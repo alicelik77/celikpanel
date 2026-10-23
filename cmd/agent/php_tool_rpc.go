@@ -55,6 +55,7 @@ func (a *Agent) BindPHPToolV1(req *transport.BindPHPToolRequest, resp *transport
 		var typed *phpToolBindError
 		if errors.As(err, &typed) {
 			resp.ErrorCode = typed.Code
+			resp.Detail = typed.Detail
 		}
 		return nil
 	}

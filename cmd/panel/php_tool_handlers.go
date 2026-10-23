@@ -179,6 +179,7 @@ func (p *Panel) handlePHPTools(w http.ResponseWriter, r *http.Request) {
 type phpToolBindFailure struct {
 	Error           string   `json:"error"`
 	Code            string   `json:"code"`
+	Detail          string   `json:"detail,omitempty"`
 	Tool            string   `json:"tool,omitempty"`
 	Version         string   `json:"version,omitempty"`
 	Previous        string   `json:"previous,omitempty"`
@@ -247,7 +248,7 @@ func (p *Panel) handlePHPToolBind(w http.ResponseWriter, r *http.Request) {
 		p.audit(r, "service.php_tool_bind.failed:"+req.Tool+":"+req.Version+" — "+auditReason(response.Error), "service", 0)
 		w.WriteHeader(http.StatusConflict)
 		json.NewEncoder(w).Encode(phpToolBindFailure{
-			Error: response.Error, Code: phpToolBindCode(response.ErrorCode), Tool: req.Tool, Version: req.Version,
+			Error: response.Error, Code: phpToolBindCode(response.ErrorCode), Detail: response.Detail, Tool: req.Tool, Version: req.Version,
 			Previous: response.Previous, Restored: response.Restored, MutationApplied: response.MutationApplied,
 		})
 		return
@@ -300,6 +301,7 @@ func (p *Panel) movePHPToolsBeforeVersionRemoval(ctx context.Context, removed, t
 			return moved, &phpToolBindFailure{
 				Error:           message,
 				Code:            errCodePHPToolMoveFailed,
+				Detail:          response.Detail,
 				Tool:            tool,
 				Version:         target,
 				Previous:        response.Previous,

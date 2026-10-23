@@ -869,6 +869,9 @@ type phpToolBindOps struct {
 type phpToolBindError struct {
 	Code    string
 	Message string
+	// Detail is the cause alone ("PHP-FPM 8.6 lacks intl for Webmail
+	// (Roundcube)"), or "" when the message is the whole story.
+	Detail string
 }
 
 func (e *phpToolBindError) Error() string { return e.Message }
@@ -885,8 +888,17 @@ type phpToolBindResult struct {
 // there; when the proof fails, the previous configuration comes back.
 func bindPHPToolWith(ctx context.Context, ops phpToolBindOps, tool, version string) (phpToolBindResult, error) {
 	var result phpToolBindResult
+	// The first error among the arguments is the cause, said on its own as
+	// Detail so a screen can quote it without repeating the sentence.
 	fail := func(code, format string, args ...any) (phpToolBindResult, error) {
-		return result, &phpToolBindError{Code: code, Message: fmt.Sprintf(format, args...)}
+		detail := ""
+		for _, arg := range args {
+			if cause, ok := arg.(error); ok && cause != nil {
+				detail = cause.Error()
+				break
+			}
+		}
+		return result, &phpToolBindError{Code: code, Message: fmt.Sprintf(format, args...), Detail: detail}
 	}
 	if !validPHPTool(tool) {
 		return fail(errCodePHPToolUnsupported, "unknown PHP tool %q", tool)

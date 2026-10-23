@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Code2 } from 'lucide-react';
 import { useI18n } from '../i18n';
-import { Button, Checking, CouldNotCheck, KeepWords } from './ui';
+import { Button, Checking, CouldNotCheck, KeepWords, Spinner } from './ui';
 import { componentName } from '../lib/componentName';
 import { movePHPTool, readPHPTools, type PHPToolName, type PHPToolsInfo } from '../lib/phpTools';
 
@@ -55,7 +55,7 @@ export function PHPToolVersion({ serviceId, tool }: { serviceId: string; tool: P
             // Yanıt kayboldu: taşıma olmuş da olabilir, olmamış da.
             setResult({ kind: 'failed', version: selected, reason: t('component.phpTool.answerLost') });
         } else {
-            const reason = answer.failure?.error || t('component.phpTool.failedUnknown');
+            const reason = answer.failure?.detail || answer.failure?.error || t('component.phpTool.failedUnknown');
             setResult(answer.failure?.restored
                 ? { kind: 'restored', version: selected, previous: answer.failure.previous || current, reason }
                 : { kind: 'failed', version: selected, reason });
@@ -107,18 +107,25 @@ export function PHPToolVersion({ serviceId, tool }: { serviceId: string; tool: P
                                         value={selected}
                                         onChange={(event) => setChoice(event.target.value)}
                                         disabled={moving}
-                                        className="rounded-lg border border-border-strong bg-surface px-2 py-1 font-mono text-sm text-fg"
+                                        className="rounded-lg border border-border-strong bg-surface px-2 py-1 font-mono text-sm text-fg max-sm:min-h-11"
                                         data-php-tool-select=""
                                     >
                                         {options.map((version) => <option key={version} value={version}>PHP {version}</option>)}
                                     </select>
                                 </label>
-                                <Button variant="secondary" onClick={() => void move()} disabled={moving || !selected} loading={moving}>
+                                <Button variant="secondary" onClick={() => void move()} disabled={moving || !selected} loading={moving} className="max-sm:min-h-11">
                                     {moving ? t('component.phpTool.moving', { version: selected }) : t('component.phpTool.apply', { version: selected })}
                                 </Button>
                             </div>
                         )}
-                        {moving && <Checking label={t('component.phpTool.movingWait', { tool: name, version: selected })} />}
+                        {/* A long waiting sentence keeps its spinner whole on a phone.
+                            Uzun bekleme cümlesi telefonda dönen işaretini korur. */}
+                        {moving && (
+                            <div className="flex items-start gap-2 text-sm text-fg-muted" data-php-tool-waiting="">
+                                <span className="mt-0.5 shrink-0"><Spinner size="xs" label={t('component.phpTool.movingWait', { tool: name, version: selected })} /></span>
+                                <span aria-hidden="true">{t('component.phpTool.movingWait', { tool: name, version: selected })}</span>
+                            </div>
+                        )}
                         <p className="text-xs text-fg-subtle">{t('component.phpTool.note', { tool: name })}</p>
                     </>
                 )}

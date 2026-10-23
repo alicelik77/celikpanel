@@ -79,6 +79,8 @@ export async function readPHPTools(signal?: AbortSignal): Promise<PHPToolsInfo> 
 export interface PHPToolMoveFailure {
     error: string;
     code: string;
+    /** The cause alone, when the server gave it; else ''. */
+    detail: string;
     tool: PHPToolName | '';
     version: string;
     previous: string;
@@ -96,6 +98,7 @@ export function decodePHPToolMoveFailure(value: unknown): PHPToolMoveFailure | n
     return {
         error: v.error,
         code: v.code,
+        detail: typeof v.detail === 'string' ? v.detail : '',
         tool: typeof v.tool === 'string' && TOOLS.has(v.tool) ? v.tool as PHPToolName : '',
         version: typeof v.version === 'string' ? v.version : '',
         previous: typeof v.previous === 'string' ? v.previous : '',

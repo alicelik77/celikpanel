@@ -137,8 +137,8 @@ func TestBindPHPToolRestoresThePreviousConfigurationWhenTheProbeFails(t *testing
 	host.probeErr = errors.New("phpMyAdmin answered HTTP 502")
 	result, err := bindPHPToolWith(context.Background(), host.ops(), phpToolPHPMyAdmin, "8.6")
 	var typed *phpToolBindError
-	if !errors.As(err, &typed) || typed.Code != errCodePHPToolProbeFailed {
-		t.Fatalf("err = %v", err)
+	if !errors.As(err, &typed) || typed.Code != errCodePHPToolProbeFailed || typed.Detail != "phpMyAdmin answered HTTP 502" {
+		t.Fatalf("err = %v (%+v)", err, typed)
 	}
 	if !strings.Contains(err.Error(), "it was put back on PHP 8.4") || !result.Restored || !result.MutationApplied {
 		t.Fatalf("result = %+v err = %v", result, err)

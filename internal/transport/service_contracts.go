@@ -482,4 +482,6 @@ type BindPHPToolResponse struct {
 	Warning           string   `json:"warning,omitempty"`
 	Error             string   `json:"error,omitempty"`
 	ErrorCode         string   `json:"error_code,omitempty"`
+	// Detail is the cause alone, for a screen that quotes it.
+	Detail string `json:"detail,omitempty"`
 }

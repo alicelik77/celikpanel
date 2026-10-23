@@ -32,7 +32,7 @@ import { componentIcon } from '../lib/componentIcons';
 import { packageVersionFacts } from '../lib/packageVersion';
 import { BundleInstallDialog, ReadyBundleStrip, useBundleSequence } from './ReadyBundleStrip';
 import { WebmailRepairButton } from './WebmailRepairButton';
-import { answerBody, decodePHPToolMoveFailure, readPHPTools, PHP_TOOL_SERVICE_ID, type PHPToolMoveFailure, type PHPToolsInfo } from '../lib/phpTools';
+import { answerBody, decodePHPToolMoveFailure, phpToolForService, readPHPTools, PHP_TOOL_SERVICE_ID, type PHPToolMoveFailure, type PHPToolsInfo } from '../lib/phpTools';
 
 // One installed copy of a runtime (B3b): php8.3-fpm is an instance, a Node
 // tree under /opt/celikpanel/runtimes is an instance. `unit` empty means the
@@ -1875,6 +1875,14 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 without it, the only place a version is said.
                                                                 Sütun varsa bu satır telefonundur. */}
                                                             <RowVersion service={s} className={versionColumn ? 'md:hidden' : ''} />
+                                                            {/* alpha.104: a PHP tool whose PHP version is not there
+                                                                says why and where it is fixed, under its name.
+                                                                PHP'si olmayan araç nedenini ve çaresini söyler. */}
+                                                            {componentStateWord(s) === 'notReady' && phpBindingOf(s) && (
+                                                                <p className="mt-0.5 text-xs text-fg-muted" data-row-not-ready="">
+                                                                    {t(phpBindingOf(s)!.version_installed ? 'services.phpNotReadyStopped' : 'services.phpNotReadyGone', { version: phpBindingOf(s)!.version })}
+                                                                </p>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     {versionColumn && (
@@ -1928,14 +1936,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                       ? t('services.running')
                                                                       : t('services.stopped')}
                                                         </span>
-                                                        {/* alpha.104: a PHP tool whose PHP version is not there
-                                                            says why and where it is fixed.
-                                                            PHP'si olmayan araç nedenini ve çaresini söyler. */}
-                                                        {componentStateWord(s) === 'notReady' && phpBindingOf(s) && (
-                                                            <p className="mt-0.5 text-xs text-fg-muted" data-row-not-ready="">
-                                                                {t(phpBindingOf(s)!.version_installed ? 'services.phpNotReadyStopped' : 'services.phpNotReadyGone', { version: phpBindingOf(s)!.version })}
-                                                            </p>
-                                                        )}
+
                                                     </div>
                                                     <fieldset
                                                         disabled={mutationControlsDisabled}
@@ -2170,9 +2171,11 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                     </button>
                                                     )}
                                                     {/* Manage: extensions/config pages. A tool has nothing to
-                                                        manage. / Yönet: uzantı/ayar sayfaları. Tool'un
-                                                        yönetecek şeyi yoktur. */}
-                                                    {s.kind !== 'tool' && (
+                                                        manage, except a PHP tool, whose PHP version is chosen
+                                                        there (alpha.104). / Yönet: uzantı/ayar sayfaları.
+                                                        Tool'un yönetecek şeyi yoktur; PHP aracının PHP sürümü
+                                                        orada seçilir. */}
+                                                    {(s.kind !== 'tool' || phpToolForService(s.id) !== null) && (
                                                     <button
                                                         onClick={() => onManageService?.(s.id, s.versions)}
                                                         className={`ml-1 ${rowButtonClass}`}
@@ -3599,6 +3602,9 @@ function VersionDrawer({
                         );
                     })()}
                 >
+                    {/* What a failed move did comes first, where it is seen.
+                        Başarısız taşımanın yaptığı önce, görüldüğü yerde. */}
+                    {moveFailure && <MoveFailureNote failure={moveFailure} removed={removeTarget.version} toolName={toolName} />}
                     {removeTarget.unit && phpVersions && (
                         <VersionRemovalImpact
                             name={`${componentName(service, t)} ${removeTarget.version}`}
@@ -3613,7 +3619,6 @@ function VersionDrawer({
                             nameOf={(id) => componentName({ id, name: id }, t)}
                         />
                     )}
-                    {moveFailure && <MoveFailureNote failure={moveFailure} removed={removeTarget.version} toolName={toolName} />}
                     {/* The refusal's evidence — the blocking sites — lands
                         here, in the confirm dialog (B3d).
                         Retin kanıtı — engelleyen siteler — buraya, onay
@@ -3675,7 +3680,12 @@ function VersionRemovalImpact({ name, serviceId, version, read, onRetry, targets
     const hosted = impact.hosted && impact.hosted.count > 0 ? impact.hosted : null;
     const shown = hosted ? hosted.names.slice(0, REMOVAL_IMPACT_NAMES_SHOWN) : [];
     const more = hosted ? hosted.count - shown.length : 0;
-    const toolsBound = (sim?.bound_tools.length ?? 0) > 0;
+    // The move is offered only when the tools are the one thing in the way:
+    // with sites on the version or packages the removal would also take,
+    // moving the tools would not make the removal possible.
+    // Taşıma yalnız araçlar tek engel olduğunda sunulur.
+    const toolsBound = (sim?.bound_tools.length ?? 0) > 0 && !impact.hosted?.blocks_removal
+        && !(sim?.state === 'checked' && sim.collateral.length > 0);
     const target = targets.includes(moveTo) ? moveTo : targets[0] ?? '';
     return (
         <div className="mb-3 space-y-2 text-sm" data-removal-impact="known">
@@ -3694,7 +3704,7 @@ function VersionRemovalImpact({ name, serviceId, version, read, onRetry, targets
                             value={target}
                             onChange={(event) => onMoveTo(event.target.value)}
                             disabled={moving}
-                            className="rounded-lg border border-border-strong bg-surface px-2 py-1 font-mono text-sm text-fg"
+                            className="rounded-lg border border-border-strong bg-surface px-2 py-1 font-mono text-sm text-fg max-sm:min-h-11"
                         >
                             {targets.map((option) => <option key={option} value={option}>PHP {option}</option>)}
                         </select>
@@ -3704,7 +3714,12 @@ function VersionRemovalImpact({ name, serviceId, version, read, onRetry, targets
                     <p className="text-fg-muted" data-version-move="none">{t('services.version.moveNone')}</p>
                 )
             )}
-            {moving && toolsBound && <Checking label={t('services.version.movingWait', { version: target })} />}
+            {moving && toolsBound && (
+                <div className="flex items-start gap-2 text-sm text-fg-muted" data-version-moving="">
+                    <span className="mt-0.5 shrink-0"><Spinner size="xs" label={t('services.version.movingWait', { version: target })} /></span>
+                    <span aria-hidden="true">{t('services.version.movingWait', { version: target })}</span>
+                </div>
+            )}
             {sim?.state === 'checked' && sim.remove.length > 0 && (
                 <div data-removal-exact="">
                     <p className="mb-1 text-fg-muted">{t('services.removal.sim.exact', { count: sim.remove.length })}</p>
@@ -3725,8 +3740,8 @@ function MoveFailureNote({ failure, removed, toolName }: { failure: PHPToolMoveF
     if (failure.moved.length > 0) parts.push(t('services.version.moveDone', { tools: failure.moved.map(toolName).join(', '), version: failure.version }));
     if (failure.tool) {
         parts.push(failure.restored
-            ? t('services.version.moveRestored', { tool: toolName(failure.tool), version: failure.version, previous: failure.previous || removed, reason: failure.error })
-            : t('services.version.moveNotRestored', { tool: toolName(failure.tool), version: failure.version, reason: failure.error }));
+            ? t('services.version.moveRestored', { tool: toolName(failure.tool), version: failure.version, previous: failure.previous || removed, reason: failure.detail || failure.error })
+            : t('services.version.moveNotRestored', { tool: toolName(failure.tool), version: failure.version, reason: failure.detail || failure.error }));
     } else {
         parts.push(failure.error);
     }
