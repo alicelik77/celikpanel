@@ -827,20 +827,27 @@ Eklenen kurallar:
    bir saatte bir güncelleme başlatmayı kabul ettiyse, sunucu süren bir
    değişiklik bildiriyorsa, kurulum sunucuyu değiştiriyorsa ya da Agent yanıt
    vermiyorsa denetim yok) ve yazma kurallarıyla çalıştırır; tüm istek 50
-   saniyeyle (denetimin kendisi 40 saniyeyle) sınırlıdır. On dakika: ekranı bir
+   saniyeyle (denetimin kendisi 40 saniyeyle) sınırlıdır; denetim ve kaydı
+   tarayıcı ayrılsa da sürer, tamamlanan okuma saklanır. On dakika: ekranı bir
    oturumda birkaç kez açan biri her seferinde celikpanel.net'e sormasın diye (kim
-   açarsa açsın, ekran açılışlarından on dakikada en çok bir sürüm okuması), ama
-   daha yeni bir sürüm çıktığında ekranın sunduğu şey 12 saatlik zamanlamanın
-   sonucu olmasın diye.
+   açarsa açsın, ekran açılışları on dakikada en çok bir tamamlanmış sürüm okuması
+   yapar; atlanan ya da sınırı içinde bitmeyen denetim hiçbir şey saklamaz, bu
+   yüzden sonraki açılış yeniden deneyebilir), ama daha yeni bir sürüm çıktığında
+   ve denetim çalışabildiğinde ekran 12 saatlik bir sonucu sunmasın diye.
 2. **Aynı anda tek sürüm denetimi.** Zamanlama, düğme ve açılış tek bir kapıdan
-   birbirini bekler; bekleyen açılış yeniden okumaz, beklediği denetimin sonucunu
-   kullanır.
+   birbirini bekler. Son on dakika içinde tamamlanan bir denetimi bekleyen açılış
+   yeniden okumaz, o sonucu kullanır; zamanlama, bekledikten sonra son on dakika
+   içinde tamamlanan bir denetim varsa yeniden okumaz ve bu arada bir başlatma
+   kabul edildiyse atlar. Düğme, beklediği denetimden sonra her zaman kendi
+   okumasını yapar; zamanlamanınki gibi 40 saniyeyle sınırlıdır.
 3. **Bekleme görünürdür ve bilineni korur.** Hareketli "celikpanel.net'te en yeni
    sürüm denetleniyor…", "Bu denetimden önce bilinen: …" ve "Güncelleme düğmesi
    bu yanıtı bekler, en çok bir dakika kadar. Hiçbir işlem kendiliğinden
    başlamaz."; teklif görünür kalır ve Başlat bekler. Başarısız bir denetim
-   teklifi yaşıyla ve mevcut hata satırıyla korur; atlanan ya da yanıtsız kalan
-   bir denetim nedenini ve gösterilenin ne kadar eski olduğunu söyler.
+   teklifi yaşıyla ve mevcut hata satırıyla korur; atlanan, zamanında yanıt
+   vermeyen (sonucu bilinmeyen) ve yanıtı okunamayan (panel bir hatayla ya da
+   okunamayan bir yanıtla döndü) denetim bunu ve gösterilenin ne kadar eski
+   olduğunu söyler.
 4. **Otomatik denetim kapalıyken hiçbir yere sorulmaz.** Ekranın açılması hiçbir
    şey sormaz; teklif "Son denetim: …" der ve sonraki denetim satırı "Güncellemeleri
    denetle"yi gösterir.
@@ -852,8 +859,12 @@ Eklenen kurallar:
    en üstte şunu gösterir: "Önce durdurulan güncellemeyle ilgili bildirimi kapatın
    ("Bildirimi kapat"); ardından bu düğme v0.1.0-alpha.102 güncellemesini
    başlatır. Hiçbir işlem kendiliğinden başlamaz." Başlat bildirimin kapanmasını
-   bekler; güncelleme kilidinin kendisi değişmedi. O sayfada bir duruştan sonra
-   açılışta denetim yapılmaz, çünkü duruş sunulacak sürümü değiştirmez.
+   bekler; güncelleme kilidinin kendisi değişmedi. Bildirim kilidi tutarken
+   açılışta denetim yapılmaz; bildirim kapanınca, bilinen sonuç on dakikadan
+   eskiyse kart denetler (bildirim açık kalırken daha yeni bir sürüm yayımlanmış
+   olabilir). Başlatmadan sonraki bir saat içinde Panel bu denetimi atlanmış
+   olarak yanıtlar, çünkü bir güncelleme başlatmayı kabul etmiştir; teklif o
+   zaman yaşı ve bu nedenle kalır ve "Güncellemeleri denetle" sürümü hemen okur.
 6. **Kenar çubuğu, Ayarlar öğesi ve Pano satırı** açılış denetiminin yanıtını
    izler: aynı ortak kopyayı okurlar ve yanıt bu kopyanın yerine geçer.
 

@@ -10003,9 +10003,9 @@ installed server).
   could not get a verified answer from the release server (celikpanel.net)."); a
   condition that was not met says so ("Not checked again on opening, because an
   update was started on this server less than an hour ago." or "Not checked again
-  on opening: another change was in progress on the server."), and an unanswered
+  on opening: another change was in progress on the server."), an unanswered
   check says "The check made on opening did not answer in time, so its result is
-  not known.", each followed by "What is shown is from the last check, 13 hours
+  not known.", and an answer that could not be read (the panel answered with an error or an unreadable reply) says "The check made on opening could not be read: the panel answered with an error or an unreadable reply.", each followed by "What is shown is from the last check, 13 hours
   ago; you can check now." **Automatic checks off:** nothing is asked; the offer
   says "Last checked 13 hours ago." and the next line points to "Check for
   updates". Start still re-checks the exact target before anything is installed.
@@ -10029,7 +10029,10 @@ installed server).
   the update to v0.1.0-alpha.102. Nothing starts by itself." **Who acts:** the
   owner, by closing the notice and pressing the update button when the package
   manager has finished. **How work resumes:** nothing starts by itself; the card's
-  quiet re-read only reads.
+  quiet re-read only reads. Once the notice is closed, the card checks for the
+  newest release if the known result is older than ten minutes (within an hour of
+  the start the Panel answers it as skipped, and "Check for updates" reads at
+  once).
 
 Unchanged: nothing installs by itself; the Agent, the updater and the schema
 (44). P0.1-P0.5 stay **partial**; this entry closes and advances nothing.

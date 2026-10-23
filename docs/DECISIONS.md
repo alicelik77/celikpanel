@@ -835,20 +835,29 @@ The rules added:
    schedule's skip rules (no check while it admitted an update start in the last
    hour, while the server reports a change in progress, while setup is changing
    the server, or when the Agent does not answer) and its write rules, bounded at
-   50 seconds for the whole request (the check itself at 40). Ten minutes, so
-   that a person who opens the screen several times in one sitting does not ask
-   celikpanel.net each time (at most one release read per ten minutes from
-   screen openings, whoever opens it), while a result of the 12-hour schedule is
-   never what the screen offers once a newer release is out.
+   50 seconds for the whole request (the check itself at 40); the check and its
+   save run on even when the browser leaves, so a completed read is kept. Ten
+   minutes, so that a person who opens the screen several times in one sitting
+   does not ask celikpanel.net each time (screen openings make at most one
+   completed release read per ten minutes, whoever opens them; a check that is
+   skipped or does not finish within its bound keeps nothing, so the next
+   opening may try again), while the screen no longer offers a 12-hour-old
+   result when a newer release is out and the check can run.
 2. **One release check at a time.** The schedule, the button and the opening
-   wait for each other through one gate; an opening that waited uses the result
-   of the check it waited for instead of reading again.
+   wait for each other through one gate. An opening that waited for a check that
+   completed within the last ten minutes uses that result instead of reading
+   again; the schedule, after waiting, does not read again when a check completed
+   within the last ten minutes, and skips when a start was admitted meanwhile.
+   The button always makes its own read, after any check it waited for; it is
+   bounded at 40 seconds like the schedule's.
 3. **Waiting is visible and keeps what is known.** "Checking celikpanel.net for
    the newest release…" with motion, "Known before this check: …", and "The
    update button waits for this answer, at most about a minute. Nothing starts
    by itself."; the offer stays in view and Start waits. A failed check keeps the
-   offer with its age and the existing failure line; a skipped or unanswered one
-   says why and how old what is shown is.
+   offer with its age and the existing failure line; a skipped one, one that did
+   not answer in time (result not known) and one whose answer could not be read
+   (the Panel answered with an error or an unreadable reply) each say so and how
+   old what is shown is.
 4. **Automatic checks off: no contact.** Opening the screen asks nothing; an
    offer says "Last checked …", and the next-check line points to "Check for
    updates".
@@ -860,8 +869,12 @@ The rules added:
    "Close the notice about the stopped update first ("Close notification"); this
    button then starts the update to v0.1.0-alpha.102. Nothing starts by itself."
    Start waits for the notice to be closed; the update lock itself is unchanged.
-   No check is made on opening after a stop on that page, because the stop
-   leaves the same release to offer.
+   No check is made on opening while the notice holds the lock; once it is
+   closed the card checks if the known result is older than ten minutes (a newer
+   release may have been published while the notice stayed open). Within an hour
+   of the start the Panel answers that check as skipped, because it admitted an
+   update start; the offer then stays with its age and that reason, and "Check
+   for updates" reads the release at once.
 6. **The sidebar, the Settings item and the Dashboard row follow** the answer of
    the opening check: they read the same shared copy, which the answer replaces.
 

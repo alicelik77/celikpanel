@@ -7399,10 +7399,11 @@ records one release; it changes no code, schema or recovery behaviour.
 
 ### Candidate v0.1.0-alpha.103 (the update screen checks again when opened; a stopped update leaves the card full; no Agent, updater or schema change; invariants 2 and 6; D-035 amendment; D-022; D-024; D-025; 2026-10-23)
 
-D-025 invariants 2 (evidence has a meaning and a lifecycle: the offer on the
-update screen is the result of a check at most ten minutes old when automatic
-checks are on, or is shown with its age; a failed, skipped or unanswered check
-keeps the known offer and says which it was) and 6 (readiness, progress and
+D-025 invariants 2 (evidence has a meaning and a lifecycle: with automatic
+checks on, opening the update screen checks a known result older than ten
+minutes again unless a stated condition holds it; whatever is offered is shown
+with its age, and a failed, skipped, unanswered or unreadable check keeps the
+known offer and says which it was) and 6 (readiness, progress and
 access remain independent: a stopped update's open notice no longer hides the
 offer, the earlier attempt and the readiness read, while the update lock that
 holds Start is unchanged; no read starts a change). The P0.1/P0.2 area (truthful,
@@ -7418,7 +7419,12 @@ observations and the code are of 2026-10-23.
   under the schedule's skip and write rules, bounded at 50 seconds; one gate so
   that the schedule, the "Check for updates" handler and the opening never run a
   release check side by side (`cmd/panel/system_update_handlers.go` takes it for
-  the button). The licence-lock exception admits the new read for administrators
+  the button, whose read is now bounded at 40 seconds like the schedule's); a
+  scheduled check that waited reads its conditions again (it does not read right
+  after a check completed within ten minutes and skips a start admitted
+  meanwhile); the opening check and its save run on a context detached from the
+  request, bounded at 50 seconds, so a completed read is kept when the browser
+  leaves. The licence-lock exception admits the new read for administrators
   (GET only), as it admits the other update reads. The web update card, its
   shared discovery reader and the update provider's additive `stopped` value
   (`web/src/components/PanelUpdateCard.tsx`, `web/src/lib/panelUpdateDiscovery.ts`,
@@ -7445,7 +7451,9 @@ observations and the code are of 2026-10-23.
 - **Recovery behaviour (D-024).** Verified failure, unmet condition and unknown
   result stay apart on the card ("Last automatic check: … — could not get a
   verified answer …"; "Not checked again on opening: …"; "… did not answer in
-  time, so its result is not known."), each with the age of what is shown and that
+  time, so its result is not known."; and the read's own failure, "The check made
+  on opening could not be read: the panel answered with an error or an unreadable
+  reply."), each with the age of what is shown and that
   the owner can check now. A stopped update says who acts (the owner closes the
   notice and starts again when the package manager is free) and how work resumes
   (nothing starts by itself; the card's quiet re-read only reads). **Installed-panel
@@ -7460,18 +7468,28 @@ observations and the code are of 2026-10-23.
   read as before. *alpha.103 back to alpha.102* (for example after a rollback):
   the new read is gone and the card shows the stored result as alpha.102 did;
   nothing is lost or needs repairing.
-- **Evidence and open.** On the candidate tree: the opening check (a stale result is checked again, a fresh one within ten minutes is not, automatic checks off make no Agent call, no check while an update was admitted or the host lock is held, a busy package manager does not hold it, a failed check keeps the offer, an unanswered Agent is a skip, a request that ends while waiting keeps nothing, one release check at a time across the button, the openings and the schedule, administrators only, readable while the licence is locked); passed on the final Go tree in the `CelikPanel-S2-Debian` guest (the Panel and the internal packages, 45-minute limit, CGO off): 7,226 passed, 44 skipped, 0 failed (2,970 top-level tests), no package failed; gofmt and go vet clean; web 1,755 tests
+- **Evidence and open.** On the candidate tree: the opening check (a stale result is checked again, a fresh one within ten minutes is not, automatic checks off make no Agent call, no check while an update was admitted or the host lock is held, a busy package manager does not hold it, a failed check keeps the offer, an unanswered Agent is a skip, a request that ends while waiting for the gate keeps nothing, a completed opening check is kept when the browser leaves, one release check at a time across the button, the openings and the schedule, a scheduled check that waited reads its conditions again (no read right after a completed check, a skip for a start admitted meanwhile), the button's read bounded at 40 seconds, administrators only, readable while the licence is locked); passed on the final Go tree in the `CelikPanel-S2-Debian` guest (the Panel and the internal packages, 45-minute limit, CGO off): 7,229 passed, 44 skipped, 0 failed (2,973 top-level tests), no package failed; gofmt and go vet clean; web 1,757 tests
   passed (mounted tests of the stale-then-newest offer, a fresh result, automatic
-  checks off, failed/skipped/unanswered checks, no check while an update is
-  followed, and Boston's stopped state consistent with the sidebar) and the
+  checks off, failed/skipped/unanswered/unreadable checks, no check while an
+  update is followed, Boston's stopped state consistent with the sidebar, the
+  check after the stopped update's notice is closed, and the recorded cause on
+  the attempt drawn from the notice) and the
   production build within its budgets; browser inspection batch 26 (40 states,
   EN/TR, light/dark, 1440/390; looked, fixed, looked again; loopback mock); in a
   fresh clone in the `archlinux` guest the offline release-recovery harness (1,109
   tests, 1 skipped) and the release sequence, download portal and signed manifest
   contracts passed. Component tests do not establish native behaviour. **Nothing
   was measured on an installed server**; the opening check has not run against a
-  real Agent or the real release server. Open: the corner notice still covers
-  part of the card on a wide screen while a stopped update's notice is open;
-  everything the alpha.90 to alpha.102 entries leave open stays open. Installed
+  real Agent or the real release server. Open: Recorded gaps for a later release: (a) for a failed update whose
+  notice is in an unknown, recovery or attention state, the card still shows only
+  the version and the switch while the sidebar says "Update available" (holding
+  Start is right; the card saying nothing is the gap); (b) the opening check is a
+  GET with a side effect (one release read and a settings write), reachable by a
+  top-level cross-site navigation of a signed-in administrator because the
+  session cookie is SameSite=Lax; it is bounded to one completed read per ten
+  minutes and has the same exposure as the existing `/update/check`; (c) the
+  corner notice still covers part of the card on a wide screen while a stopped
+  update's notice is open.
+  Everything the alpha.90 to alpha.102 entries leave open stays open. Installed
   panels are updated only by their owners, from the panel's own update screen.
   P0.1 to P0.5 stay partial.

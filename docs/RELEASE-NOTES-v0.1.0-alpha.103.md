@@ -43,10 +43,16 @@ newest release is offered, and the sidebar link, the Settings item and the
 Dashboard row show the same version.
 
 - Ten minutes, so that opening the screen several times in one sitting does not
-  ask celikpanel.net each time, while a result of the 12-hour schedule is never
-  what the screen offers once a newer release is out.
+  ask celikpanel.net each time (screen openings make at most one completed
+  release read per ten minutes; a check that is skipped or does not finish keeps
+  nothing, so the next opening may try again), while the screen no longer offers
+  a 12-hour-old result when a newer release is out and the check can run. A
+  completed check is kept even if the browser leaves before its answer arrives.
 - It is the same check as "Check for updates" and the schedule, one at a time
-  with them, with the same rules: no check while an update was started on this
+  with them: an opening that waited for a check completed within ten minutes
+  uses that result, and the schedule does not read again right after another
+  check (the button's read is now bounded at 40 seconds, as the schedule's).
+  The same rules apply: no check while an update was started on this
   server in the last hour, while the server reports a change in progress, while
   server setup is changing the server, or when the Agent does not answer. A busy
   package manager does not stop it.
@@ -55,8 +61,8 @@ Dashboard row show the same version.
   verified answer from the release server (celikpanel.net)."), a condition not
   met says so ("Not checked again on opening, because an update was started on
   this server less than an hour ago."; "Not checked again on opening: another
-  change was in progress on the server."), and no answer in time says "The check
-  made on opening did not answer in time, so its result is not known.", each
+  change was in progress on the server."), no answer in time says "The check
+  made on opening did not answer in time, so its result is not known.", and an answer that could not be read (the panel answered with an error or an unreadable reply) says "The check made on opening could not be read: the panel answered with an error or an unreadable reply.", each
   followed by "What is shown is from the last check, 13 hours ago; you can check
   now."
 - **With automatic checks off, opening the screen contacts nothing.** An offer
@@ -96,31 +102,47 @@ On a phone the readiness box's Retry button is now 44 px tall.
 - While the stopped update's notice is open, the corner notice still covers part
   of the card on a wide screen; the sentence that says what to do is at the top
   of the card, where it stays visible.
-- After a stop the page does not check again on opening (the stop leaves the same
-  release to offer); "Check for updates" still works once the notice is closed.
+- While a stopped update's notice is open no check is made on opening; once it is
+  closed the card checks if the known result is older than ten minutes. Within an
+  hour of the start the Panel answers that check as skipped ("an update was
+  started on this server less than an hour ago"); "Check for updates" reads the
+  release at once.
+- For a failed update whose notice is in an unknown, recovery or attention state,
+  the card still shows only the version and the switch while the sidebar says
+  "Update available". Holding Start there is right; the card saying nothing is a
+  gap for a later release.
+- The opening check is a GET that reads the release and writes the stored result.
+  A signed-in administrator's browser can be sent to it by a top-level link from
+  another site (the session cookie is SameSite=Lax); it is bounded to one
+  completed read per ten minutes, the same exposure as the existing "Check for
+  updates" read.
 
 ## Evidence
 
 On the candidate tree:
 
-- Go: the opening check (a stale result is checked again, a fresh one within ten minutes is not, automatic checks off make no Agent call, no check while an update was admitted or the host lock is held, a busy package manager does not hold it, a failed check keeps the offer, an unanswered Agent is a skip, a request that ends while waiting keeps nothing, one release check at a time across the button, the openings and the schedule, administrators only, readable while the licence is locked); passed on the final Go tree in the `CelikPanel-S2-Debian` guest (the Panel and the internal packages, 45-minute limit, CGO off): 7,226 passed, 44 skipped, 0 failed (2,970 top-level tests), no package failed; gofmt and go vet clean
-- Web: 1,755 tests passed, 0 failed, including mounted tests of a stale stored
+- Go: the opening check (a stale result is checked again, a fresh one within ten minutes is not, automatic checks off make no Agent call, no check while an update was admitted or the host lock is held, a busy package manager does not hold it, a failed check keeps the offer, an unanswered Agent is a skip, a request that ends while waiting for the gate keeps nothing, a completed opening check is kept when the browser leaves, one release check at a time across the button, the openings and the schedule, a scheduled check that waited reads its conditions again (no read right after a completed check, a skip for a start admitted meanwhile), the button's read bounded at 40 seconds, administrators only, readable while the licence is locked); passed on the final Go tree in the `CelikPanel-S2-Debian` guest (the Panel and the internal packages, 45-minute limit, CGO off): 7,229 passed, 44 skipped, 0 failed (2,973 top-level tests), no package failed; gofmt and go vet clean
+- Web: 1,757 tests passed, 0 failed, including mounted tests of a stale stored
   offer and a newer release (waiting, then the newest version offered and the
   sidebar following it), a fresh result (no check), automatic checks off (no
-  request, the age shown), a failed, skipped or unanswered check (the offer kept
-  with the reason), no check while an update is followed, and Boston's stopped
-  state (the offer, the earlier attempt with its cause, "still busy" and "has
-  finished", Start waiting for the notice, the sidebar saying the same version);
+  request, the age shown), a failed, skipped, unanswered or unreadable check (the
+  offer kept with the reason; an HTTP error or unreadable reply said apart from no
+  answer in time), no check while an update is followed, Boston's stopped state
+  (the offer, the earlier attempt with its cause, "still busy" and "has finished",
+  Start waiting for the notice, the sidebar saying the same version), the check
+  running once the stopped update's notice is closed (and not when the result is
+  recent), and the attempt drawn from the open notice carrying the recorded cause;
   the production build passed within its bundle budgets (no limit raised).
 - Browser inspection batch 26 (loopback mock; Frankfurt's stale offer and
   Boston's stopped-busy state; English and Turkish, light and dark, 1440 and 390
-  px; 40 states): looked once, fixed (the "close the notice first" sentence moved
+  px; 40 states, and after the review the closed-notice state at 1440 EN light
+  and 390 TR dark, where the opening check ran and Start opened): looked once, fixed (the "close the notice first" sentence moved
   to the top of the card because the corner notice covered it, the version kept
   whole in it, Retry 44 px on a phone), looked again; no raw keys, no English on
   the Turkish page, no sideways scrolling, no phone target under 44 px.
 - Shell: in a fresh clone in the `archlinux` guest the offline release-recovery
   harness passed (1,109 tests, 1 skipped; its mirrored outcome texts and logic
-  did not change, so nothing in it needed updating), and the release sequence
+  did not change, so nothing in it needed updating; it was run before the review round, which changed none of them either), and the release sequence
   policy ("102 -> 103; historical bootstrap sequence 102"), download portal and
   signed release manifest contracts passed.
 

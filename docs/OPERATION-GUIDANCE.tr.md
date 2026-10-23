@@ -9967,7 +9967,7 @@ hiçbir şey ölçülmedi).
   söyler ("Açılışta yeniden denetlenmedi, çünkü bu sunucuda bir saatten kısa süre
   önce bir güncelleme başlatıldı." ya da "Açılışta yeniden denetlenmedi: sunucuda
   başka bir değişiklik sürüyordu."), yanıtsız kalan denetim "Açılışta yapılan
-  denetim zamanında yanıt vermedi; bu yüzden sonucu bilinmiyor." der; her birinin
+  denetim zamanında yanıt vermedi; bu yüzden sonucu bilinmiyor." der, yanıtı okunamayan denetim (panel bir hatayla ya da okunamayan bir yanıtla döndü) "Açılışta yapılan denetim okunamadı: panel bir hatayla ya da okunamayan bir yanıtla döndü." der; her birinin
   ardından "Gösterilen, son denetimin sonucudur (13 saat önce); şimdi de
   denetleyebilirsiniz." gelir. **Otomatik denetim kapalıyken:** hiçbir şey sorulmaz;
   teklif "Son denetim: 13 saat önce." der ve sonraki satır "Güncellemeleri
@@ -9993,7 +9993,10 @@ hiçbir şey ölçülmedi).
   güncellemesini başlatır. Hiçbir işlem kendiliğinden başlamaz." **Kim işlem
   yapar:** sahip; bildirimi kapatır ve paket yöneticisi işini bitirince güncelleme
   düğmesine basar. **İş nasıl sürer:** hiçbir şey kendiliğinden başlamaz; kartın
-  sessiz yeniden okuması yalnız okur.
+  sessiz yeniden okuması yalnız okur. Bildirim kapanınca, bilinen sonuç on
+  dakikadan eskiyse kart en yeni sürümü denetler (başlatmadan sonraki bir saat
+  içinde Panel bunu atlanmış olarak yanıtlar ve "Güncellemeleri denetle" hemen
+  okur).
 
 Değişmeyenler: hiçbir şey kendiliğinden kurulmaz; Agent, güncelleyici ve şema (44).
 P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.

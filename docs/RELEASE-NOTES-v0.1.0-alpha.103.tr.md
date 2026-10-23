@@ -40,10 +40,16 @@ sunulur; kenar çubuğu bağlantısı, Ayarlar öğesi ve Pano satırı aynı s�
 gösterir.
 
 - On dakika: ekranı bir oturumda birkaç kez açmak her seferinde celikpanel.net'e
-  sormasın, ama daha yeni bir sürüm çıktığında ekranın sunduğu şey 12 saatlik
-  zamanlamanın sonucu olmasın diye.
+  sormasın (ekran açılışları on dakikada en çok bir tamamlanmış sürüm okuması
+  yapar; atlanan ya da bitmeyen denetim hiçbir şey saklamaz, bu yüzden sonraki
+  açılış yeniden deneyebilir), ama daha yeni bir sürüm çıktığında ve denetim
+  çalışabildiğinde ekran 12 saatlik bir sonucu sunmasın diye. Tamamlanan denetim,
+  tarayıcı yanıt gelmeden ayrılsa da saklanır.
 - "Güncellemeleri denetle" ve zamanlamayla aynı denetimdir, onlarla aynı anda
-  değil sırayla ve aynı kurallarla çalışır: bu sunucuda son bir saatte bir
+  değil sırayla çalışır: on dakika içinde tamamlanan bir denetimi bekleyen açılış
+  o sonucu kullanır, zamanlama da başka bir denetimin hemen ardından yeniden
+  okumaz (düğmenin okuması artık zamanlamanınki gibi 40 saniyeyle sınırlı). Aynı
+  kurallar geçerlidir: bu sunucuda son bir saatte bir
   güncelleme başlatıldıysa, sunucu süren bir değişiklik bildiriyorsa, sunucu
   kurulumu sunucuyu değiştiriyorsa ya da Agent yanıt vermiyorsa denetim yapılmaz.
   Meşgul paket yöneticisi onu durdurmaz.
@@ -53,7 +59,7 @@ gösterir.
   söyler ("Açılışta yeniden denetlenmedi, çünkü bu sunucuda bir saatten kısa süre
   önce bir güncelleme başlatıldı."; "Açılışta yeniden denetlenmedi: sunucuda başka
   bir değişiklik sürüyordu."), zamanında yanıt gelmezse "Açılışta yapılan denetim
-  zamanında yanıt vermedi; bu yüzden sonucu bilinmiyor." der; her birinin ardından
+  zamanında yanıt vermedi; bu yüzden sonucu bilinmiyor." der, yanıtı okunamayan denetim (panel bir hatayla ya da okunamayan bir yanıtla döndü) "Açılışta yapılan denetim okunamadı: panel bir hatayla ya da okunamayan bir yanıtla döndü." der; her birinin ardından
   "Gösterilen, son denetimin sonucudur (13 saat önce); şimdi de
   denetleyebilirsiniz." gelir.
 - **Otomatik denetim kapalıyken ekranın açılması hiçbir yere sormaz.** Teklif "Son
@@ -93,31 +99,47 @@ Telefonda hazırlık kutusunun "Tekrar dene" düğmesi artık 44 px yüksekliği
 - Durdurulan güncellemenin bildirimi açıkken köşe bildirimi geniş ekranda kartın
   bir kısmını hâlâ örter; ne yapılacağını söyleyen cümle kartın en üstündedir ve
   görünür kalır.
-- Bir duruştan sonra sayfa açılışta yeniden denetlemez (duruş sunulacak sürümü
-  değiştirmez); bildirim kapandıktan sonra "Güncellemeleri denetle" yine çalışır.
+- Durdurulan bir güncellemenin bildirimi açıkken açılışta denetim yapılmaz;
+  bildirim kapanınca, bilinen sonuç on dakikadan eskiyse kart denetler.
+  Başlatmadan sonraki bir saat içinde Panel bu denetimi atlanmış olarak yanıtlar
+  ("bu sunucuda bir saatten kısa süre önce bir güncelleme başlatıldı");
+  "Güncellemeleri denetle" sürümü hemen okur.
+- Bildirimi bilinmeyen, kurtarma ya da dikkat durumunda olan başarısız bir
+  güncellemede kart hâlâ yalnız sürümü ve anahtarı gösterir, kenar çubuğu ise
+  "Güncelleme var" der. Orada Başlat'ı tutmak doğrudur; kartın hiçbir şey
+  söylememesi sonraki bir sürüme kalan bir eksiktir.
+- Açılış denetimi sürümü okuyan ve saklanan sonucu yazan bir GET'tir. Oturumu
+  açık bir yöneticinin tarayıcısı başka bir siteden üst düzey bir bağlantıyla ona
+  gönderilebilir (oturum çerezi SameSite=Lax); on dakikada bir tamamlanmış
+  okumayla sınırlıdır, mevcut "Güncellemeleri denetle" okumasıyla aynı açıklık.
 
 ## Kanıt
 
 Aday ağaçta:
 
-- Go: açılış denetimi (eski sonuç yeniden denetlenir, on dakika içindeki taze sonuç denetlenmez, otomatik denetim kapalıyken Agent çağrısı yapılmaz, bir güncelleme kabul edilmişken ya da sunucu kilidi tutulurken denetim yapılmaz, meşgul paket yöneticisi onu tutmaz, başarısız denetim teklifi korur, yanıt vermeyen Agent atlama sayılır, beklerken biten istek hiçbir şey saklamaz, düğme, açılışlar ve zamanlama arasında aynı anda tek sürüm denetimi, yalnız yöneticiler, lisans kilidinde okunabilir); son Go ağacında `CelikPanel-S2-Debian` konuğunda geçti (Panel ve iç paketler, 45 dakika sınırı, CGO kapalı): 7.226 geçti, 44 atlandı, 0 başarısız (2.970 üst düzey test), başarısız paket yok; gofmt ve go vet temiz
-- Web: 1.755 test geçti, 0 başarısız; aralarında eski bir saklı teklif ve daha
+- Go: açılış denetimi (eski sonuç yeniden denetlenir, on dakika içindeki taze sonuç denetlenmez, otomatik denetim kapalıyken Agent çağrısı yapılmaz, bir güncelleme kabul edilmişken ya da sunucu kilidi tutulurken denetim yapılmaz, meşgul paket yöneticisi onu tutmaz, başarısız denetim teklifi korur, yanıt vermeyen Agent atlama sayılır, kapıyı beklerken biten istek hiçbir şey saklamaz, tarayıcı ayrılsa da tamamlanan açılış denetimi saklanır, düğme, açılışlar ve zamanlama arasında aynı anda tek sürüm denetimi, bekleyen zamanlanmış denetim koşullarını yeniden okur (tamamlanmış bir denetimin hemen ardından okuma yok, bu arada kabul edilen başlatmada atlama), düğmenin okuması 40 saniyeyle sınırlı, yalnız yöneticiler, lisans kilidinde okunabilir); son Go ağacında `CelikPanel-S2-Debian` konuğunda geçti (Panel ve iç paketler, 45 dakika sınırı, CGO kapalı): 7.229 geçti, 44 atlandı, 0 başarısız (2.973 üst düzey test), başarısız paket yok; gofmt ve go vet temiz
+- Web: 1.757 test geçti, 0 başarısız; aralarında eski bir saklı teklif ve daha
   yeni bir sürüm (bekleme, ardından en yeni sürümün sunulması ve kenar çubuğunun
   izlemesi), taze bir sonuç (denetim yok), otomatik denetim kapalı (istek yok, yaş
-  gösterilir), başarısız, atlanan ya da yanıtsız denetim (teklif nedeniyle kalır),
-  bir güncelleme izlenirken denetim yapılmaması ve Boston'ın durdurulmuş hâli
-  (teklif, nedeniyle önceki deneme, "hâlâ meşgul" ve "işini bitirdi", bildirimi
-  bekleyen Başlat, aynı sürümü söyleyen kenar çubuğu) için bağlanmış testler var;
+  gösterilir), başarısız, atlanan, yanıtsız ya da okunamayan denetim (teklif
+  nedeniyle kalır; HTTP hatası ya da okunamayan yanıt, zamanında gelmeyen yanıttan
+  ayrı söylenir), bir güncelleme izlenirken denetim yapılmaması, Boston'ın
+  durdurulmuş hâli (teklif, nedeniyle önceki deneme, "hâlâ meşgul" ve "işini
+  bitirdi", bildirimi bekleyen Başlat, aynı sürümü söyleyen kenar çubuğu),
+  durdurulan güncellemenin bildirimi kapanınca denetimin çalışması (sonuç yeniyse
+  çalışmaması) ve açık bildirimden çizilen denemenin kaydedilen nedeni taşıması
+  için bağlanmış testler var;
   üretim derlemesi paket bütçeleri içinde geçti (hiçbir sınır yükseltilmedi).
 - Tarayıcı incelemesi, 26. grup (yerel sahte sunucu; Frankfurt'un eski teklifi ve
   Boston'ın meşgul duruşu; İngilizce ve Türkçe, açık ve koyu, 1440 ve 390 px; 40
-  durum): bir kez bakıldı, düzeltildi ("önce bildirimi kapatın" cümlesi köşe
+  durum, incelemeden sonra da 1440 EN açık ve 390 TR koyu kapanmış bildirim hâli:
+  açılış denetimi çalıştı, Başlat açıldı): bir kez bakıldı, düzeltildi ("önce bildirimi kapatın" cümlesi köşe
   bildirimi onu örttüğü için kartın en üstüne taşındı, içindeki sürüm bölünmez
   tutuldu, telefonda Tekrar dene 44 px), yeniden bakıldı; ham anahtar yok, Türkçe
   sayfada İngilizce yok, yana kaydırma yok, telefonda 44 px'ten küçük hedef yok.
 - Kabuk: `archlinux` konuğunda temiz bir kopyada çevrimdışı sürüm kurtarma
   düzeneği geçti (1.109 test, 1 atlandı; yansıttığı sonuç metinleri ve mantığı
-  değişmediği için içinde güncellenecek bir şey yoktu), ve sürüm sırası politikası
+  değişmediği için içinde güncellenecek bir şey yoktu; inceleme turundan önce çalıştırıldı, o tur da bunların hiçbirini değiştirmedi), ve sürüm sırası politikası
   ("102 -> 103; historical bootstrap sequence 102"), indirme portalı ve imzalı
   sürüm manifesti sözleşmeleri geçti.
 
