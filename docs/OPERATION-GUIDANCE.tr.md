@@ -10000,3 +10000,20 @@ hiçbir şey ölçülmedi).
 
 Değişmeyenler: hiçbir şey kendiliğinden kurulmaz; Agent, güncelleyici ve şema (44).
 P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.
+
+### Alpha.103 yayımından sonra kurulu sunucular (2026-10-23)
+
+v0.1.0-alpha.103 23 Ekim 2026'da yayımlandı (sürüm 14:08:46Z'de, ardından indirme
+portalı yaklaşık 14:17Z'de). **Kim işlem yapar:** sahip; her sunucuyu ne zaman
+güncelleyeceğine panelin kendi güncelleme ekranından kendisi karar verir; başka
+bir şey gerekmez. Sahibin ekran görüntülerine göre: Frankfurt'u sahip alpha.100'den
+alpha.102'ye başarıyla güncelledi; Boston'ın alpha.102 güncellemesi paket yöneticisi
+meşgul olduğu için hiçbir şey değişmeden durdu ve Boston bilindiği kadarıyla hâlâ
+alpha.100'de. alpha.103'ü çalıştırdığı bilinen bir kurulu sunucu yok; hiçbir şey
+çıkarılmaz. **Açık:** açılış denetimi ve durdurulan güncelleme için dolu kart
+hiçbir kurulu sunucuda ve gerçek bir sürüm sunucusuna karşı görülmedi; sahibin
+alpha.103 gözlemi güncelledikten sonra gelir (paket yöneticisi boşalınca Boston'ın
+yeniden denemesi dahil), Beta 1'de iki sunucunun temiz yeniden kurulması yaklaşan
+kabul adımıdır, yayımlanmış bir iddia değil. alpha.103 sürüm notlarındaki
+bilinen eksikler açık kalır. Bu girdi için hiçbir metin ya da ekran değiştirilmedi.
+P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.

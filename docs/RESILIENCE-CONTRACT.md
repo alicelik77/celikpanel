@@ -7493,3 +7493,59 @@ observations and the code are of 2026-10-23.
   Everything the alpha.90 to alpha.102 entries leave open stays open. Installed
   panels are updated only by their owners, from the panel's own update screen.
   P0.1 to P0.5 stay partial.
+
+### Publication of v0.1.0-alpha.103 (no code change in the publication; invariants 2 and 6; D-035 amendment; D-022; D-024; D-025; 2026-10-23)
+
+D-025 invariants 2 (evidence has a meaning and a lifecycle: unknown is not
+absent, empty or success) and 6 (readiness, progress and access remain
+independent); D-035 amendment; D-022; D-024. **No P0 item is closed or advanced.**
+P0.1 to P0.5 stay partial and every open acceptance item stays open. This entry
+records one release; it changes no code, schema or recovery behaviour.
+2026-10-23 (UTC) is the date of everything in it; the release commit carries
+2026-10-23T16:23:04+03:00, the same instant as 13:23:04Z.
+
+- **Publication.** All steps were done by the release preparer under the owner's
+  standing instruction; installed-panel updates are the owner's only. Before the
+  pull request one independent review of the candidate found one must-fix (an
+  open stop notice disabled the opening check across reloads) and smaller items,
+  all fixed. Pull request #244 merged as
+  `f780d5f08d0f295fbf7d249a853d9c130cd28779` (author Mehmet Ömer Efe Çelik); the
+  pre-release `v0.1.0-alpha.103` was published at 2026-10-23T14:08:46Z. Before the
+  publication the preparer checked the assets: archive SHA-256
+  `8a065499b59764cbefbdbe1dc16cfe754b240d865f00191484f75ec2e4ae9a00`,
+  66,351,430 bytes; the checksums, the manifest and the archive members; the
+  manifest's signature, verified with the release key (SHA-256 `7eadeb0b…c68bb`);
+  the content guards; `get.sh` pins 103; `install.sh` is the tag's; the policy
+  says 103 after 102; the Panel binary carries the new opening-check route; the
+  interface bundle is `app-DVVjTxvw.js`. The portal package was built twice
+  byte-identical and accepted by the promoter's extract and normalize step; the
+  portal was published at about 14:17Z: committed, public verification 26 of 26,
+  and read from outside afterwards (`latest.txt` v0.1.0-alpha.103, `latest.json`
+  sequence 103 with commit `f780d5f…`). Checked by the preparer; reported by the
+  preparer, not recorded in a file here.
+- **Native record.** None for the publication, and none for alpha.103, by the
+  owner's instruction of 2026-10-16 and because no Agent, updater mutation path or
+  schema file changed. alpha.103's code is covered by component and shell-contract
+  tests and the offline release-recovery harness only (see its candidate entry
+  above); component tests do not establish native behaviour.
+- **Installed panels.** From the owner's screenshots of 2026-10-23: Frankfurt was
+  updated by the owner from alpha.100 to alpha.102 successfully; Boston's update to
+  alpha.102 stopped unchanged because the package manager was busy, and Boston
+  still runs alpha.100 as far as is known. No installed server is known to run
+  alpha.103, nothing from alpha.103 had been reported when this was written, and
+  none should be inferred (invariant 6: the publication of a release is not the
+  state of any server).
+- **Schema or version transition.** None: schema 44; the release sequence moved
+  102 to 103 in the release preparation. **Recovery behaviour.** Unchanged by the
+  publication and by alpha.103 (the candidate entry above describes the
+  alpha.103 to alpha.102 direction).
+- **Open, left for a later release.** (1) The three known gaps recorded in the
+  alpha.103 candidate entry above. (2) Nothing from alpha.103 is measured on an
+  installed server or against the real release server; the owner's observation of
+  alpha.103 after he updates from the panel's own update screen (including
+  Boston's retry) is still to come, and the clean reinstall of both servers at
+  Beta 1 is the upcoming acceptance step, not a shipped claim. (3) Whether the
+  bundles move to a data catalogue is left to the owner. None of these changes a P0
+  item.
+- **Open, carried over.** Everything the alpha.103 candidate entry and the alpha.90
+  to alpha.102 entries leave open.
