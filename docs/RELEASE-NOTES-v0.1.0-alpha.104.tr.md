@@ -1,8 +1,8 @@
-# v0.1.0-alpha.104 (aday)
+# v0.1.0-alpha.104
 
 [English](RELEASE-NOTES-v0.1.0-alpha.104.md)
 
-Bu, v0.1.0-alpha.103'ü izleyen adaydır. **Yayımlanmadı.** 23 Ekim 2026'da aday
+Bu, v0.1.0-alpha.103'ü izleyen adaydır. **23 Ekim 2026'da (UTC) yayımlandı: sürüm commit'i `98c4750b4`, GitHub ön sürümü 22:03:19Z, yapıtlar ve imza doğrulanıp dış denetim geçtikten (26/26) sonra indirme portalı yaklaşık 22:10Z.** Hiçbir parçası henüz kurulu bir sunucuda değil; kurulu panelleri yalnız sahip günceller. 23 Ekim 2026'da aday
 olarak, alpha.103'ün yayın kaydından sonraki `main` üzerinden
 `fix/alpha104-safe-removal` dalında yazıldı (alpha.103 sürüm commit'i
 `f780d5f08d0f295fbf7d249a853d9c130cd28779`).
