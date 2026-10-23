@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -18,9 +19,14 @@ import (
 // Real-system evidence for alpha.104, run only inside a disposable Debian 13
 // virtual machine (build tag realsystem, plus CELIKPANEL_REAL_SYSTEM_A104=1):
 // the package manager's own simulation refuses the Frankfurt removal, a
-// clean removal runs exactly the simulated list, and a PHP tool is moved to
+// clean removal runs exactly the simulated list, a PHP tool is moved to
 // another PHP version, proved through nginx, and put back when the proof
-// fails. Never run it on an installed server.
+// fails, removing a PHP version the tools run on is refused by the real
+// uninstall, and webmail (Roundcube, installed for real) is moved the same
+// way (review of alpha.104). Never run it on an installed server.
+//
+// Two phases: before PHP 8.5 exists (FrankfurtRemoval, CleanRemoval,
+// WebmailInstalled), then after it is installed (ToolMove, WebmailMove).
 //
 // alpha.104 gerçek sistem kanıtı; yalnız atılabilir bir Debian 13 sanal
 // makinesinde koşar. Kurulu bir sunucuda asla koşturulmaz.
@@ -71,10 +77,10 @@ func TestRealSystemA104FrankfurtRemovalIsRefused(t *testing.T) {
 		ProtectedComponent: catalogueProtectedComponent("apt", packageNameSet(frankfurtRealPackages)),
 	}
 	beforeCalled := false
-	plan, _, err := guardedRemovePackagesContext(context.Background(), "apt", request, func() error {
+	plan, _, err := guardedRemovePackagesContext(context.Background(), "apt", request, removalHooks{stop: func() error {
 		beforeCalled = true
 		return nil
-	})
+	}})
 	logJSON(t, "plan", plan)
 	var refusal *packageRemovalRefusal
 	if !errors.As(err, &refusal) || refusal.Code != errCodeRemovalWouldRemoveOthers {
@@ -106,7 +112,7 @@ func TestRealSystemA104CleanRemovalRunsTheSimulatedList(t *testing.T) {
 		Packages:           []string{"redis-server"},
 		ProtectedComponent: catalogueProtectedComponent("apt", packageNameSet([]string{"redis-server"})),
 	}
-	plan, _, err := guardedRemovePackagesContext(context.Background(), "apt", request, nil)
+	plan, _, err := guardedRemovePackagesContext(context.Background(), "apt", request, removalHooks{})
 	logJSON(t, "plan", plan)
 	if err != nil {
 		t.Fatal(err)
@@ -166,7 +172,7 @@ func TestRealSystemA104ToolMoveIsProvedAndRolledBack(t *testing.T) {
 			t.Fatalf("%s on 8.4 before the move: %v", tool, err)
 		}
 	}
-	if got := phpToolsBoundToVersion("8.4"); strings.Join(got, ",") != "phpmyadmin,phppgadmin" {
+	if got := phpToolsBoundToVersion("8.4"); !slices.Contains(got, phpToolPHPMyAdmin) || !slices.Contains(got, phpToolPHPPgAdmin) {
 		t.Fatalf("bound to 8.4 = %v", got)
 	}
 
@@ -214,9 +220,121 @@ func TestRealSystemA104ToolMoveIsProvedAndRolledBack(t *testing.T) {
 		t.Fatalf("phpPgAdmin after the rollback: %v", err)
 	}
 
-	// 3. Removing PHP 8.4 while the tools run on it is refused before
-	// anything changes.
-	if got := phpToolsBoundToVersion("8.4"); len(got) != 2 {
-		t.Fatalf("bound to 8.4 = %v", got)
+	// 3. Removing PHP 8.4 while the tools run on it is refused by the real
+	// uninstall before anything changes (alpha.104 review: an actual
+	// refusal, not only the binding count).
+	ops, err := defaultServiceUninstallOps(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	installedBefore := dpkgInstalledSet(t)
+	var removal UninstallServiceResponse
+	if err := (&Agent{}).uninstallServiceWithOps(&InstallServiceRequest{ID: "php-fpm", Package: "php8.4-fpm"}, &removal, ops); err != nil {
+		t.Fatal(err)
+	}
+	logJSON(t, "removal of PHP-FPM 8.4", removal)
+	if removal.ErrorCode != errCodeRemovalToolsBound || removal.Removed || removal.MutationApplied ||
+		!slices.Contains(removal.BoundTools, phpToolPHPMyAdmin) || !slices.Contains(removal.BoundTools, phpToolPHPPgAdmin) {
+		t.Fatalf("removal of PHP-FPM 8.4 = %+v", removal)
+	}
+	installedAfter := dpkgInstalledSet(t)
+	if len(installedAfter) != len(installedBefore) || !installedAfter["php8.4-fpm"] {
+		t.Fatalf("the refusal changed installed packages: %d -> %d", len(installedBefore), len(installedAfter))
+	}
+	if out, _ := exec.Command("systemctl", "is-active", "php8.4-fpm").Output(); strings.TrimSpace(string(out)) != "active" {
+		t.Fatalf("php8.4-fpm after the refusal: %s", out)
+	}
+}
+
+// Webmail (Roundcube) installed for real on the only PHP (8.4), then
+// configured: it is bound to 8.4 and answers as itself through its socket.
+func TestRealSystemA104WebmailInstalledOnItsPHP(t *testing.T) {
+	requireRealSystem(t)
+	if phpVersionInstalled("8.5") {
+		t.Skip("phase one runs before PHP 8.5 is installed")
+	}
+	ctx := context.Background()
+	agent := &Agent{}
+	var installed InstallRoundcubeResponse
+	agent.installRoundcubeWith(ctx, &installed)
+	logJSON(t, "install Roundcube", installed)
+	if installed.Error != "" || !installed.Installed {
+		t.Fatalf("install = %+v", installed)
+	}
+	var configured ConfigureWebmailResponse
+	agent.configureWebmailWith(ctx, &configured)
+	logJSON(t, "configure webmail", configured)
+	if configured.Error != "" || !configured.Configured || !configured.Present {
+		t.Fatalf("configure = %+v", configured)
+	}
+	if socket := parseWebmailFPMSocket(readFileString(phpToolWebmailConfPath)); socket != versionedFPMSocketPath("8.4") {
+		t.Fatalf("webmail socket = %q", socket)
+	}
+	if err := retryPHPToolProbe(ctx, phpToolWebmail, "8.4", probePHPToolHTTP, phpToolProbeSettle, time.Second); err != nil {
+		t.Fatalf("webmail on 8.4: %v", err)
+	}
+}
+
+// Webmail moved to PHP 8.5 (its extensions installed by the move), proved,
+// moved back; then a move whose proof fails (intl off for 8.5's FPM only)
+// is refused with a structured cause and the configuration is restored
+// byte for byte.
+func TestRealSystemA104WebmailMoveIsProvedAndRolledBack(t *testing.T) {
+	requireRealSystem(t)
+	if !phpVersionInstalled("8.5") {
+		t.Skip("PHP 8.5 is not installed in this VM; the move evidence needs a second PHP version")
+	}
+	if present, err := roundcubeInstallState(); err != nil || !present {
+		t.Fatalf("Roundcube is not installed (phase one): %v", err)
+	}
+	saved := phpToolBindingRecordPath
+	phpToolBindingRecordPath = filepath.Join(t.TempDir(), "php-tool-bindings.json")
+	t.Cleanup(func() { phpToolBindingRecordPath = saved })
+	ctx := context.Background()
+	sock84, sock85 := versionedFPMSocketPath("8.4"), versionedFPMSocketPath("8.5")
+	if socket := parseWebmailFPMSocket(readFileString(phpToolWebmailConfPath)); socket != sock84 {
+		t.Fatalf("webmail socket before the move = %q", socket)
+	}
+	result, err := bindPHPToolWith(ctx, hostPHPToolBindOps(), phpToolWebmail, "8.5")
+	logJSON(t, "webmail to 8.5", result)
+	if err != nil {
+		t.Fatalf("webmail to 8.5: %v", err)
+	}
+	if socket := parseWebmailFPMSocket(readFileString(phpToolWebmailConfPath)); socket != sock85 {
+		t.Fatalf("webmail socket after the move = %q", socket)
+	}
+	if err := retryPHPToolProbe(ctx, phpToolWebmail, "8.5", probePHPToolHTTP, phpToolProbeSettle, time.Second); err != nil {
+		t.Fatalf("webmail on 8.5: %v", err)
+	}
+	if _, err := bindPHPToolWith(ctx, hostPHPToolBindOps(), phpToolWebmail, "8.4"); err != nil {
+		t.Fatalf("webmail back to 8.4: %v", err)
+	}
+	if out, err := exec.Command("phpdismod", "-v", "8.5", "-s", "fpm", "intl").CombinedOutput(); err != nil {
+		t.Fatalf("phpdismod: %s", out)
+	}
+	if out, err := exec.Command("systemctl", "restart", "php8.5-fpm").CombinedOutput(); err != nil {
+		t.Fatalf("restart php8.5-fpm: %s", out)
+	}
+	t.Cleanup(func() {
+		_ = exec.Command("phpenmod", "-v", "8.5", "-s", "fpm", "intl").Run()
+		_ = exec.Command("systemctl", "restart", "php8.5-fpm").Run()
+	})
+	before := readFileString(phpToolWebmailConfPath)
+	result, err = bindPHPToolWith(ctx, hostPHPToolBindOps(), phpToolWebmail, "8.5")
+	logJSON(t, "failing webmail move", result)
+	var typed *phpToolBindError
+	if !errors.As(err, &typed) || typed.Code != errCodePHPToolProbeFailed || !result.Restored {
+		t.Fatalf("failing move: err=%v result=%+v", err, result)
+	}
+	logJSON(t, "cause", typed.Cause)
+	if typed.Cause.Kind != "missing_extensions" || !slices.Contains(typed.Cause.Extensions, "intl") {
+		t.Fatalf("cause = %+v", typed.Cause)
+	}
+	t.Logf("refusal: %v", err)
+	if after := readFileString(phpToolWebmailConfPath); after != before {
+		t.Fatal("the previous webmail configuration was not restored byte for byte")
+	}
+	if err := retryPHPToolProbe(ctx, phpToolWebmail, "8.4", probePHPToolHTTP, phpToolProbeSettle, time.Second); err != nil {
+		t.Fatalf("webmail after the rollback: %v", err)
 	}
 }
