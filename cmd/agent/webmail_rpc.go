@@ -84,40 +84,12 @@ func roundcubeInstallStateAt(baseDir string) (bool, error) {
 	return true, nil
 }
 
-// detectFPMSocket finds the default PHP-FPM socket across distros — Debian
-// puts a versioned socket under /run/php (php8.4-fpm.sock), Arch a single one
-// under /run/php-fpm. Its existence is the honest "is PHP-FPM running here"
-// signal: services.DetectInstalledPHPVersion reads /etc/php/<v>/fpm and so
-// returns "" on Arch even when PHP-FPM is up (caught live: Roundcube refused
-// on Arch with "PHP-FPM is not installed", and /webmail/ 502'd on the wrong
-// socket path). One probe answers both "installed?" and "where?".
-// detectFPMSocket, varsayılan PHP-FPM soketini dağıtımlar arası bulur —
-// Debian /run/php altında sürümlü bir soket koyar (php8.4-fpm.sock), Arch
-// /run/php-fpm altında tek bir tane. Varlığı, dürüst "burada PHP-FPM çalışıyor
-// mu" sinyalidir: services.DetectInstalledPHPVersion /etc/php/<v>/fpm okur ve
-// Arch'ta PHP-FPM ayakta olsa bile "" döner (canlıda yakalandı: Roundcube
-// Arch'ta "PHP-FPM is not installed" ile reddetti, /webmail/ yanlış soket
-// yolunda 502 verdi). Tek yoklama hem "kurulu mu?" hem "nerede?" cevabı.
-var fpmSocketPatterns = []string{
-	"/run/php/php*-fpm.sock",    // Debian, versioned default www pool
-	"/run/php-fpm/php-fpm.sock", // Arch
-	"/run/php/php-fpm.sock",     // some layouts
-	"/var/run/php/php*-fpm.sock",
-	"/var/run/php-fpm/php-fpm.sock",
-}
-
-func detectFPMSocket() string {
-	return detectFPMSocketWithPatterns(fpmSocketPatterns)
-}
-
-func detectFPMSocketWithPatterns(patterns []string) string {
-	for _, pat := range patterns {
-		if m, _ := filepath.Glob(pat); len(m) > 0 {
-			return m[len(m)-1] // newest-versioned last, e.g. php8.4 over php8.3
-		}
-	}
-	return ""
-}
+// The PHP-FPM socket webmail and the database tools are served from is
+// chosen in php_tool_binding.go (alpha.104): the bound version is kept; the
+// lexically-last-socket detection that silently moved them is gone. Arch's
+// unversioned /run/php-fpm/php-fpm.sock is still found there.
+// Web postası ve veritabanı araçlarının PHP-FPM soketi php_tool_binding.go'da
+// seçilir; bağlı sürüm korunur.
 
 type InstallRoundcubeResponse = transport.InstallRoundcubeResponse
 
@@ -181,11 +153,21 @@ func (a *Agent) InstallRoundcube(req *WebmailMutationRequest, resp *InstallRound
 	// dağıtımlar arası taşınabilir. phpVer Arch'ta yine "" olabilir ve bu
 	// sorun değil: yalnız Debian'ın sürüm-başına uzantı paketlerini adlandırmak
 	// için kullanılır, Arch'ın uzantı paketleri sürümsüzdür.
-	if detectFPMSocket() == "" {
-		resp.Error = "PHP-FPM is not installed"
+	// alpha.104: the PHP version Roundcube's extensions are prepared for is
+	// the version webmail is bound to (or will be bound to by
+	// ConfigureWebmail), not the newest one: the same choice as
+	// ConfigureWebmail makes.
+	// Roundcube uzantıları, web postasının bağlı olduğu (ya da bağlanacağı)
+	// PHP sürümü için hazırlanır; en yenisi için değil.
+	fpmSocket, err := phpToolSocket(phpToolWebmail, currentPHPToolSockets()[phpToolWebmail])
+	if err != nil {
+		resp.Error = err.Error()
 		return nil
 	}
-	phpVer := services.DetectInstalledPHPVersion()
+	phpVer := resolvedSocketVersion(fpmSocket)
+	if phpVer == "" && detectPkgFamily() == "apt" {
+		phpVer = services.DetectInstalledPHPVersion()
+	}
 	if err := a.ensureRoundcubePHPDependencies(ctx, phpVer); err != nil {
 		resp.Error = fmt.Sprintf("PHP extensions required by Roundcube could not be prepared: %v", err)
 		return nil
@@ -472,7 +454,13 @@ type roundcubePHPDependencyOps struct {
 // its enabled zipdownload plugin actually use. A package can be installed but
 // disabled, so package presence alone is not a readiness check.
 func inspectRoundcubePHPCapabilities(ctx context.Context) ([]string, error) {
-	out, err := serviceMutationCommand(ctx, "php", "-r", roundcubePHPCapabilityProbe).Output()
+	return inspectRoundcubePHPCapabilitiesWith(ctx, "php")
+}
+
+// inspectRoundcubePHPCapabilitiesWith asks one PHP command (php8.4 for the
+// version webmail runs on, alpha.104) rather than whatever "php" points at.
+func inspectRoundcubePHPCapabilitiesWith(ctx context.Context, php string) ([]string, error) {
+	out, err := serviceMutationCommand(ctx, php, "-r", roundcubePHPCapabilityProbe).Output()
 	if err != nil {
 		return nil, fmt.Errorf("inspect PHP capabilities: %w", err)
 	}
@@ -642,7 +630,9 @@ func (a *Agent) ensureRoundcubePHPDependencies(ctx context.Context, phpVer strin
 		detectPkgFamily(),
 		phpVer,
 		roundcubePHPDependencyOps{
-			probe:        inspectRoundcubePHPCapabilities,
+			probe: func(ctx context.Context) ([]string, error) {
+				return inspectRoundcubePHPCapabilitiesWith(ctx, phpCLIForVersion(phpVer))
+			},
 			install:      installPackagesContext,
 			enablePacman: enablePacmanRoundcubePHPExtensions,
 			reload: func(ctx context.Context, unit string) ([]byte, error) {
@@ -932,9 +922,13 @@ func (a *Agent) ConfigureWebmail(req *WebmailMutationRequest, resp *ConfigureWeb
 	// Roundcube PHP'dir: .php'yi varsayılan FPM soketine ver. Dağıtımlar arası
 	// tespit edilir (Debian /run/php/php<v>-fpm.sock, Arch
 	// /run/php-fpm/php-fpm.sock) — Debian yolunu asla varsayma.
-	socket := detectFPMSocket()
-	if socket == "" {
-		resp.Error = "PHP-FPM is not installed"
+	// alpha.104: webmail stays on the PHP version its configuration names
+	// while that version is installed; nothing bound yet → the default PHP.
+	// A bound version that is gone leaves the configuration unchanged.
+	// Web postası, yapılandırmasının adını verdiği PHP sürümünde kalır.
+	socket, err := phpToolSocket(phpToolWebmail, currentPHPToolSockets()[phpToolWebmail])
+	if err != nil {
+		resp.Error = err.Error()
 		return nil
 	}
 	webmailSocket, err := webmailSocketPathForNginx()

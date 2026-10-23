@@ -201,6 +201,53 @@ type UninstallServiceResponse struct {
 	Error           string `json:"error,omitempty"`
 	PartialSuccess  bool   `json:"partial_success,omitempty"`
 	MutationApplied bool   `json:"mutation_applied,omitempty"`
+	// ErrorCode types a refusal (alpha.104): REMOVAL_WOULD_REMOVE_OTHERS
+	// (the package manager's simulation would remove packages the removal
+	// did not name; Collateral names them), REMOVAL_TOOLS_BOUND (webmail or
+	// a database tool runs on the PHP being removed; BoundTools names them),
+	// REMOVAL_SIMULATION_FAILED and REMOVAL_PLAN_CHANGED. Additive: an older
+	// Agent never sets it.
+	// ErrorCode bir reddi türler (alpha.104); eklemelidir.
+	ErrorCode  string                     `json:"error_code,omitempty"`
+	Collateral []PackageRemovalCollateral `json:"collateral,omitempty"`
+	BoundTools []string                   `json:"bound_tools,omitempty"`
+}
+
+// PackageRemovalCollateral is one package a removal would take that it did
+// not name: Reason is "component" (it belongs to a catalogue component,
+// Component), "reverse_dependency" (it depends on a removed package) or
+// "would_install" (the package manager would install it).
+// PackageRemovalCollateral, bir kaldırmanın adını söylemeden alacağı tek
+// pakettir.
+type PackageRemovalCollateral struct {
+	Package   string `json:"package"`
+	Reason    string `json:"reason"`
+	Component string `json:"component,omitempty"`
+}
+
+// ServiceRemovalPreviewRequest asks what removing a component (or, with
+// Package, one version of it) would take, without changing anything.
+// ServiceRemovalPreviewRequest, bir bileşeni (ya da Package ile tek sürümünü)
+// kaldırmanın neyi alacağını hiçbir şeyi değiştirmeden sorar.
+type ServiceRemovalPreviewRequest struct {
+	ID      string `json:"id"`
+	Package string `json:"package,omitempty"`
+}
+
+// ServiceRemovalPreviewResponse is the package manager's simulated answer.
+// State: "checked" (Remove and Collateral are the simulation's answer),
+// "not_installed" (nothing to remove), "busy" (another package operation
+// holds the package lock; nothing was simulated), "unsupported" (this
+// package family has no removal here) or "failed" (Error says why).
+// ServiceRemovalPreviewResponse, paket yöneticisinin benzetim yanıtıdır.
+type ServiceRemovalPreviewResponse struct {
+	State         string                     `json:"state"`
+	PackageFamily string                     `json:"package_family"`
+	Requested     []string                   `json:"requested"`
+	Remove        []string                   `json:"remove"`
+	Collateral    []PackageRemovalCollateral `json:"collateral"`
+	BoundTools    []string                   `json:"bound_tools"`
+	Error         string                     `json:"error,omitempty"`
 }
 
 type ConfigureDBToolsResponse struct {

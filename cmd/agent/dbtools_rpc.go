@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -77,6 +78,7 @@ func (a *Agent) ConfigureDBTools(req *ServiceMutationRequest, resp *ConfigureDBT
 			installedRoots[id] = root
 		}
 	}
+	sort.Strings(tools)
 
 	if len(tools) == 0 {
 		_ = os.Remove(dbToolsConfPath)
@@ -88,14 +90,26 @@ func (a *Agent) ConfigureDBTools(req *ServiceMutationRequest, resp *ConfigureDBT
 		return nil
 	}
 
-	// The tools are PHP: hand .php to the default FPM pool of the installed
-	// PHP version. The path is version-dependent, so detect — never assume.
-	// Araçlar PHP'dir: .php'yi kurulu PHP sürümünün varsayılan FPM havuzuna
-	// ver. Yol sürüme bağlıdır; tespit et — asla varsayma.
-	socket := detectFPMSocket()
-	if socket == "" {
-		resp.Error = "PHP-FPM is not installed"
-		return nil
+	// The tools are PHP. Each stays on the PHP version its current
+	// configuration names while that version is installed (alpha.104); a
+	// tool with nothing bound yet gets the distribution's default PHP. A
+	// tool whose bound version is gone keeps its line unchanged and is
+	// reported: nothing moves it to another version silently.
+	// Araçlar PHP'dir. Her biri mevcut yapılandırmasının adını verdiği PHP
+	// sürümünde, o sürüm kurulu kaldıkça kalır; sessizce taşınmaz.
+	bound := currentPHPToolSockets()
+	sockets := make(map[string]string, len(tools))
+	var goneErrors []string
+	for _, id := range tools {
+		socket, err := phpToolSocket(id, bound[id])
+		if err != nil {
+			if _, gone := err.(*errPHPToolVersionGone); !gone {
+				resp.Error = err.Error()
+				return nil
+			}
+			goneErrors = append(goneErrors, err.Error())
+		}
+		sockets[id] = socket
 	}
 
 	var b strings.Builder
@@ -123,7 +137,7 @@ func (a *Agent) ConfigureDBTools(req *ServiceMutationRequest, resp *ConfigureDBT
             fastcgi_pass unix:%s;
         }
     }
-`, id, root, id, root, socket)
+`, id, root, id, root, sockets[id])
 	}
 	b.WriteString("}\n")
 
@@ -147,5 +161,8 @@ func (a *Agent) ConfigureDBTools(req *ServiceMutationRequest, resp *ConfigureDBT
 
 	resp.Configured = true
 	resp.Tools = tools
+	if len(goneErrors) > 0 {
+		resp.Error = strings.Join(goneErrors, "; ")
+	}
 	return nil
 }

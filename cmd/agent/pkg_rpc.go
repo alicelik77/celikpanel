@@ -500,65 +500,18 @@ func removeDNFPreviewPackagesContext(ctx context.Context, packages []string) (st
 	return string(out), nil
 }
 
-// removePackages removes named packages non-interactively. APT and pacman use
-// their established configuration/orphan cleanup policy; the bounded DNF
-// preview explicitly keeps dependencies that merely became unused.
-// removePackages, adlandırılmış paketleri etkileşimsiz kaldırır. APT ve pacman
-// mevcut yapılandırma/öksüz bağımlılık temizleme politikasını kullanır; sınırlı
-// DNF önizlemesi ise yeni boşa düşen bağımlılıkları bilerek otomatik kaldırmaz.
-func removePackages(family string, packages []string) (string, error) {
-	return removePackagesContext(context.Background(), family, packages)
-}
-
+// removePackagesContext removes named packages through the guarded removal
+// (alpha.104, package_removal_plan.go): the package manager's simulation
+// decides what goes, and anything it did not name refuses the removal. The
+// bounded DNF preview stays unreachable (certification pending).
+// removePackagesContext, adlandırılmış paketleri korumalı kaldırma ile
+// kaldırır: adı söylenmeyen her şey kaldırmayı reddeder.
 func removePackagesContext(ctx context.Context, family string, packages []string) (string, error) {
-	packageOperationMu.Lock()
-	defer packageOperationMu.Unlock()
-
-	if len(packages) == 0 {
-		return "", fmt.Errorf("no packages to remove")
-	}
-	for _, p := range packages {
-		if !validPackageName(p) {
-			return "", fmt.Errorf("invalid package name: %q", p)
-		}
-	}
-	profile, err := verifiedHostProfile(family)
-	if err != nil {
-		return "", err
-	}
-	switch family {
-	case "apt":
-		aptGet, err := executableForProfile(profile, family, "apt-get")
-		if err != nil {
-			return "", err
-		}
-		args := append([]string{"purge", "-y", "--auto-remove"}, packages...)
-		env := append(os.Environ(), "DEBIAN_FRONTEND=noninteractive")
-		out, err := runServiceMutationCombinedOutputEnv(ctx, env, aptGet, args...)
-		if err != nil {
-			return "", fmt.Errorf("%v: %s", err, strings.TrimSpace(string(out)))
-		}
-		return string(out), nil
-	case "pacman":
-		pacman, err := executableForProfile(profile, family, "pacman")
-		if err != nil {
-			return "", err
-		}
-		// -Rns = purge: the package, its now-unneeded dependencies (-s) and
-		// its config files (-n) — mirrors apt's purge --auto-remove.
-		// -Rns = purge: paket, artık gereksiz bağımlılıkları (-s) ve config
-		// dosyaları (-n) — apt'ın purge --auto-remove'unun aynası.
-		args := append([]string{"-Rns", "--noconfirm"}, packages...)
-		out, err := runServiceMutationCombinedOutput(ctx, pacman, args...)
-		if err != nil {
-			return "", fmt.Errorf("%v: %s", err, strings.TrimSpace(string(out)))
-		}
-		return string(out), nil
-	case "dnf":
-		return "", errDNFMutationCertificationPending
-	default:
-		return "", fmt.Errorf("unrecognised distribution; remove %s manually", strings.Join(packages, ", "))
-	}
+	_, out, err := guardedRemovePackagesContext(ctx, family, packageRemovalRequest{
+		Packages:           packages,
+		ProtectedComponent: catalogueProtectedComponent(family, packageNameSet(packages)),
+	}, nil)
+	return out, err
 }
 
 // packageInstalled reports whether a package is actually installed — the
