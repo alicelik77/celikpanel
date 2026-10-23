@@ -13,6 +13,11 @@
 //                 is gone reads "Not ready" on the Components page
 //   y27tool       phpPgAdmin's Manage window with its PHP version card: the
 //                 current version, a move in progress, a move put back
+//   y27review     the review corrections: tools moved, then the removal
+//                 refused; the installed versions not read; the package
+//                 manager busy (no move offered); a tool whose extension
+//                 packages are missing (row and card); a failed move's cause
+//                 in the reader's language; the tool page's phone targets
 //
 // Every answer comes from the mock on 127.0.0.1 through its overrides (SAMPLE
 // data shaped as the Panel answers, not measured). Nothing is installed,
@@ -41,10 +46,10 @@ const SERVICES = [
     svc('dovecot', 'Dovecot', 'email', true, { kind: 'service', unit: 'dovecot', packages: ['dovecot-imapd'] }),
     tool('roundcube', 'Roundcube', 'email', { packages: [], php_binding: { tool: 'webmail', installed: true, version: '8.4', socket_ready: true, version_installed: true } }),
 ].map((item) => withSamplePackageVersions(item, 'debian13'));
-const SCAN = () => ({
+const SCAN = (services = SERVICES) => ({
     scanned_at: now(), scan_age_seconds: 0, dns_identity_ready: true,
     mail_hostname: { current: 'mail.example.net', hostname: 'mail.example.net', source: 'saved', current_usable: true, will_set_hostname: false },
-    services: SERVICES, bundles: [],
+    services, bundles: [],
     profiles: ['core-mail', 'webmail', 'protected-mail'].map((id) => ({ id, name: id, description: `${id} profile`, status: 'available', available: true, verified: false, latest_attempt_status: 'none', services: ['postfix'] })),
 });
 const PHP_TOOLS = {
@@ -253,6 +258,74 @@ export default function batch27(scenarios, { base, locale, theme, out, viewport,
         await waitFor(page, () => !!document.querySelector('[data-php-tool-result]'), 8000).catch(() => {});
         await pause(500);
         await snap(page, 'tool-php-version-restored');
+        await closePage(page);
+        await clean();
+    };
+
+    // --- Review corrections (alpha.104 review) -------------------------------------
+    scenarios.y27review = async () => {
+        const toolsOn84 = { '/api/v1/service/removal-impact': { status: 200, body: versionImpact(sim({ bound_tools: ['phppgadmin', 'webmail'], refuses: true })) } };
+        await reset(); await clean();
+        await serve({ ...toolsOn84, '/api/v1/service/uninstall': { status: 409, body: {
+            error: "the package manager's answer changed between the check and the removal; nothing was removed", code: 'REMOVAL_PLAN_CHANGED', moved: ['phppgadmin', 'webmail'], moved_to: '8.6',
+        } } });
+        let page = await open('/services', rowsReady);
+        await openVersions(page); await pause(900);
+        await openVersionRemoval(page, '8.4');
+        await waitFor(page, () => !!document.querySelector('[data-version-move-remove]'), 8000).catch(() => {});
+        await page.evaluate(() => document.querySelector('[data-version-move-remove]')?.click());
+        await waitFor(page, () => !!document.querySelector('[data-version-move-failure]'), 8000).catch(() => {});
+        await pause(600);
+        await snap(page, 'review-moved-then-refused');
+        await closePage(page);
+
+        await reset(); await clean();
+        await serve({ ...toolsOn84, '/api/v1/service/php-tools': { status: 502, body: { error: 'the Agent did not answer', code: 'AGENT_UNAVAILABLE' } } });
+        page = await open('/services', rowsReady);
+        await openVersions(page); await pause(900);
+        // Without the usage read the rows have no usage marker: open 8.4's by its label.
+        await page.evaluate(() => {
+            for (const li of document.querySelectorAll('main li li, main li')) {
+                if (!/\b8\.4\b/.test((li.innerText || '').split('\n')[0] || '')) continue;
+                const trash = Array.from(li.querySelectorAll('button[title]')).find((b) => /Remove version|Sürümü kaldır|kaldır/i.test(b.getAttribute('title')));
+                if (trash) { trash.click(); return; }
+            }
+        });
+        await waitFor(page, () => !!document.querySelector('[data-removal-impact="known"]'), 8000).catch(() => {});
+        await pause(500);
+        await snap(page, 'review-versions-unknown');
+        await closePage(page);
+
+        await reset(); await clean();
+        await serve({ '/api/v1/service/removal-impact': { status: 200, body: versionImpact(sim({ state: 'busy', remove: [], bound_tools: ['phppgadmin', 'webmail'], refuses: true })) } });
+        page = await open('/services', rowsReady);
+        await openVersions(page); await pause(900);
+        await openVersionRemoval(page, '8.4');
+        await waitFor(page, () => !!document.querySelector('[data-removal-impact="known"]'), 8000).catch(() => {});
+        await pause(400);
+        await snap(page, 'review-check-busy');
+        await closePage(page);
+
+        const lacking = SERVICES.map((item) => item.id === 'roundcube'
+            ? { ...item, php_binding: { ...item.php_binding, extensions_present: false } } : item);
+        await reset(); await clean();
+        await serve({ '/api/v1/managed-services': { status: 200, body: SCAN(lacking) }, '/api/v1/managed-services/scan': { status: 200, body: SCAN(lacking) } });
+        page = await open('/services', rowsReady);
+        await whole(page, 'review-row-extensions');
+        await closePage(page);
+
+        const cardTools = { ...PHP_TOOLS, tools: PHP_TOOLS.tools.map((item) => item.tool === 'phppgadmin' ? { ...item, extensions_present: false } : item) };
+        await reset(); await clean();
+        await serve({ '/api/v1/service/php-tools': { status: 200, body: cardTools }, '/api/v1/service/php-tools/bind': { status: 409, body: {
+            error: 'phpPgAdmin did not work on PHP 8.6 (PHP 8.6 lacks pgsql for phpPgAdmin); it was put back on PHP 8.4', code: 'PHP_TOOL_PROBE_FAILED',
+            detail: 'PHP 8.6 lacks pgsql for phpPgAdmin', restored: true, previous: '8.4', cause: { kind: 'missing_extensions', version: '8.6', extensions: ['pgsql'] },
+        } } });
+        page = await open('/services/phppgadmin', () => !!document.querySelector('[data-php-tool-select]'));
+        await whole(page, 'review-tool-extensions');
+        await page.evaluate(() => Array.from(document.querySelectorAll('[data-php-tool] button')).find((b) => /PHP 8\.6/.test(b.innerText))?.click());
+        await waitFor(page, () => !!document.querySelector('[data-php-tool-result]'), 8000).catch(() => {});
+        await pause(500);
+        await snap(page, 'review-tool-cause');
         await closePage(page);
         await clean();
     };

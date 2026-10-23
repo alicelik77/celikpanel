@@ -10071,6 +10071,9 @@ yapılandırmasını yeniden yazar ve phpMyAdmin ile phpPgAdmin'i en yeni PHP so
    penceresinde başka bir seçim yapana dek phpMyAdmin 8.4'te çalışır. **Yanıt
    vermiyorsa:** phpMyAdmin'in Yönet → PHP sürümü bölümünü açın; kart hangi sürümde
    çalıştığını ve o PHP'nin çalışıp çalışmadığını söyler; çalışan bir sürüm seçin.
+   **Başka bir aracın PHP'si ilgi istiyorsa** (örneğin phpPgAdmin'in sürümü
+   kaldırıldıysa), phpMyAdmin yine kurulur ve bir uyarı o aracı ve çaresini söyler
+   (aracın Yönet penceresinde kurulu bir PHP sürümü seçin).
 4. İsteğe bağlı: araçları her aracın Yönet → PHP sürümü bölümünden başka bir sürüme
    taşıyın. PHP-FPM 8.4'ü daha sonra kaldırmak, hiçbir şey değişmeden, o anda
    sunucuda denetimin bulduğu her şey yüzünden reddedilir — hâlâ 8.4'te olan siteler
@@ -10125,11 +10128,63 @@ Kaldırma pencereleri bunu düğmeden önce gösterir:
   alındı. Neden: …". Kaybolan bir yanıt taşınıp taşınmadığının bilinmediğini söyler
   ve kart güncel sürümü yeniden okur.
 - **Ret kodları:** REMOVAL_WOULD_REMOVE_OTHERS, REMOVAL_TOOLS_BOUND,
-  REMOVAL_SIMULATION_FAILED ("sunucu yöneticisi paket yöneticisini denetler (sudo
-  apt-get check)"), REMOVAL_PLAN_CHANGED (denetim ile kaldırma arasında başka bir
-  paket işlemi çalıştı; pencereyi yeniden açın), PHP_TOOL_MOVE_FAILED,
-  PHP_TOOL_PROBE_FAILED, PHP_TOOL_EXTENSIONS_FAILED, PHP_TOOL_CONFIG_REJECTED,
+  REMOVAL_SIMULATION_FAILED ("sunucu yöneticisi sunucuda paket yöneticisinin kendi
+  tutarlılık denetimini çalıştırır"), REMOVAL_PLAN_CHANGED (denetim ile kaldırma
+  arasında başka bir paket işlemi çalıştı; hiçbir şey kaldırılmadı ve durdurulan
+  hizmetler yeniden başlatıldı; pencereyi yeniden açın), REMOVAL_CHECK_UNAVAILABLE,
+  REMOVAL_UNKNOWN_AFTER_MOVES, PHP_TOOL_MOVE_FAILED, PHP_TOOL_PROBE_FAILED,
+  PHP_TOOL_EXTENSIONS_FAILED, PHP_TOOL_CONFIG_REJECTED, PHP_TOOL_CONFIG_OWNER_EDITED,
   PHP_VERSION_NOT_RUNNING, PHP_TOOL_NOT_INSTALLED, PHP_TOOL_UNSUPPORTED.
+- **Bağımsız incelemeden sonraki düzeltmeler (aynı aday).**
+  - **Paket yöneticisi kaldırmayı kabul etmeden hiçbir araç taşınmaz.** "Onları
+    …'e taşı, sonra kaldır" önce aynı sürüm için paket yöneticisine kaldırmanın
+    neyi alacağını sorar; yanıt gelmedikçe ve başka bir şey almıyorsa hiçbir şeyi
+    taşımaz. Aksi hâlde: "Hiçbir araç taşınmadı, hiçbir şey kaldırılmadı: bu sürümü
+    kaldırmanın neyi alacağı şu an paket yöneticisine sorulamadı (başka bir paket
+    işlemi çalışıyor olabilir). Biraz bekleyip yeniden deneyin."
+    (REMOVAL_CHECK_UNAVAILABLE) ya da ayrıca alacağı paketler
+    (REMOVAL_WOULD_REMOVE_OTHERS). Pencere taşımayı yalnız kendi denetimi yanıt
+    aldığında sunar.
+  - **Araçlar taşındı, sonra kaldırma reddedildi ya da yanıtı kayboldu.** Pencere
+    ikisini de söyler: "… artık PHP 8.6 üzerinde çalışıyor ve orada yanıt verdi.",
+    ret ve "PHP 8.4 kaldırılmadı."; kaldırmanın yanıtı kaybolduysa: "PHP 8.4
+    sürümünün kaldırılıp kaldırılmadığı bilinmiyor: yanıt gelmedi. Liste sürümleri
+    yeniden okur; yeniden denemeden önce ona bakın." (REMOVAL_UNKNOWN_AFTER_MOVES).
+    Sürümler, denetim ve bileşenler yeniden okunur. Kaldırma isteği bir istek
+    kimliği taşır (D-029): kaybolan yanıt bir kez yeniden sorulur, asla iki kez
+    çalışmaz.
+  - **Kurulu sürümler okunamadı.** "Kurulu PHP sürümleri şu an okunamadı;
+    araçların nereye taşınabileceği bilinmiyor. Hiçbir şey değiştirilmedi." ve
+    Yeniden dene; "Başka PHP sürümü kurulu değil" yalnız sürümler okunduğunda
+    söylenir.
+  - **Aracın PHP eklenti paketleri sürümü için eksik.** Satır "Hazır değil" der:
+    "PHP 8.4 için bu aracın ihtiyaç duyduğu PHP eklenti paketleri eksik; bu yüzden
+    çalışmayabilir. Yönet’i açıp PHP 8.4 sürümünü yeniden seçin: taşıma onları
+    kurar ve aracı dener."; kart aynı sürümü yeniden sunar. Okunan kurulu
+    paketlerdir, PHP'nin onları yüklediği değil; taşımanın kanıtı yüklenen
+    eklentileri aracın kendi PHP-FPM'i üzerinden denetler.
+  - **Taşımanın neden başarısız olduğu okurun dilinde.** Örneğin "PHP 8.6 için
+    pgsql PHP eklentileri eksik", "sayfası HTTP 502 durum koduyla yanıt verdi",
+    "web sunucusu (nginx) yeni yapılandırmayı reddetti"; ekranın bilmediği bir
+    neden alıntılanır: "sunucunun söylediği: …". Önceki yapılandırma tam geri
+    konamadığında cümle hangi adımın başarısız olduğunu söyler: "the previous
+    configuration could not be put back (…)", "… was put back, but nginx rejected
+    it (…)" ya da "… but nginx did not reload (…)" (sunucunun kendi sözü).
+  - **Başka bir aracın PHP sorunu uyarıdır.** Başka bir aracın PHP'si ilgi
+    isterken phpMyAdmin ya da phpPgAdmin kurmak onu kurar ve o aracı ve çaresini
+    söyleyen bir uyarı gösterir.
+  - **Sahibin düzenlemesinin üzerine yazılmaz (D-022).** CelikPanel dışında
+    (CelikPanel'in yazdığı biçimin ötesinde) değiştirilmiş bir veritabanı araçları
+    ya da web postası yapılandırması yeniden üretilmez: yanıt dosyayı adlandırır ve
+    sunucu yöneticisinin PHP sürümünü o dosyada ayarlayacağını ya da CelikPanel'in
+    kendisininkini yazması için dosyayı kaldıracağını söyler
+    (PHP_TOOL_CONFIG_OWNER_EDITED). Veritabanı araçları yapılandırması atomik
+    yazılır; nginx reddederse önceki, kipi ve sahibiyle geri konur.
+  - **Bir kaldırmanın ya da kurulumun neyi alabileceği.** Bir bileşen kaldırma,
+    başka PHP sürümlerinin eklenti paketlerine (siteler kullanıyor olabilir) ve
+    zaten kullanılmayan paketlere dokunmaz. Bir kurulum (bileşen, aracın PHP
+    eklentileri) önce benzetilir; herhangi bir paketi kaldıracaksa onları
+    adlandırarak reddedilir.
 
 Değişmeyenler: siteler PHP sürümlerini hâlâ kendi ayarlarından seçer; hiçbir şey bir
 aracı kendiliğinden taşımaz; güncelleyici ve şema (44). Açık: kurulu bir sunucuda
