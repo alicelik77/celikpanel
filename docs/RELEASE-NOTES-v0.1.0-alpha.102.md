@@ -1,9 +1,10 @@
-# v0.1.0-alpha.102 (candidate, not published)
+# v0.1.0-alpha.102 (published 2026-10-23)
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.102.tr.md)
 
-This is the release candidate that follows v0.1.0-alpha.101. It is not published;
-nothing from it is on an installed server. Written on 2026-10-23 on the branch
+This is the release that follows v0.1.0-alpha.101. It was published on 2026-10-23
+(see "Publication record" at the end); nothing from it is on an installed server
+yet. Written on 2026-10-23, as a candidate, on the branch
 `fix/alpha102-install-email`, from `main` after the publication record of
 alpha.101.
 
@@ -116,3 +117,68 @@ On the candidate tree:
 Once published: from the panel's own update screen (Settings → CelikPanel updates),
 by the owner of the server. Nothing needs to be done before or after. A new
 installation uses the installer as before.
+
+## Publication record
+
+Everything below is dated 2026-10-23 (UTC unless a time zone is named). The release
+commit carries 2026-10-23T12:08:45+03:00, which is the same instant as 09:08:45Z.
+The merge, the checks, the portal publication and the read of the public site
+were done by the release preparer under the owner's standing instruction, as for
+the earlier releases; installed-panel updates are the owner's alone, from the
+panel's own update screen. No native record for the publication, by the owner's
+instruction. This entry stores none of the results below as a file in the
+repository.
+
+**What happened.**
+
+1. Pull request #242, "Release v0.1.0-alpha.102: the installer checks the
+   administrator email", was merged into `main` as commit
+   `085cc400131072f3bcda81b560bfcf98dad47f03`, authored by
+   Mehmet Ömer Efe Çelik. The manifest's `published_at` is 2026-10-23T09:08:45Z.
+2. The release is a pre-release, `v0.1.0-alpha.102`, published on GitHub at
+   2026-10-23T09:50:14Z.
+3. Checked by the preparer before the publication (not recorded in a file here):
+   the archives are 66,350,990 bytes, SHA-256
+   `84d281de4cd983f7fb1c1ab4097ccecdd07397ec99870c053d98afbb07cc2753`; the
+   checksums, the manifest and the archive members were checked; the manifest's
+   signature verifies with the release key (SHA-256 `7eadeb0b…c68bb`); both content
+   guards passed; `libexec/get.sh` pins 102; `install.sh` is the tag's; the policy
+   inside says 102 after 101; the Panel binary carries the new installer email
+   message.
+4. The portal package was built twice and came out byte-identical; the promoter's
+   own extract and normalize step accepted it.
+5. At about 10:02Z the preparer published the portal: status `committed`, public
+   verification 26 of 26 requests ok.
+6. A read from outside after the publication: `https://celikpanel.net/releases/latest.txt`
+   says v0.1.0-alpha.102; `latest.json` says sequence 102 with commit `085cc40…`.
+
+**What the owner reported.** The owner last observed both installed servers,
+Boston and Frankfurt, on alpha.100. alpha.101 and alpha.102 are on the portal; no
+installed server is known to run either yet. Nothing from alpha.102 on an
+installed server had been reported when this was written. The owner decided that
+the setup plan's contact email stays mandatory and is checked at install; that
+open item (left by alpha.99 to alpha.101) is closed by this release.
+
+**Not done, and what publication does not change.**
+
+- The installed servers were not updated to alpha.102 by the release preparer.
+  Only the owner updates them, from the panel's own update screen. alpha.102 is
+  on no installed server yet.
+- Nothing from alpha.102 has been measured on an installed server or on a real
+  first installation. The owner's observation after he updates is still to come.
+- **Upcoming acceptance, not a claim:** at Beta 1 the owner will wipe and
+  reinstall both servers for a clean first-install test; that is where the
+  installer's email check will first be seen on a real installation.
+- The certificate authority may still refuse an address at a domain that is not
+  public; the panel checks only the form of the address.
+- Whether the bundles move to a data catalogue is left to the owner (see the
+  [alpha.101 notes](RELEASE-NOTES-v0.1.0-alpha.101.md), "Known gaps").
+- Not reported and not recorded: anything from Boston or Frankfurt on alpha.101 or
+  alpha.102, and everything the earlier notes list as not reported. Each is "not
+  recorded", not "worked" and not "failed". What the alpha.101 record leaves open
+  stays open.
+- The limits of the earlier publication records (see the [alpha.88
+  notes](RELEASE-NOTES-v0.1.0-alpha.88.md)) are not reported as lifted.
+- No code, schema (44) or recovery behaviour changed in this record.
+- Publication is not acceptance. P0.1 to P0.5 stay partial; no P0 item is closed
+  or advanced.

@@ -9926,3 +9926,18 @@ denemesi için iki sunucuyu da silip yeniden kuracak; bu denetim gerçek bir
 kurulumda ilk kez orada görülecek. Kurulu panelleri yalnız sahipleri, panelin
 kendi güncelleme ekranından günceller. P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir
 şeyi kapatmaz ya da ilerletmez.
+
+### Alpha.102 yayımından sonra kurulu sunucular (2026-10-23)
+
+v0.1.0-alpha.102 23 Ekim 2026'da yayımlandı (sürüm 09:50:14Z'de, ardından indirme
+portalı yaklaşık 10:02Z'de). **Kim işlem yapar:** sahip; her sunucuyu ne zaman
+güncelleyeceğine panelin kendi güncelleme ekranından kendisi karar verir; başka
+bir şey gerekmez. Sahip Boston'ı ve Frankfurt'u en son alpha.100'de gözlemledi;
+alpha.101 ve alpha.102 portalda ve ikisinden birini çalıştırdığı bilinen bir kurulu
+sunucu henüz yok; hiçbir şey çıkarılmaz. **Açık:** kurucunun e-posta denetimi
+hiçbir kurulu sunucuda ve hiçbir gerçek ilk kurulumda görülmedi; sahibin
+alpha.102 gözlemi güncelledikten sonra gelir, Beta 1'de iki sunucunun temiz
+yeniden kurulması yaklaşan kabul adımıdır, yayımlanmış bir iddia değil. Kurulum
+planının iletişim e-postası gereksinimi karara bağlandı (zorunlu kalır ve
+kurulumda denetlenir). Bu girdi için hiçbir metin ya da ekran değiştirilmedi.
+P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ya da ilerletmez.
