@@ -6817,3 +6817,105 @@ tek bir sürümü kaydeder; kod, şema ya da kurtarma davranışını değiştir
   taşınıp taşınmayacağı sahibe bırakıldı. Hiçbiri bir P0 işini değiştirmez.
 - **Açık; devreden.** alpha.103 aday girdisinin ve alpha.90–alpha.102
   girdilerinin açık bıraktığı her şey.
+
+### Aday v0.1.0-alpha.104 (bir kaldırma adını söylemediği hiçbir şeyi kaldırmaz; PHP araçları seçilen ve kanıtlanan bir PHP sürümünde çalışır; Agent kaldırma yolu değişti; 1, 2, 3 ve 6. ilkeler; D-037 değişikliği; D-022; D-024; D-025; D-029; D-036; 23 Ekim 2026)
+
+D-025 ilkeleri 1 (sahip çalışan hizmetlerini korur: sahibin istediği bir kaldırma,
+adını söylemeden başka bir bileşeni götürmemeli ya da barındırılan bir aracı
+durdurmamalıdır; bu sürüme tam olarak Frankfurt'ta bunun olması yol açtı: PHP-FPM
+8.4'ü kaldırmak phpMyAdmin'i sildi, web postasını ve phpPgAdmin'i durdurdu), 2
+(kanıtın bir anlamı vardır: bir kaldırmanın neyi alacağının kanıtı paket
+yöneticisinin kendi benzetimidir; bilinmeyen ya da meşgul bir okuma bilinmeyen kalır,
+asla "başka hiçbir şey etkilenmez" olmaz), 3 (güvensiz eylem sınırında durdurulur:
+hiçbir unit durdurulmadan ya da paket kaldırılmadan önce reddeden Agent'tır,
+tarayıcı değil) ve 6 (ilerleme ve hazır olma doğru kalır: PHP'si eksik bir PHP aracı
+"Kurulu" değildir; bir taşıma sürerken gösterilir ve ancak kanıtından sonra
+korunur). P0.1/P0.2 alanına (doğru, uygulanabilir durum) dokunulur; olay P0.5'in
+kaygısında (sahibin iş yükleri çalışmayı sürdürür) yaşandı. **Hiçbir P0 işi
+kapatılmaz ya da ilerletilmez**; P0.1–P0.5 kısmi kalır ve her açık kabul işi açık
+kalır. Bu girdi, yerel güncelleme ve otomatik geri alma dayanıklılığının tamamlandığı
+iddiası değildir.
+
+- **Bu sürüm neye dokunur.** *Agent:* her paket kaldırma
+  (`cmd/agent/package_removal_plan.go`, `pkg_rpc.go`, `install_rpc.go`): apt üç
+  biçimde benzetilir (autoremove olmadan temizleme, autoremove ile, ve önceden var
+  olan autoremove kümesi) ve son açık liste bir kez daha, gerçek `apt-get purge -y -o
+  APT::Get::AutomaticRemove=false <liste>` ile aynı argümanlarla, hemen öncesinde
+  yinelenerek, tümü `packageOperationMu` altında; pacman'ın `-Rns --print` çıktısı ve
+  "breaks dependency" reddi; DNF erişilmez kalır. Kaldırma, hiçbir unit
+  durdurulmadan planlanır. Yeni salt-okur `Agent.ServiceRemovalPreviewV1` (paket
+  kilidini asla beklemez; 45 saniyeyle sınırlı) ve `Agent.PHPToolBindingsV1`; kendi
+  `php_tool_bind` işi ve adım yetkisiyle yeni makine değişikliği
+  `Agent.BindPHPToolV1`. Web postası, phpMyAdmin ve phpPgAdmin bağları
+  (`php_tool_binding.go`): üretilen nginx satırı gerçektir (sahibin değişikliği
+  kazanır), `/var/lib/celikpanel-agent-private/php-tool-bindings.json` içinde
+  hatırlanır; yeniden üretimler bağlı sürümü korur ve aracın eklenti paketlerini
+  sağlar; alfabetik "en yeni soket" seçimi kalktı; CelikPanel'e ait bir PHP denetim
+  betiği (`/var/lib/celikpanel-php-check/check.php`) her aracın kendi soketinden,
+  Panel vekillerinin asla iletmediği `/__celikpanel_php_check/<araç>` yolunda
+  sunulur. *Panel:* kaldırma okuması benzetimi taşır (tek sürüm için `?package=`);
+  `GET /api/v1/service/php-tools`; `POST /api/v1/service/php-tools/bind` (istek
+  kimliğiyle korunur, bir seferde tek hizmet değişikliği, denetim kaydı); kaldırmada
+  `move_tools_to`; türlü retler; tarama kurulu her aracın bağını saklar. *Web:*
+  pencereler, sürüm listesi, hazır olmayan satır ve aracın PHP sürümü kartı. Sürüm
+  sırası 103'ten 104'e geçer. Güncelleyiciye (`update.sh`, iğneleri dışında `get.sh`,
+  sistem güncelleme çalışanı, geri alma ve kurtarma), şemaya, sitelerin PHP seçimine
+  ya da herhangi bir role **dokunmaz**.
+- **Kök neden (olay).** `removePackagesContext`, önizleme olmadan `apt-get purge -y
+  --auto-remove <paketler>` çalıştırıyordu: APT, temizlenene bağlı her paketi
+  (php-mysql üzerinden phpmyadmin, dağıtımın php-* meta paketleri) ve kullanılmaz
+  kalan her otomatik kurulmuş paketi sistem genelinde kaldırır. Pencerenin sözü
+  yalnız siteleri kapsıyordu. Ayrıca `detectFPMSocket`, web postası ve veritabanı
+  araçları için her yeniden üretimde alfabetik olarak son `/run/php/php*-fpm.sock`
+  soketini seçiyordu; araçların PHP sürümü hiçbir zaman bir karar değildi; 8.4
+  kaldırıldığında üç yapılandırma da hâlâ `php8.4-fpm.sock` adını taşıyordu.
+- **Sahip bağımsızlığı (D-022).** Yerel yapılandırma gerçek kalır: aracın nginx
+  satırı okunur, sahibin değişikliği korunur; sahibin açık seçimi olmadan hiçbir şey
+  bir aracı taşımaz; sahibin bir paketini alacak kaldırma yapılmaz, reddedilir.
+  Denetim betiği ve kayıt CelikPanel'in kendi dosyalarıdır.
+- **Kurtarma davranışı (D-024).** Reddedilen kaldırma hiçbir şeyi değiştirmez, yolda
+  olanı ve sonraki adımı adlandırır; başarısız benzetim ve değişen yanıt kendi
+  retleridir (REMOVAL_SIMULATION_FAILED, REMOVAL_PLAN_CHANGED); unit'ler
+  durdurulduktan sonra değişen yanıt kısmi değişiklik olarak bildirilir
+  (MutationApplied). Kanıtı başarısız olan bir taşıma önceki yapılandırmayı bayt
+  bayt geri koyar, nginx'i yeniden yükler ve bunu söyler (PHP_TOOL_PROBE_FAILED,
+  `restored`); geri koyma da başarısız olursa sunucu yöneticisi dosyayla birlikte
+  adlandırılır. "Taşı, sonra kaldır" ilk başarısız taşımada durur: taşınan araçlar
+  doğrulanmış sürümlerinde kalır, başarısız olan geri konur, diğerlerine dokunulmaz
+  ve sürüm kaldırılmaz. **Kurulu panel güncelleme yolu: değişmedi**; her kurulu panel
+  güncellemesini sahip, panelin kendi güncelleme ekranından başlatır.
+- **Şema, sürüm geçişi ve kurtarma.** Şema 44, geçiş yok; tarama kaydına eklemeli bir
+  `php_binding` alanı gelir. *alpha.103'ten alpha.104'e:* hiçbir şey taşınmaz; her
+  aracın bağı mevcut nginx satırından okunur (Frankfurt: 8.4); kayıt dosyası bir
+  araç ilk kez yapılandırıldığında ya da taşındığında yazılır. alpha.104'ün yeniden
+  ürettiği yapılandırmalar PHP denetim konumunu taşır. *alpha.104'ten alpha.103'e*
+  (örneğin bir geri almadan sonra): alpha.103 kaydı ve denetim konumunu yok sayar;
+  bir sonraki yeniden üretimi yine alfabetik olarak son soketi seçer (alpha.103'ün
+  davranışı); denetim betiği zararsız ve kullanılmaz kalır.
+- **Kanıt.** Temiz bir bağlama ad alanında Agent paketi: 4.702 geçti (1.857 üst
+  düzey), 29 atlandı, 0 başarısız. Panel ve iç paketler (45 dakika sınırı, CGO
+  kapalı): 7.238 geçti, 44 atlandı, 0 başarısız, 64 paket; gofmt ve go vet temiz.
+  Web 1.772 geçti; derleme bütçelerinin içinde. Tarayıcı 27. grup (11 durum × 8
+  yapılandırma; bakıldı, düzeltildi, yeniden bakıldı). `archlinux` içinde temiz
+  klon: sıra (103 → 104), portal ve bildirim sözleşmeleri ile çevrimdışı sürüm
+  kurtarma düzeneği (1.109 test, 1 atlandı). **Gerçek sistem:** atılabilir bir
+  Debian 13 sanal makinesi (QEMU/KVM), `c344fd62` üzerindeki yapı etiketli Agent
+  testi: Frankfurt kaldırması phpmyadmin ve phppgadmin adıyla reddedildi ve paket
+  kümesi değişmedi; temiz bir kaldırma tam olarak benzetim listesini kaldırdı;
+  phpPgAdmin PHP 8.5'e taşındı (eklentileri Agent kurdu) ve kendi soketinden
+  kanıtlandı; PHP 8.5'in FPM'inde pgsql yokken bir taşıma kanıt tarafından
+  reddedildi ve bayt bayt geri alındı
+  ([kanıt](../deploy/e2e/removal-safety/alpha104-debian13-20261023/README.md), arşiv
+  SHA-256 `fb17d18c9959915301179dd540e7b6624a322151914bc9273e7bd0808a91ef50`). Önceki
+  iki koşu başarısız oldu ve orada kayıtlıdır: aracın sayfası tek başına eklentilerini
+  kanıtlamadı (PHP denetimi eklendi) ve yeniden yüklemenin hemen ardından nginx'in
+  eski işçileri yanıt verdi (kanıt artık en çok 20 saniye bekler). Bileşen testleri
+  ve tek bir sanal makine kurulu sunuculardaki davranışı kanıtlamaz.
+- **Açık.** Kurulu bir sunucuda hiçbir şey ölçülmedi; pacman kaldırma yolu yalnız
+  bileşen testleriyle, DNF erişilmez; Roundcube'un taşınması sanal makinede
+  koşturulmadı; taramanın "hazır değil" durumu soketin varlığına dayanır (aracın
+  eklentileri olmayan bir PHP taramayla değil, taşımanın kanıtıyla bulunur);
+  kaldırma yolu istek kimliğiyle korunmaz (yinelenen "taşı, sonra kaldır" doğrulanmış
+  taşımaları yineler); Türkçede başarısız taşımanın nedeni Agent'ın İngilizcesiyle
+  aktarılır; bileşen sayfasında önceden var olan küçük telefon hedefleri. alpha.90 ile
+  alpha.103 girdilerinin açık bıraktığı her şey açık kalır. P0.1–P0.5 kısmi kalır.

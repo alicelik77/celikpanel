@@ -7549,3 +7549,104 @@ records one release; it changes no code, schema or recovery behaviour.
   item.
 - **Open, carried over.** Everything the alpha.103 candidate entry and the alpha.90
   to alpha.102 entries leave open.
+
+### Candidate v0.1.0-alpha.104 (a removal never removes anything it did not name; PHP tools run on a chosen, proved PHP version; Agent removal path changed; invariants 1, 2, 3 and 6; D-037 amendment; D-022; D-024; D-025; D-029; D-036; 2026-10-23)
+
+D-025 invariants 1 (the owner retains working services: a removal the owner asked
+for must not take another component or stop a hosted tool without naming it; this
+release was caused by exactly that on Frankfurt, where removing PHP-FPM 8.4 purged
+phpMyAdmin and stopped webmail and phpPgAdmin), 2 (evidence has a meaning: the
+package manager's own simulation is the evidence of what a removal takes; an
+unknown or busy read stays unknown and never becomes "nothing else is affected"),
+3 (the unsafe action is stopped at its boundary: the Agent refuses before any unit
+is stopped or package removed, not the browser) and 6 (progress and readiness stay
+truthful: a PHP tool whose PHP is missing is not "Installed"; a move is shown while
+it runs and kept only after its proof). The P0.1/P0.2 area (truthful, actionable
+state) is touched, and P0.5's concern (owner workloads keep running) is where the
+incident sat. **No P0 item is closed or advanced**; P0.1 to P0.5 stay partial and
+every open acceptance item stays open. This entry is not a claim that the native
+update and automatic-rollback resilience is complete.
+
+- **What this release touches.** *Agent:* every package removal
+  (`cmd/agent/package_removal_plan.go`, `pkg_rpc.go`, `install_rpc.go`): apt is
+  simulated three ways (purge without autoremove, with autoremove, and the
+  pre-existing autoremove set) and the final explicit list once more, with the same
+  arguments as the real `apt-get purge -y -o APT::Get::AutomaticRemove=false
+  <list>`, repeated right before it, all under `packageOperationMu`; pacman's
+  `-Rns --print` and its "breaks dependency" refusal; DNF stays unreachable. The
+  uninstall plans before any unit is stopped. New read-only
+  `Agent.ServiceRemovalPreviewV1` (never waits for the package lock; bounded at 45
+  seconds) and `Agent.PHPToolBindingsV1`; new host mutation
+  `Agent.BindPHPToolV1` in its own `php_tool_bind` job and step claim. Webmail,
+  phpMyAdmin and phpPgAdmin bindings (`php_tool_binding.go`): the generated nginx
+  line is the truth (an owner's edit wins), remembered in
+  `/var/lib/celikpanel-agent-private/php-tool-bindings.json`; regenerations keep the
+  bound version and ensure the tool's extension packages; the lexical "newest
+  socket" choice is gone; a CelikPanel-owned PHP check script
+  (`/var/lib/celikpanel-php-check/check.php`) is served through each tool's own
+  socket at `/__celikpanel_php_check/<tool>`, a path the Panel's proxies never
+  forward. *Panel:* the removal read carries the simulation (`?package=` for one
+  version); `GET /api/v1/service/php-tools`; `POST /api/v1/service/php-tools/bind`
+  (request-identity guarded, one service change at a time, audited); uninstall
+  `move_tools_to`; typed refusals; the scan stores each installed tool's binding.
+  *Web:* the dialogs, the versions list, the not-ready row and the tool's PHP
+  version card. The release sequence moves 103 to 104. It does **not** touch the
+  updater (`update.sh`, `get.sh` beyond its pins, the system update worker,
+  rollback and recovery), the schema, sites' PHP choice or any role.
+- **Root cause (incident).** `removePackagesContext` ran `apt-get purge -y
+  --auto-remove <packages>` with no preview: APT removes every package that depends
+  on what is purged (phpmyadmin through php-mysql, the distribution's php-* meta
+  packages) and every automatically installed package left unused, system-wide.
+  The dialog's promise covered only sites. Separately, `detectFPMSocket` chose the
+  lexically last `/run/php/php*-fpm.sock` for webmail and the database tools on
+  every regeneration, so the tools' PHP version was never a decision; the three
+  configurations still named `php8.4-fpm.sock` when 8.4 was removed.
+- **Owner independence (D-022).** Native configuration stays the truth: the tool's
+  nginx line is read, an owner's edit is kept; nothing moves a tool without the
+  owner's explicit choice; a removal that would take an owner's package is refused
+  instead of performed. The check script and the record are CelikPanel's own files.
+- **Recovery behaviour (D-024).** A refused removal changes nothing and names what
+  is in the way and the next action; a failed simulation and a changed answer are
+  their own refusals (REMOVAL_SIMULATION_FAILED, REMOVAL_PLAN_CHANGED); an answer
+  that changes after units were stopped is reported as a partial change
+  (MutationApplied). A move that fails its proof restores the previous
+  configuration byte for byte, reloads nginx and says so (PHP_TOOL_PROBE_FAILED,
+  `restored`); if the restore itself fails, the server administrator is named with
+  the file. A "move, then remove" stops at the first failed move: moved tools stay
+  on their verified version, the failed one is put back, the rest are untouched,
+  and the version is not removed. **Installed-panel update path: unchanged**; the
+  owner starts every installed-panel update from the panel's own update screen.
+- **Schema, version transition and recovery.** Schema 44, no migration; the scan
+  record gains an additive `php_binding` field. *alpha.103 to alpha.104:* nothing
+  moves; each tool's binding is read from its existing nginx line (Frankfurt:
+  8.4); the record file is written the first time a tool is configured or moved.
+  Configurations regenerated by alpha.104 carry the PHP check location. *alpha.104
+  back to alpha.103* (for example after a rollback): alpha.103 ignores the record
+  and the check location; its next regeneration would again choose the lexically
+  last socket (alpha.103's behaviour); the check script stays harmless and unused.
+- **Evidence.** Agent package in a clean mount namespace: 4,702 passed (1,857
+  top-level), 29 skipped, 0 failed. Panel and internal packages (45-minute limit,
+  CGO off): 7,238 passed, 44 skipped, 0 failed, 64 packages; gofmt and go vet
+  clean. Web 1,772 passed; build within its budgets. Browser batch 27 (11 states ×
+  8 configurations; looked, fixed, looked again). Fresh clone in `archlinux`: the
+  sequence (103 → 104), portal and manifest contracts and the offline
+  release-recovery harness (1,109 tests, 1 skipped). **Real system:** a disposable
+  Debian 13 VM (QEMU/KVM), the build-tagged Agent test at `c344fd62`: the Frankfurt
+  removal refused with phpmyadmin and phppgadmin named and the package set
+  unchanged; a clean removal removed exactly the simulated list; phpPgAdmin moved
+  to PHP 8.5 (extensions installed by the Agent) and proved through its socket;
+  with pgsql missing in PHP 8.5's FPM a move was refused by the proof and restored
+  byte for byte ([evidence](../deploy/e2e/removal-safety/alpha104-debian13-20261023/README.md),
+  archive SHA-256 `fb17d18c9959915301179dd540e7b6624a322151914bc9273e7bd0808a91ef50`).
+  Two earlier runs failed and are recorded there: the tool's page alone did not
+  prove its extensions (the PHP check was added), and nginx's old workers answered
+  right after a reload (the proof now waits up to 20 seconds). Component tests and
+  one virtual machine do not establish behaviour on installed servers.
+- **Open.** Nothing measured on an installed server; pacman's removal path by
+  component tests only, DNF unreachable; Roundcube's move not run in the VM; the
+  scan's not-ready state rests on the socket's existence (a PHP without the tool's
+  extensions is found by a move's proof, not by the scan); the uninstall route is
+  not request-identity guarded (a repeated "move, then remove" repeats verified
+  moves); in Turkish a failed move's cause is quoted in the Agent's English;
+  pre-existing small phone targets on the component page. Everything the alpha.90
+  to alpha.103 entries leave open stays open. P0.1 to P0.5 stay partial.
