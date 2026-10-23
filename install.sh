@@ -1793,8 +1793,8 @@ preflight_first_administrator_admission() {
             "$SRC/bin/panel" --validate-admin-credentials-file=- \
             >/dev/null 2>&1; then
             clear_admin_credentials_content
-            die "Administrator credentials are invalid; the input file was left untouched" \
-                "Yönetici kimlik bilgileri geçersiz; girdi dosyasına dokunulmadı"
+            die "Administrator credentials are invalid; the input file was left untouched and nothing was installed. Correct the file, then run the installer again: a username the panel accepts, an email that is a real address such as you@example.com (the certificate authority needs it as a contact), and a password of at least 8 characters" \
+                "Yönetici kimlik bilgileri geçersiz; girdi dosyasına dokunulmadı ve hiçbir şey kurulmadı. Dosyayı düzeltip kurucuyu yeniden çalıştırın: panelin kabul ettiği bir kullanıcı adı, siz@ornek.com gibi gerçek bir e-posta adresi (sertifika yetkilisi bunu iletişim adresi olarak ister) ve en az 8 karakterlik bir parola"
         fi
         ADMIN_CREDENTIALS_IDENTITY=$identity
         arm_admin_credentials_cleanup

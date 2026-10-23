@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	paneldb "github.com/alicelik/celikpanel/internal/db"
 	"golang.org/x/sys/unix"
 )
 
@@ -117,6 +118,55 @@ func TestPanelValidateAdminCredentialsCLIReadsPipeWithoutOutput(t *testing.T) {
 	}
 	if len(output) != 0 || bytes.Contains(output, []byte("strong-password")) {
 		t.Fatalf("validation-only CLI emitted output: %q", output)
+	}
+}
+
+// The validate-only mode install.sh runs before changing the host refuses an
+// email the certificate request would refuse, without echoing a value.
+func TestPanelValidateAdminCredentialsCLIRefusesAnInvalidEmail(t *testing.T) {
+	for _, typo := range []string{"typo-owner", "typo-owner@", "typo-owner@localhost"} {
+		content := []byte(`{"username":"cli-admin","email":"` + typo + `","password":"strong-password"}`)
+		command := exec.Command(os.Args[0], "-test.run=^TestPanelValidateAdminCredentialsCLIPipeHelper$")
+		command.Env = append(os.Environ(), "CELIKPANEL_CREDENTIAL_PIPE_HELPER=1")
+		command.Stdin = bytes.NewReader(content)
+		output, err := command.CombinedOutput()
+		if err == nil {
+			t.Fatalf("validation-only CLI accepted %q", typo)
+		}
+		if !bytes.Contains(output, []byte("the email is not an address")) ||
+			bytes.Contains(output, []byte("typo-owner")) || bytes.Contains(output, []byte("strong-password")) {
+			t.Fatalf("validation-only CLI output for %q = %q", typo, output)
+		}
+	}
+}
+
+// The credentials-file creation path refuses the same addresses before any
+// database change.
+func TestRunCreateAdminFromCredentialsFileRefusesInvalidEmailBeforeAnyChange(t *testing.T) {
+	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+	if err != nil {
+		t.Fatalf("open panel database: %v", err)
+	}
+	t.Cleanup(database.Close)
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+	go func() {
+		_, _ = writer.Write([]byte(`{"username":"pipe-admin","email":"ali@","password":"strong-password"}`))
+		_ = writer.Close()
+	}()
+	var output bytes.Buffer
+	if err := runCreateAdminFromCredentialsFile(database, reader, &output); err == nil {
+		t.Fatal("credentials file with an invalid email created an administrator")
+	}
+	var count int
+	if err := database.GetDB().QueryRow(`SELECT COUNT(*) FROM users`).Scan(&count); err != nil {
+		t.Fatalf("count users: %v", err)
+	}
+	if count != 0 || output.Len() != 0 {
+		t.Fatalf("users=%d output=%q after a refused credentials file", count, output.String())
 	}
 }
 

@@ -16,11 +16,41 @@ import (
 	"github.com/alicelik/celikpanel/internal/auth"
 	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/db"
+	"github.com/alicelik/celikpanel/internal/mutationpayload"
 	"github.com/alicelik/celikpanel/internal/repositories"
 	"golang.org/x/term"
 )
 
 const minimumAdminPasswordBytes = 8
+
+// The administrator's email is the contact the panel hands to the
+// certificate authority when the first setup requests the panel's HTTPS
+// certificate (owner decision of 2026-10-23: it stays mandatory). It is
+// therefore checked here, when the administrator is created, with the same
+// validator the setup plan, the certificate request and the own-email change
+// use (mutationpayload.CanonicalContactEmail), so a typo such as "ali" or
+// "ali@" is caught at install time and not later on the Server setup screen.
+// The address is stored in that validator's canonical form, as the own-email
+// change stores it. Stored addresses of existing installations are not
+// re-validated or rewritten; an old invalid one is still corrected from
+// My account, where the Server setup blocker sends the person.
+//
+// Yöneticinin e-postası, ilk kurulum panelin HTTPS sertifikasını isterken
+// sertifika yetkilisine verilen iletişim adresidir; bu yüzden yönetici
+// oluşturulurken kurulum planı, sertifika isteği ve kişinin kendi e-posta
+// değişikliğiyle aynı doğrulayıcıyla denetlenir. Mevcut kurulumlardaki
+// adresler yeniden denetlenmez ve değiştirilmez.
+const (
+	adminEmailInvalidPrompt = "That is not a valid email address (example: you@example.com). " +
+		"The certificate authority needs it as a contact. Please try again. / " +
+		"Bu geçerli bir e-posta adresi değil (örnek: siz@ornek.com). " +
+		"Sertifika yetkilisi bunu iletişim adresi olarak ister. Lütfen yeniden deneyin."
+)
+
+// errAdminEmailInvalid names the field, never its value.
+var errAdminEmailInvalid = errors.New(
+	"admin credentials are invalid: the email is not an address the certificate authority accepts as a contact (example: you@example.com)",
+)
 
 type adminCredentials struct {
 	username string
@@ -83,6 +113,13 @@ func createOrUpdateAdmin(database *db.SQLiteDB, credentials adminCredentials, ou
 	if err := validateAdminCredentials(credentials); err != nil {
 		return err
 	}
+	// Stored as the own-email change stores it: the validator's canonical
+	// form (the domain in lower case).
+	email, err := mutationpayload.CanonicalContactEmail(credentials.email)
+	if err != nil {
+		return errAdminEmailInvalid
+	}
+	credentials.email = email
 
 	hash, err := auth.HashPassword(credentials.password)
 	if err != nil {
@@ -178,6 +215,9 @@ func validateAdminCredentials(credentials adminCredentials) error {
 	if err := auth.ValidateUsername(credentials.username); err != nil {
 		return errors.New("admin credentials are invalid")
 	}
+	if _, err := mutationpayload.CanonicalContactEmail(credentials.email); err != nil {
+		return errAdminEmailInvalid
+	}
 	return nil
 }
 
@@ -207,7 +247,12 @@ func promptAdminEmail(reader *bufio.Reader, out io.Writer) (string, error) {
 			fmt.Fprintln(out, "Email must not be empty. Please try again. / E-posta boş olamaz. Lütfen yeniden deneyin.")
 			continue
 		}
-		return email, nil
+		canonical, err := mutationpayload.CanonicalContactEmail(email)
+		if err != nil {
+			fmt.Fprintln(out, adminEmailInvalidPrompt)
+			continue
+		}
+		return canonical, nil
 	}
 }
 
