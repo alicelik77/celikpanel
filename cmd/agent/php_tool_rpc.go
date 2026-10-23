@@ -56,6 +56,8 @@ func (a *Agent) BindPHPToolV1(req *transport.BindPHPToolRequest, resp *transport
 		if errors.As(err, &typed) {
 			resp.ErrorCode = typed.Code
 			resp.Detail = typed.Detail
+			cause := typed.Cause
+			resp.Cause = &cause
 		}
 		return nil
 	}

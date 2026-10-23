@@ -254,6 +254,21 @@ type ConfigureDBToolsResponse struct {
 	Configured bool     `json:"configured"`
 	Tools      []string `json:"tools"`
 	Error      string   `json:"error,omitempty"`
+	// Warning (alpha.104): the configuration was written, but a tool's PHP
+	// needs attention (its bound version is gone, or its extensions could
+	// not be installed); the installed tool itself is fine.
+	Warning string `json:"warning,omitempty"`
+	// ToolProblems are the same, per tool, for a screen to translate.
+	ToolProblems []PHPToolProblem `json:"tool_problems,omitempty"`
+}
+
+// PHPToolProblem: a tool's PHP needs attention after a configuration.
+// Kind: version_gone (its bound Version is no longer installed) or
+// extensions_failed (its PHP extensions for Version could not be installed).
+type PHPToolProblem struct {
+	Tool    string `json:"tool"`
+	Version string `json:"version"`
+	Kind    string `json:"kind"`
 }
 
 type ConfigureDKIMSigningResponse struct {
@@ -449,6 +464,27 @@ type PHPToolBinding struct {
 	SocketReady      bool   `json:"socket_ready"`
 	VersionInstalled bool   `json:"version_installed"`
 	Source           string `json:"source,omitempty"`
+	// ExtensionsPresent: the tool's PHP extension packages are installed for
+	// its version (package presence, not proof that PHP loads them).
+	ExtensionsPresent bool `json:"extensions_present"`
+}
+
+// PHPToolCause says why a tool move failed, in a form a screen translates
+// (alpha.104). Kind: missing_extensions (Extensions), wrong_version
+// (Running), no_answer, http_status (Status), served_as_file, tool_error,
+// not_tool_page, not_running, version_not_installed, tool_not_installed,
+// unsupported, extensions_install_failed (Extensions), fpm_reload_failed,
+// config_owner_edited (Detail: the file), config_prepare_failed,
+// config_read_failed, config_write_failed, nginx_rejected,
+// nginx_reload_failed, other. Detail is the Agent's own words.
+// PHPToolCause, bir taşımanın neden başarısız olduğunu çevrilebilir söyler.
+type PHPToolCause struct {
+	Kind       string   `json:"kind"`
+	Version    string   `json:"version,omitempty"`
+	Extensions []string `json:"extensions,omitempty"`
+	Status     int      `json:"status,omitempty"`
+	Running    string   `json:"running,omitempty"`
+	Detail     string   `json:"detail,omitempty"`
 }
 
 // PHPToolBindingsResponse lists every tool's binding and the installed
@@ -484,4 +520,6 @@ type BindPHPToolResponse struct {
 	ErrorCode         string   `json:"error_code,omitempty"`
 	// Detail is the cause alone, for a screen that quotes it.
 	Detail string `json:"detail,omitempty"`
+	// Cause is the same, structured and translatable.
+	Cause *PHPToolCause `json:"cause,omitempty"`
 }

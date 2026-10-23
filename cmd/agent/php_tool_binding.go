@@ -60,13 +60,14 @@ const (
 	phpToolPHPMyAdmin = "phpmyadmin"
 	phpToolPHPPgAdmin = "phppgadmin"
 
-	errCodePHPToolNotInstalled     = "PHP_TOOL_NOT_INSTALLED"
-	errCodePHPVersionNotInstalled  = "PHP_VERSION_NOT_INSTALLED"
-	errCodePHPVersionNotRunning    = "PHP_VERSION_NOT_RUNNING"
-	errCodePHPToolExtensionsFailed = "PHP_TOOL_EXTENSIONS_FAILED"
-	errCodePHPToolConfigRejected   = "PHP_TOOL_CONFIG_REJECTED"
-	errCodePHPToolProbeFailed      = "PHP_TOOL_PROBE_FAILED"
-	errCodePHPToolUnsupported      = "PHP_TOOL_UNSUPPORTED"
+	errCodePHPToolNotInstalled      = "PHP_TOOL_NOT_INSTALLED"
+	errCodePHPVersionNotInstalled   = "PHP_VERSION_NOT_INSTALLED"
+	errCodePHPVersionNotRunning     = "PHP_VERSION_NOT_RUNNING"
+	errCodePHPToolExtensionsFailed  = "PHP_TOOL_EXTENSIONS_FAILED"
+	errCodePHPToolConfigRejected    = "PHP_TOOL_CONFIG_REJECTED"
+	errCodePHPToolProbeFailed       = "PHP_TOOL_PROBE_FAILED"
+	errCodePHPToolUnsupported       = "PHP_TOOL_UNSUPPORTED"
+	errCodePHPToolConfigOwnerEdited = "PHP_TOOL_CONFIG_OWNER_EDITED"
 )
 
 var phpTools = []string{phpToolPHPMyAdmin, phpToolPHPPgAdmin, phpToolWebmail}
@@ -351,7 +352,9 @@ func phpToolStates() []phpToolState {
 		state := phpToolState{Tool: tool, Installed: phpToolInstalledCheck(tool)}
 		if socket := conf[tool]; socket != "" {
 			state.Socket, state.Source = socket, "config"
-		} else if version := record[tool]; version != "" {
+		} else if version := record[tool]; version != "" && phpVersionInstalled(version) {
+			// A remembered version that is gone is no binding: the tool,
+			// installed again, gets the default instead of a refusal.
 			state.Socket, state.Source = versionedFPMSocketPath(version), "record"
 		}
 		states = append(states, state)
@@ -587,21 +590,64 @@ func phpToolCLIProbeCode(tool string) string {
 	return "$m=[];foreach([" + strings.Join(quoted, ",") + "] as $e){if(!extension_loaded($e)){$m[]=$e;}}echo $m?'missing:'.implode(',',$m):'ok';"
 }
 
+// phpToolProbeError is a cause a screen can say in its own language
+// (alpha.104): Kind is one of the transport.PHPToolCause kinds.
+// phpToolProbeError, ekranın kendi dilinde söyleyebileceği bir nedendir.
+type phpToolProbeError struct {
+	Kind       string
+	Extensions []string
+	Status     int
+	Running    string
+	Message    string
+}
+
+func (e *phpToolProbeError) Error() string { return e.Message }
+
+// phpToolCauseOf turns an error into a cause: a typed probe error keeps its
+// kind; anything else is the fallback kind with the error as its detail.
+func phpToolCauseOf(err error, fallback, version string) transport.PHPToolCause {
+	cause := transport.PHPToolCause{Kind: fallback, Version: version}
+	if err == nil {
+		return cause
+	}
+	cause.Detail = err.Error()
+	var typed *phpToolProbeError
+	if errors.As(err, &typed) {
+		cause.Kind = typed.Kind
+		cause.Extensions = typed.Extensions
+		cause.Status = typed.Status
+		cause.Running = typed.Running
+	}
+	return cause
+}
+
+func splitExtensions(list string) []string {
+	out := []string{}
+	for _, item := range strings.Split(list, ",") {
+		if item = strings.TrimSpace(item); item != "" {
+			out = append(out, item)
+		}
+	}
+	return out
+}
+
 func probePHPToolCLI(ctx context.Context, tool, version string) error {
 	probeCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	out, err := serviceMutationCommand(probeCtx, phpCLIForVersion(version), "-r", phpToolCLIProbeCode(tool)).Output()
 	if err != nil {
-		return fmt.Errorf("PHP %s could not be asked for its extensions: %v", version, err)
+		return &phpToolProbeError{Kind: "no_answer", Message: fmt.Sprintf("PHP %s could not be asked for its extensions: %v", version, err)}
 	}
 	result := strings.TrimSpace(string(out))
 	if result == "ok" {
 		return nil
 	}
 	if strings.HasPrefix(result, "missing:") {
-		return fmt.Errorf("PHP %s lacks %s for %s", version, strings.TrimPrefix(result, "missing:"), phpToolDisplayName(tool))
+		missing := splitExtensions(strings.TrimPrefix(result, "missing:"))
+		return &phpToolProbeError{Kind: "missing_extensions", Extensions: missing,
+			Message: fmt.Sprintf("PHP %s lacks %s for %s", version, strings.Join(missing, ","), phpToolDisplayName(tool))}
 	}
-	return fmt.Errorf("PHP %s answered the extension check unexpectedly", version)
+	return &phpToolProbeError{Kind: "no_answer", Message: fmt.Sprintf("PHP %s answered the extension check unexpectedly", version)}
 }
 
 // checkPHPToolResponse decides whether a page is the tool itself, rendered
@@ -610,10 +656,10 @@ func probePHPToolCLI(ctx context.Context, tool, version string) error {
 func checkPHPToolResponse(tool string, status int, body []byte) error {
 	text := string(body)
 	if status != http.StatusOK {
-		return fmt.Errorf("%s answered HTTP %d", phpToolDisplayName(tool), status)
+		return &phpToolProbeError{Kind: "http_status", Status: status, Message: fmt.Sprintf("%s answered HTTP %d", phpToolDisplayName(tool), status)}
 	}
 	if strings.Contains(text, "<?php") {
-		return fmt.Errorf("%s was served as a file, not run by PHP", phpToolDisplayName(tool))
+		return &phpToolProbeError{Kind: "served_as_file", Message: fmt.Sprintf("%s was served as a file, not run by PHP", phpToolDisplayName(tool))}
 	}
 	var marker string
 	var failures []string
@@ -631,11 +677,11 @@ func checkPHPToolResponse(tool string, status int, body []byte) error {
 	}
 	for _, failure := range failures {
 		if strings.Contains(text, failure) {
-			return fmt.Errorf("%s reported: %s", phpToolDisplayName(tool), failure)
+			return &phpToolProbeError{Kind: "tool_error", Message: fmt.Sprintf("%s reported: %s", phpToolDisplayName(tool), failure)}
 		}
 	}
 	if !strings.Contains(text, marker) {
-		return fmt.Errorf("%s did not answer with its own page", phpToolDisplayName(tool))
+		return &phpToolProbeError{Kind: "not_tool_page", Message: fmt.Sprintf("%s did not answer with its own page", phpToolDisplayName(tool))}
 	}
 	return nil
 }
@@ -702,16 +748,18 @@ func checkPHPToolCheckResponse(tool, version string, status int, body []byte) er
 	text := strings.TrimSpace(string(body))
 	name := phpToolDisplayName(tool)
 	if status != http.StatusOK || !strings.HasPrefix(text, "celikpanel-php-check:") {
-		return fmt.Errorf("PHP did not answer for %s on its socket (HTTP %d)", name, status)
+		return &phpToolProbeError{Kind: "no_answer", Status: status, Message: fmt.Sprintf("PHP did not answer for %s on its socket (HTTP %d)", name, status)}
 	}
 	rest := strings.TrimPrefix(text, "celikpanel-php-check:")
 	if strings.HasPrefix(rest, "missing:") {
 		parts := strings.Split(strings.TrimPrefix(rest, "missing:"), ":")
-		return fmt.Errorf("PHP-FPM %s lacks %s for %s", version, parts[0], name)
+		missing := splitExtensions(parts[0])
+		return &phpToolProbeError{Kind: "missing_extensions", Extensions: missing,
+			Message: fmt.Sprintf("PHP-FPM %s lacks %s for %s", version, strings.Join(missing, ","), name)}
 	}
 	running := strings.TrimPrefix(rest, "ok:")
 	if version != "" && !strings.HasPrefix(running, version+".") {
-		return fmt.Errorf("%s answered on PHP %s, not on PHP %s", name, running, version)
+		return &phpToolProbeError{Kind: "wrong_version", Running: running, Message: fmt.Sprintf("%s answered on PHP %s, not on PHP %s", name, running, version)}
 	}
 	return nil
 }
@@ -744,7 +792,7 @@ func probePHPToolHTTP(ctx context.Context, tool, version string) error {
 	}
 	checkResponse, err := client.Do(checkRequest)
 	if err != nil {
-		return fmt.Errorf("%s did not answer: %v", phpToolDisplayName(tool), err)
+		return &phpToolProbeError{Kind: "no_answer", Message: fmt.Sprintf("%s did not answer: %v", phpToolDisplayName(tool), err)}
 	}
 	checkBody, err := io.ReadAll(io.LimitReader(checkResponse.Body, phpToolProbeBodyLimit))
 	checkResponse.Body.Close()
@@ -762,7 +810,7 @@ func probePHPToolHTTP(ctx context.Context, tool, version string) error {
 	request.Header.Set("Accept", "text/html")
 	response, err := client.Do(request)
 	if err != nil {
-		return fmt.Errorf("%s did not answer: %v", phpToolDisplayName(tool), err)
+		return &phpToolProbeError{Kind: "no_answer", Message: fmt.Sprintf("%s did not answer: %v", phpToolDisplayName(tool), err)}
 	}
 	defer response.Body.Close()
 	body, err := io.ReadAll(io.LimitReader(response.Body, phpToolProbeBodyLimit))
@@ -856,9 +904,9 @@ type phpToolBindOps struct {
 	reloadFPM        func(context.Context, string) error
 	cliProbe         func(context.Context, string, string) error
 	render           func(tool, socket string) (string, []byte, error)
-	readConf         func(string) ([]byte, bool, error)
+	snapshotConf     func(string) (mailFileSnapshot, error)
 	writeConf        func(string, []byte) error
-	removeConf       func(string) error
+	restoreConf      func(mailFileSnapshot) error
 	nginxTest        func(context.Context) error
 	nginxReload      func(context.Context) error
 	httpProbe        func(context.Context, string, string) error
@@ -872,6 +920,9 @@ type phpToolBindError struct {
 	// Detail is the cause alone ("PHP-FPM 8.6 lacks intl for Webmail
 	// (Roundcube)"), or "" when the message is the whole story.
 	Detail string
+	// Cause is the same, structured, for a screen that says it in its own
+	// language.
+	Cause transport.PHPToolCause
 }
 
 func (e *phpToolBindError) Error() string { return e.Message }
@@ -889,106 +940,134 @@ type phpToolBindResult struct {
 func bindPHPToolWith(ctx context.Context, ops phpToolBindOps, tool, version string) (phpToolBindResult, error) {
 	var result phpToolBindResult
 	// The first error among the arguments is the cause, said on its own as
-	// Detail so a screen can quote it without repeating the sentence.
-	fail := func(code, format string, args ...any) (phpToolBindResult, error) {
+	// Detail so a screen can quote it without repeating the sentence; Cause
+	// says the same in a form a screen translates.
+	fail := func(code string, cause transport.PHPToolCause, format string, args ...any) (phpToolBindResult, error) {
 		detail := ""
 		for _, arg := range args {
-			if cause, ok := arg.(error); ok && cause != nil {
-				detail = cause.Error()
+			if err, ok := arg.(error); ok && err != nil {
+				detail = err.Error()
 				break
 			}
 		}
-		return result, &phpToolBindError{Code: code, Message: fmt.Sprintf(format, args...), Detail: detail}
+		if cause.Detail == "" {
+			cause.Detail = detail
+		}
+		if cause.Version == "" {
+			cause.Version = version
+		}
+		return result, &phpToolBindError{Code: code, Message: fmt.Sprintf(format, args...), Detail: detail, Cause: cause}
 	}
+	kind := func(k string) transport.PHPToolCause { return transport.PHPToolCause{Kind: k} }
+	name := phpToolDisplayName(tool)
 	if !validPHPTool(tool) {
-		return fail(errCodePHPToolUnsupported, "unknown PHP tool %q", tool)
+		return fail(errCodePHPToolUnsupported, kind("unsupported"), "unknown PHP tool %q", tool)
 	}
 	if ops.family() != "apt" {
-		return fail(errCodePHPToolUnsupported, "choosing a PHP version for a tool is available on Debian and Ubuntu; this system runs one PHP")
+		return fail(errCodePHPToolUnsupported, kind("unsupported"), "choosing a PHP version for a tool is available on Debian and Ubuntu; this system runs one PHP")
 	}
 	if !ops.toolInstalled(tool) {
-		return fail(errCodePHPToolNotInstalled, "%s is not installed", phpToolDisplayName(tool))
+		return fail(errCodePHPToolNotInstalled, kind("tool_not_installed"), "%s is not installed", name)
 	}
 	socket, err := ops.targetSocket(tool, version)
 	if err != nil {
-		return fail(errCodePHPVersionNotInstalled, "%v; install it from Components (PHP-FPM versions) first", err)
+		return fail(errCodePHPVersionNotInstalled, kind("version_not_installed"), "%v; install it from Components (PHP-FPM versions) first", err)
 	}
 	result.Previous = ops.state(tool).version()
 	if !ops.socketReady(socket) {
-		return fail(errCodePHPVersionNotRunning, "PHP-FPM %s is installed but not running; start it in Components, then choose it again. Nothing was changed", version)
+		return fail(errCodePHPVersionNotRunning, kind("not_running"), "PHP-FPM %s is installed but not running; start it in Components, then choose it again. Nothing was changed", version)
 	}
 
 	// 1. The tool's extensions for this version.
 	missing := missingPHPToolExtensionPackages(tool, version, ops.packageInstalled)
 	if len(missing) > 0 {
 		if err := ops.installPackages(ctx, missing); err != nil {
-			return fail(errCodePHPToolExtensionsFailed, "the PHP %s extensions %s needs could not be installed (%v); %s still runs on PHP %s", version, phpToolDisplayName(tool), err, phpToolDisplayName(tool), orUnknown(result.Previous))
+			return fail(errCodePHPToolExtensionsFailed, transport.PHPToolCause{Kind: "extensions_install_failed", Extensions: missing},
+				"the PHP %s extensions %s needs could not be installed (%v); %s still runs on PHP %s", version, name, err, name, orUnknown(result.Previous))
 		}
 		result.InstalledPackages = missing
 		result.MutationApplied = true
 		if err := ops.reloadFPM(ctx, version); err != nil {
-			return fail(errCodePHPToolExtensionsFailed, "PHP-FPM %s did not reload after its extensions were installed (%v); %s still runs on PHP %s", version, err, phpToolDisplayName(tool), orUnknown(result.Previous))
+			return fail(errCodePHPToolExtensionsFailed, kind("fpm_reload_failed"),
+				"PHP-FPM %s did not reload after its extensions were installed (%v); %s still runs on PHP %s", version, err, name, orUnknown(result.Previous))
 		}
 	}
 	if err := ops.cliProbe(ctx, tool, version); err != nil {
-		return fail(errCodePHPToolExtensionsFailed, "%v; %s still runs on PHP %s", err, phpToolDisplayName(tool), orUnknown(result.Previous))
+		return fail(errCodePHPToolExtensionsFailed, phpToolCauseOf(err, "other", version), "%v; %s still runs on PHP %s", err, name, orUnknown(result.Previous))
 	}
 
-	// 2. The new configuration, validated before nginx reloads it.
+	// 2. The new configuration, validated before nginx reloads it. A
+	// configuration changed outside CelikPanel is not overwritten.
 	path, content, err := ops.render(tool, socket)
 	if err != nil {
-		return fail(errCodePHPToolConfigRejected, "the configuration for %s could not be prepared: %v; nothing else was changed", phpToolDisplayName(tool), err)
-	}
-	previous, existed, err := ops.readConf(path)
-	if err != nil {
-		return fail(errCodePHPToolConfigRejected, "the current configuration of %s could not be read: %v; nothing else was changed", phpToolDisplayName(tool), err)
-	}
-	restore := func(reload bool) error {
-		var restoreErr error
-		if existed {
-			restoreErr = ops.writeConf(path, previous)
-		} else {
-			restoreErr = ops.removeConf(path)
+		var edited *errPHPToolConfigOwnerEdited
+		if errors.As(err, &edited) {
+			return fail(errCodePHPToolConfigOwnerEdited, transport.PHPToolCause{Kind: "config_owner_edited", Detail: edited.Path}, "%v", err)
 		}
-		if restoreErr != nil {
-			return restoreErr
+		return fail(errCodePHPToolConfigRejected, kind("config_prepare_failed"), "the configuration for %s could not be prepared: %v; nothing else was changed", name, err)
+	}
+	previous, err := ops.snapshotConf(path)
+	if err != nil {
+		return fail(errCodePHPToolConfigRejected, kind("config_read_failed"), "the current configuration of %s could not be read: %v; nothing else was changed", name, err)
+	}
+	// restore puts the previous file back (mode and owner kept) and, when
+	// nginx already loaded the new one, checks and reloads; it says which
+	// step failed, so the message never claims a restore that happened.
+	restore := func(reload bool) (string, error) {
+		if err := ops.restoreConf(previous); err != nil {
+			return "file", err
 		}
 		if reload {
 			if err := ops.nginxTest(ctx); err != nil {
-				return err
+				return "test", err
 			}
-			return ops.nginxReload(ctx)
+			if err := ops.nginxReload(ctx); err != nil {
+				return "reload", err
+			}
 		}
-		return nil
+		return "", nil
+	}
+	restoreSentence := func(step string, restoreErr error) string {
+		switch step {
+		case "file":
+			return fmt.Sprintf("the previous configuration could not be put back (%v); the server administrator checks %s", restoreErr, path)
+		case "test":
+			return fmt.Sprintf("the previous configuration was put back, but nginx rejected it (%v); the server administrator checks the web server configuration", restoreErr)
+		default:
+			return fmt.Sprintf("the previous configuration was put back, but nginx did not reload it (%v); the server administrator reloads nginx", restoreErr)
+		}
 	}
 	if err := ops.writeConf(path, content); err != nil {
-		_ = restore(false)
-		return fail(errCodePHPToolConfigRejected, "the configuration for %s could not be written: %v; the previous one is kept", phpToolDisplayName(tool), err)
+		if step, restoreErr := restore(false); restoreErr != nil {
+			return fail(errCodePHPToolConfigRejected, kind("config_write_failed"), "the configuration for %s could not be written: %v; %s", name, err, restoreSentence(step, restoreErr))
+		}
+		return fail(errCodePHPToolConfigRejected, kind("config_write_failed"), "the configuration for %s could not be written: %v; the previous one is kept", name, err)
 	}
 	if err := ops.nginxTest(ctx); err != nil {
-		if restoreErr := restore(false); restoreErr != nil {
-			return fail(errCodePHPToolConfigRejected, "nginx rejected the new configuration (%v) and the previous one could not be put back (%v); the server administrator checks %s", err, restoreErr, path)
+		if step, restoreErr := restore(false); restoreErr != nil {
+			return fail(errCodePHPToolConfigRejected, kind("nginx_rejected"), "nginx rejected the new configuration (%v); %s", err, restoreSentence(step, restoreErr))
 		}
-		return fail(errCodePHPToolConfigRejected, "nginx rejected the new configuration (%v); the previous one was put back and %s still runs on PHP %s", err, phpToolDisplayName(tool), orUnknown(result.Previous))
+		return fail(errCodePHPToolConfigRejected, kind("nginx_rejected"), "nginx rejected the new configuration (%v); the previous one was put back and %s still runs on PHP %s", err, name, orUnknown(result.Previous))
 	}
 	if err := ops.nginxReload(ctx); err != nil {
-		restoreErr := restore(true)
+		step, restoreErr := restore(true)
 		result.MutationApplied = true
 		result.Restored = restoreErr == nil
 		if restoreErr != nil {
-			return fail(errCodePHPToolConfigRejected, "nginx did not reload (%v) and the previous configuration could not be restored (%v); the server administrator checks %s", err, restoreErr, path)
+			return fail(errCodePHPToolConfigRejected, kind("nginx_reload_failed"), "nginx did not reload (%v); %s", err, restoreSentence(step, restoreErr))
 		}
-		return fail(errCodePHPToolConfigRejected, "nginx did not reload (%v); the previous configuration was restored", err)
+		return fail(errCodePHPToolConfigRejected, kind("nginx_reload_failed"), "nginx did not reload (%v); the previous configuration was restored", err)
 	}
 	result.MutationApplied = true
 
 	// 3. Proof: the tool answers as itself on the new version.
 	if err := ops.httpProbe(ctx, tool, version); err != nil {
-		if restoreErr := restore(true); restoreErr != nil {
-			return fail(errCodePHPToolProbeFailed, "%s did not work on PHP %s (%v) and the previous configuration could not be restored (%v); the server administrator checks %s", phpToolDisplayName(tool), version, err, restoreErr, path)
+		cause := phpToolCauseOf(err, "other", version)
+		if step, restoreErr := restore(true); restoreErr != nil {
+			return fail(errCodePHPToolProbeFailed, cause, "%s did not work on PHP %s (%v); %s", name, version, err, restoreSentence(step, restoreErr))
 		}
 		result.Restored = true
-		return fail(errCodePHPToolProbeFailed, "%s did not work on PHP %s (%v); it was put back on PHP %s", phpToolDisplayName(tool), version, err, orUnknown(result.Previous))
+		return fail(errCodePHPToolProbeFailed, cause, "%s did not work on PHP %s (%v); it was put back on PHP %s", name, version, err, orUnknown(result.Previous))
 	}
 	if err := ops.writeRecord(tool, version); err != nil {
 		result.RecordWarning = err.Error()
@@ -1007,6 +1086,13 @@ func orUnknown(version string) string {
 // keeping every other tool's line as it is.
 func renderPHPToolConfig(tool, socket string) (string, []byte, error) {
 	if err := ensurePHPToolCheckScript(); err != nil {
+		return "", nil, err
+	}
+	path := phpToolDBToolsConfPath
+	if tool == phpToolWebmail {
+		path = phpToolWebmailConfPath
+	}
+	if err := refuseOwnerEditedConfig(path); err != nil {
 		return "", nil, err
 	}
 	if tool == phpToolWebmail {
@@ -1032,14 +1118,10 @@ func renderPHPToolConfig(tool, socket string) (string, []byte, error) {
 	return phpToolDBToolsConfPath, []byte(renderDBToolsConfig(tools, roots, sockets)), nil
 }
 
-func readConfFile(path string) ([]byte, bool, error) {
-	data, err := os.ReadFile(path)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil, false, nil
-	}
-	return data, err == nil, err
-}
-
+// writePHPToolConfFile publishes a tool's configuration atomically (a
+// temporary file renamed into place): webmail's root-only 0600 as before,
+// the database tools' 0644 owned by root.
+// Bir aracın yapılandırması atomik yayımlanır.
 func writePHPToolConfFile(path string, content []byte) error {
 	if path == phpToolWebmailConfPath {
 		if err := secureWriteConfig(path, content, 0o600); err != nil {
@@ -1048,7 +1130,102 @@ func writePHPToolConfFile(path string, content []byte) error {
 		uid, gid := webmailConfigMetadataIdentity(path)
 		return webmailSetConfigMetadata(path, 0o600, uid, gid)
 	}
-	return os.WriteFile(path, content, 0o644)
+	return writeDBToolsConfFile(path, content)
+}
+
+// writeDBToolsConfFile is the atomic write of the database tools'
+// configuration; a variable so unprivileged tests can use a plain write.
+var writeDBToolsConfFile = func(path string, content []byte) error {
+	if path != dbToolsConfPath {
+		return secureWriteConfig(path, content, 0o644)
+	}
+	return secureWriteConfigOwnedBy(path, content, 0o644, 0, 0)
+}
+
+// errPHPToolConfigOwnerEdited: the tool's configuration is not the form
+// CelikPanel writes, so it was changed outside CelikPanel (D-022).
+type errPHPToolConfigOwnerEdited struct{ Path string }
+
+func (e *errPHPToolConfigOwnerEdited) Error() string {
+	return fmt.Sprintf("%s was changed outside CelikPanel, so CelikPanel does not overwrite it; move your changes to another file in /etc/nginx/conf.d (or delete this one to let CelikPanel write it again), then try again", e.Path)
+}
+
+var (
+	dbToolLocationBlock = regexp.MustCompile(`(?m)^    location /dbtool/([a-z]+)/ \{\n        alias (\S+)/;`)
+	webmailListenLine   = regexp.MustCompile(`listen unix:([^;\s]+);`)
+	webmailAliasLine    = regexp.MustCompile(`location /webmail/ \{\n        alias (\S+)/;`)
+)
+
+// legacyRenderDBToolsConfig is the form alpha.103 and earlier wrote (since
+// 2026-08-11), still accepted as CelikPanel's own.
+func legacyRenderDBToolsConfig(tools []string, roots, sockets map[string]string) string {
+	var b strings.Builder
+	b.WriteString("# Managed by CelikPanel — database web tools, loopback only.\n")
+	b.WriteString("# The panel reverse-proxies /dbtool/ here behind an admin session.\n")
+	b.WriteString("server {\n")
+	fmt.Fprintf(&b, "    listen %s;\n", dbToolsAddr)
+	b.WriteString("    server_name _;\n")
+	for _, id := range tools {
+		root := roots[id]
+		fmt.Fprintf(&b, `
+    location /dbtool/%s/ {
+        alias %s/;
+        index index.php;
+        location ~ ^/dbtool/%s/(.+\.php)$ {
+            alias %s/$1;
+            include fastcgi_params;
+            fastcgi_param SCRIPT_FILENAME $request_filename;
+            fastcgi_pass unix:%s;
+        }
+    }
+`, id, root, id, root, sockets[id])
+	}
+	b.WriteString("}\n")
+	return b.String()
+}
+
+// managedDBToolsConfig: the content is one of the forms CelikPanel writes,
+// for the tools, roots and sockets it names (an owner's edit of a
+// fastcgi_pass line alone is still CelikPanel's form with that socket).
+func managedDBToolsConfig(content string) bool {
+	var tools []string
+	roots := map[string]string{}
+	for _, match := range dbToolLocationBlock.FindAllStringSubmatch(content, -1) {
+		tools = append(tools, match[1])
+		roots[match[1]] = match[2]
+	}
+	sockets := parseDBToolsFPMSockets(content)
+	return content == renderDBToolsConfig(tools, roots, sockets) || content == legacyRenderDBToolsConfig(tools, roots, sockets)
+}
+
+func managedWebmailConfig(content string) bool {
+	listen := webmailListenLine.FindStringSubmatch(content)
+	alias := webmailAliasLine.FindStringSubmatch(content)
+	if listen == nil || alias == nil {
+		return false
+	}
+	fpm := parseWebmailFPMSocket(content)
+	return content == renderWebmailNginxConfig(listen[1], alias[1], fpm) || content == legacyRenderWebmailNginxConfig(listen[1], alias[1], fpm)
+}
+
+// refuseOwnerEditedConfig returns errPHPToolConfigOwnerEdited when the file
+// exists and is not CelikPanel's own form.
+func refuseOwnerEditedConfig(path string) error {
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	managed := managedDBToolsConfig(string(data))
+	if path == phpToolWebmailConfPath {
+		managed = managedWebmailConfig(string(data))
+	}
+	if !managed {
+		return &errPHPToolConfigOwnerEdited{Path: path}
+	}
+	return nil
 }
 
 func hostPHPToolBindOps() phpToolBindOps {
@@ -1070,11 +1247,11 @@ func hostPHPToolBindOps() phpToolBindOps {
 			}
 			return nil
 		},
-		cliProbe:   probePHPToolCLI,
-		render:     renderPHPToolConfig,
-		readConf:   readConfFile,
-		writeConf:  writePHPToolConfFile,
-		removeConf: func(path string) error { return os.Remove(path) },
+		cliProbe:     probePHPToolCLI,
+		render:       renderPHPToolConfig,
+		snapshotConf: snapshotMailFile,
+		writeConf:    writePHPToolConfFile,
+		restoreConf:  restoreMailFile,
 		nginxTest: func(ctx context.Context) error {
 			out, err := serviceMutationCommand(ctx, "nginx", "-t").CombinedOutput()
 			if err != nil {
@@ -1124,6 +1301,10 @@ func phpToolBindingsView() transport.PHPToolBindingsResponse {
 			binding.Version = state.version()
 			binding.SocketReady = pathExists(state.Socket)
 			binding.VersionInstalled = binding.Version != "" && phpVersionInstalled(binding.Version)
+			// Package presence only (a package can be installed and its
+			// extension disabled; a move's proof checks what PHP loads).
+			binding.ExtensionsPresent = binding.Version == "" || detectPkgFamily() != "apt" ||
+				phpToolHasExtensionPackages(state.Tool, binding.Version)
 		}
 		response.Tools = append(response.Tools, binding)
 	}

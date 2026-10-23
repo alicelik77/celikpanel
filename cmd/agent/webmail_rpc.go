@@ -128,23 +128,31 @@ func (a *Agent) InstallRoundcube(req *WebmailMutationRequest, resp *InstallRound
 		return nil
 	}
 	defer finishStep()
+	a.installRoundcubeWith(ctx, resp)
+	return nil
+}
+
+// installRoundcubeWith is InstallRoundcube's work under its held mutation
+// step (alpha.104 review: the disposable-VM evidence calls it directly).
+// installRoundcubeWith, InstallRoundcube'un tutulan adım altındaki işidir.
+func (a *Agent) installRoundcubeWith(ctx context.Context, resp *InstallRoundcubeResponse) {
 	resp.Version = roundcubeVersion
 	if err := ensureRoundcubeLifecycleSupported(); err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 	if err := secureMkdirAll(filepath.Dir(webmailBaseDir), 0o755); err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 	if err := reconcileRoundcubeArtifacts(webmailBaseDir, ""); err != nil {
 		resp.Error = fmt.Sprintf("reconcile Roundcube install artifacts: %v", err)
-		return nil
+		return
 	}
 	installed, err := roundcubeInstallState()
 	if err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 	// PHP-FPM presence is the socket's existence — portable across distros,
 	// unlike the /etc/php version read. phpVer may still be "" on Arch and
@@ -163,7 +171,7 @@ func (a *Agent) InstallRoundcube(req *WebmailMutationRequest, resp *InstallRound
 	fpmSocket, err := phpToolSocket(phpToolWebmail, phpToolStateFor(phpToolWebmail).Socket)
 	if err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 	phpVer := resolvedSocketVersion(fpmSocket)
 	if phpVer == "" && detectPkgFamily() == "apt" {
@@ -171,11 +179,11 @@ func (a *Agent) InstallRoundcube(req *WebmailMutationRequest, resp *InstallRound
 	}
 	if err := a.ensureRoundcubePHPDependencies(ctx, phpVer); err != nil {
 		resp.Error = fmt.Sprintf("PHP extensions required by Roundcube could not be prepared: %v", err)
-		return nil
+		return
 	}
 	if installed {
 		resp.Installed = true
-		return nil
+		return
 	}
 
 	url := fmt.Sprintf("https://github.com/roundcube/roundcubemail/releases/download/%s/roundcubemail-%s-complete.tar.gz",
@@ -185,7 +193,7 @@ func (a *Agent) InstallRoundcube(req *WebmailMutationRequest, resp *InstallRound
 	stage, err := createRoundcubeInstallStage(webmailBaseDir)
 	if err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 	defer func() {
 		if _, err := retireRoundcubeTree(stage); err != nil {
@@ -195,7 +203,7 @@ func (a *Agent) InstallRoundcube(req *WebmailMutationRequest, resp *InstallRound
 	tmp, err := os.CreateTemp(stage, "rc-dl-*")
 	if err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 	tmpClosed := false
 	defer func() {
@@ -210,12 +218,12 @@ func (a *Agent) InstallRoundcube(req *WebmailMutationRequest, resp *InstallRound
 	downloadReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		resp.Error = fmt.Sprintf("download request failed: %v", err)
-		return nil
+		return
 	}
 	dl, err := client.Do(downloadReq)
 	if err != nil {
 		resp.Error = fmt.Sprintf("download failed: %v", err)
-		return nil
+		return
 	}
 	defer func() {
 		if err := dl.Body.Close(); err != nil {
@@ -224,21 +232,21 @@ func (a *Agent) InstallRoundcube(req *WebmailMutationRequest, resp *InstallRound
 	}()
 	if dl.StatusCode != http.StatusOK {
 		resp.Error = fmt.Sprintf("download failed: HTTP %d", dl.StatusCode)
-		return nil
+		return
 	}
 	h := sha256.New()
 	written, err := io.Copy(io.MultiWriter(tmp, h), io.LimitReader(dl.Body, roundcubeMaxSize+1))
 	if err != nil {
 		resp.Error = fmt.Sprintf("download failed: %v", err)
-		return nil
+		return
 	}
 	if written > roundcubeMaxSize {
 		resp.Error = "download exceeded the maximum allowed Roundcube archive size"
-		return nil
+		return
 	}
 	if got := hex.EncodeToString(h.Sum(nil)); got != roundcubeSHA256 {
 		resp.Error = "checksum mismatch — download discarded"
-		return nil
+		return
 	}
 
 	// Extract to a staging dir, then move into place — a half-extracted tree
@@ -247,26 +255,26 @@ func (a *Agent) InstallRoundcube(req *WebmailMutationRequest, resp *InstallRound
 	// görünmemeli (Node deseni).
 	if err := tmp.Sync(); err != nil {
 		resp.Error = fmt.Sprintf("sync verified download: %v", err)
-		return nil
+		return
 	}
 	closeErr := tmp.Close()
 	tmpClosed = true
 	if closeErr != nil {
 		resp.Error = fmt.Sprintf("close verified download: %v", closeErr)
-		return nil
+		return
 	}
 	if out, err := serviceMutationCommand(ctx, "tar", "-xzf", tmp.Name(), "-C", stage, "--strip-components=1").CombinedOutput(); err != nil {
 		resp.Error = fmt.Sprintf("extract failed: %v: %s", err, string(out))
-		return nil
+		return
 	}
 	if err := os.Remove(tmp.Name()); err != nil {
 		resp.Error = fmt.Sprintf("remove verified Roundcube download: %v", err)
-		return nil
+		return
 	}
 
 	if err := writeRoundcubeConfig(stage, phpVer); err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 	// Build the database and apply permissions inside the staging tree. The
 	// generated config points at the final database path, while the schema
@@ -293,7 +301,7 @@ func (a *Agent) InstallRoundcube(req *WebmailMutationRequest, resp *InstallRound
 	dbDir := filepath.Join(stage, "db")
 	if err := secureMkdirAll(dbDir, 0o775); err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 	initSQL := filepath.Join(stage, "SQL", "sqlite.initial.sql")
 	dbPath := filepath.Join(dbDir, "roundcube.sqlite3")
@@ -302,7 +310,7 @@ func (a *Agent) InstallRoundcube(req *WebmailMutationRequest, resp *InstallRound
 		dbPath, initSQL)
 	if out, err := serviceMutationCommand(ctx, "php", "-r", phpLoad).CombinedOutput(); err != nil {
 		resp.Error = fmt.Sprintf("db init failed: %v: %s", err, firstLine(string(out)))
-		return nil
+		return
 	}
 
 	// The FPM pool that serves /webmail/ (the default www pool) must READ the
@@ -315,28 +323,27 @@ func (a *Agent) InstallRoundcube(req *WebmailMutationRequest, resp *InstallRound
 	grp := webServerGroup()
 	if grp == "" {
 		resp.Error = "web server group could not be detected"
-		return nil
+		return
 	}
 	if err := applyRoundcubePermissions(ctx, stage, dbPath, grp, runServiceMutationCombinedOutput); err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 	installed, err = roundcubeInstallStateAt(stage)
 	if err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 	if !installed {
 		resp.Error = "Roundcube staging tree is incomplete after installation"
-		return nil
+		return
 	}
 	if err := publishRoundcubeStage(stage, webmailBaseDir); err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 
 	resp.Installed = true
-	return nil
 }
 
 type webmailCommandRunner func(context.Context, string, ...string) ([]byte, error)
@@ -838,6 +845,32 @@ func applyWebmailNginxMutation(
 // kök tüm uygulamayı sunar.
 func roundcubeRootDir() string { return filepath.Join(webmailBaseDir, "public_html") }
 
+// legacyRenderWebmailNginxConfig is the form alpha.103 and earlier wrote,
+// still accepted as CelikPanel's own.
+func legacyRenderWebmailNginxConfig(webmailSocket, roundcubeRoot, fpmSocket string) string {
+	return fmt.Sprintf(`# Managed by CelikPanel — Roundcube webmail, Unix socket only.
+# The panel reverse-proxies /webmail/ here; Roundcube's own login is the auth.
+server {
+    listen unix:%s;
+    server_name _;
+    client_max_body_size 25m;
+
+    location /webmail/ {
+        alias %s/;
+        index index.php;
+        try_files $uri $uri/ /webmail/index.php$is_args$args;
+
+        location ~ ^/webmail/(.+\.php)$ {
+            alias %s/$1;
+            include fastcgi_params;
+            fastcgi_param SCRIPT_FILENAME $request_filename;
+            fastcgi_pass unix:%s;
+        }
+    }
+}
+`, webmailSocket, roundcubeRoot, roundcubeRoot, fpmSocket)
+}
+
 func renderWebmailNginxConfig(webmailSocket, roundcubeRoot, fpmSocket string) string {
 	return fmt.Sprintf(`# Managed by CelikPanel — Roundcube webmail, Unix socket only.
 # The panel reverse-proxies /webmail/ here; Roundcube's own login is the auth.
@@ -885,9 +918,17 @@ func (a *Agent) ConfigureWebmail(req *WebmailMutationRequest, resp *ConfigureWeb
 		return nil
 	}
 	defer finishStep()
+	a.configureWebmailWith(ctx, resp)
+	return nil
+}
+
+// configureWebmailWith is ConfigureWebmail's work under its held mutation
+// step (alpha.104 review: the disposable-VM evidence calls it directly).
+// configureWebmailWith, ConfigureWebmail'in tutulan adım altındaki işidir.
+func (a *Agent) configureWebmailWith(ctx context.Context, resp *ConfigureWebmailResponse) {
 	if _, err := exec.LookPath("nginx"); err != nil {
 		resp.Error = "nginx is not installed"
-		return nil
+		return
 	}
 
 	// Presence is the entry point's existence — InstallRoundcube renames the
@@ -898,7 +939,7 @@ func (a *Agent) ConfigureWebmail(req *WebmailMutationRequest, resp *ConfigureWeb
 	installed, err := roundcubeInstallState()
 	if err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 	if !installed {
 		if err := applyWebmailNginxMutation(
@@ -909,11 +950,11 @@ func (a *Agent) ConfigureWebmail(req *WebmailMutationRequest, resp *ConfigureWeb
 			runServiceMutationCombinedOutput,
 		); err != nil {
 			resp.Error = err.Error()
-			return nil
+			return
 		}
 		resp.Configured = true
 		resp.Present = false
-		return nil
+		return
 	}
 	resp.Present = true
 
@@ -925,7 +966,12 @@ func (a *Agent) ConfigureWebmail(req *WebmailMutationRequest, resp *ConfigureWeb
 	// /run/php-fpm/php-fpm.sock) — Debian yolunu asla varsayma.
 	if err := ensurePHPToolCheckScript(); err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
+	}
+	// A webmail configuration changed outside CelikPanel is not overwritten.
+	if err := refuseOwnerEditedConfig(phpToolWebmailConfPath); err != nil {
+		resp.Error = err.Error()
+		return
 	}
 	// alpha.104: webmail stays on the PHP version its configuration names
 	// while that version is installed; nothing bound yet → the default PHP.
@@ -934,12 +980,12 @@ func (a *Agent) ConfigureWebmail(req *WebmailMutationRequest, resp *ConfigureWeb
 	socket, err := phpToolSocket(phpToolWebmail, phpToolStateFor(phpToolWebmail).Socket)
 	if err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 	webmailSocket, err := webmailSocketPathForNginx()
 	if err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 
 	// Path-preserving: the browser path (/webmail/…) and this server's path
@@ -958,7 +1004,7 @@ func (a *Agent) ConfigureWebmail(req *WebmailMutationRequest, resp *ConfigureWeb
 		runServiceMutationCombinedOutput,
 	); err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 	// Validate before reload — a broken webmail config must not take the web
 	// server (and every customer site) down with it.
@@ -970,5 +1016,4 @@ func (a *Agent) ConfigureWebmail(req *WebmailMutationRequest, resp *ConfigureWeb
 			log.Printf("record webmail PHP version: %v", err)
 		}
 	}
-	return nil
 }

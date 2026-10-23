@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -72,6 +73,14 @@ func (a *Agent) ConfigureDBTools(req *ServiceMutationRequest, resp *ConfigureDBT
 
 	tools, installedRoots := installedDBToolRoots()
 
+	// A configuration changed outside CelikPanel is not overwritten or
+	// removed (D-022): the owner's file stays and the answer says so.
+	// CelikPanel dışında değiştirilen yapılandırmanın üzerine yazılmaz.
+	if err := refuseOwnerEditedConfig(dbToolsConfPath); err != nil {
+		resp.Error = err.Error()
+		return nil
+	}
+
 	if len(tools) == 0 {
 		_ = os.Remove(dbToolsConfPath)
 		if out, err := runServiceMutationCombinedOutput(ctx, "systemctl", "reload", "nginx"); err != nil {
@@ -105,9 +114,11 @@ func (a *Agent) ConfigureDBTools(req *ServiceMutationRequest, resp *ConfigureDBT
 				return nil
 			}
 			problems = append(problems, err.Error())
+			resp.ToolProblems = append(resp.ToolProblems, transport.PHPToolProblem{Tool: state.Tool, Version: gone.Version, Kind: "version_gone"})
 		} else if version := resolvedSocketVersion(socket); version != "" {
 			if err := ensurePHPToolExtensions(ctx, state.Tool, version); err != nil {
 				problems = append(problems, err.Error())
+				resp.ToolProblems = append(resp.ToolProblems, transport.PHPToolProblem{Tool: state.Tool, Version: version, Kind: "extensions_failed"})
 			}
 		}
 		sockets[state.Tool] = socket
@@ -118,7 +129,15 @@ func (a *Agent) ConfigureDBTools(req *ServiceMutationRequest, resp *ConfigureDBT
 	}
 	conf := renderDBToolsConfig(tools, installedRoots, sockets)
 
-	if err := os.WriteFile(dbToolsConfPath, []byte(conf), 0o644); err != nil {
+	// Atomic publication, and the previous file kept to put back when nginx
+	// refuses the new one (alpha.104; before, a refusal deleted the file).
+	// Atomik yayım; nginx reddederse önceki dosya geri konur.
+	previous, err := snapshotMailFile(dbToolsConfPath)
+	if err != nil {
+		resp.Error = fmt.Sprintf("read nginx config: %v", err)
+		return nil
+	}
+	if err := writeDBToolsConfFile(dbToolsConfPath, []byte(conf)); err != nil {
 		resp.Error = fmt.Sprintf("write nginx config: %v", err)
 		return nil
 	}
@@ -127,8 +146,11 @@ func (a *Agent) ConfigureDBTools(req *ServiceMutationRequest, resp *ConfigureDBT
 	// Yeniden yüklemeden önce doğrula — bozuk bir araç yapılandırması web
 	// sunucusunu (ve tüm müşteri sitelerini) beraberinde düşürmemeli.
 	if out, err := serviceMutationCommand(ctx, "nginx", "-t").CombinedOutput(); err != nil {
-		_ = os.Remove(dbToolsConfPath)
-		resp.Error = fmt.Sprintf("nginx rejected the tools config: %s", firstLine(string(out)))
+		if restoreErr := restoreMailFile(previous); restoreErr != nil {
+			resp.Error = fmt.Sprintf("nginx rejected the tools config: %s; the previous configuration could not be put back: %v", firstLine(string(out)), restoreErr)
+			return nil
+		}
+		resp.Error = fmt.Sprintf("nginx rejected the tools config: %s; the previous configuration was put back", firstLine(string(out)))
 		return nil
 	}
 	if out, err := runServiceMutationCombinedOutput(ctx, "systemctl", "reload", "nginx"); err != nil {
@@ -141,12 +163,15 @@ func (a *Agent) ConfigureDBTools(req *ServiceMutationRequest, resp *ConfigureDBT
 	for _, tool := range tools {
 		if version := resolvedSocketVersion(sockets[tool]); version != "" && phpVersionInstalled(version) {
 			if err := writePHPToolBinding(tool, version); err != nil {
-				problems = append(problems, err.Error())
+				log.Printf("record %s PHP version: %v", tool, err)
 			}
 		}
 	}
+	// A tool's PHP that needs attention is a warning: the configuration was
+	// written and the tool just installed is served (alpha.104).
+	// Bir aracın PHP'si ilgi istiyorsa uyarıdır; yapılandırma yazıldı.
 	if len(problems) > 0 {
-		resp.Error = strings.Join(problems, "; ")
+		resp.Warning = strings.Join(problems, "; ")
 	}
 	return nil
 }

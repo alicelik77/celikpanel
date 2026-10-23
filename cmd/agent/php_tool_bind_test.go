@@ -24,6 +24,7 @@ type fakeBindHost struct {
 	testErrs     []error
 	reloadErr    error
 	probeErr     error
+	restoreErr   error
 	conf         map[string][]byte
 	steps        []string
 	recorded     map[string]string
@@ -72,18 +73,26 @@ func (h *fakeBindHost) ops() phpToolBindOps {
 		render: func(tool, socket string) (string, []byte, error) {
 			return "/etc/nginx/conf.d/celikpanel-dbtools.conf", []byte("new:" + socket), nil
 		},
-		readConf: func(path string) ([]byte, bool, error) {
+		snapshotConf: func(path string) (mailFileSnapshot, error) {
 			content, ok := h.conf[path]
-			return content, ok, nil
+			return mailFileSnapshot{path: path, exists: ok, content: content, mode: 0o644}, nil
 		},
 		writeConf: func(path string, content []byte) error {
 			h.steps = append(h.steps, "write:"+string(content))
 			h.conf[path] = content
 			return nil
 		},
-		removeConf: func(path string) error {
-			h.steps = append(h.steps, "remove")
-			delete(h.conf, path)
+		restoreConf: func(snapshot mailFileSnapshot) error {
+			if h.restoreErr != nil {
+				return h.restoreErr
+			}
+			if !snapshot.exists {
+				h.steps = append(h.steps, "remove")
+				delete(h.conf, snapshot.path)
+				return nil
+			}
+			h.steps = append(h.steps, "write:"+string(snapshot.content))
+			h.conf[snapshot.path] = snapshot.content
 			return nil
 		},
 		nginxTest: func(context.Context) error {
@@ -134,11 +143,14 @@ func TestBindPHPToolRestoresThePreviousConfigurationWhenTheProbeFails(t *testing
 	for _, s := range []string{"mysql", "mbstring", "xml"} {
 		host.packages["php8.6-"+s] = true
 	}
-	host.probeErr = errors.New("phpMyAdmin answered HTTP 502")
+	host.probeErr = &phpToolProbeError{Kind: "http_status", Status: 502, Message: "phpMyAdmin answered HTTP 502"}
 	result, err := bindPHPToolWith(context.Background(), host.ops(), phpToolPHPMyAdmin, "8.6")
 	var typed *phpToolBindError
 	if !errors.As(err, &typed) || typed.Code != errCodePHPToolProbeFailed || typed.Detail != "phpMyAdmin answered HTTP 502" {
 		t.Fatalf("err = %v (%+v)", err, typed)
+	}
+	if typed.Cause.Kind != "http_status" || typed.Cause.Status != 502 || typed.Cause.Version != "8.6" {
+		t.Fatalf("cause = %+v", typed.Cause)
 	}
 	if !strings.Contains(err.Error(), "it was put back on PHP 8.4") || !result.Restored || !result.MutationApplied {
 		t.Fatalf("result = %+v err = %v", result, err)
@@ -354,4 +366,37 @@ func TestBindPHPToolStepNeedsItsOwnJob(t *testing.T) {
 			t.Fatalf("%s: authorized", name)
 		}
 	}
+}
+
+func TestBindPHPToolSaysWhichRestoreStepFailed(t *testing.T) {
+	host := newFakeBindHost()
+	host.packages = allPackagesFor("8.6")
+	host.probeErr = &phpToolProbeError{Kind: "missing_extensions", Extensions: []string{"mysqli"}, Message: "PHP-FPM 8.6 lacks mysqli for phpMyAdmin"}
+	host.testErrs = []error{nil, errors.New("nginx: [emerg] owner include")}
+	_, err := bindPHPToolWith(context.Background(), host.ops(), phpToolPHPMyAdmin, "8.6")
+	var typed *phpToolBindError
+	if !errors.As(err, &typed) || !strings.Contains(err.Error(), "the previous configuration was put back, but nginx rejected it") {
+		t.Fatalf("err = %v", err)
+	}
+	if typed.Cause.Kind != "missing_extensions" || len(typed.Cause.Extensions) != 1 || typed.Cause.Extensions[0] != "mysqli" {
+		t.Fatalf("cause = %+v", typed.Cause)
+	}
+	host = newFakeBindHost()
+	host.packages = allPackagesFor("8.6")
+	host.probeErr = errors.New("down")
+	host.restoreErr = errors.New("read-only file system")
+	_, err = bindPHPToolWith(context.Background(), host.ops(), phpToolPHPMyAdmin, "8.6")
+	if err == nil || !strings.Contains(err.Error(), "the previous configuration could not be put back (read-only file system)") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func allPackagesFor(version string) map[string]bool {
+	out := map[string]bool{}
+	for _, suffixes := range phpToolExtensionSuffixes {
+		for _, s := range suffixes {
+			out["php"+version+"-"+s] = true
+		}
+	}
+	return out
 }
