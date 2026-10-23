@@ -163,6 +163,8 @@ var auditActionNames = []string{
 	"service.stop.failed",
 	"service.stop.refresh.failed",
 	"service.stop.unknown",
+	"service.php_tool_bind",
+	"service.php_tool_bind.failed",
 	"service.uninstall",
 	"service.uninstall.failed",
 	"service.uninstall.firewall.failed",

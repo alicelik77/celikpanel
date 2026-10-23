@@ -450,7 +450,7 @@ func defaultPHPVersionFromInstalledMetas() string {
 	}
 	for _, meta := range []string{"php-fpm", "php-mysql", "php-pgsql", "php-mbstring", "php-xml", "php-cli"} {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		out, err := exec.CommandContext(ctx, dpkgQuery, "-W", "-f", "${Status}\t${Depends}\n", meta).Output()
+		out, err := serviceMutationCommand(ctx, dpkgQuery, "-W", "-f", "${Status}\t${Depends}\n", meta).Output()
 		cancel()
 		if err != nil {
 			continue

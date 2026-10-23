@@ -302,6 +302,8 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'dashboard.audit.action.service.stop.failed': '{target} hizmetini durduramadı',
     'dashboard.audit.action.service.stop.refresh.failed': '{target} hizmetini durdurdu; bileşen listesi yenilenemedi',
     'dashboard.audit.action.service.stop.unknown': '{target} hizmetini durdurmayı istedi; sonucu bilinmiyor',
+    'dashboard.audit.action.service.php_tool_bind': 'bir PHP aracını başka bir PHP sürümüne taşıdı ({target})',
+    'dashboard.audit.action.service.php_tool_bind.failed': 'bir PHP aracını başka bir PHP sürümüne taşıyamadı ({target})',
     'dashboard.audit.action.service.uninstall': '{target} bileşenini kaldırdı',
     'dashboard.audit.action.service.uninstall.failed': '{target} bileşenini kaldıramadı',
     'dashboard.audit.action.service.uninstall.firewall.failed': '{target} bileşenini kaldırdı; güvenlik duvarı kuralları güncellenemedi',

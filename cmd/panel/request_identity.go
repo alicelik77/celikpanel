@@ -163,6 +163,12 @@ var (
 	}
 )
 
+// requestIdentityRoutePHPToolBind (alpha.104): moving a PHP tool installs
+// packages and reloads nginx; a replay is answered from the first run.
+var requestIdentityRoutePHPToolBind = requestIdentityRoute{
+	pattern: phpToolBindPath, timeout: agentRPCDeploymentTimeout + 5*time.Minute,
+}
+
 // requestIdentityRouteFor names the protected route a request would reach. It
 // uses the dispatcher's own strict matchers, so a path the guard does not
 // recognize is a path the dispatcher does not serve either.
@@ -176,6 +182,8 @@ func requestIdentityRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 	}
 	path := r.URL.Path
 	switch {
+	case path == phpToolBindPath:
+		return requestIdentityRoutePHPToolBind, true
 	case path == "/api/v1/import/cpanel/apply":
 		return requestIdentityRouteImportApply, true
 	case path == "/api/v1/vpn/peers":

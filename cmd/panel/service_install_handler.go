@@ -456,9 +456,20 @@ func (p *Panel) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 		// Package: bileşenin bütünü yerine bir runtime'ın TEK sürümünü
 		// kaldır (php8.3-fpm) — çekmecenin sürüm başına Kaldır'ı (B3d).
 		Package string `json:"package,omitempty"`
+		// MoveToolsTo (alpha.104): before one PHP-FPM version is removed,
+		// move the PHP tools running on it (webmail, phpMyAdmin,
+		// phpPgAdmin) to this installed version, each move verified; the
+		// version is removed only when every move succeeded.
+		// MoveToolsTo: sürüm kaldırılmadan önce araçlar bu sürüme taşınır.
+		MoveToolsTo string `json:"move_tools_to,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ServiceID == "" {
 		writeClientError(w, http.StatusBadRequest, "service_id is required")
+		return
+	}
+	req.MoveToolsTo = strings.TrimSpace(req.MoveToolsTo)
+	if req.MoveToolsTo != "" && (req.ServiceID != "php-fpm" || req.Package == "" || !phpToolVersionPattern.MatchString(req.MoveToolsTo)) {
+		writeClientError(w, http.StatusBadRequest, "move_tools_to applies to removing one PHP-FPM version and names an installed version")
 		return
 	}
 	if managedDNSEngineServiceID(req.ServiceID) {
@@ -481,12 +492,14 @@ func (p *Panel) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 	// Silme koruması (B3d): panelin bildiği bir şey ona muhtaçken hiçbir şey
 	// kaldırılmaz. Ret, KİMİN engellediğini adlandırır (D-014) — admin,
 	// tıklamanın neyi kıracağını görmeden karar vermemeli.
+	removedVersion := ""
 	if req.Package != "" {
 		version := versionFromPackage(core.GetManagedServiceByID(req.ServiceID), req.Package)
 		if version == "" {
 			writeClientError(w, http.StatusBadRequest, "package does not name a removable version of this service")
 			return
 		}
+		removedVersion = version
 		count, blockers, err := runtimeVersionBlockers(r.Context(), p.db.GetDB(), req.ServiceID, version)
 		if err != nil {
 			writeServerError(w, err)
@@ -509,6 +522,37 @@ func (p *Panel) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 				fmt.Sprintf("%d thing(s) on this server depend on %s — remove or move them first.", count, req.ServiceID),
 				"", blockers)
 			return
+		}
+	}
+
+	// Move the PHP tools off the version first, each move verified; nothing
+	// is removed unless every move succeeded (alpha.104, C).
+	// Önce PHP araçlarını sürümden taşı; her taşıma doğrulanır.
+	var movedTools []string
+	if req.MoveToolsTo != "" {
+		if req.MoveToolsTo == removedVersion {
+			writeClientError(w, http.StatusBadRequest, "move_tools_to must name another PHP version")
+			return
+		}
+		moved, failure, err := p.movePHPToolsBeforeVersionRemoval(r.Context(), removedVersion, req.MoveToolsTo)
+		if err != nil {
+			writeAgentError(w, err, "move PHP tools")
+			return
+		}
+		if failure != nil {
+			if len(moved) > 0 || failure.MutationApplied {
+				if _, scanErr := p.scanManagedServices(r.Context()); scanErr != nil {
+					log.Printf("rescan after PHP tool moves: %v", scanErr)
+				}
+			}
+			p.audit(r, "service.uninstall.failed:"+req.ServiceID+pkgSuffix(req.Package)+" — "+auditReason("moving PHP tools: "+failure.Error), "service", 0)
+			w.WriteHeader(http.StatusConflict)
+			json.NewEncoder(w).Encode(failure)
+			return
+		}
+		movedTools = moved
+		if len(moved) > 0 {
+			p.audit(r, "service.php_tool_bind:"+strings.Join(moved, ",")+":"+removedVersion+"->"+req.MoveToolsTo, "service", 0)
 		}
 	}
 
@@ -684,6 +728,11 @@ func (p *Panel) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 	if resp.Error != "" && !resp.MutationApplied {
 		p.audit(r, "service.uninstall.failed:"+req.ServiceID+pkgSuffix(req.Package)+" — "+auditReason(resp.Error), "service", 0)
 		if code, details, ok := uninstallRefusalCode(resp); ok {
+			if len(movedTools) > 0 {
+				w.WriteHeader(http.StatusConflict)
+				json.NewEncoder(w).Encode(map[string]any{"error": resp.Error, "code": code, "details": details, "moved": movedTools, "moved_to": req.MoveToolsTo})
+				return
+			}
 			writeCodedErrorDetails(w, http.StatusConflict, code, resp.Error, "", details)
 			return
 		}
@@ -798,7 +847,12 @@ func (p *Panel) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 		writeServiceFirewallSyncFailed(w)
 		return
 	}
-	json.NewEncoder(w).Encode(map[string]any{"removed": resp.Removed, "detail": resp.Detail, "success": true})
+	answer := map[string]any{"removed": resp.Removed, "detail": resp.Detail, "success": true}
+	if len(movedTools) > 0 {
+		answer["moved"] = movedTools
+		answer["moved_to"] = req.MoveToolsTo
+	}
+	json.NewEncoder(w).Encode(answer)
 }
 
 // uninstallRefusalCode carries the Agent's typed removal refusal (alpha.104)
