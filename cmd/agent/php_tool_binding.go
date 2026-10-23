@@ -772,6 +772,30 @@ func probePHPToolHTTP(ctx context.Context, tool, version string) error {
 	return checkPHPToolResponse(tool, response.StatusCode, body)
 }
 
+// phpToolProbeSettle bounds how long a proof waits for nginx's reloaded
+// configuration: right after "systemctl reload nginx" the old workers can
+// still answer with the previous socket (a real Debian 13 run saw PHP 8.4
+// answer for a tool just bound to 8.5).
+// Kanıt, yeniden yüklenen nginx yapılandırmasını en çok bu kadar bekler.
+var phpToolProbeSettle = 20 * time.Second
+
+// retryPHPToolProbe repeats a proof until it passes or the bound runs out,
+// and returns the last failure.
+func retryPHPToolProbe(ctx context.Context, tool, version string, probe func(context.Context, string, string) error, bound, every time.Duration) error {
+	deadline := time.Now().Add(bound)
+	for {
+		err := probe(ctx, tool, version)
+		if err == nil || time.Now().Add(every).After(deadline) {
+			return err
+		}
+		select {
+		case <-ctx.Done():
+			return err
+		case <-time.After(every):
+		}
+	}
+}
+
 // renderDBToolsConfig writes the loopback server for the installed tools,
 // each location handing PHP to its own socket.
 func renderDBToolsConfig(tools []string, roots, sockets map[string]string) string {
@@ -1053,7 +1077,9 @@ func hostPHPToolBindOps() phpToolBindOps {
 			}
 			return nil
 		},
-		httpProbe:   probePHPToolHTTP,
+		httpProbe: func(ctx context.Context, tool, version string) error {
+			return retryPHPToolProbe(ctx, tool, version, probePHPToolHTTP, phpToolProbeSettle, time.Second)
+		},
 		writeRecord: writePHPToolBinding,
 	}
 }

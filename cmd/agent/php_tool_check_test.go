@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // The PHP check behind a tool's own socket (alpha.104): only a PHP-FPM that
@@ -76,5 +79,26 @@ func TestPHPToolCheckScriptIsWrittenOnceAndReadable(t *testing.T) {
 	data, _ := os.ReadFile(phpToolCheckScriptPath)
 	if !strings.Contains(string(data), "extension_loaded") || !strings.Contains(string(data), "PHP_VERSION") {
 		t.Fatalf("script = %s", data)
+	}
+}
+
+func TestPHPToolProbeWaitsForTheReloadedConfiguration(t *testing.T) {
+	calls := 0
+	probe := func(context.Context, string, string) error {
+		calls++
+		if calls < 3 {
+			return errors.New("phpPgAdmin answered on PHP 8.4.27, not on PHP 8.5")
+		}
+		return nil
+	}
+	if err := retryPHPToolProbe(context.Background(), phpToolPHPPgAdmin, "8.5", probe, time.Second, time.Millisecond); err != nil || calls != 3 {
+		t.Fatalf("err=%v calls=%d", err, calls)
+	}
+	calls = 0
+	failing := func(context.Context, string, string) error { calls++; return errors.New("PHP-FPM 8.5 lacks pgsql") }
+	started := time.Now()
+	err := retryPHPToolProbe(context.Background(), phpToolPHPPgAdmin, "8.5", failing, 50*time.Millisecond, 10*time.Millisecond)
+	if err == nil || !strings.Contains(err.Error(), "lacks pgsql") || calls < 2 || time.Since(started) > time.Second {
+		t.Fatalf("err=%v calls=%d took=%v", err, calls, time.Since(started))
 	}
 }
