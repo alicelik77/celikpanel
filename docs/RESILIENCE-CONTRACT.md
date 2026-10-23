@@ -7631,7 +7631,7 @@ update and automatic-rollback resilience is complete.
   8 configurations; looked, fixed, looked again). Fresh clone in `archlinux`: the
   sequence (103 → 104), portal and manifest contracts and the offline
   release-recovery harness (1,109 tests, 1 skipped). **Real system:** a disposable
-  Debian 13 VM (QEMU/KVM), the build-tagged Agent test at `c344fd62`: the Frankfurt
+  Debian 13 VM (QEMU/KVM), the build-tagged Agent test from a fresh clone of the candidate branch (its commit is in the archive's `evidence/commit.txt`): the Frankfurt
   removal refused with phpmyadmin and phppgadmin named and the package set
   unchanged; a clean removal removed exactly the simulated list; phpPgAdmin moved
   to PHP 8.5 (extensions installed by the Agent) and proved through its socket;

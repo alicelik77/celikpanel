@@ -6899,8 +6899,8 @@ iddiası değildir.
   yapılandırma; bakıldı, düzeltildi, yeniden bakıldı). `archlinux` içinde temiz
   klon: sıra (103 → 104), portal ve bildirim sözleşmeleri ile çevrimdışı sürüm
   kurtarma düzeneği (1.109 test, 1 atlandı). **Gerçek sistem:** atılabilir bir
-  Debian 13 sanal makinesi (QEMU/KVM), `c344fd62` üzerindeki yapı etiketli Agent
-  testi: Frankfurt kaldırması phpmyadmin ve phppgadmin adıyla reddedildi ve paket
+  Debian 13 sanal makinesi (QEMU/KVM), aday dalın temiz bir klonundan yapı etiketli
+  Agent testi (commit'i arşivin `evidence/commit.txt` dosyasında): Frankfurt kaldırması phpmyadmin ve phppgadmin adıyla reddedildi ve paket
   kümesi değişmedi; temiz bir kaldırma tam olarak benzetim listesini kaldırdı;
   phpPgAdmin PHP 8.5'e taşındı (eklentileri Agent kurdu) ve kendi soketinden
   kanıtlandı; PHP 8.5'in FPM'inde pgsql yokken bir taşıma kanıt tarafından
