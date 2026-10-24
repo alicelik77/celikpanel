@@ -309,6 +309,15 @@ func TestRealSystemA107PostgreSQLRemovalKeepsTheCluster(t *testing.T) {
 		t.Fatalf("the kept cluster's database is not back: %q", out)
 	}
 	a107Out(t, "pg_lsclusters")
+
+	// For the record only (CelikPanel never purges an engine): what Debian's
+	// own purge of postgresql-17 does with an existing cluster, run by hand.
+	a107Out(t, "apt-get", "purge", "-y", "-q", "postgresql-17")
+	for _, path := range []string{"/var/lib/postgresql/17/main/PG_VERSION", "/etc/postgresql/17/main/postgresql.conf"} {
+		_, err := os.Stat(path)
+		t.Logf("after a purge of postgresql-17: %s exists=%v", path, err == nil)
+	}
+	a107Out(t, "pg_lsclusters")
 }
 
 func a107Fetch(t *testing.T, url string) []byte {
