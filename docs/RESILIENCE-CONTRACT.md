@@ -7735,8 +7735,8 @@ native update and automatic-rollback resilience is complete.
   by a later proof that passes. *alpha.105 back to alpha.104:* alpha.104 does not
   read that file, so such a tool reads by alpha.104's rule; installs return to the
   alpha.104 guard (an install never removes a package).
-- **Evidence.** Agent {{GO_AGENT_COUNT}}; Panel and internal packages
-  {{GO_PANEL_COUNT}}; web {{WEB_COUNT}}. **Real system, one disposable Debian 13 VM
+- **Evidence.** Agent 4723 passed, 29 skipped (in a clean mount namespace); Panel and internal packages
+  7243 passed, 44 skipped; web 1793 passed, and the production build within its budgets. **Real system, one disposable Debian 13 VM
   (QEMU/KVM)**, the build-tagged Agent test from the candidate branch: phpMyAdmin
   alone on a bare PHP 8.3 was simulated to bring PHP 8.4's packages and its
   unconfirmed install was refused with nothing installed; PostgreSQL + PHP-FPM 8.3

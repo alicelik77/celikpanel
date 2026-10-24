@@ -79,9 +79,9 @@ alpha.104's rule that an install never removes a package.
 
 ## Evidence on the candidate
 
-- Agent: {{GO_AGENT_COUNT}}.
-- Panel and internal packages: {{GO_PANEL_COUNT}}.
-- Web: {{WEB_COUNT}}.
+- Agent: 4723 passed, 29 skipped (in a clean mount namespace).
+- Panel and internal packages: 7243 passed, 44 skipped.
+- Web: 1793 passed, and the production build within its budgets.
 - Real system, one disposable Debian 13 virtual machine (QEMU/KVM, deleted after the
   run): phpMyAdmin alone on a bare PHP 8.3 was found to bring PHP 8.4's packages,
   and its unconfirmed install was refused with nothing installed; PostgreSQL +

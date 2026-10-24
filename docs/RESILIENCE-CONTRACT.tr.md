@@ -6999,8 +6999,8 @@ dayanıklılığının tamamlandığı iddiası değildir.
   sürüm 1) ve sonradan geçen bir kanıtla silinir. *alpha.105'ten alpha.104'e geri:*
   alpha.104 o dosyayı okumaz, bu yüzden böyle bir araç alpha.104 kuralına göre
   okunur; kurulumlar alpha.104 korumasına döner (bir kurulum asla paket kaldırmaz).
-- **Kanıt.** Agent {{GO_AGENT_COUNT}}; Panel ve iç paketler {{GO_PANEL_COUNT}}; web
-  {{WEB_COUNT}}. **Gerçek sistem, atılabilir bir Debian 13 sanal makinesi
+- **Kanıt.** Agent 4723 geçti, 29 atlandı (temiz bir bağlama ad alanında); Panel ve iç paketler 7243 geçti, 44 atlandı; web
+  1793 geçti; üretim derlemesi bütçelerinin içinde. **Gerçek sistem, atılabilir bir Debian 13 sanal makinesi
   (QEMU/KVM)**, aday dalından derlenen yapı etiketli Agent testi: yalın PHP 8.3
   üzerinde tek başına phpMyAdmin'in benzetimi PHP 8.4 paketlerini getireceğini
   söyledi ve onaysız kurulumu hiçbir şey kurulmadan reddedildi; PostgreSQL + PHP-FPM

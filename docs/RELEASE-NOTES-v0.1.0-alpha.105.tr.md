@@ -76,9 +76,9 @@ korur.
 
 ## Aday üzerindeki kanıt
 
-- Agent: {{GO_AGENT_COUNT}}.
-- Panel ve iç paketler: {{GO_PANEL_COUNT}}.
-- Web: {{WEB_COUNT}}.
+- Agent: 4723 geçti, 29 atlandı (temiz bir bağlama ad alanında).
+- Panel ve iç paketler: 7243 geçti, 44 atlandı.
+- Web: 1793 geçti; üretim derlemesi bütçelerinin içinde.
 - Gerçek sistem, atılabilir bir Debian 13 sanal makinesi (QEMU/KVM, denemeden
   sonra silindi): yalın PHP 8.3 üzerinde tek başına phpMyAdmin'in PHP 8.4
   paketlerini getireceği görüldü ve onaysız kurulumu hiçbir şey kurulmadan
