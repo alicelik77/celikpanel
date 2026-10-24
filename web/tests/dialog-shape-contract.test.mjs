@@ -170,6 +170,7 @@ test('every dialogue in the product is the shared one', () => {
     // alpha.94: the confirmation of a database or web ready bundle.
     'ReadyBundleStrip.tsx': 2,
     'AppAccountLine.tsx': 1,
+    'NodePatches.tsx': 1,
     'RestartsCard.tsx': 1,
     'RoundcubeUpdateCard.tsx': 1,
     'SecurityUpdatesCard.tsx': 1,

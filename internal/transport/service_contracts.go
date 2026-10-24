@@ -662,3 +662,20 @@ type BindPHPToolResponse struct {
 	// Cause is the same, structured and translatable.
 	Cause *PHPToolCause `json:"cause,omitempty"`
 }
+
+// NodePatch is one installed Node.js version and the newest release on its
+// line in the official index (alpha.107, D-038 §9): Newer is true when a
+// newer patch exists. LTS names the line's LTS codename, if it has one.
+type NodePatch struct {
+	Installed string `json:"installed"`
+	Line      string `json:"line"`
+	Newest    string `json:"newest,omitempty"`
+	Newer     bool   `json:"newer"`
+	LTS       string `json:"lts,omitempty"`
+}
+
+type NodePatchesResponse struct {
+	Patches   []NodePatch `json:"patches"`
+	CheckedAt string      `json:"checked_at,omitempty"`
+	Error     string      `json:"error,omitempty"`
+}

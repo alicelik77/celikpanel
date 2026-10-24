@@ -140,6 +140,12 @@ func (p *Panel) handleNodeRuntimeSub(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	rest := strings.TrimPrefix(r.URL.Path, "/api/v1/runtimes/node/")
 
+	// alpha.107 (D-038 §9): the newest patch on each installed line.
+	if rest == "patches" && r.Method == http.MethodGet {
+		p.handleNodePatches(w, r)
+		return
+	}
+
 	if rest == "lts" && r.Method == http.MethodGet {
 		var resp transport.NodeLTSResponse
 		callCtx, cancel := context.WithTimeout(r.Context(), 25*time.Second)

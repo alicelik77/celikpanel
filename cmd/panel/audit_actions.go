@@ -182,6 +182,7 @@ var auditActionNames = []string{
 	"site.app_account.failed",
 	"site.hosting",
 	"site.node_version",
+	"site.node_version.failed",
 	"site.php_version",
 	"ssl.auto-renew",
 	"ssl.detach",

@@ -284,6 +284,7 @@ export const enDashboardScreens = {
     'dashboard.audit.action.site.node_version': 'changed the Node.js version of a site ({target})',
     'dashboard.audit.action.site.app_account': 'moved a site\'s application to the site\'s own user ({target})',
     'dashboard.audit.action.site.app_account.failed': 'could not move a site\'s application to the site\'s own user ({target})',
+    'dashboard.audit.action.site.node_version.failed': 'could not move a site to another Node.js version ({target})',
     'dashboard.audit.action.repo.confine': 'confined the package repository {target} to its component',
     'dashboard.audit.action.repo.confine.failed': 'could not confine the package repository {target} to its component',
     'dashboard.audit.action.repo.disable': 'turned off the package repository {target}',

@@ -25,6 +25,7 @@ import { decodeInstallPreview, installPreviewURL } from '../lib/installPreview';
 import { decodeRoundcubeUpdate, ROUNDCUBE_UPDATE_URL } from '../lib/roundcubeUpdate';
 import { supportFor, useSupportTable, type SupportComponent } from '../lib/supportTable';
 import { SupportBadge, supportConfirmation } from './SupportMark';
+import { NodePatches } from './NodePatches';
 import { InstallPreviewNotes, installPreviewAckKey, installPreviewGate } from './InstallPreviewNotes';
 import { useAuth } from '../auth/AuthContext';
 import type { TranslationKey } from '../i18n/en';
@@ -3673,6 +3674,8 @@ function VersionDrawer({
                                 </div>
                             )}
                             <div className="mt-1.5 text-xs text-fg-subtle">{t('services.nodeInstallHint')}</div>
+                            {/* alpha.107 (D-038 §9): newer patches on the installed lines. */}
+                            <NodePatches installed={instances.filter((i) => i.managed).map((i) => i.version)} onInstall={(version) => installVersion(version)} />
                         </>
                     )}
                 </div>

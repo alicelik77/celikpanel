@@ -194,6 +194,21 @@ export const enLifecycleScreens = {
     'life.app.unknown': 'The answer did not arrive, so whether the application moved is not known; it is read again.',
     'life.isolation.tools': 'Webmail, phpMyAdmin and phpPgAdmin share one PHP-FPM pool under the web server’s user; each site runs under its own user, separate from them.',
     'life.isolation.mail': 'All mailboxes are stored under one system user (vmail); mail domains are kept apart by the mail server’s own accounts, not by separate system users.',
+    // ---- Node.js patch notices (D-038 §9) ----
+    'life.node.newer': 'A newer patch on the same line exists: Node.js {newest} (installed: {installed}). The operating system never updates Node.js installed by CelikPanel.',
+    'life.node.install': 'Install {newest}…',
+    'life.node.installTitle': 'Install Node.js {newest}?',
+    'life.node.installBody': 'CelikPanel downloads Node.js {newest} from its official release, checks it against the published checksums and installs it beside {installed}. Nothing else changes: every site stays on {installed} until it is moved.',
+    'life.node.installConfirm': 'Install',
+    'life.node.sitesOn': 'Still on {installed}:',
+    'life.node.installFirst': 'Install {newest} first to move these sites.',
+    'life.node.move': 'Move to {newest}…',
+    'life.node.moveTitle': 'Move {site} to Node.js {newest}?',
+    'life.node.moveBody': 'The application of {site} is restarted on Node.js {newest}: it is unavailable for a few seconds. Then it must answer on its port; if it does not, it is put back on {installed} and restarted again.',
+    'life.node.moveConfirm': 'Move and restart',
+    'life.node.moved': '{site} now runs on Node.js {version} and answers.',
+    'life.node.moveFailed': '{site} was not moved: {reason}',
+    'life.node.unknown': 'The answer did not arrive, so the result is not known; the list is read again.',
 } as const;
 
 export type LifecycleScreenKey = keyof typeof enLifecycleScreens;

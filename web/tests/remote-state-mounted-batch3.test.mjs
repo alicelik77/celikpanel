@@ -43,7 +43,7 @@ const icons = new Set(['AlertTriangle']);
 // component read are not moved), so it is not one of `screenFiles`.
 // The ready bundles strip and the component icon map (alpha.94) are drawn by
 // the Components page and import their own icons.
-for (const name of [...screenFiles, 'Dashboard', 'DNSEngineCard', 'ServiceList', 'FirewallPanel', 'ReadyBundleStrip', '../lib/componentIcons']) {
+for (const name of [...screenFiles, 'Dashboard', 'DNSEngineCard', 'ServiceList', 'FirewallPanel', 'ReadyBundleStrip', 'LifeLine', '../lib/componentIcons']) {
   for (const match of source(`components/${name}.tsx`).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {
     for (const item of match[1].split(',')) {
       const icon = item.replace(/\btype\b/, '').trim().split(/\s+as\s+/)[0];
