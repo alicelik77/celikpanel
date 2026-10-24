@@ -378,7 +378,7 @@ func renderRepoPin(repo *core.ManagedRepo, host string, kept []string) []byte {
 	fmt.Fprintf(&b, "Pin-Priority: %d\n", repoPinLowPriority)
 	if len(kept) > 0 {
 		b.WriteString("\n")
-		fmt.Fprintf(&b, "Explanation: These packages were installed from %s before it was confined; they keep following it.\n", repo.Name)
+		fmt.Fprintf(&b, "Explanation: These packages are installed from %s; they keep following it.\n", repo.Name)
 		fmt.Fprintf(&b, "Package: %s\n", strings.Join(kept, " "))
 		fmt.Fprintf(&b, "Pin: origin \"%s\"\n", host)
 		fmt.Fprintf(&b, "Pin-Priority: %d\n", repoPinKeepPriority)

@@ -295,6 +295,11 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 			pkgs = append(pkgs, offered...)
 			skipped = notOffered
 		}
+		// alpha.107: a vendor-only version takes the vendor's shared
+		// packages it needs, named exactly (php-common=…, libpq5=…).
+		if family == "apt" {
+			pkgs = append(pkgs, hostVendorSharedPackageArgs(svc.Repo)...)
+		}
 	}
 
 	// A database tool installed for a chosen PHP version (alpha.105, a
@@ -398,6 +403,11 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 			}
 			resp.Error = fmt.Sprintf("package install failed: %v", installErr)
 			return nil
+		}
+		// alpha.107: what is now installed from the vendor repository
+		// keeps following it; everything else stays with the distribution.
+		if family == "apt" && svc.Repo != nil {
+			refreshRepoConfinement(svc.Repo)
 		}
 	}
 	// A tool installed for the first time for a chosen PHP version is bound

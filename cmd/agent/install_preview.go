@@ -94,6 +94,7 @@ func newInstallClassification(family string, requested []string, components []st
 		present:     phpVersionPresent,
 	}
 	for _, pkg := range requested {
+		pkg = installArgName(pkg)
 		c.requested[pkg] = true
 		if match := phpInstallVersionPackage.FindStringSubmatch(pkg); match != nil {
 			c.phpVersions[match[1]] = true
@@ -373,6 +374,9 @@ type installPreviewOps struct {
 	exactDefault func(ctx context.Context, svc *core.ManagedService) (string, error)
 	// existingData (alpha.107): an engine's data a previous install left.
 	existingData func(svc *core.ManagedService, pkg string) []transport.ExistingData
+	// vendorShared (alpha.107): the vendor's shared packages a vendor-only
+	// version needs, as name=version.
+	vendorShared func(repo *core.ManagedRepo) []string
 	lock         func() bool
 	unlock       func()
 }
@@ -436,6 +440,9 @@ func serviceInstallPreviewWithOps(ctx context.Context, req *transport.ServiceIns
 			if len(match) > 1 {
 				offered, _ := versionCompanionPackages(svc, match[1], ops.available)
 				pkgs = append(pkgs, offered...)
+			}
+			if ops.vendorShared != nil {
+				pkgs = append(pkgs, ops.vendorShared(svc.Repo)...)
 			}
 		}
 		for _, pkg := range pkgs {
@@ -585,6 +592,7 @@ func (a *Agent) ServiceInstallPreviewV1(req *transport.ServiceInstallPreviewRequ
 		}
 		ops.available = func(name string) bool { return packageAvailableWithExecutable(name, aptCache) }
 		ops.vendorOf = hostVendorVersionLookup()
+		ops.vendorShared = hostVendorSharedPackageArgs
 		defaults := hostExactDefaultOps(aptCache)
 		ops.exactDefault = func(ctx context.Context, svc *core.ManagedService) (string, error) {
 			return exactDefaultPackage(ctx, svc, family, defaults)

@@ -236,7 +236,7 @@ func installPackagesGuardedContext(ctx context.Context, family string, packages 
 	// Her adı koru: komut satırına yalnız gerçek bir paket dizgesi ulaşır —
 	// asla bayrak ya da kabuk metakarakteri.
 	for _, p := range packages {
-		if !validPackageName(p) {
+		if !validInstallArg(p) {
 			return "", fmt.Errorf("invalid package name: %q", p)
 		}
 	}

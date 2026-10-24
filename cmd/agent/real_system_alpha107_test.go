@@ -147,6 +147,22 @@ func TestRealSystemA107RepositoriesAreConfinedAndTheDefaultIsExact(t *testing.T)
 		t.Fatalf("php8.3-fpm from the vendor repository under confinement: %s", resp.Error)
 	}
 	t.Logf("php8.3-fpm %s, php-common %s", a107Version("php8.3-fpm"), a107Version("php-common"))
+	if v := a107Version("php-common"); hostVendorVersionLookup()("php-common", v) == "" {
+		t.Fatalf("php-common %s is not the vendor's after a vendor-only version", v)
+	}
+	pinText, _ := os.ReadFile(repoPinPath("sury"))
+	if !strings.Contains(string(pinText), "php-common") {
+		t.Fatalf("the confinement does not keep php-common following the vendor: %s", pinText)
+	}
+	// A PGDG major is offered the same way: its preview is known.
+	var pgdg transport.ServiceInstallPreviewResponse
+	if err := a.ServiceInstallPreviewV1(&transport.ServiceInstallPreviewRequest{Steps: []transport.ServiceInstallPreviewStep{{ID: "postgresql", Package: "postgresql-18"}}}, &pgdg); err != nil {
+		t.Fatal(err)
+	}
+	logJSON(t, "preview of PostgreSQL 18 from PGDG", pgdg)
+	if pgdg.State != "known" || pgdg.Error != "" {
+		t.Fatalf("PGDG preview = %+v", pgdg)
+	}
 
 	// Without the confinement (as on a server whose owner removed it), a
 	// distribution package the vendor would replace is refused by name.

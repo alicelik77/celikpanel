@@ -138,6 +138,13 @@ type ManagedRepo struct {
 	// MovingPackagePattern: bileşenin "varsayılan sürüm" paketleri; kartta
 	// bildirilir, panel kaldırmaz.
 	MovingPackagePattern string
+	// SharedPackages are the vendor's own shared packages that a version
+	// only the vendor ships needs from it (Sury's php-common, PGDG's
+	// libpq5). Under the confinement apt would keep the distribution's, so
+	// the install of a vendor-only version names them exactly (alpha.107).
+	// SharedPackages: üreticiye özgü bir sürümün üreticiden istediği ortak
+	// paketler; kurulum bunları adıyla ister.
+	SharedPackages []string
 }
 
 // Kind answers "how is this row drawn and operated?" — the single question
@@ -517,6 +524,7 @@ var ManagedServices = []ManagedService{
 			},
 			PackagePattern:       `^(php[0-9]+\.[0-9]+)-fpm$`,
 			MovingPackagePattern: `^php(-(fpm|cli|cgi|mysql|pgsql|sqlite3|curl|xml|mbstring|gd|zip|intl|bcmath|opcache|readline|soap|ldap|imap|redis|imagick|igbinary|apcu|memcached|dev))?$`,
+			SharedPackages:       []string{"php-common"},
 			// A bare php8.x-fpm runs no real site: no database driver, no
 			// mbstring, no curl. These are the extensions WordPress, Laravel and
 			// WooCommerce need before their first request.
@@ -633,6 +641,7 @@ var ManagedServices = []ManagedService{
 			// The distribution's moving packages: they follow whichever
 			// major is the default.
 			MovingPackagePattern: `^postgresql(-client|-contrib)?$`,
+			SharedPackages:       []string{"libpq5"},
 		},
 	},
 	{
