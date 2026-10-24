@@ -9,7 +9,7 @@
 // Bir kurulumun getirdikleri: paket yöneticisinin benzetimi, dikkat çeken
 // paketler ve aracı çalıştıramayacak PHP sürümü.
 
-export type NotableReason = 'new_php_version' | 'apache' | 'component' | 'database_server' | 'upgrade' | 'vendor_replaces_distribution';
+export type NotableReason = 'new_php_version' | 'apache' | 'component' | 'database_server' | 'upgrade' | 'vendor_replaces_distribution' | 'vendor_shared';
 
 export interface NotableInstall {
     package: string;
@@ -43,7 +43,7 @@ export interface InstallStep {
     phpVersion?: string;
 }
 
-const REASONS: readonly string[] = ['new_php_version', 'apache', 'component', 'database_server', 'upgrade', 'vendor_replaces_distribution'];
+const REASONS: readonly string[] = ['new_php_version', 'apache', 'component', 'database_server', 'upgrade', 'vendor_replaces_distribution', 'vendor_shared'];
 const STATES: readonly string[] = ['known', 'busy', 'unsupported', 'unknown'];
 const PACKAGE = /^[a-z0-9][a-z0-9+.:-]{0,160}$/;
 const strings = (value: unknown): string[] | null =>
@@ -133,7 +133,7 @@ export function notableGroups(notable: readonly NotableInstall[]): NotableGroup[
             groups.push(group);
         }
         // An upgrade says its versions: "libssl3 3.5.1-1 → 3.5.1-1+deb13u1".
-        group.packages.push(item.reason === 'upgrade' && item.from && item.to ? `${item.package} ${item.from} → ${item.to}` : item.package);
+        group.packages.push((item.reason === 'upgrade' || item.reason === 'vendor_shared') && item.from && item.to ? `${item.package} ${item.from} → ${item.to}` : item.package);
     }
     return groups;
 }

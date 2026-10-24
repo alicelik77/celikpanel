@@ -72,8 +72,14 @@ func vendorSharedPackageArgsFrom(repo *core.ManagedRepo, installed map[string][]
 
 // hostVendorSharedPackageArgs reads the repository's index and the installed
 // packages; an unreadable one adds nothing (the simulation then says why).
-func hostVendorSharedPackageArgs(repo *core.ManagedRepo) []string {
-	if repo == nil || len(repo.SharedPackages) == 0 {
+// Only a selected package the distribution's lists do not offer at all (a
+// version only the vendor ships) takes them; otherwise never.
+func hostVendorSharedPackageArgs(repo *core.ManagedRepo, selected string) []string {
+	if repo == nil || len(repo.SharedPackages) == 0 || selected == "" {
+		return nil
+	}
+	distro, err := readDistributionVersions(map[string]bool{selected: true})
+	if err != nil || len(distro[selected]) > 0 {
 		return nil
 	}
 	loc, ok := enabledRepoLocations()[repo.ID]

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -37,5 +38,33 @@ func TestAVendorOnlyVersionNamesTheVendorsSharedPackages(t *testing.T) {
 	}
 	if !validInstallArg("php-common=2:101+0~1") || validInstallArg("php-common=--force") || validInstallArg("-o=x") || installArgName("libpq5=18.0-1") != "libpq5" {
 		t.Fatal("install argument validation")
+	}
+}
+
+func TestTheVendorsSharedPackageIsNamedAndConfirmedNeverSilent(t *testing.T) {
+	withPHPVersionsPresent(t, "8.4")
+	args := []string{"php8.3-fpm", "php8.3-cli", "php-common=2:101+sury"}
+	c := newInstallClassification("apt", args, []string{"php-fpm"}, nil, nil)
+	c.vendorOf = func(name, version string) string {
+		if strings.Contains(version, "sury") {
+			return "sury"
+		}
+		return ""
+	}
+	sim := aptSimulation{
+		Installed: []string{"php8.3-fpm", "php8.3-cli", "php8.3-common", "php-common"},
+		Upgrades:  map[string]aptUpgrade{"php-common": {From: "2:96", To: "2:101+sury"}},
+	}
+	notable := c.classifySimulation(sim)
+	if len(notable) != 1 || notable[0].Reason != notableReasonVendorShared || notable[0].From != "2:96" || notable[0].To != "2:101+sury" || notable[0].Component != "sury" {
+		t.Fatalf("notable = %+v", notable)
+	}
+	guard := notableInstallGuard(c, args, nil)
+	var refusal *packageInstallNotableRefusal
+	if err := guard(sim); !errors.As(err, &refusal) {
+		t.Fatalf("unconfirmed = %v", err)
+	}
+	if err := notableInstallGuard(c, args, []string{"php-common"})(sim); err != nil {
+		t.Fatalf("confirmed = %v", err)
 	}
 }

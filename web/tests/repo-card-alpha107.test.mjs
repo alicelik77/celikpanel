@@ -199,3 +199,12 @@ test('a vendor replacement holds Install whatever is ticked; an upgrade says its
   const groups = preview.notableGroups(upgradeOnly.notable);
   assert.deepEqual(groups[0].packages, ['libssl3 3.5.1-1 → 3.5.1-1+deb13u1']);
 });
+
+test('the vendor’s shared package is a named, confirmable item with its versions, never a refusal', () => {
+  const notable = [{ package: 'php-common', reason: 'vendor_shared', from: '2:96', to: '2:101+sury', component: 'sury' }];
+  assert.equal(preview.hasVendorReplacement(notable), false);
+  const groups = preview.notableGroups(notable);
+  assert.equal(groups[0].reason, 'vendor_shared');
+  assert.deepEqual(groups[0].packages, ['php-common 2:96 → 2:101+sury']);
+  assert.ok(en['services.installPreview.reason.vendor_shared'] && tr['services.installPreview.reason.vendor_shared']);
+});

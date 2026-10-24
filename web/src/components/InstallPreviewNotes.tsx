@@ -123,7 +123,7 @@ export function InstallPreviewNotes({
                         <KeepWords
                             text={t(`services.installPreview.reason.${group.reason}` as TranslationKey, {
                                 version: group.version ?? '',
-                                component: group.component ? componentLabel(group.component) : '',
+                                component: group.component ? (group.reason === 'vendor_shared' ? repoLabel(group.component) : componentLabel(group.component)) : '',
                                 packages: group.packages.join(', '),
                             })}
                         />

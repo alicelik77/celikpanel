@@ -295,10 +295,11 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 			pkgs = append(pkgs, offered...)
 			skipped = notOffered
 		}
-		// alpha.107: a vendor-only version takes the vendor's shared
-		// packages it needs, named exactly (php-common=…, libpq5=…).
+		// alpha.107: a version only the vendor ships (no distribution
+		// candidate) takes the vendor's shared packages it needs, named
+		// exactly (php-common=…, libpq5=…) and confirmed by the owner.
 		if family == "apt" {
-			pkgs = append(pkgs, hostVendorSharedPackageArgs(svc.Repo)...)
+			pkgs = append(pkgs, hostVendorSharedPackageArgs(svc.Repo, req.Package)...)
 		}
 	}
 

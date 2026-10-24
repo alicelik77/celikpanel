@@ -40,6 +40,11 @@ const (
 	// vendor repository would replace (never confirmable).
 	notableReasonUpgrade            = "upgrade"
 	notableReasonVendorReplacesDist = "vendor_replaces_distribution"
+	// notableReasonVendorShared (alpha.107 review): a version only the
+	// vendor ships needs the vendor's own build of a shared package
+	// (php-common, libpq5); it replaces the distribution's and then follows
+	// the vendor. Named with its versions and confirmed, never silent.
+	notableReasonVendorShared = "vendor_shared"
 
 	errCodeInstallNeedsConfirmation = "INSTALL_NEEDS_CONFIRMATION"
 	errCodeInstallPHPVersionRefused = "INSTALL_PHP_VERSION_REFUSED"
@@ -81,6 +86,9 @@ type installClassification struct {
 	// vendorOf names the enabled vendor repository that offers this version
 	// of this package ("" for none); nil reads none (alpha.107).
 	vendorOf func(name, version string) string
+	// shared are the vendor's shared packages this install asks for as
+	// name=version: never "requested", always named for confirmation.
+	shared map[string]bool
 }
 
 // installed are the catalogue components already on the host: their own
@@ -93,8 +101,12 @@ func newInstallClassification(family string, requested []string, components []st
 		phpVersions: map[string]bool{},
 		present:     phpVersionPresent,
 	}
+	c.shared = map[string]bool{}
 	for _, pkg := range requested {
-		pkg = installArgName(pkg)
+		if name, _, exact := strings.Cut(pkg, "="); exact {
+			c.shared[name] = true
+			continue
+		}
 		c.requested[pkg] = true
 		if match := phpInstallVersionPackage.FindStringSubmatch(pkg); match != nil {
 			c.phpVersions[match[1]] = true
@@ -181,12 +193,17 @@ func (c installClassification) notableOne(pkg string) (transport.NotableInstall,
 // vendor_replaces_distribution, any other upgrade is upgrade (alpha.107).
 func (c installClassification) classifySimulation(sim aptSimulation) []transport.NotableInstall {
 	fresh := make([]string, 0, len(sim.Installed))
+	var notable []transport.NotableInstall
 	for _, name := range sim.Installed {
 		if _, upgrade := sim.Upgrades[name]; !upgrade {
+			if c.shared[packageBaseName(name)] {
+				notable = append(notable, transport.NotableInstall{Package: packageBaseName(name), Reason: notableReasonVendorShared})
+				continue
+			}
 			fresh = append(fresh, name)
 		}
 	}
-	notable := c.classify(fresh)
+	notable = append(notable, c.classify(fresh)...)
 	names := make([]string, 0, len(sim.Upgrades))
 	for name := range sim.Upgrades {
 		names = append(names, name)
@@ -194,10 +211,18 @@ func (c installClassification) classifySimulation(sim aptSimulation) []transport
 	sort.Strings(names)
 	for _, name := range names {
 		pkg := packageBaseName(name)
+		upgrade := sim.Upgrades[name]
+		if c.shared[pkg] {
+			item := transport.NotableInstall{Package: pkg, Reason: notableReasonVendorShared, From: upgrade.From, To: upgrade.To}
+			if c.vendorOf != nil {
+				item.Component = c.vendorOf(pkg, upgrade.To)
+			}
+			notable = append(notable, item)
+			continue
+		}
 		if c.requested[pkg] {
 			continue
 		}
-		upgrade := sim.Upgrades[name]
 		item := transport.NotableInstall{Package: pkg, Reason: notableReasonUpgrade, From: upgrade.From, To: upgrade.To}
 		if c.vendorOf != nil {
 			if repo := c.vendorOf(pkg, upgrade.To); repo != "" && c.vendorOf(pkg, upgrade.From) == "" {
@@ -218,6 +243,8 @@ func (c installClassification) classifySimulation(sim aptSimulation) []transport
 func notableReasonRank(reason string) int {
 	switch reason {
 	case notableReasonVendorReplacesDist:
+		return -2
+	case notableReasonVendorShared:
 		return -1
 	case notableReasonDatabaseServer:
 		return 0
@@ -376,7 +403,7 @@ type installPreviewOps struct {
 	existingData func(svc *core.ManagedService, pkg string) []transport.ExistingData
 	// vendorShared (alpha.107): the vendor's shared packages a vendor-only
 	// version needs, as name=version.
-	vendorShared func(repo *core.ManagedRepo) []string
+	vendorShared func(repo *core.ManagedRepo, selected string) []string
 	lock         func() bool
 	unlock       func()
 }
@@ -442,7 +469,7 @@ func serviceInstallPreviewWithOps(ctx context.Context, req *transport.ServiceIns
 				pkgs = append(pkgs, offered...)
 			}
 			if ops.vendorShared != nil {
-				pkgs = append(pkgs, ops.vendorShared(svc.Repo)...)
+				pkgs = append(pkgs, ops.vendorShared(svc.Repo, step.Package)...)
 			}
 		}
 		for _, pkg := range pkgs {

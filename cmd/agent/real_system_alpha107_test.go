@@ -79,12 +79,12 @@ func a107Install(t *testing.T, a *Agent, id, pkg string) *InstallServiceResponse
 	}
 	confirmed := []string{}
 	for _, item := range resp.Notable {
-		if item.Reason != notableReasonUpgrade {
+		if item.Reason != notableReasonUpgrade && item.Reason != notableReasonVendorShared {
 			return resp
 		}
 		confirmed = append(confirmed, item.Package)
 	}
-	t.Logf("%s needs the confirmation of distribution upgrades %v; confirmed as in the install dialog", id, confirmed)
+	t.Logf("%s needs the confirmation of %+v; confirmed as in the install dialog", id, resp.Notable)
 	return a105Install(t, a, id, pkg, "", confirmed)
 }
 
@@ -101,6 +101,140 @@ func a107Policy(t *testing.T, pkg string) (installed, candidate string) {
 	return installed, candidate
 }
 
+// a107EnableRepo enables a repository through the Agent's own code; it is
+// not confined by that.
+func a107EnableRepo(t *testing.T, a *Agent, id string) {
+	t.Helper()
+	var repo RepoStatusResponse
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	err := a.enableRepoWith(ctx, &EnableRepoRequest{RepoID: id}, &repo)
+	cancel()
+	logJSON(t, "enable "+id, repo)
+	if err != nil || repo.Error != "" || !repo.Enabled || repo.Confinement == nil || repo.Confinement.State != repoConfinementNotWritten {
+		t.Fatalf("enable %s: %v %+v", id, err, repo)
+	}
+}
+
+// a107Confine is the repository card's action: the plan read, then the
+// confirmed text written in its own repo_confine job.
+func a107Confine(t *testing.T, a *Agent, id string) transport.RepoConfinePreview {
+	t.Helper()
+	var plan transport.RepoConfinePreview
+	if err := a.RepoConfinePreviewV1(&EnableRepoRequest{RepoID: id}, &plan); err != nil || plan.Error != "" {
+		t.Fatalf("plan %s: %v %+v", id, err, plan)
+	}
+	logJSON(t, "confinement plan "+id, plan)
+	manager, _ := newMutationTestManager(t)
+	installGlobalMutationTestManager(t, manager)
+	beginMutationTestJobWithIdentity(t, manager, "repo_confine", id, "")
+	var resp RepoStatusResponse
+	if err := a.ConfineRepoV1(&EnableRepoRequest{ServiceMutationBinding: ServiceMutationBinding{MutationRequestID: testMutationRequestID, MutationOwnerID: testMutationOwnerID}, RepoID: id, ExpectedSHA256: plan.SHA256}, &resp); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.finish(&ServiceMutationFinishRequest{RequestID: testMutationRequestID, OwnerID: testMutationOwnerID, Success: resp.Error == ""}); err != nil {
+		t.Fatal(err)
+	}
+	logJSON(t, "confine "+id, resp)
+	if resp.Error != "" || resp.Confinement == nil || resp.Confinement.State != repoConfinementConfined {
+		t.Fatalf("confine %s: %+v", id, resp)
+	}
+	pin, err := os.ReadFile(repoPinPath(id))
+	if err != nil || sha256Hex(pin) != plan.SHA256 {
+		t.Fatalf("the written file is not the confirmed text: %v", err)
+	}
+	return plan
+}
+
+func TestRealSystemA107ConfinementIsTheOwnersShownFirstAndKeptAsTheOwnerLeftIt(t *testing.T) {
+	requireRealSystemA107(t)
+	a := &Agent{}
+	if err := os.Remove("/etc/apt/sources.list.d/php.list"); err != nil && !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"sury", "pgdg"} {
+		a107EnableRepo(t, a, id)
+	}
+	// Before confinement (as on a server whose repositories were enabled
+	// earlier): an older PGDG client is installed from the vendor.
+	var older string
+	for _, line := range strings.Split(a107Out(t, "apt-cache", "madison", "postgresql-client-18"), "\n") {
+		fields := strings.Split(line, "|")
+		if len(fields) == 3 && strings.Contains(fields[2], "apt.postgresql.org") {
+			version := strings.TrimSpace(fields[1])
+			if older == "" || debVersionCompare(version, older) < 0 {
+				older = version
+			}
+		}
+	}
+	if older == "" {
+		t.Fatal("PGDG lists no postgresql-client-18")
+	}
+	a107Out(t, "apt-get", "install", "-y", "-q", "--no-install-recommends", "postgresql-client-18="+older)
+	if a107Version("postgresql-client-18") != older {
+		t.Fatalf("the older vendor client %s was not installed", older)
+	}
+	if out := a107Out(t, "apt-get", "-s", "upgrade"); !strings.Contains(out, "Inst postgresql-client-18 ") {
+		t.Fatalf("unconfined, the older client is not upgraded:\n%s", out)
+	}
+	// Nothing confines by itself: the state says not_written.
+	for _, id := range []string{"sury", "pgdg"} {
+		var status RepoStatusResponse
+		a.RepoStatus(&EnableRepoRequest{RepoID: id}, &status)
+		if status.Confinement == nil || status.Confinement.State != repoConfinementNotWritten {
+			t.Fatalf("%s before the owner's action: %+v", id, status.Confinement)
+		}
+	}
+	plan := a107Confine(t, a, "pgdg")
+	if !slices.Contains(plan.Kept, "postgresql-client-18") || !slices.Contains(plan.StillFromVendor, "postgresql-client-18") {
+		t.Fatalf("the plan does not keep the vendor client following PGDG: %+v", plan)
+	}
+	a107Confine(t, a, "sury")
+	// Confined: the vendor client is still upgraded, from PGDG; no
+	// distribution package is replaced by a vendor build.
+	out := a107Out(t, "apt-get", "-s", "upgrade")
+	if !strings.Contains(out, "Inst postgresql-client-18 ") {
+		t.Fatalf("confined, the vendor client is no longer upgraded:\n%s", out)
+	}
+	sim := parseAptSimulation([]byte(out))
+	lookup := hostVendorVersionLookup()
+	for name, upgrade := range sim.Upgrades {
+		if lookup(packageBaseName(name), upgrade.To) != "" && lookup(packageBaseName(name), upgrade.From) == "" {
+			t.Fatalf("confined, %s %s would be replaced by the vendor's %s", name, upgrade.From, upgrade.To)
+		}
+	}
+	// A version only Sury ships: its shared php-common is named and confirmed.
+	resp := a105Install(t, a, "php-fpm", "php8.3-fpm", "", nil)
+	if resp.ErrorCode != "INSTALL_NEEDS_CONFIRMATION" || !slices.ContainsFunc(resp.Notable, func(item transport.NotableInstall) bool {
+		return item.Package == "php-common" && item.Reason == notableReasonVendorShared
+	}) {
+		t.Fatalf("php8.3-fpm unconfirmed: %+v", resp)
+	}
+	if resp := a107Install(t, a, "php-fpm", "php8.3-fpm"); resp.Error != "" {
+		t.Fatalf("php8.3-fpm confirmed: %s", resp.Error)
+	}
+	pinText, _ := os.ReadFile(repoPinPath("sury"))
+	if v := a107Version("php-common"); lookup("php-common", v) == "" || !strings.Contains(string(pinText), "php-common") {
+		t.Fatalf("php-common %s does not keep following Sury:\n%s", v, pinText)
+	}
+	// The owner deletes the rule: said, and never written again by itself.
+	if err := os.Remove(repoPinPath("pgdg")); err != nil {
+		t.Fatal(err)
+	}
+	var status RepoStatusResponse
+	a.RepoStatus(&EnableRepoRequest{RepoID: "pgdg"}, &status)
+	logJSON(t, "after the owner deleted the rule", status.Confinement)
+	if status.Confinement == nil || status.Confinement.State != repoConfinementRemovedByOwner {
+		t.Fatalf("removed: %+v", status.Confinement)
+	}
+	refreshRepoConfinement(repoFromCatalogue("pgdg"))
+	if resp := a107Install(t, a, "postgresql", "postgresql-18"); resp.Error != "" {
+		t.Fatalf("install from PGDG: %s", resp.Error)
+	}
+	if _, err := os.Stat(repoPinPath("pgdg")); !os.IsNotExist(err) {
+		t.Fatal("the rule the owner deleted was written again")
+	}
+}
+
 func TestRealSystemA107RepositoriesAreConfinedAndTheDefaultIsExact(t *testing.T) {
 	requireRealSystemA107(t)
 	a := &Agent{}
@@ -108,19 +242,8 @@ func TestRealSystemA107RepositoriesAreConfinedAndTheDefaultIsExact(t *testing.T)
 		t.Fatal(err)
 	}
 	for _, id := range []string{"sury", "pgdg"} {
-		var repo RepoStatusResponse
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		err := a.enableRepoWith(ctx, &EnableRepoRequest{RepoID: id}, &repo)
-		cancel()
-		logJSON(t, "enable "+id, repo)
-		if err != nil || repo.Error != "" || !repo.Enabled || repo.Confinement == nil || repo.Confinement.State != repoConfinementConfined {
-			t.Fatalf("enable %s: %v %+v", id, err, repo)
-		}
-		pin, err := os.ReadFile(repoPinPath(id))
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Logf("%s:\n%s", repoPinPath(id), pin)
+		a107EnableRepo(t, a, id)
+		a107Confine(t, a, id)
 	}
 	// Confined: the distribution's PHP 8.4 and PostgreSQL stay the candidates.
 	if _, candidate := a107Policy(t, "php8.4-fpm"); candidate == "" || hostVendorVersionLookup()("php8.4-fpm", candidate) != "" {
