@@ -23,7 +23,7 @@ const fill = (text, vars = {}) => Object.entries(vars).reduce((out, [name, value
 globalThis.cardWords = en;
 const stub = dataModule(`
   import React from '${reactURL}';
-  export const AlertTriangle = () => null, CheckCircle2 = () => null, Info = () => null, Package = () => null, XCircle = () => null;
+  export const AlertTriangle = () => null, CheckCircle2 = () => null, Info = () => null, Package = () => null, XCircle = () => null, X = () => null, Loader2 = () => null;
   const fill = (text, vars) => Object.entries(vars || {}).reduce((out, [name, value]) => out.split('{' + name + '}').join(String(value)), text);
   export const useI18n = () => ({ t: (key, vars) => (globalThis.cardWords?.[key] !== undefined ? fill(globalThis.cardWords[key], vars) : key), locale: 'en' });
   export const useNavigate = () => () => true;
@@ -33,6 +33,7 @@ const lifeLineURL = shared.compile('components/LifeLine.tsx');
 const { RepoCard, groupedFingerprint, repoDate } = await import(shared.compile('components/RepoCard.tsx', {
   '/lib/componentName': shared.compile('lib/componentName.ts'),
   '/LifeLine': lifeLineURL,
+  '/RepoConfineDialog': shared.compile('components/RepoConfineDialog.tsx', { '/LifeLine': lifeLineURL }),
 }));
 const preview = await import(installPreviewLibURL);
 const { installPreviewGate } = await import(shared.compile('components/InstallPreviewNotes.tsx'));
@@ -50,14 +51,22 @@ const sury = (extra = {}) => ({
   enabled_by: 'admin', enabled_at: '2026-09-01 10:00:00',
   ...extra,
 });
-async function mount(reads, { words = en, confine } = {}) {
+const plan = { state: 'read', preview: {
+  state: 'not_written', pin_path: '/etc/apt/preferences.d/celikpanel-sury.pref', text: 'Package: * Pin: origin packages.sury.org Pin-Priority: 100',
+  sha256: 'ab'.repeat(32), kept: ['php8.5-fpm'], upgrades_now: 3, upgrades_confined: 2, still_from_vendor: ['php8.5-fpm'],
+  changes: [{ package: 'php-common', from: '2:96', before: '2:102+sury', before_vendor: true }],
+} };
+async function mount(reads, { words = en, confine, plans = [plan] } = {}) {
   globalThis.cardWords = words;
+  globalThis.document = { addEventListener() {}, removeEventListener() {}, getElementById: () => null, activeElement: null, body: { style: {} } };
+  let p = 0;
   requests = [];
   let n = 0;
   globalThis.fetch = async (input, init = {}) => {
     const url = String(input);
     requests.push({ url, method: init.method ?? 'GET', body: init.body });
     if (url === '/api/v1/repo' && init.method === 'POST') return confine ? confine(init) : answer({ error: 'no' }, 409);
+    if (url.startsWith('/api/v1/repo/confine-preview?service_id=')) return answer(plans[Math.min(p++, plans.length - 1)]);
     if (url.startsWith('/api/v1/repo?service_id=')) return answer(reads[Math.min(n++, reads.length - 1)]);
     return answer({ error: 'no route' }, 404);
   };
@@ -68,6 +77,7 @@ async function unmount() {
   if (tree) await act(async () => tree.unmount());
   tree = undefined;
   globalThis.fetch = originalFetch;
+  delete globalThis.document;
 }
 const text = () => { const walk = (n) => (typeof n === 'string' ? n : (n?.children || []).map(walk).join('')); return walk(tree.toJSON()); };
 const attr = (name) => tree.root.findAll((node) => node.props && node.props[name] !== undefined);
@@ -85,17 +95,38 @@ test('a confined repository says so first, with what keeps following it and who 
   } finally { await unmount(); }
 });
 
-test('a repository not confined yet offers Confine, and the card reads again after it', async () => {
+test('confining is shown first: the plan, the exact text and its SHA-256, then written as confirmed', async () => {
   const notWritten = sury({ confinement: { state: 'not_written' } });
-  await mount([notWritten, sury()], { confine: () => answer(sury()) });
+  await mount([notWritten, sury({ confinement: { state: 'confined', written_by: 'owner', written_at: '2026-10-24T12:00:00Z' } })], { confine: () => answer(sury()) });
   try {
     assert.equal(attr('data-repo-state')[0].props['data-repo-state'], 'not_written');
-    const button = attr('data-repo-confine')[0];
-    await act(async () => { button.props.onClick(); });
+    await act(async () => { attr('data-repo-confine')[0].props.onClick(); });
+    await settle();
+    assert.equal(requests.filter((request) => request.method === 'POST').length, 0, 'nothing is written before the confirmation');
+    const all = text();
+    assert.ok(all.includes(fill(en['life.repo.plan.change.noLongerReplaced'], { package: 'php-common', from: '2:96', before: '2:102+sury' })), all);
+    assert.ok(all.includes(fill(en['life.repo.plan.still'], { names: 'php8.5-fpm' })));
+    assert.ok(all.includes('ab'.repeat(32)));
+    await act(async () => { attr('data-repo-confine-confirm')[0].props.onClick(); });
     await settle();
     const post = requests.find((request) => request.method === 'POST');
-    assert.deepEqual(JSON.parse(post.body), { service_id: 'php-fpm', action: 'confine' });
+    assert.deepEqual(JSON.parse(post.body), { service_id: 'php-fpm', action: 'confine', expected_sha256: 'ab'.repeat(32) });
     assert.equal(attr('data-repo-state')[0].props['data-repo-state'], 'confined');
+  } finally { await unmount(); }
+});
+
+test('a rule the owner deleted is said and offered again only on request, in Turkish too', async () => {
+  await mount([sury({ confinement: { state: 'removed_by_owner', pin_path: '/etc/apt/preferences.d/celikpanel-sury.pref' } })], {
+    words: tr, confine: () => answer({ error: 'the plan changed', code: 'REPO_CONFINE_PLAN_CHANGED' }, 409),
+  });
+  try {
+    assert.ok(text().includes(fill(tr['life.repo.state.removed_by_owner'], { path: '/etc/apt/preferences.d/celikpanel-sury.pref' })));
+    assert.ok(text().includes(tr['life.repo.confineAgain']));
+    await act(async () => { attr('data-repo-confine')[0].props.onClick(); });
+    await settle();
+    await act(async () => { attr('data-repo-confine-confirm')[0].props.onClick(); });
+    await settle();
+    assert.ok(text().includes(tr['life.repo.plan.changed']));
   } finally { await unmount(); }
 });
 

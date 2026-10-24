@@ -104,16 +104,10 @@ func refreshRepoConfinement(repo *core.ManagedRepo) {
 	if !ok || repoConfinementOf(repo, loc).State != repoConfinementConfined {
 		return
 	}
-	index, err := readVendorPackageIndex(loc)
+	content, kept, err := repoPinPlan(repo, loc)
 	if err != nil {
 		return
 	}
-	installed, err := readDpkgStatusVersions(dpkgStatusPath)
-	if err != nil {
-		return
-	}
-	kept := repoKeptPackages(installed, index)
-	content := renderRepoPin(repo, loc.Host, kept)
 	if readRepoRecord().Repos[repo.ID].PinSHA256 == sha256Hex(content) {
 		return
 	}

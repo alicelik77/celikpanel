@@ -160,7 +160,9 @@ func (p *Panel) handleRepo(w http.ResponseWriter, r *http.Request) {
 		defer release()
 		var req struct {
 			ServiceID string `json:"service_id"`
-			Action    string `json:"action"` // "enable" | "disable"
+			Action    string `json:"action"` // "enable" | "disable" | "confine"
+			// ExpectedSHA256: confine only, the preferences text confirmed.
+			ExpectedSHA256 string `json:"expected_sha256"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			writeClientError(w, http.StatusBadRequest, "invalid request body")
@@ -186,11 +188,20 @@ func (p *Panel) handleRepo(w http.ResponseWriter, r *http.Request) {
 			method = "Agent.DisableRepo"
 		case "confine":
 			// alpha.107: the administrator confines an enabled repository
-			// (the card offers it when the first start could not).
-			response, err := p.confineRepo(r.Context(), repo.ID)
-			p.auditRepoConfinement(r.Context(), r, repo.ID, response, err)
+			// with the text the card showed (its SHA-256).
+			if len(strings.TrimSpace(req.ExpectedSHA256)) != 64 {
+				writeClientError(w, http.StatusBadRequest, "the confirmed preferences text is missing")
+				return
+			}
+			response, err := p.confineRepo(r.Context(), repo.ID, strings.TrimSpace(req.ExpectedSHA256))
+			p.auditRepoConfinement(r, repo.ID, response, err)
 			if err != nil {
-				writeCodedError(w, http.StatusConflict, errCodeRepoConfigurationInvalid, safeRepoErrorMessage(errCodeRepoConfigurationInvalid), "/services")
+				code := "REPO_CONFINE_FAILED"
+				if response.Confinement != nil && response.Confinement.Reason == "plan_changed" {
+					code = "REPO_CONFINE_PLAN_CHANGED"
+				}
+				w.WriteHeader(http.StatusConflict)
+				json.NewEncoder(w).Encode(map[string]any{"error": err.Error(), "code": code})
 				return
 			}
 			json.NewEncoder(w).Encode(p.repoInfoContext(r.Context(), repo))

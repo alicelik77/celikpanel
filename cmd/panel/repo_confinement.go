@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -14,95 +15,99 @@ import (
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
-// Repositories enabled before alpha.107 are confined once, after the Panel
-// starts on this release (D-038 §12): in their own repo_confine job, only when
-// the Agent reads them as enabled and not confined (CelikPanel's file absent
-// and no rule of the owner's for the repository), and the result is audited
-// as the panel's own action. A busy host is retried, bounded; a confinement
-// that could not be written is not retried here: the repository card says
-// why and offers it again.
+// Confining a vendor repository is the owner's action from the repository
+// card (alpha.107 review; D-038 §3 and §12; D-022): the card shows the plan
+// (the exact preferences text and its SHA-256, the packages that keep
+// following the vendor, and how `apt-get upgrade` changes), and only that
+// text, confirmed by its SHA-256, is written, in its own repo_confine job,
+// audited with the administrator. Nothing confines a repository by itself;
+// a file the owner deleted is said, never written again unless asked.
 //
-// alpha.107 öncesi açılmış depolar, panel bu sürümle başladıktan sonra bir kez
-// sınırlanır; sahibin kuralı varsa dokunulmaz, sonuç denetim kaydına yazılır.
+// Depo sınırlaması sahibin eylemidir: plan gösterilir, yalnız onaylanan
+// metin yazılır; kendiliğinden hiçbir şey yazılmaz.
 
 const (
-	repoConfinementStartupDelay  = 30 * time.Second
-	repoConfinementRetryInterval = time.Minute
-	repoConfinementRetryAttempts = 15
-	repoConfinementCallBound     = 3 * time.Minute
-	repoAptErrorLineCap          = 300
-	repoConfinementActionUpgrade = "repo.confine"
+	repoConfinementCallBound   = 3 * time.Minute
+	repoConfinePreviewBound    = 3 * time.Minute
+	repoAptErrorLineCap        = 300
+	repoConfinementAuditAction = "repo.confine"
+	repoConfinePreviewAPIPath  = "/api/v1/repo/confine-preview"
 )
 
-// confineReposAtStartup is a test seam.
-var confineReposAtStartup = func(p *Panel) { p.confineEnabledRepos(context.Background()) }
-
-func (p *Panel) startRepoConfinement() {
-	go func() {
-		time.Sleep(repoConfinementStartupDelay)
-		confineReposAtStartup(p)
-	}()
+// readRepoConfinePreview asks the Agent for the plan (read only).
+var readRepoConfinePreview = func(p *Panel, ctx context.Context, repoID string) (transport.RepoConfinePreview, error) {
+	var preview transport.RepoConfinePreview
+	callCtx, cancel := context.WithTimeout(ctx, repoConfinePreviewBound)
+	defer cancel()
+	err := p.callAgentContext(callCtx, "Agent.RepoConfinePreviewV1", &enableRepoReq{RepoID: repoID}, &preview)
+	return preview, err
 }
 
-func catalogueRepos() []*core.ManagedRepo {
-	var repos []*core.ManagedRepo
-	for i := range core.ManagedServices {
-		if repo := core.ManagedServices[i].Repo; repo != nil {
-			repos = append(repos, repo)
-		}
-	}
-	return repos
-}
-
-func (p *Panel) confineEnabledRepos(ctx context.Context) {
-	if p.packageFamily() != "apt" {
+// handleRepoConfinePreview: GET ?service_id= is what confining the
+// component's repository would do. Admin only, read only.
+func (p *Panel) handleRepoConfinePreview(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	if c := currentCaller(r); c == nil || c.Role != roleAdmin {
+		writeClientError(w, http.StatusForbidden, "admin only")
 		return
 	}
-	for _, repo := range catalogueRepos() {
-		var st transport.RepoStatusResponse
-		if err := p.callAgentContext(ctx, "Agent.RepoStatus", &enableRepoReq{RepoID: repo.ID}, &st); err != nil {
-			continue
-		}
-		if !st.Enabled || st.Confinement == nil || st.Confinement.State != "not_written" || st.Confinement.Reason != "" {
-			continue
-		}
-		for attempt := 1; attempt <= repoConfinementRetryAttempts; attempt++ {
-			response, err := p.confineRepo(ctx, repo.ID)
-			if err != nil && startupWorkDeferredForBusyHost(err) && attempt < repoConfinementRetryAttempts {
-				time.Sleep(repoConfinementRetryInterval)
-				continue
-			}
-			p.auditRepoConfinement(ctx, nil, repo.ID, response, err)
-			break
-		}
+	if r.Method != http.MethodGet {
+		writeClientError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
 	}
+	svc := core.GetManagedServiceByID(r.URL.Query().Get("service_id"))
+	if svc == nil || svc.Repo == nil {
+		writeClientError(w, http.StatusBadRequest, "service has no managed repository")
+		return
+	}
+	preview, err := readRepoConfinePreview(p, r.Context(), svc.Repo.ID)
+	if err != nil {
+		log.Printf("[repo][%s][confine-preview] %v", svc.Repo.ID, err)
+		json.NewEncoder(w).Encode(map[string]any{"state": "unknown"})
+		return
+	}
+	if preview.Error != "" {
+		json.NewEncoder(w).Encode(map[string]any{"state": "failed", "error": cleanAptLines([]string{preview.Error})})
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]any{"state": "read", "preview": preview})
 }
 
 // confineRepo runs Agent.ConfineRepoV1 in its own repo_confine job.
-var confineRepoThroughAgent = func(p *Panel, ctx context.Context, repoID string) (transport.RepoStatusResponse, error) {
+var confineRepoThroughAgent = func(p *Panel, ctx context.Context, repoID, expectedSHA256 string) (transport.RepoStatusResponse, error) {
 	var response transport.RepoStatusResponse
 	callCtx, cancel := context.WithTimeout(ctx, repoConfinementCallBound)
 	defer cancel()
 	err := p.withStandaloneAgentMutation(callCtx, "repo_confine", repoID, "", func(callCtx context.Context, binding agentMutationBinding) error {
-		request := &enableRepoReq{ServiceMutationBinding: binding, RepoID: repoID}
+		request := &enableRepoReq{ServiceMutationBinding: binding, RepoID: repoID, ExpectedSHA256: expectedSHA256}
 		if err := p.callAgentContext(callCtx, "Agent.ConfineRepoV1", request, &response); err != nil {
 			return err
 		}
 		if response.Error != "" {
 			return errors.New(response.Error)
 		}
+		if response.Confinement == nil || response.Confinement.State != "confined" {
+			reason := "not confined"
+			if response.Confinement != nil {
+				reason = response.Confinement.State
+				if response.Confinement.Reason != "" {
+					reason += ": " + response.Confinement.Reason
+				}
+			}
+			return errors.New("the repository was not confined (" + reason + ")")
+		}
 		return nil
 	})
 	return response, err
 }
 
-func (p *Panel) confineRepo(ctx context.Context, repoID string) (transport.RepoStatusResponse, error) {
-	return confineRepoThroughAgent(p, ctx, repoID)
+func (p *Panel) confineRepo(ctx context.Context, repoID, expectedSHA256 string) (transport.RepoStatusResponse, error) {
+	return confineRepoThroughAgent(p, ctx, repoID, expectedSHA256)
 }
 
-// auditRepoConfinement records what the confinement did; with no request it
-// is the panel's own action at its first start on this release.
-func (p *Panel) auditRepoConfinement(ctx context.Context, r *http.Request, repoID string, response transport.RepoStatusResponse, err error) {
+// auditRepoConfinement records what the administrator's confinement did.
+func (p *Panel) auditRepoConfinement(r *http.Request, repoID string, response transport.RepoStatusResponse, err error) {
 	state := ""
 	if response.Confinement != nil {
 		state = response.Confinement.State
@@ -110,9 +115,9 @@ func (p *Panel) auditRepoConfinement(ctx context.Context, r *http.Request, repoI
 			state += " (" + response.Confinement.Reason + ")"
 		}
 	}
-	action := repoConfinementActionUpgrade + ":" + repoID + " — " + state
+	action := repoConfinementAuditAction + ":" + repoID + " — " + state
 	if err != nil {
-		action = repoConfinementActionUpgrade + ".failed:" + repoID + " — " + auditReason(err.Error())
+		action = repoConfinementAuditAction + ".failed:" + repoID + " — " + auditReason(err.Error())
 	}
 	details := map[string]any{"repository": repoID, "state": state}
 	if response.Confinement != nil {
@@ -120,12 +125,7 @@ func (p *Panel) auditRepoConfinement(ctx context.Context, r *http.Request, repoI
 		details["pin_path"] = response.Confinement.PinPath
 		details["owner_files"] = response.Confinement.OwnerFiles
 	}
-	if r != nil {
-		p.auditDetailed(r, action, "repo", 0, details)
-		return
-	}
-	details["by"] = "panel_upgrade"
-	p.auditSystem(ctx, action, "repo", details)
+	p.auditDetailed(r, action, "repo", 0, details)
 	log.Printf("[repo][%s][confine] %s", repoID, action)
 }
 

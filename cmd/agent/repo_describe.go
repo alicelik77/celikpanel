@@ -257,7 +257,7 @@ func (a *Agent) ConfineRepoV1(req *EnableRepoRequest, resp *RepoStatusResponse) 
 		if err != nil {
 			return err
 		}
-		state := confineRepoLocked(repo, loc, repoConfinedByUpgrade)
+		state := confineRepoLocked(repo, loc, strings.TrimSpace(req.ExpectedSHA256))
 		resp.Confinement = &state
 		resp.Enabled = true
 		return nil

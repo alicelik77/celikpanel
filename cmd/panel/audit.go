@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"database/sql"
 	"encoding/json"
 	"log"
@@ -52,22 +51,6 @@ func (p *Panel) auditDetailed(r *http.Request, action, resourceType string, reso
 		uid = c.ID
 	}
 	p.auditAsDetailed(r, uid, action, resourceType, resourceID, details)
-}
-
-// auditSystem records the panel's own action, with no caller: done by the
-// panel itself (for example once after its upgrade). It shows as "system".
-// auditSystem, panelin kendi eylemini kaydeder ("system").
-func (p *Panel) auditSystem(ctx context.Context, action, resourceType string, details map[string]any) {
-	var rtype any
-	if resourceType != "" {
-		rtype = resourceType
-	}
-	if _, err := p.db.GetDB().ExecContext(ctx, `
-		INSERT INTO audit_logs (user_id, action, resource_type, resource_id, ip_address, user_agent, details)
-		VALUES (NULL, ?, ?, NULL, '', 'celikpanel', ?)`,
-		action, rtype, auditDetailsJSON(details)); err != nil {
-		log.Printf("audit write failed (%s): %v", action, err)
-	}
 }
 
 // auditDetailsCap bounds one row's details (the column refuses more).

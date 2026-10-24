@@ -1348,6 +1348,7 @@ func main() {
 	http.HandleFunc(hostMutationReadinessPath, panel.handleHostMutationReadiness)
 	http.HandleFunc("/api/v1/firewall", panel.handleFirewall)
 	http.HandleFunc("/api/v1/repo", panel.handleRepo)
+	http.HandleFunc(repoConfinePreviewAPIPath, panel.handleRepoConfinePreview)
 	http.HandleFunc("/api/v1/hosting/capabilities", panel.handleHostingCapabilities)
 	http.HandleFunc("/api/v1/panel/certificate", panel.handlePanelCertificate)
 	http.HandleFunc(securityAuditPath, panel.handleSecurityAudit)
@@ -1491,7 +1492,6 @@ func main() {
 	panel.startPanelUpdateDiscovery(discoveryCtx)
 	// alpha.107 (D-038 §12): vendor repositories enabled before this
 	// release are confined once, in their own jobs.
-	panel.startRepoConfinement()
 	protocol := "HTTP"
 	if tlsOn {
 		protocol = "HTTPS"

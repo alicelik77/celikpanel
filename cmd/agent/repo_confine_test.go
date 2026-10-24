@@ -157,45 +157,76 @@ func suryForTest(t *testing.T) (*core.ManagedRepo, aptSourceLocation) {
 	return repo, loc
 }
 
-func TestARepositoryIsConfinedAndWhatCameFromItKeepsFollowingIt(t *testing.T) {
+func TestARepositoryIsConfinedOnlyAsConfirmedAndWhatCameFromItKeepsFollowingIt(t *testing.T) {
 	root := confinementHost(t)
 	repo, loc := suryForTest(t)
 	lists := filepath.Join(root, "lists", loc.listsPrefix())
 	writeTestFile(t, lists+"_InRelease", "-----BEGIN PGP SIGNED MESSAGE-----\nHash: SHA512\n\nOrigin: deb.sury.org\nLabel: PHP\nSuite: trixie\nDate: Fri, 23 Oct 2026 10:00:00 UTC\nSHA512:\n")
-	writeTestFile(t, lists+"_main_binary-amd64_Packages", "Package: php8.4-fpm\nVersion: 8.4.13-1+sury\n\nPackage: php8.5-fpm\nVersion: 8.5.1-1\n\nPackage: libpcre2-8-0\nVersion: 10.46-1+sury\n")
+	writeTestFile(t, lists+"_main_binary-amd64_Packages", "Package: php8.4-fpm\nVersion: 8.4.13-1+sury\n\nPackage: php8.5-fpm\nVersion: 8.5.1-1\n\nPackage: libpcre2-8-0\nVersion: 10.46-1+sury\n\nPackage: php-common\nVersion: 2:102+sury\n")
+	writeTestFile(t, filepath.Join(root, "lists", "deb.debian.org_debian_dists_trixie_main_binary-amd64_Packages"), "Package: php8.4-cli\nVersion: 8.4.11-1\n\nPackage: php-common\nVersion: 2:96\n\nPackage: libpcre2-8-0\nVersion: 10.46-1\n")
 	writeTestFile(t, filepath.Join(root, "status"),
 		"Package: php8.4-fpm\nStatus: install ok installed\nVersion: 8.4.13-1+sury\n\n"+
 			"Package: php8.4-cli\nStatus: install ok installed\nVersion: 8.4.11-1\n\n"+
+			// Sury has moved on to 2:102; the installed 2:101 is not Debian's.
+			"Package: php-common\nStatus: install ok installed\nVersion: 2:101+sury\n\n"+
+			"Package: libpcre2-8-0\nStatus: install ok installed\nVersion: 10.46-1\n\n"+
 			"Package: php-fpm\nStatus: install ok installed\nVersion: 2:96\nDepends: php8.4-fpm\n\n")
+	sourcesDir := filepath.Join(root, "sources")
+	os.MkdirAll(sourcesDir, 0o755)
+	restoreSources := aptSourcesListDir
+	aptSourcesListDir = sourcesDir
+	t.Cleanup(func() { aptSourcesListDir = restoreSources })
+	writeTestFile(t, repoSourcePath("sury"), "deb https://packages.sury.org/php/ trixie main\n")
 
 	if state := repoConfinementOf(repo, loc); state.State != repoConfinementNotWritten {
 		t.Fatalf("before = %+v", state)
 	}
-	state := confineRepoLocked(repo, loc, repoConfinedByUpgrade)
-	if state.State != repoConfinementConfined || state.KeptTotal != 1 || state.Kept[0] != "php8.4-fpm" || state.WrittenBy != repoConfinedByUpgrade {
+	text, kept, err := repoPinPlan(repo, loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(kept, ",") != "php-common,php8.4-fpm" {
+		t.Fatalf("kept = %v", kept)
+	}
+	// Anything but the confirmed text is refused, and nothing is written.
+	if refused := confineRepoLocked(repo, loc, strings.Repeat("0", 64)); refused.State != repoConfinementNotWritten || refused.Reason != repoConfinementReasonPlanChanged {
+		t.Fatalf("unconfirmed = %+v", refused)
+	}
+	if _, err := os.Stat(repoPinPath("sury")); !os.IsNotExist(err) {
+		t.Fatal("an unconfirmed plan was written")
+	}
+	state := confineRepoLocked(repo, loc, sha256Hex(text))
+	if state.State != repoConfinementConfined || state.KeptTotal != 2 || state.WrittenBy != repoConfinedByOwner {
 		t.Fatalf("confined = %+v", state)
 	}
 	pin, err := os.ReadFile(repoPinPath("sury"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	text := string(pin)
-	for _, want := range []string{"Package: *\nPin: origin \"packages.sury.org\"\nPin-Priority: 100", "Package: php8.4-fpm\nPin: origin \"packages.sury.org\"\nPin-Priority: 500"} {
-		if !strings.Contains(text, want) {
-			t.Fatalf("pin lacks %q:\n%s", want, text)
+	for _, want := range []string{"Package: *\nPin: origin \"packages.sury.org\"\nPin-Priority: 100", "Package: php-common php8.4-fpm\nPin: origin \"packages.sury.org\"\nPin-Priority: 500"} {
+		if !strings.Contains(string(pin), want) {
+			t.Fatalf("pin lacks %q:\n%s", want, pin)
 		}
 	}
-	// A second pass writes nothing and says confined.
-	if again := confineRepoLocked(repo, loc, repoConfinedByEnable); again.State != repoConfinementConfined || again.WrittenBy != repoConfinedByUpgrade {
-		t.Fatalf("again = %+v", again)
+	// Sticky: a kept name stays while it is installed, even if nothing says
+	// it came from the vendor any more.
+	writeTestFile(t, lists+"_main_binary-amd64_Packages", "Package: php8.5-fpm\nVersion: 8.5.1-1\n")
+	if _, again, _ := repoPinPlan(repo, loc); strings.Join(again, ",") != "php-common,php8.4-fpm" {
+		t.Fatalf("sticky = %v", again)
 	}
 	// Someone edits it: kept as it is, said edited, never rewritten.
-	writeTestFile(t, repoPinPath("sury"), text+"\n# mine\n")
-	if edited := confineRepoLocked(repo, loc, repoConfinedByEnable); edited.State != repoConfinementEdited {
+	writeTestFile(t, repoPinPath("sury"), string(pin)+"\n# mine\n")
+	if edited := confineRepoLocked(repo, loc, sha256Hex(text)); edited.State != repoConfinementEdited {
 		t.Fatalf("edited = %+v", edited)
 	}
-	if after, _ := os.ReadFile(repoPinPath("sury")); !strings.HasSuffix(string(after), "# mine\n") {
-		t.Fatal("an edited preferences file was rewritten")
+	// The owner deletes it: said, and never written again by itself.
+	os.Remove(repoPinPath("sury"))
+	if removed := repoConfinementOf(repo, loc); removed.State != repoConfinementRemovedByOwner {
+		t.Fatalf("removed = %+v", removed)
+	}
+	refreshRepoConfinement(repo)
+	if _, err := os.Stat(repoPinPath("sury")); !os.IsNotExist(err) {
+		t.Fatal("a file the owner removed was written again")
 	}
 	// The moving default-version package is reported with what it brings.
 	moving := repoMovingPackages(repo)
@@ -204,12 +235,50 @@ func TestARepositoryIsConfinedAndWhatCameFromItKeepsFollowingIt(t *testing.T) {
 	}
 }
 
+func TestAnInstalledVendorPackageBehindTheIndexIsKept(t *testing.T) {
+	// PGDG's postgresql-17 installed at a version its index no longer lists.
+	installed := map[string][]string{"postgresql-17": {"17.5-1.pgdg13+1"}, "libpq5": {"17.6-0+deb13u1"}, "nginx": {"1.26.3-3"}}
+	vendor := map[string]map[string]bool{"postgresql-17": {"17.6-1.pgdg13+1": true}, "libpq5": {"18.0-1.pgdg13+1": true}}
+	distro := map[string]map[string]bool{"postgresql-17": {"17.6-0+deb13u1": true}, "libpq5": {"17.6-0+deb13u1": true}}
+	if got := repoKeepList(installed, vendor, distro, nil); strings.Join(got, ",") != "postgresql-17" {
+		t.Fatalf("kept = %v", got)
+	}
+	if got := repoKeepList(installed, vendor, distro, []string{"libpq5", "gone"}); strings.Join(got, ",") != "libpq5,postgresql-17" {
+		t.Fatalf("sticky = %v", got)
+	}
+}
+
+func TestConfiningSaysWhatAptUpgradeWouldDoDifferently(t *testing.T) {
+	before := aptSimulation{Upgrades: map[string]aptUpgrade{
+		"php-common": {From: "2:96", To: "2:102+sury"},
+		"php8.4-fpm": {From: "8.4.13-1+sury", To: "8.4.14-1+sury"},
+		"perl-base":  {From: "5.40.1-6", To: "5.40.1-6+deb13u1"},
+	}}
+	after := aptSimulation{Upgrades: map[string]aptUpgrade{
+		"php8.4-fpm": {From: "8.4.13-1+sury", To: "8.4.14-1+sury"},
+		"perl-base":  {From: "5.40.1-6", To: "5.40.1-6+deb13u1"},
+	}}
+	vendorOf := func(name, version string) string {
+		if strings.Contains(version, "sury") {
+			return "sury"
+		}
+		return ""
+	}
+	changes, still := confineChanges(before, after, vendorOf)
+	if len(changes) != 1 || changes[0].Package != "php-common" || changes[0].Before != "2:102+sury" || !changes[0].BeforeVendor || changes[0].After != "" {
+		t.Fatalf("changes = %+v", changes)
+	}
+	if strings.Join(still, ",") != "php8.4-fpm" {
+		t.Fatalf("still from the vendor = %v", still)
+	}
+}
+
 func TestTheOwnersOwnRuleIsRespected(t *testing.T) {
 	root := confinementHost(t)
 	repo, loc := suryForTest(t)
 	writeTestFile(t, filepath.Join(root, "lists", loc.listsPrefix()+"_InRelease"), "Origin: deb.sury.org\nSuite: trixie\n")
 	writeTestFile(t, filepath.Join(root, "prefs", "php-from-sury.pref"), "Package: php*\nPin: release o=deb.sury.org\nPin-Priority: 990\n")
-	state := confineRepoLocked(repo, loc, repoConfinedByEnable)
+	state := confineRepoLocked(repo, loc, strings.Repeat("0", 64))
 	if state.State != repoConfinementOwnerRule || len(state.OwnerFiles) != 1 || !strings.HasSuffix(state.OwnerFiles[0], "php-from-sury.pref") {
 		t.Fatalf("state = %+v", state)
 	}
@@ -227,7 +296,7 @@ func TestTheOwnersOwnRuleIsRespected(t *testing.T) {
 func TestWithoutItsListsARepositoryIsNotConfinedBlindly(t *testing.T) {
 	confinementHost(t)
 	repo, loc := suryForTest(t)
-	state := confineRepoLocked(repo, loc, repoConfinedByEnable)
+	state := confineRepoLocked(repo, loc, strings.Repeat("0", 64))
 	if state.State != repoConfinementNotWritten || state.Reason != repoConfinementReasonListsUnreadable {
 		t.Fatalf("state = %+v", state)
 	}
@@ -275,15 +344,22 @@ func TestAKeyThatExpiresSoonIsSaid(t *testing.T) {
 	}
 }
 
-func TestPreferencesRulesAreMatchedByHostOrOrigin(t *testing.T) {
+func TestPreferencesRulesAreMatchedByAnyFieldThatNamesTheRepository(t *testing.T) {
+	id := repoIdentity{Host: "packages.sury.org", Origin: "deb.sury.org", Label: "PHP-FPM", Codename: "trixie", Suite: "trixie", Components: []string{"main"}}
 	for text, want := range map[string]bool{
 		"Pin: origin packages.sury.org":         true,
 		"Pin: origin \"packages.sury.org\"":     true,
 		"Pin: release o=deb.sury.org,n=trixie":  true,
+		"Pin: release l=PHP-FPM":                true,
+		"Pin: release origin=deb.sury.org":      true,
+		"Pin: release n=trixie, c=main":         true,
+		"Pin: release a=trixie":                 true,
 		"Pin: release o=Debian":                 false,
+		"Pin: release o=deb.sury.org,c=contrib": false,
+		"Pin: release v=13":                     false,
 		"Explanation: origin packages.sury.org": false,
 	} {
-		if got := preferencesNameRepository(text, "packages.sury.org", "deb.sury.org"); got != want {
+		if got := preferencesNameRepository(text, id); got != want {
 			t.Fatalf("%q = %v", text, got)
 		}
 	}

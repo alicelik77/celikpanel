@@ -299,15 +299,13 @@ func (a *Agent) enableRepoWith(ctx context.Context, req *EnableRepoRequest, resp
 			cmd.Env = append(os.Environ(), "DEBIAN_FRONTEND=noninteractive")
 			return cmd.CombinedOutput()
 		}, func() error {
-			if locErr != nil {
-				return fmt.Errorf("read the repository source to confine it: %w", locErr)
+			// Confinement is the owner's own action from the repository
+			// card, shown and confirmed (alpha.107 review); enabling only
+			// reads where it stands.
+			if locErr == nil {
+				resp.Confinement = confinementPointer(repoConfinementOf(repo, loc))
 			}
-			resp.Confinement = confinementPointer(confineRepoLocked(repo, loc, repoConfinedByEnable))
-			switch resp.Confinement.State {
-			case repoConfinementConfined, repoConfinementEdited, repoConfinementOwnerRule:
-				return nil
-			}
-			return fmt.Errorf("the repository could not be confined to its component (%s: %s); nothing was enabled", resp.Confinement.Reason, resp.Confinement.Detail)
+			return nil
 		})
 	})
 	if err != nil {

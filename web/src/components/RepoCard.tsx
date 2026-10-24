@@ -5,8 +5,8 @@
 // when, its signing key and expiry, what apt last downloaded from it and
 // apt's own errors about it, and the distribution's moving "default version"
 // packages installed beside it with the owner's optional command. A read
-// only, except Confine when it is not confined yet (the panel's first start
-// on this release normally does that by itself).
+// only, except Confine…, the owner's own action: it shows the plan first
+// (RepoConfineDialog) and nothing confines a repository by itself.
 //
 // Depo kartı: etkin üretici deposunun kendi bileşeniyle sınırlı olup
 // olmadığı, kim ne zaman açtı, imza anahtarı ve süresi, apt'ın son indirdiği
@@ -21,6 +21,7 @@ import { Button, KeepWords, RemoteGate } from './ui';
 import { useRemote } from '../lib/remote';
 import { decodeRepoInfo, type RepoInfo } from '../lib/componentRepo';
 import { componentName } from '../lib/componentName';
+import { RepoConfineDialog } from './RepoConfineDialog';
 
 // A time the server sent, said as a date (the shared lifecycle reading).
 export const repoDate = (value: string | undefined, locale: string): string => lifeDate(value, locale);
@@ -60,30 +61,12 @@ export function RepoCard({ serviceId }: { serviceId: string }) {
 
 function RepoFacts({ serviceId, info, onChanged }: { serviceId: string; info: RepoInfo; onChanged: () => void }) {
     const { t, locale } = useI18n();
-    const [confining, setConfining] = useState(false);
-    const [failed, setFailed] = useState(false);
+    const [asking, setAsking] = useState(false);
     const component = componentName({ id: serviceId, name: serviceId }, t);
     const confinement = info.confinement;
     const state = confinement?.state ?? 'unknown';
-    const confine = async () => {
-        setConfining(true);
-        setFailed(false);
-        try {
-            const res = await fetch('/api/v1/repo', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ service_id: serviceId, action: 'confine' }),
-            });
-            if (!res.ok) setFailed(true);
-        } catch {
-            setFailed(true);
-        } finally {
-            setConfining(false);
-            onChanged();
-        }
-    };
     const stateTone: Tone = state === 'confined' ? 'ok' : state === 'owner_rule' ? 'info' : 'warn';
-    const stateText = t(`life.repo.state.${['confined', 'edited', 'owner_rule', 'not_written'].includes(state) ? state : 'unknown'}` as TranslationKey, {
+    const stateText = t(`life.repo.state.${['confined', 'edited', 'owner_rule', 'not_written', 'removed_by_owner'].includes(state) ? state : 'unknown'}` as TranslationKey, {
         component,
         path: confinement?.pin_path ?? '',
         files: (confinement?.owner_files ?? []).join(', '),
@@ -99,22 +82,33 @@ function RepoFacts({ serviceId, info, onChanged }: { serviceId: string; info: Re
     return (
         <div className="space-y-3" data-repo-state={state}>
             <Line tone={stateTone} attr="confinement"><KeepWords text={stateText} /></Line>
-            {state === 'not_written' && confinement?.reason && (
+            {(state === 'not_written' || state === 'removed_by_owner') && confinement?.reason && (
                 <p className="pl-6 text-sm leading-6 text-fg-muted" data-repo-reason={confinement.reason}>
-                    {t(`life.repo.reason.${confinement.reason === 'write_failed' ? 'write_failed' : 'lists_unreadable'}` as TranslationKey, { detail: confinement.detail ?? '' })}
+                    {t(`life.repo.reason.${['write_failed', 'plan_changed'].includes(confinement.reason) ? confinement.reason : 'lists_unreadable'}` as TranslationKey, { detail: confinement.detail ?? '' })}
                 </p>
             )}
-            {state === 'not_written' && (
+            {(state === 'not_written' || state === 'removed_by_owner') && (
                 <div className="pl-6">
-                    <Button variant="primary" onClick={() => void confine()} loading={confining} disabled={confining} className="max-sm:min-h-11" data-repo-confine="">
-                        {confining ? t('life.repo.confining') : t('life.repo.confine')}
+                    <Button variant={state === 'not_written' ? 'primary' : undefined} onClick={() => setAsking(true)} className="max-sm:min-h-11" data-repo-confine="">
+                        {state === 'not_written' ? t('life.repo.confineAsk') : t('life.repo.confineAgain')}
                     </Button>
-                    {failed && <p className="mt-2 text-sm text-danger" role="alert">{t('life.repo.confineFailed')}</p>}
                 </div>
+            )}
+            {asking && (
+                <RepoConfineDialog
+                    serviceId={serviceId}
+                    repoName={info.name ?? serviceId}
+                    component={component}
+                    onClose={() => setAsking(false)}
+                    onDone={() => {
+                        setAsking(false);
+                        onChanged();
+                    }}
+                />
             )}
             {state === 'confined' && confinement?.written_by && (
                 <p className="pl-6 text-sm text-fg-muted">
-                    {t(confinement.written_by === 'panel_upgrade' ? 'life.repo.writtenBy.panel_upgrade' : 'life.repo.writtenBy.enable', { when: repoDate(confinement.written_at, locale) })}
+                    {t(confinement.written_by === 'owner' ? 'life.repo.writtenBy.owner' : confinement.written_by === 'panel_upgrade' ? 'life.repo.writtenBy.panel_upgrade' : 'life.repo.writtenBy.enable', { when: repoDate(confinement.written_at, locale) })}
                 </p>
             )}
             {keptTotal > 0 && (

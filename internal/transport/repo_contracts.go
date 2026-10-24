@@ -7,6 +7,40 @@ package transport
 type EnableRepoRequest struct {
 	ServiceMutationBinding
 	RepoID string `json:"repo_id"`
+	// ExpectedSHA256 (alpha.107, confine only): the preferences text the
+	// owner confirmed; the Agent recomputes it and refuses when it differs.
+	ExpectedSHA256 string `json:"expected_sha256,omitempty"`
+}
+
+// RepoConfinePreview is what confining a repository would do, shown before
+// the owner confirms it (alpha.107): the exact preferences text and its
+// SHA-256, the installed packages that keep following the vendor, and how
+// `apt-get upgrade` changes (Changes: before and after, each version's
+// vendor flag; StillFromVendor: vendor packages still upgraded). Read only.
+type RepoConfinePreview struct {
+	State            string              `json:"state"`
+	PinPath          string              `json:"pin_path,omitempty"`
+	OwnerFiles       []string            `json:"owner_files,omitempty"`
+	Text             string              `json:"text,omitempty"`
+	SHA256           string              `json:"sha256,omitempty"`
+	Kept             []string            `json:"kept,omitempty"`
+	Changes          []RepoConfineChange `json:"changes,omitempty"`
+	StillFromVendor  []string            `json:"still_from_vendor,omitempty"`
+	UpgradesNow      int                 `json:"upgrades_now"`
+	UpgradesConfined int                 `json:"upgrades_confined"`
+	Error            string              `json:"error,omitempty"`
+}
+
+// RepoConfineChange is one package `apt-get upgrade` treats differently with
+// the confinement: Before/After are the versions it would install ("" for
+// none, the package stays at From).
+type RepoConfineChange struct {
+	Package      string `json:"package"`
+	From         string `json:"from,omitempty"`
+	Before       string `json:"before,omitempty"`
+	BeforeVendor bool   `json:"before_vendor,omitempty"`
+	After        string `json:"after,omitempty"`
+	AfterVendor  bool   `json:"after_vendor,omitempty"`
 }
 
 type RepoStatusResponse struct {
@@ -50,8 +84,11 @@ type RepoPackagesResponse struct {
 //   - "edited": CelikPanel's file was changed by someone; it is kept as it is;
 //   - "owner_rule": the owner's own preferences file (OwnerFiles) already sets
 //     a rule for this repository, so CelikPanel writes none;
-//   - "not_written": the repository is enabled but not confined yet (Reason
-//     says why when an attempt failed: lists_unreadable, write_failed);
+//   - "not_written": the repository is enabled but not confined; the owner
+//     confines it from the repository card (Reason says why when an attempt
+//     failed: lists_unreadable, write_failed, plan_changed);
+//   - "removed_by_owner": CelikPanel wrote the file and someone deleted it;
+//     it is never written again unless the owner asks;
 //   - "unknown": it could not be read.
 //
 // Kept are packages that were already installed from the repository before it

@@ -62,13 +62,16 @@ const (
 	repoConfinementEdited     = "edited"
 	repoConfinementOwnerRule  = "owner_rule"
 	repoConfinementNotWritten = "not_written"
-	repoConfinementUnknown    = "unknown"
+	// repoConfinementRemovedByOwner: CelikPanel wrote the file and someone
+	// deleted it; it is never written again unless the owner asks.
+	repoConfinementRemovedByOwner = "removed_by_owner"
+	repoConfinementUnknown        = "unknown"
 
 	repoConfinementReasonListsUnreadable = "lists_unreadable"
 	repoConfinementReasonWriteFailed     = "write_failed"
+	repoConfinementReasonPlanChanged     = "plan_changed"
 
-	repoConfinedByEnable  = "enable"
-	repoConfinedByUpgrade = "panel_upgrade"
+	repoConfinedByOwner = "owner"
 
 	repoPinLowPriority  = 100
 	repoPinKeepPriority = 500
@@ -398,10 +401,20 @@ func aptReadsPreferencesFile(name string) bool {
 	return ext == "" || ext == ".pref"
 }
 
-// ownerAptPreferencesFor names the owner's own preferences files that already
-// set a rule for this repository (its host as origin, or its Release Origin
-// as o=). CelikPanel's own files are not the owner's.
-func ownerAptPreferencesFor(host, origin string) []string {
+// repoIdentity is what an apt preferences rule can name a repository by.
+type repoIdentity struct {
+	Host, Origin, Label, Codename, Suite string
+	Components                           []string
+}
+
+func repoIdentityOf(loc aptSourceLocation) repoIdentity {
+	release, _ := readRepoReleaseInfo(loc)
+	return repoIdentity{Host: loc.Host, Origin: release.Origin, Label: release.Label, Codename: release.Codename, Suite: release.Suite, Components: loc.Components}
+}
+
+// ownerAptPreferencesFor names the owner's own preferences files that set a
+// rule matching this repository. CelikPanel's own files are not the owner's.
+func ownerAptPreferencesFor(id repoIdentity) []string {
 	var files []string
 	candidates := []string{aptPreferencesFile}
 	if entries, err := os.ReadDir(aptPreferencesDir); err == nil {
@@ -425,35 +438,73 @@ func ownerAptPreferencesFor(host, origin string) []string {
 		if len(data) > repoPrefReadCap {
 			data = data[:repoPrefReadCap]
 		}
-		if preferencesNameRepository(string(data), host, origin) {
+		if preferencesNameRepository(string(data), id) {
 			files = append(files, path)
 		}
 	}
 	return files
 }
 
-func preferencesNameRepository(text, host, origin string) bool {
-	host = strings.ToLower(host)
-	origin = strings.ToLower(strings.TrimSpace(origin))
+// preferencesNameRepository: some "Pin:" line matches the repository, by
+// "origin <host>" or by "release" fields (o=, l=, n=, a=, c=, and their long
+// forms); every field the line names must match.
+func preferencesNameRepository(text string, id repoIdentity) bool {
+	lower := func(value string) string { return strings.ToLower(strings.Trim(strings.TrimSpace(value), `"`)) }
 	for _, line := range strings.Split(text, "\n") {
-		trimmed := strings.ToLower(strings.TrimSpace(line))
-		if !strings.HasPrefix(trimmed, "pin:") {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(strings.ToLower(trimmed), "pin:") {
 			continue
 		}
-		value := strings.TrimSpace(strings.TrimPrefix(trimmed, "pin:"))
-		if strings.HasPrefix(value, "origin") {
-			name := strings.Trim(strings.TrimSpace(strings.TrimPrefix(value, "origin")), `"`)
-			if name == host {
+		value := strings.TrimSpace(trimmed[len("pin:"):])
+		lowerValue := strings.ToLower(value)
+		if strings.HasPrefix(lowerValue, "origin") {
+			if host := lower(value[len("origin"):]); host != "" && host == lower(id.Host) {
 				return true
 			}
+			continue
 		}
-		if strings.HasPrefix(value, "release") && origin != "" {
-			for _, part := range strings.Split(strings.TrimSpace(strings.TrimPrefix(value, "release")), ",") {
-				part = strings.TrimSpace(part)
-				if part == "o="+origin || part == `o="`+origin+`"` {
-					return true
+		if !strings.HasPrefix(lowerValue, "release") {
+			continue
+		}
+		fields := strings.TrimSpace(value[len("release"):])
+		if fields == "" || !strings.Contains(fields, "=") {
+			continue
+		}
+		matched, named := true, 0
+		for _, part := range strings.Split(fields, ",") {
+			key, val, ok := strings.Cut(strings.TrimSpace(part), "=")
+			if !ok {
+				continue
+			}
+			val = lower(val)
+			var have []string
+			switch lower(key) {
+			case "o", "origin":
+				have = []string{id.Origin}
+			case "l", "label":
+				have = []string{id.Label}
+			case "n", "codename":
+				have = []string{id.Codename}
+			case "a", "archive", "suite":
+				have = []string{id.Suite}
+			case "c", "component":
+				have = id.Components
+			default:
+				continue
+			}
+			named++
+			found := false
+			for _, h := range have {
+				if h != "" && lower(h) == val {
+					found = true
 				}
 			}
+			if !found {
+				matched = false
+			}
+		}
+		if named > 0 && matched {
+			return true
 		}
 	}
 	return false
@@ -545,36 +596,39 @@ func repoConfinementOf(repo *core.ManagedRepo, loc aptSourceLocation) transport.
 		state.Detail = err.Error()
 		return state
 	}
-	release, _ := readRepoReleaseInfo(loc)
-	if owners := ownerAptPreferencesFor(loc.Host, release.Origin); len(owners) > 0 {
+	if owners := ownerAptPreferencesFor(repoIdentityOf(loc)); len(owners) > 0 {
 		state.State = repoConfinementOwnerRule
 		state.OwnerFiles = owners
+		return state
+	}
+	if entry.PinSHA256 != "" {
+		state.State = repoConfinementRemovedByOwner
+		state.WrittenAt, state.WrittenBy = entry.ConfinedAt, entry.ConfinedBy
 		return state
 	}
 	state.State = repoConfinementNotWritten
 	return state
 }
 
-// confineRepoLocked writes the preferences file when the repository is not
-// confined and nothing of the owner's sets a rule for it. The caller holds
-// the package operation lock. It never rewrites an existing file.
-func confineRepoLocked(repo *core.ManagedRepo, loc aptSourceLocation, by string) transport.RepoConfinement {
+// confineRepoLocked writes the preferences file the owner confirmed (its
+// SHA-256) when the repository is not confined, or CelikPanel's file was
+// removed by the owner and the owner asks again, and nothing of the owner's
+// sets a rule for it. The caller holds the package operation lock. It never
+// rewrites an existing file.
+func confineRepoLocked(repo *core.ManagedRepo, loc aptSourceLocation, expectedSHA256 string) transport.RepoConfinement {
 	state := repoConfinementOf(repo, loc)
-	if state.State != repoConfinementNotWritten {
+	if state.State != repoConfinementNotWritten && state.State != repoConfinementRemovedByOwner {
 		return state
 	}
-	vendor, err := readVendorPackageIndex(loc)
+	content, kept, err := repoPinPlan(repo, loc)
 	if err != nil {
 		state.Reason, state.Detail = repoConfinementReasonListsUnreadable, err.Error()
 		return state
 	}
-	installed, err := readDpkgStatusVersions(dpkgStatusPath)
-	if err != nil {
-		state.Reason, state.Detail = repoConfinementReasonListsUnreadable, "read the installed packages: "+err.Error()
+	if sha256Hex(content) != expectedSHA256 {
+		state.Reason, state.Detail = repoConfinementReasonPlanChanged, "what would be written is not what was confirmed; nothing was written"
 		return state
 	}
-	kept := repoKeptPackages(installed, vendor)
-	content := renderRepoPin(repo, loc.Host, kept)
 	if err := publishRepoPin(repoPinPath(repo.ID), content); err != nil {
 		state.Reason, state.Detail = repoConfinementReasonWriteFailed, err.Error()
 		return state
@@ -586,7 +640,7 @@ func confineRepoLocked(repo *core.ManagedRepo, loc aptSourceLocation, by string)
 	}
 	if err := updateRepoRecord(repo.ID, func(entry *repoRecordEntry, _ bool) bool {
 		entry.PinSHA256 = sha256Hex(content)
-		entry.ConfinedAt, entry.ConfinedBy = now, by
+		entry.ConfinedAt, entry.ConfinedBy = now, repoConfinedByOwner
 		entry.Kept, entry.KeptTotal = shown, len(kept)
 		return true
 	}); err != nil {
@@ -598,7 +652,7 @@ func confineRepoLocked(repo *core.ManagedRepo, loc aptSourceLocation, by string)
 	}
 	return transport.RepoConfinement{
 		State: repoConfinementConfined, PinPath: repoPinPath(repo.ID),
-		Kept: shown, KeptTotal: len(kept), WrittenAt: now, WrittenBy: by,
+		Kept: shown, KeptTotal: len(kept), WrittenAt: now, WrittenBy: repoConfinedByOwner,
 	}
 }
 
