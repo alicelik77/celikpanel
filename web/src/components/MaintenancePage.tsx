@@ -1,6 +1,7 @@
 import { useI18n } from '../i18n';
 import { PageHeader } from './PageHeader';
 import { SystemSQLiteManager } from './SystemSQLiteManager';
+import { RestartsCard } from './RestartsCard';
 
 // Server → Maintenance (D-037, owner 2026-10-22): inspecting and safely
 // maintaining the SQLite files CelikPanel and the installed services keep.
@@ -19,7 +20,9 @@ export function MaintenancePage() {
             {/* The card below says what the page is for (its heading and subtitle);
                 the header does not repeat it (alpha.98 review). */}
             <PageHeader title={t('nav.maintenance')} breadcrumb={[t('common.home'), t('nav.maintenance')]} />
-            <div className="max-w-7xl">
+            <div className="grid max-w-7xl gap-5">
+                {/* alpha.107 (D-038 §10): what waits for a restart or a reboot. */}
+                <div className="max-w-5xl"><RestartsCard /></div>
                 <SystemSQLiteManager />
             </div>
         </div>
