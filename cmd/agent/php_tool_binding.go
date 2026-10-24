@@ -1335,8 +1335,15 @@ func ensurePHPToolExtensions(ctx context.Context, tool, version string) error {
 // phpToolBindingsView answers the read-only binding RPC.
 func phpToolBindingsView() transport.PHPToolBindingsResponse {
 	response := transport.PHPToolBindingsResponse{Tools: []transport.PHPToolBinding{}, Versions: installedPHPFPMVersions()}
+	proofFailures := readPHPToolProofFailures()
 	for _, state := range phpToolStates() {
 		binding := transport.PHPToolBinding{Tool: state.Tool, Installed: state.Installed, Source: state.Source}
+		// alpha.105: a tool whose proof after its install failed on every
+		// version tried reads "Not ready" with the cause.
+		if cause, failed := proofFailures[state.Tool]; failed && state.Installed {
+			copied := cause
+			binding.ProofFailed, binding.ProofCause = true, &copied
+		}
 		if state.Socket != "" {
 			binding.Version = state.version()
 			binding.SocketReady = pathExists(state.Socket)

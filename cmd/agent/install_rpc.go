@@ -105,6 +105,14 @@ func (a *Agent) InstallService(req *InstallServiceRequest, resp *InstallServiceR
 		}
 	}
 
+	// A PHP version is chosen only for a database tool (alpha.105).
+	phpTool := phpToolForInstall(svc.ID)
+	phpVersion := strings.TrimSpace(req.PHPVersion)
+	if phpVersion != "" && (phpTool == "" || !phpVersionText.MatchString(phpVersion)) {
+		resp.Error = "a PHP version is chosen only for phpMyAdmin and phpPgAdmin"
+		return nil
+	}
+
 	authorizedReq := *req
 	authorizedReq.ID = svc.ID
 	authorizedReq.Package = packageName
@@ -247,15 +255,54 @@ func (a *Agent) InstallService(req *InstallServiceRequest, resp *InstallServiceR
 				resp.Error = err.Error()
 				return nil
 			}
-			for _, tpl := range svc.Repo.VersionCompanions {
-				name := strings.ReplaceAll(tpl, "{v}", versionPrefix)
-				if packageAvailableWithExecutable(name, aptCache) {
-					pkgs = append(pkgs, name)
-				} else {
-					skipped = append(skipped, name)
-				}
+			offered, notOffered := versionCompanionPackages(svc, versionPrefix, func(name string) bool {
+				return packageAvailableWithExecutable(name, aptCache)
+			})
+			pkgs = append(pkgs, offered...)
+			skipped = notOffered
+		}
+	}
+
+	// A database tool installed for a chosen PHP version (alpha.105, a
+	// bundle's choice) brings its extension packages for that version; a
+	// version that cannot serve the tool is refused before anything
+	// changes, with the reason.
+	toolBefore := phpTool != "" && phpToolInstalledCheck(phpTool)
+	if phpVersion != "" {
+		refuse := func(refusal *transport.InstallPreviewRefusal) {
+			resp.ErrorCode = errCodeInstallPHPVersionRefused
+			switch refusal.Code {
+			case "php_extensions_unavailable":
+				resp.Error = fmt.Sprintf("%s cannot run on PHP %s here: %s has no installation candidate; choose another PHP version. Nothing was installed",
+					svc.Name, phpVersion, strings.Join(refusal.Packages, ", "))
+			case "php_version_unsupported":
+				resp.Error = "choosing a PHP version for a tool is available on Debian and Ubuntu; this system runs one PHP. Nothing was installed"
+			default:
+				resp.Error = fmt.Sprintf("PHP %s is not installed; install PHP-FPM %s first, or choose another PHP version. Nothing was installed", phpVersion, phpVersion)
 			}
 		}
+		if family != "apt" {
+			refuse(&transport.InstallPreviewRefusal{Code: "php_version_unsupported"})
+			return nil
+		}
+		if !phpVersionInstalled(phpVersion) {
+			refuse(&transport.InstallPreviewRefusal{Code: "php_version_unavailable"})
+			return nil
+		}
+		aptCache, err := executableForProfile(profile, family, "apt-cache")
+		if err != nil {
+			resp.Error = err.Error()
+			return nil
+		}
+		extensions, refusal := phpToolVersionPackages(phpTool, phpVersion, family,
+			func(name string) bool { return packageInstalledForProfile(profile, name) },
+			func(name string) bool { return packageAvailableWithExecutable(name, aptCache) },
+			nil)
+		if refusal != nil {
+			refuse(refusal)
+			return nil
+		}
+		pkgs = append(pkgs, extensions...)
 	}
 	requiresRepo, err := core.InstallRequiresManagedRepository(svc, req.Package)
 	if err != nil {
@@ -285,8 +332,17 @@ func (a *Agent) InstallService(req *InstallServiceRequest, resp *InstallServiceR
 		}
 	}
 	if len(missingPackages) > 0 {
+		// alpha.105: what the simulation would install beyond what this
+		// install names is judged right before the real install; a notable
+		// package the owner did not confirm refuses it.
+		var guard func([]string) error
+		if req.CheckInstalls {
+			guard = notableInstallGuard(
+				newInstallClassification(family, missingPackages, []string{svc.ID}, []string{phpVersion}),
+				missingPackages, req.ConfirmedInstalls)
+		}
 		installMissingPackages := func() (string, error) {
-			return installPackagesWithCandidateContext(ctx, family, missingPackages, strings.TrimSpace(req.Package))
+			return installPackagesGuardedContext(ctx, family, missingPackages, strings.TrimSpace(req.Package), guard)
 		}
 		var installErr error
 		if serviceUsesBINDPackageInstallGuard(req.ID) {
@@ -295,8 +351,24 @@ func (a *Agent) InstallService(req *InstallServiceRequest, resp *InstallServiceR
 			_, installErr = installMissingPackages()
 		}
 		if installErr != nil {
+			var notable *packageInstallNotableRefusal
+			if errors.As(installErr, &notable) {
+				resp.ErrorCode = errCodeInstallNeedsConfirmation
+				resp.Notable = append([]transport.NotableInstall{}, notable.Notable...)
+			}
 			resp.Error = fmt.Sprintf("package install failed: %v", installErr)
 			return nil
+		}
+	}
+	// A tool installed for the first time for a chosen PHP version is bound
+	// to it before its configuration is written (alpha.105).
+	if phpTool != "" && !toolBefore && phpToolInstalledCheck(phpTool) {
+		resp.FirstInstall = true
+		if phpVersion != "" {
+			if err := writePHPToolBinding(phpTool, phpVersion); err != nil {
+				resp.Error = fmt.Sprintf("record %s PHP version: %v", svc.Name, err)
+				return nil
+			}
 		}
 	}
 	if err := prepareInstalledServiceContext(ctx, req.ID, family); err != nil {

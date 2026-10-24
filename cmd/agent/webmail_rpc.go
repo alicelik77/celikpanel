@@ -343,6 +343,8 @@ func (a *Agent) installRoundcubeWith(ctx context.Context, resp *InstallRoundcube
 		return
 	}
 
+	// Not on the host before: its proof may try another PHP (alpha.105).
+	resp.FirstInstall = true
 	resp.Installed = true
 }
 

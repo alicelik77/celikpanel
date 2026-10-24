@@ -46,6 +46,7 @@ const (
 	serviceMutationStepRemoveRoundcube          serviceMutationStepMethod = "Agent.RemoveRoundcube"
 	serviceMutationStepConfigureWebmail         serviceMutationStepMethod = "Agent.ConfigureWebmail"
 	serviceMutationStepBindPHPTool              serviceMutationStepMethod = "Agent.BindPHPToolV1"
+	serviceMutationStepProvePHPTool             serviceMutationStepMethod = "Agent.ProvePHPToolV1"
 	serviceMutationStepActivatePanelCertificate serviceMutationStepMethod = "agent.panel-certificate-activation"
 )
 
@@ -357,6 +358,21 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 		return claim.action == "bind" && claim.packageName != "" &&
 			(claim.target == "webmail" || claim.target == "phpmyadmin" || claim.target == "phppgadmin") &&
 			serviceMutationJobMatches(job, "php_tool_bind", claim.target, claim.packageName)
+
+	case serviceMutationStepProvePHPTool:
+		// The proof of a tool just installed (alpha.105), inside that
+		// tool's own install job or the webmail mail profile's.
+		if claim.action != "prove" || claim.packageName != "" {
+			return false
+		}
+		switch claim.target {
+		case "phpmyadmin", "phppgadmin":
+			return serviceMutationJobMatches(job, "service_install", claim.target, "")
+		case "webmail":
+			return serviceMutationJobMatches(job, "service_install", "roundcube", "") ||
+				serviceMutationMailProfileContains(job, "roundcube")
+		}
+		return false
 
 	case serviceMutationStepConfigureDBTools:
 		if claim.target != "dbtools" || claim.packageName != "" || claim.action != "configure" ||
