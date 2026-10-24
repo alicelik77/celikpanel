@@ -123,8 +123,10 @@ function OSReleaseFacts({ value, onChanged }: { value: OSReleaseView; onChanged:
                     {value.releases.map((release) => (
                         <li key={release.name} className="flex flex-wrap gap-x-2 text-fg-muted" data-os-release-entry={release.level}>
                             <span className="font-medium text-fg">{release.name}</span>
-                            <span>{t(`life.os.short.${release.level}` as TranslationKey)}</span>
-                            {release.patched_until && <span>{t('life.os.shortPatched', { date: lifeDate(release.patched_until, locale) })}</span>}
+                            <span>
+                                {t(`life.os.short.${release.level}` as TranslationKey)}
+                                {release.patched_until && <> · {t('life.os.shortPatched', { date: lifeDate(release.patched_until, locale) })}</>}
+                            </span>
                         </li>
                     ))}
                 </ul>

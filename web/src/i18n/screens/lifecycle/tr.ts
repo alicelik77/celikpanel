@@ -222,5 +222,5 @@ export const trLifecycleScreens: Record<LifecycleScreenKey, string> = {
     'life.os.short.development': '— geliştirme, sürekli güncellenen',
     'life.os.short.preview': '— önizleme, kurulum reddedilir',
     'life.os.short.not_listed': '— listede yok',
-    'life.os.shortPatched': '· {date} tarihine dek yamalanır',
+    'life.os.shortPatched': '{date} tarihine dek yamalanır',
 };

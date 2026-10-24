@@ -238,7 +238,7 @@ export const enLifecycleScreens = {
     'life.os.short.development': '— development, rolling',
     'life.os.short.preview': '— preview, installation refused',
     'life.os.short.not_listed': '— not listed',
-    'life.os.shortPatched': '· patched until {date}',
+    'life.os.shortPatched': 'patched until {date}',
 } as const;
 
 export type LifecycleScreenKey = keyof typeof enLifecycleScreens;

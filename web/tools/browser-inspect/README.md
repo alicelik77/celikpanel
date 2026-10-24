@@ -719,3 +719,17 @@ states and not-ready lines, the dialog's simulation lines, move choice and
 failure note, its last buttons, the tool card's text, phone targets under 44 px
 and sideways scrolling. The screenshots are the inspection; these scenarios do
 not fail on a finding.
+
+## Scenarios of the thirtieth batch (versions, use and security, 2026-10-24)
+
+`scenarios-batch30.mjs` draws the new cards and dialogs of the v0.1.0-alpha.107
+candidate (D-038) from overrides only: the operating system's updates card and
+its drop-in question (`y30security`), restarts and reboot with the restart
+question (`y30restarts`), the operating-system card after a Debian 13 to 14
+upgrade (`y30os`), the Node.js drawer's newer patch and the move question
+(`y30node`), the PHP-FPM page's repository card with an expiring key and apt's
+warning (`y30php`), and Roundcube's update card and question (`y30webmail`).
+SAMPLE data shaped as the Panel answers; nothing is installed, moved or
+contacted. Each state is also copied to `BROWSER_INSPECT_SHOTS` as
+`<state>-<lang>-<theme>-<width>.png`. The screenshots are the inspection; these
+scenarios do not fail on a finding.

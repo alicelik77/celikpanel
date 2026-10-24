@@ -1818,6 +1818,8 @@ const scenarios = {
 // --- batch 29 (2026-10-24): the removal dialogue of alpha.106 ---
 (await import('./scenarios-batch29.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
 // --- end of batch 29 ---
+(await import('./scenarios-batch30.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
+// --- end of batch 30 ---
 
 for (const [name, run] of Object.entries(scenarios)) {
     if (wanted && !wanted.includes(name)) continue;
