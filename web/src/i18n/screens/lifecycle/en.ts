@@ -143,6 +143,19 @@ export const enLifecycleScreens = {
     'life.restarts.resultUnknown': 'The answer did not arrive, so whether {unit} restarted is not known; the list is read again.',
     'life.restarts.needrestartAuto': 'On this server needrestart restarts services by itself after updates. That is what the operating system does, not CelikPanel.',
     'life.restarts.libraries': 'Replaced: {libraries}',
+    // ---- the dated support table (D-038 §11, §5, §14) ----
+    'life.support.badge.supported': 'Fixes until {until}',
+    'life.support.badge.ends_soon': 'Fixes end {until}',
+    'life.support.badge.unsupported': 'No security fixes',
+    'life.support.badge.unknown': 'Support not known',
+    'life.support.fromDistribution': 'the distribution',
+    'life.support.fromUpstream': 'its developers',
+    'life.support.line.supported': '{name} {version} receives security fixes from {from} until {until}.',
+    'life.support.line.ends_soon': '{name} {version} receives security fixes from {from} only until {until}. Plan the move to a newer version; nothing is moved by itself.',
+    'life.support.line.unsupported': '{name} {version} no longer receives security fixes from {from} (since {until}). What runs on it keeps running; the owner decides when to move.',
+    'life.support.line.unknown': 'Whether {name} {version} still receives security fixes is not known.',
+    'life.support.confirm.install': '{name} {version} no longer receives security fixes (since {until}). Install it anyway, for a site that cannot move yet?',
+    'life.support.confirm.choose': '{name} {version} no longer receives security fixes (since {until}). Choose it anyway? The site keeps running on it until it is changed again.',
 } as const;
 
 export type LifecycleScreenKey = keyof typeof enLifecycleScreens;

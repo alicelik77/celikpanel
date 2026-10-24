@@ -7,6 +7,8 @@ import { useHostingCapabilities } from '../lib/hostingCapabilities';
 import { apiErrorText, readApiError } from '../lib/apiError';
 import { useRemote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
+import { supportFor, useSupportTable } from '../lib/supportTable';
+import { SupportLine, supportConfirmation } from './SupportMark';
 
 interface DomainPHPSettingsProps {
     domainId: number;
@@ -81,7 +83,10 @@ export function DomainPHPSettings({
     readOnly = false,
     isAdditionalUser = false,
 }: DomainPHPSettingsProps) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
+    // alpha.107 (D-038 §5, §14): each version's security support, from the
+    // dated table; the customer sees the mark of their own site's version.
+    const support = useSupportTable();
     const [saving, setSaving] = useState(false);
     const [savingPool, setSavingPool] = useState(false);
     // The version picked here and not applied yet; null until the person picks.
@@ -128,13 +133,16 @@ export function DomainPHPSettings({
     const handleVersionChange = async () => {
         if (readOnly || !settled || selectedVersion === currentVersion) return;
         if (isAdditionalUser && !versions.includes(selectedVersion)) return;
-        if (!confirm(t('php.changeConfirm', { from: currentVersion, to: selectedVersion }))) return;
+        // A version that no longer receives security fixes asks its own
+        // confirmation, and the server is told it was confirmed.
+        const unsupported = supportConfirmation(t, locale, support, 'php', selectedVersion, 'choose');
+        if (!confirm(unsupported || t('php.changeConfirm', { from: currentVersion, to: selectedVersion }))) return;
         setSaving(true);
         try {
             const res = await answer.send(`/api/v1/domains/${domainId}/php`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ php_version: selectedVersion }),
+                body: JSON.stringify({ php_version: selectedVersion, ...(unsupported ? { confirm_unsupported: true } : {}) }),
             }, {
                 // The settings read again name the version the domain runs. If
                 // it is the picked one, the pick is done; if not, it stays
@@ -234,11 +242,15 @@ export function DomainPHPSettings({
                                     disabled={readOnly || (isAdditionalUser && versions.length === 0)}
                                     className={inputClass}
                                 >
-                                    {displayedVersions.map((v) => (
-                                        <option key={v} value={v}>
-                                            PHP {v}
-                                        </option>
-                                    ))}
+                                    {displayedVersions.map((v) => {
+                                        const mark = supportFor(support, 'php', v);
+                                        const note = mark.status === 'unsupported' ? ` — ${t('life.support.badge.unsupported')}` : mark.status === 'ends_soon' ? ` — ${t('life.support.badge.ends_soon', { until: mark.until ?? '' })}` : '';
+                                        return (
+                                            <option key={v} value={v}>
+                                                PHP {v}{note}
+                                            </option>
+                                        );
+                                    })}
                                 </select>
                                 <Button
                                     variant="primary"
@@ -250,6 +262,7 @@ export function DomainPHPSettings({
                                     {saving ? t('php.applying') : t('php.apply')}
                                 </Button>
                             </div>
+                            <SupportLine table={support} component="php" version={selectedVersion} />
                             {/* A line of its own height under the picker, so the form
                                 below does not move when the versions arrive.
                                 Seçicinin altında kendi yüksekliği olan satır; sürümler

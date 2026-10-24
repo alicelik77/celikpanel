@@ -29,7 +29,15 @@ type DomainPHPSettingsResponse struct {
 // UpdateDomainPHPRequest represents a request to update domain PHP settings
 type UpdateDomainPHPRequest struct {
 	PHPVersion string `json:"php_version"`
+	// ConfirmUnsupported (alpha.107, D-038 §5): the person confirmed a
+	// version that no longer receives security fixes. Without it such a
+	// change is refused with SUPPORT_CONFIRMATION_REQUIRED.
+	ConfirmUnsupported bool `json:"confirm_unsupported,omitempty"`
 }
+
+// errCodeSupportConfirmationRequired: the chosen version no longer receives
+// security fixes and the change did not carry the person's confirmation.
+const errCodeSupportConfirmationRequired = "SUPPORT_CONFIRMATION_REQUIRED"
 
 // handleDomainPHPSettings handles GET/POST for domain PHP settings
 func (p *Panel) handleDomainPHPSettings(w http.ResponseWriter, r *http.Request) {
@@ -164,6 +172,16 @@ func (p *Panel) handleDomainPHPSettings(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 
+		// alpha.107 (D-038 §5): a version that no longer receives security
+		// fixes is chosen only with the person's confirmation; nothing is
+		// changed without it.
+		support, refuse := phpChangeSupport(phpVersion, req.PHPVersion, req.ConfirmUnsupported)
+		if refuse {
+			writeCodedError(w, http.StatusConflict, errCodeSupportConfirmationRequired,
+				"PHP "+req.PHPVersion+" no longer receives security fixes (since "+support.Until+"); confirm the choice to use it. Nothing was changed.", "")
+			return
+		}
+
 		// Only migrate if version is actually changing
 		if req.PHPVersion != phpVersion {
 			// Move the pool to the new version under D-031 (second step,
@@ -220,6 +238,14 @@ func (p *Panel) handleDomainPHPSettings(w http.ResponseWriter, r *http.Request) 
 		if err != nil {
 			writeServerError(w, err)
 			return
+		}
+		// alpha.107 (D-038 §16): who changed the site's PHP, from and to, and
+		// whether an unsupported version was confirmed.
+		if req.PHPVersion != phpVersion {
+			p.auditDetailed(r, "site.php_version:"+domain.Name+":"+phpVersion+"->"+req.PHPVersion, "domain", domainID, map[string]any{
+				"site": domain.Name, "component": "php-fpm", "from": phpVersion, "to": req.PHPVersion,
+				"support": support.Status, "support_until": support.Until, "confirmed_unsupported": req.ConfirmUnsupported && support.Status == "unsupported",
+			})
 		}
 
 		json.NewEncoder(w).Encode(map[string]string{

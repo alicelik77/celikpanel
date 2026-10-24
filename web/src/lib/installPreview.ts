@@ -160,16 +160,6 @@ export function versionOfPackage(pkg: string): string {
     return numbered ? numbered[1] : pkg;
 }
 
-// Every PHP line below 8.2 is past upstream security support in 2026 (the
-// same threshold as the PHP-FPM versions list).
-export function phpPastSecuritySupport(version: string): boolean {
-    const match = /^([0-9]+)\.([0-9]+)$/.exec(version);
-    if (!match) return false;
-    const major = Number(match[1]);
-    const minor = Number(match[2]);
-    return major < 8 || (major === 8 && minor < 2);
-}
-
 // The database tools that come from the distribution and are built for its
 // own PHP.
 export const DISTRIBUTION_PHP_TOOLS: readonly string[] = ['phpmyadmin', 'phppgadmin'];

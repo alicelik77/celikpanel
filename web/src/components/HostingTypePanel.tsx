@@ -8,6 +8,8 @@ import { useHostingCapabilities } from '../lib/hostingCapabilities';
 import { readApiError, apiErrorText } from '../lib/apiError';
 import { decodeListIn, lastKnown, useRefreshEvery, useRemote } from '../lib/remote';
 import { useLostAnswer, type LostAnswerHandle } from '../lib/lostAnswer';
+import { supportFor, useSupportTable } from '../lib/supportTable';
+import { SupportLine, supportConfirmation } from './SupportMark';
 
 // Hosting type for a domain (roadmap 3A): pick what the site IS, fill the
 // type-specific fields, apply. For node projects the live application panel
@@ -75,7 +77,7 @@ const NODE_RUNTIMES_URL = '/api/v1/runtimes/node';
 const decodeNodeRuntimes = (raw: unknown) => decodeListIn<string>(raw, 'installed');
 
 export function HostingTypePanel({ domainId }: { domainId: number; domainName: string }) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const [saving, setSaving] = useState(false);
 
     // A type whose requirement is missing on this server must say so instead
@@ -103,9 +105,15 @@ export function HostingTypePanel({ domainId }: { domainId: number; domainName: s
     const [edit, setEdit] = useState<{ from: number; value: HostingState } | null>(null);
     const answer = useLostAnswer(() => hosting.retry());
 
+    const support = useSupportTable();
     const apply = async (form: HostingState) => {
         if (hosting.remote.state !== 'known' || answer.holding) return;
         const before = hosting.remote.value;
+        // alpha.107 (D-038 §5): a Node.js line past its support asks first.
+        if (form.project_type === 'node' && form.runtime_version && form.runtime_version !== before.runtime_version) {
+            const unsupported = supportConfirmation(t, locale, support, 'node', form.runtime_version, 'choose');
+            if (unsupported && !confirm(unsupported)) return;
+        }
         setSaving(true);
         try {
             const res = await answer.send(`/api/v1/domains/${domainId}/hosting`, {
@@ -182,6 +190,7 @@ function HostingForm({
     onApply: (form: HostingState) => void;
 }) {
     const { t } = useI18n();
+    const support = useSupportTable();
     // Which Node.js versions exist is asked only for a Node.js project. Until
     // it is known the list holds the saved version and nothing invented.
     // Hangi Node.js sürümlerinin kurulu olduğu yalnız Node.js projesi için
@@ -272,12 +281,17 @@ function HostingForm({
                                     {t('hosting.pickVersion')}
                                 </option>
                             )}
-                            {versions.map((v) => (
-                                <option key={v} value={v}>
-                                    {v}
-                                </option>
-                            ))}
+                            {versions.map((v) => {
+                                const mark = supportFor(support, 'node', v);
+                                const note = mark.status === 'unsupported' ? ` — ${t('life.support.badge.unsupported')}` : mark.status === 'ends_soon' ? ` — ${t('life.support.badge.ends_soon', { until: mark.until ?? '' })}` : '';
+                                return (
+                                    <option key={v} value={v}>
+                                        {v}{note}
+                                    </option>
+                                );
+                            })}
                         </select>
+                        {state.runtime_version && <SupportLine table={support} component="node" version={state.runtime_version} />}
                     </label>
                     {/* One line while the versions are read, in a place that
                         is there in every state; the notice when they could

@@ -260,6 +260,7 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'dashboard.audit.action.security.update_origins.failed': 'üretici depolarını işletim sisteminin otomatik güncellemelerine ekleyemedi',
     'dashboard.audit.action.webmail.update': 'web postasını (Roundcube) güncelledi ({target})',
     'dashboard.audit.action.webmail.update.failed': 'web postasını (Roundcube) güncelleyemedi ({target})',
+    'dashboard.audit.action.site.php_version': 'bir sitenin PHP sürümünü değiştirdi ({target})',
     'dashboard.audit.action.repo.confine': '{target} paket deposunu kendi bileşeniyle sınırladı',
     'dashboard.audit.action.repo.confine.failed': '{target} paket deposunu kendi bileşeniyle sınırlayamadı',
     'dashboard.audit.action.repo.disable': '{target} paket deposunu kapattı',

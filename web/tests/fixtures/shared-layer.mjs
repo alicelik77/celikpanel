@@ -98,6 +98,10 @@ export const installPreviewLibURL = compileSource('lib/installPreview.ts', unexp
 export const componentRepoURL = compileSource('lib/componentRepo.ts', unexpected('lib/componentRepo.ts'));
 // alpha.107: the webmail update check, read by its card and the Components row.
 export const roundcubeUpdateURL = compileSource('lib/roundcubeUpdate.ts', unexpected('lib/roundcubeUpdate.ts'));
+// alpha.107: the dated support table, read by every screen that marks a version.
+export const supportTableURL = compileSource('lib/supportTable.ts', (specifier) => (
+  specifier.endsWith('/remote') ? remoteURL : unexpected('lib/supportTable.ts')(specifier)
+));
 
 export function sharedLayer(stubURL, extra = {}) {
   const uiURL = compileSource('components/ui.tsx', (specifier) => (
@@ -121,6 +125,7 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/installPreview': installPreviewLibURL,
     '/lib/componentRepo': componentRepoURL,
     '/lib/roundcubeUpdate': roundcubeUpdateURL,
+    '/lib/supportTable': supportTableURL,
     '/ui': uiURL,
     ...extra,
   };
@@ -132,6 +137,7 @@ export function sharedLayer(stubURL, extra = {}) {
   // screen that mounted it inside the Components page still gets the real one.
   if (!extra['/FirewallPanel']) table['/FirewallPanel'] = compileSource('components/FirewallPanel.tsx', resolve);
   if (!extra['/InstallPreviewNotes']) table['/InstallPreviewNotes'] = compileSource('components/InstallPreviewNotes.tsx', resolve);
+  if (!extra['/SupportMark']) table['/SupportMark'] = compileSource('components/SupportMark.tsx', resolve);
   return { uiURL, resolve, compile: (path, more = {}) => compileSource(path, (specifier) => {
     for (const [suffix, url] of Object.entries(more)) if (specifier.endsWith(suffix)) return url;
     return resolve(specifier);

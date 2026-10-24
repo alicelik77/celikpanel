@@ -178,6 +178,7 @@ var auditActionNames = []string{
 	"settings.dns_identity_staged",
 	"settings.dns_setup_published",
 	"settings.dns_setup_saved",
+	"site.php_version",
 	"ssl.auto-renew",
 	"ssl.detach",
 	"ssl.issue",
