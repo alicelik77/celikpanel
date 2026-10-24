@@ -425,7 +425,11 @@ func (a *Agent) DisableRepo(req *EnableRepoRequest, resp *RepoStatusResponse) er
 			func() ([]byte, error) {
 				cmd := serviceMutationCommand(ctx, aptGet, "update", "-o", "APT::Get::List-Cleanup=1")
 				cmd.Env = append(os.Environ(), "DEBIAN_FRONTEND=noninteractive")
-				return cmd.CombinedOutput()
+				out, err := cmd.CombinedOutput()
+				// alpha.107 (D-038 §12): this full refresh is what apt now
+				// says about the repositories still enabled.
+				recordRepoAptErrors(string(out))
+				return out, err
 			},
 		)
 	})
