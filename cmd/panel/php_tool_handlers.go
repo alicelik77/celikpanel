@@ -264,7 +264,10 @@ func (p *Panel) handlePHPToolBind(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	p.audit(r, "service.php_tool_bind:"+req.Tool+":"+response.Previous+"->"+req.Version, "service", 0)
+	p.auditDetailed(r, "service.php_tool_bind:"+req.Tool+":"+response.Previous+"->"+req.Version, "service", 0, map[string]any{
+		"tool": req.Tool, "component": phpToolServiceIDs[req.Tool], "from": response.Previous, "to": req.Version,
+		"installed_packages": response.InstalledPackages,
+	})
 	json.NewEncoder(w).Encode(map[string]any{
 		"bound": true, "tool": req.Tool, "version": req.Version, "previous": response.Previous,
 		"installed_packages": response.InstalledPackages, "warning": response.Warning,

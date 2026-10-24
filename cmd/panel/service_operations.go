@@ -897,7 +897,7 @@ func (p *Panel) launchServiceOperationWithAuditMode(
 				}
 			}
 			release()
-			auditWriter(terminalCtx, actor, failureAudit+" — "+failure.Code)
+			auditWriter(withAuditDetails(terminalCtx, operationAuditDetails(op, result)), actor, failureAudit+" — "+failure.Code)
 			return
 		}
 		if err := p.finishServiceOperationSucceeded(terminalCtx, op.ID, result); err != nil {
@@ -912,7 +912,7 @@ func (p *Panel) launchServiceOperationWithAuditMode(
 			return
 		}
 		release()
-		auditWriter(terminalCtx, actor, successAudit)
+		auditWriter(withAuditDetails(terminalCtx, operationAuditDetails(op, result)), actor, successAudit)
 	}()
 }
 
@@ -2218,12 +2218,15 @@ func (p *Panel) resumeInterruptedServiceOperation(op serviceOperation) error {
 }
 
 func (p *Panel) auditServiceOperation(ctx context.Context, actor serviceOperationActor, action string) {
+	// alpha.107 (D-038 §16): the operation's details, when the caller gave
+	// them (withAuditDetails).
 	if _, err := p.db.GetDB().ExecContext(ctx, `
 		INSERT INTO audit_logs (
-			user_id, action, resource_type, resource_id, ip_address, user_agent
-		) VALUES (?, ?, 'service', NULL, ?, ?)`,
+			user_id, action, resource_type, resource_id, ip_address, user_agent, details
+		) VALUES (?, ?, 'service', NULL, ?, ?, ?)`,
 		nullablePositiveInt(actor.UserID), action,
 		nullableNonEmpty(actor.IP), nullableNonEmpty(actor.UserAgent),
+		auditDetailsJSON(auditDetailsFrom(ctx)),
 	); err != nil {
 		log.Printf("audit write failed (%s): %v", action, err)
 	}

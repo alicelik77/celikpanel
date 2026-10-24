@@ -168,9 +168,13 @@ func (p *Panel) handleUpdateHosting(w http.ResponseWriter, r *http.Request, doma
 
 	ctx, cancel := hostingDurableContext(r.Context())
 	defer cancel()
+	previous, previousErr := p.loadHostingRuntimeState(ctx, domainID)
 	appPort, err := p.transitionHosting(ctx, domainID, req)
 	switch {
 	case err == nil:
+		if previousErr == nil {
+			p.auditHostingChange(r, domainID, previous, req)
+		}
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"success":  true,
 			"app_port": appPort,

@@ -1441,6 +1441,10 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse the audit details and application account (migration 45, alpha.107).
+        ALTER TABLE sites DROP COLUMN app_run_as;
+        ALTER TABLE audit_logs DROP COLUMN details;
+
         -- Reverse the managed site files ledger (migration 44, D-031).
         DROP TABLE managed_site_files;
 
