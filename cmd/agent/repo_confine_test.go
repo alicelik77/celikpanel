@@ -109,6 +109,9 @@ func TestAnUpgradeOfARequestedPackageIsNotNotable(t *testing.T) {
 // tree: preferences, the record, dpkg's status and apt's lists.
 func confinementHost(t *testing.T) string {
 	t.Helper()
+	// CI runs without root: the files a test writes are not root-owned, so
+	// the repository files' owner check is covered by its own tests.
+	disableRepoOwnershipCheckForTest(t)
 	root := t.TempDir()
 	for _, dir := range []string{"prefs", "lists", "private"} {
 		if err := os.MkdirAll(filepath.Join(root, dir), 0o755); err != nil {
