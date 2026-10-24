@@ -4282,7 +4282,7 @@ function RemovalItemText({ item }: { item: RemovalItem }) {
     if (item.onClick) {
         return (
             <button type="button" onClick={item.onClick} data-removal-action={item.key}
-                className="text-left font-medium text-primary underline underline-offset-2 hover:no-underline max-sm:min-h-11">
+                className="inline-flex items-start text-left align-top font-medium text-primary underline underline-offset-2 hover:no-underline max-sm:min-h-11">
                 {text}
             </button>
         );
