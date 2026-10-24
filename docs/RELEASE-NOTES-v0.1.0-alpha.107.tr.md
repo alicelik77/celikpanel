@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.107.md)
 
+> **Yayımlandı.** Bu sürüm 24 Ekim 2026'de (UTC) yayımlandı: sürüm commit'i `2e68e6039`, GitHub ön sürümü 21:06:26Z, yapıtlar ve imza doğrulanıp dış denetim geçtikten (26/26) sonra indirme portalı yaklaşık 21:13Z. Hiçbir parçası henüz kurulu bir sunucuda değil; kurulu panelleri yalnız sahip günceller. Aşağıdaki aday metni yazıldığı gibi korunur.
+
 Bu, v0.1.0-alpha.106'yı izleyen sürümdür. **24 Ekim 2026'da yazılmış bir adaydır;
 yayımlanmadı ve hiçbir parçası kurulu bir sunucuda değil. Kurulu panelleri yalnız
 sahip, panelin kendi güncelleme ekranından günceller.** D-038 kaydından sonraki
