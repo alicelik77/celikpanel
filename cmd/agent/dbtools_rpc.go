@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -66,9 +67,17 @@ func (a *Agent) ConfigureDBTools(req *ServiceMutationRequest, resp *ConfigureDBT
 		return nil
 	}
 	defer finishStep()
+	configureDBToolsWith(ctx, resp)
+	return nil
+}
+
+// configureDBToolsWith is ConfigureDBTools' work under its held mutation
+// step (alpha.105: the disposable-VM evidence calls it directly).
+// configureDBToolsWith, ConfigureDBTools'un tutulan adım altındaki işidir.
+func configureDBToolsWith(ctx context.Context, resp *ConfigureDBToolsResponse) {
 	if _, err := exec.LookPath("nginx"); err != nil {
 		resp.Error = "nginx is not installed"
-		return nil
+		return
 	}
 
 	tools, installedRoots := installedDBToolRoots()
@@ -78,17 +87,17 @@ func (a *Agent) ConfigureDBTools(req *ServiceMutationRequest, resp *ConfigureDBT
 	// CelikPanel dışında değiştirilen yapılandırmanın üzerine yazılmaz.
 	if err := refuseOwnerEditedConfig(dbToolsConfPath); err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 
 	if len(tools) == 0 {
 		_ = os.Remove(dbToolsConfPath)
 		if out, err := runServiceMutationCombinedOutput(ctx, "systemctl", "reload", "nginx"); err != nil {
 			resp.Error = commandFailureDetail("nginx reload", out, err)
-			return nil
+			return
 		}
 		resp.Configured = true
-		return nil
+		return
 	}
 
 	// The tools are PHP. Each stays on the PHP version it is bound to (its
@@ -111,7 +120,7 @@ func (a *Agent) ConfigureDBTools(req *ServiceMutationRequest, resp *ConfigureDBT
 			var gone *errPHPToolVersionGone
 			if !errors.As(err, &gone) {
 				resp.Error = err.Error()
-				return nil
+				return
 			}
 			problems = append(problems, err.Error())
 			resp.ToolProblems = append(resp.ToolProblems, transport.PHPToolProblem{Tool: state.Tool, Version: gone.Version, Kind: "version_gone"})
@@ -125,7 +134,7 @@ func (a *Agent) ConfigureDBTools(req *ServiceMutationRequest, resp *ConfigureDBT
 	}
 	if err := ensurePHPToolCheckScript(); err != nil {
 		resp.Error = err.Error()
-		return nil
+		return
 	}
 	conf := renderDBToolsConfig(tools, installedRoots, sockets)
 
@@ -135,11 +144,11 @@ func (a *Agent) ConfigureDBTools(req *ServiceMutationRequest, resp *ConfigureDBT
 	previous, err := snapshotMailFile(dbToolsConfPath)
 	if err != nil {
 		resp.Error = fmt.Sprintf("read nginx config: %v", err)
-		return nil
+		return
 	}
 	if err := writeDBToolsConfFile(dbToolsConfPath, []byte(conf)); err != nil {
 		resp.Error = fmt.Sprintf("write nginx config: %v", err)
-		return nil
+		return
 	}
 	// Validate before reload — a broken tools config must not take the web
 	// server (and every customer site) down with it.
@@ -148,14 +157,14 @@ func (a *Agent) ConfigureDBTools(req *ServiceMutationRequest, resp *ConfigureDBT
 	if out, err := serviceMutationCommand(ctx, "nginx", "-t").CombinedOutput(); err != nil {
 		if restoreErr := restoreMailFile(previous); restoreErr != nil {
 			resp.Error = fmt.Sprintf("nginx rejected the tools config: %s; the previous configuration could not be put back: %v", firstLine(string(out)), restoreErr)
-			return nil
+			return
 		}
 		resp.Error = fmt.Sprintf("nginx rejected the tools config: %s; the previous configuration was put back", firstLine(string(out)))
-		return nil
+		return
 	}
 	if out, err := runServiceMutationCombinedOutput(ctx, "systemctl", "reload", "nginx"); err != nil {
 		resp.Error = commandFailureDetail("nginx reload", out, err)
-		return nil
+		return
 	}
 
 	resp.Configured = true
@@ -173,5 +182,5 @@ func (a *Agent) ConfigureDBTools(req *ServiceMutationRequest, resp *ConfigureDBT
 	if len(problems) > 0 {
 		resp.Warning = strings.Join(problems, "; ")
 	}
-	return nil
+	return
 }

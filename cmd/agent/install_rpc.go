@@ -126,7 +126,13 @@ func (a *Agent) InstallService(req *InstallServiceRequest, resp *InstallServiceR
 		return nil
 	}
 	defer finishStep()
+	return a.installServiceWith(ctx, req, svc, selectedPackageMatch, phpTool, phpVersion, resp)
+}
 
+// installServiceWith is InstallService's work under its held mutation step
+// (alpha.105: the disposable-VM evidence calls it directly).
+// installServiceWith, InstallService'in tutulan adım altındaki işidir.
+func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceRequest, svc *core.ManagedService, selectedPackageMatch []string, phpTool, phpVersion string, resp *InstallServiceResponse) error {
 	profile, err := detectHostPlatform()
 	if err != nil {
 		resp.Error = fmt.Sprintf("detect host platform: %v", err)
