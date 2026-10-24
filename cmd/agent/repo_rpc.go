@@ -210,7 +210,7 @@ func (a *Agent) EnableRepo(req *EnableRepoRequest, resp *RepoStatusResponse) err
 // enableRepoWith, EnableRepo'nun tutulan adım altındaki işidir.
 func (a *Agent) enableRepoWith(ctx context.Context, req *EnableRepoRequest, resp *RepoStatusResponse) error {
 	defer ensureRepoStatusErrorCode(resp, repoErrEnableFailed)
-	_, err = verifiedHostProfile("apt")
+	_, err := verifiedHostProfile("apt")
 	if err != nil {
 		resp.ErrorCode = repoErrUnsupportedSystem
 		resp.Error = "managed repositories currently require a verified APT package ecosystem"
