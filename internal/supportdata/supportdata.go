@@ -66,7 +66,8 @@ type Version struct {
 // Result is one version's support on one server.
 type Result struct {
 	Status string `json:"status"`
-	// Until is the last day fixes are shipped (YYYY-MM-DD), empty when unknown.
+	// Until is the last day fixes are shipped (YYYY-MM-DD), or the last month
+	// (YYYY-MM) where the source gives only the month; empty when unknown.
 	Until string `json:"until,omitempty"`
 	// Provider: "distribution" (the server's release patches it),
 	// "upstream" (its developers), or "" when unknown.
@@ -144,11 +145,15 @@ func (t Table) Status(component, version, distroKey string, now time.Time) Resul
 }
 
 func statusAt(until, provider, note string, now time.Time) Result {
-	day, err := time.Parse("2006-01-02", until)
-	if err != nil {
+	var end time.Time
+	if day, err := time.Parse("2006-01-02", until); err == nil {
+		end = day.Add(24 * time.Hour)
+	} else if month, err := time.Parse("2006-01", until); err == nil {
+		// A month as the source gives it: supported through its last day.
+		end = month.AddDate(0, 1, 0)
+	} else {
 		return Result{Status: StatusUnknown, Provider: provider, Note: note}
 	}
-	end := day.Add(24 * time.Hour)
 	result := Result{Until: until, Provider: provider, Note: note}
 	switch {
 	case !now.Before(end):

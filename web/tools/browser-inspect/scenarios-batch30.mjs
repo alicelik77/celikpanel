@@ -69,9 +69,9 @@ const OS_RELEASE = {
     recorded: { pretty_name: 'Debian GNU/Linux 13 (trixie)', codename: 'trixie', version_id: '13', recorded_at: '2026-10-24T10:00:00Z' },
     releases: [
         { name: 'Debian 13 (trixie)', level: 'tested', patched_until: '2030-06-30' },
-        { name: 'Ubuntu 24.04 LTS (noble)', level: 'tested', patched_until: '2029-05-31' },
+        { name: 'Ubuntu 24.04 LTS (noble)', level: 'tested', patched_until: '2029-05' },
         { name: 'Debian 12 (bookworm)', level: 'accepted', patched_until: '2028-06-30' },
-        { name: 'Ubuntu 22.04 LTS (jammy)', level: 'accepted', patched_until: '2027-05-31' },
+        { name: 'Ubuntu 22.04 LTS (jammy)', level: 'accepted', patched_until: '2027-05' },
         { name: 'Arch Linux (rolling)', level: 'development' },
         { name: 'Red Hat Enterprise Linux 9 and AlmaLinux / Rocky Linux 9', level: 'preview' },
     ],

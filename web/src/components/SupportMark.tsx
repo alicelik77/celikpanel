@@ -18,6 +18,11 @@ export const SUPPORT_NAMES: Record<SupportComponent, string> = { php: 'PHP', pos
 
 function shortDate(value: string | undefined, locale: string): string {
     if (!value) return '';
+    // A month as the source gives it ("2027-05") is said as a month.
+    if (/^\d{4}-\d{2}$/.test(value)) {
+        const month = new Date(value + '-01T00:00:00Z');
+        return Number.isNaN(month.getTime()) ? value : month.toLocaleDateString(locale, { year: 'numeric', month: 'short', timeZone: 'UTC' });
+    }
     const date = new Date(value + 'T00:00:00Z');
     return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
 }

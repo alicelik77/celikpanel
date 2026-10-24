@@ -47,7 +47,12 @@ func TestTheTableIsReadAndEveryDateIsADate(t *testing.T) {
 		}
 	}
 	for key, distro := range table.Distros {
-		if _, err := time.Parse("2006-01-02", distro.PatchedUntil); err != nil || table.Sources[distro.Source] == "" {
+		_, err := time.Parse("2006-01-02", distro.PatchedUntil)
+		if err != nil {
+			// A month, where the source gives only the month.
+			_, err = time.Parse("2006-01", distro.PatchedUntil)
+		}
+		if err != nil || table.Sources[distro.Source] == "" {
 			t.Fatalf("%s: %v", key, err)
 		}
 	}
@@ -57,7 +62,7 @@ func TestADistributionKeepsPatchingTheVersionItShips(t *testing.T) {
 	table, _ := Load()
 	now := at(t, "2026-10-24")
 	// PHP 8.1 is past its upstream end, but Ubuntu 22.04 ships and patches it.
-	if got := table.Status("php", "8.1", "ubuntu-22.04", now); got.Status != StatusSupported || got.Provider != "distribution" || got.Until != "2027-05-31" {
+	if got := table.Status("php", "8.1", "ubuntu-22.04", now); got.Status != StatusSupported || got.Provider != "distribution" || got.Until != "2027-05" {
 		t.Fatalf("ubuntu 22.04 php 8.1 = %+v", got)
 	}
 	// The same 8.1 from a vendor repository on Debian 13 follows upstream.

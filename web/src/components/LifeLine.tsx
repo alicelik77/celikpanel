@@ -28,6 +28,11 @@ export function LifeLine({ tone, children, attr }: { tone: Tone; children: React
 // said as a date; what cannot be read is said as it came.
 export function lifeDate(value: string | undefined, locale: string, withTime = false): string {
     if (!value) return '';
+    // A month as the source gives it ("2027-05") is said as a month.
+    if (/^\d{4}-\d{2}$/.test(value)) {
+        const month = new Date(value + '-01T00:00:00Z');
+        return Number.isNaN(month.getTime()) ? value : month.toLocaleDateString(locale, { year: 'numeric', month: 'long', timeZone: 'UTC' });
+    }
     const iso = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value) ? value.replace(' ', 'T') + 'Z' : value;
     const date = new Date(iso);
     if (Number.isNaN(date.getTime())) return value;
