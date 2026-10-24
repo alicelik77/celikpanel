@@ -21,6 +21,136 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 
 ---
 
+## D-038 · Sürüm, kullanım ve güvenlik her bileşen için tek ilkeye bağlıdır: sahibi seçer, panel önerir ve uyarır, kullanımda olan kaldırılmaz, hiçbir şey sessizce taşınmaz, yamalar işletim sisteminin işidir
+
+*24 Ekim 2026 (saat tarihi) · Sahibin 24 Ekim 2026 yönü, aynı gün onaylandı ("onaylıyorum") · Bir ilkedir, teslim edilmiş bir yeteneğin beyanı değildir: sondaki "Bugün ne var" bölümüne bakın*
+
+24 Ekim 2026'da, Frankfurt'ta PHP-FPM 8.4'ün kaldırma penceresine
+(v0.1.0-alpha.106) bakarken sahip şöyle yazdı: "müşterilerin websiteleri de
+farklı versiyonlarda php kullanıyor olabilirler. Bunu da kontrol etmelisin.
+belki de müşteri illa o sürümü kullanacaktır. php 8.4 zorunlu iken php 8.5'e
+zorlamak olmaz. fakat güvenlik yamalarını zorlamalı mıyız. tüm sunucuyu riske
+sokar mı" Ardından: "php dışında da diğer componentler için de geçerli bu
+düşünceler, planlar. program özgü çalışmıyoruz. prensip oluşturmaya
+çalışıyoruz." Sahip, boşluklar için ikinci bir gözden geçirmeden sonra aşağıdaki
+on yedi maddeyi onayladı.
+
+Bu kayıt, alpha.100 ve alpha.104–alpha.106 işlerinde (D-037 değişiklikleri)
+PHP ve panelin kendi PHP araçları için verilen kararları her bileşen için tek
+ilkeye dönüştürür: web sunucuları, PHP, Node.js, veritabanları, önbellekler,
+posta, DNS, güvenlik araçları ve panelin kendi araçları için aynı biçimde.
+D-002'yi (dürüst sürümler), D-022'yi (sahibin denetimindeki altyapı), D-024'ü
+(uygulanabilir yönlendirme), D-034'ü (paketler önerir, dayatmaz) ve D-036'yı
+(gösterilen sürüm paket veritabanının yanıtıdır) genişletir.
+
+**İlke.**
+
+1. **Bir şeyin sahibi sürümünü seçer.** Bir sitenin, veritabanının ya da
+   uygulamanın hangi sürümle çalışacağına onun sahibi karar verir. Panel önerir
+   ve uyarır; hiçbir zaman sürüm dayatmaz ve kimsenin işini kendiliğinden başka
+   bir sürüme taşımaz.
+2. **Kullanımda olan kaldırılmaz.** Bir bileşen ya da sürüm kaldırılmadan önce
+   panel onu kullanan her şeyi adıyla sayar: siteler, veritabanları, posta
+   kutuları, başka bileşenler ve panelin kendi araçları. Kullanan varsa
+   kaldırma reddedilir. Taşıma yalnız güvenle doğrulanabilen yerde ve yalnız
+   kişi isteyince önerilir; müşterinin sitesi ya da verisi asla kendiliğinden
+   taşınmaz.
+3. **Önce göster, sonra kanıtla, olmazsa geri al.** Her kurma, kaldırma ve
+   taşıma işleminden önce panel sunucuda tam olarak neyin değişeceğini
+   gösterir; beklenmeyen her şey kişinin onayını ister. İşlemden sonra panel
+   sonucun çalıştığını kanıtlar; çalışmıyorsa önceki duruma döner ve bunu
+   söyler. Paylaşılan bir servisi yeniden başlatan her işlem, başlamadan önce
+   bunu ve beklenen kesintiyi söyler; hiçbir işlem başka bir servisi söylemeden
+   yan etki olarak yeniden başlatmaz.
+4. **Sürüm içindeki güvenlik yamaları işletim sisteminin işidir.** Bunlar
+   sürümü değiştirmez ve uygulanmalıdır. Onları işletim sisteminin kendi
+   otomatik güncellemesi, panelden bağımsız olarak uygular: panel yokken de
+   sunucu yamalanmaya devam eder. Panel durumu tek yerde gösterir — otomatik
+   güncelleme açık mı, bekleyen güvenlik güncellemesi var mı, en son ne zaman
+   çalıştı — ve otomatik güncellemenin kapalı olmasını uyarı sayar. Panel bu
+   ayarı asla sessizce kapatmaz.
+5. **Desteği bitmiş sürüm açıkça işaretlenir, asla zorlanmaz.** Artık güvenlik
+   düzeltmesi almayan bir sürüm göründüğü her yerde belirgin biçimde
+   işaretlenir ve onu kullanan yerler uyarı alır. Böyle bir sürümü kurmak ya da
+   seçmek onay ister. Taşıma kararı sahibinde kalır.
+6. **Her iş kendi alanında çalışır.** Her site, veritabanı ve posta alanı
+   kendi kullanıcısıyla, diğerlerinden ayrı çalışır; böylece eski sürümdeki bir
+   iş diğerlerini tehlikeye atmaz. Bu ayrımın olmadığı yerde panel bunu söyler.
+7. **Veriyi dönüştüren sürüm değişikliği geri alınamaz ve asla yan etki
+   değildir.** Bir veritabanının ana sürüm yükseltmesi (PostgreSQL 16'dan 17'ye,
+   MariaDB'de bir ana adım) diskteki veriyi dönüştürür ve çoğu zaman geri dönüş
+   yoktur; Debian'da yeni PostgreSQL paketi eski kümeyi devralmaz, yanına boş
+   bir küme açar. Böyle bir değişiklik asla başka bir işlemin parçası olarak
+   yapılmaz: panel önce yedeğin var olup olmadığını gösterir, geri dönüş
+   olmadığını açıkça söyler ve onay ister.
+8. **Bir bileşeni kaldırmak verisini silmek değildir.** Bir bileşen
+   kaldırıldığında veritabanları, posta kutuları ve site dosyaları yerinde
+   kalır ve panel nerede olduklarını söyler. Veri silme ayrı, açıkça istenen
+   bir işlemdir. Sistem yapılandırma dosyaları purge ile gider; sahip birini
+   elle düzenlediyse panel bunu önceden söyler. Yeniden kurulum eski veri
+   bulursa ne yapılacağını sorar.
+9. **Paket yöneticisinin kurmadığını işletim sistemi yamalamaz.** Roundcube
+   panel tarafından kendi paketinden kurulur; işletim sistemi onu hiç
+   güncellemez. Böyle bileşenlerde güvenlik güncellemesini bildirmek ve kişinin
+   onayıyla, aynı göster-ve-onayla akışıyla uygulamak panelin işidir. Panel
+   hangi bileşenlerin işletim sistemi güncellemelerinin dışında kaldığını
+   açıkça listeler.
+10. **Yamalanmış, yeniden başlatılmış demek değildir.** OpenSSL gibi bir
+    kitaplık yamalanınca onu kullanan servisler yeniden başlatılana kadar eski
+    kodla çalışır; çekirdek güncellemesi yeniden başlatma ister. Panel "yeniden
+    başlatma bekleyen servisler" ve "yeniden başlatma bekleyen sunucu" durumunu
+    gösterir, beklenen kesintiyi söyler ve zamanı sahibine bırakır.
+11. **"Desteği bitti" doğru tanımlanır.** Ubuntu 22.04'teki PHP 8.1 üreticisinin
+    desteği dışındadır ama Ubuntu tarafından 2027'ye kadar yamalanır. Yanlış bir
+    uyarı insanları gereksiz taşımalara iter. Tanım şudur: bu paketi sağlayan
+    kim ise artık onun için güvenlik düzeltmesi göndermiyor. Bu bilgi tarihli
+    bir kaynaktan gelir; bilinmediğinde panel "bilinmiyor" der, tahmin etmez.
+12. **Üçüncü taraf depolar sınırlandırılır.** PHP 8.5 ve 8.6'yı getiren depo
+    Frankfurt'ta sistemin temel PHP paketlerinin yerine kendininkileri koymaya
+    adaydı. Bir üçüncü taraf depo yalnız onu gerektiren bileşen için açılır,
+    dağıtımın öteki paketlerinin yerine geçemeyecek biçimde sabitlenir; panel
+    hangi deponun kim tarafından ne zaman açıldığını ve imza anahtarının
+    durumunu gösterir. Anahtar eskidiğinde güncellemeler sessizce durmaz; panel
+    bunu söyler.
+13. **Panel yalnız bildiğini sayar ve bunu söyler.** Sahip panel dışında bir
+    şey kurabilir; bu tasarımın parçasıdır (D-022). "Hiçbir şey kullanmıyor"
+    yerine panel "CelikPanel'in bildiği hiçbir şey kullanmıyor" der. Kaldırmadan
+    önce elinden geldiğince sistemin kendi izlerine de bakar: o sokete işaret
+    eden web sunucusu yapılandırması, bağımlı servisler, açık bağlantılar.
+14. **Müşteri sunulanlar arasından seçer; seçtiği sessizce değiştirilmez.**
+    Yönetici müşterilere hangi sürümlerin sunulacağına karar verebilir
+    (örneğin desteği bitmişleri gizler). Müşterinin zaten seçtiği sürüm asla
+    kendiliğinden değiştirilmez; uyarıyı müşteri kendi sayfasında görür.
+15. **Panel "denenmiş" ile "izin verilen"i ayırır.** Panelin test edildiği
+    sürümler işaretlenir; ötekiler "kurulabilir, denenmemiş" diye sunulur. Yine
+    engel yok, yalnız bilgi var.
+16. **Her karar kayda geçer.** Sürüm seçimi, beklenmeyen paket onayı, desteği
+    bitmiş sürüm onayı, taşıma: kimin neyi ne zaman onayladığı denetim
+    günlüğüne yazılır.
+17. **İşletim sistemi sürüm yükseltmesi sahibinindir.** Debian 13'ten 14'e
+    geçiş bütün bileşen sürümlerini birden değiştirir. Panel bunu asla
+    başlatmaz; sahip yapar. Panel desteklediği işletim sistemi sürümlerini
+    açıkça söyler, yükseltmeden önce neyin değişeceğini listeler ve yükseltmeden
+    sonra ayakta kalır (D-001: sunucu asla yeniden imajlanmaz).
+
+**Bugün ne var (24 Ekim 2026).** 2. ve 3. maddeler PHP sürümleri, panelin PHP
+araçları ve bileşen kaldırma için büyük ölçüde yerinde (alpha.100, alpha.104,
+alpha.105, alpha.106): kaldırma benzetimi ve adıyla ret, dikkate değer
+paketlerin onayıyla kurulum benzetimi, kanıt ve geri almayla araç başına PHP
+bağlama, PHP sürümlerinde "kim kullanıyor", önce-sonuç kaldırma penceresi. 1.,
+5. ve 14. maddeler sitelerin PHP sürümleri için var. 4., 6. (havuz ve hesap
+tasarımının bir sonucu olarak var, bir denetim olarak yok), 7., 8. (kısmen,
+alpha.100 kaldırma metinlerinde), 9., 10., 11., 12., 13. (kısmen), 15., 16.
+(kısmen, mevcut denetim günlüğüyle) ve 17. maddeler bileşenler genelinde
+uygulanmış değil. Her bileşenin bu on yedi maddeye göre salt-okur denetimi bu
+kaydı izler; bulunan açıklar parça parça değil tek sürümde kapatılır (sahibin
+23 Ekim 2026 kuralı: sonraki sürüme bir şey bırakma).
+
+**Bunun izin vermedikleri.** Kurulu sunucularda canlı yapılandırma yok, panelin
+başlattığı işletim sistemi yükseltmesi yok, lisans politikasında değişiklik yok
+ve asistanın başlattığı kurulu panel güncellemesi yok: her kurulu panel
+güncellemesini sahip, panelin kendi güncelleme ekranından başlatır (AGENTS.md).
+
 ## D-037 · Her sayfa adının söylediği yerdedir: Ayarlar ayarları tutar; araçlar, güvenlik ve bakım Sunucu altındadır; kişinin kendi hesabı kişisel menüdedir
 
 *22 Ekim 2026 (saat tarihi) · Sahibin 21 Ekim 2026 tarihli isteği ve 22 Ekim 2026 tarihli onayı; v0.1.0-alpha.98 adayı için kaynakta, 22 Ekim 2026'da yayımlandı; 22 Ekim 2026'da sahibin kendi güncellemesinden sonra sahibin ekranları yeni menüyü iki kurulu sunucuda da gösterdi · 22 Ekim 2026'da değiştirildi: kişinin kendi e-postasını değiştirmesi, v0.1.0-alpha.99 adayı için kaynakta; değişikliğin hiçbir parçası kurulu bir sunucuda ölçülmedi · 22 Ekim 2026'da yeniden değiştirildi: Sunucu kurulumu Sunucu altına taşınır, kaldırma penceresi neyin etkileneceğini söyler, ilk ziyaret Kurulu görünümü açar; v0.1.0-alpha.100 adayı için kaynakta · 23 Ekim 2026'da yeniden değiştirildi: bir kaldırma adını söylemediği hiçbir şeyi kaldırmaz ve her PHP aracı sahibin seçtiği PHP sürümünde çalışır; v0.1.0-alpha.104 adayı için kaynakta; kurulu bir sunucuda hiçbir şey ölçülmedi*
