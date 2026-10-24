@@ -21,6 +21,143 @@ Code decisions live in git; this file is for strategy. Newest first.
 
 ---
 
+## D-038 · Versions, use and security follow one principle for every component: the owner chooses, the panel recommends and warns, nothing in use is removed, nothing is moved silently, and patches are the operating system's job
+
+*October 24, 2026 (clock date) · Owner direction of 2026-10-24, approved the same day ("onaylıyorum") · A principle, not a statement of shipped capability: see "What exists today" at the end*
+
+On 2026-10-24, looking at the removal dialog for PHP-FPM 8.4 on Frankfurt
+(v0.1.0-alpha.106), the owner wrote: "müşterilerin websiteleri de farklı
+versiyonlarda php kullanıyor olabilirler. Bunu da kontrol etmelisin. belki de
+müşteri illa o sürümü kullanacaktır. php 8.4 zorunlu iken php 8.5'e zorlamak
+olmaz. fakat güvenlik yamalarını zorlamalı mıyız. tüm sunucuyu riske sokar mı"
+(In English: customers' websites may run on different PHP versions too; you
+must check that as well; perhaps a customer needs exactly that version; forcing
+PHP 8.5 while 8.4 is required is not acceptable; but should we force security
+patches; does it put the whole server at risk?) And then: "php dışında da diğer
+componentler için de geçerli bu düşünceler, planlar. program özgü çalışmıyoruz.
+prensip oluşturmaya çalışıyoruz." (In English: these thoughts and plans apply
+to the other components too, not only PHP; we are not working per program; we
+are trying to form a principle.) The owner approved the seventeen points below
+after a second review for gaps.
+
+This entry turns what was decided for PHP and the panel's own PHP tools in the
+alpha.100 and alpha.104–alpha.106 work (the D-037 amendments) into one principle
+for every component: web servers, PHP, Node.js, databases, caches, mail, DNS,
+security tools and the panel's own tools alike. It extends D-002 (honest
+versions), D-022 (owner-controlled infrastructure), D-024 (actionable guidance),
+D-034 (bundles recommend, never impose) and D-036 (a version shown is the package
+database's answer).
+
+**The principle.**
+
+1. **The owner of a thing chooses its version.** Which version a site, a
+   database or an application runs on is decided by whoever owns it. The panel
+   recommends and warns; it never imposes a version and never moves anyone's
+   work to another version by itself.
+2. **Nothing in use is removed.** Before a component or a version is removed,
+   the panel names everything that uses it: sites, databases, mailboxes, other
+   components and the panel's own tools. If anything uses it, the removal is
+   refused. A move is offered only where it can be verified safely and only when
+   the person asks for it; a customer's site or data is never moved by itself.
+3. **Show first, prove after, roll back otherwise.** Before every install,
+   removal or move, the panel shows exactly what will change on the server;
+   anything unexpected needs the person's confirmation. After the operation the
+   panel proves that the result works; if it does not, it restores the previous
+   state and says so. Every operation that restarts a shared service says so,
+   with the expected interruption, before it starts; no operation restarts
+   another service as a side effect without saying it.
+4. **Security patches within a version are the operating system's job.** They
+   do not change a version and they must be applied. The operating system's own
+   automatic update applies them, independently of the panel: the server keeps
+   being patched when the panel is absent. The panel shows the state in one
+   place — whether automatic updates are on, whether security updates are
+   waiting, when they last ran — and treats automatic updates being off as a
+   warning. The panel never switches that setting off silently.
+5. **An unsupported version is marked plainly, never forced.** A version that no
+   longer receives security fixes is marked visibly wherever it appears, and the
+   places that use it get a warning. Installing or choosing such a version asks
+   for confirmation. The decision to move stays with the owner.
+6. **Every workload runs in its own space.** Every site, database and mail
+   domain runs under its own user, separated from the others, so that one
+   workload on an old version does not endanger the rest. Where that separation
+   is missing, the panel says so.
+7. **A version change that converts data is irreversible and is never a side
+   effect.** A major database upgrade (PostgreSQL 16 to 17, a MariaDB major
+   step) converts the data on disk and there is usually no way back; on Debian a
+   new PostgreSQL package does not take over the old cluster but opens an empty
+   one beside it. Such a change is never done as part of another operation: the
+   panel first shows whether a backup exists, says plainly that there is no way
+   back, and asks for confirmation.
+8. **Removing a component is not deleting its data.** When a component is
+   removed, its databases, mailboxes and site files stay, and the panel says
+   where they are. Deleting data is a separate, explicitly requested operation.
+   System configuration files do go with a purge; if the owner edited one, the
+   panel says so beforehand. When a reinstall finds old data, it asks what to do.
+9. **What the package manager did not install, the operating system does not
+   patch.** Roundcube is installed by the panel from its own package; the
+   operating system never updates it. For such components, reporting a security
+   update and applying it with the person's confirmation is the panel's job,
+   through the same show-and-confirm flow. The panel lists plainly which
+   components lie outside the operating system's updates.
+10. **Patched is not restarted.** When a library such as OpenSSL is patched,
+    the services that use it keep running the old code until they are
+    restarted; a kernel update needs a reboot. The panel shows "services waiting
+    for a restart" and "server waiting for a reboot", says the expected
+    interruption, and leaves the timing to the owner.
+11. **"Unsupported" is defined correctly.** PHP 8.1 on Ubuntu 22.04 is out of
+    its upstream's support but is patched by Ubuntu until 2027. A false warning
+    pushes people into needless moves. The definition is: whoever provides this
+    package no longer ships security fixes for it. That information comes from a
+    dated source; when it is unknown, the panel says "unknown" and does not
+    guess.
+12. **Third-party repositories are confined.** The repository that brings PHP
+    8.5 and 8.6 was, on Frankfurt, a candidate to replace the system's base PHP
+    packages with its own. A third-party repository is enabled only for the
+    component that needs it, pinned so that it cannot replace the
+    distribution's other packages, and the panel shows which repository was
+    enabled, by whom, when, and the state of its signing key. When a key
+    expires, updates do not stop silently; the panel says so.
+13. **The panel counts only what it knows, and says so.** The owner may install
+    things outside the panel; that is part of the design (D-022). Instead of
+    "nothing uses it", the panel says "nothing CelikPanel knows of uses it".
+    Before a removal it also looks, as far as it can, at the system's own
+    traces: web-server configuration that points at the socket, dependent
+    services, open connections.
+14. **A customer chooses among what is offered; what they chose is never changed
+    silently.** The administrator may decide which versions are offered to
+    customers (for example, hide unsupported ones). A version a customer already
+    chose is never changed by itself; the customer sees the warning on their own
+    page.
+15. **The panel separates "tested" from "allowed".** Versions the panel was
+    tested with are marked; the others are offered as "installable, not
+    tested". Again no block, only information.
+16. **Every decision is recorded.** A version choice, a confirmation of
+    unexpected packages, a confirmation of an unsupported version, a move: who
+    confirmed what, and when, goes to the audit log.
+17. **An operating-system release upgrade belongs to the owner.** Moving from
+    Debian 13 to 14 changes every component version at once. The panel never
+    starts it; the owner does. The panel states which operating-system releases
+    it supports, lists what would change before the upgrade, and stays up after
+    it (D-001: never re-image the server).
+
+**What exists today (2026-10-24).** Points 2 and 3 are largely in place for PHP
+versions, the panel's PHP tools and component removal (alpha.100, alpha.104,
+alpha.105, alpha.106): removal simulation and refusal by name, install
+simulation with confirmation of notable packages, per-tool PHP binding with
+proof and rollback, "who uses it" on PHP versions, the verdict-first removal
+dialog. Points 1, 5 and 14 exist for sites' PHP versions. Points 4, 6 (as a
+fact of the pool and account design, not as a check), 7, 8 (partly, in the
+alpha.100 removal texts), 9, 10, 11, 12, 13 (partly), 15, 16 (partly, through
+the existing audit log) and 17 are not implemented across components. A
+read-only audit of every component against these seventeen points follows this
+entry; the gaps it finds are closed in one release, not piecemeal (owner rule of
+2026-10-23: leave nothing for the next release).
+
+**What this does not authorize.** No live configuration of installed servers,
+no panel-initiated operating-system upgrade, no change to the licence policy,
+and no assistant-initiated installed-panel update: the owner starts every
+installed-panel update from the panel's own update screen (AGENTS.md).
+
 ## D-037 · Every page is where its name says it is: Settings holds settings; tools, security and maintenance live under Server; the person's own account lives in the personal menu
 
 *October 22, 2026 (clock date) · Owner request of 2026-10-21 and approval of 2026-10-22; in source for the v0.1.0-alpha.98 candidate, published 2026-10-22; on 2026-10-22 the owner's screens showed the new menu on both installed servers after the owner's own update · Amended 2026-10-22: changing one's own email, in source for the v0.1.0-alpha.99 candidate; nothing of the amendment measured on an installed server · Amended again 2026-10-22: Server setup moves under Server, the removal dialog says what is affected, the first visit opens the installed view; in source for the v0.1.0-alpha.100 candidate · Amended 2026-10-23: a removal never removes anything it did not name, and each PHP tool runs on a PHP version the owner chooses; in source for the v0.1.0-alpha.104 candidate; nothing measured on an installed server*
