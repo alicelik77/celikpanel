@@ -31,7 +31,16 @@ export function isServiceRunning(status: unknown): boolean {
 // Bağlı olduğu PHP sürümü olmayan PHP aracı "hazır değil" der.
 export type ComponentStateWord = 'notChecked' | 'notInstalled' | 'installed' | 'running' | 'stopped' | 'notReady';
 
-export interface PHPBindingFacts { version: string; socket_ready: boolean; version_installed: boolean; extensions_present: boolean }
+export interface PHPBindingFacts {
+    version: string;
+    socket_ready: boolean;
+    version_installed: boolean;
+    extensions_present: boolean;
+    /** alpha.105: the proof after its install passed on no installed PHP version. */
+    proof_failed: boolean;
+    /** The PHP extensions the failed proof found missing, when that was the cause. */
+    proof_extensions: string[];
+}
 
 export function phpBindingOf(service: unknown): PHPBindingFacts | null {
     if (!service || typeof service !== 'object') return null;
@@ -39,23 +48,37 @@ export function phpBindingOf(service: unknown): PHPBindingFacts | null {
     if (!binding || typeof binding !== 'object') return null;
     const b = binding as Record<string, unknown>;
     if (typeof b.version !== 'string' || !/^[0-9]{1,2}\.[0-9]{1,2}$/.test(b.version) || typeof b.socket_ready !== 'boolean') return null;
-    return { version: b.version, socket_ready: b.socket_ready, version_installed: b.version_installed === true, extensions_present: b.extensions_present !== false };
+    const cause = b.proof_cause && typeof b.proof_cause === 'object' ? (b.proof_cause as Record<string, unknown>) : null;
+    const extensions = cause && cause.kind === 'missing_extensions' && Array.isArray(cause.extensions)
+        ? cause.extensions.filter((item): item is string => typeof item === 'string' && /^[a-z0-9_]{1,32}$/.test(item))
+        : [];
+    return {
+        version: b.version,
+        socket_ready: b.socket_ready,
+        version_installed: b.version_installed === true,
+        extensions_present: b.extensions_present !== false,
+        proof_failed: b.proof_failed === true,
+        proof_extensions: extensions,
+    };
 }
 
 // Why a PHP tool is not ready, said under its name (alpha.104): its PHP is
 // gone, stopped, or lacks the tool's PHP extension packages (package
 // presence is what is read, not whether PHP loads them).
 // Bir PHP aracının neden hazır olmadığı.
-export function phpNotReadyHintKey(binding: PHPBindingFacts): 'services.phpNotReadyStopped' | 'services.phpNotReadyGone' | 'services.phpNotReadyExtensions' {
+// alpha.105: a tool whose proof after its install failed everywhere says so,
+// with the missing extensions when the proof named them.
+export function phpNotReadyHintKey(binding: PHPBindingFacts): 'services.phpNotReadyStopped' | 'services.phpNotReadyGone' | 'services.phpNotReadyExtensions' | 'services.phpNotReadyProof' | 'services.phpNotReadyProofExtensions' {
     if (!binding.socket_ready) return binding.version_installed ? 'services.phpNotReadyStopped' : 'services.phpNotReadyGone';
-    return 'services.phpNotReadyExtensions';
+    if (!binding.extensions_present) return 'services.phpNotReadyExtensions';
+    return binding.proof_extensions.length > 0 ? 'services.phpNotReadyProofExtensions' : 'services.phpNotReadyProof';
 }
 
 export function componentStateWord(service: { is_installed: boolean | null; kind?: string; status?: unknown; php_binding?: unknown }): ComponentStateWord {
     if (service.is_installed === null) return 'notChecked';
     if (!service.is_installed) return 'notInstalled';
     const binding = phpBindingOf(service);
-    if (binding && (!binding.socket_ready || !binding.extensions_present)) return 'notReady';
+    if (binding && (!binding.socket_ready || !binding.extensions_present || binding.proof_failed)) return 'notReady';
     if (service.kind === 'tool' || service.status === 'installed') return 'installed';
     return isServiceRunning(service.status) ? 'running' : 'stopped';
 }

@@ -196,6 +196,11 @@ export interface InstallOperationRequest {
     operationKind?: InstallOperationKind;
     package?: string;
     version?: string;
+    /** alpha.105: the PHP version a database tool is installed for (a bundle's choice). */
+    phpVersion?: string;
+    /** alpha.105: the server checks what the install brings against confirmInstalls. */
+    checkInstalls?: boolean;
+    confirmInstalls?: string[];
     // Sent once, on the request that starts a mail profile install. The server
     // saves it as the panel's own mail hostname, so a recovered or replayed
     // request resolves the same name without carrying it again.
@@ -1510,6 +1515,8 @@ export function ComponentOperationProvider({ children }: { children: ReactNode }
                 : {
                       service_id: request.serviceId,
                       ...(request.package ? { package: request.package } : {}),
+                      ...(request.phpVersion ? { php_version: request.phpVersion } : {}),
+                      ...(request.checkInstalls ? { check_installs: true, confirmed_installs: request.confirmInstalls ?? [] } : {}),
                       request_id: marker.request_id,
                   };
 

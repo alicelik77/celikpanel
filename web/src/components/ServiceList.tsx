@@ -20,6 +20,9 @@ import {
 import { Link, useLocation, useNavigate } from '../router';
 import { FirewallBar } from './FirewallPanel';
 import { componentStateWord, isServiceRunning, phpBindingOf, phpNotReadyHintKey } from '../lib/serviceStatus';
+import { decodeCandidateVersion, decodeRepoInfo, type RepoInfo } from '../lib/componentRepo';
+import { decodeInstallPreview, installPreviewURL } from '../lib/installPreview';
+import { InstallPreviewNotes, installPreviewGate } from './InstallPreviewNotes';
 import { useAuth } from '../auth/AuthContext';
 import type { TranslationKey } from '../i18n/en';
 import { useServerSetup } from './ServerSetupGate';
@@ -30,7 +33,7 @@ import { mailProfileName, webmailReportsProblem } from '../lib/mailProfileText';
 import { decodeReadyBundles, bundleChipState, bundleName, type ReadyBundle } from '../lib/readyBundles';
 import { componentIcon } from '../lib/componentIcons';
 import { packageVersionFacts } from '../lib/packageVersion';
-import { BundleInstallDialog, ReadyBundleStrip, useBundleSequence } from './ReadyBundleStrip';
+import { BundleInstallDialog, ReadyBundleStrip, useBundleSequence, type BundleChoices } from './ReadyBundleStrip';
 import { WebmailRepairButton } from './WebmailRepairButton';
 import { answerBody, decodePHPToolMoveFailure, phpToolForService, readPHPTools, PHP_TOOL_SERVICE_ID, type PHPToolMoveFailure, type PHPToolsInfo, phpToolCauseText } from '../lib/phpTools';
 
@@ -399,36 +402,6 @@ const AUTO_SCAN_MAX_AGE_SECONDS = 300;
 // When available+enabled, the install dialog offers a specific major version.
 // Bir servisin isteğe bağlı yönetilen vendor deposu (örn. PostgreSQL için PGDG).
 // Mevcut+etkinse, kurulum modalı belirli bir major sürüm sunar.
-interface RepoInfo {
-    available: boolean;
-    enabled: boolean;
-    repairable?: boolean;
-    id?: string;
-    name?: string;
-    detail?: string;
-    required?: boolean;
-    packages?: string[];
-    error_code?: string;
-}
-
-// The two reads of the install dialogue. An answer that does not say whether a
-// repository exists for the component is not "no repository": that reading is
-// what hid a required repository and left Install enabled.
-// Kurulum diyaloğunun iki okuması. Bileşen için depo olup olmadığını söylemeyen
-// yanıt "depo yok" değildir: zorunlu depoyu gizleyip Kur'u açık bırakan buydu.
-function decodeRepoInfo(raw: unknown): RepoInfo {
-    const body = raw as Partial<RepoInfo> | null;
-    if (!body || typeof body !== 'object' || typeof body.available !== 'boolean' || typeof body.enabled !== 'boolean') {
-        throw new Error('shape');
-    }
-    return body as RepoInfo;
-}
-
-function decodeCandidateVersion(raw: unknown): string {
-    const version = (raw as { version?: unknown } | null)?.version;
-    if (typeof version !== 'string') throw new Error('shape');
-    return version;
-}
 
 // unknownCategories returns a card definition for every category present in
 // the data but missing from categoryOrder above, so nothing can be silently
@@ -954,7 +927,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     // exactly the whitelisted packages for this id, then enables the unit.
     // Gerçek kurulum, onay modalından sonra koşar. Agent bu id için yalnız
     // beyaz-listedeki paketleri kurar, sonra unit'i etkinleştirir.
-    const doInstall = async (service: ManagedService, pkg?: string) => {
+    const doInstall = async (service: ManagedService, pkg?: string, confirmed: string[] = []) => {
         if (stateUnverified) {
             showToast('error', t('services.stateUnverifiedHint'));
             return;
@@ -964,6 +937,10 @@ export function ServiceList({ onManageService }: ServiceListProps) {
             serviceId: service.id,
             name: componentName(service, t),
             ...(pkg ? { package: pkg } : {}),
+            // alpha.105: what the install brings is checked again on the
+            // server against what the owner confirmed (Roundcube is a
+            // verified tarball, not a package install).
+            ...(service.id !== 'roundcube' ? { checkInstalls: true, confirmInstalls: confirmed } : {}),
         });
     };
 
@@ -1388,11 +1365,11 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         }
         setBundleTarget(bundle);
     };
-    const confirmComponentBundle = () => {
+    const confirmComponentBundle = (choices: BundleChoices) => {
         const bundle = bundleTarget;
         setBundleTarget(null);
         if (!bundle || mutationControlsDisabled) return;
-        bundleSequence.begin(bundle);
+        bundleSequence.begin(bundle, choices);
     };
     // The mail strip's one-line notices, in place of the boxes that stood
     // above the mail stack cards: why mail cannot be installed yet, who acts
@@ -1880,7 +1857,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 PHP'si olmayan araç nedenini ve çaresini söyler. */}
                                                             {componentStateWord(s) === 'notReady' && phpBindingOf(s) && (
                                                                 <p className="mt-0.5 text-xs text-fg-muted" data-row-not-ready="">
-                                                                    {t(phpNotReadyHintKey(phpBindingOf(s)!), { version: phpBindingOf(s)!.version })}
+                                                                    {t(phpNotReadyHintKey(phpBindingOf(s)!), { version: phpBindingOf(s)!.version, extensions: phpBindingOf(s)!.proof_extensions.join(', ') })}
                                                                 </p>
                                                             )}
                                                         </div>
@@ -2250,7 +2227,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                         service={installTarget}
                         busy={busy === installTarget.id}
                         onCancel={() => setInstallTarget(null)}
-                        onConfirm={(pkg) => doInstall(installTarget, pkg)}
+                        onConfirm={(pkg, confirmed) => doInstall(installTarget, pkg, confirmed)}
                     />
                 )}
                 {profileTarget && (
@@ -2746,7 +2723,7 @@ function InstallServiceDialog({
     service: ManagedService;
     busy: boolean;
     onCancel: () => void;
-    onConfirm: (pkg?: string) => void;
+    onConfirm: (pkg: string | undefined, confirmed: string[]) => void;
 }) {
     const { t } = useI18n();
     // What the package manager would install right now, as the server reports
@@ -2812,6 +2789,14 @@ function InstallServiceDialog({
         }
     };
 
+    // alpha.105: the package manager's simulation of this install, read while
+    // the dialogue is open; notable packages need the owner's confirmation.
+    // Bu kurulumun benzetimi; dikkat çeken paketler onay ister.
+    const previewURL = service.id === 'roundcube' ? null : installPreviewURL([{ id: service.id, ...(selectedPkg ? { package: selectedPkg } : {}) }]);
+    const preview = useRemote(previewURL, decodeInstallPreview);
+    const [acknowledgedFor, setAcknowledgedFor] = useState<string | null>(null);
+    const previewGate = installPreviewGate(previewURL ? preview : null, previewURL !== null && acknowledgedFor === previewURL);
+
     const willInstall = selectedPkg
         ? [selectedPkg]
         : service.packages && service.packages.length > 0
@@ -2832,8 +2817,8 @@ function InstallServiceDialog({
                         <Button variant="secondary" onClick={onCancel} disabled={busy || repoBusy}>{t('common.cancel')}</Button>
                         <Button
                             variant="primary"
-                            onClick={() => onConfirm(selectedPkg || undefined)}
-                            disabled={busy || repoBusy || !repoKnown || Boolean(repo?.required && (repo.error_code || !repo.enabled))}
+                            onClick={() => onConfirm(selectedPkg || undefined, previewGate.confirmed)}
+                            disabled={busy || repoBusy || !repoKnown || previewGate.hold || Boolean(repo?.required && (repo.error_code || !repo.enabled))}
                             icon={DownloadCloud}
                         >
                             {busy ? t('services.installing') : t('services.install')}
@@ -2866,6 +2851,15 @@ function InstallServiceDialog({
                     </div>
                     {service.id === 'php-fpm' && (
                         <p className="mt-2 text-xs text-fg-subtle">{t('services.phpVersionNote')}</p>
+                    )}
+                    {previewURL && (
+                        <InstallPreviewNotes
+                            handle={preview}
+                            acknowledged={acknowledgedFor === previewURL}
+                            onAcknowledge={(value) => setAcknowledgedFor(value ? previewURL : null)}
+                            componentLabel={(id) => componentName(id, t)}
+                            avoidable={Boolean(selectedPkg)}
+                        />
                     )}
                 </div>
 

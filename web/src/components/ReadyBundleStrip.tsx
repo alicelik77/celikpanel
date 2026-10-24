@@ -28,6 +28,18 @@ import { componentIcon } from '../lib/componentIcons';
 import { COMPONENT_STATE_KEYS, componentStateWord } from '../lib/serviceStatus';
 import { componentVersionText } from '../lib/packageVersion';
 import type { InstallOperationRequest } from './ComponentOperation';
+import { useRemote } from '../lib/remote';
+import { decodeCandidateVersion, decodeRepoInfo } from '../lib/componentRepo';
+import {
+    DISTRIBUTION_PHP_TOOLS,
+    decodeInstallPreview,
+    installPreviewURL,
+    phpPastSecuritySupport,
+    shortCandidate,
+    versionOfPackage,
+    type InstallStep,
+} from '../lib/installPreview';
+import { InstallPreviewNotes, installPreviewGate } from './InstallPreviewNotes';
 
 // A component as the rows have it: the installed bundle's dialogue says each
 // part's state and version from these same fields (alpha.101).
@@ -62,6 +74,8 @@ export type BundleStop = 'failed' | 'foreign' | 'gated' | 'refused';
 export interface BundleRun {
     bundleId: string;
     steps: string[];
+    /** alpha.105: the versions, the tool's PHP and the confirmations chosen in the dialogue. */
+    choices?: BundleChoices;
     index: number;
     phase: 'starting' | 'running' | 'stopped';
     stop?: BundleStop;
@@ -139,9 +153,17 @@ export function useBundleSequence(
         baselineRef.current = snapshotRef.current;
         seenRef.current = null;
         const componentId = current.steps[index];
+        const choices = current.choices;
+        const pkg = choices?.packages[componentId] ?? '';
         const started = await tracker.startInstall({
             serviceId: componentId,
             name: label(current.bundleId, componentId, index, current.steps.length),
+            ...(pkg ? { package: pkg } : {}),
+            ...(choices?.phpVersion && DISTRIBUTION_PHP_TOOLS.includes(componentId) ? { phpVersion: choices.phpVersion } : {}),
+            // alpha.105: the server checks what each install brings against
+            // what the owner confirmed, right before it runs.
+            checkInstalls: true,
+            confirmInstalls: choices?.confirmed ?? [],
         });
         if (!started) {
             stop(at, 'refused');
@@ -150,13 +172,13 @@ export function useBundleSequence(
         setRun((previous) => (previous && previous.bundleId === current.bundleId && previous.phase === 'starting' ? { ...previous, phase: 'running' } : previous));
     };
 
-    const begin = (bundle: ReadyBundle) => {
+    const begin = (bundle: ReadyBundle, choices?: BundleChoices) => {
         if ((run !== null && run.phase !== 'stopped') || tracker.locked) return;
         const installed = installedNow();
         const steps = bundle.missing_components.filter((id) => !installed.has(id));
         if (steps.length === 0) return;
         sentRef.current = '';
-        void send({ bundleId: bundle.id, steps, index: 0, phase: 'starting' }, 0);
+        void send({ bundleId: bundle.id, steps, index: 0, phase: 'starting', ...(choices ? { choices } : {}) }, 0);
     };
 
     useEffect(() => {
@@ -625,8 +647,111 @@ export function BundleInstalledDialog({
 // The confirmation of a database or web bundle: what it installs, what is
 // already there, what is not needed, how it runs and how it resumes. Mail
 // bundles keep their own dialogue.
-// Bir veritabanı ya da web paketinin onayı: ne kurar, ne zaten var, ne
-// gerekmiyor, nasıl sürer.
+// alpha.105 (D-034 amendment, owner's words: recommend, warn, never impose):
+// each component it installs says the version that will come, marked when it
+// is the distribution's own (recommended), with Change listing the versions
+// that component's own install offers (its managed repository); a part
+// already installed says its version and is not changed. The package
+// manager's simulation of the whole bundle says what else would be
+// installed, and notable packages need the owner's confirmation; a chosen
+// PHP version that cannot serve its tool is refused, other combinations are
+// a plain warning.
+// Bir veritabanı ya da web paketinin onayı; her bileşen gelecek sürümü
+// söyler, Değiştir onun kendi sürüm listesini sunar.
+export interface BundleChoices {
+    /** A version package per component ('' or absent: the distribution's). */
+    packages: Record<string, string>;
+    /** The PHP version the bundle's PHP tool runs on, when one was chosen. */
+    phpVersion?: string;
+    /** The notable packages the owner confirmed. */
+    confirmed: string[];
+}
+
+interface VersionOption { pkg: string; version: string; recommended: boolean }
+
+// One part the bundle installs: its version and, when its own install offers
+// more than one, Change.
+// Paketin kurduğu bir parça: sürümü ve birden çoksa Değiştir.
+function BundleVersionPart({
+    id,
+    chosen,
+    open,
+    onToggle,
+    onChoose,
+    name,
+}: {
+    id: string;
+    chosen: string;
+    open: boolean;
+    onToggle: () => void;
+    onChoose: (pkg: string) => void;
+    name: string;
+}) {
+    const { t } = useI18n();
+    const candidate = useRemote(`/api/v1/service/candidate?id=${encodeURIComponent(id)}`, decodeCandidateVersion);
+    const repoRead = useRemote(`/api/v1/repo?service_id=${encodeURIComponent(id)}`, decodeRepoInfo);
+    const repo = repoRead.remote.state === 'known' && repoRead.remote.value.available && repoRead.remote.value.enabled ? repoRead.remote.value : null;
+    const defaultVersion = candidate.remote.state === 'known' ? shortCandidate(candidate.remote.value) : '';
+    const options: VersionOption[] = [
+        { pkg: '', version: defaultVersion, recommended: true },
+        ...(repo?.packages ?? []).map((pkg) => ({ pkg, version: versionOfPackage(pkg), recommended: false })),
+    ];
+    const repoLabel = repo?.name || t('services.bundles.version.vendorRepo');
+    const said = chosen
+        ? t('services.bundles.version.vendor', { version: versionOfPackage(chosen), repo: repoLabel })
+        : candidate.remote.state === 'loading'
+            ? '…'
+            : defaultVersion
+                ? t('services.bundles.version.recommended', { version: defaultVersion })
+                : t('services.bundles.version.recommendedUnknown');
+    const legend = `bundle-version-${id}`;
+    return (
+        <>
+            <span className='ml-auto flex min-w-0 flex-wrap items-center justify-end gap-x-2 gap-y-0.5 text-right text-xs text-fg-muted'>
+                <span data-bundle-version={chosen || 'default'}><KeepWords text={said} /></span>
+                {options.length > 1 && (
+                    <button
+                        type='button'
+                        className='rounded text-primary underline decoration-dotted underline-offset-2 hover:text-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary max-sm:min-h-11'
+                        aria-expanded={open}
+                        aria-controls={legend}
+                        onClick={onToggle}
+                        data-bundle-version-change={id}
+                    >
+                        {t('services.bundles.version.change')}
+                    </button>
+                )}
+            </span>
+            {open && options.length > 1 && (
+                <fieldset id={legend} className='basis-full pl-7 pt-1.5' data-bundle-version-options={id}>
+                    <legend className='sr-only'>{t('services.bundles.version.legend', { name })}</legend>
+                    <div className='flex flex-col gap-1'>
+                        {options.map((option) => (
+                            <label key={option.pkg || 'default'} className='flex cursor-pointer items-center gap-2 text-sm text-fg max-sm:min-h-11'>
+                                <input
+                                    type='radio'
+                                    name={legend}
+                                    checked={chosen === option.pkg}
+                                    onChange={() => onChoose(option.pkg)}
+                                    className='h-4 w-4 accent-primary'
+                                    data-bundle-version-option={option.pkg || 'default'}
+                                />
+                                <span>
+                                    {option.recommended
+                                        ? (option.version
+                                            ? t('services.bundles.version.optionDefault', { version: option.version })
+                                            : t('services.bundles.version.optionDefaultUnknown'))
+                                        : t('services.bundles.version.optionVendor', { version: option.version, repo: repoLabel })}
+                                </span>
+                            </label>
+                        ))}
+                    </div>
+                </fieldset>
+            )}
+        </>
+    );
+}
+
 export function BundleInstallDialog({
     bundle,
     services,
@@ -639,13 +764,47 @@ export function BundleInstallDialog({
     /** Opened from a sequence of this page that stopped. */
     continuing?: boolean;
     onCancel: () => void;
-    onConfirm: () => void;
+    onConfirm: (choices: BundleChoices) => void;
 }) {
     const { t } = useI18n();
     const nameOf = (id: string) => componentName(services.find((service) => service.id === id) ?? id, t);
     const installed = new Set(services.filter((service) => service.is_installed === true).map((service) => service.id));
     const toInstall = bundle.missing_components.filter((id) => !installed.has(id));
+    const [packages, setPackages] = useState<Record<string, string>>({});
+    const [openPart, setOpenPart] = useState<string | null>(null);
+    const [acknowledgedFor, setAcknowledgedFor] = useState<string | null>(null);
+    // The PHP version the bundle's tool will run on: the one chosen for
+    // PHP-FPM when the bundle installs it; otherwise the tool takes the
+    // distribution's default (alpha.104), changed later in its Manage window.
+    const phpChosen = toInstall.includes('php-fpm') && packages['php-fpm'] ? versionOfPackage(packages['php-fpm']) : '';
+    const tools = toInstall.filter((id) => DISTRIBUTION_PHP_TOOLS.includes(id));
+    const steps: InstallStep[] = toInstall.map((id) => ({
+        id,
+        ...(packages[id] ? { package: packages[id] } : {}),
+        ...(phpChosen && DISTRIBUTION_PHP_TOOLS.includes(id) ? { phpVersion: phpChosen } : {}),
+    }));
+    const previewURL = installPreviewURL(steps);
+    const preview = useRemote(previewURL, decodeInstallPreview);
+    const acknowledged = previewURL !== null && acknowledgedFor === previewURL;
+    const gate = installPreviewGate(previewURL ? preview : null, acknowledged);
+    const previewValue = preview.remote.state === 'known' ? preview.remote.value : null;
+    const refusals = previewURL ? previewValue?.refusals ?? [] : [];
+    // The distribution's PHP, to warn when a tool built for it is put on
+    // another one (the same read the PHP-FPM part makes).
+    const phpDefault = useRemote(phpChosen ? '/api/v1/service/candidate?id=php-fpm' : null, decodeCandidateVersion);
+    const phpDefaultVersion = phpChosen && phpDefault.remote.state === 'known' ? shortCandidate(phpDefault.remote.value) : '';
+    const warnings: string[] = [];
+    if (phpChosen) {
+        for (const tool of tools) {
+            if (phpDefaultVersion && phpDefaultVersion !== phpChosen) {
+                warnings.push(t('services.bundles.warn.distroTool', { tool: nameOf(tool), default: phpDefaultVersion, version: phpChosen }));
+            }
+        }
+        if (phpPastSecuritySupport(phpChosen)) warnings.push(t('services.bundles.warn.eol', { version: phpChosen }));
+    }
     const title: TranslationKey = continuing ? 'services.bundles.dialog.titleContinue' : 'services.bundles.dialog.title';
+    const choose = (id: string, pkg: string) => setPackages((previous) => ({ ...previous, [id]: pkg }));
+    const avoidable = Object.values(packages).some(Boolean);
     return (
         <Dialog
             id='bundle-install-confirm'
@@ -656,7 +815,16 @@ export function BundleInstallDialog({
             actions={
                 <>
                     <Button variant='secondary' autoFocus onClick={onCancel}>{t('common.cancel')}</Button>
-                    <Button variant='primary' icon={DownloadCloud} disabled={toInstall.length === 0} onClick={onConfirm}>
+                    <Button
+                        variant='primary'
+                        icon={DownloadCloud}
+                        disabled={toInstall.length === 0 || gate.hold || refusals.length > 0}
+                        onClick={() => onConfirm({
+                            packages: { ...packages },
+                            ...(phpChosen && tools.length > 0 ? { phpVersion: phpChosen } : {}),
+                            confirmed: gate.confirmed,
+                        })}
+                    >
                         {t(continuing ? 'services.bundles.dialog.confirmContinue' : 'services.bundles.dialog.confirm', { n: toInstall.length })}
                     </Button>
                 </>
@@ -667,22 +835,63 @@ export function BundleInstallDialog({
                     const service = services.find((candidate) => candidate.id === id);
                     const Icon = componentIcon(id, service?.category ?? bundle.category);
                     const state = toInstall.includes(id) ? 'install' : installed.has(id) ? 'installed' : 'notNeeded';
+                    const version = state === 'installed' ? componentVersionText(service) : null;
+                    const installedVersion = version ? (version.kind === 'several' ? t('services.versionSeveral') : version.text) : '';
                     return (
-                        <li key={id} className={`flex items-center gap-3 px-3 py-2 text-sm ${index > 0 ? 'border-t border-border' : ''}`} data-bundle-part={state}>
+                        <li key={id} className={`flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm ${index > 0 ? 'border-t border-border' : ''}`} data-bundle-part={state}>
                             <Icon className={`h-4 w-4 shrink-0 ${state === 'install' ? 'text-fg-muted' : 'text-fg-subtle'}`} aria-hidden='true' />
-                            <span className={state === 'install' ? 'font-medium text-fg' : 'text-fg-muted'}>{nameOf(id)}</span>
-                            <span className='ml-auto text-xs text-fg-subtle'>
-                                {state === 'install'
-                                    ? t('services.bundles.dialog.willInstall')
-                                    : state === 'installed'
-                                        ? t('services.bundles.dialog.alreadyInstalled')
-                                        : t('services.bundles.dialog.notNeeded')}
+                            <span className={state === 'install' ? 'font-medium text-fg' : 'text-fg-muted'}>
+                                {nameOf(id)}
+                                {state === 'install' && phpChosen && DISTRIBUTION_PHP_TOOLS.includes(id) && (
+                                    <span className='block text-xs font-normal text-fg-muted' data-bundle-tool-php={phpChosen}>{t('services.bundles.version.runsOn', { version: phpChosen })}</span>
+                                )}
                             </span>
+                            {state === 'install' ? (
+                                <BundleVersionPart
+                                    id={id}
+                                    name={nameOf(id)}
+                                    chosen={packages[id] ?? ''}
+                                    open={openPart === id}
+                                    onToggle={() => setOpenPart(openPart === id ? null : id)}
+                                    onChoose={(pkg) => choose(id, pkg)}
+                                />
+                            ) : (
+                                <span className='ml-auto text-xs text-fg-subtle' data-bundle-installed-version={installedVersion || undefined}>
+                                    {state === 'installed'
+                                        ? (installedVersion
+                                            ? t('services.bundles.version.installed', { version: installedVersion })
+                                            : t('services.bundles.dialog.alreadyInstalled'))
+                                        : t('services.bundles.dialog.notNeeded')}
+                                </span>
+                            )}
                         </li>
                     );
                 })}
             </ol>
-            <p className='text-sm leading-6 text-fg-muted'>{t('services.bundles.dialog.howItRuns')}</p>
+            {refusals.map((refusal) => (
+                <p key={`${refusal.id}:${refusal.code}`} role='alert' className='mb-2 text-sm leading-6 text-danger' data-bundle-refusal={refusal.code}>
+                    <KeepWords text={t(`services.bundles.refusal.${refusal.code === 'php_extensions_unavailable' || refusal.code === 'php_version_unsupported' ? refusal.code : 'php_version_unavailable'}` as TranslationKey, {
+                        tool: nameOf(refusal.id),
+                        version: refusal.version ?? '',
+                        packages: refusal.packages.join(', '),
+                    })} />
+                </p>
+            ))}
+            {warnings.map((warning) => (
+                <p key={warning} className='mb-2 rounded-lg border border-warning-mark/50 bg-warning-mark/20 px-3 py-2 text-sm leading-6 text-fg' data-bundle-warning=''>
+                    <KeepWords text={warning} />
+                </p>
+            ))}
+            {previewURL && (
+                <InstallPreviewNotes
+                    handle={preview}
+                    acknowledged={acknowledged}
+                    onAcknowledge={(value) => setAcknowledgedFor(value ? previewURL : null)}
+                    componentLabel={nameOf}
+                    avoidable={avoidable}
+                />
+            )}
+            <p className='mt-3 text-sm leading-6 text-fg-muted'>{t('services.bundles.dialog.howItRuns')}</p>
         </Dialog>
     );
 }
