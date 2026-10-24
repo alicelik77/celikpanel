@@ -29,8 +29,10 @@ const stub = dataModule(`
   export const useNavigate = () => () => true;
 `);
 const shared = sharedLayer(stub);
+const lifeLineURL = shared.compile('components/LifeLine.tsx');
 const { RepoCard, groupedFingerprint, repoDate } = await import(shared.compile('components/RepoCard.tsx', {
   '/lib/componentName': shared.compile('lib/componentName.ts'),
+  '/LifeLine': lifeLineURL,
 }));
 const preview = await import(installPreviewLibURL);
 const { installPreviewGate } = await import(shared.compile('components/InstallPreviewNotes.tsx'));
@@ -118,8 +120,8 @@ test('an expiring key, an expired list and apt’s errors are said with what to 
     apt_errors_at: '2026-10-24T09:00:00Z',
   })]);
   try {
-    assert.equal(attr('data-repo-line').filter((node) => node.props['data-repo-line'] === 'key-expiring').length, 1);
-    assert.equal(attr('data-repo-line').filter((node) => node.props['data-repo-line'] === 'lists-expired').length, 1);
+    assert.equal(attr('data-life-line').filter((node) => node.props['data-life-line'] === 'key-expiring').length, 1);
+    assert.equal(attr('data-life-line').filter((node) => node.props['data-life-line'] === 'lists-expired').length, 1);
     assert.ok(text().includes('is not signed'));
     assert.equal(attr('data-repo-apt-errors').length, 1);
   } finally { await unmount(); }

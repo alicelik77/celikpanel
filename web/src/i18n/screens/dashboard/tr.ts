@@ -256,6 +256,8 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'dashboard.audit.action.mail.profile.install.recovered.failed': 'yeniden başlatmadan sonra {target} profilinin kurulumunu tamamlayamadı',
     'dashboard.audit.action.panel.certificate': '{target} için panel sertifikasını kurdu',
     'dashboard.audit.action.panel.certificate.failed': '{target} için panel sertifikasını kuramadı',
+    'dashboard.audit.action.security.update_origins': 'üretici depolarını işletim sisteminin otomatik güncellemelerine ekledi ({target})',
+    'dashboard.audit.action.security.update_origins.failed': 'üretici depolarını işletim sisteminin otomatik güncellemelerine ekleyemedi',
     'dashboard.audit.action.repo.confine': '{target} paket deposunu kendi bileşeniyle sınırladı',
     'dashboard.audit.action.repo.confine.failed': '{target} paket deposunu kendi bileşeniyle sınırlayamadı',
     'dashboard.audit.action.repo.disable': '{target} paket deposunu kapattı',

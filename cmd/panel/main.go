@@ -1340,6 +1340,9 @@ func main() {
 	http.HandleFunc("/api/v1/hosting/capabilities", panel.handleHostingCapabilities)
 	http.HandleFunc("/api/v1/panel/certificate", panel.handlePanelCertificate)
 	http.HandleFunc(securityAuditPath, panel.handleSecurityAudit)
+	// alpha.107 (D-038 §4): the operating system's own security updates.
+	http.HandleFunc(osUpdatesPath, panel.handleOSUpdates)
+	http.HandleFunc(osUpdatesOriginsPath, panel.handleOSUpdatesOrigins)
 	http.HandleFunc("/dbtool/", panel.handleDBToolProxy)
 	http.HandleFunc("/webmail/", panel.handleWebmailProxy)
 

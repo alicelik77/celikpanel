@@ -39,6 +39,7 @@ const (
 	serviceMutationStepEnableRepo               serviceMutationStepMethod = "Agent.EnableRepo"
 	serviceMutationStepDisableRepo              serviceMutationStepMethod = "Agent.DisableRepo"
 	serviceMutationStepConfineRepo              serviceMutationStepMethod = "Agent.ConfineRepoV1"
+	serviceMutationStepWriteVendorOrigins       serviceMutationStepMethod = "Agent.WriteVendorUpdateOriginsV1"
 	serviceMutationStepInstallNodeVersion       serviceMutationStepMethod = "Agent.InstallNodeVersion"
 	serviceMutationStepRemoveNodeVersion        serviceMutationStepMethod = "Agent.RemoveNodeVersion"
 	serviceMutationStepSetupVPN                 serviceMutationStepMethod = "Agent.SetupVPN"
@@ -210,6 +211,12 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 	case serviceMutationStepDisableRepo:
 		return claim.packageName == "" && claim.action == "disable" &&
 			serviceMutationJobMatches(job, "repo_disable", claim.target, "")
+
+	case serviceMutationStepWriteVendorOrigins:
+		// alpha.107: the owner confirmed the drop-in that adds the confined
+		// vendor repositories to the OS's automatic updates.
+		return claim.target == "unattended-upgrades" && claim.packageName == "" && claim.action == "origins" &&
+			serviceMutationJobMatches(job, "os_updates_origins", "unattended-upgrades", "")
 
 	case serviceMutationStepConfineRepo:
 		// alpha.107: an already enabled repository is confined to its

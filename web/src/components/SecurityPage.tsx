@@ -6,6 +6,7 @@ import { PageHeader } from './PageHeader';
 import { RemoteGate } from './ui';
 import { FirewallBar } from './FirewallPanel';
 import { SecurityAuditCard } from './SecurityAuditCard';
+import { SecurityUpdatesCard } from './SecurityUpdatesCard';
 import { fetchHostMutationReadiness, type HostMutationReadiness } from '../lib/panelUpdateAdmission';
 import { useManagedServices } from '../lib/managedServices';
 import { isServiceRunning } from '../lib/serviceStatus';
@@ -61,6 +62,8 @@ export function SecurityPage() {
                         refreshKey={0}
                     />
                 </div>
+                {/* alpha.107 (D-038 §4): the operating system's own security updates. */}
+                <SecurityUpdatesCard />
                 <Fail2banStatus />
                 <div data-security-section="audit">
                     <SecurityAuditCard />

@@ -13,7 +13,8 @@
 // ve hataları, "varsayılan sürüm" paketleri. Salt okunur; yalnız sınırlanmamış
 // depo için Sınırla.
 import { useState } from 'react';
-import { AlertTriangle, CheckCircle2, Info, Package, XCircle } from 'lucide-react';
+import { Package } from 'lucide-react';
+import { LifeLine, lifeDate, type Tone } from './LifeLine';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Button, KeepWords, RemoteGate } from './ui';
@@ -21,40 +22,15 @@ import { useRemote } from '../lib/remote';
 import { decodeRepoInfo, type RepoInfo } from '../lib/componentRepo';
 import { componentName } from '../lib/componentName';
 
-type Tone = 'ok' | 'warn' | 'bad' | 'info';
-
-const TONE_ICON = { ok: CheckCircle2, warn: AlertTriangle, bad: XCircle, info: Info } as const;
-const TONE_CLASS: Record<Tone, string> = {
-    ok: 'text-success',
-    warn: 'text-warning',
-    bad: 'text-danger',
-    info: 'text-fg-subtle',
-};
-
-// A time the server sent (RFC 3339, or SQLite's "YYYY-MM-DD HH:MM:SS" in UTC),
-// said as a date; what cannot be read is said as it came.
-export function repoDate(value: string | undefined, locale: string): string {
-    if (!value) return '';
-    const iso = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value) ? value.replace(' ', 'T') + 'Z' : value;
-    const date = new Date(iso);
-    if (Number.isNaN(date.getTime())) return value;
-    return date.toLocaleDateString(locale, { year: 'numeric', month: 'long', day: 'numeric' });
-}
+// A time the server sent, said as a date (the shared lifecycle reading).
+export const repoDate = (value: string | undefined, locale: string): string => lifeDate(value, locale);
 
 // "15058500A0235D97F5D1…" → "1505 8500 A023 …", as fingerprints are read aloud.
 export function groupedFingerprint(fingerprint: string): string {
     return (fingerprint.toUpperCase().match(/.{1,4}/g) ?? []).join(' ');
 }
 
-function Line({ tone, children, attr }: { tone: Tone; children: React.ReactNode; attr?: string }) {
-    const Icon = TONE_ICON[tone];
-    return (
-        <p className="flex items-start gap-2 text-sm leading-6 text-fg" data-repo-line={attr}>
-            <Icon className={`mt-1 h-4 w-4 shrink-0 ${TONE_CLASS[tone]}`} aria-hidden="true" />
-            <span className="min-w-0 break-words">{children}</span>
-        </p>
-    );
-}
+const Line = LifeLine;
 
 export function RepoCard({ serviceId }: { serviceId: string }) {
     const url = `/api/v1/repo?service_id=${encodeURIComponent(serviceId)}`;
