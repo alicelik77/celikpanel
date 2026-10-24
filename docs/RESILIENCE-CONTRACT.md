@@ -7789,15 +7789,18 @@ restarts, support dates, operating-system release); a refused install names the
 packages. Invariant 4 (no silent move): versions, application accounts and
 webmail move only on request, proved, and put back otherwise.
 
-- **Agent changes.** Vendor repositories are confined before their source is
-  published (and, for those enabled before, when the Panel starts); a plain
+- **Agent changes.** Vendor repositories are confined only by the owner's
+  confirmed action from the repository card (the plan, its SHA-256 and the
+  `apt-get -s upgrade` difference shown first; a file the owner deleted is never
+  rewritten; review of 2026-10-24); a plain
   install with a vendor repository takes the distribution's exact default
   package; the install guard classifies upgrades and refuses a vendor
   replacement of a distribution package; PostgreSQL and MariaDB are removed, not
   purged; new read-only RPCs for updates, restarts, Node.js patches and the
   operating-system facts; new confirmed mutations, each in its own service
   mutation job (repository confinement, the updates drop-in, the webmail update,
-  an application's file owner move).
+  an application's file owner move, which stops the application and changes
+  owners only through its directory opened as a root).
 - **Schema 44 to 45.** Migration 045 adds `audit_logs.details` (JSON, at most
   8 KiB) and `sites.app_run_as` (`site`, `web` or NULL), both nullable and
   additive. An alpha.106 Panel refuses ledger 45, so recovery to it is the
@@ -7812,7 +7815,9 @@ webmail move only on request, proved, and put back otherwise.
   pins and web tests (counts in the release notes); a browser look (EN and TR,
   1440 and 390, light) on a mock; one real-system run on a disposable Debian 13
   virtual machine
-  ([deploy/e2e/d038/alpha107-debian13-20261024](../deploy/e2e/d038/alpha107-debian13-20261024/README.md)).
-  Not measured on an installed server; pacman and DNF paths by component tests
+  ([deploy/e2e/d038/alpha107-debian13-20261024](../deploy/e2e/d038/alpha107-debian13-20261024/README.md)),
+  plus a second short run after the review for the owner's confinement (archive
+  SHA-256 `6a360711…24f72f7`). Not measured on an installed server; a Panel
+  restart was not part of the VM runs; pacman and DNF paths by component tests
   only. **No P0 item is closed or advanced**; P0.1 to P0.5 stay partial and every
   open acceptance item stays open.

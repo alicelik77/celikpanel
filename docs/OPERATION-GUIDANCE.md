@@ -10286,16 +10286,26 @@ installed server). **Who acts:** the administrator; nothing here starts by itsel
 - **Security → Security updates.** Says whether the operating system's automatic
   updates are on, when they last ran and what waits. **Frankfurt today:** PHP from
   the Sury repository is not installed by the automatic updates until the
-  administrator presses **Add to the automatic updates…** and confirms the one
+  administrator first confines Sury on the PHP-FPM page (**Confine…**, below; an
+  unconfined repository is never added, because the automatic updates would then
+  replace Debian's packages with its builds), then presses **Add to the automatic
+  updates…** and confirms the one
   file shown (`/etc/apt/apt.conf.d/52celikpanel-vendor-origins`); nothing else
   changes and no service restarts. To undo it, delete that file. Off is a warning
   with the command the administrator runs; CelikPanel never switches it off.
 - **The repository card** (PHP-FPM and PostgreSQL pages) says whether the vendor
   repository is confined to its component, who enabled it and when, its key's
-  expiry and what apt reported. Repositories enabled before this release are
-  confined when the Panel starts after the update; an owner's own rule is kept and
-  named. A moving default package installed earlier (`php-fpm`, `postgresql` from
-  the vendor) is named with the owner's optional command; nothing is removed.
+  expiry and what apt reported. **Confining is the administrator's choice:**
+  **Confine…** shows the exact rule file and its SHA-256, the packages that keep
+  following the repository, and what `apt upgrade` would do differently; only
+  that text is written after confirming. **Frankfurt:** the packages installed
+  from Sury (PHP 8.5, 8.6, their `php-common`) keep getting Sury's updates; what
+  changes is that a later `apt upgrade` no longer replaces Debian's own packages
+  (for example Debian's PHP 8.4) with Sury's builds — the dialog lists exactly
+  which. Delete the file to undo; the card then says "removed by the owner" and
+  never writes it again by itself. An owner's own rule is kept and named. A
+  moving default package installed earlier (`php-fpm`, `postgresql` from the
+  vendor) is named with the owner's optional command; nothing is removed.
 - **Removing PostgreSQL or MariaDB keeps the data.** Before this release a removal
   purged the engine's packages: **do not remove PostgreSQL or MariaDB on a server
   that has not been updated to this release.** From this release the removal says

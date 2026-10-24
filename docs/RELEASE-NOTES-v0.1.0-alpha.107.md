@@ -30,17 +30,22 @@ restart. This release closes those gaps. What the owner sees is in the
   it on; CelikPanel never switches it off.
 - **Add to the automatic updates…** writes one file,
   `/etc/apt/apt.conf.d/52celikpanel-vendor-origins`, after you confirm its text;
-  your own files are never edited. Delete it to undo.
+  your own files are never edited. Delete it to undo. Only a repository you
+  confined (below) can be added: an unconfined one would let the automatic
+  updates replace the distribution's packages.
 
 ## Vendor repositories stay in their lane
 
-- Enabling Sury PHP or PGDG writes an apt preferences file first: the repository
-  provides only what the distribution does not ship; packages already installed
-  from it keep following it. Repositories enabled before this release are confined
-  when the Panel starts after the update; an owner's own rule is kept and named.
+- **Confine…** on the repository card (PHP-FPM and PostgreSQL pages) is your
+  action: it first shows the exact apt rule file and its SHA-256, the packages
+  that keep following the repository, and what `apt upgrade` would do
+  differently; only that text is written after you confirm. Nothing confines a
+  repository by itself. Delete the file to undo; the card then says so and never
+  writes it again by itself. An owner's own rule is kept and named.
 - An install that would replace a distribution package with a vendor version is
-  refused by name. A version only the vendor ships takes the vendor's shared
-  packages it needs (Sury's `php-common`, PGDG's `libpq5`), named in the install. An install that would upgrade a package you did not ask for
+  refused by name. A version only the vendor ships may need the vendor's
+  `php-common` (Sury) or `libpq5` (PGDG): the install names it with its
+  versions and waits for your confirmation. An install that would upgrade a package you did not ask for
   names it and waits for your confirmation (for example postgresql-17 needs
   Debian's perl-base security update).
 - With a vendor repository, a plain install takes the exact version the

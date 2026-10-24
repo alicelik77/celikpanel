@@ -200,8 +200,10 @@ server). Per point, what now exists and what remains:
 6. **Every workload in its own space.** A new Node.js application runs under its
    site's own user (schema 45, `sites.app_run_as`). An application made before
    keeps the shared web user and says so, with an explicit "Run under the site's
-   own user" that changes the files' owner inside the application's directory,
-   rewrites the unit, requires an answer and otherwise puts both back. Shared
+   own user" that stops the application, changes the files' owner inside its
+   directory only (through the directory opened as a root, never following a
+   link out of it, each path re-checked when changed), rewrites the unit,
+   requires an answer and otherwise puts both back. Shared
    isolation is said as a fact: webmail, phpMyAdmin and phpPgAdmin share
    PHP-FPM's default pool; all mailboxes live under one vmail user.
    *Remains:* those shared spaces are said, not separated.
@@ -243,15 +245,24 @@ server). Per point, what now exists and what remains:
     Node.js upstream end dates and, per supported distribution release, which
     version it ships and patches. A distribution version is patched as long as
     its release; a vendor or official version follows its upstream; ends soon is
-    90 days; unknown stays unknown. The hard-coded PHP threshold is gone.
-12. **Vendor repositories are confined.** Enabling Sury or PGDG writes
-    `/etc/apt/preferences.d/celikpanel-<id>.pref` before the source exists: the
-    origin provides only what the distribution does not ship, and the packages
-    installed from it keep following it. A version only the vendor ships takes
-    the vendor's shared packages it needs (Sury's `php-common`, PGDG's
-    `libpq5`), named in the install; they then follow the vendor. Repositories enabled before are
-    confined when the Panel starts after the update; an edited rule or the
-    owner's own rule is kept and named. The repository card says who enabled it
+    90 days; unknown stays unknown; a date is stored as precisely as its source
+    gives it (Ubuntu's are months). The hard-coded PHP threshold is gone.
+12. **Vendor repositories can be confined, by the owner.** Confinement is the
+    owner's action from the repository card, never automatic (not at enable,
+    not when the Panel starts; review of 2026-10-24): **Confine…** shows the
+    plan first — the exact `/etc/apt/preferences.d/celikpanel-<id>.pref` text
+    and its SHA-256, the installed packages that keep following the vendor, and
+    how `apt-get -s upgrade` differs with and without it — and only that text,
+    confirmed by its SHA-256, is written. The origin then provides only what the
+    distribution does not ship; every package whose installed version came from
+    the vendor keeps following it (the list is sticky while the package is
+    installed, so nothing from the vendor is left without its updates). A file
+    the owner deleted reads "removed by the owner" and is never written again
+    unless asked; an edited file, or any owner rule naming the repository (by
+    origin host or by `o=`, `l=`, `n=`, `a=`, `c=`), is kept and named. A version
+    only the vendor ships (no distribution candidate) takes the vendor's shared
+    package it needs (Sury's `php-common`, PGDG's `libpq5`) only as a named,
+    confirmed item with its versions; otherwise never. The repository card says who enabled it
     and when, the signing key's fingerprint and expiry (warning at 60 days),
     the list's validity and apt's errors and warnings from the Agent's list
     refreshes.
@@ -290,8 +301,9 @@ confinement files, the drop-in and the Agent's records are additive files; the
 owner removes them with `rm` and `apt-get update`, and CelikPanel keeps an edited
 one as it is.
 
-**Evidence.** Component and mounted tests for every point above; one
-real-system run on a disposable Debian 13 virtual machine
+**Evidence.** Component and mounted tests for every point above; real-system
+runs on disposable Debian 13 virtual machines, the second after the review for
+the owner's confinement
 ([deploy/e2e/d038/alpha107-debian13-20261024](../deploy/e2e/d038/alpha107-debian13-20261024/README.md)).
 Not measured on an installed server. This amendment closes no P0 item.
 
