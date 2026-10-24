@@ -2,8 +2,7 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.106.tr.md)
 
-This is the candidate that follows v0.1.0-alpha.105. **It is not published, and
-nothing from it is on an installed server.** Written on 2026-10-24 on the branch
+This is the release that follows v0.1.0-alpha.105. **It was published on 2026-10-24 (UTC): release commit `a8f90616f`, GitHub pre-release at 12:36:00Z, download portal at about 12:40Z after the assets and signature were verified and the public check passed (26/26). Nothing from it is on an installed server yet; only the owner updates installed panels.** Written on 2026-10-24 on the branch
 `fix/alpha106-clear-removal`, from `main` after the publication record of
 alpha.105 (the alpha.105 release commit is
 `0a51195cd294be5f009f2a2b72e1dd372094e524`).
