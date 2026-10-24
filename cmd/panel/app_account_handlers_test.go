@@ -102,7 +102,7 @@ func TestAnApplicationThatDoesNotAnswerIsPutBack(t *testing.T) {
 	if recorder.Code != http.StatusConflict || !strings.Contains(recorder.Body.String(), `"rolled_back":true`) {
 		t.Fatalf("put back: %d %s", recorder.Code, recorder.Body.String())
 	}
-	if got := strings.Join(*steps, " | "); got != "move files www-data->app_example | unit as app_example | prove | unit as www-data | restore files" {
+	if got := strings.Join(*steps, " | "); got != "move files www-data->app_example | unit as app_example | prove | restore files | unit as www-data" {
 		t.Fatalf("steps = %s", got)
 	}
 	var runAs any

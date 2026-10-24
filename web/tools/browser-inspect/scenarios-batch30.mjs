@@ -210,6 +210,31 @@ export default function batch30(scenarios, { base, locale, theme, out, viewport,
         await closePage(page);
     };
 
+    // After the review: Confine… shows the plan first (390 px is the look).
+    scenarios.y30confine = async () => {
+        await reset(); await clean(); await answers();
+        await ctl({ override: {
+            '/api/v1/repo': { status: 200, body: { ...REPO, confinement: { state: 'not_written' } }, method: 'GET' },
+            '/api/v1/repo/confine-preview': { status: 200, method: 'GET', body: { state: 'read', preview: {
+                state: 'not_written', pin_path: '/etc/apt/preferences.d/celikpanel-sury.pref',
+                text: 'Explanation: Written by CelikPanel (D-038). The Sury PHP (packages.sury.org) repository was enabled for one component.\nPackage: *\nPin: origin "packages.sury.org"\nPin-Priority: 100\n\nPackage: php-common php8.5-cli php8.5-fpm\nPin: origin "packages.sury.org"\nPin-Priority: 500\n',
+                sha256: '43dea3995285527f79a2fdd1c28ca9fae6ddf26ba0d7d9a2fabdef09be777d13', kept: ['php-common', 'php8.5-cli', 'php8.5-fpm'],
+                changes: [{ package: 'php8.4-common', from: '8.4.27-1~deb13u1', before: '8.4.27-1+0~20261021.57+debian13~1.gbp7636b9', before_vendor: true }],
+                still_from_vendor: ['php8.5-cli', 'php8.5-fpm'], upgrades_now: 12, upgrades_confined: 11,
+            } } },
+        } });
+        const page = await newPage({});
+        await page.goto(`${base}/services/php-fpm`, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('main', { timeout: 20000 });
+        await quiet(page);
+        await waitFor(page, () => !!document.querySelector('[data-repo-confine]'), 10000).catch(() => {});
+        await click(page, '[data-repo-confine]');
+        await waitFor(page, () => !!document.querySelector('[data-repo-plan]'), 8000).catch(() => {});
+        await pause(400);
+        await snap(page, 'repo-confine-plan');
+        await closePage(page);
+    };
+
     scenarios.y30webmail = async () => {
         await reset(); await clean(); await answers();
         // Roundcube has no vendor repository: its card draws nothing.

@@ -7051,15 +7051,18 @@ tarihleri, işletim sistemi sürümü) bilinmeyen bilinmeyen kalır; reddedilen 
 paketleri adlandırır. İlke 4 (sessiz taşıma yok): sürümler, uygulama hesapları ve web
 postası yalnız istenince taşınır, kanıtlanır ve olmazsa geri konur.
 
-- **Agent değişiklikleri.** Üretici depoları, kaynakları yayımlanmadan önce (daha önce
-  açılmış olanlar ise Panel başlarken) sınırlanır; üretici deposu varken yalın bir
+- **Agent değişiklikleri.** Üretici depoları yalnız sahibin depo kartından onayladığı
+  eylemle sınırlanır (önce plan, SHA-256'sı ve `apt-get -s upgrade` farkı gösterilir;
+  sahibin sildiği bir dosya asla yeniden yazılmaz; 24 Ekim 2026 incelemesi); üretici
+  deposu varken yalın bir
   kurulum dağıtımın tam varsayılan paketini alır; kurulum koruması yükseltmeleri
   ayırır ve bir dağıtım paketinin üreticiden gelen bir paketle değiştirilmesini
   reddeder; PostgreSQL ve MariaDB purge edilmez, kaldırılır; güncellemeler, yeniden
   başlatmalar, Node.js yamaları ve işletim sistemi bilgileri için yeni salt-okur
   RPC'ler; her biri kendi hizmet değişiklik işinde çalışan yeni, onaylı değişiklikler
   (depo sınırlaması, güncellemeler ek dosyası, web postası güncellemesi, bir
-  uygulamanın dosya sahibinin taşınması).
+  uygulamanın dosya sahibinin taşınması; bu taşıma uygulamayı durdurur ve sahipleri
+  yalnız kök olarak açılan dizini üzerinden değiştirir).
 - **Şema 44'ten 45'e.** Geçiş 045 `audit_logs.details` (JSON, en çok 8 KiB) ve
   `sites.app_run_as` (`site`, `web` ya da NULL) ekler; ikisi de boş bırakılabilir ve
   ekleyicidir. alpha.106 Panel'i 45 numaralı geçiş defterini reddeder; bu yüzden ona
@@ -7075,7 +7078,9 @@ postası yalnız istenince taşınır, kanıtlanır ve olmazsa geri konur.
   web testleri (sayılar sürüm notlarında); bir sahte sunucu üzerinde tarayıcı bakışı
   (EN ve TR, 1440 ve 390, açık); atılabilir bir Debian 13 sanal makinesinde bir
   gerçek sistem denemesi
-  ([deploy/e2e/d038/alpha107-debian13-20261024](../deploy/e2e/d038/alpha107-debian13-20261024/README.md)).
-  Kurulu bir sunucuda ölçülmedi; pacman ve DNF yolları yalnız bileşen testleriyle.
-  **Hiçbir P0 işi kapanmaz ya da ilerlemez**; P0.1–P0.5 kısmi kalır ve her açık
-  kabul işi açık kalır.
+  ([deploy/e2e/d038/alpha107-debian13-20261024](../deploy/e2e/d038/alpha107-debian13-20261024/README.md)),
+  ayrıca incelemeden sonra sahibin sınırlaması için ikinci, kısa bir deneme (arşiv
+  SHA-256 `6a360711…24f72f7`). Kurulu bir sunucuda ölçülmedi; Panel'in yeniden
+  başlatılması sanal makine denemelerinin parçası değildi; pacman ve DNF yolları
+  yalnız bileşen testleriyle. **Hiçbir P0 işi kapanmaz ya da ilerlemez**; P0.1–P0.5
+  kısmi kalır ve her açık kabul işi açık kalır.

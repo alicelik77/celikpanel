@@ -10252,16 +10252,26 @@ v0.1.0-alpha.107 adayı için kaynakta (yayımlanmadı; kurulu bir sunucuda hiç
 - **Güvenlik → Güvenlik güncellemeleri.** İşletim sisteminin otomatik
   güncellemelerinin açık olup olmadığını, en son ne zaman çalıştıklarını ve neyin
   beklediğini söyler. **Bugün Frankfurt'ta:** Sury deposundan gelen PHP'yi otomatik
-  güncellemeler, yönetici **Otomatik güncellemelere ekle…** düğmesine basıp
-  gösterilen tek dosyayı (`/etc/apt/apt.conf.d/52celikpanel-vendor-origins`)
+  güncellemeler, yönetici önce PHP-FPM sayfasında Sury'yi sınırlayıp (**Sınırla…**,
+  aşağıda; sınırlanmamış bir depo asla eklenmez, çünkü o zaman otomatik güncellemeler
+  Debian'ın paketlerini onun derlemeleriyle değiştirir) sonra **Otomatik
+  güncellemelere ekle…** düğmesine basıp gösterilen tek dosyayı (`/etc/apt/apt.conf.d/52celikpanel-vendor-origins`)
   onaylayana kadar kurmaz; başka hiçbir şey değişmez ve hiçbir servis yeniden
   başlamaz. Geri almak için o dosyayı silin. Kapalı olması, yöneticinin çalıştıracağı
   komutla bir uyarıdır; CelikPanel onu asla kapatmaz.
 - **Depo kartı** (PHP-FPM ve PostgreSQL sayfaları) üretici deposunun kendi bileşeniyle
   sınırlı olup olmadığını, onu kimin ne zaman açtığını, anahtarının bitiş tarihini ve
-  apt'nin ne bildirdiğini söyler. Bu sürümden önce açılmış depolar, güncellemeden
-  sonra Panel başlarken sınırlanır; sahibin kendi kuralı korunur ve adlandırılır.
-  Daha önce kurulmuş, varsayılanı izleyen bir paket (üreticiden `php-fpm`,
+  apt'nin ne bildirdiğini söyler. **Sınırlamak yöneticinin seçimidir:** **Sınırla…**
+  tam kural dosyasını ve SHA-256'sını, depoyu izlemeye devam eden paketleri ve
+  `apt upgrade`'in neyi farklı yapacağını gösterir; onaylayınca (**Bu kuralı yaz**)
+  yalnız o metin yazılır. **Frankfurt:** Sury'den kurulan paketler (PHP 8.5, 8.6 ve
+  onların `php-common`'ı) Sury'nin güncellemelerini almaya devam eder; değişen,
+  sonraki bir `apt upgrade`'in artık Debian'ın kendi paketlerini (örneğin Debian'ın
+  PHP 8.4'ünü) Sury'nin derlemeleriyle değiştirmemesidir — pencere hangileri olduğunu
+  tam olarak listeler. Geri almak için dosyayı silin; kart sonra dosyanın sunucuda
+  silindiğini söyler ("CelikPanel onu kendiliğinden yeniden yazmaz") ve onu asla
+  kendiliğinden yeniden yazmaz; kural yeniden istenirse **Yeniden sınırla…**. Sahibin
+  kendi kuralı korunur ve adlandırılır. Daha önce kurulmuş, varsayılanı izleyen bir paket (üreticiden `php-fpm`,
   `postgresql`) sahibin isteğe bağlı komutuyla adlandırılır; hiçbir şey kaldırılmaz.
 - **PostgreSQL ya da MariaDB'yi kaldırmak veriyi korur.** Bu sürümden önce bir
   kaldırma motorun paketlerini purge ediyordu: **bu sürüme güncellenmemiş bir

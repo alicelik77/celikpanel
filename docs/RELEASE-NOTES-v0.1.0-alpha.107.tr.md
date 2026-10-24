@@ -30,18 +30,23 @@ gördükleri [işlem yönlendirmesinde](OPERATION-GUIDANCE.tr.md).
   olması, açmak için gereken komutla bir uyarıdır; CelikPanel onu asla kapatmaz.
 - **Otomatik güncellemelere ekle…**, metnini onayladıktan sonra tek bir dosya yazar:
   `/etc/apt/apt.conf.d/52celikpanel-vendor-origins`; sizin dosyalarınız asla
-  düzenlenmez. Geri almak için onu silin.
+  düzenlenmez. Geri almak için onu silin. Yalnız sizin sınırladığınız bir depo
+  (aşağıda) eklenebilir: sınırlanmamış bir depo, otomatik güncellemelerin dağıtımın
+  paketlerini değiştirmesine yol açardı.
 
 ## Üretici depoları kendi alanlarında kalır
 
-- Sury PHP ya da PGDG'yi açmak önce bir apt tercih dosyası yazar: depo yalnız
-  dağıtımın sağlamadığını sağlar; ondan zaten kurulmuş paketler onu izlemeye devam
-  eder. Bu sürümden önce açılmış depolar, güncellemeden sonra Panel başlarken
-  sınırlanır; sahibin kendi kuralı korunur ve adlandırılır.
+- Depo kartındaki (PHP-FPM ve PostgreSQL sayfaları) **Sınırla…** sizin
+  eyleminizdir: önce tam apt kural dosyasını ve SHA-256'sını, depoyu izlemeye devam
+  eden paketleri ve `apt upgrade`'in neyi farklı yapacağını gösterir; onayladıktan
+  sonra (**Bu kuralı yaz**) yalnız o metin yazılır. Hiçbir şey bir depoyu
+  kendiliğinden sınırlamaz. Geri almak için dosyayı silin; kart sonra bunu söyler ve
+  onu asla kendiliğinden yeniden yazmaz (kuralı geri isterseniz **Yeniden sınırla…**).
+  Sahibin kendi kuralı korunur ve adlandırılır.
 - Bir dağıtım paketinin yerine üretici sürümünü koyacak bir kurulum adıyla
-  reddedilir. Yalnız üreticinin sağladığı bir sürüm, ihtiyaç duyduğu üretici ortak
-  paketlerini (Sury'nin `php-common`'ı, PGDG'nin `libpq5`'i) kurulumda adlarıyla
-  alır. İstemediğiniz bir paketi yükseltecek bir kurulum onu adlandırır ve onayınızı
+  reddedilir. Yalnız üreticinin sağladığı bir sürüm, üreticinin `php-common`'ına
+  (Sury) ya da `libpq5`'ine (PGDG) ihtiyaç duyabilir: kurulum onu sürümleriyle
+  adlandırır ve onayınızı bekler. İstemediğiniz bir paketi yükseltecek bir kurulum onu adlandırır ve onayınızı
   bekler (örneğin postgresql-17, Debian'ın perl-base güvenlik güncellemesini ister).
 - Üretici deposu varken yalın bir kurulum, dağıtımın varsayılanının getirdiği tam
   sürümü alır (`php8.4-fpm`, `postgresql-17`); varsayılanı izleyen paketi asla

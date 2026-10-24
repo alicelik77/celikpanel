@@ -194,9 +194,10 @@ kaynakta (yayımlanmadı; kurulu bir sunucuda hiçbir şey ölçülmedi). Madde 
 6. **Her iş kendi alanında.** Yeni bir Node.js uygulaması sitesinin kendi
    kullanıcısıyla çalışır (şema 45, `sites.app_run_as`). Önceden yapılmış bir
    uygulama paylaşılan web kullanıcısını korur ve bunu söyler; açıkça seçilen
-   "Sitenin kendi kullanıcısıyla çalıştır" uygulamanın dizinindeki dosyaların
-   sahibini değiştirir, birimi yeniden yazar, bir yanıt bekler ve olmazsa ikisini de
-   geri koyar. Paylaşılan yalıtım bir gerçek olarak söylenir: web postası,
+   "Sitenin kendi kullanıcısıyla çalıştır" uygulamayı durdurur, dosyaların sahibini
+   yalnız onun dizininde değiştirir (dizin kök olarak açılır, dışarıya çıkan bir
+   bağlantı asla izlenmez, her yol değiştirilirken yeniden denetlenir), birimi
+   yeniden yazar, bir yanıt bekler ve olmazsa ikisini de geri koyar. Paylaşılan yalıtım bir gerçek olarak söylenir: web postası,
    phpMyAdmin ve phpPgAdmin PHP-FPM'in varsayılan havuzunu paylaşır; bütün posta
    kutuları tek bir vmail kullanıcısının altındadır. *Kalan:* bu paylaşılan alanlar
    söylenir, ayrılmaz.
@@ -238,16 +239,26 @@ kaynakta (yayımlanmadı; kurulu bir sunucuda hiçbir şey ölçülmedi). Madde 
     için üst kaynağın bitiş tarihlerini ve desteklenen her dağıtım sürümü için
     hangi sürümü dağıtıp yamaladığını verir. Bir dağıtım sürümü, dağıtım sürümü
     yaşadıkça yamalanır; bir üretici ya da resmî sürüm kendi üst kaynağını izler;
-    "yakında bitiyor" 90 gündür; bilinmeyen bilinmeyen kalır. Koda gömülü PHP eşiği
-    kaldırıldı.
-12. **Üretici depoları sınırlanır.** Sury ya da PGDG'yi açmak, kaynak var olmadan
-    önce `/etc/apt/preferences.d/celikpanel-<id>.pref` dosyasını yazar: kaynak yalnız
-    dağıtımın sağlamadığını sağlar ve ondan kurulan paketler onu izlemeye devam
-    eder. Yalnız üreticinin sağladığı bir sürüm, ihtiyaç duyduğu üretici ortak
-    paketlerini (Sury'nin `php-common`'ı, PGDG'nin `libpq5`'i) kurulumda adlarıyla
-    alır; bunlar sonra üreticiyi izler. Önceden açılmış depolar, güncellemeden sonra
-    Panel başlarken sınırlanır; değiştirilmiş bir kural ya da sahibin kendi kuralı
-    korunur ve adlandırılır. Depo kartı onu kimin ne zaman açtığını, imza anahtarının
+    "yakında bitiyor" 90 gündür; bilinmeyen bilinmeyen kalır; bir tarih, kaynağı onu
+    ne kadar kesin veriyorsa o kesinlikte saklanır (Ubuntu'nunkiler aydır). Koda
+    gömülü PHP eşiği kaldırıldı.
+12. **Üretici depoları sahibi tarafından sınırlanabilir.** Sınırlama sahibin depo
+    kartından yaptığı bir eylemdir, asla kendiliğinden olmaz (ne depo açılırken ne
+    Panel başlarken; 24 Ekim 2026 incelemesi): **Sınırla…** önce planı gösterir —
+    `/etc/apt/preferences.d/celikpanel-<id>.pref` dosyasının tam metni ve SHA-256'sı,
+    üreticiyi izlemeye devam eden kurulu paketler ve `apt-get -s upgrade`'in onunla
+    ve onsuz nasıl farklılaştığı — ve yalnız SHA-256'sıyla onaylanan o metin yazılır.
+    Kaynak bundan sonra yalnız dağıtımın sağlamadığını sağlar; kurulu sürümü
+    üreticiden gelen her paket onu izlemeye devam eder (liste paket kurulu kaldıkça
+    korunur, böylece üreticiden gelen hiçbir şey güncellemelerinden yoksun kalmaz).
+    Sahibin sildiği bir dosyayı kart sahibin kaldırdığı dosya olarak okur ("…
+    kural dosyası sunucuda silindi. CelikPanel onu kendiliğinden yeniden yazmaz")
+    ve dosya istenmedikçe asla yeniden yazılmaz; değiştirilmiş bir dosya ya da depoyu
+    adlandıran herhangi bir sahip kuralı (kaynak sunucu adıyla ya da `o=`, `l=`,
+    `n=`, `a=`, `c=` ile) korunur ve adlandırılır. Yalnız üreticinin sağladığı bir
+    sürüm (dağıtımda adayı yok), ihtiyaç duyduğu üretici ortak paketini (Sury'nin
+    `php-common`'ı, PGDG'nin `libpq5`'i) yalnız sürümleriyle adlandırılmış, onaylanmış
+    bir öğe olarak alır; aksi hâlde asla. Depo kartı onu kimin ne zaman açtığını, imza anahtarının
     parmak izini ve bitiş tarihini (60 gün kala uyarı), listenin geçerliliğini ve
     Agent'ın liste yenilemelerinden apt'nin hatalarını ve uyarılarını söyler.
 13. **Yalnız bildiğini sayar.** Kaldırma pencereleri "CelikPanel'in bildiği hiçbir
@@ -285,8 +296,9 @@ geri yüklenmesidir (D-025). Sınırlama dosyaları, ek dosya ve Agent'ın kayı
 ekleyici dosyalardır; sahip onları `rm` ve `apt-get update` ile kaldırır ve
 CelikPanel değiştirilmiş olanı olduğu gibi bırakır.
 
-**Kanıt.** Yukarıdaki her madde için bileşen ve bağlanmış testler; atılabilir bir
-Debian 13 sanal makinesinde bir gerçek sistem denemesi
+**Kanıt.** Yukarıdaki her madde için bileşen ve bağlanmış testler; atılabilir
+Debian 13 sanal makinelerinde gerçek sistem denemeleri, ikincisi incelemeden sonra
+sahibin sınırlaması için
 ([deploy/e2e/d038/alpha107-debian13-20261024](../deploy/e2e/d038/alpha107-debian13-20261024/README.md)).
 Kurulu bir sunucuda ölçülmedi. Bu değişiklik hiçbir P0 işini kapatmaz.
 
