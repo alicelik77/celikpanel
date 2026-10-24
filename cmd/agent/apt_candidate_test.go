@@ -63,7 +63,7 @@ func TestSelectedPackageRepositoryGuardPrecedesInstallMutation(t *testing.T) {
 	body = body[start : start+end]
 	packageValidation := strings.Index(body, "validateRepoPackageSelection(svc, packageName)")
 	repositoryGuard := strings.Index(body, "core.InstallRequiresManagedRepository(svc, req.Package)")
-	installMutation := strings.Index(body, "installPackagesWithCandidateContext(ctx, family, missingPackages")
+	installMutation := strings.Index(body, "installPackagesGuardedContext(ctx, family, missingPackages")
 	if packageValidation < 0 || repositoryGuard < 0 || installMutation < 0 {
 		t.Fatalf("package validation, repository guard, or install mutation is missing")
 	}
