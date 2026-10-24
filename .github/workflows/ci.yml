@@ -281,9 +281,17 @@ jobs:
           - shard: Site configuration
             pattern: '^TestSite'
             skip: ''
-          - shard: Server setup
-            pattern: '^TestServerSetup'
+          # Server setup was split in two (alpha.105): its job time had reached
+          # the 8-minute ceiling once. 54 of its 124 tests are in 1/2 (the
+          # suffix letters A to G), the other 70 in 2/2, which keeps the broad
+          # pattern and skips 1/2 so a future exact or lowercase name still has
+          # one home. Measure again before moving the boundary.
+          - shard: Server setup (1/2)
+            pattern: '^TestServerSetup[A-G]'
             skip: ''
+          - shard: Server setup (2/2)
+            pattern: '^TestServerSetup'
+            skip: '^TestServerSetup[A-G]'
           - shard: Service
             pattern: '^TestService'
             skip: ''
@@ -299,7 +307,7 @@ jobs:
       - name: Verify exact Go toolchain
         run: test "$(go env GOVERSION)" = go1.26.5
       # cmd/panel has hundreds of SQLite-backed tests that run serially under
-      # the race detector. These seventeen matrix entries run concurrently, are
+      # the race detector. These eighteen matrix entries run concurrently, are
       # disjoint and cover every valid Test* suffix, including a future exact
       # `Test` name or non-uppercase suffix. Four groups are split from
       # within: the complement shard keeps the broader pattern and -skips the
