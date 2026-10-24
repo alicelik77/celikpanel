@@ -146,9 +146,10 @@ func (p *Panel) handleDomainAppAccount(w http.ResponseWriter, r *http.Request, d
 		if failure == nil {
 			return nil
 		}
-		// Put the unit and exactly the moved files back, restart as before.
-		unitErr := applyHostingAppForAccount(p, ctx, state)
+		// Put exactly the moved files back (the Agent stops the application
+		// first), then the unit, which starts it as before.
 		_, filesErr := moveAppFilesOwnerThroughAgent(p, ctx, transport.AppFilesOwnerRequest{ServiceMutationBinding: binding, SiteID: state.SiteID, Restore: true})
+		unitErr := applyHostingAppForAccount(p, ctx, state)
 		if unitErr != nil || filesErr != nil {
 			return fmt.Errorf("the application did not work as %s (%v), and putting it back did not complete (unit: %v; files: %v)", view.SiteUser, failure, unitErr, filesErr)
 		}

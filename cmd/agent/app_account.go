@@ -46,6 +46,8 @@ type appFilesOwnerRecord struct {
 	ToGID    int      `json:"to_gid"`
 	Paths    []string `json:"paths"`
 	GroupToo []bool   `json:"group_too"`
+	// Kinds: each path's file type when it was moved (version 2).
+	Kinds []uint32 `json:"kinds,omitempty"`
 }
 
 func lookupAccountIDs(name string) (int, int, error) {
@@ -64,33 +66,83 @@ func lookupAccountIDs(name string) (int, int, error) {
 	return uid, gid, nil
 }
 
-var appFilesLchown = os.Lchown
+// appFilesLchown changes one path's owner through the opened root: parents
+// are resolved inside the root only (a symbolic link swapped in as a parent
+// cannot lead outside it) and the last element is never followed.
+var appFilesLchown = func(root *os.Root, rel string, uid, gid int) error { return root.Lchown(rel, uid, gid) }
+
+// walkAppRoot visits every path under the root, depth first, without
+// following symbolic links.
+func walkAppRoot(root *os.Root, rel string, visit func(rel string, info fs.FileInfo) error) error {
+	info, err := root.Lstat(rel)
+	if err != nil {
+		return err
+	}
+	if err := visit(rel, info); err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return nil
+	}
+	dir, err := root.Open(rel)
+	if err != nil {
+		return err
+	}
+	entries, err := dir.ReadDir(-1)
+	dir.Close()
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		if err := walkAppRoot(root, filepath.Join(rel, entry.Name()), visit); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ownerAndType(info fs.FileInfo) (int, int, fs.FileMode, bool) {
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	if !ok {
+		return 0, 0, 0, false
+	}
+	return int(stat.Uid), int(stat.Gid), info.Mode().Type(), true
+}
+
+// chownIfStill changes rel's owner only when it is still the same kind of
+// path and still owned by expect (re-read at chown time).
+func chownIfStill(root *os.Root, rel string, kind fs.FileMode, expect, uid, gid int) error {
+	info, err := root.Lstat(rel)
+	if err != nil {
+		return err
+	}
+	owner, _, mode, ok := ownerAndType(info)
+	if !ok || mode != kind || owner != expect {
+		return fmt.Errorf("%s changed while it was being moved", rel)
+	}
+	return appFilesLchown(root, rel, uid, gid)
+}
 
 // moveAppFilesOwner gives every path under workDir owned by from to to
 // (its group too, when it is from's group) and returns the record.
 func moveAppFilesOwner(siteID int, workDir string, fromUID, fromGID, toUID, toGID int) (appFilesOwnerRecord, error) {
-	record := appFilesOwnerRecord{Version: 1, SiteID: siteID, WorkDir: workDir, FromUID: fromUID, FromGID: fromGID, ToUID: toUID, ToGID: toGID}
-	err := filepath.WalkDir(workDir, func(path string, entry fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		info, err := entry.Info()
-		if err != nil {
-			return err
-		}
-		stat, ok := info.Sys().(*syscall.Stat_t)
-		if !ok || int(stat.Uid) != fromUID {
+	record := appFilesOwnerRecord{Version: 2, SiteID: siteID, WorkDir: workDir, FromUID: fromUID, FromGID: fromGID, ToUID: toUID, ToGID: toGID}
+	root, err := os.OpenRoot(workDir)
+	if err != nil {
+		return appFilesOwnerRecord{}, err
+	}
+	defer root.Close()
+	err = walkAppRoot(root, ".", func(rel string, info fs.FileInfo) error {
+		uid, gid, kind, ok := ownerAndType(info)
+		if !ok || uid != fromUID {
 			return nil
 		}
 		if len(record.Paths) >= appFilesOwnerCap {
 			return fmt.Errorf("more than %d files belong to the web user here; nothing was changed", appFilesOwnerCap)
 		}
-		rel, err := filepath.Rel(workDir, path)
-		if err != nil {
-			return err
-		}
 		record.Paths = append(record.Paths, rel)
-		record.GroupToo = append(record.GroupToo, int(stat.Gid) == fromGID)
+		record.GroupToo = append(record.GroupToo, gid == fromGID)
+		record.Kinds = append(record.Kinds, uint32(kind))
 		return nil
 	})
 	if err != nil {
@@ -101,27 +153,60 @@ func moveAppFilesOwner(siteID int, workDir string, fromUID, fromGID, toUID, toGI
 		if record.GroupToo[i] {
 			gid = toGID
 		}
-		if err := appFilesLchown(filepath.Join(workDir, rel), toUID, gid); err != nil {
+		if err := chownIfStill(root, rel, fs.FileMode(record.Kinds[i]), fromUID, toUID, gid); err != nil {
 			// Put back what this pass already changed.
-			restoreAppFilesOwner(appFilesOwnerRecord{WorkDir: workDir, FromUID: fromUID, FromGID: fromGID, Paths: record.Paths[:i], GroupToo: record.GroupToo[:i]})
+			done := record
+			done.Paths, done.GroupToo, done.Kinds = record.Paths[:i], record.GroupToo[:i], record.Kinds[:i]
+			_ = restoreAppFilesOwner(done)
 			return appFilesOwnerRecord{}, fmt.Errorf("change the owner of %s: %w; what was changed was put back", rel, err)
 		}
 	}
 	return record, nil
 }
 
+// restoreAppFilesOwner gives back exactly the recorded paths, each only if
+// it is still the recorded kind and still owned by the site's user.
 func restoreAppFilesOwner(record appFilesOwnerRecord) error {
+	root, err := os.OpenRoot(record.WorkDir)
+	if err != nil {
+		return err
+	}
+	defer root.Close()
 	var first error
 	for i, rel := range record.Paths {
+		if !filepath.IsLocal(rel) && rel != "." {
+			continue
+		}
 		gid := -1
 		if i < len(record.GroupToo) && record.GroupToo[i] {
 			gid = record.FromGID
 		}
-		if err := appFilesLchown(filepath.Join(record.WorkDir, rel), record.FromUID, gid); err != nil && first == nil && !os.IsNotExist(err) {
+		var err error
+		if i < len(record.Kinds) {
+			err = chownIfStill(root, rel, fs.FileMode(record.Kinds[i]), record.ToUID, record.FromUID, gid)
+		} else {
+			err = fmt.Errorf("%s has no recorded kind", rel)
+		}
+		if err != nil && first == nil && !os.IsNotExist(err) {
 			first = err
 		}
 	}
 	return first
+}
+
+// stopAppForOwnerChange stops the application's unit before its files are
+// walked, so nothing it writes changes underneath; the Panel's unit rewrite
+// starts it again.
+var stopAppForOwnerChange = func(siteID int) error {
+	out, err := appUnitSystemctl(systemctlArgs("stop", appUnitName(siteID))...)
+	if err != nil {
+		return fmt.Errorf("stop %s: %v: %s", appUnitName(siteID), err, firstLine(string(out)))
+	}
+	return nil
+}
+
+var startAppAfterOwnerChange = func(siteID int) {
+	_, _ = appUnitSystemctl(systemctlArgs("start", appUnitName(siteID))...)
 }
 
 func validAppWorkDir(workDir string) error {
@@ -172,6 +257,10 @@ func (a *Agent) MoveAppFilesOwnerV1(req *transport.AppFilesOwnerRequest, resp *t
 			resp.Error = "the record of the moved files could not be read; nothing was put back"
 			return nil
 		}
+		if err := stopAppForOwnerChange(req.SiteID); err != nil {
+			resp.Error = err.Error() + "; nothing was put back"
+			return nil
+		}
 		if err := restoreAppFilesOwner(record); err != nil {
 			resp.Error = "some files could not be given back: " + err.Error()
 			return nil
@@ -198,8 +287,13 @@ func (a *Agent) MoveAppFilesOwnerV1(req *transport.AppFilesOwnerRequest, resp *t
 		resp.Error = "an application is never moved to root"
 		return nil
 	}
+	if err := stopAppForOwnerChange(req.SiteID); err != nil {
+		resp.Error = err.Error() + "; nothing was changed"
+		return nil
+	}
 	record, err := moveAppFilesOwner(req.SiteID, req.WorkDir, fromUID, fromGID, toUID, toGID)
 	if err != nil {
+		startAppAfterOwnerChange(req.SiteID)
 		resp.Error = err.Error()
 		return nil
 	}
@@ -209,6 +303,7 @@ func (a *Agent) MoveAppFilesOwnerV1(req *transport.AppFilesOwnerRequest, resp *t
 	}
 	if err != nil {
 		_ = restoreAppFilesOwner(record)
+		startAppAfterOwnerChange(req.SiteID)
 		resp.Error = "the moved files could not be recorded, so they were given back: " + err.Error()
 		return nil
 	}

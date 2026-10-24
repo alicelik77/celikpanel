@@ -69,3 +69,37 @@ func TestAnApplicationDirectoryOutsideTheHostingRootIsRefused(t *testing.T) {
 		}
 	}
 }
+
+func TestASymlinkedParentSwappedInNeverLeadsOutsideTheApplication(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("changing owners needs root")
+	}
+	dir, outside := t.TempDir(), t.TempDir()
+	const web, site = 4211, 4212
+	os.MkdirAll(filepath.Join(dir, "logs"), 0o755)
+	os.WriteFile(filepath.Join(dir, "logs", "app.log"), []byte("x"), 0o644)
+	os.WriteFile(filepath.Join(outside, "app.log"), []byte("secret"), 0o644)
+	for _, path := range []string{dir, filepath.Join(dir, "logs"), filepath.Join(dir, "logs", "app.log"), filepath.Join(outside, "app.log")} {
+		os.Lchown(path, web, web)
+	}
+	restore := appFilesLchown
+	t.Cleanup(func() { appFilesLchown = restore })
+	appFilesLchown = func(root *os.Root, rel string, uid, gid int) error {
+		err := root.Lchown(rel, uid, gid)
+		if rel == "logs" && uid == site {
+			// An attacker swaps the directory for a link to elsewhere.
+			os.Rename(filepath.Join(dir, "logs"), filepath.Join(dir, "logs.real"))
+			os.Symlink(outside, filepath.Join(dir, "logs"))
+		}
+		return err
+	}
+	if _, err := moveAppFilesOwner(8, dir, web, web, site, site); err == nil {
+		t.Fatal("the move went on through a swapped-in link")
+	}
+	if uid, gid := ownerOf(t, filepath.Join(outside, "app.log")); uid != web || gid != web {
+		t.Fatalf("a file outside the application changed owner: %d:%d", uid, gid)
+	}
+	if uid, _ := ownerOf(t, dir); uid != web {
+		t.Fatalf("the application directory was not put back: %d", uid)
+	}
+}
