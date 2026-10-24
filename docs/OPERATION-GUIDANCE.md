@@ -10263,3 +10263,17 @@ Unchanged: sites choose their PHP in their own settings; installed panels are
 updated only by their owners from the panel's own update screen. Open: nothing
 measured on an installed server. P0.1-P0.5 stay **partial**; this entry closes and
 advances nothing.
+
+### Removing a component or a version: which version, and why it cannot go now (D-037 amendment, 2026-10-24)
+
+In source for the v0.1.0-alpha.106 candidate (not published; nothing measured on an
+installed server). **Who acts:** the administrator, from Components. When a runtime
+has several versions its remove button first asks which version, with who uses each,
+and "All versions" set apart; nothing changes there. The removal dialog then says
+first whether it can go now ("PHP-FPM can't be removed now"), each cause once, and
+**What you can do**: remove the named component first (the link opens its removal),
+move the sites to another PHP version in each site's settings (Domains), or keep it
+by closing the window, which changes nothing. **How it resumes:** after the named
+components or sites are gone, press the remove button again; the Panel reads again
+and offers Remove. The package list and the package manager's explanation are under
+Details.

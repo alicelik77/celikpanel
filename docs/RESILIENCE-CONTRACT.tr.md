@@ -7025,3 +7025,16 @@ dayanıklılığının tamamlandığı iddiası değildir.
   kurulum onaylanmaz, reddedilir. Apache kuralı yalnız Debian ve Ubuntu adlarını
   bilir; pacman denetimi gerçek `-Syu` işlemi değildir. alpha.90–alpha.104 girdilerinin açık bıraktığı her şey açık kalır. P0.1–P0.5
   kısmi kalır.
+
+### Aday v0.1.0-alpha.106 (kaldırma hangi sürüm olduğunu söyler ve yanıtla başlar; yalnız web; ilke 2; D-037 değişikliği; D-024; 24 Ekim 2026)
+
+D-025 ilke 2 (kanıtın anlamı vardır): reddedilen kaldırma önce ret olarak söylenir ve
+asla neyi götüreceğiyle anlatılmaz; paket yöneticisinin listesi Ayrıntılar altında
+kalır. **Hiçbir P0 işi kapanmaz ya da ilerlemez**; P0.1–P0.5 kısmi kalır ve her açık
+kabul işi açık kalır. Yalnız arayüz: Agent ya da Panel değişikliği yok; sürüm sırası
+(106) dışında şema ya da sıra geçişi yok (şema 44). Kurtarma davranışı değişmedi:
+reddedilen kaldırma hiçbir şeyi değiştirmez ve Kapat sunar; başarısız bir okuma yine
+kaldırmayı asla tutmaz ve Kaldır'a basılınca Agent yeniden denetler. Kanıt: web
+1805 test geçti (sürüm sorusu, reddedilen bütün kaldırma ve reddedilen sürüm için
+bağlanmış pencere testleri), üretim derlemesi bütçelerinin içinde ve bir sahte sunucu
+üzerinde tarayıcı bakışı (EN ve TR, 1440 ve 390, açık). Kurulu bir sunucuda ölçülmedi.
