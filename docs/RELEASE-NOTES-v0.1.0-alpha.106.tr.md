@@ -2,8 +2,7 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.106.md)
 
-Bu, v0.1.0-alpha.105'i izleyen adaydır. **Yayımlanmadı ve hiçbir parçası kurulu bir
-sunucuda değil.** 24 Ekim 2026'da `fix/alpha106-clear-removal` dalında, alpha.105'in
+Bu, v0.1.0-alpha.105'i izleyen sürümdür. **24 Ekim 2026'da (UTC) yayımlandı: sürüm commit'i `a8f90616f`, GitHub ön sürümü 12:36:00Z, yapıtlar ve imza doğrulanıp dış denetim geçtikten (26/26) sonra indirme portalı yaklaşık 12:40Z. Hiçbir parçası henüz kurulu bir sunucuda değil; kurulu panelleri yalnız sahip günceller.** 24 Ekim 2026'da `fix/alpha106-clear-removal` dalında, alpha.105'in
 yayım kaydından sonraki `main`'den yazıldı (alpha.105 sürüm commit'i
 `0a51195cd294be5f009f2a2b72e1dd372094e524`).
 
