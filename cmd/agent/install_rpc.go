@@ -248,6 +248,26 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 	// yerini alır — ama yalnız servisin gerçekten bir deposu varsa ve istenen ad
 	// desenine uyuyorsa; böylece bu asla keyfi bir paket kuramaz.
 	var skipped []string
+	// alpha.107 (D-038 §1/§7): with the component's vendor repository
+	// enabled, the exact version the distribution's default package brings
+	// is installed in its place, never the moving default package.
+	effectivePackage := req.Package
+	if req.Package == "" && family == "apt" && svc.Repo != nil {
+		aptCache, err := executableForProfile(profile, family, "apt-cache")
+		if err != nil {
+			resp.Error = err.Error()
+			return nil
+		}
+		exact, err := exactDefaultPackage(ctx, svc, family, hostExactDefaultOps(aptCache))
+		if err != nil {
+			resp.Error = err.Error()
+			return nil
+		}
+		if exact != "" {
+			pkgs = []string{exact}
+			effectivePackage = exact
+		}
+	}
 	if req.Package != "" {
 		pkgs = []string{req.Package}
 
@@ -405,7 +425,7 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 	// 8.3 kurulduktan sonra bu, 8.4'ü başlatıp operatörün az önce istediği
 	// sürümü durmuş bırakırdı.
 	unit := ""
-	if exactUnit, exact := exactInstallUnit(req.ID, family, req.Package); exact {
+	if exactUnit, exact := exactInstallUnit(req.ID, family, effectivePackage); exact {
 		// A selected package has one exact service target. Never fall back to
 		// another installed PHP major, postgresql.service or another PG
 		// cluster: that would report success while starting a different
@@ -416,7 +436,7 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 		// aksi hâlde operatörün seçtiğinden farklı sürüm başlatılıp başarı
 		// bildirilirdi.
 		if exactUnit == "" || !unitExistsWithExecutable(systemctl, exactUnit) {
-			resp.Error = fmt.Sprintf("selected package %s did not provide its exact service unit", req.Package)
+			resp.Error = fmt.Sprintf("selected package %s did not provide its exact service unit", effectivePackage)
 			return nil
 		}
 		unit = exactUnit

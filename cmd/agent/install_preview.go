@@ -368,7 +368,10 @@ type installPreviewOps struct {
 	available           func(string) bool
 	simulate            func(ctx context.Context, packages []string) (aptSimulation, error)
 	vendorOf            func(name, version string) string
-	lock                func() bool
+	// exactDefault (alpha.107): the exact package a plain install of the
+	// component installs with its vendor repository enabled ("" for none).
+	exactDefault func(ctx context.Context, svc *core.ManagedService) (string, error)
+	lock         func() bool
 	unlock              func()
 }
 
@@ -404,6 +407,16 @@ func serviceInstallPreviewWithOps(ctx context.Context, req *transport.ServiceIns
 			continue
 		}
 		pkgs := svc.Packages[ops.family]
+		if step.Package == "" && ops.exactDefault != nil {
+			exact, err := ops.exactDefault(ctx, svc)
+			if err != nil {
+				resp.Error = err.Error()
+				return
+			}
+			if exact != "" {
+				pkgs = []string{exact}
+			}
+		}
 		if step.Package != "" {
 			match, err := validateRepoPackageSelection(svc, step.Package)
 			if err != nil {
@@ -561,6 +574,10 @@ func (a *Agent) ServiceInstallPreviewV1(req *transport.ServiceInstallPreviewRequ
 		}
 		ops.available = func(name string) bool { return packageAvailableWithExecutable(name, aptCache) }
 		ops.vendorOf = hostVendorVersionLookup()
+		defaults := hostExactDefaultOps(aptCache)
+		ops.exactDefault = func(ctx context.Context, svc *core.ManagedService) (string, error) {
+			return exactDefaultPackage(ctx, svc, family, defaults)
+		}
 		ops.simulate = func(ctx context.Context, packages []string) (aptSimulation, error) {
 			return runAptSimulation(ctx, runPackageSimulationCommand, aptGet, aptInstallArgs(packages))
 		}
