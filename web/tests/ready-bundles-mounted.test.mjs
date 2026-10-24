@@ -200,6 +200,10 @@ const dialogText = () => {
   const dialogs = tree.root.findAll((node) => node.props && node.props.role === 'dialog');
   return dialogs.map(label).join(' | ');
 };
+// A bundle part's component name, without what its row says after it (its
+// version since alpha.105).
+const dotted = (text) => text.replace(/\s*·\s*/g, ' · ');
+const partName = (node) => dotted(label(node)).replace(/(Will be installed|Already installed|Not needed|[0-9][0-9., ]* · already installed|The distribution’s version · recommended|…)(Change)?$/, '');
 const installedState = () => tree.root.findAll((node) => node.props && node.props['data-bundle-installed-state'] !== undefined)[0]?.props['data-bundle-installed-state'];
 
 test('an offered bundle is an outlined chip that says Install; pressing it opens the confirmation, and nothing is sent', async () => {
@@ -347,7 +351,7 @@ test('under Apache the MariaDB bundle says what it installs, what is installed a
     assert.equal(label(bundleNode('db.mariadb')), `MariaDB + phpMyAdmin·${say('services.bundles.chip.install')}`);
     await press(bundleNode('db.mariadb'));
     const parts = Object.fromEntries(tree.root.findAll((node) => node.props && node.props['data-bundle-part'] !== undefined)
-      .map((node) => [label(node).replace(/(Will be installed|Already installed|Not needed)$/, ''), node.props['data-bundle-part']]));
+      .map((node) => [partName(node), node.props['data-bundle-part']]));
     assert.deepEqual(parts, { [nameOf('mariadb')]: 'installed', [nameOf('nginx')]: 'notNeeded', [nameOf('php-fpm')]: 'installed', [nameOf('phpmyadmin')]: 'install' });
     assert.ok(tree.root.findAll((node) => node.type === 'button' && label(node) === say('services.bundles.dialog.confirm', { n: 1 })).length === 1);
     // The install of phpMyAdmin fails: the stopped chip counts Nginx, which
@@ -487,7 +491,7 @@ test('on Boston, PostgreSQL + phpPgAdmin keeps PostgreSQL and Nginx and installs
     await press(bundleNode('db.postgresql'));
     assert.ok(dialogText().includes(say('services.bundles.dialog.title', { name: 'PostgreSQL + phpPgAdmin' })), dialogText());
     const parts = Object.fromEntries(tree.root.findAll((node) => node.props && node.props['data-bundle-part'] !== undefined)
-      .map((node) => [label(node).replace(/(Will be installed|Already installed|Not needed)$/, ''), node.props['data-bundle-part']]));
+      .map((node) => [partName(node), node.props['data-bundle-part']]));
     assert.deepEqual(parts, { [nameOf('postgresql')]: 'installed', [nameOf('nginx')]: 'installed', [nameOf('php-fpm')]: 'install', [nameOf('phppgadmin')]: 'install' });
     await pressLabel(say('services.bundles.dialog.confirm', { n: 2 }));
     assert.deepEqual(tracker.calls.map((call) => call.serviceId), ['php-fpm']);
@@ -754,4 +758,137 @@ test('the change gate is read again before each step: a host that is not ready s
     assert.ok(label(stoppedReason()).includes(say('services.bundles.stopped.gated', { reason: say('services.bundles.gatedReadiness') })), label(stoppedReason()));
     assert.ok(requests.filter((entry) => entry === 'GET /api/v1/host-mutation-readiness').length >= 2, 'the gate was not read again');
   } finally { await unmount(); readiness = { ready: true }; }
+});
+
+// --- alpha.105: versions in the bundle dialogue, what else it installs ---------------
+// Owner decision 2026-10-24: recommend, warn, never impose.
+function serveVersions(managed, { preview, repo = {}, candidate = {} }) {
+  serve(managed);
+  const plain = globalThis.fetch;
+  const previews = [];
+  globalThis.fetch = async (input, init = {}) => {
+    const url = String(input);
+    const [path, query = ''] = url.split('?');
+    const params = new URLSearchParams(query);
+    if (path === '/api/v1/service/candidate') return answer({ version: candidate[params.get('id')] ?? '' });
+    if (path === '/api/v1/repo') return answer(repo[params.get('service_id')] ?? { available: false, enabled: false });
+    if (path === '/api/v1/service/install-preview') {
+      previews.push(params.getAll('step'));
+      return answer(preview(params.getAll('step')));
+    }
+    return plain(input, init);
+  };
+  return previews;
+}
+const SURY = { available: true, enabled: true, name: 'Sury PHP (packages.sury.org)', packages: ['php8.3-fpm', 'php8.5-fpm'] };
+const known = (notable = [], refusals = []) => ({ state: 'known', installs: [], notable, refusals, removes: [], requested: [] });
+async function mountMariaDBBundle(options) {
+  const managed = server('boston');
+  const previews = serveVersions(managed, options);
+  globalThis.bundleTracker.calls.length = 0;
+  globalThis.bundleTracker.set({ operation: null, failure: null, catalogSnapshot: null, locked: false });
+  await act(async () => { tree = Renderer.create(React.createElement(ServiceList, {})); });
+  for (let i = 0; i < 3; i += 1) await settle();
+  await press(bundleNode('db.mariadb'));
+  for (let i = 0; i < 2; i += 1) await settle();
+  return previews;
+}
+const confirmButton = (n) => tree.root.findAll((node) => node.type === 'button' && label(node) === say('services.bundles.dialog.confirm', { n }))[0];
+const versionText = (id) => dotted(label(tree.root.find((node) => node.props && node.props['data-bundle-part'] !== undefined
+  && label(node).startsWith(nameOf(id)))));
+
+test('the bundle dialogue says the version each part brings, marks the distribution’s as recommended, and Change lists the component’s own versions', async () => {
+  globalThis.bundleToasts = [];
+  globalThis.document = { addEventListener() {}, removeEventListener() {}, getElementById: () => null, activeElement: null, body: { style: {} } };
+  const previews = await mountMariaDBBundle({ preview: () => known(), repo: { 'php-fpm': SURY }, candidate: { 'php-fpm': '2:8.4+96', mariadb: '1:11.8.3-1', phpmyadmin: '4:5.2.2-really+dfsg-1+deb13u1' } });
+  try {
+    assert.ok(versionText('php-fpm').includes(say('services.bundles.version.recommended', { version: '8.4' })), versionText('php-fpm'));
+    assert.ok(versionText('phpmyadmin').includes(say('services.bundles.version.recommended', { version: '5.2.2' })), versionText('phpmyadmin'));
+    // PostgreSQL is installed on Boston and is not part of this bundle; Nginx is.
+    assert.ok(versionText('nginx').includes('1.0 · already installed'), versionText('nginx'));
+    // Only PHP-FPM offers other versions here.
+    const changes = tree.root.findAll((node) => node.props && node.props['data-bundle-version-change'] !== undefined);
+    assert.deepEqual(changes.map((node) => node.props['data-bundle-version-change']), ['php-fpm']);
+    assert.ok(label(tree.root.find((node) => node.props && node.props['data-install-preview'] === 'clean')).includes(say('services.installPreview.nothingElse')));
+    await press(changes[0]);
+    const options = tree.root.findAll((node) => node.type === 'input' && node.props['data-bundle-version-option'] !== undefined);
+    assert.deepEqual(options.map((node) => node.props['data-bundle-version-option']), ['default', 'php8.3-fpm', 'php8.5-fpm']);
+    await act(async () => { options[1].props.onChange(); });
+    for (let i = 0; i < 2; i += 1) await settle();
+    assert.ok(versionText('php-fpm').includes(say('services.bundles.version.vendor', { version: '8.3', repo: SURY.name })), versionText('php-fpm'));
+    assert.ok(label(tree.root.find((node) => node.props && node.props['data-bundle-tool-php'] === '8.3')).includes(say('services.bundles.version.runsOn', { version: '8.3' })));
+    // The simulation is asked for the bundle's steps together, with the choice.
+    assert.deepEqual(previews.at(-1), ['mariadb', 'php-fpm:php8.3-fpm', 'phpmyadmin::8.3']);
+    // A distribution tool on another PHP is a warning, not a refusal.
+    const warning = tree.root.findAll((node) => node.props && node.props['data-bundle-warning'] !== undefined);
+    assert.equal(warning.length, 1);
+    assert.ok(label(warning[0]).includes(say('services.bundles.warn.distroTool', { tool: 'phpMyAdmin', default: '8.4', version: '8.3' })), label(warning[0]));
+    assert.equal(confirmButton(3).props.disabled, false);
+    await press(confirmButton(3));
+    const first = globalThis.bundleTracker.calls[0];
+    assert.equal(first.serviceId, 'mariadb');
+    assert.equal(first.checkInstalls, true);
+    assert.deepEqual(first.confirmInstalls, []);
+  } finally { await unmount(); }
+});
+
+test('notable installs are named with their reason and hold Install until the owner confirms them; the confirmation goes with every step', async () => {
+  globalThis.bundleToasts = [];
+  globalThis.document = { addEventListener() {}, removeEventListener() {}, getElementById: () => null, activeElement: null, body: { style: {} } };
+  const tracker = globalThis.bundleTracker;
+  await mountMariaDBBundle({
+    preview: () => known([
+      { package: 'apache2', reason: 'apache', component: 'apache' },
+      { package: 'libapache2-mod-php8.5', reason: 'apache', component: 'apache' },
+      { package: 'php8.5-common', reason: 'new_php_version', version: '8.5' },
+    ]),
+    candidate: { 'php-fpm': '2:8.4+96' },
+  });
+  try {
+    const notes = tree.root.find((node) => node.props && node.props['data-install-preview'] === 'notable');
+    assert.ok(label(notes).includes(say('services.installPreview.reason.apache', { packages: 'apache2, libapache2-mod-php8.5' })), label(notes));
+    assert.ok(label(notes).includes(say('services.installPreview.reason.new_php_version', { version: '8.5', packages: 'php8.5-common' })), label(notes));
+    assert.equal(confirmButton(3).props.disabled, true, 'Install was offered before the owner confirmed');
+    const box = tree.root.find((node) => node.type === 'input' && node.props['data-install-preview-confirm'] !== undefined);
+    await act(async () => { box.props.onChange({ target: { checked: true } }); });
+    await settle();
+    assert.equal(confirmButton(3).props.disabled, false);
+    await press(confirmButton(3));
+    assert.deepEqual(tracker.calls[0].confirmInstalls, ['apache2', 'libapache2-mod-php8.5', 'php8.5-common']);
+    tracker.set({ operation: null, locked: false, catalogSnapshot: (() => {
+      const after = server('boston');
+      after.services = after.services.map((item) => (item.id === 'mariadb' ? { ...item, is_installed: true, status: 'active (running)' } : item));
+      return after;
+    })() });
+    for (let i = 0; i < 3; i += 1) await settle();
+    assert.deepEqual(tracker.calls.map((call) => call.serviceId), ['mariadb', 'php-fpm']);
+    assert.deepEqual(tracker.calls[1].confirmInstalls, ['apache2', 'libapache2-mod-php8.5', 'php8.5-common']);
+  } finally { await unmount(); }
+});
+
+test('a chosen PHP version that cannot serve the tool is refused with what it lacks; a read that failed says so and does not hold Install', async () => {
+  globalThis.bundleToasts = [];
+  globalThis.document = { addEventListener() {}, removeEventListener() {}, getElementById: () => null, activeElement: null, body: { style: {} } };
+  let failing = false;
+  await mountMariaDBBundle({
+    preview: (steps) => (failing ? { state: 'unknown', installs: [], notable: [], refusals: [], removes: [], requested: [] }
+      : steps.includes('phpmyadmin::8.5') ? known([], [{ id: 'phpmyadmin', code: 'php_extensions_unavailable', version: '8.5', packages: ['php8.5-mysql'] }]) : known()),
+    repo: { 'php-fpm': SURY },
+    candidate: { 'php-fpm': '2:8.4+96' },
+  });
+  try {
+    await press(tree.root.find((node) => node.props && node.props['data-bundle-version-change'] === 'php-fpm'));
+    const options = tree.root.findAll((node) => node.type === 'input' && node.props['data-bundle-version-option'] !== undefined);
+    await act(async () => { options[2].props.onChange(); });
+    for (let i = 0; i < 2; i += 1) await settle();
+    const refusal = tree.root.find((node) => node.props && node.props['data-bundle-refusal'] === 'php_extensions_unavailable');
+    assert.ok(label(refusal).includes(say('services.bundles.refusal.php_extensions_unavailable', { tool: 'phpMyAdmin', version: '8.5', packages: 'php8.5-mysql' })), label(refusal));
+    assert.equal(confirmButton(3).props.disabled, true);
+    // Back to the recommended version, with the read failing this time.
+    failing = true;
+    await act(async () => { options[0].props.onChange(); });
+    for (let i = 0; i < 2; i += 1) await settle();
+    assert.ok(dialogText().includes(say('services.installPreview.unknown', { why: '' })), dialogText());
+    assert.equal(confirmButton(3).props.disabled, false);
+  } finally { await unmount(); }
 });

@@ -115,6 +115,35 @@ export function decodePHPToolProblems(result: unknown): PHPToolProblem[] {
     return out;
 }
 
+// The proof of a PHP tool just installed (alpha.105 review): the Panel
+// carries the Agent's answer in the operation result. Said when it moved
+// the tool to another version, or when no version worked.
+// Yeni kurulan PHP aracının kanıtı; işlem sonucunda taşınır.
+export interface PHPToolProofNote { tool: keyof typeof PHP_TOOL_NAMES; version: string; moved: boolean; proved: boolean; first: string; extensions: string[] }
+
+export function decodePHPToolProof(result: unknown): PHPToolProofNote | null {
+    if (!result || typeof result !== 'object') return null;
+    const raw = (result as { php_tool_proof?: unknown }).php_tool_proof as Record<string, unknown> | undefined;
+    if (!raw || typeof raw !== 'object' || typeof raw.tool !== 'string' || !(raw.tool in PHP_TOOL_NAMES)) return null;
+    const version = typeof raw.version === 'string' && /^[0-9]{1,2}\.[0-9]{1,2}$/.test(raw.version) ? raw.version : '';
+    const attempts = Array.isArray(raw.attempts) ? raw.attempts as Array<Record<string, unknown>> : [];
+    const first = attempts[0] && typeof attempts[0].version === 'string' && /^[0-9]{1,2}\.[0-9]{1,2}$/.test(attempts[0].version) ? attempts[0].version : '';
+    const cause = attempts[0]?.cause as Record<string, unknown> | undefined;
+    const extensions = cause && cause.kind === 'missing_extensions' && Array.isArray(cause.extensions)
+        ? cause.extensions.filter((item): item is string => typeof item === 'string' && /^[a-z0-9_]{1,32}$/.test(item))
+        : [];
+    return { tool: raw.tool as PHPToolProofNote['tool'], version, moved: raw.moved === true, proved: raw.proved === true, first, extensions };
+}
+
+// The packages a refused install would also have brought (alpha.105 review).
+export function decodeNotableRefusal(result: unknown): string[] {
+    if (!result || typeof result !== 'object') return [];
+    const raw = (result as { notable_installs?: unknown }).notable_installs;
+    if (!Array.isArray(raw)) return [];
+    return raw.map((item) => (item && typeof item === 'object' ? (item as { package?: unknown }).package : null))
+        .filter((name): name is string => typeof name === 'string' && /^[a-z0-9][a-z0-9+.:-]{0,160}$/.test(name));
+}
+
 export function decodeMailHostnameIdentity(value: unknown): MailHostnameIdentity | null {
     if (!value || typeof value !== 'object') return null;
     const payload = value as Record<string, unknown>;
@@ -196,6 +225,11 @@ export interface InstallOperationRequest {
     operationKind?: InstallOperationKind;
     package?: string;
     version?: string;
+    /** alpha.105: the PHP version a database tool is installed for (a bundle's choice). */
+    phpVersion?: string;
+    /** alpha.105: the server checks what the install brings against confirmInstalls. */
+    checkInstalls?: boolean;
+    confirmInstalls?: string[];
     // Sent once, on the request that starts a mail profile install. The server
     // saves it as the panel's own mail hostname, so a recovered or replayed
     // request resolves the same name without carrying it again.
@@ -1510,6 +1544,8 @@ export function ComponentOperationProvider({ children }: { children: ReactNode }
                 : {
                       service_id: request.serviceId,
                       ...(request.package ? { package: request.package } : {}),
+                      ...(request.phpVersion ? { php_version: request.phpVersion } : {}),
+                      ...(request.checkInstalls ? { check_installs: true, confirmed_installs: request.confirmInstalls ?? [] } : {}),
                       request_id: marker.request_id,
                   };
 
@@ -1750,10 +1786,14 @@ export function ComponentOperationProvider({ children }: { children: ReactNode }
                 setOperation(next);
 
                 if (next.status === 'failed') {
-                    await refreshFailedSnapshot(
-                        operationError(next.error, t('services.operation.failed')),
-                        next,
-                    );
+                    const refused = operationError(next.error, t('services.operation.failed'));
+                    // A refused notable install says what it would have
+                    // brought and where to confirm it (alpha.105 review).
+                    const notable = decodeNotableRefusal(next.result);
+                    if (notable.length > 0) {
+                        refused.details = [...(refused.details ?? []), t('services.installRefused.notable', { packages: notable.join(', ') })];
+                    }
+                    await refreshFailedSnapshot(refused, next);
                     return;
                 }
 
@@ -1853,6 +1893,16 @@ export function ComponentOperationProvider({ children }: { children: ReactNode }
                 // install (alpha.104 review): it is said as a warning that
                 // names the tool and what to do.
                 // Başka bir PHP aracının sorunu bu kurulumu düşürmez; uyarıdır.
+                // The tool just installed: moved to another version, or Not ready.
+                const proof = decodePHPToolProof(next.result);
+                if (proof && (proof.moved || !proof.proved)) {
+                    const why = proof.extensions.length > 0
+                        ? t('services.phpToolProof.whyMissing', { version: proof.first, extensions: proof.extensions.join(', ') })
+                        : t('services.phpToolProof.whyOther');
+                    showToast('warning', proof.moved
+                        ? t('services.phpToolProof.moved', { tool: PHP_TOOL_NAMES[proof.tool], version: proof.version, first: proof.first, why })
+                        : t('services.phpToolProof.notReady', { tool: PHP_TOOL_NAMES[proof.tool], version: proof.version || proof.first, why }));
+                }
                 for (const problem of decodePHPToolProblems(next.result)) {
                     showToast('warning', t(problem.kind === 'version_gone' ? 'services.phpToolProblem.versionGone' : 'services.phpToolProblem.extensionsFailed', {
                         tool: PHP_TOOL_NAMES[problem.tool],

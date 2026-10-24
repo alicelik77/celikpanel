@@ -1424,7 +1424,8 @@ test('the install dialogue, the navigation badge, the dashboard counts and the h
   const serviceList = source('components/ServiceList.tsx');
   const dialogue = serviceList.slice(serviceList.indexOf('function InstallServiceDialog({'), serviceList.indexOf('function ActionIcon({'));
   // Install is off until the server has said whether a repository is required.
-  assert.match(dialogue, /disabled=\{busy \|\| repoBusy \|\| !repoKnown \|\| Boolean\(repo\?\.required/);
+  // alpha.105: a simulation in flight, or notable installs not yet confirmed, also hold Install.
+  assert.match(dialogue, /disabled=\{busy \|\| repoBusy \|\| !repoKnown \|\| previewGate\.hold \|\| Boolean\(repo\?\.required/);
   assert.match(dialogue, /const repoKnown = repoRead\.remote\.state === 'known' && !repoRead\.reading;/);
   assert.doesNotMatch(dialogue, /fetch\(`\/api\/v1\/repo\?|\.ok \? r\.json\(\) : null/);
   assert.match(dialogue, /t\(repoObserved \? 'services\.repo\.stale' : 'services\.repo\.unknown'/);

@@ -47,6 +47,37 @@ type serviceInstallRequest struct {
 	ServiceID string `json:"service_id"`
 	Package   string `json:"package,omitempty"`
 	RequestID string `json:"request_id"`
+	// alpha.105 (D-034 amendment): the PHP version a database tool is
+	// installed for (a bundle's choice), and the owner's confirmation of
+	// what the install brings beyond what it names. They live in the running
+	// operation only; an interrupted install that resumes keeps the check
+	// with nothing confirmed, so it never installs a notable package.
+	PHPVersion        string   `json:"php_version,omitempty"`
+	CheckInstalls     bool     `json:"check_installs,omitempty"`
+	ConfirmedInstalls []string `json:"confirmed_installs,omitempty"`
+}
+
+const maxConfirmedInstalls = 64
+
+// validServiceInstallChoices checks the alpha.105 fields of an install.
+func validServiceInstallChoices(req serviceInstallRequest) string {
+	if req.PHPVersion != "" {
+		if req.ServiceID != "phpmyadmin" && req.ServiceID != "phppgadmin" {
+			return "php_version is chosen only for phpMyAdmin and phpPgAdmin"
+		}
+		if !phpToolVersionPattern.MatchString(req.PHPVersion) {
+			return "invalid php_version"
+		}
+	}
+	if len(req.ConfirmedInstalls) > maxConfirmedInstalls {
+		return "too many confirmed_installs"
+	}
+	for _, name := range req.ConfirmedInstalls {
+		if !installPreviewPackagePattern.MatchString(name) {
+			return "invalid confirmed_installs"
+		}
+	}
+	return ""
 }
 
 type serviceOperationResult map[string]any
@@ -160,8 +191,13 @@ func (p *Panel) handleServiceInstall(w http.ResponseWriter, r *http.Request) {
 	}
 	req.ServiceID = strings.TrimSpace(req.ServiceID)
 	req.Package = strings.TrimSpace(req.Package)
+	req.PHPVersion = strings.TrimSpace(req.PHPVersion)
 	if req.ServiceID == "" {
 		writeClientError(w, http.StatusBadRequest, "service_id is required")
+		return
+	}
+	if reason := validServiceInstallChoices(req); reason != "" {
+		writeClientError(w, http.StatusBadRequest, reason)
 		return
 	}
 	if core.GetManagedServiceByID(req.ServiceID) == nil {
@@ -198,8 +234,9 @@ func (p *Panel) handleServiceInstall(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 	actor := captureServiceOperationActor(r)
-	op, err := p.createServiceOperationRequest(
+	op, err := p.createServiceOperationRequestWithState(
 		r.Context(), serviceOperationKindInstall, req.ServiceID, req.Package, req.RequestID, actor,
+		"queued", encodeServiceInstallOperationData(req),
 	)
 	if errors.Is(err, errServiceOperationBusy) {
 		writeServiceOperationBusy(w)
@@ -2115,6 +2152,9 @@ func (p *Panel) resumeInterruptedServiceOperationLocked(op serviceOperation) err
 			Package:   op.PackageName,
 			RequestID: op.RequestID,
 		}
+		// The tool's PHP version and what the owner confirmed come back from
+		// the record (alpha.105 review); the server checks the install again.
+		restoreServiceInstallChoices(&request, op.OperationData)
 		runner = func(ctx context.Context, advance func(string) error) (serviceOperationResult, *serviceOperationFailure) {
 			return p.runServiceInstall(ctx, request, advance)
 		}

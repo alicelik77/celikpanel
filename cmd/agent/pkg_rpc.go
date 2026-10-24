@@ -179,12 +179,22 @@ func (r *packageInstallRefusal) Error() string {
 // is refused before this; no supported install needs a removal. A failed
 // simulation is reported and nothing is installed.
 func refuseInstallThatRemoves(ctx context.Context, run packageSimulationRunner, aptGet string, packages, args []string) error {
+	return checkAptInstallSimulation(ctx, run, aptGet, packages, args, nil)
+}
+
+// checkAptInstallSimulation is refuseInstallThatRemoves with an optional
+// guard over what the simulation would install (alpha.105: notable
+// installs the owner has not confirmed refuse the install).
+func checkAptInstallSimulation(ctx context.Context, run packageSimulationRunner, aptGet string, packages, args []string, guard func([]string) error) error {
 	sim, err := runAptSimulation(ctx, run, aptGet, args)
 	if err != nil {
 		return fmt.Errorf("the package manager could not show what installing %s would do, so nothing was installed: %w", strings.Join(packages, ", "), err)
 	}
 	if len(sim.Removed) > 0 {
 		return &packageInstallRefusal{Packages: append([]string{}, packages...), Removes: sim.Removed}
+	}
+	if guard != nil {
+		return guard(sim.Installed)
 	}
 	return nil
 }
@@ -204,6 +214,13 @@ func installPackagesContext(ctx context.Context, family string, packages []strin
 }
 
 func installPackagesWithCandidateContext(ctx context.Context, family string, packages []string, requiredCandidate string) (string, error) {
+	return installPackagesGuardedContext(ctx, family, packages, requiredCandidate, nil)
+}
+
+// installPackagesGuardedContext installs with an optional guard over what
+// the package manager's simulation says it would install, judged under
+// the same package lock right before the real install (alpha.105).
+func installPackagesGuardedContext(ctx context.Context, family string, packages []string, requiredCandidate string, guard func([]string) error) (string, error) {
 	packageOperationMu.Lock()
 	defer packageOperationMu.Unlock()
 
@@ -252,10 +269,10 @@ func installPackagesWithCandidateContext(ctx context.Context, family string, pac
 			}
 		}
 		run := func() (string, error) {
-			args := append([]string{"install", "-y", "--no-install-recommends"}, packages...)
+			args := aptInstallArgs(packages)
 			// An install never removes a package (alpha.104): the same
 			// arguments are simulated first, under this package lock.
-			if err := refuseInstallThatRemoves(ctx, runPackageSimulationCommand, aptGet, packages, args); err != nil {
+			if err := checkAptInstallSimulation(ctx, runPackageSimulationCommand, aptGet, packages, args, guard); err != nil {
 				return "", err
 			}
 			env := append(os.Environ(), "DEBIAN_FRONTEND=noninteractive")
@@ -264,7 +281,8 @@ func installPackagesWithCandidateContext(ctx context.Context, family string, pac
 		}
 		out, err := run()
 		var refusal *packageInstallRefusal
-		if errors.As(err, &refusal) {
+		var notable *packageInstallNotableRefusal
+		if errors.As(err, &refusal) || errors.As(err, &notable) {
 			return "", err
 		}
 		// Mirror rotated inside our freshness window: the lists said the file
@@ -292,6 +310,15 @@ func installPackagesWithCandidateContext(ctx context.Context, family string, pac
 		// tazeleyip sonra -S ile kurmak desteklenmeyen bir kısmi yükseltme
 		// penceresi açar. Tazeleme, yükseltme ve istenen paket kurulumunu tek
 		// pacman işleminde tut.
+		if guard != nil {
+			sim, err := runPacmanInstallPrint(ctx, runPackageSimulationCommand, pacman, packages)
+			if err != nil {
+				return "", fmt.Errorf("the package manager could not show what installing %s would do, so nothing was installed: %w", strings.Join(packages, ", "), err)
+			}
+			if err := guard(sim.Installed); err != nil {
+				return "", err
+			}
+		}
 		args := pacmanInstallArgs(packages)
 		out, err := runServiceMutationCombinedOutput(ctx, pacman, args...)
 		if err != nil {

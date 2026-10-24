@@ -10192,3 +10192,40 @@ hiçbir şey ölçülmedi; Frankfurt'ta phpPgAdmin'in sağlığı ayrıca doğru
 üretici deposunun daha yeni php-* meta paketleri, dağıtım paketlerinin hangi PHP'ye
 bağlı olduğunu değiştirebilir. P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi
 kapatmaz ya da ilerletmez.
+
+### Pakette sürüm seçmek; seçtiğinizden fazlasını getiren kurulumlar; kurulumdan sonra hazır olmayan bir araç (D-034 değişikliği, 24 Ekim 2026)
+
+v0.1.0-alpha.105 adayı için kaynakta (yayımlanmadı; kurulu bir sunucuda hiçbir şey
+ölçülmedi). **Aşağıdaki her durumda işlem yapan:** yönetici, Bileşenler'den.
+Sunucuda bir şey yapmak gerekmez.
+
+- **Pencere seçmediğiniz paketleri listeler.** "Bu, seçmediğiniz paketleri de
+  kurar:" onları bir gerekçeyle adlandırır; örneğin başka bir PHP sürümü (seçtiğiniz
+  PHP'nin yanına kurulur ve sistemle güncellenir) ya da Apache (başka bir web
+  sunucusu; CelikPanel Nginx üzerinden sunar, Apache de kurulur ve 80 numaralı
+  bağlantı noktasını kullanmaya çalışabilir). Kur bekler. **Sonraki eylem:** "Okudum;
+  bu paketleri de kur." kutusunu işaretleyip Kur'a basın ya da Değiştir'e basıp
+  önerilen sürümü (veya başka birini) seçin; liste kalkar. **Nasıl sürer:** kurulum
+  Kur'a bastığınızda başlar; ondan önce hiçbir şey değişmez.
+- **Seçilen bir PHP sürümü reddedilir.** Örneğin "phpPgAdmin burada PHP 8.6
+  üzerinde çalışamaz: php8.6-pgsql bu sunucunun depolarında yok. PHP-FPM için başka
+  bir PHP sürümü seçin." Hiçbir şey değişmedi. **Sonraki eylem:** Değiştir'e basıp
+  başka bir sürüm seçin. "… PHP 8.5 genellikle çalışır, ama dağıtım bunu sınamaz.
+  Devam edebilirsiniz." gibi bir uyarı sizi durdurmaz.
+- **"Denetlenemedi".** Okuma başarısız oldu ya da paket yöneticisi meşguldü. Kur
+  tutulmaz: sunucu kurmadan hemen önce yeniden denetler ve onaylamadığınız bir paket
+  gelecekse hiçbir şey kurmadan reddeder. **Sonraki eylem:** kurun ya da listeyi
+  önce görmek için biraz bekleyip pencereyi yeniden açın.
+- **Kurulum sunucuda reddedildi.** Yanıt onaylanmamış paketleri adlandırır; hiçbir
+  şey kurulmadı. **Sonraki eylem:** pencereyi yeniden açın, listeyi okuyup onaylayın
+  ya da başka bir sürüm seçin.
+- **Bir araç kurulumdan sonra "Hazır değil" okunur.** phpMyAdmin, phpPgAdmin ya da
+  Roundcube kuruldu ama eklentileri olan kurulu hiçbir PHP sürümünde yanıt vermedi;
+  satır nedeni söyler (örneğin PHP'de hangi eklentinin eksik olduğu). Araç kurulu
+  kalır. **Sonraki eylem:** aracın Yönet penceresini açın ve bir PHP sürümü seçin.
+  **Nasıl sürer:** o taşımanın kanıtı geçince "Hazır değil" kalkar.
+
+Değişmeyenler: siteler PHP'lerini kendi ayarlarında seçer; kurulu panelleri yalnız
+sahipleri, panelin kendi güncelleme ekranından günceller. Açık: kurulu bir sunucuda
+hiçbir şey ölçülmedi. P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ve
+ilerletmez.

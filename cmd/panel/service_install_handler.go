@@ -80,6 +80,9 @@ func (p *Panel) runServiceInstall(
 		if !wmResp.Present {
 			return result, serviceInstallFailure(errors.New("agent did not confirm that Roundcube is present in the webmail configuration"))
 		}
+		// alpha.105: webmail is proved on its PHP version right after its
+		// install; a first install may try another installed version.
+		p.provePHPToolAfterInstall(ctx, binding, "webmail", rcResp.FirstInstall, result)
 		if err := advance("scanning"); err != nil {
 			return result, operationAdvanceFailure(err)
 		}
@@ -104,6 +107,13 @@ func (p *Panel) runServiceInstall(
 		ServiceMutationBinding: binding,
 		ID:                     req.ServiceID,
 		Package:                req.Package,
+		PHPVersion:             req.PHPVersion,
+		// Every install is checked (alpha.105 review): Components, a
+		// component's own page, Server setup, mail profiles, a version added,
+		// Repair and an older tab alike. The browser only says what the owner
+		// confirmed; with nothing confirmed, a notable install is refused.
+		CheckInstalls:     true,
+		ConfirmedInstalls: req.ConfirmedInstalls,
 	}, &resp); err != nil {
 		// A failed attempt must leave a trace. Netdata could not be installed
 		// on Debian (apt has no such package) and the audit log stayed SILENT —
@@ -120,7 +130,19 @@ func (p *Panel) runServiceInstall(
 		return result, serviceInstallFailure(err)
 	}
 	if resp.Error != "" {
-		return result, serviceInstallFailure(fmt.Errorf("service install: %s", resp.Error))
+		// alpha.105: a refused notable install or PHP version is said with
+		// what it names; nothing was installed.
+		if len(resp.Notable) > 0 {
+			result["notable_installs"] = resp.Notable
+		}
+		if resp.ErrorCode != "" {
+			result["install_refusal"] = resp.ErrorCode
+		}
+		failure := serviceInstallFailure(fmt.Errorf("service install: %s", resp.Error))
+		if resp.ErrorCode == "INSTALL_NEEDS_CONFIRMATION" && len(resp.Notable) > 0 && failure.Detail == "" {
+			failure.Detail = notableRefusalDetail(resp.Notable)
+		}
+		return result, failure
 	}
 	if req.ServiceID == "postgresql" && req.Package != "" {
 		// A selected major is complete only when the agent confirms the exact
@@ -358,6 +380,7 @@ func (p *Panel) runServiceInstall(
 		if dbtResp.Warning != "" {
 			log.Printf("database tools configuration after installing %s: %s", req.ServiceID, dbtResp.Warning)
 		}
+		p.provePHPToolAfterInstall(ctx, binding, req.ServiceID, resp.FirstInstall, result)
 	}
 
 	// (Roundcube's install is handled earlier and returns before this point.)

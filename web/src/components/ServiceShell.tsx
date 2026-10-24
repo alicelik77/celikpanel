@@ -15,6 +15,10 @@ import { startVisibleReads } from '../lib/visibleReads';
 import { useNavigate } from '../router';
 import { packageVersionFacts } from '../lib/packageVersion';
 import { isServiceRunning } from '../lib/serviceStatus';
+import { useRemote } from '../lib/remote';
+import { decodeInstallPreview, installPreviewURL } from '../lib/installPreview';
+import { InstallPreviewNotes, installPreviewAckKey, installPreviewGate } from './InstallPreviewNotes';
+import { componentName } from '../lib/componentName';
 
 interface ManagedService {
     id: string;
@@ -354,12 +358,14 @@ export function ServiceShell({
         setInstallConfirmationOpen(true);
     };
 
-    const install = async () => {
+    const install = async (confirmed: string[]) => {
         if (observed !== 'absent') return;
         if (installReadiness?.ready !== true) return;
         if (installLocked) return;
         setInstallConfirmationOpen(false);
-        await startInstall({ serviceId, name });
+        // alpha.105 review: what the install brings is checked again on the
+        // server against what the owner confirmed here.
+        await startInstall({ serviceId, name, checkInstalls: true, confirmInstalls: confirmed });
     };
 
     const act = async (action: 'start' | 'stop' | 'restart') => {
@@ -605,6 +611,7 @@ export function ServiceShell({
 
             {installConfirmationOpen && (
                 <ServiceInstallConfirmationDialog
+                    serviceId={serviceId}
                     name={name}
                     readiness={installReadiness}
                     readinessLoading={installReadinessLoading}
@@ -614,7 +621,7 @@ export function ServiceShell({
                             : installReadiness?.ready !== true
                     }
                     onCancel={() => setInstallConfirmationOpen(false)}
-                    onConfirm={() => void install()}
+                    onConfirm={(confirmed) => void install(confirmed)}
                 />
             )}
         </div>
@@ -622,6 +629,7 @@ export function ServiceShell({
 }
 
 function ServiceInstallConfirmationDialog({
+    serviceId,
     name,
     readiness,
     readinessLoading,
@@ -629,14 +637,24 @@ function ServiceInstallConfirmationDialog({
     onCancel,
     onConfirm,
 }: {
+    serviceId: string;
     name: string;
     readiness: HostMutationReadiness | null;
     readinessLoading: boolean;
     confirmDisabled: boolean;
     onCancel: () => void;
-    onConfirm: () => void;
+    onConfirm: (confirmed: string[]) => void;
 }) {
     const { t } = useI18n();
+    // alpha.105 review: the package manager's simulation of this install, as
+    // in the Components dialogue; notable packages hold Install until the
+    // owner confirms them (Roundcube is a verified tarball, not a package).
+    // Bu kurulumun benzetimi; dikkat çeken paketler onay ister.
+    const previewURL = serviceId === 'roundcube' ? null : installPreviewURL([{ id: serviceId }]);
+    const preview = useRemote(previewURL, decodeInstallPreview);
+    const [acknowledgedFor, setAcknowledgedFor] = useState<string | null>(null);
+    const ackKey = installPreviewAckKey(previewURL, preview);
+    const gate = installPreviewGate(previewURL ? preview : null, ackKey !== null && acknowledgedFor === ackKey);
     const readinessMessage = readinessLoading
         ? t('services.mutationReadiness.checking')
         : readiness === null
@@ -669,8 +687,8 @@ function ServiceInstallConfirmationDialog({
                     <Button
                         variant="primary"
                         icon={Download}
-                        disabled={confirmDisabled}
-                        onClick={onConfirm}
+                        disabled={confirmDisabled || gate.hold}
+                        onClick={() => onConfirm(gate.confirmed)}
                     >
                         {t('services.confirm.install.button', { name })}
                     </Button>
@@ -689,6 +707,15 @@ function ServiceInstallConfirmationDialog({
                     {readinessMessage}
                     {readiness?.ready === false && <>{' '}{t('services.mutationReadiness.autoResume')}</>}
                 </div>
+            )}
+            {previewURL && (
+                <InstallPreviewNotes
+                    handle={preview}
+                    acknowledged={ackKey !== null && acknowledgedFor === ackKey}
+                    onAcknowledge={(value) => setAcknowledgedFor(value ? ackKey : null)}
+                    componentLabel={(id) => componentName(id, t)}
+                    avoidable={false}
+                />
             )}
         </Dialog>
     );

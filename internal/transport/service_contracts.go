@@ -178,6 +178,75 @@ type InstallServiceRequest struct {
 	ServiceMutationBinding
 	ID      string `json:"id"`
 	Package string `json:"package,omitempty"`
+	// PHPVersion (alpha.105): the PHP version a PHP tool (phpMyAdmin,
+	// phpPgAdmin) is installed for and bound to, chosen in a bundle. The
+	// tool's extension packages for it are installed with the tool.
+	// PHPVersion: bir PHP aracının kurulup bağlandığı PHP sürümü.
+	PHPVersion string `json:"php_version,omitempty"`
+	// CheckInstalls (alpha.105): the package manager's simulation of this
+	// install is classified, and a notable install (another PHP version's
+	// packages, Apache, another catalogue component, a database server)
+	// refuses the install unless ConfirmedInstalls names it. Additive: an
+	// older Panel never sets it.
+	// CheckInstalls: dikkat çeken kurulum, onaylanmadıkça kurulumu reddeder.
+	CheckInstalls     bool     `json:"check_installs,omitempty"`
+	ConfirmedInstalls []string `json:"confirmed_installs,omitempty"`
+}
+
+// NotableInstall is one package an install would bring beyond what it
+// named that the owner must see and confirm first (alpha.105). Reason:
+// new_php_version (Version names it), apache, component (Component names
+// the catalogue component), database_server.
+// NotableInstall: kurulumun adını söylediklerinin ötesinde getireceği ve
+// sahibin önce görüp onaylaması gereken paket.
+type NotableInstall struct {
+	Package   string `json:"package"`
+	Reason    string `json:"reason"`
+	Component string `json:"component,omitempty"`
+	Version   string `json:"version,omitempty"`
+}
+
+// ServiceInstallPreviewStep is one component install of a preview: the
+// component, an optional version package, an optional PHP version for a
+// PHP tool.
+type ServiceInstallPreviewStep struct {
+	ID         string `json:"id"`
+	Package    string `json:"package,omitempty"`
+	PHPVersion string `json:"php_version,omitempty"`
+}
+
+// ServiceInstallPreviewRequest asks, read-only, what installing these
+// steps together would bring (alpha.105).
+type ServiceInstallPreviewRequest struct {
+	Steps []ServiceInstallPreviewStep `json:"steps"`
+}
+
+// InstallPreviewRefusal: a step that cannot work as chosen (Code
+// php_extensions_unavailable: Packages have no installation candidate for
+// Version; php_version_unavailable: PHP Version has no FPM package here;
+// php_version_unsupported: the tool has no per-version extensions on this
+// system). The install is refused before anything changes.
+type InstallPreviewRefusal struct {
+	ID       string   `json:"id"`
+	Code     string   `json:"code"`
+	Version  string   `json:"version,omitempty"`
+	Packages []string `json:"packages,omitempty"`
+}
+
+// ServiceInstallPreviewResponse is the package manager's answer. State:
+// "known" (Installs and Notable are the simulation's answer), "busy"
+// (another package operation holds the lock), "unsupported" (this package
+// family has no simulation here) or "failed" (Error says why).
+// ServiceInstallPreviewResponse, paket yöneticisinin benzetim yanıtıdır.
+type ServiceInstallPreviewResponse struct {
+	State         string                  `json:"state"`
+	PackageFamily string                  `json:"package_family"`
+	Requested     []string                `json:"requested"`
+	Installs      []string                `json:"installs"`
+	Notable       []NotableInstall        `json:"notable"`
+	Removes       []string                `json:"removes"`
+	Refusals      []InstallPreviewRefusal `json:"refusals"`
+	Error         string                  `json:"error,omitempty"`
 }
 
 type InstallServiceResponse struct {
@@ -193,6 +262,15 @@ type InstallServiceResponse struct {
 	// uygulama bulduğunu (bugün: sunucuda zaten olan yerel cron) ve hiçbir
 	// paket ya da unit değişikliği yapmadığını bildirir. Eklemelidir.
 	PreservedExisting bool `json:"preserved_existing,omitempty"`
+	// ErrorCode types a refusal (alpha.105): INSTALL_NEEDS_CONFIRMATION
+	// (Notable names what the owner has not confirmed) and
+	// INSTALL_PHP_VERSION_REFUSED (the chosen PHP version cannot serve the
+	// tool). Nothing was installed.
+	ErrorCode string           `json:"error_code,omitempty"`
+	Notable   []NotableInstall `json:"notable,omitempty"`
+	// FirstInstall: the PHP tool was not on the host before this install,
+	// so its proof may try another installed PHP version (alpha.105).
+	FirstInstall bool `json:"first_install,omitempty"`
 }
 
 type UninstallServiceResponse struct {
@@ -330,6 +408,8 @@ type InstallRoundcubeResponse struct {
 	Installed bool   `json:"installed"`
 	Version   string `json:"version"`
 	Error     string `json:"error,omitempty"`
+	// FirstInstall: Roundcube was not on the host before (alpha.105).
+	FirstInstall bool `json:"first_install,omitempty"`
 }
 
 type RemoveRoundcubeResponse struct {
@@ -467,6 +547,13 @@ type PHPToolBinding struct {
 	// ExtensionsPresent: the tool's PHP extension packages are installed for
 	// its version (package presence, not proof that PHP loads them).
 	ExtensionsPresent bool `json:"extensions_present"`
+	// ProofFailed (alpha.105): the tool's last proof after its install did
+	// not pass on any installed PHP version; ProofCause says why for the
+	// version it runs on. Cleared by a proof that passes (a move in Manage).
+	ProofFailed bool          `json:"proof_failed,omitempty"`
+	ProofCause  *PHPToolCause `json:"proof_cause,omitempty"`
+	// ProofTriedOthers: other installed versions were tried too.
+	ProofTriedOthers bool `json:"proof_tried_others,omitempty"`
 }
 
 // PHPToolCause says why a tool move failed, in a form a screen translates
@@ -492,6 +579,35 @@ type PHPToolCause struct {
 type PHPToolBindingsResponse struct {
 	Tools    []PHPToolBinding `json:"tools"`
 	Versions []string         `json:"versions"`
+	Error    string           `json:"error,omitempty"`
+}
+
+// ProvePHPToolRequest proves a PHP tool just installed (alpha.105): it
+// must answer as itself on its PHP version; with AllowFallback (a first
+// install) the other installed versions that have its extensions are tried
+// in order, the distribution's default first.
+type ProvePHPToolRequest struct {
+	ServiceMutationBinding
+	Tool          string `json:"tool"`
+	AllowFallback bool   `json:"allow_fallback,omitempty"`
+}
+
+// PHPToolAttempt is one version a proof tried and why it failed.
+type PHPToolAttempt struct {
+	Version string        `json:"version"`
+	Cause   *PHPToolCause `json:"cause,omitempty"`
+}
+
+// ProvePHPToolResponse: Proved when the tool answered on Version; Moved
+// when that is not the version it was configured on first. Attempts lists
+// the versions that failed, in order. A tool that was not proved stays
+// installed and reads "Not ready".
+type ProvePHPToolResponse struct {
+	Tool     string           `json:"tool"`
+	Version  string           `json:"version,omitempty"`
+	Proved   bool             `json:"proved"`
+	Moved    bool             `json:"moved,omitempty"`
+	Attempts []PHPToolAttempt `json:"attempts,omitempty"`
 	Error    string           `json:"error,omitempty"`
 }
 

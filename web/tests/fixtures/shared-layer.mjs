@@ -93,6 +93,10 @@ export const phpToolsURL = compileSource('lib/phpTools.ts', (specifier) => (
   specifier.endsWith('/requestIdentity') ? requestIdentityURL : unexpected('lib/phpTools.ts')(specifier)
 ));
 
+// alpha.105: what an install brings, and the component's version reads.
+export const installPreviewLibURL = compileSource('lib/installPreview.ts', unexpected('lib/installPreview.ts'));
+export const componentRepoURL = compileSource('lib/componentRepo.ts', unexpected('lib/componentRepo.ts'));
+
 export function sharedLayer(stubURL, extra = {}) {
   const uiURL = compileSource('components/ui.tsx', (specifier) => (
     specifier.endsWith('/apiError') ? apiErrorURL : stubURL
@@ -112,6 +116,8 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/packageVersion': packageVersionURL,
     '/lib/serviceStatus': serviceStatusURL,
     '/lib/phpTools': phpToolsURL,
+    '/lib/installPreview': installPreviewLibURL,
+    '/lib/componentRepo': componentRepoURL,
     '/ui': uiURL,
     ...extra,
   };
@@ -122,6 +128,7 @@ export function sharedLayer(stubURL, extra = {}) {
   // The firewall box left ServiceList.tsx for its own module in alpha.98; a
   // screen that mounted it inside the Components page still gets the real one.
   if (!extra['/FirewallPanel']) table['/FirewallPanel'] = compileSource('components/FirewallPanel.tsx', resolve);
+  if (!extra['/InstallPreviewNotes']) table['/InstallPreviewNotes'] = compileSource('components/InstallPreviewNotes.tsx', resolve);
   return { uiURL, resolve, compile: (path, more = {}) => compileSource(path, (specifier) => {
     for (const [suffix, url] of Object.entries(more)) if (specifier.endsWith(suffix)) return url;
     return resolve(specifier);

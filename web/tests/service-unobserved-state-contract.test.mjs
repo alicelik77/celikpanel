@@ -372,7 +372,7 @@ test('installing is reachable only after this host was observed to lack the comp
   const request = serviceShell.slice(requestStart, serviceShell.indexOf('    };', requestStart));
   assert.match(request, /if \(observed !== 'absent'\) return;/);
 
-  const installStart = serviceShell.indexOf('const install = async () => {');
+  const installStart = serviceShell.indexOf('const install = async (confirmed: string[]) => {');
   const install = serviceShell.slice(installStart, serviceShell.indexOf('    };', installStart));
   const guard = install.indexOf("if (observed !== 'absent') return;");
   const mutation = install.indexOf('startInstall');
