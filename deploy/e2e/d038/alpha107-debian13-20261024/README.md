@@ -47,7 +47,8 @@ SHA-256 `eaf0992a71f585765afab1251fe2f432f0d71327f1e5bc089f50e1a5c43764ef`):
 
 `TestRealSystemA107RepositoriesAreConfinedAndTheDefaultIsExact`:
 
-- Sury and PGDG were enabled through the Agent's own code and confined
+- Sury and PGDG were enabled through the Agent's own code and confined (in this
+  first design by the enable itself; see below)
   (`/etc/apt/preferences.d/celikpanel-sury.pref`, `-pgdg.pref`: `Package: *`,
   the origin, priority 100). `apt-cache policy` then names the distribution's
   `php8.4-fpm` 8.4.27-1~deb13u1 and `postgresql` 17+278 as candidates, not Sury's
@@ -91,10 +92,45 @@ read used needrestart, knew the services and the reboot state (none waiting);
 the release facts read Debian 13 trixie, Sury's suite trixie, PGDG's
 trixie-pgdg, PHP lines and the clusters.
 
+## After the review: confinement is the owner's action (second recorded run)
+
+The recorded run above was made with the first design, in which enabling a
+repository (and the Panel's first start) confined it by itself. After the
+review that was removed: the repository card shows the plan and only the
+confirmed text is written. One short run on a fresh overlay of the same base
+image recorded the new design, from the candidate at
+`f6c44f2b65b6cce4fdd0ed49668c90600e233a8e`. Archive
+`cp-a107-confine-evidence.tar.gz`, SHA-256
+`6a360711fe6b1db35140f04e3fd6bd76a710dcc3f280ec31e253f8fe624f72f7`.
+
+`TestRealSystemA107ConfinementIsTheOwnersShownFirstAndKeptAsTheOwnerLeftIt`
+(passed):
+
+- Sury and PGDG were enabled through the Agent's own code; both read
+  `not_written` afterwards: nothing confined them.
+- Before confining, an older PGDG client was installed by hand
+  (`postgresql-client-18` 18.3-1.pgdg13+1, PGDG listing 18.6-1.pgdg13+2), and
+  `apt-get -s upgrade` upgraded it.
+- The plan for PGDG named the exact text and its SHA-256, kept `libpq5`,
+  `postgresql-client-18` and `postgresql-client-common` following PGDG, said the
+  client is still upgraded from PGDG, and that `apt-get upgrade` would do the same
+  with and without the rule (39 updates either way). Confirmed with that SHA-256,
+  the written file was byte for byte the shown text. Sury was confined the same
+  way.
+- Confined, `apt-get -s upgrade` still upgraded `postgresql-client-18` from PGDG,
+  and no upgrade replaced a distribution package with a vendor build.
+- PHP 8.3 (Sury only) was refused unconfirmed with `php-common` named as
+  `vendor_shared`; confirmed, it installed, and Sury's rule then keeps `php-common`
+  following Sury.
+- The owner deleted `/etc/apt/preferences.d/celikpanel-pgdg.pref`: the state read
+  `removed_by_owner`. Neither the post-install refresh nor installing
+  `postgresql-18` from PGDG wrote it again.
+
 ## Limits
 
 One distribution (Debian 13), apt only; pacman and DNF by component tests only.
-The Panel's endpoints, the browser cards and dialogs, the Panel-start
-confinement of repositories enabled before, Node.js patches and an application's
-account move were not part of this run (component and mounted tests cover them).
-This is not acceptance of any P0 item.
+The Panel's endpoints and a Panel restart, the browser cards and dialogs,
+Node.js patches and an application's account move were not part of these runs
+(component and mounted tests cover them; the Panel no longer confines anything
+at its start). Sury keeps only its newest builds, so the older-vendor-version
+case was run with PGDG. This is not acceptance of any P0 item.
