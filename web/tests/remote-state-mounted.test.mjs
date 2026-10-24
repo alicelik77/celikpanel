@@ -36,7 +36,7 @@ const screenFiles = [
 const icons = new Set(['AlertTriangle', 'XCircle']);
 // Children of the screens under test that are not under test themselves.
 const stubbedComponents = [
-  'Link', 'PHPToolVersion', 'RepoCard', 'SecurityUpdatesCard', 'TeamMembersPage', 'DNSServerSettings', 'SecurityAuditCard', 'ServerSetupSettings',
+  'Link', 'PHPToolVersion', 'RepoCard', 'SecurityUpdatesCard', 'RoundcubeUpdateCard', 'TeamMembersPage', 'DNSServerSettings', 'SecurityAuditCard', 'ServerSetupSettings',
   'DomainGeneralSettings', 'DomainSSLOverviewCard', 'DomainMailManager', 'ChangePasswordModal', 'ChangeEmailModal',
 ];
 for (const name of screenFiles) {

@@ -1332,6 +1332,7 @@ func main() {
 	http.HandleFunc(serviceUninstallPath, panel.handleServiceUninstall)
 	http.HandleFunc(serviceRemovalImpactPath, panel.handleServiceRemovalImpact)
 	http.HandleFunc(serviceInstallPreviewPath, panel.handleServiceInstallPreview)
+	http.HandleFunc(roundcubeUpdatePath, panel.handleRoundcubeUpdate)
 	http.HandleFunc(phpToolsPath, panel.handlePHPTools)
 	http.HandleFunc(phpToolBindPath, panel.handlePHPToolBind)
 	http.HandleFunc(hostMutationReadinessPath, panel.handleHostMutationReadiness)

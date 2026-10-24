@@ -22,6 +22,7 @@ import { FirewallBar } from './FirewallPanel';
 import { componentStateWord, isServiceRunning, phpBindingOf, phpNotReadyHintKey } from '../lib/serviceStatus';
 import { decodeCandidateVersion, decodeRepoInfo, type RepoInfo } from '../lib/componentRepo';
 import { decodeInstallPreview, installPreviewURL } from '../lib/installPreview';
+import { decodeRoundcubeUpdate, ROUNDCUBE_UPDATE_URL } from '../lib/roundcubeUpdate';
 import { InstallPreviewNotes, installPreviewAckKey, installPreviewGate } from './InstallPreviewNotes';
 import { useAuth } from '../auth/AuthContext';
 import type { TranslationKey } from '../i18n/en';
@@ -2531,13 +2532,13 @@ function MailProfileInstallDialog({
                 ? service.versions.join(', ')
                 : t('services.mailProfiles.plan.installed');
         }
-        if (service.id === 'roundcube') return '1.6.15';
+        if (service.id === 'roundcube') return '1.6.20';
         if (candidatesLoading) return '…';
         return candidateVersions[service.id] || t('services.mailProfiles.plan.repositoryCandidate');
     };
     const componentPackages = (service: ManagedService) => {
         if ((service.packages?.length ?? 0) > 0) return service.packages!.join(', ');
-        if (service.id === 'roundcube') return 'Roundcube 1.6.15';
+        if (service.id === 'roundcube') return 'Roundcube 1.6.20';
         return service.id;
     };
 
@@ -3023,7 +3024,35 @@ const rowButtonClass = 'inline-flex items-center gap-1.5 rounded-lg border borde
 // Satırın söylediği sürüm: runtime'lar kopyalarını, diğerleri paket sürümünün
 // kısa biçimini (tam sürüm ipucunda), farklıysa "birden çok sürüm", bilinmiyorsa
 // hiçbir şey.
-function RowVersion({ service, column = false, className = '' }: { service: ManagedService; column?: boolean; className?: string }) {
+function RowVersion(props: { service: ManagedService; column?: boolean; className?: string }) {
+    // alpha.107: the webmail row also says an update is available (D-038 §9).
+    if (props.service.id === 'roundcube' && props.service.is_installed) {
+        return (
+            <>
+                <RowVersionText {...props} />
+                <RoundcubeRowUpdate />
+            </>
+        );
+    }
+    return <RowVersionText {...props} />;
+}
+
+// The Roundcube row says an update is available (alpha.107); it shares the
+// webmail page's read and says nothing until that read is known.
+// Roundcube satırı, güncelleme varsa söyler.
+function RoundcubeRowUpdate() {
+    const { t } = useI18n();
+    const handle = useRemote(ROUNDCUBE_UPDATE_URL, decodeRoundcubeUpdate, { freshFor: 10 * 60_000 });
+    const remote = handle.remote;
+    if (remote.state !== 'known' || !remote.value.update_available || !remote.value.latest_on_line) return null;
+    return (
+        <div className="text-xs font-medium text-warning" data-row-webmail-update={remote.value.latest_on_line}>
+            {t('life.webmail.rowAvailable', { latest: remote.value.latest_on_line })}
+        </div>
+    );
+}
+
+function RowVersionText({ service, column = false, className = '' }: { service: ManagedService; column?: boolean; className?: string }) {
     const { t } = useI18n();
     if (!service.is_installed) return null;
     if (service.versions.length > 0) {

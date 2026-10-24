@@ -90,6 +90,26 @@ export const enLifecycleScreens = {
     'life.updates.outside.roundcube': 'Webmail (Roundcube) {versions}',
     'life.updates.outside.node': 'Node.js {versions}',
     'life.updates.needrestart': 'On this server needrestart restarts services by itself after updates. That is what the operating system does, not CelikPanel.',
+    // ---- webmail (Roundcube) updates (D-038 §9) ----
+    'life.webmail.title': 'Webmail updates',
+    'life.webmail.desc': 'CelikPanel installed Roundcube from its own release, so the operating system never updates it. Its updates are offered here and applied only when you confirm.',
+    'life.webmail.checking': 'Reading Roundcube’s releases…',
+    'life.webmail.unknown': 'Whether a newer Roundcube exists could not be read. Nothing was changed. Try again.',
+    'life.webmail.current': 'Installed: Roundcube {version}, the newest release on the {line} line.',
+    'life.webmail.available': 'Roundcube {latest} is available on the {line} line; this server runs {version}. Releases on the same line carry security fixes.',
+    'life.webmail.otherLine': 'A newer line exists ({overall}); moving to another line is not offered by CelikPanel yet.',
+    'life.webmail.checkedAt': 'Release list read {date}.',
+    'life.webmail.checkError': 'Roundcube’s release list could not be read ({reason}), so whether a newer release exists is not known.',
+    'life.webmail.update': 'Update to {latest}…',
+    'life.webmail.dialogTitle': 'Update webmail to Roundcube {latest}?',
+    'life.webmail.dialogBody': 'CelikPanel downloads Roundcube {latest}, checks its signature with Roundcube’s signing key, keeps your configuration, plugins and the webmail database, runs Roundcube’s own database update, then puts the new files in place in one step. Before that it archives the current webmail, database included. Webmail is unavailable for a few seconds; no service is restarted. If webmail does not answer afterwards, the previous files are put back exactly as they were.',
+    'life.webmail.confirm': 'Update',
+    'life.webmail.updating': 'Updating webmail… this can take a few minutes. Nothing needs to be done meanwhile.',
+    'life.webmail.done': 'Webmail was updated from {from} to {to} and answers. The previous version is archived in {backup}.',
+    'life.webmail.rolledBack': 'The update to {to} did not work, so the previous {from} files were put back exactly as they were. {reason}',
+    'life.webmail.failed': 'Webmail was not updated: {reason}',
+    'life.webmail.notInstalled': 'Webmail (Roundcube) is not installed.',
+    'life.webmail.rowAvailable': 'Update available: {latest}',
 } as const;
 
 export type LifecycleScreenKey = keyof typeof enLifecycleScreens;

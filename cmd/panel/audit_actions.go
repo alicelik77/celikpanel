@@ -216,4 +216,6 @@ var auditActionNames = []string{
 	"vpn.peer.remove",
 	"vpn.setup",
 	"vpn.sync",
+	"webmail.update",
+	"webmail.update.failed",
 }

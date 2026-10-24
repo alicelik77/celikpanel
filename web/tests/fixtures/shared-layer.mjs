@@ -96,6 +96,8 @@ export const phpToolsURL = compileSource('lib/phpTools.ts', (specifier) => (
 // alpha.105: what an install brings, and the component's version reads.
 export const installPreviewLibURL = compileSource('lib/installPreview.ts', unexpected('lib/installPreview.ts'));
 export const componentRepoURL = compileSource('lib/componentRepo.ts', unexpected('lib/componentRepo.ts'));
+// alpha.107: the webmail update check, read by its card and the Components row.
+export const roundcubeUpdateURL = compileSource('lib/roundcubeUpdate.ts', unexpected('lib/roundcubeUpdate.ts'));
 
 export function sharedLayer(stubURL, extra = {}) {
   const uiURL = compileSource('components/ui.tsx', (specifier) => (
@@ -118,6 +120,7 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/phpTools': phpToolsURL,
     '/lib/installPreview': installPreviewLibURL,
     '/lib/componentRepo': componentRepoURL,
+    '/lib/roundcubeUpdate': roundcubeUpdateURL,
     '/ui': uiURL,
     ...extra,
   };

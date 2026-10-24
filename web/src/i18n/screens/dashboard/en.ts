@@ -277,6 +277,8 @@ export const enDashboardScreens = {
     'dashboard.audit.action.panel.certificate.failed': 'could not set up the panel certificate for {target}',
     'dashboard.audit.action.security.update_origins': 'added vendor repositories to the operating system\'s automatic updates ({target})',
     'dashboard.audit.action.security.update_origins.failed': 'could not add vendor repositories to the operating system\'s automatic updates',
+    'dashboard.audit.action.webmail.update': 'updated webmail (Roundcube) ({target})',
+    'dashboard.audit.action.webmail.update.failed': 'could not update webmail (Roundcube) ({target})',
     'dashboard.audit.action.repo.confine': 'confined the package repository {target} to its component',
     'dashboard.audit.action.repo.confine.failed': 'could not confine the package repository {target} to its component',
     'dashboard.audit.action.repo.disable': 'turned off the package repository {target}',

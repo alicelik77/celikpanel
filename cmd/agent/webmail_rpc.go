@@ -38,11 +38,19 @@ import (
 // dağıtıma özgü paket (apt roundcube / pacman roundcubemail, farklı yerleşim)
 // tam da bunun kaçındığı D-004 tuzağıdır. Sürüm yükseltmek burada iki satır +
 // canlı yeniden-hash; Node ile aynı disiplin.
-const (
-	roundcubeVersion = "1.6.15"
-	roundcubeSHA256  = "48c9f212c77460132491f670abaf440b765c8276268349a690913764d26afbef"
-	roundcubeMaxSize = 100 << 20
+// alpha.107: a fresh install is 1.6.20, the newest release on the 1.6 line
+// (2026-10-19). Its SHA-256 equals the digest GitHub records for the asset,
+// and its detached signature verifies with Roundcube's signing key
+// (roundcube_update.go). An installed tree is updated through
+// UpdateRoundcubeV1. Variables only so the disposable-VM evidence can install
+// an older release first.
+// Yeni kurulum 1.6 hattının en yenisi 1.6.20'dir.
+var (
+	roundcubeVersion = "1.6.20"
+	roundcubeSHA256  = "46919c70c85609b57038903c4ecc4e1d7fa4e14c535fe5b14192d778dcd4a1ee"
 )
+
+const roundcubeMaxSize = 100 << 20
 
 // webmailBaseDir is where the verified tarball is unpacked. It lives under
 // /var/lib — NOT /opt/celikpanel — because nginx (running as the web user)
