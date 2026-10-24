@@ -10,8 +10,13 @@ import test from 'node:test';
 import React from 'react';
 import Renderer, { act } from 'react-test-renderer';
 import { dataModule, reactURL, sharedLayer } from './fixtures/shared-layer.mjs';
-import { enComponentsScreens as en } from '../src/i18n/screens/components/en.ts';
-import { trComponentsScreens as tr } from '../src/i18n/screens/components/tr.ts';
+import { enComponentsScreens } from '../src/i18n/screens/components/en.ts';
+import { trComponentsScreens } from '../src/i18n/screens/components/tr.ts';
+import { enComponentPagesScreens } from '../src/i18n/screens/componentPages/en.ts';
+import { trComponentPagesScreens } from '../src/i18n/screens/componentPages/tr.ts';
+// The components and component-page parts (split in alpha.106), as one.
+const en = { ...enComponentsScreens, ...enComponentPagesScreens };
+const tr = { ...trComponentsScreens, ...trComponentPagesScreens };
 
 const fill = (text, vars = {}) => Object.entries(vars).reduce((out, [name, value]) => out.split('{' + name + '}').join(String(value)), text);
 globalThis.cardWords = en;

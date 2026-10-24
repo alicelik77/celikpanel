@@ -26,6 +26,7 @@ import type { SitesScreenKey } from './screens/sites/en';
 import type { SiteConfigScreenKey } from './screens/siteConfig/en';
 import type { DnsCertificatesScreenKey } from './screens/dnsCertificates/en';
 import type { ComponentsScreenKey } from './screens/components/en';
+import type { ComponentPagesScreenKey } from './screens/componentPages/en';
 import type { MailDatabasesScreenKey } from './screens/mailDatabases/en';
 import type { SecurityScreenKey } from './screens/security/en';
 import type { DashboardScreenKey } from './screens/dashboard/en';
@@ -463,6 +464,7 @@ export type ScreenKey =
     | SiteConfigScreenKey
     | DnsCertificatesScreenKey
     | ComponentsScreenKey
+    | ComponentPagesScreenKey
     | MailDatabasesScreenKey
     | SecurityScreenKey
     | DashboardScreenKey
