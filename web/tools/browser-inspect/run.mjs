@@ -1811,6 +1811,10 @@ const scenarios = {
 (await import('./scenarios-batch27.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
 // --- end of batch 27 ---
 
+// --- batch 28 (2026-10-24): the bundle dialogue of alpha.105 ---
+(await import('./scenarios-batch28.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
+// --- end of batch 28 ---
+
 for (const [name, run] of Object.entries(scenarios)) {
     if (wanted && !wanted.includes(name)) continue;
     const started = Date.now();

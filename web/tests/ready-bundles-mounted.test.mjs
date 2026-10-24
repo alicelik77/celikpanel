@@ -202,7 +202,8 @@ const dialogText = () => {
 };
 // A bundle part's component name, without what its row says after it (its
 // version since alpha.105).
-const partName = (node) => label(node).replace(/(Will be installed|Already installed|Not needed|[0-9][0-9., ]* · already installed|The distribution’s version · recommended|…)(Change)?$/, '');
+const dotted = (text) => text.replace(/\s*·\s*/g, ' · ');
+const partName = (node) => dotted(label(node)).replace(/(Will be installed|Already installed|Not needed|[0-9][0-9., ]* · already installed|The distribution’s version · recommended|…)(Change)?$/, '');
 const installedState = () => tree.root.findAll((node) => node.props && node.props['data-bundle-installed-state'] !== undefined)[0]?.props['data-bundle-installed-state'];
 
 test('an offered bundle is an outlined chip that says Install; pressing it opens the confirmation, and nothing is sent', async () => {
@@ -793,8 +794,8 @@ async function mountMariaDBBundle(options) {
   return previews;
 }
 const confirmButton = (n) => tree.root.findAll((node) => node.type === 'button' && label(node) === say('services.bundles.dialog.confirm', { n }))[0];
-const versionText = (id) => label(tree.root.find((node) => node.props && node.props['data-bundle-part'] !== undefined
-  && label(node).startsWith(nameOf(id))));
+const versionText = (id) => dotted(label(tree.root.find((node) => node.props && node.props['data-bundle-part'] !== undefined
+  && label(node).startsWith(nameOf(id)))));
 
 test('the bundle dialogue says the version each part brings, marks the distribution’s as recommended, and Change lists the component’s own versions', async () => {
   globalThis.bundleToasts = [];

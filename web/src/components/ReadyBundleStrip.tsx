@@ -669,6 +669,23 @@ export interface BundleChoices {
 
 interface VersionOption { pkg: string; version: string; recommended: boolean }
 
+// "8.4 · the distribution's version · recommended", drawn as the rows draw
+// a state and its version: the parts apart, a muted dot between them.
+// Sürüm sözünün parçaları, satırlardaki gibi aralarında soluk bir noktayla.
+function Said({ text }: { text: string }) {
+    const parts = text.split(' · ');
+    return (
+        <span className='inline-flex flex-wrap items-center justify-end gap-x-1.5'>
+            {parts.map((part, index) => (
+                <span key={index} className='inline-flex items-center gap-x-1.5'>
+                    {index > 0 && <Dot />}
+                    <span className={index === 0 && /^[0-9]/.test(part) ? 'font-mono' : ''}>{part}</span>
+                </span>
+            ))}
+        </span>
+    );
+}
+
 // One part the bundle installs: its version and, when its own install offers
 // more than one, Change.
 // Paketin kurduğu bir parça: sürümü ve birden çoksa Değiştir.
@@ -708,7 +725,7 @@ function BundleVersionPart({
     return (
         <>
             <span className='ml-auto flex min-w-0 flex-wrap items-center justify-end gap-x-2 gap-y-0.5 text-right text-xs text-fg-muted'>
-                <span data-bundle-version={chosen || 'default'}><KeepWords text={said} /></span>
+                <span data-bundle-version={chosen || 'default'}><Said text={said} /></span>
                 {options.length > 1 && (
                     <button
                         type='button'
@@ -859,7 +876,7 @@ export function BundleInstallDialog({
                                 <span className='ml-auto text-xs text-fg-subtle' data-bundle-installed-version={installedVersion || undefined}>
                                     {state === 'installed'
                                         ? (installedVersion
-                                            ? t('services.bundles.version.installed', { version: installedVersion })
+                                            ? <Said text={t('services.bundles.version.installed', { version: installedVersion })} />
                                             : t('services.bundles.dialog.alreadyInstalled'))
                                         : t('services.bundles.dialog.notNeeded')}
                                 </span>
