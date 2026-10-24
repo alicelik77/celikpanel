@@ -177,7 +177,8 @@ server). Per point, what now exists and what remains:
    (`Inst name [old] (new)`) apart from new installs, names them for
    confirmation, and refuses by name — whatever was confirmed — a step that
    would replace a distribution package with a vendor repository's version.
-   Webmail updates, Node.js moves and an application's account move are proved
+   A dependency's distribution security update (on Debian 13, `postgresql-17`
+   needs `perl-base`'s) is named and waits for confirmation. Webmail updates, Node.js moves and an application's account move are proved
    and put back otherwise. Every restart offered here says what it interrupts
    before it starts; the webmail update says that no service is restarted.
 4. **Patches are the operating system's job.** Security → Security updates reads
@@ -214,8 +215,10 @@ server). Per point, what now exists and what remains:
    `apt-get remove`, not purge; the dialog says where the data stays
    (`/var/lib/postgresql/<version>/<cluster>`, `/etc/postgresql`,
    `/var/lib/mysql`), and an install that finds such data says it will use it
-   as it is. The real-system run recorded remove and purge with an existing
-   cluster (see the evidence below). *Remains:* a reinstall says what it found
+   as it is. The real-system run recorded both with an existing cluster: after
+   `remove` the cluster stayed and a reinstall started it with its database;
+   Debian's own `purge` of `postgresql-17`, run by hand, deleted the cluster's
+   data and configuration. CelikPanel therefore keeps `remove`. *Remains:* a reinstall says what it found
    but does not offer a choice; a purge's configuration-file warning for other
    components is not built.
 9. **What the package manager did not install.** Roundcube: the update check
@@ -244,7 +247,9 @@ server). Per point, what now exists and what remains:
 12. **Vendor repositories are confined.** Enabling Sury or PGDG writes
     `/etc/apt/preferences.d/celikpanel-<id>.pref` before the source exists: the
     origin provides only what the distribution does not ship, and the packages
-    already installed from it keep following it. Repositories enabled before are
+    installed from it keep following it. A version only the vendor ships takes
+    the vendor's shared packages it needs (Sury's `php-common`, PGDG's
+    `libpq5`), named in the install; they then follow the vendor. Repositories enabled before are
     confined when the Panel starts after the update; an edited rule or the
     owner's own rule is kept and named. The repository card says who enabled it
     and when, the signing key's fingerprint and expiry (warning at 60 days),
