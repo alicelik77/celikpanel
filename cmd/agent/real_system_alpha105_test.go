@@ -20,10 +20,12 @@ import (
 // virtual machine booted from the base image (nginx, the vendor PHP
 // repository configured, no PHP; build tag realsystem, plus
 // CELIKPANEL_REAL_SYSTEM_A105=1). It walks the PostgreSQL + phpPgAdmin bundle
-// with PHP 8.3 chosen from the vendor repository: the bundle's simulation
-// names the notable packages before anything changes, an unconfirmed install
-// is refused with nothing installed, the confirmed install runs through the
-// Agent's own install code, phpPgAdmin is configured and proved on 8.3; then,
+// with PHP 8.3 chosen from the vendor repository. phpMyAdmin alone on the
+// owner's bare PHP 8.3 would bring the default PHP's packages: the simulation
+// names them before anything changes and the unconfirmed install is refused
+// with nothing installed. The bundle with 8.3 chosen brings no other PHP;
+// its steps run through the Agent's own install code, each checked, and
+// phpPgAdmin is configured and proved on 8.3; then,
 // with PHP 8.4 installed and pgsql disabled for 8.3's FPM, a proof without
 // fallback leaves it Not ready, and a first-install proof moves it to 8.4.
 // Never run it on an installed server.
@@ -88,33 +90,51 @@ func a105Install(t *testing.T, a *Agent, id, pkg, phpVersion string, confirmed [
 func TestRealSystemA105BundleWithAChosenPHPIsCheckedConfirmedAndProved(t *testing.T) {
 	requireRealSystemA105(t)
 	a := &Agent{}
-	steps := []transport.ServiceInstallPreviewStep{{ID: "postgresql"}, {ID: "php-fpm", Package: "php8.3-fpm"}, {ID: "phppgadmin", PHPVersion: "8.3"}}
+	// The owner's own bare PHP 8.3 from the vendor repository; the
+	// distribution's default PHP is not installed.
+	a105Run(t, "apt-get", "install", "-y", "-q", "--no-install-recommends", "php8.3-fpm", "php8.3-cli")
 
-	// 1. The bundle's simulation, before anything changes.
+	// 1. A notable install is said before anything changes: phpMyAdmin on
+	// this server would bring the default PHP's packages.
 	before := a105DpkgSet(t)
+	var alone transport.ServiceInstallPreviewResponse
+	if err := a.ServiceInstallPreviewV1(&transport.ServiceInstallPreviewRequest{Steps: []transport.ServiceInstallPreviewStep{{ID: "phpmyadmin"}}}, &alone); err != nil {
+		t.Fatal(err)
+	}
+	logJSON(t, "phpMyAdmin preview", alone)
+	notable := []string{}
+	for _, item := range alone.Notable {
+		notable = append(notable, item.Package)
+	}
+	if alone.State != "known" || !slices.Contains(notable, "php8.4-mysql") || !slices.Contains(notable, "php8.4-common") {
+		t.Fatalf("the preview did not name PHP 8.4's packages: %+v", alone)
+	}
+	// Unconfirmed, the real install is refused and nothing changes.
+	var pkgOut string
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+	guard := notableInstallGuard(newInstallClassification("apt", []string{"phpmyadmin"}, []string{"phpmyadmin"}, nil, a.installedServiceSet()), []string{"phpmyadmin"}, nil)
+	pkgOut, err := installPackagesGuardedContext(ctx, "apt", []string{"phpmyadmin"}, "", guard)
+	var refusal *packageInstallNotableRefusal
+	if !errors.As(err, &refusal) || pkgOut != "" {
+		t.Fatalf("unconfirmed phpMyAdmin install: out=%q err=%v", pkgOut, err)
+	}
+	t.Logf("unconfirmed install refused: %v", err)
+	if after := a105DpkgSet(t); len(after) != len(before) || after["phpmyadmin"] {
+		t.Fatalf("an unconfirmed install changed the installed set")
+	}
+
+	// 2. The bundle with PHP 8.3 chosen: the tool's extensions for 8.3 come
+	// with it, so the package manager brings no other PHP.
+	steps := []transport.ServiceInstallPreviewStep{{ID: "postgresql"}, {ID: "php-fpm", Package: "php8.3-fpm"}, {ID: "phppgadmin", PHPVersion: "8.3"}}
 	var preview transport.ServiceInstallPreviewResponse
 	if err := a.ServiceInstallPreviewV1(&transport.ServiceInstallPreviewRequest{Steps: steps}, &preview); err != nil {
 		t.Fatal(err)
 	}
 	logJSON(t, "bundle preview", preview)
-	if preview.State != "known" || len(preview.Refusals) != 0 {
+	if preview.State != "known" || len(preview.Refusals) != 0 || len(preview.Notable) != 0 {
 		t.Fatalf("preview = %+v", preview)
 	}
-	notable := []string{}
-	for _, item := range preview.Notable {
-		notable = append(notable, item.Package)
-		if item.Reason != notableReasonNewPHPVersion || item.Version != "8.4" {
-			t.Fatalf("unexpected notable %+v", item)
-		}
-	}
-	if !slices.Contains(notable, "php8.4-pgsql") {
-		t.Fatalf("the bundle did not name PHP 8.4's packages: %v", notable)
-	}
-	if after := a105DpkgSet(t); len(after) != len(before) {
-		t.Fatalf("the preview changed the installed set: %d -> %d", len(before), len(after))
-	}
-
-	// 2. A chosen version that cannot serve the tool is refused.
 	var refused transport.ServiceInstallPreviewResponse
 	if err := a.ServiceInstallPreviewV1(&transport.ServiceInstallPreviewRequest{Steps: []transport.ServiceInstallPreviewStep{{ID: "phppgadmin", PHPVersion: "5.1"}}}, &refused); err != nil {
 		t.Fatal(err)
@@ -124,42 +144,35 @@ func TestRealSystemA105BundleWithAChosenPHPIsCheckedConfirmedAndProved(t *testin
 		t.Fatalf("refusals = %+v", refused.Refusals)
 	}
 
-	// 3. The bundle's steps through the Agent's own install code.
-	if resp := a105Install(t, a, "postgresql", "", "", notable); resp.Error != "" {
-		t.Fatal(resp.Error)
+	// 3. The bundle's steps through the Agent's own install code, each
+	// checked against what was confirmed (nothing: nothing was notable).
+	for _, step := range steps {
+		if resp := a105Install(t, a, step.ID, step.Package, step.PHPVersion, nil); resp.Error != "" {
+			t.Fatalf("%s: %s", step.ID, resp.Error)
+		} else if step.ID == "phppgadmin" && !resp.FirstInstall {
+			t.Fatalf("phpPgAdmin was not a first install: %+v", resp)
+		}
 	}
-	if resp := a105Install(t, a, "php-fpm", "php8.3-fpm", "", notable); resp.Error != "" {
-		t.Fatal(resp.Error)
-	}
-	// Unconfirmed: refused, nothing installed.
-	beforeTool := a105DpkgSet(t)
-	unconfirmed := a105Install(t, a, "phppgadmin", "", "8.3", nil)
-	if unconfirmed.ErrorCode != errCodeInstallNeedsConfirmation || len(unconfirmed.Notable) == 0 || !strings.Contains(unconfirmed.Error, "nothing was installed") {
-		t.Fatalf("unconfirmed install = %+v", unconfirmed)
-	}
-	if after := a105DpkgSet(t); len(after) != len(beforeTool) || after["phppgadmin"] {
-		t.Fatalf("an unconfirmed install changed the installed set")
-	}
-	confirmed := a105Install(t, a, "phppgadmin", "", "8.3", notable)
-	if confirmed.Error != "" || !confirmed.FirstInstall {
-		t.Fatalf("confirmed install = %+v", confirmed)
-	}
-	for _, pkg := range []string{"phppgadmin", "php8.3-pgsql", "php8.3-mbstring", "php8.3-xml"} {
-		if !a105DpkgSet(t)[pkg] {
+	installed := a105DpkgSet(t)
+	for _, pkg := range []string{"phppgadmin", "php8.3-pgsql", "php8.3-mbstring", "php8.3-xml", "postgresql"} {
+		if !installed[pkg] {
 			t.Fatalf("%s is not installed", pkg)
+		}
+	}
+	for pkg := range installed {
+		if strings.HasPrefix(pkg, "php8.4-") || strings.HasPrefix(pkg, "apache2") {
+			t.Fatalf("%s was installed without being confirmed", pkg)
 		}
 	}
 
 	// 4. Configured on its chosen version and proved there.
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
 	var conf ConfigureDBToolsResponse
 	configureDBToolsWith(ctx, &conf)
 	logJSON(t, "configure", conf)
 	if conf.Error != "" || !conf.Configured {
 		t.Fatalf("configure = %+v", conf)
 	}
-	proof := provePHPToolWith(ctx, hostPHPToolProveOps(), phpToolPHPPgAdmin, confirmed.FirstInstall)
+	proof := provePHPToolWith(ctx, hostPHPToolProveOps(), phpToolPHPPgAdmin, true)
 	logJSON(t, "proof on the chosen version", proof)
 	if !proof.Proved || proof.Moved || proof.Version != "8.3" {
 		t.Fatalf("proof = %+v", proof)
@@ -171,10 +184,8 @@ func TestRealSystemA105AFailingVersionTriesTheNext(t *testing.T) {
 	if !phpVersionInstalled("8.3") || phpToolStateFor(phpToolPHPPgAdmin).version() != "8.3" {
 		t.Skip("runs after the bundle test")
 	}
-	// PHP 8.4 is the default the tool's packages brought (php8.4-pgsql, -mbstring);
-	// its FPM and php8.4-xml are installed as an owner would, so 8.4 has the
-	// tool's extensions.
-	a105Run(t, "apt-get", "install", "-y", "-q", "--no-install-recommends", "php8.4-fpm", "php8.4-xml")
+	// The owner adds PHP 8.4 with the tool's extensions.
+	a105Run(t, "apt-get", "install", "-y", "-q", "--no-install-recommends", "php8.4-fpm", "php8.4-pgsql", "php8.4-mbstring", "php8.4-xml")
 	a105Run(t, "phpdismod", "-v", "8.3", "-s", "fpm", "pgsql")
 	a105Run(t, "systemctl", "restart", "php8.3-fpm")
 	t.Cleanup(func() {
