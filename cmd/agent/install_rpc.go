@@ -612,8 +612,47 @@ func unitExists(name string) bool {
 }
 
 func unitExistsWithExecutable(systemctl, name string) bool {
+	if templateInstanceUnit(name) {
+		// alpha.107 (real-system run): list-unit-files names the template
+		// (postgresql@.service), never an instance such as
+		// postgresql@17-main; an instance exists when systemd loads it.
+		// Şablon örneği list-unit-files'ta görünmez; systemd yüklüyorsa vardır.
+		out, err := serviceMutationCommand(context.Background(), systemctl, "show", "--property=LoadState", "--value", name+".service").Output()
+		return err == nil && strings.TrimSpace(string(out)) == "loaded"
+	}
 	out, err := serviceMutationCommand(context.Background(), systemctl, "list-unit-files", name+".service", "--no-legend").Output()
 	return err == nil && strings.TrimSpace(string(out)) != ""
+}
+
+// templateInstanceUnit is "name@instance", not a template "name@".
+func templateInstanceUnit(name string) bool {
+	at := strings.Index(name, "@")
+	return at > 0 && at < len(name)-1
+}
+
+// unitNamesMatching reads systemctl's unit listings (list-unit-files and
+// list-units) and keeps the service names the pattern matches. A template
+// ("postgresql@") is never a unit to stop or start: before alpha.107 its name
+// reached the removal, which then refused because "postgresql@" has no state.
+// Şablon adı ("postgresql@") durdurulacak bir unit değildir.
+func unitNamesMatching(re *regexp.Regexp, listings ...string) []string {
+	seen := map[string]bool{}
+	var units []string
+	for _, listing := range listings {
+		for _, line := range strings.Split(listing, "\n") {
+			fields := strings.Fields(line)
+			if len(fields) == 0 || !strings.HasSuffix(fields[0], ".service") {
+				continue
+			}
+			name := strings.TrimSuffix(fields[0], ".service")
+			if strings.HasSuffix(name, "@") || seen[name] || !re.MatchString(name) {
+				continue
+			}
+			seen[name] = true
+			units = append(units, name)
+		}
+	}
+	return units
 }
 
 type UninstallServiceResponse = transport.UninstallServiceResponse
@@ -1264,17 +1303,9 @@ func unitsMatchingWithExecutable(systemctl, pattern string) []string {
 	if err != nil {
 		return nil
 	}
-	var units []string
-	for _, line := range strings.Split(string(out), "\n") {
-		fields := strings.Fields(line)
-		if len(fields) == 0 {
-			continue
-		}
-		name := strings.TrimSuffix(fields[0], ".service")
-		if re.MatchString(name) {
-			units = append(units, name)
-		}
-	}
+	// Loaded template instances (postgresql@17-main) appear only in list-units.
+	loaded, _ := serviceMutationCommand(context.Background(), systemctl, "list-units", "--all", "--type=service", "--no-legend", "--no-pager", "--plain").Output()
+	units := unitNamesMatching(re, string(out), string(loaded))
 	sort.Slice(units, func(i, j int) bool {
 		ai, an := versionOf(units[i])
 		bi, bn := versionOf(units[j])

@@ -10277,3 +10277,45 @@ by closing the window, which changes nothing. **How it resumes:** after the name
 components or sites are gone, press the remove button again; the Panel reads again
 and offers Remove. The package list and the package manager's explanation are under
 Details.
+
+### Versions, updates and restarts of every component (D-038, 2026-10-24)
+
+In source for the v0.1.0-alpha.107 candidate (not published; nothing measured on an
+installed server). **Who acts:** the administrator; nothing here starts by itself.
+
+- **Security → Security updates.** Says whether the operating system's automatic
+  updates are on, when they last ran and what waits. **Frankfurt today:** PHP from
+  the Sury repository is not installed by the automatic updates until the
+  administrator presses **Add to the automatic updates…** and confirms the one
+  file shown (`/etc/apt/apt.conf.d/52celikpanel-vendor-origins`); nothing else
+  changes and no service restarts. To undo it, delete that file. Off is a warning
+  with the command the administrator runs; CelikPanel never switches it off.
+- **The repository card** (PHP-FPM and PostgreSQL pages) says whether the vendor
+  repository is confined to its component, who enabled it and when, its key's
+  expiry and what apt reported. Repositories enabled before this release are
+  confined when the Panel starts after the update; an owner's own rule is kept and
+  named. A moving default package installed earlier (`php-fpm`, `postgresql` from
+  the vendor) is named with the owner's optional command; nothing is removed.
+- **Removing PostgreSQL or MariaDB keeps the data.** Before this release a removal
+  purged the engine's packages: **do not remove PostgreSQL or MariaDB on a server
+  that has not been updated to this release.** From this release the removal says
+  where the data stays, and a later install says it found the data and uses it.
+- **Webmail updates** (Roundcube page): "Update to 1.6.x…" asks first, keeps the
+  configuration, plugins and database, archives the current webmail and puts it
+  back if webmail does not answer. No service restarts.
+- **Node.js:** the drawer says the newer patch of each installed line; install it,
+  then move each site with **Move to …**: the application restarts on the new
+  version and must answer, otherwise it is put back.
+- **Maintenance → Restarts and reboot:** which services still run replaced code
+  and whether a reboot waits. Each restart says what it interrupts first.
+- **Server setup → Operating system:** this release's place in the supported list.
+  After the owner upgrades the operating system, the card says what changed and
+  what to do for each, until **Mark as reviewed**. CelikPanel never starts an
+  operating-system upgrade.
+- **Unsupported versions** are marked where they appear; choosing one for a site
+  asks for confirmation, recorded in the audit log with its details.
+
+**How work resumes:** each card reads again with **Check again**; an answer that did
+not arrive is said as unknown and nothing is sent twice. Installed panels are
+updated only by their owners from the panel's own update screen. P0.1-P0.5 stay
+**partial**; this entry closes and advances nothing.
