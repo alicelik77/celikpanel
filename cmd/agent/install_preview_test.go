@@ -35,7 +35,7 @@ func notableNames(items []transport.NotableInstall) []string {
 
 func TestNotableInstallsAreClassifiedByReason(t *testing.T) {
 	withPHPVersionsPresent(t, "8.3")
-	c := newInstallClassification("apt", []string{"phpmyadmin", "php8.3-mysql"}, []string{"phpmyadmin"}, []string{"8.3"})
+	c := newInstallClassification("apt", []string{"phpmyadmin", "php8.3-mysql"}, []string{"phpmyadmin"}, []string{"8.3"}, nil)
 	got := notableNames(c.classify([]string{
 		"phpmyadmin", "php8.3-mysql", "php8.3-common", "libzip5", "dbconfig-common",
 		"php8.5-mbstring", "php8.5-common", "apache2", "apache2-bin", "libapache2-mod-php8.5",
@@ -52,17 +52,28 @@ func TestNotableInstallsAreClassifiedByReason(t *testing.T) {
 	}
 }
 
+func TestAnInstalledComponentsPackageIsNotAnotherComponent(t *testing.T) {
+	withPHPVersionsPresent(t, "8.3")
+	// PHP-FPM 8.3 is installed (a bundle's earlier step): its distribution
+	// package php-fpm is no other component; the PHP it brings still is.
+	c := newInstallClassification("apt", []string{"phpmyadmin"}, []string{"phpmyadmin"}, nil, map[string]bool{"php-fpm": true, "mariadb": true})
+	got := notableNames(c.classify([]string{"phpmyadmin", "php-fpm", "php8.5-fpm", "mariadb-server"}))
+	if !reflect.DeepEqual(got, []string{"new_php_version:php8.5-fpm"}) {
+		t.Fatalf("notable = %v", got)
+	}
+}
+
 func TestTheVersionTheDistributionPHPBringsIsExpected(t *testing.T) {
 	withPHPVersionsPresent(t)
 	// A bundle on a clean server: PHP-FPM's distribution package and
 	// phpMyAdmin together; php8.4-* is the version php-fpm installs.
-	c := newInstallClassification("apt", []string{"php-fpm", "phpmyadmin"}, []string{"php-fpm", "phpmyadmin", "nginx", "mariadb"}, nil)
+	c := newInstallClassification("apt", []string{"php-fpm", "phpmyadmin"}, []string{"php-fpm", "phpmyadmin", "nginx", "mariadb"}, nil, nil)
 	got := c.classify([]string{"php-fpm", "php8.4-fpm", "php8.4-common", "php8.4-mbstring", "phpmyadmin", "php-mbstring"})
 	if len(got) != 0 {
 		t.Fatalf("notable = %v, want none", notableNames(got))
 	}
 	// The same install without php-fpm named: php8.4 is a new version.
-	c = newInstallClassification("apt", []string{"phpmyadmin"}, []string{"phpmyadmin"}, nil)
+	c = newInstallClassification("apt", []string{"phpmyadmin"}, []string{"phpmyadmin"}, nil, nil)
 	got = c.classify([]string{"php8.4-fpm", "php8.4-common", "phpmyadmin"})
 	if names := notableNames(got); !reflect.DeepEqual(names, []string{"new_php_version:php8.4-common", "new_php_version:php8.4-fpm"}) {
 		t.Fatalf("notable = %v", names)
@@ -77,7 +88,7 @@ func TestAnUnconfirmedNotableInstallIsRefusedUnderTheLock(t *testing.T) {
 		}
 		return []byte("Inst phpmyadmin (4:5.2.2 Debian:13 [all])\nInst apache2 (2.4.66-1 Debian:13 [amd64])\nInst libzip5 (1.11 Debian:13 [amd64])\n"), nil
 	}
-	c := newInstallClassification("apt", []string{"phpmyadmin"}, []string{"phpmyadmin"}, []string{"8.3"})
+	c := newInstallClassification("apt", []string{"phpmyadmin"}, []string{"phpmyadmin"}, []string{"8.3"}, nil)
 	err := checkAptInstallSimulation(context.Background(), run, "/usr/bin/apt-get", []string{"phpmyadmin"}, aptInstallArgs([]string{"phpmyadmin"}),
 		notableInstallGuard(c, []string{"phpmyadmin"}, nil))
 	var refusal *packageInstallNotableRefusal
@@ -113,9 +124,10 @@ type fakePreviewHost struct {
 
 func (h *fakePreviewHost) ops() installPreviewOps {
 	return installPreviewOps{
-		family:    "apt",
-		installed: func(pkg string) bool { return h.installed[pkg] },
-		available: func(pkg string) bool { return h.available[pkg] },
+		family:              "apt",
+		installedComponents: func() map[string]bool { return map[string]bool{} },
+		installed:           func(pkg string) bool { return h.installed[pkg] },
+		available:           func(pkg string) bool { return h.available[pkg] },
 		simulate: func(_ context.Context, packages []string) (aptSimulation, error) {
 			h.simulated = append([]string{}, packages...)
 			return h.sim, h.simErr

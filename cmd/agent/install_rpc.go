@@ -338,7 +338,7 @@ func (a *Agent) InstallService(req *InstallServiceRequest, resp *InstallServiceR
 		var guard func([]string) error
 		if req.CheckInstalls {
 			guard = notableInstallGuard(
-				newInstallClassification(family, missingPackages, []string{svc.ID}, []string{phpVersion}),
+				newInstallClassification(family, missingPackages, []string{svc.ID}, []string{phpVersion}, installed),
 				missingPackages, req.ConfirmedInstalls)
 		}
 		installMissingPackages := func() (string, error) {

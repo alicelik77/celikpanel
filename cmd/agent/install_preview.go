@@ -74,7 +74,10 @@ type installClassification struct {
 	present     func(string) bool
 }
 
-func newInstallClassification(family string, requested []string, components []string, phpVersions []string) installClassification {
+// installed are the catalogue components already on the host: their own
+// packages and roles are not "another component" (a bundle's earlier step
+// installed them, or the owner did).
+func newInstallClassification(family string, requested []string, components []string, phpVersions []string, installed map[string]bool) installClassification {
 	c := installClassification{
 		requested:   map[string]bool{},
 		components:  map[string]bool{},
@@ -89,6 +92,11 @@ func newInstallClassification(family string, requested []string, components []st
 	}
 	for _, id := range components {
 		c.components[id] = true
+	}
+	for id, ok := range installed {
+		if ok {
+			c.components[id] = true
+		}
 	}
 	for _, version := range phpVersions {
 		if version != "" {
@@ -271,12 +279,13 @@ func phpToolVersionPackages(tool, version, family string, installed, available f
 
 // installPreviewOps is the narrow seam of a preview.
 type installPreviewOps struct {
-	family    string
-	installed func(string) bool
-	available func(string) bool
-	simulate  func(ctx context.Context, packages []string) (aptSimulation, error)
-	lock      func() bool
-	unlock    func()
+	family              string
+	installedComponents func() map[string]bool
+	installed           func(string) bool
+	available           func(string) bool
+	simulate            func(ctx context.Context, packages []string) (aptSimulation, error)
+	lock                func() bool
+	unlock              func()
 }
 
 // serviceInstallPreviewWithOps answers one preview.
@@ -376,7 +385,7 @@ func serviceInstallPreviewWithOps(ctx context.Context, req *transport.ServiceIns
 	resp.State = "known"
 	resp.Installs = append([]string{}, sim.Installed...)
 	resp.Removes = append([]string{}, sim.Removed...)
-	notable := newInstallClassification(ops.family, requested, components, phpVersions).classify(sim.Installed)
+	notable := newInstallClassification(ops.family, requested, components, phpVersions, ops.installedComponents()).classify(sim.Installed)
 	if len(notable) > notableInstallCap {
 		notable = notable[:notableInstallCap]
 	}
@@ -445,11 +454,12 @@ func (a *Agent) ServiceInstallPreviewV1(req *transport.ServiceInstallPreviewRequ
 	}
 	family := string(profile.PackageManager)
 	ops := installPreviewOps{
-		family:    family,
-		installed: func(pkg string) bool { return packageInstalledForProfile(profile, pkg) },
-		available: func(string) bool { return false },
-		lock:      packageOperationMu.TryLock,
-		unlock:    packageOperationMu.Unlock,
+		family:              family,
+		installedComponents: func() map[string]bool { return a.installedServiceSetWithProfile(profile) },
+		installed:           func(pkg string) bool { return packageInstalledForProfile(profile, pkg) },
+		available:           func(string) bool { return false },
+		lock:                packageOperationMu.TryLock,
+		unlock:              packageOperationMu.Unlock,
 	}
 	switch family {
 	case "apt":
