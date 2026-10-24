@@ -1407,19 +1407,22 @@ Implementation notes (not owner decisions). New read-only
 `Agent.ServiceInstallPreviewV1` (no step; never waits for the package lock) and
 `Agent.ProvePHPToolV1` (inside the tool's own install job);
 `GET /api/v1/service/install-preview`; install request fields `php_version`,
-`check_installs` and `confirmed_installs`. These live in the running operation
-only: an interrupted install that resumes keeps the check with nothing confirmed,
-so it installs nothing notable, and the bundle's PHP choice is lost (the tool then
-gets the default rule). The real-system run showed that a bundle with PHP 8.3
+`check_installs` and `confirmed_installs`. Review correction (same day): the Panel
+asks for the check on every install, whatever the browser sends (a component's own
+page, Server setup, mail profiles, a version added, Repair, an older tab); the
+browser only supplies what was confirmed. The PHP version and the confirmed names
+are kept in the install's operation record and restored when an interrupted
+install resumes. A failed proof also reads not ready in the Manage window, so the
+same version can be chosen again. The real-system run showed that a bundle with PHP 8.3
 chosen brings no other PHP (the tool's 8.3 extensions satisfy its dependencies),
 while phpMyAdmin alone on a bare PHP 8.3 would pull the default PHP 8.4's packages;
 that was said, and refused while unconfirmed.
 
 What this does not authorise: no installed-server change. Installed panels are
-still updated only by their owners from the panel's own update screen. Not covered
-by the confirmation: mail profile installs (Webmail bundle), Server setup installs,
-an extra PHP version added from the PHP-FPM versions list, and Repair; they keep the
-alpha.104 guarantee (an install never removes a package).
+still updated only by their owners from the panel's own update screen. Where no
+window lists the packages (Server setup, mail profiles, a PHP version added from
+the PHP-FPM versions list, Repair), a notable install is refused with nothing
+installed and its guidance names the packages and points to Components.
 
 Relation to the rest. D-022: the native configuration stays the truth and the
 choice is the owner's. D-024: each refusal says the reason, who acts and the next
@@ -1429,7 +1432,8 @@ D-029: install requests keep their identity. D-033: the read is shown while it
 waits. D-036: the versions offered are the package database's answer.
 
 Not done: nothing is measured on an installed server; pacman's preview is covered
-by component tests only; DNF stays unreachable. If branch protection requires the
+by component tests only, and it is not the real `-Syu` transaction; the Apache rule
+knows Debian's and Ubuntu's package names only; DNF stays unreachable. If branch protection requires the
 old check name "Panel race — Server setup", the owner must replace it with the two
 new names.
 

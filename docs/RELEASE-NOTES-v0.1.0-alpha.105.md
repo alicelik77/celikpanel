@@ -62,10 +62,11 @@ guidance](OPERATION-GUIDANCE.md#choosing-versions-in-a-bundle-installs-that-brin
 - New read-only Agent check of what an install would bring, and a new Agent step
   that proves a tool inside its install; installs are checked again under the
   package lock right before they run.
-- Panel: `GET /api/v1/service/install-preview`; install requests can carry the
-  chosen PHP version and what was confirmed. These live only while the install
-  runs: an install that is interrupted and resumes installs nothing you did not
-  confirm, and the bundle's PHP choice is not kept.
+- Panel: `GET /api/v1/service/install-preview`; every install is checked on the
+  server (a component's own page, Server setup, mail profiles, a PHP version added
+  from the versions list, Repair and an older open tab included); the browser only
+  says what you confirmed. An install keeps the chosen PHP version and what you
+  confirmed in its record, so one that is interrupted and resumes runs as you asked.
 - Continuous integration: the "Panel race — Server setup" job was split in two
   ("(1/2)" and "(2/2)"); its time limit was not raised.
 
@@ -73,15 +74,18 @@ guidance](OPERATION-GUIDANCE.md#choosing-versions-in-a-bundle-installs-that-brin
 
 Sites still choose their PHP version in their own settings. The updater, the
 schema (44) and every installed server are unchanged; only the owner updates.
-Mail profile installs (the Webmail bundle), Server setup installs, an extra PHP
-version from the versions list and Repair do not ask for the confirmation; they keep
-alpha.104's rule that an install never removes a package.
+Every install is checked, and alpha.104's rule that an install never removes a
+package stands. Where no window lists the packages (Server setup, a mail profile, a
+PHP version added from the versions list, Repair), an install that would bring a
+notable package is refused with nothing installed, and its guidance names the
+packages and says to install that component from Components, where they are listed
+for you to confirm.
 
 ## Evidence on the candidate
 
 - Agent: 4723 passed, 29 skipped (in a clean mount namespace).
 - Panel and internal packages: 7243 passed, 44 skipped.
-- Web: 1793 passed, and the production build within its budgets.
+- Web: 1796 passed, and the production build within its budgets.
 - Real system, one disposable Debian 13 virtual machine (QEMU/KVM, deleted after the
   run): phpMyAdmin alone on a bare PHP 8.3 was found to bring PHP 8.4's packages,
   and its unconfirmed install was refused with nothing installed; PostgreSQL +
@@ -102,6 +106,10 @@ alpha.104's rule that an install never removes a package.
 - The Panel's check route, the browser dialogue and the bundle sequence were not
   part of the virtual-machine run (component and mounted tests cover them); Apache
   as an unexpected install is covered by component tests only.
+- The Apache rule knows Debian's and Ubuntu's names only (apache2, apache2-bin,
+  libapache2-mod-php*), not Arch's (apache, php-apache); and on Arch the check
+  (`pacman -S --print`) is not the real `-Syu` transaction, which also upgrades the
+  system.
 - If branch protection requires the old check name "Panel race — Server setup", the
   owner must replace it with the two new names.
 - P0.1–P0.5 stay partial; no P0 item is closed or advanced.

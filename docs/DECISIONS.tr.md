@@ -1395,19 +1395,22 @@ Uygulama notları (sahip kararı değildir). Yeni salt-okur
 `Agent.ServiceInstallPreviewV1` (adım yok; paket kilidini asla beklemez) ve
 `Agent.ProvePHPToolV1` (aracın kendi kurulum işinin içinde);
 `GET /api/v1/service/install-preview`; kurulum isteğinde `php_version`,
-`check_installs` ve `confirmed_installs` alanları. Bunlar yalnız çalışan işlemde
-yaşar: kesilip yeniden süren bir kurulum denetimi korur ama hiçbir onay taşımaz,
-yani dikkat çeken hiçbir şey kurmaz; paketin PHP seçimi ise kaybolur (araç o zaman
-varsayılan kuralı alır). Gerçek sistem denemesi, PHP 8.3 seçilmiş bir paketin başka
+`check_installs` ve `confirmed_installs` alanları. İnceleme düzeltmesi (aynı gün):
+Panel, tarayıcı ne gönderirse göndersin her kurulumda denetim ister (bir bileşenin
+kendi sayfası, Sunucu kurulumu, posta profilleri, eklenen bir sürüm, Onar, eski bir
+sekme); tarayıcı yalnız onaylananları verir. PHP sürümü ve onaylanan adlar kurulumun
+işlem kaydında tutulur ve kesilen kurulum yeniden sürerken geri konur. Başarısız bir
+kanıt Yönet penceresinde de hazır değil sayılır; aynı sürüm yeniden seçilebilir. Gerçek sistem denemesi, PHP 8.3 seçilmiş bir paketin başka
 PHP getirmediğini (aracın 8.3 eklentileri bağımlılıklarını karşılar), yalın PHP
 8.3 üzerinde tek başına phpMyAdmin'in ise varsayılan PHP 8.4'ün paketlerini
 çekeceğini gösterdi; bu söylendi ve onaysızken reddedildi.
 
 Bunun izin vermediği şeyler: kurulu bir sunucuda değişiklik yok. Kurulu panelleri
-yine yalnız sahipleri, panelin kendi güncelleme ekranından günceller. Onayın
-kapsamadıkları: posta profili kurulumları (Web postası paketi), Sunucu kurulumu
-kurulumları, PHP-FPM sürüm listesinden eklenen ek bir PHP sürümü ve Onar; bunlar
-alpha.104 güvencesini korur (bir kurulum asla paket kaldırmaz).
+yine yalnız sahipleri, panelin kendi güncelleme ekranından günceller. Paketleri
+listeleyen bir pencerenin olmadığı yerlerde (Sunucu kurulumu, posta profilleri,
+PHP-FPM sürüm listesinden eklenen bir PHP sürümü, Onar) dikkat çeken bir kurulum
+hiçbir şey kurulmadan reddedilir; yönlendirmesi paketleri adlandırır ve
+Bileşenler'i gösterir.
 
 Diğerleriyle ilişkisi. D-022: yerel yapılandırma gerçeğin kendisi kalır ve seçim
 sahibindir. D-024: her ret nedeni, kimin işlem yapacağını ve sonraki eylemi söyler;
@@ -1417,7 +1420,8 @@ kurulum istekleri kimliklerini korur. D-033: okuma beklerken gösterilir. D-036:
 sunulan sürümler paket veritabanının yanıtıdır.
 
 Yapılmayan: kurulu bir sunucuda hiçbir şey ölçülmedi; pacman önizlemesi yalnız
-bileşen testleriyle kapsanır; DNF ulaşılamaz kalır. Dal koruması eski "Panel race —
+bileşen testleriyle kapsanır ve gerçek `-Syu` işlemi değildir; Apache kuralı yalnız
+Debian ve Ubuntu paket adlarını bilir; DNF ulaşılamaz kalır. Dal koruması eski "Panel race —
 Server setup" denetim adını istiyorsa, sahibin onu iki yeni adla değiştirmesi
 gerekir.
 

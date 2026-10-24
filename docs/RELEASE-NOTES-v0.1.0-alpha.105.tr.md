@@ -59,26 +59,29 @@ rehberinde](OPERATION-GUIDANCE.tr.md#pakette-sürüm-seçmek-seçtiğinizden-faz
 - Bir kurulumun ne getireceğini soran yeni salt-okur Agent denetimi ve bir aracı
   kurulumunun içinde kanıtlayan yeni Agent adımı; kurulumlar çalışmadan hemen önce
   paket kilidi altında yeniden denetlenir.
-- Panel: `GET /api/v1/service/install-preview`; kurulum istekleri seçilen PHP
-  sürümünü ve onaylananları taşıyabilir. Bunlar yalnız kurulum sürerken yaşar:
-  kesilip yeniden süren bir kurulum onaylamadığınız hiçbir şeyi kurmaz ve paketin
-  PHP seçimi korunmaz.
+- Panel: `GET /api/v1/service/install-preview`; her kurulum sunucuda denetlenir
+  (bir bileşenin kendi sayfası, Sunucu kurulumu, posta profilleri, sürüm listesinden
+  eklenen bir PHP sürümü, Onar ve açık kalmış eski bir sekme dahil); tarayıcı yalnız
+  neyi onayladığınızı söyler. Bir kurulum seçilen PHP sürümünü ve onaylananları
+  kaydında tutar; kesilip yeniden süren kurulum istediğiniz gibi çalışır.
 - Sürekli tümleştirme: "Panel race — Server setup" işi ikiye bölündü ("(1/2)" ve
   "(2/2)"); zaman sınırı yükseltilmedi.
 
 ## Değişmeyenler
 
 Siteler PHP sürümlerini yine kendi ayarlarında seçer. Güncelleyici, şema (44) ve
-her kurulu sunucu değişmedi; yalnız sahip günceller. Posta profili kurulumları (Web
-postası paketi), Sunucu kurulumu kurulumları, sürüm listesinden ek bir PHP sürümü ve
-Onar onay istemez; alpha.104'ün bir kurulumun asla paket kaldırmadığı kuralını
-korur.
+her kurulu sunucu değişmedi; yalnız sahip günceller. Her kurulum denetlenir ve
+alpha.104'ün bir kurulumun asla paket kaldırmadığı kuralı sürer. Paketleri listeleyen
+bir pencerenin olmadığı yerlerde (Sunucu kurulumu, bir posta profili, sürüm
+listesinden eklenen bir PHP sürümü, Onar) dikkat çeken bir paket getirecek kurulum
+hiçbir şey kurulmadan reddedilir; yönlendirmesi paketleri adlandırır ve o bileşeni,
+paketlerin onayınız için listelendiği Bileşenler'den kurmanızı söyler.
 
 ## Aday üzerindeki kanıt
 
 - Agent: 4723 geçti, 29 atlandı (temiz bir bağlama ad alanında).
 - Panel ve iç paketler: 7243 geçti, 44 atlandı.
-- Web: 1793 geçti; üretim derlemesi bütçelerinin içinde.
+- Web: 1796 geçti; üretim derlemesi bütçelerinin içinde.
 - Gerçek sistem, atılabilir bir Debian 13 sanal makinesi (QEMU/KVM, denemeden
   sonra silindi): yalın PHP 8.3 üzerinde tek başına phpMyAdmin'in PHP 8.4
   paketlerini getireceği görüldü ve onaysız kurulumu hiçbir şey kurulmadan
@@ -99,6 +102,9 @@ korur.
 - Panel'in denetim yolu, tarayıcı penceresi ve paket sırası sanal makine
   denemesinin parçası değildi (bileşen ve bağlı testler kapsar); beklenmeyen kurulum
   olarak Apache yalnız bileşen testleriyle kapsanır.
+- Apache kuralı yalnız Debian ve Ubuntu adlarını bilir (apache2, apache2-bin,
+  libapache2-mod-php*), Arch'ınkileri (apache, php-apache) bilmez; Arch'ta denetim
+  (`pacman -S --print`) sistemi de yükselten gerçek `-Syu` işlemi değildir.
 - Dal koruması eski "Panel race — Server setup" denetim adını istiyorsa, sahibin onu
   iki yeni adla değiştirmesi gerekir.
 - P0.1–P0.5 kısmi kalır; hiçbir P0 işi kapanmaz ya da ilerlemez.

@@ -7723,9 +7723,9 @@ native update and automatic-rollback resilience is complete.
   packages and the next action (confirm, or choose another PHP version). A failed
   proof leaves the tool installed and "Not ready" with the cause and the next
   action (choose a PHP version in Manage). A failed fallback move puts the previous
-  configuration back. A resumed install keeps the check with nothing confirmed, so
-  it installs nothing notable; the bundle's PHP choice is lost and the tool gets
-  the default rule. **Installed-panel update path: unchanged**; the owner starts
+  configuration back. Every install is checked on the server; a resumed install
+  restores the PHP version and the confirmed names from its operation record
+  (`operation_data`, no schema change) and is checked again. **Installed-panel update path: unchanged**; the owner starts
   every installed-panel update from the panel's own update screen.
 - **Schema, version transition and recovery.** Schema 44, no migration; the
   release sequence moves 104 to 105. *alpha.104 to alpha.105:* nothing moves or is
@@ -7736,7 +7736,7 @@ native update and automatic-rollback resilience is complete.
   read that file, so such a tool reads by alpha.104's rule; installs return to the
   alpha.104 guard (an install never removes a package).
 - **Evidence.** Agent 4723 passed, 29 skipped (in a clean mount namespace); Panel and internal packages
-  7243 passed, 44 skipped; web 1793 passed, and the production build within its budgets. **Real system, one disposable Debian 13 VM
+  7243 passed, 44 skipped; web 1796 passed, and the production build within its budgets. **Real system, one disposable Debian 13 VM
   (QEMU/KVM)**, the build-tagged Agent test from the candidate branch: phpMyAdmin
   alone on a bare PHP 8.3 was simulated to bring PHP 8.4's packages and its
   unconfirmed install was refused with nothing installed; PostgreSQL + PHP-FPM 8.3
@@ -7756,7 +7756,9 @@ native update and automatic-rollback resilience is complete.
 - **Open.** Nothing measured on an installed server; pacman's preview by component
   tests only, DNF unreachable; the Panel's preview route, the browser dialogue and
   the bundle sequence were not part of the VM run; Apache as a notable install by
-  component tests only. Not covered by the confirmation: mail profile installs,
-  Server setup installs, an extra PHP version from the versions list, Repair.
+  component tests only. Where no window lists the packages (Server setup, mail
+  profiles, a version added, Repair) a notable install is refused, not confirmed.
+  The Apache rule knows Debian's and Ubuntu's names only; pacman's check is not the
+  real `-Syu` transaction.
   Everything the alpha.90 to alpha.104 entries leave open stays open. P0.1 to P0.5
   stay partial.

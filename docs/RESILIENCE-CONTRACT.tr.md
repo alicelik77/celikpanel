@@ -6988,9 +6988,9 @@ dayanıklılığının tamamlandığı iddiası değildir.
   paketleri ile sonraki eylemi (onaylayın ya da başka bir PHP sürümü seçin) söyler.
   Başarısız bir kanıt aracı kurulu ve neden ile sonraki eylemle (Yönet'te bir PHP
   sürümü seçin) "Hazır değil" bırakır. Başarısız bir yedek taşıma önceki
-  yapılandırmayı geri koyar. Yeniden süren bir kurulum denetimi korur ama hiçbir
-  onay taşımaz, yani dikkat çeken hiçbir şey kurmaz; paketin PHP seçimi kaybolur ve
-  araç varsayılan kuralı alır. **Kurulu panel güncelleme yolu: değişmedi**; her
+  yapılandırmayı geri koyar. Her kurulum sunucuda denetlenir; yeniden süren bir kurulum
+  PHP sürümünü ve onaylanan adları işlem kaydından (`operation_data`, şema
+  değişikliği yok) geri alır ve yeniden denetlenir. **Kurulu panel güncelleme yolu: değişmedi**; her
   kurulu panel güncellemesini sahip, panelin kendi güncelleme ekranından başlatır.
 - **Şema, sürüm geçişi ve kurtarma.** Şema 44, geçiş yok; sürüm sırası 104'ten
   105'e. *alpha.104'ten alpha.105'e:* güncelleme hiçbir şeyi taşımaz ya da kurmaz;
@@ -7000,7 +7000,7 @@ dayanıklılığının tamamlandığı iddiası değildir.
   alpha.104 o dosyayı okumaz, bu yüzden böyle bir araç alpha.104 kuralına göre
   okunur; kurulumlar alpha.104 korumasına döner (bir kurulum asla paket kaldırmaz).
 - **Kanıt.** Agent 4723 geçti, 29 atlandı (temiz bir bağlama ad alanında); Panel ve iç paketler 7243 geçti, 44 atlandı; web
-  1793 geçti; üretim derlemesi bütçelerinin içinde. **Gerçek sistem, atılabilir bir Debian 13 sanal makinesi
+  1796 geçti; üretim derlemesi bütçelerinin içinde. **Gerçek sistem, atılabilir bir Debian 13 sanal makinesi
   (QEMU/KVM)**, aday dalından derlenen yapı etiketli Agent testi: yalın PHP 8.3
   üzerinde tek başına phpMyAdmin'in benzetimi PHP 8.4 paketlerini getireceğini
   söyledi ve onaysız kurulumu hiçbir şey kurulmadan reddedildi; PostgreSQL + PHP-FPM
@@ -7020,7 +7020,8 @@ dayanıklılığının tamamlandığı iddiası değildir.
 - **Açık.** Kurulu bir sunucuda hiçbir şey ölçülmedi; pacman önizlemesi yalnız
   bileşen testleriyle, DNF ulaşılamaz; Panel'in önizleme yolu, tarayıcı penceresi ve
   paket sırası sanal makine denemesinin parçası değildi; dikkat çeken kurulum olarak
-  Apache yalnız bileşen testleriyle. Onayın kapsamadıkları: posta profili
-  kurulumları, Sunucu kurulumu kurulumları, sürüm listesinden ek bir PHP sürümü,
-  Onar. alpha.90–alpha.104 girdilerinin açık bıraktığı her şey açık kalır. P0.1–P0.5
+  Apache yalnız bileşen testleriyle. Paketleri listeleyen bir pencerenin olmadığı yerlerde
+  (Sunucu kurulumu, posta profilleri, eklenen bir sürüm, Onar) dikkat çeken bir
+  kurulum onaylanmaz, reddedilir. Apache kuralı yalnız Debian ve Ubuntu adlarını
+  bilir; pacman denetimi gerçek `-Syu` işlemi değildir. alpha.90–alpha.104 girdilerinin açık bıraktığı her şey açık kalır. P0.1–P0.5
   kısmi kalır.
