@@ -177,6 +177,7 @@ const stub = moduleURL(`
     export const Button = (props) => React.createElement('button', props);
     export const Spinner = () => React.createElement('span', null, 'loading');
     export const PageHeader = (props) => React.createElement('header', { 'data-title': props.title, 'data-subtitle': props.subtitle, 'data-breadcrumb': (props.breadcrumb || []).join(' / ') });
+    export const OSReleaseCard = () => null;
 `);
 const gateURL = compileURL('../src/components/ServerSetupGate.tsx', { '../lib/serverSetup': setupLibURL }, stub);
 const choiceURL = compileURL('../src/components/ServerSetupChoice.tsx', { '../lib/serverSetup': setupLibURL, './ServerSetupGate': gateURL }, stub);

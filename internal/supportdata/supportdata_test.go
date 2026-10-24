@@ -86,9 +86,9 @@ func TestWhatIsNotKnownStaysUnknown(t *testing.T) {
 	table, _ := Load()
 	now := at(t, "2026-10-24")
 	for _, c := range []struct{ component, version, distro string }{
-		{"php", "8.6", "debian-13"},            // not released when the table was checked
-		{"mariadb", "10.11", "ubuntu-24.04"},   // universe: not standard security maintenance
-		{"redis", "7.2", "debian-13"},          // not in the table
+		{"php", "8.6", "debian-13"},          // not released when the table was checked
+		{"mariadb", "10.11", "ubuntu-24.04"}, // universe: not standard security maintenance
+		{"redis", "7.2", "debian-13"},        // not in the table
 		{"php", "", "debian-13"},
 	} {
 		if got := table.Status(c.component, c.version, c.distro, now); got.Status != StatusUnknown {

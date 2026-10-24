@@ -49,7 +49,9 @@ type roundcubeUpdateOps struct {
 func hostRoundcubeUpdateOps() roundcubeUpdateOps {
 	return roundcubeUpdateOps{
 		baseDir: webmailBaseDir,
-		check:   func(ctx context.Context) transport.RoundcubeUpdateCheckResponse { return roundcubeUpdateCheck(ctx, true) },
+		check: func(ctx context.Context) transport.RoundcubeUpdateCheckResponse {
+			return roundcubeUpdateCheck(ctx, true)
+		},
 		download: func(ctx context.Context, url string, limit int64, w io.Writer) error {
 			request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 			if err != nil {

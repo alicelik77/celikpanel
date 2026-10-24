@@ -46,7 +46,9 @@ func TestAnApplicationMadeBeforeKeepsTheWebUserAndANewOneRunsAsTheSite(t *testin
 func stubAppAccountMove(t *testing.T, proof func() error) *[]string {
 	t.Helper()
 	restoreMove, restoreApply, restoreProve := moveAppFilesOwnerThroughAgent, applyHostingAppForAccount, proveAppAnswers
-	t.Cleanup(func() { moveAppFilesOwnerThroughAgent, applyHostingAppForAccount, proveAppAnswers = restoreMove, restoreApply, restoreProve })
+	t.Cleanup(func() {
+		moveAppFilesOwnerThroughAgent, applyHostingAppForAccount, proveAppAnswers = restoreMove, restoreApply, restoreProve
+	})
 	var steps []string
 	moveAppFilesOwnerThroughAgent = func(_ *Panel, _ context.Context, request transport.AppFilesOwnerRequest) (transport.AppFilesOwnerResponse, error) {
 		if request.Restore {

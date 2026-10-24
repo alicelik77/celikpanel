@@ -134,7 +134,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.ServiceJournal Agent.ServiceMutationReadiness Agent.ServiceRemovalPreviewV1 Agent.ServiceInstallPreviewV1 Agent.PHPToolBindingsV1 Agent.SiteUsage Agent.Version Agent.VPNStatus
 		Agent.CheckSystemUpdate Agent.SecurityAudit Agent.SystemUpdateStatus
 		Agent.OSUpdatesStatusV1 Agent.RoundcubeUpdateCheckV1 Agent.RestartNeedsV1
-		Agent.NodePatchesV1
+		Agent.NodePatchesV1 Agent.OSReleaseFactsV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -420,6 +420,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.RoundcubeUpdateCheckV1":      agentRPCNetworkReadTimeout,
 	"Agent.RestartNeedsV1":              agentRPCNetworkReadTimeout,
 	"Agent.NodePatchesV1":               agentRPCNetworkReadTimeout,
+	"Agent.OSReleaseFactsV1":            agentRPCStandardReadTimeout,
 	"Agent.UpdateRoundcubeV1":           agentRPCDeploymentTimeout,
 	"Agent.MoveAppFilesOwnerV1":         agentRPCDeploymentTimeout,
 	"Agent.WireMailFilters":             agentRPCDeploymentTimeout,

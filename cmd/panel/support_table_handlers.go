@@ -45,10 +45,10 @@ func serverDistroKey() (key, codename string) {
 }
 
 type supportTableView struct {
-	Checked    string                                    `json:"checked"`
-	Sources    map[string]string                         `json:"sources"`
-	Distro     string                                    `json:"distro,omitempty"`
-	DistroName string                                    `json:"distro_name,omitempty"`
+	Checked    string                                   `json:"checked"`
+	Sources    map[string]string                        `json:"sources"`
+	Distro     string                                   `json:"distro,omitempty"`
+	DistroName string                                   `json:"distro_name,omitempty"`
 	Statuses   map[string]map[string]supportdata.Result `json:"statuses"`
 }
 

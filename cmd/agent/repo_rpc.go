@@ -82,6 +82,7 @@ func repoKeyringPath(id string, armored bool) string {
 func repoKeyringCandidates(id string) []string {
 	return []string{repoKeyringPath(id, true), repoKeyringPath(id, false)}
 }
+
 // aptSourcesListDir is apt's sources.list.d (a variable for tests).
 var aptSourcesListDir = "/etc/apt/sources.list.d"
 

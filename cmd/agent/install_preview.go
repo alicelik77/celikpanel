@@ -374,7 +374,7 @@ type installPreviewOps struct {
 	// existingData (alpha.107): an engine's data a previous install left.
 	existingData func(svc *core.ManagedService, pkg string) []transport.ExistingData
 	lock         func() bool
-	unlock              func()
+	unlock       func()
 }
 
 // serviceInstallPreviewWithOps answers one preview.

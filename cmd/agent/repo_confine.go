@@ -462,7 +462,7 @@ func preferencesNameRepository(text, host, origin string) bool {
 // ---- the record ----
 
 type repoRecord struct {
-	Version int                         `json:"version"`
+	Version int                        `json:"version"`
 	Repos   map[string]repoRecordEntry `json:"repos"`
 }
 

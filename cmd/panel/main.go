@@ -1356,6 +1356,8 @@ func main() {
 	http.HandleFunc(osUpdatesOriginsPath, panel.handleOSUpdatesOrigins)
 	// alpha.107 (D-038 §10): services waiting for a restart, a reboot.
 	http.HandleFunc(restartNeedsPath, panel.handleRestartNeeds)
+	http.HandleFunc(osReleaseAPIPath, panel.handleOSRelease)
+	http.HandleFunc(osReleaseReviewedAPIPath, panel.handleOSRelease)
 	// alpha.107 (D-038 §11): the dated support table, for every signed-in person.
 	http.HandleFunc(supportTablePath, panel.handleSupportTable)
 	http.HandleFunc("/dbtool/", panel.handleDBToolProxy)

@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "checked": "2026-10-24",
+  "about": "The operating-system releases CelikPanel supports (D-038 §17), from docs/DISTRO-SUPPORT.md, the release evidence in docs/RESILIENCE-CONTRACT.md and the installer's platform detection. tested: every release candidate is run on it; accepted: CelikPanel installs and runs, but release candidates are not run on it; development: a rolling release used for development, supported as it is today; preview: detected, installation is refused. A release that is not listed has not been checked. Moving from one release to the next is the owner's step: CelikPanel never starts it.",
+  "releases": [
+    { "id": "debian", "version": "13", "codename": "trixie", "name": "Debian 13 (trixie)", "level": "tested", "distro_key": "debian-13" },
+    { "id": "ubuntu", "version": "24.04", "codename": "noble", "name": "Ubuntu 24.04 LTS (noble)", "level": "tested", "distro_key": "ubuntu-24.04" },
+    { "id": "debian", "version": "12", "codename": "bookworm", "name": "Debian 12 (bookworm)", "level": "accepted", "distro_key": "debian-12" },
+    { "id": "ubuntu", "version": "22.04", "codename": "jammy", "name": "Ubuntu 22.04 LTS (jammy)", "level": "accepted", "distro_key": "ubuntu-22.04" },
+    { "id": "arch", "version": "", "codename": "", "name": "Arch Linux (rolling)", "level": "development" },
+    { "id": "rhel", "version": "9", "codename": "", "name": "Red Hat Enterprise Linux 9 and AlmaLinux / Rocky Linux 9", "level": "preview", "also": ["almalinux", "rocky"] }
+  ]
+}

@@ -277,10 +277,10 @@ func TestAKeyThatExpiresSoonIsSaid(t *testing.T) {
 
 func TestPreferencesRulesAreMatchedByHostOrOrigin(t *testing.T) {
 	for text, want := range map[string]bool{
-		"Pin: origin packages.sury.org":          true,
-		"Pin: origin \"packages.sury.org\"":      true,
-		"Pin: release o=deb.sury.org,n=trixie":   true,
-		"Pin: release o=Debian":                  false,
+		"Pin: origin packages.sury.org":         true,
+		"Pin: origin \"packages.sury.org\"":     true,
+		"Pin: release o=deb.sury.org,n=trixie":  true,
+		"Pin: release o=Debian":                 false,
 		"Explanation: origin packages.sury.org": false,
 	} {
 		if got := preferencesNameRepository(text, "packages.sury.org", "deb.sury.org"); got != want {

@@ -266,6 +266,7 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'dashboard.audit.action.site.app_account': 'bir sitenin uygulamasını sitenin kendi kullanıcısına taşıdı ({target})',
     'dashboard.audit.action.site.app_account.failed': 'bir sitenin uygulamasını sitenin kendi kullanıcısına taşıyamadı ({target})',
     'dashboard.audit.action.site.node_version.failed': 'bir siteyi başka bir Node.js sürümüne taşıyamadı ({target})',
+    'dashboard.audit.action.server.os_release_reviewed': 'İşletim sistemi sürüm değişikliği gözden geçirildi',
     'dashboard.audit.action.repo.confine': '{target} paket deposunu kendi bileşeniyle sınırladı',
     'dashboard.audit.action.repo.confine.failed': '{target} paket deposunu kendi bileşeniyle sınırlayamadı',
     'dashboard.audit.action.repo.disable': '{target} paket deposunu kapattı',

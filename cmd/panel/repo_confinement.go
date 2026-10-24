@@ -26,12 +26,12 @@ import (
 // sınırlanır; sahibin kuralı varsa dokunulmaz, sonuç denetim kaydına yazılır.
 
 const (
-	repoConfinementStartupDelay    = 30 * time.Second
-	repoConfinementRetryInterval   = time.Minute
-	repoConfinementRetryAttempts   = 15
-	repoConfinementCallBound       = 3 * time.Minute
-	repoAptErrorLineCap            = 300
-	repoConfinementActionUpgrade   = "repo.confine"
+	repoConfinementStartupDelay  = 30 * time.Second
+	repoConfinementRetryInterval = time.Minute
+	repoConfinementRetryAttempts = 15
+	repoConfinementCallBound     = 3 * time.Minute
+	repoAptErrorLineCap          = 300
+	repoConfinementActionUpgrade = "repo.confine"
 )
 
 // confineReposAtStartup is a test seam.

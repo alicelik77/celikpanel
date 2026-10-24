@@ -138,12 +138,20 @@ func roundcubeUpdateFixture(t *testing.T, prove func(int) error) (string, roundc
 		check: func(context.Context) transport.RoundcubeUpdateCheckResponse {
 			return transport.RoundcubeUpdateCheckResponse{Installed: true, Version: "1.6.15", Line: "1.6", LatestOnLine: "1.6.20", UpdateAvailable: true}
 		},
-		download:    func(_ context.Context, _ string, _ int64, w io.Writer) error { _, err := w.Write([]byte("archive")); return err },
-		verify:      func(io.Reader, []byte) error { return nil },
-		extract:     func(_ context.Context, _ string, dir string) error { writeRoundcubeTree(t, dir, "1.6.20", "new"); return nil },
+		download: func(_ context.Context, _ string, _ int64, w io.Writer) error {
+			_, err := w.Write([]byte("archive"))
+			return err
+		},
+		verify: func(io.Reader, []byte) error { return nil },
+		extract: func(_ context.Context, _ string, dir string) error {
+			writeRoundcubeTree(t, dir, "1.6.20", "new")
+			return nil
+		},
 		updateDB:    func(context.Context, string, string) error { return nil },
 		permissions: func(context.Context, string) error { return nil },
-		backup:      func(context.Context, string, string) (string, error) { return "/var/lib/celikpanel-agent-private/roundcube-backups/x.tar.gz", nil },
+		backup: func(context.Context, string, string) (string, error) {
+			return "/var/lib/celikpanel-agent-private/roundcube-backups/x.tar.gz", nil
+		},
 		exchange: func(a, b string) error {
 			return hostRoundcubeUpdateOps().exchange(a, b)
 		},
@@ -163,11 +171,11 @@ func TestARoundcubeUpdateCarriesTheOwnersFilesAndIsProved(t *testing.T) {
 		t.Fatalf("live version %q", got)
 	}
 	for name, want := range map[string]string{
-		"config/config.inc.php":                     "owner-secret",
-		"db/roundcube.sqlite3":                      "the owner's contacts",
-		"plugins/owners_plugin/owners_plugin.php":   "<?php",
-		"public_html/index.php":                     "new",
-		"config/defaults.inc.php":                   "defaults 1.6.20",
+		"config/config.inc.php":                   "owner-secret",
+		"db/roundcube.sqlite3":                    "the owner's contacts",
+		"plugins/owners_plugin/owners_plugin.php": "<?php",
+		"public_html/index.php":                   "new",
+		"config/defaults.inc.php":                 "defaults 1.6.20",
 	} {
 		data, err := os.ReadFile(filepath.Join(live, name))
 		if err != nil || !strings.Contains(string(data), want) {
