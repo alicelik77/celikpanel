@@ -1,8 +1,8 @@
-# v0.1.0-alpha.105 (candidate)
+# v0.1.0-alpha.105
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.105.tr.md)
 
-This is the candidate that follows v0.1.0-alpha.104. **It is not published.**
+This is the candidate that follows v0.1.0-alpha.104. **It was published on 2026-10-24 (UTC): release commit `0a51195cd`, GitHub pre-release at 09:38:34Z, download portal at about 09:45Z after the assets and signature were verified and the public check passed (26/26).** Nothing from it is on an installed server yet; only the owner updates installed panels.
 Written on 2026-10-24, as a candidate, on the branch
 `feat/alpha105-bundle-versions`, from `main` after the publication record of
 alpha.104 (the alpha.104 release commit is

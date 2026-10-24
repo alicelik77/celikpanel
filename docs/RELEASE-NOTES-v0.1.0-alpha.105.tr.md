@@ -1,8 +1,8 @@
-# v0.1.0-alpha.105 (aday)
+# v0.1.0-alpha.105
 
 [English](RELEASE-NOTES-v0.1.0-alpha.105.md)
 
-Bu, v0.1.0-alpha.104'ü izleyen adaydır. **Yayımlanmadı.** 24 Ekim 2026'da aday
+Bu, v0.1.0-alpha.104'ü izleyen adaydır. **24 Ekim 2026'de (UTC) yayımlandı: sürüm commit'i `0a51195cd`, GitHub ön sürümü 09:38:34Z, yapıtlar ve imza doğrulanıp dış denetim geçtikten (26/26) sonra indirme portalı yaklaşık 09:45Z.** Hiçbir parçası henüz kurulu bir sunucuda değil; kurulu panelleri yalnız sahip günceller. 24 Ekim 2026'da aday
 olarak, alpha.104'ün yayın kaydından sonraki `main` üzerinden
 `feat/alpha105-bundle-versions` dalında yazıldı (alpha.104 sürüm commit'i
 `98c4750b4a5d4ad67447468bcfdde3a3b848465a`).
