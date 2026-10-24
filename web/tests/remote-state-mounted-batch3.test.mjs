@@ -68,6 +68,7 @@ const stub = dataModule(`
   export const HelpButton = () => null;
   // alpha.107: the repository card has its own mounted tests.
   export const RepoCard = () => null;
+  export const IsolationFact = () => null, AppAccountLine = () => null;
   export const DNSEngineCard = () => React.createElement('aside', null, 'dns-engine-card');
   export const ServerSetupDNSAccess = () => null, ServerSetupDNSManagement = () => null;
   export const dnsEngineText = (locale, key) => key;

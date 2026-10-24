@@ -338,3 +338,23 @@ type DomainLogPathsResponse struct {
 	ErrorLog  string `json:"error_log"`
 	PHPLog    string `json:"php_log"`
 }
+
+// AppFilesOwnerRequest (alpha.107, D-038 §6) gives the files of a Node.js
+// application that the shared web user owns to the site's own user, or puts
+// them back. Move records exactly which paths it changed; Restore puts those
+// back and nothing else. WorkDir must lie inside the hosting root.
+// AppFilesOwnerRequest: bir uygulamanın web kullanıcısına ait dosyalarını
+// sitenin kendi kullanıcısına verir ya da geri koyar.
+type AppFilesOwnerRequest struct {
+	ServiceMutationBinding
+	SiteID   int    `json:"site_id"`
+	WorkDir  string `json:"work_dir"`
+	FromUser string `json:"from_user"`
+	ToUser   string `json:"to_user"`
+	Restore  bool   `json:"restore,omitempty"`
+}
+
+type AppFilesOwnerResponse struct {
+	Changed int    `json:"changed"`
+	Error   string `json:"error,omitempty"`
+}

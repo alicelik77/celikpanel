@@ -1,5 +1,6 @@
 import { Inbox, Clock, Users } from 'lucide-react';
 import { ServiceShell } from './ServiceShell';
+import { IsolationFact } from './AppAccountLine';
 import { ComponentPanels } from './ComponentDetail';
 import { useI18n } from '../i18n';
 import { useRemote } from '../lib/remote';
@@ -57,6 +58,8 @@ export function DovecotManagement({ onBack, onSelectConfig }: DovecotManagementP
                 <CouldNotCheck text={t('dovecot.statsUnknown')} onRetry={() => void retry()} busy={reading} className="mt-4" />
             )}
             <p className="mt-4 text-xs text-fg-subtle">{t('dovecot.statsNote')}</p>
+            {/* alpha.107 (D-038 §6): mail separation, said as a fact. */}
+            <div className="mt-3"><IsolationFact kind="mail" /></div>
             {/* The panel already knows Dovecot's unit, ports, packages, config
                 files and journal — show them instead of ending the page here
                 (operator, 25 Jul). / Panel, Dovecot'un birimini, portlarını,

@@ -53,6 +53,8 @@ const stub = dataModule(`
   export const useI18n = () => i18n;
   export const useNavigate = () => () => true;
   export const showToast = (...args) => globalThis.currentTest.toasts.push(args);
+  // alpha.107: the application's account line has its own mounted test.
+  export const AppAccountLine = () => null, IsolationFact = () => null;
 `);
 const shared = sharedLayer(stub);
 const own = {

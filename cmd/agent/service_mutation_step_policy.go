@@ -41,6 +41,7 @@ const (
 	serviceMutationStepConfineRepo              serviceMutationStepMethod = "Agent.ConfineRepoV1"
 	serviceMutationStepWriteVendorOrigins       serviceMutationStepMethod = "Agent.WriteVendorUpdateOriginsV1"
 	serviceMutationStepUpdateRoundcube          serviceMutationStepMethod = "Agent.UpdateRoundcubeV1"
+	serviceMutationStepMoveAppFilesOwner        serviceMutationStepMethod = "Agent.MoveAppFilesOwnerV1"
 	serviceMutationStepInstallNodeVersion       serviceMutationStepMethod = "Agent.InstallNodeVersion"
 	serviceMutationStepRemoveNodeVersion        serviceMutationStepMethod = "Agent.RemoveNodeVersion"
 	serviceMutationStepSetupVPN                 serviceMutationStepMethod = "Agent.SetupVPN"
@@ -212,6 +213,12 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 	case serviceMutationStepDisableRepo:
 		return claim.packageName == "" && claim.action == "disable" &&
 			serviceMutationJobMatches(job, "repo_disable", claim.target, "")
+
+	case serviceMutationStepMoveAppFilesOwner:
+		// alpha.107: one application's files, inside its own app_account job.
+		return strings.HasPrefix(claim.target, "site-") && claim.packageName == "" &&
+			(claim.action == "move" || claim.action == "restore") &&
+			serviceMutationJobMatches(job, "app_account", claim.target, "")
 
 	case serviceMutationStepUpdateRoundcube:
 		// alpha.107: webmail updated to one release in its own job.

@@ -180,6 +180,20 @@ export const enLifecycleScreens = {
     'life.audit.key.kept_total': 'packages kept following it',
     'life.audit.key.installed_version': 'installed version',
     'life.audit.key.app_user': 'runs as',
+    // ---- an application's own account; shared isolation (D-038 §6) ----
+    'life.app.site': 'The application runs as the site’s own user ({user}): it cannot read other sites’ files.',
+    'life.app.web': 'The application runs as the shared web user ({user}), as applications made before this release do. Another application running as the same user could read its files. Nothing is moved by itself.',
+    'life.app.move': 'Run under the site’s own user ({user})…',
+    'life.app.dialogTitle': 'Run the application as {user}?',
+    'life.app.dialogBody': 'CelikPanel gives the files {web} owns in the application’s directory to {user}, rewrites the application’s unit to run as {user} and restarts it: the application is unavailable for a few seconds. Then it must answer on its port. If it does not, the unit and exactly those files are put back and it runs as {web} again.',
+    'life.app.confirm': 'Move and restart',
+    'life.app.moving': 'Moving the application and checking that it answers… this takes up to half a minute.',
+    'life.app.moved': 'The application now runs as {user} and answers.',
+    'life.app.rolledBack': 'It did not work, so it was put back and runs as the shared web user again: {reason}',
+    'life.app.failed': 'The application was not moved: {reason}',
+    'life.app.unknown': 'The answer did not arrive, so whether the application moved is not known; it is read again.',
+    'life.isolation.tools': 'Webmail, phpMyAdmin and phpPgAdmin share one PHP-FPM pool under the web server’s user; each site runs under its own user, separate from them.',
+    'life.isolation.mail': 'All mailboxes are stored under one system user (vmail); mail domains are kept apart by the mail server’s own accounts, not by separate system users.',
 } as const;
 
 export type LifecycleScreenKey = keyof typeof enLifecycleScreens;

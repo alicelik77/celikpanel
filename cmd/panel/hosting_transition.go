@@ -115,6 +115,10 @@ type hostingRuntimeState struct {
 	RuntimeVersion sql.NullString
 	ForwardTo      sql.NullString
 	ForwardCode    sql.NullInt64
+	// AppRunAs (alpha.107, D-038 §6): 'site' runs the Node.js application as
+	// the site's own user; NULL is the shared web user (every application
+	// made before this release).
+	AppRunAs sql.NullString
 }
 
 func (p *Panel) handleUpdateHosting(w http.ResponseWriter, r *http.Request, domainID int) {
@@ -232,6 +236,11 @@ func (p *Panel) transitionHosting(
 
 	switch req.ProjectType {
 	case "node":
+		// alpha.107 (D-038 §6): a new application runs as the site's own
+		// user; an existing one keeps the account it runs as.
+		if previous.ProjectType != "node" {
+			target.AppRunAs = sql.NullString{String: "site", Valid: true}
+		}
 		port := req.AppPort
 		if port == 0 && previous.ProjectType == "node" && previous.AppPort.Valid {
 			port = int(previous.AppPort.Int64)
@@ -311,7 +320,7 @@ func (p *Panel) loadHostingRuntimeState(
 	err := p.db.GetDB().QueryRowContext(ctx, `
 		SELECT s.id, s.domain_id, d.name, s.document_root,
 		       COALESCE(s.project_type, 'php'), s.app_port, s.start_command,
-		       s.runtime_version, s.forward_to, s.forward_code
+		       s.runtime_version, s.forward_to, s.forward_code, s.app_run_as
 		FROM sites s
 		JOIN domains d ON d.id = s.domain_id
 		WHERE s.domain_id = ?`, domainID).Scan(
@@ -325,6 +334,7 @@ func (p *Panel) loadHostingRuntimeState(
 		&state.RuntimeVersion,
 		&state.ForwardTo,
 		&state.ForwardCode,
+		&state.AppRunAs,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return hostingRuntimeState{}, errHostingSiteNotFound
@@ -355,6 +365,7 @@ func (p *Panel) compareAndSwapHostingState(
 		UPDATE sites
 		SET project_type = ?, app_port = ?, start_command = ?,
 		    runtime_version = ?, forward_to = ?, forward_code = ?,
+		    app_run_as = ?,
 		    updated_at = datetime('now')
 		WHERE id = ?
 		  AND COALESCE(project_type, 'php') = ?
@@ -369,6 +380,7 @@ func (p *Panel) compareAndSwapHostingState(
 		nullableHostingString(to.RuntimeVersion),
 		nullableHostingString(to.ForwardTo),
 		nullableHostingInt(to.ForwardCode),
+		nullableHostingString(to.AppRunAs),
 		from.SiteID,
 		from.ProjectType,
 		nullableHostingInt(from.AppPort),

@@ -178,6 +178,8 @@ var auditActionNames = []string{
 	"settings.dns_identity_staged",
 	"settings.dns_setup_published",
 	"settings.dns_setup_saved",
+	"site.app_account",
+	"site.app_account.failed",
 	"site.hosting",
 	"site.node_version",
 	"site.php_version",

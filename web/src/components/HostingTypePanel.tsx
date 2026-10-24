@@ -10,6 +10,7 @@ import { decodeListIn, lastKnown, useRefreshEvery, useRemote } from '../lib/remo
 import { useLostAnswer, type LostAnswerHandle } from '../lib/lostAnswer';
 import { supportFor, useSupportTable } from '../lib/supportTable';
 import { SupportLine, supportConfirmation } from './SupportMark';
+import { AppAccountLine } from './AppAccountLine';
 
 // Hosting type for a domain (roadmap 3A): pick what the site IS, fill the
 // type-specific fields, apply. For node projects the live application panel
@@ -359,6 +360,8 @@ function HostingForm({
                 yüzden kayıtlı tipi izler: yalnız burada seçilmiş bir Node.js
                 tipinin henüz sorulacak uygulaması yoktur. */}
             {saved.project_type === 'node' && <AppPanel domainId={domainId} />}
+            {/* alpha.107 (D-038 §6): which account the application runs as. */}
+            {saved.project_type === 'node' && <AppAccountLine domainId={domainId} />}
             {/* Installing a Node VERSION happens in one place: the Services
                 page's version drawer (B3b) — a runtime install is a server
                 decision, not a per-domain setting. This page only SELECTS
