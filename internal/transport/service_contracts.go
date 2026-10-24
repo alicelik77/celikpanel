@@ -204,6 +204,14 @@ type NotableInstall struct {
 	Reason    string `json:"reason"`
 	Component string `json:"component,omitempty"`
 	Version   string `json:"version,omitempty"`
+	// From and To (alpha.107, D-038 §12): an already installed package the
+	// install would upgrade although it was not asked for (Reason
+	// "upgrade"), or a distribution package a vendor repository would
+	// replace (Reason "vendor_replaces_distribution", Component names the
+	// repository; never confirmable). Additive.
+	// From/To: istenmeden yükseltilecek ya da üreticiyle değiştirilecek paket.
+	From string `json:"from,omitempty"`
+	To   string `json:"to,omitempty"`
 }
 
 // ServiceInstallPreviewStep is one component install of a preview: the

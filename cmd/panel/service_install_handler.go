@@ -142,6 +142,9 @@ func (p *Panel) runServiceInstall(
 		if resp.ErrorCode == "INSTALL_NEEDS_CONFIRMATION" && len(resp.Notable) > 0 && failure.Detail == "" {
 			failure.Detail = notableRefusalDetail(resp.Notable)
 		}
+		if resp.ErrorCode == "INSTALL_VENDOR_REPLACEMENT_REFUSED" && failure.Detail == "" {
+			failure.Detail = vendorRefusalDetail(resp.Notable)
+		}
 		return result, failure
 	}
 	if req.ServiceID == "postgresql" && req.Package != "" {

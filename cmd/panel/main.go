@@ -1469,6 +1469,9 @@ func main() {
 	// still held the host is retried, bounded, once the host is idle.
 	panel.startDeferredStartupMailWork(certificateDeferral, milterWiringDeferred)
 	panel.startPanelUpdateDiscovery(discoveryCtx)
+	// alpha.107 (D-038 §12): vendor repositories enabled before this
+	// release are confined once, in their own jobs.
+	panel.startRepoConfinement()
 	protocol := "HTTP"
 	if tlsOn {
 		protocol = "HTTPS"

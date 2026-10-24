@@ -38,6 +38,7 @@ const (
 	serviceMutationStepIssuePanelCertificate    serviceMutationStepMethod = "Agent.IssuePanelCertificateV2"
 	serviceMutationStepEnableRepo               serviceMutationStepMethod = "Agent.EnableRepo"
 	serviceMutationStepDisableRepo              serviceMutationStepMethod = "Agent.DisableRepo"
+	serviceMutationStepConfineRepo              serviceMutationStepMethod = "Agent.ConfineRepoV1"
 	serviceMutationStepInstallNodeVersion       serviceMutationStepMethod = "Agent.InstallNodeVersion"
 	serviceMutationStepRemoveNodeVersion        serviceMutationStepMethod = "Agent.RemoveNodeVersion"
 	serviceMutationStepSetupVPN                 serviceMutationStepMethod = "Agent.SetupVPN"
@@ -209,6 +210,12 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 	case serviceMutationStepDisableRepo:
 		return claim.packageName == "" && claim.action == "disable" &&
 			serviceMutationJobMatches(job, "repo_disable", claim.target, "")
+
+	case serviceMutationStepConfineRepo:
+		// alpha.107: an already enabled repository is confined to its
+		// component in its own job, once, after the Panel's upgrade.
+		return claim.packageName == "" && claim.action == "confine" &&
+			serviceMutationJobMatches(job, "repo_confine", claim.target, "")
 
 	case serviceMutationStepServiceAction:
 		if claim.packageName != "" ||

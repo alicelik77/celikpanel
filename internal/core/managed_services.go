@@ -129,6 +129,15 @@ type ManagedRepo struct {
 	// sildiği türden geç ve açıklamasız bir arıza. Arayüz bunu okuyup depoyu
 	// isteğe bağlı bir yükseltme değil, zorunlu bir adım olarak sunar.
 	Required bool
+	// MovingPackagePattern matches the distribution's "default version"
+	// packages of this component (php-fpm, php-mysql, postgresql): they
+	// follow whichever version is the default, so with a vendor repository
+	// enabled a plain upgrade could move them to another version. Installed
+	// ones are reported on the repository card with the exact package each
+	// brings today (alpha.107, D-038 §1/§7); never removed by the panel.
+	// MovingPackagePattern: bileşenin "varsayılan sürüm" paketleri; kartta
+	// bildirilir, panel kaldırmaz.
+	MovingPackagePattern string
 }
 
 // Kind answers "how is this row drawn and operated?" — the single question
@@ -506,7 +515,8 @@ var ManagedServices = []ManagedService{
 				"debian": "deb https://packages.sury.org/php/ {codename} main",
 				"ubuntu": "deb https://packages.sury.org/php/ {codename} main",
 			},
-			PackagePattern: `^(php[0-9]+\.[0-9]+)-fpm$`,
+			PackagePattern:       `^(php[0-9]+\.[0-9]+)-fpm$`,
+			MovingPackagePattern: `^php(-(fpm|cli|cgi|mysql|pgsql|sqlite3|curl|xml|mbstring|gd|zip|intl|bcmath|opcache|readline|soap|ldap|imap|redis|imagick|igbinary|apcu|memcached|dev))?$`,
 			// A bare php8.x-fpm runs no real site: no database driver, no
 			// mbstring, no curl. These are the extensions WordPress, Laravel and
 			// WooCommerce need before their first request.
@@ -620,6 +630,9 @@ var ManagedServices = []ManagedService{
 			KeyFingerprint: "B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8",
 			SourceTemplate: "deb https://apt.postgresql.org/pub/repos/apt {codename}-pgdg main",
 			PackagePattern: "^postgresql-[0-9]+$",
+			// The distribution's moving packages: they follow whichever
+			// major is the default.
+			MovingPackagePattern: `^postgresql(-client|-contrib)?$`,
 		},
 	},
 	{

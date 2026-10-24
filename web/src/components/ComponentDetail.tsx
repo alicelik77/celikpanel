@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Boxes, FileText, RefreshCw, ScrollText, Search } from 'lucide-react';
 import { ServiceShell } from './ServiceShell';
 import { PHPToolVersion } from './PHPToolVersion';
+import { RepoCard } from './RepoCard';
 import { phpToolForService } from '../lib/phpTools';
 import { Checking, CouldNotCheck, KnownEmpty, RemoteGate } from './ui';
 import { useI18n } from '../i18n';
@@ -111,6 +112,8 @@ export function ComponentDetail({ serviceId, onBack, onSelectConfig }: { service
                     <PHPToolVersion serviceId={serviceId} tool={phpToolForService(serviceId)!} />
                 </div>
             )}
+            {/* alpha.107: an enabled vendor repository's card (D-038 §12). */}
+            <div className="mb-6 empty:hidden"><RepoCard serviceId={serviceId} /></div>
             <ComponentPanels serviceId={serviceId} onSelectConfig={onSelectConfig} />
         </ServiceShell>
     );

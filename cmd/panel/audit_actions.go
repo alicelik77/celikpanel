@@ -113,6 +113,8 @@ var auditActionNames = []string{
 	"mail.profile.install.recovered.failed",
 	"panel.certificate",
 	"panel.certificate.failed",
+	"repo.confine",
+	"repo.confine.failed",
 	"repo.disable",
 	"repo.disable.failed",
 	"repo.disable.partial",

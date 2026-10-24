@@ -277,6 +277,13 @@ export const enComponentsScreens = {
     'services.installPreview.reason.apache': 'Apache ({packages}): another web server. CelikPanel serves through Nginx; Apache would be installed as well and may try to use port 80.',
     'services.installPreview.reason.component': '{component} ({packages}): another component, not one you chose here.',
     'services.installPreview.reason.database_server': 'A database server ({packages}).',
+    // alpha.107 (D-038 §12).
+    'services.installPreview.reason.upgrade': 'Already installed, would be upgraded although the install did not ask for it: {packages}. The operating system’s own update would bring the same versions.',
+    'services.installPreview.reason.vendor_replaces_distribution': 'The {component} repository would replace the distribution’s {packages} with its own builds. CelikPanel does not do this, whatever is confirmed: the repository is meant only for the versions the distribution does not ship.',
+    'services.installPreview.vendorNext': 'The repository is not confined to its component on this server. The server administrator confines it on its card on the component’s page (or, if your own preferences file allows this on purpose, installs from the server’s command line), then checks again.',
+    'services.installPreview.repoName.sury': 'Sury PHP',
+    'services.installPreview.repoName.pgdg': 'PostgreSQL (PGDG)',
+    'services.installPreview.repoName.netdata': 'Netdata',
     'services.installPreview.avoid': 'Choosing the recommended versions usually avoids this.',
     'services.installPreview.confirm': 'I have read this; install these packages as well.',
     'services.phpNotReadyProof': 'It was installed, but it did not answer on PHP {version}. Open Manage and choose a PHP version: the move installs what is missing and tests the tool again.',

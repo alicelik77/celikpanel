@@ -139,6 +139,14 @@ func packageCommandEnv() []string {
 type aptSimulation struct {
 	Removed   []string
 	Installed []string
+	// Upgrades (alpha.107) are the Inst lines of packages already installed:
+	// "Inst name [old] (new …)".
+	Upgrades map[string]aptUpgrade
+}
+
+// aptUpgrade is one installed package's version now and after.
+type aptUpgrade struct {
+	From, To string
 }
 
 // parseAptSimulation reads APT's simulation lines: "Purg name [version]",
@@ -162,6 +170,15 @@ func parseAptSimulation(out []byte) aptSimulation {
 			if !seen["i:"+fields[1]] {
 				seen["i:"+fields[1]] = true
 				sim.Installed = append(sim.Installed, fields[1])
+				if len(fields) >= 4 && strings.HasPrefix(fields[2], "[") && strings.HasSuffix(fields[2], "]") && strings.HasPrefix(fields[3], "(") {
+					if sim.Upgrades == nil {
+						sim.Upgrades = map[string]aptUpgrade{}
+					}
+					sim.Upgrades[fields[1]] = aptUpgrade{
+						From: strings.TrimSuffix(strings.TrimPrefix(fields[2], "["), "]"),
+						To:   strings.TrimPrefix(fields[3], "("),
+					}
+				}
 			}
 		}
 	}

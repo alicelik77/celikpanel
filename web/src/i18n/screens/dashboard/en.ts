@@ -275,6 +275,8 @@ export const enDashboardScreens = {
     'dashboard.audit.action.mail.profile.install.recovered.failed': 'could not finish installing {target} after a restart',
     'dashboard.audit.action.panel.certificate': 'set up the panel certificate for {target}',
     'dashboard.audit.action.panel.certificate.failed': 'could not set up the panel certificate for {target}',
+    'dashboard.audit.action.repo.confine': 'confined the package repository {target} to its component',
+    'dashboard.audit.action.repo.confine.failed': 'could not confine the package repository {target} to its component',
     'dashboard.audit.action.repo.disable': 'turned off the package repository {target}',
     'dashboard.audit.action.repo.disable.failed': 'could not turn off the package repository {target}',
     'dashboard.audit.action.repo.disable.partial': 'partly turned off the package repository {target}',

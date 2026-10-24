@@ -40,6 +40,19 @@ type repoInfoResp struct {
 	Required   bool     `json:"required,omitempty"`   // without this repo the package does not exist here
 	Packages   []string `json:"packages,omitempty"`   // available version packages (newest first)
 	ErrorCode  string   `json:"error_code,omitempty"`
+	// The repository card (alpha.107, D-038 §12): the confinement, the
+	// moving default-version packages installed, the signing key, what apt
+	// last downloaded, who enabled it and when (the audit log; the Agent's
+	// own record when the log has no row), and apt's error lines that name
+	// it. Absent from an older Agent: the card says it is not known.
+	Confinement    *transport.RepoConfinement    `json:"confinement,omitempty"`
+	MovingPackages []transport.RepoMovingPackage `json:"moving_packages,omitempty"`
+	Key            *transport.RepoKeyInfo        `json:"key,omitempty"`
+	Lists          *transport.RepoListsInfo      `json:"lists,omitempty"`
+	EnabledAt      string                        `json:"enabled_at,omitempty"`
+	EnabledBy      string                        `json:"enabled_by,omitempty"`
+	AptErrors      []string                      `json:"apt_errors,omitempty"`
+	AptErrorsAt    string                        `json:"apt_errors_at,omitempty"`
 }
 
 // Repository failures cross two trust boundaries: agent -> panel and panel ->
@@ -137,7 +150,7 @@ func (p *Panel) handleRepo(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(repoInfoResp{Available: false})
 			return
 		}
-		json.NewEncoder(w).Encode(p.repoInfo(svc.Repo))
+		json.NewEncoder(w).Encode(p.repoInfoContext(r.Context(), svc.Repo))
 
 	case http.MethodPost:
 		release, busy := p.beginServiceMutation(w, r)
@@ -171,8 +184,19 @@ func (p *Panel) handleRepo(w http.ResponseWriter, r *http.Request) {
 			method = "Agent.EnableRepo"
 		case "disable":
 			method = "Agent.DisableRepo"
+		case "confine":
+			// alpha.107: the administrator confines an enabled repository
+			// (the card offers it when the first start could not).
+			response, err := p.confineRepo(r.Context(), repo.ID)
+			p.auditRepoConfinement(r.Context(), r, repo.ID, response, err)
+			if err != nil {
+				writeCodedError(w, http.StatusConflict, errCodeRepoConfigurationInvalid, safeRepoErrorMessage(errCodeRepoConfigurationInvalid), "/services")
+				return
+			}
+			json.NewEncoder(w).Encode(p.repoInfoContext(r.Context(), repo))
+			return
 		default:
-			writeClientError(w, http.StatusBadRequest, "action must be enable or disable")
+			writeClientError(w, http.StatusBadRequest, "action must be enable, disable or confine")
 			return
 		}
 		err := p.withStandaloneAgentMutation(r.Context(), "repo_"+req.Action, repo.ID, "", func(callCtx context.Context, binding agentMutationBinding) error {
@@ -222,8 +246,13 @@ func (p *Panel) handleRepo(w http.ResponseWriter, r *http.Request) {
 			writeCodedError(w, http.StatusConflict, code, safeRepoErrorMessage(code), "/services")
 			return
 		}
-		p.audit(r, "repo."+req.Action+":"+repo.ID, "repo", 0)
-		json.NewEncoder(w).Encode(p.repoInfo(repo))
+		details := map[string]any{"repository": repo.ID, "name": repo.Name}
+		if st.Confinement != nil {
+			details["confinement"] = st.Confinement.State
+			details["kept_total"] = st.Confinement.KeptTotal
+		}
+		p.auditDetailed(r, "repo."+req.Action+":"+repo.ID, "repo", 0, details)
+		json.NewEncoder(w).Encode(p.repoInfoContext(r.Context(), repo))
 
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -235,6 +264,10 @@ func (p *Panel) handleRepo(w http.ResponseWriter, r *http.Request) {
 // repoInfo, agent'tan deponun mevcut durumunu ve etkinse şu an mevcut sürümlü
 // paketleri ister.
 func (p *Panel) repoInfo(repo *core.ManagedRepo) repoInfoResp {
+	return p.repoInfoContext(context.Background(), repo)
+}
+
+func (p *Panel) repoInfoContext(ctx context.Context, repo *core.ManagedRepo) repoInfoResp {
 	info := repoInfoResp{Available: true, ID: repo.ID, Name: repo.Name, Detail: repo.Description, Required: repo.Required}
 	var st RepoStatusResp
 	if err := p.callAgent("Agent.RepoStatus", &enableRepoReq{RepoID: repo.ID}, &st); err != nil {
@@ -244,6 +277,14 @@ func (p *Panel) repoInfo(repo *core.ManagedRepo) repoInfoResp {
 	}
 	info.Enabled = st.Enabled
 	info.Repairable = st.Repairable
+	if st.Enabled {
+		info.Confinement, info.MovingPackages, info.Key, info.Lists = st.Confinement, st.MovingPackages, st.Key, st.Lists
+		info.AptErrors, info.AptErrorsAt = cleanAptLines(st.AptErrors), st.AptErrorsAt
+		info.EnabledBy, info.EnabledAt = p.repoEnabledBy(ctx, repo.ID)
+		if info.EnabledAt == "" {
+			info.EnabledAt = st.EnabledAt
+		}
+	}
 	if st.Error != "" {
 		fallback := errCodeRepoStatusFailed
 		if st.Repairable {

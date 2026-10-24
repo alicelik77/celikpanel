@@ -85,6 +85,9 @@ const screenPartBudgets = {
   // (Turkish 65.09 / 16.69 KiB before, 50.62 / 13.11 after). Set with at least
   // 25% headroom from its Turkish file: 14.51 / 4.51 KiB.
   componentPages: kib(20, 6.25),
+  // v0.1.0-alpha.107 (D-038): versions, use and security of every component
+  // (life.). A new part, set with at least 25% headroom from its Turkish file.
+  lifecycle: kib(60, 16),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

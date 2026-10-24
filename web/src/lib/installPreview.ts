@@ -9,13 +9,16 @@
 // Bir kurulumun getirdikleri: paket yöneticisinin benzetimi, dikkat çeken
 // paketler ve aracı çalıştıramayacak PHP sürümü.
 
-export type NotableReason = 'new_php_version' | 'apache' | 'component' | 'database_server';
+export type NotableReason = 'new_php_version' | 'apache' | 'component' | 'database_server' | 'upgrade' | 'vendor_replaces_distribution';
 
 export interface NotableInstall {
     package: string;
     reason: NotableReason;
     component?: string;
     version?: string;
+    /** alpha.107: an installed package's version now and after. */
+    from?: string;
+    to?: string;
 }
 
 export interface InstallRefusal {
@@ -38,7 +41,7 @@ export interface InstallStep {
     phpVersion?: string;
 }
 
-const REASONS: readonly string[] = ['new_php_version', 'apache', 'component', 'database_server'];
+const REASONS: readonly string[] = ['new_php_version', 'apache', 'component', 'database_server', 'upgrade', 'vendor_replaces_distribution'];
 const STATES: readonly string[] = ['known', 'busy', 'unsupported', 'unknown'];
 const PACKAGE = /^[a-z0-9][a-z0-9+.:-]{0,160}$/;
 const strings = (value: unknown): string[] | null =>
@@ -64,6 +67,8 @@ export function decodeInstallPreview(raw: unknown): InstallPreview {
             reason,
             ...(typeof value.component === 'string' ? { component: value.component } : {}),
             ...(typeof value.version === 'string' ? { version: value.version } : {}),
+            ...(typeof value.from === 'string' ? { from: value.from } : {}),
+            ...(typeof value.to === 'string' ? { to: value.to } : {}),
         });
     }
     const refusals: InstallRefusal[] = [];
@@ -118,9 +123,16 @@ export function notableGroups(notable: readonly NotableInstall[]): NotableGroup[
             };
             groups.push(group);
         }
-        group.packages.push(item.package);
+        // An upgrade says its versions: "libssl3 3.5.1-1 → 3.5.1-1+deb13u1".
+        group.packages.push(item.reason === 'upgrade' && item.from && item.to ? `${item.package} ${item.from} → ${item.to}` : item.package);
     }
     return groups;
+}
+
+// A vendor repository replacing a distribution package is never confirmed
+// (alpha.107, D-038 §12): the server refuses it whatever the owner ticks.
+export function hasVendorReplacement(notable: readonly NotableInstall[]): boolean {
+    return notable.some((item) => item.reason === 'vendor_replaces_distribution');
 }
 
 // The upstream part of a package manager's version ("2:8.4+96" → "8.4",

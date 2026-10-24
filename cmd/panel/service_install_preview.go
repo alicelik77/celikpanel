@@ -179,6 +179,21 @@ func notableRefusalDetail(notable []transport.NotableInstall) string {
 	return fmt.Sprintf("Not installed: it would also bring %s%s. Install it from Components to see and confirm them.", strings.Join(names, ", "), more)
 }
 
+// vendorRefusalDetail says a refused vendor replacement (alpha.107, D-038
+// §12): which distribution packages a vendor repository would have replaced,
+// that nothing was installed, and what the administrator does.
+func vendorRefusalDetail(notable []transport.NotableInstall) string {
+	names := []string{}
+	repo := ""
+	for _, item := range notable {
+		if item.Reason == "vendor_replaces_distribution" && len(names) < 4 {
+			names = append(names, item.Package)
+			repo = item.Component
+		}
+	}
+	return fmt.Sprintf("Not installed: the %s repository would have replaced the distribution's %s with its own builds. Confine the repository on its card on the component's page, then try again.", repo, strings.Join(names, ", "))
+}
+
 // serviceInstallOperationData is what an install keeps in its operation
 // record so a resumed install runs as it was asked: the tool's PHP version
 // and the packages the owner confirmed.

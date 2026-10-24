@@ -157,9 +157,13 @@ func refreshAptListsIfStaleWithExecutable(ctx context.Context, maxAge time.Durat
 		return
 	}
 	env := append(os.Environ(), "DEBIAN_FRONTEND=noninteractive")
-	if out, err := runServiceMutationCombinedOutputEnv(ctx, env, aptGet, "update"); err != nil {
+	out, err := runServiceMutationCombinedOutputEnv(ctx, env, aptGet, "update")
+	if err != nil {
 		fmt.Printf("apt-get update before install failed (continuing): %s\n", firstLine(string(out)))
 	}
+	// alpha.107: what apt said about an enabled vendor repository is kept
+	// for its card, never swallowed (D-038 §12).
+	recordRepoAptErrors(string(out))
 }
 
 // packageInstallRefusal: installing would remove packages (alpha.104).
@@ -185,7 +189,7 @@ func refuseInstallThatRemoves(ctx context.Context, run packageSimulationRunner, 
 // checkAptInstallSimulation is refuseInstallThatRemoves with an optional
 // guard over what the simulation would install (alpha.105: notable
 // installs the owner has not confirmed refuse the install).
-func checkAptInstallSimulation(ctx context.Context, run packageSimulationRunner, aptGet string, packages, args []string, guard func([]string) error) error {
+func checkAptInstallSimulation(ctx context.Context, run packageSimulationRunner, aptGet string, packages, args []string, guard func(aptSimulation) error) error {
 	sim, err := runAptSimulation(ctx, run, aptGet, args)
 	if err != nil {
 		return fmt.Errorf("the package manager could not show what installing %s would do, so nothing was installed: %w", strings.Join(packages, ", "), err)
@@ -194,7 +198,7 @@ func checkAptInstallSimulation(ctx context.Context, run packageSimulationRunner,
 		return &packageInstallRefusal{Packages: append([]string{}, packages...), Removes: sim.Removed}
 	}
 	if guard != nil {
-		return guard(sim.Installed)
+		return guard(sim)
 	}
 	return nil
 }
@@ -220,7 +224,7 @@ func installPackagesWithCandidateContext(ctx context.Context, family string, pac
 // installPackagesGuardedContext installs with an optional guard over what
 // the package manager's simulation says it would install, judged under
 // the same package lock right before the real install (alpha.105).
-func installPackagesGuardedContext(ctx context.Context, family string, packages []string, requiredCandidate string, guard func([]string) error) (string, error) {
+func installPackagesGuardedContext(ctx context.Context, family string, packages []string, requiredCandidate string, guard func(aptSimulation) error) (string, error) {
 	packageOperationMu.Lock()
 	defer packageOperationMu.Unlock()
 
@@ -282,7 +286,8 @@ func installPackagesGuardedContext(ctx context.Context, family string, packages 
 		out, err := run()
 		var refusal *packageInstallRefusal
 		var notable *packageInstallNotableRefusal
-		if errors.As(err, &refusal) || errors.As(err, &notable) {
+		var vendor *packageInstallVendorRefusal
+		if errors.As(err, &refusal) || errors.As(err, &notable) || errors.As(err, &vendor) {
 			return "", err
 		}
 		// Mirror rotated inside our freshness window: the lists said the file
@@ -315,7 +320,7 @@ func installPackagesGuardedContext(ctx context.Context, family string, packages 
 			if err != nil {
 				return "", fmt.Errorf("the package manager could not show what installing %s would do, so nothing was installed: %w", strings.Join(packages, ", "), err)
 			}
-			if err := guard(sim.Installed); err != nil {
+			if err := guard(sim); err != nil {
 				return "", err
 			}
 		}

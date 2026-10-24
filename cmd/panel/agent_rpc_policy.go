@@ -144,7 +144,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityPackageLifecycle, `
 		Agent.ConfigureDBTools Agent.ConfigureWebmail Agent.DisableRepo Agent.EnableRepo
 		Agent.InstallRoundcube Agent.InstallService Agent.RemoveRoundcube Agent.UninstallService
-		Agent.BindPHPToolV1 Agent.ProvePHPToolV1
+		Agent.BindPHPToolV1 Agent.ProvePHPToolV1 Agent.ConfineRepoV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityServiceLifecycle, `
 		Agent.EnsureNginxReady Agent.ResetFailedUnitMutation Agent.ServiceMutationAction
@@ -411,6 +411,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.UninstallService":            agentRPCDeploymentTimeout,
 	"Agent.BindPHPToolV1":               agentRPCDeploymentTimeout,
 	"Agent.ProvePHPToolV1":              agentRPCDeploymentTimeout,
+	"Agent.ConfineRepoV1":               agentRPCDeploymentTimeout,
 	"Agent.WireMailFilters":             agentRPCDeploymentTimeout,
 	"Agent.SwitchDNSEngineV1":           agentRPCDeploymentTimeout,
 

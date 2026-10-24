@@ -349,11 +349,13 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 		// alpha.105: what the simulation would install beyond what this
 		// install names is judged right before the real install; a notable
 		// package the owner did not confirm refuses it.
-		var guard func([]string) error
+		var guard func(aptSimulation) error
 		if req.CheckInstalls {
-			guard = notableInstallGuard(
-				newInstallClassification(family, missingPackages, []string{svc.ID}, []string{phpVersion}, installed),
-				missingPackages, req.ConfirmedInstalls)
+			classification := newInstallClassification(family, missingPackages, []string{svc.ID}, []string{phpVersion}, installed)
+			if family == "apt" {
+				classification.vendorOf = hostVendorVersionLookup()
+			}
+			guard = notableInstallGuard(classification, missingPackages, req.ConfirmedInstalls)
 		}
 		installMissingPackages := func() (string, error) {
 			return installPackagesGuardedContext(ctx, family, missingPackages, strings.TrimSpace(req.Package), guard)
@@ -366,9 +368,13 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 		}
 		if installErr != nil {
 			var notable *packageInstallNotableRefusal
+			var vendor *packageInstallVendorRefusal
 			if errors.As(installErr, &notable) {
 				resp.ErrorCode = errCodeInstallNeedsConfirmation
 				resp.Notable = append([]transport.NotableInstall{}, notable.Notable...)
+			} else if errors.As(installErr, &vendor) {
+				resp.ErrorCode = errCodeInstallVendorReplacement
+				resp.Notable = append([]transport.NotableInstall{}, vendor.Notable...)
 			}
 			resp.Error = fmt.Sprintf("package install failed: %v", installErr)
 			return nil
