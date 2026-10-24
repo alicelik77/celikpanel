@@ -95,9 +95,9 @@ gördükleri [işlem yönlendirmesinde](OPERATION-GUIDANCE.tr.md).
 - Kurulu bir sunucuda ölçülmedi. pacman ve DNF yolları yalnız bileşen testleriyle.
   Roundcube'u başka bir hatta taşımak, ana veritabanı yükseltme akışı, sürümleri
   müşterilerden gizlemek ve bileşen başına "denenmiş" işaretleri yapılmadı.
-- Aday ağacındaki kanıt: Agent 4767 geçti, 29 atlandı (temiz bağlama ad alanı);
-  Panel ve iç paketler 7924 geçti, 45 atlandı, 0 başarısız; sürüm kurtarma düzeneği
-  geçiş 45'i sabitler ve testleri geçti; web 1842 geçti ve üretim derlemesi
+- Aday ağacındaki kanıt: Agent 4771 geçti, 29 atlandı (temiz bağlama ad alanı);
+  Panel ve iç paketler 7925 geçti, 45 atlandı, 0 başarısız; sürüm kurtarma düzeneği
+  geçiş 45'i sabitler ve testleri geçti; web 1844 geçti ve üretim derlemesi
   bütçelerinin içinde (yeni "lifecycle" sözcük parçasının kendi tavanı var); tarayıcı
   grubu 30 (EN ve TR, 1440 ve 390, açık); atılabilir bir Debian 13 sanal makinesinde
   bir gerçek sistem denemesi

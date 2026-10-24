@@ -91,9 +91,9 @@ restart. This release closes those gaps. What the owner sees is in the
 - Not measured on an installed server. pacman and DNF paths by component tests
   only. Moving Roundcube to another line, a major database upgrade flow, hiding
   versions from customers and per-component "tested" marks are not built.
-- Evidence on the candidate tree: Agent 4767 passed, 29 skipped (clean mount
-  namespace); Panel and internal packages 7924 passed, 45 skipped, 0 failed; the
-  release-recovery harness pins migration 45 and its tests passed; web 1842
+- Evidence on the candidate tree: Agent 4771 passed, 29 skipped (clean mount
+  namespace); Panel and internal packages 7925 passed, 45 skipped, 0 failed; the
+  release-recovery harness pins migration 45 and its tests passed; web 1844
   passed and the production build within its budgets (the new "lifecycle" words
   part has its own ceiling); browser batch 30 (EN and TR, 1440 and 390, light);
   one real-system run on a disposable Debian 13 VM
