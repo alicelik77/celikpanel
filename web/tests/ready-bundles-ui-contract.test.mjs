@@ -421,7 +421,7 @@ test('row actions share one outlined shape, neutral at rest; Stop is a stop sign
   assert.doesNotMatch(services, /\bSquare\b/);
   assert.equal((services.match(/<StopCircle className="h-4 w-4" aria-hidden="true" \/>/g) ?? []).length, 2);
   // Delete is the same ActionIcon as Restart and Stop.
-  assert.match(services, /<ActionIcon\s*\n\s*title=\{t\('services\.uninstall'\)\}\s*\n\s*onClick=\{\(\) => openUninstallDialog\(s\)\}\s*\n\s*tone="danger"\s*\n\s*>\s*\n\s*<Trash2 className="h-4 w-4" aria-hidden="true" \/>/);
+  assert.match(services, /<ActionIcon\s*\n\s*title=\{t\('services\.uninstall'\)\}\s*\n\s*onClick=\{\(\) => openRemovalFlow\(s\)\}\s*\n\s*tone="danger"\s*\n\s*>\s*\n\s*<Trash2 className="h-4 w-4" aria-hidden="true" \/>/);
   assert.match(services, /variant=\{actionName === 'stop' \? 'danger' : 'primary'\}/);
 });
 

@@ -680,6 +680,31 @@ Not done: nothing is measured on an installed server; the real-system evidence i
 disposable Debian 13 machines (RESILIENCE-CONTRACT, alpha.104); pacman's path is
 covered by component tests only; the DNF path stays unreachable.
 
+### Amendment (2026-10-24, clock date): a removal says which version, and the dialog leads with the answer
+
+*Owner observation on Frankfurt (alpha.105) of 2026-10-24; in source for the v0.1.0-alpha.106 candidate; web only, nothing measured on an installed server*
+
+The owner pressed the remove button on the PHP-FPM row (8.6, 8.5 and 8.4 installed)
+and asked which version it would remove: the title said "Uninstall PHP-FPM?" and
+only a sentence in the middle said every version goes. The Panel rightly refused
+(phpPgAdmin and Roundcube run on PHP-FPM; apt would also take phppgadmin), but the
+refusal sat mid-list, the dialog still said what the removal "takes", said the
+same tools twice, used package-manager words and showed a Remove button that did
+not look unavailable. Rules: (1) a runtime with several versions first asks
+"Which version do you want to remove?", one choice per version with who uses it
+and "All versions (8.6, 8.5, 8.4)" set apart below; a version continues into its
+own removal, All versions into the whole one; with one version there is no
+question and the title names it; every title names what goes. (2) Every removal
+dialog says the answer first (D-024): can it be removed now, the causes once each
+in plain words, then what the owner can do with the way to do it (remove the
+named components, move the sites, keep it); the package list, what apt or pacman
+does and the package manager's explanation are under a folded Details, and a
+refused removal is never said to "take" anything. (3) A refused removal offers
+Close; the danger button reads "Can't remove", visibly unavailable. This includes
+the refusal for what a component hosts (sites, databases), which the alpha.100
+amendment had left to the Panel's answer. Node.js versions are removed from the
+versions list only; PostgreSQL has no per-version removal in the Panel.
+
 ---
 
 

@@ -21,8 +21,13 @@ import { enErrorsScreens as enErrorsPart } from '../src/i18n/screens/errors/en.t
 import { enScreens, trScreens } from './locale-catalogue.mjs';
 import { tr as trShellHalf } from '../src/i18n/tr.ts';
 import { trErrorsScreens as trErrorsPart } from '../src/i18n/screens/errors/tr.ts';
-import { enComponentsScreens as enComponents } from '../src/i18n/screens/components/en.ts';
-import { trComponentsScreens as trComponents } from '../src/i18n/screens/components/tr.ts';
+import { enComponentsScreens } from '../src/i18n/screens/components/en.ts';
+import { trComponentsScreens } from '../src/i18n/screens/components/tr.ts';
+import { enComponentPagesScreens } from '../src/i18n/screens/componentPages/en.ts';
+import { trComponentPagesScreens } from '../src/i18n/screens/componentPages/tr.ts';
+// The components and component-page parts (split in alpha.106), as one.
+const enComponents = { ...enComponentsScreens, ...enComponentPagesScreens };
+const trComponents = { ...trComponentsScreens, ...trComponentPagesScreens };
 
 const words = { ...enShellHalf, ...enErrorsPart, ...enScreens };
 const trWords = { ...trShellHalf, ...trErrorsPart, ...trScreens };
@@ -221,15 +226,29 @@ test('PHP 8.4 on Frankfurt: the tools on it, what the package manager would also
     assert.match(read.url, /service_id=php-fpm&package=php8\.4-fpm/);
     const name = `${nameOf('php-fpm')} 8.4`;
     const said = simLines();
-    assert.equal(said.tools, say('services.removal.sim.tools', { names: `${nameOf('phppgadmin')}, ${nameOf('roundcube')}`, version: '8.4' }));
+    assert.equal(said.tools, say('services.removal.why.tools', { names: `${nameOf('phppgadmin')}, ${nameOf('roundcube')}`, version: '8.4' }));
     assert.equal(said.collateral, say('services.removal.sim.refused', { name }));
-    assert.equal(said['component-phpmyadmin'], say('services.removal.sim.component', { packages: 'phpmyadmin', component: nameOf('phpmyadmin'), name }));
-    assert.equal(said.default, say('services.removal.sim.default', { packages: 'php-fpm', name }));
-    assert.equal(said.depends, say('services.removal.sim.depends', { packages: 'php-mysql, php-mbstring', name }));
-    // Collateral present: no move is offered and Remove is not pressable.
+    assert.equal(said['component-phpmyadmin'], say('services.removal.why.component', { component: nameOf('phpmyadmin'), packages: 'phpmyadmin' }));
+    assert.equal(said.default, say('services.removal.why.default', { packages: 'php-fpm', name: nameOf('php-fpm') }));
+    assert.equal(said.depends, say('services.removal.why.depends', { packages: 'php-mysql, php-mbstring' }));
+    // alpha.106: the answer comes first, then the causes, then what to do;
+    // the package manager's explanation and the list sit under Details.
+    const whole = label(tree.root);
+    const answer = say('services.removal.verdict.blocked', { name });
+    assert.ok(whole.indexOf(answer) >= 0 && whole.indexOf(answer) < whole.indexOf(said.tools), 'the answer does not lead');
+    assert.ok(whole.indexOf(said.depends) < whole.indexOf(say('services.removal.nextTitle')));
+    const details = tree.root.findAll((node) => node.type === 'details')[0];
+    assert.ok(details && label(details).includes(said.collateral) && label(details).includes(say('services.removal.sim.wouldTake', { count: 3 })));
+    assert.ok(!whole.includes(say('services.removal.sim.exact', { count: 3 })), 'a refused removal is said to take packages');
+    const steps = tree.root.findAll((node) => node.props && node.props['data-removal-step'] !== undefined).map((node) => node.props['data-removal-step']);
+    assert.deepEqual(steps, ['remove-phpmyadmin', 'remove-all', 'depends', 'keep']);
+    // Collateral present: no move is offered; Close is the action and the
+    // danger button says it cannot remove.
     assert.equal(buttonsLabelled(say('services.version.moveButton', { version: '8.6' })).length, 0);
-    const remove = buttonsLabelled(say('services.removeVersion')).find((node) => node.props.title === say('services.removal.refusedButton'));
-    assert.ok(remove && remove.props.disabled, 'Remove is offered for a removal the Panel refuses');
+    const remove = tree.root.findAll((node) => node.type === 'button' && node.props['data-removal-cant'] !== undefined)[0];
+    assert.ok(remove && remove.props.disabled && label(remove) === say('services.removal.cantButton'), 'Remove is offered for a removal the Panel refuses');
+    assert.ok(buttonsLabelled(say('common.close')).length > 0);
+    assert.equal(buttonsLabelled(say('services.removeVersion')).filter((node) => node.props.title === undefined).length, 0);
     // Opening the dialog changed nothing.
     assert.equal(requests.filter((request) => request.method !== 'GET').length, 0);
   } finally { await unmount(); }
@@ -288,8 +307,9 @@ test('a read that fails says so and the removal stays allowed; sites on the vers
   try {
     await openVersionRemoval('8.4');
     const sites = tree.root.findAll((node) => node.props && node.props['data-removal-line'] === 'sites')[0];
-    assert.ok(label(sites).includes(say('services.version.sitesOn', { count: 2, version: '8.4', names: 'a.example (ali), b.example (veli)' })));
-    assert.ok(label(sites).includes(say('services.version.sitesLink')));
+    assert.equal(label(sites), say('services.version.sitesOn', { count: 2, version: '8.4', names: 'a.example (ali), b.example (veli)' }));
+    const step = tree.root.findAll((node) => node.props && node.props['data-removal-step'] === 'sites')[0];
+    assert.ok(label(step).includes(say('services.version.sitesMove')) && label(step).includes(say('services.version.sitesLink')));
   } finally { await unmount(); }
 });
 
@@ -437,9 +457,11 @@ test('removing a component names what the package manager would also take, and R
     await settle();
     const said = simLines();
     assert.equal(said.collateral, say('services.removal.sim.refused', { name: nameOf('mariadb') }));
-    assert.equal(said['component-phpmyadmin'], say('services.removal.sim.component', { packages: 'phpmyadmin', component: nameOf('phpmyadmin'), name: nameOf('mariadb') }));
-    const remove = tree.root.findAll((node) => node.type === 'button' && label(node).includes(say('services.uninstall')) && node.props.title === say('services.removal.refusedButton'))[0];
-    assert.ok(remove && remove.props.disabled);
+    assert.equal(said['component-phpmyadmin'], say('services.removal.why.component', { component: nameOf('phpmyadmin'), packages: 'phpmyadmin' }));
+    // phpMyAdmin is a cause already: "Components that need MariaDB" does not say it again.
+    assert.equal(tree.root.findAll((node) => node.props && node.props['data-removal-line'] === 'required').length, 0);
+    const remove = tree.root.findAll((node) => node.type === 'button' && node.props['data-removal-cant'] !== undefined)[0];
+    assert.ok(remove && remove.props.disabled && remove.props.title === say('services.removal.refusedButton'));
   } finally { await unmount(); }
 });
 
@@ -505,4 +527,115 @@ test('after moves, no refusal says nothing was removed, in English or Turkish', 
       } finally { await unmount(); }
     }
   }
+});
+
+// --- alpha.106: which version, and the answer first ---------------------------------
+// Owner, Frankfurt, 2026-10-24: "if I say remove, which version will it remove?"
+// Sahip: "kaldır dersem hangi versiyonu kaldıracak?"
+const whichDialog = () => tree.root.findAll((node) => node.props && node.props['data-remove-which'] !== undefined)[0];
+async function pressRowRemove(id) {
+  const trash = rowOf(id).findAll((node) => node.type === 'button' && node.props.title === say('services.uninstall'))[0];
+  assert.ok(trash, `${id} has no remove button`);
+  await act(async () => { trash.props.onClick(); });
+  for (let i = 0; i < 3; i += 1) await settle();
+}
+const WHOLE_PHP = {
+  removal: 'packages', has_units: true, setup_required: false, package_family: 'apt', packages: ['php-fpm'], all_versions: true, firewall_ports: [],
+  mail_filter_rewired: false, database_tools_reconfigured: false, required_by: ['phppgadmin', 'roundcube'], bundles: [], hosted: null,
+  simulation: sim({ remove: Array.from({ length: 80 }, (_, i) => `pkg${i}`), collateral: [{ package: 'phppgadmin', reason: 'component', component: 'phppgadmin' },
+    { package: 'php-common', reason: 'would_install' }], bound_tools: ['phppgadmin', 'webmail'], refuses: true }),
+};
+
+test('alpha.106: the PHP-FPM row asks which version first, says who uses each, and sets All versions apart; nothing is read or changed', async () => {
+  await mount();
+  try {
+    await pressRowRemove('php-fpm');
+    assert.ok(whichDialog(), 'no version question');
+    const text = label(tree.root);
+    assert.ok(text.includes(say('services.removeWhich.title', { name: nameOf('php-fpm') })));
+    const choices = tree.root.findAll((node) => node.type === 'button' && node.props['data-remove-which-version'] !== undefined);
+    assert.deepEqual(choices.map((node) => node.props['data-remove-which-version']), ['8.6', '8.5', '8.4']);
+    assert.ok(label(choices[2]).includes(say('services.version.usedBy', { who: `${say('services.version.sites', { count: 2 })}, ${nameOf('phppgadmin')}, ${nameOf('roundcube')}` })));
+    const all = tree.root.findAll((node) => node.type === 'button' && node.props['data-remove-which-all'] !== undefined)[0];
+    assert.ok(label(all).includes(say('services.removeWhich.all', { versions: '8.6, 8.5, 8.4' })));
+    assert.equal(requests.filter((request) => request.path === '/api/v1/service/removal-impact').length, 0);
+    assert.equal(requests.filter((request) => request.method !== 'GET').length, 0);
+  } finally { await unmount(); }
+});
+
+test('alpha.106: choosing one version continues into the removal of that version', async () => {
+  await mount({ extra: impactRoute(versionImpact(FRANKFURT_SIM)) });
+  try {
+    await pressRowRemove('php-fpm');
+    const pick = tree.root.findAll((node) => node.type === 'button' && node.props['data-remove-which-version'] === '8.4')[0];
+    await act(async () => { pick.props.onClick(); });
+    for (let i = 0; i < 4; i += 1) await settle();
+    assert.equal(whichDialog(), undefined);
+    const read = requests.find((request) => request.path === '/api/v1/service/removal-impact');
+    assert.match(read.url, /service_id=php-fpm&package=php8\.4-fpm/);
+    assert.ok(label(tree.root).includes(say('services.removeVersionTitle', { name: nameOf('php-fpm'), version: '8.4' })));
+  } finally { await unmount(); }
+});
+
+test('alpha.106: All versions names every version, leads with the refusal, says each cause once and offers the next removals', async () => {
+  const routes = { '/api/v1/service/removal-impact': (url) => {
+    const id = new URLSearchParams(url.split('?')[1]).get('service_id');
+    return id === 'php-fpm' ? answer(WHOLE_PHP) : answer({ ...WHOLE_PHP, packages: [id], all_versions: false, required_by: [], simulation: sim({ remove: [id] }) });
+  } };
+  await mount({ extra: routes });
+  try {
+    await pressRowRemove('php-fpm');
+    const all = tree.root.findAll((node) => node.type === 'button' && node.props['data-remove-which-all'] !== undefined)[0];
+    await act(async () => { all.props.onClick(); });
+    for (let i = 0; i < 3; i += 1) await settle();
+    const name = nameOf('php-fpm');
+    const subject = say('services.removal.subjectAll', { name, versions: '8.6, 8.5, 8.4' });
+    const text = label(tree.root);
+    assert.ok(text.includes(say('services.removeSubjectTitle', { name: subject })), 'the title does not name every version');
+    assert.ok(text.includes(say('services.removal.verdict.blocked', { name: subject })));
+    const causes = tree.root.findAll((node) => node.props && node.props['data-removal-cause'] !== undefined).map((node) => node.props['data-removal-cause']);
+    assert.deepEqual(causes, ['tools', 'component-phppgadmin']);
+    // Said once: the tools are not repeated as "Components that need PHP-FPM".
+    assert.equal(tree.root.findAll((node) => node.props && node.props['data-removal-line'] === 'required').length, 0);
+    const steps = tree.root.findAll((node) => node.props && node.props['data-removal-step'] !== undefined).map((node) => node.props['data-removal-step']);
+    assert.deepEqual(steps, ['remove-phppgadmin', 'remove-roundcube', 'keep']);
+    // No "it takes exactly these 80 packages" for a refused removal; the replacement install is plain and in Details.
+    assert.ok(!text.includes(say('services.removal.sim.exact', { count: 80 })));
+    const details = tree.root.findAll((node) => node.type === 'details')[0];
+    assert.ok(label(details).includes(say('services.removal.sim.wouldTake', { count: 80 })));
+    assert.ok(label(details).includes(say('services.removal.sim.installs', { packages: 'php-common' })));
+    const cant = tree.root.findAll((node) => node.type === 'button' && node.props['data-removal-cant'] !== undefined)[0];
+    assert.ok(cant.props.disabled);
+    // "Remove phpPgAdmin first" opens the removal of phpPgAdmin.
+    const next = tree.root.findAll((node) => node.type === 'button' && node.props['data-removal-action'] === 'remove-phppgadmin')[0];
+    await act(async () => { next.props.onClick(); });
+    for (let i = 0; i < 3; i += 1) await settle();
+    assert.ok(label(tree.root).includes(say('services.uninstallTitle', { name: nameOf('phppgadmin') })));
+    assert.ok(requests.some((request) => request.url.includes('service_id=phppgadmin')));
+    assert.equal(requests.filter((request) => request.method !== 'GET').length, 0);
+  } finally { await unmount(); }
+});
+
+test('alpha.106: one installed version asks nothing and the title names it; an allowed removal says what it removes', async () => {
+  const one = SERVER.map((service) => service.id === 'php-fpm' ? { ...service, versions: ['8.4'], instances: [instance('8.4')] } : service);
+  await mount({ managed: payload(one), extra: impactRoute({ ...WHOLE_PHP, required_by: [], simulation: sim() }) });
+  try {
+    await pressRowRemove('php-fpm');
+    assert.equal(whichDialog(), undefined);
+    const text = label(tree.root);
+    assert.ok(text.includes(say('services.removeVersionTitle', { name: nameOf('php-fpm'), version: '8.4' })));
+    assert.ok(text.includes(say('services.removal.verdict.allowed', { name: `${nameOf('php-fpm')} 8.4` })));
+    const remove = tree.root.findAll((node) => node.type === 'button' && label(node).includes(say('services.uninstall')) && node.props.title === undefined)[0];
+    assert.ok(remove && !remove.props.disabled);
+  } finally { await unmount(); }
+});
+
+test('alpha.106: every new text exists in English and Turkish, Turkish not English', () => {
+  const keys = Object.keys(enComponents).filter((key) => /^services\.(removal\.(verdict|why|next|subjectAll|cantButton|nextTitle|detailsTitle|alsoTitle|wouldTitle|sim\.wouldTake)|removeWhich\.|removeSubjectTitle|version\.sitesMove)/.test(key));
+  assert.ok(keys.length >= 28, String(keys.length));
+  for (const key of keys) {
+    assert.equal(typeof trComponents[key], 'string', key);
+    assert.notEqual(trComponents[key], enComponents[key], key);
+  }
+  assert.doesNotMatch(enComponents['services.removal.sim.installs'], /in their place; CelikPanel does not do that as part of a removal/);
 });

@@ -79,6 +79,12 @@ const screenPartBudgets = {
   // shell (the boot path had 0.25 KiB left; it is 329.16 KiB after). Set with
   // at least 25% headroom from its Turkish file: 32.40 / 8.24 KiB.
   errors: kib(44, 11.5),
+  // v0.1.0-alpha.106: each component's management page (component., svc.,
+  // nginx., postfix., pdns., dovecot., mariadb., vsftpd.) moved out of
+  // "components" when the Components list's removal copy used its headroom
+  // (Turkish 65.09 / 16.69 KiB before, 50.62 / 13.11 after). Set with at least
+  // 25% headroom from its Turkish file: 14.51 / 4.51 KiB.
+  componentPages: kib(20, 6.25),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

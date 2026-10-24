@@ -20,7 +20,7 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 // Every part of the screen half, in load order. index.tsx must load each one.
 // Ekran yarısının her parçası; index.tsx her birini yüklemelidir.
 export const screenParts = [
-  'setup', 'sites', 'siteConfig', 'dnsCertificates', 'components',
+  'setup', 'sites', 'siteConfig', 'dnsCertificates', 'components', 'componentPages',
   'mailDatabases', 'security', 'dashboard', 'settings', 'errors',
 ];
 

@@ -84,8 +84,8 @@ async function loadShell(locale: Locale): Promise<Catalog> {
 
 // The screen part is itself stored in several parts per locale, one directory
 // per group of screens under ./screens (setup, sites, siteConfig,
-// dnsCertificates, components, mailDatabases, security, dashboard, settings;
-// v0.1.0-alpha.97). That is a size split only - each part has its own budget
+// dnsCertificates, components, componentPages, mailDatabases, security,
+// dashboard, settings, errors; v0.1.0-alpha.97, componentPages since alpha.106). That is a size split only - each part has its own budget
 // in web/scripts/check-bundle-budget.mjs - so every part is fetched in parallel
 // and merged before `screens` becomes true. No screen can render with only
 // some of them, and a part that fails fails the screen copy as a whole.
@@ -106,6 +106,7 @@ const screenParts: Record<Locale, Array<() => Promise<Record<string, unknown>>>>
         () => import('./screens/siteConfig/en'),
         () => import('./screens/dnsCertificates/en'),
         () => import('./screens/components/en'),
+        () => import('./screens/componentPages/en'),
         () => import('./screens/mailDatabases/en'),
         () => import('./screens/security/en'),
         () => import('./screens/dashboard/en'),
@@ -118,6 +119,7 @@ const screenParts: Record<Locale, Array<() => Promise<Record<string, unknown>>>>
         () => import('./screens/siteConfig/tr'),
         () => import('./screens/dnsCertificates/tr'),
         () => import('./screens/components/tr'),
+        () => import('./screens/componentPages/tr'),
         () => import('./screens/mailDatabases/tr'),
         () => import('./screens/security/tr'),
         () => import('./screens/dashboard/tr'),

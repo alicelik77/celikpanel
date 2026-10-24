@@ -7762,3 +7762,17 @@ native update and automatic-rollback resilience is complete.
   real `-Syu` transaction.
   Everything the alpha.90 to alpha.104 entries leave open stays open. P0.1 to P0.5
   stay partial.
+
+### Candidate v0.1.0-alpha.106 (a removal says which version and leads with the answer; web only; invariant 2; D-037 amendment; D-024; 2026-10-24)
+
+D-025 invariant 2 (evidence has a meaning): a refused removal is said as a refusal
+first and never described as what it would take; the package manager's list stays
+under Details. **No P0 item is closed or advanced**; P0.1 to P0.5 stay partial and
+every open acceptance item stays open. UI only: no Agent or Panel change, no schema
+or sequence transition beyond the release sequence (106; schema 44). Recovery
+behaviour is unchanged: a refused removal changes nothing and offers Close; a read
+that fails still never holds the removal, and the Agent checks again when Remove is
+pressed. Evidence: web 1805 tests passed (mounted dialog tests for the version
+question, the refused whole removal and the refused version), the production build
+within its budgets, and a browser look (EN and TR, 1440 and 390, light) on a mock.
+Not measured on an installed server.

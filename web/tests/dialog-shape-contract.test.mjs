@@ -171,7 +171,7 @@ test('every dialogue in the product is the shared one', () => {
     'ReadyBundleStrip.tsx': 2,
     // alpha.98: the firewall's confirmation moved with the box to FirewallPanel.tsx.
     'FirewallPanel.tsx': 1,
-    'ServiceList.tsx': 6,
+    'ServiceList.tsx': 7,
     'ServiceShell.tsx': 1,
   });
 });

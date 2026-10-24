@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Settings, Play, StopCircle, RotateCw, RefreshCw, ScanSearch, DownloadCloud, ChevronDown, ChevronRight, Trash2, ShieldOff, Layers, Globe, Database, Mail, Network, Shield, Zap, FolderUp, Activity, Boxes, Clock } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { showToast } from './Toast';
@@ -962,6 +962,31 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         setUninstallError(null);
         setRetryCleanup(false);
         setCleanupAttempt(null);
+    };
+    // The row's remove button asks which version first when a runtime has
+    // several (alpha.106, owner's question on Frankfurt: "which version would
+    // it remove?"); one version, or none, goes straight to the removal, whose
+    // title names it.
+    // Birden çok sürümde satırın kaldır düğmesi önce hangi sürüm olduğunu sorar.
+    const [versionChoice, setVersionChoice] = useState<ManagedService | null>(null);
+    const [versionRemoveRequest, setVersionRemoveRequest] = useState<{ serviceId: string; version: string; token: number } | null>(null);
+    const openRemovalFlow = (service: ManagedService) => {
+        setUninstallTarget(null);
+        if (removableVersions(service).length > 1) {
+            setVersionChoice(service);
+            return;
+        }
+        openUninstallDialog(service);
+    };
+    const removeComponentById = (id: string) => {
+        const target = services.find((candidate) => candidate.id === id);
+        setUninstallTarget(null);
+        if (target && target.is_installed === true) openRemovalFlow(target);
+    };
+    const chooseVersionRemoval = (service: ManagedService, version: string) => {
+        setVersionChoice(null);
+        setOpenDrawers((prev) => new Set(prev).add(service.id));
+        setVersionRemoveRequest({ serviceId: service.id, version, token: Date.now() });
     };
     const openWebmailCleanupDialog = (service: ManagedService) => {
         setUninstallTarget(service);
@@ -2172,7 +2197,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                     {!isTarballRuntime(s) && (
                                                     <ActionIcon
                                                         title={t('services.uninstall')}
-                                                        onClick={() => openUninstallDialog(s)}
+                                                        onClick={() => openRemovalFlow(s)}
                                                         tone="danger"
                                                     >
                                                         <Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -2201,6 +2226,10 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 requestComponentAction({ kind: 'install-node', service: s, version });
                                                                 return Promise.resolve(false);
                                                             }}
+                                                            removeRequest={versionRemoveRequest?.serviceId === s.id ? versionRemoveRequest : null}
+                                                            onRemoveRequestTaken={() => setVersionRemoveRequest(null)}
+                                                            onRemoveComponent={removeComponentById}
+                                                            onRemoveWhole={() => openUninstallDialog(s)}
                                                         />
                                                         </div>
                                                     )}
@@ -2252,8 +2281,17 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                         onConfirm={confirmComponentBundle}
                     />
                 )}
+                {versionChoice && (
+                    <RemoveWhichVersionDialog
+                        service={versionChoice}
+                        onCancel={() => setVersionChoice(null)}
+                        onPickVersion={(version) => chooseVersionRemoval(versionChoice, version)}
+                        onPickAll={() => { const target = versionChoice; setVersionChoice(null); openUninstallDialog(target); }}
+                    />
+                )}
                 {uninstallTarget && (
                     <UninstallServiceDialog
+                        key={uninstallTarget.id}
                         service={uninstallTarget}
                         busy={busy === uninstallTarget.id}
                         error={uninstallError}
@@ -2261,6 +2299,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                         cleanupAttempt={cleanupAttempt}
                         onCancel={closeUninstallDialog}
                         onConfirm={() => doUninstall(uninstallTarget)}
+                        onRemoveComponent={busy === uninstallTarget.id ? undefined : removeComponentById}
                         nameOf={(id) => componentName(services.find((service) => service.id === id) ?? id, t)}
                         bundleNameOf={(id, nameCode) => {
                             const bundle = bundles.find((candidate) => candidate.id === id);
@@ -3111,6 +3150,10 @@ function VersionDrawer({
     onStateUnverified,
     onInstallPackage,
     onInstallNode,
+    removeRequest,
+    onRemoveRequestTaken,
+    onRemoveComponent,
+    onRemoveWhole,
 }: {
     service: ManagedService;
     busy: string | null;
@@ -3120,6 +3163,13 @@ function VersionDrawer({
     onStateUnverified: (error: ApiError) => void;
     onInstallPackage: (pkg: string, version: string) => Promise<boolean>;
     onInstallNode: (version: string) => Promise<boolean>;
+    /** A version the row's remove button chose (alpha.106): its removal opens here. */
+    removeRequest?: { version: string; token: number } | null;
+    onRemoveRequestTaken?: () => void;
+    /** Opens another component's removal, named as a next action. */
+    onRemoveComponent?: (id: string) => void;
+    /** Opens the whole component's removal, every version. */
+    onRemoveWhole?: () => void;
 }) {
     const { t } = useI18n();
     const instances = service.instances ?? [];
@@ -3348,6 +3398,19 @@ function VersionDrawer({
     };
     const canRemove = (inst: ServiceInstance) =>
         inst.managed && (inst.unit ? service.kind === 'runtime' : service.id === 'node');
+    // The row's "which version?" answer continues into this version's own
+    // removal, with its move-then-remove (alpha.106).
+    // Satırdaki "hangi sürüm?" yanıtı bu sürümün kendi kaldırmasına geçer.
+    useEffect(() => {
+        if (!removeRequest) return;
+        const inst = instances.find((candidate) => candidate.version === removeRequest.version && canRemove(candidate));
+        onRemoveRequestTaken?.();
+        if (!inst) return;
+        setRemoveError(null);
+        setMoveFailure(null);
+        setRemoveTarget(inst);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [removeRequest?.token]);
 
     return (
         <fieldset
@@ -3585,7 +3648,6 @@ function VersionDrawer({
                     dismissible={false}
                     busy={removing}
                     title={t('services.removeVersionTitle', { name: componentName(service, t), version: removeTarget.version })}
-                    description={t('services.removeVersionWarn')}
                     actions={(() => {
                         const known = removeTarget.unit && phpVersions && versionImpact.read.state === 'known' ? versionImpact.read.impact : null;
                         const sim = known?.simulation ?? null;
@@ -3599,7 +3661,8 @@ function VersionDrawer({
                         // and the version stay (alpha.104 review).
                         // Yalnız paket yöneticisi yanıtladıysa ve başka bir şey almıyorsa.
                         const offerMove = toolsBound && sim?.state === 'checked' && !sitesBlock && !collateral && target !== '';
-                        const refused = Boolean(sim?.refuses) || sitesBlock;
+                        const refused = (Boolean(sim?.refuses) || sitesBlock) && !offerMove;
+                        if (refused) return <RefusedActions onClose={() => setRemoveTarget(null)} busy={removing} />;
                         return (
                             <>
                                 <Button variant="secondary" onClick={() => setRemoveTarget(null)} disabled={removing}>
@@ -3610,8 +3673,7 @@ function VersionDrawer({
                                         {removing ? t('services.version.moving', { version: target }) : t('services.version.moveButton', { version: target })}
                                     </Button>
                                 ) : (
-                                    <Button variant="danger" onClick={() => removeVersion(removeTarget)} disabled={removing || refused} loading={removing} icon={Trash2}
-                                        title={refused ? t('services.removal.refusedButton') : undefined}>
+                                    <Button variant="danger" onClick={() => removeVersion(removeTarget)} disabled={removing} loading={removing} icon={Trash2}>
                                         {removing ? t('services.uninstalling') : t('services.removeVersion')}
                                     </Button>
                                 )}
@@ -3628,6 +3690,7 @@ function VersionDrawer({
                     {removeTarget.unit && phpVersions && (
                         <VersionRemovalImpact
                             name={`${componentName(service, t)} ${removeTarget.version}`}
+                            whole={componentName(service, t)}
                             serviceId={service.id}
                             version={removeTarget.version}
                             read={versionImpact.read}
@@ -3639,6 +3702,8 @@ function VersionDrawer({
                             onMoveTo={setMoveTo}
                             moving={removing}
                             nameOf={(id) => componentName({ id, name: id }, t)}
+                            onRemoveComponent={onRemoveComponent ? (id) => { setRemoveTarget(null); onRemoveComponent(id); } : undefined}
+                            onRemoveWhole={onRemoveWhole ? () => { setRemoveTarget(null); onRemoveWhole(); } : undefined}
                         />
                     )}
                     {/* The refusal's evidence — the blocking sites — lands
@@ -3684,8 +3749,10 @@ function VersionUsage({ info, version, toolName }: { info: PHPToolsInfo; version
 // the sites on it (moved in each site's settings), the tools on it (moved
 // here, verified, before the removal), and the package manager's answer.
 // Tek PHP sürümünü kaldırmanın aldıkları, düğmeden önce.
-function VersionRemovalImpact({ name, serviceId, version, read, onRetry, targets, versions, onRetryVersions, moveTo, onMoveTo, moving, nameOf }: {
+function VersionRemovalImpact({ name, whole, serviceId, version, read, onRetry, targets, versions, onRetryVersions, moveTo, onMoveTo, moving, nameOf, onRemoveComponent, onRemoveWhole }: {
     name: string;
+    /** The component's own name, for "remove it with all its versions". */
+    whole: string;
     serviceId: string;
     version: string;
     read: RemovalRead;
@@ -3699,16 +3766,25 @@ function VersionRemovalImpact({ name, serviceId, version, read, onRetry, targets
     onMoveTo: (version: string) => void;
     moving: boolean;
     nameOf: (id: string) => string;
+    onRemoveComponent?: (id: string) => void;
+    onRemoveWhole?: () => void;
 }) {
     const { t } = useI18n();
     if (read.state === 'checking') return <div className="mb-3" data-removal-impact="checking"><Checking label={t('services.removal.checkingVersion', { name })} /></div>;
-    if (read.state === 'refused') return <div className="mb-3" data-removal-impact="refused"><ErrorBanner error={read.error} /></div>;
+    if (read.state === 'refused') {
+        return (
+            <div className="mb-3" data-removal-impact="refused">
+                <RemovalAnswer verdict="blocked" subject={name} causes={[]} steps={[]} notes={[]}><ErrorBanner error={read.error} /></RemovalAnswer>
+            </div>
+        );
+    }
     if (read.state === 'unknown') return <div className="mb-3" data-removal-impact="unknown"><CouldNotCheck text={t('services.removal.unknownVersion', { name })} onRetry={onRetry} /></div>;
     const { impact } = read;
     const sim = impact.simulation;
     const hosted = impact.hosted && impact.hosted.count > 0 ? impact.hosted : null;
     const shown = hosted ? hosted.names.slice(0, REMOVAL_IMPACT_NAMES_SHOWN) : [];
     const more = hosted ? hosted.count - shown.length : 0;
+    const sitesBlock = Boolean(hosted?.blocks_removal);
     // The move is offered only when the tools are the one thing in the way:
     // with sites on the version or packages the removal would also take,
     // moving the tools would not make the removal possible.
@@ -3716,51 +3792,66 @@ function VersionRemovalImpact({ name, serviceId, version, read, onRetry, targets
     const toolsBound = (sim?.bound_tools.length ?? 0) > 0 && !impact.hosted?.blocks_removal
         && sim?.state === 'checked' && sim.collateral.length === 0;
     const target = targets.includes(moveTo) ? moveTo : targets[0] ?? '';
+    const findings = sim ? simulationFindings(t, { name, whole, serviceId, simulation: sim, nameOf, version, onRemoveComponent, onRemoveWhole }) : NO_FINDINGS;
+    const causes: RemovalItem[] = [];
+    const steps: RemovalItem[] = [];
+    if (hosted) {
+        causes.push({ key: 'sites', line: 'sites', text: t('services.version.sitesOn', { count: hosted.count, version, names: shown.join(', ') + (more > 0 ? ' ' + t('services.removal.more', { n: more }) : '') }) });
+        if (sitesBlock) steps.push({ key: 'sites', text: t('services.version.sitesMove'), to: '/domains', linkText: t('services.version.sitesLink') });
+    }
+    causes.push(...findings.causes);
+    steps.push(...findings.steps);
+    // Tools on the version with another version to move to: removable after
+    // the move. With no other version installed it cannot go now.
+    // Araçlar taşınabiliyorsa taşımadan sonra kaldırılabilir.
+    const moveOpen = toolsBound && !(versions === 'read' && targets.length === 0);
+    if (moveOpen) steps.push({ key: 'move', text: t('services.removal.next.moveTools') });
+    const verdict = moveOpen ? 'move' : (sim?.refuses || sitesBlock) ? 'blocked' : 'allowed';
     return (
-        <div className="mb-3 space-y-2 text-sm" data-removal-impact="known">
-            {hosted && (
-                <p className="font-semibold text-fg" data-removal-line="sites">
-                    <KeepWords text={t('services.version.sitesOn', { count: hosted.count, version, names: shown.join(', ') + (more > 0 ? ' ' + t('services.removal.more', { n: more }) : '') })} />{' '}
-                    <Link to="/domains" className="font-normal text-primary underline">{t('services.version.sitesLink')}</Link>
-                </p>
-            )}
-            {sim && <SimulationLines name={name} serviceId={serviceId} simulation={sim} nameOf={nameOf} version={version} />}
-            {toolsBound && (
-                versions === 'checking' ? (
-                    <Checking label={t('services.version.versionsChecking')} />
-                ) : versions === 'unknown' ? (
-                    <div data-version-move="unknown"><CouldNotCheck text={t('services.version.versionsUnknown')} onRetry={onRetryVersions} /></div>
-                ) : targets.length > 0 ? (
-                    <label className="flex flex-wrap items-center gap-2 text-fg" data-version-move="">
-                        <span>{t('services.version.moveLabel')}</span>
-                        <select
-                            value={target}
-                            onChange={(event) => onMoveTo(event.target.value)}
-                            disabled={moving}
-                            className="rounded-lg border border-border-strong bg-surface px-2 py-1 font-mono text-sm text-fg max-sm:min-h-11"
-                        >
-                            {targets.map((option) => <option key={option} value={option}>PHP {option}</option>)}
-                        </select>
-                        <span className="text-xs text-fg-muted">{t('services.version.moveHint')}</span>
-                    </label>
-                ) : (
-                    <p className="text-fg-muted" data-version-move="none">{t('services.version.moveNone')}</p>
-                )
-            )}
-            {moving && toolsBound && (
-                <div className="flex items-start gap-2 text-sm text-fg-muted" data-version-moving="">
-                    <span className="mt-0.5 shrink-0"><Spinner size="xs" label={t('services.version.movingWait', { version: target })} /></span>
-                    <span aria-hidden="true">{t('services.version.movingWait', { version: target })}</span>
-                </div>
-            )}
-            {sim?.state === 'checked' && sim.remove.length > 0 && (
-                <div data-removal-exact="">
-                    <p className="mb-1 text-fg-muted">{t('services.removal.sim.exact', { count: sim.remove.length })}</p>
-                    <div className="flex flex-wrap gap-1.5">
-                        {sim.remove.map((pkg) => <span key={pkg} className="rounded bg-surface-2 px-2 py-0.5 font-mono text-xs text-fg">{pkg}</span>)}
+        <div className="mb-3" data-removal-impact="known">
+            <RemovalAnswer
+                verdict={verdict}
+                subject={name}
+                causes={causes}
+                steps={steps}
+                notes={findings.notes}
+                details={(
+                    <>
+                        <p className="text-fg-muted">{t('services.removeVersionWarn')}</p>
+                        {findings.details.map((item) => <p key={item.key} className="text-fg-muted"><RemovalItemText item={item} /></p>)}
+                        <SimulatedList simulation={sim} refused={verdict !== 'allowed'} />
+                    </>
+                )}
+            >
+                {toolsBound && (
+                    versions === 'checking' ? (
+                        <Checking label={t('services.version.versionsChecking')} />
+                    ) : versions === 'unknown' ? (
+                        <div data-version-move="unknown"><CouldNotCheck text={t('services.version.versionsUnknown')} onRetry={onRetryVersions} /></div>
+                    ) : targets.length > 0 ? (
+                        <label className="flex flex-wrap items-center gap-2 text-fg" data-version-move="">
+                            <span>{t('services.version.moveLabel')}</span>
+                            <select
+                                value={target}
+                                onChange={(event) => onMoveTo(event.target.value)}
+                                disabled={moving}
+                                className="rounded-lg border border-border-strong bg-surface px-2 py-1 font-mono text-sm text-fg max-sm:min-h-11"
+                            >
+                                {targets.map((option) => <option key={option} value={option}>PHP {option}</option>)}
+                            </select>
+                            <span className="text-xs text-fg-muted">{t('services.version.moveHint')}</span>
+                        </label>
+                    ) : (
+                        <p className="text-fg-muted" data-version-move="none">{t('services.version.moveNone')}</p>
+                    )
+                )}
+                {moving && toolsBound && (
+                    <div className="flex items-start gap-2 text-sm text-fg-muted" data-version-moving="">
+                        <span className="mt-0.5 shrink-0"><Spinner size="xs" label={t('services.version.movingWait', { version: target })} /></span>
+                        <span aria-hidden="true">{t('services.version.movingWait', { version: target })}</span>
                     </div>
-                </div>
-            )}
+                )}
+            </RemovalAnswer>
         </div>
     );
 }
@@ -4069,28 +4160,70 @@ export function removalSentences(impact: RemovalImpact): { removed: TranslationK
     return { removed, kept: ['services.removal.kept.packages'], warnings, command };
 }
 
-// The package manager's answer, said before the Remove button (alpha.104):
-// what it would take beyond what was named refuses the removal, by name, with
-// the next action; a read that could not run says so and the removal stays
-// allowed (the Agent checks again when it is pressed).
-// Paket yöneticisinin yanıtı, Kaldır düğmesinden önce söylenir.
-export function SimulationLines({ name, serviceId, simulation, nameOf, version }: {
+// One line of a removal answer (alpha.106): a cause, a next action, a note
+// or a detail. `line`, `sentence` and `sim` keep the names the evidence and
+// the tests read; an action is a link to the page where it is taken, or a
+// button that opens the next removal.
+// Kaldırma yanıtının tek satırı: neden, sonraki eylem, not ya da ayrıntı.
+type RemovalItem = {
+    key: string;
+    text: string;
+    line?: string;
+    sentence?: string;
+    sim?: string;
+    to?: string;
+    linkText?: string;
+    onClick?: () => void;
+};
+type RemovalFindings = { causes: RemovalItem[]; steps: RemovalItem[]; details: RemovalItem[]; notes: RemovalItem[]; named: Set<string> };
+type Translate = (key: TranslationKey, vars?: Record<string, string | number>) => string;
+
+// What the package manager's answer means for this removal (alpha.104; since
+// alpha.106 the answer first, D-024): each cause once, in plain words; the
+// next action beside it, with the way to take it; the package manager's own
+// explanation only in Details. A read that could not run is a note and the
+// removal stays allowed (the Agent checks again when it is pressed).
+// Paket yöneticisinin yanıtı: her neden bir kez, sade sözle; sonraki eylem
+// yanında; paket yöneticisinin açıklaması yalnız Ayrıntılar'da.
+export function simulationFindings(t: Translate, { name, whole, serviceId, simulation, nameOf, version, onRemoveComponent, onRemoveWhole }: {
     name: string;
+    whole: string;
     serviceId: string;
     simulation: RemovalSimulation;
     nameOf: (id: string) => string;
     version: string;
-}) {
-    const { t } = useI18n();
-    const lines: { key: string; text: string; block?: boolean }[] = [];
-    const toolNames = simulation.bound_tools.map((tool) => nameOf(PHP_TOOL_SERVICE[tool] ?? tool)).join(', ');
-    if (simulation.bound_tools.length > 0) {
-        lines.push({ key: 'tools', block: true, text: version
-            ? t('services.removal.sim.tools', { names: toolNames, version })
-            : t('services.removal.sim.toolsAll', { names: toolNames, name }) });
+    onRemoveComponent?: (id: string) => void;
+    onRemoveWhole?: () => void;
+}): RemovalFindings {
+    const causes: RemovalItem[] = [];
+    const steps: RemovalItem[] = [];
+    const details: RemovalItem[] = [];
+    const notes: RemovalItem[] = [];
+    const named = new Set<string>();
+    const removeFirst = (component: string) => {
+        if (named.has(component)) return;
+        named.add(component);
+        steps.push({
+            key: `remove-${component}`,
+            text: t('services.removal.next.remove', { component: nameOf(component) }),
+            ...(onRemoveComponent ? { onClick: () => onRemoveComponent(component) } : {}),
+        });
+    };
+    const tools = simulation.bound_tools.map((tool) => PHP_TOOL_SERVICE[tool] ?? tool);
+    if (tools.length > 0) {
+        const names = tools.map(nameOf).join(', ');
+        causes.push({ key: 'tools', sim: 'tools', text: version
+            ? t('services.removal.why.tools', { names, version })
+            : t('services.removal.why.toolsAll', { names, name }) });
+        // A version's tools move to another version (said by the move
+        // itself); a whole component's tools are removed first.
+        // Sürümün araçları taşınır; bileşenin tamamında araçlar önce kaldırılır.
+        for (const tool of tools) {
+            if (version) named.add(tool);
+            else removeFirst(tool);
+        }
     }
     if (simulation.state === 'checked' && simulation.collateral.length > 0) {
-        lines.push({ key: 'collateral', block: true, text: t('services.removal.sim.refused', { name }) });
         const byComponent = new Map<string, string[]>();
         const depends: string[] = [];
         const installs: string[] = [];
@@ -4107,49 +4240,160 @@ export function SimulationLines({ name, serviceId, simulation, nameOf, version }
             }
         }
         for (const [component, packages] of byComponent) {
-            lines.push({ key: `component-${component}`, text: t('services.removal.sim.component', { packages: packages.join(', '), component: nameOf(component), name }) });
+            causes.push({ key: `component-${component}`, sim: `component-${component}`, text: t('services.removal.why.component', { component: nameOf(component), packages: packages.join(', ') }) });
+            removeFirst(component);
         }
-        if (own.length > 0) lines.push({ key: 'default', text: t('services.removal.sim.default', { packages: own.join(', '), name }) });
-        if (depends.length > 0) lines.push({ key: 'depends', text: t('services.removal.sim.depends', { packages: depends.join(', '), name }) });
-        if (installs.length > 0) lines.push({ key: 'installs', text: t('services.removal.sim.installs', { packages: installs.join(', ') }) });
+        if (own.length > 0) {
+            causes.push({ key: 'default', sim: 'default', text: t('services.removal.why.default', { packages: own.join(', '), name: whole }) });
+            if (version) steps.push({ key: 'remove-all', text: t('services.removal.next.removeAll', { name: whole }), ...(onRemoveWhole ? { onClick: onRemoveWhole } : {}) });
+        }
+        if (depends.length > 0) {
+            causes.push({ key: 'depends', sim: 'depends', text: t('services.removal.why.depends', { packages: depends.join(', ') }) });
+            steps.push({ key: 'depends', text: t('services.removal.next.depends') });
+        }
+        details.push({ key: 'collateral', sim: 'collateral', text: t('services.removal.sim.refused', { name }) });
+        if (installs.length > 0) details.push({ key: 'installs', sim: 'installs', text: t('services.removal.sim.installs', { packages: installs.join(', ') }) });
     }
-    if (simulation.state === 'busy') lines.push({ key: 'busy', text: t('services.removal.sim.busy') });
-    if (simulation.state === 'unknown') lines.push({ key: 'unknown', text: t('services.removal.sim.unknown') });
-    if (lines.length === 0) return null;
+    if (simulation.refuses && causes.length === 0) causes.push({ key: 'other', text: t('services.removal.why.other') });
+    if (simulation.state === 'busy') notes.push({ key: 'busy', sim: 'busy', text: t('services.removal.sim.busy') });
+    if (simulation.state === 'unknown') notes.push({ key: 'unknown', sim: 'unknown', text: t('services.removal.sim.unknown') });
+    return { causes, steps, details, notes, named };
+}
+
+const NO_FINDINGS: RemovalFindings = { causes: [], steps: [], details: [], notes: [], named: new Set() };
+
+// Whether the Panel would refuse this removal as things are: no package list
+// on this package manager (Agent.UninstallService), what it hosts
+// (SERVICE_HAS_DEPENDENTS) or the package manager's answer (alpha.104). The
+// dialog then says so first and offers Close, not Remove (alpha.106).
+// Panel bu kaldırmayı şu durumda reddeder mi.
+export function removalRefused(impact: RemovalImpact): boolean {
+    return impact.removal === 'unsupported'
+        || Boolean(impact.hosted?.blocks_removal && impact.hosted.count > 0)
+        || impact.simulation?.refuses === true;
+}
+
+function RemovalItemText({ item }: { item: RemovalItem }) {
+    const text = (
+        <span data-removal-line={item.line} data-removal-sentence={item.sentence} data-removal-sim={item.sim}>
+            <KeepWords text={item.text} />
+        </span>
+    );
+    if (item.onClick) {
+        return (
+            <button type="button" onClick={item.onClick} data-removal-action={item.key}
+                className="inline-flex items-start text-left align-top font-medium text-primary underline underline-offset-2 hover:no-underline max-sm:min-h-11">
+                {text}
+            </button>
+        );
+    }
     return (
-        <ul className="mt-1 list-disc space-y-1 pl-5 text-fg" data-removal-simulation={simulation.state}>
-            {lines.map((line) => (
-                <li key={line.key} data-removal-sim={line.key} className={line.block ? 'font-semibold' : undefined}>
-                    <KeepWords text={line.text} />
-                </li>
-            ))}
-        </ul>
+        <>
+            {text}
+            {item.to && <>{' '}<Link to={item.to} className="text-primary underline">{item.linkText}</Link></>}
+        </>
+    );
+}
+
+// Every removal dialog in one order (alpha.106, D-024): the answer first —
+// can it be removed now, and why not, one line per cause; then what the
+// owner can do, with the way to do it; what the removal affects; and the
+// technical part (package list, what apt or pacman does, the package
+// manager's own explanation) folded under Details. A refused removal is
+// never described as what it "takes".
+// Her kaldırma penceresi aynı sırada: önce yanıt ve nedenleri; sonra
+// yapılabilecekler; etkilenenler; teknik kısım Ayrıntılar altında.
+function RemovalAnswer({ verdict, subject, causes, steps, notes, children, details }: {
+    verdict: 'blocked' | 'move' | 'allowed';
+    subject: string;
+    causes: RemovalItem[];
+    steps: RemovalItem[];
+    notes: RemovalItem[];
+    children?: ReactNode;
+    details?: ReactNode;
+}) {
+    const { t } = useI18n();
+    const all = verdict === 'allowed' ? steps : [...steps, { key: 'keep', text: t('services.removal.next.keep', { name: subject }) }];
+    return (
+        <div className="space-y-3 text-sm" data-removal-verdict={verdict}>
+            <div className={verdict === 'allowed' ? undefined : 'rounded-lg border border-warning-mark/50 bg-warning-mark/20 px-3 py-2'} data-removal-answer="">
+                <p className="text-base font-semibold text-fg">
+                    <KeepWords text={t(`services.removal.verdict.${verdict}` as TranslationKey, { name: subject })} />
+                </p>
+                {causes.length > 0 && (
+                    <ul className="mt-1 list-disc space-y-1 pl-5 text-fg" data-removal-reasons="">
+                        {causes.map((item) => <li key={item.key} data-removal-cause={item.key}><RemovalItemText item={item} /></li>)}
+                    </ul>
+                )}
+            </div>
+            {notes.map((item) => <p key={item.key} className="text-fg-muted" data-removal-note={item.key}><RemovalItemText item={item} /></p>)}
+            {all.length > 0 && (
+                <div data-removal-next="">
+                    <p className="font-semibold text-fg">{t('services.removal.nextTitle')}</p>
+                    <ul className="mt-1 list-disc space-y-1 pl-5 text-fg">
+                        {all.map((item) => <li key={item.key} data-removal-step={item.key}><RemovalItemText item={item} /></li>)}
+                    </ul>
+                </div>
+            )}
+            {children}
+            {details && (
+                <details className="rounded-lg border border-border px-3 py-2" data-removal-details="">
+                    <summary className="cursor-pointer select-none font-medium text-fg max-sm:py-2">{t('services.removal.detailsTitle')}</summary>
+                    <div className="mt-2 space-y-3">{details}</div>
+                </details>
+            )}
+        </div>
+    );
+}
+
+function PackageChips({ packages }: { packages: string[] }) {
+    return (
+        <div className="flex flex-wrap gap-1.5">
+            {packages.map((pkg) => <span key={pkg} className="rounded bg-surface-2 px-2 py-0.5 font-mono text-xs text-fg">{pkg}</span>)}
+        </div>
+    );
+}
+
+// The package manager's checked list, in Details: what an allowed removal
+// takes, or what a refused one would have taken.
+// Paket yöneticisinin denetlediği liste, Ayrıntılar'da.
+function SimulatedList({ simulation, refused }: { simulation: RemovalSimulation | null; refused: boolean }) {
+    const { t } = useI18n();
+    if (simulation?.state !== 'checked' || simulation.remove.length === 0) return null;
+    return (
+        <div data-removal-exact="">
+            <p className="mb-1 text-fg-muted">{t(refused ? 'services.removal.sim.wouldTake' : 'services.removal.sim.exact', { count: simulation.remove.length })}</p>
+            <PackageChips packages={simulation.remove} />
+        </div>
     );
 }
 
 function RemovalImpactSection({
     name,
+    subject,
     serviceId,
     read,
     onRetry,
     nameOf,
     bundleNameOf,
     packages,
+    onRemoveComponent,
 }: {
     name: string;
+    /** What this removal removes, as the title names it. / Başlığın adlandırdığı. */
+    subject: string;
     serviceId: string;
     read: RemovalRead;
     onRetry: () => void;
     nameOf: (id: string) => string;
     bundleNameOf: (id: string, nameCode: string) => string;
     packages: string[];
+    onRemoveComponent?: (id: string) => void;
 }) {
     const { t } = useI18n();
     const chips = (
-        <div className="flex flex-wrap gap-1.5" data-removal-packages="">
-            {packages.map((pkg) => (
-                <span key={pkg} className="rounded bg-surface-2 px-2 py-0.5 font-mono text-xs text-fg">{pkg}</span>
-            ))}
+        <div data-removal-packages="">
+            <PackageChips packages={packages} />
         </div>
     );
     if (read.state === 'checking') {
@@ -4162,9 +4406,10 @@ function RemovalImpactSection({
     }
     if (read.state === 'refused') {
         return (
-            <div className="space-y-3" data-removal-impact="refused">
-                <ErrorBanner error={read.error} />
-                {chips}
+            <div data-removal-impact="refused">
+                <RemovalAnswer verdict="blocked" subject={subject} causes={[]} steps={[]} notes={[]}>
+                    <ErrorBanner error={read.error} />
+                </RemovalAnswer>
             </div>
         );
     }
@@ -4180,27 +4425,52 @@ function RemovalImpactSection({
     }
     const { impact } = read;
     const sentences = removalSentences(impact);
+    const simulation = impact.simulation;
+    const refused = removalRefused(impact);
+    const findings = simulation
+        ? simulationFindings(t, { name, whole: name, serviceId, simulation, nameOf, version: impact.version, onRemoveComponent })
+        : NO_FINDINGS;
     // The firewall and the unrecorded kinds carry no list; a counted kind
     // with nothing in it says nothing.
     const hosted = impact.hosted && impact.hosted.count > 0 && !['firewall', 'unrecorded'].includes(impact.hosted.kind) ? impact.hosted : null;
     const shown = hosted ? hosted.names.slice(0, REMOVAL_IMPACT_NAMES_SHOWN) : [];
     const more = hosted ? hosted.count - shown.length : 0;
-    const affected: { key: string; text: string; tone?: 'block' }[] = [];
+    const causes: RemovalItem[] = [];
+    const steps: RemovalItem[] = [];
+    const affected: RemovalItem[] = [];
+    if (impact.removal === 'unsupported') {
+        causes.push({ key: 'unsupported', sentence: 'services.removal.removed.unsupported', text: t('services.removal.removed.unsupported', { name }) });
+    }
     if (hosted) {
-        affected.push({
+        const line: RemovalItem = {
             key: 'hosted',
+            line: 'hosted',
             text: t(`services.removal.hosted.${hosted.kind}` as TranslationKey, {
                 name,
                 count: hosted.count,
                 names: shown.join(', ') + (more > 0 ? (shown.length > 0 ? ' ' : '') + t('services.removal.more', { n: more }) : ''),
             }),
-        });
-        if (hosted.blocks_removal) affected.push({ key: 'blocks', text: t('services.removal.blocks', { name }), tone: 'block' });
+        };
+        if (hosted.blocks_removal) {
+            causes.push(line);
+            const to = ['sites', 'php_sites', 'node_sites'].includes(hosted.kind) ? '/domains' : hosted.kind === 'databases' ? '/databases' : '';
+            steps.push({
+                key: 'blocks',
+                line: 'blocks',
+                text: t('services.removal.blocks', { name }),
+                ...(to ? { to, linkText: t(to === '/domains' ? 'services.removal.next.sitesLink' : 'services.removal.next.databasesLink') } : {}),
+            });
+        } else {
+            affected.push(line);
+        }
     }
+    causes.push(...findings.causes);
+    steps.push(...findings.steps);
     if (impact.hosted?.kind === 'firewall') {
         const firewall = impact.hosted.firewall;
         affected.push({
             key: 'firewall',
+            line: 'firewall',
             text: !firewall?.known
                 ? t('services.removal.hosted.firewall.unknown', { name })
                 : firewall.enabled
@@ -4208,68 +4478,167 @@ function RemovalImpactSection({
                     : t('services.removal.hosted.firewall.off', { name }),
         });
     }
-    if (impact.hosted?.kind === 'unrecorded') affected.push({ key: 'unrecorded', text: t('services.removal.hosted.unrecorded', { name }) });
-    if (impact.setup_required) affected.push({ key: 'setup', text: t('services.removal.setupRequired', { name }) });
-    if (impact.required_by.length > 0) {
-        affected.push({ key: 'required', text: t('services.removal.requiredBy', { name, names: impact.required_by.map(nameOf).join(', ') }) });
+    if (impact.hosted?.kind === 'unrecorded') affected.push({ key: 'unrecorded', line: 'unrecorded', text: t('services.removal.hosted.unrecorded', { name }) });
+    if (impact.setup_required) affected.push({ key: 'setup', line: 'setup', text: t('services.removal.setupRequired', { name }) });
+    // A component already named as a cause is not said again (alpha.106).
+    // Neden olarak adı geçen bileşen yeniden söylenmez.
+    const requiredBy = impact.required_by.filter((id) => !findings.named.has(id));
+    if (requiredBy.length > 0) {
+        affected.push({ key: 'required', line: 'required', text: t('services.removal.requiredBy', { name, names: requiredBy.map(nameOf).join(', ') }) });
     }
     for (const bundle of impact.bundles) {
-        affected.push({ key: `bundle-${bundle.id}`, text: t('services.removal.bundle', { bundle: bundleNameOf(bundle.id, bundle.name_code) }) });
+        affected.push({ key: `bundle-${bundle.id}`, line: `bundle-${bundle.id}`, text: t('services.removal.bundle', { bundle: bundleNameOf(bundle.id, bundle.name_code) }) });
     }
-    const simulation = impact.simulation;
-    const nothing = affected.length === 0 && !simulation?.refuses;
+    const nothing = affected.length === 0 && causes.length === 0;
     if (impact.firewall_ports.length > 0) {
-        affected.push({ key: 'ports', text: t('services.removal.ports', { ports: impact.firewall_ports.join(', ') }) });
+        affected.push({ key: 'ports', line: 'ports', text: t('services.removal.ports', { ports: impact.firewall_ports.join(', ') }) });
     }
-    return (
-        // What this server loses comes first (D-024: the reason before the
-        // details); what the removal does and what stays follow. Red stays on
-        // the Remove button only.
-        // Önce bu sunucunun kaybettikleri; sonra kaldırmanın yaptığı ve kalanlar.
-        <div className="space-y-3 text-sm" data-removal-impact="known">
-            <div data-removal-affected="">
-                <p className="font-semibold text-fg">{t('services.removal.affectedTitle')}</p>
-                {nothing && <p className="mt-1 text-fg-muted" data-removal-nothing="">{t('services.removal.nothing', { name })}</p>}
-                {affected.length > 0 && (
-                    <ul className="mt-1 list-disc space-y-1 pl-5 text-fg">
-                        {affected.map((line) => (
-                            <li key={line.key} data-removal-line={line.key} className={line.tone === 'block' ? 'font-semibold' : undefined}>
-                                <KeepWords text={line.text} />
-                            </li>
-                        ))}
-                    </ul>
-                )}
-                {simulation && <SimulationLines name={name} serviceId={serviceId} simulation={simulation} nameOf={nameOf} version={impact.version} />}
-            </div>
-            <div data-removal-removed="">
-                <p className="font-semibold text-fg">{t('services.removal.removedTitle')}</p>
-                {sentences.removed.map((key) => <p key={key} className="mt-1 text-fg-muted" data-removal-sentence={key}>{t(key, { name })}</p>)}
-                {simulation?.state === 'checked' && simulation.remove.length > 0 ? (
-                    <div className="mt-2" data-removal-exact="">
-                        <p className="mb-1 text-fg-muted">{t('services.removal.sim.exact', { count: simulation.remove.length })}</p>
-                        <div className="flex flex-wrap gap-1.5">
-                            {simulation.remove.map((pkg) => (
-                                <span key={pkg} className="rounded bg-surface-2 px-2 py-0.5 font-mono text-xs text-fg">{pkg}</span>
-                            ))}
-                        </div>
-                    </div>
-                ) : impact.packages.length > 0 && <div className="mt-2">{chips}</div>}
-                {sentences.command && (
-                    <p className="mt-1 text-xs text-fg-subtle" data-removal-command="">
-                        {t('services.removal.command')} <span className="font-mono">{sentences.command}</span>
-                    </p>
-                )}
-                {sentences.warnings.map((key) => (
-                    <p key={key} className="mt-2 rounded-lg border border-warning-mark/50 bg-warning-mark/20 px-3 py-2 text-fg" data-removal-warning={key}>{t(key, { name })}</p>
-                ))}
-            </div>
-            {sentences.kept.length > 0 && (
-            <div data-removal-kept="">
-                <p className="font-semibold text-fg">{t('services.removal.keptTitle')}</p>
-                {sentences.kept.map((key) => <p key={key} className="mt-1 text-fg-muted" data-removal-sentence={key}>{t(key, { name })}</p>)}
-            </div>
+    const affectedList = (title: TranslationKey) => (
+        <div data-removal-affected="">
+            <p className="font-semibold text-fg">{t(title)}</p>
+            {nothing && <p className="mt-1 text-fg-muted" data-removal-nothing="">{t('services.removal.nothing', { name })}</p>}
+            {affected.length > 0 && (
+                <ul className="mt-1 list-disc space-y-1 pl-5 text-fg">
+                    {affected.map((item) => <li key={item.key}><RemovalItemText item={item} /></li>)}
+                </ul>
             )}
         </div>
+    );
+    const warnings = sentences.warnings.map((key) => (
+        <p key={key} className="rounded-lg border border-warning-mark/50 bg-warning-mark/20 px-3 py-2 text-fg" data-removal-warning={key}>{t(key, { name })}</p>
+    ));
+    // Without a package list nothing is removed: the cause says so and
+    // Details has nothing to add.
+    // Paket listesi yoksa hiçbir şey kaldırılmaz; neden bunu söyler.
+    const removedPart = impact.removal === 'unsupported' ? null : (
+        <div data-removal-removed="">
+            <p className="font-semibold text-fg">{t(refused ? 'services.removal.wouldTitle' : 'services.removal.removedTitle')}</p>
+            {sentences.removed.map((key) => <p key={key} className="mt-1 text-fg-muted" data-removal-sentence={key}>{t(key, { name })}</p>)}
+            {findings.details.map((item) => <p key={item.key} className="mt-1 text-fg-muted"><RemovalItemText item={item} /></p>)}
+            <div className="mt-2">
+                {simulation?.state === 'checked' && simulation.remove.length > 0
+                    ? <SimulatedList simulation={simulation} refused={refused} />
+                    : impact.packages.length > 0 && chips}
+            </div>
+            {sentences.command && (
+                <p className="mt-1 text-xs text-fg-subtle" data-removal-command="">
+                    {t('services.removal.command')} <span className="font-mono">{sentences.command}</span>
+                </p>
+            )}
+            {refused && warnings.length > 0 && <div className="mt-2">{warnings}</div>}
+        </div>
+    );
+    const keptPart = sentences.kept.length > 0 && (
+        <div data-removal-kept="">
+            <p className="font-semibold text-fg">{t('services.removal.keptTitle')}</p>
+            {sentences.kept.map((key) => <p key={key} className="mt-1 text-fg-muted" data-removal-sentence={key}>{t(key, { name })}</p>)}
+        </div>
+    );
+    return (
+        // The answer first (D-024): can it go now, why not, what to do; what
+        // the server loses; the technical part under Details. Red stays on the
+        // Remove button only.
+        // Önce yanıt; sonra kaybedilenler; teknik kısım Ayrıntılar altında.
+        <div data-removal-impact="known">
+            <RemovalAnswer
+                verdict={refused ? 'blocked' : 'allowed'}
+                subject={subject}
+                causes={causes}
+                steps={steps}
+                notes={findings.notes}
+                details={(refused && affected.length > 0) || removedPart || keptPart ? (
+                    <>
+                        {refused && affected.length > 0 && affectedList('services.removal.alsoTitle')}
+                        {removedPart}
+                        {keptPart}
+                    </>
+                ) : undefined}
+            >
+                {!refused && affectedList('services.removal.affectedTitle')}
+                {!refused && warnings}
+            </RemovalAnswer>
+        </div>
+    );
+}
+
+// A refused removal's buttons (alpha.106): Close is the action; the danger
+// button stays, visibly unavailable, and says why in its own label.
+// Reddedilen kaldırmanın düğmeleri: Kapat asıl eylemdir; tehlike düğmesi
+// görünür biçimde kullanılamaz ve etiketinde nedenini söyler.
+function RefusedActions({ onClose, busy }: { onClose: () => void; busy: boolean }) {
+    const { t } = useI18n();
+    return (
+        <>
+            <Button variant="danger" disabled title={t('services.removal.refusedButton')} data-removal-cant="">{t('services.removal.cantButton')}</Button>
+            <Button variant="primary" onClick={onClose} disabled={busy} data-removal-close="">{t('common.close')}</Button>
+        </>
+    );
+}
+
+// The versions a runtime row's remove button can remove one at a time: the
+// managed copies with their own unit (php8.4-fpm). Node's trees are removed
+// from the versions list only.
+// Satırın kaldır düğmesinin tek tek kaldırabileceği sürümler.
+function removableVersions(service: ManagedService): string[] {
+    if (service.kind !== 'runtime') return [];
+    return (service.instances ?? []).filter((inst) => inst.managed && inst.unit).map((inst) => inst.version);
+}
+
+// "Which version do you want to remove?" (alpha.106): one choice per
+// installed version with who uses it (the alpha.104 usage read), and the
+// whole component, every version, set apart below. Choosing only continues
+// to the removal's own dialog; nothing changes here.
+// "Hangi sürüm kaldırılsın?": kurulu her sürüm için bir seçim ve kimin
+// kullandığı; bileşenin tamamı ayrı, altta. Seçim yalnız sonraki pencereye geçer.
+function RemoveWhichVersionDialog({ service, onCancel, onPickVersion, onPickAll }: {
+    service: ManagedService;
+    onCancel: () => void;
+    onPickVersion: (version: string) => void;
+    onPickAll: () => void;
+}) {
+    const { t } = useI18n();
+    const name = componentName(service, t);
+    const versions = removableVersions(service);
+    const usage = service.id === 'php-fpm';
+    const [tools, setTools] = useState<PHPToolsInfo | null>(null);
+    useEffect(() => {
+        if (!usage) return;
+        const controller = typeof AbortController === 'undefined' ? null : new AbortController();
+        void readPHPTools(controller?.signal).then((info) => { if (!controller?.signal.aborted) setTools(info); });
+        return () => controller?.abort();
+    }, [usage]);
+    const toolName = (tool: string) => componentName({ id: PHP_TOOL_SERVICE_ID[tool as keyof typeof PHP_TOOL_SERVICE_ID] ?? tool, name: tool }, t);
+    const choice = 'flex w-full flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-left transition-colors max-sm:min-h-11';
+    return (
+        <Dialog
+            id="service-remove-which"
+            icon={Trash2}
+            title={t('services.removeWhich.title', { name })}
+            description={t('services.removeWhich.description')}
+            onDismiss={onCancel}
+            actions={<Button variant="secondary" onClick={onCancel}>{t('common.cancel')}</Button>}
+        >
+            <ul className="space-y-2" data-remove-which="">
+                {versions.map((version) => (
+                    <li key={version}>
+                        <button type="button" onClick={() => onPickVersion(version)} data-remove-which-version={version}
+                            className={`${choice} border-border-strong bg-surface hover:bg-surface-2`}>
+                            <span className="font-medium text-fg">{name} {version}</span>
+                            {usage && (tools === null
+                                ? <span className="text-xs text-fg-muted">{t('services.removeWhich.reading')}</span>
+                                : <VersionUsage info={tools} version={version} toolName={toolName} />)}
+                        </button>
+                    </li>
+                ))}
+            </ul>
+            <div className="mt-3 border-t border-border pt-3">
+                <button type="button" onClick={onPickAll} data-remove-which-all=""
+                    className={`${choice} border-danger/40 bg-surface hover:bg-danger/10`}>
+                    <span className="font-medium text-danger">{t('services.removeWhich.all', { versions: versions.join(', ') })}</span>
+                    <span className="text-xs text-fg-muted">{t('services.removeWhich.allHint', { name })}</span>
+                </button>
+            </div>
+        </Dialog>
     );
 }
 
@@ -4289,6 +4658,7 @@ function UninstallServiceDialog({
     onConfirm,
     nameOf,
     bundleNameOf,
+    onRemoveComponent,
 }: {
     service: ManagedService;
     busy: boolean;
@@ -4299,14 +4669,24 @@ function UninstallServiceDialog({
     onConfirm: () => void;
     nameOf: (id: string) => string;
     bundleNameOf: (id: string, nameCode: string) => string;
+    onRemoveComponent?: (id: string) => void;
 }) {
     const { t } = useI18n();
     // The leftovers cleanup has its own fixed list; only a removal reads
     // what it affects.
     const impact = useRemovalImpact(service.id, !retryCleanup);
-    // alpha.104: a removal the package manager's answer already refuses is
-    // not offered; the dialog says why above.
-    const refused = !retryCleanup && impact.read.state === 'known' && impact.read.impact.simulation?.refuses === true;
+    // alpha.104: a removal the Panel would refuse is not offered; since
+    // alpha.106 the dialog says so first, the button reads "Can't remove"
+    // and Close is the action.
+    // Panel'in reddedeceği kaldırma sunulmaz; pencere bunu önce söyler.
+    const refused = !retryCleanup && (impact.read.state === 'refused' || (impact.read.state === 'known' && removalRefused(impact.read.impact)));
+    // The title names what goes (alpha.106, owner's question "which version
+    // would it remove?"): every installed version, or the one there is.
+    // Başlık neyin gideceğini söyler: kurulu bütün sürümler ya da tek sürüm.
+    const name = componentName(service, t);
+    const versions = removableVersions(service);
+    const subject = versions.length > 1 ? t('services.removal.subjectAll', { name, versions: versions.join(', ') })
+        : versions.length === 1 ? `${name} ${versions[0]}` : name;
     // Destructive: no silent exit — see the note on the version-removal dialog.
     // dismissible={false} takes the backdrop and Escape away together.
     // Yıkıcı: sessiz çıkış yok — sürüm kaldırma diyalogundaki nota bakın.
@@ -4319,12 +4699,14 @@ function UninstallServiceDialog({
             busy={busy}
             title={retryCleanup
                 ? t('services.cleanupWebmailTitle')
-                : t('services.uninstallTitle', { name: componentName(service, t) })}
+                : versions.length > 1 ? t('services.removeSubjectTitle', { name: subject })
+                : versions.length === 1 ? t('services.removeVersionTitle', { name, version: versions[0] })
+                : t('services.uninstallTitle', { name })}
             description={componentDescription(service, t)}
-            actions={
+            actions={refused ? <RefusedActions onClose={onCancel} busy={busy} /> : (
                 <>
                     <Button variant="secondary" onClick={onCancel} disabled={busy}>{t('common.cancel')}</Button>
-                    <Button variant="danger" onClick={onConfirm} disabled={busy || refused} icon={Trash2} title={refused ? t('services.removal.refusedButton') : undefined}>
+                    <Button variant="danger" onClick={onConfirm} disabled={busy} icon={Trash2}>
                         {busy
                             ? t(retryCleanup
                                 ? (cleanupAttempt === 'retry' ? 'services.retryingWebmailCleanup' : 'services.cleaningWebmail')
@@ -4334,18 +4716,20 @@ function UninstallServiceDialog({
                                 : 'services.uninstall')}
                     </Button>
                 </>
-            }
+            )}
         >
                 {!retryCleanup && (
                     <div className="mb-4">
                         <RemovalImpactSection
-                            name={componentName(service, t)}
+                            name={name}
+                            subject={subject}
                             serviceId={service.id}
                             read={impact.read}
                             onRetry={impact.retry}
                             nameOf={nameOf}
                             bundleNameOf={bundleNameOf}
                             packages={service.id === 'roundcube' ? [] : service.packages && service.packages.length > 0 ? service.packages : [service.id]}
+                            onRemoveComponent={onRemoveComponent}
                         />
                     </div>
                 )}

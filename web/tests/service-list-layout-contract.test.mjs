@@ -111,7 +111,9 @@ test('the repository and version-removal buttons spin while their request runs',
   assert.equal((page.match(/loading=\{repoBusy\}/g) || []).length, 2, 'both repository buttons spin');
   // alpha.104: a removal the Panel already knows it would refuse is not
   // offered; moving the tools first and then removing spins the same way.
-  assert.match(page, /onClick=\{\(\) => removeVersion\(removeTarget\)\} disabled=\{removing \|\| refused\} loading=\{removing\}/);
+  assert.match(page, /onClick=\{\(\) => removeVersion\(removeTarget\)\} disabled=\{removing\} loading=\{removing\}/);
+  // alpha.106: a refused removal offers Close and a visibly unavailable "Can't remove".
+  assert.match(page, /if \(refused\) return <RefusedActions onClose=\{\(\) => setRemoveTarget\(null\)\} busy=\{removing\} \/>;/);
   assert.match(page, /onClick=\{\(\) => removeVersion\(removeTarget, target\)\} disabled=\{removing\} loading=\{removing\}/);
 });
 

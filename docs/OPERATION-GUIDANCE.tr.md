@@ -10229,3 +10229,17 @@ Değişmeyenler: siteler PHP'lerini kendi ayarlarında seçer; kurulu panelleri 
 sahipleri, panelin kendi güncelleme ekranından günceller. Açık: kurulu bir sunucuda
 hiçbir şey ölçülmedi. P0.1-P0.5 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ve
 ilerletmez.
+
+### Bir bileşeni ya da sürümü kaldırmak: hangi sürüm ve neden şimdi gidemez (D-037 değişikliği, 24 Ekim 2026)
+
+v0.1.0-alpha.106 adayı için kaynakta (yayımlanmadı; kurulu bir sunucuda hiçbir şey
+ölçülmedi). **Kim yapar:** yönetici, Bileşenler'den. Bir çalışma ortamının birden çok
+sürümü varsa kaldır düğmesi önce hangi sürüm olduğunu sorar; her birini kimin
+kullandığı yazar ve "Tüm sürümler" ayrıdır; orada hiçbir şey değişmez. Kaldırma
+penceresi önce şimdi gidip gidemeyeceğini söyler ("PHP-FPM şu an kaldırılamaz"), her
+nedeni bir kez söyler ve **Ne yapabilirsiniz** der: önce adı geçen bileşeni kaldırın
+(bağlantı onun kaldırmasını açar), siteleri her sitenin ayarlarından başka bir PHP
+sürümüne taşıyın (Alan adları) ya da pencereyi kapatıp tutun; hiçbir şey değişmez.
+**Nasıl devam eder:** adı geçen bileşenler ya da siteler gidince kaldır düğmesine
+yeniden basın; Panel yeniden okur ve Kaldır'ı sunar. Paket listesi ve paket
+yöneticisinin açıklaması Ayrıntılar altındadır.

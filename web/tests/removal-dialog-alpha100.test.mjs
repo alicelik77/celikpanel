@@ -238,10 +238,13 @@ test('Nginx: sites by name with "+N more", the refusal they cause, who needs it,
     assert.equal(reads.length, 1);
     assert.equal(reads[0].method, 'GET');
     assert.equal(requests.filter((request) => request.method !== 'GET').length, 0, 'opening the dialog changed something');
-    // The danger button stays outlined, and enabled: the Panel refuses on its own.
-    const button = removeButton();
-    assert.ok(button && !button.props.disabled);
-    assert.match(button.props.className, /bg-surface text-danger/);
+    // alpha.106: the sites refuse the removal (SERVICE_HAS_DEPENDENTS), so the
+    // answer leads, Close is the action and the danger button cannot be pressed.
+    assert.equal(tree.root.findAll((node) => node.props && node.props['data-removal-verdict'] !== undefined)[0].props['data-removal-verdict'], 'blocked');
+    assert.equal(removeButton(), undefined);
+    const button = tree.root.findAll((node) => node.type === 'button' && node.props['data-removal-cant'] !== undefined)[0];
+    assert.ok(button && button.props.disabled && label(button) === say('services.removal.cantButton'));
+    assert.match(button.props.className, /disabled:border-dashed/);
   } finally { await unmount(); }
 });
 
@@ -438,7 +441,9 @@ test('Turkish: the dialog speaks Turkish with no raw key', async () => {
   try {
     await openRemoval('nginx');
     const text = label(tree.root);
-    assert.ok(text.includes(trWords['services.removal.affectedTitle']));
+    assert.ok(text.includes(trWords['services.removal.alsoTitle']));
+    assert.ok(text.includes(fill(trWords['services.removal.verdict.blocked'], { name: 'Nginx' })));
+    assert.ok(text.includes(trWords['services.removal.cantButton']));
     assert.ok(text.includes(fill(trWords['services.removal.more'], { n: 2 })));
     assert.ok(!/services\.removal\./.test(text), 'a key rendered as its name');
   } finally { await unmount(); }

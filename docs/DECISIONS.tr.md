@@ -674,6 +674,32 @@ Yapılmayanlar: kurulu bir sunucuda hiçbir şey ölçülmedi; gerçek sistem ka
 iki Debian 13 makinesidir (RESILIENCE-CONTRACT, alpha.104); pacman yolu yalnız bileşen
 testleriyle kapsanır; DNF yolu erişilmez kalır.
 
+### Değişiklik (24 Ekim 2026, saat tarihi): kaldırma hangi sürüm olduğunu söyler; pencere yanıtla başlar
+
+*Sahibin 24 Ekim 2026 Frankfurt gözlemi (alpha.105); v0.1.0-alpha.106 adayı için kaynakta; yalnız web, kurulu bir sunucuda hiçbir şey ölçülmedi*
+
+Sahip PHP-FPM satırının kaldır düğmesine bastı (8.6, 8.5 ve 8.4 kurulu) ve hangi
+sürümün kaldırılacağını sordu: başlık "PHP-FPM kaldırılsın mı?" diyordu, bütün
+sürümlerin gideceğini yalnız ortadaki bir cümle söylüyordu. Panel haklı olarak
+reddetti (phpPgAdmin ve Roundcube PHP-FPM üzerinde çalışıyor; apt phppgadmin'i de
+götürürdü), ama ret listenin ortasındaydı; pencere yine de kaldırmanın neyi
+"götürdüğünü" söylüyor, aynı araçları iki kez sayıyor, paket yöneticisi diliyle
+konuşuyor ve kullanılamaz görünmeyen bir Kaldır düğmesi gösteriyordu. Kurallar:
+(1) birden çok sürümü olan çalışma ortamı önce "Hangi sürüm kaldırılsın?" diye
+sorar; her sürüm için kimin kullandığıyla bir seçim ve altta ayrı "Tüm sürümler
+(8.6, 8.5, 8.4)"; sürüm kendi kaldırmasına, Tüm sürümler bütün bileşenin
+kaldırmasına geçer; tek sürümde soru yoktur ve başlık onu adlandırır; her başlık
+neyin gideceğini söyler. (2) Her kaldırma penceresi önce yanıtı söyler (D-024):
+şimdi kaldırılabilir mi, nedenler her biri bir kez ve sade sözle, sonra sahibin
+yapabilecekleri ve nasıl yapacağı (adı geçen bileşenleri kaldırmak, siteleri
+taşımak, tutmak); paket listesi, apt ya da pacman'ın yaptığı ve paket
+yöneticisinin açıklaması katlanmış Ayrıntılar altındadır; reddedilen kaldırma için
+asla bir şeyi "götürür" denmez. (3) Reddedilen kaldırma Kapat sunar; tehlike
+düğmesi görünür biçimde kullanılamaz ve "Kaldırılamaz" der. Bu, alpha.100
+değişikliğinin Panel'in yanıtına bıraktığı barındırılanlar (siteler, veritabanları)
+reddini de kapsar. Node.js sürümleri yalnız sürüm listesinden kaldırılır;
+PostgreSQL için Panel'de sürüm başına kaldırma yoktur.
+
 ---
 
 

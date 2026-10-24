@@ -23,8 +23,13 @@ import { trScreens } from './locale-catalogue.mjs';
 import { tr as trShellHalf } from '../src/i18n/tr.ts';
 import { trErrorsScreens as trErrorsPart } from '../src/i18n/screens/errors/tr.ts';
 const tr = { ...trShellHalf, ...trErrorsPart };
-import { enComponentsScreens as enComponents } from '../src/i18n/screens/components/en.ts';
-import { trComponentsScreens as trComponents } from '../src/i18n/screens/components/tr.ts';
+import { enComponentsScreens } from '../src/i18n/screens/components/en.ts';
+import { trComponentsScreens } from '../src/i18n/screens/components/tr.ts';
+import { enComponentPagesScreens } from '../src/i18n/screens/componentPages/en.ts';
+import { trComponentPagesScreens } from '../src/i18n/screens/componentPages/tr.ts';
+// The components and component-page parts (split in alpha.106), as one.
+const enComponents = { ...enComponentsScreens, ...enComponentPagesScreens };
+const trComponents = { ...trComponentsScreens, ...trComponentPagesScreens };
 
 // The page speaks English from the real catalogue, so a bundle is named by
 // its words and never by a fallback.
