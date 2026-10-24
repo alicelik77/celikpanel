@@ -7038,3 +7038,44 @@ kaldırmayı asla tutmaz ve Kaldır'a basılınca Agent yeniden denetler. Kanıt
 1805 test geçti (sürüm sorusu, reddedilen bütün kaldırma ve reddedilen sürüm için
 bağlanmış pencere testleri), üretim derlemesi bütçelerinin içinde ve bir sahte sunucu
 üzerinde tarayıcı bakışı (EN ve TR, 1440 ve 390, açık). Kurulu bir sunucuda ölçülmedi.
+
+### Aday v0.1.0-alpha.107 (her bileşenin sürümleri, kullanımı ve güvenliği; Agent depo, paket ve kurulum yolları; şema 44'ten 45'e; ilke 1, 2 ve 4; D-038; D-022; D-024; 24 Ekim 2026)
+
+D-025 ilke 1 (sahibin hizmetleri panel olmadan çalışır): bu sürümün sunucuya yazdığı
+her dosya, işletim sisteminin kendi başına okuduğu ve sahibin kaldırabileceği yerel
+yapılandırmadır (`/etc/apt/preferences.d/celikpanel-<id>.pref`,
+`/etc/apt/apt.conf.d/52celikpanel-vendor-origins`); değiştirilmiş olanı korunur ve
+adlandırılır, asla yeniden yazılmaz; otomatik güncellemeler asla kapatılmaz. İlke 2
+(kanıtın anlamı vardır): her yeni kartta (güncellemeler, yeniden başlatmalar, destek
+tarihleri, işletim sistemi sürümü) bilinmeyen bilinmeyen kalır; reddedilen bir kurulum
+paketleri adlandırır. İlke 4 (sessiz taşıma yok): sürümler, uygulama hesapları ve web
+postası yalnız istenince taşınır, kanıtlanır ve olmazsa geri konur.
+
+- **Agent değişiklikleri.** Üretici depoları, kaynakları yayımlanmadan önce (daha önce
+  açılmış olanlar ise Panel başlarken) sınırlanır; üretici deposu varken yalın bir
+  kurulum dağıtımın tam varsayılan paketini alır; kurulum koruması yükseltmeleri
+  ayırır ve bir dağıtım paketinin üreticiden gelen bir paketle değiştirilmesini
+  reddeder; PostgreSQL ve MariaDB purge edilmez, kaldırılır; güncellemeler, yeniden
+  başlatmalar, Node.js yamaları ve işletim sistemi bilgileri için yeni salt-okur
+  RPC'ler; her biri kendi hizmet değişiklik işinde çalışan yeni, onaylı değişiklikler
+  (depo sınırlaması, güncellemeler ek dosyası, web postası güncellemesi, bir
+  uygulamanın dosya sahibinin taşınması).
+- **Şema 44'ten 45'e.** Geçiş 045 `audit_logs.details` (JSON, en çok 8 KiB) ve
+  `sites.app_run_as` (`site`, `web` ya da NULL) ekler; ikisi de boş bırakılabilir ve
+  ekleyicidir. alpha.106 Panel'i 45 numaralı geçiş defterini reddeder; bu yüzden ona
+  kurtarma, güncelleme öncesi anlık görüntünün geri yüklenmesidir; sürüm kurtarma
+  düzeneği geçiş 45'i ve şema özetini sabitler. İşletim sistemi kaydı bir
+  `panel_settings` satırıdır.
+- **Kurtarma.** Web postası güncellemesi önce ağacı ve veritabanını arşivler, atomik
+  olarak değiştirir ve web postası yanıt vermezse bayt bayt geri değiştirir; bir
+  Node.js taşıması ya da uygulama hesap taşıması birimi (ve dosyaları) geri koyar;
+  yazılamayan bir sınırlama, hiçbir şey yayımlanmadan açmayı reddeder; onaydan sonra
+  metni değişmiş bir ek dosya reddedilir.
+- **Kanıt.** Agent, Panel ve iç paketler, sürüm kurtarma düzeneğinin sabitlemeleri ve
+  web testleri (sayılar sürüm notlarında); bir sahte sunucu üzerinde tarayıcı bakışı
+  (EN ve TR, 1440 ve 390, açık); atılabilir bir Debian 13 sanal makinesinde bir
+  gerçek sistem denemesi
+  ([deploy/e2e/d038/alpha107-debian13-20261024](../deploy/e2e/d038/alpha107-debian13-20261024/README.md)).
+  Kurulu bir sunucuda ölçülmedi; pacman ve DNF yolları yalnız bileşen testleriyle.
+  **Hiçbir P0 işi kapanmaz ya da ilerlemez**; P0.1–P0.5 kısmi kalır ve her açık
+  kabul işi açık kalır.
