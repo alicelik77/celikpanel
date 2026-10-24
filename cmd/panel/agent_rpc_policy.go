@@ -131,7 +131,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.NginxInspect Agent.PanelRenewalReadiness Agent.MailHostCertificateStatus Agent.MailEnrollmentStatusV1 Agent.MailEnrollmentPreviewV1 Agent.PkgFamily
 		Agent.PostfixQueue Agent.ReadBackupChunk Agent.ReadFile
 		Agent.ReadSystemSQLiteSnapshotChunk Agent.RepoPackages Agent.ServiceCandidateVersion
-		Agent.ServiceJournal Agent.ServiceMutationReadiness Agent.ServiceRemovalPreviewV1 Agent.PHPToolBindingsV1 Agent.SiteUsage Agent.Version Agent.VPNStatus
+		Agent.ServiceJournal Agent.ServiceMutationReadiness Agent.ServiceRemovalPreviewV1 Agent.ServiceInstallPreviewV1 Agent.PHPToolBindingsV1 Agent.SiteUsage Agent.Version Agent.VPNStatus
 		Agent.CheckSystemUpdate Agent.SecurityAudit Agent.SystemUpdateStatus
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
@@ -144,7 +144,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityPackageLifecycle, `
 		Agent.ConfigureDBTools Agent.ConfigureWebmail Agent.DisableRepo Agent.EnableRepo
 		Agent.InstallRoundcube Agent.InstallService Agent.RemoveRoundcube Agent.UninstallService
-		Agent.BindPHPToolV1
+		Agent.BindPHPToolV1 Agent.ProvePHPToolV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityServiceLifecycle, `
 		Agent.EnsureNginxReady Agent.ResetFailedUnitMutation Agent.ServiceMutationAction
@@ -266,6 +266,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.NginxInspect":                agentRPCQuickReadTimeout,
 	"Agent.PkgFamily":                   agentRPCQuickReadTimeout,
 	"Agent.ServiceRemovalPreviewV1":     agentRPCStandardReadTimeout,
+	"Agent.ServiceInstallPreviewV1":     agentRPCStandardReadTimeout,
 	"Agent.PHPToolBindingsV1":           agentRPCQuickReadTimeout,
 	"Agent.PostfixQueue":                agentRPCQuickReadTimeout,
 	"Agent.RepoStatus":                  agentRPCDeploymentTimeout,
@@ -409,6 +410,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.SetupVPN":                    agentRPCDeploymentTimeout,
 	"Agent.UninstallService":            agentRPCDeploymentTimeout,
 	"Agent.BindPHPToolV1":               agentRPCDeploymentTimeout,
+	"Agent.ProvePHPToolV1":              agentRPCDeploymentTimeout,
 	"Agent.WireMailFilters":             agentRPCDeploymentTimeout,
 	"Agent.SwitchDNSEngineV1":           agentRPCDeploymentTimeout,
 

@@ -80,6 +80,9 @@ func (p *Panel) runServiceInstall(
 		if !wmResp.Present {
 			return result, serviceInstallFailure(errors.New("agent did not confirm that Roundcube is present in the webmail configuration"))
 		}
+		// alpha.105: webmail is proved on its PHP version right after its
+		// install; a first install may try another installed version.
+		p.provePHPToolAfterInstall(ctx, binding, "webmail", rcResp.FirstInstall, result)
 		if err := advance("scanning"); err != nil {
 			return result, operationAdvanceFailure(err)
 		}
@@ -104,6 +107,9 @@ func (p *Panel) runServiceInstall(
 		ServiceMutationBinding: binding,
 		ID:                     req.ServiceID,
 		Package:                req.Package,
+		PHPVersion:             req.PHPVersion,
+		CheckInstalls:          req.CheckInstalls,
+		ConfirmedInstalls:      req.ConfirmedInstalls,
 	}, &resp); err != nil {
 		// A failed attempt must leave a trace. Netdata could not be installed
 		// on Debian (apt has no such package) and the audit log stayed SILENT —
@@ -120,6 +126,14 @@ func (p *Panel) runServiceInstall(
 		return result, serviceInstallFailure(err)
 	}
 	if resp.Error != "" {
+		// alpha.105: a refused notable install or PHP version is said with
+		// what it names; nothing was installed.
+		if len(resp.Notable) > 0 {
+			result["notable_installs"] = resp.Notable
+		}
+		if resp.ErrorCode != "" {
+			result["install_refusal"] = resp.ErrorCode
+		}
 		return result, serviceInstallFailure(fmt.Errorf("service install: %s", resp.Error))
 	}
 	if req.ServiceID == "postgresql" && req.Package != "" {
@@ -358,6 +372,7 @@ func (p *Panel) runServiceInstall(
 		if dbtResp.Warning != "" {
 			log.Printf("database tools configuration after installing %s: %s", req.ServiceID, dbtResp.Warning)
 		}
+		p.provePHPToolAfterInstall(ctx, binding, req.ServiceID, resp.FirstInstall, result)
 	}
 
 	// (Roundcube's install is handled earlier and returns before this point.)

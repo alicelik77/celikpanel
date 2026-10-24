@@ -1331,6 +1331,7 @@ func main() {
 	http.HandleFunc("/api/v1/service/candidate", panel.handleServiceCandidate)
 	http.HandleFunc(serviceUninstallPath, panel.handleServiceUninstall)
 	http.HandleFunc(serviceRemovalImpactPath, panel.handleServiceRemovalImpact)
+	http.HandleFunc(serviceInstallPreviewPath, panel.handleServiceInstallPreview)
 	http.HandleFunc(phpToolsPath, panel.handlePHPTools)
 	http.HandleFunc(phpToolBindPath, panel.handlePHPToolBind)
 	http.HandleFunc(hostMutationReadinessPath, panel.handleHostMutationReadiness)
