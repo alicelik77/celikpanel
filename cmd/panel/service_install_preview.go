@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"regexp"
@@ -158,6 +159,62 @@ func nonNilStrings(values []string) []string {
 		return []string{}
 	}
 	return values
+}
+
+// notableRefusalDetail is the one line a refused install says where only a
+// line fits (Server setup's guidance, bounded to 180 characters): what it
+// would also bring, and where the owner can see and confirm it.
+func notableRefusalDetail(notable []transport.NotableInstall) string {
+	names := make([]string, 0, 2)
+	for _, item := range notable {
+		if len(names) == 2 {
+			break
+		}
+		names = append(names, item.Package)
+	}
+	more := ""
+	if len(notable) > len(names) {
+		more = fmt.Sprintf(" (+%d more)", len(notable)-len(names))
+	}
+	return fmt.Sprintf("Not installed: it would also bring %s%s. Install it from Components to see and confirm them.", strings.Join(names, ", "), more)
+}
+
+// serviceInstallOperationData is what an install keeps in its operation
+// record so a resumed install runs as it was asked: the tool's PHP version
+// and the packages the owner confirmed.
+type serviceInstallOperationData struct {
+	PHPVersion        string   `json:"install_php_version,omitempty"`
+	ConfirmedInstalls []string `json:"install_confirmed,omitempty"`
+}
+
+func encodeServiceInstallOperationData(req serviceInstallRequest) string {
+	if req.PHPVersion == "" && len(req.ConfirmedInstalls) == 0 {
+		return ""
+	}
+	data, err := json.Marshal(serviceInstallOperationData{PHPVersion: req.PHPVersion, ConfirmedInstalls: req.ConfirmedInstalls})
+	if err != nil {
+		return ""
+	}
+	return string(data)
+}
+
+// restoreServiceInstallChoices puts a recorded install's choices back on a
+// resumed request; anything that does not validate is dropped (the install
+// then keeps the check with nothing confirmed).
+func restoreServiceInstallChoices(req *serviceInstallRequest, raw string) {
+	if raw == "" {
+		return
+	}
+	var data serviceInstallOperationData
+	if json.Unmarshal([]byte(raw), &data) != nil {
+		return
+	}
+	candidate := *req
+	candidate.PHPVersion, candidate.ConfirmedInstalls = data.PHPVersion, data.ConfirmedInstalls
+	if validServiceInstallChoices(candidate) != "" {
+		return
+	}
+	*req = candidate
 }
 
 // provePHPToolAfterInstall asks the Agent to prove a PHP tool just

@@ -129,6 +129,14 @@ func (a *Agent) InstallService(req *InstallServiceRequest, resp *InstallServiceR
 	return a.installServiceWith(ctx, req, svc, selectedPackageMatch, phpTool, phpVersion, resp)
 }
 
+// firstPHPToolInstall: the tool was not on the host before this install and
+// is now. Only then may its proof move it to another PHP version; a tool
+// already installed (a repair, a second install) is never moved
+// (alpha.104 rule).
+func firstPHPToolInstall(tool string, before bool) bool {
+	return tool != "" && !before && phpToolInstalledCheck(tool)
+}
+
 // installServiceWith is InstallService's work under its held mutation step
 // (alpha.105: the disposable-VM evidence calls it directly).
 // installServiceWith, InstallService'in tutulan adım altındaki işidir.
@@ -368,7 +376,7 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 	}
 	// A tool installed for the first time for a chosen PHP version is bound
 	// to it before its configuration is written (alpha.105).
-	if phpTool != "" && !toolBefore && phpToolInstalledCheck(phpTool) {
+	if firstPHPToolInstall(phpTool, toolBefore) {
 		resp.FirstInstall = true
 		if phpVersion != "" {
 			if err := writePHPToolBinding(phpTool, phpVersion); err != nil {

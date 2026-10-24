@@ -552,6 +552,8 @@ type PHPToolBinding struct {
 	// version it runs on. Cleared by a proof that passes (a move in Manage).
 	ProofFailed bool          `json:"proof_failed,omitempty"`
 	ProofCause  *PHPToolCause `json:"proof_cause,omitempty"`
+	// ProofTriedOthers: other installed versions were tried too.
+	ProofTriedOthers bool `json:"proof_tried_others,omitempty"`
 }
 
 // PHPToolCause says why a tool move failed, in a form a screen translates

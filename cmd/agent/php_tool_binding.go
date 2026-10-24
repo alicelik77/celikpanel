@@ -1340,9 +1340,9 @@ func phpToolBindingsView() transport.PHPToolBindingsResponse {
 		binding := transport.PHPToolBinding{Tool: state.Tool, Installed: state.Installed, Source: state.Source}
 		// alpha.105: a tool whose proof after its install failed on every
 		// version tried reads "Not ready" with the cause.
-		if cause, failed := proofFailures[state.Tool]; failed && state.Installed {
-			copied := cause
-			binding.ProofFailed, binding.ProofCause = true, &copied
+		if failure, failed := proofFailures[state.Tool]; failed && state.Installed {
+			copied := failure.Cause
+			binding.ProofFailed, binding.ProofCause, binding.ProofTriedOthers = true, &copied, failure.TriedOthers
 		}
 		if state.Socket != "" {
 			binding.Version = state.version()

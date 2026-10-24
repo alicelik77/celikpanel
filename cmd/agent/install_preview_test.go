@@ -214,6 +214,10 @@ func TestPacmanPrintNamesTheTargets(t *testing.T) {
 // proveFake builds prove ops over the bind fake with a probe that fails on
 // the listed versions.
 func proveFake(host *fakeBindHost, failing map[string]error, candidates []string, recorded map[string]*transport.PHPToolCause) phpToolProveOps {
+	return proveFakeOthers(host, failing, candidates, recorded, map[string]bool{})
+}
+
+func proveFakeOthers(host *fakeBindHost, failing map[string]error, candidates []string, recorded map[string]*transport.PHPToolCause, others map[string]bool) phpToolProveOps {
 	bind := host.ops()
 	bind.httpProbe = func(_ context.Context, _ string, version string) error {
 		host.steps = append(host.steps, "probe:"+version)
@@ -222,8 +226,9 @@ func proveFake(host *fakeBindHost, failing map[string]error, candidates []string
 	return phpToolProveOps{
 		bind:       bind,
 		candidates: func(string, string) []string { return candidates },
-		record: func(tool string, cause *transport.PHPToolCause) error {
+		record: func(tool string, cause *transport.PHPToolCause, triedOthers bool) error {
 			recorded[tool] = cause
+			others[tool] = triedOthers
 			return nil
 		},
 	}
@@ -261,7 +266,11 @@ func TestAToolProvedNowhereStaysInstalledAndNotReady(t *testing.T) {
 		"8.4": &phpToolProbeError{Kind: "no_answer", Message: "phpMyAdmin did not answer"},
 		"8.5": &phpToolProbeError{Kind: "http_status", Status: 502, Message: "502"},
 	}
-	resp := provePHPToolWith(context.Background(), proveFake(host, failing, []string{"8.5"}, recorded), phpToolPHPMyAdmin, true)
+	others := map[string]bool{}
+	resp := provePHPToolWith(context.Background(), proveFakeOthers(host, failing, []string{"8.5"}, recorded, others), phpToolPHPMyAdmin, true)
+	if !others["phpmyadmin"] {
+		t.Fatal("the failed proof did not record that other versions were tried")
+	}
 	if resp.Proved || len(resp.Attempts) != 2 || recorded["phpmyadmin"] == nil || recorded["phpmyadmin"].Kind != "no_answer" {
 		t.Fatalf("resp = %+v recorded = %v", resp, recorded["phpmyadmin"])
 	}
@@ -274,8 +283,12 @@ func TestAToolProvedNowhereStaysInstalledAndNotReady(t *testing.T) {
 func TestAToolAlreadyBoundIsNeverMovedByAProof(t *testing.T) {
 	host := newFakeBindHost()
 	recorded := map[string]*transport.PHPToolCause{}
+	others := map[string]bool{}
 	failing := map[string]error{"8.4": &phpToolProbeError{Kind: "no_answer", Message: "no"}}
-	resp := provePHPToolWith(context.Background(), proveFake(host, failing, []string{"8.5"}, recorded), phpToolPHPMyAdmin, false)
+	resp := provePHPToolWith(context.Background(), proveFakeOthers(host, failing, []string{"8.5"}, recorded, others), phpToolPHPMyAdmin, false)
+	if others["phpmyadmin"] {
+		t.Fatal("a proof without fallback recorded that others were tried")
+	}
 	if resp.Proved || resp.Moved || len(resp.Attempts) != 1 || recorded["phpmyadmin"] == nil {
 		t.Fatalf("resp = %+v", resp)
 	}
@@ -283,5 +296,21 @@ func TestAToolAlreadyBoundIsNeverMovedByAProof(t *testing.T) {
 		if strings.HasPrefix(step, "write:") {
 			t.Fatalf("a proof without fallback wrote a configuration: %v", host.steps)
 		}
+	}
+}
+
+func TestOnlyAToolNotOnTheHostBeforeIsAFirstInstall(t *testing.T) {
+	previous := phpToolInstalledCheck
+	t.Cleanup(func() { phpToolInstalledCheck = previous })
+	phpToolInstalledCheck = func(string) bool { return true }
+	if firstPHPToolInstall(phpToolPHPMyAdmin, true) {
+		t.Fatal("a tool already installed was taken for a first install (its proof could move it)")
+	}
+	if !firstPHPToolInstall(phpToolPHPMyAdmin, false) || firstPHPToolInstall("", false) {
+		t.Fatal("first install misread")
+	}
+	phpToolInstalledCheck = func(string) bool { return false }
+	if firstPHPToolInstall(phpToolPHPMyAdmin, false) {
+		t.Fatal("a tool that is not on the host after the install is no first install")
 	}
 }

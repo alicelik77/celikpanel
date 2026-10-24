@@ -234,8 +234,9 @@ func (p *Panel) handleServiceInstall(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 	actor := captureServiceOperationActor(r)
-	op, err := p.createServiceOperationRequest(
+	op, err := p.createServiceOperationRequestWithState(
 		r.Context(), serviceOperationKindInstall, req.ServiceID, req.Package, req.RequestID, actor,
+		"queued", encodeServiceInstallOperationData(req),
 	)
 	if errors.Is(err, errServiceOperationBusy) {
 		writeServiceOperationBusy(w)
@@ -2150,10 +2151,10 @@ func (p *Panel) resumeInterruptedServiceOperationLocked(op serviceOperation) err
 			ServiceID: op.ServiceID,
 			Package:   op.PackageName,
 			RequestID: op.RequestID,
-			// What the owner confirmed was not kept: a resumed install
-			// installs nothing notable (alpha.105).
-			CheckInstalls: true,
 		}
+		// The tool's PHP version and what the owner confirmed come back from
+		// the record (alpha.105 review); the server checks the install again.
+		restoreServiceInstallChoices(&request, op.OperationData)
 		runner = func(ctx context.Context, advance func(string) error) (serviceOperationResult, *serviceOperationFailure) {
 			return p.runServiceInstall(ctx, request, advance)
 		}

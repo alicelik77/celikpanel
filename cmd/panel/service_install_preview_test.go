@@ -127,3 +127,41 @@ func TestInstallChoicesAreValidated(t *testing.T) {
 		}
 	}
 }
+
+func TestARefusedInstallSaysWhatItWouldBringInOneLine(t *testing.T) {
+	detail := notableRefusalDetail([]transport.NotableInstall{
+		{Package: "php8.4-common", Reason: "new_php_version", Version: "8.4"},
+		{Package: "php8.4-mbstring", Reason: "new_php_version", Version: "8.4"},
+		{Package: "php8.4-mysql", Reason: "new_php_version", Version: "8.4"},
+		{Package: "php8.4-xml", Reason: "new_php_version", Version: "8.4"},
+	})
+	if detail != "Not installed: it would also bring php8.4-common, php8.4-mbstring (+2 more). Install it from Components to see and confirm them." {
+		t.Fatalf("detail = %q", detail)
+	}
+	if len([]rune(detail)) > serviceFailureDetailLimit {
+		t.Fatalf("detail is longer than Server setup shows: %d", len(detail))
+	}
+}
+
+func TestAResumedInstallKeepsItsChoices(t *testing.T) {
+	req := serviceInstallRequest{ServiceID: "phpmyadmin", PHPVersion: "8.3", ConfirmedInstalls: []string{"php8.4-common"}}
+	raw := encodeServiceInstallOperationData(req)
+	resumed := serviceInstallRequest{ServiceID: "phpmyadmin"}
+	restoreServiceInstallChoices(&resumed, raw)
+	if resumed.PHPVersion != "8.3" || len(resumed.ConfirmedInstalls) != 1 || resumed.ConfirmedInstalls[0] != "php8.4-common" {
+		t.Fatalf("resumed = %+v", resumed)
+	}
+	if encodeServiceInstallOperationData(serviceInstallRequest{ServiceID: "nginx"}) != "" {
+		t.Fatal("an install with no choices recorded data")
+	}
+	// A record that does not validate is dropped: the check stays, nothing confirmed.
+	other := serviceInstallRequest{ServiceID: "nginx"}
+	restoreServiceInstallChoices(&other, raw)
+	if other.PHPVersion != "" || len(other.ConfirmedInstalls) != 0 {
+		t.Fatalf("other = %+v", other)
+	}
+	restoreServiceInstallChoices(&other, `{"setup_mail_hostname":"mail.example.net"}`)
+	if other.PHPVersion != "" {
+		t.Fatalf("other = %+v", other)
+	}
+}

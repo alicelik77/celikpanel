@@ -128,11 +128,13 @@ func phpToolsView(ctx context.Context, p *Panel, bindings transport.PHPToolBindi
 	response := phpToolsResponse{State: "read", Tools: []phpToolView{}, Versions: []phpVersionUsage{}}
 	for _, binding := range bindings.Tools {
 		response.Tools = append(response.Tools, phpToolView{
-			Tool:              binding.Tool,
-			ServiceID:         phpToolServiceIDs[binding.Tool],
-			Installed:         binding.Installed,
-			Version:           binding.Version,
-			Ready:             binding.SocketReady,
+			Tool:      binding.Tool,
+			ServiceID: phpToolServiceIDs[binding.Tool],
+			Installed: binding.Installed,
+			Version:   binding.Version,
+			// A failed proof after install is not ready either, so Manage
+			// offers the same version again (alpha.105 review).
+			Ready:             binding.SocketReady && !binding.ProofFailed,
 			VersionInstalled:  binding.VersionInstalled,
 			ExtensionsPresent: binding.ExtensionsPresent,
 		})

@@ -63,7 +63,7 @@ func (a *Agent) BindPHPToolV1(req *transport.BindPHPToolRequest, resp *transport
 	}
 	resp.Bound = true
 	// A proof passed: a failed proof after the install no longer stands.
-	if err := writePHPToolProof(tool, nil); err != nil && resp.Warning == "" {
+	if err := writePHPToolProof(tool, nil, false); err != nil && resp.Warning == "" {
 		resp.Warning = err.Error()
 	}
 	return nil

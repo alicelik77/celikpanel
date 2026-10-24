@@ -108,8 +108,12 @@ func (p *Panel) runServiceInstall(
 		ID:                     req.ServiceID,
 		Package:                req.Package,
 		PHPVersion:             req.PHPVersion,
-		CheckInstalls:          req.CheckInstalls,
-		ConfirmedInstalls:      req.ConfirmedInstalls,
+		// Every install is checked (alpha.105 review): Components, a
+		// component's own page, Server setup, mail profiles, a version added,
+		// Repair and an older tab alike. The browser only says what the owner
+		// confirmed; with nothing confirmed, a notable install is refused.
+		CheckInstalls:     true,
+		ConfirmedInstalls: req.ConfirmedInstalls,
 	}, &resp); err != nil {
 		// A failed attempt must leave a trace. Netdata could not be installed
 		// on Debian (apt has no such package) and the audit log stayed SILENT —
@@ -134,7 +138,11 @@ func (p *Panel) runServiceInstall(
 		if resp.ErrorCode != "" {
 			result["install_refusal"] = resp.ErrorCode
 		}
-		return result, serviceInstallFailure(fmt.Errorf("service install: %s", resp.Error))
+		failure := serviceInstallFailure(fmt.Errorf("service install: %s", resp.Error))
+		if resp.ErrorCode == "INSTALL_NEEDS_CONFIRMATION" && len(resp.Notable) > 0 && failure.Detail == "" {
+			failure.Detail = notableRefusalDetail(resp.Notable)
+		}
+		return result, failure
 	}
 	if req.ServiceID == "postgresql" && req.Package != "" {
 		// A selected major is complete only when the agent confirms the exact

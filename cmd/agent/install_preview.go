@@ -205,7 +205,7 @@ func (r *packageInstallNotableRefusal) Error() string {
 	for _, item := range r.Notable {
 		names = append(names, item.Package)
 	}
-	return fmt.Sprintf("installing %s would also install %s, which was not confirmed; nothing was installed. Check the install again in Components and confirm what it brings, or choose another version",
+	return fmt.Sprintf("installing %s would also install %s, which was not confirmed; nothing was installed. Install it from Components, which lists these packages for you to confirm, or choose another version",
 		strings.Join(r.Packages, ", "), strings.Join(capNames(names, 12), ", "))
 }
 
@@ -503,12 +503,19 @@ func aptInstallArgs(packages []string) []string {
 var phpToolProofRecordPath = "/var/lib/celikpanel-agent-private/php-tool-proofs.json"
 
 type phpToolProofRecord struct {
-	Version int                               `json:"version"`
-	Failed  map[string]transport.PHPToolCause `json:"failed"`
+	Version int                            `json:"version"`
+	Failed  map[string]phpToolProofFailure `json:"failed"`
 }
 
-func readPHPToolProofFailures() map[string]transport.PHPToolCause {
-	out := map[string]transport.PHPToolCause{}
+// phpToolProofFailure is one tool's failed proof: the cause on the version
+// it runs on, and whether other installed versions were tried too.
+type phpToolProofFailure struct {
+	Cause       transport.PHPToolCause `json:"cause"`
+	TriedOthers bool                   `json:"tried_others,omitempty"`
+}
+
+func readPHPToolProofFailures() map[string]phpToolProofFailure {
+	out := map[string]phpToolProofFailure{}
 	data, err := os.ReadFile(phpToolProofRecordPath)
 	if err != nil || len(data) > 32*1024 {
 		return out
@@ -517,16 +524,17 @@ func readPHPToolProofFailures() map[string]transport.PHPToolCause {
 	if json.Unmarshal(data, &record) != nil || record.Version != 1 {
 		return out
 	}
-	for tool, cause := range record.Failed {
+	for tool, failure := range record.Failed {
 		if validPHPTool(tool) {
-			out[tool] = cause
+			out[tool] = failure
 		}
 	}
 	return out
 }
 
-// writePHPToolProof records (cause != nil) or clears one tool's failed proof.
-func writePHPToolProof(tool string, cause *transport.PHPToolCause) error {
+// writePHPToolProof records (cause != nil) or clears one tool's failed proof;
+// triedOthers says whether other installed versions were tried as well.
+func writePHPToolProof(tool string, cause *transport.PHPToolCause, triedOthers bool) error {
 	if !validPHPTool(tool) {
 		return fmt.Errorf("unknown PHP tool %q", tool)
 	}
@@ -541,7 +549,7 @@ func writePHPToolProof(tool string, cause *transport.PHPToolCause) error {
 		if len(bounded.Detail) > 512 {
 			bounded.Detail = bounded.Detail[:512]
 		}
-		failed[tool] = bounded
+		failed[tool] = phpToolProofFailure{Cause: bounded, TriedOthers: triedOthers}
 	}
 	data, err := json.Marshal(phpToolProofRecord{Version: 1, Failed: failed})
 	if err != nil {
@@ -581,7 +589,7 @@ func writePrivateFileAtomic(path string, data []byte, pattern string) error {
 type phpToolProveOps struct {
 	bind       phpToolBindOps
 	candidates func(tool, current string) []string
-	record     func(tool string, cause *transport.PHPToolCause) error
+	record     func(tool string, cause *transport.PHPToolCause, triedOthers bool) error
 }
 
 // phpToolProofCandidates are the installed versions, other than current,
@@ -646,7 +654,7 @@ func provePHPToolWith(ctx context.Context, ops phpToolProveOps, tool string, all
 		err := ops.bind.httpProbe(ctx, tool, current)
 		if err == nil {
 			resp.Proved, resp.Version = true, current
-			_ = ops.record(tool, nil)
+			_ = ops.record(tool, nil, false)
 			if current != "" {
 				_ = ops.bind.writeRecord(tool, current)
 			}
@@ -658,8 +666,10 @@ func provePHPToolWith(ctx context.Context, ops phpToolProveOps, tool string, all
 	} else {
 		first = &transport.PHPToolCause{Kind: "version_not_installed"}
 	}
+	triedOthers := false
 	if allowFallback && ops.bind.family() == "apt" {
 		for _, version := range ops.candidates(tool, current) {
+			triedOthers = true
 			if ctx.Err() != nil {
 				break
 			}
@@ -668,12 +678,12 @@ func provePHPToolWith(ctx context.Context, ops phpToolProveOps, tool string, all
 				continue
 			}
 			resp.Proved, resp.Moved, resp.Version = true, true, version
-			_ = ops.record(tool, nil)
+			_ = ops.record(tool, nil, false)
 			return resp
 		}
 	}
 	resp.Version = current
-	if err := ops.record(tool, first); err != nil {
+	if err := ops.record(tool, first, triedOthers); err != nil {
 		resp.Error = "the failed proof could not be recorded: " + err.Error()
 	}
 	return resp
