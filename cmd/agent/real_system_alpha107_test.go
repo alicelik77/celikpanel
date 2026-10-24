@@ -67,6 +67,27 @@ func a107Version(pkg string) string {
 	return version
 }
 
+// a107Install installs through the Agent's own code. When the install's
+// simulation names distribution upgrades it was not asked for (a security
+// update of a dependency), it is refused unconfirmed; the evidence then
+// confirms exactly those, as the owner does in the install dialog.
+func a107Install(t *testing.T, a *Agent, id, pkg string) *InstallServiceResponse {
+	t.Helper()
+	resp := a105Install(t, a, id, pkg, "", nil)
+	if resp.ErrorCode != "INSTALL_NEEDS_CONFIRMATION" {
+		return resp
+	}
+	confirmed := []string{}
+	for _, item := range resp.Notable {
+		if item.Reason != notableReasonUpgrade {
+			return resp
+		}
+		confirmed = append(confirmed, item.Package)
+	}
+	t.Logf("%s needs the confirmation of distribution upgrades %v; confirmed as in the install dialog", id, confirmed)
+	return a105Install(t, a, id, pkg, "", confirmed)
+}
+
 func a107Policy(t *testing.T, pkg string) (installed, candidate string) {
 	for _, line := range strings.Split(a107Out(t, "apt-cache", "policy", pkg), "\n") {
 		line = strings.TrimSpace(line)
@@ -108,13 +129,13 @@ func TestRealSystemA107RepositoriesAreConfinedAndTheDefaultIsExact(t *testing.T)
 	a107Out(t, "apt-cache", "policy", "postgresql", "php-common")
 
 	// A plain install takes the distribution's exact default.
-	if resp := a105Install(t, a, "php-fpm", "", "", nil); resp.Error != "" {
+	if resp := a107Install(t, a, "php-fpm", ""); resp.Error != "" {
 		t.Fatalf("php-fpm: %s", resp.Error)
 	}
 	if v := a107Version("php8.4-fpm"); v == "" || hostVendorVersionLookup()("php8.4-fpm", v) != "" {
 		t.Fatalf("php8.4-fpm %q is not the distribution's", v)
 	}
-	if resp := a105Install(t, a, "postgresql", "", "", nil); resp.Error != "" {
+	if resp := a107Install(t, a, "postgresql", ""); resp.Error != "" {
 		t.Fatalf("postgresql: %s", resp.Error)
 	}
 	if a107Version("postgresql-17") == "" || a107Version("postgresql-18") != "" {
@@ -122,7 +143,7 @@ func TestRealSystemA107RepositoriesAreConfinedAndTheDefaultIsExact(t *testing.T)
 	}
 	t.Logf("postgresql metapackage: %q (exact install: empty)", a107Version("postgresql"))
 	// A version only the vendor repository has still installs from it.
-	if resp := a105Install(t, a, "php-fpm", "php8.3-fpm", "", nil); resp.Error != "" {
+	if resp := a107Install(t, a, "php-fpm", "php8.3-fpm"); resp.Error != "" {
 		t.Fatalf("php8.3-fpm from the vendor repository under confinement: %s", resp.Error)
 	}
 	t.Logf("php8.3-fpm %s, php-common %s", a107Version("php8.3-fpm"), a107Version("php-common"))
@@ -180,6 +201,7 @@ func TestRealSystemA107VendorOriginsJoinAutomaticUpdates(t *testing.T) {
 	dryRunOrigins := func() string {
 		for _, line := range strings.Split(a107Out(t, "unattended-upgrade", "--dry-run", "--debug"), "\n") {
 			if strings.Contains(line, "Allowed origins are:") {
+				t.Logf("unattended-upgrade: %s", line)
 				return line
 			}
 		}
@@ -264,7 +286,7 @@ func TestRealSystemA107PostgreSQLRemovalKeepsTheCluster(t *testing.T) {
 	if len(install.ExistingData) == 0 {
 		t.Fatalf("the install preview does not name the kept data: %+v", install)
 	}
-	if resp := a105Install(t, a, "postgresql", "", "", nil); resp.Error != "" {
+	if resp := a107Install(t, a, "postgresql", ""); resp.Error != "" {
 		t.Fatalf("reinstall: %s", resp.Error)
 	}
 	if out := a107Out(t, "runuser", "-u", "postgres", "--", "psql", "-tAc", "SELECT count(*) FROM pg_database WHERE datname = 'a107evidence'"); strings.TrimSpace(out) != "1" {
