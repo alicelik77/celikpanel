@@ -10243,3 +10243,59 @@ sürümüne taşıyın (Alan adları) ya da pencereyi kapatıp tutun; hiçbir ş
 **Nasıl devam eder:** adı geçen bileşenler ya da siteler gidince kaldır düğmesine
 yeniden basın; Panel yeniden okur ve Kaldır'ı sunar. Paket listesi ve paket
 yöneticisinin açıklaması Ayrıntılar altındadır.
+
+### Her bileşenin sürümleri, güncellemeleri ve yeniden başlatmaları (D-038, 24 Ekim 2026)
+
+v0.1.0-alpha.107 adayı için kaynakta (yayımlanmadı; kurulu bir sunucuda hiçbir şey
+ölçülmedi). **Kim yapar:** yönetici; buradaki hiçbir şey kendiliğinden başlamaz.
+
+- **Güvenlik → Güvenlik güncellemeleri.** İşletim sisteminin otomatik
+  güncellemelerinin açık olup olmadığını, en son ne zaman çalıştıklarını ve neyin
+  beklediğini söyler. **Bugün Frankfurt'ta:** Sury deposundan gelen PHP'yi otomatik
+  güncellemeler, yönetici önce PHP-FPM sayfasında Sury'yi sınırlayıp (**Sınırla…**,
+  aşağıda; sınırlanmamış bir depo asla eklenmez, çünkü o zaman otomatik güncellemeler
+  Debian'ın paketlerini onun derlemeleriyle değiştirir) sonra **Otomatik
+  güncellemelere ekle…** düğmesine basıp gösterilen tek dosyayı (`/etc/apt/apt.conf.d/52celikpanel-vendor-origins`)
+  onaylayana kadar kurmaz; başka hiçbir şey değişmez ve hiçbir servis yeniden
+  başlamaz. Geri almak için o dosyayı silin. Kapalı olması, yöneticinin çalıştıracağı
+  komutla bir uyarıdır; CelikPanel onu asla kapatmaz.
+- **Depo kartı** (PHP-FPM ve PostgreSQL sayfaları) üretici deposunun kendi bileşeniyle
+  sınırlı olup olmadığını, onu kimin ne zaman açtığını, anahtarının bitiş tarihini ve
+  apt'nin ne bildirdiğini söyler. **Sınırlamak yöneticinin seçimidir:** **Sınırla…**
+  tam kural dosyasını ve SHA-256'sını, depoyu izlemeye devam eden paketleri ve
+  `apt upgrade`'in neyi farklı yapacağını gösterir; onaylayınca (**Bu kuralı yaz**)
+  yalnız o metin yazılır. **Frankfurt:** Sury'den kurulan paketler (PHP 8.5, 8.6 ve
+  onların `php-common`'ı) Sury'nin güncellemelerini almaya devam eder; değişen,
+  sonraki bir `apt upgrade`'in artık Debian'ın kendi paketlerini (örneğin Debian'ın
+  PHP 8.4'ünü) Sury'nin derlemeleriyle değiştirmemesidir — pencere hangileri olduğunu
+  tam olarak listeler. Geri almak için dosyayı silin; kart sonra dosyanın sunucuda
+  silindiğini söyler ("CelikPanel onu kendiliğinden yeniden yazmaz") ve onu asla
+  kendiliğinden yeniden yazmaz; kural yeniden istenirse **Yeniden sınırla…**. Sahibin
+  kendi kuralı korunur ve adlandırılır. Daha önce kurulmuş, varsayılanı izleyen bir paket (üreticiden `php-fpm`,
+  `postgresql`) sahibin isteğe bağlı komutuyla adlandırılır; hiçbir şey kaldırılmaz.
+- **PostgreSQL ya da MariaDB'yi kaldırmak veriyi korur.** Bu sürümden önce bir
+  kaldırma motorun paketlerini purge ediyordu: **bu sürüme güncellenmemiş bir
+  sunucuda PostgreSQL ya da MariaDB'yi kaldırmayın.** Bu sürümden itibaren kaldırma
+  verinin nerede kaldığını söyler ve sonraki bir kurulum veriyi bulduğunu ve onu
+  kullandığını söyler.
+- **Web postası güncellemeleri** (Roundcube sayfası): "1.6.x sürümüne güncelle…"
+  önce sorar, yapılandırmayı, eklentileri ve veritabanını korur, şimdiki web postasını
+  arşivler ve web postası yanıt vermezse onu geri koyar. Hiçbir servis yeniden
+  başlamaz.
+- **Node.js:** çekmece kurulu her hattın daha yeni yamasını söyler; onu kurun, sonra
+  her siteyi **… sürümüne taşı…** ile taşıyın: uygulama yeni sürümle yeniden başlar ve
+  yanıt vermelidir, vermezse geri konur.
+- **Bakım → Yeniden başlatmalar ve yeniden açılış:** hangi servislerin hâlâ
+  değiştirilmiş kodla çalıştığı ve bir yeniden açılışın bekleyip beklemediği. Her
+  yeniden başlatma önce neyi keseceğini söyler.
+- **Sunucu kurulumu → İşletim sistemi:** bu sürümün desteklenen listedeki yeri. Sahip
+  işletim sistemini yükselttikten sonra kart, **Gözden geçirildi olarak işaretle**'ye
+  basılana kadar neyin değiştiğini ve her biri için ne yapılacağını söyler.
+  CelikPanel asla bir işletim sistemi yükseltmesi başlatmaz.
+- **Desteği bitmiş sürümler** göründükleri yerde işaretlenir; bir site için böyle
+  birini seçmek onay ister ve onay ayrıntılarıyla denetim günlüğüne yazılır.
+
+**Nasıl devam eder:** her kart **Yeniden denetle** ile yeniden okur; gelmeyen bir yanıt
+bilinmiyor olarak söylenir ve hiçbir şey iki kez gönderilmez. Kurulu panelleri yalnız
+sahipleri, panelin kendi güncelleme ekranından günceller. P0.1-P0.5 **kısmi** kalır;
+bu girdi hiçbir şeyi kapatmaz ve ilerletmez.

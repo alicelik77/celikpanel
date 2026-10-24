@@ -158,6 +158,155 @@ no panel-initiated operating-system upgrade, no change to the licence policy,
 and no assistant-initiated installed-panel update: the owner starts every
 installed-panel update from the panel's own update screen (AGENTS.md).
 
+### Amendment (2026-10-24, clock date): implemented in source for the v0.1.0-alpha.107 candidate
+
+The owner approved the twelve gap items of the read-only audit of `main`
+(703f386da) on 2026-10-24 ("ok") for one release. In source for the
+v0.1.0-alpha.107 candidate (not published; nothing measured on an installed
+server). Per point, what now exists and what remains:
+
+1. **The owner chooses.** With a vendor repository enabled (Sury PHP, PGDG), a
+   plain install takes the exact package the distribution's default brings
+   (`php8.4-fpm`, `postgresql-17`), never the moving default package; moving
+   default packages already installed are reported on the repository card with
+   the owner's optional command, never removed. A site's Node.js version moves
+   only on request (below, point 9). *Remains:* nothing for these components.
+2. **Nothing in use is removed.** Unchanged from alpha.104–alpha.106; the wording
+   is now "nothing CelikPanel knows of uses it" (point 13).
+3. **Show, prove, roll back.** The install simulation classifies upgrades
+   (`Inst name [old] (new)`) apart from new installs, names them for
+   confirmation, and refuses by name — whatever was confirmed — a step that
+   would replace a distribution package with a vendor repository's version.
+   A dependency's distribution security update (on Debian 13, `postgresql-17`
+   needs `perl-base`'s) is named and waits for confirmation. Webmail updates, Node.js moves and an application's account move are proved
+   and put back otherwise. Every restart offered here says what it interrupts
+   before it starts; the webmail update says that no service is restarted.
+4. **Patches are the operating system's job.** Security → Security updates reads
+   the operating system's own state: automatic updates on or off
+   (unattended-upgrades on apt; on pacman and DNF what is true), the last run,
+   waiting updates and security updates, the vendor origins the automatic
+   updates do not cover, and what CelikPanel installed outside the package
+   manager (Roundcube, Node.js). Off is a warning with the owner's command. With
+   confirmation it writes one separate drop-in,
+   `/etc/apt/apt.conf.d/52celikpanel-vendor-origins`, adding the confined vendor
+   origins; the owner's files are never edited, and an edited drop-in is kept as
+   it is. The Panel never switches automatic updates off.
+5. **Unsupported is marked, never forced.** The dated support table (point 11)
+   marks versions on component rows, version lists, the bundle strip and the
+   site PHP and Node.js pickers, including the customer's own page. Choosing a
+   site PHP version that no longer receives security fixes, or installing one,
+   asks for confirmation (`SUPPORT_CONFIRMATION_REQUIRED`), recorded in the
+   audit details.
+6. **Every workload in its own space.** A new Node.js application runs under its
+   site's own user (schema 45, `sites.app_run_as`). An application made before
+   keeps the shared web user and says so, with an explicit "Run under the site's
+   own user" that stops the application, changes the files' owner inside its
+   directory only (through the directory opened as a root, never following a
+   link out of it, each path re-checked when changed), rewrites the unit,
+   requires an answer and otherwise puts both back. Shared
+   isolation is said as a fact: webmail, phpMyAdmin and phpPgAdmin share
+   PHP-FPM's default pool; all mailboxes live under one vmail user.
+   *Remains:* those shared spaces are said, not separated.
+7. **A data-converting change is never a side effect.** With PGDG enabled, a
+   plain PostgreSQL install no longer follows PGDG's moving default to a new
+   major, and the confinement keeps a manual `apt upgrade` from doing so. A new
+   cluster after an operating-system upgrade is reported (point 17). *Remains:*
+   CelikPanel offers no major-upgrade flow (with backup check and confirmation);
+   a major upgrade stays the owner's own step.
+8. **Removing is not deleting.** PostgreSQL and MariaDB are removed with
+   `apt-get remove`, not purge; the dialog says where the data stays
+   (`/var/lib/postgresql/<version>/<cluster>`, `/etc/postgresql`,
+   `/var/lib/mysql`), and an install that finds such data says it will use it
+   as it is. The real-system run recorded both with an existing cluster: after
+   `remove` the cluster stayed and a reinstall started it with its database;
+   Debian's own `purge` of `postgresql-17`, run by hand, deleted the cluster's
+   data and configuration. CelikPanel therefore keeps `remove`. *Remains:* a reinstall says what it found
+   but does not offer a choice; a purge's configuration-file warning for other
+   components is not built.
+9. **What the package manager did not install.** Roundcube: the update check
+   reads Roundcube's official releases, the row says "Update available", and
+   the update (confirmed) downloads the release, verifies its signature with
+   Roundcube's pinned signing key, carries configuration, plugins, skins and
+   the SQLite database, runs Roundcube's own database update, archives the
+   current tree, swaps atomically, proves webmail through its socket and puts
+   the previous tree back byte for byte otherwise. Node.js: each installed line
+   says its newer patch; installing it is the existing verified install; the
+   sites on the old patch are listed and each moves only on request, proved or
+   put back. *Remains:* moving Roundcube to another line (1.6 to 1.7) is not
+   offered.
+10. **Patched is not restarted.** Maintenance → Restarts and reboot lists the
+    services still running replaced code (needrestart where installed, the
+    processes' own memory maps otherwise, bounded) and whether the server waits
+    for a reboot, each with its interruption; a component restarts through its
+    own restart action on request, anything else gets the command. It says when
+    the operating system's needrestart restarts services by itself.
+11. **"Unsupported" is defined correctly.** `internal/supportdata/support-table.json`
+    (checked 2026-10-24, with its sources) gives PHP, PostgreSQL, MariaDB and
+    Node.js upstream end dates and, per supported distribution release, which
+    version it ships and patches. A distribution version is patched as long as
+    its release; a vendor or official version follows its upstream; ends soon is
+    90 days; unknown stays unknown; a date is stored as precisely as its source
+    gives it (Ubuntu's are months). The hard-coded PHP threshold is gone.
+12. **Vendor repositories can be confined, by the owner.** Confinement is the
+    owner's action from the repository card, never automatic (not at enable,
+    not when the Panel starts; review of 2026-10-24): **Confine…** shows the
+    plan first — the exact `/etc/apt/preferences.d/celikpanel-<id>.pref` text
+    and its SHA-256, the installed packages that keep following the vendor, and
+    how `apt-get -s upgrade` differs with and without it — and only that text,
+    confirmed by its SHA-256, is written. The origin then provides only what the
+    distribution does not ship; every package whose installed version came from
+    the vendor keeps following it (the list is sticky while the package is
+    installed, so nothing from the vendor is left without its updates). A file
+    the owner deleted reads "removed by the owner" and is never written again
+    unless asked; an edited file, or any owner rule naming the repository (by
+    origin host or by `o=`, `l=`, `n=`, `a=`, `c=`), is kept and named. A version
+    only the vendor ships (no distribution candidate) takes the vendor's shared
+    package it needs (Sury's `php-common`, PGDG's `libpq5`) only as a named,
+    confirmed item with its versions; otherwise never. The repository card says who enabled it
+    and when, the signing key's fingerprint and expiry (warning at 60 days),
+    the list's validity and apt's errors and warnings from the Agent's list
+    refreshes.
+13. **Counts only what it knows.** Removal dialogs say "Nothing CelikPanel knows
+    of …". *Remains:* looking at the system's own traces (configuration pointing
+    at a socket, open connections) beyond the PHP tools' nginx lines is not built.
+14. **The customer's choice.** Marks and the confirmation reach the customer's
+    own PHP picker. *Remains:* the administrator cannot yet hide versions from
+    customers.
+15. **Tested and allowed.** The supported operating-system list separates tested
+    releases from accepted ones. *Remains:* per-component "tested" marks beyond
+    alpha.105's PHP warning.
+16. **Every decision is recorded.** Schema 45 adds `audit_logs.details` (bounded
+    JSON): component, package, version from and to, confirmed notable packages,
+    an unsupported version's confirmation, moves and outcomes; site PHP and
+    Node.js version changes, application account moves, repository confinement,
+    the updates drop-in and an operating-system change marked reviewed are
+    audited. The audit page shows the details.
+17. **The operating-system release belongs to the owner.**
+    `internal/supportdata/os-releases.json` lists the supported releases
+    (Debian 13 and Ubuntu 24.04 tested; Debian 12 and Ubuntu 22.04 accepted, not
+    tested; Arch rolling for development; the RHEL 9 family a preview that
+    refuses installation); Server setup shows this server's place in it and its
+    patch date. The Panel records the release and what an upgrade changes
+    underneath it; when the release differs, a read-only comparison says what
+    changed (a repository naming the old codename, a new PostgreSQL cluster, PHP
+    lines, MariaDB's version) with the next action, until the administrator
+    marks it reviewed. CelikPanel never starts an upgrade. *Remains:* the
+    changes are listed after the upgrade, not predicted before it.
+
+**Schema and recovery.** Migration 045 adds two nullable columns
+(`audit_logs.details`, `sites.app_run_as`); rows written before keep NULL and
+read as before. An older release refuses ledger 45 by design, so going back is
+the pre-update snapshot restore (D-025), not a downgrade in place. The
+confinement files, the drop-in and the Agent's records are additive files; the
+owner removes them with `rm` and `apt-get update`, and CelikPanel keeps an edited
+one as it is.
+
+**Evidence.** Component and mounted tests for every point above; real-system
+runs on disposable Debian 13 virtual machines, the second after the review for
+the owner's confinement
+([deploy/e2e/d038/alpha107-debian13-20261024](../deploy/e2e/d038/alpha107-debian13-20261024/README.md)).
+Not measured on an installed server. This amendment closes no P0 item.
+
 ## D-037 · Every page is where its name says it is: Settings holds settings; tools, security and maintenance live under Server; the person's own account lives in the personal menu
 
 *October 22, 2026 (clock date) · Owner request of 2026-10-21 and approval of 2026-10-22; in source for the v0.1.0-alpha.98 candidate, published 2026-10-22; on 2026-10-22 the owner's screens showed the new menu on both installed servers after the owner's own update · Amended 2026-10-22: changing one's own email, in source for the v0.1.0-alpha.99 candidate; nothing of the amendment measured on an installed server · Amended again 2026-10-22: Server setup moves under Server, the removal dialog says what is affected, the first visit opens the installed view; in source for the v0.1.0-alpha.100 candidate · Amended 2026-10-23: a removal never removes anything it did not name, and each PHP tool runs on a PHP version the owner chooses; in source for the v0.1.0-alpha.104 candidate; nothing measured on an installed server*

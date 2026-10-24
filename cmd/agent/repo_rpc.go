@@ -82,7 +82,11 @@ func repoKeyringPath(id string, armored bool) string {
 func repoKeyringCandidates(id string) []string {
 	return []string{repoKeyringPath(id, true), repoKeyringPath(id, false)}
 }
-func repoSourcePath(id string) string { return "/etc/apt/sources.list.d/celikpanel-" + id + ".list" }
+
+// aptSourcesListDir is apt's sources.list.d (a variable for tests).
+var aptSourcesListDir = "/etc/apt/sources.list.d"
+
+func repoSourcePath(id string) string { return aptSourcesListDir + "/celikpanel-" + id + ".list" }
 
 // EnableRepoRequest names WHICH repository, never WHAT it points at.
 //
@@ -280,13 +284,28 @@ func (a *Agent) enableRepoWith(ctx context.Context, req *EnableRepoRequest, resp
 		if err != nil {
 			return err
 		}
-		return prepareAndPublishRepoRecipe(paths, key, source, func(stagedSource string) ([]byte, error) {
+		// alpha.107 (D-038 §12): the repository is confined to its own
+		// component before its live source exists. The staged update has
+		// downloaded its lists, so the packages already installed from it
+		// are known; a confinement that cannot be written refuses the enable
+		// with nothing published.
+		// Depo, canlı kaynağı oluşmadan önce kendi bileşeniyle sınırlanır.
+		loc, locErr := parseAptSourceLine(source)
+		return prepareAndPublishRepoRecipeThen(paths, key, source, func(stagedSource string) ([]byte, error) {
 			cmd := serviceMutationCommand(ctx, aptGet, "update",
 				"-o", "Dir::Etc::sourcelist="+stagedSource,
 				"-o", "Dir::Etc::sourceparts=/dev/null",
 				"-o", "APT::Get::List-Cleanup=0")
 			cmd.Env = append(os.Environ(), "DEBIAN_FRONTEND=noninteractive")
 			return cmd.CombinedOutput()
+		}, func() error {
+			// Confinement is the owner's own action from the repository
+			// card, shown and confirmed (alpha.107 review); enabling only
+			// reads where it stands.
+			if locErr == nil {
+				resp.Confinement = confinementPointer(repoConfinementOf(repo, loc))
+			}
+			return nil
 		})
 	})
 	if err != nil {
@@ -318,7 +337,18 @@ func (a *Agent) enableRepoWith(ctx context.Context, req *EnableRepoRequest, resp
 
 	resp.Enabled = true
 	resp.Source = signed
+	now := repoConfinementNow().UTC().Format(time.RFC3339)
+	_ = updateRepoRecord(req.RepoID, func(entry *repoRecordEntry, _ bool) bool {
+		if entry.EnabledAt == "" {
+			entry.EnabledAt = now
+		}
+		return true
+	})
 	return nil
+}
+
+func confinementPointer(state transport.RepoConfinement) *transport.RepoConfinement {
+	return &state
 }
 
 // DisableRepo removes the source and pinned key, then refreshes apt so the
@@ -364,6 +394,12 @@ func (a *Agent) DisableRepo(req *EnableRepoRequest, resp *RepoStatusResponse) er
 	//
 	// Kaldirma ve apt yenileme tek paket-yoneticisi kritik bolgesi olmalidir.
 	// Boylece kurulum/kaldirma islemleri eski kaynak/anahtar durumunu kullanamaz.
+	var disabledLoc *aptSourceLocation
+	if data, readErr := readSecureRepoFile(repoSourcePath(req.RepoID), repoManagedFileMode); readErr == nil {
+		if loc, parseErr := parseAptSourceLine(firstLine(string(data))); parseErr == nil {
+			disabledLoc = &loc
+		}
+	}
 	err = runRepoPackageMutation(func() error {
 		lockedProfile, err := verifiedHostProfile("apt")
 		if err != nil {
@@ -373,13 +409,26 @@ func (a *Agent) DisableRepo(req *EnableRepoRequest, resp *RepoStatusResponse) er
 		if err != nil {
 			return err
 		}
+		defer func() {
+			// The source is gone: CelikPanel's own preferences file goes
+			// with it (only as it was written; an edited one stays).
+			if repo := repoFromCatalogue(req.RepoID); repo != nil && disabledLoc != nil && !pathExists(repoSourcePath(req.RepoID)) {
+				if removeOwnRepoPin(repo, *disabledLoc) {
+					resp.Confinement = &transport.RepoConfinement{State: repoConfinementEdited, PinPath: repoPinPath(req.RepoID)}
+				}
+			}
+		}()
 		return disableRepoRecipe(
 			repoSourcePath(req.RepoID),
 			repoKeyringCandidates(req.RepoID),
 			func() ([]byte, error) {
 				cmd := serviceMutationCommand(ctx, aptGet, "update", "-o", "APT::Get::List-Cleanup=1")
 				cmd.Env = append(os.Environ(), "DEBIAN_FRONTEND=noninteractive")
-				return cmd.CombinedOutput()
+				out, err := cmd.CombinedOutput()
+				// alpha.107 (D-038 §12): this full refresh is what apt now
+				// says about the repositories still enabled.
+				recordRepoAptErrors(string(out))
+				return out, err
 			},
 		)
 	})
@@ -500,6 +549,7 @@ func (a *Agent) RepoStatus(req *EnableRepoRequest, resp *RepoStatusResponse) err
 		return nil
 	}
 	resp.Enabled = true
+	describeEnabledRepo(repo, resp)
 	return nil
 }
 

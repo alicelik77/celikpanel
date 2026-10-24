@@ -587,6 +587,20 @@ func prepareAndPublishRepoRecipe(
 	source string,
 	validate func(stagedSource string) ([]byte, error),
 ) error {
+	return prepareAndPublishRepoRecipeThen(paths, key, source, validate, nil)
+}
+
+// prepareAndPublishRepoRecipeThen runs beforePublish after the staged source
+// was validated (its lists are downloaded) and before the live source exists
+// (alpha.107: the confinement is in place before apt can use the source).
+// beforePublish, doğrulanan kaynak yayımlanmadan hemen önce koşar.
+func prepareAndPublishRepoRecipeThen(
+	paths repoRecipePaths,
+	key []byte,
+	source string,
+	validate func(stagedSource string) ([]byte, error),
+	beforePublish func() error,
+) error {
 	stagedKey, err := stageRepoFile(paths.Keyring, "validate", key)
 	if err != nil {
 		return fmt.Errorf("stage keyring: %w", err)
@@ -601,6 +615,11 @@ func prepareAndPublishRepoRecipe(
 	defer func() { _ = os.Remove(stagedValidationSource) }()
 	if out, err := validate(stagedValidationSource); err != nil {
 		return fmt.Errorf("apt update for staged repository failed: %s", cleanCommandError(out, err))
+	}
+	if beforePublish != nil {
+		if err := beforePublish(); err != nil {
+			return err
+		}
 	}
 
 	finalSource := signedRepoSource(source, paths.Keyring) + "\n"

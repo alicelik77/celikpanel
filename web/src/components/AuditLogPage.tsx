@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { ScrollText } from 'lucide-react';
 import { useI18n } from '../i18n';
-import { auditActorName } from '../lib/auditAction';
+import { auditActorName, auditDetailParts } from '../lib/auditAction';
+import type { TranslationKey } from '../i18n/en';
 import { EmptyState, Spinner } from './ui';
 import { PageHeader } from './PageHeader';
 
@@ -13,6 +14,8 @@ interface AuditEntry {
     resource_id?: number;
     ip_address?: string;
     created_at: string;
+    /** alpha.107: what the action was about (D-038 §16). */
+    details?: Record<string, unknown>;
 }
 
 // The audit trail: a server-wide, newest-first history of who did what, from
@@ -83,6 +86,15 @@ export function AuditLogPage() {
                                         </td>
                                         <td className="px-4 py-3 text-fg-muted">
                                             {detail || (e.resource_type ? `${e.resource_type} #${e.resource_id ?? ''}` : '—')}
+                                            {e.details && (
+                                                <div className="mt-0.5 text-xs text-fg-subtle" data-audit-details="">
+                                                    {auditDetailParts(e.details, (key) => {
+                                                        const name = `life.audit.key.${key}` as TranslationKey;
+                                                        const said = t(name);
+                                                        return said === name ? key : said;
+                                                    }).join(' · ')}
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-fg-subtle">
                                             {e.ip_address || '—'}

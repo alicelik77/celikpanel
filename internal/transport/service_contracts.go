@@ -204,6 +204,14 @@ type NotableInstall struct {
 	Reason    string `json:"reason"`
 	Component string `json:"component,omitempty"`
 	Version   string `json:"version,omitempty"`
+	// From and To (alpha.107, D-038 §12): an already installed package the
+	// install would upgrade although it was not asked for (Reason
+	// "upgrade"), or a distribution package a vendor repository would
+	// replace (Reason "vendor_replaces_distribution", Component names the
+	// repository; never confirmable). Additive.
+	// From/To: istenmeden yükseltilecek ya da üreticiyle değiştirilecek paket.
+	From string `json:"from,omitempty"`
+	To   string `json:"to,omitempty"`
 }
 
 // ServiceInstallPreviewStep is one component install of a preview: the
@@ -247,6 +255,16 @@ type ServiceInstallPreviewResponse struct {
 	Removes       []string                `json:"removes"`
 	Refusals      []InstallPreviewRefusal `json:"refusals"`
 	Error         string                  `json:"error,omitempty"`
+	// ExistingData (alpha.107, D-038 §8): data an earlier install of a
+	// database engine left on this server, which the install will use as
+	// it is. Additive.
+	ExistingData []ExistingData `json:"existing_data,omitempty"`
+}
+
+// ExistingData is one data directory a previous install left.
+type ExistingData struct {
+	Component string `json:"component"`
+	Path      string `json:"path"`
 }
 
 type InstallServiceResponse struct {
@@ -326,6 +344,11 @@ type ServiceRemovalPreviewResponse struct {
 	Collateral    []PackageRemovalCollateral `json:"collateral"`
 	BoundTools    []string                   `json:"bound_tools"`
 	Error         string                     `json:"error,omitempty"`
+	// KeepsData (alpha.107, D-038 §8): the removal keeps the component's data
+	// and configuration (apt remove, not purge); DataPaths names where it
+	// stays on this server. Additive.
+	KeepsData bool     `json:"keeps_data,omitempty"`
+	DataPaths []string `json:"data_paths,omitempty"`
 }
 
 type ConfigureDBToolsResponse struct {
@@ -638,4 +661,21 @@ type BindPHPToolResponse struct {
 	Detail string `json:"detail,omitempty"`
 	// Cause is the same, structured and translatable.
 	Cause *PHPToolCause `json:"cause,omitempty"`
+}
+
+// NodePatch is one installed Node.js version and the newest release on its
+// line in the official index (alpha.107, D-038 §9): Newer is true when a
+// newer patch exists. LTS names the line's LTS codename, if it has one.
+type NodePatch struct {
+	Installed string `json:"installed"`
+	Line      string `json:"line"`
+	Newest    string `json:"newest,omitempty"`
+	Newer     bool   `json:"newer"`
+	LTS       string `json:"lts,omitempty"`
+}
+
+type NodePatchesResponse struct {
+	Patches   []NodePatch `json:"patches"`
+	CheckedAt string      `json:"checked_at,omitempty"`
+	Error     string      `json:"error,omitempty"`
 }

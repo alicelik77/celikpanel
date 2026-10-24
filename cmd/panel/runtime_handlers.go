@@ -140,6 +140,12 @@ func (p *Panel) handleNodeRuntimeSub(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	rest := strings.TrimPrefix(r.URL.Path, "/api/v1/runtimes/node/")
 
+	// alpha.107 (D-038 §9): the newest patch on each installed line.
+	if rest == "patches" && r.Method == http.MethodGet {
+		p.handleNodePatches(w, r)
+		return
+	}
+
 	if rest == "lts" && r.Method == http.MethodGet {
 		var resp transport.NodeLTSResponse
 		callCtx, cancel := context.WithTimeout(r.Context(), 25*time.Second)
@@ -221,7 +227,7 @@ func (p *Panel) handleNodeRuntimeSub(w http.ResponseWriter, r *http.Request) {
 		// successful host mutation even if its mandatory state refresh fails.
 		// Runtime ağacı bu noktada kaldırılmıştır. Zorunlu durum tazelemesi
 		// başarısız olsa bile başarılı makine değişikliğini kaybetme.
-		p.audit(r, "runtime.node.remove:"+version, "service", 0)
+		p.auditDetailed(r, "runtime.node.remove:"+version, "service", 0, map[string]any{"component": "node", "version": version})
 		// Keep the components page truthful without a manual rescan.
 		// Bileşenler sayfası elle taramasız da doğru kalsın.
 		if _, err := p.scanManagedServices(r.Context()); err != nil {

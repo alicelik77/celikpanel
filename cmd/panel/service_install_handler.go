@@ -142,6 +142,9 @@ func (p *Panel) runServiceInstall(
 		if resp.ErrorCode == "INSTALL_NEEDS_CONFIRMATION" && len(resp.Notable) > 0 && failure.Detail == "" {
 			failure.Detail = notableRefusalDetail(resp.Notable)
 		}
+		if resp.ErrorCode == "INSTALL_VENDOR_REPLACEMENT_REFUSED" && failure.Detail == "" {
+			failure.Detail = vendorRefusalDetail(resp.Notable)
+		}
 		return result, failure
 	}
 	if req.ServiceID == "postgresql" && req.Package != "" {
@@ -612,7 +615,9 @@ func (p *Panel) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 		}
 		movedTools = moved
 		if len(moved) > 0 {
-			p.audit(r, "service.php_tool_bind:"+strings.Join(moved, ",")+":"+removedVersion+"->"+req.MoveToolsTo, "service", 0)
+			p.auditDetailed(r, "service.php_tool_bind:"+strings.Join(moved, ",")+":"+removedVersion+"->"+req.MoveToolsTo, "service", 0, map[string]any{
+				"tools": moved, "from": removedVersion, "to": req.MoveToolsTo, "reason": "move before removal",
+			})
 		}
 	}
 
@@ -814,10 +819,24 @@ func (p *Panel) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 	// scan failures are separate outcomes and must not hide this audit entry.
 	// Paket değişikliğinin kendisi başarılı oldu. Sonraki bağlantı, güvenlik
 	// duvarı ve tarama hataları bu denetim kaydını gizlememelidir.
+	// alpha.107 (D-038 §16): what was removed, and the tools moved first.
+	removalDetails := map[string]any{"component": req.ServiceID}
+	if req.Package != "" {
+		removalDetails["package"] = req.Package
+	}
+	if len(movedTools) > 0 {
+		removalDetails["moved_tools"] = movedTools
+		removalDetails["moved_to"] = req.MoveToolsTo
+	}
+	for key, value := range versionSupportDetails(req.ServiceID, req.Package) {
+		if key == "version" || key == "support" {
+			removalDetails[key] = value
+		}
+	}
 	if packageRemovalPartial {
-		p.audit(r, "service.uninstall.partial:"+req.ServiceID+pkgSuffix(req.Package)+" — "+auditReason(resp.Error), "service", 0)
+		p.auditDetailed(r, "service.uninstall.partial:"+req.ServiceID+pkgSuffix(req.Package)+" — "+auditReason(resp.Error), "service", 0, removalDetails)
 	} else {
-		p.audit(r, "service.uninstall:"+req.ServiceID+pkgSuffix(req.Package), "service", 0)
+		p.auditDetailed(r, "service.uninstall:"+req.ServiceID+pkgSuffix(req.Package), "service", 0, removalDetails)
 	}
 	// A spam filter that is installed but not wired into Postfix is theatre:
 	// the daemon runs, the row says "Running", and not one message passes

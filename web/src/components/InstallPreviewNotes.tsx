@@ -9,7 +9,7 @@ import { AlertTriangle } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Checking, CouldNotCheck, KeepWords } from './ui';
-import { notableGroups, type InstallPreview } from '../lib/installPreview';
+import { hasVendorReplacement, notableGroups, type InstallPreview } from '../lib/installPreview';
 import type { RemoteHandle } from '../lib/remote';
 
 // installPreviewGate: what the confirmation may send. A known answer with
@@ -22,6 +22,8 @@ export function installPreviewGate(handle: RemoteHandle<InstallPreview> | null, 
     const remote = handle.remote;
     if (remote.state === 'loading' || handle.reading) return { hold: true, confirmed: [] };
     if (remote.state !== 'known' || remote.value.state !== 'known') return { hold: false, confirmed: [] };
+    // A vendor replacement holds Install whatever is ticked (alpha.107).
+    if (hasVendorReplacement(remote.value.notable)) return { hold: true, confirmed: [] };
     const notable = remote.value.notable.map((item) => item.package);
     if (notable.length === 0) return { hold: false, confirmed: [] };
     return acknowledged ? { hold: false, confirmed: notable } : { hold: true, confirmed: [] };
@@ -68,14 +70,47 @@ export function InstallPreviewNotes({
             />
         );
     }
+    const existing = (preview.existingData ?? []).length > 0 && (
+        <p className="mt-3 rounded-lg border border-border bg-surface-2 p-3 text-sm leading-6 text-fg" data-install-preview-existing="">
+            <KeepWords text={t('services.installPreview.existingData', { paths: (preview.existingData ?? []).map((item) => item.path).join(', ') })} />
+        </p>
+    );
     if (preview.notable.length === 0) {
         return (
-            <p className="mt-3 text-sm leading-6 text-fg-muted" data-install-preview="clean">
-                {t('services.installPreview.nothingElse')}
-            </p>
+            <>
+                {existing}
+                <p className="mt-3 text-sm leading-6 text-fg-muted" data-install-preview="clean">
+                    {t('services.installPreview.nothingElse')}
+                </p>
+            </>
         );
     }
     const groups = notableGroups(preview.notable);
+    const repoLabel = (id: string) => {
+        const key = `services.installPreview.repoName.${id}` as TranslationKey;
+        const said = t(key);
+        return said === key ? id : said;
+    };
+    if (hasVendorReplacement(preview.notable)) {
+        return (
+            <div className="mt-3 rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm leading-6 text-fg" role="alert" data-install-preview="vendor-refused">
+                <ul className="space-y-1.5">
+                    {groups.filter((group) => group.reason === 'vendor_replaces_distribution').map((group) => (
+                        <li key={group.key} className="flex items-start gap-2" data-notable-reason={group.reason}>
+                            <AlertTriangle className="mt-1 h-4 w-4 shrink-0 text-danger" aria-hidden="true" />
+                            <KeepWords
+                                text={t('services.installPreview.reason.vendor_replaces_distribution', {
+                                    component: repoLabel(group.component ?? ''),
+                                    packages: group.packages.join(', '),
+                                })}
+                            />
+                        </li>
+                    ))}
+                </ul>
+                <p className="mt-1.5 pl-6 text-fg-muted">{t('services.installPreview.vendorNext')}</p>
+            </div>
+        );
+    }
     return (
         <div className="mt-3 rounded-lg border border-warning-mark/50 bg-warning-mark/20 p-3 text-sm leading-6 text-fg" role="status" data-install-preview="notable">
             <p className="flex items-start gap-2 font-medium">
@@ -88,7 +123,7 @@ export function InstallPreviewNotes({
                         <KeepWords
                             text={t(`services.installPreview.reason.${group.reason}` as TranslationKey, {
                                 version: group.version ?? '',
-                                component: group.component ? componentLabel(group.component) : '',
+                                component: group.component ? (group.reason === 'vendor_shared' ? repoLabel(group.component) : componentLabel(group.component)) : '',
                                 packages: group.packages.join(', '),
                             })}
                         />

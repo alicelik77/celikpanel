@@ -30,7 +30,7 @@ const nameOf = (id) => words[`services.component.name.${id}`] ?? id;
 
 const source = (path) => readFileSync(new URL('../src/' + path, import.meta.url), 'utf8');
 const icons = new Set(['AlertTriangle']);
-for (const path of ['components/ServiceList.tsx', 'components/FirewallPanel.tsx', 'components/ReadyBundleStrip.tsx', 'lib/componentIcons.tsx']) {
+for (const path of ['components/ServiceList.tsx', 'components/FirewallPanel.tsx', 'components/ReadyBundleStrip.tsx', 'components/LifeLine.tsx', 'lib/componentIcons.tsx']) {
   for (const match of source(path).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {
     for (const item of match[1].split(',')) {
       const icon = item.replace(/\btype\b/, '').trim().split(/\s+as\s+/)[0];

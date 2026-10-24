@@ -248,6 +248,26 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 	// yerini alır — ama yalnız servisin gerçekten bir deposu varsa ve istenen ad
 	// desenine uyuyorsa; böylece bu asla keyfi bir paket kuramaz.
 	var skipped []string
+	// alpha.107 (D-038 §1/§7): with the component's vendor repository
+	// enabled, the exact version the distribution's default package brings
+	// is installed in its place, never the moving default package.
+	effectivePackage := req.Package
+	if req.Package == "" && family == "apt" && svc.Repo != nil {
+		aptCache, err := executableForProfile(profile, family, "apt-cache")
+		if err != nil {
+			resp.Error = err.Error()
+			return nil
+		}
+		exact, err := exactDefaultPackage(ctx, svc, family, hostExactDefaultOps(aptCache))
+		if err != nil {
+			resp.Error = err.Error()
+			return nil
+		}
+		if exact != "" {
+			pkgs = []string{exact}
+			effectivePackage = exact
+		}
+	}
 	if req.Package != "" {
 		pkgs = []string{req.Package}
 
@@ -274,6 +294,12 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 			})
 			pkgs = append(pkgs, offered...)
 			skipped = notOffered
+		}
+		// alpha.107: a version only the vendor ships (no distribution
+		// candidate) takes the vendor's shared packages it needs, named
+		// exactly (php-common=…, libpq5=…) and confirmed by the owner.
+		if family == "apt" {
+			pkgs = append(pkgs, hostVendorSharedPackageArgs(svc.Repo, req.Package)...)
 		}
 	}
 
@@ -349,11 +375,13 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 		// alpha.105: what the simulation would install beyond what this
 		// install names is judged right before the real install; a notable
 		// package the owner did not confirm refuses it.
-		var guard func([]string) error
+		var guard func(aptSimulation) error
 		if req.CheckInstalls {
-			guard = notableInstallGuard(
-				newInstallClassification(family, missingPackages, []string{svc.ID}, []string{phpVersion}, installed),
-				missingPackages, req.ConfirmedInstalls)
+			classification := newInstallClassification(family, missingPackages, []string{svc.ID}, []string{phpVersion}, installed)
+			if family == "apt" {
+				classification.vendorOf = hostVendorVersionLookup()
+			}
+			guard = notableInstallGuard(classification, missingPackages, req.ConfirmedInstalls)
 		}
 		installMissingPackages := func() (string, error) {
 			return installPackagesGuardedContext(ctx, family, missingPackages, strings.TrimSpace(req.Package), guard)
@@ -366,12 +394,21 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 		}
 		if installErr != nil {
 			var notable *packageInstallNotableRefusal
+			var vendor *packageInstallVendorRefusal
 			if errors.As(installErr, &notable) {
 				resp.ErrorCode = errCodeInstallNeedsConfirmation
 				resp.Notable = append([]transport.NotableInstall{}, notable.Notable...)
+			} else if errors.As(installErr, &vendor) {
+				resp.ErrorCode = errCodeInstallVendorReplacement
+				resp.Notable = append([]transport.NotableInstall{}, vendor.Notable...)
 			}
 			resp.Error = fmt.Sprintf("package install failed: %v", installErr)
 			return nil
+		}
+		// alpha.107: what is now installed from the vendor repository
+		// keeps following it; everything else stays with the distribution.
+		if family == "apt" && svc.Repo != nil {
+			refreshRepoConfinement(svc.Repo)
 		}
 	}
 	// A tool installed for the first time for a chosen PHP version is bound
@@ -399,7 +436,7 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 	// 8.3 kurulduktan sonra bu, 8.4'ü başlatıp operatörün az önce istediği
 	// sürümü durmuş bırakırdı.
 	unit := ""
-	if exactUnit, exact := exactInstallUnit(req.ID, family, req.Package); exact {
+	if exactUnit, exact := exactInstallUnit(req.ID, family, effectivePackage); exact {
 		// A selected package has one exact service target. Never fall back to
 		// another installed PHP major, postgresql.service or another PG
 		// cluster: that would report success while starting a different
@@ -410,7 +447,7 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 		// aksi hâlde operatörün seçtiğinden farklı sürüm başlatılıp başarı
 		// bildirilirdi.
 		if exactUnit == "" || !unitExistsWithExecutable(systemctl, exactUnit) {
-			resp.Error = fmt.Sprintf("selected package %s did not provide its exact service unit", req.Package)
+			resp.Error = fmt.Sprintf("selected package %s did not provide its exact service unit", effectivePackage)
 			return nil
 		}
 		unit = exactUnit
@@ -586,8 +623,47 @@ func unitExists(name string) bool {
 }
 
 func unitExistsWithExecutable(systemctl, name string) bool {
+	if templateInstanceUnit(name) {
+		// alpha.107 (real-system run): list-unit-files names the template
+		// (postgresql@.service), never an instance such as
+		// postgresql@17-main; an instance exists when systemd loads it.
+		// Şablon örneği list-unit-files'ta görünmez; systemd yüklüyorsa vardır.
+		out, err := serviceMutationCommand(context.Background(), systemctl, "show", "--property=LoadState", "--value", name+".service").Output()
+		return err == nil && strings.TrimSpace(string(out)) == "loaded"
+	}
 	out, err := serviceMutationCommand(context.Background(), systemctl, "list-unit-files", name+".service", "--no-legend").Output()
 	return err == nil && strings.TrimSpace(string(out)) != ""
+}
+
+// templateInstanceUnit is "name@instance", not a template "name@".
+func templateInstanceUnit(name string) bool {
+	at := strings.Index(name, "@")
+	return at > 0 && at < len(name)-1
+}
+
+// unitNamesMatching reads systemctl's unit listings (list-unit-files and
+// list-units) and keeps the service names the pattern matches. A template
+// ("postgresql@") is never a unit to stop or start: before alpha.107 its name
+// reached the removal, which then refused because "postgresql@" has no state.
+// Şablon adı ("postgresql@") durdurulacak bir unit değildir.
+func unitNamesMatching(re *regexp.Regexp, listings ...string) []string {
+	seen := map[string]bool{}
+	var units []string
+	for _, listing := range listings {
+		for _, line := range strings.Split(listing, "\n") {
+			fields := strings.Fields(line)
+			if len(fields) == 0 || !strings.HasSuffix(fields[0], ".service") {
+				continue
+			}
+			name := strings.TrimSuffix(fields[0], ".service")
+			if strings.HasSuffix(name, "@") || seen[name] || !re.MatchString(name) {
+				continue
+			}
+			seen[name] = true
+			units = append(units, name)
+		}
+	}
+	return units
 }
 
 type UninstallServiceResponse = transport.UninstallServiceResponse
@@ -912,6 +988,7 @@ func planServiceRemovalWork(svc *core.ManagedService, packageName string, ops se
 			Packages:           pkgs,
 			VersionPrefixes:    []string{prefix},
 			ProtectedComponent: catalogueProtectedComponent(family, packageNameSet(pkgs)),
+			KeepData:           removalKeepsData(svc),
 		}
 		if svc.ID == "php-fpm" && ops.boundPHPTools != nil {
 			work.boundTools = ops.boundPHPTools(strings.TrimPrefix(versionPrefix, "php"))
@@ -990,6 +1067,7 @@ func planServiceRemovalWork(svc *core.ManagedService, packageName string, ops se
 		Packages:           pkgs,
 		VersionPrefixes:    prefixes,
 		ProtectedComponent: catalogueProtectedComponent(family, packageNameSet(pkgs)),
+		KeepData:           removalKeepsData(svc),
 	}
 	if svc.ID == "php-fpm" && ops.boundPHPTools != nil {
 		work.boundTools = ops.boundPHPTools("")
@@ -1236,17 +1314,9 @@ func unitsMatchingWithExecutable(systemctl, pattern string) []string {
 	if err != nil {
 		return nil
 	}
-	var units []string
-	for _, line := range strings.Split(string(out), "\n") {
-		fields := strings.Fields(line)
-		if len(fields) == 0 {
-			continue
-		}
-		name := strings.TrimSuffix(fields[0], ".service")
-		if re.MatchString(name) {
-			units = append(units, name)
-		}
-	}
+	// Loaded template instances (postgresql@17-main) appear only in list-units.
+	loaded, _ := serviceMutationCommand(context.Background(), systemctl, "list-units", "--all", "--type=service", "--no-legend", "--no-pager", "--plain").Output()
+	units := unitNamesMatching(re, string(out), string(loaded))
 	sort.Slice(units, func(i, j int) bool {
 		ai, an := versionOf(units[i])
 		bi, bn := versionOf(units[j])

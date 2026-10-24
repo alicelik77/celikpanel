@@ -30,6 +30,9 @@ MIGRATIONS = {
     43: 'a0b5c4247f83f86d4daa700baf272f5a666c0f688ede53e1707285126c96b7c0',
     # Migration 44 (managed site files, D-031): one new table, no old one changed.
     44: '55efb384c7d1b02c48932367dad06a2086f8ffcc62ca23ad24ae7e5603e9189b',
+    # Migration 45 (audit details, Node application account; D-038): two NULL
+    # columns added to old tables (audit_logs.details, sites.app_run_as).
+    45: '0a5d618bff71cf791ea4ddf54d574b469703f65667627e266483bc2c0b094ca1',
 }
 # Exact sqlite_schema SQL from the released SQL, including triggers and indexes.
 # Tests reconstruct it from unmodified migration bytes, never a downgraded ledger.
@@ -38,6 +41,7 @@ SCHEMAS = {
     42: '2754d89b20e2c724c277a7072ac2d837aa41eb2a2a67106b4921e2fa7f015f68',
     43: '48cbd3b47573c2e09feefa4605fc4822df178a719c5e22a7e1c5cb94bb7770f7',
     44: 'afcb7db4bf3b619a605af88277714cbc22e7dbe5279375b80f0eb33f54de06fc',
+    45: 'c4eff8ddda771551d6917529d25752fec2a9b93f136f0fb9ee4a8eebcfca908b',
 }
 ADMISSION_SCHEMA = 'celikpanel/lab-populated-database-admission/v1'
 MANIFEST_SCHEMA = 'celikpanel/lab-populated-database-manifest/v1'
@@ -48,9 +52,26 @@ NEW_TABLES_42 = {'server_setup_state', 'server_setup_plans', 'server_setup_execu
                  'remote_dns_zone_ownership', 'remote_dns_records', 'remote_dns_zones', 'remote_dns_origin_history'}
 NEW_TABLES_43 = NEW_TABLES_42 | {'request_identities'}
 NEW_TABLES_44 = NEW_TABLES_43 | {'managed_site_files'}
+# Migration 45 adds no table: it adds one NULL column to two old tables.
+NEW_TABLES_45 = NEW_TABLES_44
+# Columns a pinned schema added to an old table, left out of the old-row
+# proof and required to be NULL in every old row.
+ADDED_COLUMNS = {45: {'audit_logs': ('details',), 'sites': ('app_run_as',)}}
 # The tables each pinned schema after the baseline adds to the 55 of schema38.
 # A schema that is not a key here is the baseline itself.
-NEW_TABLES = {42: NEW_TABLES_42, 43: NEW_TABLES_43, 44: NEW_TABLES_44}
+NEW_TABLES = {42: NEW_TABLES_42, 43: NEW_TABLES_43, 44: NEW_TABLES_44, 45: NEW_TABLES_45}
+
+
+def added_columns(version):
+    """Old-table columns added by every pinned schema up to version."""
+    added = {}
+    for pinned, tables in sorted(ADDED_COLUMNS.items()):
+        if type(version) is int and version >= pinned:
+            for table, columns in tables.items():
+                added[table] = added.get(table, ()) + tuple(columns)
+    return added
+
+
 MAX_BYTES = 128 * 1024 * 1024
 MAX_MANIFEST_BYTES = 16 * 1024 * 1024
 MAX_ROWS = 100_000
@@ -190,7 +211,7 @@ def _connect(path, *, writable=False):
 
 def _schema(connection, version):
     if type(version) is not int or version not in SCHEMAS:
-        raise Refused('only exact schema38, schema42, schema43 or schema44 is supported')
+        raise Refused('only exact schema38, schema42, schema43, schema44 or schema45 is supported')
     objects = connection.execute('SELECT type,name,tbl_name,sql FROM sqlite_schema ORDER BY type,name').fetchall()
     if _sha(json.dumps(objects, ensure_ascii=True, separators=(',', ':')).encode()) != SCHEMAS[version]:
         raise Refused('schema SQL differs from pinned released schema')
@@ -460,6 +481,8 @@ def verify_copy(database: Path, manifest: dict, *, manifest_sha256: str, expecte
             columns = [row[1] for row in connection.execute('PRAGMA table_info(' + _quote(table) + ')')]
             if migrated and table == 'domains':
                 columns = [name for name in columns if name not in ('dns_management', 'dns_remote_connection_id')]
+            added = added_columns(expected_version).get(table, ())
+            columns = [name for name in columns if name not in added]
             if proof['columns'] != columns:
                 raise Refused('every old column must be included in order')
         _relations(connection, admission['nonce'], manifest['fixture_ids'], expected_version)
@@ -469,6 +492,11 @@ def verify_copy(database: Path, manifest: dict, *, manifest_sha256: str, expecte
             for rowid, _ in tables['domains']['rows']:
                 if connection.execute('SELECT dns_management,dns_remote_connection_id FROM domains WHERE rowid=?', (rowid,)).fetchone() != ('local', ''):
                     raise Refused('old domain migration40/42 defaults differ')
+        for table, added in added_columns(expected_version).items():
+            for rowid, _ in tables[table]['rows']:
+                row = connection.execute('SELECT ' + ','.join(map(_quote, added)) + ' FROM ' + _quote(table) + ' WHERE rowid=?', (rowid,)).fetchone()
+                if row != tuple(None for _ in added):
+                    raise Refused('old row of ' + table + ' has a non-NULL added column')
         connection.execute('ROLLBACK')
     finally:
         connection.close()

@@ -9,13 +9,16 @@
 // Bir kurulumun getirdikleri: paket yöneticisinin benzetimi, dikkat çeken
 // paketler ve aracı çalıştıramayacak PHP sürümü.
 
-export type NotableReason = 'new_php_version' | 'apache' | 'component' | 'database_server';
+export type NotableReason = 'new_php_version' | 'apache' | 'component' | 'database_server' | 'upgrade' | 'vendor_replaces_distribution' | 'vendor_shared';
 
 export interface NotableInstall {
     package: string;
     reason: NotableReason;
     component?: string;
     version?: string;
+    /** alpha.107: an installed package's version now and after. */
+    from?: string;
+    to?: string;
 }
 
 export interface InstallRefusal {
@@ -30,6 +33,8 @@ export interface InstallPreview {
     installs: string[];
     notable: NotableInstall[];
     refusals: InstallRefusal[];
+    /** alpha.107 (D-038 §8): data an earlier install of a database engine left. */
+    existingData?: { component: string; path: string }[];
 }
 
 export interface InstallStep {
@@ -38,7 +43,7 @@ export interface InstallStep {
     phpVersion?: string;
 }
 
-const REASONS: readonly string[] = ['new_php_version', 'apache', 'component', 'database_server'];
+const REASONS: readonly string[] = ['new_php_version', 'apache', 'component', 'database_server', 'upgrade', 'vendor_replaces_distribution', 'vendor_shared'];
 const STATES: readonly string[] = ['known', 'busy', 'unsupported', 'unknown'];
 const PACKAGE = /^[a-z0-9][a-z0-9+.:-]{0,160}$/;
 const strings = (value: unknown): string[] | null =>
@@ -64,6 +69,8 @@ export function decodeInstallPreview(raw: unknown): InstallPreview {
             reason,
             ...(typeof value.component === 'string' ? { component: value.component } : {}),
             ...(typeof value.version === 'string' ? { version: value.version } : {}),
+            ...(typeof value.from === 'string' ? { from: value.from } : {}),
+            ...(typeof value.to === 'string' ? { to: value.to } : {}),
         });
     }
     const refusals: InstallRefusal[] = [];
@@ -77,7 +84,14 @@ export function decodeInstallPreview(raw: unknown): InstallPreview {
             packages: strings(value.packages) ?? [],
         });
     }
-    return { state: body.state as InstallPreview['state'], installs, notable, refusals };
+    const existingData: { component: string; path: string }[] = [];
+    if (Array.isArray(body.existing_data)) {
+        for (const item of body.existing_data) {
+            const value = item as Record<string, unknown> | null;
+            if (value && typeof value.component === 'string' && typeof value.path === 'string') existingData.push({ component: value.component, path: value.path });
+        }
+    }
+    return { state: body.state as InstallPreview['state'], installs, notable, refusals, ...(existingData.length ? { existingData } : {}) };
 }
 
 export function installPreviewURL(steps: readonly InstallStep[]): string | null {
@@ -118,9 +132,16 @@ export function notableGroups(notable: readonly NotableInstall[]): NotableGroup[
             };
             groups.push(group);
         }
-        group.packages.push(item.package);
+        // An upgrade says its versions: "libssl3 3.5.1-1 → 3.5.1-1+deb13u1".
+        group.packages.push((item.reason === 'upgrade' || item.reason === 'vendor_shared') && item.from && item.to ? `${item.package} ${item.from} → ${item.to}` : item.package);
     }
     return groups;
+}
+
+// A vendor repository replacing a distribution package is never confirmed
+// (alpha.107, D-038 §12): the server refuses it whatever the owner ticks.
+export function hasVendorReplacement(notable: readonly NotableInstall[]): boolean {
+    return notable.some((item) => item.reason === 'vendor_replaces_distribution');
 }
 
 // The upstream part of a package manager's version ("2:8.4+96" → "8.4",
@@ -137,16 +158,6 @@ export function versionOfPackage(pkg: string): string {
     if (php) return php[1];
     const numbered = /-([0-9]+(?:\.[0-9]+)?)$/.exec(pkg);
     return numbered ? numbered[1] : pkg;
-}
-
-// Every PHP line below 8.2 is past upstream security support in 2026 (the
-// same threshold as the PHP-FPM versions list).
-export function phpPastSecuritySupport(version: string): boolean {
-    const match = /^([0-9]+)\.([0-9]+)$/.exec(version);
-    if (!match) return false;
-    const major = Number(match[1]);
-    const minor = Number(match[2]);
-    return major < 8 || (major === 8 && minor < 2);
 }
 
 // The database tools that come from the distribution and are built for its

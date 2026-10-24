@@ -151,6 +151,157 @@ başlattığı işletim sistemi yükseltmesi yok, lisans politikasında değişi
 ve asistanın başlattığı kurulu panel güncellemesi yok: her kurulu panel
 güncellemesini sahip, panelin kendi güncelleme ekranından başlatır (AGENTS.md).
 
+### Değişiklik (24 Ekim 2026, saat tarihi): v0.1.0-alpha.107 adayı için kaynakta uygulandı
+
+Sahip, `main`'in (703f386da) salt-okur denetiminin bulduğu on iki açığın tek
+sürümde kapatılmasını 24 Ekim 2026'da onayladı ("ok"). v0.1.0-alpha.107 adayı için
+kaynakta (yayımlanmadı; kurulu bir sunucuda hiçbir şey ölçülmedi). Madde madde,
+şimdi ne var ve ne kalıyor:
+
+1. **Sahibi seçer.** Bir üretici deposu açıkken (Sury PHP, PGDG) yalın bir kurulum,
+   dağıtımın varsayılanının getirdiği tam paketi alır (`php8.4-fpm`,
+   `postgresql-17`); varsayılanı izleyen paketi asla almaz. Zaten kurulu olan,
+   varsayılanı izleyen paketler depo kartında sahibin isteğe bağlı komutuyla
+   bildirilir, asla kaldırılmaz. Bir sitenin Node.js sürümü yalnız istenince taşınır
+   (aşağıda, 9. madde). *Kalan:* bu bileşenler için hiçbir şey.
+2. **Kullanımda olan kaldırılmaz.** alpha.104–alpha.106'dan beri değişmedi; metin
+   artık "CelikPanel'in bildiği hiçbir şey kullanmıyor" der (13. madde).
+3. **Göster, kanıtla, geri al.** Kurulum benzetimi yükseltmeleri
+   (`Inst name [old] (new)`) yeni kurulumlardan ayırır, onay için adlandırır ve
+   bir dağıtım paketinin yerine bir üretici deposunun sürümünü koyacak adımı — ne
+   onaylanmış olursa olsun — adıyla reddeder. Bir bağımlılığın dağıtım güvenlik
+   güncellemesi (Debian 13'te `postgresql-17`, `perl-base`'inkini ister)
+   adlandırılır ve onay bekler. Web postası güncellemeleri, Node.js taşımaları ve
+   bir uygulamanın hesap taşıması kanıtlanır, olmazsa geri konur. Burada sunulan her
+   yeniden başlatma, başlamadan önce neyi keseceğini söyler; web postası
+   güncellemesi hiçbir servisin yeniden başlatılmadığını söyler.
+4. **Yamalar işletim sisteminin işidir.** Güvenlik → Güvenlik güncellemeleri
+   işletim sisteminin kendi durumunu okur: otomatik güncellemeler açık mı kapalı mı
+   (apt'de unattended-upgrades; pacman ve DNF'de doğru olan), son çalışma, bekleyen
+   güncellemeler ve güvenlik güncellemeleri, otomatik güncellemelerin kapsamadığı
+   üretici kaynakları ve CelikPanel'in paket yöneticisinin dışında kurdukları
+   (Roundcube, Node.js). Kapalı olması, sahibin komutuyla bir uyarıdır. Onayla, ayrı
+   tek bir ek dosya yazar: sınırlanmış üretici kaynaklarını ekleyen
+   `/etc/apt/apt.conf.d/52celikpanel-vendor-origins`. Sahibin dosyaları asla
+   düzenlenmez; değiştirilmiş bir ek dosya olduğu gibi bırakılır. Panel otomatik
+   güncellemeleri asla kapatmaz.
+5. **Desteği bitmiş olan işaretlenir, asla zorlanmaz.** Tarihli destek tablosu
+   (11. madde) sürümleri bileşen satırlarında, sürüm listelerinde, paket şeridinde
+   ve müşterinin kendi sayfası da dahil sitenin PHP ve Node.js seçicilerinde
+   işaretler. Bir site için artık güvenlik düzeltmesi almayan bir PHP sürümü seçmek
+   ya da böyle birini kurmak onay ister (`SUPPORT_CONFIRMATION_REQUIRED`); onay
+   denetim ayrıntılarına yazılır.
+6. **Her iş kendi alanında.** Yeni bir Node.js uygulaması sitesinin kendi
+   kullanıcısıyla çalışır (şema 45, `sites.app_run_as`). Önceden yapılmış bir
+   uygulama paylaşılan web kullanıcısını korur ve bunu söyler; açıkça seçilen
+   "Sitenin kendi kullanıcısıyla çalıştır" uygulamayı durdurur, dosyaların sahibini
+   yalnız onun dizininde değiştirir (dizin kök olarak açılır, dışarıya çıkan bir
+   bağlantı asla izlenmez, her yol değiştirilirken yeniden denetlenir), birimi
+   yeniden yazar, bir yanıt bekler ve olmazsa ikisini de geri koyar. Paylaşılan yalıtım bir gerçek olarak söylenir: web postası,
+   phpMyAdmin ve phpPgAdmin PHP-FPM'in varsayılan havuzunu paylaşır; bütün posta
+   kutuları tek bir vmail kullanıcısının altındadır. *Kalan:* bu paylaşılan alanlar
+   söylenir, ayrılmaz.
+7. **Veriyi dönüştüren bir değişiklik asla yan etki değildir.** PGDG açıkken yalın
+   bir PostgreSQL kurulumu artık PGDG'nin varsayılanını izleyip yeni bir ana sürüme
+   geçmez; sınırlama elle yapılan bir `apt upgrade`'in de bunu yapmasını önler. Bir
+   işletim sistemi yükseltmesinden sonra yeni bir küme bildirilir (17. madde).
+   *Kalan:* CelikPanel bir ana sürüm yükseltme akışı (yedek denetimi ve onayla)
+   sunmaz; ana sürüm yükseltmesi sahibin kendi adımı olarak kalır.
+8. **Kaldırmak silmek değildir.** PostgreSQL ve MariaDB purge ile değil
+   `apt-get remove` ile kaldırılır; pencere verinin nerede kaldığını söyler
+   (`/var/lib/postgresql/<version>/<cluster>`, `/etc/postgresql`,
+   `/var/lib/mysql`) ve böyle bir veri bulan kurulum onu olduğu gibi kullanacağını
+   söyler. Gerçek sistem denemesi ikisini de var olan bir kümeyle kaydetti:
+   `remove`'dan sonra küme yerinde kaldı ve yeniden kurulum onu veritabanıyla
+   başlattı; Debian'ın kendi `postgresql-17` `purge`'ü, elle çalıştırıldığında,
+   kümenin verisini ve yapılandırmasını sildi. Bu yüzden CelikPanel `remove`'da
+   kalır. *Kalan:* yeniden kurulum ne bulduğunu söyler ama bir seçim sunmaz; başka
+   bileşenler için purge'ün yapılandırma dosyası uyarısı yapılmadı.
+9. **Paket yöneticisinin kurmadıkları.** Roundcube: güncelleme denetimi
+   Roundcube'un resmî yayınlarını okur, satır "Güncelleme var" der ve (onaylanan)
+   güncelleme yayını indirir, imzasını Roundcube'un sabitlenmiş imza anahtarıyla
+   doğrular, yapılandırmayı, eklentileri, temaları ve SQLite veritabanını taşır,
+   Roundcube'un kendi veritabanı güncellemesini çalıştırır, şimdiki ağacı arşivler,
+   atomik olarak değiştirir, web postasını kendi soketi üzerinden kanıtlar ve
+   olmazsa önceki ağacı bayt bayt geri koyar. Node.js: kurulu her hat daha yeni
+   yamasını söyler; onu kurmak var olan doğrulanmış kurulumdur; eski yamadaki
+   siteler listelenir ve her biri yalnız istenince taşınır, kanıtlanır ya da geri
+   konur. *Kalan:* Roundcube'u başka bir hatta (1.6'dan 1.7'ye) taşımak sunulmaz.
+10. **Yamalanmış, yeniden başlatılmış demek değildir.** Bakım → Yeniden
+    başlatmalar ve yeniden açılış, hâlâ değiştirilmiş kodla çalışan servisleri
+    (kuruluysa needrestart, değilse süreçlerin kendi bellek eşlemleri, sınırlı
+    olarak) ve sunucunun yeniden açılış bekleyip beklemediğini, her birini
+    kesintisiyle listeler; bir bileşen istenince kendi yeniden başlatma eylemiyle
+    yeniden başlar, başka her şey için komut verilir. İşletim sisteminin
+    needrestart'ı servisleri kendiliğinden yeniden başlatıyorsa bunu söyler.
+11. **"Desteği bitti" doğru tanımlanır.** `internal/supportdata/support-table.json`
+    (24 Ekim 2026'da denetlendi, kaynaklarıyla) PHP, PostgreSQL, MariaDB ve Node.js
+    için üst kaynağın bitiş tarihlerini ve desteklenen her dağıtım sürümü için
+    hangi sürümü dağıtıp yamaladığını verir. Bir dağıtım sürümü, dağıtım sürümü
+    yaşadıkça yamalanır; bir üretici ya da resmî sürüm kendi üst kaynağını izler;
+    "yakında bitiyor" 90 gündür; bilinmeyen bilinmeyen kalır; bir tarih, kaynağı onu
+    ne kadar kesin veriyorsa o kesinlikte saklanır (Ubuntu'nunkiler aydır). Koda
+    gömülü PHP eşiği kaldırıldı.
+12. **Üretici depoları sahibi tarafından sınırlanabilir.** Sınırlama sahibin depo
+    kartından yaptığı bir eylemdir, asla kendiliğinden olmaz (ne depo açılırken ne
+    Panel başlarken; 24 Ekim 2026 incelemesi): **Sınırla…** önce planı gösterir —
+    `/etc/apt/preferences.d/celikpanel-<id>.pref` dosyasının tam metni ve SHA-256'sı,
+    üreticiyi izlemeye devam eden kurulu paketler ve `apt-get -s upgrade`'in onunla
+    ve onsuz nasıl farklılaştığı — ve yalnız SHA-256'sıyla onaylanan o metin yazılır.
+    Kaynak bundan sonra yalnız dağıtımın sağlamadığını sağlar; kurulu sürümü
+    üreticiden gelen her paket onu izlemeye devam eder (liste paket kurulu kaldıkça
+    korunur, böylece üreticiden gelen hiçbir şey güncellemelerinden yoksun kalmaz).
+    Sahibin sildiği bir dosyayı kart sahibin kaldırdığı dosya olarak okur ("…
+    kural dosyası sunucuda silindi. CelikPanel onu kendiliğinden yeniden yazmaz")
+    ve dosya istenmedikçe asla yeniden yazılmaz; değiştirilmiş bir dosya ya da depoyu
+    adlandıran herhangi bir sahip kuralı (kaynak sunucu adıyla ya da `o=`, `l=`,
+    `n=`, `a=`, `c=` ile) korunur ve adlandırılır. Yalnız üreticinin sağladığı bir
+    sürüm (dağıtımda adayı yok), ihtiyaç duyduğu üretici ortak paketini (Sury'nin
+    `php-common`'ı, PGDG'nin `libpq5`'i) yalnız sürümleriyle adlandırılmış, onaylanmış
+    bir öğe olarak alır; aksi hâlde asla. Depo kartı onu kimin ne zaman açtığını, imza anahtarının
+    parmak izini ve bitiş tarihini (60 gün kala uyarı), listenin geçerliliğini ve
+    Agent'ın liste yenilemelerinden apt'nin hatalarını ve uyarılarını söyler.
+13. **Yalnız bildiğini sayar.** Kaldırma pencereleri "CelikPanel'in bildiği hiçbir
+    şey …" der. *Kalan:* PHP araçlarının nginx satırlarının ötesinde sistemin kendi
+    izlerine (bir sokete işaret eden yapılandırma, açık bağlantılar) bakmak
+    yapılmadı.
+14. **Müşterinin seçimi.** İşaretler ve onay müşterinin kendi PHP seçicisine ulaşır.
+    *Kalan:* yönetici henüz sürümleri müşterilerden gizleyemez.
+15. **Denenmiş ve izin verilen.** Desteklenen işletim sistemi listesi denenmiş
+    sürümleri kabul edilenlerden ayırır. *Kalan:* alpha.105'in PHP uyarısının
+    ötesinde bileşen başına "denenmiş" işaretleri.
+16. **Her karar kayda geçer.** Şema 45 `audit_logs.details` (sınırlı JSON) ekler:
+    bileşen, paket, eski ve yeni sürüm, onaylanan dikkat çeken paketler, desteği
+    bitmiş bir sürümün onayı, taşımalar ve sonuçlar; sitenin PHP ve Node.js sürüm
+    değişiklikleri, uygulama hesap taşımaları, depo sınırlaması, güncellemeler ek
+    dosyası ve gözden geçirildi olarak işaretlenen bir işletim sistemi değişikliği
+    denetlenir. Denetim sayfası ayrıntıları gösterir.
+17. **İşletim sistemi sürümü sahibinindir.**
+    `internal/supportdata/os-releases.json` desteklenen sürümleri listeler
+    (Debian 13 ve Ubuntu 24.04 denenmiş; Debian 12 ve Ubuntu 22.04 kabul edilmiş,
+    denenmemiş; geliştirme için Arch rolling; RHEL 9 ailesi kurulumu reddeden bir
+    önizleme); Sunucu kurulumu bu sunucunun buradaki yerini ve yama tarihini
+    gösterir. Panel sürümü ve bir yükseltmenin altında neyi değiştirdiğini kaydeder;
+    sürüm farklı olduğunda salt-okur bir karşılaştırma neyin değiştiğini (eski kod
+    adını anan bir depo, yeni bir PostgreSQL kümesi, PHP hatları, MariaDB'nin sürümü)
+    sonraki eylemle birlikte söyler; bu, yönetici onu gözden geçirildi olarak
+    işaretleyene kadar sürer. CelikPanel asla bir yükseltme başlatmaz. *Kalan:*
+    değişiklikler yükseltmeden sonra listelenir, öncesinde öngörülmez.
+
+**Şema ve kurtarma.** Geçiş 045 boş bırakılabilir iki sütun ekler
+(`audit_logs.details`, `sites.app_run_as`); önceden yazılmış satırlar NULL kalır ve
+eskisi gibi okunur. Daha eski bir sürüm tasarım gereği 45 numaralı geçiş defterini reddeder; bu
+yüzden geri dönüş yerinde sürüm düşürme değil, güncelleme öncesi anlık görüntünün
+geri yüklenmesidir (D-025). Sınırlama dosyaları, ek dosya ve Agent'ın kayıtları
+ekleyici dosyalardır; sahip onları `rm` ve `apt-get update` ile kaldırır ve
+CelikPanel değiştirilmiş olanı olduğu gibi bırakır.
+
+**Kanıt.** Yukarıdaki her madde için bileşen ve bağlanmış testler; atılabilir
+Debian 13 sanal makinelerinde gerçek sistem denemeleri, ikincisi incelemeden sonra
+sahibin sınırlaması için
+([deploy/e2e/d038/alpha107-debian13-20261024](../deploy/e2e/d038/alpha107-debian13-20261024/README.md)).
+Kurulu bir sunucuda ölçülmedi. Bu değişiklik hiçbir P0 işini kapatmaz.
+
 ## D-037 · Her sayfa adının söylediği yerdedir: Ayarlar ayarları tutar; araçlar, güvenlik ve bakım Sunucu altındadır; kişinin kendi hesabı kişisel menüdedir
 
 *22 Ekim 2026 (saat tarihi) · Sahibin 21 Ekim 2026 tarihli isteği ve 22 Ekim 2026 tarihli onayı; v0.1.0-alpha.98 adayı için kaynakta, 22 Ekim 2026'da yayımlandı; 22 Ekim 2026'da sahibin kendi güncellemesinden sonra sahibin ekranları yeni menüyü iki kurulu sunucuda da gösterdi · 22 Ekim 2026'da değiştirildi: kişinin kendi e-postasını değiştirmesi, v0.1.0-alpha.99 adayı için kaynakta; değişikliğin hiçbir parçası kurulu bir sunucuda ölçülmedi · 22 Ekim 2026'da yeniden değiştirildi: Sunucu kurulumu Sunucu altına taşınır, kaldırma penceresi neyin etkileneceğini söyler, ilk ziyaret Kurulu görünümü açar; v0.1.0-alpha.100 adayı için kaynakta · 23 Ekim 2026'da yeniden değiştirildi: bir kaldırma adını söylemediği hiçbir şeyi kaldırmaz ve her PHP aracı sahibin seçtiği PHP sürümünde çalışır; v0.1.0-alpha.104 adayı için kaynakta; kurulu bir sunucuda hiçbir şey ölçülmedi*

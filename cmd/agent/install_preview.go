@@ -35,9 +35,20 @@ const (
 	notableReasonApache         = "apache"
 	notableReasonComponent      = "component"
 	notableReasonDatabaseServer = "database_server"
+	// alpha.107 (D-038 §12): an installed package the install would
+	// upgrade although it was not asked for, and a distribution package a
+	// vendor repository would replace (never confirmable).
+	notableReasonUpgrade            = "upgrade"
+	notableReasonVendorReplacesDist = "vendor_replaces_distribution"
+	// notableReasonVendorShared (alpha.107 review): a version only the
+	// vendor ships needs the vendor's own build of a shared package
+	// (php-common, libpq5); it replaces the distribution's and then follows
+	// the vendor. Named with its versions and confirmed, never silent.
+	notableReasonVendorShared = "vendor_shared"
 
 	errCodeInstallNeedsConfirmation = "INSTALL_NEEDS_CONFIRMATION"
 	errCodeInstallPHPVersionRefused = "INSTALL_PHP_VERSION_REFUSED"
+	errCodeInstallVendorReplacement = "INSTALL_VENDOR_REPLACEMENT_REFUSED"
 
 	serviceInstallPreviewBound = 25 * time.Second
 	notableInstallCap          = 48
@@ -72,6 +83,12 @@ type installClassification struct {
 	phpVersions map[string]bool
 	owner       func(string) string
 	present     func(string) bool
+	// vendorOf names the enabled vendor repository that offers this version
+	// of this package ("" for none); nil reads none (alpha.107).
+	vendorOf func(name, version string) string
+	// shared are the vendor's shared packages this install asks for as
+	// name=version: never "requested", always named for confirmation.
+	shared map[string]bool
 }
 
 // installed are the catalogue components already on the host: their own
@@ -84,7 +101,12 @@ func newInstallClassification(family string, requested []string, components []st
 		phpVersions: map[string]bool{},
 		present:     phpVersionPresent,
 	}
+	c.shared = map[string]bool{}
 	for _, pkg := range requested {
+		if name, _, exact := strings.Cut(pkg, "="); exact {
+			c.shared[name] = true
+			continue
+		}
 		c.requested[pkg] = true
 		if match := phpInstallVersionPackage.FindStringSubmatch(pkg); match != nil {
 			c.phpVersions[match[1]] = true
@@ -165,14 +187,73 @@ func (c installClassification) notableOne(pkg string) (transport.NotableInstall,
 	return transport.NotableInstall{}, false
 }
 
+// classifySimulation is classify over the packages the simulation newly
+// installs, then every installed package it would upgrade without being
+// asked: a distribution package replaced by a vendor repository's build is
+// vendor_replaces_distribution, any other upgrade is upgrade (alpha.107).
+func (c installClassification) classifySimulation(sim aptSimulation) []transport.NotableInstall {
+	fresh := make([]string, 0, len(sim.Installed))
+	var notable []transport.NotableInstall
+	for _, name := range sim.Installed {
+		if _, upgrade := sim.Upgrades[name]; !upgrade {
+			if c.shared[packageBaseName(name)] {
+				notable = append(notable, transport.NotableInstall{Package: packageBaseName(name), Reason: notableReasonVendorShared})
+				continue
+			}
+			fresh = append(fresh, name)
+		}
+	}
+	notable = append(notable, c.classify(fresh)...)
+	names := make([]string, 0, len(sim.Upgrades))
+	for name := range sim.Upgrades {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		pkg := packageBaseName(name)
+		upgrade := sim.Upgrades[name]
+		if c.shared[pkg] {
+			item := transport.NotableInstall{Package: pkg, Reason: notableReasonVendorShared, From: upgrade.From, To: upgrade.To}
+			if c.vendorOf != nil {
+				item.Component = c.vendorOf(pkg, upgrade.To)
+			}
+			notable = append(notable, item)
+			continue
+		}
+		if c.requested[pkg] {
+			continue
+		}
+		item := transport.NotableInstall{Package: pkg, Reason: notableReasonUpgrade, From: upgrade.From, To: upgrade.To}
+		if c.vendorOf != nil {
+			if repo := c.vendorOf(pkg, upgrade.To); repo != "" && c.vendorOf(pkg, upgrade.From) == "" {
+				item.Reason, item.Component = notableReasonVendorReplacesDist, repo
+			}
+		}
+		notable = append(notable, item)
+	}
+	sort.SliceStable(notable, func(i, j int) bool {
+		if ri, rj := notableReasonRank(notable[i].Reason), notableReasonRank(notable[j].Reason); ri != rj {
+			return ri < rj
+		}
+		return notable[i].Package < notable[j].Package
+	})
+	return notable
+}
+
 func notableReasonRank(reason string) int {
 	switch reason {
+	case notableReasonVendorReplacesDist:
+		return -2
+	case notableReasonVendorShared:
+		return -1
 	case notableReasonDatabaseServer:
 		return 0
 	case notableReasonApache:
 		return 1
 	case notableReasonNewPHPVersion:
 		return 2
+	case notableReasonUpgrade:
+		return 4
 	default:
 		return 3
 	}
@@ -186,7 +267,9 @@ func unconfirmedNotable(notable []transport.NotableInstall, confirmed []string) 
 	}
 	out := []transport.NotableInstall{}
 	for _, item := range notable {
-		if !ok[item.Package] {
+		// A vendor replacement of a distribution package is never
+		// confirmable (alpha.107).
+		if !ok[item.Package] || item.Reason == notableReasonVendorReplacesDist {
 			out = append(out, item)
 		}
 	}
@@ -209,11 +292,39 @@ func (r *packageInstallNotableRefusal) Error() string {
 		strings.Join(r.Packages, ", "), strings.Join(capNames(names, 12), ", "))
 }
 
+// packageInstallVendorRefusal: the install would replace distribution
+// packages with a vendor repository's builds (alpha.107, D-038 §12). Never
+// confirmable; nothing was installed.
+type packageInstallVendorRefusal struct {
+	Packages []string
+	Notable  []transport.NotableInstall
+}
+
+func (r *packageInstallVendorRefusal) Error() string {
+	names := make([]string, 0, len(r.Notable))
+	repo := ""
+	for _, item := range r.Notable {
+		if item.Reason == notableReasonVendorReplacesDist {
+			names = append(names, item.Package)
+			repo = item.Component
+		}
+	}
+	return fmt.Sprintf("installing %s would replace the distribution's %s with the %s repository's builds; nothing was installed. The repository is not confined to its component on this server: see its card under Components",
+		strings.Join(r.Packages, ", "), strings.Join(capNames(names, 12), ", "), repo)
+}
+
 // notableInstallGuard refuses a simulation whose notable installs are not
-// all confirmed.
-func notableInstallGuard(c installClassification, packages, confirmed []string) func([]string) error {
-	return func(installs []string) error {
-		if missing := unconfirmedNotable(c.classify(installs), confirmed); len(missing) > 0 {
+// all confirmed, and one that would replace a distribution package with a
+// vendor repository's build whatever was confirmed.
+func notableInstallGuard(c installClassification, packages, confirmed []string) func(aptSimulation) error {
+	return func(sim aptSimulation) error {
+		missing := unconfirmedNotable(c.classifySimulation(sim), confirmed)
+		for _, item := range missing {
+			if item.Reason == notableReasonVendorReplacesDist {
+				return &packageInstallVendorRefusal{Packages: append([]string{}, packages...), Notable: missing}
+			}
+		}
+		if len(missing) > 0 {
 			return &packageInstallNotableRefusal{Packages: append([]string{}, packages...), Notable: missing}
 		}
 		return nil
@@ -284,8 +395,17 @@ type installPreviewOps struct {
 	installed           func(string) bool
 	available           func(string) bool
 	simulate            func(ctx context.Context, packages []string) (aptSimulation, error)
-	lock                func() bool
-	unlock              func()
+	vendorOf            func(name, version string) string
+	// exactDefault (alpha.107): the exact package a plain install of the
+	// component installs with its vendor repository enabled ("" for none).
+	exactDefault func(ctx context.Context, svc *core.ManagedService) (string, error)
+	// existingData (alpha.107): an engine's data a previous install left.
+	existingData func(svc *core.ManagedService, pkg string) []transport.ExistingData
+	// vendorShared (alpha.107): the vendor's shared packages a vendor-only
+	// version needs, as name=version.
+	vendorShared func(repo *core.ManagedRepo, selected string) []string
+	lock         func() bool
+	unlock       func()
 }
 
 // serviceInstallPreviewWithOps answers one preview.
@@ -314,12 +434,25 @@ func serviceInstallPreviewWithOps(ctx context.Context, req *transport.ServiceIns
 			return
 		}
 		components = append(components, svc.ID)
+		if ops.existingData != nil {
+			resp.ExistingData = append(resp.ExistingData, ops.existingData(svc, step.Package)...)
+		}
 		if svc.ID == "roundcube" {
 			// Webmail is a verified tarball, not a package; its PHP
 			// extensions are prepared for the version it is bound to.
 			continue
 		}
 		pkgs := svc.Packages[ops.family]
+		if step.Package == "" && ops.exactDefault != nil {
+			exact, err := ops.exactDefault(ctx, svc)
+			if err != nil {
+				resp.Error = err.Error()
+				return
+			}
+			if exact != "" {
+				pkgs = []string{exact}
+			}
+		}
 		if step.Package != "" {
 			match, err := validateRepoPackageSelection(svc, step.Package)
 			if err != nil {
@@ -334,6 +467,9 @@ func serviceInstallPreviewWithOps(ctx context.Context, req *transport.ServiceIns
 			if len(match) > 1 {
 				offered, _ := versionCompanionPackages(svc, match[1], ops.available)
 				pkgs = append(pkgs, offered...)
+			}
+			if ops.vendorShared != nil {
+				pkgs = append(pkgs, ops.vendorShared(svc.Repo, step.Package)...)
 			}
 		}
 		for _, pkg := range pkgs {
@@ -385,7 +521,9 @@ func serviceInstallPreviewWithOps(ctx context.Context, req *transport.ServiceIns
 	resp.State = "known"
 	resp.Installs = append([]string{}, sim.Installed...)
 	resp.Removes = append([]string{}, sim.Removed...)
-	notable := newInstallClassification(ops.family, requested, components, phpVersions, ops.installedComponents()).classify(sim.Installed)
+	classification := newInstallClassification(ops.family, requested, components, phpVersions, ops.installedComponents())
+	classification.vendorOf = ops.vendorOf
+	notable := classification.classifySimulation(sim)
 	if len(notable) > notableInstallCap {
 		notable = notable[:notableInstallCap]
 	}
@@ -458,8 +596,14 @@ func (a *Agent) ServiceInstallPreviewV1(req *transport.ServiceInstallPreviewRequ
 		installedComponents: func() map[string]bool { return a.installedServiceSetWithProfile(profile) },
 		installed:           func(pkg string) bool { return packageInstalledForProfile(profile, pkg) },
 		available:           func(string) bool { return false },
-		lock:                packageOperationMu.TryLock,
-		unlock:              packageOperationMu.Unlock,
+		existingData: func(svc *core.ManagedService, pkg string) []transport.ExistingData {
+			if a.serviceInstalledWithProfile(svc, profile) && pkg == "" {
+				return nil
+			}
+			return existingEngineData(svc, family, pkg)
+		},
+		lock:   packageOperationMu.TryLock,
+		unlock: packageOperationMu.Unlock,
 	}
 	switch family {
 	case "apt":
@@ -474,6 +618,12 @@ func (a *Agent) ServiceInstallPreviewV1(req *transport.ServiceInstallPreviewRequ
 			return nil
 		}
 		ops.available = func(name string) bool { return packageAvailableWithExecutable(name, aptCache) }
+		ops.vendorOf = hostVendorVersionLookup()
+		ops.vendorShared = hostVendorSharedPackageArgs
+		defaults := hostExactDefaultOps(aptCache)
+		ops.exactDefault = func(ctx context.Context, svc *core.ManagedService) (string, error) {
+			return exactDefaultPackage(ctx, svc, family, defaults)
+		}
 		ops.simulate = func(ctx context.Context, packages []string) (aptSimulation, error) {
 			return runAptSimulation(ctx, runPackageSimulationCommand, aptGet, aptInstallArgs(packages))
 		}

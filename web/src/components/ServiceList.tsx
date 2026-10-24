@@ -22,6 +22,10 @@ import { FirewallBar } from './FirewallPanel';
 import { componentStateWord, isServiceRunning, phpBindingOf, phpNotReadyHintKey } from '../lib/serviceStatus';
 import { decodeCandidateVersion, decodeRepoInfo, type RepoInfo } from '../lib/componentRepo';
 import { decodeInstallPreview, installPreviewURL } from '../lib/installPreview';
+import { decodeRoundcubeUpdate, ROUNDCUBE_UPDATE_URL } from '../lib/roundcubeUpdate';
+import { supportFor, useSupportTable, type SupportComponent } from '../lib/supportTable';
+import { SupportBadge, supportConfirmation } from './SupportMark';
+import { NodePatches } from './NodePatches';
 import { InstallPreviewNotes, installPreviewAckKey, installPreviewGate } from './InstallPreviewNotes';
 import { useAuth } from '../auth/AuthContext';
 import type { TranslationKey } from '../i18n/en';
@@ -2531,13 +2535,13 @@ function MailProfileInstallDialog({
                 ? service.versions.join(', ')
                 : t('services.mailProfiles.plan.installed');
         }
-        if (service.id === 'roundcube') return '1.6.15';
+        if (service.id === 'roundcube') return '1.6.20';
         if (candidatesLoading) return '…';
         return candidateVersions[service.id] || t('services.mailProfiles.plan.repositoryCandidate');
     };
     const componentPackages = (service: ManagedService) => {
         if ((service.packages?.length ?? 0) > 0) return service.packages!.join(', ');
-        if (service.id === 'roundcube') return 'Roundcube 1.6.15';
+        if (service.id === 'roundcube') return 'Roundcube 1.6.20';
         return service.id;
     };
 
@@ -3023,7 +3027,63 @@ const rowButtonClass = 'inline-flex items-center gap-1.5 rounded-lg border borde
 // Satırın söylediği sürüm: runtime'lar kopyalarını, diğerleri paket sürümünün
 // kısa biçimini (tam sürüm ipucunda), farklıysa "birden çok sürüm", bilinmiyorsa
 // hiçbir şey.
-function RowVersion({ service, column = false, className = '' }: { service: ManagedService; column?: boolean; className?: string }) {
+const ROW_SUPPORT: Record<string, SupportComponent> = { 'php-fpm': 'php', postgresql: 'postgresql', mariadb: 'mariadb', node: 'node' };
+
+// A component row says when one of its installed versions no longer
+// receives security fixes, or soon will not (alpha.107, D-038 §5): the worst
+// mark among its versions, from the dated support table.
+// Bileşen satırı, kurulu sürümlerinden biri güvenlik düzeltmesi almıyorsa söyler.
+function RowSupport({ service }: { service: ManagedService }) {
+    const support = useSupportTable();
+    const component = ROW_SUPPORT[service.id];
+    if (!support || !component || !service.is_installed) return null;
+    const rank = { unsupported: 0, ends_soon: 1, supported: 2, unknown: 3 } as const;
+    let worst: { version: string; status: keyof typeof rank } | null = null;
+    for (const version of service.versions) {
+        const status = supportFor(support, component, version).status;
+        if (!worst || rank[status] < rank[worst.status]) worst = { version, status };
+    }
+    if (!worst || (worst.status !== 'unsupported' && worst.status !== 'ends_soon')) return null;
+    return <div className="mt-0.5"><SupportBadge table={support} component={component} version={worst.version} /></div>;
+}
+
+function RowVersion(props: { service: ManagedService; column?: boolean; className?: string }) {
+    if (ROW_SUPPORT[props.service.id] && props.service.is_installed) {
+        return (
+            <>
+                <RowVersionText {...props} />
+                <RowSupport service={props.service} />
+            </>
+        );
+    }
+    // alpha.107: the webmail row also says an update is available (D-038 §9).
+    if (props.service.id === 'roundcube' && props.service.is_installed) {
+        return (
+            <>
+                <RowVersionText {...props} />
+                <RoundcubeRowUpdate />
+            </>
+        );
+    }
+    return <RowVersionText {...props} />;
+}
+
+// The Roundcube row says an update is available (alpha.107); it shares the
+// webmail page's read and says nothing until that read is known.
+// Roundcube satırı, güncelleme varsa söyler.
+function RoundcubeRowUpdate() {
+    const { t } = useI18n();
+    const handle = useRemote(ROUNDCUBE_UPDATE_URL, decodeRoundcubeUpdate, { freshFor: 10 * 60_000 });
+    const remote = handle.remote;
+    if (remote.state !== 'known' || !remote.value.update_available || !remote.value.latest_on_line) return null;
+    return (
+        <div className="text-xs font-medium text-warning" data-row-webmail-update={remote.value.latest_on_line}>
+            {t('life.webmail.rowAvailable', { latest: remote.value.latest_on_line })}
+        </div>
+    );
+}
+
+function RowVersionText({ service, column = false, className = '' }: { service: ManagedService; column?: boolean; className?: string }) {
     const { t } = useI18n();
     if (!service.is_installed) return null;
     if (service.versions.length > 0) {
@@ -3225,6 +3285,7 @@ function VersionDrawer({
 
     const installPackage = async (pkg: string, version: string) => {
         if (installing) return;
+        if (!confirmUnsupportedInstall(version)) return;
         setInstalling(pkg);
         try {
             await onInstallPackage(pkg, version);
@@ -3235,17 +3296,20 @@ function VersionDrawer({
 
     // "php8.2-fpm" → "8.2". / "php8.2-fpm" → "8.2".
     const pkgVersion = (pkg: string) => /([0-9]+\.[0-9]+)/.exec(pkg)?.[1] ?? '';
-    // Every PHP line below 8.2 is past upstream security support in mid-2026.
-    // A static threshold is honest enough until a maintained EOL table exists
-    // (B4 note); the point is that a legacy line is never offered unlabeled.
-    // 8.2 altındaki her PHP hattı 2026 ortasında güvenlik desteğinin dışında.
-    // Bakımlı bir EOL tablosu gelene dek (B4 notu) sabit eşik yeterince
-    // dürüst; mesele eski hattın asla etiketsiz sunulmaması.
-    const isEOL = (version: string) => {
-        const m = /^([0-9]+)\.([0-9]+)$/.exec(version);
-        if (!m) return false;
-        const [maj, min] = [Number(m[1]), Number(m[2])];
-        return maj < 8 || (maj === 8 && min < 2);
+    // alpha.107 (D-038 §11): each version is marked from the dated support
+    // table (the server's answer: the distribution that ships it or its
+    // upstream, with the date), never from a hard-coded threshold; a
+    // version the table does not know is "not known". Installing one that
+    // no longer receives security fixes asks first.
+    // Her sürüm tarihli destek tablosundan işaretlenir; sabit eşik yok.
+    const support = useSupportTable();
+    const supportComponent: SupportComponent | null = service.id === 'php-fpm' ? 'php' : service.id === 'node' ? 'node' : service.id === 'postgresql' ? 'postgresql' : service.id === 'mariadb' ? 'mariadb' : null;
+    const { locale } = useI18n();
+    const isEOL = (version: string) => supportComponent !== null && supportFor(support, supportComponent, version).status === 'unsupported';
+    const confirmUnsupportedInstall = (version: string) => {
+        if (!supportComponent) return true;
+        const question = supportConfirmation(t, locale, support, supportComponent, version, 'install');
+        return !question || confirm(question);
     };
 
     // Named LTS options from the official index — the free-text semver box
@@ -3271,6 +3335,7 @@ function VersionDrawer({
 
     const installVersion = async (version: string) => {
         if (installing) return;
+        if (!confirmUnsupportedInstall(version)) return;
         setInstalling(version);
         try {
             await onInstallNode(version);
@@ -3431,6 +3496,7 @@ function VersionDrawer({
                         return (
                             <li key={`${inst.version}:${inst.unit ?? inst.path ?? ''}`} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2">
                                 <span className="w-16 shrink-0 font-mono text-sm font-medium text-fg">{inst.version || '—'}</span>
+                                {supportComponent && inst.version && <SupportBadge table={support} component={supportComponent} version={inst.version} />}
                                 {phpVersions && phpTools && <VersionUsage info={phpTools} version={inst.version} toolName={toolName} />}
                                 {!inst.managed && (
                                     <span
@@ -3608,6 +3674,8 @@ function VersionDrawer({
                                 </div>
                             )}
                             <div className="mt-1.5 text-xs text-fg-subtle">{t('services.nodeInstallHint')}</div>
+                            {/* alpha.107 (D-038 §9): newer patches on the installed lines. */}
+                            <NodePatches installed={instances.filter((i) => i.managed).map((i) => i.version)} onInstall={(version) => installVersion(version)} />
                         </>
                     )}
                 </div>
@@ -3988,6 +4056,9 @@ export interface RemovalSimulation {
     bound_tools: string[];
     default_runtime: boolean;
     refuses: boolean;
+    /** alpha.107 (D-038 §8): a database engine is removed, not purged; where its data stays. */
+    keeps_data?: boolean;
+    data_paths?: string[];
 }
 const SIMULATION_STATES: ReadonlySet<string> = new Set(['checked', 'busy', 'unknown', 'unsupported', 'not_installed']);
 const COLLATERAL_REASONS: ReadonlySet<string> = new Set(['component', 'reverse_dependency', 'would_install']);
@@ -4012,6 +4083,7 @@ function decodeRemovalSimulation(value: unknown): RemovalSimulation | null {
     return {
         state: v.state as RemovalSimulation['state'], remove: v.remove, collateral, bound_tools: v.bound_tools,
         default_runtime: v.default_runtime, refuses: v.refuses,
+        ...(v.keeps_data === true ? { keeps_data: true, data_paths: isStrings(v.data_paths) ? v.data_paths : [] } : {}),
     };
 }
 const REMOVAL_HOSTED_KINDS: ReadonlySet<string> = new Set(['sites', 'php_sites', 'node_sites', 'databases', 'mail_addresses', 'mail_domains', 'mailboxes', 'certificates', 'firewall', 'unrecorded', 'vpn_peers', 'ftp_accounts']);
@@ -4144,6 +4216,18 @@ export function removalSentences(impact: RemovalImpact): { removed: TranslationK
     // takes the dependencies nothing else needs.
     const removed: TranslationKey[] = impact.has_units ? ['services.removal.removed.stopUnits'] : [];
     let command: string | null = null;
+    // alpha.107 (D-038 §8): a database engine is removed, not purged: its
+    // clusters, databases and configuration stay where the dialogue says.
+    if (impact.simulation?.keeps_data) {
+        removed.push(impact.package_family === 'pacman' ? 'services.removal.removed.pacman' : 'services.removal.removed.aptKeepData');
+        if (impact.all_versions) removed.push('services.removal.removed.allVersions');
+        return {
+            removed,
+            kept: ['services.removal.kept.engineData'],
+            warnings: [],
+            command: impact.package_family === 'pacman' ? 'pacman -Rns' : 'apt-get remove',
+        };
+    }
     if (impact.package_family === 'apt') {
         removed.push('services.removal.removed.apt');
         command = 'apt-get purge';
@@ -4267,6 +4351,14 @@ const NO_FINDINGS: RemovalFindings = { causes: [], steps: [], details: [], notes
 // (SERVICE_HAS_DEPENDENTS) or the package manager's answer (alpha.104). The
 // dialog then says so first and offers Close, not Remove (alpha.106).
 // Panel bu kaldırmayı şu durumda reddeder mi.
+// Where a database engine's data stays (alpha.107): the paths the Agent
+// found, or the engine's usual place when it found none yet.
+export function removalDataPathsText(impact: RemovalImpact): string {
+    const paths = impact.simulation?.data_paths ?? [];
+    if (paths.length > 0) return paths.join(', ');
+    return impact.package_family === 'pacman' ? '/var/lib/postgres, /var/lib/mysql' : '/var/lib/postgresql, /var/lib/mysql';
+}
+
 export function removalRefused(impact: RemovalImpact): boolean {
     return impact.removal === 'unsupported'
         || Boolean(impact.hosted?.blocks_removal && impact.hosted.count > 0)
@@ -4531,7 +4623,7 @@ function RemovalImpactSection({
     const keptPart = sentences.kept.length > 0 && (
         <div data-removal-kept="">
             <p className="font-semibold text-fg">{t('services.removal.keptTitle')}</p>
-            {sentences.kept.map((key) => <p key={key} className="mt-1 text-fg-muted" data-removal-sentence={key}>{t(key, { name })}</p>)}
+            {sentences.kept.map((key) => <p key={key} className="mt-1 text-fg-muted" data-removal-sentence={key}><KeepWords text={t(key, { name, paths: removalDataPathsText(impact) })} /></p>)}
         </div>
     );
     return (

@@ -32,6 +32,7 @@ import type { SecurityScreenKey } from './screens/security/en';
 import type { DashboardScreenKey } from './screens/dashboard/en';
 import type { SettingsScreenKey } from './screens/settings/en';
 import type { ErrorsScreenKey } from './screens/errors/en';
+import type { LifecycleScreenKey } from './screens/lifecycle/en';
 
 export const en = {
     'app.name': 'CelikPanel',
@@ -469,5 +470,6 @@ export type ScreenKey =
     | SecurityScreenKey
     | DashboardScreenKey
     | SettingsScreenKey
-    | ErrorsScreenKey;
+    | ErrorsScreenKey
+    | LifecycleScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

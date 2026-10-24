@@ -267,8 +267,23 @@ jobs:
           - shard: N through Q
             pattern: '^Test[N-Q]'
             skip: ''
+          # R was split in four (alpha.107): its job reached the 8-minute
+          # ceiling. Measured with -race on one machine (206 tests, 1208 s
+          # there in all): the recovery database migration tests take 647 s,
+          # remote and restore 341 s, the rest 219 s. The complement keeps the
+          # status-check name "R" and the broad pattern, so a future name
+          # still has one home. Measure again before moving a boundary.
           - shard: R
             pattern: '^TestR'
+            skip: '^TestRe(coveryDatabaseMigration|mo|st)'
+          - shard: R, recovery database migration (1/2)
+            pattern: '^TestRecoveryDatabaseMigration[A-L]'
+            skip: ''
+          - shard: R, recovery database migration (2/2)
+            pattern: '^TestRecoveryDatabaseMigration'
+            skip: '^TestRecoveryDatabaseMigration[A-L]'
+          - shard: R, remote and restore
+            pattern: '^TestRe(mo|st)'
             skip: ''
           # Keep the existing status-check name while separating setup tests.
           # Kurulum testlerini ayirirken mevcut durum denetimi adini koru.
@@ -307,9 +322,9 @@ jobs:
       - name: Verify exact Go toolchain
         run: test "$(go env GOVERSION)" = go1.26.5
       # cmd/panel has hundreds of SQLite-backed tests that run serially under
-      # the race detector. These eighteen matrix entries run concurrently, are
+      # the race detector. These twenty-one matrix entries run concurrently, are
       # disjoint and cover every valid Test* suffix, including a future exact
-      # `Test` name or non-uppercase suffix. Four groups are split from
+      # `Test` name or non-uppercase suffix. Five groups are split from
       # within: the complement shard keeps the broader pattern and -skips the
       # carved-out prefix, so each set is exhaustive by construction. An
       # empty -skip '' skips nothing (verified on go1.26.5).

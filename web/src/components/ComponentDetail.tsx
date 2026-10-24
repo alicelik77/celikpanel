@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { Boxes, FileText, RefreshCw, ScrollText, Search } from 'lucide-react';
 import { ServiceShell } from './ServiceShell';
 import { PHPToolVersion } from './PHPToolVersion';
+import { RepoCard } from './RepoCard';
+import { RoundcubeUpdateCard } from './RoundcubeUpdateCard';
+import { IsolationFact } from './AppAccountLine';
 import { phpToolForService } from '../lib/phpTools';
 import { Checking, CouldNotCheck, KnownEmpty, RemoteGate } from './ui';
 import { useI18n } from '../i18n';
@@ -110,6 +113,16 @@ export function ComponentDetail({ serviceId, onBack, onSelectConfig }: { service
                 <div className="mb-6">
                     <PHPToolVersion serviceId={serviceId} tool={phpToolForService(serviceId)!} />
                 </div>
+            )}
+            {/* alpha.107: an enabled vendor repository's card (D-038 §12). */}
+            <div className="mb-6 empty:hidden"><RepoCard serviceId={serviceId} /></div>
+            {/* alpha.107 (D-038 §6): where isolation is shared, said as a fact. */}
+            {(serviceId === 'roundcube' || serviceId === 'phpmyadmin' || serviceId === 'phppgadmin') && (
+                <div className="mb-6"><IsolationFact kind="tools" /></div>
+            )}
+            {/* alpha.107: webmail's own updates (D-038 §9). */}
+            {serviceId === 'roundcube' && record?.is_installed === true && (
+                <div className="mb-6"><RoundcubeUpdateCard /></div>
             )}
             <ComponentPanels serviceId={serviceId} onSelectConfig={onSelectConfig} />
         </ServiceShell>

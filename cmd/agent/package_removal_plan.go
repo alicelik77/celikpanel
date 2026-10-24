@@ -74,10 +74,15 @@ type packageRemovalRequest struct {
 	// ProtectedComponent returns the catalogue component a package belongs
 	// to when it must never be removed as a side effect, or "".
 	ProtectedComponent func(string) string
+	// KeepData (alpha.107, D-038 §8): a database engine is removed with
+	// apt's "remove", never "purge", until purging is proven to keep the
+	// clusters and databases: its data and configuration stay on disk.
+	KeepData bool
 }
 
 type packageRemovalPlan struct {
 	Family    string
+	KeepData  bool
 	Requested []string
 	// Remove is the exact final list passed to the package manager.
 	Remove []string
@@ -139,6 +144,14 @@ func packageCommandEnv() []string {
 type aptSimulation struct {
 	Removed   []string
 	Installed []string
+	// Upgrades (alpha.107) are the Inst lines of packages already installed:
+	// "Inst name [old] (new …)".
+	Upgrades map[string]aptUpgrade
+}
+
+// aptUpgrade is one installed package's version now and after.
+type aptUpgrade struct {
+	From, To string
 }
 
 // parseAptSimulation reads APT's simulation lines: "Purg name [version]",
@@ -162,6 +175,15 @@ func parseAptSimulation(out []byte) aptSimulation {
 			if !seen["i:"+fields[1]] {
 				seen["i:"+fields[1]] = true
 				sim.Installed = append(sim.Installed, fields[1])
+				if len(fields) >= 4 && strings.HasPrefix(fields[2], "[") && strings.HasSuffix(fields[2], "]") && strings.HasPrefix(fields[3], "(") {
+					if sim.Upgrades == nil {
+						sim.Upgrades = map[string]aptUpgrade{}
+					}
+					sim.Upgrades[fields[1]] = aptUpgrade{
+						From: strings.TrimSuffix(strings.TrimPrefix(fields[2], "["), "]"),
+						To:   strings.TrimPrefix(fields[3], "("),
+					}
+				}
 			}
 		}
 	}
@@ -201,7 +223,20 @@ func aptSimulateArgs(args []string) []string {
 // aptFinalRemovalArgs is the one argument list of the real removal; its
 // simulation is the same list behind "-s".
 func aptFinalRemovalArgs(packages []string) []string {
-	return append([]string{"purge", "-y", "-o", "APT::Get::AutomaticRemove=false"}, packages...)
+	return aptFinalRemovalArgsFor(packages, false)
+}
+
+// aptRemovalVerb is "purge", or "remove" for a removal that keeps the data
+// (alpha.107: a database engine).
+func aptRemovalVerb(keepData bool) string {
+	if keepData {
+		return "remove"
+	}
+	return "purge"
+}
+
+func aptFinalRemovalArgsFor(packages []string, keepData bool) []string {
+	return append([]string{aptRemovalVerb(keepData), "-y", "-o", "APT::Get::AutomaticRemove=false"}, packages...)
 }
 
 func runAptSimulation(ctx context.Context, run packageSimulationRunner, aptGet string, args []string) (aptSimulation, error) {
@@ -263,7 +298,8 @@ func planAptRemoval(ctx context.Context, run packageSimulationRunner, aptGet str
 		return packageRemovalPlan{}, err
 	}
 	requested := uniquePackageNames(request.Packages)
-	plan := packageRemovalPlan{Family: "apt", Requested: requested}
+	plan := packageRemovalPlan{Family: "apt", Requested: requested, KeepData: request.KeepData}
+	verb := aptRemovalVerb(request.KeepData)
 	isRequested := map[string]bool{}
 	for _, p := range requested {
 		isRequested[p] = true
@@ -271,13 +307,13 @@ func planAptRemoval(ctx context.Context, run packageSimulationRunner, aptGet str
 
 	// 1. Without autoremove: the requested packages and their reverse
 	// dependencies (everything that depends on them).
-	plain, err := runAptSimulation(ctx, run, aptGet, append([]string{"purge", "-o", "APT::Get::AutomaticRemove=false"}, requested...))
+	plain, err := runAptSimulation(ctx, run, aptGet, append([]string{verb, "-o", "APT::Get::AutomaticRemove=false"}, requested...))
 	if err != nil {
 		return plan, err
 	}
 	// 2. With autoremove: plus every automatically installed package that is
 	// unused afterwards.
-	full, err := runAptSimulation(ctx, run, aptGet, append([]string{"purge", "--auto-remove"}, requested...))
+	full, err := runAptSimulation(ctx, run, aptGet, append([]string{verb, "--auto-remove"}, requested...))
 	if err != nil {
 		return plan, err
 	}
@@ -363,7 +399,7 @@ func planAptRemoval(ctx context.Context, run packageSimulationRunner, aptGet str
 	}
 	// 4. The exact final command, simulated: it must remove exactly the
 	// planned list and install nothing.
-	if err := verifyAptFinalSimulation(ctx, run, aptGet, plan.Remove); err != nil {
+	if err := verifyAptFinalSimulation(ctx, run, aptGet, plan.Remove, plan.KeepData); err != nil {
 		return plan, err
 	}
 	return plan, nil
@@ -405,11 +441,11 @@ func sameNameSet(a, b []string) bool {
 	return true
 }
 
-func verifyAptFinalSimulation(ctx context.Context, run packageSimulationRunner, aptGet string, remove []string) error {
+func verifyAptFinalSimulation(ctx context.Context, run packageSimulationRunner, aptGet string, remove []string, keepData bool) error {
 	if len(remove) == 0 {
 		return nil
 	}
-	final, err := runAptSimulation(ctx, run, aptGet, aptFinalRemovalArgs(remove))
+	final, err := runAptSimulation(ctx, run, aptGet, aptFinalRemovalArgsFor(remove, keepData))
 	if err != nil {
 		return err
 	}
@@ -563,7 +599,7 @@ func (e packageRemovalExecutor) plan(ctx context.Context, request packageRemoval
 func (e packageRemovalExecutor) reverify(ctx context.Context, plan packageRemovalPlan) error {
 	switch e.family {
 	case "apt":
-		return verifyAptFinalSimulation(ctx, e.run, e.tool, plan.Remove)
+		return verifyAptFinalSimulation(ctx, e.run, e.tool, plan.Remove, plan.KeepData)
 	case "pacman":
 		targets, collateral, err := runPacmanPrint(ctx, e.run, e.tool, plan.Requested)
 		if err != nil {
@@ -587,7 +623,7 @@ func (e packageRemovalExecutor) remove(ctx context.Context, plan packageRemovalP
 		if len(plan.Remove) == 0 {
 			return "", nil
 		}
-		out, err := e.mutate(ctx, packageCommandEnv(), e.tool, aptFinalRemovalArgs(plan.Remove)...)
+		out, err := e.mutate(ctx, packageCommandEnv(), e.tool, aptFinalRemovalArgsFor(plan.Remove, plan.KeepData)...)
 		if err != nil {
 			return "", fmt.Errorf("%v: %s", err, strings.TrimSpace(string(out)))
 		}

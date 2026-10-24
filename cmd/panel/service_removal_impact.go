@@ -160,6 +160,10 @@ type serviceRemovalSimulation struct {
 	BoundTools     []string                             `json:"bound_tools"`
 	DefaultRuntime bool                                 `json:"default_runtime"`
 	Refuses        bool                                 `json:"refuses"`
+	// KeepsData (alpha.107, D-038 §8): a database engine is removed, not
+	// purged; DataPaths are where its data stays on this server.
+	KeepsData bool     `json:"keeps_data,omitempty"`
+	DataPaths []string `json:"data_paths,omitempty"`
 }
 
 // removalSimulationReadBound bounds the Agent's simulation for the dialog.
@@ -188,6 +192,8 @@ func removalSimulationFrom(serviceID string, preview transport.ServiceRemovalPre
 		simulation.State = preview.State
 	}
 	simulation.Refuses = len(simulation.BoundTools) > 0 || (simulation.State == "checked" && len(simulation.Collateral) > 0)
+	simulation.KeepsData = preview.KeepsData
+	simulation.DataPaths = append([]string{}, preview.DataPaths...)
 	return simulation
 }
 

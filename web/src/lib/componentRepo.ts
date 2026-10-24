@@ -14,6 +14,26 @@ export interface RepoInfo {
     required?: boolean;
     packages?: string[];
     error_code?: string;
+    // The repository card (alpha.107, D-038 §12); absent from an older Panel
+    // or Agent.
+    confinement?: {
+        state: 'confined' | 'edited' | 'owner_rule' | 'not_written' | 'unknown' | string;
+        pin_path?: string;
+        owner_files?: string[];
+        kept?: string[];
+        kept_total?: number;
+        written_at?: string;
+        written_by?: string;
+        reason?: string;
+        detail?: string;
+    };
+    moving_packages?: { package: string; exact?: string }[];
+    key?: { fingerprint: string; created_at?: string; expires_at?: string; state: 'valid' | 'expiring' | 'expired' | 'unknown' | string };
+    lists?: { state: 'fresh' | 'missing' | 'expired' | 'unknown' | string; date?: string; valid_until?: string; origin?: string; suite?: string };
+    enabled_at?: string;
+    enabled_by?: string;
+    apt_errors?: string[];
+    apt_errors_at?: string;
 }
 
 // The two reads of the install dialogue. An answer that does not say whether a

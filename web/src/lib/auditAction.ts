@@ -95,6 +95,28 @@ export function auditActionText(action: string, t: Translate): string {
 // Eylemi kimin yaptığı. Panel, oturum açmış kullanıcısı olmayan eylem için
 // "system" adını yazar; yalnızca bu ad arayüz dilinde söylenir, kullanıcı
 // adları olduğu gibi gösterilir.
+// The details of an audit row (alpha.107, D-038 §16), said as short
+// "label: value" parts in the order they were written; empty and false values
+// are left out, true says the label alone.
+// Bir denetim satırının ayrıntıları, kısa "etiket: değer" parçaları olarak.
+export function auditDetailParts(details: unknown, label: (key: string) => string): string[] {
+    if (!details || typeof details !== 'object' || Array.isArray(details)) return [];
+    const parts: string[] = [];
+    for (const [key, value] of Object.entries(details as Record<string, unknown>)) {
+        if (value === null || value === undefined || value === '' || value === false) continue;
+        if (Array.isArray(value) && value.length === 0) continue;
+        if (key === 'from' || key === 'to' || key === 'operation' || key === 'code' || key === 'confirmed_sha256' || key === 'name' || key === 'pin_path' || key === 'owner_files' || key === 'by' || key === 'path' || key === 'from_type' || key === 'to_type' || key === 'reason' || key === 'effective' || key === 'installed_packages' || key === 'component') continue;
+        const text = value === true ? '' : Array.isArray(value) ? value.join(', ') : String(value);
+        parts.push(text ? `${label(key)}: ${text}` : label(key));
+    }
+    const record = details as Record<string, unknown>;
+    if (typeof record.from === 'string' || typeof record.to === 'string') {
+        parts.unshift(`${record.from || '—'} → ${record.to || '—'}`);
+    }
+    if (typeof record.component === 'string' && record.component) parts.unshift(record.component);
+    return parts;
+}
+
 export function auditActorName(username: string, t: Translate): string {
     return username === 'system' ? t('dashboard.audit.actor.system') : username;
 }

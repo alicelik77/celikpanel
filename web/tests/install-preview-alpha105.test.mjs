@@ -47,8 +47,8 @@ test('notable packages are grouped as they are said, and versions are read as th
   assert.equal(preview.shortCandidate('4:5.2.2-really+dfsg-1+deb13u1'), '5.2.2');
   assert.equal(preview.versionOfPackage('php8.3-fpm'), '8.3');
   assert.equal(preview.versionOfPackage('postgresql-17'), '17');
-  assert.equal(preview.phpPastSecuritySupport('8.1'), true);
-  assert.equal(preview.phpPastSecuritySupport('8.3'), false);
+  // alpha.107: no fixed threshold any more; the dated support table decides.
+  assert.equal(preview.phpPastSecuritySupport, undefined);
 });
 
 test('a tool whose proof after install failed is Not ready and says what to do, with the missing extensions', () => {

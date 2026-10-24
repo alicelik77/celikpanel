@@ -34,11 +34,11 @@ import {
     DISTRIBUTION_PHP_TOOLS,
     decodeInstallPreview,
     installPreviewURL,
-    phpPastSecuritySupport,
     shortCandidate,
     versionOfPackage,
     type InstallStep,
 } from '../lib/installPreview';
+import { supportFor, useSupportTable } from '../lib/supportTable';
 import { InstallPreviewNotes, installPreviewAckKey, installPreviewGate } from './InstallPreviewNotes';
 
 // A component as the rows have it: the installed bundle's dialogue says each
@@ -817,6 +817,7 @@ export function BundleInstallDialog({
     // another one (the same read the PHP-FPM part makes).
     const phpDefault = useRemote(phpChosen ? '/api/v1/service/candidate?id=php-fpm' : null, decodeCandidateVersion);
     const phpDefaultVersion = phpChosen && phpDefault.remote.state === 'known' ? shortCandidate(phpDefault.remote.value) : '';
+    const support = useSupportTable();
     const warnings: string[] = [];
     if (phpChosen) {
         for (const tool of tools) {
@@ -824,7 +825,8 @@ export function BundleInstallDialog({
                 warnings.push(t('services.bundles.warn.distroTool', { tool: nameOf(tool), default: phpDefaultVersion, version: phpChosen }));
             }
         }
-        if (phpPastSecuritySupport(phpChosen)) warnings.push(t('services.bundles.warn.eol', { version: phpChosen }));
+        // alpha.107: from the dated support table, never a fixed threshold.
+        if (supportFor(support, 'php', phpChosen).status === 'unsupported') warnings.push(t('services.bundles.warn.eol', { version: phpChosen }));
     }
     const title: TranslationKey = continuing ? 'services.bundles.dialog.titleContinue' : 'services.bundles.dialog.title';
     const choose = (id: string, pkg: string) => setPackages((previous) => ({ ...previous, [id]: pkg }));

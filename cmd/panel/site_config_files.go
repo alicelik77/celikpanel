@@ -263,8 +263,18 @@ func hostingAppRequest(state hostingRuntimeState) *transport.AppApplyRequest {
 		Command:             state.StartCommand.String,
 		Port:                int(state.AppPort.Int64),
 		NodeVersion:         state.RuntimeVersion.String,
-		RunAsUser:           "www-data",
+		RunAsUser:           hostingAppAccount(state),
 	}
+}
+
+// hostingAppAccount is the account a Node.js application runs as
+// (alpha.107, D-038 §6): the site's own user once it was made or moved so,
+// otherwise the shared web user, as before; nothing moves by itself.
+func hostingAppAccount(state hostingRuntimeState) string {
+	if state.AppRunAs.Valid && state.AppRunAs.String == "site" {
+		return services.SiteUsername(state.DomainName)
+	}
+	return "www-data"
 }
 
 func (p *Panel) appUnitRequest(ctx context.Context, domainID int) (*transport.AppApplyRequest, hostingRuntimeState, error) {

@@ -1,6 +1,7 @@
 import { useI18n } from '../i18n';
 import { PageHeader } from './PageHeader';
 import { ServerSetupSettings } from './ServerSetupChoice';
+import { OSReleaseCard } from './OSReleaseCard';
 
 // Server → Server setup (v0.1.0-alpha.100, owner 2026-10-22): the server's
 // purpose, the state of its setup, the setup wizard and extending what the
@@ -19,6 +20,8 @@ export function ServerSetupPage() {
             <PageHeader title={t('nav.serverSetup')} subtitle={t('setup.pageSubtitle')} breadcrumb={[t('common.home'), t('nav.serverSetup')]} />
             <div className="max-w-5xl">
                 <ServerSetupSettings />
+                {/* alpha.107 (D-038 §17): the release and what an OS upgrade changed. */}
+                <OSReleaseCard />
             </div>
         </div>
     );

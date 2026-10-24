@@ -233,6 +233,12 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "app", []string{http.MethodGet}
 	case "app/start", "app/stop", "app/restart":
 		match.kind, match.methods = "app", []string{http.MethodPost}
+	case "app/account":
+		// alpha.107 (D-038 §6): which account the application runs as.
+		match.kind, match.methods = "app-account", getPost
+	case "app/node-version":
+		// alpha.107 (D-038 §9): move a site to another Node.js patch, with proof.
+		match.kind, match.methods = "app-node-version", []string{http.MethodPost}
 	case "php":
 		match.kind, match.methods = "php", getPost
 	case "php/pool":
@@ -346,6 +352,10 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainHosting(w, r, match.domainID)
 	case "app":
 		p.handleDomainApp(w, r, match.domainID)
+	case "app-account":
+		p.handleDomainAppAccount(w, r, match.domainID)
+	case "app-node-version":
+		p.handleDomainAppNodeVersion(w, r, match.domainID)
 	case "php":
 		p.handleDomainPHPSettings(w, r)
 	case "php-pool":
@@ -1332,14 +1342,25 @@ func main() {
 	http.HandleFunc(serviceUninstallPath, panel.handleServiceUninstall)
 	http.HandleFunc(serviceRemovalImpactPath, panel.handleServiceRemovalImpact)
 	http.HandleFunc(serviceInstallPreviewPath, panel.handleServiceInstallPreview)
+	http.HandleFunc(roundcubeUpdatePath, panel.handleRoundcubeUpdate)
 	http.HandleFunc(phpToolsPath, panel.handlePHPTools)
 	http.HandleFunc(phpToolBindPath, panel.handlePHPToolBind)
 	http.HandleFunc(hostMutationReadinessPath, panel.handleHostMutationReadiness)
 	http.HandleFunc("/api/v1/firewall", panel.handleFirewall)
 	http.HandleFunc("/api/v1/repo", panel.handleRepo)
+	http.HandleFunc(repoConfinePreviewAPIPath, panel.handleRepoConfinePreview)
 	http.HandleFunc("/api/v1/hosting/capabilities", panel.handleHostingCapabilities)
 	http.HandleFunc("/api/v1/panel/certificate", panel.handlePanelCertificate)
 	http.HandleFunc(securityAuditPath, panel.handleSecurityAudit)
+	// alpha.107 (D-038 §4): the operating system's own security updates.
+	http.HandleFunc(osUpdatesPath, panel.handleOSUpdates)
+	http.HandleFunc(osUpdatesOriginsPath, panel.handleOSUpdatesOrigins)
+	// alpha.107 (D-038 §10): services waiting for a restart, a reboot.
+	http.HandleFunc(restartNeedsPath, panel.handleRestartNeeds)
+	http.HandleFunc(osReleaseAPIPath, panel.handleOSRelease)
+	http.HandleFunc(osReleaseReviewedAPIPath, panel.handleOSRelease)
+	// alpha.107 (D-038 §11): the dated support table, for every signed-in person.
+	http.HandleFunc(supportTablePath, panel.handleSupportTable)
 	http.HandleFunc("/dbtool/", panel.handleDBToolProxy)
 	http.HandleFunc("/webmail/", panel.handleWebmailProxy)
 
@@ -1469,6 +1490,8 @@ func main() {
 	// still held the host is retried, bounded, once the host is idle.
 	panel.startDeferredStartupMailWork(certificateDeferral, milterWiringDeferred)
 	panel.startPanelUpdateDiscovery(discoveryCtx)
+	// alpha.107 (D-038 §12): vendor repositories enabled before this
+	// release are confined once, in their own jobs.
 	protocol := "HTTP"
 	if tlsOn {
 		protocol = "HTTPS"

@@ -38,6 +38,10 @@ const (
 	serviceMutationStepIssuePanelCertificate    serviceMutationStepMethod = "Agent.IssuePanelCertificateV2"
 	serviceMutationStepEnableRepo               serviceMutationStepMethod = "Agent.EnableRepo"
 	serviceMutationStepDisableRepo              serviceMutationStepMethod = "Agent.DisableRepo"
+	serviceMutationStepConfineRepo              serviceMutationStepMethod = "Agent.ConfineRepoV1"
+	serviceMutationStepWriteVendorOrigins       serviceMutationStepMethod = "Agent.WriteVendorUpdateOriginsV1"
+	serviceMutationStepUpdateRoundcube          serviceMutationStepMethod = "Agent.UpdateRoundcubeV1"
+	serviceMutationStepMoveAppFilesOwner        serviceMutationStepMethod = "Agent.MoveAppFilesOwnerV1"
 	serviceMutationStepInstallNodeVersion       serviceMutationStepMethod = "Agent.InstallNodeVersion"
 	serviceMutationStepRemoveNodeVersion        serviceMutationStepMethod = "Agent.RemoveNodeVersion"
 	serviceMutationStepSetupVPN                 serviceMutationStepMethod = "Agent.SetupVPN"
@@ -209,6 +213,29 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 	case serviceMutationStepDisableRepo:
 		return claim.packageName == "" && claim.action == "disable" &&
 			serviceMutationJobMatches(job, "repo_disable", claim.target, "")
+
+	case serviceMutationStepMoveAppFilesOwner:
+		// alpha.107: one application's files, inside its own app_account job.
+		return strings.HasPrefix(claim.target, "site-") && claim.packageName == "" &&
+			(claim.action == "move" || claim.action == "restore") &&
+			serviceMutationJobMatches(job, "app_account", claim.target, "")
+
+	case serviceMutationStepUpdateRoundcube:
+		// alpha.107: webmail updated to one release in its own job.
+		return claim.target == "roundcube" && claim.packageName != "" && claim.action == "update" &&
+			serviceMutationJobMatches(job, "webmail_update", "roundcube", claim.packageName)
+
+	case serviceMutationStepWriteVendorOrigins:
+		// alpha.107: the owner confirmed the drop-in that adds the confined
+		// vendor repositories to the OS's automatic updates.
+		return claim.target == "unattended-upgrades" && claim.packageName == "" && claim.action == "origins" &&
+			serviceMutationJobMatches(job, "os_updates_origins", "unattended-upgrades", "")
+
+	case serviceMutationStepConfineRepo:
+		// alpha.107: an already enabled repository is confined to its
+		// component in its own job, once, after the Panel's upgrade.
+		return claim.packageName == "" && claim.action == "confine" &&
+			serviceMutationJobMatches(job, "repo_confine", claim.target, "")
 
 	case serviceMutationStepServiceAction:
 		if claim.packageName != "" ||
