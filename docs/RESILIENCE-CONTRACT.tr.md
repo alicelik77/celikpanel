@@ -6951,3 +6951,76 @@ iddiası değildir.
   değildi; "Hazır değil · eksik eklentiler" paket varlığını okur (paketleri olup bir
   eklentiyi yüklemeyen PHP taşımanın kanıtıyla bulunur). alpha.90 ile alpha.103
   girdilerinin açık bıraktığı her şey açık kalır. P0.1–P0.5 kısmi kalır.
+
+### Aday v0.1.0-alpha.105 (paketler sürümleri gösterir ve sahibe seçtirir; araçlar ilk kurulumda kanıtlanır; beklenmeyen kurulumlar önce gösterilir; Agent kurulum yolu değişti; 1, 2, 3 ve 6. ilkeler; D-034 değişikliği; D-022; D-024; D-025; D-029; D-033; D-036; 24 Ekim 2026)
+
+D-025 ilkeleri 1 (sahip çalışan hizmetlerini ve seçimini korur: bir kurulum başka
+bir PHP'yi, ikinci bir web sunucusunu ya da bir veritabanı sunucusunu adını
+söylemeden getirmemelidir), 2 (kanıtın anlamı vardır: bir kurulumun ne getireceğinin
+kanıtı paket yöneticisinin kendi benzetimidir; başarısız ya da meşgul bir okuma
+"denetlenemedi" kalır), 3 (güvensiz eylem sınırında durdurulur: Agent kurmadan hemen
+önce paket kilidi altında yeniden denetler ve onaylanmamış dikkat çeken bir paketi
+reddeder) ve 6 (hazır olma doğru kalır: kanıtı geçemeyen bir araç "Kurulu" değil,
+"Hazır değil"dir). **Hiçbir P0 işi kapanmaz ya da ilerlemez**; P0.1–P0.5 kısmi kalır
+ve her açık kabul işi açık kalır. Bu girdi, yerel güncelleme ve otomatik geri alma
+dayanıklılığının tamamlandığı iddiası değildir.
+
+- **Bu sürümün dokunduğu yerler.** *Agent:* kurulum yolu. Kurulumlar, isteğin
+  onaylamadığı dikkat çeken bir paketi reddeden bir benzetim korumasıyla çalışır
+  (APT `-s`, pacman `--print`; DNF ulaşılamaz). Yeni salt-okur
+  `Agent.ServiceInstallPreviewV1` (adım sahiplenmesi yok; paket kilidini asla
+  beklemez). Kendi adım sahiplenmesiyle yeni `Agent.ProvePHPToolV1`, aracın kendi
+  kurulum işinin içinde çalışır; ilk kurulumda doğrulanmış alpha.104 taşımasıyla
+  kurulu başka bir PHP'ye geçebilir. EnableRepo, InstallService ve ConfigureDBTools
+  işlerini tutulan adım altında çalışan yardımcılarda yapar. *Panel:*
+  `GET /api/v1/service/install-preview`; kurulum isteğinde `php_version`,
+  `check_installs`, `confirmed_installs` alanları (yalnız çalışan işlemde). *Web:*
+  paket penceresinin sürümleri, Değiştir, uyarılar, retler ve onay; bileşen kurulum
+  penceresinin onayı. *CI:* "Panel race — Server setup" parçası "(1/2)" ve "(2/2)"
+  olarak bölündü (54 ve 70 test), zaman sınırı değişmedi. Güncelleyiciye
+  (`update.sh`, sabitlemeleri dışında `get.sh`, sistem güncelleme işçisi, geri alma
+  ve kurtarma), şemaya ya da herhangi bir role **dokunmaz**; hiçbir güncelleme
+  dosyası değişmediği için sürüm kurtarma düzeneği koşturulmadı.
+- **Sahibin bağımsızlığı (D-022).** Yerel yapılandırma gerçeğin kendisi kalır;
+  önerilen sürüm işaretlenir, asla zorlanmaz; sahip bir uyarıya rağmen devam
+  edebilir. Yeni depo eklenmez.
+- **Kurtarma davranışı (D-024).** Reddedilen bir kurulum hiçbir şeyi değiştirmez ve
+  paketleri ile sonraki eylemi (onaylayın ya da başka bir PHP sürümü seçin) söyler.
+  Başarısız bir kanıt aracı kurulu ve neden ile sonraki eylemle (Yönet'te bir PHP
+  sürümü seçin) "Hazır değil" bırakır. Başarısız bir yedek taşıma önceki
+  yapılandırmayı geri koyar. Yeniden süren bir kurulum denetimi korur ama hiçbir
+  onay taşımaz, yani dikkat çeken hiçbir şey kurmaz; paketin PHP seçimi kaybolur ve
+  araç varsayılan kuralı alır. **Kurulu panel güncelleme yolu: değişmedi**; her
+  kurulu panel güncellemesini sahip, panelin kendi güncelleme ekranından başlatır.
+- **Şema, sürüm geçişi ve kurtarma.** Şema 44, geçiş yok; sürüm sırası 104'ten
+  105'e. *alpha.104'ten alpha.105'e:* güncelleme hiçbir şeyi taşımaz ya da kurmaz;
+  zaten kurulu araçlar bağlarını korur. Başarısız bir kurulum kanıtı yeni bir Agent
+  dosyasına kaydedilir (`/var/lib/celikpanel-agent-private/php-tool-proofs.json`,
+  sürüm 1) ve sonradan geçen bir kanıtla silinir. *alpha.105'ten alpha.104'e geri:*
+  alpha.104 o dosyayı okumaz, bu yüzden böyle bir araç alpha.104 kuralına göre
+  okunur; kurulumlar alpha.104 korumasına döner (bir kurulum asla paket kaldırmaz).
+- **Kanıt.** Agent {{GO_AGENT_COUNT}}; Panel ve iç paketler {{GO_PANEL_COUNT}}; web
+  {{WEB_COUNT}}. **Gerçek sistem, atılabilir bir Debian 13 sanal makinesi
+  (QEMU/KVM)**, aday dalından derlenen yapı etiketli Agent testi: yalın PHP 8.3
+  üzerinde tek başına phpMyAdmin'in benzetimi PHP 8.4 paketlerini getireceğini
+  söyledi ve onaysız kurulumu hiçbir şey kurulmadan reddedildi; PostgreSQL + PHP-FPM
+  8.3 + phpPgAdmin'de dikkat çeken paket yoktu, hiçbir `php8.4-*` ya da `apache2*`
+  paketi olmadan kuruldu ve phpPgAdmin 8.3'te kanıtlandı; FPM paketi olmayan bir PHP
+  sürümü reddedildi; 8.3'ün FPM'inde pgsql kapalıyken bir onarım kanıtı nedeniyle
+  başarısız oldu ve taşımadı, ilk kurulum kanıtı ise 8.4'e geçti ve kanıtlandı
+  ([kanıt](../deploy/e2e/bundle-versions/alpha105-debian13-20261024/README.md),
+  arşiv `cp-a105-evidence.tar.gz`, SHA-256
+  `183e4275b0a5811e3b7330f969965fdef03157d5696a6e836356829361d1f2f8`). Sanal makine,
+  `archlinux` WSL konuğundaki yeniden kullanılabilir temel kalıp
+  `/var/tmp/cp-base-images/debian13-base.qcow2` üzerinde bir katman olarak çalıştı
+  (24 Ekim 2026'da kuruldu; nginx ve üreticinin PHP deposu yapılandırılmış, PHP yok;
+  SHA-256 `e1c1173b677dcd4b19686241d3980804200106b6844868e9a0d55b4d4453caec`);
+  sonraki sürümler için saklanır. Bileşen testleri ve bir sanal makine, kurulu
+  sunuculardaki davranışı kanıtlamaz.
+- **Açık.** Kurulu bir sunucuda hiçbir şey ölçülmedi; pacman önizlemesi yalnız
+  bileşen testleriyle, DNF ulaşılamaz; Panel'in önizleme yolu, tarayıcı penceresi ve
+  paket sırası sanal makine denemesinin parçası değildi; dikkat çeken kurulum olarak
+  Apache yalnız bileşen testleriyle. Onayın kapsamadıkları: posta profili
+  kurulumları, Sunucu kurulumu kurulumları, sürüm listesinden ek bir PHP sürümü,
+  Onar. alpha.90–alpha.104 girdilerinin açık bıraktığı her şey açık kalır. P0.1–P0.5
+  kısmi kalır.

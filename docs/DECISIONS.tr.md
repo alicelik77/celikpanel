@@ -1005,7 +1005,7 @@ Sahibin 16 Ekim 2026 talimatı gereği gerçek sistem kaydı yok. Tarayıcı inc
 
 ## D-034 · Hazır paketler birer kısayoldur, ürün değildir: genel bir kayıt, her Bileşenler kategorisinin başında gösterilir, Pano'da tek bir kapı
 
-*17 Ekim 2026 (saat tarihi) · Bileşenler sayfasının tasarım incelemesinden (alpha.92 kaynağı, 16 Ekim 2026) ve sahibin 16 Ekim 2026 tarihli taslağından sonra sahip kararı; v0.1.0-alpha.94 adayı için kaynakta; kurulu bir sunucuda hiçbir şey ölçülmedi*
+*17 Ekim 2026 (saat tarihi) · Bileşenler sayfasının tasarım incelemesinden (alpha.92 kaynağı, 16 Ekim 2026) ve sahibin 16 Ekim 2026 tarihli taslağından sonra sahip kararı; v0.1.0-alpha.94 adayı için kaynakta; kurulu bir sunucuda hiçbir şey ölçülmedi · 17 Ekim 2026'da değiştirildi: her sunucuda aynı liste (alpha.95) · 22 Ekim 2026'da yeniden değiştirildi: paket, bir hizmet ile ona eşlik eden araçlardır (alpha.101) · 24 Ekim 2026'da yeniden değiştirildi: paketler sürümleri gösterir ve sahibe seçtirir, araçlar ilk kurulumda kanıtlanır, beklenmeyen kurulumlar önce gösterilir; v0.1.0-alpha.105 adayı için kaynakta; kurulu bir sunucuda hiçbir şey ölçülmedi*
 
 "Tek tıkla posta paketleri" başlıklı üç kart Bileşenler'in en üstünde, bütün
 bileşen satırlarının üstünde duruyordu. Telefonda ilk satır yaklaşık 1.300
@@ -1334,6 +1334,92 @@ adlandırır (Nginx'i kaldırmak artık iki veritabanı paketini de eksik bırak
 
 Yapılmayan: kurulu bir sunucuda hiçbir şey ölçülmedi; paketlerin bir veri
 kataloğuna taşınıp taşınmayacağı sahibe bırakıldı.
+
+### Değişiklik (24 Ekim 2026, saat tarihi): paketler sürümleri gösterir ve seçtirir; araçlar ilk kurulumda kanıtlanır; beklenmeyen kurulumlar önce gösterilir
+
+*Sahibin 24 Ekim 2026 kararları ("ok"); v0.1.0-alpha.105 adayı için kaynakta; kurulu bir sunucuda hiçbir şey ölçülmedi*
+
+Sahibin sorusu. Bir paket kuracağı sürümleri nasıl seçer, uyumlu olanları zorlamalı
+mı? Sahip, CelikPanel'in sahibin istediğini kurduğu ilkesini hatırlattı: **öner,
+uyar, asla dayatma**.
+
+Benimsenen kurallar (yapıldığı gibi):
+
+1. **Paket penceresi her sürümü gösterir ve sahibin değiştirmesine izin verir.**
+   Pencere kuracağı her bileşen için gelecek sürümü söyler ("8.4 · dağıtımın sürümü
+   · önerilen"); **Değiştir**, o bileşenin kendi kurulumunun zaten sunduğu sürümleri
+   listeler (yönetilen deposu: PHP-FPM için üreticinin PHP deposu, PostgreSQL için
+   PGDG; yeni depo yok). Zaten kurulu bir parça sürümünü söyler ("PostgreSQL 16.15 ·
+   zaten kurulu") ve değiştirilmez. Önerilen sürüm dağıtımın kendi sürümüdür;
+   işaretlenir, asla zorlanmaz. PHP-FPM'e bir sürüm seçildiğinde paketin veritabanı
+   aracı o PHP için kurulur ve ona bağlanır ("PHP 8.3 üzerinde çalışır"). Node.js
+   hiçbir pakette yok.
+2. **Bilinen uyumsuzlukta uyar; yalnız çalışamayacak olanı reddet.** Bir aracın
+   eklenti paketinin (ya da FPM paketinin) kurulabilir adayı olmayan bir PHP sürümü
+   seçilirse, hiçbir şey değişmeden reddedilir; paketler ve sonraki eylem söylenir:
+   "phpPgAdmin burada PHP 8.6 üzerinde çalışamaz: php8.6-pgsql bu sunucunun
+   depolarında yok. PHP-FPM için başka bir PHP sürümü seçin." Dağıtımdan gelen bir
+   aracı dağıtımınkinden başka bir PHP'ye koymak ve güvenlik desteği bitmiş bir PHP
+   (8.2'nin altı) yalnız uyarıdır ("… PHP 8.5 genellikle çalışır, ama dağıtım
+   bunu sınamaz. Devam edebilirsiniz."); sahip devam edebilir.
+3. **Araçlar ilk kurulumda kanıtlanır.** phpMyAdmin, phpPgAdmin ya da Roundcube
+   kurulup yapılandırıldıktan sonra alpha.104'teki taşımayla aynı kanıttan geçer
+   (aracın kendi soketi üzerinden CelikPanel'in PHP denetimi, sonra aracın kendi
+   sayfası, sınırlı yeniden deneme). İlk kurulum kanıtı geçemezse, aracın eklenti
+   paketleri zaten kurulu olan diğer PHP sürümleri sırayla denenir (önce dağıtımın
+   varsayılanı, sonra en yenisi); her biri, başarısız olunca önceki yapılandırmayı
+   geri koyan doğrulanmış taşımayla. Hiçbiri çalışmazsa araç kurulu kalır ve nedeni
+   (örneğin PHP'de hangi eklentinin eksik olduğu) ve sonraki eylemle (Yönet'te bir
+   PHP sürümü seçin) "Hazır değil" okunur. Zaten kurulu bir araç (onarım) kanıtlanır
+   ama asla taşınmaz; alpha.104 kuralı geçerlidir. Sonradan geçen bir kanıt
+   (Yönet'te bir taşıma) "Hazır değil"i kaldırır.
+4. **Beklenmeyen kurulumlar hiçbir şey değişmeden önce gösterilir.** Paket
+   yöneticisinin kendi kurulum benzetimi (APT `-s`; pacman `--print`; bir pakette
+   bütün adımları birlikte) istenen paketlerin ötesinde neyi kuracağını söyler.
+   Beklenen: istenen paketler, kurulumun adını verdiği ya da mevcut bir PHP
+   sürümünün paketleri, sıradan kütüphaneler ve sunucuda zaten olan bir bileşenin
+   her şeyi. Dikkat çeken: yeni bir PHP sürümünün paketleri, Apache (apache2,
+   apache2-bin, libapache2-mod-php*), başka bir katalog bileşeninin paketi, bir
+   veritabanı sunucusu. Dikkat çeken paketler paket penceresinde ve bir bileşenin
+   kendi kurulum penceresinde adlarıyla ve düz bir gerekçeyle listelenir ("Bu,
+   seçmediğiniz paketleri de kurar:") ve sahip "Okudum; bu paketleri de kur."
+   kutusunu işaretleyene kadar Kur'u tutar. Okuma sürerken gösterilir. Başarısız
+   olan ya da paket yöneticisini meşgul bulan bir okuma "denetlenemedi" der ve Kur'u
+   tutmaz, çünkü her kurulum çalışmadan hemen önce sunucuda, paket kilidi altında
+   yeniden denetlenir ve sahibin onaylamadığı dikkat çeken bir paketi getirecekse
+   reddedilir (hiçbir şey kurulmaz).
+5. **Sürekli tümleştirme.** "Panel race — Server setup" işi test adına göre "(1/2)"
+   ve "(2/2)" olarak bölündü (54 ve 70 test); zaman sınırı yükseltilmedi.
+
+Uygulama notları (sahip kararı değildir). Yeni salt-okur
+`Agent.ServiceInstallPreviewV1` (adım yok; paket kilidini asla beklemez) ve
+`Agent.ProvePHPToolV1` (aracın kendi kurulum işinin içinde);
+`GET /api/v1/service/install-preview`; kurulum isteğinde `php_version`,
+`check_installs` ve `confirmed_installs` alanları. Bunlar yalnız çalışan işlemde
+yaşar: kesilip yeniden süren bir kurulum denetimi korur ama hiçbir onay taşımaz,
+yani dikkat çeken hiçbir şey kurmaz; paketin PHP seçimi ise kaybolur (araç o zaman
+varsayılan kuralı alır). Gerçek sistem denemesi, PHP 8.3 seçilmiş bir paketin başka
+PHP getirmediğini (aracın 8.3 eklentileri bağımlılıklarını karşılar), yalın PHP
+8.3 üzerinde tek başına phpMyAdmin'in ise varsayılan PHP 8.4'ün paketlerini
+çekeceğini gösterdi; bu söylendi ve onaysızken reddedildi.
+
+Bunun izin vermediği şeyler: kurulu bir sunucuda değişiklik yok. Kurulu panelleri
+yine yalnız sahipleri, panelin kendi güncelleme ekranından günceller. Onayın
+kapsamadıkları: posta profili kurulumları (Web postası paketi), Sunucu kurulumu
+kurulumları, PHP-FPM sürüm listesinden eklenen ek bir PHP sürümü ve Onar; bunlar
+alpha.104 güvencesini korur (bir kurulum asla paket kaldırmaz).
+
+Diğerleriyle ilişkisi. D-022: yerel yapılandırma gerçeğin kendisi kalır ve seçim
+sahibindir. D-024: her ret nedeni, kimin işlem yapacağını ve sonraki eylemi söyler;
+doğrulanmış bir ret ile bilinmeyen bir okuma ayrı tutulur. D-025: Agent'ın kurulum
+yolu değişti, bu yüzden kanıtı kaydedildi (RESILIENCE-CONTRACT, alpha.105). D-029:
+kurulum istekleri kimliklerini korur. D-033: okuma beklerken gösterilir. D-036:
+sunulan sürümler paket veritabanının yanıtıdır.
+
+Yapılmayan: kurulu bir sunucuda hiçbir şey ölçülmedi; pacman önizlemesi yalnız
+bileşen testleriyle kapsanır; DNF ulaşılamaz kalır. Dal koruması eski "Panel race —
+Server setup" denetim adını istiyorsa, sahibin onu iki yeni adla değiştirmesi
+gerekir.
 
 
 ---

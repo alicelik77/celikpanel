@@ -7685,3 +7685,78 @@ update and automatic-rollback resilience is complete.
   the packages but does not load an extension is found by a move's proof).
   Everything the alpha.90 to alpha.103 entries leave open stays open. P0.1 to P0.5
   stay partial.
+
+### Candidate v0.1.0-alpha.105 (bundles show and let the owner choose versions; tools proved on first install; unexpected installs shown first; Agent install path changed; invariants 1, 2, 3 and 6; D-034 amendment; D-022; D-024; D-025; D-029; D-033; D-036; 2026-10-24)
+
+D-025 invariants 1 (the owner retains working services and his choice: an install
+must not bring another PHP, a second web server or a database server without naming
+it), 2 (evidence has a meaning: the package manager's own simulation is the evidence
+of what an install brings; a read that fails or is busy stays "could not be
+checked"), 3 (the unsafe action is stopped at its boundary: the Agent checks again
+under the package lock right before installing and refuses an unconfirmed notable
+package) and 6 (readiness stays truthful: a tool whose proof fails is "Not ready",
+not "Installed"). **No P0 item is closed or advanced**; P0.1 to P0.5 stay partial
+and every open acceptance item stays open. This entry is not a claim that the
+native update and automatic-rollback resilience is complete.
+
+- **What this release touches.** *Agent:* the install path. Installs run under a
+  simulation guard (APT `-s`, pacman `--print`; DNF unreachable) that refuses a
+  notable package the request did not confirm. New read-only
+  `Agent.ServiceInstallPreviewV1` (no step claim; never waits for the package
+  lock). New `Agent.ProvePHPToolV1` with its own step claim, run inside the tool's
+  own install job; on a first install it may fall back to another installed PHP
+  through the verified alpha.104 move. EnableRepo, InstallService and
+  ConfigureDBTools keep their work in helpers that run under the held step.
+  *Panel:* `GET /api/v1/service/install-preview`; install request fields
+  `php_version`, `check_installs`, `confirmed_installs` (in the running operation
+  only). *Web:* the bundle dialogue's versions, Change, warnings, refusals and the
+  confirmation; the component install dialogue's confirmation. *CI:* the "Panel
+  race — Server setup" shard split into "(1/2)" and "(2/2)" (54 and 70 tests),
+  timeout unchanged. It does **not** touch the updater (`update.sh`, `get.sh`
+  beyond its pins, the system update worker, rollback and recovery), the schema or
+  any role; the release-recovery harness was not run because no update file
+  changed.
+- **Owner independence (D-022).** Native configuration stays the truth; the
+  recommended version is marked, never forced; the owner may go ahead past a
+  warning. No new repository is added.
+- **Recovery behaviour (D-024).** A refused install changes nothing and names the
+  packages and the next action (confirm, or choose another PHP version). A failed
+  proof leaves the tool installed and "Not ready" with the cause and the next
+  action (choose a PHP version in Manage). A failed fallback move puts the previous
+  configuration back. A resumed install keeps the check with nothing confirmed, so
+  it installs nothing notable; the bundle's PHP choice is lost and the tool gets
+  the default rule. **Installed-panel update path: unchanged**; the owner starts
+  every installed-panel update from the panel's own update screen.
+- **Schema, version transition and recovery.** Schema 44, no migration; the
+  release sequence moves 104 to 105. *alpha.104 to alpha.105:* nothing moves or is
+  installed by the update; tools already installed keep their binding. A failed
+  install proof is recorded in a new Agent file
+  (`/var/lib/celikpanel-agent-private/php-tool-proofs.json`, version 1) and cleared
+  by a later proof that passes. *alpha.105 back to alpha.104:* alpha.104 does not
+  read that file, so such a tool reads by alpha.104's rule; installs return to the
+  alpha.104 guard (an install never removes a package).
+- **Evidence.** Agent {{GO_AGENT_COUNT}}; Panel and internal packages
+  {{GO_PANEL_COUNT}}; web {{WEB_COUNT}}. **Real system, one disposable Debian 13 VM
+  (QEMU/KVM)**, the build-tagged Agent test from the candidate branch: phpMyAdmin
+  alone on a bare PHP 8.3 was simulated to bring PHP 8.4's packages and its
+  unconfirmed install was refused with nothing installed; PostgreSQL + PHP-FPM 8.3
+  + phpPgAdmin had no notable package, installed with no `php8.4-*` or `apache2*`
+  package, and phpPgAdmin was proved on 8.3; a PHP version without an FPM package
+  was refused; with pgsql off for 8.3's FPM, a repair proof failed with the cause
+  and did not move, while a first-install proof fell back to 8.4 and was proved
+  ([evidence](../deploy/e2e/bundle-versions/alpha105-debian13-20261024/README.md),
+  archive `cp-a105-evidence.tar.gz`, SHA-256
+  `183e4275b0a5811e3b7330f969965fdef03157d5696a6e836356829361d1f2f8`). The VM ran
+  as an overlay of the reusable base image
+  `/var/tmp/cp-base-images/debian13-base.qcow2` in the `archlinux` WSL guest (built
+  2026-10-24; nginx and the vendor PHP repository configured, no PHP; SHA-256
+  `e1c1173b677dcd4b19686241d3980804200106b6844868e9a0d55b4d4453caec`), kept for
+  later releases. Component tests and one virtual machine do not establish
+  behaviour on installed servers.
+- **Open.** Nothing measured on an installed server; pacman's preview by component
+  tests only, DNF unreachable; the Panel's preview route, the browser dialogue and
+  the bundle sequence were not part of the VM run; Apache as a notable install by
+  component tests only. Not covered by the confirmation: mail profile installs,
+  Server setup installs, an extra PHP version from the versions list, Repair.
+  Everything the alpha.90 to alpha.104 entries leave open stays open. P0.1 to P0.5
+  stay partial.

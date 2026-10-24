@@ -1018,7 +1018,7 @@ uses a loopback mock; nothing was measured on an installed server.
 
 ## D-034 · Ready bundles are shortcuts, not products: a general registry, shown at the head of each Components category, one door on the Dashboard
 
-*October 17, 2026 (clock date) · Owner decision after the design review of the Components page (alpha.92 source, 2026-10-16) and the owner's mockup of 2026-10-16; in source for the v0.1.0-alpha.94 candidate; nothing measured on an installed server*
+*October 17, 2026 (clock date) · Owner decision after the design review of the Components page (alpha.92 source, 2026-10-16) and the owner's mockup of 2026-10-16; in source for the v0.1.0-alpha.94 candidate; nothing measured on an installed server · Amended 2026-10-17: the same list on every server (alpha.95) · Amended 2026-10-22: a bundle is a service with its companion tools (alpha.101) · Amended 2026-10-24: bundles show and let the owner choose versions, tools are proved on first install, unexpected installs are shown first; in source for the v0.1.0-alpha.105 candidate; nothing measured on an installed server*
 
 The three "One-click mail stacks" cards stood at the top of Components, above
 every component row. On a phone the first row came after about 1,300 px of
@@ -1342,6 +1342,96 @@ the merged bundles (removing Nginx now leaves both database bundles incomplete).
 
 Not done: nothing is measured on an installed server; whether bundles should move
 to a data catalogue is left to the owner.
+
+### Amendment (2026-10-24, clock date): bundles show and let you choose versions; tools are proved on first install; unexpected installs are shown first
+
+*Owner decisions of 2026-10-24 ("ok"); in source for the v0.1.0-alpha.105 candidate; nothing measured on an installed server*
+
+What the owner asked. How does a bundle choose the versions it installs, and should
+it force compatible ones? The owner recalled CelikPanel's principle that the owner
+installs what he wants: **recommend, warn, never impose**.
+
+The rules adopted (as built):
+
+1. **The bundle dialogue shows each version and lets the owner change it.** For
+   each component it installs, the dialogue says the version that will come
+   ("8.4 · the distribution’s version · recommended"); **Change** lists the
+   versions that component's own install already offers (its managed repository:
+   PHP-FPM through the vendor PHP repository, "8.3: from Sury PHP
+   (packages.sury.org)"; PostgreSQL through PGDG; no new repository). A part
+   already installed says its version ("PostgreSQL 16.15 · already installed") and
+   is not changed. The recommended version is the distribution's own; it is marked,
+   never forced. When PHP-FPM gets a chosen version, the bundle's database tool is
+   installed for that PHP and bound to it ("Runs on PHP 8.3"). Node.js is in no
+   bundle.
+2. **Warn on a known incompatibility; refuse only what cannot work.** A chosen PHP
+   version for which a tool's extension package (or the FPM package) has no
+   installation candidate is refused before anything changes, naming the packages
+   and the next action: "phpPgAdmin cannot run on PHP 8.6 here: php8.6-pgsql is not
+   available from this server’s repositories. Choose another PHP version for
+   PHP-FPM." A distribution tool put on a PHP other than the distribution's, and a
+   PHP past security support (below 8.2), are plain warnings ("… PHP 8.5 usually
+   works, but the distribution does not test it. You may go ahead."); the owner may
+   go ahead.
+3. **Tools are proved on first install.** After phpMyAdmin, phpPgAdmin or Roundcube
+   is installed and configured, it gets the same proof as a move in alpha.104
+   (CelikPanel's PHP check through the tool's own socket, then the tool's own page,
+   with a bounded retry). If a first install fails its proof, the other installed
+   PHP versions that already have the tool's extension packages are tried in order
+   (the distribution's default first, then the newest), each through the verified
+   move that puts the previous configuration back when it fails. If none works, the
+   tool stays installed and reads "Not ready" with the cause (for example which
+   extension PHP lacks) and the next action (choose a PHP version in Manage). A tool
+   that was already installed (a repair) is proved but never moved; the alpha.104
+   rule stands. A later proof that passes (a move in Manage) clears "Not ready".
+4. **Unexpected installs are shown before anything changes.** The package manager's
+   own simulation of the install (APT `-s`; pacman `--print`; for a bundle, all its
+   steps together) names what it would install beyond the requested packages.
+   Expected: the requested packages, packages of a PHP version the install names or
+   that is present, ordinary libraries, and anything of a component already on the
+   server. Notable: a new PHP version's packages, Apache (apache2, apache2-bin,
+   libapache2-mod-php*), another catalogue component's package, a database server.
+   Notable packages are listed by name with a plain reason ("This also installs
+   packages you did not choose:") in the bundle dialogue and in a component's own
+   install dialogue, and hold Install until the owner ticks "I have read this;
+   install these packages as well." The read is shown while it runs. A read that
+   fails or finds the package manager busy says "could not be checked" and does not
+   hold Install, because each install is checked again on the server right before it
+   runs, under the package lock, and is refused (nothing installed) if it would
+   bring a notable package the owner did not confirm.
+5. **Continuous integration.** The "Panel race — Server setup" job was split into
+   "(1/2)" and "(2/2)" by test name (54 and 70 tests); its time limit was not
+   raised.
+
+Implementation notes (not owner decisions). New read-only
+`Agent.ServiceInstallPreviewV1` (no step; never waits for the package lock) and
+`Agent.ProvePHPToolV1` (inside the tool's own install job);
+`GET /api/v1/service/install-preview`; install request fields `php_version`,
+`check_installs` and `confirmed_installs`. These live in the running operation
+only: an interrupted install that resumes keeps the check with nothing confirmed,
+so it installs nothing notable, and the bundle's PHP choice is lost (the tool then
+gets the default rule). The real-system run showed that a bundle with PHP 8.3
+chosen brings no other PHP (the tool's 8.3 extensions satisfy its dependencies),
+while phpMyAdmin alone on a bare PHP 8.3 would pull the default PHP 8.4's packages;
+that was said, and refused while unconfirmed.
+
+What this does not authorise: no installed-server change. Installed panels are
+still updated only by their owners from the panel's own update screen. Not covered
+by the confirmation: mail profile installs (Webmail bundle), Server setup installs,
+an extra PHP version added from the PHP-FPM versions list, and Repair; they keep the
+alpha.104 guarantee (an install never removes a package).
+
+Relation to the rest. D-022: the native configuration stays the truth and the
+choice is the owner's. D-024: each refusal says the reason, who acts and the next
+action; a verified refusal and an unknown read are kept apart. D-025: the Agent's
+install path changed, so its evidence is recorded (RESILIENCE-CONTRACT, alpha.105).
+D-029: install requests keep their identity. D-033: the read is shown while it
+waits. D-036: the versions offered are the package database's answer.
+
+Not done: nothing is measured on an installed server; pacman's preview is covered
+by component tests only; DNF stays unreachable. If branch protection requires the
+old check name "Panel race — Server setup", the owner must replace it with the two
+new names.
 
 
 ---

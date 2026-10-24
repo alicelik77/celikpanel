@@ -10223,3 +10223,43 @@ on an installed server; phpPgAdmin's health on Frankfurt was not confirmed
 separately; the vendor repository's newer php-* meta packages may change which PHP
 the distribution's packages depend on. P0.1-P0.5 stay **partial**; this entry
 closes and advances nothing.
+
+### Choosing versions in a bundle; installs that bring more than you chose; a tool that is not ready after its install (D-034 amendment, 2026-10-24)
+
+In source for the v0.1.0-alpha.105 candidate (not published; nothing measured on an
+installed server). **Who acts in every case below:** the administrator, from
+Components. Nothing needs to be done on the server.
+
+- **The dialogue lists packages you did not choose.** "This also installs packages
+  you did not choose:" names them with a reason, for example "PHP 8.4 (…): another
+  PHP version the packages ask for. It is installed beside the PHP you chose and is
+  updated with the system." or "Apache (…): another web server. CelikPanel serves
+  through Nginx; Apache would be installed as well and may try to use port 80."
+  Install waits. **Next action:** tick "I have read this; install these packages as
+  well." and press Install, or press Change and choose the recommended version (or
+  another one) so the list goes away. **How it resumes:** the install starts when
+  you press Install; nothing has changed before that.
+- **A chosen PHP version is refused.** For example "phpPgAdmin cannot run on PHP
+  8.6 here: php8.6-pgsql is not available from this server’s repositories. Choose
+  another PHP version for PHP-FPM." Nothing has changed. **Next action:** press
+  Change and choose another version. A warning such as "… PHP 8.5 usually works,
+  but the distribution does not test it. You may go ahead." does not stop you.
+- **"Could not be checked".** The read failed or the package manager was busy.
+  Install is not held: the server checks again right before it installs and
+  refuses, with nothing installed, if a package you did not confirm would come.
+  **Next action:** install, or wait a moment and open the dialogue again to see the
+  list first.
+- **The install was refused on the server.** The answer names the packages that
+  were not confirmed; nothing was installed. **Next action:** open the dialogue
+  again, read the list and confirm it, or choose another version.
+- **A tool reads "Not ready" after its install.** phpMyAdmin, phpPgAdmin or
+  Roundcube was installed but did not answer on any installed PHP version that has
+  its extensions; the row says the cause (for example which extension PHP lacks).
+  The tool stays installed. **Next action:** open the tool's Manage window and
+  choose a PHP version. **How it resumes:** when that move's proof passes, "Not
+  ready" goes away.
+
+Unchanged: sites choose their PHP in their own settings; installed panels are
+updated only by their owners from the panel's own update screen. Open: nothing
+measured on an installed server. P0.1-P0.5 stay **partial**; this entry closes and
+advances nothing.
