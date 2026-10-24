@@ -255,6 +255,16 @@ type ServiceInstallPreviewResponse struct {
 	Removes       []string                `json:"removes"`
 	Refusals      []InstallPreviewRefusal `json:"refusals"`
 	Error         string                  `json:"error,omitempty"`
+	// ExistingData (alpha.107, D-038 §8): data an earlier install of a
+	// database engine left on this server, which the install will use as
+	// it is. Additive.
+	ExistingData []ExistingData `json:"existing_data,omitempty"`
+}
+
+// ExistingData is one data directory a previous install left.
+type ExistingData struct {
+	Component string `json:"component"`
+	Path      string `json:"path"`
 }
 
 type InstallServiceResponse struct {
@@ -334,6 +344,11 @@ type ServiceRemovalPreviewResponse struct {
 	Collateral    []PackageRemovalCollateral `json:"collateral"`
 	BoundTools    []string                   `json:"bound_tools"`
 	Error         string                     `json:"error,omitempty"`
+	// KeepsData (alpha.107, D-038 §8): the removal keeps the component's data
+	// and configuration (apt remove, not purge); DataPaths names where it
+	// stays on this server. Additive.
+	KeepsData bool     `json:"keeps_data,omitempty"`
+	DataPaths []string `json:"data_paths,omitempty"`
 }
 
 type ConfigureDBToolsResponse struct {

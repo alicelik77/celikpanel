@@ -90,6 +90,10 @@ func serviceRemovalPreviewWithOps(
 		return
 	}
 	resp.Requested = append([]string{}, work.request.Packages...)
+	if work.request.KeepData {
+		resp.KeepsData = true
+		resp.DataPaths = removalDataPaths(svc, work.family, req.Package)
+	}
 	if work.boundTools != nil {
 		resp.BoundTools = append([]string{}, work.boundTools...)
 	}

@@ -66,6 +66,8 @@ const stub = dataModule(`
   export const ServiceShell = (props) => React.createElement('main', null, props.children);
   export const ComponentPanels = () => React.createElement('aside', null, 'component-panels');
   export const HelpButton = () => null;
+  // alpha.107: the repository card has its own mounted tests.
+  export const RepoCard = () => null;
   export const DNSEngineCard = () => React.createElement('aside', null, 'dns-engine-card');
   export const ServerSetupDNSAccess = () => null, ServerSetupDNSManagement = () => null;
   export const dnsEngineText = (locale, key) => key;

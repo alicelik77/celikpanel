@@ -70,11 +70,19 @@ export function InstallPreviewNotes({
             />
         );
     }
+    const existing = (preview.existingData ?? []).length > 0 && (
+        <p className="mt-3 rounded-lg border border-border bg-surface-2 p-3 text-sm leading-6 text-fg" data-install-preview-existing="">
+            <KeepWords text={t('services.installPreview.existingData', { paths: (preview.existingData ?? []).map((item) => item.path).join(', ') })} />
+        </p>
+    );
     if (preview.notable.length === 0) {
         return (
-            <p className="mt-3 text-sm leading-6 text-fg-muted" data-install-preview="clean">
-                {t('services.installPreview.nothingElse')}
-            </p>
+            <>
+                {existing}
+                <p className="mt-3 text-sm leading-6 text-fg-muted" data-install-preview="clean">
+                    {t('services.installPreview.nothingElse')}
+                </p>
+            </>
         );
     }
     const groups = notableGroups(preview.notable);

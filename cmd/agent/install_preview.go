@@ -371,6 +371,8 @@ type installPreviewOps struct {
 	// exactDefault (alpha.107): the exact package a plain install of the
 	// component installs with its vendor repository enabled ("" for none).
 	exactDefault func(ctx context.Context, svc *core.ManagedService) (string, error)
+	// existingData (alpha.107): an engine's data a previous install left.
+	existingData func(svc *core.ManagedService, pkg string) []transport.ExistingData
 	lock         func() bool
 	unlock              func()
 }
@@ -401,6 +403,9 @@ func serviceInstallPreviewWithOps(ctx context.Context, req *transport.ServiceIns
 			return
 		}
 		components = append(components, svc.ID)
+		if ops.existingData != nil {
+			resp.ExistingData = append(resp.ExistingData, ops.existingData(svc, step.Package)...)
+		}
 		if svc.ID == "roundcube" {
 			// Webmail is a verified tarball, not a package; its PHP
 			// extensions are prepared for the version it is bound to.
@@ -557,8 +562,14 @@ func (a *Agent) ServiceInstallPreviewV1(req *transport.ServiceInstallPreviewRequ
 		installedComponents: func() map[string]bool { return a.installedServiceSetWithProfile(profile) },
 		installed:           func(pkg string) bool { return packageInstalledForProfile(profile, pkg) },
 		available:           func(string) bool { return false },
-		lock:                packageOperationMu.TryLock,
-		unlock:              packageOperationMu.Unlock,
+		existingData: func(svc *core.ManagedService, pkg string) []transport.ExistingData {
+			if a.serviceInstalledWithProfile(svc, profile) && pkg == "" {
+				return nil
+			}
+			return existingEngineData(svc, family, pkg)
+		},
+		lock:   packageOperationMu.TryLock,
+		unlock: packageOperationMu.Unlock,
 	}
 	switch family {
 	case "apt":

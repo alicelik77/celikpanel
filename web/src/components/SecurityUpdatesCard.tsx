@@ -117,7 +117,14 @@ function UpdatesFacts({ value, onChanged }: { value: OSUpdates; onChanged: () =>
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ expected_sha256: dropIn.proposed_sha256 }),
             });
-            const body = (await res.json().catch(() => ({}))) as { effective?: boolean; origins?: string[]; error?: string };
+            const raw = await res.text();
+            let body: { effective?: boolean; origins?: string[]; error?: string };
+            try {
+                body = JSON.parse(raw);
+            } catch (error) {
+                // An answer that is not JSON is said as it came.
+                body = { error: raw.slice(0, 200) || String(error) };
+            }
             if (!res.ok) {
                 setResult({ tone: 'bad', text: t('life.updates.dropIn.failed', { reason: body.error ?? '' }) });
             } else if (body.effective) {

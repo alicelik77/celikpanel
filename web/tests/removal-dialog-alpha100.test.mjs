@@ -462,6 +462,11 @@ test('the sentence chooser follows the uninstall path for each class', () => {
   assert.deepEqual(db.warnings, ['services.removal.warn.databaseFiles']);
   assert.deepEqual(removalSentences({ ...base, removal: 'unsupported' }), { removed: ['services.removal.removed.unsupported'], kept: [], warnings: [], command: null });
   assert.deepEqual(removalSentences(decodeRemovalImpact(impact({ removal: 'webmail_tree' }))).removed, ['services.removal.removed.webmailTree']);
+  // alpha.107 (D-038 §8): a database engine is removed, not purged; the data stays and the dialogue says where.
+  const engine = { ...base, simulation: { state: 'checked', remove: ['postgresql-17'], collateral: [], bound_tools: [], default_runtime: false, refuses: false, keeps_data: true, data_paths: ['/var/lib/postgresql/17'] } };
+  assert.deepEqual(removalSentences(engine), { removed: ['services.removal.removed.stopUnits', 'services.removal.removed.aptKeepData'], kept: ['services.removal.kept.engineData'], warnings: [], command: 'apt-get remove' });
+  assert.equal(page.removalDataPathsText(engine), '/var/lib/postgresql/17');
+  assert.match(enComponents['services.removal.kept.engineData'], /\{paths\}/);
   for (const bad of [null, {}, impact({ hosted: { kind: 'planets', count: 1, names: [], blocks_removal: false } }), impact({ required_by: [1] }), impact({ hosted: { kind: 'sites', count: -1, names: [], blocks_removal: true } }),
     impact({ has_units: 'yes' }), impact({ setup_required: undefined }), impact({ removal: 'maybe' }),
     impact({ hosted: { kind: 'firewall', count: 0, names: [], blocks_removal: false, firewall: { known: true, enabled: true, open_ports: -1 } } })]) {
@@ -492,7 +497,8 @@ test('every removal text exists in English and Turkish in the components part, T
     assert.match(enComponents[key], /rules already loaded may stay until the server restarts/);
   }
   assert.doesNotMatch(Object.values(enComponents).join('\n'), /no longer enforced/);
-  assert.match(enComponents['services.removal.nothing'], /^CelikPanel records nothing else on this server that depends on \{name\}\.$/);
+  // alpha.107 (D-038 §13): "nothing CelikPanel knows of", never "nothing".
+  assert.match(enComponents['services.removal.nothing'], /^Nothing CelikPanel knows of on this server depends on \{name\}\. Something installed outside CelikPanel may still use it\.$/);
   assert.match(enComponents['services.removal.kept.packages'], /decided by your distribution/);
 });
 

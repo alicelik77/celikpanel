@@ -3988,6 +3988,9 @@ export interface RemovalSimulation {
     bound_tools: string[];
     default_runtime: boolean;
     refuses: boolean;
+    /** alpha.107 (D-038 §8): a database engine is removed, not purged; where its data stays. */
+    keeps_data?: boolean;
+    data_paths?: string[];
 }
 const SIMULATION_STATES: ReadonlySet<string> = new Set(['checked', 'busy', 'unknown', 'unsupported', 'not_installed']);
 const COLLATERAL_REASONS: ReadonlySet<string> = new Set(['component', 'reverse_dependency', 'would_install']);
@@ -4012,6 +4015,7 @@ function decodeRemovalSimulation(value: unknown): RemovalSimulation | null {
     return {
         state: v.state as RemovalSimulation['state'], remove: v.remove, collateral, bound_tools: v.bound_tools,
         default_runtime: v.default_runtime, refuses: v.refuses,
+        ...(v.keeps_data === true ? { keeps_data: true, data_paths: isStrings(v.data_paths) ? v.data_paths : [] } : {}),
     };
 }
 const REMOVAL_HOSTED_KINDS: ReadonlySet<string> = new Set(['sites', 'php_sites', 'node_sites', 'databases', 'mail_addresses', 'mail_domains', 'mailboxes', 'certificates', 'firewall', 'unrecorded', 'vpn_peers', 'ftp_accounts']);
@@ -4144,6 +4148,18 @@ export function removalSentences(impact: RemovalImpact): { removed: TranslationK
     // takes the dependencies nothing else needs.
     const removed: TranslationKey[] = impact.has_units ? ['services.removal.removed.stopUnits'] : [];
     let command: string | null = null;
+    // alpha.107 (D-038 §8): a database engine is removed, not purged: its
+    // clusters, databases and configuration stay where the dialogue says.
+    if (impact.simulation?.keeps_data) {
+        removed.push(impact.package_family === 'pacman' ? 'services.removal.removed.pacman' : 'services.removal.removed.aptKeepData');
+        if (impact.all_versions) removed.push('services.removal.removed.allVersions');
+        return {
+            removed,
+            kept: ['services.removal.kept.engineData'],
+            warnings: [],
+            command: impact.package_family === 'pacman' ? 'pacman -Rns' : 'apt-get remove',
+        };
+    }
     if (impact.package_family === 'apt') {
         removed.push('services.removal.removed.apt');
         command = 'apt-get purge';
@@ -4267,6 +4283,14 @@ const NO_FINDINGS: RemovalFindings = { causes: [], steps: [], details: [], notes
 // (SERVICE_HAS_DEPENDENTS) or the package manager's answer (alpha.104). The
 // dialog then says so first and offers Close, not Remove (alpha.106).
 // Panel bu kaldırmayı şu durumda reddeder mi.
+// Where a database engine's data stays (alpha.107): the paths the Agent
+// found, or the engine's usual place when it found none yet.
+export function removalDataPathsText(impact: RemovalImpact): string {
+    const paths = impact.simulation?.data_paths ?? [];
+    if (paths.length > 0) return paths.join(', ');
+    return impact.package_family === 'pacman' ? '/var/lib/postgres, /var/lib/mysql' : '/var/lib/postgresql, /var/lib/mysql';
+}
+
 export function removalRefused(impact: RemovalImpact): boolean {
     return impact.removal === 'unsupported'
         || Boolean(impact.hosted?.blocks_removal && impact.hosted.count > 0)
@@ -4531,7 +4555,7 @@ function RemovalImpactSection({
     const keptPart = sentences.kept.length > 0 && (
         <div data-removal-kept="">
             <p className="font-semibold text-fg">{t('services.removal.keptTitle')}</p>
-            {sentences.kept.map((key) => <p key={key} className="mt-1 text-fg-muted" data-removal-sentence={key}>{t(key, { name })}</p>)}
+            {sentences.kept.map((key) => <p key={key} className="mt-1 text-fg-muted" data-removal-sentence={key}><KeepWords text={t(key, { name, paths: removalDataPathsText(impact) })} /></p>)}
         </div>
     );
     return (

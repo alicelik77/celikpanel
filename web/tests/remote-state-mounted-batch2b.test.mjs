@@ -53,6 +53,8 @@ const stub = dataModule(`
   export const ServiceShell = (props) => React.createElement('main', null, props.children);
   export const ComponentPanels = () => React.createElement('aside', null, 'component-panels');
   export const MailAuthPanel = () => null;
+  // alpha.107: the repository card has its own mounted tests.
+  export const RepoCard = () => null;
   // What components/ComponentOperation.tsx imports and never calls here: only
   // its decoder is used, and that is the real one.
   export const createPortal = () => null;

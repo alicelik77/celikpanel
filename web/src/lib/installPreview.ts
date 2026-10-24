@@ -33,6 +33,8 @@ export interface InstallPreview {
     installs: string[];
     notable: NotableInstall[];
     refusals: InstallRefusal[];
+    /** alpha.107 (D-038 §8): data an earlier install of a database engine left. */
+    existingData?: { component: string; path: string }[];
 }
 
 export interface InstallStep {
@@ -82,7 +84,14 @@ export function decodeInstallPreview(raw: unknown): InstallPreview {
             packages: strings(value.packages) ?? [],
         });
     }
-    return { state: body.state as InstallPreview['state'], installs, notable, refusals };
+    const existingData: { component: string; path: string }[] = [];
+    if (Array.isArray(body.existing_data)) {
+        for (const item of body.existing_data) {
+            const value = item as Record<string, unknown> | null;
+            if (value && typeof value.component === 'string' && typeof value.path === 'string') existingData.push({ component: value.component, path: value.path });
+        }
+    }
+    return { state: body.state as InstallPreview['state'], installs, notable, refusals, ...(existingData.length ? { existingData } : {}) };
 }
 
 export function installPreviewURL(steps: readonly InstallStep[]): string | null {

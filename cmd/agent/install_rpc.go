@@ -938,6 +938,7 @@ func planServiceRemovalWork(svc *core.ManagedService, packageName string, ops se
 			Packages:           pkgs,
 			VersionPrefixes:    []string{prefix},
 			ProtectedComponent: catalogueProtectedComponent(family, packageNameSet(pkgs)),
+			KeepData:           removalKeepsData(svc),
 		}
 		if svc.ID == "php-fpm" && ops.boundPHPTools != nil {
 			work.boundTools = ops.boundPHPTools(strings.TrimPrefix(versionPrefix, "php"))
@@ -1016,6 +1017,7 @@ func planServiceRemovalWork(svc *core.ManagedService, packageName string, ops se
 		Packages:           pkgs,
 		VersionPrefixes:    prefixes,
 		ProtectedComponent: catalogueProtectedComponent(family, packageNameSet(pkgs)),
+		KeepData:           removalKeepsData(svc),
 	}
 	if svc.ID == "php-fpm" && ops.boundPHPTools != nil {
 		work.boundTools = ops.boundPHPTools("")
