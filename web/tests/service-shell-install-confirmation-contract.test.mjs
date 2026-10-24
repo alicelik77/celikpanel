@@ -18,7 +18,7 @@ test('an absent-service install first click opens confirmation without starting 
   assert.ok(source.includes('onClick={requestInstall}'));
   assert.ok(source.includes('<ServiceInstallConfirmationDialog'));
 
-  const installStart = source.indexOf('const install = async () => {');
+  const installStart = source.indexOf('const install = async (confirmed: string[]) => {');
   const installEnd = source.indexOf('    };', installStart);
   assert.ok(installStart >= 0, 'confirmed install handler is missing');
   assert.ok(installEnd > installStart, 'confirmed install handler is incomplete');
@@ -54,7 +54,7 @@ test('install confirmation is accessible, cancel-focused and uses shared localiz
   assert.ok(source.includes('onDismiss={onCancel}'));
   assert.ok(source.includes('autoFocus'));
   assert.ok(source.includes('onClick={onCancel}'));
-  assert.ok(source.includes('disabled={confirmDisabled}'));
+  assert.ok(source.includes('disabled={confirmDisabled || gate.hold}'));
   assert.ok(source.includes('services.confirm.install.title'));
   assert.ok(source.includes('services.confirm.install.description'));
   assert.ok(source.includes('services.confirm.install.button'));

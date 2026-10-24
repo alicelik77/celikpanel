@@ -27,6 +27,15 @@ export function installPreviewGate(handle: RemoteHandle<InstallPreview> | null, 
     return acknowledged ? { hold: false, confirmed: notable } : { hold: true, confirmed: [] };
 }
 
+// installPreviewAckKey: what a tick confirms, the read's address and the
+// notable names it showed, sorted (alpha.105 review). A tick never carries
+// over to another answer for the same address.
+// Bir onayın neyi onayladığı: okumanın adresi ve gösterdiği adlar.
+export function installPreviewAckKey(url: string | null, handle: RemoteHandle<InstallPreview> | null): string | null {
+    if (!url || !handle || handle.remote.state !== 'known' || handle.remote.value.state !== 'known') return null;
+    return `${url}|${handle.remote.value.notable.map((item) => item.package).sort().join(',')}`;
+}
+
 export function InstallPreviewNotes({
     handle,
     acknowledged,

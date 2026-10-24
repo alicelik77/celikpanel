@@ -40,6 +40,8 @@ export interface PHPBindingFacts {
     proof_failed: boolean;
     /** The PHP extensions the failed proof found missing, when that was the cause. */
     proof_extensions: string[];
+    /** Other installed PHP versions were tried too. */
+    proof_tried_others: boolean;
 }
 
 export function phpBindingOf(service: unknown): PHPBindingFacts | null {
@@ -59,6 +61,7 @@ export function phpBindingOf(service: unknown): PHPBindingFacts | null {
         extensions_present: b.extensions_present !== false,
         proof_failed: b.proof_failed === true,
         proof_extensions: extensions,
+        proof_tried_others: b.proof_tried_others === true,
     };
 }
 
@@ -66,12 +69,15 @@ export function phpBindingOf(service: unknown): PHPBindingFacts | null {
 // gone, stopped, or lacks the tool's PHP extension packages (package
 // presence is what is read, not whether PHP loads them).
 // Bir PHP aracının neden hazır olmadığı.
-// alpha.105: a tool whose proof after its install failed everywhere says so,
-// with the missing extensions when the proof named them.
-export function phpNotReadyHintKey(binding: PHPBindingFacts): 'services.phpNotReadyStopped' | 'services.phpNotReadyGone' | 'services.phpNotReadyExtensions' | 'services.phpNotReadyProof' | 'services.phpNotReadyProofExtensions' {
+// alpha.105: a tool whose proof after its install failed says so: when its
+// extension packages are installed but PHP does not load one, the module is
+// turned off (enable it, then choose the version again); it says other
+// versions were tried only when they were.
+export function phpNotReadyHintKey(binding: PHPBindingFacts): 'services.phpNotReadyStopped' | 'services.phpNotReadyGone' | 'services.phpNotReadyExtensions' | 'services.phpNotReadyProof' | 'services.phpNotReadyProofOthers' | 'services.phpNotReadyProofModuleOff' {
     if (!binding.socket_ready) return binding.version_installed ? 'services.phpNotReadyStopped' : 'services.phpNotReadyGone';
     if (!binding.extensions_present) return 'services.phpNotReadyExtensions';
-    return binding.proof_extensions.length > 0 ? 'services.phpNotReadyProofExtensions' : 'services.phpNotReadyProof';
+    if (binding.proof_extensions.length > 0) return 'services.phpNotReadyProofModuleOff';
+    return binding.proof_tried_others ? 'services.phpNotReadyProofOthers' : 'services.phpNotReadyProof';
 }
 
 export function componentStateWord(service: { is_installed: boolean | null; kind?: string; status?: unknown; php_binding?: unknown }): ComponentStateWord {

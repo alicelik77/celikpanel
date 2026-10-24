@@ -39,7 +39,7 @@ import {
     versionOfPackage,
     type InstallStep,
 } from '../lib/installPreview';
-import { InstallPreviewNotes, installPreviewGate } from './InstallPreviewNotes';
+import { InstallPreviewNotes, installPreviewAckKey, installPreviewGate } from './InstallPreviewNotes';
 
 // A component as the rows have it: the installed bundle's dialogue says each
 // part's state and version from these same fields (alpha.101).
@@ -773,6 +773,7 @@ export function BundleInstallDialog({
     bundle,
     services,
     continuing = false,
+    previous,
     onCancel,
     onConfirm,
 }: {
@@ -780,6 +781,8 @@ export function BundleInstallDialog({
     services: readonly ComponentLite[];
     /** Opened from a sequence of this page that stopped. */
     continuing?: boolean;
+    /** The choices of that stopped sequence (alpha.105 review): Continue keeps them. */
+    previous?: BundleChoices;
     onCancel: () => void;
     onConfirm: (choices: BundleChoices) => void;
 }) {
@@ -787,13 +790,16 @@ export function BundleInstallDialog({
     const nameOf = (id: string) => componentName(services.find((service) => service.id === id) ?? id, t);
     const installed = new Set(services.filter((service) => service.is_installed === true).map((service) => service.id));
     const toInstall = bundle.missing_components.filter((id) => !installed.has(id));
-    const [packages, setPackages] = useState<Record<string, string>>({});
+    const [packages, setPackages] = useState<Record<string, string>>(() => ({ ...(previous?.packages ?? {}) }));
     const [openPart, setOpenPart] = useState<string | null>(null);
     const [acknowledgedFor, setAcknowledgedFor] = useState<string | null>(null);
     // The PHP version the bundle's tool will run on: the one chosen for
     // PHP-FPM when the bundle installs it; otherwise the tool takes the
     // distribution's default (alpha.104), changed later in its Manage window.
-    const phpChosen = toInstall.includes('php-fpm') && packages['php-fpm'] ? versionOfPackage(packages['php-fpm']) : '';
+    // Continue after PHP-FPM was installed keeps the version chosen for it.
+    const phpChosen = toInstall.includes('php-fpm')
+        ? (packages['php-fpm'] ? versionOfPackage(packages['php-fpm']) : '')
+        : (previous?.phpVersion ?? '');
     const tools = toInstall.filter((id) => DISTRIBUTION_PHP_TOOLS.includes(id));
     const steps: InstallStep[] = toInstall.map((id) => ({
         id,
@@ -802,7 +808,8 @@ export function BundleInstallDialog({
     }));
     const previewURL = installPreviewURL(steps);
     const preview = useRemote(previewURL, decodeInstallPreview);
-    const acknowledged = previewURL !== null && acknowledgedFor === previewURL;
+    const ackKey = installPreviewAckKey(previewURL, preview);
+    const acknowledged = ackKey !== null && acknowledgedFor === ackKey;
     const gate = installPreviewGate(previewURL ? preview : null, acknowledged);
     const previewValue = preview.remote.state === 'known' ? preview.remote.value : null;
     const refusals = previewURL ? previewValue?.refusals ?? [] : [];
@@ -903,7 +910,7 @@ export function BundleInstallDialog({
                 <InstallPreviewNotes
                     handle={preview}
                     acknowledged={acknowledged}
-                    onAcknowledge={(value) => setAcknowledgedFor(value ? previewURL : null)}
+                    onAcknowledge={(value) => setAcknowledgedFor(value ? ackKey : null)}
                     componentLabel={nameOf}
                     avoidable={avoidable}
                 />

@@ -22,7 +22,7 @@ import { FirewallBar } from './FirewallPanel';
 import { componentStateWord, isServiceRunning, phpBindingOf, phpNotReadyHintKey } from '../lib/serviceStatus';
 import { decodeCandidateVersion, decodeRepoInfo, type RepoInfo } from '../lib/componentRepo';
 import { decodeInstallPreview, installPreviewURL } from '../lib/installPreview';
-import { InstallPreviewNotes, installPreviewGate } from './InstallPreviewNotes';
+import { InstallPreviewNotes, installPreviewAckKey, installPreviewGate } from './InstallPreviewNotes';
 import { useAuth } from '../auth/AuthContext';
 import type { TranslationKey } from '../i18n/en';
 import { useServerSetup } from './ServerSetupGate';
@@ -1857,7 +1857,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 PHP'si olmayan araç nedenini ve çaresini söyler. */}
                                                             {componentStateWord(s) === 'notReady' && phpBindingOf(s) && (
                                                                 <p className="mt-0.5 text-xs text-fg-muted" data-row-not-ready="">
-                                                                    {t(phpNotReadyHintKey(phpBindingOf(s)!), { version: phpBindingOf(s)!.version, extensions: phpBindingOf(s)!.proof_extensions.join(', ') })}
+                                                                    {t(phpNotReadyHintKey(phpBindingOf(s)!), { version: phpBindingOf(s)!.version, extensions: phpBindingOf(s)!.proof_extensions.join(', '), modules: phpBindingOf(s)!.proof_extensions.join(' ') })}
                                                                 </p>
                                                             )}
                                                         </div>
@@ -2247,6 +2247,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                         bundle={bundleTarget}
                         services={services}
                         continuing={bundleSequence.run?.bundleId === bundleTarget.id && bundleSequence.run.phase === 'stopped'}
+                        previous={bundleSequence.run?.bundleId === bundleTarget.id && bundleSequence.run.phase === 'stopped' ? bundleSequence.run.choices : undefined}
                         onCancel={() => setBundleTarget(null)}
                         onConfirm={confirmComponentBundle}
                     />
@@ -2795,7 +2796,8 @@ function InstallServiceDialog({
     const previewURL = service.id === 'roundcube' ? null : installPreviewURL([{ id: service.id, ...(selectedPkg ? { package: selectedPkg } : {}) }]);
     const preview = useRemote(previewURL, decodeInstallPreview);
     const [acknowledgedFor, setAcknowledgedFor] = useState<string | null>(null);
-    const previewGate = installPreviewGate(previewURL ? preview : null, previewURL !== null && acknowledgedFor === previewURL);
+    const ackKey = installPreviewAckKey(previewURL, preview);
+    const previewGate = installPreviewGate(previewURL ? preview : null, ackKey !== null && acknowledgedFor === ackKey);
 
     const willInstall = selectedPkg
         ? [selectedPkg]
@@ -2855,8 +2857,8 @@ function InstallServiceDialog({
                     {previewURL && (
                         <InstallPreviewNotes
                             handle={preview}
-                            acknowledged={acknowledgedFor === previewURL}
-                            onAcknowledge={(value) => setAcknowledgedFor(value ? previewURL : null)}
+                            acknowledged={ackKey !== null && acknowledgedFor === ackKey}
+                            onAcknowledge={(value) => setAcknowledgedFor(value ? ackKey : null)}
                             componentLabel={(id) => componentName(id, t)}
                             avoidable={Boolean(selectedPkg)}
                         />

@@ -7,6 +7,8 @@
 //               PHP 8.5 chosen (a warning for the distribution tool); notable
 //               installs named and Install held until confirmed; PHP 8.6
 //               refused for lack of php8.6-pgsql
+//   y28shell    phpMyAdmin's own page (not installed): its Install
+//               confirmation naming the notable packages (review of alpha.105)
 //
 // Every answer comes from the mock on 127.0.0.1 (mock-batch28.mjs, SAMPLE
 // data); nothing is installed or contacted. Screenshots also go to
@@ -116,6 +118,31 @@ export default function batch28(scenarios, { base, locale, theme, out, viewport,
         await waitFor(page, () => !!document.querySelector('[data-bundle-refusal]'), 8000).catch(() => {});
         await pause(500);
         await snap(page, 'bundle-refused');
+        await closePage(page);
+        await clean();
+    };
+
+    scenarios.y28shell = async () => {
+        await reset(); await clean();
+        await ctl({ b28: { ...B28, preview: known([
+            { package: 'php8.4-common', reason: 'new_php_version', version: '8.4' },
+            { package: 'php8.4-mysql', reason: 'new_php_version', version: '8.4' },
+        ]) }, override: {
+            '/api/v1/managed-services': { status: 200, body: SCAN() },
+            '/api/v1/managed-services/scan': { status: 200, body: SCAN() },
+        } });
+        const page = await newPage({});
+        await page.goto(`${base}/services/phpmyadmin`, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('main', { timeout: 20000 });
+        await quiet(page);
+        await pause(1500);
+        await page.evaluate(() => {
+            const button = Array.from(document.querySelectorAll('main button')).find((b) => /Install|Kur/.test(b.innerText));
+            button?.click();
+        });
+        await waitFor(page, () => !!document.querySelector('[data-install-preview]'), 8000).catch(() => {});
+        await pause(500);
+        await snap(page, 'shell-install-notable');
         await closePage(page);
         await clean();
     };

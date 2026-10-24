@@ -56,9 +56,15 @@ test('a tool whose proof after install failed is Not ready and says what to do, 
   assert.equal(status.componentStateWord(service({})), 'installed');
   const failed = service({ proof_failed: true, proof_cause: { kind: 'missing_extensions', extensions: ['mysqli'] } });
   assert.equal(status.componentStateWord(failed), 'notReady');
-  assert.equal(status.phpNotReadyHintKey(status.phpBindingOf(failed)), 'services.phpNotReadyProofExtensions');
+  // The package is installed (extensions_present) but PHP does not load it: the module is off.
+  assert.equal(status.phpNotReadyHintKey(status.phpBindingOf(failed)), 'services.phpNotReadyProofModuleOff');
   assert.deepEqual(status.phpBindingOf(failed).proof_extensions, ['mysqli']);
   assert.equal(status.phpNotReadyHintKey(status.phpBindingOf(service({ proof_failed: true, proof_cause: { kind: 'no_answer' } }))), 'services.phpNotReadyProof');
+  // "or on another installed version" only when other versions were tried.
+  assert.equal(status.phpNotReadyHintKey(status.phpBindingOf(service({ proof_failed: true, proof_tried_others: true, proof_cause: { kind: 'no_answer' } }))), 'services.phpNotReadyProofOthers');
+  assert.ok(!enScreens['services.phpNotReadyProof'].includes('another installed'));
+  assert.ok(!enScreens['services.phpNotReadyProofModuleOff'].includes('installs what is missing'));
+  assert.ok(enScreens['services.phpNotReadyProofModuleOff'].includes('phpenmod'));
 });
 
 test('every new sentence exists in English and Turkish', () => {
@@ -68,7 +74,8 @@ test('every new sentence exists in English and Turkish', () => {
   for (const reason of ['new_php_version', 'apache', 'component', 'database_server']) expanded.add(`services.installPreview.reason.${reason}`);
   for (const code of ['php_extensions_unavailable', 'php_version_unavailable', 'php_version_unsupported']) expanded.add(`services.bundles.refusal.${code}`);
   expanded.add('services.phpNotReadyProof');
-  expanded.add('services.phpNotReadyProofExtensions');
+  expanded.add('services.phpNotReadyProofModuleOff');
+  expanded.add('services.phpNotReadyProofOthers');
   assert.ok(expanded.size > 25, String(expanded.size));
   for (const key of expanded) {
     assert.equal(typeof enScreens[key], 'string', `en ${key}`);
@@ -81,4 +88,31 @@ test('the component install dialogue reads the same simulation and sends what wa
   assert.match(list, /installPreviewURL\(\[\{ id: service\.id, \.\.\.\(selectedPkg \? \{ package: selectedPkg \} : \{\}\) \}\]\)/);
   assert.match(list, /checkInstalls: true, confirmInstalls: confirmed/);
   assert.match(source('components/ComponentOperation.tsx'), /check_installs: true, confirmed_installs: request\.confirmInstalls \?\? \[\]/);
+});
+
+test('every install confirmation reads the simulation and ties its tick to the address and the names shown', () => {
+  const shell = source('components/ServiceShell.tsx');
+  assert.match(shell, /installPreviewURL\(\[\{ id: serviceId \}\]\)/);
+  assert.match(shell, /checkInstalls: true, confirmInstalls: confirmed/);
+  assert.match(shell, /disabled=\{confirmDisabled \|\| gate\.hold\}/);
+  for (const path of ['components/ServiceShell.tsx', 'components/ServiceList.tsx', 'components/ReadyBundleStrip.tsx']) {
+    assert.match(source(path), /installPreviewAckKey\(previewURL, preview\)/, path);
+  }
+  const notes = source('components/InstallPreviewNotes.tsx');
+  assert.match(notes, /notable\.map\(\(item\) => item\.package\)\.sort\(\)\.join\(','\)/);
+  assert.ok(!enScreens['services.installPreview.reason.new_php_version'].includes('beside the PHP you chose'));
+  assert.ok(enScreens['services.installPreview.nothingElse'].includes('none is another PHP, Apache, another component or a database server'));
+});
+
+test('an install result says a fallback with its reason and a refusal with its packages', () => {
+  const operation = source('components/ComponentOperation.tsx');
+  assert.match(operation, /decodePHPToolProof\(next\.result\)/);
+  assert.match(operation, /decodeNotableRefusal\(next\.result\)/);
+  assert.match(operation, /t\('services\.phpToolProof\.moved'/);
+});
+
+test('Continue after PHP-FPM was installed keeps the PHP version chosen for the bundle', () => {
+  const strip = source('components/ReadyBundleStrip.tsx');
+  assert.match(strip, /: \(previous\?\.phpVersion \?\? ''\);/);
+  assert.match(source('components/ServiceList.tsx'), /previous=\{bundleSequence\.run\?\.bundleId === bundleTarget\.id && bundleSequence\.run\.phase === 'stopped' \? bundleSequence\.run\.choices : undefined\}/);
 });
