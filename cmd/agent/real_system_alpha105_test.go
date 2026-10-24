@@ -90,8 +90,19 @@ func a105Install(t *testing.T, a *Agent, id, pkg, phpVersion string, confirmed [
 func TestRealSystemA105BundleWithAChosenPHPIsCheckedConfirmedAndProved(t *testing.T) {
 	requireRealSystemA105(t)
 	a := &Agent{}
-	// The owner's own bare PHP 8.3 from the vendor repository; the
-	// distribution's default PHP is not installed.
+	// The vendor PHP repository enabled the way Components enables it (the
+	// base image's own source for it is replaced), then the owner's own bare
+	// PHP 8.3 from it; the distribution's default PHP is not installed.
+	if err := os.Remove("/etc/apt/sources.list.d/php.list"); err != nil && !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
+	var repo RepoStatusResponse
+	repoCtx, repoCancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	if err := a.enableRepoWith(repoCtx, &EnableRepoRequest{RepoID: "sury"}, &repo); err != nil || repo.Error != "" || !repo.Enabled {
+		repoCancel()
+		t.Fatalf("enable the vendor PHP repository: %v %+v", err, repo)
+	}
+	repoCancel()
 	a105Run(t, "apt-get", "install", "-y", "-q", "--no-install-recommends", "php8.3-fpm", "php8.3-cli")
 
 	// 1. A notable install is said before anything changes: phpMyAdmin on

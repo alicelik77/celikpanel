@@ -201,6 +201,14 @@ func (a *Agent) EnableRepo(req *EnableRepoRequest, resp *RepoStatusResponse) err
 		return nil
 	}
 	defer finishStep()
+	return a.enableRepoWith(ctx, req, resp)
+}
+
+// enableRepoWith is EnableRepo's work under its held mutation step
+// (alpha.105: the disposable-VM evidence enables the vendor PHP repository
+// through it, as the Components page does).
+// enableRepoWith, EnableRepo'nun tutulan adım altındaki işidir.
+func (a *Agent) enableRepoWith(ctx context.Context, req *EnableRepoRequest, resp *RepoStatusResponse) error {
 	defer ensureRepoStatusErrorCode(resp, repoErrEnableFailed)
 	_, err = verifiedHostProfile("apt")
 	if err != nil {
