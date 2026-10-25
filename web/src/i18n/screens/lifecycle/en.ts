@@ -10,6 +10,8 @@
 // güvenliği (alpha.107, D-038). Önek: life.
 
 export const enLifecycleScreens = {
+    // ---- alpha.108 web ----
+    'life.webmail.rowLocked': 'Updates are paused while the server state is being checked or another operation is running. Nothing needs to be done: the button works again when that finishes.',
     // ---- the repository card (D-038 §12, §1/§7) ----
     'life.repo.title': 'Package repository: {name}',
     'life.repo.checking': 'Reading the repository…',

@@ -139,6 +139,8 @@ export function sharedLayer(stubURL, extra = {}) {
   if (!extra['/InstallPreviewNotes']) table['/InstallPreviewNotes'] = compileSource('components/InstallPreviewNotes.tsx', resolve);
   if (!extra['/SupportMark']) table['/SupportMark'] = compileSource('components/SupportMark.tsx', resolve);
   if (!extra['/LifeLine']) table['/LifeLine'] = compileSource('components/LifeLine.tsx', resolve);
+  // alpha.108: the one confirmed webmail update flow, started by the webmail card and the Components row.
+  if (!extra['/RoundcubeUpdateFlow']) table['/RoundcubeUpdateFlow'] = compileSource('components/RoundcubeUpdateFlow.tsx', resolve);
   if (!extra['/NodePatches']) table['/NodePatches'] = compileSource('components/NodePatches.tsx', resolve);
   return { uiURL, resolve, compile: (path, more = {}) => compileSource(path, (specifier) => {
     for (const [suffix, url] of Object.entries(more)) if (specifier.endsWith(suffix)) return url;

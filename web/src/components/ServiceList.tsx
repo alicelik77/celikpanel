@@ -23,6 +23,7 @@ import { componentStateWord, isServiceRunning, phpBindingOf, phpNotReadyHintKey 
 import { decodeCandidateVersion, decodeRepoInfo, type RepoInfo } from '../lib/componentRepo';
 import { decodeInstallPreview, installPreviewURL } from '../lib/installPreview';
 import { decodeRoundcubeUpdate, ROUNDCUBE_UPDATE_URL } from '../lib/roundcubeUpdate';
+import { RoundcubeUpdateDialog, RoundcubeUpdateProgress, useRoundcubeUpdate } from './RoundcubeUpdateFlow';
 import { supportFor, useSupportTable, type SupportComponent } from '../lib/supportTable';
 import { SupportBadge, supportConfirmation } from './SupportMark';
 import { NodePatches } from './NodePatches';
@@ -1808,14 +1809,14 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                         {group.map((s) => {
                                             const running = isRunning(s);
                                             return (
-                                                <li key={s.id} className={`relative flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-4 py-3.5 last:border-0 hover:bg-surface-2/40 md:grid ${versionColumn ? 'md:grid-cols-[minmax(0,1fr)_7.5rem_8rem_17rem]' : 'md:grid-cols-[minmax(0,1fr)_8rem_17rem]'}`}>
+                                                <li key={s.id} className={`relative flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-4 py-3.5 last:border-0 hover:bg-surface-2/40 xl:grid ${versionColumn ? 'xl:grid-cols-[minmax(0,1fr)_7.5rem_8rem_17rem]' : 'xl:grid-cols-[minmax(0,1fr)_8rem_17rem]'}`} data-component-row="">
                                                     {/* Selective dimming, not block opacity: the name stays
                                                         readable in the light theme; state is carried by the
                                                         muted tone + status text + Install button.
                                                         / Blok saydamlık değil seçici soldurma: ad açık temada
                                                         da okunur kalır; durumu soluk ton + durum yazısı +
                                                         Kur düğmesi anlatır. */}
-                                                    <div className="flex min-w-0 flex-1 basis-52 items-center gap-3">
+                                                    <div className="flex min-w-[min(100%,15rem)] flex-1 basis-60 items-center gap-3 xl:min-w-0">
                                                         {/* One line icon per component, from one map (alpha.94);
                                                             the Panel's emoji is not drawn. A row that is not
                                                             installed keeps the muted tint.
@@ -1848,7 +1849,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 to={`/services/${s.id}`}
                                                                 className={`rounded-md text-base font-medium outline-none after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-primary/40 ${s.is_installed ? 'text-fg' : 'text-fg-muted'}`}
                                                             >
-                                                                {componentName(s, t)}
+                                                                <KeepWords text={componentName(s, t)} />
                                                             </Link>
                                                             <div className="text-pretty text-xs text-fg-subtle">{componentDescription(s, t)}</div>
                                                             {/* What "Clean up leftovers" is about, said on the
@@ -1880,7 +1881,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 line is the phone's (as before alpha.95);
                                                                 without it, the only place a version is said.
                                                                 Sütun varsa bu satır telefonundur. */}
-                                                            <RowVersion service={s} className={versionColumn ? 'md:hidden' : ''} />
+                                                            <RowVersion service={s} className={versionColumn ? 'xl:hidden' : ''} updateLocked={mutationControlsDisabled || componentOperation.locked} updateLockedReason={readinessMessage} />
                                                             {/* alpha.104: a PHP tool whose PHP version is not there
                                                                 says why and where it is fixed, under its name.
                                                                 PHP'si olmayan araç nedenini ve çaresini söyler. */}
@@ -1892,11 +1893,11 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                         </div>
                                                     </div>
                                                     {versionColumn && (
-                                                        <div className="hidden min-w-0 md:block" data-version-column="">
+                                                        <div className="hidden min-w-0 xl:block" data-version-column="">
                                                             <RowVersion service={s} column />
                                                         </div>
                                                     )}
-                                                    <div className="w-32 shrink-0 md:w-auto">
+                                                    <div className="w-32 shrink-0 xl:w-auto">
                                                         {/* "Not checked yet" is information the operator
                                                             acts on, so it is fg-muted like a real status —
                                                             fg-subtle is for disabled and placeholder text
@@ -2211,7 +2212,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                     )}
                                                     </fieldset>
                                                     {s.kind === 'runtime' && openDrawers.has(s.id) && (
-                                                        <div className="basis-full md:col-span-3">
+                                                        <div className="basis-full xl:col-span-full">
                                                         <VersionDrawer
                                                             service={s}
                                                             busy={busy}
@@ -3047,7 +3048,7 @@ function RowSupport({ service }: { service: ManagedService }) {
     return <div className="mt-0.5"><SupportBadge table={support} component={component} version={worst.version} /></div>;
 }
 
-function RowVersion(props: { service: ManagedService; column?: boolean; className?: string }) {
+function RowVersion(props: { service: ManagedService; column?: boolean; className?: string; updateLocked?: boolean; updateLockedReason?: string }) {
     if (ROW_SUPPORT[props.service.id] && props.service.is_installed) {
         return (
             <>
@@ -3057,11 +3058,14 @@ function RowVersion(props: { service: ManagedService; column?: boolean; classNam
         );
     }
     // alpha.107: the webmail row also says an update is available (D-038 §9).
-    if (props.service.id === 'roundcube' && props.service.is_installed) {
+    // Once per row: the desktop version column (when drawn) shows the version
+    // alone, so the Update button is never doubled.
+    // Satır başına bir kez: sürüm sütunu yalnız sürümü gösterir.
+    if (props.service.id === 'roundcube' && props.service.is_installed && !props.column) {
         return (
             <>
                 <RowVersionText {...props} />
-                <RoundcubeRowUpdate />
+                <RoundcubeRowUpdate locked={props.updateLocked === true} lockedReason={props.updateLockedReason ?? ''} />
             </>
         );
     }
@@ -3069,16 +3073,51 @@ function RowVersion(props: { service: ManagedService; column?: boolean; classNam
 }
 
 // The Roundcube row says an update is available (alpha.107); it shares the
-// webmail page's read and says nothing until that read is known.
-// Roundcube satırı, güncelleme varsa söyler.
-function RoundcubeRowUpdate() {
+// webmail page's read and says nothing until that read is known. Since
+// alpha.108 it also carries the Update button: it opens the SAME confirmed
+// flow as the webmail card on the Manage page (RoundcubeUpdateFlow.tsx), and
+// the progress and the result are said here on the row. While mutations are
+// locked the button is disabled and the reason is written beside it.
+// Roundcube satırı, güncelleme varsa söyler ve Güncelle düğmesi taşır: Yönet
+// sayfasındaki onaylı akışın AYNISINI açar; kilitliyken neden yazılıdır.
+function RoundcubeRowUpdate({ locked, lockedReason }: { locked: boolean; lockedReason: string }) {
     const { t } = useI18n();
     const handle = useRemote(ROUNDCUBE_UPDATE_URL, decodeRoundcubeUpdate, { freshFor: 10 * 60_000 });
     const remote = handle.remote;
-    if (remote.state !== 'known' || !remote.value.update_available || !remote.value.latest_on_line) return null;
+    const known = remote.state === 'known' ? remote.value : null;
+    const latest = known?.latest_on_line ?? '';
+    const flow = useRoundcubeUpdate({ current: known?.version, latest, onChanged: () => void handle.retry() });
+    const offered = known !== null && known.update_available && latest !== '';
+    if (!offered && !flow.updating && !flow.result) return null;
+    const reason = lockedReason !== '' ? lockedReason : t('life.webmail.rowLocked');
     return (
-        <div className="text-xs font-medium text-warning" data-row-webmail-update={remote.value.latest_on_line}>
-            {t('life.webmail.rowAvailable', { latest: remote.value.latest_on_line })}
+        <div className="mt-1 space-y-1.5" data-row-webmail-update={latest}>
+            {offered && (
+                <div className="text-xs font-medium text-warning">
+                    {t('life.webmail.rowAvailable', { latest })}
+                </div>
+            )}
+            {offered && (
+                <div className="relative">
+                    <Button
+                        variant="primary"
+                        onClick={() => flow.setConfirming(true)}
+                        disabled={locked || flow.updating}
+                        aria-describedby={locked ? 'webmail-row-update-locked' : undefined}
+                        className="max-sm:min-h-11"
+                        data-row-webmail-update-button=""
+                    >
+                        {t('life.webmail.update', { latest })}
+                    </Button>
+                    {locked && (
+                        <p id="webmail-row-update-locked" className="mt-1 text-pretty text-xs text-fg-muted" data-row-webmail-update-locked="">{reason}</p>
+                    )}
+                </div>
+            )}
+            <RoundcubeUpdateProgress updating={flow.updating} result={flow.result} />
+            {flow.confirming && (
+                <RoundcubeUpdateDialog latest={latest} updating={flow.updating} onCancel={() => flow.setConfirming(false)} onConfirm={() => void flow.update()} />
+            )}
         </div>
     );
 }

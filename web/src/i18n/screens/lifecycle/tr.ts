@@ -3,6 +3,8 @@
 import type { LifecycleScreenKey } from './en';
 
 export const trLifecycleScreens: Record<LifecycleScreenKey, string> = {
+    // ---- alpha.108 web ----
+    'life.webmail.rowLocked': 'Sunucu durumu denetlenirken ya da başka bir işlem sürerken güncelleme beklemededir. Sizin bir şey yapmanız gerekmez: bu bitince düğme yeniden çalışır.',
     'life.repo.title': 'Paket deposu: {name}',
     'life.repo.checking': 'Depo okunuyor…',
     'life.repo.unknown': 'CelikPanel bu depoyu okuyamadı; bu yüzden onunla ilgili hiçbir şey gösterilmiyor. Hiçbir şey değiştirilmedi. Tekrar deneyin.',
