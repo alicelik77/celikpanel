@@ -54,6 +54,9 @@ const FRESH = { state: 'read', plan: { repo_id: 'sury', name: 'Sury PHP (package
 ] } };
 const COMPLETE = { state: 'read', plan: { ...FRESH.plan, enabled: true, sha256: '5d'.repeat(32), kept: ['php-common', 'php8.4-fpm', 'php8.5-fpm', 'php8.6-fpm'], steps: [
     step('repository', 'done', { path: '/etc/apt/sources.list.d/celikpanel-sury.list' }), FRESH.plan.steps[1], FRESH.plan.steps[2]] } };
+// The review's owner source: the owner's own php.list, no CelikPanel source.
+const OWNER = { state: 'read', plan: { ...FRESH.plan, sha256: '6e'.repeat(32), steps: [
+    step('repository', 'owner', { reason: 'owner_source', path: '/etc/apt/sources.list.d/php.list', detail: '/etc/apt/sources.list.d/php.list' }), FRESH.plan.steps[1], FRESH.plan.steps[2]] } };
 const REPO_OFF = { available: true, enabled: false, lane: true, origin: 'deb.sury.org', id: 'sury', name: 'Sury PHP (packages.sury.org)', detail: 'Debian/Ubuntu PHP repository — every maintained version, side by side.' };
 const REPO_ON = { ...REPO_OFF, enabled: true, confinement: { state: 'not_written', pin_path: '/etc/apt/preferences.d/celikpanel-sury.pref' },
     key: { fingerprint: '15058500A0235D97F5D10063B188E2B695BD4743', state: 'valid', expires_at: '2028-02-15T13:14:55Z' },
@@ -129,6 +132,18 @@ export default function batch31(scenarios, { base, locale, theme, out, viewport,
         await pause(300);
         await snap(page, 'lane-default');
         await dialog(page, '[data-lane-enable]', 'lane-fresh-dialog');
+        await closePage(page);
+    };
+
+    scenarios.y31owner = async () => {
+        const page = await open('/services/php-fpm', () => !!document.querySelector('[data-lane-owner-source]') || !!document.querySelector('[data-life-line="lane-owner-source"]'), {
+            '/api/v1/repo': { status: 200, body: REPO_OFF, method: 'GET' },
+            '/api/v1/repo/lane': { status: 200, body: OWNER, method: 'GET' },
+        });
+        await scrollTo(page, '[data-lane-default]');
+        await pause(300);
+        await snap(page, 'lane-owner-card');
+        await dialog(page, '[data-lane-enable]', 'lane-owner-dialog');
         await closePage(page);
     };
 

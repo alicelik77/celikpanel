@@ -169,6 +169,9 @@ func ownerSourcePaths(sources []ownerRepoSource) string {
 // together with every existing source (sources.list stays apt's own) and a
 // conflict between them is found before anything is written.
 func stagedSourcePartsDir(stagedSource, repoID string) (string, func(), error) {
+	if err := os.MkdirAll(filepath.Dir(repoRecordPath), 0o700); err != nil {
+		return "", func() {}, err
+	}
 	dir, err := os.MkdirTemp(filepath.Dir(repoRecordPath), ".lane-sources-*")
 	if err != nil {
 		return "", func() {}, err
