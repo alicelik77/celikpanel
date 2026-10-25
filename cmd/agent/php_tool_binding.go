@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -670,20 +671,77 @@ func checkPHPToolResponse(tool string, status int, body []byte) error {
 		marker = "phpMyAdmin"
 		failures = []string{"extension is missing", "Fatal error"}
 	case phpToolPHPPgAdmin:
-		marker = "phpPgAdmin"
-		failures = []string{"does not support PostgreSQL", "Fatal error"}
+		// phpPgAdmin 7.14.7 (Debian 13 and Ubuntu 24.04 ship the same
+		// 7.14.7+dfsg-1) renders an XHTML frameset titled "phpPgAdmin";
+		// its refusals are plain sentences from libraries/lib.inc.php and
+		// lang/english.php. "does not support the pgsql module ... to use
+		// phpPgAdmin" names the tool, so the refusals are checked first
+		// (before alpha.108 that page passed as the tool itself).
+		// phpPgAdmin'in retleri araç adını da içerir; önce retler denetlenir.
+		marker = "<title>phpPgAdmin"
+		failures = []string{
+			"does not support PostgreSQL",
+			"Your PHP installation does not support",
+			"Your config.inc.php is out of date",
+			"Configuration error:",
+			"Version of PHP not supported",
+			"cannot be fully secured",
+			"Fatal error",
+		}
 	default:
 		return fmt.Errorf("unknown PHP tool %q", tool)
 	}
 	for _, failure := range failures {
 		if strings.Contains(text, failure) {
-			return &phpToolProbeError{Kind: "tool_error", Message: fmt.Sprintf("%s reported: %s", phpToolDisplayName(tool), failure)}
+			return &phpToolProbeError{Kind: "tool_error", Message: fmt.Sprintf("%s reported: %s", phpToolDisplayName(tool), pageExcerpt(body))}
 		}
 	}
 	if !strings.Contains(text, marker) {
-		return &phpToolProbeError{Kind: "not_tool_page", Message: fmt.Sprintf("%s did not answer with its own page", phpToolDisplayName(tool))}
+		return &phpToolProbeError{Kind: "not_tool_page", Message: fmt.Sprintf("%s did not answer with its own page (it answered: %s)", phpToolDisplayName(tool), pageExcerpt(body))}
 	}
 	return nil
+}
+
+var (
+	pageTitle = regexp.MustCompile(`(?is)<title[^>]*>(.*?)</title>`)
+	pageTags  = regexp.MustCompile(`(?s)<[^>]*>`)
+)
+
+// pageExcerpt is what a page said, short and safe for a screen and a log: its
+// title when it has one, else its text without markup, control characters
+// removed, at most 160 characters. The pages are the local tools' front pages
+// and the PHP check (no secrets).
+// Bir sayfanın söylediği, kısa ve güvenli: başlığı ya da işaretsiz metni.
+func pageExcerpt(body []byte) string {
+	text := string(body)
+	if len(text) > 64*1024 {
+		text = text[:64*1024]
+	}
+	if match := pageTitle.FindStringSubmatch(text); match != nil && strings.TrimSpace(pageTags.ReplaceAllString(match[1], "")) != "" {
+		text = match[1]
+	}
+	text = pageTags.ReplaceAllString(text, " ")
+	text = strings.Map(func(r rune) rune {
+		if r < 0x20 || r == 0x7f {
+			return ' '
+		}
+		return r
+	}, text)
+	text = strings.Join(strings.Fields(text), " ")
+	if runes := []rune(text); len(runes) > 160 {
+		text = string(runes[:160]) + "…"
+	}
+	if text == "" {
+		return "an empty page"
+	}
+	return text
+}
+
+func orUnknownVersion(version string) string {
+	if version == "" {
+		return "(its version)"
+	}
+	return version
 }
 
 const phpToolProbeBodyLimit = 512 * 1024
@@ -714,18 +772,69 @@ echo $missing ? 'celikpanel-php-check:missing:' . implode(',', $missing) . ':' .
 `
 
 // ensurePHPToolCheckScript writes the check script (root-owned, readable by
-// the PHP-FPM pool) when it is missing or different.
+// the PHP-FPM pool) when it is missing or different, and repairs its modes.
+//
+// alpha.108 (Boston, Ubuntu 24.04): the installed Agent runs with the unit's
+// UMask=0027 and group celikpanel, so a plain MkdirAll(0755)/WriteFile(0644)
+// made the directory 0750 and the script 0640, owned by group celikpanel.
+// The PHP-FPM pool user (www-data) could not open it, PHP-FPM answered the
+// check with "File not found." (HTTP 404) and every proof failed although the
+// tool's own page answered. The real-system runs started the Agent's code as
+// root with umask 0022, which hid it. The modes are now set explicitly, and an
+// existing directory or script with the old modes is repaired on the next
+// configuration, move or proof.
+//
+// Ajan birimin UMask=0027 değeriyle çalışır; dizin ve betik kipleri açıkça
+// verilmezse PHP-FPM havuzu betiği okuyamaz (Boston). Kipler artık açıkça
+// ayarlanır, eski kipler bir sonraki yapılandırma, taşıma ya da kanıtta onarılır.
 func ensurePHPToolCheckScript() error {
-	if current, err := os.ReadFile(phpToolCheckScriptPath); err == nil && string(current) == phpToolCheckScript {
-		return nil
-	}
-	if err := os.MkdirAll(filepath.Dir(phpToolCheckScriptPath), 0o755); err != nil {
+	dir := filepath.Dir(phpToolCheckScriptPath)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("prepare the PHP check: %w", err)
 	}
-	if err := os.WriteFile(phpToolCheckScriptPath, []byte(phpToolCheckScript), 0o644); err != nil {
+	if err := ensureMode(dir, 0o755); err != nil {
+		return fmt.Errorf("prepare the PHP check: %w", err)
+	}
+	if current, err := os.ReadFile(phpToolCheckScriptPath); err == nil && string(current) == phpToolCheckScript {
+		if err := ensureMode(phpToolCheckScriptPath, 0o644); err != nil {
+			return fmt.Errorf("prepare the PHP check: %w", err)
+		}
+		return nil
+	}
+	tmp, err := os.CreateTemp(dir, ".check-*.php")
+	if err != nil {
+		return fmt.Errorf("prepare the PHP check: %w", err)
+	}
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName)
+	_, err = tmp.WriteString(phpToolCheckScript)
+	if err == nil {
+		// Chmod after creation: the process umask does not apply to it.
+		err = tmp.Chmod(0o644)
+	}
+	if closeErr := tmp.Close(); err == nil {
+		err = closeErr
+	}
+	if err == nil {
+		err = os.Rename(tmpName, phpToolCheckScriptPath)
+	}
+	if err != nil {
 		return fmt.Errorf("prepare the PHP check: %w", err)
 	}
 	return nil
+}
+
+// ensureMode sets a path's permission bits when they differ (an explicit
+// chmod is not narrowed by the process umask).
+func ensureMode(path string, mode os.FileMode) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+	if info.Mode().Perm() == mode {
+		return nil
+	}
+	return os.Chmod(path, mode)
 }
 
 // phpToolCheckBlock is the nginx location of a tool's PHP check.
@@ -747,8 +856,16 @@ func phpToolCheckBlock(tool, socket string) string {
 func checkPHPToolCheckResponse(tool, version string, status int, body []byte) error {
 	text := strings.TrimSpace(string(body))
 	name := phpToolDisplayName(tool)
+	// PHP-FPM answers "File not found." (404) or "Access denied." (403) when
+	// its pool user cannot open the check script: PHP runs, the check cannot
+	// be read (alpha.108, Boston). Not the same as PHP not answering.
+	// PHP-FPM betiği açamadığında 404/403 döner: PHP çalışıyor, denetim okunamıyor.
+	if status == http.StatusNotFound || status == http.StatusForbidden {
+		return &phpToolProbeError{Kind: "check_unreadable", Status: status,
+			Message: fmt.Sprintf("PHP-FPM %s could not open CelikPanel's PHP check for %s (HTTP %d: %s)", orUnknownVersion(version), name, status, pageExcerpt(body))}
+	}
 	if status != http.StatusOK || !strings.HasPrefix(text, "celikpanel-php-check:") {
-		return &phpToolProbeError{Kind: "no_answer", Status: status, Message: fmt.Sprintf("PHP did not answer for %s on its socket (HTTP %d)", name, status)}
+		return &phpToolProbeError{Kind: "no_answer", Status: status, Message: fmt.Sprintf("PHP did not answer for %s on its socket (HTTP %d: %s)", name, status, pageExcerpt(body))}
 	}
 	rest := strings.TrimPrefix(text, "celikpanel-php-check:")
 	if strings.HasPrefix(rest, "missing:") {
@@ -828,17 +945,32 @@ func probePHPToolHTTP(ctx context.Context, tool, version string) error {
 var phpToolProbeSettle = 20 * time.Second
 
 // retryPHPToolProbe repeats a proof until it passes or the bound runs out,
-// and returns the last failure.
+// and returns the last failure. Every attempt runs inside the bound
+// (alpha.108): the whole proof ends by the bound plus a moment, whatever one
+// attempt waits for, so a move's or a proof's answer stays well inside the
+// Panel's call limit. An attempt cut by the bound itself does not replace the
+// cause an earlier attempt read.
+// Her deneme sınırın içinde koşar; kanıtın tamamı sınırda biter.
 func retryPHPToolProbe(ctx context.Context, tool, version string, probe func(context.Context, string, string) error, bound, every time.Duration) error {
 	deadline := time.Now().Add(bound)
+	var last error
 	for {
-		err := probe(ctx, tool, version)
-		if err == nil || time.Now().Add(every).After(deadline) {
-			return err
+		attemptCtx, cancel := context.WithDeadline(ctx, deadline)
+		err := probe(attemptCtx, tool, version)
+		cut := attemptCtx.Err() != nil && ctx.Err() == nil
+		cancel()
+		if err == nil {
+			return nil
+		}
+		if !cut || last == nil {
+			last = err
+		}
+		if cut || time.Now().Add(every).After(deadline) {
+			return last
 		}
 		select {
 		case <-ctx.Done():
-			return err
+			return last
 		case <-time.After(every):
 		}
 	}
@@ -933,6 +1065,9 @@ type phpToolBindResult struct {
 	MutationApplied   bool
 	Restored          bool
 	RecordWarning     string
+	// ProofOnly: the tool was already configured on that version, so only
+	// the proof ran (alpha.108).
+	ProofOnly bool
 }
 
 // bindPHPToolWith moves a tool to a PHP version and proves it answers
@@ -1009,6 +1144,22 @@ func bindPHPToolWith(ctx context.Context, ops phpToolBindOps, tool, version stri
 	previous, err := ops.snapshotConf(path)
 	if err != nil {
 		return fail(errCodePHPToolConfigRejected, kind("config_read_failed"), "the current configuration of %s could not be read: %v; nothing else was changed", name, err)
+	}
+	// The tool already runs on this version with exactly this configuration
+	// (alpha.108, Boston "PHP 8.3 kullan" on 8.3): nothing is rewritten or
+	// reloaded; the proof alone answers, quickly, and a failure changes
+	// nothing.
+	// Araç bu sürümde tam bu yapılandırmayla çalışıyorsa yalnız kanıt koşar.
+	if previous.exists && bytes.Equal(previous.content, content) {
+		result.ProofOnly = true
+		if err := ops.httpProbe(ctx, tool, version); err != nil {
+			return fail(errCodePHPToolProbeFailed, phpToolCauseOf(err, "other", version),
+				"%s is already set to PHP %s but did not answer as itself there (%v); its web server configuration was not changed", name, version, err)
+		}
+		if err := ops.writeRecord(tool, version); err != nil {
+			result.RecordWarning = err.Error()
+		}
+		return result, nil
 	}
 	// restore puts the previous file back (mode and owner kept) and, when
 	// nginx already loaded the new one, checks and reloads; it says which
@@ -1336,6 +1487,18 @@ func ensurePHPToolExtensions(ctx context.Context, tool, version string) error {
 func phpToolBindingsView() transport.PHPToolBindingsResponse {
 	response := transport.PHPToolBindingsResponse{Tools: []transport.PHPToolBinding{}, Versions: installedPHPFPMVersions()}
 	proofFailures := readPHPToolProofFailures()
+	// One platform read and one unit read per version for the whole answer
+	// (alpha.108): the read stays well inside the Panel's 10-second bound.
+	// Tüm yanıt için tek platform okuması ve sürüm başına tek birim okuması.
+	family := ""
+	familyRead := false
+	apt := func() bool {
+		if !familyRead {
+			family, familyRead = detectPkgFamily(), true
+		}
+		return family == "apt"
+	}
+	unitStates := map[string]string{}
 	for _, state := range phpToolStates() {
 		binding := transport.PHPToolBinding{Tool: state.Tool, Installed: state.Installed, Source: state.Source}
 		// alpha.105: a tool whose proof after its install failed on every
@@ -1350,10 +1513,45 @@ func phpToolBindingsView() transport.PHPToolBindingsResponse {
 			binding.VersionInstalled = binding.Version != "" && phpVersionInstalled(binding.Version)
 			// Package presence only (a package can be installed and its
 			// extension disabled; a move's proof checks what PHP loads).
-			binding.ExtensionsPresent = binding.Version == "" || detectPkgFamily() != "apt" ||
+			binding.ExtensionsPresent = binding.Version == "" || !apt() ||
 				phpToolHasExtensionPackages(state.Tool, binding.Version)
+			// The unit's own state, read now (alpha.108): "not running" is
+			// said from this and the socket, never from a failed proof.
+			// Birimin kendi durumu; "çalışmıyor" bundan ve soketten söylenir.
+			if binding.Version != "" && binding.VersionInstalled && state.Installed {
+				if _, read := unitStates[binding.Version]; !read {
+					unitStates[binding.Version] = phpFPMUnitState(binding.Version)
+				}
+				binding.FPMState = unitStates[binding.Version]
+			}
 		}
 		response.Tools = append(response.Tools, binding)
 	}
 	return response
+}
+
+// phpFPMUnitState reads one versioned PHP-FPM unit's active state
+// ("active", "inactive", "failed", "activating", "reloading", ...), bounded;
+// "unknown" when systemd gave no state. Read-only. A variable for tests.
+// Sürümlü PHP-FPM biriminin etkin durumunu salt-okur ve sınırlı okur.
+var phpFPMUnitState = func(version string) string {
+	if !phpVersionText.MatchString(version) {
+		return "unknown"
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	out, _ := exec.CommandContext(ctx, "systemctl", "is-active", "php"+version+"-fpm.service").Output()
+	return phpFPMUnitStateFrom(string(out))
+}
+
+func phpFPMUnitStateFrom(out string) string {
+	state := strings.TrimSpace(out)
+	if i := strings.IndexByte(state, '\n'); i >= 0 {
+		state = state[:i]
+	}
+	switch state {
+	case "active", "inactive", "failed", "activating", "deactivating", "reloading", "refreshing", "maintenance":
+		return state
+	}
+	return "unknown"
 }

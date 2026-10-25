@@ -31,6 +31,8 @@ func newPHPToolHost(t *testing.T) phpToolHost {
 	saved := []string{phpFPMRunDir, phpEtcDir, phpCLIAlternative, phpToolWebmailConfPath, phpToolDBToolsConfPath, phpToolBindingRecordPath}
 	savedFallback := phpFallbackSocketGlobs
 	savedMetas, savedInstalled, savedPackage := phpDefaultVersionFromMetas, phpToolInstalledCheck, phpToolPackageInstalled
+	savedUnit := phpFPMUnitState
+	phpFPMUnitState = func(string) string { return "active" }
 	phpFPMRunDir, phpEtcDir = host.run, host.etc
 	phpCLIAlternative = filepath.Join(host.bin, "php")
 	phpToolWebmailConfPath, phpToolDBToolsConfPath = host.webmailConf, host.dbToolsConf
@@ -43,6 +45,7 @@ func newPHPToolHost(t *testing.T) phpToolHost {
 		phpFPMRunDir, phpEtcDir, phpCLIAlternative, phpToolWebmailConfPath, phpToolDBToolsConfPath, phpToolBindingRecordPath = saved[0], saved[1], saved[2], saved[3], saved[4], saved[5]
 		phpFallbackSocketGlobs = savedFallback
 		phpDefaultVersionFromMetas, phpToolInstalledCheck, phpToolPackageInstalled = savedMetas, savedInstalled, savedPackage
+		phpFPMUnitState = savedUnit
 	})
 	return host
 }

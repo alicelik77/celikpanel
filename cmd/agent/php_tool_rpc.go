@@ -50,6 +50,7 @@ func (a *Agent) BindPHPToolV1(req *transport.BindPHPToolRequest, resp *transport
 	resp.MutationApplied = result.MutationApplied
 	resp.Restored = result.Restored
 	resp.Warning = result.RecordWarning
+	resp.ProofOnly = result.ProofOnly
 	if err != nil {
 		resp.Error = err.Error()
 		var typed *phpToolBindError
