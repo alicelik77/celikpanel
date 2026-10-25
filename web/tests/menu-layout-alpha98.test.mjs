@@ -306,7 +306,7 @@ async function withShell(role, inspect, access = {}) {
     }
 }
 const textOf = (node) => (typeof node === 'string' ? node : node.children.map(textOf).join(' '));
-const menuButton = (renderer) => renderer.root.find((node) => node.type === 'button' && node.props['aria-expanded'] !== undefined);
+const menuButton = (renderer) => renderer.root.find((node) => node.type === 'button' && node.props['aria-expanded'] !== undefined && node.props['data-sidebar-toggle'] === undefined);
 const menuItems = (renderer) => renderer.root.find((node) => node.props.id === 'personal-menu')
     .findAll((node) => (node.type === 'a' || node.type === 'button'));
 const railLabels = (renderer) => renderer.root.findAll((node) => node.type === 'button' && node.props.onClick && node.props['aria-expanded'] === undefined)

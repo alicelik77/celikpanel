@@ -173,7 +173,7 @@ test('every dialogue in the product is the shared one', () => {
     'RepoConfineDialog.tsx': 1,
     'NodePatches.tsx': 1,
     'RestartsCard.tsx': 1,
-    'RoundcubeUpdateCard.tsx': 1,
+    'RoundcubeUpdateFlow.tsx': 1,
     'SecurityUpdatesCard.tsx': 1,
     // alpha.108: install a major, change a port, move a database, a move's step.
     'PostgreSQLClusters.tsx': 4,

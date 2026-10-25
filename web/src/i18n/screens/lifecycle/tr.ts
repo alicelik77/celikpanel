@@ -18,6 +18,8 @@ export const trLifecycleScreens: Record<LifecycleScreenKey, string> = {
     'life.offer.lost': 'Bu değişiklik için yanıt gelmedi. Yukarıdaki liste yeniden okundu ve sunucuda kayıtlı olanı gösteriyor; yalnız istediğiniz gibi değilse yeniden değiştirin.',
     'life.offer.customerKept': '{name} {version} artık yeni seçimler için sunulmuyor. Siteniz onu korur ve çalışmayı sürdürür; başka bir sürüme geçmeden önce yöneticinize danışın.',
     'life.offer.adminKept': '{name} {version} müşterilerden gizli. Bu site onu korur ve çalışmayı sürdürür; sahibi bu sürümün yeni seçimler için artık sunulmadığını görür.',
+    // ---- alpha.108 web ----
+    'life.webmail.rowLocked': 'Sunucu durumu denetlenirken ya da başka bir işlem sürerken güncelleme beklemededir. Sizin bir şey yapmanız gerekmez: bu bitince düğme yeniden çalışır.',
     'life.repo.title': 'Paket deposu: {name}',
     'life.repo.checking': 'Depo okunuyor…',
     'life.repo.unknown': 'CelikPanel bu depoyu okuyamadı; bu yüzden onunla ilgili hiçbir şey gösterilmiyor. Hiçbir şey değiştirilmedi. Tekrar deneyin.',

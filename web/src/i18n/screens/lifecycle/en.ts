@@ -25,6 +25,8 @@ export const enLifecycleScreens = {
     'life.offer.lost': 'No answer came for this change. The list above was read again and shows what the server holds; change it again only if it is not what you wanted.',
     'life.offer.customerKept': '{name} {version} is no longer offered for new choices. Your site keeps it and keeps running; ask your administrator before moving it to another version.',
     'life.offer.adminKept': '{name} {version} is hidden from customers. This site keeps it and keeps running; its owner sees that it is no longer offered for new choices.',
+    // ---- alpha.108 web ----
+    'life.webmail.rowLocked': 'Updates are paused while the server state is being checked or another operation is running. Nothing needs to be done: the button works again when that finishes.',
     // ---- the repository card (D-038 §12, §1/§7) ----
     'life.repo.title': 'Package repository: {name}',
     'life.repo.checking': 'Reading the repository…',

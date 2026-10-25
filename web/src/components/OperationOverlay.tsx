@@ -139,6 +139,7 @@ export default function OperationOverlay(props: OperationOverlayProps | FailureO
                     ? (
                         <p role="status" className="mt-4 rounded-lg border border-warning-mark/50 bg-warning-mark/10 px-4 py-3 text-left text-xs leading-5 text-fg" data-operation-reconnect-slow="">
                             <KeepWords text={t('services.operation.reconnectSlow')} />
+                            <span className="mt-1 block text-xs text-fg-muted" data-sudo-note="">{t('common.sudoNote')}</span>
                         </p>
                     )
                     : (

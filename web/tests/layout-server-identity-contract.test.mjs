@@ -28,7 +28,7 @@ test('hostname and IPv4 remain visible in the desktop footer and narrow header',
   assert.match(layout, /dir="ltr"/);
   assert.match(layout, /\{identity\.hostname\}/);
   assert.match(layout, /\{identity\.ipv4\}/);
-  assert.match(layout, /<aside className="hidden shrink-0 md:block">/);
+  assert.match(layout, /<aside id="celikpanel-sidebar" className="hidden shrink-0 md:block"/);
 
   const sidebarIdentity = layout.indexOf('placement="sidebar"');
   const buildStamp = layout.indexOf('<BuildStamp runtime={panelRuntime} />', sidebarIdentity);
