@@ -34,6 +34,8 @@ export interface RoundcubeUpdateCheck {
     last_update?: WebmailUpdateOperation | null;
     /** alpha.109: webmail answers at the panel's /webmail/ address. */
     webmail_ready?: boolean;
+    /** alpha.109 review: the check could not be read, but the last update is known. */
+    check_unknown?: boolean;
 }
 
 const OPERATION_ID = /^[a-f0-9]{32}$/;
@@ -48,10 +50,17 @@ export function decodeWebmailUpdateOperation(raw: unknown): WebmailUpdateOperati
 
 export function decodeRoundcubeUpdate(raw: unknown): RoundcubeUpdateCheck {
     const body = raw as { state?: string; check?: RoundcubeUpdateCheck; last_update?: unknown; webmail_ready?: unknown } | null;
+    // The release check could not be read, but the last update is still said
+    // (a running one is followed) rather than lost with the check.
+    // Denetim okunamasa da son güncelleme söylenir.
+    const lastUpdate = body ? decodeWebmailUpdateOperation(body.last_update) : null;
+    if (body && body.state === 'unknown' && lastUpdate) {
+        return { installed: false, update_available: false, check_unknown: true, last_update: lastUpdate, webmail_ready: body.webmail_ready === true };
+    }
     if (!body || body.state !== 'read' || !body.check || typeof body.check.installed !== 'boolean' || typeof body.check.update_available !== 'boolean') {
         throw new Error('shape');
     }
-    return { ...body.check, last_update: decodeWebmailUpdateOperation(body.last_update), webmail_ready: body.webmail_ready === true };
+    return { ...body.check, last_update: lastUpdate, webmail_ready: body.webmail_ready === true };
 }
 
 export type WebmailUpdateOutcomeKind = 'updated' | 'rolled_back' | 'not_changed' | 'rollback_failed' | 'unknown' | 'interrupted';

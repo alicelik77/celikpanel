@@ -747,4 +747,4 @@ the Components rows with the webmail Update button and the collapsed sidebar
 phpMyAdmin's install dialog on Ubuntu with the grouped confirmation (packages a
 vendor repository replaces, the additional packages under their reasons;
 `y32confirm`) and the Roundcube row and Manage card after Frankfurt's failed and
-rolled-back update, with Open webmail (`y32webmail`). Same conventions as batch 30.
+rolled-back update; Open webmail is held back until webmail has its own address (`y32webmail`). Same conventions as batch 30.

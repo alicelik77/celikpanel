@@ -92,6 +92,13 @@ test('replaced packages group by repository, additional packages by reason; a sh
   assert.deepEqual(groups.additional.map((group) => [group.key, group.items.map((item) => item.package)]), [
     ['apache:', ['apache2', 'libapache2-mod-php8.4']], ['new_php_version:8.4', ['php8.4-xml']],
   ]);
+  // Two repositories named: a package without one is not attributed to either.
+  const two = preview.confirmationGroups([
+    SHARED,
+    { package: 'libpq5', reason: 'vendor_shared', component: 'pgdg' },
+    { package: 'php-pear', reason: 'vendor_shared' },
+  ]);
+  assert.deepEqual(two.replaced.map((group) => [group.repo, group.items.map((item) => item.package)]), [['sury', ['php-common']], ['pgdg', ['libpq5']], ['', ['php-pear']]]);
 });
 
 test('Turkish: one replaced package says what, why and what follows, each with its own line; the tooltip has the exact versions', () => {

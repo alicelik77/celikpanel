@@ -124,16 +124,24 @@ test('a lost POST answer is looked up by its request id and never sent again', a
   } finally { await unmount(); }
 });
 
-test('the Open webmail link is offered only while webmail answers', async () => {
+test('the Open webmail link is held back while webmail is only on the panel origin', async () => {
+  // alpha.109 review: the panel's script policy stays on /webmail/, so the
+  // interface does not start there; the link waits for webmail's own address.
   await mount([check({}, { webmail_ready: true })]);
   try {
-    const link = attr('data-open-webmail-link');
-    assert.equal(link.length, 1);
-    assert.equal(link[0].props.href, '/webmail/');
-    assert.equal(link[0].props.rel, 'noopener noreferrer');
+    assert.equal(attr('data-open-webmail-link').length, 0);
   } finally { await unmount(); }
   await mount([check({}, { webmail_ready: false })]);
   try {
     assert.equal(attr('data-open-webmail-link').length, 0);
+  } finally { await unmount(); }
+});
+
+test('a release check that could not be read still says the last update', async () => {
+  const failed = operation('failed', { outcome: 'rolled_back', previous_answers: true, from: '1.6.15', to: '1.6.20', reason: 'webmail did not answer on 1.6.20' });
+  await mount([{ state: 'unknown', last_update: failed, webmail_ready: false }]);
+  try {
+    assert.ok(text().includes(en['life.webmail.unknown']));
+    assert.ok(text().includes(fill(en['life.webmail.rolledBack'], { from: '1.6.15', to: '1.6.20', reason: 'webmail did not answer on 1.6.20' })), text());
   } finally { await unmount(); }
 });

@@ -43,6 +43,14 @@ function WebmailFacts({ value, onChanged }: { value: RoundcubeUpdateCheck; onCha
     // Bileşenler satırının başlattığı akışın aynısı.
     const flow = useRoundcubeUpdate({ current: value.version, latest, lastUpdate: value.last_update, onChanged });
     const { confirming, setConfirming, updating, phase, result, update } = flow;
+    if (value.check_unknown) {
+        return (
+            <div className="space-y-3" data-webmail-state="unknown">
+                <LifeLine tone="info" attr="webmail-check-unknown">{t('life.webmail.unknown')}</LifeLine>
+                <RoundcubeUpdateProgress updating={updating} phase={phase} result={result} />
+            </div>
+        );
+    }
     if (!value.installed) return <p className="text-sm text-fg-muted">{t('life.webmail.notInstalled')}</p>;
     return (
         <div className="space-y-3" data-webmail-state={value.update_available ? 'available' : value.error ? 'error' : 'current'}>

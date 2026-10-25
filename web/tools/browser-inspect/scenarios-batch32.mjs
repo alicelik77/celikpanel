@@ -5,7 +5,7 @@
 //                confirmation (packages a vendor repository replaces, the
 //                additional packages under their reasons, the footer)
 //   y32webmail   Components: the Roundcube row after Frankfurt's failed and
-//                rolled-back update, with Open webmail; then its Manage page
+//                rolled-back update (Open webmail held back); then its Manage page
 //
 // Every answer comes from the mock on 127.0.0.1 through overrides (SAMPLE
 // data shaped as the Panel answers); nothing is installed, moved or contacted.
@@ -107,7 +107,7 @@ export default function batch32(scenarios, { base, locale, theme, out, viewport,
     };
 
     scenarios.y32webmail = async () => {
-        const page = await open('/services', () => !!document.querySelector('[data-open-webmail]'), {}, { 'celikpanel.components.view': 'installed' });
+        const page = await open('/services', () => !!document.querySelector('[data-row-webmail-update]'), {}, { 'celikpanel.components.view': 'installed' });
         await page.evaluate(() => document.querySelector('[data-row-webmail-update]')?.scrollIntoView({ block: 'center' }));
         await pause(300);
         await snap(page, 'webmail-row');

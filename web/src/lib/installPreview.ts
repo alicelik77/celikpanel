@@ -172,8 +172,11 @@ export function confirmationGroups(notable: readonly NotableInstall[]): { replac
     const replaced: ReplacedGroup[] = [];
     const additional: AdditionalGroup[] = [];
     // A shared package the vendor installs fresh is not told its repository;
-    // it is the one its siblings name.
-    const knownRepo = notable.find((item) => item.reason === 'vendor_shared' && item.component)?.component ?? '';
+    // it is the one its siblings name, but only when they name exactly one
+    // (alpha.109 review): with two repositories it stays "unknown
+    // repository" rather than be attributed to the wrong one.
+    const named = new Set(notable.filter((item) => item.reason === 'vendor_shared' && item.component).map((item) => item.component as string));
+    const knownRepo = named.size === 1 ? [...named][0] : '';
     for (const item of notable) {
         if (item.reason === 'vendor_replaces_distribution') continue;
         if (item.reason === 'vendor_shared') {

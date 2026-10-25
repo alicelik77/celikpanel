@@ -228,9 +228,18 @@ export function RoundcubeUpdateDialog({ latest, updating, onCancel, onConfirm }:
 // offered only while webmail answers there.
 // Web postası panelin /webmail/ adresindedir; bağlantı yalnız orada yanıt
 // verirken sunulur.
+//
+// Held back (alpha.109 review): webmail is served on the panel's own origin,
+// where the panel's script policy (which protects the administrator's
+// session) keeps Roundcube's interface from starting. The link is offered
+// once webmail has its own address (the next step); until then this flag
+// stays false and nothing is drawn.
+// Web postası kendi adresine kavuşana dek bağlantı gösterilmez.
+export const WEBMAIL_LINK_OFFERED = false;
+
 export function OpenWebmailLink({ ready, className = '' }: { ready: boolean | undefined; className?: string }) {
     const { t } = useI18n();
-    if (!ready) return null;
+    if (!WEBMAIL_LINK_OFFERED || !ready) return null;
     const origin = typeof window !== 'undefined' && window.location ? window.location.origin : '';
     const url = `${origin}/webmail/`;
     return (
