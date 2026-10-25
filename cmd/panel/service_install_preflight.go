@@ -68,6 +68,12 @@ func (p *Panel) preflightManagedServiceRepository(
 	if err != nil {
 		return fmt.Errorf("%s repository policy: %w", managed.Name, err)
 	}
+	// alpha.108: a PostgreSQL major the distribution itself ships installs by
+	// its exact name without the vendor repository.
+	if family == "apt" && requiresRepo && managed.ID == "postgresql" && strings.TrimSpace(selectedPackage) != "" &&
+		!managed.Repo.Required && p.pgDistributionOffers(ctx, strings.TrimSpace(selectedPackage)) {
+		requiresRepo = false
+	}
 	if family == "apt" && requiresRepo {
 		var status transport.RepoStatusResponse
 		if err := p.callAgentContext(ctx, "Agent.RepoStatus", &transport.EnableRepoRequest{RepoID: managed.Repo.ID}, &status); err != nil {

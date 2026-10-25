@@ -135,6 +135,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.CheckSystemUpdate Agent.SecurityAudit Agent.SystemUpdateStatus
 		Agent.OSUpdatesStatusV1 Agent.RoundcubeUpdateCheckV1 Agent.RestartNeedsV1
 		Agent.NodePatchesV1 Agent.OSReleaseFactsV1 Agent.RepoConfinePreviewV1
+		Agent.PostgreSQLClustersV1 Agent.PostgreSQLClusterPortPreviewV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -206,6 +207,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityDatabase, `
 		Agent.CreateDatabase Agent.DeleteDatabase Agent.ImportCpmoveDatabase
 		Agent.ProvisionDatabaseAdminAccount Agent.RemoveDatabaseAdminAccount
+		Agent.SetPostgreSQLClusterPortV1 Agent.CopyPostgreSQLDatabaseV1 Agent.DropPostgreSQLDatabaseV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilitySystemSQLite, `
 		Agent.CreateSystemSQLiteSnapshot Agent.OptimizeSystemSQLiteDatabase
@@ -377,17 +379,23 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.DeleteDatabase":                agentRPCDatabaseTimeout,
 	"Agent.ProvisionDatabaseAdminAccount": agentRPCDatabaseTimeout,
 	"Agent.RemoveDatabaseAdminAccount":    agentRPCDatabaseTimeout,
-	"Agent.DeleteSite":                    agentRPCDatabaseTimeout,
-	"Agent.EnsureDKIMKey":                 agentRPCDatabaseTimeout,
-	"Agent.ImportMailAccount":             agentRPCDatabaseTimeout,
-	"Agent.ApplySitePool":                 agentRPCDatabaseTimeout,
-	"Agent.SecureDNSZoneV2":               agentRPCDatabaseTimeout,
-	"Agent.SyncDNSZoneV2":                 agentRPCDatabaseTimeout,
-	"Agent.SyncDNSZoneV3":                 agentRPCDatabaseTimeout,
-	"Agent.RecoverDNSZoneV3":              agentRPCDatabaseTimeout,
-	"Agent.SyncMailTLSV2":                 agentRPCMutationTimeout,
-	"Agent.CreateSystemSQLiteSnapshot":    agentRPCDatabaseTimeout,
-	"Agent.OptimizeSystemSQLiteDatabase":  agentRPCDatabaseTimeout,
+	// alpha.108: PostgreSQL clusters side by side.
+	"Agent.PostgreSQLClustersV1":           agentRPCNetworkReadTimeout,
+	"Agent.PostgreSQLClusterPortPreviewV1": agentRPCNetworkReadTimeout,
+	"Agent.SetPostgreSQLClusterPortV1":     agentRPCDatabaseTimeout,
+	"Agent.CopyPostgreSQLDatabaseV1":       agentRPCDeploymentTimeout,
+	"Agent.DropPostgreSQLDatabaseV1":       agentRPCDatabaseTimeout,
+	"Agent.DeleteSite":                     agentRPCDatabaseTimeout,
+	"Agent.EnsureDKIMKey":                  agentRPCDatabaseTimeout,
+	"Agent.ImportMailAccount":              agentRPCDatabaseTimeout,
+	"Agent.ApplySitePool":                  agentRPCDatabaseTimeout,
+	"Agent.SecureDNSZoneV2":                agentRPCDatabaseTimeout,
+	"Agent.SyncDNSZoneV2":                  agentRPCDatabaseTimeout,
+	"Agent.SyncDNSZoneV3":                  agentRPCDatabaseTimeout,
+	"Agent.RecoverDNSZoneV3":               agentRPCDatabaseTimeout,
+	"Agent.SyncMailTLSV2":                  agentRPCMutationTimeout,
+	"Agent.CreateSystemSQLiteSnapshot":     agentRPCDatabaseTimeout,
+	"Agent.OptimizeSystemSQLiteDatabase":   agentRPCDatabaseTimeout,
 
 	// Operations that legitimately run package/application installers.
 	"Agent.ApplyVhosts":                 agentRPCDeploymentTimeout,

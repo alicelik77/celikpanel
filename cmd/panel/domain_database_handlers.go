@@ -224,15 +224,19 @@ func (p *Panel) handleCreateDatabase(w http.ResponseWriter, r *http.Request, dom
 		return
 	}
 
-	var serverID int
+	// alpha.108: a PostgreSQL server record is one cluster on its port; a
+	// record whose cluster was emptied and removed (status 'retired') takes
+	// no new database.
+	var serverID, serverPort int
 	err = pool.QueryRowContext(ctx, `
-		SELECT ds.id
+		SELECT ds.id, ds.port
 		FROM database_servers ds
 		JOIN database_server_types dst ON dst.id = ds.type_id
 		WHERE ds.subscription_id = ? AND dst.name = ?
+		  AND COALESCE(ds.status, 'active') <> 'retired'
 		ORDER BY ds.is_default DESC, ds.id
 		LIMIT 1
-	`, domain.SubscriptionID, serverTypeNameFor(req.Type)).Scan(&serverID)
+	`, domain.SubscriptionID, serverTypeNameFor(req.Type)).Scan(&serverID, &serverPort)
 	if err == sql.ErrNoRows {
 		writeClientError(w, http.StatusServiceUnavailable,
 			fmt.Sprintf("no %s server is installed on this host", req.Type))
@@ -271,6 +275,9 @@ func (p *Panel) handleCreateDatabase(w http.ResponseWriter, r *http.Request, dom
 		Name:     dbName,
 		User:     dbUser,
 		Password: req.Password,
+	}
+	if serverTypeNameFor(req.Type) == "postgresql" {
+		agentReq.Port = serverPort
 	}
 
 	err = p.callAgent("Agent.CreateDatabase", agentReq, &agentResp)
@@ -379,13 +386,14 @@ func (p *Panel) handleDeleteDatabase(w http.ResponseWriter, r *http.Request) {
 	// silinebilsin (yönlendirici, çağıranın o domain'in sahibi olduğunu
 	// zaten doğruladı).
 	var dbName, serverType string
+	var serverPort int
 	err = pool.QueryRowContext(ctx, `
-		SELECT d.name, dst.name
+		SELECT d.name, dst.name, ds.port
 		FROM databases_v2 d
 		JOIN database_servers ds ON ds.id = d.server_id
 		JOIN database_server_types dst ON dst.id = ds.type_id
 		WHERE d.id = ? AND d.domain_id = ?
-	`, dbID, domainID).Scan(&dbName, &serverType)
+	`, dbID, domainID).Scan(&dbName, &serverType, &serverPort)
 	if err != nil {
 		http.Error(w, "Database not found", http.StatusNotFound)
 		return
@@ -414,6 +422,10 @@ func (p *Panel) handleDeleteDatabase(w http.ResponseWriter, r *http.Request) {
 		Type: apiTypeNameFor(serverType),
 		Name: dbName,
 		User: dbUser,
+	}
+	if serverType == "postgresql" {
+		// alpha.108: the cluster the record says the database lives on.
+		agentReq.Port = serverPort
 	}
 
 	err = p.callAgent("Agent.DeleteDatabase", agentReq, &agentResp)

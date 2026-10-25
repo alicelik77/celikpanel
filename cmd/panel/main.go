@@ -1343,6 +1343,8 @@ func main() {
 	http.HandleFunc(serviceRemovalImpactPath, panel.handleServiceRemovalImpact)
 	http.HandleFunc(serviceInstallPreviewPath, panel.handleServiceInstallPreview)
 	http.HandleFunc(roundcubeUpdatePath, panel.handleRoundcubeUpdate)
+	// alpha.108: PostgreSQL majors side by side (clusters, ports, moves).
+	http.HandleFunc(pgServiceAPIPrefix, panel.handlePostgreSQLService)
 	http.HandleFunc(phpToolsPath, panel.handlePHPTools)
 	http.HandleFunc(phpToolBindPath, panel.handlePHPToolBind)
 	http.HandleFunc(hostMutationReadinessPath, panel.handleHostMutationReadiness)
