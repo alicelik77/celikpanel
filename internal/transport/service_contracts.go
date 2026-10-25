@@ -349,6 +349,30 @@ type ServiceRemovalPreviewResponse struct {
 	// stays on this server. Additive.
 	KeepsData bool     `json:"keeps_data,omitempty"`
 	DataPaths []string `json:"data_paths,omitempty"`
+	// Traces (alpha.108, D-038 §13): what the system's own traces show using
+	// the component outside CelikPanel — web-server configuration lines,
+	// dependent services, connected local programs. TracesState: "checked",
+	// "partial" (a source could not be read; TracesUnread names it) or ""
+	// (not looked at). Warnings, never a refusal. Additive.
+	Traces       []RemovalTrace `json:"traces,omitempty"`
+	TracesState  string         `json:"traces_state,omitempty"`
+	TracesUnread []string       `json:"traces_unread,omitempty"`
+}
+
+// RemovalTrace is one thing on the server, outside CelikPanel, that uses a
+// component about to be removed. Kind: "web_config" (Path, Line, Text),
+// "unit" (Unit depends on it through Relation, declared in Path) or
+// "process" (Process with PID is connected to Endpoint).
+type RemovalTrace struct {
+	Kind     string `json:"kind"`
+	Path     string `json:"path,omitempty"`
+	Line     int    `json:"line,omitempty"`
+	Text     string `json:"text,omitempty"`
+	Unit     string `json:"unit,omitempty"`
+	Relation string `json:"relation,omitempty"`
+	Process  string `json:"process,omitempty"`
+	PID      int    `json:"pid,omitempty"`
+	Endpoint string `json:"endpoint,omitempty"`
 }
 
 type ConfigureDBToolsResponse struct {

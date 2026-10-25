@@ -97,6 +97,12 @@ func serviceRemovalPreviewWithOps(
 	if work.boundTools != nil {
 		resp.BoundTools = append([]string{}, work.boundTools...)
 	}
+	// alpha.108 (D-038 §13): the system's own traces of use outside
+	// CelikPanel, bounded and read-only; warnings, never a refusal.
+	if removalTraceReader != nil {
+		scope := newRemovalTraceScope(svc, removalTraceVersion(svc, req.Package), work.units)
+		resp.Traces, resp.TracesState, resp.TracesUnread = removalTraceReader(ctx, scope)
+	}
 	executor, err := executorFor(work.family)
 	if err != nil {
 		resp.Error = err.Error()
