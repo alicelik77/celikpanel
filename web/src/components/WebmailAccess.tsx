@@ -1,6 +1,7 @@
 import { useI18n } from '../i18n';
 import { decodeMailSetup, mailSetupURL } from '../lib/mailSetup';
 import { useRemote } from '../lib/remote';
+import { WEBMAIL_LINK_OFFERED } from '../lib/roundcubeUpdate';
 import { Checking, CouldNotCheck } from './ui';
 
 // The webmail card of a domain's mail screen. Whether webmail is available is
@@ -29,10 +30,10 @@ export default function WebmailAccess({ domainId }: { domainId: number }) {
                 ) : remote.state === 'unknown' ? (
                     <CouldNotCheck className='mt-2' text={t('mail.webmail.unknown')} onRetry={() => void retry()} busy={reading} />
                 ) : (
-                    <p className='text-xs text-fg-muted'>{path ? t('mail.webmail.available') : t('mail.webmail.unavailable')}</p>
+                    <p className='text-xs text-fg-muted'>{path ? (WEBMAIL_LINK_OFFERED ? t('mail.webmail.available') : t('mail.webmail.heldBack')) : t('mail.webmail.unavailable')}</p>
                 )}
             </div>
-            {path && (
+            {WEBMAIL_LINK_OFFERED && path && (
                 <a href={path} target='_blank' rel='noopener noreferrer' className='inline-flex min-h-[2.75rem] items-center rounded-lg border border-border-strong px-3 py-1.5 text-sm font-medium text-fg hover:bg-surface-2'>
                     {t('mail.webmail.open')}
                 </a>

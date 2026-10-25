@@ -44,6 +44,9 @@ test('webmail payload parsing fails closed and allowlists only the public webmai
 
 test('webmail CTA is safe, read-only accessible, and absent when unavailable', () => {
   assert.ok(accessSource.includes('path && ('));
+  // alpha.109 review: held back while webmail is only on the panel's origin.
+  assert.ok(accessSource.includes('WEBMAIL_LINK_OFFERED && path && ('));
+  assert.ok(accessSource.includes("t('mail.webmail.heldBack')"));
   assert.ok(accessSource.includes('href={path}'));
   assert.ok(accessSource.includes(`target='_blank'`));
   assert.ok(accessSource.includes(`rel='noopener noreferrer'`));

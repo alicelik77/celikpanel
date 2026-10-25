@@ -7,6 +7,13 @@
 // güncelleme işlemi de gelir.
 export const ROUNDCUBE_UPDATE_URL = '/api/v1/service/roundcube/update';
 
+// WEBMAIL_LINK_OFFERED (alpha.109 review): no screen links to webmail while it
+// is served only on the panel's own origin, where the panel's script policy
+// (which protects the administrator's session) keeps Roundcube's interface
+// from starting. It turns on when webmail has its own address.
+// Web postası kendi adresine kavuşana dek hiçbir ekran ona bağlantı vermez.
+export const WEBMAIL_LINK_OFFERED = false;
+
 export interface WebmailUpdateOperation {
     id: string;
     request_id?: string;

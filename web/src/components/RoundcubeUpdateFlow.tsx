@@ -17,7 +17,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../i18n';
 import { Button, Dialog, KeepWords } from './ui';
 import { LifeLine, type Tone } from './LifeLine';
-import { readWebmailUpdateOperation as readOperation, ROUNDCUBE_UPDATE_URL, webmailUpdateOutcome, type WebmailUpdateOperation } from '../lib/roundcubeUpdate';
+import { readWebmailUpdateOperation as readOperation, ROUNDCUBE_UPDATE_URL, WEBMAIL_LINK_OFFERED, webmailUpdateOutcome, type WebmailUpdateOperation } from '../lib/roundcubeUpdate';
 
 export interface RoundcubeUpdateOutcome {
     tone: Tone;
@@ -235,7 +235,7 @@ export function RoundcubeUpdateDialog({ latest, updating, onCancel, onConfirm }:
 // once webmail has its own address (the next step); until then this flag
 // stays false and nothing is drawn.
 // Web postası kendi adresine kavuşana dek bağlantı gösterilmez.
-export const WEBMAIL_LINK_OFFERED = false;
+export { WEBMAIL_LINK_OFFERED } from '../lib/roundcubeUpdate';
 
 export function OpenWebmailLink({ ready, className = '' }: { ready: boolean | undefined; className?: string }) {
     const { t } = useI18n();
