@@ -27,7 +27,7 @@ import (
 // alpha.108 gerçek sistem kanıtı (kaldırma izleri); yalnız atılabilir bir
 // Debian 13 sanal makinesinde koşar.
 
-func requireRealSystemA108(t *testing.T) {
+func requireRealSystemA108Traces(t *testing.T) {
 	t.Helper()
 	if os.Getenv("CELIKPANEL_REAL_SYSTEM_A108") != "1" {
 		t.Skip("real-system evidence runs only in the disposable alpha.108 VM")
@@ -45,7 +45,7 @@ func a108dPreview(t *testing.T, a *Agent, pkg string) transport.ServiceRemovalPr
 }
 
 func TestRealSystemA108RemovalTraces(t *testing.T) {
-	requireRealSystemA108(t)
+	requireRealSystemA108Traces(t)
 	a := &Agent{}
 	if a107Version("php8.4-fpm") == "" {
 		if resp := a107Install(t, a, "php-fpm", ""); resp.Error != "" {

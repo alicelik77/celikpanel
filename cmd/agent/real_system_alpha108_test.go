@@ -115,17 +115,15 @@ func TestRealSystemA108PostgreSQLSideBySide(t *testing.T) {
 	a108Psql(t, "5432", "postgres", "CREATE DATABASE a108shop OWNER a108_user;")
 	a108Psql(t, "5432", "a108shop", "SET ROLE a108_user; CREATE TABLE orders (id integer PRIMARY KEY, note text); INSERT INTO orders SELECT g, 'order ' || g FROM generate_series(1, 1000) g; CREATE SCHEMA shop; CREATE TABLE shop.users (id integer, name text); INSERT INTO shop.users SELECT g, 'user ' || g FROM generate_series(1, 37) g;")
 
-	// 3. PGDG, enabled and confined, offers 18 on the next free port.
-	var repo RepoStatusResponse
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	err := a.enableRepoWith(ctx, &EnableRepoRequest{RepoID: "pgdg"}, &repo)
-	cancel()
-	logJSON(t, "enable pgdg", repo)
-	if err != nil || repo.Error != "" || !repo.Enabled {
-		t.Fatalf("enable pgdg: %v %+v", err, repo)
+	// 3. PGDG, enabled through its vendor lane (repository, confinement and
+	// automatic updates in one confirmed operation), offers 18 on the next
+	// free port.
+	a108AutomaticUpdates(t, a)
+	if _, written := a108Lane(t, a, "pgdg"); !written.Enabled {
+		t.Fatalf("pgdg lane = %+v", written)
 	}
-	if repo.Confinement == nil || repo.Confinement.State != repoConfinementConfined {
-		a107Confine(t, a, "pgdg")
+	if state := repoConfinementOf(repoFromCatalogue("pgdg"), enabledRepoLocations()["pgdg"]); state.State != repoConfinementConfined {
+		t.Fatalf("pgdg after its lane: %+v", state)
 	}
 	offered := a108Clusters(t)
 	var eighteen transport.PostgreSQLMajorOffer

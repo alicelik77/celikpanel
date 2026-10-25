@@ -33,7 +33,9 @@ func laneHost(t *testing.T, automatic string) string {
 		}
 		return map[string]string{"APT::Periodic::Unattended-Upgrade": automatic}, lists, nil
 	}
-	t.Cleanup(func() { aptSourcesListDir, vendorOriginsDropInPath, vendorLaneAptConfig = oldSources, oldDropIn, oldConfig })
+	t.Cleanup(func() {
+		aptSourcesListDir, vendorOriginsDropInPath, vendorLaneAptConfig = oldSources, oldDropIn, oldConfig
+	})
 	return root
 }
 
