@@ -51,7 +51,7 @@ export const enSetupScreens = {
     "setup.guide.installFailed.verify": "{component} is installed, but the final check did not find it running.",
     "setup.guide.installFailedDetail": "The server reported: {detail}",
     "setup.guide.installFailedAction.package": "The server administrator fixes the problem the package manager names, on this server: for example unreachable package mirrors, too little disk space, or a conflicting or held package.",
-    "setup.guide.installFailedAction.service": "The server administrator reads this service’s status and log on this server (systemctl status and journalctl -u with the service’s name) and fixes the problem they report.",
+    "setup.guide.installFailedAction.service": "The server administrator reads this service’s status and log on this server (sudo systemctl status and sudo journalctl -u with the service’s name) and fixes the problem they report.",
     "setup.guide.installFailedAction.other": "The server administrator checks the reason above on this server and fixes it.",
     "setup.guide.installFailedResume": "Then choose Review a revised plan and start setup again. Completed steps and installed components are kept; setup does not retry by itself.",
     "setup.guide.installFailedWithoutMail": "To continue without mail, choose Review a revised plan and select Web hosting as the purpose. Mail can be added once the cause is fixed.",

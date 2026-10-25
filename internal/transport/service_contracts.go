@@ -349,6 +349,37 @@ type ServiceRemovalPreviewResponse struct {
 	// stays on this server. Additive.
 	KeepsData bool     `json:"keeps_data,omitempty"`
 	DataPaths []string `json:"data_paths,omitempty"`
+	// HoldsDatabases (alpha.108, D-038 §2): the PostgreSQL clusters of this
+	// removal that still hold user databases ("17/main: shop, blog"); the
+	// removal is refused while there is one. DatabasesUnknown are the
+	// clusters that could not be asked (not running); the removal is refused
+	// for them too.
+	HoldsDatabases   []string `json:"holds_databases,omitempty"`
+	DatabasesUnknown []string `json:"databases_unknown,omitempty"`
+	// Traces (alpha.108, D-038 §13): what the system's own traces show using
+	// the component outside CelikPanel — web-server configuration lines,
+	// dependent services, connected local programs. TracesState: "checked",
+	// "partial" (a source could not be read; TracesUnread names it) or ""
+	// (not looked at). Warnings, never a refusal. Additive.
+	Traces       []RemovalTrace `json:"traces,omitempty"`
+	TracesState  string         `json:"traces_state,omitempty"`
+	TracesUnread []string       `json:"traces_unread,omitempty"`
+}
+
+// RemovalTrace is one thing on the server, outside CelikPanel, that uses a
+// component about to be removed. Kind: "web_config" (Path, Line, Text),
+// "unit" (Unit depends on it through Relation, declared in Path) or
+// "process" (Process with PID is connected to Endpoint).
+type RemovalTrace struct {
+	Kind     string `json:"kind"`
+	Path     string `json:"path,omitempty"`
+	Line     int    `json:"line,omitempty"`
+	Text     string `json:"text,omitempty"`
+	Unit     string `json:"unit,omitempty"`
+	Relation string `json:"relation,omitempty"`
+	Process  string `json:"process,omitempty"`
+	PID      int    `json:"pid,omitempty"`
+	Endpoint string `json:"endpoint,omitempty"`
 }
 
 type ConfigureDBToolsResponse struct {
@@ -577,11 +608,17 @@ type PHPToolBinding struct {
 	ProofCause  *PHPToolCause `json:"proof_cause,omitempty"`
 	// ProofTriedOthers: other installed versions were tried too.
 	ProofTriedOthers bool `json:"proof_tried_others,omitempty"`
+	// FPMState (alpha.108) is the version's PHP-FPM unit state read now
+	// ("active", "inactive", "failed", "activating", ... or "unknown"); ""
+	// when no versioned unit applies. With SocketReady it is what may say
+	// "not running"; a failed proof alone never does.
+	FPMState string `json:"fpm_state,omitempty"`
 }
 
 // PHPToolCause says why a tool move failed, in a form a screen translates
 // (alpha.104). Kind: missing_extensions (Extensions), wrong_version
-// (Running), no_answer, http_status (Status), served_as_file, tool_error,
+// (Running), no_answer, check_unreadable (Status; alpha.108: PHP-FPM could
+// not open CelikPanel's check script), http_status (Status), served_as_file, tool_error,
 // not_tool_page, not_running, version_not_installed, tool_not_installed,
 // unsupported, extensions_install_failed (Extensions), fpm_reload_failed,
 // config_owner_edited (Detail: the file), config_prepare_failed,
@@ -661,6 +698,9 @@ type BindPHPToolResponse struct {
 	Detail string `json:"detail,omitempty"`
 	// Cause is the same, structured and translatable.
 	Cause *PHPToolCause `json:"cause,omitempty"`
+	// ProofOnly (alpha.108): the tool was already configured on that
+	// version, so nothing was rewritten or reloaded; only the proof ran.
+	ProofOnly bool `json:"proof_only,omitempty"`
 }
 
 // NodePatch is one installed Node.js version and the newest release on its

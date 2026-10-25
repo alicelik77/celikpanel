@@ -33,7 +33,8 @@ const screenFiles = [
   'ConfigEditor', 'ConfigSettingsEditor', 'ConfigFileNotices', 'MailSettingsPanel', 'DomainMailManager', 'WebmailAccess',
   'PostfixManagement',
 ];
-const icons = new Set(['AlertTriangle']);
+// LifeLine's own marks (alpha.108: the MariaDB page says one line with it).
+const icons = new Set(['AlertTriangle', 'CheckCircle2', 'Info', 'XCircle']);
 for (const name of screenFiles) {
   for (const match of source(`components/${name}.tsx`).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {
     for (const item of match[1].split(',')) {
@@ -55,6 +56,8 @@ const stub = dataModule(`
   export const MailAuthPanel = () => null;
   // alpha.107: the repository card has its own mounted tests.
   export const RepoCard = () => null;
+  // alpha.108: the PostgreSQL clusters card has its own mounted tests.
+  export const PostgreSQLClustersCard = () => null;
   // What components/ComponentOperation.tsx imports and never calls here: only
   // its decoder is used, and that is the real one.
   export const createPortal = () => null;

@@ -85,7 +85,7 @@ async function loadShell(locale: Locale): Promise<Catalog> {
 // The screen part is itself stored in several parts per locale, one directory
 // per group of screens under ./screens (setup, sites, siteConfig,
 // dnsCertificates, components, componentPages, mailDatabases, security,
-// dashboard, settings, errors, lifecycle; v0.1.0-alpha.97, componentPages since alpha.106, lifecycle since alpha.107). That is a size split only - each part has its own budget
+// dashboard, settings, errors, lifecycle; v0.1.0-alpha.97, componentPages since alpha.106, lifecycle since alpha.107, databaseClusters and vendorLanes since alpha.108). That is a size split only - each part has its own budget
 // in web/scripts/check-bundle-budget.mjs - so every part is fetched in parallel
 // and merged before `screens` becomes true. No screen can render with only
 // some of them, and a part that fails fails the screen copy as a whole.
@@ -113,6 +113,8 @@ const screenParts: Record<Locale, Array<() => Promise<Record<string, unknown>>>>
         () => import('./screens/settings/en'),
         () => import('./screens/errors/en'),
         () => import('./screens/lifecycle/en'),
+        () => import('./screens/databaseClusters/en'),
+        () => import('./screens/vendorLanes/en'),
     ],
     tr: [
         () => import('./screens/setup/tr'),
@@ -127,6 +129,8 @@ const screenParts: Record<Locale, Array<() => Promise<Record<string, unknown>>>>
         () => import('./screens/settings/tr'),
         () => import('./screens/errors/tr'),
         () => import('./screens/lifecycle/tr'),
+        () => import('./screens/databaseClusters/tr'),
+        () => import('./screens/vendorLanes/tr'),
     ],
 };
 

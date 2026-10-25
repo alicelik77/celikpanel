@@ -10329,3 +10329,55 @@ installed server). **Who acts:** the administrator; nothing here starts by itsel
 not arrive is said as unknown and nothing is sent twice. Installed panels are
 updated only by their owners from the panel's own update screen. P0.1-P0.5 stay
 **partial**; this entry closes and advances nothing.
+
+### Two lanes, PostgreSQL side by side and the owner's findings (D-038, 2026-10-25)
+
+In source for the v0.1.0-alpha.108 candidate (not published; nothing measured on an
+installed server). **Who acts:** the administrator; nothing here starts by itself,
+and nothing already on the server is switched off or rewritten after the update.
+
+- **Default lane.** A component that comes from the operating system says so on its
+  page. Versions only a vendor repository ships are listed as locked, with where
+  they come from and who patches them. **Next action, only if a site needs one:**
+  **Use Sury PHP…** (PHP-FPM page) or **Use PGDG…** (PostgreSQL page). The dialog
+  shows the repository with its pinned key, the confinement rule and the origin in
+  the automatic updates, each with its file and SHA-256; one confirmation writes all
+  three. If the operating system's automatic updates are off, the dialog says the
+  command (`sudo dpkg-reconfigure -plow unattended-upgrades`) and enables nothing
+  until they are on.
+- **Frankfurt (Sury enabled, PHP 8.4 to 8.6 from Sury).** Open PHP-FPM → the
+  repository card. It names what is missing (the confinement and/or the origin in
+  the automatic updates). Press **Complete…**, read the files shown and confirm.
+  Nothing is installed, removed or restarted; Sury's packages keep getting Sury's
+  updates, now also through the operating system's automatic updates. The same
+  button is on Security → Security updates beside Sury.
+- **Boston (Sury enabled and confined by the owner on 2026-10-25).** The card names
+  only the origin in the automatic updates if it is missing; **Complete…** adds it.
+  The key line reads the key's current expiry (early 2028), not 2021.
+- **Boston, phpPgAdmin.** Open phpPgAdmin → Manage and press **Check again**. It
+  repairs the permissions of CelikPanel's check file (the cause of "did not answer
+  as itself") and proves the tool; nothing is moved. If it still fails, the card
+  says the real cause and the next action.
+- **Installing a PHP version from the versions list** (for example PHP-FPM 8.6) now
+  shows what the install brings and asks to confirm Sury's shared `php-common`
+  before anything changes. If the package manager's answer changes in between, the
+  install is refused with nothing installed: press Install again.
+- **PostgreSQL 16 → 17 (or 17 → 18) without converting data in place.** PostgreSQL
+  → Clusters → **Install PostgreSQL NN…** (the port is shown first; PGDG may be
+  needed for a major the operating system does not ship) → **Move a database…** →
+  read the per-table row counts → **Switch to the copy…** (the panel's record and
+  the site's stored host and port change; change your own application's port
+  yourself) → when everything works, **Remove the source…** → remove the old major
+  from Components (refused while it still holds a database; its data stays).
+  **Change port…** shows who is connected and the interruption first, and puts the
+  old port back if the new one does not answer.
+- **Disabling a vendor repository** removes nothing; what came from it is marked
+  "no longer updated" until it is removed or the repository is used again.
+- **Offered to customers** (PHP-FPM and Node.js pages): hide a version line from
+  customers' choices; sites already on it keep it.
+
+**How work resumes:** every card reads again on its own action; an answer that did
+not arrive is said as unknown and is read back, never sent twice. A recovery command
+starts with `sudo`; if you are signed in as root, leave out `sudo`. Installed panels
+are updated only by their owners from the panel's own update screen. P0.1–P0.5 stay
+**partial**; this entry closes and advances nothing.

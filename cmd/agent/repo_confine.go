@@ -526,6 +526,10 @@ type repoRecordEntry struct {
 	EnabledAt   string   `json:"enabled_at,omitempty"`
 	AptErrors   []string `json:"apt_errors,omitempty"`
 	AptErrorsAt string   `json:"apt_errors_at,omitempty"`
+	// NoLongerUpdated / DisabledAt (alpha.108): the installed packages that
+	// came from the repository when it was disabled; nothing updates them.
+	NoLongerUpdated []string `json:"no_longer_updated,omitempty"`
+	DisabledAt      string   `json:"disabled_at,omitempty"`
 }
 
 func readRepoRecord() repoRecord {

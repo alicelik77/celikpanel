@@ -10,6 +10,23 @@
 // güvenliği (alpha.107, D-038). Önek: life.
 
 export const enLifecycleScreens = {
+    // ---- alpha.108 slice d ----
+    // Versions offered to customers (D-038 §14).
+    'life.offer.title': 'Offered to customers',
+    'life.offer.intro': 'Customers choose a {name} version for their sites among the ones offered here. Hiding a version changes no site: a site already on it keeps it and keeps running, and its owner sees a note. As the administrator you can always choose any installed version.',
+    'life.offer.toggle': 'Offer {name} {version} to customers',
+    'life.offer.offered': 'Offered',
+    'life.offer.hidden': 'Hidden from customers',
+    'life.offer.notInstalled': '(no longer installed)',
+    'life.offer.checking': 'Reading which versions customers are offered…',
+    'life.offer.unknown': 'Which versions customers are offered could not be read. Nothing was changed. Try again.',
+    'life.offer.saving': 'Saving whether {name} {version} is offered to customers…',
+    'life.offer.failed': 'The change was not saved. Nothing else was changed; try again.',
+    'life.offer.lost': 'No answer came for this change. The list above was read again and shows what the server holds; change it again only if it is not what you wanted.',
+    'life.offer.customerKept': '{name} {version} is no longer offered for new choices. Your site keeps it and keeps running; ask your administrator before moving it to another version.',
+    'life.offer.adminKept': '{name} {version} is hidden from customers. This site keeps it and keeps running; its owner sees that it is no longer offered for new choices.',
+    // ---- alpha.108 web ----
+    'life.webmail.rowLocked': 'Updates are paused while the server state is being checked or another operation is running. Nothing needs to be done: the button works again when that finishes.',
     // ---- the repository card (D-038 §12, §1/§7) ----
     'life.repo.title': 'Package repository: {name}',
     'life.repo.checking': 'Reading the repository…',
@@ -34,8 +51,8 @@ export const enLifecycleScreens = {
     'life.repo.key': 'Signing key {fingerprint}',
     'life.repo.key.valid': 'does not expire',
     'life.repo.key.validUntil': 'valid until {date}',
-    'life.repo.key.expiring': 'Its signing key expires on {date}. Before then the server administrator enables the repository again on this page: that fetches the key the repository signs with now. Until it is renewed, apt keeps working.',
-    'life.repo.key.expired': 'Its signing key expired on {date}: apt no longer accepts this repository’s updates, so its packages are not updated. The server administrator enables the repository again on this page to fetch its current key.',
+    'life.repo.key.expiring': 'Its signing key expires on {date}. Before then the server administrator presses Fetch its current key below: CelikPanel fetches the key the repository signs with now and accepts it only if it is the pinned one. Until it is renewed, apt keeps working.',
+    'life.repo.key.expired': 'Its signing key expired on {date}: apt no longer accepts this repository’s updates, so its packages are not updated. The server administrator presses Fetch its current key below.',
     'life.repo.key.unknown': 'The signing key’s validity could not be read.',
     'life.repo.lists.fresh': 'Package list from {date}.',
     'life.repo.lists.missing': 'apt has no package list from this repository yet: until sudo apt-get update reaches it, its versions and updates are not known.',

@@ -33,8 +33,13 @@ import type { DashboardScreenKey } from './screens/dashboard/en';
 import type { SettingsScreenKey } from './screens/settings/en';
 import type { ErrorsScreenKey } from './screens/errors/en';
 import type { LifecycleScreenKey } from './screens/lifecycle/en';
+import type { DatabaseClustersScreenKey } from './screens/databaseClusters/en';
+import type { VendorLanesScreenKey } from './screens/vendorLanes/en';
 
 export const en = {
+    // ---- alpha.108 tools ----
+    'services.phpToolProof.whyCheck': 'PHP-FPM {version} could not open CelikPanel’s check file (HTTP {status}); Check again in its Manage window repairs it',
+    'services.phpToolProof.whySaid': 'it did not answer as itself; the server said: {detail}',
     'app.name': 'CelikPanel',
     'recovery.checkingTitle': 'Checking panel access',
     'recovery.checkingHelp': 'Confirming your session and panel readiness. This check does not start a server operation.',
@@ -77,7 +82,7 @@ export const en = {
     'recovery.automatic.cause.panel_start_unverified': "The update was applied, but the new version's panel did not come up, and completing the update was retried to its limit. The server owner should read the panel log on the server with sudo journalctl -u celikpanel-panel -n 50. Retrying repeats the same start until that cause is fixed. There is no supported return to the previous version from this point.",
     'recovery.automatic.cause.update_finishing_scheduler': "The new version is installed and running, but turning automatic certificate renewal (Certbot) back on did not confirm after the automatic attempts, so renewal may be off until this finishes. The recovery log names what stopped it, for example a change made to certbot.timer while the update ran.",
     'recovery.automatic.cause.candidate_panel_startup_check_failed': "The new version's panel failed its start check before anything was switched on, and the automatic return to the previous version did not finish. The recovery log shows what stopped it; retrying continues the same return to the previous version.",
-    'recovery.automatic.inspect': "On this server, open a terminal and inspect the recovery log:",
+    'recovery.automatic.inspect': "On this server, open a terminal and inspect the recovery log (if you are signed in as root, leave out sudo):",
     'recovery.automatic.resume': "Resolve the reported cause, then use the one-time retry command shown in that log for this operation. It continues the existing recovery. This page checks for its result; checking or reloading does not restart recovery.",
     'recovery.automatic.retryTitle': "Last recorded state: automatic recovery will try again",
     'recovery.automatic.retryHelp': "The last automatic recovery attempt did not finish. The server tries this same operation again by itself, normally about 30 seconds after the previous attempt ended, up to three attempts in total. Nothing is needed now: the server owner has to act only if automatic recovery pauses. This page checks for the result; checking or reloading does not start anything.",
@@ -237,6 +242,9 @@ export const en = {
     'panelUpdate.outcome.stoppedResume': "Nothing resumes by itself. Starting the update to {target} again is safe.",
     'nav.settings': 'Settings',
     'nav.menu': 'Menu',
+    'nav.collapse': 'Collapse menu',
+    'nav.expand': 'Expand menu',
+    'common.sudoNote': 'If you are signed in as root, leave out sudo.',
     'nav.monitoring': 'Monitoring',
     'nav.serverSetup': 'Server setup',
     'nav.dnsPeers': 'DNS and peer servers',
@@ -348,10 +356,10 @@ export const en = {
     'services.installed': '{name} installed.',
     'services.phpToolProblem.versionGone': '{tool} is set to PHP {version}, which is no longer installed, so {tool} cannot answer. Open {tool} in Components and choose an installed PHP version in Manage.',
     'services.phpToolProof.moved': '{tool} runs on PHP {version}: it did not work on PHP {first} ({why}), so the next installed PHP version that has its extensions was used. You can change it in {tool}’s Manage window.',
-    'services.phpToolProof.notReady': '{tool} was installed, but it did not answer on PHP {version} ({why}). It reads Not ready: open it in Components and choose a PHP version in Manage.',
+    'services.phpToolProof.notReady': '{tool} was installed, but it did not answer on PHP {version} ({why}). It reads Not ready: open its Manage window in Components; the reason is shown there, and Check again asks it again without moving it.',
     'services.phpToolProof.whyMissing': 'PHP {version} lacks {extensions}',
     'services.phpToolProof.whyOther': 'it did not answer as itself',
-    'services.installRefused.notable': 'Nothing was installed: it would also have brought {packages}, which had not been confirmed. Open the install again in Components, where these packages are listed for you to confirm, or choose the recommended version.',
+    'services.installRefused.notable': 'Nothing was installed: it would also have brought {packages}, which were not confirmed — the package manager’s answer changed after the install dialog was shown. Press Install again: the dialog now lists them for you to confirm.',
     'services.phpToolProblem.extensionsFailed': 'The PHP extensions {tool} needs could not be installed for PHP {version}, so {tool} may not work. Open {tool} in Components and choose PHP {version} again in Manage, or another version.',
     'services.mailProfiles.fallbackWarning': '{name} installed with a self-signed fallback certificate. Mail clients will show a trust warning until a matching trusted certificate is configured.',
     'services.operation.title': 'Installing {name}',
@@ -471,5 +479,7 @@ export type ScreenKey =
     | DashboardScreenKey
     | SettingsScreenKey
     | ErrorsScreenKey
-    | LifecycleScreenKey;
+    | LifecycleScreenKey
+    | DatabaseClustersScreenKey
+    | VendorLanesScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

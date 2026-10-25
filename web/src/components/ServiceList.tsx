@@ -23,10 +23,15 @@ import { componentStateWord, isServiceRunning, phpBindingOf, phpNotReadyHintKey 
 import { decodeCandidateVersion, decodeRepoInfo, type RepoInfo } from '../lib/componentRepo';
 import { decodeInstallPreview, installPreviewURL } from '../lib/installPreview';
 import { decodeRoundcubeUpdate, ROUNDCUBE_UPDATE_URL } from '../lib/roundcubeUpdate';
+import { RoundcubeUpdateDialog, RoundcubeUpdateProgress, useRoundcubeUpdate } from './RoundcubeUpdateFlow';
 import { supportFor, useSupportTable, type SupportComponent } from '../lib/supportTable';
 import { SupportBadge, supportConfirmation } from './SupportMark';
 import { NodePatches } from './NodePatches';
 import { InstallPreviewNotes, installPreviewAckKey, installPreviewGate } from './InstallPreviewNotes';
+import { VendorLaneDialog } from './VendorLaneDialog';
+import { LANE_FOR_COMPONENT } from '../lib/vendorLane';
+import { testedMark } from '../lib/testedVersions';
+import { lifeDate } from './LifeLine';
 import { useAuth } from '../auth/AuthContext';
 import type { TranslationKey } from '../i18n/en';
 import { useServerSetup } from './ServerSetupGate';
@@ -39,6 +44,7 @@ import { componentIcon } from '../lib/componentIcons';
 import { packageVersionFacts } from '../lib/packageVersion';
 import { BundleInstallDialog, ReadyBundleStrip, useBundleSequence, type BundleChoices } from './ReadyBundleStrip';
 import { WebmailRepairButton } from './WebmailRepairButton';
+import { decodeRemovalTraces, RemovalTracesNote, type RemovalTraces } from './RemovalTraces';
 import { answerBody, decodePHPToolMoveFailure, phpToolForService, readPHPTools, PHP_TOOL_SERVICE_ID, type PHPToolMoveFailure, type PHPToolsInfo, phpToolCauseText } from '../lib/phpTools';
 
 // One installed copy of a runtime (B3b): php8.3-fpm is an instance, a Node
@@ -1452,7 +1458,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         setPendingAction(action);
     };
 
-    const confirmComponentAction = async () => {
+    const confirmComponentAction = async (confirmed: string[] = []) => {
         const action = pendingAction;
         if (!action || hostMutationReadiness?.ready !== true || stateUnverified) return;
         setPendingAction(null);
@@ -1468,6 +1474,9 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                 serviceId: action.service.id,
                 name: componentName(action.service, t),
                 ...(action.service.repair_package ? { package: action.service.repair_package } : {}),
+                // alpha.108 (owner finding): what a repair install brings is
+                // shown and confirmed like any other install.
+                ...(action.service.id !== 'roundcube' ? { checkInstalls: true, confirmInstalls: confirmed } : {}),
             });
             break;
         case 'install-package':
@@ -1475,6 +1484,11 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                 serviceId: action.service.id,
                 package: action.pkg,
                 name: `${componentName(action.service, t)} ${action.version}`,
+                // alpha.108 (owner finding: "PHP-FPM 8.6 kurulsun mu?" showed
+                // no preview, then was refused): the version list's install
+                // carries what the owner confirmed in its dialog.
+                checkInstalls: true,
+                confirmInstalls: confirmed,
             });
             break;
         case 'install-node':
@@ -1808,14 +1822,14 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                         {group.map((s) => {
                                             const running = isRunning(s);
                                             return (
-                                                <li key={s.id} className={`relative flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-4 py-3.5 last:border-0 hover:bg-surface-2/40 md:grid ${versionColumn ? 'md:grid-cols-[minmax(0,1fr)_7.5rem_8rem_17rem]' : 'md:grid-cols-[minmax(0,1fr)_8rem_17rem]'}`}>
+                                                <li key={s.id} className={`relative flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-4 py-3.5 last:border-0 hover:bg-surface-2/40 xl:grid ${versionColumn ? 'xl:grid-cols-[minmax(0,1fr)_7.5rem_8rem_17rem]' : 'xl:grid-cols-[minmax(0,1fr)_8rem_17rem]'}`} data-component-row="">
                                                     {/* Selective dimming, not block opacity: the name stays
                                                         readable in the light theme; state is carried by the
                                                         muted tone + status text + Install button.
                                                         / Blok saydamlık değil seçici soldurma: ad açık temada
                                                         da okunur kalır; durumu soluk ton + durum yazısı +
                                                         Kur düğmesi anlatır. */}
-                                                    <div className="flex min-w-0 flex-1 basis-52 items-center gap-3">
+                                                    <div className="flex min-w-[min(100%,15rem)] flex-1 basis-60 items-center gap-3 xl:min-w-0">
                                                         {/* One line icon per component, from one map (alpha.94);
                                                             the Panel's emoji is not drawn. A row that is not
                                                             installed keeps the muted tint.
@@ -1848,7 +1862,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 to={`/services/${s.id}`}
                                                                 className={`rounded-md text-base font-medium outline-none after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-primary/40 ${s.is_installed ? 'text-fg' : 'text-fg-muted'}`}
                                                             >
-                                                                {componentName(s, t)}
+                                                                <KeepWords text={componentName(s, t)} />
                                                             </Link>
                                                             <div className="text-pretty text-xs text-fg-subtle">{componentDescription(s, t)}</div>
                                                             {/* What "Clean up leftovers" is about, said on the
@@ -1880,7 +1894,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 line is the phone's (as before alpha.95);
                                                                 without it, the only place a version is said.
                                                                 Sütun varsa bu satır telefonundur. */}
-                                                            <RowVersion service={s} className={versionColumn ? 'md:hidden' : ''} />
+                                                            <RowVersion service={s} className={versionColumn ? 'xl:hidden' : ''} updateLocked={mutationControlsDisabled || componentOperation.locked} updateLockedReason={readinessMessage} />
                                                             {/* alpha.104: a PHP tool whose PHP version is not there
                                                                 says why and where it is fixed, under its name.
                                                                 PHP'si olmayan araç nedenini ve çaresini söyler. */}
@@ -1892,11 +1906,11 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                         </div>
                                                     </div>
                                                     {versionColumn && (
-                                                        <div className="hidden min-w-0 md:block" data-version-column="">
+                                                        <div className="hidden min-w-0 xl:block" data-version-column="">
                                                             <RowVersion service={s} column />
                                                         </div>
                                                     )}
-                                                    <div className="w-32 shrink-0 md:w-auto">
+                                                    <div className="w-32 shrink-0 xl:w-auto">
                                                         {/* "Not checked yet" is information the operator
                                                             acts on, so it is fg-muted like a real status —
                                                             fg-subtle is for disabled and placeholder text
@@ -2211,7 +2225,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                     )}
                                                     </fieldset>
                                                     {s.kind === 'runtime' && openDrawers.has(s.id) && (
-                                                        <div className="basis-full md:col-span-3">
+                                                        <div className="basis-full xl:col-span-full">
                                                         <VersionDrawer
                                                             service={s}
                                                             busy={busy}
@@ -2320,7 +2334,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                     action={pendingAction}
                     confirmDisabled={hostMutationReadiness?.ready !== true || stateUnverified}
                     onCancel={() => setPendingAction(null)}
-                    onConfirm={() => void confirmComponentAction()}
+                    onConfirm={(confirmed) => void confirmComponentAction(confirmed)}
                 />
             )}
         </div>
@@ -2342,9 +2356,23 @@ function ComponentActionConfirmationDialog({
     action: PendingComponentAction;
     confirmDisabled: boolean;
     onCancel: () => void;
-    onConfirm: () => void;
+    onConfirm: (confirmed: string[]) => void;
 }) {
     const { t } = useI18n();
+    // alpha.108 (owner finding): a package install from the version list or a
+    // repair shows the package manager's simulation, and notable or vendor
+    // packages hold Install until the owner confirms them, as every other
+    // install path does.
+    // Sürüm listesinden kurulum ve onarım da benzetimi gösterir.
+    const previewURL = action.kind === 'install-package'
+        ? installPreviewURL([{ id: action.service.id, package: action.pkg }])
+        : action.kind === 'repair' && action.service.id !== 'roundcube'
+            ? installPreviewURL([{ id: action.service.id, ...(action.service.repair_package ? { package: action.service.repair_package } : {}) }])
+            : null;
+    const preview = useRemote(previewURL, decodeInstallPreview);
+    const [acknowledgedFor, setAcknowledgedFor] = useState<string | null>(null);
+    const ackKey = installPreviewAckKey(previewURL, preview);
+    const gate = installPreviewGate(previewURL ? preview : null, ackKey !== null && acknowledgedFor === ackKey);
     const actionName = action.kind === 'service' || action.kind === 'instance'
         ? action.action
         : action.kind === 'repair'
@@ -2387,14 +2415,24 @@ function ComponentActionConfirmationDialog({
                     <Button
                         variant={actionName === 'stop' ? 'danger' : 'primary'}
                         icon={icon}
-                        disabled={confirmDisabled}
-                        onClick={onConfirm}
+                        disabled={confirmDisabled || (previewURL !== null && gate.hold)}
+                        onClick={() => onConfirm(previewURL ? gate.confirmed : [])}
                     >
                         {t(`services.confirm.${actionName}.button` as Parameters<typeof t>[0], { name: targetName })}
                     </Button>
                 </>
             }
-        />
+        >
+            {previewURL && (
+                <InstallPreviewNotes
+                    handle={preview}
+                    acknowledged={ackKey !== null && acknowledgedFor === ackKey}
+                    onAcknowledge={(value) => setAcknowledgedFor(value ? ackKey : null)}
+                    componentLabel={(id) => componentName(id, t)}
+                    avoidable={action.kind === 'install-package'}
+                />
+            )}
+        </Dialog>
     );
 }
 
@@ -2996,7 +3034,20 @@ function InstallServiceDialog({
                     </div>
                 )}
             </Dialog>
-            {repoAction && repo && (
+            {repoAction === 'enable' && repo?.lane && (
+                // alpha.108: a vendor lane is enabled only with its
+                // confinement and automatic updates, shown first.
+                <VendorLaneDialog
+                    serviceId={service.id}
+                    component={componentName(service, t)}
+                    onClose={() => setRepoAction(null)}
+                    onDone={() => {
+                        setRepoAction(null);
+                        void repoRead.retry();
+                    }}
+                />
+            )}
+            {repoAction && repo && !(repoAction === 'enable' && repo.lane) && (
                 <RepositoryActionConfirmationDialog
                     action={repoAction}
                     repositoryName={repo.name || componentName(service, t)}
@@ -3047,7 +3098,7 @@ function RowSupport({ service }: { service: ManagedService }) {
     return <div className="mt-0.5"><SupportBadge table={support} component={component} version={worst.version} /></div>;
 }
 
-function RowVersion(props: { service: ManagedService; column?: boolean; className?: string }) {
+function RowVersion(props: { service: ManagedService; column?: boolean; className?: string; updateLocked?: boolean; updateLockedReason?: string }) {
     if (ROW_SUPPORT[props.service.id] && props.service.is_installed) {
         return (
             <>
@@ -3057,11 +3108,14 @@ function RowVersion(props: { service: ManagedService; column?: boolean; classNam
         );
     }
     // alpha.107: the webmail row also says an update is available (D-038 §9).
-    if (props.service.id === 'roundcube' && props.service.is_installed) {
+    // Once per row: the desktop version column (when drawn) shows the version
+    // alone, so the Update button is never doubled.
+    // Satır başına bir kez: sürüm sütunu yalnız sürümü gösterir.
+    if (props.service.id === 'roundcube' && props.service.is_installed && !props.column) {
         return (
             <>
                 <RowVersionText {...props} />
-                <RoundcubeRowUpdate />
+                <RoundcubeRowUpdate locked={props.updateLocked === true} lockedReason={props.updateLockedReason ?? ''} />
             </>
         );
     }
@@ -3069,16 +3123,51 @@ function RowVersion(props: { service: ManagedService; column?: boolean; classNam
 }
 
 // The Roundcube row says an update is available (alpha.107); it shares the
-// webmail page's read and says nothing until that read is known.
-// Roundcube satırı, güncelleme varsa söyler.
-function RoundcubeRowUpdate() {
+// webmail page's read and says nothing until that read is known. Since
+// alpha.108 it also carries the Update button: it opens the SAME confirmed
+// flow as the webmail card on the Manage page (RoundcubeUpdateFlow.tsx), and
+// the progress and the result are said here on the row. While mutations are
+// locked the button is disabled and the reason is written beside it.
+// Roundcube satırı, güncelleme varsa söyler ve Güncelle düğmesi taşır: Yönet
+// sayfasındaki onaylı akışın AYNISINI açar; kilitliyken neden yazılıdır.
+function RoundcubeRowUpdate({ locked, lockedReason }: { locked: boolean; lockedReason: string }) {
     const { t } = useI18n();
     const handle = useRemote(ROUNDCUBE_UPDATE_URL, decodeRoundcubeUpdate, { freshFor: 10 * 60_000 });
     const remote = handle.remote;
-    if (remote.state !== 'known' || !remote.value.update_available || !remote.value.latest_on_line) return null;
+    const known = remote.state === 'known' ? remote.value : null;
+    const latest = known?.latest_on_line ?? '';
+    const flow = useRoundcubeUpdate({ current: known?.version, latest, onChanged: () => void handle.retry() });
+    const offered = known !== null && known.update_available && latest !== '';
+    if (!offered && !flow.updating && !flow.result) return null;
+    const reason = lockedReason !== '' ? lockedReason : t('life.webmail.rowLocked');
     return (
-        <div className="text-xs font-medium text-warning" data-row-webmail-update={remote.value.latest_on_line}>
-            {t('life.webmail.rowAvailable', { latest: remote.value.latest_on_line })}
+        <div className="mt-1 space-y-1.5" data-row-webmail-update={latest}>
+            {offered && (
+                <div className="text-xs font-medium text-warning">
+                    {t('life.webmail.rowAvailable', { latest })}
+                </div>
+            )}
+            {offered && (
+                <div className="relative">
+                    <Button
+                        variant="primary"
+                        onClick={() => flow.setConfirming(true)}
+                        disabled={locked || flow.updating}
+                        aria-describedby={locked ? 'webmail-row-update-locked' : undefined}
+                        className="max-sm:min-h-11"
+                        data-row-webmail-update-button=""
+                    >
+                        {t('life.webmail.update', { latest })}
+                    </Button>
+                    {locked && (
+                        <p id="webmail-row-update-locked" className="mt-1 text-pretty text-xs text-fg-muted" data-row-webmail-update-locked="">{reason}</p>
+                    )}
+                </div>
+            )}
+            <RoundcubeUpdateProgress updating={flow.updating} result={flow.result} />
+            {flow.confirming && (
+                <RoundcubeUpdateDialog latest={latest} updating={flow.updating} onCancel={() => flow.setConfirming(false)} onConfirm={() => void flow.update()} />
+            )}
         </div>
     );
 }
@@ -3253,6 +3342,7 @@ function VersionDrawer({
     const [repoBusy, setRepoBusy] = useState(false);
     const repoError = repo?.error_code ? apiErrorText({ message: '', code: repo.error_code }, t, 'services.actionFailed') : '';
     const [repoAction, setRepoAction] = useState<'enable' | null>(null);
+    const [repoToken, setRepoToken] = useState(0);
     useEffect(() => {
         if (tarball || service.kind !== 'runtime') return;
         fetch(`/api/v1/repo?service_id=${encodeURIComponent(service.id)}`)
@@ -3260,7 +3350,7 @@ function VersionDrawer({
             .then((d: RepoInfo | null) => setRepo(d && d.available ? d : null))
             .catch(() => {});
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [service.id]);
+    }, [service.id, repoToken]);
 
     const enableRepo = async () => {
         setRepoBusy(true);
@@ -3521,6 +3611,21 @@ function VersionDrawer({
                                 {(inst.size_bytes ?? 0) > 0 && (
                                     <span className="text-xs text-fg-subtle">{fmtBytes(inst.size_bytes as number)}</span>
                                 )}
+                                {/* alpha.108: installed from a vendor repository that was
+                                    disabled since; nothing updates it any more. */}
+                                {repo && (repo.no_longer_updated ?? []).includes(`php${inst.version}-fpm`) && (
+                                    <span
+                                        title={t('lane.noLongerHint', { repo: repo.name ?? '', date: lifeDate(repo.disabled_at, locale) })}
+                                        className="rounded bg-warning/15 px-1.5 py-0.5 text-xs font-semibold text-warning"
+                                        data-no-longer-updated={inst.version}
+                                    >
+                                        {t('lane.noLonger')}
+                                    </span>
+                                )}
+                                {supportComponent && inst.version && (() => {
+                                    const mark = testedMark(support, supportComponent, inst.version);
+                                    return mark ? <TestedMark mark={mark} os={support?.distro_name ?? ''} /> : null;
+                                })()}
                                 {(inst.unit && inst.managed) || canRemove(inst) ? (
                                     <span className="ml-auto flex items-center gap-1">
                                         {inst.unit && inst.managed && (instRunning ? (
@@ -3580,14 +3685,21 @@ function VersionDrawer({
             {!tarball && repo && (
                 <div className="mt-2 border-t border-border/60 pt-3">
                     {!repo.enabled ? (
-                        <div className="flex flex-wrap items-center gap-3">
-                            <span className={`text-xs ${repoError ? 'text-danger' : 'text-fg-subtle'}`}>
-                                {repoError || t('services.repo.note')}
-                            </span>
-                            <Button variant="secondary" onClick={() => setRepoAction('enable')} disabled={repoBusy || Boolean(repo.error_code && !repo.repairable)} loading={repoBusy}>
-                                {repoBusy ? t('services.repo.enabling') : t('services.repo.enable')}
-                            </Button>
-                        </div>
+                        <>
+                            {/* alpha.108 (D-038 amendment "two lanes"): the default
+                                lane is the operating system's packages; the versions
+                                only the vendor ships are named, locked, with who
+                                patches them. */}
+                            {repo.lane && <LockedVendorVersions service={service} repoName={repo.name ?? ''} installed={instances.map((inst) => inst.version)} />}
+                            <div className="mt-2 flex flex-wrap items-center gap-3">
+                                <span className={`text-xs ${repoError ? 'text-danger' : 'text-fg-subtle'}`}>
+                                    {repoError || t('services.repo.note')}
+                                </span>
+                                <Button variant="secondary" onClick={() => setRepoAction('enable')} disabled={repoBusy || Boolean(repo.error_code && !repo.repairable)} loading={repoBusy}>
+                                    {repoBusy ? t('services.repo.enabling') : repo.lane ? t('lane.locked.enable', { repo: LANE_FOR_COMPONENT[service.id]?.name ?? repo.name ?? '' }) : t('services.repo.enable')}
+                                </Button>
+                            </div>
+                        </>
                     ) : (
                         <>
                             <div className="flex flex-wrap items-center gap-2">
@@ -3610,6 +3722,10 @@ function VersionDrawer({
                                                     {t('services.eolBadge')}
                                                 </span>
                                             )}
+                                            {supportComponent && (() => {
+                                                const mark = testedMark(support, supportComponent, v);
+                                                return mark ? <TestedMark mark={mark} os={support?.distro_name ?? ''} /> : null;
+                                            })()}
                                         </button>
                                     );
                                 })}
@@ -3680,7 +3796,18 @@ function VersionDrawer({
                     )}
                 </div>
             )}
-            {repoAction && repo && (
+            {repoAction && repo?.lane && (
+                <VendorLaneDialog
+                    serviceId={service.id}
+                    component={componentName(service, t)}
+                    onClose={() => setRepoAction(null)}
+                    onDone={() => {
+                        setRepoAction(null);
+                        setRepoToken((n) => n + 1);
+                    }}
+                />
+            )}
+            {repoAction && repo && !repo.lane && (
                 <RepositoryActionConfirmationDialog
                     action={repoAction}
                     repositoryName={repo.name || componentName(service, t)}
@@ -3782,6 +3909,63 @@ function VersionDrawer({
                 </Dialog>
             )}
         </fieldset>
+    );
+}
+
+// The default lane's locked versions (alpha.108, D-038 amendment "two
+// lanes"): the maintained versions the dated support table says this server's
+// distribution does not ship (their provider is the upstream, through the
+// vendor repository). Named and locked, with who patches them; enabling the
+// vendor lane is the administrator's informed choice.
+// Varsayılan yolun kilitli sürümleri: dağıtımın getirmediği bakımdaki sürümler.
+function LockedVendorVersions({ service, repoName, installed }: { service: ManagedService; repoName: string; installed: string[] }) {
+    const { t } = useI18n();
+    const support = useSupportTable();
+    const component: SupportComponent | null = service.id === 'php-fpm' ? 'php' : service.id === 'postgresql' ? 'postgresql' : null;
+    const lane = LANE_FOR_COMPONENT[service.id];
+    if (!component || !support || !lane) return null;
+    const versions = Object.entries(support.statuses?.[component] ?? {})
+        .filter(([version, result]) => result.provider === 'upstream' && (result.status === 'supported' || result.status === 'ends_soon') && !installed.includes(version))
+        .map(([version]) => version)
+        .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+    if (versions.length === 0) return null;
+    const os = support.distro_name ?? '';
+    return (
+        <div data-locked-versions={versions.join(',')}>
+            <p className="text-xs font-semibold text-fg-subtle">{t('lane.locked.title', { repo: lane.name || repoName })}</p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                {versions.map((version) => (
+                    <span
+                        key={version}
+                        title={t('lane.locked.hint', { repo: lane.name || repoName })}
+                        aria-disabled="true"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border-strong px-3 py-1.5 text-xs font-semibold text-fg-muted"
+                        data-locked-version={version}
+                    >
+                        <ShieldOff className="h-3.5 w-3.5" aria-hidden="true" />
+                        {`${componentName(service, t)} ${version}`}
+                    </span>
+                ))}
+            </div>
+            <p className="mt-1.5 text-xs leading-5 text-fg-subtle">
+                <KeepWords text={os ? t('lane.locked.why', { repo: lane.name || repoName, os }) : t('lane.locked.whyNoOS', { repo: lane.name || repoName })} />
+            </p>
+        </div>
+    );
+}
+
+// "Tested with this release" or "installable, not tested" (alpha.108,
+// D-038 §15): information, never a block.
+function TestedMark({ mark, os }: { mark: 'tested' | 'not_tested'; os: string }) {
+    const { t } = useI18n();
+    return (
+        <span
+            title={t(mark === 'tested' ? 'lane.testedHint' : 'lane.notTestedHint', { os })}
+            className={`rounded px-1.5 py-0.5 text-xs font-medium ${mark === 'tested' ? 'bg-success/10 text-success' : 'bg-surface-2 text-fg-subtle'}`}
+            data-tested={mark}
+        >
+            {t(mark === 'tested' ? 'lane.tested' : 'lane.notTested')}
+        </span>
     );
 }
 
@@ -3913,6 +4097,8 @@ function VersionRemovalImpact({ name, whole, serviceId, version, read, onRetry, 
                         <p className="text-fg-muted" data-version-move="none">{t('services.version.moveNone')}</p>
                     )
                 )}
+                {/* alpha.108 (D-038 §13): what the server's own traces show. */}
+                <RemovalTracesNote traces={sim?.traces} name={name} />
                 {moving && toolsBound && (
                     <div className="flex items-start gap-2 text-sm text-fg-muted" data-version-moving="">
                         <span className="mt-0.5 shrink-0"><Spinner size="xs" label={t('services.version.movingWait', { version: target })} /></span>
@@ -4059,6 +4245,11 @@ export interface RemovalSimulation {
     /** alpha.107 (D-038 §8): a database engine is removed, not purged; where its data stays. */
     keeps_data?: boolean;
     data_paths?: string[];
+    /** alpha.108 (D-038 §2): PostgreSQL clusters of this removal that still hold databases, or could not be asked. */
+    holds_databases?: string[];
+    databases_unknown?: string[];
+    /** alpha.108 (D-038 §13): the system's own traces of use outside CelikPanel. */
+    traces?: RemovalTraces;
 }
 const SIMULATION_STATES: ReadonlySet<string> = new Set(['checked', 'busy', 'unknown', 'unsupported', 'not_installed']);
 const COLLATERAL_REASONS: ReadonlySet<string> = new Set(['component', 'reverse_dependency', 'would_install']);
@@ -4084,6 +4275,9 @@ function decodeRemovalSimulation(value: unknown): RemovalSimulation | null {
         state: v.state as RemovalSimulation['state'], remove: v.remove, collateral, bound_tools: v.bound_tools,
         default_runtime: v.default_runtime, refuses: v.refuses,
         ...(v.keeps_data === true ? { keeps_data: true, data_paths: isStrings(v.data_paths) ? v.data_paths : [] } : {}),
+        ...(isStrings(v.holds_databases) && v.holds_databases.length > 0 ? { holds_databases: v.holds_databases } : {}),
+        ...(isStrings(v.databases_unknown) && v.databases_unknown.length > 0 ? { databases_unknown: v.databases_unknown } : {}),
+        traces: decodeRemovalTraces(v),
     };
 }
 const REMOVAL_HOSTED_KINDS: ReadonlySet<string> = new Set(['sites', 'php_sites', 'node_sites', 'databases', 'mail_addresses', 'mail_domains', 'mailboxes', 'certificates', 'firewall', 'unrecorded', 'vpn_peers', 'ftp_accounts']);
@@ -4337,6 +4531,13 @@ export function simulationFindings(t: Translate, { name, whole, serviceId, simul
         }
         details.push({ key: 'collateral', sim: 'collateral', text: t('services.removal.sim.refused', { name }) });
         if (installs.length > 0) details.push({ key: 'installs', sim: 'installs', text: t('services.removal.sim.installs', { packages: installs.join(', ') }) });
+    }
+    // alpha.108: a PostgreSQL cluster of this removal still holds databases.
+    if (simulation.holds_databases?.length) {
+        causes.push({ key: 'pg-holds', sim: 'pg-holds', text: t('pgc.removal.holds', { list: simulation.holds_databases.join('; ') }) });
+    }
+    if (simulation.databases_unknown?.length) {
+        causes.push({ key: 'pg-unknown', sim: 'pg-unknown', text: t('pgc.removal.unknown', { list: simulation.databases_unknown.join(', ') }) });
     }
     if (simulation.refuses && causes.length === 0) causes.push({ key: 'other', text: t('services.removal.why.other') });
     if (simulation.state === 'busy') notes.push({ key: 'busy', sim: 'busy', text: t('services.removal.sim.busy') });
@@ -4648,6 +4849,8 @@ function RemovalImpactSection({
             >
                 {!refused && affectedList('services.removal.affectedTitle')}
                 {!refused && warnings}
+                {/* alpha.108 (D-038 §13): what the server's own traces show. */}
+                <RemovalTracesNote traces={simulation?.traces} name={name} />
             </RemovalAnswer>
         </div>
     );

@@ -55,6 +55,9 @@ type CreateDatabaseRequest struct {
 	Password     string `json:"password"`
 	OperationID  string `json:"operation_id,omitempty"`
 	CleanupToken string `json:"cleanup_token,omitempty"`
+	// Port names the PostgreSQL cluster (alpha.108: majors side by side, each
+	// on its own port); 0 is the client's default, as before.
+	Port int `json:"port,omitempty"`
 }
 
 type CreateDatabaseResponse struct {
@@ -72,6 +75,8 @@ type DeleteDatabaseRequest struct {
 	RequireOwnershipProof bool   `json:"require_ownership_proof,omitempty"`
 	OperationID           string `json:"operation_id,omitempty"`
 	CleanupToken          string `json:"cleanup_token,omitempty"`
+	// Port names the PostgreSQL cluster the database lives on (alpha.108).
+	Port int `json:"port,omitempty"`
 }
 
 type DeleteDatabaseResponse struct {

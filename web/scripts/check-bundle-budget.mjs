@@ -89,6 +89,14 @@ const screenPartBudgets = {
   // (life.). A new part, set with at least 25% headroom from its Turkish file:
   // 23.99 / 6.78 KiB.
   lifecycle: kib(32.5, 9.25),
+  // v0.1.0-alpha.108: PostgreSQL majors side by side (pgc.). A new part, set
+  // with at least 25% headroom from its Turkish file: 15.16 / 4.43 KiB.
+  databaseClusters: kib(20.5, 6),
+  // v0.1.0-alpha.108: the vendor lane (lane.): the operating system's
+  // packages by default, a vendor repository only with its confinement and
+  // automatic updates. A new part, set with at least 25% headroom from its
+  // Turkish file: 8.41 / 2.87 KiB.
+  vendorLanes: kib(11.5, 3.9),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

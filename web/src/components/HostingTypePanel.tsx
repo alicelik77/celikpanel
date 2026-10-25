@@ -11,6 +11,8 @@ import { useLostAnswer, type LostAnswerHandle } from '../lib/lostAnswer';
 import { supportFor, useSupportTable } from '../lib/supportTable';
 import { SupportLine, supportConfirmation } from './SupportMark';
 import { AppAccountLine } from './AppAccountLine';
+import { OfferedVersionNote } from './OfferedVersionsCard';
+import { isOffered, useOfferedVersions } from '../lib/offeredVersions';
 
 // Hosting type for a domain (roadmap 3A): pick what the site IS, fill the
 // type-specific fields, apply. For node projects the live application panel
@@ -198,9 +200,13 @@ function HostingForm({
     // sorulur. Bilinene dek listede kayıtlı sürüm vardır, uydurma hiçbir şey yok.
     const runtimes = useRemote(state.project_type === 'node' ? NODE_RUNTIMES_URL : null, decodeNodeRuntimes);
     const installed = runtimes.remote.state === 'known' ? runtimes.remote.value : [];
-    const versions = state.runtime_version && !installed.includes(state.runtime_version)
-        ? [state.runtime_version, ...installed]
-        : installed;
+    // alpha.108 (D-038 §14): a customer's list holds the versions the
+    // administrator offers; the version the site runs stays in it (kept).
+    const offered = useOfferedVersions();
+    const savedNode = saved.project_type === 'node' ? saved.runtime_version ?? '' : '';
+    const versions = [state.runtime_version, savedNode]
+        .filter((v, index, all): v is string => Boolean(v) && !installed.includes(v as string) && all.indexOf(v) === index)
+        .concat(installed);
 
     return (
         <div className="space-y-5">
@@ -293,6 +299,9 @@ function HostingForm({
                             })}
                         </select>
                         {state.runtime_version && <SupportLine table={support} component="node" version={state.runtime_version} />}
+                        {offered && savedNode && (
+                            <OfferedVersionNote component="node" version={savedNode} offered={isOffered(offered, 'node', savedNode)} restricted={offered.restricted} />
+                        )}
                     </label>
                     {/* One line while the versions are read, in a place that
                         is there in every state; the notice when they could

@@ -93,6 +93,22 @@ func (p *Panel) handleDomainPHPSettings(w http.ResponseWriter, r *http.Request) 
 		} else {
 			availableVersions = domainPHPAvailableVersions(phpVersion, discoveredVersions)
 		}
+		// alpha.108 (D-038 §14): a customer is offered what the administrator
+		// offers; the site's own version stays listed (it keeps it).
+		if !callerIsAdministrator(r) {
+			if policy, policyErr := p.loadOfferedVersions(r.Context()); policyErr == nil {
+				kept := []string{}
+				for _, version := range availableVersions {
+					if version == phpVersion || policy.offered("php", version) {
+						kept = append(kept, version)
+					}
+				}
+				availableVersions = kept
+			} else {
+				log.Printf("versions offered to customers (domain %d): %v", domainID, policyErr)
+				availableVersions = domainPHPAvailableVersions(phpVersion, nil)
+			}
+		}
 
 		// Get pool config from agent
 		var poolConfig core.PHPPoolConfig
@@ -157,6 +173,11 @@ func (p *Panel) handleDomainPHPSettings(w http.ResponseWriter, r *http.Request) 
 		// version is no longer discoverable.
 		if err := services.ValidatePHPVersion(req.PHPVersion); err != nil {
 			writeClientError(w, http.StatusBadRequest, "invalid PHP version")
+			return
+		}
+		// alpha.108 (D-038 §14): a customer chooses among the versions the
+		// administrator offers; the version the site already runs is kept.
+		if p.refuseVersionNotOffered(w, r, "php", phpVersion, req.PHPVersion) {
 			return
 		}
 		discoveredVersions, err := p.phpVersionsFromAgent(r.Context())

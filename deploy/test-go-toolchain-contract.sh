@@ -153,14 +153,14 @@ reject_literal "$CI" 'windows-portability:'
 reject_literal "$CI" 'freebsd-compile:'
 reject_literal "$CI" 'darwin-compile:'
 require_count "$CI" 'go test -race -count=1 -timeout=8m ./cmd/panel' 1
-# Twenty-one disjoint, exhaustive shards (R-020). A letter group split from within
+# Twenty-three disjoint, exhaustive shards (R-020). A letter group split from within
 # keeps its pattern on the complement shard and -skips the carved-out prefix,
 # so the pair covers exactly what the single shard covered before. The D group
 # is carved twice, because measurement put both of its halves within seconds
 # of the 240 s exit line: TestD minus every TestDNS, then TestDNS minus the
 # engine and zone tests, then those two on their own.
-require_count "$CI" 'pattern:' 21
-require_count "$CI" 'skip:' 21
+require_count "$CI" 'pattern:' 23
+require_count "$CI" 'skip:' 23
 require_literal "$CI" "pattern: '^Test($|[A-B]|[^A-Z])'"
 require_literal "$CI" "pattern: '^TestC'"
 require_literal "$CI" "skip: '^TestControlPlane'"
@@ -174,6 +174,10 @@ require_literal "$CI" "pattern: '^TestDNSZone'"
 require_literal "$CI" "pattern: '^Test[E-K]'"
 require_literal "$CI" "pattern: '^Test[L-M]'"
 require_literal "$CI" "pattern: '^Test[N-Q]'"
+# alpha.108: N through Q carves out the TestPanel* tests (TestPa* took 202 of its 398 s
+# measured with -race); the remote and restore tests are two shards.
+require_literal "$CI" "skip: '^TestPanel'"
+require_literal "$CI" "pattern: '^TestPanel'"
 require_literal "$CI" "pattern: '^TestR'"
 # The R group is carved three times (alpha.107): measured with -race, the
 # recovery database migration tests and the remote and restore tests held
@@ -182,7 +186,9 @@ require_literal "$CI" "skip: '^TestRe(coveryDatabaseMigration|mo|st)'"
 require_literal "$CI" "pattern: '^TestRecoveryDatabaseMigration[A-L]'"
 require_literal "$CI" "pattern: '^TestRecoveryDatabaseMigration'"
 require_literal "$CI" "skip: '^TestRecoveryDatabaseMigration[A-L]'"
-require_literal "$CI" "pattern: '^TestRe(mo|st)'"
+require_literal "$CI" "pattern: '^TestRemo'"
+require_literal "$CI" "pattern: '^TestRest'"
+reject_literal "$CI" "pattern: '^TestRe(mo|st)'"
 require_literal "$CI" "pattern: '^TestS'"
 require_literal "$CI" "skip: '^Test(Service|ServerSetup|Site|Startup)'"
 # The S group is carved twice more (2026-10-11): the D-031 site-configuration
@@ -195,7 +201,7 @@ require_literal "$CI" "pattern: '^TestServerSetup'"
 require_literal "$CI" "skip: '^TestServerSetup[A-G]'"
 require_literal "$CI" "pattern: '^TestService'"
 require_literal "$CI" "pattern: '^Test[T-Z]'"
-require_count "$CI" "skip: ''" 14
+require_count "$CI" "skip: ''" 15
 require_literal "$CI" "-run '\${{ matrix.pattern }}' -skip '\${{ matrix.skip }}'"
 reject_literal "$CI" "pattern: '^Test[E-G]'"
 reject_literal "$CI" "pattern: '^Test[N-R]'"
@@ -246,8 +252,8 @@ panel_shard_output=$(awk -F "'" '
     END { if (have_pattern) exit 1 }
 ' "$CI") || die "cannot read panel race pattern/skip pairs from ci.yml"
 mapfile -t panel_shard_rows <<< "$panel_shard_output"
-((${#panel_shard_rows[@]} == 21)) ||
-    die "panel race matrix must contain exactly 21 pattern/skip pairs"
+((${#panel_shard_rows[@]} == 23)) ||
+    die "panel race matrix must contain exactly 23 pattern/skip pairs"
 
 panel_shard_membership_count() {
     local test_name=$1 count=0 row pattern skip
@@ -269,7 +275,8 @@ for boundary_name in Test TestA TestC TestControlPlane TestD TestDNS \
     TestSt TestSi TestT TestZ Test_ Test9 Testa \
     TestRe TestRec TestRecovery TestRecoveryDatabaseMigration TestRecoveryDatabaseMigrationA \
     TestRecoveryDatabaseMigrationL TestRecoveryDatabaseMigrationM TestRecoveryDatabaseMigrationz \
-    TestRemo TestRemote TestRest TestRestore TestRequest TestRFuture; do
+    TestRemo TestRemote TestRest TestRestore TestRequest TestRFuture \
+    TestN TestO TestP TestPa TestPan TestPanel TestPanelX TestPanelz TestPanels TestQ TestRe TestRem TestRes; do
     [[ "$(panel_shard_membership_count "$boundary_name")" == 1 ]] ||
         die "panel race shard boundary is not disjoint and exhaustive: $boundary_name"
 done

@@ -733,3 +733,12 @@ SAMPLE data shaped as the Panel answers; nothing is installed, moved or
 contacted. Each state is also copied to `BROWSER_INSPECT_SHOTS` as
 `<state>-<lang>-<theme>-<width>.png`. The screenshots are the inspection; these
 scenarios do not fail on a finding.
+
+`scenarios-batch31.mjs` draws the v0.1.0-alpha.108 candidate (D-038 amendment:
+two lanes, PostgreSQL majors side by side) from overrides only: the PHP-FPM page
+on the default lane and the vendor lane dialog (`y31lane`), an enabled repository
+with its missing steps and the Complete dialog (`y31complete`), the versions
+drawer's locked versions and tested marks (`y31locked`), the security updates
+card's direct action (`y31security`), the PostgreSQL clusters card (`y31pg`) and
+the Components rows with the webmail Update button and the collapsed sidebar
+(`y31rows`). Same conventions as batch 30.

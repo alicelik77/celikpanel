@@ -601,14 +601,34 @@ export function Checking({ label, className }: { label: string; className?: stri
 // exactly the command. A token longer than 40 characters stays free to wrap,
 // so it can never push a phone screen sideways.
 // Tireli sözcükler tirelerinden bölünmez; satır boşluklarda kırılır, metin aynı kalır.
+//
+// alpha.108 (owner finding C6, Frankfurt's phpMyAdmin install refusal): the
+// sentence is ONE box. It used to be a fragment, so inside a flex row (an
+// icon beside the text) every text run and every kept word became its own
+// flex item: "Sury PHP deposu dağıtımın" / "php-common" / "paketlerini…"
+// stood in three narrow columns. One span is one flex item that takes the
+// row's remaining width and wraps inside it, at 390 and at 1440.
+// Cümle tek kutudur: esnek satırda her parça ayrı sütun olmaz.
 export function KeepWords({ text }: { text: string }) {
     return (
-        <>
+        <span data-keep-words="">
             {text.split(/(\S+-\S+)/).map((part, index) => (index % 2 === 1 && part.length <= 40
                 ? <span key={index} className="whitespace-nowrap">{part}</span>
                 : part))}
-        </>
+        </span>
     );
+}
+
+// Owner terminal commands are written with sudo (alpha.108). Someone who is
+// signed in as root has no sudo to type, so wherever a command is shown the
+// page says so once, in plain words. mentionsSudo decides whether a sentence
+// carries such a command.
+// Sunucu sahibi komutları sudo ile yazılır; root olarak oturum açmış biri
+// sudo yazmaz. Komutun gösterildiği yerde bu bir kez düz sözle söylenir.
+export const mentionsSudo = (text: string): boolean => /\bsudo\b/.test(text);
+export function SudoNote({ className }: { className?: string }) {
+    const { t } = useI18n();
+    return <p className={className ?? 'mt-1 text-xs text-fg-muted'} data-sudo-note="">{t('common.sudoNote')}</p>;
 }
 
 export function CouldNotCheck({
@@ -843,12 +863,13 @@ export function ErrorBanner({ error, className }: { error: ApiError | null; clas
     const navigate = useNavigate();
     if (!error) return null;
     const actionLabel = apiErrorActionLabel(error, t);
+    const errorText = apiErrorText(error, t);
     return (
         <div
             className={`rounded-lg border border-danger/30 bg-danger/10 px-3 py-2.5 text-sm text-danger ${className ?? ''}`}
         >
             <div className="flex flex-wrap items-center gap-3">
-                <span className="min-w-0 flex-1">{apiErrorText(error, t)}</span>
+                <span className="min-w-0 flex-1">{errorText}</span>
                 {error.action && (
                     <button
                         type="button"
@@ -865,6 +886,7 @@ export function ErrorBanner({ error, className }: { error: ApiError | null; clas
                 Retin kanıtı (B3d): kimin engellediği, satır satır — admin
                 tıklamanın neyi kıracağını görmeli. "+N" kuyruğu üreticinin
                 dürüst kesme işaretidir. */}
+            {mentionsSudo(errorText) && <SudoNote />}
             {error.details && error.details.length > 0 && (
                 <ul className="mt-2 max-h-40 space-y-0.5 overflow-y-auto border-t border-danger/20 pt-2 font-mono text-xs">
                     {error.details.map((d) => (

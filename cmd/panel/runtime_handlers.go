@@ -32,6 +32,17 @@ func (p *Panel) handleNodeRuntimes(w http.ResponseWriter, r *http.Request) {
 		if resp.Installed == nil {
 			resp.Installed = []string{}
 		}
+		// alpha.108 (D-038 §14): a customer is listed the versions the
+		// administrator offers (their site's own version is added back by
+		// the picker, which keeps it).
+		if !callerIsAdministrator(r) {
+			policy, err := p.loadOfferedVersions(r.Context())
+			if err != nil {
+				writeServerError(w, err)
+				return
+			}
+			resp.Installed = policy.filter("node", resp.Installed)
+		}
 		json.NewEncoder(w).Encode(resp)
 
 	case http.MethodPost:

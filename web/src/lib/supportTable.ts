@@ -24,6 +24,9 @@ export interface SupportTable {
     distro?: string;
     distro_name?: string;
     statuses: Record<string, Record<string, SupportResult>>;
+    /** alpha.108 (D-038 §15): version lines tested with this release here. */
+    tested?: Record<string, string[]>;
+    tested_release?: string;
 }
 
 const STATUSES: ReadonlySet<string> = new Set(['supported', 'ends_soon', 'unsupported', 'unknown']);

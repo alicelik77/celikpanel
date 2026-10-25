@@ -63,6 +63,11 @@ type RepoStatusResponse struct {
 	EnabledAt      string              `json:"enabled_at,omitempty"`
 	AptErrors      []string            `json:"apt_errors,omitempty"`
 	AptErrorsAt    string              `json:"apt_errors_at,omitempty"`
+	// NoLongerUpdated (alpha.108): with the repository disabled, the
+	// installed packages that came from it and stay installed; nothing
+	// updates them any more (DisabledAt says since when). Nothing is removed.
+	NoLongerUpdated []string `json:"no_longer_updated,omitempty"`
+	DisabledAt      string   `json:"disabled_at,omitempty"`
 }
 
 type RepoPackagesRequest struct {

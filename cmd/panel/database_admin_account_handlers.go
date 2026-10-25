@@ -187,6 +187,7 @@ func (p *Panel) handleProvisionDatabaseAdminAccount(w http.ResponseWriter, r *ht
 		&transport.ProvisionDatabaseAdminAccountRequest{
 			Engine:   server.TypeName,
 			Password: password,
+			Port:     databaseAdminAccountPort(server),
 		}, &resp); err != nil {
 		p.audit(r, "database.admin_account.provision.failed:"+server.TypeName,
 			"database_server", server.ID)
@@ -396,7 +397,7 @@ func (p *Panel) provisionDatabaseAdminAccountsFor(
 			var resp transport.ProvisionDatabaseAdminAccountResponse
 			if err := p.callAgentContext(ctx, "Agent.ProvisionDatabaseAdminAccount",
 				&transport.ProvisionDatabaseAdminAccountRequest{
-					Engine: engine, Password: password,
+					Engine: engine, Password: password, Port: databaseAdminAccountPort(server),
 				}, &resp); err != nil {
 				return err
 			}
@@ -412,4 +413,13 @@ func (p *Panel) provisionDatabaseAdminAccountsFor(
 		}
 	}
 	return nil
+}
+
+// databaseAdminAccountPort is the cluster a PostgreSQL record is (alpha.108:
+// majors side by side, each on its own port); 0 for MariaDB.
+func databaseAdminAccountPort(server *core.DatabaseServer) int {
+	if server == nil || server.TypeName != "postgresql" {
+		return 0
+	}
+	return server.Port
 }

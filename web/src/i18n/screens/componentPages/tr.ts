@@ -3,6 +3,24 @@
 import type { ComponentPagesScreenKey } from './en';
 
 export const trComponentPagesScreens: Record<ComponentPagesScreenKey, string> = {
+    // ---- alpha.108 tools ----
+    'component.phpTool.proofFailed': '{tool} PHP {version} sürümüne ayarlı; ama son denetim {tool} aracının kendi yanıtını alamadı: {reason}. Hiçbir şey taşınmadı. Yeniden denetle’ye basın: {tool} aracını PHP {version} üzerinde yeniden sorar, başka hiçbir şeyi değiştirmez ve ne bulduğunu söyler.',
+    'component.phpTool.checkAgain': 'Yeniden denetle',
+    'component.phpTool.checkingAgain': 'Denetleniyor…',
+    'component.phpTool.checkWait': '{tool}, PHP {version} üzerinde yeniden soruluyor. Bu en çok yarım dakika sürer; bu arada bir şey yapmanız gerekmiyor.',
+    'component.phpTool.checkPassed': '{tool}, PHP {version} üzerinde kendisi olarak yanıt verdi; hazır.',
+    'component.phpTool.checkFailed': '{tool}, PHP {version} üzerinde hâlâ kendisi olarak yanıt vermedi: {reason}. Hiçbir şey değiştirilmedi. Sunucu yöneticisi bu nedeni giderir, sonra Yeniden denetle’ye basar.',
+    'component.phpTool.checkBusy': 'Bu sunucuda başka bir değişiklik sürüyor; bu yüzden denetim başlatılmadı. O bitince Yeniden denetle’ye basın.',
+    'component.phpTool.checkRefused': 'Denetim çalışmadı: {reason}. Hiçbir şey değiştirilmedi.',
+    'component.phpTool.checkLost': 'Denetimin yanıtı gelmedi; hiçbir şey taşınmadı. Kart güncel durumu aşağıda okuyor.',
+    'component.phpTool.proofOnlyFailed': '{tool} zaten PHP {version} üzerinde çalışıyor; bu yüzden hiçbir şey taşınmadı ya da yeniden yazılmadı; orada hâlâ kendisi olarak yanıt vermedi: {reason}. Bu nedeni giderin, sonra Yeniden denetle’ye basın.',
+    'component.phpTool.reconciling': 'Yanıt gelmedi; bu yüzden kart güncel durumu okuyor (deneme {attempt} / {total}). Hiçbir şey yeniden gönderilmiyor; bu arada bir şey yapmanız gerekmiyor.',
+    'component.phpTool.reconcileBusy': 'Sunucuda bir PHP aracı değişikliği hâlâ sürüyor; kart onun bitmesini bekleyip yeniden okuyor. Bu arada bir şey yapmanız gerekmiyor.',
+    'component.phpTool.reconciledMoved': 'Yanıt gelmedi; ama şimdi okunan durum {tool} aracını PHP {version} üzerinde ve hazır gösteriyor: taşıma tamamlandı.',
+    'component.phpTool.reconciledRead': 'Yanıt gelmedi; şimdi okunan durum {tool} aracını PHP {current} üzerinde gösteriyor. Kartın aşağıda söylediği güncel durumdur; yalnız hâlâ istediğiniz gibi değilse yeniden seçin.',
+    'component.phpTool.reconcileGaveUp': 'Yanıt gelmedi ve güncel durum {seconds} saniye boyunca okunamadı; bu yüzden değişip değişmediği bilinmiyor. Hiçbir şey yeniden gönderilmiyor. Panel ya da Agent yeniden başlıyor olabilir: durumu okumak için Tekrar dene’ye basın.',
+    'component.phpTool.cause.check_unreadable': 'PHP-FPM {version}, CelikPanel’in denetim dosyasını açamadı (HTTP {status}); Yeniden denetle dosyayı PHP-FPM’in okuyabileceği izinlerle yeniden koyar',
+    'component.phpTool.cause.said': ' (sunucunun söylediği: {detail})',
     'svc.coreService': 'Temel servis',
     'svc.notInstalled': 'Kurulu değil',
     'svc.notInstalledHint': '{name} bu sunucuda kurulu değil.',

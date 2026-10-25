@@ -1343,12 +1343,16 @@ func main() {
 	http.HandleFunc(serviceRemovalImpactPath, panel.handleServiceRemovalImpact)
 	http.HandleFunc(serviceInstallPreviewPath, panel.handleServiceInstallPreview)
 	http.HandleFunc(roundcubeUpdatePath, panel.handleRoundcubeUpdate)
+	// alpha.108: PostgreSQL majors side by side (clusters, ports, moves).
+	http.HandleFunc(pgServiceAPIPrefix, panel.handlePostgreSQLService)
 	http.HandleFunc(phpToolsPath, panel.handlePHPTools)
 	http.HandleFunc(phpToolBindPath, panel.handlePHPToolBind)
+	http.HandleFunc(phpToolProvePath, panel.handlePHPToolProve)
 	http.HandleFunc(hostMutationReadinessPath, panel.handleHostMutationReadiness)
 	http.HandleFunc("/api/v1/firewall", panel.handleFirewall)
 	http.HandleFunc("/api/v1/repo", panel.handleRepo)
 	http.HandleFunc(repoConfinePreviewAPIPath, panel.handleRepoConfinePreview)
+	http.HandleFunc(vendorLanePath, panel.handleVendorLane)
 	http.HandleFunc("/api/v1/hosting/capabilities", panel.handleHostingCapabilities)
 	http.HandleFunc("/api/v1/panel/certificate", panel.handlePanelCertificate)
 	http.HandleFunc(securityAuditPath, panel.handleSecurityAudit)
@@ -1361,6 +1365,9 @@ func main() {
 	http.HandleFunc(osReleaseReviewedAPIPath, panel.handleOSRelease)
 	// alpha.107 (D-038 §11): the dated support table, for every signed-in person.
 	http.HandleFunc(supportTablePath, panel.handleSupportTable)
+	// alpha.108 (D-038 §14): the versions offered to customers; read by
+	// every signed-in person, changed by the administrator.
+	http.HandleFunc(offeredVersionsPath, panel.handleOfferedVersions)
 	http.HandleFunc("/dbtool/", panel.handleDBToolProxy)
 	http.HandleFunc("/webmail/", panel.handleWebmailProxy)
 

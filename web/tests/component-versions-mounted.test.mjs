@@ -183,7 +183,7 @@ test('without a known package version there is no version column; a runtime keep
   ]));
   try {
     assert.equal(columns().length, 0, 'no column of empty cells');
-    assert.match(rowOf('nginx').props.className, /md:grid-cols-\[minmax\(0,1fr\)_8rem_17rem\]/);
+    assert.match(rowOf('nginx').props.className, /xl:grid-cols-\[minmax\(0,1fr\)_8rem_17rem\]/);
     assert.deepEqual(versionsIn(rowOf('nginx')), [], 'an unknown version says nothing');
     assert.deepEqual(versionsIn(rowOf('certbot')), []);
     assert.ok(!label(rowOf('nginx')).includes('—'), 'never a dash');
@@ -207,7 +207,7 @@ test('a known package version brings the column back: the short form in the row,
   ]));
   try {
     assert.equal(columns().length, 6, 'one column cell per row');
-    assert.match(rowOf('nginx').props.className, /md:grid-cols-\[minmax\(0,1fr\)_7\.5rem_8rem_17rem\]/);
+    assert.match(rowOf('nginx').props.className, /xl:grid-cols-\[minmax\(0,1fr\)_7\.5rem_8rem_17rem\]/);
     const nginx = versionsIn(rowOf('nginx'));
     // The phone line under the description and the desktop cell.
     assert.equal(nginx.length, 2);
@@ -217,7 +217,7 @@ test('a known package version brings the column back: the short form in the row,
       assert.equal(node.props.title, `1.26.3-3+deb13u1 · ${say('services.versionFromPackages')}`);
       assert.ok(label(node).startsWith('1.26.3'), label(node));
     }
-    assert.match(nginx[0].props.className, /md:hidden/);
+    assert.match(nginx[0].props.className, /xl:hidden/);
     // The epoch and the Debian revision stay in the full form only.
     const mariadb = versionsIn(rowOf('mariadb'))[0];
     assert.ok(label(mariadb).startsWith('11.8.3'), label(mariadb));
@@ -264,7 +264,7 @@ test('a Debian "really" version reads as its real version, and no version cell c
       assert.equal(node.props.title, '22.11.0');
     }
     const source = readFileSync(new URL('../src/components/ServiceList.tsx', import.meta.url), 'utf8');
-    assert.ok(source.includes('className="hidden min-w-0 md:block" data-version-column=""'), 'the column cell may shrink, so truncate can draw its ellipsis');
+    assert.ok(source.includes('className="hidden min-w-0 xl:block" data-version-column=""'), 'the column cell may shrink, so truncate can draw its ellipsis');
   } finally { await unmount(); }
 });
 

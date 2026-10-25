@@ -307,6 +307,159 @@ the owner's confinement
 ([deploy/e2e/d038/alpha107-debian13-20261024](../deploy/e2e/d038/alpha107-debian13-20261024/README.md)).
 Not measured on an installed server. This amendment closes no P0 item.
 
+### Amendment (2026-10-25, clock date): two lanes, PostgreSQL majors side by side, and the remaining items; implemented in source for the v0.1.0-alpha.108 candidate
+
+The owner approved two directions on 2026-10-25. On repositories: "güvenlik ve
+stabilite her zaman daha önemli. özgürlük vereceğiz diye sistemi ölüme
+göndermeyelim" (security and stability always come first; let us not send the
+system to its death in the name of freedom). On PostgreSQL: "postgresql 16 başka
+17 başka 18 başka; farklı portlara kurulmalı; portlar düzenlenebilmeli; 16 varken
+17'yi başka porta kurar, veritabanlarını taşır, sonra 16'yı kaldırır" (16, 17 and
+18 are different things; each on its own port; ports editable; with 16 in place,
+install 17 on another port, move the databases, then remove 16). In source for the
+v0.1.0-alpha.108 candidate (not published; nothing measured on an installed server).
+
+**Two lanes (refines points 1, 4 and 12).**
+
+1. **The default lane is the operating system's own packages.** On a server where
+   no vendor repository is enabled, PHP-FPM's and PostgreSQL's pages say so ("the
+   operating system's packages"); the version lists name the maintained versions
+   only a vendor repository ships as locked, with "comes from <repository>, not
+   from <operating system>" and who builds and patches them (from the dated
+   support table: a version whose provider is upstream on this release).
+2. **The vendor lane is the administrator's informed choice, per component,** from
+   a short known list: Sury for PHP and PGDG for PostgreSQL, each with its Release
+   origin in the catalogue; Node.js keeps its official, checksum-verified builds,
+   which the panel already patches (point 9). Enabling a vendor repository is one
+   shown-and-confirmed operation (Agent.VendorLanePlanV1, Agent.EnableVendorLaneV1
+   in its own `vendor_lane` job): the source line and its pinned key, CelikPanel's
+   confinement rule (the alpha.107 text) and the repository's origin in the
+   automatic-updates drop-in (the alpha.107 file), each with its file, exact text
+   and SHA-256, confirmed by one plan digest. They are written confinement first,
+   origin second and the source last, so the source never exists unconfined or
+   unpatched; a failed first enable takes back what it wrote. With the operating
+   system's automatic updates off or not installed, a first enable is refused with
+   the administrator's command. A plain enable of a vendor lane is refused
+   (`REPO_LANE_REQUIRED`), except as "Fetch its current key" for one already
+   enabled. On a server where the repository is already enabled (both owner
+   servers), nothing is switched off or rewritten: the repository card names the
+   missing steps with one **Complete…** that writes only those; the owner's own
+   preferences rule, an edited CelikPanel file or an edited drop-in is kept and
+   named, and a step it blocks says the line the administrator adds. The security
+   updates card offers the same action for an uncovered or unconfined vendor
+   repository.
+3. **The panel's own tools stay on the distribution's PHP by default.** A tool's
+   PHP choice preselects a distribution version; a version only the vendor ships is
+   marked "meant for sites" with a note. Defaults of a tool's install are
+   unchanged.
+4. **Customers never enable repositories** (`/api/v1/repo` and the lane are
+   administrator routes; tests prove a customer is refused). **Disabling removes
+   nothing:** the Agent records which installed packages came from the repository,
+   and the version list and the component's page mark them "no longer updated"
+   with the date.
+
+**PostgreSQL majors side by side (replaces point 7's "major-upgrade flow").** No
+in-place conversion is built. On Debian and Ubuntu (postgresql-common), another
+major is installed as its own cluster on its own port: the clusters card on the
+PostgreSQL page shows every cluster (version, port, status, data directory, user
+databases, the panel's records on it) and offers the majors that have a package
+candidate with the port the new cluster will get (the first free one from 5432 up,
+read from every cluster's configuration and the listening ports), through the
+install preview; the result says the port the cluster really got. A cluster's port
+is edited after showing the one changed line and its SHA-256, who is connected now,
+the panel's records and the restart's interruption; the cluster restarts, the new
+port is proved, and otherwise the old file is written back, restarted and proved.
+The firewall stays local-only. A database is moved by copy: pg_dump to a root-only
+file, the missing roles created from the source's own definitions (passwords
+carried, never printed), pg_restore, then the row count of every table compared on
+both sides; the source stays. Switching the panel's record and a site's stored
+host and port, switching back, and dropping the source are separate confirmed
+steps; dropping the source is refused while anything is connected. Removing a
+major is refused while its cluster holds user databases (named), or when they
+cannot be read; it is still `apt-get remove`, never purge. **Schema 45 to 46:**
+`database_servers.cluster` (NULL in every old row: the cluster on that record's
+port, filled on the first clusters read) and the table `postgresql_database_moves`
+(the proof and the switch state). **MariaDB:** side by side is not possible from
+packages, and its page says so; its in-place major change stays behind point 7 and
+is not built.
+
+**The remaining items of the alpha.107 amendment.**
+
+- **Point 14, the customer's choice:** the administrator chooses, per PHP and
+  Node.js version line, whether it is offered to customers (a `panel_settings` row;
+  default: all offered). A customer's choice of a hidden version is refused
+  (`VERSION_NOT_OFFERED`) with the next action (ask the administrator); an
+  administrator is never restricted; a site already on a hidden version keeps it
+  (a Node.js site may still move to another patch of its own line), and its owner
+  sees that it is no longer offered for new choices.
+- **Point 15, tested and allowed:** `internal/supportdata/tested-versions.json`
+  names, per distribution release, the versions this release's real-system evidence
+  exercised (Debian 13: PHP 8.4 and 8.5, PostgreSQL 17 and 18); version lists mark
+  "tested" or "installable, not tested". Information, never a block.
+- **Point 13, the system's own traces:** before a removal, bounded and read-only,
+  the Agent reads web-server configuration (nginx and Apache) naming the
+  component's socket or a loopback port, units in /etc/systemd/system that depend
+  on its unit, and local programs connected to it now; each is named in the removal
+  dialog as a warning (CelikPanel's own files, units and sites excluded, since they
+  are named already); otherwise "Nothing CelikPanel knows of …".
+
+**The owner's alpha.107 findings, corrected.** Every install path shows the install
+preview and confirmation (the version list and Repair did not; the refusal now says
+to press Install again). Sury's key read "expired on 17 March 2021" because the
+openpgp package kept the oldest of four self-signatures; the newest valid one now
+decides, as apt and gpg read it, and "apt no longer accepts" is said only when apt
+reported it. phpPgAdmin's first-install proof on Boston failed because the Agent
+runs with `UMask=0027`, so CelikPanel's check file was unreadable to PHP-FPM
+(0750/0640): it is now written 0755/0644 and repaired by a proof (new cause
+`check_unreadable`); "not running" is said only when the socket is missing or the
+unit stopped; a same-version "Use PHP x" only proves; a lost answer is reconciled
+by reading. Layout: the install refusal's text no longer splits into columns, the
+Components rows keep their names whole at medium widths, the sidebar collapses to
+icons (remembered per browser), Roundcube's row has a direct Update, owner commands
+start with `sudo` with "if you are root, leave out sudo", and the key line's words
+are apart.
+
+**What remains.** Nothing measured on an installed server. The DNF and pacman
+families have no vendor lane (apt only) and their paths are covered by component
+tests. Node.js has no distribution lane. A vendor repository disabled does not
+remove its origin from the drop-in (harmless; the source is gone). PostgreSQL's
+move carries role memberships only for roles the copy creates; an existing role on
+the target keeps its own password (the proof says so). The shared PHP-FPM pool and
+the one vmail user (point 6) are still said, not separated. A purge's
+configuration-file warning (point 8) and moving Roundcube to another line (point 9)
+are not built. An operating-system upgrade's changes are listed after it, not
+predicted (point 17).
+
+**Corrections from the release review (2026-10-25).** A move's copy proves the
+rows at copy time only: the source's write counters (its user tables' rows
+inserted, updated and deleted, and when its statistics were reset) are kept with the
+proof, read again before a switch and before the source is dropped, and either is
+refused when the source was written after the copy (copy again, or point the
+application at the copy first) or when that cannot be proved; a source written while
+it is copied makes the copy fail. An owner's own source for a vendor address
+(sources.list, `*.list` or `*.sources`) gets no second source from CelikPanel: the
+lane names it as the owner's and offers only its confinement and automatic updates;
+with both, the duplicate is named and blocks; a first enable validates the staged
+source together with every existing source. The lane also reads the automatic
+updates' timer (disabled or masked is off, unreadable is unknown), and its refusal
+says the owner may add the repository themselves instead. A removal is refused as
+unknown when pg_lsclusters fails for any reason but its absence; user tables in a
+cluster's `postgres` database count as data it holds. A customer's site switched
+back to PHP is held to the offered PHP versions. Evidence: unit and mounted tests,
+and a short second real-system run of the PostgreSQL and vendor-lane tests on the
+same base image ([evidence](../deploy/e2e/d038/alpha108-debian13-20261025/README.md)).
+
+**Schema and recovery.** Migration 046 is additive (one nullable column and one new
+table). An alpha.107 Panel refuses ledger 46, so going back is the pre-update
+snapshot restore (D-025); the release-recovery harness pins migration 46 (ledger
+`6ae06313…`, schema `b5b65789…`). The lane's files are the alpha.107 files; the
+owner removes them with `rm` and `apt-get update`.
+
+**Evidence.** Component and mounted tests for every item above; one real-system run
+on a disposable Debian 13 virtual machine from the kept base image
+([deploy/e2e/d038/alpha108-debian13-20261025](../deploy/e2e/d038/alpha108-debian13-20261025/README.md)).
+Not measured on an installed server. This amendment closes no P0 item.
+
 ## D-037 · Every page is where its name says it is: Settings holds settings; tools, security and maintenance live under Server; the person's own account lives in the personal menu
 
 *October 22, 2026 (clock date) · Owner request of 2026-10-21 and approval of 2026-10-22; in source for the v0.1.0-alpha.98 candidate, published 2026-10-22; on 2026-10-22 the owner's screens showed the new menu on both installed servers after the owner's own update · Amended 2026-10-22: changing one's own email, in source for the v0.1.0-alpha.99 candidate; nothing of the amendment measured on an installed server · Amended again 2026-10-22: Server setup moves under Server, the removal dialog says what is affected, the first visit opens the installed view; in source for the v0.1.0-alpha.100 candidate · Amended 2026-10-23: a removal never removes anything it did not name, and each PHP tool runs on a PHP version the owner chooses; in source for the v0.1.0-alpha.104 candidate; nothing measured on an installed server*

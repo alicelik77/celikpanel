@@ -3,6 +3,8 @@
 import type { DashboardScreenKey } from './en';
 
 export const trDashboardScreens: Record<DashboardScreenKey, string> = {
+    // ---- alpha.108 slice d ----
+    'dashboard.audit.action.versions.customer_offer': 'müşterilere sunulan sürümleri değiştirdi ({target})',
     'audit.title': 'Denetim günlüğü',
     'audit.subtitle': 'Bu sunucuda kim ne yaptı, en yeniden eskiye.',
     'audit.empty': 'Henüz kayıtlı etkinlik yok',
@@ -269,6 +271,9 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'dashboard.audit.action.server.os_release_reviewed': 'İşletim sistemi sürüm değişikliği gözden geçirildi',
     'dashboard.audit.action.repo.confine': '{target} paket deposunu kendi bileşeniyle sınırladı',
     'dashboard.audit.action.repo.confine.failed': '{target} paket deposunu kendi bileşeniyle sınırlayamadı',
+    'dashboard.audit.action.repo.lane': '{target} paket deposunu sınırlaması ve otomatik güncellemeleriyle açtı ya da tamamladı',
+    'dashboard.audit.action.repo.lane.failed': '{target} paket deposunun sınırlamasını ve otomatik güncellemelerini yazamadı',
+    'dashboard.audit.action.repo.lane.unknown': '{target} paket deposunun yolunun yazılmasını istedi; yazılıp yazılmadığı bilinmiyor',
     'dashboard.audit.action.repo.disable': '{target} paket deposunu kapattı',
     'dashboard.audit.action.repo.disable.failed': '{target} paket deposunu kapatamadı',
     'dashboard.audit.action.repo.disable.partial': '{target} paket deposunu kısmen kapattı',

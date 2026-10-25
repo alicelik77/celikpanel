@@ -102,6 +102,16 @@ export const roundcubeUpdateURL = compileSource('lib/roundcubeUpdate.ts', unexpe
 export const supportTableURL = compileSource('lib/supportTable.ts', (specifier) => (
   specifier.endsWith('/remote') ? remoteURL : unexpected('lib/supportTable.ts')(specifier)
 ));
+// alpha.108 slice d: the versions offered to customers (D-038 §14).
+export const offeredVersionsURL = compileSource('lib/offeredVersions.ts', (specifier) => (
+  specifier.endsWith('/remote') ? remoteURL : unexpected('lib/offeredVersions.ts')(specifier)
+));
+
+// alpha.108: the vendor lane and the tested marks.
+export const vendorLaneURL = compileSource('lib/vendorLane.ts', unexpected('lib/vendorLane.ts'));
+export const testedVersionsURL = compileSource('lib/testedVersions.ts', (specifier) => (
+  specifier.endsWith('/supportTable') ? supportTableURL : unexpected('lib/testedVersions.ts')(specifier)
+));
 
 export function sharedLayer(stubURL, extra = {}) {
   const uiURL = compileSource('components/ui.tsx', (specifier) => (
@@ -126,6 +136,9 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/componentRepo': componentRepoURL,
     '/lib/roundcubeUpdate': roundcubeUpdateURL,
     '/lib/supportTable': supportTableURL,
+    '/lib/offeredVersions': offeredVersionsURL,
+    '/lib/vendorLane': vendorLaneURL,
+    '/lib/testedVersions': testedVersionsURL,
     '/ui': uiURL,
     ...extra,
   };
@@ -139,6 +152,11 @@ export function sharedLayer(stubURL, extra = {}) {
   if (!extra['/InstallPreviewNotes']) table['/InstallPreviewNotes'] = compileSource('components/InstallPreviewNotes.tsx', resolve);
   if (!extra['/SupportMark']) table['/SupportMark'] = compileSource('components/SupportMark.tsx', resolve);
   if (!extra['/LifeLine']) table['/LifeLine'] = compileSource('components/LifeLine.tsx', resolve);
+  if (!extra['/RemovalTraces']) table['/RemovalTraces'] = compileSource('components/RemovalTraces.tsx', resolve);
+  if (!extra['/OfferedVersionsCard']) table['/OfferedVersionsCard'] = compileSource('components/OfferedVersionsCard.tsx', resolve);
+  // alpha.108: the one confirmed webmail update flow, started by the webmail card and the Components row.
+  if (!extra['/RoundcubeUpdateFlow']) table['/RoundcubeUpdateFlow'] = compileSource('components/RoundcubeUpdateFlow.tsx', resolve);
+  if (!extra['/VendorLaneDialog']) table['/VendorLaneDialog'] = compileSource('components/VendorLaneDialog.tsx', resolve);
   if (!extra['/NodePatches']) table['/NodePatches'] = compileSource('components/NodePatches.tsx', resolve);
   return { uiURL, resolve, compile: (path, more = {}) => compileSource(path, (specifier) => {
     for (const [suffix, url] of Object.entries(more)) if (specifier.endsWith(suffix)) return url;

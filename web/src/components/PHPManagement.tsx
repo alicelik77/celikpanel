@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { FileCode, Puzzle, FileText, type LucideIcon } from 'lucide-react';
 import { ServiceShell } from './ServiceShell';
 import { RepoCard } from './RepoCard';
+import { OfferedVersionsCard } from './OfferedVersionsCard';
 import { PHPExtendedConfig } from './PHPExtendedConfig';
 import { KnownEmpty, RemoteGate } from './ui';
 import { decodeList, useRemote } from '../lib/remote';
@@ -139,6 +140,8 @@ export function PHPManagement({ versions, onBack }: PHPManagementProps) {
             ) : (
                 <PHPExtendedConfig version={version} />
             )}
+            {/* alpha.108 (D-038 §14): which versions customers are offered. */}
+            <div className="mt-6 empty:hidden"><OfferedVersionsCard component="php" installed={versions} /></div>
             {/* alpha.107: the vendor PHP repository's card (D-038 §12). */}
             <div className="mt-6 empty:hidden"><RepoCard serviceId="php-fpm" /></div>
         </ServiceShell>

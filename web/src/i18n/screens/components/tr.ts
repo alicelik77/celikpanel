@@ -3,6 +3,18 @@
 import type { ComponentsScreenKey } from './en';
 
 export const trComponentsScreens: Record<ComponentsScreenKey, string> = {
+    // ---- alpha.108 slice d ----
+    // Kaldırmadan önce sistemin kendi izleri (D-038 §13).
+    'services.removal.traces.title': 'Bu sunucuda CelikPanel dışında bulunanlar — bunlar {name} bileşenini kullanır ve kaldırılınca çalışmaz:',
+    'services.removal.traces.webConfig': '{path}, satır {line}: web sunucusu istekleri {endpoint} adresine verir',
+    'services.removal.traces.unit': '{unit} hizmeti ona bağlı ({relation})',
+    'services.removal.traces.process': '{process} (süreç {pid}) şu anda ona bağlı ({endpoint})',
+    'services.removal.traces.next': 'Bunları CelikPanel kurmadı ve değiştirmez. Sunucu sahibi önce her birine bakar — başka bir şeyi kullanacak biçimde değiştirir ya da kaldırır — sonra {name} bileşenini kaldırır.',
+    'services.removal.traces.none': 'Sunucunun kendi izlerinde de CelikPanel’in bildiği hiçbir şey {name} bileşenini kullanmıyor: hiçbir web sunucusu yapılandırması ona yönelmiyor, sizin hiçbir hizmetiniz ona bağlı değil ve şu anda ona bağlı yerel bir program yok.',
+    'services.removal.traces.partial': 'Sunucunun kendi izlerinin bir kısmı okunamadı ({sources}); gösterilen, okunabilenlerdir.',
+    'services.removal.traces.source.web_config': 'web sunucusu yapılandırması',
+    'services.removal.traces.source.units': 'hizmet dosyaları',
+    'services.removal.traces.source.connections': 'açık bağlantılar',
     'services.subtitle': 'Bu sunucuda kurulu her şey — servisler, çalışma ortamları ve araçlar',
     'services.col.service': 'Servis',
     'services.col.category': 'Kategori',
@@ -283,7 +295,7 @@ export const trComponentsScreens: Record<ComponentsScreenKey, string> = {
     'services.installPreview.confirm': 'Okudum; bu paketleri de kur.',
     'services.phpNotReadyProof': 'Kuruldu, ama PHP {version} üzerinde yanıt vermedi. Yönet’i açıp bir PHP sürümü seçin: taşıma eksikleri kurar ve aracı yeniden dener.',
     'services.phpNotReadyProofOthers': 'Kuruldu, ama ne PHP {version} ne de eklentileri olan kurulu diğer PHP sürümleri üzerinde yanıt verdi. Yönet’i açıp bir PHP sürümü seçin: taşıma eksikleri kurar ve aracı yeniden dener.',
-    'services.phpNotReadyProofModuleOff': 'Kuruldu, ama PHP {version} için {extensions} PHP-FPM’de kapalı; bu yüzden yanıt veremiyor. Açın (phpenmod -v {version} -s fpm {modules}, ardından systemctl restart php{version}-fpm), sonra Yönet’te PHP {version} sürümünü yeniden seçin.',
+    'services.phpNotReadyProofModuleOff': 'Kuruldu, ama PHP {version} için {extensions} PHP-FPM’de kapalı; bu yüzden yanıt veremiyor. Açın (sudo phpenmod -v {version} -s fpm {modules}, ardından sudo systemctl restart php{version}-fpm), sonra Yönet’te PHP {version} sürümünü yeniden seçin.',
     'services.bundles.operationLabel': '{component} ({n}/{total}, {bundle})',
     'services.bundles.chip.mail_core': 'Temel Posta',
     'services.bundles.chip.mail_webmail': 'Webmail',

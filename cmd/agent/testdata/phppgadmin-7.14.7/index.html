@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Frameset//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-frameset.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en-US" lang="en-US">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<link rel="stylesheet" href="themes/default/global.css" type="text/css" id="csstheme" />
+	<link rel="shortcut icon" href="images/themes/default/Favicon.ico" type="image/vnd.microsoft.icon" />
+	<link rel="icon" type="image/png" href="images/themes/default/Introduction.png" />
+	<script type="text/javascript" src="libraries/js/jquery.js"></script>
+
+	<script type="text/javascript">
+		$(function() {
+			if (window.parent.frames.length > 1) {
+				$('#csstheme', window.parent.frames[0].document).attr('href','themes/default/global.css');
+			}
+		});
+
+	</script>
+
+	<title>phpPgAdmin</title>
+
+</head>
+<frameset cols="200,*">
+
+
+
+	<frame src="browser.php" name="browser" id="browser" frameborder="0" />
+
+<frame src="intro.php" name="detail" id="detail" frameborder="0" />
+	<noframes>
+	<body>
+		This application works best with a frames-enabled browser, but can be used without frames by following the link below.<br />
+		<a href="intro.php">Use without frames</a>
+	</body>
+	</noframes>
+
+</frameset>
+
+</html>

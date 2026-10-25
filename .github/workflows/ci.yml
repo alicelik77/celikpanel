@@ -264,8 +264,14 @@ jobs:
           - shard: L through M
             pattern: '^Test[L-M]'
             skip: ''
+          # N through Q was split (alpha.108): measured with -race on one
+          # machine it took 398 s, of which the tests named TestPa* 202 s; the
+          # complement keeps the status-check name and the broad pattern.
           - shard: N through Q
             pattern: '^Test[N-Q]'
+            skip: '^TestPanel'
+          - shard: Panel
+            pattern: '^TestPanel'
             skip: ''
           # R was split in four (alpha.107): its job reached the 8-minute
           # ceiling. Measured with -race on one machine (206 tests, 1208 s
@@ -282,8 +288,13 @@ jobs:
           - shard: R, recovery database migration (2/2)
             pattern: '^TestRecoveryDatabaseMigration'
             skip: '^TestRecoveryDatabaseMigration[A-L]'
-          - shard: R, remote and restore
-            pattern: '^TestRe(mo|st)'
+          # Remote and restore were split (alpha.108): together they took
+          # 367 s with -race on one machine.
+          - shard: R, remote
+            pattern: '^TestRemo'
+            skip: ''
+          - shard: R, restore
+            pattern: '^TestRest'
             skip: ''
           # Keep the existing status-check name while separating setup tests.
           # Kurulum testlerini ayirirken mevcut durum denetimi adini koru.
@@ -322,9 +333,9 @@ jobs:
       - name: Verify exact Go toolchain
         run: test "$(go env GOVERSION)" = go1.26.5
       # cmd/panel has hundreds of SQLite-backed tests that run serially under
-      # the race detector. These twenty-one matrix entries run concurrently, are
+      # the race detector. These twenty-three matrix entries run concurrently, are
       # disjoint and cover every valid Test* suffix, including a future exact
-      # `Test` name or non-uppercase suffix. Five groups are split from
+      # `Test` name or non-uppercase suffix. Six groups are split from
       # within: the complement shard keeps the broader pattern and -skips the
       # carved-out prefix, so each set is exhaustive by construction. An
       # empty -skip '' skips nothing (verified on go1.26.5).

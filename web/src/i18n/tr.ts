@@ -7,6 +7,9 @@
 import type { ShellKey } from './en';
 
 export const tr: Record<ShellKey, string> = {
+    // ---- alpha.108 tools ----
+    'services.phpToolProof.whyCheck': 'PHP-FPM {version}, CelikPanel’in denetim dosyasını açamadı (HTTP {status}); Yönet penceresindeki Yeniden denetle bunu onarır',
+    'services.phpToolProof.whySaid': 'kendisi olarak yanıt vermedi; sunucunun söylediği: {detail}',
     'app.name': 'CelikPanel',
     'recovery.checkingTitle': 'Panel erişimi kontrol ediliyor',
     'recovery.checkingHelp': 'Oturumunuz ve panelin hazır olma durumu doğrulanıyor. Bu kontrol sunucuda bir işlem başlatmaz.',
@@ -49,7 +52,7 @@ export const tr: Record<ShellKey, string> = {
     'recovery.automatic.cause.panel_start_unverified': "Güncelleme uygulandı, ancak yeni sürümün paneli açılmadı ve güncellemenin tamamlanması sınırına kadar yeniden denendi. Sunucu sahibi sunucudaki panel günlüğünü sudo journalctl -u celikpanel-panel -n 50 ile okumalı. Bu neden giderilene kadar yeniden deneme aynı başlatmayı tekrarlar. Bu noktadan önceki sürüme desteklenen bir dönüş yok.",
     'recovery.automatic.cause.update_finishing_scheduler': "Yeni sürüm kuruldu ve çalışıyor, ancak otomatik sertifika yenilemeyi (Certbot) yeniden açma otomatik denemelerden sonra da doğrulanmadı; bu tamamlanana kadar yenileme kapalı olabilir. Kurtarma günlüğü neyin durdurduğunu söyler; örneğin güncelleme sürerken certbot.timer üzerinde yapılan bir değişiklik.",
     'recovery.automatic.cause.candidate_panel_startup_check_failed': "Yeni sürümün paneli, hiçbir şey devreye alınmadan önce başlangıç denetiminden geçemedi ve önceki sürüme otomatik dönüş tamamlanmadı. Kurtarma günlüğü neyin durdurduğunu gösterir; yeniden deneme önceki sürüme aynı dönüşü sürdürür.",
-    'recovery.automatic.inspect': "Bu sunucuda terminal açıp kurtarma günlüğünü inceleyin:",
+    'recovery.automatic.inspect': "Bu sunucuda terminal açıp kurtarma günlüğünü inceleyin (root olarak oturum açtıysanız sudo yazmayın):",
     'recovery.automatic.resume': "Bildirilen nedeni giderdikten sonra günlükte bu işlem için gösterilen tek seferlik yeniden deneme komutunu kullanın. Komut mevcut kurtarmayı sürdürür. Bu sayfa sonucu kontrol eder; kontrol etmek veya sayfayı yenilemek kurtarmayı yeniden başlatmaz.",
     'recovery.automatic.retryTitle': "Son kaydedilen durum: otomatik kurtarma yeniden deneyecek",
     'recovery.automatic.retryHelp': "Son otomatik kurtarma denemesi tamamlanmadı. Sunucu aynı işlemi kendiliğinden yeniden dener; bu normalde bir önceki denemenin bitişinden yaklaşık 30 saniye sonra olur ve toplamda en çok üç deneme yapılır. Şimdi bir şey yapmanız gerekmiyor: sunucu sahibinin ancak otomatik kurtarma durursa işlem yapması gerekir. Bu sayfa sonucu kontrol eder; kontrol etmek veya sayfayı yenilemek hiçbir şeyi başlatmaz.",
@@ -101,6 +104,9 @@ export const tr: Record<ShellKey, string> = {
     'login.verify': 'Doğrula',
     'nav.settings': 'Ayarlar',
     'nav.menu': 'Menü',
+    'nav.collapse': 'Menüyü daralt',
+    'nav.expand': 'Menüyü genişlet',
+    'common.sudoNote': 'root olarak oturum açtıysanız sudo yazmayın.',
     'nav.monitoring': 'İzleme',
     'nav.serverSetup': 'Sunucu kurulumu',
     'nav.dnsPeers': 'DNS ve eş sunucular',
@@ -209,10 +215,10 @@ export const tr: Record<ShellKey, string> = {
     'services.installed': '{name} kuruldu.',
     'services.phpToolProblem.versionGone': '{tool} artık kurulu olmayan PHP {version} sürümüne ayarlı; bu yüzden yanıt veremiyor. Bileşenler’de {tool} aracını açıp Yönet’te kurulu bir PHP sürümü seçin.',
     'services.phpToolProof.moved': '{tool} PHP {version} üzerinde çalışıyor: PHP {first} üzerinde çalışmadı ({why}); bu yüzden eklentileri olan sıradaki kurulu PHP sürümü kullanıldı. {tool} aracının Yönet penceresinden değiştirebilirsiniz.',
-    'services.phpToolProof.notReady': '{tool} kuruldu, ama PHP {version} üzerinde yanıt vermedi ({why}). Hazır değil görünür: Bileşenler’de açıp Yönet’te bir PHP sürümü seçin.',
+    'services.phpToolProof.notReady': '{tool} kuruldu, ama PHP {version} üzerinde yanıt vermedi ({why}). Hazır değil görünür: Bileşenler’de Yönet penceresini açın; neden orada yazar ve Yeniden denetle onu taşımadan yeniden sorar.',
     'services.phpToolProof.whyMissing': 'PHP {version} için {extensions} eksik',
     'services.phpToolProof.whyOther': 'kendisi olarak yanıt vermedi',
-    'services.installRefused.notable': 'Hiçbir şey kurulmadı: onaylanmamış {packages} paketlerini de getirecekti. Kurulumu Bileşenler’de yeniden açın; bu paketler orada onaylamanız için listelenir. Ya da önerilen sürümü seçin.',
+    'services.installRefused.notable': 'Hiçbir şey kurulmadı: onaylanmamış {packages} paketlerini de getirecekti; paket yöneticisinin yanıtı kurulum penceresi gösterildikten sonra değişti. Kur’a yeniden basın: pencere bu paketleri şimdi onaylamanız için listeler.',
     'services.phpToolProblem.extensionsFailed': '{tool} aracının ihtiyaç duyduğu PHP eklentileri PHP {version} için kurulamadı; bu yüzden çalışmayabilir. Bileşenler’de {tool} aracını açıp Yönet’te PHP {version} sürümünü yeniden ya da başka bir sürümü seçin.',
     'services.mailProfiles.fallbackWarning': '{name}, kendinden imzalı yedek sertifikayla kuruldu. Eşleşen güvenilir bir sertifika yapılandırılana kadar posta istemcileri güven uyarısı gösterecektir.',
     'services.operation.title': '{name} kuruluyor',

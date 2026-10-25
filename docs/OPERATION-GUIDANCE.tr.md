@@ -10299,3 +10299,58 @@ v0.1.0-alpha.107 adayı için kaynakta (yayımlanmadı; kurulu bir sunucuda hiç
 bilinmiyor olarak söylenir ve hiçbir şey iki kez gönderilmez. Kurulu panelleri yalnız
 sahipleri, panelin kendi güncelleme ekranından günceller. P0.1-P0.5 **kısmi** kalır;
 bu girdi hiçbir şeyi kapatmaz ve ilerletmez.
+
+### Sahibin bulguları, iki yol ve yan yana PostgreSQL (D-038, 25 Ekim 2026)
+
+v0.1.0-alpha.108 adayı için kaynakta (yayımlanmadı; kurulu bir sunucuda hiçbir şey
+ölçülmedi). **Kim işlem yapar:** yönetici; burada hiçbir şey kendiliğinden başlamaz
+ve sunucuda zaten olan hiçbir şey güncellemeden sonra kapatılmaz ya da yeniden
+yazılmaz.
+
+- **Varsayılan yol.** İşletim sisteminden gelen bir bileşen bunu sayfasında söyler.
+  Yalnız bir üretici deposunun getirdiği sürümler, nereden geldikleri ve onları kimin
+  yamaladığıyla kilitli olarak listelenir. **Sonraki eylem, yalnız bir site birine
+  ihtiyaç duyuyorsa:** **Sury PHP kullan…** (PHP-FPM sayfası) ya da **PGDG kullan…**
+  (PostgreSQL sayfası). Pencere depoyu sabitlenmiş anahtarıyla, sınırlama kuralını ve
+  kaynağın otomatik güncellemelerdeki yerini, her biri kendi dosyası ve SHA-256'sıyla
+  gösterir; tek bir onay üçünü de yazar. İşletim sisteminin otomatik güncellemeleri
+  kapalıysa pencere komutu söyler (`sudo dpkg-reconfigure -plow unattended-upgrades`)
+  ve onlar açılana dek hiçbir şey açmaz.
+- **Frankfurt (Sury açık, PHP 8.4'ten 8.6'ya Sury'den).** PHP-FPM → depo kartını açın.
+  Neyin eksik olduğunu adlandırır (sınırlama ve/veya kaynağın otomatik
+  güncellemelerdeki yeri). **Tamamla…**'ya basın, gösterilen dosyaları okuyun ve
+  onaylayın. Hiçbir şey kurulmaz, kaldırılmaz ya da yeniden başlatılmaz; Sury'nin
+  paketleri Sury'nin güncellemelerini almayı sürdürür, artık işletim sisteminin
+  otomatik güncellemeleri üzerinden de. Aynı düğme Güvenlik → Güvenlik güncellemeleri
+  içinde Sury'nin yanındadır.
+- **Boston (Sury sahip tarafından 25 Ekim 2026'da açık ve sınırlanmış).** Kart, eksikse
+  yalnız kaynağın otomatik güncellemelerdeki yerini adlandırır; **Tamamla…** onu
+  ekler. Anahtar satırı anahtarın 2021'i değil güncel bitiş tarihini (2028 başı)
+  okur.
+- **Boston, phpPgAdmin.** phpPgAdmin → Yönet'i açın ve **Yeniden denetle**'ye basın.
+  CelikPanel'in denetim dosyasının izinlerini onarır ("kendisi olarak yanıt
+  vermedi"nin nedeni) ve aracı kanıtlar; hiçbir şey taşınmaz. Hâlâ başarısızsa kart
+  gerçek nedeni ve sonraki eylemi söyler.
+- **Sürüm listesinden bir PHP sürümü kurmak** (örneğin PHP-FPM 8.6) artık, bir şey
+  değişmeden önce kurulumun neyi getirdiğini gösterir ve Sury'nin paylaşılan
+  `php-common`'ının onayını ister. Paket yöneticisinin yanıtı bu arada değişirse
+  kurulum hiçbir şey kurulmadan reddedilir: yeniden Kur'a basın.
+- **PostgreSQL 16 → 17 (ya da 17 → 18), veriyi yerinde dönüştürmeden.** PostgreSQL →
+  Kümeler → **PostgreSQL NN kur…** (port önce gösterilir; işletim sisteminin
+  getirmediği bir ana sürüm için PGDG gerekebilir) → **Bir veritabanını taşı…** →
+  tablo başına satır sayılarını okuyun → **Kopyaya geçir…** (panelin kaydı ve sitenin
+  saklı sunucusu ve portu değişir; kendi uygulamanızın portunu kendiniz değiştirin)
+  → her şey çalışınca **Kaynağı kaldır…** → eski ana sürümü Bileşenler'den kaldırın
+  (hâlâ bir veritabanı tuttuğu sürece reddedilir; verisi kalır). **Portu değiştir…**
+  önce kimin bağlı olduğunu ve kesintiyi gösterir ve yenisi yanıt vermezse eski portu
+  geri koyar.
+- **Bir üretici deposunu kapatmak** hiçbir şeyi kaldırmaz; ondan gelenler, kaldırılana
+  ya da depo yeniden kullanılana dek "artık güncellenmiyor" diye işaretlenir.
+- **Müşterilere sunulan** (PHP-FPM ve Node.js sayfaları): bir sürüm hattını müşterilerin
+  seçimlerinden gizleyin; üzerindeki siteler onu korur.
+
+**Nasıl devam eder:** her kart kendi eyleminde yeniden okur; gelmeyen bir yanıt
+bilinmiyor olarak söylenir ve geri okunur, asla iki kez gönderilmez. Bir kurtarma
+komutu `sudo` ile başlar; root olarak oturum açtıysanız `sudo` yazmayın. Kurulu
+panelleri yalnız sahipleri, panelin kendi güncelleme ekranından günceller. P0.1–P0.5
+**kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ve ilerletmez.

@@ -302,6 +302,162 @@ sahibin sınırlaması için
 ([deploy/e2e/d038/alpha107-debian13-20261024](../deploy/e2e/d038/alpha107-debian13-20261024/README.md)).
 Kurulu bir sunucuda ölçülmedi. Bu değişiklik hiçbir P0 işini kapatmaz.
 
+### Değişiklik (25 Ekim 2026, saat tarihi): iki yol, yan yana PostgreSQL ana sürümleri ve kalan maddeler; v0.1.0-alpha.108 adayı için kaynakta uygulandı
+
+Sahip 25 Ekim 2026'da iki yönü onayladı. Depolar üzerine: "güvenlik ve
+stabilite her zaman daha önemli. özgürlük vereceğiz diye sistemi ölüme
+göndermeyelim". PostgreSQL üzerine: "postgresql 16 başka
+17 başka 18 başka; farklı portlara kurulmalı; portlar düzenlenebilmeli; 16 varken
+17'yi başka porta kurar, veritabanlarını taşır, sonra 16'yı kaldırır".
+v0.1.0-alpha.108 adayı için kaynakta (yayımlanmadı; kurulu bir sunucuda hiçbir şey
+ölçülmedi).
+
+**İki yol (1., 4. ve 12. maddeleri inceltir).**
+
+1. **Varsayılan yol işletim sisteminin kendi paketleridir.** Hiçbir üretici
+   deposunun açık olmadığı bir sunucuda PHP-FPM ve PostgreSQL sayfaları bunu söyler
+   ("işletim sisteminin paketleri"); sürüm listeleri, yalnız bir üretici deposunun
+   getirdiği bakımı süren sürümleri kilitli olarak adlandırır: "<depo> deposundan
+   gelir, <işletim sistemi>'nden değil" ve onları kimin derleyip yamaladığı
+   (tarihli destek tablosundan: bu sürümde sağlayıcısı üst kaynak olan sürüm).
+2. **Üretici yolu, yöneticinin bilgili seçimidir; bileşen başınadır** ve kısa,
+   bilinen bir listeden gelir: PHP için Sury, PostgreSQL için PGDG; her birinin
+   katalogdaki Release kaynağı vardır. Node.js, panelin zaten yamaladığı (9. madde)
+   resmî, sağlama toplamı doğrulanmış derlemelerini korur. Bir üretici deposunu
+   açmak, gösterilen ve onaylanan tek bir işlemdir (Agent.VendorLanePlanV1,
+   Agent.EnableVendorLaneV1; kendi `vendor_lane` işinde): kaynak satırı ve
+   sabitlenmiş anahtarı, CelikPanel'in sınırlama kuralı (alpha.107 metni) ve
+   deponun kaynağının otomatik güncellemeler ek dosyasındaki yeri (alpha.107
+   dosyası); her biri kendi dosyası, tam metni ve SHA-256'sıyla, tek bir plan
+   özetiyle onaylanır. Önce sınırlama, ikinci olarak otomatik güncellemelerdeki
+   yeri, en son kaynak satırı yazılır; böylece kaynak hiçbir zaman sınırsız ya da
+   yamasız var olmaz; başarısız
+   bir ilk açma yazdıklarını geri alır. İşletim sisteminin otomatik güncellemeleri
+   kapalıyken ya da kurulu değilken ilk açma, yöneticinin komutuyla reddedilir.
+   Bir üretici yolunun yalın açılması reddedilir (`REPO_LANE_REQUIRED`); yalnız
+   zaten açık olan bir yol için "Güncel anahtarını al" bunun dışındadır. Deponun
+   zaten açık olduğu bir sunucuda (iki sahip sunucusunda da) hiçbir şey kapatılmaz
+   ya da yeniden yazılmaz: depo kartı eksik adımları adlandırır ve yalnız onları
+   yazan tek bir **Tamamla…** sunar; sahibin kendi tercih kuralı geçerlidir,
+   düzenlenmiş bir CelikPanel dosyası ya da düzenlenmiş bir ek dosya korunur ve
+   adlandırılır, onun engellediği bir adım için yöneticinin ekleyeceği satır
+   söylenir. Güvenlik güncellemeleri kartı, kapsanmamış ya da sınırlanmamış bir
+   üretici deposu için aynı eylemi sunar.
+3. **Panelin kendi araçları varsayılan olarak dağıtımın PHP'sinde kalır.** Bir
+   aracın PHP seçimi önceden bir dağıtım sürümünü seçili getirir; yalnız
+   üreticinin getirdiği bir sürüm bir notla "siteler için" diye işaretlenir. Bir
+   aracın kurulumunun varsayılanları değişmez.
+4. **Müşteriler hiçbir zaman depo açamaz** (`/api/v1/repo` ve yol yönetici
+   yollarıdır; testler bir müşterinin reddedildiğini kanıtlar). **Kapatmak hiçbir
+   şeyi kaldırmaz:** Agent hangi kurulu paketlerin depodan geldiğini kaydeder; sürüm
+   listesi ve bileşenin sayfası onları tarihle "artık güncellenmiyor" diye işaretler.
+
+**Yan yana PostgreSQL ana sürümleri (7. maddenin "ana sürüm yükseltme akışı"nın yerine geçer).**
+Yerinde dönüştürme yapılmadı. Debian ve Ubuntu'da (postgresql-common), başka bir
+ana sürüm kendi portunda kendi kümesi olarak kurulur: PostgreSQL sayfasındaki
+kümeler kartı her kümeyi gösterir (sürüm, port, durum, veri dizini, kullanıcı
+veritabanları, panelin ondaki kayıtları) ve paket adayı olan ana sürümleri,
+yeni kümenin alacağı portla birlikte sunar (5432'den başlayarak ilk boş port;
+her kümenin yapılandırmasından ve dinlenen portlardan okunur); kurulum önizlemesi
+üzerinden gider ve sonuç kümenin gerçekte aldığı portu söyler. Bir kümenin portu,
+değişen tek satır ve SHA-256'sı, şu an kimin bağlı olduğu, panelin kayıtları ve
+yeniden başlatmanın keseceği gösterildikten sonra düzenlenir; küme yeniden başlar,
+yeni port kanıtlanır, aksi halde eski dosya geri yazılır, yeniden başlatılır ve
+kanıtlanır. Güvenlik duvarı yalnız yerel kalır. Bir veritabanı kopyalanarak
+taşınır: kök dışında kimsenin okuyamadığı bir dosyaya pg_dump, eksik roller
+kaynağın kendi tanımlarından oluşturulur (parolalar taşınır, asla gösterilmez),
+pg_restore, sonra her tablonun satır sayısı iki tarafta karşılaştırılır; kaynak
+kalır. Panelin kaydını ve bir sitenin saklı sunucusunu ve portunu geçirmek, geri
+geçirmek ve kaynağı bırakmak ayrı, onaylı adımlardır; kaynağı bırakmak, bağlı bir
+şey varken reddedilir. Bir ana sürümü kaldırmak, kümesi kullanıcı veritabanı
+tuttuğu (adlandırılır) ya da okunamadığı sürece reddedilir; hâlâ `apt-get remove`
+olarak kalır, asla purge değil. **Şema 45'ten 46'ya:** `database_servers.cluster`
+(her eski satırda NULL: o kaydın portundaki küme; ilk kümeler okumasında dolar) ve
+`postgresql_database_moves` tablosu (kanıt ve geçiş durumu). **MariaDB:** paketlerle
+yan yana çalıştırmak mümkün değildir ve sayfası bunu söyler; yerinde ana sürüm
+değişikliği 7. maddenin arkasında kalır ve yapılmadı.
+
+**alpha.107 değişikliğinin kalan maddeleri.**
+
+- **14. madde, müşterinin seçimi:** yönetici, her PHP ve Node.js sürüm hattı için
+  müşterilere sunulup sunulmayacağını seçer (bir `panel_settings` satırı;
+  varsayılan: hepsi sunulur). Bir müşterinin gizlenmiş bir sürümü seçmesi sonraki
+  eylemi söyleyerek (yöneticiye sorun) reddedilir (`VERSION_NOT_OFFERED`); bir yönetici
+  asla kısıtlanmaz; gizlenmiş bir sürümdeki site onu korur (bir Node.js sitesi
+  kendi hattının başka bir yamasına yine geçebilir) ve sahibi artık yeni seçimler
+  için sunulmadığını görür.
+- **15. madde, denenmiş ve izin verilmiş:** `internal/supportdata/tested-versions.json`
+  her dağıtım sürümü için bu sürümün gerçek sistem kanıtının denediği sürümleri
+  adlandırır (Debian 13: PHP 8.4 ve 8.5, PostgreSQL 17 ve 18); sürüm listeleri
+  "denendi" ya da "denenmedi" (kurulabilir) diye işaretler. Bilgidir, asla engel
+  değildir.
+- **13. madde, sistemin kendi izleri:** bir kaldırmadan önce, sınırlı ve salt-okur
+  olarak, Agent bileşenin soketini ya da bir loopback portunu adlandıran web
+  sunucusu yapılandırmasını (nginx ve Apache), /etc/systemd/system içinde onun
+  birimine bağlı birimleri ve ona şu an bağlı yerel programları okur; her biri
+  kaldırma penceresinde bir uyarı olarak adlandırılır (CelikPanel'in kendi
+  dosyaları, birimleri ve siteleri, zaten adlandırıldıkları için hariç); aksi
+  halde "CelikPanel'in bildiği hiçbir şey …".
+
+**Sahibin alpha.107 bulguları, düzeltildi.** Her kurulum yolu kurulum önizlemesini
+ve onayı gösterir (sürüm listesi ve Onar göstermiyordu; reddetme metni artık
+yeniden Kur'a basmayı söyler). Sury'nin anahtarı "17 Mart 2021'de doldu" diyordu,
+çünkü openpgp paketi dört kendi imzasından en eskisini tutuyordu; artık apt ve gpg
+gibi, geçerli olan en yeni imza karar verir ve "apt artık kabul etmiyor" yalnız apt
+bildirdiğinde söylenir. Boston'da phpPgAdmin'in ilk kurulum kanıtı, Agent'ın
+`UMask=0027` ile çalışması yüzünden başarısız oldu: CelikPanel'in denetim dosyası
+PHP-FPM'e okunamazdı (0750/0640); artık 0755/0644 yazılır ve bir kanıtla onarılır
+(yeni neden `check_unreadable`); "çalışmıyor" yalnız soket yokken ya da birim
+durmuşken söylenir; aynı sürümde "PHP x kullan" yalnız kanıtlar; kaybolan bir
+yanıt okuyarak uzlaştırılır. Yerleşim: kurulum reddinin metni artık sütunlara
+bölünmez, Bileşenler satırları orta genişliklerde adlarını bütün tutar, kenar
+çubuğu simgelere daralır (tarayıcı başına hatırlanır), Roundcube'un satırında
+doğrudan bir Güncelle vardır, sahip komutları `sudo` ile başlar ve "root olarak
+oturum açtıysanız sudo yazmayın" der, anahtar satırının sözcükleri ayrıdır.
+
+**Kalan.** Kurulu bir sunucuda hiçbir şey ölçülmedi. DNF ve pacman ailelerinin
+üretici yolu yoktur (yalnız apt) ve yolları bileşen testleriyle kapsanır. Node.js'in
+dağıtım yolu yoktur. Kapatılan bir üretici deposu kaynağını ek dosyadan kaldırmaz
+(zararsızdır; kaynak gitmiştir). PostgreSQL taşıması rol üyeliklerini yalnız kopyanın
+oluşturduğu roller için taşır; hedefte var olan bir rol kendi parolasını korur
+(kanıt bunu söyler). Paylaşılan PHP-FPM havuzu ve tek vmail kullanıcısı (6. madde)
+hâlâ söylenir, ayrılmaz. Purge'ün yapılandırma dosyası uyarısı (8. madde) ve
+Roundcube'u başka bir hatta taşımak (9. madde) yapılmadı. Bir işletim sistemi
+yükseltmesinin değişiklikleri sonrasında listelenir, önceden tahmin edilmez (17.
+madde).
+
+**Sürüm incelemesinden düzeltmeler (25 Ekim 2026).** Bir taşımanın kopyası satırları
+yalnız kopyalandığı anda kanıtlar: kaynağın yazma sayaçları (kullanıcı tablolarına
+eklenen, güncellenen ve silinen satırlar ile istatistiklerinin sıfırlandığı an)
+kanıtla saklanır, geçişten ve kaynak kaldırılmadan önce yeniden okunur; kaynağa
+kopyadan sonra yazıldıysa (yeniden kopyalayın ya da önce uygulamayı kopyaya
+yöneltin) ya da bu kanıtlanamıyorsa ikisi de reddedilir; kopyalanırken yazılan bir
+kaynak kopyayı başarısız kılar. Bir üretici adresi için sahibin kendi kaynağına
+(sources.list, `*.list` ya da `*.sources`) CelikPanel ikinci kaynak eklemez: yol onu
+sahibinin olarak adlandırır ve yalnız sınırlamasını ve otomatik güncellemelerini
+sunar; ikisi birden varsa çift kaynak adlandırılır ve engeller; ilk açma, hazırlanan
+kaynağı mevcut tüm kaynaklarla birlikte doğrular. Yol, otomatik güncellemelerin
+zamanlayıcısını da okur (kapalı ya da maskeli kapalıdır, okunamayan bilinmiyordur) ve
+reddi, sahibin depoyu kendisinin de ekleyebileceğini söyler. pg_lsclusters yokluğu
+dışında herhangi bir nedenle başarısız olursa kaldırma bilinmiyor olarak reddedilir;
+bir kümenin `postgres` veritabanındaki kullanıcı tabloları da onun tuttuğu veri
+sayılır. PHP'ye geri geçirilen bir müşteri sitesi sunulan PHP sürümlerine bağlıdır.
+Kanıt: birim ve bağlanmış testler ile aynı temel kalıpta PostgreSQL ve üretici yolu
+testlerinin kısa ikinci gerçek sistem denemesi
+([kanıt](../deploy/e2e/d038/alpha108-debian13-20261025/README.md)).
+
+**Şema ve kurtarma.** Geçiş 046 ekleyicidir (boş bırakılabilen bir sütun ve yeni bir
+tablo). alpha.107 Panel'i 46 numaralı geçiş defterini reddeder; bu yüzden geri
+dönüş, güncelleme öncesi anlık görüntünün geri yüklenmesidir (D-025); sürüm
+kurtarma düzeneği geçiş 46'yı sabitler (defter `6ae06313…`, şema `b5b65789…`).
+Yolun dosyaları alpha.107 dosyalarıdır; sahip onları `rm` ve `apt-get update` ile
+kaldırır.
+
+**Kanıt.** Yukarıdaki her madde için bileşen ve bağlanmış testler; saklanan temel
+imajdan atılabilir bir Debian 13 sanal makinesinde bir gerçek sistem denemesi
+([deploy/e2e/d038/alpha108-debian13-20261025](../deploy/e2e/d038/alpha108-debian13-20261025/README.md)).
+Kurulu bir sunucuda ölçülmedi. Bu değişiklik hiçbir P0 işini kapatmaz.
+
 ## D-037 · Her sayfa adının söylediği yerdedir: Ayarlar ayarları tutar; araçlar, güvenlik ve bakım Sunucu altındadır; kişinin kendi hesabı kişisel menüdedir
 
 *22 Ekim 2026 (saat tarihi) · Sahibin 21 Ekim 2026 tarihli isteği ve 22 Ekim 2026 tarihli onayı; v0.1.0-alpha.98 adayı için kaynakta, 22 Ekim 2026'da yayımlandı; 22 Ekim 2026'da sahibin kendi güncellemesinden sonra sahibin ekranları yeni menüyü iki kurulu sunucuda da gösterdi · 22 Ekim 2026'da değiştirildi: kişinin kendi e-postasını değiştirmesi, v0.1.0-alpha.99 adayı için kaynakta; değişikliğin hiçbir parçası kurulu bir sunucuda ölçülmedi · 22 Ekim 2026'da yeniden değiştirildi: Sunucu kurulumu Sunucu altına taşınır, kaldırma penceresi neyin etkileneceğini söyler, ilk ziyaret Kurulu görünümü açar; v0.1.0-alpha.100 adayı için kaynakta · 23 Ekim 2026'da yeniden değiştirildi: bir kaldırma adını söylemediği hiçbir şeyi kaldırmaz ve her PHP aracı sahibin seçtiği PHP sürümünde çalışır; v0.1.0-alpha.104 adayı için kaynakta; kurulu bir sunucuda hiçbir şey ölçülmedi*

@@ -3,6 +3,7 @@ import { Boxes, FileText, RefreshCw, ScrollText, Search } from 'lucide-react';
 import { ServiceShell } from './ServiceShell';
 import { PHPToolVersion } from './PHPToolVersion';
 import { RepoCard } from './RepoCard';
+import { OfferedVersionsCard } from './OfferedVersionsCard';
 import { RoundcubeUpdateCard } from './RoundcubeUpdateCard';
 import { IsolationFact } from './AppAccountLine';
 import { phpToolForService } from '../lib/phpTools';
@@ -112,6 +113,12 @@ export function ComponentDetail({ serviceId, onBack, onSelectConfig }: { service
             {phpToolForService(serviceId) && record?.is_installed === true && (
                 <div className="mb-6">
                     <PHPToolVersion serviceId={serviceId} tool={phpToolForService(serviceId)!} />
+                </div>
+            )}
+            {/* alpha.108 (D-038 §14): which Node.js versions customers are offered. */}
+            {serviceId === 'node' && record?.is_installed === true && (
+                <div className="mb-6 empty:hidden">
+                    <OfferedVersionsCard component="node" installed={(record.instances ?? []).filter((i) => i.managed).map((i) => i.version)} />
                 </div>
             )}
             {/* alpha.107: an enabled vendor repository's card (D-038 §12). */}

@@ -190,7 +190,7 @@ test('extension packages missing on the bound version: not ready, and that versi
   } finally { await unmount(); }
 });
 
-test('a lost answer says the result is not known; a failed read says so with Retry', async () => {
+test('a lost answer is read back and never sent again; a failed read says so with Retry', async () => {
   // No answer at all, and a gateway's own page in place of the Panel's
   // answer (502/504 HTML): both are "not known", never a failure.
   for (const bind of [
@@ -203,8 +203,11 @@ test('a lost answer says the result is not known; a failed read says so with Ret
       const button = tree.root.findAll((node) => node.type === 'button' && label(node).includes(say('component.phpTool.apply', { version: '8.6' })))[0];
       await act(async () => { button.props.onClick(); });
       await settle();
-      assert.equal(attr('data-php-tool-result').props['data-php-tool-result'], 'failed');
-      assert.ok(label(attr('data-php-tool-result')).includes(en['component.phpTool.answerLost']));
+      // alpha.108: the card reads the state back instead of leaving it
+      // unknown, and never sends the move again.
+      assert.equal(attr('data-php-tool-result').props['data-php-tool-result'], 'reconciledRead');
+      assert.equal(label(attr('data-php-tool-result')), say('component.phpTool.reconciledRead', { tool: 'phpPgAdmin', current: '8.4' }));
+      assert.equal(requests.filter((request) => request.url === '/api/v1/service/php-tools/bind').length, 1);
     } finally { await unmount(); }
   }
   await mount({ reads: ['fail'] });

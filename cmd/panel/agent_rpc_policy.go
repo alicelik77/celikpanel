@@ -134,7 +134,8 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.ServiceJournal Agent.ServiceMutationReadiness Agent.ServiceRemovalPreviewV1 Agent.ServiceInstallPreviewV1 Agent.PHPToolBindingsV1 Agent.SiteUsage Agent.Version Agent.VPNStatus
 		Agent.CheckSystemUpdate Agent.SecurityAudit Agent.SystemUpdateStatus
 		Agent.OSUpdatesStatusV1 Agent.RoundcubeUpdateCheckV1 Agent.RestartNeedsV1
-		Agent.NodePatchesV1 Agent.OSReleaseFactsV1 Agent.RepoConfinePreviewV1
+		Agent.NodePatchesV1 Agent.OSReleaseFactsV1 Agent.RepoConfinePreviewV1 Agent.VendorLanePlanV1
+		Agent.PostgreSQLClustersV1 Agent.PostgreSQLClusterPortPreviewV1 Agent.PostgreSQLSourceCheckV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -146,7 +147,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityPackageLifecycle, `
 		Agent.ConfigureDBTools Agent.ConfigureWebmail Agent.DisableRepo Agent.EnableRepo
 		Agent.InstallRoundcube Agent.InstallService Agent.RemoveRoundcube Agent.UninstallService
-		Agent.BindPHPToolV1 Agent.ProvePHPToolV1 Agent.ConfineRepoV1 Agent.WriteVendorUpdateOriginsV1
+		Agent.BindPHPToolV1 Agent.ProvePHPToolV1 Agent.ConfineRepoV1 Agent.WriteVendorUpdateOriginsV1 Agent.EnableVendorLaneV1
 		Agent.UpdateRoundcubeV1 Agent.MoveAppFilesOwnerV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityServiceLifecycle, `
@@ -206,6 +207,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityDatabase, `
 		Agent.CreateDatabase Agent.DeleteDatabase Agent.ImportCpmoveDatabase
 		Agent.ProvisionDatabaseAdminAccount Agent.RemoveDatabaseAdminAccount
+		Agent.SetPostgreSQLClusterPortV1 Agent.CopyPostgreSQLDatabaseV1 Agent.DropPostgreSQLDatabaseV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilitySystemSQLite, `
 		Agent.CreateSystemSQLiteSnapshot Agent.OptimizeSystemSQLiteDatabase
@@ -377,17 +379,24 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.DeleteDatabase":                agentRPCDatabaseTimeout,
 	"Agent.ProvisionDatabaseAdminAccount": agentRPCDatabaseTimeout,
 	"Agent.RemoveDatabaseAdminAccount":    agentRPCDatabaseTimeout,
-	"Agent.DeleteSite":                    agentRPCDatabaseTimeout,
-	"Agent.EnsureDKIMKey":                 agentRPCDatabaseTimeout,
-	"Agent.ImportMailAccount":             agentRPCDatabaseTimeout,
-	"Agent.ApplySitePool":                 agentRPCDatabaseTimeout,
-	"Agent.SecureDNSZoneV2":               agentRPCDatabaseTimeout,
-	"Agent.SyncDNSZoneV2":                 agentRPCDatabaseTimeout,
-	"Agent.SyncDNSZoneV3":                 agentRPCDatabaseTimeout,
-	"Agent.RecoverDNSZoneV3":              agentRPCDatabaseTimeout,
-	"Agent.SyncMailTLSV2":                 agentRPCMutationTimeout,
-	"Agent.CreateSystemSQLiteSnapshot":    agentRPCDatabaseTimeout,
-	"Agent.OptimizeSystemSQLiteDatabase":  agentRPCDatabaseTimeout,
+	// alpha.108: PostgreSQL clusters side by side.
+	"Agent.PostgreSQLClustersV1":           agentRPCNetworkReadTimeout,
+	"Agent.PostgreSQLClusterPortPreviewV1": agentRPCNetworkReadTimeout,
+	"Agent.PostgreSQLSourceCheckV1":        agentRPCNetworkReadTimeout,
+	"Agent.SetPostgreSQLClusterPortV1":     agentRPCDatabaseTimeout,
+	"Agent.CopyPostgreSQLDatabaseV1":       agentRPCDeploymentTimeout,
+	"Agent.DropPostgreSQLDatabaseV1":       agentRPCDatabaseTimeout,
+	"Agent.DeleteSite":                     agentRPCDatabaseTimeout,
+	"Agent.EnsureDKIMKey":                  agentRPCDatabaseTimeout,
+	"Agent.ImportMailAccount":              agentRPCDatabaseTimeout,
+	"Agent.ApplySitePool":                  agentRPCDatabaseTimeout,
+	"Agent.SecureDNSZoneV2":                agentRPCDatabaseTimeout,
+	"Agent.SyncDNSZoneV2":                  agentRPCDatabaseTimeout,
+	"Agent.SyncDNSZoneV3":                  agentRPCDatabaseTimeout,
+	"Agent.RecoverDNSZoneV3":               agentRPCDatabaseTimeout,
+	"Agent.SyncMailTLSV2":                  agentRPCMutationTimeout,
+	"Agent.CreateSystemSQLiteSnapshot":     agentRPCDatabaseTimeout,
+	"Agent.OptimizeSystemSQLiteDatabase":   agentRPCDatabaseTimeout,
 
 	// Operations that legitimately run package/application installers.
 	"Agent.ApplyVhosts":                 agentRPCDeploymentTimeout,
@@ -422,6 +431,8 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.NodePatchesV1":               agentRPCNetworkReadTimeout,
 	"Agent.OSReleaseFactsV1":            agentRPCStandardReadTimeout,
 	"Agent.RepoConfinePreviewV1":        agentRPCNetworkReadTimeout,
+	"Agent.VendorLanePlanV1":            agentRPCNetworkReadTimeout,
+	"Agent.EnableVendorLaneV1":          agentRPCDeploymentTimeout,
 	"Agent.UpdateRoundcubeV1":           agentRPCDeploymentTimeout,
 	"Agent.MoveAppFilesOwnerV1":         agentRPCDeploymentTimeout,
 	"Agent.WireMailFilters":             agentRPCDeploymentTimeout,

@@ -3,6 +3,23 @@
 import type { LifecycleScreenKey } from './en';
 
 export const trLifecycleScreens: Record<LifecycleScreenKey, string> = {
+    // ---- alpha.108 slice d ----
+    // Müşterilere sunulan sürümler (D-038 §14).
+    'life.offer.title': 'Müşterilere sunulan',
+    'life.offer.intro': 'Müşteriler siteleri için {name} sürümünü burada sunulanlar arasından seçer. Bir sürümü gizlemek hiçbir siteyi değiştirmez: o sürümdeki site onu korur ve çalışmayı sürdürür, sahibi bir not görür. Yönetici olarak siz kurulu her sürümü her zaman seçebilirsiniz.',
+    'life.offer.toggle': '{name} {version} müşterilere sunulsun',
+    'life.offer.offered': 'Sunuluyor',
+    'life.offer.hidden': 'Müşterilerden gizli',
+    'life.offer.notInstalled': '(artık kurulu değil)',
+    'life.offer.checking': 'Müşterilere hangi sürümlerin sunulduğu okunuyor…',
+    'life.offer.unknown': 'Müşterilere hangi sürümlerin sunulduğu okunamadı. Hiçbir şey değiştirilmedi. Yeniden deneyin.',
+    'life.offer.saving': '{name} {version} sürümünün müşterilere sunulup sunulmadığı kaydediliyor…',
+    'life.offer.failed': 'Değişiklik kaydedilmedi. Başka hiçbir şey değiştirilmedi; yeniden deneyin.',
+    'life.offer.lost': 'Bu değişiklik için yanıt gelmedi. Yukarıdaki liste yeniden okundu ve sunucuda kayıtlı olanı gösteriyor; yalnız istediğiniz gibi değilse yeniden değiştirin.',
+    'life.offer.customerKept': '{name} {version} artık yeni seçimler için sunulmuyor. Siteniz onu korur ve çalışmayı sürdürür; başka bir sürüme geçmeden önce yöneticinize danışın.',
+    'life.offer.adminKept': '{name} {version} müşterilerden gizli. Bu site onu korur ve çalışmayı sürdürür; sahibi bu sürümün yeni seçimler için artık sunulmadığını görür.',
+    // ---- alpha.108 web ----
+    'life.webmail.rowLocked': 'Sunucu durumu denetlenirken ya da başka bir işlem sürerken güncelleme beklemededir. Sizin bir şey yapmanız gerekmez: bu bitince düğme yeniden çalışır.',
     'life.repo.title': 'Paket deposu: {name}',
     'life.repo.checking': 'Depo okunuyor…',
     'life.repo.unknown': 'CelikPanel bu depoyu okuyamadı; bu yüzden onunla ilgili hiçbir şey gösterilmiyor. Hiçbir şey değiştirilmedi. Tekrar deneyin.',
@@ -26,8 +43,8 @@ export const trLifecycleScreens: Record<LifecycleScreenKey, string> = {
     'life.repo.key': 'İmza anahtarı {fingerprint}',
     'life.repo.key.valid': 'süresi dolmaz',
     'life.repo.key.validUntil': '{date} tarihine dek geçerli',
-    'life.repo.key.expiring': 'İmza anahtarının süresi {date} tarihinde doluyor. Sunucu yöneticisi bundan önce depoyu bu sayfada yeniden açar: bu, deponun şimdi imzaladığı anahtarı getirir. Yenilenene dek apt çalışmayı sürdürür.',
-    'life.repo.key.expired': 'İmza anahtarının süresi {date} tarihinde doldu: apt artık bu deponun güncellemelerini kabul etmiyor, paketleri güncellenmiyor. Sunucu yöneticisi güncel anahtarı almak için depoyu bu sayfada yeniden açar.',
+    'life.repo.key.expiring': 'İmza anahtarının süresi {date} tarihinde doluyor. Sunucu yöneticisi bundan önce aşağıdaki Güncel anahtarını al düğmesine basar: CelikPanel deponun şimdi imzaladığı anahtarı alır ve yalnız sabitlenmiş anahtarsa kabul eder. Yenilenene dek apt çalışmayı sürdürür.',
+    'life.repo.key.expired': 'İmza anahtarının süresi {date} tarihinde doldu: apt artık bu deponun güncellemelerini kabul etmiyor, paketleri güncellenmiyor. Sunucu yöneticisi aşağıdaki Güncel anahtarını al düğmesine basar.',
     'life.repo.key.unknown': 'İmza anahtarının geçerliliği okunamadı.',
     'life.repo.lists.fresh': 'Paket listesi: {date}.',
     'life.repo.lists.missing': 'apt’ın bu depodan henüz paket listesi yok: sudo apt-get update ona ulaşana dek sürümleri ve güncellemeleri bilinmez.',

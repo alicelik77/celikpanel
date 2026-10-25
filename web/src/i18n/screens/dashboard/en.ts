@@ -9,6 +9,8 @@
 // eklenir; büyüyen parçanın bölünmesi check-bundle-budget.mjs başlığında.
 
 export const enDashboardScreens = {
+    // ---- alpha.108 slice d ----
+    'dashboard.audit.action.versions.customer_offer': 'changed which versions customers are offered ({target})',
     'audit.title': 'Audit log',
     'audit.subtitle': 'Who did what on this server, newest first.',
     'audit.empty': 'No activity recorded yet',
@@ -288,6 +290,9 @@ export const enDashboardScreens = {
     'dashboard.audit.action.server.os_release_reviewed': 'Operating-system release change reviewed',
     'dashboard.audit.action.repo.confine': 'confined the package repository {target} to its component',
     'dashboard.audit.action.repo.confine.failed': 'could not confine the package repository {target} to its component',
+    'dashboard.audit.action.repo.lane': 'enabled or completed the package repository {target} with its confinement and automatic updates',
+    'dashboard.audit.action.repo.lane.failed': 'could not write the package repository {target}’s confinement and automatic updates',
+    'dashboard.audit.action.repo.lane.unknown': 'asked to write the package repository {target}’s lane; whether it was written is not known',
     'dashboard.audit.action.repo.disable': 'turned off the package repository {target}',
     'dashboard.audit.action.repo.disable.failed': 'could not turn off the package repository {target}',
     'dashboard.audit.action.repo.disable.partial': 'partly turned off the package repository {target}',

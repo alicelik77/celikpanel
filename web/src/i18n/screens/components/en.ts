@@ -9,6 +9,18 @@
 // eklenir; büyüyen parçanın bölünmesi check-bundle-budget.mjs başlığında.
 
 export const enComponentsScreens = {
+    // ---- alpha.108 slice d ----
+    // The system's own traces before a removal (D-038 §13).
+    'services.removal.traces.title': 'Found on this server outside CelikPanel — these use {name} and stop working when it is removed:',
+    'services.removal.traces.webConfig': '{path}, line {line}: the web server hands requests to {endpoint}',
+    'services.removal.traces.unit': 'The service {unit} depends on it ({relation})',
+    'services.removal.traces.process': '{process} (process {pid}) is connected to it now ({endpoint})',
+    'services.removal.traces.next': 'CelikPanel did not set these up and does not change them. The server owner checks each one first — changes it to use something else, or removes it — and then removes {name}.',
+    'services.removal.traces.none': 'Nothing CelikPanel knows of uses {name} in the server’s own traces either: no web-server configuration points at it, no service of yours depends on it, and no local program is connected to it right now.',
+    'services.removal.traces.partial': 'Some of the server’s own traces could not be read ({sources}); this is what could be read.',
+    'services.removal.traces.source.web_config': 'web-server configuration',
+    'services.removal.traces.source.units': 'service files',
+    'services.removal.traces.source.connections': 'open connections',
     'services.subtitle': 'Everything installed on this server — services, runtimes and tools',
     'services.col.service': 'Service',
     'services.col.category': 'Category',
@@ -293,7 +305,7 @@ export const enComponentsScreens = {
     'services.installPreview.confirm': 'I have read this; install these packages as well.',
     'services.phpNotReadyProof': 'It was installed, but it did not answer on PHP {version}. Open Manage and choose a PHP version: the move installs what is missing and tests the tool again.',
     'services.phpNotReadyProofOthers': 'It was installed, but it did not answer on PHP {version}, nor on the other installed PHP versions that have its extensions. Open Manage and choose a PHP version: the move installs what is missing and tests the tool again.',
-    'services.phpNotReadyProofModuleOff': 'It was installed, but PHP {version} has {extensions} turned off for PHP-FPM, so it cannot answer. Turn it on (phpenmod -v {version} -s fpm {modules}, then systemctl restart php{version}-fpm), then choose PHP {version} again in Manage.',
+    'services.phpNotReadyProofModuleOff': 'It was installed, but PHP {version} has {extensions} turned off for PHP-FPM, so it cannot answer. Turn it on (sudo phpenmod -v {version} -s fpm {modules}, then sudo systemctl restart php{version}-fpm), then choose PHP {version} again in Manage.',
     'services.bundles.operationLabel': '{component} ({n}/{total}, {bundle})',
     'services.bundles.chip.mail_core': 'Core Mail',
     'services.bundles.chip.mail_webmail': 'Webmail',

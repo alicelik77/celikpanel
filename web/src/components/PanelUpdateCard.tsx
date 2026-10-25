@@ -772,7 +772,7 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                                 : tracking.phase === 'restarting' ? 'panelUpdate.card.restarting'
                                     : tracking.phase === 'reading' ? 'panelUpdate.card.reading' : 'panelUpdate.card.applying', { version: tracking.version })}</p>
                         {tracking.phase === 'unknown' && tracking.overdue && (
-                            <p className="mt-1 text-fg-muted" data-update-overdue="true">{t('panelUpdate.tracking.restartOverdue')}</p>
+                            <><p className="mt-1 text-fg-muted" data-update-overdue="true">{t('panelUpdate.tracking.restartOverdue')}</p><p className="mt-1 text-xs text-fg-muted" data-sudo-note="">{t('common.sudoNote')}</p></>
                         )}
                         {tracking.elapsed && tracking.requestID && (
                             <p className="mt-1 flex flex-wrap gap-x-2 font-mono text-xs text-fg-subtle" data-update-elapsed="true">

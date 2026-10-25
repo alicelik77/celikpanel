@@ -7084,3 +7084,55 @@ postası yalnız istenince taşınır, kanıtlanır ve olmazsa geri konur.
   başlatılması sanal makine denemelerinin parçası değildi; pacman ve DNF yolları
   yalnız bileşen testleriyle. **Hiçbir P0 işi kapanmaz ya da ilerlemez**; P0.1–P0.5
   kısmi kalır ve her açık kabul işi açık kalır.
+
+### Aday v0.1.0-alpha.108 (iki yol, yan yana PostgreSQL ana sürümleri, sahibin alpha.107 bulguları; Agent depo, kurulum, PHP aracı ve PostgreSQL yolları; şema 45'ten 46'ya; ilke 1, 2 ve 4; D-038 değişikliği; D-022; D-024; 25 Ekim 2026)
+
+D-025 ilke 1 (sahibin hizmetleri panel olmadan çalışır): bir üretici deposu yalnız
+sınırlamasıyla ve kaynağının işletim sisteminin kendi otomatik güncellemelerindeki
+yeriyle birlikte açılır; böylece paketleri panel olmadan yamalanır; her dosya sahibin
+kaldırabileceği yerel apt yapılandırmasıdır; sahibin yazdığı hiçbir şey yeniden
+yazılmaz ve zaten açık olan hiçbir şey kapatılmaz. PostgreSQL kümeleri
+postgresql-common'ın kendi kümeleridir, her biri kendi portunda, işletim sistemi
+tarafından çalıştırılır. İlke 2 (kanıtın anlamı vardır): bir anahtarın bitiş tarihi
+geçerli en yeni kendi imzasınınkidir ve "apt artık kabul etmiyor" yalnız apt
+bildirdiğinde söylenir; bir PHP aracının başarısız kanıtı kendi nedenini adlandırır;
+bir veritabanı taşıması her tablonun satır sayısıyla kanıtlanır; bilinmeyen
+bilinmeyen kalır. İlke 4 (sessiz taşıma yok): bir veritabanının kaydı ve bir sitenin
+saklı sunucusu ve portu yalnız kanıttan sonra sahibin ayrı onayıyla değişir, kaynak
+bırakılana dek geri alınabilir biçimde; panelin araçları varsayılan olarak
+dağıtımın PHP'sinde kalır.
+
+- **Agent değişiklikleri.** Agent.VendorLanePlanV1 (salt-okur) ve
+  Agent.EnableVendorLaneV1 (`vendor_lane` işi): sınırlama, kaynağın yeri, sonra
+  kaynak satırı; tek bir plan özetiyle onaylanır; başarısız bir ilk açma yazdıklarını
+  geri alır; otomatik güncellemeler kapalıyken ilk açma reddedilir. Depo kaydı,
+  kapatılmış bir depodan kurulu kalanları tutar. Anahtarın geçerliliği paket paket
+  okunur. PHP denetim dosyası birimin umask'i altında 0755/0644 yazılır ve bir
+  kanıtla onarılır (`php_tool_prove` işi; aynı sürümde bağlama yalnız kanıtlar).
+  PostgreSQL: kümeler okuması, kanıtlı ve geri almalı bir port değişikliği
+  (`pg_cluster_port`), satır sayısı kanıtlı bir veritabanı kopyası
+  (`pg_database_copy`), kaynağı bırakma (`pg_database_drop`) ve bir küme
+  veritabanı tuttuğu sürece reddedilen kaldırma. Kaldırma önizlemeleri sistemin kendi
+  izlerini ekler (salt-okur, sınırlı).
+- **Şema 45'ten 46'ya.** Geçiş 046 `database_servers.cluster` (boş bırakılabilir;
+  her eski satırda NULL, o kaydın portundaki küme demektir) ve
+  `postgresql_database_moves` tablosunu ekler. alpha.107 Panel'i 46 numaralı geçiş
+  defterini reddeder; bu yüzden ona kurtarma, güncelleme öncesi anlık görüntünün geri
+  yüklenmesidir; sürüm kurtarma düzeneği geçiş 46'yı sabitler (defter `6ae06313…`,
+  şema `b5b65789…`). Sunulan sürümler seçimi bir `panel_settings` satırıdır.
+- **Kurtarma.** Yazılamayan bir yol adımı, taze bir depoyu kaynak satırı olmadan
+  bırakır; yanıt vermeyen bir port değişikliği eski dosyayı geri koyar, yeniden
+  başlatır ve kanıtlar; başarısız olan ya da kanıtlanmayan bir kopya, oluşturduğu
+  rollerle birlikte kaldırılır ve kaynağa asla dokunulmaz; kaybolan bir yanıt geri
+  okunur, asla yeniden gönderilmez.
+- **Kanıt.** Agent 4822 geçti, 29 atlandı; Panel ve iç paketler 7945 geçti, 45
+  atlandı, 0 başarısız; web 1906 geçti; sürüm kurtarma düzeneği geçiş 46'yı sabitler;
+  bir sahte sunucu üzerinde tarayıcı bakışı (EN ve TR, 1440 ve 390, açık); atılabilir
+  bir Debian 13 sanal makinesinde bir gerçek sistem denemesi
+  ([deploy/e2e/d038/alpha108-debian13-20261025](../deploy/e2e/d038/alpha108-debian13-20261025/README.md),
+  arşiv SHA-256 `effaf7ce…a1604698`); ilk denemesi kümesiz kurulan bir PGDG ana
+  sürümünü buldu, bu sürümde düzeltildi. Kurulu bir sunucuda ölçülmedi; Panel'in
+  yeniden başlatılması sanal makine denemesinin parçası değildi; pacman ve DNF yolları
+  yalnız bileşen testleriyle; Ubuntu 24.04, gerçek paketin sayfa düzenekleriyle,
+  sanal makine denemesiyle değil. **Hiçbir P0 işi kapanmaz ya da ilerlemez**;
+  P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır.

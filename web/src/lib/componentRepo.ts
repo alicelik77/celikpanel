@@ -34,6 +34,13 @@ export interface RepoInfo {
     enabled_by?: string;
     apt_errors?: string[];
     apt_errors_at?: string;
+    // alpha.108 (D-038 amendment "two lanes"): a vendor lane is enabled only
+    // with its confinement and automatic updates; with the repository
+    // disabled, what is still installed from it is no longer updated.
+    lane?: boolean;
+    origin?: string;
+    no_longer_updated?: string[];
+    disabled_at?: string;
 }
 
 // The two reads of the install dialogue. An answer that does not say whether a

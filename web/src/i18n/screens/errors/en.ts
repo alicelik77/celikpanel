@@ -11,6 +11,9 @@
 // sözleri. Kabuğun ekranlardan önce gösterebileceği kodlar ../../en.ts içinde kalır.
 
 export const enErrorsScreens = {
+    // ---- alpha.108 slice d ----
+    'err.VERSION_NOT_OFFERED': 'Nothing was changed: {name} {version} is not offered to customers on this server. Choose one of the offered versions, or ask your administrator to offer this one — the administrator decides which versions are offered.',
+    'err.NO_VERSION_OFFERED': 'Nothing was created: no {name} version is offered to customers on this server. Ask your administrator to offer one, then create the site again.',
     'err.panel_certificate_activation_pending': 'A previous panel certificate activation is still being finalized. Wait briefly, then retry. No certificate state was overwritten.',
     'err.USERNAME_RESERVED': 'This username is reserved for CelikPanel’s own actions in the activity log. Nothing was created or changed; choose a different username.',
     'err.DOMAIN_DELETION_PENDING': 'This domain is being deleted. Mail settings cannot be changed until deletion finishes or is safely retried.',

@@ -40,8 +40,12 @@ const (
 	serviceMutationStepDisableRepo              serviceMutationStepMethod = "Agent.DisableRepo"
 	serviceMutationStepConfineRepo              serviceMutationStepMethod = "Agent.ConfineRepoV1"
 	serviceMutationStepWriteVendorOrigins       serviceMutationStepMethod = "Agent.WriteVendorUpdateOriginsV1"
+	serviceMutationStepVendorLane               serviceMutationStepMethod = "Agent.EnableVendorLaneV1"
 	serviceMutationStepUpdateRoundcube          serviceMutationStepMethod = "Agent.UpdateRoundcubeV1"
 	serviceMutationStepMoveAppFilesOwner        serviceMutationStepMethod = "Agent.MoveAppFilesOwnerV1"
+	serviceMutationStepSetPGClusterPort         serviceMutationStepMethod = "Agent.SetPostgreSQLClusterPortV1"
+	serviceMutationStepCopyPGDatabase           serviceMutationStepMethod = "Agent.CopyPostgreSQLDatabaseV1"
+	serviceMutationStepDropPGDatabase           serviceMutationStepMethod = "Agent.DropPostgreSQLDatabaseV1"
 	serviceMutationStepInstallNodeVersion       serviceMutationStepMethod = "Agent.InstallNodeVersion"
 	serviceMutationStepRemoveNodeVersion        serviceMutationStepMethod = "Agent.RemoveNodeVersion"
 	serviceMutationStepSetupVPN                 serviceMutationStepMethod = "Agent.SetupVPN"
@@ -214,6 +218,24 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 		return claim.packageName == "" && claim.action == "disable" &&
 			serviceMutationJobMatches(job, "repo_disable", claim.target, "")
 
+	case serviceMutationStepSetPGClusterPort:
+		// alpha.108: one PostgreSQL cluster's port, in its own job; the
+		// qualifier is the new port.
+		return strings.HasPrefix(claim.target, "pg-") && claim.packageName != "" && claim.action == "port" &&
+			serviceMutationJobMatches(job, "pg_cluster_port", claim.target, claim.packageName)
+
+	case serviceMutationStepCopyPGDatabase:
+		// alpha.108: one database copied between two clusters (source and
+		// target ports are the qualifier).
+		return strings.HasPrefix(claim.target, "pgdb-") && claim.packageName != "" && claim.action == "copy" &&
+			serviceMutationJobMatches(job, "pg_database_copy", claim.target, claim.packageName)
+
+	case serviceMutationStepDropPGDatabase:
+		// alpha.108: one database dropped on one cluster (its port), the
+		// administrator's explicit last step of a move.
+		return strings.HasPrefix(claim.target, "pgdb-") && claim.packageName != "" && claim.action == "drop" &&
+			serviceMutationJobMatches(job, "pg_database_drop", claim.target, claim.packageName)
+
 	case serviceMutationStepMoveAppFilesOwner:
 		// alpha.107: one application's files, inside its own app_account job.
 		return strings.HasPrefix(claim.target, "site-") && claim.packageName == "" &&
@@ -230,6 +252,12 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 		// vendor repositories to the OS's automatic updates.
 		return claim.target == "unattended-upgrades" && claim.packageName == "" && claim.action == "origins" &&
 			serviceMutationJobMatches(job, "os_updates_origins", "unattended-upgrades", "")
+
+	case serviceMutationStepVendorLane:
+		// alpha.108: a vendor repository's lane (repository, confinement,
+		// automatic updates) written as one confirmed operation.
+		return claim.packageName == "" && claim.action == "lane" &&
+			serviceMutationJobMatches(job, "vendor_lane", claim.target, "")
 
 	case serviceMutationStepConfineRepo:
 		// alpha.107: an already enabled repository is confined to its
@@ -391,6 +419,14 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 		// tool's own install job or the webmail mail profile's.
 		if claim.action != "prove" || claim.packageName != "" {
 			return false
+		}
+		// alpha.108: "Check again" in a tool's Manage window proves it on
+		// the version it runs on, inside its own "php_tool_prove" job (no
+		// fallback: a proof never moves a tool).
+		// "Yeniden denetle" aracı kendi işinde, çalıştığı sürümde kanıtlar.
+		if (claim.target == "webmail" || claim.target == "phpmyadmin" || claim.target == "phppgadmin") &&
+			serviceMutationJobMatches(job, "php_tool_prove", claim.target, "") {
+			return true
 		}
 		switch claim.target {
 		case "phpmyadmin", "phppgadmin":

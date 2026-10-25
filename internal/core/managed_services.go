@@ -145,6 +145,16 @@ type ManagedRepo struct {
 	// SharedPackages: üreticiye özgü bir sürümün üreticiden istediği ortak
 	// paketler; kurulum bunları adıyla ister.
 	SharedPackages []string
+	// ReleaseOrigin is the Origin field of the repository's Release file
+	// ("deb.sury.org", "apt.postgresql.org"). A repository with one is a
+	// vendor lane (alpha.108, D-038 amendment): it is enabled only as one
+	// confirmed operation that also confines it and adds this origin to the
+	// operating system's automatic updates, so it is never unconfined or
+	// unpatched. The Agent checks the downloaded Release against it.
+	// ReleaseOrigin, deponun Release dosyasındaki Origin alanıdır; olan depo
+	// yalnız sınırlama ve otomatik güncellemeyle birlikte tek onaylı işlemle
+	// açılır.
+	ReleaseOrigin string
 }
 
 // Kind answers "how is this row drawn and operated?" — the single question
@@ -525,6 +535,7 @@ var ManagedServices = []ManagedService{
 			PackagePattern:       `^(php[0-9]+\.[0-9]+)-fpm$`,
 			MovingPackagePattern: `^php(-(fpm|cli|cgi|mysql|pgsql|sqlite3|curl|xml|mbstring|gd|zip|intl|bcmath|opcache|readline|soap|ldap|imap|redis|imagick|igbinary|apcu|memcached|dev))?$`,
 			SharedPackages:       []string{"php-common"},
+			ReleaseOrigin:        "deb.sury.org",
 			// A bare php8.x-fpm runs no real site: no database driver, no
 			// mbstring, no curl. These are the extensions WordPress, Laravel and
 			// WooCommerce need before their first request.
@@ -642,6 +653,7 @@ var ManagedServices = []ManagedService{
 			// major is the default.
 			MovingPackagePattern: `^postgresql(-client|-contrib)?$`,
 			SharedPackages:       []string{"libpq5"},
+			ReleaseOrigin:        "apt.postgresql.org",
 		},
 	},
 	{

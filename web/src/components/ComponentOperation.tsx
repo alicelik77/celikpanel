@@ -119,7 +119,11 @@ export function decodePHPToolProblems(result: unknown): PHPToolProblem[] {
 // carries the Agent's answer in the operation result. Said when it moved
 // the tool to another version, or when no version worked.
 // Yeni kurulan PHP aracının kanıtı; işlem sonucunda taşınır.
-export interface PHPToolProofNote { tool: keyof typeof PHP_TOOL_NAMES; version: string; moved: boolean; proved: boolean; first: string; extensions: string[] }
+export interface PHPToolProofNote {
+    tool: keyof typeof PHP_TOOL_NAMES; version: string; moved: boolean; proved: boolean; first: string; extensions: string[];
+    /** alpha.108: the first attempt's cause, so the toast says it (Boston said only "did not answer as itself"). */
+    kind: string; status: number; detail: string;
+}
 
 export function decodePHPToolProof(result: unknown): PHPToolProofNote | null {
     if (!result || typeof result !== 'object') return null;
@@ -132,7 +136,10 @@ export function decodePHPToolProof(result: unknown): PHPToolProofNote | null {
     const extensions = cause && cause.kind === 'missing_extensions' && Array.isArray(cause.extensions)
         ? cause.extensions.filter((item): item is string => typeof item === 'string' && /^[a-z0-9_]{1,32}$/.test(item))
         : [];
-    return { tool: raw.tool as PHPToolProofNote['tool'], version, moved: raw.moved === true, proved: raw.proved === true, first, extensions };
+    const kind = cause && typeof cause.kind === 'string' ? cause.kind : '';
+    const status = cause && typeof cause.status === 'number' && Number.isInteger(cause.status) ? cause.status : 0;
+    const detail = cause && typeof cause.detail === 'string' ? cause.detail.slice(0, 240) : '';
+    return { tool: raw.tool as PHPToolProofNote['tool'], version, moved: raw.moved === true, proved: raw.proved === true, first, extensions, kind, status, detail };
 }
 
 // The packages a refused install would also have brought (alpha.105 review).
@@ -1896,9 +1903,15 @@ export function ComponentOperationProvider({ children }: { children: ReactNode }
                 // The tool just installed: moved to another version, or Not ready.
                 const proof = decodePHPToolProof(next.result);
                 if (proof && (proof.moved || !proof.proved)) {
+                    // The first attempt's own cause (alpha.108).
+                    // İlk denemenin kendi nedeni.
                     const why = proof.extensions.length > 0
                         ? t('services.phpToolProof.whyMissing', { version: proof.first, extensions: proof.extensions.join(', ') })
-                        : t('services.phpToolProof.whyOther');
+                        : proof.kind === 'check_unreadable'
+                            ? t('services.phpToolProof.whyCheck', { version: proof.first, status: proof.status })
+                            : proof.detail
+                                ? t('services.phpToolProof.whySaid', { detail: proof.detail })
+                                : t('services.phpToolProof.whyOther');
                     showToast('warning', proof.moved
                         ? t('services.phpToolProof.moved', { tool: PHP_TOOL_NAMES[proof.tool], version: proof.version, first: proof.first, why })
                         : t('services.phpToolProof.notReady', { tool: PHP_TOOL_NAMES[proof.tool], version: proof.version || proof.first, why }));
