@@ -57,6 +57,7 @@ export const trVendorLanesScreens: Record<VendorLanesScreenKey, string> = {
     'lane.card.missing': 'Güvenli bir dış depo için eksik: {steps}. Tamamla… tam olarak neyin yazılacağını gösterir.',
     'lane.card.blocked': 'Bir adım şimdi yazılamıyor. Tamamla… nedenini ve sunucu yöneticisinin ne yapacağını söyler.',
     'lane.card.complete': 'Tamamla…',
+    'lane.card.notConfined': 'Sınırlanmamış: düz bir apt upgrade, dağıtım paketlerinin yerine bu deponun derlemelerini koyabilir.',
     'lane.card.refreshKey': 'Güncel anahtarını al…',
     'lane.card.refreshKeyAsk': '{name} için güncel imza anahtarı üreticiden alınsın mı? CelikPanel onu yalnız bu depo için sabitlediği anahtarsa kabul eder; kaynak satırı, sınırlama ve otomatik güncellemeler olduğu gibi kalır.',
     'lane.card.refreshKeyDone': 'Anahtar yeniden okundu.',

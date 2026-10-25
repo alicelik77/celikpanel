@@ -20,7 +20,7 @@ export const enDatabaseClustersScreens = {
     'pgc.lost': 'The answer did not arrive, so whether it happened is not known. The clusters are read again; nothing is sent a second time.',
     'pgc.firewall': 'The firewall is not changed: PostgreSQL stays reachable only from this server unless you open the port yourself.',
 
-    'pgc.cluster.name': 'PostgreSQL {version} · cluster {cluster}',
+    'pgc.cluster.name': 'PostgreSQL {version} — cluster {cluster}',
     'pgc.cluster.online': 'Running',
     'pgc.cluster.down': 'Not running ({status})',
     'pgc.cluster.downHint': 'Start it from this page’s Start, or with sudo systemctl start {unit}; its port and databases are read once it runs.',

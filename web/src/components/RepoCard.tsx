@@ -154,7 +154,7 @@ function RepoFacts({ serviceId, info, onChanged }: { serviceId: string; info: Re
     const confinement = info.confinement;
     const state = confinement?.state ?? 'unknown';
     const stateTone: Tone = state === 'confined' ? 'ok' : state === 'owner_rule' ? 'info' : 'warn';
-    const stateText = t(`life.repo.state.${['confined', 'edited', 'owner_rule', 'not_written', 'removed_by_owner'].includes(state) ? state : 'unknown'}` as TranslationKey, {
+    const stateText = info.lane && (state === 'not_written' || state === 'removed_by_owner') ? t('lane.card.notConfined') : t(`life.repo.state.${['confined', 'edited', 'owner_rule', 'not_written', 'removed_by_owner'].includes(state) ? state : 'unknown'}` as TranslationKey, {
         component,
         path: confinement?.pin_path ?? '',
         files: (confinement?.owner_files ?? []).join(', '),
@@ -243,7 +243,9 @@ function RepoFacts({ serviceId, info, onChanged }: { serviceId: string; info: Re
                 <div data-repo-key={key.state}>
                     <Line tone={key.state === 'expired' ? 'bad' : key.state === 'expiring' ? 'warn' : key.state === 'unknown' ? 'info' : 'ok'} attr={`key-${key.state}`}>
                         <span className="font-mono text-xs">{t('life.repo.key', { fingerprint: groupedFingerprint(key.fingerprint) })}</span>
-                        {key.state === 'valid' && <span>{'\u00a0· '}{key.expires_at ? t('life.repo.key.validUntil', { date: repoDate(key.expires_at, locale) }) : t('life.repo.key.valid')}</span>}
+                        {/* The separator is its own spaced box: text-node spaces beside the
+                            mono fingerprint were lost on the owner's screen (C12). */}
+                        {key.state === 'valid' && <><span className="mx-1.5" aria-hidden="true" data-key-separator="">·</span><span>{key.expires_at ? t('life.repo.key.validUntil', { date: repoDate(key.expires_at, locale) }) : t('life.repo.key.valid')}</span></>}
                     </Line>
                     {key.state !== 'valid' && (
                         <p className="mt-1 pl-6 text-sm leading-6 text-fg-muted" data-repo-key-state={key.state}>

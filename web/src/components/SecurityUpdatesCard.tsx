@@ -19,7 +19,7 @@ import { Button, Dialog, KeepWords, RemoteGate } from './ui';
 import { useRemote } from '../lib/remote';
 import { LifeLine, lifeDate, type Tone } from './LifeLine';
 import { VendorLaneDialog } from './VendorLaneDialog';
-import { LANE_SERVICE } from '../lib/vendorLane';
+import { LANE_FOR_COMPONENT, LANE_SERVICE } from '../lib/vendorLane';
 import { componentName } from '../lib/componentName';
 
 export interface OSUpdates {
@@ -170,7 +170,7 @@ function UpdatesFacts({ value, onChanged }: { value: OSUpdates; onChanged: () =>
                     {(!vendor.covered || !vendor.confined) && LANE_SERVICE[vendor.repo_id] && (
                         <div className="mt-2 pl-6">
                             <Button onClick={() => setLaneFor(vendor.repo_id)} className="max-sm:min-h-11" data-os-updates-lane={vendor.repo_id}>
-                                {t('lane.updates.fix', { name: vendor.name })}
+                                {t('lane.updates.fix', { name: LANE_FOR_COMPONENT[LANE_SERVICE[vendor.repo_id]]?.name ?? vendor.name })}
                             </Button>
                             <p className="mt-1 text-xs text-fg-subtle">{t('lane.updates.fixHint')}</p>
                         </div>

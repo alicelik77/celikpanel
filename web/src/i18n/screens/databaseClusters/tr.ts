@@ -13,7 +13,7 @@ export const trDatabaseClustersScreens: Record<DatabaseClustersScreenKey, string
     'pgc.lost': 'Yanıt gelmedi; bu yüzden gerçekleşip gerçekleşmediği bilinmiyor. Kümeler yeniden okunuyor; hiçbir şey ikinci kez gönderilmez.',
     'pgc.firewall': 'Güvenlik duvarı değişmez: portu kendiniz açmadıkça PostgreSQL’e yalnız bu sunucudan ulaşılır.',
 
-    'pgc.cluster.name': 'PostgreSQL {version} · {cluster} kümesi',
+    'pgc.cluster.name': 'PostgreSQL {version} — {cluster} kümesi',
     'pgc.cluster.online': 'Çalışıyor',
     'pgc.cluster.down': 'Çalışmıyor ({status})',
     'pgc.cluster.downHint': 'Bu sayfanın Başlat düğmesiyle ya da sudo systemctl start {unit} ile başlatın; portu ve veritabanları çalışınca okunur.',

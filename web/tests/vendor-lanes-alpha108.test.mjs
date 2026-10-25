@@ -165,7 +165,7 @@ test('a vendor lane is never enabled alone from the version list or the install 
 test('the key line says apt refuses only when apt said so, and keeps its words apart (C5, C12)', () => {
   const card = read('../src/components/RepoCard.tsx');
   assert.match(card, /aptReportsExpiredKey\(info\.apt_errors\) \? t\('life\.repo\.key\.expired'/);
-  assert.match(card, /'\\u00a0· '/);
+  assert.match(card, /data-key-separator="">·<\/span>/);
   assert.match(card, /data-lane-complete=""/);
   assert.match(card, /data-repo-refresh-key=""/);
 });

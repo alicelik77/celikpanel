@@ -65,6 +65,7 @@ export const enVendorLanesScreens = {
     'lane.card.missing': 'Missing for a safe vendor repository: {steps}. Complete… shows exactly what would be written.',
     'lane.card.blocked': 'A step cannot be written now. Complete… says why and what the server administrator does.',
     'lane.card.complete': 'Complete…',
+    'lane.card.notConfined': 'Not confined: a plain apt upgrade can replace distribution packages with this repository’s builds.',
     'lane.card.refreshKey': 'Fetch its current key…',
     'lane.card.refreshKeyAsk': 'Fetch {name}’s current signing key from the vendor? CelikPanel accepts it only if it is the key it pins for this repository; the source line, the confinement and the automatic updates stay as they are.',
     'lane.card.refreshKeyDone': 'The key was read again.',
