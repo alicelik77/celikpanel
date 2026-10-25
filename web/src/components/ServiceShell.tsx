@@ -715,6 +715,7 @@ function ServiceInstallConfirmationDialog({
                     onAcknowledge={(value) => setAcknowledgedFor(value ? ackKey : null)}
                     componentLabel={(id) => componentName(id, t)}
                     avoidable={false}
+                    selected={name}
                 />
             )}
         </Dialog>

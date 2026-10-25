@@ -29,5 +29,6 @@ test('KeepWords renders one inline box, never a fragment of separate pieces', ()
 
 test('the refusal that showed the columns puts the sentence beside its icon as one flex item', () => {
   // The flex row with an icon column, then exactly one KeepWords child.
-  assert.match(preview, /<li key=\{group\.key\} className="flex items-start gap-2"[^>]*>\s*<AlertTriangle className="mt-1 h-4 w-4 shrink-0 text-danger" aria-hidden="true" \/>\s*<KeepWords/);
+  // alpha.109: the sentence and its package lines are one box beside the icon.
+  assert.match(preview, /<li key=\{repo\} className="flex items-start gap-2"[^>]*>\s*<AlertTriangle className="mt-1 h-4 w-4 shrink-0 text-danger" aria-hidden="true" \/>\s*<div className="min-w-0 flex-1">\s*<KeepWords/);
 });

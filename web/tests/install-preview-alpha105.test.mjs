@@ -71,7 +71,8 @@ test('every new sentence exists in English and Turkish', () => {
   const keys = [...source('components/ReadyBundleStrip.tsx').matchAll(/'(services\.bundles\.(?:version|refusal|warn)\.[A-Za-z_]+)'/g),
     ...source('components/InstallPreviewNotes.tsx').matchAll(/'(services\.installPreview\.[A-Za-z_.]+)'/g)].map((match) => match[1]);
   const expanded = new Set(keys);
-  for (const reason of ['new_php_version', 'apache', 'component', 'database_server']) expanded.add(`services.installPreview.reason.${reason}`);
+  // alpha.109: the reasons are the shared words in the shell catalogue (tests/install-confirmation-alpha109).
+  for (const key of ['heading', 'replacedTitle', 'additionalTitle', 'note.apache', 'note.new_php_version', 'note.upgrade']) expanded.add(`services.installPreview.${key}`);
   for (const code of ['php_extensions_unavailable', 'php_version_unavailable', 'php_version_unsupported']) expanded.add(`services.bundles.refusal.${code}`);
   expanded.add('services.phpNotReadyProof');
   expanded.add('services.phpNotReadyProofModuleOff');
@@ -100,7 +101,7 @@ test('every install confirmation reads the simulation and ties its tick to the a
   }
   const notes = source('components/InstallPreviewNotes.tsx');
   assert.match(notes, /notable\.map\(\(item\) => item\.package\)\.sort\(\)\.join\(','\)/);
-  assert.ok(!enScreens['services.installPreview.reason.new_php_version'].includes('beside the PHP you chose'));
+  assert.ok(!enScreens['services.installPreview.note.new_php_version'].includes('beside the PHP you chose'));
   assert.ok(enScreens['services.installPreview.nothingElse'].includes('none is another PHP, Apache, another component or a database server'));
 });
 

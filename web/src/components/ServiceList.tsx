@@ -21,7 +21,7 @@ import { Link, useLocation, useNavigate } from '../router';
 import { FirewallBar } from './FirewallPanel';
 import { componentStateWord, isServiceRunning, phpBindingOf, phpNotReadyHintKey } from '../lib/serviceStatus';
 import { decodeCandidateVersion, decodeRepoInfo, type RepoInfo } from '../lib/componentRepo';
-import { decodeInstallPreview, installPreviewURL } from '../lib/installPreview';
+import { decodeInstallPreview, installPreviewURL, shortCandidate, versionOfPackage } from '../lib/installPreview';
 import { decodeRoundcubeUpdate, ROUNDCUBE_UPDATE_URL } from '../lib/roundcubeUpdate';
 import { RoundcubeUpdateDialog, RoundcubeUpdateProgress, useRoundcubeUpdate } from './RoundcubeUpdateFlow';
 import { supportFor, useSupportTable, type SupportComponent } from '../lib/supportTable';
@@ -2430,6 +2430,7 @@ function ComponentActionConfirmationDialog({
                     onAcknowledge={(value) => setAcknowledgedFor(value ? ackKey : null)}
                     componentLabel={(id) => componentName(id, t)}
                     avoidable={action.kind === 'install-package'}
+                    selected={targetName}
                 />
             )}
         </Dialog>
@@ -2942,6 +2943,8 @@ function InstallServiceDialog({
                             onAcknowledge={(value) => setAcknowledgedFor(value ? ackKey : null)}
                             componentLabel={(id) => componentName(id, t)}
                             avoidable={Boolean(selectedPkg)}
+                            selected={selectedPkg ? `${componentName(service, t)} ${versionOfPackage(selectedPkg)}` : componentName(service, t)}
+                            recommended={version ? shortCandidate(version) : undefined}
                         />
                     )}
                 </div>
