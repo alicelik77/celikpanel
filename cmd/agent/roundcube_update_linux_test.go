@@ -196,7 +196,7 @@ func TestAWebmailThatDoesNotAnswerGetsThePreviousTreeBackByteForByte(t *testing.
 	})
 	before, _ := os.ReadFile(filepath.Join(live, "public_html", "index.php"))
 	resp := updateRoundcubeTo(context.Background(), "1.6.20", ops)
-	if resp.Updated || !resp.RolledBack || resp.ErrorCode != "PROOF_FAILED" || *proofs != 2 || !strings.Contains(resp.Error, "answers again") {
+	if resp.Updated || !resp.RolledBack || !resp.PreviousAnswers || resp.ErrorCode != "PROOF_FAILED" || *proofs != 2 || !strings.Contains(resp.Error, "answers again") {
 		t.Fatalf("resp = %+v proofs=%d", resp, *proofs)
 	}
 	after, _ := os.ReadFile(filepath.Join(live, "public_html", "index.php"))

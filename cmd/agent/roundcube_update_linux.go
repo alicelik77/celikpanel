@@ -388,7 +388,9 @@ func updateRoundcubeTo(ctx context.Context, version string, ops roundcubeUpdateO
 	}
 	resp.RolledBack = true
 	if err := ops.prove(ctx); err != nil {
+		resp.PreviousAnswers = false
 		return fail("PROOF_FAILED", fmt.Errorf("webmail did not answer on %s (%v); the previous %s tree was put back byte for byte, and it does not answer either: %v", version, proofErr, resp.From, err))
 	}
+	resp.PreviousAnswers = true
 	return fail("PROOF_FAILED", fmt.Errorf("webmail did not answer on %s (%v); the previous %s tree was put back byte for byte and answers again", version, proofErr, resp.From))
 }

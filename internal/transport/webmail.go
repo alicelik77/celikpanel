@@ -51,6 +51,9 @@ type RoundcubeUpdateResponse struct {
 	To         string `json:"to,omitempty"`
 	Backup     string `json:"backup,omitempty"`
 	RolledBack bool   `json:"rolled_back,omitempty"`
-	Error      string `json:"error,omitempty"`
-	ErrorCode  string `json:"error_code,omitempty"`
+	// PreviousAnswers: after a put-back, the previous tree answered the
+	// proof again (alpha.109).
+	PreviousAnswers bool   `json:"previous_answers,omitempty"`
+	Error           string `json:"error,omitempty"`
+	ErrorCode       string `json:"error_code,omitempty"`
 }

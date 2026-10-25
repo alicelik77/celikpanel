@@ -2169,6 +2169,17 @@ func (p *Panel) resumeInterruptedServiceOperationLocked(op serviceOperation) err
 		}
 		successAudit = "runtime.node.install.recovered:" + op.PackageName
 		failureAudit = "runtime.node.install.recovered.failed:" + op.PackageName
+	case serviceOperationKindWebmailUpdate:
+		// alpha.109: an interrupted webmail update is reconciled read only;
+		// the installed version decides and nothing is started again.
+		if op.ServiceID != "roundcube" || !roundcubeReleaseText.MatchString(op.PackageName) {
+			return errors.New("interrupted webmail update has an invalid target")
+		}
+		runner = func(ctx context.Context, _ func(string) error) (serviceOperationResult, *serviceOperationFailure) {
+			return p.reconcileInterruptedWebmailUpdate(ctx, op.PackageName)
+		}
+		successAudit = "webmail.update.recovered:" + op.PackageName
+		failureAudit = "webmail.update.recovered.failed:" + op.PackageName
 	case serviceOperationKindMailProfileInstall:
 		if op.PackageName != "" {
 			return errors.New("interrupted mail profile operation has an unexpected package target")
