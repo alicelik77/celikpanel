@@ -147,10 +147,10 @@ func TestOlderReleaseRefusesALedgerWithTheRequestIdentitiesEntry(t *testing.T) {
 			older = append(older, migration)
 		}
 	}
-	// Migrations 44 (D-031) and 45 (alpha.107) came after it; the release
+	// Migrations 44 (D-031), 45 (alpha.107) and 46 (alpha.108) came after it; the release
 	// before 43 knew none of them.
-	if len(older) != len(embedded)-3 || embedded[len(embedded)-1].version != auditDetailsMigrationVersion {
-		t.Fatalf("the embedded migrations after %d are not exactly 43, 44 and 45", requestIdentitiesMigrationVersion-1)
+	if len(older) != len(embedded)-4 || embedded[len(embedded)-1].version != postgresqlClustersMigrationVersion {
+		t.Fatalf("the embedded migrations after %d are not exactly 43, 44, 45 and 46", requestIdentitiesMigrationVersion-1)
 	}
 	err = database.verifyMigrationLedgerCoverage(t.Context(), older)
 	database.Close()

@@ -198,7 +198,6 @@ class PopulatedDatabaseTests(unittest.TestCase):
     def test_actual_39_through_45_migrations_add_two_null_columns_and_change_no_old_row(self):
         # Migration 45 (alpha.107, D-038): audit_logs.details and
         # sites.app_run_as, NULL in every old row; no table is added.
-        self.assertEqual(len(self.sql), 45, 'a migration after 45 needs its own pin before a candidate carries it')
         result = self.build()
         connection = sqlite3.connect(result['database'])
         connection.execute('PRAGMA foreign_keys=ON')
@@ -215,7 +214,31 @@ class PopulatedDatabaseTests(unittest.TestCase):
         self.assertEqual(p.NEW_TABLES[45], p.NEW_TABLES[44])
         self.assertEqual(p.added_columns(45), {'audit_logs': ('details',), 'sites': ('app_run_as',)})
         self.assertEqual(p.added_columns(44), {})
-        for version in (46, '45', True):
+        for version in (47, '45', True):
+            with self.subTest(version=version), self.assertRaises(p.Refused):
+                self.verify(result, version)
+
+    def test_actual_39_through_46_migrations_add_a_null_column_and_a_table_and_change_no_old_row(self):
+        # Migration 46 (alpha.108, PostgreSQL majors side by side):
+        # database_servers.cluster, NULL in every old row, and the empty
+        # postgresql_database_moves table.
+        self.assertEqual(len(self.sql), 46, 'a migration after 46 needs its own pin before a candidate carries it')
+        result = self.build()
+        connection = sqlite3.connect(result['database'])
+        connection.execute('PRAGMA foreign_keys=ON')
+        apply(connection, self.sql[38:46])
+        connection.close()
+        for wrong in (44, 45):
+            with self.assertRaises(p.Refused):
+                self.verify(result, wrong)
+        proof = self.verify(result, 46)
+        self.assertEqual(proof['schema_version'], 46)
+        self.assertEqual(proof['table_count'], 68)
+        self.assertEqual(proof['old_rows_missing_or_changed'], 0)
+        self.assertEqual(proof['tables']['schema_migrations']['added'], 8)
+        self.assertEqual(p.NEW_TABLES[46] - p.NEW_TABLES[45], {'postgresql_database_moves'})
+        self.assertEqual(p.added_columns(46), {'audit_logs': ('details',), 'sites': ('app_run_as',), 'database_servers': ('cluster',)})
+        for version in (47, '46', True):
             with self.subTest(version=version), self.assertRaises(p.Refused):
                 self.verify(result, version)
 
