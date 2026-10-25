@@ -1820,6 +1820,7 @@ const scenarios = {
 // --- end of batch 29 ---
 (await import('./scenarios-batch30.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
 (await import('./scenarios-batch31.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
+(await import('./scenarios-batch32.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
 // --- end of batch 30 ---
 
 for (const [name, run] of Object.entries(scenarios)) {
