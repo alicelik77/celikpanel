@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -378,7 +379,11 @@ func TestPGPortChangeRefusesWhatItMustNotDo(t *testing.T) {
 
 func TestPGRemovalIsRefusedWhileAClusterHoldsDatabases(t *testing.T) {
 	f := newFakePGHost(t)
-	f.answers = func(_ string, port int, _, _ string) (string, error) {
+	postgresTables := "0\n"
+	f.answers = func(_ string, port int, _, statement string) (string, error) {
+		if statement == pgPostgresTablesStatement {
+			return postgresTables, nil
+		}
 		if port == 5432 {
 			return "shop\n", nil
 		}
@@ -393,6 +398,26 @@ func TestPGRemovalIsRefusedWhileAClusterHoldsDatabases(t *testing.T) {
 	}
 	if held, unknown := pgRemovalHolds(context.Background(), f.host(), ""); len(held) != 1 || !reflect.DeepEqual(unknown, []string{"16/old"}) {
 		t.Fatalf("every major: %v %v", held, unknown)
+	}
+	// alpha.108 review: user tables in the postgres database hold data too;
+	// an unreadable count, or pg_lsclusters failing for any reason but its
+	// absence, is unknown, never "nothing there".
+	postgresTables = "3\n"
+	if held, unknown := pgRemovalHolds(context.Background(), f.host(), "18"); !reflect.DeepEqual(held, []string{"18/main: postgres (3 user tables)"}) || len(unknown) != 0 {
+		t.Fatalf("18 with tables in postgres: %v %v", held, unknown)
+	}
+	postgresTables = "not a number"
+	if held, unknown := pgRemovalHolds(context.Background(), f.host(), "18"); len(held) != 0 || !reflect.DeepEqual(unknown, []string{"18/main"}) {
+		t.Fatalf("an unreadable count: %v %v", held, unknown)
+	}
+	broken := f.host()
+	broken.lsclusters = func(context.Context) (string, error) { return "", errors.New("signal: killed") }
+	if held, unknown := pgRemovalHolds(context.Background(), broken, "17"); len(held) != 0 || len(unknown) != 1 {
+		t.Fatalf("pg_lsclusters failed: %v %v", held, unknown)
+	}
+	broken.lsclusters = func(context.Context) (string, error) { return "", fmt.Errorf("x: %w", errPGLsclustersMissing) }
+	if held, unknown := pgRemovalHolds(context.Background(), broken, "17"); len(held) != 0 || len(unknown) != 0 {
+		t.Fatalf("no postgresql-common: %v %v", held, unknown)
 	}
 	code, message := pgRemovalRefusal([]string{"17/main: shop"}, nil)
 	if code != errCodeRemovalHoldsDatabases || !strings.Contains(message, "17/main: shop") || !strings.Contains(message, "nothing was changed") {

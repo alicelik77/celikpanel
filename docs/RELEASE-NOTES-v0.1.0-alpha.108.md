@@ -57,8 +57,10 @@ by side. He decided: **security and stability always come before freedom**
 - Every install path shows the preview and asks to confirm notable packages,
   including the PHP-FPM version list and Repair. The refusal says to press Install
   again.
-- **phpPgAdmin on Boston:** the cause was the Agent's `UMask=0027`, which made
-  CelikPanel's check file unreadable to PHP-FPM. **Check again** repairs it and
+- **phpPgAdmin on Boston:** the likely cause is the Agent's `UMask=0027`, which
+  makes CelikPanel's check file unreadable to PHP-FPM. It was reproduced on a
+  disposable Debian 13 VM, not measured on Boston: pressing **Check again** after the
+  update confirms it there (it says the real cause if it is another). It repairs it and
   proves the tool; "not running" is said only when PHP-FPM really is stopped; using
   the same PHP version only proves; a lost answer is read back, never resent.
 - **Sury's key:** its expiry is read from its newest signature (early 2028);

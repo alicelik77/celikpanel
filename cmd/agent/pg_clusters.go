@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -744,13 +745,26 @@ func setPGClusterPort(ctx context.Context, host pgClusterHost, req *transport.Po
 // pgRemovalHolds says which clusters of the PostgreSQL removal (one major,
 // or every major when major is "") still hold user databases, by name, and
 // which could not be asked (D-038 §2: nothing in use is removed).
+// errPGLsclustersMissing: postgresql-common's pg_lsclusters is not installed,
+// so there is no cluster this check can see.
+var errPGLsclustersMissing = errors.New("pg_lsclusters is not installed")
+
+// pgPostgresTablesStatement counts user tables in a cluster's own postgres
+// database (alpha.108 review): data kept there is data too.
+const pgPostgresTablesStatement = `SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relkind IN ('r', 'p') AND n.nspname NOT IN ('pg_catalog', 'information_schema') AND n.nspname NOT LIKE 'pg\_toast%' AND n.nspname NOT LIKE 'pg\_temp%';`
+
 func pgRemovalHolds(ctx context.Context, host pgClusterHost, major string) (held []string, unknown []string) {
 	readCtx, cancel := context.WithTimeout(ctx, pgReadBound)
 	out, err := host.lsclusters(readCtx)
 	cancel()
-	if err != nil {
+	if errors.Is(err, errPGLsclustersMissing) {
 		// No postgresql-common: no cluster this check can see.
 		return nil, nil
+	}
+	if err != nil {
+		// Any other failure or a timeout is not "nothing there"
+		// (alpha.108 review): the removal is refused as unknown.
+		return nil, []string{"PostgreSQL clusters (pg_lsclusters: " + boundedText(err.Error(), 120) + ")"}
 	}
 	clusters := parsePGLsClusters(out)
 	selected := clusters[:0]
@@ -765,8 +779,29 @@ func pgRemovalHolds(ctx context.Context, host pgClusterHost, major string) (held
 		switch {
 		case !cluster.DatabasesKnown:
 			unknown = append(unknown, ref)
-		case len(cluster.Databases) > 0:
-			held = append(held, ref+": "+strings.Join(cluster.Databases, ", "))
+		default:
+			holding := append([]string{}, cluster.Databases...)
+			// The postgres database's own user tables (alpha.108 review).
+			queryCtx, cancel := context.WithTimeout(ctx, pgReadBound)
+			out, err := host.query(queryCtx, cluster.Owner, cluster.Port, "postgres", pgPostgresTablesStatement)
+			cancel()
+			rows := pgRows(out)
+			count := int64(-1)
+			if err == nil && len(rows) == 1 {
+				if n, parseErr := strconv.ParseInt(strings.TrimSpace(rows[0]), 10, 64); parseErr == nil {
+					count = n
+				}
+			}
+			switch {
+			case count < 0:
+				unknown = append(unknown, ref)
+				continue
+			case count > 0:
+				holding = append(holding, fmt.Sprintf("postgres (%d user tables)", count))
+			}
+			if len(holding) > 0 {
+				held = append(held, ref+": "+strings.Join(holding, ", "))
+			}
 		}
 	}
 	return held, unknown

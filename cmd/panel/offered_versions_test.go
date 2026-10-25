@@ -204,3 +204,25 @@ func TestACustomersNewSiteTakesTheNewestOfferedPHPVersion(t *testing.T) {
 		t.Fatalf("php line = %q", got)
 	}
 }
+
+// alpha.108 review: a customer's Node.js site that becomes a PHP site again
+// takes its recorded PHP version only while it is offered; an administrator
+// is not held to the offer.
+func TestASiteBecomingPHPAgainIsHeldToTheOfferedPHPVersions(t *testing.T) {
+	panel, _, _, adminID := newServiceStateAtomicPanel(t)
+	seedNodeSite(t, panel, adminID, nil)
+	if _, err := panel.db.GetDB().Exec(`UPDATE sites SET php_version = '8.2' WHERE id = 9103`); err != nil {
+		t.Fatal(err)
+	}
+	setOffered(t, panel, adminID, "php", "8.2", false)
+	recorder := httptest.NewRecorder()
+	panel.handleUpdateHosting(recorder, customerRequest(http.MethodPut, "/api/v1/domains/9102/hosting", `{"project_type":"php"}`, 77), 9102)
+	if recorder.Code != http.StatusConflict || errorCode(t, recorder) != errCodeVersionNotOffered {
+		t.Fatalf("customer to a hidden PHP: %d %s", recorder.Code, recorder.Body.String())
+	}
+	var projectType string
+	panel.db.GetDB().QueryRow(`SELECT project_type FROM sites WHERE id = 9103`).Scan(&projectType)
+	if projectType != "node" {
+		t.Fatalf("the refused change moved the site to %s", projectType)
+	}
+}

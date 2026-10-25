@@ -21,7 +21,8 @@ func laneHost(t *testing.T, automatic string) string {
 	root := confinementHost(t)
 	sources := filepath.Join(root, "sources")
 	os.MkdirAll(sources, 0o755)
-	oldSources, oldDropIn, oldConfig := aptSourcesListDir, vendorOriginsDropInPath, vendorLaneAptConfig
+	oldSources, oldDropIn, oldConfig, oldTimer := aptSourcesListDir, vendorOriginsDropInPath, vendorLaneAptConfig, vendorLaneTimerState
+	vendorLaneTimerState = func(context.Context) string { return laneTimer }
 	aptSourcesListDir = sources
 	vendorOriginsDropInPath = filepath.Join(root, "52celikpanel-vendor-origins")
 	vendorLaneAptConfig = func(context.Context) (map[string]string, map[string][]string, error) {
@@ -34,7 +35,8 @@ func laneHost(t *testing.T, automatic string) string {
 		return map[string]string{"APT::Periodic::Unattended-Upgrade": automatic}, lists, nil
 	}
 	t.Cleanup(func() {
-		aptSourcesListDir, vendorOriginsDropInPath, vendorLaneAptConfig = oldSources, oldDropIn, oldConfig
+		aptSourcesListDir, vendorOriginsDropInPath, vendorLaneAptConfig, vendorLaneTimerState = oldSources, oldDropIn, oldConfig, oldTimer
+		laneTimer = "enabled"
 	})
 	return root
 }
@@ -59,6 +61,9 @@ func laneStates(plan transport.VendorLanePlan) string {
 	}
 	return strings.Join(parts, " ")
 }
+
+// laneTimer is apt-daily-upgrade.timer's state in the lane tests.
+var laneTimer = "enabled"
 
 const laneStatusWithUnattended = "Package: unattended-upgrades\nStatus: install ok installed\nVersion: 2.12\n\n"
 
@@ -305,5 +310,20 @@ func TestTheStagedSourceIsValidatedWithEveryExistingSource(t *testing.T) {
 	cleanup()
 	if _, err := os.Stat(dir); !os.IsNotExist(err) {
 		t.Fatal("the parts directory stayed")
+	}
+}
+
+// alpha.108 review: the timer that runs the automatic updates is read too;
+// disabled or masked is off, unreadable is not "on".
+func TestAMaskedOrUnreadableUpdatesTimerBlocksTheLane(t *testing.T) {
+	root := laneHost(t, "1")
+	repo, _ := suryForTest(t)
+	laneSuryLists(t, root, laneStatusWithUnattended)
+	writeTestFile(t, repoSourcePath("sury"), "deb https://packages.sury.org/php/ trixie main\n")
+	for state, reason := range map[string]string{"masked": "automatic_timer_off", "disabled": "automatic_timer_off", "": "automatic_unknown"} {
+		laneTimer = state
+		if step := laneStepOf(vendorLanePlan(context.Background(), repo), laneStepUpdates); step.State != laneStateBlocked || step.Reason != reason {
+			t.Fatalf("timer %q: %+v", state, step)
+		}
 	}
 }

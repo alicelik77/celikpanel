@@ -59,6 +59,17 @@ var vendorLaneAptConfig = func(ctx context.Context) (map[string]string, map[stri
 	return scalars, lists, nil
 }
 
+// vendorLaneTimerState reads apt-daily-upgrade.timer's UnitFileState, the
+// timer that runs the automatic updates ("" when it cannot be read; a
+// variable for tests).
+var vendorLaneTimerState = func(ctx context.Context) string {
+	profile, err := detectHostPlatform()
+	if err != nil || profile.Executables["systemctl"] == "" {
+		return ""
+	}
+	return osUpdatesSystemctlProperty(ctx, profile.Executables["systemctl"], "apt-daily-upgrade.timer", "UnitFileState")
+}
+
 // vendorLaneFetchKey downloads and checks the pinned key (a variable for tests).
 var vendorLaneFetchKey = fetchRepoKey
 
@@ -188,6 +199,17 @@ func laneUpdatesStep(ctx context.Context, repo *core.ManagedRepo, loc aptSourceL
 		return step
 	case scalars["APT::Periodic::Unattended-Upgrade"] == "" || scalars["APT::Periodic::Unattended-Upgrade"] == "0":
 		step.State, step.Reason = laneStateBlocked, "automatic_off"
+		return step
+	}
+	// alpha.108 review: the timer that runs them, read truthfully: disabled
+	// or masked is off; unreadable is not "on".
+	switch vendorLaneTimerState(ctx) {
+	case "enabled", "enabled-runtime", "static", "linked", "linked-runtime", "alias", "indirect", "generated", "transient":
+	case "disabled", "masked", "masked-runtime":
+		step.State, step.Reason, step.Detail = laneStateBlocked, "automatic_timer_off", "apt-daily-upgrade.timer"
+		return step
+	default:
+		step.State, step.Reason, step.Detail = laneStateBlocked, "automatic_unknown", "apt-daily-upgrade.timer"
 		return step
 	}
 	dropState, current := readVendorOriginsDropIn()

@@ -55,8 +55,10 @@ yapacakları [işlem yönlendirmesinde](OPERATION-GUIDANCE.tr.md#sahibin-bulgula
 
 - Her kurulum yolu önizlemeyi gösterir ve dikkat çeken paketlerin onayını ister;
   PHP-FPM sürüm listesi ve Onar da dahil. Reddetme, yeniden Kur'a basmayı söyler.
-- **Boston'da phpPgAdmin:** neden, Agent'ın `UMask=0027` ayarıydı; bu,
-  CelikPanel'in denetim dosyasını PHP-FPM'e okunamaz yapıyordu. **Yeniden denetle**
+- **Boston'da phpPgAdmin:** olası neden, Agent'ın `UMask=0027` ayarıdır; bu,
+  CelikPanel'in denetim dosyasını PHP-FPM'e okunamaz yapar. Atılabilir bir Debian 13
+  sanal makinesinde yeniden üretildi, Boston'da ölçülmedi: güncellemeden sonra
+  **Yeniden denetle**'ye basmak bunu orada doğrular (neden başkaysa onu söyler). Bu düğme
   onu onarır ve aracı kanıtlar; "çalışmıyor" yalnız PHP-FPM gerçekten durmuşken
   söylenir; aynı PHP sürümünü kullanmak yalnız kanıtlar; kaybolan bir yanıt geri
   okunur, asla yeniden gönderilmez.

@@ -149,7 +149,7 @@ func hostPGStream(ctx context.Context, owner, client string, stdin io.Reader, st
 
 func hostPGLsclusters(ctx context.Context) (string, error) {
 	if info, err := os.Stat(pgLsclustersPath); err != nil || !info.Mode().IsRegular() {
-		return "", fmt.Errorf("%s is not installed", pgLsclustersPath)
+		return "", fmt.Errorf("%s: %w", pgLsclustersPath, errPGLsclustersMissing)
 	}
 	out, err := runPackageSimulationCommand(ctx, packageCommandEnv(), pgLsclustersPath, "--no-header")
 	if err != nil {

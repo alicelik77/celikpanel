@@ -16,8 +16,9 @@ var errPGClustersLinuxOnly = errors.New("PostgreSQL clusters are managed on Linu
 func defaultPGClusterHost() pgClusterHost {
 	fail := func(context.Context) (string, error) { return "", errPGClustersLinuxOnly }
 	return pgClusterHost{
-		family:     func() string { return "" },
-		lsclusters: fail,
+		family: func() string { return "" },
+		// No postgresql-common here: no cluster any check can see.
+		lsclusters: func(context.Context) (string, error) { return "", errPGLsclustersMissing },
 		query: func(context.Context, string, int, string, string) (string, error) {
 			return "", errPGClustersLinuxOnly
 		},

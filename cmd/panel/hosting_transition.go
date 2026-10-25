@@ -182,6 +182,24 @@ func (p *Panel) handleUpdateHosting(w http.ResponseWriter, r *http.Request, doma
 			return
 		}
 	}
+	// alpha.108 review: a customer's site that becomes a PHP site again
+	// takes the PHP version recorded for it; no path may land a customer on
+	// a PHP version the administrator does not offer.
+	if req.ProjectType == "php" && !callerIsAdministrator(r) {
+		var phpVersion, previousType string
+		err := p.db.GetDB().QueryRowContext(r.Context(), `SELECT COALESCE(php_version, ''), COALESCE(project_type, 'php') FROM sites WHERE domain_id = ?`, domainID).Scan(&phpVersion, &previousType)
+		if err == nil && previousType != "php" && phpVersion != "" {
+			policy, err := p.loadOfferedVersions(r.Context())
+			if err != nil {
+				writeServerError(w, fmt.Errorf("versions offered to customers: %w", err))
+				return
+			}
+			if !policy.offered("php", phpVersion) {
+				writeVersionNotOffered(w, "php", phpVersion)
+				return
+			}
+		}
+	}
 
 	ctx, cancel := hostingDurableContext(r.Context())
 	defer cancel()

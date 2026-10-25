@@ -24,7 +24,7 @@ import { componentName } from '../lib/componentName';
 import { RepoConfineDialog } from './RepoConfineDialog';
 import { VendorLaneDialog } from './VendorLaneDialog';
 import { showToast } from './Toast';
-import { decodeLaneRead, laneURL, LANE_FOR_COMPONENT, missingSteps } from '../lib/vendorLane';
+import { decodeLaneRead, laneURL, LANE_FOR_COMPONENT, missingSteps, ownerSourceLane } from '../lib/vendorLane';
 
 // A time the server sent, said as a date (the shared lifecycle reading).
 export const repoDate = (value: string | undefined, locale: string): string => lifeDate(value, locale);
@@ -79,6 +79,13 @@ function DefaultLaneCard({ serviceId, info, onChanged }: { serviceId: string; in
     const component = componentName({ id: serviceId, name: serviceId }, t);
     const left = info.no_longer_updated ?? [];
     const short = LANE_FOR_COMPONENT[serviceId]?.name ?? info.name ?? '';
+    // alpha.108 review: the owner's own source for the address is said as
+    // theirs, with what it still lacks.
+    const lane = useRemote(laneURL(serviceId), decodeLaneRead);
+    const plan = lane.remote.state === 'known' && lane.remote.value.state === 'read' ? lane.remote.value.plan : null;
+    const owned = plan !== null && ownerSourceLane(plan);
+    const ownerFiles = plan?.steps.find((step) => step.step === 'repository')?.detail ?? '';
+    const lacking = plan ? missingSteps(plan).filter((step) => step.step !== 'repository') : [];
     return (
         <section className="rounded-2xl border border-border bg-surface" data-repo-card={serviceId} data-lane-default="">
             <header className="flex items-center gap-2 border-b border-border px-5 py-3">
@@ -86,17 +93,25 @@ function DefaultLaneCard({ serviceId, info, onChanged }: { serviceId: string; in
                 <h2 className="text-sm font-semibold text-fg">{t('lane.default.title', { component })}</h2>
             </header>
             <div className="space-y-3 p-5">
-                <Line tone="ok" attr="lane-default"><KeepWords text={t('lane.default.body', { component, name: short })} /></Line>
+                {owned ? (
+                    <Line tone={lacking.length > 0 ? 'warn' : 'ok'} attr="lane-owner-source">
+                        <KeepWords text={lacking.length > 0
+                            ? t('lane.default.ownerSource', { name: short, files: ownerFiles, steps: lacking.map((step) => t(`lane.stepName.${step.step}` as TranslationKey)).join(', ') })
+                            : t('lane.default.ownerSourceDone', { name: short, files: ownerFiles })} />
+                    </Line>
+                ) : (
+                    <Line tone="ok" attr="lane-default"><KeepWords text={t('lane.default.body', { component, name: short })} /></Line>
+                )}
                 {left.length > 0 && (
                     <Line tone="warn" attr="lane-no-longer-updated">
                         <KeepWords text={t('lane.default.left', { names: left.join(', '), name: short, date: repoDate(info.disabled_at, locale) })} />
                     </Line>
                 )}
-                <div className="pl-6">
+                {!(owned && lacking.length === 0) && <div className="pl-6">
                     <Button onClick={() => setOpen(true)} className="max-sm:min-h-11" data-lane-enable="">
-                        {t('lane.default.enable', { name: short })}
+                        {owned ? t('lane.card.complete') : t('lane.default.enable', { name: short })}
                     </Button>
-                </div>
+                </div>}
             </div>
             {open && (
                 <VendorLaneDialog

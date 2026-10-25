@@ -63,7 +63,7 @@ export const LANE_SERVICE: Record<string, string> = { sury: 'php-fpm', pgdg: 'po
 
 // Blocking reasons the dialog explains; anything else reads as "unknown".
 export const LANE_REASONS: ReadonlySet<string> = new Set([
-    'automatic_off', 'automatic_not_installed', 'drop_in_edited', 'duplicate_source', 'origin_mismatch', 'apt_config_unreadable', 'lists_unreadable',
+    'automatic_off', 'automatic_not_installed', 'drop_in_edited', 'duplicate_source', 'automatic_timer_off', 'automatic_unknown', 'origin_mismatch', 'apt_config_unreadable', 'lists_unreadable',
 ]);
 
 // Refusal codes the dialog says in words.
