@@ -601,13 +601,21 @@ export function Checking({ label, className }: { label: string; className?: stri
 // exactly the command. A token longer than 40 characters stays free to wrap,
 // so it can never push a phone screen sideways.
 // Tireli sözcükler tirelerinden bölünmez; satır boşluklarda kırılır, metin aynı kalır.
+//
+// alpha.108 (owner finding C6, Frankfurt's phpMyAdmin install refusal): the
+// sentence is ONE box. It used to be a fragment, so inside a flex row (an
+// icon beside the text) every text run and every kept word became its own
+// flex item: "Sury PHP deposu dağıtımın" / "php-common" / "paketlerini…"
+// stood in three narrow columns. One span is one flex item that takes the
+// row's remaining width and wraps inside it, at 390 and at 1440.
+// Cümle tek kutudur: esnek satırda her parça ayrı sütun olmaz.
 export function KeepWords({ text }: { text: string }) {
     return (
-        <>
+        <span data-keep-words="">
             {text.split(/(\S+-\S+)/).map((part, index) => (index % 2 === 1 && part.length <= 40
                 ? <span key={index} className="whitespace-nowrap">{part}</span>
                 : part))}
-        </>
+        </span>
     );
 }
 

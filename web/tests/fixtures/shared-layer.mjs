@@ -102,6 +102,10 @@ export const roundcubeUpdateURL = compileSource('lib/roundcubeUpdate.ts', unexpe
 export const supportTableURL = compileSource('lib/supportTable.ts', (specifier) => (
   specifier.endsWith('/remote') ? remoteURL : unexpected('lib/supportTable.ts')(specifier)
 ));
+// alpha.108 slice d: the versions offered to customers (D-038 §14).
+export const offeredVersionsURL = compileSource('lib/offeredVersions.ts', (specifier) => (
+  specifier.endsWith('/remote') ? remoteURL : unexpected('lib/offeredVersions.ts')(specifier)
+));
 
 export function sharedLayer(stubURL, extra = {}) {
   const uiURL = compileSource('components/ui.tsx', (specifier) => (
@@ -126,6 +130,7 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/componentRepo': componentRepoURL,
     '/lib/roundcubeUpdate': roundcubeUpdateURL,
     '/lib/supportTable': supportTableURL,
+    '/lib/offeredVersions': offeredVersionsURL,
     '/ui': uiURL,
     ...extra,
   };
@@ -139,6 +144,8 @@ export function sharedLayer(stubURL, extra = {}) {
   if (!extra['/InstallPreviewNotes']) table['/InstallPreviewNotes'] = compileSource('components/InstallPreviewNotes.tsx', resolve);
   if (!extra['/SupportMark']) table['/SupportMark'] = compileSource('components/SupportMark.tsx', resolve);
   if (!extra['/LifeLine']) table['/LifeLine'] = compileSource('components/LifeLine.tsx', resolve);
+  if (!extra['/RemovalTraces']) table['/RemovalTraces'] = compileSource('components/RemovalTraces.tsx', resolve);
+  if (!extra['/OfferedVersionsCard']) table['/OfferedVersionsCard'] = compileSource('components/OfferedVersionsCard.tsx', resolve);
   if (!extra['/NodePatches']) table['/NodePatches'] = compileSource('components/NodePatches.tsx', resolve);
   return { uiURL, resolve, compile: (path, more = {}) => compileSource(path, (specifier) => {
     for (const [suffix, url] of Object.entries(more)) if (specifier.endsWith(suffix)) return url;

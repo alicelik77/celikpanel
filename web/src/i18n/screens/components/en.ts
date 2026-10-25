@@ -9,6 +9,18 @@
 // eklenir; büyüyen parçanın bölünmesi check-bundle-budget.mjs başlığında.
 
 export const enComponentsScreens = {
+    // ---- alpha.108 slice d ----
+    // The system's own traces before a removal (D-038 §13).
+    'services.removal.traces.title': 'Found on this server outside CelikPanel — these use {name} and stop working when it is removed:',
+    'services.removal.traces.webConfig': '{path}, line {line}: the web server hands requests to {endpoint}',
+    'services.removal.traces.unit': 'The service {unit} depends on it ({relation})',
+    'services.removal.traces.process': '{process} (process {pid}) is connected to it now ({endpoint})',
+    'services.removal.traces.next': 'CelikPanel did not set these up and does not change them. The server owner checks each one first — changes it to use something else, or removes it — and then removes {name}.',
+    'services.removal.traces.none': 'Nothing CelikPanel knows of uses {name} in the server’s own traces either: no web-server configuration points at it, no service of yours depends on it, and no local program is connected to it right now.',
+    'services.removal.traces.partial': 'Some of the server’s own traces could not be read ({sources}); this is what could be read.',
+    'services.removal.traces.source.web_config': 'web-server configuration',
+    'services.removal.traces.source.units': 'service files',
+    'services.removal.traces.source.connections': 'open connections',
     'services.subtitle': 'Everything installed on this server — services, runtimes and tools',
     'services.col.service': 'Service',
     'services.col.category': 'Category',

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -169,6 +170,12 @@ type serviceRemovalSimulation struct {
 	// or could not be asked; the removal is refused while either is not empty.
 	HoldsDatabases   []string `json:"holds_databases,omitempty"`
 	DatabasesUnknown []string `json:"databases_unknown,omitempty"`
+	// Traces (alpha.108, D-038 §13): what the system's own traces show
+	// using it outside CelikPanel; TracesState "checked", "partial" (with
+	// TracesUnread) or "" (not looked at). Warnings; never Refuses.
+	Traces       []transport.RemovalTrace `json:"traces"`
+	TracesState  string                   `json:"traces_state,omitempty"`
+	TracesUnread []string                 `json:"traces_unread,omitempty"`
 }
 
 // removalSimulationReadBound bounds the Agent's simulation for the dialog.
@@ -176,7 +183,7 @@ const removalSimulationReadBound = 30 * time.Second
 
 // removalSimulationFrom turns the Agent's preview into the dialog's answer.
 func removalSimulationFrom(serviceID string, preview transport.ServiceRemovalPreviewResponse, err error) *serviceRemovalSimulation {
-	simulation := &serviceRemovalSimulation{State: "unknown", Remove: []string{}, Collateral: []transport.PackageRemovalCollateral{}, BoundTools: []string{}}
+	simulation := &serviceRemovalSimulation{State: "unknown", Remove: []string{}, Collateral: []transport.PackageRemovalCollateral{}, BoundTools: []string{}, Traces: []transport.RemovalTrace{}}
 	if err != nil {
 		return simulation
 	}
@@ -202,6 +209,9 @@ func removalSimulationFrom(serviceID string, preview transport.ServiceRemovalPre
 		len(simulation.HoldsDatabases) > 0 || len(simulation.DatabasesUnknown) > 0
 	simulation.KeepsData = preview.KeepsData
 	simulation.DataPaths = append([]string{}, preview.DataPaths...)
+	simulation.Traces = append(simulation.Traces, preview.Traces...)
+	simulation.TracesState = preview.TracesState
+	simulation.TracesUnread = append([]string{}, preview.TracesUnread...)
 	return simulation
 }
 
@@ -493,6 +503,7 @@ func (p *Panel) handleServiceRemovalImpact(w http.ResponseWriter, r *http.Reques
 			log.Printf("removal impact: package manager simulation for %s%s could not be read: %v", svc.ID, pkgSuffix(packageName), previewErr)
 		}
 		response.Simulation = removalSimulationFrom(svc.ID, preview, previewErr)
+		response.Simulation.Traces = p.unknownRemovalTraces(r.Context(), response.Simulation.Traces)
 	}
 	json.NewEncoder(w).Encode(response)
 }
@@ -644,4 +655,45 @@ func (p *Panel) removalHostFacts(ctx context.Context, serviceID string) removalH
 		}
 	}
 	return facts
+}
+
+// unknownRemovalTraces drops what CelikPanel itself knows of and already
+// names in the dialog: its sites' own vhosts (sites-enabled/<domain>.conf,
+// counted as the sites on it) and connections to its sites' own PHP pools.
+// What remains is what the owner set up outside CelikPanel (D-038 §13).
+// CelikPanel'in zaten bildiği ve pencerede adını söylediği izler düşülür.
+func (p *Panel) unknownRemovalTraces(ctx context.Context, traces []transport.RemovalTrace) []transport.RemovalTrace {
+	if len(traces) == 0 {
+		return traces
+	}
+	domains := map[string]bool{}
+	sockets := map[string]bool{}
+	if rows, err := p.db.GetDB().QueryContext(ctx, `SELECT d.name, COALESCE(s.php_fpm_socket, '') FROM domains d LEFT JOIN sites s ON s.domain_id = d.id`); err == nil {
+		for rows.Next() {
+			var name, socket string
+			if rows.Scan(&name, &socket) == nil {
+				domains[strings.ToLower(name)] = true
+				if socket != "" {
+					sockets[strings.Replace(socket, "/var/run/", "/run/", 1)] = true
+				}
+			}
+		}
+		rows.Close()
+	}
+	out := []transport.RemovalTrace{}
+	for _, trace := range traces {
+		switch trace.Kind {
+		case "web_config":
+			base := strings.ToLower(strings.TrimSuffix(filepath.Base(trace.Path), ".conf"))
+			if domains[base] && strings.Contains(trace.Path, "/sites-") {
+				continue
+			}
+		case "process":
+			if sockets[strings.Replace(trace.Endpoint, "/var/run/", "/run/", 1)] {
+				continue
+			}
+		}
+		out = append(out, trace)
+	}
+	return out
 }

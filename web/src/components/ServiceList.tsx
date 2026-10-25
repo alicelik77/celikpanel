@@ -39,6 +39,7 @@ import { componentIcon } from '../lib/componentIcons';
 import { packageVersionFacts } from '../lib/packageVersion';
 import { BundleInstallDialog, ReadyBundleStrip, useBundleSequence, type BundleChoices } from './ReadyBundleStrip';
 import { WebmailRepairButton } from './WebmailRepairButton';
+import { decodeRemovalTraces, RemovalTracesNote, type RemovalTraces } from './RemovalTraces';
 import { answerBody, decodePHPToolMoveFailure, phpToolForService, readPHPTools, PHP_TOOL_SERVICE_ID, type PHPToolMoveFailure, type PHPToolsInfo, phpToolCauseText } from '../lib/phpTools';
 
 // One installed copy of a runtime (B3b): php8.3-fpm is an instance, a Node
@@ -3913,6 +3914,8 @@ function VersionRemovalImpact({ name, whole, serviceId, version, read, onRetry, 
                         <p className="text-fg-muted" data-version-move="none">{t('services.version.moveNone')}</p>
                     )
                 )}
+                {/* alpha.108 (D-038 §13): what the server's own traces show. */}
+                <RemovalTracesNote traces={sim?.traces} name={name} />
                 {moving && toolsBound && (
                     <div className="flex items-start gap-2 text-sm text-fg-muted" data-version-moving="">
                         <span className="mt-0.5 shrink-0"><Spinner size="xs" label={t('services.version.movingWait', { version: target })} /></span>
@@ -4062,6 +4065,8 @@ export interface RemovalSimulation {
     /** alpha.108 (D-038 §2): PostgreSQL clusters of this removal that still hold databases, or could not be asked. */
     holds_databases?: string[];
     databases_unknown?: string[];
+    /** alpha.108 (D-038 §13): the system's own traces of use outside CelikPanel. */
+    traces?: RemovalTraces;
 }
 const SIMULATION_STATES: ReadonlySet<string> = new Set(['checked', 'busy', 'unknown', 'unsupported', 'not_installed']);
 const COLLATERAL_REASONS: ReadonlySet<string> = new Set(['component', 'reverse_dependency', 'would_install']);
@@ -4089,6 +4094,7 @@ function decodeRemovalSimulation(value: unknown): RemovalSimulation | null {
         ...(v.keeps_data === true ? { keeps_data: true, data_paths: isStrings(v.data_paths) ? v.data_paths : [] } : {}),
         ...(isStrings(v.holds_databases) && v.holds_databases.length > 0 ? { holds_databases: v.holds_databases } : {}),
         ...(isStrings(v.databases_unknown) && v.databases_unknown.length > 0 ? { databases_unknown: v.databases_unknown } : {}),
+        traces: decodeRemovalTraces(v),
     };
 }
 const REMOVAL_HOSTED_KINDS: ReadonlySet<string> = new Set(['sites', 'php_sites', 'node_sites', 'databases', 'mail_addresses', 'mail_domains', 'mailboxes', 'certificates', 'firewall', 'unrecorded', 'vpn_peers', 'ftp_accounts']);
@@ -4660,6 +4666,8 @@ function RemovalImpactSection({
             >
                 {!refused && affectedList('services.removal.affectedTitle')}
                 {!refused && warnings}
+                {/* alpha.108 (D-038 §13): what the server's own traces show. */}
+                <RemovalTracesNote traces={simulation?.traces} name={name} />
             </RemovalAnswer>
         </div>
     );

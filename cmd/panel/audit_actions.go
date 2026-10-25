@@ -228,6 +228,7 @@ var auditActionNames = []string{
 	"team_member.update",
 	"user.create",
 	"user.delete",
+	"versions.customer_offer",
 	"vpn.peer.add",
 	"vpn.peer.delivery_ack",
 	"vpn.peer.remove",

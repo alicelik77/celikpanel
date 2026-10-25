@@ -3,6 +3,9 @@
 import type { ErrorsScreenKey } from './en';
 
 export const trErrorsScreens: Record<ErrorsScreenKey, string> = {
+    // ---- alpha.108 slice d ----
+    'err.VERSION_NOT_OFFERED': 'Hiçbir şey değiştirilmedi: {name} {version} bu sunucuda müşterilere sunulmuyor. Sunulan sürümlerden birini seçin ya da yöneticinizden bunu sunmasını isteyin; hangi sürümlerin sunulacağına yönetici karar verir.',
+    'err.NO_VERSION_OFFERED': 'Hiçbir şey oluşturulmadı: bu sunucuda müşterilere hiçbir {name} sürümü sunulmuyor. Yöneticinizden birini sunmasını isteyin, sonra siteyi yeniden oluşturun.',
     'err.panel_certificate_activation_pending': 'Önceki panel sertifikası etkinleştirmesi hâlâ tamamlanıyor. Kısa süre bekleyip yeniden deneyin. Hiçbir sertifika durumu ezilmedi.',
     'err.USERNAME_RESERVED': 'Bu kullanıcı adı, etkinlik günlüğünde CelikPanel’in kendi eylemleri için ayrılmıştır. Hiçbir şey oluşturulmadı ya da değiştirilmedi; başka bir kullanıcı adı seçin.',
     'err.DOMAIN_DELETION_PENDING': 'Bu domain siliniyor. Silme işlemi tamamlanana veya güvenle yeniden denenene kadar posta ayarları değiştirilemez.',

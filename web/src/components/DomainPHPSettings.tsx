@@ -9,6 +9,8 @@ import { useRemote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
 import { supportFor, useSupportTable } from '../lib/supportTable';
 import { SupportLine, supportConfirmation } from './SupportMark';
+import { OfferedVersionNote } from './OfferedVersionsCard';
+import { isOffered, useOfferedVersions } from '../lib/offeredVersions';
 
 interface DomainPHPSettingsProps {
     domainId: number;
@@ -87,6 +89,9 @@ export function DomainPHPSettings({
     // alpha.107 (D-038 §5, §14): each version's security support, from the
     // dated table; the customer sees the mark of their own site's version.
     const support = useSupportTable();
+    // alpha.108 (D-038 §14): whether the site's version is still offered to
+    // customers; a hidden one is kept, and the page says so.
+    const offered = useOfferedVersions();
     const [saving, setSaving] = useState(false);
     const [savingPool, setSavingPool] = useState(false);
     // The version picked here and not applied yet; null until the person picks.
@@ -263,6 +268,9 @@ export function DomainPHPSettings({
                                 </Button>
                             </div>
                             <SupportLine table={support} component="php" version={selectedVersion} />
+                            {offered && (
+                                <OfferedVersionNote component="php" version={currentVersion} offered={isOffered(offered, 'php', currentVersion)} restricted={offered.restricted} />
+                            )}
                             {/* A line of its own height under the picker, so the form
                                 below does not move when the versions arrive.
                                 Seçicinin altında kendi yüksekliği olan satır; sürümler

@@ -1364,6 +1364,9 @@ func main() {
 	http.HandleFunc(osReleaseReviewedAPIPath, panel.handleOSRelease)
 	// alpha.107 (D-038 §11): the dated support table, for every signed-in person.
 	http.HandleFunc(supportTablePath, panel.handleSupportTable)
+	// alpha.108 (D-038 §14): the versions offered to customers; read by
+	// every signed-in person, changed by the administrator.
+	http.HandleFunc(offeredVersionsPath, panel.handleOfferedVersions)
 	http.HandleFunc("/dbtool/", panel.handleDBToolProxy)
 	http.HandleFunc("/webmail/", panel.handleWebmailProxy)
 
