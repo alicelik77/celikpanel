@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"io"
 	"os"
 	"regexp"
@@ -10,7 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/crypto/openpgp"
+	"golang.org/x/crypto/openpgp/armor"
+	pgperrors "golang.org/x/crypto/openpgp/errors"
 	"golang.org/x/crypto/openpgp/packet"
 
 	"github.com/alicelik/celikpanel/internal/core"
@@ -101,55 +103,125 @@ func repoKeyState(expires, now time.Time) string {
 // it can no longer verify a signature: the latest expiry among the keys that
 // may sign (the primary key and its signing subkeys); zero means it does not
 // expire.
+//
+// alpha.108 (owner finding, Boston): a vendor extends its key by issuing a
+// NEWER self-signature with a longer lifetime and keeps the older ones in the
+// same file. Sury's key carries four (2019, 2021, 2024, 2025), newest first;
+// the openpgp package keeps the LAST self-signature it reads and the FIRST
+// binding of a subkey, so the card said "expired on 17 March 2021" while apt,
+// which uses the newest valid self-signature as gpg does, accepted the
+// repository. The packets are therefore read here: for each user ID and each
+// subkey the newest signature that verifies against the primary key counts.
+//
+// alpha.108: üretici anahtarını daha YENİ bir öz-imzayla uzatır; eskiler
+// dosyada kalır. openpgp paketi sonuncuyu tuttuğu için kart 2021'de doldu
+// diyordu. Burada her kimlik ve alt anahtar için doğrulanan en yeni imza sayılır.
 func openPGPKeyValidity(data []byte, armored bool) (created, expires time.Time, ok bool) {
-	var list openpgp.EntityList
-	var err error
+	raw := data
 	if armored {
-		list, err = openpgp.ReadArmoredKeyRing(bytes.NewReader(data))
-	} else {
-		list, err = openpgp.ReadKeyRing(bytes.NewReader(data))
+		block, err := armor.Decode(bytes.NewReader(data))
+		if err != nil {
+			return time.Time{}, time.Time{}, false
+		}
+		raw, err = io.ReadAll(io.LimitReader(block.Body, 1<<20))
+		if err != nil {
+			return time.Time{}, time.Time{}, false
+		}
 	}
-	if err != nil || len(list) == 0 {
+	var primary *packet.PublicKey
+	var uid *packet.UserId
+	var sub *packet.PublicKey
+	var newestSelf *packet.Signature
+	type subkeyBinding struct {
+		key *packet.PublicKey
+		sig *packet.Signature
+	}
+	var subkeys []*subkeyBinding
+	newer := func(have, candidate *packet.Signature) bool {
+		return have == nil || candidate.CreationTime.After(have.CreationTime)
+	}
+	reader := packet.NewReader(bytes.NewReader(raw))
+read:
+	for {
+		p, err := reader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			var unsupported pgperrors.UnsupportedError
+			if errors.As(err, &unsupported) {
+				continue
+			}
+			return time.Time{}, time.Time{}, false
+		}
+		switch pkt := p.(type) {
+		case *packet.PublicKey:
+			if !pkt.IsSubkey {
+				if primary != nil {
+					// A second primary key: only the first entity counts.
+					break read
+				}
+				primary = pkt
+				continue
+			}
+			sub, uid = pkt, nil
+			subkeys = append(subkeys, &subkeyBinding{key: pkt})
+		case *packet.UserId:
+			uid, sub = pkt, nil
+		case *packet.Signature:
+			if primary == nil {
+				continue
+			}
+			switch {
+			case sub != nil && pkt.SigType == packet.SigTypeSubkeyBinding:
+				current := subkeys[len(subkeys)-1]
+				if newer(current.sig, pkt) && primary.VerifyKeySignature(sub, pkt) == nil {
+					current.sig = pkt
+				}
+			case uid != nil && sub == nil && isUserIDCertification(pkt.SigType) &&
+				pkt.IssuerKeyId != nil && *pkt.IssuerKeyId == primary.KeyId:
+				if newer(newestSelf, pkt) && primary.VerifyUserIdSignature(uid.Id, primary, pkt) == nil {
+					newestSelf = pkt
+				}
+			}
+		}
+	}
+	if primary == nil {
 		return time.Time{}, time.Time{}, false
 	}
-	entity := list[0]
-	created = entity.PrimaryKey.CreationTime
+	created = primary.CreationTime
 	var signers []time.Time
 	never := false
 	consider := func(sig *packet.Signature, key *packet.PublicKey) {
-		if sig == nil || key == nil {
-			return
-		}
 		if sig.KeyLifetimeSecs == nil || *sig.KeyLifetimeSecs == 0 {
 			never = true
 			return
 		}
 		signers = append(signers, key.CreationTime.Add(time.Duration(*sig.KeyLifetimeSecs)*time.Second))
 	}
-	var newest *packet.Signature
-	for _, identity := range entity.Identities {
-		if identity.SelfSignature != nil && (newest == nil || identity.SelfSignature.CreationTime.After(newest.CreationTime)) {
-			newest = identity.SelfSignature
-		}
+	if newestSelf != nil && (!newestSelf.FlagsValid || newestSelf.FlagSign) {
+		consider(newestSelf, primary)
 	}
-	if newest != nil && (!newest.FlagsValid || newest.FlagSign) {
-		consider(newest, entity.PrimaryKey)
-	}
-	for _, subkey := range entity.Subkeys {
-		if subkey.Sig != nil && subkey.Sig.FlagsValid && subkey.Sig.FlagSign {
-			consider(subkey.Sig, subkey.PublicKey)
+	for _, binding := range subkeys {
+		if binding.sig != nil && binding.sig.FlagsValid && binding.sig.FlagSign {
+			consider(binding.sig, binding.key)
 		}
 	}
 	if never || len(signers) == 0 {
 		// A primary key whose self-signature carries no lifetime does not
 		// expire; with no signing key at all, nothing is claimed beyond it.
-		if newest != nil && newest.KeyLifetimeSecs != nil && *newest.KeyLifetimeSecs > 0 && !never {
-			return created, created.Add(time.Duration(*newest.KeyLifetimeSecs) * time.Second), true
+		if newestSelf != nil && newestSelf.KeyLifetimeSecs != nil && *newestSelf.KeyLifetimeSecs > 0 && !never {
+			return created, created.Add(time.Duration(*newestSelf.KeyLifetimeSecs) * time.Second), true
 		}
 		return created, time.Time{}, true
 	}
 	sort.Slice(signers, func(i, j int) bool { return signers[i].After(signers[j]) })
 	return created, signers[0], true
+}
+
+func isUserIDCertification(t packet.SignatureType) bool {
+	return t == packet.SigTypePositiveCert || t == packet.SigTypeGenericCert ||
+		t == packet.SigTypePersonaCert || t == packet.SigTypeCasualCert
 }
 
 // repoMovingPackages are the installed distribution packages that follow
