@@ -15,12 +15,6 @@ import { Checking, CouldNotCheck } from './ui';
 // Bir alan adının posta ekranındaki webmail kartı. Webmail'in kullanılabilir
 // olup olmadığı kiracıya özgü kurulum uç noktasından okunur ve üç şeyden
 // biridir: kontrol ediliyor, kontrol edilemedi ya da biliniyor.
-// The whole address, so it can be told to mailbox users (alpha.109).
-function webmailAddress(path: string): string {
-    const origin = typeof window !== 'undefined' && window.location ? window.location.origin : '';
-    return origin + path;
-}
-
 export default function WebmailAccess({ domainId }: { domainId: number }) {
     const { t } = useI18n();
     const { remote, reading, retry } = useRemote(mailSetupURL(domainId), decodeMailSetup);
@@ -35,7 +29,7 @@ export default function WebmailAccess({ domainId }: { domainId: number }) {
                 ) : remote.state === 'unknown' ? (
                     <CouldNotCheck className='mt-2' text={t('mail.webmail.unknown')} onRetry={() => void retry()} busy={reading} />
                 ) : (
-                    <p className='break-words text-xs text-fg-muted'>{path ? t('mail.webmail.available', { url: webmailAddress(path) }) : t('mail.webmail.unavailable')}</p>
+                    <p className='text-xs text-fg-muted'>{path ? t('mail.webmail.available') : t('mail.webmail.unavailable')}</p>
                 )}
             </div>
             {path && (

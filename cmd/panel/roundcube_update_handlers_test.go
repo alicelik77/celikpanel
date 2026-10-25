@@ -117,26 +117,60 @@ func TestWebmailUpdateIsADurableOperationThatSaysItsOutcome(t *testing.T) {
 	}
 }
 
-func TestAnInterruptedWebmailUpdateIsReconciledReadOnly(t *testing.T) {
-	panel, _, _, _ := newServiceStateAtomicPanel(t)
-	restoreRead := readRoundcubeUpdateFromAgent
-	t.Cleanup(func() { readRoundcubeUpdateFromAgent = restoreRead })
-	version := "1.6.15"
-	readRoundcubeUpdateFromAgent = func(*Panel, context.Context) (transport.RoundcubeUpdateCheckResponse, error) {
-		return transport.RoundcubeUpdateCheckResponse{Installed: true, Version: version}, nil
+// An interrupted update is resumed by startup recovery as a read-only
+// reconciliation (alpha.109 review): "updated" only when the target release
+// is installed and proves itself through the Agent-side webmail server; a
+// missing Roundcube, an unproved target and a failed read are unknown; an
+// older release is "not updated". Nothing is updated again.
+func TestAnInterruptedWebmailUpdateIsReconciledReadOnlyByRecovery(t *testing.T) {
+	panel, _, _, userID := newServiceStateAtomicPanel(t)
+	restoreRead, restoreProof, restoreUpdate := readRoundcubeUpdateFromAgent, readWebmailProofFromAgent, updateRoundcubeThroughAgent
+	t.Cleanup(func() {
+		readRoundcubeUpdateFromAgent, readWebmailProofFromAgent, updateRoundcubeThroughAgent = restoreRead, restoreProof, restoreUpdate
+	})
+	updateRoundcubeThroughAgent = func(*Panel, context.Context, string) (transport.RoundcubeUpdateResponse, error) {
+		t.Error("recovery started an update")
+		return transport.RoundcubeUpdateResponse{}, errors.New("no update")
 	}
-	result, failure := panel.reconcileInterruptedWebmailUpdate(context.Background(), "1.6.20")
-	if failure == nil || failure.Code != "webmail_update_interrupted" || result["outcome"] != webmailUpdateOutcomeInterrupted {
-		t.Fatalf("not updated: %+v %+v", result, failure)
+	cases := []struct {
+		name     string
+		check    transport.RoundcubeUpdateCheckResponse
+		checkErr error
+		proof    transport.WebmailProofResponse
+		status   string
+		code     string
+		outcome  string
+	}{
+		{"proved", transport.RoundcubeUpdateCheckResponse{Installed: true, Version: "1.6.20"}, nil, transport.WebmailProofResponse{Proved: true, Version: "1.6.20"}, serviceOperationSucceeded, "", webmailUpdateOutcomeUpdated},
+		{"not proved", transport.RoundcubeUpdateCheckResponse{Installed: true, Version: "1.6.20"}, nil, transport.WebmailProofResponse{Version: "1.6.20", Error: "webmail's stylesheet answered HTTP 404"}, serviceOperationFailed, "webmail_update_unknown", webmailUpdateOutcomeUnknown},
+		{"older", transport.RoundcubeUpdateCheckResponse{Installed: true, Version: "1.6.15"}, nil, transport.WebmailProofResponse{}, serviceOperationFailed, "webmail_update_interrupted", webmailUpdateOutcomeInterrupted},
+		{"not found", transport.RoundcubeUpdateCheckResponse{}, nil, transport.WebmailProofResponse{}, serviceOperationFailed, "webmail_update_unknown", webmailUpdateOutcomeUnknown},
+		{"unread", transport.RoundcubeUpdateCheckResponse{}, errors.New("agent unreachable"), transport.WebmailProofResponse{}, serviceOperationFailed, "webmail_update_unknown", webmailUpdateOutcomeUnknown},
 	}
-	version = "1.6.20"
-	if result, failure := panel.reconcileInterruptedWebmailUpdate(context.Background(), "1.6.20"); failure != nil || result["outcome"] != webmailUpdateOutcomeUpdated {
-		t.Fatalf("updated: %+v %+v", result, failure)
-	}
-	readRoundcubeUpdateFromAgent = func(*Panel, context.Context) (transport.RoundcubeUpdateCheckResponse, error) {
-		return transport.RoundcubeUpdateCheckResponse{}, errors.New("agent unreachable")
-	}
-	if result, failure := panel.reconcileInterruptedWebmailUpdate(context.Background(), "1.6.20"); failure == nil || failure.Code != "webmail_update_unknown" || result["outcome"] != webmailUpdateOutcomeUnknown {
-		t.Fatalf("unknown: %+v %+v", result, failure)
+	for _, tc := range cases {
+		readRoundcubeUpdateFromAgent = func(*Panel, context.Context) (transport.RoundcubeUpdateCheckResponse, error) {
+			return tc.check, tc.checkErr
+		}
+		readWebmailProofFromAgent = func(*Panel, context.Context) (transport.WebmailProofResponse, error) { return tc.proof, nil }
+		op, err := panel.createServiceOperationRequest(context.Background(), serviceOperationKindWebmailUpdate, "roundcube", "1.6.20", mustServiceOperationRequestID(t), serviceOperationActor{UserID: userID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := panel.markServiceOperationRunning(context.Background(), op.ID, "updating"); err != nil {
+			t.Fatal(err)
+		}
+		op.Status = serviceOperationRunning
+		panel.serviceMutationMu.Lock()
+		if err := panel.resumeInterruptedServiceOperationLocked(op); err != nil {
+			panel.serviceMutationMu.Unlock()
+			t.Fatalf("%s: %v", tc.name, err)
+		}
+		done, _ := waitForServiceOperation(t, panel, userID, op.ID, tc.status)
+		if !strings.Contains(string(done.Result), `"outcome":"`+tc.outcome+`"`) || (tc.code != "" && (done.Error == nil || done.Error.Code != tc.code)) {
+			t.Fatalf("%s: %+v %s", tc.name, done.Error, done.Result)
+		}
+		// The lock came back: the next case can take it.
+		panel.serviceMutationMu.Lock()
+		panel.serviceMutationMu.Unlock()
 	}
 }

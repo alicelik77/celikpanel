@@ -144,25 +144,53 @@ func (p *Panel) runWebmailUpdate(ctx context.Context, version string, advance fu
 	return result, nil
 }
 
+// readWebmailProofFromAgent proves webmail read only through the Agent-side
+// webmail server: the PHP check, the login page and its stylesheet.
+var readWebmailProofFromAgent = func(p *Panel, ctx context.Context) (transport.WebmailProofResponse, error) {
+	callCtx, cancel := context.WithTimeout(ctx, roundcubeUpdateReadBound)
+	defer cancel()
+	var response transport.WebmailProofResponse
+	err := p.callAgentContext(callCtx, "Agent.WebmailProofV1", &transport.Empty{}, &response)
+	return response, err
+}
+
 // reconcileInterruptedWebmailUpdate decides, read only, what an update
-// interrupted by a panel restart left: the installed version says it.
-// Nothing is started again by itself.
+// interrupted by a panel restart left. "Updated" is said only when the
+// installed release is the target and webmail proves itself there (check,
+// page, stylesheet); a target release that does not prove, a Roundcube that
+// is not found and a read that fails are all "not known". Nothing is started
+// again by itself.
+// Yarıda kalan güncelleme salt okunarak uzlaştırılır; "güncellendi" yalnız
+// hedef sürüm kuruluyken ve web postası kanıtlanınca söylenir.
 func (p *Panel) reconcileInterruptedWebmailUpdate(ctx context.Context, version string) (serviceOperationResult, *serviceOperationFailure) {
 	result := serviceOperationResult{"success": false, "to": version, "recovered": true}
+	unknown := func(message string, cause error) (serviceOperationResult, *serviceOperationFailure) {
+		result["outcome"] = webmailUpdateOutcomeUnknown
+		return result, operationFailure("webmail_update_unknown", message, cause)
+	}
 	check, err := readRoundcubeUpdateFromAgent(p, ctx)
 	if err != nil {
-		result["outcome"] = webmailUpdateOutcomeUnknown
-		return result, operationFailure("webmail_update_unknown",
-			"The panel restarted during the webmail update and the installed version could not be read, so its result is not known.", err)
+		return unknown("The panel restarted during the webmail update and the installed version could not be read, so its result is not known.", err)
+	}
+	if !check.Installed {
+		return unknown("The panel restarted during the webmail update and Roundcube was not found where CelikPanel installs it, so its result is not known.", nil)
 	}
 	result["from"] = check.Version
-	if check.Installed && check.Version == version {
-		result["success"], result["outcome"] = true, webmailUpdateOutcomeUpdated
-		return result, nil
+	if check.Version != version {
+		result["outcome"] = webmailUpdateOutcomeInterrupted
+		return result, operationFailure("webmail_update_interrupted",
+			"The panel restarted during the webmail update; Roundcube was not updated.", nil)
 	}
-	result["outcome"] = webmailUpdateOutcomeInterrupted
-	return result, operationFailure("webmail_update_interrupted",
-		"The panel restarted during the webmail update; Roundcube was not updated.", nil)
+	proof, err := readWebmailProofFromAgent(p, ctx)
+	if err != nil || !proof.Proved || proof.Version != version {
+		if err == nil {
+			err = errors.New(proof.Error)
+		}
+		result["reason"] = boundedWebmailReason(err.Error())
+		return unknown("Roundcube "+version+" is installed but webmail did not prove itself after the panel restarted; press Update again.", err)
+	}
+	result["success"], result["outcome"], result["proved"] = true, webmailUpdateOutcomeUpdated, true
+	return result, nil
 }
 
 func (p *Panel) webmailUpdateAuditWriter(version string, outcome *transport.RoundcubeUpdateResponse) serviceOperationAuditWriter {

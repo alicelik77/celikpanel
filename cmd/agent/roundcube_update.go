@@ -238,3 +238,20 @@ func (a *Agent) UpdateRoundcubeV1(req *transport.RoundcubeUpdateRequest, resp *t
 	*resp = updateRoundcubeTo(ctx, version, hostRoundcubeUpdateOps())
 	return nil
 }
+
+// WebmailProofV1 proves webmail read only through the Agent-side webmail
+// server (alpha.109 review): the PHP check, the login page and its
+// stylesheet as text/css. Nothing is written or reloaded, so it needs no
+// mutation step; the Panel uses it to reconcile an interrupted update.
+// Web postasını salt okunur kanıtlar; hiçbir şey yazılmaz.
+func (a *Agent) WebmailProofV1(_ *transport.Empty, resp *transport.WebmailProofResponse) error {
+	*resp = transport.WebmailProofResponse{Version: roundcubeTreeVersion(webmailBaseDir)}
+	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
+	defer cancel()
+	if err := probePHPToolHTTP(ctx, phpToolWebmail, phpToolStateFor(phpToolWebmail).version()); err != nil {
+		resp.Error = err.Error()
+		return nil
+	}
+	resp.Proved = true
+	return nil
+}

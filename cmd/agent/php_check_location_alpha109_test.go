@@ -175,3 +175,22 @@ func TestWebmailProofRequiresItsStylesheetAsCSS(t *testing.T) {
 		t.Fatal("a stylesheet elsewhere was accepted")
 	}
 }
+
+// alpha.109 review: a failed reload says how far the put-back went.
+func TestAFailedReloadSaysHowFarThePutBackWent(t *testing.T) {
+	webmailPath, _ := pointPHPToolConfs(t)
+	legacy := legacyRenderWebmailNginxConfig("/run/celikpanel/webmail.sock", "/var/lib/celikpanel-webmail/public_html", "/run/php/php8.4-fpm.sock")
+	os.WriteFile(webmailPath, []byte(legacy), 0o600)
+	rec := &checkLocationRecorder{reloadErr: errors.New("reload refused")}
+	_, err := ensurePHPToolCheckLocationWith(context.Background(), checkLocationOps(rec), phpToolWebmail)
+	if err == nil || !strings.Contains(err.Error(), "did not reload it either") {
+		t.Fatalf("err = %v", err)
+	}
+	ops := checkLocationOps(&checkLocationRecorder{reloadErr: errors.New("reload refused")})
+	ops.restoreConf = func(mailFileSnapshot) error { return errors.New("read-only file system") }
+	os.WriteFile(webmailPath, []byte(legacy), 0o600)
+	_, err = ensurePHPToolCheckLocationWith(context.Background(), ops, phpToolWebmail)
+	if err == nil || !strings.Contains(err.Error(), "could not be put back (read-only file system)") || strings.Contains(err.Error(), "was put back") {
+		t.Fatalf("err = %v", err)
+	}
+}

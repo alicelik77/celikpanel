@@ -1740,20 +1740,48 @@ func ensurePHPToolCheckLocationWith(ctx context.Context, ops phpToolBindOps, too
 		return false, fmt.Errorf("nginx rejected %s with the PHP check (%v); the previous file was put back", path, err)
 	}
 	if err := ops.nginxReload(ctx); err != nil {
-		if restoreErr := ops.restoreConf(previous); restoreErr == nil {
-			_ = ops.nginxTest(ctx)
-			_ = ops.nginxReload(ctx)
+		// Say exactly how far the put-back went (alpha.109 review).
+		if restoreErr := ops.restoreConf(previous); restoreErr != nil {
+			return false, fmt.Errorf("nginx did not reload %s with the PHP check (%v), and the previous file could not be put back (%v); the server administrator checks %s", path, err, restoreErr, path)
 		}
-		return false, fmt.Errorf("nginx did not reload %s with the PHP check (%v); the previous file was put back", path, err)
+		if testErr := ops.nginxTest(ctx); testErr != nil {
+			return false, fmt.Errorf("nginx did not reload %s with the PHP check (%v); the previous file was put back, but nginx rejects it (%v); the server administrator checks the web server configuration", path, err, testErr)
+		}
+		if reloadErr := ops.nginxReload(ctx); reloadErr != nil {
+			return false, fmt.Errorf("nginx did not reload %s with the PHP check (%v); the previous file was put back, but nginx did not reload it either (%v); the server administrator reloads nginx", path, err, reloadErr)
+		}
+		return false, fmt.Errorf("nginx did not reload %s with the PHP check (%v); the previous file was put back and nginx reloaded it", path, err)
 	}
 	return true, nil
 }
 
 // preparePHPToolProof puts the check script (readable modes, alpha.108) and
 // the check location (alpha.109) in place before a proof.
+//
+// A missing or empty configuration (the owner removed an edited file so
+// CelikPanel writes it again) is written again exactly as ConfigureWebmail
+// or ConfigureDBTools write it, validated and reloaded, before the proof.
+// Eksik ya da boş yapılandırma, kanıttan önce CelikPanel'in yazdığı gibi
+// yeniden yazılır.
 func preparePHPToolProof(ctx context.Context, tool string) error {
 	if err := ensurePHPToolCheckScript(); err != nil {
 		return err
+	}
+	if strings.TrimSpace(readFileString(phpToolConfPathFor(tool))) == "" {
+		if tool == phpToolWebmail {
+			var resp ConfigureWebmailResponse
+			(&Agent{}).configureWebmailWith(ctx, &resp)
+			if resp.Error != "" {
+				return fmt.Errorf("the webmail configuration could not be written again: %s", resp.Error)
+			}
+			return nil
+		}
+		var resp ConfigureDBToolsResponse
+		configureDBToolsWith(ctx, &resp)
+		if resp.Error != "" {
+			return fmt.Errorf("the database tools configuration could not be written again: %s", resp.Error)
+		}
+		return nil
 	}
 	_, err := ensurePHPToolCheckLocationWith(ctx, hostPHPToolBindOps(), tool)
 	return err

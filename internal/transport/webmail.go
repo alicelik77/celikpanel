@@ -57,3 +57,12 @@ type RoundcubeUpdateResponse struct {
 	Error           string `json:"error,omitempty"`
 	ErrorCode       string `json:"error_code,omitempty"`
 }
+
+// WebmailProofResponse is the read-only proof of webmail through the
+// Agent-side webmail server (its socket): CelikPanel's PHP check, the login
+// page and its stylesheet as text/css (alpha.109). Nothing is changed.
+type WebmailProofResponse struct {
+	Proved  bool   `json:"proved"`
+	Version string `json:"version,omitempty"`
+	Error   string `json:"error,omitempty"`
+}
