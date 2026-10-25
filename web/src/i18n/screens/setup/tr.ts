@@ -45,7 +45,7 @@ export const trSetupScreens: Record<SetupScreenKey, string> = {
     "setup.guide.installFailed.verify": "{component} kuruldu, ancak son kontrol onu çalışır durumda bulamadı.",
     "setup.guide.installFailedDetail": "Sunucunun bildirdiği: {detail}",
     "setup.guide.installFailedAction.package": "Sunucu yöneticisi, paket yöneticisinin adlandırdığı sorunu bu sunucuda giderir: örneğin erişilemeyen paket aynaları, yetersiz disk alanı ya da çakışan veya sabitlenmiş bir paket.",
-    "setup.guide.installFailedAction.service": "Sunucu yöneticisi bu servisin durumunu ve günlüğünü bu sunucuda okur (servis adıyla systemctl status ve journalctl -u) ve bildirilen sorunu giderir.",
+    "setup.guide.installFailedAction.service": "Sunucu yöneticisi bu servisin durumunu ve günlüğünü bu sunucuda okur (servis adıyla sudo systemctl status ve sudo journalctl -u) ve bildirilen sorunu giderir.",
     "setup.guide.installFailedAction.other": "Sunucu yöneticisi yukarıdaki nedeni bu sunucuda kontrol edip giderir.",
     "setup.guide.installFailedResume": "Ardından Düzeltilmiş planı incele’yi seçip kurulumu yeniden başlatın. Tamamlanan adımlar ve kurulu bileşenler korunur; kurulum kendiliğinden yeniden denenmez.",
     "setup.guide.installFailedWithoutMail": "E-posta olmadan devam etmek için Düzeltilmiş planı incele’yi seçip kullanım amacı olarak Web barındırma’yı işaretleyin. Neden giderildiğinde e-posta eklenebilir.",

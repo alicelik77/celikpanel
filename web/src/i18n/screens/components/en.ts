@@ -293,7 +293,7 @@ export const enComponentsScreens = {
     'services.installPreview.confirm': 'I have read this; install these packages as well.',
     'services.phpNotReadyProof': 'It was installed, but it did not answer on PHP {version}. Open Manage and choose a PHP version: the move installs what is missing and tests the tool again.',
     'services.phpNotReadyProofOthers': 'It was installed, but it did not answer on PHP {version}, nor on the other installed PHP versions that have its extensions. Open Manage and choose a PHP version: the move installs what is missing and tests the tool again.',
-    'services.phpNotReadyProofModuleOff': 'It was installed, but PHP {version} has {extensions} turned off for PHP-FPM, so it cannot answer. Turn it on (phpenmod -v {version} -s fpm {modules}, then systemctl restart php{version}-fpm), then choose PHP {version} again in Manage.',
+    'services.phpNotReadyProofModuleOff': 'It was installed, but PHP {version} has {extensions} turned off for PHP-FPM, so it cannot answer. Turn it on (sudo phpenmod -v {version} -s fpm {modules}, then sudo systemctl restart php{version}-fpm), then choose PHP {version} again in Manage.',
     'services.bundles.operationLabel': '{component} ({n}/{total}, {bundle})',
     'services.bundles.chip.mail_core': 'Core Mail',
     'services.bundles.chip.mail_webmail': 'Webmail',

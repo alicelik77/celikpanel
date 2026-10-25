@@ -103,6 +103,7 @@ export function ServiceActionNotice({
                     {sentence.map((part, index) => <Fragment key={index}>{index > 0 && command}{part}</Fragment>)}
                 </p>
                 {sentence.length === 1 && command && <p className="mt-1.5 break-words">{command}</p>}
+                {vars.command && /sudo/.test(vars.command) && <p className="mt-1 text-xs text-fg-muted" data-sudo-note="">{t('common.sudoNote')}</p>}
                 {vars.detail && (
                     <p className="mt-1.5 max-w-[75ch] break-words text-fg-muted">
                         {before}<span className="font-mono text-fg">{vars.detail}</span>{after}

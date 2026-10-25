@@ -2269,6 +2269,7 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
                     {failureGuidance.command}
                 </code>
             )}
+            {failureGuidance.command && /\bsudo\b/.test(failureGuidance.command) && <p className="mt-1 text-left text-xs text-fg-muted" data-sudo-note="">{t('common.sudoNote')}</p>}
             {failureGuidance.serverMessage && (
                 <details className="mt-3 text-left text-xs text-fg-subtle" data-update-details="">
                     <summary className="cursor-pointer select-none font-medium text-fg-muted">{t('panelUpdate.details')}</summary>

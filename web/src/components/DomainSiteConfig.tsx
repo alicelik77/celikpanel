@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AlertTriangle, FileCode2, FilePen, FolderPlus, Info, RefreshCw } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
-import { Button, ErrorBanner, RemoteGate, ResultUnknown } from './ui';
+import { Button, ErrorBanner, RemoteGate, ResultUnknown, SudoNote } from './ui';
 import { readApiError, type ApiError } from '../lib/apiError';
 import { useRemote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
@@ -523,6 +523,7 @@ function SiteConfigState({
                                 : protection === 'none' ? tk('unwritable.next.none')
                                     : tk('unwritable.next.unknown')}
                     </p>
+                    {flag && <SudoNote />}
                     {protection !== 'none' && <p className="mt-1">{tk('unwritable.resume')}</p>}
                 </Attention>
                 <FileLine label={tk('file')} value={path} />

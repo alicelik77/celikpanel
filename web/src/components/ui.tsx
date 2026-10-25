@@ -611,6 +611,18 @@ export function KeepWords({ text }: { text: string }) {
     );
 }
 
+// Owner terminal commands are written with sudo (alpha.108). Someone who is
+// signed in as root has no sudo to type, so wherever a command is shown the
+// page says so once, in plain words. mentionsSudo decides whether a sentence
+// carries such a command.
+// Sunucu sahibi komutları sudo ile yazılır; root olarak oturum açmış biri
+// sudo yazmaz. Komutun gösterildiği yerde bu bir kez düz sözle söylenir.
+export const mentionsSudo = (text: string): boolean => /\bsudo\b/.test(text);
+export function SudoNote({ className }: { className?: string }) {
+    const { t } = useI18n();
+    return <p className={className ?? 'mt-1 text-xs text-fg-muted'} data-sudo-note="">{t('common.sudoNote')}</p>;
+}
+
 export function CouldNotCheck({
     text,
     onRetry,
@@ -843,12 +855,13 @@ export function ErrorBanner({ error, className }: { error: ApiError | null; clas
     const navigate = useNavigate();
     if (!error) return null;
     const actionLabel = apiErrorActionLabel(error, t);
+    const errorText = apiErrorText(error, t);
     return (
         <div
             className={`rounded-lg border border-danger/30 bg-danger/10 px-3 py-2.5 text-sm text-danger ${className ?? ''}`}
         >
             <div className="flex flex-wrap items-center gap-3">
-                <span className="min-w-0 flex-1">{apiErrorText(error, t)}</span>
+                <span className="min-w-0 flex-1">{errorText}</span>
                 {error.action && (
                     <button
                         type="button"
@@ -865,6 +878,7 @@ export function ErrorBanner({ error, className }: { error: ApiError | null; clas
                 Retin kanıtı (B3d): kimin engellediği, satır satır — admin
                 tıklamanın neyi kıracağını görmeli. "+N" kuyruğu üreticinin
                 dürüst kesme işaretidir. */}
+            {mentionsSudo(errorText) && <SudoNote />}
             {error.details && error.details.length > 0 && (
                 <ul className="mt-2 max-h-40 space-y-0.5 overflow-y-auto border-t border-danger/20 pt-2 font-mono text-xs">
                     {error.details.map((d) => (

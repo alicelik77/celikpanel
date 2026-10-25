@@ -14,7 +14,7 @@ import { useState } from 'react';
 import { RotateCw } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
-import { Button, Dialog, KeepWords, RemoteGate } from './ui';
+import { Button, Dialog, KeepWords, RemoteGate, SudoNote } from './ui';
 import { useRemote } from '../lib/remote';
 import { LifeLine, type Tone } from './LifeLine';
 
@@ -151,6 +151,7 @@ function RestartFacts({ value, onChanged }: { value: RestartNeeds; onChanged: ()
                             </li>
                         ))}
                     </ul>
+                    {value.services.some((item) => !PANEL_RESTARTS(item)) && <SudoNote className="mt-2 pl-6 text-sm text-fg-muted" />}
                     {value.truncated && <p className="mt-2 pl-6 text-sm text-fg-subtle">{t('life.restarts.truncated')}</p>}
                 </div>
             )}

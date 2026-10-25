@@ -11,6 +11,11 @@ import { readRemote } from '../lib/remote';
 import { useAccessWaitStage, useQuietRead } from '../lib/quietRead';
 import type { AccessReadFailure } from '../auth/usePanelSession';
 
+// Owner commands are written with sudo; the page says what root leaves out (alpha.108).
+// The eager shell imports nothing it does not need, so this is not the shared SudoNote.
+// Sahip komutları sudo ile yazılır; root'un neyi yazmayacağı söylenir. Hazır kabuk gereksiz içe aktarma yapmaz.
+const sudoIn = (text: string): boolean => /\bsudo\b/.test(text);
+
 /** The interface still loading after this long: the reload is offered (as in AccessHold). */
 const WAITING_PROLONGED_MS = 30000;
 
@@ -106,11 +111,13 @@ export function RecoveryStatus({ username, onUnauthorized, embedded = false, unf
                     {/* Attempts remain, or the last one is finishing: the owner is not asked to act before the pause. */}
                     <p className="font-semibold">{t(last.automatic_recovery === 'pause_pending' ? 'recovery.automatic.pausingTitle' : 'recovery.automatic.retryTitle')}</p>
                     {retryingCauseKey(last.first_failure_code) && <p className="max-w-prose">{t(retryingCauseKey(last.first_failure_code)!)}</p>}
+                    {retryingCauseKey(last.first_failure_code) && sudoIn(t(retryingCauseKey(last.first_failure_code)!)) && <p className="max-w-prose text-sm text-fg-muted" data-sudo-note="">{t('common.sudoNote')}</p>}
                     <p className="max-w-prose text-fg-muted">{t(last.automatic_recovery === 'pause_pending' ? 'recovery.automatic.pausingHelp' : 'recovery.automatic.retryHelp')}</p>
-                </> : <><p className="font-semibold">{t(last.automatic_recovery ? 'recovery.automatic.pausedTitle' : last.waiting_for ? `recovery.wait.${last.waiting_for}` : `recovery.phase.${last.phase}`)}</p>{last.automatic_recovery && last.first_failure_code && <p className="max-w-prose">{t(`recovery.automatic.cause.${last.first_failure_code}`)}</p>}<p className="max-w-prose text-fg-muted">{t(last.automatic_recovery ? 'recovery.automatic.pausedHelp' : last.waiting_for ? 'recovery.wait.next' : recoveryFailureGuidanceKey(last) ?? `recovery.next.${last.phase}`)}</p>{last.automatic_recovery && <p className="max-w-prose text-fg-muted">{t(last.renewal_before_update === 'off' ? 'recovery.automatic.renewalOff' : 'recovery.automatic.renewal')}</p>}</>)}
+                </> : <><p className="font-semibold">{t(last.automatic_recovery ? 'recovery.automatic.pausedTitle' : last.waiting_for ? `recovery.wait.${last.waiting_for}` : `recovery.phase.${last.phase}`)}</p>{last.automatic_recovery && last.first_failure_code && <p className="max-w-prose">{t(`recovery.automatic.cause.${last.first_failure_code}`)}</p>}{last.automatic_recovery && last.first_failure_code && sudoIn(t(`recovery.automatic.cause.${last.first_failure_code}`)) && <p className="max-w-prose text-sm text-fg-muted" data-sudo-note="">{t('common.sudoNote')}</p>}<p className="max-w-prose text-fg-muted">{t(last.automatic_recovery ? 'recovery.automatic.pausedHelp' : last.waiting_for ? 'recovery.wait.next' : recoveryFailureGuidanceKey(last) ?? `recovery.next.${last.phase}`)}</p>{!last.automatic_recovery && !last.waiting_for && sudoIn(t(recoveryFailureGuidanceKey(last) ?? `recovery.next.${last.phase}`)) && <p className="max-w-prose text-sm text-fg-muted" data-sudo-note="">{t('common.sudoNote')}</p>}{last.automatic_recovery && <p className="max-w-prose text-fg-muted">{t(last.renewal_before_update === 'off' ? 'recovery.automatic.renewalOff' : 'recovery.automatic.renewal')}</p>}</>)}
                 {last?.automatic_recovery === 'paused_retry_limit' && <div className="space-y-3">
                     <p className="max-w-prose">{t('recovery.automatic.inspect')}</p>
                     <pre className="whitespace-pre-wrap break-words rounded border border-border bg-surface px-3 py-3 text-sm"><code>sudo journalctl -u celikpanel-release-recovery.service --no-pager -n 50</code></pre>
+                    <p className="max-w-prose text-sm text-fg-muted" data-sudo-note="">{t('common.sudoNote')}</p>
                     <p className="max-w-prose text-fg-muted">{t('recovery.automatic.resume')}</p>
                 </div>}
                 {/* upd4 O9: a verified update shows no failure label for its earlier attempts. */}

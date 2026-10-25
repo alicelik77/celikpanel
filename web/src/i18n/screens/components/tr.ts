@@ -283,7 +283,7 @@ export const trComponentsScreens: Record<ComponentsScreenKey, string> = {
     'services.installPreview.confirm': 'Okudum; bu paketleri de kur.',
     'services.phpNotReadyProof': 'Kuruldu, ama PHP {version} üzerinde yanıt vermedi. Yönet’i açıp bir PHP sürümü seçin: taşıma eksikleri kurar ve aracı yeniden dener.',
     'services.phpNotReadyProofOthers': 'Kuruldu, ama ne PHP {version} ne de eklentileri olan kurulu diğer PHP sürümleri üzerinde yanıt verdi. Yönet’i açıp bir PHP sürümü seçin: taşıma eksikleri kurar ve aracı yeniden dener.',
-    'services.phpNotReadyProofModuleOff': 'Kuruldu, ama PHP {version} için {extensions} PHP-FPM’de kapalı; bu yüzden yanıt veremiyor. Açın (phpenmod -v {version} -s fpm {modules}, ardından systemctl restart php{version}-fpm), sonra Yönet’te PHP {version} sürümünü yeniden seçin.',
+    'services.phpNotReadyProofModuleOff': 'Kuruldu, ama PHP {version} için {extensions} PHP-FPM’de kapalı; bu yüzden yanıt veremiyor. Açın (sudo phpenmod -v {version} -s fpm {modules}, ardından sudo systemctl restart php{version}-fpm), sonra Yönet’te PHP {version} sürümünü yeniden seçin.',
     'services.bundles.operationLabel': '{component} ({n}/{total}, {bundle})',
     'services.bundles.chip.mail_core': 'Temel Posta',
     'services.bundles.chip.mail_webmail': 'Webmail',
