@@ -7125,8 +7125,8 @@ dağıtımın PHP'sinde kalır.
   başlatır ve kanıtlar; başarısız olan ya da kanıtlanmayan bir kopya, oluşturduğu
   rollerle birlikte kaldırılır ve kaynağa asla dokunulmaz; kaybolan bir yanıt geri
   okunur, asla yeniden gönderilmez.
-- **Kanıt.** Agent 4817 geçti, 29 atlandı; Panel ve iç paketler 7944 geçti, 45
-  atlandı, 0 başarısız; web 1904 geçti; sürüm kurtarma düzeneği geçiş 46'yı sabitler;
+- **Kanıt.** Agent 4822 geçti, 29 atlandı; Panel ve iç paketler 7945 geçti, 45
+  atlandı, 0 başarısız; web 1906 geçti; sürüm kurtarma düzeneği geçiş 46'yı sabitler;
   bir sahte sunucu üzerinde tarayıcı bakışı (EN ve TR, 1440 ve 390, açık); atılabilir
   bir Debian 13 sanal makinesinde bir gerçek sistem denemesi
   ([deploy/e2e/d038/alpha108-debian13-20261025](../deploy/e2e/d038/alpha108-debian13-20261025/README.md),

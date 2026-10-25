@@ -92,8 +92,8 @@ by side. He decided: **security and stability always come before freedom**
 
 ## Evidence
 
-- Agent 4817 passed, 29 skipped (in a clean mount namespace); Panel and internal
-  packages 7944 passed, 45 skipped, 0 failed; web 1904 passed, and the production
+- Agent 4822 passed, 29 skipped (in a clean mount namespace); Panel and internal
+  packages 7945 passed, 45 skipped, 0 failed; web 1906 passed, and the production
   build within its budgets (two new screen parts, `databaseClusters` and
   `vendorLanes`, each with its own ceiling). The release-recovery harness pins
   schema 46; its four database suites pass, and its controller suites show the same
@@ -105,6 +105,10 @@ by side. He decided: **security and stability always come before freedom**
   install now creates it on the shown port
   ([evidence](../deploy/e2e/d038/alpha108-debian13-20261025/README.md), archive
   SHA-256 `effaf7ce…a1604698`).
+- After the release review, a short second run of the PostgreSQL and vendor-lane
+  tests on the same base image: an UPDATE after the copy refuses the drop of the
+  source, and the image's own `php.list` is named as the owner's with no second
+  source (archive SHA-256 `79430a30…0b1429b`).
 - A browser look (EN and TR, 1440 and 390, light) on a mock (batch 31).
 
 Not measured on an installed server. A candidate is not acceptance; P0.1–P0.5 stay

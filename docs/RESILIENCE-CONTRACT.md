@@ -7860,8 +7860,8 @@ dropped; the panel's tools stay on the distribution's PHP by default.
   restarts and proves it; a copy that fails or does not prove is removed with the
   roles it created, and the source is never touched; a lost answer is read back,
   never resent.
-- **Evidence.** Agent 4817 passed, 29 skipped; Panel and internal packages 7944
-  passed, 45 skipped, 0 failed; web 1904 passed; the release-recovery harness pins
+- **Evidence.** Agent 4822 passed, 29 skipped; Panel and internal packages 7945
+  passed, 45 skipped, 0 failed; web 1906 passed; the release-recovery harness pins
   migration 46; a browser look (EN and TR, 1440 and 390, light) on a mock; one
   real-system run on a disposable Debian 13 virtual machine
   ([deploy/e2e/d038/alpha108-debian13-20261025](../deploy/e2e/d038/alpha108-debian13-20261025/README.md),

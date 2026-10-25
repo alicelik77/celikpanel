@@ -430,6 +430,25 @@ configuration-file warning (point 8) and moving Roundcube to another line (point
 are not built. An operating-system upgrade's changes are listed after it, not
 predicted (point 17).
 
+**Corrections from the release review (2026-10-25).** A move's copy proves the
+rows at copy time only: the source's write counters (its user tables' rows
+inserted, updated and deleted, and when its statistics were reset) are kept with the
+proof, read again before a switch and before the source is dropped, and either is
+refused when the source was written after the copy (copy again, or point the
+application at the copy first) or when that cannot be proved; a source written while
+it is copied makes the copy fail. An owner's own source for a vendor address
+(sources.list, `*.list` or `*.sources`) gets no second source from CelikPanel: the
+lane names it as the owner's and offers only its confinement and automatic updates;
+with both, the duplicate is named and blocks; a first enable validates the staged
+source together with every existing source. The lane also reads the automatic
+updates' timer (disabled or masked is off, unreadable is unknown), and its refusal
+says the owner may add the repository themselves instead. A removal is refused as
+unknown when pg_lsclusters fails for any reason but its absence; user tables in a
+cluster's `postgres` database count as data it holds. A customer's site switched
+back to PHP is held to the offered PHP versions. Evidence: unit and mounted tests,
+and a short second real-system run of the PostgreSQL and vendor-lane tests on the
+same base image ([evidence](../deploy/e2e/d038/alpha108-debian13-20261025/README.md)).
+
 **Schema and recovery.** Migration 046 is additive (one nullable column and one new
 table). An alpha.107 Panel refuses ledger 46, so going back is the pre-update
 snapshot restore (D-025); the release-recovery harness pins migration 46 (ledger

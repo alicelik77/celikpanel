@@ -92,8 +92,8 @@ yapacakları [işlem yönlendirmesinde](OPERATION-GUIDANCE.tr.md#sahibin-bulgula
 
 ## Kanıt
 
-- Agent 4817 geçti, 29 atlandı (temiz bağlama ad alanında); Panel ve iç paketler
-  7944 geçti, 45 atlandı, 0 başarısız; web 1904 geçti ve üretim derlemesi
+- Agent 4822 geçti, 29 atlandı (temiz bağlama ad alanında); Panel ve iç paketler
+  7945 geçti, 45 atlandı, 0 başarısız; web 1906 geçti ve üretim derlemesi
   bütçelerinin içinde (iki yeni ekran parçası, `databaseClusters` ve `vendorLanes`,
   her birinin kendi tavanı var). Sürüm kurtarma düzeneği şema 46'yı sabitler; dört
   veritabanı takımı geçer, denetleyici takımları o konukta alpha.107'dekiyle aynı
@@ -105,6 +105,10 @@ yapacakları [işlem yönlendirmesinde](OPERATION-GUIDANCE.tr.md#sahibin-bulgula
   kurulum artık onu gösterilen portta oluşturur
   ([kanıt](../deploy/e2e/d038/alpha108-debian13-20261025/README.md), arşiv
   SHA-256 `effaf7ce…a1604698`).
+- Sürüm incelemesinden sonra, aynı temel kalıpta PostgreSQL ve üretici yolu
+  testlerinin kısa ikinci denemesi: kopyadan sonraki bir UPDATE kaynağın
+  kaldırılmasını reddeder ve kalıbın kendi `php.list` dosyası ikinci kaynak
+  eklenmeden sahibinin olarak adlandırılır (arşiv SHA-256 `79430a30…0b1429b`).
 - Bir sahte sunucu üzerinde tarayıcı bakışı (EN ve TR, 1440 ve 390, açık) (grup 31).
 
 Kurulu bir sunucuda ölçülmedi. Aday kabul değildir; P0.1–P0.5 **kısmi** kalır; hiçbir

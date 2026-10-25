@@ -426,6 +426,26 @@ Roundcube'u başka bir hatta taşımak (9. madde) yapılmadı. Bir işletim sist
 yükseltmesinin değişiklikleri sonrasında listelenir, önceden tahmin edilmez (17.
 madde).
 
+**Sürüm incelemesinden düzeltmeler (25 Ekim 2026).** Bir taşımanın kopyası satırları
+yalnız kopyalandığı anda kanıtlar: kaynağın yazma sayaçları (kullanıcı tablolarına
+eklenen, güncellenen ve silinen satırlar ile istatistiklerinin sıfırlandığı an)
+kanıtla saklanır, geçişten ve kaynak kaldırılmadan önce yeniden okunur; kaynağa
+kopyadan sonra yazıldıysa (yeniden kopyalayın ya da önce uygulamayı kopyaya
+yöneltin) ya da bu kanıtlanamıyorsa ikisi de reddedilir; kopyalanırken yazılan bir
+kaynak kopyayı başarısız kılar. Bir üretici adresi için sahibin kendi kaynağına
+(sources.list, `*.list` ya da `*.sources`) CelikPanel ikinci kaynak eklemez: yol onu
+sahibinin olarak adlandırır ve yalnız sınırlamasını ve otomatik güncellemelerini
+sunar; ikisi birden varsa çift kaynak adlandırılır ve engeller; ilk açma, hazırlanan
+kaynağı mevcut tüm kaynaklarla birlikte doğrular. Yol, otomatik güncellemelerin
+zamanlayıcısını da okur (kapalı ya da maskeli kapalıdır, okunamayan bilinmiyordur) ve
+reddi, sahibin depoyu kendisinin de ekleyebileceğini söyler. pg_lsclusters yokluğu
+dışında herhangi bir nedenle başarısız olursa kaldırma bilinmiyor olarak reddedilir;
+bir kümenin `postgres` veritabanındaki kullanıcı tabloları da onun tuttuğu veri
+sayılır. PHP'ye geri geçirilen bir müşteri sitesi sunulan PHP sürümlerine bağlıdır.
+Kanıt: birim ve bağlanmış testler ile aynı temel kalıpta PostgreSQL ve üretici yolu
+testlerinin kısa ikinci gerçek sistem denemesi
+([kanıt](../deploy/e2e/d038/alpha108-debian13-20261025/README.md)).
+
 **Şema ve kurtarma.** Geçiş 046 ekleyicidir (boş bırakılabilen bir sütun ve yeni bir
 tablo). alpha.107 Panel'i 46 numaralı geçiş defterini reddeder; bu yüzden geri
 dönüş, güncelleme öncesi anlık görüntünün geri yüklenmesidir (D-025); sürüm

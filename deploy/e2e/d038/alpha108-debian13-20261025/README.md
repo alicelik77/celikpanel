@@ -42,3 +42,22 @@ Archives:
 - `cp-a108-evidence.tar.gz` — SHA-256 `effaf7cee44bbcba9465405d41f2ba0d6e43cbe924d68570072d4b19a1604698`
   (run log, VM log, build log, serial log, commit, binary and base image digests)
 - `cp-a108-first-run.tar.gz` — SHA-256 `80e0917acac6cf76dde9e88075c5b38bc4180795f286964e8bbea715aa4d90e7`
+
+## Review run (2026-10-25)
+
+After the release review, `TestRealSystemA108PostgreSQLSideBySide` and
+`TestRealSystemA108VendorLane` ran again on the same base image at commit
+`e138da242a6a7a6b9d49e7a09bcba21d7b57ccc8` (binary SHA-256
+`69b95731320570b2ad7c3d4d49fe3ededf827f7e420e80f1046b6d5dc8c6f244`); both PASS. New in
+them: the copy keeps the source's write counters; an unchanged source reads
+unchanged; an `UPDATE` of one row after the copy (row counts the same) reads
+`SOURCE_CHANGED`, and the drop of the source with the expectation is refused with it
+and the source stays. With the base image's own `/etc/apt/sources.list.d/php.list`,
+the Sury lane names the repository step `owner_source` and offers only the
+confinement and the automatic updates; no CelikPanel source is written. The run
+script now stops the image's apt timers and waits for a running unattended-upgrade
+before the tests (an earlier attempt of this run met the dpkg lock held by it); two
+earlier attempts found the Agent's private directory missing on a VM without an
+installed Agent (fixed in `e138da242`) and that lock.
+
+- `cp-a108-review-evidence.tar.gz` — SHA-256 `79430a30150f932a00b9dfce497c8b195fa2419719f31a6a5753bbb150b1429b`
