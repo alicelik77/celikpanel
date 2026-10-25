@@ -11,6 +11,24 @@
 // alpha.106'da "components" parçasından ekran sınırı boyunca ayrıldı.
 
 export const enComponentPagesScreens = {
+    // ---- alpha.108 tools ----
+    'component.phpTool.proofFailed': '{tool} is set to PHP {version}, but the last check did not get {tool}’s own answer: {reason}. Nothing was moved. Press Check again: it asks {tool} again on PHP {version}, changes nothing else, and says what it found.',
+    'component.phpTool.checkAgain': 'Check again',
+    'component.phpTool.checkingAgain': 'Checking…',
+    'component.phpTool.checkWait': 'Asking {tool} on PHP {version} again. This takes up to half a minute; nothing needs to be done meanwhile.',
+    'component.phpTool.checkPassed': '{tool} answered as itself on PHP {version}; it is ready.',
+    'component.phpTool.checkFailed': '{tool} still did not answer as itself on PHP {version}: {reason}. Nothing was changed. The server administrator fixes that reason, then presses Check again.',
+    'component.phpTool.checkBusy': 'Another change is running on this server, so the check was not started. Press Check again when it has finished.',
+    'component.phpTool.checkRefused': 'The check did not run: {reason}. Nothing was changed.',
+    'component.phpTool.checkLost': 'The answer to the check did not arrive; nothing was moved. The card reads the current state below.',
+    'component.phpTool.proofOnlyFailed': '{tool} already runs on PHP {version}, so nothing was moved or rewritten; it still did not answer as itself there: {reason}. Fix that reason, then press Check again.',
+    'component.phpTool.reconciling': 'The answer did not arrive, so the card is reading the current state (attempt {attempt} of {total}). Nothing is sent again and nothing needs to be done meanwhile.',
+    'component.phpTool.reconcileBusy': 'A change to a PHP tool is still running on the server; the card waits for it to finish and reads again. Nothing needs to be done meanwhile.',
+    'component.phpTool.reconciledMoved': 'The answer did not arrive, but reading now shows {tool} on PHP {version} and ready: the move completed.',
+    'component.phpTool.reconciledRead': 'The answer did not arrive; reading now shows {tool} on PHP {current}. What the card says below is the current state; choose again only if it is still not what you want.',
+    'component.phpTool.reconcileGaveUp': 'The answer did not arrive and the current state could not be read for {seconds} seconds, so whether it changed is not known. Nothing is sent again. The panel or its Agent may be restarting: press Retry to read the state.',
+    'component.phpTool.cause.check_unreadable': 'PHP-FPM {version} could not open CelikPanel’s check file (HTTP {status}); Check again puts the file back with permissions PHP-FPM can read',
+    'component.phpTool.cause.said': ' (the server said: {detail})',
     'svc.coreService': 'Core service',
     'svc.notInstalled': 'Not installed',
     'svc.notInstalledHint': '{name} is not installed on this server.',

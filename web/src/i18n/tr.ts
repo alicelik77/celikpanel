@@ -7,6 +7,9 @@
 import type { ShellKey } from './en';
 
 export const tr: Record<ShellKey, string> = {
+    // ---- alpha.108 tools ----
+    'services.phpToolProof.whyCheck': 'PHP-FPM {version}, CelikPanel’in denetim dosyasını açamadı (HTTP {status}); Yönet penceresindeki Yeniden denetle bunu onarır',
+    'services.phpToolProof.whySaid': 'kendisi olarak yanıt vermedi; sunucunun söylediği: {detail}',
     'app.name': 'CelikPanel',
     'recovery.checkingTitle': 'Panel erişimi kontrol ediliyor',
     'recovery.checkingHelp': 'Oturumunuz ve panelin hazır olma durumu doğrulanıyor. Bu kontrol sunucuda bir işlem başlatmaz.',
@@ -209,7 +212,7 @@ export const tr: Record<ShellKey, string> = {
     'services.installed': '{name} kuruldu.',
     'services.phpToolProblem.versionGone': '{tool} artık kurulu olmayan PHP {version} sürümüne ayarlı; bu yüzden yanıt veremiyor. Bileşenler’de {tool} aracını açıp Yönet’te kurulu bir PHP sürümü seçin.',
     'services.phpToolProof.moved': '{tool} PHP {version} üzerinde çalışıyor: PHP {first} üzerinde çalışmadı ({why}); bu yüzden eklentileri olan sıradaki kurulu PHP sürümü kullanıldı. {tool} aracının Yönet penceresinden değiştirebilirsiniz.',
-    'services.phpToolProof.notReady': '{tool} kuruldu, ama PHP {version} üzerinde yanıt vermedi ({why}). Hazır değil görünür: Bileşenler’de açıp Yönet’te bir PHP sürümü seçin.',
+    'services.phpToolProof.notReady': '{tool} kuruldu, ama PHP {version} üzerinde yanıt vermedi ({why}). Hazır değil görünür: Bileşenler’de Yönet penceresini açın; neden orada yazar ve Yeniden denetle onu taşımadan yeniden sorar.',
     'services.phpToolProof.whyMissing': 'PHP {version} için {extensions} eksik',
     'services.phpToolProof.whyOther': 'kendisi olarak yanıt vermedi',
     'services.installRefused.notable': 'Hiçbir şey kurulmadı: onaylanmamış {packages} paketlerini de getirecekti. Kurulumu Bileşenler’de yeniden açın; bu paketler orada onaylamanız için listelenir. Ya da önerilen sürümü seçin.',

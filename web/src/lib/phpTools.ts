@@ -25,7 +25,17 @@ export interface PHPToolState {
      *  (package presence, not proof PHP loads them). Absent from an older
      *  Panel: taken as present, nothing is claimed. */
     extensions_present: boolean;
+    /** alpha.108: the version's PHP-FPM socket exists now (read on the host). */
+    socket_ready: boolean;
+    /** alpha.108: the PHP-FPM unit's state read now ("active", "failed", ...; '' unknown). */
+    fpm_state: string;
+    /** alpha.108: the last proof failed; proof_cause says why. */
+    proof_failed: boolean;
+    proof_cause: PHPToolCause | null;
 }
+
+/** alpha.108: a PHP tool move or check the server runs now. */
+export interface PHPToolChange { kind: string; tool: string }
 
 export interface PHPVersionUsage {
     version: string;
@@ -35,7 +45,7 @@ export interface PHPVersionUsage {
 }
 
 export type PHPToolsInfo =
-    | { state: 'read'; tools: PHPToolState[]; versions: PHPVersionUsage[] }
+    | { state: 'read'; tools: PHPToolState[]; versions: PHPVersionUsage[]; changing: PHPToolChange | null }
     | { state: 'unknown' };
 
 const TOOLS: ReadonlySet<string> = new Set(['webmail', 'phpmyadmin', 'phppgadmin']);
@@ -59,7 +69,17 @@ export function decodePHPTools(value: unknown): PHPToolsInfo {
         if (!t || typeof t !== 'object' || typeof t.tool !== 'string' || !TOOLS.has(t.tool) || typeof t.service_id !== 'string'
             || typeof t.installed !== 'boolean' || typeof t.version !== 'string' || (t.version !== '' && !VERSION.test(t.version))
             || typeof t.ready !== 'boolean' || typeof t.version_installed !== 'boolean') return { state: 'unknown' };
-        tools.push({ tool: t.tool as PHPToolName, service_id: t.service_id, installed: t.installed, version: t.version, ready: t.ready, version_installed: t.version_installed, extensions_present: t.extensions_present !== false });
+        // alpha.108: a Panel without the parts gives socket_ready = ready
+        // (what "ready" meant then), so "not running" is never newly claimed.
+        // Parçaları olmayan Panel'de socket_ready = ready.
+        const socketReady = typeof t.socket_ready === 'boolean' ? t.socket_ready : t.ready;
+        const proofFailed = t.proof_failed === true;
+        tools.push({
+            tool: t.tool as PHPToolName, service_id: t.service_id, installed: t.installed, version: t.version, ready: t.ready,
+            version_installed: t.version_installed, extensions_present: t.extensions_present !== false,
+            socket_ready: socketReady, fpm_state: typeof t.fpm_state === 'string' ? t.fpm_state : '',
+            proof_failed: proofFailed, proof_cause: proofFailed ? decodePHPToolCause(t.proof_cause) : null,
+        });
     }
     const versions: PHPVersionUsage[] = [];
     for (const raw of v.versions) {
@@ -68,7 +88,11 @@ export function decodePHPTools(value: unknown): PHPToolsInfo {
             || !Number.isInteger(u.sites) || u.sites < 0 || !strings(u.site_names) || !strings(u.tools) || !u.tools.every((tool) => TOOLS.has(tool))) return { state: 'unknown' };
         versions.push({ version: u.version, sites: u.sites, site_names: u.site_names, tools: u.tools as PHPToolName[] });
     }
-    return { state: 'read', tools, versions };
+    const c = v.changing as Record<string, unknown> | null | undefined;
+    const changing = c && typeof c === 'object' && typeof c.kind === 'string'
+        ? { kind: c.kind, tool: typeof c.tool === 'string' ? c.tool : '' }
+        : null;
+    return { state: 'read', tools, versions, changing };
 }
 
 export async function readPHPTools(signal?: AbortSignal): Promise<PHPToolsInfo> {
@@ -97,6 +121,8 @@ export interface PHPToolMoveFailure {
     not_attempted: PHPToolName[];
     /** The structured cause, translated on the screen; null when absent. */
     cause: PHPToolCause | null;
+    /** alpha.108: the tool was already on that version; only the proof ran. */
+    proof_only: boolean;
 }
 
 // Why a move failed, as the Agent says it (alpha.104 review): a kind the
@@ -112,7 +138,7 @@ export interface PHPToolCause {
 }
 
 const CAUSE_KINDS: ReadonlySet<string> = new Set([
-    'missing_extensions', 'extensions_install_failed', 'wrong_version', 'no_answer', 'http_status', 'served_as_file', 'tool_error',
+    'missing_extensions', 'extensions_install_failed', 'wrong_version', 'no_answer', 'check_unreadable', 'http_status', 'served_as_file', 'tool_error',
     'not_tool_page', 'not_running', 'version_not_installed', 'tool_not_installed', 'unsupported', 'fpm_reload_failed',
     'config_owner_edited', 'config_prepare_failed', 'config_read_failed', 'config_write_failed', 'nginx_rejected', 'nginx_reload_failed',
 ]);
@@ -141,10 +167,16 @@ export function phpToolCauseText(t: Translate, cause: PHPToolCause | null, said:
         const words = cause?.detail || said;
         return words ? t('component.phpTool.cause.other', { detail: words }) : t('component.phpTool.failedUnknown');
     }
-    return t(('component.phpTool.cause.' + cause.kind) as TranslationKey, {
+    const text = t(('component.phpTool.cause.' + cause.kind) as TranslationKey, {
         version: cause.version, extensions: cause.extensions.join(', '), status: cause.status, running: cause.running, detail: cause.detail,
     });
+    // alpha.108: what answered, in the server's words, for the causes whose
+    // sentence does not carry it (Boston's proof said only "did not answer
+    // as itself"). / Yanıt verenin sunucunun sözüyle söylenişi.
+    return cause.detail && SAID_KINDS.has(cause.kind) ? text + t('component.phpTool.cause.said', { detail: cause.detail }) : text;
 }
+
+const SAID_KINDS: ReadonlySet<string> = new Set(['no_answer', 'tool_error', 'not_tool_page']);
 
 export function decodePHPToolMoveFailure(value: unknown): PHPToolMoveFailure | null {
     if (!value || typeof value !== 'object') return null;
@@ -163,6 +195,7 @@ export function decodePHPToolMoveFailure(value: unknown): PHPToolMoveFailure | n
         moved: tools(v.moved),
         not_attempted: tools(v.not_attempted),
         cause: decodePHPToolCause(v.cause),
+        proof_only: v.proof_only === true,
     };
 }
 
@@ -203,5 +236,37 @@ export async function movePHPTool(tool: PHPToolName, version: string): Promise<P
     if (answerWasLost(response)) return { kind: 'lost' };
     const body = await answerBody(response);
     if (response.ok && body && typeof body === 'object' && (body as { bound?: unknown }).bound === true) return { kind: 'moved' };
+    return { kind: 'refused', failure: decodePHPToolMoveFailure(body) };
+}
+
+export type PHPToolProveAnswer =
+    | { kind: 'proved'; version: string }
+    | { kind: 'failed'; version: string; cause: PHPToolCause | null }
+    | { kind: 'busy' }
+    | { kind: 'refused'; failure: PHPToolMoveFailure | null }
+    | { kind: 'lost' };
+
+// "Check again" (alpha.108): asks the tool on the version it runs on; it
+// moves nothing. "busy": another change runs, nothing was started. "lost":
+// no answer arrived; the card reads the state instead of asking again.
+// "Yeniden denetle": aracı çalıştığı sürümde sorar; hiçbir şeyi taşımaz.
+export async function provePHPTool(tool: PHPToolName): Promise<PHPToolProveAnswer> {
+    let response: Response;
+    try {
+        response = await fetch('/api/v1/service/php-tools/prove', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tool }),
+        });
+    } catch {
+        return { kind: 'lost' };
+    }
+    if (answerWasLost(response)) return { kind: 'lost' };
+    const body = await answerBody(response) as Record<string, unknown> | null;
+    if (response.ok && body && typeof body === 'object' && typeof body.proved === 'boolean') {
+        const version = typeof body.version === 'string' ? body.version : '';
+        return body.proved ? { kind: 'proved', version } : { kind: 'failed', version, cause: decodePHPToolCause(body.cause) };
+    }
+    if (body && typeof body === 'object' && (body.code === 'service_operation_busy' || body.code === 'server_setup_busy')) return { kind: 'busy' };
     return { kind: 'refused', failure: decodePHPToolMoveFailure(body) };
 }

@@ -35,6 +35,9 @@ import type { ErrorsScreenKey } from './screens/errors/en';
 import type { LifecycleScreenKey } from './screens/lifecycle/en';
 
 export const en = {
+    // ---- alpha.108 tools ----
+    'services.phpToolProof.whyCheck': 'PHP-FPM {version} could not open CelikPanel’s check file (HTTP {status}); Check again in its Manage window repairs it',
+    'services.phpToolProof.whySaid': 'it did not answer as itself; the server said: {detail}',
     'app.name': 'CelikPanel',
     'recovery.checkingTitle': 'Checking panel access',
     'recovery.checkingHelp': 'Confirming your session and panel readiness. This check does not start a server operation.',
@@ -348,7 +351,7 @@ export const en = {
     'services.installed': '{name} installed.',
     'services.phpToolProblem.versionGone': '{tool} is set to PHP {version}, which is no longer installed, so {tool} cannot answer. Open {tool} in Components and choose an installed PHP version in Manage.',
     'services.phpToolProof.moved': '{tool} runs on PHP {version}: it did not work on PHP {first} ({why}), so the next installed PHP version that has its extensions was used. You can change it in {tool}’s Manage window.',
-    'services.phpToolProof.notReady': '{tool} was installed, but it did not answer on PHP {version} ({why}). It reads Not ready: open it in Components and choose a PHP version in Manage.',
+    'services.phpToolProof.notReady': '{tool} was installed, but it did not answer on PHP {version} ({why}). It reads Not ready: open its Manage window in Components; the reason is shown there, and Check again asks it again without moving it.',
     'services.phpToolProof.whyMissing': 'PHP {version} lacks {extensions}',
     'services.phpToolProof.whyOther': 'it did not answer as itself',
     'services.installRefused.notable': 'Nothing was installed: it would also have brought {packages}, which had not been confirmed. Open the install again in Components, where these packages are listed for you to confirm, or choose the recommended version.',
