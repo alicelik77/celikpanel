@@ -241,7 +241,7 @@ func TestAnOwnersOwnVendorSourceGetsNoSecondSourceOnlyItsConfinementAndUpdates(t
 	writeTestFile(t, aptMainSourcesList, "deb http://deb.debian.org/debian "+osCodename()+" main\n")
 	laneSuryLists(t, root, laneStatusWithUnattended)
 	// The base image's and Frankfurt's shape: php.list with the owner's key.
-	writeTestFile(t, filepath.Join(aptSourcesListDir, "php.list"), "# mine\ndeb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ "+osCodename()+" main\n")
+	writeTestFile(t, filepath.Join(aptSourcesListDir, "php.list"), "# mine\ndeb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ trixie main\n")
 	plan := vendorLanePlan(context.Background(), repo)
 	if plan.Error != "" {
 		t.Skipf("this host cannot render the source: %s", plan.Error)
@@ -261,7 +261,7 @@ func TestAnOwnersOwnVendorSourceGetsNoSecondSourceOnlyItsConfinementAndUpdates(t
 		t.Fatalf("pin = %s", pin)
 	}
 	// CelikPanel's source beside the owner's: the duplicate is named.
-	writeTestFile(t, repoSourcePath("sury"), "deb https://packages.sury.org/php/ "+osCodename()+" main\n")
+	writeTestFile(t, repoSourcePath("sury"), "deb https://packages.sury.org/php/ trixie main\n")
 	plan = vendorLanePlan(context.Background(), repo)
 	if step := laneStepOf(plan, laneStepRepository); step.State != laneStateBlocked || step.Reason != "duplicate_source" || !strings.Contains(step.Detail, "php.list") {
 		t.Fatalf("duplicate = %+v", step)
