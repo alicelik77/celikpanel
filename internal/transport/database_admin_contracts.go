@@ -40,6 +40,8 @@ type ProvisionDatabaseAdminAccountRequest struct {
 	// reaches a process argument list on the way to the engine (R-062).
 	// Password, panelin uretip muhurledigi kimlik bilgisidir.
 	Password string
+	// Port names the PostgreSQL cluster (alpha.108); 0 is the default one.
+	Port int `json:",omitempty"`
 }
 
 // ProvisionDatabaseAdminAccountResponse reports what the engine now has.

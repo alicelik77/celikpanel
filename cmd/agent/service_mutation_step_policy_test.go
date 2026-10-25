@@ -76,6 +76,9 @@ func TestServiceMutationStepPolicyAllowsEveryDeclaredWorkflowRow(t *testing.T) {
 		{"confine an enabled repository", mutationPolicyJob("repo_confine", "sury", ""), mutationPolicyClaim(serviceMutationStepConfineRepo, "sury", "", "confine")},
 		{"move an application's files", mutationPolicyJob("app_account", "site-7", ""), mutationPolicyClaim(serviceMutationStepMoveAppFilesOwner, "site-7", "", "move")},
 		{"update webmail", mutationPolicyJob("webmail_update", "roundcube", "1.6.20"), mutationPolicyClaim(serviceMutationStepUpdateRoundcube, "roundcube", "1.6.20", "update")},
+		{"change a PostgreSQL cluster's port", mutationPolicyJob("pg_cluster_port", "pg-17-main", "5440"), mutationPolicyClaim(serviceMutationStepSetPGClusterPort, "pg-17-main", "5440", "port")},
+		{"copy a PostgreSQL database", mutationPolicyJob("pg_database_copy", "pgdb-shop", "5432-5433"), mutationPolicyClaim(serviceMutationStepCopyPGDatabase, "pgdb-shop", "5432-5433", "copy")},
+		{"drop a moved PostgreSQL database's source", mutationPolicyJob("pg_database_drop", "pgdb-shop", "5432"), mutationPolicyClaim(serviceMutationStepDropPGDatabase, "pgdb-shop", "5432", "drop")},
 		{"add vendor origins to the OS updates", mutationPolicyJob("os_updates_origins", "unattended-upgrades", ""), mutationPolicyClaim(serviceMutationStepWriteVendorOrigins, "unattended-upgrades", "", "origins")},
 		{"install node", mutationPolicyJob("runtime_install", "node", "22.14.0"), mutationPolicyClaim(serviceMutationStepInstallNodeVersion, "node", "22.14.0", "install")},
 		{"remove node", mutationPolicyJob("runtime_remove", "node:22.14.0", ""), mutationPolicyClaim(serviceMutationStepRemoveNodeVersion, "node", "22.14.0", "remove")},
@@ -172,6 +175,9 @@ func TestServiceMutationStepPolicyAllowsEveryDeclaredWorkflowRow(t *testing.T) {
 		serviceMutationStepWriteVendorOrigins,
 		serviceMutationStepUpdateRoundcube,
 		serviceMutationStepMoveAppFilesOwner,
+		serviceMutationStepSetPGClusterPort,
+		serviceMutationStepCopyPGDatabase,
+		serviceMutationStepDropPGDatabase,
 		serviceMutationStepActivatePanelCertificate,
 	}
 	for _, method := range expectedMethods {
@@ -422,6 +428,9 @@ func TestServiceMutationPrivilegedCallsitesCarryTypedClaims(t *testing.T) {
 		"serviceMutationStepWriteVendorOrigins":       true,
 		"serviceMutationStepUpdateRoundcube":          true,
 		"serviceMutationStepMoveAppFilesOwner":        true,
+		"serviceMutationStepSetPGClusterPort":         true,
+		"serviceMutationStepCopyPGDatabase":           true,
+		"serviceMutationStepDropPGDatabase":           true,
 		"serviceMutationStepSetServerHostname":        true,
 	}
 	seenMethods := make(map[string]string)
@@ -482,8 +491,8 @@ func TestServiceMutationPrivilegedCallsitesCarryTypedClaims(t *testing.T) {
 		}
 	}
 
-	if len(seenMethods) != 38 {
-		t.Errorf("production requiredServiceMutationStep claim count=%d want=38", len(seenMethods))
+	if len(seenMethods) != 41 {
+		t.Errorf("production requiredServiceMutationStep claim count=%d want=41", len(seenMethods))
 	}
 	for method := range expectedMethods {
 		if seenMethods[method] == "" {
