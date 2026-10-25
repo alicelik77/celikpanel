@@ -220,6 +220,9 @@ func customerSitePHPVersion(requested string, installed []string, policy offered
 
 type offeredVersionsView struct {
 	Hidden map[string][]string `json:"hidden"`
+	// Restricted: the person reading is held to the offered versions (not
+	// the administrator), so their own page says a hidden version is kept.
+	Restricted bool `json:"restricted"`
 }
 
 type offeredVersionChange struct {
@@ -241,7 +244,7 @@ func (p *Panel) handleOfferedVersions(w http.ResponseWriter, r *http.Request) {
 			writeServerError(w, err)
 			return
 		}
-		_ = json.NewEncoder(w).Encode(offeredVersionsView{Hidden: policy.Hidden})
+		_ = json.NewEncoder(w).Encode(offeredVersionsView{Hidden: policy.Hidden, Restricted: !callerIsAdministrator(r)})
 	case http.MethodPut:
 		if !callerIsAdministrator(r) {
 			writeClientError(w, http.StatusForbidden, "administrator access required")
@@ -302,7 +305,7 @@ func (p *Panel) handleOfferedVersions(w http.ResponseWriter, r *http.Request) {
 			}
 			p.auditDetailed(r, "versions.customer_offer:"+change.Component+":"+line+":"+verb, "panel_settings", 0, details)
 		}
-		_ = json.NewEncoder(w).Encode(offeredVersionsView{Hidden: policy.Hidden})
+		_ = json.NewEncoder(w).Encode(offeredVersionsView{Hidden: policy.Hidden, Restricted: !callerIsAdministrator(r)})
 	default:
 		writeClientError(w, http.StatusMethodNotAllowed, "method not allowed")
 	}

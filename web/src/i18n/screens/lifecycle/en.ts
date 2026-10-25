@@ -10,6 +10,21 @@
 // güvenliği (alpha.107, D-038). Önek: life.
 
 export const enLifecycleScreens = {
+    // ---- alpha.108 slice d ----
+    // Versions offered to customers (D-038 §14).
+    'life.offer.title': 'Offered to customers',
+    'life.offer.intro': 'Customers choose a {name} version for their sites among the ones offered here. Hiding a version changes no site: a site already on it keeps it and keeps running, and its owner sees a note. As the administrator you can always choose any installed version.',
+    'life.offer.toggle': 'Offer {name} {version} to customers',
+    'life.offer.offered': 'Offered',
+    'life.offer.hidden': 'Hidden from customers',
+    'life.offer.notInstalled': '(no longer installed)',
+    'life.offer.checking': 'Reading which versions customers are offered…',
+    'life.offer.unknown': 'Which versions customers are offered could not be read. Nothing was changed. Try again.',
+    'life.offer.saving': 'Saving whether {name} {version} is offered to customers…',
+    'life.offer.failed': 'The change was not saved. Nothing else was changed; try again.',
+    'life.offer.lost': 'No answer came for this change. The list above was read again and shows what the server holds; change it again only if it is not what you wanted.',
+    'life.offer.customerKept': '{name} {version} is no longer offered for new choices. Your site keeps it and keeps running; ask your administrator before moving it to another version.',
+    'life.offer.adminKept': '{name} {version} is hidden from customers. This site keeps it and keeps running; its owner sees that it is no longer offered for new choices.',
     // ---- the repository card (D-038 §12, §1/§7) ----
     'life.repo.title': 'Package repository: {name}',
     'life.repo.checking': 'Reading the repository…',

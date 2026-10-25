@@ -58,7 +58,7 @@ func TestOfferedVersionsDefaultToEverythingAndAChangeIsTheAdministratorsAndAudit
 
 	recorder := httptest.NewRecorder()
 	panel.handleOfferedVersions(recorder, customerRequest(http.MethodGet, offeredVersionsPath, "", 77))
-	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"php":[]`) || !strings.Contains(recorder.Body.String(), `"node":[]`) {
+	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"php":[]`) || !strings.Contains(recorder.Body.String(), `"node":[]`) || !strings.Contains(recorder.Body.String(), `"restricted":true`) {
 		t.Fatalf("default = %d %s", recorder.Code, recorder.Body.String())
 	}
 
