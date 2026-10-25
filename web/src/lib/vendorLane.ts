@@ -46,6 +46,12 @@ export function decodeLaneRead(raw: unknown): LaneRead {
     return { state: 'read', plan: body.plan };
 }
 
+/** The owner's own source for the address (alpha.108 review): the lane then
+ * offers only its confinement and automatic updates, never a second source. */
+export function ownerSourceLane(plan: LanePlan): boolean {
+    return plan.steps.some((step) => step.step === 'repository' && step.state === 'owner' && step.reason === 'owner_source');
+}
+
 /** The steps still to be written or blocked: what the card names as missing. */
 export function missingSteps(plan: LanePlan): LaneStep[] {
     return plan.steps.filter((step) => step.state === 'todo' || step.state === 'blocked');
@@ -57,7 +63,7 @@ export const LANE_SERVICE: Record<string, string> = { sury: 'php-fpm', pgdg: 'po
 
 // Blocking reasons the dialog explains; anything else reads as "unknown".
 export const LANE_REASONS: ReadonlySet<string> = new Set([
-    'automatic_off', 'automatic_not_installed', 'drop_in_edited', 'origin_mismatch', 'apt_config_unreadable', 'lists_unreadable',
+    'automatic_off', 'automatic_not_installed', 'drop_in_edited', 'duplicate_source', 'origin_mismatch', 'apt_config_unreadable', 'lists_unreadable',
 ]);
 
 // Refusal codes the dialog says in words.

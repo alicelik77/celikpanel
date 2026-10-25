@@ -86,21 +86,35 @@ func vendorLanePlan(ctx context.Context, repo *core.ManagedRepo) transport.Vendo
 	plan := transport.VendorLanePlan{RepoID: repo.ID, Name: repo.Name, Origin: repo.ReleaseOrigin, Steps: []transport.VendorLaneStep{}}
 	loc, enabled := enabledRepoLocations()[repo.ID]
 	plan.Enabled = enabled
+	source, err := repoSourceForHost(repo)
+	if err != nil {
+		plan.Error = err.Error()
+		return plan
+	}
+	want, err := parseAptSourceLine(source)
+	if err != nil {
+		plan.Error = err.Error()
+		return plan
+	}
+	// alpha.108 review: the owner's own source for the same address.
+	owners := ownerSourcesFor(repo, want)
+	ownerSource := false
 
 	// The repository.
-	if enabled {
+	switch {
+	case enabled && len(owners) > 0:
+		// Two sources for one address: apt refuses updates when their keys
+		// differ. The owner removes one; CelikPanel removes nothing.
+		plan.Steps = append(plan.Steps, transport.VendorLaneStep{Step: laneStepRepository, State: laneStateBlocked, Reason: "duplicate_source", Path: repoSourcePath(repo.ID), Detail: ownerSourcePaths(owners)})
+	case enabled:
 		plan.Steps = append(plan.Steps, transport.VendorLaneStep{Step: laneStepRepository, State: laneStateDone, Path: repoSourcePath(repo.ID)})
-	} else {
-		source, err := repoSourceForHost(repo)
-		if err != nil {
-			plan.Error = err.Error()
-			return plan
-		}
-		loc, err = parseAptSourceLine(source)
-		if err != nil {
-			plan.Error = err.Error()
-			return plan
-		}
+	case len(owners) > 0:
+		// The owner's source stays the only one; the lane offers its
+		// confinement and its automatic updates.
+		loc, ownerSource = owners[0].Loc, true
+		plan.Steps = append(plan.Steps, transport.VendorLaneStep{Step: laneStepRepository, State: laneStateOwner, Reason: "owner_source", Path: owners[0].Path, Detail: ownerSourcePaths(owners)})
+	default:
+		loc = want
 		text := laneRepositoryText(source, repo.KeyFingerprint)
 		plan.Steps = append(plan.Steps, transport.VendorLaneStep{Step: laneStepRepository, State: laneStateTodo, Path: repoSourcePath(repo.ID), Text: text, SHA256: sha256Hex([]byte(text))})
 	}
@@ -120,7 +134,7 @@ func vendorLanePlan(ctx context.Context, repo *core.ManagedRepo) transport.Vendo
 		switch {
 		case err == nil:
 			plan.Kept = kept
-		case !enabled:
+		case !enabled && !ownerSource:
 			// Not enabled and its list never downloaded: nothing can
 			// have come from it, so nothing is kept. If the download
 			// shows otherwise, the plan has changed and nothing is
@@ -136,7 +150,7 @@ func vendorLanePlan(ctx context.Context, repo *core.ManagedRepo) transport.Vendo
 	plan.Steps = append(plan.Steps, confinement)
 
 	// The operating system's automatic updates.
-	plan.Steps = append(plan.Steps, laneUpdatesStep(ctx, repo, loc, enabled))
+	plan.Steps = append(plan.Steps, laneUpdatesStep(ctx, repo, loc, enabled || ownerSource))
 
 	todo, blocked := 0, false
 	for _, step := range plan.Steps {
@@ -149,7 +163,7 @@ func vendorLanePlan(ctx context.Context, repo *core.ManagedRepo) transport.Vendo
 	}
 	// A fresh repository is enabled only with all three in place; on an
 	// enabled one each missing step that can be written is a gain.
-	plan.Ready = todo > 0 && (enabled || !blocked)
+	plan.Ready = todo > 0 && (enabled || ownerSource || !blocked)
 	plan.SHA256 = laneSHA(plan.Steps)
 	return plan
 }
@@ -315,7 +329,33 @@ func enableVendorLaneLocked(ctx context.Context, repo *core.ManagedRepo, expecte
 		return
 	}
 	if plan.Enabled {
-		completeVendorLane(ctx, repo, plan, resp)
+		loc, ok := enabledRepoLocations()[repo.ID]
+		if !ok {
+			resp.ErrorCode, resp.Error = "LANE_PLAN_CHANGED", errLanePlanChanged.Error()
+			return
+		}
+		completeVendorLane(repo, plan, loc, resp)
+		return
+	}
+	// The owner's own source: never a second one, only its confinement and
+	// automatic updates (alpha.108 review).
+	if step := laneStepOf(plan, laneStepRepository); step.State == laneStateOwner {
+		source, err := repoSourceForHost(repo)
+		if err != nil {
+			resp.ErrorCode, resp.Error = "LANE_INVALID", err.Error()
+			return
+		}
+		want, err := parseAptSourceLine(source)
+		if err != nil {
+			resp.ErrorCode, resp.Error = "LANE_INVALID", err.Error()
+			return
+		}
+		owners := ownerSourcesFor(repo, want)
+		if len(owners) == 0 {
+			resp.ErrorCode, resp.Error = "LANE_PLAN_CHANGED", errLanePlanChanged.Error()
+			return
+		}
+		completeVendorLane(repo, plan, owners[0].Loc, resp)
 		return
 	}
 	freshVendorLane(ctx, repo, plan, resp)
@@ -418,9 +458,17 @@ func freshVendorLane(ctx context.Context, repo *core.ManagedRepo, plan transport
 	undo := &laneUndo{}
 	completed := []string{}
 	err = prepareAndPublishRepoRecipeThen(paths, key, source, func(stagedSource string) ([]byte, error) {
+		// alpha.108 review: the staged source is read together with every
+		// existing source, so a conflict with one of them ("Conflicting
+		// values set for option Signed-By") stops the enable before
+		// anything is written.
+		parts, cleanup, err := stagedSourcePartsDir(stagedSource, repo.ID)
+		if err != nil {
+			return nil, err
+		}
+		defer cleanup()
 		cmd := serviceMutationCommand(ctx, aptGet, "update",
-			"-o", "Dir::Etc::sourcelist="+stagedSource,
-			"-o", "Dir::Etc::sourceparts=/dev/null",
+			"-o", "Dir::Etc::sourceparts="+parts,
 			"-o", "APT::Get::List-Cleanup=0")
 		cmd.Env = append(os.Environ(), "DEBIAN_FRONTEND=noninteractive")
 		return cmd.CombinedOutput()
@@ -475,12 +523,7 @@ func freshVendorLane(ctx context.Context, repo *core.ManagedRepo, plan transport
 	})
 }
 
-func completeVendorLane(_ context.Context, repo *core.ManagedRepo, plan transport.VendorLanePlan, resp *transport.VendorLaneResponse) {
-	loc, ok := enabledRepoLocations()[repo.ID]
-	if !ok {
-		resp.ErrorCode, resp.Error = "LANE_PLAN_CHANGED", errLanePlanChanged.Error()
-		return
-	}
+func completeVendorLane(repo *core.ManagedRepo, plan transport.VendorLanePlan, loc aptSourceLocation, resp *transport.VendorLaneResponse) {
 	partial := func(code, detail string) {
 		resp.ErrorCode, resp.Error = code, detail
 		if len(resp.Completed) > 0 {

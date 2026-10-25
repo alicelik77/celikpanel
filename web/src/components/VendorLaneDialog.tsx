@@ -18,7 +18,7 @@ import { Button, Dialog, KeepWords, RemoteGate } from './ui';
 import { LifeLine, type Tone } from './LifeLine';
 import { showToast } from './Toast';
 import { useRemote } from '../lib/remote';
-import { decodeLaneRead, laneURL, LANE_CODES, LANE_REASONS, type LanePlan, type LaneStep } from '../lib/vendorLane';
+import { decodeLaneRead, laneURL, LANE_CODES, LANE_REASONS, ownerSourceLane, type LanePlan, type LaneStep } from '../lib/vendorLane';
 
 const STEP_TONE: Record<string, Tone> = { done: 'ok', owner: 'info', todo: 'warn', blocked: 'bad' };
 
@@ -28,7 +28,7 @@ export function laneStepText(t: ReturnType<typeof useI18n>['t'], step: LaneStep,
         return t(`lane.blocked.${LANE_REASONS.has(step.reason ?? '') ? step.reason : 'unknown'}` as TranslationKey, vars);
     }
     if (step.state === 'owner') {
-        return t(`lane.owner.${step.reason === 'edited' || step.reason === 'owner_rule' ? step.reason : 'owner_config'}` as TranslationKey, vars);
+        return t(`lane.owner.${step.reason === 'edited' || step.reason === 'owner_rule' || step.reason === 'owner_source' ? step.reason : 'owner_config'}` as TranslationKey, vars);
     }
     const state = step.state === 'done' ? 'done' : 'todo';
     const name = ['repository', 'confinement', 'updates'].includes(step.step) ? step.step : 'repository';
@@ -65,7 +65,7 @@ export function VendorLaneDialog({ serviceId, component, onClose, onDone }: {
                 // not JSON: said as unknown below
             }
             if (res.ok) {
-                showToast(body.effective === false ? 'warning' : 'success', t(body.effective === false ? 'lane.done.notEffective' : current.enabled ? 'lane.done.completed' : 'lane.done.enabled', { name: current.name ?? '' }));
+                showToast(body.effective === false ? 'warning' : 'success', t(body.effective === false ? 'lane.done.notEffective' : current.enabled || ownerSourceLane(current) ? 'lane.done.completed' : 'lane.done.enabled', { name: current.name ?? '' }));
                 onDone();
                 return;
             }
@@ -83,7 +83,10 @@ export function VendorLaneDialog({ serviceId, component, onClose, onDone }: {
             setBusy(false);
         }
     };
-    const title = plan?.enabled ? t('lane.title.complete', { name: plan.name ?? '' }) : t('lane.title.enable', { name: plan?.name ?? '', component });
+    // An owner's own source reads like an enabled repository: only the
+    // missing steps are written (alpha.108 review).
+    const completing = Boolean(plan && (plan.enabled || ownerSourceLane(plan)));
+    const title = completing ? t('lane.title.complete', { name: plan?.name ?? '' }) : t('lane.title.enable', { name: plan?.name ?? '', component });
     return (
         <Dialog
             id="vendor-lane"
@@ -101,7 +104,7 @@ export function VendorLaneDialog({ serviceId, component, onClose, onDone }: {
                         disabled={busy || !plan?.ready || !plan.sha256}
                         data-vendor-lane-confirm=""
                     >
-                        {plan?.enabled ? t('lane.confirm.complete') : t('lane.confirm.enable')}
+                        {completing ? t('lane.confirm.complete') : t('lane.confirm.enable')}
                     </Button>
                 </>
             }
@@ -109,7 +112,7 @@ export function VendorLaneDialog({ serviceId, component, onClose, onDone }: {
             <RemoteGate remote={handle.remote} checking={t('lane.checking')} failed={t('lane.unknown')} onRetry={() => void handle.retry()} busy={handle.reading}>
                 {({ value }) => value.state !== 'read' ? <p className="text-sm text-fg-muted">{t('lane.none')}</p> : (
                     <div className="space-y-3 text-sm leading-6 text-fg" data-vendor-lane={value.plan.repo_id} data-lane-ready={value.plan.ready ? 'yes' : 'no'}>
-                        <p><KeepWords text={t(value.plan.enabled ? 'lane.intro.enabled' : 'lane.intro.fresh', { name: value.plan.name ?? '', component })} /></p>
+                        <p><KeepWords text={t(ownerSourceLane(value.plan) ? 'lane.intro.owner' : value.plan.enabled ? 'lane.intro.enabled' : 'lane.intro.fresh', { name: value.plan.name ?? '', component, detail: value.plan.steps.find((step) => step.step === 'repository')?.detail ?? '' })} /></p>
                         <ol className="space-y-3">
                             {value.plan.steps.map((step) => (
                                 <li key={step.step} data-lane-step={step.step} data-lane-state={step.state}>

@@ -219,3 +219,91 @@ func TestOnlyCatalogueVendorLanesHaveALane(t *testing.T) {
 		t.Fatal("a repository without a known origin was given a lane")
 	}
 }
+
+// alpha.108 review: an owner's own source for the vendor address. The lane
+// never adds a second source; it offers only the confinement and the
+// automatic updates for the owner's source. With CelikPanel's source as
+// well, the duplicate is named and blocks.
+func TestAnOwnersOwnVendorSourceGetsNoSecondSourceOnlyItsConfinementAndUpdates(t *testing.T) {
+	if osCodename() == "" {
+		t.Skip("the host has no os-release codename")
+	}
+	root := laneHost(t, "1")
+	repo, _ := suryForTest(t)
+	oldMain := aptMainSourcesList
+	aptMainSourcesList = filepath.Join(root, "sources.list")
+	t.Cleanup(func() { aptMainSourcesList = oldMain })
+	writeTestFile(t, aptMainSourcesList, "deb http://deb.debian.org/debian "+osCodename()+" main\n")
+	laneSuryLists(t, root, laneStatusWithUnattended)
+	// The base image's and Frankfurt's shape: php.list with the owner's key.
+	writeTestFile(t, filepath.Join(aptSourcesListDir, "php.list"), "# mine\ndeb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ "+osCodename()+" main\n")
+	plan := vendorLanePlan(context.Background(), repo)
+	if plan.Error != "" {
+		t.Skipf("this host cannot render the source: %s", plan.Error)
+	}
+	if got := laneStates(plan); got != "repository=owner(owner_source) confinement=todo updates=todo" || !plan.Ready {
+		t.Fatalf("plan = %s %+v", got, plan)
+	}
+	var resp transport.VendorLaneResponse
+	enableVendorLaneLocked(context.Background(), repo, plan.SHA256, &resp)
+	if resp.ErrorCode != "" || strings.Join(resp.Completed, ",") != "confinement,updates" {
+		t.Fatalf("resp = %+v", resp)
+	}
+	if _, err := os.Stat(repoSourcePath("sury")); !os.IsNotExist(err) {
+		t.Fatal("a second source was added beside the owner's")
+	}
+	if pin, _ := os.ReadFile(repoPinPath("sury")); !strings.Contains(string(pin), `Pin: origin "packages.sury.org"`) {
+		t.Fatalf("pin = %s", pin)
+	}
+	// CelikPanel's source beside the owner's: the duplicate is named.
+	writeTestFile(t, repoSourcePath("sury"), "deb https://packages.sury.org/php/ "+osCodename()+" main\n")
+	plan = vendorLanePlan(context.Background(), repo)
+	if step := laneStepOf(plan, laneStepRepository); step.State != laneStateBlocked || step.Reason != "duplicate_source" || !strings.Contains(step.Detail, "php.list") {
+		t.Fatalf("duplicate = %+v", step)
+	}
+}
+
+func TestAnOwnersDeb822SourceIsFoundAndDisabledStanzasAreNot(t *testing.T) {
+	root := laneHost(t, "1")
+	oldMain := aptMainSourcesList
+	aptMainSourcesList = filepath.Join(root, "sources.list")
+	t.Cleanup(func() { aptMainSourcesList = oldMain })
+	repo := repoFromCatalogue("pgdg")
+	want, err := parseAptSourceLine("deb https://apt.postgresql.org/pub/repos/apt trixie-pgdg main")
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, filepath.Join(aptSourcesListDir, "pgdg.sources"), "Types: deb\nURIs: http://apt.postgresql.org/pub/repos/apt/\nSuites: trixie-pgdg\nComponents: main\nSigned-By: /usr/share/keyrings/pgdg.asc\n\nTypes: deb\nURIs: https://apt.postgresql.org/pub/repos/apt\nSuites: trixie-pgdg-testing\nComponents: main\nEnabled: no\n")
+	owners := ownerSourcesFor(repo, want)
+	if len(owners) != 1 || !strings.HasSuffix(owners[0].Path, "pgdg.sources") || owners[0].Loc.Suite != "trixie-pgdg" {
+		t.Fatalf("owners = %+v", owners)
+	}
+	if got := ownerSourcesFor(repoFromCatalogue("sury"), aptSourceLocation{URI: "https://packages.sury.org/php/"}); len(got) != 0 {
+		t.Fatalf("another address matched: %+v", got)
+	}
+}
+
+func TestTheStagedSourceIsValidatedWithEveryExistingSource(t *testing.T) {
+	root := laneHost(t, "1")
+	writeTestFile(t, filepath.Join(aptSourcesListDir, "debian.sources"), "Types: deb\nURIs: https://deb.debian.org/debian\nSuites: trixie\nComponents: main\n")
+	writeTestFile(t, filepath.Join(aptSourcesListDir, "php.list"), "deb https://packages.sury.org/php/ trixie main\n")
+	writeTestFile(t, filepath.Join(aptSourcesListDir, ".celikpanel-sury-validate-1.list"), "deb [signed-by=/x] https://packages.sury.org/php/ trixie main\n")
+	staged := filepath.Join(root, "staged.list")
+	writeTestFile(t, staged, "deb [signed-by=/x] https://packages.sury.org/php/ trixie main\n")
+	dir, cleanup, err := stagedSourcePartsDir(staged, "sury")
+	if err != nil {
+		t.Fatal(err)
+	}
+	entries, _ := os.ReadDir(dir)
+	var names []string
+	for _, entry := range entries {
+		names = append(names, entry.Name())
+	}
+	if strings.Join(names, ",") != "celikpanel-sury.list,debian.sources,php.list" {
+		t.Fatalf("parts = %v", names)
+	}
+	cleanup()
+	if _, err := os.Stat(dir); !os.IsNotExist(err) {
+		t.Fatal("the parts directory stayed")
+	}
+}

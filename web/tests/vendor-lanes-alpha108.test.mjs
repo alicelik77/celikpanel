@@ -198,3 +198,12 @@ test('a component on the default lane says so on its own page and offers the inf
   assert.match(card, /data-lane-enable=""/);
   for (const key of ['lane.default.title', 'lane.default.body', 'lane.default.left', 'lane.default.enable']) assert.ok(en[key] && tr[key], key);
 });
+
+test('an owner’s own source gets no second source: the dialog says so and only completes (review)', () => {
+  const dialog = read('../src/components/VendorLaneDialog.tsx');
+  assert.match(dialog, /ownerSourceLane\(value\.plan\) \? 'lane\.intro\.owner'/);
+  assert.match(dialog, /const completing = Boolean\(plan && \(plan\.enabled \|\| ownerSourceLane\(plan\)\)\)/);
+  for (const key of ['lane.intro.owner', 'lane.owner.owner_source', 'lane.blocked.duplicate_source']) assert.ok(en[key] && tr[key], key);
+  assert.match(en['lane.blocked.automatic_off'], /Or add the repository yourself: CelikPanel then shows it as yours and not patched automatically/);
+  assert.match(en['lane.blocked.automatic_off'], /asks one question/);
+});
