@@ -7821,3 +7821,53 @@ webmail move only on request, proved, and put back otherwise.
   restart was not part of the VM runs; pacman and DNF paths by component tests
   only. **No P0 item is closed or advanced**; P0.1 to P0.5 stay partial and every
   open acceptance item stays open.
+
+### Candidate v0.1.0-alpha.108 (two lanes, PostgreSQL majors side by side, the owner's alpha.107 findings; Agent repository, install, PHP tool and PostgreSQL paths; schema 45 to 46; invariants 1, 2 and 4; D-038 amendment; D-022; D-024; 2026-10-25)
+
+D-025 invariant 1 (the owner's services run without the panel): a vendor
+repository is enabled only together with its confinement and its origin in the
+operating system's own automatic updates, so its packages are patched without the
+panel; every file is native apt configuration the owner can remove; nothing the
+owner wrote is rewritten, and nothing already enabled is switched off. PostgreSQL
+clusters are postgresql-common's own clusters, each on its own port, run by the
+operating system. Invariant 2 (evidence has a meaning): a key's expiry is the
+newest valid self-signature's, and "apt no longer accepts" is said only when apt
+reported it; a PHP tool's failed proof names its own cause; a database move is
+proved by every table's row count; unknown stays unknown. Invariant 4 (no silent
+move): a database's record and a site's stored host and port change only on the
+owner's separate confirmation after the proof, reversibly until the source is
+dropped; the panel's tools stay on the distribution's PHP by default.
+
+- **Agent changes.** Agent.VendorLanePlanV1 (read only) and Agent.EnableVendorLaneV1
+  (`vendor_lane` job): confinement, origin, then source, confirmed by one plan
+  digest; a failed first enable takes back what it wrote; automatic updates off
+  refuse a first enable. The repository record keeps what stays installed from a
+  disabled repository. The key's validity is read packet by packet. The PHP check
+  file is written 0755/0644 under the unit's umask and repaired by a proof
+  (`php_tool_prove` job; a same-version bind only proves). PostgreSQL: a clusters
+  read, a port change with proof and rollback (`pg_cluster_port`), a database copy
+  with row-count proof (`pg_database_copy`), a source drop (`pg_database_drop`),
+  and a removal refused while a cluster holds databases. Removal previews add the
+  system's own traces (read only, bounded).
+- **Schema 45 to 46.** Migration 046 adds `database_servers.cluster` (nullable;
+  NULL in every old row means the cluster on that record's port) and the table
+  `postgresql_database_moves`. An alpha.107 Panel refuses ledger 46, so recovery to
+  it is the pre-update snapshot restore; the release-recovery harness pins
+  migration 46 (ledger `6ae06313…`, schema `b5b65789…`). The offered-versions
+  choice is a `panel_settings` row.
+- **Recovery.** A lane step that cannot be written leaves a fresh repository
+  without its source; a port change that does not answer puts the old file back,
+  restarts and proves it; a copy that fails or does not prove is removed with the
+  roles it created, and the source is never touched; a lost answer is read back,
+  never resent.
+- **Evidence.** Agent 4817 passed, 29 skipped; Panel and internal packages 7944
+  passed, 45 skipped, 0 failed; web 1904 passed; the release-recovery harness pins
+  migration 46; a browser look (EN and TR, 1440 and 390, light) on a mock; one
+  real-system run on a disposable Debian 13 virtual machine
+  ([deploy/e2e/d038/alpha108-debian13-20261025](../deploy/e2e/d038/alpha108-debian13-20261025/README.md),
+  archive SHA-256 `effaf7ce…a1604698`), whose first run found a PGDG major installed
+  without its cluster, fixed in this release. Not measured on an installed server; a Panel
+  restart was not part of the VM run; pacman and DNF paths by component tests
+  only; Ubuntu 24.04 by the real package's page fixtures, not a VM run.
+  **No P0 item is closed or advanced**; P0.1 to P0.5 stay partial and every open
+  acceptance item stays open.
