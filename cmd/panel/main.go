@@ -1345,6 +1345,7 @@ func main() {
 	http.HandleFunc(roundcubeUpdatePath, panel.handleRoundcubeUpdate)
 	http.HandleFunc(phpToolsPath, panel.handlePHPTools)
 	http.HandleFunc(phpToolBindPath, panel.handlePHPToolBind)
+	http.HandleFunc(phpToolProvePath, panel.handlePHPToolProve)
 	http.HandleFunc(hostMutationReadinessPath, panel.handleHostMutationReadiness)
 	http.HandleFunc("/api/v1/firewall", panel.handleFirewall)
 	http.HandleFunc("/api/v1/repo", panel.handleRepo)

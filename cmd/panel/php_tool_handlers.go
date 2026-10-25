@@ -29,6 +29,8 @@ import (
 const (
 	phpToolsPath    = "/api/v1/service/php-tools"
 	phpToolBindPath = "/api/v1/service/php-tools/bind"
+	// phpToolProvePath (alpha.108): "Check again" in a tool's Manage window.
+	phpToolProvePath = "/api/v1/service/php-tools/prove"
 	// serviceUninstallPath is the removal route (request-identity guarded
 	// since alpha.104).
 	serviceUninstallPath = "/api/v1/service/uninstall"
@@ -106,6 +108,16 @@ type phpToolView struct {
 	// ExtensionsPresent: the tool's extension packages are installed for
 	// its version (alpha.104 review; package presence, not proof of load).
 	ExtensionsPresent bool `json:"extensions_present"`
+	// alpha.108 (Boston): what "not ready" is made of, so the card says the
+	// real reason. SocketReady and FPMState are read now from the host;
+	// ProofFailed/ProofCause are the last proof's recorded failure. Ready
+	// stays SocketReady && !ProofFailed (Manage offers the same version
+	// again), but "not running" is said only from the socket and the unit.
+	// Kartın gerçek nedeni söylemesi için "hazır değil"in parçaları.
+	SocketReady bool                    `json:"socket_ready"`
+	FPMState    string                  `json:"fpm_state"`
+	ProofFailed bool                    `json:"proof_failed"`
+	ProofCause  *transport.PHPToolCause `json:"proof_cause,omitempty"`
 }
 
 // phpVersionUsage says who uses one installed PHP-FPM version.
@@ -137,6 +149,10 @@ func phpToolsView(ctx context.Context, p *Panel, bindings transport.PHPToolBindi
 			Ready:             binding.SocketReady && !binding.ProofFailed,
 			VersionInstalled:  binding.VersionInstalled,
 			ExtensionsPresent: binding.ExtensionsPresent,
+			SocketReady:       binding.SocketReady,
+			FPMState:          binding.FPMState,
+			ProofFailed:       binding.ProofFailed,
+			ProofCause:        binding.ProofCause,
 		})
 	}
 	for _, version := range bindings.Versions {
@@ -198,6 +214,9 @@ type phpToolBindFailure struct {
 	MutationApplied bool                    `json:"mutation_applied,omitempty"`
 	Moved           []string                `json:"moved,omitempty"`
 	NotAttempted    []string                `json:"not_attempted,omitempty"`
+	// ProofOnly (alpha.108): the tool was already on that version, only the
+	// proof ran and nothing was changed.
+	ProofOnly bool `json:"proof_only,omitempty"`
 }
 
 // bindPHPTool runs one verified move in its own php_tool_bind job.
@@ -261,6 +280,7 @@ func (p *Panel) handlePHPToolBind(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(phpToolBindFailure{
 			Error: response.Error, Code: phpToolBindCode(response.ErrorCode), Detail: response.Detail, Cause: response.Cause, Tool: req.Tool, Version: req.Version,
 			Previous: response.Previous, Restored: response.Restored, MutationApplied: response.MutationApplied,
+			ProofOnly: response.ProofOnly,
 		})
 		return
 	}
@@ -270,8 +290,89 @@ func (p *Panel) handlePHPToolBind(w http.ResponseWriter, r *http.Request) {
 	})
 	json.NewEncoder(w).Encode(map[string]any{
 		"bound": true, "tool": req.Tool, "version": req.Version, "previous": response.Previous,
-		"installed_packages": response.InstalledPackages, "warning": response.Warning,
+		"installed_packages": response.InstalledPackages, "warning": response.Warning, "proof_only": response.ProofOnly,
 	})
+}
+
+// phpToolProveBound bounds "Check again" (alpha.108). The Agent's proof is
+// bounded by its settle time (20 s) plus preparing the check, so the order
+// is: the Agent's work < this bound < the browser, which waits for it.
+// "Yeniden denetle" sınırı: Agent'ın işi < bu sınır < tarayıcı.
+const phpToolProveBound = 2 * time.Minute
+
+type phpToolProveAnswer struct {
+	Proved  bool                    `json:"proved"`
+	Tool    string                  `json:"tool"`
+	Version string                  `json:"version"`
+	Cause   *transport.PHPToolCause `json:"cause,omitempty"`
+}
+
+// provePHPToolThroughAgent proves one tool on the version it runs on, in its
+// own php_tool_prove job, without fallback: a proof never moves a tool.
+var provePHPToolThroughAgent = func(p *Panel, ctx context.Context, tool string) (transport.ProvePHPToolResponse, error) {
+	var response transport.ProvePHPToolResponse
+	callCtx, cancel := context.WithTimeout(ctx, phpToolProveBound)
+	defer cancel()
+	err := p.withStandaloneAgentMutation(callCtx, "php_tool_prove", tool, "", func(callCtx context.Context, binding agentMutationBinding) error {
+		request := transport.ProvePHPToolRequest{ServiceMutationBinding: binding, Tool: tool}
+		if err := p.callAgentContext(callCtx, "Agent.ProvePHPToolV1", &request, &response); err != nil {
+			return err
+		}
+		if response.Error != "" {
+			return errors.New(response.Error)
+		}
+		return nil
+	})
+	if err != nil && response.Error == "" {
+		return response, err
+	}
+	return response, nil
+}
+
+// handlePHPToolProve: POST {tool}. "Check again" in a tool's Manage window
+// (alpha.108, Boston): it asks the tool on the version it runs on and
+// records the answer; it never rewrites, reloads or moves anything except
+// CelikPanel's own check script, which it puts back readable. One service
+// change at a time: while another runs it answers busy and starts nothing.
+// "Yeniden denetle": aracı çalıştığı sürümde sorar; hiçbir şeyi taşımaz.
+func (p *Panel) handlePHPToolProve(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.Method != http.MethodPost {
+		writeClientError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	var req struct {
+		Tool string `json:"tool"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeClientError(w, http.StatusBadRequest, "tool is required")
+		return
+	}
+	if _, ok := phpToolServiceIDs[req.Tool]; !ok {
+		writeClientError(w, http.StatusBadRequest, "tool is required")
+		return
+	}
+	release, busy := p.beginServiceMutation(w, r)
+	if busy {
+		return
+	}
+	defer release()
+
+	response, err := provePHPToolThroughAgent(p, r.Context(), req.Tool)
+	if err != nil {
+		writeAgentError(w, err, "PHP tool check")
+		return
+	}
+	if response.Error != "" {
+		w.WriteHeader(http.StatusConflict)
+		json.NewEncoder(w).Encode(phpToolBindFailure{Error: response.Error, Code: "PHP_TOOL_PROVE_FAILED", Tool: req.Tool})
+		return
+	}
+	answer := phpToolProveAnswer{Proved: response.Proved, Tool: req.Tool, Version: response.Version}
+	if !response.Proved && len(response.Attempts) > 0 {
+		answer.Cause = response.Attempts[0].Cause
+	}
+	json.NewEncoder(w).Encode(answer)
 }
 
 func phpToolBindCode(code string) string {
