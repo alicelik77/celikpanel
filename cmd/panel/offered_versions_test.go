@@ -204,3 +204,4 @@ func TestACustomersNewSiteTakesTheNewestOfferedPHPVersion(t *testing.T) {
 		t.Fatalf("php line = %q", got)
 	}
 }
+
