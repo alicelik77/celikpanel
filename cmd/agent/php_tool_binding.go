@@ -1499,6 +1499,13 @@ func phpToolBindingsView() transport.PHPToolBindingsResponse {
 		return family == "apt"
 	}
 	unitStates := map[string]string{}
+	var packageCheck func(string) bool
+	hasPackages := func(tool, version string) bool {
+		if packageCheck == nil {
+			packageCheck = phpToolViewPackageCheck()
+		}
+		return len(missingPHPToolExtensionPackages(tool, version, packageCheck)) == 0
+	}
 	for _, state := range phpToolStates() {
 		binding := transport.PHPToolBinding{Tool: state.Tool, Installed: state.Installed, Source: state.Source}
 		// alpha.105: a tool whose proof after its install failed on every
@@ -1514,7 +1521,7 @@ func phpToolBindingsView() transport.PHPToolBindingsResponse {
 			// Package presence only (a package can be installed and its
 			// extension disabled; a move's proof checks what PHP loads).
 			binding.ExtensionsPresent = binding.Version == "" || !apt() ||
-				phpToolHasExtensionPackages(state.Tool, binding.Version)
+				hasPackages(state.Tool, binding.Version)
 			// The unit's own state, read now (alpha.108): "not running" is
 			// said from this and the socket, never from a failed proof.
 			// Birimin kendi durumu; "çalışmıyor" bundan ve soketten söylenir.
@@ -1554,4 +1561,18 @@ func phpFPMUnitStateFrom(out string) string {
 		return state
 	}
 	return "unknown"
+}
+
+// phpToolViewPackageCheck is the package check one bindings read uses: the
+// host platform is verified once for the whole read (alpha.108). Before, every
+// package asked systemd again (systemctl is-system-running, bounded at 3 s
+// each), so a slow systemd could push the read past the Panel's 10-second
+// bound and the card said "could not be read". A variable for tests.
+// Tek okuma için platform bir kez doğrulanır; her paket systemd'ye yeniden sormaz.
+var phpToolViewPackageCheck = func() func(string) bool {
+	profile, err := verifiedHostProfile("apt")
+	if err != nil {
+		return func(string) bool { return false }
+	}
+	return func(pkg string) bool { return packageInstalledForProfile(profile, pkg) }
 }

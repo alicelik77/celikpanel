@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alicelik/celikpanel/internal/hostplatform"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -246,5 +247,30 @@ func TestA108BindingsSayTheUnitStateBesideAFailedProof(t *testing.T) {
 		if got := phpFPMUnitStateFrom(out); got != want {
 			t.Fatalf("%q = %q, want %q", out, got, want)
 		}
+	}
+}
+
+func TestA108BindingsReadVerifiesThePlatformOnce(t *testing.T) {
+	original := phpToolViewPackageCheck
+	host := newPHPToolHost(t)
+	phpToolViewPackageCheck = original
+	host.installVersion(t, "8.4", true)
+	host.installVersion(t, "8.5", true)
+	host.writeFrankfurtConfs(t)
+	saved := detectHostPlatform
+	t.Cleanup(func() { detectHostPlatform = saved })
+	detects := 0
+	detectHostPlatform = func() (hostplatform.Profile, error) {
+		detects++
+		return hostplatform.Profile{PackageManager: hostplatform.PackageManagerAPT}, nil
+	}
+	view := phpToolBindingsView()
+	if len(view.Tools) != 3 {
+		t.Fatalf("view = %+v", view)
+	}
+	// Three tools with nine extension packages: one family read and one
+	// verified profile, not one systemd question per package.
+	if detects > 2 {
+		t.Fatalf("the platform was detected %d times for one read", detects)
 	}
 }
