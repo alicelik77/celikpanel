@@ -33,6 +33,7 @@ import type { DashboardScreenKey } from './screens/dashboard/en';
 import type { SettingsScreenKey } from './screens/settings/en';
 import type { ErrorsScreenKey } from './screens/errors/en';
 import type { LifecycleScreenKey } from './screens/lifecycle/en';
+import type { DatabaseClustersScreenKey } from './screens/databaseClusters/en';
 
 export const en = {
     // ---- alpha.108 tools ----
@@ -474,5 +475,6 @@ export type ScreenKey =
     | DashboardScreenKey
     | SettingsScreenKey
     | ErrorsScreenKey
-    | LifecycleScreenKey;
+    | LifecycleScreenKey
+    | DatabaseClustersScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

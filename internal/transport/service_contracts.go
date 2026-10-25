@@ -349,6 +349,13 @@ type ServiceRemovalPreviewResponse struct {
 	// stays on this server. Additive.
 	KeepsData bool     `json:"keeps_data,omitempty"`
 	DataPaths []string `json:"data_paths,omitempty"`
+	// HoldsDatabases (alpha.108, D-038 §2): the PostgreSQL clusters of this
+	// removal that still hold user databases ("17/main: shop, blog"); the
+	// removal is refused while there is one. DatabasesUnknown are the
+	// clusters that could not be asked (not running); the removal is refused
+	// for them too.
+	HoldsDatabases   []string `json:"holds_databases,omitempty"`
+	DatabasesUnknown []string `json:"databases_unknown,omitempty"`
 }
 
 type ConfigureDBToolsResponse struct {

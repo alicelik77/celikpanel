@@ -97,6 +97,9 @@ func serviceRemovalPreviewWithOps(
 	if work.boundTools != nil {
 		resp.BoundTools = append([]string{}, work.boundTools...)
 	}
+	if major, ok := pgRemovalMajor(svc, req.Package); ok && work.family == "apt" && ops.postgresqlHolds != nil {
+		resp.HoldsDatabases, resp.DatabasesUnknown = ops.postgresqlHolds(major)
+	}
 	executor, err := executorFor(work.family)
 	if err != nil {
 		resp.Error = err.Error()

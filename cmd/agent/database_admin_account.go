@@ -227,6 +227,12 @@ func (a *Agent) provisionPostgreSQLAdminAccount(
 		resp.Error = "CelikPanel generated a password its own database engine will not accept"
 		return nil
 	}
+	// alpha.108: the cluster on the server record's port.
+	run, err := postgreSQLStatementFor(req.Port)
+	if err != nil {
+		resp.Error = err.Error()
+		return nil
+	}
 
 	// A named dollar-quote tag rather than $$, so a body that happens to
 	// contain $$ cannot end the block early.
@@ -239,7 +245,7 @@ BEGIN
 END
 $celikpanel_admin_account$;`, nameLiteral, ident)
 
-	if output, err := postgreSQLExecStatement(create); err != nil {
+	if output, err := run(create); err != nil {
 		resp.Error = hostcmd.Fail(
 			"failed to open CelikPanel's own account on this PostgreSQL server",
 			output, err, databaseClientMeaning,
@@ -251,7 +257,7 @@ $celikpanel_admin_account$;`, nameLiteral, ident)
 	// Ayri ifade; boylece parola bir kez ve yalnizca bir kez tirnaklanir.
 	alter := fmt.Sprintf("ALTER ROLE %s WITH LOGIN CREATEDB CREATEROLE PASSWORD %s;",
 		ident, passwordLiteral)
-	if output, err := postgreSQLExecStatement(alter); err != nil {
+	if output, err := run(alter); err != nil {
 		resp.Error = hostcmd.Fail(
 			"failed to set the password on CelikPanel's own PostgreSQL account",
 			output, err, databaseClientMeaning,

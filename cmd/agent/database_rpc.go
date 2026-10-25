@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"github.com/alicelik/celikpanel/internal/hostcmd"
@@ -53,17 +54,43 @@ var postgreSQLExecStatement = runPostgreSQLStatement
 // okuyan psql, ifade başarısız olsa da sıfır döner ve aşağıdaki her çağrı
 // başarıyı çıkış kodundan okur.
 func newPostgreSQLStatementCommand(statement string) *exec.Cmd {
-	command := exec.Command(
-		"sudo", "-u", "postgres", "psql",
-		"--no-psqlrc",
-		"--set", "ON_ERROR_STOP=on",
-	)
+	return newPostgreSQLStatementCommandOn(0, statement)
+}
+
+// newPostgreSQLStatementCommandOn is the same command for the cluster on one
+// port (alpha.108: every PostgreSQL major runs as its own cluster on its own
+// port). Port 0 is psql's own choice, as before.
+func newPostgreSQLStatementCommandOn(port int, statement string) *exec.Cmd {
+	args := []string{"-u", "postgres", "psql", "--no-psqlrc", "--set", "ON_ERROR_STOP=on"}
+	if port > 0 {
+		args = append(args, "--port", strconv.Itoa(port))
+	}
+	command := exec.Command("sudo", args...)
 	command.Stdin = strings.NewReader(statement + "\n")
 	return command
 }
 
 func runPostgreSQLStatement(statement string) ([]byte, error) {
 	return newPostgreSQLStatementCommand(statement).CombinedOutput()
+}
+
+// postgreSQLExecStatementOnPort runs a statement on the cluster on one port
+// (a variable for tests).
+var postgreSQLExecStatementOnPort = func(port int, statement string) ([]byte, error) {
+	return newPostgreSQLStatementCommandOn(port, statement).CombinedOutput()
+}
+
+// postgreSQLStatementFor is the statement runner for a request's port: the
+// default runner for 0, the port's otherwise. A port outside 1..65535 is
+// refused before anything runs.
+func postgreSQLStatementFor(port int) (func(string) ([]byte, error), error) {
+	if port == 0 {
+		return postgreSQLExecStatement, nil
+	}
+	if port < 1 || port > 65535 {
+		return nil, fmt.Errorf("invalid PostgreSQL port %d", port)
+	}
+	return func(statement string) ([]byte, error) { return postgreSQLExecStatementOnPort(port, statement) }, nil
 }
 
 // Database Management RPC Methods
@@ -366,8 +393,14 @@ func (a *Agent) createPostgreSQLDatabase(req CreateDatabaseRequest, resp *Create
 		return nil
 	}
 
+	run, err := postgreSQLStatementFor(req.Port)
+	if err != nil {
+		resp.Error = err.Error()
+		return nil
+	}
+
 	// Create user
-	output, err := postgreSQLExecStatement(
+	output, err := run(
 		fmt.Sprintf("CREATE USER %s WITH PASSWORD %s;", userIdent, pwLiteral))
 	if err != nil && !strings.Contains(string(output), "already exists") {
 		resp.Success = false
@@ -376,7 +409,7 @@ func (a *Agent) createPostgreSQLDatabase(req CreateDatabaseRequest, resp *Create
 	}
 
 	// Create database
-	output, err = postgreSQLExecStatement(
+	output, err = run(
 		fmt.Sprintf("CREATE DATABASE %s OWNER %s;", dbIdent, userIdent))
 	if err != nil {
 		resp.Success = false
@@ -396,8 +429,14 @@ func (a *Agent) deletePostgreSQLDatabase(req DeleteDatabaseRequest, resp *Delete
 		return nil
 	}
 
+	run, err := postgreSQLStatementFor(req.Port)
+	if err != nil {
+		resp.Error = err.Error()
+		return nil
+	}
+
 	// Drop database
-	output, err := postgreSQLExecStatement(
+	output, err := run(
 		fmt.Sprintf("DROP DATABASE IF EXISTS %s;", dbIdent))
 	if err != nil {
 		resp.Success = false
@@ -408,7 +447,7 @@ func (a *Agent) deletePostgreSQLDatabase(req DeleteDatabaseRequest, resp *Delete
 	// Drop user
 	if userIdent, err := services.QuotePGIdentifier(req.User); err == nil {
 		// Don't fail if user doesn't exist
-		_, _ = postgreSQLExecStatement(fmt.Sprintf("DROP USER IF EXISTS %s;", userIdent))
+		_, _ = run(fmt.Sprintf("DROP USER IF EXISTS %s;", userIdent))
 	}
 
 	resp.Success = true

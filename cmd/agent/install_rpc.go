@@ -349,6 +349,13 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 		resp.Error = fmt.Sprintf("repository policy failed: %v", err)
 		return nil
 	}
+	// alpha.108: a PostgreSQL major the distribution itself ships
+	// (postgresql-17 on Debian 13) is installed by its exact name without
+	// the vendor repository; only a major the distribution does not ship
+	// needs PGDG.
+	if requiresRepo && family == "apt" && svc.ID == "postgresql" && req.Package != "" && !svc.Repo.Required && pgDistributionOffers(req.Package) {
+		requiresRepo = false
+	}
 	if family == "apt" && requiresRepo {
 		var repoStatus RepoStatusResponse
 		if err := a.RepoStatus(&EnableRepoRequest{RepoID: svc.Repo.ID}, &repoStatus); err != nil {
@@ -489,11 +496,26 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 		}
 	}
 
+	// alpha.108: a PostgreSQL major runs as its own cluster on its own port;
+	// the install proves that cluster answers and names its port.
+	clusterProof := ""
+	if svc.ID == "postgresql" && family == "apt" && pgVersionPackageRe.MatchString(effectivePackage) {
+		proof, err := pgInstallProof(ctx, effectivePackage)
+		if err != nil {
+			resp.Error = err.Error()
+			return nil
+		}
+		clusterProof = proof
+	}
+
 	resp.Installed = !alreadyPresent || len(missingPackages) > 0
 	if resp.Installed {
 		resp.Detail = fmt.Sprintf("installed %s", strings.Join(pkgs, ", "))
 	} else {
 		resp.Detail = fmt.Sprintf("verified and repaired %s", svc.Name)
+	}
+	if clusterProof != "" {
+		resp.Detail += " — " + clusterProof
 	}
 	if len(skipped) > 0 {
 		resp.Detail += fmt.Sprintf(" — not offered for this version: %s", strings.Join(skipped, ", "))
@@ -697,6 +719,10 @@ type serviceUninstallOps struct {
 	// boundPHPTools lists the tools (webmail, phpMyAdmin, phpPgAdmin) served
 	// from a PHP version ("" = from any PHP-FPM socket).
 	boundPHPTools func(string) []string
+	// postgresqlHolds names the PostgreSQL clusters of a major ("" = every
+	// major) that hold user databases, and those that could not be asked
+	// (alpha.108).
+	postgresqlHolds func(major string) (held, unknown []string)
 }
 
 func defaultServiceUninstallOps(ctx context.Context) (serviceUninstallOps, error) {
@@ -748,6 +774,9 @@ func defaultServiceUninstallOps(ctx context.Context) (serviceUninstallOps, error
 			return installedRepoPackagesForServiceWithExecutable(ctx, service, dpkgQuery)
 		},
 		boundPHPTools: phpToolsBoundToVersion,
+		postgresqlHolds: func(major string) ([]string, []string) {
+			return pgRemovalHolds(ctx, pgClusterHostActive(), major)
+		},
 	}, nil
 }
 
@@ -1139,6 +1168,14 @@ func (a *Agent) uninstallServiceWithOps(
 		resp.ErrorCode = errCodeRemovalToolsBound
 		resp.BoundTools = work.boundTools
 		return nil
+	}
+	// A PostgreSQL major whose cluster still holds databases is not removed
+	// (alpha.108, D-038 §2): they are named, and moved or removed first.
+	if major, ok := pgRemovalMajor(svc, req.Package); ok && work.family == "apt" && ops.postgresqlHolds != nil {
+		if code, message := pgRemovalRefusal(ops.postgresqlHolds(major)); code != "" {
+			resp.Error, resp.ErrorCode = message, code
+			return nil
+		}
 	}
 
 	// Each unit's state as the owner left it, read before anything stops,

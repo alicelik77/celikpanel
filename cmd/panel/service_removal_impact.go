@@ -164,6 +164,11 @@ type serviceRemovalSimulation struct {
 	// purged; DataPaths are where its data stays on this server.
 	KeepsData bool     `json:"keeps_data,omitempty"`
 	DataPaths []string `json:"data_paths,omitempty"`
+	// HoldsDatabases / DatabasesUnknown (alpha.108, D-038 §2): the
+	// PostgreSQL clusters of this removal that still hold databases, by name,
+	// or could not be asked; the removal is refused while either is not empty.
+	HoldsDatabases   []string `json:"holds_databases,omitempty"`
+	DatabasesUnknown []string `json:"databases_unknown,omitempty"`
 }
 
 // removalSimulationReadBound bounds the Agent's simulation for the dialog.
@@ -191,7 +196,10 @@ func removalSimulationFrom(serviceID string, preview transport.ServiceRemovalPre
 	case "busy", "unsupported", "not_installed":
 		simulation.State = preview.State
 	}
-	simulation.Refuses = len(simulation.BoundTools) > 0 || (simulation.State == "checked" && len(simulation.Collateral) > 0)
+	simulation.HoldsDatabases = append([]string{}, preview.HoldsDatabases...)
+	simulation.DatabasesUnknown = append([]string{}, preview.DatabasesUnknown...)
+	simulation.Refuses = len(simulation.BoundTools) > 0 || (simulation.State == "checked" && len(simulation.Collateral) > 0) ||
+		len(simulation.HoldsDatabases) > 0 || len(simulation.DatabasesUnknown) > 0
 	simulation.KeepsData = preview.KeepsData
 	simulation.DataPaths = append([]string{}, preview.DataPaths...)
 	return simulation

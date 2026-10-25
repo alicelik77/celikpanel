@@ -42,6 +42,9 @@ const (
 	serviceMutationStepWriteVendorOrigins       serviceMutationStepMethod = "Agent.WriteVendorUpdateOriginsV1"
 	serviceMutationStepUpdateRoundcube          serviceMutationStepMethod = "Agent.UpdateRoundcubeV1"
 	serviceMutationStepMoveAppFilesOwner        serviceMutationStepMethod = "Agent.MoveAppFilesOwnerV1"
+	serviceMutationStepSetPGClusterPort         serviceMutationStepMethod = "Agent.SetPostgreSQLClusterPortV1"
+	serviceMutationStepCopyPGDatabase           serviceMutationStepMethod = "Agent.CopyPostgreSQLDatabaseV1"
+	serviceMutationStepDropPGDatabase           serviceMutationStepMethod = "Agent.DropPostgreSQLDatabaseV1"
 	serviceMutationStepInstallNodeVersion       serviceMutationStepMethod = "Agent.InstallNodeVersion"
 	serviceMutationStepRemoveNodeVersion        serviceMutationStepMethod = "Agent.RemoveNodeVersion"
 	serviceMutationStepSetupVPN                 serviceMutationStepMethod = "Agent.SetupVPN"
@@ -213,6 +216,24 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 	case serviceMutationStepDisableRepo:
 		return claim.packageName == "" && claim.action == "disable" &&
 			serviceMutationJobMatches(job, "repo_disable", claim.target, "")
+
+	case serviceMutationStepSetPGClusterPort:
+		// alpha.108: one PostgreSQL cluster's port, in its own job; the
+		// qualifier is the new port.
+		return strings.HasPrefix(claim.target, "pg-") && claim.packageName != "" && claim.action == "port" &&
+			serviceMutationJobMatches(job, "pg_cluster_port", claim.target, claim.packageName)
+
+	case serviceMutationStepCopyPGDatabase:
+		// alpha.108: one database copied between two clusters (source and
+		// target ports are the qualifier).
+		return strings.HasPrefix(claim.target, "pgdb-") && claim.packageName != "" && claim.action == "copy" &&
+			serviceMutationJobMatches(job, "pg_database_copy", claim.target, claim.packageName)
+
+	case serviceMutationStepDropPGDatabase:
+		// alpha.108: one database dropped on one cluster (its port), the
+		// administrator's explicit last step of a move.
+		return strings.HasPrefix(claim.target, "pgdb-") && claim.packageName != "" && claim.action == "drop" &&
+			serviceMutationJobMatches(job, "pg_database_drop", claim.target, claim.packageName)
 
 	case serviceMutationStepMoveAppFilesOwner:
 		// alpha.107: one application's files, inside its own app_account job.

@@ -33,6 +33,9 @@ MIGRATIONS = {
     # Migration 45 (audit details, Node application account; D-038): two NULL
     # columns added to old tables (audit_logs.details, sites.app_run_as).
     45: '0a5d618bff71cf791ea4ddf54d574b469703f65667627e266483bc2c0b094ca1',
+    # Migration 46 (PostgreSQL majors side by side, alpha.108): one NULL column
+    # added to an old table (database_servers.cluster) and one new table.
+    46: '6ae063137eaa421a6209c22f3cc5bc185f22f5bf95042c4d05a36a40991bbd69',
 }
 # Exact sqlite_schema SQL from the released SQL, including triggers and indexes.
 # Tests reconstruct it from unmodified migration bytes, never a downgraded ledger.
@@ -42,6 +45,7 @@ SCHEMAS = {
     43: '48cbd3b47573c2e09feefa4605fc4822df178a719c5e22a7e1c5cb94bb7770f7',
     44: 'afcb7db4bf3b619a605af88277714cbc22e7dbe5279375b80f0eb33f54de06fc',
     45: 'c4eff8ddda771551d6917529d25752fec2a9b93f136f0fb9ee4a8eebcfca908b',
+    46: 'b5b65789f63a609cba495807b6c715cead504f6024beaf5cdebde97813c8d084',
 }
 ADMISSION_SCHEMA = 'celikpanel/lab-populated-database-admission/v1'
 MANIFEST_SCHEMA = 'celikpanel/lab-populated-database-manifest/v1'
@@ -54,12 +58,15 @@ NEW_TABLES_43 = NEW_TABLES_42 | {'request_identities'}
 NEW_TABLES_44 = NEW_TABLES_43 | {'managed_site_files'}
 # Migration 45 adds no table: it adds one NULL column to two old tables.
 NEW_TABLES_45 = NEW_TABLES_44
+# Migration 46 adds the database moves table and one NULL column to an old table.
+NEW_TABLES_46 = NEW_TABLES_45 | {'postgresql_database_moves'}
 # Columns a pinned schema added to an old table, left out of the old-row
 # proof and required to be NULL in every old row.
-ADDED_COLUMNS = {45: {'audit_logs': ('details',), 'sites': ('app_run_as',)}}
+ADDED_COLUMNS = {45: {'audit_logs': ('details',), 'sites': ('app_run_as',)},
+                 46: {'database_servers': ('cluster',)}}
 # The tables each pinned schema after the baseline adds to the 55 of schema38.
 # A schema that is not a key here is the baseline itself.
-NEW_TABLES = {42: NEW_TABLES_42, 43: NEW_TABLES_43, 44: NEW_TABLES_44, 45: NEW_TABLES_45}
+NEW_TABLES = {42: NEW_TABLES_42, 43: NEW_TABLES_43, 44: NEW_TABLES_44, 45: NEW_TABLES_45, 46: NEW_TABLES_46}
 
 
 def added_columns(version):
@@ -211,7 +218,7 @@ def _connect(path, *, writable=False):
 
 def _schema(connection, version):
     if type(version) is not int or version not in SCHEMAS:
-        raise Refused('only exact schema38, schema42, schema43, schema44 or schema45 is supported')
+        raise Refused('only exact schema38, schema42, schema43, schema44, schema45 or schema46 is supported')
     objects = connection.execute('SELECT type,name,tbl_name,sql FROM sqlite_schema ORDER BY type,name').fetchall()
     if _sha(json.dumps(objects, ensure_ascii=True, separators=(',', ':')).encode()) != SCHEMAS[version]:
         raise Refused('schema SQL differs from pinned released schema')

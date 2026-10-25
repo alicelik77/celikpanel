@@ -175,6 +175,8 @@ test('every dialogue in the product is the shared one', () => {
     'RestartsCard.tsx': 1,
     'RoundcubeUpdateCard.tsx': 1,
     'SecurityUpdatesCard.tsx': 1,
+    // alpha.108: install a major, change a port, move a database, a move's step.
+    'PostgreSQLClusters.tsx': 4,
     // alpha.98: the firewall's confirmation moved with the box to FirewallPanel.tsx.
     'FirewallPanel.tsx': 1,
     'ServiceList.tsx': 7,
