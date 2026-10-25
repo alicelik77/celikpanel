@@ -207,6 +207,38 @@ func TestRealSystemA108PostgreSQLSideBySide(t *testing.T) {
 	if entries, _ := os.ReadDir(pgDumpDir); len(entries) != 0 {
 		t.Fatalf("the dump was left behind: %v", entries)
 	}
+	// Review must-fix: the copy proves rows at copy time only. Unchanged, the
+	// source reads as unchanged; an UPDATE after the copy (row counts the
+	// same) is seen, and the drop of the source is refused with it.
+	if copied.Proof.SourceWrites == nil {
+		t.Fatal("the proof does not keep the source's write counters")
+	}
+	expect := transport.PostgreSQLSourceExpectation{Writes: *copied.Proof.SourceWrites, Tables: copied.Proof.Tables, TablesTotal: copied.Proof.TablesTotal}
+	var unchanged transport.PostgreSQLSourceCheckResponse
+	if err := a.PostgreSQLSourceCheckV1(&transport.PostgreSQLSourceCheckRequest{Database: "a108shop", Port: 5432, Expect: expect}, &unchanged); err != nil || !unchanged.Unchanged {
+		t.Fatalf("an unchanged source = %+v %v", unchanged, err)
+	}
+	a108Psql(t, "5432", "a108shop", "UPDATE orders SET note = 'after the copy' WHERE id = 1;")
+	time.Sleep(2 * time.Second) // the writer's statistics reach the server when it exits
+	var changed transport.PostgreSQLSourceCheckResponse
+	if err := a.PostgreSQLSourceCheckV1(&transport.PostgreSQLSourceCheckRequest{Database: "a108shop", Port: 5432, Expect: expect}, &changed); err != nil || changed.Unchanged || changed.Code != "SOURCE_CHANGED" {
+		t.Fatalf("a source written after the copy = %+v %v", changed, err)
+	}
+	logJSON(t, "source written after the copy", changed)
+	var refusedDrop transport.PostgreSQLDropResponse
+	a108Job(t, "pg_database_drop", "pgdb-a108shop", "5432", func(binding ServiceMutationBinding) bool {
+		if err := a.DropPostgreSQLDatabaseV1(&transport.PostgreSQLDropRequest{ServiceMutationBinding: binding, Database: "a108shop", Port: 5432, KeepPort: 5440, ExpectSource: &expect}, &refusedDrop); err != nil {
+			t.Fatal(err)
+		}
+		return refusedDrop.Dropped
+	})
+	logJSON(t, "drop of a source written after the copy", refusedDrop)
+	if refusedDrop.Dropped || refusedDrop.ErrorCode != "SOURCE_CHANGED" {
+		t.Fatalf("the drop of a changed source = %+v", refusedDrop)
+	}
+	if got := a108Psql(t, "5432", "postgres", "SELECT count(*) FROM pg_database WHERE datname = 'a108shop';"); got != "1" {
+		t.Fatalf("the changed source is gone: %q", got)
+	}
 
 	// 7. Removing postgresql-17 is refused while 17/main holds a108shop.
 	var removal transport.ServiceRemovalPreviewResponse
@@ -230,7 +262,9 @@ func TestRealSystemA108PostgreSQLSideBySide(t *testing.T) {
 		t.Fatalf("removal = %+v", refusedRemoval)
 	}
 
-	// 8. The source dropped only as the explicit step; then the removal runs and keeps 17's data.
+	// 8. The source dropped only as the explicit step (here without the
+	// expectation, after its refusal above was shown; the Panel always sends
+	// it); then the removal runs and keeps 17's data.
 	var dropped transport.PostgreSQLDropResponse
 	a108Job(t, "pg_database_drop", "pgdb-a108shop", "5432", func(binding ServiceMutationBinding) bool {
 		if err := a.DropPostgreSQLDatabaseV1(&transport.PostgreSQLDropRequest{ServiceMutationBinding: binding, Database: "a108shop", Port: 5432, KeepPort: 5440}, &dropped); err != nil {

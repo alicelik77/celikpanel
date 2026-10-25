@@ -78,13 +78,31 @@ func a108AutomaticUpdates(t *testing.T, a *Agent) {
 func TestRealSystemA108VendorLane(t *testing.T) {
 	requireRealSystemA108(t)
 	a := &Agent{}
-	// The base image's own Sury source is the owner's earlier choice; the
-	// default lane starts without it.
+	a108AutomaticUpdates(t, a)
+	// Review must-fix: the base image's own Sury source (php.list) is the
+	// owner's. The lane adds no second source; it offers only the
+	// confinement and the automatic updates for it.
+	if _, err := os.Stat("/etc/apt/sources.list.d/php.list"); err == nil {
+		var owned transport.VendorLanePlan
+		if err := a.VendorLanePlanV1(&EnableRepoRequest{RepoID: "sury"}, &owned); err != nil || owned.Error != "" {
+			t.Fatalf("plan with the owner's source: %v %+v", err, owned)
+		}
+		logJSON(t, "lane plan with the owner's php.list", owned)
+		if step := laneStepOf(owned, laneStepRepository); step.State != laneStateOwner || step.Reason != "owner_source" || !strings.Contains(step.Detail, "php.list") {
+			t.Fatalf("the owner's source is not named as theirs: %+v", step)
+		}
+		if laneStepOf(owned, laneStepConfinement).State != laneStateTodo {
+			t.Fatalf("the owner's source is not offered its confinement: %+v", owned)
+		}
+		if _, err := os.Stat(repoSourcePath("sury")); !os.IsNotExist(err) {
+			t.Fatal("a CelikPanel source exists beside the owner's")
+		}
+	}
+	// The default lane starts without it.
 	if err := os.Remove("/etc/apt/sources.list.d/php.list"); err != nil && !os.IsNotExist(err) {
 		t.Fatal(err)
 	}
 	a107Out(t, "apt-get", "update", "-q")
-	a108AutomaticUpdates(t, a)
 
 	// 1. Without the vendor repository, PHP 8.5 has no candidate: the default lane.
 	if _, candidate := a107Policy(t, "php8.5-fpm"); candidate != "" && candidate != "(none)" {

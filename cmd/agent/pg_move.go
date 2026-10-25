@@ -75,15 +75,18 @@ func pgTableCounts(ctx context.Context, host pgClusterHost, owner string, port i
 	return counts, order, nil
 }
 
-// pgWritesStatement reads one database's write counters (alpha.108 review).
-func pgWritesStatement(database string) string {
-	literal, _ := services.QuotePGStringLiteral(database)
-	return "SELECT tup_inserted || chr(31) || tup_updated || chr(31) || tup_deleted || chr(31) || coalesce(stats_reset::text, '') FROM pg_stat_database WHERE datname = " + literal + ";"
+// pgWritesStatement reads, inside the database, its user tables' write
+// counters (rows inserted, updated, deleted, from pg_stat_user_tables) and
+// when its statistics were last reset (alpha.108 review). User tables only:
+// autovacuum's ANALYZE writes the system catalogs and must not read as the
+// application writing.
+func pgWritesStatement(string) string {
+	return "SELECT coalesce(sum(n_tup_ins), 0) || chr(31) || coalesce(sum(n_tup_upd), 0) || chr(31) || coalesce(sum(n_tup_del), 0) || chr(31) || coalesce((SELECT stats_reset::text FROM pg_stat_database WHERE datname = current_database()), '') FROM pg_stat_user_tables;"
 }
 
 // pgReadWrites reads the write counters of database on the cluster.
 func pgReadWrites(ctx context.Context, host pgClusterHost, owner string, port int, database string) (transport.PostgreSQLWriteMark, error) {
-	out, err := host.query(ctx, owner, port, "postgres", pgWritesStatement(database))
+	out, err := host.query(ctx, owner, port, database, pgWritesStatement(database))
 	if err != nil {
 		return transport.PostgreSQLWriteMark{}, err
 	}
