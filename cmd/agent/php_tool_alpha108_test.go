@@ -202,7 +202,11 @@ func TestA108ProofPreparesTheCheckFirst(t *testing.T) {
 	recorded := map[string]*transport.PHPToolCause{}
 	ops := proveFake(host, nil, nil, recorded)
 	prepared := false
-	ops.prepare = func(context.Context, string) error { prepared = true; host.steps = append(host.steps, "prepare"); return nil }
+	ops.prepare = func(context.Context, string) error {
+		prepared = true
+		host.steps = append(host.steps, "prepare")
+		return nil
+	}
 	resp := provePHPToolWith(context.Background(), ops, phpToolPHPPgAdmin, false)
 	if !prepared || !resp.Proved || !reflect.DeepEqual(host.steps, []string{"prepare", "probe:8.4"}) {
 		t.Fatalf("resp = %+v steps = %v", resp, host.steps)
