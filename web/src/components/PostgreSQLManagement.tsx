@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Database, Settings, ShieldCheck, FileCode, type LucideIcon } from 'lucide-react';
 import { ServiceShell } from './ServiceShell';
 import { RepoCard } from './RepoCard';
+import { PostgreSQLClustersCard } from './PostgreSQLClusters';
 import { ComponentPanels } from './ComponentDetail';
 import { ConfigEditor } from './ConfigEditor';
 import { PostgreSQLSettings } from './PostgreSQLSettings';
@@ -96,6 +97,8 @@ export function PostgreSQLManagement({ onBack }: PostgreSQLManagementProps) {
                 Üstteki dosya listesiyle aynı okumadan çizilirler; o okuma
                 sürerken ya da başarısız olduğunda bunu üstteki kart bir kez,
                 tek bir Tekrar dene ile söyler. */}
+            {/* alpha.108: every major as its own cluster on its own port. */}
+            <div className="mt-6"><PostgreSQLClustersCard /></div>
             {/* alpha.107: the PGDG repository's card (D-038 §12). */}
             <div className="mt-6 empty:hidden"><RepoCard serviceId="postgresql" /></div>
             {known && <ComponentPanels serviceId="postgresql" show={{ configs: false }} />}

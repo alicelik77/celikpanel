@@ -4059,6 +4059,9 @@ export interface RemovalSimulation {
     /** alpha.107 (D-038 §8): a database engine is removed, not purged; where its data stays. */
     keeps_data?: boolean;
     data_paths?: string[];
+    /** alpha.108 (D-038 §2): PostgreSQL clusters of this removal that still hold databases, or could not be asked. */
+    holds_databases?: string[];
+    databases_unknown?: string[];
 }
 const SIMULATION_STATES: ReadonlySet<string> = new Set(['checked', 'busy', 'unknown', 'unsupported', 'not_installed']);
 const COLLATERAL_REASONS: ReadonlySet<string> = new Set(['component', 'reverse_dependency', 'would_install']);
@@ -4084,6 +4087,8 @@ function decodeRemovalSimulation(value: unknown): RemovalSimulation | null {
         state: v.state as RemovalSimulation['state'], remove: v.remove, collateral, bound_tools: v.bound_tools,
         default_runtime: v.default_runtime, refuses: v.refuses,
         ...(v.keeps_data === true ? { keeps_data: true, data_paths: isStrings(v.data_paths) ? v.data_paths : [] } : {}),
+        ...(isStrings(v.holds_databases) && v.holds_databases.length > 0 ? { holds_databases: v.holds_databases } : {}),
+        ...(isStrings(v.databases_unknown) && v.databases_unknown.length > 0 ? { databases_unknown: v.databases_unknown } : {}),
     };
 }
 const REMOVAL_HOSTED_KINDS: ReadonlySet<string> = new Set(['sites', 'php_sites', 'node_sites', 'databases', 'mail_addresses', 'mail_domains', 'mailboxes', 'certificates', 'firewall', 'unrecorded', 'vpn_peers', 'ftp_accounts']);
@@ -4337,6 +4342,13 @@ export function simulationFindings(t: Translate, { name, whole, serviceId, simul
         }
         details.push({ key: 'collateral', sim: 'collateral', text: t('services.removal.sim.refused', { name }) });
         if (installs.length > 0) details.push({ key: 'installs', sim: 'installs', text: t('services.removal.sim.installs', { packages: installs.join(', ') }) });
+    }
+    // alpha.108: a PostgreSQL cluster of this removal still holds databases.
+    if (simulation.holds_databases?.length) {
+        causes.push({ key: 'pg-holds', sim: 'pg-holds', text: t('pgc.removal.holds', { list: simulation.holds_databases.join('; ') }) });
+    }
+    if (simulation.databases_unknown?.length) {
+        causes.push({ key: 'pg-unknown', sim: 'pg-unknown', text: t('pgc.removal.unknown', { list: simulation.databases_unknown.join(', ') }) });
     }
     if (simulation.refuses && causes.length === 0) causes.push({ key: 'other', text: t('services.removal.why.other') });
     if (simulation.state === 'busy') notes.push({ key: 'busy', sim: 'busy', text: t('services.removal.sim.busy') });

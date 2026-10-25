@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Database, Lightbulb } from 'lucide-react';
 import { ServiceShell } from './ServiceShell';
 import { ComponentPanels } from './ComponentDetail';
+import { LifeLine } from './LifeLine';
 import { MariaDBSettings } from './MariaDBSettings';
 import { useI18n } from '../i18n';
 import { useComponentConfigFiles } from '../lib/managedServices';
@@ -115,6 +116,9 @@ export function MariaDBManagement({ onBack }: MariaDBManagementProps) {
                 Üstteki dosya listesiyle aynı okumadan çizilirler; o okuma
                 sürerken ya da başarısız olduğunda bunu üstteki kart bir kez,
                 tek bir Tekrar dene ile söyler. */}
+            {/* alpha.108: PostgreSQL runs majors side by side; MariaDB cannot,
+                and its in-place major change is not offered (D-038 §7). */}
+            <div className="mt-6" data-mariadb-majors=""><LifeLine tone="info">{t('pgc.mariadb.noSideBySide')}</LifeLine></div>
             {known && <ComponentPanels serviceId="mariadb" show={{ configs: false }} />}
         </ServiceShell>
     );
