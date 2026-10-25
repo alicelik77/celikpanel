@@ -392,6 +392,14 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 		if claim.action != "prove" || claim.packageName != "" {
 			return false
 		}
+		// alpha.108: "Check again" in a tool's Manage window proves it on
+		// the version it runs on, inside its own "php_tool_prove" job (no
+		// fallback: a proof never moves a tool).
+		// "Yeniden denetle" aracı kendi işinde, çalıştığı sürümde kanıtlar.
+		if (claim.target == "webmail" || claim.target == "phpmyadmin" || claim.target == "phppgadmin") &&
+			serviceMutationJobMatches(job, "php_tool_prove", claim.target, "") {
+			return true
+		}
 		switch claim.target {
 		case "phpmyadmin", "phppgadmin":
 			return serviceMutationJobMatches(job, "service_install", claim.target, "")

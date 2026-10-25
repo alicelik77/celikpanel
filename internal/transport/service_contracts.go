@@ -577,11 +577,17 @@ type PHPToolBinding struct {
 	ProofCause  *PHPToolCause `json:"proof_cause,omitempty"`
 	// ProofTriedOthers: other installed versions were tried too.
 	ProofTriedOthers bool `json:"proof_tried_others,omitempty"`
+	// FPMState (alpha.108) is the version's PHP-FPM unit state read now
+	// ("active", "inactive", "failed", "activating", ... or "unknown"); ""
+	// when no versioned unit applies. With SocketReady it is what may say
+	// "not running"; a failed proof alone never does.
+	FPMState string `json:"fpm_state,omitempty"`
 }
 
 // PHPToolCause says why a tool move failed, in a form a screen translates
 // (alpha.104). Kind: missing_extensions (Extensions), wrong_version
-// (Running), no_answer, http_status (Status), served_as_file, tool_error,
+// (Running), no_answer, check_unreadable (Status; alpha.108: PHP-FPM could
+// not open CelikPanel's check script), http_status (Status), served_as_file, tool_error,
 // not_tool_page, not_running, version_not_installed, tool_not_installed,
 // unsupported, extensions_install_failed (Extensions), fpm_reload_failed,
 // config_owner_edited (Detail: the file), config_prepare_failed,
@@ -661,6 +667,9 @@ type BindPHPToolResponse struct {
 	Detail string `json:"detail,omitempty"`
 	// Cause is the same, structured and translatable.
 	Cause *PHPToolCause `json:"cause,omitempty"`
+	// ProofOnly (alpha.108): the tool was already configured on that
+	// version, so nothing was rewritten or reloaded; only the proof ran.
+	ProofOnly bool `json:"proof_only,omitempty"`
 }
 
 // NodePatch is one installed Node.js version and the newest release on its

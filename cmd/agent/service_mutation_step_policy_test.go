@@ -73,6 +73,7 @@ func TestServiceMutationStepPolicyAllowsEveryDeclaredWorkflowRow(t *testing.T) {
 		{"configure webmail profile", mutationPolicyJob("mail_profile_install", core.MailProfileWebmail, ""), mutationPolicyClaim(serviceMutationStepConfigureWebmail, "roundcube", "", "configure")},
 		{"bind a PHP tool", mutationPolicyJob("php_tool_bind", "phpmyadmin", "8.5"), mutationPolicyClaim(serviceMutationStepBindPHPTool, "phpmyadmin", "8.5", "bind")},
 		{"prove a PHP tool just installed", mutationPolicyJob("service_install", "phppgadmin", ""), mutationPolicyClaim(serviceMutationStepProvePHPTool, "phppgadmin", "", "prove")},
+		{"re-prove a PHP tool from its Manage window", mutationPolicyJob("php_tool_prove", "phppgadmin", ""), mutationPolicyClaim(serviceMutationStepProvePHPTool, "phppgadmin", "", "prove")},
 		{"confine an enabled repository", mutationPolicyJob("repo_confine", "sury", ""), mutationPolicyClaim(serviceMutationStepConfineRepo, "sury", "", "confine")},
 		{"move an application's files", mutationPolicyJob("app_account", "site-7", ""), mutationPolicyClaim(serviceMutationStepMoveAppFilesOwner, "site-7", "", "move")},
 		{"update webmail", mutationPolicyJob("webmail_update", "roundcube", "1.6.20"), mutationPolicyClaim(serviceMutationStepUpdateRoundcube, "roundcube", "1.6.20", "update")},

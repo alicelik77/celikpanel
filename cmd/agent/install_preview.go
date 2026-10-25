@@ -740,6 +740,10 @@ type phpToolProveOps struct {
 	bind       phpToolBindOps
 	candidates func(tool, current string) []string
 	record     func(tool string, cause *transport.PHPToolCause, triedOthers bool) error
+	// prepare puts CelikPanel's PHP check in place with readable modes
+	// before the proof (alpha.108: a check left unreadable by an earlier
+	// Agent is repaired by the next proof). nil in tests that do not need it.
+	prepare func() error
 }
 
 // phpToolProofCandidates are the installed versions, other than current,
@@ -765,7 +769,7 @@ func phpToolProofCandidates(tool, current string) []string {
 }
 
 func hostPHPToolProveOps() phpToolProveOps {
-	return phpToolProveOps{bind: hostPHPToolBindOps(), candidates: phpToolProofCandidates, record: writePHPToolProof}
+	return phpToolProveOps{bind: hostPHPToolBindOps(), candidates: phpToolProofCandidates, record: writePHPToolProof, prepare: ensurePHPToolCheckScript}
 }
 
 func causeOfBindError(err error, version string) *transport.PHPToolCause {
@@ -800,6 +804,17 @@ func provePHPToolWith(ctx context.Context, ops phpToolProveOps, tool string, all
 	state := ops.bind.state(tool)
 	current := state.version()
 	var first *transport.PHPToolCause
+	if ops.prepare != nil {
+		if err := ops.prepare(); err != nil {
+			cause := transport.PHPToolCause{Kind: "config_prepare_failed", Version: current, Detail: err.Error()}
+			resp.Version = current
+			resp.Attempts = append(resp.Attempts, transport.PHPToolAttempt{Version: current, Cause: &cause})
+			if recordErr := ops.record(tool, &cause, false); recordErr != nil {
+				resp.Error = "the failed proof could not be recorded: " + recordErr.Error()
+			}
+			return resp
+		}
+	}
 	if state.Socket != "" {
 		err := ops.bind.httpProbe(ctx, tool, current)
 		if err == nil {
