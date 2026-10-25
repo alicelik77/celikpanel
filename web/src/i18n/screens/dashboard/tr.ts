@@ -3,6 +3,8 @@
 import type { DashboardScreenKey } from './en';
 
 export const trDashboardScreens: Record<DashboardScreenKey, string> = {
+    // ---- alpha.108 slice d ----
+    'dashboard.audit.action.versions.customer_offer': 'müşterilere sunulan sürümleri değiştirdi ({target})',
     'audit.title': 'Denetim günlüğü',
     'audit.subtitle': 'Bu sunucuda kim ne yaptı, en yeniden eskiye.',
     'audit.empty': 'Henüz kayıtlı etkinlik yok',

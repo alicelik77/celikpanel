@@ -9,6 +9,8 @@
 // eklenir; büyüyen parçanın bölünmesi check-bundle-budget.mjs başlığında.
 
 export const enDashboardScreens = {
+    // ---- alpha.108 slice d ----
+    'dashboard.audit.action.versions.customer_offer': 'changed which versions customers are offered ({target})',
     'audit.title': 'Audit log',
     'audit.subtitle': 'Who did what on this server, newest first.',
     'audit.empty': 'No activity recorded yet',

@@ -32,7 +32,9 @@ func mountTraceTree(t *testing.T, ss map[string]string, ssErr error) string {
 	t.Helper()
 	root := t.TempDir()
 	restoreGlobs, restoreUnits, restoreSS := removalTraceWebConfigGlobs, removalTraceUnitDir, removalTraceSS
-	t.Cleanup(func() { removalTraceWebConfigGlobs, removalTraceUnitDir, removalTraceSS = restoreGlobs, restoreUnits, restoreSS })
+	t.Cleanup(func() {
+		removalTraceWebConfigGlobs, removalTraceUnitDir, removalTraceSS = restoreGlobs, restoreUnits, restoreSS
+	})
 	removalTraceWebConfigGlobs = []string{
 		filepath.Join(root, "nginx/nginx.conf"), filepath.Join(root, "nginx/sites-enabled/*"), filepath.Join(root, "nginx/conf.d/*.conf"),
 		filepath.Join(root, "apache2/sites-enabled/*"),
@@ -182,7 +184,9 @@ func TestRemovalPreviewCarriesTheTraces(t *testing.T) {
 		unitsMatching:       func(string) []string { return nil },
 	}
 	serviceRemovalPreviewWithOps(context.Background(), &transport.ServiceRemovalPreviewRequest{ID: "mariadb"}, &resp, ops,
-		func(string) (packageRemovalExecutor, error) { return packageRemovalExecutor{}, errors.New("no executor in this test") })
+		func(string) (packageRemovalExecutor, error) {
+			return packageRemovalExecutor{}, errors.New("no executor in this test")
+		})
 	if len(resp.Traces) != 1 || resp.TracesState != "checked" || !asked.ownUnit("mariadb.service") {
 		t.Fatalf("preview traces = %+v %s scope=%v", resp.Traces, resp.TracesState, asked.units)
 	}
