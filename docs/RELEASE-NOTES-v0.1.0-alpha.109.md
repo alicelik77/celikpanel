@@ -15,10 +15,10 @@ Every server with webmail, and every server where installs are confirmed. On
 Frankfurt the Roundcube update to 1.6.20 failed and was put back, the lock then
 read "another CelikPanel operation is still running", the row offered "Update
 available" again without saying what had happened, and webmail opened with plain
-inputs. The owner also did not know how to open webmail, and found the install
+inputs. The owner also asked how to open webmail, and found the install
 confirmation confusing as soon as it named more than one package. What the owner
 does on each server is in the
-[operation guidance](OPERATION-GUIDANCE.md#frankfurts-webmail-update-the-webmail-link-and-install-confirmations-2026-10-26).
+[operation guidance](OPERATION-GUIDANCE.md#frankfurts-webmail-update-and-install-confirmations-2026-10-26).
 
 ## Webmail updates that work on servers set up by older releases
 
@@ -39,25 +39,25 @@ does on each server is in the
   last update did until the server runs that release: updated, failed and put back
   with the cause, not changed (with the reason), put back but not answering, could
   not be put back, interrupted, or not known, each with who acts and the next step.
-- **The proof also loads webmail's stylesheet** and requires it as CSS, so a webmail
-  that would open without its layout never passes.
+- **The proof also loads webmail's stylesheet** through the Agent's own webmail
+  server and requires it as CSS, so a webmail whose files cannot be read never passes.
+  An update interrupted by a panel restart says "updated" only when the new release
+  is installed and passes this proof; otherwise its result is "not known".
 
-## Webmail opens with its interface
+## Webmail's interface waits for its own address
 
-Webmail behind the panel received the panel's own security policy, which allows
-scripts only from files and forbids frames. Roundcube starts itself with an inline
-script and shows messages in same-origin frames, so its interface never started:
-plain inputs on the login page and, after signing in, no working mailbox. This was
-not caused by the rollback; it was so since webmail was served through the panel.
-Webmail's answers now carry their own policy (frames only from the same origin,
-Roundcube's own `X-Frame-Options`); nosniff, the referrer policy and HSTS stay.
-
-## Open webmail
-
-The Roundcube row and its Manage page show **Open webmail** with the full address
-while webmail answers there, and say that mailbox users sign in with their email
-address and password and need no panel account. The domain's mail screen says the
-same address.
+Webmail is served on the panel's own address (`/webmail/`). There the panel's
+security policy applies to it on purpose: scripts only from files and no frames.
+That policy protects the administrator's session, because a script running on the
+panel's address could use the panel's API as the signed-in administrator, and
+Roundcube has had such cross-site-scripting flaws. Roundcube starts itself with an
+inline script and shows messages in frames, so **on the panel's address its
+interface does not render** (plain inputs on the login page; no working mailbox
+after signing in). This is by design and was so before this release; the rollback
+did not cause it. The panel keeps its strict policy on `/webmail/`, and webmail is
+held back until it gets its own address in the next step. The update and its proof
+work (they go through the Agent's own webmail server); **Open webmail** is not
+offered yet.
 
 ## Install confirmations people can read
 
@@ -79,9 +79,9 @@ alpha.108.
 
 ## Evidence
 
-- Agent 4827 passed, 29 skipped (as root in a clean mount namespace); the Agent
+- Agent 4828 passed, 29 skipped (as root in a clean mount namespace); the Agent
   package also passes as the unprivileged user `nobody`, as CI runs it; Panel 3448
-  passed, 6 skipped; every internal package passes; web 1920 passed, and the
+  passed, 6 skipped; every internal package passes; web 1921 passed, and the
   production build within its budgets. The release-recovery harness is unchanged
   (schema 46) and is not part of this candidate's evidence. The race shards could not be run locally (no C
   compiler in that guest); CI runs them.

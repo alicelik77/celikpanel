@@ -7137,7 +7137,7 @@ dağıtımın PHP'sinde kalır.
   sanal makine denemesiyle değil. **Hiçbir P0 işi kapanmaz ya da ilerlemez**;
   P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır.
 
-### Aday v0.1.0-alpha.109 (eski yapılandırmalardan da çalışan kalıcı bir işlem olarak web postası güncellemesi; panelin arkasındaki web postası; kurulum onayları; Agent web postası güncellemesi ve PHP aracı kanıtı yolları; şema değişmez; ilke 1, 2 ve 6; D-022; D-024; D-038; 26 Ekim 2026)
+### Aday v0.1.0-alpha.109 (eski yapılandırmalardan da çalışan kalıcı bir işlem olarak web postası güncellemesi; panelin kökeninde bekletilen web postası arayüzü; kurulum onayları; Agent web postası güncellemesi ve PHP aracı kanıtı yolları; şema değişmez; ilke 1, 2 ve 6; D-022; D-024; D-038; 26 Ekim 2026)
 
 D-025 ilke 2 (kanıtın bir anlamı vardır): bir web postası güncellemesinin sonucu
 panelin işlem kaydına yazılır ve ekran onu geri okur; gelmeyen bir yanıt bilinmiyor
@@ -7157,12 +7157,14 @@ kirasını tutar; aynı istek kimliği aynı işlemi döndürür.
   adını verdiği stil dosyasını çeker (`asset_unreadable`).
 - **Panel değişiklikleri.** `POST /api/v1/service/roundcube/update` bir
   `webmail_update` hizmet işlemi kaydeder ve 202 döner; iş istekten bağımsız bir
-  bağlamda sürer; `GET` `last_update` ve `webmail_ready` ekler. Web postası yanıtları
-  panelin kuralı yerine `frame-ancestors 'self'` ve Roundcube'un kendi
-  `X-Frame-Options` değerini taşır.
+  bağlamda sürer; `GET` `last_update` ve `webmail_ready` ekler. Panelin kökenindeki web
+  postası panelin sıkı kuralını korur (`script-src 'self'`, `X-Frame-Options: DENY`);
+  bu yüzden kendi kökenine kavuşana dek arayüzü orada tasarım gereği çizilmez; yarıda
+  kalan bir güncelleme yalnız salt okunur `Agent.WebmailProofV1` geçince "güncellendi"
+  der.
 - **Şema.** Yok (46): var olan `service_operations` tablosu.
 - **Kurtarma.** Başarısız kanıt önceki ağacı bayt bayt geri koyar (alpha.107'den beri
   olduğu gibi); reddedilen denetim konumu önceki nginx dosyasını geri koyar; yarıda
   kalan güncelleme salt okunarak uzlaştırılır.
-- **Kanıt.** Agent 4827 geçti, 29 atlandı (`nobody` olarak da); Panel 3448 geçti, 6 atlandı; iç paketler geçer; web 1920 geçti; sahte veriyle tarayıcı bakışı; atılabilir bir Debian 13 sanal makinesinde Frankfurt'un 404'ünü yeniden üreten ve güncellemeyi kanıtlayan bir gerçek sistem denemesi ([deploy/e2e/d038/alpha109-debian13-20261026](../deploy/e2e/d038/alpha109-debian13-20261026/README.md), arşiv SHA-256 `e77d1ab4…960f7ee`); yarış bölümleri yerelde koşturulmadı. Kurulu bir sunucuda ölçülmedi. **Hiçbir P0 işi kapanmaz ya
+- **Kanıt.** Agent 4828 geçti, 29 atlandı (`nobody` olarak da); Panel 3448 geçti, 6 atlandı; iç paketler geçer; web 1921 geçti; sahte veriyle tarayıcı bakışı; atılabilir bir Debian 13 sanal makinesinde Frankfurt'un 404'ünü yeniden üreten ve güncellemeyi kanıtlayan bir gerçek sistem denemesi ([deploy/e2e/d038/alpha109-debian13-20261026](../deploy/e2e/d038/alpha109-debian13-20261026/README.md), arşiv SHA-256 `e77d1ab4…960f7ee`); yarış bölümleri yerelde koşturulmadı. Kurulu bir sunucuda ölçülmedi. **Hiçbir P0 işi kapanmaz ya
   da ilerlemez**; P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır.

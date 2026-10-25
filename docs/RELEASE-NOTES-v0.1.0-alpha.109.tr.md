@@ -13,10 +13,10 @@ kaydından sonraki `main`'den `fix/alpha109-webmail-update` dalında yazıldı
 Web postası olan ve kurulum onaylanan her sunucu. Frankfurt'ta Roundcube'un 1.6.20
 güncellemesi başarısız oldu ve geri alındı; ardından kilit "Başka bir CelikPanel
 işlemi hâlâ sürüyor" dedi, satır ne olduğunu söylemeden yeniden "Güncelleme var"
-gösterdi ve web postası düz kutularla açıldı. Sahip ayrıca web postasını nasıl
-açacağını bilmiyordu ve kurulum onayını birden fazla paket adı geçince kafa
+gösterdi ve web postası düz kutularla açıldı. Sahip ayrıca web postasının nasıl
+açılacağını sordu ve kurulum onayını birden fazla paket adı geçince kafa
 karıştırıcı buldu. Sahibin her sunucuda yapacakları
-[işlem rehberinde](OPERATION-GUIDANCE.tr.md#frankfurtun-web-postası-güncellemesi-web-postası-bağlantısı-ve-kurulum-onayları-26-ekim-2026).
+[işlem rehberinde](OPERATION-GUIDANCE.tr.md#frankfurtun-web-postası-güncellemesi-ve-kurulum-onayları-26-ekim-2026).
 
 ## Eski sürümlerle kurulmuş sunucularda da çalışan web postası güncellemesi
 
@@ -38,26 +38,24 @@ karıştırıcı buldu. Sahibin her sunucuda yapacakları
   ve nedeniyle geri kondu; değiştirilmedi (gerekçesiyle); geri kondu ama yanıt
   vermiyor; geri konamadı; yarıda kaldı ya da bilinmiyor — her biri kimin ne
   yapacağıyla.
-- **Kanıt web postasının stil dosyasını da yükler** ve CSS olarak gelmesini ister;
-  düzeni olmadan açılacak bir web postası asla geçmez.
+- **Kanıt web postasının stil dosyasını da** Agent'ın kendi web postası sunucusundan
+  yükler ve CSS olarak gelmesini ister; dosyaları okunamayan bir web postası asla
+  geçmez. Panelin yeniden başlamasıyla yarıda kalan bir güncelleme, yalnız yeni sürüm
+  kuruluyken ve bu kanıtı geçerken "güncellendi" der; aksi hâlde sonucu "bilinmiyor"dur.
 
-## Web postası arayüzüyle açılır
+## Web postasının arayüzü kendi adresini bekler
 
-Panelin arkasındaki web postası, panelin kendi güvenlik kuralını alıyordu: betiklere
-yalnız dosyadan izin verir, çerçeveleri yasaklar. Roundcube kendini satır içi bir
-betikle başlatır ve iletileri aynı kökenli çerçevelerde gösterir; bu yüzden arayüzü
-hiç başlamadı: giriş sayfasında düz kutular, girişten sonra da çalışan bir posta
-kutusu yok. Bunu geri alma yapmadı; web postası panel üzerinden sunulduğundan beri
-böyleydi. Web postasının yanıtları artık kendi kuralını taşır (çerçeveler yalnız
-aynı kökenden, Roundcube'un kendi `X-Frame-Options` değeri); nosniff, yönlendiren
-kuralı ve HSTS kalır.
-
-## Web postasını aç
-
-Roundcube satırı ve Yönet sayfası, web postası orada yanıt verirken tam adresiyle
-**Web postasını aç** gösterir ve posta kutusu kullanıcılarının e-posta adresi ve
-parolasıyla girdiğini, panel hesabı gerekmediğini söyler. Alan adının posta ekranı
-da aynı adresi söyler.
+Web postası panelin kendi adresinde (`/webmail/`) sunulur. Orada panelin güvenlik
+kuralı ona bilerek uygulanır: betikler yalnız dosyadan, çerçeve yok. Bu kural
+yöneticinin oturumunu korur; çünkü panelin adresinde çalışan bir betik panelin
+API'sini oturum açmış yönetici olarak kullanabilir ve Roundcube'da bu tür siteler
+arası betik açıkları görüldü. Roundcube kendini satır içi bir betikle başlatır ve
+iletileri çerçevelerde gösterir; bu yüzden **panelin adresinde arayüzü çizilmez**
+(giriş sayfasında düz kutular; girişten sonra çalışan bir posta kutusu yok). Bu
+tasarım gereğidir ve bu sürümden önce de böyleydi; geri alma buna yol açmadı. Panel
+`/webmail/` üzerinde sıkı kuralını korur; web postası bir sonraki adımda kendi
+adresine kavuşana dek bekletilir. Güncelleme ve kanıtı çalışır (Agent'ın kendi web
+postası sunucusundan geçer); **Web postasını aç** henüz sunulmaz.
 
 ## Okunabilen kurulum onayları
 
@@ -79,9 +77,9 @@ kendi biçimidir.
 
 ## Kanıt
 
-- Agent 4827 geçti, 29 atlandı (temiz bir bağlama ad alanında root olarak); Agent
+- Agent 4828 geçti, 29 atlandı (temiz bir bağlama ad alanında root olarak); Agent
   paketi CI'daki gibi yetkisiz `nobody` kullanıcısıyla da geçer; Panel 3448 geçti,
-  6 atlandı; her iç paket geçer; web 1920 geçti ve üretim derlemesi bütçelerinde.
+  6 atlandı; her iç paket geçer; web 1921 geçti ve üretim derlemesi bütçelerinde.
   Sürüm kurtarma düzeneği değişmedi (şema 46) ve bu adayın kanıtına girmez. Yarış
   bölümleri yerelde koşturulamadı (o konukta C derleyicisi yok); CI koşturur.
 - Saklanan temel görüntüden atılabilir bir Debian 13 sanal makinesinde, Agent
