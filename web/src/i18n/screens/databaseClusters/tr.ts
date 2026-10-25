@@ -82,7 +82,7 @@ export const trDatabaseClustersScreens: Record<DatabaseClustersScreenKey, string
     'pgc.move.steps': 'CelikPanel veritabanını kopyalar: bir dökümü, gerektirdiği rollerin kaynaktaki tanımlarıyla hedefte oluşturulması (parolalar dahil, asla gösterilmez), geri yükleme, ardından her tablonun satırlarının iki tarafta sayılması. Kaynak veritabanı değişmez ve olduğu yerde kalır.',
     'pgc.move.recordAfter': 'CelikPanel’in {database} kaydı, kanıtı gördükten sonra ayrı bir adım olarak siz geçirene dek kaynağı göstermeye devam eder. Sonra port {port}’a bağlanır; kaynağı kaldırana dek geri dönebilirsiniz.',
     'pgc.move.unrecorded': 'CelikPanel’de {database} kaydı yok: kopyadan sonra uygulamanızı yeni porta kendiniz yöneltin, sonra kaynağı kaldırın.',
-    'pgc.move.writes': 'Kopyalanırken veritabanına yazanı durdurun: kopya başladıktan sonra kaynağa yazılan satırlar sayıları farklı kılar ve kopya o zaman yeniden kaldırılır.',
+    'pgc.move.writes': 'Kopyalanırken veritabanına yazanı durdurun: kopya başladıktan sonra kaynağa yazılan satırlar sayıları farklı kılar ve kopya o zaman yeniden kaldırılır. Kanıt yalnız kopyalandığı andaki satırları kapsar: kaynağa kopyadan sonra yazılırsa CelikPanel bunu görür ve siz yeniden kopyalayana dek geçişi ve kaynağın kaldırılmasını reddeder.',
     'pgc.move.confirm': 'Kanıtla kopyala',
     'pgc.move.busy': '{database} kopyalanıyor ve her tablo iki tarafta sayılıyor. Büyük bir veritabanı birkaç dakika sürer; bir şey yapmanız gerekmiyor. Kaynak değişmez.',
     'pgc.move.copied': '{database}, {from} kümesinden {to} kümesine kopyalandı ve her tablonun iki tarafta aynı satırları var. CelikPanel’in kaydı hâlâ {from} kümesini gösteriyor: hazır olduğunuzda aşağıdan geçirin.',
@@ -122,6 +122,8 @@ export const trDatabaseClustersScreens: Record<DatabaseClustersScreenKey, string
     'pgc.moves.done.switch': 'CelikPanel’in {database} kaydı artık {to} kümesini gösteriyor (port {port}). Uygulamanızın portunu {port} yapın.',
     'pgc.moves.done.switch-back': 'CelikPanel’in {database} kaydı yeniden {from} kümesini gösteriyor (port {port}).',
     'pgc.moves.done.drop-source': '{database}, {from} kümesinden kaldırıldı; {to} üzerinde yaşıyor.',
+    'pgc.moves.sourceChanged': '{database} kopyadan sonra {from} üzerinde yazıldı; bu yüzden kopyada her şey yok. Hiçbir şey değiştirilmedi. Yeniden kopyalayın (önce bu kopyayı kaldırın) ya da önce uygulamanızı kopyaya yöneltip sonra yeniden kopyalayın.',
+    'pgc.moves.sourceUnknown': '{database} veritabanına {from} üzerinde kopyadan sonra yazılıp yazılmadığı kanıtlanamadı; bu yüzden hiçbir şey değiştirilmedi. Yeniden deneyin; böyle kalırsa yeniden kopyalayın.',
     'pgc.moves.done.drop-copy': '{database} için {to} üzerindeki kopya kaldırıldı.',
 
     // ---- the removal dialogue and the MariaDB page ----
@@ -136,6 +138,7 @@ export const trDatabaseClustersScreens: Record<DatabaseClustersScreenKey, string
     'dashboard.audit.action.postgresql.database.copy': 'bir PostgreSQL veritabanını kanıtla başka bir kümeye kopyaladı ({target})',
     'dashboard.audit.action.postgresql.database.copy.failed': 'bir PostgreSQL veritabanını başka bir kümeye kopyalayamadı ({target})',
     'dashboard.audit.action.postgresql.database.switch': 'bir PostgreSQL veritabanının kaydını kopyasına geçirdi ({target})',
+    'dashboard.audit.action.postgresql.database.switch.failed': 'bir PostgreSQL veritabanının kaydını kopyasına geçiremedi ({target})',
     'dashboard.audit.action.postgresql.database.switch_back': 'bir PostgreSQL veritabanının kaydını geri geçirdi ({target})',
     'dashboard.audit.action.postgresql.database.drop_source': 'taşınan bir PostgreSQL veritabanının kaynağını kaldırdı ({target})',
     'dashboard.audit.action.postgresql.database.drop_copy': 'bir PostgreSQL veritabanının kopyasını kaldırdı ({target})',

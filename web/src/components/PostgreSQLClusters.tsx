@@ -577,7 +577,14 @@ function MoveActionDialog({ move, action, onClose }: { move: PGMove; action: Mov
                 onClose({ tone: 'ok', text: t(`pgc.moves.done.${action}` as TranslationKey, vars) });
                 return;
             }
-            setFailure(t('pgc.failed', { reason: String(answer.body.error ?? '') }));
+            // alpha.108 review: the source written after the copy is said in
+            // words, with the next action.
+            const code = String(answer.body.code ?? '');
+            setFailure(/SOURCE_CHANGED$/.test(code)
+                ? t('pgc.moves.sourceChanged', vars)
+                : /SOURCE_UNKNOWN$/.test(code)
+                    ? t('pgc.moves.sourceUnknown', vars)
+                    : t('pgc.failed', { reason: String(answer.body.error ?? '') }));
         } catch {
             onClose({ tone: 'bad', text: t('pgc.lost') });
         } finally {

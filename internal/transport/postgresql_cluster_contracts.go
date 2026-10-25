@@ -168,6 +168,46 @@ type PostgreSQLCopyProof struct {
 	Owner         string                 `json:"owner,omitempty"`
 	SizeBytes     int64                  `json:"size_bytes,omitempty"`
 	Seconds       int                    `json:"seconds,omitempty"`
+	// SourceWrites (alpha.108 review) is the source database's write
+	// counters when the copy was proved. The copy proves rows at copy time
+	// only; a switch and the drop of the source read them again and refuse
+	// when the source was written after the copy.
+	SourceWrites *PostgreSQLWriteMark `json:"source_writes,omitempty"`
+}
+
+// PostgreSQLWriteMark is one database's cumulative write counters from
+// pg_stat_database (rows inserted, updated, deleted) and when they were last
+// reset; a different reset means the counters cannot prove anything.
+type PostgreSQLWriteMark struct {
+	Inserted   int64  `json:"inserted"`
+	Updated    int64  `json:"updated"`
+	Deleted    int64  `json:"deleted"`
+	StatsReset string `json:"stats_reset,omitempty"`
+}
+
+// PostgreSQLSourceExpectation is what the source looked like at the copy:
+// its write counters and its tables' rows (the stored list may be shortened;
+// TablesTotal is the real number).
+type PostgreSQLSourceExpectation struct {
+	Writes      PostgreSQLWriteMark    `json:"writes"`
+	Tables      []PostgreSQLTableCount `json:"tables"`
+	TablesTotal int                    `json:"tables_total"`
+}
+
+// PostgreSQLSourceCheckRequest asks, read only, whether a database is still
+// as it was at the copy.
+type PostgreSQLSourceCheckRequest struct {
+	Database string                      `json:"database"`
+	Port     int                         `json:"port"`
+	Expect   PostgreSQLSourceExpectation `json:"expect"`
+}
+
+// PostgreSQLSourceCheckResponse: Unchanged, or Code SOURCE_CHANGED (written
+// after the copy) / SOURCE_UNKNOWN (it could not be read) with Error.
+type PostgreSQLSourceCheckResponse struct {
+	Unchanged bool   `json:"unchanged"`
+	Code      string `json:"code,omitempty"`
+	Error     string `json:"error,omitempty"`
 }
 
 // PostgreSQLCopyResponse: Copied and Proof.Equal when the copy is complete
@@ -188,6 +228,9 @@ type PostgreSQLDropRequest struct {
 	Database string `json:"database"`
 	Port     int    `json:"port"`
 	KeepPort int    `json:"keep_port"`
+	// ExpectSource (alpha.108 review): dropping the source of a move is
+	// refused unless it is still as it was at the copy.
+	ExpectSource *PostgreSQLSourceExpectation `json:"expect_source,omitempty"`
 }
 
 // PostgreSQLDropResponse says whether the database is gone.

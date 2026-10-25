@@ -75,6 +75,103 @@ func pgTableCounts(ctx context.Context, host pgClusterHost, owner string, port i
 	return counts, order, nil
 }
 
+// pgWritesStatement reads one database's write counters (alpha.108 review).
+func pgWritesStatement(database string) string {
+	literal, _ := services.QuotePGStringLiteral(database)
+	return "SELECT tup_inserted || chr(31) || tup_updated || chr(31) || tup_deleted || chr(31) || coalesce(stats_reset::text, '') FROM pg_stat_database WHERE datname = " + literal + ";"
+}
+
+// pgReadWrites reads the write counters of database on the cluster.
+func pgReadWrites(ctx context.Context, host pgClusterHost, owner string, port int, database string) (transport.PostgreSQLWriteMark, error) {
+	out, err := host.query(ctx, owner, port, "postgres", pgWritesStatement(database))
+	if err != nil {
+		return transport.PostgreSQLWriteMark{}, err
+	}
+	rows := pgRows(out)
+	if len(rows) != 1 {
+		return transport.PostgreSQLWriteMark{}, fmt.Errorf("the database's write counters could not be read")
+	}
+	fields := strings.Split(rows[0], "\x1f")
+	if len(fields) != 4 {
+		return transport.PostgreSQLWriteMark{}, fmt.Errorf("the database's write counters could not be read")
+	}
+	var mark transport.PostgreSQLWriteMark
+	values := []*int64{&mark.Inserted, &mark.Updated, &mark.Deleted}
+	for i, target := range values {
+		value, err := strconv.ParseInt(strings.TrimSpace(fields[i]), 10, 64)
+		if err != nil {
+			return transport.PostgreSQLWriteMark{}, fmt.Errorf("the database's write counters could not be read")
+		}
+		*target = value
+	}
+	mark.StatsReset = strings.TrimSpace(fields[3])
+	return mark, nil
+}
+
+// pgSourceUnchanged says whether a move's source is still as it was when the
+// copy was proved: the same write counters and, for every table the proof
+// kept, the same rows (alpha.108 review). The copy proves rows at copy time
+// only; anything written to the source after it would be lost with a switch
+// or a drop. Unknown is never "unchanged".
+func pgSourceUnchanged(ctx context.Context, host pgClusterHost, cluster transport.PostgreSQLCluster, database string, expect transport.PostgreSQLSourceExpectation) (code, message string) {
+	ref := pgClusterRef(cluster.Version, cluster.Name)
+	writes, err := pgReadWrites(ctx, host, cluster.Owner, cluster.Port, database)
+	if err != nil {
+		return "SOURCE_UNKNOWN", fmt.Sprintf("whether %s on cluster %s was written after the copy could not be read (%s); nothing was changed. Try again", database, ref, boundedText(err.Error(), 160))
+	}
+	if writes.StatsReset != expect.Writes.StatsReset {
+		return "SOURCE_UNKNOWN", fmt.Sprintf("the statistics of cluster %s were reset since the copy, so whether %s was written after it cannot be proved; copy it again; nothing was changed", ref, database)
+	}
+	changed := writes != expect.Writes
+	if !changed {
+		counts, _, err := pgTableCounts(ctx, host, cluster.Owner, cluster.Port, database)
+		if err != nil {
+			return "SOURCE_UNKNOWN", fmt.Sprintf("the rows of %s on cluster %s could not be counted again (%s); nothing was changed. Try again", database, ref, boundedText(err.Error(), 160))
+		}
+		if expect.TablesTotal != len(counts) {
+			changed = true
+		}
+		for _, table := range expect.Tables {
+			if count, ok := counts[table.Schema+"\x1f"+table.Table]; !ok || count != table.Source {
+				changed = true
+			}
+		}
+	}
+	if changed {
+		return "SOURCE_CHANGED", fmt.Sprintf("%s on cluster %s was written after the copy, so the copy no longer has everything; nothing was changed. Copy it again, or point the application at the copy first and then copy again", database, ref)
+	}
+	return "", ""
+}
+
+// PostgreSQLSourceCheckV1 answers, read only, whether a move's source is
+// still as it was at the copy (the Panel asks before a switch).
+func (a *Agent) PostgreSQLSourceCheckV1(req *transport.PostgreSQLSourceCheckRequest, resp *transport.PostgreSQLSourceCheckResponse) error {
+	*resp = transport.PostgreSQLSourceCheckResponse{}
+	if req == nil || !pgDatabaseNameRe.MatchString(req.Database) || req.Port < 1 || req.Port > 65535 {
+		resp.Code, resp.Error = "INVALID_REQUEST", "a database and its cluster's port are required"
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	sourceCheck(ctx, pgClusterHostActive(), req, resp)
+	return nil
+}
+
+func sourceCheck(ctx context.Context, host pgClusterHost, req *transport.PostgreSQLSourceCheckRequest, resp *transport.PostgreSQLSourceCheckResponse) {
+	out, err := host.lsclusters(ctx)
+	if err != nil {
+		resp.Code, resp.Error = "SOURCE_UNKNOWN", "pg_lsclusters could not be read; nothing was changed"
+		return
+	}
+	cluster, ok := findPGClusterByPort(parsePGLsClusters(out), req.Port)
+	if !ok || !cluster.Online {
+		resp.Code, resp.Error = "SOURCE_UNKNOWN", fmt.Sprintf("no running PostgreSQL cluster on port %d, so the source cannot be checked; nothing was changed", req.Port)
+		return
+	}
+	resp.Code, resp.Error = pgSourceUnchanged(ctx, host, cluster, req.Database, req.Expect)
+	resp.Unchanged = resp.Code == ""
+}
+
 // pgCompareCounts is the proof: the same tables on both sides, every count
 // equal.
 func pgCompareCounts(source map[string]int64, target map[string]int64) transport.PostgreSQLCopyProof {
@@ -319,6 +416,13 @@ func copyPGDatabase(parent context.Context, host pgClusterHost, req *transport.P
 		return
 	}
 	_ = sourceBefore
+	// The write counters before the dump; read again after the proof, they
+	// must be the same (alpha.108 review).
+	writesBefore, err := pgReadWrites(ctx, host, source.Owner, source.Port, req.Database)
+	if err != nil {
+		fail("COUNT_FAILED", "the write counters of %s could not be read on the source (%s); nothing was changed", req.Database, boundedText(err.Error(), 160))
+		return
+	}
 
 	// Roles: those the database needs, created on the target only when missing.
 	out, err = host.query(ctx, source.Owner, source.Port, req.Database, pgNeededRolesStatement)
@@ -437,6 +541,20 @@ func copyPGDatabase(parent context.Context, host pgClusterHost, req *transport.P
 	proof.RolesCreated = append([]string{}, created...)
 	proof.Seconds = int(host.now().Sub(started).Seconds())
 	resp.Proof = proof
+	if proof.Equal {
+		writesAfter, err := pgReadWrites(ctx, host, source.Owner, source.Port, req.Database)
+		if err != nil {
+			cleanup(true)
+			fail("COUNT_FAILED", "the write counters of the source could not be read again (%s); the copy was removed from the target", boundedText(err.Error(), 160))
+			return
+		}
+		if writesAfter != writesBefore {
+			cleanup(true)
+			fail("PROOF_FAILED", "%s was written while it was copied, so the copy may miss rows; it was removed from the target and the source is unchanged. Stop what writes to it, then copy again", req.Database)
+			return
+		}
+		resp.Proof.SourceWrites = &writesAfter
+	}
 	if !proof.Equal {
 		cleanup(true)
 		changed := ""
@@ -495,6 +613,14 @@ func dropPGDatabase(parent context.Context, host pgClusterHost, req *transport.P
 	if there, err := pgDatabaseExists(ctx, host, cluster, req.Database); err == nil && !there {
 		resp.Dropped = true
 		return
+	}
+	// The source of a move is dropped only while it is as it was at the copy
+	// (alpha.108 review): writes after the copy would be lost with it.
+	if req.ExpectSource != nil {
+		if code, message := pgSourceUnchanged(ctx, host, cluster, req.Database, *req.ExpectSource); code != "" {
+			resp.ErrorCode, resp.Error = code, message
+			return
+		}
 	}
 	ident, _ := services.QuotePGIdentifier(req.Database)
 	if _, err := host.query(ctx, cluster.Owner, cluster.Port, "postgres", "DROP DATABASE "+ident+";"); err != nil {

@@ -78,6 +78,10 @@ func TestPGProofListsMismatchesFirstAndNeedsTheSameTables(t *testing.T) {
 
 // copyHost answers like a 17 cluster on 5432 with database shop and an 18
 // cluster on 5433; restoreRows is what the copy holds after pg_restore.
+// sourceWrites is the source's write counters in the copy tests; a test
+// changes it to simulate writes.
+var sourceWrites = "100\x1f20\x1f3\x1f2026-10-01 00:00:00+00\n"
+
 func copyHost(t *testing.T, restoreRows string) (*fakePGHost, *bool) {
 	f := newFakePGHost(t)
 	dumpDir := t.TempDir()
@@ -94,6 +98,11 @@ func copyHost(t *testing.T, restoreRows string) (*fakePGHost, *bool) {
 			return "0\n", nil
 		case strings.Contains(statement, "pg_database_size"):
 			return "shop_user\x1f8192\n", nil
+		case statement == pgWritesStatement("shop"):
+			if port != 5432 {
+				t.Fatalf("write counters read on %d", port)
+			}
+			return sourceWrites, nil
 		case statement == pgTableCountsStatement:
 			if port == 5432 {
 				return "public\x1forders\x1f10\npublic\x1fusers\x1f3\n", nil
@@ -144,6 +153,9 @@ func TestPGCopyIsProvedByEveryTablesRows(t *testing.T) {
 	copyPGDatabase(context.Background(), f.host(), &transport.PostgreSQLCopyRequest{Database: "shop", SourcePort: 5432, TargetPort: 5433}, &resp)
 	if !resp.Copied || !resp.Proof.Equal || resp.Proof.TablesTotal != 2 || resp.Error != "" {
 		t.Fatalf("copy = %+v", resp)
+	}
+	if resp.Proof.SourceWrites == nil || *resp.Proof.SourceWrites != (transport.PostgreSQLWriteMark{Inserted: 100, Updated: 20, Deleted: 3, StatsReset: "2026-10-01 00:00:00+00"}) {
+		t.Fatalf("the proof does not keep the source's writes: %+v", resp.Proof.SourceWrites)
 	}
 	if resp.Proof.SourceVersion != "17" || resp.Proof.TargetVersion != "18" || resp.Proof.Owner != "shop_user" || len(resp.Proof.RolesCreated) != 1 {
 		t.Fatalf("proof = %+v", resp.Proof)
@@ -234,5 +246,71 @@ func TestPGDropNeedsTheCopyAndRefusesWhileConnected(t *testing.T) {
 	dropPGDatabase(context.Background(), f.host(), request, &resp)
 	if !resp.Dropped || resp.Error != "" {
 		t.Fatalf("drop = %+v", resp)
+	}
+}
+
+// alpha.108 review: the copy proves rows at copy time only. A source written
+// while it is copied is refused; a source written after the copy blocks the
+// switch and the drop; unknown is never "unchanged".
+func TestPGSourceWrittenDuringOrAfterTheCopyIsCaught(t *testing.T) {
+	f, _ := copyHost(t, "public\x1forders\x1f10\npublic\x1fusers\x1f3\n")
+	defer func() { sourceWrites = "100\x1f20\x1f3\x1f2026-10-01 00:00:00+00\n" }()
+	base := f.answers
+	reads := 0
+	f.answers = func(owner string, port int, database, statement string) (string, error) {
+		if statement == pgWritesStatement("shop") {
+			reads++
+			if reads == 2 { // written while the dump ran
+				return "101\x1f20\x1f3\x1f2026-10-01 00:00:00+00\n", nil
+			}
+		}
+		return base(owner, port, database, statement)
+	}
+	var resp transport.PostgreSQLCopyResponse
+	copyPGDatabase(context.Background(), f.host(), &transport.PostgreSQLCopyRequest{Database: "shop", SourcePort: 5432, TargetPort: 5433}, &resp)
+	if resp.Copied || resp.ErrorCode != "PROOF_FAILED" || !resp.Cleaned || !strings.Contains(resp.Error, "written while it was copied") {
+		t.Fatalf("written during the copy = %+v", resp)
+	}
+
+	f.answers = base
+	cluster := transport.PostgreSQLCluster{Version: "17", Name: "main", Port: 5432, Owner: "postgres", Online: true}
+	expect := transport.PostgreSQLSourceExpectation{
+		Writes:      transport.PostgreSQLWriteMark{Inserted: 100, Updated: 20, Deleted: 3, StatsReset: "2026-10-01 00:00:00+00"},
+		Tables:      []transport.PostgreSQLTableCount{{Schema: "public", Table: "orders", Source: 10, Target: 10}, {Schema: "public", Table: "users", Source: 3, Target: 3}},
+		TablesTotal: 2,
+	}
+	if code, msg := pgSourceUnchanged(context.Background(), f.host(), cluster, "shop", expect); code != "" {
+		t.Fatalf("unchanged source = %s %s", code, msg)
+	}
+	sourceWrites = "100\x1f21\x1f3\x1f2026-10-01 00:00:00+00\n" // an UPDATE after the copy
+	if code, msg := pgSourceUnchanged(context.Background(), f.host(), cluster, "shop", expect); code != "SOURCE_CHANGED" || !strings.Contains(msg, "point the application at the copy first") {
+		t.Fatalf("written after the copy = %s %s", code, msg)
+	}
+	sourceWrites = "0\x1f0\x1f0\x1f2026-10-25 00:00:00+00\n" // statistics reset
+	if code, _ := pgSourceUnchanged(context.Background(), f.host(), cluster, "shop", expect); code != "SOURCE_UNKNOWN" {
+		t.Fatalf("reset statistics = %s", code)
+	}
+	sourceWrites = "100\x1f20\x1f3\x1f2026-10-01 00:00:00+00\n"
+	expect.TablesTotal = 3 // a table the copy did not have
+	if code, _ := pgSourceUnchanged(context.Background(), f.host(), cluster, "shop", expect); code != "SOURCE_CHANGED" {
+		t.Fatalf("a new table = %s", code)
+	}
+
+	// The drop of the source refuses before any DROP when it changed.
+	expect.TablesTotal = 2
+	sourceWrites = "105\x1f20\x1f3\x1f2026-10-01 00:00:00+00\n"
+	f.answers = func(owner string, port int, database, statement string) (string, error) {
+		switch {
+		case strings.HasPrefix(statement, "SELECT count(*) FROM pg_database"):
+			return "1\n", nil
+		case strings.HasPrefix(statement, "DROP DATABASE"):
+			t.Fatalf("a changed source was dropped")
+		}
+		return base(owner, port, database, statement)
+	}
+	var drop transport.PostgreSQLDropResponse
+	dropPGDatabase(context.Background(), f.host(), &transport.PostgreSQLDropRequest{Database: "shop", Port: 5432, KeepPort: 5433, ExpectSource: &expect}, &drop)
+	if drop.Dropped || drop.ErrorCode != "SOURCE_CHANGED" {
+		t.Fatalf("drop of a changed source = %+v", drop)
 	}
 }

@@ -198,3 +198,16 @@ test('the PostgreSQL page shows the card, MariaDB says plainly why it has none, 
   assert.match(card, /checkInstalls: true,\s*confirmInstalls: confirmed/);
   assert.match(card, /installPreviewURL\(\[\{ id: 'postgresql', package: offer\.package \}\]\)/);
 });
+
+// alpha.108 review: the copy proves rows at copy time only; writes after it
+// block the switch and the removal of the source, said with the next action.
+test('a source written after the copy is said, and the move dialog says the proof is at copy time', () => {
+  const card = source('components/PostgreSQLClusters.tsx');
+  assert.match(card, /SOURCE_CHANGED\$\/\.test\(code\)/);
+  assert.match(card, /SOURCE_UNKNOWN\$\/\.test\(code\)/);
+  for (const words of [en, tr]) {
+    assert.ok(words['pgc.moves.sourceChanged'] && words['pgc.moves.sourceUnknown']);
+  }
+  assert.match(en['pgc.move.writes'], /at the time of the copy only/);
+  assert.match(tr['pgc.move.writes'], /kopyalandığı andaki/);
+});

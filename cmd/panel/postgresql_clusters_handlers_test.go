@@ -151,7 +151,22 @@ func TestPGMoveIsCopiedProvedSwitchedAsItsOwnStepAndDroppedExplicitly(t *testing
 	sourceServer, databaseID := pgTestRecords(t, database.GetDB(), userID)
 	clusters := pgTestClusters(false)
 	pgStubAgent(t, &clusters)
-	proof := transport.PostgreSQLCopyProof{Equal: true, TablesTotal: 2, Tables: []transport.PostgreSQLTableCount{{Schema: "public", Table: "orders", Source: 10, Target: 10}}, RolesCreated: []string{"shop_user"}, RolesKept: []string{}}
+	writes := transport.PostgreSQLWriteMark{Inserted: 100, Updated: 20, Deleted: 3, StatsReset: "2026-10-01 00:00:00+00"}
+	proof := transport.PostgreSQLCopyProof{Equal: true, TablesTotal: 2, Tables: []transport.PostgreSQLTableCount{{Schema: "public", Table: "orders", Source: 10, Target: 10}}, RolesCreated: []string{"shop_user"}, RolesKept: []string{}, SourceWrites: &writes}
+	// alpha.108 review: a switch and the drop of the source ask whether the
+	// source was written after the copy.
+	restoreCheck := checkPGSourceThroughAgent
+	t.Cleanup(func() { checkPGSourceThroughAgent = restoreCheck })
+	sourceChanged := true
+	checkPGSourceThroughAgent = func(_ *Panel, _ context.Context, req transport.PostgreSQLSourceCheckRequest) (transport.PostgreSQLSourceCheckResponse, error) {
+		if req.Database != "shop" || req.Port != 5432 || req.Expect.Writes != writes || req.Expect.TablesTotal != 2 {
+			t.Fatalf("source check = %+v", req)
+		}
+		if sourceChanged {
+			return transport.PostgreSQLSourceCheckResponse{Code: "SOURCE_CHANGED", Error: "shop on cluster 17/main was written after the copy"}, nil
+		}
+		return transport.PostgreSQLSourceCheckResponse{Unchanged: true}, nil
+	}
 	copyPGThroughAgent = func(_ *Panel, _ context.Context, req transport.PostgreSQLCopyRequest) (transport.PostgreSQLCopyResponse, error) {
 		if req.Database != "shop" || req.SourcePort != 5432 || req.TargetPort != 5433 {
 			t.Fatalf("copy request = %+v", req)
@@ -180,6 +195,14 @@ func TestPGMoveIsCopiedProvedSwitchedAsItsOwnStepAndDroppedExplicitly(t *testing
 	if recorder := pgCall(t, panel, http.MethodPost, moves+"/drop-source", "", userID); !strings.Contains(recorder.Body.String(), "PG_MOVE_STATE") {
 		t.Fatalf("drop before the switch: %s", recorder.Body.String())
 	}
+	if recorder := pgCall(t, panel, http.MethodPost, moves+"/switch", "", userID); recorder.Code != http.StatusConflict || !strings.Contains(recorder.Body.String(), "PG_SOURCE_CHANGED") {
+		t.Fatalf("switch to a copy whose source changed: %d %s", recorder.Code, recorder.Body.String())
+	}
+	database.GetDB().QueryRow(`SELECT server_id FROM databases_v2 WHERE id = ?`, databaseID).Scan(&recordServer)
+	if recordServer != sourceServer {
+		t.Fatalf("a refused switch moved the record to %d", recordServer)
+	}
+	sourceChanged = false
 	if recorder := pgCall(t, panel, http.MethodPost, moves+"/switch", "", userID); recorder.Code != http.StatusOK {
 		t.Fatalf("switch: %d %s", recorder.Code, recorder.Body.String())
 	}
@@ -200,7 +223,7 @@ func TestPGMoveIsCopiedProvedSwitchedAsItsOwnStepAndDroppedExplicitly(t *testing
 		t.Fatalf("switch again: %d %s", recorder.Code, recorder.Body.String())
 	}
 	dropPGThroughAgent = func(_ *Panel, _ context.Context, req transport.PostgreSQLDropRequest) (transport.PostgreSQLDropResponse, error) {
-		if req.Database != "shop" || req.Port != 5432 || req.KeepPort != 5433 {
+		if req.Database != "shop" || req.Port != 5432 || req.KeepPort != 5433 || req.ExpectSource == nil || req.ExpectSource.Writes != writes {
 			t.Fatalf("drop request = %+v", req)
 		}
 		return transport.PostgreSQLDropResponse{Dropped: true}, nil
@@ -225,7 +248,7 @@ func TestPGMoveIsCopiedProvedSwitchedAsItsOwnStepAndDroppedExplicitly(t *testing
 		actions = append(actions, strings.SplitN(action, ":", 2)[0])
 	}
 	rows.Close()
-	want := "postgresql.database.copy postgresql.database.switch postgresql.database.switch_back postgresql.database.switch postgresql.database.drop_source"
+	want := "postgresql.database.copy postgresql.database.switch.failed postgresql.database.switch postgresql.database.switch_back postgresql.database.switch postgresql.database.drop_source"
 	if strings.Join(actions, " ") != want {
 		t.Fatalf("audit = %v", actions)
 	}

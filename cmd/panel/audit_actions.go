@@ -121,6 +121,7 @@ var auditActionNames = []string{
 	"postgresql.database.drop_copy",
 	"postgresql.database.drop_source",
 	"postgresql.database.switch",
+	"postgresql.database.switch.failed",
 	"postgresql.database.switch_back",
 	"postgresql.records.port",
 	"repo.confine",

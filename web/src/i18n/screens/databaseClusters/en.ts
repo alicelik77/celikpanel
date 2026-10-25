@@ -89,7 +89,7 @@ export const enDatabaseClustersScreens = {
     'pgc.move.steps': 'CelikPanel copies the database: a dump of it, the roles it needs created on the target from their definitions on the source (passwords included, never shown), a restore, then every table’s rows counted on both sides. The source database is not changed and stays where it is.',
     'pgc.move.recordAfter': 'CelikPanel’s record of {database} keeps pointing at the source until you switch it, as a separate step after you have seen the proof. Then it connects to port {port}; you can switch back until you remove the source.',
     'pgc.move.unrecorded': 'CelikPanel has no record of {database}: after the copy, point your application at the new port yourself, then remove the source.',
-    'pgc.move.writes': 'Stop what writes to the database while it is copied: rows written to the source after the copy started make the counts differ, and the copy is then removed again.',
+    'pgc.move.writes': 'Stop what writes to the database while it is copied: rows written to the source after the copy started make the counts differ, and the copy is then removed again. The proof covers the rows at the time of the copy only: if the source is written after it, CelikPanel sees it and refuses the switch and the removal of the source until you copy again.',
     'pgc.move.confirm': 'Copy with proof',
     'pgc.move.busy': 'Copying {database} and counting every table on both sides. A large database takes several minutes; you do not need to do anything. The source is not changed.',
     'pgc.move.copied': '{database} was copied from {from} to {to} and every table has the same rows on both sides. CelikPanel’s record still points at {from}: switch it below when you are ready.',
@@ -129,6 +129,8 @@ export const enDatabaseClustersScreens = {
     'pgc.moves.done.switch': 'CelikPanel’s record of {database} now points at {to} (port {port}). Change your application’s port to {port}.',
     'pgc.moves.done.switch-back': 'CelikPanel’s record of {database} points at {from} again (port {port}).',
     'pgc.moves.done.drop-source': '{database} was removed from {from}; it lives on {to}.',
+    'pgc.moves.sourceChanged': '{database} was written on {from} after the copy, so the copy no longer has everything. Nothing was changed. Copy it again (remove this copy first), or point your application at the copy first and then copy again.',
+    'pgc.moves.sourceUnknown': 'Whether {database} on {from} was written after the copy could not be proved, so nothing was changed. Try again; if it stays so, copy it again.',
     'pgc.moves.done.drop-copy': 'The copy of {database} on {to} was removed.',
 
     // ---- the removal dialogue and the MariaDB page ----
@@ -143,6 +145,7 @@ export const enDatabaseClustersScreens = {
     'dashboard.audit.action.postgresql.database.copy': 'copied a PostgreSQL database to another cluster, with proof ({target})',
     'dashboard.audit.action.postgresql.database.copy.failed': 'could not copy a PostgreSQL database to another cluster ({target})',
     'dashboard.audit.action.postgresql.database.switch': 'switched a PostgreSQL database’s record to its copy ({target})',
+    'dashboard.audit.action.postgresql.database.switch.failed': 'could not switch a PostgreSQL database’s record to its copy ({target})',
     'dashboard.audit.action.postgresql.database.switch_back': 'switched a PostgreSQL database’s record back ({target})',
     'dashboard.audit.action.postgresql.database.drop_source': 'removed a moved PostgreSQL database’s source ({target})',
     'dashboard.audit.action.postgresql.database.drop_copy': 'removed a PostgreSQL database’s copy ({target})',

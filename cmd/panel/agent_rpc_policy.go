@@ -135,7 +135,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.CheckSystemUpdate Agent.SecurityAudit Agent.SystemUpdateStatus
 		Agent.OSUpdatesStatusV1 Agent.RoundcubeUpdateCheckV1 Agent.RestartNeedsV1
 		Agent.NodePatchesV1 Agent.OSReleaseFactsV1 Agent.RepoConfinePreviewV1 Agent.VendorLanePlanV1
-		Agent.PostgreSQLClustersV1 Agent.PostgreSQLClusterPortPreviewV1
+		Agent.PostgreSQLClustersV1 Agent.PostgreSQLClusterPortPreviewV1 Agent.PostgreSQLSourceCheckV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -382,6 +382,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	// alpha.108: PostgreSQL clusters side by side.
 	"Agent.PostgreSQLClustersV1":           agentRPCNetworkReadTimeout,
 	"Agent.PostgreSQLClusterPortPreviewV1": agentRPCNetworkReadTimeout,
+	"Agent.PostgreSQLSourceCheckV1":        agentRPCNetworkReadTimeout,
 	"Agent.SetPostgreSQLClusterPortV1":     agentRPCDatabaseTimeout,
 	"Agent.CopyPostgreSQLDatabaseV1":       agentRPCDeploymentTimeout,
 	"Agent.DropPostgreSQLDatabaseV1":       agentRPCDatabaseTimeout,

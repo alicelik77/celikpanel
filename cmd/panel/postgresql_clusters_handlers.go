@@ -116,6 +116,27 @@ var copyPGThroughAgent = func(p *Panel, ctx context.Context, req transport.Postg
 	return response, nil
 }
 
+// checkPGSourceThroughAgent asks, read only, whether a move's source is still
+// as it was at the copy (alpha.108 review).
+var checkPGSourceThroughAgent = func(p *Panel, ctx context.Context, req transport.PostgreSQLSourceCheckRequest) (transport.PostgreSQLSourceCheckResponse, error) {
+	callCtx, cancel := context.WithTimeout(ctx, pgClustersReadBud)
+	defer cancel()
+	var response transport.PostgreSQLSourceCheckResponse
+	err := p.callAgentContext(callCtx, "Agent.PostgreSQLSourceCheckV1", &req, &response)
+	return response, err
+}
+
+// pgMoveExpectation is the source as the stored proof saw it; ok is false
+// for a proof without the source's write counters (it cannot prove the source
+// unchanged, so nothing that relies on that runs).
+func pgMoveExpectation(move *pgMoveView) (transport.PostgreSQLSourceExpectation, bool) {
+	var proof transport.PostgreSQLCopyProof
+	if err := json.Unmarshal(move.Proof, &proof); err != nil || proof.SourceWrites == nil {
+		return transport.PostgreSQLSourceExpectation{}, false
+	}
+	return transport.PostgreSQLSourceExpectation{Writes: *proof.SourceWrites, Tables: proof.Tables, TablesTotal: proof.TablesTotal}, true
+}
+
 var dropPGThroughAgent = func(p *Panel, ctx context.Context, req transport.PostgreSQLDropRequest) (transport.PostgreSQLDropResponse, error) {
 	var response transport.PostgreSQLDropResponse
 	err := p.withStandaloneAgentMutation(ctx, "pg_database_drop", pgDatabaseJobTarget(req.Database), strconv.Itoa(req.Port), func(callCtx context.Context, binding agentMutationBinding) error {
@@ -933,6 +954,26 @@ func (p *Panel) handlePGMoveAction(w http.ResponseWriter, r *http.Request, id in
 			refuse("PG_MOVE_TARGET_MISSING", fmt.Sprintf("database %s is not seen on the cluster on port %d now, so CelikPanel's record was not switched", move.Database, checkPort))
 			return
 		}
+		// alpha.108 review: the copy proves rows at copy time only; a switch
+		// to it is refused when the source was written after the copy.
+		if action == "switch" {
+			expect, ok := pgMoveExpectation(move)
+			if !ok {
+				refuse("PG_SOURCE_UNKNOWN", "this copy's proof has no record of the source's writes, so whether the source changed since cannot be proved; copy it again; nothing was switched")
+				return
+			}
+			check, err := checkPGSourceThroughAgent(p, ctx, transport.PostgreSQLSourceCheckRequest{Database: move.Database, Port: move.SourcePort, Expect: expect})
+			if err != nil {
+				writeAgentError(w, err, "PostgreSQL source check")
+				return
+			}
+			if !check.Unchanged {
+				details["code"] = check.Code
+				p.auditDetailed(r, "postgresql.database.switch.failed:"+move.Database+" — "+check.Code, "service", id, details)
+				refuse("PG_"+check.Code, check.Error)
+				return
+			}
+		}
 		if err := p.pgSwitchRecord(ctx, *move.DatabaseID, from, to, id, move.State, next); err != nil {
 			if errors.Is(err, errPGRecordMoved) {
 				refuse("PG_RECORD_MOVED", "CelikPanel's record of this database no longer points at the cluster this move expects; nothing was switched")
@@ -959,7 +1000,18 @@ func (p *Panel) handlePGMoveAction(w http.ResponseWriter, r *http.Request, id in
 			refuse("PG_MOVE_STATE", "this move is "+move.State+"; that database is still the one CelikPanel's record uses, so it is not dropped")
 			return
 		}
-		response, err := dropPGThroughAgent(p, ctx, transport.PostgreSQLDropRequest{Database: move.Database, Port: port, KeepPort: keep})
+		drop := transport.PostgreSQLDropRequest{Database: move.Database, Port: port, KeepPort: keep}
+		if action == "drop-source" {
+			// alpha.108 review: the source goes only while it is as it was at
+			// the copy; writes after it would be lost.
+			expect, ok := pgMoveExpectation(move)
+			if !ok {
+				refuse("PG_SOURCE_UNKNOWN", "this copy's proof has no record of the source's writes, so whether the source changed since cannot be proved; copy it again; nothing was removed")
+				return
+			}
+			drop.ExpectSource = &expect
+		}
+		response, err := dropPGThroughAgent(p, ctx, drop)
 		details["code"] = response.ErrorCode
 		if err != nil || !response.Dropped {
 			reason := response.Error
