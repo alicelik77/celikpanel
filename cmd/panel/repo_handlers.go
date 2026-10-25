@@ -53,6 +53,15 @@ type repoInfoResp struct {
 	EnabledBy      string                        `json:"enabled_by,omitempty"`
 	AptErrors      []string                      `json:"apt_errors,omitempty"`
 	AptErrorsAt    string                        `json:"apt_errors_at,omitempty"`
+	// Lane / Origin (alpha.108): this repository is a vendor lane — it is
+	// enabled only through the confirmed lane (repository, confinement and
+	// automatic updates together); Origin is its Release origin.
+	Lane   bool   `json:"lane,omitempty"`
+	Origin string `json:"origin,omitempty"`
+	// NoLongerUpdated / DisabledAt (alpha.108): with the repository
+	// disabled, what is still installed from it; nothing updates it.
+	NoLongerUpdated []string `json:"no_longer_updated,omitempty"`
+	DisabledAt      string   `json:"disabled_at,omitempty"`
 }
 
 // Repository failures cross two trust boundaries: agent -> panel and panel ->
@@ -184,6 +193,13 @@ func (p *Panel) handleRepo(w http.ResponseWriter, r *http.Request) {
 			// Yalnız kalıcı değişiklik kimliği ile depo id'si yolculuk eder: URL'i
 			// ve kaynak satırını agent KENDİ kataloğunda arar.
 			method = "Agent.EnableRepo"
+			// alpha.108: a vendor lane is never enabled alone — only with
+			// its confinement and its automatic updates, as the lane shown
+			// and confirmed at /api/v1/repo/lane.
+			if strings.TrimSpace(repo.ReleaseOrigin) != "" {
+				writeCodedError(w, http.StatusConflict, "REPO_LANE_REQUIRED", "this repository is enabled only together with its confinement and automatic updates", "/services")
+				return
+			}
 		case "disable":
 			method = "Agent.DisableRepo"
 		case "confine":
@@ -279,7 +295,8 @@ func (p *Panel) repoInfo(repo *core.ManagedRepo) repoInfoResp {
 }
 
 func (p *Panel) repoInfoContext(ctx context.Context, repo *core.ManagedRepo) repoInfoResp {
-	info := repoInfoResp{Available: true, ID: repo.ID, Name: repo.Name, Detail: repo.Description, Required: repo.Required}
+	info := repoInfoResp{Available: true, ID: repo.ID, Name: repo.Name, Detail: repo.Description, Required: repo.Required,
+		Lane: strings.TrimSpace(repo.ReleaseOrigin) != "", Origin: repo.ReleaseOrigin}
 	var st RepoStatusResp
 	if err := p.callAgent("Agent.RepoStatus", &enableRepoReq{RepoID: repo.ID}, &st); err != nil {
 		log.Printf("[repo][%s][status][transport] %v", repo.ID, err)
@@ -288,6 +305,7 @@ func (p *Panel) repoInfoContext(ctx context.Context, repo *core.ManagedRepo) rep
 	}
 	info.Enabled = st.Enabled
 	info.Repairable = st.Repairable
+	info.NoLongerUpdated, info.DisabledAt = st.NoLongerUpdated, st.DisabledAt
 	if st.Enabled {
 		info.Confinement, info.MovingPackages, info.Key, info.Lists = st.Confinement, st.MovingPackages, st.Key, st.Lists
 		info.AptErrors, info.AptErrorsAt = cleanAptLines(st.AptErrors), st.AptErrorsAt

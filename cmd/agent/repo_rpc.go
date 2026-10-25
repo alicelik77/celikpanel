@@ -395,9 +395,17 @@ func (a *Agent) DisableRepo(req *EnableRepoRequest, resp *RepoStatusResponse) er
 	// Kaldirma ve apt yenileme tek paket-yoneticisi kritik bolgesi olmalidir.
 	// Boylece kurulum/kaldirma islemleri eski kaynak/anahtar durumunu kullanamaz.
 	var disabledLoc *aptSourceLocation
+	var fromVendor []string
 	if data, readErr := readSecureRepoFile(repoSourcePath(req.RepoID), repoManagedFileMode); readErr == nil {
 		if loc, parseErr := parseAptSourceLine(firstLine(string(data))); parseErr == nil {
 			disabledLoc = &loc
+			// alpha.108: what is installed from it stays installed and is
+			// no longer updated; the version lists say so. Nothing is removed.
+			if vendor, err := readVendorPackageIndex(loc); err == nil {
+				if installed, err := readDpkgStatusVersions(dpkgStatusPath); err == nil {
+					fromVendor = repoKeptPackages(installed, vendor)
+				}
+			}
 		}
 	}
 	err = runRepoPackageMutation(func() error {
@@ -440,6 +448,14 @@ func (a *Agent) DisableRepo(req *EnableRepoRequest, resp *RepoStatusResponse) er
 		return nil
 	}
 	resp.Enabled = false
+	if len(fromVendor) > 0 {
+		now := repoConfinementNow().UTC().Format(time.RFC3339)
+		_ = updateRepoRecord(req.RepoID, func(entry *repoRecordEntry, _ bool) bool {
+			entry.NoLongerUpdated, entry.DisabledAt = fromVendor, now
+			return true
+		})
+		resp.NoLongerUpdated, resp.DisabledAt = laneNoLongerUpdated(req.RepoID)
+	}
 	return nil
 }
 
@@ -530,6 +546,7 @@ func (a *Agent) RepoStatus(req *EnableRepoRequest, resp *RepoStatusResponse) err
 	}
 	data, err := readSecureRepoFile(sourcePath, repoManagedFileMode)
 	if os.IsNotExist(err) {
+		resp.NoLongerUpdated, resp.DisabledAt = laneNoLongerUpdated(req.RepoID)
 		return nil
 	}
 	if err != nil {

@@ -1352,6 +1352,7 @@ func main() {
 	http.HandleFunc("/api/v1/firewall", panel.handleFirewall)
 	http.HandleFunc("/api/v1/repo", panel.handleRepo)
 	http.HandleFunc(repoConfinePreviewAPIPath, panel.handleRepoConfinePreview)
+	http.HandleFunc(vendorLanePath, panel.handleVendorLane)
 	http.HandleFunc("/api/v1/hosting/capabilities", panel.handleHostingCapabilities)
 	http.HandleFunc("/api/v1/panel/certificate", panel.handlePanelCertificate)
 	http.HandleFunc(securityAuditPath, panel.handleSecurityAudit)

@@ -40,6 +40,7 @@ const (
 	serviceMutationStepDisableRepo              serviceMutationStepMethod = "Agent.DisableRepo"
 	serviceMutationStepConfineRepo              serviceMutationStepMethod = "Agent.ConfineRepoV1"
 	serviceMutationStepWriteVendorOrigins       serviceMutationStepMethod = "Agent.WriteVendorUpdateOriginsV1"
+	serviceMutationStepVendorLane               serviceMutationStepMethod = "Agent.EnableVendorLaneV1"
 	serviceMutationStepUpdateRoundcube          serviceMutationStepMethod = "Agent.UpdateRoundcubeV1"
 	serviceMutationStepMoveAppFilesOwner        serviceMutationStepMethod = "Agent.MoveAppFilesOwnerV1"
 	serviceMutationStepSetPGClusterPort         serviceMutationStepMethod = "Agent.SetPostgreSQLClusterPortV1"
@@ -251,6 +252,12 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 		// vendor repositories to the OS's automatic updates.
 		return claim.target == "unattended-upgrades" && claim.packageName == "" && claim.action == "origins" &&
 			serviceMutationJobMatches(job, "os_updates_origins", "unattended-upgrades", "")
+
+	case serviceMutationStepVendorLane:
+		// alpha.108: a vendor repository's lane (repository, confinement,
+		// automatic updates) written as one confirmed operation.
+		return claim.packageName == "" && claim.action == "lane" &&
+			serviceMutationJobMatches(job, "vendor_lane", claim.target, "")
 
 	case serviceMutationStepConfineRepo:
 		// alpha.107: an already enabled repository is confined to its
