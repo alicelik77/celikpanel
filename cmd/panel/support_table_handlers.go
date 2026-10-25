@@ -50,6 +50,11 @@ type supportTableView struct {
 	Distro     string                                   `json:"distro,omitempty"`
 	DistroName string                                   `json:"distro_name,omitempty"`
 	Statuses   map[string]map[string]supportdata.Result `json:"statuses"`
+	// Tested / TestedRelease (alpha.108, D-038 §15): the version lines this
+	// release was tested with on this server's distribution release; every
+	// other line is "installable, not tested". Information, never a block.
+	Tested        map[string][]string `json:"tested,omitempty"`
+	TestedRelease string              `json:"tested_release,omitempty"`
 }
 
 // supportStatus is one version's status on this server (for refusals and
@@ -105,6 +110,9 @@ func (p *Panel) handleSupportTable(w http.ResponseWriter, r *http.Request) {
 	if !team {
 		view.Distro = key
 		view.DistroName = table.Distros[key].Name
+		if tested, err := supportdata.LoadTested(); err == nil {
+			view.Tested, view.TestedRelease = tested.For(key), tested.Release
+		}
 	}
 	json.NewEncoder(w).Encode(view)
 }

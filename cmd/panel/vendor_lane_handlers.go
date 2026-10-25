@@ -56,6 +56,16 @@ var enableVendorLaneThroughAgent = func(p *Panel, ctx context.Context, repoID, e
 	return response, err
 }
 
+// repoEnabledNow asks the Agent whether CelikPanel's source for the
+// repository is in place; an unknown answer is "not enabled" (fail closed).
+func (p *Panel) repoEnabledNow(repoID string) bool {
+	var st RepoStatusResp
+	if err := p.callAgent("Agent.RepoStatus", &enableRepoReq{RepoID: repoID}, &st); err != nil {
+		return false
+	}
+	return st.Enabled || (st.Repairable && st.Source != "")
+}
+
 // laneServiceRepo is the component's repository when it is a vendor lane.
 func laneServiceRepo(serviceID string) *core.ManagedRepo {
 	svc := core.GetManagedServiceByID(serviceID)

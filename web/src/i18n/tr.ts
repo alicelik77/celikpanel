@@ -218,7 +218,7 @@ export const tr: Record<ShellKey, string> = {
     'services.phpToolProof.notReady': '{tool} kuruldu, ama PHP {version} üzerinde yanıt vermedi ({why}). Hazır değil görünür: Bileşenler’de Yönet penceresini açın; neden orada yazar ve Yeniden denetle onu taşımadan yeniden sorar.',
     'services.phpToolProof.whyMissing': 'PHP {version} için {extensions} eksik',
     'services.phpToolProof.whyOther': 'kendisi olarak yanıt vermedi',
-    'services.installRefused.notable': 'Hiçbir şey kurulmadı: onaylanmamış {packages} paketlerini de getirecekti. Kurulumu Bileşenler’de yeniden açın; bu paketler orada onaylamanız için listelenir. Ya da önerilen sürümü seçin.',
+    'services.installRefused.notable': 'Hiçbir şey kurulmadı: onaylanmamış {packages} paketlerini de getirecekti; paket yöneticisinin yanıtı kurulum penceresi gösterildikten sonra değişti. Kur’a yeniden basın: pencere bu paketleri şimdi onaylamanız için listeler.',
     'services.phpToolProblem.extensionsFailed': '{tool} aracının ihtiyaç duyduğu PHP eklentileri PHP {version} için kurulamadı; bu yüzden çalışmayabilir. Bileşenler’de {tool} aracını açıp Yönet’te PHP {version} sürümünü yeniden ya da başka bir sürümü seçin.',
     'services.mailProfiles.fallbackWarning': '{name}, kendinden imzalı yedek sertifikayla kuruldu. Eşleşen güvenilir bir sertifika yapılandırılana kadar posta istemcileri güven uyarısı gösterecektir.',
     'services.operation.title': '{name} kuruluyor',

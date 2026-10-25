@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "release": "v0.1.0-alpha.108",
+  "about": "Which component versions this CelikPanel release was tested with, per supported distribution release (D-038 §15). Tested means the release's real-system evidence installed and exercised the version on that release (deploy/e2e/d038). Everything else the package manager offers is installable, not tested: information, never a block. Updated with each release's evidence.",
+  "evidence": "deploy/e2e/d038/alpha108-debian13-20261025",
+  "tested": {
+    "debian-13": {
+      "php": ["8.4", "8.5"],
+      "postgresql": ["17", "18"]
+    }
+  }
+}

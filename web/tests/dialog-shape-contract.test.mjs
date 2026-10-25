@@ -171,6 +171,9 @@ test('every dialogue in the product is the shared one', () => {
     'ReadyBundleStrip.tsx': 2,
     'AppAccountLine.tsx': 1,
     'RepoConfineDialog.tsx': 1,
+    // alpha.108: the vendor lane, and fetching a repository's current key.
+    'VendorLaneDialog.tsx': 1,
+    'RepoCard.tsx': 1,
     'NodePatches.tsx': 1,
     'RestartsCard.tsx': 1,
     'RoundcubeUpdateFlow.tsx': 1,

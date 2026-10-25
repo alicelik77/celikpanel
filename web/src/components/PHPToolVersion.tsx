@@ -3,6 +3,7 @@ import { Code2 } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { Button, Checking, CouldNotCheck, KeepWords, Spinner } from './ui';
 import { componentName } from '../lib/componentName';
+import { supportFor, useSupportTable } from '../lib/supportTable';
 import { movePHPTool, phpToolCauseText, provePHPTool, readPHPTools, type PHPToolName, type PHPToolsInfo } from '../lib/phpTools';
 
 // Which PHP version webmail (Roundcube), phpMyAdmin or phpPgAdmin runs on, in
@@ -79,7 +80,14 @@ export function PHPToolVersion({ serviceId, tool, reconcileDelayMs = 5000 }: { s
     const options = versions.filter((version) => version !== current || offerCurrent);
     // Lacking extension packages on a running version: that version first,
     // as the card's sentence says. / Eklentisi eksikse önce o sürüm.
-    const fallback = state?.ready && !state.extensions_present && options.includes(current) ? current : options[0] ?? '';
+    // alpha.108 (D-038 amendment "two lanes"): the tools stay on the
+    // distribution's PHP by default; a version only a vendor repository ships
+    // is marked as meant for sites and is never the preselected choice.
+    // Araçlar varsayılan olarak dağıtımın PHP'sinde kalır.
+    const support = useSupportTable();
+    const vendorVersion = (version: string) => supportFor(support, 'php', version).provider === 'upstream';
+    const preferred = options.find((version) => !vendorVersion(version)) ?? options[0] ?? '';
+    const fallback = state?.ready && !state.extensions_present && options.includes(current) ? current : preferred;
     const selected = options.includes(choice) ? choice : fallback;
     const busy = moving || checking || result?.kind === 'reconciling';
 
@@ -249,7 +257,11 @@ export function PHPToolVersion({ serviceId, tool, reconcileDelayMs = 5000 }: { s
                                         className="rounded-lg border border-border-strong bg-surface px-2 py-1 font-mono text-sm text-fg max-sm:min-h-11"
                                         data-php-tool-select=""
                                     >
-                                        {options.map((version) => <option key={version} value={version}>PHP {version}</option>)}
+                                        {options.map((version) => (
+                                            <option key={version} value={version}>
+                                                {vendorVersion(version) ? `PHP ${version} — ${t('lane.tools.vendor', { repo: 'Sury PHP' })}` : `PHP ${version}`}
+                                            </option>
+                                        ))}
                                     </select>
                                 </label>
                                 <Button variant="secondary" onClick={() => void move()} disabled={busy || !selected} loading={moving} className="max-sm:min-h-11">
@@ -264,6 +276,9 @@ export function PHPToolVersion({ serviceId, tool, reconcileDelayMs = 5000 }: { s
                                 <span className="mt-0.5 shrink-0"><Spinner size="xs" label={t('component.phpTool.movingWait', { tool: name, version: selected })} /></span>
                                 <span aria-hidden="true">{t('component.phpTool.movingWait', { tool: name, version: selected })}</span>
                             </div>
+                        )}
+                        {selected && vendorVersion(selected) && (
+                            <p className="text-xs leading-5 text-warning" data-php-tool-vendor={selected}><KeepWords text={t('lane.tools.vendorHint', { repo: 'Sury PHP' })} /></p>
                         )}
                         <p className="text-xs text-fg-subtle">{t('component.phpTool.note', { tool: name })}</p>
                     </>

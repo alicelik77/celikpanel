@@ -18,6 +18,9 @@ import type { TranslationKey } from '../i18n/en';
 import { Button, Dialog, KeepWords, RemoteGate } from './ui';
 import { useRemote } from '../lib/remote';
 import { LifeLine, lifeDate, type Tone } from './LifeLine';
+import { VendorLaneDialog } from './VendorLaneDialog';
+import { LANE_SERVICE } from '../lib/vendorLane';
+import { componentName } from '../lib/componentName';
 
 export interface OSUpdates {
     state: 'read' | 'unknown';
@@ -83,6 +86,9 @@ function UpdatesFacts({ value, onChanged }: { value: OSUpdates; onChanged: () =>
     const [confirming, setConfirming] = useState(false);
     const [writing, setWriting] = useState(false);
     const [result, setResult] = useState<{ tone: Tone; text: string } | null>(null);
+    // alpha.108 (owner finding: "ne ekleyeyim"): an uncovered or unconfined
+    // vendor repository gets its direct action, the lane's missing steps.
+    const [laneFor, setLaneFor] = useState<string | null>(null);
     const auto = value.automatic;
     const autoTone: Tone = auto.state === 'on' ? 'ok' : auto.state === 'not_applicable' || auto.state === 'unknown' ? 'info' : 'warn';
     const command = enableCommand(value.package_family, auto.reason);
@@ -161,6 +167,14 @@ function UpdatesFacts({ value, onChanged }: { value: OSUpdates; onChanged: () =>
                         />
                     </LifeLine>
                     {!vendor.covered && !vendor.confined && <p className="pl-6 text-sm text-fg-muted">{t('life.updates.vendor.notConfined', { name: vendor.name })}</p>}
+                    {(!vendor.covered || !vendor.confined) && LANE_SERVICE[vendor.repo_id] && (
+                        <div className="mt-2 pl-6">
+                            <Button onClick={() => setLaneFor(vendor.repo_id)} className="max-sm:min-h-11" data-os-updates-lane={vendor.repo_id}>
+                                {t('lane.updates.fix', { name: vendor.name })}
+                            </Button>
+                            <p className="mt-1 text-xs text-fg-subtle">{t('lane.updates.fixHint')}</p>
+                        </div>
+                    )}
                 </div>
             ))}
             {dropIn?.state === 'present' && (dropIn.origins ?? []).length > 0 && (
@@ -187,6 +201,17 @@ function UpdatesFacts({ value, onChanged }: { value: OSUpdates; onChanged: () =>
                         ))}
                     </ul>
                 </div>
+            )}
+            {laneFor && LANE_SERVICE[laneFor] && (
+                <VendorLaneDialog
+                    serviceId={LANE_SERVICE[laneFor]}
+                    component={componentName({ id: LANE_SERVICE[laneFor], name: LANE_SERVICE[laneFor] }, t)}
+                    onClose={() => setLaneFor(null)}
+                    onDone={() => {
+                        setLaneFor(null);
+                        onChanged();
+                    }}
+                />
             )}
             {confirming && dropIn?.proposed && (
                 <Dialog

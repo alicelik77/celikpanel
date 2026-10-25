@@ -28,6 +28,10 @@ import { supportFor, useSupportTable, type SupportComponent } from '../lib/suppo
 import { SupportBadge, supportConfirmation } from './SupportMark';
 import { NodePatches } from './NodePatches';
 import { InstallPreviewNotes, installPreviewAckKey, installPreviewGate } from './InstallPreviewNotes';
+import { VendorLaneDialog } from './VendorLaneDialog';
+import { LANE_FOR_COMPONENT } from '../lib/vendorLane';
+import { testedMark } from '../lib/testedVersions';
+import { lifeDate } from './LifeLine';
 import { useAuth } from '../auth/AuthContext';
 import type { TranslationKey } from '../i18n/en';
 import { useServerSetup } from './ServerSetupGate';
@@ -1454,7 +1458,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         setPendingAction(action);
     };
 
-    const confirmComponentAction = async () => {
+    const confirmComponentAction = async (confirmed: string[] = []) => {
         const action = pendingAction;
         if (!action || hostMutationReadiness?.ready !== true || stateUnverified) return;
         setPendingAction(null);
@@ -1470,6 +1474,9 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                 serviceId: action.service.id,
                 name: componentName(action.service, t),
                 ...(action.service.repair_package ? { package: action.service.repair_package } : {}),
+                // alpha.108 (owner finding): what a repair install brings is
+                // shown and confirmed like any other install.
+                ...(action.service.id !== 'roundcube' ? { checkInstalls: true, confirmInstalls: confirmed } : {}),
             });
             break;
         case 'install-package':
@@ -1477,6 +1484,11 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                 serviceId: action.service.id,
                 package: action.pkg,
                 name: `${componentName(action.service, t)} ${action.version}`,
+                // alpha.108 (owner finding: "PHP-FPM 8.6 kurulsun mu?" showed
+                // no preview, then was refused): the version list's install
+                // carries what the owner confirmed in its dialog.
+                checkInstalls: true,
+                confirmInstalls: confirmed,
             });
             break;
         case 'install-node':
@@ -2322,7 +2334,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                     action={pendingAction}
                     confirmDisabled={hostMutationReadiness?.ready !== true || stateUnverified}
                     onCancel={() => setPendingAction(null)}
-                    onConfirm={() => void confirmComponentAction()}
+                    onConfirm={(confirmed) => void confirmComponentAction(confirmed)}
                 />
             )}
         </div>
@@ -2344,9 +2356,23 @@ function ComponentActionConfirmationDialog({
     action: PendingComponentAction;
     confirmDisabled: boolean;
     onCancel: () => void;
-    onConfirm: () => void;
+    onConfirm: (confirmed: string[]) => void;
 }) {
     const { t } = useI18n();
+    // alpha.108 (owner finding): a package install from the version list or a
+    // repair shows the package manager's simulation, and notable or vendor
+    // packages hold Install until the owner confirms them, as every other
+    // install path does.
+    // Sürüm listesinden kurulum ve onarım da benzetimi gösterir.
+    const previewURL = action.kind === 'install-package'
+        ? installPreviewURL([{ id: action.service.id, package: action.pkg }])
+        : action.kind === 'repair' && action.service.id !== 'roundcube'
+            ? installPreviewURL([{ id: action.service.id, ...(action.service.repair_package ? { package: action.service.repair_package } : {}) }])
+            : null;
+    const preview = useRemote(previewURL, decodeInstallPreview);
+    const [acknowledgedFor, setAcknowledgedFor] = useState<string | null>(null);
+    const ackKey = installPreviewAckKey(previewURL, preview);
+    const gate = installPreviewGate(previewURL ? preview : null, ackKey !== null && acknowledgedFor === ackKey);
     const actionName = action.kind === 'service' || action.kind === 'instance'
         ? action.action
         : action.kind === 'repair'
@@ -2389,14 +2415,24 @@ function ComponentActionConfirmationDialog({
                     <Button
                         variant={actionName === 'stop' ? 'danger' : 'primary'}
                         icon={icon}
-                        disabled={confirmDisabled}
-                        onClick={onConfirm}
+                        disabled={confirmDisabled || (previewURL !== null && gate.hold)}
+                        onClick={() => onConfirm(previewURL ? gate.confirmed : [])}
                     >
                         {t(`services.confirm.${actionName}.button` as Parameters<typeof t>[0], { name: targetName })}
                     </Button>
                 </>
             }
-        />
+        >
+            {previewURL && (
+                <InstallPreviewNotes
+                    handle={preview}
+                    acknowledged={ackKey !== null && acknowledgedFor === ackKey}
+                    onAcknowledge={(value) => setAcknowledgedFor(value ? ackKey : null)}
+                    componentLabel={(id) => componentName(id, t)}
+                    avoidable={action.kind === 'install-package'}
+                />
+            )}
+        </Dialog>
     );
 }
 
@@ -2998,7 +3034,20 @@ function InstallServiceDialog({
                     </div>
                 )}
             </Dialog>
-            {repoAction && repo && (
+            {repoAction === 'enable' && repo?.lane && (
+                // alpha.108: a vendor lane is enabled only with its
+                // confinement and automatic updates, shown first.
+                <VendorLaneDialog
+                    serviceId={service.id}
+                    component={componentName(service, t)}
+                    onClose={() => setRepoAction(null)}
+                    onDone={() => {
+                        setRepoAction(null);
+                        void repoRead.retry();
+                    }}
+                />
+            )}
+            {repoAction && repo && !(repoAction === 'enable' && repo.lane) && (
                 <RepositoryActionConfirmationDialog
                     action={repoAction}
                     repositoryName={repo.name || componentName(service, t)}
@@ -3293,6 +3342,7 @@ function VersionDrawer({
     const [repoBusy, setRepoBusy] = useState(false);
     const repoError = repo?.error_code ? apiErrorText({ message: '', code: repo.error_code }, t, 'services.actionFailed') : '';
     const [repoAction, setRepoAction] = useState<'enable' | null>(null);
+    const [repoToken, setRepoToken] = useState(0);
     useEffect(() => {
         if (tarball || service.kind !== 'runtime') return;
         fetch(`/api/v1/repo?service_id=${encodeURIComponent(service.id)}`)
@@ -3300,7 +3350,7 @@ function VersionDrawer({
             .then((d: RepoInfo | null) => setRepo(d && d.available ? d : null))
             .catch(() => {});
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [service.id]);
+    }, [service.id, repoToken]);
 
     const enableRepo = async () => {
         setRepoBusy(true);
@@ -3561,6 +3611,21 @@ function VersionDrawer({
                                 {(inst.size_bytes ?? 0) > 0 && (
                                     <span className="text-xs text-fg-subtle">{fmtBytes(inst.size_bytes as number)}</span>
                                 )}
+                                {/* alpha.108: installed from a vendor repository that was
+                                    disabled since; nothing updates it any more. */}
+                                {repo && (repo.no_longer_updated ?? []).includes(`php${inst.version}-fpm`) && (
+                                    <span
+                                        title={t('lane.noLongerHint', { repo: repo.name ?? '', date: lifeDate(repo.disabled_at, locale) })}
+                                        className="rounded bg-warning/15 px-1.5 py-0.5 text-xs font-semibold text-warning"
+                                        data-no-longer-updated={inst.version}
+                                    >
+                                        {t('lane.noLonger')}
+                                    </span>
+                                )}
+                                {supportComponent && inst.version && (() => {
+                                    const mark = testedMark(support, supportComponent, inst.version);
+                                    return mark ? <TestedMark mark={mark} os={support?.distro_name ?? ''} /> : null;
+                                })()}
                                 {(inst.unit && inst.managed) || canRemove(inst) ? (
                                     <span className="ml-auto flex items-center gap-1">
                                         {inst.unit && inst.managed && (instRunning ? (
@@ -3620,14 +3685,21 @@ function VersionDrawer({
             {!tarball && repo && (
                 <div className="mt-2 border-t border-border/60 pt-3">
                     {!repo.enabled ? (
-                        <div className="flex flex-wrap items-center gap-3">
-                            <span className={`text-xs ${repoError ? 'text-danger' : 'text-fg-subtle'}`}>
-                                {repoError || t('services.repo.note')}
-                            </span>
-                            <Button variant="secondary" onClick={() => setRepoAction('enable')} disabled={repoBusy || Boolean(repo.error_code && !repo.repairable)} loading={repoBusy}>
-                                {repoBusy ? t('services.repo.enabling') : t('services.repo.enable')}
-                            </Button>
-                        </div>
+                        <>
+                            {/* alpha.108 (D-038 amendment "two lanes"): the default
+                                lane is the operating system's packages; the versions
+                                only the vendor ships are named, locked, with who
+                                patches them. */}
+                            {repo.lane && <LockedVendorVersions service={service} repoName={repo.name ?? ''} installed={instances.map((inst) => inst.version)} />}
+                            <div className="mt-2 flex flex-wrap items-center gap-3">
+                                <span className={`text-xs ${repoError ? 'text-danger' : 'text-fg-subtle'}`}>
+                                    {repoError || t('services.repo.note')}
+                                </span>
+                                <Button variant="secondary" onClick={() => setRepoAction('enable')} disabled={repoBusy || Boolean(repo.error_code && !repo.repairable)} loading={repoBusy}>
+                                    {repoBusy ? t('services.repo.enabling') : repo.lane ? t('lane.locked.enable', { repo: LANE_FOR_COMPONENT[service.id]?.name ?? repo.name ?? '' }) : t('services.repo.enable')}
+                                </Button>
+                            </div>
+                        </>
                     ) : (
                         <>
                             <div className="flex flex-wrap items-center gap-2">
@@ -3650,6 +3722,10 @@ function VersionDrawer({
                                                     {t('services.eolBadge')}
                                                 </span>
                                             )}
+                                            {supportComponent && (() => {
+                                                const mark = testedMark(support, supportComponent, v);
+                                                return mark ? <TestedMark mark={mark} os={support?.distro_name ?? ''} /> : null;
+                                            })()}
                                         </button>
                                     );
                                 })}
@@ -3720,7 +3796,18 @@ function VersionDrawer({
                     )}
                 </div>
             )}
-            {repoAction && repo && (
+            {repoAction && repo?.lane && (
+                <VendorLaneDialog
+                    serviceId={service.id}
+                    component={componentName(service, t)}
+                    onClose={() => setRepoAction(null)}
+                    onDone={() => {
+                        setRepoAction(null);
+                        setRepoToken((n) => n + 1);
+                    }}
+                />
+            )}
+            {repoAction && repo && !repo.lane && (
                 <RepositoryActionConfirmationDialog
                     action={repoAction}
                     repositoryName={repo.name || componentName(service, t)}
@@ -3822,6 +3909,63 @@ function VersionDrawer({
                 </Dialog>
             )}
         </fieldset>
+    );
+}
+
+// The default lane's locked versions (alpha.108, D-038 amendment "two
+// lanes"): the maintained versions the dated support table says this server's
+// distribution does not ship (their provider is the upstream, through the
+// vendor repository). Named and locked, with who patches them; enabling the
+// vendor lane is the administrator's informed choice.
+// Varsayılan yolun kilitli sürümleri: dağıtımın getirmediği bakımdaki sürümler.
+function LockedVendorVersions({ service, repoName, installed }: { service: ManagedService; repoName: string; installed: string[] }) {
+    const { t } = useI18n();
+    const support = useSupportTable();
+    const component: SupportComponent | null = service.id === 'php-fpm' ? 'php' : service.id === 'postgresql' ? 'postgresql' : null;
+    const lane = LANE_FOR_COMPONENT[service.id];
+    if (!component || !support || !lane) return null;
+    const versions = Object.entries(support.statuses?.[component] ?? {})
+        .filter(([version, result]) => result.provider === 'upstream' && (result.status === 'supported' || result.status === 'ends_soon') && !installed.includes(version))
+        .map(([version]) => version)
+        .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+    if (versions.length === 0) return null;
+    const os = support.distro_name ?? '';
+    return (
+        <div data-locked-versions={versions.join(',')}>
+            <p className="text-xs font-semibold text-fg-subtle">{t('lane.locked.title', { repo: lane.name || repoName })}</p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                {versions.map((version) => (
+                    <span
+                        key={version}
+                        title={t('lane.locked.hint', { repo: lane.name || repoName })}
+                        aria-disabled="true"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border-strong px-3 py-1.5 text-xs font-semibold text-fg-muted"
+                        data-locked-version={version}
+                    >
+                        <ShieldOff className="h-3.5 w-3.5" aria-hidden="true" />
+                        {`${componentName(service, t)} ${version}`}
+                    </span>
+                ))}
+            </div>
+            <p className="mt-1.5 text-xs leading-5 text-fg-subtle">
+                <KeepWords text={os ? t('lane.locked.why', { repo: lane.name || repoName, os }) : t('lane.locked.whyNoOS', { repo: lane.name || repoName })} />
+            </p>
+        </div>
+    );
+}
+
+// "Tested with this release" or "installable, not tested" (alpha.108,
+// D-038 §15): information, never a block.
+function TestedMark({ mark, os }: { mark: 'tested' | 'not_tested'; os: string }) {
+    const { t } = useI18n();
+    return (
+        <span
+            title={t(mark === 'tested' ? 'lane.testedHint' : 'lane.notTestedHint', { os })}
+            className={`rounded px-1.5 py-0.5 text-xs font-medium ${mark === 'tested' ? 'bg-success/10 text-success' : 'bg-surface-2 text-fg-subtle'}`}
+            data-tested={mark}
+        >
+            {t(mark === 'tested' ? 'lane.tested' : 'lane.notTested')}
+        </span>
     );
 }
 

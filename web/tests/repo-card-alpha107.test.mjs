@@ -27,6 +27,7 @@ const stub = dataModule(`
   const fill = (text, vars) => Object.entries(vars || {}).reduce((out, [name, value]) => out.split('{' + name + '}').join(String(value)), text);
   export const useI18n = () => ({ t: (key, vars) => (globalThis.cardWords?.[key] !== undefined ? fill(globalThis.cardWords[key], vars) : key), locale: 'en' });
   export const useNavigate = () => () => true;
+  export const showToast = () => {};
 `);
 const shared = sharedLayer(stub);
 const lifeLineURL = shared.compile('components/LifeLine.tsx');

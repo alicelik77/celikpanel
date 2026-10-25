@@ -196,7 +196,10 @@ func (p *Panel) handleRepo(w http.ResponseWriter, r *http.Request) {
 			// alpha.108: a vendor lane is never enabled alone — only with
 			// its confinement and its automatic updates, as the lane shown
 			// and confirmed at /api/v1/repo/lane.
-			if strings.TrimSpace(repo.ReleaseOrigin) != "" {
+			// An enabled one is enabled again only to fetch its current
+			// key: the source and key are rewritten from the catalogue, the
+			// confinement and the drop-in stay.
+			if strings.TrimSpace(repo.ReleaseOrigin) != "" && !p.repoEnabledNow(repo.ID) {
 				writeCodedError(w, http.StatusConflict, "REPO_LANE_REQUIRED", "this repository is enabled only together with its confinement and automatic updates", "/services")
 				return
 			}

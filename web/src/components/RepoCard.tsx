@@ -17,11 +17,14 @@ import { Package } from 'lucide-react';
 import { LifeLine, lifeDate, type Tone } from './LifeLine';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
-import { Button, KeepWords, RemoteGate } from './ui';
+import { Button, Dialog, KeepWords, RemoteGate } from './ui';
 import { useRemote } from '../lib/remote';
 import { decodeRepoInfo, type RepoInfo } from '../lib/componentRepo';
 import { componentName } from '../lib/componentName';
 import { RepoConfineDialog } from './RepoConfineDialog';
+import { VendorLaneDialog } from './VendorLaneDialog';
+import { showToast } from './Toast';
+import { decodeLaneRead, laneURL, missingSteps } from '../lib/vendorLane';
 
 // A time the server sent, said as a date (the shared lifecycle reading).
 export const repoDate = (value: string | undefined, locale: string): string => lifeDate(value, locale);
@@ -59,9 +62,43 @@ export function RepoCard({ serviceId }: { serviceId: string }) {
     );
 }
 
+// apt's own words for a key it refuses as expired (gpgv's EXPKEYSIG, or an
+// "expired" line naming the repository): only then does the card say apt no
+// longer accepts the repository (alpha.108, owner finding).
+export const aptReportsExpiredKey = (lines: string[] | undefined): boolean =>
+    (lines ?? []).some((line) => /EXPKEYSIG|KEYEXPIRED|expired/i.test(line));
+
 function RepoFacts({ serviceId, info, onChanged }: { serviceId: string; info: RepoInfo; onChanged: () => void }) {
     const { t, locale } = useI18n();
     const [asking, setAsking] = useState(false);
+    // alpha.108: a vendor lane's missing steps, completed as one confirmed
+    // operation (repository, confinement, automatic updates).
+    const lane = useRemote(info.lane ? laneURL(serviceId) : null, decodeLaneRead);
+    const lanePlan = lane.remote.state === 'known' && lane.remote.value.state === 'read' ? lane.remote.value.plan : null;
+    const missing = lanePlan ? missingSteps(lanePlan) : [];
+    const [laneOpen, setLaneOpen] = useState(false);
+    const [keyAsk, setKeyAsk] = useState(false);
+    const [keyBusy, setKeyBusy] = useState(false);
+    // Fetching the current key is the idempotent enable of an enabled
+    // repository: the pinned key is fetched and checked again; the source,
+    // the confinement and the automatic updates stay.
+    const refreshKey = async () => {
+        setKeyBusy(true);
+        try {
+            const res = await fetch('/api/v1/repo', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ service_id: serviceId, action: 'enable' }),
+            });
+            showToast(res.ok ? 'success' : 'error', res.ok ? t('lane.card.refreshKeyDone') : t('life.repo.confineFailed'));
+        } catch {
+            showToast('error', t('common.resultUnknown'));
+        } finally {
+            setKeyBusy(false);
+            setKeyAsk(false);
+            onChanged();
+        }
+    };
     const component = componentName({ id: serviceId, name: serviceId }, t);
     const confinement = info.confinement;
     const state = confinement?.state ?? 'unknown';
@@ -87,7 +124,33 @@ function RepoFacts({ serviceId, info, onChanged }: { serviceId: string; info: Re
                     {t(`life.repo.reason.${['write_failed', 'plan_changed'].includes(confinement.reason) ? confinement.reason : 'lists_unreadable'}` as TranslationKey, { detail: confinement.detail ?? '' })}
                 </p>
             )}
-            {(state === 'not_written' || state === 'removed_by_owner') && (
+            {info.lane && missing.length > 0 && (
+                <div data-lane-missing={missing.map((step) => step.step).join(',')}>
+                    <Line tone={lanePlan?.ready ? 'warn' : 'bad'} attr="lane-missing">
+                        <KeepWords text={lanePlan?.ready
+                            ? t('lane.card.missing', { steps: missing.map((step) => t(`lane.stepName.${step.step}` as TranslationKey)).join(', ') })
+                            : t('lane.card.blocked')} />
+                    </Line>
+                    <div className="mt-2 pl-6">
+                        <Button variant="primary" onClick={() => setLaneOpen(true)} className="max-sm:min-h-11" data-lane-complete="">
+                            {t('lane.card.complete')}
+                        </Button>
+                    </div>
+                </div>
+            )}
+            {laneOpen && (
+                <VendorLaneDialog
+                    serviceId={serviceId}
+                    component={component}
+                    onClose={() => setLaneOpen(false)}
+                    onDone={() => {
+                        setLaneOpen(false);
+                        void lane.retry();
+                        onChanged();
+                    }}
+                />
+            )}
+            {!info.lane && (state === 'not_written' || state === 'removed_by_owner') && (
                 <div className="pl-6">
                     <Button variant={state === 'not_written' ? 'primary' : undefined} onClick={() => setAsking(true)} className="max-sm:min-h-11" data-repo-confine="">
                         {state === 'not_written' ? t('life.repo.confineAsk') : t('life.repo.confineAgain')}
@@ -124,14 +187,46 @@ function RepoFacts({ serviceId, info, onChanged }: { serviceId: string; info: Re
                       : t('life.repo.enabledUnknown')}
             </Line>
             {key && (
-                <Line tone={key.state === 'expired' ? 'bad' : key.state === 'expiring' ? 'warn' : key.state === 'unknown' ? 'info' : 'ok'} attr={`key-${key.state}`}>
-                    <span className="font-mono text-xs">{t('life.repo.key', { fingerprint: groupedFingerprint(key.fingerprint) })}</span>
-                    {' · '}
-                    {key.state === 'valid' && (key.expires_at ? t('life.repo.key.validUntil', { date: repoDate(key.expires_at, locale) }) : t('life.repo.key.valid'))}
-                    {key.state === 'expiring' && t('life.repo.key.expiring', { date: repoDate(key.expires_at, locale) })}
-                    {key.state === 'expired' && t('life.repo.key.expired', { date: repoDate(key.expires_at, locale) })}
-                    {key.state === 'unknown' && t('life.repo.key.unknown')}
-                </Line>
+                // alpha.108 (owner findings): the fingerprint and its state as their
+                // own sentences; "apt no longer accepts" only when apt said so.
+                <div data-repo-key={key.state}>
+                    <Line tone={key.state === 'expired' ? 'bad' : key.state === 'expiring' ? 'warn' : key.state === 'unknown' ? 'info' : 'ok'} attr={`key-${key.state}`}>
+                        <span className="font-mono text-xs">{t('life.repo.key', { fingerprint: groupedFingerprint(key.fingerprint) })}</span>
+                        {key.state === 'valid' && <span>{'\u00a0· '}{key.expires_at ? t('life.repo.key.validUntil', { date: repoDate(key.expires_at, locale) }) : t('life.repo.key.valid')}</span>}
+                    </Line>
+                    {key.state !== 'valid' && (
+                        <p className="mt-1 pl-6 text-sm leading-6 text-fg-muted" data-repo-key-state={key.state}>
+                            <KeepWords text={
+                                key.state === 'expiring' ? t('life.repo.key.expiring', { date: repoDate(key.expires_at, locale) })
+                                    : key.state === 'expired' ? (aptReportsExpiredKey(info.apt_errors) ? t('life.repo.key.expired', { date: repoDate(key.expires_at, locale) }) : t('lane.key.expiredFile', { date: repoDate(key.expires_at, locale) }))
+                                        : t('life.repo.key.unknown')
+                            } />
+                        </p>
+                    )}
+                    {(key.state === 'expiring' || key.state === 'expired') && (
+                        <div className="mt-2 pl-6">
+                            <Button onClick={() => setKeyAsk(true)} disabled={keyBusy} loading={keyBusy} className="max-sm:min-h-11" data-repo-refresh-key="">
+                                {t('lane.card.refreshKey')}
+                            </Button>
+                        </div>
+                    )}
+                    {keyAsk && (
+                        <Dialog
+                            id="repo-refresh-key"
+                            title={t('lane.card.refreshKey')}
+                            busy={keyBusy}
+                            onDismiss={() => setKeyAsk(false)}
+                            actions={
+                                <>
+                                    <Button onClick={() => setKeyAsk(false)} disabled={keyBusy}>{t('common.cancel')}</Button>
+                                    <Button variant="primary" onClick={() => void refreshKey()} loading={keyBusy} disabled={keyBusy}>{t('lane.card.refreshKey')}</Button>
+                                </>
+                            }
+                        >
+                            <p className="text-sm leading-6 text-fg"><KeepWords text={t('lane.card.refreshKeyAsk', { name: info.name ?? serviceId })} /></p>
+                        </Dialog>
+                    )}
+                </div>
             )}
             {lists && (
                 <Line tone={lists.state === 'fresh' ? 'ok' : lists.state === 'expired' ? 'bad' : 'warn'} attr={`lists-${lists.state}`}>

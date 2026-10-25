@@ -34,6 +34,7 @@ import type { SettingsScreenKey } from './screens/settings/en';
 import type { ErrorsScreenKey } from './screens/errors/en';
 import type { LifecycleScreenKey } from './screens/lifecycle/en';
 import type { DatabaseClustersScreenKey } from './screens/databaseClusters/en';
+import type { VendorLanesScreenKey } from './screens/vendorLanes/en';
 
 export const en = {
     // ---- alpha.108 tools ----
@@ -358,7 +359,7 @@ export const en = {
     'services.phpToolProof.notReady': '{tool} was installed, but it did not answer on PHP {version} ({why}). It reads Not ready: open its Manage window in Components; the reason is shown there, and Check again asks it again without moving it.',
     'services.phpToolProof.whyMissing': 'PHP {version} lacks {extensions}',
     'services.phpToolProof.whyOther': 'it did not answer as itself',
-    'services.installRefused.notable': 'Nothing was installed: it would also have brought {packages}, which had not been confirmed. Open the install again in Components, where these packages are listed for you to confirm, or choose the recommended version.',
+    'services.installRefused.notable': 'Nothing was installed: it would also have brought {packages}, which were not confirmed — the package manager’s answer changed after the install dialog was shown. Press Install again: the dialog now lists them for you to confirm.',
     'services.phpToolProblem.extensionsFailed': 'The PHP extensions {tool} needs could not be installed for PHP {version}, so {tool} may not work. Open {tool} in Components and choose PHP {version} again in Manage, or another version.',
     'services.mailProfiles.fallbackWarning': '{name} installed with a self-signed fallback certificate. Mail clients will show a trust warning until a matching trusted certificate is configured.',
     'services.operation.title': 'Installing {name}',
@@ -479,5 +480,6 @@ export type ScreenKey =
     | SettingsScreenKey
     | ErrorsScreenKey
     | LifecycleScreenKey
-    | DatabaseClustersScreenKey;
+    | DatabaseClustersScreenKey
+    | VendorLanesScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;
