@@ -29,7 +29,7 @@ import (
 // ships the same source version): index.php through Misc::printHeader and
 // printFooter, and lib.inc.php's refusals from lang/english.php.
 
-func withUmask(t *testing.T, mask int) {
+func a108ToolsUmask(t *testing.T, mask int) {
 	t.Helper()
 	previous := syscall.Umask(mask)
 	t.Cleanup(func() { syscall.Umask(previous) })
@@ -40,7 +40,7 @@ func TestA108PHPCheckIsReadableByPHPFPMUnderTheAgentsUmask(t *testing.T) {
 	phpToolCheckScriptPath = filepath.Join(t.TempDir(), "celikpanel-php-check", "check.php")
 	t.Cleanup(func() { phpToolCheckScriptPath = saved })
 	// The unit's UMask=0027 (deploy/systemd/celikpanel-agent.service).
-	withUmask(t, 0o027)
+	a108ToolsUmask(t, 0o027)
 	if err := ensurePHPToolCheckScript(); err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func TestA108PHPCheckIsReadableByPHPFPMUnderTheAgentsUmask(t *testing.T) {
 	}
 }
 
-func a108Fixture(t *testing.T, name string) []byte {
+func a108ToolsFixture(t *testing.T, name string) []byte {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join("testdata", "phppgadmin-7.14.7", name))
 	if err != nil {
@@ -87,12 +87,12 @@ func a108Fixture(t *testing.T, name string) []byte {
 
 func TestA108PHPPgAdminRealPageShapes(t *testing.T) {
 	// The frameset both Ubuntu 24.04 and Debian 13 render is the tool.
-	if err := checkPHPToolResponse(phpToolPHPPgAdmin, 200, a108Fixture(t, "index.html")); err != nil {
+	if err := checkPHPToolResponse(phpToolPHPPgAdmin, 200, a108ToolsFixture(t, "index.html")); err != nil {
 		t.Fatalf("the real phpPgAdmin 7.14.7 page was refused: %v", err)
 	}
 	// Its refusals are not, also the one that names phpPgAdmin.
 	for _, name := range []string{"libnotfound.html", "badconfig.html"} {
-		body := a108Fixture(t, name)
+		body := a108ToolsFixture(t, name)
 		err := checkPHPToolResponse(phpToolPHPPgAdmin, 200, body)
 		var typed *phpToolProbeError
 		if !errors.As(err, &typed) || typed.Kind != "tool_error" || !strings.Contains(err.Error(), strings.TrimSpace(string(body))[:40]) {
