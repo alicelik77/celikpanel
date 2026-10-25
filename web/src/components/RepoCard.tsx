@@ -41,8 +41,13 @@ export function RepoCard({ serviceId }: { serviceId: string }) {
     const handle = useRemote(url, decodeRepoInfo);
     const { t } = useI18n();
     const remote = handle.remote;
-    // Nothing is drawn for a component without a repository, nor for one whose
-    // repository is not enabled: the install dialogue offers it there.
+    // Nothing is drawn for a component without a repository. A vendor lane
+    // that is not enabled says the default lane and offers the informed
+    // choice (alpha.108); another repository is offered by the install
+    // dialogue.
+    if (remote.state === 'known' && remote.value.available && !remote.value.enabled && remote.value.lane) {
+        return <DefaultLaneCard serviceId={serviceId} info={remote.value} onChanged={() => void handle.retry()} />;
+    }
     if (remote.state === 'known' && (!remote.value.available || !remote.value.enabled)) return null;
     if (remote.state === 'loading') return null;
     return (
@@ -58,6 +63,51 @@ export function RepoCard({ serviceId }: { serviceId: string }) {
                     {({ value }) => <RepoFacts serviceId={serviceId} info={value} onChanged={() => void handle.retry()} />}
                 </RemoteGate>
             </div>
+        </section>
+    );
+}
+
+// The default lane (alpha.108, D-038 amendment "two lanes"): this component
+// uses the operating system's packages only; the vendor repository is the
+// administrator's informed choice, enabled with its confinement and automatic
+// updates. What a disabled repository left installed is said as no longer
+// updated.
+// Varsayılan yol: işletim sisteminin paketleri; dış depo bilinçli seçim.
+function DefaultLaneCard({ serviceId, info, onChanged }: { serviceId: string; info: RepoInfo; onChanged: () => void }) {
+    const { t, locale } = useI18n();
+    const [open, setOpen] = useState(false);
+    const component = componentName({ id: serviceId, name: serviceId }, t);
+    const left = info.no_longer_updated ?? [];
+    return (
+        <section className="rounded-2xl border border-border bg-surface" data-repo-card={serviceId} data-lane-default="">
+            <header className="flex items-center gap-2 border-b border-border px-5 py-3">
+                <Package className="h-4 w-4 text-fg-muted" aria-hidden="true" />
+                <h2 className="text-sm font-semibold text-fg">{t('lane.default.title', { component })}</h2>
+            </header>
+            <div className="space-y-3 p-5">
+                <Line tone="ok" attr="lane-default"><KeepWords text={t('lane.default.body', { component, name: info.name ?? '' })} /></Line>
+                {left.length > 0 && (
+                    <Line tone="warn" attr="lane-no-longer-updated">
+                        <KeepWords text={t('lane.default.left', { names: left.join(', '), name: info.name ?? '', date: repoDate(info.disabled_at, locale) })} />
+                    </Line>
+                )}
+                <div className="pl-6">
+                    <Button onClick={() => setOpen(true)} className="max-sm:min-h-11" data-lane-enable="">
+                        {t('lane.default.enable', { name: info.name ?? '' })}
+                    </Button>
+                </div>
+            </div>
+            {open && (
+                <VendorLaneDialog
+                    serviceId={serviceId}
+                    component={component}
+                    onClose={() => setOpen(false)}
+                    onDone={() => {
+                        setOpen(false);
+                        onChanged();
+                    }}
+                />
+            )}
         </section>
     );
 }

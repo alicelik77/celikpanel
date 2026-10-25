@@ -190,3 +190,11 @@ test('tested marks are information read from the server, never a block (D-038 §
   assert.equal(testedMark({ ...table, tested_release: undefined }, 'php', '8.4'), null);
   assert.equal(testedMark(null, 'php', '8.4'), null);
 });
+
+test('a component on the default lane says so on its own page and offers the informed choice', () => {
+  const card = read('../src/components/RepoCard.tsx');
+  assert.match(card, /remote\.value\.available && !remote\.value\.enabled && remote\.value\.lane/);
+  assert.match(card, /data-lane-default=""/);
+  assert.match(card, /data-lane-enable=""/);
+  for (const key of ['lane.default.title', 'lane.default.body', 'lane.default.left', 'lane.default.enable']) assert.ok(en[key] && tr[key], key);
+});

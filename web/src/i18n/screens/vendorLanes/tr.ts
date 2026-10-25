@@ -50,6 +50,10 @@ export const trVendorLanesScreens: Record<VendorLanesScreenKey, string> = {
     'lane.stepName.confinement': 'sınırlama',
     'lane.stepName.updates': 'otomatik güncellemeler',
     // ---- depo kartı ----
+    'lane.default.title': '{component}: işletim sisteminin paketleri',
+    'lane.default.body': '{component} bu sunucunun işletim sisteminden gelir; onu işletim sistemi yamalar. İşletim sisteminin getirmediği sürümler {name} deposundan gelir; bu, yöneticinin bilinçli seçimidir ve yalnız sınırlaması ve otomatik güncellemeleriyle açılır. Müşteriler onu açamaz.',
+    'lane.default.left': '{date} tarihinde kapatılmadan önce {name} deposundan kuruldu ve artık güncellenmiyor: {names}. Çalışmayı sürdürürler; kaldırın ya da {name} deposunu yeniden açın.',
+    'lane.default.enable': '{name} kullan…',
     'lane.card.missing': 'Güvenli bir dış depo için eksik: {steps}. Tamamla… tam olarak neyin yazılacağını gösterir.',
     'lane.card.blocked': 'Bir adım şimdi yazılamıyor. Tamamla… nedenini ve sunucu yöneticisinin ne yapacağını söyler.',
     'lane.card.complete': 'Tamamla…',

@@ -58,6 +58,10 @@ export const enVendorLanesScreens = {
     'lane.stepName.confinement': 'the confinement',
     'lane.stepName.updates': 'the automatic updates',
     // ---- the repository card ----
+    'lane.default.title': '{component}: the operating system’s packages',
+    'lane.default.body': '{component} comes from this server’s operating system, which patches it. Versions it does not ship come from {name}; that is the administrator’s informed choice, enabled only with its confinement and automatic updates. Customers cannot enable it.',
+    'lane.default.left': 'Installed from {name} before it was disabled on {date}, and no longer updated: {names}. They keep running; remove them or enable {name} again.',
+    'lane.default.enable': 'Use {name}…',
     'lane.card.missing': 'Missing for a safe vendor repository: {steps}. Complete… shows exactly what would be written.',
     'lane.card.blocked': 'A step cannot be written now. Complete… says why and what the server administrator does.',
     'lane.card.complete': 'Complete…',
