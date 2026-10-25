@@ -132,6 +132,12 @@ func (p *Panel) handleDomainAppNodeVersion(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	from := state.RuntimeVersion.String
+	// alpha.108 (D-038 §14): another line is a customer's new choice and
+	// must be offered; another patch of the line the site runs never is
+	// refused.
+	if p.refuseVersionNotOffered(w, r, "node", from, req.Version) {
+		return
+	}
 	if from == req.Version {
 		json.NewEncoder(w).Encode(map[string]any{"moved": true, "from": from, "to": req.Version})
 		return

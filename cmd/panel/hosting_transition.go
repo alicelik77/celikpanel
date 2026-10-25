@@ -170,6 +170,19 @@ func (p *Panel) handleUpdateHosting(w http.ResponseWriter, r *http.Request, doma
 		}
 	}
 
+	// alpha.108 (D-038 §14): a customer's application takes a Node.js
+	// version the administrator offers; the one it runs (or another patch of
+	// its line) is kept.
+	if req.ProjectType == "node" {
+		current := ""
+		if state, err := p.loadHostingRuntimeState(r.Context(), domainID); err == nil && state.ProjectType == "node" && state.RuntimeVersion.Valid {
+			current = state.RuntimeVersion.String
+		}
+		if p.refuseVersionNotOffered(w, r, "node", current, strings.TrimSpace(req.RuntimeVersion)) {
+			return
+		}
+	}
+
 	ctx, cancel := hostingDurableContext(r.Context())
 	defer cancel()
 	previous, previousErr := p.loadHostingRuntimeState(ctx, domainID)

@@ -438,9 +438,30 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 	// okunuyor, bir şey bulunamazsa 8.3 yazılıyordu: tek ve sürümsüz PHP-FPM
 	// olan bir sunucuda (Arch) PHP 8.5 çalıştıran site 8.3 diye kaydediliyordu.
 	if req.ProjectType == "php" {
-		version, installed := newSitePHPVersion(req.PHPVersion, caps.PHPVersions)
+		requested := req.PHPVersion
+		if !isAdmin {
+			// alpha.108 (D-038 §14): a customer's new site takes a version
+			// the administrator offers — the one asked for, or the newest
+			// offered one. An administrator is never restricted.
+			policy, policyErr := p.loadOfferedVersions(r.Context())
+			if policyErr != nil {
+				writeServerError(w, policyErr)
+				return
+			}
+			chosen, offered := customerSitePHPVersion(req.PHPVersion, caps.PHPVersions, policy)
+			if !offered {
+				if req.PHPVersion == "" {
+					writeNoVersionOffered(w, "php")
+				} else {
+					writeVersionNotOffered(w, "php", req.PHPVersion)
+				}
+				return
+			}
+			requested = chosen
+		}
+		version, installed := newSitePHPVersion(requested, caps.PHPVersions)
 		if !installed {
-			writePHPVersionNotInstalled(w, req.PHPVersion, caps.PHPVersions)
+			writePHPVersionNotInstalled(w, requested, caps.PHPVersions)
 			return
 		}
 		req.PHPVersion = version

@@ -183,6 +183,16 @@ func (p *Panel) handleHostingCapabilities(w http.ResponseWriter, r *http.Request
 		writeAgentError(w, err, "hosting capabilities")
 		return
 	}
+	// alpha.108 (D-038 §14): a customer is shown the PHP versions the
+	// administrator offers; the administrator sees every installed one.
+	if !callerIsAdministrator(r) {
+		policy, err := p.loadOfferedVersions(r.Context())
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		caps.PHPVersions = policy.filter("php", caps.PHPVersions)
+	}
 	if err := json.NewEncoder(w).Encode(caps); err != nil {
 		writeServerError(w, err)
 	}
