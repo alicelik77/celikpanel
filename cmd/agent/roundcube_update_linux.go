@@ -40,10 +40,13 @@ type roundcubeUpdateOps struct {
 	extract     func(ctx context.Context, archive, dir string) error
 	updateDB    func(ctx context.Context, stage, from string) error
 	permissions func(ctx context.Context, stage string) error
-	backup      func(ctx context.Context, tree, from string) (string, error)
-	exchange    func(a, b string) error
-	prove       func(ctx context.Context) error
-	retire      func(path string) error
+	// prepareProof puts CelikPanel's PHP check (script and nginx location)
+	// in place before anything changes (alpha.109); nil in tests.
+	prepareProof func(ctx context.Context) error
+	backup       func(ctx context.Context, tree, from string) (string, error)
+	exchange     func(a, b string) error
+	prove        func(ctx context.Context) error
+	retire       func(path string) error
 }
 
 func hostRoundcubeUpdateOps() roundcubeUpdateOps {
@@ -82,7 +85,10 @@ func hostRoundcubeUpdateOps() roundcubeUpdateOps {
 		},
 		updateDB:    runRoundcubeDBUpdate,
 		permissions: setRoundcubeUpdatePermissions,
-		backup:      backupRoundcubeTree,
+		prepareProof: func(ctx context.Context) error {
+			return preparePHPToolProof(ctx, phpToolWebmail)
+		},
+		backup: backupRoundcubeTree,
 		exchange: func(a, b string) error {
 			if err := unix.Renameat2(unix.AT_FDCWD, a, unix.AT_FDCWD, b, unix.RENAME_EXCHANGE); err != nil {
 				return err
@@ -265,6 +271,22 @@ func updateRoundcubeTo(ctx context.Context, version string, ops roundcubeUpdateO
 	}
 	if check.LatestOnLine != version || !roundcubeVersionLess(check.Version, version) {
 		return fail("NOT_LATEST", fmt.Errorf("the newest release on the %s line is %s, not %s; nothing was changed", check.Line, check.LatestOnLine, version))
+	}
+	// alpha.109 (Frankfurt): a webmail configuration written by an older
+	// release had no PHP check location, so the proof after the swap read
+	// HTTP 404 and a working Roundcube was rolled back. The check is put in
+	// place first; an owner-edited configuration stops the update here,
+	// before anything of Roundcube changes.
+	// Kanıt denetimi önce yerine konur; sahibin değiştirdiği yapılandırma
+	// güncellemeyi burada, hiçbir şey değişmeden durdurur.
+	if ops.prepareProof != nil {
+		if err := ops.prepareProof(ctx); err != nil {
+			var edited *errPHPToolConfigOwnerEdited
+			if errors.As(err, &edited) {
+				return fail("CONFIG_OWNER_EDITED", fmt.Errorf("%v; Roundcube was not changed", err))
+			}
+			return fail("PROOF_PREPARE_FAILED", fmt.Errorf("CelikPanel's PHP check for webmail could not be put in place (%v); Roundcube was not changed", err))
+		}
 	}
 	live := ops.baseDir
 	if err := reconcileRoundcubeArtifacts(live, ""); err != nil {

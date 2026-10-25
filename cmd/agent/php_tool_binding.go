@@ -1576,3 +1576,119 @@ var phpToolViewPackageCheck = func() func(string) bool {
 	}
 	return func(pkg string) bool { return packageInstalledForProfile(profile, pkg) }
 }
+
+// alpha.109 (Frankfurt): a server set up by an older release keeps the
+// webmail (or database tools) configuration that release wrote, without the
+// location of CelikPanel's PHP check, so every proof read HTTP 404 from
+// nginx and a Roundcube update was rolled back although Roundcube worked.
+// Before a proof the check location is added: only to a file in one of
+// CelikPanel's own forms, keeping its listen address, roots and sockets
+// exactly; nginx validates it and reloads, and a refusal puts the previous
+// file back. A file the owner changed is refused, with the reason, as before.
+//
+// Eski sürümlerin yazdığı yapılandırmada PHP denetiminin konumu yoktu; her
+// kanıt 404 okuyordu. Kanıttan önce konum, yalnız CelikPanel'in kendi
+// biçimindeki dosyaya, aynı dinleme, kök ve soketlerle eklenir; sahibin
+// değiştirdiği dosya gerekçesiyle reddedilir.
+
+// phpToolHasCheckLocation: the configuration serves the tool's PHP check.
+func phpToolHasCheckLocation(content, tool string) bool {
+	return strings.Contains(content, "location = "+phpToolCheckPrefix+tool+" {")
+}
+
+func phpToolConfPathFor(tool string) string {
+	if tool == phpToolWebmail {
+		return phpToolWebmailConfPath
+	}
+	return phpToolDBToolsConfPath
+}
+
+// currentFormPHPToolConfig renders a managed configuration in today's form
+// with the same listen address, roots and sockets it names. An alpha.1 to
+// alpha.12 loopback webmail server moves to the webmail socket, as
+// ConfigureWebmail does.
+func currentFormPHPToolConfig(tool, content string) (string, error) {
+	if tool == phpToolWebmail {
+		alias := webmailAliasLine.FindStringSubmatch(content)
+		if alias == nil {
+			return "", fmt.Errorf("the webmail configuration names no Roundcube root")
+		}
+		listen := ""
+		if match := webmailListenLine.FindStringSubmatch(content); match != nil {
+			listen = match[1]
+		} else {
+			socket, err := webmailSocketPathForNginx()
+			if err != nil {
+				return "", err
+			}
+			listen = socket
+		}
+		return renderWebmailNginxConfig(listen, alias[1], parseWebmailFPMSocket(content)), nil
+	}
+	var tools []string
+	roots := map[string]string{}
+	for _, match := range dbToolLocationBlock.FindAllStringSubmatch(content, -1) {
+		tools = append(tools, match[1])
+		roots[match[1]] = match[2]
+	}
+	return renderDBToolsConfig(tools, roots, parseDBToolsFPMSockets(content)), nil
+}
+
+// ensurePHPToolCheckLocationWith adds the tool's check location when its
+// managed configuration lacks it; it says whether it rewrote the file. A
+// missing or empty file is left alone: there is nothing to prove through.
+func ensurePHPToolCheckLocationWith(ctx context.Context, ops phpToolBindOps, tool string) (bool, error) {
+	path := phpToolConfPathFor(tool)
+	previous, err := ops.snapshotConf(path)
+	if err != nil {
+		return false, fmt.Errorf("the configuration of %s could not be read: %v", phpToolDisplayName(tool), err)
+	}
+	content := string(previous.content)
+	if !previous.exists || strings.TrimSpace(content) == "" || phpToolHasCheckLocation(content, tool) {
+		return false, nil
+	}
+	managed := managedDBToolsConfig(content)
+	if tool == phpToolWebmail {
+		managed = managedWebmailConfig(content)
+	}
+	if !managed {
+		return false, &errPHPToolConfigOwnerEdited{Path: path}
+	}
+	next, err := currentFormPHPToolConfig(tool, content)
+	if err != nil {
+		return false, err
+	}
+	if !phpToolHasCheckLocation(next, tool) {
+		return false, fmt.Errorf("the configuration of %s does not serve it, so CelikPanel's PHP check cannot be added", phpToolDisplayName(tool))
+	}
+	if err := ops.writeConf(path, []byte(next)); err != nil {
+		if restoreErr := ops.restoreConf(previous); restoreErr != nil {
+			return false, fmt.Errorf("the PHP check could not be added to %s (%v), and the previous file could not be put back (%v)", path, err, restoreErr)
+		}
+		return false, fmt.Errorf("the PHP check could not be added to %s: %v; the previous file is kept", path, err)
+	}
+	if err := ops.nginxTest(ctx); err != nil {
+		if restoreErr := ops.restoreConf(previous); restoreErr != nil {
+			return false, fmt.Errorf("nginx rejected %s with the PHP check (%v), and the previous file could not be put back (%v)", path, err, restoreErr)
+		}
+		return false, fmt.Errorf("nginx rejected %s with the PHP check (%v); the previous file was put back", path, err)
+	}
+	if err := ops.nginxReload(ctx); err != nil {
+		if restoreErr := ops.restoreConf(previous); restoreErr == nil {
+			_ = ops.nginxTest(ctx)
+			_ = ops.nginxReload(ctx)
+		}
+		return false, fmt.Errorf("nginx did not reload %s with the PHP check (%v); the previous file was put back", path, err)
+	}
+	return true, nil
+}
+
+// preparePHPToolProof puts the check script (readable modes, alpha.108) and
+// the check location (alpha.109) in place before a proof.
+func preparePHPToolProof(ctx context.Context, tool string) error {
+	if err := ensurePHPToolCheckScript(); err != nil {
+		return err
+	}
+	_, err := ensurePHPToolCheckLocationWith(ctx, hostPHPToolBindOps(), tool)
+	return err
+}

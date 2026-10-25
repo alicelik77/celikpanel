@@ -742,8 +742,10 @@ type phpToolProveOps struct {
 	record     func(tool string, cause *transport.PHPToolCause, triedOthers bool) error
 	// prepare puts CelikPanel's PHP check in place with readable modes
 	// before the proof (alpha.108: a check left unreadable by an earlier
-	// Agent is repaired by the next proof). nil in tests that do not need it.
-	prepare func() error
+	// Agent is repaired by the next proof), and since alpha.109 the check's
+	// location in a configuration an older release wrote. nil in tests that
+	// do not need it.
+	prepare func(ctx context.Context, tool string) error
 }
 
 // phpToolProofCandidates are the installed versions, other than current,
@@ -769,7 +771,7 @@ func phpToolProofCandidates(tool, current string) []string {
 }
 
 func hostPHPToolProveOps() phpToolProveOps {
-	return phpToolProveOps{bind: hostPHPToolBindOps(), candidates: phpToolProofCandidates, record: writePHPToolProof, prepare: ensurePHPToolCheckScript}
+	return phpToolProveOps{bind: hostPHPToolBindOps(), candidates: phpToolProofCandidates, record: writePHPToolProof, prepare: preparePHPToolProof}
 }
 
 func causeOfBindError(err error, version string) *transport.PHPToolCause {
@@ -805,8 +807,12 @@ func provePHPToolWith(ctx context.Context, ops phpToolProveOps, tool string, all
 	current := state.version()
 	var first *transport.PHPToolCause
 	if ops.prepare != nil {
-		if err := ops.prepare(); err != nil {
+		if err := ops.prepare(ctx, tool); err != nil {
 			cause := transport.PHPToolCause{Kind: "config_prepare_failed", Version: current, Detail: err.Error()}
+			var edited *errPHPToolConfigOwnerEdited
+			if errors.As(err, &edited) {
+				cause.Kind, cause.Detail = "config_owner_edited", edited.Path
+			}
 			resp.Version = current
 			resp.Attempts = append(resp.Attempts, transport.PHPToolAttempt{Version: current, Cause: &cause})
 			if recordErr := ops.record(tool, &cause, false); recordErr != nil {
