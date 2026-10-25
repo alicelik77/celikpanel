@@ -12,7 +12,7 @@ import { useI18n } from '../i18n';
 import { Button, RemoteGate } from './ui';
 import { useRemote } from '../lib/remote';
 import { LifeLine, lifeDate } from './LifeLine';
-import { RoundcubeUpdateDialog, RoundcubeUpdateProgress, useRoundcubeUpdate } from './RoundcubeUpdateFlow';
+import { OpenWebmailLink, RoundcubeUpdateDialog, RoundcubeUpdateProgress, useRoundcubeUpdate } from './RoundcubeUpdateFlow';
 import { decodeRoundcubeUpdate, ROUNDCUBE_UPDATE_URL, type RoundcubeUpdateCheck } from '../lib/roundcubeUpdate';
 
 export { decodeRoundcubeUpdate } from '../lib/roundcubeUpdate';
@@ -41,11 +41,12 @@ function WebmailFacts({ value, onChanged }: { value: RoundcubeUpdateCheck; onCha
     const latest = value.latest_on_line ?? '';
     // The same flow the Components row starts (RoundcubeUpdateFlow.tsx).
     // Bileşenler satırının başlattığı akışın aynısı.
-    const flow = useRoundcubeUpdate({ current: value.version, latest, onChanged });
-    const { confirming, setConfirming, updating, result, update } = flow;
+    const flow = useRoundcubeUpdate({ current: value.version, latest, lastUpdate: value.last_update, onChanged });
+    const { confirming, setConfirming, updating, phase, result, update } = flow;
     if (!value.installed) return <p className="text-sm text-fg-muted">{t('life.webmail.notInstalled')}</p>;
     return (
         <div className="space-y-3" data-webmail-state={value.update_available ? 'available' : value.error ? 'error' : 'current'}>
+            <OpenWebmailLink ready={value.webmail_ready} />
             {value.error ? (
                 <LifeLine tone="info" attr="webmail-error">{t('life.webmail.checkError', { reason: value.error })}</LifeLine>
             ) : value.update_available ? (
@@ -64,7 +65,7 @@ function WebmailFacts({ value, onChanged }: { value: RoundcubeUpdateCheck; onCha
                     </Button>
                 </div>
             )}
-            <RoundcubeUpdateProgress updating={updating} result={result} />
+            <RoundcubeUpdateProgress updating={updating} phase={phase} result={result} />
             {confirming && (
                 <RoundcubeUpdateDialog latest={latest} updating={updating} onCancel={() => setConfirming(false)} onConfirm={() => void update()} />
             )}

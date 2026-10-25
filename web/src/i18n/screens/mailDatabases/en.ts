@@ -68,7 +68,7 @@ export const enMailDatabasesScreens = {
     'mail.setup.usernameHint': 'always the full email address, e.g. {example}',
     'mail.webmail.title': 'Webmail',
     'mail.webmail.checking': 'Checking availability…',
-    'mail.webmail.available': 'Open your mailbox in the browser.',
+    'mail.webmail.available': 'Mailboxes open in the browser at {url}: each user signs in with their full email address and mailbox password; no panel account is needed.',
     'mail.webmail.unavailable': 'Webmail is not available on this server.',
     'mail.webmail.open': 'Open Webmail',
     'mail.catchAll.title': 'Catch-all address',

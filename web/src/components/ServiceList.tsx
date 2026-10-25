@@ -23,7 +23,7 @@ import { componentStateWord, isServiceRunning, phpBindingOf, phpNotReadyHintKey 
 import { decodeCandidateVersion, decodeRepoInfo, type RepoInfo } from '../lib/componentRepo';
 import { decodeInstallPreview, installPreviewURL, shortCandidate, versionOfPackage } from '../lib/installPreview';
 import { decodeRoundcubeUpdate, ROUNDCUBE_UPDATE_URL } from '../lib/roundcubeUpdate';
-import { RoundcubeUpdateDialog, RoundcubeUpdateProgress, useRoundcubeUpdate } from './RoundcubeUpdateFlow';
+import { OpenWebmailLink, RoundcubeUpdateDialog, RoundcubeUpdateProgress, useRoundcubeUpdate } from './RoundcubeUpdateFlow';
 import { supportFor, useSupportTable, type SupportComponent } from '../lib/supportTable';
 import { SupportBadge, supportConfirmation } from './SupportMark';
 import { NodePatches } from './NodePatches';
@@ -3139,12 +3139,14 @@ function RoundcubeRowUpdate({ locked, lockedReason }: { locked: boolean; lockedR
     const remote = handle.remote;
     const known = remote.state === 'known' ? remote.value : null;
     const latest = known?.latest_on_line ?? '';
-    const flow = useRoundcubeUpdate({ current: known?.version, latest, onChanged: () => void handle.retry() });
+    const flow = useRoundcubeUpdate({ current: known?.version, latest, lastUpdate: known?.last_update, onChanged: () => void handle.retry() });
     const offered = known !== null && known.update_available && latest !== '';
-    if (!offered && !flow.updating && !flow.result) return null;
+    const ready = known?.webmail_ready === true;
+    if (!offered && !flow.updating && !flow.result && !ready) return null;
     const reason = lockedReason !== '' ? lockedReason : t('life.webmail.rowLocked');
     return (
         <div className="mt-1 space-y-1.5" data-row-webmail-update={latest}>
+            <OpenWebmailLink ready={ready} />
             {offered && (
                 <div className="text-xs font-medium text-warning">
                     {t('life.webmail.rowAvailable', { latest })}
@@ -3167,7 +3169,7 @@ function RoundcubeRowUpdate({ locked, lockedReason }: { locked: boolean; lockedR
                     )}
                 </div>
             )}
-            <RoundcubeUpdateProgress updating={flow.updating} result={flow.result} />
+            <RoundcubeUpdateProgress updating={flow.updating} phase={flow.phase} result={flow.result} />
             {flow.confirming && (
                 <RoundcubeUpdateDialog latest={latest} updating={flow.updating} onCancel={() => flow.setConfirming(false)} onConfirm={() => void flow.update()} />
             )}

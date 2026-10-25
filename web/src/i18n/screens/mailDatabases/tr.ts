@@ -62,7 +62,7 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'mail.setup.usernameHint': 'her zaman tam e-posta adresi, örn. {example}',
     'mail.webmail.title': 'Web posta',
     'mail.webmail.checking': 'Kullanılabilirlik denetleniyor…',
-    'mail.webmail.available': 'Posta kutunuzu tarayıcıda açın.',
+    'mail.webmail.available': 'Posta kutuları tarayıcıda {url} adresinde açılır: her kullanıcı tam e-posta adresi ve posta kutusu parolasıyla girer; panel hesabı gerekmez.',
     'mail.webmail.unavailable': 'Web posta bu sunucuda kullanılamıyor.',
     'mail.webmail.open': 'Webmail’i Aç',
     'mail.catchAll.title': 'Catch-all adresi',

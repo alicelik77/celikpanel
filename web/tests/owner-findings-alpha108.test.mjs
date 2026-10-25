@@ -113,8 +113,8 @@ test('C9: two short shell strings, in English and Turkish', () => {
 test('C10: the webmail update is started by one flow; the card and the Components row both use it', () => {
   assert.match(flow, /export function useRoundcubeUpdate/);
   assert.match(flow, /export function RoundcubeUpdateDialog/);
-  assert.match(flow, /\/api\/v1\/service\/roundcube\/update/);
-  assert.match(flow, /if \(running\.current\) return;/, 'a second start is refused while one runs');
+  assert.match(flow, /fetch\(ROUNDCUBE_UPDATE_URL/);
+  assert.match(flow, /if \(starting\.current \|\| following\) return;/, 'a second start is refused while one runs');
   for (const [name, source] of [['card', card], ['row', list]]) {
     assert.match(source, /useRoundcubeUpdate\(/, name);
     assert.match(source, /<RoundcubeUpdateDialog /, name);
@@ -133,7 +133,7 @@ test('C10: the row button opens the confirmation, is disabled with a written rea
   assert.match(row, /relative/, 'it sits above the row link overlay');
   assert.match(list, /updateLocked=\{mutationControlsDisabled \|\| componentOperation\.locked\} updateLockedReason=\{readinessMessage\}/);
   // The result stays after the offer is gone (the re-read clears update_available).
-  assert.match(row, /if \(!offered && !flow\.updating && !flow\.result\) return null;/);
+  assert.match(row, /if \(!offered && !flow\.updating && !flow\.result && !ready\) return null;/);
   // The desktop version column shows the version alone: one button per row.
   assert.match(list, /props\.service\.id === 'roundcube' && props\.service\.is_installed && !props\.column/);
 });

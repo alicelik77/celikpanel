@@ -31,7 +31,9 @@ let requests = [];
 const answer = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 async function settle() { await act(async () => { await new Promise((resolve) => setTimeout(resolve, 10)); }); }
 const check = (extra = {}) => ({ state: 'read', check: { installed: true, version: '1.6.15', line: '1.6', latest_on_line: '1.6.20', latest_overall: '1.7.5', update_available: true, checked_at: '2026-10-24T10:00:00Z', ...extra } });
-async function mount(reads, { words = en, post, component = RoundcubeUpdateCard } = {}) {
+const opID = 'a'.repeat(32);
+const operation = (status, result = {}, extra = {}) => ({ id: opID, request_id: 'b'.repeat(32), kind: 'webmail_update', service_id: 'roundcube', package_name: '1.6.20', status, phase: status === 'running' ? 'updating' : 'completed', started_at: '2026-10-25T10:00:00Z', result, ...extra });
+async function mount(reads, { words = en, post, ops = [], component = RoundcubeUpdateCard } = {}) {
   globalThis.cardWords = words;
   globalThis.document = { addEventListener() {}, removeEventListener() {}, getElementById: () => null, activeElement: null, body: { style: {} } };
   requests = [];
@@ -41,6 +43,7 @@ async function mount(reads, { words = en, post, component = RoundcubeUpdateCard 
     requests.push({ url, method: init.method ?? 'GET', body: init.body });
     if (url === '/api/v1/service/roundcube/update' && init.method === 'POST') return post(init);
     if (url === '/api/v1/service/roundcube/update') return answer(reads[Math.min(n++, reads.length - 1)]);
+    if (url.startsWith('/api/v1/service/operation?')) return answer({ operation: ops.length > 1 ? ops.shift() : ops[0] ?? null });
     return answer({ error: 'no route' }, 404);
   };
   await act(async () => { tree = Renderer.create(React.createElement(component)); });
@@ -57,7 +60,8 @@ const attr = (name) => tree.root.findAll((node) => node.props && node.props[name
 
 test('a newer release on the line is offered and updated after confirmation', async () => {
   await mount([check(), check({ version: '1.6.20', update_available: false })], {
-    post: () => answer({ updated: true, proved: true, from: '1.6.15', to: '1.6.20', backup: '/var/lib/celikpanel-agent-private/roundcube-backups/roundcube-1.6.15.tar.gz' }),
+    post: () => answer({ operation: operation('queued') }, 202),
+    ops: [operation('succeeded', { success: true, outcome: 'updated', from: '1.6.15', to: '1.6.20', backup: '/var/lib/celikpanel-agent-private/roundcube-backups/roundcube-1.6.15.tar.gz' })],
   });
   try {
     assert.equal(attr('data-webmail-state')[0].props['data-webmail-state'], 'available');
@@ -66,7 +70,10 @@ test('a newer release on the line is offered and updated after confirmation', as
     await act(async () => { attr('data-webmail-update-confirm')[0].props.onClick(); });
     await settle();
     const post = requests.find((request) => request.method === 'POST');
-    assert.deepEqual(JSON.parse(post.body), { version: '1.6.20' });
+    const sent = JSON.parse(post.body);
+    assert.equal(sent.version, '1.6.20');
+    assert.match(sent.request_id, /^[a-f0-9]{32}$/);
+    assert.equal(requests.filter((request) => request.method === 'POST').length, 1, 'polling never sends a second update');
     assert.ok(text().includes('roundcube-1.6.15.tar.gz'));
     assert.equal(attr('data-webmail-state')[0].props['data-webmail-state'], 'current');
   } finally { await unmount(); }
@@ -75,7 +82,8 @@ test('a newer release on the line is offered and updated after confirmation', as
 test('a failed update says the previous files were put back, in Turkish too', async () => {
   await mount([check()], {
     words: tr,
-    post: () => answer({ error: 'webmail did not answer on 1.6.20', code: 'WEBMAIL_UPDATE_PROOF_FAILED', rolled_back: true, from: '1.6.15', to: '1.6.20' }, 409),
+    post: () => answer({ operation: operation('running') }, 202),
+    ops: [operation('failed', { success: false, outcome: 'rolled_back', previous_answers: true, code: 'PROOF_FAILED', rolled_back: true, from: '1.6.15', to: '1.6.20', reason: 'webmail did not answer on 1.6.20' }, { error: { code: 'webmail_update_failed', message: 'Webmail was not updated.' } })],
   });
   try {
     await act(async () => { attr('data-webmail-update-offer')[0].props.onClick(); });
