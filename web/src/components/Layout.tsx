@@ -84,6 +84,26 @@ function decodePanelRuntime(value: unknown): PanelRuntime | null {
     };
 }
 
+// The rail can be collapsed to icons (alpha.108). The choice is remembered
+// per browser; storage can be missing or throw (private window, blocked site
+// data), so every access is guarded and the rail simply starts expanded.
+// Ray, yalnız simgelere daraltılabilir; seçim tarayıcı başına hatırlanır.
+const RAIL_STORAGE_KEY = 'celikpanel.sidebar.collapsed';
+function readRailCollapsed(): boolean {
+    try {
+        return window.localStorage.getItem(RAIL_STORAGE_KEY) === '1';
+    } catch {
+        return false;
+    }
+}
+function writeRailCollapsed(collapsed: boolean) {
+    try {
+        window.localStorage.setItem(RAIL_STORAGE_KEY, collapsed ? '1' : '0');
+    } catch {
+        /* the choice just is not remembered */
+    }
+}
+
 export function Layout({ children, currentPage = '', onPageChange, mode = 'panel', setupNavigation }: LayoutProps) {
     const { t } = useI18n();
     const setupMode = mode === 'setup';
@@ -114,6 +134,13 @@ export function Layout({ children, currentPage = '', onPageChange, mode = 'panel
     const domainCount = setupMode ? undefined : lastKnown(domainsCount(domainList.remote, role === 'admin' ? zoneList.remote : null))?.value;
     const [panelRuntime, setPanelRuntime] = useState<PanelRuntime | null>(null);
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [railCollapsed, setRailCollapsed] = useState(readRailCollapsed);
+    const toggleRail = useCallback(() => {
+        setRailCollapsed((current) => {
+            writeRailCollapsed(!current);
+            return !current;
+        });
+    }, []);
     const [desktopPageHeaderTarget, setDesktopPageHeaderTarget] = useState<HTMLDivElement | null>(null);
     const [desktopPageHeaderCount, setDesktopPageHeaderCount] = useState(0);
     const registerDesktopPageHeader = useCallback(() => {
@@ -219,6 +246,8 @@ export function Layout({ children, currentPage = '', onPageChange, mode = 'panel
                     }}
                     mobileOpen={mobileOpen}
                     onCloseMobile={() => setMobileOpen(false)}
+                    collapsed={railCollapsed}
+                    onToggleCollapsed={toggleRail}
                     expandedHeader={hasDesktopPageHeader || setupMode}
                     setupMode={setupMode}
                     setupNavigation={setupNavigation}
@@ -276,6 +305,8 @@ function Sidebar({
     onPageChange,
     mobileOpen,
     onCloseMobile,
+    collapsed,
+    onToggleCollapsed,
     expandedHeader,
     setupMode,
     setupNavigation,
@@ -290,6 +321,8 @@ function Sidebar({
     onPageChange: (id: string) => void;
     mobileOpen: boolean;
     onCloseMobile: () => void;
+    collapsed: boolean;
+    onToggleCollapsed: () => void;
     expandedHeader: boolean;
     setupMode: boolean;
     setupNavigation?: React.ReactNode;
@@ -300,31 +333,41 @@ function Sidebar({
     const { t } = useI18n();
     const items = navItemsForRole(role, access);
 
-    const content = (
-        <div className="flex h-full w-64 flex-col bg-sidebar text-sidebar-fg">
+    // The desktop rail may be collapsed to icons; the phone drawer never is
+    // (it is opened on demand and has the room). The setup shell keeps its
+    // own navigation and is never collapsed.
+    // Masaüstü ray simgelere daralabilir; telefon çekmecesi hiç daralmaz;
+    // kurulum kabuğu da daralmaz.
+    const buildContent = (desktop: boolean) => {
+    const rail = desktop && collapsed && !setupMode;
+    return (
+        <div className={`flex h-full ${rail ? 'w-16' : 'w-64'} flex-col bg-sidebar text-sidebar-fg`}>
             <div
-                className={'flex h-14 items-center gap-2.5 border-b border-sidebar-border px-5 ' +
+                className={`flex h-14 items-center gap-2.5 border-b border-sidebar-border ${rail ? 'justify-center px-0' : 'px-5'} ` +
                     (expandedHeader ? 'xl:h-[90px]' : '')}
             >
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-fg">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-fg">
                     <BrandMark className="h-5 w-5" />
                 </div>
-                <span className="text-lg font-bold text-white">{t('app.name')}</span>
+                <span className={rail ? 'sr-only' : 'text-lg font-bold text-white'}>{t('app.name')}</span>
             </div>
 
             {setupMode ? <div className="min-h-0 flex-1 overflow-y-auto px-3 py-6" data-setup-navigation>
                 {setupNavigation || <p className="px-3 text-sm font-semibold">{t('setup.settingsTitle')}</p>}
-            </div> : <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
+            </div> : <nav className={`flex-1 space-y-4 overflow-y-auto ${rail ? 'px-2' : 'px-3'} py-4`}>
+                {desktop && <RailToggle collapsed={collapsed} onToggle={onToggleCollapsed} />}
                 {navGroups.map((group) => {
                     const groupItems = items.filter((i) => i.group === group.id);
                     if (groupItems.length === 0) return null;
                     return (
                         <div key={group.id}>
-                            {group.labelKey && (
+                            {group.labelKey && (rail ? (
+                                <div className="mx-2 mb-2 border-t border-sidebar-border" aria-hidden="true" />
+                            ) : (
                                 <p className="px-3 pb-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-heading">
                                     {t(group.labelKey)}
                                 </p>
-                            )}
+                            ))}
                             <div className="space-y-0.5">
                                 {groupItems.map((item) => (
                                     <SidebarItem
@@ -332,6 +375,7 @@ function Sidebar({
                                         item={item}
                                         active={currentPage === item.id}
                                         count={item.countKey ? counts[item.countKey] : undefined}
+                                        rail={rail}
                                         onClick={() => onPageChange(item.id)}
                                     />
                                 ))}
@@ -341,7 +385,21 @@ function Sidebar({
                 })}
             </nav>}
 
-            <div className="shrink-0 border-t border-sidebar-border px-4 py-3 text-xs text-sidebar-muted [overflow-wrap:anywhere]">
+            <div className={`shrink-0 border-t border-sidebar-border ${rail ? 'flex justify-center px-2' : 'px-4'} py-3 text-xs text-sidebar-muted [overflow-wrap:anywhere]`}>
+                {rail ? (
+                    updateTarget && (
+                        <Link
+                            to="/settings?section=updates"
+                            onClick={onCloseMobile}
+                            data-update-available={updateTarget.version}
+                            title={t('panelUpdate.notice.sidebar', { version: updateTarget.version })}
+                            aria-label={t('panelUpdate.notice.sidebar', { version: updateTarget.version })}
+                            className="flex h-9 w-9 items-center justify-center rounded-lg text-sidebar-fg hover:bg-sidebar-hover hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                        >
+                            <DownloadCloud className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+                        </Link>
+                    )
+                ) : (<>
                 {serverIdentity && (
                     <ServerIdentityLabel identity={serverIdentity} placement="sidebar" />
                 )}
@@ -362,13 +420,16 @@ function Sidebar({
                         </Link>
                     )}
                 </div>
+                </>)}
             </div>
         </div>
     );
+    };
+    const content = buildContent(false);
 
     return (
         <>
-            <aside className="hidden shrink-0 md:block">{content}</aside>
+            <aside id="celikpanel-sidebar" className="hidden shrink-0 md:block" data-sidebar-collapsed={collapsed && !setupMode ? 'true' : 'false'}>{buildContent(true)}</aside>
             {mobileOpen && (
                 <div className="fixed inset-0 z-40 md:hidden">
                     <div className="absolute inset-0 bg-scrim/80" onClick={onCloseMobile} />
@@ -383,19 +444,30 @@ function SidebarItem({
     item,
     active,
     count,
+    rail = false,
     onClick,
 }: {
     item: NavItem;
     active: boolean;
     count?: number | null;
+    rail?: boolean;
     onClick: () => void;
 }) {
     const { t } = useI18n();
     const Icon = item.icon;
+    const label = t(item.labelKey);
+    // Collapsed, the label is gone from view, so the button keeps its name
+    // (with the count it would have shown) and says it in a tooltip, on hover
+    // and on keyboard focus.
+    // Daraltılmışken etiket görünmez; düğme adını (sayıyla) korur ve ipucu
+    // gösterir: fare üstünde ve klavye odağında.
+    const railName = count === null ? `${label}, ${t('services.notChecked')}` : count !== undefined && count > 0 ? `${label}, ${count}` : label;
+    const tip = useRailTip();
     return (
         <button
             onClick={onClick}
-            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+            {...(rail ? { title: railName, 'aria-label': railName, ...tip.handlers } : {})}
+            className={`flex w-full items-center ${rail ? 'justify-center px-0' : 'gap-3 px-3'} rounded-lg py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
                 active
                     ? 'bg-sidebar-active text-sidebar-active-fg'
                     // The lit plate belongs to the current route, so hover cannot take
@@ -406,7 +478,8 @@ function SidebarItem({
             }`}
         >
             <Icon className="h-[18px] w-[18px] shrink-0" />
-            <span className="flex-1 text-left">{t(item.labelKey)}</span>
+            {rail && tip.node(railName)}
+            {!rail && <span className="flex-1 text-left">{label}</span>}
             {/* A dash is the honest badge for a count this panel does not
                 have — the same mark the Components page uses for a group
                 nothing is known about. It is not styled down: "not checked
@@ -419,7 +492,7 @@ function SidebarItem({
                 owner's screens the pill read as a notification count
                 (alpha.95, 2026-10-17). Null is still not zero.
                 Sayı dolu hap değil, sade soluk bir sayıdır; null yine sıfır değildir. */}
-            {count === null ? (
+            {rail ? null : <>{count === null ? (
                 <span
                     title={t('services.notChecked')}
                     className={`text-xs font-medium ${navCountTone(active)}`}
@@ -432,7 +505,72 @@ function SidebarItem({
                 <span className={`text-xs font-medium tabular-nums ${navCountTone(active)}`} data-nav-count="">
                     {count}
                 </span>
-            ) : null}
+            ) : null}</>}
+        </button>
+    );
+}
+
+// A tooltip for the collapsed rail that also shows on keyboard focus. It is
+// drawn with fixed positioning from the button's own box, because the rail's
+// nav scrolls and would clip an absolutely positioned one. The native title
+// serves the pointer; this one appears for keyboard focus only, so the two
+// never double. Escape dismisses it.
+// Daraltılmış ray için, klavye odağında da görünen ipucu; fare için yerel
+// title kullanılır, bu yalnız klavye odağında çıkar; Escape kapatır.
+function useRailTip() {
+    const [at, setAt] = useState<{ top: number; left: number } | null>(null);
+    const handlers = {
+        onFocus: (event: React.FocusEvent<HTMLElement>) => {
+            let visible = true;
+            try {
+                visible = event.currentTarget.matches(':focus-visible');
+            } catch {
+                visible = true;
+            }
+            if (!visible) return;
+            const box = event.currentTarget.getBoundingClientRect();
+            setAt({ top: box.top + box.height / 2, left: box.right + 8 });
+        },
+        onBlur: () => setAt(null),
+        onKeyDown: (event: React.KeyboardEvent<HTMLElement>) => {
+            if (event.key === 'Escape') setAt(null);
+        },
+    };
+    const node = (text: string) => at && (
+        <span
+            aria-hidden="true"
+            data-rail-tip=""
+            style={{ position: 'fixed', top: at.top, left: at.left, transform: 'translateY(-50%)' }}
+            className="pointer-events-none z-50 whitespace-nowrap rounded-md border border-border bg-surface px-2.5 py-1 text-xs font-medium text-fg shadow-lg"
+        >
+            {text}
+        </span>
+    );
+    return { handlers, node };
+}
+
+// The collapse control: a real button that says whether the rail is
+// expanded and which element it controls. Collapsed, it is an icon with the
+// same tooltip behaviour as the items.
+// Daraltma düğmesi: gerçek bir düğme; ray açık mı, hangi öğeyi denetliyor.
+function RailToggle({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+    const { t } = useI18n();
+    const tip = useRailTip();
+    const label = t(collapsed ? 'nav.expand' : 'nav.collapse');
+    return (
+        <button
+            type="button"
+            onClick={onToggle}
+            aria-expanded={!collapsed}
+            aria-controls="celikpanel-sidebar"
+            aria-label={label}
+            title={label}
+            data-sidebar-toggle=""
+            {...(collapsed ? tip.handlers : {})}
+            className={`flex w-full items-center ${collapsed ? 'justify-center px-0' : 'gap-3 px-3'} rounded-lg py-2 text-sm font-medium text-sidebar-fg transition-colors hover:bg-sidebar-hover hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70`}
+        >
+            <ChevronDown className={`h-[18px] w-[18px] shrink-0 ${collapsed ? '-rotate-90' : 'rotate-90'}`} aria-hidden="true" />
+            {collapsed ? tip.node(label) : <span className="flex-1 text-left">{label}</span>}
         </button>
     );
 }
