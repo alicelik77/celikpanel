@@ -134,6 +134,33 @@ type phpToolsResponse struct {
 	State    string            `json:"state"`
 	Tools    []phpToolView     `json:"tools"`
 	Versions []phpVersionUsage `json:"versions"`
+	// Changing (alpha.108) names a PHP tool move or check the Agent is
+	// running now, read from its mutation status: a card whose answer was
+	// lost waits for it and reads again instead of guessing. Absent when
+	// nothing runs or the status could not be read.
+	// Agent'ın şu an koşturduğu araç taşıması ya da denetimi.
+	Changing *phpToolChange `json:"changing,omitempty"`
+}
+
+type phpToolChange struct {
+	// Kind: "php_tool_bind", "php_tool_prove" or "other" (another change).
+	Kind string `json:"kind"`
+	Tool string `json:"tool,omitempty"`
+}
+
+// phpToolChangeRunning reads, bounded and read-only, which change the Agent
+// runs now; nil when none or unknown.
+var phpToolChangeRunning = func(p *Panel, ctx context.Context) *phpToolChange {
+	statusCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	job, err := p.statusAgentMutation(statusCtx, "")
+	if err != nil || job == nil || !agentMutationActive(job.Status) {
+		return nil
+	}
+	if job.Kind != "php_tool_bind" && job.Kind != "php_tool_prove" {
+		return &phpToolChange{Kind: "other"}
+	}
+	return &phpToolChange{Kind: job.Kind, Tool: job.Target}
 }
 
 func phpToolsView(ctx context.Context, p *Panel, bindings transport.PHPToolBindingsResponse) (phpToolsResponse, error) {
@@ -197,6 +224,7 @@ func (p *Panel) handlePHPTools(w http.ResponseWriter, r *http.Request) {
 		writeServerError(w, err)
 		return
 	}
+	response.Changing = phpToolChangeRunning(p, r.Context())
 	json.NewEncoder(w).Encode(response)
 }
 

@@ -135,3 +135,25 @@ func TestA108SameVersionBindSaysOnlyTheProofRan(t *testing.T) {
 		t.Fatalf("answer: %d %+v", recorder.Code, failure)
 	}
 }
+
+func TestA108PHPToolsReadNamesAMoveStillRunning(t *testing.T) {
+	panel := newManagedServiceCachePanel(t)
+	stubPHPToolBindings(t, bostonBindings(), nil)
+	read := func() string {
+		recorder := httptest.NewRecorder()
+		panel.handlePHPTools(recorder, httptest.NewRequest(http.MethodGet, phpToolsPath, nil))
+		return recorder.Body.String()
+	}
+	// No Agent status (none in this test Panel): nothing is claimed.
+	if body := read(); strings.Contains(body, `"changing"`) {
+		t.Fatalf("body = %s", body)
+	}
+	restore := phpToolChangeRunning
+	t.Cleanup(func() { phpToolChangeRunning = restore })
+	phpToolChangeRunning = func(*Panel, context.Context) *phpToolChange {
+		return &phpToolChange{Kind: "php_tool_bind", Tool: "phppgadmin"}
+	}
+	if body := read(); !strings.Contains(body, `"changing":{"kind":"php_tool_bind","tool":"phppgadmin"}`) {
+		t.Fatalf("body = %s", body)
+	}
+}
