@@ -10381,3 +10381,38 @@ not arrive is said as unknown and is read back, never sent twice. A recovery com
 starts with `sudo`; if you are signed in as root, leave out `sudo`. Installed panels
 are updated only by their owners from the panel's own update screen. P0.1–P0.5 stay
 **partial**; this entry closes and advances nothing.
+
+### Frankfurt's webmail update, the webmail link and install confirmations (2026-10-26)
+
+In source for the v0.1.0-alpha.109 candidate (not published; nothing measured on an
+installed server). **Who acts:** the administrator, after updating the panel from
+its own update screen.
+
+- **Frankfurt: the Roundcube update to 1.6.20 failed and was put back.** Webmail
+  still runs 1.6.15 as before; nothing needs repairing. The cause was the webmail
+  configuration an older release wrote, without the location of CelikPanel's PHP
+  check (the proof read HTTP 404). **Next action:** after updating the panel, open
+  Components → Roundcube and press **Update to 1.6.20…** again. The panel first adds
+  the check location to that configuration (only when it is CelikPanel's own form),
+  then updates and proves. You can leave the page; the row says the result when you
+  come back. If the row says the configuration was changed outside CelikPanel, move
+  your own lines to another file in `/etc/nginx/conf.d` (or delete the named file so
+  CelikPanel writes it again) and press Update again.
+- **If an update's result is "not known"** (the server agent's answer did not
+  arrive): reload the page in a minute; the version shown is the installed one. If
+  it is not the new release, press Update again. Nothing is retried by itself.
+- **Webmail opened with plain inputs.** Fixed by the update: webmail no longer gets
+  the panel's script policy. After updating, reload webmail in the browser.
+- **How to open webmail.** Components → Roundcube (or its Manage page): **Open
+  webmail** shows the address, `https://<panel address>/webmail/`. Mailbox users
+  sign in there with their full email address and mailbox password; they need no
+  panel account. The domain's mail screen shows the same address.
+- **Install confirmations.** The dialog lists the packages a vendor repository would
+  replace and the additional packages, one per line, with the reason. Tick the box
+  only if that is what you want; otherwise press Cancel and choose the
+  distribution's own version.
+
+**How work resumes:** the update runs on the server; the screen only reads it, and a
+lost answer is looked up, never sent twice. Installed panels are updated only by
+their owners from the panel's own update screen. P0.1–P0.5 stay **partial**; this
+entry closes and advances nothing.
