@@ -9,7 +9,7 @@ import { AlertTriangle } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Checking, CouldNotCheck, KeepWords } from './ui';
-import { hasVendorReplacement, notableGroups, type InstallPreview } from '../lib/installPreview';
+import { capitalize, confirmationGroups, distroWords, hasVendorReplacement, reasonPhrase, versionPair, versionsSaid, type InstallPreview, type NotableInstall } from '../lib/installPreview';
 import type { RemoteHandle } from '../lib/remote';
 
 // installPreviewGate: what the confirmation may send. A known answer with
@@ -44,16 +44,22 @@ export function InstallPreviewNotes({
     onAcknowledge,
     componentLabel,
     avoidable,
+    selected,
+    recommended,
 }: {
     handle: RemoteHandle<InstallPreview>;
     acknowledged: boolean;
     onAcknowledge: (value: boolean) => void;
     /** A catalogue id said as the page names it. */
     componentLabel: (id: string) => string;
-    /** A version other than the recommended one was chosen. */
+    /** A version other than the distribution's own was chosen. */
     avoidable: boolean;
+    /** What the owner chose, as the dialog names it ("PHP-FPM 8.5"). */
+    selected?: string;
+    /** The distribution's own version, said short, when it is known. */
+    recommended?: string;
 }) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const remote = handle.remote;
     if (remote.state === 'loading') {
         return <Checking label={t('services.installPreview.checking')} className="mt-3" />;
@@ -85,52 +91,121 @@ export function InstallPreviewNotes({
             </>
         );
     }
-    const groups = notableGroups(preview.notable);
+    const say = (key: string, params?: Record<string, string>) => t(key as TranslationKey, params);
     const repoLabel = (id: string) => {
-        const key = `services.installPreview.repoName.${id}` as TranslationKey;
-        const said = t(key);
-        return said === key ? id : said;
+        const key = `services.notable.repoName.${id}` as TranslationKey;
+        const said = id ? t(key) : key;
+        return said === key ? id || t('services.notable.repoUnknown') : said;
     };
+    const distro = distroWords(preview.distribution, locale, say);
     if (hasVendorReplacement(preview.notable)) {
+        const refused = preview.notable.filter((item) => item.reason === 'vendor_replaces_distribution');
+        const repos = [...new Set(refused.map((item) => item.component ?? ''))];
         return (
             <div className="mt-3 rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm leading-6 text-fg" role="alert" data-install-preview="vendor-refused">
-                <ul className="space-y-1.5">
-                    {groups.filter((group) => group.reason === 'vendor_replaces_distribution').map((group) => (
-                        <li key={group.key} className="flex items-start gap-2" data-notable-reason={group.reason}>
+                <ul className="space-y-2">
+                    {repos.map((repo) => (
+                        <li key={repo} className="flex items-start gap-2" data-notable-reason="vendor_replaces_distribution">
                             <AlertTriangle className="mt-1 h-4 w-4 shrink-0 text-danger" aria-hidden="true" />
-                            <KeepWords
-                                text={t('services.installPreview.reason.vendor_replaces_distribution', {
-                                    component: repoLabel(group.component ?? ''),
-                                    packages: group.packages.join(', '),
-                                })}
-                            />
+                            <div className="min-w-0 flex-1">
+                                <KeepWords text={t('services.installPreview.vendorRefused', { repo: repoLabel(repo), ...distro })} />
+                                <ul className="mt-1 space-y-0.5">
+                                    {refused.filter((item) => (item.component ?? '') === repo).map((item) => (
+                                        <li key={item.package} className="break-words" title={item.from && item.to ? `${item.package} ${item.from} → ${item.to}` : undefined} data-notable-package={item.package}>
+                                            <strong className="font-semibold">{item.package}</strong>{versionsSaid(item)}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
                         </li>
                     ))}
                 </ul>
+                <p className="mt-1.5 pl-6 text-fg-muted">{t('services.installPreview.vendorRefusedWhy')}</p>
                 <p className="mt-1.5 pl-6 text-fg-muted">{t('services.installPreview.vendorNext')}</p>
             </div>
         );
     }
+    const { replaced, additional } = confirmationGroups(preview.notable);
+    const chosen = selected || t('services.installPreview.selectedUnknown');
+    const fullTitle = (item: NotableInstall) => (item.from && item.to ? `${item.package} ${item.from} → ${item.to}` : undefined);
     return (
-        <div className="mt-3 rounded-lg border border-warning-mark/50 bg-warning-mark/20 p-3 text-sm leading-6 text-fg" role="status" data-install-preview="notable">
+        <div className="mt-3 min-w-0 rounded-lg border border-warning-mark/50 bg-warning-mark/20 p-3 text-sm leading-6 text-fg" role="status" data-install-preview="notable">
             <p className="flex items-start gap-2 font-medium">
                 <AlertTriangle className="mt-1 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
-                {t('services.installPreview.notableTitle')}
+                <span className="min-w-0 break-words">{t('services.installPreview.heading', { selected: chosen })}</span>
             </p>
-            <ul className="mt-1.5 space-y-1.5 pl-6">
-                {groups.map((group) => (
-                    <li key={group.key} data-notable-reason={group.reason}>
-                        <KeepWords
-                            text={t(`services.installPreview.reason.${group.reason}` as TranslationKey, {
-                                version: group.version ?? '',
-                                component: group.component ? (group.reason === 'vendor_shared' ? repoLabel(group.component) : componentLabel(group.component)) : '',
-                                packages: group.packages.join(', '),
+            <div className="mt-2 space-y-3 pl-6">
+                {replaced.length > 0 && (
+                    <section data-install-preview-group="replaced">
+                        <h4 className="font-semibold">{t('services.installPreview.replacedTitle')}</h4>
+                        {replaced.map((group) => {
+                            const repo = repoLabel(group.repo);
+                            const many = group.items.length > 1;
+                            return (
+                                <div key={group.repo} className="mt-1" data-notable-reason="vendor_shared">
+                                    <ul className="space-y-1">
+                                        {group.items.map((item) => (
+                                            <li key={item.package} className="break-words" title={fullTitle(item)} data-notable-package={item.package}>
+                                                <strong className="font-semibold">{item.package}</strong>
+                                                {': '}
+                                                {item.from && item.to
+                                                    ? t('services.installPreview.replaced', { ...distro, repo, ...versionPair(item.from, item.to) })
+                                                    : t('services.installPreview.replacedNoVersions', { ...distro, repo })}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    <p className="mt-1 text-fg-muted">{t(many ? 'services.installPreview.whyMany' : 'services.installPreview.whyOne', { selected: chosen, repo })}</p>
+                                    <p className="text-fg-muted">{t(many ? 'services.installPreview.afterMany' : 'services.installPreview.afterOne', { ...distro, repo })}</p>
+                                </div>
+                            );
+                        })}
+                    </section>
+                )}
+                {additional.length > 0 && (
+                    <section data-install-preview-group="additional">
+                        <h4 className="font-semibold">{t('services.installPreview.additionalTitle')}</h4>
+                        <ul className="mt-1 space-y-1.5">
+                            {additional.map((group) => {
+                                const phrase = reasonPhrase(group, say, componentLabel, repoLabel);
+                                const noteKey = `services.installPreview.note.${group.reason}` as TranslationKey;
+                                const note = t(noteKey);
+                                return (
+                                    <li key={group.key} className="break-words" data-notable-reason={group.reason}>
+                                        {group.items.length === 1 ? (
+                                            <span title={fullTitle(group.items[0])} data-notable-package={group.items[0].package}>
+                                                <strong className="font-semibold">{group.items[0].package}</strong>
+                                                {versionsSaid(group.items[0])}
+                                                {': '}
+                                                {phrase}
+                                            </span>
+                                        ) : (
+                                            <>
+                                                <span>{capitalize(phrase, locale)}:</span>
+                                                <ul className="space-y-0.5 pl-3">
+                                                    {group.items.map((item) => (
+                                                        <li key={item.package} title={fullTitle(item)} data-notable-package={item.package}>
+                                                            <strong className="font-semibold">{item.package}</strong>
+                                                            {versionsSaid(item)}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </>
+                                        )}
+                                        {note !== noteKey && <span className="block text-fg-muted">{note}</span>}
+                                    </li>
+                                );
                             })}
-                        />
-                    </li>
-                ))}
-            </ul>
-            {avoidable && <p className="mt-1.5 pl-6 text-fg-muted">{t('services.installPreview.avoid')}</p>}
+                        </ul>
+                    </section>
+                )}
+                {avoidable && (
+                    <p className="text-fg-muted" data-install-preview-avoid="">
+                        {recommended
+                            ? t('services.installPreview.avoid', { ...distro, recommended })
+                            : t('services.installPreview.avoidNoVersion', distro)}
+                    </p>
+                )}
+            </div>
             <label className="mt-2.5 flex cursor-pointer items-start gap-2.5 pl-6 max-sm:min-h-11">
                 <input
                     type="checkbox"

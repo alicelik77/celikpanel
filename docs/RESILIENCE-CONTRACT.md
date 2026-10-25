@@ -7871,3 +7871,36 @@ dropped; the panel's tools stay on the distribution's PHP by default.
   only; Ubuntu 24.04 by the real package's page fixtures, not a VM run.
   **No P0 item is closed or advanced**; P0.1 to P0.5 stay partial and every open
   acceptance item stays open.
+
+### Candidate v0.1.0-alpha.109 (the webmail update as a durable operation from older configurations; webmail's interface held back on the panel's origin; install confirmations; Agent webmail update and PHP tool proof paths; no schema change; invariants 1, 2 and 6; D-022; D-024; D-038; 2026-10-26)
+
+D-025 invariant 2 (evidence has a meaning): a webmail update's outcome is recorded
+in the panel's operation record and read back by the screen; an answer that did not
+arrive is said as unknown, and a panel restart during the update is reconciled read
+only from the installed version, never by starting it again. The proof requires the
+check, the login page and its stylesheet as CSS. Invariant 1 (the owner's services
+run without the panel): the check location is added only to a configuration in
+CelikPanel's own form, keeping its addresses and sockets; nginx validates it; an
+owner-edited file is refused with the reason (D-022). Invariant 6 (one change at a
+time): the update holds the service mutation lock and its agent lease until its
+row is terminal; the same request id returns the same operation.
+
+- **Agent changes.** Before `Agent.UpdateRoundcubeV1` changes anything, and before a
+  PHP tool's proof, the check script and its nginx location are put in place
+  (`CONFIG_OWNER_EDITED` stops the update with nothing changed). The response says
+  whether the previous tree answered after a put-back. The webmail proof fetches the
+  stylesheet the login page names (`asset_unreadable`).
+- **Panel changes.** `POST /api/v1/service/roundcube/update` records a
+  `webmail_update` service operation and returns 202; the work runs on a context
+  detached from the request; `GET` adds `last_update` and `webmail_ready`. Webmail on
+  the panel's origin keeps the panel's strict policy (`script-src 'self'`,
+  `X-Frame-Options: DENY`), so its interface does not render there by design until
+  it has its own origin; an interrupted update says "updated" only after the
+  read-only `Agent.WebmailProofV1` passes.
+- **Schema.** None (46): the existing `service_operations` table.
+- **Recovery.** A failed proof puts the previous tree back byte for byte (as since
+  alpha.107); a refused check location puts the previous nginx file back; an
+  interrupted update is reconciled read only.
+- **Evidence.** Agent 4828 passed, 29 skipped (also as `nobody`); Panel 3448 passed, 6 skipped; internal packages pass; web 1921 passed; a browser look on a mock; one real-system run on a disposable Debian 13 virtual machine ([deploy/e2e/d038/alpha109-debian13-20261026](../deploy/e2e/d038/alpha109-debian13-20261026/README.md), archive SHA-256 `e77d1ab4…960f7ee`) that reproduced Frankfurt's 404 and proved the update; race shards not run locally. Not measured on an installed server. **No P0 item is
+  closed or advanced**; P0.1 to P0.5 stay partial and every open acceptance item
+  stays open.

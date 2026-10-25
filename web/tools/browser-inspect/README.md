@@ -742,3 +742,9 @@ drawer's locked versions and tested marks (`y31locked`), the security updates
 card's direct action (`y31security`), the PostgreSQL clusters card (`y31pg`) and
 the Components rows with the webmail Update button and the collapsed sidebar
 (`y31rows`). Same conventions as batch 30.
+
+`scenarios-batch32.mjs` draws the v0.1.0-alpha.109 candidate from overrides only:
+phpMyAdmin's install dialog on Ubuntu with the grouped confirmation (packages a
+vendor repository replaces, the additional packages under their reasons;
+`y32confirm`) and the Roundcube row and Manage card after Frankfurt's failed and
+rolled-back update; Open webmail is held back until webmail has its own address (`y32webmail`). Same conventions as batch 30.

@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -934,7 +936,71 @@ func probePHPToolHTTP(ctx context.Context, tool, version string) error {
 	if err != nil {
 		return fmt.Errorf("%s answer could not be read: %v", phpToolDisplayName(tool), err)
 	}
-	return checkPHPToolResponse(tool, response.StatusCode, body)
+	if err := checkPHPToolResponse(tool, response.StatusCode, body); err != nil {
+		return err
+	}
+	if tool != phpToolWebmail {
+		return nil
+	}
+	// 3. Webmail's stylesheet (alpha.109): a page whose stylesheet does not
+	// arrive as CSS opens without its layout.
+	return probeWebmailStylesheet(probeCtx, client, base, body)
+}
+
+var webmailStylesheetHref = regexp.MustCompile(`<link[^>]*\brel="stylesheet"[^>]*\bhref="([^"]+)"`)
+
+// webmailStylesheetURL is the address of the skin's own stylesheet the page
+// names (the first "styles" one, else the first), on the same server.
+func webmailStylesheetURL(base string, body []byte) (string, error) {
+	var chosen string
+	for _, match := range webmailStylesheetHref.FindAllSubmatch(body, -1) {
+		href := html.UnescapeString(string(match[1]))
+		if chosen == "" || (strings.Contains(href, "/styles/") && !strings.Contains(chosen, "/styles/")) {
+			chosen = href
+		}
+	}
+	if chosen == "" {
+		return "", &phpToolProbeError{Kind: "asset_unreadable", Message: "webmail's page names no stylesheet, so it would open without its layout"}
+	}
+	page, err := url.Parse(base + "/webmail/")
+	if err != nil {
+		return "", err
+	}
+	ref, err := url.Parse(chosen)
+	if err != nil {
+		return "", &phpToolProbeError{Kind: "asset_unreadable", Message: fmt.Sprintf("webmail's stylesheet address %q could not be read", chosen)}
+	}
+	resolved := page.ResolveReference(ref)
+	if resolved.Host != page.Host || !strings.HasPrefix(resolved.Path, "/webmail/") {
+		return "", &phpToolProbeError{Kind: "asset_unreadable", Message: fmt.Sprintf("webmail's stylesheet %q is not served by webmail itself", chosen)}
+	}
+	return resolved.String(), nil
+}
+
+// probeWebmailStylesheet fetches the stylesheet the login page names and
+// requires HTTP 200 as text/css (the panel answers with nosniff, so a
+// stylesheet sent as another type is refused by the browser).
+func probeWebmailStylesheet(ctx context.Context, client *http.Client, base string, page []byte) error {
+	address, err := webmailStylesheetURL(base, page)
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, address, nil)
+	if err != nil {
+		return err
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		return &phpToolProbeError{Kind: "asset_unreadable", Message: fmt.Sprintf("webmail's stylesheet did not answer: %v", err)}
+	}
+	defer response.Body.Close()
+	_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, phpToolProbeBodyLimit))
+	contentType := response.Header.Get("Content-Type")
+	if response.StatusCode != http.StatusOK || !strings.HasPrefix(strings.ToLower(contentType), "text/css") {
+		return &phpToolProbeError{Kind: "asset_unreadable", Status: response.StatusCode,
+			Message: fmt.Sprintf("webmail's stylesheet %s answered HTTP %d as %q, not as text/css, so webmail would open without its layout", strings.TrimPrefix(address, base), response.StatusCode, contentType)}
+	}
+	return nil
 }
 
 // phpToolProbeSettle bounds how long a proof waits for nginx's reloaded
@@ -1575,4 +1641,148 @@ var phpToolViewPackageCheck = func() func(string) bool {
 		return func(string) bool { return false }
 	}
 	return func(pkg string) bool { return packageInstalledForProfile(profile, pkg) }
+}
+
+// alpha.109 (Frankfurt): a server set up by an older release keeps the
+// webmail (or database tools) configuration that release wrote, without the
+// location of CelikPanel's PHP check, so every proof read HTTP 404 from
+// nginx and a Roundcube update was rolled back although Roundcube worked.
+// Before a proof the check location is added: only to a file in one of
+// CelikPanel's own forms, keeping its listen address, roots and sockets
+// exactly; nginx validates it and reloads, and a refusal puts the previous
+// file back. A file the owner changed is refused, with the reason, as before.
+//
+// Eski sürümlerin yazdığı yapılandırmada PHP denetiminin konumu yoktu; her
+// kanıt 404 okuyordu. Kanıttan önce konum, yalnız CelikPanel'in kendi
+// biçimindeki dosyaya, aynı dinleme, kök ve soketlerle eklenir; sahibin
+// değiştirdiği dosya gerekçesiyle reddedilir.
+
+// phpToolHasCheckLocation: the configuration serves the tool's PHP check.
+func phpToolHasCheckLocation(content, tool string) bool {
+	return strings.Contains(content, "location = "+phpToolCheckPrefix+tool+" {")
+}
+
+func phpToolConfPathFor(tool string) string {
+	if tool == phpToolWebmail {
+		return phpToolWebmailConfPath
+	}
+	return phpToolDBToolsConfPath
+}
+
+// currentFormPHPToolConfig renders a managed configuration in today's form
+// with the same listen address, roots and sockets it names. An alpha.1 to
+// alpha.12 loopback webmail server moves to the webmail socket, as
+// ConfigureWebmail does.
+func currentFormPHPToolConfig(tool, content string) (string, error) {
+	if tool == phpToolWebmail {
+		alias := webmailAliasLine.FindStringSubmatch(content)
+		if alias == nil {
+			return "", fmt.Errorf("the webmail configuration names no Roundcube root")
+		}
+		listen := ""
+		if match := webmailListenLine.FindStringSubmatch(content); match != nil {
+			listen = match[1]
+		} else {
+			socket, err := webmailSocketPathForNginx()
+			if err != nil {
+				return "", err
+			}
+			listen = socket
+		}
+		return renderWebmailNginxConfig(listen, alias[1], parseWebmailFPMSocket(content)), nil
+	}
+	var tools []string
+	roots := map[string]string{}
+	for _, match := range dbToolLocationBlock.FindAllStringSubmatch(content, -1) {
+		tools = append(tools, match[1])
+		roots[match[1]] = match[2]
+	}
+	return renderDBToolsConfig(tools, roots, parseDBToolsFPMSockets(content)), nil
+}
+
+// ensurePHPToolCheckLocationWith adds the tool's check location when its
+// managed configuration lacks it; it says whether it rewrote the file. A
+// missing or empty file is left alone: there is nothing to prove through.
+func ensurePHPToolCheckLocationWith(ctx context.Context, ops phpToolBindOps, tool string) (bool, error) {
+	path := phpToolConfPathFor(tool)
+	previous, err := ops.snapshotConf(path)
+	if err != nil {
+		return false, fmt.Errorf("the configuration of %s could not be read: %v", phpToolDisplayName(tool), err)
+	}
+	content := string(previous.content)
+	if !previous.exists || strings.TrimSpace(content) == "" || phpToolHasCheckLocation(content, tool) {
+		return false, nil
+	}
+	managed := managedDBToolsConfig(content)
+	if tool == phpToolWebmail {
+		managed = managedWebmailConfig(content)
+	}
+	if !managed {
+		return false, &errPHPToolConfigOwnerEdited{Path: path}
+	}
+	next, err := currentFormPHPToolConfig(tool, content)
+	if err != nil {
+		return false, err
+	}
+	if !phpToolHasCheckLocation(next, tool) {
+		return false, fmt.Errorf("the configuration of %s does not serve it, so CelikPanel's PHP check cannot be added", phpToolDisplayName(tool))
+	}
+	if err := ops.writeConf(path, []byte(next)); err != nil {
+		if restoreErr := ops.restoreConf(previous); restoreErr != nil {
+			return false, fmt.Errorf("the PHP check could not be added to %s (%v), and the previous file could not be put back (%v)", path, err, restoreErr)
+		}
+		return false, fmt.Errorf("the PHP check could not be added to %s: %v; the previous file is kept", path, err)
+	}
+	if err := ops.nginxTest(ctx); err != nil {
+		if restoreErr := ops.restoreConf(previous); restoreErr != nil {
+			return false, fmt.Errorf("nginx rejected %s with the PHP check (%v), and the previous file could not be put back (%v)", path, err, restoreErr)
+		}
+		return false, fmt.Errorf("nginx rejected %s with the PHP check (%v); the previous file was put back", path, err)
+	}
+	if err := ops.nginxReload(ctx); err != nil {
+		// Say exactly how far the put-back went (alpha.109 review).
+		if restoreErr := ops.restoreConf(previous); restoreErr != nil {
+			return false, fmt.Errorf("nginx did not reload %s with the PHP check (%v), and the previous file could not be put back (%v); the server administrator checks %s", path, err, restoreErr, path)
+		}
+		if testErr := ops.nginxTest(ctx); testErr != nil {
+			return false, fmt.Errorf("nginx did not reload %s with the PHP check (%v); the previous file was put back, but nginx rejects it (%v); the server administrator checks the web server configuration", path, err, testErr)
+		}
+		if reloadErr := ops.nginxReload(ctx); reloadErr != nil {
+			return false, fmt.Errorf("nginx did not reload %s with the PHP check (%v); the previous file was put back, but nginx did not reload it either (%v); the server administrator reloads nginx", path, err, reloadErr)
+		}
+		return false, fmt.Errorf("nginx did not reload %s with the PHP check (%v); the previous file was put back and nginx reloaded it", path, err)
+	}
+	return true, nil
+}
+
+// preparePHPToolProof puts the check script (readable modes, alpha.108) and
+// the check location (alpha.109) in place before a proof.
+//
+// A missing or empty configuration (the owner removed an edited file so
+// CelikPanel writes it again) is written again exactly as ConfigureWebmail
+// or ConfigureDBTools write it, validated and reloaded, before the proof.
+// Eksik ya da boş yapılandırma, kanıttan önce CelikPanel'in yazdığı gibi
+// yeniden yazılır.
+func preparePHPToolProof(ctx context.Context, tool string) error {
+	if err := ensurePHPToolCheckScript(); err != nil {
+		return err
+	}
+	if strings.TrimSpace(readFileString(phpToolConfPathFor(tool))) == "" {
+		if tool == phpToolWebmail {
+			var resp ConfigureWebmailResponse
+			(&Agent{}).configureWebmailWith(ctx, &resp)
+			if resp.Error != "" {
+				return fmt.Errorf("the webmail configuration could not be written again: %s", resp.Error)
+			}
+			return nil
+		}
+		var resp ConfigureDBToolsResponse
+		configureDBToolsWith(ctx, &resp)
+		if resp.Error != "" {
+			return fmt.Errorf("the database tools configuration could not be written again: %s", resp.Error)
+		}
+		return nil
+	}
+	_, err := ensurePHPToolCheckLocationWith(ctx, hostPHPToolBindOps(), tool)
+	return err
 }

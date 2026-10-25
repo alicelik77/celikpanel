@@ -10381,3 +10381,41 @@ not arrive is said as unknown and is read back, never sent twice. A recovery com
 starts with `sudo`; if you are signed in as root, leave out `sudo`. Installed panels
 are updated only by their owners from the panel's own update screen. P0.1–P0.5 stay
 **partial**; this entry closes and advances nothing.
+
+### Frankfurt's webmail update and install confirmations (2026-10-26)
+
+In source for the v0.1.0-alpha.109 candidate (not published; nothing measured on an
+installed server). **Who acts:** the administrator, after updating the panel from
+its own update screen.
+
+- **Frankfurt: the Roundcube update to 1.6.20 failed and was put back.** Webmail
+  still runs 1.6.15 as before; nothing needs repairing. The cause was the webmail
+  configuration an older release wrote, without the location of CelikPanel's PHP
+  check (the proof read HTTP 404). **Next action:** after updating the panel, open
+  Components → Roundcube and press **Update to 1.6.20…** again. The panel first adds
+  the check location to that configuration (only when it is CelikPanel's own form),
+  then updates and proves. You can leave the page; the row says the result when you
+  come back.
+- **If an update's result is "not known"** (the server agent's answer did not
+  arrive): reload the page in a minute; the version shown is the installed one. If
+  it is not the new release, press Update again. Nothing is retried by itself.
+- **Webmail opens with plain inputs on the panel's address.** This is by design for
+  now: the panel's security policy, which protects your administrator session, stays
+  on `/webmail/` and keeps Roundcube's interface from starting there. Nothing needs
+  to be done on the server. Webmail gets its own address in a coming release; until
+  then **Open webmail** is not shown, and mailbox users use a mail app (IMAP/SMTP, the
+  domain's mail screen shows the settings).
+- **If the update stops because the configuration was changed outside CelikPanel:**
+  keep a copy (`sudo cp /etc/nginx/conf.d/celikpanel-webmail.conf /root/`), remove it
+  (`sudo rm /etc/nginx/conf.d/celikpanel-webmail.conf`) and press Update again;
+  CelikPanel first writes its own file, checks it with nginx and reloads, then
+  updates. Put your own lines in another file in `/etc/nginx/conf.d` afterwards.
+- **Install confirmations.** The dialog lists the packages a vendor repository would
+  replace and the additional packages, one per line, with the reason. Tick the box
+  only if that is what you want; otherwise press Cancel and choose the
+  distribution's own version.
+
+**How work resumes:** the update runs on the server; the screen only reads it, and a
+lost answer is looked up, never sent twice. Installed panels are updated only by
+their owners from the panel's own update screen. P0.1–P0.5 stay **partial**; this
+entry closes and advances nothing.

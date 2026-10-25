@@ -71,6 +71,7 @@ export const enMailDatabasesScreens = {
     'mail.webmail.available': 'Open your mailbox in the browser.',
     'mail.webmail.unavailable': 'Webmail is not available on this server.',
     'mail.webmail.open': 'Open Webmail',
+    'mail.webmail.heldBack': 'Webmail gets its own address in the next release; until then mailbox users read their mail with a mail app.',
     'mail.catchAll.title': 'Catch-all address',
     'mail.catchAll.hint': 'Delivers every message sent to an unknown mailbox at {domain} to one address.',
     'mail.catchAll.destination': 'Deliver to',

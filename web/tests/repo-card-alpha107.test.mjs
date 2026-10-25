@@ -207,5 +207,5 @@ test('the vendor’s shared package is a named, confirmable item with its versio
   const groups = preview.notableGroups(notable);
   assert.equal(groups[0].reason, 'vendor_shared');
   assert.deepEqual(groups[0].packages, ['php-common 2:96 → 2:101+sury']);
-  assert.ok(en['services.installPreview.reason.vendor_shared'] && tr['services.installPreview.reason.vendor_shared']);
+  assert.ok(en['services.installPreview.replaced'] && tr['services.installPreview.replaced']);
 });

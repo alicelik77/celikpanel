@@ -142,13 +142,87 @@ export function decodePHPToolProof(result: unknown): PHPToolProofNote | null {
     return { tool: raw.tool as PHPToolProofNote['tool'], version, moved: raw.moved === true, proved: raw.proved === true, first, extensions, kind, status, detail };
 }
 
-// The packages a refused install would also have brought (alpha.105 review).
-export function decodeNotableRefusal(result: unknown): string[] {
+// The packages a refused install would also have brought (alpha.105 review),
+// with what the server said of each (alpha.109: said as grouped lines).
+export interface RefusedNotable {
+    package: string;
+    reason: string;
+    component?: string;
+    version?: string;
+    from?: string;
+    to?: string;
+}
+
+export function decodeNotableRefusal(result: unknown): RefusedNotable[] {
     if (!result || typeof result !== 'object') return [];
     const raw = (result as { notable_installs?: unknown }).notable_installs;
     if (!Array.isArray(raw)) return [];
-    return raw.map((item) => (item && typeof item === 'object' ? (item as { package?: unknown }).package : null))
-        .filter((name): name is string => typeof name === 'string' && /^[a-z0-9][a-z0-9+.:-]{0,160}$/.test(name));
+    const text = (value: unknown) => (typeof value === 'string' && value.length <= 200 ? value : undefined);
+    return raw.flatMap((item): RefusedNotable[] => {
+        if (!item || typeof item !== 'object') return [];
+        const value = item as Record<string, unknown>;
+        if (typeof value.package !== 'string' || !/^[a-z0-9][a-z0-9+.:-]{0,160}$/.test(value.package)) return [];
+        return [{
+            package: value.package,
+            reason: text(value.reason) ?? 'component',
+            ...(text(value.component) ? { component: text(value.component) } : {}),
+            ...(text(value.version) ? { version: text(value.version) } : {}),
+            ...(text(value.from) ? { from: text(value.from) } : {}),
+            ...(text(value.to) ? { to: text(value.to) } : {}),
+        }];
+    });
+}
+
+// notableRefusalLines: one package a line, packages sharing a reason under
+// that reason, versions short ("php-common (2:93 → 2:101)"), in the words the
+// install dialog uses (lib/installPreview.ts; repeated here because this
+// provider is imported without the screen's modules).
+// Reddedilen kurulumun paketleri, satır satır ve nedene göre gruplu.
+type Say = (key: string, params?: Record<string, string>) => string;
+const shortVersion = (version: string) => {
+    const match = /^(?:([0-9]+):)?([0-9]+(?:\.[0-9]+)*)/.exec(version);
+    return match ? (match[1] ? `${match[1]}:` : '') + match[2] : version;
+};
+export function notableRefusalLines(items: readonly RefusedNotable[], say: Say, locale: string): string[] {
+    const NOTABLE_WHY = ['new_php_version', 'apache', 'component', 'database_server', 'upgrade'];
+    const repoName = (id: string) => {
+        const key = `services.notable.repoName.${id}`;
+        const said = id ? say(key) : key;
+        return said === key ? id || say('services.notable.repoUnknown') : said;
+    };
+    const groups: { key: string; phrase: string; items: RefusedNotable[] }[] = [];
+    const sharedRepo = items.find((item) => item.reason === 'vendor_shared' && item.component)?.component ?? '';
+    for (const item of items) {
+        const vendor = item.reason === 'vendor_shared' || item.reason === 'vendor_replaces_distribution';
+        const reason = vendor ? 'vendor_shared' : NOTABLE_WHY.includes(item.reason) ? item.reason : 'component';
+        const component = vendor ? item.component ?? sharedRepo : item.component ?? '';
+        const key = `${reason}:${reason === 'new_php_version' ? item.version ?? '' : reason === 'apache' || reason === 'upgrade' ? '' : component}`;
+        let group = groups.find((candidate) => candidate.key === key);
+        if (!group) {
+            const phrase = vendor
+                ? say('services.notable.why.vendor_shared', { repo: repoName(component) })
+                : say(`services.notable.why.${reason}`, { version: item.version ?? '', component });
+            group = { key, phrase, items: [] };
+            groups.push(group);
+        }
+        group.items.push(item);
+    }
+    const versions = (item: RefusedNotable) => {
+        if (!item.from || !item.to) return '';
+        const from = shortVersion(item.from);
+        const to = shortVersion(item.to);
+        return from === to ? ` (${item.from} → ${item.to})` : ` (${from} → ${to})`;
+    };
+    const lines: string[] = [];
+    for (const group of groups) {
+        if (group.items.length === 1) {
+            lines.push(`${group.items[0].package}${versions(group.items[0])}: ${group.phrase}`);
+            continue;
+        }
+        lines.push(`${group.phrase.charAt(0).toLocaleUpperCase(locale) + group.phrase.slice(1)}:`);
+        for (const item of group.items) lines.push(`– ${item.package}${versions(item)}`);
+    }
+    return lines;
 }
 
 export function decodeMailHostnameIdentity(value: unknown): MailHostnameIdentity | null {
@@ -967,7 +1041,7 @@ function restoredOperation(): ComponentOperation | null {
 }
 
 export function ComponentOperationProvider({ children }: { children: ReactNode }) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const [initialSession] = useState(() => ({
         operation: restoredOperation(),
         recoveryMarker: readStoredRecoveryMarker(),
@@ -1798,7 +1872,11 @@ export function ComponentOperationProvider({ children }: { children: ReactNode }
                     // brought and where to confirm it (alpha.105 review).
                     const notable = decodeNotableRefusal(next.result);
                     if (notable.length > 0) {
-                        refused.details = [...(refused.details ?? []), t('services.installRefused.notable', { packages: notable.join(', ') })];
+                        refused.details = [
+                            ...(refused.details ?? []),
+                            t('services.installRefused.notable'),
+                            ...notableRefusalLines(notable, (key, params) => t(key as Parameters<typeof t>[0], params), locale),
+                        ];
                     }
                     await refreshFailedSnapshot(refused, next);
                     return;

@@ -305,6 +305,7 @@ function InstallMajorDialog({ offer, value, onCancel, onConfirm }: { offer: PGOf
                         onAcknowledge={(on) => setAcknowledgedFor(on ? ackKey : null)}
                         componentLabel={(id) => (id === 'postgresql' ? 'PostgreSQL' : id)}
                         avoidable={false}
+                        selected={`PostgreSQL ${offer.major}`}
                     />
                 )}
             </div>

@@ -831,6 +831,11 @@ export function BundleInstallDialog({
     const title: TranslationKey = continuing ? 'services.bundles.dialog.titleContinue' : 'services.bundles.dialog.title';
     const choose = (id: string, pkg: string) => setPackages((previous) => ({ ...previous, [id]: pkg }));
     const avoidable = Object.values(packages).some(Boolean);
+    // alpha.109: the confirmation names what was chosen ("PHP-FPM 8.5") and,
+    // when only PHP's version was changed, the distribution's own.
+    const chosenEntries = Object.entries(packages).filter(([, pkg]) => Boolean(pkg));
+    const chosenVersions = chosenEntries.map(([id, pkg]) => `${nameOf(id)} ${versionOfPackage(pkg)}`).join(', ');
+    const onlyPHPChosen = chosenEntries.length === 1 && chosenEntries[0][0] === 'php-fpm';
     return (
         <Dialog
             id='bundle-install-confirm'
@@ -915,6 +920,8 @@ export function BundleInstallDialog({
                     onAcknowledge={(value) => setAcknowledgedFor(value ? ackKey : null)}
                     componentLabel={nameOf}
                     avoidable={avoidable}
+                    selected={chosenVersions || bundleName(bundle, t, nameOf)}
+                    recommended={onlyPHPChosen ? phpDefaultVersion : undefined}
                 />
             )}
             <p className='mt-3 text-sm leading-6 text-fg-muted'>{t('services.bundles.dialog.howItRuns')}</p>

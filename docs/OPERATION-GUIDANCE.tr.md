@@ -10354,3 +10354,42 @@ bilinmiyor olarak söylenir ve geri okunur, asla iki kez gönderilmez. Bir kurta
 komutu `sudo` ile başlar; root olarak oturum açtıysanız `sudo` yazmayın. Kurulu
 panelleri yalnız sahipleri, panelin kendi güncelleme ekranından günceller. P0.1–P0.5
 **kısmi** kalır; bu girdi hiçbir şeyi kapatmaz ve ilerletmez.
+
+### Frankfurt'un web postası güncellemesi ve kurulum onayları (26 Ekim 2026)
+
+v0.1.0-alpha.109 adayının kaynağında (yayımlanmadı; kurulu bir sunucuda hiçbir şey
+ölçülmedi). **Kim yapar:** panel kendi güncelleme ekranından güncellendikten sonra
+yönetici.
+
+- **Frankfurt: Roundcube'un 1.6.20 güncellemesi başarısız oldu ve geri kondu.** Web
+  postası eskisi gibi 1.6.15 çalıştırıyor; onarılacak bir şey yok. Neden, eski bir
+  sürümün yazdığı ve CelikPanel'in PHP denetimi için konumu olmayan web postası
+  yapılandırmasıydı (kanıt HTTP 404 okudu). **Sonraki adım:** paneli güncelledikten
+  sonra Bileşenler → Roundcube'u açın ve **1.6.20 sürümüne güncelle…** düğmesine
+  yeniden basın. Panel önce bu yapılandırmaya denetim konumunu ekler (yalnız
+  CelikPanel'in kendi biçimindeyse), sonra günceller ve kanıtlar. Sayfadan
+  çıkabilirsiniz; döndüğünüzde satır sonucu söyler.
+- **Bir güncellemenin sonucu "bilinmiyor" ise** (sunucu ajanının yanıtı gelmedi):
+  bir dakika sonra sayfayı yenileyin; gösterilen sürüm kurulu olandır. Yeni sürüm
+  değilse Güncelle'ye yeniden basın. Hiçbir şey kendiliğinden yeniden denenmez.
+- **Web postası panelin adresinde düz kutularla açılır.** Şimdilik tasarım gereği:
+  yönetici oturumunuzu koruyan panel güvenlik kuralı `/webmail/` üzerinde kalır ve
+  Roundcube'un arayüzünün orada başlamasını engeller. Sunucuda yapılacak bir şey yok.
+  Web postası gelecek bir sürümde kendi adresine kavuşur; o zamana dek **Web
+  postasını aç** gösterilmez ve posta kutusu kullanıcıları bir posta uygulaması
+  kullanır (IMAP/SMTP; alan adının posta ekranı ayarları gösterir).
+- **Güncelleme yapılandırma CelikPanel dışında değiştirildiği için durursa:** bir
+  kopyasını alın (`sudo cp /etc/nginx/conf.d/celikpanel-webmail.conf /root/`), dosyayı
+  kaldırın (`sudo rm /etc/nginx/conf.d/celikpanel-webmail.conf`) ve Güncelle'ye yeniden
+  basın; CelikPanel önce kendi dosyasını yazar, nginx ile denetleyip yeniden yükler,
+  sonra günceller. Kendi satırlarınızı ardından `/etc/nginx/conf.d` içinde başka bir
+  dosyaya koyun.
+- **Kurulum onayları.** Pencere, bir üretici deposunun değiştireceği paketleri ve ek
+  olarak kurulacak paketleri her satırda bir paketle, gerekçesiyle sayar. Kutuyu
+  yalnız istediğiniz buysa işaretleyin; değilse İptal'e basıp dağıtımın kendi
+  sürümünü seçin.
+
+**İş nasıl devam eder:** güncelleme sunucuda sürer; ekran yalnız okur, kaybolan bir
+yanıt aranır, asla iki kez gönderilmez. Kurulu panelleri yalnız sahipleri, panelin
+kendi güncelleme ekranından günceller. P0.1–P0.5 **kısmi** kalır; bu girdi hiçbir
+şeyi kapatmaz ve ilerletmez.

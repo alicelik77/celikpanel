@@ -102,6 +102,14 @@ func newWebmailReverseProxy(target *url.URL) *httputil.ReverseProxy {
 	}
 	proxy.ModifyResponse = func(response *http.Response) error {
 		stripWebmailProtectedSetCookies(response.Header)
+		// The panel's own X-Frame-Options (DENY) and script policy stay on
+		// every webmail answer (alpha.109 review): webmail is served on the
+		// panel's origin, so a script running there could call the panel's
+		// API with the administrator's session. Roundcube's weaker
+		// X-Frame-Options is not added beside it. Webmail's interface needs
+		// its own address before it can run (the next step).
+		// Panelin sıkı kuralı web postasında da kalır.
+		response.Header.Del("X-Frame-Options")
 		return nil
 	}
 	proxy.ErrorHandler = func(w http.ResponseWriter, _ *http.Request, _ error) {

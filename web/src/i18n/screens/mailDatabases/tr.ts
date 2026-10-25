@@ -65,6 +65,7 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'mail.webmail.available': 'Posta kutunuzu tarayıcıda açın.',
     'mail.webmail.unavailable': 'Web posta bu sunucuda kullanılamıyor.',
     'mail.webmail.open': 'Webmail’i Aç',
+    'mail.webmail.heldBack': 'Web postası bir sonraki sürümde kendi adresine kavuşur; o zamana dek posta kutusu kullanıcıları postalarını bir posta uygulamasıyla okur.',
     'mail.catchAll.title': 'Catch-all adresi',
     'mail.catchAll.hint': '{domain} adresinde tanınmayan bir posta kutusuna gönderilen her iletiyi tek bir adrese teslim eder.',
     'mail.catchAll.destination': 'Teslim et',

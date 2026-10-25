@@ -176,3 +176,46 @@ func TestWebmailProxyRateLimitReturnsRetryHint(t *testing.T) {
 		t.Fatalf("Retry-After = %q, want 60", got)
 	}
 }
+
+// alpha.109 review: webmail is served on the panel's origin, so its answers
+// keep the panel's strict policy (script-src 'self', X-Frame-Options DENY):
+// a script in Roundcube must never be able to call /api/v1 with the
+// administrator's session. Roundcube's own weaker X-Frame-Options is dropped.
+func TestWebmailAnswersKeepThePanelsStrictPolicy(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, ".css") {
+			w.Header().Set("Content-Type", "text/css")
+			_, _ = w.Write([]byte("body{}"))
+			return
+		}
+		w.Header().Set("X-Frame-Options", "sameorigin")
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte("<script>var rcmail = new rcube_webmail();</script>"))
+	}))
+	defer upstream.Close()
+	target, err := url.Parse(upstream.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	previous := webmailProxy
+	webmailProxy = newWebmailReverseProxy(target)
+	t.Cleanup(func() { webmailProxy = previous })
+	handler := securityHeaders(true, http.HandlerFunc((&Panel{}).handleWebmailProxy))
+	for _, path := range []string{"/webmail/", "/webmail/skins/elastic/styles/styles.min.css?s=1"} {
+		recorder := httptest.NewRecorder()
+		request := httptest.NewRequest(http.MethodGet, "https://panel.example.test"+path, nil)
+		request.RemoteAddr = "192.0.2.46:1234"
+		handler.ServeHTTP(recorder, request)
+		header := recorder.Result().Header
+		csp := header.Values("Content-Security-Policy")
+		if recorder.Code != http.StatusOK || len(csp) != 1 || !strings.Contains(csp[0], "script-src 'self';") || !strings.Contains(csp[0], "frame-ancestors 'none'") {
+			t.Fatalf("%s: %d CSP %#v", path, recorder.Code, csp)
+		}
+		if got := header.Values("X-Frame-Options"); len(got) != 1 || got[0] != "DENY" {
+			t.Fatalf("%s: X-Frame-Options = %#v, want only the panel's DENY", path, got)
+		}
+		if header.Get("X-Content-Type-Options") != "nosniff" || header.Get("Strict-Transport-Security") == "" {
+			t.Fatalf("%s: nosniff and HSTS must stay: %#v", path, header)
+		}
+	}
+}

@@ -281,6 +281,8 @@ export const enDashboardScreens = {
     'dashboard.audit.action.security.update_origins.failed': 'could not add vendor repositories to the operating system\'s automatic updates',
     'dashboard.audit.action.webmail.update': 'updated webmail (Roundcube) ({target})',
     'dashboard.audit.action.webmail.update.failed': 'could not update webmail (Roundcube) ({target})',
+    'dashboard.audit.action.webmail.update.recovered': 'confirmed after a panel restart that webmail (Roundcube) was updated ({target})',
+    'dashboard.audit.action.webmail.update.recovered.failed': 'found after a panel restart that webmail (Roundcube) was not updated ({target})',
     'dashboard.audit.action.site.php_version': 'changed the PHP version of a site ({target})',
     'dashboard.audit.action.site.hosting': 'changed how a site is hosted ({target})',
     'dashboard.audit.action.site.node_version': 'changed the Node.js version of a site ({target})',

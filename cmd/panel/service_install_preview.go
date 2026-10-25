@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/core"
+	"github.com/alicelik/celikpanel/internal/hostplatform"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -44,6 +46,24 @@ type serviceInstallPreviewAnswer struct {
 	Removes   []string                          `json:"removes"`
 	Refusals  []transport.InstallPreviewRefusal `json:"refusals"`
 	Requested []string                          `json:"requested"`
+	// Distribution (alpha.109): this server's os-release ID ("ubuntu",
+	// "debian") so the confirmation names whose version a vendor package
+	// replaces. Absent when os-release cannot be read. Additive.
+	// Sunucunun dağıtımı; onay, kimin sürümünün değiştirileceğini adıyla söyler.
+	Distribution string `json:"distribution,omitempty"`
+}
+
+// serverDistributionID is this server's os-release ID, or "".
+func serverDistributionID() string {
+	data, err := os.ReadFile(osReleasePath)
+	if err != nil {
+		return ""
+	}
+	release, err := hostplatform.ParseOSRelease(data)
+	if err != nil {
+		return ""
+	}
+	return release.ID
 }
 
 // parseInstallPreviewSteps reads "step=<id>[:<package>[:<php version>]]".
@@ -111,6 +131,7 @@ func (p *Panel) handleServiceInstallPreview(w http.ResponseWriter, r *http.Reque
 		Refusals:  []transport.InstallPreviewRefusal{},
 		Requested: []string{},
 	}
+	answer.Distribution = serverDistributionID()
 	resp, err := installPackagePreview(p, ctx, transport.ServiceInstallPreviewRequest{Steps: steps})
 	if err != nil {
 		log.Printf("install preview: %v", err)

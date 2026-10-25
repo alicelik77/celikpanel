@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -163,5 +164,28 @@ func TestAResumedInstallKeepsItsChoices(t *testing.T) {
 	restoreServiceInstallChoices(&other, `{"setup_mail_hostname":"mail.example.net"}`)
 	if other.PHPVersion != "" {
 		t.Fatalf("other = %+v", other)
+	}
+}
+
+// alpha.109: the confirmation names whose version a vendor package replaces
+// ("Ubuntu’s version"), so the answer carries this server's distribution;
+// without os-release it is left out and the page says "the distribution".
+func TestInstallPreviewNamesTheServersDistribution(t *testing.T) {
+	panel := newManagedServiceCachePanel(t)
+	stubInstallPreview(t, func(transport.ServiceInstallPreviewRequest) (transport.ServiceInstallPreviewResponse, error) {
+		return transport.ServiceInstallPreviewResponse{State: "known"}, nil
+	})
+	withSupportServer(t, "ID=ubuntu\nVERSION_ID=\"24.04\"\nVERSION_CODENAME=noble\n")
+	var answer serviceInstallPreviewAnswer
+	if err := json.Unmarshal(installPreviewRequest(panel, http.MethodGet, "?step=mariadb").Body.Bytes(), &answer); err != nil {
+		t.Fatal(err)
+	}
+	if answer.Distribution != "ubuntu" {
+		t.Fatalf("distribution = %q", answer.Distribution)
+	}
+	osReleasePath = filepath.Join(t.TempDir(), "missing")
+	body := installPreviewRequest(panel, http.MethodGet, "?step=mariadb").Body.String()
+	if strings.Contains(body, "distribution") {
+		t.Fatalf("an unread os-release still named a distribution: %s", body)
 	}
 }

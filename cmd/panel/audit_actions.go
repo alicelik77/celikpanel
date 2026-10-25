@@ -240,4 +240,6 @@ var auditActionNames = []string{
 	"vpn.sync",
 	"webmail.update",
 	"webmail.update.failed",
+	"webmail.update.recovered",
+	"webmail.update.recovered.failed",
 }

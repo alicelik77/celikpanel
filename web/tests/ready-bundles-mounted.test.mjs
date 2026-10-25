@@ -846,8 +846,9 @@ test('notable installs are named with their reason and hold Install until the ow
   });
   try {
     const notes = tree.root.find((node) => node.props && node.props['data-install-preview'] === 'notable');
-    assert.ok(label(notes).includes(say('services.installPreview.reason.apache', { packages: 'apache2, libapache2-mod-php8.5' })), label(notes));
-    assert.ok(label(notes).includes(say('services.installPreview.reason.new_php_version', { version: '8.5', packages: 'php8.5-common' })), label(notes));
+    // alpha.109: grouped, one package a line; packages sharing a reason under it.
+    assert.ok(label(notes).includes('The Apache web server:apache2libapache2-mod-php8.5'), label(notes));
+    assert.ok(label(notes).includes(`php8.5-common: ${say('services.notable.why.new_php_version', { version: '8.5' })}`), label(notes));
     assert.equal(confirmButton(3).props.disabled, true, 'Install was offered before the owner confirmed');
     const box = tree.root.find((node) => node.type === 'input' && node.props['data-install-preview-confirm'] !== undefined);
     await act(async () => { box.props.onChange({ target: { checked: true } }); });
