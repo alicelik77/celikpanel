@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -934,7 +936,71 @@ func probePHPToolHTTP(ctx context.Context, tool, version string) error {
 	if err != nil {
 		return fmt.Errorf("%s answer could not be read: %v", phpToolDisplayName(tool), err)
 	}
-	return checkPHPToolResponse(tool, response.StatusCode, body)
+	if err := checkPHPToolResponse(tool, response.StatusCode, body); err != nil {
+		return err
+	}
+	if tool != phpToolWebmail {
+		return nil
+	}
+	// 3. Webmail's stylesheet (alpha.109): a page whose stylesheet does not
+	// arrive as CSS opens without its layout.
+	return probeWebmailStylesheet(probeCtx, client, base, body)
+}
+
+var webmailStylesheetHref = regexp.MustCompile(`<link[^>]*\brel="stylesheet"[^>]*\bhref="([^"]+)"`)
+
+// webmailStylesheetURL is the address of the skin's own stylesheet the page
+// names (the first "styles" one, else the first), on the same server.
+func webmailStylesheetURL(base string, body []byte) (string, error) {
+	var chosen string
+	for _, match := range webmailStylesheetHref.FindAllSubmatch(body, -1) {
+		href := html.UnescapeString(string(match[1]))
+		if chosen == "" || (strings.Contains(href, "/styles/") && !strings.Contains(chosen, "/styles/")) {
+			chosen = href
+		}
+	}
+	if chosen == "" {
+		return "", &phpToolProbeError{Kind: "asset_unreadable", Message: "webmail's page names no stylesheet, so it would open without its layout"}
+	}
+	page, err := url.Parse(base + "/webmail/")
+	if err != nil {
+		return "", err
+	}
+	ref, err := url.Parse(chosen)
+	if err != nil {
+		return "", &phpToolProbeError{Kind: "asset_unreadable", Message: fmt.Sprintf("webmail's stylesheet address %q could not be read", chosen)}
+	}
+	resolved := page.ResolveReference(ref)
+	if resolved.Host != page.Host || !strings.HasPrefix(resolved.Path, "/webmail/") {
+		return "", &phpToolProbeError{Kind: "asset_unreadable", Message: fmt.Sprintf("webmail's stylesheet %q is not served by webmail itself", chosen)}
+	}
+	return resolved.String(), nil
+}
+
+// probeWebmailStylesheet fetches the stylesheet the login page names and
+// requires HTTP 200 as text/css (the panel answers with nosniff, so a
+// stylesheet sent as another type is refused by the browser).
+func probeWebmailStylesheet(ctx context.Context, client *http.Client, base string, page []byte) error {
+	address, err := webmailStylesheetURL(base, page)
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, address, nil)
+	if err != nil {
+		return err
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		return &phpToolProbeError{Kind: "asset_unreadable", Message: fmt.Sprintf("webmail's stylesheet did not answer: %v", err)}
+	}
+	defer response.Body.Close()
+	_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, phpToolProbeBodyLimit))
+	contentType := response.Header.Get("Content-Type")
+	if response.StatusCode != http.StatusOK || !strings.HasPrefix(strings.ToLower(contentType), "text/css") {
+		return &phpToolProbeError{Kind: "asset_unreadable", Status: response.StatusCode,
+			Message: fmt.Sprintf("webmail's stylesheet %s answered HTTP %d as %q, not as text/css, so webmail would open without its layout", strings.TrimPrefix(address, base), response.StatusCode, contentType)}
+	}
+	return nil
 }
 
 // phpToolProbeSettle bounds how long a proof waits for nginx's reloaded

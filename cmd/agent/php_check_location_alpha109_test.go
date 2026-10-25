@@ -5,6 +5,8 @@ package main
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -137,5 +139,39 @@ func TestAnOwnerEditedWebmailConfigurationIsRefusedAndTheUpdateChangesNothing(t 
 	}
 	if !strings.Contains(resp.Error, "Roundcube was not changed") {
 		t.Fatalf("error: %s", resp.Error)
+	}
+}
+
+// alpha.109 (Frankfurt, unstyled webmail): the proof also fetches the
+// stylesheet the login page names and requires it as text/css.
+func TestWebmailProofRequiresItsStylesheetAsCSS(t *testing.T) {
+	page := []byte(`<html><head><link rel="shortcut icon" href="skins/elastic/images/favicon.ico">` +
+		`<link rel="stylesheet" href="skins/elastic/deps/bootstrap.min.css?s=1">` +
+		`<link rel="stylesheet" href="skins/elastic/styles/styles.min.css?s=1743252480&amp;x=1"></head></html>`)
+	contentType := "text/css; charset=utf-8"
+	var asked string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		asked = r.URL.RequestURI()
+		w.Header().Set("Content-Type", contentType)
+		_, _ = w.Write([]byte("body{}"))
+	}))
+	defer server.Close()
+	if err := probeWebmailStylesheet(context.Background(), server.Client(), server.URL, page); err != nil {
+		t.Fatal(err)
+	}
+	if asked != "/webmail/skins/elastic/styles/styles.min.css?s=1743252480&x=1" {
+		t.Fatalf("asked %q", asked)
+	}
+	contentType = "text/plain"
+	err := probeWebmailStylesheet(context.Background(), server.Client(), server.URL, page)
+	var probe *phpToolProbeError
+	if !errors.As(err, &probe) || probe.Kind != "asset_unreadable" || !strings.Contains(err.Error(), `"text/plain"`) {
+		t.Fatalf("text/plain stylesheet: %v", err)
+	}
+	if err := probeWebmailStylesheet(context.Background(), server.Client(), server.URL, []byte("<html></html>")); !errors.As(err, &probe) {
+		t.Fatalf("no stylesheet: %v", err)
+	}
+	if _, err := webmailStylesheetURL(server.URL, []byte(`<link rel="stylesheet" href="https://elsewhere.example/x.css">`)); err == nil {
+		t.Fatal("a stylesheet elsewhere was accepted")
 	}
 }

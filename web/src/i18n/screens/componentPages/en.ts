@@ -28,6 +28,7 @@ export const enComponentPagesScreens = {
     'component.phpTool.reconciledRead': 'The answer did not arrive; reading now shows {tool} on PHP {current}. What the card says below is the current state; choose again only if it is still not what you want.',
     'component.phpTool.reconcileGaveUp': 'The answer did not arrive and the current state could not be read for {seconds} seconds, so whether it changed is not known. Nothing is sent again. The panel or its Agent may be restarting: press Retry to read the state.',
     'component.phpTool.cause.check_unreadable': 'PHP-FPM {version} could not open CelikPanel’s check file (HTTP {status}); Check again puts the file back with permissions PHP-FPM can read',
+    'component.phpTool.cause.asset_unreadable': 'its page answered, but its stylesheet did not arrive as a stylesheet (HTTP {status}), so it would open without its layout',
     'component.phpTool.cause.said': ' (the server said: {detail})',
     'svc.coreService': 'Core service',
     'svc.notInstalled': 'Not installed',

@@ -200,5 +200,26 @@ func (p *Panel) handleWebmailProxy(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Too many webmail requests.", http.StatusTooManyRequests)
 		return
 	}
+	webmailResponseHeaders(w.Header())
 	webmailProxy.ServeHTTP(w, r)
+}
+
+// webmailCSP is the policy webmail answers carry instead of the panel's.
+const webmailCSP = "frame-ancestors 'self'"
+
+// webmailResponseHeaders replaces the panel's single-page-application policy
+// on webmail's answers (alpha.109, Frankfurt: webmail rendered with plain
+// inputs). The panel's Content-Security-Policy allows scripts only from
+// files (script-src 'self'), but Roundcube starts itself with an inline
+// script ("var rcmail = new rcube_webmail();"), so the browser refused it
+// and Roundcube's interface never started; X-Frame-Options DENY refused the
+// same-origin frames Roundcube shows messages in. Roundcube sends its own
+// X-Frame-Options (sameorigin); webmail keeps nosniff, the referrer policy
+// and HSTS, and frames only from its own origin.
+//
+// Panelin tek sayfa uygulaması kuralı web postasına uygulanmaz: Roundcube
+// kendini satır içi bir betikle başlatır; panelin CSP'si onu engelliyordu.
+func webmailResponseHeaders(header http.Header) {
+	header.Del("X-Frame-Options")
+	header.Set("Content-Security-Policy", webmailCSP)
 }

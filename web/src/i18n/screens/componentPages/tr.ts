@@ -20,6 +20,7 @@ export const trComponentPagesScreens: Record<ComponentPagesScreenKey, string> = 
     'component.phpTool.reconciledRead': 'Yanıt gelmedi; şimdi okunan durum {tool} aracını PHP {current} üzerinde gösteriyor. Kartın aşağıda söylediği güncel durumdur; yalnız hâlâ istediğiniz gibi değilse yeniden seçin.',
     'component.phpTool.reconcileGaveUp': 'Yanıt gelmedi ve güncel durum {seconds} saniye boyunca okunamadı; bu yüzden değişip değişmediği bilinmiyor. Hiçbir şey yeniden gönderilmiyor. Panel ya da Agent yeniden başlıyor olabilir: durumu okumak için Tekrar dene’ye basın.',
     'component.phpTool.cause.check_unreadable': 'PHP-FPM {version}, CelikPanel’in denetim dosyasını açamadı (HTTP {status}); Yeniden denetle dosyayı PHP-FPM’in okuyabileceği izinlerle yeniden koyar',
+    'component.phpTool.cause.asset_unreadable': 'sayfası yanıt verdi, ama stil dosyası stil dosyası olarak gelmedi (HTTP {status}); düzeni olmadan açılırdı',
     'component.phpTool.cause.said': ' (sunucunun söylediği: {detail})',
     'svc.coreService': 'Temel servis',
     'svc.notInstalled': 'Kurulu değil',

@@ -138,7 +138,7 @@ export interface PHPToolCause {
 }
 
 const CAUSE_KINDS: ReadonlySet<string> = new Set([
-    'missing_extensions', 'extensions_install_failed', 'wrong_version', 'no_answer', 'check_unreadable', 'http_status', 'served_as_file', 'tool_error',
+    'missing_extensions', 'extensions_install_failed', 'wrong_version', 'no_answer', 'check_unreadable', 'asset_unreadable', 'http_status', 'served_as_file', 'tool_error',
     'not_tool_page', 'not_running', 'version_not_installed', 'tool_not_installed', 'unsupported', 'fpm_reload_failed',
     'config_owner_edited', 'config_prepare_failed', 'config_read_failed', 'config_write_failed', 'nginx_rejected', 'nginx_reload_failed',
 ]);
