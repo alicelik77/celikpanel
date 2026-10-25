@@ -815,6 +815,67 @@ func pgDistributionOffers(pkg string) bool {
 	return err == nil && len(distro[pkg]) > 0
 }
 
+// pgCreateClusterPath is postgresql-common's own cluster creator.
+var pgCreateClusterPath = "/usr/bin/pg_createcluster"
+
+// pgCreateMainCluster creates NN/main on port with postgresql-common's
+// pg_createcluster, without starting it (the install starts its unit).
+var pgCreateMainCluster = func(ctx context.Context, version string, port int) error {
+	if !pgVersionRe.MatchString(version) || port < 1024 || port > 65535 {
+		return fmt.Errorf("invalid cluster %s on port %d", version, port)
+	}
+	if info, err := os.Stat(pgCreateClusterPath); err != nil || !info.Mode().IsRegular() {
+		return fmt.Errorf("%s is not installed", pgCreateClusterPath)
+	}
+	callCtx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+	defer cancel()
+	cmd := serviceMutationCommand(callCtx, pgCreateClusterPath, version, "main", "-p", strconv.Itoa(port))
+	cmd.Env = packageCommandEnv()
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("pg_createcluster %s main -p %d: %v: %s", version, port, err, boundedText(lastLines(string(out), 3), 300))
+	}
+	return nil
+}
+
+// pgEnsureMainCluster (alpha.108, a real-system finding): with PGDG confined,
+// the distribution's postgresql-common stays (Debian 13: 278), and a newer
+// major's own install from PGDG (postgresql-18) creates no cluster, so its
+// unit cannot start. Unless the owner's createcluster.conf says
+// create_main_cluster = false, the Agent then creates NN/main itself, with
+// postgresql-common's pg_createcluster, on the port the clusters card showed:
+// the first one from 5432 up that no cluster is configured for and nothing
+// listens on. An existing NN/main is never touched.
+func pgEnsureMainCluster(ctx context.Context, host pgClusterHost, pkg string, create func(context.Context, string, int) error) (created bool, port int, err error) {
+	m := pgVersionPackageRe.FindStringSubmatch(pkg)
+	if m == nil || host.family() != "apt" {
+		return false, 0, nil
+	}
+	readCtx, cancel := context.WithTimeout(ctx, pgReadBound)
+	out, err := host.lsclusters(readCtx)
+	cancel()
+	if err != nil {
+		return false, 0, err
+	}
+	clusters := parsePGLsClusters(out)
+	for _, cluster := range clusters {
+		if cluster.Version == m[1] && cluster.Name == "main" {
+			return false, cluster.Port, nil
+		}
+	}
+	if !pgCreatesMainCluster(host.readFile) {
+		return false, 0, nil
+	}
+	port = nextFreePGPort(pgConfiguredPorts(host, clusters), host.listening())
+	if port == 0 {
+		return false, 0, fmt.Errorf("no free port from %d up", pgDefaultPort)
+	}
+	if err := create(ctx, m[1], port); err != nil {
+		return false, port, err
+	}
+	return true, port, nil
+}
+
 // pgInstallProof proves, after postgresql-NN was installed, that its cluster
 // NN/main answers on its port, and names the port. Without the cluster (the
 // owner's createcluster.conf creates none) it says so.

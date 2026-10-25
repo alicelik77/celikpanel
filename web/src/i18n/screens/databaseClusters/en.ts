@@ -42,7 +42,7 @@ export const enDatabaseClustersScreens = {
     'pgc.offers.title': 'Install another major beside these',
     'pgc.offers.distribution': 'PostgreSQL {major} ({candidate}, from the operating system) — its cluster would get port {port}.',
     'pgc.offers.pgdg': 'PostgreSQL {major} ({candidate}, from the PGDG repository) — its cluster would get port {port}.',
-    'pgc.offers.needsRepo': 'PostgreSQL {major} comes from PGDG, not from the operating system; it stays locked until the administrator chooses PGDG with “Use PostgreSQL Global Development Group (PGDG)…” on this page.',
+    'pgc.offers.needsRepo': 'PostgreSQL {major} comes from PGDG, not from the operating system; it stays locked until the administrator chooses PGDG with “Use PGDG…” on this page.',
     'pgc.offers.notOffered': 'PostgreSQL {major} is not offered for this system by the enabled repositories.',
     'pgc.offers.install': 'Install PostgreSQL {major}…',
 

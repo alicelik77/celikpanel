@@ -442,6 +442,15 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 	// — firstPresentUnit mevcut EN YENİ unit'i döndürür; var olan 8.4'ün yanına
 	// 8.3 kurulduktan sonra bu, 8.4'ü başlatıp operatörün az önce istediği
 	// sürümü durmuş bırakırdı.
+	// alpha.108 (real-system finding): a PGDG major on the distribution's
+	// postgresql-common may come without its cluster; it is created on the
+	// first free port before its unit is started.
+	if svc.ID == "postgresql" && family == "apt" && pgVersionPackageRe.MatchString(effectivePackage) {
+		if _, _, err := pgEnsureMainCluster(ctx, pgClusterHostActive(), effectivePackage, pgCreateMainCluster); err != nil {
+			resp.Error = fmt.Sprintf("PostgreSQL was installed but its cluster could not be created: %v", err)
+			return nil
+		}
+	}
 	unit := ""
 	if exactUnit, exact := exactInstallUnit(req.ID, family, effectivePackage); exact {
 		// A selected package has one exact service target. Never fall back to

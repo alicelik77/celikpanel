@@ -160,10 +160,13 @@ test('C11: the note exists in both languages, as the owner worded it', () => {
 });
 
 test('C11: the recovery page, the update outcome, the restarts list and the offline page carry the note beside their commands', () => {
-  const recovery = read('../src/components/RecoveryAccess.tsx');
-  const afterCommand = recovery.slice(recovery.indexOf('<code>sudo journalctl'));
-  // The eager shell and the update screens use the key directly (their test doubles of ui.tsx carry no SudoNote).
-  assert.match(afterCommand.slice(0, 300), /data-sudo-note="">\{t\('common\.sudoNote'\)\}/);
+  // The recovery screen's structure is read by the release-recovery harness
+  // (deploy/e2e/release-recovery, parse_screen_source): the note is in the
+  // sentence that introduces its one command, not a new element.
+  assert.match(en['recovery.automatic.inspect'], /if you are signed in as root, leave out sudo/);
+  assert.match(tr['recovery.automatic.inspect'], /root olarak oturum açtıysanız sudo yazmayın/);
+  assert.doesNotMatch(read('../src/components/RecoveryAccess.tsx'), /data-sudo-note/);
+  // The update screens use the key directly (their test doubles of ui.tsx carry no SudoNote).
   assert.match(read('../src/components/SystemUpdateOperation.tsx'), /failureGuidance\.command && \/\\bsudo\\b\/\.test\(failureGuidance\.command\) && <p[^>]*data-sudo-note/);
   assert.match(read('../src/components/PanelUpdateCard.tsx'), /data-sudo-note="">\{t\('common\.sudoNote'\)\}/);
   assert.match(read('../src/components/OperationOverlay.tsx'), /data-sudo-note="">\{t\('common\.sudoNote'\)\}/);

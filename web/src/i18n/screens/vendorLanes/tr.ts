@@ -66,7 +66,7 @@ export const trVendorLanesScreens: Record<VendorLanesScreenKey, string> = {
     'lane.locked.why': 'Bu sürümler {os} değil {repo} kaynaklıdır: onları {os} değil {repo} derler ve yamalar. Sunucu yöneticisi {repo} deposunu sınırlaması ve otomatik güncellemeleriyle açana dek kilitli kalırlar.',
     'lane.locked.whyNoOS': 'Bu sürümler bu sunucunun işletim sistemi değil {repo} kaynaklıdır: onları {repo} derler ve yamalar. Sunucu yöneticisi {repo} deposunu sınırlaması ve otomatik güncellemeleriyle açana dek kilitli kalırlar.',
     'lane.locked.hint': 'Kilitli: işletim sisteminden değil {repo} deposundan gelir',
-    'lane.locked.enable': '{repo} deposunu aç…',
+    'lane.locked.enable': '{repo} kullan…',
     'lane.noLonger': 'artık güncellenmiyor',
     'lane.noLongerHint': '{date} tarihinde kapatılan {repo} deposundan kuruldu: artık hiçbir şey onu güncellemiyor. Çalışmayı sürdürür. Kaldırın ya da {repo} deposunu yeniden açın.',
     'lane.tested': 'denendi',

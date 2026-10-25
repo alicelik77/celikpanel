@@ -35,7 +35,7 @@ export const trDatabaseClustersScreens: Record<DatabaseClustersScreenKey, string
     'pgc.offers.title': 'Bunların yanına başka bir ana sürüm kurun',
     'pgc.offers.distribution': 'PostgreSQL {major} ({candidate}, işletim sisteminden) — kümesi port {port} alır.',
     'pgc.offers.pgdg': 'PostgreSQL {major} ({candidate}, PGDG deposundan) — kümesi port {port} alır.',
-    'pgc.offers.needsRepo': 'PostgreSQL {major} işletim sisteminden değil PGDG deposundan gelir; yönetici bu sayfadaki “PostgreSQL Global Development Group (PGDG) kullan…” ile PGDG’yi seçene dek kilitli kalır.',
+    'pgc.offers.needsRepo': 'PostgreSQL {major} işletim sisteminden değil PGDG deposundan gelir; yönetici bu sayfadaki “PGDG kullan…” ile PGDG’yi seçene dek kilitli kalır.',
     'pgc.offers.notOffered': 'PostgreSQL {major}, açık depolarda bu sistem için sunulmuyor.',
     'pgc.offers.install': 'PostgreSQL {major} kur…',
 

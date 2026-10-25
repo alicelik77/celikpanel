@@ -474,3 +474,39 @@ func TestPGStatementsGoOnStdinWithThePort(t *testing.T) {
 		t.Fatalf("statements = %v", got)
 	}
 }
+
+// alpha.108 real-system finding: postgresql-18 from a confined PGDG, on the
+// distribution's postgresql-common, came without its cluster; the Agent
+// creates NN/main on the first free port, never over an existing cluster
+// and never against the owner's create_main_cluster = false.
+func TestAMajorWithoutItsClusterGetsOneOnTheFirstFreePort(t *testing.T) {
+	f := newFakePGHost(t)
+	f.ls = "17  main    5432 online postgres /var/lib/postgresql/17/main log\n"
+	f.writeConf("17", "main", "port = 5432\n")
+	f.listening = map[int]bool{22: true, 5432: true, 5433: true}
+	var made []string
+	create := func(_ context.Context, version string, port int) error {
+		made = append(made, version+":"+strconv.Itoa(port))
+		return nil
+	}
+	created, port, err := pgEnsureMainCluster(context.Background(), f.host(), "postgresql-18", create)
+	if err != nil || !created || port != 5434 || strings.Join(made, ",") != "18:5434" {
+		t.Fatalf("created=%v port=%d err=%v made=%v", created, port, err, made)
+	}
+	// An existing cluster is never touched.
+	made = nil
+	f.ls = fakeLsclusters
+	if created, port, err := pgEnsureMainCluster(context.Background(), f.host(), "postgresql-18", create); err != nil || created || port != 5433 || len(made) != 0 {
+		t.Fatalf("existing: created=%v port=%d err=%v made=%v", created, port, err, made)
+	}
+	// The owner's choice not to create one is kept.
+	f.ls = "17  main    5432 online postgres /var/lib/postgresql/17/main log\n"
+	os.MkdirAll(filepath.Dir(pgCommonConfPath), 0o755)
+	os.WriteFile(pgCommonConfPath, []byte("create_main_cluster = false\n"), 0o644)
+	if created, _, err := pgEnsureMainCluster(context.Background(), f.host(), "postgresql-18", create); err != nil || created || len(made) != 0 {
+		t.Fatalf("owner's choice: created=%v err=%v made=%v", created, err, made)
+	}
+	if created, _, _ := pgEnsureMainCluster(context.Background(), f.host(), "postgresql", create); created {
+		t.Fatal("the moving package made a cluster")
+	}
+}

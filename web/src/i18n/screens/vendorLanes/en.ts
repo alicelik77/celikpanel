@@ -74,7 +74,7 @@ export const enVendorLanesScreens = {
     'lane.locked.why': 'These versions come from {repo}, not from {os}: {repo} builds and patches them, not {os}. They stay locked until the server administrator enables {repo} with its confinement and automatic updates.',
     'lane.locked.whyNoOS': 'These versions come from {repo}, not from this server’s operating system: {repo} builds and patches them. They stay locked until the server administrator enables {repo} with its confinement and automatic updates.',
     'lane.locked.hint': 'Locked: comes from {repo}, not from the operating system',
-    'lane.locked.enable': 'Enable {repo}…',
+    'lane.locked.enable': 'Use {repo}…',
     'lane.noLonger': 'no longer updated',
     'lane.noLongerHint': 'Installed from {repo}, which was disabled on {date}: nothing updates it any more. It keeps running. Remove it, or enable {repo} again.',
     'lane.tested': 'tested',

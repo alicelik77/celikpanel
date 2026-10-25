@@ -153,7 +153,7 @@ func TestRealSystemA108VendorLane(t *testing.T) {
 		t.Fatal(err)
 	}
 	logJSON(t, "install preview php8.5-fpm", preview)
-	if preview.State != "checked" || !slices.ContainsFunc(preview.Notable, func(item transport.NotableInstall) bool { return item.Reason == notableReasonVendorShared }) {
+	if preview.State != "known" || !slices.ContainsFunc(preview.Notable, func(item transport.NotableInstall) bool { return item.Reason == notableReasonVendorShared }) {
 		t.Fatalf("the preview does not name the vendor-shared package: %+v", preview)
 	}
 	if resp := a105Install(t, a, "php-fpm", "php8.5-fpm", "", nil); resp.ErrorCode != "INSTALL_NEEDS_CONFIRMATION" {

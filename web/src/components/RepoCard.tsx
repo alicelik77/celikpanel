@@ -24,7 +24,7 @@ import { componentName } from '../lib/componentName';
 import { RepoConfineDialog } from './RepoConfineDialog';
 import { VendorLaneDialog } from './VendorLaneDialog';
 import { showToast } from './Toast';
-import { decodeLaneRead, laneURL, missingSteps } from '../lib/vendorLane';
+import { decodeLaneRead, laneURL, LANE_FOR_COMPONENT, missingSteps } from '../lib/vendorLane';
 
 // A time the server sent, said as a date (the shared lifecycle reading).
 export const repoDate = (value: string | undefined, locale: string): string => lifeDate(value, locale);
@@ -78,6 +78,7 @@ function DefaultLaneCard({ serviceId, info, onChanged }: { serviceId: string; in
     const [open, setOpen] = useState(false);
     const component = componentName({ id: serviceId, name: serviceId }, t);
     const left = info.no_longer_updated ?? [];
+    const short = LANE_FOR_COMPONENT[serviceId]?.name ?? info.name ?? '';
     return (
         <section className="rounded-2xl border border-border bg-surface" data-repo-card={serviceId} data-lane-default="">
             <header className="flex items-center gap-2 border-b border-border px-5 py-3">
@@ -85,15 +86,15 @@ function DefaultLaneCard({ serviceId, info, onChanged }: { serviceId: string; in
                 <h2 className="text-sm font-semibold text-fg">{t('lane.default.title', { component })}</h2>
             </header>
             <div className="space-y-3 p-5">
-                <Line tone="ok" attr="lane-default"><KeepWords text={t('lane.default.body', { component, name: info.name ?? '' })} /></Line>
+                <Line tone="ok" attr="lane-default"><KeepWords text={t('lane.default.body', { component, name: short })} /></Line>
                 {left.length > 0 && (
                     <Line tone="warn" attr="lane-no-longer-updated">
-                        <KeepWords text={t('lane.default.left', { names: left.join(', '), name: info.name ?? '', date: repoDate(info.disabled_at, locale) })} />
+                        <KeepWords text={t('lane.default.left', { names: left.join(', '), name: short, date: repoDate(info.disabled_at, locale) })} />
                     </Line>
                 )}
                 <div className="pl-6">
                     <Button onClick={() => setOpen(true)} className="max-sm:min-h-11" data-lane-enable="">
-                        {t('lane.default.enable', { name: info.name ?? '' })}
+                        {t('lane.default.enable', { name: short })}
                     </Button>
                 </div>
             </div>
