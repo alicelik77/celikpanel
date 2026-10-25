@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.108.tr.md)
 
+> **Published.** This release was published on 2026-10-25 (UTC): release commit `f99ae9f3e`, GitHub pre-release at 18:26:34Z, download portal at about 18:35Z after the assets and signature were verified and the public check passed (26/26). Nothing from it is on an installed server yet; only the owner updates installed panels. The candidate text below is kept as written.
+
 This is the release that follows v0.1.0-alpha.107. **It is a candidate, written on
 2026-10-25; it is not published and nothing from it is on an installed server.
 Only the owner updates installed panels, from the panel's own update screen.**
