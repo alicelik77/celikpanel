@@ -511,6 +511,10 @@ func setRoundcubeAddressSettings(enabled bool) (string, error) {
 		return "", err
 	}
 	if err := secureSetMailFileMetadata(path, snapshot.mode, snapshot.uid, snapshot.gid); err != nil {
+		// PHP-FPM must still read it: the previous file comes back.
+		if restoreErr := restoreMailFile(snapshot); restoreErr != nil {
+			return "", errors.Join(err, restoreErr)
+		}
 		return "", err
 	}
 	if enabled {

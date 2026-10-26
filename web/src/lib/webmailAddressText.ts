@@ -115,7 +115,7 @@ export interface OutcomeSaid {
     extras: { tone: SaidTone; text: string }[];
 }
 
-const FAIL_CODES = ['ADDRESS_INVALID', 'ROUNDCUBE_NOT_INSTALLED', 'NGINX_UNAVAILABLE', 'PHP_UNAVAILABLE', 'CERTBOT_MISSING', 'NAME_IN_USE', 'CONFIG_OWNER_EDITED', 'NGINX_REJECTED', 'CERTIFICATE_FAILED', 'PROOF_FAILED', 'ROLLBACK_FAILED'] as const;
+const FAIL_CODES = ['ADDRESS_INVALID', 'ROUNDCUBE_NOT_INSTALLED', 'NGINX_UNAVAILABLE', 'PHP_UNAVAILABLE', 'CERTBOT_MISSING', 'NAME_IN_USE', 'CONFIG_OWNER_EDITED', 'NGINX_REJECTED', 'CERTIFICATE_FAILED', 'PROOF_FAILED', 'ROLLBACK_FAILED', 'BUSY', 'STATE_UNREADABLE'] as const;
 type FailCode = (typeof FAIL_CODES)[number];
 const isFailCode = (code: string): code is FailCode => (FAIL_CODES as readonly string[]).includes(code);
 
@@ -131,6 +131,8 @@ const FAIL_KEY: Record<FailCode, TranslationKey> = {
     CERTIFICATE_FAILED: 'life.addr.fail.CERTIFICATE_FAILED',
     PROOF_FAILED: 'life.addr.fail.PROOF_FAILED',
     ROLLBACK_FAILED: 'life.addr.fail.ROLLBACK_FAILED',
+    BUSY: 'life.addr.fail.BUSY',
+    STATE_UNREADABLE: 'life.addr.fail.STATE_UNREADABLE',
 };
 
 // sayOutcome: what a finished operation says. Success is said only for an

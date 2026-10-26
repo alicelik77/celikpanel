@@ -115,6 +115,8 @@ export const enWebmailAddressScreens = {
     'life.addr.fail.ADDRESS_INVALID': 'Webmail was not set up: the server refused “{host}” as a host name. Nothing was changed. Next: type another name and press Check.',
     'life.addr.fail.ROUNDCUBE_NOT_INSTALLED': 'Webmail was not set up: Roundcube is not installed on this server. Nothing was changed. Next: install it on Components, then set the address.',
     'life.addr.fail.NGINX_UNAVAILABLE': 'Webmail was not set up: the web server (Nginx) is not available on this server. Nothing was changed. Next: install or start Nginx on Components, then try again.',
+    'life.addr.fail.BUSY': 'Webmail was not set up: another certificate operation is running on this server. Nothing was changed. Next: wait until it finishes, then press Set up again.',
+    'life.addr.fail.STATE_UNREADABLE': 'Webmail was not set up: the server could not read its current web server configuration ({reason}). Nothing was changed. Who acts: the server owner. Next: run sudo nginx -t on the server, then press Set up again.',
     'life.addr.fail.PHP_UNAVAILABLE': 'Webmail was not set up: PHP-FPM is not available for Roundcube. Nothing was changed. Next: check on Components that PHP-FPM runs, then try again.',
     'life.addr.fail.CERTBOT_MISSING': 'Webmail was not set up: certbot, the certificate tool, is not installed on this server. Nothing was changed. Who acts: the server owner. Next: install certbot, then press Set up again.',
     'life.addr.fail.NAME_IN_USE': 'Webmail was not set up on {host}: another web server configuration already answers this name. {reason} Nothing was changed. Who acts: the server owner. Next: remove or rename that configuration, or choose another name.',

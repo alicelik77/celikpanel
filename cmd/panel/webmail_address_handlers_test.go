@@ -100,6 +100,17 @@ func TestWebmailAddressCheckSaysWhatDNSAnswersAgainstThisServer(t *testing.T) {
 	if peer.Ready || peer.Code != "points_to_peer" || peer.Peer == nil || peer.Peer.Name != "ns2.peer.test" || !strings.Contains(peer.Message, "ns2.peer.test (198.51.100.20)") {
 		t.Fatalf("peer: %+v", peer)
 	}
+	// One public resolver does not see the record yet: not ready.
+	webmailAddressResolvers = func() []hostResolver {
+		return []hostResolver{webmailAddressTestResolver{"mail.celikhost.com": {"203.0.113.10"}}, webmailAddressTestResolver{}}
+	}
+	if partial := checkWebmailAddressForTest(t, panel, userID, "mail.celikhost.com"); partial.Ready || partial.State != webmailAddressNotFound {
+		t.Fatalf("partial propagation: %+v", partial)
+	}
+	webmailAddressResolvers = func() []hostResolver {
+		r := webmailAddressTestResolver{"mail.celikhost.com": {"203.0.113.10", "2001:db8::10"}, "slow.example.test": nil}
+		return []hostResolver{r, r}
+	}
 	unknown := checkWebmailAddressForTest(t, panel, userID, "slow.example.test")
 	if unknown.Ready || unknown.State != webmailAddressUnknown || unknown.Owner == nil {
 		t.Fatalf("unknown: %+v", unknown)

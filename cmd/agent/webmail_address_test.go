@@ -336,6 +336,19 @@ func TestWebmailAddressNameUsesReadEveryFile(t *testing.T) {
 	if use.httpsFile != "/etc/nginx/conf.d/other.conf" {
 		t.Fatalf("IPv6 https not seen: %+v", use)
 	}
+	// A block bound to an explicit public address takes that address's
+	// visitors before any name is looked at: refused, whatever its name.
+	bound := dump + "\n# configuration file /etc/nginx/sites-enabled/kept.conf:\nserver { listen 203.0.113.10:443 ssl; server_name kept.example.test; }\n"
+	if use := webmailAddressNameUses(bound, "mail.example.test", ""); use.boundFile != "/etc/nginx/sites-enabled/kept.conf" || use.boundListen != "203.0.113.10:443" {
+		t.Fatalf("bound listen not seen: %+v", use)
+	}
+	loopback := dump + "\n# configuration file /etc/nginx/conf.d/local.conf:\nserver { listen 127.0.0.1:80; listen [::]:443 ssl; server_name local.example.test; }\n"
+	if use := webmailAddressNameUses(loopback, "mail.example.test", ""); use.boundFile != "" {
+		t.Fatalf("loopback or wildcard counted as bound: %+v", use)
+	}
+	if !strings.Contains(renderWebmailAddressConfig("mail.example.test", "/c", "/r", "/s", true), "shared:celikpanel_webmail:10m") {
+		t.Fatal("webmail's TLS session cache must not share a zone name another server may size differently")
+	}
 }
 
 func TestProveWebmailAddressOverHTTPSOnTheName(t *testing.T) {

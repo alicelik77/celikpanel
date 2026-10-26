@@ -66,6 +66,8 @@ const (
 	errCodeWebmailAddressProof          = "PROOF_FAILED"
 	errCodeWebmailAddressRollbackFailed = "ROLLBACK_FAILED"
 	errCodeWebmailAddressPHP            = "PHP_UNAVAILABLE"
+	errCodeWebmailAddressBusy           = "BUSY"
+	errCodeWebmailAddressUnreadable     = "STATE_UNREADABLE"
 )
 
 var (
@@ -216,7 +218,7 @@ func renderWebmailAddressConfig(host, challengeRoot, roundcubeRoot, fpmSocket st
 
     ssl_certificate %s/fullchain.pem;
     ssl_certificate_key %s/privkey.pem;
-    ssl_session_cache shared:SSL:10m;
+    ssl_session_cache shared:celikpanel_webmail:10m;
     ssl_session_timeout 10m;
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
@@ -332,6 +334,12 @@ type webmailAddressNameUse struct {
 	httpsFile string
 	httpFile  string
 	panelACME bool
+	// boundFile/boundListen: another server block listens on an explicit
+	// public address on port 80 or 443. nginx chooses the listen address
+	// before the name, so visitors to that address would never reach
+	// webmail's wildcard server (while the loopback proof would pass).
+	boundFile   string
+	boundListen string
 }
 
 var nginxConfigFileHeader = regexp.MustCompile(`(?m)^# configuration file (\S+):$`)
@@ -350,6 +358,17 @@ func webmailAddressNameUses(dump, host, ownPath string) webmailAddressNameUse {
 			continue
 		}
 		for _, block := range services.NginxServerBlocks(dump[index[1]:end]) {
+			for _, listen := range block.Listens {
+				if len(listen) == 0 || use.boundFile != "" {
+					continue
+				}
+				address, port := parseWebmailAddressListen(listen[0])
+				if (port == "80" || port == "443") && address != "" && address != "*" {
+					if ip := net.ParseIP(address); ip == nil || (!ip.IsLoopback() && !ip.IsUnspecified()) {
+						use.boundFile, use.boundListen = file, listen[0]
+					}
+				}
+			}
 			named := false
 			for _, name := range block.Names {
 				if strings.EqualFold(name, host) {
@@ -393,17 +412,7 @@ func webmailAddressListenKinds(listens [][]string) (https, http bool) {
 		if len(listen) == 0 || strings.HasPrefix(listen[0], "unix:") {
 			continue
 		}
-		value, port := listen[0], "80"
-		switch {
-		case strings.HasPrefix(value, "["):
-			if end := strings.IndexByte(value, ']'); end >= 0 && strings.HasPrefix(value[end+1:], ":") {
-				port = value[end+2:]
-			}
-		case isDigits(value):
-			port = value
-		case strings.Contains(value, ":"):
-			port = value[strings.LastIndexByte(value, ':')+1:]
-		}
+		_, port := parseWebmailAddressListen(listen[0])
 		ssl := false
 		for _, argument := range listen[1:] {
 			if argument == "ssl" {
@@ -418,6 +427,33 @@ func webmailAddressListenKinds(listens [][]string) (https, http bool) {
 		}
 	}
 	return https, http
+}
+
+// parseWebmailAddressListen splits a listen directive's first argument into
+// its address ("" for a bare port, "*" for *:port) and port (80 when absent).
+func parseWebmailAddressListen(value string) (address, port string) {
+	port = "80"
+	switch {
+	case strings.HasPrefix(value, "unix:"):
+		return "", ""
+	case strings.HasPrefix(value, "["):
+		end := strings.IndexByte(value, ']')
+		if end < 0 {
+			return "", ""
+		}
+		address = value[1:end]
+		if strings.HasPrefix(value[end+1:], ":") {
+			port = value[end+2:]
+		}
+	case isDigits(value):
+		port = value
+	case strings.Contains(value, ":"):
+		cut := strings.LastIndexByte(value, ':')
+		address, port = value[:cut], value[cut+1:]
+	default:
+		address = value
+	}
+	return address, port
 }
 
 // readWebmailAddressCertificate reads the lineage's live certificate.
@@ -500,7 +536,7 @@ func enableWebmailAddress(ctx context.Context, ops webmailAddressOps, rawHost, e
 	path := webmailAddressConfPath(host)
 	snapshot, err := snapshotMailFile(path)
 	if err != nil {
-		webmailAddressFail(&resp, errCodeWebmailAddressRejected, "the current file %s could not be read: %v", path, err)
+		webmailAddressFail(&resp, errCodeWebmailAddressUnreadable, "the current file %s could not be read (%v); nothing was changed", path, err)
 		return
 	}
 	if snapshot.exists {
@@ -511,12 +547,16 @@ func enableWebmailAddress(ctx context.Context, ops webmailAddressOps, rawHost, e
 	}
 	dump, err := ops.nginxDump(ctx)
 	if err != nil {
-		webmailAddressFail(&resp, errCodeWebmailAddressRejected, "the web server's configuration could not be read (%v); nothing was changed", err)
+		webmailAddressFail(&resp, errCodeWebmailAddressUnreadable, "the web server's configuration could not be read (%v); nothing was changed", err)
 		return
 	}
 	use := webmailAddressNameUses(dump, host, path)
 	if use.httpsFile != "" {
 		webmailAddressFail(&resp, errCodeWebmailAddressConflict, "%s already answers HTTPS for %s, so webmail cannot have that name; choose another name or remove that server block. Nothing was changed", use.httpsFile, host)
+		return
+	}
+	if use.boundFile != "" {
+		webmailAddressFail(&resp, errCodeWebmailAddressConflict, "%s listens on %s, so nginx sends visitors of that address there before it looks at webmail's server for %s; the server owner changes that listen to a port only (for example listen 443 ssl;), then tries again. Nothing was changed", use.boundFile, use.boundListen, host)
 		return
 	}
 	if use.httpFile != "" && !use.panelACME {
@@ -536,12 +576,32 @@ func enableWebmailAddress(ctx context.Context, ops webmailAddressOps, rawHost, e
 	}
 	challenge, err := ops.challengeRoot()
 	if err != nil {
-		webmailAddressFail(&resp, errCodeWebmailAddressRejected, "the certificate check's folder could not be prepared: %v; nothing was changed", err)
+		webmailAddressFail(&resp, errCodeWebmailAddressUnreadable, "the certificate check's folder could not be prepared (%v); nothing was changed", err)
 		return
 	}
 
-	// restore puts the file back as it was and says whether that worked.
+	// written is what this run last put in the file (nil: nothing yet).
+	var written []byte
+	apply := func(content []byte) error {
+		err := applyWebmailNginxMutation(ctx, path, content, true, ops.run)
+		if err == nil {
+			written = content
+		} else if strings.Contains(err.Error(), "rollback failed") {
+			return &webmailAddressRollbackError{err}
+		}
+		return err
+	}
+	// restore puts the file back as it was and says whether that worked; a
+	// file the owner changed while this run waited (certbot can take
+	// minutes) is left as it is.
 	restore := func(cause string) {
+		if written != nil {
+			if current, err := os.ReadFile(path); err == nil && !bytes.Equal(current, written) {
+				resp.ErrorCode = errCodeWebmailAddressOwnerEdited
+				resp.Error = fmt.Sprintf("%s; %s was changed outside CelikPanel meanwhile, so it was left as it is", cause, path)
+				return
+			}
+		}
 		var restoreErr error
 		if snapshot.exists {
 			restoreErr = applyWebmailNginxMutation(ctx, path, snapshot.content, true, ops.run)
@@ -566,7 +626,12 @@ func enableWebmailAddress(ctx context.Context, ops webmailAddressOps, rawHost, e
 			return
 		}
 		if withHTTP && !(snapshot.exists && strings.Contains(string(snapshot.content), "listen 80;")) {
-			if err := applyWebmailNginxMutation(ctx, path, []byte(renderWebmailAddressPending(host, challenge)), true, ops.run); err != nil {
+			if err := apply([]byte(renderWebmailAddressPending(host, challenge))); err != nil {
+				var rollback *webmailAddressRollbackError
+				if errors.As(err, &rollback) {
+					webmailAddressFail(&resp, errCodeWebmailAddressRollbackFailed, "nginx did not accept the certificate check's server for %s and the previous file could not be put back (%v); the server owner checks %s and runs nginx -t", host, err, path)
+					return
+				}
 				webmailAddressFail(&resp, errCodeWebmailAddressRejected, "nginx did not accept the certificate check's server for %s (%v); the previous file was put back", host, err)
 				resp.RolledBack = true
 				return
@@ -601,10 +666,13 @@ func enableWebmailAddress(ctx context.Context, ops webmailAddressOps, rawHost, e
 
 	// 2. The complete file, validated before nginx reloads it.
 	content := renderWebmailAddressConfig(host, challenge, roundcubeRootDir(), fpm, withHTTP)
-	if err := applyWebmailNginxMutation(ctx, path, []byte(content), true, ops.run); err != nil {
+	if err := apply([]byte(content)); err != nil {
 		webmailAddressFail(&resp, errCodeWebmailAddressRejected, "nginx did not accept webmail's server for %s (%v)", host, err)
 		restore(resp.Error)
 		return
+	}
+	if !withHTTP {
+		resp.Warning = joinWarning(resp.Warning, fmt.Sprintf("port 80 for %s belongs to the mail certificate's check server, so http://%s/ answers 404 instead of redirecting; webmail opens with https://%s/", host, host, host))
 	}
 	// 3. Roundcube's own lines for its own origin (only in CelikPanel's
 	// form of its configuration; an owner-edited one is left as it is).
@@ -633,6 +701,12 @@ func enableWebmailAddress(ctx context.Context, ops webmailAddressOps, rawHost, e
 	}
 	return
 }
+
+// webmailAddressRollbackError: nginx refused the change and the previous file
+// could not be put back either.
+type webmailAddressRollbackError struct{ err error }
+
+func (e *webmailAddressRollbackError) Error() string { return e.err.Error() }
 
 func joinWarning(current, next string) string {
 	if current == "" {
@@ -934,7 +1008,7 @@ func (a *Agent) EnableWebmailAddressV1(req *transport.WebmailAddressEnableReques
 	}
 	defer finishStep()
 	if !acquireSiteCertbot() {
-		webmailAddressFail(resp, errCodeWebmailAddressCertificate, "another certificate operation is running on this server; try again when it has finished")
+		webmailAddressFail(resp, errCodeWebmailAddressBusy, "another certificate operation is running on this server; nothing was changed. Try again when it has finished")
 		return nil
 	}
 	defer releaseSiteCertbot()

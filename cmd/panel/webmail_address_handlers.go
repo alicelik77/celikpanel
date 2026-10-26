@@ -225,8 +225,11 @@ func (p *Panel) panelOwnNames(r *http.Request) []string {
 			names = append(names, canonical)
 		}
 	}
-	if name := panelCertificateHostname(); name != "" {
-		names = append(names, name)
+	info := currentPanelCert()
+	for _, raw := range append(append([]string(nil), info.DNSNames...), info.Subject) {
+		if canonical, err := hostname.CanonicalFQDN(strings.TrimSpace(raw)); err == nil {
+			names = append(names, canonical)
+		}
 	}
 	return names
 }
@@ -378,7 +381,9 @@ func webmailAddressLookup(ctx context.Context, host string) ([]string, error) {
 			}
 		}
 	}
-	if len(union) == 0 && notFound != nil {
+	if notFound != nil {
+		// Not every public resolver sees the record yet: certbot's check
+		// could reach one that does not, so it is not ready.
 		return nil, notFound
 	}
 	if len(union) == 0 {
@@ -610,6 +615,17 @@ func (p *Panel) reconcileInterruptedWebmailAddress(ctx context.Context, op servi
 	if err := p.saveWebmailAddress(ctx, host); err != nil {
 		return result, operationFailure("webmail_address_not_recorded", "Webmail answers on its address, but the panel could not record it; press Set up again.", err)
 	}
+	// A change interrupted after the new address proved: the previous
+	// address may still answer; it is said, never removed by itself.
+	var data struct {
+		Replace string `json:"replace"`
+	}
+	if json.Unmarshal([]byte(op.OperationData), &data) == nil && data.Replace != "" && data.Replace != host {
+		result["replace"] = data.Replace
+		if old, err := readWebmailAddressStatusFromAgent(p, ctx, data.Replace, false); err != nil || old.Present {
+			result["warning"] = "the previous address " + data.Replace + " may still answer; remove it from the webmail address card"
+		}
+	}
 	result["success"], result["outcome"], result["url"] = true, "enabled", webmailAddressURL(host)
 	return result, nil
 }
@@ -783,7 +799,12 @@ func (p *Panel) startWebmailAddressEnable(w http.ResponseWriter, r *http.Request
 		}
 	}()
 	actor := captureServiceOperationActor(r)
-	op, err := p.createServiceOperationRequest(r.Context(), serviceOperationKindWebmailAddress, "roundcube", host, req.RequestID, actor)
+	replace := ""
+	if check.Current != "" && check.Current != host {
+		replace = check.Current
+	}
+	data, _ := json.Marshal(map[string]string{"replace": replace})
+	op, err := p.createServiceOperationRequestWithState(r.Context(), serviceOperationKindWebmailAddress, "roundcube", host, req.RequestID, actor, "queued", string(data))
 	switch {
 	case errors.Is(err, errServiceOperationBusy):
 		writeServiceOperationBusy(w)
@@ -797,10 +818,6 @@ func (p *Panel) startWebmailAddressEnable(w http.ResponseWriter, r *http.Request
 	case err != nil:
 		writeServerError(w, err)
 		return
-	}
-	replace := ""
-	if check.Current != "" && check.Current != host {
-		replace = check.Current
 	}
 	email := p.certificateEmailFor(r.Context(), actor.UserID)
 	outcome := &transport.WebmailAddressResponse{}
