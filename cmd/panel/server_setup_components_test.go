@@ -89,7 +89,9 @@ func TestServerSetupCustomizationCanonicalAndLegacyWireIdentity(t *testing.T) {
 	if err != nil || !slices.Equal(canonical.Customization.Components, []string{"nginx", "phpmyadmin"}) {
 		t.Fatalf("canonical selection: %+v %v", canonical.Customization, err)
 	}
-	for _, id := range []string{"apache", "exim", "vsftpd", "bind", "pdns", "netdata", "clamav", "nftables", "certbot", "../../bin/sh"} {
+	// alpha.111: the choices come from the catalogue (owner decision of
+	// 2026-10-26); what the catalogue cannot offer through setup stays refused.
+	for _, id := range []string{"apache", "exim", "vsftpd", "bind", "pdns", "netdata", "spamassassin", "cron", "nftables", "certbot", "../../bin/sh"} {
 		draft.Customization = &serverSetupCustomization{Components: []string{id}}
 		if _, err := canonicalServerSetupDraft(draft); err == nil {
 			t.Fatalf("unsupported arbitrary input accepted: %s", id)

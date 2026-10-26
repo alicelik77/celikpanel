@@ -435,6 +435,12 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 		}
 	}
 	addService := func(id string) {
+		// A version the owner chose (alpha.111) is the step's exact package;
+		// a draft without one keeps its empty qualifier and its identity.
+		qualifier := ""
+		if draft.Customization != nil {
+			qualifier = draft.Customization.Versions[id]
+		}
 		managed := core.GetManagedServiceByID(id)
 		if managed == nil {
 			addBlocker("server_setup_service_unknown")
@@ -450,11 +456,21 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 			addBlocker("server_setup_service_conflict:" + id + ":" + taken)
 		}
 		if !installed[id] {
-			addStep("service", id, "")
+			addStep("service", id, qualifier)
 		}
 		planned[id] = true
 	}
+	// The wizard's own answers (alpha.111) add refusals only to drafts that
+	// carry them; an older draft has neither and keeps its review.
+	// Sihirbazin yanitlari yalniz onlari tasiyan taslaga ret ekler.
+	if draft.MainDNSServer == "this" && (draft.DNSMode != setupDNSModeLocal || draft.DNSRole != transport.DNSPairRolePrimary) {
+		addBlocker("server_setup_main_dns_server_mismatch")
+	}
+	if draft.ServerCount == 1 && draft.DNSMode == setupDNSModeLocal {
+		addBlocker("server_setup_local_dns_requires_two_servers")
+	}
 	addStep("dns", draft.DNSMode, "")
+	mailDependent := []string{}
 	if draft.Customization != nil {
 		resolved, err := serverSetupResolvedComponents(draft)
 		if err != nil {
@@ -482,6 +498,12 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 				addStep("runtime", "node", draft.NodeVersion)
 				planned[id] = true
 			default:
+				// A service that needs a mail server (SpamAssassin) follows
+				// the mail profile that installs Postfix and Dovecot.
+				if serverSetupMailDependent(id) {
+					mailDependent = append(mailDependent, id)
+					continue
+				}
 				addService(id)
 			}
 		}
@@ -547,6 +569,9 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 			}
 			addStep("mail_profile", profileID, "")
 		}
+	}
+	for _, id := range mailDependent {
+		addService(id)
 	}
 	if serverSetupNeedsNativeCron(draft) {
 		addService(core.NativeCronServiceID)

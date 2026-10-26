@@ -9,10 +9,12 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/hostname"
+	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 const serverSetupPath = "/api/v1/setup"
@@ -52,6 +54,19 @@ type serverSetupDraft struct {
 	NodeVersion           string                             `json:"node_version"`
 	Database              string                             `json:"database"`
 	Customization         *serverSetupCustomization          `json:"customization,omitempty"`
+	// The wizard's own answers (alpha.111, setup wizard v2), all additive and
+	// omitted when empty, so a draft saved before them serializes, and its
+	// reviewed plan hashes, exactly as before. MainDomain is the owner's main
+	// domain, asked once and first; with local DNS on the main DNS server it
+	// is the infrastructure zone (canonicalServerSetupDraft). ServerCount is
+	// 1 or 2. ShortName is the server's own short name ("Bu sunucunun kısa
+	// adı"), never guessed by the panel. MainDNSServer is "this" when this
+	// server is the main DNS server; no other value exists in this release.
+	// Sihirbazin yeni yanitlari; bossa yazilmaz, eski taslagin plani ayni kalir.
+	MainDomain    string `json:"main_domain,omitempty"`
+	ServerCount   int    `json:"server_count,omitempty"`
+	ShortName     string `json:"short_name,omitempty"`
+	MainDNSServer string `json:"main_dns_server,omitempty"`
 }
 
 // Reason and Vars are additive (2026-10-10): the typed cause of a check that
@@ -89,6 +104,11 @@ type serverSetupState struct {
 	// yalniz degisenleri gostermek ve genisletmeyi durdurmak icin tutulur.
 	Extension     bool              `json:"extension,omitempty"`
 	ExtensionBase *serverSetupDraft `json:"extension_base,omitempty"`
+	// ShortNameSuggestion (alpha.111) is the machine host name's first label
+	// when it reads like a name a person chose; otherwise empty
+	// (serverSetupShortNameSuggestion). Only the GET answer carries it.
+	// Kisa ad onerisi; yalniz GET yanitinda.
+	ShortNameSuggestion string `json:"short_name_suggestion,omitempty"`
 }
 
 func defaultServerSetupDraft() serverSetupDraft {
@@ -176,7 +196,59 @@ func canonicalServerSetupDraft(d serverSetupDraft) (serverSetupDraft, error) {
 	if d.Purpose == "custom" && d.Customization == nil {
 		d.Customization = &serverSetupCustomization{Components: []string{}}
 	}
+	if err := serverSetupVersionChoicesSelected(d); err != nil {
+		return d, err
+	}
+	if err := canonicalServerSetupWizardAnswers(&d); err != nil {
+		return d, err
+	}
 	return d, nil
+}
+
+var serverSetupShortNamePattern = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$`)
+
+// canonicalServerSetupWizardAnswers checks the wizard v2 answers. A draft
+// without a main domain (every draft saved before alpha.111) is left exactly
+// as it is. With one, the main domain is the infrastructure zone whenever this
+// server is the main DNS server with local DNS: the owner named it as the
+// first question, so the zone is no longer an unticked option on another
+// screen. A backup DNS server or another DNS home prepares no zone here.
+// Sihirbaz v2 yanitlari: ana alan adi yoksa taslaga dokunulmaz; varsa ve bu
+// sunucu yerel ana DNS sunucusuysa bolge ana alan adidir.
+func canonicalServerSetupWizardAnswers(d *serverSetupDraft) error {
+	d.MainDomain = strings.TrimSpace(d.MainDomain)
+	d.ShortName = strings.ToLower(strings.TrimSpace(d.ShortName))
+	d.MainDNSServer = strings.TrimSpace(d.MainDNSServer)
+	if d.MainDomain != "" {
+		canonical, err := hostname.CanonicalFQDN(d.MainDomain)
+		if err != nil {
+			return errors.New("the main domain must be a fully qualified domain name")
+		}
+		d.MainDomain = canonical
+	}
+	if d.ShortName != "" && !serverSetupShortNamePattern.MatchString(d.ShortName) {
+		return errors.New("the server's short name must be one DNS label")
+	}
+	if d.ServerCount < 0 || d.ServerCount > 2 {
+		return errors.New("setup supports one or two servers")
+	}
+	if !stringIn(d.MainDNSServer, "", "this") {
+		return errors.New("invalid main DNS server choice")
+	}
+	if d.MainDomain == "" {
+		return nil
+	}
+	if d.DNSMode == setupDNSModeLocal && d.DNSRole == transport.DNSPairRolePrimary {
+		selection := serverSetupInfrastructureDNSDraft{Zone: d.MainDomain}
+		if d.InfrastructureDNS != nil {
+			selection.PeerPanelDomain = d.InfrastructureDNS.PeerPanelDomain
+			selection.PeerMailHostname = d.InfrastructureDNS.PeerMailHostname
+		}
+		d.InfrastructureDNS = &selection
+	} else {
+		d.InfrastructureDNS = nil
+	}
+	return nil
 }
 
 func stringIn(value string, choices ...string) bool {
@@ -397,6 +469,7 @@ func (p *Panel) handleServerSetup(w http.ResponseWriter, r *http.Request) {
 		if address := net.ParseIP(serverPrimaryIP()); address != nil && address.IsGlobalUnicast() && !address.IsPrivate() && !address.IsLoopback() {
 			s.ServerIP = address.String()
 		}
+		s.ShortNameSuggestion = currentServerSetupShortNameSuggestion()
 		if r.URL.Query().Get("check") == "1" {
 			ctx, cancel := context.WithTimeout(r.Context(), 25*time.Second)
 			defer cancel()
