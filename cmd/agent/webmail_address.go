@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
@@ -68,6 +69,7 @@ const (
 	errCodeWebmailAddressPHP            = "PHP_UNAVAILABLE"
 	errCodeWebmailAddressBusy           = "BUSY"
 	errCodeWebmailAddressUnreadable     = "STATE_UNREADABLE"
+	errCodeWebmailAddressChallenge      = "CHALLENGE_UNREACHABLE"
 )
 
 var (
@@ -83,6 +85,7 @@ type webmailAddressOps struct {
 	certbotPresent     func() error
 	challengeRoot      func() (string, error)
 	issue              func(ctx context.Context, host, email, lineage, webroot string) (string, error)
+	awaitChallenge     func(ctx context.Context, host, webroot string) error
 	ensureRenewal      func(context.Context) error
 	deleteCertificate  func(ctx context.Context, lineage string) error
 	roundcubeInstalled func() (bool, error)
@@ -119,9 +122,10 @@ func hostWebmailAddressOps() webmailAddressOps {
 			}
 			return nil
 		},
-		challengeRoot: preparePanelACMEChallengeRoot,
-		issue:         issueWebmailAddressCertificate,
-		ensureRenewal: ensurePanelCertRenewalScheduler,
+		challengeRoot:  preparePanelACMEChallengeRoot,
+		awaitChallenge: awaitWebmailAddressChallenge,
+		issue:          issueWebmailAddressCertificate,
+		ensureRenewal:  ensurePanelCertRenewalScheduler,
 		deleteCertificate: func(ctx context.Context, lineage string) error {
 			out, err := runServiceMutationCombinedOutput(ctx, "certbot", "delete", "--non-interactive", "--cert-name", lineage)
 			if err != nil {
@@ -476,6 +480,65 @@ func readWebmailAddressCertificate(lineage string) (*x509.Certificate, []byte, e
 	return leaf, block.Bytes, nil
 }
 
+// awaitWebmailAddressChallenge puts a probe file where certbot puts its
+// challenge (world-readable, as certbot writes it), asks this server's port
+// 80 for it with the name as Host, and waits, bounded, until nginx answers it.
+func awaitWebmailAddressChallenge(ctx context.Context, host, webroot string) error {
+	dir := filepath.Join(webroot, ".well-known", "acme-challenge")
+	for _, path := range []string{filepath.Join(webroot, ".well-known"), dir} {
+		if err := os.MkdirAll(path, 0o755); err != nil {
+			return err
+		}
+		if err := os.Chmod(path, 0o755); err != nil {
+			return err
+		}
+	}
+	token := make([]byte, 16)
+	if _, err := rand.Read(token); err != nil {
+		return err
+	}
+	name := "celikpanel-probe-" + hex.EncodeToString(token)
+	path := filepath.Join(dir, name)
+	if err := os.WriteFile(path, []byte(name), 0o644); err != nil {
+		return err
+	}
+	defer os.Remove(path)
+	if err := os.Chmod(path, 0o644); err != nil {
+		return err
+	}
+	client := &http.Client{Timeout: 5 * time.Second, Transport: &http.Transport{Proxy: nil, DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+		var dialer net.Dialer
+		return dialer.DialContext(ctx, "tcp", "127.0.0.1:80")
+	}}, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	defer client.CloseIdleConnections()
+	deadline := time.Now().Add(webmailAddressProofSettle)
+	last := errors.New("no answer yet")
+	for {
+		request, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://"+host+"/.well-known/acme-challenge/"+name, nil)
+		if err != nil {
+			return err
+		}
+		if response, err := client.Do(request); err != nil {
+			last = err
+		} else {
+			body, _ := io.ReadAll(io.LimitReader(response.Body, 4096))
+			response.Body.Close()
+			if response.StatusCode == http.StatusOK && string(body) == name {
+				return nil
+			}
+			last = fmt.Errorf("HTTP %d", response.StatusCode)
+		}
+		if !time.Now().Before(deadline) {
+			return last
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(time.Second):
+		}
+	}
+}
+
 // issueWebmailAddressCertificate asks certbot for the name's certificate
 // through the challenge root nginx serves on port 80. The deploy hook stored
 // in certbot's own renewal configuration reloads nginx after every renewal,
@@ -636,6 +699,14 @@ func enableWebmailAddress(ctx context.Context, ops webmailAddressOps, rawHost, e
 				resp.RolledBack = true
 				return
 			}
+		}
+		// Right after a reload nginx's old workers can still answer port 80
+		// without the new server: certbot starts only once this server
+		// itself answers the check for the name.
+		if err := ops.awaitChallenge(ctx, host, challenge); err != nil {
+			webmailAddressFail(&resp, errCodeWebmailAddressChallenge, "port 80 on this server did not answer the certificate check for %s (%v); nothing was asked of Let's Encrypt", host, err)
+			restore(resp.Error)
+			return
 		}
 		detail, err := ops.issue(ctx, host, email, lineage, challenge)
 		if err != nil {

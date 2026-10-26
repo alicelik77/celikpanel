@@ -94,6 +94,7 @@ func newWebmailAddressTestHost(t *testing.T) *webmailAddressTestHost {
 		nginxActive:        func(context.Context) error { return nil },
 		certbotPresent:     func() error { return nil },
 		challengeRoot:      func() (string, error) { return "/var/lib/celikpanel-acme/panel", nil },
+		awaitChallenge:     func(context.Context, string, string) error { return nil },
 		roundcubeInstalled: func() (bool, error) { return true, nil },
 		fpmSocket:          func() (string, error) { return "/run/php/php8.4-fpm.sock", nil },
 		ensureCheck:        func() error { return nil },
@@ -190,6 +191,13 @@ func TestWebmailAddressRollsBackTheServerAndKeepsTheCertificate(t *testing.T) {
 	h2 := newWebmailAddressTestHost(t)
 	h2.ops.issue = func(context.Context, string, string, string, string) (string, error) {
 		return "Timeout during connect (likely firewall problem)", errors.New("certbot could not obtain a certificate for mail.celikhost.com: exit status 1")
+	}
+	// Port 80 does not answer the check on this server: Let's Encrypt is
+	// never asked, the pending server goes.
+	h3 := newWebmailAddressTestHost(t)
+	h3.ops.awaitChallenge = func(context.Context, string, string) error { return errors.New("HTTP 404") }
+	if resp := enableWebmailAddress(context.Background(), h3.ops, "mail.celikhost.com", "owner@example.test", ""); resp.ErrorCode != errCodeWebmailAddressChallenge || h3.issued != 0 || !resp.RolledBack {
+		t.Fatalf("unanswered check = %+v issued=%d", resp, h3.issued)
 	}
 	resp = enableWebmailAddress(context.Background(), h2.ops, "mail.celikhost.com", "owner@example.test", "")
 	if resp.ErrorCode != errCodeWebmailAddressCertificate || !resp.RolledBack || !strings.Contains(resp.Error, "firewall problem") || !strings.Contains(resp.Error, "port 80") {

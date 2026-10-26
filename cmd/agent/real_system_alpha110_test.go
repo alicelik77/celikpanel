@@ -70,6 +70,7 @@ func a110Issue(t *testing.T) func(context.Context, string, string, string, strin
 		}
 		a107Out(t, "namei", "-l", token)
 		defer os.Remove(token)
+		// What Let's Encrypt asks, from outside the Agent's own wait.
 		response, err := http.Get("http://" + host + "/.well-known/acme-challenge/a110-token")
 		if err != nil {
 			t.Fatalf("certbot's check over port 80: %v", err)
@@ -170,6 +171,7 @@ func TestRealSystemA110WebmailAddressEnable(t *testing.T) {
 	resp := enableWebmailAddress(ctx, ops, a110Host, "owner@a110.test", "")
 	logJSON(t, "enable", resp)
 	if !resp.Enabled || !resp.Proved || !resp.CertificateIssued || resp.RoundcubeSettings != "applied" {
+		a107Out(t, "sh", "-c", "nginx -T 2>/dev/null | grep -nE 'configuration file|server_name|listen|root' | head -80; ls -la /etc/nginx/sites-enabled /etc/nginx/conf.d")
 		t.Fatalf("enable = %+v", resp)
 	}
 	conf := a107Out(t, "cat", webmailAddressConfPath(a110Host))
