@@ -7168,3 +7168,41 @@ kirasını tutar; aynı istek kimliği aynı işlemi döndürür.
   kalan güncelleme salt okunarak uzlaştırılır.
 - **Kanıt.** Agent 4828 geçti, 29 atlandı (`nobody` olarak da); Panel 3448 geçti, 6 atlandı; iç paketler geçer; web 1921 geçti; sahte veriyle tarayıcı bakışı; atılabilir bir Debian 13 sanal makinesinde Frankfurt'un 404'ünü yeniden üreten ve güncellemeyi kanıtlayan bir gerçek sistem denemesi ([deploy/e2e/d038/alpha109-debian13-20261026](../deploy/e2e/d038/alpha109-debian13-20261026/README.md), arşiv SHA-256 `e77d1ab4…960f7ee`); yarış bölümleri yerelde koşturulmadı. Kurulu bir sunucuda ölçülmedi. **Hiçbir P0 işi kapanmaz ya
   da ilerlemez**; P0.1–P0.5 kısmi kalır ve her açık kabul işi açık kalır.
+
+### Aday v0.1.0-alpha.110 (web postası sunucunun kendi nginx'iyle kendi adresinde; panelin /webmail/ yolu yalnız yönlendirir; Ajan web postası adresi yolları; şema değişikliği yok; ilke 1, 2 ve 6; D-022; D-024; D-038; 26 Ekim 2026)
+
+D-025 ilke 1 (sahibin hizmetleri panel olmadan çalışır): adresindeki web postası,
+Roundcube'un ağacı ve web postasının bağlı PHP-FPM'iyle sunulan tek bir yerel nginx
+dosyasıdır; sertifikası işletim sisteminin zamanlayıcısıyla yenilenen bir certbot
+soyudur, nginx'i certbot'un kendi kancası yeniden yükler; panel dururken de yanıt
+verir. Sahibin değiştirdiği dosya, certbot çalışırken değişse bile asla üzerine
+yazılmaz ya da silinmez (D-022). İlke 2 (kanıtın anlamı vardır): adres yalnız Ajan
+onu ad üzerinden HTTPS ile kanıtladıktan sonra kaydedilir (sunulan sertifika soyun
+sertifikasıdır; PHP sürümü ve uzantıları; kuralıyla giriş sayfası; CSS olarak stil
+dosyası); her genel çözümleyicinin görmediği DNS hazır sayılmaz; gelmeyen yanıt
+bilinmiyordur. İlke 6 (bir anda tek değişiklik): kurma ve kaldırma, hizmet değişiklik
+kilidi ve kendi ajan işleri altında kalıcı hizmet işlemleridir; aynı istek kimliği
+aynı işlemi döndürür.
+
+- **Ajan değişiklikleri.** `Agent.EnableWebmailAddressV1` (`webmail_address` işi),
+  `Agent.RemoveWebmailAddressV1` (`webmail_address_remove` işi),
+  `Agent.WebmailAddressStatusV1` (salt okunur). `nginx -T` içindeki ad çakışmaları
+  (HTTPS, 80 portu, açık genel dinleme adresleri) hiçbir şey değişmeden reddedilir;
+  sonraki her hatada dosya eski haline döner, sertifika kalır. Web postasının PHP
+  sürümünün yeniden bağlanması ve Roundcube'un kaldırılması adres dosyalarını izler.
+  Roundcube'un kendi satırları (`use_https`, `session_samesite`) yalnız
+  yapılandırmasının CelikPanel biçimine eklenir.
+- **Panel değişiklikleri.** `GET/POST /api/v1/service/roundcube/address`, `POST
+  .../check` (salt okunur), `POST .../remove`, yalnız yönetici. `/webmail/` adrese
+  yönlendirir ya da panelin sıkı kuralı altında durağan bir sayfa gösterir; Roundcube
+  ters vekili kaldırıldı. Yarıda kalan işlemler `Agent.WebmailAddressStatusV1`'den
+  salt okunarak uzlaştırılır.
+- **Şema.** Yok (46): `panel_settings` (`webmail_address`) ve mevcut
+  `service_operations` tablosu.
+- **Kurtarma.** alpha.109'a dönüş etkin adresi çalışır bırakır (dosyası ve sertifikası
+  yereldir); alpha.109'un `/webmail/` yolu yeniden geri tutulan vekildir. Adres elle
+  `rm`, `nginx -t` ve yeniden yüklemeyle kaldırılır.
+- **Kanıt.** Ajan 4840 geçti, 29 atlandı (`nobody` olarak da); Panel 3450 geçti, 6 atlandı; iç paketler geçer; web 1947 geçti; sahte veride tarayıcı bakışı (grup 33); atılabilir bir Debian 13 sanal makinesinde atılabilir bir
+  test CA'sıyla tek gerçek sistem koşusu ([deploy/e2e/d038/alpha110-debian13-20261026](../deploy/e2e/d038/alpha110-debian13-20261026/README.md), arşiv SHA-256 `cf485342…888497b6`).
+  Kurulu bir sunucuda ölçülmedi. **Hiçbir P0 işi kapanmaz ya da ilerlemez**; P0.1–P0.5
+  kısmi kalır ve her açık kabul işi açık kalır.

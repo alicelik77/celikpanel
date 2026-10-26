@@ -19,6 +19,67 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 > kayıtlar saat tarihini kullanır; D-029 dışında 10, 11 veya 12 Ekim 2026 tarihli bir
 > kayıt gerçektir.
 
+### Değişiklik (26 Ekim 2026, saat tarihi): web postası kendi adresinde, sunucunun kendi web sunucusuyla; v0.1.0-alpha.110 adayı için kaynakta uygulandı
+
+Sahip 26 Ekim 2026'da onayladı: web postası panelin kökeninde çalışmamalı; orada
+Roundcube'da çalışan bir betik (geçmiş XSS açıkları CVE-2023-5631, 2024-37383,
+2024-42009) oturum açmış yönetici olarak `/api/v1` çağırabilir. alpha.109
+`/webmail/`'i panelin sıkı kuralının arkasında tuttu; Roundcube'un arayüzü orada
+başlayamadı. Web postası kendi adresini alır ve sunucunun kendi nginx'i sunar;
+böylece panel durduğunda da yanıt verir (D-022). Adlar için sahibin sözleri:
+"https://mail.celikhost.com/ diyeyim … frankfurt ya da boston diye prefixleri
+kullanmak istemiyorsam". v0.1.0-alpha.110 adayı için kaynakta (yayımlanmadı; kurulu
+bir sunucuda hiçbir şey ölçülmedi).
+
+1. **Sunucu başına, yöneticinin seçtiği adres.** Herhangi bir ad (varsayılan öneri:
+   Sunucu kurulumundaki posta sunucusu adı; panelin kendi adı asla, çünkü tarayıcı
+   panelin oturum çerezini aynı adın her portuna gönderir). `panel_settings`
+   içinde (`webmail_address`); şema değişikliği yok.
+2. **Önce salt okunur denetim.** Genel DNS (sabit genel çözümleyicilerin hepsi)
+   yalnız bu sunucunun adreslerini yanıtlamalı. Henüz değilse: eklenecek kaydın
+   kendisi; bölge bu panelde ise onaydan sonra bölgenin kendi kayıt düzenleyicisiyle
+   eklenir. Başka yeri gösteriyorsa: beklenen ve gerçek adreslerle reddedilir;
+   diğer DNS sunucusuysa adıyla söylenir. DNS'e sorulamadıysa bilinmez. Güvenlik
+   duvarında 80 ve 443 kapalıysa nerede açılacağı söylenir; CelikPanel portları
+   kendiliğinden asla açmaz.
+3. **Tek onaylı işlem** (`webmail_address`, kalıcı, sunucu yeniden denetler): ad
+   için certbot sertifikası (nginx üzerinden 80 portunda HTTP-01, panelin denetim
+   kökü, posta sertifikasıyla aynı kurallar; işletim sisteminin certbot
+   zamanlayıcısı yeniler, nginx'i certbot'un kendi kancası yeniden yükler); tek
+   yerel dosya `/etc/nginx/conf.d/celikpanel-webmail-origin-<ad>.conf` (80: denetim
+   ve HTTPS'e yönlendirme; 443: Roundcube'un genel ağacı, web postasının bağlı
+   PHP-FPM soketi, kendi kuralı `frame-ancestors 'self'`, HSTS, nosniff,
+   Roundcube'un satır içi başlangıç betiği o kökende serbest; CelikPanel'in PHP
+   denetimi yalnız bu sunucudan); `nginx -t`, yeniden yükleme, ad üzerinden HTTPS
+   kanıtı (sunulan sertifika, PHP sürümü ve uzantıları, kuralıyla giriş sayfası,
+   text/css stil dosyası). Her hatada dosya eski haline döner, sertifika kalır.
+   Adı zaten yanıtlayan ya da 80/443'te açık bir genel adresi dinleyen başka bir
+   sunucu bloğu dosyasıyla reddedilir; posta sertifikasının kendi 80 sunucusu
+   paylaşılabilir (o zaman `http://` 404 verir, söylenir). Sahibin değiştirdiği
+   dosyalar asla üzerine yazılmaz ya da silinmez.
+4. **Roundcube'un kendi ayarları** (`use_https`, `session_samesite` Strict)
+   yalnız CelikPanel biçimindeki yapılandırmasına eklenir; sahibin değiştirdiği
+   yapılandırma olduğu gibi kalır ve söylenir. IMAP ve SMTP yerelde kalır.
+5. **Panelin `/webmail/` yolu** `https://<adres>/`'e yönlendirir (302); adres
+   yoksa panelin sıkı kuralı altında, adresin nerede ayarlandığını söyleyen kısa
+   bir sayfadır. Roundcube vekili panelin kökeninden kaldırıldı. Bağlantılar yalnız
+   adrese döner; posta kutusu kullanıcılarının panel hesabı gerekmez.
+6. **Değiştirme ve kaldırma.** Ad değişince yenisi kurulur, eskisinin dosyası
+   yalnız yenisi kanıtlanınca kaldırılır. Kaldırma ayrı onaylı bir işlemdir;
+   yönetici istemedikçe sertifika kalır. Roundcube kaldırılınca adres dosyaları da
+   kaldırılır (sertifikalar kalır).
+
+**Yapılmadı (sonraki adımlar, kayıtlı).** Birden çok sunucudaki posta kutuları için
+tek adres (Roundcube'un alan adına göre IMAP yönlendirmesi); müşterilerin kendi
+`webmail.<alanadı>` adları. Eş sunucunun kendi etkin adresi okunmaz (bunun için
+uzak API çağrılmaz); denetim DNS yanıtını ve bilinen eş adresini karşılaştırır.
+
+**Kanıt.** Bileşen ve bağlanmış testler (Agent, Panel, web); saklanan temel
+imajdan atılabilir bir Debian 13 sanal makinesinde, Let's Encrypt yerine atılabilir
+bir test CA'sıyla tek gerçek sistem koşusu
+([deploy/e2e/d038/alpha110-debian13-20261026](../deploy/e2e/d038/alpha110-debian13-20261026/README.md)).
+Kurulu bir sunucuda ölçülmedi. Bu değişiklik hiçbir P0 işini kapatmaz.
+
 ---
 
 ## D-038 · Sürüm, kullanım ve güvenlik her bileşen için tek ilkeye bağlıdır: sahibi seçer, panel önerir ve uyarır, kullanımda olan kaldırılmaz, hiçbir şey sessizce taşınmaz, yamalar işletim sisteminin işidir
@@ -2783,6 +2844,11 @@ Bu yön kararı asistana canlı sunucuyu değiştirme, paneli kaldırma veya kur
 güncelleme izni vermez. Güncellemeyi kullanıcı panelden kendisi başlatır.
 
 [Kaynak uygulaması ve kalan bağımlılıklar](OWNER-INDEPENDENCE.tr.md).
+
+*Değişiklik (26 Ekim 2026, alpha.110 adayı):* web postası kendi adresinde, sunucunun
+kendi nginx'i ve PHP-FPM'iyle çalışır; sertifikasını işletim sisteminin certbot
+zamanlayıcısı yeniler; panel dururken de yanıt verir (D-038, 26 Ekim 2026
+değişikliği).
 
 ---
 

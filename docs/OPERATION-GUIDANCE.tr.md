@@ -10393,3 +10393,50 @@ yönetici.
 yanıt aranır, asla iki kez gönderilmez. Kurulu panelleri yalnız sahipleri, panelin
 kendi güncelleme ekranından günceller. P0.1–P0.5 **kısmi** kalır; bu girdi hiçbir
 şeyi kapatmaz ve ilerletmez.
+
+### Web postası kendi adresinde (26 Ekim 2026)
+
+v0.1.0-alpha.110 adayının kaynağında (yayımlanmadı; kurulu bir sunucuda hiçbir şey
+ölçülmedi). **Kim yapar:** panel kendi güncelleme ekranından güncellendikten sonra
+yönetici. **Neden:** web postası panelin adresinde çalışmamalı; orada Roundcube'daki
+bir açık oturum açmış yönetici gibi davranabilir. Artık kendi adında açılır; onu
+sunucunun kendi web sunucusu sunar.
+
+- **Frankfurt (örnek `mail.celikhost.com`).** 1. Adı sunucuya yönlendirin:
+  `celikhost.com`'un yönetildiği yerde `mail.celikhost.com. A 72.62.38.15` DNS
+  kaydını ekleyin; bu bölge bu panelde ise kart, onayladıktan sonra kaydı sizin için
+  ekler. 2. Bileşenler → Web postası (Roundcube) → Yönet → **Web postası adresi**'ni
+  açın, `mail.celikhost.com` yazın (posta sunucusu adıysa önerilir) ve **Denetle**'ye
+  basın. 3. Denetim adın bu sunucuyu gösterdiğini söyleyince **mail.celikhost.com
+  adında web postasını kur…**'a basıp onaylayın. Sayfadan ayrılabilirsiniz; döndüğünüzde
+  kart sonucu söyler. 4. `https://mail.celikhost.com/` adresini açın; posta kutusu
+  kullanıcıları orada e-posta adresi ve parolasıyla girer.
+- **"Henüz adres kaydı yok."** Kartın gösterdiği kaydı ekleyin, sonra yeniden
+  Denetle'ye basın; yeni bir kaydın genel DNS'te görünmesi birkaç dakika sürebilir.
+  **"Başka bir sunucuyu gösteriyor."** Kaydı bu sunucunun adresine düzeltin ya da başka
+  bir ad seçin; her ad için web postası tek sunucuda yanıt verir. **"Bilinmiyor."**
+  Genel DNS'e sorulamadı; bir dakika sonra yeniden Denetle'ye basın; hiçbir şey
+  değişmedi.
+- **"80 ve 443 portları kapalı."** Sunucu → Güvenlik → Güvenlik duvarı'nda izin verin
+  (CelikPanel portları kendiliğinden asla açmaz), sonra yeniden Denetle'ye basın. 80
+  portu sertifika denetimi ve yenilemeleri için gereklidir.
+- **"Sertifika alınamadı."** Web sunucusu dosyası eski haline döndü; başka hiçbir şey
+  değişmedi. Adın bu sunucuyu gösterdiğini ve 80 portuna internetten ulaşılabildiğini
+  denetleyin, sonra yeniden Kur'a basın.
+- **"Bu adı zaten başka bir web sunucusu yapılandırması yanıtlıyor."** Kart dosyanın
+  adını verir. Başka bir ad seçin ya da o sunucu bloğunu kendiniz kaldırın, sonra
+  yeniden deneyin. Elle değiştirdiğiniz bir web postası adresi dosyası olduğu gibi
+  kalır; CelikPanel'in yeniden yönetmesi için: `sudo cp
+  /etc/nginx/conf.d/celikpanel-webmail-origin-<ad>.conf /root/`, dosyayı `sudo rm`
+  ile kaldırın, `sudo nginx -t`, `sudo systemctl reload nginx`, sonra yeniden Kur.
+- **Adresi kaldırmak ya da değiştirmek.** Adresi kaldır (onaylı) o adda web postasını
+  durdurur; kutuyu işaretlemedikçe sertifikası kalır; posta kutuları ve iletiler
+  etkilenmez. Ad değişince önce yenisi kurulur, eskisi yenisi çalışınca kaldırılır.
+- **Panel olmadan.** Web postası adresinde, panel dururken de yanıt verir; sertifikayı
+  certbot zamanlayıcısı yeniler (`systemctl status certbot.timer`).
+
+**Nasıl devam eder:** işlem sunucuda koşar; ekran yalnız okur; kaybolan bir yanıt
+aranır, asla iki kez gönderilmez. İşlem sırasında panel yeniden başlarsa sonuç
+sunucunun durumundan salt okunarak uzlaştırılır. Kurulu panelleri yalnız sahipleri,
+panelin kendi güncelleme ekranından günceller. P0.1–P0.5 **kısmi** kalır; bu girdi
+hiçbir şeyi kapatmaz ve ilerletmez.
