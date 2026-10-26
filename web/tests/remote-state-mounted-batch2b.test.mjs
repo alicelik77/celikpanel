@@ -4,7 +4,7 @@ import test from 'node:test';
 import React from 'react';
 import Renderer, { act } from 'react-test-renderer';
 import ts from 'typescript';
-import { apiErrorURL, compileSource, dataModule, reactURL, remoteURL, sharedLayer } from './fixtures/shared-layer.mjs';
+import { apiErrorURL, compileSource, dataModule, reactURL, remoteURL, sharedLayer, webmailAddressLibURL } from './fixtures/shared-layer.mjs';
 import { readAllowList, scanTree } from './remote-state-ratchet.mjs';
 import { fileURLToPath } from 'node:url';
 
@@ -50,6 +50,9 @@ const stub = dataModule(`
   const i18n = { t: (key, vars) => (vars ? key + JSON.stringify(vars) : key), locale: 'en' };
   export const useI18n = () => i18n;
   export const useNavigate = () => () => true;
+  // alpha.110: the webmail card tells an administrator where to set the address.
+  export const useAuth = () => ({ role: globalThis.currentTest?.role ?? 'customer' });
+  export const Link = (props) => React.createElement('a', { href: props.to }, props.children);
   export const showToast = (...args) => globalThis.currentTest.toasts.push(args);
   export const ServiceShell = (props) => React.createElement('main', null, props.children);
   export const ComponentPanels = () => React.createElement('aside', null, 'component-panels');
@@ -76,7 +79,7 @@ const textURL = compileSource('lib/dbConfigText.ts', () => stub);
 // could accept an answer the shipped pages refuse.
 const operationURL = lib('components/ComponentOperation.tsx');
 const managedURL = lib('lib/managedServices.ts', { ...beside, '/ComponentOperation': operationURL });
-const mailSetupURL = compileSource('lib/mailSetup.ts', () => stub);
+const mailSetupURL = compileSource('lib/mailSetup.ts', (specifier) => (specifier.endsWith('/webmailAddress') ? webmailAddressLibURL : stub));
 const currentURL = lib('components/CurrentSettings.tsx');
 const own = {
   '/lib/configFile': configFileURL, '/lib/dbConfigText': textURL, '/lib/managedServices': managedURL,
@@ -151,7 +154,7 @@ const scan = scanOf(
 const protocol = (port, security) => ({ host: 'mail.example.com', port, security });
 const setup = (overrides = {}) => ({
   mail_host: 'mail.example.com', imap: protocol(993, 'SSL/TLS'), pop3: protocol(995, 'SSL/TLS'), smtp: protocol(587, 'STARTTLS'),
-  username_is_full_email: true, webmail_available: true, webmail_url: '/webmail/', ...overrides,
+  username_is_full_email: true, webmail_available: true, webmail_url: 'https://mail.example.com/', ...overrides,
 });
 const json = (body, status = 200) => () => Response.json(body, { status });
 const healthy = {

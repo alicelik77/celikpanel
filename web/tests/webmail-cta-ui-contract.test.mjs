@@ -35,22 +35,26 @@ test('a failed read of the setup is unknown, never "webmail is not available"', 
   assert.ok(accessSource.indexOf("t('mail.webmail.unavailable')") > unknownAt);
 });
 
-test('webmail payload parsing fails closed and allowlists only the public webmail route', () => {
-  assert.ok(setupSource.includes(`setup.webmail_available === true && setup.webmail_url === '/webmail/' ? setup.webmail_url : null`));
-  assert.ok(setupSource.includes(`typeof setup.webmail_available !== 'boolean') throw`), 'an answer without the flag is not the contract');
+test('webmail payload parsing fails closed and allowlists only webmail’s own https address', () => {
+  // alpha.110: the panel no longer serves Roundcube; only https://<host>/ is a link.
+  assert.ok(setupSource.includes('setup.webmail_available === true ? webmailLinkOrNull(setup.webmail_url) : null'));
+  assert.ok(!setupSource.includes("'/webmail/'"), 'the panel path is no longer an allowed link');
+  assert.ok(setupSource.includes("typeof setup.webmail_available !== 'boolean') throw"), 'an answer without the flag is not the contract');
   assert.ok(accessSource.includes("remote.state === 'known' ? remote.value.webmail : null"));
   assert.ok(!accessSource.includes('window.open'));
 });
 
 test('webmail CTA is safe, read-only accessible, and absent when unavailable', () => {
-  assert.ok(accessSource.includes('path && ('));
-  // alpha.109 review: held back while webmail is only on the panel's origin.
-  assert.ok(accessSource.includes('WEBMAIL_LINK_OFFERED && path && ('));
-  assert.ok(accessSource.includes("t('mail.webmail.heldBack')"));
-  assert.ok(accessSource.includes('href={path}'));
-  assert.ok(accessSource.includes(`target='_blank'`));
-  assert.ok(accessSource.includes(`rel='noopener noreferrer'`));
-  assert.ok(accessSource.includes(`t('mail.webmail.unavailable')`));
+  assert.ok(accessSource.includes('url && ('));
+  assert.ok(!accessSource.includes('WEBMAIL_LINK_OFFERED'), 'the hold-back switch is gone');
+  assert.ok(!accessSource.includes('heldBack'));
+  assert.ok(accessSource.includes('href={url}'));
+  assert.ok(accessSource.includes("target='_blank'"));
+  assert.ok(accessSource.includes("rel='noopener noreferrer'"));
+  assert.ok(accessSource.includes("t('mail.webmail.unavailable')"));
+  assert.ok(accessSource.includes("t('mail.webmail.noAddressAdmin')"), 'an administrator is told where to set the address');
+  assert.ok(accessSource.includes("role === 'admin'"));
+  assert.ok(accessSource.includes("to='/services/roundcube'"));
   assert.ok(!accessSource.includes('readOnly'));
 });
 
@@ -62,6 +66,9 @@ test('webmail availability copy stays in EN/TR parity', () => {
     'mail.webmail.unavailable',
     'mail.webmail.unknown',
     'mail.webmail.open',
+    'mail.webmail.signIn',
+    'mail.webmail.noAddressAdmin',
+    'mail.webmail.setAddress',
   ];
   for (const key of keys) {
     assert.ok(enSource.includes(`'${key}':`), 'missing EN key ' + key);

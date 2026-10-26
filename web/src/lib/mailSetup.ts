@@ -2,7 +2,9 @@
 // (`GET /api/v1/domains/{id}/mail/setup`), and its one decoder (see
 // lib/remote.ts: every reader of an address shares the decoder and the
 // request). The client settings card and the webmail card both read it.
-//
+
+import { webmailLinkOrNull } from './webmailAddress';
+
 // A read that failed is unknown. It is not "webmail is not available on this
 // server", which is what the card said before 9 Oct 2026.
 //
@@ -23,10 +25,11 @@ export interface MailSetup {
     pop3: MailProtocol;
     smtp: MailProtocol;
     username_is_full_email: boolean;
-    // Only the panel's fixed public proxy may become a link. Any unavailable,
-    // malformed or external value fails closed to null: no link.
-    // Yalnız panelin sabit genel vekili bağlantı olabilir.
-    webmail: '/webmail/' | null;
+    // Only webmail's own address (https://<host>/, exactly) may become a link.
+    // Anything unavailable, malformed or any other URL fails closed to null:
+    // no link (alpha.110).
+    // Yalnız web postasının kendi adresi (https://<ad>/) bağlantı olabilir.
+    webmail: string | null;
 }
 
 export const mailSetupURL = (domainId: number) => `/api/v1/domains/${domainId}/mail/setup`;
@@ -48,6 +51,6 @@ export function decodeMailSetup(raw: unknown): MailSetup {
         pop3: protocol(setup.pop3),
         smtp: protocol(setup.smtp),
         username_is_full_email: setup.username_is_full_email === true,
-        webmail: setup.webmail_available === true && setup.webmail_url === '/webmail/' ? setup.webmail_url : null,
+        webmail: setup.webmail_available === true ? webmailLinkOrNull(setup.webmail_url) : null,
     };
 }

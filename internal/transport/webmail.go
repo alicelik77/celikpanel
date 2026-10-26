@@ -66,3 +66,79 @@ type WebmailProofResponse struct {
 	Version string `json:"version,omitempty"`
 	Error   string `json:"error,omitempty"`
 }
+
+// Webmail on its own address (alpha.110, D-038 amendment). Roundcube is no
+// longer served on the panel's origin: the server's own nginx serves it on a
+// name the owner chooses (for example mail.example.com) with its own
+// certificate, so a script running in Roundcube can never reach the panel's
+// API with the administrator's session, and webmail keeps answering when the
+// panel is stopped (D-022).
+// Web postası kendi adresinde: sunucunun nginx'i sunar, panel aracı değildir.
+
+// WebmailAddressEnableRequest enables webmail on Host. Email is the address
+// certbot registers the certificate with (empty: certbot's existing account).
+// Replace names the address enabled before, removed only after Host proves
+// itself (changing the address: enable the new one, then remove the old).
+type WebmailAddressEnableRequest struct {
+	ServiceMutationBinding
+	Host    string `json:"host"`
+	Email   string `json:"email,omitempty"`
+	Replace string `json:"replace,omitempty"`
+}
+
+// WebmailAddressResponse is the outcome of enabling an address. Proved means
+// the login page, its stylesheet (text/css) and CelikPanel's PHP check
+// answered over HTTPS on the name with the certificate issued for it.
+// RolledBack: the nginx file was put back as it was (the certificate stays).
+type WebmailAddressResponse struct {
+	Enabled            bool   `json:"enabled"`
+	Proved             bool   `json:"proved"`
+	Host               string `json:"host,omitempty"`
+	CertificateIssued  bool   `json:"certificate_issued,omitempty"`
+	CertificateExpires string `json:"certificate_expires,omitempty"`
+	Lineage            string `json:"lineage,omitempty"`
+	RolledBack         bool   `json:"rolled_back,omitempty"`
+	// RoundcubeSettings: "applied" (CelikPanel's lines for the address are
+	// in Roundcube's configuration), "owner_edited" (the configuration is not
+	// in CelikPanel's form, so it was left as it is) or "unchanged".
+	RoundcubeSettings string `json:"roundcube_settings,omitempty"`
+	Warning           string `json:"warning,omitempty"`
+	Error             string `json:"error,omitempty"`
+	ErrorCode         string `json:"error_code,omitempty"`
+}
+
+// WebmailAddressRemoveRequest removes the nginx file of Host. The
+// certificate is kept unless RemoveCertificate.
+type WebmailAddressRemoveRequest struct {
+	ServiceMutationBinding
+	Host              string `json:"host"`
+	RemoveCertificate bool   `json:"remove_certificate,omitempty"`
+}
+
+type WebmailAddressRemoveResponse struct {
+	Removed            bool   `json:"removed"`
+	CertificateRemoved bool   `json:"certificate_removed,omitempty"`
+	Warning            string `json:"warning,omitempty"`
+	Error              string `json:"error,omitempty"`
+	ErrorCode          string `json:"error_code,omitempty"`
+}
+
+// WebmailAddressStatusRequest reads one address (read only). Prove also
+// asks webmail over HTTPS on the name, locally.
+type WebmailAddressStatusRequest struct {
+	Host  string `json:"host"`
+	Prove bool   `json:"prove,omitempty"`
+}
+
+// WebmailAddressStatusResponse: Present (CelikPanel's nginx file for the
+// name exists), Managed (in CelikPanel's own form), the certificate's expiry,
+// Proved / ProofError when asked, and Hosts: every address file present.
+type WebmailAddressStatusResponse struct {
+	Present            bool     `json:"present"`
+	Managed            bool     `json:"managed"`
+	CertificateExpires string   `json:"certificate_expires,omitempty"`
+	Proved             bool     `json:"proved,omitempty"`
+	ProofError         string   `json:"proof_error,omitempty"`
+	Hosts              []string `json:"hosts,omitempty"`
+	Error              string   `json:"error,omitempty"`
+}

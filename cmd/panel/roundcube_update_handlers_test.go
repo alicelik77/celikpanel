@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -26,8 +27,36 @@ func postWebmailUpdate(t *testing.T, panel *Panel, userID int, body string) *htt
 	return recorder
 }
 
+// observeServiceOperationAudits has the panel tell the test each service
+// operation audit action once its row is written: a durable operation's
+// terminal state (and its lock) comes before its audit row, so the trail is
+// read only after this says so (a flake on main's race run, alpha.109).
+func observeServiceOperationAudits(panel *Panel) <-chan string {
+	audited := make(chan string, 64)
+	panel.serviceOperationAudited = func(action string) {
+		select {
+		case audited <- action:
+		default:
+		}
+	}
+	return audited
+}
+
+func waitForServiceOperationAudit(t *testing.T, audited <-chan string, prefix string) {
+	t.Helper()
+	select {
+	case action := <-audited:
+		if !strings.HasPrefix(action, prefix) {
+			t.Fatalf("audit = %q, want %q…", action, prefix)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatalf("no audit row %q… was written", prefix)
+	}
+}
+
 func TestWebmailUpdateIsADurableOperationThatSaysItsOutcome(t *testing.T) {
 	panel, _, database, userID := newServiceStateAtomicPanel(t)
+	audited := observeServiceOperationAudits(panel)
 	restoreRead, restoreUpdate := readRoundcubeUpdateFromAgent, updateRoundcubeThroughAgent
 	t.Cleanup(func() { readRoundcubeUpdateFromAgent, updateRoundcubeThroughAgent = restoreRead, restoreUpdate })
 	readRoundcubeUpdateFromAgent = func(*Panel, context.Context) (transport.RoundcubeUpdateCheckResponse, error) {
@@ -66,6 +95,7 @@ func TestWebmailUpdateIsADurableOperationThatSaysItsOutcome(t *testing.T) {
 		t.Fatalf("operation: %+v", accepted)
 	}
 	failed, _ := waitForServiceOperation(t, panel, userID, accepted.ID, serviceOperationFailed)
+	waitForServiceOperationAudit(t, audited, "webmail.update.failed:1.6.20")
 	var result map[string]any
 	if err := json.Unmarshal(failed.Result, &result); err != nil {
 		t.Fatal(err)
@@ -105,6 +135,7 @@ func TestWebmailUpdateIsADurableOperationThatSaysItsOutcome(t *testing.T) {
 		t.Fatalf("accepted: %d %s", recorder.Code, recorder.Body.String())
 	}
 	succeeded, _ := waitForServiceOperation(t, panel, userID, decodeServiceOperationEnvelope(t, recorder).ID, serviceOperationSucceeded)
+	waitForServiceOperationAudit(t, audited, "webmail.update:1.6.15->1.6.20")
 	if !strings.Contains(string(succeeded.Result), `"outcome":"updated"`) {
 		t.Fatalf("succeeded row: %s", succeeded.Result)
 	}

@@ -2,8 +2,8 @@
 // After a reload the card re-attaches to a running update by reading it;
 // the outcome of the last update stays said (failed and put back, with the
 // cause) until the server runs that release; a lost POST answer is looked up
-// by its request id, never sent again; the Open webmail link is offered only
-// while webmail answers.
+// by its request id, never sent again; the Open webmail link (alpha.110) points
+// only to webmail's own https address, when the server says it answers.
 // Web postası güncellemesi kalıcı bir işlemdir; yeniden bağlanma, sonuç ve
 // web postası bağlantısı.
 import assert from 'node:assert/strict';
@@ -124,13 +124,25 @@ test('a lost POST answer is looked up by its request id and never sent again', a
   } finally { await unmount(); }
 });
 
-test('the Open webmail link is held back while webmail is only on the panel origin', async () => {
-  // alpha.109 review: the panel's script policy stays on /webmail/, so the
-  // interface does not start there; the link waits for webmail's own address.
-  await mount([check({}, { webmail_ready: true })]);
+test('the Open webmail link points only to the webmail address, https only', async () => {
+  // alpha.110: webmail has its own address; the link is offered for the
+  // server's webmail_url when it is exactly https://<host>/ and for nothing else
+  // (alpha.109 held it back while webmail was only on the panel's origin).
+  await mount([check({}, { webmail_ready: true, webmail_url: 'https://mail.example.com/' })]);
   try {
-    assert.equal(attr('data-open-webmail-link').length, 0);
+    const links = attr('data-open-webmail-link');
+    assert.equal(links.length, 1);
+    assert.equal(links[0].props.href, 'https://mail.example.com/');
+    assert.equal(links[0].props.rel, 'noopener noreferrer');
+    assert.equal(links[0].props.target, '_blank');
+    assert.ok(text().includes('https://mail.example.com/'), 'the full address is shown');
   } finally { await unmount(); }
+  for (const url of ['/webmail/', 'http://mail.example.com/', 'https://mail.example.com:8443/', 'https://mail.example.com/x', 'https://user@mail.example.com/', 'javascript:alert(1)', '', undefined]) {
+    await mount([check({}, { webmail_ready: true, ...(url === undefined ? {} : { webmail_url: url }) })]);
+    try {
+      assert.equal(attr('data-open-webmail-link').length, 0, 'no link for ' + String(url));
+    } finally { await unmount(); }
+  }
   await mount([check({}, { webmail_ready: false })]);
   try {
     assert.equal(attr('data-open-webmail-link').length, 0);

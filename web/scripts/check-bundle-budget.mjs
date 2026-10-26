@@ -97,6 +97,10 @@ const screenPartBudgets = {
   // automatic updates. A new part, set with at least 25% headroom from its
   // Turkish file: 8.41 / 2.87 KiB.
   vendorLanes: kib(11.5, 3.9),
+  // v0.1.0-alpha.110: webmail on its own address (life.addr.), split out of
+  // "lifecycle", which had no headroom left. A new part, set with at least 25%
+  // headroom from its Turkish file: 16.14 / 4.44 KiB.
+  webmailAddress: kib(20.5, 5.7),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

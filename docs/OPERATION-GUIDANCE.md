@@ -10419,3 +10419,51 @@ its own update screen.
 lost answer is looked up, never sent twice. Installed panels are updated only by
 their owners from the panel's own update screen. P0.1–P0.5 stay **partial**; this
 entry closes and advances nothing.
+
+### Webmail on its own address (2026-10-26)
+
+In source for the v0.1.0-alpha.110 candidate (not published; nothing measured on an
+installed server). **Who acts:** the administrator, after updating the panel from
+its own update screen. **Why:** webmail must not run on the panel's address, where
+a flaw in Roundcube could act as the signed-in administrator; it now opens on its
+own name, served by the server's own web server.
+
+- **Frankfurt (example `mail.celikhost.com`).** 1. Make the name point to the
+  server: add the DNS record `mail.celikhost.com. A 72.62.38.15` where
+  `celikhost.com` is managed; if this panel hosts that zone, the card adds it for
+  you after you confirm it. 2. Open Components → Webmail (Roundcube) → Manage → **Webmail
+  address**, type `mail.celikhost.com` (it is suggested when it is the mail host
+  name) and press **Check**. 3. When the check says the name points to this server,
+  press **Set up webmail on mail.celikhost.com…** and confirm. You can leave the
+  page; the card says the result when you come back. 4. Open
+  `https://mail.celikhost.com/`; mailbox users sign in there with their email
+  address and password.
+- **"No address record yet."** Add the record the card shows, then press Check
+  again; a new record can take a few minutes to be seen by public DNS. **"Points to
+  another server."** Correct the record to this server's address, or choose another
+  name; webmail answers on one server per name. **"Not known."** Public DNS could
+  not be asked; press Check again in a minute; nothing was changed.
+- **"Ports 80 and 443 are closed."** Allow them on Server → Security → Firewall
+  (CelikPanel never opens ports by itself), then press Check again. Port 80 is
+  needed for the certificate check and its renewals.
+- **"Could not obtain a certificate."** The web server file was put back; nothing
+  else changed. Check that the name points to this server and that port 80 is
+  reachable from the internet, then press Set up again.
+- **"Another web server configuration already answers this name."** The card names
+  the file. Choose another name, or remove that server block yourself, then try
+  again. A webmail address file you changed by hand is left as it is; to let
+  CelikPanel manage it again: `sudo cp
+  /etc/nginx/conf.d/celikpanel-webmail-origin-<name>.conf /root/`, `sudo rm` it,
+  `sudo nginx -t`, `sudo systemctl reload nginx`, then Set up again.
+- **Removing or changing the address.** Remove address (confirmed) stops webmail on
+  that name and keeps its certificate unless you tick the box; mailboxes and
+  messages are not touched. Changing the name sets up the new one first and removes
+  the old one after the new one works.
+- **Without the panel.** Webmail on its address keeps answering while the panel is
+  stopped; certbot's timer renews the certificate (`systemctl status certbot.timer`).
+
+**How work resumes:** the operation runs on the server; the screen only reads it,
+and a lost answer is looked up, never sent twice. A panel restart during it is
+reconciled read only from the server's state. Installed panels are updated only by
+their owners from the panel's own update screen. P0.1–P0.5 stay **partial**; this
+entry closes and advances nothing.

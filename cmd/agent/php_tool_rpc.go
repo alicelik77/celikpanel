@@ -67,5 +67,13 @@ func (a *Agent) BindPHPToolV1(req *transport.BindPHPToolRequest, resp *transport
 	if err := writePHPToolProof(tool, nil, false); err != nil && resp.Warning == "" {
 		resp.Warning = err.Error()
 	}
+	// alpha.110: webmail's own address follows webmail's new PHP-FPM socket.
+	if tool == phpToolWebmail {
+		if socket := parseWebmailFPMSocket(readFileString(phpToolWebmailConfPath)); socket != "" {
+			if warning := refreshWebmailAddresses(ctx, runServiceMutationCombinedOutput, socket); warning != "" {
+				resp.Warning = joinWarning(resp.Warning, warning)
+			}
+		}
+	}
 	return nil
 }

@@ -23,7 +23,7 @@ import { componentStateWord, isServiceRunning, phpBindingOf, phpNotReadyHintKey 
 import { decodeCandidateVersion, decodeRepoInfo, type RepoInfo } from '../lib/componentRepo';
 import { decodeInstallPreview, installPreviewURL, shortCandidate, versionOfPackage } from '../lib/installPreview';
 import { decodeRoundcubeUpdate, ROUNDCUBE_UPDATE_URL } from '../lib/roundcubeUpdate';
-import { OpenWebmailLink, RoundcubeUpdateDialog, RoundcubeUpdateProgress, useRoundcubeUpdate, WEBMAIL_LINK_OFFERED } from './RoundcubeUpdateFlow';
+import { OpenWebmailLink, RoundcubeUpdateDialog, RoundcubeUpdateProgress, useRoundcubeUpdate } from './RoundcubeUpdateFlow';
 import { supportFor, useSupportTable, type SupportComponent } from '../lib/supportTable';
 import { SupportBadge, supportConfirmation } from './SupportMark';
 import { NodePatches } from './NodePatches';
@@ -3141,12 +3141,12 @@ function RoundcubeRowUpdate({ locked, lockedReason }: { locked: boolean; lockedR
     const latest = known?.latest_on_line ?? '';
     const flow = useRoundcubeUpdate({ current: known?.version, latest, lastUpdate: known?.last_update, onChanged: () => void handle.retry() });
     const offered = known !== null && known.update_available && latest !== '';
-    const ready = WEBMAIL_LINK_OFFERED && known?.webmail_ready === true;
-    if (!offered && !flow.updating && !flow.result && !ready) return null;
+    const webmailUrl = known?.webmail_url ?? '';
+    if (!offered && !flow.updating && !flow.result && webmailUrl === '') return null;
     const reason = lockedReason !== '' ? lockedReason : t('life.webmail.rowLocked');
     return (
         <div className="mt-1 space-y-1.5" data-row-webmail-update={latest}>
-            <OpenWebmailLink ready={ready} />
+            <OpenWebmailLink url={webmailUrl} />
             {offered && (
                 <div className="text-xs font-medium text-warning">
                     {t('life.webmail.rowAvailable', { latest })}

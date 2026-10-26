@@ -17,7 +17,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../i18n';
 import { Button, Dialog, KeepWords } from './ui';
 import { LifeLine, type Tone } from './LifeLine';
-import { readWebmailUpdateOperation as readOperation, ROUNDCUBE_UPDATE_URL, WEBMAIL_LINK_OFFERED, webmailUpdateOutcome, type WebmailUpdateOperation } from '../lib/roundcubeUpdate';
+import { readWebmailUpdateOperation as readOperation, ROUNDCUBE_UPDATE_URL, webmailUpdateOutcome, type WebmailUpdateOperation } from '../lib/roundcubeUpdate';
+import { isWebmailAddressURL } from '../lib/webmailAddress';
 
 export interface RoundcubeUpdateOutcome {
     tone: Tone;
@@ -223,29 +224,20 @@ export function RoundcubeUpdateDialog({ latest, updating, onCancel, onConfirm }:
     );
 }
 
-// OpenWebmailLink (alpha.109, owner: "I don't know how to open webmail"):
-// the panel serves Roundcube at its own /webmail/ address; the link is
-// offered only while webmail answers there.
-// Web postası panelin /webmail/ adresindedir; bağlantı yalnız orada yanıt
-// verirken sunulur.
-//
-// Held back (alpha.109 review): webmail is served on the panel's own origin,
-// where the panel's script policy (which protects the administrator's
-// session) keeps Roundcube's interface from starting. The link is offered
-// once webmail has its own address (the next step); until then this flag
-// stays false and nothing is drawn.
-// Web postası kendi adresine kavuşana dek bağlantı gösterilmez.
-export { WEBMAIL_LINK_OFFERED } from '../lib/roundcubeUpdate';
-
-export function OpenWebmailLink({ ready, className = '' }: { ready: boolean | undefined; className?: string }) {
+// OpenWebmailLink (alpha.109, owner: "I don't know how to open webmail"). Since
+// alpha.110 webmail answers on its own address (https://<host>/), served by the
+// server's own web server and not by the panel. The link is drawn only for the
+// server's webmail_url when it is exactly such an address; it never points at
+// the panel's own origin.
+// Web postası kendi adresinde yanıt verir; bağlantı yalnız sunucunun bildirdiği
+// tam adres için çizilir, panelin kendi origin'ine asla işaret etmez.
+export function OpenWebmailLink({ url, className = '' }: { url: string | null | undefined; className?: string }) {
     const { t } = useI18n();
-    if (!WEBMAIL_LINK_OFFERED || !ready) return null;
-    const origin = typeof window !== 'undefined' && window.location ? window.location.origin : '';
-    const url = `${origin}/webmail/`;
+    if (!isWebmailAddressURL(url)) return null;
     return (
         <div className={`flex flex-wrap items-center gap-x-3 gap-y-1.5 ${className}`} data-open-webmail="">
             <a
-                href="/webmail/"
+                href={url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex min-h-[2.75rem] items-center rounded-lg border border-border-strong px-3 py-1.5 text-sm font-medium text-fg hover:bg-surface-2 sm:min-h-0"
@@ -253,7 +245,7 @@ export function OpenWebmailLink({ ready, className = '' }: { ready: boolean | un
             >
                 {t('life.webmail.open')}
             </a>
-            <span className="min-w-0 break-words text-xs text-fg-muted">{t('life.webmail.openHint', { url })}</span>
+            <span className="min-w-0 break-all text-xs text-fg-muted">{t('life.webmail.openHint', { url })}</span>
         </div>
     );
 }

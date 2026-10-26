@@ -133,7 +133,7 @@ test('C10: the row button opens the confirmation, is disabled with a written rea
   assert.match(row, /relative/, 'it sits above the row link overlay');
   assert.match(list, /updateLocked=\{mutationControlsDisabled \|\| componentOperation\.locked\} updateLockedReason=\{readinessMessage\}/);
   // The result stays after the offer is gone (the re-read clears update_available).
-  assert.match(row, /if \(!offered && !flow\.updating && !flow\.result && !ready\) return null;/);
+  assert.match(row, /if \(!offered && !flow\.updating && !flow\.result && webmailUrl === ''\) return null;/);
   // The desktop version column shows the version alone: one button per row.
   assert.match(list, /props\.service\.id === 'roundcube' && props\.service\.is_installed && !props\.column/);
 });

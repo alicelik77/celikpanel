@@ -5,6 +5,7 @@ import { PHPToolVersion } from './PHPToolVersion';
 import { RepoCard } from './RepoCard';
 import { OfferedVersionsCard } from './OfferedVersionsCard';
 import { RoundcubeUpdateCard } from './RoundcubeUpdateCard';
+import { WebmailAddressCard } from './WebmailAddressCard';
 import { IsolationFact } from './AppAccountLine';
 import { phpToolForService } from '../lib/phpTools';
 import { Checking, CouldNotCheck, KnownEmpty, RemoteGate } from './ui';
@@ -126,6 +127,10 @@ export function ComponentDetail({ serviceId, onBack, onSelectConfig }: { service
             {/* alpha.107 (D-038 §6): where isolation is shared, said as a fact. */}
             {(serviceId === 'roundcube' || serviceId === 'phpmyadmin' || serviceId === 'phppgadmin') && (
                 <div className="mb-6"><IsolationFact kind="tools" /></div>
+            )}
+            {/* alpha.110: webmail's own address, above its updates (webmail never runs on the panel's origin). */}
+            {serviceId === 'roundcube' && record?.is_installed === true && (
+                <div className="mb-6"><WebmailAddressCard /></div>
             )}
             {/* alpha.107: webmail's own updates (D-038 §9). */}
             {serviceId === 'roundcube' && record?.is_installed === true && (

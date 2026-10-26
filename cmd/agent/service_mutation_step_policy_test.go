@@ -78,6 +78,8 @@ func TestServiceMutationStepPolicyAllowsEveryDeclaredWorkflowRow(t *testing.T) {
 		{"write a vendor repository's lane", mutationPolicyJob("vendor_lane", "pgdg", ""), mutationPolicyClaim(serviceMutationStepVendorLane, "pgdg", "", "lane")},
 		{"move an application's files", mutationPolicyJob("app_account", "site-7", ""), mutationPolicyClaim(serviceMutationStepMoveAppFilesOwner, "site-7", "", "move")},
 		{"update webmail", mutationPolicyJob("webmail_update", "roundcube", "1.6.20"), mutationPolicyClaim(serviceMutationStepUpdateRoundcube, "roundcube", "1.6.20", "update")},
+		{"enable webmail's own address", mutationPolicyJob("webmail_address", "roundcube", "mail.example.com"), mutationPolicyClaim(serviceMutationStepEnableWebmailAddress, "roundcube", "mail.example.com", "enable")},
+		{"remove webmail's own address", mutationPolicyJob("webmail_address_remove", "roundcube", "mail.example.com"), mutationPolicyClaim(serviceMutationStepRemoveWebmailAddress, "roundcube", "mail.example.com", "remove")},
 		{"change a PostgreSQL cluster's port", mutationPolicyJob("pg_cluster_port", "pg-17-main", "5440"), mutationPolicyClaim(serviceMutationStepSetPGClusterPort, "pg-17-main", "5440", "port")},
 		{"copy a PostgreSQL database", mutationPolicyJob("pg_database_copy", "pgdb-shop", "5432-5433"), mutationPolicyClaim(serviceMutationStepCopyPGDatabase, "pgdb-shop", "5432-5433", "copy")},
 		{"drop a moved PostgreSQL database's source", mutationPolicyJob("pg_database_drop", "pgdb-shop", "5432"), mutationPolicyClaim(serviceMutationStepDropPGDatabase, "pgdb-shop", "5432", "drop")},
@@ -182,6 +184,8 @@ func TestServiceMutationStepPolicyAllowsEveryDeclaredWorkflowRow(t *testing.T) {
 		serviceMutationStepCopyPGDatabase,
 		serviceMutationStepDropPGDatabase,
 		serviceMutationStepActivatePanelCertificate,
+		serviceMutationStepEnableWebmailAddress,
+		serviceMutationStepRemoveWebmailAddress,
 	}
 	for _, method := range expectedMethods {
 		if !seenMethods[method] {
@@ -331,6 +335,8 @@ func TestServiceMutationStepPolicyRejectsMismatchesAndConfusedDeputies(t *testin
 	}{
 		{"nil job", nil, mutationPolicyClaim(serviceMutationStepInstallService, "nginx", "", "install")},
 		{"wrong kind", mutationPolicyJob("service_uninstall", "nginx", ""), mutationPolicyClaim(serviceMutationStepInstallService, "nginx", "", "install")},
+		{"webmail address for another name", mutationPolicyJob("webmail_address", "roundcube", "mail.example.com"), mutationPolicyClaim(serviceMutationStepEnableWebmailAddress, "roundcube", "evil.example.com", "enable")},
+		{"webmail address removed in an enable job", mutationPolicyJob("webmail_address", "roundcube", "mail.example.com"), mutationPolicyClaim(serviceMutationStepRemoveWebmailAddress, "roundcube", "mail.example.com", "remove")},
 		{"wrong target", mutationPolicyJob("service_install", "apache", ""), mutationPolicyClaim(serviceMutationStepInstallService, "nginx", "", "install")},
 		{"wrong package", mutationPolicyJob("runtime_install", "node", "22.14.0"), mutationPolicyClaim(serviceMutationStepInstallNodeVersion, "node", "20.19.0", "install")},
 		{"wrong action", mutationPolicyJob("repo_enable", "docker", ""), mutationPolicyClaim(serviceMutationStepEnableRepo, "docker", "", "disable")},
@@ -431,6 +437,8 @@ func TestServiceMutationPrivilegedCallsitesCarryTypedClaims(t *testing.T) {
 		"serviceMutationStepWriteVendorOrigins":       true,
 		"serviceMutationStepVendorLane":               true,
 		"serviceMutationStepUpdateRoundcube":          true,
+		"serviceMutationStepEnableWebmailAddress":     true,
+		"serviceMutationStepRemoveWebmailAddress":     true,
 		"serviceMutationStepMoveAppFilesOwner":        true,
 		"serviceMutationStepSetPGClusterPort":         true,
 		"serviceMutationStepCopyPGDatabase":           true,
@@ -495,8 +503,8 @@ func TestServiceMutationPrivilegedCallsitesCarryTypedClaims(t *testing.T) {
 		}
 	}
 
-	if len(seenMethods) != 42 {
-		t.Errorf("production requiredServiceMutationStep claim count=%d want=42", len(seenMethods))
+	if len(seenMethods) != 44 {
+		t.Errorf("production requiredServiceMutationStep claim count=%d want=44", len(seenMethods))
 	}
 	for method := range expectedMethods {
 		if seenMethods[method] == "" {

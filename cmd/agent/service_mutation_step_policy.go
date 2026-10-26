@@ -42,6 +42,8 @@ const (
 	serviceMutationStepWriteVendorOrigins       serviceMutationStepMethod = "Agent.WriteVendorUpdateOriginsV1"
 	serviceMutationStepVendorLane               serviceMutationStepMethod = "Agent.EnableVendorLaneV1"
 	serviceMutationStepUpdateRoundcube          serviceMutationStepMethod = "Agent.UpdateRoundcubeV1"
+	serviceMutationStepEnableWebmailAddress     serviceMutationStepMethod = "Agent.EnableWebmailAddressV1"
+	serviceMutationStepRemoveWebmailAddress     serviceMutationStepMethod = "Agent.RemoveWebmailAddressV1"
 	serviceMutationStepMoveAppFilesOwner        serviceMutationStepMethod = "Agent.MoveAppFilesOwnerV1"
 	serviceMutationStepSetPGClusterPort         serviceMutationStepMethod = "Agent.SetPostgreSQLClusterPortV1"
 	serviceMutationStepCopyPGDatabase           serviceMutationStepMethod = "Agent.CopyPostgreSQLDatabaseV1"
@@ -246,6 +248,16 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 		// alpha.107: webmail updated to one release in its own job.
 		return claim.target == "roundcube" && claim.packageName != "" && claim.action == "update" &&
 			serviceMutationJobMatches(job, "webmail_update", "roundcube", claim.packageName)
+
+	case serviceMutationStepEnableWebmailAddress:
+		// alpha.110: webmail on its own address (the name is the qualifier),
+		// in its own job.
+		return claim.target == "roundcube" && claim.packageName != "" && claim.action == "enable" &&
+			serviceMutationJobMatches(job, "webmail_address", "roundcube", claim.packageName)
+
+	case serviceMutationStepRemoveWebmailAddress:
+		return claim.target == "roundcube" && claim.packageName != "" && claim.action == "remove" &&
+			serviceMutationJobMatches(job, "webmail_address_remove", "roundcube", claim.packageName)
 
 	case serviceMutationStepWriteVendorOrigins:
 		// alpha.107: the owner confirmed the drop-in that adds the confined

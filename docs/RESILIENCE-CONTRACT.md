@@ -7904,3 +7904,41 @@ row is terminal; the same request id returns the same operation.
 - **Evidence.** Agent 4828 passed, 29 skipped (also as `nobody`); Panel 3448 passed, 6 skipped; internal packages pass; web 1921 passed; a browser look on a mock; one real-system run on a disposable Debian 13 virtual machine ([deploy/e2e/d038/alpha109-debian13-20261026](../deploy/e2e/d038/alpha109-debian13-20261026/README.md), archive SHA-256 `e77d1ab4…960f7ee`) that reproduced Frankfurt's 404 and proved the update; race shards not run locally. Not measured on an installed server. **No P0 item is
   closed or advanced**; P0.1 to P0.5 stay partial and every open acceptance item
   stays open.
+
+### Candidate v0.1.0-alpha.110 (webmail on its own address served by the server's own nginx; the panel's /webmail/ only redirects; Agent webmail address paths; no schema change; invariants 1, 2 and 6; D-022; D-024; D-038; 2026-10-26)
+
+D-025 invariant 1 (the owner's services run without the panel): webmail on its
+address is one native nginx file served with Roundcube's tree and webmail's bound
+PHP-FPM; its certificate is a certbot lineage renewed by the operating system's
+timer, nginx reloaded by certbot's own deploy hook; it answers while the panel is
+stopped. A file the owner changed is never overwritten or removed (D-022), also when
+it changes while certbot runs. Invariant 2 (evidence has a meaning): an address is
+recorded only after the Agent proved it over HTTPS on the name (the served
+certificate is the lineage's; PHP version and extensions; the login page with its
+policy; its stylesheet as CSS); DNS that not every public resolver sees is not
+ready; an answer that did not arrive is unknown. Invariant 6 (one change at a time):
+enabling and removing are durable service operations under the service mutation
+lock and their own agent jobs; the same request id returns the same operation.
+
+- **Agent changes.** `Agent.EnableWebmailAddressV1` (job `webmail_address`),
+  `Agent.RemoveWebmailAddressV1` (job `webmail_address_remove`),
+  `Agent.WebmailAddressStatusV1` (read only). Name conflicts in `nginx -T` (HTTPS,
+  port 80, explicit public listen addresses) refuse before anything changes; the
+  file comes back as it was on any later failure and the certificate stays. A
+  rebind of webmail's PHP version and Roundcube's removal follow the address files.
+  Roundcube's own lines (`use_https`, `session_samesite`) only in CelikPanel's form
+  of its configuration.
+- **Panel changes.** `GET/POST /api/v1/service/roundcube/address`, `POST
+  .../check` (read only), `POST .../remove`, admin only. `/webmail/` redirects to
+  the address or shows a static page under the panel's strict policy; the
+  Roundcube reverse proxy is removed. Interrupted operations are reconciled read
+  only from `Agent.WebmailAddressStatusV1`.
+- **Schema.** None (46): `panel_settings` (`webmail_address`) and the existing
+  `service_operations` table.
+- **Recovery.** Going back to alpha.109 leaves an enabled address serving (its file
+  and certificate are native); alpha.109's `/webmail/` is the held-back proxy again.
+  The address is removed by hand with `rm`, `nginx -t` and a reload.
+- **Evidence.** Agent 4840 passed, 29 skipped (also as `nobody`); Panel 3450 passed, 6 skipped; internal packages pass; web 1947 passed; a browser look on a mock (batch 33); one real-system run on a disposable Debian 13 virtual
+  machine with a disposable test CA ([deploy/e2e/d038/alpha110-debian13-20261026](../deploy/e2e/d038/alpha110-debian13-20261026/README.md), archive SHA-256 `cf485342…888497b6`).
+  Not measured on an installed server. **No P0 item is closed or advanced**; P0.1
+  to P0.5 stay partial and every open acceptance item stays open.

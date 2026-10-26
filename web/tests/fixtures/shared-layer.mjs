@@ -97,7 +97,11 @@ export const phpToolsURL = compileSource('lib/phpTools.ts', (specifier) => (
 export const installPreviewLibURL = compileSource('lib/installPreview.ts', unexpected('lib/installPreview.ts'));
 export const componentRepoURL = compileSource('lib/componentRepo.ts', unexpected('lib/componentRepo.ts'));
 // alpha.107: the webmail update check, read by its card and the Components row.
-export const roundcubeUpdateURL = compileSource('lib/roundcubeUpdate.ts', unexpected('lib/roundcubeUpdate.ts'));
+// alpha.110: webmail's own address, the only URL a screen may link to.
+export const webmailAddressLibURL = compileSource('lib/webmailAddress.ts', unexpected('lib/webmailAddress.ts'));
+export const roundcubeUpdateURL = compileSource('lib/roundcubeUpdate.ts', (specifier) => (
+  specifier.endsWith('/webmailAddress') ? webmailAddressLibURL : unexpected('lib/roundcubeUpdate.ts')(specifier)
+));
 // alpha.107: the dated support table, read by every screen that marks a version.
 export const supportTableURL = compileSource('lib/supportTable.ts', (specifier) => (
   specifier.endsWith('/remote') ? remoteURL : unexpected('lib/supportTable.ts')(specifier)
@@ -135,6 +139,7 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/installPreview': installPreviewLibURL,
     '/lib/componentRepo': componentRepoURL,
     '/lib/roundcubeUpdate': roundcubeUpdateURL,
+    '/lib/webmailAddress': webmailAddressLibURL,
     '/lib/supportTable': supportTableURL,
     '/lib/offeredVersions': offeredVersionsURL,
     '/lib/vendorLane': vendorLaneURL,

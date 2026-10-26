@@ -19,6 +19,69 @@ Code decisions live in git; this file is for strategy. Newest first.
 > D-029. Entries written after this note use the clock date; a dated entry from 10, 11 or
 > 12 October 2026 other than D-029 is genuine.
 
+### Amendment (2026-10-26, clock date): webmail on its own address, served by the server's own web server; implemented in source for the v0.1.0-alpha.110 candidate
+
+The owner approved on 2026-10-26: webmail must not run on the panel's origin, where
+a script running in Roundcube (its past XSS CVEs 2023-5631, 2024-37383,
+2024-42009) could call `/api/v1` as the signed-in administrator. alpha.109 kept
+`/webmail/` behind the panel's strict policy, so Roundcube's interface could not
+start there. Webmail gets its own address, served by the server's own nginx, so it
+also answers while the panel is stopped (D-022). On the names, in the owner's
+words: "https://mail.celikhost.com/ diyeyim … frankfurt ya da boston diye
+prefixleri kullanmak istemiyorsam" (say https://mail.celikhost.com/ … if I do not
+want to use prefixes like frankfurt or boston). In source for the v0.1.0-alpha.110
+candidate (not published; nothing measured on an installed server).
+
+1. **Address per server, chosen by the administrator.** Any host name (default
+   suggestion: the mail host name from Server setup, never the panel's own name,
+   because a browser sends the panel's sign-in cookie to every port of a name).
+   Recorded in `panel_settings` (`webmail_address`); no schema change.
+2. **Read-only check first.** Public DNS (the fixed public resolvers, every one of
+   them) must answer only this server's addresses. Not yet: the exact record to
+   add, and when this panel hosts the zone, adding it through the zone's own
+   record editor after confirmation. Pointing elsewhere: refused with expected and
+   actual addresses, naming the other DNS server when it is that one. Not known
+   when DNS could not be asked. Ports 80 and 443 closed in the firewall: said with
+   where to open them; CelikPanel never opens ports by itself.
+3. **One confirmed operation** (`webmail_address`, durable, the server checks
+   again): certbot's certificate for the name (HTTP-01 on port 80 through nginx
+   with the panel's challenge root, the same rules as the mail certificate;
+   renewed by the operating system's certbot timer, nginx reloaded by certbot's own
+   deploy hook); one native file
+   `/etc/nginx/conf.d/celikpanel-webmail-origin-<name>.conf` (port 80: the check
+   and a redirect to HTTPS; port 443: Roundcube's public tree through webmail's
+   bound PHP-FPM socket, its own policy `frame-ancestors 'self'`, HSTS, nosniff,
+   Roundcube's inline start-up script allowed on that origin; CelikPanel's PHP
+   check only from this server); `nginx -t`, reload, proof over HTTPS on the name
+   (served certificate, PHP version and extensions, the login page with its
+   policy, its stylesheet as text/css). Any failure puts the file back as it was
+   and keeps the certificate. Another server block that already answers the name,
+   or listens on an explicit public address on port 80 or 443, is refused with the
+   file; the mail certificate's own port-80 server may be shared (then `http://`
+   answers 404, said). Files the owner changed are never overwritten or removed.
+4. **Roundcube's own settings** for the origin (`use_https`, `session_samesite`
+   Strict) are added only to its configuration in CelikPanel's form; an
+   owner-edited configuration is left as it is and said. IMAP and SMTP stay local.
+5. **The panel's `/webmail/`** redirects (302) to `https://<address>/`; without an
+   address it is a short page under the panel's strict policy saying where the
+   address is set. The Roundcube proxy is removed from the panel's origin. Links
+   come back only to the address; mailbox users need no panel account.
+6. **Change and removal.** Changing the name enables the new one and removes the
+   old file only after the new one proved. Removal is its own confirmed operation;
+   the certificate stays unless the administrator asks. Removing Roundcube removes
+   its address files too (certificates stay).
+
+**Not built (next steps, recorded).** One address for mailboxes on several servers
+(Roundcube's per-domain IMAP host routing); customers' own `webmail.<domain>`
+names. A peer server's own enabled address is not read (no remote API is called for
+it); the DNS answer and the known peer address are what the check compares.
+
+**Evidence.** Component and mounted tests (Agent, Panel, web); one real-system run
+on a disposable Debian 13 virtual machine from the kept base image, with a
+disposable test CA instead of Let's Encrypt
+([deploy/e2e/d038/alpha110-debian13-20261026](../deploy/e2e/d038/alpha110-debian13-20261026/README.md)).
+Not measured on an installed server. This amendment closes no P0 item.
+
 ---
 
 ## D-038 · Versions, use and security follow one principle for every component: the owner chooses, the panel recommends and warns, nothing in use is removed, nothing is moved silently, and patches are the operating system's job
@@ -2788,6 +2851,11 @@ This direction does not authorize assistant-side live changes, panel removal or
 installed-panel updates. The user-only update rule remains binding.
 
 [Source implementation and remaining dependencies](OWNER-INDEPENDENCE.md).
+
+*Amendment (2026-10-26, alpha.110 candidate):* webmail runs on its own address
+served by the server's own nginx and PHP-FPM, its certificate renewed by the
+operating system's certbot timer; it answers while the panel is stopped (D-038,
+amendment of 2026-10-26).
 
 ---
 
