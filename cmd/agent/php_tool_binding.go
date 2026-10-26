@@ -952,6 +952,12 @@ var webmailStylesheetHref = regexp.MustCompile(`<link[^>]*\brel="stylesheet"[^>]
 // webmailStylesheetURL is the address of the skin's own stylesheet the page
 // names (the first "styles" one, else the first), on the same server.
 func webmailStylesheetURL(base string, body []byte) (string, error) {
+	return webmailStylesheetURLAt(base, "/webmail/", body)
+}
+
+// webmailStylesheetURLAt is the same for a page served at pagePath (alpha.110:
+// "/" on webmail's own address).
+func webmailStylesheetURLAt(base, pagePath string, body []byte) (string, error) {
 	var chosen string
 	for _, match := range webmailStylesheetHref.FindAllSubmatch(body, -1) {
 		href := html.UnescapeString(string(match[1]))
@@ -962,7 +968,7 @@ func webmailStylesheetURL(base string, body []byte) (string, error) {
 	if chosen == "" {
 		return "", &phpToolProbeError{Kind: "asset_unreadable", Message: "webmail's page names no stylesheet, so it would open without its layout"}
 	}
-	page, err := url.Parse(base + "/webmail/")
+	page, err := url.Parse(base + pagePath)
 	if err != nil {
 		return "", err
 	}
@@ -971,7 +977,7 @@ func webmailStylesheetURL(base string, body []byte) (string, error) {
 		return "", &phpToolProbeError{Kind: "asset_unreadable", Message: fmt.Sprintf("webmail's stylesheet address %q could not be read", chosen)}
 	}
 	resolved := page.ResolveReference(ref)
-	if resolved.Host != page.Host || !strings.HasPrefix(resolved.Path, "/webmail/") {
+	if resolved.Host != page.Host || !strings.HasPrefix(resolved.Path, pagePath) {
 		return "", &phpToolProbeError{Kind: "asset_unreadable", Message: fmt.Sprintf("webmail's stylesheet %q is not served by webmail itself", chosen)}
 	}
 	return resolved.String(), nil

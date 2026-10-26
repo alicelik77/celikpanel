@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -433,8 +434,17 @@ func writeRoundcubeConfig(root, phpVer string) error {
 	// The DB lives in db/ (a group-writable subdir) so SQLite can write its
 	// journal beside the file. / DB db/ içinde yaşar (grup-yazılabilir alt
 	// dizin) ki SQLite journal'ını dosyanın yanına yazabilsin.
+	conf := renderRoundcubeConfig(hex.EncodeToString(key))
+	// The staging tree's config path (moved into place with the tree).
+	// Hazırlık ağacının config yolu (ağaçla birlikte yerine taşınır).
+	return secureWriteConfig(filepath.Join(root, "config", "config.inc.php"), []byte(conf), 0o640)
+}
+
+// renderRoundcubeConfig is CelikPanel's form of Roundcube's configuration
+// with its des_key (alpha.110: read back to recognise CelikPanel's form).
+func renderRoundcubeConfig(desKey string) string {
 	dbPath := filepath.Join(webmailBaseDir, "db", "roundcube.sqlite3")
-	conf := fmt.Sprintf(`<?php
+	return fmt.Sprintf(`<?php
 // Managed by CelikPanel. Roundcube installed from the official tarball (D-004:
 // one path on every Linux). SQLite store, localhost IMAP/SMTP.
 $config = [];
@@ -449,10 +459,64 @@ $config['product_name'] = 'CelikPanel Webmail';
 $config['plugins'] = ['archive', 'zipdownload'];
 $config['skin'] = 'elastic';
 $config['enable_installer'] = false;
-`, dbPath, hex.EncodeToString(key))
-	// The staging tree's config path (moved into place with the tree).
-	// Hazırlık ağacının config yolu (ağaçla birlikte yerine taşınır).
-	return secureWriteConfig(filepath.Join(root, "config", "config.inc.php"), []byte(conf), 0o640)
+`, dbPath, desKey)
+}
+
+// roundcubeAddressSettings are CelikPanel's lines for webmail on its own
+// address (alpha.110): Roundcube treats every request as HTTPS (secure
+// cookies even behind a proxy) and its session cookie is never sent with a
+// request another site starts. IMAP and SMTP stay on this server.
+const roundcubeAddressSettings = `// CelikPanel: webmail on its own address (begin)
+$config['use_https'] = true;
+$config['session_samesite'] = 'Strict';
+// CelikPanel: webmail on its own address (end)
+`
+
+var roundcubeDesKeyLine = regexp.MustCompile(`(?m)^\$config\['des_key'\] = '([0-9a-f]{36})';$`)
+
+// setRoundcubeAddressSettings adds (enabled) or removes CelikPanel's lines
+// for the address, only when the configuration is exactly CelikPanel's form
+// (with or without them): "applied", "unchanged" or "owner_edited". The
+// file's mode and owner are kept.
+func setRoundcubeAddressSettings(enabled bool) (string, error) {
+	path := filepath.Join(webmailBaseDir, "config", "config.inc.php")
+	snapshot, err := snapshotMailFile(path)
+	if err != nil {
+		return "", err
+	}
+	if !snapshot.exists {
+		return "", fmt.Errorf("%s is missing", path)
+	}
+	content := string(snapshot.content)
+	key := roundcubeDesKeyLine.FindStringSubmatch(content)
+	if key == nil {
+		return "owner_edited", nil
+	}
+	base := renderRoundcubeConfig(key[1])
+	var next string
+	switch {
+	case content == base && enabled:
+		next = base + roundcubeAddressSettings
+	case content == base+roundcubeAddressSettings && !enabled:
+		next = base
+	case content == base || content == base+roundcubeAddressSettings:
+		if enabled {
+			return "applied", nil
+		}
+		return "unchanged", nil
+	default:
+		return "owner_edited", nil
+	}
+	if err := secureWriteConfig(path, []byte(next), snapshot.mode); err != nil {
+		return "", err
+	}
+	if err := secureSetMailFileMetadata(path, snapshot.mode, snapshot.uid, snapshot.gid); err != nil {
+		return "", err
+	}
+	if enabled {
+		return "applied", nil
+	}
+	return "unchanged", nil
 }
 
 const roundcubePHPCapabilityProbe = "$missing=[];if(!function_exists('mb_internal_encoding')){$missing[]='mbstring';}if(!class_exists('DOMDocument')){$missing[]='dom';}if(!extension_loaded('intl')){$missing[]='intl';}if(!class_exists('PDO')||!in_array('sqlite',PDO::getAvailableDrivers(),true)){$missing[]='pdo_sqlite';}if(!class_exists('ZipArchive')){$missing[]='zip';}echo count($missing)===0?'ok':'missing:'.implode(',',$missing);"
@@ -739,7 +803,7 @@ func validateWebmailSocketPath(path string) (string, error) {
 }
 
 func webmailConfigMetadataIdentity(path string) (int, int) {
-	if path == webmailConfPath {
+	if path == webmailConfPath || (filepath.Dir(path) == "/etc/nginx/conf.d" && strings.HasPrefix(filepath.Base(path), webmailAddressConfPrefix)) {
 		return 0, 0
 	}
 	return -1, -1
@@ -952,6 +1016,12 @@ func (a *Agent) configureWebmailWith(ctx context.Context, resp *ConfigureWebmail
 		return
 	}
 	if !installed {
+		// alpha.110: webmail's own addresses go with it (their certificates
+		// stay with certbot).
+		if err := removeAllWebmailAddresses(ctx, runServiceMutationCombinedOutput); err != nil {
+			resp.Error = err.Error()
+			return
+		}
 		if err := applyWebmailNginxMutation(
 			ctx,
 			webmailConfPath,
@@ -1025,5 +1095,9 @@ func (a *Agent) configureWebmailWith(ctx context.Context, resp *ConfigureWebmail
 		if err := writePHPToolBinding(phpToolWebmail, version); err != nil {
 			log.Printf("record webmail PHP version: %v", err)
 		}
+	}
+	// alpha.110: webmail's own address follows the same PHP-FPM socket.
+	if warning := refreshWebmailAddresses(ctx, runServiceMutationCombinedOutput, socket); warning != "" {
+		log.Printf("configure webmail: %s", warning)
 	}
 }

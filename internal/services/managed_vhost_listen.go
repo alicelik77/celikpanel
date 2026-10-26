@@ -341,3 +341,22 @@ func (ng *NginxGenerator) probePlan(domain string, names []string) (map[string][
 	}
 	return plan, nil
 }
+
+// NginxServerBlock is one `server { … }` block's own names and listen
+// directives, for a reader outside this package (alpha.110: the webmail
+// address refuses a name another server block already answers for).
+type NginxServerBlock struct {
+	Names   []string
+	Listens [][]string
+}
+
+// NginxServerBlocks reads the server blocks of an nginx text (a file or one
+// file's part of `nginx -T`).
+func NginxServerBlocks(text string) []NginxServerBlock {
+	blocks := nginxServerBlocks(text)
+	out := make([]NginxServerBlock, 0, len(blocks))
+	for _, block := range blocks {
+		out = append(out, NginxServerBlock{Names: block.names, Listens: block.listens})
+	}
+	return out
+}
