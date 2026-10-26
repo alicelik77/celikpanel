@@ -229,16 +229,17 @@ func (p *Panel) handleRoundcubeUpdate(w http.ResponseWriter, r *http.Request) {
 		if lastErr != nil {
 			log.Printf("webmail update: last operation: %v", lastErr)
 		}
-		// webmail_ready (alpha.109): webmail answers at the panel's
-		// /webmail/ address, so the screens offer the link to open it.
-		ready := p.webmailAvailable(r.Context())
+		// webmail_ready (alpha.109, alpha.110): webmail answers on its own
+		// address (webmail_url), so the screens offer the link to open it.
+		link := p.webmailLink(r.Context())
+		ready := link != ""
 		response, err := readRoundcubeUpdateFromAgent(p, r.Context())
 		if err != nil {
 			log.Printf("webmail update check: %v", err)
-			json.NewEncoder(w).Encode(map[string]any{"state": "unknown", "last_update": last, "webmail_ready": ready})
+			json.NewEncoder(w).Encode(map[string]any{"state": "unknown", "last_update": last, "webmail_ready": ready, "webmail_url": link})
 			return
 		}
-		json.NewEncoder(w).Encode(map[string]any{"state": "read", "check": response, "last_update": last, "webmail_ready": ready})
+		json.NewEncoder(w).Encode(map[string]any{"state": "read", "check": response, "last_update": last, "webmail_ready": ready, "webmail_url": link})
 	case http.MethodPost:
 		if !p.requireSubsystemOperational(w, degradedSubsystemServiceOperations) {
 			return

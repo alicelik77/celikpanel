@@ -754,6 +754,11 @@ func (p *Panel) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 			writeAgentError(w, installedErr, "roundcube remains installed after removal attempt")
 			return
 		}
+		// alpha.110: Roundcube is gone, and its own addresses went with it
+		// (ConfigureWebmail); the panel forgets the address.
+		if err := p.clearWebmailAddress(context.WithoutCancel(r.Context())); err != nil {
+			log.Printf("forget webmail address after roundcube uninstall: %v", err)
+		}
 
 		if !cleanMutation {
 			if failureErr == nil {

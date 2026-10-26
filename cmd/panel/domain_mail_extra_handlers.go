@@ -56,11 +56,10 @@ func (p *Panel) handleMailClientSetup(w http.ResponseWriter, r *http.Request, do
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	host := "mail." + domain
-	available := p.webmailAvailable(r.Context())
-	webmailURL := ""
-	if available {
-		webmailURL = webmailPublicPath
-	}
+	// alpha.110: webmail is offered only on its own address (never on the
+	// panel's origin), while Roundcube answers.
+	webmailURL := p.webmailLink(r.Context())
+	available := webmailURL != ""
 	json.NewEncoder(w).Encode(mailClientSetupResponse{
 		MailHost: host,
 		IMAP: mailClientProtocol{

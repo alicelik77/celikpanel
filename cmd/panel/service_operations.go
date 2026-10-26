@@ -2180,6 +2180,22 @@ func (p *Panel) resumeInterruptedServiceOperationLocked(op serviceOperation) err
 		}
 		successAudit = "webmail.update.recovered:" + op.PackageName
 		failureAudit = "webmail.update.recovered.failed:" + op.PackageName
+	case serviceOperationKindWebmailAddress, serviceOperationKindWebmailAddressRemove:
+		// alpha.110: an interrupted webmail address operation is reconciled
+		// read only from the server's state; nothing is started again.
+		if op.ServiceID != "roundcube" || op.PackageName == "" {
+			return errors.New("interrupted webmail address operation has an invalid target")
+		}
+		runner = func(ctx context.Context, _ func(string) error) (serviceOperationResult, *serviceOperationFailure) {
+			return p.reconcileInterruptedWebmailAddress(ctx, op)
+		}
+		if op.Kind == serviceOperationKindWebmailAddress {
+			successAudit = "webmail.address.recovered:" + op.PackageName
+			failureAudit = "webmail.address.recovered.failed:" + op.PackageName
+		} else {
+			successAudit = "webmail.address.remove.recovered:" + op.PackageName
+			failureAudit = "webmail.address.remove.recovered.failed:" + op.PackageName
+		}
 	case serviceOperationKindMailProfileInstall:
 		if op.PackageName != "" {
 			return errors.New("interrupted mail profile operation has an unexpected package target")

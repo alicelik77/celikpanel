@@ -2,101 +2,11 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
-	"strings"
 	"testing"
 	"time"
 )
-
-func TestWebmailProxyScrubsClientForwardingHeaders(t *testing.T) {
-	var received http.Header
-	var receivedHost string
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		received = r.Header.Clone()
-		receivedHost = r.Host
-		w.Header().Add("Set-Cookie", "roundcube_sessid=mail-session; Path=/webmail/; HttpOnly")
-		w.Header().Add("Set-Cookie", sessionCookieName+"=upstream-overwrite; Path=/")
-		w.Header().Add("Set-Cookie", impersonatorCookieName+"=upstream-overwrite; Path=/")
-		w.WriteHeader(http.StatusNoContent)
-	}))
-	defer upstream.Close()
-
-	target, err := url.Parse(upstream.URL)
-	if err != nil {
-		t.Fatalf("parse upstream URL: %v", err)
-	}
-	request := httptest.NewRequest(http.MethodGet, "https://panel.example.test/webmail/", nil)
-	request.RemoteAddr = "192.0.2.44:54321"
-	request.TLS = &tls.ConnectionState{}
-	request.Header.Set("Forwarded", "for=attacker.example")
-	request.Header.Set("X-Forwarded-For", "203.0.113.9")
-	request.Header.Set("X-Forwarded-Host", "attacker.example")
-	request.Header.Set("X-Forwarded-Proto", "gopher")
-	request.Header.Set("X-Real-IP", "203.0.113.10")
-	request.Header.Set("CF-Connecting-IP", "203.0.113.11")
-	request.Header.Set("Authorization", "Bearer panel-secret")
-	request.Header.Set("Proxy-Authorization", "Basic panel-proxy-secret")
-	request.Header.Add("Cookie", "roundcube_sessid=keep-mail; "+sessionCookieName+"=panel-session; "+impersonatorCookieName+"=panel-impersonator")
-
-	recorder := httptest.NewRecorder()
-	newWebmailReverseProxy(target).ServeHTTP(recorder, request)
-
-	if recorder.Code != http.StatusNoContent {
-		t.Fatalf("proxy status = %d, want 204; body=%s", recorder.Code, recorder.Body.String())
-	}
-	if receivedHost != target.Host {
-		t.Fatalf("upstream Host = %q, want %q", receivedHost, target.Host)
-	}
-	if got := received.Get("X-Forwarded-For"); got != "192.0.2.44" {
-		t.Fatalf("X-Forwarded-For = %q, want actual client IP", got)
-	}
-	if got := received.Get("X-Real-IP"); got != "192.0.2.44" {
-		t.Fatalf("X-Real-IP = %q, want actual client IP", got)
-	}
-	if got := received.Get("X-Forwarded-Proto"); got != "https" {
-		t.Fatalf("X-Forwarded-Proto = %q, want https", got)
-	}
-	for _, header := range []string{"Forwarded", "X-Forwarded-Host", "CF-Connecting-IP"} {
-		if got := received.Get(header); got != "" {
-			t.Fatalf("%s leaked to upstream: %q", header, got)
-		}
-	}
-	if got := received.Get("Authorization"); got != "" {
-		t.Fatalf("Authorization leaked upstream: %q", got)
-	}
-	if got := received.Get("Proxy-Authorization"); got != "" {
-		t.Fatalf("Proxy-Authorization leaked upstream: %q", got)
-	}
-	if got := received.Get("Cookie"); got != "roundcube_sessid=keep-mail" {
-		t.Fatalf("upstream Cookie = %q, want only Roundcube cookie", got)
-	}
-	setCookies := recorder.Result().Header.Values("Set-Cookie")
-	if len(setCookies) != 1 || !strings.HasPrefix(setCookies[0], "roundcube_sessid=") {
-		t.Fatalf("downstream Set-Cookie = %#v, want only Roundcube cookie", setCookies)
-	}
-}
-
-func TestWebmailCookieFilteringFailsClosedOnMalformedProtectedNames(t *testing.T) {
-	header := http.Header{}
-	header.Add("Cookie", "roundcube_sessid=keep; celikpanel_session\\=must-not-leak; celikpanel_session malformed-secret")
-	header.Add("Cookie", impersonatorCookieName+"=must-not-leak-either")
-	stripWebmailPanelCredentials(header)
-	if got := header.Get("Cookie"); got != "roundcube_sessid=keep" {
-		t.Fatalf("filtered Cookie = %q", got)
-	}
-
-	header.Add("Set-Cookie", "roundcube_sessid=keep-response; Path=/webmail/")
-	header.Add("Set-Cookie", "celikpanel_session\\=must-not-reach-browser; Path=/")
-	header.Add("Set-Cookie", sessionCookieName+"=must-not-reach-browser; Path=/")
-	stripWebmailProtectedSetCookies(header)
-	setCookies := header.Values("Set-Cookie")
-	if len(setCookies) != 1 || !strings.HasPrefix(setCookies[0], "roundcube_sessid=") {
-		t.Fatalf("filtered Set-Cookie = %#v", setCookies)
-	}
-}
 
 func TestWebmailReadinessRequiresDirectHTTP200(t *testing.T) {
 	redirectReached := false
@@ -158,7 +68,7 @@ func TestWebmailReadinessTimeoutFailsClosed(t *testing.T) {
 	}
 }
 
-func TestWebmailProxyRateLimitReturnsRetryHint(t *testing.T) {
+func TestWebmailEntryRateLimitReturnsRetryHint(t *testing.T) {
 	previous := webmailRequestLimiter
 	webmailRequestLimiter = newRateLimiter(0, time.Minute)
 	t.Cleanup(func() { webmailRequestLimiter = previous })
@@ -167,55 +77,12 @@ func TestWebmailProxyRateLimitReturnsRetryHint(t *testing.T) {
 	request.RemoteAddr = "192.0.2.45:1234"
 	recorder := httptest.NewRecorder()
 
-	(&Panel{}).handleWebmailProxy(recorder, request)
+	(&Panel{}).handleWebmailEntry(recorder, request)
 
 	if recorder.Code != http.StatusTooManyRequests {
 		t.Fatalf("status = %d, want 429", recorder.Code)
 	}
 	if got := recorder.Header().Get("Retry-After"); got != "60" {
 		t.Fatalf("Retry-After = %q, want 60", got)
-	}
-}
-
-// alpha.109 review: webmail is served on the panel's origin, so its answers
-// keep the panel's strict policy (script-src 'self', X-Frame-Options DENY):
-// a script in Roundcube must never be able to call /api/v1 with the
-// administrator's session. Roundcube's own weaker X-Frame-Options is dropped.
-func TestWebmailAnswersKeepThePanelsStrictPolicy(t *testing.T) {
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasSuffix(r.URL.Path, ".css") {
-			w.Header().Set("Content-Type", "text/css")
-			_, _ = w.Write([]byte("body{}"))
-			return
-		}
-		w.Header().Set("X-Frame-Options", "sameorigin")
-		w.Header().Set("Content-Type", "text/html")
-		_, _ = w.Write([]byte("<script>var rcmail = new rcube_webmail();</script>"))
-	}))
-	defer upstream.Close()
-	target, err := url.Parse(upstream.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
-	previous := webmailProxy
-	webmailProxy = newWebmailReverseProxy(target)
-	t.Cleanup(func() { webmailProxy = previous })
-	handler := securityHeaders(true, http.HandlerFunc((&Panel{}).handleWebmailProxy))
-	for _, path := range []string{"/webmail/", "/webmail/skins/elastic/styles/styles.min.css?s=1"} {
-		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "https://panel.example.test"+path, nil)
-		request.RemoteAddr = "192.0.2.46:1234"
-		handler.ServeHTTP(recorder, request)
-		header := recorder.Result().Header
-		csp := header.Values("Content-Security-Policy")
-		if recorder.Code != http.StatusOK || len(csp) != 1 || !strings.Contains(csp[0], "script-src 'self';") || !strings.Contains(csp[0], "frame-ancestors 'none'") {
-			t.Fatalf("%s: %d CSP %#v", path, recorder.Code, csp)
-		}
-		if got := header.Values("X-Frame-Options"); len(got) != 1 || got[0] != "DENY" {
-			t.Fatalf("%s: X-Frame-Options = %#v, want only the panel's DENY", path, got)
-		}
-		if header.Get("X-Content-Type-Options") != "nosniff" || header.Get("Strict-Transport-Security") == "" {
-			t.Fatalf("%s: nosniff and HSTS must stay: %#v", path, header)
-		}
 	}
 }

@@ -23,6 +23,10 @@ func TestMailSetupWebmailAvailabilityStaysTenantScoped(t *testing.T) {
 		probeCalls++
 		return true
 	}
+	// alpha.110: webmail is offered on its own address only.
+	if err := fixture.panel.saveWebmailAddress(context.Background(), "mail.matrix.test"); err != nil {
+		t.Fatal(err)
+	}
 	caller := teamMemberAuthzTestCaller()
 
 	foreign := teamMemberAuthzTestRequest(
@@ -56,7 +60,7 @@ func TestMailSetupWebmailAvailabilityStaysTenantScoped(t *testing.T) {
 	if err := json.Unmarshal(ownedRecorder.Body.Bytes(), &response); err != nil {
 		t.Fatal(err)
 	}
-	if !response.WebmailAvailable || response.WebmailURL != "/webmail/" {
+	if !response.WebmailAvailable || response.WebmailURL != "https://mail.matrix.test/" {
 		t.Fatalf("webmail response = available:%v url:%q", response.WebmailAvailable, response.WebmailURL)
 	}
 	if response.MailHost != "mail.customer.matrix.test" {

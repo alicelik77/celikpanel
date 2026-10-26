@@ -1369,7 +1369,12 @@ func main() {
 	// every signed-in person, changed by the administrator.
 	http.HandleFunc(offeredVersionsPath, panel.handleOfferedVersions)
 	http.HandleFunc("/dbtool/", panel.handleDBToolProxy)
-	http.HandleFunc("/webmail/", panel.handleWebmailProxy)
+	// alpha.110: /webmail/ only redirects to webmail's own address (or says
+	// where it is set); Roundcube is never served on the panel's origin.
+	http.HandleFunc("/webmail/", panel.handleWebmailEntry)
+	http.HandleFunc(webmailAddressPath, panel.handleWebmailAddress)
+	http.HandleFunc(webmailAddressCheckPath, panel.handleWebmailAddressCheck)
+	http.HandleFunc(webmailAddressRemovePath, panel.handleWebmailAddressRemove)
 
 	// Domain Management
 	http.HandleFunc("/api/v1/domains", panel.handleDomains)

@@ -133,7 +133,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.ReadSystemSQLiteSnapshotChunk Agent.RepoPackages Agent.ServiceCandidateVersion
 		Agent.ServiceJournal Agent.ServiceMutationReadiness Agent.ServiceRemovalPreviewV1 Agent.ServiceInstallPreviewV1 Agent.PHPToolBindingsV1 Agent.SiteUsage Agent.Version Agent.VPNStatus
 		Agent.CheckSystemUpdate Agent.SecurityAudit Agent.SystemUpdateStatus
-		Agent.OSUpdatesStatusV1 Agent.RoundcubeUpdateCheckV1 Agent.WebmailProofV1 Agent.RestartNeedsV1
+		Agent.OSUpdatesStatusV1 Agent.RoundcubeUpdateCheckV1 Agent.WebmailProofV1 Agent.WebmailAddressStatusV1 Agent.RestartNeedsV1
 		Agent.NodePatchesV1 Agent.OSReleaseFactsV1 Agent.RepoConfinePreviewV1 Agent.VendorLanePlanV1
 		Agent.PostgreSQLClustersV1 Agent.PostgreSQLClusterPortPreviewV1 Agent.PostgreSQLSourceCheckV1
 	`),
@@ -148,7 +148,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.ConfigureDBTools Agent.ConfigureWebmail Agent.DisableRepo Agent.EnableRepo
 		Agent.InstallRoundcube Agent.InstallService Agent.RemoveRoundcube Agent.UninstallService
 		Agent.BindPHPToolV1 Agent.ProvePHPToolV1 Agent.ConfineRepoV1 Agent.WriteVendorUpdateOriginsV1 Agent.EnableVendorLaneV1
-		Agent.UpdateRoundcubeV1 Agent.MoveAppFilesOwnerV1
+		Agent.UpdateRoundcubeV1 Agent.MoveAppFilesOwnerV1 Agent.EnableWebmailAddressV1 Agent.RemoveWebmailAddressV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityServiceLifecycle, `
 		Agent.EnsureNginxReady Agent.ResetFailedUnitMutation Agent.ServiceMutationAction
@@ -428,6 +428,9 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.OSUpdatesStatusV1":           agentRPCNetworkReadTimeout,
 	"Agent.RoundcubeUpdateCheckV1":      agentRPCNetworkReadTimeout,
 	"Agent.WebmailProofV1":              agentRPCNetworkReadTimeout,
+	"Agent.WebmailAddressStatusV1":      agentRPCNetworkReadTimeout,
+	"Agent.EnableWebmailAddressV1":      agentRPCDeploymentTimeout,
+	"Agent.RemoveWebmailAddressV1":      agentRPCDeploymentTimeout,
 	"Agent.RestartNeedsV1":              agentRPCNetworkReadTimeout,
 	"Agent.NodePatchesV1":               agentRPCNetworkReadTimeout,
 	"Agent.OSReleaseFactsV1":            agentRPCStandardReadTimeout,
