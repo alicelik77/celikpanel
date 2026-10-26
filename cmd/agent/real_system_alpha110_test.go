@@ -36,6 +36,11 @@ import (
 
 const a110Host = "mail.a110.test"
 
+// a110CA is the disposable test CA: this process loaded the system roots
+// before the run added it to the VM's trust store, so its own browser view
+// trusts it explicitly (a new process, like the panel's test, uses the store).
+var a110CA = x509.NewCertPool()
+
 func requireRealSystemA110(t *testing.T) {
 	t.Helper()
 	if os.Getenv("CELIKPANEL_REAL_SYSTEM_A110") != "1" {
@@ -108,6 +113,7 @@ func a110WriteCertificate(t *testing.T, host, lineage string) {
 	}
 	keyDER, _ := x509.MarshalECPrivateKey(leafKey)
 	caPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caDER})
+	a110CA.AppendCertsFromPEM(caPEM)
 	live := webmailAddressLiveDir(lineage)
 	if err := os.MkdirAll(live, 0o700); err != nil {
 		t.Fatal(err)
@@ -187,7 +193,8 @@ func TestRealSystemA110WebmailAddressEnable(t *testing.T) {
 	}
 
 	// What a browser gets, verified against the VM's trust store.
-	client := &http.Client{Timeout: 20 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	client := &http.Client{Timeout: 20 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+		Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: a110CA}}}
 	redirect, err := client.Get("http://" + a110Host + "/?_task=mail")
 	if err != nil {
 		t.Fatal(err)
@@ -234,7 +241,7 @@ func TestRealSystemA110WebmailAddressEnable(t *testing.T) {
 				continue
 			}
 			remote := &http.Client{Timeout: 10 * time.Second, Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{ServerName: a110Host},
+				TLSClientConfig: &tls.Config{ServerName: a110Host, RootCAs: a110CA},
 				DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 					var d net.Dialer
 					return d.DialContext(ctx, "tcp", net.JoinHostPort(ip.String(), "443"))
@@ -274,13 +281,25 @@ func TestRealSystemA110WebmailAddressRemove(t *testing.T) {
 	if _, _, err := readWebmailAddressCertificate(webmailAddressLineageName(a110Host)); err != nil {
 		t.Fatalf("the certificate was not kept: %v", err)
 	}
-	client := &http.Client{Timeout: 10 * time.Second}
-	page, err := client.Get("https://" + a110Host + "/")
-	answered := err == nil
-	if answered {
-		body, _ := io.ReadAll(page.Body)
-		page.Body.Close()
-		answered = strings.Contains(string(body), "rcmloginuser")
+	// nginx's previous workers may answer for a moment after the reload.
+	var answered bool
+	var err error
+	for attempt := 0; attempt < 20; attempt++ {
+		client := &http.Client{Timeout: 10 * time.Second}
+		var page *http.Response
+		page, err = client.Get("https://" + a110Host + "/")
+		answered = err == nil
+		if answered {
+			body, _ := io.ReadAll(page.Body)
+			page.Body.Close()
+			answered = strings.Contains(string(body), "rcmloginuser")
+		}
+		client.CloseIdleConnections()
+		if !answered {
+			t.Logf("after %d s", attempt)
+			break
+		}
+		time.Sleep(time.Second)
 	}
 	t.Logf("https://%s/ after removal: err=%v, Roundcube answered=%v", a110Host, err, answered)
 	if answered {
