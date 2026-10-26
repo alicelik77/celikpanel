@@ -9,6 +9,49 @@ bu yönü onayladı. Bu belge anlaşmayı ve uygulamanın kabul ölçütlerini k
 Asistana kurulu panel güncelleme yetkisi vermez; [AGENTS.md](../AGENTS.md) gereği
 kurulu panel güncellemelerini kullanıcı CelikPanel'in kendi arayüzünden başlatır.
 
+## 26 Ekim ek kararı: kurulum sihirbazı v2, 1. aşama (v0.1.0-alpha.111 kaynağı)
+
+Sahip yeniden tasarlanan ilk kurulum sihirbazını onayladı (önce ana alan adı,
+görevler, ana alan adından önerilen adlar, açık DNS yeri). 1. aşama bunu
+bugünkü DNS altyapısı üzerinde sunar; ikinci sunucunun kodla bağlanması, ikinci
+sunucunun ana seçilmesi, mevcut kayıtların aktarılması, posta kayıtları, alan
+adı firmasının canlı kontrolü ve ana DNS'in taşınması sonraki sürümlerdedir.
+
+- **Adımlar.** Ana alan adı (bir kez, ilk) → sunucu sayısı (iki önerilir) →
+  sunucunun kısa adı (yalnız makine adı insan seçimi gibiyse önerilir; panel ad
+  uydurmaz) → görevler (Web siteleri, E-posta, DNS; birleşebilir; her biri ne
+  kurduğunu yazar) → bileşenler (isteğe bağlı; Bileşenler sayfasıyla aynı
+  katalog; kurulu sürüm, önerilen dağıtım sürümü, üretici sürümleri yalnız açık
+  depodan, sihirbazın kurmadığı her bileşen için neden) → ana alan adı ve kısa
+  addan önerilen adlar (sahibin değiştirdiği ad korunur) → DNS listesi nerede →
+  özet → kurulum.
+- **DNS yeri.** *Kendi sunucularımda*: bu sunucu ana DNS sunucusudur (bu sürümde
+  tek ana sunucu seçeneği) ya da zaten kurulu bir ana sunucunun yedek DNS
+  sunucusudur; BIND ya da PowerDNS, incelemenin kendi kapı gerekçeleriyle. Ana
+  alan adı bölgedir; artık işaretsiz bir seçenek değildir. İki sunucuda ikinci
+  sunucunun ad sunucusu adı ve IPv4'ü hâlâ yazılır ve ekran bunu söyler. Tek
+  sunucu henüz kendi DNS'ini tutamaz (`server_setup_local_dns_requires_two_servers`
+  ile reddedilir). *Harici sağlayıcıda*: DNS yazılımı kurulmaz, 53 açılmaz;
+  başlatınca eklenecek kayıtlar canlı genel durumlarıyla gösterilir
+  (`GET /api/v1/setup/provider-records`, salt-okur, dakikada yaklaşık bir
+  kontrol, başarısız sorgu bilinmiyor sayılır). *Başka bir CelikPanel'de*:
+  bugünkü bağlantı.
+- **Kurulum ekranı.** Panel, adı çözülene kadar `https://IP:2083` adresinde geçici
+  sertifikayla açılır ve bu açıkça söylenir. Alan adı firması kartı ad
+  sunucularını ve ana alan adının içindeki adlar için IP kayıtlarını (glue)
+  bugünkü zamanlamayla verir: yedek DNS sunucusu hazır olduktan sonra.
+- **Arka uç.** Ek taslak alanları `main_domain`, `server_count`, `short_name`,
+  `main_dns_server` ve `customization.versions` (seçilen üretici paketi hizmet
+  adımının paketi olur; kurulum ön kontrolü deponun açık olmasını yine ister).
+  `GET /api/v1/setup/components` her katalog bileşenini sihirbazın onunla ne
+  yaptığıyla ve görev başına DNS yazılımı teklifiyle listeler. Yardımcı birimini
+  kurulumun son kontrolünün göremediği servisler (SpamAssassin, ClamAV) ve
+  Netdata (üretici deposu gerekir) kurulumdan sonra Bileşenler'den kurulur.
+  Şema değişikliği yok.
+
+Kurulu bir sunucuda ölçülmedi; ilk gerçek çalışma Beta 1 yeniden kurulumudur.
+Kurulu paneller yine yalnız sahiplerince güncellenir.
+
 ## 11 Eylül ek kararı: açık sihirbaz tercihi (Alpha66 sürüm kaynağı)
 
 Alpha65 sonrasında ilk yönlendirmede **Sihirbazla kur** ve **Kendim

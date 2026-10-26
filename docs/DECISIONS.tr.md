@@ -2993,6 +2993,30 @@ sunucuyu da silip yeniden kuracak; bu denetim gerçek bir kurulumda ilk kez orad
 görülecek. Kurulu paneller yine yalnız sahipleri tarafından panelin kendi
 güncelleme ekranından güncellenir.
 
+
+### Ek (2026-10-26): ana alan adı kurulumun bölgesidir ve sihirbaz bu sürümün yapamadığını söyler
+
+*Sahibin onayladığı kurulum sihirbazı v2, 1. aşama; v0.1.0-alpha.111 adayının
+kaynağında (yayımlanmadı); kurulu bir sunucuda ölçülmedi*
+
+Sahip yeniden tasarlanan sihirbazı 2026-10-26'da onayladı ([Yönlendirmeli
+sunucu kurulumu](SERVER-SETUP-PLAN.tr.md), o tarihli giriş). İki ürün kuralı
+değişir:
+
+- **Ana alan adı, altyapı bölgesi için açık niyettir.** Bir kez ve ilk sorulur.
+  Bu sunucu yerel ana DNS sunucusuysa kurulum o bölgenin sunucu adresi
+  kayıtlarını hazırlar (inceleme bunları gösterir); eski işaretsiz "bu kayıtları
+  burada hazırla" seçeneği kalktı. Yedek DNS sunucusu ve harici ya da uzak DNS
+  yeri bölge hazırlamaz. Kurulumun kiracı, site, posta kutusu, MX, SPF ya da
+  apex kaydı oluşturmadığı kural değişmez.
+- **Sihirbazın bileşen listesi katalogdan gelir.** Her katalog bileşeni,
+  sihirbazın onunla ne yaptığıyla görünür; kurulumla kurulamayan, nedenini ve
+  nerede kurulacağını söyler.
+
+Sürüm sınırlarını da ekranda söyler: tek sunucu henüz kendi DNS'ini tutamaz ve
+iki sunucuda ikinci sunucunun IP adresi hâlâ yazılır. Mevcut DNS sahipliği,
+topoloji ve kurtarma kuralları değişmez.
+
 ---
 
 ## D-020 · Yönetilen sunucu desteği dağıtım adına değil kanıtlanmış yeteneğe bağlanır

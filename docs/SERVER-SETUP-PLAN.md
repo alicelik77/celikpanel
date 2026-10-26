@@ -10,6 +10,50 @@ This document records that agreement and the implementation acceptance criteria.
 It does not authorize an assistant to update any installed panel; the user starts
 every installed-panel update from CelikPanel itself, as required by [AGENTS.md](../AGENTS.md).
 
+## October 26 follow-up: setup wizard v2, phase 1 (v0.1.0-alpha.111 source)
+
+The owner approved a redesigned first-run wizard (main domain first, roles,
+names proposed from the main domain, an explicit DNS home). Phase 1 ships it
+on today's DNS backend; joining the second server by code, choosing the
+second server as main, importing existing records, mail records, the live
+registrar check and moving the main DNS server come in later releases.
+
+- **Steps.** Main domain (asked once, first) → number of servers (two
+  recommended) → the server's short name (prefilled only when the host name
+  reads like a name a person chose; never invented) → roles (Websites, Email,
+  DNS; combinable; each lists what it installs) → components (optional; the
+  same catalogue as the Components page, with installed versions, the
+  distribution version recommended, vendor versions only from an enabled
+  repository and a reason for every component the wizard does not install) →
+  names proposed from the main domain and short name (an owner edit is kept)
+  → where the DNS list lives → summary → install.
+- **DNS home.** *On my own servers*: this server is the main DNS server (the
+  only main-server choice in this release) or the backup DNS server of a main
+  server already set up; BIND or PowerDNS with the review's own gate reasons.
+  The main domain is the zone; it is no longer an unticked option. With two
+  servers the second server's nameserver name and IPv4 are still typed, and
+  the screen says so. One server cannot keep its own DNS yet (refused with
+  `server_setup_local_dns_requires_two_servers`). *At an external provider*:
+  no DNS software, port 53 is not opened; after the start the records to add
+  are shown with their live public state (`GET /api/v1/setup/provider-records`,
+  read-only, about one check a minute, a failed lookup is unknown). *On
+  another CelikPanel*: today's connection.
+- **Install screen.** The panel is reachable at `https://IP:2083` with a
+  temporary certificate until its name resolves, said plainly. The registrar
+  card lists the nameservers and, for names inside the main domain, their IP
+  records (glue), with today's timing: after the backup DNS server is ready.
+- **Backend.** Additive draft fields `main_domain`, `server_count`,
+  `short_name`, `main_dns_server` and `customization.versions` (a chosen
+  vendor package becomes the service step's package; the install preflight
+  still requires its repository). `GET /api/v1/setup/components` lists every
+  catalogue component with what the wizard does with it and the per-role DNS
+  software offer. Services whose helper unit setup's final check cannot see
+  (SpamAssassin, ClamAV) and Netdata (vendor repository required) install
+  from Components after setup. No schema change.
+
+Not measured on an installed server; the Beta 1 reinstall is the first real
+run. Installed panels are still updated only by their owners.
+
 ## September 11 follow-up: explicit guidance preference (Alpha66 release source)
 
 After updating Alpha65, the operator could not find the setup entry or decline

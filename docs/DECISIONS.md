@@ -3013,6 +3013,30 @@ servers for a clean first-install test; that run is where this check will first 
 seen on a real installation. Installed panels are still updated only by their
 owners from the panel's own update screen.
 
+
+### Amendment (2026-10-26): the main domain is the setup's zone, and the wizard says what this release cannot do
+
+*Owner-approved setup wizard v2, phase 1; in source for the v0.1.0-alpha.111
+candidate (not published); nothing measured on an installed server*
+
+The owner approved the redesigned wizard on 2026-10-26 ([Guided server
+setup](SERVER-SETUP-PLAN.md), entry of that date). Two product rules change:
+
+- **The main domain is the explicit intent for the infrastructure zone.** It
+  is asked once, first. When this server is the local main DNS server, the
+  setup prepares that zone's server-address records (the review shows them);
+  the earlier unticked "prepare these records here" option is gone. A backup
+  DNS server and an external or remote DNS home prepare no zone. The rule
+  that setup never creates a tenant, website, mailbox, MX, SPF or apex record
+  is unchanged.
+- **The wizard's component list comes from the catalogue.** Every catalogue
+  component appears with what the wizard does with it; one it cannot install
+  through setup says why and where it is installed instead.
+
+The release also states its limits on screen: one server cannot keep its own
+DNS yet, and with two servers the second server's IP address is still typed.
+Existing DNS ownership, topology and recovery invariants are unchanged.
+
 ---
 
 ## D-020 · Managed-server support follows proven capabilities, not distribution names
