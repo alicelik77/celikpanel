@@ -1246,7 +1246,7 @@ test('Components: a server whose setup has finished adds mail through a setup ex
     assert.equal(context.snapshot.extension, true);
     assert.deepEqual(globalThis.batch3Navigated, ['/setup']);
     const editor = JSON.parse(kept.get('celikpanel.setup.editor.admin'));
-    assert.equal(editor.step, 'access');
+    assert.equal(editor.step, 'names');
     assert.equal(editor.revision, 8);
   } finally { await unmount(); delete globalThis.batch3Dialogs; delete globalThis.batch3Setup; delete globalThis.batch3Navigated; delete globalThis.sessionStorage; delete globalThis.document; }
   // Control: without a finished setup the dialog installs directly and says

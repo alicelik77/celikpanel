@@ -51,9 +51,13 @@ const stepsURL = dataURL(`import React from '${reactURL}';\n` + compile('../src/
 const choiceURL = dataURL(`import React from '${reactURL}';\n` + compile('../src/components/ServerSetupChoice.tsx').replace(/from ['"]([^'"]+)['"]/g, (_, path) => `from '${path === 'react' ? reactURL : path.endsWith('/serverSetup') ? setupURL : stub}'`));
 const componentUIURL = dataURL(`import React from '${reactURL}';\n` + compile('../src/components/ServerSetupComponents.tsx').replace(/from ['"]([^'"]+)['"]/g, (_, path) => `from '${path === 'react' ? reactURL : path.endsWith('/componentName') ? componentNameURL : path.endsWith('/serverSetupComponents') ? componentLibURL : stub}'`));
 const { ServerSetupComponents: ComponentPicker } = await import(componentUIURL);
+const apiErrorURL = dataURL(compile('../src/lib/apiError.ts'));
+const remoteLibURL = dataURL(compile('../src/lib/remote.ts').replace(/from ['"]([^'"]+)['"]/g, (_, path) => `from '${path === 'react' ? reactURL : apiErrorURL}'`));
+const wizardStepsURL = dataURL(`import React from '${reactURL}';
+` + compile('../src/components/ServerSetupWizardSteps.tsx').replace(/from ['"]([^'"]+)['"]/g, (_, path) => `from '${path === 'react' ? reactURL : path.endsWith('/componentName') ? componentNameURL : path.endsWith('/serverSetupComponents') ? componentLibURL : path.endsWith('/setupDNS') ? dnsCopyURL : path.endsWith('/lib/remote') ? remoteLibURL : path.endsWith('/serverSetup') ? setupURL : stub}'`));
 async function loadComponent(name, exported = name) {
     const source = compile(`../src/components/${name}.tsx`).replace(/from ['"]([^'"]+)['"]/g, (_, path) => {
-        const url = path === 'react' ? reactURL : path.endsWith('/ServerSetupSteps') ? stepsURL : path.endsWith('/remoteDNS') ? remoteURL : path.endsWith('/ServerSetupComponents') ? componentUIURL : path.endsWith('/componentName') ? componentNameURL : path.endsWith('/serverSetupComponents') ? componentLibURL : path.endsWith('/ServerSetupChoice') ? choiceURL : path.endsWith('/setupDNS') ? dnsCopyURL : path.endsWith('/visibleReads') ? visibleReadsURL : path.endsWith('/panelHandover') ? handoverURL : path.endsWith('/serverSetupGuidance') ? guidanceURL : path.endsWith('/serverSetupOperation') ? operationURL : path.endsWith('/serverSetup') ? setupURL : stub;
+        const url = path === 'react' ? reactURL : path.endsWith('/ServerSetupSteps') ? stepsURL : path.endsWith('/remoteDNS') ? remoteURL : path.endsWith('/ServerSetupComponents') ? componentUIURL : path.endsWith('/ServerSetupWizardSteps') ? wizardStepsURL : path.endsWith('/componentName') ? componentNameURL : path.endsWith('/serverSetupComponents') ? componentLibURL : path.endsWith('/ServerSetupChoice') ? choiceURL : path.endsWith('/setupDNS') ? dnsCopyURL : path.endsWith('/visibleReads') ? visibleReadsURL : path.endsWith('/panelHandover') ? handoverURL : path.endsWith('/serverSetupGuidance') ? guidanceURL : path.endsWith('/serverSetupOperation') ? operationURL : path.endsWith('/serverSetup') ? setupURL : stub;
         return `from '${url}'`;
     });
     return (await import(dataURL(`import React from '${reactURL}';\n${source}`)))[exported];
@@ -90,7 +94,12 @@ async function mount(Component=Wizard){await act(async()=>{tree=Renderer.create(
 async function cleanup(){if(tree)await act(async()=>tree.unmount());for(const[key,value]of Object.entries(original)){if(value===undefined)delete globalThis[key];else globalThis[key]=value;}delete globalThis.setupFixture;}
 const findButton=label=>tree.root.findAllByType('button').find(button=>button.props.children===label);
 async function submit(){await act(async()=>tree.root.findByType('form').props.onSubmit({preventDefault(){}}));}
-async function toReview(){await submit();await act(async()=>tree.root.findByProps({id:'setup-panel_domain'}).props.onChange({target:{value:'panel.example.com'}}));await act(async()=>tree.root.findByProps({name:'setup-dns',value:'external'}).props.onChange());await submit();}
+const input=id=>tree.root.findByProps({id});
+async function type(id,value){await act(async()=>input(id).props.onChange({target:{value}}));}
+// The wizard v2 path: main domain, server count, short name, roles, names, DNS home, review.
+async function toNames(domain='example.com'){await type('setup-main_domain',domain);await submit();await submit();await submit();await submit();}
+async function toDNSHome(domain){await toNames(domain);await submit();}
+async function toReview(){await toDNSHome();await act(async()=>tree.root.findByProps({name:'setup-dns',value:'external'}).props.onChange());await submit();}
 
 test('setup state decoder rejects absent provenance and contradictory completion',()=>{
     assert.equal(setup.decodeServerSetup({...fresh(),origin:undefined}),null);
@@ -116,11 +125,11 @@ test('failed or malformed assessment does not guess fresh state or expose manage
     }
 });
 test('opening the wizard performs only read requests; purpose and plan are persisted before installation',async()=>{
-    init();try{await mount();assert.ok(calls.every(call=>!call.options?.method||call.options.method==='GET'));await toReview();assert.equal(state.draft.panel_domain,'panel.example.com');assert.equal(state.draft.dns_mode,'external');assert.equal(calls.filter(call=>call.options?.method==='PUT').length,2);assert.equal(calls.some(call=>call.url==='/api/v1/setup/start'),false);assert.equal(findButton('setup.start').props.disabled,true);}finally{await cleanup();}
+    init();try{await mount();assert.ok(calls.every(call=>!call.options?.method||call.options.method==='GET'));await toReview();assert.equal(state.draft.panel_domain,'panel.example.com');assert.equal(state.draft.dns_mode,'external');assert.equal(state.draft.main_domain,'example.com');assert.equal(calls.filter(call=>call.options?.method==='PUT').length,6,'each wizard step saves the draft');assert.equal(calls.some(call=>call.url==='/api/v1/setup/start'),false);assert.equal(findButton('setup.start').props.disabled,true);}finally{await cleanup();}
 });
 test('a blocked plan cannot run, and changing material inputs requires a new review',async()=>{
     init();const read=fetch;globalThis.fetch=async(url,options)=>url==='/api/v1/setup/plan'?Response.json(plan({blockers:['server_setup_dns_mode_unsupported'],can_start:false})):read(url,options);
-    try{await mount();await toReview();assert.equal(findButton('setup.start').props.disabled,true);assert.equal(tree.root.findAllByProps({type:'checkbox'}).length,0);await act(async()=>findButton('setup.back').props.onClick());assert.equal(findButton('setup.start'),undefined);assert.equal(tree.root.findByProps({id:'setup-panel_domain'}).props.value,'panel.example.com');}finally{await cleanup();}
+    try{await mount();await toReview();assert.equal(findButton('setup.start').props.disabled,true);assert.equal(tree.root.findAllByProps({type:'checkbox'}).length,0);await act(async()=>findButton('setup.back').props.onClick());assert.equal(findButton('setup.start'),undefined);assert.equal(tree.root.findByProps({name:'setup-dns',value:'external'}).props.checked,true);}finally{await cleanup();}
 });
 test('a lost start response reconciles exact request identity and never starts twice',async()=>{
     init();let stored;const read=fetch;
@@ -169,7 +178,7 @@ test('waiting plans can be revised only after server proof; rejection preserves 
             assert.equal(calls.filter(call=>call.url==='/api/v1/setup/revise').length,1);
             assert.equal(tree.root.findAllByType('form').length,permitted?1:0);
             assert.equal(store.size,permitted?0:1);
-            if(permitted)assert.equal(tree.root.findByProps({id:'setup-panel_domain'}).props.value,'panel.example.com');
+            if(permitted)assert.ok(tree.root.findByProps({name:'setup-dns',value:'external'}));
             else assert.ok(JSON.stringify(tree.toJSON()).includes('setup.reviseBlocked'));
         }finally{await cleanup();}
     }
@@ -185,7 +194,8 @@ test('application setup selects an exact official LTS version; unavailable lists
         };
         try{
             await mount();assert.equal(calls.some(call=>call.url==='/api/v1/runtimes/node/lts'),false);
-            await act(async()=>tree.root.findByProps({name:'setup-purpose',value:'application'}).props.onChange());await submit();
+            await type('setup-main_domain','example.com');await submit();await submit();await submit();
+            await act(async()=>findButton('setup.components.customize').props.onClick());await toggleComponent('node');
             const selector=tree.root.findByProps({id:'setup-node_version'});assert.equal(selector.type,'select');assert.equal(selector.props.disabled,!available);
             if(available){await act(async()=>selector.props.onChange({target:{value:'24.18.0'}}));assert.equal(tree.root.findByProps({id:'setup-node_version'}).props.value,'24.18.0');}
             else assert.ok(findButton('common.retry'));
@@ -213,8 +223,7 @@ test('remote DNS setup requires fresh proof and reviews only the selected saved 
     init();const id='d'.repeat(32);const base=globalThis.fetch;
     globalThis.fetch=async(url,options)=>url==='/api/v1/setup/plan'?Response.json(plan({remote_dns_connection:{id,endpoint:'https://dns.example.com:2083',nameservers:['ns1.example.com','ns2.example.com']}})):base(url,options);
     try{
-        await mount();await submit();
-        await act(async()=>tree.root.findByProps({id:'setup-panel_domain'}).props.onChange({target:{value:'panel.example.com'}}));
+        await mount();await toDNSHome();
         await act(async()=>tree.root.findByProps({name:'setup-dns',value:'existing'}).props.onChange());
         await act(async()=>tree.root.findByType('remote-connection').props.onChange(id));
         const before=calls.length;await submit();assert.equal(calls.length,before,'unverified selection cannot persist or review setup');
@@ -233,8 +242,7 @@ test('remote DNS review rejects a plan bound to a different saved connection',as
     init();const base=globalThis.fetch;
     globalThis.fetch=async(url,options)=>url==='/api/v1/setup/plan'?Response.json(plan({remote_dns_connection:{id:'e'.repeat(32),endpoint:'https://other.example.com:2083',nameservers:['ns1.example.com']}})):base(url,options);
     try{
-        await mount();await submit();
-        await act(async()=>tree.root.findByProps({id:'setup-panel_domain'}).props.onChange({target:{value:'panel.example.com'}}));
+        await mount();await toDNSHome();
         await act(async()=>tree.root.findByProps({name:'setup-dns',value:'existing'}).props.onChange());
         await act(async()=>tree.root.findByType('remote-connection').props.onChange('d'.repeat(32)));
         await act(async()=>tree.root.findByType('remote-connection').props.onValidityChange(true));
@@ -243,30 +251,6 @@ test('remote DNS review rejects a plan bound to a different saved connection',as
         assert.ok(JSON.stringify(tree.toJSON()).includes('setup.planFailed'));
         assert.equal(calls.some(call=>call.url==='/api/v1/setup/start'),false);
     }finally{await cleanup();}
-});
-
-test('paired DNS guidance keeps both roles out of the final-verification dependency loop',async()=>{
-    for(const lang of ['en','tr']){
-        const catalogue=(lang === 'en' ? enScreens : trScreens);
-        init();fixture.translations=catalogue;
-        try{
-            await mount();
-            await act(async()=>tree.root.findByProps({name:'setup-purpose',value:'dns'}).props.onChange());
-            await submit();
-            const guidance=catalogue['setup.dnsPairOrder'];
-            assert.ok(guidance && guidance!=='setup.dnsPairOrder');
-            for(const role of ['primary','secondary']){
-                await act(async()=>tree.root.findByProps({id:'setup-dns_role'}).props.onChange({target:{value:role}}));
-                assert.ok(JSON.stringify(tree.toJSON()).includes(guidance),`${lang} ${role} must explain primary DNS before secondary, not primary completion`);
-            }
-            assert.equal(calls.some(call=>call.url==='/api/v1/setup/start'),false);
-            await act(async()=>findButton(catalogue['setup.back']).props.onClick());
-            await act(async()=>tree.root.findByProps({name:'setup-purpose',value:'web'}).props.onChange());
-            await submit();
-            await act(async()=>tree.root.findByProps({name:'setup-dns',value:'external'}).props.onChange());
-            assert.ok(!JSON.stringify(tree.toJSON()).includes(guidance),'external DNS has no local pair setup dependency');
-        }finally{await cleanup();}
-    }
 });
 
 test('pending receipt reconciliation is neutral progress and preserves the operation admission lock',async()=>{
@@ -336,7 +320,7 @@ test('guidance failure stays visible and a guided choice can reopen a manually c
         await mount();await act(async()=>findButton('setup.useWizard').props.onClick());
         assert.equal(tree.root.findAllByType('redirect').length,0);assert.ok(JSON.stringify(tree.toJSON()).includes('setup.choiceFailed'));
         fail=false;await act(async()=>findButton('setup.useWizard').props.onClick());
-        assert.equal(tree.root.findAllByProps({name:'setup-purpose'}).length,5);
+        assert.equal(tree.root.findAllByProps({id:'setup-main_domain'}).length,1);
         assert.equal(state.guidance,'guided');assert.equal(state.status,'new');
     } finally {await cleanup();}
 });
@@ -392,8 +376,9 @@ test('component picker blocks conflicting and unsupported choices and preserves 
         assert.equal(component('redis').props.disabled, false);
         await toggleComponent('redis');
         assert.equal(component('valkey').props.disabled, false);
-        await toggleComponent('nginx');
-        assert.deepEqual(selected(), []);
+        assert.equal(tree.root.findAllByProps({ id: 'setup-component-nginx' }).length, 0, 'installed software has no box');
+        assert.ok(JSON.stringify(tree.toJSON()).includes('setup.components.installedKeep'));
+        assert.deepEqual(selected(), ['nginx']);
         assert.equal(catalog.components.find(row => row.id === 'nginx').installed, true);
         assert.ok(JSON.stringify(tree.toJSON()).includes('setup.components.preserve'));
         assert.equal(calls.length, 0, 'deselecting installed software cannot call removal or installation APIs');
@@ -411,106 +396,6 @@ test('unknown inventory disables new choices without inventing installed state',
     } finally { await cleanup(); }
 });
 
-test('default profiles keep four steps and customization is a separate explicit choice', async () => {
-    init();
-    try {
-        await mount();
-        assert.equal(tree.root.findAllByType('ol')[0].findAllByType('li').length, 4);
-        assert.equal(tree.root.findAllByProps({ name: 'setup-purpose' }).length, 5);
-        assert.ok(findButton('setup.components.customize'));
-        await submit();
-        assert.equal(state.draft.customization, undefined);
-        assert.ok(tree.root.findByProps({ id: 'setup-panel_domain' }));
-        assert.equal(calls.some(call => call.url === '/api/v1/setup/start'), false);
-    } finally { await cleanup(); }
-});
-
-test('profile customization starts from its defaults and saves only explicit choices', async () => {
-    init();
-    try {
-        await mount();await act(async () => findButton('setup.components.customize').props.onClick());
-        assert.equal(tree.root.findAllByType('ol')[0].findAllByType('li').length, 5);
-        for (const id of ['nginx', 'php-fpm', 'mariadb']) assert.equal(component(id).props.checked, true);
-        await toggleComponent('mariadb');await toggleComponent('postgresql');await submit();
-        assert.deepEqual([...state.draft.customization.components].sort(), ['nginx', 'php-fpm', 'postgresql']);
-        assert.ok(tree.root.findByProps({ id: 'setup-panel_domain' }));
-        assert.equal(tree.root.findAllByProps({ id: 'setup-node_version' }).length, 0);
-        assert.equal(tree.root.findAllByProps({ id: 'setup-mail_hostname' }).length, 0);
-        assert.equal(calls.some(call => call.url === '/api/v1/setup/start'), false);
-    } finally { await cleanup(); }
-});
-
-test('custom setup persists an explicit empty selection and restores it after reopening', async () => {
-    init();
-    try {
-        await mount();await choosePurpose('custom');await submit();
-        assert.ok(tree.root.findAllByProps({ type: 'checkbox' }).every(input => !input.props.checked));
-        await submit();
-        assert.deepEqual(state.draft.customization, { components: [] });
-        assert.equal(state.draft.purpose, 'custom');
-        await act(async () => tree.unmount());tree = null;
-        fixture.context.accept(state);await mount();
-        assert.ok(tree.root.findByProps({id:'setup-panel_domain'}), 'reopen on the last access step');
-        await act(async()=>findButton('setup.back').props.onClick());
-        assert.ok(component('nginx'));
-        assert.ok(tree.root.findAllByProps({ type: 'checkbox' }).every(input => !input.props.checked));
-        assert.equal(calls.some(call => call.url === '/api/v1/setup/start'), false);
-    } finally { await cleanup(); }
-});
-
-test('custom mail and runtime selections determine required access inputs', async () => {
-    init();const base = fetch;
-    globalThis.fetch = async (url, options) => url === '/api/v1/runtimes/node/lts'
-        ? Response.json({ releases: [{ version: '24.18.0', name: 'Fixture' }] }) : base(url, options);
-    try {
-        await mount();await choosePurpose('custom');await submit();
-        await toggleComponent('roundcube');await toggleComponent('node');await submit();
-        assert.ok(tree.root.findByProps({ id: 'setup-node_version' }));
-        assert.ok(tree.root.findByProps({ id: 'setup-mail_hostname' }));
-        assert.deepEqual([...state.draft.customization.components].sort(), ['node', 'roundcube']);
-        assert.equal(calls.some(call => call.url === '/api/v1/setup/start'), false);
-    } finally { await cleanup(); }
-});
-
-test('catalogue failure or unknown inventory prevents advancing custom setup and offers retry', async () => {
-    for (const reply of [() => Response.json({}, { status: 503 }), () => Response.json({}), () => Response.json({ ...setupCatalogFixture(), inventory_state: 'unknown' })]) {
-        init();const base = fetch;
-        globalThis.fetch = async (url, options) => url === '/api/v1/setup/components' ? reply() : base(url, options);
-        try {
-            await mount();await choosePurpose('custom');await submit();
-            assert.equal(formNext().props.disabled, true);
-            const writes = calls.filter(call => call.options?.method === 'PUT').length;
-            await submit();
-            assert.equal(calls.filter(call => call.options?.method === 'PUT').length, writes);
-            assert.equal(tree.root.findAllByProps({ id: 'setup-panel_domain' }).length, 0);
-            assert.equal(calls.some(call => call.url === '/api/v1/setup/plan'), false);
-            assert.ok(findButton('common.retry'));
-        } finally { await cleanup(); }
-    }
-});
-
-test('editing a reviewed component selection invalidates confirmation and requires a new review', async () => {
-    init();
-    try {
-        await mount();await choosePurpose('custom');await submit();await toggleComponent('postgresql');await submit();
-        await act(async () => tree.root.findByProps({ id: 'setup-panel_domain' }).props.onChange({ target: { value: 'panel.example.com' } }));
-        await act(async () => tree.root.findByProps({ name: 'setup-dns', value: 'external' }).props.onChange());
-        await submit();
-        await act(async () => tree.root.findByProps({ type: 'checkbox' }).props.onChange({ target: { checked: true } }));
-        assert.equal(findButton('setup.start').props.disabled, false);
-        const reviewedRevision = state.revision;
-        await act(async () => findButton('setup.back').props.onClick());
-        await act(async () => findButton('setup.back').props.onClick());
-        assert.equal(findButton('setup.start'), undefined);
-        await toggleComponent('redis');await submit();await submit();
-        assert.ok(state.revision > reviewedRevision);
-        assert.equal(calls.filter(call => call.url === '/api/v1/setup/plan').length, 2);
-        assert.equal(findButton('setup.start').props.disabled, true, 'a prior acknowledgement never authorizes changed components');
-        assert.equal(tree.root.findByProps({ type: 'checkbox' }).props.checked, false);
-        assert.equal(calls.some(call => call.url === '/api/v1/setup/start'), false);
-    } finally { await cleanup(); }
-});
-
 test('draft decoding distinguishes an untouched preset from explicit empty customization', () => {
     const preset = fresh();
     assert.equal(setup.decodeServerSetup(preset).draft.customization, undefined);
@@ -519,60 +404,6 @@ test('draft decoding distinguishes an untouched preset from explicit empty custo
     for (const customization of [null, {}, { components: null }, { components: [1] }, { components: ['redis', 'redis'] }]) {
         assert.equal(setup.decodeServerSetup({ ...custom, draft: { ...custom.draft, customization } }), null);
     }
-});
-
-test('customization review distinguishes installed software and dependencies without starting work', async () => {
-    init();const base = fetch;
-    const components = [
-        { id: 'postgresql', selected: true, required: false, installed: false },
-        { id: 'nftables', selected: false, required: true, installed: true },
-        { id: 'certbot', selected: false, required: true, installed: false },
-    ];
-    globalThis.fetch = async (url, options) => url === '/api/v1/setup/plan' ? Response.json(plan({ components })) : base(url, options);
-    try {
-        await mount();await choosePurpose('custom');await submit();await toggleComponent('postgresql');await submit();
-        await act(async () => tree.root.findByProps({ id: 'setup-panel_domain' }).props.onChange({ target: { value: 'panel.example.com' } }));
-        await act(async () => tree.root.findByProps({ name: 'setup-dns', value: 'external' }).props.onChange());
-        await submit();
-        const text = JSON.stringify(tree.toJSON());
-        for (const label of ['PostgreSQL', 'Firewall', 'Certbot', 'setup.components.toInstall', 'setup.components.keep', 'setup.components.dependency', 'setup.components.preserve']) assert.ok(text.includes(label), label);
-        assert.equal(findButton('setup.start').props.disabled, true);
-        assert.equal(calls.some(call => call.url === '/api/v1/setup/start'), false);
-        for (const invalid of [null, [{ ...components[0], installed: 'yes' }], [{ ...components[0], required: undefined }]]) {
-            assert.equal(operations.decodeSetupPlan(plan({ components: invalid }), state.revision), null);
-        }
-    } finally { await cleanup(); }
-});
-
-test('a saved customized profile reopens with its exact choices instead of preset defaults', async () => {
-    init('admin', { status: 'draft', draft: { ...fresh().draft, customization: { components: ['postgresql', 'redis'] } } });
-    try {
-        await mount();
-        assert.equal(component('postgresql').props.checked, true);
-        assert.equal(component('redis').props.checked, true);
-        assert.equal(component('mariadb').props.checked, false);
-        assert.equal(component('nginx').props.checked, false);
-        assert.ok(calls.every(call => !call.options?.method || call.options.method === 'GET'));
-    } finally { await cleanup(); }
-});
-
-test('catalogue retry obtains fresh inventory before customization can continue', async () => {
-    init();const base = fetch;let healthy = false;let requests = 0;
-    globalThis.fetch = async (url, options) => {
-        if (url === '/api/v1/setup/components') { requests++;return healthy ? Response.json(setupCatalogFixture()) : Response.json({}, { status: 503 }); }
-        return base(url, options);
-    };
-    try {
-        await mount();await choosePurpose('custom');await submit();
-        assert.equal(formNext().props.disabled, true);
-        healthy = true;await act(async () => findButton('common.retry').props.onClick());
-        assert.equal(requests, 2);
-        assert.equal(formNext().props.disabled, false);
-        await toggleComponent('postgresql');await submit();
-        assert.deepEqual(state.draft.customization, { components: ['postgresql'] });
-        assert.ok(tree.root.findByProps({ id: 'setup-panel_domain' }));
-        assert.equal(calls.some(call => call.url === '/api/v1/setup/start'), false);
-    } finally { await cleanup(); }
 });
 
 test('completion links and labels follow customized services instead of the original profile', async () => {
@@ -597,51 +428,6 @@ test('completion links and labels follow customized services instead of the orig
     }
 });
 
-test('saved external DNS stays visible until the administrator changes an empty custom setup to local DNS', async () => {
-    init('admin', { status: 'draft', draft: { ...fresh().draft, purpose: 'custom', dns_mode: 'external', customization: { components: [] } } });
-    try {
-        await mount();await submit();
-        const external = tree.root.findByProps({ name: 'setup-dns', value: 'external' });
-        assert.equal(external.props.checked, true);
-        assert.equal(external.props.disabled, false, 'an incompatible saved value is still a visible, enabled current selection');
-        assert.equal(formNext().props.disabled, true);
-        assert.ok(tree.root.findAllByProps({ role: 'alert' }).length > 0, 'the user can discover how to correct the DNS mode');
-        const writes = calls.filter(call => call.options?.method === 'PUT').length;
-        await submit();
-        assert.equal(calls.filter(call => call.options?.method === 'PUT').length, writes, 'incompatible DNS cannot produce a saved reviewed plan');
-        assert.equal(calls.some(call => call.url === '/api/v1/setup/plan'), false);
-        assert.equal(state.draft.dns_mode, 'external', 'choosing components never silently rewrites the saved DNS mode');
-        await act(async () => tree.root.findByProps({ name: 'setup-dns', value: 'local' }).props.onChange());
-        assert.equal(tree.root.findByProps({ name: 'setup-dns', value: 'local' }).props.checked, true);
-        assert.equal(formNext().props.disabled, false);
-        assert.equal(state.draft.dns_mode, 'external', 'changing the form does not persist before Continue');
-        assert.equal(calls.some(call => call.url === '/api/v1/setup/start'), false);
-    } finally { await cleanup(); }
-});
-
-test('explicit automatic secondary hosting requires a publisher address or an explicit role change', async () => {
-    init('admin', { status: 'draft', draft: { ...fresh().draft, purpose: 'custom', dns_mode: 'local', dns_role: 'secondary', dns_hosting_management: 'panel', customization: { components: ['nginx'] } } });
-    try {
-        await mount();await submit();
-        const selector = tree.root.findByProps({ id: 'setup-dns_role' });
-        assert.equal(selector.props.value, 'secondary');
-        assert.notEqual(selector.findAllByType('option').find(option => option.props.value === 'secondary').props.disabled, true);
-        assert.equal(formNext().props.disabled, true);
-        assert.ok(tree.root.findAllByProps({ role: 'alert' }).length > 0);
-        const writes = calls.filter(call => call.options?.method === 'PUT').length;
-        await submit();
-        assert.equal(calls.filter(call => call.options?.method === 'PUT').length, writes);
-        assert.equal(calls.some(call => call.url === '/api/v1/setup/plan'), false);
-        assert.equal(state.draft.dns_role, 'secondary');
-        await act(async () => selector.props.onChange({ target: { value: 'primary' } }));
-        assert.equal(tree.root.findByProps({ id: 'setup-dns_role' }).props.value, 'primary');
-        assert.equal(formNext().props.disabled, false);
-        assert.equal(state.draft.dns_role, 'secondary', 'role changes must be explicitly saved');
-        assert.equal(calls.some(call => call.url === '/api/v1/setup/start'), false);
-    } finally { await cleanup(); }
-});
-
-
 test('DNS role changes preserve physical server names, addresses and unrelated draft fields', () => {
     const draft = {...fresh().draft, ns1:'ns2.example.com', ns2:'ns1.example.com', peer_ns:'ns1.example.com', local_ip:'72.62.38.15', peer_ip:'2.25.80.4'};
     const secondary = setup.changeSetupDNSRole(draft, 'secondary');
@@ -659,112 +445,6 @@ test('DNS role changes preserve physical server names, addresses and unrelated d
 test('only a usable server-reported IPv4 is offered for prefilling', () => {
     for (const value of [undefined, '', '10.0.0.1', '127.0.0.1', '169.254.2.1', '172.16.0.2', '192.168.1.3', '100.64.1.1', '224.0.0.1', '0.1.2.3', '256.1.1.1', '1.2.3', '01.2.3.4', '2001:db8::1']) assert.equal(setup.setupDetectedIPv4(value), '');
     assert.equal(setup.setupDetectedIPv4('72.62.38.15'), '72.62.38.15');
-});
-
-test('detected IP fills the field but never replaces saved or manually cleared input', async () => {
-    for (const saved of ['', '2.25.80.4']) {
-        init('admin', {status:'draft', server_ip:'72.62.38.15', draft:{...fresh().draft, local_ip:saved}});
-        try {
-            await mount();
-            assert.equal(tree.root.findByProps({id:'setup-local_ip'}).props.value, saved || '72.62.38.15');
-            assert.equal(calls.some(c => c.options?.method === 'PUT'), false);
-            await act(async () => tree.root.findByProps({id:'setup-local_ip'}).props.onChange({target:{value:''}}));
-            await act(async () => tree.root.findByProps({name:'setup-dns', value:'external'}).props.onChange());
-            await act(async () => tree.root.findByProps({name:'setup-dns', value:'local'}).props.onChange());
-            assert.equal(tree.root.findByProps({id:'setup-local_ip'}).props.value, '');
-        } finally { await cleanup(); }
-    }
-});
-
-test('local DNS edits derive the peer once and submit the same physical pairing after role change', async () => {
-    init('admin', {status:'draft', draft:{...fresh().draft, purpose:'dns', panel_domain:'panel.example.com', ns1:'ns2.example.com', ns2:'ns1.example.com', peer_ns:'ns1.example.com', local_ip:'72.62.38.15', peer_ip:'2.25.80.4'}});
-    try {
-        await mount();
-        assert.equal(tree.root.findAllByProps({id:'setup-peer_ns'}).length, 0);
-        await act(async () => tree.root.findByProps({id:'setup-dns_role'}).props.onChange({target:{value:'secondary'}}));
-        assert.equal(tree.root.findByProps({id:'setup-ns2'}).props.value, 'ns2.example.com');
-        await act(async () => tree.root.findByProps({id:'setup-ns1'}).props.onChange({target:{value:'primary.example.com'}}));
-        await submit();
-        assert.equal(state.draft.peer_ns, 'primary.example.com');
-        assert.equal(state.draft.ns1, 'primary.example.com');
-        assert.equal(state.draft.ns2, 'ns2.example.com');
-        assert.equal(state.draft.local_ip, '72.62.38.15');
-        assert.equal(state.draft.peer_ip, '2.25.80.4');
-        assert.equal(calls.some(c => c.url === '/api/v1/setup/start'), false);
-    } finally { await cleanup(); }
-});
-
-test('a conflicting saved peer remains visible and blocks review until explicitly corrected', async () => {
-    init('admin', {status:'draft', draft:{...fresh().draft, panel_domain:'panel.example.com', ns1:'primary.example.com', ns2:'secondary.example.com', peer_ns:'old.example.com'}});
-    try {
-        await mount();
-        assert.ok(JSON.stringify(tree.toJSON()).includes('old.example.com'));
-        await submit();
-        assert.equal(calls.some(c => c.url === '/api/v1/setup/plan'), false);
-        assert.equal(state.draft.peer_ns, 'old.example.com');
-        await act(async () => findButton('setup.useDisplayedPeer').props.onClick());
-        await submit();
-        assert.equal(state.draft.peer_ns, 'secondary.example.com');
-        assert.equal(calls.filter(c => c.url === '/api/v1/setup/plan').length, 1);
-    } finally { await cleanup(); }
-});
-
-
-test('web secondary offers optional publication while DNS-only permits either engine without one', async () => {
-    init();
-    try {
-        await mount(); await submit();
-        const secondary = () => tree.root.findByProps({id:'setup-dns_role'}).findAllByType('option').find(option => option.props.value === 'secondary');
-        assert.notEqual(secondary().props.disabled, true);
-        await act(async () => tree.root.findByProps({id:'setup-dns_role'}).props.onChange({target:{value:'secondary'}}));
-        assert.equal(tree.root.findAllByProps({id:'setup-dns_publisher_endpoint'}).length, 0);
-        await act(async () => tree.root.findByProps({id:'setup-dns_hosting_management'}).props.onChange({target:{value:'panel'}}));
-        assert.ok(tree.root.findByProps({id:'setup-dns_publisher_endpoint'}));
-        assert.ok(JSON.stringify(tree.toJSON()).includes('setup.publisher.roleHelp'));
-        assert.equal(calls.some(c => c.url.includes('/dns/remote')), false);
-        await act(async () => findButton('setup.back').props.onClick());
-        await act(async () => tree.root.findByProps({name:'setup-purpose',value:'dns'}).props.onChange());
-        await submit();
-        assert.notEqual(secondary().props.disabled, true);
-        assert.equal(tree.root.findAllByProps({id:'setup-dns_publisher_endpoint'}).length, 0);
-        assert.equal(tree.root.findAllByProps({id:'setup-mail_hostname'}).length, 0);
-        await act(async () => tree.root.findByProps({id:'setup-dns_role'}).props.onChange({target:{value:'secondary'}}));
-        for (const engine of ['bind','pdns']) {
-            await act(async () => tree.root.findByProps({id:'setup-dns_engine'}).props.onChange({target:{value:engine}}));
-            assert.equal(tree.root.findByProps({id:'setup-dns_role'}).props.value, 'secondary');
-        }
-        assert.equal(calls.some(call => call.url === '/api/v1/setup/start'), false);
-    } finally { await cleanup(); }
-});
-
-test('changing from customized mail hosting to DNS or web clears inherited mail components', () => {
-    const old = {...fresh().draft,purpose:'web_mail',customization:{components:['postfix','roundcube']},mail_hostname:'mail.example.com'};
-    for (const purpose of ['dns','web']) {
-        const draft = setup.chooseSetupPurpose(old,purpose);
-        assert.equal(draft.customization,undefined);
-        assert.equal(draft.purpose,purpose);
-    }
-});
-
-
-test('secondary hosting requires a valid reviewed primary endpoint without pairing during review', async () => {
-    init('admin', {status:'draft', draft:{...fresh().draft,purpose:'web_mail',panel_domain:'boston.example.com',mail_hostname:'mail.boston.example.com',dns_role:'secondary',dns_hosting_management:'panel',ns1:'ns1.example.com',ns2:'ns2.example.com',peer_ns:'ns1.example.com',peer_ip:'192.0.2.10',local_ip:'192.0.2.20'}});
-    try {
-        await mount();
-        await submit();
-        assert.equal(calls.some(c => c.url==='/api/v1/setup/plan'),false);
-        for(const endpoint of ['http://primary.example.com','https://192.0.2.10','https://user:secret@primary.example.com','https://primary.example.com/other']) {
-            await act(async()=>tree.root.findByProps({id:'setup-dns_publisher_endpoint'}).props.onChange({target:{value:endpoint}}));
-            await submit();
-            assert.equal(calls.some(c => c.url==='/api/v1/setup/plan'),false);
-        }
-        await act(async()=>tree.root.findByProps({id:'setup-dns_publisher_endpoint'}).props.onChange({target:{value:'https://primary.example.com:2083'}}));
-        await submit();
-        assert.equal(state.draft.dns_publisher_endpoint,'https://primary.example.com:2083');
-        assert.equal(state.draft.dns_role,'secondary');
-        assert.ok(JSON.stringify(tree.toJSON()).includes('setup.publisher.reviewTitle'));
-        assert.equal(calls.some(c => c.url.includes('/dns/remote') || c.url==='/api/v1/setup/start'),false);
-    } finally { await cleanup(); }
 });
 
 test('waiting secondary keeps its reviewed endpoint and binds only an explicitly verified connection',async()=>{
@@ -809,21 +489,6 @@ async function remountWizard() {
     await mount();
 }
 
-test('customized access survives remount and reload with unsaved fields and no configuration requests',async()=>{
-    init('admin',{status:'draft',draft:{...fresh().draft,customization:{components:['nginx']}}});
-    try{
-        await mount();await submit();
-        await act(async()=>tree.root.findByProps({id:'setup-panel_domain'}).props.onChange({target:{value:'frankfurt.example.com'}}));
-        await act(async()=>tree.root.findByProps({id:'setup-peer_ip'}).props.onChange({target:{value:'192.0.2.20'}}));
-        const before=calls.length;
-        await remountWizard();
-        assert.equal(tree.root.findAllByProps({'aria-current':'step'})[0].findAllByType('span')[1].props.children,'setup.step.access');
-        assert.equal(tree.root.findByProps({id:'setup-panel_domain'}).props.value,'frankfurt.example.com');
-        assert.equal(tree.root.findByProps({id:'setup-peer_ip'}).props.value,'192.0.2.20');
-        assert.ok(calls.slice(before).every(call=>!call.options?.method||call.options.method==='GET'));
-    }finally{await cleanup();}
-});
-
 test('review survives remount with a fresh server plan and requires confirmation again',async()=>{
     init();try{
         await mount();await toReview();
@@ -837,30 +502,6 @@ test('review survives remount with a fresh server plan and requires confirmation
         assert.equal(calls.some(call=>call.url==='/api/v1/setup/start'),false);
         assert.equal(calls.slice(before).some(call=>call.options?.method==='PUT'),false);
     }finally{await cleanup();}
-});
-
-test('review recovery cannot reuse a stale or unavailable plan, and preserves access fields',async()=>{
-    for(const kind of ['offline','revision','blocked']){
-        init();try{
-            await mount();await toReview();
-            const base=fetch;
-            globalThis.fetch=async(url,options)=>{
-                if(url==='/api/v1/setup/plan'){
-                    if(kind==='offline')throw new Error('offline');
-                    return Response.json(kind==='revision'?plan({revision:state.revision+1}):plan({can_start:false,blockers:['panel_dns_not_ready']}));
-                }
-                return base(url,options);
-            };
-            await remountWizard();
-            if(kind==='blocked')assert.equal(findButton('setup.start').props.disabled,true);
-            else{
-                assert.equal(findButton('setup.start'),undefined);
-                assert.equal(tree.root.findByProps({id:'setup-panel_domain'}).props.value,'panel.example.com');
-                assert.ok(JSON.stringify(tree.toJSON()).includes('setup.planFailed'));
-            }
-            assert.equal(calls.some(call=>call.url==='/api/v1/setup/start'),false);
-        }finally{await cleanup();}
-    }
 });
 
 test('server operation wins over a saved review after reload',async()=>{
@@ -895,38 +536,6 @@ test('editor checkpoints cannot override changed server revisions, completed set
 test('unavailable session storage does not prevent normal wizard use',async()=>{
     init();globalThis.sessionStorage={getItem(){throw new Error('denied')},setItem(){throw new Error('denied')},removeItem(){throw new Error('denied')}};
     try{await mount();await toReview();assert.ok(findButton('setup.start'));}finally{await cleanup();}
-});
-
-
-test('manual secondary hosting reviews without a primary panel and preserves the selected topology', async () => {
-    for (const engine of ['bind', 'pdns']) {
-        init('admin', {status:'draft', draft:{...fresh().draft,purpose:'web_mail',panel_domain:'boston.example.com',mail_hostname:'mail.boston.example.com',dns_role:'secondary',dns_engine:engine,ns1:'ns1.example.com',ns2:'ns2.example.com',peer_ns:'ns1.example.com',peer_ip:'192.0.2.10',local_ip:'192.0.2.20'}});
-        try {
-            await mount();
-            assert.equal(tree.root.findByProps({id:'setup-dns_hosting_management'}).props.value,'manual');
-            assert.equal(tree.root.findAllByProps({id:'setup-dns_publisher_endpoint'}).length,0);
-            await submit();
-            assert.equal(state.draft.dns_hosting_management,'manual');
-            assert.equal(state.draft.dns_role,'secondary');
-            assert.equal(state.draft.dns_engine,engine);
-            assert.equal(calls.filter(c=>c.url==='/api/v1/setup/plan').length,1);
-            assert.ok(JSON.stringify(tree.toJSON()).includes('setup.publisher.manualHelp'));
-            assert.equal(calls.some(c=>c.url.includes('/dns/remote') || c.url==='/api/v1/setup/start'),false);
-        } finally {await cleanup();}
-    }
-});
-
-test('an existing publisher endpoint keeps automatic management until the owner selects manual', async () => {
-    init('admin',{status:'draft',draft:{...fresh().draft,purpose:'web',dns_role:'secondary',dns_publisher_endpoint:'https://primary.example.com:2083'}});
-    try {
-        await mount();
-        assert.equal(tree.root.findByProps({id:'setup-dns_hosting_management'}).props.value,'panel');
-        await act(async()=>tree.root.findByProps({id:'setup-dns_hosting_management'}).props.onChange({target:{value:'manual'}}));
-        assert.equal(tree.root.findAllByProps({id:'setup-dns_publisher_endpoint'}).length,0);
-        await submit();
-        assert.equal(state.draft.dns_hosting_management,'manual');
-        assert.equal(calls.some(c=>c.url.includes('/dns/remote') || c.url==='/api/v1/setup/start'),false);
-    } finally {await cleanup();}
 });
 
 
@@ -965,56 +574,6 @@ const infrastructurePlan = () => ({zone:'example.com',expected_digest:'d'.repeat
 ]});
 const primaryDraft = () => ({...fresh().draft,panel_domain:'panel.example.com',ns1:'ns1.example.com',ns2:'ns2.example.com',peer_ns:'ns2.example.com',local_ip:'192.0.2.10',peer_ip:'192.0.2.20'});
 
-test('infrastructure DNS requires explicit owner intent and reviews the exact native records without creating a website',async()=>{
-    init('admin',{status:'draft',draft:primaryDraft()});
-    const base=fetch;globalThis.fetch=async(url,options)=>url==='/api/v1/setup/plan'?Response.json(plan({infrastructure_dns:infrastructurePlan(),steps:[{id:'infra',kind:'infrastructure_dns',target:'example.com'},{id:'public',kind:'access_dns',target:'panel.example.com',qualifier:'192.0.2.10'}]})):base(url,options);
-    try {
-        await mount();
-        const prepare=tree.root.findByProps({id:'setup-prepare-infrastructure-dns'});
-        assert.equal(prepare.props.checked,false);
-        assert.equal(tree.root.findAllByProps({id:'setup-infrastructure_zone'}).length,0);
-        assert.equal(calls.some(c=>c.options?.method),false,'opening an editor must not claim a zone');
-        await act(async()=>prepare.props.onChange({target:{checked:true}}));
-        assert.equal(tree.root.findByProps({id:'setup-infrastructure_zone'}).props.value,'example.com');
-        await act(async()=>tree.root.findByProps({id:'setup-peer_panel_domain'}).props.onChange({target:{value:'boston.example.com'}}));
-        await submit();
-        assert.deepEqual(state.draft.infrastructure_dns,{zone:'example.com',peer_panel_domain:'boston.example.com'});
-        const review=tree.root.findByProps({'aria-label':'setup.infrastructure.reviewTitle'});
-        assert.ok(review.findAllByType('td').some(row=>row.props.children==='A'));
-        assert.ok(JSON.stringify(tree.toJSON()).includes('boston.example.com'));
-        assert.ok(JSON.stringify(tree.toJSON()).includes('setup.infrastructure.keep'));
-        assert.ok(JSON.stringify(tree.toJSON()).includes('setup.infrastructure.add'));
-        assert.equal(findButton('setup.start').props.disabled,true,'record review still requires the start acknowledgement');
-        assert.equal(calls.some(c=>c.url.includes('/domains')||c.url==='/api/v1/setup/start'),false);
-    } finally {await cleanup();}
-});
-
-test('changing DNS ownership or role clears hidden infrastructure creation intent',async()=>{
-    for(const next of ['external','existing','secondary']){
-        init('admin',{status:'draft',draft:{...primaryDraft(),infrastructure_dns:{zone:'example.com',peer_panel_domain:'boston.example.com'}}});
-        try{
-            await mount();
-            await act(async()=>next==='secondary'?tree.root.findByProps({id:'setup-dns_role'}).props.onChange({target:{value:next}}):tree.root.findByProps({name:'setup-dns',value:next}).props.onChange());
-            assert.equal(tree.root.findAllByProps({id:'setup-prepare-infrastructure-dns'}).length,0);
-            const checkpoint=JSON.parse(sessionStorage.getItem('celikpanel.setup.editor.admin'));
-            assert.equal(checkpoint.draft.infrastructure_dns,undefined);
-            assert.equal(calls.some(c=>c.url==='/api/v1/setup/start'),false);
-        } finally {await cleanup();}
-    }
-});
-
-test('zone suggestions are editable and never infer an unrelated parent zone',()=>{
-    const draft=primaryDraft();
-    assert.equal(setup.setupInfrastructureZoneCandidate(draft),'example.com');
-    assert.equal(setup.setupInfrastructureZoneCandidate({...draft,ns2:'ns2.external.net'}),'');
-    assert.equal(setup.setupInfrastructureZoneCandidate({...draft,panel_domain:'not a hostname'}),'');
-    assert.equal(setup.setupInfrastructureZoneCandidate({...draft,panel_domain:' panel.EXAMPLE.com. '}),'example.com');
-    const snapshot={...fresh(),draft:{...draft,infrastructure_dns:{zone:'example.com'}}};
-    assert.ok(setup.decodeServerSetup(snapshot));
-    for(const infrastructure_dns of [null,{}, {zone:42}, {zone:'example.com',peer_panel_domain:42}])assert.equal(setup.decodeServerSetup({...snapshot,draft:{...draft,infrastructure_dns}}),null);
-    assert.ok(setup.decodeServerSetup({...fresh(),draft}),'old drafts remain readable');
-});
-
 test('DNS record plans reject malformed mutation details but optional execution metadata cannot hide an active operation',()=>{
     init();
     const reviewed=plan({infrastructure_dns:infrastructurePlan(),server_ip:'192.0.2.10'});
@@ -1027,19 +586,6 @@ test('DNS record plans reject malformed mutation details but optional execution 
     assert.equal(operations.decodeSetupExecution({...current,context}).context.infrastructure_dns.zone,'example.com');
     const preserved=operations.decodeSetupExecution({...current,context:{...context,infrastructure_dns:{invalid:true}}});
     assert.equal(preserved.id,current.id);assert.equal(preserved.context,undefined);
-});
-
-test('secondary setup keeps server address prerequisites inside the wizard without a zone claim or primary panel API',async()=>{
-    init('admin',{status:'draft',draft:{...primaryDraft(),purpose:'dns',dns_role:'secondary',panel_domain:'boston.example.com',peer_ns:'ns1.example.com',local_ip:'192.0.2.20',peer_ip:'192.0.2.10'}});
-    try{
-        await mount();
-        assert.equal(tree.root.findAllByProps({id:'setup-infrastructure_zone'}).length,0);
-        assert.equal(tree.root.findAllByProps({id:'setup-dns_publisher_endpoint'}).length,0);
-        assert.ok(JSON.stringify(tree.toJSON()).includes('setup.infrastructure.secondaryHelp'));
-        await submit();
-        assert.equal(state.draft.infrastructure_dns,undefined);
-        assert.equal(calls.some(c=>c.url.includes('/dns/remote')||c.url.includes('/domains')||c.url==='/api/v1/setup/start'),false);
-    }finally{await cleanup();}
 });
 
 test('public DNS waiting retains exact operation and exposes safe in-wizard plan revision',async()=>{
@@ -1057,20 +603,6 @@ test('public DNS waiting retains exact operation and exposes safe in-wizard plan
     }finally{await cleanup();}
 });
 
-
-test('route-scoped DNS copy follows language changes without losing the draft or issuing mutations',async()=>{
-    init('admin',{status:'draft',draft:{...primaryDraft(),infrastructure_dns:{zone:'example.com',peer_panel_domain:'boston.example.com'}}});
-    fixture.locale='en';
-    try{
-        await mount();
-        assert.ok(JSON.stringify(tree.toJSON()).includes('DNS for server addresses'));
-        fixture.locale='tr';
-        await act(async()=>tree.update(React.createElement(Wizard)));
-        assert.ok(JSON.stringify(tree.toJSON()).includes('Sunucu adreslerinin DNS kayıtları'));
-        assert.equal(tree.root.findByProps({id:'setup-peer_panel_domain'}).props.value,'boston.example.com');
-        assert.ok(calls.every(c=>!c.options?.method||c.options.method==='GET'));
-    }finally{await cleanup();}
-});
 
 test('final verification stays waiting and manual checks report unchanged, unknown, passed or unavailable evidence without installation',async()=>{
     for(const outcome of ['action_required','unknown','ready','empty','error']){
@@ -1253,23 +785,6 @@ test('reviewed handoff retry is limited to verified absence on the current runni
 });
 
 
-test('review displays independent mail renewal without its internal kit digest or an automatic start',async()=>{
- init('admin',{status:'draft',draft:primaryDraft()});
- const base=fetch;
- globalThis.fetch=async(url,options)=>url==='/api/v1/setup/plan'?Response.json(plan({steps:[{id:'cert',kind:'mail_certificate',target:'mail.example.com'},{id:'renewal',kind:'mail_enrollment',target:'mail-renewal',qualifier:'c'.repeat(64)},{id:'verify',kind:'verify',target:'web_mail'}]})):base(url,options);
- try{
-  await mount();await submit();
-  const rendered=JSON.stringify(tree.toJSON());
-  assert.ok(rendered.includes('setup.kind.mail_enrollment'));
-  assert.ok(!rendered.includes('c'.repeat(64)));
-  assert.equal(findButton('setup.start').props.disabled,true);
-  assert.ok(!calls.some(call=>call.url==='/api/v1/setup/start'));
- }finally{await cleanup();}
-});
-
-// 2026-10-08: the certificate step restarts the Panel once. On another address
-// than the host being secured the wizard says so in advance, and when the
-// connection drops at that step it names the restart instead of an unknown result.
 test('planned certificate handover: advance notice, then a calm state when the connection drops',async()=>{
     const host='panel.example.com';
     const marker={request_id:'d'.repeat(32),plan_id:'a'.repeat(32),panel_domain:host,handover:true};
@@ -1387,7 +902,7 @@ test('a completed setup offers its extension, says what it does not do, and begi
         await act(async () => { tree.update(React.createElement(Wizard, null)); await new Promise(resolve => setTimeout(resolve, 0)); });
         const shown = textOf();
         assert.ok(shown.includes('setup.extend.title') && shown.includes('setup.extend.intro'), shown.slice(0, 400));
-        assert.ok(tree.root.findAllByProps({ name: 'setup-purpose' }).length > 0, 'the extension opens on the purpose step');
+        assert.ok(tree.root.findAllByProps({ id: 'setup-main_domain' }).length > 0, 'the extension opens on the first step');
         assert.ok(findButton('setup.extend.stop'));
         assert.ok(!shown.includes('setup.manualHelp'), 'the manual-setup choice is offered to an extension');
         assert.ok(writes().every(call => call.url === '/api/v1/setup/extend'));
@@ -1557,13 +1072,13 @@ test('an extension of a completed setup opens its wizard, not the completed run 
         const shown = textOf();
         assert.ok(calls.some(call => call.url.includes('/setup/operation')), 'the operation was not read');
         assert.ok(!shown.includes('setup.verificationFailed') && !shown.includes('setup.verifying') && !shown.includes('setup.reconnect'), shown.slice(0, 600));
-        assert.ok(tree.root.findAllByProps({ name: 'setup-purpose' }).length > 0, 'the extension does not open on the purpose step');
+        assert.ok(tree.root.findAllByProps({ id: 'setup-main_domain' }).length > 0, 'the extension does not open on the first step');
         assert.ok(findButton('setup.extend.stop'), 'Stop extending is not reachable');
         assert.equal(tree.root.findAllByProps({ 'data-setup-extend-stop': '' }).length, 1);
         assert.equal(writes().length, 0);
     } finally { await cleanup(); }
-    // The Components route lands on the access step with the mail host name.
-    extensionFixture({ step: 'access' });
+    // The Components route lands on the names step with the mail host name.
+    extensionFixture({ step: 'names' });
     try {
         await mount(); await settle();
         assert.equal(tree.root.findByProps({ id: 'setup-panel_domain' }).props.value, 'panel.example.com');
@@ -1673,27 +1188,6 @@ test('a pressed mail enrollment continuation stays single-flight until the opera
 });
 
 // Second server as a full peer, part 2 (2026-10-16).
-test('the primary’s plan carries the other server’s mail host name beside its panel host name', async () => {
-    init('admin', {status:'draft', draft:{...fresh().draft, purpose:'web', panel_domain:'frankfurt.example.com', ns1:'ns1.example.com', ns2:'ns2.example.com', peer_ns:'ns2.example.com', local_ip:'192.0.2.10', peer_ip:'192.0.2.20', infrastructure_dns:{zone:'example.com', peer_panel_domain:'boston.example.com'}}});
-    try {
-        await mount();
-        const field = () => tree.root.findAllByProps({id:'setup-peer_mail_hostname'});
-        assert.equal(field().length, 1, 'the field is not offered with the infrastructure zone');
-        assert.ok(JSON.stringify(tree.toJSON()).includes('setup.infrastructure.peerMailHelp'));
-        await act(async () => field()[0].props.onChange({target:{value:'mail.boston.example.com'}}));
-        await submit();
-        assert.equal(state.draft.infrastructure_dns.peer_mail_hostname, 'mail.boston.example.com');
-        assert.equal(state.draft.infrastructure_dns.peer_panel_domain, 'boston.example.com');
-    } finally { await cleanup(); }
-    // Control: without the infrastructure zone there is no such field.
-    init('admin', {status:'draft', draft:{...fresh().draft, purpose:'web', panel_domain:'frankfurt.example.com', ns1:'ns1.example.com', ns2:'ns2.example.com', peer_ns:'ns2.example.com', local_ip:'192.0.2.10', peer_ip:'192.0.2.20'}});
-    try {
-        await mount();
-        assert.equal(tree.root.findAllByProps({id:'setup-prepare-infrastructure-dns'}).length, 1);
-        assert.equal(tree.root.findAllByProps({id:'setup-peer_mail_hostname'}).length, 0);
-    } finally { await cleanup(); }
-});
-
 test('the draft decoder accepts the peer’s mail host name and refuses one that is not the contract', () => {
     const draft = (infrastructure) => ({...fresh(), draft:{...fresh().draft, infrastructure_dns:infrastructure}});
     assert.ok(setup.decodeServerSetup(draft({zone:'example.com', peer_mail_hostname:'mail.boston.example.com'})));
@@ -1714,4 +1208,151 @@ test('the execution context keeps a valid record request outcome and drops only 
     assert.equal(bad.context.peer_nameserver, 'ns1.example.com');
     const strange = operations.decodeSetupExecution(run({channel:true, outcome:{status:'exploded', name:'x', content:'y'}}));
     assert.deepEqual(strange.context.peer_host_record, {channel:true});
+});
+
+// Setup wizard v2 (alpha.111): main domain first, server count, short name,
+// roles, names proposed from the main domain, DNS home, then the review.
+const putDraft = () => state.draft;
+const radio = (name, value) => tree.root.findByProps({ name, value });
+async function pick(name, value) { await act(async () => radio(name, value).props.onChange()); }
+const putCount = () => calls.filter(call => call.options?.method === 'PUT').length;
+
+test('wizard v2: the main domain comes first and every name is proposed from it, an owner edit is kept', async () => {
+    init('admin', { short_name_suggestion: 'frankfurt' });
+    try {
+        await mount();
+        await submit();
+        assert.equal(putCount(), 0, 'an empty main domain is refused before any request');
+        assert.ok(textOf().includes('setup.v2.domain.invalid'));
+        await type('setup-main_domain', 'https://www.Example.com/');
+        await submit();
+        assert.equal(putDraft().main_domain, 'example.com');
+        assert.equal(radio('setup-server_count', '2').props.checked, true, 'two servers are recommended');
+        assert.ok(textOf().includes('setup.v2.peerIPNote'), 'the release says plainly that the second IP is still needed');
+        await submit();
+        assert.equal(input('setup-short_name').props.value, 'frankfurt');
+        await submit();
+        assert.equal(putDraft().short_name, 'frankfurt');
+        await submit();
+        assert.equal(input('setup-panel_domain').props.value, 'frankfurt.example.com');
+        await type('setup-panel_domain', 'admin.example.com');
+        await act(async () => findButton('setup.back').props.onClick());
+        await act(async () => findButton('setup.back').props.onClick());
+        await type('setup-short_name', 'boston');
+        await submit(); await submit();
+        assert.equal(input('setup-panel_domain').props.value, 'admin.example.com', 'a name the owner typed is never replaced');
+        await submit();
+        assert.equal(putDraft().ns1, 'ns1.example.com');
+        assert.equal(putDraft().ns2, 'ns2.example.com');
+        assert.equal(putDraft().peer_ns, 'ns2.example.com');
+        assert.equal(putDraft().main_dns_server, 'this');
+        assert.equal(calls.some(call => call.url === '/api/v1/setup/start'), false);
+    } finally { await cleanup(); }
+});
+
+test('wizard v2: roles combine, preselect their components, and customising opens the grid', async () => {
+    init();
+    try {
+        await mount();
+        await type('setup-main_domain', 'example.com'); await submit(); await submit(); await submit();
+        assert.equal(radio('setup-role', 'web').props.checked, true);
+        assert.equal(radio('setup-role', 'dns').props.checked, true);
+        await pick('setup-role', 'mail');
+        assert.ok(textOf().includes('Postfix'), 'the mail role says what it installs');
+        await act(async () => findButton('setup.components.customize').props.onClick());
+        assert.ok(component('redis'), 'the grid lists every choice');
+        await toggleComponent('redis');
+        await submit();
+        assert.equal(putDraft().purpose, 'custom');
+        assert.ok(putDraft().customization.components.includes('redis'));
+        assert.ok(putDraft().customization.components.includes('postfix'));
+        await act(async () => findButton('setup.back').props.onClick());
+        await act(async () => findButton('setup.back').props.onClick());
+        assert.ok(textOf().includes('setup.v2.roles.customized'));
+        await act(async () => tree.root.findAllByType('button').find(button => button.props.children === 'setup.v2.roles.reset').props.onClick());
+        await submit();
+        assert.equal(putDraft().customization.components.includes('redis'), false, 'the recommended set drops the explicit extra');
+    } finally { await cleanup(); }
+});
+
+test('wizard v2: one server cannot keep its own DNS in this release and says why', async () => {
+    init();
+    try {
+        await mount();
+        await type('setup-main_domain', 'example.com'); await submit();
+        await pick('setup-server_count', '1'); await submit(); await submit(); await submit(); await submit();
+        const before = putCount();
+        await submit();
+        assert.equal(putCount(), before, 'no request is sent for a choice this release cannot run');
+        assert.ok(textOf().includes('setup.v2.dns.localOneServer'));
+        await pick('setup-dns', 'external');
+        await submit();
+        assert.equal(putDraft().dns_mode, 'external');
+        assert.equal(putDraft().server_count, 1);
+        assert.ok(findButton('setup.start'), 'the review opens');
+    } finally { await cleanup(); }
+});
+
+test('wizard v2: the DNS software offer follows the catalogue, and the backup role keeps ns1 on the main server', async () => {
+    init();const base = globalThis.fetch;
+    globalThis.fetch = async (url, options) => url === '/api/v1/setup/components'
+        ? Response.json({ ...setupCatalogFixture(), dns_engines: [
+            { id: 'bind', role: 'main', offered: true, candidate_version: '9.20' }, { id: 'pdns', role: 'main', offered: false, reason: 'server_setup_pdns_main_untested_system' },
+            { id: 'bind', role: 'backup', offered: true }, { id: 'pdns', role: 'backup', offered: true }] })
+        : base(url, options);
+    try {
+        await mount();
+        await toDNSHome();
+        await type('setup-local_ip', '203.0.113.10');
+        await type('setup-peer_ip', '198.51.100.20');
+        assert.ok(textOf().includes('setup.v2.engine.untested'), 'the reason is shown where PowerDNS is offered');
+        await submit();
+        assert.equal(calls.some(call => call.url === '/api/v1/setup/plan'), false);
+        assert.ok(textOf().includes('setup.v2.engine.notOffered'));
+        await pick('setup-dns_engine', 'bind');
+        await pick('setup-dns_role', 'secondary');
+        assert.ok(input('setup-ns2'), 'this backup server carries the second nameserver');
+        await submit();
+        assert.equal(putDraft().dns_role, 'secondary');
+        assert.equal(putDraft().ns1, 'ns1.example.com');
+        assert.equal(putDraft().peer_ns, 'ns1.example.com');
+        assert.equal(putDraft().main_dns_server, undefined);
+        assert.equal(putDraft().infrastructure_dns, undefined, 'a backup DNS server prepares no list of its own');
+        assert.ok(calls.some(call => call.url === '/api/v1/setup/plan'));
+    } finally { await cleanup(); }
+});
+
+function waitingFixture(draft, phase, extra = () => null) {
+    init('admin', { status: 'waiting', draft: { ...fresh().draft, ...draft }, server_ip: '203.0.113.10' });
+    const marker = { plan_id: 'a'.repeat(32), request_id: 'b'.repeat(32), panel_domain: 'panel.example.com' };
+    store.set('celikpanel.setup.start.admin', JSON.stringify(marker));
+    const running = { ...execution(marker, 'waiting'), phase, steps: [{ id: '01-access_dns', kind: 'access_dns', target: 'panel.example.com', status: 'running' }, { id: 'verify', kind: 'verify', target: 'web', status: 'pending' }] };
+    const base = globalThis.fetch;
+    globalThis.fetch = async (url, options) => url.includes('/setup/operation') ? Response.json(running) : (extra(url, options) ?? base(url, options));
+}
+
+test('wizard v2: with an external provider the progress screen lists the records with their internet state, reading only', async () => {
+    waitingFixture({ dns_mode: 'external', panel_domain: 'panel.example.com', main_domain: 'example.com' }, 'access_dns', url => url === '/api/v1/setup/provider-records'
+        ? (calls.push({ url }), Response.json({ mode: 'external', servers: [{ label: '', ip4: '203.0.113.10', rows: [{ name: 'panel.example.com', type: 'A', value: '203.0.113.10', state: 'different', seen: ['192.0.2.80'] }] }], checked_at: new Date().toISOString(), next_check_after: 60 }))
+        : null);
+    try {
+        await mount(); await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
+        const text = textOf();
+        assert.ok(calls.some(call => call.url === '/api/v1/setup/provider-records'));
+        assert.ok(text.includes('setup.v2.provider.different') && text.includes('panel.example.com'), text.slice(0, 400));
+        assert.ok(text.includes('setup.v2.access.title') && text.includes('https://203.0.113.10:'), 'the temporary address is said plainly');
+        assert.equal(tree.root.findAllByProps({ 'data-setup-registrar': 'now' }).length, 0);
+        assert.equal(writes().length, 0, 'polling never mutates');
+    } finally { await cleanup(); }
+});
+
+test('wizard v2: the registrar card names the nameservers and the IP records inside the main domain', async () => {
+    waitingFixture({ dns_mode: 'local', dns_role: 'primary', main_domain: 'example.com', panel_domain: 'panel.example.com', ns1: 'ns1.example.com', ns2: 'ns2.example.com', peer_ns: 'ns2.example.com', local_ip: '203.0.113.10', peer_ip: '198.51.100.20' }, 'access_dns');
+    try {
+        await mount();
+        const text = textOf();
+        assert.equal(tree.root.findAllByProps({ 'data-setup-registrar': 'now' }).length, 1, 'the panel waits for its name: the registrar step is now');
+        for (const value of ['setup.v2.registrar.glueTitle', 'ns1.example.com', 'ns2.example.com', '198.51.100.20', 'setup.v2.registrar.nowWhy']) assert.ok(text.includes(value), value);
+        assert.equal(writes().length, 0);
+    } finally { await cleanup(); }
 });

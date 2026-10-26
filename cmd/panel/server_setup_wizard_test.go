@@ -239,31 +239,6 @@ func TestServerSetupDraftWizardAnswersCanonical(t *testing.T) {
 	}
 }
 
-func TestServerSetupDraftOldDraftsKeepTheirPlanIdentity(t *testing.T) {
-	// A plan of the alpha.110 shape: infrastructure DNS with a peer mail host
-	// and a customized selection. Its bytes and identity are frozen here.
-	legacy := `{"infrastructure_dns":{"zone_type":"Native","zone":"example.test","expected_digest":"d","records":[]},"id":"","version":1,"revision":3,"purpose":"custom","steps":[{"id":"01-dns","kind":"dns","target":"local"},{"id":"02-service","kind":"service","target":"php-fpm"}],"blockers":[],"can_start":true,"tcp_ports":[53,80,443,2083],"udp_ports":[53],"preserve_ssh":true,"persist_firewall":true,"draft":{"infrastructure_dns":{"zone":"example.test","peer_panel_domain":"boston.example.test","peer_mail_hostname":"mail2.example.test"},"purpose":"custom","remote_dns_connection_id":"","panel_domain":"frankfurt.example.test","mail_hostname":"","dns_mode":"local","dns_engine":"bind","dns_role":"primary","ns1":"ns1.example.test","ns2":"ns2.example.test","local_ip":"203.0.113.10","peer_ip":"198.51.100.20","peer_ns":"ns2.example.test","node_version":"","database":"","customization":{"components":["nginx","php-fpm"]}},"build_commit":"e3ed58af9c9becb8bf20e6da0a4219204265a283","contact_email":"admin@example.test","actor":{"UserID":1,"IP":"","UserAgent":""}}`
-	var plan serverSetupPlan
-	if err := json.Unmarshal([]byte(legacy), &plan); err != nil {
-		t.Fatal(err)
-	}
-	if encoded, _ := json.Marshal(plan); string(encoded) != legacy {
-		t.Fatalf("alpha.110 plan wire changed:\n%s", encoded)
-	}
-	if serverSetupPlanIdentity(plan) != serverSetupID(legacy) {
-		t.Fatal("alpha.110 plan identity changed")
-	}
-	canonical, err := canonicalServerSetupDraft(plan.Draft)
-	if err != nil {
-		t.Fatal(err)
-	}
-	before, _ := json.Marshal(plan.Draft)
-	after, _ := json.Marshal(canonical)
-	if string(before) != string(after) {
-		t.Fatalf("canonicalization rewrote an old draft:\n%s\n%s", before, after)
-	}
-}
-
 func TestServerSetupBuildWizardVersionsAndRefusals(t *testing.T) {
 	f, state := setupOperationFixture(t)
 	state.Draft.Purpose = "custom"

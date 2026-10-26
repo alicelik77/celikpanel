@@ -3,7 +3,9 @@ export type SetupPurpose = typeof setupPurposes[number];
 export type SetupDNSMode = 'local' | 'existing' | 'external';
 export interface ServerSetupDraft {
     purpose: SetupPurpose;
-    customization?: { components: string[] };
+    // versions (alpha.111): component id -> the exact vendor package chosen
+    // instead of the distribution's version; absent means the distribution's.
+    customization?: { components: string[]; versions?: Record<string, string> };
     infrastructure_dns?: { zone: string; peer_panel_domain?: string; peer_mail_hostname?: string };
     panel_domain: string;
     mail_hostname: string;
@@ -20,6 +22,12 @@ export interface ServerSetupDraft {
     peer_ns: string;
     node_version: string;
     database: string;
+    // Setup wizard v2 answers (alpha.111), all optional: a draft saved before
+    // them has none and keeps its reviewed plan.
+    main_domain?: string;
+    server_count?: 1 | 2;
+    short_name?: string;
+    main_dns_server?: 'this';
 }
 export interface ServerSetupCheck {
     id: string;
@@ -43,6 +51,9 @@ export interface ServerSetupSnapshot {
     // completion record; extension_base is the draft as it was completed.
     extension?: boolean;
     extension_base?: ServerSetupDraft;
+    // alpha.111: the machine host name's first label when it reads like a
+    // name a person chose; absent otherwise. Never a guess of the panel's.
+    short_name_suggestion?: string;
 }
 const draftStrings = ['remote_dns_connection_id', 'panel_domain', 'mail_hostname', 'ns1', 'ns2', 'local_ip', 'peer_ip', 'peer_ns', 'node_version', 'database'] as const;
 function record(value: unknown): value is Record<string, unknown> {
@@ -66,6 +77,13 @@ function validDraft(draft: unknown): draft is Record<string, unknown> {
     if (customization !== undefined && (!record(customization) || !Array.isArray(customization.components)
         || customization.components.length > 80 || customization.components.some(id => typeof id !== 'string' || !/^[a-z][a-z0-9-]{0,63}$/.test(id))
         || new Set(customization.components).size !== customization.components.length)) return false;
+    const versions = record(customization) ? customization.versions : undefined;
+    if (versions !== undefined && (!record(versions) || Object.keys(versions).length > 8
+        || Object.entries(versions).some(([id, pkg]) => !/^[a-z][a-z0-9-]{0,63}$/.test(id) || typeof pkg !== 'string' || pkg.length > 64))) return false;
+    if (draft.main_domain !== undefined && (typeof draft.main_domain !== 'string' || draft.main_domain.length > 253)) return false;
+    if (draft.server_count !== undefined && draft.server_count !== 1 && draft.server_count !== 2) return false;
+    if (draft.short_name !== undefined && (typeof draft.short_name !== 'string' || draft.short_name.length > 63)) return false;
+    if (draft.main_dns_server !== undefined && draft.main_dns_server !== 'this') return false;
     return true;
 }
 export function decodeServerSetup(value: unknown): ServerSetupSnapshot | null {
@@ -79,6 +97,7 @@ export function decodeServerSetup(value: unknown): ServerSetupSnapshot | null {
     if (value.checks.some(check => !record(check) || typeof check.id !== 'string'
         || !['ready', 'action_required', 'unknown'].includes(String(check.state)) || typeof check.code !== 'string')) return null;
     if (value.server_ip !== undefined && typeof value.server_ip !== 'string') return null;
+    if (value.short_name_suggestion !== undefined && (typeof value.short_name_suggestion !== 'string' || value.short_name_suggestion.length > 63)) return null;
     if (value.status === 'ready' && value.required) return null;
     if (value.extension === true && (value.status === 'ready' || value.required)) return null;
     if (value.guidance !== undefined && !['undecided', 'guided', 'manual'].includes(String(value.guidance))) return null;
@@ -160,7 +179,10 @@ export function setupDetectedIPv4(value?: string): string {
 // authoritative; neither a reviewed plan nor permission to start is stored here.
 // Yalniz sekmenin duzenleme durumu tutulur; sunucu surumu ve islem kabul
 // denetimleri gecerliligini korur. Plan veya baslatma izni burada saklanmaz.
-export type SetupEditorStep = 'purpose' | 'components' | 'access' | 'review';
+// The wizard's editing steps (alpha.111, setup wizard v2). "components" is
+// shown only when the owner customizes the components.
+export const setupWizardSteps = ['domain', 'count', 'name', 'roles', 'components', 'names', 'dnshome', 'review'] as const;
+export type SetupEditorStep = typeof setupWizardSteps[number];
 export const setupEditorKey = (username: string) => `celikpanel.setup.editor.${username}`;
 export interface SetupEditorCheckpoint {
     version: 1;
@@ -172,14 +194,19 @@ export function decodeSetupEditorCheckpoint(raw: string | null, snapshot: Server
     try {
         if (!['new', 'legacy', 'draft'].includes(snapshot.status)) return null;
         const value: unknown = JSON.parse(raw || 'null');
-        if (!record(value) || value.version !== 1 || value.revision !== snapshot.revision
-            || !['purpose', 'components', 'access', 'review'].includes(String(value.step))) return null;
+        if (!record(value) || value.version !== 1 || value.revision !== snapshot.revision) return null;
+        // A checkpoint written before alpha.111 names the old steps: the
+        // purpose step reopens at the start, the access step at the DNS step.
+        // Eski adimlar yeni adimlara eslenir.
+        const legacy: Record<string, SetupEditorStep> = { purpose: 'domain', access: 'dnshome' };
+        const step = legacy[String(value.step)] ?? String(value.step);
+        if (!(setupWizardSteps as readonly string[]).includes(step)) return null;
         const restored = decodeServerSetup({ ...snapshot, draft: value.draft });
-        if (!restored || (value.step === 'components' && !restored.draft.customization && restored.draft.purpose !== 'custom')) return null;
+        if (!restored || (step === 'components' && !restored.draft.customization && restored.draft.purpose !== 'custom')) return null;
         // Review can only be recovered from exactly the server-saved inputs.
         // Inceleme yalniz sunucuda kayitli girdilerle ayniysa geri yuklenir.
-        if (value.step === 'review' && JSON.stringify(restored.draft) !== JSON.stringify(snapshot.draft)) return null;
-        return { version: 1, revision: snapshot.revision, step: value.step as SetupEditorStep, draft: restored.draft };
+        if (step === 'review' && JSON.stringify(restored.draft) !== JSON.stringify(snapshot.draft)) return null;
+        return { version: 1, revision: snapshot.revision, step: step as SetupEditorStep, draft: restored.draft };
     } catch { return null; }
 }
 
@@ -195,4 +222,60 @@ export function setupExtensionChanges(base: ServerSetupDraft | undefined, draft:
     const read = (value: ServerSetupDraft, key: SetupExtensionChangeKey) => key === 'purpose' ? purpose(value) : String(value[key] ?? '');
     return keys.map(key => ({ key, before: read(base, key), after: read(draft, key) }))
         .filter(change => change.before !== change.after);
+}
+
+// Setup wizard v2 (alpha.111): the main domain is asked once and first; every
+// other name is proposed from it and stays editable.
+// Ana alan adi bir kez ve ilk sorulur; diger adlar ondan onerilir.
+const dnsLabel = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+export function normalizeSetupDomain(value: string): string {
+    return value.trim().toLowerCase().replace(/^[a-z][a-z0-9+.-]*:\/\//, '').replace(/[/?#].*$/, '').replace(/:\d+$/, '').replace(/^www\./, '').replace(/\.$/, '');
+}
+export function validSetupDomain(value: string): boolean {
+    const labels = value.split('.');
+    return value.length <= 253 && labels.length >= 2 && labels.every(item => dnsLabel.test(item)) && !/^\d+$/.test(labels[labels.length - 1]);
+}
+export function validSetupShortName(value: string): boolean {
+    return value === '' || dnsLabel.test(value);
+}
+export function setupNameWithin(name: string, domain: string): boolean {
+    const value = name.trim().toLowerCase().replace(/\.$/, '');
+    return !!domain && (value === domain || value.endsWith(`.${domain}`));
+}
+// An extended or reopened setup takes its main domain from the zone it
+// prepared; otherwise the owner is asked (empty).
+export function setupInitialMainDomain(draft: ServerSetupDraft): string {
+    return draft.main_domain || draft.infrastructure_dns?.zone || '';
+}
+export interface SetupProposedNames { panel: string; mail: string; ns1: string; ns2: string }
+export function setupProposedNames(mainDomain: string, shortName: string): SetupProposedNames {
+    if (!mainDomain) return { panel: '', mail: '', ns1: '', ns2: '' };
+    return { panel: `${shortName || 'panel'}.${mainDomain}`, mail: `mail.${mainDomain}`, ns1: `ns1.${mainDomain}`, ns2: `ns2.${mainDomain}` };
+}
+// Fills each name the owner has not typed: an empty one, or one still equal to
+// the previous proposal. A name the owner changed is never replaced. The
+// nameserver slots follow the setup protocol (ns1 = main DNS server).
+// Sahibin yazmadigi adlar doldurulur; degistirdigi ad hic degistirilmez.
+export function setupApplyProposedNames(draft: ServerSetupDraft, proposal: SetupProposedNames, previous: SetupProposedNames | null, withMail: boolean): ServerSetupDraft {
+    const fill = (current: string, next: string, before: string | undefined) => !next ? current : (!current.trim() || current === before) ? next : current;
+    const next = { ...draft, panel_domain: fill(draft.panel_domain, proposal.panel, previous?.panel) };
+    if (withMail) next.mail_hostname = fill(draft.mail_hostname, proposal.mail, previous?.mail);
+    next.ns1 = fill(draft.ns1, proposal.ns1, previous?.ns1);
+    next.ns2 = fill(draft.ns2, proposal.ns2, previous?.ns2);
+    const peerKey = next.dns_role === 'primary' ? 'ns2' : 'ns1';
+    if (!draft.peer_ns.trim() || draft.peer_ns === draft[peerKey] || draft.peer_ns === previous?.[peerKey]) next.peer_ns = next[peerKey];
+    return next;
+}
+// The DNS role in the wizard: proposed names keep ns1 on the main DNS server
+// whichever server this is; names the owner typed stay with their server
+// (changeSetupDNSRole).
+export function changeSetupWizardDNSRole(draft: ServerSetupDraft, role: ServerSetupDraft['dns_role'], proposal: SetupProposedNames): ServerSetupDraft {
+    if (role === draft.dns_role) return draft;
+    const proposed = !!proposal.ns1 && [draft.ns1, draft.ns2].sort().join() === [proposal.ns1, proposal.ns2].sort().join();
+    const next: ServerSetupDraft = proposed ? { ...draft, dns_role: role, ns1: proposal.ns1, ns2: proposal.ns2 } : changeSetupDNSRole(draft, role);
+    if (role === 'secondary') delete next.infrastructure_dns;
+    next.peer_ns = next[role === 'primary' ? 'ns2' : 'ns1'];
+    if (role === 'primary' && next.dns_mode === 'local') next.main_dns_server = 'this';
+    else delete next.main_dns_server;
+    return next;
 }

@@ -1328,7 +1328,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         }
         serverSetup.accept(next);
         try {
-            sessionStorage.setItem(setupEditorKey(user.username), JSON.stringify({ version: 1, revision: next.revision, step: 'access', draft: next.draft }));
+            sessionStorage.setItem(setupEditorKey(user.username), JSON.stringify({ version: 1, revision: next.revision, step: 'names', draft: next.draft }));
         } catch { /* the wizard then opens on its first step */ }
         setProfileTarget(null);
         navigate('/setup');

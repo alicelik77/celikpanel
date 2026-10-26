@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowRight, Check, Circle, Loader2 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useI18n } from '../i18n';
 import { setupDNSTranslation } from '../i18n/setupDNS';
 import type { TranslationKey } from '../i18n/en';
 import { Link, Navigate } from '../router';
-import { decodeSetupEditorCheckpoint, setupInfrastructureZoneCandidate, changeSetupDNSRole, setupDNSNames, setupDetectedIPv4, chooseSetupPurpose, decodeServerSetup, setupEditorKey, setupExtensionChanges, setupNextPath, setupPurposes, type ServerSetupCheck, type ServerSetupDraft, type ServerSetupSnapshot, type SetupExtensionChangeKey } from '../lib/serverSetup';
+import { decodeSetupEditorCheckpoint, changeSetupWizardDNSRole, setupDNSNames, setupDetectedIPv4, decodeServerSetup, setupEditorKey, setupExtensionChanges, setupNextPath, normalizeSetupDomain, validSetupDomain, validSetupShortName, setupNameWithin, setupInitialMainDomain, setupProposedNames, setupApplyProposedNames, type ServerSetupCheck, type ServerSetupDraft, type ServerSetupSnapshot, type SetupEditorStep, type SetupExtensionChangeKey, type SetupProposedNames } from '../lib/serverSetup';
 import { retryableMailEnrollmentHandoff, continuableMailEnrollment, decodeSetupExecution, decodeSetupMarker, decodeSetupPlan, newSetupRequestID, safeSetupPanelURL, type ServerSetupExecution, type SetupInfrastructureDNSPlan, type ServerSetupPlan, type SetupStartMarker } from '../lib/serverSetupOperation';
 import { ServerSetupShell, useServerSetup } from './ServerSetupGate';
 import { ServerSetupSteps } from './ServerSetupSteps';
@@ -13,10 +13,11 @@ import { ServerSetupDNSConnection } from './ServerSetupDNSConnections';
 import { remoteDNSEndpoint } from '../lib/remoteDNS';
 import { ServerSetupChoice, ServerSetupManualAction } from './ServerSetupChoice';
 import { Button, inputClass, KeepWords, Spinner } from './ui';
+import { SetupCountStep, SetupDNSHomeStep, SetupDomainStep, SetupNameStep, SetupNamesStep, SetupPanelAccessCard, SetupProviderRecordsCard, SetupRegistrarCard, SetupRolesStep, SetupWizardInput, setupEngineChoice, setupServerLabel } from './ServerSetupWizardSteps';
 import { AddressLink } from './AddressLink';
 import { ServerSetupComponents, useSetupComponentCatalog } from './ServerSetupComponents';
 import { setupCheckLine, setupComponentName, setupExecutionGuidance, setupHostBusyGuidance, setupHostingRootBlockerValues, setupPlanReopened, setupStepState, setupStepStateLabel, type SetupGuidanceText } from '../lib/serverSetupGuidance';
-import { setupEffectiveComponents, setupPresetComponents } from '../lib/serverSetupComponents';
+import { applySetupRoles, resetSetupCustomization, setupCustomized, setupDraftRoles, setupEffectiveComponents, setupRolesPreset } from '../lib/serverSetupComponents';
 import { componentName } from '../lib/componentName';
 import { handoverAddress, handoverSettled, plannedHandoverDrop, setupHandover, setupStartMarkerKey } from '../lib/panelHandover';
 import { startVisibleReads } from '../lib/visibleReads';
@@ -26,7 +27,7 @@ function useSetupI18n() {
     return { ...i18n, t: (key: TranslationKey, values?: Record<string, string | number>) => setupDNSTranslation(i18n.locale, key, values) ?? i18n.t(key, values) };
 }
 
-type Step = 'purpose' | 'components' | 'access' | 'review' | 'progress';
+type Step = SetupEditorStep | 'progress';
 const requestOptions = (body: unknown) => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 async function setupFetch(url: string, options?: RequestInit) {
     const controller = new AbortController();
@@ -58,6 +59,8 @@ const codeKey: Record<string, TranslationKey> = {
     server_setup_mail_enrollment_busy: 'setup.blocker.mailEnrollmentBusy',
     server_setup_dns_identity_required: 'setup.blocker.dnsIdentity',
     server_setup_hosting_requires_dns_publisher: 'setup.publisher.endpointRequired',
+    server_setup_main_dns_server_mismatch: 'setup.v2.blocker.mainDNS',
+    server_setup_local_dns_requires_two_servers: 'setup.v2.dns.localOneServer',
     server_setup_dns_publisher_endpoint_required: 'setup.publisher.endpointRequired',
     server_setup_dns_publisher_required: 'setup.publisher.waitingHelp',
     server_setup_dns_readiness_required: 'setup.publisher.pairWaiting',
@@ -196,7 +199,17 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         try { return decodeSetupEditorCheckpoint(sessionStorage.getItem(editorKey(user.username)), initial); }
         catch { return null; }
     });
-    const [draft, setDraft] = useState(restoredEditor?.draft || initial.draft);
+    // The wizard's own answers start from the saved draft: the main domain (or
+    // the zone an earlier setup prepared), two servers (recommended) and the
+    // host name's suggestion for the short name. / Ilk degerler.
+    const [draft, setDraft] = useState<ServerSetupDraft>(() => restoredEditor?.draft || {
+        ...initial.draft,
+        main_domain: setupInitialMainDomain(initial.draft) || undefined,
+        server_count: initial.draft.server_count ?? 2,
+        short_name: initial.draft.short_name ?? (initial.short_name_suggestion || undefined),
+    });
+    const proposalRef = useRef<SetupProposedNames | null>(null);
+    const [componentsOpen, setComponentsOpen] = useState(false);
     const restoreReview = useRef(restoredEditor?.step === 'review');
     const restoredSnapshot = useRef(initial);
     const localIPTouched = useRef(false);
@@ -206,7 +219,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         setDraft(previous => previous.local_ip ? previous : { ...previous, local_ip: detectedIP });
     }, [detectedIP, snapshot.status]);
     const dnsNames = setupDNSNames(draft);
-    const [step, setStep] = useState<Step>(restoredEditor?.step || (initial.status === 'new' || initial.status === 'legacy' || (initial.extension && initial.status === 'draft') ? 'purpose' : initial.draft.customization ? 'components' : 'access'));
+    const [step, setStep] = useState<Step>(restoredEditor?.step || (initial.status === 'new' || initial.status === 'legacy' || (initial.extension && initial.status === 'draft') || !initial.draft.main_domain ? 'domain' : 'dnshome'));
     const [plan, setPlan] = useState<ServerSetupPlan | null>(null);
     const [execution, setExecution] = useState<ServerSetupExecution | null>(null);
     const [marker, setMarker] = useState<SetupStartMarker | null>(() => {
@@ -340,7 +353,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                     setPlan(reviewed); setAcknowledged(false);
                 } catch {
                     if (!alive.current || epoch !== pollEpoch.current) return;
-                    setStep('access'); setError(t('setup.planFailed'));
+                    setStep('dnshome'); setError(t('setup.planFailed'));
                 }
             }
             setExecution(next); setResolving(false); setReconnecting(false);
@@ -431,8 +444,23 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         if (key === 'dns_mode' || key === 'remote_dns_connection_id') setRemoteVerified(false);
         setDraft(previous => ({ ...previous, [key]: value, ...(key === 'dns_mode' && value !== 'local' ? { infrastructure_dns: undefined } : {}) })); setPlan(null); setAcknowledged(false); setError('');
     }
+    function updateDraft(update: (previous: ServerSetupDraft) => ServerSetupDraft) {
+        setDraft(update); setPlan(null); setAcknowledged(false); setError('');
+    }
+    // DNS home: unticking the DNS role is the external provider; the main DNS
+    // server answer follows the role. / DNS yeri ve gorev.
+    function chooseDNSMode(mode: ServerSetupDraft['dns_mode']) {
+        setRemoteVerified(false);
+        updateDraft(previous => {
+            const next: ServerSetupDraft = { ...previous, dns_mode: mode };
+            if (mode === 'local' && next.dns_role === 'primary') next.main_dns_server = 'this';
+            else { delete next.main_dns_server; }
+            if (mode !== 'local') delete next.infrastructure_dns;
+            return next;
+        });
+    }
     async function saveDraft(): Promise<ServerSetupSnapshot> {
-        const response = await setupFetch('/api/v1/setup', { ...requestOptions({ revision: snapshot.revision, draft: { ...draft, ...(secondaryHosting ? { dns_hosting_management: hostingDNSManagement, ...(hostingDNSManagement === 'manual' ? { dns_publisher_endpoint: '' } : {}) } : {}) } }), method: 'PUT' });
+        const response = await setupFetch('/api/v1/setup', { ...requestOptions({ revision: snapshot.revision, draft: { ...draft, ...(draft.main_domain ? { main_domain: normalizeSetupDomain(draft.main_domain) } : {}), ...(draft.short_name !== undefined ? { short_name: draft.short_name.trim().toLowerCase() || undefined } : {}), ...(secondaryHosting ? { dns_hosting_management: hostingDNSManagement, ...(hostingDNSManagement === 'manual' ? { dns_publisher_endpoint: '' } : {}) } : {}) } }), method: 'PUT' });
         if (response.status === 409) throw new Error(t('setup.conflict'));
         if (!response.ok) throw new Error(t('setup.saveFailed'));
         const next = decodeServerSetup(await response.json());
@@ -442,18 +470,21 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     }
     async function next(event: FormEvent) {
         event.preventDefault();
-        if (step === 'components' && (!catalog || catalog.inventory_state !== 'ready')) { setError(t('setup.components.inventoryUnknown')); return; }
-        if (step === 'components' && emptySelectionInvalid) { setError(t('setup.components.chooseRequired')); return; }
-        if (step === 'access' && draft.dns_mode === 'local' && dnsNames.mismatch) { setError(t('setup.dnsMappingMismatch')); return; }
-        if (step === 'access' && dnsSelectionError) { setError(t(dnsSelectionError)); return; }
-        if (step === 'access' && draft.dns_mode === 'existing' && !remoteVerified) { setError(t('setup.remote.proof.failed')); return; }
+        const problem = stepProblem();
+        if (problem) { setError(t(problem)); return; }
         if (pendingRef.current) return;
         pendingRef.current = true; setBusy(true); setError('');
         try {
             const saved = await saveDraft();
             if (!alive.current) return;
-            if (step === 'purpose') { setStep(saved.draft.customization || saved.draft.purpose === 'custom' ? 'components' : 'access'); return; }
-            if (step === 'components') { setStep('access'); return; }
+            if (step !== 'dnshome') {
+                const after = steps[steps.indexOf(step) + 1] as Step;
+                // Names are proposed from the main domain and the short name
+                // when the names step opens; a name the owner typed is kept.
+                if (after === 'names' || after === 'dnshome') proposeNames();
+                setStep(after);
+                return;
+            }
             const response = await setupFetch('/api/v1/setup/plan', requestOptions({ revision: saved.revision }));
             if (!response.ok) throw new Error(t('setup.planFailed'));
             const reviewed = decodeSetupPlan(await response.json(), saved.revision);
@@ -480,7 +511,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                     // The server checks a previously committed request first.
                     localStorage.removeItem(markerKey(user.username));
                     markerRef.current = null; setMarker(null); setPlan(null); setAcknowledged(false);
-                    setStep('access'); setError(t('setup.conflict')); return;
+                    setStep('dnshome'); setError(t('setup.conflict')); return;
                 }
                 await reconcile(); return;
             }
@@ -558,7 +589,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
             } else {
                 const next = decodeServerSetup(await response.json());
                 // An extension opens on the purpose step, whatever this screen showed.
-                if (settled(next)) { pendingRef.current = false; if (action === 'begin') setStep('purpose'); accept(next); return; }
+                if (settled(next)) { pendingRef.current = false; if (action === 'begin') setStep('domain'); accept(next); return; }
             }
         } catch { code = 'unanswered'; }
         let latest: ServerSetupSnapshot | null = null;
@@ -566,7 +597,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         pendingRef.current = false;
         if (!alive.current) return;
         setExtendBusy(false);
-        if (settled(latest) && action === 'begin') setStep('purpose');
+        if (settled(latest) && action === 'begin') setStep('domain');
         if (latest) accept(latest);
         if (settled(latest)) return;
         setExtendError(code === 'server_setup_busy' ? 'setup.extend.busy' : code === 'server_setup_extend_not_ready' ? 'setup.extend.notReady' : action === 'cancel' ? 'setup.extend.stopFailed' : 'setup.extend.failed');
@@ -579,7 +610,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         pollEpoch.current++;
         setVerificationResult(null); setFinishingRun(null); setFinishingSlow(false);
         try { localStorage.removeItem(markerKey(user.username)); } catch { /* next start still requires storage */ }
-        markerRef.current = null; setMarker(null); setExecution(null); setPlan(null); setAcknowledged(false); setStep('access');
+        markerRef.current = null; setMarker(null); setExecution(null); setPlan(null); setAcknowledged(false); setStep('dnshome');
     }
     async function reviseWaiting() {
         if (execution?.status !== 'waiting' || !['verification', 'dns_publisher', 'dns_readiness', 'access_dns', 'primary_dns', 'infrastructure_dns'].includes(execution.phase) || pendingRef.current) return;
@@ -623,11 +654,19 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     const handoverNotice = handoverAhead?.elsewhere && handoverAhead.phase !== 'done' ? handoverAhead : null;
     const handoverLink = handoverNotice || (handoverDrop?.elsewhere ? handoverDrop : null);
     const handoverURL = handoverLink ? handoverAddress(handoverLink.host, window.location.port, execution?.panel_url) : '';
-    const customized = !!draft.customization || draft.purpose === 'custom';
-    const steps: Step[] = ['purpose', ...(customized ? ['components' as const] : []), 'access', 'review', 'progress'];
+    // Setup wizard v2 (alpha.111): roles, the optional components step, the
+    // names proposed from the main domain and the DNS home.
+    const roles = setupDraftRoles(draft, catalog);
+    const customized = setupCustomized(draft, catalog);
+    const explicitSelection = !!draft.customization || draft.purpose === 'custom';
+    const steps: Step[] = ['domain', 'count', 'name', 'roles', ...(customized || componentsOpen ? ['components' as const] : []), 'names', 'dnshome', 'review', 'progress'];
     const selectedComponents = setupEffectiveComponents(draft, catalog);
-    const emptySelectionInvalid = customized && selectedComponents.size === 0 && !['dns', 'custom'].includes(draft.purpose);
-    const isDNS = draft.purpose === 'dns' || (draft.purpose === 'custom' && selectedComponents.size === 0);
+    const serverCount = draft.server_count ?? 2;
+    const mainDomain = draft.main_domain ? normalizeSetupDomain(draft.main_domain) : '';
+    const proposal = setupProposedNames(validSetupDomain(mainDomain) ? mainDomain : '', draft.short_name || '');
+    const serverLabel = setupServerLabel(t, draft.short_name);
+    const emptySelectionInvalid = selectedComponents.size === 0 && draft.dns_mode !== 'local';
+    const isDNS = selectedComponents.size === 0;
     const needsDNSPublisher = ['nginx', 'node', 'postfix', 'roundcube'].some(id => selectedComponents.has(id));
     const localPrimary = draft.dns_mode === 'local' && draft.dns_role === 'primary';
     const panelDNSIP = draft.dns_mode === 'local' ? draft.local_ip : snapshot.server_ip;
@@ -635,15 +674,45 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     const hostingDNSManagement = draft.dns_hosting_management || (draft.dns_publisher_endpoint ? 'panel' : 'manual');
     const automaticPublisher = secondaryHosting && hostingDNSManagement === 'panel';
     const publisherEndpoint = remoteDNSEndpoint(draft.dns_publisher_endpoint || '');
-    // Whether PowerDNS may be the paired primary is the server's product
-    // gate; the review shows its pdns_primary_switch_paused blocker.
     const dnsSelectionError: TranslationKey | null = isDNS && draft.dns_mode !== 'local'
         ? 'setup.components.localDNSRequired'
         : automaticPublisher && !publisherEndpoint
             ? 'setup.publisher.endpointRequired' : null;
+    const fullName = (value: string) => validSetupDomain(value.trim().toLowerCase().replace(/\.$/, ''));
+    function stepProblem(): TranslationKey | null {
+        switch (step) {
+        case 'domain': return validSetupDomain(mainDomain) ? null : 'setup.v2.domain.invalid';
+        case 'name': return validSetupShortName((draft.short_name || '').trim().toLowerCase()) ? null : 'setup.v2.name.invalid';
+        case 'roles': return roles.web || roles.mail || roles.dns || selectedComponents.size > 0 ? null : 'setup.v2.roles.required';
+        case 'components':
+            if (!catalog || catalog.inventory_state !== 'ready') return 'setup.components.inventoryUnknown';
+            return emptySelectionInvalid && !roles.dns ? 'setup.components.chooseRequired' : null;
+        case 'names':
+            if (!fullName(draft.panel_domain) || (isMail && !fullName(draft.mail_hostname))) return 'setup.v2.names.invalid';
+            if (localPrimary && (!setupNameWithin(draft.panel_domain, mainDomain) || (isMail && !setupNameWithin(draft.mail_hostname, mainDomain)))) return 'setup.v2.names.outsideZoneShort';
+            return null;
+        case 'dnshome':
+            if (draft.dns_mode === 'local' && serverCount === 1) return 'setup.v2.dns.localOneServer';
+            if (draft.dns_mode === 'local' && dnsNames.mismatch) return 'setup.dnsMappingMismatch';
+            if (draft.dns_mode === 'local' && setupEngineChoice(catalog, draft.dns_engine, draft.dns_role)?.offered === false) return 'setup.v2.engine.notOffered';
+            if (dnsSelectionError) return dnsSelectionError;
+            if (draft.dns_mode === 'existing' && !remoteVerified) return 'setup.remote.proof.failed';
+            return null;
+        default: return null;
+        }
+    }
+    function proposeNames() {
+        const current = proposal;
+        updateDraft(previous => {
+            const next = setupApplyProposedNames(previous, current, proposalRef.current, roles.mail);
+            if (next.dns_mode === 'local' && next.dns_role === 'primary') next.main_dns_server = 'this';
+            return next;
+        });
+        proposalRef.current = current;
+    }
     const isMail = ['postfix', 'dovecot', 'rspamd', 'roundcube'].some(id => selectedComponents.has(id));
     const isNode = selectedComponents.has('node');
-    const nextPath = setupNextPath(snapshot.draft.purpose, customized ? selectedComponents : undefined);
+    const nextPath = setupNextPath(snapshot.draft.purpose, explicitSelection ? selectedComponents : undefined);
     const nextLabel = nextPath === '/dns-infrastructure' ? 'setup.nextDNS' : nextPath === '/services' ? 'setup.nextComponents' : isNode ? 'setup.nextApplication' : 'setup.nextWebsite';
     const progressCurrentStep = execution?.steps.find(item => ['running', 'failed'].includes(item.status));
     const observingMailEnrollment = progressCurrentStep?.kind === 'mail_enrollment' && execution?.status === 'running' && ['running', 'rollback', 'unknown', 'not_recorded', 'handoff'].some(reason => execution.error?.code === `server_setup_mail_enrollment_${reason}`);
@@ -681,7 +750,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
             <p className="mt-3 max-w-2xl text-fg-muted">{t(completed ? 'setup.completeHelp' : hasOperation ? 'setup.guide.progressIntro' : extending ? 'setup.extend.intro' : 'setup.intro')}</p>
         </div>
         {completed ? <section className="mt-8 max-w-3xl space-y-6" aria-labelledby="setup-ready-title">
-            <div className="flex items-start gap-3"><Check className="mt-1 h-5 w-5 shrink-0 text-success" aria-hidden="true" /><div><h2 id="setup-ready-title" className="text-lg font-semibold">{t(customized ? 'setup.purpose.custom' : `setup.purpose.${snapshot.draft.purpose}`)}</h2><p className="mt-1 text-sm text-fg-muted">{t('setup.completeServices')}</p></div></div>
+            <div className="flex items-start gap-3"><Check className="mt-1 h-5 w-5 shrink-0 text-success" aria-hidden="true" /><div><h2 id="setup-ready-title" className="text-lg font-semibold">{t('setup.v2.ready', { server: setupServerLabel(t, snapshot.draft.short_name) })}</h2><p className="mt-1 text-sm text-fg-muted">{t('setup.completeServices')}</p></div></div>
             <Link to={nextPath} className="inline-flex items-center gap-3 rounded-lg bg-primary px-5 py-3 font-semibold text-primary-fg hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">{t(nextLabel)}<ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
             {/* What extending does and does not do, said before the action (D-033). */}
             <section aria-labelledby="setup-extend-title" className="border-t border-border pt-6" data-setup-extend="">
@@ -730,6 +799,9 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                     {progressChecks.length > 0 && waitingVerification && !guidance?.checks && <ul className="mt-5 list-disc space-y-2 pl-5 text-sm text-fg-muted">{progressChecks.map(check => <li key={check.id} className="break-words">{checkSentence(check)}</li>)}</ul>}
                     {/* After everything that explains the current state, and still above the step list. */}
                     {handoverNotice && <SetupHandoverNotice host={handoverNotice.host} url={handoverURL} />}
+                    {execution && !certificateReady && execution.status !== 'failed' && <SetupPanelAccessCard ip={snapshot.server_ip || draft.local_ip} port={window.location.port || '2083'} panelDomain={marker?.panel_domain || draft.panel_domain} />}
+                    {execution && execution.status !== 'failed' && draft.dns_mode === 'external' && <SetupProviderRecordsCard />}
+                    {execution && execution.status !== 'failed' && draft.dns_mode === 'local' && draft.ns1 && draft.ns2 && <SetupRegistrarCard draft={draft} mainDomain={mainDomain} now={execution.phase === 'access_dns' || (draft.dns_role === 'secondary' && execution.status === 'succeeded')} />}
                     <ol className="mt-6 divide-y divide-border" aria-live="polite">
                         {execution?.steps.map(item => {
                             // The step's real state: a stopped run shows nothing in progress, and a
@@ -763,81 +835,44 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                         </div>}
                     </div>}
                 </section> : <form onSubmit={next} className="min-w-0">
-                    {step === 'purpose' && <fieldset disabled={busy}>
-                        <legend className="text-xl font-semibold">{t('setup.purposeTitle')}</legend>
-                        <div className="mt-4 divide-y divide-border rounded-xl border border-border bg-surface">
-                            {setupPurposes.map(purpose => <div key={purpose} className={`first:rounded-t-xl last:rounded-b-xl ${draft.purpose === purpose ? 'bg-surface-2' : 'hover:bg-surface-subtle'}`}>
-                                <label className="flex cursor-pointer items-start gap-4 px-4 py-4 sm:px-5"><input type="radio" name="setup-purpose" value={purpose} checked={draft.purpose === purpose} onChange={() => { setDraft(previous => chooseSetupPurpose(previous, purpose)); setPlan(null); }} className="mt-1 h-4 w-4 shrink-0 accent-primary" /><span className="grid min-w-0 flex-1 gap-1 xl:grid-cols-3 xl:gap-5"><span className="font-semibold"><span id={`setup-purpose-title-${purpose}`}>{t(`setup.purpose.${purpose}`)}</span>{purpose === 'web' && <span className="mt-1 block text-xs font-normal text-fg-muted">{t('setup.recommended')}</span>}</span><span className="text-sm leading-6 text-fg-muted xl:col-span-2"><KeepWords text={t(`setup.purpose.${purpose}.help`)} /></span></span></label>
-                                {draft.purpose === purpose && purpose !== 'custom' && <button type="button" disabled={!catalog || busy} aria-describedby={`setup-purpose-title-${purpose}`} className="mb-3 ml-12 inline-flex min-h-9 items-center text-sm font-medium text-primary underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60 sm:ml-[3.25rem]" onClick={() => { if (!catalog) return; change('customization', { components: draft.customization?.components || setupPresetComponents(draft, catalog) }); setStep('components'); }}>{t('setup.components.customize')}</button>}
-                            </div>)}
-                        </div>
-                        <p className="mt-4 text-sm text-fg-muted">{t('setup.purposeHelp')}</p>
+                    {step === 'domain' && <SetupDomainStep value={draft.main_domain || ''} invalid={!!error && !validSetupDomain(mainDomain)} onChange={value => updateDraft(previous => ({ ...previous, main_domain: value }))} />}
+                    {step === 'count' && <SetupCountStep value={serverCount} onChange={value => updateDraft(previous => ({ ...previous, server_count: value }))} />}
+                    {step === 'name' && <SetupNameStep value={draft.short_name || ''} suggestion={snapshot.short_name_suggestion} mainDomain={mainDomain} invalid={!validSetupShortName((draft.short_name || '').trim().toLowerCase())} onChange={value => updateDraft(previous => ({ ...previous, short_name: value }))} />}
+                    {step === 'roles' && <>
+                        <SetupRolesStep roles={roles} catalog={catalog} server={serverLabel} serverCount={serverCount} customized={customized} disabled={busy}
+                            onRoles={next => { if (catalog) updateDraft(previous => applySetupRoles(previous, next, catalog)); else updateDraft(previous => ({ ...previous, dns_mode: next.dns ? 'local' : previous.dns_mode === 'local' ? 'external' : previous.dns_mode })); }}
+                            onCustomize={() => { if (!catalog) return; setComponentsOpen(true); updateDraft(previous => ({ ...previous, purpose: 'custom', customization: previous.customization || { components: setupRolesPreset(roles, catalog) } })); setStep('components'); }}
+                            onReset={() => { if (catalog) { setComponentsOpen(false); updateDraft(previous => resetSetupCustomization(previous, catalog)); } }} />
                         {catalogFailed && <p role="alert" className="mt-3 text-sm text-fg-muted">{t('setup.components.loadFailed')} <Button type="button" onClick={reloadCatalog}>{t('common.retry')}</Button></p>}
-                    </fieldset>}
-                    {step === 'components' && (catalog ? <ServerSetupComponents catalog={catalog} selected={draft.customization?.components || []} disabled={busy} onChange={components => change('customization', { components })} /> : <div role={catalogFailed ? 'alert' : 'status'} className="space-y-3"><h2 className="text-xl font-semibold">{t('setup.components.title')}</h2><p className="text-sm text-fg-muted">{t(catalogFailed ? 'setup.components.loadFailed' : 'setup.components.loading')}</p>{catalogFailed && <Button type="button" onClick={reloadCatalog}>{t('common.retry')}</Button>}</div>)}
-                    {step === 'components' && emptySelectionInvalid && <p role="alert" className="mt-4 text-sm text-danger">{t('setup.components.chooseRequired')}</p>}
+                    </>}
+                    {step === 'components' && (catalog ? <ServerSetupComponents catalog={catalog} selected={draft.customization?.components || []} disabled={busy}
+                        versions={draft.customization?.versions || {}}
+                        onVersions={versions => updateDraft(previous => ({ ...previous, purpose: 'custom', customization: { components: previous.customization?.components || [], ...(Object.keys(versions).length ? { versions } : {}) } }))}
+                        onChange={components => updateDraft(previous => {
+                            const versions = Object.fromEntries(Object.entries(previous.customization?.versions || {}).filter(([id]) => setupEffectiveComponents({ ...previous, customization: { components } }, catalog).has(id)));
+                            return { ...previous, purpose: 'custom', customization: { components, ...(Object.keys(versions).length ? { versions } : {}) } };
+                        })} /> : <div role={catalogFailed ? 'alert' : 'status'} className="space-y-3"><h2 className="text-xl font-semibold">{t('setup.components.title')}</h2><p className="text-sm text-fg-muted">{t(catalogFailed ? 'setup.components.loadFailed' : 'setup.components.loading')}</p>{catalogFailed && <Button type="button" onClick={reloadCatalog}>{t('common.retry')}</Button>}</div>)}
+                    {step === 'components' && isNode && <div className="mt-6 max-w-md"><SetupNodeVersion value={draft.node_version} onChange={value => change('node_version', value)} /></div>}
+                    {step === 'components' && emptySelectionInvalid && !roles.dns && <p role="alert" className="mt-4 text-sm text-danger">{t('setup.components.chooseRequired')}</p>}
                     {step === 'components' && catalog?.inventory_state === 'unknown' && <div className="mt-4"><Button type="button" disabled={busy} onClick={reloadCatalog}>{t('common.retry')}</Button></div>}
-                    {step === 'access' && <fieldset disabled={busy} className="space-y-6">
-                        <legend className="mb-0 text-xl font-semibold">{t('setup.accessTitle')}</legend>
-                        <div className="space-y-4"><SetupInput name="panel_domain" label={t('setup.panelDomain')} value={draft.panel_domain} onChange={value => change('panel_domain', value)} placeholder="panel.example.com" required /><p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.panelDomainShort')}</p>
-                            {panelDNSIP && draft.panel_domain && <p className="break-words rounded-lg bg-surface-2 px-4 py-3 text-sm">{t('setup.infrastructure.panelRecord', { name: draft.panel_domain, ip: panelDNSIP })}</p>}
-                        </div>
-                        {isMail && <div className="space-y-3"><SetupInput name="mail_hostname" label={t('setup.mailHostname')} value={draft.mail_hostname} onChange={value => change('mail_hostname', value)} placeholder="mail.example.com" required /><p className="text-sm leading-6 text-fg-muted">{t('setup.mailHostnameHelp')}</p></div>}
-                        <fieldset><legend className="font-semibold">{t('setup.dnsTitle')}</legend><p className="mt-2 text-sm text-fg-muted">{t('setup.dnsHelp')}</p>
-                            <div className="mt-4 grid gap-3 xl:grid-cols-3">{(['local', 'external', 'existing'] as const).map(mode => <label key={mode} className={`flex items-start gap-3 rounded-lg border border-border p-4 ${draft.dns_mode === mode ? 'bg-surface-2 ring-1 ring-primary' : 'bg-surface'} ${isDNS && mode !== 'local' ? 'text-fg-muted' : 'cursor-pointer hover:bg-surface-2'}`}><input type="radio" name="setup-dns" value={mode} checked={draft.dns_mode === mode} disabled={isDNS && mode !== 'local' && draft.dns_mode !== mode} onChange={() => change('dns_mode', mode)} className="mt-1 h-4 w-4 shrink-0 accent-primary" /><span><span className="font-medium">{t(`setup.dns.${mode}.shortTitle`)}</span><span className="mt-1 block text-sm leading-6 text-fg-muted">{t(`setup.dns.${mode}.shortHelp`)}</span></span></label>)}</div>
-                        </fieldset>
-                        {dnsSelectionError && <p role="alert" className="text-sm leading-6 text-danger">{t(dnsSelectionError)}</p>}
-                        {draft.dns_mode === 'existing' && <ServerSetupDNSConnection value={draft.remote_dns_connection_id} onChange={value => change('remote_dns_connection_id', value)} onValidityChange={setRemoteVerified} />}
-                        {draft.dns_mode === 'local' && <div className="space-y-5">
-                            <p className="text-sm leading-6 text-fg-muted">{t(draft.dns_role === 'secondary' ? 'setup.secondaryHelp' : 'setup.primaryHelp')}</p>
-                            <div className="grid gap-6 rounded-xl border border-border bg-surface p-4 sm:p-5 lg:grid-cols-2 lg:gap-8">
-                                <fieldset className="min-w-0 space-y-4">
-                                    <legend className="mb-0 font-semibold">{t('setup.thisServer')}</legend>
-                                    <SetupSelect name="dns_role" label={t('setup.dnsRole')} value={draft.dns_role} onChange={value => { setDraft(previous => changeSetupDNSRole(previous, value as 'primary' | 'secondary')); setPlan(null); setAcknowledged(false); setError(''); }}><option value="primary">{t('setup.primary')}</option><option value="secondary">{t('setup.secondary')}</option></SetupSelect>
-                                    {automaticPublisher && <p className="text-sm leading-6 text-fg-muted" role="note">{t('setup.publisher.roleHelp')}</p>}
-                                    <SetupInput name={dnsNames.localKey} label={t('setup.nameserverName')} value={draft[dnsNames.localKey]} onChange={value => change(dnsNames.localKey, value)} placeholder="ns1.example.com" required />
-                                    <SetupInput name="local_ip" label={t('setup.publicIPv4')} value={draft.local_ip} onChange={value => change('local_ip', value)} required />
-                                    {detectedIP && draft.local_ip === detectedIP && <p className="text-xs leading-5 text-fg-muted">{t('setup.detectedIPHelp')}</p>}
-                                </fieldset>
-                                <fieldset className="min-w-0 space-y-4 border-t border-border md:border-l md:border-t-0 md:pl-8">
-                                    <legend className="mb-0 font-semibold">{t('setup.otherDNSServer')}</legend>
-                                    <div><p className="mb-2 text-sm font-medium">{t('setup.peerRole')}</p><p className={`${inputClass} flex items-center bg-surface-2 text-sm`} aria-live="polite">{t(draft.dns_role === 'primary' ? 'setup.secondary' : 'setup.primary')}</p></div>
-                                    <SetupInput name={dnsNames.peerKey} label={t('setup.nameserverName')} value={draft[dnsNames.peerKey]} onChange={value => { setDraft(previous => ({ ...previous, [setupDNSNames(previous).peerKey]: value, peer_ns: value })); setPlan(null); setAcknowledged(false); setError(''); }} placeholder="ns2.example.com" required />
-                                    <SetupInput name="peer_ip" label={t('setup.publicIPv4')} value={draft.peer_ip} onChange={value => change('peer_ip', value)} required />
-                                </fieldset>
-                            </div>
-                            {dnsNames.mismatch && <div role="alert" className="space-y-2 rounded-lg border border-warning-mark/40 bg-warning-mark/10 p-4 text-sm"><p>{t('setup.dnsMappingMismatch')}</p><p className="break-all">{t('setup.savedPeerName')}: {draft.peer_ns || '—'}</p><Button type="button" disabled={!draft[dnsNames.peerKey].trim()} onClick={() => change('peer_ns', draft[dnsNames.peerKey])}>{t('setup.useDisplayedPeer')}</Button></div>}
-                            <div className="max-w-sm"><SetupSelect name="dns_engine" label={t('setup.engine')} value={draft.dns_engine} onChange={value => change('dns_engine', value as 'bind' | 'pdns')}><option value="bind">BIND</option><option value="pdns">PowerDNS</option></SetupSelect></div>
-                            <p className="text-sm leading-6 text-fg-muted">{t('setup.dnsStartPrimary')}</p>
-                            <details className="text-sm text-fg-muted"><summary className="cursor-pointer font-medium text-primary">{t('setup.dnsPairDetails')}</summary><p className="mt-3 leading-6">{t('setup.dnsPairOrder')}</p><p className="mt-3 leading-6">{t('setup.dnsNativePeerHelp')}</p></details>
-                        </div>}
-                        {localPrimary && <fieldset className="space-y-3 border-t border-border pt-5">
-                            <legend className="font-semibold">{t('setup.infrastructure.title')}</legend>
-                            <label className="flex cursor-pointer items-start gap-3 text-sm leading-6"><input id="setup-prepare-infrastructure-dns" type="checkbox" checked={!!draft.infrastructure_dns} onChange={event => change('infrastructure_dns', event.target.checked ? { zone: setupInfrastructureZoneCandidate(draft) } : undefined)} className="mt-1 h-4 w-4 shrink-0 accent-primary" /><span>{t('setup.infrastructure.prepare')}</span></label>
-                            {draft.infrastructure_dns ? <div className="space-y-4">
-                                <p id="setup-infrastructure-help" className="text-sm leading-6 text-fg-muted">{t('setup.infrastructure.help')}</p>
-                                <SetupInput name="infrastructure_zone" label={t('setup.infrastructure.zone')} value={draft.infrastructure_dns.zone} onChange={value => change('infrastructure_dns', { ...draft.infrastructure_dns!, zone: value })} placeholder="example.com" required />
-                                <p className="text-sm leading-6 text-fg-muted">{t('setup.infrastructure.zoneHelp')}</p>
-                                <SetupInput name="peer_panel_domain" label={t('setup.infrastructure.peerPanel')} value={draft.infrastructure_dns.peer_panel_domain || ''} onChange={value => change('infrastructure_dns', { ...draft.infrastructure_dns!, peer_panel_domain: value })} placeholder="secondary.example.com" />
-                                <p className="text-sm leading-6 text-fg-muted">{t('setup.infrastructure.peerHelp', { ip: draft.peer_ip || '—' })}</p>
-                                <SetupInput name="peer_mail_hostname" label={t('setup.infrastructure.peerMail')} value={draft.infrastructure_dns.peer_mail_hostname || ''} onChange={value => change('infrastructure_dns', { ...draft.infrastructure_dns!, peer_mail_hostname: value })} placeholder="mail.secondary.example.com" />
-                                <p className="text-sm leading-6 text-fg-muted">{t('setup.infrastructure.peerMailHelp', { ip: draft.peer_ip || '—' })}</p>
-                            </div> : <p className="text-sm leading-6 text-fg-muted">{t('setup.infrastructure.externalHelp')}</p>}
-                        </fieldset>}
-                        {draft.dns_mode === 'local' && draft.dns_role === 'secondary' && <div className="space-y-2 border-t border-border pt-5 text-sm leading-6"><h3 className="font-semibold">{t('setup.infrastructure.title')}</h3><p className="text-fg-muted">{t('setup.infrastructure.secondaryHelp', { name: draft.panel_domain || '—', ip: draft.local_ip || '—', primary: draft.ns1 || '—' })}</p></div>}
-                        {draft.dns_mode !== 'local' && <p className="text-sm leading-6 text-fg-muted">{t('setup.infrastructure.providerHelp')}</p>}
-                        {secondaryHosting && <div className="space-y-3">
-                            <SetupSelect name="dns_hosting_management" label={t('setup.publisher.management')} value={hostingDNSManagement} onChange={value => change('dns_hosting_management', value as 'manual' | 'panel')}>
+                    {step === 'names' && <fieldset disabled={busy}><SetupNamesStep draft={draft} mail={isMail} web={roles.web} mainDomain={mainDomain} ip={panelDNSIP || snapshot.server_ip || ''} ownDNS={localPrimary} onChange={(key, value) => change(key, value)} /></fieldset>}
+                    {step === 'dnshome' && <fieldset disabled={busy}><SetupDNSHomeStep draft={draft} catalog={catalog} serverCount={serverCount} mainDomain={mainDomain} detectedIP={detectedIP}
+                        set={(key, value) => { if (key === 'local_ip') localIPTouched.current = true; updateDraft(previous => ({ ...previous, [key]: value })); }}
+                        onMode={chooseDNSMode}
+                        onRole={role => updateDraft(previous => changeSetupWizardDNSRole(previous, role, proposal))}
+                        connection={<ServerSetupDNSConnection value={draft.remote_dns_connection_id} onChange={value => change('remote_dns_connection_id', value)} onValidityChange={setRemoteVerified} />}
+                        publisher={secondaryHosting && <div className="space-y-3">
+                            <label className="block" htmlFor="setup-dns_hosting_management"><span className="mb-2 block text-sm font-medium">{t('setup.publisher.management')}</span><select id="setup-dns_hosting_management" name="dns_hosting_management" value={hostingDNSManagement} onChange={event => change('dns_hosting_management', event.target.value as 'manual' | 'panel')} className={`${inputClass} w-full`}>
                                 <option value="manual">{t('setup.publisher.manual')}</option>
                                 <option value="panel">{t('setup.publisher.automatic')}</option>
-                            </SetupSelect>
+                            </select></label>
                             {automaticPublisher ? <>
-                            <SetupInput name="dns_publisher_endpoint" label={t('setup.publisher.endpoint')} value={draft.dns_publisher_endpoint || ''} onChange={value => change('dns_publisher_endpoint', value)} placeholder="https://primary.example.com:2083" required />
-                            <p className="text-sm leading-6 text-fg-muted">{t('setup.publisher.setupHelp')}</p>
+                                <SetupWizardInput name="dns_publisher_endpoint" label={t('setup.publisher.endpoint')} value={draft.dns_publisher_endpoint || ''} onChange={value => change('dns_publisher_endpoint', value)} placeholder="https://frankfurt.example.com:2083" required />
+                                <p className="text-sm leading-6 text-fg-muted">{t('setup.publisher.setupHelp')}</p>
                             </> : <p className="text-sm leading-6 text-fg-muted">{t('setup.publisher.manualHelp')}</p>}
-                        </div>}
-                        {isNode && <SetupNodeVersion value={draft.node_version} onChange={value => change('node_version', value)} />}
-                        {draft.purpose === 'application' && !customized && <SetupSelect name="database" label={t('setup.database')} value={draft.database} onChange={value => change('database', value)}><option value="">{t('setup.databaseNone')}</option><option value="mariadb">MariaDB</option><option value="postgresql">PostgreSQL</option></SetupSelect>}
+                        </div>} />
+                        {dnsSelectionError && <p role="alert" className="mt-4 text-sm leading-6 text-danger">{t(dnsSelectionError)}</p>}
+                        {draft.dns_mode === 'local' && dnsNames.mismatch && <div role="alert" className="mt-4 space-y-2 rounded-lg border border-warning-mark/40 bg-warning-mark/10 p-4 text-sm"><p>{t('setup.dnsMappingMismatch')}</p><p className="break-all">{t('setup.savedPeerName')}: {draft.peer_ns || '—'}</p><Button type="button" disabled={!draft[dnsNames.peerKey].trim()} onClick={() => change('peer_ns', draft[dnsNames.peerKey])}>{t('setup.useDisplayedPeer')}</Button></div>}
                     </fieldset>}
                     {step === 'review' && plan && <section aria-labelledby="setup-plan-title">
                         <h2 id="setup-plan-title" className="text-xl font-semibold">{t('setup.reviewTitle')}</h2><p className="mt-3 text-sm leading-6 text-fg-muted">{t('setup.reviewHelp')}</p>
@@ -853,12 +888,22 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                         {draft.dns_mode === 'external' && <p className="mt-5 text-sm leading-6 text-fg-muted">{t('setup.externalAfter')}</p>}
                         {isMail && <p className="mt-4 text-sm leading-6 text-fg-muted">{t('setup.mailAfter')}</p>}
                         {plan.blockers.length > 0 && <div role="alert" className="mt-5 rounded-lg border border-warning-mark/40 bg-warning-mark/10 p-4"><p className="font-semibold">{t('setup.planBlocked')}</p><ul className="mt-3 list-disc space-y-2 pl-5 text-sm">{plan.blockers.map(code => <li key={code}>{failureText(code)}{code === 'panel_certificate_contact_email_invalid' && <>{' '}<Link to="/account#email" className="inline-flex min-h-11 items-center font-medium text-primary underline underline-offset-4 sm:min-h-0" data-setup-blocker-action={code}>{t('setup.blocker.contactAction')}</Link></>}<details className="mt-1 text-xs text-fg-muted"><summary className="cursor-pointer">{t('setup.details')}</summary><code className="mt-1 block break-words">{code}</code></details></li>)}</ul></div>}
+                        <div className="mt-5 rounded-lg border border-border bg-surface p-4 text-sm leading-6" data-setup-untouched="">
+                            <h3 className="font-semibold">{t('setup.v2.review.untouched')}</h3>
+                            <ul className="mt-2 list-disc space-y-1 pl-5 text-fg-muted">
+                                {localPrimary && mainDomain && <li>{t('setup.v2.review.registrar', { domain: mainDomain })}</li>}
+                                {draft.dns_mode === 'external' && <li>{t('setup.v2.review.provider')}</li>}
+                                {roles.web && mainDomain && <li>{t('setup.v2.review.site', { domain: mainDomain })}</li>}
+                                <li>{t('setup.v2.review.installed')}</li>
+                            </ul>
+                        </div>
+                        <SetupPanelAccessCard ip={snapshot.server_ip || draft.local_ip} port={window.location.port || '2083'} panelDomain={draft.panel_domain} />
                         {plan.can_start && <label className="mt-6 flex cursor-pointer items-start gap-3 text-sm leading-6"><input type="checkbox" checked={acknowledged} onChange={event => setAcknowledged(event.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-primary" /><span>{t('setup.confirm')}</span></label>}
                     </section>}
                     <div className="setup-actions sticky bottom-0 z-10 mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-bg py-4">
-                        {step !== 'purpose' && <Button type="button" variant="secondary" disabled={busy} onClick={() => { setStep(steps[Math.max(0, steps.indexOf(step) - 1)]); setPlan(null); setAcknowledged(false); }}>{t('setup.back')}</Button>}
+                        {step !== 'domain' && <Button type="button" variant="secondary" disabled={busy} onClick={() => { setStep(steps[Math.max(0, steps.indexOf(step) - 1)]); setPlan(null); setAcknowledged(false); setError(''); }}>{t('setup.back')}</Button>}
                         <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
-                        {step === 'review' ? <Button type="button" variant="primary" disabled={busy || !plan?.can_start || !acknowledged} onClick={() => void start()}>{t('setup.start')}</Button> : <button type="submit" disabled={busy || (step === 'components' && (!catalog || catalog.inventory_state !== 'ready' || emptySelectionInvalid)) || (step === 'access' && (!!dnsSelectionError || (draft.dns_mode === 'local' && dnsNames.mismatch) || (draft.dns_mode === 'existing' && !remoteVerified)))} className="inline-flex items-center gap-3 rounded-lg bg-primary px-5 py-2.5 font-semibold text-primary-fg hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60">{busy ? t('common.loading') : t(step === 'purpose' || step === 'components' ? 'setup.continue' : 'setup.review')}<ArrowRight className="h-4 w-4" aria-hidden="true" /></button>}
+                        {step === 'review' ? <Button type="button" variant="primary" disabled={busy || !plan?.can_start || !acknowledged} onClick={() => void start()}>{t('setup.start')}</Button> : <button type="submit" disabled={busy || (step === 'components' && (!catalog || catalog.inventory_state !== 'ready')) || (step === 'dnshome' && (!!dnsSelectionError || (draft.dns_mode === 'local' && dnsNames.mismatch) || (draft.dns_mode === 'existing' && !remoteVerified)))} className="inline-flex items-center gap-3 rounded-lg bg-primary px-5 py-2.5 font-semibold text-primary-fg hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60">{busy ? t('common.loading') : t(step === 'dnshome' ? 'setup.review' : 'setup.continue')}<ArrowRight className="h-4 w-4" aria-hidden="true" /></button>}
                         </div>
                     </div>
                 </form>}
@@ -976,14 +1021,6 @@ function SetupDNSPublisher({ execution, onBound }: { execution: ServerSetupExecu
             <Button type="button" variant="primary" disabled={!connection || !verified || busy || bound} loading={busy} onClick={() => void bind()}>{t('setup.publisher.continue')}</Button>
         </> : <p role="alert" className="text-sm text-danger">{t('setup.publisher.endpointRequired')}</p>}
     </div>;
-}
-
-
-function SetupInput({ name, label, value, onChange, placeholder, required }: { name: string; label: string; value: string; onChange: (value: string) => void; placeholder?: string; required?: boolean }) {
-    return <label className="block" htmlFor={`setup-${name}`}><span className="mb-2 block text-sm font-medium">{label}</span><input id={`setup-${name}`} name={name} value={value} onChange={event => onChange(event.target.value)} placeholder={placeholder} required={required} autoCapitalize="none" spellCheck={false} className={`${inputClass} w-full`} /></label>;
-}
-function SetupSelect({ name, label, value, onChange, children }: { name: string; label: string; value: string; onChange: (value: string) => void; children: ReactNode }) {
-    return <label className="block" htmlFor={`setup-${name}`}><span className="mb-2 block text-sm font-medium">{label}</span><select id={`setup-${name}`} name={name} value={value} onChange={event => onChange(event.target.value)} className={`${inputClass} w-full`}>{children}</select></label>;
 }
 
 
