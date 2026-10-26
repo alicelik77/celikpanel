@@ -748,3 +748,9 @@ phpMyAdmin's install dialog on Ubuntu with the grouped confirmation (packages a
 vendor repository replaces, the additional packages under their reasons;
 `y32confirm`) and the Roundcube row and Manage card after Frankfurt's failed and
 rolled-back update; Open webmail is held back until webmail has its own address (`y32webmail`). Same conventions as batch 30.
+
+`scenarios-batch33.mjs` draws the v0.1.0-alpha.110 candidate from overrides only:
+Roundcube's Manage page with the Webmail address card without an address (the
+suggestion), a check with no record yet (the record and the zone hosted here), a
+ready check and its set-up confirmation, and an enabled, proved address with its
+removal confirmation (`y33address`). Same conventions as batch 30.

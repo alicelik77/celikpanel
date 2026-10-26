@@ -437,6 +437,8 @@ func TestServiceMutationPrivilegedCallsitesCarryTypedClaims(t *testing.T) {
 		"serviceMutationStepWriteVendorOrigins":       true,
 		"serviceMutationStepVendorLane":               true,
 		"serviceMutationStepUpdateRoundcube":          true,
+		"serviceMutationStepEnableWebmailAddress":     true,
+		"serviceMutationStepRemoveWebmailAddress":     true,
 		"serviceMutationStepMoveAppFilesOwner":        true,
 		"serviceMutationStepSetPGClusterPort":         true,
 		"serviceMutationStepCopyPGDatabase":           true,
@@ -501,8 +503,8 @@ func TestServiceMutationPrivilegedCallsitesCarryTypedClaims(t *testing.T) {
 		}
 	}
 
-	if len(seenMethods) != 42 {
-		t.Errorf("production requiredServiceMutationStep claim count=%d want=42", len(seenMethods))
+	if len(seenMethods) != 44 {
+		t.Errorf("production requiredServiceMutationStep claim count=%d want=44", len(seenMethods))
 	}
 	for method := range expectedMethods {
 		if seenMethods[method] == "" {
