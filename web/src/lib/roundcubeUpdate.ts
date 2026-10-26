@@ -7,12 +7,14 @@
 // güncelleme işlemi de gelir.
 export const ROUNDCUBE_UPDATE_URL = '/api/v1/service/roundcube/update';
 
-// WEBMAIL_LINK_OFFERED (alpha.109 review): no screen links to webmail while it
-// is served only on the panel's own origin, where the panel's script policy
-// (which protects the administrator's session) keeps Roundcube's interface
-// from starting. It turns on when webmail has its own address.
-// Web postası kendi adresine kavuşana dek hiçbir ekran ona bağlantı vermez.
-export const WEBMAIL_LINK_OFFERED = false;
+// Since alpha.110 webmail has its own address (https://<host>/), served by the
+// server's own web server; the panel never serves Roundcube. A screen links to
+// webmail only through the server's webmail_url, and only when it is exactly
+// such an address (isWebmailAddressURL). Nothing links to the panel's own
+// /webmail/ path.
+// Web postasının kendi adresi vardır; ekranlar yalnız sunucunun bildirdiği
+// webmail_url'ye ve yalnız tam olarak böyle bir adres olduğunda bağlantı verir.
+import { webmailLinkOrNull } from './webmailAddress';
 
 export interface WebmailUpdateOperation {
     id: string;
@@ -39,8 +41,10 @@ export interface RoundcubeUpdateCheck {
     error?: string;
     /** alpha.109: the newest webmail update operation, or null. */
     last_update?: WebmailUpdateOperation | null;
-    /** alpha.109: webmail answers at the panel's /webmail/ address. */
+    /** alpha.109: webmail answers (alpha.110: on its own address). */
     webmail_ready?: boolean;
+    /** alpha.110: https://<address>/ when webmail has an address and answers; '' otherwise or when malformed. */
+    webmail_url?: string;
     /** alpha.109 review: the check could not be read, but the last update is known. */
     check_unknown?: boolean;
 }
@@ -56,18 +60,18 @@ export function decodeWebmailUpdateOperation(raw: unknown): WebmailUpdateOperati
 }
 
 export function decodeRoundcubeUpdate(raw: unknown): RoundcubeUpdateCheck {
-    const body = raw as { state?: string; check?: RoundcubeUpdateCheck; last_update?: unknown; webmail_ready?: unknown } | null;
+    const body = raw as { state?: string; check?: RoundcubeUpdateCheck; last_update?: unknown; webmail_ready?: unknown; webmail_url?: unknown } | null;
     // The release check could not be read, but the last update is still said
     // (a running one is followed) rather than lost with the check.
     // Denetim okunamasa da son güncelleme söylenir.
     const lastUpdate = body ? decodeWebmailUpdateOperation(body.last_update) : null;
     if (body && body.state === 'unknown' && lastUpdate) {
-        return { installed: false, update_available: false, check_unknown: true, last_update: lastUpdate, webmail_ready: body.webmail_ready === true };
+        return { installed: false, update_available: false, check_unknown: true, last_update: lastUpdate, webmail_ready: body.webmail_ready === true, webmail_url: webmailLinkOrNull(body.webmail_url) ?? '' };
     }
     if (!body || body.state !== 'read' || !body.check || typeof body.check.installed !== 'boolean' || typeof body.check.update_available !== 'boolean') {
         throw new Error('shape');
     }
-    return { ...body.check, last_update: lastUpdate, webmail_ready: body.webmail_ready === true };
+    return { ...body.check, last_update: lastUpdate, webmail_ready: body.webmail_ready === true, webmail_url: webmailLinkOrNull(body.webmail_url) ?? '' };
 }
 
 export type WebmailUpdateOutcomeKind = 'updated' | 'rolled_back' | 'not_changed' | 'rollback_failed' | 'unknown' | 'interrupted';

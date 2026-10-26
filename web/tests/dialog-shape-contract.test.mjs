@@ -177,6 +177,8 @@ test('every dialogue in the product is the shared one', () => {
     'NodePatches.tsx': 1,
     'RestartsCard.tsx': 1,
     'RoundcubeUpdateFlow.tsx': 1,
+    // alpha.110: webmail's own address - add to the zone, set up, remove.
+    'WebmailAddressCard.tsx': 3,
     'SecurityUpdatesCard.tsx': 1,
     // alpha.108: install a major, change a port, move a database, a move's step.
     'PostgreSQLClusters.tsx': 4,

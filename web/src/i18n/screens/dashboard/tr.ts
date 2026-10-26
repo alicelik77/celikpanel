@@ -3,6 +3,15 @@
 import type { DashboardScreenKey } from './en';
 
 export const trDashboardScreens: Record<DashboardScreenKey, string> = {
+    // ---- alpha.110 webmail address ----
+    'dashboard.audit.action.webmail.address': 'web postasının kendi adresini kurdu ({target})',
+    'dashboard.audit.action.webmail.address.failed': 'web postasının kendi adresini kuramadı ({target})',
+    'dashboard.audit.action.webmail.address.recovered': 'panel yeniden başladıktan sonra web postasının kendi adresinin kurulduğunu doğruladı ({target})',
+    'dashboard.audit.action.webmail.address.recovered.failed': 'panel yeniden başladıktan sonra web postasının kendi adresinin kurulmadığını gördü ({target})',
+    'dashboard.audit.action.webmail.address.remove': 'web postasının kendi adresini kaldırdı ({target})',
+    'dashboard.audit.action.webmail.address.remove.failed': 'web postasının kendi adresini kaldıramadı ({target})',
+    'dashboard.audit.action.webmail.address.remove.recovered': 'panel yeniden başladıktan sonra web postasının kendi adresinin kaldırıldığını doğruladı ({target})',
+    'dashboard.audit.action.webmail.address.remove.recovered.failed': 'panel yeniden başladıktan sonra web postasının kendi adresinin kaldırılmadığını gördü ({target})',
     // ---- alpha.108 slice d ----
     'dashboard.audit.action.versions.customer_offer': 'müşterilere sunulan sürümleri değiştirdi ({target})',
     'audit.title': 'Denetim günlüğü',

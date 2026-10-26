@@ -3,6 +3,10 @@
 import type { MailDatabasesScreenKey } from './en';
 
 export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
+    // ---- alpha.110 webmail address ----
+    'mail.webmail.signIn': 'Web postası {url} adresinde açılır. Posta kutusunun e-posta adresi ve parolasıyla giriş yapın; panel hesabı gerekmez.',
+    'mail.webmail.noAddressAdmin': 'Web postası henüz kullanılamıyor. Roundcube kuruluysa Bileşenler → Web postası (Roundcube) → Yönet sayfasında ona bir adres verin; kurulu değilse önce oradan kurun.',
+    'mail.webmail.setAddress': 'Web postası ayarlarını aç',
     'dbtools.title': 'Veritabanı web araçları',
     'dbtools.hint': 'Veritabanlarını tarayıcıda yönetin. Panel üzerinden, yalnız yönetici — ağa asla açılmaz.',
     'dbtools.open': '{name} aç',
@@ -63,9 +67,8 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'mail.webmail.title': 'Web posta',
     'mail.webmail.checking': 'Kullanılabilirlik denetleniyor…',
     'mail.webmail.available': 'Posta kutunuzu tarayıcıda açın.',
-    'mail.webmail.unavailable': 'Web posta bu sunucuda kullanılamıyor.',
+    'mail.webmail.unavailable': 'Web postası bu sunucuda henüz kullanılamıyor.',
     'mail.webmail.open': 'Webmail’i Aç',
-    'mail.webmail.heldBack': 'Web postası bir sonraki sürümde kendi adresine kavuşur; o zamana dek posta kutusu kullanıcıları postalarını bir posta uygulamasıyla okur.',
     'mail.catchAll.title': 'Catch-all adresi',
     'mail.catchAll.hint': '{domain} adresinde tanınmayan bir posta kutusuna gönderilen her iletiyi tek bir adrese teslim eder.',
     'mail.catchAll.destination': 'Teslim et',

@@ -9,6 +9,15 @@
 // eklenir; büyüyen parçanın bölünmesi check-bundle-budget.mjs başlığında.
 
 export const enDashboardScreens = {
+    // ---- alpha.110 webmail address ----
+    'dashboard.audit.action.webmail.address': 'set up webmail’s own address ({target})',
+    'dashboard.audit.action.webmail.address.failed': 'could not set up webmail’s own address ({target})',
+    'dashboard.audit.action.webmail.address.recovered': 'confirmed after a panel restart that webmail’s own address was set up ({target})',
+    'dashboard.audit.action.webmail.address.recovered.failed': 'found after a panel restart that webmail’s own address was not set up ({target})',
+    'dashboard.audit.action.webmail.address.remove': 'removed webmail’s own address ({target})',
+    'dashboard.audit.action.webmail.address.remove.failed': 'could not remove webmail’s own address ({target})',
+    'dashboard.audit.action.webmail.address.remove.recovered': 'confirmed after a panel restart that webmail’s own address was removed ({target})',
+    'dashboard.audit.action.webmail.address.remove.recovered.failed': 'found after a panel restart that webmail’s own address was not removed ({target})',
     // ---- alpha.108 slice d ----
     'dashboard.audit.action.versions.customer_offer': 'changed which versions customers are offered ({target})',
     'audit.title': 'Audit log',

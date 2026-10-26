@@ -54,7 +54,7 @@ function WebmailFacts({ value, onChanged }: { value: RoundcubeUpdateCheck; onCha
     if (!value.installed) return <p className="text-sm text-fg-muted">{t('life.webmail.notInstalled')}</p>;
     return (
         <div className="space-y-3" data-webmail-state={value.update_available ? 'available' : value.error ? 'error' : 'current'}>
-            <OpenWebmailLink ready={value.webmail_ready} />
+            <OpenWebmailLink url={value.webmail_url} />
             {value.error ? (
                 <LifeLine tone="info" attr="webmail-error">{t('life.webmail.checkError', { reason: value.error })}</LifeLine>
             ) : value.update_available ? (

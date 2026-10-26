@@ -9,6 +9,10 @@
 // eklenir; büyüyen parçanın bölünmesi check-bundle-budget.mjs başlığında.
 
 export const enMailDatabasesScreens = {
+    // ---- alpha.110 webmail address ----
+    'mail.webmail.signIn': 'Webmail opens at {url}. Sign in with the mailbox’s email address and password; no panel account is needed.',
+    'mail.webmail.noAddressAdmin': 'Webmail is not available yet. If Roundcube is installed, give it an address on Components → Webmail (Roundcube) → Manage; if it is not, install it there first.',
+    'mail.webmail.setAddress': 'Open the webmail settings',
     'dbtools.title': 'Database web tools',
     'dbtools.hint': 'Manage databases in the browser. Opened through the panel, admin-only — never exposed to the network.',
     'dbtools.open': 'Open {name}',
@@ -69,9 +73,8 @@ export const enMailDatabasesScreens = {
     'mail.webmail.title': 'Webmail',
     'mail.webmail.checking': 'Checking availability…',
     'mail.webmail.available': 'Open your mailbox in the browser.',
-    'mail.webmail.unavailable': 'Webmail is not available on this server.',
+    'mail.webmail.unavailable': 'Webmail is not available on this server yet.',
     'mail.webmail.open': 'Open Webmail',
-    'mail.webmail.heldBack': 'Webmail gets its own address in the next release; until then mailbox users read their mail with a mail app.',
     'mail.catchAll.title': 'Catch-all address',
     'mail.catchAll.hint': 'Delivers every message sent to an unknown mailbox at {domain} to one address.',
     'mail.catchAll.destination': 'Deliver to',
