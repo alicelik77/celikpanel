@@ -135,6 +135,7 @@ func TestWebmailAddressCheckSaysWhatDNSAnswersAgainstThisServer(t *testing.T) {
 
 func TestWebmailAddressEnableIsOneCheckedDurableOperation(t *testing.T) {
 	panel, _, database, userID := newServiceStateAtomicPanel(t)
+	audited := observeServiceOperationAudits(panel)
 	stubWebmailAddressWorld(t, webmailAddressTestResolver{
 		"mail.celikhost.com":   {"203.0.113.10"},
 		"mail2.celikhost.com":  {"203.0.113.10"},
@@ -180,6 +181,7 @@ func TestWebmailAddressEnableIsOneCheckedDurableOperation(t *testing.T) {
 	}
 	op := decodeServiceOperationEnvelope(t, accepted)
 	done, _ := waitForServiceOperation(t, panel, userID, op.ID, serviceOperationSucceeded)
+	waitForServiceOperationAudit(t, audited, "webmail.address:mail.celikhost.com")
 	if !strings.Contains(string(done.Result), `"url":"https://mail.celikhost.com/"`) || requests[0].Email != "state@example.test" || requests[0].Replace != "" {
 		t.Fatalf("enabled: %s %+v", done.Result, requests)
 	}

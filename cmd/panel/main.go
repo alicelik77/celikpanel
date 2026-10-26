@@ -79,6 +79,11 @@ type Panel struct {
 	// real Roundcube process. Production leaves it nil and uses the fixed,
 	// Unix-socket-backed probe.
 	webmailReadinessProbe func(context.Context) bool
+	// serviceOperationAudited is set only by tests: it is told every
+	// service operation audit action after its row is written, because a
+	// durable operation's audit is written after its terminal state (and the
+	// lock) and a test must not read the audit trail before it.
+	serviceOperationAudited func(action string)
 	// lastUpdateAttempt is injectable only for handler tests. Production leaves
 	// it nil and reads the native recovery observations directly.
 	lastUpdateAttempt func(commit string) (recoveryobs.Attempt, bool)

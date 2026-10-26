@@ -2257,6 +2257,9 @@ func (p *Panel) auditServiceOperation(ctx context.Context, actor serviceOperatio
 	); err != nil {
 		log.Printf("audit write failed (%s): %v", action, err)
 	}
+	if p.serviceOperationAudited != nil {
+		p.serviceOperationAudited(action)
+	}
 }
 
 func operationAdvanceFailure(err error) *serviceOperationFailure {
