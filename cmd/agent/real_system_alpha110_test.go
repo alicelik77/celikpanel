@@ -63,6 +63,12 @@ func a110Issue(t *testing.T) func(context.Context, string, string, string, strin
 		if err := os.WriteFile(token, []byte("a110-key-authorization"), 0o644); err != nil {
 			t.Fatal(err)
 		}
+		// certbot writes its challenge files world-readable whatever the
+		// caller's umask; the Agent's unit umask (0027) would not.
+		if err := os.Chmod(token, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		a107Out(t, "namei", "-l", token)
 		defer os.Remove(token)
 		response, err := http.Get("http://" + host + "/.well-known/acme-challenge/a110-token")
 		if err != nil {
