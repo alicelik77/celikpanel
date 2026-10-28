@@ -206,6 +206,7 @@ func serverSetupPeerJoinSteps(steps []serverSetupPlanStep, lead serverSetupPlanS
 // --- DKIM over the link ------------------------------------------------------
 
 type serverSetupPeerDKIMRequest struct {
+	Protocol  int    `json:"protocol"`
 	RequestID string `json:"request_id"`
 	Domain    string `json:"domain"`
 	Selector  string `json:"selector"`
@@ -218,7 +219,7 @@ type serverSetupPeerDKIMRequest struct {
 // same change, so a retry after a lost answer changes nothing twice.
 func (p *Panel) handleServerSetupPeerDKIM(w http.ResponseWriter, r *http.Request) {
 	var request serverSetupPeerDKIMRequest
-	if !decodeRemoteDNSBody(w, r, &request) {
+	if !decodeServerSetupLinkBody(w, r, &request) || refuseServerSetupLinkProtocol(w, request.Protocol) {
 		return
 	}
 	ctx := r.Context()
@@ -272,11 +273,11 @@ func (p *Panel) handleServerSetupPeerDKIM(w http.ResponseWriter, r *http.Request
 	if err := p.syncZoneToDNS(ctx, d.InfrastructureDNS.Zone, false); err != nil {
 		// Saved; its publication is checked by the zone's own operation.
 		w.WriteHeader(http.StatusAccepted)
-		_ = json.NewEncoder(w).Encode(map[string]string{"state": "saved"})
+		_ = json.NewEncoder(w).Encode(map[string]any{"protocol": serverSetupLinkProtocol, "state": "saved"})
 		return
 	}
 	p.audit(r, "server.setup.peer_dkim", "", 0)
-	_ = json.NewEncoder(w).Encode(map[string]string{"state": "published"})
+	_ = json.NewEncoder(w).Encode(map[string]any{"protocol": serverSetupLinkProtocol, "state": "published"})
 }
 
 // serverSetupPeerTarget is how this server reaches the other one: on the
@@ -315,7 +316,7 @@ func (p *Panel) sendServerSetupPeerDKIM(ctx context.Context, plan serverSetupPla
 	if err != nil {
 		return &serverSetupChildFailure{Code: "server_setup_peer_link_missing", Message: "This server has no setup link to the main DNS server, so its DKIM record cannot be sent. Add it on the main DNS server: Domains → " + plan.Draft.MainDomain + "."}
 	}
-	request := serverSetupPeerDKIMRequest{RequestID: serverSetupID(step.RequestID, "peer-dkim", "request"), Domain: plan.Draft.MainDomain, Selector: dkimSelector, Value: value}
+	request := serverSetupPeerDKIMRequest{Protocol: serverSetupLinkProtocol, RequestID: serverSetupID(step.RequestID, "peer-dkim", "request"), Domain: plan.Draft.MainDomain, Selector: dkimSelector, Value: value}
 	var answer struct {
 		State string `json:"state"`
 	}
@@ -331,6 +332,8 @@ func (p *Panel) sendServerSetupPeerDKIM(ctx context.Context, plan serverSetupPla
 		// main domain's mail itself; this server's mail serves its own
 		// domains, so there is nothing to publish for it.
 		return nil
+	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_version_incompatible":
+		return serverSetupPeerVersionWait()
 	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_dkim_zone_waiting":
 		return &serverSetupPeerWait{Code: refusal.Code, Message: "The main DNS server has not prepared the main domain's zone yet. Setup sends the DKIM record again by itself."}
 	case errors.As(callErr, &refusal):

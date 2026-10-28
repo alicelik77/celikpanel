@@ -112,7 +112,7 @@ func TestServerSetupPeerMailRecordsAreWrittenOnTheMain(t *testing.T) {
 	}
 	var join serverSetupJoinRecord
 	readServerSetupJSONSetting(context.Background(), pair.first.database.GetDB(), serverSetupJoinKey, &join)
-	names := serverSetupPeerNames{RequestID: strings.Repeat("4", 32), ShortName: "beta", PanelDomain: "beta.example.test", MailHostname: "mail.example.test", DNSEngine: "bind",
+	names := serverSetupPeerNames{Protocol: serverSetupLinkProtocol, RequestID: strings.Repeat("4", 32), ShortName: "beta", PanelDomain: "beta.example.test", MailHostname: "mail.example.test", DNSEngine: "bind",
 		Mail: &serverSetupPeerMail{Hostname: "mail.example.test", MX: "now", DMARC: "add"}, Address: "https://198.51.100.20:" + itoaTest(panelPort()), Pin: strings.Repeat("cd", 32)}
 	bearer := join.LinkID + "." + join.LinkCredential
 	if w := joinMachineRequest(t, pair.first, serverSetupPeerNamesPath, bearer, names); w.Code != http.StatusOK {
@@ -144,7 +144,7 @@ func TestServerSetupPeerMailRecordsAreWrittenOnTheMain(t *testing.T) {
 		}
 	}
 	// DKIM over the link: refused while the zone does not exist, then written.
-	dkim := serverSetupPeerDKIMRequest{RequestID: strings.Repeat("3", 32), Domain: "example.test", Selector: dkimSelector, Value: "v=DKIM1; k=rsa; p=QUJD"}
+	dkim := serverSetupPeerDKIMRequest{Protocol: serverSetupLinkProtocol, RequestID: strings.Repeat("3", 32), Domain: "example.test", Selector: dkimSelector, Value: "v=DKIM1; k=rsa; p=QUJD"}
 	if w := joinMachineRequest(t, pair.first, serverSetupPeerDKIMPath, bearer, dkim); w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), "server_setup_peer_dkim_zone_waiting") {
 		t.Fatalf("no zone yet: %d %s", w.Code, w.Body.String())
 	}

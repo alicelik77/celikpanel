@@ -299,7 +299,7 @@ export function SetupJoinPanel({ onJoined, disabled, serverIP }: { onJoined: (se
         } finally { inFlight.current = false; setBusy(false); }
     }
     const refused = (value: SetupConnectAnswer) => {
-        const known = ['server_setup_join_code_wrong', 'server_setup_join_code_used', 'server_setup_join_code_expired', 'server_setup_join_code_exhausted', 'server_setup_join_code_unavailable', 'server_setup_join_source_mismatch', 'server_setup_join_not_waiting', 'server_setup_join_rate_limited', 'server_setup_join_same_server', 'server_setup_join_address_not_public'];
+        const known = ['server_setup_join_code_wrong', 'server_setup_join_code_used', 'server_setup_join_code_expired', 'server_setup_join_code_exhausted', 'server_setup_join_code_unavailable', 'server_setup_join_source_mismatch', 'server_setup_join_not_waiting', 'server_setup_join_rate_limited', 'server_setup_join_same_server', 'server_setup_join_address_not_public', 'server_setup_peer_version_incompatible'];
         return known.includes(value.code || '') ? t(`setup.v5.join.refused.${value.code}` as TranslationKey, { left: value.attempts_left ?? 0 }) : t('setup.v5.join.refused.other', { code: value.code || '' });
     };
     const message = answer?.state === 'ok' ? answer.setup ? '' : t('setup.v5.join.draftRetry')

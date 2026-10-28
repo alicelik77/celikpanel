@@ -232,7 +232,7 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 		writeServerError(w, err)
 		return
 	}
-	join := serverSetupJoinRequest{Proof: proof, RequestID: pending.RequestID, ShortName: state.Draft.ShortName, OS: serverSetupHostOS(p)}
+	join := serverSetupJoinRequest{Protocol: serverSetupLinkProtocol, Proof: proof, RequestID: pending.RequestID, ShortName: state.Draft.ShortName, OS: serverSetupHostOS(p)}
 	join.DeclaredIPv4, _ = canonicalIPv4(serverPrimaryIP())
 	if request.PublicIPv4 != "" {
 		typed, err := netip.ParseAddr(strings.TrimSpace(request.PublicIPv4))
@@ -296,6 +296,10 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 		}
 		p.audit(r, "server.setup.peer_connected", "", 0)
 		answer = p.applyServerSetupJoinedDraft(ctx, link)
+	case callErr == nil && document.Protocol != serverSetupLinkProtocol:
+		// A first server of another version: a known state, not a lost answer.
+		_, _ = p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key=?`, serverSetupLinkPendingKey)
+		answer.State, answer.Code = "refused", "server_setup_peer_version_incompatible"
 	case callErr == nil:
 		// An answer that is not a join document for this request.
 		answer.State, answer.Code = "unknown", "server_setup_join_unknown"
@@ -459,6 +463,13 @@ func (p *Panel) serverSetupPeerState(ctx context.Context) (serverSetupPeerView, 
 // running and is asked again; nothing is repeated under a new identity.
 type serverSetupPeerWait struct{ Code, Message string }
 
+// serverSetupPeerVersionWait: the other panel speaks another link version.
+// A known state: the owner updates the older panel from its own update
+// screen; setup asks again by itself.
+func serverSetupPeerVersionWait() error {
+	return &serverSetupPeerWait{Code: "server_setup_peer_version_incompatible", Message: "The two panels run versions that cannot work together. Update the older panel from its own update screen; setup asks again by itself."}
+}
+
 func (e *serverSetupPeerWait) Error() string { return e.Code + ": " + e.Message }
 
 // runServerSetupPeerNames sends this server's names to the first server at
@@ -478,13 +489,16 @@ func (p *Panel) runServerSetupPeerNames(ctx context.Context, plan serverSetupPla
 		return false, err
 	}
 	var answer struct {
+		Protocol int  `json:"protocol"`
 		Accepted bool `json:"accepted"`
 	}
 	callErr := serverSetupLinkJSON(ctx, link.target(), serverSetupPeerNamesPath, link.bearer(), names, &answer)
 	var refusal *serverSetupLinkRefusal
 	switch {
-	case callErr == nil && answer.Accepted:
+	case callErr == nil && answer.Accepted && answer.Protocol == serverSetupLinkProtocol:
 		return true, nil
+	case (callErr == nil && answer.Protocol != serverSetupLinkProtocol) || (errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_version_incompatible"):
+		return false, serverSetupPeerVersionWait()
 	case errors.As(callErr, &refusal):
 		return false, &serverSetupChildFailure{Code: refusal.Code, Message: "The first server refused this server's names (" + refusal.Code + "). Change the names in this server's plan, or check the first server's setup."}
 	case errors.Is(callErr, errServerSetupLinkUnreachable), errors.Is(callErr, errServerSetupLinkPinMismatch):
@@ -498,7 +512,7 @@ func (p *Panel) runServerSetupPeerNames(ctx context.Context, plan serverSetupPla
 // this server is the main DNS server, the publishing endpoint and an
 // enrollment code for the first server's connection (issued once and kept).
 func (p *Panel) serverSetupOwnNames(ctx context.Context, d serverSetupDraft, link *serverSetupLinkRecord, requestID string) (serverSetupPeerNames, error) {
-	names := serverSetupPeerNames{RequestID: requestID, ShortName: d.ShortName, PanelDomain: d.PanelDomain, DNSEngine: d.DNSEngine}
+	names := serverSetupPeerNames{Protocol: serverSetupLinkProtocol, RequestID: requestID, ShortName: d.ShortName, PanelDomain: d.PanelDomain, DNSEngine: d.DNSEngine}
 	local, _ := canonicalIPv4(d.LocalIP)
 	names.Address = "https://" + net.JoinHostPort(local, strconv.Itoa(panelPort()))
 	cert, err := serverSetupPanelCertificate()

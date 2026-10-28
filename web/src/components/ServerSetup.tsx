@@ -68,6 +68,7 @@ const codeKey: Record<string, TranslationKey> = {
     server_setup_peer_names_bound: 'setup.v5.wait.server_setup_peer_names_bound',
     server_setup_peer_mail_both: 'setup.v5.wait.server_setup_peer_mail_both',
     server_setup_peer_link_missing: 'setup.v5.wait.server_setup_peer_link_missing',
+    server_setup_peer_version_incompatible: 'setup.v5.wait.server_setup_peer_version_incompatible',
     server_setup_peer_join_waiting: 'setup.v5.wait.server_setup_peer_join_waiting',
     server_setup_peer_names_waiting: 'setup.v5.wait.server_setup_peer_names_waiting',
     server_setup_peer_join_changed: 'setup.v5.wait.server_setup_peer_join_changed',

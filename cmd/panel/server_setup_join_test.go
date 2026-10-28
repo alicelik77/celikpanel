@@ -121,7 +121,7 @@ func joinRequestFor(t *testing.T, code, requestID string) serverSetupJoinRequest
 	if !ok {
 		t.Fatalf("code does not parse: %q", code)
 	}
-	return serverSetupJoinRequest{Proof: proof, RequestID: requestID, DeclaredIPv4: "198.51.100.20", ShortName: "beta", OS: "debian 13"}
+	return serverSetupJoinRequest{Protocol: serverSetupLinkProtocol, Proof: proof, RequestID: requestID, DeclaredIPv4: "198.51.100.20", ShortName: "beta", OS: "debian 13"}
 }
 
 // --- tests --------------------------------------------------------------------
@@ -450,5 +450,65 @@ func TestServerSetupJoinReplacedWithdrawsTheEarlierEnrollment(t *testing.T) {
 	db.QueryRow(`SELECT COUNT(*) FROM audit_logs WHERE action='server.setup.join_replaced'`).Scan(&replaced)
 	if old != 0 || revoked != 1 || replaced != 1 {
 		t.Fatalf("the old enrollment and its client are withdrawn: enrollment=%d revoked=%d audit=%d", old, revoked, replaced)
+	}
+}
+
+// Mixed versions: a request of another link protocol is a verified refusal;
+// a newer peer's extra fields are tolerated; a panel without the endpoint is
+// an older version, never an unknown answer.
+func TestServerSetupJoinOtherVersionsAreAKnownState(t *testing.T) {
+	_, cert := joinTestCertificate(t)
+	joinTestSeams(t, cert, "")
+	f, _, _ := joinFirstFixture(t, joinFirstDraft())
+	view := issueJoinCode(t, f)
+	request := joinRequestFor(t, view.Code, strings.Repeat("a", 32))
+	older := request
+	older.Protocol = 0
+	if w := joinMachineRequest(t, f, serverSetupJoinPath, "", older); w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), "server_setup_peer_version_incompatible") {
+		t.Fatalf("another protocol: %d %s", w.Code, w.Body.String())
+	}
+	newer := map[string]any{"protocol": serverSetupLinkProtocol, "proof": request.Proof, "request_id": request.RequestID, "declared_ipv4": request.DeclaredIPv4, "a_field_from_a_newer_panel": true}
+	if w := joinMachineRequest(t, f, serverSetupJoinPath, "", newer); w.Code != http.StatusOK {
+		t.Fatalf("extra fields are tolerated: %d %s", w.Code, w.Body.String())
+	}
+	served, leaf := joinTestCertificate(t)
+	for _, test := range []struct {
+		status int
+		body   string
+		want   string
+	}{
+		{http.StatusNotFound, "404 page not found", "server_setup_peer_version_incompatible"},
+		{http.StatusOK, `{"protocol":1,"accepted":true,"later":"field"}`, ""},
+	} {
+		server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if test.status == http.StatusOK {
+				w.Header().Set("Content-Type", "application/json")
+			}
+			w.WriteHeader(test.status)
+			_, _ = w.Write([]byte(test.body))
+		}))
+		server.TLS = &tls.Config{Certificates: []tls.Certificate{served}}
+		server.StartTLS()
+		listener := server.Listener.Addr().String()
+		previous := serverSetupLinkDeps
+		serverSetupLinkDeps = func() serverSetupLinkDependencies {
+			return serverSetupLinkDependencies{dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
+				return (&net.Dialer{}).DialContext(ctx, network, listener)
+			}}
+		}
+		var answer struct {
+			Protocol int  `json:"protocol"`
+			Accepted bool `json:"accepted"`
+		}
+		err := serverSetupLinkJSON(context.Background(), serverSetupLinkTarget{Address: "https://203.0.113.10:2083", Pin: serverSetupSPKI(leaf)}, serverSetupPeerNamesPath, "x.y", map[string]string{}, &answer)
+		var refusal *serverSetupLinkRefusal
+		if test.want != "" && (!errors.As(err, &refusal) || refusal.Code != test.want) {
+			t.Fatalf("%d: %v", test.status, err)
+		}
+		if test.want == "" && (err != nil || !answer.Accepted || answer.Protocol != 1) {
+			t.Fatalf("tolerant decoding: %v %+v", err, answer)
+		}
+		serverSetupLinkDeps = previous
+		server.Close()
 	}
 }

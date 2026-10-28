@@ -204,6 +204,7 @@ type serverSetupPeerMail struct {
 // own setup starts: its names and, when it is the main DNS server, how the
 // first server reaches it for publishing.
 type serverSetupPeerNames struct {
+	Protocol          int                  `json:"protocol"`
 	RequestID         string               `json:"request_id"`
 	ShortName         string               `json:"short_name,omitempty"`
 	PanelDomain       string               `json:"panel_domain"`
@@ -250,6 +251,7 @@ type serverSetupJoinPrepared struct {
 // serverSetupJoinDocument is the answer to a join: everything the second
 // server's setup takes from the first. MainDNSServer is "first" or "second".
 type serverSetupJoinDocument struct {
+	Protocol          int                      `json:"protocol"`
 	Version           int                      `json:"version"`
 	RequestID         string                   `json:"request_id"`
 	MainDomain        string                   `json:"main_domain"`
@@ -285,7 +287,7 @@ func serverSetupPanelEndpoint(name string) string {
 // per-join identity and secrets. Its digest tells whether a later plan still
 // matches what the second server received.
 func serverSetupJoinDocumentFor(d serverSetupDraft) serverSetupJoinDocument {
-	document := serverSetupJoinDocument{Version: serverSetupJoinDocumentVersion, MainDomain: d.MainDomain, ServerCount: 2, DNSMode: d.DNSMode, MainDNSServer: "first", NS1: d.NS1, NS2: d.NS2,
+	document := serverSetupJoinDocument{Protocol: serverSetupLinkProtocol, Version: serverSetupJoinDocumentVersion, MainDomain: d.MainDomain, ServerCount: 2, DNSMode: d.DNSMode, MainDNSServer: "first", NS1: d.NS1, NS2: d.NS2,
 		First: serverSetupJoinFirst{IPv4: d.LocalIP, ShortName: d.ShortName, PanelDomain: d.PanelDomain, DNSEngine: d.DNSEngine}}
 	if serverSetupHasMail(d) {
 		document.First.MailHostname, document.First.MainDomainMail = d.MailHostname, true
@@ -499,6 +501,7 @@ func serverSetupJoinAddress(d serverSetupDraft) string {
 // --- machine: the join -----------------------------------------------------
 
 type serverSetupJoinRequest struct {
+	Protocol     int    `json:"protocol"`
 	Proof        string `json:"proof"`
 	RequestID    string `json:"request_id"`
 	DeclaredIPv4 string `json:"declared_ipv4"`
@@ -545,7 +548,7 @@ func (p *Panel) handleServerSetupJoin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var request serverSetupJoinRequest
-	if !decodeRemoteDNSBody(w, r, &request) {
+	if !decodeServerSetupLinkBody(w, r, &request) || refuseServerSetupLinkProtocol(w, request.Protocol) {
 		return
 	}
 	declared, declaredErr := netip.ParseAddr(request.DeclaredIPv4)
@@ -920,7 +923,7 @@ func (p *Panel) authenticateServerSetupLink(w http.ResponseWriter, r *http.Reque
 // accepted until the first server's setup bound the second server.
 func (p *Panel) handleServerSetupPeerNames(w http.ResponseWriter, r *http.Request) {
 	var names serverSetupPeerNames
-	if !decodeRemoteDNSBody(w, r, &names) {
+	if !decodeServerSetupLinkBody(w, r, &names) || refuseServerSetupLinkProtocol(w, names.Protocol) {
 		return
 	}
 	ctx := r.Context()
@@ -964,7 +967,7 @@ func (p *Panel) handleServerSetupPeerNames(w http.ResponseWriter, r *http.Reques
 	p.audit(r, "server.setup.peer_names", "", 0)
 	p.wakeServerSetupRunner()
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]bool{"accepted": true})
+	_ = json.NewEncoder(w).Encode(map[string]any{"protocol": serverSetupLinkProtocol, "accepted": true})
 }
 
 func serverSetupPeerNamesEqual(a, b serverSetupPeerNames) bool {

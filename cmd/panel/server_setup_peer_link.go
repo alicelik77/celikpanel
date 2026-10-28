@@ -30,6 +30,32 @@ import (
 // only the peer's known address.
 // Kurulum baglantisi: once anahtar parmak izi, sonra alan adi sertifikasi.
 
+// serverSetupLinkProtocol is the version of the join and link messages. Both
+// servers must speak the same one; another is a verified state the owner
+// resolves by updating the older panel from its own update screen.
+const serverSetupLinkProtocol = 1
+
+// decodeServerSetupLinkBody reads a link request: bounded in size, tolerant
+// of fields a newer peer adds.
+func decodeServerSetupLinkBody(w http.ResponseWriter, r *http.Request, dst any) bool {
+	r.Body = http.MaxBytesReader(w, r.Body, remoteDNSMaxBytes)
+	decoder := json.NewDecoder(r.Body)
+	if decoder.Decode(dst) != nil || decoder.Decode(&struct{}{}) != io.EOF {
+		writeServerSetupJoinRefusal(w, http.StatusBadRequest, "server_setup_link_invalid", "The setup link request is not valid.", nil)
+		return false
+	}
+	return true
+}
+
+// refuseServerSetupLinkProtocol answers a request of another protocol.
+func refuseServerSetupLinkProtocol(w http.ResponseWriter, protocol int) bool {
+	if protocol == serverSetupLinkProtocol {
+		return false
+	}
+	writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_version_incompatible", "The two panels run versions that cannot join. Update the older panel from its own update screen, then try again.", nil)
+	return true
+}
+
 var (
 	// errServerSetupLinkUnreachable: no connection or handshake; nothing was sent.
 	errServerSetupLinkUnreachable = errors.New("the other server could not be reached")
@@ -151,6 +177,10 @@ func serverSetupLinkJSON(ctx context.Context, target serverSetupLinkTarget, path
 	if err != nil || len(raw) > remoteDNSJSONLimit {
 		return errServerSetupLinkUnknown
 	}
+	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusMethodNotAllowed {
+		// A panel without this endpoint is an older version.
+		return &serverSetupLinkRefusal{Status: resp.StatusCode, Code: "server_setup_peer_version_incompatible"}
+	}
 	if resp.StatusCode >= 400 && resp.StatusCode < 500 && resp.StatusCode != http.StatusRequestTimeout {
 		var refusal serverSetupJoinRefusal
 		if json.Unmarshal(raw, &refusal) != nil || refusal.Code == "" || len(refusal.Code) > 64 {
@@ -170,8 +200,9 @@ func serverSetupLinkJSON(ctx context.Context, target serverSetupLinkTarget, path
 	if err != nil || mediaType != "application/json" {
 		return errServerSetupLinkUnknown
 	}
+	// Tolerant on purpose: a newer peer may add fields. The size is bounded
+	// above and the protocol version is checked by the caller.
 	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.DisallowUnknownFields()
 	if decoder.Decode(response) != nil || decoder.Decode(new(any)) != io.EOF {
 		return errServerSetupLinkUnknown
 	}
