@@ -15,6 +15,7 @@ import { ServerSetupChoice, ServerSetupManualAction } from './ServerSetupChoice'
 import { Button, inputClass, KeepWords, Spinner } from './ui';
 import { SetupCountStep, SetupDNSHomeStep, SetupDomainStep, SetupJoinCard, SetupJoinPanel, SetupJoinedSummary, SetupMailStep, SetupOpenTasks, SetupRecordsStep, SetupNameStep, SetupNamesStep, SetupPanelAccessCard, SetupProviderRecordsCard, SetupRegistrarCard, SetupRolesStep, SetupWizardInput, setupEngineChoice, setupServerLabel, useSetupPeerLink } from './ServerSetupWizardSteps';
 import { AddressLink } from './AddressLink';
+import { SetupFirstSite } from './SetupFirstSite';
 import { ServerSetupComponents, useSetupComponentCatalog } from './ServerSetupComponents';
 import { setupCheckLine, setupComponentName, setupExecutionGuidance, setupHostBusyGuidance, setupHostingRootBlockerValues, setupPlanReopened, setupStepState, setupStepStateLabel, type SetupGuidanceText } from '../lib/serverSetupGuidance';
 import { applySetupRoles, resetSetupCustomization, setupCustomized, setupDraftRoles, setupEffectiveComponents, setupRolesPreset } from '../lib/serverSetupComponents';
@@ -796,6 +797,8 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         {completed ? <section className="mt-8 max-w-3xl space-y-6" aria-labelledby="setup-ready-title">
             <div className="flex items-start gap-3"><Check className="mt-1 h-5 w-5 shrink-0 text-success" aria-hidden="true" /><div><h2 id="setup-ready-title" className="text-lg font-semibold">{t('setup.v2.ready', { server: setupServerLabel(t, snapshot.draft.short_name) })}</h2><p className="mt-1 text-sm text-fg-muted">{t('setup.completeServices')}</p></div></div>
             {snapshot.checks.some(check => check.advisory && check.state !== 'ready') && <SetupOpenTasks lines={snapshot.checks.filter(check => check.advisory && check.state !== 'ready').map(checkSentence)} />}
+            {/* The optional first site (alpha.115): the main domain prefilled in the existing Add domain form; nothing is created unless the owner confirms there. */}
+            {snapshot.draft.main_domain && setupEffectiveComponents(snapshot.draft, catalog).has('nginx') && <SetupFirstSite domain={normalizeSetupDomain(snapshot.draft.main_domain)} />}
             <Link to={nextPath} className="inline-flex items-center gap-3 rounded-lg bg-primary px-5 py-3 font-semibold text-primary-fg hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">{t(nextLabel)}<ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
             {/* What extending does and does not do, said before the action (D-033). */}
             <section aria-labelledby="setup-extend-title" className="border-t border-border pt-6" data-setup-extend="">

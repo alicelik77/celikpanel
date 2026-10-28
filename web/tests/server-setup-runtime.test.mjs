@@ -46,6 +46,7 @@ export const ArrowRight=()=>null, Check=()=>null, Circle=()=>null, Loader2=()=>n
 export const ServerSetupDNSConnection=props=>React.createElement('remote-connection',props);
 export const inputClass='';
 export const AddressLink=props=>React.createElement('a',{href:props.href},props.address);
+export const SetupFirstSite=props=>React.createElement('first-site',props);
 `);
 const stepsURL = dataURL(`import React from '${reactURL}';\n` + compile('../src/components/ServerSetupSteps.tsx').replace(/from ['"]([^'"]+)['"]/g, (_, path) => `from '${stub}'`));
 const choiceURL = dataURL(`import React from '${reactURL}';\n` + compile('../src/components/ServerSetupChoice.tsx').replace(/from ['"]([^'"]+)['"]/g, (_, path) => `from '${path === 'react' ? reactURL : path.endsWith('/serverSetup') ? setupURL : stub}'`));
@@ -424,6 +425,22 @@ test('completion links and labels follow customized services instead of the orig
             assert.ok(JSON.stringify(tree.toJSON()).includes(label), `${purpose}/${selected} label`);
             assert.equal(tree.root.findAllByType('form').length, 0);
             assert.ok(calls.every(call => !call.options?.method || call.options.method === 'GET'));
+        } finally { await cleanup(); }
+    }
+});
+
+// alpha.115: the end of setup offers the first site, prefilled with the main
+// domain, only when websites were set up; it is the existing form and sends nothing.
+test('a finished setup with websites offers the first site with the main domain; without websites or a main domain it does not', async () => {
+    for (const [purpose, main, offered] of [['web', 'Example.COM', true], ['dns', 'example.com', false], ['web', '', false]]) {
+        const draft = { ...fresh().draft, purpose, ...(main ? { main_domain: main } : {}) };
+        init('admin', { status: 'ready', required: false, draft });
+        try {
+            await mount();
+            const offers = tree.root.findAllByType('first-site');
+            assert.equal(offers.length, offered ? 1 : 0, `${purpose}/${main}`);
+            if (offered) assert.equal(offers[0].props.domain, 'example.com');
+            assert.ok(calls.every(call => !call.options?.method || call.options.method === 'GET'), 'the offer sends nothing by itself');
         } finally { await cleanup(); }
     }
 });

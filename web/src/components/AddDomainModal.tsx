@@ -18,6 +18,10 @@ import {
 interface AddDomainModalProps {
     onClose: () => void;
     onSuccess: () => void;
+    // The name the form opens with (alpha.115: the end of server setup offers
+    // the main domain). Only a starting value: nothing is sent until the
+    // person submits the form.
+    initialDomain?: string;
 }
 
 // What this server can host right now drives which choices the dialog offers
@@ -88,10 +92,10 @@ async function readDomainCreatePartialSuccess(res: Response): Promise<DomainCrea
     }
 }
 
-export function AddDomainModal({ onClose, onSuccess }: AddDomainModalProps) {
+export function AddDomainModal({ onClose, onSuccess, initialDomain = '' }: AddDomainModalProps) {
     const { t } = useI18n();
     const navigate = useNavigate();
-    const [domainName, setDomainName] = useState('');
+    const [domainName, setDomainName] = useState(initialDomain);
     // The page under this dialog reads the same capabilities; the dialog uses
     // that answer and that request (lib/remote.ts) instead of asking again.
     // Bu pencerenin altındaki sayfa aynı yetenekleri okur; pencere yeniden
