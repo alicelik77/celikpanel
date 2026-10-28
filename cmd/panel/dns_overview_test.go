@@ -761,3 +761,21 @@ func TestDNSOverviewAnMXTheOwnerSetIsNeverTheOldMailServer(t *testing.T) {
 		t.Fatalf("no MX: %+v %+v", mx, none.Sentence)
 	}
 }
+
+func TestDNSOverviewAnEditedDraftKeepsTheCompletedSetupsSecondServer(t *testing.T) {
+	f, _ := overviewPairedFirst(t)
+	state, err := f.panel.loadServerSetup(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	edited := state.Draft
+	edited.ShortName = "alpha-next"
+	raw, _ := json.Marshal(edited)
+	if _, err := f.database.GetDB().Exec(`UPDATE server_setup_state SET draft_json=? WHERE id=1`, string(raw)); err != nil {
+		t.Fatal(err)
+	}
+	value := readDNSOverview(t, f.panel)
+	if peer := overviewServer(value, "peer"); peer.ShortName != "beta" || peer.Answers != "ok" || value.Join.State != "bound" || overviewServer(value, "this").ShortName != "alpha" {
+		t.Fatalf("the completed setup's pair: %+v %+v", value.Servers, value.Join)
+	}
+}

@@ -264,23 +264,31 @@ func (p *Panel) dnsOverviewInputs(ctx context.Context, edges dnsOverviewSeams) (
 	if err != nil {
 		return in, err
 	}
+	matched := false
 	if execution != nil {
 		in.Running = stringIn(execution.Status, "running", "waiting")
 		if plan, err := p.loadServerSetupPlan(ctx, execution.PlanID); err == nil && reflect.DeepEqual(plan.Draft, state.Draft) {
-			if serverSetupPlanHasStep(plan, "peer_join") {
-				binding, err := p.readServerSetupPeerBinding(ctx, plan, execution.ID)
-				if err != nil {
+			matched = true
+			if err := p.dnsOverviewApplyPlan(ctx, &in, plan, execution.ID); err != nil {
+				return in, err
+			}
+			if !in.Peer.Bound && serverSetupPlanHasStep(plan, "peer_join") {
+				in.JoinWaiting = in.Running
+			}
+		}
+	}
+	// The draft was edited after setup completed (an extension being
+	// reviewed): what runs is the last succeeded plan, with its binding.
+	if !matched && in.Ready {
+		succeeded, err := p.latestSucceededServerSetupExecution(ctx)
+		if err != nil {
+			return in, err
+		}
+		if succeeded != nil {
+			if plan, err := p.loadServerSetupPlan(ctx, succeeded.PlanID); err == nil {
+				in.Draft = plan.Draft
+				if err := p.dnsOverviewApplyPlan(ctx, &in, plan, succeeded.ID); err != nil {
 					return in, err
-				}
-				if binding == nil {
-					in.JoinWaiting = in.Running
-				} else {
-					in.Draft = serverSetupBoundPlan(plan, *binding).Draft
-					in.Peer = dnsOverviewPeer{Bound: true, ShortName: binding.PeerShortName, PanelName: binding.PeerPanelDomain, MailHost: binding.PeerMailHostname,
-						MainMail: binding.PeerMail != nil, Software: binding.PeerDNSEngine, IPv4: binding.PeerIPv4}
-					if binding.PeerMail != nil {
-						in.Peer.MailDNS = &serverSetupMailDNS{MX: binding.PeerMail.MX, DMARC: binding.PeerMail.DMARC}
-					}
 				}
 			}
 		}
@@ -345,6 +353,42 @@ func (p *Panel) dnsOverviewZoneDigest(ctx context.Context, zone string) (string,
 		return "", nil
 	}
 	return hex.EncodeToString(digest.Sum(nil)), nil
+}
+
+// dnsOverviewApplyPlan completes the picture with the plan's second-server
+// binding, when it has one.
+func (p *Panel) dnsOverviewApplyPlan(ctx context.Context, in *dnsOverviewInput, plan serverSetupPlan, executionID string) error {
+	if !serverSetupPlanHasStep(plan, "peer_join") {
+		return nil
+	}
+	binding, err := p.readServerSetupPeerBinding(ctx, plan, executionID)
+	if err != nil || binding == nil {
+		return err
+	}
+	in.Draft = serverSetupBoundPlan(plan, *binding).Draft
+	in.Peer = dnsOverviewPeer{Bound: true, ShortName: binding.PeerShortName, PanelName: binding.PeerPanelDomain, MailHost: binding.PeerMailHostname,
+		MainMail: binding.PeerMail != nil, Software: binding.PeerDNSEngine, IPv4: binding.PeerIPv4}
+	if binding.PeerMail != nil {
+		in.Peer.MailDNS = &serverSetupMailDNS{MX: binding.PeerMail.MX, DMARC: binding.PeerMail.DMARC}
+	}
+	return nil
+}
+
+// latestSucceededServerSetupExecution is the last setup run that finished.
+func (p *Panel) latestSucceededServerSetupExecution(ctx context.Context) (*serverSetupExecution, error) {
+	var raw string
+	err := p.db.GetDB().QueryRowContext(ctx, `SELECT execution_json FROM server_setup_executions WHERE status='succeeded' ORDER BY created_at DESC, id DESC LIMIT 1`).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var execution serverSetupExecution
+	if err := json.Unmarshal([]byte(raw), &execution); err != nil {
+		return nil, err
+	}
+	return &execution, nil
 }
 
 // thisRole is this server's DNS role in the picture.
