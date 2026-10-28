@@ -42,9 +42,9 @@ func TestServerSetupCatalogListsEveryCatalogueComponent(t *testing.T) {
 	}
 	want := map[string]string{
 		"nginx": "choice", "php-fpm": "choice", "node": "choice", "mariadb": "choice", "postgresql": "choice",
-		"postfix": "choice", "roundcube": "choice", "clamav": "components", "wireguard": "choice", "fail2ban": "choice",
+		"postfix": "choice", "roundcube": "choice", "clamav": "choice", "wireguard": "choice", "fail2ban": "choice",
 		"nftables": "required", "certbot": "required", core.NativeCronServiceID: "automatic", "bind": "dns", "pdns": "dns",
-		"apache": "unavailable", "exim": "unavailable", "vsftpd": "unavailable", "netdata": "components", "spamassassin": "components",
+		"apache": "unavailable", "exim": "unavailable", "vsftpd": "unavailable", "netdata": "components", "spamassassin": "choice",
 	}
 	for id, role := range want {
 		choice := catalogChoice(t, catalog, id)
@@ -60,7 +60,7 @@ func TestServerSetupCatalogListsEveryCatalogueComponent(t *testing.T) {
 	}
 	reasons := map[string]string{
 		"apache": "server_setup_service_integration:apache", "netdata": "server_setup_repository_required:netdata",
-		"spamassassin": "server_setup_component_after_setup:spamassassin", "bind": "server_setup_component_dns_step",
+		"bind":                   "server_setup_component_dns_step",
 		core.NativeCronServiceID: "server_setup_component_automatic",
 	}
 	for id, reason := range reasons {

@@ -148,7 +148,7 @@ func serverSetupComponentWizardRole(service *core.ManagedService) string {
 // Tarayicinin goremedigi yardimci birimli servis Bilesenler'den kurulur.
 func serverSetupHelperUnitsObservable(service *core.ManagedService) bool {
 	for _, helper := range service.HelperUnits {
-		if core.ServiceForUnit(helper) == nil {
+		if core.ServiceForUnit(helper) == nil && core.HelperUnitOwner(helper) != service {
 			return false
 		}
 	}

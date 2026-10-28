@@ -1,6 +1,9 @@
 package core
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // Every catalogue service that a scan should ever detect must be reachable by
 // BOTH derived halves: the fetch glob must select its unit names, and the
@@ -144,5 +147,32 @@ func TestPatternPrefix(t *testing.T) {
 		if got := patternPrefix(pat); got != want {
 			t.Errorf("patternPrefix(%q) = %q, want %q", pat, got, want)
 		}
+	}
+}
+
+// Helper units (SpamAssassin's spamass-milter, ClamAV's clamav-freshclam) are
+// fetched by the scanner so server setup's final check can see them, but a
+// helper never stands for its service: ServiceForUnit does not claim it.
+func TestHelperUnitsAreScannedNotOwned(t *testing.T) {
+	globs := ServiceScanGlobs()
+	for _, want := range []struct{ unit, owner string }{{"spamass-milter", "spamassassin"}, {"clamav-freshclam", "clamav"}} {
+		covered := false
+		for _, glob := range globs {
+			if strings.HasPrefix(want.unit, strings.TrimSuffix(glob, "*")) {
+				covered = true
+			}
+		}
+		if !covered {
+			t.Fatalf("%s is not fetched by the scan globs %v", want.unit, globs)
+		}
+		if owner := HelperUnitOwner(want.unit + ".service"); owner == nil || owner.ID != want.owner {
+			t.Fatalf("%s helper owner: %+v", want.unit, owner)
+		}
+		if ServiceForUnit(want.unit) != nil {
+			t.Fatalf("helper %s must not stand for its service", want.unit)
+		}
+	}
+	if HelperUnitOwner("nginx") != nil {
+		t.Fatal("a service unit is not a helper")
 	}
 }

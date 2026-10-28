@@ -91,7 +91,7 @@ func TestServerSetupCustomizationCanonicalAndLegacyWireIdentity(t *testing.T) {
 	}
 	// alpha.111: the choices come from the catalogue (owner decision of
 	// 2026-10-26); what the catalogue cannot offer through setup stays refused.
-	for _, id := range []string{"apache", "exim", "vsftpd", "bind", "pdns", "netdata", "spamassassin", "cron", "nftables", "certbot", "../../bin/sh"} {
+	for _, id := range []string{"apache", "exim", "vsftpd", "bind", "pdns", "netdata", "cron", "nftables", "certbot", "../../bin/sh"} {
 		draft.Customization = &serverSetupCustomization{Components: []string{id}}
 		if _, err := canonicalServerSetupDraft(draft); err == nil {
 			t.Fatalf("unsupported arbitrary input accepted: %s", id)
@@ -180,7 +180,7 @@ func TestServerSetupCustomizationCatalogueUsesHostAndConflicts(t *testing.T) {
 	for _, id := range serverSetupSelectableComponents {
 		service := core.GetManagedServiceByID(id)
 		for _, helper := range service.HelperUnits {
-			if core.ServiceForUnit(helper) == nil {
+			if core.ServiceForUnit(helper) == nil && core.HelperUnitOwner(helper) != service {
 				t.Fatalf("%s helper cannot be observed by current service scanner", id)
 			}
 		}
