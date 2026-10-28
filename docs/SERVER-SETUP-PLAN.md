@@ -53,6 +53,40 @@ every installed-panel update from CelikPanel itself, as required by [AGENTS.md](
   site": the existing Add domain form opens with the main domain filled in and
   creates nothing until the owner submits it; "Later" hides the offer.
 
+Review corrections (same phase):
+
+- **The shared check.** Its timing is set under its lock (a data race was
+  measured with `-race`); a check that panics wakes its readers, who say the
+  result is not known. "Check now" (`?fresh=1`) starts a real new check at
+  most once per panel every 15 seconds; inside that window it returns the
+  check in flight or the latest answer and `fresh_after` says when the next
+  is possible. The page reads again when the shared answer expires
+  (`next_check_after`) and waits while the tab is hidden. Any write to the
+  main domain's zone (a digest of its records is part of the key) is a new
+  check, so a change made in the editor or by "Move mail" shows at once.
+- **Truthful states.** Setup neither finished nor running asks nothing of the
+  internet and points to Server setup. A DKIM key that could not be read is
+  unknown; no key after a finished setup with mail is a task. A backup DNS
+  server that answers but not for the domain before its first copy is proven
+  (pair ready on the main, catalog consumption on the backup) waits, on the
+  page and on the registrar card alike (one rule). A server name the
+  internet shows wrong is compared with our own DNS server's answer first:
+  if our list has another value it is the owner's change, not a delay. After
+  setup is edited (an extension under review) the picture keeps the last
+  completed run and its second server. Only the sentence's title is a live
+  region; it is an alert only when the state turns into a verified failure.
+- **Mail.** The MX is judged by this panel's own list. "Move mail" is offered
+  only while the list still has exactly the old MX setup imported; an MX the
+  owner set is never called the old mail server. The record update API
+  takes an optional `expected_content` and refuses a mismatch
+  (`DNS_RECORD_CHANGED`); the confirmation names the record's real TTL. A
+  record setup wrote that the owner removed or changed is never added back
+  by a later plan or extension.
+- **First site in the infrastructure zone.** Adding the main domain as a
+  website when it is already the infrastructure zone adds only the missing
+  apex and www addresses (A, and AAAA with a global IPv6 address); a name
+  that points elsewhere is left unchanged and reported with who decides.
+
 Not in this phase: "Move main DNS" (alpha.116–.118); the existing-installations
 mapping was dropped by the owner's rule of 2026-10-26 (nothing real is
 installed). Remaining limits: the other server's DKIM key is checked only as

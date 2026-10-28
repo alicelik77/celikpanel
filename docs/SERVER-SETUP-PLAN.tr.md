@@ -53,6 +53,41 @@ kurulu panel güncellemelerini kullanıcı CelikPanel'in kendi arayüzünden ba�
   ekleyin" önerir: mevcut Alan adı ekle formu ana alan adı dolu açılır ve
   sahip göndermeden hiçbir şey oluşturmaz; "Sonra" öneriyi gizler.
 
+İnceleme düzeltmeleri (aynı aşama):
+
+- **Paylaşılan kontrol.** Süre hesabı kilidin içinde yapılır (`-race` ile bir
+  veri yarışı ölçülmüştü); çöken bir kontrol bekleyenleri uyandırır, onlar da
+  sonucun bilinmediğini söyler. "Şimdi bak" (`?fresh=1`) panel başına 15
+  saniyede en çok bir kez gerçek yeni kontrol başlatır; bu süre içinde süren
+  kontrolü ya da son yanıtı döndürür, `fresh_after` sonrakinin ne zaman
+  mümkün olduğunu söyler. Sayfa paylaşılan yanıtın süresi dolunca
+  (`next_check_after`) yeniden okur, sekme gizliyken bekler. Ana alan adı
+  bölgesine her yazma (kayıtlarının özeti anahtarın parçasıdır) yeni bir
+  kontroldür; düzenleyicideki ya da "Postayı al" ile yapılan değişiklik hemen
+  görünür.
+- **Doğru durumlar.** Bitmemiş ve sürmeyen kurulum internete hiçbir şey sormaz
+  ve Sunucu kurulumu'nu gösterir. Okunamayan DKIM anahtarı bilinmiyordur;
+  postalı tamamlanmış kurulumda anahtarın olmaması bir iştir. İlk kopyası
+  kanıtlanmadan (anada eş hazır, yedekte katalog tüketimi) yanıt veren ama
+  alan adı için vermeyen yedek DNS sunucusu sayfada da alan adı firması
+  kartında da bekliyordur (tek kural). İnternetin yanlış gösterdiği sunucu adı
+  önce kendi DNS sunucumuzun yanıtıyla karşılaştırılır: listemizde başka değer
+  varsa bu sahibin değişikliğidir, gecikme değil. Kurulum düzenlendiğinde
+  (incelenen genişletme) resim son tamamlanan çalışmayı ve ikinci sunucusunu
+  korur. Yalnız cümlenin başlığı canlı bölgedir; yalnız durum doğrulanmış
+  hataya dönünce uyarıdır.
+- **Posta.** MX bu panelin kendi listesine göre değerlendirilir. "Postayı al"
+  yalnız liste hâlâ kurulumun aktardığı eski MX'i aynen taşıyorsa önerilir;
+  sahibin ayarladığı MX asla eski posta sunucusu sayılmaz. Kayıt güncelleme
+  API'si isteğe bağlı `expected_content` alır ve uyuşmazlığı reddeder
+  (`DNS_RECORD_CHANGED`); onay kaydın gerçek TTL'sini söyler. Kurulumun
+  yazdığı ve sahibin silip değiştirdiği kayıt sonraki plan ya da genişletmede
+  geri eklenmez.
+- **Altyapı bölgesinde ilk site.** Ana alan adı zaten altyapı bölgesiyken site
+  olarak eklenince yalnız eksik kök ve www adresleri eklenir (A, küresel IPv6
+  varsa AAAA); başka yeri gösteren ad değiştirilmez, kimin karar vereceğiyle
+  bildirilir.
+
 Bu aşamada yok: "Ana DNS'i taşı" (alpha.116–.118); mevcut kurulum eşlemesi
 sahibin 2026-10-26 kuralıyla düşürüldü (gerçek bir kurulum yok). Kalan
 sınırlar: diğer sunucunun DKIM anahtarı yalnız yayımlanmış olarak kontrol
