@@ -268,7 +268,17 @@ func Delegation(ctx context.Context, domain string, options DelegationOptions) (
 			last = err
 			continue
 		}
+		// A lame parent server (one that no longer serves the zone, or a
+		// resolver answering in its place) is skipped: "not registered"
+		// counts only from the zone's own authority, a delegation only when
+		// it names nameservers for the domain. Anything else asks the next
+		// server, and no usable answer is an error (unknown), never "empty".
+		// Ust bolgenin yetkisiz sunucusu atlanir; yalniz tutarli yanit sayilir.
 		if message.RCode == 3 {
+			if !message.Authoritative {
+				last = errors.New("parent server returned a non-authoritative NXDOMAIN")
+				continue
+			}
 			result.Asked, result.Registered = address, false
 			return result, nil
 		}
@@ -281,6 +291,10 @@ func Delegation(ctx context.Context, domain string, options DelegationOptions) (
 			if rr.Type == TypeNS && rr.Name == domain && !contains(ns, rr.Value) && len(ns) < 16 {
 				ns = append(ns, rr.Value)
 			}
+		}
+		if len(ns) == 0 {
+			last = errors.New("parent server returned no delegation for the domain")
+			continue
 		}
 		for _, rr := range message.Additional {
 			if (rr.Type == TypeA || rr.Type == TypeAAAA) && contains(ns, rr.Name) && !contains(result.Glue[rr.Name], rr.Value) {

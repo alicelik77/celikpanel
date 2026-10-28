@@ -59,7 +59,7 @@ func TestRegistrarDelegationReadsTheParentWithoutRecursion(t *testing.T) {
 }
 
 func TestRegistrarDelegationUnregisteredAndUnreachable(t *testing.T) {
-	options, _ := delegationFixture(t, "test", func(string, uint16, bool) dnswiretest.Reply { return dnswiretest.Reply{RCode: 3} })
+	options, _ := delegationFixture(t, "test", func(string, uint16, bool) dnswiretest.Reply { return dnswiretest.Reply{RCode: 3, Authoritative: true} })
 	result, err := Delegation(context.Background(), "nothere.test", options)
 	if err != nil || result.Registered || result.Parent != "test" {
 		t.Fatalf("NXDOMAIN at the parent is a verified answer: %+v %v", result, err)
@@ -70,6 +70,45 @@ func TestRegistrarDelegationUnregisteredAndUnreachable(t *testing.T) {
 	}
 	if _, err := Delegation(context.Background(), "test", options); err == nil {
 		t.Fatal("a name without a parent must be refused")
+	}
+}
+
+// Lame parent servers (a non-authoritative NXDOMAIN, an answer without the
+// domain's nameservers) are skipped for the next one; when none is usable
+// the result is an error (unknown), never "not registered" or "no NS".
+func TestRegistrarDelegationSkipsLameParentServers(t *testing.T) {
+	lameNX := dnswiretest.Start(t, func(string, uint16, bool) dnswiretest.Reply { return dnswiretest.Reply{RCode: 3} })
+	upward := dnswiretest.Start(t, func(string, uint16, bool) dnswiretest.Reply {
+		return dnswiretest.Reply{Authority: []dnswiretest.RR{{Name: "test", Type: dnswiretest.TypeNS, Value: "a.root-servers.net"}}}
+	})
+	good := dnswiretest.Start(t, func(name string, qtype uint16, recursive bool) dnswiretest.Reply {
+		return dnswiretest.Reply{Authority: []dnswiretest.RR{{Name: "example.test", Type: dnswiretest.TypeNS, Value: "ns1.example.test"}}}
+	})
+	servers := map[string]string{"127.0.0.11": lameNX.Address, "127.0.0.12": upward.Address, "127.0.0.13": good.Address}
+	resolver := dnswiretest.Start(t, func(name string, qtype uint16, recursive bool) dnswiretest.Reply {
+		soa := dnswiretest.RR{Name: "test", Type: dnswiretest.TypeSOA, Value: "ns.nic.test hostmaster.test 7 3600 600 604800 300"}
+		switch {
+		case qtype == dnswiretest.TypeSOA && name == "test":
+			return dnswiretest.Reply{Answer: []dnswiretest.RR{soa}}
+		case qtype == dnswiretest.TypeNS && name == "test":
+			return dnswiretest.Reply{Answer: []dnswiretest.RR{{Name: "test", Type: dnswiretest.TypeNS, Value: "a.nic.test"}, {Name: "test", Type: dnswiretest.TypeNS, Value: "b.nic.test"}, {Name: "test", Type: dnswiretest.TypeNS, Value: "c.nic.test"}}}
+		case qtype == dnswiretest.TypeA && name == "a.nic.test":
+			return dnswiretest.Reply{Answer: []dnswiretest.RR{{Name: name, Type: dnswiretest.TypeA, Value: "127.0.0.11"}}}
+		case qtype == dnswiretest.TypeA && name == "b.nic.test":
+			return dnswiretest.Reply{Answer: []dnswiretest.RR{{Name: name, Type: dnswiretest.TypeA, Value: "127.0.0.12"}}}
+		case qtype == dnswiretest.TypeA && name == "c.nic.test":
+			return dnswiretest.Reply{Answer: []dnswiretest.RR{{Name: name, Type: dnswiretest.TypeA, Value: "127.0.0.13"}}}
+		}
+		return dnswiretest.Reply{RCode: 3}
+	})
+	options := DelegationOptions{Resolvers: []string{resolver.Address}, Address: func(ip string) string { return servers[ip] }}
+	result, err := Delegation(context.Background(), "example.test", options)
+	if err != nil || !result.Registered || result.Asked != "127.0.0.13" || !slices.Equal(result.NS, []string{"ns1.example.test"}) {
+		t.Fatalf("the usable parent must answer: %+v %v", result, err)
+	}
+	servers["127.0.0.13"] = lameNX.Address
+	if result, err := Delegation(context.Background(), "example.test", options); err == nil {
+		t.Fatalf("only lame parents must be unknown: %+v", result)
 	}
 }
 
