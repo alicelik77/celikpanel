@@ -391,8 +391,8 @@ func (p *Panel) revokeServerSetupLink(ctx context.Context) error {
 	var join serverSetupJoinRecord
 	if found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join); err != nil {
 		return err
-	} else if found && join.LinkCredential != "" {
-		join.LinkCredential = ""
+	} else if found && (join.LinkCredentialHash != "" || join.PeerCredential != "") {
+		join.LinkCredentialHash, join.PeerCredential = "", ""
 		if err := writeServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, join); err != nil {
 			return err
 		}
@@ -433,7 +433,11 @@ func (p *Panel) serverSetupPeerTarget(ctx context.Context, plan serverSetupPlan,
 		return serverSetupLinkTarget{}, "", errors.Join(errors.New("no setup link to the other server"), err)
 	}
 	pin, _ := hex.DecodeString(binding.PeerPin)
-	return serverSetupLinkTarget{Address: binding.PeerAddress, Pin: pin}, join.LinkID + "." + join.LinkCredential, nil
+	credential, err := p.openServerSetupSecret(join.PeerCredential)
+	if err != nil || credential == "" {
+		return serverSetupLinkTarget{}, "", errors.Join(errors.New("no setup link credential for the other server"), err)
+	}
+	return serverSetupLinkTarget{Address: binding.PeerAddress, Pin: pin}, join.LinkID + "." + credential, nil
 }
 
 // sendServerSetupPeerDKIM: the backup DNS server that receives the main

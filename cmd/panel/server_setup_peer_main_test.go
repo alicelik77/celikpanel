@@ -78,6 +78,13 @@ func TestServerSetupPeerSecondServerAsMainTakesThePreparedList(t *testing.T) {
 	if _, _, err := setupDNSIdentity(effective.Draft); err != nil {
 		t.Fatalf("a full backup identity: %v", err)
 	}
+	// The first server reaches the main with the credential the main derived
+	// and sent; the main keeps no copy of it.
+	_, bearer, err := pair.first.panel.serverSetupPeerTarget(context.Background(), pair.plan, pair.execution.ID)
+	id, credential, _ := strings.Cut(bearer, ".")
+	if err != nil || !pair.second.panel.serverSetupLinkAuthorized(context.Background(), id, credential) || pair.second.panel.serverSetupLinkAuthorized(context.Background(), id, link.LinkCredential) {
+		t.Fatalf("reverse credential: %v", err)
+	}
 	// Its publishing connection uses the handed-over code by itself; until
 	// the main accepts, it waits with the reason.
 	previous := remoteDNSExchange
@@ -139,7 +146,7 @@ func TestServerSetupPeerMailRecordsAreWrittenOnTheMain(t *testing.T) {
 	readServerSetupJSONSetting(context.Background(), pair.first.database.GetDB(), serverSetupJoinKey, &join)
 	names := serverSetupPeerNames{Protocol: serverSetupLinkProtocol, RequestID: strings.Repeat("4", 32), ShortName: "beta", PanelDomain: "beta.example.test", MailHostname: "mail.example.test", DNSEngine: "bind",
 		Mail: &serverSetupPeerMail{Hostname: "mail.example.test", MX: "now", DMARC: "add"}, Address: "https://198.51.100.20:" + itoaTest(panelPort()), Pin: strings.Repeat("cd", 32)}
-	bearer := join.LinkID + "." + join.LinkCredential
+	bearer := link.LinkID + "." + link.LinkCredential
 	if w := joinMachineRequest(t, pair.first, serverSetupPeerNamesPath, bearer, names); w.Code != http.StatusOK {
 		t.Fatalf("names: %d %s", w.Code, w.Body.String())
 	}

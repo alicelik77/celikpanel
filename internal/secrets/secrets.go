@@ -38,6 +38,23 @@ const keySize = 32 // AES-256
 type Box struct {
 	aead        cipher.AEAD
 	fingerprint string
+	macKey      []byte
+}
+
+// macKeyLabel derives the key MAC uses, apart from the sealing key.
+const macKeyLabel = "celikpanel-secret-key-mac/v1"
+
+// MAC is an HMAC-SHA256 of label and value under a key derived from the key
+// file (outside the database): what a database alone cannot recompute. The
+// label separates uses.
+// MAC, anahtar dosyasindan turetilen anahtarla HMAC-SHA256; veritabani tek
+// basina yeniden hesaplayamaz.
+func (b *Box) MAC(label, value string) string {
+	mac := hmac.New(sha256.New, b.macKey)
+	mac.Write([]byte(label))
+	mac.Write([]byte{0})
+	mac.Write([]byte(value))
+	return hex.EncodeToString(mac.Sum(nil))
 }
 
 // fingerprintLabel domain-separates the identity proof from any other use of
@@ -130,7 +147,9 @@ func newBox(path string, key []byte) (*Box, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Box{aead: aead, fingerprint: keyFingerprint(key)}, nil
+	derive := hmac.New(sha256.New, key)
+	derive.Write([]byte(macKeyLabel))
+	return &Box{aead: aead, fingerprint: keyFingerprint(key), macKey: derive.Sum(nil)}, nil
 }
 
 // Encrypt seals plain and returns the self-describing ciphertext. The empty

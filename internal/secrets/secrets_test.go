@@ -160,3 +160,14 @@ func TestLoadNeverCreatesAKey(t *testing.T) {
 		t.Fatalf("Load(short key) error = %v, want a size error", err)
 	}
 }
+
+func TestMACIsKeyedAndLabelled(t *testing.T) {
+	box := newTestBox(t)
+	other := newTestBox(t)
+	if box.MAC("a", "value") != box.MAC("a", "value") || len(box.MAC("a", "value")) != 64 {
+		t.Fatal("a MAC is stable and hex")
+	}
+	if box.MAC("a", "value") == box.MAC("b", "value") || box.MAC("a", "value") == other.MAC("a", "value") || box.MAC("a", "value") == box.MAC("a\x00", "value") {
+		t.Fatal("the label and the key separate MACs")
+	}
+}

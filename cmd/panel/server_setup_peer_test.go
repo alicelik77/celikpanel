@@ -137,7 +137,7 @@ func TestServerSetupPeerJoinsByCodeAndTakesTheFirstServersAnswers(t *testing.T) 
 	}
 	w = httptest.NewRecorder()
 	pair.first.panel.handleServerSetupPeer(w, serviceOperationAdminRequest(t, http.MethodGet, serverSetupPeerPath, "", pair.first.userID))
-	if strings.Contains(w.Body.String(), join.LinkCredential) || !strings.Contains(w.Body.String(), `"ipv4":"198.51.100.20"`) {
+	if strings.Contains(w.Body.String(), join.LinkCredentialHash) || !strings.Contains(w.Body.String(), `"ipv4":"198.51.100.20"`) {
 		t.Fatalf("first server's view: %s", w.Body.String())
 	}
 	// The second server's plan starts by sending its names; its shared

@@ -215,13 +215,19 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 		writeServerError(w, err)
 		return
 	}
-	if !found || pending.Address != address || pending.Code != canonicalCode {
+	pendingCode, openErr := p.openServerSetupSecret(pending.Code)
+	if !found || openErr != nil || pending.Address != address || pendingCode != canonicalCode {
 		id, err := newServiceOperationID()
 		if err != nil {
 			writeServerError(w, err)
 			return
 		}
-		pending = serverSetupLinkPending{RequestID: id, Address: address, Code: canonicalCode, CreatedAt: time.Now().UTC().Format(time.RFC3339)}
+		sealedCode, err := p.sealServerSetupSecret(canonicalCode)
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		pending = serverSetupLinkPending{RequestID: id, Address: address, Code: sealedCode, CreatedAt: time.Now().UTC().Format(time.RFC3339)}
 		if err := writeServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupLinkPendingKey, pending); err != nil {
 			writeServerError(w, err)
 			return
@@ -512,7 +518,7 @@ func (p *Panel) runServerSetupPeerNames(ctx context.Context, plan serverSetupPla
 // this server is the main DNS server, the publishing endpoint and an
 // enrollment code for the first server's connection (issued once and kept).
 func (p *Panel) serverSetupOwnNames(ctx context.Context, d serverSetupDraft, link *serverSetupLinkRecord, requestID string) (serverSetupPeerNames, error) {
-	names := serverSetupPeerNames{Protocol: serverSetupLinkProtocol, RequestID: requestID, ShortName: d.ShortName, PanelDomain: d.PanelDomain, DNSEngine: d.DNSEngine}
+	names := serverSetupPeerNames{Protocol: serverSetupLinkProtocol, ReverseCredential: serverSetupReverseCredential(link.LinkCredential), RequestID: requestID, ShortName: d.ShortName, PanelDomain: d.PanelDomain, DNSEngine: d.DNSEngine}
 	local, _ := canonicalIPv4(d.LocalIP)
 	names.Address = "https://" + net.JoinHostPort(local, strconv.Itoa(panelPort()))
 	cert, err := serverSetupPanelCertificate()

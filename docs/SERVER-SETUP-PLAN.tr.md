@@ -67,11 +67,16 @@ kurulu panel güncellemelerini kullanıcı CelikPanel'in kendi arayüzünden ba�
   DKIM kaydı bağlantıdan gider; "elle ekleyin" kalktı. İki sunucuda da posta
   varsa ana alan adının postasını ana DNS sunucusu alır, diğer sunucunun postası
   kendi alan adlarına hizmet eder.
-- **Bağlantı.** Eş panel alan adı sertifikasını almadan önce bağlantı ona IP
-  adresinden yalnız anahtar parmak iziyle güvenir; sertifika değişince eşin panel
-  adı için sertifikayı doğrular, yine bilinen adrese bağlanır. Gizli değerler
-  (bağlantı kimliği, kayıt kodları) yalnız her sunucunun özel ayarlarında tutulur;
-  yönetici API'sinden, günlükten ya da denetim kaydından çıkmaz.
+- **Bağlantı.** Bağlantı eşin IPv4 adresine bağlanır ve yalnız anahtar parmak
+  izine (katılmadan sonra tam SHA-256 SPKI) güvenir, asla sertifika adına güvenmez.
+  Panel, alan adı sertifikalarından sonra da IP adresinde ilk kendinden imzalı
+  kimliğini sunar; bu yüzden kurulum boyunca iz geçerli kalır. İlk sunucu kodun
+  gizli değerinin ve ikinci sunucunun kimlik bilgisinin yalnız anahtarlı özetini
+  (veritabanı dışındaki panel anahtar dosyasıyla HMAC) tutar; ikinci sunucu kabul
+  ettiği kimlik bilgisini türetir, yazılan kodu da yalnız katılmanın sonucu
+  bilinmezken anahtar dosyasıyla mühürlü tutar (bilinen her sonuçta silinir).
+  Bağlantı kimliği iki sunucuda da kurulum tamamlanınca kaldırılır. Gizli hiçbir
+  şey yönetici API'sinden, günlükten ya da denetim kaydından çıkmaz.
 
 Kalan sınırlar: kaynak için yalnız IPv4 adresi denetlenir; yedeğin kendi anahtar
 parmak izi adlarıyla bir kez gönderilir; bağlantı kaydını kaybeden ikinci sunucu

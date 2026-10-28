@@ -6,6 +6,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -17,10 +18,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/alicelik/celikpanel/internal/secrets"
 )
 
 // --- fixtures ---------------------------------------------------------------
@@ -225,7 +229,7 @@ func TestServerSetupJoinCodeIsHashedSingleUseAndReplaysTheSameJoin(t *testing.T)
 		t.Fatalf("the lost enrollment is withdrawn, never doubled: %d", enrollments)
 	}
 	var join serverSetupJoinRecord
-	if found, _ := readServerSetupJSONSetting(context.Background(), f.database.GetDB(), serverSetupJoinKey, &join); !found || join.RequestID != request.RequestID || join.LinkCredential != again.LinkCredential {
+	if found, _ := readServerSetupJSONSetting(context.Background(), f.database.GetDB(), serverSetupJoinKey, &join); !found || join.RequestID != request.RequestID || join.LinkCredentialHash != f.panel.serverSetupMAC("link", again.LinkCredential) {
 		t.Fatalf("one join, the latest credential: %+v", join)
 	}
 	// Another request with the same code: used.
@@ -510,5 +514,48 @@ func TestServerSetupJoinOtherVersionsAreAKnownState(t *testing.T) {
 		}
 		serverSetupLinkDeps = previous
 		server.Close()
+	}
+}
+
+// Secrets at rest: the first server keeps only keyed hashes (under the key
+// file, outside the database) of the code's secret and of the second
+// server's credential; the second server keeps the code only while the
+// join's outcome is unknown, sealed.
+func TestServerSetupJoinKeepsOnlyKeyedHashes(t *testing.T) {
+	pair := newPeerPair(t, joinFirstDraft())
+	box, err := secrets.LoadOrCreate(filepath.Join(t.TempDir(), "secret.key"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pair.first.panel.secrets, pair.second.panel.secrets = box, box
+	view := issueJoinCode(t, pair.first)
+	_, proof, _ := parseServerSetupJoinCode(view.Code)
+	var record serverSetupJoinCodeRecord
+	readServerSetupJSONSetting(context.Background(), pair.first.database.GetDB(), serverSetupJoinCodeKey, &record)
+	plain := sha256.Sum256([]byte(record.Salt + ":" + proof))
+	if record.Hash != box.MAC("server-setup/join-proof", record.Salt+":"+proof) || record.Hash == hex.EncodeToString(plain[:]) {
+		t.Fatal("the code's secret is kept as a keyed hash")
+	}
+	pair.dropAnswer.Store(true)
+	pair.connect(t, view.Code)
+	var raw string
+	pair.second.database.GetDB().QueryRow(`SELECT value FROM panel_settings WHERE key=?`, serverSetupLinkPendingKey).Scan(&raw)
+	if raw == "" || strings.Contains(raw, strings.ReplaceAll(view.Code, "-", "")) || strings.Contains(raw, view.Code) {
+		t.Fatalf("the unknown join's code is kept sealed: %q", raw)
+	}
+	if answer := pair.connect(t, view.Code); answer.State != "ok" {
+		t.Fatalf("retry: %+v", answer)
+	}
+	var left int
+	pair.second.database.GetDB().QueryRow(`SELECT COUNT(*) FROM panel_settings WHERE key=?`, serverSetupLinkPendingKey).Scan(&left)
+	link, _ := pair.second.panel.readServerSetupLink(context.Background())
+	var join serverSetupJoinRecord
+	readServerSetupJSONSetting(context.Background(), pair.first.database.GetDB(), serverSetupJoinKey, &join)
+	if left != 0 || join.LinkCredentialHash != box.MAC("server-setup/link", link.LinkCredential) {
+		t.Fatalf("pending gone, credential hashed: %d %+v", left, join)
+	}
+	stored, _ := json.Marshal(join)
+	if strings.Contains(string(stored), link.LinkCredential) {
+		t.Fatal("the first server keeps no plain credential of the second")
 	}
 }

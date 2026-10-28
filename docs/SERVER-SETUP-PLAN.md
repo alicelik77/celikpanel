@@ -70,12 +70,17 @@ every installed-panel update from CelikPanel itself, as required by [AGENTS.md](
   main from its answers and its DKIM record goes over the link; "add them by
   hand" is gone. When both servers have mail the main DNS server receives the
   main domain's mail and the other server's mail serves its own domains.
-- **The link.** Before the peer panel has its domain certificate the link
-  trusts it only by the key fingerprint, at its IP address; after the
-  certificate changes it validates the certificate for the peer's panel name,
-  still dialing the known address. Secrets (link credential, enrollment codes)
-  are kept only in each server's private settings and never leave through an
-  administrator API, a log or the audit.
+- **The link.** The link dials the peer's IPv4 address and trusts only its
+  key fingerprint (the full SHA-256 SPKI after the join), never a
+  certificate name. The panel keeps serving its first self-signed identity on
+  its IP address across domain certificates, so the pin holds during setup.
+  The first server keeps only keyed hashes (HMAC under the panel's key file,
+  outside the database) of the code's secret and of the second server's
+  credential; the second server derives the credential it accepts and keeps
+  the typed code, sealed under the key file, only while a join's outcome is
+  unknown (it is deleted on every known outcome). The link credential is
+  removed on both servers when their setup completes. Nothing secret leaves
+  through an administrator API, a log or the audit.
 
 Remaining limits: the IPv4 address is the only address checked for the
 source; the backup's own key fingerprint is sent once with its names; a

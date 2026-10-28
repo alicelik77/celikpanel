@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -154,9 +155,52 @@ func parseServerSetupJoinCode(raw string) ([]byte, string, bool) {
 	return decoded[:10], cleaned[16:], true
 }
 
-func serverSetupJoinProofHash(salt, proof string) string {
-	sum := sha256.Sum256([]byte(salt + ":" + proof))
-	return hex.EncodeToString(sum[:])
+// serverSetupMAC is a keyed hash under the panel's key file (outside the
+// database), used for everything of the join kept as a hash: a copy of the
+// database alone cannot test codes or credentials against it. A panel
+// without a key (only tests) uses a key of the process.
+func (p *Panel) serverSetupMAC(label, value string) string {
+	if p.secrets != nil {
+		return p.secrets.MAC("server-setup/"+label, value)
+	}
+	mac := hmac.New(sha256.New, serverSetupProcessMACKey)
+	mac.Write([]byte("server-setup/" + label + "\x00" + value))
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
+var serverSetupProcessMACKey = func() []byte {
+	key := make([]byte, 32)
+	_, _ = rand.Read(key)
+	return key
+}()
+
+func (p *Panel) serverSetupJoinProofHash(salt, proof string) string {
+	return p.serverSetupMAC("join-proof", salt+":"+proof)
+}
+
+// serverSetupReverseCredential is the credential the first server uses on
+// the second: derived from the link credential by the second server, which
+// therefore keeps no copy of it, and sent with its names.
+func serverSetupReverseCredential(linkCredential string) string {
+	mac := hmac.New(sha256.New, []byte(linkCredential))
+	mac.Write([]byte("celikpanel-setup-link-reverse/v1"))
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
+// sealServerSetupSecret / openServerSetupSecret keep a secret this server
+// must use again sealed under the key file.
+func (p *Panel) sealServerSetupSecret(value string) (string, error) {
+	if p.secrets == nil || value == "" {
+		return value, nil
+	}
+	return p.secrets.Encrypt(value)
+}
+
+func (p *Panel) openServerSetupSecret(value string) (string, error) {
+	if p.secrets == nil || value == "" {
+		return value, nil
+	}
+	return p.secrets.Decrypt(value)
 }
 
 type serverSetupJoinCodeRecord struct {
@@ -215,22 +259,28 @@ type serverSetupPeerNames struct {
 	DNSEngine         string               `json:"dns_engine"`
 	PublisherEndpoint string               `json:"publisher_endpoint,omitempty"`
 	EnrollmentCode    string               `json:"enrollment_code,omitempty"`
+	// ReverseCredential is what this server accepts from the first server.
+	ReverseCredential string `json:"reverse_credential"`
 }
 
 // serverSetupJoinRecord is the first server's private record of the join:
 // never returned as stored (the link credential and the handed-over
 // enrollment code are secrets).
 type serverSetupJoinRecord struct {
-	RequestID      string                `json:"request_id"`
-	PlanID         string                `json:"plan_id"`
-	Digest         string                `json:"digest"`
-	Peer           serverSetupJoinPeer   `json:"peer"`
-	JoinedAt       string                `json:"joined_at"`
-	LinkID         string                `json:"link_id"`
-	LinkCredential string                `json:"link_credential"`
-	EnrollmentHash string                `json:"enrollment_hash,omitempty"`
-	Names          *serverSetupPeerNames `json:"names,omitempty"`
-	NamesAt        string                `json:"names_at,omitempty"`
+	RequestID string              `json:"request_id"`
+	PlanID    string              `json:"plan_id"`
+	Digest    string              `json:"digest"`
+	Peer      serverSetupJoinPeer `json:"peer"`
+	JoinedAt  string              `json:"joined_at"`
+	LinkID    string              `json:"link_id"`
+	// Only a keyed hash of the credential the second server uses here is
+	// kept; PeerCredential is the one this server uses on the second (sent
+	// with its names), sealed under the key file.
+	LinkCredentialHash string                `json:"link_credential_hash"`
+	PeerCredential     string                `json:"peer_credential,omitempty"`
+	EnrollmentHash     string                `json:"enrollment_hash,omitempty"`
+	Names              *serverSetupPeerNames `json:"names,omitempty"`
+	NamesAt            string                `json:"names_at,omitempty"`
 }
 
 type serverSetupJoinFirst struct {
@@ -472,7 +522,7 @@ func (p *Panel) handleServerSetupJoinCodes(w http.ResponseWriter, r *http.Reques
 	_, proof, _ := parseServerSetupJoinCode(code)
 	now := time.Now().UTC()
 	record := serverSetupJoinCodeRecord{Salt: hex.EncodeToString(salt), Pin: hex.EncodeToString(pin), PlanID: plan.ID, ExpiresAt: now.Add(serverSetupJoinLifetime).Unix(), CreatedAt: now.Format(time.RFC3339)}
-	record.Hash = serverSetupJoinProofHash(record.Salt, proof)
+	record.Hash = p.serverSetupJoinProofHash(record.Salt, proof)
 	if err := writeServerSetupJSONSetting(r.Context(), p.db.GetDB(), serverSetupJoinCodeKey, record); err != nil {
 		writeServerError(w, err)
 		return
@@ -583,7 +633,7 @@ func (p *Panel) handleServerSetupJoin(w http.ResponseWriter, r *http.Request) {
 	}
 	sourceKey := serverSetupJoinSourceKey(source)
 	left := func() *int { value := max(0, serverSetupJoinAttempts-record.FailuresBy[sourceKey]); return &value }
-	proofOK := subtle.ConstantTimeCompare([]byte(serverSetupJoinProofHash(record.Salt, request.Proof)), []byte(record.Hash)) == 1
+	proofOK := subtle.ConstantTimeCompare([]byte(p.serverSetupJoinProofHash(record.Salt, request.Proof)), []byte(record.Hash)) == 1
 	// The second server always dials the first server's IPv4 address, so the
 	// caller's address must be exactly the IPv4 address it declares.
 	sourceOK := source.Is4() && source == declared
@@ -715,7 +765,7 @@ func (p *Panel) newServerSetupJoin(ctx context.Context, plan serverSetupPlan, re
 	}
 	join := serverSetupJoinRecord{RequestID: request.RequestID, PlanID: plan.ID, Digest: serverSetupJoinDocumentDigest(document),
 		Peer:     serverSetupJoinPeer{IPv4: request.DeclaredIPv4, IPv6: request.DeclaredIPv6, ShortName: request.ShortName, OS: strings.TrimSpace(request.OS)},
-		JoinedAt: time.Now().UTC().Format(time.RFC3339), LinkID: linkID, LinkCredential: credential}
+		JoinedAt: time.Now().UTC().Format(time.RFC3339), LinkID: linkID, LinkCredentialHash: p.serverSetupMAC("link", credential)}
 	if document.MainDNSServer == "first" {
 		code, err := remoteDNSSecret()
 		if err != nil {
@@ -802,7 +852,7 @@ func (p *Panel) answerServerSetupJoinReplay(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	defer tx.Rollback()
-	join.LinkID, join.LinkCredential = fresh.LinkID, fresh.LinkCredential
+	join.LinkID, join.LinkCredentialHash = fresh.LinkID, fresh.LinkCredentialHash
 	if enrollmentUsed {
 		// The second server already enrolled with the earlier code.
 		document.EnrollmentCode = ""
@@ -882,18 +932,23 @@ func (p *Panel) requireServerSetupLinkMachine(next http.Handler) http.Handler {
 	})
 }
 
-// serverSetupLinkSecret reads this server's side of the link: on the first
-// server the join record, on the second the link record.
-func (p *Panel) serverSetupLinkSecret(ctx context.Context) (string, string, error) {
+// serverSetupLinkAuthorized checks a link credential: on the first server
+// against the keyed hash it keeps, on the second against the credential
+// derived from its own link credential. Both compares are constant-time.
+func (p *Panel) serverSetupLinkAuthorized(ctx context.Context, id, credential string) bool {
 	var join serverSetupJoinRecord
-	if found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join); err != nil || found {
-		return join.LinkID, join.LinkCredential, err
+	if found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join); err != nil {
+		return false
+	} else if found && join.LinkCredentialHash != "" {
+		return subtle.ConstantTimeCompare([]byte(id), []byte(join.LinkID)) == 1 &&
+			subtle.ConstantTimeCompare([]byte(p.serverSetupMAC("link", credential)), []byte(join.LinkCredentialHash)) == 1
 	}
 	var link serverSetupLinkRecord
-	if found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupLinkKey, &link); err != nil || found {
-		return link.LinkID, link.LinkCredential, err
+	if found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupLinkKey, &link); err != nil || !found || link.LinkCredential == "" {
+		return false
 	}
-	return "", "", nil
+	return subtle.ConstantTimeCompare([]byte(id), []byte(link.LinkID)) == 1 &&
+		subtle.ConstantTimeCompare([]byte(credential), []byte(serverSetupReverseCredential(link.LinkCredential))) == 1
 }
 
 func (p *Panel) authenticateServerSetupLink(w http.ResponseWriter, r *http.Request) bool {
@@ -909,8 +964,7 @@ func (p *Panel) authenticateServerSetupLink(w http.ResponseWriter, r *http.Reque
 	if !ok || !validServiceOperationID(id) || !remoteDNSValidSecret(credential) {
 		return deny()
 	}
-	storedID, storedCredential, err := p.serverSetupLinkSecret(r.Context())
-	if err != nil || storedID == "" || storedCredential == "" || subtle.ConstantTimeCompare([]byte(id), []byte(storedID)) != 1 || !remoteDNSHashEqual(remoteDNSHash(credential), remoteDNSHash(storedCredential)) {
+	if !p.serverSetupLinkAuthorized(r.Context(), id, credential) {
 		return deny()
 	}
 	return true
@@ -959,7 +1013,14 @@ func (p *Panel) handleServerSetupPeerNames(w http.ResponseWriter, r *http.Reques
 			}
 		}
 	}
+	sealed, err := p.sealServerSetupSecret(names.ReverseCredential)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	join.PeerCredential = sealed
 	join.Names, join.NamesAt = &names, time.Now().UTC().Format(time.RFC3339)
+	join.Names.ReverseCredential = ""
 	if err := writeServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, join); err != nil {
 		writeServerError(w, err)
 		return
@@ -972,6 +1033,7 @@ func (p *Panel) handleServerSetupPeerNames(w http.ResponseWriter, r *http.Reques
 
 func serverSetupPeerNamesEqual(a, b serverSetupPeerNames) bool {
 	a.RequestID, b.RequestID = "", ""
+	a.ReverseCredential, b.ReverseCredential = "", ""
 	left, _ := json.Marshal(a)
 	right, _ := json.Marshal(b)
 	return string(left) == string(right)
@@ -996,7 +1058,7 @@ func canonicalServerSetupPeerNames(names *serverSetupPeerNames, d serverSetupDra
 			return "server_setup_peer_names_outside_domain", "The second server's names must be names under " + d.MainDomain + "."
 		}
 	}
-	if names.PanelDomain == "" || (names.ShortName != "" && !serverSetupShortNamePattern.MatchString(names.ShortName)) {
+	if names.PanelDomain == "" || (names.ShortName != "" && !serverSetupShortNamePattern.MatchString(names.ShortName)) || (names.ReverseCredential != "" && !remoteDNSValidSecret(names.ReverseCredential)) {
 		return invalid()
 	}
 	if names.Mail != nil && (names.Mail.Hostname != names.MailHostname || names.MailHostname == "" || !stringIn(names.Mail.MX, "", "now", "later") || !stringIn(names.Mail.DMARC, "", "keep", "add")) {
