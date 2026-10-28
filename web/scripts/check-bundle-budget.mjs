@@ -104,8 +104,8 @@ const screenPartBudgets = {
   // v0.1.0-alpha.111/112: the setup wizard v2 (setup.v2., setup.v3.), split
   // out of "setup", which had 1.9 KiB left. A new part, set with at least 25%
   // headroom from its Turkish file: 18.35 / 5.71 KiB. Raised at alpha.113 to
-  // keep 25% headroom over 19.23 / 5.93 KiB.
-  setupWizard: kib(26, 8),
+  // keep 25% headroom over 19.98 / 6.15 KiB (review fixes of alpha.112).
+  setupWizard: kib(27, 8.25),
   // v0.1.0-alpha.113: the live registrar card (setup.v4.). A new part, set
   // with at least 25% headroom from its Turkish file: 3.05 / 1.21 KiB.
   setupRegistrar: kib(8, 3),

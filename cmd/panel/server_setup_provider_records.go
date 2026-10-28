@@ -265,7 +265,9 @@ func serverSetupProviderMailRows(draft serverSetupDraft, dkimPublic string) []se
 		{Name: domain, Type: "TXT", Value: mergeServerSetupSPF("", draft.MailHostname), Kind: "spf", State: "unknown", Seen: []string{}},
 		{Name: "_dmarc." + domain, Type: "TXT", Value: dmarcRecommended(domain, "none"), Kind: "dmarc", State: "unknown", Seen: []string{}},
 	}
-	if draft.MailDNS != nil && draft.MailDNS.MX == "later" {
+	// At an external provider the old MX is kept unless the owner moves mail
+	// now; an unanswered choice is "later", as the mail step shows.
+	if draft.MailDNS == nil || draft.MailDNS.MX != "now" {
 		rows[0].Kind = "mx-later"
 	}
 	if draft.MailDNS != nil && draft.MailDNS.DMARC == "add" {

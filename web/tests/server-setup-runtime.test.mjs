@@ -1453,3 +1453,33 @@ test('wizard v2: the registrar card reads the live check, waits for the backup a
     }
 });
 
+
+test('wizard v2: a value the review would refuse is shown as not importable and never sent', async () => {
+    init(); withPublicRecords([
+        { name: 'example.com', type: 'MX', values: ['0 ', '10 mx.old.example'], state: 'found', not_importable: { '0 ': 'content_invalid' } },
+        { name: 'example.com', type: 'TXT', values: ['v=spf1 -all', 'v=spf1 mx -all'], state: 'found', not_importable: { 'v=spf1 mx -all': 'one_per_name' } },
+    ]);
+    try {
+        await mount(); await toRecords();
+        assert.equal(tree.root.findAllByProps({ 'data-not-importable': 'content_invalid' }).length, 1);
+        assert.equal(tree.root.findAllByProps({ 'data-not-importable': 'one_per_name' }).length, 1);
+        await submit();
+        const sent = state.draft.imported_records.map(item => `${item.type} ${item.content}`).sort();
+        assert.deepEqual(sent, ['MX mx.old.example', 'TXT v=spf1 -all'], 'refused values are never part of the draft');
+    } finally { await cleanup(); }
+});
+
+test('wizard v2: with an external provider the shown MX default is saved and DKIM says who adds it', async () => {
+    init();
+    try {
+        await mount();
+        await type('setup-main_domain', 'example.com'); await submit(); await submit(); await submit();
+        await pick('setup-role', 'mail'); await submit(); await submit();
+        await pick('setup-dns', 'external'); await submit();
+        assert.ok(tree.root.findAllByProps({ 'data-setup-mail': '' }).length === 1);
+        assert.equal(radio('setup-mail_mx', 'later').props.checked, true);
+        assert.ok(textOf().includes('setup.v3.mail.dkimExternal'));
+        await submit();
+        assert.equal(state.draft.mail_dns.mx, 'later', 'the server applies exactly what the page showed');
+    } finally { await cleanup(); }
+});

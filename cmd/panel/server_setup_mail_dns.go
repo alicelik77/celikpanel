@@ -2,14 +2,15 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
-	"net"
 	"regexp"
 	"slices"
 	"strconv"
 	"strings"
 
+	"github.com/alicelik/celikpanel/internal/binddns"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -57,62 +58,66 @@ func serverSetupRecordName(value string) (string, bool) {
 	return value, true
 }
 
-func canonicalServerSetupRecordContent(recordType, content string) (string, bool) {
+// serverSetupImportableContent is the one rule for a record the owner may
+// import: exactly the zone renderer's own (binddns.CanonicalRecordContent),
+// so a record that passes review is always publishable. It returns the
+// record's plain value for the draft (TXT unquoted) and its stored form.
+// Iceri alinabilir kayit icin tek kural: bolge yazicisinin kurali.
+func serverSetupImportableContent(recordType, content string) (plain, stored string, err error) {
 	content = strings.TrimSpace(content)
-	switch recordType {
-	case "A":
-		ip, ok := canonicalIPv4(content)
-		return ip, ok
-	case "AAAA":
-		ip := net.ParseIP(content)
-		if ip == nil || ip.To4() != nil {
-			return "", false
-		}
-		return ip.String(), true
-	case "CNAME", "MX":
-		host, ok := serverSetupRecordName(content)
-		return host, ok
-	case "TXT":
-		if content == "" || len(content) > 2048 || strings.ContainsAny(content, "\x00\r\n") {
-			return "", false
-		}
-		return content, true
-	case "CAA":
-		fields := strings.Fields(content)
-		if len(fields) < 3 || len(content) > 512 || !stringIn(fields[1], "issue", "issuewild", "iodef") {
-			return "", false
-		}
-		return content, true
+	stored, err = binddns.CanonicalRecordContent(recordType, content)
+	if err != nil {
+		return "", "", err
 	}
-	return "", false
+	if recordType == "TXT" {
+		return content, stored, nil
+	}
+	return stored, stored, nil
 }
 
 // canonicalServerSetupMailAnswers checks the imported records and the mail
-// DNS choice. Records outside the main domain, NS/SOA records and an apex
-// CNAME are refused: they are not the owner's ordinary records to import.
+// DNS choice. Only a record the owner imports is held to the renderer's
+// rules: a skipped one changes nothing and is never a reason to refuse the
+// draft (a skipped record that cannot even be named is dropped). An apex
+// CNAME, a second SPF or DMARC policy and names outside the main domain are
+// refused as imports.
 func canonicalServerSetupMailAnswers(d *serverSetupDraft) error {
 	if len(d.ImportedRecords) > serverSetupMaxImportedRecords {
 		return errors.New("too many imported records")
 	}
 	seen := map[string]bool{}
 	records := []serverSetupImportedRecord{}
+	policies := map[string]int{}
 	for _, record := range d.ImportedRecords {
 		record.Type = strings.ToUpper(strings.TrimSpace(record.Type))
-		name, ok := serverSetupRecordName(record.Name)
-		if !ok || d.MainDomain == "" || !serverSetupDNSNameWithin(name, d.MainDomain) {
-			return errors.New("an imported record must be a name under the main domain")
-		}
-		if !stringIn(record.Type, "A", "AAAA", "CNAME", "MX", "TXT", "CAA") || (record.Type == "CNAME" && name == d.MainDomain) {
-			return errors.New("unsupported imported record")
-		}
-		content, ok := canonicalServerSetupRecordContent(record.Type, record.Content)
-		if !ok || record.Priority < 0 || record.Priority > 65535 || (record.Type != "MX" && record.Priority != 0) {
-			return errors.New("invalid imported record content")
-		}
+		name, nameOK := serverSetupRecordName(record.Name)
 		if !stringIn(record.Decision, "import", "skip") {
 			return errors.New("each imported record needs a decision")
 		}
-		record.Name, record.Content = name, content
+		if record.Decision == "skip" {
+			if !nameOK || !stringIn(record.Type, "A", "AAAA", "CNAME", "MX", "TXT", "CAA") || len(record.Content) > 4096 {
+				continue
+			}
+			record.Name, record.Content, record.Priority = name, strings.TrimSpace(record.Content), max(0, min(record.Priority, 65535))
+		} else {
+			if !nameOK || d.MainDomain == "" || !serverSetupDNSNameWithin(name, d.MainDomain) {
+				return errors.New("an imported record must be a name under the main domain")
+			}
+			if !stringIn(record.Type, "A", "AAAA", "CNAME", "MX", "TXT", "CAA") || (record.Type == "CNAME" && name == d.MainDomain) {
+				return errors.New("unsupported imported record")
+			}
+			plain, _, err := serverSetupImportableContent(record.Type, record.Content)
+			if err != nil || record.Priority < 0 || record.Priority > 65535 || (record.Type != "MX" && record.Priority != 0) {
+				return errors.New("invalid imported record content")
+			}
+			record.Name, record.Content = name, plain
+			if kind := serverSetupPolicyKind(record, d.MainDomain); kind != "" {
+				policies[kind]++
+				if policies[kind] > 1 {
+					return errors.New("only one " + kind + " policy can be imported")
+				}
+			}
+		}
 		key := record.Name + "\x00" + record.Type + "\x00" + record.Content
 		if seen[key] {
 			continue
@@ -137,6 +142,18 @@ func canonicalServerSetupMailAnswers(d *serverSetupDraft) error {
 		}
 	}
 	return nil
+}
+
+// serverSetupPolicyKind names a record that may exist once per name: an SPF
+// or a DMARC policy.
+func serverSetupPolicyKind(record serverSetupImportedRecord, domain string) string {
+	switch {
+	case isSPF(record, domain):
+		return "SPF"
+	case isDMARC(record, domain):
+		return "DMARC"
+	}
+	return ""
 }
 
 func serverSetupImported(d serverSetupDraft) []serverSetupImportedRecord {
@@ -232,6 +249,11 @@ func serverSetupImportedAndMailDesired(d serverSetupDraft, own map[string]bool) 
 		if own[record.Name] && stringIn(record.Type, "A", "AAAA", "CNAME") {
 			return nil, &serverSetupInfrastructureDNSPlanError{Code: "infrastructure_dns_imported_clash", Message: fmt.Sprintf("the imported %s record of %s uses a name this setup gives to a server; choose another name or skip the record", record.Type, record.Name)}
 		}
+		// The DKIM record the mail step publishes is CelikPanel's own; an
+		// imported key at that name would be overwritten, so it is refused.
+		if mail && record.Name == dkimSelector+"._domainkey."+domain {
+			return nil, &serverSetupInfrastructureDNSPlanError{Code: "infrastructure_dns_imported_clash", Message: fmt.Sprintf("the imported record %s is the DKIM name this setup publishes; skip it", record.Name)}
+		}
 		if mail && isSPF(record, domain) {
 			oldSPF = record.Content
 			continue
@@ -248,9 +270,9 @@ func serverSetupImportedAndMailDesired(d serverSetupDraft, own map[string]bool) 
 				continue
 			}
 		}
-		content := record.Content
-		if record.Type == "TXT" {
-			content = splitTXTContent(content)
+		_, content, err := serverSetupImportableContent(record.Type, record.Content)
+		if err != nil {
+			return nil, &serverSetupInfrastructureDNSPlanError{Code: "infrastructure_dns_imported_clash", Message: fmt.Sprintf("the imported %s record of %s cannot be published: %v", record.Type, record.Name, err)}
 		}
 		records = append(records, serverSetupInfrastructureDNSRecord{Name: record.Name, Type: record.Type, Content: content, Priority: record.Priority, TTL: 3600, Action: "add", Origin: "imported"})
 	}
@@ -329,15 +351,40 @@ func (p *Panel) runServerSetupMailDNS(ctx context.Context, plan serverSetupPlan,
 	}
 	var zoneID int
 	if err := p.db.GetDB().QueryRowContext(ctx, `SELECT id FROM pdns_domains WHERE name=?`, draft.InfrastructureDNS.Zone).Scan(&zoneID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, &serverSetupChildFailure{Code: "server_setup_mail_dns_zone_missing", Message: "The setup's DNS zone was not found, so the DKIM record has nowhere to go. Review the plan again."}
+		}
 		return false, err
 	}
 	if err := p.upsertTXT(ctx, zoneID, dkimSelector+"._domainkey."+draft.MainDomain, dkimRecommended(key.PublicKeyB64)); err != nil {
 		return false, err
 	}
 	if err := p.syncZoneToDNS(ctx, draft.InfrastructureDNS.Zone, false); err != nil {
-		return false, err
+		return false, p.serverSetupZonePublishOutcome(ctx, draft.InfrastructureDNS.Zone)
 	}
 	return true, nil
+}
+
+// serverSetupZonePublishOutcome says what a failed publication of the setup
+// zone is, the way the infrastructure DNS step does (D-024): an operation
+// still held is being checked (unknown), a recorded publication error is a
+// verified failure, a DNS pair that is not ready is a wait, anything else
+// is unknown and read again. The saved record change is kept either way.
+func (p *Panel) serverSetupZonePublishOutcome(ctx context.Context, zone string) error {
+	if _, err := readDNSZoneEngineLease(ctx, p.db.GetDB(), zone); err == nil || !errors.Is(err, sql.ErrNoRows) {
+		return errServerSetupInfrastructureDNSUnknown
+	}
+	state, err := readDNSZoneSyncState(ctx, p.db.GetDB(), zone)
+	if err != nil {
+		return errServerSetupInfrastructureDNSUnknown
+	}
+	if state.Status == "error" {
+		return &serverSetupChildFailure{Code: "server_setup_mail_dns_publish_failed", Message: "The DKIM record was saved but its publication failed. Check Server -> DNS for the DNS operation, then review the plan again."}
+	}
+	if _, ready, err := p.activeDNSPublisher(ctx); err == nil && !ready {
+		return errServerSetupInfrastructureDNSWaiting
+	}
+	return errServerSetupInfrastructureDNSUnknown
 }
 
 type serverSetupMailDNSSigning struct {

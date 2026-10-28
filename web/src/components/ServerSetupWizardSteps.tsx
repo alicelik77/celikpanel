@@ -407,7 +407,7 @@ export function SetupProviderRecordsCard() {
 export interface SetupPublicRecords {
     domain: string;
     extras: string[];
-    records: { name: string; type: string; values: string[]; state: 'found' | 'none' | 'unknown' }[];
+    records: { name: string; type: string; values: string[]; state: 'found' | 'none' | 'unknown'; not_importable?: Record<string, string> }[];
     checked_at: string;
 }
 export function decodeSetupPublicRecords(value: unknown): SetupPublicRecords {
@@ -423,7 +423,7 @@ export function decodeSetupPublicRecords(value: unknown): SetupPublicRecords {
 
 type ImportType = SetupImportedRecord['type'];
 const importTypes: ImportType[] = ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'CAA'];
-interface ImportCandidate { record: SetupImportedRecord; clash: boolean }
+interface ImportCandidate { record: SetupImportedRecord; clash: boolean; refused?: string }
 
 // One candidate per public value. A name this setup gives to a server cannot
 // keep its old address record: it is skipped and the screen says why.
@@ -432,6 +432,10 @@ function importCandidates(read: SetupPublicRecords, draft: ServerSetupDraft, own
     for (const item of read.records) {
         if (item.state !== 'found' || !importTypes.includes(item.type as ImportType)) continue;
         for (const value of item.values) {
+            // A value the review would refuse (the zone renderer's own rule) is
+            // shown with its reason and never sent: it cannot trap the draft.
+            const refused = item.not_importable?.[value];
+            if (refused) { out.push({ clash: false, refused, record: { name: item.name, type: item.type as ImportType, content: value, decision: 'skip' } }); continue; }
             let content = value, priority: number | undefined;
             if (item.type === 'MX') { const [pref, host] = value.split(/\s+/); priority = Number(pref) || 0; content = host || ''; }
             const clash = own.includes(item.name) && ['A', 'AAAA', 'CNAME'].includes(item.type);
@@ -455,7 +459,7 @@ export function SetupRecordsStep({ draft, update, mainDomain, own }: {
     const remote = useRemote(url, decodeSetupPublicRecords);
     const read = remote.remote.state === 'known' ? remote.remote.value : null;
     const candidates = read ? importCandidates(read, draft, own) : [];
-    const wanted = JSON.stringify(candidates.map(item => item.record));
+    const wanted = JSON.stringify(candidates.filter(item => !item.refused).map(item => item.record));
     useEffect(() => {
         if (!read) return;
         update(previous => JSON.stringify(previous.imported_records || []) === wanted ? previous : { ...previous, imported_records: JSON.parse(wanted) });
@@ -464,10 +468,10 @@ export function SetupRecordsStep({ draft, update, mainDomain, own }: {
     const decide = (index: number, decision: 'import' | 'skip') => update(previous => {
         const list = candidates.map(item => item.record);
         list[index] = { ...list[index], decision };
-        return { ...previous, imported_records: list };
+        return { ...previous, imported_records: list.filter((_, position) => !candidates[position].refused) };
     });
     const unread = read?.records.filter(item => item.state === 'unknown') || [];
-    const imported = candidates.filter(item => item.record.decision === 'import').length;
+    const imported = candidates.filter(item => !item.refused && item.record.decision === 'import').length;
     const mailClash = candidates.some(item => item.clash && item.record.name === draft.mail_hostname);
     return <section className="space-y-5" aria-labelledby="setup-records-title" data-setup-records="">
         <h2 id="setup-records-title" className="text-xl font-semibold">{t('setup.v3.records.title')}</h2>
@@ -481,13 +485,15 @@ export function SetupRecordsStep({ draft, update, mainDomain, own }: {
                 return <li key={`${record.name}-${record.type}-${record.content}`} className="space-y-2 px-4 py-3 text-sm" data-import={`${record.name} ${record.type}`} data-decision={record.decision}>
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                         <span className="min-w-0 break-all font-mono">{record.name} <span className="text-fg-muted">{record.type}</span> {record.priority !== undefined ? `${record.priority} ` : ''}{record.content}</span>
-                        {item.clash ? <span className="text-fg-muted">{t('setup.v3.records.clash')}</span>
+                        {item.refused ? <span className="text-fg-muted" data-not-importable={item.refused}>{t('setup.v3.records.notImportable')}</span>
+                            : item.clash ? <span className="text-fg-muted">{t('setup.v3.records.clash')}</span>
                             : <span role="radiogroup" aria-label={record.name} className="flex gap-3">
                                 {(['import', 'skip'] as const).map(choice => <label key={choice} className="inline-flex cursor-pointer items-center gap-1.5"><input type="radio" name={`setup-import-${index}`} value={choice} checked={record.decision === choice} onChange={() => decide(index, choice)} className="h-4 w-4 accent-primary" />{t(choice === 'import' ? 'setup.v3.records.import' : 'setup.v3.records.skip')}</label>)}
                             </span>}
                     </div>
+                    {item.refused && <p className="leading-6 text-fg-muted">{t(item.refused === 'one_per_name' ? 'setup.v3.records.onePerName' : item.refused === 'too_many' ? 'setup.v3.records.tooMany' : 'setup.v3.records.invalid')}</p>}
                     {item.clash && <p className="leading-6 text-fg-muted">{t('setup.v3.records.clashHelp', { name: record.name })}</p>}
-                    {!item.clash && record.decision === 'skip' && <p className="leading-6 text-fg-muted">{t('setup.v3.records.skipHelp')}</p>}
+                    {!item.clash && !item.refused && record.decision === 'skip' && <p className="leading-6 text-fg-muted">{t('setup.v3.records.skipHelp')}</p>}
                 </li>;
             })}</ul>)}
         {mailClash && <div className="space-y-2 rounded-lg border border-border bg-surface p-4 text-sm leading-6">
@@ -520,6 +526,10 @@ export function SetupMailStep({ draft, update, mainDomain, ip4, ip6 }: {
     const mx = draft.mail_dns?.mx || (askMX ? 'later' : 'now');
     const dmarc = draft.mail_dns?.dmarc || (oldDMARC ? 'keep' : 'add');
     const choose = (key: 'mx' | 'dmarc', value: string) => update(previous => ({ ...previous, mail_dns: { ...previous.mail_dns, [key]: value } }));
+    // The shown default is saved, so the server applies exactly what the page says.
+    useEffect(() => {
+        if (askMX && !draft.mail_dns?.mx) update(previous => previous.mail_dns?.mx ? previous : { ...previous, mail_dns: { ...previous.mail_dns, mx: 'later' } });
+    }, [askMX]);
     const spf = mergeSetupSPF(setupImportedSPF(draft, mainDomain), host);
     return <section className="space-y-5" aria-labelledby="setup-mail-title" data-setup-mail="">
         <h2 id="setup-mail-title" className="text-xl font-semibold">{t('setup.v3.mail.title')}</h2>
@@ -527,7 +537,7 @@ export function SetupMailStep({ draft, update, mainDomain, ip4, ip6 }: {
         <ul className="space-y-2 text-sm">
             <li className="rounded-md border border-border bg-surface-2 px-3 py-2"><span className="font-medium">MX</span> · <span className="break-all font-mono">{mx === 'now' ? `10 ${host}` : t('setup.v3.mail.mxKept', { old: oldMX.map(item => item.content).join(', ') || '—' })}</span></li>
             <li className="rounded-md border border-border bg-surface-2 px-3 py-2"><span className="font-medium">SPF</span> · <span className="break-all font-mono">{spf}</span>{setupImportedSPF(draft, mainDomain) && <span className="block text-xs text-fg-muted">{t('setup.v3.mail.spfMerged')}</span>}</li>
-            <li className="rounded-md border border-border bg-surface-2 px-3 py-2"><span className="font-medium">DKIM</span> · {t('setup.v3.mail.dkim')}</li>
+            <li className="rounded-md border border-border bg-surface-2 px-3 py-2"><span className="font-medium">DKIM</span> · {t(local ? 'setup.v3.mail.dkim' : draft.dns_mode === 'external' ? 'setup.v3.mail.dkimExternal' : 'setup.v3.mail.dkimElsewhere', { domain: mainDomain })}</li>
             <li className="rounded-md border border-border bg-surface-2 px-3 py-2"><span className="font-medium">DMARC</span> · <span className="break-all font-mono">{dmarc === 'keep' && oldDMARC ? oldDMARC.content : `v=DMARC1; p=none; rua=mailto:dmarc@${mainDomain}`}</span></li>
         </ul>
         {askMX && <fieldset className="space-y-2"><legend className="font-semibold">{t('setup.v3.mail.mxTitle')}</legend>

@@ -195,4 +195,10 @@ export const trSetupWizardScreens: Record<SetupWizardScreenKey, string> = {
     "setup.v3.tasks.why": "Alıcı sunucular bu sunucunun adresinin posta adını verdiğini kontrol eder. Olmadan posta yine çalışır, ancak istenmeyen posta sayılabilir.",
     "setup.v3.tasks.who": "Siz · sunucu sağlayıcınızın panelinde (CelikPanel bunu ayarlayamaz)",
     "setup.v3.tasks.then": "Kurulum bunu beklemez. Bu sayfa kurulumu her okuduğunda yeniden bakılır; internet doğru adı gösterince iş kalkar.",
+    "setup.v3.records.notImportable": "Aktarılamaz",
+    "setup.v3.records.invalid": "Bu değer olduğu gibi sunucularınızdan yayımlanamaz (örneğin boş bir posta sunucusu ya da metin kaydında tırnak). Gerekirse Alan adları sayfasından elle ekleyin.",
+    "setup.v3.records.onePerName": "Bir adda bu türden yalnız bir kayıt olabilir; ilki sunuluyor.",
+    "setup.v3.records.tooMany": "Burada en çok 64 kayıt aktarılabilir; kalanları Alan adları sayfasından ekleyin.",
+    "setup.v3.mail.dkimExternal": "anahtarı kurulum sırasında, posta kurulduktan sonra oluşturulur; TXT kaydını sağlayıcınızda siz eklersiniz (diğer kayıtlarla birlikte gösterilir).",
+    "setup.v3.mail.dkimElsewhere": "bu sunucunun kurulumu hazırlamaz: {domain} listesinin tutulduğu yerde ayarlayın.",
 };

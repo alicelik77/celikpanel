@@ -196,6 +196,12 @@ export const enSetupWizardScreens = {
     "setup.v3.tasks.why": "Receiving servers check that this server’s address names its mail host. Without it mail still works but may be marked as spam.",
     "setup.v3.tasks.who": "You · in your server provider’s panel (CelikPanel cannot set it)",
     "setup.v3.tasks.then": "Setup does not wait for it. It is checked again whenever this page reads the setup; the task disappears once the internet shows the right name.",
+    "setup.v3.records.notImportable": "Not importable",
+    "setup.v3.records.invalid": "This value cannot be published from your servers as it is (for example an empty mail server or quotes in a text record). Add it by hand on the Domains page if you need it.",
+    "setup.v3.records.onePerName": "A name can have only one such policy; the first one is offered.",
+    "setup.v3.records.tooMany": "At most 64 records can be imported here; add the rest on the Domains page.",
+    "setup.v3.mail.dkimExternal": "its key is created during setup, after mail is installed; you add its TXT record at your provider (shown with the other records).",
+    "setup.v3.mail.dkimElsewhere": "not prepared by this server’s setup: set it up for {domain} where its list is kept.",
 } as const;
 
 export type SetupWizardScreenKey = keyof typeof enSetupWizardScreens;

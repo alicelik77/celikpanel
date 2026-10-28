@@ -315,7 +315,36 @@ func serverSetupInfrastructureDNSDesired(d serverSetupDraft) ([]serverSetupInfra
 		}
 		records = append(records, extra...)
 	}
+	// A CNAME owns its name alone (RFC 1034): any other record at the same
+	// name is refused before anything is written.
+	for _, alias := range records {
+		if alias.Type != "CNAME" {
+			continue
+		}
+		for _, other := range records {
+			if other.Name == alias.Name && other.Type != "CNAME" {
+				return nil, &serverSetupInfrastructureDNSPlanError{Code: "infrastructure_dns_imported_clash", Message: fmt.Sprintf("%s is an alias (CNAME) and cannot also have a %s record; skip one of them", alias.Name, other.Type)}
+			}
+		}
+	}
 	return records, nil
+}
+
+// serverSetupOnePerName names a record kind that may exist once at its name:
+// an SPF or DMARC policy, and the mail record's MX when the owner moves
+// mail now. Two of them would break mail (SPF permerror) or leave the old
+// server receiving it.
+func serverSetupOnePerName(record serverSetupInfrastructureDNSRecord, zone string) string {
+	value := strings.ToLower(joinTXTSegments(record.Content))
+	switch {
+	case record.Type == "TXT" && record.Name == zone && strings.HasPrefix(value, "v=spf1"):
+		return "spf"
+	case record.Type == "TXT" && strings.HasPrefix(record.Name, "_dmarc.") && strings.HasPrefix(value, "v=dmarc1"):
+		return "dmarc"
+	case record.Type == "MX" && record.Origin == "mail":
+		return "mx"
+	}
+	return ""
 }
 
 func buildServerSetupInfrastructureDNSAgainstSnapshot(d serverSetupDraft, s serverSetupInfrastructureDNSSnapshot) (*serverSetupInfrastructureDNSPlan, error) {
@@ -333,6 +362,9 @@ func buildServerSetupInfrastructureDNSAgainstSnapshot(d serverSetupDraft, s serv
 			if got.Disabled == 0 && ((got.Type == "DNAME" && serverSetupDNSNameWithin(want.Name, name)) || (got.Type == "NS" && name != s.Zone && serverSetupDNSNameWithin(want.Name, name)) || (got.Type == "CNAME" && name == want.Name && !(want.Type == "CNAME" && canonicalDNSName(got.Content) == want.Content))) {
 				return nil, infrastructureDNSReviewError(fmt.Sprintf("infrastructure hostname %s conflicts with an alias or delegated child", want.Name))
 			}
+			if want.Origin != "" && got.Disabled == 0 && name == want.Name && want.Type == "CNAME" && got.Type != "CNAME" {
+				return nil, &serverSetupInfrastructureDNSPlanError{Code: "infrastructure_dns_imported_clash", Message: fmt.Sprintf("%s already has a %s record in the zone and cannot also be an alias (CNAME)", want.Name, got.Type)}
+			}
 			if name != want.Name || got.Type != want.Type {
 				continue
 			}
@@ -344,6 +376,10 @@ func buildServerSetupInfrastructureDNSAgainstSnapshot(d serverSetupDraft, s serv
 				// anything else is added beside what the zone already has.
 				if got.Content == want.Content && got.Priority == want.Priority {
 					want.TTL, want.Action = got.TTL, "keep"
+					continue
+				}
+				if kind := serverSetupOnePerName(*want, s.Zone); kind != "" && got.Disabled == 0 && (kind != "spf" && kind != "dmarc" || serverSetupOnePerName(serverSetupInfrastructureDNSRecord{Name: name, Type: got.Type, Content: got.Content}, s.Zone) == kind) {
+					return nil, &serverSetupInfrastructureDNSPlanError{Code: "infrastructure_dns_imported_clash", Message: fmt.Sprintf("the zone already has a different %s record for %s; change or remove it in Domains first", strings.ToUpper(kind), want.Name)}
 				}
 				continue
 			}

@@ -173,6 +173,31 @@ func canonicalizeRecord(domain string, record transport.ZoneRecord) (canonicalRe
 	}, nil
 }
 
+// CanonicalRecordContent applies to one record's content exactly the rules
+// RenderZone applies (length, UTF-8, control characters, then the type's
+// own form). Server setup checks the records an owner imports with it, so a
+// reviewed record can always be published; TXT comes back in its quoted
+// storage form. Only A, AAAA, CNAME, MX, TXT and CAA are accepted here.
+// CanonicalRecordContent: RenderZone ile ayni kurallar; iceri alinan kayit
+// incelemede gecerse yayinlanabilir.
+func CanonicalRecordContent(recordType, raw string) (string, error) {
+	recordType = strings.ToUpper(strings.TrimSpace(recordType))
+	switch recordType {
+	case "A", "AAAA", "CNAME", "MX", "TXT", "CAA":
+	default:
+		return "", fmt.Errorf("unsupported record type %q", recordType)
+	}
+	if len(raw) == 0 || len(raw) > maxRecordContentBytes || !utf8.ValidString(raw) {
+		return "", errors.New("record content is empty, too large, or invalid UTF-8")
+	}
+	for _, character := range raw {
+		if character < 0x20 || character == 0x7f {
+			return "", errors.New("record content contains a control character")
+		}
+	}
+	return canonicalRData(recordType, raw)
+}
+
 func canonicalOwnerName(domain, raw string) (string, error) {
 	name := strings.ToLower(strings.TrimSuffix(strings.TrimSpace(raw), "."))
 	if name == "" || len(name) > 253 || (name != domain && !strings.HasSuffix(name, "."+domain)) {

@@ -228,8 +228,15 @@ func TestServerSetupCatalogPublicRecordsReadKnownNamesOnly(t *testing.T) {
 	}
 	before := calls.Load()
 	p.serverSetupPublicRecords(context.Background(), "example.test", extras, time.Now())
+	if calls.Load() == before {
+		t.Fatal("an answer with an unread name was kept, so Try again would not ask again")
+	}
+	answers["mail.example.test/A"] = func() ([]string, error) { return []string{"192.0.2.55"}, nil }
+	p.serverSetupPublicRecords(context.Background(), "example.test", extras, time.Now())
+	before = calls.Load()
+	p.serverSetupPublicRecords(context.Background(), "example.test", extras, time.Now())
 	if calls.Load() != before {
-		t.Fatal("a read within a minute asked the internet again")
+		t.Fatal("a complete read within a minute asked the internet again")
 	}
 	f, state0 := setupOperationFixture(t)
 	w := httptest.NewRecorder()
@@ -367,5 +374,127 @@ func TestServerSetupBuildReverseDNSIsAnOpenTaskNotAWait(t *testing.T) {
 	}
 	if serverSetupChecksReady([]serverSetupCheck{ptr}) {
 		t.Fatal("open tasks alone never complete setup")
+	}
+}
+
+func TestServerSetupDraftSkippedRecordsNeverTrapTheOwner(t *testing.T) {
+	d := mailDraftForTest()
+	bad := []serverSetupImportedRecord{
+		{Name: "example.test", Type: "MX", Content: "", Decision: "skip"},
+		{Name: "example.test", Type: "TXT", Content: `say "hi" \ there`, Decision: "skip"},
+		{Name: "example.test", Type: "CAA", Content: `0 tbs "x"`, Decision: "skip"},
+		{Name: "example.test", Type: "TXT", Content: strings.Repeat("x", 5000), Decision: "skip"},
+	}
+	d.ImportedRecords = bad
+	got, err := canonicalServerSetupDraft(d)
+	if err != nil || len(got.ImportedRecords) != 3 {
+		t.Fatalf("skipped values must never refuse the draft (an oversized one is dropped): %+v %v", got.ImportedRecords, err)
+	}
+	for _, record := range bad[:2] {
+		record.Decision = "import"
+		d.ImportedRecords = []serverSetupImportedRecord{record}
+		if _, err := canonicalServerSetupDraft(d); err == nil {
+			t.Fatalf("an unpublishable import accepted: %+v", record)
+		}
+	}
+	d.ImportedRecords = []serverSetupImportedRecord{
+		{Name: "example.test", Type: "TXT", Content: "v=spf1 -all", Decision: "import"},
+		{Name: "example.test", Type: "TXT", Content: "v=spf1 mx -all", Decision: "import"},
+	}
+	if _, err := canonicalServerSetupDraft(d); err == nil {
+		t.Fatal("two SPF policies imported")
+	}
+	marked := []serverSetupPublicRecord{
+		{Name: "example.test", Type: "MX", Values: []string{"0 ", "10 mx.old.test"}, State: "found"},
+		{Name: "example.test", Type: "TXT", Values: []string{"v=spf1 -all", "v=spf1 mx -all", `a "quoted" one`}, State: "found"},
+	}
+	markServerSetupImportable(marked, "example.test")
+	if marked[0].NotImportable["0 "] != "content_invalid" || marked[0].NotImportable["10 mx.old.test"] != "" ||
+		marked[1].NotImportable["v=spf1 mx -all"] != "one_per_name" || marked[1].NotImportable[`a "quoted" one`] != "content_invalid" || marked[1].NotImportable["v=spf1 -all"] != "" {
+		t.Fatalf("importability marks: %+v %+v", marked[0].NotImportable, marked[1].NotImportable)
+	}
+}
+
+func TestServerSetupBuildImportedRecordsKeepTheZoneValid(t *testing.T) {
+	clash := func(records ...serverSetupImportedRecord) error {
+		d := mailDraftForTest()
+		d.ImportedRecords = records
+		_, err := serverSetupInfrastructureDNSDesired(d)
+		return err
+	}
+	for label, records := range map[string][]serverSetupImportedRecord{
+		"CNAME beside A":          {{Name: "www.example.test", Type: "CNAME", Content: "example.test", Decision: "import"}, {Name: "www.example.test", Type: "A", Content: "192.0.2.1", Decision: "import"}},
+		"CNAME at the DMARC name": {{Name: "_dmarc.example.test", Type: "CNAME", Content: "dmarc.old.test", Decision: "import"}},
+		"imported DKIM key":       {{Name: dkimSelector + "._domainkey.example.test", Type: "TXT", Content: "v=DKIM1; p=abc", Decision: "import"}},
+	} {
+		var planErr *serverSetupInfrastructureDNSPlanError
+		if err := clash(records...); !errors.As(err, &planErr) || planErr.Code != "infrastructure_dns_imported_clash" {
+			t.Fatalf("%s not refused: %v", label, err)
+		}
+	}
+	d := mailDraftForTest()
+	d.ImportedRecords = []serverSetupImportedRecord{{Name: "example.test", Type: "CAA", Content: `0 ISSUE letsencrypt.org`, Decision: "import"}}
+	records := desiredByKey(t, d)
+	if _, ok := records[`example.test CAA 0 issue "letsencrypt.org"`]; !ok {
+		t.Fatalf("imports are written in the renderer's own form: %v", records)
+	}
+	// Against a zone that already has a different SPF, DMARC or MX: refused.
+	for label, existing := range map[string]serverSetupInfrastructureDNSStoredRecord{
+		"SPF":            {Name: "example.test", Type: "TXT", Content: `"v=spf1 include:other.test -all"`},
+		"DMARC":          {Name: "_dmarc.example.test", Type: "TXT", Content: `"v=DMARC1; p=reject"`},
+		"MX":             {Name: "example.test", Type: "MX", Content: "mx.old.test", Priority: 5},
+		"A at the alias": {Name: "www.example.test", Type: "A", Content: "192.0.2.1"},
+	} {
+		d := mailDraftForTest()
+		d.ImportedRecords = []serverSetupImportedRecord{{Name: "www.example.test", Type: "CNAME", Content: "example.test", Decision: "import"}}
+		if label != "A at the alias" {
+			d.ImportedRecords = nil
+		}
+		_, err := buildServerSetupInfrastructureDNSAgainstSnapshot(d, serverSetupInfrastructureDNSSnapshot{Zone: "example.test", ZoneID: 1, Records: []serverSetupInfrastructureDNSStoredRecord{existing}})
+		var planErr *serverSetupInfrastructureDNSPlanError
+		if !errors.As(err, &planErr) || planErr.Code != "infrastructure_dns_imported_clash" {
+			t.Fatalf("existing %s not refused: %v", label, err)
+		}
+	}
+	other := mailDraftForTest()
+	if _, err := buildServerSetupInfrastructureDNSAgainstSnapshot(other, serverSetupInfrastructureDNSSnapshot{Zone: "example.test", ZoneID: 1, Records: []serverSetupInfrastructureDNSStoredRecord{{Name: "example.test", Type: "TXT", Content: `"google-site-verification=x"`}}}); err != nil {
+		t.Fatalf("an unrelated TXT is not a second SPF: %v", err)
+	}
+}
+
+func TestServerSetupBuildForwardDNSStillBlocksAndExternalMXDefaultsToLater(t *testing.T) {
+	health := transport.MailHealthResponse{ServerIP: "203.0.113.42", Myhostname: "mail.example.test", HostnameFQDN: true, PTR: "mail.example.test.", PTRAligned: true, FCrDNS: false}
+	check := setupMailIdentityCheck(health, nil, "mail.example.test")
+	if check.Reason != "forward_dns_mismatch" || check.Advisory {
+		t.Fatalf("a mail host whose address does not reach this server must block: %+v", check)
+	}
+	d := mailDraftForTest()
+	d.DNSMode = "external"
+	if rows := serverSetupProviderMailRows(d, ""); rows[0].Kind != "mx-later" {
+		t.Fatalf("an unanswered MX choice at a provider is later: %+v", rows[0])
+	}
+	d.MailDNS = &serverSetupMailDNS{MX: "now"}
+	if rows := serverSetupProviderMailRows(d, ""); rows[0].Kind != "mx" {
+		t.Fatal("now must ask for the new MX")
+	}
+}
+
+func TestServerSetupBuildMailDNSRunsAfterTheZoneIsWritten(t *testing.T) {
+	d := mailDraftForTest()
+	d.Customization = &serverSetupCustomization{Components: []string{"nginx", "postfix"}}
+	steps := []serverSetupPlanStep{{Kind: "dns", Target: "local"}, {Kind: "service", Target: "nginx"}, {Kind: "mail_profile", Target: "core-mail"}, {Kind: "mail_dns", Target: "example.test"},
+		{Kind: "service", Target: "nftables"}, {Kind: "firewall"}, {Kind: "infrastructure_dns", Target: "example.test"}, {Kind: "access_dns", Target: d.PanelDomain}, {Kind: "verify"}}
+	ordered := serverSetupDNSBootstrapSteps(d, steps)
+	zone, dkim := -1, -1
+	for index, step := range ordered {
+		if step.Kind == "infrastructure_dns" {
+			zone = index
+		}
+		if step.Kind == "mail_dns" {
+			dkim = index
+		}
+	}
+	if zone < 0 || dkim < zone {
+		t.Fatalf("the DKIM record needs the zone first: %+v", ordered)
 	}
 }

@@ -910,8 +910,8 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                             <ul className="mt-2 list-disc space-y-1 pl-5 text-fg-muted">
                                 {localPrimary && mainDomain && <li>{t('setup.v2.review.registrar', { domain: mainDomain })}</li>}
                                 {draft.dns_mode === 'external' && <li>{t('setup.v2.review.provider')}</li>}
-                                {roles.web && mainDomain && !(draft.imported_records || []).some(item => item.decision === 'import') && <li>{t('setup.v2.review.site', { domain: mainDomain })}</li>}
-                                {(draft.imported_records || []).length > 0 && <li>{t('setup.v3.review.imported', { imported: (draft.imported_records || []).filter(item => item.decision === 'import').length, skipped: (draft.imported_records || []).filter(item => item.decision === 'skip').length })}</li>}
+                                {roles.web && mainDomain && !(localPrimary && (draft.imported_records || []).some(item => item.decision === 'import')) && <li>{t('setup.v2.review.site', { domain: mainDomain })}</li>}
+                                {localPrimary && !!draft.main_domain && (draft.imported_records || []).length > 0 && <li>{t('setup.v3.review.imported', { imported: (draft.imported_records || []).filter(item => item.decision === 'import').length, skipped: (draft.imported_records || []).filter(item => item.decision === 'skip').length })}</li>}
                                 {mailSelected && mainDomain && <li>{t(draft.mail_dns?.mx === 'now' || !(draft.imported_records || []).some(item => item.decision === 'import' && item.type === 'MX') ? 'setup.v3.review.mailNow' : 'setup.v3.review.mailLater', { domain: mainDomain, host: draft.mail_hostname })}</li>}
                                 <li>{t('setup.v2.review.installed')}</li>
                             </ul>
