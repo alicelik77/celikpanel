@@ -187,8 +187,9 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 		writeCodedError(w, http.StatusConflict, "server_setup_peer_connect_running", "This server's setup is running; join before starting it.", "/setup")
 		return
 	}
-	serverSetupJoinMu.Lock()
-	defer serverSetupJoinMu.Unlock()
+	joinLock := p.serverSetupJoinLock()
+	joinLock.Lock()
+	defer joinLock.Unlock()
 	canonicalCode := formatServerSetupJoinCode(pin, mustDecodeServerSetupProof(proof))
 	var pending serverSetupLinkPending
 	found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupLinkPendingKey, &pending)

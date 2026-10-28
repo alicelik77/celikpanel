@@ -130,8 +130,9 @@ func (p *Panel) runServerSetupPeerJoin(ctx context.Context, plan serverSetupPlan
 	if binding, err := p.readServerSetupPeerBinding(ctx, plan, executionID); err != nil || binding != nil {
 		return binding != nil, err
 	}
-	serverSetupJoinMu.Lock()
-	defer serverSetupJoinMu.Unlock()
+	joinLock := p.serverSetupJoinLock()
+	joinLock.Lock()
+	defer joinLock.Unlock()
 	var join serverSetupJoinRecord
 	found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join)
 	if err != nil {

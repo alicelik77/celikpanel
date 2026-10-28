@@ -389,8 +389,9 @@ func (p *Panel) handleServerSetupJoinCodes(w http.ResponseWriter, r *http.Reques
 		writeClientError(w, http.StatusBadRequest, "invalid join code request")
 		return
 	}
-	serverSetupJoinMu.Lock()
-	defer serverSetupJoinMu.Unlock()
+	joinLock := p.serverSetupJoinLock()
+	joinLock.Lock()
+	defer joinLock.Unlock()
 	plan, _, err := p.serverSetupJoinWaitingPlan(r.Context())
 	if errors.Is(err, errServerSetupJoinNotWaiting) {
 		writeCodedError(w, http.StatusConflict, "server_setup_join_not_waiting", "Create the code once this server's setup has started and waits for the second server.", "/setup")
@@ -434,7 +435,13 @@ func (p *Panel) handleServerSetupJoinCodes(w http.ResponseWriter, r *http.Reques
 	_ = json.NewEncoder(w).Encode(serverSetupJoinCodeView{Code: code, Address: serverSetupJoinAddress(plan.Draft), ExpiresAt: time.Unix(record.ExpiresAt, 0).UTC().Format(time.RFC3339), AttemptsLeft: serverSetupJoinAttempts})
 }
 
-var serverSetupJoinMu sync.Mutex
+// serverSetupJoinLocks serializes one panel's join, names and binding.
+var serverSetupJoinLocks sync.Map
+
+func (p *Panel) serverSetupJoinLock() *sync.Mutex {
+	lock, _ := serverSetupJoinLocks.LoadOrStore(p, &sync.Mutex{})
+	return lock.(*sync.Mutex)
+}
 
 func serverSetupJoinAddress(d serverSetupDraft) string {
 	ip := d.LocalIP
@@ -510,8 +517,9 @@ func (p *Panel) handleServerSetupJoin(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	serverSetupJoinMu.Lock()
-	defer serverSetupJoinMu.Unlock()
+	joinLock := p.serverSetupJoinLock()
+	joinLock.Lock()
+	defer joinLock.Unlock()
 	ctx := r.Context()
 	var record serverSetupJoinCodeRecord
 	found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinCodeKey, &record)
@@ -813,8 +821,9 @@ func (p *Panel) handleServerSetupPeerNames(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	ctx := r.Context()
-	serverSetupJoinMu.Lock()
-	defer serverSetupJoinMu.Unlock()
+	joinLock := p.serverSetupJoinLock()
+	joinLock.Lock()
+	defer joinLock.Unlock()
 	var join serverSetupJoinRecord
 	found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join)
 	if err != nil {
