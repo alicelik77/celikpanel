@@ -58,6 +58,16 @@ sormayı bırakır.
   hiçbir şey çıkarılmaz); eski DMARC seçime göre korunur ya da değiştirilir.
   Aktarılan ve posta kayıtları bölgede sahibindir (Alan adları'ndan
   düzenlenir); yalnız kurulumun kendi sunucu adresleri kilitli kalır.
+  İnceleme düzeltmesi: kayıtlar bölge yazıcısının kendi biçiminde karşılaştırılır.
+  Kurulum yazdığı aktarılan ve posta kayıtlarının listesini tutar
+  (`panel_settings`, şema değişikliği yok); gözden geçirilmiş planda kurulumun
+  yazdığı ad başına tek kayıt (posta adı değişince birleşik SPF, DMARC, posta
+  "şimdi" taşınınca aktarılan eski MX) tam saklı satırıyla değiştirilir, asla
+  reddedilmez. Kurulumun yazmadığı (ya da sahibin Alan adları'nda değiştirdiği)
+  farklı bir SPF veya DMARC planı reddeder; sahibin eklediği başka bir MX (yedek
+  MX) bizimkinin yanında kalır, çünkü bir adın birden çok MX'i olabilir. Kurulumun
+  yazdığı ama yeni planın artık istemediği kayıtlar (atlanan aktarım, "şimdi"
+  "sonra"ya dönünce bizim MX) Alan adları'nda sahibine bırakılır.
 - **Harici sağlayıcı.** Sağlayıcı listesine MX, birleştirilmiş SPF, DMARC ve
   DKIM satırları genel durumlarıyla eklenir (sahibin koruduğu eski MX için
   "korunuyor", DKIM anahtarı oluşana kadar "bekliyor").

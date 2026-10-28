@@ -438,11 +438,11 @@ func TestServerSetupBuildImportedRecordsKeepTheZoneValid(t *testing.T) {
 	if _, ok := records[`example.test CAA 0 issue "letsencrypt.org"`]; !ok {
 		t.Fatalf("imports are written in the renderer's own form: %v", records)
 	}
-	// Against a zone that already has a different SPF, DMARC or MX: refused.
+	// Against a zone that already has a different SPF or DMARC the setup did
+	// not write: refused. Another MX the owner added stays beside ours.
 	for label, existing := range map[string]serverSetupInfrastructureDNSStoredRecord{
 		"SPF":            {Name: "example.test", Type: "TXT", Content: `"v=spf1 include:other.test -all"`},
 		"DMARC":          {Name: "_dmarc.example.test", Type: "TXT", Content: `"v=DMARC1; p=reject"`},
-		"MX":             {Name: "example.test", Type: "MX", Content: "mx.old.test", Priority: 5},
 		"A at the alias": {Name: "www.example.test", Type: "A", Content: "192.0.2.1"},
 	} {
 		d := mailDraftForTest()
@@ -459,6 +459,96 @@ func TestServerSetupBuildImportedRecordsKeepTheZoneValid(t *testing.T) {
 	other := mailDraftForTest()
 	if _, err := buildServerSetupInfrastructureDNSAgainstSnapshot(other, serverSetupInfrastructureDNSSnapshot{Zone: "example.test", ZoneID: 1, Records: []serverSetupInfrastructureDNSStoredRecord{{Name: "example.test", Type: "TXT", Content: `"google-site-verification=x"`}}}); err != nil {
 		t.Fatalf("an unrelated TXT is not a second SPF: %v", err)
+	}
+	backup := serverSetupInfrastructureDNSStoredRecord{ID: 7, Name: "example.test", Type: "MX", Content: "backup-mx.example.test", Priority: 20}
+	plan, err := buildServerSetupInfrastructureDNSAgainstSnapshot(other, serverSetupInfrastructureDNSSnapshot{Zone: "example.test", ZoneID: 1, Records: []serverSetupInfrastructureDNSStoredRecord{backup}})
+	if err != nil {
+		t.Fatalf("an owner's backup MX stays beside ours: %v", err)
+	}
+	for _, record := range plan.Records {
+		if len(record.Replaces) != 0 {
+			t.Fatalf("a record the setup did not write is never replaced: %+v", record)
+		}
+	}
+	// The same content typed differently (unquoted TXT) is the same record.
+	spf := mergeServerSetupSPF("", other.MailHostname)
+	plan, err = buildServerSetupInfrastructureDNSAgainstSnapshot(other, serverSetupInfrastructureDNSSnapshot{Zone: "example.test", ZoneID: 1, Records: []serverSetupInfrastructureDNSStoredRecord{{Name: "example.test", Type: "TXT", Content: spf}}})
+	if err != nil {
+		t.Fatalf("an equal SPF in another form must be kept: %v", err)
+	}
+	for _, record := range plan.Records {
+		if record.Type == "TXT" && record.Name == "example.test" && record.Action != "keep" {
+			t.Fatalf("canonical comparison: %+v", record)
+		}
+	}
+}
+
+// Records the setup wrote itself are replaced on a revised plan, never
+// refused: the merged SPF after a mail host change and the imported old MX
+// when mail moves now. The owner's backup MX stays; an SPF the owner changed
+// in between is the owner's and refuses the revision.
+func TestServerSetupRevisedPlanReplacesOnlyRecordsSetupWrote(t *testing.T) {
+	p := newDNSPanelForTest(t)
+	d := infrastructureDNSTestDraft()
+	d.MainDomain, d.Purpose, d.MailHostname = "example.test", "web_mail", "mail.example.test"
+	d.ImportedRecords = []serverSetupImportedRecord{{Name: "example.test", Type: "MX", Content: "mx.oldmail.test", Priority: 5, Decision: "import"}, {Name: "example.test", Type: "TXT", Content: "v=spf1 include:_spf.oldmail.test ~all", Decision: "import"}}
+	d.MailDNS = &serverSetupMailDNS{MX: "later"}
+	prepare := func(d serverSetupDraft, request string) error {
+		infra, err := p.buildServerSetupInfrastructureDNSPlan(context.Background(), d)
+		if err != nil {
+			return err
+		}
+		plan := serverSetupPlan{Version: serverSetupPlanVersion, Draft: d, InfrastructureDNS: infra, Steps: []serverSetupPlanStep{{ID: "03-infrastructure_dns", Kind: "infrastructure_dns", Target: infra.Zone}}}
+		plan.ID = serverSetupPlanIdentity(plan)
+		step := serverSetupExecutionStep{serverSetupPlanStep: plan.Steps[0], RequestID: strings.Repeat(request, 32), OwnerID: strings.Repeat("c", 32)}
+		_, err = p.prepareServerSetupInfrastructureDNSRecords(context.Background(), plan, step, dnsPublisherIdentity{Engine: "bind", Epoch: 1})
+		return err
+	}
+	rows := func(kind string) []string {
+		out := []string{}
+		result, err := p.db.GetDB().Query(`SELECT COALESCE(prio,0)||' '||content FROM pdns_records WHERE name='example.test' AND type=? ORDER BY content`, kind)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer result.Close()
+		for result.Next() {
+			var value string
+			result.Scan(&value)
+			out = append(out, joinTXTSegments(strings.TrimPrefix(value, "0 ")))
+		}
+		return out
+	}
+	if err := prepare(d, "a"); err != nil {
+		t.Fatal(err)
+	}
+	if mx := rows("MX"); !slices.Equal(mx, []string{"5 mx.oldmail.test"}) {
+		t.Fatalf("later keeps the imported MX: %v", mx)
+	}
+	// The owner adds a backup MX in Domains (not imported, not setup's).
+	if _, err := p.db.GetDB().Exec(`INSERT INTO pdns_records(domain_id,name,type,content,ttl,prio) SELECT id,'example.test','MX','backup-mx.example.test',3600,20 FROM pdns_domains WHERE name='example.test'`); err != nil {
+		t.Fatal(err)
+	}
+	revised := d
+	revised.MailDNS = &serverSetupMailDNS{MX: "now"}
+	revised.MailHostname = "mail2.example.test"
+	if err := prepare(revised, "d"); err != nil {
+		t.Fatalf("a revision of records setup wrote must not be refused: %v", err)
+	}
+	if mx := rows("MX"); !slices.Equal(mx, []string{"20 backup-mx.example.test", "10 mail2.example.test"}) {
+		t.Fatalf("now replaces the imported MX and keeps the owner's backup: %v", mx)
+	}
+	if txt := rows("TXT"); len(txt) != 1 || !strings.Contains(txt[0], "a:mail2.example.test") || strings.Contains(txt[0], "a:mail.example.test ") {
+		t.Fatalf("the merged SPF is replaced, never doubled: %v", txt)
+	}
+	// The owner changes the SPF in Domains: that one is the owner's now.
+	if _, err := p.db.GetDB().Exec(`UPDATE pdns_records SET content='"v=spf1 include:owner.test -all"' WHERE name='example.test' AND type='TXT'`); err != nil {
+		t.Fatal(err)
+	}
+	again := revised
+	again.MailHostname = "mail3.example.test"
+	var planErr *serverSetupInfrastructureDNSPlanError
+	if err := prepare(again, "e"); !errors.As(err, &planErr) || planErr.Code != "infrastructure_dns_imported_clash" {
+		t.Fatalf("an SPF the owner changed must refuse the revision: %v", err)
 	}
 }
 

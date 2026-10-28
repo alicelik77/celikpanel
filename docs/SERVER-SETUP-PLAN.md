@@ -60,6 +60,16 @@ step is opened again.
   nothing removed); an old DMARC is kept or replaced as chosen. Imported and
   mail records are the owner's records in the zone (editable in Domains);
   only the setup's own server addresses stay locked.
+  Review correction: records are compared in the zone renderer's own form.
+  The setup keeps a list of the imported and mail records it wrote
+  (`panel_settings`, no schema change); on a revised plan a once-per-name
+  record it wrote (the merged SPF after a mail host change, DMARC, the old
+  imported MX when mail moves now) is replaced by its exact stored row,
+  never refused. A different SPF or DMARC the setup did not write (or one
+  the owner changed in Domains) refuses the plan; another MX the owner added
+  (a backup MX) stays beside ours, since a name may have several. Records
+  the setup wrote that a revision no longer wants (a skipped import, our MX
+  after "now" becomes "later") are left for the owner in Domains.
 - **External provider.** The provider list adds MX, the merged SPF, DMARC and
   DKIM rows with their public state ("kept" for an old MX the owner keeps,
   "pending" until the DKIM key exists).

@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/alicelik/celikpanel/internal/binddns"
 	"github.com/alicelik/celikpanel/internal/hostname"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -31,6 +32,57 @@ type serverSetupInfrastructureDNSRecord struct {
 	// are the owner's in the zone and are never locked.
 	Priority int    `json:"priority,omitempty"`
 	Origin   string `json:"origin,omitempty"`
+	// Replaces lists records the setup itself wrote earlier that this one
+	// replaces on a revised plan (the merged SPF after a mail host change,
+	// the old MX when mail moves now); the exact stored rows, so an owner's
+	// change in between makes the plan stale instead of being overwritten.
+	Replaces []serverSetupInfrastructureDNSReplaced `json:"replaces,omitempty"`
+}
+
+type serverSetupInfrastructureDNSReplaced struct {
+	ID       int64  `json:"id"`
+	Content  string `json:"content"`
+	Priority int    `json:"priority,omitempty"`
+}
+
+// serverSetupInfrastructureDNSWritten is the setup's own record of which
+// imported and mail records it wrote into the zone (panel_settings, no
+// schema change): only those may be replaced on a revised plan; a different
+// record the setup did not write is the owner's and is never overwritten.
+// Kurulumun bolgeye kendi yazdigi kayitlarin listesi.
+type serverSetupInfrastructureDNSWritten struct {
+	ZoneID  int64                                       `json:"zone_id"`
+	Records []serverSetupInfrastructureDNSWrittenRecord `json:"records"`
+}
+
+type serverSetupInfrastructureDNSWrittenRecord struct {
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+	Content  string `json:"content"`
+	Priority int    `json:"priority,omitempty"`
+}
+
+func serverSetupInfrastructureDNSWrittenKey(zone string) string {
+	return "server_setup_infrastructure_written:" + zone
+}
+
+// serverSetupCanonicalStored is a stored record's content in the renderer's
+// own form, so equal records compare equal however they were typed.
+func serverSetupCanonicalStored(recordType, content string) string {
+	if canonical, err := binddns.CanonicalRecordContent(recordType, content); err == nil {
+		return canonical
+	}
+	return content
+}
+
+func (s serverSetupInfrastructureDNSSnapshot) setupWrote(got serverSetupInfrastructureDNSStoredRecord) bool {
+	content := serverSetupCanonicalStored(got.Type, got.Content)
+	for _, record := range s.Written {
+		if record.Name == canonicalDNSName(got.Name) && record.Type == got.Type && record.Priority == got.Priority && serverSetupCanonicalStored(record.Type, record.Content) == content {
+			return true
+		}
+	}
+	return false
 }
 
 type serverSetupInfrastructureDNSPlan struct {
@@ -83,6 +135,7 @@ type serverSetupInfrastructureDNSSnapshot struct {
 	Master    string
 	Ownership string
 	Records   []serverSetupInfrastructureDNSStoredRecord
+	Written   []serverSetupInfrastructureDNSWrittenRecord
 }
 
 type serverSetupInfrastructureDNSStoredRecord struct {
@@ -199,6 +252,15 @@ func readServerSetupInfrastructureDNSSnapshot(ctx context.Context, q serverSetup
 	}
 	if len(s.Records) > 2048 {
 		return s, infrastructureDNSReviewError("infrastructure zone exceeds the bounded setup record limit")
+	}
+	var raw string
+	err = q.QueryRowContext(ctx, `SELECT value FROM panel_settings WHERE key=?`, serverSetupInfrastructureDNSWrittenKey(zone)).Scan(&raw)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return s, err
+	}
+	var written serverSetupInfrastructureDNSWritten
+	if err == nil && json.Unmarshal([]byte(raw), &written) == nil && written.ZoneID == s.ZoneID {
+		s.Written = written.Records
 	}
 	return s, nil
 }
@@ -372,16 +434,29 @@ func buildServerSetupInfrastructureDNSAgainstSnapshot(d serverSetupDraft, s serv
 				return nil, infrastructureDNSReviewError(fmt.Sprintf("infrastructure record %s %s is disabled; review it first", want.Name, want.Type))
 			}
 			if want.Origin != "" {
-				// The owner's records are a set: an identical record is kept,
-				// anything else is added beside what the zone already has.
-				if got.Content == want.Content && got.Priority == want.Priority {
+				// The owner's records are a set: an identical record (in the
+				// renderer's own form) is kept, anything else is added beside
+				// what the zone already has. For a once-per-name record (SPF,
+				// DMARC, the mail MX) a different one the setup wrote earlier
+				// is replaced; one the setup did not write is the owner's: a
+				// second SPF or DMARC is refused, another MX (a backup the
+				// owner added in Domains) stays beside ours.
+				if serverSetupCanonicalStored(got.Type, got.Content) == want.Content && got.Priority == want.Priority {
 					want.TTL, want.Action = got.TTL, "keep"
 					continue
 				}
-				if kind := serverSetupOnePerName(*want, s.Zone); kind != "" && got.Disabled == 0 && (kind != "spf" && kind != "dmarc" || serverSetupOnePerName(serverSetupInfrastructureDNSRecord{Name: name, Type: got.Type, Content: got.Content}, s.Zone) == kind) {
-					return nil, &serverSetupInfrastructureDNSPlanError{Code: "infrastructure_dns_imported_clash", Message: fmt.Sprintf("the zone already has a different %s record for %s; change or remove it in Domains first", strings.ToUpper(kind), want.Name)}
+				kind := serverSetupOnePerName(*want, s.Zone)
+				if kind == "" || (kind != "mx" && serverSetupOnePerName(serverSetupInfrastructureDNSRecord{Name: name, Type: got.Type, Content: got.Content}, s.Zone) != kind) {
+					continue
 				}
-				continue
+				if s.setupWrote(got) {
+					want.Replaces = append(want.Replaces, serverSetupInfrastructureDNSReplaced{ID: got.ID, Content: got.Content, Priority: got.Priority})
+					continue
+				}
+				if kind == "mx" {
+					continue
+				}
+				return nil, &serverSetupInfrastructureDNSPlanError{Code: "infrastructure_dns_imported_clash", Message: fmt.Sprintf("the zone already has a different %s record for %s that setup did not write; change or remove it in Domains first", strings.ToUpper(kind), want.Name)}
 			}
 			if want.Type == "SOA" {
 				seen++
@@ -470,11 +545,34 @@ func (p *Panel) prepareServerSetupInfrastructureDNSRecords(ctx context.Context, 
 	if _, err := tx.ExecContext(ctx, `UPDATE pdns_domains SET type=? WHERE id=? AND type<>?`, current.ZoneType, zoneID, current.ZoneType); err != nil {
 		return receipt, err
 	}
+	written := append([]serverSetupInfrastructureDNSWrittenRecord(nil), s.Written...)
 	for _, r := range current.Records {
+		for _, old := range r.Replaces {
+			result, err := tx.ExecContext(ctx, `DELETE FROM pdns_records WHERE id=? AND domain_id=? AND content=? AND COALESCE(prio,0)=?`, old.ID, zoneID, old.Content, old.Priority)
+			if err != nil {
+				return receipt, err
+			}
+			if changed, err := result.RowsAffected(); err != nil || changed != 1 {
+				return receipt, errServerSetupInfrastructureDNSChanged
+			}
+			content := serverSetupCanonicalStored(r.Type, old.Content)
+			written = slices.DeleteFunc(written, func(record serverSetupInfrastructureDNSWrittenRecord) bool {
+				return record.Name == r.Name && record.Type == r.Type && record.Priority == old.Priority && serverSetupCanonicalStored(record.Type, record.Content) == content
+			})
+		}
 		if r.Action != "add" {
 			continue
 		}
 		if _, err := tx.ExecContext(ctx, `INSERT INTO pdns_records(domain_id,name,type,content,ttl,prio) VALUES(?,?,?,?,?,?)`, zoneID, r.Name, r.Type, r.Content, r.TTL, r.Priority); err != nil {
+			return receipt, err
+		}
+		if r.Origin != "" {
+			written = append(written, serverSetupInfrastructureDNSWrittenRecord{Name: r.Name, Type: r.Type, Content: r.Content, Priority: r.Priority})
+		}
+	}
+	if len(written) > 0 || len(s.Written) > 0 {
+		raw, _ := json.Marshal(serverSetupInfrastructureDNSWritten{ZoneID: zoneID, Records: written})
+		if _, err := tx.ExecContext(ctx, `INSERT INTO panel_settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value`, serverSetupInfrastructureDNSWrittenKey(s.Zone), string(raw)); err != nil {
 			return receipt, err
 		}
 	}
