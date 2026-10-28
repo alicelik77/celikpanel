@@ -139,6 +139,12 @@ type dnsOverviewName struct {
 	Where    string   `json:"where"`
 	Optional bool     `json:"optional,omitempty"`
 	Reason   string   `json:"reason,omitempty"`
+	// Own (a name in our own list that the internet shows missing or
+	// different) is what our main DNS server itself answers: "same" (it
+	// has the expected value: the change is spreading), "differs" (our
+	// list has another value: the owner changed it) or "unknown".
+	Own     string   `json:"own,omitempty"`
+	OwnSeen []string `json:"own_seen,omitempty"`
 }
 
 // dnsOverviewMailRecord is one of the main domain's mail records: "mx",
@@ -602,6 +608,9 @@ func (p *Panel) checkDNSOverview(ctx context.Context, in dnsOverviewInput, edges
 			}
 		}
 	}
+	if delegate {
+		p.compareDNSOverviewOwnAnswers(ctx, &result, edges)
+	}
 	if mx := dnsOverviewMXMoveOffer(in, result, receiver); mx != nil {
 		result.MXMove = mx
 	}
@@ -627,6 +636,50 @@ func dnsOverviewJoinFor(in dnsOverviewInput, role string) dnsOverviewJoin {
 		return dnsOverviewJoin{State: "unavailable", Reason: "standalone_pdns"}
 	}
 	return dnsOverviewJoin{State: "unavailable", Reason: "standalone_bind"}
+}
+
+// compareDNSOverviewOwnAnswers asks our main DNS server itself, without
+// recursion, for each name of our list that the internet shows missing or
+// different: a readable authoritative answer with the expected value means
+// the change is spreading; one without it means our own list says something
+// else (the owner changed it). Bounded; an unreadable answer is unknown.
+func (p *Panel) compareDNSOverviewOwnAnswers(ctx context.Context, result *dnsOverview, edges dnsOverviewSeams) {
+	mainIP := ""
+	for _, server := range result.Servers {
+		if (server.Role == "main" || server.Role == "standalone") && server.IPv4 != "" && server.Answers == "ok" {
+			mainIP = server.IPv4
+		}
+	}
+	address := net.JoinHostPort(mainIP, "53")
+	if edges.Delegation.Address != nil {
+		address = edges.Delegation.Address(mainIP)
+	}
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	for index := range result.Names {
+		row := &result.Names[index]
+		if (row.Where != "zone" && row.Where != "main") || (row.State != "missing" && row.State != "different") || serverSetupRecordTypes[row.Type] == 0 {
+			continue
+		}
+		row.Own = "unknown"
+		if mainIP == "" {
+			continue
+		}
+		message, err := dnswire.Exchange(ctx, address, row.Name, serverSetupRecordTypes[row.Type], false)
+		if err != nil || !message.Authoritative || (message.RCode != 0 && message.RCode != 3) {
+			continue
+		}
+		seen := []string{}
+		for _, rr := range message.Answer {
+			if rr.Type == serverSetupRecordTypes[row.Type] {
+				seen = append(seen, rr.Value)
+			}
+		}
+		row.Own, row.OwnSeen = "differs", seen
+		if slices.Contains(seen, row.Expected) {
+			row.Own = "same"
+		}
+	}
 }
 
 func dnsOverviewDKIMPublished(seen []string, state string) string {
@@ -766,6 +819,14 @@ func dnsOverviewSentenceFor(in dnsOverviewInput, r dnsOverview) dnsOverviewSente
 			return dnsOverviewSay("prerequisite", "dns_overview_dkim_pending", "The mail signing key (DKIM) of the domain has not been made yet, so mail is sent unsigned.", "You, in Server setup.", "Extend this server's setup and run it again: its mail records step makes the key.", "This page shows the key and its record once it exists.", vars)
 		}
 	}
+	// Our own list says something else for a server's name: the owner
+	// changed it, which is not a delay that passes by itself.
+	for _, name := range r.Names {
+		if name.Own == "differs" {
+			vars["name"], vars["value"], vars["seen"] = name.Name, name.Expected, strings.Join(name.OwnSeen, ", ")
+			return dnsOverviewSay("prerequisite", "dns_overview_owner_changed", "The list itself has another value for one of the servers' own names.", "You, the owner of the list.", "Check "+name.Name+" in the record editor; it should be "+name.Expected+".", "This page checks again every minute.", vars)
+		}
+	}
 	if r.Home == "own" {
 		if mainServer.Answers == "unknown" || (backup.Role == "backup" && backup.Answers == "unknown") {
 			who := mainServer
@@ -791,6 +852,12 @@ func dnsOverviewSentenceFor(in dnsOverviewInput, r dnsOverview) dnsOverviewSente
 	if backup.Role == "backup" && backup.Answers == "waiting" {
 		vars["backup"] = label(backup)
 		return dnsOverviewSay("waiting", "dns_overview_backup_first_copy", "The backup DNS server has not received its first copy of the list yet.", "Nobody: it is copied by itself.", "Nothing to do.", "It answers for the domain once it has its copy; this page checks every minute.", vars)
+	}
+	for _, name := range r.Names {
+		if (name.State == "missing" || name.State == "different") && name.Own == "unknown" {
+			vars["name"] = name.Name
+			return dnsOverviewSay("unknown", "dns_overview_some_unknown", "A name does not show its address on the internet, and our own DNS server could not be asked just now.", "Nobody yet.", "Nothing to do now.", "This page asks again in a minute.", vars)
+		}
 	}
 	for _, name := range r.Names {
 		if name.State == "missing" || name.State == "different" || name.State == "not_yet" {

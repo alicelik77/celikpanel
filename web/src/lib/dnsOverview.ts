@@ -32,6 +32,9 @@ export interface DNSOverviewName {
     where: 'zone' | 'main' | 'provider' | 'remote' | 'registrar';
     optional?: boolean;
     reason?: string;
+    /** What our own main DNS server answers for a name the internet shows wrong. */
+    own?: 'same' | 'differs' | 'unknown';
+    own_seen?: string[];
 }
 
 export interface DNSOverviewMail {
@@ -65,7 +68,7 @@ export const DNS_OVERVIEW_CODES = [
     'setup_not_done', 'setup_running', 'join_waiting', 'main_not_serving', 'backup_not_serving', 'peer_not_joined',
     'registrar_not_pointing', 'domain_not_registered', 'glue_missing', 'provider_records', 'remote_records',
     'provider_mail', 'remote_mail', 'server_unknown', 'some_unknown', 'spreading', 'mail_spreading',
-    'backup_first_copy', 'ok_mail_kept', 'dkim_pending', 'ok', 'check_running',
+    'owner_changed', 'backup_first_copy', 'ok_mail_kept', 'dkim_pending', 'ok', 'check_running',
 ] as const;
 
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
@@ -93,7 +96,8 @@ export function decodeDNSOverview(raw: unknown): DNSOverview {
     for (const name of raw.names) {
         if (!record(name) || !text(name.name) || !oneOf(name.kind, ['panel', 'mail', 'ns', 'nameservers', 'glue']) || !text(name.type) || !text(name.expected)
             || !strings(name.seen) || !oneOf(name.state, rowStates) || !oneOf(name.where, ['zone', 'main', 'provider', 'remote', 'registrar'])
-            || !optionalText(name.server) || !optionalText(name.reason)) throw invalid('name');
+            || !optionalText(name.server) || !optionalText(name.reason)
+            || (name.own !== undefined && !oneOf(name.own, ['same', 'differs', 'unknown'])) || (name.own_seen !== undefined && !strings(name.own_seen))) throw invalid('name');
     }
     if (!Array.isArray(raw.mail) || raw.mail.length > 4) throw invalid('mail');
     for (const mail of raw.mail) {

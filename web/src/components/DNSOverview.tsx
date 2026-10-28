@@ -47,8 +47,9 @@ const stateClass = (state: string) => state === 'ok' ? 'text-success' : state ==
 
 const softwareName = (id?: string) => id === 'bind' ? 'BIND' : id === 'pdns' ? 'PowerDNS' : id || '';
 
-function rowStateText(t: T, row: Pick<DNSOverviewName, 'state' | 'seen'>): string {
+function rowStateText(t: T, row: Pick<DNSOverviewName, 'state' | 'seen'> & { own?: string; own_seen?: string[] }): string {
     const seen = row.seen.join(', ') || '—';
+    if (row.own === 'differs') return t('dnsov.state.ownDiffers', { seen: row.own_seen?.join(', ') || '—' });
     if (row.state === 'not_yet' && row.seen.length > 0) return t('dnsov.state.not_yetSeen', { seen });
     return t(`dnsov.state.${row.state}`, { seen });
 }

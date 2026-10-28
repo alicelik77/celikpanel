@@ -32,12 +32,14 @@ type overviewWorld struct {
 	parentNS []string
 	glue     map[string]string
 	servers  map[string]string
+	// zone: the A records our own DNS servers answer, name → address.
+	zone map[string]string
 	// noCopy: the backup's first copy is not proven yet.
 	noCopy atomic.Bool
 }
 
 func newOverviewWorld() *overviewWorld {
-	return &overviewWorld{public: map[string][]string{}, failing: map[string]bool{}, glue: map[string]string{}, servers: map[string]string{}}
+	return &overviewWorld{public: map[string][]string{}, failing: map[string]bool{}, glue: map[string]string{}, servers: map[string]string{}, zone: map[string]string{}}
 }
 
 func (w *overviewWorld) set(fn func(*overviewWorld)) {
@@ -97,6 +99,12 @@ func (w *overviewWorld) seams(t *testing.T) *dnsOverviewSeams {
 		}
 		if name == "example.test" && qtype == dnswiretest.TypeSOA {
 			return dnswiretest.Reply{Authoritative: true, Answer: []dnswiretest.RR{{Name: name, Type: dnswiretest.TypeSOA, Value: "ns1.example.test hostmaster.example.test 2026102801 3600 600 604800 300"}}}
+		}
+		w.mu.Lock()
+		ip, found := w.zone[name]
+		w.mu.Unlock()
+		if found && qtype == dnswiretest.TypeA {
+			return dnswiretest.Reply{Authoritative: true, Answer: []dnswiretest.RR{{Name: name, Type: dnswiretest.TypeA, Value: ip}}}
 		}
 		return dnswiretest.Reply{Authoritative: true, RCode: 3}
 	})
@@ -282,6 +290,7 @@ func TestDNSOverviewSentencePutsAVerifiedFailureFirst(t *testing.T) {
 	world.set(func(w *overviewWorld) {
 		delete(w.failing, "beta.example.test")
 		delete(w.public, "beta.example.test A")
+		w.zone["beta.example.test"] = "198.51.100.20"
 	})
 	if value := read(); value.Sentence.State != "waiting" || value.Sentence.Code != "dns_overview_spreading" || overviewName(value, "panel", "beta.example.test").State != "missing" {
 		t.Fatalf("spreading: %+v", value.Sentence)
@@ -637,5 +646,30 @@ func TestDNSOverviewBackupBeforeItsFirstCopyWaitsLikeTheRegistrarCard(t *testing
 	}
 	if serverSetupBackupAnswerState("ok", false) != "ok" || serverSetupBackupAnswerState("unknown", true) != "unknown" {
 		t.Fatal("the shared rule")
+	}
+}
+
+func TestDNSOverviewAnOwnerChangeInOurListIsNotADelay(t *testing.T) {
+	f, world := overviewPairedFirst(t)
+	world.set(func(w *overviewWorld) {
+		w.public["beta.example.test A"] = []string{"192.0.2.50"}
+		w.zone["beta.example.test"] = "198.51.100.20"
+	})
+	now := time.Now()
+	spreading, _ := f.panel.dnsOverview(context.Background(), now, false)
+	if row := overviewName(spreading, "panel", "beta.example.test"); row.State != "different" || row.Own != "same" || spreading.Sentence.Code != "dns_overview_spreading" {
+		t.Fatalf("our list has it: %+v %+v", row, spreading.Sentence)
+	}
+	world.set(func(w *overviewWorld) { w.zone["beta.example.test"] = "192.0.2.50" })
+	changed, _ := f.panel.dnsOverview(context.Background(), now.Add(2*time.Minute), false)
+	row := overviewName(changed, "panel", "beta.example.test")
+	if row.Own != "differs" || changed.Sentence.Code != "dns_overview_owner_changed" || changed.Sentence.State != "prerequisite" || !strings.Contains(changed.Sentence.Next, "record editor") || strings.Contains(changed.Sentence.Then, "spread") {
+		t.Fatalf("an owner change: %+v %+v", row, changed.Sentence)
+	}
+	// Our own server cannot be asked: not called a delay either.
+	world.set(func(w *overviewWorld) { w.servers["203.0.113.10"] = "" })
+	unread, _ := f.panel.dnsOverview(context.Background(), now.Add(4*time.Minute), false)
+	if overviewName(unread, "panel", "beta.example.test").Own != "unknown" || unread.Sentence.State == "waiting" {
+		t.Fatalf("unreadable own answer: %+v", unread.Sentence)
 	}
 }
