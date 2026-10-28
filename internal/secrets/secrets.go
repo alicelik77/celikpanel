@@ -135,6 +135,14 @@ func Load(path string) (*Box, error) {
 	return newBox(path, key)
 }
 
+// New opens a box over a 32-byte key held only in memory: for a process
+// without a key file (tests), never for values that must outlive it.
+// New, yalnız bellekte tutulan 32 baytlık anahtarla kutu açar; anahtar
+// dosyası olmayan süreç (testler) içindir, kalıcı değerler için değildir.
+func New(key []byte) (*Box, error) {
+	return newBox("(memory)", key)
+}
+
 func newBox(path string, key []byte) (*Box, error) {
 	if len(key) != keySize {
 		return nil, fmt.Errorf("key file %s: expected %d bytes, got %d", path, keySize, len(key))

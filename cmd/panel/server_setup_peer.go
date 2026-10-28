@@ -63,13 +63,41 @@ type serverSetupLinkPending struct {
 	CreatedAt  string `json:"created_at"`
 }
 
+// readServerSetupLink returns the link record with its secrets opened (the
+// stored record keeps them sealed: writeServerSetupLink).
 func (p *Panel) readServerSetupLink(ctx context.Context) (*serverSetupLinkRecord, error) {
+	return p.readServerSetupLinkFrom(ctx, p.db.GetDB())
+}
+
+func (p *Panel) readServerSetupLinkFrom(ctx context.Context, q serverSetupInfrastructureDNSQuery) (*serverSetupLinkRecord, error) {
 	var link serverSetupLinkRecord
-	found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupLinkKey, &link)
+	found, err := readServerSetupJSONSetting(ctx, q, serverSetupLinkKey, &link)
 	if err != nil || !found {
 		return nil, err
 	}
+	for _, field := range link.secretFields() {
+		if *field, err = p.openServerSetupSecret(*field); err != nil {
+			return nil, err
+		}
+	}
 	return &link, nil
+}
+
+// writeServerSetupLink keeps the link record with its secrets sealed.
+func (p *Panel) writeServerSetupLink(ctx context.Context, q serverSetupExec, link serverSetupLinkRecord) error {
+	for _, field := range link.secretFields() {
+		sealed, err := p.sealServerSetupSecret(*field)
+		if err != nil {
+			return err
+		}
+		*field = sealed
+	}
+	return writeServerSetupJSONSetting(ctx, q, serverSetupLinkKey, link)
+}
+
+// secretFields are the link's bearer and enrollment codes.
+func (l *serverSetupLinkRecord) secretFields() []*string {
+	return []*string{&l.LinkCredential, &l.EnrollmentCode, &l.IssuedEnrollment}
 }
 
 func (l serverSetupLinkRecord) target() serverSetupLinkTarget {
@@ -304,19 +332,19 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 		// A new join (another first server, or the same one with a new code)
 		// replaces the old link and withdraws the enrollment this server
 		// issued for the old join.
-		var old serverSetupLinkRecord
-		replaced, err := readServerSetupJSONSetting(ctx, tx, serverSetupLinkKey, &old)
+		old, err := p.readServerSetupLinkFrom(ctx, tx)
 		if err != nil {
 			writeServerError(w, err)
 			return
 		}
+		replaced := old != nil
 		if replaced && old.IssuedEnrollment != "" {
 			if err := retireServerSetupEnrollment(ctx, tx, remoteDNSHash(old.IssuedEnrollment)); err != nil {
 				writeServerError(w, err)
 				return
 			}
 		}
-		if err := writeServerSetupJSONSetting(ctx, tx, serverSetupLinkKey, link); err != nil {
+		if err := p.writeServerSetupLink(ctx, tx, link); err != nil {
 			writeServerError(w, err)
 			return
 		}
@@ -617,7 +645,7 @@ func (p *Panel) serverSetupOwnNames(ctx context.Context, d serverSetupDraft, lin
 				return names, err
 			}
 			link.IssuedEnrollment = code
-			if err := writeServerSetupJSONSetting(ctx, tx, serverSetupLinkKey, link); err != nil {
+			if err := p.writeServerSetupLink(ctx, tx, *link); err != nil {
 				return names, err
 			}
 			if err := tx.Commit(); err != nil {

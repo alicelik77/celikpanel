@@ -162,9 +162,18 @@ only by component tests on loopback servers; not on installed servers.
   outside the database) of the code's secret and of the second server's
   credential; the second server derives the credential it accepts and keeps
   the typed code, sealed under the key file, only while a join's outcome is
-  unknown (it is deleted on every known outcome). The link credential is
-  removed on both servers when their setup completes. Nothing secret leaves
-  through an administrator API, a log or the audit.
+  unknown (it is deleted on every known outcome). Every secret a server must
+  use again is sealed under its own key file (AES-GCM, `secret.key`): on the
+  second server the link credential, the enrollment code the first server
+  handed over and the one it issued itself as main DNS server; on the first
+  server the credential it uses on the second and, in Option A, the
+  enrollment code the main sent with its names. A copy of either database
+  alone therefore yields no bearer, code or enrollment. Hashes and sealed
+  values both carry the key generation they were made with (`k1:`), so a
+  later key rotation can tell old values from new; there is no rotation yet,
+  and a value of another generation is not read. The link credential and the
+  join code are removed on both servers when their setup completes. Nothing
+  secret leaves through an administrator API, a log or the audit.
 
 Remaining limits: the IPv4 address is the only address checked for the
 source; the backup's own key fingerprint is sent once with its names; a

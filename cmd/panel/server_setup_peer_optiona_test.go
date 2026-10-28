@@ -7,9 +7,12 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/alicelik/celikpanel/internal/secrets"
 )
 
 // startSecond saves the second server's reviewed plan and starts its
@@ -327,5 +330,90 @@ func TestServerSetupPeerCompletionNeverFallsBackToTheUnboundDraft(t *testing.T) 
 	completeWithChecks(t, pair.first, pair.plan, pair.execution)
 	if pair.execution.Status != "succeeded" || pair.execution.Error != nil {
 		t.Fatalf("the bound plan completes: %s %+v", pair.execution.Status, pair.execution.Error)
+	}
+}
+
+// Claim-9 (alpha.114 review): neither database alone yields a bearer, a
+// code or an enrollment. The second server keeps its link credential and
+// both enrollment codes sealed, the first server the enrollment code the
+// main sent with its names (Option A), each under its own key file and
+// labelled with the key generation; with another key nothing opens.
+func TestServerSetupJoinSecretsAreSealedAtRest(t *testing.T) {
+	for _, main := range []string{"first", "second"} {
+		t.Run("main is the "+main, func(t *testing.T) {
+			draft := joinFirstDraft()
+			if main == "second" {
+				draft.MainDNSServer = "peer"
+			}
+			pair := newPeerPair(t, draft)
+			boxes := []*secrets.Box{}
+			for range 3 {
+				box, err := secrets.LoadOrCreate(filepath.Join(t.TempDir(), "secret.key"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				boxes = append(boxes, box)
+			}
+			pair.first.panel.secrets, pair.second.panel.secrets = boxes[0], boxes[1]
+			if answer := pair.connect(t, issueJoinCode(t, pair.first).Code); answer.State != "ok" {
+				t.Fatalf("connect: %+v", answer)
+			}
+			_, plan := pair.secondReview(t, nil)
+			if done, err := pair.second.panel.runServerSetupPeerNames(context.Background(), plan, serverSetupExecutionStep{serverSetupPlanStep: plan.Steps[0], RequestID: strings.Repeat("5", 32)}); !done || err != nil {
+				t.Fatalf("names: %v %v", done, err)
+			}
+			joinIndex := pair.advanceToJoin(t)
+			if pair.execution.Steps[joinIndex].Status != "succeeded" {
+				t.Fatalf("the sealed names bind: %+v", pair.execution.Error)
+			}
+			link, err := pair.second.panel.readServerSetupLink(context.Background())
+			if err != nil || link == nil || !remoteDNSValidSecret(link.LinkCredential) {
+				t.Fatalf("the link opens with its own key: %v", err)
+			}
+			plain := []string{link.LinkCredential, serverSetupReverseCredential(link.LinkCredential)}
+			if main == "first" {
+				if !remoteDNSValidSecret(link.EnrollmentCode) {
+					t.Fatal("the enrollment code the first server handed over")
+				}
+				plain = append(plain, link.EnrollmentCode)
+			} else {
+				var join serverSetupJoinRecord
+				readServerSetupJSONSetting(context.Background(), pair.first.database.GetDB(), serverSetupJoinKey, &join)
+				names, err := pair.first.panel.openServerSetupPeerNames(*join.Names)
+				if err != nil || !remoteDNSValidSecret(link.IssuedEnrollment) || names.EnrollmentCode != link.IssuedEnrollment || !strings.HasPrefix(join.Names.EnrollmentCode, "k1:enc:v1:") {
+					t.Fatalf("the main's enrollment code, sealed on the first server: %v %q", err, join.Names.EnrollmentCode)
+				}
+				plain = append(plain, link.IssuedEnrollment)
+				if _, err := (&Panel{db: pair.first.database, secrets: boxes[2]}).openServerSetupPeerNames(*join.Names); err == nil {
+					t.Fatal("the first server's database alone opens no enrollment code")
+				}
+			}
+			for _, f := range []serviceOperationTestFixture{pair.first, pair.second} {
+				rows, err := f.database.GetDB().Query(`SELECT key,value FROM panel_settings`)
+				if err != nil {
+					t.Fatal(err)
+				}
+				for rows.Next() {
+					var key, value string
+					rows.Scan(&key, &value)
+					for _, secret := range plain {
+						if strings.Contains(value, secret) {
+							t.Errorf("%s keeps a secret in the clear", key)
+						}
+					}
+				}
+				rows.Close()
+			}
+			var raw string
+			pair.second.database.GetDB().QueryRow(`SELECT value FROM panel_settings WHERE key=?`, serverSetupLinkKey).Scan(&raw)
+			if !strings.Contains(raw, `"link_credential":"k1:enc:v1:`) {
+				t.Fatalf("sealed with its key generation: %s", raw)
+			}
+			// The second server's database with another key: nothing opens.
+			copied := &Panel{db: pair.second.database, secrets: boxes[2]}
+			if _, err := copied.readServerSetupLink(context.Background()); err == nil {
+				t.Fatal("the second server's database alone opens no link")
+			}
+		})
 	}
 }

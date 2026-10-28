@@ -249,7 +249,7 @@ func TestServerSetupPeerNewLinkWithdrawsTheIssuedEnrollment(t *testing.T) {
 		t.Fatal(err)
 	}
 	old := serverSetupLinkRecord{RequestID: strings.Repeat("6", 32), Address: "https://203.0.113.99:2083", Pin: strings.Repeat("ab", 10), LinkID: strings.Repeat("5", 32), LinkCredential: strings.Repeat("4", 64), IssuedEnrollment: issued}
-	if err := writeServerSetupJSONSetting(context.Background(), db, serverSetupLinkKey, old); err != nil {
+	if err := pair.second.panel.writeServerSetupLink(context.Background(), db, old); err != nil {
 		t.Fatal(err)
 	}
 	view := issueJoinCode(t, pair.first)

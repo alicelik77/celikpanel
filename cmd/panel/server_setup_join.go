@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/hostname"
+	"github.com/alicelik/celikpanel/internal/secrets"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -157,24 +158,37 @@ func parseServerSetupJoinCode(raw string) ([]byte, string, bool) {
 	return decoded[:10], cleaned[16:], true
 }
 
-// serverSetupMAC is a keyed hash under the panel's key file (outside the
-// database), used for everything of the join kept as a hash: a copy of the
-// database alone cannot test codes or credentials against it. A panel
-// without a key (only tests) uses a key of the process.
-func (p *Panel) serverSetupMAC(label, value string) string {
-	if p.secrets != nil {
-		return p.secrets.MAC("server-setup/"+label, value)
-	}
-	mac := hmac.New(sha256.New, serverSetupProcessMACKey)
-	mac.Write([]byte("server-setup/" + label + "\x00" + value))
-	return hex.EncodeToString(mac.Sum(nil))
-}
+// The join's secrets at rest (alpha.114): what the first server only checks
+// is kept as a keyed hash, what a server must use again is sealed, both
+// under the panel's key file (secret.key, outside the database), so a copy
+// of either database alone yields no bearer, code or enrollment. Both
+// formats carry the key generation they were made with
+// (serverSetupSecretGeneration + ":"), so a later key rotation can tell old
+// values from new ones; there is no rotation yet. A panel without a key
+// (only tests) uses a key of the process.
+const serverSetupSecretGeneration = "k1"
 
-var serverSetupProcessMACKey = func() []byte {
+var serverSetupProcessBox = func() *secrets.Box {
 	key := make([]byte, 32)
 	_, _ = rand.Read(key)
-	return key
+	box, err := secrets.New(key)
+	if err != nil {
+		panic(err)
+	}
+	return box
 }()
+
+func (p *Panel) serverSetupBox() *secrets.Box {
+	if p.secrets != nil {
+		return p.secrets
+	}
+	return serverSetupProcessBox
+}
+
+// serverSetupMAC is the keyed hash of a join value under one label.
+func (p *Panel) serverSetupMAC(label, value string) string {
+	return serverSetupSecretGeneration + ":" + p.serverSetupBox().MAC("server-setup/"+label, value)
+}
 
 func (p *Panel) serverSetupJoinProofHash(salt, proof string) string {
 	return p.serverSetupMAC("join-proof", salt+":"+proof)
@@ -190,19 +204,43 @@ func serverSetupReverseCredential(linkCredential string) string {
 }
 
 // sealServerSetupSecret / openServerSetupSecret keep a secret this server
-// must use again sealed under the key file.
+// must use again sealed under the key file. The empty value stays empty (a
+// removed credential); anything else must be a sealed value of this key
+// generation: a plain value is never read as a secret.
 func (p *Panel) sealServerSetupSecret(value string) (string, error) {
-	if p.secrets == nil || value == "" {
-		return value, nil
+	if value == "" {
+		return "", nil
 	}
-	return p.secrets.Encrypt(value)
+	sealed, err := p.serverSetupBox().Encrypt(value)
+	if err != nil {
+		return "", err
+	}
+	return serverSetupSecretGeneration + ":" + sealed, nil
 }
 
+var errServerSetupSecretUnreadable = errors.New("a saved setup secret cannot be opened with this panel's key")
+
 func (p *Panel) openServerSetupSecret(value string) (string, error) {
-	if p.secrets == nil || value == "" {
-		return value, nil
+	if value == "" {
+		return "", nil
 	}
-	return p.secrets.Decrypt(value)
+	sealed, ok := strings.CutPrefix(value, serverSetupSecretGeneration+":")
+	if !ok || !secrets.IsEncrypted(sealed) {
+		return "", errServerSetupSecretUnreadable
+	}
+	opened, err := p.serverSetupBox().Decrypt(sealed)
+	if err != nil {
+		return "", errServerSetupSecretUnreadable
+	}
+	return opened, nil
+}
+
+// openServerSetupPeerNames is a copy of received names with the enrollment
+// code (Option A) opened: never written back.
+func (p *Panel) openServerSetupPeerNames(names serverSetupPeerNames) (serverSetupPeerNames, error) {
+	code, err := p.openServerSetupSecret(names.EnrollmentCode)
+	names.EnrollmentCode = code
+	return names, err
 }
 
 type serverSetupJoinCodeRecord struct {
@@ -1060,7 +1098,16 @@ func (p *Panel) handleServerSetupPeerNames(w http.ResponseWriter, r *http.Reques
 		writeServerSetupJoinRefusal(w, http.StatusUnprocessableEntity, code, message, nil)
 		return
 	}
-	if join.Names != nil && !serverSetupPeerNamesEqual(*join.Names, names) {
+	var stored *serverSetupPeerNames
+	if join.Names != nil {
+		opened, err := p.openServerSetupPeerNames(*join.Names)
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		stored = &opened
+	}
+	if stored != nil && !serverSetupPeerNamesEqual(*stored, names) {
 		if execution, err := p.latestServerSetupExecution(ctx); err == nil && execution != nil {
 			if latest, err := p.loadServerSetupPlan(ctx, execution.PlanID); err == nil {
 				if binding, err := p.readServerSetupPeerBinding(ctx, latest, execution.ID); err == nil && binding != nil {
@@ -1070,15 +1117,20 @@ func (p *Panel) handleServerSetupPeerNames(w http.ResponseWriter, r *http.Reques
 			}
 		}
 	}
-	same := join.Names != nil && serverSetupPeerNamesEqual(*join.Names, names)
+	same := stored != nil && serverSetupPeerNamesEqual(*stored, names)
 	sealed, err := p.sealServerSetupSecret(names.ReverseCredential)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	sealedEnrollment, err := p.sealServerSetupSecret(names.EnrollmentCode)
 	if err != nil {
 		writeServerError(w, err)
 		return
 	}
 	join.PeerCredential = sealed
 	join.Names, join.NamesAt = &names, time.Now().UTC().Format(time.RFC3339)
-	join.Names.ReverseCredential = ""
+	join.Names.ReverseCredential, join.Names.EnrollmentCode = "", sealedEnrollment
 	if err := writeServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, join); err != nil {
 		writeServerError(w, err)
 		return

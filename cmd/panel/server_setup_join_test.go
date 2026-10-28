@@ -546,7 +546,7 @@ func TestServerSetupJoinKeepsOnlyKeyedHashes(t *testing.T) {
 	var record serverSetupJoinCodeRecord
 	readServerSetupJSONSetting(context.Background(), pair.first.database.GetDB(), serverSetupJoinCodeKey, &record)
 	plain := sha256.Sum256([]byte(record.Salt + ":" + proof))
-	if record.Hash != box.MAC("server-setup/join-proof", record.Salt+":"+proof) || record.Hash == hex.EncodeToString(plain[:]) {
+	if record.Hash != "k1:"+box.MAC("server-setup/join-proof", record.Salt+":"+proof) || record.Hash == hex.EncodeToString(plain[:]) {
 		t.Fatal("the code's secret is kept as a keyed hash")
 	}
 	pair.dropAnswer.Store(true)
@@ -564,7 +564,7 @@ func TestServerSetupJoinKeepsOnlyKeyedHashes(t *testing.T) {
 	link, _ := pair.second.panel.readServerSetupLink(context.Background())
 	var join serverSetupJoinRecord
 	readServerSetupJSONSetting(context.Background(), pair.first.database.GetDB(), serverSetupJoinKey, &join)
-	if left != 0 || join.LinkCredentialHash != box.MAC("server-setup/link", link.LinkCredential) {
+	if left != 0 || join.LinkCredentialHash != "k1:"+box.MAC("server-setup/link", link.LinkCredential) {
 		t.Fatalf("pending gone, credential hashed: %d %+v", left, join)
 	}
 	stored, _ := json.Marshal(join)

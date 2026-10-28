@@ -147,10 +147,14 @@ func (p *Panel) runServerSetupPeerJoin(ctx context.Context, plan serverSetupPlan
 	if join.Names == nil {
 		return false, &serverSetupPeerWait{Code: "server_setup_peer_names_waiting", Message: "The second server joined; waiting for its own setup to start, which sends its names here."}
 	}
-	if code, message := canonicalServerSetupPeerNames(join.Names, plan.Draft, join); code != "" {
+	names, err := p.openServerSetupPeerNames(*join.Names)
+	if err != nil {
+		return false, err
+	}
+	if code, message := canonicalServerSetupPeerNames(&names, plan.Draft, join); code != "" {
 		return false, &serverSetupPeerWait{Code: code, Message: message}
 	}
-	binding := serverSetupPeerBindingFromJoin(join, *join.Names)
+	binding := serverSetupPeerBindingFromJoin(join, names)
 	binding.ExecutionID, binding.PlanID = executionID, plan.ID
 	effective := serverSetupEffectiveDraft(plan.Draft, binding)
 	if effective.InfrastructureDNS != nil && effective.DNSRole == transport.DNSPairRolePrimary {
@@ -412,12 +416,11 @@ func (p *Panel) revokeServerSetupLink(ctx context.Context) error {
 			return err
 		}
 	}
-	var link serverSetupLinkRecord
-	if found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupLinkKey, &link); err != nil {
+	if link, err := p.readServerSetupLink(ctx); err != nil {
 		return err
-	} else if found && link.LinkCredential != "" {
+	} else if link != nil && link.LinkCredential != "" {
 		link.LinkCredential = ""
-		return writeServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupLinkKey, link)
+		return p.writeServerSetupLink(ctx, p.db.GetDB(), *link)
 	}
 	return nil
 }
@@ -542,7 +545,11 @@ func (p *Panel) autoServerSetupDNSPublisher(ctx context.Context, plan serverSetu
 		if found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join); err != nil {
 			return nil, err
 		} else if found && join.Names != nil && join.Names.PublisherEndpoint == endpoint {
-			code = join.Names.EnrollmentCode
+			opened, err := p.openServerSetupSecret(join.Names.EnrollmentCode)
+			if err != nil {
+				return nil, err
+			}
+			code = opened
 		}
 	}
 	if code == "" || !remoteDNSValidSecret(code) || !serverSetupSecondaryHosting(plan.Draft) {

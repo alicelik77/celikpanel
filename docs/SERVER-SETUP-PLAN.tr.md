@@ -162,8 +162,17 @@ sunucularda değil.
   (veritabanı dışındaki panel anahtar dosyasıyla HMAC) tutar; ikinci sunucu kabul
   ettiği kimlik bilgisini türetir, yazılan kodu da yalnız katılmanın sonucu
   bilinmezken anahtar dosyasıyla mühürlü tutar (bilinen her sonuçta silinir).
-  Bağlantı kimliği iki sunucuda da kurulum tamamlanınca kaldırılır. Gizli hiçbir
-  şey yönetici API'sinden, günlükten ya da denetim kaydından çıkmaz.
+  Bir sunucunun yeniden kullanması gereken her gizli değer kendi anahtar
+  dosyasıyla (AES-GCM, `secret.key`) mühürlüdür: ikinci sunucuda bağlantı kimlik
+  bilgisi, ilk sunucunun devrettiği kayıt kodu ve ana DNS sunucusu olarak kendi
+  verdiği kod; ilk sunucuda ikinci sunucuda kullandığı kimlik bilgisi ve Seçenek
+  A'da ananın adlarıyla gönderdiği kayıt kodu. Bu yüzden iki veritabanından
+  birinin kopyası tek başına ne bir erişim kimliği, ne kod, ne kayıt kodu verir.
+  Özetler ve mühürlü değerler yapıldıkları anahtar kuşağını taşır (`k1:`); böylece
+  sonraki bir anahtar değişimi eski değerleri yenilerinden ayırabilir. Anahtar
+  değişimi henüz yoktur; başka kuşaktan bir değer okunmaz. Bağlantı kimliği ve
+  katılma kodu iki sunucuda da kurulum tamamlanınca kaldırılır. Gizli hiçbir şey
+  yönetici API'sinden, günlükten ya da denetim kaydından çıkmaz.
 
 Kalan sınırlar: kaynak için yalnız IPv4 adresi denetlenir; yedeğin kendi anahtar
 parmak izi adlarıyla bir kez gönderilir; bağlantı kaydını kaybeden ikinci sunucu
