@@ -13,7 +13,7 @@ import { ServerSetupDNSConnection } from './ServerSetupDNSConnections';
 import { remoteDNSEndpoint } from '../lib/remoteDNS';
 import { ServerSetupChoice, ServerSetupManualAction } from './ServerSetupChoice';
 import { Button, inputClass, KeepWords, Spinner } from './ui';
-import { SetupCountStep, SetupDNSHomeStep, SetupDomainStep, SetupNameStep, SetupNamesStep, SetupPanelAccessCard, SetupProviderRecordsCard, SetupRegistrarCard, SetupRolesStep, SetupWizardInput, setupEngineChoice, setupServerLabel } from './ServerSetupWizardSteps';
+import { SetupCountStep, SetupDNSHomeStep, SetupDomainStep, SetupMailStep, SetupRecordsStep, SetupNameStep, SetupNamesStep, SetupPanelAccessCard, SetupProviderRecordsCard, SetupRegistrarCard, SetupRolesStep, SetupWizardInput, setupEngineChoice, setupServerLabel } from './ServerSetupWizardSteps';
 import { AddressLink } from './AddressLink';
 import { ServerSetupComponents, useSetupComponentCatalog } from './ServerSetupComponents';
 import { setupCheckLine, setupComponentName, setupExecutionGuidance, setupHostBusyGuidance, setupHostingRootBlockerValues, setupPlanReopened, setupStepState, setupStepStateLabel, type SetupGuidanceText } from '../lib/serverSetupGuidance';
@@ -60,6 +60,7 @@ const codeKey: Record<string, TranslationKey> = {
     server_setup_dns_identity_required: 'setup.blocker.dnsIdentity',
     server_setup_hosting_requires_dns_publisher: 'setup.publisher.endpointRequired',
     server_setup_main_dns_server_mismatch: 'setup.v2.blocker.mainDNS',
+    server_setup_infrastructure_dns_imported_clash: 'setup.v3.blocker.importClash',
     server_setup_local_dns_requires_two_servers: 'setup.v2.dns.localOneServer',
     server_setup_pdns_main_untested_system: 'setup.v2.engine.untested',
     server_setup_version_repository_required: 'setup.v2.blocker.versionRepository',
@@ -480,7 +481,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         try {
             const saved = await saveDraft();
             if (!alive.current) return;
-            if (step !== 'dnshome') {
+            if (step !== lastEdit) {
                 const after = steps[steps.indexOf(step) + 1] as Step;
                 // Names are proposed from the main domain and the short name
                 // when the names step opens; a name the owner typed is kept.
@@ -662,8 +663,13 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     const roles = setupDraftRoles(draft, catalog);
     const customized = setupCustomized(draft, catalog);
     const explicitSelection = !!draft.customization || draft.purpose === 'custom';
-    const steps: Step[] = ['domain', 'count', 'name', 'roles', ...(customized || componentsOpen ? ['components' as const] : []), 'names', 'dnshome', 'review', 'progress'];
     const selectedComponents = setupEffectiveComponents(draft, catalog);
+    const mailSelected = ['postfix', 'dovecot', 'rspamd', 'roundcube'].some(id => selectedComponents.has(id));
+    const steps: Step[] = ['domain', 'count', 'name', 'roles', ...(customized || componentsOpen ? ['components' as const] : []), 'names', 'dnshome',
+        ...(draft.dns_mode === 'local' && draft.dns_role === 'primary' && draft.main_domain ? ['records' as const] : []),
+        ...(mailSelected && draft.main_domain ? ['mail' as const] : []), 'review', 'progress'];
+    // The plan is reviewed when the last editing step is left.
+    const lastEdit = steps[steps.indexOf('review') - 1];
     const serverCount = draft.server_count ?? 2;
     const mainDomain = draft.main_domain ? normalizeSetupDomain(draft.main_domain) : '';
     const proposal = setupProposedNames(validSetupDomain(mainDomain) ? mainDomain : '', draft.short_name || '');
@@ -859,6 +865,9 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                     {step === 'components' && emptySelectionInvalid && !roles.dns && <p role="alert" className="mt-4 text-sm text-danger">{t('setup.components.chooseRequired')}</p>}
                     {step === 'components' && catalog?.inventory_state === 'unknown' && <div className="mt-4"><Button type="button" disabled={busy} onClick={reloadCatalog}>{t('common.retry')}</Button></div>}
                     {step === 'names' && <fieldset disabled={busy}><SetupNamesStep draft={draft} mail={isMail} web={roles.web} mainDomain={mainDomain} ip={panelDNSIP || snapshot.server_ip || ''} ownDNS={localPrimary} onChange={(key, value) => change(key, value)} /></fieldset>}
+                    {step === 'records' && <fieldset disabled={busy}><SetupRecordsStep draft={draft} update={updateDraft} mainDomain={mainDomain}
+                        own={[draft.panel_domain, draft.mail_hostname, draft.ns1, draft.ns2, draft.infrastructure_dns?.peer_panel_domain || '', draft.infrastructure_dns?.peer_mail_hostname || ''].filter(Boolean)} /></fieldset>}
+                    {step === 'mail' && <fieldset disabled={busy}><SetupMailStep draft={draft} update={updateDraft} mainDomain={mainDomain} ip4={draft.dns_mode === 'local' ? draft.local_ip : snapshot.server_ip || ''} ip6={snapshot.server_ipv6 || ''} /></fieldset>}
                     {step === 'dnshome' && <fieldset disabled={busy}><SetupDNSHomeStep draft={draft} catalog={catalog} serverCount={serverCount} mainDomain={mainDomain} detectedIP={detectedIP}
                         set={(key, value) => { if (key === 'local_ip') localIPTouched.current = true; updateDraft(previous => ({ ...previous, [key]: value })); }}
                         onMode={chooseDNSMode}
@@ -896,7 +905,9 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                             <ul className="mt-2 list-disc space-y-1 pl-5 text-fg-muted">
                                 {localPrimary && mainDomain && <li>{t('setup.v2.review.registrar', { domain: mainDomain })}</li>}
                                 {draft.dns_mode === 'external' && <li>{t('setup.v2.review.provider')}</li>}
-                                {roles.web && mainDomain && <li>{t('setup.v2.review.site', { domain: mainDomain })}</li>}
+                                {roles.web && mainDomain && !(draft.imported_records || []).some(item => item.decision === 'import') && <li>{t('setup.v2.review.site', { domain: mainDomain })}</li>}
+                                {(draft.imported_records || []).length > 0 && <li>{t('setup.v3.review.imported', { imported: (draft.imported_records || []).filter(item => item.decision === 'import').length, skipped: (draft.imported_records || []).filter(item => item.decision === 'skip').length })}</li>}
+                                {mailSelected && mainDomain && <li>{t(draft.mail_dns?.mx === 'now' || !(draft.imported_records || []).some(item => item.decision === 'import' && item.type === 'MX') ? 'setup.v3.review.mailNow' : 'setup.v3.review.mailLater', { domain: mainDomain, host: draft.mail_hostname })}</li>}
                                 <li>{t('setup.v2.review.installed')}</li>
                             </ul>
                         </div>
@@ -906,7 +917,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                     <div className="setup-actions sticky bottom-0 z-10 mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-bg py-4">
                         {step !== 'domain' && <Button type="button" variant="secondary" disabled={busy} onClick={() => { setStep(steps[Math.max(0, steps.indexOf(step) - 1)]); setPlan(null); setAcknowledged(false); setError(''); }}>{t('setup.back')}</Button>}
                         <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
-                        {step === 'review' ? <Button type="button" variant="primary" disabled={busy || !plan?.can_start || !acknowledged} onClick={() => void start()}>{t('setup.start')}</Button> : <button type="submit" disabled={busy || (step === 'components' && (!catalog || catalog.inventory_state !== 'ready')) || (step === 'dnshome' && (!!dnsSelectionError || (draft.dns_mode === 'local' && dnsNames.mismatch) || (draft.dns_mode === 'existing' && !remoteVerified)))} className="inline-flex items-center gap-3 rounded-lg bg-primary px-5 py-2.5 font-semibold text-primary-fg hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60">{busy ? t('common.loading') : t(step === 'dnshome' ? 'setup.review' : 'setup.continue')}<ArrowRight className="h-4 w-4" aria-hidden="true" /></button>}
+                        {step === 'review' ? <Button type="button" variant="primary" disabled={busy || !plan?.can_start || !acknowledged} onClick={() => void start()}>{t('setup.start')}</Button> : <button type="submit" disabled={busy || (step === 'components' && (!catalog || catalog.inventory_state !== 'ready')) || (step === 'dnshome' && (!!dnsSelectionError || (draft.dns_mode === 'local' && dnsNames.mismatch) || (draft.dns_mode === 'existing' && !remoteVerified)))} className="inline-flex items-center gap-3 rounded-lg bg-primary px-5 py-2.5 font-semibold text-primary-fg hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60">{busy ? t('common.loading') : t(step === lastEdit ? 'setup.review' : 'setup.continue')}<ArrowRight className="h-4 w-4" aria-hidden="true" /></button>}
                         </div>
                     </div>
                 </form>}

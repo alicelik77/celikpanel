@@ -532,6 +532,13 @@ export const enSetupScreens = {
     "setup.components.summaryHost": "Versions: {system} repositories",
     "setup.components.catalogueNote": "The list comes from the same catalogue as the Components page; a component added there appears here too.",
     "setup.components.always": "Always included: firewall engine (nftables) · certificate renewal (certbot).",
+    "setup.step.records": "Existing records",
+    "setup.step.mail": "Mail records",
+    "setup.kind.mail_dns": "Prepare the mail records of {target} (DKIM)",
+    "setup.check.name.mail_identity_ipv6": "IPv6 reverse DNS",
+    "setup.check.mailIdentity6.missing": "The IPv6 address {ip} has no reverse DNS (PTR) naming {hostname}. Set it to {hostname} in your server provider’s panel; mail sent over IPv6 is refused without it. Setup checks again by itself.",
+    "setup.check.mailIdentity6.mismatch": "The reverse DNS (PTR) of the IPv6 address {ip} is {ptr}, not {hostname}. Change it to {hostname} in your server provider’s panel. Setup checks again by itself.",
+    "setup.check.mailIdentity6.unknown": "The reverse DNS of the IPv6 address {ip} could not be read just now. Nothing needs to be done yet; it is read again shortly.",
 } as const;
 
 export type SetupScreenKey = keyof typeof enSetupScreens;

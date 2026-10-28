@@ -1356,3 +1356,59 @@ test('wizard v2: the registrar card names the nameservers and the IP records ins
         assert.equal(writes().length, 0);
     } finally { await cleanup(); }
 });
+
+// Setup wizard v2 phase 2 (alpha.112): existing records and mail records.
+const publicRead = (records) => ({ domain: 'example.com', extras: [], records, checked_at: new Date().toISOString(), next_check_after: 60 });
+function withPublicRecords(records) {
+    const base = globalThis.fetch;
+    globalThis.fetch = async (url, options) => url.startsWith('/api/v1/setup/public-records') ? (calls.push({ url }), Response.json(publicRead(records))) : base(url, options);
+}
+async function settleReads() { await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); }); }
+async function toRecords(extra = async () => {}) {
+    await type('setup-main_domain', 'example.com'); await submit(); await submit(); await submit();
+    await extra();
+    await submit(); await submit();
+    await type('setup-local_ip', '203.0.113.10'); await type('setup-peer_ip', '198.51.100.20');
+    await submit(); await settleReads();
+}
+
+test('wizard v2: existing records are read only, each is imported or skipped, and a server name is never taken over', async () => {
+    init(); withPublicRecords([
+        { name: 'example.com', type: 'A', values: ['192.0.2.80'], state: 'found' },
+        { name: 'example.com', type: 'TXT', values: ['google-site-verification=abc'], state: 'found' },
+        { name: 'ns1.example.com', type: 'A', values: ['192.0.2.53'], state: 'found' },
+        { name: 'www.example.com', type: 'CNAME', values: [], state: 'unknown' },
+    ]);
+    try {
+        await mount(); await toRecords();
+        assert.ok(tree.root.findAllByProps({ 'data-setup-records': '' }).length === 1, 'the records step follows the DNS step for the main DNS server');
+        assert.ok(textOf().includes('setup.v3.records.clash'), 'a name the setup gives to a server is not imported');
+        assert.ok(textOf().includes('setup.v3.records.unread'), 'an unread name is said as unread, not as empty');
+        await act(async () => tree.root.findByProps({ name: 'setup-import-1', value: 'skip' }).props.onChange());
+        await submit();
+        const decisions = Object.fromEntries(state.draft.imported_records.map(item => [`${item.name} ${item.type}`, item.decision]));
+        assert.deepEqual(decisions, { 'example.com A': 'import', 'example.com TXT': 'skip', 'ns1.example.com A': 'skip' });
+        assert.ok(calls.filter(call => call.url.startsWith('/api/v1/setup/public-records')).length >= 1);
+        assert.equal(calls.some(call => call.url === '/api/v1/setup/start'), false);
+    } finally { await cleanup(); }
+});
+
+test('wizard v2: mail keeps the old MX until the owner moves it, SPF is merged, and the PTR rows are shown', async () => {
+    init(); withPublicRecords([
+        { name: 'example.com', type: 'MX', values: ['10 mx.old.example'], state: 'found' },
+        { name: 'example.com', type: 'TXT', values: ['v=spf1 include:_spf.old.example ~all'], state: 'found' },
+    ]);
+    try {
+        await mount(); await toRecords(async () => { await pick('setup-role', 'mail'); });
+        assert.ok(state.draft.mail_hostname, 'a mail host name was proposed');
+        await submit();
+        assert.ok(tree.root.findAllByProps({ 'data-setup-mail': '' }).length === 1);
+        assert.equal(radio('setup-mail_mx', 'later').props.checked, true, 'the old MX is kept by default');
+        assert.ok(textOf().includes(`v=spf1 include:_spf.old.example a:${state.draft.mail_hostname} ~all`), 'SPF is merged, not replaced');
+        assert.ok(tree.root.findAllByProps({ 'data-setup-ptr': '' }).length === 1 && textOf().includes('203.0.113.10'));
+        await pick('setup-mail_mx', 'now');
+        await submit();
+        assert.equal(state.draft.mail_dns.mx, 'now');
+        assert.ok(findButton('setup.start'), 'the review follows the mail step');
+    } finally { await cleanup(); }
+});

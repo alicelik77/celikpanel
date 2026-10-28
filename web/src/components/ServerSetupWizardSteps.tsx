@@ -4,7 +4,7 @@ import { setupDNSTranslation } from '../i18n/setupDNS';
 import type { TranslationKey } from '../i18n/en';
 import { componentName } from '../lib/componentName';
 import { setupComponentClosure, setupRolePreset, type SetupComponentCatalog, type SetupDNSEngineChoice, type SetupRoles } from '../lib/serverSetupComponents';
-import { setupDNSNames, setupNameWithin, type ServerSetupDraft } from '../lib/serverSetup';
+import { mergeSetupSPF, setupDNSNames, setupImportedDMARC, setupImportedMX, setupImportedSPF, setupNameWithin, type ServerSetupDraft, type SetupImportedRecord } from '../lib/serverSetup';
 import { useRefreshEvery, useRemote } from '../lib/remote';
 import { Button, inputClass, KeepWords } from './ui';
 
@@ -283,7 +283,7 @@ export function SetupRegistrarCard({ draft, mainDomain, now }: { draft: ServerSe
 
 export interface SetupProviderRecords {
     mode: string;
-    servers: { label: string; ip4?: string; rows: { name: string; type: string; value: string; state: 'ok' | 'missing' | 'different' | 'unknown'; seen: string[] }[] }[];
+    servers: { label: string; ip4?: string; rows: { name: string; type: string; value: string; state: 'ok' | 'missing' | 'different' | 'unknown' | 'kept' | 'pending'; seen: string[]; kind?: string }[] }[];
     checked_at: string;
 }
 export function decodeSetupProviderRecords(value: unknown): SetupProviderRecords {
@@ -294,13 +294,13 @@ export function decodeSetupProviderRecords(value: unknown): SetupProviderRecords
         if (!record(server) || typeof server.label !== 'string' || !Array.isArray(server.rows) || server.rows.length > 8) throw invalid();
         for (const row of server.rows) {
             if (!record(row) || typeof row.name !== 'string' || typeof row.type !== 'string' || typeof row.value !== 'string'
-                || !['ok', 'missing', 'different', 'unknown'].includes(String(row.state)) || !Array.isArray(row.seen) || row.seen.some(item => typeof item !== 'string')) throw invalid();
+                || !['ok', 'missing', 'different', 'unknown', 'kept', 'pending'].includes(String(row.state)) || !Array.isArray(row.seen) || row.seen.some(item => typeof item !== 'string')) throw invalid();
         }
     }
     return value as unknown as SetupProviderRecords;
 }
 
-const providerState: Record<string, TranslationKey> = { ok: 'setup.v2.provider.ok', missing: 'setup.v2.provider.missing', different: 'setup.v2.provider.different', unknown: 'setup.v2.provider.unknown' };
+const providerState: Record<string, TranslationKey> = { ok: 'setup.v2.provider.ok', missing: 'setup.v2.provider.missing', different: 'setup.v2.provider.different', unknown: 'setup.v2.provider.unknown', kept: 'setup.v3.provider.kept', pending: 'setup.v3.provider.pending' };
 
 // The records to add at an external DNS provider, each with what the internet
 // answers now. The page only reads; the server shares one answer per minute.
@@ -313,7 +313,7 @@ export function SetupProviderRecordsCard() {
     const value = remote.remote.state === 'known' ? remote.remote.value : remote.remote.state === 'unknown' ? remote.remote.previous?.value ?? null : null;
     const failed = remote.remote.state === 'unknown';
     const rows = value?.servers.flatMap(server => server.rows) || [];
-    const allOK = rows.length > 0 && rows.every(row => row.state === 'ok');
+    const allOK = rows.length > 0 && rows.every(row => row.state === 'ok' || row.state === 'kept');
     return <section aria-labelledby="setup-provider-title" className="mt-5 space-y-4" data-setup-provider-records="">
         <SetupLead tone={allOK ? 'done' : 'neutral'} title={t(allOK ? 'setup.v2.provider.doneTitle' : 'setup.v2.provider.leadTitle')} why={t('setup.v2.provider.why')} who={t(allOK ? 'setup.v2.provider.whoNone' : 'setup.v2.provider.who')} next={t(allOK ? 'setup.v2.provider.nextNone' : 'setup.v2.provider.next')} then={t('setup.v2.provider.then')} />
         <div className="space-y-3 rounded-lg border border-border bg-surface p-4 sm:p-5">
@@ -321,12 +321,162 @@ export function SetupProviderRecordsCard() {
             {!value ? <p role="status" className="text-sm text-fg-muted">{t(failed ? 'setup.v2.provider.failed' : 'setup.v2.provider.loading')}</p>
                 : rows.length === 0 ? <p className="text-sm text-fg-muted">{t('setup.v2.provider.none')}</p>
                     : <ul className="space-y-3">{rows.map(row => <li key={`${row.name}-${row.type}`} className="space-y-2" data-record={row.name} data-state={row.state}>
-                        <div className="grid gap-2 sm:grid-cols-2"><SetupCopyRow label={`${t('setup.v2.registrar.name')} · ${row.type}`} value={row.name} /><SetupCopyRow label={row.type === 'AAAA' ? 'IPv6' : 'IPv4'} value={row.value} /></div>
+                        <div className="grid gap-2 sm:grid-cols-2"><SetupCopyRow label={`${t('setup.v2.registrar.name')} · ${row.type}`} value={row.name} />{row.value ? <SetupCopyRow label={row.type === 'A' ? 'IPv4' : row.type === 'AAAA' ? 'IPv6' : t('setup.v3.provider.value')} value={row.value} /> : null}</div>
                         <p className={`text-sm ${row.state === 'ok' ? 'text-success' : row.state === 'different' ? 'text-danger' : 'text-fg-muted'}`}>{t(providerState[row.state], { seen: row.seen.join(', ') || '—' })}</p>
                     </li>)}</ul>}
             {failed && value && <p role="status" className="text-sm text-fg-muted">{t('setup.v2.provider.failed')}</p>}
             <p className="text-sm leading-6 text-fg-muted">{t('setup.v2.provider.cloudflare')}</p>
             {value && <p className="text-xs text-fg-muted">{t('setup.v2.provider.checkedAt', { time: new Date(value.checked_at).toLocaleTimeString() })}</p>}
+        </div>
+    </section>;
+}
+
+// ---- Phase 2 (alpha.112): existing records and the main domain's mail ----
+
+export interface SetupPublicRecords {
+    domain: string;
+    extras: string[];
+    records: { name: string; type: string; values: string[]; state: 'found' | 'none' | 'unknown' }[];
+    checked_at: string;
+}
+export function decodeSetupPublicRecords(value: unknown): SetupPublicRecords {
+    const record = (item: unknown): item is Record<string, unknown> => !!item && typeof item === 'object' && !Array.isArray(item);
+    const invalid = () => new Error('public records outside the contract');
+    if (!record(value) || typeof value.domain !== 'string' || !Array.isArray(value.extras) || !Array.isArray(value.records) || value.records.length > 128) throw invalid();
+    for (const item of value.records) {
+        if (!record(item) || typeof item.name !== 'string' || typeof item.type !== 'string' || !Array.isArray(item.values)
+            || item.values.some(entry => typeof entry !== 'string') || !['found', 'none', 'unknown'].includes(String(item.state))) throw invalid();
+    }
+    return value as unknown as SetupPublicRecords;
+}
+
+type ImportType = SetupImportedRecord['type'];
+const importTypes: ImportType[] = ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'CAA'];
+interface ImportCandidate { record: SetupImportedRecord; clash: boolean }
+
+// One candidate per public value. A name this setup gives to a server cannot
+// keep its old address record: it is skipped and the screen says why.
+function importCandidates(read: SetupPublicRecords, draft: ServerSetupDraft, own: string[]): ImportCandidate[] {
+    const out: ImportCandidate[] = [];
+    for (const item of read.records) {
+        if (item.state !== 'found' || !importTypes.includes(item.type as ImportType)) continue;
+        for (const value of item.values) {
+            let content = value, priority: number | undefined;
+            if (item.type === 'MX') { const [pref, host] = value.split(/\s+/); priority = Number(pref) || 0; content = host || ''; }
+            const clash = own.includes(item.name) && ['A', 'AAAA', 'CNAME'].includes(item.type);
+            const saved = draft.imported_records?.find(entry => entry.name === item.name && entry.type === item.type && entry.content === content);
+            out.push({ clash, record: { name: item.name, type: item.type as ImportType, content, ...(priority !== undefined ? { priority } : {}), decision: clash ? 'skip' : saved?.decision || 'import' } });
+        }
+    }
+    return out;
+}
+
+export function SetupRecordsStep({ draft, update, mainDomain, own }: {
+    draft: ServerSetupDraft;
+    update: (change: (draft: ServerSetupDraft) => ServerSetupDraft) => void;
+    mainDomain: string;
+    own: string[];
+}) {
+    const { t } = useSetupWizardI18n();
+    const [extras, setExtras] = useState<string[]>(() => [...new Set((draft.imported_records || []).map(item => item.name.slice(0, -(mainDomain.length + 1))).filter(label => label && !['www', 'mail', 'webmail', 'autodiscover', '_dmarc'].includes(label)))].slice(0, 8));
+    const [typed, setTyped] = useState('');
+    const url = `/api/v1/setup/public-records${extras.length ? `?extra=${encodeURIComponent(extras.join(','))}` : ''}`;
+    const remote = useRemote(url, decodeSetupPublicRecords);
+    const read = remote.remote.state === 'known' ? remote.remote.value : null;
+    const candidates = read ? importCandidates(read, draft, own) : [];
+    const wanted = JSON.stringify(candidates.map(item => item.record));
+    useEffect(() => {
+        if (!read) return;
+        update(previous => JSON.stringify(previous.imported_records || []) === wanted ? previous : { ...previous, imported_records: JSON.parse(wanted) });
+        // `wanted` is the whole decision list; the read itself only changes it.
+    }, [wanted]);
+    const decide = (index: number, decision: 'import' | 'skip') => update(previous => {
+        const list = candidates.map(item => item.record);
+        list[index] = { ...list[index], decision };
+        return { ...previous, imported_records: list };
+    });
+    const unread = read?.records.filter(item => item.state === 'unknown') || [];
+    const imported = candidates.filter(item => item.record.decision === 'import').length;
+    const mailClash = candidates.some(item => item.clash && item.record.name === draft.mail_hostname);
+    return <section className="space-y-5" aria-labelledby="setup-records-title" data-setup-records="">
+        <h2 id="setup-records-title" className="text-xl font-semibold">{t('setup.v3.records.title')}</h2>
+        <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v3.records.help', { domain: mainDomain })}</p>
+        {remote.remote.state === 'loading' && <p role="status" className="text-sm text-fg-muted">{t('setup.v3.records.reading')}</p>}
+        {remote.remote.state === 'unknown' && <div role="status" className="space-y-2 rounded-lg border border-border bg-surface p-4 text-sm"><p>{t('setup.v3.records.failed')}</p><Button type="button" variant="secondary" onClick={() => void remote.retry()}>{t('common.retry')}</Button></div>}
+        {read && (candidates.length === 0
+            ? <p className="text-sm leading-6 text-fg-muted">{t('setup.v3.records.none', { domain: mainDomain })}</p>
+            : <ul className="divide-y divide-border rounded-lg border border-border bg-surface">{candidates.map((item, index) => {
+                const record = item.record;
+                return <li key={`${record.name}-${record.type}-${record.content}`} className="space-y-2 px-4 py-3 text-sm" data-import={`${record.name} ${record.type}`} data-decision={record.decision}>
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                        <span className="min-w-0 break-all font-mono">{record.name} <span className="text-fg-muted">{record.type}</span> {record.priority !== undefined ? `${record.priority} ` : ''}{record.content}</span>
+                        {item.clash ? <span className="text-fg-muted">{t('setup.v3.records.clash')}</span>
+                            : <span role="radiogroup" aria-label={record.name} className="flex gap-3">
+                                {(['import', 'skip'] as const).map(choice => <label key={choice} className="inline-flex cursor-pointer items-center gap-1.5"><input type="radio" name={`setup-import-${index}`} value={choice} checked={record.decision === choice} onChange={() => decide(index, choice)} className="h-4 w-4 accent-primary" />{t(choice === 'import' ? 'setup.v3.records.import' : 'setup.v3.records.skip')}</label>)}
+                            </span>}
+                    </div>
+                    {item.clash && <p className="leading-6 text-fg-muted">{t('setup.v3.records.clashHelp', { name: record.name })}</p>}
+                    {!item.clash && record.decision === 'skip' && <p className="leading-6 text-fg-muted">{t('setup.v3.records.skipHelp')}</p>}
+                </li>;
+            })}</ul>)}
+        {mailClash && <div className="space-y-2 rounded-lg border border-border bg-surface p-4 text-sm leading-6">
+            <p>{t('setup.v3.records.mailClash', { name: draft.mail_hostname })}</p>
+            <Button type="button" variant="secondary" onClick={() => update(previous => ({ ...previous, mail_hostname: `mail2.${mainDomain}` }))}>{t('setup.v3.records.useMail2', { name: `mail2.${mainDomain}` })}</Button>
+        </div>}
+        {unread.length > 0 && <p role="status" className="text-sm leading-6 text-fg-muted">{t('setup.v3.records.unread', { names: [...new Set(unread.map(item => item.name))].join(', ') })}</p>}
+        {read && <p className="text-sm text-fg-muted">{t('setup.v3.records.count', { imported, skipped: candidates.length - imported })}</p>}
+        <div className="flex max-w-md flex-wrap items-end gap-2">
+            <div className="min-w-0 flex-1"><SetupWizardInput name="extra_name" label={t('setup.v3.records.extra')} value={typed} onChange={setTyped} placeholder={`shop.${mainDomain || 'example.com'}`} /></div>
+            <Button type="button" variant="secondary" disabled={!typed.trim() || extras.length >= 8} onClick={() => { const label = typed.trim().toLowerCase().replace(/\.$/, '').replace(new RegExp(`\\.${mainDomain.replace(/\./g, '\\.')}$`), ''); if (label && !extras.includes(label)) setExtras([...extras, label]); setTyped(''); }}>{t('setup.v3.records.look')}</Button>
+        </div>
+        <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v3.records.limit')}</p>
+    </section>;
+}
+
+export function SetupMailStep({ draft, update, mainDomain, ip4, ip6 }: {
+    draft: ServerSetupDraft;
+    update: (change: (draft: ServerSetupDraft) => ServerSetupDraft) => void;
+    mainDomain: string;
+    ip4: string;
+    ip6: string;
+}) {
+    const { t } = useSetupWizardI18n();
+    const host = draft.mail_hostname || `mail.${mainDomain}`;
+    const local = draft.dns_mode === 'local' && draft.dns_role === 'primary';
+    const oldMX = setupImportedMX(draft, mainDomain);
+    const oldDMARC = setupImportedDMARC(draft, mainDomain);
+    const askMX = oldMX.length > 0 || draft.dns_mode === 'external';
+    const mx = draft.mail_dns?.mx || (askMX ? 'later' : 'now');
+    const dmarc = draft.mail_dns?.dmarc || (oldDMARC ? 'keep' : 'add');
+    const choose = (key: 'mx' | 'dmarc', value: string) => update(previous => ({ ...previous, mail_dns: { ...previous.mail_dns, [key]: value } }));
+    const spf = mergeSetupSPF(setupImportedSPF(draft, mainDomain), host);
+    return <section className="space-y-5" aria-labelledby="setup-mail-title" data-setup-mail="">
+        <h2 id="setup-mail-title" className="text-xl font-semibold">{t('setup.v3.mail.title')}</h2>
+        <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t(local ? 'setup.v3.mail.helpLocal' : draft.dns_mode === 'external' ? 'setup.v3.mail.helpExternal' : 'setup.v3.mail.helpElsewhere', { domain: mainDomain })}</p>
+        <ul className="space-y-2 text-sm">
+            <li className="rounded-md border border-border bg-surface-2 px-3 py-2"><span className="font-medium">MX</span> · <span className="break-all font-mono">{mx === 'now' ? `10 ${host}` : t('setup.v3.mail.mxKept', { old: oldMX.map(item => item.content).join(', ') || '—' })}</span></li>
+            <li className="rounded-md border border-border bg-surface-2 px-3 py-2"><span className="font-medium">SPF</span> · <span className="break-all font-mono">{spf}</span>{setupImportedSPF(draft, mainDomain) && <span className="block text-xs text-fg-muted">{t('setup.v3.mail.spfMerged')}</span>}</li>
+            <li className="rounded-md border border-border bg-surface-2 px-3 py-2"><span className="font-medium">DKIM</span> · {t('setup.v3.mail.dkim')}</li>
+            <li className="rounded-md border border-border bg-surface-2 px-3 py-2"><span className="font-medium">DMARC</span> · <span className="break-all font-mono">{dmarc === 'keep' && oldDMARC ? oldDMARC.content : `v=DMARC1; p=none; rua=mailto:dmarc@${mainDomain}`}</span></li>
+        </ul>
+        {askMX && <fieldset className="space-y-2"><legend className="font-semibold">{t('setup.v3.mail.mxTitle')}</legend>
+            <div className="grid gap-3 lg:grid-cols-2">
+                <Choice name="setup-mail_mx" value="later" checked={mx === 'later'} onChange={() => choose('mx', 'later')} title={t('setup.v3.mail.mxLater')} tag={t('setup.v2.recommended')} help={t('setup.v3.mail.mxLaterHelp')} />
+                <Choice name="setup-mail_mx" value="now" checked={mx === 'now'} onChange={() => choose('mx', 'now')} title={t('setup.v3.mail.mxNow')} help={t('setup.v3.mail.mxNowHelp', { host })} />
+            </div>
+        </fieldset>}
+        {oldDMARC && <fieldset className="space-y-2"><legend className="font-semibold">DMARC</legend>
+            <div className="grid gap-3 lg:grid-cols-2">
+                <Choice name="setup-mail_dmarc" value="keep" checked={dmarc === 'keep'} onChange={() => choose('dmarc', 'keep')} title={t('setup.v3.mail.dmarcKeep')} help={t('setup.v3.mail.dmarcKeepHelp')} />
+                <Choice name="setup-mail_dmarc" value="add" checked={dmarc === 'add'} onChange={() => choose('dmarc', 'add')} title={t('setup.v3.mail.dmarcAdd')} help={t('setup.v3.mail.dmarcAddHelp')} />
+            </div>
+        </fieldset>}
+        <div className="space-y-2 rounded-lg border border-border bg-surface p-4 text-sm leading-6" data-setup-ptr="">
+            <h3 className="font-semibold">{t('setup.v3.mail.ptrTitle')}</h3>
+            <p className="text-fg-muted">{t('setup.v3.mail.ptrHelp', { host })}</p>
+            {ip4 && <div className="grid gap-2 sm:grid-cols-2"><SetupCopyRow label="IPv4" value={ip4} /><SetupCopyRow label="PTR" value={host} /></div>}
+            {ip6 && <div className="grid gap-2 sm:grid-cols-2"><SetupCopyRow label="IPv6" value={ip6} /><SetupCopyRow label="PTR" value={host} /></div>}
+            <p className="text-fg-muted">{t('setup.v3.mail.port25')}</p>
         </div>
     </section>;
 }

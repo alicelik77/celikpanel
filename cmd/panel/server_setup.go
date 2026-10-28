@@ -113,6 +113,9 @@ type serverSetupState struct {
 	// (serverSetupShortNameSuggestion). Only the GET answer carries it.
 	// Kisa ad onerisi; yalniz GET yanitinda.
 	ShortNameSuggestion string `json:"short_name_suggestion,omitempty"`
+	// ServerIPv6 (alpha.112) is the server's public IPv6 address, for the
+	// reverse DNS rows the owner gives the provider; only the GET carries it.
+	ServerIPv6 string `json:"server_ipv6,omitempty"`
 }
 
 func defaultServerSetupDraft() serverSetupDraft {
@@ -477,6 +480,9 @@ func (p *Panel) handleServerSetup(w http.ResponseWriter, r *http.Request) {
 			s.ServerIP = address.String()
 		}
 		s.ShortNameSuggestion = currentServerSetupShortNameSuggestion()
+		if address := net.ParseIP(setupMailIPv6()); address != nil && address.To4() == nil && address.IsGlobalUnicast() && !address.IsPrivate() {
+			s.ServerIPv6 = address.String()
+		}
 		if r.URL.Query().Get("check") == "1" {
 			ctx, cancel := context.WithTimeout(r.Context(), 25*time.Second)
 			defer cancel()

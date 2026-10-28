@@ -35,6 +35,14 @@ const address = (value: unknown): value is string => typeof value === 'string' &
 // got no answer (reverse_dns_unknown): said as not known, never as missing.
 // Bilinmeyen kontrolun tek tipli nedeni yanitsiz ters DNS sorgusudur.
 export function setupCheckReasonText(check: ServerSetupCheck): SetupGuidanceText | null {
+    if (check.id === 'mail_identity_ipv6' && typeof check.reason === 'string') {
+        const { hostname, ip, ptr } = (check.vars && typeof check.vars === 'object' ? check.vars : {}) as Record<string, unknown>;
+        if (!address(ip)) return null;
+        if (check.state === 'unknown') return check.reason === 'reverse_dns6_unknown' ? text('setup.check.mailIdentity6.unknown', { ip }) : null;
+        if (check.state !== 'action_required' || !dnsName(hostname)) return null;
+        if (check.reason === 'reverse_dns6_mismatch' && dnsName(ptr)) return text('setup.check.mailIdentity6.mismatch', { ip, ptr, hostname });
+        return check.reason === 'reverse_dns6_missing' || check.reason === 'reverse_dns6_mismatch' ? text('setup.check.mailIdentity6.missing', { ip, hostname }) : null;
+    }
     if (check.id !== 'mail_identity' || typeof check.reason !== 'string') return null;
     const vars = check.vars && typeof check.vars === 'object' && !Array.isArray(check.vars) ? check.vars : {};
     const { hostname, ip, ptr, current, name, resolver, resolvers } = vars as Record<string, unknown>;
@@ -72,6 +80,7 @@ const checkNames: Record<string, TranslationKey> = {
     panel_https: 'setup.check.name.panel_https', panel_renewal: 'setup.check.name.panel_renewal', dns: 'setup.check.name.dns',
     firewall: 'setup.check.name.firewall', services: 'setup.check.name.services', mail_tls: 'setup.check.name.mail_tls',
     mail_identity: 'setup.check.name.mail_identity', mail_delivery: 'setup.check.name.mail_delivery',
+    mail_identity_ipv6: 'setup.check.name.mail_identity_ipv6',
 };
 // One line per open check, said the same way wherever a check is listed: the
 // run's guidance and the box under "Check requirements again" (2026-10-16).
@@ -96,7 +105,8 @@ export function setupCheckLine(check: ServerSetupCheck): SetupCheckLine {
 export type SetupStepState = 'pending' | 'running' | 'succeeded' | 'failed' | 'stopped' | 'notStarted' | 'waitingOwner' | 'waitingReverseDNS' | 'waitingRequirement' | 'finishing' | 'unconfirmed' | 'unknown';
 // The typed reason whose fix is made at the server provider and then spreads
 // through public DNS (cmd/panel setupMailIdentityReason).
-const reverseDNSWait = (check: ServerSetupCheck) => check.id === 'mail_identity' && check.state === 'action_required' && check.reason === 'reverse_dns_mismatch' && !!setupCheckReasonText(check);
+const reverseDNSWait = (check: ServerSetupCheck) => check.state === 'action_required' && !!setupCheckReasonText(check)
+    && ((check.id === 'mail_identity' && check.reason === 'reverse_dns_mismatch') || (check.id === 'mail_identity_ipv6' && ['reverse_dns6_mismatch', 'reverse_dns6_missing'].includes(check.reason || '')));
 export function setupStepState(execution: ServerSetupExecution, step: ServerSetupExecution['steps'][number], checks: ServerSetupCheck[] = execution.checks || []): SetupStepState {
     const stopped = execution.status === 'failed';
     if (step.kind === 'verify') {
@@ -351,7 +361,7 @@ export function setupExecutionGuidance(execution: ServerSetupExecution, componen
         for (const check of open) {
             if (setupCheckReasonText(check)) continue;
             const key: TranslationKey = check.id === 'dns' ? 'setup.guide.pairChecks'
-                : check.id === 'mail_identity' ? 'setup.guide.mailIdentity'
+                : check.id === 'mail_identity' || check.id === 'mail_identity_ipv6' ? 'setup.guide.mailIdentity'
                     : check.id === 'mail_delivery' ? 'setup.guide.mailDelivery'
                         : ['panel_https', 'panel_renewal', 'mail_tls'].includes(check.id) ? 'setup.guide.certificateChecks'
                             : check.id === 'firewall' ? 'setup.guide.firewall' : 'setup.guide.checkUnknown';

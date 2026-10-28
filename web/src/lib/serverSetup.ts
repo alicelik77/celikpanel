@@ -28,6 +28,17 @@ export interface ServerSetupDraft {
     server_count?: 1 | 2;
     short_name?: string;
     main_dns_server?: 'this';
+    // alpha.112: the main domain's public records the owner reviewed, each
+    // imported or skipped, and the mail DNS choice.
+    imported_records?: SetupImportedRecord[];
+    mail_dns?: { mx?: 'now' | 'later' | ''; dmarc?: 'keep' | 'add' | '' };
+}
+export interface SetupImportedRecord {
+    name: string;
+    type: 'A' | 'AAAA' | 'CNAME' | 'MX' | 'TXT' | 'CAA';
+    content: string;
+    priority?: number;
+    decision: 'import' | 'skip';
 }
 export interface ServerSetupCheck {
     id: string;
@@ -54,6 +65,8 @@ export interface ServerSetupSnapshot {
     // alpha.111: the machine host name's first label when it reads like a
     // name a person chose; absent otherwise. Never a guess of the panel's.
     short_name_suggestion?: string;
+    // alpha.112: the server's public IPv6 address, when it has one.
+    server_ipv6?: string;
 }
 const draftStrings = ['remote_dns_connection_id', 'panel_domain', 'mail_hostname', 'ns1', 'ns2', 'local_ip', 'peer_ip', 'peer_ns', 'node_version', 'database'] as const;
 function record(value: unknown): value is Record<string, unknown> {
@@ -84,6 +97,12 @@ function validDraft(draft: unknown): draft is Record<string, unknown> {
     if (draft.server_count !== undefined && draft.server_count !== 1 && draft.server_count !== 2) return false;
     if (draft.short_name !== undefined && (typeof draft.short_name !== 'string' || draft.short_name.length > 63)) return false;
     if (draft.main_dns_server !== undefined && draft.main_dns_server !== 'this') return false;
+    const imported = draft.imported_records;
+    if (imported !== undefined && (!Array.isArray(imported) || imported.length > 64 || imported.some(item => !record(item)
+        || typeof item.name !== 'string' || !['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'CAA'].includes(String(item.type))
+        || typeof item.content !== 'string' || item.content.length > 2048 || !['import', 'skip'].includes(String(item.decision))))) return false;
+    if (draft.mail_dns !== undefined && (!record(draft.mail_dns) || !['', 'now', 'later', undefined].includes(draft.mail_dns.mx as string)
+        || !['', 'keep', 'add', undefined].includes(draft.mail_dns.dmarc as string))) return false;
     return true;
 }
 export function decodeServerSetup(value: unknown): ServerSetupSnapshot | null {
@@ -181,7 +200,7 @@ export function setupDetectedIPv4(value?: string): string {
 // denetimleri gecerliligini korur. Plan veya baslatma izni burada saklanmaz.
 // The wizard's editing steps (alpha.111, setup wizard v2). "components" is
 // shown only when the owner customizes the components.
-export const setupWizardSteps = ['domain', 'count', 'name', 'roles', 'components', 'names', 'dnshome', 'review'] as const;
+export const setupWizardSteps = ['domain', 'count', 'name', 'roles', 'components', 'names', 'dnshome', 'records', 'mail', 'review'] as const;
 export type SetupEditorStep = typeof setupWizardSteps[number];
 export const setupEditorKey = (username: string) => `celikpanel.setup.editor.${username}`;
 export interface SetupEditorCheckpoint {
@@ -279,3 +298,21 @@ export function changeSetupWizardDNSRole(draft: ServerSetupDraft, role: ServerSe
     else delete next.main_dns_server;
     return next;
 }
+
+// SPF is merged, never replaced (alpha.112, cmd/panel mergeServerSetupSPF):
+// this mail server is added before the final "all" or "redirect".
+export function mergeSetupSPF(old: string, mailHost: string): string {
+    const mechanism = `a:${mailHost}`;
+    const fields = old.trim().split(/\s+/).filter(Boolean);
+    if (fields.length === 0) return `v=spf1 mx ${mechanism} ~all`;
+    if (fields.some(field => field.toLowerCase() === mechanism.toLowerCase())) return fields.join(' ');
+    let at = fields.findIndex(field => { const lower = field.toLowerCase(); return (lower.endsWith('all') && lower.length <= 4) || lower.startsWith('redirect='); });
+    if (at < 0) at = fields.length;
+    return [...fields.slice(0, at), mechanism, ...fields.slice(at)].join(' ');
+}
+export const setupImportedSPF = (draft: ServerSetupDraft, domain: string) =>
+    draft.imported_records?.find(item => item.decision === 'import' && item.type === 'TXT' && item.name === domain && item.content.toLowerCase().startsWith('v=spf1'))?.content || '';
+export const setupImportedMX = (draft: ServerSetupDraft, domain: string) =>
+    draft.imported_records?.filter(item => item.decision === 'import' && item.type === 'MX' && item.name === domain) || [];
+export const setupImportedDMARC = (draft: ServerSetupDraft, domain: string) =>
+    draft.imported_records?.find(item => item.decision === 'import' && item.type === 'TXT' && item.name === `_dmarc.${domain}` && item.content.toUpperCase().startsWith('V=DMARC1'));

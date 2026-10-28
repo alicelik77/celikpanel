@@ -642,7 +642,7 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 			// 2026-10-16); every other review error stays the conflict.
 			// Tipli ret kendi kodunu korur; digerleri cakisma olarak kalir.
 			code := "infrastructure_dns_conflict"
-			if strings.HasPrefix(reviewError.Code, "infrastructure_dns_peer_mail_") {
+			if strings.HasPrefix(reviewError.Code, "infrastructure_dns_peer_mail_") || reviewError.Code == "infrastructure_dns_imported_clash" {
 				code = reviewError.Code
 			}
 			addBlocker("server_setup_" + code + ":" + reviewError.Message)

@@ -521,4 +521,11 @@ export const trSetupScreens: Record<SetupScreenKey, string> = {
     "setup.components.summaryHost": "Sürümler: {system} depoları",
     "setup.components.catalogueNote": "Liste Bileşenler sayfasıyla aynı katalogdan gelir; oraya eklenen bileşen burada da görünür.",
     "setup.components.always": "Her kurulumda: güvenlik duvarı motoru (nftables) · sertifika yenileme (certbot).",
+    "setup.step.records": "Mevcut kayıtlar",
+    "setup.step.mail": "Posta kayıtları",
+    "setup.kind.mail_dns": "{target} posta kayıtlarını hazırla (DKIM)",
+    "setup.check.name.mail_identity_ipv6": "IPv6 ters DNS",
+    "setup.check.mailIdentity6.missing": "{ip} IPv6 adresinin {hostname} adını veren ters DNS (PTR) kaydı yok. Sunucu sağlayıcınızın panelinden {hostname} olarak ayarlayın; olmadan IPv6 üzerinden giden posta reddedilir. Kurulum kendisi yeniden bakar.",
+    "setup.check.mailIdentity6.mismatch": "{ip} IPv6 adresinin ters DNS (PTR) kaydı {hostname} değil, {ptr}. Sunucu sağlayıcınızın panelinden {hostname} olarak değiştirin. Kurulum kendisi yeniden bakar.",
+    "setup.check.mailIdentity6.unknown": "{ip} IPv6 adresinin ters DNS kaydı şu an okunamadı. Şimdilik bir şey yapmanız gerekmiyor; birazdan yeniden okunur.",
 };

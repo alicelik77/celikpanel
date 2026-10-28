@@ -101,6 +101,10 @@ const screenPartBudgets = {
   // "lifecycle", which had no headroom left. A new part, set with at least 25%
   // headroom from its Turkish file: 16.14 / 4.44 KiB.
   webmailAddress: kib(20.5, 5.7),
+  // v0.1.0-alpha.111/112: the setup wizard v2 (setup.v2., setup.v3.), split
+  // out of "setup", which had 1.9 KiB left. A new part, set with at least 25%
+  // headroom from its Turkish file: 18.35 / 5.71 KiB.
+  setupWizard: kib(25, 7.75),
 }
 
 // Translation chunks, named by source. The shell halves are held to the
