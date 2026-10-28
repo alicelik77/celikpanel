@@ -285,23 +285,44 @@ func (p *Panel) runServerSetupMailDNS(ctx context.Context, plan serverSetupPlan,
 	if key.Error != "" || key.PublicKeyB64 == "" {
 		return false, &serverSetupChildFailure{Code: "server_setup_mail_dns_dkim_failed", Message: "The DKIM key for the main domain could not be prepared: " + boundedSetupHostReason(key.Error)}
 	}
-	if !p.serviceMutationMu.TryLock() {
+	// The signing change has one identity per step (D-024): a lost reply is
+	// reconciled by reading that exact mutation, never repeated under a new
+	// identity. / Imzalama degisikliginin adim basina tek kimligi vardir.
+	signing := serverSetupMailDNSSigningIdentity(step)
+	job, err := p.statusAgentMutation(ctx, signing.RequestID)
+	if err != nil {
 		return false, errServiceOperationBusy
 	}
-	var sign transport.ConfigureDKIMSigningResponse
-	signErr := p.withStandaloneAgentMutation(ctx, "dkim_signing_configure", "opendkim", "", func(callCtx context.Context, binding agentMutationBinding) error {
-		request := transport.ServiceMutationRequest{ServiceMutationBinding: binding}
-		if err := p.callAgentContext(callCtx, "Agent.ConfigureDKIMSigning", &request, &sign); err != nil {
-			return err
+	switch {
+	case job != nil && agentMutationActive(job.Status):
+		return false, errServiceOperationBusy
+	case job != nil && job.Status == agentMutationFailed:
+		return false, &serverSetupChildFailure{Code: "server_setup_mail_dns_signing_failed", Message: "DKIM signing for the main domain could not be configured; its recorded operation failed. Review the plan again to retry."}
+	case job != nil && job.Status == agentMutationSucceeded:
+		// Already configured by this step's own operation.
+	default:
+		if !p.serviceMutationMu.TryLock() {
+			return false, errServiceOperationBusy
 		}
-		if sign.Error != "" {
-			return errors.New(sign.Error)
+		var sign transport.ConfigureDKIMSigningResponse
+		signErr := p.withStandaloneAgentMutationIdentity(ctx, signing.op, signing.OwnerID, func(callCtx context.Context, binding agentMutationBinding) error {
+			request := transport.ServiceMutationRequest{ServiceMutationBinding: binding}
+			if err := p.callAgentContext(callCtx, "Agent.ConfigureDKIMSigning", &request, &sign); err != nil {
+				return err
+			}
+			if sign.Error != "" {
+				return errors.New(sign.Error)
+			}
+			return nil
+		})
+		p.serviceMutationMu.Unlock()
+		if signErr != nil {
+			if sign.Error == "" {
+				// No answer from the Agent: the outcome is read again next pass.
+				return false, errServiceOperationBusy
+			}
+			return false, &serverSetupChildFailure{Code: "server_setup_mail_dns_signing_failed", Message: "DKIM signing for the main domain could not be configured: " + boundedSetupHostReason(sign.Error)}
 		}
-		return nil
-	})
-	p.serviceMutationMu.Unlock()
-	if signErr != nil {
-		return false, &serverSetupChildFailure{Code: "server_setup_mail_dns_signing_failed", Message: "DKIM signing for the main domain could not be configured: " + boundedSetupHostReason(signErr.Error())}
 	}
 	if draft.DNSMode != setupDNSModeLocal || draft.InfrastructureDNS == nil {
 		return true, nil
@@ -317,6 +338,19 @@ func (p *Panel) runServerSetupMailDNS(ctx context.Context, plan serverSetupPlan,
 		return false, err
 	}
 	return true, nil
+}
+
+type serverSetupMailDNSSigning struct {
+	RequestID, OwnerID string
+	op                 serviceOperation
+}
+
+// serverSetupMailDNSSigningIdentity derives the DKIM signing mutation's
+// identity from the step's own (itself derived from execution and step).
+func serverSetupMailDNSSigningIdentity(step serverSetupExecutionStep) serverSetupMailDNSSigning {
+	identity := serverSetupMailDNSSigning{RequestID: serverSetupID(step.RequestID, "dkim-signing", "request"), OwnerID: serverSetupID(step.OwnerID, "dkim-signing", "owner")}
+	identity.op = serviceOperation{RequestID: identity.RequestID, Kind: "dkim_signing_configure", ServiceID: "opendkim"}
+	return identity
 }
 
 func serverSetupNeedsMailDNSStep(d serverSetupDraft) bool {
