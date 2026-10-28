@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -36,7 +37,10 @@ type serverSetupLinkRecord struct {
 	Document       serverSetupJoinDocument `json:"document"`
 	LinkID         string                  `json:"link_id"`
 	LinkCredential string                  `json:"link_credential"`
-	EnrollmentCode string                  `json:"enrollment_code,omitempty"`
+	// CodeMAC is a keyed hash of the code this join was made with: the same
+	// code again is the same join; another code is a new join.
+	CodeMAC        string `json:"code_mac"`
+	EnrollmentCode string `json:"enrollment_code,omitempty"`
 	// IssuedEnrollment is the code this server issued for the first server
 	// when this server is the main DNS server (sent with its names).
 	IssuedEnrollment string `json:"issued_enrollment,omitempty"`
@@ -198,18 +202,20 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 	joinLock := p.serverSetupJoinLock()
 	joinLock.Lock()
 	defer joinLock.Unlock()
-	// Already joined to this first server (a draft that could not be saved,
-	// or the same form sent twice): the join is not repeated; the answers it
-	// gave are applied again, which changes nothing when they already are.
+	canonicalCode := formatServerSetupJoinCode(pin, mustDecodeServerSetupProof(proof))
+	// Already joined with this code (a draft that could not be saved, or the
+	// same form sent twice): the join is not repeated; the answers it gave
+	// are applied again, which changes nothing when they already are. A new
+	// code for the same first server (it asked to join again) is a new join
+	// that replaces this one.
 	if link, err := p.readServerSetupLink(ctx); err != nil {
 		writeServerError(w, err)
 		return
-	} else if link != nil && link.Address == address {
+	} else if link != nil && link.Address == address && serverSetupSameSecret(link.CodeMAC, p.serverSetupLinkCodeMAC(canonicalCode)) {
 		_, _ = p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key=?`, serverSetupLinkPendingKey)
 		_ = json.NewEncoder(w).Encode(p.applyServerSetupJoinedDraft(ctx, *link))
 		return
 	}
-	canonicalCode := formatServerSetupJoinCode(pin, mustDecodeServerSetupProof(proof))
 	var pending serverSetupLinkPending
 	found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupLinkPendingKey, &pending)
 	if err != nil {
@@ -263,7 +269,7 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 	switch {
 	case callErr == nil && validServerSetupJoinDocument(document, address, pending.RequestID):
 		link := serverSetupLinkRecord{RequestID: pending.RequestID, Address: address, Pin: document.FirstSPKI, LinkID: document.LinkID, LinkCredential: document.LinkCredential,
-			EnrollmentCode: document.EnrollmentCode, JoinedAt: time.Now().UTC().Format(time.RFC3339)}
+			CodeMAC: p.serverSetupLinkCodeMAC(canonicalCode), EnrollmentCode: document.EnrollmentCode, JoinedAt: time.Now().UTC().Format(time.RFC3339)}
 		link.Document = document
 		link.Document.LinkCredential, link.Document.EnrollmentCode = "", ""
 		tx, err := p.db.GetDB().BeginTx(ctx, nil)
@@ -272,8 +278,9 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 			return
 		}
 		defer tx.Rollback()
-		// A join to another first server replaces the old link and withdraws
-		// the enrollment this server issued for the old first server.
+		// A new join (another first server, or the same one with a new code)
+		// replaces the old link and withdraws the enrollment this server
+		// issued for the old join.
 		var old serverSetupLinkRecord
 		replaced, err := readServerSetupJSONSetting(ctx, tx, serverSetupLinkKey, &old)
 		if err != nil {
@@ -346,6 +353,17 @@ func (p *Panel) applyServerSetupJoinedDraft(ctx context.Context, link serverSetu
 		}
 	}
 	return serverSetupPeerConnectAnswer{State: "ok", Code: "server_setup_peer_draft_retry"}
+}
+
+// serverSetupLinkCodeMAC: the keyed hash of a join code kept with its link.
+func (p *Panel) serverSetupLinkCodeMAC(code string) string {
+	return p.serverSetupMAC("link-code", code)
+}
+
+// serverSetupSameSecret compares two keyed hashes in constant time; an empty
+// one never matches.
+func serverSetupSameSecret(stored, computed string) bool {
+	return stored != "" && subtle.ConstantTimeCompare([]byte(stored), []byte(computed)) == 1
 }
 
 func mustDecodeServerSetupProof(proof string) []byte {

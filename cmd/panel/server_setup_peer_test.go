@@ -385,3 +385,74 @@ func TestServerSetupPeerDocumentFromAnotherVersion(t *testing.T) {
 		t.Fatalf("another version: %d %s", w.Code, w.Body.String())
 	}
 }
+
+// advanceToJoin marks the first server's steps before its join step done
+// and runs the join step once; it returns the join step's index.
+func (pair *peerPair) advanceToJoin(t *testing.T) int {
+	t.Helper()
+	joinIndex := -1
+	for index, step := range pair.execution.Steps {
+		if step.Kind == "peer_join" {
+			joinIndex = index
+			break
+		}
+		pair.execution.Steps[index].Status = "succeeded"
+	}
+	if _, err := pair.first.panel.advanceServerSetupExecution(pair.plan, pair.execution); err != nil {
+		t.Fatal(err)
+	}
+	return joinIndex
+}
+
+// MUST-1 (alpha.114 review): the first server asks the second to join again
+// (its answers changed, or the main refused the publishing connection). A
+// new code for the same address is a new join that replaces the old one and
+// completes; the old code again is still the old join, never a second one.
+func TestServerSetupPeerRejoinsTheSameFirstServerWithANewCode(t *testing.T) {
+	pair := newPeerPair(t, joinFirstDraft())
+	first := issueJoinCode(t, pair.first)
+	if answer := pair.connect(t, first.Code); answer.State != "ok" {
+		t.Fatalf("first join: %+v", answer)
+	}
+	old, _ := pair.second.panel.readServerSetupLink(context.Background())
+	// The first server's answers changed after the join: it waits for a new one.
+	db := pair.first.database.GetDB()
+	var join serverSetupJoinRecord
+	readServerSetupJSONSetting(context.Background(), db, serverSetupJoinKey, &join)
+	join.Digest = strings.Repeat("0", len(join.Digest))
+	if err := writeServerSetupJSONSetting(context.Background(), db, serverSetupJoinKey, join); err != nil {
+		t.Fatal(err)
+	}
+	joinIndex := pair.advanceToJoin(t)
+	if pair.execution.Error == nil || pair.execution.Error.Code != "server_setup_peer_join_changed" {
+		t.Fatalf("join changed: %+v", pair.execution.Error)
+	}
+	second := issueJoinCode(t, pair.first)
+	if answer := pair.connect(t, first.Code); answer.State != "ok" || pair.joins.Load() != 1 {
+		t.Fatalf("the old code is the old join: %+v %d", answer, pair.joins.Load())
+	}
+	if answer := pair.connect(t, second.Code); answer.State != "ok" || answer.Setup == nil || pair.joins.Load() != 2 {
+		t.Fatalf("a new code to the same address joins again: %+v %d", answer, pair.joins.Load())
+	}
+	link, _ := pair.second.panel.readServerSetupLink(context.Background())
+	if link.LinkID == old.LinkID || link.RequestID == old.RequestID || link.CodeMAC == old.CodeMAC {
+		t.Fatalf("a new link: %+v", link)
+	}
+	if pair.first.panel.serverSetupLinkAuthorized(context.Background(), old.LinkID, old.LinkCredential) {
+		t.Fatal("the old link is withdrawn on the first server")
+	}
+	if answer := pair.connect(t, second.Code); answer.State != "ok" || pair.joins.Load() != 2 {
+		t.Fatalf("the new code again is the same join: %+v %d", answer, pair.joins.Load())
+	}
+	_, plan := pair.secondReview(t, nil)
+	step := serverSetupExecutionStep{serverSetupPlanStep: plan.Steps[0], RequestID: strings.Repeat("5", 32), OwnerID: strings.Repeat("6", 32)}
+	if done, err := pair.second.panel.runServerSetupPeerNames(context.Background(), plan, step); !done || err != nil {
+		t.Fatalf("names over the new link: %v %v", done, err)
+	}
+	if _, err := pair.first.panel.advanceServerSetupExecution(pair.plan, pair.execution); err != nil {
+		t.Fatal(err)
+	}
+	if pair.execution.Steps[joinIndex].Status != "succeeded" {
+		t.Fatalf("the new join completes: %+v %+v", pair.execution.Steps[joinIndex], pair.execution.Error)
+	}
+}
