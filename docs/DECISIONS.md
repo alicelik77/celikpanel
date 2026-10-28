@@ -3037,6 +3037,23 @@ The release also states its limits on screen: one server cannot keep its own
 DNS yet, and with two servers the second server's IP address is still typed.
 Existing DNS ownership, topology and recovery invariants are unchanged.
 
+
+### Amendment (2026-10-28): setup writes the records the owner imports and the main domain's mail records
+
+*Owner-approved setup wizard v2, phase 2; in source for the v0.1.0-alpha.112
+candidate (not published); nothing measured on an installed server*
+
+The earlier rule that setup never creates an apex, `www`, MX, SPF or DMARC
+record changes for the main domain only, and only by the owner's explicit
+choices in the wizard: the existing public records the owner imports are
+written into the main domain's zone, and with email its MX, SPF, DMARC and
+DKIM are written. MX never moves without the owner (an imported old MX stays
+until the owner chooses "now"), SPF is merged, an old DMARC is kept unless
+replaced. These are the owner's records (editable in Domains); setup's own
+server addresses stay locked. Setup still creates no tenant, website or
+mailbox. Reverse DNS stays the server provider's: setup shows the exact rows
+and checks IPv4 and, when present, IPv6 before completing.
+
 ---
 
 ## D-020 · Managed-server support follows proven capabilities, not distribution names

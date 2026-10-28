@@ -9,6 +9,36 @@ bu yönü onayladı. Bu belge anlaşmayı ve uygulamanın kabul ölçütlerini k
 Asistana kurulu panel güncelleme yetkisi vermez; [AGENTS.md](../AGENTS.md) gereği
 kurulu panel güncellemelerini kullanıcı CelikPanel'in kendi arayüzünden başlatır.
 
+## 28 Ekim ek kararı: kurulum sihirbazı v2, 2. aşama (v0.1.0-alpha.112 kaynağı)
+
+- **Mevcut kayıtlar.** Ana DNS sunucusunda DNS adımından sonraki adım, ana alan
+  adının bilinen adları (alan adının kendisi, www, mail, webmail, autodiscover,
+  _dmarc) ve sahibin yazdığı adlar için internetin şu anki yanıtını okur
+  (`GET /api/v1/setup/public-records`: iki sabit genel çözümleyici, salt-okur,
+  bir dakika paylaşılır; okunamayan ad bilinmiyor sayılır). İnternet tam liste
+  vermez ve ekran bunu söyler. Her kayıt aktarılır ya da atlanır; atlanan,
+  ad sunucusu değişikliği yayılınca çalışmayı bırakır. Kurulumun bir sunucuya
+  verdiği ad asla devralınmaz; eski posta sunucusu `mail.<alan>` adını
+  tutuyorsa tek düğme bu sunucuya `mail2` verir.
+- **Posta kayıtları.** E-posta seçiliyse ana alan adının MX, SPF ve DMARC
+  kayıtları bölgeye yazılır; DKIM posta profilinden sonraki `mail_dns` adımında
+  (anahtar, imzalama, TXT kaydı; tekrarlanabilir). MX yalnız eski MX aktarılmadıysa
+  ya da sahip "şimdi" dediyse değişir; SPF birleştirilir (bu sunucu eklenir,
+  hiçbir şey çıkarılmaz); eski DMARC seçime göre korunur ya da değiştirilir.
+  Aktarılan ve posta kayıtları bölgede sahibindir (Alan adları'ndan
+  düzenlenir); yalnız kurulumun kendi sunucu adresleri kilitli kalır.
+- **Harici sağlayıcı.** Sağlayıcı listesine MX, birleştirilmiş SPF, DMARC ve
+  DKIM satırları genel durumlarıyla eklenir (sahibin koruduğu eski MX için
+  "korunuyor", DKIM anahtarı oluşana kadar "bekliyor").
+- **Ters DNS.** Posta adımı sunucu sağlayıcısına verilecek IPv4 ve IPv6 PTR
+  satırlarını gösterir; genel IPv6 adresi olan sunucu, kurulum bitmeden o
+  adresin ters DNS kontrolünden de geçer (yanıtsız sorgu bilinmiyor sayılır).
+- **Yardımcı birimler.** SpamAssassin ve ClamAV yeniden sihirbaz seçeneğidir:
+  tarayıcı artık yardımcı birimlerini (spamass-milter, clamav-freshclam) görür;
+  bunlar servisin kendisi sayılmaz.
+
+Şema değişikliği yok. Kurulu bir sunucuda ölçülmedi.
+
 ## 26 Ekim ek kararı: kurulum sihirbazı v2, 1. aşama (v0.1.0-alpha.111 kaynağı)
 
 Sahip yeniden tasarlanan ilk kurulum sihirbazını onayladı (önce ana alan adı,

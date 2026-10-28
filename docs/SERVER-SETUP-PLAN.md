@@ -10,6 +10,36 @@ This document records that agreement and the implementation acceptance criteria.
 It does not authorize an assistant to update any installed panel; the user starts
 every installed-panel update from CelikPanel itself, as required by [AGENTS.md](../AGENTS.md).
 
+## October 28 follow-up: setup wizard v2, phase 2 (v0.1.0-alpha.112 source)
+
+- **Existing records.** On the main DNS server a step after the DNS step reads
+  what the public internet answers now for the main domain's usual names (the
+  domain itself, www, mail, webmail, autodiscover, _dmarc) and any name the
+  owner types (`GET /api/v1/setup/public-records`: two fixed public resolvers,
+  read-only, shared for a minute; an unread name is unknown). The internet
+  gives no complete list, and the screen says so. Each record is imported or
+  skipped; a skipped one stops working once the nameserver change spreads. A
+  name the setup gives to a server is never taken over; when the old mail
+  server holds `mail.<domain>`, one button gives this server `mail2`.
+- **Mail records.** With email, MX, SPF and DMARC for the main domain are
+  written into the zone, DKIM by a `mail_dns` step after the mail profile
+  (key, signing, TXT record; idempotent). MX moves only when no old MX was
+  imported or the owner chose "now"; SPF is merged (this server is added,
+  nothing removed); an old DMARC is kept or replaced as chosen. Imported and
+  mail records are the owner's records in the zone (editable in Domains);
+  only the setup's own server addresses stay locked.
+- **External provider.** The provider list adds MX, the merged SPF, DMARC and
+  DKIM rows with their public state ("kept" for an old MX the owner keeps,
+  "pending" until the DKIM key exists).
+- **Reverse DNS.** The mail step shows the PTR rows for IPv4 and IPv6 to give
+  the server provider; a server with public IPv6 also gets a reverse-DNS check
+  for that address before setup completes (an unanswered lookup is unknown).
+- **Helpers.** SpamAssassin and ClamAV are wizard choices again: the scanner
+  now sees their helper units (spamass-milter, clamav-freshclam), which never
+  stand for the service itself.
+
+No schema change. Not measured on an installed server.
+
 ## October 26 follow-up: setup wizard v2, phase 1 (v0.1.0-alpha.111 source)
 
 The owner approved a redesigned first-run wizard (main domain first, roles,

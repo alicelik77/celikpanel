@@ -3017,6 +3017,23 @@ Sürüm sınırlarını da ekranda söyler: tek sunucu henüz kendi DNS'ini tuta
 iki sunucuda ikinci sunucunun IP adresi hâlâ yazılır. Mevcut DNS sahipliği,
 topoloji ve kurtarma kuralları değişmez.
 
+
+### Ek (2026-10-28): kurulum, sahibin aktardığı kayıtları ve ana alan adının posta kayıtlarını yazar
+
+*Sahibin onayladığı kurulum sihirbazı v2, 2. aşama; v0.1.0-alpha.112 adayının
+kaynağında (yayımlanmadı); kurulu bir sunucuda ölçülmedi*
+
+Kurulumun apex, `www`, MX, SPF ya da DMARC kaydı oluşturmadığı önceki kural
+yalnız ana alan adı için ve yalnız sahibin sihirbazdaki açık seçimleriyle
+değişir: sahibin aktardığı mevcut genel kayıtlar ana alan adının bölgesine
+yazılır; e-posta seçiliyse MX, SPF, DMARC ve DKIM yazılır. MX sahip olmadan
+değişmez (aktarılan eski MX, sahip "şimdi" diyene kadar kalır), SPF
+birleştirilir, eski DMARC değiştirilmedikçe korunur. Bunlar sahibin
+kayıtlarıdır (Alan adları'ndan düzenlenir); kurulumun kendi sunucu adresleri
+kilitli kalır. Kurulum yine kiracı, site ya da posta kutusu oluşturmaz. Ters
+DNS sunucu sağlayıcısında kalır: kurulum tam satırları gösterir ve bitmeden
+IPv4'ü ve varsa IPv6'yı kontrol eder.
+
 ---
 
 ## D-020 · Yönetilen sunucu desteği dağıtım adına değil kanıtlanmış yeteneğe bağlanır
