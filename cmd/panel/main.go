@@ -1268,6 +1268,7 @@ func main() {
 	http.HandleFunc(serverSetupPath+"/components", panel.handleServerSetupComponents)
 	http.HandleFunc(serverSetupProviderRecordsPath, panel.handleServerSetupProviderRecords)
 	http.HandleFunc(serverSetupPublicRecordsPath, panel.handleServerSetupPublicRecords)
+	http.HandleFunc(serverSetupDelegationPath, panel.handleServerSetupDelegation)
 	http.HandleFunc(serverSetupPath+"/complete", panel.handleServerSetupComplete)
 	http.HandleFunc(serverSetupPath+"/revise", panel.handleServerSetupRevise)
 	http.HandleFunc(serverSetupPath+"/extend", panel.handleServerSetupExtend)
