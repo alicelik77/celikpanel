@@ -102,6 +102,8 @@ export const enSetupJoinScreens = {
     "setup.v5.wait.server_setup_peer_names_bound": "The first server's setup already uses this server's earlier names. Keep those names, or reopen the first server's plan.",
     "setup.v5.wait.server_setup_peer_version_incompatible": "The two panels run versions that cannot work together. You update the older panel from its own update screen (Settings → Updates); setup then asks again by itself.",
     "setup.v5.wait.server_setup_dns_publisher_refused": "The main DNS server refused this server's publishing connection: its enrollment code expired, was withdrawn or was already used. On the main DNS server create a new join code, join this server again, then review this plan again.",
+    "setup.v5.wait.server_setup_peer_dkim_conflict": "The main DNS server already has a different DKIM record at this name that setup did not write. Change or remove it there in Domains; setup sends this server's record again by itself.",
+    "setup.v5.check.peerDKIM": "Waiting for the other server's DKIM record: it is sent here once that server's mail is set up. Nothing to do here; setup checks again by itself.",
     "setup.v5.wait.other": "Waiting for the other server ({code}). Setup asks again by itself.",
     "setup.v5.blocker.answersChanged": "The shared answers (main domain, DNS servers, nameserver names) must stay as the first server gave them. To change them, change the first server's plan and join again.",
     "setup.kind.peer_join": "The second server joins",

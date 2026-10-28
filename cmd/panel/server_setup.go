@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -459,7 +460,19 @@ func (p *Panel) completeServerSetupOwned(ctx context.Context, revision int, exec
 	} else if active {
 		return errServerSetupConflict
 	}
-	checks, err := p.serverSetupCompletionChecks(ctx, s.Draft)
+	// A run whose second server is bound (alpha.114) is checked on the plan
+	// that binding completed: the peer's address is not in the draft.
+	checked := s.Draft
+	if executionID != "" {
+		if execution, err := p.latestServerSetupExecution(ctx); err == nil && execution != nil && execution.ID == executionID {
+			if plan, err := p.loadServerSetupPlan(ctx, execution.PlanID); err == nil && reflect.DeepEqual(plan.Draft, s.Draft) {
+				if bound, err := p.effectiveServerSetupPlan(ctx, plan, execution.ID); err == nil && bound.peerBound {
+					checked = bound.Draft
+				}
+			}
+		}
+	}
+	checks, err := p.serverSetupCompletionChecks(ctx, checked)
 	if err != nil {
 		return err
 	}
@@ -487,6 +500,11 @@ func (p *Panel) completeServerSetupOwned(ctx context.Context, revision int, exec
 	// Biten genisletmenin tabani silinir; kalan satir zararsizdir.
 	if _, err := p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key=?`, settingServerSetupExtensionBase); err != nil {
 		log.Printf("server setup extension base not cleared: %v", err)
+	}
+	// The setup link ends with the setup (alpha.114). A failure is logged;
+	// the next completion or a new join removes it.
+	if err := p.revokeServerSetupLink(ctx); err != nil {
+		log.Printf("server setup link not revoked: %v", err)
 	}
 	return nil
 }

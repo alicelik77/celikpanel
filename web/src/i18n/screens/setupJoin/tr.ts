@@ -102,6 +102,8 @@ export const trSetupJoinScreens: Record<SetupJoinScreenKey, string> = {
     "setup.v5.wait.server_setup_peer_names_bound": "İlk sunucunun kurulumu bu sunucunun önceki adlarını kullanıyor. O adları koruyun ya da ilk sunucunun planını yeniden açın.",
     "setup.v5.wait.server_setup_peer_version_incompatible": "İki panel birlikte çalışamayan sürümlerde. Eski olan paneli kendi güncelleme ekranından (Ayarlar → Güncellemeler) güncellersiniz; kurulum sonra kendiliğinden yeniden sorar.",
     "setup.v5.wait.server_setup_dns_publisher_refused": "Ana DNS sunucusu bu sunucunun yayımlama bağlantısını reddetti: kayıt kodunun süresi doldu, geri alındı ya da zaten kullanıldı. Ana DNS sunucusunda yeni bir katılma kodu oluşturun, bu sunucuyu yeniden katın ve planı yeniden gözden geçirin.",
+    "setup.v5.wait.server_setup_peer_dkim_conflict": "Ana DNS sunucusunda bu adda kurulumun yazmadığı farklı bir DKIM kaydı var. Onu orada Alan adları'ndan değiştirin ya da silin; kurulum bu sunucunun kaydını kendiliğinden yeniden gönderir.",
+    "setup.v5.check.peerDKIM": "Diğer sunucunun DKIM kaydı bekleniyor: o sunucunun postası kurulunca buraya gönderilir. Burada yapılacak bir şey yok; kurulum kendiliğinden yeniden bakar.",
     "setup.v5.wait.other": "Diğer sunucu bekleniyor ({code}). Kurulum kendiliğinden yeniden sorar.",
     "setup.v5.blocker.answersChanged": "Ortak yanıtlar (ana alan adı, DNS sunucuları, ad sunucusu adları) ilk sunucunun verdiği gibi kalmalı. Değiştirmek için ilk sunucunun planını değiştirip yeniden katılın.",
     "setup.kind.peer_join": "İkinci sunucu katılır",

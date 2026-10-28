@@ -181,15 +181,54 @@ func TestServerSetupPeerMailRecordsAreWrittenOnTheMain(t *testing.T) {
 			t.Fatalf("dkim %d: %d %s", attempt, w.Code, w.Body.String())
 		}
 	}
-	var rows int
-	pair.first.database.GetDB().QueryRow(`SELECT COUNT(*) FROM pdns_records WHERE name=? AND type='TXT'`, dkimSelector+"._domainkey.example.test").Scan(&rows)
-	if rows != 1 {
-		t.Fatalf("one DKIM record however often it is sent: %d", rows)
+	var rows, audits int
+	db := pair.first.database.GetDB()
+	db.QueryRow(`SELECT COUNT(*) FROM pdns_records WHERE name=? AND type='TXT'`, dkimSelector+"._domainkey.example.test").Scan(&rows)
+	db.QueryRow(`SELECT COUNT(*) FROM audit_logs WHERE action='server.setup.peer_dkim'`).Scan(&audits)
+	if rows != 1 || audits != 1 {
+		t.Fatalf("one DKIM record however often it is sent, audited once: %d %d", rows, audits)
 	}
+	var written serverSetupInfrastructureDNSWritten
+	readServerSetupJSONSetting(context.Background(), db, serverSetupInfrastructureDNSWrittenKey("example.test"), &written)
+	if len(written.Records) != 1 || written.Records[0].Name != dkimSelector+"._domainkey.example.test" {
+		t.Fatalf("the DKIM record is one setup wrote: %+v", written)
+	}
+	// Completion waits for it while the other server receives the mail.
+	if present, err := pair.first.panel.serverSetupPeerDKIMPresent(context.Background(), effective.Draft); err != nil || !present {
+		t.Fatalf("present: %v %v", present, err)
+	}
+	// A key rotated by the other server replaces setup's own record; a
+	// record the owner changed is refused with the reason.
+	rotated := dkim
+	rotated.Value = "v=DKIM1; k=rsa; p=REVG"
+	if w := joinMachineRequest(t, pair.first, serverSetupPeerDKIMPath, bearer, rotated); w.Code != http.StatusOK && w.Code != http.StatusAccepted {
+		t.Fatalf("rotated: %d %s", w.Code, w.Body.String())
+	}
+	if _, err := db.Exec(`UPDATE pdns_records SET content='"v=DKIM1; p=OWNER"' WHERE name=? AND type='TXT'`, dkimSelector+"._domainkey.example.test"); err != nil {
+		t.Fatal(err)
+	}
+	if w := joinMachineRequest(t, pair.first, serverSetupPeerDKIMPath, bearer, dkim); w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), "server_setup_peer_dkim_conflict") {
+		t.Fatalf("an owner record: %d %s", w.Code, w.Body.String())
+	}
+
 	invalid := dkim
 	invalid.Value = `v=DKIM1; p="x"`
 	if w := joinMachineRequest(t, pair.first, serverSetupPeerDKIMPath, bearer, invalid); w.Code != http.StatusBadRequest {
 		t.Fatalf("an invalid record: %d", w.Code)
+	}
+	// Only while this server's setup runs.
+	if _, err := db.Exec(`UPDATE server_setup_executions SET status='failed',execution_json=replace(replace(execution_json,'"status":"running"','"status":"failed"'),'"status":"waiting"','"status":"failed"') WHERE id=?`, pair.execution.ID); err != nil {
+		t.Fatal(err)
+	}
+	if w := joinMachineRequest(t, pair.first, serverSetupPeerDKIMPath, bearer, dkim); w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), "server_setup_peer_dkim_not_running") {
+		t.Fatalf("setup not running: %d %s", w.Code, w.Body.String())
+	}
+	// The link ends with the setup: afterwards nothing is accepted.
+	if err := pair.first.panel.revokeServerSetupLink(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if w := joinMachineRequest(t, pair.first, serverSetupPeerDKIMPath, bearer, dkim); w.Code != http.StatusUnauthorized {
+		t.Fatalf("after completion: %d %s", w.Code, w.Body.String())
 	}
 }
 

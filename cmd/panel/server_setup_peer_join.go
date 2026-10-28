@@ -233,8 +233,10 @@ func (p *Panel) handleServerSetupPeerDKIM(w http.ResponseWriter, r *http.Request
 		writeServerError(w, err)
 		return
 	}
-	if execution == nil {
-		writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_dkim_zone_waiting", "The main DNS server's setup has not prepared the zone yet.", nil)
+	// Only while this server's own setup runs with the other server bound:
+	// the link is a setup channel, not a standing record interface.
+	if execution == nil || !stringIn(execution.Status, "running", "waiting") {
+		writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_dkim_not_running", "The main DNS server's setup is not running; the DKIM record is added there in Domains.", nil)
 		return
 	}
 	plan, err := p.loadServerSetupPlan(ctx, execution.PlanID)
@@ -248,6 +250,10 @@ func (p *Panel) handleServerSetupPeerDKIM(w http.ResponseWriter, r *http.Request
 		return
 	}
 	d := plan.Draft
+	if !plan.peerBound {
+		writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_dkim_not_running", "The main DNS server's setup has not bound this server yet.", nil)
+		return
+	}
 	if d.DNSMode != setupDNSModeLocal || d.DNSRole != transport.DNSPairRolePrimary || d.InfrastructureDNS == nil || d.InfrastructureDNS.Zone != d.MainDomain || request.Domain != d.MainDomain {
 		writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_dkim_not_main", "This server does not keep the main domain's zone.", nil)
 		return
@@ -265,19 +271,140 @@ func (p *Panel) handleServerSetupPeerDKIM(w http.ResponseWriter, r *http.Request
 		writeServerError(w, err)
 		return
 	}
-	if err := p.upsertTXT(ctx, zoneID, dkimSelector+"._domainkey."+d.MainDomain, value); err != nil {
+	changed, err := p.writeServerSetupPeerDKIM(ctx, d.InfrastructureDNS.Zone, int64(zoneID), dkimSelector+"._domainkey."+d.MainDomain, value)
+	if errors.Is(err, errServerSetupPeerDKIMConflict) {
+		writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_dkim_conflict", "The zone already has a different DKIM record at this name that setup did not write. Change or remove it in Domains on the main DNS server; setup sends the record again by itself.", nil)
+		return
+	}
+	if err != nil {
 		writeServerError(w, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if err := p.syncZoneToDNS(ctx, d.InfrastructureDNS.Zone, false); err != nil {
+	published := false
+	if changed {
+		p.audit(r, "server.setup.peer_dkim", "", 0)
+		published = p.syncZoneToDNS(ctx, d.InfrastructureDNS.Zone, false) == nil
+	} else if state, err := readDNSZoneSyncState(ctx, p.db.GetDB(), d.InfrastructureDNS.Zone); err == nil {
+		// The same record again: nothing changes and nothing is published
+		// again; the answer says whether the zone already carries it.
+		published = state.Status == "applied" && state.AppliedGeneration == state.DesiredGeneration
+	}
+	if !published {
 		// Saved; its publication is checked by the zone's own operation.
 		w.WriteHeader(http.StatusAccepted)
 		_ = json.NewEncoder(w).Encode(map[string]any{"protocol": serverSetupLinkProtocol, "state": "saved"})
 		return
 	}
-	p.audit(r, "server.setup.peer_dkim", "", 0)
 	_ = json.NewEncoder(w).Encode(map[string]any{"protocol": serverSetupLinkProtocol, "state": "published"})
+}
+
+var errServerSetupPeerDKIMConflict = errors.New("a different DKIM record setup did not write exists")
+
+// writeServerSetupPeerDKIM writes the other server's DKIM record into the
+// setup's zone as a record setup wrote (the written list), replaces only a
+// record setup wrote earlier, refuses one the owner wrote, and reports
+// whether anything changed.
+func (p *Panel) writeServerSetupPeerDKIM(ctx context.Context, zone string, zoneID int64, name, value string) (bool, error) {
+	tx, err := p.db.GetDB().BeginTx(ctx, nil)
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback()
+	content := splitTXTContent(value)
+	rows, err := tx.QueryContext(ctx, `SELECT id,content FROM pdns_records WHERE domain_id=? AND name=? AND type='TXT'`, zoneID, name)
+	if err != nil {
+		return false, err
+	}
+	type existing struct {
+		id      int64
+		content string
+	}
+	found := []existing{}
+	for rows.Next() {
+		var row existing
+		if err := rows.Scan(&row.id, &row.content); err != nil {
+			rows.Close()
+			return false, err
+		}
+		found = append(found, row)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return false, err
+	}
+	var written serverSetupInfrastructureDNSWritten
+	if _, err := readServerSetupJSONSetting(ctx, tx, serverSetupInfrastructureDNSWrittenKey(zone), &written); err != nil {
+		return false, err
+	}
+	if written.ZoneID != zoneID {
+		written = serverSetupInfrastructureDNSWritten{ZoneID: zoneID}
+	}
+	setupWrote := func(stored string) bool {
+		for _, record := range written.Records {
+			if record.Name == name && record.Type == "TXT" && joinTXTSegments(record.Content) == joinTXTSegments(stored) {
+				return true
+			}
+		}
+		return false
+	}
+	switch {
+	case len(found) == 1 && joinTXTSegments(found[0].content) == value:
+		return false, nil
+	case len(found) > 1 || (len(found) == 1 && !setupWrote(found[0].content)):
+		return false, errServerSetupPeerDKIMConflict
+	case len(found) == 1:
+		if _, err := tx.ExecContext(ctx, `UPDATE pdns_records SET content=?,disabled=0 WHERE id=?`, content, found[0].id); err != nil {
+			return false, err
+		}
+		written.Records = slices.DeleteFunc(written.Records, func(record serverSetupInfrastructureDNSWrittenRecord) bool {
+			return record.Name == name && record.Type == "TXT"
+		})
+	default:
+		if _, err := tx.ExecContext(ctx, `INSERT INTO pdns_records(domain_id,name,type,content,ttl) VALUES(?,?,'TXT',?,3600)`, zoneID, name, content); err != nil {
+			return false, err
+		}
+	}
+	written.Records = append(written.Records, serverSetupInfrastructureDNSWrittenRecord{Name: name, Type: "TXT", Content: content})
+	if err := writeServerSetupJSONSetting(ctx, tx, serverSetupInfrastructureDNSWrittenKey(zone), written); err != nil {
+		return false, err
+	}
+	return true, tx.Commit()
+}
+
+// serverSetupPeerDKIMPresent: the other server's DKIM record is in the zone.
+// The main DNS server's completion waits for it when the other server
+// receives the main domain's mail, so its link stays open until then.
+func (p *Panel) serverSetupPeerDKIMPresent(ctx context.Context, d serverSetupDraft) (bool, error) {
+	var count int
+	err := p.db.GetDB().QueryRowContext(ctx, `SELECT COUNT(*) FROM pdns_records r JOIN pdns_domains z ON z.id=r.domain_id WHERE z.name=? AND r.name=? AND r.type='TXT' AND COALESCE(r.disabled,0)=0`,
+		d.InfrastructureDNS.Zone, dkimSelector+"._domainkey."+d.MainDomain).Scan(&count)
+	return count > 0, err
+}
+
+// revokeServerSetupLink ends this server's side of the setup link once its
+// setup completed: the link credential is removed, so neither the join nor
+// a link call is accepted afterwards. The join's other records stay as
+// evidence.
+// Kurulum tamamlaninca baglanti kimligi kaldirilir.
+func (p *Panel) revokeServerSetupLink(ctx context.Context) error {
+	var join serverSetupJoinRecord
+	if found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join); err != nil {
+		return err
+	} else if found && join.LinkCredential != "" {
+		join.LinkCredential = ""
+		if err := writeServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, join); err != nil {
+			return err
+		}
+	}
+	var link serverSetupLinkRecord
+	if found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupLinkKey, &link); err != nil {
+		return err
+	} else if found && link.LinkCredential != "" {
+		link.LinkCredential = ""
+		return writeServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupLinkKey, link)
+	}
+	return nil
 }
 
 // serverSetupPeerTarget is how this server reaches the other one: on the
@@ -334,6 +461,8 @@ func (p *Panel) sendServerSetupPeerDKIM(ctx context.Context, plan serverSetupPla
 		return nil
 	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_version_incompatible":
 		return serverSetupPeerVersionWait()
+	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_dkim_conflict":
+		return &serverSetupPeerWait{Code: refusal.Code, Message: "The main DNS server already has a different DKIM record at this name that setup did not write. Change or remove it there in Domains; setup sends the record again by itself."}
 	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_dkim_zone_waiting":
 		return &serverSetupPeerWait{Code: refusal.Code, Message: "The main DNS server has not prepared the main domain's zone yet. Setup sends the DKIM record again by itself."}
 	case errors.As(callErr, &refusal):

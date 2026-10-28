@@ -910,7 +910,7 @@ func (p *Panel) authenticateServerSetupLink(w http.ResponseWriter, r *http.Reque
 		return deny()
 	}
 	storedID, storedCredential, err := p.serverSetupLinkSecret(r.Context())
-	if err != nil || storedID == "" || subtle.ConstantTimeCompare([]byte(id), []byte(storedID)) != 1 || !remoteDNSHashEqual(remoteDNSHash(credential), remoteDNSHash(storedCredential)) {
+	if err != nil || storedID == "" || storedCredential == "" || subtle.ConstantTimeCompare([]byte(id), []byte(storedID)) != 1 || !remoteDNSHashEqual(remoteDNSHash(credential), remoteDNSHash(storedCredential)) {
 		return deny()
 	}
 	return true
