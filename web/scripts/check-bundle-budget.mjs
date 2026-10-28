@@ -112,6 +112,11 @@ const screenPartBudgets = {
   // v0.1.0-alpha.114: the second server joining by code (setup.v5.). A new
   // part, set with at least 25% headroom from its Turkish file: 10.58 / 2.88 KiB.
   setupJoin: kib(14.5, 4),
+  // v0.1.0-alpha.114 review fixes: the setup link's waits and verified states
+  // (setup.v5.wait., setup.v5.check.), split out of "setupJoin" when they took
+  // it over its ceiling (Turkish 15.05 / 3.93 KiB). A new part, set with at
+  // least 25% headroom from its Turkish file: 5.90 / 1.77 KiB.
+  setupLink: kib(8, 2.5),
   // v0.1.0-alpha.115: the DNS page's overview and the first-site offer
   // (dnsov.). A new part, set with at least 25% headroom from its Turkish
   // file: 15.36 / 4.24 KiB. Raised with the alpha.115 review fixes to keep

@@ -39,6 +39,7 @@ import type { WebmailAddressScreenKey } from './screens/webmailAddress/en';
 import type { SetupWizardScreenKey } from './screens/setupWizard/en';
 import type { SetupRegistrarScreenKey } from './screens/setupRegistrar/en';
 import type { SetupJoinScreenKey } from './screens/setupJoin/en';
+import type { SetupLinkScreenKey } from './screens/setupLink/en';
 import type { DnsOverviewScreenKey } from './screens/dnsOverview/en';
 
 export const en = {
@@ -503,5 +504,6 @@ export type ScreenKey =
     | SetupWizardScreenKey
     | SetupRegistrarScreenKey
     | SetupJoinScreenKey
+    | SetupLinkScreenKey
     | DnsOverviewScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

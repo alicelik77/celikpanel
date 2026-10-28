@@ -1,0 +1,35 @@
+// SCREEN catalogue part "setupLink" (Turkce): iki sunucu arasindaki kurulum
+// baglantisinin beklemeleri ve dogrulanmis durumlari (v0.1.0-alpha.114,
+// setup.v5.wait., setup.v5.check.).
+import type { SetupLinkScreenKey } from './en';
+
+export const trSetupLinkScreens: Record<SetupLinkScreenKey, string> = {
+    "setup.v5.wait.server_setup_peer_join_waiting": "İkinci sunucunun katılması bekleniyor. Bu ekranda bir katılma kodu oluşturup ikinci sunucuda girin.",
+    "setup.v5.wait.server_setup_peer_names_waiting": "İkinci sunucu katıldı. Onun kurulumunun başlaması bekleniyor; başlayınca adlarını buraya gönderir.",
+    "setup.v5.wait.server_setup_peer_join_changed": "İkinci sunucu katıldıktan sonra bu sunucunun yanıtları değişti. Burada yeni bir kod oluşturup ikinci sunucuyu yeniden katın.",
+    "setup.v5.wait.server_setup_peer_names_clash": "İkinci sunucunun adları bölgeye eklenemiyor (ayrıntılara bakın). Onları ikinci sunucunun planında ya da çakışan kaydı Alan adları'nda değiştirin.",
+    "setup.v5.wait.server_setup_peer_names_outside_domain": "İkinci sunucunun adları ana alan adının altında değil. Onları ikinci sunucunun planında değiştirin.",
+    "setup.v5.wait.server_setup_peer_names_invalid": "İkinci sunucu bu sunucunun kullanamayacağı adlar gönderdi. İkinci sunucunun planını yeniden gözden geçirin.",
+    "setup.v5.wait.server_setup_peer_mail_both": "Ana alan adının postasını iki sunucu da alacaktı. Postayı tek sunucuda seçin.",
+    "setup.v5.wait.server_setup_peer_names_unreachable": "Bu sunucunun adlarını göndermek için ilk sunucuya ulaşılamıyor. Çalıştığını kontrol edin; kurulum kendiliğinden yeniden sorar.",
+    "setup.v5.wait.server_setup_peer_names_unknown": "İlk sunucunun yanıtı gelmedi. Kurulum aynı adları yeniden gönderir; hiçbir şey iki kez yapılmaz.",
+    "setup.v5.wait.server_setup_dns_publisher_waiting": "Ana DNS sunucusunun bu sunucunun yayımlama bağlantısını kabul etmesi bekleniyor. DNS çifti hazır olunca ve ad sunucuları genel DNS'te görününce kabul eder; kurulum kendiliğinden yeniden sorar.",
+    "setup.v5.wait.server_setup_dns_publisher_local_waiting": "Bu yedek DNS sunucusu, ana DNS sunucusunun listesini sunana ve iki ad sunucusu adı da genel DNS'te görünene kadar bekler. Kurulum kendiliğinden yeniden sorar.",
+    "setup.v5.wait.server_setup_peer_dkim_zone_waiting": "Ana DNS sunucusu ana alan adının bölgesini henüz hazırlamadı. Kurulum bu sunucunun DKIM kaydını kendiliğinden yeniden gönderir.",
+    "setup.v5.wait.server_setup_peer_dkim_publishing": "Ana DNS sunucusu bu sunucunun DKIM kaydını kaydetti ve yayımlıyor. Kurulum kendiliğinden yeniden bakar.",
+    "setup.v5.wait.server_setup_peer_dkim_unreachable": "Bu sunucunun DKIM kaydını göndermek için ana DNS sunucusuna ulaşılamıyor. Kurulum kendiliğinden yeniden sorar.",
+    "setup.v5.wait.server_setup_peer_dkim_unknown": "Ana DNS sunucusunun yanıtı gelmedi. Kurulum aynı kaydı yeniden gönderir; hiçbir şey iki kez yapılmaz.",
+    "setup.v5.wait.server_setup_join_certificate_unavailable": "Bu panel kendi IP adresinde geçerli bir sertifika sunmuyor (kendinden imzalı panel sertifikası eksik, bozuk ya da süresi dolmuş); diğer sunucu tam bu anahtarı denetlediği için kodla eşleştirme yapılamaz. Sunucu sahibi panelin kendi sertifikasını geri koyar (panelin tls klasöründeki panel.crt ve panel.key, örneğin yedekten) ve paneli yeniden başlatır; sonra yeniden deneyin.",
+    "setup.v5.wait.server_setup_completion_plan_changed": "Bu sunucunun kayıtlı yanıtları bu kurulumun çalıştırdığı planla artık eşleşmiyor; bu yüzden kurulum tamamlandı sayılmaz. Planı bu ekranda yeniden gözden geçirin; kurulum kendiliğinden yeniden denetler.",
+    "setup.v5.wait.server_setup_completion_unknown": "Kurulumun tamamlanıp tamamlanmadığı denetlenemedi: planı ya da ikinci sunucunun bağlanma kaydı okunamadı. Burada bir şey yapmanız gerekmez; kurulum kendiliğinden yeniden denetler.",
+    "setup.v5.wait.server_setup_peer_link_revoked": "İki sunucu arasındaki kurulum bağlantısı sona erdi (bir kurulum bitti ya da yeniden çalıştırıldı); bu yüzden üzerinden artık bir şey gönderilmez. İlk sunucuda yeni bir katılma kodu oluşturun ve onu ikinci sunucuda, kurulumun ilk adımında girin; kurulum yeniden başlatıldığında devam eder.",
+    "setup.v5.wait.server_setup_peer_link_missing": "Bu sunucu artık ilk sunucuya bağlı değil. Kurulumun ilk adımından yeniden katılın, sonra planı gözden geçirin.",
+    "setup.v5.wait.server_setup_peer_names_bound": "İlk sunucunun kurulumu bu sunucunun önceki adlarını kullanıyor. O adları koruyun ya da ilk sunucunun planını yeniden açın.",
+    "setup.v5.wait.server_setup_peer_version_incompatible": "İki panel birlikte çalışamayan sürümlerde. Eski olan paneli kendi güncelleme ekranından (Ayarlar → Güncellemeler) güncellersiniz; kurulum sonra kendiliğinden yeniden sorar.",
+    "setup.v5.wait.server_setup_dns_publisher_refused": "Ana DNS sunucusu bu sunucunun yayımlama bağlantısını reddetti: kayıt kodunun süresi doldu, geri alındı ya da zaten kullanıldı. Ana DNS sunucusunda yeni bir katılma kodu oluşturun, bu sunucuyu yeniden katın ve planı yeniden gözden geçirin.",
+    "setup.v5.wait.server_setup_peer_dkim_conflict": "Ana DNS sunucusunda bu adda kurulumun yazmadığı farklı bir DKIM kaydı var. Onu orada Alan adları'ndan değiştirin ya da silin, sonra bu sunucunun planını yeniden gözden geçirin.",
+    "setup.v5.wait.server_setup_peer_dkim_not_running": "Ana DNS sunucusunun kurulumu çalışmıyor. Birazdan başlayacaksa burada bir şey yapmanız gerekmez; değilse kurulumu ana DNS sunucusunda başlatın ya da sürdürün. Bu sunucu DKIM kaydını kendiliğinden yeniden gönderir.",
+    "setup.v5.wait.server_setup_peer_dkim_not_bound": "Ana DNS sunucusunun kurulumu bu sunucuyu henüz almadı; bu sunucunun adları ona ulaşınca alır (katılma adımında bekliyorsa orayı kontrol edin). Kurulum DKIM kaydını kendiliğinden yeniden gönderir.",
+    "setup.v5.check.peerDKIM": "Diğer sunucunun DKIM kaydı bekleniyor: o sunucunun postası kurulunca buraya gönderilir. Burada yapılacak bir şey yok; kurulum kendiliğinden yeniden bakar.",
+    "setup.v5.wait.other": "Diğer sunucu bekleniyor ({code}). Kurulum kendiliğinden yeniden sorar.",
+};
