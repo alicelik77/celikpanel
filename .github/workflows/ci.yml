@@ -308,12 +308,13 @@ jobs:
             pattern: '^TestSite'
             skip: ''
           # Server setup was split in two (alpha.105): its job time had reached
-          # the 8-minute ceiling once. The boundary moved at alpha.114, measured
-          # without the race detector: A to J (100 of 162 tests, about 10.4 s)
-          # in 1/2, the other 62 (about 11.5 s, the join and pairing tests among
-          # them) in 2/2, which keeps the broad pattern and skips 1/2 so a future
-          # exact or lowercase name still has one home. Measure again before
-          # moving the boundary.
+          # the 8-minute ceiling once. The boundary moved at alpha.114: A to J in
+          # 1/2, the rest (the join and pairing tests among them) in 2/2, which
+          # keeps the broad pattern and skips 1/2 so a future exact or lowercase
+          # name still has one home. Since test databases are copies of one
+          # migrated template, both halves measure about 22 s and 25 s with the
+          # race detector (2/2 had taken 317 s). Measure again before moving
+          # the boundary.
           - shard: Server setup (1/2)
             pattern: '^TestServerSetup[A-J]'
             skip: ''
