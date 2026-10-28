@@ -195,14 +195,16 @@ test('Move mail: the consequence is confirmed in the page first, then the one MX
   } } });
   try {
     await act(async () => button('Move mail to This server (alpha)').props.onClick());
+    await settle();
     assert.equal(byProp('data-dns-mail-confirm', '').length, 1);
     assert.ok(textOf().includes('Create the mailboxes on This server (alpha) first'));
-    assert.equal(requests.filter((request) => request.url === RECORDS).length, 0, 'nothing is read or sent before the confirmation');
+    assert.ok(textOf().includes('for up to one hour (its TTL)'), 'the confirmation names the record’s own TTL');
+    assert.equal(requests.filter((request) => request.method === 'PUT').length, 0, 'nothing is sent before the confirmation');
     await act(async () => button('Move mail now').props.onClick());
     await settle();
     assert.equal(puts, 1);
     const put = requests.find((request) => request.method === 'PUT');
-    assert.deepEqual(JSON.parse(put.body), { id: 7, content: 'mail.example.test', ttl: 3600, prio: 10, disabled: false });
+    assert.deepEqual(JSON.parse(put.body), { id: 7, content: 'mail.example.test', ttl: 3600, prio: 10, disabled: false, expected_content: 'mx.oldhost.example' });
     assert.equal(byProp('data-dns-mail-moved', '').length, 1);
   } finally { await unmount(); }
 });
@@ -211,8 +213,8 @@ test('Move mail: several MX records are not chosen for the owner; a lost answer 
   await mount(kept(), { routes: { [RECORDS]: () => json({ records: [{ id: 7, name: 'example.test', type: 'MX', content: 'mx1.oldhost.example', ttl: 3600, prio: 10 }, { id: 9, name: 'example.test', type: 'MX', content: 'mx2.oldhost.example', ttl: 3600, prio: 20 }] }) } });
   try {
     await act(async () => button('Move mail to').props.onClick());
-    await act(async () => button('Move mail now').props.onClick());
     await settle();
+    assert.equal(byProp('data-dns-mail-confirm', '').length, 0);
     assert.equal(requests.filter((request) => request.method === 'PUT').length, 0);
     assert.ok(textOf().includes('has 2 MX records'));
   } finally { await unmount(); }
@@ -222,6 +224,7 @@ test('Move mail: several MX records are not chosen for the owner; a lost answer 
   } } });
   try {
     await act(async () => button('Move mail to').props.onClick());
+    await settle();
     await act(async () => button('Move mail now').props.onClick());
     await settle(30);
     assert.equal(requests.filter((request) => request.method === 'PUT').length, 1, 'sent once');
@@ -236,4 +239,25 @@ test('the MX target helper only looks: none, many, already done, or the one reco
   assert.equal(lib.dnsOverviewMXTarget([mx(1, 'a.example'), mx(2, 'b.example')], 'example.test', 'mail.example.test').none, 'many');
   assert.equal(lib.dnsOverviewMXTarget([mx(1, 'mail.example.test')], 'example.test', 'mail.example.test').none, 'done');
   assert.equal(lib.dnsOverviewMXTarget([mx(1, 'old.example'), { ...mx(2, 'x.example'), name: 'sub.example.test' }], 'example.test', 'mail.example.test').record.id, 1);
+});
+
+test('Move mail: a record saved but not yet published is said as such, and a stale read is refused by its reason', async () => {
+  const rows = { records: [{ id: 7, name: 'example.test', type: 'MX', content: 'mx.oldhost.example', ttl: 300, prio: 10 }] };
+  await mount(kept(), { routes: { [RECORDS]: (init) => init.method === 'PUT' ? json({ error: 'saved, not published', code: 'DNS_PUBLICATION_FAILED' }, 409) : json(rows) } });
+  try {
+    await act(async () => button('Move mail to').props.onClick());
+    await settle();
+    assert.ok(textOf().includes('for up to 5 minutes'));
+    await act(async () => button('Move mail now').props.onClick());
+    await settle();
+    assert.equal(byProp('data-dns-mail-saved', '').length, 1);
+  } finally { await unmount(); }
+  await mount(kept(), { routes: { [RECORDS]: (init) => init.method === 'PUT' ? json({ error: 'changed', code: 'DNS_RECORD_CHANGED' }, 409) : json(rows) } });
+  try {
+    await act(async () => button('Move mail to').props.onClick());
+    await settle();
+    await act(async () => button('Move mail now').props.onClick());
+    await settle();
+    assert.ok(textOf().includes('The record changed since it was read'), textOf().slice(0, 300));
+  } finally { await unmount(); }
 });

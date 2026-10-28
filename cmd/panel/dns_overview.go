@@ -649,6 +649,15 @@ func (p *Panel) checkDNSOverview(ctx context.Context, in dnsOverviewInput, edges
 	if delegate {
 		p.compareDNSOverviewOwnAnswers(ctx, &result, edges)
 	}
+	if hasMail && result.OwnRecordsLink.Where == "here" {
+		if err := p.dnsOverviewZoneMailExchange(ctx, in, receiver, &result); err != nil {
+			for index := range result.Mail {
+				if result.Mail[index].Kind == "mx" {
+					result.Mail[index].State = "unknown"
+				}
+			}
+		}
+	}
 	if mx := dnsOverviewMXMoveOffer(in, result, receiver); mx != nil {
 		result.MXMove = mx
 	}
@@ -718,6 +727,68 @@ func (p *Panel) compareDNSOverviewOwnAnswers(ctx context.Context, result *dnsOve
 			row.Own = "same"
 		}
 	}
+}
+
+// dnsOverviewZoneMailExchange judges the main domain's MX by this panel's
+// own list, which the owner edits: it names the receiving server (the
+// internet's answer then only says whether it has spread), it is still
+// exactly the old MX setup imported ("kept": the owner chose to keep the old
+// mail server, and moving is offered), it names another mail server the
+// owner set ("owner": never called the old mail server, never offered for
+// moving), or there is none ("none").
+func (p *Panel) dnsOverviewZoneMailExchange(ctx context.Context, in dnsOverviewInput, receiver dnsOverviewMailReceiver, result *dnsOverview) error {
+	domain := in.Draft.MainDomain
+	rows, err := p.db.GetDB().QueryContext(ctx, `SELECT COALESCE(r.content,''),COALESCE(r.prio,0) FROM pdns_records r JOIN pdns_domains d ON d.id=r.domain_id
+		WHERE d.name=? AND r.type='MX' AND lower(r.name)=? AND COALESCE(r.disabled,0)=0 ORDER BY r.id LIMIT 33`, domain, domain)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	zone := []string{}
+	ours := false
+	for rows.Next() {
+		var content string
+		var priority int
+		if err := rows.Scan(&content, &priority); err != nil {
+			return err
+		}
+		host := canonicalDNSName(content)
+		zone = append(zone, fmt.Sprintf("%d %s", priority, host))
+		ours = ours || host == canonicalDNSName(receiver.Host)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	imported := []string{}
+	for _, record := range serverSetupImported(in.Draft) {
+		if record.Type == "MX" && canonicalDNSName(record.Name) == domain {
+			imported = append(imported, fmt.Sprintf("%d %s", record.Priority, canonicalDNSName(record.Content)))
+		}
+	}
+	slices.Sort(zone)
+	slices.Sort(imported)
+	for index := range result.Mail {
+		row := &result.Mail[index]
+		if row.Kind != "mx" {
+			continue
+		}
+		switch {
+		case ours:
+			row.Expected = fmt.Sprintf("10 %s", canonicalDNSName(receiver.Host))
+			if row.State == "kept" {
+				// Our list names this mail server; the internet still shows
+				// the old one: the change is spreading.
+				row.State = "different"
+			}
+		case len(zone) == 0:
+			row.State, row.Seen = "none", []string{}
+		case len(imported) > 0 && slices.Equal(zone, imported):
+			row.State, row.Seen = "kept", zone
+		default:
+			row.State, row.Seen = "owner", zone
+		}
+	}
+	return nil
 }
 
 func dnsOverviewDKIMPublished(seen []string, state string) string {
@@ -850,6 +921,11 @@ func dnsOverviewSentenceFor(in dnsOverviewInput, r dnsOverview) dnsOverviewSente
 			}
 		}
 	}
+	for _, mail := range r.Mail {
+		if mail.Kind == "mx" && mail.State == "none" && in.Ready {
+			return dnsOverviewSay("prerequisite", "dns_overview_mail_no_mx", "The domain's list has no MX record, so no mail can be delivered to the domain.", "You, the owner of the list.", "Add an MX record in the record editor (it names the server that receives the mail).", "This page checks again every minute.", vars)
+		}
+	}
 	// A finished setup with mail and no DKIM key yet: mail is sent unsigned
 	// and may be marked as spam; that is a task, never "all good".
 	for _, mail := range r.Mail {
@@ -907,6 +983,12 @@ func dnsOverviewSentenceFor(in dnsOverviewInput, r dnsOverview) dnsOverviewSente
 		if mail.State == "missing" || mail.State == "different" {
 			vars["kind"] = mail.Kind
 			return dnsOverviewSay("waiting", "dns_overview_mail_spreading", "A mail record does not show everywhere on the internet yet.", "Nobody: waiting is enough.", "Nothing to do.", "This page checks again every minute.", vars)
+		}
+	}
+	for _, mail := range r.Mail {
+		if mail.Kind == "mx" && mail.State == "owner" {
+			vars["seen"] = strings.Join(mail.Seen, ", ")
+			return dnsOverviewSay("ok", "dns_overview_ok_mail_elsewhere", "Your names look correct; the domain's MX names a mail server you set.", "Nobody.", "If mail for the domain should come to this server, change the MX in the record editor.", "This page checks again every minute.", vars)
 		}
 	}
 	if r.MXMove != nil {

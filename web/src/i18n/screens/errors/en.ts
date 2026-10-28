@@ -36,6 +36,7 @@ export const enErrorsScreens = {
     'err.DNS_ENGINE_WORKFLOW_REQUIRED.action': 'Open DNS and peer servers',
     'err.DNSSEC_ENGINE_UNSUPPORTED': 'DNSSEC management currently requires PowerDNS as the active DNS engine. BIND activation is limited to unsigned zones in this release.',
     'err.DNSSEC_ENGINE_UNSUPPORTED.action': 'Open DNS and peer servers',
+    'err.DNS_RECORD_CHANGED': 'The record changed since it was read, so nothing was changed. Read the records again and decide.',
     'err.DNS_SETTINGS_REQUIRED': 'DNS identity is not ready. Save the shared nameserver names and choose an operating mode in Server → DNS and peer servers before adding a domain.',
     'err.DNS_SETTINGS_REQUIRED.action': 'Configure the DNS pair',
     'err.DNS_SETUP_REQUIRED': 'This older action can save only part of the DNS topology. Review the complete DNS setup and publish it in one step.',

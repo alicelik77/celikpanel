@@ -8,7 +8,7 @@
 export const DNS_OVERVIEW_URL = '/api/v1/dns/overview';
 
 export type DNSOverviewState = 'ok' | 'waiting' | 'prerequisite' | 'failed' | 'unknown';
-export type DNSOverviewRowState = 'ok' | 'missing' | 'different' | 'not_yet' | 'unknown' | 'kept' | 'pending';
+export type DNSOverviewRowState = 'ok' | 'missing' | 'different' | 'not_yet' | 'unknown' | 'kept' | 'pending' | 'owner' | 'none';
 
 export interface DNSOverviewServer {
     who: 'this' | 'peer';
@@ -68,7 +68,7 @@ export const DNS_OVERVIEW_CODES = [
     'setup_not_done', 'setup_running', 'join_waiting', 'main_not_serving', 'backup_not_serving', 'peer_not_joined',
     'registrar_not_pointing', 'domain_not_registered', 'glue_missing', 'provider_records', 'remote_records',
     'provider_mail', 'remote_mail', 'server_unknown', 'some_unknown', 'spreading', 'mail_spreading',
-    'owner_changed', 'backup_first_copy', 'ok_mail_kept', 'dkim_pending', 'ok', 'check_running',
+    'owner_changed', 'mail_no_mx', 'backup_first_copy', 'ok_mail_kept', 'ok_mail_elsewhere', 'dkim_pending', 'ok', 'check_running',
 ] as const;
 
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
@@ -76,7 +76,7 @@ const text = (value: unknown) => typeof value === 'string';
 const optionalText = (value: unknown) => value === undefined || typeof value === 'string';
 const strings = (value: unknown) => Array.isArray(value) && value.length <= 32 && value.every(text);
 const oneOf = (value: unknown, allowed: readonly string[]) => typeof value === 'string' && allowed.includes(value);
-const rowStates = ['ok', 'missing', 'different', 'not_yet', 'unknown', 'kept', 'pending'] as const;
+const rowStates = ['ok', 'missing', 'different', 'not_yet', 'unknown', 'kept', 'pending', 'owner', 'none'] as const;
 
 export function decodeDNSOverview(raw: unknown): DNSOverview {
     const invalid = (what: string) => new Error(`DNS overview outside the contract: ${what}`);

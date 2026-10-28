@@ -368,10 +368,15 @@ func overviewMailServer(t *testing.T) (serviceOperationTestFixture, *overviewWor
 	d := mailDraftForTest()
 	d.ServerCount, d.ShortName, d.PeerIP, d.PeerNS = 1, "alpha", "", ""
 	d.MailDNS = &serverSetupMailDNS{MX: "later", DMARC: "keep"}
+	d.ImportedRecords = []serverSetupImportedRecord{{Name: "example.test", Type: "MX", Content: "mx.oldhost.example", Priority: 10, Decision: "import"}}
 	f, world := overviewDraftFixture(t, d)
 	seedInfrastructureDNSZone(t, f.panel, "example.test")
 	var zoneID int64
 	if err := f.database.GetDB().QueryRow(`SELECT id FROM pdns_domains WHERE name='example.test'`).Scan(&zoneID); err != nil {
+		t.Fatal(err)
+	}
+	// The old MX setup imported, as setup wrote it.
+	if _, err := f.database.GetDB().Exec(`INSERT INTO pdns_records(domain_id,name,type,content,ttl,prio) VALUES(?,?,?,?,?,?)`, zoneID, "example.test", "MX", "mx.oldhost.example", 3600, 10); err != nil {
 		t.Fatal(err)
 	}
 	owner, _ := json.Marshal(serverSetupInfrastructureDNSOwner{Zone: "example.test", ZoneID: zoneID, PlanID: infrastructureTestPlanID})
@@ -690,5 +695,69 @@ func TestDNSOverviewAnyRecordWriteIsANewCheck(t *testing.T) {
 	}
 	if _, err := f.panel.dnsOverview(context.Background(), now.Add(20*time.Second), false); err != nil || world.asked.Load() == asked {
 		t.Fatalf("a changed zone was answered from the shared check: %v", err)
+	}
+}
+
+func overviewMailRow(value dnsOverview, kind string) dnsOverviewMailRecord {
+	for _, mail := range value.Mail {
+		if mail.Kind == kind {
+			return mail
+		}
+	}
+	return dnsOverviewMailRecord{}
+}
+
+func TestDNSOverviewMoveMailPutShowsTheNewStateAtOnce(t *testing.T) {
+	f, _, _ := overviewMailServer(t)
+	now := time.Now()
+	before, _ := f.panel.dnsOverview(context.Background(), now, false)
+	if before.MXMove == nil || overviewMailRow(before, "mx").State != "kept" {
+		t.Fatalf("before: %+v %+v", before.MXMove, overviewMailRow(before, "mx"))
+	}
+	id := infrastructureRecordID(t, f.panel, "example.test", "MX")
+	put := func(expected string) *httptest.ResponseRecorder {
+		body, _ := json.Marshal(map[string]any{"id": id, "content": "mail.example.test", "ttl": 3600, "prio": 10, "disabled": false, "expected_content": expected})
+		w := httptest.NewRecorder()
+		f.panel.handleUpdateDNSRecord(w, infraAdminRequest(http.MethodPut, "/", string(body)), "example.test")
+		return w
+	}
+	// What the page read is no longer what is stored: refused, nothing changed.
+	if w := put("mx.someone-else.example"); w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), errCodeDNSRecordChanged) {
+		t.Fatalf("a stale expected content: %d %s", w.Code, w.Body.String())
+	}
+	// Saved; this test host has no DNS engine to publish to, which the
+	// editor says as its own known answer.
+	if w := put("mx.oldhost.example."); w.Code != http.StatusOK && !strings.Contains(w.Body.String(), "DNS_PUBLICATION_FAILED") {
+		t.Fatalf("the move: %d %s", w.Code, w.Body.String())
+	}
+	var stored string
+	if err := f.database.GetDB().QueryRow(`SELECT content FROM pdns_records WHERE id=?`, id).Scan(&stored); err != nil || canonicalDNSName(stored) != "mail.example.test" {
+		t.Fatalf("stored MX: %q %v", stored, err)
+	}
+	// Within the shared minute the page reads the new state at once: our list
+	// names this server, the internet still shows the old one (spreading).
+	after, _ := f.panel.dnsOverview(context.Background(), now.Add(5*time.Second), false)
+	mx := overviewMailRow(after, "mx")
+	if after.MXMove != nil || mx.State != "different" || mx.Expected != "10 mail.example.test" || after.Sentence.Code != "dns_overview_mail_spreading" {
+		t.Fatalf("after the move: %+v %+v %+v", after.MXMove, mx, after.Sentence)
+	}
+}
+
+func TestDNSOverviewAnMXTheOwnerSetIsNeverTheOldMailServer(t *testing.T) {
+	f, world, _ := overviewMailServer(t)
+	if _, err := f.database.GetDB().Exec(`UPDATE pdns_records SET content='mx.thirdparty.example' WHERE type='MX'`); err != nil {
+		t.Fatal(err)
+	}
+	world.set(func(w *overviewWorld) { w.public["example.test MX"] = []string{"10 mx.thirdparty.example"} })
+	value, _ := f.panel.dnsOverview(context.Background(), time.Now(), false)
+	if mx := overviewMailRow(value, "mx"); mx.State != "owner" || value.MXMove != nil || value.Sentence.Code != "dns_overview_ok_mail_elsewhere" {
+		t.Fatalf("a third-party MX: %+v %+v %+v", mx, value.MXMove, value.Sentence)
+	}
+	if _, err := f.database.GetDB().Exec(`DELETE FROM pdns_records WHERE type='MX'`); err != nil {
+		t.Fatal(err)
+	}
+	none, _ := f.panel.dnsOverview(context.Background(), time.Now().Add(2*time.Minute), false)
+	if mx := overviewMailRow(none, "mx"); mx.State != "none" || none.Sentence.Code != "dns_overview_mail_no_mx" || none.Sentence.State != "prerequisite" {
+		t.Fatalf("no MX: %+v %+v", mx, none.Sentence)
 	}
 }

@@ -66,6 +66,24 @@ type dnsRecordUpdateRequest struct {
 	TTL      int    `json:"ttl"`
 	Prio     int    `json:"prio"`
 	Disabled bool   `json:"disabled"`
+	// ExpectedContent (alpha.115, optional) is the content the caller read:
+	// when the stored record differs, the change is refused (the record
+	// changed since it was read) instead of overwriting the newer value.
+	ExpectedContent *string `json:"expected_content,omitempty"`
+}
+
+const errCodeDNSRecordChanged = "DNS_RECORD_CHANGED"
+
+// sameDNSRecordContent compares a stored record's content with what a
+// caller read, in the record's own form (host names without the final dot,
+// in lower case).
+func sameDNSRecordContent(recordType, a, b string) bool {
+	a, b = strings.TrimSpace(a), strings.TrimSpace(b)
+	switch strings.ToUpper(recordType) {
+	case "CNAME", "MX", "NS":
+		return canonicalDNSName(a) == canonicalDNSName(b)
+	}
+	return a == b
 }
 
 func (p *Panel) handleDomainDNS(w http.ResponseWriter, r *http.Request) {
@@ -710,6 +728,11 @@ func (p *Panel) handleUpdateDNSRecord(w http.ResponseWriter, r *http.Request, do
 	}
 	if managedDNSRecord(domainName, ownerName, recordType) {
 		writeClientError(w, http.StatusConflict, "SOA and apex nameserver records are managed by DNS settings")
+		return false
+	}
+	if request.ExpectedContent != nil && !sameDNSRecordContent(recordType, *request.ExpectedContent, storedContent) {
+		// D-024: a known refusal with its reason; nothing was changed.
+		writeCodedError(w, http.StatusConflict, errCodeDNSRecordChanged, "The record changed since it was read; nothing was changed. Read the records again and decide.", "")
 		return false
 	}
 	if bySetup, err := p.infrastructureDNSRecordManagedBySetup(r.Context(), domainName, ownerName, recordType, storedContent); err != nil {

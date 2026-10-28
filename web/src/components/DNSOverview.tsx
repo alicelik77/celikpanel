@@ -18,6 +18,7 @@ import {
     type DNSOverviewMail,
     type DNSOverviewName,
     type DNSOverviewServer,
+    type DNSRecordRow,
 } from '../lib/dnsOverview';
 import { Button } from './ui';
 import { SetupJoinCard } from './ServerSetupWizardSteps';
@@ -183,7 +184,23 @@ function NamesCard({ value, t }: { value: Overview; t: T }) {
     </section>;
 }
 
-type MoveState = { step: 'idle' } | { step: 'confirm' } | { step: 'sending' } | { step: 'done' } | { step: 'problem'; text: string };
+type MoveState =
+    | { step: 'idle' }
+    | { step: 'reading' }
+    | { step: 'confirm'; record: DNSRecordRow }
+    | { step: 'sending'; record: DNSRecordRow }
+    | { step: 'done' }
+    | { step: 'saved' }
+    | { step: 'problem'; text: string };
+
+/** A TTL in the owner's words: seconds, minutes or hours. */
+function ttlText(t: T, seconds: number): string {
+    if (seconds === 3600) return t('dnsov.ttl.oneHour');
+    if (seconds === 60) return t('dnsov.ttl.oneMinute');
+    if (seconds > 3600 && seconds % 3600 === 0) return t('dnsov.ttl.hours', { n: seconds / 3600 });
+    if (seconds > 60) return t('dnsov.ttl.minutes', { n: Math.round(seconds / 60) });
+    return t('dnsov.ttl.seconds', { n: seconds });
+}
 
 function MailCard({ value, t, rereadOverview }: { value: Overview; t: T; rereadOverview: () => Promise<Remote<Overview>> }) {
     const i18n = useI18n();
@@ -198,13 +215,13 @@ function MailCard({ value, t, rereadOverview }: { value: Overview; t: T; rereadO
     const api = value.own_records_link.api;
     const offer = value.mx_move && api ? value.mx_move : null;
     const target = offer ? dnsOverviewServerLabel(t, value.servers.find(server => server.who === offer.to) || { who: offer.to }) : '';
-    async function moveMail() {
+    // Read the list first (only reads): exactly one MX at the apex is
+    // changed, and the confirmation names its real TTL.
+    async function prepare() {
         if (!offer || !api || inFlight.current || answer.holding) return;
         inFlight.current = true;
-        setMove({ step: 'sending' });
+        setMove({ step: 'reading' });
         try {
-            // Read the list first: exactly one MX at the apex is changed, and
-            // only when it does not already name the new host.
             const listed = await readRemote(`${api}/records`, decodeDNSRecordRows);
             if (listed.state !== 'known') { setMove({ step: 'problem', text: t('dnsov.mail.readFailed') }); return; }
             const found = dnsOverviewMXTarget(listed.value, offer.zone, offer.to_host);
@@ -213,12 +230,30 @@ function MailCard({ value, t, rereadOverview }: { value: Overview; t: T; rereadO
                 setMove({ step: 'problem', text: found.none === 'many' ? t('dnsov.mail.manyMX', { domain: value.domain, count: found.count }) : t('dnsov.mail.noMX') });
                 return;
             }
+            setMove({ step: 'confirm', record: found.record });
+        } finally {
+            inFlight.current = false;
+        }
+    }
+    // The one change, sent once, with the content it was read with: a record
+    // changed meanwhile is refused by the server, never overwritten.
+    async function moveMail(record: DNSRecordRow) {
+        if (!offer || !api || inFlight.current || answer.holding) return;
+        inFlight.current = true;
+        setMove({ step: 'sending', record });
+        try {
             const res = await answer.send(`${api}/records`, {
                 method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: found.record.id, content: offer.to_host, ttl: found.record.ttl, prio: found.record.prio ?? 10, disabled: false }),
+                body: JSON.stringify({ id: record.id, content: offer.to_host, ttl: record.ttl, prio: record.prio ?? 10, disabled: false, expected_content: record.content }),
             });
             if (!res) { setMove({ step: 'problem', text: t('dnsov.mail.lost') }); return; }
-            if (!res.ok) { setMove({ step: 'problem', text: t('dnsov.mail.refused', { reason: apiErrorText(await readApiError(res), i18n.t, 'common.error') }) }); return; }
+            if (!res.ok) {
+                const refusal = await readApiError(res);
+                // Saved in the list, not yet published: a known state of its own.
+                if (refusal.code === 'DNS_PUBLICATION_FAILED') { setMove({ step: 'saved' }); void rereadOverview(); return; }
+                setMove({ step: 'problem', text: t('dnsov.mail.refused', { reason: apiErrorText(refusal, i18n.t, 'common.error') }) });
+                return;
+            }
             answer.settle();
             setMove({ step: 'done' });
             void rereadOverview();
@@ -226,24 +261,26 @@ function MailCard({ value, t, rereadOverview }: { value: Overview; t: T; rereadO
             inFlight.current = false;
         }
     }
+    const confirming = move.step === 'confirm' || move.step === 'sending' ? move.record : null;
     return <section aria-labelledby="dns-mail-title" className="space-y-3 rounded-lg border border-border bg-surface p-4 sm:p-5" data-dns-mail="">
         <h2 id="dns-mail-title" className="font-semibold">{t('dnsov.mail.title')}</h2>
         {receiver.host && <p className="text-sm leading-6">{t('dnsov.mail.receiver', { domain: value.domain, server: receiverLabel, host: receiver.host })}</p>}
         <ul className="space-y-3 text-sm">{value.mail.map(row => <MailRow key={row.kind} row={row} t={t} peerKey={row.kind === 'dkim' && receiver.server === 'peer'} />)}</ul>
-        {offer && move.step !== 'done' && <div className="space-y-3">
-            {move.step === 'idle' || move.step === 'problem'
-                ? <Button type="button" variant="primary" disabled={answer.holding} onClick={() => setMove({ step: 'confirm' })}>{t('dnsov.mail.move', { server: target })}</Button>
+        {offer && move.step !== 'done' && move.step !== 'saved' && <div className="space-y-3">
+            {!confirming
+                ? <Button type="button" variant="primary" disabled={answer.holding || move.step === 'reading'} loading={move.step === 'reading'} onClick={() => void prepare()}>{t('dnsov.mail.move', { server: target })}</Button>
                 : <div role="group" aria-labelledby="dns-mail-confirm-title" className="space-y-3 rounded-md border border-warning-mark/50 bg-warning-mark/10 p-4" data-dns-mail-confirm="">
                     <h3 id="dns-mail-confirm-title" className="font-semibold">{t('dnsov.mail.confirmTitle', { domain: value.domain, server: target })}</h3>
-                    <p className="text-sm leading-6">{t('dnsov.mail.confirmBody', { domain: value.domain, server: target, host: offer.to_host })}</p>
+                    <p className="text-sm leading-6">{t('dnsov.mail.confirmBody', { domain: value.domain, server: target, host: offer.to_host, old: confirming.content, ttl: ttlText(t, confirming.ttl) })}</p>
                     <div className="flex flex-wrap gap-3">
-                        <Button type="button" variant="primary" disabled={move.step === 'sending'} loading={move.step === 'sending'} onClick={() => void moveMail()}>{t(move.step === 'sending' ? 'dnsov.mail.moving' : 'dnsov.mail.confirm')}</Button>
+                        <Button type="button" variant="primary" disabled={move.step === 'sending'} loading={move.step === 'sending'} onClick={() => void moveMail(confirming)}>{t(move.step === 'sending' ? 'dnsov.mail.moving' : 'dnsov.mail.confirm')}</Button>
                         <Button type="button" variant="secondary" disabled={move.step === 'sending'} onClick={() => setMove({ step: 'idle' })}>{t('dnsov.mail.cancel')}</Button>
                     </div>
                 </div>}
             {move.step === 'problem' && <p role="alert" className="text-sm leading-6" data-dns-mail-problem="">{move.text}</p>}
         </div>}
-        {move.step === 'done' && offer && <p role="status" className="text-sm leading-6 text-success" data-dns-mail-moved="">{t('dnsov.mail.moved', { host: offer.to_host })}</p>}
+        {move.step === 'done' && <p role="status" className="text-sm leading-6 text-success" data-dns-mail-moved="">{t('dnsov.mail.moved', { host: receiver.host || '' })}</p>}
+        {move.step === 'saved' && <p role="status" className="text-sm leading-6" data-dns-mail-saved="">{t('dnsov.mail.savedNotPublished', { host: receiver.host || '' })}</p>}
     </section>;
 }
 
