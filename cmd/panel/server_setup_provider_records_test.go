@@ -37,6 +37,9 @@ func TestServerSetupCatalogProviderRecordStates(t *testing.T) {
 
 func TestServerSetupCatalogProviderRecordsEndpointIsBoundedAndCached(t *testing.T) {
 	t.Setenv("CELIKPANEL_SERVER_IP", "203.0.113.10")
+	previousIPv6 := setupProviderRecordIPv6
+	t.Cleanup(func() { setupProviderRecordIPv6 = previousIPv6 })
+	setupProviderRecordIPv6 = func() string { return "" }
 	f, state := setupOperationFixture(t)
 	state.Draft.ShortName = "frankfurt"
 	if _, err := f.panel.saveServerSetupDraft(context.Background(), state.Revision, state.Draft); err != nil {
@@ -93,5 +96,16 @@ func TestServerSetupCatalogProviderRecordsEndpointIsBoundedAndCached(t *testing.
 	f.panel.handleServerSetupProviderRecords(w, r)
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("customer reached provider records: %d", w.Code)
+	}
+}
+
+func TestServerSetupCatalogProviderRecordsListAAAAWhenTheServerHasIPv6(t *testing.T) {
+	draft := serverSetupDraft{PanelDomain: "panel.example.test"}
+	rows := serverSetupProviderRecordRows(draft, "203.0.113.10", "2001:db8:100::10")
+	if len(rows) != 2 || rows[0].Type != "A" || rows[1].Type != "AAAA" || rows[1].Value != "2001:db8:100::10" {
+		t.Fatalf("rows: %+v", rows)
+	}
+	if rows := serverSetupProviderRecordRows(draft, "203.0.113.10", ""); len(rows) != 1 || rows[0].Type != "A" {
+		t.Fatalf("rows without IPv6: %+v", rows)
 	}
 }

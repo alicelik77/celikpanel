@@ -75,7 +75,26 @@ func (a *serviceOperationTestAgent) RepoStatus(
 ) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	if a.repoUnreadable {
+		resp.Error = "repository state unreadable"
+		return nil
+	}
 	resp.Enabled = a.repoEnabled
+	return nil
+}
+
+type ServiceOperationRepoPackagesResponse struct {
+	Packages []string
+	Error    string
+}
+
+func (a *serviceOperationTestAgent) RepoPackages(
+	_ *ServiceOperationRepoRequest,
+	resp *ServiceOperationRepoPackagesResponse,
+) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	resp.Packages = append([]string(nil), a.repoPackages...)
 	return nil
 }
 

@@ -248,10 +248,43 @@ func TestServerSetupBuildWizardVersionsAndRefusals(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	f.agent.mu.Lock()
+	f.agent.repoEnabled, f.agent.repoPackages = true, []string{"php8.3-fpm", "php8.5-fpm"}
+	f.agent.mu.Unlock()
 	plan, err := f.panel.buildServerSetupPlan(context.Background(), state, serviceOperationActor{UserID: f.userID})
 	if err != nil {
 		t.Fatal(err)
 	}
+	for _, blocker := range plan.Blockers {
+		if strings.HasPrefix(blocker, "server_setup_version_repository") {
+			t.Fatalf("an offered vendor version was refused: %v", plan.Blockers)
+		}
+	}
+	// A vendor version is refused at review while its repository is off,
+	// no longer offers the package, or cannot be read (alpha.111 review).
+	for _, test := range []struct {
+		enabled, unreadable bool
+		packages            []string
+		want                string
+	}{
+		{false, false, nil, "server_setup_version_repository_required:php-fpm"},
+		{true, false, []string{"php8.5-fpm"}, "server_setup_version_repository_required:php-fpm"},
+		{false, true, nil, "server_setup_version_repository_unknown:php-fpm"},
+	} {
+		f.agent.mu.Lock()
+		f.agent.repoEnabled, f.agent.repoUnreadable, f.agent.repoPackages = test.enabled, test.unreadable, test.packages
+		f.agent.mu.Unlock()
+		refused, err := f.panel.buildServerSetupPlan(context.Background(), state, serviceOperationActor{UserID: f.userID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if refused.CanStart || !slices.Contains(refused.Blockers, test.want) {
+			t.Fatalf("repo enabled=%v unreadable=%v packages=%v: blockers %v, want %s", test.enabled, test.unreadable, test.packages, refused.Blockers, test.want)
+		}
+	}
+	f.agent.mu.Lock()
+	f.agent.repoEnabled, f.agent.repoUnreadable, f.agent.repoPackages = true, false, []string{"php8.3-fpm"}
+	f.agent.mu.Unlock()
 	found := false
 	for _, step := range plan.Steps {
 		if step.Kind == "service" && step.Target == "php-fpm" {

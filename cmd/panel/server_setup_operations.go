@@ -379,6 +379,11 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 			// here at review time, before any DNS identity is saved.
 			if code := setupPDNSPairedPrimaryBlocker(draft, state); code != "" {
 				addBlocker(code)
+			} else if draft.DNSRole == transport.DNSPairRolePrimary && state.ActiveEngine == "" &&
+				transport.DNSEngine(draft.DNSEngine) == transport.DNSEnginePowerDNS &&
+				!serverSetupPDNSMainSystemTested(p.managedServiceHostProfile()) {
+				// Same rule as the catalogue: refused at review, not mid-run.
+				addBlocker("server_setup_pdns_main_untested_system")
 			}
 			if serverSetupSecondaryHosting(draft) {
 				endpoint, err := canonicalRemoteDNSEndpoint(draft.DNSPublisherEndpoint)
@@ -454,6 +459,21 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 		}
 		if taken := core.SeatTakenBy(managed, planned); taken != "" {
 			addBlocker("server_setup_service_conflict:" + id + ":" + taken)
+		}
+		if qualifier != "" && !installed[id] {
+			// A vendor version needs its repository enabled and offering
+			// that package now: refused at review (unmet prerequisite or
+			// unknown), never discovered mid-run.
+			observation := serverSetupRepoObservation{State: "unknown"}
+			if managed.Repo != nil {
+				observation = p.readServerSetupRepoObservation(ctx, managed.Repo.ID)
+			}
+			switch {
+			case observation.State == "unknown":
+				addBlocker("server_setup_version_repository_unknown:" + id)
+			case observation.State != "enabled" || !slices.Contains(observation.Packages, qualifier):
+				addBlocker("server_setup_version_repository_required:" + id)
+			}
 		}
 		if !installed[id] {
 			addStep("service", id, qualifier)

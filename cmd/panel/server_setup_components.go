@@ -487,22 +487,29 @@ func (p *Panel) readServerSetupCatalogInputs(ctx context.Context) serverSetupCat
 		if _, read := inputs.Repos[service.Repo.ID]; read {
 			continue
 		}
-		observation := serverSetupRepoObservation{State: "unknown"}
-		var status transport.RepoStatusResponse
-		if err := p.callAgentContext(ctx, "Agent.RepoStatus", &transport.EnableRepoRequest{RepoID: service.Repo.ID}, &status); err == nil && status.Error == "" {
-			observation.State = "disabled"
-			if status.Enabled {
-				var packages transport.RepoPackagesResponse
-				if err := p.callAgentContext(ctx, "Agent.RepoPackages", &transport.RepoPackagesRequest{RepoID: service.Repo.ID}, &packages); err == nil && packages.Error == "" {
-					observation = serverSetupRepoObservation{State: "enabled", Packages: packages.Packages}
-				} else {
-					observation.State = "unknown"
-				}
-			}
-		}
-		inputs.Repos[service.Repo.ID] = observation
+		inputs.Repos[service.Repo.ID] = p.readServerSetupRepoObservation(ctx, service.Repo.ID)
 	}
 	return inputs
+}
+
+// readServerSetupRepoObservation reads one vendor repository's state and, when
+// it is enabled, the packages it offers. A failed read is "unknown".
+// Yalniz okuma: deponun durumu ve sundugu paketler.
+func (p *Panel) readServerSetupRepoObservation(ctx context.Context, repoID string) serverSetupRepoObservation {
+	observation := serverSetupRepoObservation{State: "unknown"}
+	var status transport.RepoStatusResponse
+	if err := p.callAgentContext(ctx, "Agent.RepoStatus", &transport.EnableRepoRequest{RepoID: repoID}, &status); err == nil && status.Error == "" {
+		observation.State = "disabled"
+		if status.Enabled {
+			var packages transport.RepoPackagesResponse
+			if err := p.callAgentContext(ctx, "Agent.RepoPackages", &transport.RepoPackagesRequest{RepoID: repoID}, &packages); err == nil && packages.Error == "" {
+				observation = serverSetupRepoObservation{State: "enabled", Packages: packages.Packages}
+			} else {
+				observation.State = "unknown"
+			}
+		}
+	}
+	return observation
 }
 
 // buildServerSetupComponentCatalog keeps the established call shape.
@@ -634,6 +641,14 @@ func serverSetupPackageVersionLabel(pkg string) string {
 	return serverSetupPackageVersionDigits.FindString(pkg)
 }
 
+// serverSetupPDNSMainSystemTested reports whether PowerDNS as the main (paired
+// primary) DNS server was measured on this system: Debian 13 amd64 only. The
+// catalogue and the plan review use the same rule.
+// PowerDNS ana sunucu olarak yalniz olculen sistemde (Debian 13 amd64).
+func serverSetupPDNSMainSystemTested(host core.ManagedServiceHostProfile) bool {
+	return host.DistroID == "debian" && host.VersionID == "13" && host.Architecture == "amd64"
+}
+
 // serverSetupDNSEngineChoices applies the review's DNS rules per software and
 // role: a server runs one DNS software and an active one is never switched by
 // setup; PowerDNS as the main (paired primary) server is offered only by the
@@ -663,7 +678,7 @@ func serverSetupDNSEngineChoices(inputs serverSetupCatalogInputs) []serverSetupD
 				code, _ := pdnsPairedPrimaryBlocker(dnsEngineSnapshot{Topology: transport.DNSTopologyPaired, PairRole: transport.DNSPairRolePrimary, EngineEpoch: inputs.DNSState.EngineEpoch}, engine, "install")
 				if code != "" {
 					choice.Offered, choice.Reason = false, code
-				} else if inputs.Host.DistroID != "debian" || inputs.Host.VersionID != "13" || inputs.Host.Architecture != "amd64" {
+				} else if !serverSetupPDNSMainSystemTested(inputs.Host) {
 					choice.Offered, choice.Reason = false, "server_setup_pdns_main_untested_system"
 				}
 			}

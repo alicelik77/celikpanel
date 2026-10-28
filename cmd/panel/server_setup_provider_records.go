@@ -81,10 +81,16 @@ func (p *Panel) serverSetupProviderRecordsCache() *serverSetupProviderRecordsCac
 	return value.(*serverSetupProviderRecordsCache)
 }
 
+// setupProviderRecordIPv6 is this server's global IPv6 address (tests replace
+// it so the CI host's own address never leaks into a result).
+var setupProviderRecordIPv6 = serverPrimaryIPv6
+
 // serverSetupProviderRecordRows lists the address records this server needs at
 // an external provider: the panel name and, with mail, the mail host name,
-// each as an A record to the server's public IPv4 address.
-func serverSetupProviderRecordRows(draft serverSetupDraft, ip4 string) []serverSetupProviderRecordRow {
+// each as an A record to the server's public IPv4 address and, when the server
+// has a global IPv6 address, an AAAA record to it (a stale AAAA at the
+// provider would break certificate issuance over IPv6).
+func serverSetupProviderRecordRows(draft serverSetupDraft, ip4, ip6 string) []serverSetupProviderRecordRow {
 	rows := []serverSetupProviderRecordRow{}
 	if ip4 == "" {
 		return rows
@@ -94,10 +100,13 @@ func serverSetupProviderRecordRows(draft serverSetupDraft, ip4 string) []serverS
 		names = append(names, draft.MailHostname)
 	}
 	for _, name := range names {
-		if name == "" || slices.ContainsFunc(rows, func(row serverSetupProviderRecordRow) bool { return row.Name == name }) {
+		if name == "" || slices.ContainsFunc(rows, func(row serverSetupProviderRecordRow) bool { return row.Name == name && row.Type == "A" }) {
 			continue
 		}
 		rows = append(rows, serverSetupProviderRecordRow{Name: name, Type: "A", Value: ip4, State: "unknown", Seen: []string{}})
+		if ip6 != "" {
+			rows = append(rows, serverSetupProviderRecordRow{Name: name, Type: "AAAA", Value: ip6, State: "unknown", Seen: []string{}})
+		}
 	}
 	return rows
 }
@@ -156,7 +165,11 @@ func (p *Panel) checkServerSetupProviderRecords(ctx context.Context, rows []serv
 			answers := [][]string{}
 			failures := 0
 			for _, lookup := range lookups {
-				values, err := lookup(ctx, row.Name, dnswire.TypeA)
+				qtype := dnswire.TypeA
+				if row.Type == "AAAA" {
+					qtype = dnswire.TypeAAAA
+				}
+				values, err := lookup(ctx, row.Name, qtype)
 				var dnsErr *net.DNSError
 				switch {
 				case err == nil:
@@ -180,10 +193,14 @@ func (p *Panel) checkServerSetupProviderRecords(ctx context.Context, rows []serv
 
 func (p *Panel) serverSetupProviderRecords(ctx context.Context, draft serverSetupDraft, now time.Time) serverSetupProviderRecords {
 	ip4, _ := canonicalIPv4(serverPrimaryIP())
-	server := serverSetupProviderRecordServer{Label: draft.ShortName, IP4: ip4, Rows: serverSetupProviderRecordRows(draft, ip4)}
-	key := draft.DNSMode + "|" + server.Label + "|" + ip4
+	ip6 := ""
+	if parsed := net.ParseIP(setupProviderRecordIPv6()); parsed != nil && parsed.To4() == nil && parsed.IsGlobalUnicast() && !parsed.IsPrivate() {
+		ip6 = parsed.String()
+	}
+	server := serverSetupProviderRecordServer{Label: draft.ShortName, IP4: ip4, IP6: ip6, Rows: serverSetupProviderRecordRows(draft, ip4, ip6)}
+	key := draft.DNSMode + "|" + server.Label + "|" + ip4 + "|" + ip6
 	for _, row := range server.Rows {
-		key += "|" + row.Name + "=" + row.Value
+		key += "|" + row.Name + "/" + row.Type + "=" + row.Value
 	}
 	cache := p.serverSetupProviderRecordsCache()
 	cache.mu.Lock()
@@ -193,7 +210,9 @@ func (p *Panel) serverSetupProviderRecords(ctx context.Context, draft serverSetu
 		result.NextCheckAfter = int((serverSetupProviderRecordsTTL - now.Sub(cache.at)).Seconds())
 		return result
 	}
-	server.Rows = p.checkServerSetupProviderRecords(ctx, server.Rows, setupProviderRecordResolvers())
+	// The shared answer must not depend on one caller: a closed tab would
+	// otherwise cache "unknown" for everyone. The check keeps its own bound.
+	server.Rows = p.checkServerSetupProviderRecords(context.WithoutCancel(ctx), server.Rows, setupProviderRecordResolvers())
 	result := serverSetupProviderRecords{Mode: draft.DNSMode, Servers: []serverSetupProviderRecordServer{server}, CheckedAt: now.UTC().Format(time.RFC3339), NextCheckAfter: int(serverSetupProviderRecordsTTL.Seconds())}
 	cache.key, cache.at, cache.value = key, now, result
 	return result

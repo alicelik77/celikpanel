@@ -28,6 +28,7 @@ func TestServerSetupProfileDNSMatrixPreservesIdentityAndServiceScope(t *testing.
 						t.Run(name, func(t *testing.T) {
 							setPDNSPairedPrimaryGateForTest(t, gateOpen)
 							f, state := setupOperationFixture(t)
+							setServerSetupTestHost(f.panel, "debian", "13")
 							caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
 							f.agent.versionCapabilities = &caps
 							state.Draft.Purpose, state.Draft.DNSMode = purpose, mode
@@ -84,5 +85,36 @@ func TestServerSetupProfileDNSMatrixPreservesIdentityAndServiceScope(t *testing.
 				}
 			}
 		}
+	}
+}
+
+// setServerSetupTestHost publishes a verified host identity for a test panel.
+func setServerSetupTestHost(p *Panel, distro, version string) {
+	identity := debianPolicyTestIdentity()
+	identity.DistroID, identity.VersionID = distro, version
+	p.pkgFamilyMu.Lock()
+	p.pkgFamilyVal = "apt"
+	p.hostPlatformVal = identity
+	p.hostPlatformKnown = true
+	p.pkgFamilyMu.Unlock()
+}
+
+// PowerDNS as the main DNS server is refused at review on a system where it
+// was not measured, with the same reason the wizard shows (alpha.111 review).
+func TestServerSetupBuildRefusesPowerDNSMainOnUntestedSystem(t *testing.T) {
+	setPDNSPairedPrimaryGateForTest(t, true)
+	f, state := setupOperationFixture(t)
+	setServerSetupTestHost(f.panel, "ubuntu", "24.04")
+	caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
+	f.agent.versionCapabilities = &caps
+	state.Draft.Purpose, state.Draft.DNSMode, state.Draft.DNSEngine, state.Draft.DNSRole = "web", "local", "pdns", "primary"
+	state.Draft.NS1, state.Draft.NS2, state.Draft.PeerNS = "ns1.example.test", "ns2.example.test", "ns2.example.test"
+	state.Draft.LocalIP, state.Draft.PeerIP = "72.62.38.15", "2.25.80.4"
+	plan, err := f.panel.buildServerSetupPlan(context.Background(), state, serviceOperationActor{UserID: f.userID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.CanStart || !slices.Contains(plan.Blockers, "server_setup_pdns_main_untested_system") {
+		t.Fatalf("PowerDNS main on Ubuntu was not refused at review: %v", plan.Blockers)
 	}
 }

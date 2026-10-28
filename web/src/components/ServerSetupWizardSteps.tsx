@@ -78,12 +78,12 @@ export function SetupRolesStep({ roles, onRoles, catalog, server, serverCount, c
     const cards: { role: keyof SetupRoles; title: TranslationKey; help: TranslationKey; brings: string }[] = [
         { role: 'web', title: 'setup.v2.role.web', help: 'setup.v2.role.web.help', brings: installs('web') },
         { role: 'mail', title: 'setup.v2.role.mail', help: 'setup.v2.role.mail.help', brings: installs('mail') },
-        { role: 'dns', title: 'setup.v2.role.dns', help: serverCount === 2 ? 'setup.v2.role.dns.helpTwo' : 'setup.v2.role.dns.help', brings: t('setup.v2.role.dnsInstalls') },
+        { role: 'dns', title: 'setup.v2.role.dns', help: serverCount === 2 ? 'setup.v2.role.dns.helpTwo' : 'setup.v2.dns.localOneServer', brings: t('setup.v2.role.dnsInstalls') },
     ];
     return <fieldset className="space-y-4" disabled={disabled}>
         <legend className="text-xl font-semibold">{t('setup.v2.roles.title', { server })}</legend>
         <p className="max-w-2xl pt-2 text-sm leading-6 text-fg-muted">{t('setup.v2.roles.help')}</p>
-        <div className="grid gap-3">{cards.map(card => <Choice key={card.role} type="checkbox" name="setup-role" value={card.role} checked={roles[card.role]} disabled={!catalog && card.role !== 'dns'}
+        <div className="grid gap-3">{cards.map(card => <Choice key={card.role} type="checkbox" name="setup-role" value={card.role} checked={roles[card.role]} disabled={(!catalog && card.role !== 'dns') || (card.role === 'dns' && serverCount !== 2 && !roles.dns)}
             onChange={() => onRoles({ ...roles, [card.role]: !roles[card.role] })} title={t(card.title)} help={t(card.help)}
             extra={<span className="mt-2 block text-sm leading-6"><span className="font-medium">{t('setup.v2.role.installs')}</span> {card.brings}</span>} />)}</div>
         {customized
@@ -321,7 +321,7 @@ export function SetupProviderRecordsCard() {
             {!value ? <p role="status" className="text-sm text-fg-muted">{t(failed ? 'setup.v2.provider.failed' : 'setup.v2.provider.loading')}</p>
                 : rows.length === 0 ? <p className="text-sm text-fg-muted">{t('setup.v2.provider.none')}</p>
                     : <ul className="space-y-3">{rows.map(row => <li key={`${row.name}-${row.type}`} className="space-y-2" data-record={row.name} data-state={row.state}>
-                        <div className="grid gap-2 sm:grid-cols-2"><SetupCopyRow label={`${t('setup.v2.registrar.name')} · ${row.type}`} value={row.name} /><SetupCopyRow label="IPv4" value={row.value} /></div>
+                        <div className="grid gap-2 sm:grid-cols-2"><SetupCopyRow label={`${t('setup.v2.registrar.name')} · ${row.type}`} value={row.name} /><SetupCopyRow label={row.type === 'AAAA' ? 'IPv6' : 'IPv4'} value={row.value} /></div>
                         <p className={`text-sm ${row.state === 'ok' ? 'text-success' : row.state === 'different' ? 'text-danger' : 'text-fg-muted'}`}>{t(providerState[row.state], { seen: row.seen.join(', ') || '—' })}</p>
                     </li>)}</ul>}
             {failed && value && <p role="status" className="text-sm text-fg-muted">{t('setup.v2.provider.failed')}</p>}

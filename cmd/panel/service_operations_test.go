@@ -175,6 +175,8 @@ type serviceOperationTestAgent struct {
 	installNoop     bool
 	installUnit     string
 	repoEnabled     bool
+	repoPackages    []string
+	repoUnreadable  bool
 	// dropActiveBeforeGetServices simulates a selected unit that was started
 	// and reported by InstallService, then died before the final host scan.
 	// dropActiveBeforeGetServices, InstallService tarafından başlatılıp
