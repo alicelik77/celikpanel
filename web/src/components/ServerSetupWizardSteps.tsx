@@ -252,17 +252,27 @@ export function decodeSetupPeerView(value: unknown): SetupPeerView {
     return value as unknown as SetupPeerView;
 }
 
+// A public IPv4 address as the wizard can tell: not private, loopback,
+// link-local, shared or multicast. / Genel IPv4 adresi.
+function publicSetupIPv4(value: string): boolean {
+    const parts = value.split('.').map(Number);
+    if (parts.length !== 4 || parts.some(part => !Number.isInteger(part) || part < 0 || part > 255)) return false;
+    const [a, b] = parts;
+    return !(a === 0 || a === 10 || a === 127 || a >= 224 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127));
+}
+
 type SetupConnectAnswer = { state: 'ok' | 'refused' | 'wrong_server' | 'unreachable' | 'unknown'; code?: string; attempts_left?: number; setup?: unknown };
 
 // On the second server, before its setup starts: the first server's address
 // and code. The answer's state leads (D-024): refused names its reason; a
 // wrong server, an unreachable one and a lost answer say that nothing was
 // sent or that the same join is asked again.
-export function SetupJoinPanel({ onJoined, disabled }: { onJoined: (setup: unknown) => void; disabled?: boolean }) {
+export function SetupJoinPanel({ onJoined, disabled, serverIP }: { onJoined: (setup: unknown) => void; disabled?: boolean; serverIP?: string }) {
     const { t } = useSetupWizardI18n();
     const [open, setOpen] = useState(false);
     const [address, setAddress] = useState('');
     const [code, setCode] = useState('');
+    const [publicIPv4, setPublicIPv4] = useState('');
     const [busy, setBusy] = useState(false);
     const [answer, setAnswer] = useState<SetupConnectAnswer | null>(null);
     const [problem, setProblem] = useState<TranslationKey | null>(null);
@@ -272,11 +282,11 @@ export function SetupJoinPanel({ onJoined, disabled }: { onJoined: (setup: unkno
         if (!address.trim() || code.replace(/[\s-]/g, '').length !== 24) { setProblem('setup.v5.join.invalid'); return; }
         inFlight.current = true; setBusy(true); setProblem(null); setAnswer(null);
         try {
-            const response = await fetch('/api/v1/setup/peer/connect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address: address.trim(), code: code.trim() }) });
+            const response = await fetch('/api/v1/setup/peer/connect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address: address.trim(), code: code.trim(), ...(publicIPv4.trim() ? { public_ipv4: publicIPv4.trim() } : {}) }) });
             const body: unknown = await response.json().then((value: unknown) => value, (cause: unknown) => ({ unreadable: String(cause) }));
             if (!response.ok) {
                 const coded = peerRecord(body) && typeof body.code === 'string' ? body.code : '';
-                setProblem(coded === 'server_setup_peer_connect_invalid' ? 'setup.v5.join.invalid' : coded === 'server_setup_peer_connect_running' ? 'setup.v5.join.running' : 'setup.v5.join.failed');
+                setProblem(coded === 'server_setup_peer_connect_invalid' ? 'setup.v5.join.invalid' : coded === 'server_setup_peer_connect_running' ? 'setup.v5.join.running' : coded === 'server_setup_peer_connect_public_ipv4' ? 'setup.v5.join.publicInvalid' : 'setup.v5.join.failed');
                 return;
             }
             if (!peerRecord(body) || !['ok', 'refused', 'wrong_server', 'unreachable', 'unknown'].includes(String(body.state))) { setProblem('setup.v5.join.failed'); return; }
@@ -301,6 +311,11 @@ export function SetupJoinPanel({ onJoined, disabled }: { onJoined: (setup: unkno
         {!open ? <Button type="button" variant="secondary" disabled={disabled} onClick={() => setOpen(true)}>{t('setup.v5.join.open')}</Button> : <div className="max-w-xl space-y-4">
             <SetupWizardInput name="join_address" label={t('setup.v5.join.address')} value={address} onChange={setAddress} placeholder="https://203.0.113.10:2083" help={t('setup.v5.join.addressHelp')} />
             <SetupWizardInput name="join_code" label={t('setup.v5.join.code')} value={code} onChange={setCode} placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX" help={t('setup.v5.join.codeHelp')} />
+            {/* The first server checks the caller's address against the one this
+                server declares. Behind 1:1 NAT the own address is private: the
+                owner types the public one (D-024: who acts and what to type). */}
+            {serverIP && <p className="text-sm leading-6 text-fg-muted" data-setup-join-ip="">{t(publicSetupIPv4(serverIP) ? 'setup.v5.join.detected' : 'setup.v5.join.noPublic', { ip: serverIP })}</p>}
+            {(!publicSetupIPv4(serverIP || '') || answer?.code === 'server_setup_join_source_mismatch' || publicIPv4) && <SetupWizardInput name="join_public_ipv4" label={t('setup.v5.join.publicIPv4')} value={publicIPv4} onChange={setPublicIPv4} placeholder="203.0.113.20" help={t('setup.v5.join.publicIPv4Help')} />}
             {problem && <p role="alert" className="text-sm leading-6 text-danger">{t(problem)}</p>}
             {message && <p role={answer?.state === 'refused' ? 'alert' : 'status'} className="text-sm leading-6" data-setup-join-state={answer?.state}>{message}</p>}
             <Button type="button" variant="primary" disabled={busy || disabled} loading={busy} onClick={() => void join()}>{t(busy ? 'setup.v5.join.joining' : answer && !(answer.state === 'ok' && answer.setup) ? 'setup.v5.join.retry' : 'setup.v5.join.submit')}</Button>

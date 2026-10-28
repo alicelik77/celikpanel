@@ -346,3 +346,28 @@ func TestServerSetupPanelIdentityIsTheIPAddressIdentity(t *testing.T) {
 		t.Fatal("a missing identity is not")
 	}
 }
+
+// Behind 1:1 NAT the second server's own address is private: the owner's
+// typed public IPv4 address is what the join declares.
+func TestServerSetupPeerJoinDeclaresTheTypedPublicIPv4(t *testing.T) {
+	pair := newPeerPair(t, joinFirstDraft())
+	t.Setenv("CELIKPANEL_SERVER_IP", "10.0.0.5")
+	view := issueJoinCode(t, pair.first)
+	send := func(public string) *httptest.ResponseRecorder {
+		body, _ := json.Marshal(map[string]string{"address": "203.0.113.10:" + itoaTest(panelPort()), "code": view.Code, "public_ipv4": public})
+		w := httptest.NewRecorder()
+		pair.second.panel.handleServerSetupPeerConnect(w, serviceOperationAdminRequest(t, http.MethodPost, serverSetupPeerConnectPath, string(body), pair.second.userID))
+		return w
+	}
+	if w := send("not-an-address"); w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "server_setup_peer_connect_public_ipv4") {
+		t.Fatalf("an invalid typed address: %d %s", w.Code, w.Body.String())
+	}
+	if w := send("198.51.100.20"); w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"state":"ok"`) {
+		t.Fatalf("the typed public address joins: %d %s", w.Code, w.Body.String())
+	}
+	var join serverSetupJoinRecord
+	readServerSetupJSONSetting(context.Background(), pair.first.database.GetDB(), serverSetupJoinKey, &join)
+	if join.Peer.IPv4 != "198.51.100.20" {
+		t.Fatalf("declared: %+v", join.Peer)
+	}
+}

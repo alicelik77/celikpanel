@@ -879,7 +879,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                 </section> : <form onSubmit={next} className="min-w-0">
                     {step === 'domain' && (joinedLink ? <SetupJoinedSummary link={joinedLink} /> : <>
                         <SetupDomainStep value={draft.main_domain || ''} invalid={!!error && !validSetupDomain(mainDomain)} onChange={value => updateDraft(previous => ({ ...previous, main_domain: value }))} />
-                        {!extending && peer.known && <SetupJoinPanel disabled={busy} onJoined={value => { const next = decodeServerSetup(value); peer.refresh(); if (next) { accept(next); setDraft(next.draft); setStep('name'); } }} />}
+                        {!extending && peer.known && <SetupJoinPanel disabled={busy} serverIP={snapshot.server_ip} onJoined={value => { const next = decodeServerSetup(value); peer.refresh(); if (next) { accept(next); setDraft(next.draft); setStep('name'); } }} />}
                     </>)}
                     {step === 'count' && <SetupCountStep value={serverCount} onChange={value => updateDraft(previous => ({ ...previous, server_count: value }))} />}
                     {step === 'name' && <SetupNameStep value={draft.short_name || ''} suggestion={snapshot.short_name_suggestion} mainDomain={mainDomain} invalid={!validSetupShortName((draft.short_name || '').trim().toLowerCase())} onChange={value => updateDraft(previous => ({ ...previous, short_name: value }))} />}

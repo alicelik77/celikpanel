@@ -56,10 +56,15 @@ const (
 	serverSetupPeerNamesPath   = serverSetupPath + "/peer/names"
 	serverSetupPeerDKIMPath    = serverSetupPath + "/peer/dkim"
 
-	serverSetupJoinCodeKey  = "server_setup_join_code"
-	serverSetupJoinKey      = "server_setup_join"
-	serverSetupJoinAttempts = 5
-	serverSetupJoinLifetime = 24 * time.Hour
+	serverSetupJoinCodeKey = "server_setup_join_code"
+	serverSetupJoinKey     = "server_setup_join"
+	// Wrong codes: 5 per source address (per /64 for IPv6), 50 per code in
+	// all; a correct code from a wrong address uses up nothing.
+	serverSetupJoinAttempts      = 5
+	serverSetupJoinCodeFailures  = 50
+	serverSetupJoinRatePerSource = 10
+	serverSetupJoinRateTotal     = 600
+	serverSetupJoinLifetime      = 24 * time.Hour
 	// The enrollment the join hands over is accepted only once the main DNS
 	// server is ready (remote DNS accept rules); it lives long enough for the
 	// registrar change and both setups.
@@ -163,6 +168,20 @@ type serverSetupJoinCodeRecord struct {
 	Attempts   int    `json:"attempts"`
 	CreatedAt  string `json:"created_at"`
 	ConsumedBy string `json:"consumed_by,omitempty"`
+	// FailuresBy counts wrong codes per source (/32, or /64 for IPv6);
+	// Attempts is their total for the code.
+	FailuresBy map[string]int `json:"failures_by,omitempty"`
+}
+
+// serverSetupJoinSourceKey groups callers: one IPv4 address, or one IPv6
+// /64 (a host usually holds a whole /64).
+func serverSetupJoinSourceKey(ip netip.Addr) string {
+	ip = ip.Unmap()
+	if ip.Is6() {
+		prefix, _ := ip.Prefix(64)
+		return prefix.String()
+	}
+	return ip.String()
 }
 
 type serverSetupJoinPeer struct {
@@ -364,8 +383,9 @@ var errServerSetupJoinBound = errors.New("the second server is already bound to 
 
 // --- rate limit ------------------------------------------------------------
 
-// serverSetupJoinLimiter bounds join attempts on top of the code's own five:
-// at most 20 a minute in all and 5 a minute from one address.
+// serverSetupJoinLimiter bounds join requests per source (an IPv4 address or
+// an IPv6 /64) per minute, with a much larger ceiling in all, so one caller
+// cannot hold every other one out.
 type serverSetupJoinLimiter struct {
 	mu     sync.Mutex
 	window time.Time
@@ -381,7 +401,7 @@ func (l *serverSetupJoinLimiter) allow(ip string, now time.Time) bool {
 	if now.Sub(l.window) >= time.Minute || now.Before(l.window) {
 		l.window, l.total, l.byIP = now, 0, map[string]int{}
 	}
-	if l.total >= 20 || l.byIP[ip] >= 5 {
+	if l.total >= serverSetupJoinRateTotal || l.byIP[ip] >= serverSetupJoinRatePerSource {
 		return false
 	}
 	l.total++
@@ -520,7 +540,7 @@ var serverSetupOSPattern = regexp.MustCompile(`^[A-Za-z0-9 ._()+-]{0,64}$`)
 
 func (p *Panel) handleServerSetupJoin(w http.ResponseWriter, r *http.Request) {
 	source, ok := serverSetupJoinSourceIP(r)
-	if !ok || !setupJoinLimiter.allow(source.String(), time.Now()) {
+	if !ok || !setupJoinLimiter.allow(serverSetupJoinSourceKey(source), time.Now()) {
 		writeServerSetupJoinRefusal(w, http.StatusTooManyRequests, "server_setup_join_rate_limited", "Too many join attempts; wait a minute and try again.", nil)
 		return
 	}
@@ -558,7 +578,8 @@ func (p *Panel) handleServerSetupJoin(w http.ResponseWriter, r *http.Request) {
 		writeServerSetupJoinRefusal(w, http.StatusGone, "server_setup_join_code_unavailable", "This server has no join code. Create one on this server's setup screen.", nil)
 		return
 	}
-	left := func() *int { value := max(0, serverSetupJoinAttempts-record.Attempts); return &value }
+	sourceKey := serverSetupJoinSourceKey(source)
+	left := func() *int { value := max(0, serverSetupJoinAttempts-record.FailuresBy[sourceKey]); return &value }
 	proofOK := subtle.ConstantTimeCompare([]byte(serverSetupJoinProofHash(record.Salt, request.Proof)), []byte(record.Hash)) == 1
 	// The second server always dials the first server's IPv4 address, so the
 	// caller's address must be exactly the IPv4 address it declares.
@@ -573,7 +594,7 @@ func (p *Panel) handleServerSetupJoin(w http.ResponseWriter, r *http.Request) {
 		writeServerSetupJoinRefusal(w, http.StatusGone, "server_setup_join_code_used", "This code was already used. Create a new code on the first server if the second server must join again.", nil)
 		return
 	}
-	if record.Attempts >= serverSetupJoinAttempts {
+	if record.Attempts >= serverSetupJoinCodeFailures || record.FailuresBy[sourceKey] >= serverSetupJoinAttempts {
 		writeServerSetupJoinRefusal(w, http.StatusGone, "server_setup_join_code_exhausted", "This code was entered wrongly too often. Create a new code on the first server.", left())
 		return
 	}
@@ -581,21 +602,27 @@ func (p *Panel) handleServerSetupJoin(w http.ResponseWriter, r *http.Request) {
 		writeServerSetupJoinRefusal(w, http.StatusGone, "server_setup_join_code_expired", "This code has expired. Create a new code on the first server.", nil)
 		return
 	}
-	if !proofOK || !sourceOK || !serverSetupPeerAddressAllowed(declared) {
+	if !proofOK {
 		record.Attempts++
+		if record.FailuresBy == nil {
+			record.FailuresBy = map[string]int{}
+		}
+		record.FailuresBy[sourceKey]++
 		if err := writeServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinCodeKey, record); err != nil {
 			writeServerError(w, err)
 			return
 		}
-		if proofOK && !sourceOK {
+		writeServerSetupJoinRefusal(w, http.StatusUnauthorized, "server_setup_join_code_wrong", "The code is not correct. Check it on the first server's setup screen.", left())
+		return
+	}
+	// A correct code from a wrong or private address uses up nothing: the
+	// owner corrects the address (for example behind 1:1 NAT) and tries again.
+	if !sourceOK || !serverSetupPeerAddressAllowed(declared) {
+		if !sourceOK {
 			writeServerSetupJoinRefusal(w, http.StatusForbidden, "server_setup_join_source_mismatch", "The request did not come from the address the second server gave. Join from the second server itself, without a proxy.", left())
 			return
 		}
-		if proofOK {
-			writeServerSetupJoinRefusal(w, http.StatusForbidden, "server_setup_join_address_not_public", "The second server's address is not a public server address.", left())
-			return
-		}
-		writeServerSetupJoinRefusal(w, http.StatusUnauthorized, "server_setup_join_code_wrong", "The code is not correct. Check it on the first server's setup screen.", left())
+		writeServerSetupJoinRefusal(w, http.StatusForbidden, "server_setup_join_address_not_public", "The second server's address is not a public server address.", left())
 		return
 	}
 	plan, _, err := p.serverSetupJoinWaitingPlan(ctx)

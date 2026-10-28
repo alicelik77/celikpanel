@@ -247,44 +247,65 @@ func TestServerSetupJoinRefusesWrongCodesSourcesAndFloods(t *testing.T) {
 	if wrong.Proof == request.Proof {
 		wrong.Proof = "BBBBBBBB"
 	}
-	// The caller's address must be the one it declares.
+	// The caller's address must be the one it declares; a correct code from
+	// a wrong address uses up nothing.
 	spoofed := request
 	spoofed.DeclaredIPv4 = "198.51.100.99"
-	if w := joinMachineRequest(t, f, serverSetupJoinPath, "", spoofed); w.Code != http.StatusForbidden || !strings.Contains(w.Body.String(), "server_setup_join_source_mismatch") {
-		t.Fatalf("source: %d %s", w.Code, w.Body.String())
+	for attempt := 0; attempt < 3; attempt++ {
+		w := joinMachineRequest(t, f, serverSetupJoinPath, "", spoofed)
+		var refusal serverSetupJoinRefusal
+		if w.Code != http.StatusForbidden || json.Unmarshal(w.Body.Bytes(), &refusal) != nil || refusal.Code != "server_setup_join_source_mismatch" || *refusal.AttemptsLeft != 5 {
+			t.Fatalf("source: %d %s", w.Code, w.Body.String())
+		}
 	}
-	for attempt := 2; attempt <= 4; attempt++ {
+	for attempt := 1; attempt <= 4; attempt++ {
 		w := joinMachineRequest(t, f, serverSetupJoinPath, "", wrong)
 		var refusal serverSetupJoinRefusal
 		if w.Code != http.StatusUnauthorized || json.Unmarshal(w.Body.Bytes(), &refusal) != nil || refusal.Code != "server_setup_join_code_wrong" || refusal.AttemptsLeft == nil || *refusal.AttemptsLeft != 5-attempt {
 			t.Fatalf("attempt %d: %d %s", attempt, w.Code, w.Body.String())
 		}
 	}
-	// The rate limit (5 a minute from one address) answers before the code.
-	if w := joinMachineRequest(t, f, serverSetupJoinPath, "", request); w.Code != http.StatusOK {
-		t.Fatalf("the right code within the attempts: %d %s", w.Code, w.Body.String())
+	// Five wrong codes from one source end that source, not the code: the
+	// right code from another address still joins.
+	if w := joinMachineRequest(t, f, serverSetupJoinPath, "", wrong); w.Code != http.StatusUnauthorized {
+		t.Fatalf("fifth: %d", w.Code)
 	}
-	if w := joinMachineRequest(t, f, serverSetupJoinPath, "", request); w.Code != http.StatusTooManyRequests {
-		t.Fatalf("flood: %d %s", w.Code, w.Body.String())
+	if w := joinMachineRequest(t, f, serverSetupJoinPath, "", request); w.Code != http.StatusGone || !strings.Contains(w.Body.String(), "server_setup_join_code_exhausted") {
+		t.Fatalf("the source is exhausted: %d %s", w.Code, w.Body.String())
 	}
-	// A fresh code exhausted by five wrong tries refuses even the right one.
+	serverSetupJoinSourceIP = func(*http.Request) (netip.Addr, bool) { return netip.MustParseAddr("198.51.100.30"), true }
+	other := request
+	other.DeclaredIPv4 = "198.51.100.30"
+	if w := joinMachineRequest(t, f, serverSetupJoinPath, "", other); w.Code != http.StatusOK {
+		t.Fatalf("another source with the right code: %d %s", w.Code, w.Body.String())
+	}
+	// The rate limit is per source with a large ceiling: one flooding caller
+	// does not hold another out.
 	setupJoinLimiter = &serverSetupJoinLimiter{}
+	now := time.Now()
+	for i := 0; i < serverSetupJoinRatePerSource; i++ {
+		if !setupJoinLimiter.allow("198.51.100.40", now) {
+			t.Fatalf("request %d refused", i)
+		}
+	}
+	if setupJoinLimiter.allow("198.51.100.40", now) || !setupJoinLimiter.allow("198.51.100.41", now) {
+		t.Fatal("per-source limit")
+	}
+	if serverSetupJoinSourceKey(netip.MustParseAddr("2001:db8:1:2:aaaa::1")) != serverSetupJoinSourceKey(netip.MustParseAddr("2001:db8:1:2:bbbb::2")) {
+		t.Fatal("an IPv6 /64 is one source")
+	}
+	// A code with 50 wrong tries in all is dead for everyone.
 	if _, err := f.database.GetDB().Exec(`DELETE FROM panel_settings WHERE key IN (?,?)`, serverSetupJoinKey, serverSetupJoinCodeKey); err != nil {
 		t.Fatal(err)
 	}
+	serverSetupJoinSourceIP = serverSetupRequestSourceIP
 	view = issueJoinCode(t, f)
-	request = joinRequestFor(t, view.Code, strings.Repeat("d", 32))
-	wrong.Proof = "AAAAAAAA"
-	if wrong.Proof == request.Proof {
-		wrong.Proof = "BBBBBBBB"
-	}
-	for attempt := 0; attempt < 5; attempt++ {
-		setupJoinLimiter = &serverSetupJoinLimiter{}
-		joinMachineRequest(t, f, serverSetupJoinPath, "", wrong)
-	}
-	setupJoinLimiter = &serverSetupJoinLimiter{}
-	if w := joinMachineRequest(t, f, serverSetupJoinPath, "", request); w.Code != http.StatusGone || !strings.Contains(w.Body.String(), "server_setup_join_code_exhausted") {
-		t.Fatalf("exhausted: %d %s", w.Code, w.Body.String())
+	var record serverSetupJoinCodeRecord
+	readServerSetupJSONSetting(context.Background(), f.database.GetDB(), serverSetupJoinCodeKey, &record)
+	record.Attempts = serverSetupJoinCodeFailures
+	writeServerSetupJSONSetting(context.Background(), f.database.GetDB(), serverSetupJoinCodeKey, record)
+	if w := joinMachineRequest(t, f, serverSetupJoinPath, "", joinRequestFor(t, view.Code, strings.Repeat("d", 32))); w.Code != http.StatusGone || !strings.Contains(w.Body.String(), "server_setup_join_code_exhausted") {
+		t.Fatalf("dead code: %d %s", w.Code, w.Body.String())
 	}
 	// The link endpoints accept no browser request and no unknown credential.
 	if w := joinMachineRequest(t, f, serverSetupPeerNamesPath, strings.Repeat("e", 32)+"."+strings.Repeat("f", 64), serverSetupPeerNames{}); w.Code != http.StatusUnauthorized {

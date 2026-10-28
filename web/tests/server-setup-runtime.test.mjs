@@ -1538,6 +1538,8 @@ test('wizard v2: the second server joins with the first server\'s address and co
         await act(async () => findButton('setup.v5.join.open').props.onClick());
         await type('setup-join_address', '203.0.113.10:2083');
         await type('setup-join_code', 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX');
+        assert.equal(tree.root.findAllByProps({ 'data-setup-join-ip': '' }).length, 0, 'no address known, no line');
+        assert.ok(input('setup-join_public_ipv4'), 'without a known public address the owner can type it (1:1 NAT)');
         await act(async () => findButton('setup.v5.join.submit').props.onClick());
         assert.equal(tree.root.findAllByProps({ 'data-setup-join-state': 'refused' }).length, 1, 'a refusal names its reason');
         assert.ok(textOf().includes('setup.v5.join.refused.server_setup_join_code_wrong'));

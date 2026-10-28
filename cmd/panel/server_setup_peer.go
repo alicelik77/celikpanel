@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"net/netip"
 	"reflect"
 	"strconv"
 	"strings"
@@ -174,6 +175,9 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 	var request struct {
 		Address string `json:"address"`
 		Code    string `json:"code"`
+		// PublicIPv4 is the owner's answer when this server's own address is
+		// not its public one (1:1 NAT): the join declares it instead.
+		PublicIPv4 string `json:"public_ipv4,omitempty"`
 	}
 	if decodeServiceOperationJSON(w, r, &request) != nil {
 		writeClientError(w, http.StatusBadRequest, "invalid join request")
@@ -230,6 +234,14 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 	}
 	join := serverSetupJoinRequest{Proof: proof, RequestID: pending.RequestID, ShortName: state.Draft.ShortName, OS: serverSetupHostOS(p)}
 	join.DeclaredIPv4, _ = canonicalIPv4(serverPrimaryIP())
+	if request.PublicIPv4 != "" {
+		typed, err := netip.ParseAddr(strings.TrimSpace(request.PublicIPv4))
+		if err != nil || !typed.Is4() || !serverSetupPeerAddressAllowed(typed) {
+			writeCodedError(w, http.StatusBadRequest, "server_setup_peer_connect_public_ipv4", "Enter this server's public IPv4 address, as the provider shows it.", "")
+			return
+		}
+		join.DeclaredIPv4 = typed.String()
+	}
 	join.DeclaredIPv6 = serverSetupPublicIPv6()
 	var document serverSetupJoinDocument
 	var observed []byte
@@ -427,7 +439,7 @@ func (p *Panel) serverSetupPeerState(ctx context.Context) (serverSetupPeerView, 
 		if err != nil {
 			return view, err
 		}
-		view.Code = &serverSetupJoinCodeView{Address: serverSetupJoinAddress(state.Draft), ExpiresAt: time.Unix(code.ExpiresAt, 0).UTC().Format(time.RFC3339), AttemptsLeft: max(0, serverSetupJoinAttempts-code.Attempts), Used: code.ConsumedBy != ""}
+		view.Code = &serverSetupJoinCodeView{Address: serverSetupJoinAddress(state.Draft), ExpiresAt: time.Unix(code.ExpiresAt, 0).UTC().Format(time.RFC3339), AttemptsLeft: max(0, serverSetupJoinCodeFailures-code.Attempts), Used: code.ConsumedBy != ""}
 	}
 	if joinFound {
 		view.Joined = &serverSetupPeerJoined{ShortName: join.Peer.ShortName, IPv4: join.Peer.IPv4, JoinedAt: join.JoinedAt}
