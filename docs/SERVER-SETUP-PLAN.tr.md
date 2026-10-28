@@ -9,6 +9,23 @@ bu yönü onayladı. Bu belge anlaşmayı ve uygulamanın kabul ölçütlerini k
 Asistana kurulu panel güncelleme yetkisi vermez; [AGENTS.md](../AGENTS.md) gereği
 kurulu panel güncellemelerini kullanıcı CelikPanel'in kendi arayüzünden başlatır.
 
+## 28 Ekim ek kararı: kurulum sihirbazı v2, 3. aşama (v0.1.0-alpha.113 kaynağı)
+
+Alan adı firması kartı kendini kontrol eder. `GET /api/v1/setup/delegation?zone=`
+(yalnız sahibin kendi DNS sunucularındaki ana alan adı; yalnız yönetici, salt-okur,
+bir dakika paylaşılan sınırlı yanıt) üst bölgeyi SOA kaydıyla bulur (`.com.tr`
+gibi uzantılar için liste gerekmez), üst bölgenin kendi sunucularına özyinelemesiz
+olarak hangi ad sunucularını ve IP kayıtlarını (glue) verdiklerini sorar, bizim
+her sunucumuza bölge için yetkili yanıt verip vermediğini (SOA seri numarasıyla)
+sorar ve aktarılan kayıtları sunucularımızın yanıtıyla karşılaştırır. Her madde
+doğru, henüz değil, bekliyor (kurulmadan önce yedek DNS sunucusu) ya da
+bakılamadı olur; okunamayan yanıt asla "henüz değil" sayılmaz. İki sunucuda kart,
+yedek yanıt verince ya da kurulum panel adını beklerken tam açılır; "Yine de şimdi
+yap" ana DNS sunucusu yanıt verene kadar nedeniyle reddedilir ve `.tr` kayıt
+kuruluşunun ikisi de yanıt vermeden değişikliği reddettiği uyarısını verir. Glue
+yalnız alan adının içindeki ad sunucuları için istenir; IPv6 glue isteğe bağlıdır.
+Kurulu bir sunucuda ölçülmedi.
+
 ## 28 Ekim ek kararı: kurulum sihirbazı v2, 2. aşama (v0.1.0-alpha.112 kaynağı)
 
 - **Mevcut kayıtlar.** Ana DNS sunucusunda DNS adımından sonraki adım, ana alan

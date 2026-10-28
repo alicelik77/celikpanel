@@ -10,6 +10,23 @@ This document records that agreement and the implementation acceptance criteria.
 It does not authorize an assistant to update any installed panel; the user starts
 every installed-panel update from CelikPanel itself, as required by [AGENTS.md](../AGENTS.md).
 
+## October 28 follow-up: setup wizard v2, phase 3 (v0.1.0-alpha.113 source)
+
+The registrar card checks itself. `GET /api/v1/setup/delegation?zone=` (the
+main domain on the owner's own DNS servers only; admin-only, read-only, one
+bounded answer shared for a minute) finds the parent zone by its SOA (so
+`.com.tr`-style suffixes need no list), asks the parent's own servers without
+recursion which nameservers and IP records (glue) they hand out, asks each of
+our servers whether it answers the zone authoritatively (with its SOA serial)
+and compares the imported records with what our servers answer. Each item is
+correct, not yet, waiting (the backup DNS server before it is set up) or
+could not be checked; an unread answer is never "not yet". With two servers
+the card opens fully once the backup answers or setup waits for the panel's
+name; "Do it now anyway" is refused with the reason until the main DNS server
+answers, and warns that `.tr` registries refuse a change before both answer.
+Glue is asked only for nameservers inside the domain; IPv6 glue is optional.
+Not measured on an installed server.
+
 ## October 28 follow-up: setup wizard v2, phase 2 (v0.1.0-alpha.112 source)
 
 - **Existing records.** On the main DNS server a step after the DNS step reads
