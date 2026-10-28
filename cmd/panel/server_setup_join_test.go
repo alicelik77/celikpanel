@@ -344,3 +344,42 @@ func TestServerSetupJoinPinnedTLSSendsNothingToAnotherKey(t *testing.T) {
 		t.Fatalf("a lost answer is unknown: %v", err)
 	}
 }
+
+// The source check is the declared IPv4 address only (alpha.114 review):
+// an IPv6 caller declaring any IPv4 address is refused, the declared IPv6
+// address must be public and never authorizes, and the first server is
+// dialed at its IPv4 address.
+func TestServerSetupJoinSourceIsTheDeclaredIPv4Only(t *testing.T) {
+	_, cert := joinTestCertificate(t)
+	joinTestSeams(t, cert, "")
+	f, _, _ := joinFirstFixture(t, joinFirstDraft())
+	view := issueJoinCode(t, f)
+	send := func(remote string, request serverSetupJoinRequest) *httptest.ResponseRecorder {
+		raw, _ := json.Marshal(request)
+		req := httptest.NewRequest(http.MethodPost, serverSetupJoinPath, bytes.NewReader(raw))
+		req.TLS, req.RemoteAddr = &tls.ConnectionState{}, remote
+		w := httptest.NewRecorder()
+		f.panel.requireServerSetupLinkMachine(http.NotFoundHandler()).ServeHTTP(w, req)
+		return w
+	}
+	request := joinRequestFor(t, view.Code, strings.Repeat("a", 32))
+	request.DeclaredIPv6 = "2001:db8::5"
+	if w := send("[2001:db8::5]:40000", request); w.Code != http.StatusForbidden || !strings.Contains(w.Body.String(), "server_setup_join_source_mismatch") {
+		t.Fatalf("an IPv6 caller declaring an IPv4 address: %d %s", w.Code, w.Body.String())
+	}
+	for _, v6 := range []string{"fe80::1", "::1", "fd00::1", "not-an-address"} {
+		bad := request
+		bad.DeclaredIPv6 = v6
+		if w := send("198.51.100.20:40000", bad); w.Code != http.StatusBadRequest {
+			t.Fatalf("declared IPv6 %q: %d %s", v6, w.Code, w.Body.String())
+		}
+	}
+	if w := send("198.51.100.20:40000", request); w.Code != http.StatusOK {
+		t.Fatalf("the declared IPv4 caller joins: %d %s", w.Code, w.Body.String())
+	}
+	for _, address := range []string{"[2001:db8::1]:2083", "https://[2001:db8::1]:2083"} {
+		if _, ok := canonicalServerSetupPeerAddress(address); ok {
+			t.Fatalf("the first server is dialed at its IPv4 address only: %q", address)
+		}
+	}
+}

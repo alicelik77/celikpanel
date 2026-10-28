@@ -511,8 +511,10 @@ func (p *Panel) handleServerSetupJoin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if request.DeclaredIPv6 != "" {
+		// Informational only (the second server's address record): a public
+		// global unicast address, never used to authorize the join.
 		v6, err := netip.ParseAddr(request.DeclaredIPv6)
-		if err != nil || !v6.Is6() || v6.Is4In6() || v6.String() != request.DeclaredIPv6 {
+		if err != nil || !v6.Is6() || v6.Is4In6() || v6.String() != request.DeclaredIPv6 || !v6.IsGlobalUnicast() || v6.IsPrivate() || !serverSetupPeerAddressAllowed(v6) {
 			writeServerSetupJoinRefusal(w, http.StatusBadRequest, "server_setup_join_invalid", "The join request is not valid.", nil)
 			return
 		}
@@ -533,7 +535,9 @@ func (p *Panel) handleServerSetupJoin(w http.ResponseWriter, r *http.Request) {
 	}
 	left := func() *int { value := max(0, serverSetupJoinAttempts-record.Attempts); return &value }
 	proofOK := subtle.ConstantTimeCompare([]byte(serverSetupJoinProofHash(record.Salt, request.Proof)), []byte(record.Hash)) == 1
-	sourceOK := source == declared || (request.DeclaredIPv6 != "" && source.String() == request.DeclaredIPv6)
+	// The second server always dials the first server's IPv4 address, so the
+	// caller's address must be exactly the IPv4 address it declares.
+	sourceOK := source.Is4() && source == declared
 	if record.ConsumedBy != "" {
 		// The same request after a lost answer gets the same join; any other
 		// request finds the code used.
@@ -952,9 +956,10 @@ func canonicalServerSetupPeerAddress(raw string) (string, bool) {
 	if err != nil {
 		host, port = rest, strconv.Itoa(panelPort())
 	}
-	ip, err := netip.ParseAddr(strings.Trim(host, "[]"))
+	ip, err := netip.ParseAddr(host)
 	number, portErr := strconv.Atoi(port)
-	if err != nil || ip.Zone() != "" || portErr != nil || number < 1 || number > 65535 || strconv.Itoa(number) != port {
+	// IPv4 only: the join's source check is the declared IPv4 address.
+	if err != nil || !ip.Is4() || portErr != nil || number < 1 || number > 65535 || strconv.Itoa(number) != port {
 		return "", false
 	}
 	return "https://" + net.JoinHostPort(ip.Unmap().String(), port), true
