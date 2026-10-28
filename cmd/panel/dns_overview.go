@@ -480,13 +480,18 @@ func (p *Panel) checkDNSOverview(ctx context.Context, in dnsOverviewInput, edges
 	receiver, choice, hasMail := dnsOverviewMailInputs(in)
 	result.MailReceiver = receiver
 	mailRows := []serverSetupProviderRecordRow{}
+	// A key that could not be read is unknown, never "not made yet".
+	var dkimErr error
 	if hasMail {
 		mailDraft := d
 		mailDraft.MailHostname, mailDraft.MailDNS = receiver.Host, &choice
 		dkim := ""
 		peerKey := receiver.Server == "peer"
 		if !peerKey && edges.DKIM != nil {
-			dkim, _ = edges.DKIM(ctx, d.MainDomain)
+			dkim, dkimErr = edges.DKIM(ctx, d.MainDomain)
+			if dkimErr != nil {
+				dkim = ""
+			}
 		}
 		mailRows = serverSetupProviderMailRows(mailDraft, dkim)
 		if peerKey {
@@ -538,6 +543,9 @@ func (p *Panel) checkDNSOverview(ctx context.Context, in dnsOverviewInput, edges
 			// Any published DKIM key counts: its value is the other server's.
 			got.State = dnsOverviewDKIMPublished(got.Seen, got.State)
 			got.Value = ""
+		}
+		if kind == "dkim" && dkimErr != nil {
+			got.State, got.Value, got.Seen = "unknown", "", []string{}
 		}
 		result.Mail = append(result.Mail, dnsOverviewMailRecord{Kind: kind, Name: row.Name, Type: row.Type, Expected: got.Value, Seen: got.Seen, State: got.State})
 	}
@@ -739,6 +747,13 @@ func dnsOverviewSentenceFor(in dnsOverviewInput, r dnsOverview) dnsOverviewSente
 				}
 				return dnsOverviewSay("prerequisite", code, "A mail record of the domain is missing or different where the list is kept.", who, "Add the value shown under Mail records.", "This page checks again every minute.", vars)
 			}
+		}
+	}
+	// A finished setup with mail and no DKIM key yet: mail is sent unsigned
+	// and may be marked as spam; that is a task, never "all good".
+	for _, mail := range r.Mail {
+		if mail.Kind == "dkim" && mail.State == "pending" && in.Ready {
+			return dnsOverviewSay("prerequisite", "dns_overview_dkim_pending", "The mail signing key (DKIM) of the domain has not been made yet, so mail is sent unsigned.", "You, in Server setup.", "Extend this server's setup and run it again: its mail records step makes the key.", "This page shows the key and its record once it exists.", vars)
 		}
 	}
 	if r.Home == "own" {

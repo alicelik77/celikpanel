@@ -349,7 +349,10 @@ func TestDNSOverviewExternalProviderNamesTheRecordsAndNoDNSSoftware(t *testing.T
 	}
 }
 
-func TestDNSOverviewKeptOldMailOffersTheMoveWithTheEditor(t *testing.T) {
+// overviewMailServer: one server keeping its own DNS and the main domain's
+// mail, the old MX kept ("later"), every record answering correctly.
+func overviewMailServer(t *testing.T) (serviceOperationTestFixture, *overviewWorld, string) {
+	t.Helper()
 	d := mailDraftForTest()
 	d.ServerCount, d.ShortName, d.PeerIP, d.PeerNS = 1, "alpha", "", ""
 	d.MailDNS = &serverSetupMailDNS{MX: "later", DMARC: "keep"}
@@ -377,6 +380,11 @@ func TestDNSOverviewKeptOldMailOffersTheMoveWithTheEditor(t *testing.T) {
 		w.public["_dmarc.example.test TXT"] = []string{"v=DMARC1; p=none"}
 		w.public["celik._domainkey.example.test TXT"] = []string{dkimRecommended(key)}
 	})
+	return f, world, key
+}
+
+func TestDNSOverviewKeptOldMailOffersTheMoveWithTheEditor(t *testing.T) {
+	f, _, _ := overviewMailServer(t)
 	value := readDNSOverview(t, f.panel)
 	states := map[string]string{}
 	for _, mail := range value.Mail {
@@ -571,5 +579,27 @@ func TestDNSOverviewSetupNotFinishedAndNotRunningAsksNothing(t *testing.T) {
 		if server.Answers == "not_serving" || server.Answers == "unknown" {
 			t.Fatalf("an unfinished server is reported as failing: %+v", server)
 		}
+	}
+}
+
+func TestDNSOverviewDKIMKeyUnreadableIsUnknownAndMissingIsATask(t *testing.T) {
+	f, _, _ := overviewMailServer(t)
+	dkimRow := func(value dnsOverview) dnsOverviewMailRecord {
+		for _, mail := range value.Mail {
+			if mail.Kind == "dkim" {
+				return mail
+			}
+		}
+		return dnsOverviewMailRecord{}
+	}
+	f.panel.dnsOverviewSeams.DKIM = func(context.Context, string) (string, error) { return "", errors.New("agent unreachable") }
+	unread, _ := f.panel.dnsOverview(context.Background(), time.Now(), false)
+	if row := dkimRow(unread); row.State != "unknown" || row.Expected != "" || unread.Sentence.State != "unknown" {
+		t.Fatalf("an unreadable key: %+v %+v", row, unread.Sentence)
+	}
+	f.panel.dnsOverviewSeams.DKIM = func(context.Context, string) (string, error) { return "", nil }
+	missing, _ := f.panel.dnsOverview(context.Background(), time.Now().Add(2*time.Minute), false)
+	if row := dkimRow(missing); row.State != "pending" || missing.Sentence.State != "prerequisite" || missing.Sentence.Code != "dns_overview_dkim_pending" {
+		t.Fatalf("no key after setup: %+v %+v", row, missing.Sentence)
 	}
 }
