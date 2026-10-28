@@ -1454,6 +1454,26 @@ test('wizard v2: the registrar card reads the live check, waits for the backup a
 });
 
 
+test('wizard v2: the registrar card stops asking once everything answers correctly', async () => {
+    const local = { dns_mode: 'local', dns_role: 'primary', main_domain: 'example.com', panel_domain: 'panel.example.com', ns1: 'ns1.example.com', ns2: 'ns2.example.com', peer_ns: 'ns2.example.com', local_ip: '203.0.113.10', peer_ip: '198.51.100.20' };
+    const done = { zone: 'example.com', checked_at: new Date().toISOString(), now_allowed: true,
+        expected_ns: [{ name: 'ns1.example.com', server: 'main', ipv4: '203.0.113.10', glue_needed: true }, { name: 'ns2.example.com', server: 'backup', ipv4: '198.51.100.20', glue_needed: true }],
+        items: [{ id: 'answers_main', state: 'ok', vars: { ip: '203.0.113.10' } }, { id: 'answers_backup', state: 'ok', vars: { ip: '198.51.100.20' } }, { id: 'nameservers', state: 'ok', vars: { expected: 'ns1.example.com, ns2.example.com' } }, { id: 'imported', state: 'ok', vars: { matched: '3', total: '3' } }] };
+    const realSet = globalThis.setInterval, realClear = globalThis.clearInterval;
+    const active = new Map();
+    globalThis.setInterval = (callback, ms) => { const id = realSet(callback, ms); active.set(id, ms); return id; };
+    globalThis.clearInterval = id => { active.delete(id); realClear(id); };
+    waitingFixture(local, 'infrastructure_dns', url => url.startsWith('/api/v1/setup/delegation') ? Response.json(done) : null);
+    try {
+        await mount(); await settleReads();
+        assert.ok(textOf().includes('setup.v4.doneTitle'), 'the card says everything answers correctly');
+        assert.equal([...active.values()].filter(ms => ms === 60_000).length, 0, 'a done card keeps no minute timer');
+        const stamp = tree.root.findAll(node => node.type === 'p' && [].concat(node.props.children).some(child => typeof child === 'string' && child.includes('setup.v4.checkedAt')));
+        assert.equal(stamp.length, 1);
+        for (let node = stamp[0]; node; node = node.parent) assert.notEqual(node.props?.['aria-live'], 'polite', 'the check time is outside the live region');
+    } finally { globalThis.setInterval = realSet; globalThis.clearInterval = realClear; await cleanup(); }
+});
+
 test('wizard v2: a value the review would refuse is shown as not importable and never sent', async () => {
     init(); withPublicRecords([
         { name: 'example.com', type: 'MX', values: ['0 ', '10 mx.old.example'], state: 'found', not_importable: { '0 ': 'content_invalid' } },

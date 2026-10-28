@@ -281,7 +281,6 @@ export function SetupRegistrarCard({ draft, mainDomain, now }: { draft: ServerSe
     const { t } = useSetupWizardI18n();
     const domain = mainDomain || draft.infrastructure_dns?.zone || '';
     const remote = useRemote(domain ? `/api/v1/setup/delegation?zone=${encodeURIComponent(domain)}` : null, decodeSetupDelegation);
-    useRefreshEvery(remote, 60_000, !!domain);
     const [early, setEarly] = useState(false);
     const live = remote.remote.state === 'known' ? remote.remote.value : remote.remote.state === 'unknown' ? remote.remote.previous?.value ?? null : null;
     const primary = draft.dns_role === 'primary';
@@ -294,6 +293,9 @@ export function SetupRegistrarCard({ draft, mainDomain, now }: { draft: ServerSe
     const ready = now || backupReady;
     const shown = ready || (early && !!live?.now_allowed);
     const done = !!live && live.items.length > 0 && live.items.every(item => item.state === 'ok' || (item.state !== 'unknown' && item.vars?.optional === 'true'));
+    // Once everything answers correctly the card stops asking; opening the
+    // step again reads once more. / Her sey dogruysa kart sormayi birakir.
+    useRefreshEvery(remote, 60_000, !!domain && !done);
     const itemText = (item: SetupDelegation['items'][number]) => {
         const vars = item.vars || {};
         if (item.id.startsWith('glue_v4:') || item.id.startsWith('glue_v6:')) return t(item.id.startsWith('glue_v6:') ? 'setup.v4.item.glue6' : 'setup.v4.item.glue4', { name: vars.name || '', ip: vars.ip || '' });
@@ -308,6 +310,7 @@ export function SetupRegistrarCard({ draft, mainDomain, now }: { draft: ServerSe
         if (item.state === 'not_yet' && item.id.startsWith('glue')) return vars.optional === 'true' ? t('setup.v4.why.glue6') : t(vars.seen ? 'setup.v4.why.glueWrong' : 'setup.v4.why.glueMissing', { seen: vars.seen || '' });
         if (item.state === 'waiting' && item.id === 'answers_backup') return t('setup.v4.why.backupWaiting');
         if (item.state === 'not_yet' && item.id === 'imported') return t('setup.v4.why.imported');
+        if (item.state === 'unknown' && item.id === 'imported') return t('setup.v4.why.importedUnknown');
         return '';
     };
     return <section aria-labelledby="setup-registrar-title" className="mt-5 space-y-4" data-setup-registrar={shown ? 'now' : 'later'}>
@@ -345,8 +348,8 @@ export function SetupRegistrarCard({ draft, mainDomain, now }: { draft: ServerSe
                     <span className="flex flex-wrap items-baseline justify-between gap-x-3"><span className="break-all">{itemText(item)}</span><span className={item.state === 'ok' ? 'text-success' : 'text-fg-muted'}>{t(delegationState[item.state])}</span></span>
                     {itemWhy(item) && <span className="text-xs leading-5 text-fg-muted">{itemWhy(item)}</span>}
                 </li>)}</ul>}
-                {live && <p className="text-xs text-fg-muted">{t('setup.v4.checkedAt', { time: new Date(live.checked_at).toLocaleTimeString() })}</p>}
             </div>
+            {live && <p className="text-xs text-fg-muted">{t('setup.v4.checkedAt', { time: new Date(live.checked_at).toLocaleTimeString() })}</p>}
             <p className="text-sm leading-6 text-fg-muted">{t('setup.v2.registrar.spread')}</p>
         </div>
     </section>;
