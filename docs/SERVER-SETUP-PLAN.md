@@ -10,6 +10,56 @@ This document records that agreement and the implementation acceptance criteria.
 It does not authorize an assistant to update any installed panel; the user starts
 every installed-panel update from CelikPanel itself, as required by [AGENTS.md](../AGENTS.md).
 
+## October 29 follow-up: setup wizard v2, phase 5 (v0.1.0-alpha.115 source)
+
+- **The DNS page reads one picture.** `GET /api/v1/dns/overview`
+  (administrator only, read only, no schema change) answers the whole DNS
+  picture at once: one D-024 sentence (state `ok`, `waiting`, `prerequisite`,
+  `failed` or `unknown`, a stable code, why, who acts, the next action and
+  what happens then), this server and the bound second server (role main,
+  backup, standalone or none; short name, panel name, DNS software; whether it
+  answers for the main domain when asked directly: answers, answers but not
+  for the domain, could not be asked, not joined), the names with the
+  expected value and what the public resolvers answer (panel and mail names,
+  in-zone nameserver names, the registry's nameservers and IP records (glue)
+  from the registrar check), the main domain's MX, SPF, DKIM (selector
+  `celik`) and DMARC with who receives the mail, where the owner's own records
+  are edited, and whether a second server can join here. With the list at a
+  provider no server claims DNS software and no registrar check runs. A failed
+  lookup is unknown, never missing; a verified failure comes first, then what
+  someone must do, then what could not be checked, then a change that is
+  spreading. One bounded answer per panel is shared for a minute (15 seconds
+  when part of it is unknown), computed apart from the caller; polling never
+  changes anything. Link credentials, enrollment and join codes never appear.
+- **The page.** Server → DNS opens with that sentence, then the servers (named
+  "This server (name)" and "Second server (name)", never a guessed name) or
+  where the list is kept, the "Join a server" entry, the name table with a
+  per-row internet check, the mail records and "Records you added" with a
+  link to the existing record editor. Today's DNS settings and engine card are
+  kept whole under Advanced, collapsed and mounted only when opened.
+- **Joining from the DNS page.** While setup waits for the second server the
+  entry is the existing join card. Otherwise it says why there is no join
+  here: setup not finished; one server on BIND (a running BIND cannot gain a
+  backup DNS server in this release); PowerDNS pairs under Advanced; the list
+  at a provider or another CelikPanel (the second server runs its own setup);
+  this server is the backup.
+- **Move mail.** When the owner kept the old mail server (MX "later") and this
+  panel keeps the list, "Move mail to …" changes the one apex MX record
+  through the existing record editor after an in-page confirmation that says
+  what changes (new mail arrives on this server; create the mailboxes first;
+  mail on the old server stays). Several MX records are left to the editor;
+  a lost answer is never sent again and the page reads the state again.
+- **The first site.** A finished setup with websites offers "Add your first
+  site": the existing Add domain form opens with the main domain filled in and
+  creates nothing until the owner submits it; "Later" hides the offer.
+
+Not in this phase: "Move main DNS" (alpha.116–.118); the existing-installations
+mapping was dropped by the owner's rule of 2026-10-26 (nothing real is
+installed). Remaining limits: the other server's DKIM key is checked only as
+published (its value is that server's); reverse DNS stays an open task of
+setup, not a row of this page; the record editor itself is unchanged. Measured
+only by component tests on loopback servers; not on installed servers.
+
 ## October 28 follow-up: setup wizard v2, phase 4 (v0.1.0-alpha.114 source)
 
 - **One server, its own DNS.** One server keeping its own DNS is standalone:

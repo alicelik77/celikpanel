@@ -9,6 +9,58 @@ bu yönü onayladı. Bu belge anlaşmayı ve uygulamanın kabul ölçütlerini k
 Asistana kurulu panel güncelleme yetkisi vermez; [AGENTS.md](../AGENTS.md) gereği
 kurulu panel güncellemelerini kullanıcı CelikPanel'in kendi arayüzünden başlatır.
 
+## 29 Ekim ek kararı: kurulum sihirbazı v2, 5. aşama (v0.1.0-alpha.115 kaynağı)
+
+- **DNS sayfası tek bir resim okur.** `GET /api/v1/dns/overview` (yalnız
+  yönetici, salt-okur, şema değişikliği yok) bütün DNS durumunu tek yanıtta
+  verir: tek D-024 cümlesi (durum `ok`, `waiting`, `prerequisite`, `failed`
+  ya da `unknown`; sabit kod, neden, kim yapar, sıradaki adım, sonra ne olur),
+  bu sunucu ve bağlanmış ikinci sunucu (rol: ana, yedek, tek ya da yok; kısa
+  ad, panel adı, DNS yazılımı; doğrudan sorulduğunda ana alan adı için yanıt
+  verip vermediği: veriyor, veriyor ama alan adı için değil, sorulamadı,
+  bağlanmadı), adlar ve genel çözücülerin yanıtı (panel ve posta adları, bölge
+  içindeki ad sunucusu adları, alan adı firması kontrolünden kayıt kuruluşunun
+  ad sunucuları ve IP kayıtları (glue)), ana alan adının MX, SPF, DKIM (seçici
+  `celik`) ve DMARC kayıtları ile postayı kimin aldığı, sahibin kendi
+  kayıtlarını nerede düzenlediği ve ikinci sunucunun burada bağlanıp
+  bağlanamayacağı. Liste bir sağlayıcıdaysa hiçbir sunucu DNS yazılımı
+  göstermez ve alan adı firması kontrolü yapılmaz. Başarısız sorgu
+  "bilinmiyor"dur, asla "eksik" değil; önce doğrulanmış hata, sonra birinin
+  yapması gereken, sonra bakılamayan, sonra yayılan değişiklik söylenir. Panel
+  başına sınırlı tek yanıt bir dakika paylaşılır (bir kısmı bilinmiyorsa 15
+  saniye) ve çağırandan bağımsız hesaplanır; yoklama hiçbir şeyi değiştirmez.
+  Bağlantı kimlik bilgisi, kayıt ve katılma kodları yanıtta yer almaz.
+- **Sayfa.** Sunucu → DNS bu cümleyle açılır; ardından sunucular ("Bu sunucu
+  (ad)", "İkinci sunucu (ad)"; tahmin edilmiş ad yok) ya da listenin nerede
+  tutulduğu, "Sunucu bağla" girişi, satır satır internet kontrollü ad tablosu,
+  posta kayıtları ve mevcut kayıt düzenleyiciye bağlantılı "Sizin eklediğiniz
+  kayıtlar" gelir. Bugünkü DNS ayarları ve motor kartı Gelişmiş altında,
+  kapalı ve yalnız açılınca yüklenerek olduğu gibi durur.
+- **DNS sayfasından bağlanma.** Kurulum ikinci sunucuyu beklerken giriş mevcut
+  katılma kartıdır. Aksi hâlde burada neden bağlanılamadığını söyler: kurulum
+  bitmedi; BIND'li tek sunucu (çalışan bir BIND'e bu sürümde yedek DNS
+  sunucusu eklenemez); PowerDNS Gelişmiş'te eşleşir; liste bir sağlayıcıda ya
+  da başka bir CelikPanel'de (ikinci sunucu kendi kurulumunu yapar); bu sunucu
+  yedektir.
+- **Postayı taşıma.** Sahip eski posta sunucusunu tuttuysa (MX "sonra") ve
+  liste bu paneldeyse, "Postayı şuraya al" düğmesi ne değişeceğini söyleyen
+  sayfa içi onaydan sonra mevcut kayıt düzenleyiciyle tek kök MX kaydını
+  değiştirir (yeni posta bu sunucuya gelir; önce posta kutularını oluşturun;
+  eski sunucudaki posta orada kalır). Birden çok MX kaydı düzenleyiciye
+  bırakılır; yanıtı yiten değişiklik asla yeniden gönderilmez, sayfa durumu
+  yeniden okur.
+- **İlk site.** Web siteleri kurulan tamamlanmış kurulum "İlk sitenizi
+  ekleyin" önerir: mevcut Alan adı ekle formu ana alan adı dolu açılır ve
+  sahip göndermeden hiçbir şey oluşturmaz; "Sonra" öneriyi gizler.
+
+Bu aşamada yok: "Ana DNS'i taşı" (alpha.116–.118); mevcut kurulum eşlemesi
+sahibin 2026-10-26 kuralıyla düşürüldü (gerçek bir kurulum yok). Kalan
+sınırlar: diğer sunucunun DKIM anahtarı yalnız yayımlanmış olarak kontrol
+edilir (değeri o sunucunundur); ters DNS kurulumun açık işi olarak kalır, bu
+sayfanın satırı değildir; kayıt düzenleyicinin kendisi değişmedi. Yalnız
+yerel geri döngü sunucularında bileşen testleriyle ölçüldü; kurulu
+sunucularda değil.
+
 ## 28 Ekim ek kararı: kurulum sihirbazı v2, 4. aşama (v0.1.0-alpha.114 kaynağı)
 
 - **Tek sunucu, kendi DNS'i.** Kendi DNS'ini tutan tek sunucu bağımsızdır: iki
