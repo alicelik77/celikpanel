@@ -210,10 +210,10 @@ func (p *Panel) checkServerSetupDelegation(ctx context.Context, d serverSetupDra
 	result.Servers = servers
 	for _, server := range servers {
 		state := server.State
-		if server.Role == "backup" && state != "ok" {
-			// The backup DNS server answers once it is set up and receives the
-			// list: until then this waits, it is not a failure.
-			state = "waiting"
+		if server.Role == "backup" {
+			// Without proof of its first copy the backup waits (the caller
+			// applies the proof: applyServerSetupBackupCopy).
+			state = serverSetupBackupAnswerState(state, false)
 		}
 		result.Items = append(result.Items, serverSetupDelegationItem{ID: "answers_" + server.Role, State: state, Vars: map[string]string{"ip": server.IP}})
 	}
@@ -374,6 +374,63 @@ func checkServerSetupPublishedAnswers(ctx context.Context, d serverSetupDraft, s
 	return imported, serverSetupDelegationItem{ID: "imported", State: state, Vars: map[string]string{"matched": strconv.Itoa(imported.Matched), "total": strconv.Itoa(imported.Total)}}
 }
 
+// serverSetupBackupAnswerState is what a backup DNS server's direct answer
+// means, for the registrar card and the DNS page alike: answering is "ok";
+// until its first copy of the list is proven (the main's pair is ready, or
+// this backup consumes the main's catalog) anything else is "waiting", not
+// a failure; after that the answer stands ("not_yet": it answers, not for
+// the domain; "unknown": no answer could be read).
+func serverSetupBackupAnswerState(answered string, copyProven bool) string {
+	switch {
+	case answered == "ok":
+		return "ok"
+	case !copyProven:
+		return "waiting"
+	}
+	return answered
+}
+
+// applyServerSetupBackupCopy words the backup's item with the proof of its
+// first copy.
+func applyServerSetupBackupCopy(result *serverSetupDelegation, copyProven bool) {
+	for _, server := range result.Servers {
+		if server.Role != "backup" {
+			continue
+		}
+		for index := range result.Items {
+			if result.Items[index].ID == "answers_backup" {
+				result.Items[index].State = serverSetupBackupAnswerState(server.State, copyProven)
+			}
+		}
+	}
+}
+
+// dnsBackupCopyProven reads whether the pair's first copy is proven: on the
+// main DNS server the agent's proof that the backup serves the catalog
+// (pair ready), on the backup its proof that it consumes the main's catalog.
+// A read that fails, or no pair, is not a proof.
+func (p *Panel) dnsBackupCopyProven(ctx context.Context) bool {
+	if p.dnsOverviewSeams != nil && p.dnsOverviewSeams.CopyProven != nil {
+		return p.dnsOverviewSeams.CopyProven(ctx)
+	}
+	if p.db == nil || p.agentClient == nil {
+		return false
+	}
+	state, err := readDNSEngineDBState(ctx, p.db.GetDB())
+	if err != nil || state.ActiveEngine == "" || state.Topology != transport.DNSTopologyPaired {
+		return false
+	}
+	runtimes, _, _, err := p.readDNSBackendRuntime(ctx)
+	if err != nil {
+		return false
+	}
+	runtime := runtimes[state.ActiveEngine]
+	if state.PairRole == transport.DNSPairRoleSecondary {
+		return runtime.SecondaryReady
+	}
+	return runtime.PairReady
+}
+
 type serverSetupDelegationFlight struct {
 	done  chan struct{}
 	value serverSetupDelegation
@@ -412,18 +469,20 @@ func (p *Panel) serverSetupDelegation(ctx context.Context, d serverSetupDraft, n
 	if parsed := net.ParseIP(setupProviderRecordIPv6()); parsed != nil && parsed.To4() == nil && parsed.IsGlobalUnicast() && !parsed.IsPrivate() {
 		ipv6 = parsed.String()
 	}
+	copyProven := p.dnsBackupCopyProven(ctx)
 	raw, _ := json.Marshal(struct {
-		D    serverSetupDraft
-		IPv6 string
-	}{d, ipv6})
+		D          serverSetupDraft
+		IPv6       string
+		CopyProven bool
+	}{d, ipv6, copyProven})
 	key := string(raw)
 	value, _ := setupDelegationCaches.LoadOrStore(p, &serverSetupDelegationCache{})
 	cache := value.(*serverSetupDelegationCache)
 	cache.mu.Lock()
 	if cache.key == key && now.Sub(cache.at) >= 0 && now.Sub(cache.at) < serverSetupProviderRecordsTTL {
 		result := cache.value
-		cache.mu.Unlock()
 		result.NextCheckAfter = int((serverSetupProviderRecordsTTL - now.Sub(cache.at)).Seconds())
+		cache.mu.Unlock()
 		return result
 	}
 	if cache.inflight == nil {
@@ -446,6 +505,7 @@ func (p *Panel) serverSetupDelegation(ctx context.Context, d serverSetupDraft, n
 	cache.mu.Unlock()
 
 	result := p.checkServerSetupDelegation(context.WithoutCancel(ctx), d, ipv6, setupDelegationOptions())
+	applyServerSetupBackupCopy(&result, copyProven)
 	result.CheckedAt, result.NextCheckAfter = now.UTC().Format(time.RFC3339), int(serverSetupProviderRecordsTTL.Seconds())
 	complete := !slices.ContainsFunc(result.Items, func(item serverSetupDelegationItem) bool { return item.State == "unknown" })
 	flight.value = result

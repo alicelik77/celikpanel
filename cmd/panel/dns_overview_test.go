@@ -32,6 +32,8 @@ type overviewWorld struct {
 	parentNS []string
 	glue     map[string]string
 	servers  map[string]string
+	// noCopy: the backup's first copy is not proven yet.
+	noCopy atomic.Bool
 }
 
 func newOverviewWorld() *overviewWorld {
@@ -115,7 +117,8 @@ func (w *overviewWorld) seams(t *testing.T) *dnsOverviewSeams {
 	}}
 	return &dnsOverviewSeams{Lookups: []setupProviderRecordLookup{lookup, lookup}, Delegation: options,
 		IPv4: func() string { return "203.0.113.10" }, IPv6: func() string { return "" },
-		DKIM: func(context.Context, string) (string, error) { return "", nil }}
+		CopyProven: func(context.Context) bool { return !w.noCopy.Load() },
+		DKIM:       func(context.Context, string) (string, error) { return "", nil }}
 }
 
 func readDNSOverview(t *testing.T, p *Panel) dnsOverview {
@@ -601,5 +604,38 @@ func TestDNSOverviewDKIMKeyUnreadableIsUnknownAndMissingIsATask(t *testing.T) {
 	missing, _ := f.panel.dnsOverview(context.Background(), time.Now().Add(2*time.Minute), false)
 	if row := dkimRow(missing); row.State != "pending" || missing.Sentence.State != "prerequisite" || missing.Sentence.Code != "dns_overview_dkim_pending" {
 		t.Fatalf("no key after setup: %+v %+v", row, missing.Sentence)
+	}
+}
+
+func TestDNSOverviewBackupBeforeItsFirstCopyWaitsLikeTheRegistrarCard(t *testing.T) {
+	f, world := overviewPairedFirst(t)
+	previousOptions, previousIPv6 := setupDelegationOptions, setupProviderRecordIPv6
+	t.Cleanup(func() { setupDelegationOptions, setupProviderRecordIPv6 = previousOptions, previousIPv6 })
+	options := f.panel.dnsOverviewSeams.Delegation
+	setupDelegationOptions = func() dnswire.DelegationOptions { return options }
+	setupProviderRecordIPv6 = func() string { return "" }
+	world.set(func(w *overviewWorld) { w.servers["198.51.100.20"] = "refused" })
+	world.noCopy.Store(true)
+	in, err := f.panel.dnsOverviewInputs(context.Background(), f.panel.dnsOverviewEdges())
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	for _, proven := range []bool{false, true} {
+		world.noCopy.Store(!proven)
+		now = now.Add(2 * time.Minute)
+		value, _ := f.panel.dnsOverview(context.Background(), now, false)
+		card := itemStates(f.panel.serverSetupDelegation(context.Background(), in.Draft, now))["answers_backup"]
+		answers := overviewServer(value, "peer").Answers
+		wantCard, wantAnswers, wantCode := "waiting", "waiting", "dns_overview_backup_first_copy"
+		if proven {
+			wantCard, wantAnswers, wantCode = "not_yet", "not_serving", "dns_overview_backup_not_serving"
+		}
+		if card != wantCard || answers != wantAnswers || value.Sentence.Code != wantCode {
+			t.Fatalf("copy proven=%v: card %q, page %q (%s)", proven, card, answers, value.Sentence.Code)
+		}
+	}
+	if serverSetupBackupAnswerState("ok", false) != "ok" || serverSetupBackupAnswerState("unknown", true) != "unknown" {
+		t.Fatal("the shared rule")
 	}
 }

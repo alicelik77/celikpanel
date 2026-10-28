@@ -46,6 +46,9 @@ type dnsOverviewSeams struct {
 	Delegation dnswire.DelegationOptions
 	IPv4       func() string
 	IPv6       func() string
+	// CopyProven reads whether the backup's first copy of the list is
+	// proven (serverSetupBackupAnswerState); nil reads the agent.
+	CopyProven func(ctx context.Context) bool
 	// DKIM answers this server's public DKIM key for the main domain ("" when
 	// there is none yet). Only the public half is ever read.
 	DKIM func(ctx context.Context, domain string) (string, error)
@@ -516,6 +519,7 @@ func (p *Panel) checkDNSOverview(ctx context.Context, in dnsOverviewInput, edges
 	var wg sync.WaitGroup
 	var checked []serverSetupProviderRecordRow
 	var delegation serverSetupDelegation
+	copyProven := false
 	delegate := in.home() == "own" && d.MainDomain != "" && d.NS1 != "" && d.NS2 != "" && (role != "backup" || in.Peer.Bound || d.PeerIP != "")
 	wg.Add(1)
 	go func() {
@@ -527,6 +531,8 @@ func (p *Panel) checkDNSOverview(ctx context.Context, in dnsOverviewInput, edges
 		go func() {
 			defer wg.Done()
 			delegation = p.checkServerSetupDelegation(ctx, d, in.IPv6, edges.Delegation)
+			copyProven = p.dnsBackupCopyProven(ctx)
+			applyServerSetupBackupCopy(&delegation, copyProven)
 		}()
 	}
 	wg.Wait()
@@ -583,7 +589,11 @@ func (p *Panel) checkDNSOverview(ctx context.Context, in dnsOverviewInput, edges
 			}
 			for _, answered := range delegation.Servers {
 				if answered.Role == dnsRole && answered.IP != "" {
-					server.Answers = map[string]string{"ok": "ok", "not_yet": "not_serving"}[answered.State]
+					state := answered.State
+					if dnsRole == "backup" {
+						state = serverSetupBackupAnswerState(state, copyProven)
+					}
+					server.Answers = map[string]string{"ok": "ok", "not_yet": "not_serving", "waiting": "waiting"}[state]
 					if server.Answers == "" {
 						server.Answers = "unknown"
 					}
@@ -777,6 +787,10 @@ func dnsOverviewSentenceFor(in dnsOverviewInput, r dnsOverview) dnsOverviewSente
 			vars["kind"] = mail.Kind
 			return dnsOverviewSay("unknown", "dns_overview_some_unknown", "Some records could not be checked from the internet just now.", "Nobody yet.", "Nothing to do now.", "This page asks again in a minute.", vars)
 		}
+	}
+	if backup.Role == "backup" && backup.Answers == "waiting" {
+		vars["backup"] = label(backup)
+		return dnsOverviewSay("waiting", "dns_overview_backup_first_copy", "The backup DNS server has not received its first copy of the list yet.", "Nobody: it is copied by itself.", "Nothing to do.", "It answers for the domain once it has its copy; this page checks every minute.", vars)
 	}
 	for _, name := range r.Names {
 		if name.State == "missing" || name.State == "different" || name.State == "not_yet" {

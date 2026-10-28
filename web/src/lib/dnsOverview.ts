@@ -17,7 +17,7 @@ export interface DNSOverviewServer {
     panel_name?: string;
     software?: string;
     ipv4?: string;
-    answers: 'ok' | 'not_serving' | 'unknown' | 'not_joined' | 'not_applicable';
+    answers: 'ok' | 'not_serving' | 'waiting' | 'unknown' | 'not_joined' | 'not_applicable';
     serial?: number;
 }
 
@@ -65,7 +65,7 @@ export const DNS_OVERVIEW_CODES = [
     'setup_not_done', 'setup_running', 'join_waiting', 'main_not_serving', 'backup_not_serving', 'peer_not_joined',
     'registrar_not_pointing', 'domain_not_registered', 'glue_missing', 'provider_records', 'remote_records',
     'provider_mail', 'remote_mail', 'server_unknown', 'some_unknown', 'spreading', 'mail_spreading',
-    'ok_mail_kept', 'dkim_pending', 'ok', 'check_running',
+    'backup_first_copy', 'ok_mail_kept', 'dkim_pending', 'ok', 'check_running',
 ] as const;
 
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
@@ -86,7 +86,7 @@ export function decodeDNSOverview(raw: unknown): DNSOverview {
     if (!Array.isArray(raw.servers) || raw.servers.length > 2) throw invalid('servers');
     for (const server of raw.servers) {
         if (!record(server) || !oneOf(server.who, ['this', 'peer']) || !oneOf(server.role, ['main', 'backup', 'standalone', 'none'])
-            || !oneOf(server.answers, ['ok', 'not_serving', 'unknown', 'not_joined', 'not_applicable'])
+            || !oneOf(server.answers, ['ok', 'not_serving', 'waiting', 'unknown', 'not_joined', 'not_applicable'])
             || !optionalText(server.short_name) || !optionalText(server.panel_name) || !optionalText(server.software) || !optionalText(server.ipv4)) throw invalid('server');
     }
     if (!Array.isArray(raw.names) || raw.names.length > 32) throw invalid('names');
