@@ -233,6 +233,20 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 			return
 		}
 		defer tx.Rollback()
+		// A join to another first server replaces the old link and withdraws
+		// the enrollment this server issued for the old first server.
+		var old serverSetupLinkRecord
+		replaced, err := readServerSetupJSONSetting(ctx, tx, serverSetupLinkKey, &old)
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		if replaced && old.IssuedEnrollment != "" {
+			if err := retireServerSetupEnrollment(ctx, tx, remoteDNSHash(old.IssuedEnrollment)); err != nil {
+				writeServerError(w, err)
+				return
+			}
+		}
 		if err := writeServerSetupJSONSetting(ctx, tx, serverSetupLinkKey, link); err != nil {
 			writeServerError(w, err)
 			return
@@ -244,6 +258,9 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 		if err := tx.Commit(); err != nil {
 			writeServerError(w, err)
 			return
+		}
+		if replaced {
+			p.audit(r, "server.setup.join_replaced", "", 0)
 		}
 		p.audit(r, "server.setup.peer_connected", "", 0)
 		saved, err := p.saveServerSetupDraft(ctx, state.Revision, serverSetupJoinedDraft(state.Draft, document))

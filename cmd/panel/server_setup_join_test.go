@@ -383,3 +383,38 @@ func TestServerSetupJoinSourceIsTheDeclaredIPv4Only(t *testing.T) {
 		}
 	}
 }
+
+// A new join withdraws what the earlier join handed over: its enrollment
+// code and, once used, the publishing client it made.
+func TestServerSetupJoinReplacedWithdrawsTheEarlierEnrollment(t *testing.T) {
+	_, cert := joinTestCertificate(t)
+	joinTestSeams(t, cert, "")
+	f, _, _ := joinFirstFixture(t, joinFirstDraft())
+	view := issueJoinCode(t, f)
+	w := joinMachineRequest(t, f, serverSetupJoinPath, "", joinRequestFor(t, view.Code, strings.Repeat("a", 32)))
+	var first serverSetupJoinDocument
+	if w.Code != http.StatusOK || json.Unmarshal(w.Body.Bytes(), &first) != nil {
+		t.Fatalf("first join: %d %s", w.Code, w.Body.String())
+	}
+	// The second server enrolled with it.
+	client := strings.Repeat("9", 32)
+	db := f.database.GetDB()
+	if _, err := db.Exec(`INSERT INTO remote_dns_clients(id,credential_hash,label,created_at,revoked) VALUES(?,?,?,?,0)`, client, remoteDNSHash(strings.Repeat("1", 64)), "old", "now"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`UPDATE remote_dns_enrollments SET client_id=? WHERE code_hash=?`, client, remoteDNSHash(first.EnrollmentCode)); err != nil {
+		t.Fatal(err)
+	}
+	setupJoinLimiter = &serverSetupJoinLimiter{}
+	view = issueJoinCode(t, f)
+	if w := joinMachineRequest(t, f, serverSetupJoinPath, "", joinRequestFor(t, view.Code, strings.Repeat("b", 32))); w.Code != http.StatusOK {
+		t.Fatalf("new join: %d %s", w.Code, w.Body.String())
+	}
+	var old, revoked, replaced int
+	db.QueryRow(`SELECT COUNT(*) FROM remote_dns_enrollments WHERE code_hash=?`, remoteDNSHash(first.EnrollmentCode)).Scan(&old)
+	db.QueryRow(`SELECT revoked FROM remote_dns_clients WHERE id=?`, client).Scan(&revoked)
+	db.QueryRow(`SELECT COUNT(*) FROM audit_logs WHERE action='server.setup.join_replaced'`).Scan(&replaced)
+	if old != 0 || revoked != 1 || replaced != 1 {
+		t.Fatalf("the old enrollment and its client are withdrawn: enrollment=%d revoked=%d audit=%d", old, revoked, replaced)
+	}
+}

@@ -167,3 +167,27 @@ func TestServerSetupPeerMailRecordsAreWrittenOnTheMain(t *testing.T) {
 		t.Fatalf("an invalid record: %d", w.Code)
 	}
 }
+
+// Joining another first server withdraws the enrollment this server issued
+// for the old one.
+func TestServerSetupPeerNewLinkWithdrawsTheIssuedEnrollment(t *testing.T) {
+	pair := newPeerPair(t, joinFirstDraft())
+	issued := strings.Repeat("7", 64)
+	db := pair.second.database.GetDB()
+	if _, err := db.Exec(`INSERT INTO remote_dns_enrollments(code_hash,expires_at) VALUES(?,?)`, remoteDNSHash(issued), 9999999999); err != nil {
+		t.Fatal(err)
+	}
+	old := serverSetupLinkRecord{RequestID: strings.Repeat("6", 32), Address: "https://203.0.113.99:2083", Pin: strings.Repeat("ab", 10), LinkID: strings.Repeat("5", 32), LinkCredential: strings.Repeat("4", 64), IssuedEnrollment: issued}
+	if err := writeServerSetupJSONSetting(context.Background(), db, serverSetupLinkKey, old); err != nil {
+		t.Fatal(err)
+	}
+	view := issueJoinCode(t, pair.first)
+	if answer := pair.connect(t, view.Code); answer.State != "ok" {
+		t.Fatalf("connect: %+v", answer)
+	}
+	var left int
+	db.QueryRow(`SELECT COUNT(*) FROM remote_dns_enrollments WHERE code_hash=?`, remoteDNSHash(issued)).Scan(&left)
+	if left != 0 {
+		t.Fatal("the enrollment issued for the old first server is withdrawn")
+	}
+}

@@ -301,6 +301,7 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'dashboard.audit.action.server.setup.child.failed': 'kurulum sırasında {target} bileşenini hazırlayamadı',
     'dashboard.audit.action.server.setup.complete': 'sunucu kurulumunu tamamladı',
     'dashboard.audit.action.server.setup.dns_publisher': 'kurulumun DNS yayımlama adımını onayladı',
+    'dashboard.audit.action.server.setup.join_replaced': 'ikinci sunucunun önceki katılmasını değiştirdi ve verdiği izinleri geri aldı',
     'dashboard.audit.action.server.setup.join_code': 'ikinci sunucunun katılması için kod oluşturdu',
     'dashboard.audit.action.server.setup.peer_joined': 'ikinci sunucu koduyla katıldı',
     'dashboard.audit.action.server.setup.peer_connected': 'bu sunucuyu ilk sunucuya bağladı',

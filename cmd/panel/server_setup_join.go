@@ -597,6 +597,21 @@ func (p *Panel) handleServerSetupJoin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer tx.Rollback()
+	// A join that replaces an earlier one withdraws what the earlier one
+	// handed over: its unused enrollment code, or the publishing client it
+	// already made (revoked).
+	var previous serverSetupJoinRecord
+	replaced, err := readServerSetupJSONSetting(ctx, tx, serverSetupJoinKey, &previous)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	if replaced {
+		if err := retireServerSetupEnrollment(ctx, tx, previous.EnrollmentHash); err != nil {
+			writeServerError(w, err)
+			return
+		}
+	}
 	if err := p.replaceServerSetupJoinEnrollment(ctx, tx, document.EnrollmentCode, ""); err != nil {
 		writeServerError(w, err)
 		return
@@ -613,6 +628,9 @@ func (p *Panel) handleServerSetupJoin(w http.ResponseWriter, r *http.Request) {
 	if err := tx.Commit(); err != nil {
 		writeServerError(w, err)
 		return
+	}
+	if replaced {
+		p.audit(r, "server.setup.join_replaced", "", 0)
 	}
 	p.audit(r, "server.setup.peer_joined", "", 0)
 	p.wakeServerSetupRunner()
@@ -649,6 +667,32 @@ func (p *Panel) newServerSetupJoin(ctx context.Context, plan serverSetupPlan, re
 		join.EnrollmentHash = remoteDNSHash(code)
 	}
 	return document, join, nil
+}
+
+// retireServerSetupEnrollment withdraws an enrollment code an earlier join
+// handed over: unused, it is deleted; used, it is deleted and the remote DNS
+// publishing client it made is revoked, so nothing the earlier join granted
+// stays live.
+// Onceki katilmanin verdigi kayit kodu geri alinir; kullanildiysa istemci iptal edilir.
+func retireServerSetupEnrollment(ctx context.Context, tx *sql.Tx, hash string) error {
+	if hash == "" {
+		return nil
+	}
+	var client string
+	err := tx.QueryRowContext(ctx, `SELECT client_id FROM remote_dns_enrollments WHERE code_hash=?`, hash).Scan(&client)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if client != "" {
+		if _, err := tx.ExecContext(ctx, `UPDATE remote_dns_clients SET revoked=1 WHERE id=?`, client); err != nil {
+			return err
+		}
+	}
+	_, err = tx.ExecContext(ctx, `DELETE FROM remote_dns_enrollments WHERE code_hash=?`, hash)
+	return err
 }
 
 // replaceServerSetupJoinEnrollment issues the handed-over enrollment code and

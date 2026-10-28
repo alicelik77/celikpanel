@@ -153,6 +153,7 @@ var auditActionNames = []string{
 	"server.setup.extend.cancel",
 	"server.setup.guidance",
 	"server.setup.join_code",
+	"server.setup.join_replaced",
 	"server.setup.mail_enrollment.continue",
 	"server.setup.peer_connected",
 	"server.setup.peer_dkim",

@@ -320,6 +320,7 @@ export const enDashboardScreens = {
     'dashboard.audit.action.server.setup.child.failed': 'could not prepare {target} during setup',
     'dashboard.audit.action.server.setup.complete': 'completed the server setup',
     'dashboard.audit.action.server.setup.dns_publisher': 'confirmed the DNS publication step of setup',
+    'dashboard.audit.action.server.setup.join_replaced': 'replaced an earlier join of the second server and withdrew what it had granted',
     'dashboard.audit.action.server.setup.join_code': 'created a code for the second server to join',
     'dashboard.audit.action.server.setup.peer_joined': 'the second server joined with its code',
     'dashboard.audit.action.server.setup.peer_connected': 'joined this server to the first server',
