@@ -290,7 +290,7 @@ func TestDNSOverviewWhileSetupWaitsForTheSecondServer(t *testing.T) {
 	world := newOverviewWorld()
 	f.panel.dnsOverviewSeams = world.seams(t)
 	value := readDNSOverview(t, f.panel)
-	if value.Join.State != "waiting" || value.Sentence.Code != "dns_overview_setup_running" || value.Sentence.State != "waiting" {
+	if value.Join.State != "waiting" || value.Sentence.Code != "dns_overview_join_waiting" || value.Sentence.State != "prerequisite" || !strings.Contains(value.Sentence.Next, "join code") {
 		t.Fatalf("waiting join: %+v %+v", value.Join, value.Sentence)
 	}
 	if peer := overviewServer(value, "peer"); peer.Answers != "not_joined" || peer.ShortName != "" || peer.PanelName != "" {
@@ -551,5 +551,25 @@ func TestDNSOverviewACheckThatPanicsWakesItsReaders(t *testing.T) {
 	}
 	if f.panel.dnsOverviewInFlight() {
 		t.Fatal("the in-flight entry stayed")
+	}
+}
+
+func TestDNSOverviewSetupNotFinishedAndNotRunningAsksNothing(t *testing.T) {
+	f, world := overviewDraftFixture(t, joinFirstDraft())
+	if _, err := f.database.GetDB().Exec(`UPDATE server_setup_state SET status='draft', completed_at='' WHERE id=1`); err != nil {
+		t.Fatal(err)
+	}
+	world.set(func(w *overviewWorld) { w.servers = map[string]string{} })
+	value := readDNSOverview(t, f.panel)
+	if value.Sentence.State != "prerequisite" || value.Sentence.Code != "dns_overview_setup_not_done" || value.SetupReady {
+		t.Fatalf("sentence: %+v", value.Sentence)
+	}
+	if world.asked.Load() != 0 || len(value.Names) != 0 || len(value.Mail) != 0 {
+		t.Fatalf("nothing is asked of the internet: asked=%d names=%+v", world.asked.Load(), value.Names)
+	}
+	for _, server := range value.Servers {
+		if server.Answers == "not_serving" || server.Answers == "unknown" {
+			t.Fatalf("an unfinished server is reported as failing: %+v", server)
+		}
 	}
 }

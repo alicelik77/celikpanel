@@ -467,6 +467,14 @@ func (p *Panel) checkDNSOverview(ctx context.Context, in dnsOverviewInput, edges
 		result.Servers = append(result.Servers, peer)
 	}
 	result.Join = dnsOverviewJoinFor(in, role)
+	result.MailReceiver = dnsOverviewMailReceiver{Server: "none"}
+	// Setup neither finished nor running: nothing is asked of the internet,
+	// so nothing unfinished is reported as failing; the page points to
+	// Server setup.
+	if !in.Ready && !in.Running {
+		result.Sentence = dnsOverviewSentenceFor(in, result)
+		return result
+	}
 
 	addresses := dnsOverviewAddressRows(in)
 	receiver, choice, hasMail := dnsOverviewMailInputs(in)
@@ -647,8 +655,11 @@ func dnsOverviewSay(state, code, reason, who, next, then string, vars map[string
 func dnsOverviewSentenceFor(in dnsOverviewInput, r dnsOverview) dnsOverviewSentence {
 	d := in.Draft
 	vars := map[string]string{"domain": d.MainDomain}
-	if d.MainDomain == "" || d.DNSMode == "" {
-		return dnsOverviewSay("prerequisite", "dns_overview_setup_not_done", "Server setup has not chosen the main domain and where its DNS list is kept yet.", "You, in Server setup.", "Finish server setup.", "This page then shows the names and what the internet answers.", nil)
+	if d.MainDomain == "" || d.DNSMode == "" || (!in.Ready && !in.Running) {
+		return dnsOverviewSay("prerequisite", "dns_overview_setup_not_done", "Server setup has not finished, so there is no DNS picture to check yet.", "You, in Server setup.", "Open Server setup and finish it.", "This page then shows the names and what the internet answers.", nil)
+	}
+	if in.JoinWaiting {
+		return dnsOverviewSay("prerequisite", "dns_overview_join_waiting", "Setup waits for the second server to join.", "You, on the second server.", "Run the second server's setup and enter this server's address and its join code (make the code below).", "Setup continues by itself once the second server has joined.", vars)
 	}
 	if !in.Ready && in.Running {
 		return dnsOverviewSay("waiting", "dns_overview_setup_running", "Server setup is still running; DNS is part of it.", "Follow the setup page; it says when you need to act.", "Open Server setup.", "This page shows the finished picture once setup completes.", vars)

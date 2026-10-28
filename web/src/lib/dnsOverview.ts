@@ -62,7 +62,7 @@ export interface DNSOverview {
 // The sentence codes the page words itself; any other code is shown with the
 // server's own English sentence (D-024: never a bare code).
 export const DNS_OVERVIEW_CODES = [
-    'setup_not_done', 'setup_running', 'main_not_serving', 'backup_not_serving', 'peer_not_joined',
+    'setup_not_done', 'setup_running', 'join_waiting', 'main_not_serving', 'backup_not_serving', 'peer_not_joined',
     'registrar_not_pointing', 'domain_not_registered', 'glue_missing', 'provider_records', 'remote_records',
     'provider_mail', 'remote_mail', 'server_unknown', 'some_unknown', 'spreading', 'mail_spreading',
     'ok_mail_kept', 'ok', 'check_running',
