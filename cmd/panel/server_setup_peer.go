@@ -190,6 +190,17 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 	joinLock := p.serverSetupJoinLock()
 	joinLock.Lock()
 	defer joinLock.Unlock()
+	// Already joined to this first server (a draft that could not be saved,
+	// or the same form sent twice): the join is not repeated; the answers it
+	// gave are applied again, which changes nothing when they already are.
+	if link, err := p.readServerSetupLink(ctx); err != nil {
+		writeServerError(w, err)
+		return
+	} else if link != nil && link.Address == address {
+		_, _ = p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key=?`, serverSetupLinkPendingKey)
+		_ = json.NewEncoder(w).Encode(p.applyServerSetupJoinedDraft(ctx, *link))
+		return
+	}
 	canonicalCode := formatServerSetupJoinCode(pin, mustDecodeServerSetupProof(proof))
 	var pending serverSetupLinkPending
 	found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupLinkPendingKey, &pending)
@@ -263,15 +274,7 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 			p.audit(r, "server.setup.join_replaced", "", 0)
 		}
 		p.audit(r, "server.setup.peer_connected", "", 0)
-		saved, err := p.saveServerSetupDraft(ctx, state.Revision, serverSetupJoinedDraft(state.Draft, document))
-		if err != nil {
-			// The link is kept; the draft is taken from it again on the
-			// next read of this answer (the review compares them).
-			answer.State, answer.Code = "ok", "server_setup_peer_draft_retry"
-			_ = json.NewEncoder(w).Encode(answer)
-			return
-		}
-		answer.State, answer.Setup = "ok", &saved
+		answer = p.applyServerSetupJoinedDraft(ctx, link)
 	case callErr == nil:
 		// An answer that is not a join document for this request.
 		answer.State, answer.Code = "unknown", "server_setup_join_unknown"
@@ -288,6 +291,26 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 		answer.State, answer.Code = "unknown", "server_setup_join_unknown"
 	}
 	_ = json.NewEncoder(w).Encode(answer)
+}
+
+// serverSetupPeerSaveDraft saves the joined draft; tests make it fail once.
+var serverSetupPeerSaveDraft = func(p *Panel, ctx context.Context, revision int, d serverSetupDraft) (serverSetupState, error) {
+	return p.saveServerSetupDraft(ctx, revision, d)
+}
+
+// applyServerSetupJoinedDraft takes the shared answers of the link into the
+// draft. When that cannot be saved (D-024: a known join, answers not yet
+// applied) the answer says so; sending the form again applies them without
+// joining again.
+func (p *Panel) applyServerSetupJoinedDraft(ctx context.Context, link serverSetupLinkRecord) serverSetupPeerConnectAnswer {
+	state, err := p.loadServerSetup(ctx)
+	if err == nil {
+		var saved serverSetupState
+		if saved, err = serverSetupPeerSaveDraft(p, ctx, state.Revision, serverSetupJoinedDraft(state.Draft, link.Document)); err == nil {
+			return serverSetupPeerConnectAnswer{State: "ok", Setup: &saved}
+		}
+	}
+	return serverSetupPeerConnectAnswer{State: "ok", Code: "server_setup_peer_draft_retry"}
 }
 
 func mustDecodeServerSetupProof(proof string) []byte {

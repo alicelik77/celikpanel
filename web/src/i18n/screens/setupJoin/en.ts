@@ -17,6 +17,7 @@ export const enSetupJoinScreens = {
     "setup.v5.join.invalid": "Enter the first server's address and its 24-character code.",
     "setup.v5.join.running": "This server's setup is running; a server joins before its setup starts.",
     "setup.v5.join.failed": "The join request could not be sent from this page. Nothing was changed; try again.",
+    "setup.v5.join.draftRetry": "This server joined the first server, but its answers could not be saved here yet. Press Try again: the join is not repeated, only its answers are applied.",
     "setup.v5.join.state.unknown": "The first server's answer did not arrive. Try again: the same join is repeated, never a second one.",
     "setup.v5.join.state.unreachable": "The first server could not be reached at this address. Nothing was sent and the code is still unused. Check the address and that the first server is running, then try again.",
     "setup.v5.join.state.wrongServer": "The server at this address is not the one this code belongs to, so nothing was sent. Check the address on the first server's setup screen.",

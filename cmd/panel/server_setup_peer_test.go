@@ -280,3 +280,33 @@ func TestServerSetupPeerNamesClashesAreRefusedBeforeAnythingIsWritten(t *testing
 		t.Fatalf("mail on both: %q", code)
 	}
 }
+
+// A draft that could not be saved after the join is applied by sending the
+// form again; the join is never repeated, and a second press after success
+// is the same answer, not "code used".
+func TestServerSetupPeerConnectRecoversAFailedDraftSave(t *testing.T) {
+	pair := newPeerPair(t, joinFirstDraft())
+	view := issueJoinCode(t, pair.first)
+	previous := serverSetupPeerSaveDraft
+	t.Cleanup(func() { serverSetupPeerSaveDraft = previous })
+	failed := false
+	serverSetupPeerSaveDraft = func(p *Panel, ctx context.Context, revision int, d serverSetupDraft) (serverSetupState, error) {
+		if !failed {
+			failed = true
+			return serverSetupState{}, errServerSetupConflict
+		}
+		return previous(p, ctx, revision, d)
+	}
+	if answer := pair.connect(t, view.Code); answer.State != "ok" || answer.Code != "server_setup_peer_draft_retry" || answer.Setup != nil {
+		t.Fatalf("a failed save is said: %+v", answer)
+	}
+	for attempt := 0; attempt < 2; attempt++ {
+		answer := pair.connect(t, view.Code)
+		if answer.State != "ok" || answer.Code != "" || answer.Setup == nil || answer.Setup.Draft.MainDomain != "example.test" || answer.Setup.Draft.PeerIP != "203.0.113.10" {
+			t.Fatalf("attempt %d recovers: %+v", attempt, answer)
+		}
+	}
+	if pair.joins.Load() != 1 {
+		t.Fatalf("the join is not repeated: %d", pair.joins.Load())
+	}
+}

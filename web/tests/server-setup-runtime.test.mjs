@@ -1518,6 +1518,7 @@ test('wizard v2: the second server joins with the first server\'s address and co
     let joined = false; const answers = [
         { state: 'refused', code: 'server_setup_join_code_wrong', attempts_left: 3 },
         { state: 'unknown', code: 'server_setup_join_unknown' },
+        { state: 'ok', code: 'server_setup_peer_draft_retry' },
     ];
     const base = globalThis.fetch;
     globalThis.fetch = async (url, options) => {
@@ -1543,10 +1544,13 @@ test('wizard v2: the second server joins with the first server\'s address and co
         await act(async () => findButton('setup.v5.join.retry').props.onClick());
         assert.ok(textOf().includes('setup.v5.join.state.unknown'), 'a lost answer says the same join is asked again');
         await act(async () => findButton('setup.v5.join.retry').props.onClick());
+        assert.ok(textOf().includes('setup.v5.join.draftRetry'), 'a join whose answers could not be saved says what to do');
+        assert.ok(input('setup-main_domain'), 'the wizard stays until the answers are applied');
+        await act(async () => findButton('setup.v5.join.retry').props.onClick());
         await settleReads();
         const sent = calls.filter(call => call.url === '/api/v1/setup/peer/connect').map(call => JSON.parse(call.options.body));
-        assert.equal(sent.length, 3);
-        assert.deepEqual(sent[2], { address: '203.0.113.10:2083', code: 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX' });
+        assert.equal(sent.length, 4);
+        assert.deepEqual(sent[3], { address: '203.0.113.10:2083', code: 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX' });
         assert.ok(input('setup-short_name'), 'after the join the wizard goes on with this server\'s own name');
         await act(async () => findButton('setup.back').props.onClick());
         assert.equal(tree.root.findAllByProps({ 'data-setup-joined': '' }).length, 1, 'the shared answers are shown, fixed');

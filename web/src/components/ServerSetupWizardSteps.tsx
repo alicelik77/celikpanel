@@ -282,7 +282,7 @@ export function SetupJoinPanel({ onJoined, disabled }: { onJoined: (setup: unkno
             if (!peerRecord(body) || !['ok', 'refused', 'wrong_server', 'unreachable', 'unknown'].includes(String(body.state))) { setProblem('setup.v5.join.failed'); return; }
             const value = body as unknown as SetupConnectAnswer;
             setAnswer(value);
-            if (value.state === 'ok') onJoined(value.setup);
+            if (value.state === 'ok' && value.setup) onJoined(value.setup);
         } catch {
             // The request may not have left this page: nothing is assumed.
             setProblem('setup.v5.join.failed');
@@ -292,7 +292,8 @@ export function SetupJoinPanel({ onJoined, disabled }: { onJoined: (setup: unkno
         const known = ['server_setup_join_code_wrong', 'server_setup_join_code_used', 'server_setup_join_code_expired', 'server_setup_join_code_exhausted', 'server_setup_join_code_unavailable', 'server_setup_join_source_mismatch', 'server_setup_join_not_waiting', 'server_setup_join_rate_limited', 'server_setup_join_same_server', 'server_setup_join_address_not_public'];
         return known.includes(value.code || '') ? t(`setup.v5.join.refused.${value.code}` as TranslationKey, { left: value.attempts_left ?? 0 }) : t('setup.v5.join.refused.other', { code: value.code || '' });
     };
-    const message = answer && answer.state !== 'ok' ? answer.state === 'refused' ? refused(answer)
+    const message = answer?.state === 'ok' ? answer.setup ? '' : t('setup.v5.join.draftRetry')
+        : answer ? answer.state === 'refused' ? refused(answer)
         : t(answer.state === 'wrong_server' ? 'setup.v5.join.state.wrongServer' : answer.state === 'unreachable' ? 'setup.v5.join.state.unreachable' : 'setup.v5.join.state.unknown') : '';
     return <section aria-labelledby="setup-join-title" className="mt-8 space-y-3 border-t border-border pt-6" data-setup-join="">
         <h3 id="setup-join-title" className="font-semibold">{t('setup.v5.join.title')}</h3>
@@ -302,7 +303,7 @@ export function SetupJoinPanel({ onJoined, disabled }: { onJoined: (setup: unkno
             <SetupWizardInput name="join_code" label={t('setup.v5.join.code')} value={code} onChange={setCode} placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX" help={t('setup.v5.join.codeHelp')} />
             {problem && <p role="alert" className="text-sm leading-6 text-danger">{t(problem)}</p>}
             {message && <p role={answer?.state === 'refused' ? 'alert' : 'status'} className="text-sm leading-6" data-setup-join-state={answer?.state}>{message}</p>}
-            <Button type="button" variant="primary" disabled={busy || disabled} loading={busy} onClick={() => void join()}>{t(busy ? 'setup.v5.join.joining' : answer && answer.state !== 'ok' ? 'setup.v5.join.retry' : 'setup.v5.join.submit')}</Button>
+            <Button type="button" variant="primary" disabled={busy || disabled} loading={busy} onClick={() => void join()}>{t(busy ? 'setup.v5.join.joining' : answer && !(answer.state === 'ok' && answer.setup) ? 'setup.v5.join.retry' : 'setup.v5.join.submit')}</Button>
         </div>}
     </section>;
 }
