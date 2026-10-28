@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"net/url"
@@ -245,6 +248,9 @@ type dnsOverviewInput struct {
 	DomainID    int64
 	Infra       bool
 	IPv4, IPv6  string
+	// ZoneDigest is a digest of the main domain zone's records: any write
+	// to the zone, by any path, is a new state and a new check.
+	ZoneDigest string
 }
 
 func (p *Panel) dnsOverviewInputs(ctx context.Context, edges dnsOverviewSeams) (dnsOverviewInput, error) {
@@ -299,6 +305,9 @@ func (p *Panel) dnsOverviewInputs(ctx context.Context, edges dnsOverviewSeams) (
 		if in.Infra, err = p.isInfrastructureDNSZone(ctx, domain); err != nil {
 			return in, err
 		}
+		if in.ZoneDigest, err = p.dnsOverviewZoneDigest(ctx, domain); err != nil {
+			return in, err
+		}
 	}
 	if ip, ok := canonicalIPv4(edges.IPv4()); ok {
 		in.IPv4 = ip
@@ -307,6 +316,35 @@ func (p *Panel) dnsOverviewInputs(ctx context.Context, edges dnsOverviewSeams) (
 		in.IPv6 = parsed.String()
 	}
 	return in, nil
+}
+
+// dnsOverviewZoneDigest digests a zone's stored records (bounded), "" when
+// there is no such zone.
+func (p *Panel) dnsOverviewZoneDigest(ctx context.Context, zone string) (string, error) {
+	rows, err := p.db.GetDB().QueryContext(ctx, `SELECT r.id,COALESCE(r.name,''),COALESCE(r.type,''),COALESCE(r.content,''),COALESCE(r.ttl,0),COALESCE(r.prio,0),COALESCE(r.disabled,0)
+		FROM pdns_records r JOIN pdns_domains d ON d.id=r.domain_id WHERE d.name=? ORDER BY r.id LIMIT 4097`, zone)
+	if err != nil {
+		return "", err
+	}
+	defer rows.Close()
+	digest := sha256.New()
+	count := 0
+	for rows.Next() {
+		var id, ttl, prio, disabled int64
+		var name, recordType, content string
+		if err := rows.Scan(&id, &name, &recordType, &content, &ttl, &prio, &disabled); err != nil {
+			return "", err
+		}
+		count++
+		fmt.Fprintf(digest, "%d|%q|%q|%q|%d|%d|%d;", id, name, recordType, content, ttl, prio, disabled)
+	}
+	if err := rows.Err(); err != nil {
+		return "", err
+	}
+	if count == 0 {
+		return "", nil
+	}
+	return hex.EncodeToString(digest.Sum(nil)), nil
 }
 
 // thisRole is this server's DNS role in the picture.

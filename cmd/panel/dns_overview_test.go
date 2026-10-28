@@ -673,3 +673,22 @@ func TestDNSOverviewAnOwnerChangeInOurListIsNotADelay(t *testing.T) {
 		t.Fatalf("unreadable own answer: %+v", unread.Sentence)
 	}
 }
+
+func TestDNSOverviewAnyRecordWriteIsANewCheck(t *testing.T) {
+	f, world, _ := overviewMailServer(t)
+	now := time.Now()
+	if _, err := f.panel.dnsOverview(context.Background(), now, false); err != nil {
+		t.Fatal(err)
+	}
+	asked := world.asked.Load()
+	if _, err := f.panel.dnsOverview(context.Background(), now.Add(10*time.Second), false); err != nil || world.asked.Load() != asked {
+		t.Fatalf("an unchanged zone shares the answer: %v", err)
+	}
+	// Any write path: here the database itself.
+	if _, err := f.database.GetDB().Exec(`INSERT INTO pdns_records(domain_id,name,type,content,ttl) SELECT id,'shop.example.test','CNAME','shops.example.net',300 FROM pdns_domains WHERE name='example.test'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.panel.dnsOverview(context.Background(), now.Add(20*time.Second), false); err != nil || world.asked.Load() == asked {
+		t.Fatalf("a changed zone was answered from the shared check: %v", err)
+	}
+}
