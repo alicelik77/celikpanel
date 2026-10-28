@@ -555,3 +555,57 @@ func TestServerSetupInfrastructureDNSBlocksUnpreparedPowerDNSPrimary(t *testing.
 		t.Fatalf("unsupported first install reached Agent: calls=%d", switchCalls)
 	}
 }
+
+// alpha.115: "Move mail to ..." changed the old MX setup imported; a later
+// extension of the setup reviews the zone again and never adds that MX back,
+// nor touches the owner's record. A record setup never wrote is still added.
+func TestServerSetupInfrastructureDNSOwnerChangesWinOverAnExtension(t *testing.T) {
+	d := mailDraftForTest()
+	d.ServerCount, d.PeerIP, d.PeerNS = 1, "", ""
+	d.MailDNS = &serverSetupMailDNS{MX: "later", DMARC: "keep"}
+	d.ImportedRecords = []serverSetupImportedRecord{
+		{Name: "example.test", Type: "MX", Content: "mx.oldhost.example", Priority: 10, Decision: "import"},
+		{Name: "example.test", Type: "TXT", Content: "google-site-verification=abc", Decision: "import"},
+	}
+	snapshot := serverSetupInfrastructureDNSSnapshot{Zone: "example.test", ZoneID: 7, ZoneType: "MASTER",
+		Records: []serverSetupInfrastructureDNSStoredRecord{
+			{ID: 1, Name: "example.test", Type: "SOA", Content: "ns1.example.test hostmaster.example.test 2026102901 3600 600 604800 300", TTL: 3600},
+			{ID: 2, Name: "example.test", Type: "NS", Content: "ns1.example.test", TTL: 3600},
+			{ID: 3, Name: "example.test", Type: "NS", Content: "ns2.example.test", TTL: 3600},
+			// The owner moved mail: the imported MX now names this server.
+			{ID: 4, Name: "example.test", Type: "MX", Content: "mail.example.test", TTL: 3600, Priority: 10},
+		},
+		Written: []serverSetupInfrastructureDNSWrittenRecord{{Name: "example.test", Type: "MX", Content: "mx.oldhost.example", Priority: 10}},
+	}
+	plan, err := buildServerSetupInfrastructureDNSAgainstSnapshot(d, snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	verification := false
+	for _, record := range plan.Records {
+		if record.Type == "MX" && strings.Contains(record.Content, "oldhost") {
+			t.Fatalf("the old MX would be added back: %+v", record)
+		}
+		for _, replaced := range record.Replaces {
+			if replaced.ID == 4 {
+				t.Fatalf("the owner's MX would be replaced: %+v", record)
+			}
+		}
+		if record.Type == "TXT" && strings.Contains(record.Content, "google-site-verification") && record.Action == "add" {
+			verification = true
+		}
+	}
+	if !verification {
+		t.Fatalf("an imported record setup never wrote is still added: %+v", plan.Records)
+	}
+	// Deleted by the owner (not changed): not added back either.
+	snapshot.Records = snapshot.Records[:3]
+	if plan, err = buildServerSetupInfrastructureDNSAgainstSnapshot(d, snapshot); err != nil {
+		t.Fatal(err)
+	}
+	for _, record := range plan.Records {
+		if record.Type == "MX" {
+			t.Fatalf("a deleted MX would be added back: %+v", record)
+		}
+	}
+}

@@ -85,6 +85,18 @@ func (s serverSetupInfrastructureDNSSnapshot) setupWrote(got serverSetupInfrastr
 	return false
 }
 
+// setupWroteDesired: the setup wrote this exact record into the zone
+// before (its own record of what it wrote).
+func (s serverSetupInfrastructureDNSSnapshot) setupWroteDesired(want serverSetupInfrastructureDNSRecord) bool {
+	content := serverSetupCanonicalStored(want.Type, want.Content)
+	for _, record := range s.Written {
+		if record.Name == want.Name && record.Type == want.Type && record.Priority == want.Priority && serverSetupCanonicalStored(record.Type, record.Content) == content {
+			return true
+		}
+	}
+	return false
+}
+
 type serverSetupInfrastructureDNSPlan struct {
 	ZoneType       string                               `json:"zone_type"`
 	Zone           string                               `json:"zone"`
@@ -484,6 +496,18 @@ func buildServerSetupInfrastructureDNSAgainstSnapshot(d serverSetupDraft, s serv
 			}
 		}
 	}
+	// The owner's deletions and changes win (alpha.115): an imported or
+	// mail record the setup wrote before and that is no longer in the zone
+	// was removed or changed by the owner (the record editor, "Move mail
+	// to ..."), and a later plan or extension never adds it back.
+	kept := plan.Records[:0]
+	for _, want := range plan.Records {
+		if want.Origin != "" && want.Action == "add" && len(want.Replaces) == 0 && s.setupWroteDesired(want) {
+			continue
+		}
+		kept = append(kept, want)
+	}
+	plan.Records = kept
 	return plan, nil
 }
 
