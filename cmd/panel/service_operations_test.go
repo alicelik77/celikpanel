@@ -807,7 +807,7 @@ type serviceOperationTestFixture struct {
 
 func newServiceOperationTestFixture(t *testing.T) serviceOperationTestFixture {
 	t.Helper()
-	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+	database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), "panel.sqlite"))
 	if err != nil {
 		t.Fatalf("open service operation database: %v", err)
 	}

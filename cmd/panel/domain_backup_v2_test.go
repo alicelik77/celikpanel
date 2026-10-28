@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/backupspec"
-	paneldb "github.com/alicelik/celikpanel/internal/db"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -150,7 +149,7 @@ type panelBackupFixture struct {
 
 func newPanelBackupFixture(t *testing.T) panelBackupFixture {
 	t.Helper()
-	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+	database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), "panel.sqlite"))
 	if err != nil {
 		t.Fatalf("open database: %v", err)
 	}

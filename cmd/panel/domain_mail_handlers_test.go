@@ -16,7 +16,6 @@ import (
 	"testing"
 
 	"github.com/alicelik/celikpanel/internal/core"
-	paneldb "github.com/alicelik/celikpanel/internal/db"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -99,7 +98,7 @@ func (a *mailMutationPanelAgent) passwordCallState() []transport.UpdateMailPassw
 
 func newMailMutationPanel(t *testing.T, agent *mailMutationPanelAgent) (*Panel, int) {
 	t.Helper()
-	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+	database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), "panel.sqlite"))
 	if err != nil {
 		t.Fatalf("open test database: %v", err)
 	}

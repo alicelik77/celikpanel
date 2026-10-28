@@ -13,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/alicelik/celikpanel/internal/core"
-	paneldb "github.com/alicelik/celikpanel/internal/db"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -37,7 +36,7 @@ func (a *databaseAutodiscoverAgent) GetServices(
 
 func newDatabaseAutodiscoverFixture(t *testing.T) (*Panel, *sql.DB) {
 	t.Helper()
-	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+	database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), "panel.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/alicelik/celikpanel/internal/auth"
-	paneldb "github.com/alicelik/celikpanel/internal/db"
 )
 
 func TestParseAdminCredentialsJSONStrict(t *testing.T) {
@@ -60,7 +59,7 @@ func TestParseAdminCredentialsJSONStrict(t *testing.T) {
 }
 
 func TestCreateOrUpdateAdminUsesSharedValidatedPathWithoutPasswordOutput(t *testing.T) {
-	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+	database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), "panel.sqlite"))
 	if err != nil {
 		t.Fatalf("open panel database: %v", err)
 	}
@@ -199,7 +198,7 @@ func TestValidateAdminCredentialsFileArgumentSpellings(t *testing.T) {
 // The credentials file is held to the certificate request's contact rule, the
 // refusal names the field but never a value, and nothing is written.
 func TestCreateOrUpdateAdminRefusesAnEmailTheCertificateRequestRefuses(t *testing.T) {
-	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+	database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), "panel.sqlite"))
 	if err != nil {
 		t.Fatalf("open panel database: %v", err)
 	}

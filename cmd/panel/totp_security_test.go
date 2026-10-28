@@ -23,7 +23,7 @@ import (
 
 func newTOTPSecurityPanel(t *testing.T) (*Panel, *paneldb.SQLiteDB, *core.User) {
 	t.Helper()
-	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), `panel.sqlite`))
+	database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), `panel.sqlite`))
 	if err != nil {
 		t.Fatalf(`open TOTP test database: %v`, err)
 	}
