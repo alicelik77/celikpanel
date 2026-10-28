@@ -18,6 +18,10 @@ export interface SetupExecutionGuidance {
     checksAt?: number;
 }
 const text = (key: TranslationKey, values?: Record<string, string>): SetupGuidanceText => ({ key, values });
+const setupLinkCodes = ['server_setup_peer_join_waiting', 'server_setup_peer_names_waiting', 'server_setup_peer_join_changed', 'server_setup_peer_names_clash',
+    'server_setup_peer_names_outside_domain', 'server_setup_peer_names_invalid', 'server_setup_peer_mail_both', 'server_setup_peer_names_unreachable', 'server_setup_peer_names_unknown',
+    'server_setup_dns_publisher_waiting', 'server_setup_dns_publisher_local_waiting', 'server_setup_peer_dkim_zone_waiting', 'server_setup_peer_dkim_publishing',
+    'server_setup_peer_dkim_unreachable', 'server_setup_peer_dkim_unknown', 'server_setup_join_certificate_unavailable', 'server_setup_peer_link_missing', 'server_setup_peer_names_bound'];
 
 // The run was stopped because its plan was reopened (POST /api/v1/setup/revise,
 // cmd/panel/server_setup_revise.go): a known end that is not a failure.
@@ -269,6 +273,19 @@ export function setupExecutionGuidance(execution: ServerSetupExecution, componen
     }
     if (confirming) result.messages.push(text('setup.guide.confirm'));
     if (execution.status === 'failed') result.messages.push(text('setup.guide.failed'));
+    // The join and the setup link (alpha.114): each wait and refusal has its
+    // own sentence; any other code of these steps is still named.
+    // Katilma ve kurulum baglantisi: her bekleme ve retin kendi cumlesi var.
+    const linkCode = execution.error?.code || '';
+    if (setupLinkCodes.includes(linkCode)) {
+        result.messages.push(text(`setup.v5.wait.${linkCode}` as TranslationKey));
+        if (execution.status === 'waiting') result.details.push(text('setup.guide.monitoring'));
+        return result;
+    }
+    if (phase === 'peer_join' || phase === 'peer_names') {
+        result.messages.push(text('setup.v5.wait.other', { code: linkCode || '—' }));
+        return result;
+    }
 
     if (phase === 'access_dns') {
         const domain = current?.kind === 'access_dns' ? current.target : context?.panel_domain;

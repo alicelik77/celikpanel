@@ -1228,7 +1228,7 @@ test('wizard v2: the main domain comes first and every name is proposed from it,
         await submit();
         assert.equal(putDraft().main_domain, 'example.com');
         assert.equal(radio('setup-server_count', '2').props.checked, true, 'two servers are recommended');
-        assert.ok(textOf().includes('setup.v2.peerIPNote'), 'the release says plainly that the second IP is still needed');
+        assert.ok(textOf().includes('setup.v5.dns.second.help'), 'the second server joins by code; its address is never typed here');
         await submit();
         assert.equal(input('setup-short_name').props.value, 'frankfurt');
         await submit();
@@ -1275,21 +1275,24 @@ test('wizard v2: roles combine, preselect their components, and customising open
     } finally { await cleanup(); }
 });
 
-test('wizard v2: one server cannot keep its own DNS in this release and says why', async () => {
+test('wizard v2: one server keeps its own DNS standalone, both names on this server', async () => {
     init();
     try {
         await mount();
         await type('setup-main_domain', 'example.com'); await submit();
         await pick('setup-server_count', '1'); await submit(); await submit(); await submit(); await submit();
-        const before = putCount();
+        assert.equal(tree.root.findAllByProps({ 'data-setup-dns-standalone': '' }).length, 1, 'one server keeps the DNS itself');
+        assert.ok(textOf().includes('setup.v5.dns.standalone.help'));
+        assert.equal(textOf().includes('setup.v2.dns.localOneServer'), false, 'no refusal for one server');
+        assert.equal(tree.root.findAllByProps({ id: 'setup-peer_ip' }).length, 0);
+        assert.ok(input('setup-ns1') && input('setup-ns2'), 'both nameserver names are this server\'s');
+        await type('setup-local_ip', '203.0.113.10');
         await submit();
-        assert.equal(putCount(), before, 'no request is sent for a choice this release cannot run');
-        assert.ok(textOf().includes('setup.v2.dns.localOneServer'));
-        await pick('setup-dns', 'external');
-        await submit();
-        assert.equal(putDraft().dns_mode, 'external');
+        assert.equal(putDraft().dns_mode, 'local');
         assert.equal(putDraft().server_count, 1);
-        assert.ok(findButton('setup.start'), 'the review opens');
+        assert.equal(putDraft().peer_ip, '');
+        assert.equal(putDraft().peer_ns, '');
+        assert.equal(putDraft().main_dns_server, 'this');
     } finally { await cleanup(); }
 });
 
@@ -1304,21 +1307,23 @@ test('wizard v2: the DNS software offer follows the catalogue, and the backup ro
         await mount();
         await toDNSHome();
         await type('setup-local_ip', '203.0.113.10');
-        await type('setup-peer_ip', '198.51.100.20');
+        assert.equal(tree.root.findAllByProps({ id: 'setup-peer_ip' }).length, 0, 'the second server\'s address is never typed');
+        assert.ok(textOf().includes('setup.v5.dns.second.title'), 'the second server is not connected yet');
         assert.ok(textOf().includes('setup.v2.engine.untested'), 'the reason is shown where PowerDNS is offered');
         await submit();
         assert.equal(calls.some(call => call.url === '/api/v1/setup/plan'), false);
         assert.ok(textOf().includes('setup.v2.engine.notOffered'));
         await pick('setup-dns_engine', 'bind');
-        await pick('setup-dns_role', 'secondary');
+        await pick('setup-main_dns_server', 'peer');
         assert.ok(input('setup-ns2'), 'this backup server carries the second nameserver');
         await submit();
         assert.equal(putDraft().dns_role, 'secondary');
         assert.equal(putDraft().ns1, 'ns1.example.com');
         assert.equal(putDraft().peer_ns, 'ns1.example.com');
-        assert.equal(putDraft().main_dns_server, undefined);
-        assert.equal(putDraft().infrastructure_dns, undefined, 'a backup DNS server prepares no list of its own');
-        assert.ok(calls.some(call => call.url === '/api/v1/setup/plan'));
+        assert.equal(putDraft().peer_ip, '');
+        assert.equal(putDraft().main_dns_server, 'peer', 'the second server is the main DNS server (Option A)');
+        assert.equal(putDraft().infrastructure_dns, undefined, 'a backup DNS server keeps no zone of its own');
+        assert.equal(tree.root.findAllByProps({ id: 'setup-records-title' }).length, 1, 'this server still prepares the list it hands over with the join');
     } finally { await cleanup(); }
 });
 
@@ -1368,7 +1373,7 @@ async function toRecords(extra = async () => {}) {
     await type('setup-main_domain', 'example.com'); await submit(); await submit(); await submit();
     await extra();
     await submit(); await submit();
-    await type('setup-local_ip', '203.0.113.10'); await type('setup-peer_ip', '198.51.100.20');
+    await type('setup-local_ip', '203.0.113.10');
     await submit(); await settleReads();
 }
 
@@ -1501,5 +1506,80 @@ test('wizard v2: with an external provider the shown MX default is saved and DKI
         assert.ok(textOf().includes('setup.v3.mail.dkimExternal'));
         await submit();
         assert.equal(state.draft.mail_dns.mx, 'later', 'the server applies exactly what the page showed');
+    } finally { await cleanup(); }
+});
+
+
+// alpha.114: the second server joins the first by code at the start.
+const joinedLink = { address: 'https://203.0.113.10:2083', main_domain: 'example.com', main_dns_server: 'first', ns1: 'ns1.example.com', ns2: 'ns2.example.com',
+    first: { ipv4: '203.0.113.10', short_name: 'alpha', panel_domain: 'alpha.example.com', dns_engine: 'bind' }, imported: 0, joined_at: '2026-10-28T10:00:00Z' };
+test('wizard v2: the second server joins with the first server\'s address and code; each answer says what happened', async () => {
+    init();
+    let joined = false; const answers = [
+        { state: 'refused', code: 'server_setup_join_code_wrong', attempts_left: 3 },
+        { state: 'unknown', code: 'server_setup_join_unknown' },
+    ];
+    const base = globalThis.fetch;
+    globalThis.fetch = async (url, options) => {
+        if (url === '/api/v1/setup/peer') return Response.json(joined ? { role: 'second', link: joinedLink } : { role: 'none' });
+        if (url === '/api/v1/setup/peer/connect') {
+            calls.push({ url, options });
+            const next = answers.shift();
+            if (next) return Response.json(next);
+            joined = true;
+            state = { ...state, revision: state.revision + 1, status: 'draft', draft: { ...state.draft, main_domain: 'example.com', server_count: 2, dns_mode: 'local', dns_role: 'secondary', main_dns_server: 'peer', ns1: 'ns1.example.com', ns2: 'ns2.example.com', peer_ip: '203.0.113.10', peer_ns: 'ns1.example.com', dns_publisher_endpoint: 'https://alpha.example.com:2083' } };
+            return Response.json({ state: 'ok', setup: state });
+        }
+        return base(url, options);
+    };
+    try {
+        await mount(); await settleReads();
+        await act(async () => findButton('setup.v5.join.open').props.onClick());
+        await type('setup-join_address', '203.0.113.10:2083');
+        await type('setup-join_code', 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX');
+        await act(async () => findButton('setup.v5.join.submit').props.onClick());
+        assert.equal(tree.root.findAllByProps({ 'data-setup-join-state': 'refused' }).length, 1, 'a refusal names its reason');
+        assert.ok(textOf().includes('setup.v5.join.refused.server_setup_join_code_wrong'));
+        await act(async () => findButton('setup.v5.join.retry').props.onClick());
+        assert.ok(textOf().includes('setup.v5.join.state.unknown'), 'a lost answer says the same join is asked again');
+        await act(async () => findButton('setup.v5.join.retry').props.onClick());
+        await settleReads();
+        const sent = calls.filter(call => call.url === '/api/v1/setup/peer/connect').map(call => JSON.parse(call.options.body));
+        assert.equal(sent.length, 3);
+        assert.deepEqual(sent[2], { address: '203.0.113.10:2083', code: 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX' });
+        assert.ok(input('setup-short_name'), 'after the join the wizard goes on with this server\'s own name');
+        await act(async () => findButton('setup.back').props.onClick());
+        assert.equal(tree.root.findAllByProps({ 'data-setup-joined': '' }).length, 1, 'the shared answers are shown, fixed');
+        assert.equal(tree.root.findAllByProps({ id: 'setup-main_domain' }).length, 0);
+    } finally { await cleanup(); }
+});
+
+test('wizard v2: the first server waiting for the second shows the code once and what the second has done', async () => {
+    let view = { role: 'none' };
+    const marker = { plan_id: 'a'.repeat(32), request_id: 'b'.repeat(32), panel_domain: 'panel.example.com' };
+    init('admin', { status: 'waiting', draft: { ...fresh().draft, main_domain: 'example.com', server_count: 2, ns1: 'ns1.example.com', ns2: 'ns2.example.com', local_ip: '203.0.113.10' }, server_ip: '203.0.113.10' });
+    store.set('celikpanel.setup.start.admin', JSON.stringify(marker));
+    const waiting = { ...execution(marker, 'waiting'), phase: 'peer_join', error: { code: 'server_setup_peer_join_waiting', message: 'Waiting for the second server to join.' },
+        steps: [{ id: '01-service', kind: 'service', target: 'nginx', status: 'succeeded' }, { id: '02-peer_join', kind: 'peer_join', target: 'second', status: 'running' }, { id: '03-dns', kind: 'dns', target: 'local', status: 'pending' }, { id: 'verify', kind: 'verify', target: 'web', status: 'pending' }] };
+    const base = globalThis.fetch; let codes = 0;
+    globalThis.fetch = async (url, options) => {
+        if (url.includes('/setup/operation')) return Response.json(waiting);
+        if (url === '/api/v1/setup/peer') return Response.json(view);
+        if (url === '/api/v1/setup/join-codes') {
+            codes++;
+            view = { role: 'first', code: { address: 'https://203.0.113.10:2083', expires_at: '2026-10-29T10:00:00Z', attempts_left: 5, used: false } };
+            return Response.json({ code: 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX', address: 'https://203.0.113.10:2083', expires_at: '2026-10-29T10:00:00Z', attempts_left: 5 });
+        }
+        return base(url, options);
+    };
+    try {
+        await mount(); await settleReads();
+        assert.equal(tree.root.findAllByProps({ 'data-setup-join-card': '' }).length, 1, 'the join card leads while waiting');
+        assert.ok(textOf().includes('setup.v5.wait.server_setup_peer_join_waiting'), 'the wait names its reason');
+        assert.equal(codes, 0, 'reading never makes a code');
+        await act(async () => findButton('setup.v5.card.create').props.onClick());
+        assert.equal(codes, 1);
+        assert.ok(textOf().includes('ABCD-EFGH-IJKL-MNOP-QRST-UVWX'), 'the code is shown once');
+        assert.ok(textOf().includes('setup.v5.card.shownOnce'));
     } finally { await cleanup(); }
 });

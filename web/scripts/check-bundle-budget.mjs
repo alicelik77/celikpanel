@@ -109,6 +109,9 @@ const screenPartBudgets = {
   // v0.1.0-alpha.113: the live registrar card (setup.v4.). A new part, set
   // with at least 25% headroom from its Turkish file: 3.05 / 1.21 KiB.
   setupRegistrar: kib(8, 3),
+  // v0.1.0-alpha.114: the second server joining by code (setup.v5.). A new
+  // part, set with at least 25% headroom from its Turkish file: 10.58 / 2.88 KiB.
+  setupJoin: kib(14.5, 4),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

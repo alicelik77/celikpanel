@@ -27,11 +27,15 @@ export interface ServerSetupDraft {
     main_domain?: string;
     server_count?: 1 | 2;
     short_name?: string;
-    main_dns_server?: 'this';
+    // 'this' or, with two servers, 'peer': the second server is the main DNS
+    // server (alpha.114, Option A); this server is then the backup.
+    main_dns_server?: 'this' | 'peer';
     // alpha.112: the main domain's public records the owner reviewed, each
     // imported or skipped, and the mail DNS choice.
     imported_records?: SetupImportedRecord[];
     mail_dns?: { mx?: 'now' | 'later' | ''; dmarc?: 'keep' | 'add' | '' };
+    // alpha.114: the other server's main-domain mail, taken from the join.
+    peer_mail?: { hostname: string; mx?: string; dmarc?: string };
 }
 export interface SetupImportedRecord {
     name: string;
@@ -99,7 +103,8 @@ function validDraft(draft: unknown): draft is Record<string, unknown> {
     if (draft.main_domain !== undefined && (typeof draft.main_domain !== 'string' || draft.main_domain.length > 253)) return false;
     if (draft.server_count !== undefined && draft.server_count !== 1 && draft.server_count !== 2) return false;
     if (draft.short_name !== undefined && (typeof draft.short_name !== 'string' || draft.short_name.length > 63)) return false;
-    if (draft.main_dns_server !== undefined && draft.main_dns_server !== 'this') return false;
+    if (draft.main_dns_server !== undefined && draft.main_dns_server !== 'this' && draft.main_dns_server !== 'peer') return false;
+    if (draft.peer_mail !== undefined && (!record(draft.peer_mail) || typeof draft.peer_mail.hostname !== 'string' || draft.peer_mail.hostname.length > 253)) return false;
     const imported = draft.imported_records;
     if (imported !== undefined && (!Array.isArray(imported) || imported.length > 64 || imported.some(item => !record(item)
         || typeof item.name !== 'string' || !['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'CAA'].includes(String(item.type))
@@ -298,8 +303,18 @@ export function changeSetupWizardDNSRole(draft: ServerSetupDraft, role: ServerSe
     if (role === 'secondary') delete next.infrastructure_dns;
     next.peer_ns = next[role === 'primary' ? 'ns2' : 'ns1'];
     if (role === 'primary' && next.dns_mode === 'local') next.main_dns_server = 'this';
+    else if (role === 'secondary' && next.dns_mode === 'local' && next.server_count === 2) next.main_dns_server = 'peer';
     else delete next.main_dns_server;
     return next;
+}
+// With two servers and the owner's own DNS the second server joins by code
+// (alpha.114): its address is never typed here. With one server the DNS is
+// this server's alone (standalone): both names point here, no peer.
+// Iki sunucuda ikinci sunucu kodla katilir; tek sunucuda DNS yalniz buradadir.
+export function setupJoinPendingDraft(draft: ServerSetupDraft): ServerSetupDraft {
+    if (draft.dns_mode !== 'local') return draft;
+    if (draft.server_count === 1) return { ...draft, dns_role: 'primary', main_dns_server: 'this', peer_ip: '', peer_ns: '' };
+    return { ...draft, peer_ip: '', peer_ns: draft.dns_role === 'primary' ? draft.ns2 : draft.ns1 };
 }
 
 // SPF is merged, never replaced (alpha.112, cmd/panel mergeServerSetupSPF):

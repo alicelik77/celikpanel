@@ -1,6 +1,6 @@
 import { setupPurposes, type ServerSetupCheck, type SetupPurpose } from './serverSetup';
 
-export interface SetupPlanStep { id: string; kind: 'infrastructure_dns' | 'access_dns' | 'dns' | 'dns_publisher' | 'dns_readiness' | 'service' | 'runtime' | 'mail_profile' | 'mail_enrollment' | 'firewall' | 'panel_certificate' | 'mail_certificate' | 'verify'; target: string; qualifier?: string }
+export interface SetupPlanStep { id: string; kind: 'infrastructure_dns' | 'access_dns' | 'dns' | 'dns_publisher' | 'dns_readiness' | 'service' | 'runtime' | 'mail_profile' | 'mail_enrollment' | 'mail_dns' | 'peer_join' | 'peer_names' | 'firewall' | 'panel_certificate' | 'mail_certificate' | 'verify'; target: string; qualifier?: string }
 export interface SetupInfrastructureDNSPlan {
     zone: string; existing_zone_id?: number; expected_digest: string;
     records: { name: string; type: string; content: string; ttl: number; action: 'add' | 'keep' }[];
@@ -56,7 +56,8 @@ function decodePeerHostRecord(value: unknown): SetupPeerHostRecord | undefined {
         ...(outcome.code ? { code: outcome.code as string } : {}), ...(outcome.result ? { result: outcome.result as string } : {}), ...(outcome.zone ? { zone: outcome.zone as string } : {}),
     } };
 }
-const kinds = ['infrastructure_dns', 'access_dns', 'dns', 'dns_publisher', 'dns_readiness', 'service', 'runtime', 'mail_profile', 'mail_enrollment', 'firewall', 'panel_certificate', 'mail_certificate', 'verify'];
+// mail_dns since alpha.112; peer_join and peer_names since alpha.114.
+const kinds = ['infrastructure_dns', 'access_dns', 'dns', 'dns_publisher', 'dns_readiness', 'service', 'runtime', 'mail_profile', 'mail_enrollment', 'mail_dns', 'peer_join', 'peer_names', 'firewall', 'panel_certificate', 'mail_certificate', 'verify'];
 const isRecord = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const identity = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{32}$/.test(value);
 function isStep(value: unknown): value is SetupPlanStep {
@@ -68,10 +69,12 @@ function isInfrastructureDNSPlan(value: unknown): value is SetupInfrastructureDN
     return isRecord(value) && typeof value.zone === 'string' && value.zone.length > 0 && value.zone.length <= 253
         && (value.existing_zone_id === undefined || (Number.isSafeInteger(value.existing_zone_id) && (value.existing_zone_id as number) > 0))
         && typeof value.expected_digest === 'string' && value.expected_digest.length <= 128
-        && Array.isArray(value.records) && value.records.length > 0 && value.records.length <= 32
+        // The setup's own records plus, since alpha.112, the imported and mail
+        // records of the main domain (at most 64 imports).
+        && Array.isArray(value.records) && value.records.length > 0 && value.records.length <= 128
         && value.records.every(item => isRecord(item) && typeof item.name === 'string' && item.name.length <= 253
-            && typeof item.type === 'string' && ['SOA', 'NS', 'A', 'AAAA'].includes(item.type)
-            && typeof item.content === 'string' && item.content.length <= 2048
+            && typeof item.type === 'string' && ['SOA', 'NS', 'A', 'AAAA', 'CNAME', 'MX', 'TXT', 'CAA'].includes(item.type)
+            && typeof item.content === 'string' && item.content.length <= 8192
             && Number.isSafeInteger(item.ttl) && (item.ttl as number) >= 0 && (item.ttl as number) <= 2147483647
             && ['add', 'keep'].includes(String(item.action)));
 }

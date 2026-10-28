@@ -5,7 +5,7 @@ import { useI18n } from '../i18n';
 import { setupDNSTranslation } from '../i18n/setupDNS';
 import type { TranslationKey } from '../i18n/en';
 import { Link, Navigate } from '../router';
-import { decodeSetupEditorCheckpoint, changeSetupWizardDNSRole, setupDNSNames, setupDetectedIPv4, decodeServerSetup, setupEditorKey, setupExtensionChanges, setupNextPath, normalizeSetupDomain, validSetupDomain, validSetupShortName, setupNameWithin, setupInitialMainDomain, setupProposedNames, setupApplyProposedNames, type ServerSetupCheck, type ServerSetupDraft, type ServerSetupSnapshot, type SetupEditorStep, type SetupExtensionChangeKey, type SetupProposedNames } from '../lib/serverSetup';
+import { decodeSetupEditorCheckpoint, changeSetupWizardDNSRole, setupJoinPendingDraft, setupDNSNames, setupDetectedIPv4, decodeServerSetup, setupEditorKey, setupExtensionChanges, setupNextPath, normalizeSetupDomain, validSetupDomain, validSetupShortName, setupNameWithin, setupInitialMainDomain, setupProposedNames, setupApplyProposedNames, type ServerSetupCheck, type ServerSetupDraft, type ServerSetupSnapshot, type SetupEditorStep, type SetupExtensionChangeKey, type SetupProposedNames } from '../lib/serverSetup';
 import { retryableMailEnrollmentHandoff, continuableMailEnrollment, decodeSetupExecution, decodeSetupMarker, decodeSetupPlan, newSetupRequestID, safeSetupPanelURL, type ServerSetupExecution, type SetupInfrastructureDNSPlan, type ServerSetupPlan, type SetupStartMarker } from '../lib/serverSetupOperation';
 import { ServerSetupShell, useServerSetup } from './ServerSetupGate';
 import { ServerSetupSteps } from './ServerSetupSteps';
@@ -13,7 +13,7 @@ import { ServerSetupDNSConnection } from './ServerSetupDNSConnections';
 import { remoteDNSEndpoint } from '../lib/remoteDNS';
 import { ServerSetupChoice, ServerSetupManualAction } from './ServerSetupChoice';
 import { Button, inputClass, KeepWords, Spinner } from './ui';
-import { SetupCountStep, SetupDNSHomeStep, SetupDomainStep, SetupMailStep, SetupOpenTasks, SetupRecordsStep, SetupNameStep, SetupNamesStep, SetupPanelAccessCard, SetupProviderRecordsCard, SetupRegistrarCard, SetupRolesStep, SetupWizardInput, setupEngineChoice, setupServerLabel } from './ServerSetupWizardSteps';
+import { SetupCountStep, SetupDNSHomeStep, SetupDomainStep, SetupJoinCard, SetupJoinPanel, SetupJoinedSummary, SetupMailStep, SetupOpenTasks, SetupRecordsStep, SetupNameStep, SetupNamesStep, SetupPanelAccessCard, SetupProviderRecordsCard, SetupRegistrarCard, SetupRolesStep, SetupWizardInput, setupEngineChoice, setupServerLabel, useSetupPeerLink } from './ServerSetupWizardSteps';
 import { AddressLink } from './AddressLink';
 import { ServerSetupComponents, useSetupComponentCatalog } from './ServerSetupComponents';
 import { setupCheckLine, setupComponentName, setupExecutionGuidance, setupHostBusyGuidance, setupHostingRootBlockerValues, setupPlanReopened, setupStepState, setupStepStateLabel, type SetupGuidanceText } from '../lib/serverSetupGuidance';
@@ -61,7 +61,25 @@ const codeKey: Record<string, TranslationKey> = {
     server_setup_hosting_requires_dns_publisher: 'setup.publisher.endpointRequired',
     server_setup_main_dns_server_mismatch: 'setup.v2.blocker.mainDNS',
     server_setup_infrastructure_dns_imported_clash: 'setup.v3.blocker.importClash',
-    server_setup_local_dns_requires_two_servers: 'setup.v2.dns.localOneServer',
+    server_setup_peer_join_answers_changed: 'setup.v5.blocker.answersChanged',
+    server_setup_peer_names_clash: 'setup.v5.wait.server_setup_peer_names_clash',
+    server_setup_peer_names_outside_domain: 'setup.v5.wait.server_setup_peer_names_outside_domain',
+    server_setup_peer_names_invalid: 'setup.v5.wait.server_setup_peer_names_invalid',
+    server_setup_peer_names_bound: 'setup.v5.wait.server_setup_peer_names_bound',
+    server_setup_peer_mail_both: 'setup.v5.wait.server_setup_peer_mail_both',
+    server_setup_peer_link_missing: 'setup.v5.wait.server_setup_peer_link_missing',
+    server_setup_peer_join_waiting: 'setup.v5.wait.server_setup_peer_join_waiting',
+    server_setup_peer_names_waiting: 'setup.v5.wait.server_setup_peer_names_waiting',
+    server_setup_peer_join_changed: 'setup.v5.wait.server_setup_peer_join_changed',
+    server_setup_peer_names_unreachable: 'setup.v5.wait.server_setup_peer_names_unreachable',
+    server_setup_peer_names_unknown: 'setup.v5.wait.server_setup_peer_names_unknown',
+    server_setup_dns_publisher_waiting: 'setup.v5.wait.server_setup_dns_publisher_waiting',
+    server_setup_dns_publisher_local_waiting: 'setup.v5.wait.server_setup_dns_publisher_local_waiting',
+    server_setup_peer_dkim_zone_waiting: 'setup.v5.wait.server_setup_peer_dkim_zone_waiting',
+    server_setup_peer_dkim_publishing: 'setup.v5.wait.server_setup_peer_dkim_publishing',
+    server_setup_peer_dkim_unreachable: 'setup.v5.wait.server_setup_peer_dkim_unreachable',
+    server_setup_peer_dkim_unknown: 'setup.v5.wait.server_setup_peer_dkim_unknown',
+    server_setup_join_certificate_unavailable: 'setup.v5.wait.server_setup_join_certificate_unavailable',
     server_setup_pdns_main_untested_system: 'setup.v2.engine.untested',
     server_setup_version_repository_required: 'setup.v2.blocker.versionRepository',
     server_setup_version_repository_unknown: 'setup.v2.blocker.versionRepositoryUnknown',
@@ -223,6 +241,10 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         setDraft(previous => previous.local_ip ? previous : { ...previous, local_ip: detectedIP });
     }, [detectedIP, snapshot.status]);
     const dnsNames = setupDNSNames(draft);
+    // A second server that joined the first by code (alpha.114): its shared
+    // answers come from the join. / Kodla katilmis ikinci sunucu.
+    const peer = useSetupPeerLink(!['ready'].includes(initial.status));
+    const joinedLink = peer.link;
     const [step, setStep] = useState<Step>(restoredEditor?.step || (initial.status === 'new' || initial.status === 'legacy' || (initial.extension && initial.status === 'draft') || !initial.draft.main_domain ? 'domain' : 'dnshome'));
     const [plan, setPlan] = useState<ServerSetupPlan | null>(null);
     const [execution, setExecution] = useState<ServerSetupExecution | null>(null);
@@ -464,7 +486,10 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         });
     }
     async function saveDraft(): Promise<ServerSetupSnapshot> {
-        const response = await setupFetch('/api/v1/setup', { ...requestOptions({ revision: snapshot.revision, draft: { ...draft, ...(draft.main_domain ? { main_domain: normalizeSetupDomain(draft.main_domain) } : {}), ...(draft.short_name !== undefined ? { short_name: draft.short_name.trim().toLowerCase() || undefined } : {}), ...(secondaryHosting ? { dns_hosting_management: hostingDNSManagement, ...(hostingDNSManagement === 'manual' ? { dns_publisher_endpoint: '' } : {}) } : {}) } }), method: 'PUT' });
+        // The new flow never sends a typed peer: the second server joins by
+        // code; a joined second server keeps what the join gave it.
+        const sent = joinedLink ? draft : setupJoinPendingDraft(draft);
+        const response = await setupFetch('/api/v1/setup', { ...requestOptions({ revision: snapshot.revision, draft: { ...sent, ...(sent.main_domain ? { main_domain: normalizeSetupDomain(sent.main_domain) } : {}), ...(sent.short_name !== undefined ? { short_name: sent.short_name.trim().toLowerCase() || undefined } : {}), ...(secondaryHosting && !joinFlow ? { dns_hosting_management: hostingDNSManagement, ...(hostingDNSManagement === 'manual' ? { dns_publisher_endpoint: '' } : {}) } : {}) } }), method: 'PUT' });
         if (response.status === 409) throw new Error(t('setup.conflict'));
         if (!response.ok) throw new Error(t('setup.saveFailed'));
         const next = decodeServerSetup(await response.json());
@@ -665,8 +690,11 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     const explicitSelection = !!draft.customization || draft.purpose === 'custom';
     const selectedComponents = setupEffectiveComponents(draft, catalog);
     const mailSelected = ['postfix', 'dovecot', 'rspamd', 'roundcube'].some(id => selectedComponents.has(id));
-    const steps: Step[] = ['domain', 'count', 'name', 'roles', ...(customized || componentsOpen ? ['components' as const] : []), 'names', 'dnshome',
-        ...(draft.dns_mode === 'local' && draft.dns_role === 'primary' && draft.main_domain ? ['records' as const] : []),
+    // Two servers with their own DNS join by code: the first server prepares
+    // the list whichever server is the main; a joined second server takes it.
+    const joinFlow = !!joinedLink || (draft.dns_mode === 'local' && (draft.server_count ?? 2) === 2);
+    const steps: Step[] = ['domain', ...(joinedLink ? [] : ['count' as const]), 'name', 'roles', ...(customized || componentsOpen ? ['components' as const] : []), 'names', 'dnshome',
+        ...(!joinedLink && draft.dns_mode === 'local' && (draft.dns_role === 'primary' || joinFlow) && draft.main_domain ? ['records' as const] : []),
         ...(mailSelected && draft.main_domain ? ['mail' as const] : []), 'review', 'progress'];
     // The plan is reviewed when the last editing step is left.
     const lastEdit = steps[steps.indexOf('review') - 1];
@@ -685,12 +713,12 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     const publisherEndpoint = remoteDNSEndpoint(draft.dns_publisher_endpoint || '');
     const dnsSelectionError: TranslationKey | null = isDNS && draft.dns_mode !== 'local'
         ? 'setup.components.localDNSRequired'
-        : automaticPublisher && !publisherEndpoint
+        : automaticPublisher && !publisherEndpoint && !joinFlow
             ? 'setup.publisher.endpointRequired' : null;
     const fullName = (value: string) => validSetupDomain(value.trim().toLowerCase().replace(/\.$/, ''));
     function stepProblem(): TranslationKey | null {
         switch (step) {
-        case 'domain': return validSetupDomain(mainDomain) ? null : 'setup.v2.domain.invalid';
+        case 'domain': return joinedLink || validSetupDomain(mainDomain) ? null : 'setup.v2.domain.invalid';
         case 'name': return validSetupShortName((draft.short_name || '').trim().toLowerCase()) ? null : 'setup.v2.name.invalid';
         case 'roles': return roles.web || roles.mail || roles.dns || selectedComponents.size > 0 ? null : 'setup.v2.roles.required';
         case 'components':
@@ -701,7 +729,6 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
             if (localPrimary && (!setupNameWithin(draft.panel_domain, mainDomain) || (isMail && !setupNameWithin(draft.mail_hostname, mainDomain)))) return 'setup.v2.names.outsideZoneShort';
             return null;
         case 'dnshome':
-            if (draft.dns_mode === 'local' && serverCount === 1) return 'setup.v2.dns.localOneServer';
             if (draft.dns_mode === 'local' && dnsNames.mismatch) return 'setup.dnsMappingMismatch';
             if (draft.dns_mode === 'local' && setupEngineChoice(catalog, draft.dns_engine, draft.dns_role)?.offered === false) return 'setup.v2.engine.notOffered';
             if (dnsSelectionError) return dnsSelectionError;
@@ -786,7 +813,8 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                         : reconnecting && (reconnectSlow
                             ? <div role="status" className="mt-3 max-w-2xl rounded-lg border border-border bg-surface p-4"><p className="break-words text-sm leading-6" data-setup-reconnect-slow=""><KeepWords text={t('setup.reconnectSlow')} /></p><p className="mt-1 text-sm text-fg-muted" data-sudo-note="">{t('common.sudoNote')}</p><Button variant="secondary" className="mt-3" onClick={() => window.location.reload()}>{t('setup.reloadPage')}</Button></div>
                             : <p role="status" className="mt-3 flex max-w-2xl items-start gap-3 text-sm leading-6 text-fg-muted" data-setup-reconnecting=""><Loader2 className="mt-1 h-4 w-4 shrink-0 text-primary motion-safe:animate-spin" aria-hidden="true" /><span>{t('setup.uncertain')}</span></p>)}
-                    {execution?.status === 'waiting' && execution.phase === 'dns_publisher' && <SetupDNSPublisher key={execution.id} execution={execution} onBound={reconcile} />}
+                    {execution?.status === 'waiting' && execution.phase === 'dns_publisher' && !execution.error?.code.startsWith('server_setup_dns_publisher_') && <SetupDNSPublisher key={execution.id} execution={execution} onBound={reconcile} />}
+                    {execution && execution.status !== 'failed' && execution.steps.some(item => item.kind === 'peer_join' && item.status !== 'succeeded') && <SetupJoinCard />}
                     {hostBusy ? <div role="alert" className={`mt-4 rounded-lg border p-4 sm:p-5 ${hostBusy.caution ? 'border-warning-mark/40 bg-warning-mark/10' : 'border-border bg-surface'}`}>
                         <p className="max-w-3xl break-words text-sm leading-6 text-fg">{t(hostBusy.body)}</p>
                         <Button variant="primary" className="mt-4" onClick={editPlan}>{t('setup.revise')}</Button>
@@ -849,7 +877,10 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                         </div>}
                     </div>}
                 </section> : <form onSubmit={next} className="min-w-0">
-                    {step === 'domain' && <SetupDomainStep value={draft.main_domain || ''} invalid={!!error && !validSetupDomain(mainDomain)} onChange={value => updateDraft(previous => ({ ...previous, main_domain: value }))} />}
+                    {step === 'domain' && (joinedLink ? <SetupJoinedSummary link={joinedLink} /> : <>
+                        <SetupDomainStep value={draft.main_domain || ''} invalid={!!error && !validSetupDomain(mainDomain)} onChange={value => updateDraft(previous => ({ ...previous, main_domain: value }))} />
+                        {!extending && peer.known && <SetupJoinPanel disabled={busy} onJoined={value => { const next = decodeServerSetup(value); peer.refresh(); if (next) { accept(next); setDraft(next.draft); setStep('name'); } }} />}
+                    </>)}
                     {step === 'count' && <SetupCountStep value={serverCount} onChange={value => updateDraft(previous => ({ ...previous, server_count: value }))} />}
                     {step === 'name' && <SetupNameStep value={draft.short_name || ''} suggestion={snapshot.short_name_suggestion} mainDomain={mainDomain} invalid={!validSetupShortName((draft.short_name || '').trim().toLowerCase())} onChange={value => updateDraft(previous => ({ ...previous, short_name: value }))} />}
                     {step === 'roles' && <>
@@ -876,9 +907,10 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                     {step === 'dnshome' && <fieldset disabled={busy}><SetupDNSHomeStep draft={draft} catalog={catalog} serverCount={serverCount} mainDomain={mainDomain} detectedIP={detectedIP}
                         set={(key, value) => { if (key === 'local_ip') localIPTouched.current = true; updateDraft(previous => ({ ...previous, [key]: value })); }}
                         onMode={chooseDNSMode}
-                        onRole={role => updateDraft(previous => changeSetupWizardDNSRole(previous, role, proposal))}
+                        onMainDNS={main => updateDraft(previous => changeSetupWizardDNSRole(previous, main === 'this' ? 'primary' : 'secondary', proposal))}
+                        joined={joinedLink}
                         connection={<ServerSetupDNSConnection value={draft.remote_dns_connection_id} onChange={value => change('remote_dns_connection_id', value)} onValidityChange={setRemoteVerified} />}
-                        publisher={secondaryHosting && <div className="space-y-3">
+                        publisher={secondaryHosting && !joinFlow && <div className="space-y-3">
                             <label className="block" htmlFor="setup-dns_hosting_management"><span className="mb-2 block text-sm font-medium">{t('setup.publisher.management')}</span><select id="setup-dns_hosting_management" name="dns_hosting_management" value={hostingDNSManagement} onChange={event => change('dns_hosting_management', event.target.value as 'manual' | 'panel')} className={`${inputClass} w-full`}>
                                 <option value="manual">{t('setup.publisher.manual')}</option>
                                 <option value="panel">{t('setup.publisher.automatic')}</option>
@@ -909,6 +941,8 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                             <h3 className="font-semibold">{t('setup.v2.review.untouched')}</h3>
                             <ul className="mt-2 list-disc space-y-1 pl-5 text-fg-muted">
                                 {localPrimary && mainDomain && <li>{t('setup.v2.review.registrar', { domain: mainDomain })}</li>}
+                                {joinFlow && !joinedLink && <li>{t('setup.v5.review.second')}</li>}
+                                {joinedLink && <li>{t('setup.v5.review.joined', { server: joinedLink.first.short_name || t('setup.v5.joined.firstServer'), ip: joinedLink.first.ipv4 })}</li>}
                                 {draft.dns_mode === 'external' && <li>{t('setup.v2.review.provider')}</li>}
                                 {roles.web && mainDomain && !(localPrimary && (draft.imported_records || []).some(item => item.decision === 'import')) && <li>{t('setup.v2.review.site', { domain: mainDomain })}</li>}
                                 {localPrimary && !!draft.main_domain && (draft.imported_records || []).length > 0 && <li>{t('setup.v3.review.imported', { imported: (draft.imported_records || []).filter(item => item.decision === 'import').length, skipped: (draft.imported_records || []).filter(item => item.decision === 'skip').length })}</li>}
