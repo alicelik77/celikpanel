@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -528,5 +529,45 @@ func TestServerSetupPeerEndedLinkSaysWhatToDo(t *testing.T) {
 	}
 	if pair.requests.Load() != sent {
 		t.Fatal("nothing is sent over an ended link")
+	}
+}
+
+// Claim-6 (alpha.114 review): a full join document of another protocol is
+// the version state, checked before the document is accepted; nothing of
+// it is kept, its fingerprint least of all.
+func TestServerSetupPeerOtherProtocolIsCheckedBeforeTheDocument(t *testing.T) {
+	served, leaf := joinTestCertificate(t)
+	first, _, _ := joinFirstFixture(t, joinFirstDraft())
+	joinTestSeams(first.panel, leaf, "198.51.100.20")
+	machine := first.panel.requireServerSetupLinkMachine(http.NotFoundHandler())
+	_, other := joinTestCertificate(t)
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		recorder := httptest.NewRecorder()
+		machine.ServeHTTP(recorder, r)
+		var document serverSetupJoinDocument
+		_ = json.Unmarshal(recorder.Body.Bytes(), &document)
+		// A newer first server: another protocol, and a fingerprint that is
+		// not the key that answered.
+		document.Protocol, document.FirstSPKI = serverSetupLinkProtocol+1, hex.EncodeToString(serverSetupSPKI(other))
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(document)
+	}))
+	server.TLS = &tls.Config{Certificates: []tls.Certificate{served}}
+	server.StartTLS()
+	t.Cleanup(server.Close)
+	listener := server.Listener.Addr().String()
+	second, _ := setupOperationFixture(t)
+	joinTestSeams(second.panel, leaf, "")
+	joinTestDial(second.panel, func() string { return listener })
+	t.Setenv("CELIKPANEL_SERVER_IP", "198.51.100.20")
+	view := issueJoinCode(t, first)
+	body, _ := json.Marshal(map[string]string{"address": "203.0.113.10:" + itoaTest(panelPort()), "code": view.Code})
+	w := httptest.NewRecorder()
+	second.panel.handleServerSetupPeerConnect(w, serviceOperationAdminRequest(t, http.MethodPost, serverSetupPeerConnectPath, string(body), second.userID))
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"state":"refused"`) || !strings.Contains(w.Body.String(), "server_setup_peer_version_incompatible") {
+		t.Fatalf("another protocol: %d %s", w.Code, w.Body.String())
+	}
+	if link, _ := second.panel.readServerSetupLink(context.Background()); link != nil {
+		t.Fatalf("nothing of it is kept: %+v", link)
 	}
 }

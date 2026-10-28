@@ -283,8 +283,15 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 	answer := serverSetupPeerConnectAnswer{}
 	var refusal *serverSetupLinkRefusal
 	switch {
+	case callErr == nil && document.Protocol != serverSetupLinkProtocol:
+		// A first server of another version: a known state, not a lost
+		// answer, checked before anything of its answer is read or kept.
+		_, _ = p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key=?`, serverSetupLinkPendingKey)
+		answer.State, answer.Code = "refused", "server_setup_peer_version_incompatible"
 	case callErr == nil && validServerSetupJoinDocument(document, address, pending.RequestID):
-		link := serverSetupLinkRecord{RequestID: pending.RequestID, Address: address, Pin: document.FirstSPKI, LinkID: document.LinkID, LinkCredential: document.LinkCredential,
+		// The pin kept is the key that answered (checked equal to the
+		// document's fingerprint above), never the document's word alone.
+		link := serverSetupLinkRecord{RequestID: pending.RequestID, Address: address, Pin: hex.EncodeToString(observed), LinkID: document.LinkID, LinkCredential: document.LinkCredential,
 			CodeMAC: p.serverSetupLinkCodeMAC(canonicalCode), PublicIPv4: public, EnrollmentCode: document.EnrollmentCode, JoinedAt: time.Now().UTC().Format(time.RFC3339)}
 		link.Document = document
 		link.Document.LinkCredential, link.Document.EnrollmentCode = "", ""
@@ -326,10 +333,6 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 		}
 		p.audit(r, "server.setup.peer_connected", "", 0)
 		answer = p.applyServerSetupJoinedDraft(ctx, link)
-	case callErr == nil && document.Protocol != serverSetupLinkProtocol:
-		// A first server of another version: a known state, not a lost answer.
-		_, _ = p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key=?`, serverSetupLinkPendingKey)
-		answer.State, answer.Code = "refused", "server_setup_peer_version_incompatible"
 	case callErr == nil:
 		// An answer that is not a join document for this request.
 		answer.State, answer.Code = "unknown", "server_setup_join_unknown"
