@@ -247,34 +247,105 @@ export function SetupPanelAccessCard({ ip, port, panelDomain }: { ip: string; po
     </section>;
 }
 
-// The registrar card on today's DNS backend (alpha.111): the exact nameserver
-// names and, for names inside the main domain, their IP records (glue). The
-// panel does not read the delegation itself in this release; setup notices it
-// when the panel's own name starts to resolve.
+export interface SetupDelegation {
+    zone: string;
+    expected_ns: { name: string; server: 'main' | 'backup'; ipv4: string; ipv6?: string; glue_needed: boolean }[];
+    items: { id: string; state: 'ok' | 'not_yet' | 'waiting' | 'unknown'; vars?: Record<string, string> }[];
+    now_allowed: boolean;
+    now_reason?: string;
+    checked_at: string;
+}
+export function decodeSetupDelegation(value: unknown): SetupDelegation {
+    const record = (item: unknown): item is Record<string, unknown> => !!item && typeof item === 'object' && !Array.isArray(item);
+    const invalid = () => new Error('delegation outside the contract');
+    if (!record(value) || typeof value.zone !== 'string' || !Array.isArray(value.expected_ns) || value.expected_ns.length !== 2 || !Array.isArray(value.items)
+        || value.items.length > 32 || typeof value.now_allowed !== 'boolean' || typeof value.checked_at !== 'string') throw invalid();
+    for (const ns of value.expected_ns) {
+        if (!record(ns) || typeof ns.name !== 'string' || !['main', 'backup'].includes(String(ns.server)) || typeof ns.ipv4 !== 'string' || typeof ns.glue_needed !== 'boolean') throw invalid();
+    }
+    for (const item of value.items) {
+        if (!record(item) || typeof item.id !== 'string' || !['ok', 'not_yet', 'waiting', 'unknown'].includes(String(item.state))) throw invalid();
+    }
+    return value as unknown as SetupDelegation;
+}
+
+const delegationState: Record<string, TranslationKey> = { ok: 'setup.v4.state.ok', not_yet: 'setup.v4.state.notYet', waiting: 'setup.v4.state.waiting', unknown: 'setup.v4.state.unknown' };
+
+// The registrar card (alpha.113): the exact values, and what the internet
+// shows now, read by the server about once a minute. With two servers it
+// opens fully once the backup DNS server answers (or the setup waits for the
+// panel's name); "do it now" is offered before that only when the main DNS
+// server already answers the domain, otherwise refused with the reason.
+// Alan adi firmasi karti: degerler ve internetin canli durumu.
 export function SetupRegistrarCard({ draft, mainDomain, now }: { draft: ServerSetupDraft; mainDomain: string; now: boolean }) {
     const { t } = useSetupWizardI18n();
-    const primary = draft.dns_role === 'primary';
-    const rows = [
-        { name: draft.ns1, ip: primary ? draft.local_ip : draft.peer_ip },
-        { name: draft.ns2, ip: primary ? draft.peer_ip : draft.local_ip },
-    ];
     const domain = mainDomain || draft.infrastructure_dns?.zone || '';
-    const glue = rows.filter(row => domain && setupNameWithin(row.name, domain));
-    return <section aria-labelledby="setup-registrar-title" className="mt-5 space-y-4" data-setup-registrar={now ? 'now' : 'later'}>
-        <SetupLead title={t(now ? 'setup.v2.registrar.nowTitle' : 'setup.v2.registrar.laterTitle')}
-            why={t(now ? 'setup.v2.registrar.nowWhy' : 'setup.v2.registrar.laterWhy', { domain: domain || '—', name: draft.panel_domain || '—' })}
-            who={t('setup.v2.registrar.who')} next={t(glue.length ? 'setup.v2.registrar.nextGlue' : 'setup.v2.registrar.next')} then={t('setup.v2.registrar.then')} />
+    const remote = useRemote(domain ? `/api/v1/setup/delegation?zone=${encodeURIComponent(domain)}` : null, decodeSetupDelegation);
+    useRefreshEvery(remote, 60_000, !!domain);
+    const [early, setEarly] = useState(false);
+    const live = remote.remote.state === 'known' ? remote.remote.value : remote.remote.state === 'unknown' ? remote.remote.previous?.value ?? null : null;
+    const primary = draft.dns_role === 'primary';
+    const rows = live?.expected_ns.map(ns => ({ name: ns.name, ipv4: ns.ipv4, ipv6: ns.ipv6 || '', glue: ns.glue_needed })) ?? [
+        { name: draft.ns1, ipv4: primary ? draft.local_ip : draft.peer_ip, ipv6: '', glue: !!domain && setupNameWithin(draft.ns1, domain) },
+        { name: draft.ns2, ipv4: primary ? draft.peer_ip : draft.local_ip, ipv6: '', glue: !!domain && setupNameWithin(draft.ns2, domain) },
+    ];
+    const glue = rows.filter(row => row.glue);
+    const backupReady = live?.items.some(item => item.id === 'answers_backup' && item.state === 'ok') ?? false;
+    const ready = now || backupReady;
+    const shown = ready || (early && !!live?.now_allowed);
+    const done = !!live && live.items.length > 0 && live.items.every(item => item.state === 'ok' || (item.state !== 'unknown' && item.vars?.optional === 'true'));
+    const itemText = (item: SetupDelegation['items'][number]) => {
+        const vars = item.vars || {};
+        if (item.id.startsWith('glue_v4:') || item.id.startsWith('glue_v6:')) return t(item.id.startsWith('glue_v6:') ? 'setup.v4.item.glue6' : 'setup.v4.item.glue4', { name: vars.name || '', ip: vars.ip || '' });
+        if (item.id === 'nameservers') return t('setup.v4.item.nameservers', { domain, names: vars.expected || '' });
+        if (item.id === 'answers_main' || item.id === 'answers_backup') return t(item.id === 'answers_main' ? 'setup.v4.item.answersMain' : 'setup.v4.item.answersBackup', { ip: vars.ip || '' });
+        if (item.id === 'imported') return t('setup.v4.item.imported', { matched: vars.matched || '0', total: vars.total || '0' });
+        return item.id;
+    };
+    const itemWhy = (item: SetupDelegation['items'][number]) => {
+        const vars = item.vars || {};
+        if (item.state === 'not_yet' && item.id === 'nameservers') return vars.reason === 'not_registered' ? t('setup.v4.why.notRegistered', { domain }) : t('setup.v4.why.nameservers', { seen: vars.seen || '—' });
+        if (item.state === 'not_yet' && item.id.startsWith('glue')) return vars.optional === 'true' ? t('setup.v4.why.glue6') : t(vars.seen ? 'setup.v4.why.glueWrong' : 'setup.v4.why.glueMissing', { seen: vars.seen || '' });
+        if (item.state === 'waiting' && item.id === 'answers_backup') return t('setup.v4.why.backupWaiting');
+        if (item.state === 'not_yet' && item.id === 'imported') return t('setup.v4.why.imported');
+        return '';
+    };
+    return <section aria-labelledby="setup-registrar-title" className="mt-5 space-y-4" data-setup-registrar={shown ? 'now' : 'later'}>
+        {done ? <SetupLead tone="done" title={t('setup.v4.doneTitle')} why={t('setup.v4.doneWhy')} who={t('setup.v2.provider.whoNone')} next={t('setup.v4.doneNext')} then={t('setup.v2.registrar.then')} />
+            : <SetupLead title={t(shown ? 'setup.v2.registrar.nowTitle' : 'setup.v2.registrar.laterTitle')}
+                why={t(shown ? 'setup.v2.registrar.nowWhy' : 'setup.v2.registrar.laterWhy', { domain: domain || '—', name: draft.panel_domain || '—' })}
+                who={t('setup.v2.registrar.who')} next={t(glue.length ? 'setup.v2.registrar.nextGlue' : 'setup.v2.registrar.next')} then={t('setup.v2.registrar.then')} />}
+        {!ready && <div className="space-y-2 text-sm leading-6">
+            {!early && <Button type="button" variant="secondary" onClick={() => setEarly(true)}>{t('setup.v4.early')}</Button>}
+            {early && live && !live.now_allowed && <p role="status" className="text-fg-muted" data-setup-registrar-refused="">{t('setup.v4.earlyRefused')}</p>}
+            {early && !live && <p role="status" className="text-fg-muted">{t('setup.v4.reading')}</p>}
+            {early && live?.now_allowed && <p className="rounded-md border border-warning-mark/40 bg-warning-mark/10 p-3">{t(/\.tr$/.test(domain) ? 'setup.v4.earlyWarnTR' : 'setup.v4.earlyWarn', { domain })}</p>}
+        </div>}
         <div className="space-y-4 rounded-lg border border-border bg-surface p-4 sm:p-5">
             <h3 id="setup-registrar-title" className="font-semibold">{t('setup.v2.registrar.title')}</h3>
             {glue.length > 0 ? <div className="space-y-2">
                 <h4 className="text-sm font-semibold">{t('setup.v2.registrar.glueTitle')}</h4>
-                <p className="text-sm leading-6 text-fg-muted">{t('setup.v2.registrar.glueHelp', { domain })}</p>
-                {glue.map(row => <div key={row.name} className="grid gap-2 sm:grid-cols-2"><SetupCopyRow label={t('setup.v2.registrar.name')} value={row.name} /><SetupCopyRow label="IPv4" value={row.ip || '—'} /></div>)}
+                <p className="text-sm leading-6 text-fg-muted">{t('setup.v4.glueHelp', { domain })}</p>
+                {glue.map(row => <div key={row.name} className="grid gap-2 sm:grid-cols-2">
+                    <SetupCopyRow label={t('setup.v2.registrar.name')} value={row.name} /><SetupCopyRow label="IPv4" value={row.ipv4 || '—'} />
+                    {row.ipv6 && <><span className="hidden sm:block" /><SetupCopyRow label={t('setup.v4.ipv6Optional')} value={row.ipv6} /></>}
+                </div>)}
             </div> : <p className="text-sm leading-6 text-fg-muted">{t('setup.v2.registrar.noGlue')}</p>}
             <div className="space-y-2">
                 <h4 className="text-sm font-semibold">{t(glue.length ? 'setup.v2.registrar.nsTitle' : 'setup.v2.registrar.nsTitleOnly')}</h4>
                 <p className="text-sm leading-6 text-fg-muted">{t('setup.v2.registrar.nsHelp')}</p>
-                <div className="grid gap-2 sm:grid-cols-2"><SetupCopyRow label={t('setup.v2.registrar.ns1')} value={draft.ns1} /><SetupCopyRow label={t('setup.v2.registrar.ns2')} value={draft.ns2} /></div>
+                <div className="grid gap-2 sm:grid-cols-2"><SetupCopyRow label={t('setup.v2.registrar.ns1')} value={rows[0].name} /><SetupCopyRow label={t('setup.v2.registrar.ns2')} value={rows[1].name} /></div>
+            </div>
+            {/\.tr$/.test(domain) && <p className="text-sm leading-6 text-fg-muted">{t('setup.v4.trNote', { domain })}</p>}
+            <div className="space-y-2" aria-live="polite">
+                <h4 className="text-sm font-semibold">{t('setup.v4.seenTitle')}</h4>
+                {remote.remote.state === 'loading' && <p role="status" className="text-sm text-fg-muted">{t('setup.v4.reading')}</p>}
+                {remote.remote.state === 'unknown' && !live && <p role="status" className="text-sm text-fg-muted">{t('setup.v4.readFailed')}</p>}
+                {live && <ul className="space-y-2 text-sm">{live.items.map(item => <li key={item.id} data-delegation-item={item.id} data-state={item.state} className="flex flex-col gap-0.5">
+                    <span className="flex flex-wrap items-baseline justify-between gap-x-3"><span className="break-all">{itemText(item)}</span><span className={item.state === 'ok' ? 'text-success' : 'text-fg-muted'}>{t(delegationState[item.state])}</span></span>
+                    {itemWhy(item) && <span className="text-xs leading-5 text-fg-muted">{itemWhy(item)}</span>}
+                </li>)}</ul>}
+                {live && <p className="text-xs text-fg-muted">{t('setup.v4.checkedAt', { time: new Date(live.checked_at).toLocaleTimeString() })}</p>}
             </div>
             <p className="text-sm leading-6 text-fg-muted">{t('setup.v2.registrar.spread')}</p>
         </div>

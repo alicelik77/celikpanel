@@ -1431,3 +1431,25 @@ test('wizard v2: reverse DNS is an open task with who acts, never what the final
     } finally { await cleanup(); }
 });
 
+test('wizard v2: the registrar card reads the live check, waits for the backup and refuses "now" until the main answers', async () => {
+    const local = { dns_mode: 'local', dns_role: 'primary', main_domain: 'example.com', panel_domain: 'panel.example.com', ns1: 'ns1.example.com', ns2: 'ns2.example.com', peer_ns: 'ns2.example.com', local_ip: '203.0.113.10', peer_ip: '198.51.100.20' };
+    const delegation = (mainAnswers) => ({ zone: 'example.com', checked_at: new Date().toISOString(), now_allowed: mainAnswers,
+        expected_ns: [{ name: 'ns1.example.com', server: 'main', ipv4: '203.0.113.10', ipv6: '2001:db8::10', glue_needed: true }, { name: 'ns2.example.com', server: 'backup', ipv4: '198.51.100.20', glue_needed: true }],
+        items: [{ id: 'answers_main', state: mainAnswers ? 'ok' : 'unknown', vars: { ip: '203.0.113.10' } }, { id: 'answers_backup', state: 'waiting', vars: { ip: '198.51.100.20' } },
+            { id: 'glue_v4:ns1.example.com', state: 'not_yet', vars: { name: 'ns1.example.com', ip: '203.0.113.10' } }, { id: 'nameservers', state: 'not_yet', vars: { expected: 'ns1.example.com, ns2.example.com', seen: 'ns1.old.example' } }] });
+    for (const mainAnswers of [false, true]) {
+        waitingFixture(local, 'infrastructure_dns', url => url.startsWith('/api/v1/setup/delegation') ? (calls.push({ url }), Response.json(delegation(mainAnswers))) : null);
+        try {
+            await mount(); await settleReads();
+            assert.equal(tree.root.findAllByProps({ 'data-setup-registrar': 'later' }).length, 1, 'with two servers the card waits for the backup DNS server');
+            assert.ok(calls.some(call => call.url === '/api/v1/setup/delegation?zone=example.com'));
+            assert.equal(tree.root.findAllByProps({ 'data-delegation-item': 'nameservers' })[0].props['data-state'], 'not_yet');
+            assert.ok(textOf().includes('2001:db8::10'), 'the IPv6 IP record is offered, as optional');
+            await act(async () => findButton('setup.v4.early').props.onClick());
+            assert.equal(tree.root.findAllByProps({ 'data-setup-registrar-refused': '' }).length, mainAnswers ? 0 : 1, 'refused with the reason until the main answers');
+            assert.equal(tree.root.findAllByProps({ 'data-setup-registrar': 'now' }).length, mainAnswers ? 1 : 0);
+            assert.equal(writes().length, 0, 'the card only reads');
+        } finally { await cleanup(); }
+    }
+});
+

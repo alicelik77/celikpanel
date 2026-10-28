@@ -37,6 +37,7 @@ import type { DatabaseClustersScreenKey } from './screens/databaseClusters/en';
 import type { VendorLanesScreenKey } from './screens/vendorLanes/en';
 import type { WebmailAddressScreenKey } from './screens/webmailAddress/en';
 import type { SetupWizardScreenKey } from './screens/setupWizard/en';
+import type { SetupRegistrarScreenKey } from './screens/setupRegistrar/en';
 
 export const en = {
     // ---- alpha.108 tools ----
@@ -497,5 +498,6 @@ export type ScreenKey =
     | DatabaseClustersScreenKey
     | VendorLanesScreenKey
     | WebmailAddressScreenKey
-    | SetupWizardScreenKey;
+    | SetupWizardScreenKey
+    | SetupRegistrarScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

@@ -1,0 +1,37 @@
+// The Turkish half of the screen catalogue part "setupRegistrar"; ./en.ts defines its keys.
+// "setupRegistrar" ekran parçasının Türkçe yarısı; anahtarlarını ./en.ts tanımlar.
+import type { SetupRegistrarScreenKey } from './en';
+
+export const trSetupRegistrarScreens: Record<SetupRegistrarScreenKey, string> = {
+    "setup.v4.state.ok": "doğru",
+    "setup.v4.state.notYet": "henüz değil",
+    "setup.v4.state.waiting": "bekliyor",
+    "setup.v4.state.unknown": "bakılamadı",
+    "setup.v4.item.glue4": "{name} → {ip} (IP kaydı, IPv4)",
+    "setup.v4.item.glue6": "{name} → {ip} (IP kaydı, IPv6, isteğe bağlı)",
+    "setup.v4.item.nameservers": "{domain} ad sunucuları: {names}",
+    "setup.v4.item.answersMain": "Ana DNS sunucusu ({ip}) alan adı için yanıt veriyor",
+    "setup.v4.item.answersBackup": "Yedek DNS sunucusu ({ip}) alan adı için yanıt veriyor",
+    "setup.v4.item.imported": "Sunucularınız aktarılan kayıtları eskisi gibi yanıtlıyor ({matched}/{total})",
+    "setup.v4.why.notRegistered": "Kayıt kuruluşu {domain} alan adını henüz tanımıyor: alan adının kayıtlı ve etkin olduğunu kontrol edin.",
+    "setup.v4.why.nameservers": "Kayıt kuruluşu hâlâ şunları veriyor: {seen}. Yukarıdaki iki adı alan adı firmanızda girin.",
+    "setup.v4.why.glueMissing": "Kayıt kuruluşunda bu ad için henüz IP kaydı yok; 1. adımda girin.",
+    "setup.v4.why.glueWrong": "Kayıt kuruluşunda bu ad için {seen} var; 1. adımda düzeltin.",
+    "setup.v4.why.glue6": "Firmanızda IPv6 alanı yoksa atlayın; IPv4 yeterlidir.",
+    "setup.v4.why.backupWaiting": "Yedek DNS sunucusu kurulup listeyi aldığında yanıt verir.",
+    "setup.v4.why.imported": "Aktarılan bazı kayıtlar farklı yanıt veriyor; değişiklik yayılmadan Alan adları sayfasından kontrol edin.",
+    "setup.v4.doneTitle": "Alan adı firmanızda her şey tamam",
+    "setup.v4.doneWhy": "Kayıt kuruluşu ad sunucularınızı veriyor ve iki sunucunuz da internetten yanıt veriyor.",
+    "setup.v4.doneNext": "Bir şey yapmanız gerekmiyor; değişikliğin her önbelleğe ulaşması biraz sürebilir.",
+    "setup.v4.early": "Yine de şimdi yap",
+    "setup.v4.earlyRefused": "Henüz değil: ana DNS sunucusu internetten alan adı için yanıt vermiyor; şimdi firmada değişiklik yapmak alan adını yanıtsız bırakır. Bu sayfa kendisi yeniden bakar.",
+    "setup.v4.earlyWarn": "Firma kabul ederse {domain} yedek kurulana kadar yalnız ana DNS sunucusundan yanıt verir; bu sırada yedek yoktur.",
+    "setup.v4.earlyWarnTR": ".tr kayıt kuruluşu değişikliği yalnız iki ad sunucusu da yanıt veriyorsa kabul eder; {domain} için şimdi büyük olasılıkla reddedilir: önce yedek DNS sunucusunu kurun.",
+    "setup.v4.reading": "İnternetten bakılıyor…",
+    "setup.v4.readFailed": "Kontrol şu an okunamadı; birazdan yeniden denenir. Yukarıdaki değerler doğrudur.",
+    "setup.v4.glueHelp": "Ad sunucularınız {domain} içinde olduğu için önce IP kayıtları gerekir; birçok firma 2. adımı bunlar olmadan kabul etmez. Firmada “Özel ad sunucusu”, “Child nameserver”, “Host kaydı” ya da “Glue” diye geçer. IPv6 alanı yoksa IPv4 yeterlidir.",
+    "setup.v4.ipv6Optional": "IPv6 (isteğe bağlı)",
+    "setup.v4.trNote": ".tr ve .com.tr kayıt kuruluşu ad sunucusu değişikliğini ancak iki ad sunucusu da {domain} için zaten yanıt veriyorsa kabul eder.",
+    "setup.v4.seenTitle": "İnternetten bakınca",
+    "setup.v4.checkedAt": "Son kontrol: {time}; yaklaşık dakikada bir yeniden bakılır.",
+};
