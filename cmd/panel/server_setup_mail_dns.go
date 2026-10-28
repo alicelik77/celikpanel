@@ -205,6 +205,25 @@ func serverSetupHasMail(d serverSetupDraft) bool {
 	return d.MainDomain != "" && d.MailHostname != "" && len(serverSetupMailProfileIDs(d)) > 0
 }
 
+// serverSetupMainDomainMail is the server receiving the main domain's mail,
+// as the zone's records name it: this server when it has mail, otherwise
+// the other server of the pair when it does (alpha.114, PeerMail from the
+// join), with that server's MX and DMARC answers.
+// Ana alan adinin postasini alan sunucu: bu sunucu ya da eslesmis diger sunucu.
+func serverSetupMainDomainMail(d serverSetupDraft) (string, serverSetupMailDNS, bool) {
+	choice := serverSetupMailDNS{}
+	if serverSetupHasMail(d) {
+		if d.MailDNS != nil {
+			choice = *d.MailDNS
+		}
+		return d.MailHostname, choice, true
+	}
+	if d.MainDomain != "" && d.PeerMail != nil && d.PeerMail.Hostname != "" {
+		return d.PeerMail.Hostname, serverSetupMailDNS{MX: d.PeerMail.MX, DMARC: d.PeerMail.DMARC}, true
+	}
+	return "", choice, false
+}
+
 // serverSetupMailDNSValues are the main domain's mail records the setup
 // proposes, as plain values (TXT unquoted): MX unless an old MX is kept, the
 // merged SPF, and DMARC unless an old one is kept. DKIM follows in its step.
@@ -214,18 +233,15 @@ type serverSetupMailRecord struct {
 }
 
 func serverSetupMailDNSValues(d serverSetupDraft, oldSPF string, oldMX, oldDMARC bool) []serverSetupMailRecord {
-	if !serverSetupHasMail(d) {
+	host, choice, mail := serverSetupMainDomainMail(d)
+	if !mail {
 		return nil
-	}
-	choice := serverSetupMailDNS{}
-	if d.MailDNS != nil {
-		choice = *d.MailDNS
 	}
 	records := []serverSetupMailRecord{}
 	if !oldMX || choice.MX == "now" {
-		records = append(records, serverSetupMailRecord{Name: d.MainDomain, Type: "MX", Value: d.MailHostname, Priority: 10})
+		records = append(records, serverSetupMailRecord{Name: d.MainDomain, Type: "MX", Value: host, Priority: 10})
 	}
-	records = append(records, serverSetupMailRecord{Name: d.MainDomain, Type: "TXT", Value: mergeServerSetupSPF(oldSPF, d.MailHostname)})
+	records = append(records, serverSetupMailRecord{Name: d.MainDomain, Type: "TXT", Value: mergeServerSetupSPF(oldSPF, host)})
 	if !oldDMARC || choice.DMARC == "add" {
 		records = append(records, serverSetupMailRecord{Name: "_dmarc." + d.MainDomain, Type: "TXT", Value: dmarcRecommended(d.MainDomain, "none")})
 	}
@@ -238,11 +254,7 @@ func serverSetupMailDNSValues(d serverSetupDraft, oldSPF string, oldMX, oldDMARC
 func serverSetupImportedAndMailDesired(d serverSetupDraft, own map[string]bool) ([]serverSetupInfrastructureDNSRecord, error) {
 	domain := d.MainDomain
 	imported := serverSetupImported(d)
-	choice := serverSetupMailDNS{}
-	if d.MailDNS != nil {
-		choice = *d.MailDNS
-	}
-	mail := serverSetupHasMail(d)
+	_, choice, mail := serverSetupMainDomainMail(d)
 	oldSPF, oldMX, oldDMARC := "", false, false
 	records := []serverSetupInfrastructureDNSRecord{}
 	for _, record := range imported {
@@ -346,6 +358,14 @@ func (p *Panel) runServerSetupMailDNS(ctx context.Context, plan serverSetupPlan,
 			return false, &serverSetupChildFailure{Code: "server_setup_mail_dns_signing_failed", Message: "DKIM signing for the main domain could not be configured: " + boundedSetupHostReason(sign.Error)}
 		}
 	}
+	if draft.DNSMode == setupDNSModeLocal && draft.DNSRole == transport.DNSPairRoleSecondary {
+		// The backup DNS server receiving the main domain's mail sends its
+		// DKIM record to the main DNS server over the setup link (alpha.114).
+		if err := p.sendServerSetupPeerDKIM(ctx, plan, "", step, dkimRecommended(key.PublicKeyB64)); err != nil {
+			return false, err
+		}
+		return true, nil
+	}
 	if draft.DNSMode != setupDNSModeLocal || draft.InfrastructureDNS == nil {
 		return true, nil
 	}
@@ -402,6 +422,13 @@ func serverSetupMailDNSSigningIdentity(step serverSetupExecutionStep) serverSetu
 
 func serverSetupNeedsMailDNSStep(d serverSetupDraft) bool {
 	return serverSetupHasMail(d) && ((d.DNSMode == setupDNSModeLocal && d.DNSRole == transport.DNSPairRolePrimary && d.InfrastructureDNS != nil) || d.DNSMode == setupDNSModeExternal)
+}
+
+// serverSetupPeerMailDNSStep: a backup DNS server of a joined pair that
+// receives the main domain's mail (the main DNS server has none) prepares
+// its DKIM key and signing and sends the record to the main DNS server.
+func serverSetupPeerMailDNSStep(d serverSetupDraft, mainHasMail bool) bool {
+	return serverSetupHasMail(d) && d.DNSMode == setupDNSModeLocal && d.DNSRole == transport.DNSPairRoleSecondary && d.ServerCount == 2 && !mainHasMail
 }
 
 // serverSetupMXPriority parses "10 mail.example.com".

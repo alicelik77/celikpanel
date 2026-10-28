@@ -602,7 +602,7 @@ func (p *Panel) runServerSetupInfrastructureDNS(ctx context.Context, plan server
 	if err := p.requireServerSetupAdmission(ctx); err != nil {
 		return false, err
 	}
-	if plan.InfrastructureDNS == nil || plan.Draft.InfrastructureDNS == nil || plan.Draft.DNSMode != setupDNSModeLocal || plan.Draft.DNSRole != transport.DNSPairRolePrimary || plan.InfrastructureDNS.Zone != plan.Draft.InfrastructureDNS.Zone || step.Kind != "infrastructure_dns" || step.Target != plan.InfrastructureDNS.Zone || plan.ID != serverSetupPlanIdentity(plan) || !validServiceOperationID(step.RequestID) || !validServiceOperationID(step.OwnerID) {
+	if plan.InfrastructureDNS == nil || plan.Draft.InfrastructureDNS == nil || plan.Draft.DNSMode != setupDNSModeLocal || plan.Draft.DNSRole != transport.DNSPairRolePrimary || plan.InfrastructureDNS.Zone != plan.Draft.InfrastructureDNS.Zone || step.Kind != "infrastructure_dns" || step.Target != plan.InfrastructureDNS.Zone || (plan.ID != serverSetupPlanIdentity(plan) && !plan.peerBound) || !validServiceOperationID(step.RequestID) || !validServiceOperationID(step.OwnerID) {
 		return false, errors.New("infrastructure DNS step does not match its immutable reviewed plan")
 	}
 	stepFound := false

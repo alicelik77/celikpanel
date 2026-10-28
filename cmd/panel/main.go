@@ -957,9 +957,9 @@ func main() {
 	} else if interrupted > 0 {
 		log.Printf("[request-identity] %d request(s) were running when the Panel stopped; their outcome is reported as unknown", interrupted)
 	}
-	applicationHandler := panel.requireRemoteDNSMachineAuth(csrfProtect(
+	applicationHandler := panel.requireServerSetupLinkMachine(panel.requireRemoteDNSMachineAuth(csrfProtect(
 		panel.requireAuth(panel.requestIdentities.wrap(http.DefaultServeMux)),
-	))
+	)))
 	startupGate := newPanelHTTPStartupGate(applicationHandler)
 	panel.startupGate = startupGate
 	handler := securityHeaders(panel.secureCookies, startupGate)
@@ -1269,6 +1269,9 @@ func main() {
 	http.HandleFunc(serverSetupProviderRecordsPath, panel.handleServerSetupProviderRecords)
 	http.HandleFunc(serverSetupPublicRecordsPath, panel.handleServerSetupPublicRecords)
 	http.HandleFunc(serverSetupDelegationPath, panel.handleServerSetupDelegation)
+	http.HandleFunc(serverSetupJoinCodesPath, panel.handleServerSetupJoinCodes)
+	http.HandleFunc(serverSetupPeerPath, panel.handleServerSetupPeer)
+	http.HandleFunc(serverSetupPeerConnectPath, panel.handleServerSetupPeerConnect)
 	http.HandleFunc(serverSetupPath+"/complete", panel.handleServerSetupComplete)
 	http.HandleFunc(serverSetupPath+"/revise", panel.handleServerSetupRevise)
 	http.HandleFunc(serverSetupPath+"/extend", panel.handleServerSetupExtend)

@@ -46,7 +46,7 @@ func (p *Panel) handleServerSetupRevise(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	var execution serverSetupExecution
-	if json.Unmarshal([]byte(raw), &execution) != nil || execution.ID != request.ExecutionID || execution.Status != "waiting" || !stringIn(execution.Phase, "verification", "dns_publisher", "dns_readiness", "access_dns", "infrastructure_dns", "primary_dns") {
+	if json.Unmarshal([]byte(raw), &execution) != nil || execution.ID != request.ExecutionID || execution.Status != "waiting" || !stringIn(execution.Phase, "verification", "dns_publisher", "dns_readiness", "access_dns", "infrastructure_dns", "primary_dns", "peer_join", "peer_names") {
 		conflict()
 		return
 	}
@@ -158,7 +158,7 @@ func serverSetupExecutionCanRevise(plan serverSetupPlan, execution serverSetupEx
 	if execution.Phase == "primary_dns" && (plan.Draft.DNSMode != "local" || plan.Draft.DNSRole != "secondary") {
 		return false
 	}
-	if !stringIn(execution.Phase, "dns_publisher", "dns_readiness", "access_dns", "infrastructure_dns", "primary_dns") {
+	if !stringIn(execution.Phase, "dns_publisher", "dns_readiness", "access_dns", "infrastructure_dns", "primary_dns", "peer_join", "peer_names") {
 		return false
 	}
 	kind := execution.Phase

@@ -71,6 +71,10 @@ type serverSetupDraft struct {
 	// imported or skipped) and the mail DNS choice (server_setup_mail_dns.go).
 	ImportedRecords []serverSetupImportedRecord `json:"imported_records,omitempty"`
 	MailDNS         *serverSetupMailDNS         `json:"mail_dns,omitempty"`
+	// alpha.114: on the main DNS server, the other server's main-domain mail
+	// (its mail host and MX/DMARC answers) when that server, not this one,
+	// receives the main domain's mail. Taken from the join, never typed.
+	PeerMail *serverSetupPeerMail `json:"peer_mail,omitempty"`
 }
 
 // Reason and Vars are additive (2026-10-10): the typed cause of a check that
@@ -266,6 +270,18 @@ func canonicalServerSetupWizardAnswers(d *serverSetupDraft) error {
 	}
 	if d.DNSMode == setupDNSModeLocal && d.ServerCount == 2 && d.MainDNSServer == "peer" {
 		d.DNSRole = transport.DNSPairRoleSecondary
+	}
+	if d.PeerMail != nil {
+		mail := *d.PeerMail
+		canonical, err := hostname.CanonicalFQDN(strings.TrimSpace(mail.Hostname))
+		if err != nil || !stringIn(mail.MX, "", "now", "later") || !stringIn(mail.DMARC, "", "keep", "add") {
+			return errors.New("invalid peer mail answer")
+		}
+		mail.Hostname = canonical
+		d.PeerMail = &mail
+		if d.DNSMode != setupDNSModeLocal || d.DNSRole != transport.DNSPairRolePrimary || serverSetupHasMail(*d) {
+			d.PeerMail = nil
+		}
 	}
 	if d.DNSMode == setupDNSModeLocal && d.DNSRole == transport.DNSPairRolePrimary {
 		selection := serverSetupInfrastructureDNSDraft{Zone: d.MainDomain}

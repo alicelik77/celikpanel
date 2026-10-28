@@ -133,6 +133,13 @@ func (p *Panel) runServerSetupDNSPublisher(ctx context.Context, plan serverSetup
 		return false, err
 	}
 	if binding == nil {
+		// A joined pair carries the main DNS server's enrollment code: the
+		// connection is made here without the administrator (alpha.114).
+		if binding, err = p.autoServerSetupDNSPublisher(ctx, plan, executionID); err != nil {
+			return false, err
+		}
+	}
+	if binding == nil {
 		return false, errServerSetupDNSPublisherRequired
 	}
 	if _, err := p.serverSetupDNSPublisherProof(ctx, plan.Draft, binding.Connection.ID); err != nil {
@@ -183,9 +190,16 @@ func (p *Panel) serverSetupSecondaryHostingReadiness(ctx context.Context, draft 
 	if err != nil {
 		return false, err
 	}
+	if validateServerSetupExecution(plan, *execution) != nil {
+		return false, nil
+	}
+	plan, err = p.effectiveServerSetupPlan(ctx, plan, execution.ID)
+	if err != nil {
+		return false, err
+	}
 	want, _ := json.Marshal(draft)
 	actual, _ := json.Marshal(plan.Draft)
-	if string(want) != string(actual) || validateServerSetupExecution(plan, *execution) != nil {
+	if string(want) != string(actual) {
 		return false, nil
 	}
 	binding, err := p.readServerSetupDNSPublisher(ctx, plan, execution.ID)

@@ -58,6 +58,9 @@ type serverSetupPlan struct {
 	ContactEmail        string                            `json:"contact_email"`
 	Actor               serviceOperationActor             `json:"actor"`
 	Components          []serverSetupPlanComponent        `json:"components,omitempty"`
+	// peerBound marks a plan completed by its second-server binding
+	// (serverSetupBoundPlan); it is never stored or hashed.
+	peerBound bool
 }
 
 type serverSetupExecutionStep struct {
@@ -362,7 +365,32 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 	if draft.Purpose == "dns" && draft.DNSMode != "local" {
 		addBlocker("server_setup_dns_purpose_requires_local")
 	}
-	if draft.DNSMode == "local" {
+	joinPending := serverSetupJoinPending(draft)
+	link, err := p.readServerSetupLink(ctx)
+	if err != nil {
+		return plan, err
+	}
+	if link != nil && !serverSetupJoinedDraftMatches(draft, *link) {
+		// A joined second server keeps the answers the first server gave.
+		addBlocker("server_setup_peer_join_answers_changed")
+	}
+	if draft.DNSMode == "local" && joinPending {
+		// The second server joins by code after this plan starts: its
+		// address and names are bound then (peer_join). Here only this
+		// server's own identity is checked.
+		if _, valid := canonicalIPv4(draft.LocalIP); !valid || !validDNSHostname(draft.NS1) || !validDNSHostname(draft.NS2) || draft.NS1 == draft.NS2 || !transport.ValidDNSEngine(transport.DNSEngine(draft.DNSEngine)) {
+			addBlocker("server_setup_dns_identity_required")
+		}
+		if state, stateErr := readDNSEngineDBState(ctx, p.db.GetDB()); stateErr != nil {
+			return plan, stateErr
+		} else if state.ActiveEngine != "" {
+			addBlocker("server_setup_existing_dns_requires_migration")
+		} else if code := setupPDNSPairedPrimaryBlocker(draft, state); code != "" {
+			addBlocker(code)
+		} else if draft.DNSRole == transport.DNSPairRolePrimary && transport.DNSEngine(draft.DNSEngine) == transport.DNSEnginePowerDNS && !serverSetupPDNSMainSystemTested(p.managedServiceHostProfile()) {
+			addBlocker("server_setup_pdns_main_untested_system")
+		}
+	} else if draft.DNSMode == "local" {
 		request, local, identityErr := setupDNSIdentity(draft)
 		if identityErr != nil {
 			addBlocker("server_setup_dns_identity_required")
@@ -595,6 +623,8 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 	// mail profile that installs the mail server.
 	if serverSetupNeedsMailDNSStep(draft) {
 		addStep("mail_dns", draft.MainDomain, "")
+	} else if serverSetupPeerMailDNSStep(draft, link != nil && link.Document.First.MainDomainMail) && (link != nil || joinPending) {
+		addStep("mail_dns", draft.MainDomain, "")
 	}
 	if serverSetupNeedsNativeCron(draft) {
 		addService(core.NativeCronServiceID)
@@ -630,7 +660,13 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 	}
 	if draft.InfrastructureDNS != nil {
 		var infrastructureErr error
-		plan.InfrastructureDNS, infrastructureErr = p.buildServerSetupInfrastructureDNSPlan(ctx, draft)
+		reviewed := draft
+		if joinPending {
+			// The records are computed again when the second server is bound;
+			// here they are checked with a stand-in address for it.
+			reviewed = serverSetupEffectiveDraft(draft, serverSetupPeerBinding{PeerIPv4: serverSetupJoinStandInPeer(draft.LocalIP)})
+		}
+		plan.InfrastructureDNS, infrastructureErr = p.buildServerSetupInfrastructureDNSPlan(ctx, reviewed)
 		if infrastructureErr != nil {
 			var reviewError *serverSetupInfrastructureDNSPlanError
 			if !errors.As(infrastructureErr, &reviewError) {
@@ -647,6 +683,9 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 		}
 		if plan.InfrastructureDNS != nil {
 			addStep("infrastructure_dns", plan.InfrastructureDNS.Zone, "")
+			if joinPending {
+				plan.InfrastructureDNS = nil
+			}
 		}
 	}
 	addStep("access_dns", draft.PanelDomain, plan.ServerIP)
@@ -686,6 +725,12 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 	}
 	addStep("verify", draft.Purpose, "")
 	plan.Steps = serverSetupDNSBootstrapSteps(draft, plan.Steps)
+	switch {
+	case joinPending && draft.DNSMode == setupDNSModeLocal:
+		plan.Steps = serverSetupPeerJoinSteps(plan.Steps, serverSetupPlanStep{Kind: "peer_join", Target: "second"})
+	case link != nil:
+		plan.Steps = serverSetupPeerJoinSteps(plan.Steps, serverSetupPlanStep{Kind: "peer_names", Target: link.Address})
+	}
 	plan.CanStart = len(plan.Blockers) == 0
 	plan.ID = serverSetupPlanIdentity(plan)
 	return plan, nil
@@ -946,6 +991,11 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
 	defer cancel()
+	reviewed := plan
+	plan, err := p.effectiveServerSetupPlan(ctx, reviewed, execution.ID)
+	if err != nil {
+		return false, err
+	}
 	if execution.Status == "waiting" && stringIn(execution.Phase, "primary_dns", "infrastructure_dns", "access_dns") {
 		if err := p.claimServerSetupDNSRetry(ctx, plan, execution); err != nil {
 			return false, err
@@ -969,12 +1019,26 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 		}
 		var done bool
 		var err error
-		if step.Kind == "dns_publisher" {
+		if step.Kind == "peer_join" {
+			done, err = p.runServerSetupPeerJoin(ctx, reviewed, execution.ID)
+			if done && err == nil {
+				plan, err = p.effectiveServerSetupPlan(ctx, reviewed, execution.ID)
+			}
+		} else if step.Kind == "dns_publisher" {
 			done, err = p.runServerSetupDNSPublisher(ctx, plan, execution.ID)
 		} else if step.Kind == "mail_enrollment" {
-			done, err = p.runServerSetupMailEnrollment(ctx, plan, execution, index)
+			done, err = p.runServerSetupMailEnrollment(ctx, reviewed, execution, index)
 		} else {
 			done, err = p.runServerSetupStep(ctx, plan, step)
+		}
+		var peerWait *serverSetupPeerWait
+		if errors.As(err, &peerWait) {
+			// A wait with its own reason (the join, the names, the link):
+			// the step stays running and is asked again (D-024).
+			execution.Status = "waiting"
+			execution.Phase = step.Kind
+			execution.Error = &serviceOperationError{Code: peerWait.Code, Message: peerWait.Message}
+			return false, p.persistServerSetupExecution(ctx, *execution)
 		}
 		var enrollmentWait *serverSetupMailEnrollmentWait
 		if errors.As(err, &enrollmentWait) {
@@ -1127,6 +1191,11 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 
 func (p *Panel) runServerSetupStep(ctx context.Context, plan serverSetupPlan, step *serverSetupExecutionStep) (bool, error) {
 	switch step.Kind {
+	case "peer_names":
+		if err := p.requireServerSetupAdmission(ctx); err != nil {
+			return false, err
+		}
+		return p.runServerSetupPeerNames(ctx, plan, *step)
 	case "access_dns":
 		return p.runServerSetupAccessDNS(ctx, plan, *step)
 	case "infrastructure_dns":

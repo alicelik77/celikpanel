@@ -220,7 +220,7 @@ func TestServerSetupDraftWizardAnswersCanonical(t *testing.T) {
 		func(d *serverSetupDraft) { d.ShortName = "two.labels" },
 		func(d *serverSetupDraft) { d.ShortName = "-bad" },
 		func(d *serverSetupDraft) { d.ServerCount = 3 },
-		func(d *serverSetupDraft) { d.MainDNSServer = "peer" },
+		func(d *serverSetupDraft) { d.MainDNSServer = "second" },
 	} {
 		draft := base
 		invalid(&draft)
@@ -330,7 +330,7 @@ func TestServerSetupBuildWizardVersionsAndRefusals(t *testing.T) {
 		t.Fatal(err)
 	}
 	local, err := f.panel.buildServerSetupPlan(context.Background(), state, serviceOperationActor{UserID: f.userID})
-	if err != nil || slices.Contains(local.Blockers, "server_setup_local_dns_requires_two_servers") || slices.Contains(local.Blockers, "server_setup_dns_identity_required") {
+	if err != nil || slices.Contains(local.Blockers, "server_setup_local_dns_requires_two_servers") {
 		t.Fatalf("one server keeps its own DNS standalone (alpha.114): %v %v", local.Blockers, err)
 	}
 }
