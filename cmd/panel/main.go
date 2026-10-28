@@ -160,6 +160,9 @@ type Panel struct {
 	// one shared answer per panel. Zero value ready.
 	dnsOverviewSeams *dnsOverviewSeams
 	dnsOverviewCache dnsOverviewCache
+	// The server setup link (alpha.114): the join rate limit and the seams a
+	// test sets on its own panel (server_setup_peer_link.go).
+	setupLink serverSetupLinkState
 }
 
 type domainSubroute struct {

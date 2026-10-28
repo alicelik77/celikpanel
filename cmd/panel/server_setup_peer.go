@@ -243,7 +243,7 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 	join.DeclaredIPv4, _ = canonicalIPv4(serverPrimaryIP())
 	if request.PublicIPv4 != "" {
 		typed, err := netip.ParseAddr(strings.TrimSpace(request.PublicIPv4))
-		if err != nil || !typed.Is4() || !serverSetupPeerAddressAllowed(typed) {
+		if err != nil || !typed.Is4() || !p.serverSetupPeerAddressAllowed(typed) {
 			writeCodedError(w, http.StatusBadRequest, "server_setup_peer_connect_public_ipv4", "Enter this server's public IPv4 address, as the provider shows it.", "")
 			return
 		}
@@ -252,7 +252,7 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 	join.DeclaredIPv6 = serverSetupPublicIPv6()
 	var document serverSetupJoinDocument
 	var observed []byte
-	callErr := serverSetupLinkJSON(context.WithoutCancel(ctx), serverSetupLinkTarget{Address: address, Pin: pin, Observed: &observed}, serverSetupJoinPath, "", join, &document)
+	callErr := p.serverSetupLinkJSON(context.WithoutCancel(ctx), serverSetupLinkTarget{Address: address, Pin: pin, Observed: &observed}, serverSetupJoinPath, "", join, &document)
 	if callErr == nil && document.Protocol == serverSetupLinkProtocol && (len(observed) != 32 || document.FirstSPKI != hex.EncodeToString(observed)) {
 		// The full fingerprint sent over the pinned channel must be the key
 		// that answered (whose prefix the code carries).
@@ -325,8 +325,11 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 	_ = json.NewEncoder(w).Encode(answer)
 }
 
-// serverSetupPeerSaveDraft saves the joined draft; tests make it fail once.
-var serverSetupPeerSaveDraft = func(p *Panel, ctx context.Context, revision int, d serverSetupDraft) (serverSetupState, error) {
+// serverSetupPeerSaveDraft saves the joined draft; a test makes it fail once.
+func (p *Panel) serverSetupPeerSaveDraft(ctx context.Context, revision int, d serverSetupDraft) (serverSetupState, error) {
+	if p.setupLink.saveDraft != nil {
+		return p.setupLink.saveDraft(ctx, revision, d)
+	}
 	return p.saveServerSetupDraft(ctx, revision, d)
 }
 
@@ -338,7 +341,7 @@ func (p *Panel) applyServerSetupJoinedDraft(ctx context.Context, link serverSetu
 	state, err := p.loadServerSetup(ctx)
 	if err == nil {
 		var saved serverSetupState
-		if saved, err = serverSetupPeerSaveDraft(p, ctx, state.Revision, serverSetupJoinedDraft(state.Draft, link.Document)); err == nil {
+		if saved, err = p.serverSetupPeerSaveDraft(ctx, state.Revision, serverSetupJoinedDraft(state.Draft, link.Document)); err == nil {
 			return serverSetupPeerConnectAnswer{State: "ok", Setup: &saved}
 		}
 	}
@@ -499,7 +502,7 @@ func (p *Panel) runServerSetupPeerNames(ctx context.Context, plan serverSetupPla
 		Protocol int  `json:"protocol"`
 		Accepted bool `json:"accepted"`
 	}
-	callErr := serverSetupLinkJSON(ctx, link.target(), serverSetupPeerNamesPath, link.bearer(), names, &answer)
+	callErr := p.serverSetupLinkJSON(ctx, link.target(), serverSetupPeerNamesPath, link.bearer(), names, &answer)
 	var refusal *serverSetupLinkRefusal
 	switch {
 	case callErr == nil && answer.Accepted && answer.Protocol == serverSetupLinkProtocol:
@@ -522,7 +525,7 @@ func (p *Panel) serverSetupOwnNames(ctx context.Context, d serverSetupDraft, lin
 	names := serverSetupPeerNames{Protocol: serverSetupLinkProtocol, ReverseCredential: serverSetupReverseCredential(link.LinkCredential), RequestID: requestID, ShortName: d.ShortName, PanelDomain: d.PanelDomain, DNSEngine: d.DNSEngine}
 	local, _ := canonicalIPv4(d.LocalIP)
 	names.Address = "https://" + net.JoinHostPort(local, strconv.Itoa(panelPort()))
-	cert, err := serverSetupPanelCertificate()
+	cert, err := p.serverSetupPanelCertificate()
 	if err != nil {
 		return names, &serverSetupPeerWait{Code: "server_setup_join_certificate_unavailable", Message: "This panel's TLS certificate could not be read. Check Settings → Panel certificate; setup asks again by itself."}
 	}

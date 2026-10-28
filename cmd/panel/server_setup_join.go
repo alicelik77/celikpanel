@@ -76,17 +76,17 @@ const (
 var serverSetupJoinEncoding = base32.StdEncoding.WithPadding(base32.NoPadding)
 var serverSetupJoinProofPattern = regexp.MustCompile(`^[A-Z2-7]{8}$`)
 
-// serverSetupPeerAddressAllowed is the address policy for a peer server: a
-// public unicast address. Tests replace it for loopback servers only.
-var serverSetupPeerAddressAllowed = func(ip netip.Addr) bool { return remoteDNSPublicAddress(ip) }
-
 // serverSetupPanelCertificate reads the certificate this panel serves, the
-// same file the TLS listener and the certificate page use.
+// same file the TLS listener and the certificate page use (a test sets its
+// own panel's certificate).
 // It is the identity the panel serves on its IP address (no name in the
 // handshake), which is where peers dial: the first self-signed identity
 // while it is valid, kept across domain certificate changes
 // (configurePanelHTTPTLS), otherwise the active certificate.
-var serverSetupPanelCertificate = func() (*x509.Certificate, error) {
+func (p *Panel) serverSetupPanelCertificate() (*x509.Certificate, error) {
+	if p.setupLink.certificate != nil {
+		return p.setupLink.certificate()
+	}
 	path := os.Getenv("CELIKPANEL_TLS_CERT")
 	if path == "" {
 		active, _, found, err := managedPanelCertificatePaths(tlsDir())
@@ -450,8 +450,6 @@ type serverSetupJoinLimiter struct {
 	byIP   map[string]int
 }
 
-var setupJoinLimiter = &serverSetupJoinLimiter{}
-
 func (l *serverSetupJoinLimiter) allow(ip string, now time.Time) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -507,7 +505,7 @@ func (p *Panel) handleServerSetupJoinCodes(w http.ResponseWriter, r *http.Reques
 		writeServerError(w, err)
 		return
 	}
-	cert, err := serverSetupPanelCertificate()
+	cert, err := p.serverSetupPanelCertificate()
 	if err != nil {
 		writeCodedError(w, http.StatusConflict, "server_setup_join_certificate_unavailable", "This panel's TLS certificate could not be read, so no code can be made. Check Settings → Panel certificate, then try again.", "")
 		return
@@ -590,15 +588,11 @@ func serverSetupRequestSourceIP(r *http.Request) (netip.Addr, bool) {
 	return ip.Unmap(), true
 }
 
-// serverSetupJoinSourceIP is the caller's address as the listener saw it
-// (no proxy header is trusted). Tests map their loopback caller.
-var serverSetupJoinSourceIP = serverSetupRequestSourceIP
-
 var serverSetupOSPattern = regexp.MustCompile(`^[A-Za-z0-9 ._()+-]{0,64}$`)
 
 func (p *Panel) handleServerSetupJoin(w http.ResponseWriter, r *http.Request) {
-	source, ok := serverSetupJoinSourceIP(r)
-	if !ok || !setupJoinLimiter.allow(serverSetupJoinSourceKey(source), time.Now()) {
+	source, ok := p.serverSetupJoinSourceIP(r)
+	if !ok || !p.setupLink.limiter.allow(serverSetupJoinSourceKey(source), time.Now()) {
 		writeServerSetupJoinRefusal(w, http.StatusTooManyRequests, "server_setup_join_rate_limited", "Too many join attempts; wait a minute and try again.", nil)
 		return
 	}
@@ -617,7 +611,7 @@ func (p *Panel) handleServerSetupJoin(w http.ResponseWriter, r *http.Request) {
 		// Informational only (the second server's address record): a public
 		// global unicast address, never used to authorize the join.
 		v6, err := netip.ParseAddr(request.DeclaredIPv6)
-		if err != nil || !v6.Is6() || v6.Is4In6() || v6.String() != request.DeclaredIPv6 || !v6.IsGlobalUnicast() || v6.IsPrivate() || !serverSetupPeerAddressAllowed(v6) {
+		if err != nil || !v6.Is6() || v6.Is4In6() || v6.String() != request.DeclaredIPv6 || !v6.IsGlobalUnicast() || v6.IsPrivate() || !p.serverSetupPeerAddressAllowed(v6) {
 			writeServerSetupJoinRefusal(w, http.StatusBadRequest, "server_setup_join_invalid", "The join request is not valid.", nil)
 			return
 		}
@@ -675,7 +669,7 @@ func (p *Panel) handleServerSetupJoin(w http.ResponseWriter, r *http.Request) {
 	}
 	// A correct code from a wrong or private address uses up nothing: the
 	// owner corrects the address (for example behind 1:1 NAT) and tries again.
-	if !sourceOK || !serverSetupPeerAddressAllowed(declared) {
+	if !sourceOK || !p.serverSetupPeerAddressAllowed(declared) {
 		if !sourceOK {
 			writeServerSetupJoinRefusal(w, http.StatusForbidden, "server_setup_join_source_mismatch", "The request did not come from the address the second server gave. Join from the second server itself, without a proxy.", left())
 			return
@@ -765,7 +759,7 @@ func (p *Panel) newServerSetupJoin(ctx context.Context, plan serverSetupPlan, re
 		return document, serverSetupJoinRecord{}, err
 	}
 	document.LinkID, document.LinkCredential = linkID, credential
-	if cert, err := serverSetupPanelCertificate(); err == nil {
+	if cert, err := p.serverSetupPanelCertificate(); err == nil {
 		document.FirstSPKI = hex.EncodeToString(serverSetupSPKI(cert))
 	}
 	join := serverSetupJoinRecord{RequestID: request.RequestID, PlanID: plan.ID, Digest: serverSetupJoinDocumentDigest(document),

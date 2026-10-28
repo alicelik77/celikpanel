@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -49,20 +50,28 @@ func joinTestCertificate(t *testing.T) (tls.Certificate, *x509.Certificate) {
 	return tls.Certificate{Certificate: [][]byte{der}, PrivateKey: key, Leaf: leaf}, leaf
 }
 
-// joinTestSeams: loopback addresses are allowed, the caller's address is
-// mapped, and this panel serves the given certificate.
-func joinTestSeams(t *testing.T, cert *x509.Certificate, source string) {
-	t.Helper()
-	previousAllowed, previousCert, previousSource, previousLimiter := serverSetupPeerAddressAllowed, serverSetupPanelCertificate, serverSetupJoinSourceIP, setupJoinLimiter
-	t.Cleanup(func() {
-		serverSetupPeerAddressAllowed, serverSetupPanelCertificate, serverSetupJoinSourceIP, setupJoinLimiter = previousAllowed, previousCert, previousSource, previousLimiter
-	})
-	serverSetupPeerAddressAllowed = func(netip.Addr) bool { return true }
-	serverSetupPanelCertificate = func() (*x509.Certificate, error) { return cert, nil }
-	setupJoinLimiter = &serverSetupJoinLimiter{}
+// joinTestSeams, on one panel before it serves: loopback addresses are
+// allowed, the caller's address is mapped, and the panel serves the given
+// certificate.
+func joinTestSeams(p *Panel, cert *x509.Certificate, source string) {
+	p.setupLink.addressAllowed = func(netip.Addr) bool { return true }
+	p.setupLink.certificate = func() (*x509.Certificate, error) { return cert, nil }
 	if source != "" {
-		serverSetupJoinSourceIP = func(*http.Request) (netip.Addr, bool) { return netip.MustParseAddr(source), true }
+		p.setupLink.sourceIP = func(*http.Request) (netip.Addr, bool) { return netip.MustParseAddr(source), true }
 	}
+}
+
+// joinTestDial sends every setup link dial of this panel to one listener.
+func joinTestDial(p *Panel, listener func() string) {
+	p.setupLink.dial = func(ctx context.Context, network, _ string) (net.Conn, error) {
+		return (&net.Dialer{Timeout: time.Second}).DialContext(ctx, network, listener())
+	}
+}
+
+func (l *serverSetupJoinLimiter) reset() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.window, l.total, l.byIP = time.Time{}, 0, nil
 }
 
 func joinFirstDraft() serverSetupDraft {
@@ -157,8 +166,8 @@ func TestServerSetupJoinCodeCarriesPinAndSecret(t *testing.T) {
 
 func TestServerSetupJoinPlanRunsComponentsFirstAndWaitsForTheSecondServer(t *testing.T) {
 	_, cert := joinTestCertificate(t)
-	joinTestSeams(t, cert, "")
 	f, plan, execution := joinFirstFixture(t, joinFirstDraft())
+	joinTestSeams(f.panel, cert, "")
 	joinIndex, dnsIndex := -1, -1
 	for index, step := range plan.Steps {
 		switch step.Kind {
@@ -192,8 +201,8 @@ func TestServerSetupJoinPlanRunsComponentsFirstAndWaitsForTheSecondServer(t *tes
 
 func TestServerSetupJoinCodeIsHashedSingleUseAndReplaysTheSameJoin(t *testing.T) {
 	_, cert := joinTestCertificate(t)
-	joinTestSeams(t, cert, "")
 	f, _, _ := joinFirstFixture(t, joinFirstDraft())
+	joinTestSeams(f.panel, cert, "")
 	view := issueJoinCode(t, f)
 	if view.AttemptsLeft != 5 || view.Address != "https://203.0.113.10:"+itoaTest(panelPort()) {
 		t.Fatalf("code view: %+v", view)
@@ -248,8 +257,8 @@ func TestServerSetupJoinCodeIsHashedSingleUseAndReplaysTheSameJoin(t *testing.T)
 
 func TestServerSetupJoinRefusesWrongCodesSourcesAndFloods(t *testing.T) {
 	_, cert := joinTestCertificate(t)
-	joinTestSeams(t, cert, "")
 	f, _, _ := joinFirstFixture(t, joinFirstDraft())
+	joinTestSeams(f.panel, cert, "")
 	view := issueJoinCode(t, f)
 	request := joinRequestFor(t, view.Code, strings.Repeat("c", 32))
 	wrong := request
@@ -283,7 +292,7 @@ func TestServerSetupJoinRefusesWrongCodesSourcesAndFloods(t *testing.T) {
 	if w := joinMachineRequest(t, f, serverSetupJoinPath, "", request); w.Code != http.StatusGone || !strings.Contains(w.Body.String(), "server_setup_join_code_exhausted") {
 		t.Fatalf("the source is exhausted: %d %s", w.Code, w.Body.String())
 	}
-	serverSetupJoinSourceIP = func(*http.Request) (netip.Addr, bool) { return netip.MustParseAddr("198.51.100.30"), true }
+	f.panel.setupLink.sourceIP = func(*http.Request) (netip.Addr, bool) { return netip.MustParseAddr("198.51.100.30"), true }
 	other := request
 	other.DeclaredIPv4 = "198.51.100.30"
 	if w := joinMachineRequest(t, f, serverSetupJoinPath, "", other); w.Code != http.StatusOK {
@@ -291,14 +300,14 @@ func TestServerSetupJoinRefusesWrongCodesSourcesAndFloods(t *testing.T) {
 	}
 	// The rate limit is per source with a large ceiling: one flooding caller
 	// does not hold another out.
-	setupJoinLimiter = &serverSetupJoinLimiter{}
+	limiter := &serverSetupJoinLimiter{}
 	now := time.Now()
 	for i := 0; i < serverSetupJoinRatePerSource; i++ {
-		if !setupJoinLimiter.allow("198.51.100.40", now) {
+		if !limiter.allow("198.51.100.40", now) {
 			t.Fatalf("request %d refused", i)
 		}
 	}
-	if setupJoinLimiter.allow("198.51.100.40", now) || !setupJoinLimiter.allow("198.51.100.41", now) {
+	if limiter.allow("198.51.100.40", now) || !limiter.allow("198.51.100.41", now) {
 		t.Fatal("per-source limit")
 	}
 	if serverSetupJoinSourceKey(netip.MustParseAddr("2001:db8:1:2:aaaa::1")) != serverSetupJoinSourceKey(netip.MustParseAddr("2001:db8:1:2:bbbb::2")) {
@@ -308,7 +317,7 @@ func TestServerSetupJoinRefusesWrongCodesSourcesAndFloods(t *testing.T) {
 	if _, err := f.database.GetDB().Exec(`DELETE FROM panel_settings WHERE key IN (?,?)`, serverSetupJoinKey, serverSetupJoinCodeKey); err != nil {
 		t.Fatal(err)
 	}
-	serverSetupJoinSourceIP = serverSetupRequestSourceIP
+	f.panel.setupLink.sourceIP = nil
 	view = issueJoinCode(t, f)
 	var record serverSetupJoinCodeRecord
 	readServerSetupJSONSetting(context.Background(), f.database.GetDB(), serverSetupJoinCodeKey, &record)
@@ -326,7 +335,8 @@ func TestServerSetupJoinRefusesWrongCodesSourcesAndFloods(t *testing.T) {
 func TestServerSetupJoinPinnedTLSSendsNothingToAnotherKey(t *testing.T) {
 	served, leaf := joinTestCertificate(t)
 	_, other := joinTestCertificate(t)
-	joinTestSeams(t, leaf, "")
+	caller := &Panel{}
+	joinTestSeams(caller, leaf, "")
 	var received, bearers atomic.Int32
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		received.Add(1)
@@ -339,39 +349,33 @@ func TestServerSetupJoinPinnedTLSSendsNothingToAnotherKey(t *testing.T) {
 	server.TLS = &tls.Config{Certificates: []tls.Certificate{served}}
 	server.StartTLS()
 	t.Cleanup(server.Close)
-	previous := serverSetupLinkDeps
-	t.Cleanup(func() { serverSetupLinkDeps = previous })
+	var listenerMu sync.Mutex
 	listener := server.Listener.Addr().String()
-	serverSetupLinkDeps = func() serverSetupLinkDependencies {
-		dialer := &net.Dialer{Timeout: time.Second}
-		return serverSetupLinkDependencies{dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
-			return dialer.DialContext(ctx, network, listener)
-		}}
-	}
+	joinTestDial(caller, func() string { listenerMu.Lock(); defer listenerMu.Unlock(); return listener })
 	target := serverSetupLinkTarget{Address: "https://203.0.113.10:2083", Pin: serverSetupSPKIPin(leaf)}
 	var answer struct {
 		Accepted bool `json:"accepted"`
 	}
-	if err := serverSetupLinkJSON(context.Background(), target, serverSetupPeerNamesPath, "x.y", map[string]string{}, &answer); err != nil || !answer.Accepted || received.Load() != 1 {
+	if err := caller.serverSetupLinkJSON(context.Background(), target, serverSetupPeerNamesPath, "x.y", map[string]string{}, &answer); err != nil || !answer.Accepted || received.Load() != 1 {
 		t.Fatalf("pinned exchange: %v %v %d", err, answer, received.Load())
 	}
 	// After the join the full fingerprint is pinned, and it is observed.
 	var observed []byte
 	target = serverSetupLinkTarget{Address: target.Address, Pin: serverSetupSPKI(leaf), Observed: &observed}
-	if err := serverSetupLinkJSON(context.Background(), target, serverSetupPeerNamesPath, "x.y", map[string]string{}, &answer); err != nil || !bytes.Equal(observed, serverSetupSPKI(leaf)) || bearers.Load() != 2 {
+	if err := caller.serverSetupLinkJSON(context.Background(), target, serverSetupPeerNamesPath, "x.y", map[string]string{}, &answer); err != nil || !bytes.Equal(observed, serverSetupSPKI(leaf)) || bearers.Load() != 2 {
 		t.Fatalf("full pin: %v %x %d", err, observed, bearers.Load())
 	}
 	// Another key gets no bearer and there is no fallback of any kind.
 	for _, pin := range [][]byte{serverSetupSPKIPin(other), serverSetupSPKI(other), append(serverSetupSPKIPin(leaf)[:9:9], 0)} {
 		target = serverSetupLinkTarget{Address: target.Address, Pin: pin}
-		if err := serverSetupLinkJSON(context.Background(), target, serverSetupPeerNamesPath, "x.y", map[string]string{}, &answer); !errors.Is(err, errServerSetupLinkPinMismatch) || received.Load() != 2 || bearers.Load() != 2 {
+		if err := caller.serverSetupLinkJSON(context.Background(), target, serverSetupPeerNamesPath, "x.y", map[string]string{}, &answer); !errors.Is(err, errServerSetupLinkPinMismatch) || received.Load() != 2 || bearers.Load() != 2 {
 			t.Fatalf("another key must get nothing: %v %d %d", err, received.Load(), bearers.Load())
 		}
 	}
 	target = serverSetupLinkTarget{Address: target.Address, Pin: serverSetupSPKIPin(leaf)}
 	server.Close()
 	target.Pin = serverSetupSPKIPin(leaf)
-	if err := serverSetupLinkJSON(context.Background(), target, serverSetupPeerNamesPath, "x.y", map[string]string{}, &answer); !errors.Is(err, errServerSetupLinkUnreachable) {
+	if err := caller.serverSetupLinkJSON(context.Background(), target, serverSetupPeerNamesPath, "x.y", map[string]string{}, &answer); !errors.Is(err, errServerSetupLinkUnreachable) {
 		t.Fatalf("a closed server is unreachable, nothing sent: %v", err)
 	}
 	// An answer lost after the request was written is unknown.
@@ -383,8 +387,10 @@ func TestServerSetupJoinPinnedTLSSendsNothingToAnotherKey(t *testing.T) {
 	lost.TLS = &tls.Config{Certificates: []tls.Certificate{served}}
 	lost.StartTLS()
 	t.Cleanup(lost.Close)
+	listenerMu.Lock()
 	listener = lost.Listener.Addr().String()
-	if err := serverSetupLinkJSON(context.Background(), target, serverSetupPeerNamesPath, "x.y", map[string]string{}, &answer); !errors.Is(err, errServerSetupLinkUnknown) {
+	listenerMu.Unlock()
+	if err := caller.serverSetupLinkJSON(context.Background(), target, serverSetupPeerNamesPath, "x.y", map[string]string{}, &answer); !errors.Is(err, errServerSetupLinkUnknown) {
 		t.Fatalf("a lost answer is unknown: %v", err)
 	}
 }
@@ -395,8 +401,8 @@ func TestServerSetupJoinPinnedTLSSendsNothingToAnotherKey(t *testing.T) {
 // dialed at its IPv4 address.
 func TestServerSetupJoinSourceIsTheDeclaredIPv4Only(t *testing.T) {
 	_, cert := joinTestCertificate(t)
-	joinTestSeams(t, cert, "")
 	f, _, _ := joinFirstFixture(t, joinFirstDraft())
+	joinTestSeams(f.panel, cert, "")
 	view := issueJoinCode(t, f)
 	send := func(remote string, request serverSetupJoinRequest) *httptest.ResponseRecorder {
 		raw, _ := json.Marshal(request)
@@ -432,8 +438,8 @@ func TestServerSetupJoinSourceIsTheDeclaredIPv4Only(t *testing.T) {
 // code and, once used, the publishing client it made.
 func TestServerSetupJoinReplacedWithdrawsTheEarlierEnrollment(t *testing.T) {
 	_, cert := joinTestCertificate(t)
-	joinTestSeams(t, cert, "")
 	f, _, _ := joinFirstFixture(t, joinFirstDraft())
+	joinTestSeams(f.panel, cert, "")
 	view := issueJoinCode(t, f)
 	w := joinMachineRequest(t, f, serverSetupJoinPath, "", joinRequestFor(t, view.Code, strings.Repeat("a", 32)))
 	var first serverSetupJoinDocument
@@ -449,7 +455,7 @@ func TestServerSetupJoinReplacedWithdrawsTheEarlierEnrollment(t *testing.T) {
 	if _, err := db.Exec(`UPDATE remote_dns_enrollments SET client_id=? WHERE code_hash=?`, client, remoteDNSHash(first.EnrollmentCode)); err != nil {
 		t.Fatal(err)
 	}
-	setupJoinLimiter = &serverSetupJoinLimiter{}
+	f.panel.setupLink.limiter.reset()
 	view = issueJoinCode(t, f)
 	if w := joinMachineRequest(t, f, serverSetupJoinPath, "", joinRequestFor(t, view.Code, strings.Repeat("b", 32))); w.Code != http.StatusOK {
 		t.Fatalf("new join: %d %s", w.Code, w.Body.String())
@@ -468,8 +474,8 @@ func TestServerSetupJoinReplacedWithdrawsTheEarlierEnrollment(t *testing.T) {
 // an older version, never an unknown answer.
 func TestServerSetupJoinOtherVersionsAreAKnownState(t *testing.T) {
 	_, cert := joinTestCertificate(t)
-	joinTestSeams(t, cert, "")
 	f, _, _ := joinFirstFixture(t, joinFirstDraft())
+	joinTestSeams(f.panel, cert, "")
 	view := issueJoinCode(t, f)
 	request := joinRequestFor(t, view.Code, strings.Repeat("a", 32))
 	older := request
@@ -500,17 +506,14 @@ func TestServerSetupJoinOtherVersionsAreAKnownState(t *testing.T) {
 		server.TLS = &tls.Config{Certificates: []tls.Certificate{served}}
 		server.StartTLS()
 		listener := server.Listener.Addr().String()
-		previous := serverSetupLinkDeps
-		serverSetupLinkDeps = func() serverSetupLinkDependencies {
-			return serverSetupLinkDependencies{dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
-				return (&net.Dialer{}).DialContext(ctx, network, listener)
-			}}
-		}
+		caller := &Panel{}
+		joinTestSeams(caller, leaf, "")
+		joinTestDial(caller, func() string { return listener })
 		var answer struct {
 			Protocol int  `json:"protocol"`
 			Accepted bool `json:"accepted"`
 		}
-		err := serverSetupLinkJSON(context.Background(), serverSetupLinkTarget{Address: "https://203.0.113.10:2083", Pin: serverSetupSPKI(leaf)}, serverSetupPeerNamesPath, "x.y", map[string]string{}, &answer)
+		err := caller.serverSetupLinkJSON(context.Background(), serverSetupLinkTarget{Address: "https://203.0.113.10:2083", Pin: serverSetupSPKI(leaf)}, serverSetupPeerNamesPath, "x.y", map[string]string{}, &answer)
 		var refusal *serverSetupLinkRefusal
 		if test.want != "" && (!errors.As(err, &refusal) || refusal.Code != test.want) {
 			t.Fatalf("%d: %v", test.status, err)
@@ -518,7 +521,6 @@ func TestServerSetupJoinOtherVersionsAreAKnownState(t *testing.T) {
 		if test.want == "" && (err != nil || !answer.Accepted || answer.Protocol != 1) {
 			t.Fatalf("tolerant decoding: %v %+v", err, answer)
 		}
-		serverSetupLinkDeps = previous
 		server.Close()
 	}
 }
@@ -570,8 +572,8 @@ func TestServerSetupJoinKeepsOnlyKeyedHashes(t *testing.T) {
 // told the code is used; there is never a second join.
 func TestServerSetupJoinConcurrentJoinsWithOneCode(t *testing.T) {
 	_, cert := joinTestCertificate(t)
-	joinTestSeams(t, cert, "")
 	f, _, _ := joinFirstFixture(t, joinFirstDraft())
+	joinTestSeams(f.panel, cert, "")
 	view := issueJoinCode(t, f)
 	codes := make(chan int, 2)
 	for _, id := range []string{strings.Repeat("a", 32), strings.Repeat("b", 32)} {
@@ -590,8 +592,8 @@ func TestServerSetupJoinConcurrentJoinsWithOneCode(t *testing.T) {
 // a valid document (no new code, said so).
 func TestServerSetupJoinReplayAfterAUsedEnrollmentIsValid(t *testing.T) {
 	_, cert := joinTestCertificate(t)
-	joinTestSeams(t, cert, "")
 	f, _, _ := joinFirstFixture(t, joinFirstDraft())
+	joinTestSeams(f.panel, cert, "")
 	view := issueJoinCode(t, f)
 	request := joinRequestFor(t, view.Code, strings.Repeat("a", 32))
 	var first serverSetupJoinDocument

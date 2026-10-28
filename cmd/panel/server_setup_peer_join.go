@@ -451,7 +451,7 @@ func (p *Panel) sendServerSetupPeerDKIM(ctx context.Context, plan serverSetupPla
 	var answer struct {
 		State string `json:"state"`
 	}
-	callErr := serverSetupLinkJSON(ctx, target, serverSetupPeerDKIMPath, bearer, request, &answer)
+	callErr := p.serverSetupLinkJSON(ctx, target, serverSetupPeerDKIMPath, bearer, request, &answer)
 	var refusal *serverSetupLinkRefusal
 	switch {
 	case callErr == nil && answer.State == "published":

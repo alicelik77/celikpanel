@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -14,7 +13,6 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/alicelik/celikpanel/internal/dnswire"
 )
@@ -34,9 +32,9 @@ type peerPair struct {
 func newPeerPair(t *testing.T, firstDraft serverSetupDraft) *peerPair {
 	t.Helper()
 	served, leaf := joinTestCertificate(t)
-	joinTestSeams(t, leaf, "198.51.100.20")
 	pair := &peerPair{}
 	pair.first, pair.plan, pair.execution = joinFirstFixture(t, firstDraft)
+	joinTestSeams(pair.first.panel, leaf, "198.51.100.20")
 	machine := pair.first.panel.requireServerSetupLinkMachine(http.NotFoundHandler())
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == serverSetupJoinPath {
@@ -54,16 +52,10 @@ func newPeerPair(t *testing.T, firstDraft serverSetupDraft) *peerPair {
 	server.TLS = &tls.Config{Certificates: []tls.Certificate{served}}
 	server.StartTLS()
 	t.Cleanup(server.Close)
-	previous := serverSetupLinkDeps
-	t.Cleanup(func() { serverSetupLinkDeps = previous })
 	listener := server.Listener.Addr().String()
-	serverSetupLinkDeps = func() serverSetupLinkDependencies {
-		dialer := &net.Dialer{Timeout: time.Second}
-		return serverSetupLinkDependencies{dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
-			return dialer.DialContext(ctx, network, listener)
-		}}
-	}
 	pair.second, _ = setupOperationFixture(t)
+	joinTestSeams(pair.second.panel, leaf, "")
+	joinTestDial(pair.second.panel, func() string { return listener })
 	t.Setenv("CELIKPANEL_SERVER_IP", "198.51.100.20")
 	return pair
 }
@@ -291,15 +283,13 @@ func TestServerSetupPeerNamesClashesAreRefusedBeforeAnythingIsWritten(t *testing
 func TestServerSetupPeerConnectRecoversAFailedDraftSave(t *testing.T) {
 	pair := newPeerPair(t, joinFirstDraft())
 	view := issueJoinCode(t, pair.first)
-	previous := serverSetupPeerSaveDraft
-	t.Cleanup(func() { serverSetupPeerSaveDraft = previous })
 	failed := false
-	serverSetupPeerSaveDraft = func(p *Panel, ctx context.Context, revision int, d serverSetupDraft) (serverSetupState, error) {
+	pair.second.panel.setupLink.saveDraft = func(ctx context.Context, revision int, d serverSetupDraft) (serverSetupState, error) {
 		if !failed {
 			failed = true
 			return serverSetupState{}, errServerSetupConflict
 		}
-		return previous(p, ctx, revision, d)
+		return pair.second.panel.saveServerSetupDraft(ctx, revision, d)
 	}
 	if answer := pair.connect(t, view.Code); answer.State != "ok" || answer.Code != "server_setup_peer_draft_retry" || answer.Setup != nil {
 		t.Fatalf("a failed save is said: %+v", answer)
@@ -321,7 +311,7 @@ func TestServerSetupPeerDocumentFingerprintMustBeTheAnsweringKey(t *testing.T) {
 	pair := newPeerPair(t, joinFirstDraft())
 	view := issueJoinCode(t, pair.first)
 	_, other := joinTestCertificate(t)
-	serverSetupPanelCertificate = func() (*x509.Certificate, error) { return other, nil }
+	pair.first.panel.setupLink.certificate = func() (*x509.Certificate, error) { return other, nil }
 	if answer := pair.connect(t, view.Code); answer.State != "wrong_server" {
 		t.Fatalf("a document naming another key: %+v", answer)
 	}
@@ -375,7 +365,6 @@ func TestServerSetupPeerJoinDeclaresTheTypedPublicIPv4(t *testing.T) {
 // A join document from another version is a known state, not a lost answer.
 func TestServerSetupPeerDocumentFromAnotherVersion(t *testing.T) {
 	served, leaf := joinTestCertificate(t)
-	joinTestSeams(t, leaf, "")
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"protocol":2,"version":2,"a_newer_field":{}}`))
@@ -384,14 +373,9 @@ func TestServerSetupPeerDocumentFromAnotherVersion(t *testing.T) {
 	server.StartTLS()
 	t.Cleanup(server.Close)
 	listener := server.Listener.Addr().String()
-	previous := serverSetupLinkDeps
-	t.Cleanup(func() { serverSetupLinkDeps = previous })
-	serverSetupLinkDeps = func() serverSetupLinkDependencies {
-		return serverSetupLinkDependencies{dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
-			return (&net.Dialer{}).DialContext(ctx, network, listener)
-		}}
-	}
 	second, _ := setupOperationFixture(t)
+	joinTestSeams(second.panel, leaf, "")
+	joinTestDial(second.panel, func() string { return listener })
 	t.Setenv("CELIKPANEL_SERVER_IP", "198.51.100.20")
 	code := formatServerSetupJoinCode(serverSetupSPKIPin(leaf), []byte{1, 2, 3, 4, 5})
 	body, _ := json.Marshal(map[string]string{"address": "203.0.113.10:2083", "code": code})

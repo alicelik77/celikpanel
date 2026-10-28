@@ -76,16 +76,43 @@ type serverSetupLinkRefusal struct {
 
 func (e *serverSetupLinkRefusal) Error() string { return "the other server refused: " + e.Code }
 
-// serverSetupLinkDependencies are replaced only by tests (loopback servers,
-// their own roots); production dials the literal address with system roots.
-type serverSetupLinkDependencies struct {
-	dial  func(ctx context.Context, network, address string) (net.Conn, error)
-	roots *x509.CertPool
+// serverSetupLinkState is one panel's setup link state: the join rate limit
+// and the seams a test sets on its own panel before it serves (loopback
+// servers, a mapped caller, a failing draft save). Production leaves every
+// seam nil: it dials the literal address and allows public addresses only.
+type serverSetupLinkState struct {
+	limiter serverSetupJoinLimiter
+
+	dial           func(ctx context.Context, network, address string) (net.Conn, error)
+	addressAllowed func(netip.Addr) bool
+	sourceIP       func(*http.Request) (netip.Addr, bool)
+	certificate    func() (*x509.Certificate, error)
+	saveDraft      func(ctx context.Context, revision int, d serverSetupDraft) (serverSetupState, error)
 }
 
-var serverSetupLinkDeps = func() serverSetupLinkDependencies {
-	dialer := &net.Dialer{Timeout: 5 * time.Second}
-	return serverSetupLinkDependencies{dial: dialer.DialContext}
+// serverSetupPeerAddressAllowed is the address policy for a peer server: a
+// public unicast address.
+func (p *Panel) serverSetupPeerAddressAllowed(ip netip.Addr) bool {
+	if p.setupLink.addressAllowed != nil {
+		return p.setupLink.addressAllowed(ip)
+	}
+	return remoteDNSPublicAddress(ip)
+}
+
+// serverSetupJoinSourceIP is the caller's address as the listener saw it (no
+// proxy header is trusted).
+func (p *Panel) serverSetupJoinSourceIP(r *http.Request) (netip.Addr, bool) {
+	if p.setupLink.sourceIP != nil {
+		return p.setupLink.sourceIP(r)
+	}
+	return serverSetupRequestSourceIP(r)
+}
+
+func (p *Panel) serverSetupLinkDial(ctx context.Context, address string) (net.Conn, error) {
+	if p.setupLink.dial != nil {
+		return p.setupLink.dial(ctx, "tcp", address)
+	}
+	return (&net.Dialer{Timeout: 5 * time.Second}).DialContext(ctx, "tcp", address)
 }
 
 // serverSetupLinkTarget: where and how to reach the peer. Pin is the
@@ -101,21 +128,20 @@ type serverSetupLinkTarget struct {
 	Observed *[]byte
 }
 
-func serverSetupLinkJSON(ctx context.Context, target serverSetupLinkTarget, path, bearer string, request, response any) error {
+func (p *Panel) serverSetupLinkJSON(ctx context.Context, target serverSetupLinkTarget, path, bearer string, request, response any) error {
 	address, ok := canonicalServerSetupPeerAddress(target.Address)
 	if !ok || address != target.Address || !serverSetupLinkMachinePath(path) || (len(target.Pin) != 10 && len(target.Pin) != 32) {
 		return errors.New("invalid setup link exchange")
 	}
 	u, _ := url.Parse(address)
 	ip, err := netip.ParseAddr(u.Hostname())
-	if err != nil || !serverSetupPeerAddressAllowed(ip) {
+	if err != nil || !p.serverSetupPeerAddressAllowed(ip) {
 		return errors.New("the other server's address is not a public server address")
 	}
 	payload, err := json.Marshal(request)
 	if err != nil || len(payload) > remoteDNSJSONLimit {
 		return errors.New("setup link request exceeds its contract")
 	}
-	deps := serverSetupLinkDeps()
 	var pinMismatch, wrote atomic.Bool
 	// The key fingerprint is the trust: no name, no authority. It is checked
 	// in the handshake, before any request byte (and its bearer) is written.
@@ -144,7 +170,7 @@ func serverSetupLinkJSON(ctx context.Context, target serverSetupLinkTarget, path
 			if network != "tcp" || dialAddress != host {
 				return nil, errors.New("setup link target changed")
 			}
-			return deps.dial(dialCtx, "tcp", host)
+			return p.serverSetupLinkDial(dialCtx, host)
 		},
 	}
 	defer httpTransport.CloseIdleConnections()
