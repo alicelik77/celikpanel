@@ -26,6 +26,20 @@ kuruluşunun ikisi de yanıt vermeden değişikliği reddettiği uyarısını ve
 yalnız alan adının içindeki ad sunucuları için istenir; IPv6 glue isteğe bağlıdır.
 Kurulu bir sunucuda ölçülmedi.
 
+İnceleme düzeltmeleri: karşılaştırma ham aktarılan kayıtlarla değil, bölgenin
+yayımladığı kayıtlarla yapılır (aktarılan kayıtlar ve posta kayıtları: birleşik
+SPF, sahibin seçtiği MX ve DMARC); sahibin bizimkinin yanına eklediği değer
+(yedek MX) kabul edilir. Yalnız yayımlanan bir değeri içermeyen yetkili NOERROR
+ya da NXDOMAIN yanıtı "henüz değil"dir; yanıt yoksa, yanıt yetkili değilse ya da
+REFUSED/SERVFAIL ise "bakılamadı" olur. Üst bölge yürüyüşü ve sunucularımızın
+yanıtları kendi süre sınırlarıyla yan yana çalışır. Yetkisiz bir üst bölge
+sunucusu (yetkisiz NXDOMAIN, alan adının ad sunucularını içermeyen yanıt)
+atlanır ve sıradakine sorulur; üst bölge sunucularına yalnız IPv4 ile ulaşılır,
+yalnız IPv6 sunucusu olan bir üst bölge "bakılamadı" olur. Bilinmeyen maddesi
+olan yanıt paylaşılmaz, ikinci bakış süren kontrolü bekler (ya da kendi isteği
+bitince vazgeçer) ve her şeyi doğru olan kart, adım yeniden açılana kadar
+sormayı bırakır.
+
 ## 28 Ekim ek kararı: kurulum sihirbazı v2, 2. aşama (v0.1.0-alpha.112 kaynağı)
 
 - **Mevcut kayıtlar.** Ana DNS sunucusunda DNS adımından sonraki adım, ana alan

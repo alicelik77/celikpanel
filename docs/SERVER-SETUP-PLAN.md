@@ -27,6 +27,21 @@ answers, and warns that `.tr` registries refuse a change before both answer.
 Glue is asked only for nameservers inside the domain; IPv6 glue is optional.
 Not measured on an installed server.
 
+Review corrections: the comparison uses the records as the zone publishes
+them (imported records plus the mail records: the merged SPF, the MX and
+DMARC as the owner chose), not the raw imports; a value the owner added
+beside ours (a backup MX) is allowed. Only an authoritative NOERROR or
+NXDOMAIN answer lacking a published value is "not yet"; no reply, a reply
+that is not authoritative, or REFUSED/SERVFAIL is "could not be checked".
+The parent walk and our servers' answers run side by side in their own time
+budgets. A lame parent server (a non-authoritative NXDOMAIN, an answer
+without the domain's nameservers) is skipped for the next one; parent
+servers are reached over IPv4 only, so a parent with only IPv6 servers is
+"could not be checked". An answer with an unknown item is not shared, a
+second look waits for the check in flight (or gives up with its own
+request), and a card where everything is correct stops asking until the
+step is opened again.
+
 ## October 28 follow-up: setup wizard v2, phase 2 (v0.1.0-alpha.112 source)
 
 - **Existing records.** On the main DNS server a step after the DNS step reads

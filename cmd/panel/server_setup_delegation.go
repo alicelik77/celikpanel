@@ -57,8 +57,14 @@ type serverSetupDelegationDiff struct {
 	Seen     []string `json:"seen"`
 }
 
+// serverSetupDelegationImported compares the records the setup publishes
+// beside its own server names (imported and mail records, as published:
+// merged SPF, MX and DMARC as the owner chose). Unknown counts records no
+// server of ours answered readably (no reply, not authoritative, an error
+// code): they are neither matched nor differences.
 type serverSetupDelegationImported struct {
 	Matched int                         `json:"matched"`
+	Unknown int                         `json:"unknown"`
 	Total   int                         `json:"total"`
 	Diffs   []serverSetupDelegationDiff `json:"diffs"`
 }
@@ -97,16 +103,43 @@ func serverSetupDelegationExpected(d serverSetupDraft, ipv6 string) []serverSetu
 	}
 }
 
-func serverSetupImportedExpectation(record serverSetupImportedRecord) string {
-	if record.Type == "MX" {
-		return strings.TrimSpace(strconv.Itoa(record.Priority) + " " + record.Content)
+// serverSetupPublishedExpectation is a published record's value the way a
+// DNS answer shows it: MX as "preference host", TXT as its joined text.
+func serverSetupPublishedExpectation(record serverSetupInfrastructureDNSRecord) string {
+	switch record.Type {
+	case "MX":
+		return strconv.Itoa(record.Priority) + " " + record.Content
+	case "TXT":
+		return joinTXTSegments(record.Content)
 	}
 	return record.Content
 }
 
+// serverSetupDelegationPublished lists the imported and mail records the
+// setup's zone publishes (records as published, never the raw imports).
+func serverSetupDelegationPublished(d serverSetupDraft) []serverSetupInfrastructureDNSRecord {
+	if d.DNSRole != transport.DNSPairRolePrimary || d.InfrastructureDNS == nil || d.InfrastructureDNS.Zone != d.MainDomain {
+		return nil
+	}
+	desired, err := serverSetupInfrastructureDNSDesired(d)
+	if err != nil {
+		return nil
+	}
+	out := []serverSetupInfrastructureDNSRecord{}
+	for _, record := range desired {
+		if record.Origin != "" {
+			out = append(out, record)
+		}
+	}
+	return out
+}
+
+// The parent-zone walk and our own servers' answers run side by side, each
+// in its own time budget: a slow parent never turns our answers into
+// mismatches, and slow servers of ours never hide the parent's answer.
+var serverSetupDelegationBudget = 10 * time.Second
+
 func (p *Panel) checkServerSetupDelegation(ctx context.Context, d serverSetupDraft, ipv6 string, options dnswire.DelegationOptions) serverSetupDelegation {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
 	address := func(ip string) string {
 		if options.Address != nil {
 			return options.Address(ip)
@@ -120,29 +153,42 @@ func (p *Panel) checkServerSetupDelegation(ctx context.Context, d serverSetupDra
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		delegation, delegationErr = dnswire.Delegation(ctx, d.MainDomain, options)
+		walkCtx, cancel := context.WithTimeout(ctx, serverSetupDelegationBudget)
+		defer cancel()
+		delegation, delegationErr = dnswire.Delegation(walkCtx, d.MainDomain, options)
 	}()
 	servers := make([]serverSetupDelegationServer, len(result.ExpectedNS))
-	for index, ns := range result.ExpectedNS {
-		wg.Add(1)
-		go func(index int, ns serverSetupDelegationNS) {
-			defer wg.Done()
-			server := serverSetupDelegationServer{Role: ns.Server, IP: ns.IPv4, State: "unknown"}
-			if ns.IPv4 != "" {
-				message, err := dnswire.Exchange(ctx, address(ns.IPv4), d.MainDomain, dnswire.TypeSOA, false)
-				switch {
-				case err != nil:
-					server.State = "unknown"
-				case message.Authoritative && message.RCode == 0 && len(message.Answer) > 0:
-					server.State = "ok"
-					server.Serial, _ = dnswire.SOASerial(message.Answer[0].Value)
-				default:
-					server.State = "not_yet"
+	var imported serverSetupDelegationImported
+	importedItem := serverSetupDelegationItem{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		answerCtx, cancel := context.WithTimeout(ctx, serverSetupDelegationBudget)
+		defer cancel()
+		var inner sync.WaitGroup
+		for index, ns := range result.ExpectedNS {
+			inner.Add(1)
+			go func(index int, ns serverSetupDelegationNS) {
+				defer inner.Done()
+				server := serverSetupDelegationServer{Role: ns.Server, IP: ns.IPv4, State: "unknown"}
+				if ns.IPv4 != "" {
+					message, err := dnswire.Exchange(answerCtx, address(ns.IPv4), d.MainDomain, dnswire.TypeSOA, false)
+					switch {
+					case err != nil:
+						server.State = "unknown"
+					case message.Authoritative && message.RCode == 0 && len(message.Answer) > 0:
+						server.State = "ok"
+						server.Serial, _ = dnswire.SOASerial(message.Answer[0].Value)
+					default:
+						server.State = "not_yet"
+					}
 				}
-			}
-			servers[index] = server
-		}(index, ns)
-	}
+				servers[index] = server
+			}(index, ns)
+		}
+		inner.Wait()
+		imported, importedItem = checkServerSetupPublishedAnswers(answerCtx, d, servers, address)
+	}()
 	wg.Wait()
 	result.Servers = servers
 	for _, server := range servers {
@@ -211,32 +257,41 @@ func (p *Panel) checkServerSetupDelegation(ctx context.Context, d serverSetupDra
 		nsItem.Vars["seen"] = strings.Join(seen, ", ")
 	}
 	result.Items = append(result.Items, nsItem)
-	p.checkServerSetupImportedAnswers(ctx, d, servers, address, &result)
+	if importedItem.ID != "" {
+		result.Imported = imported
+		result.Items = append(result.Items, importedItem)
+	}
 	return result
 }
 
-// checkServerSetupImportedAnswers asks every answering server of ours each
-// imported record directly: the same answer as before is what keeps the
-// site and mail working through the nameserver change.
-func (p *Panel) checkServerSetupImportedAnswers(ctx context.Context, d serverSetupDraft, servers []serverSetupDelegationServer, address func(string) string, result *serverSetupDelegation) {
+// checkServerSetupPublishedAnswers asks every answering server of ours each
+// imported and mail record directly, as the zone publishes it: the same
+// answer is what keeps the site and mail working through the nameserver
+// change. Only a readable, authoritative answer (NOERROR or NXDOMAIN) that
+// lacks a published value is a difference (not yet); no reply, a reply that
+// is not authoritative or another response code is unknown (D-024). Values
+// the owner added beside ours (a backup MX added in Domains) are allowed.
+func checkServerSetupPublishedAnswers(ctx context.Context, d serverSetupDraft, servers []serverSetupDelegationServer, address func(string) string) (serverSetupDelegationImported, serverSetupDelegationItem) {
+	imported := serverSetupDelegationImported{Diffs: []serverSetupDelegationDiff{}}
 	type key struct{ name, kind string }
 	expected := map[key][]string{}
 	order := []key{}
-	for _, record := range serverSetupImported(d) {
+	for _, record := range serverSetupDelegationPublished(d) {
 		k := key{record.Name, record.Type}
 		if _, seen := expected[k]; !seen {
 			order = append(order, k)
 		}
-		expected[k] = append(expected[k], serverSetupImportedExpectation(record))
+		expected[k] = append(expected[k], serverSetupPublishedExpectation(record))
 	}
 	if len(order) == 0 {
-		return
+		return imported, serverSetupDelegationItem{}
 	}
-	result.Imported.Total = len(order)
+	imported.Total = len(order)
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	limit := make(chan struct{}, 8)
 	diffs := map[key]serverSetupDelegationDiff{}
+	unknown := map[key]bool{}
 	answered := false
 	for _, server := range servers {
 		if server.State != "ok" {
@@ -250,53 +305,75 @@ func (p *Panel) checkServerSetupImportedAnswers(ctx context.Context, d serverSet
 				limit <- struct{}{}
 				defer func() { <-limit }()
 				message, err := dnswire.Exchange(ctx, address(ip), k.name, serverSetupRecordTypes[k.kind], false)
+				if err != nil || !message.Authoritative || (message.RCode != 0 && message.RCode != 3) {
+					mu.Lock()
+					unknown[k] = true
+					mu.Unlock()
+					return
+				}
 				seen := []string{}
-				if err == nil {
-					for _, rr := range message.Answer {
-						if rr.Name == k.name && rr.Type == serverSetupRecordTypes[k.kind] {
-							seen = append(seen, rr.Value)
-						}
+				for _, rr := range message.Answer {
+					if rr.Name == k.name && rr.Type == serverSetupRecordTypes[k.kind] {
+						seen = append(seen, rr.Value)
 					}
 				}
 				want := append([]string(nil), expected[k]...)
 				slices.Sort(want)
 				slices.Sort(seen)
-				if err != nil || !slices.Equal(want, seen) {
-					mu.Lock()
-					diffs[k] = serverSetupDelegationDiff{Name: k.name, Type: k.kind, Expected: want, Seen: seen}
-					mu.Unlock()
+				for _, value := range want {
+					if !slices.Contains(seen, value) {
+						mu.Lock()
+						diffs[k] = serverSetupDelegationDiff{Name: k.name, Type: k.kind, Expected: want, Seen: seen}
+						mu.Unlock()
+						return
+					}
 				}
 			}(server.IP, k)
 		}
 	}
 	wg.Wait()
 	if !answered {
-		result.Items = append(result.Items, serverSetupDelegationItem{ID: "imported", State: "waiting", Vars: map[string]string{"total": strconv.Itoa(len(order))}})
-		return
+		return imported, serverSetupDelegationItem{ID: "imported", State: "waiting", Vars: map[string]string{"total": strconv.Itoa(len(order))}}
 	}
 	for _, k := range order {
 		if diff, failed := diffs[k]; failed {
-			result.Imported.Diffs = append(result.Imported.Diffs, diff)
+			imported.Diffs = append(imported.Diffs, diff)
+		} else if unknown[k] {
+			imported.Unknown++
 		} else {
-			result.Imported.Matched++
+			imported.Matched++
 		}
 	}
 	state := "ok"
-	if len(result.Imported.Diffs) > 0 {
+	switch {
+	case len(imported.Diffs) > 0:
 		state = "not_yet"
+	case imported.Unknown > 0:
+		state = "unknown"
 	}
-	result.Items = append(result.Items, serverSetupDelegationItem{ID: "imported", State: state, Vars: map[string]string{"matched": strconv.Itoa(result.Imported.Matched), "total": strconv.Itoa(result.Imported.Total)}})
+	return imported, serverSetupDelegationItem{ID: "imported", State: state, Vars: map[string]string{"matched": strconv.Itoa(imported.Matched), "total": strconv.Itoa(imported.Total)}}
+}
+
+type serverSetupDelegationFlight struct {
+	done  chan struct{}
+	value serverSetupDelegation
 }
 
 type serverSetupDelegationCache struct {
-	mu    sync.Mutex
-	key   string
-	at    time.Time
-	value serverSetupDelegation
+	mu       sync.Mutex
+	key      string
+	at       time.Time
+	value    serverSetupDelegation
+	inflight map[string]*serverSetupDelegationFlight
 }
 
 var setupDelegationCaches sync.Map
 
+// serverSetupDelegation shares one check per minute. The check runs without
+// the cache lock: a second caller for the same draft waits for the check in
+// flight (or gives up when its own request ends) instead of starting
+// another. An answer with an unknown item is not kept, so the next look asks
+// the internet again.
 func (p *Panel) serverSetupDelegation(ctx context.Context, d serverSetupDraft, now time.Time) serverSetupDelegation {
 	ipv6 := ""
 	if parsed := net.ParseIP(setupProviderRecordIPv6()); parsed != nil && parsed.To4() == nil && parsed.IsGlobalUnicast() && !parsed.IsPrivate() {
@@ -310,15 +387,40 @@ func (p *Panel) serverSetupDelegation(ctx context.Context, d serverSetupDraft, n
 	value, _ := setupDelegationCaches.LoadOrStore(p, &serverSetupDelegationCache{})
 	cache := value.(*serverSetupDelegationCache)
 	cache.mu.Lock()
-	defer cache.mu.Unlock()
 	if cache.key == key && now.Sub(cache.at) >= 0 && now.Sub(cache.at) < serverSetupProviderRecordsTTL {
 		result := cache.value
+		cache.mu.Unlock()
 		result.NextCheckAfter = int((serverSetupProviderRecordsTTL - now.Sub(cache.at)).Seconds())
 		return result
 	}
+	if cache.inflight == nil {
+		cache.inflight = map[string]*serverSetupDelegationFlight{}
+	}
+	if flight, running := cache.inflight[key]; running {
+		cache.mu.Unlock()
+		select {
+		case <-flight.done:
+			return flight.value
+		case <-ctx.Done():
+			return serverSetupDelegation{Zone: d.MainDomain, ExpectedNS: []serverSetupDelegationNS{}, ParentNS: []string{}, ParentGlue: map[string][]string{}, Servers: []serverSetupDelegationServer{}, Items: []serverSetupDelegationItem{}, Imported: serverSetupDelegationImported{Diffs: []serverSetupDelegationDiff{}}, NextCheckAfter: 5}
+		}
+	}
+	flight := &serverSetupDelegationFlight{done: make(chan struct{})}
+	cache.inflight[key] = flight
+	cache.mu.Unlock()
+
 	result := p.checkServerSetupDelegation(context.WithoutCancel(ctx), d, ipv6, setupDelegationOptions())
 	result.CheckedAt, result.NextCheckAfter = now.UTC().Format(time.RFC3339), int(serverSetupProviderRecordsTTL.Seconds())
-	cache.key, cache.at, cache.value = key, now, result
+	complete := !slices.ContainsFunc(result.Items, func(item serverSetupDelegationItem) bool { return item.State == "unknown" })
+	flight.value = result
+
+	cache.mu.Lock()
+	if complete {
+		cache.key, cache.at, cache.value = key, now, result
+	}
+	delete(cache.inflight, key)
+	cache.mu.Unlock()
+	close(flight.done)
 	return result
 }
 
