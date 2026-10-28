@@ -27,12 +27,14 @@ type peerPair struct {
 	second     serviceOperationTestFixture
 	dropAnswer atomic.Bool
 	joins      atomic.Int32
+	// served is the key both panels present on their link (one per test).
+	served tls.Certificate
 }
 
 func newPeerPair(t *testing.T, firstDraft serverSetupDraft) *peerPair {
 	t.Helper()
 	served, leaf := joinTestCertificate(t)
-	pair := &peerPair{}
+	pair := &peerPair{served: served}
 	pair.first, pair.plan, pair.execution = joinFirstFixture(t, firstDraft)
 	joinTestSeams(pair.first.panel, leaf, "198.51.100.20")
 	machine := pair.first.panel.requireServerSetupLinkMachine(http.NotFoundHandler())

@@ -233,8 +233,11 @@ func (p *Panel) handleServerSetupPeerDKIM(w http.ResponseWriter, r *http.Request
 		writeServerError(w, err)
 		return
 	}
-	// Only while this server's own setup runs with the other server bound:
-	// the link is a setup channel, not a standing record interface.
+	// The gate is the live link credential (checked before this handler) and
+	// this server's own setup running or waiting: the link is a setup
+	// channel, not a standing record interface. Either server can be the
+	// main DNS server, so being bound is not the gate: a second server that
+	// is the main (Option A) has no binding step at all.
 	if execution == nil || !stringIn(execution.Status, "running", "waiting") {
 		writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_dkim_not_running", "The main DNS server's setup is not running; the DKIM record is added there in Domains.", nil)
 		return
@@ -244,16 +247,25 @@ func (p *Panel) handleServerSetupPeerDKIM(w http.ResponseWriter, r *http.Request
 		writeServerError(w, err)
 		return
 	}
-	plan, err = p.effectiveServerSetupPlan(ctx, plan, execution.ID)
-	if err != nil {
-		writeServerError(w, err)
+	switch {
+	case serverSetupPlanHasStep(plan, "peer_join"):
+		// The first server: its plan names the other server once bound.
+		plan, err = p.effectiveServerSetupPlan(ctx, plan, execution.ID)
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		if !plan.peerBound {
+			writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_dkim_not_bound", "The main DNS server's setup has not taken this server in yet; it does once it has this server's names. Setup sends the record again by itself.", nil)
+			return
+		}
+	case serverSetupPlanHasStep(plan, "peer_names"):
+		// The second server: the join gave its plan the other server.
+	default:
+		writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_dkim_not_running", "The main DNS server's setup does not run with this server; the DKIM record is added there in Domains.", nil)
 		return
 	}
 	d := plan.Draft
-	if !plan.peerBound {
-		writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_dkim_not_running", "The main DNS server's setup has not bound this server yet.", nil)
-		return
-	}
 	if d.DNSMode != setupDNSModeLocal || d.DNSRole != transport.DNSPairRolePrimary || d.InfrastructureDNS == nil || d.InfrastructureDNS.Zone != d.MainDomain || request.Domain != d.MainDomain {
 		writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_dkim_not_main", "This server does not keep the main domain's zone.", nil)
 		return
