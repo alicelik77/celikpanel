@@ -10,6 +10,79 @@ This document records that agreement and the implementation acceptance criteria.
 It does not authorize an assistant to update any installed panel; the user starts
 every installed-panel update from CelikPanel itself, as required by [AGENTS.md](../AGENTS.md).
 
+## October 28 follow-up: setup wizard v2, phase 4 (v0.1.0-alpha.114 source)
+
+- **One server, its own DNS.** One server keeping its own DNS is standalone:
+  both nameserver names point to it, there is no backup DNS server, and the
+  wizard does not promise adding one later for BIND (a running BIND cannot
+  move from standalone to paired). Readiness needs both names published to
+  this server; the registrar card asks this server once.
+- **The second server joins by code at the start.** With two servers and the
+  owner's own DNS the first server's plan runs its components (services,
+  runtimes, mail profiles) and then waits at a "the second server joins" step;
+  the second server's address is never typed. Its administrator creates a
+  join code there: 24 characters, the first 16 carrying 80 bits of the first
+  panel's TLS key fingerprint (SHA-256 of the SubjectPublicKeyInfo), the last
+  8 a 40-bit single-use secret, valid 24 hours and 5 wrong tries, kept only as
+  a salted hash, audited without the secret, shown once. On the second server
+  the first step offers "Join the first server with a code": the address and
+  the code. The second server checks the fingerprint in the TLS handshake
+  before anything is written, so a wrong address never receives the secret.
+  The first server checks the secret in constant time, the caller's source
+  address against the address it declares, a rate limit (20 a minute, 5 from
+  one address), and consumes the code once. Answers: joined; refused with the
+  reason (wrong code with the tries left, used, expired, exhausted, not
+  waiting, source mismatch); wrong server (another key; nothing sent);
+  unreachable (nothing sent; the code unused); unknown (the answer was lost:
+  the request is kept and the next try is the same request, which the first
+  server answers with the same join and fresh secrets, never a second join).
+- **The join document.** The second server's shared answers come from the
+  first: main domain, two servers, its own DNS, which server is the main DNS
+  server, ns1 (always the main) and ns2, the first server's address, short
+  name and names, and either the first server's publishing endpoint with a
+  one-time enrollment code (first server is the main) or the list the first
+  server prepared (second server is the main). The second server's review
+  refuses a draft whose shared answers differ ("join again to change them").
+- **Names over the link, bound once.** The second server's plan starts by
+  sending its names (panel, mail, its main-domain mail choice when it
+  receives the main domain's mail, its address and key fingerprint) over the
+  link; the first server checks them against its own names and records at
+  once (a clash is refused before anything is written) and wakes. Its join
+  step then binds the second server to that exact execution, once and
+  immutably (INSERT OR IGNORE, like the DNS publisher binding), computing the
+  zone records against the zone at binding time; every later step runs on the
+  plan completed by the binding, the reviewed plan itself never changes. A
+  runner restarted mid-wait binds the same way; names that change after the
+  binding are refused with the reason.
+- **Choosing the main DNS server (Option A).** When the second server is the
+  main, the first prepares the list (records, mail choice) and installs no DNS
+  software until the second joined; the list goes with the join; the second
+  keeps the zone with the first server's names, and the first installs as
+  backup with an enrollment code the second issued with its names.
+- **Publishing without the administrator.** A joined backup DNS server makes
+  its publishing connection by itself with the handed-over enrollment code
+  (the join was the main administrator's consent, Q5); until the main DNS
+  server accepts (its pair ready and nameservers public) the step waits with
+  that reason. The connection itself keeps the existing rules (HTTPS name,
+  public addresses, a certificate from a public authority).
+- **Mail of the other server.** When the backup DNS server receives the main
+  domain's mail (the main has none), its MX, SPF and DMARC are written on the
+  main from its answers and its DKIM record goes over the link; "add them by
+  hand" is gone. When both servers have mail the main DNS server receives the
+  main domain's mail and the other server's mail serves its own domains.
+- **The link.** Before the peer panel has its domain certificate the link
+  trusts it only by the key fingerprint, at its IP address; after the
+  certificate changes it validates the certificate for the peer's panel name,
+  still dialing the known address. Secrets (link credential, enrollment codes)
+  are kept only in each server's private settings and never leave through an
+  administrator API, a log or the audit.
+
+Remaining limits: the IPv4 address is the only address checked for the
+source; the backup's own key fingerprint is sent once with its names; a
+second server that lost its link record joins again with a new code.
+Measured only by component tests on loopback servers; not on installed
+servers.
+
 ## October 28 follow-up: setup wizard v2, phase 3 (v0.1.0-alpha.113 source)
 
 The registrar card checks itself. `GET /api/v1/setup/delegation?zone=` (the

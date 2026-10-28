@@ -3057,6 +3057,27 @@ task it does not wait for (owner decision 2026-10-28; mail works without it but
 may be marked as spam). This changes the earlier final check, which waited
 for the IPv4 reverse DNS; a wrong mail name or address still blocks.
 
+### Amendment (2026-10-28): the second server joins by code; one server may keep its own DNS
+
+*Owner-approved setup wizard v2, phase 4 (Q1, Q4, Q5, Q7 of the 2026-10-26
+plan); in source for the v0.1.0-alpha.114 candidate (not published); nothing
+measured on an installed server*
+
+The earlier limits stated on screen are gone. One server may keep its own DNS
+as a standalone server (both nameserver names on it; no claim that a backup
+can be added later for BIND). With two servers the second server's address is
+never typed: it joins the first by a single-use code carrying the first
+panel's key fingerprint and a secret, and its names, address and main-domain
+mail choice come over that link and are bound to the first server's
+execution once. The join is the main administrator's consent to the second
+server's names and publishing connection (Q5). Either server may be the main
+DNS server (Q1, Option A): the first then installs no DNS software until the
+second joined and hands its prepared list over. ns1 is the main DNS server at
+setup time (Q2). The DNS pair is still the native primary/secondary transfer;
+the link only carries setup answers and the backup's records, and no hosted
+workload depends on it. Existing DNS ownership, topology and recovery
+invariants are unchanged; no schema change.
+
 ---
 
 ## D-020 · Managed-server support follows proven capabilities, not distribution names

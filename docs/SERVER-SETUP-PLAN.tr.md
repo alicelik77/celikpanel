@@ -9,6 +9,75 @@ bu yönü onayladı. Bu belge anlaşmayı ve uygulamanın kabul ölçütlerini k
 Asistana kurulu panel güncelleme yetkisi vermez; [AGENTS.md](../AGENTS.md) gereği
 kurulu panel güncellemelerini kullanıcı CelikPanel'in kendi arayüzünden başlatır.
 
+## 28 Ekim ek kararı: kurulum sihirbazı v2, 4. aşama (v0.1.0-alpha.114 kaynağı)
+
+- **Tek sunucu, kendi DNS'i.** Kendi DNS'ini tutan tek sunucu bağımsızdır: iki
+  ad sunucusu adı da onu gösterir, yedek DNS sunucusu yoktur ve sihirbaz BIND
+  için sonradan yedek eklemeyi vaat etmez (çalışan BIND bağımsızdan çifte
+  geçemez). Hazırlık için iki adın da bu sunucuya yayımlanması gerekir; alan adı
+  firması kartı bu sunucuya bir kez sorar.
+- **İkinci sunucu başlangıçta kodla katılır.** İki sunucu ve sahibin kendi
+  DNS'inde ilk sunucunun planı bileşenlerini (hizmetler, çalışma ortamları,
+  posta profilleri) kurar, sonra "ikinci sunucu katılır" adımında bekler; ikinci
+  sunucunun adresi hiç yazılmaz. Yöneticisi orada bir katılma kodu oluşturur: 24
+  karakter; ilk 16'sı ilk panelin TLS anahtar parmak izinin (SubjectPublicKeyInfo
+  SHA-256) 80 bitini, son 8'i 40 bitlik tek kullanımlık gizli değeri taşır; 24
+  saat ve 5 yanlış deneme geçerlidir, yalnız tuzlu özeti tutulur, gizli değer
+  olmadan denetim kaydına yazılır, bir kez gösterilir. İkinci sunucuda ilk adım
+  "İlk sunucuya kodla katıl"ı sunar: adres ve kod. İkinci sunucu parmak izini TLS
+  el sıkışmasında, hiçbir şey yazılmadan önce denetler; yanlış adres gizli değeri
+  asla almaz. İlk sunucu gizli değeri sabit sürede karşılaştırır, çağıranın
+  kaynak adresini bildirdiği adresle, bir hız sınırını (dakikada 20, bir
+  adresten 5) denetler ve kodu bir kez tüketir. Yanıtlar: katıldı; nedeniyle
+  reddedildi (kalan denemelerle yanlış kod, kullanılmış, süresi dolmuş, tükenmiş,
+  beklemiyor, kaynak uyuşmazlığı); yanlış sunucu (başka anahtar; hiçbir şey
+  gönderilmedi); ulaşılamadı (hiçbir şey gönderilmedi; kod kullanılmadı);
+  bilinmiyor (yanıt kayboldu: istek saklanır, sonraki deneme aynı istektir; ilk
+  sunucu aynı katılmayı yeni gizli değerlerle yanıtlar, asla ikinci bir katılma
+  olmaz).
+- **Katılma belgesi.** İkinci sunucunun ortak yanıtları ilkinden gelir: ana alan
+  adı, iki sunucu, kendi DNS'i, hangi sunucunun ana DNS sunucusu olduğu, ns1
+  (hep ana) ve ns2, ilk sunucunun adresi, kısa adı ve adları; ayrıca ya ilk
+  sunucunun yayımlama adresi ve tek kullanımlık kayıt kodu (ana ilk sunucuysa) ya
+  da ilk sunucunun hazırladığı liste (ana ikinci sunucuysa). İkinci sunucunun
+  incelemesi ortak yanıtları farklı taslağı reddeder ("değiştirmek için yeniden
+  katılın").
+- **Adlar bağlantıdan gelir, bir kez bağlanır.** İkinci sunucunun planı adlarını
+  (panel, posta, ana alan adının postasını alıyorsa posta seçimi, adresi ve
+  anahtar parmak izi) bağlantı üzerinden göndererek başlar; ilk sunucu onları
+  kendi adları ve kayıtlarıyla hemen karşılaştırır (çakışma hiçbir şey
+  yazılmadan reddedilir) ve uyanır. Katılma adımı ikinci sunucuyu o çalışmaya bir
+  kez ve değişmez biçimde bağlar (DNS yayımlayıcı bağlamasındaki gibi INSERT OR
+  IGNORE); bölge kayıtları bağlanma anında bölgeye göre hesaplanır. Sonraki her
+  adım bağlamanın tamamladığı planla çalışır; incelenen plan hiç değişmez. Bekleme
+  sırasında yeniden başlayan çalıştırıcı aynı biçimde bağlar; bağlamadan sonra
+  değişen adlar nedeniyle reddedilir.
+- **Ana DNS sunucusunu seçmek (Seçenek A).** Ana ikinci sunucuysa ilk sunucu
+  listeyi (kayıtlar, posta seçimi) hazırlar ve ikinci katılana kadar DNS yazılımı
+  kurmaz; liste katılmayla gider; ikinci sunucu bölgeyi ilk sunucunun adlarıyla
+  tutar, ilk sunucu da ikincinin adlarıyla verdiği kayıt koduyla yedek olarak
+  kurulur.
+- **Yöneticisiz yayımlama bağlantısı.** Katılmış yedek DNS sunucusu yayımlama
+  bağlantısını devredilen kayıt koduyla kendisi kurar (katılma ana yöneticinin
+  onayıydı, Q5); ana DNS sunucusu kabul edene kadar (çifti hazır, ad sunucuları
+  genel) adım bu nedenle bekler. Bağlantının kendisi mevcut kuralları korur
+  (HTTPS adı, genel adresler, genel bir kuruluşun sertifikası).
+- **Diğer sunucunun postası.** Yedek DNS sunucusu ana alan adının postasını
+  alıyorsa (ananın postası yoksa) MX, SPF ve DMARC onun yanıtlarıyla anada yazılır,
+  DKIM kaydı bağlantıdan gider; "elle ekleyin" kalktı. İki sunucuda da posta
+  varsa ana alan adının postasını ana DNS sunucusu alır, diğer sunucunun postası
+  kendi alan adlarına hizmet eder.
+- **Bağlantı.** Eş panel alan adı sertifikasını almadan önce bağlantı ona IP
+  adresinden yalnız anahtar parmak iziyle güvenir; sertifika değişince eşin panel
+  adı için sertifikayı doğrular, yine bilinen adrese bağlanır. Gizli değerler
+  (bağlantı kimliği, kayıt kodları) yalnız her sunucunun özel ayarlarında tutulur;
+  yönetici API'sinden, günlükten ya da denetim kaydından çıkmaz.
+
+Kalan sınırlar: kaynak için yalnız IPv4 adresi denetlenir; yedeğin kendi anahtar
+parmak izi adlarıyla bir kez gönderilir; bağlantı kaydını kaybeden ikinci sunucu
+yeni kodla yeniden katılır. Yalnız geri döngü sunucularındaki bileşen testleriyle
+ölçüldü; kurulu sunucularda ölçülmedi.
+
 ## 28 Ekim ek kararı: kurulum sihirbazı v2, 3. aşama (v0.1.0-alpha.113 kaynağı)
 
 Alan adı firması kartı kendini kontrol eder. `GET /api/v1/setup/delegation?zone=`

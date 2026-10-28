@@ -3037,6 +3037,26 @@ gösterir; yanlış ya da eksik PTR'yi beklemediği açık bir iş olarak tutar 
 IPv4 ters DNS'ini bekleyen önceki son kontrolü değiştirir; yanlış posta adı ya
 da adres yine engeller.
 
+### Ek (2026-10-28): ikinci sunucu kodla katılır; tek sunucu kendi DNS'ini tutabilir
+
+*Sahibin onayladığı kurulum sihirbazı v2, 4. aşama (2026-10-26 planının Q1, Q4,
+Q5, Q7 maddeleri); v0.1.0-alpha.114 adayının kaynağında (yayımlanmadı); kurulu
+bir sunucuda ölçülmedi*
+
+Ekranda söylenen önceki sınırlar kalktı. Tek sunucu kendi DNS'ini bağımsız sunucu
+olarak tutabilir (iki ad sunucusu adı da onda; BIND için sonradan yedek
+eklenebileceği söylenmez). İki sunucuda ikinci sunucunun adresi hiç yazılmaz:
+ilk panelin anahtar parmak izini ve bir gizli değeri taşıyan tek kullanımlık kodla
+ilkine katılır; adları, adresi ve ana alan adı posta seçimi bu bağlantıdan gelir
+ve ilk sunucunun çalışmasına bir kez bağlanır. Katılma, ana yöneticinin ikinci
+sunucunun adlarına ve yayımlama bağlantısına onayıdır (Q5). Ana DNS sunucusu iki
+sunucudan biri olabilir (Q1, Seçenek A): o zaman ilk sunucu ikinci katılana kadar
+DNS yazılımı kurmaz ve hazırladığı listeyi devreder. Kurulum anında ns1 ana DNS
+sunucusudur (Q2). DNS çifti yine yerel birincil/ikincil aktarımdır; bağlantı
+yalnız kurulum yanıtlarını ve yedeğin kayıtlarını taşır, hiçbir barındırılan iş
+ona bağlı değildir. Mevcut DNS sahipliği, topoloji ve kurtarma ilkeleri
+değişmez; şema değişikliği yoktur.
+
 ---
 
 ## D-020 · Yönetilen sunucu desteği dağıtım adına değil kanıtlanmış yeteneğe bağlanır
