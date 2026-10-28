@@ -129,7 +129,11 @@ func ParseRecords(message []byte, id uint16, name string, qtype uint16) ([]strin
 			if err != nil || after != end {
 				return nil, errors.New("DNS alias is malformed")
 			}
-			aliases[owner] = strings.ToLower(strings.TrimSuffix(target, "."))
+			target = strings.ToLower(strings.TrimSuffix(target, "."))
+			if previous, exists := aliases[owner]; exists && previous != target {
+				return nil, errors.New("DNS alias has conflicting targets")
+			}
+			aliases[owner] = target
 			if qtype != TypeCNAME {
 				continue
 			}
@@ -142,6 +146,23 @@ func ParseRecords(message []byte, id uint16, name string, qtype uint16) ([]strin
 			return nil, err
 		}
 		values[owner] = append(values[owner], value)
+	}
+	// The records after the answer section are not read here, but a reply
+	// that claims more data than it carries is refused as ParseResponse does.
+	total := answers + int(binary.BigEndian.Uint16(message[8:10])) + int(binary.BigEndian.Uint16(message[10:12]))
+	for index := answers; index < total; index++ {
+		_, header, err := decodeDNSName(message, offset)
+		if err != nil || header+10 > len(message) {
+			return nil, errors.New("DNS response record is malformed")
+		}
+		end := header + 10 + int(binary.BigEndian.Uint16(message[header+8:header+10]))
+		if end > len(message) {
+			return nil, errors.New("DNS response record is truncated")
+		}
+		offset = end
+	}
+	if offset != len(message) || total > 256 {
+		return nil, errors.New("DNS response has trailing data")
 	}
 	if qtype == TypeCNAME {
 		return values[name], nil

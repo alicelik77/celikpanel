@@ -32,6 +32,9 @@ type serverSetupPublicRecord struct {
 	Type   string   `json:"type"`
 	Values []string `json:"values"`
 	State  string   `json:"state"`
+	// NotImportable maps a value to why it cannot be imported:
+	// "content_invalid", "one_per_name" or "too_many".
+	NotImportable map[string]string `json:"not_importable,omitempty"`
 }
 
 type serverSetupPublicRecords struct {
@@ -166,30 +169,109 @@ func readServerSetupPublicRecords(ctx context.Context, questions []serverSetupRe
 	return kept
 }
 
-type serverSetupPublicRecordsCache struct {
-	mu    sync.Mutex
-	key   string
-	at    time.Time
+// markServerSetupImportable says, per value, why it cannot be imported, by
+// the same rule the review applies (serverSetupImportableContent): content
+// the zone renderer refuses (a null MX, quotes in a TXT…), a second SPF or
+// DMARC policy, or a value beyond the import limit.
+func markServerSetupImportable(records []serverSetupPublicRecord, domain string) {
+	importable := 0
+	policies := map[string]bool{}
+	for index := range records {
+		record := &records[index]
+		if record.State != "found" {
+			continue
+		}
+		for _, value := range record.Values {
+			reason := ""
+			content := value
+			if record.Type == "MX" {
+				_, content = serverSetupMXValue(value)
+				if content == "" {
+					content = "."
+				}
+			}
+			if _, _, err := serverSetupImportableContent(record.Type, content); err != nil {
+				reason = "content_invalid"
+			}
+			if reason == "" {
+				if kind := serverSetupPolicyKind(serverSetupImportedRecord{Name: record.Name, Type: record.Type, Content: content}, domain); kind != "" {
+					if policies[kind] {
+						reason = "one_per_name"
+					}
+					policies[kind] = true
+				}
+			}
+			if reason == "" {
+				importable++
+				if importable > serverSetupMaxImportedRecords {
+					reason = "too_many"
+				}
+			}
+			if reason != "" {
+				if record.NotImportable == nil {
+					record.NotImportable = map[string]string{}
+				}
+				record.NotImportable[value] = reason
+			}
+		}
+	}
+}
+
+type serverSetupPublicRecordsFlight struct {
+	done  chan struct{}
 	value serverSetupPublicRecords
+}
+
+type serverSetupPublicRecordsCache struct {
+	mu       sync.Mutex
+	key      string
+	at       time.Time
+	value    serverSetupPublicRecords
+	inflight map[string]*serverSetupPublicRecordsFlight
 }
 
 var setupPublicRecordsCaches sync.Map
 
+// serverSetupPublicRecords shares one read per minute. The read itself runs
+// without the cache lock: a second caller for the same names waits for the
+// read in flight instead of starting another. An answer with an unreadable
+// name is not kept, so "Try again" asks the internet again.
 func (p *Panel) serverSetupPublicRecords(ctx context.Context, domain string, extras []string, now time.Time) serverSetupPublicRecords {
 	value, _ := setupPublicRecordsCaches.LoadOrStore(p, &serverSetupPublicRecordsCache{})
 	cache := value.(*serverSetupPublicRecordsCache)
 	key := domain + "|" + strings.Join(extras, ",")
 	cache.mu.Lock()
-	defer cache.mu.Unlock()
 	if cache.key == key && now.Sub(cache.at) >= 0 && now.Sub(cache.at) < serverSetupProviderRecordsTTL {
 		result := cache.value
+		cache.mu.Unlock()
 		result.NextCheckAfter = int((serverSetupProviderRecordsTTL - now.Sub(cache.at)).Seconds())
 		return result
 	}
+	if cache.inflight == nil {
+		cache.inflight = map[string]*serverSetupPublicRecordsFlight{}
+	}
+	if flight, running := cache.inflight[key]; running {
+		cache.mu.Unlock()
+		<-flight.done
+		return flight.value
+	}
+	flight := &serverSetupPublicRecordsFlight{done: make(chan struct{})}
+	cache.inflight[key] = flight
+	cache.mu.Unlock()
+
 	records := readServerSetupPublicRecords(context.WithoutCancel(ctx), serverSetupPublicRecordQuestions(domain, extras), setupPublicRecordResolvers())
-	result := serverSetupPublicRecords{Domain: domain, Extras: extras, Records: records, CheckedAt: now.UTC().Format(time.RFC3339), NextCheckAfter: int(serverSetupProviderRecordsTTL.Seconds())}
-	cache.key, cache.at, cache.value = key, now, result
-	return result
+	markServerSetupImportable(records, domain)
+	flight.value = serverSetupPublicRecords{Domain: domain, Extras: extras, Records: records, CheckedAt: now.UTC().Format(time.RFC3339), NextCheckAfter: int(serverSetupProviderRecordsTTL.Seconds())}
+	complete := !slices.ContainsFunc(records, func(record serverSetupPublicRecord) bool { return record.State == "unknown" })
+
+	cache.mu.Lock()
+	if complete {
+		cache.key, cache.at, cache.value = key, now, flight.value
+	}
+	delete(cache.inflight, key)
+	cache.mu.Unlock()
+	close(flight.done)
+	return flight.value
 }
 
 func (p *Panel) handleServerSetupPublicRecords(w http.ResponseWriter, r *http.Request) {

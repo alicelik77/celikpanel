@@ -83,3 +83,19 @@ func TestRecordsFollowAliasesAndSeparateMissingFromEmpty(t *testing.T) {
 		t.Fatalf("SERVFAIL must be a failure, not missing: %v", err)
 	}
 }
+
+func TestRecordsRefuseTrailingDataAndConflictingAliases(t *testing.T) {
+	message, id := recordAnswer(t, "example.test", TypeA, 0, func(add func(string, uint16, []byte)) {
+		add("example.test", TypeA, net.ParseIP("192.0.2.1").To4())
+	})
+	if _, err := ParseRecords(append(message, 1, 2, 3), id, "example.test", TypeA); err == nil {
+		t.Fatal("trailing data accepted")
+	}
+	conflict, cid := recordAnswer(t, "www.example.test", TypeA, 0, func(add func(string, uint16, []byte)) {
+		add("www.example.test", TypeCNAME, hostData("a.example.test"))
+		add("www.example.test", TypeCNAME, hostData("b.example.test"))
+	})
+	if _, err := ParseRecords(conflict, cid, "www.example.test", TypeA); err == nil {
+		t.Fatal("conflicting aliases accepted")
+	}
+}
