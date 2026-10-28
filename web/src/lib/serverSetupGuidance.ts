@@ -22,7 +22,7 @@ const setupLinkCodes = ['server_setup_peer_join_waiting', 'server_setup_peer_nam
     'server_setup_peer_names_outside_domain', 'server_setup_peer_names_invalid', 'server_setup_peer_mail_both', 'server_setup_peer_names_unreachable', 'server_setup_peer_names_unknown',
     'server_setup_dns_publisher_waiting', 'server_setup_dns_publisher_local_waiting', 'server_setup_peer_dkim_zone_waiting', 'server_setup_peer_dkim_publishing',
     'server_setup_peer_dkim_unreachable', 'server_setup_peer_dkim_unknown', 'server_setup_join_certificate_unavailable', 'server_setup_peer_link_missing', 'server_setup_peer_names_bound', 'server_setup_peer_version_incompatible', 'server_setup_dns_publisher_refused', 'server_setup_peer_dkim_conflict',
-    'server_setup_peer_dkim_not_running', 'server_setup_peer_dkim_not_bound'];
+    'server_setup_peer_dkim_not_running', 'server_setup_peer_dkim_not_bound', 'server_setup_peer_link_revoked'];
 
 // The run was stopped because its plan was reopened (POST /api/v1/setup/revise,
 // cmd/panel/server_setup_revise.go): a known end that is not a failure.

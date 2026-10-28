@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -27,6 +28,7 @@ type peerPair struct {
 	second     serviceOperationTestFixture
 	dropAnswer atomic.Bool
 	joins      atomic.Int32
+	requests   atomic.Int32
 	// served is the key both panels present on their link (one per test).
 	served tls.Certificate
 }
@@ -39,6 +41,7 @@ func newPeerPair(t *testing.T, firstDraft serverSetupDraft) *peerPair {
 	joinTestSeams(pair.first.panel, leaf, "198.51.100.20")
 	machine := pair.first.panel.requireServerSetupLinkMachine(http.NotFoundHandler())
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		pair.requests.Add(1)
 		if r.URL.Path == serverSetupJoinPath {
 			pair.joins.Add(1)
 			if pair.dropAnswer.CompareAndSwap(true, false) {
@@ -456,5 +459,42 @@ func TestServerSetupPeerRejoinsTheSameFirstServerWithANewCode(t *testing.T) {
 	}
 	if pair.execution.Steps[joinIndex].Status != "succeeded" {
 		t.Fatalf("the new join completes: %+v %+v", pair.execution.Steps[joinIndex], pair.execution.Error)
+	}
+}
+
+// SHOULD-3 (alpha.114 review): an ended link is a verified state with the
+// owner's next action, found before anything is sent (no empty bearer), and
+// the other side's refusal of an ended link says the same.
+func TestServerSetupPeerEndedLinkSaysWhatToDo(t *testing.T) {
+	pair := newPeerPair(t, joinFirstDraft())
+	if answer := pair.connect(t, issueJoinCode(t, pair.first).Code); answer.State != "ok" {
+		t.Fatalf("connect: %+v", answer)
+	}
+	_, plan := pair.secondReview(t, nil)
+	step := serverSetupExecutionStep{serverSetupPlanStep: plan.Steps[0], RequestID: strings.Repeat("5", 32), OwnerID: strings.Repeat("6", 32)}
+	revoked := func(err error) bool {
+		var failure *serverSetupChildFailure
+		return errors.As(err, &failure) && failure.Code == "server_setup_peer_link_revoked" && strings.Contains(failure.Message, "enter it here")
+	}
+	// The first server ended the link: its refusal is the ended link.
+	if err := pair.first.panel.revokeServerSetupLink(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if done, err := pair.second.panel.runServerSetupPeerNames(context.Background(), plan, step); done || !revoked(err) {
+		t.Fatalf("refused by the first server: %v %v", done, err)
+	}
+	// This server's own setup completed earlier: nothing is sent at all.
+	if err := pair.second.panel.revokeServerSetupLink(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	sent := pair.requests.Load()
+	if done, err := pair.second.panel.runServerSetupPeerNames(context.Background(), plan, step); done || !revoked(err) {
+		t.Fatalf("names over an ended link: %v %v", done, err)
+	}
+	if err := pair.second.panel.sendServerSetupPeerDKIM(context.Background(), plan, "", step, "v=DKIM1; k=rsa; p=QUJD"); !revoked(err) {
+		t.Fatalf("DKIM over an ended link: %v", err)
+	}
+	if pair.requests.Load() != sent {
+		t.Fatal("nothing is sent over an ended link")
 	}
 }

@@ -98,6 +98,7 @@ export const enSetupJoinScreens = {
     "setup.v5.wait.server_setup_peer_dkim_unreachable": "The main DNS server cannot be reached to send this server's DKIM record. Setup asks again by itself.",
     "setup.v5.wait.server_setup_peer_dkim_unknown": "The main DNS server's answer was not received. Setup sends the same record again; nothing is done twice.",
     "setup.v5.wait.server_setup_join_certificate_unavailable": "This panel's TLS certificate could not be read. Check Settings → Panel certificate; setup asks again by itself.",
+    "setup.v5.wait.server_setup_peer_link_revoked": "The setup link between the two servers has ended (a setup finished or was run again), so nothing more is sent over it. Create a new join code on the first server and enter it on the second server, in the first step of its setup; setup continues when it is started again.",
     "setup.v5.wait.server_setup_peer_link_missing": "This server is no longer joined to the first server. Join it again from the first step of setup, then review the plan.",
     "setup.v5.wait.server_setup_peer_names_bound": "The first server's setup already uses this server's earlier names. Keep those names, or reopen the first server's plan.",
     "setup.v5.wait.server_setup_peer_version_incompatible": "The two panels run versions that cannot work together. You update the older panel from its own update screen (Settings → Updates); setup then asks again by itself.",

@@ -500,6 +500,22 @@ func serverSetupPeerVersionWait() error {
 
 func (e *serverSetupPeerWait) Error() string { return e.Code + ": " + e.Message }
 
+// errServerSetupPeerLinkRevoked: this server's link credential was removed
+// (its setup completed), so the link cannot be used any more.
+var errServerSetupPeerLinkRevoked = errors.New("the setup link to the other server has ended")
+
+// serverSetupPeerLinkRevoked is the verified state of an ended setup link
+// (D-024): who acts is the owner, the next action a new join code on the
+// first server entered on the second, after which setup continues once it
+// is started again. onSecond words it for the second server's screen.
+func serverSetupPeerLinkRevoked(onSecond bool) error {
+	where := "enter it on the second server, in the first step of its setup"
+	if onSecond {
+		where = "enter it here, in the first step of setup"
+	}
+	return &serverSetupChildFailure{Code: "server_setup_peer_link_revoked", Message: "The setup link between the two servers has ended (a setup finished or was run again), so nothing more is sent over it. Create a new join code on the first server and " + where + "; setup continues when it is started again."}
+}
+
 // runServerSetupPeerNames sends this server's names to the first server at
 // the start of its setup. The request carries the step's own identity, so a
 // retry after a lost answer is the same request; the first server accepts
@@ -511,6 +527,11 @@ func (p *Panel) runServerSetupPeerNames(ctx context.Context, plan serverSetupPla
 	}
 	if link == nil || step.Target != link.Address {
 		return false, &serverSetupChildFailure{Code: "server_setup_peer_link_missing", Message: "This server is no longer joined to the first server. Join it again from the first step of setup, then review the plan."}
+	}
+	if link.LinkCredential == "" {
+		// The link ended (this server's earlier setup completed): nothing is
+		// sent with an empty credential.
+		return false, serverSetupPeerLinkRevoked(true)
 	}
 	names, err := p.serverSetupOwnNames(ctx, plan.Draft, link, step.RequestID)
 	if err != nil {
@@ -527,6 +548,8 @@ func (p *Panel) runServerSetupPeerNames(ctx context.Context, plan serverSetupPla
 		return true, nil
 	case (callErr == nil && answer.Protocol != serverSetupLinkProtocol) || (errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_version_incompatible"):
 		return false, serverSetupPeerVersionWait()
+	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_link_unauthorized":
+		return false, serverSetupPeerLinkRevoked(true)
 	case errors.As(callErr, &refusal):
 		return false, &serverSetupChildFailure{Code: refusal.Code, Message: "The first server refused this server's names (" + refusal.Code + "). Change the names in this server's plan, or check the first server's setup."}
 	case errors.Is(callErr, errServerSetupLinkUnreachable), errors.Is(callErr, errServerSetupLinkPinMismatch):

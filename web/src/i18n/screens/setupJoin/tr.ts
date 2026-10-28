@@ -98,6 +98,7 @@ export const trSetupJoinScreens: Record<SetupJoinScreenKey, string> = {
     "setup.v5.wait.server_setup_peer_dkim_unreachable": "Bu sunucunun DKIM kaydını göndermek için ana DNS sunucusuna ulaşılamıyor. Kurulum kendiliğinden yeniden sorar.",
     "setup.v5.wait.server_setup_peer_dkim_unknown": "Ana DNS sunucusunun yanıtı gelmedi. Kurulum aynı kaydı yeniden gönderir; hiçbir şey iki kez yapılmaz.",
     "setup.v5.wait.server_setup_join_certificate_unavailable": "Bu panelin TLS sertifikası okunamadı. Ayarlar → Panel sertifikası'nı kontrol edin; kurulum kendiliğinden yeniden sorar.",
+    "setup.v5.wait.server_setup_peer_link_revoked": "İki sunucu arasındaki kurulum bağlantısı sona erdi (bir kurulum bitti ya da yeniden çalıştırıldı); bu yüzden üzerinden artık bir şey gönderilmez. İlk sunucuda yeni bir katılma kodu oluşturun ve onu ikinci sunucuda, kurulumun ilk adımında girin; kurulum yeniden başlatıldığında devam eder.",
     "setup.v5.wait.server_setup_peer_link_missing": "Bu sunucu artık ilk sunucuya bağlı değil. Kurulumun ilk adımından yeniden katılın, sonra planı gözden geçirin.",
     "setup.v5.wait.server_setup_peer_names_bound": "İlk sunucunun kurulumu bu sunucunun önceki adlarını kullanıyor. O adları koruyun ya da ilk sunucunun planını yeniden açın.",
     "setup.v5.wait.server_setup_peer_version_incompatible": "İki panel birlikte çalışamayan sürümlerde. Eski olan paneli kendi güncelleme ekranından (Ayarlar → Güncellemeler) güncellersiniz; kurulum sonra kendiliğinden yeniden sorar.",

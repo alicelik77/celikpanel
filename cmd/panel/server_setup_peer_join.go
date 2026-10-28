@@ -430,6 +430,9 @@ func (p *Panel) serverSetupPeerTarget(ctx context.Context, plan serverSetupPlan,
 		if link == nil {
 			return serverSetupLinkTarget{}, "", err
 		}
+		if link.LinkCredential == "" {
+			return serverSetupLinkTarget{}, "", errServerSetupPeerLinkRevoked
+		}
 		return link.target(), link.bearer(), nil
 	}
 	if executionID == "" {
@@ -447,6 +450,9 @@ func (p *Panel) serverSetupPeerTarget(ctx context.Context, plan serverSetupPlan,
 	if found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join); err != nil || !found {
 		return serverSetupLinkTarget{}, "", errors.Join(errors.New("no setup link to the other server"), err)
 	}
+	if join.PeerCredential == "" && join.LinkCredentialHash == "" {
+		return serverSetupLinkTarget{}, "", errServerSetupPeerLinkRevoked
+	}
 	pin, _ := hex.DecodeString(binding.PeerPin)
 	credential, err := p.openServerSetupSecret(join.PeerCredential)
 	if err != nil || credential == "" {
@@ -455,10 +461,19 @@ func (p *Panel) serverSetupPeerTarget(ctx context.Context, plan serverSetupPlan,
 	return serverSetupLinkTarget{Address: binding.PeerAddress, Pin: pin}, join.LinkID + "." + credential, nil
 }
 
+// serverSetupIsSecond: this server joined another (it keeps a link record).
+func (p *Panel) serverSetupIsSecond(ctx context.Context) bool {
+	link, err := p.readServerSetupLink(ctx)
+	return err == nil && link != nil
+}
+
 // sendServerSetupPeerDKIM: the backup DNS server that receives the main
 // domain's mail sends its DKIM record to the main DNS server.
 func (p *Panel) sendServerSetupPeerDKIM(ctx context.Context, plan serverSetupPlan, executionID string, step serverSetupExecutionStep, value string) error {
 	target, bearer, err := p.serverSetupPeerTarget(ctx, plan, executionID)
+	if errors.Is(err, errServerSetupPeerLinkRevoked) {
+		return serverSetupPeerLinkRevoked(p.serverSetupIsSecond(ctx))
+	}
 	if err != nil {
 		return &serverSetupChildFailure{Code: "server_setup_peer_link_missing", Message: "This server has no setup link to the main DNS server, so its DKIM record cannot be sent. Add it on the main DNS server: Domains → " + plan.Draft.MainDomain + "."}
 	}
@@ -488,6 +503,8 @@ func (p *Panel) sendServerSetupPeerDKIM(ctx context.Context, plan serverSetupPla
 		return &serverSetupPeerWait{Code: refusal.Code, Message: "The main DNS server's setup has not taken this server in yet; it does once it has this server's names (check its join step if it waits there). Setup sends the DKIM record again by itself."}
 	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_dkim_zone_waiting":
 		return &serverSetupPeerWait{Code: refusal.Code, Message: "The main DNS server has not prepared the main domain's zone yet. Setup sends the DKIM record again by itself."}
+	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_link_unauthorized":
+		return serverSetupPeerLinkRevoked(p.serverSetupIsSecond(ctx))
 	// A definite refusal: the owner's own record is in the way.
 	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_dkim_conflict":
 		return &serverSetupChildFailure{Code: refusal.Code, Message: "The main DNS server already has a different DKIM record at this name that setup did not write. Change or remove it there in Domains → " + plan.Draft.MainDomain + ", then review this plan again."}
