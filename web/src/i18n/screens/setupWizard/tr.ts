@@ -189,4 +189,10 @@ export const trSetupWizardScreens: Record<SetupWizardScreenKey, string> = {
     "setup.v2.provider.none": "Henüz kayıt gerekmiyor: panel adresi belirlenmedi.",
     "setup.v2.provider.cloudflare": "Cloudflare kullanıyorsanız bu kayıtları “Yalnız DNS” (gri bulut) yapın: posta onun vekilinden geçemez, panel adresi de en sorunsuz böyle çalışır.",
     "setup.v2.provider.checkedAt": "Son kontrol: {time}.",
+    "setup.v3.mail.helpBackup": "Bu sunucu yedek DNS sunucusu: {domain} listesi ana DNS sunucusunda tutuluyor. Bu kayıtları şimdi orada ekleyin: ana sunucuda Alan adları → {domain}. Bu sürümde oraya kendiliğinden hiçbir şey yazılmaz.",
+    "setup.v3.mail.ptrOpenTask": "Kurulum bunu beklemez: posta onsuz da çalışır, ancak alıcı sunucular istenmeyen posta sayabilir. Ayarlanana kadar açık iş olarak listelenir.",
+    "setup.v3.tasks.title": "Açık iş: posta için ters DNS (PTR)",
+    "setup.v3.tasks.why": "Alıcı sunucular bu sunucunun adresinin posta adını verdiğini kontrol eder. Olmadan posta yine çalışır, ancak istenmeyen posta sayılabilir.",
+    "setup.v3.tasks.who": "Siz · sunucu sağlayıcınızın panelinde (CelikPanel bunu ayarlayamaz)",
+    "setup.v3.tasks.then": "Kurulum bunu beklemez. Bu sayfa kurulumu her okuduğunda yeniden bakılır; internet doğru adı gösterince iş kalkar.",
 };

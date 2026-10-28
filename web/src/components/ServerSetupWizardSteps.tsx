@@ -452,7 +452,7 @@ export function SetupMailStep({ draft, update, mainDomain, ip4, ip6 }: {
     const spf = mergeSetupSPF(setupImportedSPF(draft, mainDomain), host);
     return <section className="space-y-5" aria-labelledby="setup-mail-title" data-setup-mail="">
         <h2 id="setup-mail-title" className="text-xl font-semibold">{t('setup.v3.mail.title')}</h2>
-        <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t(local ? 'setup.v3.mail.helpLocal' : draft.dns_mode === 'external' ? 'setup.v3.mail.helpExternal' : 'setup.v3.mail.helpElsewhere', { domain: mainDomain })}</p>
+        <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t(local ? 'setup.v3.mail.helpLocal' : draft.dns_mode === 'external' ? 'setup.v3.mail.helpExternal' : draft.dns_mode === 'local' ? 'setup.v3.mail.helpBackup' : 'setup.v3.mail.helpElsewhere', { domain: mainDomain })}</p>
         <ul className="space-y-2 text-sm">
             <li className="rounded-md border border-border bg-surface-2 px-3 py-2"><span className="font-medium">MX</span> · <span className="break-all font-mono">{mx === 'now' ? `10 ${host}` : t('setup.v3.mail.mxKept', { old: oldMX.map(item => item.content).join(', ') || '—' })}</span></li>
             <li className="rounded-md border border-border bg-surface-2 px-3 py-2"><span className="font-medium">SPF</span> · <span className="break-all font-mono">{spf}</span>{setupImportedSPF(draft, mainDomain) && <span className="block text-xs text-fg-muted">{t('setup.v3.mail.spfMerged')}</span>}</li>
@@ -476,7 +476,18 @@ export function SetupMailStep({ draft, update, mainDomain, ip4, ip6 }: {
             <p className="text-fg-muted">{t('setup.v3.mail.ptrHelp', { host })}</p>
             {ip4 && <div className="grid gap-2 sm:grid-cols-2"><SetupCopyRow label="IPv4" value={ip4} /><SetupCopyRow label="PTR" value={host} /></div>}
             {ip6 && <div className="grid gap-2 sm:grid-cols-2"><SetupCopyRow label="IPv6" value={ip6} /><SetupCopyRow label="PTR" value={host} /></div>}
+            <p className="text-fg-muted">{t('setup.v3.mail.ptrOpenTask')}</p>
             <p className="text-fg-muted">{t('setup.v3.mail.port25')}</p>
         </div>
     </section>;
+}
+
+// Open tasks setup does not wait for (reverse DNS at the server provider),
+// said in D-024 order: why, who acts, the next action, then.
+export function SetupOpenTasks({ lines }: { lines: string[] }) {
+    const { t } = useSetupWizardI18n();
+    return <div className="mt-5" data-setup-open-tasks="">
+        <SetupLead title={t('setup.v3.tasks.title')} why={t('setup.v3.tasks.why')} who={t('setup.v3.tasks.who')}
+            next={<ul className="list-disc space-y-1 pl-5">{lines.map((line, index) => <li key={index}>{line}</li>)}</ul>} then={t('setup.v3.tasks.then')} />
+    </div>;
 }

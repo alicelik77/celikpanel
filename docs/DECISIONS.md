@@ -3052,7 +3052,10 @@ until the owner chooses "now"), SPF is merged, an old DMARC is kept unless
 replaced. These are the owner's records (editable in Domains); setup's own
 server addresses stay locked. Setup still creates no tenant, website or
 mailbox. Reverse DNS stays the server provider's: setup shows the exact rows
-and checks IPv4 and, when present, IPv6 before completing.
+for IPv4 and, when present, IPv6, and keeps a wrong or missing PTR as an open
+task it does not wait for (owner decision 2026-10-28; mail works without it but
+may be marked as spam). This changes the earlier final check, which waited
+for the IPv4 reverse DNS; a wrong mail name or address still blocks.
 
 ---
 

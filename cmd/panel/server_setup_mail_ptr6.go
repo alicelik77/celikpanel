@@ -15,7 +15,8 @@ import (
 // may send mail over IPv6, and receiving servers then require the address's
 // PTR to name the mail host, exactly as for IPv4 (mail_identity). Reverse DNS
 // is set at the server provider, never by CelikPanel; a lookup that got no
-// answer leaves the check unknown, not an action.
+// answer leaves the check unknown, not an action. Like the IPv4 reverse DNS
+// it is an open task that setup does not wait for (Advisory).
 // IPv6 ters DNS kontrolu; PTR saglayicida ayarlanir, panel ayarlamaz.
 
 // setupMailIPv6 is the server's global IPv6 address; tests replace it.
@@ -69,11 +70,11 @@ func setupMailIPv6Check(ctx context.Context, mailHostname string) (serverSetupCh
 	}
 	vars := map[string]string{"ip": ip.String(), "hostname": mailHostname}
 	if answered == 0 {
-		return serverSetupCheck{ID: "mail_identity_ipv6", State: "unknown", Code: "mail_identity_ipv6_unavailable", Reason: "reverse_dns6_unknown", Vars: vars}, true
+		return serverSetupCheck{ID: "mail_identity_ipv6", State: "unknown", Code: "mail_identity_ipv6_unavailable", Reason: "reverse_dns6_unknown", Vars: vars, Advisory: true}, true
 	}
 	reason := "reverse_dns6_missing"
 	if seen != "" && setupShownDNSName(seen) {
 		reason, vars["ptr"] = "reverse_dns6_mismatch", seen
 	}
-	return serverSetupCheck{ID: "mail_identity_ipv6", State: "action_required", Code: "mail_identity_ipv6_required", Reason: reason, Vars: vars}, true
+	return serverSetupCheck{ID: "mail_identity_ipv6", State: "action_required", Code: "mail_identity_ipv6_required", Reason: reason, Vars: vars, Advisory: true}, true
 }

@@ -1412,3 +1412,22 @@ test('wizard v2: mail keeps the old MX until the owner moves it, SPF is merged, 
         assert.ok(findButton('setup.start'), 'the review follows the mail step');
     } finally { await cleanup(); }
 });
+
+test('wizard v2: reverse DNS is an open task with who acts, never what the final check waits for', async () => {
+    const ptr = { id: 'mail_identity', state: 'action_required', code: 'mail_identity_required', reason: 'reverse_dns_mismatch', advisory: true, vars: { hostname: 'mail.example.com', ip: '203.0.113.10', ptr: 'static.provider.example' } };
+    waitingFixture({ dns_mode: 'external', panel_domain: 'panel.example.com' }, 'access_dns');
+    const base = globalThis.fetch;
+    globalThis.fetch = async (url, options) => url.includes('/setup/operation')
+        ? Response.json({ ...execution({ plan_id: 'a'.repeat(32), request_id: 'b'.repeat(32) }, 'waiting'), phase: 'verification', checks: [{ id: 'services', state: 'action_required', code: 'services_required' }, ptr], steps: [{ id: 'verify', kind: 'verify', target: 'web', status: 'pending' }] })
+        : base(url, options);
+    try {
+        await mount();
+        const box = tree.root.findAllByProps({ 'data-setup-open-tasks': '' });
+        assert.equal(box.length, 1, 'the PTR is listed as an open task');
+        assert.ok(textOf().includes('setup.v3.tasks.who'));
+        const waitedFor = tree.root.findAllByProps({ 'data-check': 'mail_identity' }).filter(node => node.props['data-state'] !== undefined);
+        assert.equal(waitedFor.length, 0, 'the open task is not among the checks setup waits for');
+        assert.ok(tree.root.findAllByProps({ 'data-check': 'services' }).length > 0, 'the blocking check is still listed');
+    } finally { await cleanup(); }
+});
+

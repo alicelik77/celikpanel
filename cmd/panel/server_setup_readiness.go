@@ -354,6 +354,10 @@ func setupMailIdentityCheck(health transport.MailHealthResponse, healthErr error
 		if check.Reason == "reverse_dns_unknown" {
 			check.State, check.Code = "unknown", "mail_identity_unavailable"
 		}
+		// Only the reverse DNS part is the provider's (owner decision
+		// 2026-10-28): an open task, not a wait. A mail name or address
+		// that is wrong still blocks.
+		check.Advisory = stringIn(check.Reason, "reverse_dns_mismatch", "forward_dns_mismatch", "reverse_dns_unknown")
 	}
 	return check
 }

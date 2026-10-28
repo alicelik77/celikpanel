@@ -58,7 +58,7 @@ export const ServerSetupSteps = () => null;
 export const ServerSetupComponents = () => null;
 export const useSetupComponentCatalog = () => ({ catalog: null, failed: false, reload() {} });
 export const ServerSetupChoice = () => null, ServerSetupManualAction = () => null;
-export const SetupCountStep = () => null, SetupMailStep = () => null, SetupRecordsStep = () => null, SetupDNSHomeStep = () => null, SetupDomainStep = () => null, SetupNameStep = () => null, SetupNamesStep = () => null, SetupPanelAccessCard = () => null, SetupProviderRecordsCard = () => null, SetupRegistrarCard = () => null, SetupRolesStep = () => null, SetupWizardInput = () => null;
+export const SetupCountStep = () => null, SetupMailStep = () => null, SetupOpenTasks = () => null, SetupRecordsStep = () => null, SetupDNSHomeStep = () => null, SetupDomainStep = () => null, SetupNameStep = () => null, SetupNamesStep = () => null, SetupPanelAccessCard = () => null, SetupProviderRecordsCard = () => null, SetupRegistrarCard = () => null, SetupRolesStep = () => null, SetupWizardInput = () => null;
 export const setupEngineChoice = () => undefined, setupServerLabel = () => 'This server';
 export const inputClass = '';
 export const AddressLink = props => React.createElement('a', { href: props.href }, props.address);

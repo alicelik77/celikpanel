@@ -3031,8 +3031,11 @@ değişmez (aktarılan eski MX, sahip "şimdi" diyene kadar kalır), SPF
 birleştirilir, eski DMARC değiştirilmedikçe korunur. Bunlar sahibin
 kayıtlarıdır (Alan adları'ndan düzenlenir); kurulumun kendi sunucu adresleri
 kilitli kalır. Kurulum yine kiracı, site ya da posta kutusu oluşturmaz. Ters
-DNS sunucu sağlayıcısında kalır: kurulum tam satırları gösterir ve bitmeden
-IPv4'ü ve varsa IPv6'yı kontrol eder.
+DNS sunucu sağlayıcısında kalır: kurulum IPv4 ve varsa IPv6 için tam satırları
+gösterir; yanlış ya da eksik PTR'yi beklemediği açık bir iş olarak tutar (sahibin
+2026-10-28 kararı; posta onsuz da çalışır ama istenmeyen sayılabilir). Bu,
+IPv4 ters DNS'ini bekleyen önceki son kontrolü değiştirir; yanlış posta adı ya
+da adres yine engeller.
 
 ---
 

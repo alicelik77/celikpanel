@@ -31,8 +31,11 @@ kurulu panel güncellemelerini kullanıcı CelikPanel'in kendi arayüzünden ba�
   DKIM satırları genel durumlarıyla eklenir (sahibin koruduğu eski MX için
   "korunuyor", DKIM anahtarı oluşana kadar "bekliyor").
 - **Ters DNS.** Posta adımı sunucu sağlayıcısına verilecek IPv4 ve IPv6 PTR
-  satırlarını gösterir; genel IPv6 adresi olan sunucu, kurulum bitmeden o
-  adresin ters DNS kontrolünden de geçer (yanıtsız sorgu bilinmiyor sayılır).
+  satırlarını gösterir. IPv4 ve genel IPv6 varsa IPv6 için ters DNS, kurulumun
+  beklemediği açık bir iştir (sahibin 2026-10-28 kararı): posta onsuz da çalışır
+  ama istenmeyen sayılabilir; internet doğru adı gösterene kadar posta adımında,
+  kurulum ekranında ve tamamlandıktan sonra listelenir (yanıtsız sorgu
+  bilinmiyor sayılır).
 - **Yardımcı birimler.** SpamAssassin ve ClamAV yeniden sihirbaz seçeneğidir:
   tarayıcı artık yardımcı birimlerini (spamass-milter, clamav-freshclam) görür;
   bunlar servisin kendisi sayılmaz.

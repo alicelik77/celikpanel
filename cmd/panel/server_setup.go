@@ -85,6 +85,13 @@ type serverSetupCheck struct {
 	Code   string            `json:"code"`
 	Reason string            `json:"reason,omitempty"`
 	Vars   map[string]string `json:"vars,omitempty"`
+	// Advisory (alpha.112, owner decision 2026-10-28): an open task setup does
+	// not wait for. Reverse DNS (PTR) is set at the server provider, never by
+	// CelikPanel; mail works without it but may be marked as spam, so a PTR
+	// that is missing, differs or could not be read is said and kept open,
+	// and setup completes without it.
+	// Kurulumun beklemedigi acik is: ters DNS saglayicida ayarlanir.
+	Advisory bool `json:"advisory,omitempty"`
 }
 
 type serverSetupState struct {
@@ -364,15 +371,17 @@ func (p *Panel) saveServerSetupDraft(ctx context.Context, revision int, draft se
 }
 
 func serverSetupChecksReady(checks []serverSetupCheck) bool {
-	if len(checks) == 0 {
-		return false
-	}
+	blocking := 0
 	for _, check := range checks {
+		if check.Advisory {
+			continue
+		}
+		blocking++
 		if check.State != "ready" {
 			return false
 		}
 	}
-	return true
+	return blocking > 0
 }
 
 func (p *Panel) completeServerSetup(ctx context.Context, revision int) error {

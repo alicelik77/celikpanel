@@ -190,6 +190,12 @@ export const enSetupWizardScreens = {
     "setup.v2.provider.none": "No record is needed yet: the panel address is not set.",
     "setup.v2.provider.cloudflare": "If you use Cloudflare, set these records to “DNS only” (grey cloud): mail cannot pass through its proxy, and the panel address works most reliably this way.",
     "setup.v2.provider.checkedAt": "Last checked at {time}.",
+    "setup.v3.mail.helpBackup": "This server is a backup DNS server: {domain}’s list is kept on the main DNS server. Add these records there now: on the main server, Domains → {domain}. Nothing is written there automatically in this release.",
+    "setup.v3.mail.ptrOpenTask": "Setup does not wait for it: mail works without it, but receiving servers may mark it as spam. It stays listed as an open task until it is set.",
+    "setup.v3.tasks.title": "Open task: reverse DNS (PTR) for mail",
+    "setup.v3.tasks.why": "Receiving servers check that this server’s address names its mail host. Without it mail still works but may be marked as spam.",
+    "setup.v3.tasks.who": "You · in your server provider’s panel (CelikPanel cannot set it)",
+    "setup.v3.tasks.then": "Setup does not wait for it. It is checked again whenever this page reads the setup; the task disappears once the internet shows the right name.",
 } as const;
 
 export type SetupWizardScreenKey = keyof typeof enSetupWizardScreens;

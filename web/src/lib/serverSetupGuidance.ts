@@ -111,7 +111,7 @@ export function setupStepState(execution: ServerSetupExecution, step: ServerSetu
     const stopped = execution.status === 'failed';
     if (step.kind === 'verify') {
         if (execution.status === 'waiting' && execution.phase === 'verification') {
-            const open = checks.filter(check => check.state !== 'ready');
+            const open = checks.filter(check => check.state !== 'ready' && !check.advisory);
             const typed = open.filter(check => check.state === 'action_required' && setupCheckReasonText(check));
             if (typed.some(check => !reverseDNSWait(check))) return 'waitingOwner';
             if (typed.length > 0) return 'waitingReverseDNS';
@@ -248,7 +248,7 @@ export function setupExecutionGuidance(execution: ServerSetupExecution, componen
     if (setupPlanReopened(execution)) {
         result.title = 'setup.guide.revisedTitle';
         result.messages.push(text('setup.guide.revised'));
-        const open = execution.phase === 'verification' ? (execution.checks || []).filter(check => check.state !== 'ready') : [];
+        const open = execution.phase === 'verification' ? (execution.checks || []).filter(check => check.state !== 'ready' && !check.advisory) : [];
         if (open.length > 0) {
             result.messages.push(text('setup.guide.revisedChecks'));
             result.checks = open.map(setupCheckLine);
@@ -354,7 +354,7 @@ export function setupExecutionGuidance(execution: ServerSetupExecution, componen
         // lead, one line per open check, its general help, then how it resumes.
         // Neden, kimin islem yapacagi ve sonraki eylem adim listesinden once,
         // katlanmadan soylenir.
-        const open = (execution.checks || []).filter(check => check.state !== 'ready');
+        const open = (execution.checks || []).filter(check => check.state !== 'ready' && !check.advisory);
         result.messages.push(text(execution.status === 'waiting' ? 'setup.guide.verificationWaiting' : 'setup.guide.verification'));
         if (open.length > 0) { result.checks = open.map(setupCheckLine); result.checksAt = 0; }
         const codes = new Set<string>();

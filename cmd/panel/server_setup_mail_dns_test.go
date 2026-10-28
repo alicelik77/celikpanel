@@ -337,3 +337,35 @@ func TestServerSetupBuildMailDNSStepFollowsTheMailProfile(t *testing.T) {
 		}
 	}
 }
+
+func TestServerSetupBuildMailDNSSigningIdentityIsTheSteps(t *testing.T) {
+	step := serverSetupExecutionStep{serverSetupPlanStep: serverSetupPlanStep{ID: "09-mail_dns", Kind: "mail_dns"}, RequestID: serverSetupID("e", "09-mail_dns", "request"), OwnerID: serverSetupID("e", "09-mail_dns", "owner")}
+	first, again := serverSetupMailDNSSigningIdentity(step), serverSetupMailDNSSigningIdentity(step)
+	if first.RequestID != again.RequestID || first.OwnerID != again.OwnerID || !validServiceOperationID(first.RequestID) || !validServiceOperationID(first.OwnerID) {
+		t.Fatalf("signing identity must be fixed per step: %+v %+v", first, again)
+	}
+	other := step
+	other.RequestID = serverSetupID("f", "09-mail_dns", "request")
+	if serverSetupMailDNSSigningIdentity(other).RequestID == first.RequestID || first.RequestID == step.RequestID {
+		t.Fatal("signing identity must belong to its own step and differ from the step's")
+	}
+}
+
+func TestServerSetupBuildReverseDNSIsAnOpenTaskNotAWait(t *testing.T) {
+	health := transport.MailHealthResponse{ServerIP: "203.0.113.42", Myhostname: "mail.example.test", HostnameFQDN: true, PTR: "static.provider.example.", PTRAligned: false, FCrDNS: false}
+	ptr := setupMailIdentityCheck(health, nil, "mail.example.test")
+	if ptr.State != "action_required" || !ptr.Advisory {
+		t.Fatalf("a provider PTR must be an open task: %+v", ptr)
+	}
+	ready := serverSetupCheck{ID: "services", State: "ready", Code: "ready"}
+	if !serverSetupChecksReady([]serverSetupCheck{ready, ptr}) {
+		t.Fatal("setup waited for reverse DNS")
+	}
+	health.Myhostname, health.HostnameFQDN = "debian", false
+	if name := setupMailIdentityCheck(health, nil, "mail.example.test"); name.Advisory || serverSetupChecksReady([]serverSetupCheck{ready, name}) {
+		t.Fatalf("a wrong mail name must still block: %+v", name)
+	}
+	if serverSetupChecksReady([]serverSetupCheck{ptr}) {
+		t.Fatal("open tasks alone never complete setup")
+	}
+}

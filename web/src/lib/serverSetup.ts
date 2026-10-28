@@ -47,6 +47,9 @@ export interface ServerSetupCheck {
     // Additive (2026-10-10): the typed cause and the observed values it names.
     reason?: string;
     vars?: Record<string, string>;
+    // alpha.112: an open task setup does not wait for (reverse DNS at the
+    // server provider). / Kurulumun beklemedigi acik is.
+    advisory?: boolean;
 }
 export interface ServerSetupSnapshot {
     version: number;

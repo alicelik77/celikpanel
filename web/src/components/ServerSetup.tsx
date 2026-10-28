@@ -13,7 +13,7 @@ import { ServerSetupDNSConnection } from './ServerSetupDNSConnections';
 import { remoteDNSEndpoint } from '../lib/remoteDNS';
 import { ServerSetupChoice, ServerSetupManualAction } from './ServerSetupChoice';
 import { Button, inputClass, KeepWords, Spinner } from './ui';
-import { SetupCountStep, SetupDNSHomeStep, SetupDomainStep, SetupMailStep, SetupRecordsStep, SetupNameStep, SetupNamesStep, SetupPanelAccessCard, SetupProviderRecordsCard, SetupRegistrarCard, SetupRolesStep, SetupWizardInput, setupEngineChoice, setupServerLabel } from './ServerSetupWizardSteps';
+import { SetupCountStep, SetupDNSHomeStep, SetupDomainStep, SetupMailStep, SetupOpenTasks, SetupRecordsStep, SetupNameStep, SetupNamesStep, SetupPanelAccessCard, SetupProviderRecordsCard, SetupRegistrarCard, SetupRolesStep, SetupWizardInput, setupEngineChoice, setupServerLabel } from './ServerSetupWizardSteps';
 import { AddressLink } from './AddressLink';
 import { ServerSetupComponents, useSetupComponentCatalog } from './ServerSetupComponents';
 import { setupCheckLine, setupComponentName, setupExecutionGuidance, setupHostBusyGuidance, setupHostingRootBlockerValues, setupPlanReopened, setupStepState, setupStepStateLabel, type SetupGuidanceText } from '../lib/serverSetupGuidance';
@@ -191,7 +191,7 @@ const setupReconnectLimit = 60_000;
 // for the same request without starting a second operation).
 // Dogrulanmayan devam istegi bu sureden sonra yeniden sunulur.
 const enrollmentSettleLimit = 15_000;
-const setupChecksPassed = (checks: ServerSetupCheck[]) => checks.length > 0 && checks.every(check => check.state === 'ready');
+const setupChecksPassed = (checks: ServerSetupCheck[]) => checks.some(check => !check.advisory) && checks.every(check => check.state === 'ready' || check.advisory);
 
 function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     const setup = useServerSetup()!;
@@ -743,8 +743,11 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     // Kabul edilmis, henuz baslamamis calisma ilk adimini adlandirir.
     const guidanceStepItem = progressCurrentStep || (execution?.status === 'running' && execution.phase === 'queued' ? execution.steps.find(item => item.status === 'pending') : undefined);
     const guidanceStep = guidanceStepItem && !waitingLicense ? t(`setup.kind.${guidanceStepItem.kind}`, { target: stepTarget(guidanceStepItem.kind, guidanceStepItem.target) }) : '';
-    const progressChecks = (verificationResult && !verificationResult.failed ? verificationResult.checks : execution?.checks || snapshot.checks).filter(check => check.state !== 'ready');
-    const verifiedBlockers = verificationResult?.checks.filter(check => check.state !== 'ready') || [];
+    const shownChecks = verificationResult && !verificationResult.failed ? verificationResult.checks : execution?.checks || snapshot.checks;
+    const progressChecks = shownChecks.filter(check => check.state !== 'ready' && !check.advisory);
+    // Reverse DNS is the provider's: an open task, never a wait (2026-10-28).
+    const openTasks = shownChecks.filter(check => check.state !== 'ready' && check.advisory);
+    const verifiedBlockers = verificationResult?.checks.filter(check => check.state !== 'ready' && !check.advisory) || [];
     const verificationMessage = verifyingRequirements ? 'setup.verifyChecking'
         : !verificationResult ? null
         : verificationResult.failed || verificationResult.checks.length === 0 ? 'setup.verificationFailed'
@@ -760,6 +763,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         </div>
         {completed ? <section className="mt-8 max-w-3xl space-y-6" aria-labelledby="setup-ready-title">
             <div className="flex items-start gap-3"><Check className="mt-1 h-5 w-5 shrink-0 text-success" aria-hidden="true" /><div><h2 id="setup-ready-title" className="text-lg font-semibold">{t('setup.v2.ready', { server: setupServerLabel(t, snapshot.draft.short_name) })}</h2><p className="mt-1 text-sm text-fg-muted">{t('setup.completeServices')}</p></div></div>
+            {snapshot.checks.some(check => check.advisory && check.state !== 'ready') && <SetupOpenTasks lines={snapshot.checks.filter(check => check.advisory && check.state !== 'ready').map(checkSentence)} />}
             <Link to={nextPath} className="inline-flex items-center gap-3 rounded-lg bg-primary px-5 py-3 font-semibold text-primary-fg hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">{t(nextLabel)}<ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
             {/* What extending does and does not do, said before the action (D-033). */}
             <section aria-labelledby="setup-extend-title" className="border-t border-border pt-6" data-setup-extend="">
@@ -808,6 +812,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                     {progressChecks.length > 0 && waitingVerification && !guidance?.checks && <ul className="mt-5 list-disc space-y-2 pl-5 text-sm text-fg-muted">{progressChecks.map(check => <li key={check.id} className="break-words">{checkSentence(check)}</li>)}</ul>}
                     {/* After everything that explains the current state, and still above the step list. */}
                     {handoverNotice && <SetupHandoverNotice host={handoverNotice.host} url={handoverURL} />}
+                    {openTasks.length > 0 && <SetupOpenTasks lines={openTasks.map(checkSentence)} />}
                     {execution && !certificateReady && execution.status !== 'failed' && <SetupPanelAccessCard ip={snapshot.server_ip || draft.local_ip} port={window.location.port || '2083'} panelDomain={marker?.panel_domain || draft.panel_domain} />}
                     {execution && execution.status !== 'failed' && draft.dns_mode === 'external' && <SetupProviderRecordsCard />}
                     {execution && execution.status !== 'failed' && draft.dns_mode === 'local' && draft.ns1 && draft.ns2 && <SetupRegistrarCard draft={draft} mainDomain={mainDomain} now={execution.phase === 'access_dns' || (draft.dns_role === 'secondary' && execution.status === 'succeeded')} />}

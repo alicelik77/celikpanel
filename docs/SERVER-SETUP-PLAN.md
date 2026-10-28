@@ -32,8 +32,11 @@ every installed-panel update from CelikPanel itself, as required by [AGENTS.md](
   DKIM rows with their public state ("kept" for an old MX the owner keeps,
   "pending" until the DKIM key exists).
 - **Reverse DNS.** The mail step shows the PTR rows for IPv4 and IPv6 to give
-  the server provider; a server with public IPv6 also gets a reverse-DNS check
-  for that address before setup completes (an unanswered lookup is unknown).
+  the server provider. Reverse DNS for IPv4 and, with public IPv6, for IPv6
+  is an open task setup does not wait for (owner decision 2026-10-28): mail
+  works without it but may be marked as spam; it stays listed in the mail
+  step, on the install screen and after completion until the internet shows
+  the right name (an unanswered lookup is unknown).
 - **Helpers.** SpamAssassin and ClamAV are wizard choices again: the scanner
   now sees their helper units (spamass-milter, clamav-freshclam), which never
   stand for the service itself.
