@@ -159,3 +159,13 @@ func TestRegistrarDelegationRefusesHostileReplies(t *testing.T) {
 		t.Fatalf("serial: %d %v", serial, ok)
 	}
 }
+
+// The parent's own (authoritative) answer without nameservers is a known
+// state: registered, nothing entered at the registrar.
+func TestRegistrarDelegationAuthoritativeParentWithoutNameservers(t *testing.T) {
+	options, _ := delegationFixture(t, "test", func(string, uint16, bool) dnswiretest.Reply { return dnswiretest.Reply{Authoritative: true} })
+	result, err := Delegation(context.Background(), "example.test", options)
+	if err != nil || !result.Registered || len(result.NS) != 0 {
+		t.Fatalf("registered without nameservers: %+v %v", result, err)
+	}
+}

@@ -371,3 +371,33 @@ func TestServerSetupPeerJoinDeclaresTheTypedPublicIPv4(t *testing.T) {
 		t.Fatalf("declared: %+v", join.Peer)
 	}
 }
+
+// A join document from another version is a known state, not a lost answer.
+func TestServerSetupPeerDocumentFromAnotherVersion(t *testing.T) {
+	served, leaf := joinTestCertificate(t)
+	joinTestSeams(t, leaf, "")
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"protocol":2,"version":2,"a_newer_field":{}}`))
+	}))
+	server.TLS = &tls.Config{Certificates: []tls.Certificate{served}}
+	server.StartTLS()
+	t.Cleanup(server.Close)
+	listener := server.Listener.Addr().String()
+	previous := serverSetupLinkDeps
+	t.Cleanup(func() { serverSetupLinkDeps = previous })
+	serverSetupLinkDeps = func() serverSetupLinkDependencies {
+		return serverSetupLinkDependencies{dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
+			return (&net.Dialer{}).DialContext(ctx, network, listener)
+		}}
+	}
+	second, _ := setupOperationFixture(t)
+	t.Setenv("CELIKPANEL_SERVER_IP", "198.51.100.20")
+	code := formatServerSetupJoinCode(serverSetupSPKIPin(leaf), []byte{1, 2, 3, 4, 5})
+	body, _ := json.Marshal(map[string]string{"address": "203.0.113.10:2083", "code": code})
+	w := httptest.NewRecorder()
+	second.panel.handleServerSetupPeerConnect(w, serviceOperationAdminRequest(t, http.MethodPost, serverSetupPeerConnectPath, string(body), second.userID))
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"state":"refused"`) || !strings.Contains(w.Body.String(), "server_setup_peer_version_incompatible") {
+		t.Fatalf("another version: %d %s", w.Code, w.Body.String())
+	}
+}

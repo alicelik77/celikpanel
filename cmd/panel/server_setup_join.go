@@ -144,7 +144,9 @@ func formatServerSetupJoinCode(pin, secret []byte) string {
 // parseServerSetupJoinCode returns the 10-byte fingerprint and the 8-character
 // secret part of a code typed with or without dashes and spaces.
 func parseServerSetupJoinCode(raw string) ([]byte, string, bool) {
-	cleaned := strings.ToUpper(strings.NewReplacer("-", "", " ", "").Replace(strings.TrimSpace(raw)))
+	// Dashes and spaces are dropped; digits that look like base32 letters
+	// (0, 1, 8) are read as O, I and B.
+	cleaned := strings.NewReplacer("-", "", " ", "", "0", "O", "1", "I", "8", "B").Replace(strings.ToUpper(strings.TrimSpace(raw)))
 	if len(cleaned) != 24 {
 		return nil, "", false
 	}
@@ -314,8 +316,11 @@ type serverSetupJoinDocument struct {
 	Prepared          *serverSetupJoinPrepared `json:"prepared,omitempty"`
 	PublisherEndpoint string                   `json:"publisher_endpoint,omitempty"`
 	EnrollmentCode    string                   `json:"enrollment_code,omitempty"`
-	LinkID            string                   `json:"link_id"`
-	LinkCredential    string                   `json:"link_credential"`
+	// EnrollmentUsed: a replayed join whose enrollment the second server
+	// already used; there is no new code to hand over.
+	EnrollmentUsed bool   `json:"enrollment_used,omitempty"`
+	LinkID         string `json:"link_id"`
+	LinkCredential string `json:"link_credential"`
 	// FirstSPKI is the first server's full key fingerprint; it must match
 	// the code's prefix and the key the join was answered with.
 	FirstSPKI string `json:"first_spki"`
@@ -855,7 +860,7 @@ func (p *Panel) answerServerSetupJoinReplay(w http.ResponseWriter, r *http.Reque
 	join.LinkID, join.LinkCredentialHash = fresh.LinkID, fresh.LinkCredentialHash
 	if enrollmentUsed {
 		// The second server already enrolled with the earlier code.
-		document.EnrollmentCode = ""
+		document.EnrollmentCode, document.EnrollmentUsed = "", true
 	} else {
 		if err := p.replaceServerSetupJoinEnrollment(ctx, tx, document.EnrollmentCode, join.EnrollmentHash); err != nil {
 			writeServerError(w, err)
@@ -1013,6 +1018,7 @@ func (p *Panel) handleServerSetupPeerNames(w http.ResponseWriter, r *http.Reques
 			}
 		}
 	}
+	same := join.Names != nil && serverSetupPeerNamesEqual(*join.Names, names)
 	sealed, err := p.sealServerSetupSecret(names.ReverseCredential)
 	if err != nil {
 		writeServerError(w, err)
@@ -1025,7 +1031,10 @@ func (p *Panel) handleServerSetupPeerNames(w http.ResponseWriter, r *http.Reques
 		writeServerError(w, err)
 		return
 	}
-	p.audit(r, "server.setup.peer_names", "", 0)
+	if !same {
+		// The same names again (a retry) change nothing and are not audited again.
+		p.audit(r, "server.setup.peer_names", "", 0)
+	}
 	p.wakeServerSetupRunner()
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"protocol": serverSetupLinkProtocol, "accepted": true})
@@ -1096,10 +1105,11 @@ func canonicalServerSetupPeerNames(names *serverSetupPeerNames, d serverSetupDra
 		bound := serverSetupEffectiveDraft(d, serverSetupPeerBindingFromJoin(join, *names))
 		if _, err := serverSetupInfrastructureDNSDesired(bound); err != nil {
 			var planErr *serverSetupInfrastructureDNSPlanError
-			if errors.As(err, &planErr) {
-				return "server_setup_peer_names_clash", planErr.Message
+			conflict := "infrastructure_dns_conflict"
+			if errors.As(err, &planErr) && planErr.Code != "" {
+				conflict = planErr.Code
 			}
-			return "server_setup_peer_names_clash", err.Error()
+			return "server_setup_peer_names_clash", "The second server's names cannot be added to the main domain's zone (" + conflict + "). Change them in the second server's plan, or the conflicting record in Domains."
 		}
 	}
 	return "", ""

@@ -19,6 +19,8 @@ export const trSetupRegistrarScreens: Record<SetupRegistrarScreenKey, string> = 
     "setup.v4.why.glueWrong": "Kayıt kuruluşunda bu ad için {seen} var; 1. adımda düzeltin.",
     "setup.v4.why.glue6": "Firmanızda IPv6 alanı yoksa atlayın; IPv4 yeterlidir.",
     "setup.v4.why.backupWaiting": "Yedek DNS sunucusu kurulup listeyi aldığında yanıt verir.",
+    "setup.v4.item.checkRunning": "Kontrol hâlâ sürüyor; yanıtı gelince gösterilir.",
+    "setup.v4.why.noNameservers": "Kayıt kuruluşunda {domain} var ama henüz ad sunucusu yok: yukarıdaki iki adı alan adı firmanızda girin.",
     "setup.v4.why.imported": "Aktarılan bazı kayıtlar farklı yanıt veriyor; değişiklik yayılmadan Alan adları sayfasından kontrol edin.",
     "setup.v4.why.importedUnknown": "Bazı kayıtlar sunucularınızdan şu an okunamadı; bir şey yapmanız gerekmiyor, bir dakika içinde yeniden sorulur.",
     "setup.v4.doneTitle": "Alan adı firmanızda her şey tamam",

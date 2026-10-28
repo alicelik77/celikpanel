@@ -264,6 +264,9 @@ func (p *Panel) checkServerSetupDelegation(ctx context.Context, d serverSetupDra
 		nsItem.State = "unknown"
 	case !delegation.Registered:
 		nsItem.State, nsItem.Vars["reason"] = "not_yet", "not_registered"
+	case len(result.ParentNS) == 0:
+		// The registry answers for the domain, with no nameservers for it.
+		nsItem.State, nsItem.Vars["reason"] = "not_yet", "no_nameservers"
 	case slices.Equal(seen, expectedNames):
 		nsItem.State = "ok"
 	default:
@@ -416,7 +419,10 @@ func (p *Panel) serverSetupDelegation(ctx context.Context, d serverSetupDraft, n
 		case <-flight.done:
 			return flight.value
 		case <-ctx.Done():
-			return serverSetupDelegation{Zone: d.MainDomain, ExpectedNS: []serverSetupDelegationNS{}, ParentNS: []string{}, ParentGlue: map[string][]string{}, Servers: []serverSetupDelegationServer{}, Items: []serverSetupDelegationItem{}, Imported: serverSetupDelegationImported{Diffs: []serverSetupDelegationDiff{}}, NextCheckAfter: 5}
+			// D-024: the check is running; its answer is not known yet.
+			return serverSetupDelegation{Zone: d.MainDomain, ExpectedNS: []serverSetupDelegationNS{}, ParentNS: []string{}, ParentGlue: map[string][]string{}, Servers: []serverSetupDelegationServer{},
+				Items: []serverSetupDelegationItem{{ID: "check_running", State: "unknown"}}, Imported: serverSetupDelegationImported{Diffs: []serverSetupDelegationDiff{}},
+				NowReason: "server_setup_delegation_check_running", NextCheckAfter: 5}
 		}
 	}
 	flight := &serverSetupDelegationFlight{done: make(chan struct{})}

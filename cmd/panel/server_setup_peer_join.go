@@ -160,7 +160,7 @@ func (p *Panel) runServerSetupPeerJoin(ctx context.Context, plan serverSetupPlan
 		if err != nil {
 			var planErr *serverSetupInfrastructureDNSPlanError
 			if errors.As(err, &planErr) {
-				return false, &serverSetupPeerWait{Code: "server_setup_peer_names_clash", Message: "The second server's names cannot be added to the zone: " + planErr.Message + ". Change them in the second server's plan, or the conflicting record in Domains."}
+				return false, &serverSetupPeerWait{Code: "server_setup_peer_names_clash", Message: "The second server's names cannot be added to the main domain's zone (" + planErr.Code + "). Change them in the second server's plan, or the conflicting record in Domains."}
 			}
 			return false, err
 		}

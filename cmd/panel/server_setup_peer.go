@@ -131,7 +131,8 @@ func validServerSetupJoinDocument(document serverSetupJoinDocument, address, req
 	}
 	if document.MainDNSServer == "first" {
 		endpoint, err := canonicalRemoteDNSEndpoint(document.PublisherEndpoint)
-		if err != nil || endpoint != document.PublisherEndpoint || !remoteDNSValidSecret(document.EnrollmentCode) || document.Prepared != nil {
+		codeOK := remoteDNSValidSecret(document.EnrollmentCode) || (document.EnrollmentUsed && document.EnrollmentCode == "")
+		if err != nil || endpoint != document.PublisherEndpoint || !codeOK || document.Prepared != nil {
 			return false
 		}
 	} else if document.PublisherEndpoint != "" || document.EnrollmentCode != "" {
@@ -252,7 +253,7 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 	var document serverSetupJoinDocument
 	var observed []byte
 	callErr := serverSetupLinkJSON(context.WithoutCancel(ctx), serverSetupLinkTarget{Address: address, Pin: pin, Observed: &observed}, serverSetupJoinPath, "", join, &document)
-	if callErr == nil && (len(observed) != 32 || document.FirstSPKI != hex.EncodeToString(observed)) {
+	if callErr == nil && document.Protocol == serverSetupLinkProtocol && (len(observed) != 32 || document.FirstSPKI != hex.EncodeToString(observed)) {
 		// The full fingerprint sent over the pinned channel must be the key
 		// that answered (whose prefix the code carries).
 		callErr = errServerSetupLinkPinMismatch

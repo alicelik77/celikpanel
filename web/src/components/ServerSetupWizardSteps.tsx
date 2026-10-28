@@ -492,11 +492,12 @@ export function SetupRegistrarCard({ draft, mainDomain, now }: { draft: ServerSe
         if (item.id === 'nameservers') return t('setup.v4.item.nameservers', { domain, names: vars.expected || '' });
         if (item.id === 'answers_main' || item.id === 'answers_backup') return t(item.id === 'answers_main' ? 'setup.v4.item.answersMain' : 'setup.v4.item.answersBackup', { ip: vars.ip || '' });
         if (item.id === 'imported') return t('setup.v4.item.imported', { matched: vars.matched || '0', total: vars.total || '0' });
+        if (item.id === 'check_running') return t('setup.v4.item.checkRunning');
         return item.id;
     };
     const itemWhy = (item: SetupDelegation['items'][number]) => {
         const vars = item.vars || {};
-        if (item.state === 'not_yet' && item.id === 'nameservers') return vars.reason === 'not_registered' ? t('setup.v4.why.notRegistered', { domain }) : t('setup.v4.why.nameservers', { seen: vars.seen || '—' });
+        if (item.state === 'not_yet' && item.id === 'nameservers') return vars.reason === 'not_registered' ? t('setup.v4.why.notRegistered', { domain }) : vars.reason === 'no_nameservers' ? t('setup.v4.why.noNameservers', { domain }) : t('setup.v4.why.nameservers', { seen: vars.seen || '—' });
         if (item.state === 'not_yet' && item.id.startsWith('glue')) return vars.optional === 'true' ? t('setup.v4.why.glue6') : t(vars.seen ? 'setup.v4.why.glueWrong' : 'setup.v4.why.glueMissing', { seen: vars.seen || '' });
         if (item.state === 'waiting' && item.id === 'answers_backup') return t('setup.v4.why.backupWaiting');
         if (item.state === 'not_yet' && item.id === 'imported') return t('setup.v4.why.imported');

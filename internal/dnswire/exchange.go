@@ -293,6 +293,12 @@ func Delegation(ctx context.Context, domain string, options DelegationOptions) (
 			}
 		}
 		if len(ns) == 0 {
+			if message.Authoritative {
+				// The parent's own answer: the name exists there without
+				// nameservers (registered, nothing entered at the registrar).
+				result.Asked, result.Registered, result.NS = address, true, []string{}
+				return result, nil
+			}
 			last = errors.New("parent server returned no delegation for the domain")
 			continue
 		}

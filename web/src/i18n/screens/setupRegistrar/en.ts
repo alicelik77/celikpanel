@@ -19,6 +19,8 @@ export const enSetupRegistrarScreens = {
     "setup.v4.why.glueWrong": "The registry has {seen} for this name; correct it in step 1.",
     "setup.v4.why.glue6": "If your registrar has no IPv6 field, skip it; IPv4 is enough.",
     "setup.v4.why.backupWaiting": "Answers once the backup DNS server is set up and has received the list.",
+    "setup.v4.item.checkRunning": "The check is still running; its answer is shown when it arrives.",
+    "setup.v4.why.noNameservers": "The registry has {domain}, with no nameservers for it yet: enter the two names above at your registrar.",
     "setup.v4.why.imported": "Some imported records answer differently; check them on the Domains page before the change spreads.",
     "setup.v4.why.importedUnknown": "Some records could not be read from your servers just now; nothing to do, they are asked again in a minute.",
     "setup.v4.doneTitle": "Everything is done at your registrar",

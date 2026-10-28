@@ -19,6 +19,7 @@ import (
 	"net/http/httptest"
 	"net/netip"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -142,7 +143,12 @@ func TestServerSetupJoinCodeCarriesPinAndSecret(t *testing.T) {
 			t.Fatalf("%q: %x %q %v", typed, gotPin, proof, ok)
 		}
 	}
-	for _, bad := range []string{"", code[:28], code + "A", strings.Replace(code, code[0:1], "1", 1)} {
+	// Digits that look like letters are read as those letters.
+	lookAlike := strings.NewReplacer("O", "0", "I", "1", "B", "8").Replace(code)
+	if gotPin, _, ok := parseServerSetupJoinCode(lookAlike); !ok || !bytes.Equal(gotPin, pin) {
+		t.Fatalf("look-alikes: %q", lookAlike)
+	}
+	for _, bad := range []string{"", code[:28], code + "A", strings.Replace(code, code[0:1], "9", 1)} {
 		if _, _, ok := parseServerSetupJoinCode(bad); ok {
 			t.Fatalf("accepted %q", bad)
 		}
@@ -557,5 +563,47 @@ func TestServerSetupJoinKeepsOnlyKeyedHashes(t *testing.T) {
 	stored, _ := json.Marshal(join)
 	if strings.Contains(string(stored), link.LinkCredential) {
 		t.Fatal("the first server keeps no plain credential of the second")
+	}
+}
+
+// Two joins at the same moment with the same code: one joins, the other is
+// told the code is used; there is never a second join.
+func TestServerSetupJoinConcurrentJoinsWithOneCode(t *testing.T) {
+	_, cert := joinTestCertificate(t)
+	joinTestSeams(t, cert, "")
+	f, _, _ := joinFirstFixture(t, joinFirstDraft())
+	view := issueJoinCode(t, f)
+	codes := make(chan int, 2)
+	for _, id := range []string{strings.Repeat("a", 32), strings.Repeat("b", 32)} {
+		go func(id string) {
+			codes <- joinMachineRequest(t, f, serverSetupJoinPath, "", joinRequestFor(t, view.Code, id)).Code
+		}(id)
+	}
+	got := []int{<-codes, <-codes}
+	slices.Sort(got)
+	if got[0] != http.StatusOK || got[1] != http.StatusGone {
+		t.Fatalf("one join, one refusal: %v", got)
+	}
+}
+
+// A replayed join whose enrollment the second server already used is still
+// a valid document (no new code, said so).
+func TestServerSetupJoinReplayAfterAUsedEnrollmentIsValid(t *testing.T) {
+	_, cert := joinTestCertificate(t)
+	joinTestSeams(t, cert, "")
+	f, _, _ := joinFirstFixture(t, joinFirstDraft())
+	view := issueJoinCode(t, f)
+	request := joinRequestFor(t, view.Code, strings.Repeat("a", 32))
+	var first serverSetupJoinDocument
+	json.Unmarshal(joinMachineRequest(t, f, serverSetupJoinPath, "", request).Body.Bytes(), &first)
+	if _, err := f.database.GetDB().Exec(`UPDATE remote_dns_enrollments SET client_id=? WHERE code_hash=?`, strings.Repeat("9", 32), remoteDNSHash(first.EnrollmentCode)); err != nil {
+		t.Fatal(err)
+	}
+	var again serverSetupJoinDocument
+	if w := joinMachineRequest(t, f, serverSetupJoinPath, "", request); w.Code != http.StatusOK || json.Unmarshal(w.Body.Bytes(), &again) != nil || again.EnrollmentCode != "" || !again.EnrollmentUsed {
+		t.Fatalf("replay: %d %s", w.Code, w.Body.String())
+	}
+	if !validServerSetupJoinDocument(again, "https://203.0.113.10:2083", request.RequestID) {
+		t.Fatalf("the replayed document is valid: %+v", again)
 	}
 }
