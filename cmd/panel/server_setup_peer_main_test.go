@@ -90,6 +90,31 @@ func TestServerSetupPeerSecondServerAsMainTakesThePreparedList(t *testing.T) {
 			t.Fatalf("publisher wait: %v", err)
 		}
 	}
+	// A definite refusal is a verified failure with its next action; a main
+	// that is not ready yet, or a server error, is still a wait.
+	for _, test := range []struct {
+		err  error
+		code string
+	}{
+		{&remoteDNSHTTPError{StatusCode: http.StatusUnauthorized}, "server_setup_dns_publisher_refused"},
+		{&remoteDNSHTTPError{StatusCode: http.StatusConflict}, "server_setup_dns_publisher_refused"},
+		{&remoteDNSHTTPError{StatusCode: http.StatusConflict, Code: "REMOTE_DNS_AUTHORITY_NOT_READY"}, "server_setup_dns_publisher_waiting"},
+		{&remoteDNSHTTPError{StatusCode: http.StatusBadGateway}, "server_setup_dns_publisher_waiting"},
+	} {
+		remoteDNSExchange = func(context.Context, string, string, string, any, any) error { return test.err }
+		_, err := pair.first.panel.autoServerSetupDNSPublisher(context.Background(), effective, pair.execution.ID)
+		var failure *serverSetupChildFailure
+		var wait *serverSetupPeerWait
+		got := ""
+		if errors.As(err, &failure) {
+			got = failure.Code
+		} else if errors.As(err, &wait) {
+			got = wait.Code
+		}
+		if got != test.code {
+			t.Fatalf("%v: %q", test.err, got)
+		}
+	}
 	var connections int
 	pair.first.database.GetDB().QueryRow(`SELECT COUNT(*) FROM remote_dns_connections WHERE enrollment_hash=?`, remoteDNSHash(link.IssuedEnrollment)).Scan(&connections)
 	if connections != 1 {

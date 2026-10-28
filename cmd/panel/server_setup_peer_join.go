@@ -387,6 +387,14 @@ func (p *Panel) autoServerSetupDNSPublisher(ctx context.Context, plan serverSetu
 	}
 	connection, err := p.resumeRemoteDNSConnection(ctx, id)
 	if err != nil {
+		// A definite refusal by the main DNS server (the code expired, was
+		// withdrawn or used by another identity) is a verified failure with
+		// its next action; only a transport failure, a main not ready yet or
+		// an unreadable answer is a wait.
+		var refused *remoteDNSHTTPError
+		if errors.As(err, &refused) && refused.StatusCode >= 400 && refused.StatusCode < 500 && refused.Code != "REMOTE_DNS_AUTHORITY_NOT_READY" && refused.StatusCode != http.StatusTooManyRequests && refused.StatusCode != http.StatusRequestTimeout {
+			return nil, &serverSetupChildFailure{Code: "server_setup_dns_publisher_refused", Message: "The main DNS server refused this server's publishing connection: its enrollment code expired, was withdrawn or was already used. On the main DNS server create a new join code, join this server again, then review this plan again."}
+		}
 		return nil, waiting
 	}
 	binding, err := p.serverSetupDNSPublisherProof(ctx, plan.Draft, connection.ID)
