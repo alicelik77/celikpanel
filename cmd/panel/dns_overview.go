@@ -904,21 +904,18 @@ func dnsOverviewSentenceFor(in dnsOverviewInput, r dnsOverview) dnsOverviewSente
 		}
 		return dnsOverviewServer{}
 	}
-	label := func(s dnsOverviewServer) string {
-		if s.ShortName != "" {
-			return s.ShortName
-		}
-		return s.Who
-	}
+	// The short name when there is one; the page names a server without one
+	// ("This server" / "Second server") from its *_who value.
+	label := func(s dnsOverviewServer) string { return s.ShortName }
 	mainServer, backup := byRole("main"), byRole("backup")
 	if r.Home == "own" {
-		vars["main"], vars["main_ip"] = label(mainServer), mainServer.IPv4
+		vars["main"], vars["main_ip"], vars["main_who"] = label(mainServer), mainServer.IPv4, mainServer.Who
 		if mainServer.Answers == "not_serving" {
 			vars["who"] = mainServer.Who
 			return dnsOverviewSay("failed", "dns_overview_main_not_serving", "The main DNS server answers, but not for the domain: the domain's list is not served.", "You, on the main DNS server's panel.", "Open Advanced → DNS software on that server and check its state.", "This page checks again every minute.", vars)
 		}
 		if backup.Role == "backup" && backup.Answers == "not_serving" {
-			vars["backup"], vars["backup_ip"], vars["who"] = label(backup), backup.IPv4, backup.Who
+			vars["backup"], vars["backup_ip"], vars["backup_who"] = label(backup), backup.IPv4, backup.Who
 			return dnsOverviewSay("failed", "dns_overview_backup_not_serving", "The backup DNS server answers, but not for the domain; the domain answers from the main DNS server only, without a backup.", "You, on the backup DNS server's panel.", "Check its DNS software and its copy of the list there.", "When its copy is served again, this page shows it within a minute.", vars)
 		}
 		if peer := server("peer"); peer.Answers == "not_joined" {
@@ -991,7 +988,7 @@ func dnsOverviewSentenceFor(in dnsOverviewInput, r dnsOverview) dnsOverviewSente
 			if mainServer.Answers != "unknown" {
 				who = backup
 			}
-			vars["server"], vars["ip"] = label(who), who.IPv4
+			vars["server"], vars["ip"], vars["server_who"] = label(who), who.IPv4, who.Who
 			return dnsOverviewSay("unknown", "dns_overview_server_unknown", "A DNS server could not be asked just now; this is not known to be a failure.", "Nobody yet.", "If it stays so, check that the server is running and port 53 is open.", "This page asks again in a minute.", vars)
 		}
 	}
@@ -1008,7 +1005,7 @@ func dnsOverviewSentenceFor(in dnsOverviewInput, r dnsOverview) dnsOverviewSente
 		}
 	}
 	if backup.Role == "backup" && backup.Answers == "waiting" {
-		vars["backup"] = label(backup)
+		vars["backup"], vars["backup_who"] = label(backup), backup.Who
 		return dnsOverviewSay("waiting", "dns_overview_backup_first_copy", "The backup DNS server has not received its first copy of the list yet.", "Nobody: it is copied by itself.", "Nothing to do.", "It answers for the domain once it has its copy; this page checks every minute.", vars)
 	}
 	for _, name := range r.Names {

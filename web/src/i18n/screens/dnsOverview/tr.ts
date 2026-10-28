@@ -9,6 +9,7 @@ export const trDnsOverviewScreens: Record<DnsOverviewScreenKey, string> = {
     "dnsov.readFailedKept": "Son okuma başarısız oldu; gördüğünüz {time} saatinde okundu.",
     "dnsov.checkedAt": "{time} saatinde bakıldı; yaklaşık her dakika yeniden bakılır.",
     "dnsov.checkNow": "Şimdi bak",
+    "dnsov.checkNowIn": "Yeni kontrol {seconds} sn sonra yapılabilir.",
     "dnsov.thisServer": "Bu sunucu",
     "dnsov.thisServerNamed": "Bu sunucu ({name})",
     "dnsov.peerServer": "İkinci sunucu",

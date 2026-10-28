@@ -60,6 +60,8 @@ export interface DNSOverview {
     join: { state: 'waiting' | 'bound' | 'unavailable'; reason?: string };
     checked_at: string;
     next_check_after: number;
+    /** Seconds until "Check now" starts a new check. */
+    fresh_after: number;
 }
 
 // The sentence codes the page words itself; any other code is shown with the
@@ -81,7 +83,7 @@ const rowStates = ['ok', 'missing', 'different', 'not_yet', 'unknown', 'kept', '
 export function decodeDNSOverview(raw: unknown): DNSOverview {
     const invalid = (what: string) => new Error(`DNS overview outside the contract: ${what}`);
     if (!record(raw) || !text(raw.domain) || !oneOf(raw.home, ['own', 'provider', 'remote', 'none']) || typeof raw.setup_ready !== 'boolean'
-        || !text(raw.checked_at) || typeof raw.next_check_after !== 'number') throw invalid('shape');
+        || !text(raw.checked_at) || typeof raw.next_check_after !== 'number' || typeof raw.fresh_after !== 'number') throw invalid('shape');
     const sentence = raw.sentence;
     if (!record(sentence) || !oneOf(sentence.state, ['ok', 'waiting', 'prerequisite', 'failed', 'unknown']) || !text(sentence.code)
         || !text(sentence.reason) || !text(sentence.who) || !text(sentence.next) || !text(sentence.then)
@@ -144,13 +146,14 @@ export function dnsOverviewSentenceValues(t: Translate, overview: DNSOverview): 
     const byRole = (role: string) => overview.servers.find(server => server.role === role || (role === 'main' && server.role === 'standalone'));
     const main = byRole('main');
     const backup = byRole('backup');
-    if (main) vars.main = dnsOverviewServerLabel(t, main);
-    if (backup) vars.backup = dnsOverviewServerLabel(t, backup);
-    if (vars.ip) {
-        const named = overview.servers.find(server => server.ipv4 === vars.ip);
-        if (named) vars.server = dnsOverviewServerLabel(t, named);
-    }
-    if (!vars.server && vars.host) vars.server = dnsOverviewServerLabel(t, overview.servers.find(server => server.who === overview.mx_move?.to));
+    // The page names every server itself (short name, or "This server" /
+    // "Second server"); the server's own values are never shown raw.
+    vars.main = dnsOverviewServerLabel(t, main || { who: 'this' });
+    vars.backup = dnsOverviewServerLabel(t, backup || { who: 'peer' });
+    const named = overview.servers.find(server => server.who === vars.server_who)
+        || (vars.ip ? overview.servers.find(server => server.ipv4 === vars.ip) : undefined)
+        || (vars.host ? overview.servers.find(server => server.who === overview.mx_move?.to) : undefined);
+    vars.server = dnsOverviewServerLabel(t, named || { who: vars.server_who === 'peer' ? 'peer' : 'this' });
     for (const key of ['seen', 'names']) if (vars[key] === '') vars[key] = '—';
     return vars;
 }

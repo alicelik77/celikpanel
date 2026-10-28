@@ -1,10 +1,10 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Link } from '../router';
 import { apiErrorText, readApiError } from '../lib/apiError';
 import { useLostAnswer } from '../lib/lostAnswer';
-import { readRemote, useRefreshEvery, useRemote, type Remote } from '../lib/remote';
+import { readRemote, useRemote, type Remote, type RemoteHandle } from '../lib/remote';
 import {
     DNS_OVERVIEW_URL,
     decodeDNSOverview,
@@ -55,18 +55,72 @@ function rowStateText(t: T, row: Pick<DNSOverviewName, 'state' | 'seen'> & { own
     return t(`dnsov.state.${row.state}`, { seen });
 }
 
+// The next read follows the server's own next_check_after (its shared answer
+// expires then) and waits while the tab is hidden; a read that failed is
+// tried again after 30 s. It only reads.
+// Sonraki okuma sunucunun next_check_after degerini izler; sekme gizliyken bekler.
+function useOverviewPolling(remote: RemoteHandle<Overview>, value: Overview | null) {
+    const latest = useRef(remote);
+    latest.current = remote;
+    const seconds = value ? Math.max(5, value.next_check_after || 60) : 30;
+    const stamp = value ? `${value.checked_at}|${remote.remote.state}` : remote.remote.state;
+    useEffect(() => {
+        const page = typeof document === 'undefined' ? null : document;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const schedule = () => {
+            clearTimeout(timer);
+            if (page?.visibilityState === 'hidden') return;
+            timer = setTimeout(() => { if (!latest.current.reading) void latest.current.retry(); }, seconds * 1000);
+        };
+        const onVisibility = () => { if (page?.visibilityState === 'visible') schedule(); else clearTimeout(timer); };
+        schedule();
+        page?.addEventListener('visibilitychange', onVisibility);
+        return () => { clearTimeout(timer); page?.removeEventListener('visibilitychange', onVisibility); };
+    }, [stamp, seconds]);
+}
+
 export function DNSOverview({ advanced }: { advanced: ReactNode }) {
     const i18n = useI18n();
     const t: T = (key, values) => i18n.t(key as TranslationKey, values);
     const remote = useRemote(DNS_OVERVIEW_URL, decodeDNSOverview);
-    useRefreshEvery(remote, 60_000);
     const [advancedOpen, setAdvancedOpen] = useState(false);
+    const [forcing, setForcing] = useState(false);
     const value = remote.remote.state === 'known' ? remote.remote.value : remote.remote.state === 'unknown' ? remote.remote.previous?.value ?? null : null;
+    const observedAt = remote.remote.state === 'known' ? remote.remote.observedAt : remote.remote.state === 'unknown' ? remote.remote.previous?.observedAt ?? 0 : 0;
+    useOverviewPolling(remote, value);
+    // "Check now" asks the server for a real new check; it accepts one per
+    // 15 s and otherwise answers with the latest check and when the next one
+    // is possible. Until then the button says so.
+    const freshAt = value ? observedAt + value.fresh_after * 1000 : 0;
+    const [now, setNow] = useState(() => Date.now());
+    useEffect(() => {
+        if (!freshAt || freshAt <= Date.now()) return;
+        const timer = setTimeout(() => setNow(Date.now()), freshAt - Date.now() + 50);
+        return () => clearTimeout(timer);
+    }, [freshAt]);
+    const at = Math.max(now, Date.now());
+    const freshIn = freshAt > at ? Math.ceil((freshAt - at) / 1000) : 0;
+    const forced = useRef(false);
+    async function checkNow() {
+        if (forced.current) return;
+        forced.current = true;
+        setForcing(true);
+        try {
+            // The forced read refreshes the server's shared answer; the page's
+            // own read then shows it (both only read).
+            await readRemote(`${DNS_OVERVIEW_URL}?fresh=1`, decodeDNSOverview);
+            await remote.retry();
+            setNow(Date.now());
+        } finally {
+            forced.current = false;
+            setForcing(false);
+        }
+    }
     const failed = remote.remote.state === 'unknown';
     const time = (at: string) => new Date(at).toLocaleTimeString(i18n.locale);
     return <div className="space-y-6" data-dns-overview="">
         {!value ? <p role="status" className="text-sm text-fg-muted" data-dns-overview-state={failed ? 'unknown' : 'loading'}>{t(failed ? 'dnsov.readFailed' : 'dnsov.loading')}</p>
-            : <OverviewBody value={value} t={t} reread={() => void remote.retry()} reading={remote.reading} failedNote={failed ? t('dnsov.readFailedKept', { time: time(value.checked_at) }) : ''} checkedAt={t('dnsov.checkedAt', { time: time(value.checked_at) })} rereadOverview={remote.retry} />}
+            : <OverviewBody value={value} t={t} checkNow={() => void checkNow()} reading={remote.reading || forcing} freshIn={freshIn} failedNote={failed ? t('dnsov.readFailedKept', { time: time(value.checked_at) }) : ''} checkedAt={t('dnsov.checkedAt', { time: time(value.checked_at) })} rereadOverview={remote.retry} />}
         <details className="rounded-lg border border-border bg-surface" onToggle={event => setAdvancedOpen((event.currentTarget as HTMLDetailsElement).open)} data-dns-advanced="">
             <summary className="cursor-pointer px-4 py-3 font-semibold sm:px-5">{t('dnsov.advanced')}</summary>
             <div className="space-y-4 border-t border-border p-4 sm:p-5">
@@ -78,16 +132,29 @@ export function DNSOverview({ advanced }: { advanced: ReactNode }) {
     </div>;
 }
 
-function OverviewBody({ value, t, reread, reading, failedNote, checkedAt, rereadOverview }: {
-    value: Overview; t: T; reread: () => void; reading: boolean; failedNote: string; checkedAt: string; rereadOverview: () => Promise<Remote<Overview>>;
+function OverviewBody({ value, t, checkNow, reading, freshIn, failedNote, checkedAt, rereadOverview }: {
+    value: Overview; t: T; checkNow: () => void; reading: boolean; freshIn: number; failedNote: string; checkedAt: string; rereadOverview: () => Promise<Remote<Overview>>;
 }) {
     const stem = dnsOverviewSentenceKey(value.sentence.code);
     const vars = dnsOverviewSentenceValues(t, value);
     const say = (part: 'title' | 'why' | 'who' | 'next' | 'then', fallback: string) => stem ? t(`${stem}.${part}`, vars) : fallback;
     const tone = dnsOverviewTone(value.sentence.state);
+    // Only the title is a live region. It is an alert only when the state
+    // turns into a verified failure while the page is open; a poll that
+    // reads the same failure again announces nothing new.
+    const previous = useRef(value.sentence.state);
+    const [alerting, setAlerting] = useState(false);
+    useEffect(() => {
+        const state = value.sentence.state;
+        if (state === 'failed' && previous.current !== 'failed') setAlerting(true);
+        if (state !== 'failed') setAlerting(false);
+        previous.current = state;
+    }, [value.sentence.state]);
     return <>
-        <section aria-labelledby="dns-overview-lead" role={tone === 'bad' ? 'alert' : 'status'} className={`rounded-lg border p-4 sm:p-5 ${toneClass[tone]}`} data-dns-sentence={value.sentence.code} data-state={value.sentence.state}>
-            <h2 id="dns-overview-lead" className="text-lg font-semibold">{say('title', value.sentence.reason)}</h2>
+        <section aria-labelledby="dns-overview-lead" className={`rounded-lg border p-4 sm:p-5 ${toneClass[tone]}`} data-dns-sentence={value.sentence.code} data-state={value.sentence.state}>
+            <div role={alerting ? 'alert' : 'status'} data-dns-sentence-live={alerting ? 'alert' : 'status'}>
+                <h2 id="dns-overview-lead" className="text-lg font-semibold">{say('title', value.sentence.reason)}</h2>
+            </div>
             <dl className="mt-3 grid gap-x-4 gap-y-2 text-sm leading-6 sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)]">
                 <dt className="text-fg-muted">{t('setup.v2.why')}</dt><dd className="min-w-0 break-words">{say('why', value.sentence.reason)}</dd>
                 <dt className="text-fg-muted">{t('setup.v2.who')}</dt><dd className="min-w-0 break-words">{say('who', value.sentence.who)}</dd>
@@ -95,9 +162,9 @@ function OverviewBody({ value, t, reread, reading, failedNote, checkedAt, reread
                 <dt className="text-fg-muted">{t('setup.v2.then')}</dt><dd className="min-w-0 break-words">{say('then', value.sentence.then)}</dd>
             </dl>
             <div className="mt-3 flex flex-wrap items-center gap-3">
-                <Button type="button" variant="secondary" disabled={reading} loading={reading} onClick={reread}>{t('dnsov.checkNow')}</Button>
-                <span className="text-xs text-fg-muted">{checkedAt}</span>
-                {value.sentence.code === 'dns_overview_setup_running' || value.sentence.code === 'dns_overview_setup_not_done'
+                <Button type="button" variant="secondary" disabled={reading || freshIn > 0} loading={reading} onClick={checkNow}>{t('dnsov.checkNow')}</Button>
+                <span className="text-xs text-fg-muted">{freshIn > 0 ? t('dnsov.checkNowIn', { seconds: freshIn }) : checkedAt}</span>
+                {['dns_overview_setup_running', 'dns_overview_setup_not_done', 'dns_overview_dkim_pending'].includes(value.sentence.code)
                     ? <Link to="/setup" className="text-sm font-medium text-primary underline underline-offset-4">{t('dnsov.join.openSetup')}</Link> : null}
             </div>
             {failedNote && <p className="mt-2 text-sm text-fg-muted">{failedNote}</p>}

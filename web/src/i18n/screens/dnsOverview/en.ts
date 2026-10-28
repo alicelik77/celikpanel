@@ -8,6 +8,7 @@ export const enDnsOverviewScreens = {
     "dnsov.readFailedKept": "The latest reading failed; what you see was read at {time}.",
     "dnsov.checkedAt": "Checked at {time}; checked again about every minute.",
     "dnsov.checkNow": "Check now",
+    "dnsov.checkNowIn": "A new check is possible in {seconds} s.",
     "dnsov.thisServer": "This server",
     "dnsov.thisServerNamed": "This server ({name})",
     "dnsov.peerServer": "Second server",

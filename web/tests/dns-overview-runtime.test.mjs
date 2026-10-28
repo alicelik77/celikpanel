@@ -50,7 +50,7 @@ const paired = (extra = {}) => ({
   ],
   mail: [], mail_receiver: { server: 'none' },
   own_records_link: { where: 'here', path: '/domains/infrastructure/example.test', api: '/api/v1/dns/infrastructure-zones/example.test' },
-  join: { state: 'bound' }, checked_at: '2026-10-28T10:00:00Z', next_check_after: 60, ...extra,
+  join: { state: 'bound' }, checked_at: '2026-10-28T10:00:00Z', next_check_after: 60, fresh_after: 0, ...extra,
 });
 
 async function mount(overview, { words = enScreens, routes = {} } = {}) {
@@ -107,7 +107,7 @@ test('all good: the sentence first, both servers by the page\'s own names, the n
   try {
     const lead = byProp('data-dns-sentence', 'dns_overview_ok')[0];
     assert.equal(lead.props['data-state'], 'ok');
-    assert.equal(lead.props.role, 'status');
+    assert.equal(byProp('data-dns-sentence-live', 'status').length, 1, 'only the title is the live region, polite');
     const text = textOf();
     assert.ok(text.includes('All good') && text.includes('This server (alpha)') && text.includes('Second server (beta)'));
     assert.ok(text.indexOf('All good') < text.indexOf('Your DNS servers'), 'the sentence comes before the servers');
@@ -123,13 +123,19 @@ test('all good: the sentence first, both servers by the page\'s own names, the n
   } finally { await unmount(); }
 });
 
-test('a verified failure is an alert in Turkish that names the backup as the page names it', async () => {
-  const value = paired({ sentence: sentence('backup_not_serving', 'failed', { domain: 'example.test', backup: 'peer', main: 'this' }) });
-  value.servers[1].answers = 'not_serving';
-  await mount(value, { words: trScreens });
+test('a verified failure is announced once, when it starts, in Turkish, naming the servers as the page names them', async () => {
+  const failing = paired({ sentence: sentence('backup_not_serving', 'failed', { domain: 'example.test', backup: 'beta', backup_who: 'peer', main: 'alpha', main_who: 'this' }) });
+  failing.servers[1].answers = 'not_serving';
+  let current = paired();
+  await mount(() => json(current), { words: trScreens });
   try {
-    const lead = byProp('data-dns-sentence', 'dns_overview_backup_not_serving')[0];
-    assert.equal(lead.props.role, 'alert');
+    assert.equal(byProp('data-dns-sentence-live', 'status').length, 1);
+    current = failing;
+    await act(async () => button('Şimdi bak').props.onClick());
+    await settle();
+    assert.equal(byProp('data-dns-sentence-live', 'alert').length, 1, 'the change to a verified failure is an alert');
+    assert.equal(byProp('data-dns-sentence', 'dns_overview_backup_not_serving')[0].props.role, undefined, 'the rest of the sentence is not a live region');
+    assert.ok(requests.some((request) => request.url === '/api/v1/dns/overview?fresh=1'), 'Check now asks for a real new check');
     const text = textOf();
     assert.ok(text.includes('İkinci sunucu (beta) yanıt veriyor ama example.test için değil'), text.slice(0, 400));
     assert.ok(text.includes('Bu sunucu (alpha) üzerinden'));
@@ -259,5 +265,27 @@ test('Move mail: a record saved but not yet published is said as such, and a sta
     await act(async () => button('Move mail now').props.onClick());
     await settle();
     assert.ok(textOf().includes('The record changed since it was read'), textOf().slice(0, 300));
+  } finally { await unmount(); }
+});
+
+test('a failure already there on opening is not an alert; servers without a short name are named by the page', async () => {
+  const value = paired({ sentence: sentence('server_unknown', 'failed', { domain: 'example.test', server: '', server_who: 'peer', ip: '198.51.100.20' }) });
+  value.servers = value.servers.map((server) => ({ ...server, short_name: undefined }));
+  await mount(value);
+  try {
+    assert.equal(byProp('data-dns-sentence-live', 'alert').length, 0);
+    const text = textOf();
+    assert.ok(text.includes('Second server (198.51.100.20) did not answer this check'), text.slice(0, 400));
+  } finally { await unmount(); }
+});
+
+test('Check now waits for the server\u2019s window, and the poll follows next_check_after', async () => {
+  await mount(paired({ fresh_after: 12, next_check_after: 1 }));
+  try {
+    assert.equal(button('Check now').props.disabled, true);
+    assert.match(textOf(), /A new check is possible in 1[12] s\./);
+    const before = requests.filter((request) => request.url === '/api/v1/dns/overview').length;
+    await settle(5200);
+    assert.ok(requests.filter((request) => request.url === '/api/v1/dns/overview').length > before, 'read again when the shared answer expires (at least 5 s)');
   } finally { await unmount(); }
 });
