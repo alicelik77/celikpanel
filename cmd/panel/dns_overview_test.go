@@ -232,7 +232,7 @@ func TestDNSOverviewSentencePutsAVerifiedFailureFirst(t *testing.T) {
 	now := time.Now()
 	read := func() dnsOverview {
 		now = now.Add(2 * time.Minute)
-		value, err := f.panel.dnsOverview(context.Background(), now)
+		value, err := f.panel.dnsOverview(context.Background(), now, false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -335,12 +335,12 @@ func TestDNSOverviewExternalProviderNamesTheRecordsAndNoDNSSoftware(t *testing.T
 	}
 	// Once the provider has it, and a failed lookup stays unknown.
 	world.set(func(w *overviewWorld) { w.public["panel.example.test A"] = []string{"203.0.113.10"} })
-	later, err := f.panel.dnsOverview(context.Background(), time.Now().Add(2*time.Minute))
+	later, err := f.panel.dnsOverview(context.Background(), time.Now().Add(2*time.Minute), false)
 	if err != nil || later.Sentence.Code != "dns_overview_ok" {
 		t.Fatalf("provider done: %+v %v", later.Sentence, err)
 	}
 	world.set(func(w *overviewWorld) { w.failing["panel.example.test"] = true })
-	failed, _ := f.panel.dnsOverview(context.Background(), time.Now().Add(4*time.Minute))
+	failed, _ := f.panel.dnsOverview(context.Background(), time.Now().Add(4*time.Minute), false)
 	if failed.Sentence.State != "unknown" || overviewName(failed, "panel", "panel.example.test").State != "unknown" {
 		t.Fatalf("a failed lookup must be unknown: %+v", failed.Sentence)
 	}
@@ -470,4 +470,86 @@ func mustJSON(t *testing.T, value any) string {
 		t.Fatal(err)
 	}
 	return string(raw)
+}
+
+func TestDNSOverviewConcurrentReadsShareOneCheckAndForcedChecksAreBounded(t *testing.T) {
+	f, world := overviewPairedFirst(t)
+	now := time.Now()
+	var wg sync.WaitGroup
+	results := make([]dnsOverview, 16)
+	for index := range results {
+		wg.Add(1)
+		go func(index int) {
+			defer wg.Done()
+			value, err := f.panel.dnsOverview(context.Background(), now, index%2 == 0)
+			if err != nil {
+				t.Error(err)
+			}
+			results[index] = value
+		}(index)
+	}
+	wg.Wait()
+	for _, value := range results {
+		if value.Sentence.Code != "dns_overview_ok" {
+			t.Fatalf("concurrent read: %+v", value.Sentence)
+		}
+	}
+	asked := world.asked.Load()
+	// A forced check inside the 15 s window is the shared answer, with when
+	// the next forced check is accepted.
+	inside, _ := f.panel.dnsOverview(context.Background(), now.Add(5*time.Second), true)
+	if world.asked.Load() != asked || inside.FreshAfter != 10 || inside.NextCheckAfter != 55 {
+		t.Fatalf("forced inside the window: asked %d→%d fresh_after=%d next=%d", asked, world.asked.Load(), inside.FreshAfter, inside.NextCheckAfter)
+	}
+	// After the window a forced check asks the internet again, inside the minute.
+	if _, err := f.panel.dnsOverview(context.Background(), now.Add(20*time.Second), true); err != nil || world.asked.Load() == asked {
+		t.Fatalf("a forced check after 15 s did not check: %v", err)
+	}
+	if f.panel.dnsOverviewInFlight() {
+		t.Fatal("a check stayed in flight")
+	}
+}
+
+func TestDNSOverviewACheckThatPanicsWakesItsReaders(t *testing.T) {
+	d := mailDraftForTest()
+	d.ServerCount, d.ShortName, d.PeerIP, d.PeerNS = 1, "alpha", "", ""
+	f, _ := overviewDraftFixture(t, d)
+	release := make(chan struct{})
+	f.panel.dnsOverviewSeams.DKIM = func(context.Context, string) (string, error) {
+		<-release
+		panic("the key read panicked")
+	}
+	first := make(chan any, 1)
+	go func() {
+		defer func() { first <- recover() }()
+		_, _ = f.panel.dnsOverview(context.Background(), time.Now(), false)
+	}()
+	deadline := time.Now().Add(5 * time.Second)
+	for !f.panel.dnsOverviewInFlight() {
+		if time.Now().After(deadline) {
+			t.Fatal("the check never started")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	second := make(chan dnsOverview, 1)
+	go func() {
+		value, _ := f.panel.dnsOverview(context.Background(), time.Now(), false)
+		second <- value
+	}()
+	time.Sleep(20 * time.Millisecond)
+	close(release)
+	select {
+	case value := <-second:
+		if value.Sentence.Code != "dns_overview_check_running" || value.Sentence.State != "unknown" {
+			t.Fatalf("waiting reader: %+v", value.Sentence)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("a reader hung after the check panicked")
+	}
+	if recovered := <-first; recovered == nil {
+		t.Fatal("the panic was swallowed")
+	}
+	if f.panel.dnsOverviewInFlight() {
+		t.Fatal("the in-flight entry stayed")
+	}
 }

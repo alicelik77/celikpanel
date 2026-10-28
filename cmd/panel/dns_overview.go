@@ -205,6 +205,9 @@ type dnsOverview struct {
 	Join           dnsOverviewJoin         `json:"join"`
 	CheckedAt      string                  `json:"checked_at"`
 	NextCheckAfter int                     `json:"next_check_after"`
+	// FreshAfter is how many seconds until "Check now" starts a new check;
+	// until then it returns the check in flight or the latest answer.
+	FreshAfter int `json:"fresh_after"`
 }
 
 // dnsOverviewPeer is what this server knows of the other server, from the
@@ -771,17 +774,26 @@ func dnsOverviewSentenceFor(in dnsOverviewInput, r dnsOverview) dnsOverviewSente
 type dnsOverviewFlight struct {
 	done  chan struct{}
 	value dnsOverview
+	// ok is false when the check ended without an answer (it panicked):
+	// waiting readers then say the result is not known, and never hang.
+	ok bool
 }
 
 // dnsOverviewCache shares one check per panel; the zero value is ready.
+// started is when the last check began (any state): a forced check ("Check
+// now") is accepted at most once per dnsOverviewFreshInterval per panel.
 type dnsOverviewCache struct {
 	mu       sync.Mutex
 	key      string
 	at       time.Time
 	ttl      time.Duration
 	value    dnsOverview
+	started  time.Time
 	inflight map[string]*dnsOverviewFlight
 }
+
+// dnsOverviewFreshInterval bounds forced checks: one per panel per 15 s.
+const dnsOverviewFreshInterval = 15 * time.Second
 
 func dnsOverviewComplete(value dnsOverview) bool {
 	if value.Sentence.State == "unknown" {
@@ -802,7 +814,36 @@ func (p *Panel) dnsOverviewInFlight() bool {
 	return len(p.dnsOverviewCache.inflight) > 0
 }
 
-func (p *Panel) dnsOverview(ctx context.Context, now time.Time) (dnsOverview, error) {
+// dnsOverviewSeconds rounds a wait up to whole seconds, never below zero.
+func dnsOverviewSeconds(d time.Duration) int {
+	if d <= 0 {
+		return 0
+	}
+	return int((d + time.Second - 1) / time.Second)
+}
+
+// timing sets when the shared answer expires and when a forced check is
+// accepted again. The caller holds c.mu.
+func (c *dnsOverviewCache) timing(result *dnsOverview, now time.Time) {
+	result.NextCheckAfter = dnsOverviewSeconds(c.ttl - now.Sub(c.at))
+	result.FreshAfter = dnsOverviewSeconds(dnsOverviewFreshInterval - now.Sub(c.started))
+}
+
+// dnsOverviewRunning: the check is running and its answer is not known yet
+// (D-024).
+func dnsOverviewRunning(in dnsOverviewInput, now time.Time) dnsOverview {
+	return dnsOverview{Domain: in.Draft.MainDomain, Home: in.home(), SetupReady: in.Ready, Servers: []dnsOverviewServer{}, Names: []dnsOverviewName{}, Mail: []dnsOverviewMailRecord{},
+		MailReceiver: dnsOverviewMailReceiver{Server: "none"}, OwnRecordsLink: dnsOverviewOwnRecordsLink(in), Join: dnsOverviewJoinFor(in, in.thisRole()),
+		Sentence:  dnsOverviewSay("unknown", "dns_overview_check_running", "The check is still running.", "Nobody.", "Nothing to do.", "Its answer is shown when it arrives.", nil),
+		CheckedAt: now.UTC().Format(time.RFC3339), NextCheckAfter: 5, FreshAfter: 5}
+}
+
+// dnsOverview answers the shared check. fresh asks for a new check ("Check
+// now"); it is honoured at most once per panel every 15 s, and inside that
+// window the check in flight or the latest answer is returned, FreshAfter
+// saying when a forced check is accepted again. Checks of the same state
+// are coalesced: a second caller waits for the first.
+func (p *Panel) dnsOverview(ctx context.Context, now time.Time, fresh bool) (dnsOverview, error) {
 	edges := p.dnsOverviewEdges()
 	in, err := p.dnsOverviewInputs(ctx, edges)
 	if err != nil {
@@ -812,10 +853,13 @@ func (p *Panel) dnsOverview(ctx context.Context, now time.Time) (dnsOverview, er
 	key := string(raw)
 	cache := &p.dnsOverviewCache
 	cache.mu.Lock()
-	if cache.key == key && now.Sub(cache.at) >= 0 && now.Sub(cache.at) < cache.ttl {
+	if since := now.Sub(cache.started); fresh && since >= 0 && since < dnsOverviewFreshInterval {
+		fresh = false
+	}
+	if !fresh && cache.key == key && now.Sub(cache.at) >= 0 && now.Sub(cache.at) < cache.ttl {
 		result := cache.value
+		cache.timing(&result, now)
 		cache.mu.Unlock()
-		result.NextCheckAfter = int((cache.ttl - now.Sub(cache.at)).Seconds())
 		return result, nil
 	}
 	if cache.inflight == nil {
@@ -825,32 +869,41 @@ func (p *Panel) dnsOverview(ctx context.Context, now time.Time) (dnsOverview, er
 		cache.mu.Unlock()
 		select {
 		case <-flight.done:
+			if !flight.ok {
+				return dnsOverviewRunning(in, now), nil
+			}
 			return flight.value, nil
 		case <-ctx.Done():
-			// D-024: the check is running; its answer is not known yet.
-			return dnsOverview{Domain: in.Draft.MainDomain, Home: in.home(), SetupReady: in.Ready, Servers: []dnsOverviewServer{}, Names: []dnsOverviewName{}, Mail: []dnsOverviewMailRecord{},
-				MailReceiver: dnsOverviewMailReceiver{Server: "none"}, OwnRecordsLink: dnsOverviewOwnRecordsLink(in), Join: dnsOverviewJoinFor(in, in.thisRole()),
-				Sentence:  dnsOverviewSay("unknown", "dns_overview_check_running", "The check is still running.", "Nobody.", "Nothing to do.", "Its answer is shown when it arrives.", nil),
-				CheckedAt: now.UTC().Format(time.RFC3339), NextCheckAfter: 5}, nil
+			return dnsOverviewRunning(in, now), nil
 		}
 	}
 	flight := &dnsOverviewFlight{done: make(chan struct{})}
 	cache.inflight[key] = flight
+	cache.started = now
 	cache.mu.Unlock()
+	// Whatever happens to the check, its entry goes and its readers wake.
+	defer func() {
+		cache.mu.Lock()
+		if cache.inflight[key] == flight {
+			delete(cache.inflight, key)
+		}
+		cache.mu.Unlock()
+		close(flight.done)
+	}()
 
 	result := p.checkDNSOverview(context.WithoutCancel(ctx), in, edges)
 	ttl := dnsOverviewTTL
 	if !dnsOverviewComplete(result) {
 		ttl = dnsOverviewUnknownTTL
 	}
-	result.CheckedAt, result.NextCheckAfter = now.UTC().Format(time.RFC3339), int(ttl.Seconds())
-	flight.value = result
+	result.CheckedAt = now.UTC().Format(time.RFC3339)
 
 	cache.mu.Lock()
-	cache.key, cache.at, cache.ttl, cache.value = key, now, ttl, result
-	delete(cache.inflight, key)
+	cache.key, cache.at, cache.ttl = key, now, ttl
+	cache.timing(&result, now)
+	cache.value = result
+	flight.value, flight.ok = result, true
 	cache.mu.Unlock()
-	close(flight.done)
 	return result, nil
 }
 
@@ -864,7 +917,7 @@ func (p *Panel) handleDNSOverview(w http.ResponseWriter, r *http.Request) {
 		rejectRouteMethod(w, []string{http.MethodGet})
 		return
 	}
-	value, err := p.dnsOverview(r.Context(), time.Now())
+	value, err := p.dnsOverview(r.Context(), time.Now(), r.URL.Query().Get("fresh") == "1")
 	if err != nil {
 		writeServerError(w, err)
 		return
