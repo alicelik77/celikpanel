@@ -637,9 +637,13 @@ func (p *Panel) handleServerSetupJoin(w http.ResponseWriter, r *http.Request) {
 	// caller's address must be exactly the IPv4 address it declares.
 	sourceOK := source.Is4() && source == declared
 	if record.ConsumedBy != "" {
-		// The same request after a lost answer gets the same join; any other
-		// request finds the code used.
+		// The same request after a lost answer gets the same join while the
+		// code is still valid; any other request finds the code used.
 		if record.ConsumedBy == request.RequestID && proofOK && sourceOK {
+			if time.Now().Unix() >= record.ExpiresAt {
+				writeServerSetupJoinRefusal(w, http.StatusGone, "server_setup_join_code_expired", "This code has expired. Create a new code on the first server.", nil)
+				return
+			}
 			p.answerServerSetupJoinReplay(w, r, request)
 			return
 		}
@@ -820,6 +824,9 @@ func (p *Panel) replaceServerSetupJoinEnrollment(ctx context.Context, tx *sql.Tx
 // answerServerSetupJoinReplay answers the same join again after a lost
 // answer: the same peer and plan, fresh secrets (the lost ones were never
 // seen), the unused old enrollment withdrawn. Names already received stay.
+// Only while the join is live: its link not ended (revoked at completion)
+// and this server's setup for that plan still running or waiting, so an
+// ended join never hands out a credential or an enrollment again.
 func (p *Panel) answerServerSetupJoinReplay(w http.ResponseWriter, r *http.Request, request serverSetupJoinRequest) {
 	ctx := r.Context()
 	var join serverSetupJoinRecord
@@ -828,8 +835,14 @@ func (p *Panel) answerServerSetupJoinReplay(w http.ResponseWriter, r *http.Reque
 		writeServerError(w, err)
 		return
 	}
+	execution, err := p.latestServerSetupExecution(ctx)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	live := found && join.LinkCredentialHash != "" && execution != nil && execution.PlanID == join.PlanID && stringIn(execution.Status, "running", "waiting")
 	plan, err := p.loadServerSetupPlan(ctx, join.PlanID)
-	if !found || err != nil || join.RequestID != request.RequestID || join.Peer.IPv4 != request.DeclaredIPv4 {
+	if !live || err != nil || join.RequestID != request.RequestID || join.Peer.IPv4 != request.DeclaredIPv4 {
 		writeServerSetupJoinRefusal(w, http.StatusGone, "server_setup_join_code_used", "This code was already used. Create a new code on the first server if the second server must join again.", nil)
 		return
 	}

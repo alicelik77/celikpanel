@@ -614,3 +614,57 @@ func TestServerSetupJoinReplayAfterAUsedEnrollmentIsValid(t *testing.T) {
 		t.Fatalf("the replayed document is valid: %+v", again)
 	}
 }
+
+// SHOULD-2 (alpha.114 review): an ended join is final. A replay of the same
+// request after the setup completed (link revoked, code removed), after the
+// setup stopped, or once the code expired hands out no credential and no
+// enrollment.
+func TestServerSetupJoinReplayAfterTheJoinEndedGetsNothing(t *testing.T) {
+	for _, end := range []string{"completed", "stopped", "expired"} {
+		t.Run(end, func(t *testing.T) {
+			_, cert := joinTestCertificate(t)
+			f, _, execution := joinFirstFixture(t, joinFirstDraft())
+			joinTestSeams(f.panel, cert, "")
+			view := issueJoinCode(t, f)
+			request := joinRequestFor(t, view.Code, strings.Repeat("a", 32))
+			if w := joinMachineRequest(t, f, serverSetupJoinPath, "", request); w.Code != http.StatusOK {
+				t.Fatalf("join: %d %s", w.Code, w.Body.String())
+			}
+			db := f.database.GetDB()
+			var before serverSetupJoinRecord
+			readServerSetupJSONSetting(context.Background(), db, serverSetupJoinKey, &before)
+			want := "server_setup_join_code_used"
+			switch end {
+			case "completed":
+				if err := f.panel.revokeServerSetupLink(context.Background()); err != nil {
+					t.Fatal(err)
+				}
+				readServerSetupJSONSetting(context.Background(), db, serverSetupJoinKey, &before)
+				want = "server_setup_join_code_unavailable"
+			case "stopped":
+				if _, err := db.Exec(`UPDATE server_setup_executions SET status='failed',execution_json=replace(execution_json,'"status":"running"','"status":"failed"') WHERE id=?`, execution.ID); err != nil {
+					t.Fatal(err)
+				}
+			case "expired":
+				var record serverSetupJoinCodeRecord
+				readServerSetupJSONSetting(context.Background(), db, serverSetupJoinCodeKey, &record)
+				record.ExpiresAt = time.Now().Add(-time.Minute).Unix()
+				writeServerSetupJSONSetting(context.Background(), db, serverSetupJoinCodeKey, record)
+				want = "server_setup_join_code_expired"
+			}
+			var enrollments int
+			db.QueryRow(`SELECT COUNT(*) FROM remote_dns_enrollments`).Scan(&enrollments)
+			w := joinMachineRequest(t, f, serverSetupJoinPath, "", request)
+			if w.Code != http.StatusGone || !strings.Contains(w.Body.String(), want) || strings.Contains(w.Body.String(), "link_credential") || strings.Contains(w.Body.String(), "enrollment_code") {
+				t.Fatalf("replay: %d %s", w.Code, w.Body.String())
+			}
+			var after serverSetupJoinRecord
+			readServerSetupJSONSetting(context.Background(), db, serverSetupJoinKey, &after)
+			var enrollmentsAfter int
+			db.QueryRow(`SELECT COUNT(*) FROM remote_dns_enrollments`).Scan(&enrollmentsAfter)
+			if after.LinkCredentialHash != before.LinkCredentialHash || after.LinkID != before.LinkID || enrollmentsAfter != enrollments {
+				t.Fatalf("nothing new is issued: %+v %d %d", after, enrollments, enrollmentsAfter)
+			}
+		})
+	}
+}

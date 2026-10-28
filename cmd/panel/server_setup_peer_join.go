@@ -395,11 +395,14 @@ func (p *Panel) serverSetupPeerDKIMPresent(ctx context.Context, d serverSetupDra
 }
 
 // revokeServerSetupLink ends this server's side of the setup link once its
-// setup completed: the link credential is removed, so neither the join nor
-// a link call is accepted afterwards. The join's other records stay as
-// evidence.
-// Kurulum tamamlaninca baglanti kimligi kaldirilir.
+// setup completed: the link credential and the join code are removed, so
+// neither a join (nor its replay) nor a link call is accepted afterwards.
+// The join's other records stay as evidence.
+// Kurulum tamamlaninca baglanti kimligi ve katilma kodu kaldirilir.
 func (p *Panel) revokeServerSetupLink(ctx context.Context) error {
+	if _, err := p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key=?`, serverSetupJoinCodeKey); err != nil {
+		return err
+	}
 	var join serverSetupJoinRecord
 	if found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join); err != nil {
 		return err
