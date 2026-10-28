@@ -247,6 +247,11 @@ export const enDnsOverviewScreens = {
     "dnsov.site.later": "Later",
     "dnsov.site.added": "Site added. Upload your files: Domains → the site → Files.",
     "dnsov.site.skipped": "You can add sites any time under Domains.",
+    "dnsov.site.keptTitle": "Some of the site's names already point elsewhere",
+    "dnsov.site.keptWhy": "Your list already has {names}. Nothing was changed for these names.",
+    "dnsov.site.keptWho": "You, when you decide.",
+    "dnsov.site.keptNext": "Point them to this server ({ip}) in the record editor, or keep them as they are.",
+    "dnsov.site.keptThen": "The site answers on these names once they point here; the other names already do.",
     "dnsov.site.openDNS": "Open the DNS page",
 } as const;
 

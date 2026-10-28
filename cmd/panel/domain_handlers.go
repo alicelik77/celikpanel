@@ -598,10 +598,20 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 		// rollback. Return its identity as an explicit partial success: the UI can
 		// close Create, refresh the list and continue in this domain's management
 		// screen instead of telling the operator to submit a duplicate Create.
-		zoneExists, err := p.publishNewTopLevelDomainZone(dnsCtx, req.Domain)
+		zoneExists, site, err := p.publishTopLevelDomainZone(dnsCtx, req.Domain)
 		if err != nil {
 			log.Printf("dns zone publication for %s: %v", req.Domain, err)
 			writeDomainCreatePartialSuccess(w, result.DomainID, req.Domain, zoneExists)
+			return
+		}
+		if site != nil {
+			// The site took over the infrastructure zone: say which of its
+			// names were given an address and which already point elsewhere.
+			raw, _ := json.Marshal(result)
+			answer := map[string]any{}
+			_ = json.Unmarshal(raw, &answer)
+			answer["site_records"] = site
+			_ = json.NewEncoder(w).Encode(answer)
 			return
 		}
 	}
@@ -610,13 +620,28 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *Panel) publishNewTopLevelDomainZone(ctx context.Context, domain string) (bool, error) {
-	if _, _, err := p.createZoneWithTemplate(ctx, domain); err != nil {
-		return false, fmt.Errorf("create DNS zone: %w", err)
+	exists, _, err := p.publishTopLevelDomainZone(ctx, domain)
+	return exists, err
+}
+
+// publishTopLevelDomainZone creates the zone from its template or, for the
+// infrastructure zone setup made, adds only the site's missing addresses
+// (addInfrastructureZoneSiteRecords), then publishes it.
+func (p *Panel) publishTopLevelDomainZone(ctx context.Context, domain string) (bool, *infrastructureSiteRecords, error) {
+	_, created, err := p.createZoneWithTemplate(ctx, domain)
+	if err != nil {
+		return false, nil, fmt.Errorf("create DNS zone: %w", err)
+	}
+	var site *infrastructureSiteRecords
+	if !created {
+		if site, err = p.addInfrastructureZoneSiteRecords(ctx, domain); err != nil {
+			return true, nil, fmt.Errorf("add the site's addresses: %w", err)
+		}
 	}
 	if err := p.syncZoneToDNS(ctx, domain, false); err != nil {
-		return true, fmt.Errorf("publish DNS zone: %w", err)
+		return true, site, fmt.Errorf("publish DNS zone: %w", err)
 	}
-	return true, nil
+	return true, site, nil
 }
 
 // handleDeleteDomain deletes a domain

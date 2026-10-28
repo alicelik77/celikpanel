@@ -248,5 +248,10 @@ export const trDnsOverviewScreens: Record<DnsOverviewScreenKey, string> = {
     "dnsov.site.later": "Sonra",
     "dnsov.site.added": "Site eklendi. Dosyalarınızı yükleyin: Alan adları → site → Dosyalar.",
     "dnsov.site.skipped": "Siteleri istediğiniz zaman Alan adları’ndan ekleyebilirsiniz.",
+    "dnsov.site.keptTitle": "Sitenin bazı adları zaten başka bir yeri gösteriyor",
+    "dnsov.site.keptWhy": "Listenizde zaten {names} var. Bu adlar için hiçbir şey değiştirilmedi.",
+    "dnsov.site.keptWho": "Siz · karar verdiğinizde",
+    "dnsov.site.keptNext": "Kayıt düzenleyicide onları bu sunucuya ({ip}) yönlendirin ya da oldukları gibi bırakın.",
+    "dnsov.site.keptThen": "Bu adlar buraya yönelince site onlarda da açılır; diğer adlar zaten açılıyor.",
     "dnsov.site.openDNS": "DNS sayfasını aç",
 };

@@ -234,3 +234,46 @@ func TestRemovingASiteForTheInfrastructureZoneKeepsTheZone(t *testing.T) {
 		t.Fatalf("listing=%+v err=%v", zonesListed, err)
 	}
 }
+
+// alpha.115: the first site for the main domain when it is the
+// infrastructure zone: only the missing apex and www addresses are added;
+// a name that already points elsewhere is kept and reported.
+func TestInfrastructureZoneSiteRecordsAddOnlyWhatIsMissing(t *testing.T) {
+	t.Setenv("CELIKPANEL_SERVER_IP", "203.0.113.10")
+	t.Setenv("CELIKPANEL_SERVER_IPV6", "2001:db8::10")
+	p := newDNSPanelForTest(t)
+	d := seedSetupInfrastructureZone(t, p)
+	zone := d.InfrastructureDNS.Zone
+	// The old site the owner imported still answers at the apex.
+	var zoneID int64
+	if err := p.db.GetDB().QueryRow(`SELECT id FROM pdns_domains WHERE name=?`, zone).Scan(&zoneID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.db.GetDB().Exec(`INSERT INTO pdns_records(domain_id,name,type,content,ttl) VALUES(?,?,?,?,300)`, zoneID, zone, "A", "192.0.2.80"); err != nil {
+		t.Fatal(err)
+	}
+	site, err := p.addInfrastructureZoneSiteRecords(context.Background(), zone)
+	if err != nil || site == nil {
+		t.Fatalf("site records: %+v %v", site, err)
+	}
+	if len(site.Kept) != 1 || site.Kept[0].Name != zone || site.Kept[0].Content != "192.0.2.80" || site.Kept[0].Expected != "203.0.113.10" {
+		t.Fatalf("kept: %+v", site.Kept)
+	}
+	if len(site.Added) != 2 || site.Added[0].Name != "www."+zone || site.Added[0].Type != "A" || site.Added[1].Type != "AAAA" {
+		t.Fatalf("added: %+v", site.Added)
+	}
+	var apex int
+	if err := p.db.GetDB().QueryRow(`SELECT COUNT(*) FROM pdns_records WHERE domain_id=? AND name=? AND type IN ('A','AAAA')`, zoneID, zone).Scan(&apex); err != nil || apex != 1 {
+		t.Fatalf("the apex was changed: %d %v", apex, err)
+	}
+	// Running again adds nothing more.
+	again, err := p.addInfrastructureZoneSiteRecords(context.Background(), zone)
+	if err != nil || len(again.Added) != 0 {
+		t.Fatalf("a second run: %+v %v", again, err)
+	}
+	// An ordinary zone is left to its template.
+	seedInfrastructureDNSZone(t, p, "other.test")
+	if other, err := p.addInfrastructureZoneSiteRecords(context.Background(), "other.test"); err != nil || other != nil {
+		t.Fatalf("an ordinary zone: %+v %v", other, err)
+	}
+}

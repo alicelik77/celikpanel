@@ -289,3 +289,43 @@ test('Check now waits for the server\u2019s window, and the poll follows next_ch
     assert.ok(requests.filter((request) => request.url === '/api/v1/dns/overview').length > before, 'read again when the shared answer expires (at least 5 s)');
   } finally { await unmount(); }
 });
+
+// The first site at the end of setup: the existing form opens prefilled, and
+// when the main domain is the infrastructure zone the names that already
+// point elsewhere are said with who decides (D-024).
+const modalStub = dataModule(`
+  import React from '${reactURL}';
+  export const AddDomainModal = (props) => {
+    globalThis.firstSiteModal = props;
+    return React.createElement('add-domain-modal', { initialDomain: props.initialDomain });
+  };
+`);
+// The form is loaded lazily (import('./AddDomainModal')); the test gives it a stand-in.
+const compiledFirstSite = shared.compile('components/SetupFirstSite.tsx');
+const firstSiteSource = Buffer.from(compiledFirstSite.slice(compiledFirstSite.indexOf(',') + 1), 'base64').toString()
+  .replace(/import\(['"]\.\/AddDomainModal['"]\)/, `import('${modalStub}')`);
+const firstSiteURL = dataModule(firstSiteSource);
+const { SetupFirstSite } = await import(firstSiteURL);
+
+test('the first site opens the existing form with the main domain; names pointing elsewhere are said, not changed', async () => {
+  globalThis.dnsWords = enScreens;
+  const memory = new Map();
+  globalThis.window = { localStorage: { getItem: (key) => memory.get(key) ?? null, setItem: (key, value) => memory.set(key, value) } };
+  try {
+    await act(async () => { tree = Renderer.create(React.createElement(SetupFirstSite, { domain: 'example.test' })); });
+    assert.equal(tree.root.findAll((node) => node.props?.['data-setup-first-site'] === 'offer').length, 1);
+    await act(async () => button('Add the site').props.onClick());
+    await settle(30);
+    assert.equal(tree.root.findAllByType('add-domain-modal')[0].props.initialDomain, 'example.test', 'prefilled; nothing is created until the form is submitted');
+    await act(async () => globalThis.firstSiteModal.onSuccess({ siteRecords: { added: [{ name: 'www.example.test', type: 'A', content: '203.0.113.10' }], kept: [{ name: 'example.test', type: 'A', content: '192.0.2.80', expected: '203.0.113.10' }], ipv4: '203.0.113.10' } }));
+    const text = JSON.stringify(tree.toJSON());
+    assert.ok(text.includes('example.test A 192.0.2.80') && text.includes('Point them to this server (203.0.113.10)') && text.includes('You, when you decide.'), text.slice(0, 500));
+    assert.equal(memory.get('celikpanel.setup.firstSite.example.test'), 'added');
+  } finally {
+    if (tree) await act(async () => tree.unmount());
+    tree = null;
+    delete globalThis.window;
+    delete globalThis.firstSiteModal;
+    delete globalThis.dnsWords;
+  }
+});
