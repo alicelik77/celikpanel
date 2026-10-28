@@ -308,16 +308,18 @@ jobs:
             pattern: '^TestSite'
             skip: ''
           # Server setup was split in two (alpha.105): its job time had reached
-          # the 8-minute ceiling once. 54 of its 124 tests are in 1/2 (the
-          # suffix letters A to G), the other 70 in 2/2, which keeps the broad
-          # pattern and skips 1/2 so a future exact or lowercase name still has
-          # one home. Measure again before moving the boundary.
+          # the 8-minute ceiling once. The boundary moved at alpha.114, measured
+          # without the race detector: A to J (100 of 162 tests, about 10.4 s)
+          # in 1/2, the other 62 (about 11.5 s, the join and pairing tests among
+          # them) in 2/2, which keeps the broad pattern and skips 1/2 so a future
+          # exact or lowercase name still has one home. Measure again before
+          # moving the boundary.
           - shard: Server setup (1/2)
-            pattern: '^TestServerSetup[A-G]'
+            pattern: '^TestServerSetup[A-J]'
             skip: ''
           - shard: Server setup (2/2)
             pattern: '^TestServerSetup'
-            skip: '^TestServerSetup[A-G]'
+            skip: '^TestServerSetup[A-J]'
           - shard: Service
             pattern: '^TestService'
             skip: ''

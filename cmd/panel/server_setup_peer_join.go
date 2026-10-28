@@ -326,6 +326,11 @@ func (p *Panel) sendServerSetupPeerDKIM(ctx context.Context, plan serverSetupPla
 		return nil
 	case callErr == nil:
 		return &serverSetupPeerWait{Code: "server_setup_peer_dkim_publishing", Message: "The main DNS server saved this server's DKIM record and is publishing it. Setup checks again by itself."}
+	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_dkim_main_signs":
+		// Both servers have mail: the main DNS server receives and signs the
+		// main domain's mail itself; this server's mail serves its own
+		// domains, so there is nothing to publish for it.
+		return nil
 	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_dkim_zone_waiting":
 		return &serverSetupPeerWait{Code: refusal.Code, Message: "The main DNS server has not prepared the main domain's zone yet. Setup sends the DKIM record again by itself."}
 	case errors.As(callErr, &refusal):
