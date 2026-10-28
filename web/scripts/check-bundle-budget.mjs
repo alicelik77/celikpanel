@@ -114,8 +114,9 @@ const screenPartBudgets = {
   setupJoin: kib(14.5, 4),
   // v0.1.0-alpha.115: the DNS page's overview and the first-site offer
   // (dnsov.). A new part, set with at least 25% headroom from its Turkish
-  // file: 15.36 / 4.24 KiB.
-  dnsOverview: kib(21, 6),
+  // file: 15.36 / 4.24 KiB. Raised with the alpha.115 review fixes to keep
+  // 25% headroom over 19.34 / 5.16 KiB.
+  dnsOverview: kib(26, 7),
 }
 
 // Translation chunks, named by source. The shell halves are held to the
