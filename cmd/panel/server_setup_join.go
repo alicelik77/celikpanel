@@ -6,18 +6,16 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
+	"crypto/tls"
 	"crypto/x509"
 	"database/sql"
 	"encoding/base32"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"net"
 	"net/http"
 	"net/netip"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -76,52 +74,54 @@ const (
 var serverSetupJoinEncoding = base32.StdEncoding.WithPadding(base32.NoPadding)
 var serverSetupJoinProofPattern = regexp.MustCompile(`^[A-Z2-7]{8}$`)
 
-// serverSetupPanelCertificate reads the certificate this panel serves, the
-// same file the TLS listener and the certificate page use (a test sets its
-// own panel's certificate).
-// It is the identity the panel serves on its IP address (no name in the
-// handshake), which is where peers dial: the first self-signed identity
-// while it is valid, kept across domain certificate changes
-// (configurePanelHTTPTLS), otherwise the active certificate.
-func (p *Panel) serverSetupPanelCertificate() (*x509.Certificate, error) {
-	if p.setupLink.certificate != nil {
-		return p.setupLink.certificate()
+// The setup link's identity is the certificate the listener serves on the
+// panel's IP address (no name in the handshake), which is where peers dial:
+// configurePanelHTTPTLS puts the first self-signed identity there while
+// panelIPCertificate finds it valid and paired with its key (CELIKPANEL_TLS
+// managed certificates), otherwise the served certificate itself. It is
+// captured once when the listener starts, never read again from the files,
+// so the pin a code carries is the key that actually answers.
+var (
+	errServerSetupIdentityMissing = errors.New("this panel serves no TLS identity on its address")
+	errServerSetupIdentityInvalid = errors.New("this panel's address identity is not a valid self-signed certificate for its IP address")
+)
+
+// captureServerSetupIdentity records the certificate a handshake without a
+// name gets from this listener configuration.
+func (p *Panel) captureServerSetupIdentity(config *tls.Config) {
+	if config == nil || len(config.Certificates) == 0 || len(config.Certificates[0].Certificate) == 0 {
+		return
 	}
-	path := os.Getenv("CELIKPANEL_TLS_CERT")
-	if path == "" {
-		active, _, found, err := managedPanelCertificatePaths(tlsDir())
+	leaf := config.Certificates[0].Leaf
+	if leaf == nil {
+		parsed, err := x509.ParseCertificate(config.Certificates[0].Certificate[0])
 		if err != nil {
-			return nil, err
+			return
 		}
-		path = filepath.Join(tlsDir(), "panel.crt")
-		if found && !serverSetupBootstrapIdentityValid(path) {
-			path = active
-		}
+		leaf = parsed
 	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	block, _ := pem.Decode(data)
-	if block == nil {
-		return nil, errors.New("panel certificate is not PEM")
-	}
-	return x509.ParseCertificate(block.Bytes)
+	p.setupLink.identity.Store(leaf)
 }
 
-func serverSetupBootstrapIdentityValid(path string) bool {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return false
+// serverSetupPanelCertificate is the captured identity when it can be the
+// link's trust: self-signed, for an IP address, valid now. A missing or
+// unusable one is a verified state (server_setup_join_certificate_unavailable).
+func (p *Panel) serverSetupPanelCertificate() (*x509.Certificate, error) {
+	leaf := p.setupLink.identity.Load()
+	if leaf == nil {
+		return nil, errServerSetupIdentityMissing
 	}
-	block, _ := pem.Decode(data)
-	if block == nil {
-		return false
+	now := time.Now()
+	if len(leaf.IPAddresses) == 0 || now.Before(leaf.NotBefore) || !now.Before(leaf.NotAfter) ||
+		leaf.CheckSignature(leaf.SignatureAlgorithm, leaf.RawTBSCertificate, leaf.Signature) != nil {
+		return nil, errServerSetupIdentityInvalid
 	}
-	leaf, err := x509.ParseCertificate(block.Bytes)
-	return err == nil && len(leaf.IPAddresses) > 0 && time.Now().After(leaf.NotBefore) && time.Now().Before(leaf.NotAfter) &&
-		leaf.CheckSignature(leaf.SignatureAlgorithm, leaf.RawTBSCertificate, leaf.Signature) == nil
+	return leaf, nil
 }
+
+// serverSetupIdentityGuidance: who acts and what to do when the identity
+// cannot be used (D-024).
+const serverSetupIdentityGuidance = "This panel does not serve a valid certificate of its own on its IP address (its self-signed panel certificate is missing, damaged or expired), and the other server checks exactly that key, so it cannot be paired by code. The server owner restores the panel's own certificate (panel.crt and panel.key in the panel's tls folder, for example from a backup) and restarts the panel; then try again."
 
 // serverSetupSPKI is the full SHA-256 of a certificate's public key; the
 // join code carries its first 10 bytes.
@@ -507,7 +507,7 @@ func (p *Panel) handleServerSetupJoinCodes(w http.ResponseWriter, r *http.Reques
 	}
 	cert, err := p.serverSetupPanelCertificate()
 	if err != nil {
-		writeCodedError(w, http.StatusConflict, "server_setup_join_certificate_unavailable", "This panel's TLS certificate could not be read, so no code can be made. Check Settings → Panel certificate, then try again.", "")
+		writeCodedError(w, http.StatusConflict, "server_setup_join_certificate_unavailable", serverSetupIdentityGuidance, "")
 		return
 	}
 	pin := serverSetupSPKIPin(cert)
@@ -692,6 +692,10 @@ func (p *Panel) handleServerSetupJoin(w http.ResponseWriter, r *http.Request) {
 	}
 	if request.DeclaredIPv4 == plan.Draft.LocalIP {
 		writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_join_same_server", "The second server must be a different server from the first.", nil)
+		return
+	}
+	if _, err := p.serverSetupPanelCertificate(); err != nil {
+		writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_join_certificate_unavailable", serverSetupIdentityGuidance, nil)
 		return
 	}
 	document, join, err := p.newServerSetupJoin(ctx, plan, request)

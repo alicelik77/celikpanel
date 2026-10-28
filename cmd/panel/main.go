@@ -987,6 +987,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to start panel listener: %v", err)
 	}
+	// The setup link pins the identity this listener serves on its IP
+	// address, taken from the listener once (server_setup_join.go).
+	panel.captureServerSetupIdentity(server.TLSConfig)
 	if tlsOn {
 		log.Printf("Panel startup listener active on %s (HTTPS; application gated)", addr)
 	} else {

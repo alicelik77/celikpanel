@@ -56,7 +56,7 @@ func joinTestCertificate(t *testing.T) (tls.Certificate, *x509.Certificate) {
 // certificate.
 func joinTestSeams(p *Panel, cert *x509.Certificate, source string) {
 	p.setupLink.addressAllowed = func(netip.Addr) bool { return true }
-	p.setupLink.certificate = func() (*x509.Certificate, error) { return cert, nil }
+	p.setupLink.identity.Store(cert)
 	if source != "" {
 		p.setupLink.sourceIP = func(*http.Request) (netip.Addr, bool) { return netip.MustParseAddr(source), true }
 	}

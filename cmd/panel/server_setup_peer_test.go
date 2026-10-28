@@ -3,16 +3,12 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -319,29 +315,12 @@ func TestServerSetupPeerDocumentFingerprintMustBeTheAnsweringKey(t *testing.T) {
 	pair := newPeerPair(t, joinFirstDraft())
 	view := issueJoinCode(t, pair.first)
 	_, other := joinTestCertificate(t)
-	pair.first.panel.setupLink.certificate = func() (*x509.Certificate, error) { return other, nil }
+	pair.first.panel.setupLink.identity.Store(other)
 	if answer := pair.connect(t, view.Code); answer.State != "wrong_server" {
 		t.Fatalf("a document naming another key: %+v", answer)
 	}
 	if link, _ := pair.second.panel.readServerSetupLink(context.Background()); link != nil {
 		t.Fatal("nothing of it is kept")
-	}
-}
-
-// The pin is the identity the panel serves on its IP address: the first
-// self-signed certificate while it is valid, across domain certificates.
-func TestServerSetupPanelIdentityIsTheIPAddressIdentity(t *testing.T) {
-	dir := t.TempDir()
-	served, leaf := joinTestCertificate(t)
-	path := filepath.Join(dir, "panel.crt")
-	if err := os.WriteFile(path, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: served.Certificate[0]}), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if !serverSetupBootstrapIdentityValid(path) || len(leaf.IPAddresses) == 0 {
-		t.Fatal("a valid self-signed IP identity is the pinned one")
-	}
-	if serverSetupBootstrapIdentityValid(filepath.Join(dir, "missing.crt")) {
-		t.Fatal("a missing identity is not")
 	}
 }
 

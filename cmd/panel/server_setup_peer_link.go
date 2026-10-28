@@ -81,12 +81,14 @@ func (e *serverSetupLinkRefusal) Error() string { return "the other server refus
 // servers, a mapped caller, a failing draft save). Production leaves every
 // seam nil: it dials the literal address and allows public addresses only.
 type serverSetupLinkState struct {
-	limiter serverSetupJoinLimiter
+	// identity is the certificate the listener serves on the panel's IP
+	// address, captured once at start (captureServerSetupIdentity).
+	identity atomic.Pointer[x509.Certificate]
+	limiter  serverSetupJoinLimiter
 
 	dial           func(ctx context.Context, network, address string) (net.Conn, error)
 	addressAllowed func(netip.Addr) bool
 	sourceIP       func(*http.Request) (netip.Addr, bool)
-	certificate    func() (*x509.Certificate, error)
 	saveDraft      func(ctx context.Context, revision int, d serverSetupDraft) (serverSetupState, error)
 }
 

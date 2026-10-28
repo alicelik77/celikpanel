@@ -587,7 +587,8 @@ func (p *Panel) serverSetupOwnNames(ctx context.Context, d serverSetupDraft, lin
 	names.Address = "https://" + net.JoinHostPort(link.PublicIPv4, strconv.Itoa(panelPort()))
 	cert, err := p.serverSetupPanelCertificate()
 	if err != nil {
-		return names, &serverSetupPeerWait{Code: "server_setup_join_certificate_unavailable", Message: "This panel's TLS certificate could not be read. Check Settings → Panel certificate; setup asks again by itself."}
+		// Captured at start: asking again changes nothing until the owner acts.
+		return names, &serverSetupChildFailure{Code: "server_setup_join_certificate_unavailable", Message: serverSetupIdentityGuidance}
 	}
 	names.Pin = hex.EncodeToString(serverSetupSPKI(cert))
 	if serverSetupHasMail(d) {
