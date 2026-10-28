@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -453,6 +454,15 @@ func (p *Panel) handleServerSetupDelegation(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	d := state.Draft
+	// Once the second server is bound (alpha.114) its address is part of the
+	// run's plan, not of the draft: the card names both servers from it.
+	if execution, err := p.latestServerSetupExecution(r.Context()); err == nil && execution != nil {
+		if plan, err := p.loadServerSetupPlan(r.Context(), execution.PlanID); err == nil && reflect.DeepEqual(plan.Draft, d) {
+			if bound, err := p.effectiveServerSetupPlan(r.Context(), plan, execution.ID); err == nil && bound.peerBound {
+				d = bound.Draft
+			}
+		}
+	}
 	zone := strings.ToLower(strings.TrimSuffix(strings.TrimSpace(r.URL.Query().Get("zone")), "."))
 	if d.MainDomain == "" || zone != d.MainDomain || d.DNSMode != setupDNSModeLocal || d.NS1 == "" || d.NS2 == "" {
 		writeCodedError(w, http.StatusConflict, "server_setup_delegation_not_applicable", "The registrar check applies to the setup's main domain kept on your own DNS servers.", "/setup")

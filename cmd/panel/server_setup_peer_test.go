@@ -11,6 +11,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/alicelik/celikpanel/internal/dnswire"
 )
 
 // peerPair: a first server waiting at its join step, served over TLS with
@@ -210,6 +212,18 @@ func TestServerSetupPeerNamesBindTheSecondServerOnceAcrossRestarts(t *testing.T)
 	if _, _, err := setupDNSIdentity(effective.Draft); err != nil {
 		t.Fatalf("the bound draft is a full DNS pair: %v", err)
 	}
+	// The registrar card names the bound second server.
+	previousOptions := setupDelegationOptions
+	t.Cleanup(func() { setupDelegationOptions = previousOptions })
+	setupDelegationOptions = func() dnswire.DelegationOptions {
+		return dnswire.DelegationOptions{Resolvers: []string{"127.0.0.1:1"}, Address: func(string) string { return "127.0.0.1:1" }}
+	}
+	w := httptest.NewRecorder()
+	pair.first.panel.handleServerSetupDelegation(w, serviceOperationAdminRequest(t, http.MethodGet, serverSetupDelegationPath+"?zone=example.test", "", pair.first.userID))
+	var card serverSetupDelegation
+	if w.Code != http.StatusOK || json.Unmarshal(w.Body.Bytes(), &card) != nil || card.ExpectedNS[1].IPv4 != "198.51.100.20" {
+		t.Fatalf("registrar card after binding: %d %s", w.Code, w.Body.String())
+	}
 	var bindings int
 	pair.first.database.GetDB().QueryRow(`SELECT COUNT(*) FROM panel_settings WHERE key LIKE 'server_setup_peer_binding:%'`).Scan(&bindings)
 	if bindings != 1 {
@@ -223,7 +237,7 @@ func TestServerSetupPeerNamesBindTheSecondServerOnceAcrossRestarts(t *testing.T)
 	}
 	// A new code is refused once the second server is bound (the setup has
 	// moved past its join step).
-	w := httptest.NewRecorder()
+	w = httptest.NewRecorder()
 	pair.first.panel.handleServerSetupJoinCodes(w, serviceOperationAdminRequest(t, http.MethodPost, serverSetupJoinCodesPath, "{}", pair.first.userID))
 	if w.Code != http.StatusConflict || !(strings.Contains(w.Body.String(), "server_setup_join_bound") || strings.Contains(w.Body.String(), "server_setup_join_not_waiting")) {
 		t.Fatalf("code after binding: %d %s", w.Code, w.Body.String())
