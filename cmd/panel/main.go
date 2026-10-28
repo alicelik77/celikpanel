@@ -155,6 +155,11 @@ type Panel struct {
 	// "Check for updates" button and the check made when the update screen
 	// opens wait for each other; none runs beside another. Zero value ready.
 	updateCheckGate panelUpdateCheckGate
+	// The DNS page's overview (alpha.115, dns_overview.go): its network edges,
+	// set only by tests before the first read (nil in production), and the
+	// one shared answer per panel. Zero value ready.
+	dnsOverviewSeams *dnsOverviewSeams
+	dnsOverviewCache dnsOverviewCache
 }
 
 type domainSubroute struct {
@@ -1419,6 +1424,7 @@ func main() {
 	http.HandleFunc(infrastructureDNSZonesPath, panel.handleInfrastructureDNSZones)
 	http.HandleFunc(infrastructureDNSZonesPath+"/", panel.handleInfrastructureDNSZones)
 	http.HandleFunc("/api/v1/dns/engine", panel.handleDNSEngine)
+	http.HandleFunc(dnsOverviewPath, panel.handleDNSOverview)
 	http.HandleFunc("/api/v1/dns/engine/reconcile", panel.handleDNSEngineReconcile)
 	http.HandleFunc("/api/v1/dns/engine/switch/preview", panel.handleDNSEngineSwitchPreview)
 	http.HandleFunc("/api/v1/dns/engine/switch", panel.handleDNSEngineSwitch)
