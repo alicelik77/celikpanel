@@ -7,10 +7,12 @@ import (
 	"net"
 	"net/http"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/dnswire"
+	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 // GET /api/v1/setup/provider-records (alpha.111): the records the owner adds
@@ -35,6 +37,11 @@ type serverSetupProviderRecordRow struct {
 	Value string   `json:"value"`
 	State string   `json:"state"`
 	Seen  []string `json:"seen"`
+	// Kind (alpha.112) is "" for an address record, otherwise the mail record
+	// it is: "mx", "spf", "dmarc" or "dkim". Their states add "kept" (an old
+	// record the owner chose to keep) and "pending" (the DKIM key is made by
+	// the mail step; the value is shown once it exists).
+	Kind string `json:"kind,omitempty"`
 }
 
 type serverSetupProviderRecordServer struct {
@@ -61,7 +68,7 @@ var setupProviderRecordResolvers = func() []setupProviderRecordLookup {
 	for _, address := range []string{"1.1.1.1:53", "8.8.8.8:53"} {
 		address := address
 		lookups = append(lookups, func(ctx context.Context, name string, qtype uint16) ([]string, error) {
-			return dnswire.Query(ctx, address, name, qtype)
+			return dnswire.QueryRecords(ctx, address, name, qtype)
 		})
 	}
 	return lookups
@@ -164,11 +171,12 @@ func (p *Panel) checkServerSetupProviderRecords(ctx context.Context, rows []serv
 			defer wg.Done()
 			answers := [][]string{}
 			failures := 0
+			if row.State == "pending" {
+				out[index] = row
+				return
+			}
 			for _, lookup := range lookups {
-				qtype := dnswire.TypeA
-				if row.Type == "AAAA" {
-					qtype = dnswire.TypeAAAA
-				}
+				qtype := serverSetupRecordTypes[row.Type]
 				values, err := lookup(ctx, row.Name, qtype)
 				var dnsErr *net.DNSError
 				switch {
@@ -180,7 +188,11 @@ func (p *Panel) checkServerSetupProviderRecords(ctx context.Context, rows []serv
 					failures++
 				}
 			}
-			row.State, row.Seen = classifyServerSetupProviderRecord(row.Value, answers, failures)
+			if row.Kind != "" {
+				row.State, row.Seen, row.Value = classifyServerSetupMailRecord(row, answers, failures)
+			} else {
+				row.State, row.Seen = classifyServerSetupProviderRecord(row.Value, answers, failures)
+			}
 			if len(lookups) == 0 {
 				row.State = "unknown"
 			}
@@ -198,6 +210,13 @@ func (p *Panel) serverSetupProviderRecords(ctx context.Context, draft serverSetu
 		ip6 = parsed.String()
 	}
 	server := serverSetupProviderRecordServer{Label: draft.ShortName, IP4: ip4, IP6: ip6, Rows: serverSetupProviderRecordRows(draft, ip4, ip6)}
+	if draft.DNSMode == setupDNSModeExternal && serverSetupHasMail(draft) {
+		var dkim transport.DKIMStatusResponse
+		if err := p.callAgentContext(ctx, "Agent.GetDKIMStatus", &transport.DKIMStatusRequest{Domain: draft.MainDomain, Selector: dkimSelector}, &dkim); err != nil || dkim.Error != "" || !dkim.HasKey {
+			dkim.PublicKeyB64 = ""
+		}
+		server.Rows = append(server.Rows, serverSetupProviderMailRows(draft, dkim.PublicKeyB64)...)
+	}
 	key := draft.DNSMode + "|" + server.Label + "|" + ip4 + "|" + ip6
 	for _, row := range server.Rows {
 		key += "|" + row.Name + "/" + row.Type + "=" + row.Value
@@ -234,4 +253,89 @@ func (p *Panel) handleServerSetupProviderRecords(w http.ResponseWriter, r *http.
 		return
 	}
 	_ = json.NewEncoder(w).Encode(p.serverSetupProviderRecords(r.Context(), state.Draft, time.Now()))
+}
+
+// serverSetupProviderMailRows are the main domain's mail records the owner
+// adds at an external provider (alpha.112). The SPF value is completed with
+// the provider's current policy when it is read (merged, never replaced).
+func serverSetupProviderMailRows(draft serverSetupDraft, dkimPublic string) []serverSetupProviderRecordRow {
+	domain := draft.MainDomain
+	rows := []serverSetupProviderRecordRow{
+		{Name: domain, Type: "MX", Value: "10 " + draft.MailHostname, Kind: "mx", State: "unknown", Seen: []string{}},
+		{Name: domain, Type: "TXT", Value: mergeServerSetupSPF("", draft.MailHostname), Kind: "spf", State: "unknown", Seen: []string{}},
+		{Name: "_dmarc." + domain, Type: "TXT", Value: dmarcRecommended(domain, "none"), Kind: "dmarc", State: "unknown", Seen: []string{}},
+	}
+	if draft.MailDNS != nil && draft.MailDNS.MX == "later" {
+		rows[0].Kind = "mx-later"
+	}
+	if draft.MailDNS != nil && draft.MailDNS.DMARC == "add" {
+		rows[2].Kind = "dmarc-add"
+	}
+	dkim := serverSetupProviderRecordRow{Name: dkimSelector + "._domainkey." + domain, Type: "TXT", Kind: "dkim", State: "pending", Seen: []string{}}
+	if dkimPublic != "" {
+		dkim.Value, dkim.State = dkimRecommended(dkimPublic), "unknown"
+	}
+	return append(rows, dkim)
+}
+
+// classifyServerSetupMailRecord: a mail record is judged by its own kind of
+// value only (an apex has other TXT records). The SPF expected value is the
+// provider's current policy with this mail server added.
+func classifyServerSetupMailRecord(row serverSetupProviderRecordRow, answers [][]string, failures int) (string, []string, string) {
+	mailHost := ""
+	if _, host := serverSetupMXValue(row.Value); host != "" {
+		mailHost = host
+	}
+	seen := []string{}
+	for _, values := range answers {
+		for _, value := range values {
+			lower := strings.ToLower(value)
+			relevant := strings.HasPrefix(row.Kind, "mx") || (row.Kind == "spf" && strings.HasPrefix(lower, "v=spf1")) ||
+				(strings.HasPrefix(row.Kind, "dmarc") && strings.HasPrefix(lower, "v=dmarc1")) || (row.Kind == "dkim" && strings.HasPrefix(lower, "v=dkim1"))
+			if relevant && !slices.Contains(seen, value) {
+				seen = append(seen, value)
+			}
+		}
+	}
+	slices.Sort(seen)
+	if len(seen) == 0 {
+		if failures > 0 {
+			return "unknown", seen, row.Value
+		}
+		return "missing", seen, row.Value
+	}
+	switch row.Kind {
+	case "mx", "mx-later":
+		for _, value := range seen {
+			if _, host := serverSetupMXValue(value); host == mailHost {
+				return "ok", seen, row.Value
+			}
+		}
+		if row.Kind == "mx-later" {
+			// The owner keeps the old mail server for now (alpha.112 rule:
+			// MX never moves without the owner).
+			return "kept", seen, row.Value
+		}
+		return "different", seen, row.Value
+	case "spf":
+		parts := strings.Fields(row.Value)
+		mechanism := parts[len(parts)-2]
+		merged := mergeServerSetupSPF(seen[0], strings.TrimPrefix(mechanism, "a:"))
+		if merged == strings.Join(strings.Fields(seen[0]), " ") {
+			return "ok", seen, merged
+		}
+		return "different", seen, merged
+	case "dmarc":
+		return "ok", seen, row.Value
+	case "dmarc-add":
+		if slices.Contains(seen, row.Value) {
+			return "ok", seen, row.Value
+		}
+		return "different", seen, row.Value
+	default:
+		if slices.Contains(seen, row.Value) {
+			return "ok", seen, row.Value
+		}
+		return "different", seen, row.Value
+	}
 }

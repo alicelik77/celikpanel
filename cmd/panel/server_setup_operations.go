@@ -593,6 +593,11 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 	for _, id := range mailDependent {
 		addService(id)
 	}
+	// alpha.112: the main domain's DKIM key, signing and record follow the
+	// mail profile that installs the mail server.
+	if serverSetupNeedsMailDNSStep(draft) {
+		addStep("mail_dns", draft.MainDomain, "")
+	}
 	if serverSetupNeedsNativeCron(draft) {
 		addService(core.NativeCronServiceID)
 	}
@@ -1185,6 +1190,8 @@ func (p *Panel) runServerSetupStep(ctx context.Context, plan serverSetupPlan, st
 		return true, p.startServerSetupDNS(ctx, plan.Draft, step.RequestID, plan.Actor)
 	case "mail_certificate":
 		return p.runServerSetupMailCertificate(ctx, plan, *step)
+	case "mail_dns":
+		return p.runServerSetupMailDNS(ctx, plan, *step)
 	case "firewall":
 		return p.runServerSetupFirewall(ctx, plan, *step)
 	case "service", "runtime", "mail_profile", "panel_certificate":

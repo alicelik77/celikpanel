@@ -67,6 +67,10 @@ type serverSetupDraft struct {
 	ServerCount   int    `json:"server_count,omitempty"`
 	ShortName     string `json:"short_name,omitempty"`
 	MainDNSServer string `json:"main_dns_server,omitempty"`
+	// alpha.112: the main domain's public records the owner reviewed (each
+	// imported or skipped) and the mail DNS choice (server_setup_mail_dns.go).
+	ImportedRecords []serverSetupImportedRecord `json:"imported_records,omitempty"`
+	MailDNS         *serverSetupMailDNS         `json:"mail_dns,omitempty"`
 }
 
 // Reason and Vars are additive (2026-10-10): the typed cause of a check that
@@ -200,6 +204,9 @@ func canonicalServerSetupDraft(d serverSetupDraft) (serverSetupDraft, error) {
 		return d, err
 	}
 	if err := canonicalServerSetupWizardAnswers(&d); err != nil {
+		return d, err
+	}
+	if err := canonicalServerSetupMailAnswers(&d); err != nil {
 		return d, err
 	}
 	return d, nil

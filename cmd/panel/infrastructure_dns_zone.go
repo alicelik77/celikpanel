@@ -174,7 +174,7 @@ func (p *Panel) infrastructureDNSManagedRecords(ctx context.Context, zone string
 			continue
 		}
 		for _, r := range desired {
-			if r.Type == "A" || r.Type == "AAAA" {
+			if (r.Type == "A" || r.Type == "AAAA") && r.Origin == "" {
 				managed[infrastructureDNSRecordKey(r.Name, r.Type, r.Content)] = infrastructureDNSRecordManagedBySetup
 			}
 		}

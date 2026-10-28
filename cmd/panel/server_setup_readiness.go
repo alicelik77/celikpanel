@@ -268,6 +268,9 @@ func (p *Panel) serverSetupCompletionChecks(ctx context.Context, draft serverSet
 			healthErr = errors.New("mail host health could not be read")
 		}
 		checks = append(checks, setupMailIdentityCheck(health, healthErr, draft.MailHostname))
+		if check, applies := setupMailIPv6Check(ctx, draft.MailHostname); applies {
+			checks = append(checks, check)
+		}
 		checks = append(checks, setupCheck("mail_delivery", health.Error == "" && health.OutboundPort25 == "open", healthErr))
 	}
 

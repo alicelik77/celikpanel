@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -49,7 +50,7 @@ func TestServerSetupPlanBlocksOnKnownFirewallConditions(t *testing.T) {
 				t.Fatalf("blockers=%q canStart=%v", plan.Blockers, plan.CanStart)
 			}
 			after, err := f.panel.loadServerSetup(context.Background())
-			if err != nil || after.Revision != before.Revision || after.Draft != before.Draft {
+			if err != nil || after.Revision != before.Revision || !reflect.DeepEqual(after.Draft, before.Draft) {
 				t.Fatalf("reviewing a blocked plan changed the setup state: %+v -> %+v (%v)", before, after, err)
 			}
 			if dns, err := readDNSEngineDBState(context.Background(), f.database.GetDB()); err == nil &&

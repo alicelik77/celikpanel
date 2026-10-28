@@ -25,6 +25,12 @@ type serverSetupInfrastructureDNSRecord struct {
 	Content string `json:"content"`
 	TTL     int    `json:"ttl"`
 	Action  string `json:"action"`
+	// alpha.112: MX preference, and the origin of a record that is not one of
+	// the setup's own server addresses: "imported" (the owner's existing
+	// public record) or "mail" (the main domain's mail records). Such records
+	// are the owner's in the zone and are never locked.
+	Priority int    `json:"priority,omitempty"`
+	Origin   string `json:"origin,omitempty"`
 }
 
 type serverSetupInfrastructureDNSPlan struct {
@@ -279,6 +285,12 @@ func serverSetupInfrastructureDNSDesired(d serverSetupDraft) ([]serverSetupInfra
 			return nil, err
 		}
 	}
+	own := map[string]bool{zone: false}
+	for _, r := range records {
+		if r.Type == "A" {
+			own[r.Name] = true
+		}
+	}
 	// The peer's mail host name (2026-10-16): optional, inside the zone, never
 	// one of this server's own names, and an A record to the reviewed peer
 	// address like the peer's panel host name.
@@ -294,6 +306,14 @@ func serverSetupInfrastructureDNSDesired(d serverSetupDraft) ([]serverSetupInfra
 		if err := addAddress(peerMail, d.PeerIP); err != nil {
 			return nil, err
 		}
+		own[peerMail] = true
+	}
+	if d.MainDomain == zone {
+		extra, err := serverSetupImportedAndMailDesired(d, own)
+		if err != nil {
+			return nil, err
+		}
+		records = append(records, extra...)
 	}
 	return records, nil
 }
@@ -310,7 +330,7 @@ func buildServerSetupInfrastructureDNSAgainstSnapshot(d serverSetupDraft, s serv
 		for _, got := range s.Records {
 			name := canonicalDNSName(got.Name)
 			// Neither an alias nor a delegated child may be overwritten by an A record.
-			if got.Disabled == 0 && ((got.Type == "DNAME" && serverSetupDNSNameWithin(want.Name, name)) || (got.Type == "NS" && name != s.Zone && serverSetupDNSNameWithin(want.Name, name)) || (got.Type == "CNAME" && name == want.Name)) {
+			if got.Disabled == 0 && ((got.Type == "DNAME" && serverSetupDNSNameWithin(want.Name, name)) || (got.Type == "NS" && name != s.Zone && serverSetupDNSNameWithin(want.Name, name)) || (got.Type == "CNAME" && name == want.Name && !(want.Type == "CNAME" && canonicalDNSName(got.Content) == want.Content))) {
 				return nil, infrastructureDNSReviewError(fmt.Sprintf("infrastructure hostname %s conflicts with an alias or delegated child", want.Name))
 			}
 			if name != want.Name || got.Type != want.Type {
@@ -318,6 +338,14 @@ func buildServerSetupInfrastructureDNSAgainstSnapshot(d serverSetupDraft, s serv
 			}
 			if got.Disabled != 0 {
 				return nil, infrastructureDNSReviewError(fmt.Sprintf("infrastructure record %s %s is disabled; review it first", want.Name, want.Type))
+			}
+			if want.Origin != "" {
+				// The owner's records are a set: an identical record is kept,
+				// anything else is added beside what the zone already has.
+				if got.Content == want.Content && got.Priority == want.Priority {
+					want.TTL, want.Action = got.TTL, "keep"
+				}
+				continue
 			}
 			if want.Type == "SOA" {
 				seen++
@@ -410,7 +438,7 @@ func (p *Panel) prepareServerSetupInfrastructureDNSRecords(ctx context.Context, 
 		if r.Action != "add" {
 			continue
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO pdns_records(domain_id,name,type,content,ttl) VALUES(?,?,?,?,?)`, zoneID, r.Name, r.Type, r.Content, r.TTL); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO pdns_records(domain_id,name,type,content,ttl,prio) VALUES(?,?,?,?,?,?)`, zoneID, r.Name, r.Type, r.Content, r.TTL, r.Priority); err != nil {
 			return receipt, err
 		}
 	}
