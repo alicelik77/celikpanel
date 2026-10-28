@@ -486,7 +486,7 @@ export const enSettingsScreens = {
     'account.email.saving': 'Saving your new address. Nothing else is needed; this takes a few seconds.',
     'account.email.outcomeUnknown': 'It is not known yet whether your new address was saved. This is not a failure. The address shown on this page was read again; if it is still the old one, try again.',
     'account.email.changed': 'Your email address was changed.',
-    'dnsPeers.subtitle': "Shared nameservers, this server's role, its peer server and DNS replication.",
+    'dnsPeers.subtitle': 'Which server each of your names points to, and how the internet sees it.',
     // --- end of the pages that left Settings ---
 } as const;
 
