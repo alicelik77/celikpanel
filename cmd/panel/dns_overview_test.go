@@ -431,7 +431,7 @@ func TestDNSOverviewSecondServerIsTheBackupAndKeepsSecretsOut(t *testing.T) {
 	link := serverSetupLinkRecord{RequestID: strings.Repeat("4", 32), Address: "https://panel.example.test:2083", Pin: strings.Repeat("cd", 32), LinkID: "link-1", LinkCredential: "secret-link-credential", EnrollmentCode: "secret-enrollment-code",
 		Document: serverSetupJoinDocument{MainDomain: "example.test", ServerCount: 2, DNSMode: "local", MainDNSServer: "first", NS1: "ns1.example.test", NS2: "ns2.example.test", LinkCredential: "secret-link-credential",
 			First: serverSetupJoinFirst{IPv4: "203.0.113.10", ShortName: "alpha", PanelDomain: "panel.example.test", DNSEngine: "pdns"}}}
-	if err := writeServerSetupJSONSetting(context.Background(), f.database.GetDB(), serverSetupLinkKey, link); err != nil {
+	if err := f.panel.writeServerSetupLink(context.Background(), f.database.GetDB(), link); err != nil {
 		t.Fatal(err)
 	}
 	world.set(func(w *overviewWorld) {
