@@ -460,17 +460,9 @@ func (p *Panel) completeServerSetupOwned(ctx context.Context, revision int, exec
 	} else if active {
 		return errServerSetupConflict
 	}
-	// A run whose second server is bound (alpha.114) is checked on the plan
-	// that binding completed: the peer's address is not in the draft.
-	checked := s.Draft
-	if executionID != "" {
-		if execution, err := p.latestServerSetupExecution(ctx); err == nil && execution != nil && execution.ID == executionID {
-			if plan, err := p.loadServerSetupPlan(ctx, execution.PlanID); err == nil && reflect.DeepEqual(plan.Draft, s.Draft) {
-				if bound, err := p.effectiveServerSetupPlan(ctx, plan, execution.ID); err == nil && bound.peerBound {
-					checked = bound.Draft
-				}
-			}
-		}
+	checked, err := p.serverSetupCompletionDraft(ctx, s, executionID)
+	if err != nil {
+		return err
 	}
 	checks, err := p.serverSetupCompletionChecks(ctx, checked)
 	if err != nil {
@@ -507,6 +499,38 @@ func (p *Panel) completeServerSetupOwned(ctx context.Context, revision int, exec
 		log.Printf("server setup link not revoked: %v", err)
 	}
 	return nil
+}
+
+// serverSetupCompletionDraft is the draft completion is checked on. A run
+// whose second server is bound (alpha.114) is checked on the plan that
+// binding completed (the peer's address is not in the saved draft); it never
+// falls back to the unbound draft. A plan that no longer matches the saved
+// answers, or one that cannot be read, is not complete: a wait with its
+// reason (D-024), checked again by the runner.
+func (p *Panel) serverSetupCompletionDraft(ctx context.Context, s serverSetupState, executionID string) (serverSetupDraft, error) {
+	if executionID == "" {
+		return s.Draft, nil
+	}
+	unknown := &serverSetupPeerWait{Code: "server_setup_completion_unknown", Message: "Whether setup is complete could not be checked: its plan or the second server's binding could not be read. Nothing to do here; setup checks again by itself."}
+	execution, err := p.latestServerSetupExecution(ctx)
+	if err != nil || execution == nil || execution.ID != executionID {
+		return s.Draft, unknown
+	}
+	plan, err := p.loadServerSetupPlan(ctx, execution.PlanID)
+	if err != nil {
+		return s.Draft, unknown
+	}
+	if !serverSetupPlanHasStep(plan, "peer_join") {
+		return s.Draft, nil
+	}
+	if !reflect.DeepEqual(plan.Draft, s.Draft) {
+		return s.Draft, &serverSetupPeerWait{Code: "server_setup_completion_plan_changed", Message: "This server's saved answers no longer match the plan this setup runs, so setup is not marked complete. Review the plan again on this screen; setup checks again by itself."}
+	}
+	bound, err := p.effectiveServerSetupPlan(ctx, plan, execution.ID)
+	if err != nil || !bound.peerBound {
+		return s.Draft, unknown
+	}
+	return bound.Draft, nil
 }
 
 func requireServerSetupAdmin(w http.ResponseWriter, r *http.Request) bool {

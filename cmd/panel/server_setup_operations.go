@@ -1177,6 +1177,13 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 		return false, p.persistServerSetupExecution(ctx, *execution)
 	}
 	if err := p.completeServerSetupExecution(ctx, plan.Revision, execution.ID); err != nil {
+		var wait *serverSetupPeerWait
+		if errors.As(err, &wait) {
+			// Not complete, with its reason; the runner checks again.
+			execution.Status = "waiting"
+			execution.Error = &serviceOperationError{Code: wait.Code, Message: wait.Message}
+			return false, p.persistServerSetupExecution(ctx, *execution)
+		}
 		return false, err
 	}
 	for index := range execution.Steps {
@@ -1186,6 +1193,7 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 	}
 	execution.Status = "succeeded"
 	execution.Phase = "complete"
+	execution.Error = nil
 	return true, p.persistServerSetupExecution(ctx, *execution)
 }
 

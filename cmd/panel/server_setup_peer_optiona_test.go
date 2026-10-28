@@ -275,3 +275,57 @@ func TestServerSetupPeerCredentialsDoNotCrossRoles(t *testing.T) {
 		t.Fatalf("names after the join ended: %d %s", w.Code, w.Body.String())
 	}
 }
+
+// Claim-8 (alpha.114 review): a first server's completion is checked on its
+// bound plan only. Saved answers that no longer match the running plan, or
+// a plan or binding that cannot be read, are not complete: a wait with its
+// code, never the unbound draft.
+func TestServerSetupPeerCompletionNeverFallsBackToTheUnboundDraft(t *testing.T) {
+	pair := newPeerPair(t, joinFirstDraft())
+	if answer := pair.connect(t, issueJoinCode(t, pair.first).Code); answer.State != "ok" {
+		t.Fatalf("connect: %+v", answer)
+	}
+	_, plan := pair.secondReview(t, nil)
+	if done, err := pair.second.panel.runServerSetupPeerNames(context.Background(), plan, serverSetupExecutionStep{serverSetupPlanStep: plan.Steps[0], RequestID: strings.Repeat("5", 32)}); !done || err != nil {
+		t.Fatalf("names: %v %v", done, err)
+	}
+	pair.advanceToJoin(t)
+	db := pair.first.database.GetDB()
+	var original string
+	db.QueryRow(`SELECT draft_json FROM server_setup_state WHERE id=1`).Scan(&original)
+	changed := pair.plan.Draft
+	changed.ShortName = "changed"
+	raw, _ := json.Marshal(changed)
+	if _, err := db.Exec(`UPDATE server_setup_state SET draft_json=? WHERE id=1`, string(raw)); err != nil {
+		t.Fatal(err)
+	}
+	completeWithChecks(t, pair.first, pair.plan, pair.execution)
+	state, _ := pair.first.panel.loadServerSetup(context.Background())
+	if pair.execution.Status != "waiting" || pair.execution.Error == nil || pair.execution.Error.Code != "server_setup_completion_plan_changed" || state.Status == "ready" {
+		t.Fatalf("changed answers are not complete: %s %+v %s", pair.execution.Status, pair.execution.Error, state.Status)
+	}
+	if _, err := db.Exec(`UPDATE server_setup_state SET draft_json=? WHERE id=1`, original); err != nil {
+		t.Fatal(err)
+	}
+	state, _ = pair.first.panel.loadServerSetup(context.Background())
+	var wait *serverSetupPeerWait
+	if _, err := pair.first.panel.serverSetupCompletionDraft(context.Background(), state, strings.Repeat("9", 32)); !errors.As(err, &wait) || wait.Code != "server_setup_completion_unknown" {
+		t.Fatalf("another execution: %v", err)
+	}
+	var binding string
+	key := serverSetupPeerBindingKey(pair.execution.ID)
+	db.QueryRow(`SELECT value FROM panel_settings WHERE key=?`, key).Scan(&binding)
+	if _, err := db.Exec(`UPDATE panel_settings SET value='{"execution_id":"x"}' WHERE key=?`, key); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pair.first.panel.serverSetupCompletionDraft(context.Background(), state, pair.execution.ID); !errors.As(err, &wait) || wait.Code != "server_setup_completion_unknown" {
+		t.Fatalf("an unreadable binding: %v", err)
+	}
+	if _, err := db.Exec(`UPDATE panel_settings SET value=? WHERE key=?`, binding, key); err != nil {
+		t.Fatal(err)
+	}
+	completeWithChecks(t, pair.first, pair.plan, pair.execution)
+	if pair.execution.Status != "succeeded" || pair.execution.Error != nil {
+		t.Fatalf("the bound plan completes: %s %+v", pair.execution.Status, pair.execution.Error)
+	}
+}
