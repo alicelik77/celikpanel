@@ -155,13 +155,16 @@ func (p *Panel) checkServerSetupDelegation(ctx context.Context, d serverSetupDra
 		return net.JoinHostPort(ip, "53")
 	}
 	result := serverSetupDelegation{Zone: d.MainDomain, ExpectedNS: serverSetupDelegationExpected(d, ipv6), ParentNS: []string{}, ParentGlue: map[string][]string{}, Servers: []serverSetupDelegationServer{}, Items: []serverSetupDelegationItem{}, Imported: serverSetupDelegationImported{Diffs: []serverSetupDelegationDiff{}}}
+	// The budget is read once, here: the goroutines below read nothing
+	// package-level, and the call returns only after all of them ended.
+	budget := serverSetupDelegationBudget
 	var wg sync.WaitGroup
 	var delegation dnswire.DelegationResult
 	var delegationErr error
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		walkCtx, cancel := context.WithTimeout(ctx, serverSetupDelegationBudget)
+		walkCtx, cancel := context.WithTimeout(ctx, budget)
 		defer cancel()
 		delegation, delegationErr = dnswire.Delegation(walkCtx, d.MainDomain, options)
 	}()
@@ -177,7 +180,7 @@ func (p *Panel) checkServerSetupDelegation(ctx context.Context, d serverSetupDra
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		answerCtx, cancel := context.WithTimeout(ctx, serverSetupDelegationBudget)
+		answerCtx, cancel := context.WithTimeout(ctx, budget)
 		defer cancel()
 		var inner sync.WaitGroup
 		for index, ns := range asked {
@@ -385,6 +388,19 @@ type serverSetupDelegationCache struct {
 }
 
 var setupDelegationCaches sync.Map
+
+// serverSetupDelegationInFlight tells whether a check is in flight for this
+// panel (tests wait for it instead of sleeping).
+func serverSetupDelegationInFlight(p *Panel) bool {
+	value, ok := setupDelegationCaches.Load(p)
+	if !ok {
+		return false
+	}
+	cache := value.(*serverSetupDelegationCache)
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+	return len(cache.inflight) > 0
+}
 
 // serverSetupDelegation shares one check per minute. The check runs without
 // the cache lock: a second caller for the same draft waits for the check in

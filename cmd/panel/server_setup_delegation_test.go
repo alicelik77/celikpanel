@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"slices"
 	"strings"
 	"sync/atomic"
@@ -331,18 +332,31 @@ func TestRegistrarDelegationSlowParentKeepsOurAnswers(t *testing.T) {
 	setupDelegationOptions = func() dnswire.DelegationOptions { return options }
 	setupProviderRecordIPv6 = func() string { return "" }
 	p := &Panel{}
-	started := make(chan struct{})
+	// The first check runs in its own goroutine; the test waits for it to end
+	// before its seams are restored (registered last, so it runs first).
+	first := make(chan struct{})
 	go func() {
-		close(started)
+		defer close(first)
 		p.serverSetupDelegation(context.Background(), d, time.Now())
 	}()
-	<-started
-	time.Sleep(50 * time.Millisecond)
+	t.Cleanup(func() {
+		if once.CompareAndSwap(false, true) {
+			close(release)
+		}
+		<-first
+	})
+	deadline := time.Now().Add(5 * time.Second)
+	for !serverSetupDelegationInFlight(p) {
+		if time.Now().After(deadline) {
+			t.Fatal("the first check never started")
+		}
+		runtime.Gosched()
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	begin := time.Now()
-	p.serverSetupDelegation(ctx, d, time.Now())
-	if time.Since(begin) > 300*time.Millisecond {
-		t.Fatal("a waiting caller must give up when its request ends")
+	waited := p.serverSetupDelegation(ctx, d, time.Now())
+	if time.Since(begin) > 300*time.Millisecond || itemStates(waited)["check_running"] != "unknown" {
+		t.Fatalf("a waiting caller gives up when its request ends, with a state: %+v", waited.Items)
 	}
 }
