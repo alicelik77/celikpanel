@@ -16,6 +16,7 @@ import (
 	"net/netip"
 	"net/url"
 	"strconv"
+	"sync/atomic"
 	"time"
 )
 
@@ -61,26 +62,22 @@ var serverSetupLinkDeps = func() serverSetupLinkDependencies {
 	return serverSetupLinkDependencies{dial: dialer.DialContext}
 }
 
-// serverSetupLinkTarget: where and how to reach the peer. Pin is the peer's
-// key fingerprint (10 bytes); ServerName, when set, allows the certificate
-// fallback for that panel name.
+// serverSetupLinkTarget: where and how to reach the peer. Pin is the
+// SHA-256 of the peer's TLS SubjectPublicKeyInfo: the code's 10-byte prefix
+// for the join, the full 32 bytes afterwards. There is no name fallback: the
+// link never accepts a certificate whose key does not match the pin (the
+// panel keeps serving its first self-signed identity on its IP address
+// across domain certificate changes, so the pin stays valid during setup).
+// Observed, when set, receives the full fingerprint the peer presented.
 type serverSetupLinkTarget struct {
-	Address    string
-	Pin        []byte
-	ServerName string
+	Address  string
+	Pin      []byte
+	Observed *[]byte
 }
 
 func serverSetupLinkJSON(ctx context.Context, target serverSetupLinkTarget, path, bearer string, request, response any) error {
-	err := serverSetupLinkJSONOnce(ctx, target, false, path, bearer, request, response)
-	if errors.Is(err, errServerSetupLinkPinMismatch) && target.ServerName != "" {
-		return serverSetupLinkJSONOnce(ctx, target, true, path, bearer, request, response)
-	}
-	return err
-}
-
-func serverSetupLinkJSONOnce(ctx context.Context, target serverSetupLinkTarget, byName bool, path, bearer string, request, response any) error {
 	address, ok := canonicalServerSetupPeerAddress(target.Address)
-	if !ok || address != target.Address || !serverSetupLinkMachinePath(path) || len(target.Pin) != 10 {
+	if !ok || address != target.Address || !serverSetupLinkMachinePath(path) || (len(target.Pin) != 10 && len(target.Pin) != 32) {
 		return errors.New("invalid setup link exchange")
 	}
 	u, _ := url.Parse(address)
@@ -93,24 +90,24 @@ func serverSetupLinkJSONOnce(ctx context.Context, target serverSetupLinkTarget, 
 		return errors.New("setup link request exceeds its contract")
 	}
 	deps := serverSetupLinkDeps()
-	pinMismatch := false
-	config := &tls.Config{MinVersion: tls.VersionTLS12}
-	if byName {
-		canonical, err := canonicalRemoteDNSEndpoint("https://" + target.ServerName)
-		if err != nil || canonical != "https://"+target.ServerName {
-			return errors.New("invalid setup link name")
+	var pinMismatch, wrote atomic.Bool
+	// The key fingerprint is the trust: no name, no authority. It is checked
+	// in the handshake, before any request byte (and its bearer) is written.
+	config := &tls.Config{MinVersion: tls.VersionTLS12, InsecureSkipVerify: true}
+	config.VerifyConnection = func(state tls.ConnectionState) error {
+		if len(state.PeerCertificates) == 0 {
+			pinMismatch.Store(true)
+			return errServerSetupLinkPinMismatch
 		}
-		config.ServerName, config.RootCAs = target.ServerName, deps.roots
-	} else {
-		// The key fingerprint is the trust: no name, no authority.
-		config.InsecureSkipVerify = true
-		config.VerifyConnection = func(state tls.ConnectionState) error {
-			if len(state.PeerCertificates) == 0 || subtle.ConstantTimeCompare(serverSetupSPKIPin(state.PeerCertificates[0]), target.Pin) != 1 {
-				pinMismatch = true
-				return errServerSetupLinkPinMismatch
-			}
-			return nil
+		full := serverSetupSPKI(state.PeerCertificates[0])
+		if subtle.ConstantTimeCompare(full[:len(target.Pin)], target.Pin) != 1 {
+			pinMismatch.Store(true)
+			return errServerSetupLinkPinMismatch
 		}
+		if target.Observed != nil {
+			*target.Observed = full
+		}
+		return nil
 	}
 	host := u.Host
 	httpTransport := &http.Transport{
@@ -127,16 +124,10 @@ func serverSetupLinkJSONOnce(ctx context.Context, target serverSetupLinkTarget, 
 	defer httpTransport.CloseIdleConnections()
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
-	wrote := false
-	trace := &httptrace.ClientTrace{WroteHeaders: func() { wrote = true }}
+	trace := &httptrace.ClientTrace{WroteHeaders: func() { wrote.Store(true) }}
 	req, err := http.NewRequestWithContext(httptrace.WithClientTrace(ctx, trace), http.MethodPost, "https://"+host+path, bytes.NewReader(payload))
 	if err != nil {
 		return errors.New("setup link request could not be prepared")
-	}
-	if byName {
-		// The certificate names the panel; the request still goes to the
-		// peer's known address.
-		req.Host = net.JoinHostPort(target.ServerName, u.Port())
 	}
 	if bearer != "" {
 		req.Header.Set("Authorization", "Bearer "+bearer)
@@ -147,9 +138,9 @@ func serverSetupLinkJSONOnce(ctx context.Context, target serverSetupLinkTarget, 
 	resp, err := client.Do(req)
 	if err != nil {
 		switch {
-		case pinMismatch:
+		case pinMismatch.Load():
 			return errServerSetupLinkPinMismatch
-		case wrote:
+		case wrote.Load():
 			return errServerSetupLinkUnknown
 		default:
 			return errServerSetupLinkUnreachable

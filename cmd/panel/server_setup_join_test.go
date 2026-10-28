@@ -296,9 +296,12 @@ func TestServerSetupJoinPinnedTLSSendsNothingToAnotherKey(t *testing.T) {
 	served, leaf := joinTestCertificate(t)
 	_, other := joinTestCertificate(t)
 	joinTestSeams(t, leaf, "")
-	var received atomic.Int32
+	var received, bearers atomic.Int32
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		received.Add(1)
+		if r.Header.Get("Authorization") != "" {
+			bearers.Add(1)
+		}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"accepted":true}`))
 	}))
@@ -321,10 +324,20 @@ func TestServerSetupJoinPinnedTLSSendsNothingToAnotherKey(t *testing.T) {
 	if err := serverSetupLinkJSON(context.Background(), target, serverSetupPeerNamesPath, "x.y", map[string]string{}, &answer); err != nil || !answer.Accepted || received.Load() != 1 {
 		t.Fatalf("pinned exchange: %v %v %d", err, answer, received.Load())
 	}
-	target.Pin = serverSetupSPKIPin(other)
-	if err := serverSetupLinkJSON(context.Background(), target, serverSetupPeerNamesPath, "x.y", map[string]string{}, &answer); !errors.Is(err, errServerSetupLinkPinMismatch) || received.Load() != 1 {
-		t.Fatalf("another key must get nothing: %v %d", err, received.Load())
+	// After the join the full fingerprint is pinned, and it is observed.
+	var observed []byte
+	target = serverSetupLinkTarget{Address: target.Address, Pin: serverSetupSPKI(leaf), Observed: &observed}
+	if err := serverSetupLinkJSON(context.Background(), target, serverSetupPeerNamesPath, "x.y", map[string]string{}, &answer); err != nil || !bytes.Equal(observed, serverSetupSPKI(leaf)) || bearers.Load() != 2 {
+		t.Fatalf("full pin: %v %x %d", err, observed, bearers.Load())
 	}
+	// Another key gets no bearer and there is no fallback of any kind.
+	for _, pin := range [][]byte{serverSetupSPKIPin(other), serverSetupSPKI(other), append(serverSetupSPKIPin(leaf)[:9:9], 0)} {
+		target = serverSetupLinkTarget{Address: target.Address, Pin: pin}
+		if err := serverSetupLinkJSON(context.Background(), target, serverSetupPeerNamesPath, "x.y", map[string]string{}, &answer); !errors.Is(err, errServerSetupLinkPinMismatch) || received.Load() != 2 || bearers.Load() != 2 {
+			t.Fatalf("another key must get nothing: %v %d %d", err, received.Load(), bearers.Load())
+		}
+	}
+	target = serverSetupLinkTarget{Address: target.Address, Pin: serverSetupSPKIPin(leaf)}
 	server.Close()
 	target.Pin = serverSetupSPKIPin(leaf)
 	if err := serverSetupLinkJSON(context.Background(), target, serverSetupPeerNamesPath, "x.y", map[string]string{}, &answer); !errors.Is(err, errServerSetupLinkUnreachable) {

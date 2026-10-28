@@ -113,7 +113,7 @@ func TestServerSetupPeerMailRecordsAreWrittenOnTheMain(t *testing.T) {
 	var join serverSetupJoinRecord
 	readServerSetupJSONSetting(context.Background(), pair.first.database.GetDB(), serverSetupJoinKey, &join)
 	names := serverSetupPeerNames{RequestID: strings.Repeat("4", 32), ShortName: "beta", PanelDomain: "beta.example.test", MailHostname: "mail.example.test", DNSEngine: "bind",
-		Mail: &serverSetupPeerMail{Hostname: "mail.example.test", MX: "now", DMARC: "add"}, Address: "https://198.51.100.20:" + itoaTest(panelPort()), Pin: strings.Repeat("cd", 10)}
+		Mail: &serverSetupPeerMail{Hostname: "mail.example.test", MX: "now", DMARC: "add"}, Address: "https://198.51.100.20:" + itoaTest(panelPort()), Pin: strings.Repeat("cd", 32)}
 	bearer := join.LinkID + "." + join.LinkCredential
 	if w := joinMachineRequest(t, pair.first, serverSetupPeerNamesPath, bearer, names); w.Code != http.StatusOK {
 		t.Fatalf("names: %d %s", w.Code, w.Body.String())

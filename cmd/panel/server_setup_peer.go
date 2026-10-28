@@ -62,7 +62,7 @@ func (p *Panel) readServerSetupLink(ctx context.Context) (*serverSetupLinkRecord
 
 func (l serverSetupLinkRecord) target() serverSetupLinkTarget {
 	pin, _ := hex.DecodeString(l.Pin)
-	return serverSetupLinkTarget{Address: l.Address, Pin: pin, ServerName: l.Document.First.PanelDomain}
+	return serverSetupLinkTarget{Address: l.Address, Pin: pin}
 }
 
 func (l serverSetupLinkRecord) bearer() string { return l.LinkID + "." + l.LinkCredential }
@@ -121,6 +121,9 @@ func validServerSetupJoinDocument(document serverSetupJoinDocument, address, req
 		if canonical, err := hostname.CanonicalFQDN(name); err != nil || canonical != name {
 			return false
 		}
+	}
+	if spki, err := hex.DecodeString(document.FirstSPKI); err != nil || len(spki) != 32 {
+		return false
 	}
 	if document.NS1 == document.NS2 || !transport.ValidDNSEngine(transport.DNSEngine(document.First.DNSEngine)) {
 		return false
@@ -229,12 +232,18 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 	join.DeclaredIPv4, _ = canonicalIPv4(serverPrimaryIP())
 	join.DeclaredIPv6 = serverSetupPublicIPv6()
 	var document serverSetupJoinDocument
-	callErr := serverSetupLinkJSON(context.WithoutCancel(ctx), serverSetupLinkTarget{Address: address, Pin: pin}, serverSetupJoinPath, "", join, &document)
+	var observed []byte
+	callErr := serverSetupLinkJSON(context.WithoutCancel(ctx), serverSetupLinkTarget{Address: address, Pin: pin, Observed: &observed}, serverSetupJoinPath, "", join, &document)
+	if callErr == nil && (len(observed) != 32 || document.FirstSPKI != hex.EncodeToString(observed)) {
+		// The full fingerprint sent over the pinned channel must be the key
+		// that answered (whose prefix the code carries).
+		callErr = errServerSetupLinkPinMismatch
+	}
 	answer := serverSetupPeerConnectAnswer{}
 	var refusal *serverSetupLinkRefusal
 	switch {
 	case callErr == nil && validServerSetupJoinDocument(document, address, pending.RequestID):
-		link := serverSetupLinkRecord{RequestID: pending.RequestID, Address: address, Pin: hex.EncodeToString(pin), LinkID: document.LinkID, LinkCredential: document.LinkCredential,
+		link := serverSetupLinkRecord{RequestID: pending.RequestID, Address: address, Pin: document.FirstSPKI, LinkID: document.LinkID, LinkCredential: document.LinkCredential,
 			EnrollmentCode: document.EnrollmentCode, JoinedAt: time.Now().UTC().Format(time.RFC3339)}
 		link.Document = document
 		link.Document.LinkCredential, link.Document.EnrollmentCode = "", ""
@@ -484,7 +493,7 @@ func (p *Panel) serverSetupOwnNames(ctx context.Context, d serverSetupDraft, lin
 	if err != nil {
 		return names, &serverSetupPeerWait{Code: "server_setup_join_certificate_unavailable", Message: "This panel's TLS certificate could not be read. Check Settings → Panel certificate; setup asks again by itself."}
 	}
-	names.Pin = hex.EncodeToString(serverSetupSPKIPin(cert))
+	names.Pin = hex.EncodeToString(serverSetupSPKI(cert))
 	if serverSetupHasMail(d) {
 		names.MailHostname = d.MailHostname
 		if !link.Document.First.MainDomainMail && d.DNSRole == transport.DNSPairRoleSecondary {

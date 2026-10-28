@@ -76,6 +76,10 @@ var serverSetupPeerAddressAllowed = func(ip netip.Addr) bool { return remoteDNSP
 
 // serverSetupPanelCertificate reads the certificate this panel serves, the
 // same file the TLS listener and the certificate page use.
+// It is the identity the panel serves on its IP address (no name in the
+// handshake), which is where peers dial: the first self-signed identity
+// while it is valid, kept across domain certificate changes
+// (configurePanelHTTPTLS), otherwise the active certificate.
 var serverSetupPanelCertificate = func() (*x509.Certificate, error) {
 	path := os.Getenv("CELIKPANEL_TLS_CERT")
 	if path == "" {
@@ -84,7 +88,7 @@ var serverSetupPanelCertificate = func() (*x509.Certificate, error) {
 			return nil, err
 		}
 		path = filepath.Join(tlsDir(), "panel.crt")
-		if found {
+		if found && !serverSetupBootstrapIdentityValid(path) {
 			path = active
 		}
 	}
@@ -99,10 +103,28 @@ var serverSetupPanelCertificate = func() (*x509.Certificate, error) {
 	return x509.ParseCertificate(block.Bytes)
 }
 
-func serverSetupSPKIPin(cert *x509.Certificate) []byte {
-	sum := sha256.Sum256(cert.RawSubjectPublicKeyInfo)
-	return sum[:10]
+func serverSetupBootstrapIdentityValid(path string) bool {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	block, _ := pem.Decode(data)
+	if block == nil {
+		return false
+	}
+	leaf, err := x509.ParseCertificate(block.Bytes)
+	return err == nil && len(leaf.IPAddresses) > 0 && time.Now().After(leaf.NotBefore) && time.Now().Before(leaf.NotAfter) &&
+		leaf.CheckSignature(leaf.SignatureAlgorithm, leaf.RawTBSCertificate, leaf.Signature) == nil
 }
+
+// serverSetupSPKI is the full SHA-256 of a certificate's public key; the
+// join code carries its first 10 bytes.
+func serverSetupSPKI(cert *x509.Certificate) []byte {
+	sum := sha256.Sum256(cert.RawSubjectPublicKeyInfo)
+	return sum[:]
+}
+
+func serverSetupSPKIPin(cert *x509.Certificate) []byte { return serverSetupSPKI(cert)[:10] }
 
 func formatServerSetupJoinCode(pin, secret []byte) string {
 	raw := serverSetupJoinEncoding.EncodeToString(append(append([]byte{}, pin...), secret...))
@@ -223,6 +245,9 @@ type serverSetupJoinDocument struct {
 	EnrollmentCode    string                   `json:"enrollment_code,omitempty"`
 	LinkID            string                   `json:"link_id"`
 	LinkCredential    string                   `json:"link_credential"`
+	// FirstSPKI is the first server's full key fingerprint; it must match
+	// the code's prefix and the key the join was answered with.
+	FirstSPKI string `json:"first_spki"`
 }
 
 // serverSetupJoinPending: a first server with two servers and its own DNS
@@ -261,7 +286,7 @@ func serverSetupJoinDocumentFor(d serverSetupDraft) serverSetupJoinDocument {
 }
 
 func serverSetupJoinDocumentDigest(document serverSetupJoinDocument) string {
-	document.RequestID, document.EnrollmentCode, document.LinkID, document.LinkCredential = "", "", "", ""
+	document.RequestID, document.EnrollmentCode, document.LinkID, document.LinkCredential, document.FirstSPKI = "", "", "", "", ""
 	document.First.IPv6 = ""
 	raw, _ := json.Marshal(document)
 	return serverSetupID(string(raw))
@@ -655,6 +680,9 @@ func (p *Panel) newServerSetupJoin(ctx context.Context, plan serverSetupPlan, re
 		return document, serverSetupJoinRecord{}, err
 	}
 	document.LinkID, document.LinkCredential = linkID, credential
+	if cert, err := serverSetupPanelCertificate(); err == nil {
+		document.FirstSPKI = hex.EncodeToString(serverSetupSPKI(cert))
+	}
 	join := serverSetupJoinRecord{RequestID: request.RequestID, PlanID: plan.ID, Digest: serverSetupJoinDocumentDigest(document),
 		Peer:     serverSetupJoinPeer{IPv4: request.DeclaredIPv4, IPv6: request.DeclaredIPv6, ShortName: request.ShortName, OS: strings.TrimSpace(request.OS)},
 		JoinedAt: time.Now().UTC().Format(time.RFC3339), LinkID: linkID, LinkCredential: credential}
@@ -944,7 +972,7 @@ func canonicalServerSetupPeerNames(names *serverSetupPeerNames, d serverSetupDra
 	if names.Mail != nil && (names.Mail.Hostname != names.MailHostname || names.MailHostname == "" || !stringIn(names.Mail.MX, "", "now", "later") || !stringIn(names.Mail.DMARC, "", "keep", "add")) {
 		return invalid()
 	}
-	if _, err := hex.DecodeString(names.Pin); err != nil || len(names.Pin) != 20 {
+	if _, err := hex.DecodeString(names.Pin); err != nil || len(names.Pin) != 64 {
 		return invalid()
 	}
 	address, ok := canonicalServerSetupPeerAddress(names.Address)

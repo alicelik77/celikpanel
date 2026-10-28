@@ -3,10 +3,14 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -250,7 +254,7 @@ func TestServerSetupPeerNamesClashesAreRefusedBeforeAnythingIsWritten(t *testing
 		t.Fatal(err)
 	}
 	join := serverSetupJoinRecord{RequestID: strings.Repeat("a", 32), Peer: serverSetupJoinPeer{IPv4: "198.51.100.20"}}
-	base := serverSetupPeerNames{RequestID: strings.Repeat("b", 32), PanelDomain: "beta.example.test", DNSEngine: "bind", Address: "https://198.51.100.20:2083", Pin: strings.Repeat("ab", 10)}
+	base := serverSetupPeerNames{RequestID: strings.Repeat("b", 32), PanelDomain: "beta.example.test", DNSEngine: "bind", Address: "https://198.51.100.20:2083", Pin: strings.Repeat("ab", 32)}
 	if code, message := canonicalServerSetupPeerNames(&base, d, join); code != "" {
 		t.Fatalf("valid names refused: %s %s", code, message)
 	}
@@ -308,5 +312,37 @@ func TestServerSetupPeerConnectRecoversAFailedDraftSave(t *testing.T) {
 	}
 	if pair.joins.Load() != 1 {
 		t.Fatalf("the join is not repeated: %d", pair.joins.Load())
+	}
+}
+
+// The join document's full key fingerprint must be the key that answered;
+// another one is a wrong server and nothing is kept.
+func TestServerSetupPeerDocumentFingerprintMustBeTheAnsweringKey(t *testing.T) {
+	pair := newPeerPair(t, joinFirstDraft())
+	view := issueJoinCode(t, pair.first)
+	_, other := joinTestCertificate(t)
+	serverSetupPanelCertificate = func() (*x509.Certificate, error) { return other, nil }
+	if answer := pair.connect(t, view.Code); answer.State != "wrong_server" {
+		t.Fatalf("a document naming another key: %+v", answer)
+	}
+	if link, _ := pair.second.panel.readServerSetupLink(context.Background()); link != nil {
+		t.Fatal("nothing of it is kept")
+	}
+}
+
+// The pin is the identity the panel serves on its IP address: the first
+// self-signed certificate while it is valid, across domain certificates.
+func TestServerSetupPanelIdentityIsTheIPAddressIdentity(t *testing.T) {
+	dir := t.TempDir()
+	served, leaf := joinTestCertificate(t)
+	path := filepath.Join(dir, "panel.crt")
+	if err := os.WriteFile(path, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: served.Certificate[0]}), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if !serverSetupBootstrapIdentityValid(path) || len(leaf.IPAddresses) == 0 {
+		t.Fatal("a valid self-signed IP identity is the pinned one")
+	}
+	if serverSetupBootstrapIdentityValid(filepath.Join(dir, "missing.crt")) {
+		t.Fatal("a missing identity is not")
 	}
 }

@@ -305,7 +305,7 @@ func (p *Panel) serverSetupPeerTarget(ctx context.Context, plan serverSetupPlan,
 		return serverSetupLinkTarget{}, "", errors.Join(errors.New("no setup link to the other server"), err)
 	}
 	pin, _ := hex.DecodeString(binding.PeerPin)
-	return serverSetupLinkTarget{Address: binding.PeerAddress, Pin: pin, ServerName: binding.PeerPanelDomain}, join.LinkID + "." + join.LinkCredential, nil
+	return serverSetupLinkTarget{Address: binding.PeerAddress, Pin: pin}, join.LinkID + "." + join.LinkCredential, nil
 }
 
 // sendServerSetupPeerDKIM: the backup DNS server that receives the main
