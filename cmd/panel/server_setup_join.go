@@ -933,37 +933,78 @@ func (p *Panel) requireServerSetupLinkMachine(next http.Handler) http.Handler {
 		case serverSetupJoinPath:
 			p.handleServerSetupJoin(w, r)
 		case serverSetupPeerNamesPath:
-			if p.authenticateServerSetupLink(w, r) {
+			// Only a first server receives names.
+			if p.authenticateServerSetupLink(w, r, serverSetupLinkRoleFirst) {
 				p.handleServerSetupPeerNames(w, r)
 			}
 		case serverSetupPeerDKIMPath:
-			if p.authenticateServerSetupLink(w, r) {
+			// The main DNS server is either one: the role of this server's
+			// own setup says which credentials it accepts.
+			if p.authenticateServerSetupLink(w, r, p.serverSetupLinkRole(r.Context())) {
 				p.handleServerSetupPeerDKIM(w, r)
 			}
 		}
 	})
 }
 
-// serverSetupLinkAuthorized checks a link credential: on the first server
-// against the keyed hash it keeps, on the second against the credential
-// derived from its own link credential. Both compares are constant-time.
-func (p *Panel) serverSetupLinkAuthorized(ctx context.Context, id, credential string) bool {
-	var join serverSetupJoinRecord
-	if found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join); err != nil {
-		return false
-	} else if found && join.LinkCredentialHash != "" {
-		return subtle.ConstantTimeCompare([]byte(id), []byte(join.LinkID)) == 1 &&
-			subtle.ConstantTimeCompare([]byte(p.serverSetupMAC("link", credential)), []byte(join.LinkCredentialHash)) == 1
+// The two credential namespaces of the link. A server can be the second of
+// one pair and the first of another; each endpoint accepts only its role's
+// credentials and never falls through to the other's.
+const (
+	// serverSetupLinkRoleFirst: credentials this server issued with a join
+	// (the second server calls it).
+	serverSetupLinkRoleFirst = "first"
+	// serverSetupLinkRoleSecond: the credential derived from this server's
+	// own link record (the first server calls it).
+	serverSetupLinkRoleSecond = "second"
+)
+
+// serverSetupLinkRole is this server's role in its own latest setup: first
+// when its plan waits for a second server, second when it joined one, none
+// otherwise.
+func (p *Panel) serverSetupLinkRole(ctx context.Context) string {
+	execution, err := p.latestServerSetupExecution(ctx)
+	if err != nil || execution == nil {
+		return ""
 	}
-	var link serverSetupLinkRecord
-	if found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupLinkKey, &link); err != nil || !found || link.LinkCredential == "" {
-		return false
+	plan, err := p.loadServerSetupPlan(ctx, execution.PlanID)
+	switch {
+	case err != nil:
+		return ""
+	case serverSetupPlanHasStep(plan, "peer_join"):
+		return serverSetupLinkRoleFirst
+	case serverSetupPlanHasStep(plan, "peer_names"):
+		return serverSetupLinkRoleSecond
 	}
-	return subtle.ConstantTimeCompare([]byte(id), []byte(link.LinkID)) == 1 &&
-		subtle.ConstantTimeCompare([]byte(credential), []byte(serverSetupReverseCredential(link.LinkCredential))) == 1
+	return ""
 }
 
-func (p *Panel) authenticateServerSetupLink(w http.ResponseWriter, r *http.Request) bool {
+// serverSetupLinkAuthorized checks a link credential in one role's
+// namespace: as first server against the keyed hash it keeps of the join's
+// credential, as second against the credential derived from its own link
+// credential. Both compares are constant-time; a removed credential (an
+// ended link) matches nothing.
+func (p *Panel) serverSetupLinkAuthorized(ctx context.Context, role, id, credential string) bool {
+	switch role {
+	case serverSetupLinkRoleFirst:
+		var join serverSetupJoinRecord
+		if found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join); err != nil || !found || join.LinkCredentialHash == "" {
+			return false
+		}
+		return subtle.ConstantTimeCompare([]byte(id), []byte(join.LinkID)) == 1 &&
+			subtle.ConstantTimeCompare([]byte(p.serverSetupMAC("link", credential)), []byte(join.LinkCredentialHash)) == 1
+	case serverSetupLinkRoleSecond:
+		link, err := p.readServerSetupLink(ctx)
+		if err != nil || link == nil || link.LinkCredential == "" {
+			return false
+		}
+		return subtle.ConstantTimeCompare([]byte(id), []byte(link.LinkID)) == 1 &&
+			subtle.ConstantTimeCompare([]byte(credential), []byte(serverSetupReverseCredential(link.LinkCredential))) == 1
+	}
+	return false
+}
+
+func (p *Panel) authenticateServerSetupLink(w http.ResponseWriter, r *http.Request, role string) bool {
 	deny := func() bool {
 		writeServerSetupJoinRefusal(w, http.StatusUnauthorized, "server_setup_link_unauthorized", "The server setup link is not valid; join the second server again.", nil)
 		return false
@@ -976,7 +1017,7 @@ func (p *Panel) authenticateServerSetupLink(w http.ResponseWriter, r *http.Reque
 	if !ok || !validServiceOperationID(id) || !remoteDNSValidSecret(credential) {
 		return deny()
 	}
-	if !p.serverSetupLinkAuthorized(r.Context(), id, credential) {
+	if !p.serverSetupLinkAuthorized(r.Context(), role, id, credential) {
 		return deny()
 	}
 	return true

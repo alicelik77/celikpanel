@@ -222,3 +222,56 @@ func TestServerSetupPeerDKIMBeforeTheMainIsReadyWaits(t *testing.T) {
 		t.Fatalf("the main's setup stopped: %s %s", kind, code)
 	}
 }
+
+// SHOULD-4 (alpha.114 review): a server that is the second of one pair and
+// the first of another keeps the two credential namespaces apart: the names
+// endpoint takes only credentials it issued with a join, the DKIM endpoint
+// only those of its own setup's role, and an ended join never falls
+// through to the link record.
+func TestServerSetupPeerCredentialsDoNotCrossRoles(t *testing.T) {
+	pair := newPeerPair(t, joinFirstDraft())
+	if answer := pair.connect(t, issueJoinCode(t, pair.first).Code); answer.State != "ok" {
+		t.Fatalf("connect: %+v", answer)
+	}
+	// B (the second server here) is also the first server of another pair:
+	// a third server C joined it.
+	b := pair.second
+	link, _ := b.panel.readServerSetupLink(context.Background())
+	reverse := link.LinkID + "." + serverSetupReverseCredential(link.LinkCredential)
+	issued := strings.Repeat("c", 64)
+	asFirst := serverSetupJoinRecord{RequestID: strings.Repeat("1", 32), PlanID: strings.Repeat("2", 32), LinkID: strings.Repeat("3", 32), LinkCredentialHash: b.panel.serverSetupMAC("link", issued), Peer: serverSetupJoinPeer{IPv4: "198.51.100.30"}}
+	if err := writeServerSetupJSONSetting(context.Background(), b.database.GetDB(), serverSetupJoinKey, asFirst); err != nil {
+		t.Fatal(err)
+	}
+	fromC := asFirst.LinkID + "." + issued
+	ctx := context.Background()
+	id, credential, _ := strings.Cut(reverse, ".")
+	cID, cCredential, _ := strings.Cut(fromC, ".")
+	if !b.panel.serverSetupLinkAuthorized(ctx, serverSetupLinkRoleSecond, id, credential) || b.panel.serverSetupLinkAuthorized(ctx, serverSetupLinkRoleFirst, id, credential) ||
+		!b.panel.serverSetupLinkAuthorized(ctx, serverSetupLinkRoleFirst, cID, cCredential) || b.panel.serverSetupLinkAuthorized(ctx, serverSetupLinkRoleSecond, cID, cCredential) {
+		t.Fatal("each credential belongs to its own role only")
+	}
+	// The names endpoint is a first server's: A's credential is refused.
+	if w := joinMachineRequest(t, b, serverSetupPeerNamesPath, reverse, serverSetupPeerNames{Protocol: serverSetupLinkProtocol}); w.Code != http.StatusUnauthorized {
+		t.Fatalf("names with the link record's credential: %d %s", w.Code, w.Body.String())
+	}
+	// B's own setup runs as the second server: its DKIM endpoint takes A's
+	// credential only, never one B issued to C.
+	_, plan := pair.secondReview(t, nil)
+	pair.startSecond(t, plan)
+	dkim := serverSetupPeerDKIMRequest{Protocol: serverSetupLinkProtocol, RequestID: strings.Repeat("3", 32), Domain: "example.test", Selector: dkimSelector, Value: "v=DKIM1; k=rsa; p=QUJD"}
+	if w := joinMachineRequest(t, b, serverSetupPeerDKIMPath, fromC, dkim); w.Code != http.StatusUnauthorized {
+		t.Fatalf("DKIM with a join-issued credential on a second server: %d %s", w.Code, w.Body.String())
+	}
+	if w := joinMachineRequest(t, b, serverSetupPeerDKIMPath, reverse, dkim); w.Code == http.StatusUnauthorized {
+		t.Fatalf("DKIM with the first server's credential: %d %s", w.Code, w.Body.String())
+	}
+	// B's join as first server ended: nothing falls through to its link.
+	asFirst.LinkCredentialHash = ""
+	if err := writeServerSetupJSONSetting(context.Background(), b.database.GetDB(), serverSetupJoinKey, asFirst); err != nil {
+		t.Fatal(err)
+	}
+	if w := joinMachineRequest(t, b, serverSetupPeerNamesPath, reverse, serverSetupPeerNames{Protocol: serverSetupLinkProtocol}); w.Code != http.StatusUnauthorized {
+		t.Fatalf("names after the join ended: %d %s", w.Code, w.Body.String())
+	}
+}

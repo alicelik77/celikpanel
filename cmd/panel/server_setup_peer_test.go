@@ -443,7 +443,7 @@ func TestServerSetupPeerRejoinsTheSameFirstServerWithANewCode(t *testing.T) {
 	if link.LinkID == old.LinkID || link.RequestID == old.RequestID || link.CodeMAC == old.CodeMAC {
 		t.Fatalf("a new link: %+v", link)
 	}
-	if pair.first.panel.serverSetupLinkAuthorized(context.Background(), old.LinkID, old.LinkCredential) {
+	if pair.first.panel.serverSetupLinkAuthorized(context.Background(), serverSetupLinkRoleFirst, old.LinkID, old.LinkCredential) {
 		t.Fatal("the old link is withdrawn on the first server")
 	}
 	if answer := pair.connect(t, second.Code); answer.State != "ok" || pair.joins.Load() != 2 {

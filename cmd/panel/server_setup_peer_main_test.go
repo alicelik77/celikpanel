@@ -82,7 +82,7 @@ func TestServerSetupPeerSecondServerAsMainTakesThePreparedList(t *testing.T) {
 	// and sent; the main keeps no copy of it.
 	_, bearer, err := pair.first.panel.serverSetupPeerTarget(context.Background(), pair.plan, pair.execution.ID)
 	id, credential, _ := strings.Cut(bearer, ".")
-	if err != nil || !pair.second.panel.serverSetupLinkAuthorized(context.Background(), id, credential) || pair.second.panel.serverSetupLinkAuthorized(context.Background(), id, link.LinkCredential) {
+	if err != nil || !pair.second.panel.serverSetupLinkAuthorized(context.Background(), serverSetupLinkRoleSecond, id, credential) || pair.second.panel.serverSetupLinkAuthorized(context.Background(), serverSetupLinkRoleSecond, id, link.LinkCredential) {
 		t.Fatalf("reverse credential: %v", err)
 	}
 	// Its publishing connection uses the handed-over code by itself; until
