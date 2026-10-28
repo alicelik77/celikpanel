@@ -39,7 +39,11 @@ type serverSetupLinkRecord struct {
 	LinkCredential string                  `json:"link_credential"`
 	// CodeMAC is a keyed hash of the code this join was made with: the same
 	// code again is the same join; another code is a new join.
-	CodeMAC        string `json:"code_mac"`
+	CodeMAC string `json:"code_mac"`
+	// PublicIPv4 is this server's public IPv4 address as the join declared
+	// it (typed by the owner behind 1:1 NAT, else the detected public one):
+	// the one address this server states everywhere in the pair.
+	PublicIPv4     string `json:"public_ipv4"`
 	EnrollmentCode string `json:"enrollment_code,omitempty"`
 	// IssuedEnrollment is the code this server issued for the first server
 	// when this server is the main DNS server (sent with its names).
@@ -53,7 +57,10 @@ type serverSetupLinkPending struct {
 	RequestID string `json:"request_id"`
 	Address   string `json:"address"`
 	Code      string `json:"code"`
-	CreatedAt string `json:"created_at"`
+	// PublicIPv4 is the address the unanswered request declared; the same
+	// request is sent again only with it.
+	PublicIPv4 string `json:"public_ipv4"`
+	CreatedAt  string `json:"created_at"`
 }
 
 func (p *Panel) readServerSetupLink(ctx context.Context) (*serverSetupLinkRecord, error) {
@@ -72,15 +79,15 @@ func (l serverSetupLinkRecord) target() serverSetupLinkTarget {
 
 func (l serverSetupLinkRecord) bearer() string { return l.LinkID + "." + l.LinkCredential }
 
-// serverSetupJoinedDraft is the draft the join document gives the second
-// server. The owner's own answers (roles, components, names, mail choice)
-// stay; the shared answers come from the first server.
-func serverSetupJoinedDraft(d serverSetupDraft, document serverSetupJoinDocument) serverSetupDraft {
+// serverSetupJoinedDraft is the draft the join gives the second server. The
+// owner's own answers (roles, components, names, mail choice) stay; the
+// shared answers come from the first server, and this server's address is
+// the public IPv4 address the join declared, so its names, its records and
+// its address on the link are the address the first server checked.
+func serverSetupJoinedDraft(d serverSetupDraft, link serverSetupLinkRecord) serverSetupDraft {
+	document := link.Document
 	d.MainDomain, d.ServerCount, d.DNSMode = document.MainDomain, 2, setupDNSModeLocal
-	d.NS1, d.NS2, d.PeerIP = document.NS1, document.NS2, document.First.IPv4
-	if local, ok := canonicalIPv4(serverPrimaryIP()); ok && d.LocalIP == "" {
-		d.LocalIP = local
-	}
+	d.NS1, d.NS2, d.PeerIP, d.LocalIP = document.NS1, document.NS2, document.First.IPv4, link.PublicIPv4
 	d.DNSHostingManagement, d.RemoteDNSConnectionID = "", ""
 	if document.MainDNSServer == "first" {
 		d.DNSRole, d.MainDNSServer, d.PeerNS = transport.DNSPairRoleSecondary, "peer", document.NS1
@@ -106,7 +113,7 @@ func serverSetupJoinedDraft(d serverSetupDraft, document serverSetupJoinDocument
 // serverSetupJoinedDraftMatches: the shared answers of a joined second
 // server's draft are still the join document's.
 func serverSetupJoinedDraftMatches(d serverSetupDraft, link serverSetupLinkRecord) bool {
-	want, err := canonicalServerSetupDraft(serverSetupJoinedDraft(d, link.Document))
+	want, err := canonicalServerSetupDraft(serverSetupJoinedDraft(d, link))
 	if err != nil {
 		return false
 	}
@@ -203,6 +210,24 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 	joinLock.Lock()
 	defer joinLock.Unlock()
 	canonicalCode := formatServerSetupJoinCode(pin, mustDecodeServerSetupProof(proof))
+	// This server's public IPv4 address: the owner's answer, else the
+	// detected address when it is public, else the owner is asked (D-024).
+	public, publicOK := canonicalIPv4(serverPrimaryIP())
+	if publicOK {
+		publicOK = p.serverSetupPeerAddressAllowed(netip.MustParseAddr(public))
+	}
+	if request.PublicIPv4 != "" {
+		typed, err := netip.ParseAddr(strings.TrimSpace(request.PublicIPv4))
+		if err != nil || !typed.Is4() || !p.serverSetupPeerAddressAllowed(typed) {
+			writeCodedError(w, http.StatusBadRequest, "server_setup_peer_connect_public_ipv4", "Enter this server's public IPv4 address, as the provider shows it.", "")
+			return
+		}
+		public, publicOK = typed.String(), true
+	}
+	if !publicOK {
+		writeCodedError(w, http.StatusBadRequest, "server_setup_peer_connect_public_ipv4_required", "This server's own address is not a public address (for example behind 1:1 NAT). Enter its public IPv4 address, as the provider shows it, then join again.", "")
+		return
+	}
 	// Already joined with this code (a draft that could not be saved, or the
 	// same form sent twice): the join is not repeated; the answers it gave
 	// are applied again, which changes nothing when they already are. A new
@@ -223,7 +248,7 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	pendingCode, openErr := p.openServerSetupSecret(pending.Code)
-	if !found || openErr != nil || pending.Address != address || pendingCode != canonicalCode {
+	if !found || openErr != nil || pending.Address != address || pendingCode != canonicalCode || pending.PublicIPv4 != public {
 		id, err := newServiceOperationID()
 		if err != nil {
 			writeServerError(w, err)
@@ -234,7 +259,7 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 			writeServerError(w, err)
 			return
 		}
-		pending = serverSetupLinkPending{RequestID: id, Address: address, Code: sealedCode, CreatedAt: time.Now().UTC().Format(time.RFC3339)}
+		pending = serverSetupLinkPending{RequestID: id, Address: address, Code: sealedCode, PublicIPv4: public, CreatedAt: time.Now().UTC().Format(time.RFC3339)}
 		if err := writeServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupLinkPendingKey, pending); err != nil {
 			writeServerError(w, err)
 			return
@@ -245,16 +270,7 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 		writeServerError(w, err)
 		return
 	}
-	join := serverSetupJoinRequest{Protocol: serverSetupLinkProtocol, Proof: proof, RequestID: pending.RequestID, ShortName: state.Draft.ShortName, OS: serverSetupHostOS(p)}
-	join.DeclaredIPv4, _ = canonicalIPv4(serverPrimaryIP())
-	if request.PublicIPv4 != "" {
-		typed, err := netip.ParseAddr(strings.TrimSpace(request.PublicIPv4))
-		if err != nil || !typed.Is4() || !p.serverSetupPeerAddressAllowed(typed) {
-			writeCodedError(w, http.StatusBadRequest, "server_setup_peer_connect_public_ipv4", "Enter this server's public IPv4 address, as the provider shows it.", "")
-			return
-		}
-		join.DeclaredIPv4 = typed.String()
-	}
+	join := serverSetupJoinRequest{Protocol: serverSetupLinkProtocol, Proof: proof, RequestID: pending.RequestID, DeclaredIPv4: public, ShortName: state.Draft.ShortName, OS: serverSetupHostOS(p)}
 	join.DeclaredIPv6 = serverSetupPublicIPv6()
 	var document serverSetupJoinDocument
 	var observed []byte
@@ -269,7 +285,7 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 	switch {
 	case callErr == nil && validServerSetupJoinDocument(document, address, pending.RequestID):
 		link := serverSetupLinkRecord{RequestID: pending.RequestID, Address: address, Pin: document.FirstSPKI, LinkID: document.LinkID, LinkCredential: document.LinkCredential,
-			CodeMAC: p.serverSetupLinkCodeMAC(canonicalCode), EnrollmentCode: document.EnrollmentCode, JoinedAt: time.Now().UTC().Format(time.RFC3339)}
+			CodeMAC: p.serverSetupLinkCodeMAC(canonicalCode), PublicIPv4: public, EnrollmentCode: document.EnrollmentCode, JoinedAt: time.Now().UTC().Format(time.RFC3339)}
 		link.Document = document
 		link.Document.LinkCredential, link.Document.EnrollmentCode = "", ""
 		tx, err := p.db.GetDB().BeginTx(ctx, nil)
@@ -348,7 +364,7 @@ func (p *Panel) applyServerSetupJoinedDraft(ctx context.Context, link serverSetu
 	state, err := p.loadServerSetup(ctx)
 	if err == nil {
 		var saved serverSetupState
-		if saved, err = p.serverSetupPeerSaveDraft(ctx, state.Revision, serverSetupJoinedDraft(state.Draft, link.Document)); err == nil {
+		if saved, err = p.serverSetupPeerSaveDraft(ctx, state.Revision, serverSetupJoinedDraft(state.Draft, link)); err == nil {
 			return serverSetupPeerConnectAnswer{State: "ok", Setup: &saved}
 		}
 	}
@@ -564,8 +580,8 @@ func (p *Panel) runServerSetupPeerNames(ctx context.Context, plan serverSetupPla
 // enrollment code for the first server's connection (issued once and kept).
 func (p *Panel) serverSetupOwnNames(ctx context.Context, d serverSetupDraft, link *serverSetupLinkRecord, requestID string) (serverSetupPeerNames, error) {
 	names := serverSetupPeerNames{Protocol: serverSetupLinkProtocol, ReverseCredential: serverSetupReverseCredential(link.LinkCredential), RequestID: requestID, ShortName: d.ShortName, PanelDomain: d.PanelDomain, DNSEngine: d.DNSEngine}
-	local, _ := canonicalIPv4(d.LocalIP)
-	names.Address = "https://" + net.JoinHostPort(local, strconv.Itoa(panelPort()))
+	// The address the join declared (the draft's own address is that one).
+	names.Address = "https://" + net.JoinHostPort(link.PublicIPv4, strconv.Itoa(panelPort()))
 	cert, err := p.serverSetupPanelCertificate()
 	if err != nil {
 		return names, &serverSetupPeerWait{Code: "server_setup_join_certificate_unavailable", Message: "This panel's TLS certificate could not be read. Check Settings → Panel certificate; setup asks again by itself."}

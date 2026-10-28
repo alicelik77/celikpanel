@@ -286,7 +286,7 @@ export function SetupJoinPanel({ onJoined, disabled, serverIP }: { onJoined: (se
             const body: unknown = await response.json().then((value: unknown) => value, (cause: unknown) => ({ unreadable: String(cause) }));
             if (!response.ok) {
                 const coded = peerRecord(body) && typeof body.code === 'string' ? body.code : '';
-                setProblem(coded === 'server_setup_peer_connect_invalid' ? 'setup.v5.join.invalid' : coded === 'server_setup_peer_connect_running' ? 'setup.v5.join.running' : coded === 'server_setup_peer_connect_public_ipv4' ? 'setup.v5.join.publicInvalid' : 'setup.v5.join.failed');
+                setProblem(coded === 'server_setup_peer_connect_invalid' ? 'setup.v5.join.invalid' : coded === 'server_setup_peer_connect_running' ? 'setup.v5.join.running' : coded === 'server_setup_peer_connect_public_ipv4' ? 'setup.v5.join.publicInvalid' : coded === 'server_setup_peer_connect_public_ipv4_required' ? 'setup.v5.join.publicRequired' : 'setup.v5.join.failed');
                 return;
             }
             if (!peerRecord(body) || !['ok', 'refused', 'wrong_server', 'unreachable', 'unknown'].includes(String(body.state))) { setProblem('setup.v5.join.failed'); return; }
@@ -315,7 +315,7 @@ export function SetupJoinPanel({ onJoined, disabled, serverIP }: { onJoined: (se
                 server declares. Behind 1:1 NAT the own address is private: the
                 owner types the public one (D-024: who acts and what to type). */}
             {serverIP && <p className="text-sm leading-6 text-fg-muted" data-setup-join-ip="">{t(publicSetupIPv4(serverIP) ? 'setup.v5.join.detected' : 'setup.v5.join.noPublic', { ip: serverIP })}</p>}
-            {(!publicSetupIPv4(serverIP || '') || answer?.code === 'server_setup_join_source_mismatch' || publicIPv4) && <SetupWizardInput name="join_public_ipv4" label={t('setup.v5.join.publicIPv4')} value={publicIPv4} onChange={setPublicIPv4} placeholder="203.0.113.20" help={t('setup.v5.join.publicIPv4Help')} />}
+            {(!publicSetupIPv4(serverIP || '') || answer?.code === 'server_setup_join_source_mismatch' || problem === 'setup.v5.join.publicRequired' || publicIPv4) && <SetupWizardInput name="join_public_ipv4" label={t('setup.v5.join.publicIPv4')} value={publicIPv4} onChange={setPublicIPv4} placeholder="203.0.113.20" help={t('setup.v5.join.publicIPv4Help')} />}
             {problem && <p role="alert" className="text-sm leading-6 text-danger">{t(problem)}</p>}
             {message && <p role={answer?.state === 'refused' ? 'alert' : 'status'} className="text-sm leading-6" data-setup-join-state={answer?.state}>{message}</p>}
             <Button type="button" variant="primary" disabled={busy || disabled} loading={busy} onClick={() => void join()}>{t(busy ? 'setup.v5.join.joining' : answer && !(answer.state === 'ok' && answer.setup) ? 'setup.v5.join.retry' : 'setup.v5.join.submit')}</Button>

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"strings"
@@ -85,7 +86,8 @@ func (pair *peerPair) secondReview(t *testing.T, change func(*serverSetupDraft))
 		t.Fatal(err)
 	}
 	draft := state.Draft
-	draft.Purpose, draft.PanelDomain, draft.LocalIP, draft.DNSEngine, draft.ShortName = "web", "beta.example.test", "198.51.100.20", "bind", "beta"
+	// The server's own address comes from the join (its public IPv4).
+	draft.Purpose, draft.PanelDomain, draft.DNSEngine, draft.ShortName = "web", "beta.example.test", "bind", "beta"
 	if change != nil {
 		change(&draft)
 	}
@@ -342,11 +344,14 @@ func TestServerSetupPanelIdentityIsTheIPAddressIdentity(t *testing.T) {
 	}
 }
 
-// Behind 1:1 NAT the second server's own address is private: the owner's
-// typed public IPv4 address is what the join declares.
+// Behind 1:1 NAT the second server's own address is private (Claim-5 of the
+// alpha.114 review): one public IPv4 value, the owner's answer, else the
+// detected public address, else the owner is asked, is the address the join
+// declares, the address its names give and the address of its records.
 func TestServerSetupPeerJoinDeclaresTheTypedPublicIPv4(t *testing.T) {
 	pair := newPeerPair(t, joinFirstDraft())
 	t.Setenv("CELIKPANEL_SERVER_IP", "10.0.0.5")
+	pair.second.panel.setupLink.addressAllowed = func(ip netip.Addr) bool { return !ip.IsPrivate() }
 	view := issueJoinCode(t, pair.first)
 	send := func(public string) *httptest.ResponseRecorder {
 		body, _ := json.Marshal(map[string]string{"address": "203.0.113.10:" + itoaTest(panelPort()), "code": view.Code, "public_ipv4": public})
@@ -354,16 +359,43 @@ func TestServerSetupPeerJoinDeclaresTheTypedPublicIPv4(t *testing.T) {
 		pair.second.panel.handleServerSetupPeerConnect(w, serviceOperationAdminRequest(t, http.MethodPost, serverSetupPeerConnectPath, string(body), pair.second.userID))
 		return w
 	}
-	if w := send("not-an-address"); w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "server_setup_peer_connect_public_ipv4") {
-		t.Fatalf("an invalid typed address: %d %s", w.Code, w.Body.String())
+	if w := send(""); w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "server_setup_peer_connect_public_ipv4_required") || pair.joins.Load() != 0 {
+		t.Fatalf("a private address asks for the public one before anything is sent: %d %s", w.Code, w.Body.String())
 	}
-	if w := send("198.51.100.20"); w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"state":"ok"`) {
-		t.Fatalf("the typed public address joins: %d %s", w.Code, w.Body.String())
+	for _, bad := range []string{"not-an-address", "10.0.0.6"} {
+		if w := send(bad); w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), `"server_setup_peer_connect_public_ipv4"`) {
+			t.Fatalf("an invalid typed address %q: %d %s", bad, w.Code, w.Body.String())
+		}
+	}
+	w := send("198.51.100.20")
+	var answer serverSetupPeerConnectAnswer
+	if w.Code != http.StatusOK || json.Unmarshal(w.Body.Bytes(), &answer) != nil || answer.State != "ok" || answer.Setup == nil || answer.Setup.Draft.LocalIP != "198.51.100.20" {
+		t.Fatalf("the typed public address joins and is this server's address: %d %s", w.Code, w.Body.String())
 	}
 	var join serverSetupJoinRecord
 	readServerSetupJSONSetting(context.Background(), pair.first.database.GetDB(), serverSetupJoinKey, &join)
 	if join.Peer.IPv4 != "198.51.100.20" {
 		t.Fatalf("declared: %+v", join.Peer)
+	}
+	_, plan := pair.secondReview(t, nil)
+	if !plan.CanStart || plan.Draft.LocalIP != "198.51.100.20" {
+		t.Fatalf("the plan uses the public address: %v %+v", plan.Blockers, plan.Draft.LocalIP)
+	}
+	step := serverSetupExecutionStep{serverSetupPlanStep: plan.Steps[0], RequestID: strings.Repeat("5", 32), OwnerID: strings.Repeat("6", 32)}
+	if done, err := pair.second.panel.runServerSetupPeerNames(context.Background(), plan, step); !done || err != nil {
+		t.Fatalf("the names give the declared address and are accepted: %v %v", done, err)
+	}
+	joinIndex := pair.advanceToJoin(t)
+	binding, err := pair.first.panel.readServerSetupPeerBinding(context.Background(), pair.plan, pair.execution.ID)
+	if pair.execution.Steps[joinIndex].Status != "succeeded" || err != nil || binding == nil || binding.PeerAddress != "https://198.51.100.20:"+itoaTest(panelPort()) {
+		t.Fatalf("bound at the public address: %+v %v %+v", binding, err, pair.execution.Error)
+	}
+	found := false
+	for _, record := range binding.InfrastructureDNS.Records {
+		found = found || (record.Name == "beta.example.test" && record.Type == "A" && record.Content == "198.51.100.20")
+	}
+	if !found {
+		t.Fatalf("the second server's record is its public address: %+v", binding.InfrastructureDNS.Records)
 	}
 }
 

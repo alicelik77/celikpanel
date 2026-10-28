@@ -22,6 +22,7 @@ export const enSetupJoinScreens = {
     "setup.v5.join.publicIPv4": "This server's public IPv4 address",
     "setup.v5.join.publicIPv4Help": "On clouds with 1:1 NAT the server's network card has a private address. Type the public IPv4 address your provider shows for this server, and set CELIKPANEL_SERVER_IP to that address in the panel's environment so the DNS steps use it too.",
     "setup.v5.join.publicInvalid": "Enter this server's public IPv4 address, as the provider shows it.",
+    "setup.v5.join.publicRequired": "This server's own address is not a public address (for example behind 1:1 NAT), so nothing was sent. Enter its public IPv4 address, as the provider shows it, then join again.",
     "setup.v5.join.draftRetry": "This server joined the first server, but its answers could not be saved here yet. Press Try again: the join is not repeated, only its answers are applied.",
     "setup.v5.join.state.unknown": "The first server's answer did not arrive. Try again: the same join is repeated, never a second one.",
     "setup.v5.join.state.unreachable": "The first server could not be reached at this address. Nothing was sent and the code is still unused. Check the address and that the first server is running, then try again.",

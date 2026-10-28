@@ -22,6 +22,7 @@ export const trSetupJoinScreens: Record<SetupJoinScreenKey, string> = {
     "setup.v5.join.publicIPv4": "Bu sunucunun genel IPv4 adresi",
     "setup.v5.join.publicIPv4Help": "1:1 NAT kullanan bulutlarda sunucunun ağ kartında özel bir adres olur. Sağlayıcınızın bu sunucu için gösterdiği genel IPv4 adresini yazın; DNS adımları da kullansın diye panelin ortamında CELIKPANEL_SERVER_IP değerini bu adres yapın.",
     "setup.v5.join.publicInvalid": "Bu sunucunun genel IPv4 adresini, sağlayıcının gösterdiği gibi girin.",
+    "setup.v5.join.publicRequired": "Bu sunucunun kendi adresi genel bir adres değil (örneğin 1:1 NAT arkasında); bu yüzden hiçbir şey gönderilmedi. Sağlayıcının gösterdiği genel IPv4 adresini girip yeniden katılın.",
     "setup.v5.join.draftRetry": "Bu sunucu ilk sunucuya katıldı ama yanıtları burada henüz kaydedilemedi. Yeniden dene'ye basın: katılma tekrarlanmaz, yalnız yanıtları uygulanır.",
     "setup.v5.join.state.unknown": "İlk sunucunun yanıtı gelmedi. Yeniden deneyin: aynı katılma tekrarlanır, asla ikinci bir katılma olmaz.",
     "setup.v5.join.state.unreachable": "İlk sunucuya bu adresten ulaşılamadı. Hiçbir şey gönderilmedi ve kod hâlâ kullanılmadı. Adresi ve ilk sunucunun çalıştığını kontrol edip yeniden deneyin.",
