@@ -285,7 +285,7 @@ func (p *Panel) handleServerSetupPeerDKIM(w http.ResponseWriter, r *http.Request
 	}
 	changed, err := p.writeServerSetupPeerDKIM(ctx, d.InfrastructureDNS.Zone, int64(zoneID), dkimSelector+"._domainkey."+d.MainDomain, value)
 	if errors.Is(err, errServerSetupPeerDKIMConflict) {
-		writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_dkim_conflict", "The zone already has a different DKIM record at this name that setup did not write. Change or remove it in Domains on the main DNS server; setup sends the record again by itself.", nil)
+		writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_dkim_conflict", "The zone already has a different DKIM record at this name that setup did not write. Change or remove it in Domains on the main DNS server, then review the other server's plan again.", nil)
 		return
 	}
 	if err != nil {
@@ -477,10 +477,17 @@ func (p *Panel) sendServerSetupPeerDKIM(ctx context.Context, plan serverSetupPla
 		return nil
 	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_version_incompatible":
 		return serverSetupPeerVersionWait()
-	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_dkim_conflict":
-		return &serverSetupPeerWait{Code: refusal.Code, Message: "The main DNS server already has a different DKIM record at this name that setup did not write. Change or remove it there in Domains; setup sends the record again by itself."}
+	// Not yet: the main's setup has not started, has not taken this server
+	// in, or has no zone yet. A wait (D-024); the same request is sent again.
+	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_dkim_not_running":
+		return &serverSetupPeerWait{Code: refusal.Code, Message: "The main DNS server's setup is not running. Nothing to do here if it is about to start; otherwise start or resume setup on the main DNS server. This server sends its DKIM record again by itself."}
+	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_dkim_not_bound":
+		return &serverSetupPeerWait{Code: refusal.Code, Message: "The main DNS server's setup has not taken this server in yet; it does once it has this server's names (check its join step if it waits there). Setup sends the DKIM record again by itself."}
 	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_dkim_zone_waiting":
 		return &serverSetupPeerWait{Code: refusal.Code, Message: "The main DNS server has not prepared the main domain's zone yet. Setup sends the DKIM record again by itself."}
+	// A definite refusal: the owner's own record is in the way.
+	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_dkim_conflict":
+		return &serverSetupChildFailure{Code: refusal.Code, Message: "The main DNS server already has a different DKIM record at this name that setup did not write. Change or remove it there in Domains → " + plan.Draft.MainDomain + ", then review this plan again."}
 	case errors.As(callErr, &refusal):
 		return &serverSetupChildFailure{Code: refusal.Code, Message: "The main DNS server refused this server's DKIM record (" + refusal.Code + ")."}
 	case errors.Is(callErr, errServerSetupLinkUnreachable), errors.Is(callErr, errServerSetupLinkPinMismatch):

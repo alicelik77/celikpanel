@@ -159,3 +159,66 @@ func TestServerSetupPeerOptionAWithMailOnTheFirstServer(t *testing.T) {
 		t.Fatalf("after completion: %v", err)
 	}
 }
+
+// peerOutcomeCode is the code of a wait or a verified failure.
+func peerOutcomeCode(err error) (string, string) {
+	var wait *serverSetupPeerWait
+	var failure *serverSetupChildFailure
+	switch {
+	case errors.As(err, &wait):
+		return "wait", wait.Code
+	case errors.As(err, &failure):
+		return "failed", failure.Code
+	case err == nil:
+		return "done", ""
+	}
+	return "error", err.Error()
+}
+
+// SHOULD-1 (alpha.114 review): a DKIM record sent before the main DNS
+// server bound this server, while its setup does not run, or before its
+// zone exists is a wait, sent again by itself; only the owner's own record
+// in the way is a verified failure.
+func TestServerSetupPeerDKIMBeforeTheMainIsReadyWaits(t *testing.T) {
+	pair := newPeerPair(t, joinFirstDraft())
+	if answer := pair.connect(t, issueJoinCode(t, pair.first).Code); answer.State != "ok" {
+		t.Fatalf("connect: %+v", answer)
+	}
+	plan := serverSetupPlan{Draft: serverSetupDraft{MainDomain: "example.test"}}
+	step := serverSetupExecutionStep{RequestID: strings.Repeat("5", 32)}
+	send := func() (string, string) {
+		return peerOutcomeCode(pair.second.panel.sendServerSetupPeerDKIM(context.Background(), plan, "", step, "v=DKIM1; k=rsa; p=QUJD"))
+	}
+	if kind, code := send(); kind != "wait" || code != "server_setup_peer_dkim_not_bound" {
+		t.Fatalf("before the binding: %s %s", kind, code)
+	}
+	link, _ := pair.second.panel.readServerSetupLink(context.Background())
+	names := serverSetupPeerNames{Protocol: serverSetupLinkProtocol, RequestID: strings.Repeat("4", 32), ShortName: "beta", PanelDomain: "beta.example.test", MailHostname: "mail.example.test", DNSEngine: "bind",
+		Mail: &serverSetupPeerMail{Hostname: "mail.example.test", MX: "now"}, Address: "https://198.51.100.20:" + itoaTest(panelPort()), Pin: strings.Repeat("cd", 32)}
+	if w := joinMachineRequest(t, pair.first, serverSetupPeerNamesPath, link.bearer(), names); w.Code != http.StatusOK {
+		t.Fatalf("names: %d %s", w.Code, w.Body.String())
+	}
+	pair.advanceToJoin(t)
+	if kind, code := send(); kind != "wait" || code != "server_setup_peer_dkim_zone_waiting" {
+		t.Fatalf("before the zone: %s %s", kind, code)
+	}
+	db := pair.first.database.GetDB()
+	if _, err := db.Exec(`INSERT INTO pdns_domains(name,type) VALUES('example.test','MASTER')`); err != nil {
+		t.Fatal(err)
+	}
+	if kind, code := send(); kind != "wait" || code != "server_setup_peer_dkim_publishing" {
+		t.Fatalf("saved: %s %s", kind, code)
+	}
+	if _, err := db.Exec(`UPDATE pdns_records SET content='"v=DKIM1; p=OWNER"' WHERE name=? AND type='TXT'`, dkimSelector+"._domainkey.example.test"); err != nil {
+		t.Fatal(err)
+	}
+	if kind, code := send(); kind != "failed" || code != "server_setup_peer_dkim_conflict" {
+		t.Fatalf("the owner's record: %s %s", kind, code)
+	}
+	if _, err := db.Exec(`UPDATE server_setup_executions SET status='failed',execution_json=replace(replace(execution_json,'"status":"running"','"status":"failed"'),'"status":"waiting"','"status":"failed"') WHERE id=?`, pair.execution.ID); err != nil {
+		t.Fatal(err)
+	}
+	if kind, code := send(); kind != "wait" || code != "server_setup_peer_dkim_not_running" {
+		t.Fatalf("the main's setup stopped: %s %s", kind, code)
+	}
+}

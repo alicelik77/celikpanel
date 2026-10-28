@@ -72,6 +72,8 @@ const codeKey: Record<string, TranslationKey> = {
     server_setup_peer_version_incompatible: 'setup.v5.wait.server_setup_peer_version_incompatible',
     server_setup_dns_publisher_refused: 'setup.v5.wait.server_setup_dns_publisher_refused',
     server_setup_peer_dkim_conflict: 'setup.v5.wait.server_setup_peer_dkim_conflict',
+    server_setup_peer_dkim_not_running: 'setup.v5.wait.server_setup_peer_dkim_not_running',
+    server_setup_peer_dkim_not_bound: 'setup.v5.wait.server_setup_peer_dkim_not_bound',
     peer_mail_dkim_required: 'setup.v5.check.peerDKIM',
     peer_mail_dkim_unavailable: 'setup.v5.check.peerDKIM',
     server_setup_peer_join_waiting: 'setup.v5.wait.server_setup_peer_join_waiting',
