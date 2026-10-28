@@ -483,11 +483,9 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 	// The wizard's own answers (alpha.111) add refusals only to drafts that
 	// carry them; an older draft has neither and keeps its review.
 	// Sihirbazin yanitlari yalniz onlari tasiyan taslaga ret ekler.
-	if draft.MainDNSServer == "this" && (draft.DNSMode != setupDNSModeLocal || draft.DNSRole != transport.DNSPairRolePrimary) {
+	if (draft.MainDNSServer == "this" && (draft.DNSMode != setupDNSModeLocal || draft.DNSRole != transport.DNSPairRolePrimary)) ||
+		(draft.MainDNSServer == "peer" && (draft.DNSMode != setupDNSModeLocal || draft.DNSRole != transport.DNSPairRoleSecondary || draft.ServerCount != 2)) {
 		addBlocker("server_setup_main_dns_server_mismatch")
-	}
-	if draft.ServerCount == 1 && draft.DNSMode == setupDNSModeLocal {
-		addBlocker("server_setup_local_dns_requires_two_servers")
 	}
 	addStep("dns", draft.DNSMode, "")
 	mailDependent := []string{}
@@ -1140,6 +1138,17 @@ func (p *Panel) runServerSetupStep(ctx context.Context, plan serverSetupPlan, st
 		if serverSetupManualSecondaryHosting(plan.Draft) {
 			ready, err := p.serverSetupManualSecondaryHostingReadiness(ctx, plan.Draft)
 			if err != nil || !ready {
+				return false, errServerSetupDNSReadinessRequired
+			}
+			return true, nil
+		}
+		if serverSetupStandaloneDNS(plan.Draft) {
+			// One server keeping its own DNS: its engine and both public
+			// nameserver names, no pair and no publishing connection.
+			if ready, err := p.setupDNSModeReadiness(ctx, setupDNSModeLocal); err != nil || !ready {
+				return false, errServerSetupDNSReadinessRequired
+			}
+			if ready, err := p.setupDNSNameserverReadiness(ctx); err != nil || !ready {
 				return false, errServerSetupDNSReadinessRequired
 			}
 			return true, nil

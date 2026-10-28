@@ -30,6 +30,9 @@ func (p *Panel) setupDNSNameserverReadinessWithResolvers(ctx context.Context, re
 	if err != nil {
 		return false, err
 	}
+	if state.ActiveEngine != "" && state.Topology == transport.DNSTopologyStandalone && state.PairRole == "" && state.CurrentSwitchID == "" {
+		return p.setupDNSStandaloneNameserverReadiness(ctx, resolvers)
+	}
 	if state.ActiveEngine == "" || state.Topology != transport.DNSTopologyPaired || state.CurrentSwitchID != "" ||
 		state.LocalNS == "" || state.PeerNS == "" || state.LocalIP == "" || state.PeerIP == "" {
 		return false, errors.New("configure the authoritative DNS pair before publishing its nameserver addresses")
@@ -73,6 +76,37 @@ func (p *Panel) setupDNSNameserverReadinessWithResolvers(ctx context.Context, re
 	}
 	if strings.EqualFold(state.LocalNS, state.PeerNS) || !nameserverPairUsable(transport.DNSTopologyPaired, state.PeerIP, facts) {
 		return false, errors.New("publish a separate nameserver address for each configured DNS server")
+	}
+	return true, nil
+}
+
+// setupDNSStandaloneNameserverReadiness: with one server keeping its own DNS
+// (alpha.114) both nameserver names must publish this server's IPv4 address
+// and nothing that is not this server.
+// Tek sunucuda iki ad sunucusu adi da bu sunucunun adresini yayimlamalidir.
+func (p *Panel) setupDNSStandaloneNameserverReadiness(ctx context.Context, resolvers []hostResolver) (bool, error) {
+	ns1, ns2 := p.configuredNameservers(ctx)
+	local, valid := canonicalIPv4(serverPrimaryIP())
+	if !valid || ns1 == "" || ns2 == "" || strings.EqualFold(ns1, ns2) {
+		return false, errors.New("configure both nameserver names of this DNS server before publishing them")
+	}
+	ipv6 := serverPrimaryIPv6()
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	for _, host := range []string{ns1, ns2} {
+		addresses, err := lookupNameserverHost(ctx, host, resolvers)
+		if err != nil || len(addresses) == 0 {
+			return false, fmt.Errorf("waiting for public DNS: publish %s pointing to %s, then check again", host, local)
+		}
+		for _, raw := range addresses {
+			ip := net.ParseIP(raw)
+			if ip == nil || !(ip.Equal(net.ParseIP(local)) || (ipv6 != "" && ip.Equal(net.ParseIP(ipv6)))) {
+				return false, fmt.Errorf("nameserver %s resolves outside this DNS server; correct its public A/AAAA records before completing setup", host)
+			}
+		}
+		if !containsStr(addresses, local) {
+			return false, fmt.Errorf("nameserver %s must publish this server's IPv4 address %s", host, local)
+		}
 	}
 	return true, nil
 }

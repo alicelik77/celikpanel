@@ -677,7 +677,7 @@ func (p *Panel) runServerSetupInfrastructureDNS(ctx context.Context, plan server
 		if err != nil {
 			return false, errServerSetupInfrastructureDNSUnknown
 		}
-		if !ready || publisher.PairRole != transport.DNSPairRolePrimary {
+		if !ready || (publisher.PairRole != transport.DNSPairRolePrimary && !(serverSetupStandaloneDNS(plan.Draft) && publisher.PairRole == "")) {
 			return false, errServerSetupInfrastructureDNSWaiting
 		}
 		receipt, err = p.prepareServerSetupInfrastructureDNSRecords(ctx, plan, step, publisher)

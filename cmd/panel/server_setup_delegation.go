@@ -94,6 +94,13 @@ type serverSetupDelegation struct {
 func serverSetupDelegationExpected(d serverSetupDraft, ipv6 string) []serverSetupDelegationNS {
 	mainIP, backupIP := d.LocalIP, d.PeerIP
 	mainV6, backupV6 := ipv6, ""
+	if serverSetupStandaloneDNS(d) {
+		// One server keeping its own DNS: both names are this server.
+		return []serverSetupDelegationNS{
+			{Name: d.NS1, Server: "main", IPv4: d.LocalIP, IPv6: ipv6, GlueNeeded: serverSetupDNSNameWithin(d.NS1, d.MainDomain)},
+			{Name: d.NS2, Server: "main", IPv4: d.LocalIP, IPv6: ipv6, GlueNeeded: serverSetupDNSNameWithin(d.NS2, d.MainDomain)},
+		}
+	}
 	if d.DNSRole == transport.DNSPairRoleSecondary {
 		mainIP, backupIP, mainV6, backupV6 = d.PeerIP, d.LocalIP, "", ipv6
 	}
@@ -157,7 +164,13 @@ func (p *Panel) checkServerSetupDelegation(ctx context.Context, d serverSetupDra
 		defer cancel()
 		delegation, delegationErr = dnswire.Delegation(walkCtx, d.MainDomain, options)
 	}()
-	servers := make([]serverSetupDelegationServer, len(result.ExpectedNS))
+	asked := []serverSetupDelegationNS{}
+	for _, ns := range result.ExpectedNS {
+		if !slices.ContainsFunc(asked, func(other serverSetupDelegationNS) bool { return other.Server == ns.Server }) {
+			asked = append(asked, ns)
+		}
+	}
+	servers := make([]serverSetupDelegationServer, len(asked))
 	var imported serverSetupDelegationImported
 	importedItem := serverSetupDelegationItem{}
 	wg.Add(1)
@@ -166,7 +179,7 @@ func (p *Panel) checkServerSetupDelegation(ctx context.Context, d serverSetupDra
 		answerCtx, cancel := context.WithTimeout(ctx, serverSetupDelegationBudget)
 		defer cancel()
 		var inner sync.WaitGroup
-		for index, ns := range result.ExpectedNS {
+		for index, ns := range asked {
 			inner.Add(1)
 			go func(index int, ns serverSetupDelegationNS) {
 				defer inner.Done()

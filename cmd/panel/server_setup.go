@@ -249,11 +249,23 @@ func canonicalServerSetupWizardAnswers(d *serverSetupDraft) error {
 	if d.ServerCount < 0 || d.ServerCount > 2 {
 		return errors.New("setup supports one or two servers")
 	}
-	if !stringIn(d.MainDNSServer, "", "this") {
+	if !stringIn(d.MainDNSServer, "", "this", "peer") {
 		return errors.New("invalid main DNS server choice")
 	}
 	if d.MainDomain == "" {
 		return nil
+	}
+	// One server keeping its own DNS is standalone: no peer, both names here.
+	// With two servers the main DNS server is this one or the second one
+	// (alpha.114, Option A): ns1 is always the main, ns2 the backup.
+	if d.DNSMode == setupDNSModeLocal && d.ServerCount == 1 {
+		d.DNSRole, d.PeerIP, d.PeerNS, d.MainDNSServer = transport.DNSPairRolePrimary, "", "", "this"
+		if d.InfrastructureDNS != nil {
+			d.InfrastructureDNS.PeerPanelDomain, d.InfrastructureDNS.PeerMailHostname = "", ""
+		}
+	}
+	if d.DNSMode == setupDNSModeLocal && d.ServerCount == 2 && d.MainDNSServer == "peer" {
+		d.DNSRole = transport.DNSPairRoleSecondary
 	}
 	if d.DNSMode == setupDNSModeLocal && d.DNSRole == transport.DNSPairRolePrimary {
 		selection := serverSetupInfrastructureDNSDraft{Zone: d.MainDomain}

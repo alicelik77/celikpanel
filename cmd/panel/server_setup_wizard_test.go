@@ -325,9 +325,13 @@ func TestServerSetupBuildWizardVersionsAndRefusals(t *testing.T) {
 		t.Fatalf("main DNS server answer without local DNS: %v %v", refused.Blockers, err)
 	}
 	state.Draft.DNSMode, state.Draft.MainDNSServer = "local", ""
+	state.Draft, err = canonicalServerSetupDraft(state.Draft)
+	if err != nil {
+		t.Fatal(err)
+	}
 	local, err := f.panel.buildServerSetupPlan(context.Background(), state, serviceOperationActor{UserID: f.userID})
-	if err != nil || !slices.Contains(local.Blockers, "server_setup_local_dns_requires_two_servers") {
-		t.Fatalf("one server with its own DNS must say why it is refused: %v %v", local.Blockers, err)
+	if err != nil || slices.Contains(local.Blockers, "server_setup_local_dns_requires_two_servers") || slices.Contains(local.Blockers, "server_setup_dns_identity_required") {
+		t.Fatalf("one server keeps its own DNS standalone (alpha.114): %v %v", local.Blockers, err)
 	}
 }
 
