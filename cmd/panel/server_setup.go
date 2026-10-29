@@ -435,7 +435,9 @@ func (p *Panel) completeServerSetupOwned(ctx context.Context, revision int, exec
 		return errServerSetupConflict
 	}
 	if s.Status == "ready" {
-		return nil
+		// Ready here; a backup whose main was not told yet tells it now
+		// (review fix, item 6), then its link side ends.
+		return p.tellMainAndSettleServerSetupLink(ctx, s.Draft)
 	}
 	active, err := p.serverSetupExecutionActive(ctx)
 	if err != nil {
@@ -471,11 +473,6 @@ func (p *Panel) completeServerSetupOwned(ctx context.Context, revision int, exec
 	if !serverSetupChecksReady(checks) {
 		return errors.New("setup prerequisites are not ready")
 	}
-	// The backup of a pair tells the main DNS server first; the main keeps
-	// the link open until then (Beta-1 re-run P7). Not reachable: a wait.
-	if err := p.reportServerSetupReadyToMain(ctx, checked); err != nil {
-		return err
-	}
 	// Recheck ownership in the committing statement: another panel process
 	// may have admitted an execution while readiness was being read.
 	result, err := p.db.GetDB().ExecContext(ctx, `UPDATE server_setup_state SET status='ready',completed_at=?,updated_at=datetime('now')
@@ -498,10 +495,22 @@ func (p *Panel) completeServerSetupOwned(ctx context.Context, revision int, exec
 	if _, err := p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key=?`, settingServerSetupExtensionBase); err != nil {
 		log.Printf("server setup extension base not cleared: %v", err)
 	}
-	// The setup link ends with the setup (alpha.114), except on the main
-	// DNS server while its backup has not reported ready (Beta-1 re-run P7).
-	// A failure is logged; the next completion or a new join removes it.
-	if err := p.settleServerSetupLink(ctx, checked); err != nil {
+	// Durably ready here: only now the backup tells the main DNS server,
+	// and only once it was told does its side of the link end. A report that
+	// fails is the wait "ready here, main not told yet"; the runner (or the
+	// owner's own completion) reports again (review fix, item 6).
+	return p.tellMainAndSettleServerSetupLink(ctx, checked)
+}
+
+// tellMainAndSettleServerSetupLink runs only after this server's setup is
+// ready. The setup link ends with the setup (alpha.114), except on the main
+// DNS server while its backup has not reported ready (Beta-1 re-run P7). A
+// failed settle is logged; the next completion or a new join removes it.
+func (p *Panel) tellMainAndSettleServerSetupLink(ctx context.Context, d serverSetupDraft) error {
+	if err := p.reportServerSetupReadyToMain(ctx, d); err != nil {
+		return err
+	}
+	if err := p.settleServerSetupLink(ctx, d); err != nil {
 		log.Printf("server setup link not revoked: %v", err)
 	}
 	return nil
@@ -635,6 +644,13 @@ func (p *Panel) handleServerSetupComplete(w http.ResponseWriter, r *http.Request
 	if err := p.completeServerSetup(r.Context(), req.Revision); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			writeServerError(w, err)
+			return
+		}
+		// A wait keeps its own reason (review fix, item 9): for example a
+		// backup ready here whose main DNS server was not told yet.
+		var wait *serverSetupPeerWait
+		if errors.As(err, &wait) {
+			writeCodedError(w, http.StatusConflict, wait.Code, wait.Message, "/setup")
 			return
 		}
 		writeCodedError(w, http.StatusConflict, "setup_not_ready", "complete the outstanding setup checks before continuing", "/setup")

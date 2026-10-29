@@ -147,15 +147,39 @@ func TestServerSetupPeerOwnerStopsWaitingForTheSecondServer(t *testing.T) {
 func TestServerSetupPeerBackupWaitsWhenTheMainCannotBeTold(t *testing.T) {
 	pair, plan, second := boundPeerPair(t)
 	completeWithChecks(t, pair.first, pair.plan, pair.execution)
+	listener := pair.second.panel.setupLink.dial
 	joinTestDial(pair.second.panel, func() string { return "127.0.0.1:1" })
 	completeWithChecks(t, pair.second, plan, second)
 	if second.Status != "waiting" || second.Error == nil || second.Error.Code != "server_setup_peer_ready_unreachable" {
 		t.Fatalf("the backup did not wait for the main: %s %+v", second.Status, second.Error)
 	}
-	if state, _ := pair.second.panel.loadServerSetup(context.Background()); state.Status == "ready" {
-		t.Fatal("the backup was marked ready before the main was told")
+	// Review fix (item 6): it reports only once it is durably ready, and
+	// its side of the link stays until the main was told.
+	if state, _ := pair.second.panel.loadServerSetup(context.Background()); state.Status != "ready" {
+		t.Fatalf("the backup reported before it was durably ready: %s", state.Status)
+	}
+	if link, _ := pair.second.panel.readServerSetupLink(context.Background()); link == nil || link.LinkCredential == "" {
+		t.Fatal("the backup ended its link before the main was told")
+	}
+	if view := peerViewOf(t, pair.second); view.PeerSetup != "reporting" {
+		t.Fatalf("the backup's view: %+v", view)
 	}
 	if view := peerViewOf(t, pair.first); view.PeerSetup != "pending" {
 		t.Fatalf("the main's peer view: %+v", view)
+	}
+	// The owner's own completion keeps the wait's reason (item 9).
+	w := httptest.NewRecorder()
+	pair.second.panel.handleServerSetupComplete(w, serviceOperationAdminRequest(t, http.MethodPost, "/api/v1/setup/complete", `{"revision":`+itoaTest(plan.Revision)+`}`, pair.second.userID))
+	if w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), "server_setup_peer_ready_unreachable") {
+		t.Fatalf("manual completion: %d %s", w.Code, w.Body.String())
+	}
+	// The main is reachable again: the next pass tells it and finishes.
+	pair.second.panel.setupLink.dial = listener
+	completeWithChecks(t, pair.second, plan, second)
+	if second.Status != "succeeded" || firstJoinRecord(t, pair).PeerReadyAt == "" {
+		t.Fatalf("after the main was reachable: %s %+v", second.Status, second.Error)
+	}
+	if link, _ := pair.second.panel.readServerSetupLink(context.Background()); link == nil || link.LinkCredential != "" {
+		t.Fatal("the backup kept its side after the main was told")
 	}
 }

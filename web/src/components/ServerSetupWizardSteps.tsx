@@ -246,7 +246,8 @@ export interface SetupPeerView {
     changed?: boolean;
     // The main DNS server, its own setup ready (Beta-1 re-run P7): whether
     // the second server reported its setup ready over the link.
-    peer_setup?: 'pending' | 'ready' | 'retired';
+    // On the backup, "reporting": ready here, the main not told yet.
+    peer_setup?: 'pending' | 'ready' | 'retired' | 'reporting';
 }
 const peerRecord = (item: unknown): item is Record<string, unknown> => !!item && typeof item === 'object' && !Array.isArray(item);
 const peerText = (value: unknown, limit = 253) => typeof value === 'string' && value.length <= limit;
@@ -257,7 +258,7 @@ export function decodeSetupPeerView(value: unknown): SetupPeerView {
     if (code !== undefined && (!peerRecord(code) || !peerText(code.address) || !peerText(code.expires_at, 64) || typeof code.attempts_left !== 'number' || typeof code.used !== 'boolean')) throw invalid();
     if (joined !== undefined && (!peerRecord(joined) || !peerText(joined.ipv4, 64) || !peerText(joined.joined_at, 64))) throw invalid();
     if (value.changed !== undefined && typeof value.changed !== 'boolean') throw invalid();
-    if (value.peer_setup !== undefined && !['pending', 'ready', 'retired'].includes(String(value.peer_setup))) throw invalid();
+    if (value.peer_setup !== undefined && !['pending', 'ready', 'retired', 'reporting'].includes(String(value.peer_setup))) throw invalid();
     if (link !== undefined && (!peerRecord(link) || !peerText(link.address) || !peerText(link.main_domain) || !['first', 'second'].includes(String(link.main_dns_server)) || !peerText(link.ns1) || !peerText(link.ns2)
         || !peerRecord(link.first) || !peerText(link.first.ipv4, 64) || !peerText(link.first.panel_domain) || typeof link.imported !== 'number')) throw invalid();
     return value as unknown as SetupPeerView;
@@ -408,7 +409,7 @@ export function SetupJoinCard({ joinPending = true, finished = false }: { joinPe
     if (finished) {
         const peerSetup = view?.peer_setup;
         if (!peerSetup) return null;
-        if (peerSetup !== 'pending') return <p role="status" className="max-w-2xl text-sm leading-6" data-setup-peer-setup={peerSetup}>{t(peerSetup === 'ready' ? 'setup.v5.peerSetup.ready' : 'setup.v5.peerSetup.retired', { server })}</p>;
+        if (peerSetup !== 'pending') return <p role="status" className="max-w-2xl text-sm leading-6" data-setup-peer-setup={peerSetup}>{t(peerSetup === 'ready' ? 'setup.v5.peerSetup.ready' : peerSetup === 'reporting' ? 'setup.v5.peerSetup.reporting' : 'setup.v5.peerSetup.retired', { server })}</p>;
         return <section aria-labelledby="setup-peer-setup-title" className="max-w-3xl space-y-3" data-setup-peer-setup="pending">
             <h3 id="setup-peer-setup-title" className="sr-only">{t(joined?.short_name ? 'setup.v5.peerSetup.title' : 'setup.v5.peerSetup.titleUnnamed', { server })}</h3>
             <SetupLead title={t(joined?.short_name ? 'setup.v5.peerSetup.title' : 'setup.v5.peerSetup.titleUnnamed', { server })} why={t('setup.v5.peerSetup.why')} who={t('setup.v5.peerSetup.who', { server })} next={t('setup.v5.peerSetup.next', { server })} then={t('setup.v5.peerSetup.then')} />

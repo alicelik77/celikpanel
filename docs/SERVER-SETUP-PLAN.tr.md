@@ -51,7 +51,8 @@ sayılmadan önce yeni bir hedefli VM koşusu gerekir.
   sahip ana sunucuda beklemeyi bırakana kadar (İkinci sunucuyu beklemeyi
   bırak, `POST /api/v1/setup/peer/retire`, onaylı) açık tutar. Bağlantıyı
   ancak o zaman kapatır. Katılma kodu yine ana sunucunun kurulumuyla biter.
-  Yedek sunucu kendini hazır işaretlemeden önce bildirir; ana sunucuya
+  Yedek sunucu kalıcı olarak hazır olduktan sonra bildirir ve ana sunucuya
+  bildirilene kadar bağlantının kendi tarafını tutar (`peer_setup: reporting`); ana sunucuya
   ulaşamazsa bekler (`server_setup_peer_ready_unreachable`) ve kendiliğinden
   yeniden bildirir. Yalnız alındı yanıtı ya da ana sunucunun
   `server_setup_peer_link_ended` yanıtı bildirilmiş sayılır: kapanan taraf kabul

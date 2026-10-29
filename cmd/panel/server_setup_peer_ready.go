@@ -439,11 +439,21 @@ func (p *Panel) serverSetupPeerSetupView(ctx context.Context, view *serverSetupP
 	if err != nil {
 		return err
 	}
-	if state.Status != "ready" || !serverSetupDraftIsMainDNS(state.Draft) {
+	if state.Status != "ready" {
 		return nil
 	}
 	role, err := p.serverSetupOwnLinkRole(ctx)
 	if err != nil || role == "" {
+		return nil
+	}
+	if serverSetupDraftIsBackupDNS(state.Draft) {
+		// Ready here while the main was not told yet: its side is still live.
+		if record, err := p.readServerSetupPeerRecord(ctx, role); err == nil && record.Found && record.Live {
+			view.PeerSetup = "reporting"
+		}
+		return nil
+	}
+	if !serverSetupDraftIsMainDNS(state.Draft) {
 		return nil
 	}
 	record, err := p.readServerSetupPeerRecord(ctx, role)

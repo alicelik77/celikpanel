@@ -1716,3 +1716,16 @@ test('the start confirms only the package-update list the page showed',async()=>
         assert.equal(starts[1].package_updates_digest,'digest-b');
     }finally{await cleanup();}
 });
+
+// Review fix (item 6): the backup ready here whose main was not told yet
+// says so on its completed page.
+test('a ready backup whose main was not told yet says so',async()=>{
+    init('admin',{status:'ready',required:false});const read=fetch;
+    globalThis.fetch=async(url,options)=>url==='/api/v1/setup/peer'?Response.json({role:'second',peer_setup:'reporting'}):read(url,options);
+    try{
+        await mount();
+        await act(async()=>{await new Promise(resolve=>setTimeout(resolve,0));});
+        assert.ok(tree.root.findAllByProps({'data-setup-peer-setup':'reporting'}).length>0,JSON.stringify(tree.toJSON()));
+        assert.ok(JSON.stringify(tree.toJSON()).includes('setup.v5.peerSetup.reporting'));
+    }finally{await cleanup();}
+});

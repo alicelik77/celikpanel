@@ -69,6 +69,7 @@ export const trSetupJoinScreens: Record<SetupJoinScreenKey, string> = {
     "setup.v5.peerSetup.next": "{server} üzerinde kurulumu açıp orada bitirin ya da adını verdiği adımı yeniden deneyin.",
     "setup.v5.peerSetup.then": "İki sunucu da hazır olur; bu sunucu kurulum bağlantısını kendiliğinden kapatır.",
     "setup.v5.peerSetup.ready": "İki sunucu da hazır: {server} kurulumunun bittiğini bildirdi ve kurulum bağlantısı kapandı.",
+    "setup.v5.peerSetup.reporting": "Bu sunucu hazır, ancak ana DNS sunucusuna henüz bildirilmedi; bu sunucu o zamana kadar kurulum bağlantısının kendi tarafını tutar ve kendiliğinden yeniden bildirir. Ana sunucu kısa süreli kapalıysa kimsenin bir şey yapması gerekmez; değilse ana DNS sunucusunun panelinin çalıştığını denetleyin.",
     "setup.v5.peerSetup.retired": "Bu sunucu {server} için beklemeyi bıraktı ve kurulum bağlantısını kapattı.",
     "setup.v5.peerSetup.stop": "İkinci sunucuyu beklemeyi bırak",
     "setup.v5.peerSetup.stopHelp": "Bu, kurulum bağlantısını şimdi kapatır. {server} kurulumunu bitirmediyse artık bu sunucuyla bitiremez. Bunu yalnız o sunucu kurulumunu bitirmeyecekse yapın; örneğin kaldırıldıysa. Bu sunucuda başka hiçbir şey değişmez.",

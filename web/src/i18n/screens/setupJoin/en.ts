@@ -70,6 +70,7 @@ export const enSetupJoinScreens = {
     "setup.v5.peerSetup.next": "Open setup on {server} and finish it there, or try again the step it names.",
     "setup.v5.peerSetup.then": "Both servers are ready; this server then ends the setup link by itself.",
     "setup.v5.peerSetup.ready": "Both servers are ready: {server} reported that its setup finished, and the setup link has ended.",
+    "setup.v5.peerSetup.reporting": "This server is ready, but the main DNS server has not been told yet; this server keeps its side of the setup link until then and reports again by itself. Nobody needs to act if the main is only briefly offline; otherwise check that the main DNS server's panel is running.",
     "setup.v5.peerSetup.retired": "This server stopped waiting for {server} and ended the setup link.",
     "setup.v5.peerSetup.stop": "Stop waiting for the second server",
     "setup.v5.peerSetup.stopHelp": "This ends the setup link now. If {server} has not finished its setup, it can then no longer finish it with this server. Do this only if that server will not finish, for example because it was removed. Nothing else changes on this server.",

@@ -50,8 +50,9 @@ re-run is owed before any is called proven.
   same join: a report for another binding is refused), or until the owner
   stops waiting for it on the main (Stop waiting for the second server, `POST
   /api/v1/setup/peer/retire`, confirmed). Only then does the main end it. The
-  join code still ends with the main's setup. The backup reports before it
-  marks itself ready; when the main cannot be told it waits
+  join code still ends with the main's setup. The backup reports once it is
+  durably ready and keeps its side of the link until the main was told; until
+  then it says so (`peer_setup: reporting`) and waits
   (`server_setup_peer_ready_unreachable`) and reports again by itself. Only an
   acknowledgement or the main's `server_setup_peer_link_ended` counts as told:
   an ended side keeps a keyed hash of the credential it accepted (never the

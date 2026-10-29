@@ -454,7 +454,8 @@ type serverSetupPeerView struct {
 	// PeerSetup (main DNS server, own setup ready; Beta-1 re-run P7):
 	// "pending" while the second server has not reported its setup ready
 	// over the link (the link stays open), "ready" once it has, "retired"
-	// when the owner stopped waiting for it. Empty otherwise.
+	// when the owner stopped waiting for it. On the backup, "reporting": ready
+	// here, the main DNS server not told yet. Empty otherwise.
 	PeerSetup string `json:"peer_setup,omitempty"`
 }
 
