@@ -321,6 +321,11 @@ type serverSetupJoinRecord struct {
 	EnrollmentHash     string                `json:"enrollment_hash,omitempty"`
 	Names              *serverSetupPeerNames `json:"names,omitempty"`
 	NamesAt            string                `json:"names_at,omitempty"`
+	// NamesChanged (Beta-1 fix): the second server sent other names after
+	// this join was bound to a setup run that has not succeeded. The binding
+	// is never rewritten with them: the run waits for a new join
+	// (server_setup_peer_join_changed), and a new code may be created.
+	NamesChanged bool `json:"names_changed,omitempty"`
 }
 
 type serverSetupJoinFirst struct {
@@ -459,7 +464,24 @@ func (p *Panel) serverSetupJoinWaitingPlan(ctx context.Context) (serverSetupPlan
 		return serverSetupPlan{}, nil, err
 	}
 	if binding != nil {
-		return serverSetupPlan{}, nil, errServerSetupJoinBound
+		// A binding belongs to one run. While that run has not succeeded and
+		// its binding went stale (the second server's answers changed, or a
+		// newer join replaced it), a new code is the recovery (Beta-1 P4).
+		var join serverSetupJoinRecord
+		found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join)
+		if err != nil {
+			return serverSetupPlan{}, nil, err
+		}
+		if !found || !serverSetupBindingStale(join, *binding) {
+			return serverSetupPlan{}, nil, errServerSetupJoinBound
+		}
+		unused, err := p.serverSetupBindingUnused(ctx, *execution)
+		if err != nil {
+			return serverSetupPlan{}, nil, err
+		}
+		if !unused {
+			return serverSetupPlan{}, nil, errServerSetupJoinReopen
+		}
 	}
 	return plan, execution, nil
 }
@@ -475,6 +497,7 @@ func serverSetupPlanHasStep(plan serverSetupPlan, kind string) bool {
 
 var errServerSetupJoinNotWaiting = errors.New("this server's setup is not waiting for a second server")
 var errServerSetupJoinBound = errors.New("the second server is already bound to this setup")
+var errServerSetupJoinReopen = errors.New("the second server's earlier answers were already used by this setup run")
 
 // --- rate limit ------------------------------------------------------------
 
@@ -532,11 +555,19 @@ func (p *Panel) handleServerSetupJoinCodes(w http.ResponseWriter, r *http.Reques
 	defer joinLock.Unlock()
 	plan, _, err := p.serverSetupJoinWaitingPlan(r.Context())
 	if errors.Is(err, errServerSetupJoinNotWaiting) {
+		if finished, findErr := p.serverSetupSucceededPeerBinding(r.Context()); findErr == nil && finished != nil {
+			writeCodedError(w, http.StatusConflict, "server_setup_join_finished", "This server's setup finished with its second server joined. Joining a second server again after a finished setup is not available in this release.", "/setup")
+			return
+		}
 		writeCodedError(w, http.StatusConflict, "server_setup_join_not_waiting", "Create the code once this server's setup has started and waits for the second server.", "/setup")
 		return
 	}
 	if errors.Is(err, errServerSetupJoinBound) {
 		writeCodedError(w, http.StatusConflict, "server_setup_join_bound", "The second server is already part of this setup; no new code is needed.", "/setup")
+		return
+	}
+	if errors.Is(err, errServerSetupJoinReopen) {
+		writeCodedError(w, http.StatusConflict, "server_setup_join_reopen_required", serverSetupPeerJoinReopenMessage, "/setup")
 		return
 	}
 	if err != nil {
@@ -1108,16 +1139,39 @@ func (p *Panel) handleServerSetupPeerNames(w http.ResponseWriter, r *http.Reques
 		stored = &opened
 	}
 	if stored != nil && !serverSetupPeerNamesEqual(*stored, names) {
+		// After a run with this join succeeded there is no path to other
+		// names in this release; before, the join is marked changed and the
+		// first server's run waits for a new join (Beta-1 P4).
+		if finished, err := p.serverSetupSucceededPeerBinding(ctx); err != nil {
+			writeServerError(w, err)
+			return
+		} else if finished != nil && finished.JoinRequestID == join.RequestID {
+			writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_names_final", "The first server's setup finished with this server's earlier answers. Changing them after a finished setup is not available in this release; keep the earlier answers in this server's plan.", nil)
+			return
+		}
 		if execution, err := p.latestServerSetupExecution(ctx); err == nil && execution != nil {
 			if latest, err := p.loadServerSetupPlan(ctx, execution.PlanID); err == nil {
-				if binding, err := p.readServerSetupPeerBinding(ctx, latest, execution.ID); err == nil && binding != nil {
-					writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_names_bound", "The first server's setup already uses the second server's earlier names. Keep those names, or reopen the first server's plan.", nil)
+				if binding, err := p.readServerSetupPeerBinding(ctx, latest, execution.ID); err == nil && binding != nil && binding.JoinRequestID == join.RequestID {
+					if !join.NamesChanged {
+						join.NamesChanged = true
+						if err := writeServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, join); err != nil {
+							writeServerError(w, err)
+							return
+						}
+						p.audit(r, "server.setup.peer_names_changed", "", 0)
+						p.wakeServerSetupRunner()
+					}
+					writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_names_bound", "The first server already uses this server's earlier answers. Create a new join code on the first server and enter it here; setup then continues with these answers.", nil)
 					return
 				}
 			}
 		}
 	}
 	same := stored != nil && serverSetupPeerNamesEqual(*stored, names)
+	if same {
+		// The earlier names again: the binding is consistent once more.
+		join.NamesChanged = false
+	}
 	sealed, err := p.sealServerSetupSecret(names.ReverseCredential)
 	if err != nil {
 		writeServerError(w, err)

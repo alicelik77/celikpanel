@@ -83,6 +83,8 @@ export const enSetupJoinScreens = {
     "setup.v5.card.readFailed": "The join state could not be read just now; it is read again by itself.",
     "setup.v5.card.error.server_setup_join_not_waiting": "A code can be created only while this setup waits for the second server.",
     "setup.v5.card.error.server_setup_join_bound": "The second server is already part of this setup; no code is needed.",
+    "setup.v5.card.error.server_setup_join_reopen_required": "The second server's earlier answers were already used by this setup run. Reopen this server's plan and start it again, then create a new code here.",
+    "setup.v5.card.error.server_setup_join_finished": "This server's setup finished with its second server joined. Joining a second server again after a finished setup is not available in this release.",
     "setup.v5.card.error.server_setup_join_certificate_unavailable": "This panel does not serve a valid certificate of its own on its IP address (its self-signed panel certificate is missing, damaged or expired), and the other server checks exactly that key, so it cannot be paired by code. The server owner restores the panel's own certificate (panel.crt and panel.key in the panel's tls folder, for example from a backup) and restarts the panel; then try again.",
     "setup.v5.card.error.other": "The code could not be created. Nothing was changed; try again.",
     "setup.v5.blocker.answersChanged": "The shared answers (main domain, DNS servers, nameserver names) must stay as the first server gave them. To change them, change the first server's plan and join again.",

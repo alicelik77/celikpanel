@@ -82,6 +82,8 @@ export const trSetupJoinScreens: Record<SetupJoinScreenKey, string> = {
     "setup.v5.card.readFailed": "Katılma durumu şu an okunamadı; kendiliğinden yeniden okunur.",
     "setup.v5.card.error.server_setup_join_not_waiting": "Kod yalnız bu kurulum ikinci sunucuyu beklerken oluşturulabilir.",
     "setup.v5.card.error.server_setup_join_bound": "İkinci sunucu zaten bu kurulumun parçası; kod gerekmez.",
+    "setup.v5.card.error.server_setup_join_reopen_required": "İkinci sunucunun önceki yanıtları bu kurulum çalışmasında kullanıldı. Bu sunucunun planını yeniden açıp başlatın, sonra burada yeni bir kod oluşturun.",
+    "setup.v5.card.error.server_setup_join_finished": "Bu sunucunun kurulumu ikinci sunucu katılmış olarak tamamlandı. Tamamlanmış kurulumdan sonra ikinci sunucuyu yeniden katmak bu sürümde yok.",
     "setup.v5.card.error.server_setup_join_certificate_unavailable": "Bu panel kendi IP adresinde geçerli bir sertifika sunmuyor (kendinden imzalı panel sertifikası eksik, bozuk ya da süresi dolmuş); diğer sunucu tam bu anahtarı denetlediği için kodla eşleştirme yapılamaz. Sunucu sahibi panelin kendi sertifikasını geri koyar (panelin tls klasöründeki panel.crt ve panel.key, örneğin yedekten) ve paneli yeniden başlatır; sonra yeniden deneyin.",
     "setup.v5.card.error.other": "Kod oluşturulamadı. Hiçbir şey değişmedi; yeniden deneyin.",
     "setup.v5.blocker.answersChanged": "Ortak yanıtlar (ana alan adı, DNS sunucuları, ad sunucusu adları) ilk sunucunun verdiği gibi kalmalı. Değiştirmek için ilk sunucunun planını değiştirip yeniden katılın.",

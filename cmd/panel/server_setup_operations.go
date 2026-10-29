@@ -1091,6 +1091,20 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 	if err != nil {
 		return false, err
 	}
+	if plan.peerBound && execution.Status != "succeeded" {
+		wait, unbound, err := p.reconcileServerSetupStaleBinding(ctx, reviewed, execution)
+		if err != nil {
+			return false, err
+		}
+		if wait != nil {
+			execution.Status, execution.Phase = "waiting", "peer_join"
+			execution.Error = &serviceOperationError{Code: wait.Code, Message: wait.Message}
+			return false, p.persistServerSetupExecution(ctx, *execution)
+		}
+		if unbound {
+			plan = reviewed
+		}
+	}
 	if execution.Status == "waiting" && stringIn(execution.Phase, "primary_dns", "infrastructure_dns", "access_dns") {
 		if err := p.claimServerSetupDNSRetry(ctx, plan, execution); err != nil {
 			return false, err

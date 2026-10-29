@@ -144,6 +144,11 @@ func (p *Panel) runServerSetupPeerJoin(ctx context.Context, plan serverSetupPlan
 	if join.Digest != serverSetupJoinDocumentDigest(serverSetupJoinDocumentFor(plan.Draft)) {
 		return false, &serverSetupPeerWait{Code: "server_setup_peer_join_changed", Message: "This server's answers changed after the second server joined. Create a new join code here and join the second server again."}
 	}
+	if join.NamesChanged {
+		// The stored names are the ones the second server replaced: binding
+		// them would bind answers it no longer has (Beta-1 P4).
+		return false, serverSetupPeerJoinChangedWait()
+	}
 	if join.Names == nil {
 		return false, &serverSetupPeerWait{Code: "server_setup_peer_names_waiting", Message: "The second server joined; waiting for its own setup to start, which sends its names here."}
 	}
@@ -181,6 +186,116 @@ func (p *Panel) runServerSetupPeerJoin(ctx context.Context, plan serverSetupPlan
 		return false, errors.Join(errors.New("second server binding was not saved"), err)
 	}
 	return true, nil
+}
+
+// The second server's answers changed after a run bound them (Beta-1 P4):
+// who acts is the owner, the next action is a new join code here entered on
+// the second server, and setup then continues by itself.
+const serverSetupPeerJoinChangedMessage = "The second server's answers changed after it joined this setup. Create a new join code here and enter it on the second server; setup then continues by itself."
+
+// serverSetupPeerJoinReopenMessage: the same change after this run already
+// went on with the earlier answers: the run cannot take new ones.
+const serverSetupPeerJoinReopenMessage = "The second server's answers changed after this setup run already used them. Reopen this server's plan and start it again; then create a new join code here and enter it on the second server."
+
+func serverSetupPeerJoinChangedWait() *serverSetupPeerWait {
+	return &serverSetupPeerWait{Code: "server_setup_peer_join_changed", Message: serverSetupPeerJoinChangedMessage}
+}
+
+// serverSetupBindingStale: the join a run was bound to was replaced by a
+// newer one, or the second server sent other names after the binding.
+func serverSetupBindingStale(join serverSetupJoinRecord, binding serverSetupPeerBinding) bool {
+	return join.RequestID != binding.JoinRequestID || join.NamesChanged
+}
+
+// serverSetupBindingUnused: nothing after the run's join step has used the
+// binding yet. Every later step is still pending, or is the DNS step waiting
+// for the main DNS server before its install began (no DNS child exists).
+func (p *Panel) serverSetupBindingUnused(ctx context.Context, execution serverSetupExecution) (bool, error) {
+	after := false
+	for _, step := range execution.Steps {
+		if step.Kind == "peer_join" {
+			after = true
+			continue
+		}
+		if !after || step.Status == "pending" {
+			continue
+		}
+		if step.Kind == "dns" && step.Status == "running" {
+			status, err := p.serverSetupDNSOperationStatus(ctx, step.RequestID)
+			if err != nil {
+				return false, err
+			}
+			if status == "missing" {
+				continue
+			}
+		}
+		return false, nil
+	}
+	return after, nil
+}
+
+// serverSetupSucceededPeerBinding is the binding of a setup run that
+// succeeded, if any: after it, a second server's answers are final.
+func (p *Panel) serverSetupSucceededPeerBinding(ctx context.Context) (*serverSetupPeerBinding, error) {
+	var raw string
+	err := p.db.GetDB().QueryRowContext(ctx, `SELECT s.value FROM panel_settings s JOIN server_setup_executions e ON s.key='server_setup_peer_binding:'||e.id
+		WHERE e.status='succeeded' ORDER BY e.updated_at DESC, e.id DESC LIMIT 1`).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var binding serverSetupPeerBinding
+	if err := json.Unmarshal([]byte(raw), &binding); err != nil || !validServiceOperationID(binding.ExecutionID) {
+		return nil, errors.New("saved second server binding is invalid")
+	}
+	return &binding, nil
+}
+
+// reconcileServerSetupStaleBinding handles a run whose binding went stale
+// before the run succeeded: it waits for the owner's new join, or, once a
+// newer join replaced the one it was bound to and nothing used the binding,
+// it unbinds and runs its join step again with the new join. A run that
+// already used the binding is told to be reopened. Reading changes nothing
+// unless the newer join is there (D-024: polling never mutates otherwise).
+func (p *Panel) reconcileServerSetupStaleBinding(ctx context.Context, reviewed serverSetupPlan, execution *serverSetupExecution) (*serverSetupPeerWait, bool, error) {
+	joinLock := p.serverSetupJoinLock()
+	joinLock.Lock()
+	defer joinLock.Unlock()
+	binding, err := p.readServerSetupPeerBinding(ctx, reviewed, execution.ID)
+	if err != nil || binding == nil {
+		return nil, false, err
+	}
+	var join serverSetupJoinRecord
+	found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join)
+	if err != nil || !found || !serverSetupBindingStale(join, *binding) {
+		return nil, false, err
+	}
+	unused, err := p.serverSetupBindingUnused(ctx, *execution)
+	if err != nil {
+		return nil, false, err
+	}
+	if !unused {
+		return &serverSetupPeerWait{Code: "server_setup_peer_join_reopen_required", Message: serverSetupPeerJoinReopenMessage}, false, nil
+	}
+	if join.RequestID == binding.JoinRequestID {
+		return serverSetupPeerJoinChangedWait(), false, nil
+	}
+	// A newer join is here: this run's unused binding is withdrawn and its
+	// join step binds the new join (or waits for its names).
+	for index := range execution.Steps {
+		if execution.Steps[index].Kind == "peer_join" {
+			execution.Steps[index].Status = "running"
+		}
+	}
+	if err := p.persistServerSetupExecution(ctx, *execution); err != nil {
+		return nil, false, err
+	}
+	if _, err := p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key=?`, serverSetupPeerBindingKey(execution.ID)); err != nil {
+		return nil, false, err
+	}
+	return nil, true, nil
 }
 
 // serverSetupPeerJoinSteps orders a joined plan: the components that need

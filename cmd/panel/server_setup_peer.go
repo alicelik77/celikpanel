@@ -597,6 +597,11 @@ func (p *Panel) runServerSetupPeerNames(ctx context.Context, plan serverSetupPla
 		return false, serverSetupPeerVersionWait()
 	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_link_unauthorized":
 		return false, serverSetupPeerLinkRevoked(true)
+	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_names_bound":
+		// Recoverable (Beta-1 P4): the first server waits for a new join.
+		return false, &serverSetupChildFailure{Code: refusal.Code, Message: "The first server already uses this server's earlier answers. Create a new join code on the first server, enter it here in the join step, then review and start this server's plan again; setup then continues with these answers."}
+	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_names_final":
+		return false, &serverSetupChildFailure{Code: refusal.Code, Message: "The first server's setup finished with this server's earlier answers. Changing them after a finished setup is not available in this release; keep the earlier answers in this server's plan."}
 	case errors.As(callErr, &refusal):
 		return false, &serverSetupChildFailure{Code: refusal.Code, Message: "The first server refused this server's names (" + refusal.Code + "). Change the names in this server's plan, or check the first server's setup."}
 	case errors.Is(callErr, errServerSetupLinkUnreachable), errors.Is(callErr, errServerSetupLinkPinMismatch):

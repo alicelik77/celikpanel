@@ -365,7 +365,7 @@ export function SetupJoinCard() {
                 setMade({ code: body.code, address: body.address, expires_at: body.expires_at, attempts_left: body.attempts_left });
             } else {
                 const coded = peerRecord(body) && typeof body.code === 'string' ? body.code : '';
-                setProblem(['server_setup_join_not_waiting', 'server_setup_join_bound', 'server_setup_join_certificate_unavailable'].includes(coded) ? t(`setup.v5.card.error.${coded}` as TranslationKey) : t('setup.v5.card.error.other'));
+                setProblem(['server_setup_join_not_waiting', 'server_setup_join_bound', 'server_setup_join_reopen_required', 'server_setup_join_finished', 'server_setup_join_certificate_unavailable'].includes(coded) ? t(`setup.v5.card.error.${coded}` as TranslationKey) : t('setup.v5.card.error.other'));
             }
         } catch {
             setProblem(t('setup.v5.card.error.other'));
