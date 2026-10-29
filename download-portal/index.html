@@ -59,12 +59,13 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 <p class="alpha-note"><span data-en="Free during alpha. Not yet ready for production use." >Alfa boyunca ücretsiz. Üretim kullanımı için henüz hazır değil.</span></p>
 <p><a data-en="Create an account and get your free annual license" href="/account/?action=register">Üye olun ve ücretsiz yıllık lisansınızı alın</a></p>
 <ol class="install-steps"><li><span data-en="Get a free license for this server from your account. Each server needs its own license." >Hesabınızdan bu sunucu için ücretsiz bir lisans alın. Her sunucunun kendi lisansı olur.</span></li><li><span data-en="Prepare a clean, supported Linux server." >Desteklenen, temiz bir Linux sunucusu hazırlayın.</span></li><li><span data-en="Run the command in your server’s root terminal." >Komutu sunucunuzun root terminalinde çalıştırın.</span></li><li><span data-en="Sign in at the panel address shown by the installer. The setup wizard opens." >Kurucunun gösterdiği adresle panele giriş yapın. Kurulum sihirbazı açılır.</span></li></ol>
-<p class="setup-tip"><span data-en="The server’s clock must be set automatically, or certificates cannot be issued. Turn it on with:" >Sunucunun saati otomatik ayarlı olmalı; yoksa sertifika alınamaz. Açmak için:</span> <code>timedatectl set-ntp true</code></p>
+<p class="setup-tip"><span data-en="The first line sets the server’s clock automatically; with a wrong clock, certificates cannot be issued." >İlk satır sunucunun saatini otomatik ayara alır; saat yanlışsa sertifika alınamaz.</span></p>
 <p data-en="Already installed? Update from inside your panel." class="existing-install">Zaten kurulu mu? Güncellemeyi panel içinden yapın.</p>
 </div><div class="install-workspace"><div class="command-stack">
-<p class="install-instruction" data-en="Run both lines together in your server’s root terminal.">İki satırı birlikte sunucunuzun root terminalinde çalıştırın.</p>
+<p class="install-instruction" data-en="Run all three lines together in your server’s root terminal.">Üç satırı birlikte sunucunuzun root terminalinde çalıştırın.</p>
 <article class="command-card"><div class="command-head"><h3 data-en="Installation command" >Kurulum komutu</h3><button class="copy-button" type="button" data-copy="latest-command" aria-label="Standart kurulum komutunu kopyala"><span data-copy-label>Kopyala</span></button></div>
-<pre tabindex="0"><code id="latest-command">curl -fL --proto '=https' -o celikpanel-install.sh https://celikpanel.net/get.sh &amp;&amp;
+<pre tabindex="0"><code id="latest-command">timedatectl set-ntp true
+curl -fL --proto '=https' -o celikpanel-install.sh https://celikpanel.net/get.sh &amp;&amp;
 sh celikpanel-install.sh</code></pre></article>
 <p class="sr-only" id="copy-status" aria-live="polite"></p>
 </div><aside class="release-panel" id="surum" aria-labelledby="latest-title" aria-busy="true"><div class="release-top"><div><p data-en="Current alpha release" class="release-label">Güncel alfa sürümü</p><h3 id="latest-title"><span id="release-version" aria-live="polite">Yükleniyor…</span></h3></div><span class="release-ready"><i aria-hidden="true"></i><span id="release-status">Manifest okunuyor</span></span></div>
