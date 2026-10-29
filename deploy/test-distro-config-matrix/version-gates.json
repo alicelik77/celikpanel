@@ -1,0 +1,149 @@
+{
+  "comment": "Version-gated configuration syntax. internal/configmatrix/gates_test.go fails when a generator or template emits a gated directive without a version switch while a release in versions/*.json ships a program version outside the gate. 'guard' is a regex that, found within guard_window lines before the use, marks it as switched; 'guard_elsewhere' marks every use as switched when that file contains that pattern (a host-version gate enforced in code). 'accepted' documents a deliberate exception (the program ignores the line on older versions and that is intended). 'known_violations' lists files with a reported, not-yet-fixed violation: the test then logs instead of failing, and fails once the violation is gone so the entry is removed.",
+  "gates": [
+    {
+      "id": "nginx-http2-directive",
+      "program": "nginx",
+      "min": "1.25.1",
+      "pattern": "^\\s*http2\\s+on\\s*;",
+      "files": [
+        "internal/services/templates/nginx/vhost.conf.tmpl",
+        "cmd/agent/*.go"
+      ],
+      "guard": "\\{\\{-?\\s*if\\s[^}]*(?i:http2)",
+      "note": "nginx < 1.25.1: [emerg] unknown directive \"http2\". Older form: listen 443 ssl http2;",
+      "known_violations": [
+        "internal/services/templates/nginx/vhost.conf.tmpl"
+      ]
+    },
+    {
+      "id": "nginx-listen-quic",
+      "program": "nginx",
+      "min": "1.25.0",
+      "pattern": "listen\\s+[^;]*\\bquic\\b",
+      "files": [
+        "internal/services/templates/nginx/vhost.conf.tmpl",
+        "cmd/agent/*.go"
+      ],
+      "guard": "\\{\\{-?\\s*if\\s[^}]*(?i:quic|http3)"
+    },
+    {
+      "id": "nginx-ssl-reject-handshake",
+      "program": "nginx",
+      "min": "1.19.4",
+      "pattern": "ssl_reject_handshake",
+      "files": [
+        "internal/services/templates/nginx/vhost.conf.tmpl",
+        "cmd/agent/*.go"
+      ]
+    },
+    {
+      "id": "systemd-restart-steps",
+      "program": "systemd",
+      "min": "254",
+      "pattern": "^(RestartSteps|RestartMaxDelaySec)=",
+      "files": [
+        "deploy/systemd/*.service",
+        "internal/firewallruntime/*.service",
+        "internal/mailrenewalkit/renewal.*"
+      ],
+      "accepted": "deploy/systemd/celikpanel-agent.service:18-27: older systemd ignores both keys and the unit's StartLimit* bound still trips; systemd-analyze reports them as unknown keys there."
+    },
+    {
+      "id": "systemd-exec-condition",
+      "program": "systemd",
+      "min": "243",
+      "pattern": "ExecCondition=",
+      "files": [
+        "deploy/*.sh",
+        "deploy/systemd/*"
+      ]
+    },
+    {
+      "id": "postfix-tls-protocols-ge-syntax",
+      "program": "postfix",
+      "min": "3.6",
+      "pattern": ">=TLSv1\\.2",
+      "files": [
+        "internal/mailtlsconfig/*.go",
+        "cmd/agent/*.go"
+      ]
+    },
+    {
+      "id": "postfix-tls-server-sni-maps",
+      "program": "postfix",
+      "min": "3.4",
+      "pattern": "tls_server_sni_maps",
+      "files": [
+        "internal/mailtlsconfig/*.go",
+        "cmd/agent/mail_tls_rpc.go"
+      ]
+    },
+    {
+      "id": "dovecot-24-settings",
+      "program": "dovecot",
+      "min": "2.4.0",
+      "pattern": "ssl_server_cert_file|ssl_server_key_file|mail_driver\\s*=|passwd_file_path",
+      "files": [
+        "internal/mailtlsconfig/*.go",
+        "cmd/agent/dovecot_dialect.go"
+      ],
+      "guard": "is24|if modern|dialect",
+      "guard_window": 40
+    },
+    {
+      "id": "dovecot-23-settings-removed-in-24",
+      "program": "dovecot",
+      "max_exclusive": "2.4.0",
+      "pattern": "ssl_cert = <|ssl_key = <|mail_location\\s*=|default_fields\\s*=|args\\s*=\\s*scheme=",
+      "files": [
+        "internal/mailtlsconfig/*.go",
+        "cmd/agent/dovecot_dialect.go"
+      ],
+      "guard": "is24|dialect",
+      "guard_window": 40
+    },
+    {
+      "id": "bind-primaries-keyword",
+      "program": "bind",
+      "min": "9.16.12",
+      "pattern": "primaries\\s*\\{|default-primaries",
+      "files": [
+        "internal/binddns/*.go",
+        "cmd/agent/dns_engine_bind_*.go"
+      ]
+    },
+    {
+      "id": "pdns-primary-secondary-names",
+      "program": "powerdns",
+      "min": "4.5.0",
+      "pattern": "\\b(primary|secondary|autosecondary)=yes",
+      "files": [
+        "internal/pdnsmanagedconf/*.go",
+        "cmd/agent/dns_cluster_rpc.go"
+      ]
+    },
+    {
+      "id": "pdns-catalog-zones",
+      "program": "powerdns",
+      "min": "4.7.0",
+      "pattern": "'PRODUCER'|'CONSUMER'",
+      "files": [
+        "cmd/agent/dns_engine_pdns_catalog.go"
+      ],
+      "guard_elsewhere": {
+        "file": "internal/dnsengineartifact/pdns_tested_series.go",
+        "pattern": "\"4\\.9\""
+      }
+    },
+    {
+      "id": "openssh-pubkey-accepted-algorithms",
+      "program": "openssh",
+      "min": "8.5",
+      "pattern": "PubkeyAcceptedAlgorithms",
+      "files": [
+        "internal/dnspeerenrollowner/*.go"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+# Failures the matrix has found and that are reported but not yet fixed.
+# deploy/test-distro-config-matrix.sh exits non-zero for any FAIL or
+# RENDER-FAILED that is NOT listed here, and for an entry here that no longer
+# fails (remove it in the change that fixes it). Every entry names the finding.
+#
+# Columns: release-glob  case-id  status  finding
