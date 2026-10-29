@@ -75,6 +75,7 @@ kanıtlanmış sayılmadan önce yeni bir hedefli VM koşusu gerekir.
   söylüyordu. Bağlantının İngilizce ve Türkçe metinleri artık "katılma kodunu
   oluşturan sunucu", "öteki sunucu" ya da "ana DNS sunucusu" der; kapanan
   bağlantı iletisi her tarafa yeni kodun nerede oluşturulacağını söyler.
+Yanıtı kaybolan bir sertifika adımı da yetkiliden geri kalan saati söyler: alt işin kaydı saat kodunu ve cümlesini tutar; panel ve posta sertifikası adımları kaydı yeniden okurken bunu tekrar eşler.
 
 ## 29 Ekim ek kararı: hedefli Beta-1 yeniden koşusunun düzeltmeleri (alpha.115 kaynağı)
 

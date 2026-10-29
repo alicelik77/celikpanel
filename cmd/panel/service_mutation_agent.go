@@ -506,6 +506,11 @@ func standaloneAgentMutationFailure(
 			cause,
 		)
 	}
+	// A certificate child that failed on the clock records that reason in
+	// its job (review fix, item 8).
+	if failure, ok := certificateClockSkewOperationFailure(callErr); ok {
+		return failure
+	}
 	message := "The privileged host operation did not complete."
 	if named := namedHostOperationSentence(callErr); named != "" {
 		message = named

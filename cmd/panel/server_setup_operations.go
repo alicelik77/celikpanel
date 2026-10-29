@@ -2226,6 +2226,11 @@ func (p *Panel) runServerSetupMailCertificate(ctx context.Context, plan serverSe
 		if agentMutationActive(job.Status) {
 			return false, nil
 		}
+		// The reply was lost: the job's recorded reason still says a clock
+		// behind the authority (review fix, item 8).
+		if skew, ok := certificateClockSkewRecorded(job.ErrorCode, job.ErrorMessage); ok {
+			return false, &serverSetupChildFailure{Code: certificateClockSkewCode, Message: skew.message()}
+		}
 		return false, errors.New("mail host certificate operation failed; review a new attempt")
 	}
 	if err := p.requireServerSetupAdmission(ctx); err != nil {

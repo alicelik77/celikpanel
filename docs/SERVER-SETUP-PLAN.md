@@ -77,6 +77,7 @@ targeted VM re-run is owed before any is called proven.
   server". The link's texts in English and Turkish now say "the server that
   created the join code", "the other server" or "the main DNS server", and
   the ended-link message tells each side where the new code is made.
+A certificate step whose reply was lost still names a clock behind the authority: the child's job records the clock code and sentence, and both the panel certificate and the mail certificate steps map it again when they read the job back.
 
 ## October 29 follow-up: fixes from the targeted Beta-1 re-run (alpha.115 source)
 

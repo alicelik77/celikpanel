@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"regexp"
 	"strconv"
 )
 
@@ -33,10 +34,49 @@ func certificateClockSkewFrom(err error) (certificateClockSkewError, bool) {
 	if errors.As(err, &skew) && skew.Seconds > 0 {
 		return *skew, true
 	}
-	// A terminal certificate child keeps the call's own error as its cause.
+	// A terminal certificate child keeps the call's own error as its cause,
+	// or, read back after a lost reply, the code its job recorded.
 	var child *panelCertificateChildTerminalFailure
-	if errors.As(err, &child) && child.cause != nil && errors.As(child.cause, &skew) && skew.Seconds > 0 {
-		return *skew, true
+	if errors.As(err, &child) {
+		if child.cause != nil && errors.As(child.cause, &skew) && skew.Seconds > 0 {
+			return *skew, true
+		}
+		return certificateClockSkewRecorded(child.code, child.message)
+	}
+	var failure *serverSetupChildFailure
+	if errors.As(err, &failure) {
+		return certificateClockSkewRecorded(failure.Code, failure.Message)
 	}
 	return certificateClockSkewError{}, false
+}
+
+var certificateClockSkewSeconds = regexp.MustCompile(`^This server's clock is ([0-9]{1,8}) seconds behind`)
+
+// certificateClockSkewRecorded reads the reason back from a job's recorded
+// code and the panel-authored sentence (review fix, item 8: a lost reply
+// kept only the job). The sentence is made again from the seconds alone.
+func certificateClockSkewRecorded(code, message string) (certificateClockSkewError, bool) {
+	if code != certificateClockSkewCode {
+		return certificateClockSkewError{}, false
+	}
+	match := certificateClockSkewSeconds.FindStringSubmatch(message)
+	if match == nil {
+		return certificateClockSkewError{}, false
+	}
+	seconds, err := strconv.Atoi(match[1])
+	if err != nil || seconds <= 0 {
+		return certificateClockSkewError{}, false
+	}
+	return certificateClockSkewError{Seconds: seconds}, true
+}
+
+// certificateClockSkewOperationFailure: the code and sentence a certificate
+// child's job records when its call failed on the clock, so a later read of
+// the job (after a lost reply) still says it.
+func certificateClockSkewOperationFailure(err error) (*serviceOperationFailure, bool) {
+	skew, ok := certificateClockSkewFrom(err)
+	if !ok {
+		return nil, false
+	}
+	return operationFailure(certificateClockSkewCode, skew.message(), err), true
 }
