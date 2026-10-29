@@ -352,6 +352,10 @@ func (a *Agent) IssuePanelCertificateV2(
 			"issue and publish panel certificate: %v",
 			errors.Join(publishErr, cleanupErr),
 		)
+		// The clock reason, coded, reaches the step (N2).
+		if seconds, ok := issuedCertificateClockSkew(publishErr); ok {
+			resp.ErrorCode, resp.ClockSkewSeconds = transport.CertificateClockSkewErrorCode, seconds
+		}
 		return nil
 	}
 	wakePanelCertificateActivationReconciler()

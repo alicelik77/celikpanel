@@ -34,6 +34,16 @@ kanıtlanmış sayılmadan önce yeni bir hedefli VM koşusu gerekir.
   çalışma aynı kodla bekler: başka bir işlem sürerken hiçbir şey oluşturulmaz,
   Agent'ın kabulde reddettiği (hiçbir şey çalışmamış) alt işlem yeni bir alt
   kimlikle en çok 30 kez yeniden sorulur.
+- **Sertifika yetkilisinin gerisindeki saat her sertifika için söylenir.**
+  Saat 200 sn geriyken panel sertifikası adımı yalnız
+  `panel_certificate_issue_failed`, hiç beklemesi olmayan posta sertifikası
+  ise genel `server_setup_step_failed` dedi. Artık ortak bir Agent işlevi,
+  kurulumun verdiği her sertifikanın (panel ve posta sunucusu) bu saate göre
+  geçerli olmasını en çok iki dakika bekler; daha büyük sapma saniyesiyle
+  kodlanıp işlemden adıma taşınır: `server_setup_certificate_clock_skew`
+  (saat N saniye geride; siz, sunucu sahibi: saat eşitlemesini açın,
+  `timedatectl set-ntp true`, ya da saati düzeltin; sonra yeniden vermek için
+  düzeltilmiş planı inceleyin).
 
 ## 29 Ekim ek kararı: hedefli Beta-1 yeniden koşusunun düzeltmeleri (alpha.115 kaynağı)
 

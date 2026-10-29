@@ -438,6 +438,8 @@ export const enSetupScreens = {
     "setup.reviseBlocked": "The plan cannot be edited yet. A server operation may still be running; reconnect and check its result.",
     "setup.blocker.ssh": "The server could not verify a working SSH access port. Restore management access before applying the firewall.",
     "setup.blocker.installedDiffers": "This server already runs the DNS software an earlier run of this setup installed, and this plan names another one or another role or address. Setup never replaces it: choose that DNS software (and the same names) in the plan, or change it first in Server → DNS.",
+    "setup.blocker.clockSkew": "This server's clock is {seconds} seconds behind the certificate authority's, so the certificate it just issued is not valid yet here and was not put to use. Nothing else was changed. You, the owner: turn on time synchronisation (timedatectl set-ntp true) or correct the clock; then choose Review a revised plan to issue it again.",
+    "setup.blocker.clockSkewUnknown": "This server's clock is behind the certificate authority's, so the certificate it just issued is not valid yet here and was not put to use. You, the owner: turn on time synchronisation (timedatectl set-ntp true) or correct the clock; then choose Review a revised plan to issue it again.",
     "setup.blocker.migration": "Existing DNS ownership differs from this plan. Review Server → DNS and peer servers and use a supported migration before changing it.",
     "setup.nodeChoose": "Choose a Node.js version",
     "setup.nodeUnavailable": "The Node.js release list could not be loaded.",

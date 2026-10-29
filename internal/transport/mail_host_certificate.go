@@ -14,8 +14,17 @@ type IssueMailHostCertificateRequest struct {
 type IssueMailHostCertificateResponse struct {
 	Issued    bool      `json:"issued"`
 	ExpiresAt time.Time `json:"expires_at"`
-	Error     string    `json:"error,omitempty"`
+	// ErrorCode / ClockSkewSeconds: CertificateClockSkewErrorCode when the
+	// issued leaf is not valid yet by this server's clock (additive).
+	ErrorCode        string `json:"error_code,omitempty"`
+	ClockSkewSeconds int    `json:"clock_skew_seconds,omitempty"`
+	Error            string `json:"error,omitempty"`
 }
+
+// CertificateClockSkewErrorCode: a certificate the setup issued is not valid
+// yet by this server's clock (the clock is behind the authority's). Shared by
+// every certificate the setup issues (Beta-1 third re-run N2/N4).
+const CertificateClockSkewErrorCode = "certificate_clock_skew"
 
 type MailHostCertificateStatusRequest struct {
 	Domain string `json:"domain"`

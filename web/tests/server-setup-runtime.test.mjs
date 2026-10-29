@@ -1748,3 +1748,20 @@ test('a start refused because another change runs keeps the review with its reas
         assert.ok(findButton('setup.start'),'still on the review');
     }finally{await cleanup();}
 });
+
+// Beta-1 third re-run N2/N4: a clock behind the certificate authority is said
+// with its own sentence, not the generic certificate failure.
+test('a certificate step stopped by a clock behind the authority says so',async()=>{
+    init('admin',{status:'running'});
+    const marker={plan_id:'a'.repeat(32),request_id:'b'.repeat(32),panel_domain:'panel.example.com'};
+    store.set('celikpanel.setup.start.admin',JSON.stringify(marker));
+    const failed={...execution(marker,'failed'),phase:'09-panel_certificate',error:{code:'server_setup_certificate_clock_skew',message:"This server's clock is 200 seconds behind the certificate authority's"},steps:[{id:'09-panel_certificate',kind:'panel_certificate',target:'panel.example.com',status:'failed'}]};
+    const read=fetch;
+    globalThis.fetch=async(url,options)=>url.includes('/setup/operation')?Response.json(failed):read(url,options);
+    try{
+        await mount();
+        const text=JSON.stringify(tree.toJSON());
+        assert.ok(text.includes('setup.blocker.clockSkew'),text);
+        assert.ok(!text.includes('setup.blocker.panelTLS'));
+    }finally{await cleanup();}
+});

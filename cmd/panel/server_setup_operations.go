@@ -2211,10 +2211,21 @@ func (p *Panel) runServerSetupMailCertificate(ctx context.Context, plan serverSe
 		if err := p.callAgentContext(bound, "Agent.IssueMailHostCertificateV1", &req, &response); err != nil {
 			return err
 		}
-		if response.Error != "" || !response.Issued {
-			return errors.New("mail host certificate publication was not verified")
-		}
-		return nil
+		return serverSetupMailCertificateResponseError(response)
 	})
 	return err == nil, err
+}
+
+// serverSetupMailCertificateResponseError: the mail host certificate's
+// answer as the step's outcome. A clock behind the authority is the same
+// coded reason as for the panel certificate (N4).
+func serverSetupMailCertificateResponseError(response transport.IssueMailHostCertificateResponse) error {
+	if response.ErrorCode == transport.CertificateClockSkewErrorCode && response.ClockSkewSeconds > 0 {
+		skew := certificateClockSkewError{Seconds: response.ClockSkewSeconds}
+		return &serverSetupChildFailure{Code: certificateClockSkewCode, Message: skew.message()}
+	}
+	if response.Error != "" || !response.Issued {
+		return errors.New("mail host certificate publication was not verified")
+	}
+	return nil
 }

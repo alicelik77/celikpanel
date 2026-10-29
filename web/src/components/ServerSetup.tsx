@@ -319,6 +319,11 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     markerRef.current = marker;
     const accept = useCallback((value: ServerSetupSnapshot) => { setSnapshot(value); setup.accept(value); }, [setup.accept]);
     const failureText = (code: string, message?: string, reason?: string) => {
+        // The clock reason with the seconds the server measured (N2/N4).
+        if (code === 'server_setup_certificate_clock_skew') {
+            const seconds = /(\d{1,8}) seconds behind/.exec(message || '')?.[1];
+            return seconds ? t('setup.blocker.clockSkew', { seconds }) : t('setup.blocker.clockSkewUnknown');
+        }
         const hostingRoot = setupHostingRootBlockerValues(code);
         if (hostingRoot) return t('setup.blocker.hostingRoot', hostingRoot);
         const busy = setupHostBusyGuidance({ code, message, reason });

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 )
@@ -46,5 +47,27 @@ func TestPanelCertificateIssueWaitsForALeafValidMomentsAfterThisClock(t *testing
 				t.Fatalf("reads=%d slept=%v, want 1 and %v", reads, slept, test.want)
 			}
 		})
+	}
+}
+
+// N4: the same wait for every certificate the setup issues (the mail host
+// certificate had none).
+func TestIssuedCertificateWaitAndClockSkewAreShared(t *testing.T) {
+	previousNow, previousSleep := panelCertificateWaitNow, panelCertificateWaitSleep
+	t.Cleanup(func() { panelCertificateWaitNow, panelCertificateWaitSleep = previousNow, previousSleep })
+	now := time.Date(2026, 10, 29, 7, 0, 0, 0, time.UTC)
+	panelCertificateWaitNow = func() time.Time { return now }
+	var slept time.Duration
+	panelCertificateWaitSleep = func(_ context.Context, d time.Duration) error { slept = d; return nil }
+	early := &panelCertificateSourceNotYetValidError{NotBefore: now.Add(3 * time.Second), Now: now}
+	waitIssuedCertificateSourceValid(context.Background(), func() error { return early })
+	if slept != 4*time.Second {
+		t.Fatalf("slept %v", slept)
+	}
+	if seconds, ok := issuedCertificateClockSkew(fmt.Errorf("read: %w", &panelCertificateSourceNotYetValidError{NotBefore: now.Add(199500 * time.Millisecond), Now: now})); !ok || seconds != 200 {
+		t.Fatalf("skew %d %v", seconds, ok)
+	}
+	if _, ok := issuedCertificateClockSkew(errors.New("chain")); ok {
+		t.Fatal("another failure was taken for a clock skew")
 	}
 }

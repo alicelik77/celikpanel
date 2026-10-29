@@ -35,6 +35,16 @@ targeted VM re-run is owed before any is called proven.
   meets it waits with the same code: nothing is created while another
   operation runs, and a child the Agent refused at admission (nothing ran) is
   asked again under a new child identity, at most 30 times.
+- **A clock behind the certificate authority is said, for every certificate.**
+  With the clock 200 s behind, the panel certificate step said only
+  `panel_certificate_issue_failed`, and the mail certificate (which had no
+  wait at all) the generic `server_setup_step_failed`. One shared Agent
+  function now waits, at most two minutes, for any certificate the setup
+  issues (panel and mail host) to become valid by this clock, and a larger
+  skew is coded with its seconds through the operation into the step:
+  `server_setup_certificate_clock_skew` (the clock is N seconds behind; you,
+  the owner: turn on time sync, `timedatectl set-ntp true`, or correct the
+  clock; then review a revised plan to issue it again).
 
 ## October 29 follow-up: fixes from the targeted Beta-1 re-run (alpha.115 source)
 

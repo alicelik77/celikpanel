@@ -54,9 +54,18 @@ var (
 // leaf becomes valid within the bound, waits until it is. It never changes
 // anything; the caller's own read decides as before.
 func waitPanelCertificateSourceValid(ctx context.Context, domain string) {
-	_, _, _, _, err := panelCertificateActivationReadSource(domain)
+	waitIssuedCertificateSourceValid(ctx, func() error {
+		_, _, _, _, err := panelCertificateActivationReadSource(domain)
+		return err
+	})
+}
+
+// waitIssuedCertificateSourceValid is that wait for every certificate the
+// setup issues (panel and mail host; Beta-1 third re-run N4): read once, and
+// when the leaf becomes valid by this clock within the bound, wait for it.
+func waitIssuedCertificateSourceValid(ctx context.Context, read func() error) {
 	var early *panelCertificateSourceNotYetValidError
-	if !errors.As(err, &early) {
+	if !errors.As(read(), &early) {
 		return
 	}
 	wait := early.NotBefore.Sub(panelCertificateWaitNow()) + time.Second
@@ -64,4 +73,25 @@ func waitPanelCertificateSourceValid(ctx context.Context, domain string) {
 		return
 	}
 	_ = panelCertificateWaitSleep(ctx, wait)
+}
+
+// issuedCertificateClockSkew: the publication failed because the leaf is
+// still not valid by this clock; seconds is how far the clock is behind
+// (rounded up, bounded). Shared by every certificate the setup issues (N2).
+func issuedCertificateClockSkew(err error) (int, bool) {
+	var early *panelCertificateSourceNotYetValidError
+	if !errors.As(err, &early) {
+		return 0, false
+	}
+	seconds := int(early.NotBefore.Sub(early.Now) / time.Second)
+	if early.NotBefore.Sub(early.Now)%time.Second != 0 {
+		seconds++
+	}
+	if seconds < 1 {
+		seconds = 1
+	}
+	if seconds > 10_000_000 {
+		seconds = 10_000_000
+	}
+	return seconds, true
 }
