@@ -61,6 +61,18 @@ re-run is owed before any is called proven.
   minutes and reading only, until the leaf is valid by this server's clock,
   then reads and checks it as before. A larger skew still fails, and its
   reason now names the clock (`timedatectl`).
+- **A rejoined backup goes through its publisher step.** When the backup DNS
+  server is the first server (the main joined it), its plan is reviewed
+  before the main joins, so its publishing step names no endpoint yet; the
+  binding supplies it. The step's gate compared the empty reviewed endpoint
+  with the bound one and failed every such run with the generic
+  `server_setup_step_failed` (in the run, right after the P4 rejoin). The
+  gate now takes the bound endpoint for that step, so a run that adopted the
+  replacing join's binding continues. If a join were replaced under a run
+  that had already used its binding, the run stops with
+  `server_setup_plan_changed_by_rejoin` (you, the owner: Review a revised
+  plan; setup then continues with the new join; completed host changes are
+  kept), never the generic failure.
 
 ## October 29 follow-up: fixes from the Beta-1 VM run (alpha.115 source)
 

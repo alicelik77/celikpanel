@@ -205,6 +205,33 @@ func serverSetupPeerJoinChangedWait() *serverSetupPeerWait {
 	return &serverSetupPeerWait{Code: "server_setup_peer_join_changed", Message: serverSetupPeerJoinChangedMessage}
 }
 
+// serverSetupPlanChangedByRejoin: the run's second server joined again with
+// other answers after this run used its earlier binding, so the run stops
+// with this verified state (D-024: who = owner; next = review the plan
+// again; then setup continues from the revised plan, completed host changes
+// kept). Beta-1 re-run P8.
+func serverSetupPlanChangedByRejoin() error {
+	return &serverSetupChildFailure{Code: "server_setup_plan_changed_by_rejoin", Message: "The second server joined this setup again after this run had used its earlier join, so this run stopped. Completed host changes are kept. You, the owner: choose Review a revised plan here; setup then continues from the revised plan with the new join."}
+}
+
+// serverSetupRejoinedUnderRun: the join this run is bound to is no longer
+// the current join (a newer join replaced it), or its names changed.
+func (p *Panel) serverSetupRejoinedUnderRun(ctx context.Context, reviewed serverSetupPlan, executionID string) (bool, error) {
+	if !serverSetupPlanHasStep(reviewed, "peer_join") {
+		return false, nil
+	}
+	binding, err := p.readServerSetupPeerBinding(ctx, reviewed, executionID)
+	if err != nil || binding == nil {
+		return false, err
+	}
+	var join serverSetupJoinRecord
+	found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join)
+	if err != nil || !found {
+		return false, err
+	}
+	return serverSetupBindingStale(join, *binding), nil
+}
+
 // serverSetupBindingStale: the join a run was bound to was replaced by a
 // newer one, or the second server sent other names after the binding.
 func serverSetupBindingStale(join serverSetupJoinRecord, binding serverSetupPeerBinding) bool {

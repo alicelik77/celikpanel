@@ -88,6 +88,7 @@ const codeKey: Record<string, TranslationKey> = {
     server_setup_peer_join_reopen_required: 'setup.v5.wait.server_setup_peer_join_reopen_required',
     server_setup_peer_ready_unreachable: 'setup.v5.wait.server_setup_peer_ready_unreachable',
     server_setup_peer_ready_refused: 'setup.v5.wait.server_setup_peer_ready_refused',
+    server_setup_plan_changed_by_rejoin: 'setup.v5.wait.server_setup_plan_changed_by_rejoin',
     server_setup_distribution_updates_changed: 'setup.v5.wait.server_setup_distribution_updates_changed',
     server_setup_distribution_updates_unread: 'setup.v5.wait.server_setup_distribution_updates_unread',
     server_setup_peer_names_unreachable: 'setup.v5.wait.server_setup_peer_names_unreachable',

@@ -220,6 +220,16 @@ func (p *Panel) serverSetupSecondaryHostingReadiness(ctx context.Context, draft 
 	return p.serverSetupLocalSecondaryReadiness(ctx, draft)
 }
 
+// serverSetupPublisherStepTarget: the reviewed dns_publisher step names the
+// endpoint the plan publishes to. A first server that is the backup (Option
+// A) reviewed its plan before the second server joined, so its step has no
+// endpoint yet: the binding (or, after a rejoin, the replacing join's
+// binding) supplies it and the bound plan carries it (Beta-1 re-run P8; the
+// run failed here with the generic server_setup_step_failed).
+func serverSetupPublisherStepTarget(plan serverSetupPlan, target string) bool {
+	return target == plan.Draft.DNSPublisherEndpoint || (plan.peerBound && target == "" && plan.Draft.DNSPublisherEndpoint != "")
+}
+
 func serverSetupAtPublisherGate(plan serverSetupPlan, execution serverSetupExecution) bool {
 	if !serverSetupSecondaryHosting(plan.Draft) || execution.Status != "waiting" || execution.Phase != "dns_publisher" || validateServerSetupExecution(plan, execution) != nil {
 		return false
@@ -227,7 +237,7 @@ func serverSetupAtPublisherGate(plan serverSetupPlan, execution serverSetupExecu
 	found := false
 	for _, step := range execution.Steps {
 		if step.Kind == "dns_publisher" {
-			if found || step.Status != "running" || step.Target != plan.Draft.DNSPublisherEndpoint {
+			if found || step.Status != "running" || !serverSetupPublisherStepTarget(plan, step.Target) {
 				return false
 			}
 			found = true

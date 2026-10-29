@@ -1253,6 +1253,13 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 			}
 		} else if step.Kind == "dns_publisher" {
 			done, err = p.runServerSetupDNSPublisher(ctx, plan, execution.ID)
+			if errors.Is(err, errServerSetupConflict) {
+				// A join replaced under this run: a verified stop with what
+				// the owner does, never the generic step failure (P8).
+				if rejoined, rejoinErr := p.serverSetupRejoinedUnderRun(ctx, reviewed, execution.ID); rejoinErr == nil && rejoined {
+					err = serverSetupPlanChangedByRejoin()
+				}
+			}
 		} else if step.Kind == "mail_enrollment" {
 			done, err = p.runServerSetupMailEnrollment(ctx, reviewed, execution, index)
 		} else if step.Kind == "service" {

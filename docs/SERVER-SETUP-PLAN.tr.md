@@ -62,6 +62,18 @@ sayılmadan önce yeni bir hedefli VM koşusu gerekir.
   dakika ve yalnız okuyarak, yaprak bu sunucunun saatine göre geçerli olana
   kadar bekler; sonra her zamanki gibi okur ve denetler. Daha büyük sapma yine
   başarısız olur ve nedeni artık saati adlandırır (`timedatectl`).
+- **Yeniden katılan yedek sunucu yayımlama adımından geçer.** Yedek DNS
+  sunucusu ilk sunucuysa (ana sunucu ona katıldıysa) planı ana sunucu
+  katılmadan incelenir; bu yüzden yayımlama adımı henüz bir uç nokta
+  adlandırmaz, uç noktayı bağlama verir. Adımın kapısı incelenmiş boş uç
+  noktayı bağlanmış olanla karşılaştırıyor ve bu tür her çalışmayı genel
+  `server_setup_step_failed` ile düşürüyordu (koşuda P4 yeniden katılmasından
+  hemen sonra). Kapı artık bu adım için bağlanmış uç noktayı alır; yerine
+  geçen katılmanın bağlamasını benimseyen çalışma sürer. Bağlamasını
+  kullanmış bir çalışmanın altında katılma değişseydi çalışma
+  `server_setup_plan_changed_by_rejoin` ile durur (siz, sunucu sahibi:
+  Düzeltilmiş planı incele; kurulum yeni katılmayla sürer; tamamlanan sunucu
+  değişiklikleri korunur), asla genel hatayla değil.
 
 ## 29 Ekim ek kararı: Beta-1 sanal makine koşusunun düzeltmeleri (alpha.115 kaynağı)
 

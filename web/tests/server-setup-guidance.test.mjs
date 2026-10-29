@@ -202,3 +202,11 @@ test('the backup waiting to report ready names that reason in both languages',()
         assert.ok(enScreens[`setup.v5.wait.${code}`]&&trScreens[`setup.v5.wait.${code}`],code);
     }
 });
+// Beta-1 re-run P8: a run stopped because its second server joined again
+// says so, with the owner's next action, never the generic failure.
+test('a run stopped by a rejoin names that state in both languages',()=>{
+    const guide=setupExecutionGuidance(execution({status:'failed',phase:'10-dns_publisher',error:{code:'server_setup_plan_changed_by_rejoin',message:'x'},steps:[{id:'10-dns_publisher',kind:'dns_publisher',target:'',status:'failed'}]}));
+    assert.ok(keys(guide).includes('setup.v5.wait.server_setup_plan_changed_by_rejoin'));
+    assert.match(enScreens['setup.v5.wait.server_setup_plan_changed_by_rejoin'],/Review a revised plan/);
+    assert.match(trScreens['setup.v5.wait.server_setup_plan_changed_by_rejoin'],/Düzeltilmiş planı incele/);
+});
