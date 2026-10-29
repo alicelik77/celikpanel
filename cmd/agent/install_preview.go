@@ -364,19 +364,22 @@ func (r *packageInstallVendorRefusal) Error() string {
 // all confirmed, and one that would replace a distribution package with a
 // vendor repository's build whatever was confirmed.
 func notableInstallGuard(c installClassification, packages, confirmed []string) func(aptSimulation) error {
-	return notableInstallGuardAccepting(c, packages, confirmed, false)
+	return notableInstallGuardAccepting(c, packages, confirmed, nil)
 }
 
 // notableInstallGuardAccepting is notableInstallGuard for a reviewed server
-// setup step: with acceptPointUpdates the distribution point updates the
-// setup's confirmation covers are not refused; everything else is judged as
-// before.
-func notableInstallGuardAccepting(c installClassification, packages, confirmed []string, acceptPointUpdates bool) func(aptSimulation) error {
+// setup step: a point update whose "package=version" the setup's review
+// listed exactly is not refused; everything else is judged as before.
+func notableInstallGuardAccepting(c installClassification, packages, confirmed, acceptedPointUpdates []string) func(aptSimulation) error {
+	accepted := map[string]bool{}
+	for _, item := range acceptedPointUpdates {
+		accepted[strings.TrimSpace(item)] = true
+	}
 	return func(sim aptSimulation) error {
 		missing := unconfirmedNotable(c.classifySimulation(sim), confirmed)
-		if acceptPointUpdates {
-			missing = slices.DeleteFunc(missing, func(item transport.NotableInstall) bool { return item.PointUpdate })
-		}
+		missing = slices.DeleteFunc(missing, func(item transport.NotableInstall) bool {
+			return item.PointUpdate && accepted[item.Package+"="+item.To]
+		})
 		for _, item := range missing {
 			if item.Reason == notableReasonVendorReplacesDist {
 				return &packageInstallVendorRefusal{Packages: append([]string{}, packages...), Notable: missing}

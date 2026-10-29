@@ -186,7 +186,7 @@ export const enSetupScreens = {
     "setup.components.reviewTitle": "Components in this plan",
     "setup.packageUpdates.title": "Distribution packages also updated",
     "setup.packageUpdates.help": "Installing these components also brings these updates of already installed packages from your distribution, within its current release. Starting setup confirms them; nothing else is updated without asking.",
-    "setup.packageUpdates.unknown": "CelikPanel could not read which installed distribution packages these components would also update. Setup accepts only updates within your distribution's current release; anything else stops the step with what to do.",
+    "setup.packageUpdates.unknown": "CelikPanel could not read which installed distribution packages these components would also update, so this review confirms none. If a component's install would update one, setup stops before installing it and asks you to review again; nothing else changes.",
     "setup.components.dependency": "Required dependency",
     "setup.components.toInstall": "Prepare component",
     "setup.components.category.web": "Web and applications",

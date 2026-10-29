@@ -178,7 +178,7 @@ export const trSetupScreens: Record<SetupScreenKey, string> = {
     "setup.components.reviewTitle": "Bu plandaki bileşenler",
     "setup.packageUpdates.title": "Ayrıca güncellenecek dağıtım paketleri",
     "setup.packageUpdates.help": "Bu bileşenleri kurmak, kurulu paketlerin dağıtımınızın mevcut sürümü içindeki şu güncellemelerini de getirir. Kurulumu başlatmak bunları onaylar; başka hiçbir şey sorulmadan güncellenmez.",
-    "setup.packageUpdates.unknown": "CelikPanel bu bileşenlerin kurulu dağıtım paketlerinden hangilerini ayrıca güncelleyeceğini okuyamadı. Kurulum yalnız dağıtımınızın mevcut sürümü içindeki güncellemeleri kabul eder; başka bir şey adımı ne yapılacağını söyleyerek durdurur.",
+    "setup.packageUpdates.unknown": "CelikPanel bu bileşenlerin kurulu dağıtım paketlerinden hangilerini ayrıca güncelleyeceğini okuyamadı; bu yüzden bu inceleme hiçbirini onaylamaz. Bir bileşenin kurulumu birini güncelleyecekse kurulum onu kurmadan durur ve yeniden incelemenizi ister; başka hiçbir şey değişmez.",
     "setup.components.dependency": "Gerekli bağımlılık",
     "setup.components.toInstall": "Bileşen hazırlanacak",
     "setup.components.category.web": "Web ve uygulamalar",

@@ -55,10 +55,10 @@ type serviceInstallRequest struct {
 	PHPVersion        string   `json:"php_version,omitempty"`
 	CheckInstalls     bool     `json:"check_installs,omitempty"`
 	ConfirmedInstalls []string `json:"confirmed_installs,omitempty"`
-	// AcceptPointUpdates is set only by a reviewed server setup step (never
-	// from a request body): its confirmation covered the distribution point
-	// updates it listed.
-	AcceptPointUpdates bool `json:"-"`
+	// AcceptedPointUpdates is set only by a reviewed server setup step (never
+	// from a request body): the exact "package=version" distribution point
+	// updates its review listed and its confirmation covered.
+	AcceptedPointUpdates []string `json:"-"`
 }
 
 const maxConfirmedInstalls = 64

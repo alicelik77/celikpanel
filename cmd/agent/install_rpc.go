@@ -388,7 +388,7 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 			if family == "apt" {
 				classification.vendorOf = hostVendorVersionLookup()
 			}
-			guard = notableInstallGuardAccepting(classification, missingPackages, req.ConfirmedInstalls, req.AcceptPointUpdates)
+			guard = notableInstallGuardAccepting(classification, missingPackages, req.ConfirmedInstalls, req.AcceptedPointUpdates)
 		}
 		installMissingPackages := func() (string, error) {
 			return installPackagesGuardedContext(ctx, family, missingPackages, strings.TrimSpace(req.Package), guard)

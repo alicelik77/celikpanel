@@ -191,14 +191,15 @@ type InstallServiceRequest struct {
 	// CheckInstalls: dikkat çeken kurulum, onaylanmadıkça kurulumu reddeder.
 	CheckInstalls     bool     `json:"check_installs,omitempty"`
 	ConfirmedInstalls []string `json:"confirmed_installs,omitempty"`
-	// AcceptPointUpdates (Beta-1 fix): the install is a step of a reviewed
-	// server setup whose one confirmation covers the distribution point
-	// updates of installed packages it listed (NotableInstall.PointUpdate).
-	// Those are not refused; every other notable install still is. Additive:
-	// an older Agent ignores it and refuses them as before.
-	// AcceptPointUpdates: kurulum onayı, listelediği dağıtım yama
-	// güncellemelerini kapsar; diğer dikkat çekenler yine reddedilir.
-	AcceptPointUpdates bool `json:"accept_point_updates,omitempty"`
+	// AcceptedPointUpdates (Beta-1 fix): the install is a step of a reviewed
+	// server setup, and these are the exact "package=version" distribution
+	// point updates its review listed and its one confirmation covers. Only
+	// a point update (NotableInstall.PointUpdate) whose package and new
+	// version match one exactly is not refused; every other notable install
+	// still is. Additive: an older Agent ignores it and refuses them all.
+	// AcceptedPointUpdates: incelemenin listelediği tam "paket=sürüm" yama
+	// güncellemeleri; yalnız birebir eşleşen kabul edilir.
+	AcceptedPointUpdates []string `json:"accepted_point_updates,omitempty"`
 }
 
 // NotableInstall is one package an install would bring beyond what it

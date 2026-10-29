@@ -822,6 +822,44 @@ func (p *Panel) serverSetupPackageUpdates(ctx context.Context, steps []serverSet
 	return updates, "known"
 }
 
+// serverSetupAcceptedPointUpdates is what a setup step tells the Agent: the
+// reviewed point updates as exact "package=version", none when the review
+// could not read them.
+func serverSetupAcceptedPointUpdates(plan serverSetupPlan) []string {
+	if plan.PackageUpdatesState != "known" {
+		return nil
+	}
+	accepted := make([]string, 0, len(plan.PackageUpdates))
+	for _, item := range plan.PackageUpdates {
+		accepted = append(accepted, item.Package+"="+item.To)
+	}
+	return accepted
+}
+
+// serverSetupPointUpdatesWait asks, read-only, what this component's install
+// would update now. A point update the review did not list (or any, when the
+// review could not read them) is a verified state for the owner; a read that
+// failed is unknown and asked again. Nothing is installed in either case.
+func (p *Panel) serverSetupPointUpdatesWait(ctx context.Context, plan serverSetupPlan, step serverSetupExecutionStep) *serverSetupPeerWait {
+	updates, state := p.serverSetupPackageUpdates(ctx, []serverSetupPlanStep{step.serverSetupPlanStep})
+	if state == "" {
+		return nil
+	}
+	if state != "known" {
+		return &serverSetupPeerWait{Code: "server_setup_distribution_updates_unread", Message: "CelikPanel could not read which distribution packages this component's install would also update, so nothing was installed. Nobody needs to act yet; setup asks again by itself."}
+	}
+	listed := map[string]bool{}
+	for _, item := range serverSetupAcceptedPointUpdates(plan) {
+		listed[item] = true
+	}
+	for _, item := range updates {
+		if !listed[item.Package+"="+item.To] {
+			return &serverSetupPeerWait{Code: "server_setup_distribution_updates_changed", Message: "New distribution updates appeared since the review (" + item.Package + " " + item.To + "), so nothing was installed. You, the owner: open the review and start setup again; it lists them for you to confirm."}
+		}
+	}
+	return nil
+}
+
 // serverSetupPackageUpdatesCovered: at start the reviewed list still covers
 // what the package manager would update now. A newer read that names a
 // package the review did not list needs a new review; an unread one does not
@@ -1454,6 +1492,13 @@ func (p *Panel) ensureServerSetupChild(ctx context.Context, plan serverSetupPlan
 	if plan.BuildCommit != "" && plan.BuildCommit != strings.TrimSpace(buildCommit) {
 		return serviceOperation{}, errServerSetupBuildChanged
 	}
+	if step.Kind == "service" {
+		// Before a component's first install the package manager is asked
+		// again: a point update the review did not list is never accepted.
+		if wait := p.serverSetupPointUpdatesWait(ctx, plan, step); wait != nil {
+			return serviceOperation{}, wait
+		}
+	}
 	if _, degraded := p.subsystemDegraded(degradedSubsystemServiceOperations); degraded {
 		return serviceOperation{}, errors.New("service operation recovery is required")
 	}
@@ -1537,10 +1582,10 @@ func (p *Panel) ensureServerSetupChild(ctx context.Context, plan serverSetupPlan
 	switch step.Kind {
 	case "service":
 		runner = func(ctx context.Context, advance func(string) error) (serviceOperationResult, *serviceOperationFailure) {
-			// The setup's one confirmation covers the distribution point
-			// updates its review listed; every other notable install is
-			// still refused by the Agent.
-			return p.runServiceInstall(ctx, serviceInstallRequest{ServiceID: step.Target, Package: step.Qualifier, RequestID: step.RequestID, AcceptPointUpdates: true}, advance)
+			// The setup's one confirmation covers exactly the distribution
+			// point updates its review listed; every other notable install
+			// is still refused by the Agent.
+			return p.runServiceInstall(ctx, serviceInstallRequest{ServiceID: step.Target, Package: step.Qualifier, RequestID: step.RequestID, AcceptedPointUpdates: serverSetupAcceptedPointUpdates(plan)}, advance)
 		}
 	case "runtime":
 		runner = func(ctx context.Context, advance func(string) error) (serviceOperationResult, *serviceOperationFailure) {

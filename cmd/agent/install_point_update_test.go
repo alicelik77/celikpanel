@@ -74,6 +74,20 @@ func TestPointUpdatesOfInstalledPackagesAreToldApart(t *testing.T) {
 	if err := notableInstallGuard(c, []string{"mariadb-server"}, nil)(sim); !errors.As(err, &refusal) {
 		t.Fatalf("an unconfirmed point update outside setup is still refused: %v", err)
 	}
+	// A reviewed setup step accepts exactly the package=version it listed.
+	listed := []string{"perl-base=5.40.1-6+deb13u1", "libpcre2-8-0=10.46-1~deb13u3"}
+	if err := notableInstallGuardAccepting(c, []string{"mariadb-server"}, nil, listed)(sim); err != nil {
+		t.Fatalf("the listed point updates: %v", err)
+	}
+	for name, accepted := range map[string][]string{
+		"none":          nil,
+		"other version": {"perl-base=5.40.1-6+deb13u2", "libpcre2-8-0=10.46-1~deb13u3"},
+		"one missing":   {"perl-base=5.40.1-6+deb13u1"},
+	} {
+		if err := notableInstallGuardAccepting(c, []string{"mariadb-server"}, nil, accepted)(sim); !errors.As(err, &refusal) {
+			t.Fatalf("%s: %v", name, err)
+		}
+	}
 	// Pacman has no distribution revision: never a point update.
 	pacman := newInstallClassification("pacman", []string{"mariadb"}, []string{"mariadb"}, nil, nil)
 	for _, item := range pacman.classifySimulation(aptSimulation{Upgrades: map[string]aptUpgrade{"perl": {From: "5.40.1-6", To: "5.40.1-7", Origins: official}}}) {

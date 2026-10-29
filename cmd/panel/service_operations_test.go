@@ -24,12 +24,12 @@ import (
 )
 
 type ServiceOperationInstallRequest struct {
-	MutationRequestID  string
-	MutationOwnerID    string
-	ID                 string
-	Package            string
-	CheckInstalls      bool
-	AcceptPointUpdates bool
+	MutationRequestID    string
+	MutationOwnerID      string
+	ID                   string
+	Package              string
+	CheckInstalls        bool
+	AcceptedPointUpdates []string
 }
 
 type ServiceOperationInstallResponse struct {
@@ -219,6 +219,8 @@ type serviceOperationTestAgent struct {
 	// bindOwnerChanged: BIND runs with its published files changed by the
 	// owner (DNSBackendReadiness reports OwnerChanged).
 	bindOwnerChanged bool
+	// installPreview answers ServiceInstallPreviewV1 when set.
+	installPreview func(*transport.ServiceInstallPreviewRequest, *transport.ServiceInstallPreviewResponse) error
 	// installRequests are the InstallService requests received, in order.
 	installRequests []ServiceOperationInstallRequest
 
@@ -578,6 +580,19 @@ func (a *serviceOperationTestAgent) ListServiceInstances(
 			resp.Instances = append(resp.Instances, core.ServiceInstance{Version: version, Managed: true})
 		}
 	}
+	return nil
+}
+
+// ServiceInstallPreviewV1 answers the setup's read-only install simulation:
+// installPreview when a test sets one, otherwise "nothing else is brought".
+func (a *serviceOperationTestAgent) ServiceInstallPreviewV1(req *transport.ServiceInstallPreviewRequest, resp *transport.ServiceInstallPreviewResponse) error {
+	a.mu.Lock()
+	preview := a.installPreview
+	a.mu.Unlock()
+	if preview != nil {
+		return preview(req, resp)
+	}
+	resp.State = "known"
 	return nil
 }
 
