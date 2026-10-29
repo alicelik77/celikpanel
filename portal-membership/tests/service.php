@@ -111,6 +111,19 @@ $s->requestToken('alice@example.com','reset');$now+=1801;
 rejects(fn()=>$s->consumeToken(end($mail)['token'],'reset','another-password-12345'),'invalid_token');
 check(!str_contains(file_get_contents($dir.'/db.sqlite'),$license['key']),'key not plaintext');
 check(!str_contains(json_encode($s->licenses($member['id'])),'activation_token'),'listing does not expose credentials');
+// Removal: a bound license stops refreshing and activating, leaves the list,
+// keeps its row and event, and the owner can no longer act on it.
+$gone=$s->issue($member['id']);$goneEnvelope=$s->activate($gone['key'],str_repeat('c',64),'gone.example.com','8.8.8.8');
+rejects(fn()=>$s->remove($member['id'],$gone['id'],'wrong'),'invalid_login');
+$s->remove($member['id'],$gone['id'],'a-new-password-12345');
+rejects(fn()=>$s->refresh($gone['id'],str_repeat('c',64),$goneEnvelope['activation_token'],'8.8.8.8'),'invalid_activation');
+rejects(fn()=>$s->activate($gone['key'],str_repeat('c',64),'gone.example.com','8.8.8.8'),'invalid_license');
+check(!in_array($gone['id'],array_column($s->licenses($member['id']),'id'),true),'removed license leaves the list');
+rejects(fn()=>$s->reveal($member['id'],$gone['id'],'a-new-password-12345'),'license_not_found');
+rejects(fn()=>$s->remove($member['id'],$gone['id'],'a-new-password-12345'),'license_not_found');
+$row=$s->db->query("SELECT removed,key_encrypted,server_id FROM licenses WHERE id='".$gone['id']."'")->fetch(PDO::FETCH_ASSOC);
+check($row['removed']!==null && $row['key_encrypted']===null && $row['server_id']===null,'removal keeps the row without the key');
+check((int)$s->db->query("SELECT COUNT(*) FROM events WHERE kind='removed' AND license_id='".$gone['id']."'")->fetchColumn()===1,'removal is recorded');
 $s->limit('one',1,60);rejects(fn()=>$s->limit('one',1,60),'rate_limited');$now+=61;$s->limit('one',1,60);
 
 // Migration fills only unstarted legacy terms and preserves granted expiries and key hashes.
@@ -120,7 +133,7 @@ $s->db->prepare('UPDATE licenses SET expires=NULL,key_encrypted=NULL WHERE id=?'
 $migrated=new Service($dir.'/db.sqlite',$secret,static function(){},fn()=>$now);
 $afterMigration=$migrated->db->query('SELECT id,key_hash,expires FROM licenses ORDER BY id')->fetchAll(PDO::FETCH_ASSOC);
 check($beforeMigration===$afterMigration,'migration preserves keys and granted terms');
-check((int)$migrated->db->query('SELECT COUNT(*) FROM licenses WHERE key_encrypted IS NULL')->fetchColumn()===1,'legacy key is not silently replaced');
+check((int)$migrated->db->query('SELECT COUNT(*) FROM licenses WHERE key_encrypted IS NULL AND removed IS NULL')->fetchColumn()===1,'legacy key is not silently replaced');
 
 // Two processes race different servers for the same unbound license.
 if(function_exists('pcntl_fork')){
