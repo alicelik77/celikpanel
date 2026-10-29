@@ -28,6 +28,16 @@ re-run is owed before any is called proven.
   Confirm and continue. The confirmed list is recorded for that run, and the
   same run continues from the waiting step; nothing already done is repeated,
   and no plan is reopened. A running step or a known failure is never changed.
+- **A DNS install that placed nothing is a verified failure at once.** When
+  the DNS software's first install fails before any package is placed (for
+  example APT has no installation candidate for bind9), the Agent now proves
+  that rollback too: its exact install receipt, none of the packages it found
+  missing installed, no unit of that software running, failed or masked, and
+  nothing on public port 53, read twice. The setup step then shows
+  `server_setup_dns_rolled_back` on its next pass, with both next actions
+  (keep the software and try again, or choose the other one in the revised
+  plan), and no panel restart is needed. Before, it stayed at
+  `server_setup_dns_agent_failed` until startup recovery released it.
 
 ## October 29 follow-up: fixes from the Beta-1 VM run (alpha.115 source)
 

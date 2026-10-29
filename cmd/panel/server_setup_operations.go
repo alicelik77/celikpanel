@@ -1837,7 +1837,7 @@ func serverSetupFailureForStep(step serverSetupExecutionStep, cause error) *serv
 	case errors.Is(cause, errServerSetupHostRestartRequired):
 		return &serviceOperationError{Code: transport.FirewallStatusHostRestartRequired, Message: setupHostRestartRequiredMessage}
 	case errors.Is(cause, errServerSetupDNSRolledBack):
-		message := "The DNS engine installation did not complete and CelikPanel undid it: no DNS engine is running on this server, and the installed packages were kept stopped for the next attempt. Nothing else was changed. The server administrator can review a new plan and start this DNS step again; it runs as a new installation."
+		message := "The DNS engine installation did not complete and CelikPanel undid it: no DNS engine is running on this server, and any packages it installed were kept stopped for the next attempt. Nothing else was changed, and no restart is needed. The server administrator chooses Review a revised plan: keep this DNS software to try the installation again as a new one, or choose the other DNS software in the plan; setup then continues from the new plan."
 		if sentence := namedHostOperationSentence(cause); sentence != "" {
 			message += " Reason: " + sentence
 		}

@@ -27,6 +27,17 @@ sayılmadan önce yeni bir hedefli VM koşusu gerekir.
   Onayla ve sürdür. Onaylanan liste o çalışma için kaydedilir ve aynı çalışma
   bekleyen adımdan sürer; yapılmış hiçbir şey yinelenmez ve plan yeniden
   açılmaz. Çalışan bir adım ya da bilinen bir hata asla değiştirilmez.
+- **Hiçbir şey yerleştirmeyen DNS kurulumu hemen doğrulanmış hatadır.** DNS
+  yazılımının ilk kurulumu herhangi bir paket yerleştirmeden başarısız olursa
+  (örneğin APT'de bind9 için kurulum adayı yoksa) Agent bu geri almayı da
+  kanıtlar: tam kurulum makbuzu, eksik bulduğu paketlerin hiçbirinin kurulu
+  olmaması, o yazılımın hiçbir biriminin çalışmaması, hatalı ya da maskeli
+  olmaması ve genel 53 numaralı bağlantı noktasında hizmet veren olmaması; iki
+  kez okunur. Kurulum adımı sonraki geçişinde iki sonraki eylemiyle
+  (yazılımı koruyup yeniden denemek ya da düzeltilmiş planda diğerini seçmek)
+  `server_setup_dns_rolled_back` gösterir ve panelin yeniden başlatılması
+  gerekmez. Önceden başlangıç kurtarması bırakana kadar
+  `server_setup_dns_agent_failed` durumunda kalıyordu.
 
 ## 29 Ekim ek kararı: Beta-1 sanal makine koşusunun düzeltmeleri (alpha.115 kaynağı)
 
