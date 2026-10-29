@@ -131,6 +131,9 @@ type Panel struct {
 	// serverSetupInstallPreview replaces the Agent's read-only install
 	// simulation for the setup review in tests (nil in production).
 	serverSetupInstallPreview func(context.Context, transport.ServiceInstallPreviewRequest) (transport.ServiceInstallPreviewResponse, error)
+	// serverSetupStepOverride lets a test answer one setup step's call
+	// (handled=true) instead of the real step; production leaves it nil.
+	serverSetupStepOverride func(context.Context, serverSetupExecutionStep) (done bool, err error, handled bool)
 	// dnsTopologyMu serializes every request-time DNS identity mutation. The
 	// setup endpoint and the two legacy endpoints share agent state and one
 	// SQLite tuple; their snapshot/apply/commit/rollback sequences must never

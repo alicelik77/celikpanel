@@ -90,6 +90,8 @@ const codeKey: Record<string, TranslationKey> = {
     server_setup_peer_ready_refused: 'setup.v5.wait.server_setup_peer_ready_refused',
     server_setup_peer_ready_identity_changed: 'setup.v5.wait.server_setup_peer_ready_identity_changed',
     server_setup_plan_changed_by_rejoin: 'setup.v5.wait.server_setup_plan_changed_by_rejoin',
+    server_setup_host_starting: 'setup.v5.wait.server_setup_host_starting',
+    server_setup_host_not_started: 'setup.v5.wait.server_setup_host_not_started',
     server_setup_distribution_updates_changed: 'setup.v5.wait.server_setup_distribution_updates_changed',
     server_setup_distribution_updates_unread: 'setup.v5.wait.server_setup_distribution_updates_unread',
     server_setup_peer_names_unreachable: 'setup.v5.wait.server_setup_peer_names_unreachable',

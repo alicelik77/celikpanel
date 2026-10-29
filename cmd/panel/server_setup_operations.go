@@ -97,6 +97,9 @@ type serverSetupExecution struct {
 	Error     *serviceOperationError     `json:"error,omitempty"`
 	Checks    []serverSetupCheck         `json:"checks,omitempty"`
 	PanelURL  string                     `json:"panel_url,omitempty"`
+	// HostStartingSince: when the run first found the host still starting
+	// (server_setup_host_starting); cleared once a step goes on.
+	HostStartingSince string `json:"host_starting_since,omitempty"`
 }
 
 var serverSetupRunners sync.Map
@@ -1465,6 +1468,15 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 		if errors.Is(err, errServiceOperationBusy) {
 			return false, nil
 		}
+		if serverSetupHostStarting(err) {
+			// The host is still starting: nothing was sent to the Agent; the
+			// same step is asked again (N1). Past the bound it is a failure.
+			waiting, boundErr := serverSetupHostStartingWait(execution, time.Now(), err)
+			if waiting {
+				return false, p.persistServerSetupExecution(ctx, *execution)
+			}
+			err = boundErr
+		}
 		if err != nil {
 			// A failed transport reply cannot prove that the admitted child did
 			// not commit. Keep its exact identity and reconcile before a retry.
@@ -1486,6 +1498,7 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 		}
 		execution.Status = "running"
 		execution.Error = nil
+		execution.HostStartingSince = ""
 		if !done {
 			return false, p.persistServerSetupExecution(ctx, *execution)
 		}
@@ -1539,6 +1552,11 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 }
 
 func (p *Panel) runServerSetupStep(ctx context.Context, plan serverSetupPlan, step *serverSetupExecutionStep) (bool, error) {
+	if p.serverSetupStepOverride != nil {
+		if done, err, handled := p.serverSetupStepOverride(ctx, *step); handled {
+			return done, err
+		}
+	}
 	switch step.Kind {
 	case "peer_names":
 		if err := p.requireServerSetupAdmission(ctx); err != nil {
@@ -1670,6 +1688,10 @@ func (p *Panel) ensureServerSetupChild(ctx context.Context, plan serverSetupPlan
 		return prior, err
 	}
 	if err := p.requireServerSetupAdmission(ctx); err != nil {
+		return serviceOperation{}, err
+	}
+	// A host still starting is a wait before the operation exists (N1).
+	if err := p.requireServerSetupHostIdentity(ctx); err != nil {
 		return serviceOperation{}, err
 	}
 	if plan.BuildCommit != "" && plan.BuildCommit != strings.TrimSpace(buildCommit) {
@@ -1940,6 +1962,8 @@ func serverSetupFailureForStep(step serverSetupExecutionStep, cause error) *serv
 			Reason: child.Reason}
 	}
 	switch {
+	case errors.Is(cause, errServerSetupHostNotStarted):
+		return &serviceOperationError{Code: serverSetupHostNotStartedCode, Message: serverSetupHostNotStartedText}
 	case errors.Is(cause, errServerSetupHostRestartRequired):
 		return &serviceOperationError{Code: transport.FirewallStatusHostRestartRequired, Message: setupHostRestartRequiredMessage}
 	case errors.Is(cause, errServerSetupDNSRolledBack):

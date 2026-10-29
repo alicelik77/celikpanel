@@ -9,6 +9,23 @@ bu yönü onayladı. Bu belge anlaşmayı ve uygulamanın kabul ölçütlerini k
 Asistana kurulu panel güncelleme yetkisi vermez; [AGENTS.md](../AGENTS.md) gereği
 kurulu panel güncellemelerini kullanıcı CelikPanel'in kendi arayüzünden başlatır.
 
+## 29 Ekim ek kararı: üçüncü hedefli Beta-1 yeniden koşusunun düzeltmeleri (alpha.115 kaynağı)
+
+cfcadd3f1 ürün kaydının üçüncü hedefli yeniden koşusu aşağıdaki kusurları
+buldu. Her düzeltmenin bileşen testi var ve hiçbiri şemayı değiştirmez;
+kanıtlanmış sayılmadan önce yeni bir hedefli VM koşusu gerekir.
+- **Açılan sunucu her adım için bir beklemedir.** Yeniden başlatmadan sonra
+  çalıştırıcı, systemd hâlâ "starting" bildirirken DNS adımını sürdürdü;
+  Agent'ın sunucu kimliği okunamadı ve adım genel `server_setup_dns_failed`
+  ile düştü. Artık tek bir sınıflandırıcı, systemd açılırken (ya da Agent
+  henüz yanıt vermezken) sunucu kimliği okunamadığı için gönderilmeden
+  reddedilen Agent çağrısını `server_setup_host_starting` sayar: hiçbir şey
+  gönderilmedi, kimse bir şey yapmaz ve çalıştırıcı aynı adımı yeni bir
+  değişiklik yapmadan yeniden sorar. Kurulumun alt işlemi ancak sunucu kimliği
+  okunduktan sonra oluşturulur. 10 dakika sonra hâlâ açılan sunucu, systemd'yi
+  ve denetlenecek komutları adlandıran `server_setup_host_not_started` ile
+  düşer.
+
 ## 29 Ekim ek kararı: hedefli Beta-1 yeniden koşusunun düzeltmeleri (alpha.115 kaynağı)
 
 b86ab6fa4 ürün kaydının hedefli yeniden koşusu aşağıdaki kusurları buldu. Her

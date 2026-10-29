@@ -10,6 +10,23 @@ This document records that agreement and the implementation acceptance criteria.
 It does not authorize an assistant to update any installed panel; the user starts
 every installed-panel update from CelikPanel itself, as required by [AGENTS.md](../AGENTS.md).
 
+## October 29 follow-up: fixes from the third targeted Beta-1 re-run (alpha.115 source)
+
+The third targeted re-run of product commit cfcadd3f1 found the defects
+below. Each fix has a component test and none changes the schema; a further
+targeted VM re-run is owed before any is called proven.
+- **A booting host is a wait, for every step.** After a reboot the runner
+  resumed the DNS step while systemd still reported "starting"; the Agent's
+  host identity could not be read and the step failed with the generic
+  `server_setup_dns_failed`. One classifier now treats an Agent call refused
+  before dispatch because the host identity is unavailable while systemd is
+  starting (or the Agent does not answer yet) as `server_setup_host_starting`:
+  nothing was sent, nobody acts, and the runner asks the same step again
+  without a new mutation. A setup child operation is created only after the
+  host identity is read. A host still starting after 10 minutes fails with
+  `server_setup_host_not_started`, which names systemd and the commands to
+  check.
+
 ## October 29 follow-up: fixes from the targeted Beta-1 re-run (alpha.115 source)
 
 The targeted re-run of product commit b86ab6fa4 found the defects below. Each
