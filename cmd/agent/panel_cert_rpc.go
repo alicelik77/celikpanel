@@ -248,6 +248,9 @@ func (a *Agent) IssuePanelCertificateV2(
 		issuedNotAfter time.Time
 		hostPublished  bool
 	)
+	// A leaf issued a moment "in the future" of this server's clock (Beta-1
+	// re-run P7) becomes valid within the bound: wait for it, read only.
+	waitPanelCertificateSourceValid(stepCtx, domain)
 	publishErr := panelCertWithPublishLock(func() (operationErr error) {
 		if err := requirePanelCertificateIssuanceIntentLocked(intent); err != nil {
 			return err

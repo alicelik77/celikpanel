@@ -53,6 +53,14 @@ re-run is owed before any is called proven.
   the main is ready for its own services, and its setup page says the second
   server has not finished (`peer_setup: pending`; you, on the second server:
   open setup there; then both are ready).
+- **A just-issued panel certificate is waited for, not failed.** The run's
+  `panel_certificate_issue_failed` after a successful issue was not name
+  resolution: the ACME server stamped notBefore with its issue time and the
+  backup's clock was about 1.5 s behind, so the agent's read right after
+  certbot found the leaf "not yet valid". Issuance now waits, at most two
+  minutes and reading only, until the leaf is valid by this server's clock,
+  then reads and checks it as before. A larger skew still fails, and its
+  reason now names the clock (`timedatectl`).
 
 ## October 29 follow-up: fixes from the Beta-1 VM run (alpha.115 source)
 

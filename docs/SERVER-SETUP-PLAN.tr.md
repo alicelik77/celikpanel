@@ -54,6 +54,14 @@ sayılmadan önce yeni bir hedefli VM koşusu gerekir.
   için hazırdır ve kurulum sayfası ikinci sunucunun bitirmediğini söyler
   (`peer_setup: pending`; siz, ikinci sunucuda: kurulumu orada açın; sonra
   ikisi de hazır olur).
+- **Yeni verilmiş panel sertifikası beklenir, hata sayılmaz.** Koşudaki
+  başarılı verilişten sonraki `panel_certificate_issue_failed` ad çözümlemesi
+  değildi: ACME sunucusu notBefore'u veriliş anıyla damgaladı ve yedek
+  sunucunun saati yaklaşık 1,5 sn gerideydi; Agent certbot'tan hemen sonra
+  okuduğunda yaprağı "henüz geçerli değil" buldu. Veriliş artık en çok iki
+  dakika ve yalnız okuyarak, yaprak bu sunucunun saatine göre geçerli olana
+  kadar bekler; sonra her zamanki gibi okur ve denetler. Daha büyük sapma yine
+  başarısız olur ve nedeni artık saati adlandırır (`timedatectl`).
 
 ## 29 Ekim ek kararı: Beta-1 sanal makine koşusunun düzeltmeleri (alpha.115 kaynağı)
 

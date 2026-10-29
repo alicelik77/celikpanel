@@ -63,7 +63,10 @@ func readTrustedCertbotCertificateSource(domain, lineage string) (certificate, p
 		return nil, nil, nil, time.Time{}, fmt.Errorf("parse panel certificate source leaf: %w", err)
 	}
 	now := panelCertificateSourceNow()
-	if now.Before(leaf.NotBefore) || !now.Before(leaf.NotAfter) {
+	if now.Before(leaf.NotBefore) {
+		return nil, nil, nil, time.Time{}, &panelCertificateSourceNotYetValidError{NotBefore: leaf.NotBefore, Now: now}
+	}
+	if !now.Before(leaf.NotAfter) {
 		return nil, nil, nil, time.Time{}, errors.New("panel certificate source leaf is not currently valid")
 	}
 	if leaf.NotAfter.Before(now.Add(panelCertificateSourceMinLifetime)) {
