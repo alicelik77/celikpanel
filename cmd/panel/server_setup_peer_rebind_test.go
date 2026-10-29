@@ -182,3 +182,43 @@ func TestServerSetupPeerChangedAnswersAfterUseAskToReopen(t *testing.T) {
 		t.Fatalf("reopened run: %v", err)
 	}
 }
+
+// Beta-1 VM cell a: extending the first server after its pair succeeded
+// added a new join step. The extension's plan reuses the succeeded binding:
+// no peer_join, the bound second server's address in its answers, no
+// blocker for a missing peer.
+func TestServerSetupExtensionAfterASucceededPairReusesItsBinding(t *testing.T) {
+	f, plan, execution := joinFirstFixture(t, joinFirstDraft())
+	binding := serverSetupPeerBinding{ExecutionID: execution.ID, PlanID: plan.ID, JoinRequestID: strings.Repeat("3", 32), PeerIPv4: "198.51.100.20",
+		PeerPanelDomain: "beta.example.test", PeerAddress: "https://198.51.100.20:2083", PeerPin: strings.Repeat("ab", 32), PeerDNSEngine: "bind"}
+	if err := writeServerSetupJSONSetting(context.Background(), f.database.GetDB(), serverSetupPeerBindingKey(execution.ID), binding); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.database.GetDB().Exec(`UPDATE server_setup_executions SET status='succeeded' WHERE id=?`, execution.ID); err != nil {
+		t.Fatal(err)
+	}
+	state, err := f.panel.loadServerSetup(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	extended, err := f.panel.buildServerSetupPlan(context.Background(), state, serviceOperationActor{UserID: f.userID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if serverSetupPlanHasStep(extended, "peer_join") || extended.Draft.PeerIP != "198.51.100.20" || extended.Draft.PeerNS != "ns2.example.test" {
+		t.Fatalf("extension plan: %+v %+v", extended.Draft, extended.Steps)
+	}
+	for _, blocker := range extended.Blockers {
+		if strings.Contains(blocker, "dns_identity") {
+			t.Fatalf("the reused binding completes the DNS identity: %v", extended.Blockers)
+		}
+	}
+	// Without a succeeded binding the join step stays.
+	if _, err := f.database.GetDB().Exec(`UPDATE server_setup_executions SET status='running' WHERE id=?`, execution.ID); err != nil {
+		t.Fatal(err)
+	}
+	again, err := f.panel.buildServerSetupPlan(context.Background(), state, serviceOperationActor{UserID: f.userID})
+	if err != nil || !serverSetupPlanHasStep(again, "peer_join") {
+		t.Fatalf("join step without a succeeded pair: %v %+v", err, again.Steps)
+	}
+}

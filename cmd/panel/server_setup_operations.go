@@ -341,6 +341,17 @@ func (p *Panel) serverSetupPDNSMainCandidateTested(ctx context.Context) bool {
 
 func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState, actor serviceOperationActor) (serverSetupPlan, error) {
 	draft := state.Draft
+	if serverSetupJoinPending(draft) {
+		// A setup that succeeded with its second server bound (an extension,
+		// Beta-1 fix): the plan reuses that binding and has no new join step.
+		bound, err := p.serverSetupSucceededPeerBinding(ctx)
+		if err != nil {
+			return serverSetupPlan{Draft: draft}, err
+		}
+		if bound != nil {
+			draft = serverSetupEffectiveDraft(draft, *bound)
+		}
+	}
 	plan := serverSetupPlan{Version: serverSetupPlanVersion, Revision: state.Revision, Purpose: draft.Purpose, Draft: draft, Actor: actor,
 		BuildCommit: strings.TrimSpace(buildCommit), Steps: []serverSetupPlanStep{}, Blockers: []string{}, TCPPorts: []int{panelPort(), 80}, UDPPorts: []int{}, PreserveSSH: true, PersistFirewall: true}
 	addBlocker := func(code string) {
