@@ -188,8 +188,11 @@ def cmd_provision(a) -> dict:
     info = lab.start(a.cell, a.node, a.os, a.ip, a.hostname, memory=a.mem)
     ready = lab.wait_ssh(a.cell, a.node, 600)
     root = PEBBLE_ROOT.read_bytes()
-    prep = ("sudo -n sh -c 'set -e; cat > /usr/local/share/ca-certificates/beta1-lab-pebble-root.crt; "
-            "update-ca-certificates >/dev/null; install -d -m 0700 /root/.config/letsencrypt; "
+    # Arch keeps local anchors in /etc/ca-certificates/trust-source/anchors (p11-kit's update-ca-trust).
+    trust = ("cat > /etc/ca-certificates/trust-source/anchors/beta1-lab-pebble-root.crt; update-ca-trust; "
+             if a.os == "arch" else
+             "cat > /usr/local/share/ca-certificates/beta1-lab-pebble-root.crt; update-ca-certificates >/dev/null; ")
+    prep = ("sudo -n sh -c 'set -e; " + trust + "install -d -m 0700 /root/.config/letsencrypt; "
             "printf \"%s\\n\" \"# beta1 lab only: certbot uses the lab ACME server (pebble)\" "
             "\"server = https://192.0.2.60:14000/dir\" \"no-verify-ssl = true\" > /root/.config/letsencrypt/cli.ini; "
             "cat /root/.config/letsencrypt/cli.ini; ip -4 route get 1.1.1.1; ip -4 route get 192.0.2.1; cat /etc/resolv.conf | grep -v ^#; "
