@@ -29,9 +29,54 @@ func prepareInstalledServiceContext(ctx context.Context, serviceID, family strin
 		return prepareArchMariaDBContext(ctx)
 	case "clamav":
 		return prepareArchClamAVContext(ctx)
+	case "fail2ban":
+		return prepareArchFail2ban()
 	default:
 		return nil
 	}
+}
+
+// Debian's fail2ban package enables the sshd jail and bans through nftables
+// (/etc/fail2ban/jail.d/defaults-debian.conf). Arch's package enables no
+// jail at all and keeps the iptables ban action, so an installed Fail2ban
+// protected nothing. CelikPanel writes the same defaults, once, as its own
+// jail.d file, with Arch's unit name for the SSH journal match; a file
+// already there (the owner's or an earlier one) is never rewritten.
+// Debian'ın fail2ban paketi sshd hapsini açar ve nftables ile yasaklar;
+// Arch'ınki hiçbir hapsi açmaz. CelikPanel aynı varsayılanları bir kez,
+// kendi jail.d dosyası olarak yazar; var olan dosyaya dokunmaz.
+var archFail2banDefaultsPath = "/etc/fail2ban/jail.d/celikpanel-defaults.conf"
+
+const archFail2banDefaults = `# Written once by CelikPanel when Fail2ban was installed: the defaults Debian's
+# package ships (defaults-debian.conf), with Arch Linux's sshd unit name.
+# CelikPanel never rewrites this file; edit or remove it as you need.
+[DEFAULT]
+banaction = nftables
+banaction_allports = nftables[type=allports]
+
+[sshd]
+backend = systemd
+journalmatch = _SYSTEMD_UNIT=sshd.service + _COMM=sshd
+enabled = true
+`
+
+func prepareArchFail2ban() error {
+	dir := filepath.Dir(archFail2banDefaultsPath)
+	info, err := os.Lstat(dir)
+	if err != nil || !info.IsDir() {
+		return fmt.Errorf("fail2ban jail directory %s is missing; reinstall Fail2ban with the operating system's package manager", dir)
+	}
+	exists, err := secureMailFileExists(archFail2banDefaultsPath)
+	if err != nil {
+		return fmt.Errorf("inspect %s: %w", archFail2banDefaultsPath, err)
+	}
+	if exists {
+		return nil
+	}
+	if err := secureWriteConfig(archFail2banDefaultsPath, []byte(archFail2banDefaults), 0o644); err != nil {
+		return fmt.Errorf("write fail2ban defaults: %w", err)
+	}
+	return nil
 }
 
 func prepareArchPostgreSQL() error {

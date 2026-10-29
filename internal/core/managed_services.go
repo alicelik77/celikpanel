@@ -697,7 +697,8 @@ var ManagedServices = []ManagedService{
 		// carries official-repo packages.
 		// pacman yok: phpPgAdmin Arch'ta yalnız AUR'da; whitelist yalnız resmi
 		// depo paketlerini taşır.
-		Packages: map[string][]string{"apt": {"phppgadmin"}},
+		Packages:                  map[string][]string{"apt": {"phppgadmin"}},
+		FamilyInstallBlockReasons: map[string]string{"pacman": PHPPgAdminPacmanReason},
 		Requires: []string{"postgresql", "web-server", "php-fpm"},
 	},
 	{
@@ -793,20 +794,17 @@ var ManagedServices = []ManagedService{
 		// bağımlıları tatmin eder.
 		ConflictGroup: "imap-server",
 		Packages:      map[string][]string{"apt": {"dovecot-imapd", "dovecot-pop3d", "dovecot-lmtpd"}, "pacman": {"dovecot"}},
-		// Arch's Dovecot 2.4 package ships one /etc/dovecot/dovecot.conf with
-		// its own mail storage, PAM login and TLS settings AFTER an optional
-		// conf.d include, and no conf.d directory. CelikPanel's mail
-		// configuration lives in conf.d files, so those packaged settings
-		// would still win; supporting Arch means adopting the packaged main
-		// file, an owner-configuration decision not made in this release.
-		// Setup refuses mail on Arch up front instead of stopping mid-install
-		// (upd1 finding P2, reproduced 30 Sep 2026 with dovecot 2.4.4-1).
-		// Arch'ın Dovecot 2.4 paketi tek bir dovecot.conf getirir; kendi
-		// posta, PAM ve TLS ayarları isteğe bağlı conf.d include'undan SONRA
-		// gelir ve conf.d dizini yoktur. Kurulum Arch'ta postayı yarıda
-		// kalmak yerine baştan reddeder.
-		FamilyInstallBlockReasons: map[string]string{"pacman": DovecotPacmanLayoutReason},
-		FirewallPorts:             []FirewallPort{{143, "tcp"}, {993, "tcp"}, {110, "tcp"}, {995, "tcp"}},
+		// Arch's Dovecot 2.4 package ships one /etc/dovecot/dovecot.conf whose
+		// own storage, PAM and TLS settings come after its conf.d include, and
+		// no conf.d directory (upd1 finding P2, 30 Sep 2026). Since 2026-10-30
+		// the Agent gives that main file the Debian shape when it is absent or
+		// exactly the package's file (pacman's recorded digest), and keeps and
+		// names an owner-edited file (cmd/agent/dovecot_arch_layout.go, D-031).
+		// The 2.4 dialect is the one Debian 13 already uses.
+		// Arch'ın Dovecot 2.4 paketi tek dovecot.conf getirir; 30 Eki 2026'dan
+		// beri Agent bu ana dosyaya, yoksa ya da paketin dosyasıyla aynıysa,
+		// Debian biçimini verir; sahibin değiştirdiği dosyayı korur ve adlandırır.
+		FirewallPorts: []FirewallPort{{143, "tcp"}, {993, "tcp"}, {110, "tcp"}, {995, "tcp"}},
 	},
 	{
 		// Webmail (operator, 23 Jul: "webmails too"; 24 Jul: "if it can't be
@@ -871,8 +869,9 @@ var ManagedServices = []ManagedService{
 		// Postayı süzemeyecek bir kurulum sunmak "kurulunca çalışır"ı bozardı;
 		// bu yüzden Arch'ta bu satır dürüstçe "henüz desteklenmiyor" der —
 		// ikisinde de çalışan filtre Rspamd'dir.
-		Packages:    map[string][]string{"apt": {"spamassassin", "spamd", "spamass-milter"}},
-		HelperUnits: []string{"spamass-milter"},
+		Packages:                  map[string][]string{"apt": {"spamassassin", "spamd", "spamass-milter"}},
+		FamilyInstallBlockReasons: map[string]string{"pacman": SpamAssassinPacmanReason},
+		HelperUnits:               []string{"spamass-milter"},
 		// A spam filter without an SMTP server filters nothing — and the
 		// requirement names the ROLE, not a product: any member of the
 		// smtp-server seat satisfies it (operator, 23 Jul: "maybe I'll
@@ -1049,7 +1048,8 @@ var ManagedServices = []ManagedService{
 		// pacman yok: Arch, Redis'i Valkey çatalıyla değiştirdi; "Redis" adı
 		// altında sessizce çatal kurmak, paket takma adı kılığında bir ürün
 		// kararı olurdu.
-		Packages: map[string][]string{"apt": {"redis-server"}},
+		Packages:                  map[string][]string{"apt": {"redis-server"}},
+		FamilyInstallBlockReasons: map[string]string{"pacman": RedisPacmanReason},
 		// Redis and Valkey both listen on 6379 by default: installing the
 		// second one leaves it unable to bind, i.e. "installed" and dead. The
 		// seat makes that a visible swap instead of a silent collision.
@@ -1211,9 +1211,17 @@ const NativeCronServiceID = "cron"
 // verdiği sabit gerekçedir.
 const NativeCronRemovalRefusal = "CelikPanel does not remove the server's cron service: it runs every scheduled job on this server, including jobs created outside the panel. The server owner removes it with the operating system's package manager if that is intended."
 
-// DovecotPacmanLayoutReason is the owner-facing reason automatic mail setup is
-// closed on Arch Linux: what is missing, who acts, and the two ways forward.
-const DovecotPacmanLayoutReason = "CelikPanel cannot set up Dovecot on Arch Linux yet: the Arch package keeps its mail, login and TLS settings in one /etc/dovecot/dovecot.conf that CelikPanel does not manage. The server administrator can choose a setup purpose without mail (Web hosting), or install and configure mail with the operating system's own tools."
+// Arch Linux rows closed because the official repositories (core, extra) do
+// not carry a working package; CelikPanel installs official distribution
+// packages only and never uses the AUR (owner rule: security before freedom).
+// Each reason names what is missing, who acts and the way forward (D-024).
+// Arch satırları, resmi depolarda çalışan paket olmadığı için kapalıdır;
+// CelikPanel AUR kullanmaz. Her gerekçe eksik olanı, kimin ne yapacağını söyler.
+const (
+	RedisPacmanReason        = "Redis is not offered on Arch Linux: its official repositories ship Valkey instead (extra/valkey, which provides redis), and CelikPanel installs official distribution packages only. The server administrator installs Valkey, the compatible cache in the same seat, from the Components page."
+	PHPPgAdminPacmanReason   = "phpPgAdmin is not offered on Arch Linux: it is not in the official repositories (only in the AUR, which CelikPanel does not use). The server administrator manages PostgreSQL with psql on the server, or with a desktop client through an SSH tunnel."
+	SpamAssassinPacmanReason = "SpamAssassin is not offered on Arch Linux: its Postfix bridge, spamass-milter, is not in the official repositories (only in the AUR, which CelikPanel does not use), so SpamAssassin would filter no mail. The server administrator installs Rspamd, the spam filter in the same seat, from the Components page."
+)
 
 // GetManagedServiceByID returns a managed service by its ID
 func GetManagedServiceByID(id string) *ManagedService {

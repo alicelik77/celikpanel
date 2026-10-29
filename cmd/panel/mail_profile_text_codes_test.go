@@ -106,9 +106,9 @@ func TestMailProfileViewTypesItsSentences(t *testing.T) {
 	if platform, ok := profileViewByID(t, mailProfilesView(catalogView(nil, ""), true, "", "", false, true, nil), "core-mail").BlockedVars["platform"]; ok {
 		t.Fatalf("an unverified platform is named: %q", platform)
 	}
-	check("pacman layout", profileViewByID(t, mailProfilesView(catalogView(nil, "pacman"), true, "pacman", "", false, true, nil), "core-mail"), want{
-		blocked: mailProfileBlockedNotInstallable, vars: map[string]string{"component": "Dovecot", "kind": "distribution", "platform": "Arch Linux (pacman)"},
-	})
+	// Arch Linux's Dovecot layout is configured since 2026-10-30: core mail is
+	// offered there like on Debian.
+	check("pacman layout", profileViewByID(t, mailProfilesView(catalogView(nil, "pacman"), true, "pacman", "", false, true, nil), "core-mail"), want{})
 	check("dnf preview", profileViewByID(t, mailProfilesView(catalogView(nil, "dnf"), true, "dnf", "", false, true, nil), "core-mail"), want{
 		blocked: mailProfileBlockedNotInstallable, vars: map[string]string{"component": "Postfix", "platform": "Fedora/RHEL (dnf)"},
 	})

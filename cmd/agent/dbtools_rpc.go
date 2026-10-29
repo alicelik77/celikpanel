@@ -129,6 +129,13 @@ func configureDBToolsWith(ctx context.Context, resp *ConfigureDBToolsResponse) {
 				problems = append(problems, err.Error())
 				resp.ToolProblems = append(resp.ToolProblems, transport.PHPToolProblem{Tool: state.Tool, Version: version, Kind: "extensions_failed"})
 			}
+		} else if detectPkgFamily() == "pacman" {
+			// Arch's single, unversioned PHP: the extensions ship in the
+			// php package and are enabled by a drop-in.
+			if err := ensurePacmanPHPToolExtensions(ctx, state.Tool); err != nil {
+				problems = append(problems, err.Error())
+				resp.ToolProblems = append(resp.ToolProblems, transport.PHPToolProblem{Tool: state.Tool, Kind: "extensions_failed"})
+			}
 		}
 		sockets[state.Tool] = socket
 	}
