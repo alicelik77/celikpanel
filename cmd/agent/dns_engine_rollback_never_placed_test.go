@@ -131,7 +131,9 @@ func TestDNSEngineInstallNeverPlacedProofRefusesAnythingTheInstallCouldHaveLeft(
 func TestDNSEngineInstallNeverPlacedProofFailsOnANonCanonicalPackageStatus(t *testing.T) {
 	receipt := dnsEngineInstallOwnershipReceipt{Engine: transport.DNSEngineBIND, PackageManager: "apt", Packages: []string{"bind9"}, MissingBefore: []string{"bind9"}}
 	profile := hostplatform.Profile{PackageManager: hostplatform.PackageManagerAPT}
-	runner := func(context.Context, string, ...string) ([]byte, error) { return []byte("deinstall ok config-files"), nil }
+	runner := func(context.Context, string, ...string) ([]byte, error) {
+		return []byte("deinstall ok config-files"), nil
+	}
 	got, err := verifyDNSEngineInstallNeverPlacedWithOps(receipt, dnsEngineNeverPlacedOps{
 		packageInstalled: func(name string) (bool, error) {
 			return exactDNSEnginePackageInstalledWithRunner(context.Background(), profile, "/usr/bin/dpkg-query", name, runner)
@@ -146,11 +148,15 @@ func TestDNSEngineInstallNeverPlacedProofFailsOnANonCanonicalPackageStatus(t *te
 	request, manifest := rollbackEvidenceRequestForTest(t, "", 0)
 	readRollbackEvidenceJournal = func() (dnsEngineSwitchJournal, bool, error) { return dnsEngineSwitchJournal{}, false, nil }
 	readRollbackEvidenceState = func() (dnsEngineStateReceipt, bool, error) { return dnsEngineStateReceipt{}, false, nil }
-	readRollbackEvidenceOwnership = func(transport.DNSEngine) (dnsEngineStateReceipt, bool, error) { return dnsEngineStateReceipt{}, false, nil }
+	readRollbackEvidenceOwnership = func(transport.DNSEngine) (dnsEngineStateReceipt, bool, error) {
+		return dnsEngineStateReceipt{}, false, nil
+	}
 	readRollbackEvidenceInstallOwnership = func(transport.DNSEngine) (dnsEngineInstallOwnershipReceipt, bool, error) {
 		return installOwnershipForEvidenceTest(request, manifest), true, nil
 	}
-	verifyRollbackEvidenceTargetSeal = func(context.Context, transport.DNSEngine, dnsEngineRollbackTargetHost) error { return errors.New("not sealed") }
+	verifyRollbackEvidenceTargetSeal = func(context.Context, transport.DNSEngine, dnsEngineRollbackTargetHost) error {
+		return errors.New("not sealed")
+	}
 	readRollbackEvidenceNeverPlaced = func(context.Context, transport.DNSEngine, dnsEngineInstallOwnershipReceipt, dnsEngineRollbackTargetHost) (bool, error) {
 		return got, err
 	}

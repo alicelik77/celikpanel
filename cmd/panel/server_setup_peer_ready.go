@@ -60,7 +60,6 @@ func serverSetupPeerReadyState(ready, retired string) string {
 	return "pending"
 }
 
-
 // serverSetupDraftIsMainDNS / Backup: this server's role in its own pair.
 func serverSetupDraftIsMainDNS(d serverSetupDraft) bool {
 	return d.DNSMode == setupDNSModeLocal && d.DNSRole == transport.DNSPairRolePrimary
