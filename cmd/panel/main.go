@@ -128,6 +128,9 @@ type Panel struct {
 	serviceMutationMu sync.Mutex
 	serverSetupMu     sync.Mutex
 	serverSetupProbe  func(context.Context, serverSetupDraft) ([]serverSetupCheck, error)
+	// serverSetupInstallPreview replaces the Agent's read-only install
+	// simulation for the setup review in tests (nil in production).
+	serverSetupInstallPreview func(context.Context, transport.ServiceInstallPreviewRequest) (transport.ServiceInstallPreviewResponse, error)
 	// dnsTopologyMu serializes every request-time DNS identity mutation. The
 	// setup endpoint and the two legacy endpoints share agent state and one
 	// SQLite tuple; their snapshot/apply/commit/rollback sequences must never

@@ -14,6 +14,10 @@ export interface ServerSetupPlan {
     server_ip?: string;
     components?: { id: string; selected: boolean; required: boolean; installed: boolean }[];
     remote_dns_connection?: { id: string; endpoint: string; nameservers: string[] };
+    // Distribution point updates of installed packages the component installs
+    // would also bring; the setup confirmation covers them (Beta-1 fix).
+    package_updates?: { package: string; from?: string; to?: string }[];
+    package_updates_state?: 'known' | 'unknown';
 }
 export interface ServerSetupExecution {
     id: string; request_id: string; plan_id: string;
@@ -93,6 +97,10 @@ export function decodeSetupPlan(value: unknown, revision: number): ServerSetupPl
     if (value.infrastructure_dns !== undefined && !isInfrastructureDNSPlan(value.infrastructure_dns)) return null;
     if (value.components !== undefined && (!Array.isArray(value.components) || value.components.length > 80
         || value.components.some(item => !isRecord(item) || typeof item.id !== 'string' || typeof item.selected !== 'boolean' || typeof item.required !== 'boolean' || typeof item.installed !== 'boolean'))) return null;
+    if (value.package_updates !== undefined && (!Array.isArray(value.package_updates) || value.package_updates.length > 400
+        || value.package_updates.some(item => !isRecord(item) || typeof item.package !== 'string' || item.package.length > 128
+            || (item.from !== undefined && typeof item.from !== 'string') || (item.to !== undefined && typeof item.to !== 'string')))) return null;
+    if (value.package_updates_state !== undefined && !['known', 'unknown'].includes(String(value.package_updates_state))) return null;
     return value as unknown as ServerSetupPlan;
 }
 export function decodeSetupExecution(value: unknown, marker?: SetupStartMarker | null): ServerSetupExecution | null {

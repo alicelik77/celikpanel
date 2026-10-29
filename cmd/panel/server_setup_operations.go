@@ -58,6 +58,17 @@ type serverSetupPlan struct {
 	ContactEmail        string                            `json:"contact_email"`
 	Actor               serviceOperationActor             `json:"actor"`
 	Components          []serverSetupPlanComponent        `json:"components,omitempty"`
+	// PackageUpdates (Beta-1 fix): the distribution point updates of already
+	// installed packages that this plan's component installs would also
+	// bring, as the package manager's simulation said at review. The review
+	// lists them ("Distribution packages also updated") and the one setup
+	// confirmation covers them, so a setup step does not refuse them.
+	// PackageUpdatesState is "known" or "unknown" (the simulation could not
+	// be read). Neither is part of the plan identity: the start check
+	// compares the list itself (serverSetupPackageUpdatesCovered).
+	// Kurulumun ayrıca güncelleyeceği dağıtım paketleri; tek onay kapsar.
+	PackageUpdates      []transport.NotableInstall `json:"package_updates,omitempty"`
+	PackageUpdatesState string                     `json:"package_updates_state,omitempty"`
 	// peerBound marks a plan completed by its second-server binding
 	// (serverSetupBoundPlan); it is never stored or hashed.
 	peerBound bool
@@ -243,6 +254,7 @@ func (p *Panel) loadServerSetupPlan(ctx context.Context, id string) (serverSetup
 
 func serverSetupPlanIdentity(plan serverSetupPlan) string {
 	plan.ID = ""
+	plan.PackageUpdates, plan.PackageUpdatesState = nil, ""
 	encoded, _ := json.Marshal(plan)
 	return serverSetupID(string(encoded))
 }
@@ -748,8 +760,75 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 		plan.Steps = serverSetupPeerJoinSteps(plan.Steps, serverSetupPlanStep{Kind: "peer_names", Target: link.Address})
 	}
 	plan.CanStart = len(plan.Blockers) == 0
+	if plan.CanStart {
+		plan.PackageUpdates, plan.PackageUpdatesState = p.serverSetupPackageUpdates(ctx, plan.Steps)
+	}
 	plan.ID = serverSetupPlanIdentity(plan)
 	return plan, nil
+}
+
+// serverSetupPackageUpdateBound bounds the review's read-only simulation.
+const serverSetupPackageUpdateBound = 20 * time.Second
+
+// serverSetupPackageUpdates asks the package manager, read-only, which
+// installed distribution packages the plan's component installs would also
+// update within this release. Anything else notable is not listed here: a
+// setup step still refuses it as before. A failed or busy read is "unknown".
+func (p *Panel) serverSetupPackageUpdates(ctx context.Context, steps []serverSetupPlanStep) ([]transport.NotableInstall, string) {
+	preview := p.serverSetupInstallPreview
+	if preview == nil {
+		preview = func(ctx context.Context, request transport.ServiceInstallPreviewRequest) (transport.ServiceInstallPreviewResponse, error) {
+			return installPackagePreview(p, ctx, request)
+		}
+	}
+	var batch []transport.ServiceInstallPreviewStep
+	for _, step := range steps {
+		if step.Kind == "service" && !managedDNSEngineServiceID(step.Target) && core.GetManagedServiceByID(step.Target) != nil {
+			batch = append(batch, transport.ServiceInstallPreviewStep{ID: step.Target, Package: step.Qualifier})
+		}
+	}
+	if len(batch) == 0 {
+		return nil, ""
+	}
+	ctx, cancel := context.WithTimeout(ctx, serverSetupPackageUpdateBound)
+	defer cancel()
+	updates := []transport.NotableInstall{}
+	seen := map[string]bool{}
+	for start := 0; start < len(batch); start += maxInstallPreviewSteps {
+		end := min(start+maxInstallPreviewSteps, len(batch))
+		resp, err := preview(ctx, transport.ServiceInstallPreviewRequest{Steps: batch[start:end]})
+		if err != nil || resp.State != "known" {
+			return nil, "unknown"
+		}
+		for _, item := range resp.Notable {
+			if item.PointUpdate && !seen[item.Package] {
+				seen[item.Package] = true
+				updates = append(updates, transport.NotableInstall{Package: item.Package, Reason: item.Reason, From: item.From, To: item.To, PointUpdate: true})
+			}
+		}
+	}
+	slices.SortFunc(updates, func(a, b transport.NotableInstall) int { return strings.Compare(a.Package, b.Package) })
+	return updates, "known"
+}
+
+// serverSetupPackageUpdatesCovered: at start the reviewed list still covers
+// what the package manager would update now. A newer read that names a
+// package the review did not list needs a new review; an unread one does not
+// (each step's install is checked again on the server).
+func serverSetupPackageUpdatesCovered(reviewed, fresh serverSetupPlan) bool {
+	if fresh.PackageUpdatesState != "known" {
+		return true
+	}
+	listed := map[string]bool{}
+	for _, item := range reviewed.PackageUpdates {
+		listed[item.Package+"\x00"+item.To] = true
+	}
+	for _, item := range fresh.PackageUpdates {
+		if !listed[item.Package+"\x00"+item.To] {
+			return false
+		}
+	}
+	return true
 }
 
 func (p *Panel) handleServerSetupStart(w http.ResponseWriter, r *http.Request) {
@@ -815,7 +894,7 @@ func (p *Panel) handleServerSetupStart(w http.ResponseWriter, r *http.Request) {
 		writeServerError(w, err)
 		return
 	}
-	if fresh.ID != plan.ID {
+	if fresh.ID != plan.ID || !serverSetupPackageUpdatesCovered(plan, fresh) {
 		writeCodedError(w, http.StatusConflict, "server_setup_review_stale", "Server requirements changed. Review the current plan.", "")
 		return
 	}
@@ -1433,7 +1512,10 @@ func (p *Panel) ensureServerSetupChild(ctx context.Context, plan serverSetupPlan
 	switch step.Kind {
 	case "service":
 		runner = func(ctx context.Context, advance func(string) error) (serviceOperationResult, *serviceOperationFailure) {
-			return p.runServiceInstall(ctx, serviceInstallRequest{ServiceID: step.Target, Package: step.Qualifier, RequestID: step.RequestID}, advance)
+			// The setup's one confirmation covers the distribution point
+			// updates its review listed; every other notable install is
+			// still refused by the Agent.
+			return p.runServiceInstall(ctx, serviceInstallRequest{ServiceID: step.Target, Package: step.Qualifier, RequestID: step.RequestID, AcceptPointUpdates: true}, advance)
 		}
 	case "runtime":
 		runner = func(ctx context.Context, advance func(string) error) (serviceOperationResult, *serviceOperationFailure) {

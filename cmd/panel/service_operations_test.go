@@ -24,10 +24,12 @@ import (
 )
 
 type ServiceOperationInstallRequest struct {
-	MutationRequestID string
-	MutationOwnerID   string
-	ID                string
-	Package           string
+	MutationRequestID  string
+	MutationOwnerID    string
+	ID                 string
+	Package            string
+	CheckInstalls      bool
+	AcceptPointUpdates bool
 }
 
 type ServiceOperationInstallResponse struct {
@@ -214,6 +216,8 @@ type serviceOperationTestAgent struct {
 	// candidateVersions answers Agent.ServiceCandidateVersion; an absent
 	// entry is an unread version (the RPC fails), as before it existed.
 	candidateVersions map[string]string
+	// installRequests are the InstallService requests received, in order.
+	installRequests []ServiceOperationInstallRequest
 
 	// packageVersions answers Agent.InstalledPackageVersionsV1 (alpha.97);
 	// nil answers "unsupported". packageVersionCalls counts the reads.
@@ -478,6 +482,7 @@ func (a *serviceOperationTestAgent) InstallService(
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	a.installRequests = append(a.installRequests, *req)
 	if a.installRPCError != nil {
 		return a.installRPCError
 	}

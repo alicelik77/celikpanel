@@ -191,6 +191,14 @@ type InstallServiceRequest struct {
 	// CheckInstalls: dikkat çeken kurulum, onaylanmadıkça kurulumu reddeder.
 	CheckInstalls     bool     `json:"check_installs,omitempty"`
 	ConfirmedInstalls []string `json:"confirmed_installs,omitempty"`
+	// AcceptPointUpdates (Beta-1 fix): the install is a step of a reviewed
+	// server setup whose one confirmation covers the distribution point
+	// updates of installed packages it listed (NotableInstall.PointUpdate).
+	// Those are not refused; every other notable install still is. Additive:
+	// an older Agent ignores it and refuses them as before.
+	// AcceptPointUpdates: kurulum onayı, listelediği dağıtım yama
+	// güncellemelerini kapsar; diğer dikkat çekenler yine reddedilir.
+	AcceptPointUpdates bool `json:"accept_point_updates,omitempty"`
 }
 
 // NotableInstall is one package an install would bring beyond what it
@@ -212,6 +220,12 @@ type NotableInstall struct {
 	// From/To: istenmeden yükseltilecek ya da üreticiyle değiştirilecek paket.
 	From string `json:"from,omitempty"`
 	To   string `json:"to,omitempty"`
+	// PointUpdate (Beta-1 fix): an "upgrade" of an installed distribution
+	// package within the same release (APT, same epoch and upstream version,
+	// only the distribution's revision changes): a stable or security point
+	// update, not a new version. Additive.
+	// PointUpdate: aynı dağıtım sürümü içindeki yama güncellemesi.
+	PointUpdate bool `json:"point_update,omitempty"`
 }
 
 // ServiceInstallPreviewStep is one component install of a preview: the

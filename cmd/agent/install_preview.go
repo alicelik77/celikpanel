@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -89,6 +90,9 @@ type installClassification struct {
 	// shared are the vendor's shared packages this install asks for as
 	// name=version: never "requested", always named for confirmation.
 	shared map[string]bool
+	// pointUpdates: the package family versions releases with a separate
+	// distribution revision (APT), so a point update can be told apart.
+	pointUpdates bool
 }
 
 // installed are the catalogue components already on the host: their own
@@ -102,6 +106,7 @@ func newInstallClassification(family string, requested []string, components []st
 		present:     phpVersionPresent,
 	}
 	c.shared = map[string]bool{}
+	c.pointUpdates = family == "apt"
 	for _, pkg := range requested {
 		if name, _, exact := strings.Cut(pkg, "="); exact {
 			c.shared[name] = true
@@ -229,6 +234,10 @@ func (c installClassification) classifySimulation(sim aptSimulation) []transport
 				item.Reason, item.Component = notableReasonVendorReplacesDist, repo
 			}
 		}
+		if item.Reason == notableReasonUpgrade && c.pointUpdates && aptPointUpdate(upgrade.From, upgrade.To) &&
+			(c.vendorOf == nil || c.vendorOf(pkg, upgrade.To) == "") {
+			item.PointUpdate = true
+		}
 		notable = append(notable, item)
 	}
 	sort.SliceStable(notable, func(i, j int) bool {
@@ -257,6 +266,30 @@ func notableReasonRank(reason string) int {
 	default:
 		return 3
 	}
+}
+
+// aptPointUpdate: from and to are one release of the package (same epoch and
+// upstream version) and only the distribution's revision changes, as a
+// Debian stable/security update (5.40.1-6 -> 5.40.1-6+deb13u1) or an Ubuntu
+// SRU of the same upstream does. A new upstream version is not one.
+func aptPointUpdate(from, to string) bool {
+	split := func(version string) (string, string, bool) {
+		epoch, rest := "0", version
+		if colon := strings.IndexByte(rest, ':'); colon > 0 {
+			epoch, rest = rest[:colon], rest[colon+1:]
+		}
+		dash := strings.LastIndexByte(rest, '-')
+		if dash <= 0 || dash == len(rest)-1 {
+			return "", "", false
+		}
+		return epoch, rest[:dash], true
+	}
+	if from == "" || to == "" || from == to || !validDebianVersion(from) || !validDebianVersion(to) {
+		return false
+	}
+	fromEpoch, fromUpstream, ok := split(from)
+	toEpoch, toUpstream, ok2 := split(to)
+	return ok && ok2 && fromEpoch == toEpoch && fromUpstream == toUpstream
 }
 
 // unconfirmedNotable is what the owner has not confirmed.
@@ -317,8 +350,19 @@ func (r *packageInstallVendorRefusal) Error() string {
 // all confirmed, and one that would replace a distribution package with a
 // vendor repository's build whatever was confirmed.
 func notableInstallGuard(c installClassification, packages, confirmed []string) func(aptSimulation) error {
+	return notableInstallGuardAccepting(c, packages, confirmed, false)
+}
+
+// notableInstallGuardAccepting is notableInstallGuard for a reviewed server
+// setup step: with acceptPointUpdates the distribution point updates the
+// setup's confirmation covers are not refused; everything else is judged as
+// before.
+func notableInstallGuardAccepting(c installClassification, packages, confirmed []string, acceptPointUpdates bool) func(aptSimulation) error {
 	return func(sim aptSimulation) error {
 		missing := unconfirmedNotable(c.classifySimulation(sim), confirmed)
+		if acceptPointUpdates {
+			missing = slices.DeleteFunc(missing, func(item transport.NotableInstall) bool { return item.PointUpdate })
+		}
 		for _, item := range missing {
 			if item.Reason == notableReasonVendorReplacesDist {
 				return &packageInstallVendorRefusal{Packages: append([]string{}, packages...), Notable: missing}
