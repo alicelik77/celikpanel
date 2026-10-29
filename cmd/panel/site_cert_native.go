@@ -121,6 +121,49 @@ func (p *Panel) observeNativeSiteCertificates(ctx context.Context) {
 		p.observeNativeSiteCertificate(jobCtx, row)
 		cancel()
 	}
+	p.retireSupersededNativeLineages(ctx)
+}
+
+// retireSupersededNativeLineages switches certbot's renewal off for native
+// lineages that only replaced (revoked or expired) ledger rows name. Their
+// rows stay as rollback records, so the lineage stays too, but the
+// operating system must not keep renewing a certificate nothing serves.
+// Idempotent: an already-off or already-removed lineage changes nothing.
+func (p *Panel) retireSupersededNativeLineages(ctx context.Context) {
+	rows, err := p.db.GetDB().QueryContext(ctx, `
+		SELECT DISTINCT old.domain_id, old.lineage_name
+		FROM ssl_certificates old
+		WHERE old.status <> 'active' AND old.type = 'letsencrypt' AND old.lineage_name LIKE ?
+		  AND NOT EXISTS (
+			SELECT 1 FROM ssl_certificates cur
+			WHERE cur.status = 'active' AND cur.lineage_name = old.lineage_name)`,
+		transport.NativeSiteLineagePrefix+"%")
+	if err != nil {
+		log.Printf("cert renewal: read replaced OS-renewed certificates: %v", err)
+		return
+	}
+	type retired struct {
+		domainID int
+		lineage  string
+	}
+	var list []retired
+	for rows.Next() {
+		var item retired
+		if err := rows.Scan(&item.domainID, &item.lineage); err != nil {
+			rows.Close()
+			log.Printf("cert renewal: read replaced OS-renewed certificates: %v", err)
+			return
+		}
+		if transport.NativeSiteLineageBelongsTo(item.lineage, item.domainID) {
+			list = append(list, item)
+		}
+	}
+	rows.Close()
+	for _, item := range list {
+		if err := p.setNativeSiteAutoRenew(ctx, item.domainID, item.lineage, false); err != nil {
+			log.Printf("cert renewal: stop certbot renewing the replaced lineage %s: %v", item.lineage, err)
+		}
+	}
 }
 
 // nativeObservation is what one reading changes in the ledger.

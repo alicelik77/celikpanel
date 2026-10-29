@@ -67,7 +67,7 @@ test('the next actions are concrete and name the server administrator', () => {
   assert.match(sentence(englishScreens, 'ssl.renewalGuide.who'), /server administrator/);
   assert.match(sentence(turkishScreens, 'ssl.renewalGuide.who'), /sunucu yöneticisi/);
   for (const catalogue of [englishScreens, turkishScreens]) {
-    assert.match(sentence(catalogue, 'ssl.renewalGuide.failed.action'), /certbot renew --cert-name \{lineage\} --dry-run/);
+    assert.match(sentence(catalogue, 'ssl.renewalGuide.failed.action'), /sudo certbot renew --cert-name \{lineage\}/);
     assert.match(sentence(catalogue, 'ssl.renewalGuide.scheduler_missing.action'), /systemctl enable --now certbot\.timer/);
     assert.match(sentence(catalogue, 'ssl.renewalGuide.deploy_incomplete.action'), /systemctl reload nginx/);
     assert.match(sentence(catalogue, 'dashboard.certRenewalProblem'), /\{domain\}/);

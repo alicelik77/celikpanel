@@ -911,6 +911,10 @@ func (a *Agent) SetSiteCertificateAutoRenewV1(req *transport.SetSiteCertificateA
 	}
 	defer releaseSiteCertbot()
 	changed, err := setNativeSiteAutoRenew(req.LineageName, req.AutoRenew)
+	if !req.AutoRenew && errors.Is(err, os.ErrNotExist) {
+		// No lineage left: nothing renews it, which is what was asked.
+		return nil
+	}
 	if err != nil {
 		resp.Error = "certbot's renewal configuration could not be changed: " + boundedNativeDetail(err.Error())
 		return nil
