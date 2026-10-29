@@ -1160,6 +1160,18 @@ func (p *Panel) handleServerSetupPeerNames(w http.ResponseWriter, r *http.Reques
 		if execution, err := p.latestServerSetupExecution(ctx); err == nil && execution != nil {
 			if latest, err := p.loadServerSetupPlan(ctx, execution.PlanID); err == nil {
 				if binding, err := p.readServerSetupPeerBinding(ctx, latest, execution.ID); err == nil && binding != nil && binding.JoinRequestID == join.RequestID {
+					// A run that already went on with the earlier answers,
+					// or one that is not running, keeps them: the earlier
+					// refusal, and the join is left as it is.
+					unused, unusedErr := p.serverSetupBindingUnused(ctx, *execution)
+					if unusedErr != nil {
+						writeServerError(w, unusedErr)
+						return
+					}
+					if !unused || !stringIn(execution.Status, "running", "waiting") {
+						writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_names_bound", "The first server's setup already uses the second server's earlier names. Keep those names, or reopen the first server's plan.", nil)
+						return
+					}
 					if !join.NamesChanged {
 						join.NamesChanged = true
 						if err := writeServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, join); err != nil {
@@ -1169,7 +1181,7 @@ func (p *Panel) handleServerSetupPeerNames(w http.ResponseWriter, r *http.Reques
 						p.audit(r, "server.setup.peer_names_changed", "", 0)
 						p.wakeServerSetupRunner()
 					}
-					writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_names_bound", "The first server already uses this server's earlier answers. Create a new join code on the first server and enter it here; setup then continues with these answers.", nil)
+					writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_names_changed", "The first server already uses this server's earlier answers. Create a new join code on the first server and enter it here; setup then continues with these answers.", nil)
 					return
 				}
 			}

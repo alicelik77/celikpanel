@@ -68,6 +68,7 @@ const codeKey: Record<string, TranslationKey> = {
     server_setup_peer_names_invalid: 'setup.v5.wait.server_setup_peer_names_invalid',
     server_setup_peer_names_bound: 'setup.v5.wait.server_setup_peer_names_bound',
     server_setup_peer_names_final: 'setup.v5.wait.server_setup_peer_names_final',
+    server_setup_peer_names_changed: 'setup.v5.wait.server_setup_peer_names_changed',
     server_setup_peer_mail_both: 'setup.v5.wait.server_setup_peer_mail_both',
     server_setup_peer_link_missing: 'setup.v5.wait.server_setup_peer_link_missing',
     server_setup_peer_link_revoked: 'setup.v5.wait.server_setup_peer_link_revoked',
@@ -833,7 +834,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                             ? <div role="status" className="mt-3 max-w-2xl rounded-lg border border-border bg-surface p-4"><p className="break-words text-sm leading-6" data-setup-reconnect-slow=""><KeepWords text={t('setup.reconnectSlow')} /></p><p className="mt-1 text-sm text-fg-muted" data-sudo-note="">{t('common.sudoNote')}</p><Button variant="secondary" className="mt-3" onClick={() => window.location.reload()}>{t('setup.reloadPage')}</Button></div>
                             : <p role="status" className="mt-3 flex max-w-2xl items-start gap-3 text-sm leading-6 text-fg-muted" data-setup-reconnecting=""><Loader2 className="mt-1 h-4 w-4 shrink-0 text-primary motion-safe:animate-spin" aria-hidden="true" /><span>{t('setup.uncertain')}</span></p>)}
                     {execution?.status === 'waiting' && execution.phase === 'dns_publisher' && !execution.error?.code.startsWith('server_setup_dns_publisher_') && <SetupDNSPublisher key={execution.id} execution={execution} onBound={reconcile} />}
-                    {execution && execution.status !== 'failed' && execution.steps.some(item => item.kind === 'peer_join' && item.status !== 'succeeded') && <SetupJoinCard />}
+                    {execution && execution.status !== 'failed' && execution.status !== 'succeeded' && execution.steps.some(item => item.kind === 'peer_join') && <SetupJoinCard joinPending={execution.steps.some(item => item.kind === 'peer_join' && item.status !== 'succeeded')} />}
                     {hostBusy ? <div role="alert" className={`mt-4 rounded-lg border p-4 sm:p-5 ${hostBusy.caution ? 'border-warning-mark/40 bg-warning-mark/10' : 'border-border bg-surface'}`}>
                         <p className="max-w-3xl break-words text-sm leading-6 text-fg">{t(hostBusy.body)}</p>
                         <Button variant="primary" className="mt-4" onClick={editPlan}>{t('setup.revise')}</Button>

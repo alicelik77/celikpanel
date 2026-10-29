@@ -240,6 +240,9 @@ export interface SetupPeerView {
     joined?: { short_name?: string; ipv4: string; joined_at: string; panel_domain?: string; mail_hostname?: string; main_domain_mail?: boolean };
     link?: SetupPeerLink;
     pending?: boolean;
+    // The second server sent other answers after this run bound its earlier
+    // ones: a new join code is the next action (server_setup_peer_join_changed).
+    changed?: boolean;
 }
 const peerRecord = (item: unknown): item is Record<string, unknown> => !!item && typeof item === 'object' && !Array.isArray(item);
 const peerText = (value: unknown, limit = 253) => typeof value === 'string' && value.length <= limit;
@@ -249,6 +252,7 @@ export function decodeSetupPeerView(value: unknown): SetupPeerView {
     const code = value.code, joined = value.joined, link = value.link;
     if (code !== undefined && (!peerRecord(code) || !peerText(code.address) || !peerText(code.expires_at, 64) || typeof code.attempts_left !== 'number' || typeof code.used !== 'boolean')) throw invalid();
     if (joined !== undefined && (!peerRecord(joined) || !peerText(joined.ipv4, 64) || !peerText(joined.joined_at, 64))) throw invalid();
+    if (value.changed !== undefined && typeof value.changed !== 'boolean') throw invalid();
     if (link !== undefined && (!peerRecord(link) || !peerText(link.address) || !peerText(link.main_domain) || !['first', 'second'].includes(String(link.main_dns_server)) || !peerText(link.ns1) || !peerText(link.ns2)
         || !peerRecord(link.first) || !peerText(link.first.ipv4, 64) || !peerText(link.first.panel_domain) || typeof link.imported !== 'number')) throw invalid();
     return value as unknown as SetupPeerView;
@@ -347,7 +351,10 @@ export function SetupJoinedSummary({ link }: { link: SetupPeerLink }) {
 // On the first server while its setup waits for the second: the code, made
 // on request and shown once, and what the second server has done so far. The
 // state is read about every ten seconds; reading never makes a code.
-export function SetupJoinCard() {
+// joinPending: the run still waits at its join step. Past it, the card is
+// shown only when the second server's answers changed (the next action is a
+// new code); the run's own step state is never replaced for it.
+export function SetupJoinCard({ joinPending = true }: { joinPending?: boolean } = {}) {
     const { t } = useSetupWizardI18n();
     const remote = useRemote('/api/v1/setup/peer', decodeSetupPeerView);
     useRefreshEvery(remote, 10_000);
@@ -378,9 +385,12 @@ export function SetupJoinCard() {
     const joinedText = joined ? joined.panel_domain
         ? t(joined.mail_hostname ? 'setup.v5.card.namedMail' : 'setup.v5.card.named', { server, ip: joined.ipv4, panel: joined.panel_domain, mail: joined.mail_hostname || '' })
         : t('setup.v5.card.joined', { server, ip: joined.ipv4 }) : '';
+    const changed = view?.changed === true;
+    if (!joinPending && !changed) return null;
     return <section aria-labelledby="setup-join-card-title" className="mt-5 space-y-4" data-setup-join-card="">
         <h3 id="setup-join-card-title" className="sr-only">{t('setup.v5.card.title')}</h3>
         <SetupLead title={t('setup.v5.card.title')} why={t('setup.v5.card.why')} who={t('setup.v5.card.who')} next={t('setup.v5.card.next')} then={t('setup.v5.card.then')} />
+        {changed && <p role="status" className="rounded-lg border border-warning-mark/40 bg-warning-mark/10 p-3 text-sm leading-6" data-setup-join-changed="">{t('setup.v5.wait.server_setup_peer_join_changed')}</p>}
         {joinedText && <p role="status" className="text-sm leading-6" data-setup-join-joined="">{joinedText}</p>}
         {made && <div className="space-y-2 rounded-lg border border-border bg-surface p-4" data-setup-join-code="">
             <SetupCopyRow label={t('setup.v5.card.address')} value={made.address} />
@@ -391,7 +401,7 @@ export function SetupJoinCard() {
         {!made && view?.code && !view.code.used && <p className="text-sm leading-6 text-fg-muted">{t('setup.v5.card.active', { time: time(view.code.expires_at), left: view.code.attempts_left })}</p>}
         {remote.remote.state === 'unknown' && <p role="status" className="text-sm text-fg-muted">{t('setup.v5.card.readFailed')}</p>}
         {problem && <p role="alert" className="text-sm leading-6 text-danger">{problem}</p>}
-        {!joined?.panel_domain && <Button type="button" variant={made ? 'secondary' : 'primary'} disabled={busy} loading={busy} onClick={() => void create()}>{t(busy ? 'setup.v5.card.creating' : made || view?.code ? 'setup.v5.card.createAgain' : 'setup.v5.card.create')}</Button>}
+        {(!joined?.panel_domain || changed) && <Button type="button" variant={made ? 'secondary' : 'primary'} disabled={busy} loading={busy} onClick={() => void create()}>{t(busy ? 'setup.v5.card.creating' : made || view?.code ? 'setup.v5.card.createAgain' : 'setup.v5.card.create')}</Button>}
     </section>;
 }
 

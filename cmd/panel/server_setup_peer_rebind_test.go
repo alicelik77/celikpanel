@@ -64,17 +64,22 @@ func TestServerSetupPeerChangedAnswersRecoverWithANewCode(t *testing.T) {
 	step.serverSetupPlanStep = changed.Steps[0]
 	_, err = pair.second.panel.runServerSetupPeerNames(context.Background(), changed, step)
 	var failure *serverSetupChildFailure
-	if !errors.As(err, &failure) || failure.Code != "server_setup_peer_names_bound" || !strings.Contains(failure.Message, "new join code on the first server") {
+	if !errors.As(err, &failure) || failure.Code != "server_setup_peer_names_changed" || !strings.Contains(failure.Message, "new join code on the first server") {
 		t.Fatalf("changed answers on the second server: %v", err)
 	}
-	// The first server says what changed, who acts and what to do; asking
-	// again changes nothing.
+	// The first server says what changed on its setup link (the DNS step
+	// that is waiting keeps its own phase and reason, D-024); asking again
+	// changes nothing and the run does not go on with the old answers.
 	for pass := 0; pass < 2; pass++ {
 		if _, err := firstAdvance(); err != nil {
 			t.Fatal(err)
 		}
-		if pair.execution.Status != "waiting" || pair.execution.Error == nil || pair.execution.Error.Code != "server_setup_peer_join_changed" || !strings.Contains(pair.execution.Error.Message, "Create a new join code here") {
-			t.Fatalf("pass %d: %s %+v", pass, pair.execution.Status, pair.execution.Error)
+		if pair.execution.Status != "waiting" || pair.execution.Phase != "primary_dns" || pair.execution.Error == nil || pair.execution.Error.Code != "server_setup_primary_dns_required" {
+			t.Fatalf("pass %d: the waiting step's state was replaced: %s %s %+v", pass, pair.execution.Status, pair.execution.Phase, pair.execution.Error)
+		}
+		view, err := pair.first.panel.serverSetupPeerState(context.Background())
+		if err != nil || !view.Changed {
+			t.Fatalf("pass %d: the link view does not say the change: %+v %v", pass, view, err)
 		}
 		if again, _ := pair.first.panel.readServerSetupPeerBinding(context.Background(), pair.plan, pair.execution.ID); again == nil || again.PeerDNSEngine != "pdns" {
 			t.Fatalf("pass %d: polling changed the binding: %+v", pass, again)
@@ -89,6 +94,16 @@ func TestServerSetupPeerChangedAnswersRecoverWithANewCode(t *testing.T) {
 	t.Setenv("CELIKPANEL_SERVER_IP", "198.51.100.20")
 	if answer := pair.connect(t, code.Code); answer.State != "ok" {
 		t.Fatalf("join again: %+v", answer)
+	}
+	// A crash after the run marked its join step running and before the
+	// stale binding was withdrawn: the next pass finishes the same change.
+	pair.execution.Steps[joinIndex].Status = "running"
+	crashed, _ := json.Marshal(pair.execution)
+	if _, err := pair.first.database.GetDB().Exec(`UPDATE server_setup_executions SET execution_json=? WHERE id=?`, string(crashed), pair.execution.ID); err != nil {
+		t.Fatal(err)
+	}
+	if still, _ := pair.first.panel.readServerSetupPeerBinding(context.Background(), pair.plan, pair.execution.ID); still == nil {
+		t.Fatal("the crash state needs the stale binding")
 	}
 	// Before the new answers arrive the run waits for them; nothing is bound.
 	if _, err := firstAdvance(); err != nil {
@@ -143,9 +158,10 @@ func TestServerSetupPeerChangedAnswersRecoverWithANewCode(t *testing.T) {
 }
 
 // The same change after the run already used the earlier answers (a step
-// after the join ran): the run cannot take new answers and says to reopen
-// the plan; a new code is refused with that reason. Reopening is the path.
-func TestServerSetupPeerChangedAnswersAfterUseAskToReopen(t *testing.T) {
+// after the join ran): the second server gets the earlier refusal, the join
+// is left as it is, the first server's run keeps its own state and a new
+// code is still refused (reopening the plan is the path).
+func TestServerSetupPeerChangedAnswersAfterUseKeepTheEarlierRefusal(t *testing.T) {
 	pair := newPeerPair(t, joinFirstDraft())
 	if answer := pair.connect(t, issueJoinCode(t, pair.first).Code); answer.State != "ok" {
 		t.Fatalf("join: %+v", answer)
@@ -158,28 +174,32 @@ func TestServerSetupPeerChangedAnswersAfterUseAskToReopen(t *testing.T) {
 	joinIndex := pair.advanceToJoin(t)
 	// A step after the join already ran with the binding.
 	pair.execution.Steps[joinIndex+1].Status = "succeeded"
+	used, _ := json.Marshal(pair.execution)
+	if _, err := pair.first.database.GetDB().Exec(`UPDATE server_setup_executions SET execution_json=? WHERE id=?`, string(used), pair.execution.ID); err != nil {
+		t.Fatal(err)
+	}
+	before := *pair.execution
 	_, changed := pair.secondReview(t, func(d *serverSetupDraft) { d.PanelDomain = "gamma.example.test" })
 	step.serverSetupPlanStep = changed.Steps[0]
-	if _, err := pair.second.panel.runServerSetupPeerNames(context.Background(), changed, step); err == nil {
-		t.Fatal("changed answers accepted")
+	_, err := pair.second.panel.runServerSetupPeerNames(context.Background(), changed, step)
+	var failure *serverSetupChildFailure
+	if !errors.As(err, &failure) || failure.Code != "server_setup_peer_names_bound" {
+		t.Fatalf("changed answers after use: %v", err)
+	}
+	var join serverSetupJoinRecord
+	if found, _ := readServerSetupJSONSetting(context.Background(), pair.first.database.GetDB(), serverSetupJoinKey, &join); !found || join.NamesChanged {
+		t.Fatalf("the join was changed: %+v", join)
 	}
 	if _, err := pair.first.panel.advanceServerSetupExecution(pair.plan, pair.execution); err != nil {
 		t.Fatal(err)
 	}
-	if pair.execution.Error == nil || pair.execution.Error.Code != "server_setup_peer_join_reopen_required" || !strings.Contains(pair.execution.Error.Message, "Reopen this server's plan") {
-		t.Fatalf("used binding: %+v", pair.execution.Error)
+	if pair.execution.Error != nil && (pair.execution.Error.Code == "server_setup_peer_join_changed" || pair.execution.Error.Code == "server_setup_peer_join_reopen_required") {
+		t.Fatalf("the run's state was replaced: %+v (before %+v)", pair.execution.Error, before.Error)
 	}
 	w := httptest.NewRecorder()
 	pair.first.panel.handleServerSetupJoinCodes(w, serviceOperationAdminRequest(t, http.MethodPost, serverSetupJoinCodesPath, "{}", pair.first.userID))
-	if w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), "server_setup_join_reopen_required") {
+	if w.Code != http.StatusConflict || !(strings.Contains(w.Body.String(), "server_setup_join_bound") || strings.Contains(w.Body.String(), "server_setup_join_not_waiting")) {
 		t.Fatalf("code with a used binding: %d %s", w.Code, w.Body.String())
-	}
-	// The reopened plan's run never binds the replaced answers: it waits
-	// for the new join (the VM run re-bound them at once).
-	_, err := pair.first.panel.runServerSetupPeerJoin(context.Background(), pair.plan, strings.Repeat("4", 32))
-	var wait *serverSetupPeerWait
-	if !errors.As(err, &wait) || wait.Code != "server_setup_peer_join_changed" {
-		t.Fatalf("reopened run: %v", err)
 	}
 }
 

@@ -439,6 +439,11 @@ type serverSetupPeerView struct {
 	Joined  *serverSetupPeerJoined   `json:"joined,omitempty"`
 	Link    *serverSetupPeerLinkView `json:"link,omitempty"`
 	Pending bool                     `json:"pending,omitempty"`
+	// Changed (first server): the second server sent other answers after
+	// this setup run bound its earlier ones; a new join code is the next
+	// action (server_setup_peer_join_changed). Shown here so the run's own
+	// step state is never overwritten.
+	Changed bool `json:"changed,omitempty"`
 }
 
 type serverSetupPeerJoined struct {
@@ -521,6 +526,7 @@ func (p *Panel) serverSetupPeerState(ctx context.Context) (serverSetupPeerView, 
 		view.Code = &serverSetupJoinCodeView{Address: serverSetupJoinAddress(state.Draft), ExpiresAt: time.Unix(code.ExpiresAt, 0).UTC().Format(time.RFC3339), AttemptsLeft: serverSetupJoinCodeAttemptsLeft(code), Used: code.ConsumedBy != ""}
 	}
 	if joinFound {
+		view.Changed = join.NamesChanged
 		view.Joined = &serverSetupPeerJoined{ShortName: join.Peer.ShortName, IPv4: join.Peer.IPv4, JoinedAt: join.JoinedAt}
 		if join.Names != nil {
 			view.Joined.PanelDomain, view.Joined.MailHostname, view.Joined.MainDomainMail = join.Names.PanelDomain, join.Names.MailHostname, join.Names.Mail != nil
@@ -597,7 +603,7 @@ func (p *Panel) runServerSetupPeerNames(ctx context.Context, plan serverSetupPla
 		return false, serverSetupPeerVersionWait()
 	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_link_unauthorized":
 		return false, serverSetupPeerLinkRevoked(true)
-	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_names_bound":
+	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_names_changed":
 		// Recoverable (Beta-1 P4): the first server waits for a new join.
 		return false, &serverSetupChildFailure{Code: refusal.Code, Message: "The first server already uses this server's earlier answers. Create a new join code on the first server, enter it here in the join step, then review and start this server's plan again; setup then continues with these answers."}
 	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_names_final":

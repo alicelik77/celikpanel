@@ -329,6 +329,23 @@ func setupPDNSPairedPrimaryBlocker(draft serverSetupDraft, state dnsEngineDBStat
 	return code
 }
 
+// serverSetupExecutionStateReplaceable: no step after the join step is
+// running or failed and the run holds no error other than the join's own
+// waits, so saying the join's state replaces nothing the owner must see.
+func serverSetupExecutionStateReplaceable(execution serverSetupExecution) bool {
+	after := false
+	for _, step := range execution.Steps {
+		if step.Kind == "peer_join" {
+			after = true
+			continue
+		}
+		if after && (step.Status == "running" || step.Status == "failed") {
+			return false
+		}
+	}
+	return execution.Error == nil || stringIn(execution.Error.Code, "server_setup_peer_join_changed", "server_setup_peer_join_reopen_required", "server_setup_peer_names_waiting", "server_setup_peer_join_waiting")
+}
+
 // serverSetupPDNSMainCandidateCode reads, read-only, the PowerDNS build this
 // server would install and applies the catalogue's rule to it.
 func (p *Panel) serverSetupPDNSMainCandidateCode(ctx context.Context) string {
@@ -1145,6 +1162,13 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 			return false, err
 		}
 		if wait != nil {
+			// The run does not go on with answers the second server
+			// replaced. A step that is running, or a known failure, keeps
+			// its own phase and error (D-024); the setup link's state says
+			// the change (GET /api/v1/setup/peer: changed).
+			if !serverSetupExecutionStateReplaceable(*execution) {
+				return false, nil
+			}
 			execution.Status, execution.Phase = "waiting", "peer_join"
 			execution.Error = &serviceOperationError{Code: wait.Code, Message: wait.Message}
 			return false, p.persistServerSetupExecution(ctx, *execution)
