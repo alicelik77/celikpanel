@@ -82,9 +82,11 @@ run_release() {
 }
 
 running=0
+ran=()
 while read -r name image family codename; do
     [[ -z "$name" || "$name" == \#* ]] && continue
     selected "$name" || continue
+    ran+=("$name")
     run_release "$name" "$image" "$family" "$codename" &
     running=$((running + 1))
     if [[ $running -ge $jobs ]]; then wait -n || true; running=$((running - 1)); fi
@@ -94,12 +96,13 @@ wait || true
 # ---------------------------------------------------------------- report ---
 results=$out/results.tsv
 : >"$results"
-for f in "$out"/*/results.tsv; do [[ -f "$f" ]] && cat "$f" >>"$results"; done
+for rel in "${ran[@]}"; do [[ -f "$out/$rel/results.tsv" ]] && cat "$out/$rel/results.tsv" >>"$results"; done
 
 # Version drift: what was installed vs the checked-in table.
 drift=$out/version-drift.txt
 : >"$drift"
-for f in "$out"/*/installed.tsv; do
+for rel in "${ran[@]}"; do
+    f=$out/$rel/installed.tsv
     [[ -f "$f" ]] || continue
     rel=$(basename "$(dirname "$f")")
     table=$matrix/versions/$rel.json
@@ -152,8 +155,10 @@ if [[ -f "$known" ]]; then
         # Only releases that ran in this invocation can make an entry stale.
         awk -F'\t' -v c="$c" '$2==c' "$results" | while IFS=$'\t' read -r rel id _ _ status _ _; do
             # shellcheck disable=SC2053
-            [[ "$rel" == $r && "$status" != "$s" ]] && printf 'STALE known failure (now %s): %s %s\n' "$status" "$rel" "$id" >&2
-        done
+            if [[ "$rel" == $r && "$status" != "$s" ]]; then
+                printf 'STALE known failure (now %s): %s %s\n' "$status" "$rel" "$id" >&2
+            fi
+        done || true
     done <"$known" 2>"$out/stale.txt"
     stale=$(wc -l <"$out/stale.txt")
     cat "$out/stale.txt" >&2

@@ -424,7 +424,9 @@ func renderMatrixRoundcube(t *testing.T, h *matrixHost) {
 	if err := os.MkdirAll(filepath.Dir(scratch), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(scratch, []byte(base), 0o640); err != nil {
+	// The form embeds webmailBaseDir (the SQLite path), so the scratch copy
+	// is rendered for the scratch directory and mapped back afterwards.
+	if err := os.WriteFile(scratch, []byte(renderRoundcubeConfig(key)), 0o640); err != nil {
 		t.Fatal(err)
 	}
 	src := "cmd/agent/webmail_rpc.go:481 setRoundcubeAddressSettings"
@@ -438,7 +440,7 @@ func renderMatrixRoundcube(t *testing.T, h *matrixHost) {
 	}
 	c2 := &configmatrix.Case{ID: "roundcube.config-address", Program: "roundcube", Variant: "config.inc.php + own-address settings",
 		Validator: "php-lint", Source: src, Target: target}
-	c2.File(target, with, 0o640)
+	c2.File(target, []byte(strings.ReplaceAll(string(with), webmailBaseDir, old)), 0o640)
 	h.write(t, c2)
 }
 
@@ -920,6 +922,10 @@ func renderMatrixBIND(t *testing.T, h *matrixHost) {
 			Source: source, Target: layout.MainConfig, Extra: map[string]string{}}
 		for p, data := range mutation.desired {
 			c.File(p, data, os.FileMode(bindVendorConfigMode(layout)))
+			if bindLayoutIsPacman(layout) {
+				// The vendor owner the Agent keeps on pacman (0640 root:named).
+				c.Extra["OWNERS"] = strings.TrimSpace(c.Extra["OWNERS"] + " " + p + "=root:named")
+			}
 		}
 		genDir := path.Join(layout.GenerationRoot, "generations", generation.ID)
 		c.File(path.Join(genDir, "zones.conf"), generation.Config, 0o644)
@@ -970,7 +976,7 @@ func renderMatrixPowerDNS(t *testing.T, h *matrixHost) {
 		// (cmd/agent/dns_engine_pdns_config_owner.go:258).
 		mainDesired = append(append([]byte(nil), stockMain...), []byte("\n# Managed by CelikPanel.\ninclude-dir="+managedDir+"\n")...)
 	}
-	standalone, err := pdnsmanagedconf.Standalone("/var/lib/powerdns/pdns.sqlite3", []string{"127.0.0.1", "192.0.2.10"})
+	standalone, err := pdnsmanagedconf.Standalone("/var/lib/powerdns/pdns.sqlite3", []string{"192.0.2.10", "2001:db8::10"})
 	if err != nil {
 		h.renderFailure(t, "powerdns.all", "powerdns", "standalone", "internal/pdnsmanagedconf/render.go:27 Standalone", err)
 		return

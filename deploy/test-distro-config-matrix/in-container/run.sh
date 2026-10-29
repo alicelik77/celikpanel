@@ -12,13 +12,14 @@ LC_ALL=C
 export LC_ALL
 release=$1 family=$2 codename=$3
 here=/src/deploy/test-distro-config-matrix
+trap 'echo "run.sh: command failed at line $LINENO: $BASH_COMMAND" >&2' ERR
 
 bash "$here/in-container/provision.sh" "$family"
 
 # Installed versions (what was validated), next to the checked-in table.
 installed_version() {
     if [[ "$family" == apt ]]; then dpkg-query -W -f='${Version}' -- "$1" 2>/dev/null || true
-    else pacman -Q -- "$1" 2>/dev/null | awk '{print $2}'; fi
+    else { pacman -Q -- "$1" 2>/dev/null || true; } | awk '{print $2}'; fi
 }
 : >/out/installed.tsv
 while read -r program apt_pkg pacman_pkg; do

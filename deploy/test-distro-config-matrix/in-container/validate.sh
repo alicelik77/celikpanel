@@ -31,12 +31,17 @@ ensure_user() {
 warnings_in() { grep -Ei 'warn|error|fatal|unknown|deprecated|obsolete|invalid|failed|not supported' || true; }
 
 # Each validator prints its findings and returns 0 (PASS), 1 (FAIL) or 2 (WARN).
+# Warnings the release's stock nginx configuration prints by itself (Arch:
+# types_hash) are not the panel's: they are recorded once as a baseline case
+# and not repeated on every nginx case.
+nginx_baseline=
+nginx_warnings() { grep '\[warn\]' | sed -E 's/^.*\[warn\] [0-9#]+: //' | sort -u; }
 v_nginx() {
-    local out rc
+    local out rc warn
     out=$(nginx -t 2>&1); rc=$?
-    printf '%s\n' "$out"
-    [[ $rc -ne 0 ]] && return 1
-    grep -q '\[warn\]' <<<"$out" && return 2
+    if [[ $rc -ne 0 ]]; then printf '%s\n' "$out"; return 1; fi
+    warn=$(nginx_warnings <<<"$out" | grep -vxF -e "${nginx_baseline:-@none@}" || true)
+    [[ -n "$warn" ]] && { printf '%s\n' "$warn"; return 2; }
     return 0
 }
 fpm_binary() {
@@ -79,6 +84,16 @@ v_postfix() {
     [[ -n "$out" ]] && { printf 'postconf -P: %s\n' "$out"; warn=1; }
     # Start the real daemon (logging to a file) and open each listener once:
     # smtpd reads its -o overrides and the TLS/SNI tables only when it runs.
+    # What the distro's postfix.service does before starting (Debian/Ubuntu
+    # configure-instance.sh): the chroot gets hosts/resolv.conf/services, so
+    # chrooted smtpd can resolve inet:localhost milters.
+    if [[ -d /var/spool/postfix ]]; then
+        mkdir -p /var/spool/postfix/etc
+        for f in /etc/hosts /etc/resolv.conf /etc/nsswitch.conf /etc/services /etc/host.conf /etc/localtime; do
+            [[ -e "$f" ]] && cp -L "$f" "/var/spool/postfix$f" 2>/dev/null
+        done
+    fi
+    newaliases >/dev/null 2>&1 || true   # Arch's postfix.service runs it first
     postconf -e maillog_file=/var/log/matrix-postfix.log >/dev/null 2>&1
     : >/var/log/matrix-postfix.log
     if postfix start >/dev/null 2>&1 </dev/null; then
@@ -155,7 +170,10 @@ v_bind() {
     # server loads it).
     out=$(timeout 6 named -g -u "$user" -c "$TARGET" -p 5353 2>&1)
     if grep -Eqi 'loading configuration: failure|exiting \(due to fatal error\)|fatal' <<<"$out"; then
-        grep -Ei 'error|fail|fatal|unknown|not ' <<<"$out" | sed -E 's/^[0-9]{2}-[A-Za-z]{3}-[0-9]{4} [0-9:.]+ //' | head -15
+        # The last lines before the exit, without the start-up banner.
+        sed -E 's/^[0-9]{2}-[A-Za-z]{3}-[0-9]{4} [0-9:.]+ //' <<<"$out" \
+            | grep -Ev "^(built with|running as|compiled|linked|found [0-9]+ CPU|using [0-9]+ UDP|-+$|BIND 9 is|corporation|support|Inc\.|Please|available|starting BIND|running on|adjusted limit)" \
+            | tail -10
         return 1
     fi
     out=$(grep -Ei "warning|deprecated|obsolete|not recommended" <<<"$out" | grep -vi 'none:' | sed -E 's/^[0-9]{2}-[A-Za-z]{3}-[0-9]{4} [0-9:.]+ //' | sort -u)
@@ -257,6 +275,15 @@ v_mariadb() {
     grep -Eqi 'error|unknown variable|unknown option' <<<"$out" && return 1
     return 2
 }
+
+if command -v nginx >/dev/null 2>&1; then
+    nginx_baseline=$(nginx -t 2>&1 | nginx_warnings)
+    if [[ -n "$nginx_baseline" ]]; then
+        CASE_ID=nginx.stock-baseline PROGRAM=nginx SOURCE=- \
+            VARIANT="the release's own nginx.conf before any CelikPanel file" \
+            record WARN "stock configuration, not CelikPanel's: $nginx_baseline"
+    fi
+fi
 
 for dir in "$cases"/*/; do
     [[ -f "$dir/case.env" ]] || continue
