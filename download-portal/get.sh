@@ -3,8 +3,8 @@ set -eu
 umask 077
 
 base_url=https://celikpanel.net
-bootstrap_release_sequence=111
-bootstrap_release_version=v0.1.0-alpha.111
+bootstrap_release_sequence=112
+bootstrap_release_version=v0.1.0-alpha.112
 bootstrap_release_public_key_sha256=7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb
 requested_version=latest
 requested_action=auto
@@ -1440,6 +1440,15 @@ if [ "$operation" = install ]; then
   [ -f "$installer" ] && [ ! -L "$installer" ] || fail \
     "The verified archive does not contain a regular install.sh." \
     "Doğrulanan arşiv normal bir install.sh dosyası içermiyor."
+  # umask 077 extracted the archive as 0700/0600. The recovery, firewall and
+  # mail kits require their published 0755/0644 modes, so restore them inside
+  # the root-only, link-free staging tree (updates do the same in
+  # bootstrap-prebuilt-update.sh). The release root itself stays 0700.
+  # Kurtarma kitleri yayımlanan 0755/0644 izinlerini ister; yalnız root'a ait
+  # bağlantısız hazırlık ağacında geri yüklenir, sürüm kökü 0700 kalır.
+  chmod -R go+rX -- "$extracted_root" && chmod 0700 -- "$extracted_root" || fail \
+    "The verified release files could not be prepared for installation." \
+    "Doğrulanan sürüm dosyaları kuruluma hazırlanamadı."
   validate_bootstrap_release_public_key "$signed_public_key_path" || fail \
     "The pinned first-install release key changed before installer handoff." \
     "Sabitlenmis ilk-kurulum surum anahtari installer aktarimindan once degisti."
