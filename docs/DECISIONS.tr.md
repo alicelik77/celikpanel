@@ -2673,15 +2673,25 @@ Kapı, sunulanın ölçülen olması için tam ölçülen yapıyı (4.9.17-0+deb
 daemon özeti) sabitliyordu. Temiz bir Debian 13'te dağıtımın adayı bir
 güvenlik yama sürümü olan 4.9.18-0+deb13u1'e geçmişti: sihirbaz PowerDNS'i
 ana DNS sunucusu olarak sundu, DNS adımı reddedip geri aldı. Kapı artık yamayı
-değil denenmiş **seriyi** (major.minor, 4.9) tutar: sihirbazın sunduğunu,
-Agent ön denetiminin kurduğunu (tek aday için `ad=sürüm`), kurulum sonrası
-kimlik denetiminin kabul ettiğini (iki paket tek bir 4.9 sürümünde, daemon
-dpkg'nin kaydettiği özetle kurulu paketin kendi dosyası) ve bağımsız kurtarma
-doğrulamasının kabul ettiğini tek ortak kural belirler. Seri dışındaki aday
-gerekçesiyle sunulmaz ve incelemede reddedilir. Sunucu profili, topoloji ve
-yukarıdaki diğer sınırlar değişmez; yeni major/minor sürüm yeni ölçüm ister.
-Seri içi yama sürümleri yeni gerçek koşu olmadan kabul edilir; davranışı
-değiştiren bir yama sürümü bilinen sınırdır.
+değil, **Debian'ın kendi arşiv yapısının** denenmiş **serisini** (major.minor,
+4.9) tutar. Sihirbazın sunduğunu, incelemenin kabul ettiğini, Agent ön
+denetiminin kurduğunu (tek aday için `ad=sürüm`), kurulum sonrası denetimin
+ve bağımsız kurtarma doğrulamasının kabul ettiğini tek ortak kural belirler:
+epoch'suz ve Debian arşiv revizyonlu bir sürüm (backport, repo.powerdns.com
+ya da üretici yapısı her yerde sürümünden reddedilir), iki paket tek bir 4.9
+sürümünde. Kaynak kanıtı arşiv denetimidir: kurulumdan önce APT'nin aday için
+gösterdiği her arşiv Debian'ın yayımlanmış sürümü ya da onun güvenlik/
+güncelleme cebi olmalıdır; okunamayan dizin reddedilir. Kurulumdan sonra kaynak
+artık okunamaz; kurulum sonrası denetim ve kurtarma sürüm kuralına dayanır.
+Daemon, dpkg'nin kurulu paket için kaydettiği özetle (md5sums) karşılaştırılır:
+bu, diskte değişikliği ya da bozulmayı bulan bir bütünlük denetimidir, kaynak
+kanıtı değildir. İki denetim de sunucudaki root'u (dosyaları ve kayıtları
+birlikte değiştirebilir) ya da geçerli imzalı arşiv sunan ele geçirilmiş bir
+yansıyı kapsamaz. Kural dışındaki aday gerekçesiyle sunulmaz ve incelemede
+reddedilir. Sunucu profili, topoloji ve yukarıdaki diğer sınırlar değişmez;
+yeni major/minor sürüm yeni ölçüm ister. Seri içi yama sürümleri yeni gerçek
+koşu olmadan kabul edilir; davranışı değiştiren bir yama sürümü bilinen
+sınırdır.
 
 ---
 

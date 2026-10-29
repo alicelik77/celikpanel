@@ -2680,16 +2680,27 @@ digest) so that what is offered is what was measured. On a fresh Debian 13
 the distribution's candidate had moved to 4.9.18-0+deb13u1, a security
 point release: the wizard offered PowerDNS as the main DNS server and the
 DNS step refused it and rolled back. The gate now holds the tested
-**series** (major.minor, 4.9), not the patch: one shared rule decides what
-the wizard offers, what the Agent's preflight installs (`name=version` for
-the one candidate), what its post-install identity check accepts (both
-packages at one 4.9 release, the daemon the installed package's own file
-by dpkg's recorded digest) and what the independent recovery attestation
-accepts. A candidate outside the series is not offered, with its reason,
-and is refused at review. Host profile, topology and every other limit
-above are unchanged; a new major or minor release needs new measurement.
-Patch releases inside the series are accepted without a new native run, so
-a later point release that changes behaviour is a known limit.
+**series** (major.minor, 4.9) of **Debian's own archive build**, not the
+patch. One shared rule decides what the wizard offers, what the review
+accepts, what the Agent's preflight installs (`name=version` for the one
+candidate), what its post-install check accepts and what the independent
+recovery attestation accepts: a version with no epoch and a Debian archive
+revision (a backport, a repo.powerdns.com or a vendor build is refused by
+version everywhere), both packages at one 4.9 release. Provenance is the
+archive check: before the install, every archive APT names for the
+candidate must be Debian's own released suite or its security/updates
+pocket; an unreadable index is refused. After the install the source can no
+longer be read, so the post-install check and recovery rely on the version
+rule. The daemon is compared with the digest dpkg recorded for the installed
+package (md5sums): an integrity check that finds an on-disk change or
+corruption, not provenance. Neither check covers root on the host (who can
+change the files and the records together) or a compromised mirror that
+serves a validly signed archive. A candidate outside the rule is not
+offered, with its reason, and is refused at review. Host profile, topology
+and every other limit above are unchanged; a new major or minor release
+needs new measurement. Patch releases inside the series are accepted
+without a new native run, so a later point release that changes behaviour
+is a known limit.
 
 ---
 
