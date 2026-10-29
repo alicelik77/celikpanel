@@ -183,13 +183,16 @@ func (p *Panel) runServerSetupPeerJoin(ctx context.Context, plan serverSetupPlan
 	return true, nil
 }
 
-// serverSetupPeerJoinSteps orders a first server's new-flow plan: the
-// components that need no DNS first, then the join step, then the DNS steps
-// and their waits, then the rest.
+// serverSetupPeerJoinSteps orders a joined plan: the components that need
+// no DNS first, then the join step, then the DNS steps and their waits, then
+// the rest. The mail profile and every service that needs a mail server
+// (SpamAssassin) need this server's DNS identity (mailProfileDNSIdentityReady),
+// which exists only after the DNS waits: they stay in the rest, after them
+// (Beta-1 VM cells a and b failed with mail_profile_dns_identity_not_ready).
 func serverSetupPeerJoinSteps(steps []serverSetupPlanStep, lead serverSetupPlanStep) []serverSetupPlanStep {
 	early, rest := []serverSetupPlanStep{}, []serverSetupPlanStep{}
 	for _, step := range steps {
-		if slices.Contains([]string{"service", "runtime", "mail_profile"}, step.Kind) {
+		if step.Kind == "runtime" || (step.Kind == "service" && !serverSetupMailDependent(step.Target)) {
 			early = append(early, step)
 		} else {
 			rest = append(rest, step)
