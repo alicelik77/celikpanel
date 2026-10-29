@@ -209,7 +209,17 @@ func TestServerSetupJoinCodeIsHashedSingleUseAndReplaysTheSameJoin(t *testing.T)
 	f, _, _ := joinFirstFixture(t, joinFirstDraft())
 	joinTestSeams(f.panel, cert, "")
 	view := issueJoinCode(t, f)
-	if view.AttemptsLeft != 5 || view.Address != "https://203.0.113.10:"+itoaTest(panelPort()) {
+	// One meaning of "wrong tries left" (Beta-1 VM: 5 at creation, 50 on
+	// re-read): the code's own count, the same at creation and re-read.
+	peer := httptest.NewRecorder()
+	f.panel.handleServerSetupPeer(peer, serviceOperationAdminRequest(t, http.MethodGet, serverSetupPeerPath, "", f.userID))
+	var reread struct {
+		Code *serverSetupJoinCodeView `json:"code"`
+	}
+	if peer.Code != http.StatusOK || json.Unmarshal(peer.Body.Bytes(), &reread) != nil || reread.Code == nil || reread.Code.AttemptsLeft != view.AttemptsLeft {
+		t.Fatalf("re-read: %d %s, created with %d", peer.Code, peer.Body.String(), view.AttemptsLeft)
+	}
+	if view.AttemptsLeft != serverSetupJoinCodeFailures || view.Address != "https://203.0.113.10:"+itoaTest(panelPort()) {
 		t.Fatalf("code view: %+v", view)
 	}
 	var stored string
@@ -278,14 +288,14 @@ func TestServerSetupJoinRefusesWrongCodesSourcesAndFloods(t *testing.T) {
 	for attempt := 0; attempt < 3; attempt++ {
 		w := joinMachineRequest(t, f, serverSetupJoinPath, "", spoofed)
 		var refusal serverSetupJoinRefusal
-		if w.Code != http.StatusForbidden || json.Unmarshal(w.Body.Bytes(), &refusal) != nil || refusal.Code != "server_setup_join_source_mismatch" || *refusal.AttemptsLeft != 5 {
+		if w.Code != http.StatusForbidden || json.Unmarshal(w.Body.Bytes(), &refusal) != nil || refusal.Code != "server_setup_join_source_mismatch" || *refusal.AttemptsLeft != serverSetupJoinCodeFailures {
 			t.Fatalf("source: %d %s", w.Code, w.Body.String())
 		}
 	}
 	for attempt := 1; attempt <= 4; attempt++ {
 		w := joinMachineRequest(t, f, serverSetupJoinPath, "", wrong)
 		var refusal serverSetupJoinRefusal
-		if w.Code != http.StatusUnauthorized || json.Unmarshal(w.Body.Bytes(), &refusal) != nil || refusal.Code != "server_setup_join_code_wrong" || refusal.AttemptsLeft == nil || *refusal.AttemptsLeft != 5-attempt {
+		if w.Code != http.StatusUnauthorized || json.Unmarshal(w.Body.Bytes(), &refusal) != nil || refusal.Code != "server_setup_join_code_wrong" || refusal.AttemptsLeft == nil || *refusal.AttemptsLeft != serverSetupJoinCodeFailures-attempt {
 			t.Fatalf("attempt %d: %d %s", attempt, w.Code, w.Body.String())
 		}
 	}

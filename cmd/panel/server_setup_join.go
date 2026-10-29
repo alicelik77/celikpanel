@@ -59,7 +59,9 @@ const (
 	serverSetupJoinCodeKey = "server_setup_join_code"
 	serverSetupJoinKey     = "server_setup_join"
 	// Wrong codes: 5 per source address (per /64 for IPv6), 50 per code in
-	// all; a correct code from a wrong address uses up nothing.
+	// all; a correct code from a wrong address uses up nothing. What a screen
+	// shows as "wrong tries left" is the code's own count (50 at creation, the
+	// same on every later read and refusal); the per-source limit is not shown.
 	serverSetupJoinAttempts      = 5
 	serverSetupJoinCodeFailures  = 50
 	serverSetupJoinRatePerSource = 10
@@ -601,7 +603,13 @@ func (p *Panel) handleServerSetupJoinCodes(w http.ResponseWriter, r *http.Reques
 	}
 	// The code itself is shown once, here; the audit names the act only.
 	p.audit(r, "server.setup.join_code", "", 0)
-	_ = json.NewEncoder(w).Encode(serverSetupJoinCodeView{Code: code, Address: serverSetupJoinAddress(plan.Draft), ExpiresAt: time.Unix(record.ExpiresAt, 0).UTC().Format(time.RFC3339), AttemptsLeft: serverSetupJoinAttempts})
+	_ = json.NewEncoder(w).Encode(serverSetupJoinCodeView{Code: code, Address: serverSetupJoinAddress(plan.Draft), ExpiresAt: time.Unix(record.ExpiresAt, 0).UTC().Format(time.RFC3339), AttemptsLeft: serverSetupJoinCodeFailures})
+}
+
+// serverSetupJoinCodeAttemptsLeft is the one meaning of "wrong tries left":
+// the code's remaining wrong attempts in all.
+func serverSetupJoinCodeAttemptsLeft(record serverSetupJoinCodeRecord) int {
+	return max(0, serverSetupJoinCodeFailures-record.Attempts)
 }
 
 // serverSetupJoinLocks serializes one panel's join, names and binding.
@@ -700,7 +708,7 @@ func (p *Panel) handleServerSetupJoin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sourceKey := serverSetupJoinSourceKey(source)
-	left := func() *int { value := max(0, serverSetupJoinAttempts-record.FailuresBy[sourceKey]); return &value }
+	left := func() *int { value := serverSetupJoinCodeAttemptsLeft(record); return &value }
 	proofOK := subtle.ConstantTimeCompare([]byte(p.serverSetupJoinProofHash(record.Salt, request.Proof)), []byte(record.Hash)) == 1
 	// The second server always dials the first server's IPv4 address, so the
 	// caller's address must be exactly the IPv4 address it declares.

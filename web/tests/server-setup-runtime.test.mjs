@@ -1590,8 +1590,8 @@ test('wizard v2: the first server waiting for the second shows the code once and
         if (url === '/api/v1/setup/peer') return Response.json(view);
         if (url === '/api/v1/setup/join-codes') {
             codes++;
-            view = { role: 'first', code: { address: 'https://203.0.113.10:2083', expires_at: '2026-10-29T10:00:00Z', attempts_left: 5, used: false } };
-            return Response.json({ code: 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX', address: 'https://203.0.113.10:2083', expires_at: '2026-10-29T10:00:00Z', attempts_left: 5 });
+            view = { role: 'first', code: { address: 'https://203.0.113.10:2083', expires_at: '2026-10-29T10:00:00Z', attempts_left: 50, used: false } };
+            return Response.json({ code: 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX', address: 'https://203.0.113.10:2083', expires_at: '2026-10-29T10:00:00Z', attempts_left: 50 });
         }
         return base(url, options);
     };

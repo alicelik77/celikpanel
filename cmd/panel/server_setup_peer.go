@@ -518,7 +518,7 @@ func (p *Panel) serverSetupPeerState(ctx context.Context) (serverSetupPeerView, 
 		if err != nil {
 			return view, err
 		}
-		view.Code = &serverSetupJoinCodeView{Address: serverSetupJoinAddress(state.Draft), ExpiresAt: time.Unix(code.ExpiresAt, 0).UTC().Format(time.RFC3339), AttemptsLeft: max(0, serverSetupJoinCodeFailures-code.Attempts), Used: code.ConsumedBy != ""}
+		view.Code = &serverSetupJoinCodeView{Address: serverSetupJoinAddress(state.Draft), ExpiresAt: time.Unix(code.ExpiresAt, 0).UTC().Format(time.RFC3339), AttemptsLeft: serverSetupJoinCodeAttemptsLeft(code), Used: code.ConsumedBy != ""}
 	}
 	if joinFound {
 		view.Joined = &serverSetupPeerJoined{ShortName: join.Peer.ShortName, IPv4: join.Peer.IPv4, JoinedAt: join.JoinedAt}
