@@ -33,8 +33,13 @@ targeted VM re-run is owed before any is called proven.
   start is now refused before a run exists with `server_setup_host_busy`
   (another change is running; wait until it finishes, then start). A run that
   meets it waits with the same code: nothing is created while another
-  operation runs, and a child the Agent refused at admission (nothing ran) is
-  asked again under a new child identity, at most 30 times.
+  operation runs. A child is admitted again only with proof that nothing ran
+  (it failed at its first lease because the host was busy, and the Agent's
+  ledger has no job for it): the same child and operation row, with the
+  attempts kept on the step and no audit row per attempt, for at most 30
+  minutes; then `server_setup_host_stayed_busy` names what kept the server
+  busy. A resumed child or a mail profile whose later mail TLS sub-step was
+  refused (its own code, `mail_tls_sync_host_busy`) is never admitted again.
 - **A clock behind the certificate authority is said, for every certificate.**
   With the clock 200 s behind, the panel certificate step said only
   `panel_certificate_issue_failed`, and the mail certificate (which had no

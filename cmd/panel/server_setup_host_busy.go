@@ -2,7 +2,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"strconv"
+	"time"
+
+	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 // Another change on this server (Beta-1 third re-run, side effect,
@@ -13,8 +17,8 @@ import (
 // Now the start is refused before a run exists (server_setup_host_busy), and
 // a run that meets the busy state waits instead of failing: when another
 // operation is active nothing is created, and when the Agent refuses a child
-// at admission (nothing ran) the step asks again under a new child identity,
-// up to serverSetupHostBusyAttempts times, then fails as before.
+// at admission (proven: nothing ran) the same child is admitted again, for
+// at most serverSetupHostBusyBound, then the step fails naming the cause.
 //
 // Sunucuda başka bir değişiklik sürerken kurulum başlamaz; süren kurulum
 // adımı bekler.
@@ -25,18 +29,75 @@ const (
 	serverSetupHostBusyWaitMessage  = "Another change is running on this server (for example a component installing from Components, or the package manager is busy), so this step waits and started nothing. Nobody needs to act: setup continues this step by itself once the other change has finished."
 )
 
-// serverSetupHostBusyAttempts bounds the refused child attempts of one step
-// (the runner asks again about every 20 s).
-const serverSetupHostBusyAttempts = 30
+// serverSetupHostBusyBound bounds, by time, how long a step's child may be
+// refused at admission before the step fails (review fix, item 9).
+var serverSetupHostBusyBound = 30 * time.Minute
 
-// serverSetupChildRequestID is the request identity of a step's current
-// child operation: the step's own one, then one per refused attempt. The
-// panel certificate saga keeps its own identity.
-func serverSetupChildRequestID(step serverSetupExecutionStep) string {
-	if step.ChildAttempt == 0 || step.Kind == "panel_certificate" {
-		return step.RequestID
+const serverSetupHostStayedBusyCode = "server_setup_host_stayed_busy"
+
+// serverSetupChildRefusedAtAdmission proves that a failed child never ran:
+// it failed at its first (non-resume) admission, at the lease, because the
+// host was busy, and the Agent's ledger holds no job for its request. A
+// resumed child (its job is in the ledger), a mail profile whose later
+// sub-step was refused (another phase and code), or any read that fails is
+// not proof.
+func (p *Panel) serverSetupChildRefusedAtAdmission(ctx context.Context, op serviceOperation) bool {
+	if op.Status != serviceOperationFailed || op.Phase != "lease_failed" || op.Error == nil || op.Error.Code != errCodeHostMutationBusy {
+		return false
 	}
-	return serverSetupID(step.RequestID, "child-attempt", strconv.Itoa(step.ChildAttempt))
+	job, err := p.statusAgentMutation(ctx, op.RequestID)
+	return err == nil && job == nil
+}
+
+// serverSetupHostBusyAttempt records one refused admission on the step: a
+// wait, or past the bound a verified failure that names what kept the host
+// busy when that is known.
+func serverSetupHostBusyAttempt(step *serverSetupExecutionStep, op serviceOperation, now time.Time) error {
+	since, err := time.Parse(time.RFC3339Nano, step.BusySince)
+	if err != nil || step.BusySince == "" {
+		since = now
+		step.BusySince = now.UTC().Format(time.RFC3339Nano)
+	}
+	step.BusyAttempts++
+	if now.Sub(since) < serverSetupHostBusyBound {
+		step.BusyRetry = true
+		return &serverSetupPeerWait{Code: serverSetupHostBusyCode, Message: serverSetupHostBusyWaitMessage}
+	}
+	step.BusyRetry = false
+	why := map[string]string{
+		transport.HostMutationReasonPackageManager: "its package manager was busy with another package task",
+		transport.HostMutationReasonAgentMutation:  "another CelikPanel change was running",
+		transport.HostMutationReasonPanelOperation: "another CelikPanel operation was running",
+		transport.HostMutationReasonHostLock:       "an unfinished change was holding it",
+	}[reasonOf(op)]
+	if why == "" {
+		why = "another change kept it busy"
+	}
+	return &serverSetupChildFailure{Code: serverSetupHostStayedBusyCode, Reason: reasonOf(op),
+		Message: "This server stayed busy for more than 30 minutes (" + why + "), so this step could not start and nothing was installed (" + strconv.Itoa(step.BusyAttempts) + " tries). You, the owner: finish or stop the other change on this server; then choose Review a revised plan."}
+}
+
+func reasonOf(op serviceOperation) string {
+	if op.Error == nil {
+		return ""
+	}
+	return op.Error.Reason
+}
+
+// requeueRefusedServiceOperation admits the same refused child again: its
+// row goes back to queued (it never ran), so no new operation, request
+// identity or audit row is made for the attempt.
+func (p *Panel) requeueRefusedServiceOperation(ctx context.Context, op serviceOperation) (serviceOperation, error) {
+	result, err := p.db.GetDB().ExecContext(ctx, `UPDATE service_operations SET status=?, phase='queued', error_code=NULL, error_message=NULL, finished_at=NULL, updated_at=?
+		WHERE id=? AND status=? AND phase='lease_failed' AND error_code=?`,
+		serviceOperationQueued, time.Now().UTC().Format(time.RFC3339Nano), op.ID, serviceOperationFailed, errCodeHostMutationBusy)
+	if err != nil {
+		return serviceOperation{}, err
+	}
+	if changed, err := result.RowsAffected(); err != nil || changed != 1 {
+		return serviceOperation{}, errors.New("refused setup child changed before it was admitted again")
+	}
+	return p.serviceOperationByRequestID(ctx, op.RequestID)
 }
 
 // serverSetupHostBusy: another service operation or Agent mutation is

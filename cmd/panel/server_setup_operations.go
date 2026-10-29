@@ -80,10 +80,13 @@ type serverSetupPlan struct {
 
 type serverSetupExecutionStep struct {
 	serverSetupPlanStep
-	// ChildAttempt counts child operations the Agent refused at admission
-	// because the host was busy (HOST_MUTATION_BUSY: nothing ran). Each new
-	// attempt has its own request identity (serverSetupChildRequestID).
-	ChildAttempt                int    `json:"child_attempt,omitempty"`
+	// BusySince / BusyAttempts record, on the step, the Agent refusing its
+	// child at admission while the host was busy (proven: nothing ran, see
+	// serverSetupChildRefusedAtAdmission). BusyRetry asks the next pass to
+	// admit the same child again (same identity, same operation row).
+	BusySince                   string `json:"busy_since,omitempty"`
+	BusyAttempts                int    `json:"busy_attempts,omitempty"`
+	BusyRetry                   bool   `json:"busy_retry,omitempty"`
 	Status                      string `json:"status"`
 	RequestID                   string `json:"request_id"`
 	OwnerID                     string `json:"owner_id"`
@@ -418,7 +421,7 @@ func (p *Panel) serverSetupStepChildMissing(ctx context.Context, step serverSetu
 	if step.OperationID != "" {
 		return false
 	}
-	_, err := p.serviceOperationByRequestID(ctx, serverSetupChildRequestID(step))
+	_, err := p.serviceOperationByRequestID(ctx, step.RequestID)
 	return errors.Is(err, sql.ErrNoRows)
 }
 
@@ -1665,21 +1668,23 @@ func (p *Panel) runServerSetupStep(ctx context.Context, plan serverSetupPlan, st
 	case "firewall":
 		return p.runServerSetupFirewall(ctx, plan, *step)
 	case "service", "runtime", "mail_profile", "panel_certificate":
+		retry := step.BusyRetry
 		op, err := p.ensureServerSetupChild(ctx, plan, *step)
 		if err != nil {
 			return false, err
+		}
+		if retry && op.Status != serviceOperationFailed {
+			step.BusyRetry = false
 		}
 		step.OperationID = op.ID
 		switch op.Status {
 		case serviceOperationSucceeded:
 			return true, nil
 		case serviceOperationFailed:
-			if op.Error != nil && op.Error.Code == errCodeHostMutationBusy && step.Kind != "panel_certificate" && step.ChildAttempt < serverSetupHostBusyAttempts {
-				// The Agent refused the child at admission (nothing ran): the
-				// step waits and asks again under a new child identity.
-				step.ChildAttempt++
-				step.OperationID = ""
-				return false, &serverSetupPeerWait{Code: serverSetupHostBusyCode, Message: serverSetupHostBusyWaitMessage}
+			if step.Kind != "panel_certificate" && p.serverSetupChildRefusedAtAdmission(ctx, op) {
+				// Proven that nothing ran: the step waits, bounded by time,
+				// and the same child is admitted again (review fix, item 1/9).
+				return false, serverSetupHostBusyAttempt(step, op, time.Now())
 			}
 			if op.Error != nil {
 				return false, &serverSetupChildFailure{Code: op.Error.Code, Message: op.Error.Message,
@@ -1715,10 +1720,15 @@ func (p *Panel) ensureServerSetupChild(ctx context.Context, plan serverSetupPlan
 		}
 		qualifier = certificate.Qualifier
 	}
-	childRequestID := serverSetupChildRequestID(step)
-	prior, found, err := p.idempotentServiceOperation(ctx, childRequestID, kind, step.Target, qualifier)
-	if err != nil || found {
+	prior, found, err := p.idempotentServiceOperation(ctx, step.RequestID, kind, step.Target, qualifier)
+	if err != nil {
 		return prior, err
+	}
+	// A child the Agent refused at admission (proven: nothing ran) is
+	// admitted again under its own identity when the step asks for it.
+	requeue := found && step.BusyRetry && step.Kind != "panel_certificate" && p.serverSetupChildRefusedAtAdmission(ctx, prior)
+	if found && !requeue {
+		return prior, nil
 	}
 	if err := p.requireServerSetupAdmission(ctx); err != nil {
 		return serviceOperation{}, err
@@ -1809,7 +1819,12 @@ func (p *Panel) ensureServerSetupChild(ctx context.Context, plan serverSetupPlan
 		raw, _ := json.Marshal(serverSetupMailChild{MailHostname: plan.Draft.MailHostname})
 		operationData = string(raw)
 	}
-	op, err := p.createServiceOperationRequestWithState(ctx, kind, step.Target, qualifier, childRequestID, plan.Actor, "queued", operationData)
+	var op serviceOperation
+	if requeue {
+		op, err = p.requeueRefusedServiceOperation(ctx, prior)
+	} else {
+		op, err = p.createServiceOperationRequestWithState(ctx, kind, step.Target, qualifier, step.RequestID, plan.Actor, "queued", operationData)
+	}
 	if errors.Is(err, errServiceOperationReplay) {
 		return op, nil
 	}
@@ -1823,7 +1838,7 @@ func (p *Panel) ensureServerSetupChild(ctx context.Context, plan serverSetupPlan
 			// The setup's one confirmation covers exactly the distribution
 			// point updates its review listed; every other notable install
 			// is still refused by the Agent.
-			return p.runServiceInstall(ctx, serviceInstallRequest{ServiceID: step.Target, Package: step.Qualifier, RequestID: childRequestID, AcceptedPointUpdates: serverSetupAcceptedPointUpdates(plan)}, advance)
+			return p.runServiceInstall(ctx, serviceInstallRequest{ServiceID: step.Target, Package: step.Qualifier, RequestID: step.RequestID, AcceptedPointUpdates: serverSetupAcceptedPointUpdates(plan)}, advance)
 		}
 	case "runtime":
 		runner = func(ctx context.Context, advance func(string) error) (serviceOperationResult, *serviceOperationFailure) {
@@ -1836,7 +1851,16 @@ func (p *Panel) ensureServerSetupChild(ctx context.Context, plan serverSetupPlan
 	default:
 		return serviceOperation{}, errors.New("unknown service setup child")
 	}
-	p.launchServiceOperation(op, plan.Actor, "queued", "server.setup.child:"+step.Target, "server.setup.child.failed:"+step.Target, release, runner)
+	failureAudit := "server.setup.child.failed:" + step.Target
+	p.launchServiceOperationWithAudit(op, plan.Actor, "queued", "server.setup.child:"+step.Target, failureAudit, release, runner,
+		func(ctx context.Context, actor serviceOperationActor, action string) {
+			// A refusal at admission is recorded on the step, not as one
+			// audit row per attempt.
+			if action == failureAudit+" — "+errCodeHostMutationBusy {
+				return
+			}
+			p.auditServiceOperation(ctx, actor, action)
+		})
 	transferred = true
 	return op, nil
 }

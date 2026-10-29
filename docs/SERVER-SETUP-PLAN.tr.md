@@ -31,9 +31,14 @@ kanıtlanmış sayılmadan önce yeni bir hedefli VM koşusu gerekir.
   Agent kabulde reddetti (`HOST_MUTATION_BUSY`) ve çalışma düştü. Başlatma
   artık çalışma oluşmadan `server_setup_host_busy` ile reddedilir (başka bir
   değişiklik sürüyor; bitene kadar bekleyin, sonra başlatın). Buna rastlayan
-  çalışma aynı kodla bekler: başka bir işlem sürerken hiçbir şey oluşturulmaz,
-  Agent'ın kabulde reddettiği (hiçbir şey çalışmamış) alt işlem yeni bir alt
-  kimlikle en çok 30 kez yeniden sorulur.
+  çalışma aynı kodla bekler: başka bir işlem sürerken hiçbir şey oluşturulmaz.
+  Alt işlem ancak hiçbir şeyin çalışmadığı kanıtlanırsa yeniden kabule sunulur
+  (sunucu meşgul olduğu için ilk kirasında düştü ve Agent defterinde işi yok):
+  aynı alt işlem ve satırı, denemeler adımda tutulur ve her deneme için denetim
+  satırı yazılmaz; en çok 30 dakika, sonra `server_setup_host_stayed_busy`
+  sunucuyu meşgul tutanı adlandırır. Sürdürülen alt işlem ya da sonraki posta
+  TLS alt adımı reddedilen posta profili (kendi kodu, `mail_tls_sync_host_busy`)
+  asla yeniden kabule sunulmaz.
 - **Sertifika yetkilisinin gerisindeki saat her sertifika için söylenir.**
   Saat 200 sn geriyken panel sertifikası adımı yalnız
   `panel_certificate_issue_failed`, hiç beklemesi olmayan posta sertifikası

@@ -105,6 +105,7 @@ type ServiceOperationMutationResponse struct {
 	Job       *ServiceOperationMutationJob
 	ErrorCode string
 	Error     string
+	Reason    string
 }
 
 type ServiceOperationNodeResponse struct {
@@ -164,6 +165,10 @@ type serviceOperationTestAgent struct {
 	verifiedAPTAgentRPCFixture
 
 	mu sync.Mutex
+
+	// beginBusyReason, when set, refuses every lease at admission as the
+	// real Agent does while the host is busy (HOST_MUTATION_BUSY).
+	beginBusyReason string
 
 	installStarted chan struct{}
 	releaseInstall <-chan struct{}
@@ -310,6 +315,10 @@ func (a *serviceOperationTestAgent) BeginServiceMutation(
 ) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	if a.beginBusyReason != "" {
+		resp.ErrorCode, resp.Reason = transport.HostMutationBusy, a.beginBusyReason
+		return nil
+	}
 	if active := a.mutationJobs[a.mutationActive]; active != nil &&
 		(active.Status == agentMutationRunning ||
 			active.Status == agentMutationCancelling ||
