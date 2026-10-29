@@ -50,9 +50,20 @@ func saveSetupPlanForTest(t *testing.T, f serviceOperationTestFixture, state ser
 	return plan
 }
 
+// storedPlanDigestForTest is the digest the review page received for the
+// stored plan (empty when the plan is not stored).
+func storedPlanDigestForTest(t *testing.T, f serviceOperationTestFixture, planID string) string {
+	t.Helper()
+	plan, err := f.panel.loadServerSetupPlan(context.Background(), planID)
+	if err != nil {
+		return ""
+	}
+	return serverSetupPackageUpdatesDigest(plan)
+}
+
 func postSetupStartForTest(t *testing.T, f serviceOperationTestFixture, planID, requestID string) *httptest.ResponseRecorder {
 	t.Helper()
-	body, _ := json.Marshal(map[string]any{"plan_id": planID, "request_id": requestID, "confirmed": true})
+	body, _ := json.Marshal(map[string]any{"plan_id": planID, "request_id": requestID, "confirmed": true, "package_updates_digest": storedPlanDigestForTest(t, f, planID)})
 	w := httptest.NewRecorder()
 	f.panel.handleServerSetupStart(w, serviceOperationAdminRequest(t, http.MethodPost, "/api/v1/setup/start", string(body), f.userID))
 	return w

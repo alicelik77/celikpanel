@@ -18,6 +18,8 @@ export interface ServerSetupPlan {
     // would also bring; the setup confirmation covers them (Beta-1 fix).
     package_updates?: { package: string; from?: string; to?: string }[];
     package_updates_state?: 'known' | 'unknown';
+    // The stored list's digest; the start sends it back (the list the page showed).
+    package_updates_digest?: string;
 }
 export interface ServerSetupExecution {
     id: string; request_id: string; plan_id: string;
@@ -150,7 +152,7 @@ export function decodeSetupExecution(value: unknown, marker?: SetupStartMarker |
 }
 // handover: the reviewed plan contained the panel certificate step, so the
 // Panel restarts once during this setup (lib/panelHandover.ts).
-export interface SetupStartMarker { request_id: string; plan_id: string; panel_domain: string; handover?: boolean }
+export interface SetupStartMarker { request_id: string; plan_id: string; panel_domain: string; handover?: boolean; package_updates_digest?: string }
 export function decodeSetupMarker(raw: string | null): SetupStartMarker | null {
     try {
         const value: unknown = JSON.parse(raw || 'null');

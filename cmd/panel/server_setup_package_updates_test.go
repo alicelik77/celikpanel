@@ -253,3 +253,59 @@ func TestServerSetupDistributionUpdatesWaitIsConfirmedAndTheSameRunContinues(t *
 		t.Fatalf("install requests: %+v", f.agent.installRequests)
 	}
 }
+
+// Review fix (2026-10-29): a second review (a reload or another tab)
+// replaced the unread list between this page's review and its start, so the
+// start could confirm an update the owner never saw. The start now sends the
+// digest of the list its page showed; another one is refused with its own
+// reason. A list once read is never replaced for the same plan, and the
+// review answers what is stored.
+func TestServerSetupStartConfirmsOnlyTheListThePageShowed(t *testing.T) {
+	f, state := setupOperationFixture(t)
+	busy := true
+	update := transport.NotableInstall{Package: "libssl3t64", Reason: "upgrade", From: "3.5.7-1~deb13u2", To: "3.5.7-1~deb13u3", PointUpdate: true}
+	notable := []transport.NotableInstall{update}
+	f.panel.serverSetupInstallPreview = func(context.Context, transport.ServiceInstallPreviewRequest) (transport.ServiceInstallPreviewResponse, error) {
+		if busy {
+			return transport.ServiceInstallPreviewResponse{}, errors.New("package lock busy")
+		}
+		return transport.ServiceInstallPreviewResponse{State: "known", Notable: notable}, nil
+	}
+	serverSetupRunners.Store(f.panel, true)
+	t.Cleanup(func() { serverSetupRunners.Delete(f.panel) })
+	review := func() serverSetupPlan {
+		w := httptest.NewRecorder()
+		body, _ := json.Marshal(map[string]any{"revision": state.Revision})
+		f.panel.handleServerSetupPlan(w, serviceOperationAdminRequest(t, http.MethodPost, "/api/v1/setup/plan", string(body), f.userID))
+		var plan serverSetupPlan
+		if w.Code != http.StatusOK || json.Unmarshal(w.Body.Bytes(), &plan) != nil {
+			t.Fatalf("review: %d %s", w.Code, w.Body.String())
+		}
+		return plan
+	}
+	start := func(plan serverSetupPlan, digest, request string) *httptest.ResponseRecorder {
+		body, _ := json.Marshal(map[string]any{"plan_id": plan.ID, "request_id": request, "confirmed": true, "package_updates_digest": digest})
+		w := httptest.NewRecorder()
+		f.panel.handleServerSetupStart(w, serviceOperationAdminRequest(t, http.MethodPost, "/api/v1/setup/start", string(body), f.userID))
+		return w
+	}
+	first := review() // this tab: unread
+	busy = false
+	second := review() // another tab: the list, read
+	if second.ID != first.ID || second.PackageUpdatesState != "known" || second.PackageUpdatesDigest == first.PackageUpdatesDigest {
+		t.Fatalf("second review: %+v", second)
+	}
+	// The first tab confirms what it showed: not the stored list.
+	if w := start(first, first.PackageUpdatesDigest, strings.Repeat("d", 32)); w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), "server_setup_distribution_updates_changed_before_start") {
+		t.Fatalf("a start for a list the page did not show: %d %s", w.Code, w.Body.String())
+	}
+	// A read list is not replaced for the same plan; the review says what is stored.
+	notable = append(notable, transport.NotableInstall{Package: "perl-base", Reason: "upgrade", From: "5.40.1-6", To: "5.40.1-6+deb13u1", PointUpdate: true})
+	if third := review(); third.PackageUpdatesDigest != second.PackageUpdatesDigest || len(third.PackageUpdates) != 1 {
+		t.Fatalf("a read list was replaced: %+v", third.PackageUpdates)
+	}
+	notable = notable[:1]
+	if w := start(second, second.PackageUpdatesDigest, strings.Repeat("e", 32)); w.Code != http.StatusAccepted {
+		t.Fatalf("the shown list did not start: %d %s", w.Code, w.Body.String())
+	}
+}

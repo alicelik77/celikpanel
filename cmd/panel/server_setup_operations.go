@@ -69,6 +69,10 @@ type serverSetupPlan struct {
 	// Kurulumun ayrıca güncelleyeceği dağıtım paketleri; tek onay kapsar.
 	PackageUpdates      []transport.NotableInstall `json:"package_updates,omitempty"`
 	PackageUpdatesState string                     `json:"package_updates_state,omitempty"`
+	// PackageUpdatesDigest names the list (and its state) exactly as stored
+	// for this plan; the start sends back the one its page showed, so an
+	// update the owner never saw is never confirmed (review fix, 2026-10-29).
+	PackageUpdatesDigest string `json:"package_updates_digest,omitempty"`
 	// peerBound marks a plan completed by its second-server binding
 	// (serverSetupBoundPlan); it is never stored or hashed.
 	peerBound bool
@@ -254,7 +258,7 @@ func (p *Panel) loadServerSetupPlan(ctx context.Context, id string) (serverSetup
 
 func serverSetupPlanIdentity(plan serverSetupPlan) string {
 	plan.ID = ""
-	plan.PackageUpdates, plan.PackageUpdatesState = nil, ""
+	plan.PackageUpdates, plan.PackageUpdatesState, plan.PackageUpdatesDigest = nil, "", ""
 	// An unread package-update list holds the start (CanStart false) but is
 	// not part of what was reviewed: the same plan read again is the same plan.
 	plan.CanStart = len(plan.Blockers) == 0
@@ -294,17 +298,27 @@ func (p *Panel) handleServerSetupPlan(w http.ResponseWriter, r *http.Request) {
 		writeServerError(w, err)
 		return
 	}
-	// The same plan reviewed again keeps its identity; its package-update
-	// list is the latest read (P5: a refreshed review replaces an unread
-	// one). A plan a run already started from is never rewritten.
+	// The same plan reviewed again keeps its identity. Its stored list is
+	// replaced only while it is still unread (P5: a refreshed review reads
+	// it), never once read and never for a plan a run started from. The
+	// answer is the stored plan: the list the page shows is the one the
+	// start compares (review fix, 2026-10-29).
 	_, err = p.db.GetDB().ExecContext(r.Context(), `INSERT INTO server_setup_plans(id,revision,plan_json,requested_by,created_at) VALUES(?,?,?,?,?)
-		ON CONFLICT(id) DO UPDATE SET plan_json=excluded.plan_json WHERE NOT EXISTS (SELECT 1 FROM server_setup_executions WHERE plan_id=excluded.id)`, plan.ID, plan.Revision, string(encoded), plan.Actor.UserID, time.Now().UTC().Format(time.RFC3339Nano))
+		ON CONFLICT(id) DO UPDATE SET plan_json=excluded.plan_json
+		WHERE COALESCE(json_extract(server_setup_plans.plan_json,'$.package_updates_state'),'')='unknown'
+		AND NOT EXISTS (SELECT 1 FROM server_setup_executions WHERE plan_id=excluded.id)`, plan.ID, plan.Revision, string(encoded), plan.Actor.UserID, time.Now().UTC().Format(time.RFC3339Nano))
 	if err != nil {
 		writeServerError(w, err)
 		return
 	}
+	stored, err := p.loadServerSetupPlan(r.Context(), plan.ID)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	stored.PackageUpdatesDigest = serverSetupPackageUpdatesDigest(stored)
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(plan)
+	_ = json.NewEncoder(w).Encode(stored)
 }
 
 func serverSetupAdmin(w http.ResponseWriter, r *http.Request, method string) bool {
@@ -873,7 +887,19 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 		}
 	}
 	plan.ID = serverSetupPlanIdentity(plan)
+	plan.PackageUpdatesDigest = serverSetupPackageUpdatesDigest(plan)
 	return plan, nil
+}
+
+// serverSetupPackageUpdatesDigest: the package-update list and its state as
+// one value, order-independent.
+func serverSetupPackageUpdatesDigest(plan serverSetupPlan) string {
+	lines := make([]string, 0, len(plan.PackageUpdates))
+	for _, item := range plan.PackageUpdates {
+		lines = append(lines, item.Package+"="+item.From+"="+item.To)
+	}
+	slices.Sort(lines)
+	return serverSetupID(append([]string{"package-updates", plan.PackageUpdatesState}, lines...)...)
 }
 
 // serverSetupPackageUpdateBound bounds the review's read-only simulation.
@@ -998,6 +1024,8 @@ func (p *Panel) handleServerSetupStart(w http.ResponseWriter, r *http.Request) {
 		PlanID    string `json:"plan_id"`
 		Confirmed bool   `json:"confirmed"`
 		RequestID string `json:"request_id"`
+		// PackageUpdatesDigest: the package-update list the page showed.
+		PackageUpdatesDigest string `json:"package_updates_digest"`
 	}
 	if err := decodeServiceOperationJSON(w, r, &request); err != nil || !request.Confirmed || !validServiceOperationID(request.RequestID) || !validServiceOperationID(request.PlanID) {
 		writeClientError(w, http.StatusBadRequest, "confirm the exact reviewed plan and provide a valid request_id")
@@ -1043,6 +1071,12 @@ func (p *Panel) handleServerSetupStart(w http.ResponseWriter, r *http.Request) {
 	}
 	if state.Revision != plan.Revision || plan.BuildCommit != strings.TrimSpace(buildCommit) || plan.Actor.UserID != currentCaller(r).ID {
 		writeCodedError(w, http.StatusConflict, "server_setup_review_stale", "Setup changed. Review the current plan.", "")
+		return
+	}
+	if request.PackageUpdatesDigest != serverSetupPackageUpdatesDigest(plan) {
+		// Another review (a reload, a second tab) replaced the list after
+		// this page read it: the owner confirms only a list they read.
+		writeCodedError(w, http.StatusConflict, "server_setup_distribution_updates_changed_before_start", "The distribution updates this setup would also bring changed after you read the review, so setup did not start. You, the owner: read the review again; then confirm it and start setup.", "")
 		return
 	}
 	if plan.PackageUpdatesState == "unknown" {

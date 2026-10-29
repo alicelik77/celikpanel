@@ -22,7 +22,11 @@ re-run is owed before any is called proven.
   setup does not start: the confirm button is disabled with the reason, and
   the start handler refuses with `server_setup_distribution_updates_unread`.
   Refresh the review reads the list again and changes nothing on the server;
-  the plan keeps its identity. A component step that waits on
+  the plan keeps its identity. The start sends the digest of the list its
+  page showed; a list replaced by another review in between is refused with
+  `server_setup_distribution_updates_changed_before_start` (read the review
+  again, then confirm), and a stored list is replaced only while it is
+  unread. A component step that waits on
   `server_setup_distribution_updates_changed` (or `_unread`) offers Review the
   updates: a read of the list for the run's remaining component installs, then
   Confirm and continue. The confirmed list is recorded for that run, and the

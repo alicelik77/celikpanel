@@ -21,7 +21,11 @@ sayılmadan önce yeni bir hedefli VM koşusu gerekir.
   örneğin paket yöneticisi meşgul) kurulum başlamaz: onay düğmesi nedeniyle
   birlikte kapalıdır ve başlatma isteği `server_setup_distribution_updates_unread`
   ile reddedilir. İncelemeyi yenile listeyi yeniden okur ve sunucuda hiçbir
-  şey değiştirmez; plan kimliğini korur. `server_setup_distribution_updates_changed`
+  şey değiştirmez; plan kimliğini korur. Başlatma, sayfanın gösterdiği listenin
+  özetini gönderir; arada başka bir incelemenin değiştirdiği liste
+  `server_setup_distribution_updates_changed_before_start` ile reddedilir
+  (incelemeyi yeniden okuyun, sonra onaylayın); saklanan liste yalnız
+  okunmamışken değiştirilir. `server_setup_distribution_updates_changed`
   (ya da `_unread`) ile bekleyen bir bileşen adımı Güncellemeleri incele'yi
   sunar: çalışmanın kalan bileşen kurulumları için listenin okunması, ardından
   Onayla ve sürdür. Onaylanan liste o çalışma için kaydedilir ve aynı çalışma

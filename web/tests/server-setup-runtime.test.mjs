@@ -1693,3 +1693,26 @@ test('a ready main DNS server says the second server has not finished, and stops
         assert.ok(tree.root.findAllByProps({'data-setup-peer-setup':'retired'}).length>0,text());
     }finally{await cleanup();}
 });
+
+// Review fix: the start sends the digest of the package-update list the page
+// showed; a list replaced after that is refused and the review is read again.
+test('the start confirms only the package-update list the page showed',async()=>{
+    init();let stored='digest-a';const read=fetch;const starts=[];
+    globalThis.fetch=async(url,options)=>{
+        if(url==='/api/v1/setup/plan'){calls.push({url,options});return Response.json(plan({package_updates_state:'known',package_updates:[],package_updates_digest:stored}));}
+        if(url==='/api/v1/setup/start'){const body=JSON.parse(options.body);starts.push(body);if(body.package_updates_digest!==stored)return Response.json({code:'server_setup_distribution_updates_changed_before_start'},{status:409});return Response.json(execution(body,'running'),{status:202});}
+        return read(url,options);
+    };
+    try{
+        await mount();await toReview();
+        stored='digest-b';
+        await act(async()=>tree.root.findByProps({type:'checkbox'}).props.onChange({target:{checked:true}}));
+        await act(async()=>findButton('setup.start').props.onClick());
+        assert.equal(starts[0].package_updates_digest,'digest-a');
+        assert.ok(JSON.stringify(tree.toJSON()).includes('setup.packageUpdates.changedBeforeStart'));
+        assert.ok(tree.root.findAllByType('form').length>0,'back on the review');
+        await act(async()=>tree.root.findByProps({type:'checkbox'}).props.onChange({target:{checked:true}}));
+        await act(async()=>findButton('setup.start').props.onClick());
+        assert.equal(starts[1].package_updates_digest,'digest-b');
+    }finally{await cleanup();}
+});

@@ -187,6 +187,7 @@ export const enSetupScreens = {
     "setup.packageUpdates.title": "Distribution packages also updated",
     "setup.packageUpdates.help": "Installing these components also brings these updates of already installed packages from your distribution, within its current release. Starting setup confirms them; nothing else is updated without asking.",
     "setup.packageUpdates.unknown": "CelikPanel could not read yet which installed distribution packages these components would also update (the package manager may be busy), so setup cannot start on this review. Nobody needs to fix anything: wait a moment, then refresh the review; it reads the list again without changing the server. Then confirm it and start setup.",
+    "setup.packageUpdates.changedBeforeStart": "The distribution updates this setup would also bring changed after you read the review, so setup did not start. You, the owner: read the review again below; then confirm it and start setup.",
     "setup.packageUpdates.refresh": "Refresh the review",
     "setup.packageUpdates.waitReview": "Review the updates",
     "setup.packageUpdates.waitHelp": "This component's install, and the ones after it, would also bring these updates of already installed packages from your distribution, within its current release. Confirming them lets setup continue from this step; nothing already done is repeated.",

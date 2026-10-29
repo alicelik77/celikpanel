@@ -550,14 +550,26 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         pendingRef.current = true; setBusy(true); setError('');
         let started: SetupStartMarker;
         try {
-            started = { request_id: newSetupRequestID(), plan_id: plan.id, panel_domain: draft.panel_domain, ...(plan.steps.some(item => item.kind === 'panel_certificate') ? { handover: true } : {}) };
+            started = { request_id: newSetupRequestID(), plan_id: plan.id, panel_domain: draft.panel_domain, ...(plan.package_updates_digest ? { package_updates_digest: plan.package_updates_digest } : {}), ...(plan.steps.some(item => item.kind === 'panel_certificate') ? { handover: true } : {}) };
             localStorage.setItem(markerKey(user.username), JSON.stringify(started));
         } catch { setError(t('setup.storageFailed')); pendingRef.current = false; setBusy(false); return; }
         markerRef.current = started; setMarker(started); setStep('progress');
         try {
-            const response = await setupFetch('/api/v1/setup/start', requestOptions({ plan_id: started.plan_id, request_id: started.request_id, confirmed: true }));
+            const response = await setupFetch('/api/v1/setup/start', requestOptions({ plan_id: started.plan_id, request_id: started.request_id, confirmed: true, package_updates_digest: started.package_updates_digest ?? '' }));
             if (!response.ok) {
                 const problem = await response.clone().json().catch(() => null);
+                if (response.status === 409 && problem?.code === 'server_setup_distribution_updates_changed_before_start') {
+                    // The list changed after this page read it: the review is
+                    // read again (the stored list) and confirmed again.
+                    localStorage.removeItem(markerKey(user.username));
+                    markerRef.current = null; setMarker(null); setAcknowledged(false); setStep('review');
+                    const again = await setupFetch('/api/v1/setup/plan', requestOptions({ revision: snapshot.revision }));
+                    if (!again.ok) throw new Error(t('setup.planFailed'));
+                    const reviewed = decodeSetupPlan(await again.json(), snapshot.revision);
+                    if (!reviewed) throw new Error(t('setup.planFailed'));
+                    if (alive.current) { setPlan(reviewed); setError(t('setup.packageUpdates.changedBeforeStart')); }
+                    return;
+                }
                 if (response.status === 409 && problem?.code === 'server_setup_distribution_updates_unread') {
                     // Refused before any execution: the review stays, unread.
                     localStorage.removeItem(markerKey(user.username));
@@ -616,7 +628,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         try {
             // Reuse the already confirmed plan and request. A lost response is
             // never permission to create another installation identity.
-            const response = await setupFetch('/api/v1/setup/start', requestOptions({ plan_id: saved.plan_id, request_id: saved.request_id, confirmed: true }));
+            const response = await setupFetch('/api/v1/setup/start', requestOptions({ plan_id: saved.plan_id, request_id: saved.request_id, confirmed: true, package_updates_digest: saved.package_updates_digest ?? '' }));
             if (response.ok) {
                 const resumed = decodeSetupExecution(await response.json(), saved);
                 if (resumed && alive.current) { setExecution(resumed); setReconnecting(false); }
