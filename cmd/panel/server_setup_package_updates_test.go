@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"slices"
 	"strings"
 	"testing"
@@ -111,5 +112,144 @@ func TestServiceInstallRequestCannotCarryTheSetupConfirmation(t *testing.T) {
 	var req serviceInstallRequest
 	if err := json.Unmarshal([]byte(`{"service_id":"mariadb","accepted_point_updates":["perl-base=5.40.1-6+deb13u1"],"AcceptedPointUpdates":["x=1"]}`), &req); err != nil || req.AcceptedPointUpdates != nil {
 		t.Fatalf("decoded %+v %v", req, err)
+	}
+}
+
+// Beta-1 re-run P5: the review read "unknown" (the package manager was busy)
+// and setup started anyway. An unread list holds the start, in the plan the
+// web reads (can_start) and in the start handler a client cannot bypass;
+// refreshing the review reads it again and the same plan can then start.
+func TestServerSetupUnreadPackageUpdatesHoldTheStartUntilTheReviewIsRefreshed(t *testing.T) {
+	f, state := setupOperationFixture(t)
+	busy := true
+	f.panel.serverSetupInstallPreview = func(context.Context, transport.ServiceInstallPreviewRequest) (transport.ServiceInstallPreviewResponse, error) {
+		if busy {
+			return transport.ServiceInstallPreviewResponse{}, errors.New("could not get lock /var/lib/dpkg/lock-frontend")
+		}
+		return transport.ServiceInstallPreviewResponse{State: "known"}, nil
+	}
+	serverSetupRunners.Store(f.panel, true)
+	t.Cleanup(func() { serverSetupRunners.Delete(f.panel) })
+	review := func() serverSetupPlan {
+		w := httptest.NewRecorder()
+		body, _ := json.Marshal(map[string]any{"revision": state.Revision})
+		f.panel.handleServerSetupPlan(w, serviceOperationAdminRequest(t, http.MethodPost, "/api/v1/setup/plan", string(body), f.userID))
+		var plan serverSetupPlan
+		if w.Code != http.StatusOK || json.Unmarshal(w.Body.Bytes(), &plan) != nil {
+			t.Fatalf("review: %d %s", w.Code, w.Body.String())
+		}
+		return plan
+	}
+	unread := review()
+	if unread.PackageUpdatesState != "unknown" || unread.CanStart || len(unread.Blockers) != 0 {
+		t.Fatalf("an unread review could start: %q %v %v", unread.PackageUpdatesState, unread.CanStart, unread.Blockers)
+	}
+	w := postSetupStartForTest(t, f, unread.ID, strings.Repeat("d", 32))
+	if w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), serverSetupPackageUpdatesUnreadCode) {
+		t.Fatalf("the start handler accepted an unread review: %d %s", w.Code, w.Body.String())
+	}
+	if execution, err := f.panel.latestServerSetupExecution(context.Background()); err != nil || execution != nil {
+		t.Fatalf("an execution was created: %+v %v", execution, err)
+	}
+	if f.agent.installCalls.Load() != 0 {
+		t.Fatal("the refused start installed something")
+	}
+	// Refreshing the review is a read: the same plan, now read.
+	busy = false
+	read := review()
+	if read.ID != unread.ID || read.PackageUpdatesState != "known" || !read.CanStart {
+		t.Fatalf("refreshed review: %s/%s %q %v", read.ID, unread.ID, read.PackageUpdatesState, read.CanStart)
+	}
+	if w := postSetupStartForTest(t, f, read.ID, strings.Repeat("e", 32)); w.Code != http.StatusAccepted {
+		t.Fatalf("the read review did not start: %d %s", w.Code, w.Body.String())
+	}
+}
+
+// Beta-1 re-run P5: a step waited on server_setup_distribution_updates_changed
+// and told the owner to open the review, but reopening was refused for the
+// phase "service". The owner now reviews the new list from that wait and
+// confirms it; the same execution continues from that step, nothing already
+// done is repeated, and the install carries the confirmed update.
+func TestServerSetupDistributionUpdatesWaitIsConfirmedAndTheSameRunContinues(t *testing.T) {
+	f, state := setupOperationFixture(t)
+	var notable []transport.NotableInstall
+	f.panel.serverSetupInstallPreview = func(context.Context, transport.ServiceInstallPreviewRequest) (transport.ServiceInstallPreviewResponse, error) {
+		return transport.ServiceInstallPreviewResponse{State: "known", Notable: notable}, nil
+	}
+	plan := saveSetupPlanForTest(t, f, state)
+	if plan.PackageUpdatesState != "known" || len(plan.PackageUpdates) != 0 {
+		t.Fatalf("review: %q %+v", plan.PackageUpdatesState, plan.PackageUpdates)
+	}
+	serverSetupRunners.Store(f.panel, true)
+	t.Cleanup(func() { serverSetupRunners.Delete(f.panel) })
+	response := postSetupStartForTest(t, f, plan.ID, strings.Repeat("9", 32))
+	if response.Code != http.StatusAccepted {
+		t.Fatalf("start %d %s", response.Code, response.Body.String())
+	}
+	var execution serverSetupExecution
+	if err := json.Unmarshal(response.Body.Bytes(), &execution); err != nil {
+		t.Fatal(err)
+	}
+	// Days later a point update appears; the first component waits.
+	update := transport.NotableInstall{Package: "libssl3t64", Reason: "upgrade", From: "3.5.7-1~deb13u2", To: "3.5.7-1~deb13u3", PointUpdate: true}
+	notable = []transport.NotableInstall{update}
+	for pass := 0; pass < 4 && execution.Status != "waiting"; pass++ {
+		if _, err := f.panel.advanceServerSetupExecution(plan, &execution); err != nil {
+			t.Fatal(err)
+		}
+	}
+	index := serverSetupPackageUpdatesWaitingStep(execution)
+	if execution.Status != "waiting" || execution.Error == nil || execution.Error.Code != "server_setup_distribution_updates_changed" || index < 0 {
+		t.Fatalf("no distribution-update wait: %+v", execution)
+	}
+	if f.agent.installCalls.Load() != 0 {
+		t.Fatal("the wait installed something")
+	}
+	call := func(body map[string]any) *httptest.ResponseRecorder {
+		raw, _ := json.Marshal(body)
+		w := httptest.NewRecorder()
+		f.panel.handleServerSetupPackageUpdates(w, serviceOperationAdminRequest(t, http.MethodPost, "/api/v1/setup/package-updates", string(raw), f.userID))
+		return w
+	}
+	// The owner reviews: a read, the new list.
+	w := call(map[string]any{"execution_id": execution.ID, "action": "review"})
+	var reviewed serverSetupPackageUpdatesResponse
+	if w.Code != http.StatusOK || json.Unmarshal(w.Body.Bytes(), &reviewed) != nil || reviewed.State != "known" || len(reviewed.Updates) != 1 || reviewed.Updates[0].To != update.To {
+		t.Fatalf("review: %d %s", w.Code, w.Body.String())
+	}
+	if confirmed, _ := f.panel.readServerSetupRunPackageUpdates(context.Background(), execution.ID); len(confirmed) != 0 {
+		t.Fatalf("the review confirmed something: %+v", confirmed)
+	}
+	// A confirmation that does not cover what the package manager lists now
+	// confirms nothing.
+	if w := call(map[string]any{"execution_id": execution.ID, "action": "confirm", "updates": []transport.NotableInstall{}}); w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), "server_setup_review_stale") {
+		t.Fatalf("an empty confirmation: %d %s", w.Code, w.Body.String())
+	}
+	w = call(map[string]any{"execution_id": execution.ID, "action": "confirm", "updates": reviewed.Updates})
+	if w.Code != http.StatusOK {
+		t.Fatalf("confirm: %d %s", w.Code, w.Body.String())
+	}
+	saved, err := f.panel.latestServerSetupExecution(context.Background())
+	if err != nil || saved.ID != execution.ID || saved.Status != "running" || saved.Error != nil {
+		t.Fatalf("the same run did not continue: %+v %v", saved, err)
+	}
+	// Not waiting any more: the actions are refused, nothing is overwritten.
+	if w := call(map[string]any{"execution_id": execution.ID, "action": "confirm", "updates": reviewed.Updates}); w.Code != http.StatusConflict {
+		t.Fatalf("a confirmation outside the wait: %d %s", w.Code, w.Body.String())
+	}
+	execution = *saved
+	waiting := execution.Steps[index]
+	if _, err := f.panel.advanceServerSetupExecution(plan, &execution); err != nil {
+		t.Fatal(err)
+	}
+	step := execution.Steps[index]
+	if step.ID != waiting.ID || step.RequestID != waiting.RequestID || step.OperationID == "" {
+		t.Fatalf("the waiting step did not continue: %+v", step)
+	}
+	waitForServiceOperation(t, f.panel, f.userID, step.OperationID, "failed")
+	f.agent.mu.Lock()
+	defer f.agent.mu.Unlock()
+	if len(f.agent.installRequests) != 1 || !slices.Contains(f.agent.installRequests[0].AcceptedPointUpdates, "libssl3t64=3.5.7-1~deb13u3") {
+		t.Fatalf("install requests: %+v", f.agent.installRequests)
 	}
 }

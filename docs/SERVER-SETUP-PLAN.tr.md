@@ -9,6 +9,25 @@ bu yönü onayladı. Bu belge anlaşmayı ve uygulamanın kabul ölçütlerini k
 Asistana kurulu panel güncelleme yetkisi vermez; [AGENTS.md](../AGENTS.md) gereği
 kurulu panel güncellemelerini kullanıcı CelikPanel'in kendi arayüzünden başlatır.
 
+## 29 Ekim ek kararı: hedefli Beta-1 yeniden koşusunun düzeltmeleri (alpha.115 kaynağı)
+
+b86ab6fa4 ürün kaydının hedefli yeniden koşusu aşağıdaki kusurları buldu. Her
+düzeltmenin bileşen testi var ve hiçbiri şemayı değiştirmez; kanıtlanmış
+sayılmadan önce yeni bir hedefli VM koşusu gerekir.
+
+- **Okunamayan güncelleme listesi başlatmayı tutar.** İnceleme, planın
+  kurulumlarının kurulu dağıtım paketlerinden hangilerini ayrıca
+  güncelleyeceğini okuyamadığı sürece (`package_updates_state: unknown`,
+  örneğin paket yöneticisi meşgul) kurulum başlamaz: onay düğmesi nedeniyle
+  birlikte kapalıdır ve başlatma isteği `server_setup_distribution_updates_unread`
+  ile reddedilir. İncelemeyi yenile listeyi yeniden okur ve sunucuda hiçbir
+  şey değiştirmez; plan kimliğini korur. `server_setup_distribution_updates_changed`
+  (ya da `_unread`) ile bekleyen bir bileşen adımı Güncellemeleri incele'yi
+  sunar: çalışmanın kalan bileşen kurulumları için listenin okunması, ardından
+  Onayla ve sürdür. Onaylanan liste o çalışma için kaydedilir ve aynı çalışma
+  bekleyen adımdan sürer; yapılmış hiçbir şey yinelenmez ve plan yeniden
+  açılmaz. Çalışan bir adım ya da bilinen bir hata asla değiştirilmez.
+
 ## 29 Ekim ek kararı: Beta-1 sanal makine koşusunun düzeltmeleri (alpha.115 kaynağı)
 
 Kurulum sihirbazı v2'nin temiz Debian 13 ve Ubuntu 24.04 konuklarındaki gerçek
@@ -25,10 +44,10 @@ koşusu aşağıdaki kusurları buldu; her düzeltmenin bileşen testi var, hiç
   paketleri" altında listeler; kurulumu başlatmak tam olarak bunları
   (paket=sürüm) onaylar; bunları Agent'a yalnız kurulumun kendi bileşen
   adımları gönderir ve Agent yalnız birebir eşleşeni kabul eder. Okunamayan
-  inceleme hiçbirini onaylamaz. Her bileşenin ilk kurulumundan önce adım
+  inceleme kurulumu başlatmaz. Her bileşenin ilk kurulumundan önce adım
   yeniden sorar: incelemenin listelemediği güncelleme
-  `server_setup_distribution_updates_changed` olarak bekler (sahip incelemeyi
-  açıp yeniden başlatır), okunamayan yanıt
+  `server_setup_distribution_updates_changed` olarak bekler (sahip o bekleyişten
+  inceleyip onaylar), okunamayan yanıt
   `server_setup_distribution_updates_unread` olarak bekler; hiçbir şey
   kurulmaz. PPA, üretici ya da üçüncü taraf depo, backports, sürüm düşürme,
   yeni üst sürüm, veritabanı sunucusu, Apache, başka PHP sürümü ya da başka

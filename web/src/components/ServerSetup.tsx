@@ -554,6 +554,13 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
             const response = await setupFetch('/api/v1/setup/start', requestOptions({ plan_id: started.plan_id, request_id: started.request_id, confirmed: true }));
             if (!response.ok) {
                 const problem = await response.clone().json().catch(() => null);
+                if (response.status === 409 && problem?.code === 'server_setup_distribution_updates_unread') {
+                    // Refused before any execution: the review stays, unread.
+                    localStorage.removeItem(markerKey(user.username));
+                    markerRef.current = null; setMarker(null); setAcknowledged(false);
+                    setPlan({ ...plan, can_start: false, package_updates_state: 'unknown', package_updates: undefined });
+                    setStep('review'); return;
+                }
                 if (response.status === 409 && ['server_setup_review_required', 'server_setup_review_stale', 'server_setup_plan_blocked'].includes(problem?.code)) {
                     // These codes are emitted only before an execution is created.
                     // The server checks a previously committed request first.
@@ -567,6 +574,19 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
             if (!accepted) { await reconcile(); return; }
             if (alive.current) { setExecution(accepted); setReconnecting(false); }
         } catch { await reconcile(); }
+        finally { pendingRef.current = false; if (alive.current) setBusy(false); }
+    }
+    // Refreshing the review is a read: the same plan read again (P5).
+    async function refreshReview() {
+        if (pendingRef.current) return;
+        pendingRef.current = true; setBusy(true); setError('');
+        try {
+            const response = await setupFetch('/api/v1/setup/plan', requestOptions({ revision: snapshot.revision }));
+            if (!response.ok) throw new Error(t('setup.planFailed'));
+            const reviewed = decodeSetupPlan(await response.json(), snapshot.revision);
+            if (!reviewed) throw new Error(t('setup.planFailed'));
+            if (alive.current) { setPlan(reviewed); setAcknowledged(false); }
+        } catch (failure) { if (alive.current) setError(failure instanceof Error ? failure.message : t('setup.planFailed')); }
         finally { pendingRef.current = false; if (alive.current) setBusy(false); }
     }
     async function verifyManual() {
@@ -856,6 +876,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                     </aside>}
                     {/* The failure colour is for a verified failure only: a busy server, an unmet prerequisite and a result still being confirmed are not one. */}
                     {execution?.error && !['dns_publisher', 'dns_readiness'].includes(execution.phase) && <div role={hostBusy ? undefined : confirmingPrevious || waitingDNSPrerequisite || observingMailEnrollment || planReopened ? 'status' : 'alert'} className={`${hostBusy ? 'mt-3' : 'mt-5'} space-y-2 text-sm`}>{!hostBusy && !peerRecordApplied && (!(confirmingPrevious || observingMailEnrollment || planReopened) || !guidance) && <p className={execution.status === 'failed' ? 'text-danger' : confirmingPrevious || waitingDNSPrerequisite ? 'text-fg-muted' : 'text-fg'}>{failureText(execution.error.code, execution.error.message, execution.error.reason)}</p>}<details><summary className="cursor-pointer text-primary">{t('setup.details')}</summary><p className="mt-2 break-words text-fg-muted">{execution.error.message}</p></details></div>}
+                    {execution && setupPackageUpdatesWaiting(execution) && <SetupPackageUpdatesWait key={execution.id} executionID={execution.id} onContinued={next => { if (next) setExecution(next); void reconcile(); }} />}
                     {/* The action a stopped run names sits with its reason, above the step list. */}
                     {execution?.status === 'failed' && guidance && !hostBusy && <div className="mt-5"><Button variant="primary" onClick={editPlan}>{t('setup.revise')}</Button></div>}
                     {progressChecks.length > 0 && waitingVerification && !guidance?.checks && <ul className="mt-5 list-disc space-y-2 pl-5 text-sm text-fg-muted">{progressChecks.map(check => <li key={check.id} className="break-words">{checkSentence(check)}</li>)}</ul>}
@@ -951,7 +972,8 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                         {extending && <SetupExtensionReview plan={plan} changes={extensionChanges.map(change => ({ key: change.key, label: t(extensionLabels[change.key]), before: extensionValue(change.key, change.before), after: extensionValue(change.key, change.after), beforeLiteral: extensionLiteral(change.key) && change.before !== '', afterLiteral: extensionLiteral(change.key) && change.after !== '' }))} name={(kind, target) => kind === 'service' ? componentName(catalog?.components.find(row => row.id === target) ?? { id: target, name: stepTarget('service', target) }, t) : t(`setup.kind.${kind}` as TranslationKey, { target: stepTarget(kind, target) })} />}
                         {plan.components && !extending && <div className="mt-5"><h3 className="font-semibold">{t('setup.components.reviewTitle')}</h3><ul className="mt-2 divide-y divide-border">{plan.components.map(item => <li key={item.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2 text-sm"><span>{componentName(catalog?.components.find(row => row.id === item.id) ?? { id: item.id, name: stepTarget('service', item.id) }, t)}</span><span className="text-fg-muted">{t(item.installed ? 'setup.components.keep' : item.required ? 'setup.components.dependency' : 'setup.components.toInstall')}</span></li>)}</ul><p className="mt-3 text-sm text-fg-muted">{t('setup.components.preserve')}</p></div>}
                         {plan.package_updates && plan.package_updates.length > 0 && <div className="mt-5" data-setup-package-updates=""><h3 className="font-semibold">{t('setup.packageUpdates.title')}</h3><p className="mt-1 text-sm leading-6 text-fg-muted">{t('setup.packageUpdates.help')}</p><ul className="mt-2 divide-y divide-border">{plan.package_updates.map(item => <li key={item.package} className="flex flex-wrap items-baseline justify-between gap-2 py-2 text-sm"><span className="break-all">{item.package}</span>{item.from && item.to && <span className="break-all tabular-nums text-fg-muted">{item.from} → {item.to}</span>}</li>)}</ul></div>}
-                        {plan.package_updates_state === 'unknown' && <p className="mt-5 text-sm leading-6 text-fg-muted" data-setup-package-updates="unknown">{t('setup.packageUpdates.unknown')}</p>}
+                        {/* An unread list is an unmet prerequisite (P5): setup cannot start on it; refreshing the review reads it again and changes nothing on the server. */}
+                        {plan.package_updates_state === 'unknown' && <div role="status" className="mt-5 rounded-lg border border-border bg-surface p-4 text-sm leading-6" data-setup-package-updates="unknown"><p>{t('setup.packageUpdates.unknown')}</p><Button type="button" variant="secondary" className="mt-3" disabled={busy} loading={busy} onClick={() => void refreshReview()}>{t('setup.packageUpdates.refresh')}</Button></div>}
                         <ol className="mt-5 divide-y divide-border">{plan.steps.map(item => <li key={item.id} className="py-4"><p className="font-medium">{t(`setup.kind.${item.kind}`, { target: stepTarget(item.kind, item.target) })}</p>{item.qualifier && item.kind !== 'mail_enrollment' && <p className="mt-1 text-sm text-fg-muted">{item.qualifier}</p>}{handoverNotice && item.kind === 'panel_certificate' && <p className="mt-1 text-sm text-fg-muted">{t('setup.handover.stepNote')}</p>}</li>)}</ol>
                         <dl className="mt-5 space-y-3 rounded-lg bg-surface-2 p-4 text-sm"><div><dt className="font-semibold">{t('setup.firewallReview')}</dt><dd className="mt-1 leading-6 text-fg-muted">{t('setup.firewallHelp')}</dd></div><div><dt className="font-semibold">TCP</dt><dd className="mt-1 break-words tabular-nums">{plan.tcp_ports.join(', ') || t('setup.noPorts')}</dd></div><div><dt className="font-semibold">UDP</dt><dd className="mt-1 break-words tabular-nums">{plan.udp_ports.join(', ') || t('setup.noPorts')}</dd></div><div><dt className="font-semibold">{t('setup.certificateContact')}</dt><dd className="mt-1 break-all">{plan.contact_email}</dd></div>{plan.hostname_change && <div><dt className="font-semibold">{t('setup.hostnameChange')}</dt><dd className="mt-1 break-all">{plan.hostname_change}</dd></div>}</dl>
                         {automaticPublisher && publisherEndpoint && <div className="mt-5 space-y-2 border-t border-border pt-4 text-sm"><p className="font-semibold">{t('setup.publisher.reviewTitle')}</p><p className="break-all">{publisherEndpoint}</p><p className="leading-6 text-fg-muted">{t('setup.publisher.setupHelp')}</p></div>}
@@ -1128,5 +1150,62 @@ function SetupNodeVersion({ value, onChange }: { value: string; onChange: (value
         </select></label>
         <p className="text-sm text-fg-muted">{t('setup.nodeHelp')}</p>
         {failed && <p role="alert" className="flex flex-wrap items-center gap-3 text-sm text-danger">{t('setup.nodeUnavailable')}<Button type="button" variant="secondary" onClick={() => setAttempt(value => value + 1)}>{t('common.retry')}</Button></p>}
+    </div>;
+}
+
+// A component step waits on its distribution updates (P5): the owner reads
+// the list again here and confirms it; the same run continues from that step.
+// Reading never confirms; only the confirm button sends the list seen.
+// Bekleyen adimdan sahip listeyi yeniden okur ve onaylar; ayni calisma surer.
+export function setupPackageUpdatesWaiting(execution: ServerSetupExecution) {
+    return execution.status === 'waiting' && execution.phase === 'service'
+        && ['server_setup_distribution_updates_changed', 'server_setup_distribution_updates_unread'].includes(execution.error?.code || '');
+}
+
+type SetupPackageUpdate = { package: string; from?: string; to?: string };
+function SetupPackageUpdatesWait({ executionID, onContinued }: { executionID: string; onContinued: (next: ServerSetupExecution | null) => void }) {
+    const { t } = useSetupI18n();
+    const [state, setState] = useState<'idle' | 'reading' | 'known' | 'unknown' | 'confirming'>('idle');
+    const [updates, setUpdates] = useState<SetupPackageUpdate[]>([]);
+    const [acknowledged, setAcknowledged] = useState(false);
+    const [problem, setProblem] = useState<TranslationKey | null>(null);
+    const call = async (body: Record<string, unknown>) => {
+        const response = await setupFetch('/api/v1/setup/package-updates', requestOptions({ execution_id: executionID, ...body }));
+        // A body that is not JSON throws here; the caller shows the failure.
+        const text = await response.text();
+        const value: unknown = text ? JSON.parse(text) : null;
+        return { ok: response.ok, value: value && typeof value === 'object' ? value as Record<string, unknown> : null };
+    };
+    async function review() {
+        setState('reading'); setProblem(null); setAcknowledged(false);
+        try {
+            const { ok, value } = await call({ action: 'review' });
+            const list = Array.isArray(value?.updates) ? (value.updates as unknown[]).filter((item): item is SetupPackageUpdate => !!item && typeof item === 'object' && typeof (item as SetupPackageUpdate).package === 'string') : null;
+            if (!ok || !list) { setState('idle'); setProblem('setup.packageUpdates.waitFailed'); return; }
+            setUpdates(list); setState(value?.state === 'known' ? 'known' : 'unknown');
+        } catch { setState('idle'); setProblem('setup.packageUpdates.waitFailed'); }
+    }
+    async function confirm() {
+        if (!acknowledged) return;
+        setState('confirming'); setProblem(null);
+        try {
+            const { ok, value } = await call({ action: 'confirm', updates });
+            if (!ok) { setState('idle'); setAcknowledged(false); setProblem(value?.code === 'server_setup_review_stale' ? 'setup.packageUpdates.waitChanged' : value?.code === 'server_setup_distribution_updates_unread' ? 'setup.packageUpdates.waitUnread' : 'setup.packageUpdates.waitFailed'); return; }
+            onContinued(decodeSetupExecution(value?.execution) ?? null);
+        } catch { setState('idle'); setProblem('setup.packageUpdates.waitFailed'); }
+    }
+    return <div className="mt-5 rounded-lg border border-border bg-surface p-4 text-sm leading-6" data-setup-package-updates-wait="">
+        {state === 'known' || state === 'confirming' ? <>
+            <h3 className="font-semibold">{t('setup.packageUpdates.title')}</h3>
+            <p className="mt-1 text-fg-muted">{t('setup.packageUpdates.waitHelp')}</p>
+            {updates.length > 0 ? <ul className="mt-2 divide-y divide-border">{updates.map(item => <li key={item.package} className="flex flex-wrap items-baseline justify-between gap-2 py-2"><span className="break-all">{item.package}</span>{item.from && item.to && <span className="break-all tabular-nums text-fg-muted">{item.from} → {item.to}</span>}</li>)}</ul>
+                : <p className="mt-2 text-fg-muted">{t('setup.packageUpdates.waitNone')}</p>}
+            <label className="mt-3 flex cursor-pointer items-start gap-3"><input type="checkbox" checked={acknowledged} onChange={event => setAcknowledged(event.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-primary" /><span>{t('setup.packageUpdates.waitConfirmLabel')}</span></label>
+            <Button type="button" variant="primary" className="mt-3" disabled={!acknowledged || state === 'confirming'} loading={state === 'confirming'} onClick={() => void confirm()}>{t('setup.packageUpdates.waitConfirm')}</Button>
+        </> : <>
+            {state === 'unknown' && <p role="status">{t('setup.packageUpdates.waitUnread')}</p>}
+            <Button type="button" variant="secondary" className={state === 'unknown' ? 'mt-3' : ''} disabled={state === 'reading'} loading={state === 'reading'} onClick={() => void review()}>{t('setup.packageUpdates.waitReview')}</Button>
+        </>}
+        {problem && <p role="alert" className="mt-3 text-fg">{t(problem)}</p>}
     </div>;
 }

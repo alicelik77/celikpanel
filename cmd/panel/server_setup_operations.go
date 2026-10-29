@@ -255,6 +255,9 @@ func (p *Panel) loadServerSetupPlan(ctx context.Context, id string) (serverSetup
 func serverSetupPlanIdentity(plan serverSetupPlan) string {
 	plan.ID = ""
 	plan.PackageUpdates, plan.PackageUpdatesState = nil, ""
+	// An unread package-update list holds the start (CanStart false) but is
+	// not part of what was reviewed: the same plan read again is the same plan.
+	plan.CanStart = len(plan.Blockers) == 0
 	encoded, _ := json.Marshal(plan)
 	return serverSetupID(string(encoded))
 }
@@ -291,7 +294,11 @@ func (p *Panel) handleServerSetupPlan(w http.ResponseWriter, r *http.Request) {
 		writeServerError(w, err)
 		return
 	}
-	_, err = p.db.GetDB().ExecContext(r.Context(), `INSERT OR IGNORE INTO server_setup_plans(id,revision,plan_json,requested_by,created_at) VALUES(?,?,?,?,?)`, plan.ID, plan.Revision, string(encoded), plan.Actor.UserID, time.Now().UTC().Format(time.RFC3339Nano))
+	// The same plan reviewed again keeps its identity; its package-update
+	// list is the latest read (P5: a refreshed review replaces an unread
+	// one). A plan a run already started from is never rewritten.
+	_, err = p.db.GetDB().ExecContext(r.Context(), `INSERT INTO server_setup_plans(id,revision,plan_json,requested_by,created_at) VALUES(?,?,?,?,?)
+		ON CONFLICT(id) DO UPDATE SET plan_json=excluded.plan_json WHERE NOT EXISTS (SELECT 1 FROM server_setup_executions WHERE plan_id=excluded.id)`, plan.ID, plan.Revision, string(encoded), plan.Actor.UserID, time.Now().UTC().Format(time.RFC3339Nano))
 	if err != nil {
 		writeServerError(w, err)
 		return
@@ -807,6 +814,12 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 	plan.CanStart = len(plan.Blockers) == 0
 	if plan.CanStart {
 		plan.PackageUpdates, plan.PackageUpdatesState = p.serverSetupPackageUpdates(ctx, plan.Steps)
+		// Beta-1 re-run P5: the one confirmation covers a list the owner has
+		// read. While it is unread (the package manager was busy) setup does
+		// not start; refreshing the review reads it again.
+		if plan.PackageUpdatesState == "unknown" {
+			plan.CanStart = false
+		}
 	}
 	plan.ID = serverSetupPlanIdentity(plan)
 	return plan, nil
@@ -814,6 +827,15 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 
 // serverSetupPackageUpdateBound bounds the review's read-only simulation.
 const serverSetupPackageUpdateBound = 20 * time.Second
+
+// serverSetupPackageUpdatesUnreadCode: the review could not read which
+// installed distribution packages the plan's installs would also update, so
+// it cannot be confirmed yet (D-024: an unmet prerequisite; who: the panel;
+// next: wait or refresh the review; then: confirm and start).
+const (
+	serverSetupPackageUpdatesUnreadCode    = "server_setup_distribution_updates_unread"
+	serverSetupPackageUpdatesUnreadMessage = "CelikPanel could not read yet which installed distribution packages this plan's installs would also update (the package manager may be busy), so setup cannot start on this review. Nobody needs to fix anything: wait a moment and refresh the review; it reads the list again without changing the server. Then confirm it and start setup."
+)
 
 // serverSetupPackageUpdates asks the package manager, read-only, which
 // installed distribution packages the plan's component installs would also
@@ -880,7 +902,7 @@ func (p *Panel) serverSetupPointUpdatesWait(ctx context.Context, plan serverSetu
 		return nil
 	}
 	if state != "known" {
-		return &serverSetupPeerWait{Code: "server_setup_distribution_updates_unread", Message: "CelikPanel could not read which distribution packages this component's install would also update, so nothing was installed. Nobody needs to act yet; setup asks again by itself."}
+		return &serverSetupPeerWait{Code: "server_setup_distribution_updates_unread", Message: "CelikPanel could not read which distribution packages this component's install would also update, so nothing was installed. Nobody needs to act yet: setup asks again by itself, or you can choose Review the updates on this page to read and confirm them now; setup then continues from this step."}
 	}
 	listed := map[string]bool{}
 	for _, item := range serverSetupAcceptedPointUpdates(plan) {
@@ -888,7 +910,7 @@ func (p *Panel) serverSetupPointUpdatesWait(ctx context.Context, plan serverSetu
 	}
 	for _, item := range updates {
 		if !listed[item.Package+"="+item.To] {
-			return &serverSetupPeerWait{Code: "server_setup_distribution_updates_changed", Message: "New distribution updates appeared since the review (" + item.Package + " " + item.To + "), so nothing was installed. You, the owner: open the review and start setup again; it lists them for you to confirm."}
+			return &serverSetupPeerWait{Code: "server_setup_distribution_updates_changed", Message: "New distribution updates appeared since the review (" + item.Package + " " + item.To + "), so nothing was installed. You, the owner: choose Review the updates on this page and confirm them; setup then continues from this step, and nothing already done is repeated."}
 		}
 	}
 	return nil
@@ -970,6 +992,12 @@ func (p *Panel) handleServerSetupStart(w http.ResponseWriter, r *http.Request) {
 	}
 	if state.Revision != plan.Revision || plan.BuildCommit != strings.TrimSpace(buildCommit) || plan.Actor.UserID != currentCaller(r).ID {
 		writeCodedError(w, http.StatusConflict, "server_setup_review_stale", "Setup changed. Review the current plan.", "")
+		return
+	}
+	if plan.PackageUpdatesState == "unknown" {
+		// The same refusal the review's disabled button shows: a client
+		// cannot start on a list nobody could read (P5).
+		writeCodedError(w, http.StatusConflict, serverSetupPackageUpdatesUnreadCode, serverSetupPackageUpdatesUnreadMessage, "")
 		return
 	}
 	fresh, err := p.buildServerSetupPlan(r.Context(), state, plan.Actor)
@@ -1227,6 +1255,14 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 			done, err = p.runServerSetupDNSPublisher(ctx, plan, execution.ID)
 		} else if step.Kind == "mail_enrollment" {
 			done, err = p.runServerSetupMailEnrollment(ctx, reviewed, execution, index)
+		} else if step.Kind == "service" {
+			// The updates the owner confirmed during this run join the
+			// reviewed list for its component installs (P5).
+			stepPlan, readErr := p.withServerSetupRunPackageUpdates(ctx, plan, execution.ID)
+			if readErr != nil {
+				return false, readErr
+			}
+			done, err = p.runServerSetupStep(ctx, stepPlan, step)
 		} else {
 			done, err = p.runServerSetupStep(ctx, plan, step)
 		}

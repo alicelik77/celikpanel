@@ -1606,3 +1606,64 @@ test('wizard v2: the first server waiting for the second shows the code once and
         assert.ok(textOf().includes('setup.v5.card.shownOnce'));
     } finally { await cleanup(); }
 });
+
+// Beta-1 re-run P5: an unread package-update list cannot be confirmed. The
+// start button stays disabled with the reason and a refresh, which reads the
+// review again; a run waiting on its distribution updates offers the review
+// of that list and continues the same run once confirmed.
+test('an unread package-update review keeps start disabled until the review is refreshed',async()=>{
+    init();let unread=true;const read=fetch;
+    globalThis.fetch=async(url,options)=>{
+        if(url==='/api/v1/setup/plan'){calls.push({url,options});return Response.json(unread?plan({can_start:false,package_updates_state:'unknown'}):plan({package_updates_state:'known'}));}
+        return read(url,options);
+    };
+    try{
+        await mount();await toReview();
+        assert.equal(findButton('setup.start').props.disabled,true);
+        assert.equal(tree.root.findAllByProps({type:'checkbox'}).length,0);
+        assert.ok(tree.root.findAllByProps({'data-setup-package-updates':'unknown'}).length>0);
+        const plans=calls.filter(call=>call.url==='/api/v1/setup/plan').length;
+        unread=false;
+        await act(async()=>findButton('setup.packageUpdates.refresh').props.onClick());
+        assert.equal(calls.filter(call=>call.url==='/api/v1/setup/plan').length,plans+1);
+        assert.equal(calls.some(call=>call.url==='/api/v1/setup/start'),false,'refreshing never starts');
+        assert.equal(tree.root.findAllByProps({'data-setup-package-updates':'unknown'}).length,0);
+        await act(async()=>tree.root.findByProps({type:'checkbox'}).props.onChange({target:{checked:true}}));
+        assert.equal(findButton('setup.start').props.disabled,false);
+    }finally{await cleanup();}
+});
+test('a run waiting on new distribution updates is reviewed and confirmed from the wait',async()=>{
+    init('admin',{status:'running'});
+    state.draft.panel_domain='panel.example.com';
+    const marker={plan_id:'a'.repeat(32),request_id:'b'.repeat(32),panel_domain:'panel.example.com'};
+    store.set('celikpanel.setup.start.admin',JSON.stringify(marker));
+    let running={...execution(marker,'waiting'),phase:'service',error:{code:'server_setup_distribution_updates_changed',message:'new updates'},steps:[{id:'01-service',kind:'service',target:'mariadb',status:'running'},{id:'02-verify',kind:'verify',target:'web',status:'pending'}]};
+    const update={package:'libssl3t64',reason:'upgrade',from:'3.5.7-1~deb13u2',to:'3.5.7-1~deb13u3',point_update:true};
+    const read=fetch;const sent=[];
+    globalThis.fetch=async(url,options)=>{
+        if(url.includes('/setup/operation'))return Response.json(running);
+        if(url==='/api/v1/setup/package-updates'){
+            const body=JSON.parse(options.body);sent.push(body);assert.equal(body.execution_id,running.id);
+            if(body.action==='review')return Response.json({state:'known',updates:[update]});
+            assert.deepEqual(body.updates,[update]);
+            running={...running,status:'running',error:undefined};
+            return Response.json({state:'known',updates:[update],execution:running});
+        }
+        return read(url,options);
+    };
+    try{
+        await mount();
+        assert.equal(findButton('setup.editPlan'),undefined,'the wait does not send the owner to reopen the plan');
+        await act(async()=>findButton('setup.packageUpdates.waitReview').props.onClick());
+        assert.deepEqual(sent.map(body=>body.action),['review']);
+        assert.ok(JSON.stringify(tree.toJSON()).includes('libssl3t64'));
+        const confirm=findButton('setup.packageUpdates.waitConfirm');
+        assert.equal(confirm.props.disabled,true,'confirming needs the checkbox');
+        const box=tree.root.findAllByProps({type:'checkbox'}).at(-1);
+        await act(async()=>box.props.onChange({target:{checked:true}}));
+        await act(async()=>findButton('setup.packageUpdates.waitConfirm').props.onClick());
+        assert.deepEqual(sent.map(body=>body.action),['review','confirm']);
+        assert.equal(calls.some(call=>call.url==='/api/v1/setup/revise'||call.url==='/api/v1/setup/start'),false);
+        assert.equal(tree.root.findAllByProps({'data-setup-package-updates-wait':''}).length,0);
+    }finally{await cleanup();}
+});

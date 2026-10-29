@@ -1288,6 +1288,7 @@ func main() {
 	http.HandleFunc(serverSetupPeerConnectPath, panel.handleServerSetupPeerConnect)
 	http.HandleFunc(serverSetupPath+"/complete", panel.handleServerSetupComplete)
 	http.HandleFunc(serverSetupPath+"/revise", panel.handleServerSetupRevise)
+	http.HandleFunc(serverSetupPath+"/package-updates", panel.handleServerSetupPackageUpdates)
 	http.HandleFunc(serverSetupPath+"/extend", panel.handleServerSetupExtend)
 	http.HandleFunc(serverSetupPath+"/mail-enrollment/continue", panel.handleServerSetupMailEnrollmentContinue)
 	http.HandleFunc(serverSetupPath+"/mail-enrollment/retry", panel.handleServerSetupMailEnrollmentRetry)

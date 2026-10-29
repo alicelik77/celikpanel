@@ -10,6 +10,25 @@ This document records that agreement and the implementation acceptance criteria.
 It does not authorize an assistant to update any installed panel; the user starts
 every installed-panel update from CelikPanel itself, as required by [AGENTS.md](../AGENTS.md).
 
+## October 29 follow-up: fixes from the targeted Beta-1 re-run (alpha.115 source)
+
+The targeted re-run of product commit b86ab6fa4 found the defects below. Each
+fix has a component test and none changes the schema; a further targeted VM
+re-run is owed before any is called proven.
+
+- **An unread update list holds the start.** While the review cannot read
+  which installed distribution packages the plan's installs would also update
+  (`package_updates_state: unknown`, for example a busy package manager),
+  setup does not start: the confirm button is disabled with the reason, and
+  the start handler refuses with `server_setup_distribution_updates_unread`.
+  Refresh the review reads the list again and changes nothing on the server;
+  the plan keeps its identity. A component step that waits on
+  `server_setup_distribution_updates_changed` (or `_unread`) offers Review the
+  updates: a read of the list for the run's remaining component installs, then
+  Confirm and continue. The confirmed list is recorded for that run, and the
+  same run continues from the waiting step; nothing already done is repeated,
+  and no plan is reopened. A running step or a known failure is never changed.
+
 ## October 29 follow-up: fixes from the Beta-1 VM run (alpha.115 source)
 
 A native run of setup wizard v2 on fresh Debian 13 and Ubuntu 24.04 guests
@@ -26,10 +45,10 @@ schema, and a targeted VM re-run is still owed before any is called proven.
   simulation once and lists them under "Distribution packages also updated"
   ("Ayrıca güncellenecek dağıtım paketleri"); starting setup confirms exactly
   those (package=version), and only setup's own component steps send them to
-  the Agent, which accepts only exact matches. An unread review confirms none.
+  the Agent, which accepts only exact matches. An unread review cannot start.
   Before each component's first install the step asks again: an update the
   review did not list waits as `server_setup_distribution_updates_changed`
-  (the owner opens the review and starts again), an unread answer waits as
+  (the owner reviews and confirms it from that wait), an unread answer waits as
   `server_setup_distribution_updates_unread`; nothing is installed. A PPA, a
   vendor or third-party repository, backports, a downgrade, a new upstream
   version, a database server, Apache, another PHP version or another
