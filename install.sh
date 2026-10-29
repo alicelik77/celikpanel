@@ -2547,13 +2547,27 @@ AUTOCONF
             "unattended-upgrades kurulamadı — atlandı (elle kurulabilir)"
     fi
 elif [[ $APPLY_ONLY -eq 0 ]] && [ "${SKIP_DEPS:-0}" != "1" ] && [ "${SKIP_SECURITY_UPDATES:-0}" != "1" ] && [ "$PKG_FAMILY" = "pacman" ]; then
-    # CelikPanel has no verified security-only channel for the pacman ecosystem,
-    # so we say so instead of pretending.
-    # CelikPanel'in pacman ekosistemi için doğrulanmış güvenlik-yalnız yama
-    # kanalı yoktur; öyleymiş gibi yapmak yerine bunu söyleriz.
-    step "Automatic security patches" "Otomatik güvenlik yamaları"
-    warn "The pacman ecosystem has no managed security-only channel — automatic patches were not configured; keep the system current with 'pacman -Syu'" \
-        "Pacman ekosisteminde yönetilen güvenlik-yalnız kanal yok — otomatik yama kurulmadı; sistemi 'pacman -Syu' ile güncel tutun"
+    # Arch has no security-only channel: every update is a full `pacman -Syu`,
+    # which can move PostgreSQL to a new major version (its data must then be
+    # converted by hand) or change PHP under every site. An unattended full
+    # upgrade could stop hosted services, so nothing is scheduled (decision
+    # of 2026-10-30). Instead the two official read-only tools are installed
+    # so Security -> Security updates can count what waits: checkupdates
+    # (extra/pacman-contrib, uses its own database copy, never a partial
+    # upgrade) and arch-audit (extra/arch-audit, the Arch security tracker).
+    # Arch'ta yalnız güvenlik kanalı yoktur; gözetimsiz tam yükseltme
+    # hizmetleri durdurabilir, bu yüzden hiçbir şey zamanlanmaz. Bekleyeni
+    # saymak için iki resmi salt-okur araç kurulur.
+    step "Security updates (Arch Linux: counted, applied by the administrator)" \
+        "Güvenlik güncellemeleri (Arch Linux: sayılır, yönetici uygular)"
+    if "$PACMAN_BIN" -Syu --noconfirm --needed pacman-contrib arch-audit >/dev/null 2>&1; then
+        ok "checkupdates and arch-audit installed" "checkupdates ve arch-audit kuruldu"
+    else
+        warn "pacman-contrib and arch-audit could not be installed — the panel cannot count waiting updates until 'sudo pacman -Syu --needed pacman-contrib arch-audit' succeeds" \
+            "pacman-contrib ve arch-audit kurulamadı — 'sudo pacman -Syu --needed pacman-contrib arch-audit' başarılı olana dek panel bekleyen güncellemeleri sayamaz"
+    fi
+    warn "Arch has no security-only updates and CelikPanel schedules no automatic upgrade: read archlinux.org/news and run 'sudo pacman -Syu' regularly" \
+        "Arch'ta yalnız güvenlik güncellemesi yoktur ve CelikPanel otomatik yükseltme zamanlamaz: archlinux.org/news'u okuyup 'sudo pacman -Syu'yu düzenli çalıştırın"
 fi
 
 # 2. Service user & group ----------------------------------------------------

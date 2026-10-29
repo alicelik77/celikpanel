@@ -330,8 +330,10 @@ func (a *Agent) OSUpdatesStatusV1(_ *transport.Empty, resp *transport.OSUpdatesS
 			}
 		}
 	case "pacman":
-		// Arch has no automatic updates by design: the owner runs pacman -Syu.
+		// Arch has no automatic updates by design, and CelikPanel does not
+		// schedule one (osUpdatesPacman): the owner runs pacman -Syu.
 		resp.Automatic.State = "not_applicable"
+		resp.Automatic.Reason = "arch_full_upgrade_by_owner"
 		if r, done, ok := readFileTail(pacmanLogPath, osUpdatesLogTail); ok {
 			resp.LastRun = lastPacmanUpgrade(r)
 			if resp.LastRun != "" {
@@ -339,6 +341,7 @@ func (a *Agent) OSUpdatesStatusV1(_ *transport.Empty, resp *transport.OSUpdatesS
 			}
 			done()
 		}
+		osUpdatesPacman(ctx, resp)
 	}
 	if roundcubeInstalled() {
 		item := transport.OSUpdatesOutside{ID: "roundcube"}
@@ -352,6 +355,116 @@ func (a *Agent) OSUpdatesStatusV1(_ *transport.Empty, resp *transport.OSUpdatesS
 		resp.Outside = append(resp.Outside, transport.OSUpdatesOutside{ID: "node", Versions: nodes.Installed})
 	}
 	return nil
+}
+
+// Arch Linux (decision of 2026-10-30, security before freedom). Arch is a
+// rolling release with no security-only channel: an update is a full
+// `pacman -Syu`, and a partial upgrade (-Sy without -u) is unsupported and can
+// break the system. A full upgrade can also move PostgreSQL to a new major
+// version whose data directory must then be converted by hand before the
+// server starts again, change PHP's version under every site, or require a
+// manual step announced on archlinux.org/news. An unattended full upgrade
+// can therefore take hosted services down without anyone present, so
+// CelikPanel never schedules one and never enables a timer silently. What it
+// does instead is read, without changing the system's package database:
+//
+//   - waiting updates with pacman-contrib's checkupdates, which synchronises
+//     a separate copy of the package databases (never /var/lib/pacman/sync,
+//     so no partial upgrade can follow from it);
+//   - which of them fix known vulnerabilities with arch-audit -u (the Arch
+//     security tracker), when it is installed;
+//   - when the last full upgrade ran, from pacman's own log.
+//
+// The card says that applying them is the owner's `sudo pacman -Syu`, after
+// reading the Arch news; install.sh installs pacman-contrib and arch-audit
+// from the official extra repository so the count is available.
+//
+// Arch'ta güvenlik-yalnız kanal yoktur; güncelleme tam -Syu'dur ve gözetimsiz
+// tam yükseltme PostgreSQL'i elle dönüştürülmesi gereken yeni ana sürüme
+// taşıyabilir. CelikPanel bu yüzden otomatik yükseltme zamanlamaz; bekleyen
+// güncellemeleri sistemin paket veritabanını değiştirmeden okur.
+var (
+	checkupdatesPath = "/usr/bin/checkupdates"
+	archAuditPath    = "/usr/bin/arch-audit"
+)
+
+var checkupdatesLine = regexp.MustCompile(`^([a-z0-9@._+-]+) (\S+) -> (\S+)$`)
+
+// parseCheckupdates reads `checkupdates --nocolor`: "name old -> new" lines.
+func parseCheckupdates(out string) []string {
+	names := []string{}
+	for _, line := range strings.Split(out, "\n") {
+		if match := checkupdatesLine.FindStringSubmatch(strings.TrimSpace(line)); match != nil {
+			names = append(names, match[1])
+		}
+	}
+	return names
+}
+
+var archAuditName = regexp.MustCompile(`^[a-z0-9@._+-]+$`)
+
+// parseArchAuditNames reads `arch-audit -u -f %n`: one package per line.
+func parseArchAuditNames(out string) []string {
+	names := []string{}
+	for _, line := range strings.Split(out, "\n") {
+		if line = strings.TrimSpace(line); archAuditName.MatchString(line) {
+			names = append(names, line)
+		}
+	}
+	return names
+}
+
+type osUpdatesExitCoder interface{ ExitCode() int }
+
+func osUpdatesPacman(ctx context.Context, resp *transport.OSUpdatesStatusResponse) {
+	if !systemExecutable(checkupdatesPath) {
+		resp.Pending.State, resp.Pending.Reason = "unknown", "checkupdates_missing"
+		return
+	}
+	out, err := osUpdatesCommand(ctx, append(packageCommandEnv(), "CHECKUPDATES_DB=/var/lib/celikpanel-agent-private/checkupdates-db"), checkupdatesPath, "--nocolor")
+	var names []string
+	if err != nil {
+		coded, ok := err.(osUpdatesExitCoder)
+		if !ok || coded.ExitCode() != 2 {
+			// 1 is checkupdates' own failure (no network, mirror refused):
+			// unknown, never "nothing waiting".
+			resp.Pending.State, resp.Pending.Reason = "unknown", "checkupdates_failed"
+			return
+		}
+	} else {
+		names = parseCheckupdates(string(out))
+	}
+	resp.Pending = transport.OSUpdatesPending{State: "known", Total: len(names), ListsAt: time.Now().UTC().Format(time.RFC3339)}
+	if !systemExecutable(archAuditPath) {
+		resp.Pending.SecurityState = "arch_audit_missing"
+		return
+	}
+	auditOut, err := osUpdatesCommand(ctx, packageCommandEnv(), archAuditPath, "-u", "-f", "%n")
+	if err != nil {
+		resp.Pending.SecurityState = "arch_audit_failed"
+		return
+	}
+	waiting := map[string]bool{}
+	for _, name := range names {
+		waiting[name] = true
+	}
+	resp.Pending.SecurityState = "known"
+	for _, name := range parseArchAuditNames(string(auditOut)) {
+		if !waiting[name] {
+			continue
+		}
+		resp.Pending.Security++
+		if len(resp.Pending.SecurityNames) < osUpdatesSecurityNamesCap {
+			resp.Pending.SecurityNames = append(resp.Pending.SecurityNames, name)
+		}
+	}
+}
+
+// systemExecutable is a regular executable in a system directory that
+// neither its group nor others can write (/usr/bin is the package manager's).
+func systemExecutable(path string) bool {
+	info, err := os.Lstat(path)
+	return err == nil && info.Mode().IsRegular() && info.Mode().Perm()&0o022 == 0 && info.Mode().Perm()&0o111 != 0
 }
 
 func systemdTime(value string) string {

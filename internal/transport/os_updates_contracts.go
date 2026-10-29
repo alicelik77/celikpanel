@@ -39,6 +39,15 @@ type OSUpdatesPending struct {
 	// ListsAt is when the package lists the count is based on were last
 	// refreshed (RFC 3339), empty when not known.
 	ListsAt string `json:"lists_at,omitempty"`
+	// Reason names why an unknown count is unknown (pacman, 2026-10-30):
+	// checkupdates_missing (pacman-contrib not installed), checkupdates_failed
+	// (it could not reach the mirrors).
+	Reason string `json:"reason,omitempty"`
+	// SecurityState says how Security was counted where the package manager
+	// has no security archive (pacman): known (arch-audit read the Arch
+	// security tracker), arch_audit_missing, arch_audit_failed. Empty on apt,
+	// where the -security archive is the source.
+	SecurityState string `json:"security_state,omitempty"`
 }
 
 // OSUpdatesVendorOrigin is one enabled vendor repository and whether the
