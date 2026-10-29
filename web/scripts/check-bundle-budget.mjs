@@ -115,8 +115,10 @@ const screenPartBudgets = {
   // v0.1.0-alpha.114 review fixes: the setup link's waits and verified states
   // (setup.v5.wait., setup.v5.check.), split out of "setupJoin" when they took
   // it over its ceiling (Turkish 15.05 / 3.93 KiB). A new part, set with at
-  // least 25% headroom from its Turkish file: 5.90 / 1.77 KiB.
-  setupLink: kib(8, 2.5),
+  // least 25% headroom from its Turkish file: 5.90 / 1.77 KiB. Raised with
+  // the Beta-1 re-run fixes (the distribution-update, ready-report and
+  // rejoin waits) to keep 25% headroom over 8.38 / 2.37 KiB.
+  setupLink: kib(10.5, 3),
   // v0.1.0-alpha.115: the DNS page's overview and the first-site offer
   // (dnsov.). A new part, set with at least 25% headroom from its Turkish
   // file: 15.36 / 4.24 KiB. Raised with the alpha.115 review fixes to keep
