@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/alicelik/celikpanel/internal/hostname"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -547,7 +548,7 @@ func ensureDovecotSSLCert(ctx context.Context) error {
 		return fmt.Errorf("openssl is required to create the mail TLS certificate")
 	}
 
-	host, _ := os.Hostname()
+	host, _ := hostname.LocalFQDN()
 	if host == "" {
 		host = "localhost"
 	}

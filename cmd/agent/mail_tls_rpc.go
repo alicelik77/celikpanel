@@ -941,7 +941,7 @@ func setMailTLSFailure(
 func ensureDefaultMailCert(host string) error {
 	host = strings.TrimSpace(host)
 	if host == "" {
-		host, _ = os.Hostname()
+		host, _ = hostname.LocalFQDN()
 		host = strings.TrimSpace(host)
 		if host == "" {
 			host = "mail.local"

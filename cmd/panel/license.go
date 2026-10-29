@@ -116,7 +116,7 @@ func runLicenseCLI(args []string) (bool, error) {
 			secret[i] = 0
 		}
 	}()
-	hostname, err := os.Hostname()
+	hostname, err := localServerName()
 	if err != nil {
 		return true, err
 	}
@@ -156,7 +156,7 @@ func (p *Panel) handleLicense(w http.ResponseWriter, r *http.Request) {
 		var err error
 		switch input.Action {
 		case "activate":
-			hostname, e := os.Hostname()
+			hostname, e := localServerName()
 			if e != nil {
 				err = e
 			} else {
