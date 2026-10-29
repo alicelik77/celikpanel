@@ -43,3 +43,4 @@ internal/mailtlsconfig/testdata/*.map text eol=lf
 deploy/e2e/dns-kill-matrix/evidence/** -text -whitespace
 deploy/e2e/release-recovery/evidence/** -text -whitespace
 deploy/e2e/dns-pair-acceptance/evidence/** -text -whitespace
+deploy/test-distro-config-matrix/** text eol=lf
