@@ -7206,3 +7206,57 @@ aynı işlemi döndürür.
   test CA'sıyla tek gerçek sistem koşusu ([deploy/e2e/d038/alpha110-debian13-20261026](../deploy/e2e/d038/alpha110-debian13-20261026/README.md), arşiv SHA-256 `cf485342…888497b6`).
   Kurulu bir sunucuda ölçülmedi. **Hiçbir P0 işi kapanmaz ya da ilerlemez**; P0.1–P0.5
   kısmi kalır ve her açık kabul işi açık kalır.
+
+### Aday v0.1.0-alpha.111 (Beta 1 kurulumu: kurulum sihirbazı v2, kodla katılma, kurulum bağlantısı, DNS sayfası; Ajan DNS kurulumu, geri alma, sertifika ve nokta güncellemesi yolları; şema değişikliği yok; ilke 1, 2, 4 ve 6; D-021 değişiklikleri; D-022; D-024; D-025; D-028 değişikliği; 29 Ekim 2026)
+
+D-025 ilke 1 (sahip yetkisini ve çalışan hizmetlerini korur): iki sunucu DNS'i DNS
+yazılımının kendi bölge aktarımıyla çoğaltır, asla panel üzerinden değil; panel ve
+ajan durdurulmuşken sahibin yerel `rndc` değişikliği yedeğe ulaştı, sonra fark
+edildi ve korundu; yazılım kartında ve DNS sayfasında tek bildirim, asla üzerine
+yazılmaz. Kurulumun yazdığı ve sahibin sildiği ya da değiştirdiği kayıt sonraki bir
+planla geri eklenmez. İlke 2 (kanıtın anlamı vardır): kaybolan ya da okunamayan
+yanıt bilinmiyordur, asla "henüz değil" ya da hata değildir (kayıt kuruluşu
+denetimi, genel kayıt okuması, DNS özeti, katılma); doğrulanmış hata, eksik önkoşul
+ve bilinmeyen sonuç kendi kodlarını korur; yeni verilmiş sertifika bu sunucunun
+saatine göre beklenir, daha büyük kayma saniyesiyle kodlanır. İlke 4 (her
+değişiklik bir kurtarma sözleşmesi taşır): adım, yeniden başlatmadan ya da panel
+yeniden başladıktan sonra aynı işlem olarak sürer; açılmakta olan sunucu
+beklemedir ve hiçbir şey gönderilmez; meşgul sunucu başlatmayı bekletir, bir alt
+işlem yalnız hiçbir şeyin çalışmadığı kanıtıyla yeniden kabul edilir; kaybolan
+katılma yanıtı aynı istektir ve tek katılma verir; hiçbir paket yerleştirmeyen DNS
+kurulumu kendi geri alınmasını kanıtlar. İlke 6 (hazırlık, ilerleme ve erişim
+ayrıdır): durum sorgusu asla değişiklik yapmaz; her bekleme kimin işlem yapacağını
+ve sıradaki adımı söyler; ana sunucu, yedek hazır olduğunu bildirene kadar
+bağlantıyı tutar.
+
+- **Ajan değişiklikleri.** Panel ve posta sunucusu sertifikaları bu saate göre
+  geçerli bir yaprak için (en çok iki dakika, salt okunur) bekler, daha büyük
+  kaymayı kodlar (`panel_cert_source_wait.go`); hiçbir paket yerleştirmeyen ilk DNS
+  kurulumu geri alınmasını kanıtlar (tam makbuz, birim yok, 53 portunda hiçbir şey
+  yok); ana DNS sunucusu olarak PowerDNS yalnız denenen 4.9 serisinin Debian'ın
+  kendi arşivindeki yapısından; kurulum önizlemesi dağıtım nokta güncellemelerini
+  listeler, kurulum yalnız onaylananların tam eşini kabul eder; SpamAssassin ve
+  ClamAV'ın yardımcı birimleri hizmetin kendisi sayılmaz.
+- **Panel değişiklikleri.** Sihirbazın taslak alanları ve bileşen listesi; `GET
+  /api/v1/setup/provider-records`, `/public-records`, `/delegation` ve `GET
+  /api/v1/dns/overview` (yalnız yönetici, salt okunur, paylaşılan sınırlı
+  yanıtlar); katılma kodları ve kurulum bağlantısı (`/api/v1/setup/peer/...`:
+  adlar, hazır bildirimi, bırakma, DKIM), anahtarlı özetler ve anahtar dosyasıyla
+  mühürlenen gizli değerler (`k1:`); her yürütmede bir kez katılma bağlaması; DNS
+  adımlarından sonra posta; tek posta alıcısı; açılmakta ya da meşgul sunucu ve saat
+  kayması için kodlu beklemeler; kayıt güncellemesinde `expected_content`.
+- **Şema.** Yok (46): `panel_settings` ile var olan kurulum, DNS ve kayıt tabloları.
+- **Kurtarma.** Yarıda kalan adımlar aynı işlem olarak sürer; bilinen hatalar
+  sıradaki adımıyla adımda kalır; Planı düzenle başarısız adımı kurtarır. Bir
+  kurulumun ortasında alpha.110'a dönüş ölçülmedi; test sunucuları yeniden kurulur
+  ve önceki alfa kurulumlarından yükseltme yolu vaat edilmez.
+- **Kanıt.** Ajan 4870 geçti, 29 atlandı, ortamdan gelen bilinen bir hata; Panel
+  3601 geçti, 6 atlandı; iç paketler geçer; web 1980 geçti; bir laboratuvar ağında
+  atılabilir sanal makinelerde temiz kurulumdan dört koşu, dördüncüsü adayın ürün
+  kodu `68a9915a0` üzerinde iki sunuculu iki düzen için uçtan uca
+  ([deploy/e2e/dns-pair-acceptance/evidence/beta1d-20261029](../deploy/e2e/dns-pair-acceptance/evidence/beta1d-20261029/SUMMARY.md)
+  ve yanındaki önceki üç klasör). Gerçek sistemde ölçülmedi: lisans davranışı,
+  koşu ortasında meşgul bekleme, büyük kaymada posta sertifikası, yalın 401
+  bağlantı reddi, IPv6 ve ters DNS. Kurulu bir sunucuda ölçülmedi. **Hiçbir P0 işi
+  kapanmaz ya da ilerlemez**; P0.1–P0.5 kısmi kalır ve her açık kabul işi açık
+  kalır.
