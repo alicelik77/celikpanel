@@ -38,6 +38,22 @@ sayılmadan önce yeni bir hedefli VM koşusu gerekir.
   `server_setup_dns_rolled_back` gösterir ve panelin yeniden başlatılması
   gerekmez. Önceden başlangıç kurtarması bırakana kadar
   `server_setup_dns_agent_failed` durumunda kalıyordu.
+- **Kurulum bağlantısı ana DNS sunucusunun kendi kurulumundan sonra da
+  sürer.** Ana sunucu kendi kurulumu hazır olduktan sonra bağlantının kendi
+  tarafını, yedek sunucu kurulumunun hazır olduğunu bağlantı üzerinden
+  bildirene kadar (`POST /api/v1/setup/peer/ready`; rolünün ad alanındaki
+  bağlantı kimliğiyle doğrulanır, ilk sunucuda katılmadaki adresten gelir ve
+  aynı katılmayı adlandırır: başka bir bağlama için bildirim reddedilir) ya da
+  sahip ana sunucuda beklemeyi bırakana kadar (İkinci sunucuyu beklemeyi
+  bırak, `POST /api/v1/setup/peer/retire`, onaylı) açık tutar. Bağlantıyı
+  ancak o zaman kapatır. Katılma kodu yine ana sunucunun kurulumuyla biter.
+  Yedek sunucu kendini hazır işaretlemeden önce bildirir; ana sunucuya
+  ulaşamazsa bekler (`server_setup_peer_ready_unreachable`) ve kendiliğinden
+  yeniden bildirir. Böylece ana sunucu bittikten sonra başarısız olan yedek
+  sunucu yeniden deneyip bitirebilir. Bu arada ana sunucu kendi hizmetleri
+  için hazırdır ve kurulum sayfası ikinci sunucunun bitirmediğini söyler
+  (`peer_setup: pending`; siz, ikinci sunucuda: kurulumu orada açın; sonra
+  ikisi de hazır olur).
 
 ## 29 Ekim ek kararı: Beta-1 sanal makine koşusunun düzeltmeleri (alpha.115 kaynağı)
 

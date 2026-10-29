@@ -38,6 +38,21 @@ re-run is owed before any is called proven.
   (keep the software and try again, or choose the other one in the revised
   plan), and no panel restart is needed. Before, it stayed at
   `server_setup_dns_agent_failed` until startup recovery released it.
+- **The setup link outlives the main DNS server's own setup.** The main
+  keeps its side of the link after its setup is ready, until the backup
+  reports over the link that its setup is ready (`POST
+  /api/v1/setup/peer/ready`, authenticated by the link credential in its
+  role's namespace, from the joined address on the first server, naming the
+  same join: a report for another binding is refused), or until the owner
+  stops waiting for it on the main (Stop waiting for the second server, `POST
+  /api/v1/setup/peer/retire`, confirmed). Only then does the main end it. The
+  join code still ends with the main's setup. The backup reports before it
+  marks itself ready; when the main cannot be told it waits
+  (`server_setup_peer_ready_unreachable`) and reports again by itself. So a
+  backup that fails after the main finished can retry and finish. Meanwhile
+  the main is ready for its own services, and its setup page says the second
+  server has not finished (`peer_setup: pending`; you, on the second server:
+  open setup there; then both are ready).
 
 ## October 29 follow-up: fixes from the Beta-1 VM run (alpha.115 source)
 

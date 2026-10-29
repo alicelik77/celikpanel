@@ -1667,3 +1667,29 @@ test('a run waiting on new distribution updates is reviewed and confirmed from t
         assert.equal(tree.root.findAllByProps({'data-setup-package-updates-wait':''}).length,0);
     }finally{await cleanup();}
 });
+
+// Beta-1 re-run P7: the main DNS server is ready while its second server has
+// not finished; the link stays open, the card says who acts and what next,
+// and stopping the wait is an explicit, confirmed action.
+test('a ready main DNS server says the second server has not finished, and stops waiting only on confirmation',async()=>{
+    init('admin',{status:'ready',required:false});
+    let peerSetup='pending';const read=fetch;const retired=[];
+    globalThis.fetch=async(url,options)=>{
+        if(url==='/api/v1/setup/peer')return Response.json({role:'first',joined:{short_name:'beta',ipv4:'198.51.100.20',joined_at:'2026-10-29T03:00:00Z'},peer_setup:peerSetup});
+        if(url==='/api/v1/setup/peer/retire'){retired.push(JSON.parse(options.body));peerSetup='retired';return Response.json({role:'first',peer_setup:'retired'});}
+        return read(url,options);
+    };
+    try{
+        await mount();
+        await act(async()=>{await new Promise(resolve=>setTimeout(resolve,0));});
+        const text=()=>JSON.stringify(tree.toJSON());
+        assert.ok(tree.root.findAllByProps({'data-setup-peer-setup':'pending'}).length>0,text());
+        assert.ok(text().includes('setup.v5.peerSetup.title')&&text().includes('setup.v5.peerSetup.who')&&text().includes('setup.v5.peerSetup.next'));
+        await act(async()=>tree.root.findAll(node=>node.type==='button'&&node.props.children==='setup.v5.peerSetup.stop')[0].props.onClick());
+        assert.equal(retired.length,0,'the first click only asks');
+        await act(async()=>findButton('setup.v5.peerSetup.stopConfirm').props.onClick());
+        await act(async()=>{await new Promise(resolve=>setTimeout(resolve,0));});
+        assert.deepEqual(retired,[{confirmed:true}]);
+        assert.ok(tree.root.findAllByProps({'data-setup-peer-setup':'retired'}).length>0,text());
+    }finally{await cleanup();}
+});

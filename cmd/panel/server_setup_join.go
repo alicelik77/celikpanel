@@ -328,6 +328,11 @@ type serverSetupJoinRecord struct {
 	// is never rewritten with them: the run waits for a new join
 	// (server_setup_peer_join_changed), and a new code may be created.
 	NamesChanged bool `json:"names_changed,omitempty"`
+	// PeerReadyAt / PeerRetiredAt (Beta-1 re-run P7): when this server is
+	// the main DNS server, the link outlives its own setup until the second
+	// server reports ready over it, or the owner stops waiting for it.
+	PeerReadyAt   string `json:"peer_ready_at,omitempty"`
+	PeerRetiredAt string `json:"peer_retired_at,omitempty"`
 }
 
 type serverSetupJoinFirst struct {
@@ -979,7 +984,7 @@ func serverSetupPublicIPv6() string {
 // --- machine: the link ------------------------------------------------------
 
 func serverSetupLinkMachinePath(path string) bool {
-	return path == serverSetupJoinPath || path == serverSetupPeerNamesPath || path == serverSetupPeerDKIMPath
+	return path == serverSetupJoinPath || path == serverSetupPeerNamesPath || path == serverSetupPeerDKIMPath || path == serverSetupPeerReadyPath
 }
 
 // serverSetupLinkMachineRequest has the remote DNS machine request's shape:
@@ -1023,6 +1028,11 @@ func (p *Panel) requireServerSetupLinkMachine(next http.Handler) http.Handler {
 			// own setup says which credentials it accepts.
 			if p.authenticateServerSetupLink(w, r, p.serverSetupLinkRole(r.Context())) {
 				p.handleServerSetupPeerDKIM(w, r)
+			}
+		case serverSetupPeerReadyPath:
+			// The backup reports to the main DNS server, which is either one.
+			if p.authenticateServerSetupLink(w, r, p.serverSetupLinkRole(r.Context())) {
+				p.handleServerSetupPeerReady(w, r)
 			}
 		}
 	})

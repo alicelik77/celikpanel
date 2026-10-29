@@ -471,6 +471,11 @@ func (p *Panel) completeServerSetupOwned(ctx context.Context, revision int, exec
 	if !serverSetupChecksReady(checks) {
 		return errors.New("setup prerequisites are not ready")
 	}
+	// The backup of a pair tells the main DNS server first; the main keeps
+	// the link open until then (Beta-1 re-run P7). Not reachable: a wait.
+	if err := p.reportServerSetupReadyToMain(ctx, checked); err != nil {
+		return err
+	}
 	// Recheck ownership in the committing statement: another panel process
 	// may have admitted an execution while readiness was being read.
 	result, err := p.db.GetDB().ExecContext(ctx, `UPDATE server_setup_state SET status='ready',completed_at=?,updated_at=datetime('now')
@@ -493,9 +498,10 @@ func (p *Panel) completeServerSetupOwned(ctx context.Context, revision int, exec
 	if _, err := p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key=?`, settingServerSetupExtensionBase); err != nil {
 		log.Printf("server setup extension base not cleared: %v", err)
 	}
-	// The setup link ends with the setup (alpha.114). A failure is logged;
-	// the next completion or a new join removes it.
-	if err := p.revokeServerSetupLink(ctx); err != nil {
+	// The setup link ends with the setup (alpha.114), except on the main
+	// DNS server while its backup has not reported ready (Beta-1 re-run P7).
+	// A failure is logged; the next completion or a new join removes it.
+	if err := p.settleServerSetupLink(ctx, checked); err != nil {
 		log.Printf("server setup link not revoked: %v", err)
 	}
 	return nil

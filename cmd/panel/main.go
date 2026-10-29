@@ -1286,6 +1286,7 @@ func main() {
 	http.HandleFunc(serverSetupJoinCodesPath, panel.handleServerSetupJoinCodes)
 	http.HandleFunc(serverSetupPeerPath, panel.handleServerSetupPeer)
 	http.HandleFunc(serverSetupPeerConnectPath, panel.handleServerSetupPeerConnect)
+	http.HandleFunc(serverSetupPeerRetirePath, panel.handleServerSetupPeerRetire)
 	http.HandleFunc(serverSetupPath+"/complete", panel.handleServerSetupComplete)
 	http.HandleFunc(serverSetupPath+"/revise", panel.handleServerSetupRevise)
 	http.HandleFunc(serverSetupPath+"/package-updates", panel.handleServerSetupPackageUpdates)

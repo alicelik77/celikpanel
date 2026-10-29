@@ -829,6 +829,8 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         </div>
         {completed ? <section className="mt-8 max-w-3xl space-y-6" aria-labelledby="setup-ready-title">
             <div className="flex items-start gap-3"><Check className="mt-1 h-5 w-5 shrink-0 text-success" aria-hidden="true" /><div><h2 id="setup-ready-title" className="text-lg font-semibold">{t('setup.v2.ready', { server: setupServerLabel(t, snapshot.draft.short_name) })}</h2><p className="mt-1 text-sm text-fg-muted">{t('setup.completeServices')}</p></div></div>
+            {/* The main DNS server keeps the setup link open until the second server finished (P7). */}
+            <SetupJoinCard joinPending={false} finished />
             {snapshot.checks.some(check => check.advisory && check.state !== 'ready') && <SetupOpenTasks lines={snapshot.checks.filter(check => check.advisory && check.state !== 'ready').map(checkSentence)} />}
             {/* The optional first site (alpha.115): the main domain prefilled in the existing Add domain form; nothing is created unless the owner confirms there. */}
             {snapshot.draft.main_domain && setupEffectiveComponents(snapshot.draft, catalog).has('nginx') && <SetupFirstSite domain={normalizeSetupDomain(snapshot.draft.main_domain)} />}

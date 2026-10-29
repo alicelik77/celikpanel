@@ -49,6 +49,10 @@ type serverSetupLinkRecord struct {
 	// when this server is the main DNS server (sent with its names).
 	IssuedEnrollment string `json:"issued_enrollment,omitempty"`
 	JoinedAt         string `json:"joined_at"`
+	// PeerReadyAt / PeerRetiredAt: as on the first server's join record,
+	// when this second server is the main DNS server (Beta-1 re-run P7).
+	PeerReadyAt   string `json:"peer_ready_at,omitempty"`
+	PeerRetiredAt string `json:"peer_retired_at,omitempty"`
 }
 
 // serverSetupLinkPending keeps a join whose answer was not received, so the
@@ -444,6 +448,11 @@ type serverSetupPeerView struct {
 	// action (server_setup_peer_join_changed). Shown here so the run's own
 	// step state is never overwritten.
 	Changed bool `json:"changed,omitempty"`
+	// PeerSetup (main DNS server, own setup ready; Beta-1 re-run P7):
+	// "pending" while the second server has not reported its setup ready
+	// over the link (the link stays open), "ready" once it has, "retired"
+	// when the owner stopped waiting for it. Empty otherwise.
+	PeerSetup string `json:"peer_setup,omitempty"`
 }
 
 type serverSetupPeerJoined struct {
@@ -492,6 +501,11 @@ func (p *Panel) serverSetupPeerState(ctx context.Context) (serverSetupPeerView, 
 	}
 	if link != nil {
 		view.Role = "second"
+		if link.LinkCredential != "" || link.PeerReadyAt != "" || link.PeerRetiredAt != "" {
+			if err := p.serverSetupPeerSetupView(ctx, &view, link.PeerReadyAt, link.PeerRetiredAt); err != nil {
+				return view, err
+			}
+		}
 		view.Link = &serverSetupPeerLinkView{Address: link.Address, MainDomain: link.Document.MainDomain, MainDNSServer: link.Document.MainDNSServer, NS1: link.Document.NS1, NS2: link.Document.NS2, First: link.Document.First, JoinedAt: link.JoinedAt}
 		view.Link.First.MailDNS = nil
 		if link.Document.Prepared != nil {
@@ -527,6 +541,11 @@ func (p *Panel) serverSetupPeerState(ctx context.Context) (serverSetupPeerView, 
 	}
 	if joinFound {
 		view.Changed = join.NamesChanged
+		if join.LinkCredentialHash != "" || join.PeerReadyAt != "" || join.PeerRetiredAt != "" {
+			if err := p.serverSetupPeerSetupView(ctx, &view, join.PeerReadyAt, join.PeerRetiredAt); err != nil {
+				return view, err
+			}
+		}
 		view.Joined = &serverSetupPeerJoined{ShortName: join.Peer.ShortName, IPv4: join.Peer.IPv4, JoinedAt: join.JoinedAt}
 		if join.Names != nil {
 			view.Joined.PanelDomain, view.Joined.MailHostname, view.Joined.MainDomainMail = join.Names.PanelDomain, join.Names.MailHostname, join.Names.Mail != nil

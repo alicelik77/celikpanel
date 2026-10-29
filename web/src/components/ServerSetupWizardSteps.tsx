@@ -243,6 +243,9 @@ export interface SetupPeerView {
     // The second server sent other answers after this run bound its earlier
     // ones: a new join code is the next action (server_setup_peer_join_changed).
     changed?: boolean;
+    // The main DNS server, its own setup ready (Beta-1 re-run P7): whether
+    // the second server reported its setup ready over the link.
+    peer_setup?: 'pending' | 'ready' | 'retired';
 }
 const peerRecord = (item: unknown): item is Record<string, unknown> => !!item && typeof item === 'object' && !Array.isArray(item);
 const peerText = (value: unknown, limit = 253) => typeof value === 'string' && value.length <= limit;
@@ -253,6 +256,7 @@ export function decodeSetupPeerView(value: unknown): SetupPeerView {
     if (code !== undefined && (!peerRecord(code) || !peerText(code.address) || !peerText(code.expires_at, 64) || typeof code.attempts_left !== 'number' || typeof code.used !== 'boolean')) throw invalid();
     if (joined !== undefined && (!peerRecord(joined) || !peerText(joined.ipv4, 64) || !peerText(joined.joined_at, 64))) throw invalid();
     if (value.changed !== undefined && typeof value.changed !== 'boolean') throw invalid();
+    if (value.peer_setup !== undefined && !['pending', 'ready', 'retired'].includes(String(value.peer_setup))) throw invalid();
     if (link !== undefined && (!peerRecord(link) || !peerText(link.address) || !peerText(link.main_domain) || !['first', 'second'].includes(String(link.main_dns_server)) || !peerText(link.ns1) || !peerText(link.ns2)
         || !peerRecord(link.first) || !peerText(link.first.ipv4, 64) || !peerText(link.first.panel_domain) || typeof link.imported !== 'number')) throw invalid();
     return value as unknown as SetupPeerView;
@@ -354,7 +358,10 @@ export function SetupJoinedSummary({ link }: { link: SetupPeerLink }) {
 // joinPending: the run still waits at its join step. Past it, the card is
 // shown only when the second server's answers changed (the next action is a
 // new code); the run's own step state is never replaced for it.
-export function SetupJoinCard({ joinPending = true }: { joinPending?: boolean } = {}) {
+// finished: this server's setup is complete. As the main DNS server it keeps
+// the link open until the second server reports its setup ready (Beta-1
+// re-run P7); the card then says so, and offers to stop waiting.
+export function SetupJoinCard({ joinPending = true, finished = false }: { joinPending?: boolean; finished?: boolean } = {}) {
     const { t } = useSetupWizardI18n();
     const remote = useRemote('/api/v1/setup/peer', decodeSetupPeerView);
     useRefreshEvery(remote, 10_000);
@@ -386,6 +393,36 @@ export function SetupJoinCard({ joinPending = true }: { joinPending?: boolean } 
         ? t(joined.mail_hostname ? 'setup.v5.card.namedMail' : 'setup.v5.card.named', { server, ip: joined.ipv4, panel: joined.panel_domain, mail: joined.mail_hostname || '' })
         : t('setup.v5.card.joined', { server, ip: joined.ipv4 }) : '';
     const changed = view?.changed === true;
+    const [stopping, setStopping] = useState<'idle' | 'confirm' | 'sending'>('idle');
+    async function stopWaiting() {
+        if (inFlight.current) return;
+        inFlight.current = true; setStopping('sending'); setProblem('');
+        try {
+            const response = await fetch('/api/v1/setup/peer/retire', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirmed: true }) });
+            if (!response.ok) setProblem(t('setup.v5.peerSetup.stopFailed'));
+        } catch {
+            setProblem(t('setup.v5.peerSetup.stopFailed'));
+        } finally { inFlight.current = false; setStopping('idle'); void remote.retry(); }
+    }
+    if (finished) {
+        const peerSetup = view?.peer_setup;
+        if (!peerSetup) return null;
+        if (peerSetup !== 'pending') return <p role="status" className="max-w-2xl text-sm leading-6" data-setup-peer-setup={peerSetup}>{t(peerSetup === 'ready' ? 'setup.v5.peerSetup.ready' : 'setup.v5.peerSetup.retired', { server })}</p>;
+        return <section aria-labelledby="setup-peer-setup-title" className="max-w-3xl space-y-3" data-setup-peer-setup="pending">
+            <h3 id="setup-peer-setup-title" className="sr-only">{t(joined?.short_name ? 'setup.v5.peerSetup.title' : 'setup.v5.peerSetup.titleUnnamed', { server })}</h3>
+            <SetupLead title={t(joined?.short_name ? 'setup.v5.peerSetup.title' : 'setup.v5.peerSetup.titleUnnamed', { server })} why={t('setup.v5.peerSetup.why')} who={t('setup.v5.peerSetup.who', { server })} next={t('setup.v5.peerSetup.next', { server })} then={t('setup.v5.peerSetup.then')} />
+            {stopping === 'idle' ? <button type="button" className="min-h-11 py-2 text-sm font-medium text-primary underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary" onClick={() => setStopping('confirm')}>{t('setup.v5.peerSetup.stop')}</button>
+                : <div className="space-y-3 rounded-lg border border-warning-mark/40 bg-warning-mark/10 p-4 text-sm leading-6" data-setup-peer-stop="">
+                    <p>{t('setup.v5.peerSetup.stopHelp', { server })}</p>
+                    <div className="flex flex-wrap gap-3">
+                        <Button type="button" variant="primary" disabled={stopping === 'sending'} loading={stopping === 'sending'} onClick={() => void stopWaiting()}>{t('setup.v5.peerSetup.stopConfirm')}</Button>
+                        <Button type="button" variant="secondary" disabled={stopping === 'sending'} onClick={() => setStopping('idle')}>{t('setup.v5.peerSetup.keepWaiting')}</Button>
+                    </div>
+                </div>}
+            {remote.remote.state === 'unknown' && <p role="status" className="text-sm text-fg-muted">{t('setup.v5.card.readFailed')}</p>}
+            {problem && <p role="alert" className="text-sm leading-6 text-danger">{problem}</p>}
+        </section>;
+    }
     if (!joinPending && !changed) return null;
     return <section aria-labelledby="setup-join-card-title" className="mt-5 space-y-4" data-setup-join-card="">
         <h3 id="setup-join-card-title" className="sr-only">{t('setup.v5.card.title')}</h3>
