@@ -123,7 +123,9 @@ func TestServerSetupBuildRefusesPowerDNSMainOnUntestedSystem(t *testing.T) {
 // PowerDNS as the main DNS server is offered and accepted by one rule: a
 // release of the tested series (Beta-1 VM cell b: Debian 13 offered 4.9.18,
 // the DNS step accepted only 4.9.17 and rolled back). A candidate outside the
-// series is refused at review with the wizard's reason, never mid-run.
+// series is refused at review with the wizard's reason, never mid-run. A
+// build from outside Debian's archive says so whatever its version (Beta-1
+// re-run: a vendor 4.9.18 build was refused as an untested version).
 func TestServerSetupBuildPowerDNSMainFollowsTheTestedSeries(t *testing.T) {
 	type candidate = transport.PDNSFreshPrimaryCandidateResponse
 	for name, test := range map[string]struct {
@@ -133,8 +135,6 @@ func TestServerSetupBuildPowerDNSMainFollowsTheTestedSeries(t *testing.T) {
 		"4.9.18 from Debian":       {&candidate{State: "known", Version: "4.9.18-0+deb13u1", Official: true}, ""},
 		"4.9.17 from Debian":       {&candidate{State: "known", Version: "4.9.17-0+deb13u1", Official: true}, ""},
 		"other series":             {&candidate{State: "known", Version: "5.0.1-1", Official: true}, "server_setup_pdns_main_untested_version"},
-		// Beta-1 re-run: the vendor build in the tested series was refused as
-		// an untested version; the origin is checked first.
 		"repo.powerdns.com build":  {&candidate{State: "known", Version: "4.9.4-1pdns.trixie"}, "server_setup_pdns_main_not_debian_archive"},
 		"vendor 4.9.18 build":      {&candidate{State: "known", Version: "4.9.18-1pdns.trixie"}, "server_setup_pdns_main_not_debian_archive"},
 		"backport":                 {&candidate{State: "known", Version: "4.9.4-1~bpo13+1"}, "server_setup_pdns_main_not_debian_archive"},
