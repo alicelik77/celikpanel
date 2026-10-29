@@ -91,6 +91,35 @@ func TestServerSetupStepWaitsWhileTheHostIsStarting(t *testing.T) {
 	}
 }
 
+// Review fix (item 7): the wait's text is true for a resumed step too, and
+// the two bounded failures say which one held: systemd still starting, or
+// an Agent that never answered.
+func TestServerSetupHostNotStartedSaysWhichOneHeld(t *testing.T) {
+	if !strings.Contains(serverSetupHostStartingMessage, "Nothing new was started") || strings.Contains(serverSetupHostStartingMessage, "has not begun") {
+		t.Fatalf("the wait's text: %q", serverSetupHostStartingMessage)
+	}
+	now := time.Now()
+	for _, test := range []struct {
+		cause error
+		code  string
+		says  string
+	}{
+		{bootingHostErrorForTest(), serverSetupHostNotStartedCode, "systemctl is-system-running"},
+		{fmt.Errorf("%w: setup child: %w", errAgentRPCPlatformIdentityUnavailable, errAgentRPCClientUnavailable), serverSetupAgentNotAnsweringCode, "systemctl status celikpanel-agent"},
+	} {
+		execution := serverSetupExecution{Status: "waiting", Error: &serviceOperationError{Code: serverSetupHostStartingCode},
+			HostStartingSince: now.Add(-serverSetupHostStartingBound - time.Minute).UTC().Format(time.RFC3339Nano)}
+		waiting, err := serverSetupHostStartingWait(&execution, now, test.cause)
+		if waiting {
+			t.Fatalf("%s: still waiting past the bound", test.code)
+		}
+		failure := serverSetupFailureForStep(serverSetupExecutionStep{serverSetupPlanStep: serverSetupPlanStep{Kind: "service"}}, err)
+		if failure.Code != test.code || !strings.Contains(failure.Message, test.says) {
+			t.Fatalf("%s: %+v", test.code, failure)
+		}
+	}
+}
+
 // Review fix (item 2): an earlier boot never shortens a later one. A wait
 // of another kind in between ends the first episode; a second reboot hours
 // later waits again instead of failing at once.

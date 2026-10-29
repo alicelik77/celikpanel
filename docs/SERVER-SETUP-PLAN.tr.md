@@ -23,9 +23,11 @@ kanıtlanmış sayılmadan önce yeni bir hedefli VM koşusu gerekir.
   reddedilen Agent çağrısını `server_setup_host_starting` sayar: hiçbir şey
   gönderilmedi, kimse bir şey yapmaz ve çalıştırıcı aynı adımı yeni bir
   değişiklik yapmadan yeniden sorar. Kurulumun alt işlemi ancak sunucu kimliği
-  okunduktan sonra oluşturulur. 10 dakika sonra hâlâ açılan sunucu, systemd'yi
-  ve denetlenecek komutları adlandıran `server_setup_host_not_started` ile
-  düşer.
+  okunduktan sonra oluşturulur. 10 dakika sonra hâlâ açılan sunucu
+  `server_setup_host_not_started` (systemd hâlâ açılıyor; denetlenecek
+  komutlar) ya da `server_setup_agent_not_answering` (Agent hiç yanıt vermedi;
+  `systemctl status celikpanel-agent`) ile düşer. Her açılış ayrı bir
+  dönemdir: başka her sonuç öncekini bitirir.
 - **Sunucudaki başka bir değişiklik başlatmayı tutar, çalışma bekler.**
   Bileşenler'den bir kurulum sürerken başlatılan çalışmanın ilk bileşenini
   Agent kabulde reddetti (`HOST_MUTATION_BUSY`) ve çalışma düştü. Başlatma

@@ -213,7 +213,7 @@ test('a run stopped by a rejoin names that state in both languages',()=>{
 // Beta-1 third re-run N1: a booting host is a wait with its own sentence;
 // a host that stays starting is a verified failure naming systemd.
 test('a booting host is said as a wait, and its bound as a failure',()=>{
-    for(const [code,status] of [['server_setup_host_starting','waiting'],['server_setup_host_not_started','failed']]){
+    for(const [code,status] of [['server_setup_host_starting','waiting'],['server_setup_host_not_started','failed'],['server_setup_agent_not_answering','failed']]){
         const guide=setupExecutionGuidance(execution({status,error:{code,message:'x'}}));
         assert.ok(keys(guide).includes(`setup.v5.wait.${code}`),code);
         assert.ok(enScreens[`setup.v5.wait.${code}`]&&trScreens[`setup.v5.wait.${code}`],code);

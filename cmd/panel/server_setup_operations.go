@@ -2025,6 +2025,8 @@ func serverSetupFailureForStep(step serverSetupExecutionStep, cause error) *serv
 	switch {
 	case errors.Is(cause, errServerSetupHostNotStarted):
 		return &serviceOperationError{Code: serverSetupHostNotStartedCode, Message: serverSetupHostNotStartedText}
+	case errors.Is(cause, errServerSetupAgentNotAnswering):
+		return &serviceOperationError{Code: serverSetupAgentNotAnsweringCode, Message: serverSetupAgentNotAnsweringText}
 	case errors.Is(cause, errServerSetupHostRestartRequired):
 		return &serviceOperationError{Code: transport.FirewallStatusHostRestartRequired, Message: setupHostRestartRequiredMessage}
 	case errors.Is(cause, errServerSetupDNSRolledBack):

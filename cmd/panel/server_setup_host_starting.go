@@ -27,16 +27,29 @@ import (
 // Sunucu hâlâ açılıyor: adım bekler ve aynı adımı yeniden dener.
 
 const (
-	serverSetupHostStartingCode    = "server_setup_host_starting"
-	serverSetupHostNotStartedCode  = "server_setup_host_not_started"
-	serverSetupHostStartingMessage = "This server is still starting (its system manager, systemd, does not report it ready yet, or the CelikPanel Agent is not answering yet), so this step has not begun and nothing was changed. Nobody needs to act: setup waits and continues this step by itself once the server has started."
-	serverSetupHostNotStartedText  = "This server has still not finished starting: its system manager (systemd) has reported it as starting for more than 10 minutes, so CelikPanel cannot verify the host and did not run this step. You, the owner: run `systemctl is-system-running` and `systemctl --failed` on this server and fix what keeps the boot from finishing; then choose Review a revised plan."
+	serverSetupHostStartingCode      = "server_setup_host_starting"
+	serverSetupHostNotStartedCode    = "server_setup_host_not_started"
+	serverSetupAgentNotAnsweringCode = "server_setup_agent_not_answering"
+	// True for a step that has not begun and for a resumed one (review fix,
+	// item 7): nothing new was started either way.
+	serverSetupHostStartingMessage   = "This server is still starting (its system manager, systemd, does not report it ready yet, or the CelikPanel Agent is not answering yet), so CelikPanel cannot reach the host. Nothing new was started; once the server has started, setup checks this step's saved operation again and continues it. Nobody needs to act."
+	serverSetupHostNotStartedText    = "This server has still not finished starting: its system manager (systemd) has reported it as starting for more than 10 minutes, so CelikPanel cannot verify the host and did not run this step. You, the owner: run `systemctl is-system-running` and `systemctl --failed` on this server and fix what keeps the boot from finishing; then choose Review a revised plan."
+	serverSetupAgentNotAnsweringText = "The CelikPanel Agent on this server has not answered for more than 10 minutes, so CelikPanel cannot reach the host and did not run this step. You, the owner: run `systemctl status celikpanel-agent` on this server and, if it is stopped, `sudo systemctl start celikpanel-agent`; then choose Review a revised plan."
 )
 
 // serverSetupHostStartingBound bounds the wait for a booting host.
 var serverSetupHostStartingBound = 10 * time.Minute
 
-var errServerSetupHostNotStarted = errors.New("the host did not finish starting")
+var (
+	errServerSetupHostNotStarted    = errors.New("the host did not finish starting")
+	errServerSetupAgentNotAnswering = errors.New("the Agent did not answer")
+)
+
+// serverSetupHostStartingBySystemd: the refusal names systemd still
+// starting (otherwise the Agent itself did not answer).
+func serverSetupHostStartingBySystemd(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "systemd is not ready")
+}
 
 // serverSetupHostStarting: an Agent call was refused before dispatch because
 // the host is still starting. Only the platform-identity refusal counts (the
@@ -74,7 +87,10 @@ func serverSetupHostStartingWait(execution *serverSetupExecution, now time.Time,
 		execution.Error = &serviceOperationError{Code: serverSetupHostStartingCode, Message: serverSetupHostStartingMessage}
 		return true, nil
 	}
-	return false, fmt.Errorf("%w: %v", errServerSetupHostNotStarted, cause)
+	if serverSetupHostStartingBySystemd(cause) {
+		return false, fmt.Errorf("%w: %v", errServerSetupHostNotStarted, cause)
+	}
+	return false, fmt.Errorf("%w: %v", errServerSetupAgentNotAnswering, cause)
 }
 
 // requireServerSetupHostIdentity reads the Agent's host identity before a
