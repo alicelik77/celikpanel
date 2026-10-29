@@ -597,6 +597,18 @@ section { padding: clamp(3rem, 6vw, 5.5rem) 0; }
 .release-details summary { min-height: 44px; padding-top: 0.65rem; font-size: 0.8125rem; color: var(--ink-3); cursor: pointer; }
 .release-details .release-meta { padding-top: 0.5rem; }
 .release-meta code { overflow-wrap: anywhere; }
+.setup-tip { margin-top: 1.4rem; font-size: 0.875rem; line-height: 1.6; color: var(--ink-2); }
+.setup-tip code { padding: 0.1rem 0.4rem; white-space: nowrap; border: 1px solid var(--rule); border-radius: var(--radius); font-size: 0.8125rem; color: var(--ink); background: var(--paper-2); }
+.setup-section { padding: 5.6rem 0 6rem; border-top: 1px solid var(--rule); }
+.setup-layout { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.35fr); gap: clamp(2rem, 4vw, 4.5rem); }
+.setup-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 2.5rem; min-width: 0; }
+.setup-label { padding-bottom: 0.9rem; font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.setup-choices > div { padding: 1.1rem 0 1.25rem; border-top: 1px solid var(--rule); }
+.setup-choices h4 { margin: 0; font-size: 1.0625rem; line-height: 1.4; font-weight: 700; }
+.setup-choices p { margin-top: 0.5rem; font-size: 0.9375rem; line-height: 1.65; color: var(--ink-2); }
+.setup-steps { list-style: none; counter-reset: setup-step; display: grid; padding: 0; }
+.setup-steps li { counter-increment: setup-step; display: grid; grid-template-columns: 2rem minmax(0, 1fr); gap: 0.75rem; padding: 1.1rem 0 1.25rem; border-top: 1px solid var(--rule); font-size: 0.9375rem; line-height: 1.65; color: var(--ink-2); }
+.setup-steps li::before { content: counter(setup-step); display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; background: var(--board); color: var(--track); font-family: var(--font-mono); font-size: 0.875rem; font-weight: 700; }
 .questions-section { padding: 4.5rem 0 5rem; background: var(--paper-2); }
 .questions-layout { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.35fr); gap: clamp(2rem, 4vw, 4.5rem); }
 .questions-list details { border-top: 1px solid var(--rule); }
@@ -645,7 +657,7 @@ dialog::backdrop { background: rgba(14, 31, 61, 0.75); }
   .hero-message h1 { max-width: 18ch; font-size: 3.4rem; }
   .hero-lede { max-width: 49ch; }
   .product-hero { padding: 3.5rem 0 2.5rem; }
-  .work-layout, .questions-layout { grid-template-columns: minmax(0, 1fr); gap: 2.5rem; }
+  .work-layout, .questions-layout, .setup-layout { grid-template-columns: minmax(0, 1fr); gap: 2.5rem; }
   .work-list { gap: 0 2rem; }
   .trust-layout, .start-layout { gap: 3rem; }
   .compatibility { align-items: flex-start; font-size: 0.8125rem; }
@@ -669,8 +681,9 @@ dialog::backdrop { background: rgba(14, 31, 61, 0.75); }
   .product-description { margin-top: 0.4rem; }
   .compatibility { flex-direction: column; gap: 0.35rem; font-size: 0.75rem; }
   .compatibility span { margin-inline: 0.25rem; }
-  .work-section, .start-section { padding: 3.5rem 0; }
+  .work-section, .start-section, .setup-section { padding: 3.5rem 0; }
   .work-list { grid-template-columns: minmax(0, 1fr); }
+  .setup-body { grid-template-columns: minmax(0, 1fr); gap: 2rem; }
   .work-list > div { padding: 1.1rem 0 1.25rem; }
   .trust-section { padding: 3.5rem 0; }
   .trust-layout, .start-layout { grid-template-columns: minmax(0, 1fr); gap: 2.25rem; }
