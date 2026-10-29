@@ -121,7 +121,6 @@ function UpdatesFacts({ value, onChanged }: { value: OSUpdates; onChanged: () =>
           : pending.reason === 'checkupdates_failed'
             ? t('life.updates.pending.checkupdatesFailed')
             : t(pending.state === 'busy' ? 'life.updates.pending.busy' : 'life.updates.pending.unknown');
-    const archApply = value.package_family === 'pacman' && pending.state === 'known' && pending.total > 0;
     const dropIn = value.drop_in;
     const write = async () => {
         if (!dropIn?.proposed_sha256) return;
@@ -164,7 +163,6 @@ function UpdatesFacts({ value, onChanged }: { value: OSUpdates; onChanged: () =>
             {pending.state === 'known' && (pending.security_names ?? []).length > 0 && (
                 <p className="pl-6 text-sm text-fg-muted"><KeepWords text={t('life.updates.pending.securityNames', { names: (pending.security_names ?? []).join(', ') })} /></p>
             )}
-            {archApply && <p className="pl-6 text-sm text-fg-muted" data-os-updates-arch-apply=""><KeepWords text={t('life.updates.pending.archApply')} /></p>}
             {value.needrestart_auto_restart && <LifeLine tone="info" attr="needrestart">{t('life.updates.needrestart')}</LifeLine>}
             {value.vendors.map((vendor) => (
                 <div key={vendor.repo_id} data-os-updates-vendor={vendor.repo_id} data-covered={vendor.covered ? 'yes' : 'no'}>
