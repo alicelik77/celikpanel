@@ -213,6 +213,15 @@ func (p *Panel) startServerSetupDNS(ctx context.Context, draft serverSetupDraft,
 	}
 	if state.ActiveEngine != "" {
 		if !setupDNSDraftMatchesState(draft, request, local, state) {
+			// The setup's own engine with another bound peer (or names) is
+			// its coded state, never the generic one (review fix, item 5):
+			// a plan that waits for its second server cannot compare the
+			// peer at review, only here once it is bound.
+			if own, err := p.serverSetupOwnDNSEngine(ctx, state); err != nil {
+				return setupDNSReconciliationError(err)
+			} else if own {
+				return serverSetupDNSInstalledDiffersFailure()
+			}
 			return errors.New("existing DNS ownership must be managed in Server → DNS and peer servers; setup will not replace it")
 		}
 		return setupDNSReconciliationError(p.saveSetupDNSManagementMode(ctx, serverSetupDomainDNSMode(draft)))

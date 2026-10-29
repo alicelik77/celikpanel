@@ -88,7 +88,9 @@ re-run is owed before any is called proven.
   migration": when it matches the plan the run's DNS step adopts it without
   installing anything; when it does not, the review says so
   (`server_setup_dns_installed_differs`: choose that engine in the plan, or
-  change it in Server → DNS). An engine without that record still needs the
+  change it in Server → DNS); a second server bound after the review is
+  compared at the DNS step, with the same code. An engine without that record
+  still needs the
   migration as before.
 - **A vendor PowerDNS build says where it comes from.** The origin is checked
   before the version: a build from repo.powerdns.com (for example

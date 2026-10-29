@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"strings"
 	"testing"
@@ -76,6 +77,18 @@ func TestServerSetupOwnDNSIsNotExistingDNSThatNeedsMigration(t *testing.T) {
 	// installed again.
 	if err := x.f.panel.startServerSetupDNS(ctx, setupDNSTestDraft(), strings.Repeat("4", 32), serviceOperationActor{UserID: x.f.userID}); err != nil {
 		t.Fatalf("the new run did not adopt the setup's own engine: %v", err)
+	}
+	if calls := x.switchCalls(); calls != 1 {
+		t.Fatalf("host switch calls: %d", calls)
+	}
+	// A rejoin bound another second server: the DNS step says the coded
+	// state, never the generic "existing DNS ownership" (review fix, item 5).
+	moved := setupDNSTestDraft()
+	moved.PeerIP = "192.0.2.3"
+	err = x.f.panel.startServerSetupDNS(ctx, moved, strings.Repeat("3", 32), serviceOperationActor{UserID: x.f.userID})
+	var differs *serverSetupChildFailure
+	if !errors.As(err, &differs) || differs.Code != serverSetupDNSInstalledDiffersCode || !strings.Contains(differs.Message, "Review a revised plan") {
+		t.Fatalf("own engine, other bound peer: %v", err)
 	}
 	if calls := x.switchCalls(); calls != 1 {
 		t.Fatalf("host switch calls: %d", calls)

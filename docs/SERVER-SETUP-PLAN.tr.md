@@ -89,7 +89,8 @@ sayılmadan önce yeni bir hedefli VM koşusu gerekir.
   Böyle bir motor asla "taşıma gerektiren mevcut DNS" sayılmaz: plana
   uyuyorsa çalışmanın DNS adımı hiçbir şey kurmadan onu benimser; uymuyorsa
   inceleme bunu söyler (`server_setup_dns_installed_differs`: planda o motoru
-  seçin ya da Sunucu → DNS'te değiştirin). Bu kaydı olmayan motor önceki gibi
+  seçin ya da Sunucu → DNS'te değiştirin); incelemeden sonra bağlanan ikinci
+  sunucu DNS adımında aynı kodla karşılaştırılır. Bu kaydı olmayan motor önceki gibi
   taşıma ister.
 - **Üretici PowerDNS derlemesi nereden geldiğini söyler.** Kaynak sürümden
   önce denetlenir: repo.powerdns.com (örneğin 4.9.18-1pdns.trixie), backports

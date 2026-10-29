@@ -29,6 +29,14 @@ import (
 
 const serverSetupDNSInstalledDiffersCode = "server_setup_dns_installed_differs"
 
+// serverSetupDNSInstalledDiffersFailure is that state at the DNS step: the
+// setup's own engine serves another second server or other names than the
+// bound plan (D-024: who = owner; next = review a revised plan that keeps
+// them, or change the DNS pair in Server → DNS; then setup continues).
+func serverSetupDNSInstalledDiffersFailure() error {
+	return &serverSetupChildFailure{Code: serverSetupDNSInstalledDiffersCode, Message: "This server already runs the DNS software an earlier run of this setup installed, paired with another second server or other names than this run's join. Setup never replaces it, and nothing was changed. You, the owner: choose Review a revised plan and keep the earlier pair, or change the DNS pair first in Server → DNS; setup then continues."}
+}
+
 func (p *Panel) serverSetupOwnDNSEngine(ctx context.Context, state dnsEngineDBState) (bool, error) {
 	if state.ActiveEngine == "" || state.CurrentSwitchID != "" {
 		return false, nil
