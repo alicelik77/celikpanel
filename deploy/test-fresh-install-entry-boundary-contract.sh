@@ -67,6 +67,12 @@ case "${CELIKPANEL_ENTRY_BOUNDARY_EXPECT_MODE:-}" in
         [[ "$CELIKPANEL_TRUSTED_RELEASE_ROOT" == "$SRC" ]]
         [[ "$TRUSTED_RELEASE_ROOT" == "$SRC" ]]
         [[ "$SRC" == "$CELIKPANEL_ENTRY_BOUNDARY_EXPECT_PREFIX/"* ]]
+        # get.sh extracts under umask 077; the recovery kits need the archive's
+        # published modes back before install.sh enrolls them.
+        [[ "$(stat -Lc '%a' -- "$SRC")" == 700 ]]
+        [[ "$(stat -Lc '%a' -- "$SRC/deploy")" == 755 ]]
+        [[ "$(stat -Lc '%a' -- "$SRC/install.sh")" == 755 ]]
+        [[ "$(stat -Lc '%a' -- "$SRC/deploy/release-transaction-guard.sh")" == 644 ]]
         ;;
     *) return 85 ;;
 esac
