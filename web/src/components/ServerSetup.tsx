@@ -63,6 +63,7 @@ const codeKey: Record<string, TranslationKey> = {
     server_setup_main_dns_server_mismatch: 'setup.v2.blocker.mainDNS',
     server_setup_infrastructure_dns_imported_clash: 'setup.v3.blocker.importClash',
     server_setup_peer_join_answers_changed: 'setup.v5.blocker.answersChanged',
+    server_setup_extension_needs_second_server: 'setup.v5.blocker.extensionNeedsSecond',
     server_setup_peer_names_clash: 'setup.v5.wait.server_setup_peer_names_clash',
     server_setup_peer_names_outside_domain: 'setup.v5.wait.server_setup_peer_names_outside_domain',
     server_setup_peer_names_invalid: 'setup.v5.wait.server_setup_peer_names_invalid',

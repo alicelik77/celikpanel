@@ -86,6 +86,7 @@ export const trSetupJoinScreens: Record<SetupJoinScreenKey, string> = {
     "setup.v5.card.error.server_setup_join_finished": "Bu sunucunun kurulumu ikinci sunucu katılmış olarak tamamlandı. Tamamlanmış kurulumdan sonra ikinci sunucuyu yeniden katmak bu sürümde yok.",
     "setup.v5.card.error.server_setup_join_certificate_unavailable": "Bu panel kendi IP adresinde geçerli bir sertifika sunmuyor (kendinden imzalı panel sertifikası eksik, bozuk ya da süresi dolmuş); diğer sunucu tam bu anahtarı denetlediği için kodla eşleştirme yapılamaz. Sunucu sahibi panelin kendi sertifikasını geri koyar (panelin tls klasöründeki panel.crt ve panel.key, örneğin yedekten) ve paneli yeniden başlatır; sonra yeniden deneyin.",
     "setup.v5.card.error.other": "Kod oluşturulamadı. Hiçbir şey değişmedi; yeniden deneyin.",
+    "setup.v5.blocker.extensionNeedsSecond": "Bu değişiklik ikinci sunucuyu da gerektirir: o, bu sunucunun ortak yanıtlarını, adlarını ve posta seçimini zaten aldı; eşleştirmeden sonra bunları değiştirmek bu sürümde mümkün değil. Siz, sunucu sahibi: ortak yanıtları olduğu gibi bırakıp yalnız bu sunucunun kullandığını değiştirin ya da iki sunucuyu yeniden kurun.",
     "setup.v5.blocker.answersChanged": "Ortak yanıtlar (ana alan adı, DNS sunucuları, ad sunucusu adları) ilk sunucunun verdiği gibi kalmalı. Değiştirmek için ilk sunucunun planını değiştirip yeniden katılın.",
     "setup.kind.peer_join": "İkinci sunucu katılır",
     "setup.kind.peer_names": "Bu sunucunun adlarını ilk sunucuya gönder",

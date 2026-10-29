@@ -354,14 +354,26 @@ func (p *Panel) serverSetupPDNSMainCandidateCode(ctx context.Context) string {
 
 func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState, actor serviceOperationActor) (serverSetupPlan, error) {
 	draft := state.Draft
+	extensionChangesJoin := false
 	if serverSetupJoinPending(draft) {
 		// A setup that succeeded with its second server bound (an extension,
-		// Beta-1 fix): the plan reuses that binding and has no new join step.
+		// Beta-1 fix): the plan reuses that binding and has no new join step,
+		// unless it would change what the second server received.
 		bound, err := p.serverSetupSucceededPeerBinding(ctx)
 		if err != nil {
 			return serverSetupPlan{Draft: draft}, err
 		}
 		if bound != nil {
+			reviewed := bound.JoinDigest
+			if reviewed == "" {
+				var join serverSetupJoinRecord
+				if found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join); err != nil {
+					return serverSetupPlan{Draft: draft}, err
+				} else if found && join.RequestID == bound.JoinRequestID {
+					reviewed = join.Digest
+				}
+			}
+			extensionChangesJoin = reviewed != "" && reviewed != serverSetupJoinDocumentDigest(serverSetupJoinDocumentFor(draft))
 			draft = serverSetupEffectiveDraft(draft, *bound)
 		}
 	}
@@ -374,6 +386,12 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 	}
 	addStep := func(kind, target, qualifier string) {
 		plan.Steps = append(plan.Steps, serverSetupPlanStep{ID: fmt.Sprintf("%02d-%s", len(plan.Steps)+1, kind), Kind: kind, Target: target, Qualifier: qualifier})
+	}
+	if extensionChangesJoin {
+		// Verified prerequisite: the second server has the earlier shared
+		// answers, names and mail choice; this release cannot change them
+		// on both after pairing.
+		addBlocker("server_setup_extension_needs_second_server")
 	}
 	if canonical, err := hostname.CanonicalFQDN(draft.PanelDomain); err != nil || canonical != draft.PanelDomain {
 		addBlocker("server_setup_panel_domain_invalid")

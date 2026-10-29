@@ -40,6 +40,10 @@ type serverSetupPeerBinding struct {
 	PeerDNSEngine     string                            `json:"peer_dns_engine"`
 	PublisherEndpoint string                            `json:"publisher_endpoint,omitempty"`
 	InfrastructureDNS *serverSetupInfrastructureDNSPlan `json:"infrastructure_dns,omitempty"`
+	// JoinDigest is the digest of the join document the second server
+	// received (shared answers, names, mail): an extension that would change
+	// it needs the second server too. Additive; older bindings have none.
+	JoinDigest string `json:"join_digest,omitempty"`
 }
 
 func serverSetupPeerBindingKey(executionID string) string {
@@ -47,7 +51,7 @@ func serverSetupPeerBindingKey(executionID string) string {
 }
 
 func serverSetupPeerBindingFromJoin(join serverSetupJoinRecord, names serverSetupPeerNames) serverSetupPeerBinding {
-	binding := serverSetupPeerBinding{JoinRequestID: join.RequestID, PeerIPv4: join.Peer.IPv4, PeerIPv6: join.Peer.IPv6, PeerShortName: join.Peer.ShortName,
+	binding := serverSetupPeerBinding{JoinRequestID: join.RequestID, JoinDigest: join.Digest, PeerIPv4: join.Peer.IPv4, PeerIPv6: join.Peer.IPv6, PeerShortName: join.Peer.ShortName,
 		PeerPanelDomain: names.PanelDomain, PeerMailHostname: names.MailHostname, PeerMail: names.Mail, PeerAddress: names.Address, PeerPin: names.Pin,
 		PeerDNSEngine: names.DNSEngine, PublisherEndpoint: names.PublisherEndpoint}
 	if names.ShortName != "" {

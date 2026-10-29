@@ -87,6 +87,7 @@ export const enSetupJoinScreens = {
     "setup.v5.card.error.server_setup_join_finished": "This server's setup finished with its second server joined. Joining a second server again after a finished setup is not available in this release.",
     "setup.v5.card.error.server_setup_join_certificate_unavailable": "This panel does not serve a valid certificate of its own on its IP address (its self-signed panel certificate is missing, damaged or expired), and the other server checks exactly that key, so it cannot be paired by code. The server owner restores the panel's own certificate (panel.crt and panel.key in the panel's tls folder, for example from a backup) and restarts the panel; then try again.",
     "setup.v5.card.error.other": "The code could not be created. Nothing was changed; try again.",
+    "setup.v5.blocker.extensionNeedsSecond": "This change needs the second server too: it already has this server's shared answers, names and mail choice, and changing them after pairing is not possible in this release. You, the owner: keep the shared answers as they are and change only what this server alone uses, or set up both servers again.",
     "setup.v5.blocker.answersChanged": "The shared answers (main domain, DNS servers, nameserver names) must stay as the first server gave them. To change them, change the first server's plan and join again.",
     "setup.kind.peer_join": "The second server joins",
     "setup.kind.peer_names": "Send this server's names to the first server",

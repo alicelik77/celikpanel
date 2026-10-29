@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -210,7 +211,8 @@ func TestServerSetupPeerChangedAnswersAfterUseKeepTheEarlierRefusal(t *testing.T
 func TestServerSetupExtensionAfterASucceededPairReusesItsBinding(t *testing.T) {
 	f, plan, execution := joinFirstFixture(t, joinFirstDraft())
 	binding := serverSetupPeerBinding{ExecutionID: execution.ID, PlanID: plan.ID, JoinRequestID: strings.Repeat("3", 32), PeerIPv4: "198.51.100.20",
-		PeerPanelDomain: "beta.example.test", PeerAddress: "https://198.51.100.20:2083", PeerPin: strings.Repeat("ab", 32), PeerDNSEngine: "bind"}
+		PeerPanelDomain: "beta.example.test", PeerAddress: "https://198.51.100.20:2083", PeerPin: strings.Repeat("ab", 32), PeerDNSEngine: "bind",
+		JoinDigest: serverSetupJoinDocumentDigest(serverSetupJoinDocumentFor(plan.Draft))}
 	if err := writeServerSetupJSONSetting(context.Background(), f.database.GetDB(), serverSetupPeerBindingKey(execution.ID), binding); err != nil {
 		t.Fatal(err)
 	}
@@ -229,8 +231,21 @@ func TestServerSetupExtensionAfterASucceededPairReusesItsBinding(t *testing.T) {
 		t.Fatalf("extension plan: %+v %+v", extended.Draft, extended.Steps)
 	}
 	for _, blocker := range extended.Blockers {
-		if strings.Contains(blocker, "dns_identity") {
+		if strings.Contains(blocker, "dns_identity") || blocker == "server_setup_extension_needs_second_server" {
 			t.Fatalf("the reused binding completes the DNS identity: %v", extended.Blockers)
+		}
+	}
+	// An extension that would change what the second server received (its
+	// shared answers, names or mail) is a verified prerequisite at review.
+	for name, change := range map[string]func(*serverSetupDraft){
+		"panel name": func(d *serverSetupDraft) { d.PanelDomain = "admin.example.test" },
+		"mail":       func(d *serverSetupDraft) { d.Purpose, d.MailHostname = "web_mail", "mail.example.test" },
+	} {
+		edited := state
+		change(&edited.Draft)
+		blocked, err := f.panel.buildServerSetupPlan(context.Background(), edited, serviceOperationActor{UserID: f.userID})
+		if err != nil || blocked.CanStart || !slices.Contains(blocked.Blockers, "server_setup_extension_needs_second_server") {
+			t.Fatalf("%s: %v %v", name, err, blocked.Blockers)
 		}
 	}
 	// Without a succeeded binding the join step stays.
