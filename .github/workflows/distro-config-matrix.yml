@@ -1,0 +1,110 @@
+name: Distro config matrix
+
+# Every configuration file the panel and agent write is rendered by the
+# product's own generators inside a clean container of each supported release
+# and checked by that release's own program (nginx -t, php-fpm -t, postfix,
+# doveconf/doveadm, named-checkconf/named, pdns_server, nft -c,
+# systemd-analyze verify, visudo, sshd -t, apt). A directive valid on one
+# release's package version and unknown on another's (nginx `http2 on;` on
+# Ubuntu 24.04's 1.24) fails here instead of on a server.
+# Runs only for changes that can alter a rendered file, or on demand.
+#
+# Her yapılandırma dosyası, desteklenen her sürümün temiz bir kabında ürünün
+# kendi üreticileriyle oluşturulur ve o sürümün kendi programıyla denetlenir.
+# Yalnızca oluşturulan bir dosyayı değiştirebilecek değişikliklerde ya da
+# elle başlatıldığında çalışır.
+
+on:
+  pull_request:
+    paths:
+      - 'cmd/agent/**'
+      - 'internal/services/**'
+      - 'internal/configmatrix/**'
+      - 'internal/binddns/**'
+      - 'internal/bindconfig/**'
+      - 'internal/pdnsmanagedconf/**'
+      - 'internal/mailtlsconfig/**'
+      - 'internal/firewallpolicy/**'
+      - 'internal/firewallruntime/**'
+      - 'internal/mailrenewalkit/**'
+      - 'internal/dnspeerenrollowner/**'
+      - 'internal/recoveryruntime/**'
+      - 'internal/hostingpath/**'
+      - 'internal/transport/**'
+      - 'internal/core/managed_services.go'
+      - 'deploy/systemd/**'
+      - 'deploy/test-distro-config-matrix.sh'
+      - 'deploy/test-distro-config-matrix/**'
+      - '.github/workflows/distro-config-matrix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GOTOOLCHAIN: local
+
+jobs:
+  build:
+    name: Build render tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.5'
+          cache: true
+      - name: Verify exact Go toolchain
+        run: test "$(go env GOVERSION)" = go1.26.5
+      - name: Version-gated directives have a version switch
+        run: go test ./internal/configmatrix -count=1 -v
+      - name: Build static render test binaries
+        run: |
+          mkdir -p "$RUNNER_TEMP/matrix-bin"
+          for pkg in cmd/agent internal/services internal/dnspeerenrollowner internal/recoveryruntime; do
+            CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go test -c -o "$RUNNER_TEMP/matrix-bin/${pkg//\//-}.test" "./$pkg"
+          done
+      - uses: actions/upload-artifact@v7
+        with:
+          name: matrix-bin
+          path: ${{ runner.temp }}/matrix-bin
+          retention-days: 1
+
+  release:
+    name: ${{ matrix.release }}
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        release: [debian-12, debian-13, ubuntu-22.04, ubuntu-24.04, arch]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: matrix-bin
+          path: ${{ runner.temp }}/matrix-bin
+      - name: Render and validate on ${{ matrix.release }}
+        env:
+          CONTAINER_RUNTIME: docker
+          MATRIX_BIN: ${{ runner.temp }}/matrix-bin
+          MATRIX_OUT: ${{ runner.temp }}/matrix-out
+        run: |
+          chmod 0755 "$MATRIX_BIN"/*.test
+          bash deploy/test-distro-config-matrix.sh "${{ matrix.release }}"
+      - name: Publish the report
+        if: always()
+        run: |
+          test -f "$RUNNER_TEMP/matrix-out/report.md" && cat "$RUNNER_TEMP/matrix-out/report.md" >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: matrix-${{ matrix.release }}
+          path: |
+            ${{ runner.temp }}/matrix-out/report.md
+            ${{ runner.temp }}/matrix-out/results.tsv
+            ${{ runner.temp }}/matrix-out/version-drift.txt
+            ${{ runner.temp }}/matrix-out/${{ matrix.release }}/container.log
+            ${{ runner.temp }}/matrix-out/${{ matrix.release }}/render.log
+          retention-days: 14

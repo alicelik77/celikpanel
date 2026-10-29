@@ -1,0 +1,15 @@
+# Releases whose package versions the distro config matrix checks.
+#
+# The panel accepts a host by package-manager family (internal/hostplatform:
+# ID/ID_LIKE debian|ubuntu -> APT, arch -> pacman); it does not pin release
+# numbers. Debian 13 and Ubuntu 24.04 are the measured production targets
+# (README: Frankfurt / Boston). Debian 12 and Ubuntu 22.04 are still accepted
+# by that family rule, and Arch is accepted as the pacman family, so all five
+# are checked. A release that is dropped from support is removed here.
+#
+# Columns: name  container-image  family  codename
+debian-12     docker.io/library/debian:12          apt     bookworm
+debian-13     docker.io/library/debian:13          apt     trixie
+ubuntu-22.04  docker.io/library/ubuntu:22.04       apt     jammy
+ubuntu-24.04  docker.io/library/ubuntu:24.04       apt     noble
+arch          docker.io/library/archlinux:latest   pacman  rolling
