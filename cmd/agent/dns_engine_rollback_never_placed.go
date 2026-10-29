@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -67,7 +68,10 @@ func verifyDNSEngineInstallNeverPlacedWithOps(
 	}
 	for _, unit := range units {
 		if unit.active() || unit.activeState == "failed" || unit.activeState == "activating" ||
-			unit.activeState == "deactivating" || unit.activeState == "reloading" || unit.masked() {
+			unit.activeState == "deactivating" || unit.activeState == "reloading" || unit.masked() ||
+			// Enabled to start at boot: something configured it (review
+			// fix, fail-closed).
+			strings.HasPrefix(unit.unitFileState, "enabled") {
 			return false, nil
 		}
 	}

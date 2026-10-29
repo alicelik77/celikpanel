@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
+	"github.com/alicelik/celikpanel/internal/hostplatform"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -84,6 +86,7 @@ func TestDNSEngineInstallNeverPlacedProofRefusesAnythingTheInstallCouldHaveLeft(
 		{name: "a unit failed", unit: bindInstallUnitState{name: "named.service", loadState: "loaded", activeState: "failed"}},
 		{name: "a unit still masked", unit: bindInstallUnitState{name: "named.service", loadState: "masked", activeState: "inactive", unitFileState: "masked"}},
 		{name: "port 53 served", unit: absentUnit, conflict: true},
+		{name: "a unit enabled at boot", unit: bindInstallUnitState{name: "named.service", loadState: "loaded", activeState: "inactive", unitFileState: "enabled"}},
 		{name: "packages adopted, not installed", receipt: func(r dnsEngineInstallOwnershipReceipt) dnsEngineInstallOwnershipReceipt {
 			r.AdoptedPresent = true
 			return r
@@ -119,5 +122,39 @@ func TestDNSEngineInstallNeverPlacedProofRefusesAnythingTheInstallCouldHaveLeft(
 				t.Fatalf("got %v %v, want %v", got, err, test.want)
 			}
 		})
+	}
+}
+
+// Review fix (item 10): a package status dpkg answers in a non-canonical
+// form proves nothing: the proof fails with it and the evidence is
+// "unverified", never "safe".
+func TestDNSEngineInstallNeverPlacedProofFailsOnANonCanonicalPackageStatus(t *testing.T) {
+	receipt := dnsEngineInstallOwnershipReceipt{Engine: transport.DNSEngineBIND, PackageManager: "apt", Packages: []string{"bind9"}, MissingBefore: []string{"bind9"}}
+	profile := hostplatform.Profile{PackageManager: hostplatform.PackageManagerAPT}
+	runner := func(context.Context, string, ...string) ([]byte, error) { return []byte("deinstall ok config-files"), nil }
+	got, err := verifyDNSEngineInstallNeverPlacedWithOps(receipt, dnsEngineNeverPlacedOps{
+		packageInstalled: func(name string) (bool, error) {
+			return exactDNSEnginePackageInstalledWithRunner(context.Background(), profile, "/usr/bin/dpkg-query", name, runner)
+		},
+		targetUnits:    func() ([]bindInstallUnitState, error) { return nil, nil },
+		port53Conflict: func() (bool, error) { return false, nil },
+	})
+	if got || err == nil {
+		t.Fatalf("a non-canonical status proved never placed: %v %v", got, err)
+	}
+	withRollbackEvidenceReadersForTest(t)
+	request, manifest := rollbackEvidenceRequestForTest(t, "", 0)
+	readRollbackEvidenceJournal = func() (dnsEngineSwitchJournal, bool, error) { return dnsEngineSwitchJournal{}, false, nil }
+	readRollbackEvidenceState = func() (dnsEngineStateReceipt, bool, error) { return dnsEngineStateReceipt{}, false, nil }
+	readRollbackEvidenceOwnership = func(transport.DNSEngine) (dnsEngineStateReceipt, bool, error) { return dnsEngineStateReceipt{}, false, nil }
+	readRollbackEvidenceInstallOwnership = func(transport.DNSEngine) (dnsEngineInstallOwnershipReceipt, bool, error) {
+		return installOwnershipForEvidenceTest(request, manifest), true, nil
+	}
+	verifyRollbackEvidenceTargetSeal = func(context.Context, transport.DNSEngine, dnsEngineRollbackTargetHost) error { return errors.New("not sealed") }
+	readRollbackEvidenceNeverPlaced = func(context.Context, transport.DNSEngine, dnsEngineInstallOwnershipReceipt, dnsEngineRollbackTargetHost) (bool, error) {
+		return got, err
+	}
+	if outcome := classifyDNSEngineRollbackHostEvidenceWithin(request, manifest, time.Second); outcome != transport.DNSEngineRollbackUnverified {
+		t.Fatalf("outcome %q", outcome)
 	}
 }
