@@ -117,7 +117,7 @@ re-run is owed before any is called proven.
   /api/v1/setup/peer/ready`, authenticated by the link credential in its
   role's namespace, from the joined address on the first server, naming the
   same join: a report for another binding is refused), or until the owner
-  stops waiting for it on the main (Stop waiting for the second server, `POST
+  stops waiting for it on the main (Stop waiting for the other server, `POST
   /api/v1/setup/peer/retire`, confirmed). Only then does the main end it. The
   join code still ends with the main's setup. The backup reports once it is
   durably ready and keeps its side of the link until the main was told; until
@@ -128,7 +128,7 @@ re-run is owed before any is called proven.
   value), and the main says the link ended only for exactly that credential
   from the joined address. Any other refusal is the wait
   `server_setup_peer_ready_refused` (you, the owner: on the main open setup
-  and, if needed, choose Stop waiting for the second server); another TLS key
+  and, if needed, choose Stop waiting for the other server); another TLS key
   is `server_setup_peer_ready_identity_changed` (create a new join code on the
   main). A report acts only on the record of the namespace its credential
   authenticates in, and a report whose state cannot be read is an error, so

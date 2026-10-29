@@ -33,7 +33,7 @@ func TestServerSetupPeerReadyTellsAnEndedLinkFromARefusal(t *testing.T) {
 	}
 	completeWithChecks(t, pair.second, plan, second)
 	if second.Status != "waiting" || second.Error == nil || second.Error.Code != "server_setup_peer_ready_refused" ||
-		!strings.Contains(second.Error.Message, "Stop waiting for the second server") {
+		!strings.Contains(second.Error.Message, "Stop waiting for the other server") {
 		t.Fatalf("a refusal from a live link was taken for done: %s %+v", second.Status, second.Error)
 	}
 	if join := firstJoinRecord(t, pair); join.PeerReadyAt != "" || join.LinkCredentialHash == "" {

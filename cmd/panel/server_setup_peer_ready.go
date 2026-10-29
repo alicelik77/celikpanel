@@ -208,7 +208,7 @@ func (p *Panel) settleServerSetupLink(ctx context.Context, d serverSetupDraft) e
 // serverSetupPeerReadyOutcome is what the backup does with the main's answer
 // to its report.
 const (
-	serverSetupPeerReadyRefusedMessage  = "The main DNS server did not accept this server's report that its setup is ready, although this server is ready. You, the owner: on the main DNS server open setup; if it still waits for this server, choose \"Stop waiting for the second server\" there. This server reports again by itself."
+	serverSetupPeerReadyRefusedMessage  = "The main DNS server did not accept this server's report that its setup is ready, although this server is ready. You, the owner: on the main DNS server open setup; if it still waits for this server, choose \"Stop waiting for the other server\" there. This server reports again by itself."
 	serverSetupPeerReadyIdentityMessage = "The main DNS server answered with another identity (TLS key) than the one this server joined, so nothing was sent. This is a verified state, not a network problem. You, the owner: on the main DNS server create a new join code and join this server again."
 )
 

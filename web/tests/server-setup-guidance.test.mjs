@@ -221,15 +221,17 @@ test('a booting host is said as a wait, and its bound as a failure',()=>{
 });
 // Beta-1 third re-run N6: the setup link's texts name the servers by role
 // (the server that created the join code, the main DNS server), never by
-// first/second, which in Option A pointed at the wrong server. The button
-// "Stop waiting for the second server" is quoted by its own name.
+// first/second, which in Option A pointed at the wrong server. Review fix
+// (item 10): the waiting card for the other server and its button too, and
+// the button's name quoted in other texts is the card's own.
+const roleNamed=key=>key.startsWith('setup.v5.wait.')||key.startsWith('setup.v5.peerSetup.');
 test('the setup link texts name the servers by role',()=>{
-    for(const [key,text] of Object.entries(enScreens).filter(([key])=>key.startsWith('setup.v5.wait.'))){
-        const plain=text.replace('"Stop waiting for the second server"','');
-        assert.ok(!/first server|second server/i.test(plain),`${key}: ${text}`);
+    for(const [key,text] of Object.entries(enScreens).filter(([key])=>roleNamed(key))){
+        assert.ok(!/first server|second server/i.test(text),`${key}: ${text}`);
     }
-    for(const [key,text] of Object.entries(trScreens).filter(([key])=>key.startsWith('setup.v5.wait.'))){
-        const plain=text.replace('"İkinci sunucuyu beklemeyi bırak"','');
-        assert.ok(!/ilk sunucu|ikinci sunucu/i.test(plain),`${key}: ${text}`);
+    for(const [key,text] of Object.entries(trScreens).filter(([key])=>roleNamed(key))){
+        assert.ok(!/ilk sunucu|ikinci sunucu/i.test(text),`${key}: ${text}`);
     }
+    assert.ok(enScreens['setup.v5.wait.server_setup_peer_ready_refused'].includes(`"${enScreens['setup.v5.peerSetup.stop']}"`));
+    assert.ok(trScreens['setup.v5.wait.server_setup_peer_ready_refused'].includes(`"${trScreens['setup.v5.peerSetup.stop']}"`));
 });

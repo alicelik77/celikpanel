@@ -116,7 +116,7 @@ sayılmadan önce yeni bir hedefli VM koşusu gerekir.
   bildirene kadar (`POST /api/v1/setup/peer/ready`; rolünün ad alanındaki
   bağlantı kimliğiyle doğrulanır, ilk sunucuda katılmadaki adresten gelir ve
   aynı katılmayı adlandırır: başka bir bağlama için bildirim reddedilir) ya da
-  sahip ana sunucuda beklemeyi bırakana kadar (İkinci sunucuyu beklemeyi
+  sahip ana sunucuda beklemeyi bırakana kadar (Diğer sunucuyu beklemeyi
   bırak, `POST /api/v1/setup/peer/retire`, onaylı) açık tutar. Bağlantıyı
   ancak o zaman kapatır. Katılma kodu yine ana sunucunun kurulumuyla biter.
   Yedek sunucu kalıcı olarak hazır olduktan sonra bildirir ve ana sunucuya
@@ -127,7 +127,7 @@ sayılmadan önce yeni bir hedefli VM koşusu gerekir.
   ettiği kimliğin anahtarlı özetini saklar (değerini asla) ve ana sunucu
   bağlantının kapandığını yalnız tam o kimlik için ve katılmadaki adresten
   söyler. Başka her ret `server_setup_peer_ready_refused` beklemesidir (siz,
-  sunucu sahibi: ana sunucuda kurulumu açın, gerekirse İkinci sunucuyu
+  sunucu sahibi: ana sunucuda kurulumu açın, gerekirse Diğer sunucuyu
   beklemeyi bırak'ı seçin); başka TLS anahtarı
   `server_setup_peer_ready_identity_changed` olur (ana sunucuda yeni katılma
   kodu oluşturun). Bildirim yalnız kimliğinin doğrulandığı ad alanının
