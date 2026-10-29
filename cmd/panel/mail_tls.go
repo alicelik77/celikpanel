@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 	"sync"
 
@@ -18,7 +17,7 @@ import (
 )
 
 var mailTLSSyncMu sync.Mutex
-var readMailTLSHostname = os.Hostname
+var readMailTLSHostname = localServerName
 
 const panelMailTLSManagedRoot = "/etc/ssl/celikpanel"
 
