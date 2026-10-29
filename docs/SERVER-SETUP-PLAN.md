@@ -10,6 +10,57 @@ This document records that agreement and the implementation acceptance criteria.
 It does not authorize an assistant to update any installed panel; the user starts
 every installed-panel update from CelikPanel itself, as required by [AGENTS.md](../AGENTS.md).
 
+## October 29 follow-up: fixes from the Beta-1 VM run (alpha.115 source)
+
+A native run of setup wizard v2 on fresh Debian 13 and Ubuntu 24.04 guests
+found the defects below; each fix has a component test, none changes the
+schema, and a targeted VM re-run is still owed before any is called proven.
+
+- **Distribution point updates are listed, not refused.** A component's
+  install that also updates already installed packages within the same
+  release (APT: same epoch and upstream version, only the distribution
+  revision changes, for example perl-base 5.40.1-6 → 5.40.1-6+deb13u1) no
+  longer stops a fresh setup. The review reads the install simulation once and
+  lists them under "Distribution packages also updated" ("Ayrıca güncellenecek
+  dağıtım paketleri"); starting setup confirms them, and only setup's own
+  component steps tell the Agent so. A new upstream version, a vendor
+  replacement, a database server, Apache, another PHP version or another
+  component keeps today's confirmation. A start that would bring an unlisted
+  point update needs a new review; an unread simulation is said as unknown.
+- **One server with its own DNS finishes its zone.** The plan and every zone
+  sync decide the zone kind with one rule (`NATIVE` alone, `MASTER` in a
+  pair), so the reviewed digest no longer loops on
+  `infrastructure_dns_changed`.
+- **Mail follows the DNS identity.** In the join flow only components that
+  need no DNS run before the join; the mail profile and everything that needs
+  a mail server (SpamAssassin) run after the DNS steps and waits on both
+  servers and in every layout.
+- **PowerDNS as the main DNS server: one tested series.** The wizard offers,
+  the review accepts and the DNS step installs the distribution's current
+  release of the tested PowerDNS series (4.9.x; D-028 amendment). A candidate
+  outside it is not offered (`server_setup_pdns_main_untested_version`) and is
+  refused at review, never mid-run.
+- **Changed second-server answers recover with a new code.** A binding still
+  belongs to one run. While no run with it has succeeded, answers the second
+  server changed afterwards (for example its DNS software) mark the join
+  changed: the first server's run says `server_setup_peer_join_changed` (the
+  owner creates a new join code there and enters it on the second server), a
+  new code is allowed, and the run binds the new answers and continues.
+  Unchanged answers re-bind as before; a run that already went on with the
+  earlier answers asks to reopen the plan
+  (`server_setup_peer_join_reopen_required`). After a run succeeded the
+  answers are final and a new code is refused, both said plainly
+  (`server_setup_peer_names_final`, `server_setup_join_finished`).
+- **Extending after a succeeded pair** reuses its binding: no new join step.
+- **Join code tries** mean one thing everywhere: the code's own remaining wrong
+  attempts (50), the same at creation, on re-read and in a refusal.
+- **An owner's native DNS edit** is one notice on the DNS software card and the
+  DNS page (`engine_owner_changed` / `dns_overview_engine_owner_changed`):
+  changed outside CelikPanel, the owner acts, keep it (never overwritten) or
+  adopt it on the DNS software page; never "Nothing to do" and never a foreign
+  DNS server. Known limit: for an active BIND the DNS software page offers no
+  adopt action in this source; the notice says "when that page offers it".
+
 ## October 29 follow-up: setup wizard v2, phase 5 (v0.1.0-alpha.115 source)
 
 - **The DNS page reads one picture.** `GET /api/v1/dns/overview`

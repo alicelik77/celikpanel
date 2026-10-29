@@ -9,6 +9,58 @@ bu yönü onayladı. Bu belge anlaşmayı ve uygulamanın kabul ölçütlerini k
 Asistana kurulu panel güncelleme yetkisi vermez; [AGENTS.md](../AGENTS.md) gereği
 kurulu panel güncellemelerini kullanıcı CelikPanel'in kendi arayüzünden başlatır.
 
+## 29 Ekim ek kararı: Beta-1 sanal makine koşusunun düzeltmeleri (alpha.115 kaynağı)
+
+Kurulum sihirbazı v2'nin temiz Debian 13 ve Ubuntu 24.04 konuklarındaki gerçek
+koşusu aşağıdaki kusurları buldu; her düzeltmenin bileşen testi var, hiçbiri
+şemayı değiştirmez ve kanıtlanmış sayılmadan önce hedefli bir VM koşusu gerekir.
+
+- **Dağıtım yama güncellemeleri listelenir, reddedilmez.** Bir bileşen kurulumu
+  kurulu paketleri aynı sürüm içinde de güncelliyorsa (APT: aynı epoch ve üst
+  sürüm, yalnız dağıtım revizyonu değişir; örneğin perl-base 5.40.1-6 →
+  5.40.1-6+deb13u1) temiz kurulum artık durmaz. İnceleme kurulum benzetimini
+  bir kez okur ve "Ayrıca güncellenecek dağıtım paketleri" altında listeler;
+  kurulumu başlatmak bunları onaylar ve bunu Agent'a yalnız kurulumun kendi
+  bileşen adımları söyler. Yeni üst sürüm, üretici değişimi, veritabanı
+  sunucusu, Apache, başka PHP sürümü ya da başka bileşen bugünkü onayı korur.
+  Listelenmemiş bir yama güncellemesi getirecek başlatma yeni inceleme ister;
+  okunamayan benzetim bilinmiyor olarak söylenir.
+- **Kendi DNS'ini tutan tek sunucu bölgesini bitirir.** Plan ve her bölge
+  eşitlemesi bölge türünü tek kuralla seçer (tek başına `NATIVE`, çiftte
+  `MASTER`); incelenen özet artık `infrastructure_dns_changed` döngüsüne
+  girmez.
+- **Posta DNS kimliğinden sonra gelir.** Katılma akışında katılmadan önce
+  yalnız DNS gerektirmeyen bileşenler çalışır; posta profili ve posta sunucusu
+  gerektiren her şey (SpamAssassin) iki sunucuda ve her düzende DNS adımları ve
+  beklemelerinden sonra çalışır.
+- **Ana DNS sunucusu olarak PowerDNS: tek denenmiş seri.** Sihirbazın sunduğu,
+  incelemenin kabul ettiği ve DNS adımının kurduğu, denenmiş PowerDNS
+  serisinin (4.9.x; D-028 eki) dağıtımdaki güncel sürümüdür. Seri dışındaki
+  aday sunulmaz (`server_setup_pdns_main_untested_version`) ve incelemede
+  reddedilir, çalışma ortasında değil.
+- **İkinci sunucunun değişen yanıtları yeni kodla toparlanır.** Bağlama yine
+  tek çalışmaya aittir. Onunla hiçbir çalışma başarıyla bitmemişken ikinci
+  sunucunun sonradan değişen yanıtları (örneğin DNS yazılımı) katılmayı
+  değişmiş olarak işaretler: ilk sunucunun çalışması
+  `server_setup_peer_join_changed` der (sahip orada yeni katılma kodu oluşturup
+  ikinci sunucuya girer), yeni koda izin verilir ve çalışma yeni yanıtları
+  bağlayıp sürer. Değişmeyen yanıtlar eskisi gibi yeniden bağlanır; önceki
+  yanıtlarla ilerlemiş bir çalışma planın yeniden açılmasını ister
+  (`server_setup_peer_join_reopen_required`). Bir çalışma başarıyla bittikten
+  sonra yanıtlar kesindir ve yeni kod reddedilir; ikisi de açıkça söylenir
+  (`server_setup_peer_names_final`, `server_setup_join_finished`).
+- **Başarılı bir çiftten sonra genişletme** onun bağlamasını kullanır; yeni
+  katılma adımı yoktur.
+- **Katılma kodu denemeleri** her yerde tek anlam taşır: kodun kalan yanlış
+  deneme hakkı (50); oluşturmada, yeniden okumada ve retlerde aynıdır.
+- **Sahibin yerel DNS düzenlemesi** DNS yazılımı kartında ve DNS sayfasında tek
+  bildirimdir (`engine_owner_changed` / `dns_overview_engine_owner_changed`):
+  CelikPanel dışında değişti, sahip karar verir, korur (asla üzerine
+  yazılmaz) ya da DNS yazılımı sayfasında devralır; asla "Yapılacak bir şey
+  yok" ve asla yabancı DNS sunucusu değildir. Bilinen sınır: etkin BIND için
+  DNS yazılımı sayfası bu kaynakta devralma eylemi sunmaz; bildirim "o sayfa
+  sunduğunda" der.
+
 ## 29 Ekim ek kararı: kurulum sihirbazı v2, 5. aşama (v0.1.0-alpha.115 kaynağı)
 
 - **DNS sayfası tek bir resim okur.** `GET /api/v1/dns/overview` (yalnız
