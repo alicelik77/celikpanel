@@ -73,6 +73,19 @@ re-run is owed before any is called proven.
   `server_setup_plan_changed_by_rejoin` (you, the owner: Review a revised
   plan; setup then continues with the new join; completed host changes are
   kept), never the generic failure.
+- **The setup's own DNS software is not "existing DNS".** Reviewing a new
+  plan after a run (for example the P4 rejoin) was refused with
+  `server_setup_existing_dns_requires_migration` because of the PowerDNS that
+  the earlier run had installed. Now an active engine is this setup's own
+  when a run of this panel recorded it: a committed first install (no source
+  engine) whose request is the DNS step of a setup run on this panel that
+  succeeded, at the engine's current epoch (no later switch), with no switch
+  or marker pending. Such an engine is never "existing DNS that needs
+  migration": when it matches the plan the run's DNS step adopts it without
+  installing anything; when it does not, the review says so
+  (`server_setup_dns_installed_differs`: choose that engine in the plan, or
+  change it in Server → DNS). An engine without that record still needs the
+  migration as before.
 
 ## October 29 follow-up: fixes from the Beta-1 VM run (alpha.115 source)
 

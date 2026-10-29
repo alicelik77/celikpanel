@@ -427,6 +427,7 @@ export const trSetupScreens: Record<SetupScreenKey, string> = {
     "setup.reviseHelp": "Kaydedilen bilgileri değiştirmeniz gerekiyorsa kalan planı düzenleyin. Tamamlanan hizmetler ve yapılandırma korunur. Yalnız bütün kurulum adımları bittikten sonra düzenleme yapılabilir.",
     "setup.reviseBlocked": "Plan henüz düzenlenemiyor. Bir sunucu işlemi devam ediyor olabilir; yeniden bağlanıp sonucunu kontrol edin.",
     "setup.blocker.ssh": "Sunucu çalışan bir SSH erişim portunu doğrulayamadı. Güvenlik duvarını uygulamadan önce yönetim erişimini düzeltin.",
+    "setup.blocker.installedDiffers": "Bu sunucu, bu kurulumun önceki bir çalışmasının kurduğu DNS yazılımını zaten çalıştırıyor ve bu plan başka bir yazılım, rol ya da adres adlandırıyor. Kurulum onu asla değiştirmez: planda o DNS yazılımını (ve aynı adları) seçin ya da önce Sunucu → DNS'te değiştirin.",
     "setup.blocker.migration": "Mevcut DNS yönetimi bu plandan farklı. Sunucu → DNS ve eş sunucular sayfasını inceleyin ve değiştirmeden önce desteklenen geçiş yolunu kullanın.",
     "setup.nodeChoose": "Node.js sürümü seçin",
     "setup.nodeUnavailable": "Node.js sürüm listesi yüklenemedi.",

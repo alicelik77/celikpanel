@@ -455,7 +455,16 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 		if state, stateErr := readDNSEngineDBState(ctx, p.db.GetDB()); stateErr != nil {
 			return plan, stateErr
 		} else if state.ActiveEngine != "" {
-			addBlocker("server_setup_existing_dns_requires_migration")
+			// This setup's own recorded engine is not "existing DNS" (P9).
+			own, ownErr := p.serverSetupOwnDNSEngine(ctx, state)
+			switch {
+			case ownErr != nil:
+				return plan, ownErr
+			case !own:
+				addBlocker("server_setup_existing_dns_requires_migration")
+			case !serverSetupOwnDNSMatchesJoinDraft(draft, state):
+				addBlocker(serverSetupDNSInstalledDiffersCode)
+			}
 		} else if code := setupPDNSPairedPrimaryBlocker(draft, state); code != "" {
 			addBlocker(code)
 		} else if draft.DNSRole == transport.DNSPairRolePrimary && transport.DNSEngine(draft.DNSEngine) == transport.DNSEnginePowerDNS && !serverSetupPDNSMainSystemTested(p.managedServiceHostProfile()) {
@@ -475,7 +484,15 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 				return plan, stateErr
 			}
 			if state.ActiveEngine != "" && !setupDNSDraftMatchesState(draft, request, local, state) {
-				addBlocker("server_setup_existing_dns_requires_migration")
+				own, ownErr := p.serverSetupOwnDNSEngine(ctx, state)
+				if ownErr != nil {
+					return plan, ownErr
+				}
+				if own {
+					addBlocker(serverSetupDNSInstalledDiffersCode)
+				} else {
+					addBlocker("server_setup_existing_dns_requires_migration")
+				}
 			}
 			// Setup installs the first engine only. The paired PowerDNS
 			// primary is decided by the same policy as the DNS engine card,

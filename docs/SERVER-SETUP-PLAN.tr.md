@@ -74,6 +74,19 @@ sayılmadan önce yeni bir hedefli VM koşusu gerekir.
   `server_setup_plan_changed_by_rejoin` ile durur (siz, sunucu sahibi:
   Düzeltilmiş planı incele; kurulum yeni katılmayla sürer; tamamlanan sunucu
   değişiklikleri korunur), asla genel hatayla değil.
+- **Kurulumun kendi DNS yazılımı "mevcut DNS" değildir.** Bir çalışmadan
+  sonra (örneğin P4 yeniden katılması) yeni plan incelemesi, önceki
+  çalışmanın kurduğu PowerDNS yüzünden
+  `server_setup_existing_dns_requires_migration` ile reddediliyordu. Artık bu
+  panelin bir çalışması kaydettiyse etkin motor kurulumun kendisinindir:
+  isteği bu paneldeki bir kurulum çalışmasının başarılı DNS adımı olan,
+  kaynak motoru olmayan, işlenmiş bir ilk kurulum; motorun güncel
+  döneminde (sonradan değiştirilmemiş) ve bekleyen değişim ya da işaret yok.
+  Böyle bir motor asla "taşıma gerektiren mevcut DNS" sayılmaz: plana
+  uyuyorsa çalışmanın DNS adımı hiçbir şey kurmadan onu benimser; uymuyorsa
+  inceleme bunu söyler (`server_setup_dns_installed_differs`: planda o motoru
+  seçin ya da Sunucu → DNS'te değiştirin). Bu kaydı olmayan motor önceki gibi
+  taşıma ister.
 
 ## 29 Ekim ek kararı: Beta-1 sanal makine koşusunun düzeltmeleri (alpha.115 kaynağı)
 

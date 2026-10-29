@@ -420,6 +420,9 @@ type serverSetupCatalogInputs struct {
 	CandidateVersions map[string]string
 	Repos             map[string]serverSetupRepoObservation
 	DNSState          *dnsEngineDBState
+	// OwnDNSEngine: the active engine is this setup's own recorded install
+	// (serverSetupOwnDNSEngine), not foreign DNS needing a migration.
+	OwnDNSEngine bool
 	// PDNSCandidate is the Agent's read of the PowerDNS build a fresh paired
 	// primary would install (nil when not read).
 	PDNSCandidate *transport.PDNSFreshPrimaryCandidateResponse
@@ -460,6 +463,7 @@ func (p *Panel) readServerSetupCatalogInputs(ctx context.Context) serverSetupCat
 	}
 	if state, err := readDNSEngineDBState(ctx, p.db.GetDB()); err == nil {
 		inputs.DNSState = &state
+		inputs.OwnDNSEngine, _ = p.serverSetupOwnDNSEngine(ctx, state)
 		if state.ActiveEngine == "" && serverSetupPDNSMainSystemTested(inputs.Host) {
 			inputs.PDNSCandidate = p.readServerSetupPDNSCandidate(ctx)
 		}
@@ -708,6 +712,8 @@ func serverSetupDNSEngineChoices(inputs serverSetupCatalogInputs) []serverSetupD
 				choice.Offered, choice.Reason = false, "server_setup_inventory_unavailable"
 			case managed == nil || blocked != "":
 				choice.Offered, choice.Reason = false, "server_setup_dns_engine_unsupported"
+			case inputs.DNSState.ActiveEngine != "" && inputs.DNSState.ActiveEngine != engine && inputs.OwnDNSEngine:
+				choice.Offered, choice.Reason = false, serverSetupDNSInstalledDiffersCode
 			case inputs.DNSState.ActiveEngine != "" && inputs.DNSState.ActiveEngine != engine:
 				choice.Offered, choice.Reason = false, "server_setup_existing_dns_requires_migration"
 			case role == "main" && engine == transport.DNSEnginePowerDNS && inputs.DNSState.ActiveEngine == "":

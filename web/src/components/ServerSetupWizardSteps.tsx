@@ -116,6 +116,7 @@ const engineReason: Record<string, TranslationKey> = {
     server_setup_pdns_main_untested_version: 'setup.v2.engine.untestedVersion',
     server_setup_pdns_main_not_debian_archive: 'setup.v2.engine.notDebianArchive',
     server_setup_existing_dns_requires_migration: 'setup.v2.engine.existing',
+    server_setup_dns_installed_differs: 'setup.v2.engine.installedDiffers',
     bind_source_pdns_switch_unsupported: 'setup.v2.engine.existing',
     pdns_primary_switch_paused: 'setup.v2.engine.paused',
     server_setup_dns_engine_unsupported: 'setup.v2.engine.unsupported',

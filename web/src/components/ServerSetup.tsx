@@ -110,6 +110,7 @@ const codeKey: Record<string, TranslationKey> = {
     server_setup_dns_readiness_required: 'setup.publisher.pairWaiting',
     server_setup_dns_engine_unsupported: 'setup.blocker.profile',
     server_setup_existing_dns_requires_migration: 'setup.blocker.migration',
+    server_setup_dns_installed_differs: 'setup.blocker.installedDiffers',
     pdns_primary_switch_paused: 'setup.pdnsPrimaryPaused',
     server_setup_dns_failed: 'setup.blocker.dnsIdentity',
     server_setup_dns_rolled_back: 'setup.guide.dnsRolledBack',

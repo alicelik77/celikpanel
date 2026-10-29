@@ -118,6 +118,7 @@ export const trSetupWizardScreens: Record<SetupWizardScreenKey, string> = {
     "setup.v2.engine.untested": "Bu sistemde ana DNS sunucusu olarak henüz denenmedi; BIND kullanın ya da PowerDNS’i yedek sunucuda seçin.",
     "setup.v2.engine.notDebianArchive": "Bu sunucu PowerDNS'i başka bir depodan (örneğin repo.powerdns.com ya da backports) kuracaktı; CelikPanel ana DNS sunucusunu yalnız Debian'ın kendi yapısıyla çalıştırır. BIND kullanın ya da sunucu sahibi o depoyu kaldırsın veya sınırlasın.",
     "setup.v2.engine.untestedVersion": "Bu sunucunun kuracağı PowerDNS sürümü ana DNS sunucusu olarak henüz denenmedi; BIND kullanın ya da PowerDNS’i yedek sunucuda seçin.",
+    "setup.v2.engine.installedDiffers": "Bu sunucu, bu kurulumun önceki bir çalışmasının kurduğu DNS yazılımını zaten çalıştırıyor; kurulum onu asla değiştirmez. Onu seçin ya da önce Sunucu → DNS'te değiştirin.",
     "setup.v2.engine.existing": "Bu sunucuda başka bir DNS yazılımı zaten çalışıyor ve kurulum onu asla değiştirmez; onu seçin.",
     "setup.v2.engine.paused": "Bu sürümde PowerDNS ana DNS sunucusu olarak durduruldu; BIND kullanın.",
     "setup.v2.engine.unsupported": "Bu sistemde sunulmuyor.",
