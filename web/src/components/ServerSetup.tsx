@@ -96,6 +96,7 @@ const codeKey: Record<string, TranslationKey> = {
     server_setup_host_stayed_busy: 'setup.v5.wait.server_setup_host_stayed_busy',
     mail_tls_sync_host_busy: 'setup.v5.wait.mail_tls_sync_host_busy',
     server_setup_agent_not_answering: 'setup.v5.wait.server_setup_agent_not_answering',
+    server_setup_peer_dkim_removed: 'setup.v5.wait.server_setup_peer_dkim_removed',
     server_setup_distribution_updates_changed: 'setup.v5.wait.server_setup_distribution_updates_changed',
     server_setup_distribution_updates_unread: 'setup.v5.wait.server_setup_distribution_updates_unread',
     server_setup_peer_names_unreachable: 'setup.v5.wait.server_setup_peer_names_unreachable',

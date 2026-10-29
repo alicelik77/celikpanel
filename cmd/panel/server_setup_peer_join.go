@@ -474,6 +474,10 @@ func (p *Panel) handleServerSetupPeerDKIM(w http.ResponseWriter, r *http.Request
 		return
 	}
 	changed, err := p.writeServerSetupPeerDKIM(ctx, d.InfrastructureDNS.Zone, int64(zoneID), dkimSelector+"._domainkey."+d.MainDomain, value)
+	if errors.Is(err, errServerSetupPeerDKIMRemoved) {
+		writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_dkim_removed", "The DKIM record setup wrote for the other server was removed on the main DNS server by its owner, and an owner's deletion is kept. You, the owner: add the record back yourself in Domains on the main DNS server, or keep it removed; then mail from the other server is not signed for the main domain.", nil)
+		return
+	}
 	if errors.Is(err, errServerSetupPeerDKIMConflict) {
 		writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_dkim_conflict", "The zone already has a different DKIM record at this name that setup did not write. Change or remove it in Domains on the main DNS server, then review the other server's plan again.", nil)
 		return
@@ -502,6 +506,11 @@ func (p *Panel) handleServerSetupPeerDKIM(w http.ResponseWriter, r *http.Request
 }
 
 var errServerSetupPeerDKIMConflict = errors.New("a different DKIM record setup did not write exists")
+
+// errServerSetupPeerDKIMRemoved: setup wrote this DKIM record and the owner
+// deleted it; the owner's deletion wins, as for every DNS record setup
+// wrote (review fix, item 6).
+var errServerSetupPeerDKIMRemoved = errors.New("the owner removed the DKIM record setup wrote")
 
 // writeServerSetupPeerDKIM writes the other server's DKIM record into the
 // setup's zone as a record setup wrote (the written list), replaces only a
@@ -555,6 +564,10 @@ func (p *Panel) writeServerSetupPeerDKIM(ctx context.Context, zone string, zoneI
 		return false, nil
 	case len(found) > 1 || (len(found) == 1 && !setupWrote(found[0].content)):
 		return false, errServerSetupPeerDKIMConflict
+	case len(found) == 0 && slices.ContainsFunc(written.Records, func(record serverSetupInfrastructureDNSWrittenRecord) bool {
+		return record.Name == name && record.Type == "TXT"
+	}):
+		return false, errServerSetupPeerDKIMRemoved
 	case len(found) == 1:
 		if _, err := tx.ExecContext(ctx, `UPDATE pdns_records SET content=?,disabled=0 WHERE id=?`, content, found[0].id); err != nil {
 			return false, err
@@ -713,6 +726,8 @@ func (p *Panel) sendServerSetupPeerDKIM(ctx context.Context, plan serverSetupPla
 	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_link_unauthorized":
 		return serverSetupPeerLinkRevoked(p.serverSetupIsSecond(ctx))
 	// A definite refusal: the owner's own record is in the way.
+	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_dkim_removed":
+		return &serverSetupChildFailure{Code: refusal.Code, Message: "The DKIM record setup wrote for the other server was removed on the main DNS server by its owner, and an owner's deletion is kept. You, the owner: add the record back yourself in Domains on the main DNS server, or keep it removed; then mail from the other server is not signed for the main domain."}
 	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_dkim_conflict":
 		return &serverSetupChildFailure{Code: refusal.Code, Message: "The main DNS server already has a different DKIM record at this name that setup did not write. Change or remove it there in Domains → " + plan.Draft.MainDomain + ", then review this plan again."}
 	case errors.As(callErr, &refusal):

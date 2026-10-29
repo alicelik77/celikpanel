@@ -233,6 +233,25 @@ func TestServerSetupPeerDKIMBeforeTheMainIsReadyWaits(t *testing.T) {
 	if _, err := db.Exec(`UPDATE pdns_records SET content='"v=DKIM1; k=rsa; p=QUJD"' WHERE name=? AND type='TXT'`, dkimSelector+"._domainkey.example.test"); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := db.Exec(`UPDATE panel_settings SET value=replace(value,'p=OWNER','p=QUJD') WHERE key=?`, serverSetupInfrastructureDNSWrittenKey("example.test")); err != nil {
+		t.Fatal(err)
+	}
+	// Review fix (item 6): the owner deletes the record setup wrote; the
+	// deletion wins and the same record again is refused with its reason.
+	if _, err := db.Exec(`DELETE FROM pdns_records WHERE name=? AND type='TXT'`, dkimSelector+"._domainkey.example.test"); err != nil {
+		t.Fatal(err)
+	}
+	if kind, code := send(); kind != "failed" || code != "server_setup_peer_dkim_removed" {
+		t.Fatalf("the owner's deletion: %s %s", kind, code)
+	}
+	var back int
+	db.QueryRow(`SELECT COUNT(*) FROM pdns_records WHERE name=? AND type='TXT'`, dkimSelector+"._domainkey.example.test").Scan(&back)
+	if back != 0 {
+		t.Fatal("the deleted record was written again")
+	}
+	if _, err := db.Exec(`INSERT INTO pdns_records(domain_id,name,type,content,ttl) SELECT id,?,'TXT','"v=DKIM1; k=rsa; p=QUJD"',3600 FROM pdns_domains WHERE name='example.test'`, dkimSelector+"._domainkey.example.test"); err != nil {
+		t.Fatal(err)
+	}
 	// Beta-1 third re-run N3: the main finished while its link is live (it
 	// waits for the backup's report): the backup's DKIM is still taken.
 	if _, err := db.Exec(`UPDATE server_setup_executions SET status='succeeded' WHERE id=?`, pair.execution.ID); err != nil {
