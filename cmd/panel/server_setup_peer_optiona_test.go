@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -240,6 +241,20 @@ func TestServerSetupPeerDKIMBeforeTheMainIsReadyWaits(t *testing.T) {
 	if kind, code := send(); kind == "failed" || code == "server_setup_peer_dkim_not_running" {
 		t.Fatalf("the finished main refused the backup's DKIM over a live link: %s %s", kind, code)
 	}
+	// Review fix (item 5): from another address than the joined one it is
+	// refused and nothing is written.
+	link, _ = pair.second.panel.readServerSetupLink(context.Background())
+	pair.first.panel.setupLink.sourceIP = func(*http.Request) (netip.Addr, bool) { return netip.MustParseAddr("198.51.100.99"), true }
+	request := serverSetupPeerDKIMRequest{Protocol: serverSetupLinkProtocol, RequestID: strings.Repeat("8", 32), Domain: "example.test", Selector: dkimSelector, Value: "v=DKIM1; k=rsa; p=WRONG"}
+	if w := joinMachineRequest(t, pair.first, serverSetupPeerDKIMPath, link.bearer(), request); w.Code != http.StatusForbidden || !strings.Contains(w.Body.String(), "server_setup_peer_dkim_source") {
+		t.Fatalf("a DKIM record from another address: %d %s", w.Code, w.Body.String())
+	}
+	var wrong int
+	db.QueryRow(`SELECT COUNT(*) FROM pdns_records WHERE content LIKE '%WRONG%'`).Scan(&wrong)
+	if wrong != 0 {
+		t.Fatal("a record from another address was written")
+	}
+	pair.first.panel.setupLink.sourceIP = func(*http.Request) (netip.Addr, bool) { return netip.MustParseAddr("198.51.100.20"), true }
 	if err := pair.first.panel.revokeServerSetupLinkSide(context.Background(), serverSetupLinkRoleFirst); err != nil {
 		t.Fatal(err)
 	}

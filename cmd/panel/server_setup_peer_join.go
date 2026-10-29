@@ -403,6 +403,19 @@ func (p *Panel) handleServerSetupPeerDKIM(w http.ResponseWriter, r *http.Request
 	// channel, not a standing record interface. Either server can be the
 	// main DNS server, so being bound is not the gate: a second server that
 	// is the main (Option A) has no binding step at all.
+	// On the first server the record comes from the second server's joined
+	// address, exactly as its ready report does (review fix, item 5).
+	if role == serverSetupLinkRoleFirst {
+		record, err := p.readServerSetupPeerRecord(ctx, role)
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		if source, known := p.serverSetupJoinSourceIP(r); !record.Found || !known || source.String() != record.PeerSource {
+			writeServerSetupJoinRefusal(w, http.StatusForbidden, "server_setup_peer_dkim_source", "This DKIM record does not come from the second server's joined address; it is not written.", nil)
+			return
+		}
+	}
 	// A main whose run finished keeps its link open until the backup reports
 	// ready (P7): while that link is live, the backup's DKIM for the bound
 	// join is still taken (Beta-1 third re-run N3).
