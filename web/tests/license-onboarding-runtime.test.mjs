@@ -11,6 +11,7 @@ const require = createRequire(import.meta.url);
 const dataModule = text => 'data:text/javascript;base64,' + Buffer.from(text).toString('base64');
 const reactURL = pathToFileURL(require.resolve('react')).href;
 const accessURL = dataModule(ts.transpileModule(readFileSync(new URL('../src/lib/accessObservation.ts',import.meta.url),'utf8'), {compilerOptions:{module:ts.ModuleKind.ES2022,target:ts.ScriptTarget.ES2020}}).outputText);
+const offlineURL = dataModule(ts.transpileModule(readFileSync(new URL('../src/lib/licenseOffline.ts',import.meta.url),'utf8'), {compilerOptions:{module:ts.ModuleKind.ES2022,target:ts.ScriptTarget.ES2020}}).outputText);
 const stub = dataModule(`
   import React from '${reactURL}';
   export const useAuth = () => globalThis.licenseTest.auth;
@@ -20,7 +21,7 @@ const stub = dataModule(`
   export const useI18n = () => ({ t: key => key, locale: 'en', screensReady: true, screensFailed: false });
  export const PanelAddressHint = () => null;
  export const RecoveryStatus = () => null;
- export const RecoveryAccess = props => React.createElement('aside', {failed:true,onCheck:props.onRetry,cause:props.cause}, 'recovery');
+ export const RecoveryAccess = props => React.createElement('aside', {failed:true,onCheck:props.onRetry,cause:props.cause,licenseReason:props.licenseReason}, 'recovery');
  export const BrandMark = () => null, LanguageSwitcher = () => null, ThemeSwitcher = () => null, ChangePasswordModal = () => null, ToastContainer = () => null;
  export const LicensePanel = () => React.createElement('section', null, 'activation');
  export const PanelUpdateCard = props => React.createElement('article', props, 'signed-update');
@@ -53,7 +54,7 @@ async function component(name) {
   const source = readFileSync(new URL(`../src/components/${name}.tsx`, import.meta.url), 'utf8');
   const compiled = ts.transpileModule(source, { compilerOptions: {
     jsx: ts.JsxEmit.React, module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2020,
-  }}).outputText.replace(/import\('\.\/LicenseLockScreen'\)/g, `import('${stub}')`).replace(/from ['"]([^'"]+)['"]/g, (_, specifier) => `from '${specifier === 'react' ? reactURL : specifier.endsWith('/accessObservation') ? accessURL : specifier.endsWith('/AccessHold') ? holdURL : specifier.endsWith('/systemUpdateRestartSignal') ? restartURL : stub}'`);
+  }}).outputText.replace(/import\('\.\/LicenseLockScreen'\)/g, `import('${stub}')`).replace(/from ['"]([^'"]+)['"]/g, (_, specifier) => `from '${specifier === 'react' ? reactURL : specifier.endsWith('/accessObservation') ? accessURL : specifier.endsWith('/licenseOffline') ? offlineURL : specifier.endsWith('/AccessHold') ? holdURL : specifier.endsWith('/systemUpdateRestartSignal') ? restartURL : stub}'`);
   return (await import(dataModule(`import React from '${reactURL}';\n${compiled}`)))[name];
 }
 const LicenseOnboarding = await component('LicenseOnboarding');
@@ -640,4 +641,81 @@ test('set17 D1: the update navigation lock survives the restart and is still hel
   await clock.advance(10000);
   assert.equal(lease.at(-1), false, 'the bounded lease ends by itself as before');
  } finally { await endRestart(); clock.restore(); await cleanup(); }
+});
+
+// D-039: the license page explains the license check itself.
+const drawn = () => JSON.stringify(tree.toJSON());
+const flush = () => act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
+const answering = answers => {
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options });
+    const next = answers.length > 1 ? answers.shift() : answers[0];
+    return typeof next === 'function' ? next() : Response.json(next);
+  };
+};
+test('license page: an unreachable service inside the offline window says nothing is needed and until when', async () => {
+  fixture('admin', 'active'); globalThis.licenseTest.search = '';
+  answering([{ state: 'active', can_provision: true, expires_at: 2000000000, check: 'unreachable', offline_for_seconds: 5 * 86400, verified_seconds_ago: 2 * 86400 }]);
+  try {
+    await mount(LicensePanel); await flush();
+    const box = tree.root.findByProps({ 'data-license-check': 'unreachable' });
+    assert.equal(box.props.role, 'status');
+    for (const key of ['license.offline.title', 'license.offline.help', 'license.lastCheck', 'license.state.active']) assert.ok(drawn().includes(key), key);
+    assert.ok(!drawn().includes('recovery.licenseHelp'));
+  } finally { await cleanup(); }
+});
+test('license page: the last 48 hours warn and say who acts; a lapse names its cause instead of the generic text', async () => {
+  for (const [answer, keys, role] of [
+    [{ state: 'active', can_provision: true, check: 'unreachable', offline_for_seconds: 40 * 3600, verified_seconds_ago: 128 * 3600 }, ['license.offline.soonTitle', 'license.offline.soonHelp'], 'alert'],
+    [{ state: 'active', can_provision: true, check: 'clock_behind', offline_for_seconds: 5 * 86400 }, ['license.clock.title', 'license.clock.help'], 'alert'],
+    [{ state: 'verification_unavailable', can_provision: false, reason: 'offline_ended' }, ['license.offlineEnded.title', 'license.offlineEnded.help']],
+    [{ state: 'verification_unavailable', can_provision: false, reason: 'clock_behind' }, ['license.clockBehind.title', 'license.clockBehind.help']],
+    [{ state: 'verification_unavailable', can_provision: false }, ['recovery.licenseTitle', 'recovery.licenseHelp']],
+    [{ state: 'active', can_provision: true }, ['license.state.active']],
+  ]) {
+    fixture('admin', 'active'); globalThis.licenseTest.search = '';
+    answering([answer]);
+    try {
+      await mount(LicensePanel); await flush();
+      for (const key of keys) assert.ok(drawn().includes(key), `${JSON.stringify(answer)} lacks ${key}`);
+      const boxes = tree.root.findAll(node => node.props && node.props['data-license-check'] !== undefined && typeof node.type === 'string');
+      if (role) assert.equal(boxes[0].props.role, role);
+      else assert.equal(boxes.length, 0, 'only management that is open carries a check box');
+      // A lapse is not a key problem: no activation form for it.
+      if (answer.state === 'verification_unavailable') assert.equal(tree.root.findAllByType('form').length, 0);
+      assert.ok(!!button('license.refresh'), 'Check again stays available');
+    } finally { await cleanup(); }
+  }
+});
+test('license page: a failed Check again keeps its error and reads the status again to show the offline window', async () => {
+  fixture('admin', 'active'); globalThis.licenseTest.search = '';
+  answering([
+    { state: 'active', can_provision: true },
+    () => Response.json({ code: 'license_action_failed', error: 'license service unavailable; existing license retained' }, { status: 400 }),
+    { state: 'active', can_provision: true, check: 'unreachable', offline_for_seconds: 5 * 86400, verified_seconds_ago: 3600 },
+  ]);
+  try {
+    await mount(LicensePanel); await flush();
+    await act(async () => button('license.refresh').props.onClick()); await flush(); await flush();
+    assert.deepEqual(calls.map(call => call.options?.method ?? 'GET'), ['GET', 'POST', 'GET']);
+    assert.equal(tree.root.findAll(node => node.props?.role === 'alert' && typeof node.type === 'string' && node.props.children === 'license.unavailable').length, 1, 'the failed check is still said');
+    assert.ok(drawn().includes('license.offline.title'), 'the re-read shows how long management stays open');
+    assert.equal(button('license.refresh').props.disabled, false);
+  } finally { await cleanup(); }
+});
+test('the lock screen is told why verification lapsed (D-039), and only for a license cause', async () => {
+  for (const reason of ['offline_ended', 'clock_behind', undefined, 'unknown-reason']) {
+    fixture('admin', 'verification_unavailable');
+    globalThis.fetch = async (url, options) => {
+      calls.push({ url, options });
+      return Response.json({ state: 'verification_unavailable', observation: 'unavailable', can_use_panel: false, valid_until: 0, valid_for_seconds: 0, ...(reason ? { reason } : {}) });
+    };
+    try {
+      await act(async () => { tree = Renderer.create(React.createElement(LicenseOnboarding, null, React.createElement('main', null, 'management'))); });
+      const aside = tree.root.findByType('aside');
+      assert.equal(aside.props.cause, 'license');
+      assert.equal(aside.props.licenseReason, reason === 'offline_ended' || reason === 'clock_behind' ? reason : undefined);
+      assert.equal(tree.root.findAllByType('main').length, 0);
+    } finally { await cleanup(); }
+  }
 });

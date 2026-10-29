@@ -60,24 +60,25 @@ func TestLicenseObservationOutageKeepsExactDeadlineAndKnownExpiry(t *testing.T) 
 	if err := m.save(e); err != nil {
 		t.Fatal(err)
 	}
-	before, _ := os.ReadFile(m.file)
+	before := signedPart(t, m.file)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(503) }))
 	defer server.Close()
 	m.endpoint = server.URL
-	now = now.Add(45 * time.Second)
-	if s := m.AccessStatus(context.Background()); s.State != "active" || s.Observation != ObservationKnown || !s.CanProvision || s.OfflineUntil != c.IssuedAt+60 {
+	now = now.Add(time.Hour)
+	if s := m.AccessStatus(context.Background()); s.State != "active" || s.Observation != ObservationKnown || !s.CanProvision ||
+		s.OfflineUntil != c.IssuedAt+7*86400 || s.Check != CheckUnreachable {
 		t.Fatal(s)
 	}
-	now = now.Add(15 * time.Second)
-	if s := m.AccessStatus(context.Background()); s.State != "verification_unavailable" || s.Observation != ObservationUnavailable || s.CanProvision || s.OfflineUntil != c.IssuedAt+60 {
+	now = time.Unix(c.OfflineUntil, 0)
+	if s := m.AccessStatus(context.Background()); s.State != "verification_unavailable" || s.Observation != ObservationUnavailable ||
+		s.CanProvision || s.OfflineUntil != c.IssuedAt+7*86400 || s.Reason != ReasonOfflineEnded {
 		t.Fatal(s)
 	}
 	now = time.Unix(c.ExpiresAt, 0)
 	if s := m.AccessStatus(context.Background()); s.State != "expired" || s.Observation != ObservationKnown || s.CanProvision {
 		t.Fatal(s)
 	}
-	after, _ := os.ReadFile(m.file)
-	if string(before) != string(after) {
+	if signedPart(t, m.file) != before {
 		t.Fatal("outage rewrote receipt")
 	}
 }

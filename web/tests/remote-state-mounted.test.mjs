@@ -95,6 +95,8 @@ const own = {
   '/lib/componentName': compileSource('lib/componentName.ts', () => stub),
   // The infrastructure DNS zones beside the domains (2026-10-16).
   '/lib/infrastructureZones': compileSource('lib/infrastructureZones.ts', besideRemote),
+  // What the license check itself says (D-039, 2026-10-30).
+  '/lib/licenseOffline': compileSource('lib/licenseOffline.ts', () => stub),
 };
 // The two notices of 10 Oct 2026 are the shipped ones: what a service action
 // ended with, and a change whose one-time result is not kept.
@@ -1157,6 +1159,34 @@ test('Dashboard license notice: it speaks only about an answer, and "could not b
     assert.equal(tree.toJSON(), null);
   } finally {
     await cleanup();
+  }
+});
+
+test('Dashboard license notice (D-039): an unreachable license service inside the offline window is calm, its last 48 hours say who acts, a lapse names its cause', async () => {
+  const day = 86400;
+  for (const [answer, drawn, role] of [
+    [{ state: 'active', can_provision: true }, null],
+    [{ state: 'active', can_provision: true, offline_for_seconds: 6 * day, verified_seconds_ago: day }, null],
+    [{ state: 'active', can_provision: true, check: 'unreachable', offline_for_seconds: 5 * day, verified_seconds_ago: 2 * day }, ['license.offline.title', 'license.noticeOffline'], 'status'],
+    [{ state: 'active', can_provision: true, check: 'unreachable', offline_for_seconds: day, verified_seconds_ago: 6 * day }, ['license.offline.soonTitle', 'license.noticeOfflineSoon'], 'alert'],
+    [{ state: 'active', can_provision: true, check: 'clock_behind', offline_for_seconds: 5 * day }, ['license.clock.title', 'license.clock.help'], 'alert'],
+    [{ state: 'active', can_provision: true, check: 'something-new', offline_for_seconds: 5 * day }, null],
+    [{ state: 'verification_unavailable', can_provision: false, reason: 'offline_ended' }, ['license.offlineEnded.title', 'license.offlineEnded.help']],
+    [{ state: 'verification_unavailable', can_provision: false, reason: 'clock_behind' }, ['license.clockBehind.title', 'license.clockBehind.help']],
+  ]) {
+    serve({ '/api/v1/panel/license': json(answer) });
+    try {
+      await mount(LicenseNotice);
+      if (!drawn) {
+        assert.equal(tree.toJSON(), null, `${JSON.stringify(answer)} drew a notice`);
+        continue;
+      }
+      for (const key of drawn) assert.ok(has(key), `${JSON.stringify(answer)} lacks ${key}`);
+      assert.ok(!has('license.restricted') && !has('license.noticeUnverified'), 'a known check cause fell back to the generic copy');
+      if (role) assert.equal(tree.root.findByProps({ 'aria-label': 'license.title' }).props.role, role);
+    } finally {
+      await cleanup();
+    }
   }
 });
 

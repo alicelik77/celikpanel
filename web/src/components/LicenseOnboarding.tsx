@@ -279,7 +279,7 @@ export function LicenseOnboarding({ children, onAccessChange, onRecoveryChange, 
     </AccessHold>;
     const loading = <div className="min-h-screen flex items-center justify-center bg-bg"><Spinner /></div>;
     if (screensFailed) return <RecoveryAccess user={user} cause="bundle" onRetry={() => void check()} />;
-    if (failed && !allowed) return <RecoveryAccess user={user} cause={cause} onRetry={() => void check()} />;
+    if (failed && !allowed) return <RecoveryAccess user={user} cause={cause} licenseReason={cause === 'license' && known ? known.reason : undefined} onRetry={() => void check()} />;
     // Before the quiet time a first read that has not answered is not a page: only the background.
     if (quiet) return <div className="min-h-screen bg-bg" aria-busy="true" data-access-quiet="" />;
     if (!screensReady) return loading;

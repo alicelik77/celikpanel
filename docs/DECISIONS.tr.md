@@ -82,6 +82,58 @@ Kurulu bir sunucuda ölçülmedi. Bu değişiklik hiçbir P0 işini kapatmaz.
 
 ---
 
+## D-039 · Bir başarılı lisans kontrolü yönetimi çevrimdışı en çok yedi gün açık tutar; kullanımdaki panel yaklaşık saatte bir kontrol eder
+
+*30 Ekim 2026 (saat tarihi) · Sahibin 2026-10-29 onayı (lisans doğrulaması çevrimdışı yaklaşık 7 gün geçerli, yaklaşık saatte bir kontrol: "ok") · Kaynak değişikliği `feat/license-offline-grace` dalında; yayımlanmadı, kurulu panel güncellenmedi*
+
+**Neden.** #134'ten (v0.1.0-alpha.64) beri hizmet bir dakikalık süre imzalıyor,
+panel de her kaydı `issued_at + 60 sn` ile sınırlıyordu. celikpanel.net'in bir
+dakikadan uzun tek bir kesintisi bu yüzden kurulu bütün panellerin yönetim
+ekranlarını aynı anda kapatıyordu (siteler, e-posta ve DNS çalışmaya devam
+ediyordu). Bu bütün müşteriler için tek hata noktasıdır ve D-022'deki sahip
+bağımsızlığıyla çelişir.
+
+**Karar.**
+- Üyelik hizmeti `refresh_after = şimdi + 3600` ve
+  `offline_until = min(şimdi + 7 gün, yıllık bitiş)` imzalar; v1 biçimi yedi güne
+  zaten izin veriyordu, biçim değişmez.
+- Panel `min(offline_until, issued_at + 7 gün, bitiş)` sınırını uygular; `refresh_after`
+  ile bir saatin erken olanında, sunucuya özgü belirlenimci sapmayla beşte bire kadar
+  erken kontrol eder. Başarısızlıkta 1→30 dakika bekler (o da sapmalı), hiçbir zaman
+  kaydın geçersizleşeceği andan sonra değil; geçersizleşince kullanımda 30 saniyede
+  bir. Hizmete yalnız kimliği doğrulanmış kullanım ya da "Tekrar kontrol et" ulaşır;
+  boştaki sunucuda zamanlayıcı yoktur.
+- Zamanı gelen kontrol, kayıt geçerliyken en çok 3 sn bekler (tek ortak yenileme);
+  böylece erişilebilen hizmetin açık reddi (kaldırma, taşıma ya da anahtar
+  değiştirme sonrası `invalid_activation`; `invalid_license`, `license_in_use`,
+  `license_expired`) yönetimi onu saptayan istekte kapatır; erişilemeyen hizmet her
+  bekleme aralığında en çok bir isteği 3 sn geciktirir.
+- Saat güvenliği: süre hizmetin `issued_at` değerine bağlıdır; ondan 5 dakikadan
+  fazla önceki, kalıcı yerel üst işaret `seen_at`'ın 5 dakikadan fazla altındaki ya
+  da çalışırken geri alınan saat (duvar saati ile monoton zaman) bir kontrol başarılı
+  olana kadar `verification_unavailable` / `clock_behind` verir.
+- D-024 yönlendirmesi: lisans sayfası ve Pano "lisans hizmetine ulaşılamıyor;
+  yapmanız gereken bir şey yok; … tarihine kadar çalışır" der, son 48 saatte kimin ne
+  yapacağını söyler (sunucu yöneticisi: celikpanel.net'e giden HTTPS'e izin verip
+  Tekrar kontrol et), süre dolarsa kurtarma ekranı nedeni adıyla söyler.
+
+**Uyumluluk.** Eski paneller (alpha.64 … bu sürüm) yedi günlük kaydı kabul eder ve
+kendi 60 saniyelik sınırlarını ve 45 saniyelik yenilemelerini korur; eski hizmetin
+60 saniyelik kaydını alan yeni panel tam o dakikayı uygular. alpha.64 öncesi
+paneller imzalı süreyi zaten uyguluyordu. Yerel `seen_at` alanını eski paneller
+geri dönüşte yok sayar.
+
+**Dayanıklılık sözleşmesi (D-025).** Etkilenen: erişim kapısı ve kalıcı lisans
+kanıtı (`license.json` isteğe bağlı yerel `seen_at` alanını kazanır; imzalı içerik
+değişmez). Kurtarma: süre dolması ya da saat sorunu bir sonraki başarılı kontrolle,
+kullanımda ya da "Tekrar kontrol et" ile düzelir; doğrulanmış yanıt olmadan hiçbir
+şey yeniden yazılmaz. Kanıt: bileşen testleri (licensing, cmd/panel, web, PHP hizmeti
+ve HTTP akışı, PHP↔Go birlikte çalışma, değiştirilmemiş alpha.112 licensing paketinin
+yeni hizmet kaydıyla denenmesi). Kalan açıklar: gerçek bir kurulumda çok günlük
+kesinti denemesi yapılmadı; sunucuda root olan kişi her yerel kontrolü yine aşabilir
+(eski dosyayı geri koyup saati geri almak), önceden olduğu gibi; üyelik hizmeti
+değişikliğini sahip yayımlar.
+
 ## D-038 · Sürüm, kullanım ve güvenlik her bileşen için tek ilkeye bağlıdır: sahibi seçer, panel önerir ve uyarır, kullanımda olan kaldırılmaz, hiçbir şey sessizce taşınmaz, yamalar işletim sisteminin işidir
 
 *24 Ekim 2026 (saat tarihi) · Sahibin 24 Ekim 2026 yönü, aynı gün onaylandı ("onaylıyorum") · Bir ilkedir, teslim edilmiş bir yeteneğin beyanı değildir: sondaki "Bugün ne var" bölümüne bakın*

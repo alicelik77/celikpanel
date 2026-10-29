@@ -84,6 +84,57 @@ Not measured on an installed server. This amendment closes no P0 item.
 
 ---
 
+## D-039 · One successful license check keeps management open for up to seven days offline; panels in use check about hourly
+
+*October 30, 2026 (clock date) · Owner approval of 2026-10-29 ("ok" to: license verification valid about 7 days offline, checked about hourly) · Source change on `feat/license-offline-grace`; not deployed, no installed panel updated*
+
+**Why.** Since #134 (v0.1.0-alpha.64) the service signed a one-minute window and
+the panel capped every receipt at `issued_at + 60 s`. One central outage of
+celikpanel.net longer than a minute therefore closed the management screens of
+every installed panel at once (sites, mail and DNS kept running). That is a
+single point of failure across all customers, at odds with D-022's owner
+independence.
+
+**Decision.**
+- The membership service signs `refresh_after = now + 3600` and
+  `offline_until = min(now + 7 days, annual expiry)`; the v1 format already
+  permitted seven days, so no format change.
+- The panel honours `min(offline_until, issued_at + 7 days, expiry)` and checks at
+  the earlier of `refresh_after` and one hour, minus up to a fifth as
+  deterministic per-server jitter. Failures back off 1→30 minutes (also jittered),
+  never past the lapse; after a lapse, 30 seconds on use. Only authenticated use
+  or "Check again" contacts the service; an idle server has no timer.
+- A due check waits at most 3 s while the receipt is still valid (single shared
+  refresh), so a reachable service's explicit rejection (`invalid_activation` after
+  remove, release or key replacement; `invalid_license`, `license_in_use`,
+  `license_expired`) still closes management on the very request that discovered
+  it; an unreachable service costs one request at most 3 s per retry delay.
+- Clock safety: the window is anchored on the service's `issued_at`; a clock more
+  than 5 minutes before it, more than 5 minutes below the persisted local
+  high-water mark `seen_at`, or set back while running (wall vs. monotonic) gives
+  `verification_unavailable` / `clock_behind` until a check succeeds.
+- D-024 guidance: the license page and Dashboard say "the license service cannot
+  be reached; nothing to do; works until …", warn in the last 48 hours with who
+  acts (the server administrator: allow outbound HTTPS to celikpanel.net, then
+  Check again), and a lapse names its cause on the recovery screen.
+
+**Compatibility.** Old panels (alpha.64 … this release) accept seven-day receipts
+and keep their own 60-second cap and 45-second refresh; new panels receiving the
+old service's 60-second receipt honour exactly that minute. Panels before
+alpha.64 already honoured the signed window. The local `seen_at` field is ignored
+by older panels on downgrade.
+
+**Resilience contract (D-025).** Affected: access gate and persisted license
+evidence (`license.json` gains the optional local `seen_at`; signed payload
+unchanged). Recovery: a lapse or clock fault recovers by the next successful
+check, on use or "Check again"; nothing is rewritten without a verified answer.
+Evidence: component tests (licensing, cmd/panel, web, PHP service and HTTP flow,
+PHP↔Go interop, an unchanged alpha.112 licensing package against a new-service
+receipt). Remaining gaps: no native multi-day outage run on a real installation;
+root on the server can still defeat any local check (restore an old file and set
+the clock back), as before; the membership service change must be deployed by
+the owner.
+
 ## D-038 · Versions, use and security follow one principle for every component: the owner chooses, the panel recommends and warns, nothing in use is removed, nothing is moved silently, and patches are the operating system's job
 
 *October 24, 2026 (clock date) · Owner direction of 2026-10-24, approved the same day ("onaylıyorum") · A principle, not a statement of shipped capability: see "What exists today" at the end*
