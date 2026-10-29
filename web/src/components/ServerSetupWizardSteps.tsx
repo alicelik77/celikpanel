@@ -184,7 +184,7 @@ export function SetupDNSHomeStep({ draft, set, onMode, onMainDNS, catalog, serve
             {software}
         </div> : <>
         <div className="grid gap-3">
-            <Choice name="setup-dns" value="local" checked={draft.dns_mode === 'local'} onChange={() => onMode('local')} title={t('setup.v2.dns.local')} tag={oneServer ? undefined : t('setup.v2.recommended')} help={t(oneServer ? 'setup.v5.dns.standalone.help' : 'setup.v2.dns.local.help')} />
+            <Choice name="setup-dns" value="local" checked={draft.dns_mode === 'local'} onChange={() => onMode('local')} title={t('setup.v2.dns.local')} help={t(oneServer ? 'setup.v5.dns.standalone.help' : 'setup.v2.dns.local.help')} />
             <Choice name="setup-dns" value="external" checked={draft.dns_mode === 'external'} onChange={() => onMode('external')} title={t('setup.v2.dns.external')} help={t('setup.v2.dns.external.help')} />
             <Choice name="setup-dns" value="existing" checked={draft.dns_mode === 'existing'} onChange={() => onMode('existing')} title={t('setup.v2.dns.existing')} help={t('setup.v2.dns.existing.help')} />
         </div>
@@ -546,6 +546,11 @@ export function SetupRegistrarCard({ draft, mainDomain, now }: { draft: ServerSe
     const ready = now || backupReady;
     const shown = ready || (early && !!live?.now_allowed);
     const done = !!live && live.items.length > 0 && live.items.every(item => item.state === 'ok' || (item.state !== 'unknown' && item.vars?.optional === 'true'));
+    // The registrar already lists these nameservers (and every required glue
+    // record): nothing is asked of the owner there; only the servers' own
+    // answers are awaited. / Kayitci zaten bu ad sunucularini gosteriyor.
+    const registrarDone = !!live && live.items.some(item => item.id === 'nameservers' && item.state === 'ok')
+        && live.items.filter(item => item.id.startsWith('glue')).every(item => item.state === 'ok' || item.vars?.optional === 'true');
     // Once everything answers correctly the card stops asking; opening the
     // step again reads once more. / Her sey dogruysa kart sormayi birakir.
     useRefreshEvery(remote, 60_000, !!domain && !done);
@@ -569,10 +574,11 @@ export function SetupRegistrarCard({ draft, mainDomain, now }: { draft: ServerSe
     };
     return <section aria-labelledby="setup-registrar-title" className="mt-5 space-y-4" data-setup-registrar={shown ? 'now' : 'later'}>
         {done ? <SetupLead tone="done" title={t('setup.v4.doneTitle')} why={t('setup.v4.doneWhy')} who={t('setup.v2.provider.whoNone')} next={t('setup.v4.doneNext')} then={t('setup.v2.registrar.then')} />
+            : registrarDone ? <SetupLead title={t('setup.v2.registrar.alreadyTitle')} why={t('setup.v2.registrar.alreadyWhy', { domain: domain || '—' })} who={t('setup.v2.provider.whoNone')} next={t('setup.v2.registrar.alreadyNext')} then={t('setup.v2.registrar.then')} />
             : <SetupLead title={t(shown ? 'setup.v2.registrar.nowTitle' : 'setup.v2.registrar.laterTitle')}
                 why={t(shown ? 'setup.v2.registrar.nowWhy' : 'setup.v2.registrar.laterWhy', { domain: domain || '—', name: draft.panel_domain || '—' })}
                 who={t('setup.v2.registrar.who')} next={t(glue.length ? 'setup.v2.registrar.nextGlue' : 'setup.v2.registrar.next')} then={t('setup.v2.registrar.then')} />}
-        {!ready && <div className="space-y-2 text-sm leading-6">
+        {!ready && !registrarDone && <div className="space-y-2 text-sm leading-6">
             {!early && <Button type="button" variant="secondary" onClick={() => setEarly(true)}>{t('setup.v4.early')}</Button>}
             {early && live && !live.now_allowed && <p role="status" className="text-fg-muted" data-setup-registrar-refused="">{t('setup.v4.earlyRefused')}</p>}
             {early && !live && <p role="status" className="text-fg-muted">{t('setup.v4.reading')}</p>}

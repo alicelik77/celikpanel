@@ -1477,6 +1477,23 @@ test('wizard v2: the registrar card reads the live check, waits for the backup a
 });
 
 
+test('wizard v2: a domain already delegated to this pair asks nothing at the registrar while the backup is awaited', async () => {
+    const local = { dns_mode: 'local', dns_role: 'primary', main_domain: 'example.com', panel_domain: 'panel.example.com', ns1: 'ns1.example.com', ns2: 'ns2.example.com', peer_ns: 'ns2.example.com', local_ip: '203.0.113.10', peer_ip: '198.51.100.20' };
+    const delegated = { zone: 'example.com', checked_at: new Date().toISOString(), now_allowed: true,
+        expected_ns: [{ name: 'ns1.example.com', server: 'main', ipv4: '203.0.113.10', ipv6: '2001:db8::10', glue_needed: true }, { name: 'ns2.example.com', server: 'backup', ipv4: '198.51.100.20', glue_needed: true }],
+        items: [{ id: 'answers_main', state: 'ok', vars: { ip: '203.0.113.10' } }, { id: 'answers_backup', state: 'waiting', vars: { ip: '198.51.100.20' } },
+            { id: 'glue_v4:ns1.example.com', state: 'ok', vars: { name: 'ns1.example.com', ip: '203.0.113.10' } }, { id: 'glue_v6:ns1.example.com', state: 'not_yet', vars: { name: 'ns1.example.com', ip: '2001:db8::10', optional: 'true' } },
+            { id: 'glue_v4:ns2.example.com', state: 'ok', vars: { name: 'ns2.example.com', ip: '198.51.100.20' } }, { id: 'nameservers', state: 'ok', vars: { expected: 'ns1.example.com, ns2.example.com' } }] };
+    waitingFixture(local, 'infrastructure_dns', url => url.startsWith('/api/v1/setup/delegation') ? Response.json(delegated) : null);
+    try {
+        await mount(); await settleReads();
+        assert.ok(textOf().includes('setup.v2.registrar.alreadyTitle') && textOf().includes('setup.v2.registrar.alreadyNext'), 'nothing to do at the registrar');
+        assert.equal(textOf().includes('setup.v2.registrar.laterWhy'), false, 'no "keeps working from where it is"');
+        assert.equal(textOf().includes('setup.v4.early'), false, 'no "do it now anyway" offer');
+        assert.equal(writes().length, 0, 'the card only reads');
+    } finally { await cleanup(); }
+});
+
 test('wizard v2: the registrar card stops asking once everything answers correctly', async () => {
     const local = { dns_mode: 'local', dns_role: 'primary', main_domain: 'example.com', panel_domain: 'panel.example.com', ns1: 'ns1.example.com', ns2: 'ns2.example.com', peer_ns: 'ns2.example.com', local_ip: '203.0.113.10', peer_ip: '198.51.100.20' };
     const done = { zone: 'example.com', checked_at: new Date().toISOString(), now_allowed: true,
@@ -1905,7 +1922,7 @@ test('wizard: the number of servers and the DNS software are the owner\'s choice
         await submit(); await submit(); await submit(); await submit();
         await type('setup-local_ip', '203.0.113.10');
         assert.ok(textOf().includes('setup.v2.dns.bind.help'), 'the BIND description stays');
-        assert.equal(textOf().split('setup.v2.recommended').length - 1, 1, 'only the own-DNS choice keeps a badge, none on BIND');
+        assert.equal(textOf().includes('setup.v2.recommended'), false, 'no badge on own DNS or on BIND');
         assert.ok(textOf().includes('setup.v5.dns.second.help'), 'the second server\'s sentence is in the DNS step\'s second-server box');
     } finally { await cleanup(); }
 });
