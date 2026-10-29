@@ -1870,15 +1870,20 @@ func (p *Panel) ensureServerSetupChild(ctx context.Context, plan serverSetupPlan
 	default:
 		return serviceOperation{}, errors.New("unknown service setup child")
 	}
+	successAudit := "server.setup.child:" + step.Target
 	failureAudit := "server.setup.child.failed:" + step.Target
-	p.launchServiceOperationWithAudit(op, plan.Actor, "queued", "server.setup.child:"+step.Target, failureAudit, release, runner,
+	p.launchServiceOperationWithAudit(op, plan.Actor, "queued", successAudit, failureAudit, release, runner,
 		func(ctx context.Context, actor serviceOperationActor, action string) {
 			// A refusal at admission is recorded on the step, not as one
-			// audit row per attempt.
-			if action == failureAudit+" — "+errCodeHostMutationBusy {
+			// audit row per attempt. Every other row keeps its fixed name.
+			if code, failed := strings.CutPrefix(action, failureAudit+" — "); failed {
+				if code == errCodeHostMutationBusy {
+					return
+				}
+				p.auditServiceOperation(ctx, actor, failureAudit+" — "+code)
 				return
 			}
-			p.auditServiceOperation(ctx, actor, action)
+			p.auditServiceOperation(ctx, actor, successAudit)
 		})
 	transferred = true
 	return op, nil
