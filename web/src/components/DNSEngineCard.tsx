@@ -14,7 +14,7 @@ import {
 import { useI18n } from '../i18n';
 import { dnsEngineText, type DNSEngineCopyKey } from '../i18n/dnsEngine';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
-import { dnsEngineIdentityReviewLocked, dnsEngineMutationsHeld } from '../lib/dnsIdentityPlan';
+import { dnsEngineIdentityReviewLocked, dnsEngineMutationsHeld, dnsEngineOwnerChanged } from '../lib/dnsIdentityPlan';
 import {
     DNS_ENGINE_IDS,
     decodeDNSEngineSnapshot,
@@ -1065,7 +1065,9 @@ export function DNSEngineCard({
                                 */}
                                 {dnsEngineMutationsHeld(snapshot)
                                     ? et('dnsEngine.stateHeld')
-                                    : et(`dnsEngine.state.${snapshot.state}` as DNSEngineCopyKey)}
+                                    : dnsEngineOwnerChanged(snapshot)
+                                      ? t('dnsov.s.engine_owner_changed.title')
+                                      : et(`dnsEngine.state.${snapshot.state}` as DNSEngineCopyKey)}
                             </span>
                             <span className="text-fg-muted">
                                 {et('dnsEngine.zoneSummary', {
@@ -1100,6 +1102,16 @@ export function DNSEngineCard({
                                 </span>
                             )}
                         </div>
+
+                        {dnsEngineOwnerChanged(snapshot) && (
+                            // The overview says the same notice (one code, one text).
+                            <div className="mt-4 space-y-1 rounded-lg border border-border bg-surface-2/40 px-3 py-2 text-sm leading-6" data-testid="dns-engine-owner-changed">
+                                <p className="font-semibold text-fg">{t('dnsov.s.engine_owner_changed.why')}</p>
+                                <p className="text-fg-muted">{t('dnsov.s.engine_owner_changed.who')}</p>
+                                <p className="text-fg">{t('dnsov.s.engine_owner_changed.next')}</p>
+                                <p className="text-fg-muted">{t('dnsov.s.engine_owner_changed.then')}</p>
+                            </div>
+                        )}
 
                         {snapshot.operation && (
                             <DNSEngineOperationProgress

@@ -112,8 +112,9 @@ func (p *Panel) runServiceInstall(
 		// component's own page, Server setup, mail profiles, a version added,
 		// Repair and an older tab alike. The browser only says what the owner
 		// confirmed; with nothing confirmed, a notable install is refused.
-		CheckInstalls:     true,
-		ConfirmedInstalls: req.ConfirmedInstalls,
+		CheckInstalls:        true,
+		ConfirmedInstalls:    req.ConfirmedInstalls,
+		AcceptedPointUpdates: req.AcceptedPointUpdates,
 	}, &resp); err != nil {
 		// A failed attempt must leave a trace. Netdata could not be installed
 		// on Debian (apt has no such package) and the audit log stayed SILENT —

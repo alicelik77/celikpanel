@@ -1,0 +1,7 @@
+# beta1 lab only, not persistent: the backup cannot reach the main's DNS (port 53), so its DNS step really waits
+table ip beta1block53 {
+    chain out_drop {
+        type filter hook output priority 10; policy accept;
+        ip daddr 192.0.3.10 meta l4proto { tcp, udp } th dport 53 counter drop
+    }
+}

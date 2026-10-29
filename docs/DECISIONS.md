@@ -2674,6 +2674,34 @@ step-time bounds of the native proof are single samples. Installed servers
 were not touched; the decision does not authorise updating them (the owner
 starts every panel update from the panel's own update screen).
 
+**Amendment, October 29, 2026 (owner decision after the Beta-1 VM run).** The
+gate pinned the exact measured build (4.9.17-0+deb13u1 and its daemon
+digest) so that what is offered is what was measured. On a fresh Debian 13
+the distribution's candidate had moved to 4.9.18-0+deb13u1, a security
+point release: the wizard offered PowerDNS as the main DNS server and the
+DNS step refused it and rolled back. The gate now holds the tested
+**series** (major.minor, 4.9) of **Debian's own archive build**, not the
+patch. One shared rule decides what the wizard offers, what the review
+accepts, what the Agent's preflight installs (`name=version` for the one
+candidate), what its post-install check accepts and what the independent
+recovery attestation accepts: a version with no epoch and a Debian archive
+revision (a backport, a repo.powerdns.com or a vendor build is refused by
+version everywhere), both packages at one 4.9 release. Provenance is the
+archive check: before the install, every archive APT names for the
+candidate must be Debian's own released suite or its security/updates
+pocket; an unreadable index is refused. After the install the source can no
+longer be read, so the post-install check and recovery rely on the version
+rule. The daemon is compared with the digest dpkg recorded for the installed
+package (md5sums): an integrity check that finds an on-disk change or
+corruption, not provenance. Neither check covers root on the host (who can
+change the files and the records together) or a compromised mirror that
+serves a validly signed archive. A candidate outside the rule is not
+offered, with its reason, and is refused at review. Host profile, topology
+and every other limit above are unchanged; a new major or minor release
+needs new measurement. Patch releases inside the series are accepted
+without a new native run, so a later point release that changes behaviour
+is a known limit.
+
 ---
 
 ## D-027 · Acceptance runs use a test-only fixture license; license policy is unchanged
@@ -3012,6 +3040,71 @@ Upcoming acceptance, not a claim. At Beta 1 the owner will wipe and reinstall bo
 servers for a clean first-install test; that run is where this check will first be
 seen on a real installation. Installed panels are still updated only by their
 owners from the panel's own update screen.
+
+
+### Amendment (2026-10-26): the main domain is the setup's zone, and the wizard says what this release cannot do
+
+*Owner-approved setup wizard v2, phase 1; in source for the v0.1.0-alpha.111
+candidate (not published); nothing measured on an installed server*
+
+The owner approved the redesigned wizard on 2026-10-26 ([Guided server
+setup](SERVER-SETUP-PLAN.md), entry of that date). Two product rules change:
+
+- **The main domain is the explicit intent for the infrastructure zone.** It
+  is asked once, first. When this server is the local main DNS server, the
+  setup prepares that zone's server-address records (the review shows them);
+  the earlier unticked "prepare these records here" option is gone. A backup
+  DNS server and an external or remote DNS home prepare no zone. The rule
+  that setup never creates a tenant, website, mailbox, MX, SPF or apex record
+  is unchanged.
+- **The wizard's component list comes from the catalogue.** Every catalogue
+  component appears with what the wizard does with it; one it cannot install
+  through setup says why and where it is installed instead.
+
+The release also states its limits on screen: one server cannot keep its own
+DNS yet, and with two servers the second server's IP address is still typed.
+Existing DNS ownership, topology and recovery invariants are unchanged.
+
+
+### Amendment (2026-10-28): setup writes the records the owner imports and the main domain's mail records
+
+*Owner-approved setup wizard v2, phase 2; in source for the v0.1.0-alpha.112
+candidate (not published); nothing measured on an installed server*
+
+The earlier rule that setup never creates an apex, `www`, MX, SPF or DMARC
+record changes for the main domain only, and only by the owner's explicit
+choices in the wizard: the existing public records the owner imports are
+written into the main domain's zone, and with email its MX, SPF, DMARC and
+DKIM are written. MX never moves without the owner (an imported old MX stays
+until the owner chooses "now"), SPF is merged, an old DMARC is kept unless
+replaced. These are the owner's records (editable in Domains); setup's own
+server addresses stay locked. Setup still creates no tenant, website or
+mailbox. Reverse DNS stays the server provider's: setup shows the exact rows
+for IPv4 and, when present, IPv6, and keeps a wrong or missing PTR as an open
+task it does not wait for (owner decision 2026-10-28; mail works without it but
+may be marked as spam). This changes the earlier final check, which waited
+for the IPv4 reverse DNS; a wrong mail name or address still blocks.
+
+### Amendment (2026-10-28): the second server joins by code; one server may keep its own DNS
+
+*Owner-approved setup wizard v2, phase 4 (Q1, Q4, Q5, Q7 of the 2026-10-26
+plan); in source for the v0.1.0-alpha.114 candidate (not published); nothing
+measured on an installed server*
+
+The earlier limits stated on screen are gone. One server may keep its own DNS
+as a standalone server (both nameserver names on it; no claim that a backup
+can be added later for BIND). With two servers the second server's address is
+never typed: it joins the first by a single-use code carrying the first
+panel's key fingerprint and a secret, and its names, address and main-domain
+mail choice come over that link and are bound to the first server's
+execution once. The join is the main administrator's consent to the second
+server's names and publishing connection (Q5). Either server may be the main
+DNS server (Q1, Option A): the first then installs no DNS software until the
+second joined and hands its prepared list over. ns1 is the main DNS server at
+setup time (Q2). The DNS pair is still the native primary/secondary transfer;
+the link only carries setup answers and the backup's records, and no hosted
+workload depends on it. Existing DNS ownership, topology and recovery
+invariants are unchanged; no schema change.
 
 ---
 

@@ -32,6 +32,15 @@ func (e *serverSetupDNSRolledBackError) Unwrap() []error {
 	return []error{errServerSetupDNSRolledBack, e.cause}
 }
 
+// serverSetupStandaloneDNS is one server keeping its own DNS (alpha.114,
+// D-021 Q7): both nameserver names point to this server and no peer exists.
+// Adding a backup DNS server later is not offered for BIND (a running BIND
+// cannot move from standalone to paired), so nothing claims it.
+// Tek sunucu kendi DNS'ini tutar: iki ad sunucusu adi da bu sunucuyu gosterir.
+func serverSetupStandaloneDNS(draft serverSetupDraft) bool {
+	return draft.DNSMode == setupDNSModeLocal && draft.ServerCount == 1
+}
+
 // setupDNSIdentity validates the reviewed topology without rewriting the OS,
 // panel address, mail identity or a saved authoritative ownership epoch.
 func setupDNSIdentity(draft serverSetupDraft) (dnsSetupRequest, string, error) {
@@ -46,6 +55,13 @@ func setupDNSIdentity(draft serverSetupDraft) (dnsSetupRequest, string, error) {
 	local, valid := canonicalIPv4(strings.TrimSpace(draft.LocalIP))
 	if !valid {
 		return request, "", errors.New("local DNS IPv4 address is invalid")
+	}
+	if serverSetupStandaloneDNS(draft) {
+		if draft.DNSRole != transport.DNSPairRolePrimary || request.PeerIP != "" || request.PeerNS != "" {
+			return request, "", errors.New("one server keeping its own DNS has no peer")
+		}
+		request.Role = transport.DNSTopologyStandalone
+		return request, local, nil
 	}
 	peer, valid := canonicalIPv4(request.PeerIP)
 	if !valid || peer == local {
@@ -68,6 +84,10 @@ func setupDNSIdentity(draft serverSetupDraft) (dnsSetupRequest, string, error) {
 }
 
 func setupDNSDraftMatchesState(draft serverSetupDraft, request dnsSetupRequest, local string, state dnsEngineDBState) bool {
+	if request.Role == transport.DNSTopologyStandalone {
+		return state.ActiveEngine == transport.DNSEngine(draft.DNSEngine) && state.CurrentSwitchID == "" &&
+			state.Topology == transport.DNSTopologyStandalone && state.PairRole == "" && state.PeerIP == "" && state.PeerNS == ""
+	}
 	localNS := request.NS1
 	if draft.DNSRole == transport.DNSPairRoleSecondary {
 		localNS = request.NS2
@@ -107,9 +127,17 @@ func (p *Panel) startServerSetupDNS(ctx context.Context, draft serverSetupDraft,
 	}
 	persisted, readErr := readDNSEngineSwitchByRequest(ctx, p.db.GetDB(), requestID)
 	if readErr == nil {
+		pairRole, expectedIP, expectedNS := draft.DNSRole, local, localNS
+		if request.Role == transport.DNSTopologyStandalone {
+			// A standalone operation records no pair identity.
+			pairRole, expectedIP, expectedNS = "", persisted.LocalIP, persisted.LocalNS
+			if (expectedIP != "" && expectedIP != local) || (expectedNS != "" && expectedNS != localNS) {
+				return errors.New("saved DNS operation does not match the reviewed setup")
+			}
+		}
 		if persisted.SourceEngine != "" || persisted.TargetEngine != transport.DNSEngine(draft.DNSEngine) ||
-			persisted.Topology != transport.DNSTopologyPaired || persisted.PairRole != draft.DNSRole ||
-			persisted.LocalIP != local || persisted.LocalNS != localNS || persisted.PeerIP != request.PeerIP || persisted.PeerNS != request.PeerNS {
+			persisted.Topology != request.Role || persisted.PairRole != pairRole ||
+			persisted.LocalIP != expectedIP || persisted.LocalNS != expectedNS || persisted.PeerIP != request.PeerIP || persisted.PeerNS != request.PeerNS {
 			return errors.New("saved DNS operation does not match the reviewed setup")
 		}
 		persisted.Action = "install"
@@ -185,6 +213,15 @@ func (p *Panel) startServerSetupDNS(ctx context.Context, draft serverSetupDraft,
 	}
 	if state.ActiveEngine != "" {
 		if !setupDNSDraftMatchesState(draft, request, local, state) {
+			// The setup's own engine with another bound peer (or names) is
+			// its coded state, never the generic one (review fix, item 5):
+			// a plan that waits for its second server cannot compare the
+			// peer at review, only here once it is bound.
+			if own, err := p.serverSetupOwnDNSEngine(ctx, state); err != nil {
+				return setupDNSReconciliationError(err)
+			} else if own {
+				return serverSetupDNSInstalledDiffersFailure()
+			}
 			return errors.New("existing DNS ownership must be managed in Server → DNS and peer servers; setup will not replace it")
 		}
 		return setupDNSReconciliationError(p.saveSetupDNSManagementMode(ctx, serverSetupDomainDNSMode(draft)))

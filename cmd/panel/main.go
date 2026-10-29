@@ -128,6 +128,12 @@ type Panel struct {
 	serviceMutationMu sync.Mutex
 	serverSetupMu     sync.Mutex
 	serverSetupProbe  func(context.Context, serverSetupDraft) ([]serverSetupCheck, error)
+	// serverSetupInstallPreview replaces the Agent's read-only install
+	// simulation for the setup review in tests (nil in production).
+	serverSetupInstallPreview func(context.Context, transport.ServiceInstallPreviewRequest) (transport.ServiceInstallPreviewResponse, error)
+	// serverSetupStepOverride lets a test answer one setup step's call
+	// (handled=true) instead of the real step; production leaves it nil.
+	serverSetupStepOverride func(context.Context, serverSetupExecutionStep) (done bool, err error, handled bool)
 	// dnsTopologyMu serializes every request-time DNS identity mutation. The
 	// setup endpoint and the two legacy endpoints share agent state and one
 	// SQLite tuple; their snapshot/apply/commit/rollback sequences must never
@@ -155,6 +161,14 @@ type Panel struct {
 	// "Check for updates" button and the check made when the update screen
 	// opens wait for each other; none runs beside another. Zero value ready.
 	updateCheckGate panelUpdateCheckGate
+	// The DNS page's overview (alpha.115, dns_overview.go): its network edges,
+	// set only by tests before the first read (nil in production), and the
+	// one shared answer per panel. Zero value ready.
+	dnsOverviewSeams *dnsOverviewSeams
+	dnsOverviewCache dnsOverviewCache
+	// The server setup link (alpha.114): the join rate limit and the seams a
+	// test sets on its own panel (server_setup_peer_link.go).
+	setupLink serverSetupLinkState
 }
 
 type domainSubroute struct {
@@ -957,9 +971,9 @@ func main() {
 	} else if interrupted > 0 {
 		log.Printf("[request-identity] %d request(s) were running when the Panel stopped; their outcome is reported as unknown", interrupted)
 	}
-	applicationHandler := panel.requireRemoteDNSMachineAuth(csrfProtect(
+	applicationHandler := panel.requireServerSetupLinkMachine(panel.requireRemoteDNSMachineAuth(csrfProtect(
 		panel.requireAuth(panel.requestIdentities.wrap(http.DefaultServeMux)),
-	))
+	)))
 	startupGate := newPanelHTTPStartupGate(applicationHandler)
 	panel.startupGate = startupGate
 	handler := securityHeaders(panel.secureCookies, startupGate)
@@ -979,6 +993,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to start panel listener: %v", err)
 	}
+	// The setup link pins the identity this listener serves on its IP
+	// address, taken from the listener once (server_setup_join.go).
+	panel.captureServerSetupIdentity(server.TLSConfig)
 	if tlsOn {
 		log.Printf("Panel startup listener active on %s (HTTPS; application gated)", addr)
 	} else {
@@ -1266,8 +1283,16 @@ func main() {
 	http.HandleFunc(serverSetupPath, panel.handleServerSetup)
 	http.HandleFunc(serverSetupPath+"/guidance", panel.handleServerSetupGuidance)
 	http.HandleFunc(serverSetupPath+"/components", panel.handleServerSetupComponents)
+	http.HandleFunc(serverSetupProviderRecordsPath, panel.handleServerSetupProviderRecords)
+	http.HandleFunc(serverSetupPublicRecordsPath, panel.handleServerSetupPublicRecords)
+	http.HandleFunc(serverSetupDelegationPath, panel.handleServerSetupDelegation)
+	http.HandleFunc(serverSetupJoinCodesPath, panel.handleServerSetupJoinCodes)
+	http.HandleFunc(serverSetupPeerPath, panel.handleServerSetupPeer)
+	http.HandleFunc(serverSetupPeerConnectPath, panel.handleServerSetupPeerConnect)
+	http.HandleFunc(serverSetupPeerRetirePath, panel.handleServerSetupPeerRetire)
 	http.HandleFunc(serverSetupPath+"/complete", panel.handleServerSetupComplete)
 	http.HandleFunc(serverSetupPath+"/revise", panel.handleServerSetupRevise)
+	http.HandleFunc(serverSetupPath+"/package-updates", panel.handleServerSetupPackageUpdates)
 	http.HandleFunc(serverSetupPath+"/extend", panel.handleServerSetupExtend)
 	http.HandleFunc(serverSetupPath+"/mail-enrollment/continue", panel.handleServerSetupMailEnrollmentContinue)
 	http.HandleFunc(serverSetupPath+"/mail-enrollment/retry", panel.handleServerSetupMailEnrollmentRetry)
@@ -1413,6 +1438,7 @@ func main() {
 	http.HandleFunc(infrastructureDNSZonesPath, panel.handleInfrastructureDNSZones)
 	http.HandleFunc(infrastructureDNSZonesPath+"/", panel.handleInfrastructureDNSZones)
 	http.HandleFunc("/api/v1/dns/engine", panel.handleDNSEngine)
+	http.HandleFunc(dnsOverviewPath, panel.handleDNSOverview)
 	http.HandleFunc("/api/v1/dns/engine/reconcile", panel.handleDNSEngineReconcile)
 	http.HandleFunc("/api/v1/dns/engine/switch/preview", panel.handleDNSEngineSwitchPreview)
 	http.HandleFunc("/api/v1/dns/engine/switch", panel.handleDNSEngineSwitch)

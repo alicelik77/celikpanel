@@ -28,6 +28,7 @@ export const trErrorsScreens: Record<ErrorsScreenKey, string> = {
     'err.DNS_ENGINE_WORKFLOW_REQUIRED.action': 'DNS ve eş sunucuları aç',
     'err.DNSSEC_ENGINE_UNSUPPORTED': 'DNSSEC yönetimi şu anda etkin DNS motoru olarak PowerDNS gerektirir. Bu sürümde BIND yalnız imzasız zonelarla etkinleştirilebilir.',
     'err.DNSSEC_ENGINE_UNSUPPORTED.action': 'DNS ve eş sunucuları aç',
+    'err.DNS_RECORD_CHANGED': 'Kayıt okunduktan sonra değişti; bu yüzden hiçbir şey değiştirilmedi. Kayıtları yeniden okuyup karar verin.',
     'err.DNS_SETTINGS_REQUIRED': 'DNS kimliği henüz hazır değil. Domain eklemeden önce Sunucu → DNS ve eş sunucular sayfasında paylaşılan ad sunucusu adlarını kaydedin ve çalışma modunu seçin.',
     'err.DNS_SETTINGS_REQUIRED.action': 'DNS çiftini yapılandır',
     'err.DNS_SETUP_REQUIRED': 'Bu eski işlem DNS topolojisinin yalnız bir bölümünü kaydedebilir. DNS kurulumunun tamamını gözden geçirip tek adımda yayımlayın.',

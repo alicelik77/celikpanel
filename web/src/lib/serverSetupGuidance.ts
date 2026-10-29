@@ -18,6 +18,12 @@ export interface SetupExecutionGuidance {
     checksAt?: number;
 }
 const text = (key: TranslationKey, values?: Record<string, string>): SetupGuidanceText => ({ key, values });
+const setupLinkCodes = ['server_setup_peer_join_waiting', 'server_setup_peer_names_waiting', 'server_setup_peer_join_changed', 'server_setup_peer_names_clash',
+    'server_setup_peer_names_outside_domain', 'server_setup_peer_names_invalid', 'server_setup_peer_mail_both', 'server_setup_peer_names_unreachable', 'server_setup_peer_names_unknown',
+    'server_setup_dns_publisher_waiting', 'server_setup_dns_publisher_local_waiting', 'server_setup_peer_dkim_zone_waiting', 'server_setup_peer_dkim_publishing',
+    'server_setup_peer_dkim_unreachable', 'server_setup_peer_dkim_unknown', 'server_setup_join_certificate_unavailable', 'server_setup_peer_link_missing', 'server_setup_peer_names_bound', 'server_setup_peer_names_final', 'server_setup_peer_names_changed', 'server_setup_peer_join_reopen_required', 'server_setup_peer_version_incompatible', 'server_setup_dns_publisher_refused', 'server_setup_peer_dkim_conflict',
+    'server_setup_peer_dkim_not_running', 'server_setup_peer_dkim_not_bound', 'server_setup_peer_link_revoked',
+    'server_setup_peer_ready_unreachable', 'server_setup_peer_ready_refused', 'server_setup_peer_ready_identity_changed', 'server_setup_plan_changed_by_rejoin', 'server_setup_host_starting', 'server_setup_host_not_started', 'server_setup_host_busy', 'server_setup_host_stayed_busy', 'mail_tls_sync_host_busy', 'server_setup_agent_not_answering', 'server_setup_peer_dkim_removed', 'server_setup_completion_plan_changed', 'server_setup_completion_unknown'];
 
 // The run was stopped because its plan was reopened (POST /api/v1/setup/revise,
 // cmd/panel/server_setup_revise.go): a known end that is not a failure.
@@ -35,6 +41,14 @@ const address = (value: unknown): value is string => typeof value === 'string' &
 // got no answer (reverse_dns_unknown): said as not known, never as missing.
 // Bilinmeyen kontrolun tek tipli nedeni yanitsiz ters DNS sorgusudur.
 export function setupCheckReasonText(check: ServerSetupCheck): SetupGuidanceText | null {
+    if (check.id === 'mail_identity_ipv6' && typeof check.reason === 'string') {
+        const { hostname, ip, ptr } = (check.vars && typeof check.vars === 'object' ? check.vars : {}) as Record<string, unknown>;
+        if (!address(ip)) return null;
+        if (check.state === 'unknown') return check.reason === 'reverse_dns6_unknown' ? text('setup.check.mailIdentity6.unknown', { ip }) : null;
+        if (check.state !== 'action_required' || !dnsName(hostname)) return null;
+        if (check.reason === 'reverse_dns6_mismatch' && dnsName(ptr)) return text('setup.check.mailIdentity6.mismatch', { ip, ptr, hostname });
+        return check.reason === 'reverse_dns6_missing' || check.reason === 'reverse_dns6_mismatch' ? text('setup.check.mailIdentity6.missing', { ip, hostname }) : null;
+    }
     if (check.id !== 'mail_identity' || typeof check.reason !== 'string') return null;
     const vars = check.vars && typeof check.vars === 'object' && !Array.isArray(check.vars) ? check.vars : {};
     const { hostname, ip, ptr, current, name, resolver, resolvers } = vars as Record<string, unknown>;
@@ -72,6 +86,7 @@ const checkNames: Record<string, TranslationKey> = {
     panel_https: 'setup.check.name.panel_https', panel_renewal: 'setup.check.name.panel_renewal', dns: 'setup.check.name.dns',
     firewall: 'setup.check.name.firewall', services: 'setup.check.name.services', mail_tls: 'setup.check.name.mail_tls',
     mail_identity: 'setup.check.name.mail_identity', mail_delivery: 'setup.check.name.mail_delivery',
+    mail_identity_ipv6: 'setup.check.name.mail_identity_ipv6',
 };
 // One line per open check, said the same way wherever a check is listed: the
 // run's guidance and the box under "Check requirements again" (2026-10-16).
@@ -96,12 +111,13 @@ export function setupCheckLine(check: ServerSetupCheck): SetupCheckLine {
 export type SetupStepState = 'pending' | 'running' | 'succeeded' | 'failed' | 'stopped' | 'notStarted' | 'waitingOwner' | 'waitingReverseDNS' | 'waitingRequirement' | 'finishing' | 'unconfirmed' | 'unknown';
 // The typed reason whose fix is made at the server provider and then spreads
 // through public DNS (cmd/panel setupMailIdentityReason).
-const reverseDNSWait = (check: ServerSetupCheck) => check.id === 'mail_identity' && check.state === 'action_required' && check.reason === 'reverse_dns_mismatch' && !!setupCheckReasonText(check);
+const reverseDNSWait = (check: ServerSetupCheck) => check.state === 'action_required' && !!setupCheckReasonText(check)
+    && ((check.id === 'mail_identity' && check.reason === 'reverse_dns_mismatch') || (check.id === 'mail_identity_ipv6' && ['reverse_dns6_mismatch', 'reverse_dns6_missing'].includes(check.reason || '')));
 export function setupStepState(execution: ServerSetupExecution, step: ServerSetupExecution['steps'][number], checks: ServerSetupCheck[] = execution.checks || []): SetupStepState {
     const stopped = execution.status === 'failed';
     if (step.kind === 'verify') {
         if (execution.status === 'waiting' && execution.phase === 'verification') {
-            const open = checks.filter(check => check.state !== 'ready');
+            const open = checks.filter(check => check.state !== 'ready' && !check.advisory);
             const typed = open.filter(check => check.state === 'action_required' && setupCheckReasonText(check));
             if (typed.some(check => !reverseDNSWait(check))) return 'waitingOwner';
             if (typed.length > 0) return 'waitingReverseDNS';
@@ -238,7 +254,7 @@ export function setupExecutionGuidance(execution: ServerSetupExecution, componen
     if (setupPlanReopened(execution)) {
         result.title = 'setup.guide.revisedTitle';
         result.messages.push(text('setup.guide.revised'));
-        const open = execution.phase === 'verification' ? (execution.checks || []).filter(check => check.state !== 'ready') : [];
+        const open = execution.phase === 'verification' ? (execution.checks || []).filter(check => check.state !== 'ready' && !check.advisory) : [];
         if (open.length > 0) {
             result.messages.push(text('setup.guide.revisedChecks'));
             result.checks = open.map(setupCheckLine);
@@ -259,6 +275,19 @@ export function setupExecutionGuidance(execution: ServerSetupExecution, componen
     }
     if (confirming) result.messages.push(text('setup.guide.confirm'));
     if (execution.status === 'failed') result.messages.push(text('setup.guide.failed'));
+    // The join and the setup link (alpha.114): each wait and refusal has its
+    // own sentence; any other code of these steps is still named.
+    // Katilma ve kurulum baglantisi: her bekleme ve retin kendi cumlesi var.
+    const linkCode = execution.error?.code || '';
+    if (setupLinkCodes.includes(linkCode)) {
+        result.messages.push(text(`setup.v5.wait.${linkCode}` as TranslationKey));
+        if (execution.status === 'waiting') result.details.push(text('setup.guide.monitoring'));
+        return result;
+    }
+    if (phase === 'peer_join' || phase === 'peer_names') {
+        result.messages.push(text('setup.v5.wait.other', { code: linkCode || '—' }));
+        return result;
+    }
 
     if (phase === 'access_dns') {
         const domain = current?.kind === 'access_dns' ? current.target : context?.panel_domain;
@@ -344,14 +373,14 @@ export function setupExecutionGuidance(execution: ServerSetupExecution, componen
         // lead, one line per open check, its general help, then how it resumes.
         // Neden, kimin islem yapacagi ve sonraki eylem adim listesinden once,
         // katlanmadan soylenir.
-        const open = (execution.checks || []).filter(check => check.state !== 'ready');
+        const open = (execution.checks || []).filter(check => check.state !== 'ready' && !check.advisory);
         result.messages.push(text(execution.status === 'waiting' ? 'setup.guide.verificationWaiting' : 'setup.guide.verification'));
         if (open.length > 0) { result.checks = open.map(setupCheckLine); result.checksAt = 0; }
         const codes = new Set<string>();
         for (const check of open) {
             if (setupCheckReasonText(check)) continue;
             const key: TranslationKey = check.id === 'dns' ? 'setup.guide.pairChecks'
-                : check.id === 'mail_identity' ? 'setup.guide.mailIdentity'
+                : check.id === 'mail_identity' || check.id === 'mail_identity_ipv6' ? 'setup.guide.mailIdentity'
                     : check.id === 'mail_delivery' ? 'setup.guide.mailDelivery'
                         : ['panel_https', 'panel_renewal', 'mail_tls'].includes(check.id) ? 'setup.guide.certificateChecks'
                             : check.id === 'firewall' ? 'setup.guide.firewall' : 'setup.guide.checkUnknown';

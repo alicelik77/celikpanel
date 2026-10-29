@@ -72,6 +72,14 @@ func withRollbackEvidenceReadersForTest(t *testing.T) {
 	install := readRollbackEvidenceInstallOwnership
 	targetHost := readRollbackEvidenceTargetHost
 	seal := verifyRollbackEvidenceTargetSeal
+	neverPlaced := readRollbackEvidenceNeverPlaced
+	// The host proof is never run by these tests: by default every
+	// package this install found missing is now present.
+	readRollbackEvidenceNeverPlaced = func(
+		context.Context, transport.DNSEngine, dnsEngineInstallOwnershipReceipt, dnsEngineRollbackTargetHost,
+	) (bool, error) {
+		return false, nil
+	}
 	readRollbackEvidenceTargetHost = func(
 		transport.DNSEngine,
 	) (dnsEngineRollbackTargetHost, error) {
@@ -88,6 +96,7 @@ func withRollbackEvidenceReadersForTest(t *testing.T) {
 		readRollbackEvidenceInstallOwnership = install
 		readRollbackEvidenceTargetHost = targetHost
 		verifyRollbackEvidenceTargetSeal = seal
+		readRollbackEvidenceNeverPlaced = neverPlaced
 	})
 }
 

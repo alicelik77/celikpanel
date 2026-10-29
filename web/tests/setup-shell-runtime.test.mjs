@@ -140,7 +140,7 @@ async function withMounted(element, check, response = runtime) {
 
 test('mounted setup shell preserves server identity and build without ordinary navigation or census requests', async () => {
     const navigation = React.createElement(ServerSetupSteps, {
-        steps: ['purpose', 'components', 'access', 'review', 'progress'], current: 'review',
+        steps: ['domain', 'count', 'name', 'roles', 'names', 'dnshome', 'review', 'progress'], current: 'review',
     });
     await withMounted(React.createElement(ServerSetupShell, { navigation },
         React.createElement('h1', null, 'Reviewed setup plan')), async (renderer, fixture) => {

@@ -7942,3 +7942,58 @@ lock and their own agent jobs; the same request id returns the same operation.
   machine with a disposable test CA ([deploy/e2e/d038/alpha110-debian13-20261026](../deploy/e2e/d038/alpha110-debian13-20261026/README.md), archive SHA-256 `cf485342…888497b6`).
   Not measured on an installed server. **No P0 item is closed or advanced**; P0.1
   to P0.5 stay partial and every open acceptance item stays open.
+
+### Candidate v0.1.0-alpha.111 (the Beta 1 setup: setup wizard v2, join by code, the setup link, the DNS page; Agent DNS install, rollback, certificate and point-update paths; no schema change; invariants 1, 2, 4 and 6; D-021 amendments; D-022; D-024; D-025; D-028 amendment; 2026-10-29)
+
+D-025 invariant 1 (the owner retains authority and working services): the two
+servers replicate DNS by the DNS software's own zone transfer, never through the
+panel; with the panel and the agent stopped an owner's native `rndc` edit reached
+the backup and was then detected and kept, one notice on the engine card and the
+DNS page, never overwritten. A record setup wrote that the owner removed or
+changed is not added back by a later plan. Invariant 2 (evidence has a meaning):
+a lost or unread answer is unknown, never "not yet" or a failure (the registrar
+check, the public-records read, the DNS overview, the join); a verified failure,
+an unmet prerequisite and an unknown result keep their own codes; a just-issued
+certificate is waited for by this server's clock and a larger skew is coded with
+its seconds. Invariant 4 (every mutation carries a recovery contract): a step
+resumes as the same operation after a reboot or a panel restart; a booting host
+is a wait and nothing is sent; a busy host holds the start, and a child is
+admitted again only with proof that nothing ran; a lost join answer is the same
+request and gives one join; a DNS install that placed nothing proves its own
+rollback. Invariant 6 (readiness, progress and access apart): polling never
+mutates; every wait names who acts and the next action; the main keeps the link
+until the backup reports ready.
+
+- **Agent changes.** Panel and mail-host certificates wait (at most two minutes,
+  read only) for a leaf valid by this clock and code a larger skew
+  (`panel_cert_source_wait.go`); a DNS first install that placed no package
+  proves its rollback (exact receipt, no unit, nothing on port 53); PowerDNS as
+  the main DNS server only from Debian's own archive build of the tested 4.9
+  series; the install preview lists distribution point updates and the install
+  accepts only the exact confirmed ones; helper units of SpamAssassin and ClamAV
+  are not the service.
+- **Panel changes.** The wizard's draft fields and component list; `GET
+  /api/v1/setup/provider-records`, `/public-records`, `/delegation` and `GET
+  /api/v1/dns/overview` (admin only, read only, shared bounded answers); join
+  codes and the setup link (`/api/v1/setup/peer/...`: names, ready report,
+  retire, DKIM), keyed hashes and secrets sealed under the key file (`k1:`); the
+  join binding once per execution; mail after the DNS steps; one mail receiver;
+  coded waits for a starting or busy host and for clock skew; `expected_content`
+  on the record update.
+- **Schema.** None (46): `panel_settings` and the existing setup, DNS and
+  enrollment tables.
+- **Recovery.** Interrupted steps continue as the same operation; known failures
+  stay on the step with their next action; Edit plan recovers a failed step.
+  Going back to alpha.110 in the middle of a setup is not measured; the test
+  servers are reinstalled, and no upgrade path from earlier alpha setups is
+  promised.
+- **Evidence.** Agent 4870 passed, 29 skipped, one known environment failure;
+  Panel 3601 passed, 6 skipped; internal packages pass; web 1980 passed; four runs
+  on disposable VMs in a lab network from fresh installs, the fourth on the
+  candidate's product code `68a9915a0` end to end for both two-server layouts
+  ([deploy/e2e/dns-pair-acceptance/evidence/beta1d-20261029](../deploy/e2e/dns-pair-acceptance/evidence/beta1d-20261029/SUMMARY.md)
+  and the three earlier folders beside it). Not measured natively: licence
+  behaviour, a busy wait mid-run, the mail certificate at a large skew, a bare-401
+  link refusal, IPv6 and reverse DNS. Nothing measured on an installed server.
+  **No P0 item is closed or advanced**; P0.1 to P0.5 stay partial and every open
+  acceptance item stays open.

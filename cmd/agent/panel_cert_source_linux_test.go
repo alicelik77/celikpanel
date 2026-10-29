@@ -555,3 +555,16 @@ func TestReadPanelCertificateSourceOwnerSeamsFailClosed(t *testing.T) {
 		t.Fatalf("error = %v", err)
 	}
 }
+
+// Beta-1 re-run P7: a leaf whose validity starts after this clock is a typed
+// state carrying its notBefore, so issuance can wait for it.
+func TestReadPanelCertificateSourceNamesALeafNotValidYet(t *testing.T) {
+	fixture := createTestPanelCertificateSource(t)
+	early := fixture.now.Add(-time.Hour - 2*time.Second)
+	panelCertificateSourceNow = func() time.Time { return early }
+	_, _, _, _, err := readPanelCertificateSource(fixture.domain)
+	var notYet *panelCertificateSourceNotYetValidError
+	if !errors.As(err, &notYet) || !notYet.NotBefore.Equal(fixture.now.Add(-time.Hour)) || !strings.Contains(err.Error(), "clock") {
+		t.Fatalf("error = %v, want the not-yet-valid state", err)
+	}
+}

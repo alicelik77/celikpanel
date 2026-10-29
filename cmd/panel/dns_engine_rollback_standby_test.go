@@ -49,7 +49,7 @@ func TestSetupDNSRetriesARolledBackFirstInstall(t *testing.T) {
 				t.Fatalf("first install was not a proven rollback: %v", firstErr)
 			}
 			if failure := serverSetupFailureForStep(serverSetupExecutionStep{serverSetupPlanStep: serverSetupPlanStep{Kind: "dns"}}, firstErr); failure.Code != "server_setup_dns_rolled_back" ||
-				!strings.Contains(failure.Message, "start this DNS step again") {
+				!strings.Contains(failure.Message, "try the installation again") {
 				t.Fatalf("wizard guidance for the rolled-back step = %+v", failure)
 			}
 			agent.mu.Lock()

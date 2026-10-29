@@ -81,8 +81,9 @@ func (p *Panel) setupDNSModeReadiness(ctx context.Context, mode string) (bool, e
 	if err != nil {
 		return false, err
 	}
-	if state.ActiveEngine == "" || state.CurrentSwitchID != "" || state.Topology != transport.DNSTopologyPaired ||
-		state.PeerIP == "" || state.PeerIP == state.LocalIP {
+	standalone := state.Topology == transport.DNSTopologyStandalone && state.PairRole == "" && state.PeerIP == ""
+	if state.ActiveEngine == "" || state.CurrentSwitchID != "" || (!standalone && (state.Topology != transport.DNSTopologyPaired ||
+		state.PeerIP == "" || state.PeerIP == state.LocalIP)) {
 		return false, nil
 	}
 	runtimes, conflict, hold, err := p.readDNSBackendRuntime(ctx)
@@ -92,6 +93,10 @@ func (p *Panel) setupDNSModeReadiness(ctx context.Context, mode string) (bool, e
 	runtime := runtimes[state.ActiveEngine]
 	if conflict || hold != "" || !runtime.Installed || !runtime.Running || !runtime.Managed {
 		return false, nil
+	}
+	if standalone {
+		// One server keeping its own DNS (alpha.114): no pair to wait for.
+		return p.savedDNSIdentityConfiguredStrict(ctx)
 	}
 	if (state.PairRole != transport.DNSPairRolePrimary && state.PairRole != transport.DNSPairRoleSecondary) ||
 		(state.PairRole == transport.DNSPairRolePrimary && !runtime.PairReady) ||

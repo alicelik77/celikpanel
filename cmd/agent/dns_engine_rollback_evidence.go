@@ -24,6 +24,7 @@ var (
 	readRollbackEvidenceInstallOwnership = readDNSEngineInstallOwnership
 	readRollbackEvidenceTargetHost       = verifiedDNSEngineRollbackTargetHost
 	verifyRollbackEvidenceTargetSeal     = verifyDNSEngineRollbackTargetSeal
+	readRollbackEvidenceNeverPlaced      = verifyDNSEngineInstallNeverPlaced
 )
 
 type dnsEngineRollbackTargetHost struct {
@@ -280,6 +281,19 @@ func classifyDNSEngineRollbackHostEvidence(
 	if err := verifyRollbackEvidenceTargetSeal(
 		ctx, manifest.TargetEngine, host,
 	); err != nil {
+		// A first install whose exact receipt exists but that never placed
+		// a package has nothing to seal (dns_engine_rollback_never_placed.go).
+		if installExists {
+			neverPlaced, proofErr := readRollbackEvidenceNeverPlaced(
+				ctx, manifest.TargetEngine, install, host,
+			)
+			if proofErr != nil {
+				return transport.DNSEngineRollbackUnverified, proofErr
+			}
+			if neverPlaced {
+				return transport.DNSEngineRollbackSafe, nil
+			}
+		}
 		return transport.DNSEngineRollbackRuntimeUnsealed, nil
 	}
 	return transport.DNSEngineRollbackSafe, nil

@@ -2668,6 +2668,31 @@ ve gerçek sistemde ortaya çıkmadı. Yerel kanıtın adım süresi sınırlar�
 yetki vermez (her panel güncellemesini sahibi panelin kendi güncelleme
 ekranından başlatır).
 
+**Ek, 29 Ekim 2026 (Beta-1 sanal makine koşusundan sonra sahip kararı).**
+Kapı, sunulanın ölçülen olması için tam ölçülen yapıyı (4.9.17-0+deb13u1 ve
+daemon özeti) sabitliyordu. Temiz bir Debian 13'te dağıtımın adayı bir
+güvenlik yama sürümü olan 4.9.18-0+deb13u1'e geçmişti: sihirbaz PowerDNS'i
+ana DNS sunucusu olarak sundu, DNS adımı reddedip geri aldı. Kapı artık yamayı
+değil, **Debian'ın kendi arşiv yapısının** denenmiş **serisini** (major.minor,
+4.9) tutar. Sihirbazın sunduğunu, incelemenin kabul ettiğini, Agent ön
+denetiminin kurduğunu (tek aday için `ad=sürüm`), kurulum sonrası denetimin
+ve bağımsız kurtarma doğrulamasının kabul ettiğini tek ortak kural belirler:
+epoch'suz ve Debian arşiv revizyonlu bir sürüm (backport, repo.powerdns.com
+ya da üretici yapısı her yerde sürümünden reddedilir), iki paket tek bir 4.9
+sürümünde. Kaynak kanıtı arşiv denetimidir: kurulumdan önce APT'nin aday için
+gösterdiği her arşiv Debian'ın yayımlanmış sürümü ya da onun güvenlik/
+güncelleme cebi olmalıdır; okunamayan dizin reddedilir. Kurulumdan sonra kaynak
+artık okunamaz; kurulum sonrası denetim ve kurtarma sürüm kuralına dayanır.
+Daemon, dpkg'nin kurulu paket için kaydettiği özetle (md5sums) karşılaştırılır:
+bu, diskte değişikliği ya da bozulmayı bulan bir bütünlük denetimidir, kaynak
+kanıtı değildir. İki denetim de sunucudaki root'u (dosyaları ve kayıtları
+birlikte değiştirebilir) ya da geçerli imzalı arşiv sunan ele geçirilmiş bir
+yansıyı kapsamaz. Kural dışındaki aday gerekçesiyle sunulmaz ve incelemede
+reddedilir. Sunucu profili, topoloji ve yukarıdaki diğer sınırlar değişmez;
+yeni major/minor sürüm yeni ölçüm ister. Seri içi yama sürümleri yeni gerçek
+koşu olmadan kabul edilir; davranışı değiştiren bir yama sürümü bilinen
+sınırdır.
+
 ---
 
 ## D-027 · Kabul koşuları yalnız deneyde geçerli lisans kullanır; lisans politikası değişmez
@@ -2992,6 +3017,70 @@ Yaklaşan kabul, iddia değil. Beta 1'de sahip temiz ilk kurulum denemesi için 
 sunucuyu da silip yeniden kuracak; bu denetim gerçek bir kurulumda ilk kez orada
 görülecek. Kurulu paneller yine yalnız sahipleri tarafından panelin kendi
 güncelleme ekranından güncellenir.
+
+
+### Ek (2026-10-26): ana alan adı kurulumun bölgesidir ve sihirbaz bu sürümün yapamadığını söyler
+
+*Sahibin onayladığı kurulum sihirbazı v2, 1. aşama; v0.1.0-alpha.111 adayının
+kaynağında (yayımlanmadı); kurulu bir sunucuda ölçülmedi*
+
+Sahip yeniden tasarlanan sihirbazı 2026-10-26'da onayladı ([Yönlendirmeli
+sunucu kurulumu](SERVER-SETUP-PLAN.tr.md), o tarihli giriş). İki ürün kuralı
+değişir:
+
+- **Ana alan adı, altyapı bölgesi için açık niyettir.** Bir kez ve ilk sorulur.
+  Bu sunucu yerel ana DNS sunucusuysa kurulum o bölgenin sunucu adresi
+  kayıtlarını hazırlar (inceleme bunları gösterir); eski işaretsiz "bu kayıtları
+  burada hazırla" seçeneği kalktı. Yedek DNS sunucusu ve harici ya da uzak DNS
+  yeri bölge hazırlamaz. Kurulumun kiracı, site, posta kutusu, MX, SPF ya da
+  apex kaydı oluşturmadığı kural değişmez.
+- **Sihirbazın bileşen listesi katalogdan gelir.** Her katalog bileşeni,
+  sihirbazın onunla ne yaptığıyla görünür; kurulumla kurulamayan, nedenini ve
+  nerede kurulacağını söyler.
+
+Sürüm sınırlarını da ekranda söyler: tek sunucu henüz kendi DNS'ini tutamaz ve
+iki sunucuda ikinci sunucunun IP adresi hâlâ yazılır. Mevcut DNS sahipliği,
+topoloji ve kurtarma kuralları değişmez.
+
+
+### Ek (2026-10-28): kurulum, sahibin aktardığı kayıtları ve ana alan adının posta kayıtlarını yazar
+
+*Sahibin onayladığı kurulum sihirbazı v2, 2. aşama; v0.1.0-alpha.112 adayının
+kaynağında (yayımlanmadı); kurulu bir sunucuda ölçülmedi*
+
+Kurulumun apex, `www`, MX, SPF ya da DMARC kaydı oluşturmadığı önceki kural
+yalnız ana alan adı için ve yalnız sahibin sihirbazdaki açık seçimleriyle
+değişir: sahibin aktardığı mevcut genel kayıtlar ana alan adının bölgesine
+yazılır; e-posta seçiliyse MX, SPF, DMARC ve DKIM yazılır. MX sahip olmadan
+değişmez (aktarılan eski MX, sahip "şimdi" diyene kadar kalır), SPF
+birleştirilir, eski DMARC değiştirilmedikçe korunur. Bunlar sahibin
+kayıtlarıdır (Alan adları'ndan düzenlenir); kurulumun kendi sunucu adresleri
+kilitli kalır. Kurulum yine kiracı, site ya da posta kutusu oluşturmaz. Ters
+DNS sunucu sağlayıcısında kalır: kurulum IPv4 ve varsa IPv6 için tam satırları
+gösterir; yanlış ya da eksik PTR'yi beklemediği açık bir iş olarak tutar (sahibin
+2026-10-28 kararı; posta onsuz da çalışır ama istenmeyen sayılabilir). Bu,
+IPv4 ters DNS'ini bekleyen önceki son kontrolü değiştirir; yanlış posta adı ya
+da adres yine engeller.
+
+### Ek (2026-10-28): ikinci sunucu kodla katılır; tek sunucu kendi DNS'ini tutabilir
+
+*Sahibin onayladığı kurulum sihirbazı v2, 4. aşama (2026-10-26 planının Q1, Q4,
+Q5, Q7 maddeleri); v0.1.0-alpha.114 adayının kaynağında (yayımlanmadı); kurulu
+bir sunucuda ölçülmedi*
+
+Ekranda söylenen önceki sınırlar kalktı. Tek sunucu kendi DNS'ini bağımsız sunucu
+olarak tutabilir (iki ad sunucusu adı da onda; BIND için sonradan yedek
+eklenebileceği söylenmez). İki sunucuda ikinci sunucunun adresi hiç yazılmaz:
+ilk panelin anahtar parmak izini ve bir gizli değeri taşıyan tek kullanımlık kodla
+ilkine katılır; adları, adresi ve ana alan adı posta seçimi bu bağlantıdan gelir
+ve ilk sunucunun çalışmasına bir kez bağlanır. Katılma, ana yöneticinin ikinci
+sunucunun adlarına ve yayımlama bağlantısına onayıdır (Q5). Ana DNS sunucusu iki
+sunucudan biri olabilir (Q1, Seçenek A): o zaman ilk sunucu ikinci katılana kadar
+DNS yazılımı kurmaz ve hazırladığı listeyi devreder. Kurulum anında ns1 ana DNS
+sunucusudur (Q2). DNS çifti yine yerel birincil/ikincil aktarımdır; bağlantı
+yalnız kurulum yanıtlarını ve yedeğin kayıtlarını taşır, hiçbir barındırılan iş
+ona bağlı değildir. Mevcut DNS sahipliği, topoloji ve kurtarma ilkeleri
+değişmez; şema değişikliği yoktur.
 
 ---
 

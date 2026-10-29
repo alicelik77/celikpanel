@@ -58,10 +58,35 @@ type serverSetupPlan struct {
 	ContactEmail        string                            `json:"contact_email"`
 	Actor               serviceOperationActor             `json:"actor"`
 	Components          []serverSetupPlanComponent        `json:"components,omitempty"`
+	// PackageUpdates (Beta-1 fix): the distribution point updates of already
+	// installed packages that this plan's component installs would also
+	// bring, as the package manager's simulation said at review. The review
+	// lists them ("Distribution packages also updated") and the one setup
+	// confirmation covers them, so a setup step does not refuse them.
+	// PackageUpdatesState is "known" or "unknown" (the simulation could not
+	// be read). Neither is part of the plan identity: the start check
+	// compares the list itself (serverSetupPackageUpdatesCovered).
+	// Kurulumun ayrıca güncelleyeceği dağıtım paketleri; tek onay kapsar.
+	PackageUpdates      []transport.NotableInstall `json:"package_updates,omitempty"`
+	PackageUpdatesState string                     `json:"package_updates_state,omitempty"`
+	// PackageUpdatesDigest names the list (and its state) exactly as stored
+	// for this plan; the start sends back the one its page showed, so an
+	// update the owner never saw is never confirmed (review fix, 2026-10-29).
+	PackageUpdatesDigest string `json:"package_updates_digest,omitempty"`
+	// peerBound marks a plan completed by its second-server binding
+	// (serverSetupBoundPlan); it is never stored or hashed.
+	peerBound bool
 }
 
 type serverSetupExecutionStep struct {
 	serverSetupPlanStep
+	// BusySince / BusyAttempts record, on the step, the Agent refusing its
+	// child at admission while the host was busy (proven: nothing ran, see
+	// serverSetupChildRefusedAtAdmission). BusyRetry asks the next pass to
+	// admit the same child again (same identity, same operation row).
+	BusySince                   string `json:"busy_since,omitempty"`
+	BusyAttempts                int    `json:"busy_attempts,omitempty"`
+	BusyRetry                   bool   `json:"busy_retry,omitempty"`
 	Status                      string `json:"status"`
 	RequestID                   string `json:"request_id"`
 	OwnerID                     string `json:"owner_id"`
@@ -79,6 +104,9 @@ type serverSetupExecution struct {
 	Error     *serviceOperationError     `json:"error,omitempty"`
 	Checks    []serverSetupCheck         `json:"checks,omitempty"`
 	PanelURL  string                     `json:"panel_url,omitempty"`
+	// HostStartingSince: when the run first found the host still starting
+	// (server_setup_host_starting); cleared once a step goes on.
+	HostStartingSince string `json:"host_starting_since,omitempty"`
 }
 
 var serverSetupRunners sync.Map
@@ -240,6 +268,10 @@ func (p *Panel) loadServerSetupPlan(ctx context.Context, id string) (serverSetup
 
 func serverSetupPlanIdentity(plan serverSetupPlan) string {
 	plan.ID = ""
+	plan.PackageUpdates, plan.PackageUpdatesState, plan.PackageUpdatesDigest = nil, "", ""
+	// An unread package-update list holds the start (CanStart false) but is
+	// not part of what was reviewed: the same plan read again is the same plan.
+	plan.CanStart = len(plan.Blockers) == 0
 	encoded, _ := json.Marshal(plan)
 	return serverSetupID(string(encoded))
 }
@@ -276,13 +308,27 @@ func (p *Panel) handleServerSetupPlan(w http.ResponseWriter, r *http.Request) {
 		writeServerError(w, err)
 		return
 	}
-	_, err = p.db.GetDB().ExecContext(r.Context(), `INSERT OR IGNORE INTO server_setup_plans(id,revision,plan_json,requested_by,created_at) VALUES(?,?,?,?,?)`, plan.ID, plan.Revision, string(encoded), plan.Actor.UserID, time.Now().UTC().Format(time.RFC3339Nano))
+	// The same plan reviewed again keeps its identity. Its stored list is
+	// replaced only while it is still unread (P5: a refreshed review reads
+	// it), never once read and never for a plan a run started from. The
+	// answer is the stored plan: the list the page shows is the one the
+	// start compares (review fix, 2026-10-29).
+	_, err = p.db.GetDB().ExecContext(r.Context(), `INSERT INTO server_setup_plans(id,revision,plan_json,requested_by,created_at) VALUES(?,?,?,?,?)
+		ON CONFLICT(id) DO UPDATE SET plan_json=excluded.plan_json
+		WHERE COALESCE(json_extract(server_setup_plans.plan_json,'$.package_updates_state'),'')='unknown'
+		AND NOT EXISTS (SELECT 1 FROM server_setup_executions WHERE plan_id=excluded.id)`, plan.ID, plan.Revision, string(encoded), plan.Actor.UserID, time.Now().UTC().Format(time.RFC3339Nano))
 	if err != nil {
 		writeServerError(w, err)
 		return
 	}
+	stored, err := p.loadServerSetupPlan(r.Context(), plan.ID)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	stored.PackageUpdatesDigest = serverSetupPackageUpdatesDigest(stored)
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(plan)
+	_ = json.NewEncoder(w).Encode(stored)
 }
 
 func serverSetupAdmin(w http.ResponseWriter, r *http.Request, method string) bool {
@@ -314,8 +360,102 @@ func setupPDNSPairedPrimaryBlocker(draft serverSetupDraft, state dnsEngineDBStat
 	return code
 }
 
+// serverSetupExecutionStateReplaceable: no step after the join step failed
+// or runs an operation, and the run holds no error other than the join's own
+// waits or a wait of a step that has started nothing yet, so saying the
+// join's state replaces nothing the owner must see.
+//
+// Beta-1 re-run: the first server's run waited at primary_dns (its DNS step
+// had not admitted its install) while its second server's answers had
+// changed; the run kept saying primary_dns and only the peer card said the
+// change. That wait cannot end before the join is fixed, so the join's state
+// is the current one and is said at the top. A step with an operation (a
+// DNS switch, a component install) or a known failure is never replaced.
+func (p *Panel) serverSetupExecutionStateReplaceable(ctx context.Context, execution serverSetupExecution) bool {
+	after, waitingStep := false, false
+	for _, step := range execution.Steps {
+		if step.Kind == "peer_join" {
+			after = true
+			continue
+		}
+		if !after {
+			continue
+		}
+		if step.Status == "failed" {
+			return false
+		}
+		if step.Status == "running" {
+			if !p.serverSetupStepWaitsWithoutChild(ctx, execution, step) {
+				return false
+			}
+			waitingStep = true
+		}
+	}
+	return execution.Error == nil || waitingStep || stringIn(execution.Error.Code, "server_setup_peer_join_changed", "server_setup_peer_join_reopen_required", "server_setup_peer_names_waiting", "server_setup_peer_join_waiting")
+}
+
+// serverSetupStepWaitsWithoutChild: the run waits at a step that has not
+// admitted anything: a DNS step whose switch does not exist, or a component
+// step before its operation.
+func (p *Panel) serverSetupStepWaitsWithoutChild(ctx context.Context, execution serverSetupExecution, step serverSetupExecutionStep) bool {
+	if execution.Status != "waiting" || step.OperationID != "" {
+		return false
+	}
+	switch step.Kind {
+	case "dns":
+		status, err := p.serverSetupDNSOperationStatus(ctx, step.RequestID)
+		return err == nil && status == "missing"
+	case "service", "runtime", "mail_profile":
+		return p.serverSetupStepChildMissing(ctx, step)
+	}
+	return false
+}
+
+// serverSetupStepChildMissing: no operation exists under the step's own
+// request identity. The step's OperationID can lag behind the operation (it
+// is saved after the operation is created), so the operation is looked up by
+// the identity it was created with. A lookup that fails is not "missing":
+// the step then counts as having its operation, and nothing is replaced.
+// Review fix (item 8, 2026-10-29).
+func (p *Panel) serverSetupStepChildMissing(ctx context.Context, step serverSetupExecutionStep) bool {
+	if step.OperationID != "" {
+		return false
+	}
+	_, err := p.serviceOperationByRequestID(ctx, step.RequestID)
+	return errors.Is(err, sql.ErrNoRows)
+}
+
+// serverSetupPDNSMainCandidateCode reads, read-only, the PowerDNS build this
+// server would install and applies the catalogue's rule to it.
+func (p *Panel) serverSetupPDNSMainCandidateCode(ctx context.Context) string {
+	return serverSetupPDNSMainCandidateBlocker(p.readServerSetupPDNSCandidate(ctx))
+}
+
 func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState, actor serviceOperationActor) (serverSetupPlan, error) {
 	draft := state.Draft
+	extensionChangesJoin := false
+	if serverSetupJoinPending(draft) {
+		// A setup that succeeded with its second server bound (an extension,
+		// Beta-1 fix): the plan reuses that binding and has no new join step,
+		// unless it would change what the second server received.
+		bound, err := p.serverSetupSucceededPeerBinding(ctx)
+		if err != nil {
+			return serverSetupPlan{Draft: draft}, err
+		}
+		if bound != nil {
+			reviewed := bound.JoinDigest
+			if reviewed == "" {
+				var join serverSetupJoinRecord
+				if found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join); err != nil {
+					return serverSetupPlan{Draft: draft}, err
+				} else if found && join.RequestID == bound.JoinRequestID {
+					reviewed = join.Digest
+				}
+			}
+			extensionChangesJoin = reviewed != "" && reviewed != serverSetupJoinDocumentDigest(serverSetupJoinDocumentFor(draft))
+			draft = serverSetupEffectiveDraft(draft, *bound)
+		}
+	}
 	plan := serverSetupPlan{Version: serverSetupPlanVersion, Revision: state.Revision, Purpose: draft.Purpose, Draft: draft, Actor: actor,
 		BuildCommit: strings.TrimSpace(buildCommit), Steps: []serverSetupPlanStep{}, Blockers: []string{}, TCPPorts: []int{panelPort(), 80}, UDPPorts: []int{}, PreserveSSH: true, PersistFirewall: true}
 	addBlocker := func(code string) {
@@ -325,6 +465,12 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 	}
 	addStep := func(kind, target, qualifier string) {
 		plan.Steps = append(plan.Steps, serverSetupPlanStep{ID: fmt.Sprintf("%02d-%s", len(plan.Steps)+1, kind), Kind: kind, Target: target, Qualifier: qualifier})
+	}
+	if extensionChangesJoin {
+		// Verified prerequisite: the second server has the earlier shared
+		// answers, names and mail choice; this release cannot change them
+		// on both after pairing.
+		addBlocker("server_setup_extension_needs_second_server")
 	}
 	if canonical, err := hostname.CanonicalFQDN(draft.PanelDomain); err != nil || canonical != draft.PanelDomain {
 		addBlocker("server_setup_panel_domain_invalid")
@@ -362,7 +508,55 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 	if draft.Purpose == "dns" && draft.DNSMode != "local" {
 		addBlocker("server_setup_dns_purpose_requires_local")
 	}
-	if draft.DNSMode == "local" {
+	joinPending := serverSetupJoinPending(draft)
+	link, err := p.readServerSetupLink(ctx)
+	if err != nil {
+		return plan, err
+	}
+	if link != nil && !serverSetupJoinedDraftMatches(draft, *link) {
+		// A joined second server keeps the answers the first server gave.
+		addBlocker("server_setup_peer_join_answers_changed")
+	}
+	// Only a first setup that has not completed: the link record is kept
+	// after a pair finished, and an extension keeps its own rules (review
+	// fix, item 3).
+	if link != nil && link.Document.First.MainDomainMail && serverSetupHasMail(draft) && state.CompletedAt == "" {
+		// One server receives the main domain's mail, and the join's shared
+		// answer says which: the server that created the join code already
+		// does (Beta-1 third re-run N3/N5: both claimed it). The wizard has
+		// no mail for this server's own host name only, so it is refused.
+		addBlocker("server_setup_peer_mail_both")
+	}
+	if draft.DNSMode == "local" && joinPending {
+		// The second server joins by code after this plan starts: its
+		// address and names are bound then (peer_join). Here only this
+		// server's own identity is checked.
+		if _, valid := canonicalIPv4(draft.LocalIP); !valid || !validDNSHostname(draft.NS1) || !validDNSHostname(draft.NS2) || draft.NS1 == draft.NS2 || !transport.ValidDNSEngine(transport.DNSEngine(draft.DNSEngine)) {
+			addBlocker("server_setup_dns_identity_required")
+		}
+		if state, stateErr := readDNSEngineDBState(ctx, p.db.GetDB()); stateErr != nil {
+			return plan, stateErr
+		} else if state.ActiveEngine != "" {
+			// This setup's own recorded engine is not "existing DNS" (P9).
+			own, ownErr := p.serverSetupOwnDNSEngine(ctx, state)
+			switch {
+			case ownErr != nil:
+				return plan, ownErr
+			case !own:
+				addBlocker("server_setup_existing_dns_requires_migration")
+			case !serverSetupOwnDNSMatchesJoinDraft(draft, state):
+				addBlocker(serverSetupDNSInstalledDiffersCode)
+			}
+		} else if code := setupPDNSPairedPrimaryBlocker(draft, state); code != "" {
+			addBlocker(code)
+		} else if draft.DNSRole == transport.DNSPairRolePrimary && transport.DNSEngine(draft.DNSEngine) == transport.DNSEnginePowerDNS && !serverSetupPDNSMainSystemTested(p.managedServiceHostProfile()) {
+			addBlocker("server_setup_pdns_main_untested_system")
+		} else if draft.DNSRole == transport.DNSPairRolePrimary && transport.DNSEngine(draft.DNSEngine) == transport.DNSEnginePowerDNS {
+			if code := p.serverSetupPDNSMainCandidateCode(ctx); code != "" {
+				addBlocker(code)
+			}
+		}
+	} else if draft.DNSMode == "local" {
 		request, local, identityErr := setupDNSIdentity(draft)
 		if identityErr != nil {
 			addBlocker("server_setup_dns_identity_required")
@@ -372,13 +566,31 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 				return plan, stateErr
 			}
 			if state.ActiveEngine != "" && !setupDNSDraftMatchesState(draft, request, local, state) {
-				addBlocker("server_setup_existing_dns_requires_migration")
+				own, ownErr := p.serverSetupOwnDNSEngine(ctx, state)
+				if ownErr != nil {
+					return plan, ownErr
+				}
+				if own {
+					addBlocker(serverSetupDNSInstalledDiffersCode)
+				} else {
+					addBlocker("server_setup_existing_dns_requires_migration")
+				}
 			}
 			// Setup installs the first engine only. The paired PowerDNS
 			// primary is decided by the same policy as the DNS engine card,
 			// here at review time, before any DNS identity is saved.
 			if code := setupPDNSPairedPrimaryBlocker(draft, state); code != "" {
 				addBlocker(code)
+			} else if draft.DNSRole == transport.DNSPairRolePrimary && state.ActiveEngine == "" &&
+				transport.DNSEngine(draft.DNSEngine) == transport.DNSEnginePowerDNS &&
+				!serverSetupPDNSMainSystemTested(p.managedServiceHostProfile()) {
+				// Same rule as the catalogue: refused at review, not mid-run.
+				addBlocker("server_setup_pdns_main_untested_system")
+			} else if draft.DNSRole == transport.DNSPairRolePrimary && state.ActiveEngine == "" &&
+				transport.DNSEngine(draft.DNSEngine) == transport.DNSEnginePowerDNS {
+				if code := p.serverSetupPDNSMainCandidateCode(ctx); code != "" {
+					addBlocker(code)
+				}
 			}
 			if serverSetupSecondaryHosting(draft) {
 				endpoint, err := canonicalRemoteDNSEndpoint(draft.DNSPublisherEndpoint)
@@ -435,6 +647,12 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 		}
 	}
 	addService := func(id string) {
+		// A version the owner chose (alpha.111) is the step's exact package;
+		// a draft without one keeps its empty qualifier and its identity.
+		qualifier := ""
+		if draft.Customization != nil {
+			qualifier = draft.Customization.Versions[id]
+		}
 		managed := core.GetManagedServiceByID(id)
 		if managed == nil {
 			addBlocker("server_setup_service_unknown")
@@ -449,12 +667,35 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 		if taken := core.SeatTakenBy(managed, planned); taken != "" {
 			addBlocker("server_setup_service_conflict:" + id + ":" + taken)
 		}
+		if qualifier != "" && !installed[id] {
+			// A vendor version needs its repository enabled and offering
+			// that package now: refused at review (unmet prerequisite or
+			// unknown), never discovered mid-run.
+			observation := serverSetupRepoObservation{State: "unknown"}
+			if managed.Repo != nil {
+				observation = p.readServerSetupRepoObservation(ctx, managed.Repo.ID)
+			}
+			switch {
+			case observation.State == "unknown":
+				addBlocker("server_setup_version_repository_unknown:" + id)
+			case observation.State != "enabled" || !slices.Contains(observation.Packages, qualifier):
+				addBlocker("server_setup_version_repository_required:" + id)
+			}
+		}
 		if !installed[id] {
-			addStep("service", id, "")
+			addStep("service", id, qualifier)
 		}
 		planned[id] = true
 	}
+	// The wizard's own answers (alpha.111) add refusals only to drafts that
+	// carry them; an older draft has neither and keeps its review.
+	// Sihirbazin yanitlari yalniz onlari tasiyan taslaga ret ekler.
+	if (draft.MainDNSServer == "this" && (draft.DNSMode != setupDNSModeLocal || draft.DNSRole != transport.DNSPairRolePrimary)) ||
+		(draft.MainDNSServer == "peer" && (draft.DNSMode != setupDNSModeLocal || draft.DNSRole != transport.DNSPairRoleSecondary || draft.ServerCount != 2)) {
+		addBlocker("server_setup_main_dns_server_mismatch")
+	}
 	addStep("dns", draft.DNSMode, "")
+	mailDependent := []string{}
 	if draft.Customization != nil {
 		resolved, err := serverSetupResolvedComponents(draft)
 		if err != nil {
@@ -482,6 +723,12 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 				addStep("runtime", "node", draft.NodeVersion)
 				planned[id] = true
 			default:
+				// A service that needs a mail server (SpamAssassin) follows
+				// the mail profile that installs Postfix and Dovecot.
+				if serverSetupMailDependent(id) {
+					mailDependent = append(mailDependent, id)
+					continue
+				}
 				addService(id)
 			}
 		}
@@ -548,6 +795,16 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 			addStep("mail_profile", profileID, "")
 		}
 	}
+	for _, id := range mailDependent {
+		addService(id)
+	}
+	// alpha.112: the main domain's DKIM key, signing and record follow the
+	// mail profile that installs the mail server.
+	if serverSetupNeedsMailDNSStep(draft) {
+		addStep("mail_dns", draft.MainDomain, "")
+	} else if serverSetupPeerMailDNSStep(draft, link != nil && link.Document.First.MainDomainMail) && (link != nil || joinPending) {
+		addStep("mail_dns", draft.MainDomain, "")
+	}
 	if serverSetupNeedsNativeCron(draft) {
 		addService(core.NativeCronServiceID)
 	}
@@ -582,7 +839,13 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 	}
 	if draft.InfrastructureDNS != nil {
 		var infrastructureErr error
-		plan.InfrastructureDNS, infrastructureErr = p.buildServerSetupInfrastructureDNSPlan(ctx, draft)
+		reviewed := draft
+		if joinPending {
+			// The records are computed again when the second server is bound;
+			// here they are checked with a stand-in address for it.
+			reviewed = serverSetupEffectiveDraft(draft, serverSetupPeerBinding{PeerIPv4: serverSetupJoinStandInPeer(draft.LocalIP)})
+		}
+		plan.InfrastructureDNS, infrastructureErr = p.buildServerSetupInfrastructureDNSPlan(ctx, reviewed)
 		if infrastructureErr != nil {
 			var reviewError *serverSetupInfrastructureDNSPlanError
 			if !errors.As(infrastructureErr, &reviewError) {
@@ -592,13 +855,16 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 			// 2026-10-16); every other review error stays the conflict.
 			// Tipli ret kendi kodunu korur; digerleri cakisma olarak kalir.
 			code := "infrastructure_dns_conflict"
-			if strings.HasPrefix(reviewError.Code, "infrastructure_dns_peer_mail_") {
+			if strings.HasPrefix(reviewError.Code, "infrastructure_dns_peer_mail_") || reviewError.Code == "infrastructure_dns_imported_clash" {
 				code = reviewError.Code
 			}
 			addBlocker("server_setup_" + code + ":" + reviewError.Message)
 		}
 		if plan.InfrastructureDNS != nil {
 			addStep("infrastructure_dns", plan.InfrastructureDNS.Zone, "")
+			if joinPending {
+				plan.InfrastructureDNS = nil
+			}
 		}
 	}
 	addStep("access_dns", draft.PanelDomain, plan.ServerIP)
@@ -638,9 +904,147 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 	}
 	addStep("verify", draft.Purpose, "")
 	plan.Steps = serverSetupDNSBootstrapSteps(draft, plan.Steps)
+	switch {
+	case joinPending && draft.DNSMode == setupDNSModeLocal:
+		plan.Steps = serverSetupPeerJoinSteps(plan.Steps, serverSetupPlanStep{Kind: "peer_join", Target: "second"})
+	case link != nil:
+		plan.Steps = serverSetupPeerJoinSteps(plan.Steps, serverSetupPlanStep{Kind: "peer_names", Target: link.Address})
+	}
 	plan.CanStart = len(plan.Blockers) == 0
+	if plan.CanStart {
+		plan.PackageUpdates, plan.PackageUpdatesState = p.serverSetupPackageUpdates(ctx, plan.Steps)
+		// Beta-1 re-run P5: the one confirmation covers a list the owner has
+		// read. While it is unread (the package manager was busy) setup does
+		// not start; refreshing the review reads it again.
+		if plan.PackageUpdatesState == "unknown" {
+			plan.CanStart = false
+		}
+	}
 	plan.ID = serverSetupPlanIdentity(plan)
+	plan.PackageUpdatesDigest = serverSetupPackageUpdatesDigest(plan)
 	return plan, nil
+}
+
+// serverSetupPackageUpdatesDigest: the package-update list and its state as
+// one value, order-independent.
+func serverSetupPackageUpdatesDigest(plan serverSetupPlan) string {
+	lines := make([]string, 0, len(plan.PackageUpdates))
+	for _, item := range plan.PackageUpdates {
+		lines = append(lines, item.Package+"="+item.From+"="+item.To)
+	}
+	slices.Sort(lines)
+	return serverSetupID(append([]string{"package-updates", plan.PackageUpdatesState}, lines...)...)
+}
+
+// serverSetupPackageUpdateBound bounds the review's read-only simulation.
+const serverSetupPackageUpdateBound = 20 * time.Second
+
+// serverSetupPackageUpdatesUnreadCode: the review could not read which
+// installed distribution packages the plan's installs would also update, so
+// it cannot be confirmed yet (D-024: an unmet prerequisite; who: the panel;
+// next: wait or refresh the review; then: confirm and start).
+const (
+	serverSetupPackageUpdatesUnreadCode    = "server_setup_distribution_updates_unread"
+	serverSetupPackageUpdatesUnreadMessage = "CelikPanel could not read yet which installed distribution packages this plan's installs would also update (the package manager may be busy), so setup cannot start on this review. Nobody needs to fix anything: wait a moment and refresh the review; it reads the list again without changing the server. Then confirm it and start setup."
+)
+
+// serverSetupPackageUpdates asks the package manager, read-only, which
+// installed distribution packages the plan's component installs would also
+// update within this release. Anything else notable is not listed here: a
+// setup step still refuses it as before. A failed or busy read is "unknown".
+func (p *Panel) serverSetupPackageUpdates(ctx context.Context, steps []serverSetupPlanStep) ([]transport.NotableInstall, string) {
+	preview := p.serverSetupInstallPreview
+	if preview == nil {
+		preview = func(ctx context.Context, request transport.ServiceInstallPreviewRequest) (transport.ServiceInstallPreviewResponse, error) {
+			return installPackagePreview(p, ctx, request)
+		}
+	}
+	var batch []transport.ServiceInstallPreviewStep
+	for _, step := range steps {
+		if step.Kind == "service" && !managedDNSEngineServiceID(step.Target) && core.GetManagedServiceByID(step.Target) != nil {
+			batch = append(batch, transport.ServiceInstallPreviewStep{ID: step.Target, Package: step.Qualifier})
+		}
+	}
+	if len(batch) == 0 {
+		return nil, ""
+	}
+	ctx, cancel := context.WithTimeout(ctx, serverSetupPackageUpdateBound)
+	defer cancel()
+	updates := []transport.NotableInstall{}
+	seen := map[string]bool{}
+	for start := 0; start < len(batch); start += maxInstallPreviewSteps {
+		end := min(start+maxInstallPreviewSteps, len(batch))
+		resp, err := preview(ctx, transport.ServiceInstallPreviewRequest{Steps: batch[start:end]})
+		if err != nil || resp.State != "known" {
+			return nil, "unknown"
+		}
+		for _, item := range resp.Notable {
+			if item.PointUpdate && !seen[item.Package] {
+				seen[item.Package] = true
+				updates = append(updates, transport.NotableInstall{Package: item.Package, Reason: item.Reason, From: item.From, To: item.To, PointUpdate: true})
+			}
+		}
+	}
+	slices.SortFunc(updates, func(a, b transport.NotableInstall) int { return strings.Compare(a.Package, b.Package) })
+	return updates, "known"
+}
+
+// serverSetupAcceptedPointUpdates is what a setup step tells the Agent: the
+// reviewed point updates as exact "package=version", none when the review
+// could not read them.
+func serverSetupAcceptedPointUpdates(plan serverSetupPlan) []string {
+	if plan.PackageUpdatesState != "known" {
+		return nil
+	}
+	accepted := make([]string, 0, len(plan.PackageUpdates))
+	for _, item := range plan.PackageUpdates {
+		accepted = append(accepted, item.Package+"="+item.To)
+	}
+	return accepted
+}
+
+// serverSetupPointUpdatesWait asks, read-only, what this component's install
+// would update now. A point update the review did not list (or any, when the
+// review could not read them) is a verified state for the owner; a read that
+// failed is unknown and asked again. Nothing is installed in either case.
+func (p *Panel) serverSetupPointUpdatesWait(ctx context.Context, plan serverSetupPlan, step serverSetupExecutionStep) *serverSetupPeerWait {
+	updates, state := p.serverSetupPackageUpdates(ctx, []serverSetupPlanStep{step.serverSetupPlanStep})
+	if state == "" {
+		return nil
+	}
+	if state != "known" {
+		return &serverSetupPeerWait{Code: "server_setup_distribution_updates_unread", Message: "CelikPanel could not read which distribution packages this component's install would also update, so nothing was installed. Nobody needs to act yet: setup asks again by itself, or you can choose Review the updates on this page to read and confirm them now; setup then continues from this step."}
+	}
+	listed := map[string]bool{}
+	for _, item := range serverSetupAcceptedPointUpdates(plan) {
+		listed[item] = true
+	}
+	for _, item := range updates {
+		if !listed[item.Package+"="+item.To] {
+			return &serverSetupPeerWait{Code: "server_setup_distribution_updates_changed", Message: "New distribution updates appeared since the review (" + item.Package + " " + item.To + "), so nothing was installed. You, the owner: choose Review the updates on this page and confirm them; setup then continues from this step, and nothing already done is repeated."}
+		}
+	}
+	return nil
+}
+
+// serverSetupPackageUpdatesCovered: at start the reviewed list still covers
+// what the package manager would update now. A newer read that names a
+// package the review did not list needs a new review; an unread one does not
+// (each step's install is checked again on the server).
+func serverSetupPackageUpdatesCovered(reviewed, fresh serverSetupPlan) bool {
+	if fresh.PackageUpdatesState != "known" {
+		return true
+	}
+	listed := map[string]bool{}
+	for _, item := range reviewed.PackageUpdates {
+		listed[item.Package+"\x00"+item.To] = true
+	}
+	for _, item := range fresh.PackageUpdates {
+		if !listed[item.Package+"\x00"+item.To] {
+			return false
+		}
+	}
+	return true
 }
 
 func (p *Panel) handleServerSetupStart(w http.ResponseWriter, r *http.Request) {
@@ -654,6 +1058,8 @@ func (p *Panel) handleServerSetupStart(w http.ResponseWriter, r *http.Request) {
 		PlanID    string `json:"plan_id"`
 		Confirmed bool   `json:"confirmed"`
 		RequestID string `json:"request_id"`
+		// PackageUpdatesDigest: the package-update list the page showed.
+		PackageUpdatesDigest string `json:"package_updates_digest"`
 	}
 	if err := decodeServiceOperationJSON(w, r, &request); err != nil || !request.Confirmed || !validServiceOperationID(request.RequestID) || !validServiceOperationID(request.PlanID) {
 		writeClientError(w, http.StatusBadRequest, "confirm the exact reviewed plan and provide a valid request_id")
@@ -701,12 +1107,45 @@ func (p *Panel) handleServerSetupStart(w http.ResponseWriter, r *http.Request) {
 		writeCodedError(w, http.StatusConflict, "server_setup_review_stale", "Setup changed. Review the current plan.", "")
 		return
 	}
+	if request.PackageUpdatesDigest != serverSetupPackageUpdatesDigest(plan) {
+		// Another review (a reload, a second tab) replaced the list after
+		// this page read it: the owner confirms only a list they read.
+		writeCodedError(w, http.StatusConflict, "server_setup_distribution_updates_changed_before_start", "The distribution updates this setup would also bring changed after you read the review, so setup did not start. You, the owner: read the review again; then confirm it and start setup.", "")
+		return
+	}
+	if plan.PackageUpdatesState == "unknown" {
+		// The same refusal the review's disabled button shows: a client
+		// cannot start on a list nobody could read (P5).
+		writeCodedError(w, http.StatusConflict, serverSetupPackageUpdatesUnreadCode, serverSetupPackageUpdatesUnreadMessage, "")
+		return
+	}
+	// Another change on this server (a Components install, for example):
+	// refused before a run exists, so it never becomes a failed run.
+	// The host itself must answer first: a starting host, an Agent that does
+	// not answer or a busy one is a coded refusal, never a bare 500 (review
+	// fix, item 4).
+	hostErr := p.requireServerSetupHostIdentity(r.Context())
+	busy := false
+	if hostErr == nil {
+		busy, hostErr = p.serverSetupHostBusy(r.Context())
+	}
+	if code, message, coded := serverSetupStartHostRefusal(hostErr); coded {
+		writeCodedError(w, http.StatusConflict, code, message, "")
+		return
+	} else if hostErr != nil {
+		writeServerError(w, hostErr)
+		return
+	}
+	if busy {
+		writeCodedError(w, http.StatusConflict, serverSetupHostBusyCode, serverSetupHostBusyStartMessage, "")
+		return
+	}
 	fresh, err := p.buildServerSetupPlan(r.Context(), state, plan.Actor)
 	if err != nil {
 		writeServerError(w, err)
 		return
 	}
-	if fresh.ID != plan.ID {
+	if fresh.ID != plan.ID || !serverSetupPackageUpdatesCovered(plan, fresh) {
 		writeCodedError(w, http.StatusConflict, "server_setup_review_stale", "Server requirements changed. Review the current plan.", "")
 		return
 	}
@@ -819,6 +1258,10 @@ func serverSetupRunSuperseded(state serverSetupState, execution serverSetupExecu
 }
 
 func (p *Panel) persistServerSetupExecution(ctx context.Context, execution serverSetupExecution) error {
+	// Every outcome other than the booting-host wait ends that episode.
+	if execution.Error == nil || execution.Error.Code != serverSetupHostStartingCode {
+		execution.HostStartingSince = ""
+	}
 	encoded, err := json.Marshal(execution)
 	if err != nil {
 		return err
@@ -898,6 +1341,32 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
 	defer cancel()
+	reviewed := plan
+	plan, err := p.effectiveServerSetupPlan(ctx, reviewed, execution.ID)
+	if err != nil {
+		return false, err
+	}
+	if plan.peerBound && execution.Status != "succeeded" {
+		wait, unbound, err := p.reconcileServerSetupStaleBinding(ctx, reviewed, execution)
+		if err != nil {
+			return false, err
+		}
+		if wait != nil {
+			// The run does not go on with answers the second server
+			// replaced. A step that is running, or a known failure, keeps
+			// its own phase and error (D-024); the setup link's state says
+			// the change (GET /api/v1/setup/peer: changed).
+			if !p.serverSetupExecutionStateReplaceable(ctx, *execution) {
+				return false, nil
+			}
+			execution.Status, execution.Phase = "waiting", "peer_join"
+			execution.Error = &serviceOperationError{Code: wait.Code, Message: wait.Message}
+			return false, p.persistServerSetupExecution(ctx, *execution)
+		}
+		if unbound {
+			plan = reviewed
+		}
+	}
 	if execution.Status == "waiting" && stringIn(execution.Phase, "primary_dns", "infrastructure_dns", "access_dns") {
 		if err := p.claimServerSetupDNSRetry(ctx, plan, execution); err != nil {
 			return false, err
@@ -921,12 +1390,41 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 		}
 		var done bool
 		var err error
-		if step.Kind == "dns_publisher" {
+		if step.Kind == "peer_join" {
+			done, err = p.runServerSetupPeerJoin(ctx, reviewed, execution.ID)
+			if done && err == nil {
+				plan, err = p.effectiveServerSetupPlan(ctx, reviewed, execution.ID)
+			}
+		} else if step.Kind == "dns_publisher" {
 			done, err = p.runServerSetupDNSPublisher(ctx, plan, execution.ID)
+			if errors.Is(err, errServerSetupConflict) {
+				// A join replaced under this run: a verified stop with what
+				// the owner does, never the generic step failure (P8).
+				if rejoined, rejoinErr := p.serverSetupRejoinedUnderRun(ctx, reviewed, execution.ID); rejoinErr == nil && rejoined {
+					err = serverSetupPlanChangedByRejoin()
+				}
+			}
 		} else if step.Kind == "mail_enrollment" {
-			done, err = p.runServerSetupMailEnrollment(ctx, plan, execution, index)
+			done, err = p.runServerSetupMailEnrollment(ctx, reviewed, execution, index)
+		} else if step.Kind == "service" {
+			// The updates the owner confirmed during this run join the
+			// reviewed list for its component installs (P5).
+			stepPlan, readErr := p.withServerSetupRunPackageUpdates(ctx, plan, execution.ID)
+			if readErr != nil {
+				return false, readErr
+			}
+			done, err = p.runServerSetupStep(ctx, stepPlan, step)
 		} else {
 			done, err = p.runServerSetupStep(ctx, plan, step)
+		}
+		var peerWait *serverSetupPeerWait
+		if errors.As(err, &peerWait) {
+			// A wait with its own reason (the join, the names, the link):
+			// the step stays running and is asked again (D-024).
+			execution.Status = "waiting"
+			execution.Phase = step.Kind
+			execution.Error = &serviceOperationError{Code: peerWait.Code, Message: peerWait.Message}
+			return false, p.persistServerSetupExecution(ctx, *execution)
 		}
 		var enrollmentWait *serverSetupMailEnrollmentWait
 		if errors.As(err, &enrollmentWait) {
@@ -1010,7 +1508,21 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 			return false, p.persistServerSetupExecution(ctx, *execution)
 		}
 		if errors.Is(err, errServiceOperationBusy) {
-			return false, nil
+			// Another change runs on this server: the step waits with that
+			// reason and starts nothing (D-024 prerequisite).
+			execution.Status = "waiting"
+			execution.Phase = step.Kind
+			execution.Error = &serviceOperationError{Code: serverSetupHostBusyCode, Message: serverSetupHostBusyWaitMessage}
+			return false, p.persistServerSetupExecution(ctx, *execution)
+		}
+		if serverSetupHostStarting(err) {
+			// The host is still starting: nothing was sent to the Agent; the
+			// same step is asked again (N1). Past the bound it is a failure.
+			waiting, boundErr := serverSetupHostStartingWait(execution, time.Now(), err)
+			if waiting {
+				return false, p.persistServerSetupExecution(ctx, *execution)
+			}
+			err = boundErr
 		}
 		if err != nil {
 			// A failed transport reply cannot prove that the admitted child did
@@ -1033,6 +1545,7 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 		}
 		execution.Status = "running"
 		execution.Error = nil
+		execution.HostStartingSince = ""
 		if !done {
 			return false, p.persistServerSetupExecution(ctx, *execution)
 		}
@@ -1065,6 +1578,13 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 		return false, p.persistServerSetupExecution(ctx, *execution)
 	}
 	if err := p.completeServerSetupExecution(ctx, plan.Revision, execution.ID); err != nil {
+		var wait *serverSetupPeerWait
+		if errors.As(err, &wait) {
+			// Not complete, with its reason; the runner checks again.
+			execution.Status = "waiting"
+			execution.Error = &serviceOperationError{Code: wait.Code, Message: wait.Message}
+			return false, p.persistServerSetupExecution(ctx, *execution)
+		}
 		return false, err
 	}
 	for index := range execution.Steps {
@@ -1074,11 +1594,22 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 	}
 	execution.Status = "succeeded"
 	execution.Phase = "complete"
+	execution.Error = nil
 	return true, p.persistServerSetupExecution(ctx, *execution)
 }
 
 func (p *Panel) runServerSetupStep(ctx context.Context, plan serverSetupPlan, step *serverSetupExecutionStep) (bool, error) {
+	if p.serverSetupStepOverride != nil {
+		if done, err, handled := p.serverSetupStepOverride(ctx, *step); handled {
+			return done, err
+		}
+	}
 	switch step.Kind {
+	case "peer_names":
+		if err := p.requireServerSetupAdmission(ctx); err != nil {
+			return false, err
+		}
+		return p.runServerSetupPeerNames(ctx, plan, *step)
 	case "access_dns":
 		return p.runServerSetupAccessDNS(ctx, plan, *step)
 	case "infrastructure_dns":
@@ -1090,6 +1621,17 @@ func (p *Panel) runServerSetupStep(ctx context.Context, plan serverSetupPlan, st
 		if serverSetupManualSecondaryHosting(plan.Draft) {
 			ready, err := p.serverSetupManualSecondaryHostingReadiness(ctx, plan.Draft)
 			if err != nil || !ready {
+				return false, errServerSetupDNSReadinessRequired
+			}
+			return true, nil
+		}
+		if serverSetupStandaloneDNS(plan.Draft) {
+			// One server keeping its own DNS: its engine and both public
+			// nameserver names, no pair and no publishing connection.
+			if ready, err := p.setupDNSModeReadiness(ctx, setupDNSModeLocal); err != nil || !ready {
+				return false, errServerSetupDNSReadinessRequired
+			}
+			if ready, err := p.setupDNSNameserverReadiness(ctx); err != nil || !ready {
 				return false, errServerSetupDNSReadinessRequired
 			}
 			return true, nil
@@ -1140,18 +1682,29 @@ func (p *Panel) runServerSetupStep(ctx context.Context, plan serverSetupPlan, st
 		return true, p.startServerSetupDNS(ctx, plan.Draft, step.RequestID, plan.Actor)
 	case "mail_certificate":
 		return p.runServerSetupMailCertificate(ctx, plan, *step)
+	case "mail_dns":
+		return p.runServerSetupMailDNS(ctx, plan, *step)
 	case "firewall":
 		return p.runServerSetupFirewall(ctx, plan, *step)
 	case "service", "runtime", "mail_profile", "panel_certificate":
+		retry := step.BusyRetry
 		op, err := p.ensureServerSetupChild(ctx, plan, *step)
 		if err != nil {
 			return false, err
+		}
+		if retry && op.Status != serviceOperationFailed {
+			step.BusyRetry = false
 		}
 		step.OperationID = op.ID
 		switch op.Status {
 		case serviceOperationSucceeded:
 			return true, nil
 		case serviceOperationFailed:
+			if step.Kind != "panel_certificate" && p.serverSetupChildRefusedAtAdmission(ctx, op) {
+				// Proven that nothing ran: the step waits, bounded by time,
+				// and the same child is admitted again (review fix, item 1/9).
+				return false, serverSetupHostBusyAttempt(step, op, time.Now())
+			}
 			if op.Error != nil {
 				return false, &serverSetupChildFailure{Code: op.Error.Code, Message: op.Error.Message,
 					Component: op.Error.Component, Step: op.Error.Step, Detail: op.Error.Detail,
@@ -1187,14 +1740,31 @@ func (p *Panel) ensureServerSetupChild(ctx context.Context, plan serverSetupPlan
 		qualifier = certificate.Qualifier
 	}
 	prior, found, err := p.idempotentServiceOperation(ctx, step.RequestID, kind, step.Target, qualifier)
-	if err != nil || found {
+	if err != nil {
 		return prior, err
+	}
+	// A child the Agent refused at admission (proven: nothing ran) is
+	// admitted again under its own identity when the step asks for it.
+	requeue := found && step.BusyRetry && step.Kind != "panel_certificate" && p.serverSetupChildRefusedAtAdmission(ctx, prior)
+	if found && !requeue {
+		return prior, nil
 	}
 	if err := p.requireServerSetupAdmission(ctx); err != nil {
 		return serviceOperation{}, err
 	}
+	// A host still starting is a wait before the operation exists (N1).
+	if err := p.requireServerSetupHostIdentity(ctx); err != nil {
+		return serviceOperation{}, err
+	}
 	if plan.BuildCommit != "" && plan.BuildCommit != strings.TrimSpace(buildCommit) {
 		return serviceOperation{}, errServerSetupBuildChanged
+	}
+	if step.Kind == "service" {
+		// Before a component's first install the package manager is asked
+		// again: a point update the review did not list is never accepted.
+		if wait := p.serverSetupPointUpdatesWait(ctx, plan, step); wait != nil {
+			return serviceOperation{}, wait
+		}
 	}
 	if _, degraded := p.subsystemDegraded(degradedSubsystemServiceOperations); degraded {
 		return serviceOperation{}, errors.New("service operation recovery is required")
@@ -1268,7 +1838,12 @@ func (p *Panel) ensureServerSetupChild(ctx context.Context, plan serverSetupPlan
 		raw, _ := json.Marshal(serverSetupMailChild{MailHostname: plan.Draft.MailHostname})
 		operationData = string(raw)
 	}
-	op, err := p.createServiceOperationRequestWithState(ctx, kind, step.Target, qualifier, step.RequestID, plan.Actor, "queued", operationData)
+	var op serviceOperation
+	if requeue {
+		op, err = p.requeueRefusedServiceOperation(ctx, prior)
+	} else {
+		op, err = p.createServiceOperationRequestWithState(ctx, kind, step.Target, qualifier, step.RequestID, plan.Actor, "queued", operationData)
+	}
 	if errors.Is(err, errServiceOperationReplay) {
 		return op, nil
 	}
@@ -1279,7 +1854,10 @@ func (p *Panel) ensureServerSetupChild(ctx context.Context, plan serverSetupPlan
 	switch step.Kind {
 	case "service":
 		runner = func(ctx context.Context, advance func(string) error) (serviceOperationResult, *serviceOperationFailure) {
-			return p.runServiceInstall(ctx, serviceInstallRequest{ServiceID: step.Target, Package: step.Qualifier, RequestID: step.RequestID}, advance)
+			// The setup's one confirmation covers exactly the distribution
+			// point updates its review listed; every other notable install
+			// is still refused by the Agent.
+			return p.runServiceInstall(ctx, serviceInstallRequest{ServiceID: step.Target, Package: step.Qualifier, RequestID: step.RequestID, AcceptedPointUpdates: serverSetupAcceptedPointUpdates(plan)}, advance)
 		}
 	case "runtime":
 		runner = func(ctx context.Context, advance func(string) error) (serviceOperationResult, *serviceOperationFailure) {
@@ -1292,7 +1870,21 @@ func (p *Panel) ensureServerSetupChild(ctx context.Context, plan serverSetupPlan
 	default:
 		return serviceOperation{}, errors.New("unknown service setup child")
 	}
-	p.launchServiceOperation(op, plan.Actor, "queued", "server.setup.child:"+step.Target, "server.setup.child.failed:"+step.Target, release, runner)
+	successAudit := "server.setup.child:" + step.Target
+	failureAudit := "server.setup.child.failed:" + step.Target
+	p.launchServiceOperationWithAudit(op, plan.Actor, "queued", successAudit, failureAudit, release, runner,
+		func(ctx context.Context, actor serviceOperationActor, action string) {
+			// A refusal at admission is recorded on the step, not as one
+			// audit row per attempt. Every other row keeps its fixed name.
+			if code, failed := strings.CutPrefix(action, failureAudit+" — "); failed {
+				if code == errCodeHostMutationBusy {
+					return
+				}
+				p.auditServiceOperation(ctx, actor, failureAudit+" — "+code)
+				return
+			}
+			p.auditServiceOperation(ctx, actor, successAudit)
+		})
 	transferred = true
 	return op, nil
 }
@@ -1451,10 +2043,14 @@ func serverSetupFailureForStep(step serverSetupExecutionStep, cause error) *serv
 			Reason: child.Reason}
 	}
 	switch {
+	case errors.Is(cause, errServerSetupHostNotStarted):
+		return &serviceOperationError{Code: serverSetupHostNotStartedCode, Message: serverSetupHostNotStartedText}
+	case errors.Is(cause, errServerSetupAgentNotAnswering):
+		return &serviceOperationError{Code: serverSetupAgentNotAnsweringCode, Message: serverSetupAgentNotAnsweringText}
 	case errors.Is(cause, errServerSetupHostRestartRequired):
 		return &serviceOperationError{Code: transport.FirewallStatusHostRestartRequired, Message: setupHostRestartRequiredMessage}
 	case errors.Is(cause, errServerSetupDNSRolledBack):
-		message := "The DNS engine installation did not complete and CelikPanel undid it: no DNS engine is running on this server, and the installed packages were kept stopped for the next attempt. Nothing else was changed. The server administrator can review a new plan and start this DNS step again; it runs as a new installation."
+		message := "The DNS engine installation did not complete and CelikPanel undid it: no DNS engine is running on this server, and any packages it installed were kept stopped for the next attempt. Nothing else was changed, and no restart is needed. The server administrator chooses Review a revised plan: keep this DNS software to try the installation again as a new one, or choose the other DNS software in the plan; setup then continues from the new plan."
 		if sentence := namedHostOperationSentence(cause); sentence != "" {
 			message += " Reason: " + sentence
 		}
@@ -1635,6 +2231,11 @@ func (p *Panel) runServerSetupMailCertificate(ctx context.Context, plan serverSe
 		if agentMutationActive(job.Status) {
 			return false, nil
 		}
+		// The reply was lost: the job's recorded reason still says a clock
+		// behind the authority (review fix, item 8).
+		if skew, ok := certificateClockSkewRecorded(job.ErrorCode, job.ErrorMessage); ok {
+			return false, &serverSetupChildFailure{Code: certificateClockSkewCode, Message: skew.message()}
+		}
 		return false, errors.New("mail host certificate operation failed; review a new attempt")
 	}
 	if err := p.requireServerSetupAdmission(ctx); err != nil {
@@ -1672,10 +2273,21 @@ func (p *Panel) runServerSetupMailCertificate(ctx context.Context, plan serverSe
 		if err := p.callAgentContext(bound, "Agent.IssueMailHostCertificateV1", &req, &response); err != nil {
 			return err
 		}
-		if response.Error != "" || !response.Issued {
-			return errors.New("mail host certificate publication was not verified")
-		}
-		return nil
+		return serverSetupMailCertificateResponseError(response)
 	})
 	return err == nil, err
+}
+
+// serverSetupMailCertificateResponseError: the mail host certificate's
+// answer as the step's outcome. A clock behind the authority is the same
+// coded reason as for the panel certificate (N4).
+func serverSetupMailCertificateResponseError(response transport.IssueMailHostCertificateResponse) error {
+	if response.ErrorCode == transport.CertificateClockSkewErrorCode && response.ClockSkewSeconds > 0 {
+		skew := certificateClockSkewError{Seconds: response.ClockSkewSeconds}
+		return &serverSetupChildFailure{Code: certificateClockSkewCode, Message: skew.message()}
+	}
+	if response.Error != "" || !response.Issued {
+		return errors.New("mail host certificate publication was not verified")
+	}
+	return nil
 }

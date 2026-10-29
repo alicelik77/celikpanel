@@ -87,6 +87,25 @@ func ServiceForUnit(unit string) *ManagedService {
 	return nil
 }
 
+// HelperUnitOwner returns the catalogue service whose HelperUnits names this
+// unit (spamass-milter for SpamAssassin, clamav-freshclam for ClamAV), or
+// nil. A helper is not the service itself: ServiceForUnit never returns its
+// owner, so no start/stop or "running" claim of the service is made from it;
+// the scanner only lists it so a check that requires the helper running
+// (server setup's final check) can see it.
+// HelperUnitOwner: yardimci birimin sahibi servis; servisin kendisi sayilmaz.
+func HelperUnitOwner(unit string) *ManagedService {
+	unit = strings.TrimSuffix(unit, ".service")
+	for i := range ManagedServices {
+		for _, helper := range ManagedServices[i].HelperUnits {
+			if strings.TrimSuffix(helper, ".service") == unit {
+				return &ManagedServices[i]
+			}
+		}
+	}
+	return nil
+}
+
 // ServiceScanGlobs is the systemctl glob set the scanner fetches — derived
 // from every service's SystemNames and SystemNamePattern, so it can never
 // drift from the catalogue. A versioned runtime contributes its pattern's
@@ -116,6 +135,9 @@ func ServiceScanGlobs() []string {
 		s := &ManagedServices[i]
 		for _, n := range s.SystemNames {
 			add(globStem(n))
+		}
+		for _, helper := range s.HelperUnits {
+			add(globStem(strings.TrimSuffix(helper, ".service")))
 		}
 		add(patternPrefix(s.SystemNamePattern))
 	}

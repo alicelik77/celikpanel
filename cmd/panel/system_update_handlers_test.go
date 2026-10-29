@@ -176,7 +176,7 @@ type systemUpdateTestFixture struct {
 
 func newSystemUpdateTestFixture(t *testing.T) systemUpdateTestFixture {
 	t.Helper()
-	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+	database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), "panel.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -280,7 +280,7 @@ func TestPanelUpdateRoutesRemainBehindAuthenticationAndCSRF(t *testing.T) {
 	}
 	// The request-identity guard (D-029) sits inside authentication, in front
 	// of the mux; it lets every route it does not name pass untouched.
-	if !strings.Contains(text, "applicationHandler := panel.requireRemoteDNSMachineAuth(csrfProtect(\n\t\tpanel.requireAuth(panel.requestIdentities.wrap(http.DefaultServeMux)),\n\t))") {
+	if !strings.Contains(text, "applicationHandler := panel.requireServerSetupLinkMachine(panel.requireRemoteDNSMachineAuth(csrfProtect(\n\t\tpanel.requireAuth(panel.requestIdentities.wrap(http.DefaultServeMux)),\n\t)))") {
 		t.Fatal("default API mux is no longer wrapped by auth then same-origin CSRF")
 	}
 }

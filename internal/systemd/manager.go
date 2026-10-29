@@ -65,8 +65,14 @@ func (m *Manager) ListServices() ([]core.Service, error) {
 		// Sahipliğe katalog karar verir — glob'un fazladan topladığı ama hiçbir
 		// servisin sahiplenmediği unit atlanır.
 		owner := core.ServiceForUnit(name)
+		helper := false
 		if owner == nil {
-			continue
+			// A helper unit (spamass-milter, clamav-freshclam) is listed as a
+			// non-primary unit of its service, never as the service itself.
+			if owner = core.HelperUnitOwner(name); owner == nil {
+				continue
+			}
+			helper = true
 		}
 
 		serviceType := serviceTypeForService(owner)
@@ -78,7 +84,7 @@ func (m *Manager) ListServices() ([]core.Service, error) {
 		configFiles := m.getConfigFiles(name, string(serviceType))
 
 		// Determine if this is a primary service (not a helper)
-		isPrimary := m.isPrimaryService(name)
+		isPrimary := m.isPrimaryService(name) && !helper
 
 		s := core.Service{
 			ID:          name,

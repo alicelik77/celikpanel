@@ -77,9 +77,18 @@ func (a *Agent) IssueMailHostCertificateV1(req *transport.IssueMailHostCertifica
 		resp.Error = err.Error()
 		return nil
 	}
+	// A leaf valid moments after this clock is waited for, and a larger
+	// skew is coded, as for the panel certificate (N4).
+	waitIssuedCertificateSourceValid(ctx, func() error {
+		_, _, _, _, readErr := readMailHostCertificateSource(commitment.Domain)
+		return readErr
+	})
 	expires, err := publishMailHostCertificateSource(ctx, commitment.Domain, req.MutationRequestID, commitment.Qualifier, "")
 	if err != nil {
 		resp.Error = err.Error()
+		if seconds, ok := issuedCertificateClockSkew(err); ok {
+			resp.ErrorCode, resp.ClockSkewSeconds = transport.CertificateClockSkewErrorCode, seconds
+		}
 		return nil
 	}
 	resp.Issued = true

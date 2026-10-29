@@ -1,6 +1,6 @@
 import { setupPurposes, type ServerSetupCheck, type SetupPurpose } from './serverSetup';
 
-export interface SetupPlanStep { id: string; kind: 'infrastructure_dns' | 'access_dns' | 'dns' | 'dns_publisher' | 'dns_readiness' | 'service' | 'runtime' | 'mail_profile' | 'mail_enrollment' | 'firewall' | 'panel_certificate' | 'mail_certificate' | 'verify'; target: string; qualifier?: string }
+export interface SetupPlanStep { id: string; kind: 'infrastructure_dns' | 'access_dns' | 'dns' | 'dns_publisher' | 'dns_readiness' | 'service' | 'runtime' | 'mail_profile' | 'mail_enrollment' | 'mail_dns' | 'peer_join' | 'peer_names' | 'firewall' | 'panel_certificate' | 'mail_certificate' | 'verify'; target: string; qualifier?: string }
 export interface SetupInfrastructureDNSPlan {
     zone: string; existing_zone_id?: number; expected_digest: string;
     records: { name: string; type: string; content: string; ttl: number; action: 'add' | 'keep' }[];
@@ -14,6 +14,12 @@ export interface ServerSetupPlan {
     server_ip?: string;
     components?: { id: string; selected: boolean; required: boolean; installed: boolean }[];
     remote_dns_connection?: { id: string; endpoint: string; nameservers: string[] };
+    // Distribution point updates of installed packages the component installs
+    // would also bring; the setup confirmation covers them (Beta-1 fix).
+    package_updates?: { package: string; from?: string; to?: string }[];
+    package_updates_state?: 'known' | 'unknown';
+    // The stored list's digest; the start sends it back (the list the page showed).
+    package_updates_digest?: string;
 }
 export interface ServerSetupExecution {
     id: string; request_id: string; plan_id: string;
@@ -56,7 +62,8 @@ function decodePeerHostRecord(value: unknown): SetupPeerHostRecord | undefined {
         ...(outcome.code ? { code: outcome.code as string } : {}), ...(outcome.result ? { result: outcome.result as string } : {}), ...(outcome.zone ? { zone: outcome.zone as string } : {}),
     } };
 }
-const kinds = ['infrastructure_dns', 'access_dns', 'dns', 'dns_publisher', 'dns_readiness', 'service', 'runtime', 'mail_profile', 'mail_enrollment', 'firewall', 'panel_certificate', 'mail_certificate', 'verify'];
+// mail_dns since alpha.112; peer_join and peer_names since alpha.114.
+const kinds = ['infrastructure_dns', 'access_dns', 'dns', 'dns_publisher', 'dns_readiness', 'service', 'runtime', 'mail_profile', 'mail_enrollment', 'mail_dns', 'peer_join', 'peer_names', 'firewall', 'panel_certificate', 'mail_certificate', 'verify'];
 const isRecord = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const identity = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{32}$/.test(value);
 function isStep(value: unknown): value is SetupPlanStep {
@@ -68,10 +75,12 @@ function isInfrastructureDNSPlan(value: unknown): value is SetupInfrastructureDN
     return isRecord(value) && typeof value.zone === 'string' && value.zone.length > 0 && value.zone.length <= 253
         && (value.existing_zone_id === undefined || (Number.isSafeInteger(value.existing_zone_id) && (value.existing_zone_id as number) > 0))
         && typeof value.expected_digest === 'string' && value.expected_digest.length <= 128
-        && Array.isArray(value.records) && value.records.length > 0 && value.records.length <= 32
+        // The setup's own records plus, since alpha.112, the imported and mail
+        // records of the main domain (at most 64 imports).
+        && Array.isArray(value.records) && value.records.length > 0 && value.records.length <= 128
         && value.records.every(item => isRecord(item) && typeof item.name === 'string' && item.name.length <= 253
-            && typeof item.type === 'string' && ['SOA', 'NS', 'A', 'AAAA'].includes(item.type)
-            && typeof item.content === 'string' && item.content.length <= 2048
+            && typeof item.type === 'string' && ['SOA', 'NS', 'A', 'AAAA', 'CNAME', 'MX', 'TXT', 'CAA'].includes(item.type)
+            && typeof item.content === 'string' && item.content.length <= 8192
             && Number.isSafeInteger(item.ttl) && (item.ttl as number) >= 0 && (item.ttl as number) <= 2147483647
             && ['add', 'keep'].includes(String(item.action)));
 }
@@ -90,6 +99,10 @@ export function decodeSetupPlan(value: unknown, revision: number): ServerSetupPl
     if (value.infrastructure_dns !== undefined && !isInfrastructureDNSPlan(value.infrastructure_dns)) return null;
     if (value.components !== undefined && (!Array.isArray(value.components) || value.components.length > 80
         || value.components.some(item => !isRecord(item) || typeof item.id !== 'string' || typeof item.selected !== 'boolean' || typeof item.required !== 'boolean' || typeof item.installed !== 'boolean'))) return null;
+    if (value.package_updates !== undefined && (!Array.isArray(value.package_updates) || value.package_updates.length > 400
+        || value.package_updates.some(item => !isRecord(item) || typeof item.package !== 'string' || item.package.length > 128
+            || (item.from !== undefined && typeof item.from !== 'string') || (item.to !== undefined && typeof item.to !== 'string')))) return null;
+    if (value.package_updates_state !== undefined && !['known', 'unknown'].includes(String(value.package_updates_state))) return null;
     return value as unknown as ServerSetupPlan;
 }
 export function decodeSetupExecution(value: unknown, marker?: SetupStartMarker | null): ServerSetupExecution | null {
@@ -139,7 +152,7 @@ export function decodeSetupExecution(value: unknown, marker?: SetupStartMarker |
 }
 // handover: the reviewed plan contained the panel certificate step, so the
 // Panel restarts once during this setup (lib/panelHandover.ts).
-export interface SetupStartMarker { request_id: string; plan_id: string; panel_domain: string; handover?: boolean }
+export interface SetupStartMarker { request_id: string; plan_id: string; panel_domain: string; handover?: boolean; package_updates_digest?: string }
 export function decodeSetupMarker(raw: string | null): SetupStartMarker | null {
     try {
         const value: unknown = JSON.parse(raw || 'null');

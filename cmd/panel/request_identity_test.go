@@ -13,8 +13,6 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
-
-	paneldb "github.com/alicelik/celikpanel/internal/db"
 )
 
 // D-029. These tests drive the guard with a counting handler in place of the
@@ -30,7 +28,7 @@ const (
 
 func newRequestIdentityTestGuard(t *testing.T) (*requestIdentityGuard, *sql.DB) {
 	t.Helper()
-	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+	database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), "panel.sqlite"))
 	if err != nil {
 		t.Fatalf("open database: %v", err)
 	}

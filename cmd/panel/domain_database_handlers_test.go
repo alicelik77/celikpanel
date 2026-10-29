@@ -9,12 +9,10 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
-
-	paneldb "github.com/alicelik/celikpanel/internal/db"
 )
 
 func TestDomainDatabaseAvailableTypesAreTenantScopedActiveAndStable(t *testing.T) {
-	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+	database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), "panel.sqlite"))
 	if err != nil {
 		t.Fatalf("open panel database: %v", err)
 	}

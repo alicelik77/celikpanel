@@ -44,6 +44,16 @@ or its prior infrastructure ownership receipt. Unknown ownership, external or
 remote management, conflicting addresses, aliases, delegated children and
 ambiguous authority block preparation with a reason to review.
 
+### Amendment (v0.1.0-alpha.112 source)
+
+When the zone is the wizard's main domain, the reviewed zone also carries the
+records the owner chose to import from the public internet and, with email,
+the main domain's MX, SPF and DMARC (DKIM follows in the `mail_dns` step after
+the mail profile). They are planned with an origin ("imported", "mail"), are
+kept when an identical record already exists, and are never locked; only the
+setup's own server addresses are. An imported address on a name the setup
+gives to a server is refused (`infrastructure_dns_imported_clash`).
+
 ## Primary BIND and secondary PowerDNS sequence
 
 For the reviewed Frankfurt primary/Boston secondary arrangement:

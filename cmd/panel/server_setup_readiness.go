@@ -268,9 +268,18 @@ func (p *Panel) serverSetupCompletionChecks(ctx context.Context, draft serverSet
 			healthErr = errors.New("mail host health could not be read")
 		}
 		checks = append(checks, setupMailIdentityCheck(health, healthErr, draft.MailHostname))
+		if check, applies := setupMailIPv6Check(ctx, draft.MailHostname); applies {
+			checks = append(checks, check)
+		}
 		checks = append(checks, setupCheck("mail_delivery", health.Error == "" && health.OutboundPort25 == "open", healthErr))
 	}
 
+	// The other server's DKIM record when it receives the main domain's mail
+	// (alpha.114): written here over the link; completion waits for it.
+	if draft.PeerMail != nil && draft.DNSMode == setupDNSModeLocal && draft.DNSRole == transport.DNSPairRolePrimary && draft.InfrastructureDNS != nil && !serverSetupHasMail(draft) {
+		present, err := p.serverSetupPeerDKIMPresent(ctx, draft)
+		checks = append(checks, setupCheck("peer_mail_dkim", present, err))
+	}
 	return checks, nil
 }
 
@@ -351,6 +360,12 @@ func setupMailIdentityCheck(health transport.MailHealthResponse, healthErr error
 		if check.Reason == "reverse_dns_unknown" {
 			check.State, check.Code = "unknown", "mail_identity_unavailable"
 		}
+		// Only the reverse DNS part is the provider's (owner decision
+		// 2026-10-28): an open task, not a wait. A mail name or address
+		// that is wrong still blocks.
+		// forward_dns_mismatch stays blocking: the mail host's own address
+		// does not reach this server, which is a wrong mail name or record.
+		check.Advisory = stringIn(check.Reason, "reverse_dns_mismatch", "reverse_dns_unknown")
 	}
 	return check
 }

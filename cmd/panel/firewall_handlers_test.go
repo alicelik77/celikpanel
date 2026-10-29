@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/alicelik/celikpanel/internal/mutationpayload"
+	"github.com/alicelik/celikpanel/internal/transport"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -14,10 +16,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	paneldb "github.com/alicelik/celikpanel/internal/db"
-	"github.com/alicelik/celikpanel/internal/mutationpayload"
-	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 type FirewallSyncApplyRequest = transport.ApplyFirewallRequest
@@ -472,7 +470,7 @@ func waitPanelCertificateOperation(
 
 func TestPanelCertificateFailureRollsBackACMEFirewallAfterIssue(t *testing.T) {
 	useFastPanelCertificateSagaRetry(t)
-	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+	database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), "panel.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -550,7 +548,7 @@ func TestPanelCertificateFailureRollsBackACMEFirewallAfterIssue(t *testing.T) {
 }
 
 func TestPanelCertificateRejectsInvalidStoredContactEmailBeforeMutation(t *testing.T) {
-	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+	database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), "panel.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -598,7 +596,7 @@ func TestPanelCertificateRejectsInvalidStoredContactEmailBeforeMutation(t *testi
 
 func TestPanelCertificateFinalizeFailureRunsStandaloneCompensationAndAudits(t *testing.T) {
 	useFastPanelCertificateSagaRetry(t)
-	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+	database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), "panel.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -738,7 +736,7 @@ func TestFirewallGETDoesNotApplyOrCreatePersistence(t *testing.T) {
 }
 
 func TestSaveForRebootPOSTPersistsAndAuditsExplicitAction(t *testing.T) {
-	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+	database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), "panel.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -783,7 +781,7 @@ func TestSaveForRebootPOSTPersistsAndAuditsExplicitAction(t *testing.T) {
 }
 
 func TestSaveForRebootEnableFailureReturnsErrorAndAuditsFailure(t *testing.T) {
-	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+	database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), "panel.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -913,7 +911,7 @@ func TestManualOffWinsAgainstInFlightServiceSync(t *testing.T) {
 }
 
 func TestFirewallPOSTHoldsGlobalMutationLockBeforeDiscovery(t *testing.T) {
-	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+	database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), "panel.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1041,7 +1039,7 @@ func TestFirewallEnableNamesTheSSHReasonAndOffersTheOnlyWayForward(t *testing.T)
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+			database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), "panel.sqlite"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1150,7 +1148,7 @@ func TestFirewallLateAgentSSHRefusalStillCarriesItsCode(t *testing.T) {
 		applyResponseError: "this server has an SSH service but no verified listening sshd port; firewall was not changed",
 		applyStatusReason:  transport.SSHDiscoveryNotListening,
 	}
-	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+	database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), "panel.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}

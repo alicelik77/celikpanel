@@ -152,6 +152,16 @@ export function dnsEngineIdentityStagesATakeover(
 // Agent'in bu makinede her kalici mutasyonu reddedip reddetmedigi - panelin
 // kurdugu bir motorun kimsenin degilmis gibi okunmasina yol acan tek sey. Panel
 // bunu, okunusunu degistirdigi motorun detay kodu olarak yayimlar.
+// The active engine's published files were changed outside CelikPanel
+// (detail code engine_owner_changed): an owner-change notice, not a foreign
+// DNS server and not a generic alarm.
+export function dnsEngineOwnerChanged(
+    snapshot: DNSEngineFlowEvidence | null,
+): boolean {
+    return snapshot !== null &&
+        snapshot.engines.some((entry) => entry.detail_code === 'engine_owner_changed');
+}
+
 export function dnsEngineMutationsHeld(
     snapshot: DNSEngineFlowEvidence | null,
 ): boolean {

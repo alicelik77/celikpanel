@@ -469,6 +469,6 @@ export const trSettingsScreens: Record<SettingsScreenKey, string> = {
     'account.email.saving': 'Yeni adresiniz kaydediliyor. Başka bir şey yapmanız gerekmiyor; birkaç saniye sürer.',
     'account.email.outcomeUnknown': 'Yeni adresinizin kaydedilip kaydedilmediği henüz bilinmiyor. Bu bir hata değil. Bu sayfadaki adres yeniden okundu; hâlâ eskisiyse yeniden deneyin.',
     'account.email.changed': 'E-posta adresiniz değiştirildi.',
-    'dnsPeers.subtitle': 'Ortak ad sunucuları, bu sunucunun rolü, eş sunucusu ve DNS çoğaltması.',
+    'dnsPeers.subtitle': 'Alan adlarınızın hangi sunucuyu gösterdiği ve internetin bunu nasıl gördüğü.',
     // --- Ayarlar'dan çıkan sayfaların sonu ---
 };

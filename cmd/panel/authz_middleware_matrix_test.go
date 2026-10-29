@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/alicelik/celikpanel/internal/auth"
-	paneldb "github.com/alicelik/celikpanel/internal/db"
 	"github.com/alicelik/celikpanel/internal/repositories"
 	"github.com/alicelik/celikpanel/internal/secrets"
 	"github.com/alicelik/celikpanel/internal/services"
@@ -61,7 +60,7 @@ type authzMatrixFixture struct {
 
 func newAuthzMatrixFixture(t *testing.T) authzMatrixFixture {
 	t.Helper()
-	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+	database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), "panel.sqlite"))
 	if err != nil {
 		t.Fatalf("open authz matrix database: %v", err)
 	}

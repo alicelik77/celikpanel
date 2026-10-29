@@ -311,7 +311,7 @@ func freshPrimaryProcessIdentityV3(pid uint64) (string, error) {
 	}
 	running, err := os.Stat(fmt.Sprintf("/proc/%d/exe", pid))
 	if err != nil || !os.SameFile(installed, running) {
-		return "", errors.New("v3 running PowerDNS executable differs from measured package")
+		return "", errors.New("v3 running PowerDNS executable differs from the installed package")
 	}
 	again, err := processidentity.StartToken(int(pid))
 	if err != nil || again != started {

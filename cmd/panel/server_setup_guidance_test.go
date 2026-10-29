@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -23,7 +24,7 @@ func TestServerSetupGuidancePersistsWithoutCompletingOrChangingDraft(t *testing.
 	}
 	// Read again independently, as a new session does. It is not a browser flag.
 	state, err = f.panel.loadServerSetup(ctx)
-	if err != nil || state.Guidance != "manual" || state.Revision != original.Revision+1 || state.Status != original.Status || state.Required != original.Required || state.Draft != original.Draft || state.CompletedAt != original.CompletedAt {
+	if err != nil || state.Guidance != "manual" || state.Revision != original.Revision+1 || state.Status != original.Status || state.Required != original.Required || !reflect.DeepEqual(state.Draft, original.Draft) || state.CompletedAt != original.CompletedAt {
 		t.Fatalf("manual choice changed setup or was not persisted: %+v %v", state, err)
 	}
 	if _, err := f.panel.saveServerSetupGuidance(ctx, original.Revision, "guided"); !errors.Is(err, errServerSetupConflict) {

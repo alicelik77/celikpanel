@@ -1760,16 +1760,19 @@ func switchToPDNSOnCertifiedProfile(
 		manifest.PairRole == transport.DNSPairRolePrimary
 	var freshTargetBeforePackages dnsUnitSnapshot
 	freshTargetOwnGuardMask := false
+	freshPDNSVersion := ""
 	if freshPairedPrimaryV3 {
 		// Refuse an unmeasured host before any package, unit or file effect.
 		if err := validateFreshPDNSPrimaryHostProfileV3(profile); err != nil {
 			return transport.SwitchDNSEngineV1Response{}, err
 		}
-		// The measured-version pin, read before any receipt, mask, package
+		// The tested-series version, read before any receipt, mask, package
 		// or journal effect (item 4a); the post-install identity check stays.
-		if err := preflightFreshPDNSPackageVersionsV3(ctx, profile, packages, missing); err != nil {
+		version, err := preflightFreshPDNSPackageVersionsV3(ctx, profile, packages, missing)
+		if err != nil {
 			return transport.SwitchDNSEngineV1Response{}, err
 		}
+		freshPDNSVersion = version
 		beforePackages, captureErr := captureDNSUnitSnapshots(ctx, systemctl, []string{"pdns.service"})
 		if captureErr != nil {
 			return transport.SwitchDNSEngineV1Response{}, captureErr
@@ -1853,7 +1856,7 @@ func switchToPDNSOnCertifiedProfile(
 				return installOwnedDNSEnginePackages(installReceipt, func() error {
 					install := func() (string, error) {
 						if freshPairedPrimaryV3 {
-							return installFreshPDNSPackagesV3(ctx, missing)
+							return installFreshPDNSPackagesV3(ctx, missing, freshPDNSVersion)
 						}
 						return installPackagesWithCandidateContext(
 							ctx, string(profile.PackageManager), missing, "",

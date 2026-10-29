@@ -72,7 +72,7 @@ const stub = dataModule(`
   export const DNSEngineCard = () => React.createElement('aside', null, 'dns-engine-card');
   export const ServerSetupDNSAccess = () => null, ServerSetupDNSManagement = () => null;
   export const dnsEngineText = (locale, key) => key;
-  export const dnsEngineIdentityStagesATakeover = () => false, dnsEngineMutationsHeld = () => false, dnsEngineIdentityReviewLocked = () => false;
+  export const dnsEngineIdentityStagesATakeover = () => false, dnsEngineMutationsHeld = () => false, dnsEngineOwnerChanged = () => false, dnsEngineIdentityReviewLocked = () => false;
   // A dialog is drawn only where a test asks for it (2026-10-16).
   export const Dialog = (props) => (globalThis.batch3Dialogs ? React.createElement('dialog', null, props.title, props.description, props.children, props.footerLead, props.actions) : null);
   // The settings form is mounted on the route that stages the names before an
@@ -1246,7 +1246,7 @@ test('Components: a server whose setup has finished adds mail through a setup ex
     assert.equal(context.snapshot.extension, true);
     assert.deepEqual(globalThis.batch3Navigated, ['/setup']);
     const editor = JSON.parse(kept.get('celikpanel.setup.editor.admin'));
-    assert.equal(editor.step, 'access');
+    assert.equal(editor.step, 'names');
     assert.equal(editor.revision, 8);
   } finally { await unmount(); delete globalThis.batch3Dialogs; delete globalThis.batch3Setup; delete globalThis.batch3Navigated; delete globalThis.sessionStorage; delete globalThis.document; }
   // Control: without a finished setup the dialog installs directly and says

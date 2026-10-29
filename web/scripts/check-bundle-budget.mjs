@@ -101,6 +101,29 @@ const screenPartBudgets = {
   // "lifecycle", which had no headroom left. A new part, set with at least 25%
   // headroom from its Turkish file: 16.14 / 4.44 KiB.
   webmailAddress: kib(20.5, 5.7),
+  // v0.1.0-alpha.111/112: the setup wizard v2 (setup.v2., setup.v3.), split
+  // out of "setup", which had 1.9 KiB left. A new part, set with at least 25%
+  // headroom from its Turkish file: 18.35 / 5.71 KiB. Raised at alpha.113 to
+  // keep 25% headroom over 19.98 / 6.15 KiB (review fixes of alpha.112).
+  setupWizard: kib(27, 8.25),
+  // v0.1.0-alpha.113: the live registrar card (setup.v4.). A new part, set
+  // with at least 25% headroom from its Turkish file: 3.05 / 1.21 KiB.
+  setupRegistrar: kib(8, 3),
+  // v0.1.0-alpha.114: the second server joining by code (setup.v5.). A new
+  // part, set with at least 25% headroom from its Turkish file: 10.58 / 2.88 KiB.
+  setupJoin: kib(14.5, 4),
+  // v0.1.0-alpha.114 review fixes: the setup link's waits and verified states
+  // (setup.v5.wait., setup.v5.check.), split out of "setupJoin" when they took
+  // it over its ceiling (Turkish 15.05 / 3.93 KiB). A new part, set with at
+  // least 25% headroom from its Turkish file: 5.90 / 1.77 KiB. Raised with
+  // the Beta-1 re-run fixes (the distribution-update, ready-report and
+  // rejoin waits) to keep 25% headroom over 8.38 / 2.37 KiB.
+  setupLink: kib(13, 4),
+  // v0.1.0-alpha.115: the DNS page's overview and the first-site offer
+  // (dnsov.). A new part, set with at least 25% headroom from its Turkish
+  // file: 15.36 / 4.24 KiB. Raised with the alpha.115 review fixes to keep
+  // 25% headroom over 19.34 / 5.16 KiB.
+  dnsOverview: kib(26, 7),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

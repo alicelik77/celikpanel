@@ -1010,3 +1010,48 @@ func TestPublisherRestoreMissingPointerIsExactAndIdempotent(t *testing.T) {
 		}
 	})
 }
+
+// Beta-1 VM cell a: the owner edited the published zone natively (rndc). A
+// changed published tree is told apart as a change outside CelikPanel
+// (ErrGenerationChanged), so the screens say the owner's change rather than
+// a foreign DNS server; an absent tree is not one.
+func TestPublisherTellsAChangedPublishedTreeApart(t *testing.T) {
+	filesystem := newMemoryFS()
+	runner := &recordingRunner{}
+	publisher := newTestPublisher(t, filesystem, runner)
+	if _, err := publisher.LoadCurrent(); errors.Is(err, ErrGenerationChanged) {
+		t.Fatalf("no tree is not a change: %v", err)
+	}
+	generation := publisherGeneration(t, 1, "192.0.2.1")
+	if err := publisher.Stage(context.Background(), generation); err != nil {
+		t.Fatal(err)
+	}
+	if err := publisher.Activate(generation.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := publisher.LoadCurrent(); err != nil {
+		t.Fatal(err)
+	}
+	base := "/var/lib/celikpanel/bind/generations/" + generation.ID
+	// A receipt another Agent version wrote (a field this one does not know)
+	// is unknown, never the owner's change.
+	receipt := filesystem.nodes[base+"/receipt.json"]
+	original := append([]byte(nil), receipt.data...)
+	receipt.data = append([]byte(`{"schema_note":"older agent",`), original[1:]...)
+	if _, err := publisher.LoadCurrent(); err == nil || errors.Is(err, ErrGenerationChanged) {
+		t.Fatalf("a receipt of another schema read as an owner change: %v", err)
+	}
+	receipt.data = original
+	// A mode change of a published file is a change outside CelikPanel.
+	zonePath := base + "/zones/" + zoneFileName("example.com")
+	zone := filesystem.nodes[zonePath]
+	zone.mode = 0o644
+	if _, err := publisher.LoadCurrent(); !errors.Is(err, ErrGenerationChanged) {
+		t.Fatalf("a changed mode: %v", err)
+	}
+	zone.mode = 0o444
+	zone.data = []byte("$ORIGIN example.com.\n@ 60 IN TXT \"set by the owner\"\n")
+	if _, err := publisher.LoadCurrent(); !errors.Is(err, ErrGenerationChanged) {
+		t.Fatalf("a changed zone file: %v", err)
+	}
+}

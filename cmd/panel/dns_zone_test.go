@@ -7,13 +7,11 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	paneldb "github.com/alicelik/celikpanel/internal/db"
 )
 
 func newDNSPanelForTest(t *testing.T) *Panel {
 	t.Helper()
-	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+	database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), "panel.sqlite"))
 	if err != nil {
 		t.Fatalf("open test database: %v", err)
 	}

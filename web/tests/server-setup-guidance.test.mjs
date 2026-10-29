@@ -193,3 +193,45 @@ test('every sentence about the record requested from the primary exists in both 
         for(const table of [enScreens,trScreens]) assert.ok(table[key].includes('{primary}'),`${key} does not name the primary`);
     }
 });
+// Beta-1 re-run P7: the backup waits to tell the main DNS server it is ready;
+// the reason is said in both languages, not as an unknown wait.
+test('the backup waiting to report ready names that reason in both languages',()=>{
+    for(const code of ['server_setup_peer_ready_unreachable','server_setup_peer_ready_refused','server_setup_peer_ready_identity_changed']){
+        const guide=setupExecutionGuidance(execution({status:'waiting',phase:'verification',error:{code,message:'x'},steps:[{id:'02-verify',kind:'verify',target:'web',status:'pending'}]}));
+        assert.ok(keys(guide).includes(`setup.v5.wait.${code}`),code);
+        assert.ok(enScreens[`setup.v5.wait.${code}`]&&trScreens[`setup.v5.wait.${code}`],code);
+    }
+});
+// Beta-1 re-run P8: a run stopped because its second server joined again
+// says so, with the owner's next action, never the generic failure.
+test('a run stopped by a rejoin names that state in both languages',()=>{
+    const guide=setupExecutionGuidance(execution({status:'failed',phase:'10-dns_publisher',error:{code:'server_setup_plan_changed_by_rejoin',message:'x'},steps:[{id:'10-dns_publisher',kind:'dns_publisher',target:'',status:'failed'}]}));
+    assert.ok(keys(guide).includes('setup.v5.wait.server_setup_plan_changed_by_rejoin'));
+    assert.match(enScreens['setup.v5.wait.server_setup_plan_changed_by_rejoin'],/Review a revised plan/);
+    assert.match(trScreens['setup.v5.wait.server_setup_plan_changed_by_rejoin'],/Düzeltilmiş planı incele/);
+});
+// Beta-1 third re-run N1: a booting host is a wait with its own sentence;
+// a host that stays starting is a verified failure naming systemd.
+test('a booting host is said as a wait, and its bound as a failure',()=>{
+    for(const [code,status] of [['server_setup_host_starting','waiting'],['server_setup_host_not_started','failed'],['server_setup_agent_not_answering','failed']]){
+        const guide=setupExecutionGuidance(execution({status,error:{code,message:'x'}}));
+        assert.ok(keys(guide).includes(`setup.v5.wait.${code}`),code);
+        assert.ok(enScreens[`setup.v5.wait.${code}`]&&trScreens[`setup.v5.wait.${code}`],code);
+    }
+});
+// Beta-1 third re-run N6: the setup link's texts name the servers by role
+// (the server that created the join code, the main DNS server), never by
+// first/second, which in Option A pointed at the wrong server. Review fix
+// (item 10): the waiting card for the other server and its button too, and
+// the button's name quoted in other texts is the card's own.
+const roleNamed=key=>key.startsWith('setup.v5.wait.')||key.startsWith('setup.v5.peerSetup.');
+test('the setup link texts name the servers by role',()=>{
+    for(const [key,text] of Object.entries(enScreens).filter(([key])=>roleNamed(key))){
+        assert.ok(!/first server|second server/i.test(text),`${key}: ${text}`);
+    }
+    for(const [key,text] of Object.entries(trScreens).filter(([key])=>roleNamed(key))){
+        assert.ok(!/ilk sunucu|ikinci sunucu/i.test(text),`${key}: ${text}`);
+    }
+    assert.ok(enScreens['setup.v5.wait.server_setup_peer_ready_refused'].includes(`"${enScreens['setup.v5.peerSetup.stop']}"`));
+    assert.ok(trScreens['setup.v5.wait.server_setup_peer_ready_refused'].includes(`"${trScreens['setup.v5.peerSetup.stop']}"`));
+});

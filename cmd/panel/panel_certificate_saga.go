@@ -576,6 +576,10 @@ func (p *Panel) executePanelCertificateIssue(
 		if err != nil {
 			return err
 		}
+		if response.ErrorCode == transport.CertificateClockSkewErrorCode && response.ClockSkewSeconds > 0 {
+			// The clock reason, coded, reaches the step (N2).
+			return &certificateClockSkewError{Seconds: response.ClockSkewSeconds}
+		}
 		if response.Error != "" {
 			return errors.New(response.Error)
 		}
@@ -594,8 +598,11 @@ func panelCertificateSagaFailure(cause error) (string, string) {
 	// Agent errors and ledger messages may contain host paths, command output,
 	// or other privileged details. They stay in process logs only; the durable
 	// private saga document and eventual public operation error use a closed,
-	// operator-safe classification.
-	_ = cause
+	// operator-safe classification. The clock skew is one of its classes: a
+	// panel-authored sentence with a bounded number (N2).
+	if skew, ok := certificateClockSkewFrom(cause); ok {
+		return certificateClockSkewCode, skew.message()
+	}
 	return "panel_certificate_issue_failed", "The panel certificate could not be issued and verified."
 }
 

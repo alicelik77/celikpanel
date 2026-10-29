@@ -248,6 +248,9 @@ func (a *Agent) IssuePanelCertificateV2(
 		issuedNotAfter time.Time
 		hostPublished  bool
 	)
+	// A leaf issued a moment "in the future" of this server's clock (Beta-1
+	// re-run P7) becomes valid within the bound: wait for it, read only.
+	waitPanelCertificateSourceValid(stepCtx, domain)
 	publishErr := panelCertWithPublishLock(func() (operationErr error) {
 		if err := requirePanelCertificateIssuanceIntentLocked(intent); err != nil {
 			return err
@@ -349,6 +352,10 @@ func (a *Agent) IssuePanelCertificateV2(
 			"issue and publish panel certificate: %v",
 			errors.Join(publishErr, cleanupErr),
 		)
+		// The clock reason, coded, reaches the step (N2).
+		if seconds, ok := issuedCertificateClockSkew(publishErr); ok {
+			resp.ErrorCode, resp.ClockSkewSeconds = transport.CertificateClockSkewErrorCode, seconds
+		}
 		return nil
 	}
 	wakePanelCertificateActivationReconciler()

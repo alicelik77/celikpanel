@@ -55,6 +55,10 @@ type serviceInstallRequest struct {
 	PHPVersion        string   `json:"php_version,omitempty"`
 	CheckInstalls     bool     `json:"check_installs,omitempty"`
 	ConfirmedInstalls []string `json:"confirmed_installs,omitempty"`
+	// AcceptedPointUpdates is set only by a reviewed server setup step (never
+	// from a request body): the exact "package=version" distribution point
+	// updates its review listed and its confirmation covered.
+	AcceptedPointUpdates []string `json:"-"`
 }
 
 const maxConfirmedInstalls = 64
@@ -609,22 +613,22 @@ func (p *Panel) syncMailTLSAfterOperation(
 	)
 	defer cancelSync()
 	if err := p.authorizeAgentRPCContext(syncCtx, "Agent.SyncMailTLSV2"); err != nil {
-		return mailProfileInstallFailure(err)
+		return mailTLSSyncFailure(err)
 	}
 	if err := p.requireMailTLSSyncV2Agent(syncCtx); err != nil {
-		return mailProfileInstallFailure(err)
+		return mailTLSSyncFailure(err)
 	}
 	mailTLSSyncMu.Lock()
 	defer mailTLSSyncMu.Unlock()
 	host, sni, err := p.loadMailTLSSnapshotLocked(syncCtx, 0)
 	if err != nil {
-		return mailProfileInstallFailure(fmt.Errorf("build mail TLS snapshot: %w", err))
+		return mailTLSSyncFailure(fmt.Errorf("build mail TLS snapshot: %w", err))
 	}
 	commitment, err := mutationpayload.CanonicalMailTLSSync(
 		panelMailTLSManagedRoot, host, sni,
 	)
 	if err != nil {
-		return mailProfileInstallFailure(fmt.Errorf("canonicalize mail TLS snapshot: %w", err))
+		return mailTLSSyncFailure(fmt.Errorf("canonicalize mail TLS snapshot: %w", err))
 	}
 	requestID, err := newServiceOperationID()
 	if err != nil {
@@ -647,7 +651,7 @@ func (p *Panel) syncMailTLSAfterOperation(
 		syncCtx, commitment, requestID, ownerID,
 	)
 	if err != nil {
-		return mailProfileInstallFailure(fmt.Errorf("mail TLS synchronization: %w", err))
+		return mailTLSSyncFailure(fmt.Errorf("mail TLS synchronization: %w", err))
 	}
 	tlsResult := mailProfileTLSResult{
 		Configured: true, SNICount: response.SNICount,

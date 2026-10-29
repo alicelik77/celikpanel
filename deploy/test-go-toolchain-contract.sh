@@ -196,9 +196,9 @@ require_literal "$CI" "skip: '^Test(Service|ServerSetup|Site|Startup)'"
 # its 8 minute limit once TestSite* joined it.
 require_literal "$CI" "pattern: '^TestSite'"
 require_literal "$CI" "pattern: '^TestStartup'"
-require_literal "$CI" "pattern: '^TestServerSetup[A-G]'"
+require_literal "$CI" "pattern: '^TestServerSetup[A-J]'"
 require_literal "$CI" "pattern: '^TestServerSetup'"
-require_literal "$CI" "skip: '^TestServerSetup[A-G]'"
+require_literal "$CI" "skip: '^TestServerSetup[A-J]'"
 require_literal "$CI" "pattern: '^TestService'"
 require_literal "$CI" "pattern: '^Test[T-Z]'"
 require_count "$CI" "skip: ''" 15
@@ -270,7 +270,7 @@ panel_shard_membership_count() {
 
 for boundary_name in Test TestA TestC TestControlPlane TestD TestDNS \
     TestDNSEngine TestDNSZone TestE TestG TestH TestM TestN TestR TestS \
-    TestService TestServerSetup TestServerSetupA TestServerSetupG TestServerSetupH TestServerSetupz TestServerSetupFuture TestServerFuture \
+    TestService TestServerSetup TestServerSetupA TestServerSetupG TestServerSetupH TestServerSetupJ TestServerSetupK TestServerSetupz TestServerSetupFuture TestServerFuture \
     TestSite TestSiteConfig TestSiteFuture TestStartup TestStartupFuture \
     TestSt TestSi TestT TestZ Test_ Test9 Testa \
     TestRe TestRec TestRecovery TestRecoveryDatabaseMigration TestRecoveryDatabaseMigrationA \

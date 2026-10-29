@@ -24,10 +24,12 @@ import (
 )
 
 type ServiceOperationInstallRequest struct {
-	MutationRequestID string
-	MutationOwnerID   string
-	ID                string
-	Package           string
+	MutationRequestID    string
+	MutationOwnerID      string
+	ID                   string
+	Package              string
+	CheckInstalls        bool
+	AcceptedPointUpdates []string
 }
 
 type ServiceOperationInstallResponse struct {
@@ -103,6 +105,7 @@ type ServiceOperationMutationResponse struct {
 	Job       *ServiceOperationMutationJob
 	ErrorCode string
 	Error     string
+	Reason    string
 }
 
 type ServiceOperationNodeResponse struct {
@@ -163,6 +166,10 @@ type serviceOperationTestAgent struct {
 
 	mu sync.Mutex
 
+	// beginBusyReason, when set, refuses every lease at admission as the
+	// real Agent does while the host is busy (HOST_MUTATION_BUSY).
+	beginBusyReason string
+
 	installStarted chan struct{}
 	releaseInstall <-chan struct{}
 	startOnce      sync.Once
@@ -175,6 +182,8 @@ type serviceOperationTestAgent struct {
 	installNoop     bool
 	installUnit     string
 	repoEnabled     bool
+	repoPackages    []string
+	repoUnreadable  bool
 	// dropActiveBeforeGetServices simulates a selected unit that was started
 	// and reported by InstallService, then died before the final host scan.
 	// dropActiveBeforeGetServices, InstallService tarafından başlatılıp
@@ -209,6 +218,19 @@ type serviceOperationTestAgent struct {
 	installed    map[string]bool
 	active       map[string]bool
 	nodeVersions map[string]bool
+	// candidateVersions answers Agent.ServiceCandidateVersion; an absent
+	// entry is an unread version (the RPC fails), as before it existed.
+	candidateVersions map[string]string
+	// bindOwnerChanged: BIND runs with its published files changed by the
+	// owner (DNSBackendReadiness reports OwnerChanged).
+	bindOwnerChanged bool
+	// pdnsCandidate answers PDNSFreshPrimaryCandidateV1 (nil: the RPC fails,
+	// as an older Agent's would).
+	pdnsCandidate *transport.PDNSFreshPrimaryCandidateResponse
+	// installPreview answers ServiceInstallPreviewV1 when set.
+	installPreview func(*transport.ServiceInstallPreviewRequest, *transport.ServiceInstallPreviewResponse) error
+	// installRequests are the InstallService requests received, in order.
+	installRequests []ServiceOperationInstallRequest
 
 	// packageVersions answers Agent.InstalledPackageVersionsV1 (alpha.97);
 	// nil answers "unsupported". packageVersionCalls counts the reads.
@@ -293,6 +315,10 @@ func (a *serviceOperationTestAgent) BeginServiceMutation(
 ) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	if a.beginBusyReason != "" {
+		resp.ErrorCode, resp.Reason = transport.HostMutationBusy, a.beginBusyReason
+		return nil
+	}
 	if active := a.mutationJobs[a.mutationActive]; active != nil &&
 		(active.Status == agentMutationRunning ||
 			active.Status == agentMutationCancelling ||
@@ -473,6 +499,7 @@ func (a *serviceOperationTestAgent) InstallService(
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	a.installRequests = append(a.installRequests, *req)
 	if a.installRPCError != nil {
 		return a.installRPCError
 	}
@@ -565,6 +592,40 @@ func (a *serviceOperationTestAgent) ListServiceInstances(
 			resp.Instances = append(resp.Instances, core.ServiceInstance{Version: version, Managed: true})
 		}
 	}
+	return nil
+}
+
+func (a *serviceOperationTestAgent) PDNSFreshPrimaryCandidateV1(_ *transport.Empty, resp *transport.PDNSFreshPrimaryCandidateResponse) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.pdnsCandidate == nil {
+		return errors.New("PowerDNS candidate not read")
+	}
+	*resp = *a.pdnsCandidate
+	return nil
+}
+
+// ServiceInstallPreviewV1 answers the setup's read-only install simulation:
+// installPreview when a test sets one, otherwise "nothing else is brought".
+func (a *serviceOperationTestAgent) ServiceInstallPreviewV1(req *transport.ServiceInstallPreviewRequest, resp *transport.ServiceInstallPreviewResponse) error {
+	a.mu.Lock()
+	preview := a.installPreview
+	a.mu.Unlock()
+	if preview != nil {
+		return preview(req, resp)
+	}
+	resp.State = "known"
+	return nil
+}
+
+func (a *serviceOperationTestAgent) ServiceCandidateVersion(req *transport.InstallServiceRequest, out *string) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	version, ok := a.candidateVersions[req.ID]
+	if !ok {
+		return errors.New("candidate version not read")
+	}
+	*out = version
 	return nil
 }
 
@@ -705,6 +766,9 @@ func (a *serviceOperationTestAgent) DNSBackendReadiness(
 		},
 		{Engine: transport.DNSEngineBIND, Unit: "bind9.service"},
 	}
+	if a.bindOwnerChanged {
+		resp.Engines[1] = transport.DNSBackendRuntimeState{Engine: transport.DNSEngineBIND, Installed: true, Running: true, OwnerChanged: true, Unit: "bind9.service"}
+	}
 	return nil
 }
 
@@ -805,7 +869,7 @@ type serviceOperationTestFixture struct {
 
 func newServiceOperationTestFixture(t *testing.T) serviceOperationTestFixture {
 	t.Helper()
-	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+	database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), "panel.sqlite"))
 	if err != nil {
 		t.Fatalf("open service operation database: %v", err)
 	}

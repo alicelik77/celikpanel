@@ -1475,3 +1475,33 @@ test('a refused preview makes the working control the prominent one, above the r
   assert.match(card, /disabled=\{confirmationDisabled\}/);
   assert.match(card, /const blocked = !preview \|\| preview\.blockers\.length > 0/);
 });
+
+// Beta-1 VM cell a: after the owner's native edit the card said a generic
+// "Needs attention" with a foreign-server status while the overview said
+// "Nothing to do". A detected owner change is one notice on both screens:
+// the card reads the shared overview text for engine_owner_changed.
+test('a detected owner change of the active engine is the shared owner-change notice', async () => {
+  const plan = await loadIdentityPlanRuntime();
+  const changed = readySnapshot({
+    state: 'degraded',
+    active_engine: 'bind',
+    engines: [
+      { id: 'pdns', installed: false, running: false, managed: false, status: 'available' },
+      { id: 'bind', installed: true, running: true, managed: false, status: 'unmanaged', detail_code: 'engine_owner_changed' },
+    ],
+  });
+  assert.equal(plan.dnsEngineOwnerChanged(changed), true);
+  assert.equal(plan.dnsEngineOwnerChanged(readySnapshot()), false);
+  assert.equal(plan.dnsEngineOwnerChanged(null), false);
+  for (const part of ['title', 'why', 'who', 'next', 'then']) {
+    assert.match(card, new RegExp(`dnsov\.s\.engine_owner_changed\.${part}`));
+  }
+  const overview = readFileSync(new URL('../src/lib/dnsOverview.ts', import.meta.url), 'utf8');
+  assert.match(overview, /'engine_owner_changed'/);
+  for (const locale of ['en', 'tr']) {
+    const words = readFileSync(new URL(`../src/i18n/screens/dnsOverview/${locale}.ts`, import.meta.url), 'utf8');
+    for (const part of ['title', 'why', 'who', 'next', 'then']) {
+      assert.match(words, new RegExp(`"dnsov\.s\.engine_owner_changed\.${part}"`));
+    }
+  }
+});

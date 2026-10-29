@@ -15,9 +15,35 @@ import {
     type DomainPurpose,
 } from '../lib/hostingCapabilities';
 
+/**
+ * The site's names when it took over the infrastructure zone (alpha.115):
+ * the addresses added, and the names that already point elsewhere and were
+ * left exactly as they are.
+ */
+export interface SiteRecordsOutcome {
+    added: { name: string; type: string; content: string }[];
+    kept: { name: string; type: string; content: string; expected?: string }[];
+    ipv4: string;
+}
+
+function readSiteRecords(value: unknown): SiteRecordsOutcome | undefined {
+    if (!value || typeof value !== 'object') return undefined;
+    const site = (value as Record<string, unknown>).site_records;
+    if (!site || typeof site !== 'object') return undefined;
+    const record = site as Record<string, unknown>;
+    const rows = (list: unknown) => Array.isArray(list) && list.length <= 8 && list.every((row) => !!row && typeof row === 'object'
+        && typeof (row as Record<string, unknown>).name === 'string' && typeof (row as Record<string, unknown>).type === 'string' && typeof (row as Record<string, unknown>).content === 'string');
+    if (!rows(record.added) || !rows(record.kept) || typeof record.ipv4 !== 'string') return undefined;
+    return record as unknown as SiteRecordsOutcome;
+}
+
 interface AddDomainModalProps {
     onClose: () => void;
-    onSuccess: () => void;
+    onSuccess: (outcome?: { siteRecords?: SiteRecordsOutcome }) => void;
+    // The name the form opens with (alpha.115: the end of server setup offers
+    // the main domain). Only a starting value: nothing is sent until the
+    // person submits the form.
+    initialDomain?: string;
 }
 
 // What this server can host right now drives which choices the dialog offers
@@ -88,10 +114,10 @@ async function readDomainCreatePartialSuccess(res: Response): Promise<DomainCrea
     }
 }
 
-export function AddDomainModal({ onClose, onSuccess }: AddDomainModalProps) {
+export function AddDomainModal({ onClose, onSuccess, initialDomain = '' }: AddDomainModalProps) {
     const { t } = useI18n();
     const navigate = useNavigate();
-    const [domainName, setDomainName] = useState('');
+    const [domainName, setDomainName] = useState(initialDomain);
     // The page under this dialog reads the same capabilities; the dialog uses
     // that answer and that request (lib/remote.ts) instead of asking again.
     // Bu pencerenin altındaki sayfa aynı yetenekleri okur; pencere yeniden
@@ -210,7 +236,10 @@ export function AddDomainModal({ onClose, onSuccess }: AddDomainModalProps) {
             }
 
             showToast('success', t('domains.add.created', { name: domainName }));
-            onSuccess();
+            // Only read: what happened to the site's names, when the server says.
+            let answer: unknown = null;
+            try { answer = await res.json(); } catch { answer = null; }
+            onSuccess({ siteRecords: readSiteRecords(answer) });
         } catch {
             const apiErr: ApiError = { message: t('domains.add.failed') };
             setError(apiErr);

@@ -213,6 +213,17 @@ const (
 
 // DNSBackendReadinessResponse reports only bounded runtime facts. Detailed
 // probe failures stay in agent logs and are not exposed as raw API errors.
+// PDNSFreshPrimaryCandidateResponse is the PowerDNS build a fresh paired
+// primary would install: State "known" or "unknown" (busy, unreadable, or
+// already installed), Version the one version both packages would get, and
+// Official whether every archive APT names for it is Debian's own.
+// PDNSFreshPrimaryCandidateResponse: kurulacak PowerDNS yapısı ve kaynağı.
+type PDNSFreshPrimaryCandidateResponse struct {
+	State    string `json:"state"`
+	Version  string `json:"version,omitempty"`
+	Official bool   `json:"official,omitempty"`
+}
+
 type DNSBackendRuntimeState struct {
 	Engine    DNSEngine `json:"engine"`
 	Installed bool      `json:"installed"`
@@ -269,6 +280,14 @@ type DNSBackendRuntimeState struct {
 	// da yüklü ve devre dışı. Yeniden denemek yine ilk kurulumdur. Sahibin
 	// kurduğu bir motor asla true okumaz. Eklemelidir; eski Agent onu göndermez.
 	RollbackStandby bool `json:"rollback_standby,omitempty"`
+	// OwnerChanged (Beta-1 fix): the active engine runs, CelikPanel's state
+	// names it, and the files CelikPanel published for it were changed
+	// outside the panel (for example an owner's native rndc edit). The engine
+	// serves the owner's version; CelikPanel does not overwrite it. A read
+	// that could not be completed never reads true. Additive.
+	// OwnerChanged: etkin motorun panelin yayımladığı dosyaları panel dışında
+	// değişti; panel üzerine yazmaz.
+	OwnerChanged bool `json:"owner_changed,omitempty"`
 }
 
 // The vocabulary of a takeover's difference list. The agent reads these

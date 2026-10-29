@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/mutationpayload"
+	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 func bindPanelCertificateMutation(
@@ -775,5 +776,47 @@ func TestCertificateRestartSchedulerNeverRunsDetachedCommand(t *testing.T) {
 	}
 	if err := schedulePanelCertificateRestart(context.Background()); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// Beta-1 third re-run N2: with the clock 200 s behind, the step said only
+// panel_certificate_issue_failed. The issuance answer now carries the coded
+// clock reason and the seconds, so the step can say it.
+func TestIssuePanelCertificateCodesAClockBehindTheAuthority(t *testing.T) {
+	installPanelCertificateSourceOwnershipFixture(t, "panel.example.test")
+	installPanelCertificateAPTPackageFamily(t)
+	installPanelCertificateActivationMemoryStore(t)
+	originalLookPath, originalRun, originalHook := panelCertLookPath, panelCertRunMutationCommand, panelCertWriteDeployHook
+	originalRenewal, originalLock, originalReadSource := panelCertEnsureRenewal, panelCertWithPublishLock, panelCertificateActivationReadSource
+	originalSleep := panelCertificateWaitSleep
+	t.Cleanup(func() {
+		panelCertLookPath, panelCertRunMutationCommand, panelCertWriteDeployHook = originalLookPath, originalRun, originalHook
+		panelCertEnsureRenewal, panelCertWithPublishLock, panelCertificateActivationReadSource = originalRenewal, originalLock, originalReadSource
+		panelCertificateWaitSleep = originalSleep
+	})
+	panelCertLookPath = func(name string) (string, error) {
+		if name == "certbot" {
+			return "/usr/bin/certbot", nil
+		}
+		return "", exec.ErrNotFound
+	}
+	panelCertRunMutationCommand = func(context.Context, time.Duration, string, ...string) ([]byte, error) { return nil, nil }
+	panelCertEnsureRenewal = func(context.Context) error { return nil }
+	panelCertWriteDeployHook = func(string, string) error { return nil }
+	panelCertWithPublishLock = func(action func() error) error { return action() }
+	slept := false
+	panelCertificateWaitSleep = func(context.Context, time.Duration) error { slept = true; return nil }
+	now := time.Now()
+	panelCertificateActivationReadSource = func(string) ([]byte, []byte, []byte, time.Time, error) {
+		return nil, nil, nil, time.Time{}, &panelCertificateSourceNotYetValidError{NotBefore: now.Add(200 * time.Second), Now: now}
+	}
+	var resp IssuePanelCertV2Response
+	req := &IssuePanelCertV2Request{Domain: "panel.example.test", TLSDir: managedPanelTLSDir, ExpectedBuildCommit: strings.TrimSpace(buildCommit)}
+	bindPanelCertificateMutation(t, req)
+	if err := (&Agent{}).IssuePanelCertificateV2(req, &resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp.Issued || resp.ErrorCode != transport.CertificateClockSkewErrorCode || resp.ClockSkewSeconds != 200 || slept {
+		t.Fatalf("clock behind by 200 s: issued=%v code=%q seconds=%d slept=%v error=%q", resp.Issued, resp.ErrorCode, resp.ClockSkewSeconds, slept, resp.Error)
 	}
 }

@@ -562,6 +562,19 @@ func mailProfileInstallFailure(cause error) *serviceOperationFailure {
 	)
 }
 
+// mailTLSSyncFailure is the outcome of the mail TLS sub-step that runs after
+// the mail profile installed. A busy host there has its own code: the profile
+// did run, so it is never taken for a child refused at admission (review
+// fix, 2026-10-29). Every other cause keeps the profile's classification.
+const errCodeMailTLSSyncHostBusy = "mail_tls_sync_host_busy"
+
+func mailTLSSyncFailure(cause error) *serviceOperationFailure {
+	if _, ok := classifyHostMutationError(cause); ok {
+		return operationFailure(errCodeMailTLSSyncHostBusy, "The mail server was installed, but setting up its certificates could not run because another change was running on this server. Nothing else was changed. You, the owner: once the other change has finished, choose Review a revised plan; the installed mail server is kept.", cause)
+	}
+	return mailProfileInstallFailure(cause)
+}
+
 func (p *Panel) runMailProfileInstall(
 	ctx context.Context,
 	profileID string,

@@ -11,8 +11,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	paneldb "github.com/alicelik/celikpanel/internal/db"
 )
 
 const (
@@ -26,7 +24,7 @@ const (
 
 func newStorePanelForTest(t *testing.T) *Panel {
 	t.Helper()
-	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+	database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), "panel.sqlite"))
 	if err != nil {
 		t.Fatalf("open test database: %v", err)
 	}

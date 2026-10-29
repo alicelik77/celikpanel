@@ -5,15 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/alicelik/celikpanel/internal/transport"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/rpc"
 	"path/filepath"
 	"testing"
-
-	paneldb "github.com/alicelik/celikpanel/internal/db"
-	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 type configHandlerRPCAgent struct {
@@ -44,7 +42,7 @@ func newConfigHandlerPanel(t *testing.T, agent *configHandlerRPCAgent) *Panel {
 // two configuration RPCs.
 func newConfigHandlerPanelFor(t *testing.T, agent any) *Panel {
 	t.Helper()
-	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+	database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), "panel.sqlite"))
 	if err != nil {
 		t.Fatalf("open test database: %v", err)
 	}

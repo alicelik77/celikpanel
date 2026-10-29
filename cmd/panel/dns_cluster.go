@@ -489,7 +489,20 @@ func dnsPortAnswers(ip string) bool {
 // aktarılabilmesi için MASTER, sunucu tek başına çalışıyorsa NATIVE. Eşin
 // oluşturduğu zone'lar ayrıca SLAVE/SECONDARY olarak gelir.
 func (p *Panel) dnsZoneType(ctx context.Context) string {
-	if normalizeDNSRole(p.setting(ctx, settingDNSRole)) == "paired" {
+	return dnsLocalZoneType(p.setting(ctx, settingDNSRole))
+}
+
+// dnsLocalZoneType is the one rule for the ledger kind of a zone this server
+// publishes itself. The setup plan (from the reviewed draft) and every zone
+// sync (from the saved role) both use it, so a reviewed digest cannot differ
+// from what the sync stores. Both engines read the same kind (the BIND
+// renderer and PowerDNS accept MASTER and NATIVE alike), so only the
+// topology decides: MASTER when a paired peer transfers the zone, NATIVE when
+// this server works alone.
+// dnsLocalZoneType, bu sunucunun kendi yayımladığı zone türü için tek kuraldır;
+// kurulum planı ve her eşitleme aynı kuralı kullanır.
+func dnsLocalZoneType(role string) string {
+	if normalizeDNSRole(strings.TrimSpace(role)) == "paired" {
 		return "MASTER"
 	}
 	return "NATIVE"

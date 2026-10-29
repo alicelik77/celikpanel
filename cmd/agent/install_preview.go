@@ -8,11 +8,13 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/core"
+	"github.com/alicelik/celikpanel/internal/debversion"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -89,6 +91,9 @@ type installClassification struct {
 	// shared are the vendor's shared packages this install asks for as
 	// name=version: never "requested", always named for confirmation.
 	shared map[string]bool
+	// pointUpdates: the package family versions releases with a separate
+	// distribution revision (APT), so a point update can be told apart.
+	pointUpdates bool
 }
 
 // installed are the catalogue components already on the host: their own
@@ -102,6 +107,7 @@ func newInstallClassification(family string, requested []string, components []st
 		present:     phpVersionPresent,
 	}
 	c.shared = map[string]bool{}
+	c.pointUpdates = family == "apt"
 	for _, pkg := range requested {
 		if name, _, exact := strings.Cut(pkg, "="); exact {
 			c.shared[name] = true
@@ -229,6 +235,10 @@ func (c installClassification) classifySimulation(sim aptSimulation) []transport
 				item.Reason, item.Component = notableReasonVendorReplacesDist, repo
 			}
 		}
+		if item.Reason == notableReasonUpgrade && c.pointUpdates && aptPointUpdate(upgrade.From, upgrade.To) &&
+			aptOfficialStableArchive(upgrade.Origins) && (c.vendorOf == nil || c.vendorOf(pkg, upgrade.To) == "") {
+			item.PointUpdate = true
+		}
 		notable = append(notable, item)
 	}
 	sort.SliceStable(notable, func(i, j int) bool {
@@ -257,6 +267,43 @@ func notableReasonRank(reason string) int {
 	default:
 		return 3
 	}
+}
+
+// aptPointUpdate: from and to are one release of the package (same epoch and
+// upstream version) and to is newer (dpkg's order), as a Debian stable or
+// security update (5.40.1-6 -> 5.40.1-6+deb13u1) or an Ubuntu SRU of the same
+// upstream is. A new upstream version or a downgrade (a pin) is not one. Where
+// the new version comes from is checked apart (aptOfficialStableArchive).
+func aptPointUpdate(from, to string) bool {
+	if !debversion.Valid(from) || !debversion.Valid(to) {
+		return false
+	}
+	a, _ := debversion.Parse(from)
+	b, _ := debversion.Parse(to)
+	return a.Epoch == b.Epoch && a.Upstream == b.Upstream && debversion.Compare(to, from) > 0
+}
+
+// aptOfficialStableArchive: every archive APT names for the new version is
+// the distribution's own (Debian, Debian-Security, Ubuntu) and a released
+// suite or its security/updates pocket. A PPA, a vendor or third-party
+// repository, backports, proposed, testing/unstable, or a line that named no
+// archive (an unreadable index) is not.
+func aptOfficialStableArchive(origins []aptOrigin) bool {
+	if len(origins) == 0 {
+		return false
+	}
+	for _, origin := range origins {
+		if origin.Origin != "Debian" && origin.Origin != "Debian-Security" && origin.Origin != "Ubuntu" {
+			return false
+		}
+		suite := strings.ToLower(origin.Suite)
+		for _, refused := range []string{"backports", "proposed", "experimental", "unstable", "testing", "sid"} {
+			if strings.Contains(suite, refused) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // unconfirmedNotable is what the owner has not confirmed.
@@ -317,8 +364,22 @@ func (r *packageInstallVendorRefusal) Error() string {
 // all confirmed, and one that would replace a distribution package with a
 // vendor repository's build whatever was confirmed.
 func notableInstallGuard(c installClassification, packages, confirmed []string) func(aptSimulation) error {
+	return notableInstallGuardAccepting(c, packages, confirmed, nil)
+}
+
+// notableInstallGuardAccepting is notableInstallGuard for a reviewed server
+// setup step: a point update whose "package=version" the setup's review
+// listed exactly is not refused; everything else is judged as before.
+func notableInstallGuardAccepting(c installClassification, packages, confirmed, acceptedPointUpdates []string) func(aptSimulation) error {
+	accepted := map[string]bool{}
+	for _, item := range acceptedPointUpdates {
+		accepted[strings.TrimSpace(item)] = true
+	}
 	return func(sim aptSimulation) error {
 		missing := unconfirmedNotable(c.classifySimulation(sim), confirmed)
+		missing = slices.DeleteFunc(missing, func(item transport.NotableInstall) bool {
+			return item.PointUpdate && accepted[item.Package+"="+item.To]
+		})
 		for _, item := range missing {
 			if item.Reason == notableReasonVendorReplacesDist {
 				return &packageInstallVendorRefusal{Packages: append([]string{}, packages...), Notable: missing}

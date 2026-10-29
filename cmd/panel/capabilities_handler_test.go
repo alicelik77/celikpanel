@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/alicelik/celikpanel/internal/core"
-	paneldb "github.com/alicelik/celikpanel/internal/db"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -74,7 +73,7 @@ func (a *hostingCapabilitiesTestAgent) DNSBackendReadiness(
 
 func newHostingCapabilitiesTestPanel(t *testing.T, agent *hostingCapabilitiesTestAgent) *Panel {
 	t.Helper()
-	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+	database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), "panel.sqlite"))
 	if err != nil {
 		t.Fatalf("create hosting capabilities database: %v", err)
 	}

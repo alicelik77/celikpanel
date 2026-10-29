@@ -13,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/alicelik/celikpanel/internal/core"
-	paneldb "github.com/alicelik/celikpanel/internal/db"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -177,7 +176,7 @@ func TestRepoMutationHandlerDistinguishesRollbackFromPartialMutation(t *testing.
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+			database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), "panel.sqlite"))
 			if err != nil {
 				t.Fatal(err)
 			}

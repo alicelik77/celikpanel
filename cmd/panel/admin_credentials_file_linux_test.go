@@ -4,13 +4,11 @@ package main
 
 import (
 	"bytes"
+	"golang.org/x/sys/unix"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
-
-	paneldb "github.com/alicelik/celikpanel/internal/db"
-	"golang.org/x/sys/unix"
 )
 
 func TestValidateAdminCredentialsFileMetadata(t *testing.T) {
@@ -143,7 +141,7 @@ func TestPanelValidateAdminCredentialsCLIRefusesAnInvalidEmail(t *testing.T) {
 // The credentials-file creation path refuses the same addresses before any
 // database change.
 func TestRunCreateAdminFromCredentialsFileRefusesInvalidEmailBeforeAnyChange(t *testing.T) {
-	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+	database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), "panel.sqlite"))
 	if err != nil {
 		t.Fatalf("open panel database: %v", err)
 	}

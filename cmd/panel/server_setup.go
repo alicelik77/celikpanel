@@ -9,10 +9,13 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"reflect"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/hostname"
+	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 const serverSetupPath = "/api/v1/setup"
@@ -52,6 +55,27 @@ type serverSetupDraft struct {
 	NodeVersion           string                             `json:"node_version"`
 	Database              string                             `json:"database"`
 	Customization         *serverSetupCustomization          `json:"customization,omitempty"`
+	// The wizard's own answers (alpha.111, setup wizard v2), all additive and
+	// omitted when empty, so a draft saved before them serializes, and its
+	// reviewed plan hashes, exactly as before. MainDomain is the owner's main
+	// domain, asked once and first; with local DNS on the main DNS server it
+	// is the infrastructure zone (canonicalServerSetupDraft). ServerCount is
+	// 1 or 2. ShortName is the server's own short name ("Bu sunucunun kısa
+	// adı"), never guessed by the panel. MainDNSServer is "this" when this
+	// server is the main DNS server; no other value exists in this release.
+	// Sihirbazin yeni yanitlari; bossa yazilmaz, eski taslagin plani ayni kalir.
+	MainDomain    string `json:"main_domain,omitempty"`
+	ServerCount   int    `json:"server_count,omitempty"`
+	ShortName     string `json:"short_name,omitempty"`
+	MainDNSServer string `json:"main_dns_server,omitempty"`
+	// alpha.112: the main domain's public records the owner reviewed (each
+	// imported or skipped) and the mail DNS choice (server_setup_mail_dns.go).
+	ImportedRecords []serverSetupImportedRecord `json:"imported_records,omitempty"`
+	MailDNS         *serverSetupMailDNS         `json:"mail_dns,omitempty"`
+	// alpha.114: on the main DNS server, the other server's main-domain mail
+	// (its mail host and MX/DMARC answers) when that server, not this one,
+	// receives the main domain's mail. Taken from the join, never typed.
+	PeerMail *serverSetupPeerMail `json:"peer_mail,omitempty"`
 }
 
 // Reason and Vars are additive (2026-10-10): the typed cause of a check that
@@ -66,6 +90,13 @@ type serverSetupCheck struct {
 	Code   string            `json:"code"`
 	Reason string            `json:"reason,omitempty"`
 	Vars   map[string]string `json:"vars,omitempty"`
+	// Advisory (alpha.112, owner decision 2026-10-28): an open task setup does
+	// not wait for. Reverse DNS (PTR) is set at the server provider, never by
+	// CelikPanel; mail works without it but may be marked as spam, so a PTR
+	// that is missing, differs or could not be read is said and kept open,
+	// and setup completes without it.
+	// Kurulumun beklemedigi acik is: ters DNS saglayicida ayarlanir.
+	Advisory bool `json:"advisory,omitempty"`
 }
 
 type serverSetupState struct {
@@ -89,6 +120,14 @@ type serverSetupState struct {
 	// yalniz degisenleri gostermek ve genisletmeyi durdurmak icin tutulur.
 	Extension     bool              `json:"extension,omitempty"`
 	ExtensionBase *serverSetupDraft `json:"extension_base,omitempty"`
+	// ShortNameSuggestion (alpha.111) is the machine host name's first label
+	// when it reads like a name a person chose; otherwise empty
+	// (serverSetupShortNameSuggestion). Only the GET answer carries it.
+	// Kisa ad onerisi; yalniz GET yanitinda.
+	ShortNameSuggestion string `json:"short_name_suggestion,omitempty"`
+	// ServerIPv6 (alpha.112) is the server's public IPv6 address, for the
+	// reverse DNS rows the owner gives the provider; only the GET carries it.
+	ServerIPv6 string `json:"server_ipv6,omitempty"`
 }
 
 func defaultServerSetupDraft() serverSetupDraft {
@@ -176,7 +215,90 @@ func canonicalServerSetupDraft(d serverSetupDraft) (serverSetupDraft, error) {
 	if d.Purpose == "custom" && d.Customization == nil {
 		d.Customization = &serverSetupCustomization{Components: []string{}}
 	}
+	if err := serverSetupVersionChoicesSelected(d); err != nil {
+		return d, err
+	}
+	if err := canonicalServerSetupWizardAnswers(&d); err != nil {
+		return d, err
+	}
+	if err := canonicalServerSetupMailAnswers(&d); err != nil {
+		return d, err
+	}
 	return d, nil
+}
+
+var serverSetupShortNamePattern = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$`)
+
+// canonicalServerSetupWizardAnswers checks the wizard v2 answers. A draft
+// without a main domain (every draft saved before alpha.111) is left exactly
+// as it is. With one, the main domain is the infrastructure zone whenever this
+// server is the main DNS server with local DNS: the owner named it as the
+// first question, so the zone is no longer an unticked option on another
+// screen. A backup DNS server or another DNS home prepares no zone here.
+// Sihirbaz v2 yanitlari: ana alan adi yoksa taslaga dokunulmaz; varsa ve bu
+// sunucu yerel ana DNS sunucusuysa bolge ana alan adidir.
+func canonicalServerSetupWizardAnswers(d *serverSetupDraft) error {
+	d.MainDomain = strings.TrimSpace(d.MainDomain)
+	d.ShortName = strings.ToLower(strings.TrimSpace(d.ShortName))
+	d.MainDNSServer = strings.TrimSpace(d.MainDNSServer)
+	if d.MainDomain != "" {
+		canonical, err := hostname.CanonicalFQDN(d.MainDomain)
+		if err != nil {
+			return errors.New("the main domain must be a fully qualified domain name")
+		}
+		d.MainDomain = canonical
+	}
+	if d.ShortName != "" && !serverSetupShortNamePattern.MatchString(d.ShortName) {
+		return errors.New("the server's short name must be one DNS label")
+	}
+	if d.ServerCount < 0 || d.ServerCount > 2 {
+		return errors.New("setup supports one or two servers")
+	}
+	if !stringIn(d.MainDNSServer, "", "this", "peer") {
+		return errors.New("invalid main DNS server choice")
+	}
+	if d.MainDomain == "" {
+		return nil
+	}
+	// One server keeping its own DNS is standalone: no peer, both names here.
+	// With two servers the main DNS server is this one or the second one
+	// (alpha.114, Option A): ns1 is always the main, ns2 the backup.
+	if d.DNSMode == setupDNSModeLocal && d.ServerCount == 1 {
+		d.DNSRole, d.PeerIP, d.PeerNS, d.MainDNSServer = transport.DNSPairRolePrimary, "", "", "this"
+		if d.InfrastructureDNS != nil {
+			d.InfrastructureDNS.PeerPanelDomain, d.InfrastructureDNS.PeerMailHostname = "", ""
+		}
+	}
+	if d.DNSMode == setupDNSModeLocal && d.ServerCount == 2 && d.MainDNSServer == "peer" {
+		d.DNSRole = transport.DNSPairRoleSecondary
+	}
+	if d.PeerMail != nil {
+		mail := *d.PeerMail
+		canonical, err := hostname.CanonicalFQDN(strings.TrimSpace(mail.Hostname))
+		if err != nil || !stringIn(mail.MX, "", "now", "later") || !stringIn(mail.DMARC, "", "keep", "add") {
+			return errors.New("invalid peer mail answer")
+		}
+		mail.Hostname = canonical
+		d.PeerMail = &mail
+		// The join's shared answer is kept even when this server selects
+		// mail too: the review then refuses two receivers
+		// (server_setup_peer_mail_both) instead of silently dropping the
+		// answer (Beta-1 third re-run N3/N5).
+		if d.DNSMode != setupDNSModeLocal || d.DNSRole != transport.DNSPairRolePrimary {
+			d.PeerMail = nil
+		}
+	}
+	if d.DNSMode == setupDNSModeLocal && d.DNSRole == transport.DNSPairRolePrimary {
+		selection := serverSetupInfrastructureDNSDraft{Zone: d.MainDomain}
+		if d.InfrastructureDNS != nil {
+			selection.PeerPanelDomain = d.InfrastructureDNS.PeerPanelDomain
+			selection.PeerMailHostname = d.InfrastructureDNS.PeerMailHostname
+		}
+		d.InfrastructureDNS = &selection
+	} else {
+		d.InfrastructureDNS = nil
+	}
+	return nil
 }
 
 func stringIn(value string, choices ...string) bool {
@@ -282,15 +404,17 @@ func (p *Panel) saveServerSetupDraft(ctx context.Context, revision int, draft se
 }
 
 func serverSetupChecksReady(checks []serverSetupCheck) bool {
-	if len(checks) == 0 {
-		return false
-	}
+	blocking := 0
 	for _, check := range checks {
+		if check.Advisory {
+			continue
+		}
+		blocking++
 		if check.State != "ready" {
 			return false
 		}
 	}
-	return true
+	return blocking > 0
 }
 
 func (p *Panel) completeServerSetup(ctx context.Context, revision int) error {
@@ -315,7 +439,9 @@ func (p *Panel) completeServerSetupOwned(ctx context.Context, revision int, exec
 		return errServerSetupConflict
 	}
 	if s.Status == "ready" {
-		return nil
+		// Ready here; a backup whose main was not told yet tells it now
+		// (review fix, item 6), then its link side ends.
+		return p.tellMainAndSettleServerSetupLink(ctx, s.Draft)
 	}
 	active, err := p.serverSetupExecutionActive(ctx)
 	if err != nil {
@@ -340,7 +466,11 @@ func (p *Panel) completeServerSetupOwned(ctx context.Context, revision int, exec
 	} else if active {
 		return errServerSetupConflict
 	}
-	checks, err := p.serverSetupCompletionChecks(ctx, s.Draft)
+	checked, err := p.serverSetupCompletionDraft(ctx, s, executionID)
+	if err != nil {
+		return err
+	}
+	checks, err := p.serverSetupCompletionChecks(ctx, checked)
 	if err != nil {
 		return err
 	}
@@ -369,7 +499,57 @@ func (p *Panel) completeServerSetupOwned(ctx context.Context, revision int, exec
 	if _, err := p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key=?`, settingServerSetupExtensionBase); err != nil {
 		log.Printf("server setup extension base not cleared: %v", err)
 	}
+	// Durably ready here: only now the backup tells the main DNS server,
+	// and only once it was told does its side of the link end. A report that
+	// fails is the wait "ready here, main not told yet"; the runner (or the
+	// owner's own completion) reports again (review fix, item 6).
+	return p.tellMainAndSettleServerSetupLink(ctx, checked)
+}
+
+// tellMainAndSettleServerSetupLink runs only after this server's setup is
+// ready. The setup link ends with the setup (alpha.114), except on the main
+// DNS server while its backup has not reported ready (Beta-1 re-run P7). A
+// failed settle is logged; the next completion or a new join removes it.
+func (p *Panel) tellMainAndSettleServerSetupLink(ctx context.Context, d serverSetupDraft) error {
+	if err := p.reportServerSetupReadyToMain(ctx, d); err != nil {
+		return err
+	}
+	if err := p.settleServerSetupLink(ctx, d); err != nil {
+		log.Printf("server setup link not revoked: %v", err)
+	}
 	return nil
+}
+
+// serverSetupCompletionDraft is the draft completion is checked on. A run
+// whose second server is bound (alpha.114) is checked on the plan that
+// binding completed (the peer's address is not in the saved draft); it never
+// falls back to the unbound draft. A plan that no longer matches the saved
+// answers, or one that cannot be read, is not complete: a wait with its
+// reason (D-024), checked again by the runner.
+func (p *Panel) serverSetupCompletionDraft(ctx context.Context, s serverSetupState, executionID string) (serverSetupDraft, error) {
+	if executionID == "" {
+		return s.Draft, nil
+	}
+	unknown := &serverSetupPeerWait{Code: "server_setup_completion_unknown", Message: "Whether setup is complete could not be checked: its plan or the second server's binding could not be read. Nothing to do here; setup checks again by itself."}
+	execution, err := p.latestServerSetupExecution(ctx)
+	if err != nil || execution == nil || execution.ID != executionID {
+		return s.Draft, unknown
+	}
+	plan, err := p.loadServerSetupPlan(ctx, execution.PlanID)
+	if err != nil {
+		return s.Draft, unknown
+	}
+	if !serverSetupPlanHasStep(plan, "peer_join") {
+		return s.Draft, nil
+	}
+	if !reflect.DeepEqual(plan.Draft, s.Draft) {
+		return s.Draft, &serverSetupPeerWait{Code: "server_setup_completion_plan_changed", Message: "This server's saved answers no longer match the plan this setup runs, so setup is not marked complete. Review the plan again on this screen; setup checks again by itself."}
+	}
+	bound, err := p.effectiveServerSetupPlan(ctx, plan, execution.ID)
+	if err != nil || !bound.peerBound {
+		return s.Draft, unknown
+	}
+	return bound.Draft, nil
 }
 
 func requireServerSetupAdmin(w http.ResponseWriter, r *http.Request) bool {
@@ -396,6 +576,10 @@ func (p *Panel) handleServerSetup(w http.ResponseWriter, r *http.Request) {
 		}
 		if address := net.ParseIP(serverPrimaryIP()); address != nil && address.IsGlobalUnicast() && !address.IsPrivate() && !address.IsLoopback() {
 			s.ServerIP = address.String()
+		}
+		s.ShortNameSuggestion = currentServerSetupShortNameSuggestion()
+		if address := net.ParseIP(setupMailIPv6()); address != nil && address.To4() == nil && address.IsGlobalUnicast() && !address.IsPrivate() {
+			s.ServerIPv6 = address.String()
 		}
 		if r.URL.Query().Get("check") == "1" {
 			ctx, cancel := context.WithTimeout(r.Context(), 25*time.Second)
@@ -464,6 +648,13 @@ func (p *Panel) handleServerSetupComplete(w http.ResponseWriter, r *http.Request
 	if err := p.completeServerSetup(r.Context(), req.Revision); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			writeServerError(w, err)
+			return
+		}
+		// A wait keeps its own reason (review fix, item 9): for example a
+		// backup ready here whose main DNS server was not told yet.
+		var wait *serverSetupPeerWait
+		if errors.As(err, &wait) {
+			writeCodedError(w, http.StatusConflict, wait.Code, wait.Message, "/setup")
 			return
 		}
 		writeCodedError(w, http.StatusConflict, "setup_not_ready", "complete the outstanding setup checks before continuing", "/setup")

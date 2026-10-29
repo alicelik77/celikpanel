@@ -6,15 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/alicelik/celikpanel/internal/secrets"
+	"github.com/alicelik/celikpanel/internal/services"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	paneldb "github.com/alicelik/celikpanel/internal/db"
-	"github.com/alicelik/celikpanel/internal/secrets"
-	"github.com/alicelik/celikpanel/internal/services"
 )
 
 const (
@@ -102,7 +100,7 @@ type databaseV2SecurityFixture struct {
 
 func newDatabaseV2SecurityFixture(t *testing.T) databaseV2SecurityFixture {
 	t.Helper()
-	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), `panel.sqlite`))
+	database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), `panel.sqlite`))
 	if err != nil {
 		t.Fatal(err)
 	}

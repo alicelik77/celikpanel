@@ -11,7 +11,6 @@ import (
 
 	"github.com/alicelik/celikpanel/internal/auth"
 	"github.com/alicelik/celikpanel/internal/core"
-	paneldb "github.com/alicelik/celikpanel/internal/db"
 	"github.com/alicelik/celikpanel/internal/repositories"
 )
 
@@ -46,7 +45,7 @@ func (r *authMeUserRepositoryOverride) GetByID(ctx context.Context, id int) (*co
 func newAuthHandlerTestPanel(t *testing.T, secureCookies bool) (*Panel, string) {
 	t.Helper()
 
-	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+	database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), "panel.sqlite"))
 	if err != nil {
 		t.Fatalf("open auth handler database: %v", err)
 	}

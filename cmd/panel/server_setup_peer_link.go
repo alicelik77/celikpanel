@@ -1,0 +1,247 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"crypto/subtle"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/json"
+	"errors"
+	"io"
+	"mime"
+	"net"
+	"net/http"
+	"net/http/httptrace"
+	"net/netip"
+	"net/url"
+	"strconv"
+	"sync/atomic"
+	"time"
+)
+
+// The setup link's transport (alpha.114). Before the peer panel has a
+// certificate from a public authority it is reached at its IP address and
+// trusted only by the fingerprint of its TLS key carried in the join code:
+// the handshake checks the fingerprint before any request byte is written,
+// so a wrong address or an interception never receives the secret. Once the
+// peer panel's certificate changes (its domain certificate), the link uses
+// ordinary certificate validation for the peer's panel name, still dialing
+// only the peer's known address.
+// Kurulum baglantisi: once anahtar parmak izi, sonra alan adi sertifikasi.
+
+// serverSetupLinkProtocol is the version of the join and link messages. Both
+// servers must speak the same one; another is a verified state the owner
+// resolves by updating the older panel from its own update screen.
+const serverSetupLinkProtocol = 1
+
+// decodeServerSetupLinkBody reads a link request: bounded in size, tolerant
+// of fields a newer peer adds.
+func decodeServerSetupLinkBody(w http.ResponseWriter, r *http.Request, dst any) bool {
+	r.Body = http.MaxBytesReader(w, r.Body, remoteDNSMaxBytes)
+	decoder := json.NewDecoder(r.Body)
+	if decoder.Decode(dst) != nil || decoder.Decode(&struct{}{}) != io.EOF {
+		writeServerSetupJoinRefusal(w, http.StatusBadRequest, "server_setup_link_invalid", "The setup link request is not valid.", nil)
+		return false
+	}
+	return true
+}
+
+// refuseServerSetupLinkProtocol answers a request of another protocol.
+func refuseServerSetupLinkProtocol(w http.ResponseWriter, protocol int) bool {
+	if protocol == serverSetupLinkProtocol {
+		return false
+	}
+	writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_version_incompatible", "The two panels run versions that cannot join. Update the older panel from its own update screen, then try again.", nil)
+	return true
+}
+
+var (
+	// errServerSetupLinkUnreachable: no connection or handshake; nothing was sent.
+	errServerSetupLinkUnreachable = errors.New("the other server could not be reached")
+	// errServerSetupLinkPinMismatch: the address answered with another key;
+	// nothing was sent.
+	errServerSetupLinkPinMismatch = errors.New("the other server's TLS key does not match the join code")
+	// errServerSetupLinkUnknown: the request may have arrived; its answer was
+	// lost or unreadable. The same request is asked again.
+	errServerSetupLinkUnknown = errors.New("the other server's answer was not received")
+)
+
+// serverSetupLinkRefusal is a verified answer refusing the request.
+type serverSetupLinkRefusal struct {
+	Status       int
+	Code         string
+	AttemptsLeft *int
+}
+
+func (e *serverSetupLinkRefusal) Error() string { return "the other server refused: " + e.Code }
+
+// serverSetupLinkState is one panel's setup link state: the join rate limit
+// and the seams a test sets on its own panel before it serves (loopback
+// servers, a mapped caller, a failing draft save). Production leaves every
+// seam nil: it dials the literal address and allows public addresses only.
+type serverSetupLinkState struct {
+	// identity is the certificate the listener serves on the panel's IP
+	// address, captured once at start (captureServerSetupIdentity).
+	identity atomic.Pointer[x509.Certificate]
+	limiter  serverSetupJoinLimiter
+
+	dial           func(ctx context.Context, network, address string) (net.Conn, error)
+	addressAllowed func(netip.Addr) bool
+	sourceIP       func(*http.Request) (netip.Addr, bool)
+	saveDraft      func(ctx context.Context, revision int, d serverSetupDraft) (serverSetupState, error)
+}
+
+// serverSetupPeerAddressAllowed is the address policy for a peer server: a
+// public unicast address.
+func (p *Panel) serverSetupPeerAddressAllowed(ip netip.Addr) bool {
+	if p.setupLink.addressAllowed != nil {
+		return p.setupLink.addressAllowed(ip)
+	}
+	return remoteDNSPublicAddress(ip)
+}
+
+// serverSetupJoinSourceIP is the caller's address as the listener saw it (no
+// proxy header is trusted).
+func (p *Panel) serverSetupJoinSourceIP(r *http.Request) (netip.Addr, bool) {
+	if p.setupLink.sourceIP != nil {
+		return p.setupLink.sourceIP(r)
+	}
+	return serverSetupRequestSourceIP(r)
+}
+
+func (p *Panel) serverSetupLinkDial(ctx context.Context, address string) (net.Conn, error) {
+	if p.setupLink.dial != nil {
+		return p.setupLink.dial(ctx, "tcp", address)
+	}
+	return (&net.Dialer{Timeout: 5 * time.Second}).DialContext(ctx, "tcp", address)
+}
+
+// serverSetupLinkTarget: where and how to reach the peer. Pin is the
+// SHA-256 of the peer's TLS SubjectPublicKeyInfo: the code's 10-byte prefix
+// for the join, the full 32 bytes afterwards. There is no name fallback: the
+// link never accepts a certificate whose key does not match the pin (the
+// panel keeps serving its first self-signed identity on its IP address
+// across domain certificate changes, so the pin stays valid during setup).
+// Observed, when set, receives the full fingerprint the peer presented.
+type serverSetupLinkTarget struct {
+	Address  string
+	Pin      []byte
+	Observed *[]byte
+}
+
+func (p *Panel) serverSetupLinkJSON(ctx context.Context, target serverSetupLinkTarget, path, bearer string, request, response any) error {
+	address, ok := canonicalServerSetupPeerAddress(target.Address)
+	if !ok || address != target.Address || !serverSetupLinkMachinePath(path) || (len(target.Pin) != 10 && len(target.Pin) != 32) {
+		return errors.New("invalid setup link exchange")
+	}
+	u, _ := url.Parse(address)
+	ip, err := netip.ParseAddr(u.Hostname())
+	if err != nil || !p.serverSetupPeerAddressAllowed(ip) {
+		return errors.New("the other server's address is not a public server address")
+	}
+	payload, err := json.Marshal(request)
+	if err != nil || len(payload) > remoteDNSJSONLimit {
+		return errors.New("setup link request exceeds its contract")
+	}
+	var pinMismatch, wrote atomic.Bool
+	// The key fingerprint is the trust: no name, no authority. It is checked
+	// in the handshake, before any request byte (and its bearer) is written.
+	config := &tls.Config{MinVersion: tls.VersionTLS12, InsecureSkipVerify: true}
+	config.VerifyConnection = func(state tls.ConnectionState) error {
+		if len(state.PeerCertificates) == 0 {
+			pinMismatch.Store(true)
+			return errServerSetupLinkPinMismatch
+		}
+		full := serverSetupSPKI(state.PeerCertificates[0])
+		if subtle.ConstantTimeCompare(full[:len(target.Pin)], target.Pin) != 1 {
+			pinMismatch.Store(true)
+			return errServerSetupLinkPinMismatch
+		}
+		if target.Observed != nil {
+			*target.Observed = full
+		}
+		return nil
+	}
+	host := u.Host
+	httpTransport := &http.Transport{
+		Proxy: nil, DisableKeepAlives: true, DisableCompression: true, ForceAttemptHTTP2: false,
+		TLSNextProto:    map[string]func(string, *tls.Conn) http.RoundTripper{},
+		TLSClientConfig: config, TLSHandshakeTimeout: 5 * time.Second, ResponseHeaderTimeout: 15 * time.Second, MaxResponseHeaderBytes: 16 << 10,
+		DialContext: func(dialCtx context.Context, network, dialAddress string) (net.Conn, error) {
+			if network != "tcp" || dialAddress != host {
+				return nil, errors.New("setup link target changed")
+			}
+			return p.serverSetupLinkDial(dialCtx, host)
+		},
+	}
+	defer httpTransport.CloseIdleConnections()
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	trace := &httptrace.ClientTrace{WroteHeaders: func() { wrote.Store(true) }}
+	req, err := http.NewRequestWithContext(httptrace.WithClientTrace(ctx, trace), http.MethodPost, "https://"+host+path, bytes.NewReader(payload))
+	if err != nil {
+		return errors.New("setup link request could not be prepared")
+	}
+	if bearer != "" {
+		req.Header.Set("Authorization", "Bearer "+bearer)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	client := &http.Client{Transport: httpTransport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	resp, err := client.Do(req)
+	if err != nil {
+		switch {
+		case pinMismatch.Load():
+			return errServerSetupLinkPinMismatch
+		case wrote.Load():
+			return errServerSetupLinkUnknown
+		default:
+			return errServerSetupLinkUnreachable
+		}
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, remoteDNSJSONLimit+1))
+	if err != nil || len(raw) > remoteDNSJSONLimit {
+		return errServerSetupLinkUnknown
+	}
+	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusMethodNotAllowed {
+		// A panel without this endpoint is an older version.
+		return &serverSetupLinkRefusal{Status: resp.StatusCode, Code: "server_setup_peer_version_incompatible"}
+	}
+	if resp.StatusCode >= 400 && resp.StatusCode < 500 && resp.StatusCode != http.StatusRequestTimeout {
+		var refusal serverSetupJoinRefusal
+		if json.Unmarshal(raw, &refusal) != nil || refusal.Code == "" || len(refusal.Code) > 64 {
+			return &serverSetupLinkRefusal{Status: resp.StatusCode, Code: "server_setup_link_refused"}
+		}
+		for _, c := range refusal.Code {
+			if !((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || (c >= 'A' && c <= 'Z')) {
+				return &serverSetupLinkRefusal{Status: resp.StatusCode, Code: "server_setup_link_refused"}
+			}
+		}
+		return &serverSetupLinkRefusal{Status: resp.StatusCode, Code: refusal.Code, AttemptsLeft: refusal.AttemptsLeft}
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return errServerSetupLinkUnknown
+	}
+	mediaType, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
+	if err != nil || mediaType != "application/json" {
+		return errServerSetupLinkUnknown
+	}
+	// Tolerant on purpose: a newer peer may add fields. The size is bounded
+	// above and the protocol version is checked by the caller.
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	if decoder.Decode(response) != nil || decoder.Decode(new(any)) != io.EOF {
+		return errServerSetupLinkUnknown
+	}
+	return nil
+}
+
+func serverSetupPanelPortOf(address string) int {
+	u, err := url.Parse(address)
+	if err != nil {
+		return 0
+	}
+	port, _ := strconv.Atoi(u.Port())
+	return port
+}

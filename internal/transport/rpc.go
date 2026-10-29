@@ -524,7 +524,9 @@ type IssuePanelCertificateResponse struct {
 	ExpiresAt time.Time `json:"expires_at"`
 	Detail    string    `json:"detail,omitempty"`
 	ErrorCode string    `json:"error_code,omitempty"`
-	Error     string    `json:"error,omitempty"`
+	// ClockSkewSeconds goes with CertificateClockSkewErrorCode (additive).
+	ClockSkewSeconds int    `json:"clock_skew_seconds,omitempty"`
+	Error            string `json:"error,omitempty"`
 }
 
 // V2 binds the complete effective issuance payload into the surrounding

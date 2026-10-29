@@ -30,7 +30,8 @@ test('setup maps rolled-back DNS and firewall host conditions to their own guida
     assert.match(en, new RegExp(`"${key.replaceAll('.', String.raw`\.`)}": "`), `EN ${key}`);
     assert.match(tr, new RegExp(`"${key.replaceAll('.', String.raw`\.`)}": "`), `TR ${key}`);
   }
-  assert.match(en, /"setup\.guide\.dnsRolledBack": "The DNS engine installation did not complete and was undone: no DNS engine is running, and the installed packages were kept stopped\. Nothing else was changed\. Review a new plan and start this DNS step again\."/);
-  assert.match(tr, /"setup\.guide\.dnsRolledBack": "DNS motoru kurulumu tamamlanmadı ve geri alındı: çalışan bir DNS motoru yok, kurulan paketler durdurulmuş olarak saklandı\. Başka hiçbir şey değiştirilmedi\. Yeni planı gözden geçirip bu DNS adımını yeniden başlatın\."/);
+  // Beta-1 re-run P6: a verified failure with both next actions and no restart.
+  assert.match(en, /"setup\.guide\.dnsRolledBack": "The DNS engine installation did not complete and was undone: no DNS engine is running, and any packages it installed were kept stopped\. Nothing else was changed, and no restart is needed\. You, the server administrator: choose Review a revised plan, then keep this DNS software to try again or choose the other one; setup continues from the new plan\."/);
+  assert.match(tr, /"setup\.guide\.dnsRolledBack": "DNS motoru kurulumu tamamlanmadı ve geri alındı: çalışan bir DNS motoru yok, kurduğu paketler varsa durdurulmuş olarak saklandı\. Başka hiçbir şey değiştirilmedi ve yeniden başlatma gerekmez\. Siz, sunucu yöneticisi: Düzeltilmiş planı incele'yi seçin; bu DNS yazılımıyla yeniden deneyin ya da diğerini seçin; kurulum yeni plandan sürer\."/);
   assert.match(en, /"setup\.blocker\.hostRestart": "This server was updated and must be restarted before its firewall can be checked\. Restart the server, then open setup again; your draft continues and nothing was changed\."/);
 });

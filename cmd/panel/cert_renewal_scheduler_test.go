@@ -4,12 +4,10 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
-
-	paneldb "github.com/alicelik/celikpanel/internal/db"
 )
 
 func TestRunDueCertRenewalsRejectsPartialJobListOnScanError(t *testing.T) {
-	database, err := paneldb.NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
+	database, err := openTemplatePanelDatabase(filepath.Join(t.TempDir(), "panel.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -5,6 +5,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -28,6 +29,7 @@ func TestServerSetupProfileDNSMatrixPreservesIdentityAndServiceScope(t *testing.
 						t.Run(name, func(t *testing.T) {
 							setPDNSPairedPrimaryGateForTest(t, gateOpen)
 							f, state := setupOperationFixture(t)
+							setServerSetupTestHost(f.panel, "debian", "13")
 							caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
 							f.agent.versionCapabilities = &caps
 							state.Draft.Purpose, state.Draft.DNSMode = purpose, mode
@@ -84,5 +86,93 @@ func TestServerSetupProfileDNSMatrixPreservesIdentityAndServiceScope(t *testing.
 				}
 			}
 		}
+	}
+}
+
+// setServerSetupTestHost publishes a verified host identity for a test panel.
+func setServerSetupTestHost(p *Panel, distro, version string) {
+	identity := debianPolicyTestIdentity()
+	identity.DistroID, identity.VersionID = distro, version
+	p.pkgFamilyMu.Lock()
+	p.pkgFamilyVal = "apt"
+	p.hostPlatformVal = identity
+	p.hostPlatformKnown = true
+	p.pkgFamilyMu.Unlock()
+}
+
+// PowerDNS as the main DNS server is refused at review on a system where it
+// was not measured, with the same reason the wizard shows (alpha.111 review).
+func TestServerSetupBuildRefusesPowerDNSMainOnUntestedSystem(t *testing.T) {
+	setPDNSPairedPrimaryGateForTest(t, true)
+	f, state := setupOperationFixture(t)
+	setServerSetupTestHost(f.panel, "ubuntu", "24.04")
+	caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
+	f.agent.versionCapabilities = &caps
+	state.Draft.Purpose, state.Draft.DNSMode, state.Draft.DNSEngine, state.Draft.DNSRole = "web", "local", "pdns", "primary"
+	state.Draft.NS1, state.Draft.NS2, state.Draft.PeerNS = "ns1.example.test", "ns2.example.test", "ns2.example.test"
+	state.Draft.LocalIP, state.Draft.PeerIP = "72.62.38.15", "2.25.80.4"
+	plan, err := f.panel.buildServerSetupPlan(context.Background(), state, serviceOperationActor{UserID: f.userID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.CanStart || !slices.Contains(plan.Blockers, "server_setup_pdns_main_untested_system") {
+		t.Fatalf("PowerDNS main on Ubuntu was not refused at review: %v", plan.Blockers)
+	}
+}
+
+// PowerDNS as the main DNS server is offered and accepted by one rule: a
+// release of the tested series (Beta-1 VM cell b: Debian 13 offered 4.9.18,
+// the DNS step accepted only 4.9.17 and rolled back). A candidate outside the
+// series is refused at review with the wizard's reason, never mid-run. A
+// build from outside Debian's archive says so whatever its version (Beta-1
+// re-run: a vendor 4.9.18 build was refused as an untested version).
+func TestServerSetupBuildPowerDNSMainFollowsTheTestedSeries(t *testing.T) {
+	type candidate = transport.PDNSFreshPrimaryCandidateResponse
+	for name, test := range map[string]struct {
+		candidate *candidate
+		code      string
+	}{
+		"4.9.18 from Debian":       {&candidate{State: "known", Version: "4.9.18-0+deb13u1", Official: true}, ""},
+		"4.9.17 from Debian":       {&candidate{State: "known", Version: "4.9.17-0+deb13u1", Official: true}, ""},
+		"other series":             {&candidate{State: "known", Version: "5.0.1-1", Official: true}, "server_setup_pdns_main_untested_version"},
+		"repo.powerdns.com build":  {&candidate{State: "known", Version: "4.9.4-1pdns.trixie"}, "server_setup_pdns_main_not_debian_archive"},
+		"vendor 4.9.18 build":      {&candidate{State: "known", Version: "4.9.18-1pdns.trixie"}, "server_setup_pdns_main_not_debian_archive"},
+		"backport":                 {&candidate{State: "known", Version: "4.9.4-1~bpo13+1"}, "server_setup_pdns_main_not_debian_archive"},
+		"epoch":                    {&candidate{State: "known", Version: "1:4.9.18-0+deb13u1", Official: true}, "server_setup_pdns_main_untested_version"},
+		"Debian version elsewhere": {&candidate{State: "known", Version: "4.9.18-0+deb13u1", Official: false}, "server_setup_pdns_main_not_debian_archive"},
+		"unknown":                  {&candidate{State: "unknown"}, ""},
+		"older agent":              {nil, ""},
+	} {
+		t.Run(name, func(t *testing.T) {
+			setPDNSPairedPrimaryGateForTest(t, true)
+			f, state := setupOperationFixture(t)
+			setServerSetupTestHost(f.panel, "debian", "13")
+			caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
+			f.agent.versionCapabilities = &caps
+			f.agent.pdnsCandidate = test.candidate
+			state.Draft.Purpose, state.Draft.DNSMode, state.Draft.DNSEngine, state.Draft.DNSRole = "web", "local", "pdns", "primary"
+			state.Draft.NS1, state.Draft.NS2, state.Draft.PeerNS = "ns1.example.test", "ns2.example.test", "ns2.example.test"
+			state.Draft.LocalIP, state.Draft.PeerIP = "72.62.38.15", "2.25.80.4"
+			plan, err := f.panel.buildServerSetupPlan(context.Background(), state, serviceOperationActor{UserID: f.userID})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, code := range []string{"server_setup_pdns_main_untested_version", "server_setup_pdns_main_not_debian_archive"} {
+				if got := slices.Contains(plan.Blockers, code); got != (code == test.code) {
+					t.Fatalf("%s refused=%v: %v", code, got, plan.Blockers)
+				}
+			}
+			debian := core.ManagedServiceHostProfile{PackageFamily: "apt", DistroID: "debian", VersionID: "13", Architecture: "amd64"}
+			catalog := buildServerSetupComponentCatalogFrom(serverSetupCatalogInputs{Host: debian, InventoryReady: true, DNSState: &dnsEngineDBState{}, PDNSCandidate: test.candidate})
+			for _, choice := range catalog.DNSEngines {
+				if choice.ID != "pdns" {
+					continue
+				}
+				want := test.code == "" || choice.Role == "backup"
+				if choice.Offered != want || (!want && choice.Reason != test.code) {
+					t.Fatalf("%s: %+v", choice.Role, choice)
+				}
+			}
+		})
 	}
 }

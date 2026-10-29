@@ -42,6 +42,16 @@ alan adı kaydı veya önceki altyapı sahiplik kaydıyla doğrulanır. Bilinmey
 sahiplik, harici/uzak yönetim, çelişen adresler, takma adlar, devredilmiş alt
 bölgeler veya belirsiz otorite, açıklanan bir nedenle hazırlığı durdurur.
 
+### Ek (v0.1.0-alpha.112 kaynağı)
+
+Bölge sihirbazın ana alan adıysa, incelenen bölge sahibin internetten aktarmayı
+seçtiği kayıtları ve e-posta seçiliyse ana alan adının MX, SPF ve DMARC
+kayıtlarını da taşır (DKIM, posta profilinden sonraki `mail_dns` adımında
+gelir). Bunlar bir kaynakla ("imported", "mail") planlanır, aynısı zaten varsa
+korunur ve asla kilitlenmez; yalnız kurulumun kendi sunucu adresleri kilitlidir.
+Kurulumun bir sunucuya verdiği ada aktarılan adres reddedilir
+(`infrastructure_dns_imported_clash`).
+
 ## Birincil BIND ve ikincil PowerDNS sırası
 
 İncelenen Frankfurt birincil/Boston ikincil düzeninde:

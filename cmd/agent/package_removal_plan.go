@@ -147,11 +147,60 @@ type aptSimulation struct {
 	// Upgrades (alpha.107) are the Inst lines of packages already installed:
 	// "Inst name [old] (new …)".
 	Upgrades map[string]aptUpgrade
+	// Versions are every Inst line's new version and its archives, new
+	// installs and upgrades alike (From is empty for a new install).
+	Versions map[string]aptUpgrade
 }
 
-// aptUpgrade is one installed package's version now and after.
+// aptUpgrade is one installed package's version now and after, and the
+// archives APT names for the new version (empty when it named none).
 type aptUpgrade struct {
 	From, To string
+	Origins  []aptOrigin
+}
+
+// aptOrigin is one archive APT names for a version: the Release file's
+// Origin and the archive (suite) it belongs to.
+type aptOrigin struct {
+	Origin, Suite string
+}
+
+// aptInstOrigins reads the archives of an Inst line's new version: APT prints
+// "(<version> <origin>:[<release>/]<archive>[, …] [<arch>])", for example
+// "(5.40.1-6+deb13u1 Debian:13.1/stable, Debian-Security:13/stable-security
+// [amd64])" or "(8.5.1-1+0~20251121 deb.sury.org:trixie [amd64])". Nothing it cannot read is guessed: no archives come back.
+func aptInstOrigins(line, version string) []aptOrigin {
+	open := strings.IndexByte(line, '(')
+	if open < 0 {
+		return nil
+	}
+	end := strings.IndexByte(line[open:], ')')
+	if end < 0 {
+		return nil
+	}
+	inner := strings.TrimSpace(line[open+1 : open+end])
+	rest, ok := strings.CutPrefix(inner, version+" ")
+	if !ok {
+		return nil
+	}
+	if arch := strings.LastIndex(rest, " ["); arch >= 0 && strings.HasSuffix(rest, "]") {
+		rest = rest[:arch]
+	}
+	var origins []aptOrigin
+	for _, part := range strings.Split(rest, ", ") {
+		origin, release, ok := strings.Cut(strings.TrimSpace(part), ":")
+		if !ok || origin == "" {
+			return nil
+		}
+		// "<release version>/<archive>", or only "<archive>" when the
+		// Release file has no Version (a vendor repository's often has none).
+		suite := release[strings.LastIndexByte(release, '/')+1:]
+		if suite == "" {
+			return nil
+		}
+		origins = append(origins, aptOrigin{Origin: origin, Suite: suite})
+	}
+	return origins
 }
 
 // parseAptSimulation reads APT's simulation lines: "Purg name [version]",
@@ -175,13 +224,26 @@ func parseAptSimulation(out []byte) aptSimulation {
 			if !seen["i:"+fields[1]] {
 				seen["i:"+fields[1]] = true
 				sim.Installed = append(sim.Installed, fields[1])
+				if len(fields) >= 3 {
+					version := fields[2]
+					if strings.HasPrefix(version, "[") && len(fields) >= 4 {
+						version = fields[3]
+					}
+					version = strings.TrimPrefix(version, "(")
+					if sim.Versions == nil {
+						sim.Versions = map[string]aptUpgrade{}
+					}
+					sim.Versions[fields[1]] = aptUpgrade{To: version, Origins: aptInstOrigins(line, version)}
+				}
 				if len(fields) >= 4 && strings.HasPrefix(fields[2], "[") && strings.HasSuffix(fields[2], "]") && strings.HasPrefix(fields[3], "(") {
 					if sim.Upgrades == nil {
 						sim.Upgrades = map[string]aptUpgrade{}
 					}
+					to := strings.TrimPrefix(fields[3], "(")
 					sim.Upgrades[fields[1]] = aptUpgrade{
-						From: strings.TrimSuffix(strings.TrimPrefix(fields[2], "["), "]"),
-						To:   strings.TrimPrefix(fields[3], "("),
+						From:    strings.TrimSuffix(strings.TrimPrefix(fields[2], "["), "]"),
+						To:      to,
+						Origins: aptInstOrigins(line, to),
 					}
 				}
 			}
