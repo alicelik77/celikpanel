@@ -517,7 +517,10 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 		// A joined second server keeps the answers the first server gave.
 		addBlocker("server_setup_peer_join_answers_changed")
 	}
-	if link != nil && link.Document.First.MainDomainMail && serverSetupHasMail(draft) {
+	// Only a first setup that has not completed: the link record is kept
+	// after a pair finished, and an extension keeps its own rules (review
+	// fix, item 3).
+	if link != nil && link.Document.First.MainDomainMail && serverSetupHasMail(draft) && state.CompletedAt == "" {
 		// One server receives the main domain's mail, and the join's shared
 		// answer says which: the server that created the join code already
 		// does (Beta-1 third re-run N3/N5: both claimed it). The wizard has

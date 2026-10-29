@@ -455,3 +455,26 @@ func TestDNSOverviewMailReceiverFollowsTheJoinsSharedAnswer(t *testing.T) {
 		t.Fatalf("without the shared answer: %+v", receiver)
 	}
 }
+
+// Review fix (item 3): the refusal of a second receiver applies to a first
+// setup only. The link record outlives a finished pair, so an extension of
+// that pair is judged by the extension rules, not refused by it.
+func TestServerSetupPeerMailBothDoesNotRefuseAnExtension(t *testing.T) {
+	first := joinFirstDraft()
+	first.MainDNSServer, first.Purpose, first.MailHostname = "peer", "web_mail", "mail.example.test"
+	pair := newPeerPair(t, first)
+	if answer := pair.connect(t, issueJoinCode(t, pair.first).Code); answer.State != "ok" {
+		t.Fatalf("join: %+v", answer)
+	}
+	mail := func(d *serverSetupDraft) { d.Purpose, d.MailHostname = "web_mail", "mail2.example.test" }
+	if _, plan := pair.secondReview(t, mail); !strings.Contains(strings.Join(plan.Blockers, ","), "server_setup_peer_mail_both") {
+		t.Fatalf("a first setup: %v", plan.Blockers)
+	}
+	// The pair finished earlier (an installed pair); this is its extension.
+	if _, err := pair.second.database.GetDB().Exec(`UPDATE server_setup_state SET completed_at='2026-10-29T07:00:00Z', status='draft' WHERE id=1`); err != nil {
+		t.Fatal(err)
+	}
+	if _, plan := pair.secondReview(t, mail); strings.Contains(strings.Join(plan.Blockers, ","), "server_setup_peer_mail_both") {
+		t.Fatalf("an extension of a finished pair was refused: %v", plan.Blockers)
+	}
+}
