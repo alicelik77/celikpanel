@@ -26,7 +26,7 @@ kanıtlanmış sayılmadan önce yeni bir hedefli VM koşusu gerekir.
   okunduktan sonra oluşturulur. 10 dakika sonra hâlâ açılan sunucu
   `server_setup_host_not_started` (systemd hâlâ açılıyor; denetlenecek
   komutlar) ya da `server_setup_agent_not_answering` (Agent hiç yanıt vermedi;
-  `systemctl status celikpanel-agent`) ile düşer. Her açılış ayrı bir
+  `sudo systemctl status celikpanel-agent`) ile düşer. Her açılış ayrı bir
   dönemdir: başka her sonuç öncekini bitirir.
 - **Sunucudaki başka bir değişiklik başlatmayı tutar, çalışma bekler.**
   Bileşenler'den bir kurulum sürerken başlatılan çalışmanın ilk bileşenini

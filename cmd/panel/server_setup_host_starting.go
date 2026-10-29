@@ -34,7 +34,7 @@ const (
 	// item 7): nothing new was started either way.
 	serverSetupHostStartingMessage   = "This server is still starting (its system manager, systemd, does not report it ready yet, or the CelikPanel Agent is not answering yet), so CelikPanel cannot reach the host. Nothing new was started; once the server has started, setup checks this step's saved operation again and continues it. Nobody needs to act."
 	serverSetupHostNotStartedText    = "This server has still not finished starting: its system manager (systemd) has reported it as starting for more than 10 minutes, so CelikPanel cannot verify the host and did not run this step. You, the owner: run `systemctl is-system-running` and `systemctl --failed` on this server and fix what keeps the boot from finishing; then choose Review a revised plan."
-	serverSetupAgentNotAnsweringText = "The CelikPanel Agent on this server has not answered for more than 10 minutes, so CelikPanel cannot reach the host and did not run this step. You, the owner: run `systemctl status celikpanel-agent` on this server and, if it is stopped, `sudo systemctl start celikpanel-agent`; then choose Review a revised plan."
+	serverSetupAgentNotAnsweringText = "The CelikPanel Agent on this server has not answered for more than 10 minutes, so CelikPanel cannot reach the host and did not run this step. You, the owner: run `sudo systemctl status celikpanel-agent` on this server and, if it is stopped, `sudo systemctl start celikpanel-agent`; then choose Review a revised plan."
 )
 
 // serverSetupHostStartingBound bounds the wait for a booting host.

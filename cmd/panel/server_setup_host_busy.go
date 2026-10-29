@@ -123,7 +123,7 @@ var errServerSetupAgentUnreachable = errors.New("the CelikPanel Agent could not 
 
 const (
 	serverSetupAgentUnreachableCode    = "server_setup_agent_unreachable"
-	serverSetupAgentUnreachableMessage = "CelikPanel could not reach its Agent on this server, so setup did not start and nothing was changed. You, the owner: check that the agent runs (`systemctl status celikpanel-agent`, and `sudo systemctl start celikpanel-agent` if it is stopped); then start setup."
+	serverSetupAgentUnreachableMessage = "CelikPanel could not reach its Agent on this server, so setup did not start and nothing was changed. You, the owner: check that the agent runs (`sudo systemctl status celikpanel-agent`, and `sudo systemctl start celikpanel-agent` if it is stopped); then start setup."
 )
 
 // serverSetupStartHostRefusal: the start's coded answer for a host that is

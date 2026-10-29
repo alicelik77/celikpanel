@@ -27,7 +27,7 @@ targeted VM re-run is owed before any is called proven.
   host identity is read. A host still starting after 10 minutes fails with
   `server_setup_host_not_started` (systemd still starting; the commands to
   check) or `server_setup_agent_not_answering` (the Agent never answered;
-  `systemctl status celikpanel-agent`). Each boot is its own episode: any
+  `sudo systemctl status celikpanel-agent`). Each boot is its own episode: any
   other outcome ends the previous one.
 - **Another change on the server holds the start, and a run waits.** A start
   while a Components install ran created a run whose first component the
