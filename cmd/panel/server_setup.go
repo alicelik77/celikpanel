@@ -280,7 +280,11 @@ func canonicalServerSetupWizardAnswers(d *serverSetupDraft) error {
 		}
 		mail.Hostname = canonical
 		d.PeerMail = &mail
-		if d.DNSMode != setupDNSModeLocal || d.DNSRole != transport.DNSPairRolePrimary || serverSetupHasMail(*d) {
+		// The join's shared answer is kept even when this server selects
+		// mail too: the review then refuses two receivers
+		// (server_setup_peer_mail_both) instead of silently dropping the
+		// answer (Beta-1 third re-run N3/N5).
+		if d.DNSMode != setupDNSModeLocal || d.DNSRole != transport.DNSPairRolePrimary {
 			d.PeerMail = nil
 		}
 	}

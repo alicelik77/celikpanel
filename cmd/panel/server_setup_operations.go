@@ -514,6 +514,13 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 		// A joined second server keeps the answers the first server gave.
 		addBlocker("server_setup_peer_join_answers_changed")
 	}
+	if link != nil && link.Document.First.MainDomainMail && serverSetupHasMail(draft) {
+		// One server receives the main domain's mail, and the join's shared
+		// answer says which: the server that created the join code already
+		// does (Beta-1 third re-run N3/N5: both claimed it). The wizard has
+		// no mail for this server's own host name only, so it is refused.
+		addBlocker("server_setup_peer_mail_both")
+	}
 	if draft.DNSMode == "local" && joinPending {
 		// The second server joins by code after this plan starts: its
 		// address and names are bound then (peer_join). Here only this

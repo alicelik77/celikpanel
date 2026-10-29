@@ -225,6 +225,9 @@ type dnsOverview struct {
 // dnsOverviewPeer is what this server knows of the other server, from the
 // first server's binding or the second server's link (never their secrets).
 type dnsOverviewPeer struct {
+	// FromLink: read from the join document this server received (it is
+	// the second server); its MainMail is the shared answer.
+	FromLink  bool
 	Bound     bool
 	ShortName string
 	PanelName string
@@ -301,7 +304,7 @@ func (p *Panel) dnsOverviewInputs(ctx context.Context, edges dnsOverviewSeams) (
 		return in, err
 	} else if link != nil {
 		first := link.Document.First
-		in.Peer = dnsOverviewPeer{Bound: true, ShortName: first.ShortName, PanelName: first.PanelDomain, MailHost: first.MailHostname,
+		in.Peer = dnsOverviewPeer{FromLink: true, Bound: true, ShortName: first.ShortName, PanelName: first.PanelDomain, MailHost: first.MailHostname,
 			MainMail: first.MainDomainMail, MailDNS: first.MailDNS, Software: first.DNSEngine, IPv4: first.IPv4}
 	}
 	engine, _, err := p.readDNSEngineStateAndOperation(ctx)
@@ -497,6 +500,16 @@ func dnsOverviewMailInputs(in dnsOverviewInput) (dnsOverviewMailReceiver, server
 	d := in.Draft
 	if d.MainDomain == "" {
 		return dnsOverviewMailReceiver{Server: "none"}, serverSetupMailDNS{}, false
+	}
+	// The join's shared answer decides who receives the main domain's mail
+	// (N5): on a second server whose first server receives it, that is the
+	// receiver, whatever this server runs itself.
+	if in.Peer.FromLink && in.Peer.MainMail && in.Peer.MailHost != "" {
+		choice := serverSetupMailDNS{}
+		if in.Peer.MailDNS != nil {
+			choice = *in.Peer.MailDNS
+		}
+		return dnsOverviewMailReceiver{Server: "peer", Host: in.Peer.MailHost, ShortName: in.Peer.ShortName}, choice, true
 	}
 	if host, choice, ok := serverSetupMainDomainMail(d); ok {
 		receiver := dnsOverviewMailReceiver{Server: "this", Host: host, ShortName: d.ShortName}

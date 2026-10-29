@@ -13,7 +13,7 @@ export const enSetupLinkScreens = {
     "setup.v5.wait.server_setup_peer_names_clash": "The second server's names cannot be added to the zone (see the details). Change them in the second server's plan, or the conflicting record in Domains.",
     "setup.v5.wait.server_setup_peer_names_outside_domain": "The second server's names are not under the main domain. Change them in the second server's plan.",
     "setup.v5.wait.server_setup_peer_names_invalid": "The second server sent names this server cannot use. Review the second server's plan again.",
-    "setup.v5.wait.server_setup_peer_mail_both": "Both servers would receive the main domain's mail. Choose mail on one server.",
+    "setup.v5.wait.server_setup_peer_mail_both": "The server that created the join code already receives the main domain's mail (the join gave this server that answer), and one domain has one mail receiver. You, the owner: remove the mail components from this server's plan, or, to receive the mail here instead, remove mail on that server and join again; then review this plan again.",
     "setup.v5.wait.server_setup_peer_names_unreachable": "The first server cannot be reached to send this server's names. Check that it is running; setup asks again by itself.",
     "setup.v5.wait.server_setup_peer_names_unknown": "The first server's answer was not received. Setup sends the same names again; nothing is done twice.",
     "setup.v5.wait.server_setup_dns_publisher_waiting": "Waiting for the main DNS server to accept this server's publishing connection. It does once its DNS pair is ready and its nameservers are public; setup asks again by itself.",

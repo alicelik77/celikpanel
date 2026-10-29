@@ -11,7 +11,7 @@ export const trSetupLinkScreens: Record<SetupLinkScreenKey, string> = {
     "setup.v5.wait.server_setup_peer_names_clash": "İkinci sunucunun adları bölgeye eklenemiyor (ayrıntılara bakın). Onları ikinci sunucunun planında ya da çakışan kaydı Alan adları'nda değiştirin.",
     "setup.v5.wait.server_setup_peer_names_outside_domain": "İkinci sunucunun adları ana alan adının altında değil. Onları ikinci sunucunun planında değiştirin.",
     "setup.v5.wait.server_setup_peer_names_invalid": "İkinci sunucu bu sunucunun kullanamayacağı adlar gönderdi. İkinci sunucunun planını yeniden gözden geçirin.",
-    "setup.v5.wait.server_setup_peer_mail_both": "Ana alan adının postasını iki sunucu da alacaktı. Postayı tek sunucuda seçin.",
+    "setup.v5.wait.server_setup_peer_mail_both": "Katılma kodunu oluşturan sunucu ana alan adının postasını zaten alıyor (katılma bu yanıtı bu sunucuya verdi) ve bir alan adının tek posta alıcısı olur. Siz, sunucu sahibi: posta bileşenlerini bu sunucunun planından çıkarın ya da postayı burada almak için o sunucuda postayı kaldırıp yeniden katılın; sonra bu planı yeniden inceleyin.",
     "setup.v5.wait.server_setup_peer_names_unreachable": "Bu sunucunun adlarını göndermek için ilk sunucuya ulaşılamıyor. Çalıştığını kontrol edin; kurulum kendiliğinden yeniden sorar.",
     "setup.v5.wait.server_setup_peer_names_unknown": "İlk sunucunun yanıtı gelmedi. Kurulum aynı adları yeniden gönderir; hiçbir şey iki kez yapılmaz.",
     "setup.v5.wait.server_setup_dns_publisher_waiting": "Ana DNS sunucusunun bu sunucunun yayımlama bağlantısını kabul etmesi bekleniyor. DNS çifti hazır olunca ve ad sunucuları genel DNS'te görününce kabul eder; kurulum kendiliğinden yeniden sorar.",

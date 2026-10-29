@@ -52,6 +52,18 @@ targeted VM re-run is owed before any is called proven.
   for the bound join whether its own run is still running or finished, and
   writes and publishes it through the same reviewed DNS path. An ended link
   refuses it.
+- **One server receives the main domain's mail.** In Option A with mail
+  chosen on both servers, both plans claimed the main domain's mail: the join
+  document said the first server (the one that created the code) receives it,
+  but the main's draft dropped that answer because it had mail of its own, and
+  the backup's overview showed itself as the receiver. The join's shared
+  answer is now the single source of truth: it is kept in the joined draft,
+  a joined server that would also receive the main domain's mail is refused
+  at review with `server_setup_peer_mail_both` (you, the owner: remove mail
+  from this server's plan, or remove it on the other server and join again;
+  then review again), and the DNS overview names the receiver the shared
+  answer names. This release has no mail for a server's own host name only,
+  so the second server cannot keep mail beside it.
 
 ## October 29 follow-up: fixes from the targeted Beta-1 re-run (alpha.115 source)
 
@@ -367,8 +379,9 @@ only by component tests on loopback servers; not on installed servers.
 - **Mail of the other server.** When the backup DNS server receives the main
   domain's mail (the main has none), its MX, SPF and DMARC are written on the
   main from its answers and its DKIM record goes over the link; "add them by
-  hand" is gone. When both servers have mail the main DNS server receives the
-  main domain's mail and the other server's mail serves its own domains.
+  hand" is gone. Exactly one server receives the main domain's mail, and the
+  join's shared answer says which (superseded on 2026-10-29: mail chosen on
+  both is refused at review with `server_setup_peer_mail_both`).
 - **The link.** The link dials the peer's IPv4 address and trusts only its
   key fingerprint (the full SHA-256 SPKI after the join), never a
   certificate name. The panel keeps serving its first self-signed identity on

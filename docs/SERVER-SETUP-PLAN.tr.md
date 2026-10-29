@@ -50,6 +50,18 @@ kanıtlanmış sayılmadan önce yeni bir hedefli VM koşusu gerekir.
   açık oldukça (yedek hazır olduğunu bildirene kadar sürer), ana sunucu kendi
   çalışması sürse de bitse de bağlı katılmanın DKIM kaydını alır ve aynı
   incelenmiş DNS yolundan yazıp yayımlar. Kapanmış bağlantı onu reddeder.
+- **Ana alan adının postasını tek sunucu alır.** A seçeneğinde postayı iki
+  sunucuda da seçince iki plan da ana alan adının postasını üstlendi: katılma
+  belgesi postayı ilk sunucunun (kodu oluşturanın) aldığını söylüyordu, ama ana
+  sunucunun taslağı kendi postası olduğu için bu yanıtı düşürdü ve yedeğin genel
+  bakışı kendini alıcı gösterdi. Katılmanın ortak yanıtı artık tek doğruluk
+  kaynağıdır: katılmış taslakta korunur, ana alan adının postasını ayrıca
+  alacak katılmış sunucu incelemede `server_setup_peer_mail_both` ile reddedilir
+  (siz, sunucu sahibi: postayı bu sunucunun planından çıkarın ya da öteki
+  sunucuda kaldırıp yeniden katılın; sonra yeniden inceleyin) ve DNS genel
+  bakışı ortak yanıtın adlandırdığı alıcıyı gösterir. Bu sürümde yalnız
+  sunucunun kendi ana bilgisayar adı için posta yoktur; bu yüzden ikinci
+  sunucu yanında posta tutamaz.
 
 ## 29 Ekim ek kararı: hedefli Beta-1 yeniden koşusunun düzeltmeleri (alpha.115 kaynağı)
 
@@ -364,9 +376,10 @@ sunucularda değil.
   (HTTPS adı, genel adresler, genel bir kuruluşun sertifikası).
 - **Diğer sunucunun postası.** Yedek DNS sunucusu ana alan adının postasını
   alıyorsa (ananın postası yoksa) MX, SPF ve DMARC onun yanıtlarıyla anada yazılır,
-  DKIM kaydı bağlantıdan gider; "elle ekleyin" kalktı. İki sunucuda da posta
-  varsa ana alan adının postasını ana DNS sunucusu alır, diğer sunucunun postası
-  kendi alan adlarına hizmet eder.
+  DKIM kaydı bağlantıdan gider; "elle ekleyin" kalktı. Ana alan adının postasını tam
+  olarak bir sunucu alır ve hangisi olduğunu katılmanın ortak yanıtı söyler
+  (29 Ekim 2026'da değişti: iki sunucuda da seçilen posta incelemede
+  `server_setup_peer_mail_both` ile reddedilir).
 - **Bağlantı.** Bağlantı eşin IPv4 adresine bağlanır ve yalnız anahtar parmak
   izine (katılmadan sonra tam SHA-256 SPKI) güvenir, asla sertifika adına güvenmez.
   Panel, alan adı sertifikalarından sonra da IP adresinde ilk kendinden imzalı

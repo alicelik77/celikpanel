@@ -90,7 +90,13 @@ func TestServerSetupPeerOptionAWithMailOnTheFirstServer(t *testing.T) {
 	if answer.State != "ok" || answer.Setup == nil || answer.Setup.Draft.PeerMail == nil || answer.Setup.Draft.PeerMail.Hostname != "mail.example.test" {
 		t.Fatalf("the main takes the first server's mail choice: %+v", answer)
 	}
-	_, plan := pair.secondReview(t, nil)
+	// Beta-1 third re-run N3/N5: mail on both servers is refused on the
+	// main's review; the join's shared answer says the first receives it.
+	before, _ := pair.second.panel.loadServerSetup(context.Background())
+	if _, both := pair.secondReview(t, func(d *serverSetupDraft) { d.Purpose, d.MailHostname = "web_mail", "mail2.example.test" }); both.CanStart || !strings.Contains(strings.Join(both.Blockers, ","), "server_setup_peer_mail_both") {
+		t.Fatalf("mail on both servers: %v", both.Blockers)
+	}
+	_, plan := pair.secondReview(t, func(d *serverSetupDraft) { d.MailHostname = before.Draft.MailHostname })
 	second := pair.startSecond(t, plan)
 	if done, err := pair.second.panel.runServerSetupPeerNames(context.Background(), plan, second.Steps[0]); !done || err != nil {
 		t.Fatalf("names: %v %v", done, err)
@@ -151,6 +157,11 @@ func TestServerSetupPeerOptionAWithMailOnTheFirstServer(t *testing.T) {
 	completeWithChecks(t, pair.second, plan, second)
 	if second.Status != "succeeded" || second.Phase != "complete" {
 		t.Fatalf("the main completes once the first server's DKIM record is in its zone: %s %s %+v", second.Status, second.Phase, second.Checks)
+	}
+	// The main finished; its link is live until the backup reports: the
+	// backup's DKIM is still taken (N3).
+	if err := send(); err != nil {
+		t.Fatalf("the backup's DKIM after the main finished: %v", err)
 	}
 	completeWithChecks(t, pair.first, pair.plan, pair.execution)
 	if pair.execution.Status != "succeeded" || pair.execution.Phase != "complete" {
@@ -426,5 +437,21 @@ func TestServerSetupJoinSecretsAreSealedAtRest(t *testing.T) {
 				t.Fatal("the second server's database alone opens no link")
 			}
 		})
+	}
+}
+
+// N5: the second server's DNS overview names the receiver the join's shared
+// answer names, even on a pair installed before the refusal where the second
+// also runs mail.
+func TestDNSOverviewMailReceiverFollowsTheJoinsSharedAnswer(t *testing.T) {
+	in := dnsOverviewInput{Draft: serverSetupDraft{MainDomain: "example.test", Purpose: "web_mail", MailHostname: "mail2.example.test", ShortName: "beta"},
+		Peer: dnsOverviewPeer{FromLink: true, Bound: true, ShortName: "alpha", MailHost: "mail.example.test", MainMail: true}}
+	receiver, _, ok := dnsOverviewMailInputs(in)
+	if !ok || receiver.Server != "peer" || receiver.Host != "mail.example.test" {
+		t.Fatalf("receiver: %+v %v", receiver, ok)
+	}
+	in.Peer.MainMail = false
+	if receiver, _, _ := dnsOverviewMailInputs(in); receiver.Server != "this" {
+		t.Fatalf("without the shared answer: %+v", receiver)
 	}
 }
