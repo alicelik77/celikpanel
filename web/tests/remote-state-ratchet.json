@@ -73,7 +73,6 @@
     "src/components/ServerSetup.tsx": {
       "valueFromFailure": 3,
       "swallowedFailure": 2,
-      "ignoredFailure": 1,
       "rawRead": 1
     },
     "src/components/ServerSetupChoice.tsx": {

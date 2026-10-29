@@ -6,14 +6,14 @@ import { setupDNSTranslation } from '../i18n/setupDNS';
 import type { TranslationKey } from '../i18n/en';
 import { Link, Navigate } from '../router';
 import { decodeSetupEditorCheckpoint, changeSetupWizardDNSRole, setupJoinPendingDraft, setupDNSNames, setupDetectedIPv4, decodeServerSetup, setupEditorKey, setupExtensionChanges, setupNextPath, normalizeSetupDomain, validSetupDomain, validSetupShortName, setupNameWithin, setupInitialMainDomain, setupProposedNames, setupApplyProposedNames, type ServerSetupCheck, type ServerSetupDraft, type ServerSetupSnapshot, type SetupEditorStep, type SetupExtensionChangeKey, type SetupProposedNames } from '../lib/serverSetup';
-import { retryableMailEnrollmentHandoff, continuableMailEnrollment, decodeSetupExecution, decodeSetupMarker, decodeSetupPlan, newSetupRequestID, safeSetupPanelURL, type ServerSetupExecution, type SetupInfrastructureDNSPlan, type ServerSetupPlan, type SetupStartMarker } from '../lib/serverSetupOperation';
+import { retryableMailEnrollmentHandoff, continuableMailEnrollment, decodeSetupExecution, decodeSetupMarker, decodeSetupPlan, newSetupRequestID, safeSetupPanelURL, setupMarkerForInstallation, setupStartRefusedBeforeRun, type ServerSetupExecution, type SetupInfrastructureDNSPlan, type ServerSetupPlan, type SetupStartMarker } from '../lib/serverSetupOperation';
 import { ServerSetupShell, useServerSetup } from './ServerSetupGate';
 import { ServerSetupSteps } from './ServerSetupSteps';
 import { ServerSetupDNSConnection } from './ServerSetupDNSConnections';
 import { remoteDNSEndpoint } from '../lib/remoteDNS';
 import { ServerSetupChoice, ServerSetupManualAction } from './ServerSetupChoice';
 import { Button, inputClass, KeepWords, Spinner } from './ui';
-import { SetupCountStep, SetupDNSHomeStep, SetupDomainStep, SetupJoinCard, SetupJoinPanel, SetupJoinedSummary, SetupMailStep, SetupOpenTasks, SetupRecordsStep, SetupNameStep, SetupNamesStep, SetupPanelAccessCard, SetupProviderRecordsCard, SetupRegistrarCard, SetupRolesStep, SetupWizardInput, setupEngineChoice, setupServerLabel, useSetupPeerLink } from './ServerSetupWizardSteps';
+import { SetupCountStep, SetupDNSHomeStep, SetupDomainStep, SetupJoinCard, SetupJoinPanel, SetupJoinedSummary, SetupMailStep, SetupOpenTasks, SetupRecordsStep, SetupNameStep, SetupNamesStep, SetupPanelAccessCard, SetupProviderRecordsCard, SetupRegistrarCard, SetupRolesStep, SetupWizardInput, setupEngineChoice, setupServerLabel, useSetupDelegation, useSetupPeerLink } from './ServerSetupWizardSteps';
 import { AddressLink } from './AddressLink';
 import { SetupFirstSite } from './SetupFirstSite';
 import { ServerSetupComponents, useSetupComponentCatalog } from './ServerSetupComponents';
@@ -263,6 +263,9 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     });
     const proposalRef = useRef<SetupProposedNames | null>(null);
     const [componentsOpen, setComponentsOpen] = useState(false);
+    // The join-by-code panel shares the main domain step's form; while it is
+    // open that step's own field is not required (it comes from the first server).
+    const [joinOpen, setJoinOpen] = useState(false);
     const restoreReview = useRef(restoredEditor?.step === 'review');
     const restoredSnapshot = useRef(initial);
     const localIPTouched = useRef(false);
@@ -279,14 +282,28 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     const [step, setStep] = useState<Step>(restoredEditor?.step || (initial.status === 'new' || initial.status === 'legacy' || (initial.extension && initial.status === 'draft') || !initial.draft.main_domain ? 'domain' : 'dnshome'));
     const [plan, setPlan] = useState<ServerSetupPlan | null>(null);
     const [execution, setExecution] = useState<ServerSetupExecution | null>(null);
-    const [marker, setMarker] = useState<SetupStartMarker | null>(() => {
-        try { return decodeSetupMarker(localStorage.getItem(markerKey(user.username))); } catch { return null; }
+    // The identity of this panel installation, kept from the first answer that
+    // carried it (later answers to a save do not repeat it).
+    const installationRef = useRef(initial.installation_id);
+    if (snapshot.installation_id) installationRef.current = snapshot.installation_id;
+    // A start marker the browser kept from another installation (the server at
+    // this address was wiped and installed again) is dropped, with a plain
+    // notice; it never selects what to read here.
+    // Baska kurulumdan kalan baslatma isareti atilir.
+    const [savedMarker] = useState<{ marker: SetupStartMarker | null; foreign: boolean }>(() => {
+        try {
+            const kept = decodeSetupMarker(localStorage.getItem(markerKey(user.username)));
+            const own = setupMarkerForInstallation(kept, initial.installation_id);
+            if (kept && !own) localStorage.removeItem(markerKey(user.username));
+            return { marker: own, foreign: !!kept && !own };
+        } catch { return { marker: null, foreign: false }; }
     });
+    const [marker, setMarker] = useState<SetupStartMarker | null>(savedMarker.marker);
     const [resolving, setResolving] = useState(true);
     const [busy, setBusy] = useState(false);
     const [acknowledged, setAcknowledged] = useState(false);
     const [remoteVerified, setRemoteVerified] = useState(false);
-    const [error, setError] = useState('');
+    const [error, setError] = useState(() => savedMarker.foreign ? t('setup.staleStart') : '');
     const [reconnecting, setReconnecting] = useState(false);
     const [reconnectSlow, setReconnectSlow] = useState(false);
     const [enrollmentNotice, setEnrollmentNotice] = useState<'checking' | 'unknown' | null>(null);
@@ -321,7 +338,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     const heading = useRef<HTMLHeadingElement>(null);
     const markerRef = useRef(marker);
     markerRef.current = marker;
-    const accept = useCallback((value: ServerSetupSnapshot) => { setSnapshot(value); setup.accept(value); }, [setup.accept]);
+    const accept = useCallback((value: ServerSetupSnapshot) => { if (value.installation_id) installationRef.current = value.installation_id; setSnapshot(value); setup.accept(value); }, [setup.accept]);
     const failureText = (code: string, message?: string, reason?: string) => {
         // The clock reason with the seconds the server measured (N2/N4).
         if (code === 'server_setup_certificate_clock_skew') {
@@ -563,7 +580,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         pendingRef.current = true; setBusy(true); setError('');
         let started: SetupStartMarker;
         try {
-            started = { request_id: newSetupRequestID(), plan_id: plan.id, panel_domain: draft.panel_domain, ...(plan.package_updates_digest ? { package_updates_digest: plan.package_updates_digest } : {}), ...(plan.steps.some(item => item.kind === 'panel_certificate') ? { handover: true } : {}) };
+            started = { request_id: newSetupRequestID(), plan_id: plan.id, panel_domain: draft.panel_domain, ...(plan.package_updates_digest ? { package_updates_digest: plan.package_updates_digest } : {}), ...(plan.steps.some(item => item.kind === 'panel_certificate') ? { handover: true } : {}), ...(installationRef.current ? { installation: installationRef.current } : {}) };
             localStorage.setItem(markerKey(user.username), JSON.stringify(started));
         } catch { setError(t('setup.storageFailed')); pendingRef.current = false; setBusy(false); return; }
         markerRef.current = started; setMarker(started); setStep('progress');
@@ -598,7 +615,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                     setPlan({ ...plan, can_start: false, package_updates_state: 'unknown', package_updates: undefined });
                     setStep('review'); return;
                 }
-                if (response.status === 409 && ['server_setup_review_required', 'server_setup_review_stale', 'server_setup_plan_blocked'].includes(problem?.code)) {
+                if (response.status === 409 && setupStartRefusedBeforeRun.includes(problem?.code)) {
                     // These codes are emitted only before an execution is created.
                     // The server checks a previously committed request first.
                     localStorage.removeItem(markerKey(user.username));
@@ -653,6 +670,23 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
             if (response.ok) {
                 const resumed = decodeSetupExecution(await response.json(), saved);
                 if (resumed && alive.current) { setExecution(resumed); setReconnecting(false); }
+            } else if (response.status === 409) {
+                // The server answered the same request definitively: these
+                // refusals come only before any run exists, so this
+                // installation never started that request (the server was
+                // reinstalled, or its saved answers changed since). Only now is
+                // the saved start dropped and the wizard offered again; a lost
+                // answer never reaches this branch.
+                // Ayni istek kesin reddedildi: bu kurulum onu hic baslatmadi.
+                const problem: { code?: unknown } | null = await response.clone().json().then((value: { code?: unknown } | null) => value, () => null);
+                if (setupStartRefusedBeforeRun.includes(String(problem?.code))) {
+                    pollEpoch.current++;
+                    try { localStorage.removeItem(markerKey(user.username)); } catch { /* the marker only selects what to read */ }
+                    if (!alive.current) return;
+                    markerRef.current = null; setMarker(null); setExecution(null); setReconnecting(false); setResolving(false);
+                    setPlan(null); setAcknowledged(false); setStep(draft.main_domain ? 'dnshome' : 'domain'); setError(t('setup.staleStart'));
+                    return;
+                }
             }
             await reconcile();
         } catch { if (alive.current) setReconnecting(true); }
@@ -782,6 +816,9 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     const isDNS = selectedComponents.size === 0;
     const needsDNSPublisher = ['nginx', 'node', 'postfix', 'roundcube'].some(id => selectedComponents.has(id));
     const localPrimary = draft.dns_mode === 'local' && draft.dns_role === 'primary';
+    // The review's registrar line is true only when the domain does not already
+    // point at these servers: read where it points (no record is read).
+    const delegation = useSetupDelegation(step === 'review' && localPrimary && !!mainDomain);
     const panelDNSIP = draft.dns_mode === 'local' ? draft.local_ip : snapshot.server_ip;
     const secondaryHosting = needsDNSPublisher && draft.dns_mode === 'local' && draft.dns_role === 'secondary';
     const hostingDNSManagement = draft.dns_hosting_management || (draft.dns_publisher_endpoint ? 'panel' : 'manual');
@@ -959,8 +996,12 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                     </div>}
                 </section> : <form onSubmit={next} className="min-w-0">
                     {step === 'domain' && (joinedLink ? <SetupJoinedSummary link={joinedLink} /> : <>
-                        <SetupDomainStep value={draft.main_domain || ''} invalid={!!error && !validSetupDomain(mainDomain)} onChange={value => updateDraft(previous => ({ ...previous, main_domain: value }))} />
-                        {!extending && peer.known && <SetupJoinPanel disabled={busy} serverIP={snapshot.server_ip} onJoined={value => { const next = decodeServerSetup(value); peer.refresh(); if (next) { accept(next); setDraft(next.draft); setStep('name'); } }} />}
+                        <SetupDomainStep required={!joinOpen} value={draft.main_domain || ''} invalid={!!error && !validSetupDomain(mainDomain)} onChange={value => updateDraft(previous => ({ ...previous, main_domain: value }))} />
+                        {!extending && peer.known && <SetupJoinPanel disabled={busy} serverIP={snapshot.server_ip} onOpenChange={setJoinOpen} onJoined={value => {
+                            const next = decodeServerSetup(value); peer.refresh();
+                            // The joined draft carries the first server's answers; this server's own name stays the host name's suggestion.
+                            if (next) { accept(next); setDraft({ ...next.draft, short_name: next.draft.short_name ?? (next.short_name_suggestion || snapshot.short_name_suggestion || undefined) }); setJoinOpen(false); setStep('name'); }
+                        }} />}
                     </>)}
                     {step === 'count' && <SetupCountStep value={serverCount} onChange={value => updateDraft(previous => ({ ...previous, server_count: value }))} />}
                     {step === 'name' && <SetupNameStep value={draft.short_name || ''} suggestion={snapshot.short_name_suggestion} mainDomain={mainDomain} invalid={!validSetupShortName((draft.short_name || '').trim().toLowerCase())} onChange={value => updateDraft(previous => ({ ...previous, short_name: value }))} />}
@@ -1024,7 +1065,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                         <div className="mt-5 rounded-lg border border-border bg-surface p-4 text-sm leading-6" data-setup-untouched="">
                             <h3 className="font-semibold">{t('setup.v2.review.untouched')}</h3>
                             <ul className="mt-2 list-disc space-y-1 pl-5 text-fg-muted">
-                                {localPrimary && mainDomain && <li>{t('setup.v2.review.registrar', { domain: mainDomain })}</li>}
+                                {localPrimary && mainDomain && <li data-setup-registrar={delegation.state}>{delegation.state === 'here' ? t('setup.v2.review.registrarHere', { domain: mainDomain, servers: delegation.servers }) : t('setup.v2.review.registrar', { domain: mainDomain })}</li>}
                                 {joinFlow && !joinedLink && <li>{t('setup.v5.review.second')}</li>}
                                 {joinedLink && <li>{t('setup.v5.review.joined', { server: joinedLink.first.short_name || t('setup.v5.joined.firstServer'), ip: joinedLink.first.ipv4 })}</li>}
                                 {draft.dns_mode === 'external' && <li>{t('setup.v2.review.provider')}</li>}

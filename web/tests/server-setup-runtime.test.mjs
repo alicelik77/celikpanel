@@ -31,7 +31,7 @@ const operations = await import(operationURL);
 const stub = dataURL(`
 import React from '${reactURL}';
 export const useAuth = () => globalThis.setupFixture.auth;
-export const useI18n = () => ({ locale:globalThis.setupFixture.locale, t:(key, vars)=>globalThis.setupFixture.translations?.[key]??key, screensReady:true, screensFailed:false });
+export const useI18n = () => ({ locale:globalThis.setupFixture.locale, t:(key, vars)=>globalThis.setupFixture.translations?.[key]??(globalThis.setupFixture.showVars&&vars?key+' '+Object.values(vars).join(' | '):key), screensReady:true, screensFailed:false });
 export const useLocation = () => ({ pathname:globalThis.setupFixture.path });
 export const Navigate = props => React.createElement('redirect',props);
 export const Link = props => React.createElement('a',{...props,href:props.to});
@@ -1244,8 +1244,9 @@ test('wizard v2: the main domain comes first and every name is proposed from it,
         await type('setup-main_domain', 'https://www.Example.com/');
         await submit();
         assert.equal(putDraft().main_domain, 'example.com');
-        assert.equal(radio('setup-server_count', '2').props.checked, true, 'two servers are recommended');
-        assert.ok(textOf().includes('setup.v5.dns.second.help'), 'the second server joins by code; its address is never typed here');
+        assert.equal(radio('setup-server_count', '2').props.checked, true, 'two servers are the default');
+        assert.equal(textOf().includes('setup.v2.recommended'), false, 'the number of servers is the owner\'s choice: no recommended badge');
+        assert.equal(textOf().includes('setup.v5.dns.second.help'), false, 'the second server\'s sentence belongs to the DNS step, not to the count');
         await submit();
         assert.equal(input('setup-short_name').props.value, 'frankfurt');
         await submit();
@@ -1766,4 +1767,219 @@ test('a certificate step stopped by a clock behind the authority says so',async(
         assert.ok(text.includes('setup.blocker.clockSkew'),text);
         assert.ok(!text.includes('setup.blocker.panelTLS'));
     }finally{await cleanup();}
+});
+
+// ---- Owner findings after the first two real installs (2026-10-30) --------
+
+const inst = char => char.repeat(32);
+const staleMarker = extra => ({ plan_id: 'a'.repeat(32), request_id: 'b'.repeat(32), panel_domain: 'panel.example.com', ...extra });
+
+test('a start marker from another installation is dropped and the wizard starts, with a plain notice and no read of its operation', async () => {
+    init('admin', { installation_id: inst('a') });
+    store.set('celikpanel.setup.start.admin', JSON.stringify(staleMarker({ installation: inst('b') })));
+    try {
+        await mount(); await settleReads();
+        assert.equal(store.has('celikpanel.setup.start.admin'), false, 'the foreign marker is removed');
+        assert.ok(input('setup-main_domain'), 'the wizard starts');
+        assert.ok(textOf().includes('setup.staleStart'), 'a plain notice says what happened and who acts');
+        assert.equal(calls.some(call => call.url.includes('request_id=')), false, 'the foreign request is never read');
+        assert.equal(calls.some(call => call.url === '/api/v1/setup/start'), false, 'nothing is started');
+    } finally { await cleanup(); }
+});
+
+test('a marker from this installation, or one made before installations were named, is kept', async () => {
+    for (const marker of [staleMarker({ installation: inst('a') }), staleMarker()]) {
+        init('admin', { installation_id: inst('a') });
+        store.set('celikpanel.setup.start.admin', JSON.stringify(marker));
+        try {
+            await mount(); await settleReads();
+            assert.equal(store.has('celikpanel.setup.start.admin'), true);
+            assert.equal(tree.root.findAllByProps({ id: 'setup-main_domain' }).length, 0, 'the confirmed setup is followed, not the wizard');
+            assert.ok(calls.some(call => call.url.includes('request_id=')));
+        } finally { await cleanup(); }
+    }
+    assert.equal(operations.setupMarkerForInstallation(staleMarker({ installation: inst('b') }), undefined) !== null, true, 'a panel that names no installation cannot tell');
+});
+
+test('a start remembers the installation it was made on', async () => {
+    init('admin', { installation_id: inst('c') });
+    const read = fetch; let sent;
+    globalThis.fetch = async (url, options) => {
+        if (url === '/api/v1/setup/start') { calls.push({ url, options }); sent = JSON.parse(options.body); throw new Error('response lost'); }
+        return read(url, options);
+    };
+    try {
+        await mount(); await toReview();
+        await act(async () => tree.root.findByProps({ type: 'checkbox' }).props.onChange({ target: { checked: true } }));
+        await act(async () => findButton('setup.start').props.onClick());
+        const saved = JSON.parse(store.get('celikpanel.setup.start.admin'));
+        assert.equal(saved.installation, inst('c'));
+        assert.equal(saved.request_id, sent.request_id);
+    } finally { await cleanup(); }
+});
+
+test('an unconfirmed start the server refuses as unknown is dropped; a lost answer is never taken for that', async () => {
+    init();
+    store.set('celikpanel.setup.start.admin', JSON.stringify(staleMarker()));
+    const read = fetch; const posts = []; let reply = () => Response.json({ code: 'server_setup_review_required' }, { status: 409 });
+    globalThis.fetch = async (url, options) => {
+        if (url === '/api/v1/setup/start') { calls.push({ url, options }); posts.push(JSON.parse(options.body)); return reply(); }
+        return read(url, options);
+    };
+    try {
+        await mount(); await settleReads();
+        assert.ok(findButton('setup.resumeConfirmed'), 'the owner can ask the server about the confirmed setup');
+        // A lost answer keeps the marker and the same request identity.
+        reply = () => { throw new Error('response lost'); };
+        await act(async () => findButton('setup.resumeConfirmed').props.onClick());
+        assert.equal(store.has('celikpanel.setup.start.admin'), true, 'a lost answer drops nothing');
+        // Another refusal that does not say "never started" drops nothing either.
+        reply = () => Response.json({ code: 'server_setup_busy' }, { status: 409 });
+        await act(async () => findButton('setup.resumeConfirmed').props.onClick());
+        assert.equal(store.has('celikpanel.setup.start.admin'), true);
+        // The definitive refusal ends it.
+        reply = () => Response.json({ code: 'server_setup_review_required' }, { status: 409 });
+        await act(async () => findButton('setup.resumeConfirmed').props.onClick());
+        await settleReads();
+        assert.equal(store.has('celikpanel.setup.start.admin'), false, 'the unknown start is dropped');
+        assert.ok(input('setup-main_domain'), 'back at the wizard start');
+        assert.ok(textOf().includes('setup.staleStart'));
+        assert.equal(findButton('setup.resumeConfirmed'), undefined);
+        assert.equal(posts.length, 3);
+        assert.ok(posts.every(post => post.request_id === 'b'.repeat(32) && post.plan_id === 'a'.repeat(32)), 'only the one confirmed request was ever sent, never a new identity');
+    } finally { await cleanup(); }
+});
+
+test('wizard: Enter in the join fields joins and never submits the main domain form', async () => {
+    init('admin', { short_name_suggestion: 'beta' });
+    let joined = false;
+    const base = globalThis.fetch;
+    globalThis.fetch = async (url, options) => {
+        if (url === '/api/v1/setup/peer') return Response.json(joined ? { role: 'second', link: joinedLink } : { role: 'none' });
+        if (url === '/api/v1/setup/peer/connect') {
+            calls.push({ url, options }); joined = true;
+            state = { ...state, revision: state.revision + 1, status: 'draft', draft: { ...state.draft, main_domain: 'example.com', server_count: 2, dns_mode: 'local', dns_role: 'secondary', ns1: 'ns1.example.com', ns2: 'ns2.example.com' } };
+            return Response.json({ state: 'ok', setup: state });
+        }
+        return base(url, options);
+    };
+    try {
+        await mount(); await settleReads();
+        assert.equal(input('setup-main_domain').props.required, true, 'the main domain is required while only the domain is being entered');
+        await act(async () => findButton('setup.v5.join.open').props.onClick());
+        assert.equal(input('setup-main_domain').props.required, false, 'it is not required while the join panel is open');
+        await type('setup-join_address', '203.0.113.10:2083');
+        await type('setup-join_code', 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX');
+        const fields = tree.root.findByProps({ 'data-setup-join-fields': '' });
+        let prevented = 0;
+        await act(async () => fields.props.onKeyDown({ key: 'a', target: { tagName: 'INPUT' }, preventDefault() { prevented++; } }));
+        assert.equal(calls.filter(call => call.url === '/api/v1/setup/peer/connect').length, 0, 'another key does nothing');
+        await act(async () => fields.props.onKeyDown({ key: 'Enter', target: { tagName: 'INPUT' }, preventDefault() { prevented++; } }));
+        await settleReads();
+        assert.equal(prevented, 1, 'Enter never reaches the form');
+        assert.equal(calls.filter(call => call.url === '/api/v1/setup/peer/connect').length, 1, 'Enter joins');
+        assert.equal(putCount(), 0, 'the main domain form was not submitted');
+        assert.equal(input('setup-short_name').props.value, 'beta', 'after the join this server keeps its own host name as the short name');
+    } finally { await cleanup(); }
+});
+
+test('wizard: the short name example and placeholder come from this server, never another server\'s name', async () => {
+    for (const [suggestion, example] of [['boston', 'boston'], [undefined, 'my-server']]) {
+        init('admin', suggestion ? { short_name_suggestion: suggestion } : {});
+        try {
+            fixture.showVars = true;
+            await mount(); await type('setup-main_domain', 'example.com'); await submit(); await submit();
+            assert.equal(input('setup-short_name').props.placeholder, example);
+            assert.ok(textOf().includes(`${example}.example.com`), 'the help example uses it');
+            assert.equal(textOf().includes('frankfurt'), false);
+        } finally { await cleanup(); }
+    }
+});
+
+test('wizard: the number of servers and the DNS software are the owner\'s choice, so neither carries a recommended badge', async () => {
+    init();
+    try {
+        await mount(); await type('setup-main_domain', 'example.com'); await submit();
+        assert.equal(textOf().includes('setup.v2.recommended'), false, 'server count');
+        assert.ok(textOf().includes('setup.v2.count.two.help') && textOf().includes('setup.v2.count.one.help'), 'the facts stay');
+        await submit(); await submit(); await submit(); await submit();
+        await type('setup-local_ip', '203.0.113.10');
+        assert.ok(textOf().includes('setup.v2.dns.bind.help'), 'the BIND description stays');
+        assert.equal(textOf().split('setup.v2.recommended').length - 1, 1, 'only the own-DNS choice keeps a badge, none on BIND');
+        assert.ok(textOf().includes('setup.v5.dns.second.help'), 'the second server\'s sentence is in the DNS step\'s second-server box');
+    } finally { await cleanup(); }
+});
+
+const delegatedServers = [{ name: 'ns1.example.com', addresses: ['72.62.38.15'], server: 'this' }, { name: 'ns2.example.com', addresses: ['2.25.80.4'], server: 'peer' }];
+function withDelegation(records, delegation) {
+    const base = globalThis.fetch;
+    globalThis.fetch = async (url, options) => url.startsWith('/api/v1/setup/public-records') ? (calls.push({ url }), Response.json({ ...publicRead(records), ...(delegation ? { delegation } : {}) })) : base(url, options);
+}
+const unreadRecords = [{ name: 'example.com', type: 'A', values: [], state: 'unknown' }, { name: 'www.example.com', type: 'CNAME', values: [], state: 'unknown' }];
+
+test('existing records: a domain already pointing at these servers says nothing answers yet, nothing is imported, continue', async () => {
+    init(); withDelegation(unreadRecords, { state: 'here', nameservers: delegatedServers });
+    try {
+        fixture.showVars = true;
+        await mount(); await toRecords();
+        const note = tree.root.findByProps({ 'data-setup-records-state': 'delegated-here' });
+        assert.ok(JSON.stringify(note.props.children).includes('setup.v3.records.delegatedHere'));
+        assert.ok(textOf().includes('ns1.example.com (72.62.38.15), ns2.example.com (2.25.80.4)'), 'it names the nameservers and their addresses');
+        assert.equal(textOf().includes('setup.v3.records.unread'), false, 'no unread list');
+        assert.equal(findButton('setup.v3.records.retry'), undefined, 'no retry: it cannot help');
+        assert.equal(textOf().includes('setup.v3.records.none'), false);
+        assert.equal(textOf().includes('setup.v3.records.count'), false);
+        const before = putCount();
+        await submit();
+        assert.ok(putCount() > before, 'the owner can continue');
+        assert.ok((putDraft().imported_records || []).length === 0, 'nothing is imported');
+    } finally { await cleanup(); }
+});
+
+test('existing records: other nameservers that did not answer are named, with who acts and a retry', async () => {
+    init(); withDelegation(unreadRecords, { state: 'elsewhere', nameservers: [{ name: 'ns1.provider.test', addresses: ['198.51.100.7'], server: 'other' }, { name: 'ns2.provider.test', addresses: [], server: 'other' }] });
+    try {
+        fixture.showVars = true;
+        await mount(); await toRecords();
+        tree.root.findByProps({ 'data-setup-records-state': 'unanswered' });
+        assert.ok(textOf().includes('setup.v3.records.elsewhereUnread'));
+        assert.ok(textOf().includes('ns1.provider.test (198.51.100.7), ns2.provider.test'), 'the nameservers that did not answer are named');
+        assert.ok(textOf().includes('example.com, www.example.com'), 'and the names that could not be read');
+        const before = calls.filter(call => call.url.startsWith('/api/v1/setup/public-records')).length;
+        await act(async () => findButton('setup.v3.records.retry').props.onClick());
+        assert.equal(calls.filter(call => call.url.startsWith('/api/v1/setup/public-records')).length, before + 1, 'retry reads again');
+    } finally { await cleanup(); }
+});
+
+test('existing records: records read from another DNS are the list; an unreadable delegation keeps the neutral unread text with a retry', async () => {
+    init(); withDelegation([{ name: 'example.com', type: 'A', values: ['192.0.2.80'], state: 'found' }], { state: 'elsewhere', nameservers: [] });
+    try {
+        await mount(); await toRecords();
+        assert.ok(tree.root.findAllByProps({ 'data-import': 'example.com A' }).length === 1, 'the current records are listed');
+        assert.equal(tree.root.findAllByProps({ 'data-setup-records-state': 'unanswered' }).length, 0, 'nothing is unread, so no warning');
+    } finally { await cleanup(); }
+    init(); withDelegation(unreadRecords, { state: 'unknown', nameservers: [] });
+    try {
+        await mount(); await toRecords();
+        tree.root.findByProps({ 'data-setup-records-state': 'unread' });
+        assert.ok(textOf().includes('setup.v3.records.unread'));
+        assert.ok(findButton('setup.v3.records.retry'));
+    } finally { await cleanup(); }
+});
+
+test('review: the registrar line says the domain already points here only when the delegation shows it; the DNS software is in the component list', async () => {
+    for (const [delegation, line] of [[{ state: 'here', nameservers: delegatedServers }, 'setup.v2.review.registrarHere'], [{ state: 'elsewhere', nameservers: [] }, 'setup.v2.review.registrar'], [undefined, 'setup.v2.review.registrar']]) {
+        init(); withDelegation([], delegation);
+        const base = globalThis.fetch;
+        globalThis.fetch = async (url, options) => url === '/api/v1/setup/plan' ? Response.json(plan({ components: [{ id: 'bind', selected: true, required: false, installed: false }, { id: 'nftables', selected: false, required: true, installed: false }] })) : base(url, options);
+        try {
+            fixture.showVars = true;
+            await mount(); await toRecords(); await submit(); await settleReads();
+            const item = tree.root.findByProps({ 'data-setup-registrar': delegation ? delegation.state : 'unknown' });
+            assert.ok(JSON.stringify(item.props.children).includes(line), `${line} for ${delegation?.state}`);
+            if (delegation?.state === 'here') assert.ok(textOf().includes('ns1.example.com (72.62.38.15)'));
+            assert.ok(textOf().includes('BIND') && textOf().includes('setup.components.toInstall'), 'the chosen DNS software is listed with the components');
+            assert.ok(calls.some(call => call.url === '/api/v1/setup/public-records?delegation=only'));
+        } finally { await cleanup(); }
+    }
 });

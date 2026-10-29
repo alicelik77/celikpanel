@@ -38,12 +38,14 @@ function Choice({ name, value, checked, disabled, onChange, title, tag, help, ex
     </label>;
 }
 
-export function SetupDomainStep({ value, onChange, invalid }: { value: string; onChange: (value: string) => void; invalid: boolean }) {
+// required: false while the owner is joining a first server by code, since the
+// main domain then comes from that server (the join panel shares this form).
+export function SetupDomainStep({ value, onChange, invalid, required = true }: { value: string; onChange: (value: string) => void; invalid: boolean; required?: boolean }) {
     const { t } = useSetupWizardI18n();
     return <section className="space-y-5" aria-labelledby="setup-domain-title">
         <h2 id="setup-domain-title" className="text-xl font-semibold">{t('setup.v2.domain.title')}</h2>
         <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v2.domain.help', { example: `panel.${value || 'example.com'}` })}</p>
-        <div className="max-w-md"><SetupWizardInput name="main_domain" label={t('setup.v2.domain.label')} value={value} onChange={onChange} placeholder="example.com" required help={t('setup.v2.domain.hint')} invalid={invalid ? t('setup.v2.domain.invalid') : undefined} /></div>
+        <div className="max-w-md"><SetupWizardInput name="main_domain" label={t('setup.v2.domain.label')} value={value} onChange={onChange} placeholder="example.com" required={required} help={t('setup.v2.domain.hint')} invalid={invalid ? t('setup.v2.domain.invalid') : undefined} /></div>
     </section>;
 }
 
@@ -53,18 +55,22 @@ export function SetupCountStep({ value, onChange }: { value: 1 | 2; onChange: (v
         <legend className="text-xl font-semibold">{t('setup.v2.count.title')}</legend>
         <div className="grid gap-3 pt-2">
             <Choice name="setup-server_count" value="1" checked={value === 1} onChange={() => onChange(1)} title={t('setup.v2.count.one')} help={t('setup.v2.count.one.help')} />
-            <Choice name="setup-server_count" value="2" checked={value === 2} onChange={() => onChange(2)} title={t('setup.v2.count.two')} tag={t('setup.v2.recommended')} help={t('setup.v2.count.two.help')} />
+            <Choice name="setup-server_count" value="2" checked={value === 2} onChange={() => onChange(2)} title={t('setup.v2.count.two')} help={t('setup.v2.count.two.help')} />
         </div>
-        {value === 2 && <p className="max-w-2xl text-sm leading-6 text-fg-muted" role="note">{t('setup.v5.dns.second.help')}</p>}
     </fieldset>;
 }
 
 export function SetupNameStep({ value, suggestion, mainDomain, onChange, invalid }: { value: string; suggestion?: string; mainDomain: string; onChange: (value: string) => void; invalid: boolean }) {
     const { t } = useSetupWizardI18n();
+    // The example and the placeholder come from this server's own host name
+    // when it reads like a name a person chose (the suggestion), never from
+    // another server's name; without one they are neutral.
+    // Ornek ve yer tutucu bu sunucunun kendi adindan gelir; yoksa notrdur.
+    const sample = value || suggestion || 'my-server';
     return <section className="space-y-5" aria-labelledby="setup-name-title">
         <h2 id="setup-name-title" className="text-xl font-semibold">{t('setup.v2.name.title')}</h2>
-        <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v2.name.help', { example: `${value || 'frankfurt'}.${mainDomain || 'example.com'}` })}</p>
-        <div className="max-w-sm"><SetupWizardInput name="short_name" label={t('setup.v2.name.label')} value={value} onChange={onChange} placeholder="frankfurt"
+        <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v2.name.help', { example: `${sample}.${mainDomain || 'example.com'}` })}</p>
+        <div className="max-w-sm"><SetupWizardInput name="short_name" label={t('setup.v2.name.label')} value={value} onChange={onChange} placeholder={suggestion || 'my-server'}
             help={suggestion && value === suggestion ? t('setup.v2.name.suggested', { host: suggestion }) : t('setup.v2.name.optional')} invalid={invalid ? t('setup.v2.name.invalid') : undefined} /></div>
     </section>;
 }
@@ -160,7 +166,7 @@ export function SetupDNSHomeStep({ draft, set, onMode, onMainDNS, catalog, serve
             const choice = engine(id);
             const blocked = !!choice && !choice.offered;
             return <Choice key={id} name="setup-dns_engine" value={id} checked={draft.dns_engine === id} disabled={blocked && draft.dns_engine !== id} onChange={() => set('dns_engine', id)}
-                title={<>{id === 'bind' ? 'BIND' : 'PowerDNS'}{version(id) && <span className="font-normal text-fg-muted">{version(id)}</span>}</>} tag={id === 'bind' ? t('setup.v2.recommended') : undefined} help={engineHelp(id)} />;
+                title={<>{id === 'bind' ? 'BIND' : 'PowerDNS'}{version(id) && <span className="font-normal text-fg-muted">{version(id)}</span>}</>} help={engineHelp(id)} />;
         })}</div>
         {engine(draft.dns_engine) && !engine(draft.dns_engine)!.offered && <p role="alert" className="text-sm leading-6 text-danger">{engineHelp(draft.dns_engine)}</p>}
         <p className="text-sm leading-6 text-fg-muted">{t('setup.v2.dns.oneSoftware')}</p>
@@ -279,9 +285,10 @@ type SetupConnectAnswer = { state: 'ok' | 'refused' | 'wrong_server' | 'unreacha
 // and code. The answer's state leads (D-024): refused names its reason; a
 // wrong server, an unreachable one and a lost answer say that nothing was
 // sent or that the same join is asked again.
-export function SetupJoinPanel({ onJoined, disabled, serverIP }: { onJoined: (setup: unknown) => void; disabled?: boolean; serverIP?: string }) {
+export function SetupJoinPanel({ onJoined, disabled, serverIP, onOpenChange }: { onJoined: (setup: unknown) => void; disabled?: boolean; serverIP?: string; onOpenChange?: (open: boolean) => void }) {
     const { t } = useSetupWizardI18n();
-    const [open, setOpen] = useState(false);
+    const [open, setOpenState] = useState(false);
+    const setOpen = (value: boolean) => { setOpenState(value); onOpenChange?.(value); };
     const [address, setAddress] = useState('');
     const [code, setCode] = useState('');
     const [publicIPv4, setPublicIPv4] = useState('');
@@ -320,7 +327,12 @@ export function SetupJoinPanel({ onJoined, disabled, serverIP }: { onJoined: (se
     return <section aria-labelledby="setup-join-title" className="mt-8 space-y-3 border-t border-border pt-6" data-setup-join="">
         <h3 id="setup-join-title" className="font-semibold">{t('setup.v5.join.title')}</h3>
         <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v5.join.help')}</p>
-        {!open ? <Button type="button" variant="secondary" disabled={disabled} onClick={() => setOpen(true)}>{t('setup.v5.join.open')}</Button> : <div className="max-w-xl space-y-4">
+        {!open ? <Button type="button" variant="secondary" disabled={disabled} onClick={() => setOpen(true)}>{t('setup.v5.join.open')}</Button> : <div className="max-w-xl space-y-4" data-setup-join-fields=""
+            // This panel sits inside the main domain step's form. Enter in one
+            // of its fields joins; it never submits that form, whose own
+            // required field is a different question.
+            // Katilma alanlarinda Enter katilir; dis formu gondermez.
+            onKeyDown={event => { if (event.key === 'Enter' && (event.target as { tagName?: string }).tagName === 'INPUT') { event.preventDefault(); void join(); } }}>
             <SetupWizardInput name="join_address" label={t('setup.v5.join.address')} value={address} onChange={setAddress} placeholder="https://203.0.113.10:2083" help={t('setup.v5.join.addressHelp')} />
             <SetupWizardInput name="join_code" label={t('setup.v5.join.code')} value={code} onChange={setCode} placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX" help={t('setup.v5.join.codeHelp')} />
             {/* The first server checks the caller's address against the one this
@@ -654,6 +666,21 @@ export interface SetupPublicRecords {
     extras: string[];
     records: { name: string; type: string; values: string[]; state: 'found' | 'none' | 'unknown'; not_importable?: Record<string, string> }[];
     checked_at: string;
+    // Present when a name could not be read: where the parent zone points the
+    // domain. 'here': every nameserver is this server or its pair, so nothing
+    // answers only because DNS is not installed yet. 'elsewhere': other
+    // nameservers that did not answer. 'unknown': it could not be read.
+    delegation?: SetupPublicDelegation;
+}
+export interface SetupPublicDelegation { state: 'here' | 'elsewhere' | 'unknown'; nameservers: { name: string; addresses: string[]; server: 'this' | 'peer' | 'other' }[] }
+const setupDelegationServers = (delegation: SetupPublicDelegation) => delegation.nameservers.map(ns => ns.addresses.length ? `${ns.name} (${ns.addresses.join(', ')})` : ns.name).join(', ');
+// Where the main domain points, for the review: read on its own (no record is
+// read) and only for the wording; 'loading' and 'unknown' keep the neutral text.
+export function useSetupDelegation(enabled: boolean): { state: 'loading' | 'here' | 'elsewhere' | 'unknown'; servers: string } {
+    const remote = useRemote(enabled ? '/api/v1/setup/public-records?delegation=only' : null, decodeSetupPublicRecords);
+    if (remote.remote.state === 'loading') return { state: 'loading', servers: '' };
+    const delegation = remote.remote.state === 'known' ? remote.remote.value.delegation : undefined;
+    return delegation ? { state: delegation.state, servers: setupDelegationServers(delegation) } : { state: 'unknown', servers: '' };
 }
 export function decodeSetupPublicRecords(value: unknown): SetupPublicRecords {
     const record = (item: unknown): item is Record<string, unknown> => !!item && typeof item === 'object' && !Array.isArray(item);
@@ -662,6 +689,13 @@ export function decodeSetupPublicRecords(value: unknown): SetupPublicRecords {
     for (const item of value.records) {
         if (!record(item) || typeof item.name !== 'string' || typeof item.type !== 'string' || !Array.isArray(item.values)
             || item.values.some(entry => typeof entry !== 'string') || !['found', 'none', 'unknown'].includes(String(item.state))) throw invalid();
+    }
+    // An unreadable delegation is left out: the unread names keep their neutral wording.
+    const delegation = value.delegation;
+    if (delegation !== undefined && !(record(delegation) && ['here', 'elsewhere', 'unknown'].includes(String(delegation.state)) && Array.isArray(delegation.nameservers) && delegation.nameservers.length <= 16
+        && delegation.nameservers.every(ns => record(ns) && typeof ns.name === 'string' && ns.name.length <= 253 && Array.isArray(ns.addresses) && ns.addresses.length <= 16 && ns.addresses.every(address => typeof address === 'string' && address.length <= 64) && ['this', 'peer', 'other'].includes(String(ns.server))))) {
+        const { delegation: _invalid, ...kept } = value;
+        return kept as unknown as SetupPublicRecords;
     }
     return value as unknown as SetupPublicRecords;
 }
@@ -716,6 +750,7 @@ export function SetupRecordsStep({ draft, update, mainDomain, own }: {
         return { ...previous, imported_records: list.filter((_, position) => !candidates[position].refused) };
     });
     const unread = read?.records.filter(item => item.state === 'unknown') || [];
+    const delegatedHere = unread.length > 0 && read?.delegation?.state === 'here';
     const imported = candidates.filter(item => !item.refused && item.record.decision === 'import').length;
     const mailClash = candidates.some(item => item.clash && item.record.name === draft.mail_hostname);
     return <section className="space-y-5" aria-labelledby="setup-records-title" data-setup-records="">
@@ -724,7 +759,7 @@ export function SetupRecordsStep({ draft, update, mainDomain, own }: {
         {remote.remote.state === 'loading' && <p role="status" className="text-sm text-fg-muted">{t('setup.v3.records.reading')}</p>}
         {remote.remote.state === 'unknown' && <div role="status" className="space-y-2 rounded-lg border border-border bg-surface p-4 text-sm"><p>{t('setup.v3.records.failed')}</p><Button type="button" variant="secondary" onClick={() => void remote.retry()}>{t('common.retry')}</Button></div>}
         {read && (candidates.length === 0
-            ? <p className="text-sm leading-6 text-fg-muted">{t('setup.v3.records.none', { domain: mainDomain })}</p>
+            ? unread.length === 0 && <p className="text-sm leading-6 text-fg-muted">{t('setup.v3.records.none', { domain: mainDomain })}</p>
             : <ul className="divide-y divide-border rounded-lg border border-border bg-surface">{candidates.map((item, index) => {
                 const record = item.record;
                 return <li key={`${record.name}-${record.type}-${record.content}`} className="space-y-2 px-4 py-3 text-sm" data-import={`${record.name} ${record.type}`} data-decision={record.decision}>
@@ -745,8 +780,18 @@ export function SetupRecordsStep({ draft, update, mainDomain, own }: {
             <p>{t('setup.v3.records.mailClash', { name: draft.mail_hostname })}</p>
             <Button type="button" variant="secondary" onClick={() => update(previous => ({ ...previous, mail_hostname: `mail2.${mainDomain}` }))}>{t('setup.v3.records.useMail2', { name: `mail2.${mainDomain}` })}</Button>
         </div>}
-        {unread.length > 0 && <p role="status" className="text-sm leading-6 text-fg-muted">{t('setup.v3.records.unread', { names: [...new Set(unread.map(item => item.name))].join(', ') })}</p>}
-        {read && <p className="text-sm text-fg-muted">{t('setup.v3.records.count', { imported, skipped: candidates.length - imported })}</p>}
+        {/* A name nobody answered has three different causes (D-024: reason, who acts, next action): the domain already points at
+            these servers, where nothing is installed yet; it points at other nameservers that did not answer; or where it points
+            could not be read. Only the last two can be tried again. */}
+        {unread.length > 0 && (delegatedHere
+            ? <p role="status" className="max-w-2xl text-sm leading-6" data-setup-records-state="delegated-here">{t('setup.v3.records.delegatedHere', { domain: mainDomain, servers: setupDelegationServers(read!.delegation!) })}</p>
+            : <div role="status" className="max-w-2xl space-y-2 text-sm leading-6 text-fg-muted" data-setup-records-state={read?.delegation?.state === 'elsewhere' ? 'unanswered' : 'unread'}>
+                <p>{read?.delegation?.state === 'elsewhere'
+                    ? t('setup.v3.records.elsewhereUnread', { domain: mainDomain, servers: setupDelegationServers(read.delegation), names: [...new Set(unread.map(item => item.name))].join(', ') })
+                    : t('setup.v3.records.unread', { domain: mainDomain, names: [...new Set(unread.map(item => item.name))].join(', ') })}</p>
+                <Button type="button" variant="secondary" onClick={() => void remote.retry()}>{t('setup.v3.records.retry')}</Button>
+            </div>)}
+        {read && !delegatedHere && <p className="text-sm text-fg-muted">{t('setup.v3.records.count', { imported, skipped: candidates.length - imported })}</p>}
         <div className="flex max-w-md flex-wrap items-end gap-2">
             <div className="min-w-0 flex-1"><SetupWizardInput name="extra_name" label={t('setup.v3.records.extra')} value={typed} onChange={setTyped} placeholder={`shop.${mainDomain || 'example.com'}`} /></div>
             <Button type="button" variant="secondary" disabled={!typed.trim() || extras.length >= 8} onClick={() => { const label = typed.trim().toLowerCase().replace(/\.$/, '').replace(new RegExp(`\\.${mainDomain.replace(/\./g, '\\.')}$`), ''); if (label && !extras.includes(label)) setExtras([...extras, label]); setTyped(''); }}>{t('setup.v3.records.look')}</Button>

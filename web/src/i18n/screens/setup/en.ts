@@ -414,6 +414,7 @@ export const enSetupScreens = {
     "setup.blocker.node": "Choose an available Node.js LTS release.",
     "setup.blocker.database": "Choose a supported database engine.",
     'setup.resumeConfirmed': 'Resume the confirmed setup',
+    "setup.staleStart": "This browser still held a record of a setup start that this server does not know. The server may have been reset and installed again since. Nothing was started on this server, and the old record is now removed. You: enter your answers and confirm the plan again; setup starts only then.",
     "setup.blocker.remote": "Choose a verified DNS connection, or finish authorizing the pending connection.",
     "setup.remote.title": "Connect to the DNS server",
     "setup.remote.help": "On the DNS server, open Server → DNS and peer servers and generate a connection code. Enter its trusted HTTPS panel address and that code here. Only this connection’s domains can be changed.",

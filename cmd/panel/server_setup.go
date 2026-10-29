@@ -128,6 +128,12 @@ type serverSetupState struct {
 	// ServerIPv6 (alpha.112) is the server's public IPv6 address, for the
 	// reverse DNS rows the owner gives the provider; only the GET carries it.
 	ServerIPv6 string `json:"server_ipv6,omitempty"`
+	// InstallationID identifies this panel installation (the GET answer
+	// carries it). A browser start marker from another installation, for
+	// example one the same address had before it was wiped and installed
+	// again, is dropped when this differs (serverSetupInstallationID).
+	// Kurulum kimligi; baska kurulumdan kalan baslatma isaretini ayirt eder.
+	InstallationID string `json:"installation_id,omitempty"`
 }
 
 func defaultServerSetupDraft() serverSetupDraft {
@@ -578,6 +584,11 @@ func (p *Panel) handleServerSetup(w http.ResponseWriter, r *http.Request) {
 			s.ServerIP = address.String()
 		}
 		s.ShortNameSuggestion = currentServerSetupShortNameSuggestion()
+		// Without an identity (an unreadable settings row) the field is left
+		// out and the page keeps its older behaviour; it is never invented.
+		if id, err := p.serverSetupInstallationID(r.Context()); err == nil {
+			s.InstallationID = id
+		}
 		if address := net.ParseIP(setupMailIPv6()); address != nil && address.To4() == nil && address.IsGlobalUnicast() && !address.IsPrivate() {
 			s.ServerIPv6 = address.String()
 		}
