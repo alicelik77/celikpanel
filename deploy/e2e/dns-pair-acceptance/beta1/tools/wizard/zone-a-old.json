@@ -1,0 +1,5 @@
+[{"name": "beta1a.test", "type": "A", "value": "192.0.2.80"},
+ {"name": "www.beta1a.test", "type": "CNAME", "value": "beta1a.test."},
+ {"name": "beta1a.test", "type": "MX", "value": "10 mx.oldmail.test."},
+ {"name": "beta1a.test", "type": "TXT", "value": "v=spf1 include:oldmail.test ~all"},
+ {"name": "_dmarc.beta1a.test", "type": "TXT", "value": "v=DMARC1; p=none; rua=mailto:dmarc@oldmail.test"}]

@@ -1,0 +1,13 @@
+# beta1 lab only: lose the first server's answer to the second server's join (setup link) after the request arrived.
+# The client's first TLS application-data record (its Finished, sent only after the server's whole first flight,
+# session tickets included) marks the connection; every later server payload to the client is dropped.
+table ip beta1lost {
+    chain in_mark {
+        type filter hook input priority 10; policy accept;
+        ip saddr 192.0.3.41 tcp dport 2083 tcp doff 8 @th,256,24 0x170303 ct mark set 0x1d counter
+    }
+    chain out_drop {
+        type filter hook output priority 10; policy accept;
+        ip daddr 192.0.3.41 tcp sport 2083 ct mark 0x1d ip length > 52 counter drop
+    }
+}

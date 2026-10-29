@@ -1,0 +1,1 @@
+{"purpose":"custom","dns_mode":"local","customization":{"components":["nginx","php-fpm","mariadb"]}}

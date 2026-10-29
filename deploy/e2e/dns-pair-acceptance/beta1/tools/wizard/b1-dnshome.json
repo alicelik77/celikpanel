@@ -1,0 +1,1 @@
+{"dns_mode":"local","dns_role":"secondary","dns_engine":"pdns","main_dns_server":"peer","peer_ns":"ns1.beta1b.test"}
