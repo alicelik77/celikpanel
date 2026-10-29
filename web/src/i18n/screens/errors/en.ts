@@ -143,6 +143,8 @@ export const enErrorsScreens = {
     'err.CERTIFICATE_VALIDATION_UNKNOWN': 'CelikPanel could not check whether this site’s nginx configuration file lets the certificate validation run, because nginx on this server did not answer, so no certificate was requested and nothing was changed. The server administrator checks that nginx is running; then request the certificate again.',
     'err.panel_certificate_contact_email_invalid': 'The administrator account has no valid email address, which the certificate authority needs as a contact. Nothing was requested. Set your email on My account (top-right menu), then try again.',
     'err.panel_certificate_contact_email_invalid.action': 'Open My account',
+    'err.ssl_contact_email_required': 'No contact email address was given and your account has no valid one, which the certificate authority needs. No certificate was requested; if you were adding a site, it was created. Set your email on My account (top-right menu), then request the certificate under SSL/TLS in the domain’s settings.',
+    'err.ssl_contact_email_required.action': 'Open My account',
     // v0.1.0-alpha.99: changing one's own email (cmd/panel/account_email_handler.go).
     'err.account_email_request_invalid': 'The request could not be read, so nothing was changed. Reload the page and try again.',
     'err.account_email_invalid': 'This is not an email address the panel can use, so nothing was changed. Enter one address such as name@example.com; a domain with letters outside English goes in its ASCII form (xn--…).',

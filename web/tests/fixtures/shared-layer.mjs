@@ -117,6 +117,15 @@ export const testedVersionsURL = compileSource('lib/testedVersions.ts', (specifi
   specifier.endsWith('/supportTable') ? supportTableURL : unexpected('lib/testedVersions.ts')(specifier)
 ));
 
+// The certificate Add domain asks for after the site exists: the shipped module,
+// so a test that mounts the dialog sends the real request and reads the real
+// answer rather than a stand-in.
+export const siteCertificateRequestURL = compileSource('lib/siteCertificateRequest.ts', (specifier) => (
+  specifier.endsWith('/apiError') ? apiErrorURL
+    : specifier.endsWith('/lostAnswer') ? lostAnswerURL
+      : unexpected('lib/siteCertificateRequest.ts')(specifier)
+));
+
 export function sharedLayer(stubURL, extra = {}) {
   const uiURL = compileSource('components/ui.tsx', (specifier) => (
     specifier.endsWith('/apiError') ? apiErrorURL : stubURL
@@ -127,6 +136,7 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/remote': remoteURL,
     '/lib/hostingCapabilities': capabilitiesURL,
     '/lib/lostAnswer': lostAnswerURL,
+    '/lib/siteCertificateRequest': siteCertificateRequestURL,
     '/lib/domainDatabases': domainDatabasesURL,
     '/lib/download': downloadURL,
     '/lib/siteWebServerRefused': siteWebServerRefusedURL,

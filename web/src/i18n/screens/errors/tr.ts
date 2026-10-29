@@ -135,6 +135,8 @@ export const trErrorsScreens: Record<ErrorsScreenKey, string> = {
     'err.CERTIFICATE_VALIDATION_UNKNOWN': 'Bu sunucudaki nginx yanıt vermediği için CelikPanel, bu sitenin nginx yapılandırma dosyasının sertifika doğrulamasına izin verip vermediğini kontrol edemedi; bu yüzden sertifika istenmedi ve hiçbir şey değiştirilmedi. Sunucu yöneticisi nginx’in çalıştığını denetler; sonra sertifikayı yeniden isteyin.',
     'err.panel_certificate_contact_email_invalid': 'Yönetici hesabının geçerli bir e-posta adresi yok; sertifika yetkilisi bunu iletişim adresi olarak ister. Hiçbir şey istenmedi. E-posta adresinizi Hesabım’da (sağ üst menü) ayarlayın, sonra yeniden deneyin.',
     'err.panel_certificate_contact_email_invalid.action': 'Hesabım’ı aç',
+    'err.ssl_contact_email_required': 'İletişim e-posta adresi verilmedi ve hesabınızın geçerli bir adresi yok; sertifika yetkilisi bunu ister. Sertifika istenmedi; site ekliyorduysanız site oluşturuldu. E-posta adresinizi Hesabım’da (sağ üst menü) ayarlayın, sonra sertifikayı alan adının ayarlarında SSL/TLS bölümünden isteyin.',
+    'err.ssl_contact_email_required.action': 'Hesabım’ı aç',
     // v0.1.0-alpha.99: kişinin kendi e-postasını değiştirmesi.
     'err.account_email_request_invalid': 'İstek okunamadı; hiçbir şey değiştirilmedi. Sayfayı yenileyip yeniden deneyin.',
     'err.account_email_invalid': 'Bu, panelin kullanabileceği bir e-posta adresi değil; hiçbir şey değiştirilmedi. name@example.com gibi tek bir adres girin; İngilizce dışı harfler içeren bir alan adı ASCII biçimiyle (xn--…) yazılır.',

@@ -137,6 +137,18 @@ func seedDomainListMetadata(t *testing.T, fixture *authzMatrixFixture) {
 	); err != nil {
 		t.Fatalf("seed site metadata: %v", err)
 	}
+	// The list reports SSL only while a certificate is active, so a site that
+	// is listed with SSL on has one.
+	if _, err := fixture.panel.db.GetDB().Exec(`
+		INSERT INTO ssl_certificates (
+			domain_id, type, cert_path, key_path, issuer, subject,
+			issued_at, expires_at, status
+		) VALUES (?, 'letsencrypt', '/c/fullchain.pem', '/c/privkey.pem', 'x',
+			'customer.matrix.test', '2026-01-01T00:00:00Z', '2027-01-01T00:00:00Z', 'active')`,
+		authzMatrixCustomerDomainID,
+	); err != nil {
+		t.Fatalf("seed active certificate: %v", err)
+	}
 	var phpVersion, projectType string
 	var sslEnabled bool
 	var diskUsage, bandwidth int64

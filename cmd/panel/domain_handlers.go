@@ -58,6 +58,20 @@ type domainCreatePartialSuccess struct {
 	Action         string `json:"action"`
 }
 
+// domainSiteInfoQuery is what the domain list reads about a site. SSL is
+// reported only while a certificate is active: sites.ssl_enabled alone is not
+// enough, because a row written before a certificate existed (a site created
+// with SSL requested used to be one) would otherwise list SSL on while the
+// domain's own page says there is no certificate.
+// Alan adı listesi SSL'i yalnız etkin bir sertifika varken bildirir.
+const domainSiteInfoQuery = `SELECT php_version,
+	COALESCE(ssl_enabled, false) AND EXISTS (
+		SELECT 1 FROM ssl_certificates sc
+		WHERE sc.domain_id = sites.domain_id AND sc.status = 'active'),
+	COALESCE(project_type,'php'),
+	COALESCE(disk_usage_bytes,0), COALESCE(traffic_month_bytes,0)
+	FROM sites WHERE domain_id = ? LIMIT 1`
+
 func writeDomainCreatePartialSuccess(w http.ResponseWriter, domainID int, domain string, zoneExists bool) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusConflict)
@@ -169,10 +183,7 @@ func (p *Panel) handleDomains(w http.ResponseWriter, r *http.Request) {
 			var phpVersion, projectType string
 			var sslEnabled bool
 			var diskUsage, bandwidth int64
-			query := `SELECT php_version, COALESCE(ssl_enabled, false), COALESCE(project_type,'php'),
-				COALESCE(disk_usage_bytes,0), COALESCE(traffic_month_bytes,0)
-				FROM sites WHERE domain_id = ? LIMIT 1`
-			err := p.db.GetDB().QueryRowContext(context.Background(), query, domain.ID).
+			err := p.db.GetDB().QueryRowContext(context.Background(), domainSiteInfoQuery, domain.ID).
 				Scan(&phpVersion, &sslEnabled, &projectType, &diskUsage, &bandwidth)
 			if err != nil {
 				// A domain without a site: the legacy full-account defaults, and

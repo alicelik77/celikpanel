@@ -30,7 +30,7 @@ export const enSitesScreens = {
     'domains.add.needsPhp': 'Requires PHP-FPM — install it from Services.',
     'domains.add.phpVersion': 'PHP version',
     'domains.add.ssl': 'Enable SSL (Let’s Encrypt)',
-    'domains.add.sslHint': 'Automatically provision and renew the certificate. The domain must already resolve to this server.',
+    'domains.add.sslHint': 'A free certificate (Let’s Encrypt) is requested right after the site is created and renews by itself. It only works if the domain already points to this server. If it does not yet, the site is still created and you can request the certificate later under SSL/TLS in the domain’s settings.',
     'domains.add.dnsServed': 'The DNS zone will be served from this server ({server}).',
     'domains.goServices': 'Go to Services',
     'domains.add.needsDns': 'An active, panel-managed DNS server is required before adding domains. Choose and activate BIND or PowerDNS in Server → DNS and peer servers.',
@@ -39,6 +39,24 @@ export const enSitesScreens = {
     'domains.add.created': 'Domain {name} created.',
     'domains.add.createdDnsPending': 'Domain {name} was created, but DNS publication needs attention. Opening its management page.',
     'domains.add.failed': 'Failed to create domain',
+    // The certificate that "Enable SSL" asks for right after the site exists
+    // (D-024: what happened, who acts, the next action, how it resumes).
+    'domains.add.sslCreated': '{name} was created.',
+    'domains.add.sslRequesting.title': 'Requesting the certificate',
+    'domains.add.sslRequesting.wait': 'Asking Let’s Encrypt for the certificate of {name}…',
+    'domains.add.sslRequesting.body': 'This can take up to a minute. You do not need to do anything: this window shows the result. Leave it open. The certificate is requested only once; nothing is sent again if you wait.',
+    'domains.add.sslRequesting.button': 'Requesting…',
+    'domains.add.sslOutcome.title': 'The site is created. Check its certificate',
+    'domains.add.sslIssued': 'The certificate for {name} was issued and is active. It renews automatically.',
+    'domains.add.sslFailed': '{name} was created, but its certificate was not issued. The site works without HTTPS for now.',
+    'domains.add.sslFailedNext': 'The site itself was not changed, and nothing asks for the certificate again by itself. When the cause is fixed, request the certificate again under SSL/TLS in the domain’s settings; the button below opens it.',
+    'domains.add.sslWaitingForOwner': 'The certificate for {name} was issued and stored, but the site’s configuration file is yours and does not use it yet. Nothing changes until you choose. Open SSL/TLS to see what you can do.',
+    'domains.add.sslActivationPending': 'The certificate for {name} was issued, but the web server could not start using it yet. Nothing is lost and nothing retries by itself. Open SSL/TLS and press Retry activation.',
+    'domains.add.sslDependentsPending': 'The certificate for {name} is active on the website, but updating the mail server to use it did not finish. Nothing retries by itself. Open SSL/TLS and press Retry activation.',
+    'domains.add.sslUnknown': 'The site {name} was created. The answer to its certificate request did not arrive, so it is not known whether a certificate was issued. The request was not sent a second time. Open SSL/TLS to see the current state, and request a certificate there only if none is shown.',
+    'domains.add.sslNotRequested': 'The certificate for {name} was not requested because its DNS setup is not finished. When the name points to this server, request it under SSL/TLS in the domain’s settings.',
+    'domains.add.sslDone': 'Done',
+    'domains.add.sslOpen': 'Open SSL/TLS',
     // A site nginx refused (12 Oct 2026): what happened, what was removed again
     // and whether that was confirmed, the one command, how work resumes.
     'domains.add.webServerRefused.removed': "{domain} was not created: the web server (nginx) refused the configuration CelikPanel generated for it. What had been created for the site was removed again, and the removal was confirmed: its web server configuration, system account, files and, for a PHP site, PHP pool. nginx was reloaded with the configuration it had before. On the server, run {command}. If it reports an error, a file of the server’s own nginx configuration is refused; correct that first. If it passes, the refusal came from the configuration CelikPanel generated, and the line nginx printed names it (administrators see it below). Then create the site again; nothing retries by itself.",
