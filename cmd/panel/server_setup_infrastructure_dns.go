@@ -426,7 +426,11 @@ func buildServerSetupInfrastructureDNSAgainstSnapshot(d serverSetupDraft, s serv
 	if err != nil || desired == nil {
 		return nil, err
 	}
-	plan := &serverSetupInfrastructureDNSPlan{Zone: s.Zone, ZoneType: "MASTER", ExistingZoneID: s.ZoneID, ExpectedDigest: serverSetupInfrastructureDNSSnapshotDigest(s, false), Records: desired}
+	role := d.DNSRole
+	if serverSetupStandaloneDNS(d) {
+		role = transport.DNSTopologyStandalone
+	}
+	plan := &serverSetupInfrastructureDNSPlan{Zone: s.Zone, ZoneType: dnsLocalZoneType(role), ExistingZoneID: s.ZoneID, ExpectedDigest: serverSetupInfrastructureDNSSnapshotDigest(s, false), Records: desired}
 	for i := range plan.Records {
 		want := &plan.Records[i]
 		seen := 0

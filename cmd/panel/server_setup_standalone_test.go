@@ -120,3 +120,63 @@ func TestServerSetupStandaloneRegistrarCardAsksThisServerOnce(t *testing.T) {
 		t.Fatalf("this server is asked once: %+v", result.Servers)
 	}
 }
+
+// One server keeping its own DNS publishes its infrastructure zone once and
+// is done: the plan and the zone sync decide the zone kind with the same rule,
+// so the reviewed digest is the one the sync leaves (Beta-1 VM cell d looped
+// on infrastructure_dns_changed: plan MASTER, sync NATIVE). A paired primary
+// keeps MASTER on both sides.
+func TestServerSetupStandaloneInfrastructureDNSZoneKindMatchesSync(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		standalone bool
+		want       string
+	}{{"standalone bind", true, "NATIVE"}, {"paired bind", false, "MASTER"}} {
+		t.Run(test.name, func(t *testing.T) {
+			p := newDNSPanelForTest(t)
+			p.license = testPanelLicense(t, "active")
+			seedSetupDNSOwner(t, p)
+			d := infrastructureDNSTestDraft()
+			if test.standalone {
+				d = standaloneSetupDraftForTest()
+				var err error
+				if d, err = canonicalServerSetupDraft(d); err != nil {
+					t.Fatal(err)
+				}
+			}
+			attachDNSEngineTestAgent(t, p, newDNSEngineTestAgent())
+			t.Setenv("CELIKPANEL_SERVER_IP", d.LocalIP)
+			if err := p.startServerSetupDNS(context.Background(), d, strings.Repeat("a", 32), serviceOperationActor{UserID: 1}); err != nil {
+				t.Fatal(err)
+			}
+			agent := newDNSZoneV3TestAgent()
+			agent.pairReady = !test.standalone
+			agent.publisher = transport.DNSEngineBIND
+			attachInfrastructureDNSAgent(t, p, agent)
+			infra, err := p.buildServerSetupInfrastructureDNSPlan(context.Background(), d)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if infra.ZoneType != test.want || infra.ZoneType != p.dnsZoneType(context.Background()) {
+				t.Fatalf("plan zone kind %q, sync rule %q, want %q", infra.ZoneType, p.dnsZoneType(context.Background()), test.want)
+			}
+			plan := serverSetupPlan{Version: serverSetupPlanVersion, BuildCommit: strings.TrimSpace(buildCommit), Draft: d, InfrastructureDNS: infra, Steps: []serverSetupPlanStep{{ID: "03-infrastructure_dns", Kind: "infrastructure_dns", Target: infra.Zone}}}
+			plan.ID = serverSetupPlanIdentity(plan)
+			step := serverSetupExecutionStep{serverSetupPlanStep: plan.Steps[0], RequestID: strings.Repeat("b", 32), OwnerID: strings.Repeat("c", 32)}
+			for i := 0; i < 2; i++ {
+				if done, err := p.runServerSetupInfrastructureDNS(context.Background(), plan, step); err != nil || !done {
+					t.Fatalf("run %d done=%v err=%v", i, done, err)
+				}
+			}
+			var kind string
+			if err := p.db.GetDB().QueryRow(`SELECT type FROM pdns_domains WHERE name=?`, infra.Zone).Scan(&kind); err != nil || kind != test.want {
+				t.Fatalf("stored zone kind %q %v, want %q", kind, err, test.want)
+			}
+			agent.mu.Lock()
+			defer agent.mu.Unlock()
+			if len(agent.requests) != 1 {
+				t.Fatalf("published %d times", len(agent.requests))
+			}
+		})
+	}
+}
