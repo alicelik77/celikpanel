@@ -23,7 +23,7 @@ const setupLinkCodes = ['server_setup_peer_join_waiting', 'server_setup_peer_nam
     'server_setup_dns_publisher_waiting', 'server_setup_dns_publisher_local_waiting', 'server_setup_peer_dkim_zone_waiting', 'server_setup_peer_dkim_publishing',
     'server_setup_peer_dkim_unreachable', 'server_setup_peer_dkim_unknown', 'server_setup_join_certificate_unavailable', 'server_setup_peer_link_missing', 'server_setup_peer_names_bound', 'server_setup_peer_names_final', 'server_setup_peer_names_changed', 'server_setup_peer_join_reopen_required', 'server_setup_peer_version_incompatible', 'server_setup_dns_publisher_refused', 'server_setup_peer_dkim_conflict',
     'server_setup_peer_dkim_not_running', 'server_setup_peer_dkim_not_bound', 'server_setup_peer_link_revoked',
-    'server_setup_peer_ready_unreachable', 'server_setup_peer_ready_refused', 'server_setup_peer_ready_identity_changed', 'server_setup_plan_changed_by_rejoin', 'server_setup_host_starting', 'server_setup_host_not_started', 'server_setup_completion_plan_changed', 'server_setup_completion_unknown'];
+    'server_setup_peer_ready_unreachable', 'server_setup_peer_ready_refused', 'server_setup_peer_ready_identity_changed', 'server_setup_plan_changed_by_rejoin', 'server_setup_host_starting', 'server_setup_host_not_started', 'server_setup_host_busy', 'server_setup_completion_plan_changed', 'server_setup_completion_unknown'];
 
 // The run was stopped because its plan was reopened (POST /api/v1/setup/revise,
 // cmd/panel/server_setup_revise.go): a known end that is not a failure.

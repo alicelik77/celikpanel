@@ -14,6 +14,7 @@ kurulu panel güncellemelerini kullanıcı CelikPanel'in kendi arayüzünden ba�
 cfcadd3f1 ürün kaydının üçüncü hedefli yeniden koşusu aşağıdaki kusurları
 buldu. Her düzeltmenin bileşen testi var ve hiçbiri şemayı değiştirmez;
 kanıtlanmış sayılmadan önce yeni bir hedefli VM koşusu gerekir.
+
 - **Açılan sunucu her adım için bir beklemedir.** Yeniden başlatmadan sonra
   çalıştırıcı, systemd hâlâ "starting" bildirirken DNS adımını sürdürdü;
   Agent'ın sunucu kimliği okunamadı ve adım genel `server_setup_dns_failed`
@@ -25,6 +26,14 @@ kanıtlanmış sayılmadan önce yeni bir hedefli VM koşusu gerekir.
   okunduktan sonra oluşturulur. 10 dakika sonra hâlâ açılan sunucu, systemd'yi
   ve denetlenecek komutları adlandıran `server_setup_host_not_started` ile
   düşer.
+- **Sunucudaki başka bir değişiklik başlatmayı tutar, çalışma bekler.**
+  Bileşenler'den bir kurulum sürerken başlatılan çalışmanın ilk bileşenini
+  Agent kabulde reddetti (`HOST_MUTATION_BUSY`) ve çalışma düştü. Başlatma
+  artık çalışma oluşmadan `server_setup_host_busy` ile reddedilir (başka bir
+  değişiklik sürüyor; bitene kadar bekleyin, sonra başlatın). Buna rastlayan
+  çalışma aynı kodla bekler: başka bir işlem sürerken hiçbir şey oluşturulmaz,
+  Agent'ın kabulde reddettiği (hiçbir şey çalışmamış) alt işlem yeni bir alt
+  kimlikle en çok 30 kez yeniden sorulur.
 
 ## 29 Ekim ek kararı: hedefli Beta-1 yeniden koşusunun düzeltmeleri (alpha.115 kaynağı)
 

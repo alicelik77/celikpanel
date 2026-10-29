@@ -80,6 +80,10 @@ type serverSetupPlan struct {
 
 type serverSetupExecutionStep struct {
 	serverSetupPlanStep
+	// ChildAttempt counts child operations the Agent refused at admission
+	// because the host was busy (HOST_MUTATION_BUSY: nothing ran). Each new
+	// attempt has its own request identity (serverSetupChildRequestID).
+	ChildAttempt                int    `json:"child_attempt,omitempty"`
 	Status                      string `json:"status"`
 	RequestID                   string `json:"request_id"`
 	OwnerID                     string `json:"owner_id"`
@@ -414,7 +418,7 @@ func (p *Panel) serverSetupStepChildMissing(ctx context.Context, step serverSetu
 	if step.OperationID != "" {
 		return false
 	}
-	_, err := p.serviceOperationByRequestID(ctx, step.RequestID)
+	_, err := p.serviceOperationByRequestID(ctx, serverSetupChildRequestID(step))
 	return errors.Is(err, sql.ErrNoRows)
 }
 
@@ -1124,6 +1128,15 @@ func (p *Panel) handleServerSetupStart(w http.ResponseWriter, r *http.Request) {
 		writeCodedError(w, http.StatusConflict, "server_setup_busy", "A setup operation is already active.", "")
 		return
 	}
+	// Another change on this server (a Components install, for example):
+	// refused before a run exists, so it never becomes a failed run.
+	if busy, err := p.serverSetupHostBusy(r.Context()); err != nil {
+		writeServerError(w, err)
+		return
+	} else if busy {
+		writeCodedError(w, http.StatusConflict, serverSetupHostBusyCode, serverSetupHostBusyStartMessage, "")
+		return
+	}
 	execution := serverSetupExecution{ID: request.RequestID, RequestID: request.RequestID, PlanID: plan.ID, Status: "running", Phase: "queued", Steps: []serverSetupExecutionStep{}, PanelURL: fmt.Sprintf("https://%s:%d/", plan.Draft.PanelDomain, panelPort())}
 	for _, step := range plan.Steps {
 		execution.Steps = append(execution.Steps, serverSetupExecutionStep{serverSetupPlanStep: step, Status: "pending", RequestID: serverSetupID(execution.ID, step.ID, "request"), OwnerID: serverSetupID(execution.ID, step.ID, "owner")})
@@ -1466,7 +1479,12 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 			return false, p.persistServerSetupExecution(ctx, *execution)
 		}
 		if errors.Is(err, errServiceOperationBusy) {
-			return false, nil
+			// Another change runs on this server: the step waits with that
+			// reason and starts nothing (D-024 prerequisite).
+			execution.Status = "waiting"
+			execution.Phase = step.Kind
+			execution.Error = &serviceOperationError{Code: serverSetupHostBusyCode, Message: serverSetupHostBusyWaitMessage}
+			return false, p.persistServerSetupExecution(ctx, *execution)
 		}
 		if serverSetupHostStarting(err) {
 			// The host is still starting: nothing was sent to the Agent; the
@@ -1649,6 +1667,13 @@ func (p *Panel) runServerSetupStep(ctx context.Context, plan serverSetupPlan, st
 		case serviceOperationSucceeded:
 			return true, nil
 		case serviceOperationFailed:
+			if op.Error != nil && op.Error.Code == errCodeHostMutationBusy && step.Kind != "panel_certificate" && step.ChildAttempt < serverSetupHostBusyAttempts {
+				// The Agent refused the child at admission (nothing ran): the
+				// step waits and asks again under a new child identity.
+				step.ChildAttempt++
+				step.OperationID = ""
+				return false, &serverSetupPeerWait{Code: serverSetupHostBusyCode, Message: serverSetupHostBusyWaitMessage}
+			}
 			if op.Error != nil {
 				return false, &serverSetupChildFailure{Code: op.Error.Code, Message: op.Error.Message,
 					Component: op.Error.Component, Step: op.Error.Step, Detail: op.Error.Detail,
@@ -1683,7 +1708,8 @@ func (p *Panel) ensureServerSetupChild(ctx context.Context, plan serverSetupPlan
 		}
 		qualifier = certificate.Qualifier
 	}
-	prior, found, err := p.idempotentServiceOperation(ctx, step.RequestID, kind, step.Target, qualifier)
+	childRequestID := serverSetupChildRequestID(step)
+	prior, found, err := p.idempotentServiceOperation(ctx, childRequestID, kind, step.Target, qualifier)
 	if err != nil || found {
 		return prior, err
 	}
@@ -1776,7 +1802,7 @@ func (p *Panel) ensureServerSetupChild(ctx context.Context, plan serverSetupPlan
 		raw, _ := json.Marshal(serverSetupMailChild{MailHostname: plan.Draft.MailHostname})
 		operationData = string(raw)
 	}
-	op, err := p.createServiceOperationRequestWithState(ctx, kind, step.Target, qualifier, step.RequestID, plan.Actor, "queued", operationData)
+	op, err := p.createServiceOperationRequestWithState(ctx, kind, step.Target, qualifier, childRequestID, plan.Actor, "queued", operationData)
 	if errors.Is(err, errServiceOperationReplay) {
 		return op, nil
 	}
@@ -1790,7 +1816,7 @@ func (p *Panel) ensureServerSetupChild(ctx context.Context, plan serverSetupPlan
 			// The setup's one confirmation covers exactly the distribution
 			// point updates its review listed; every other notable install
 			// is still refused by the Agent.
-			return p.runServiceInstall(ctx, serviceInstallRequest{ServiceID: step.Target, Package: step.Qualifier, RequestID: step.RequestID, AcceptedPointUpdates: serverSetupAcceptedPointUpdates(plan)}, advance)
+			return p.runServiceInstall(ctx, serviceInstallRequest{ServiceID: step.Target, Package: step.Qualifier, RequestID: childRequestID, AcceptedPointUpdates: serverSetupAcceptedPointUpdates(plan)}, advance)
 		}
 	case "runtime":
 		runner = func(ctx context.Context, advance func(string) error) (serviceOperationResult, *serviceOperationFailure) {

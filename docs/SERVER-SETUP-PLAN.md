@@ -15,6 +15,7 @@ every installed-panel update from CelikPanel itself, as required by [AGENTS.md](
 The third targeted re-run of product commit cfcadd3f1 found the defects
 below. Each fix has a component test and none changes the schema; a further
 targeted VM re-run is owed before any is called proven.
+
 - **A booting host is a wait, for every step.** After a reboot the runner
   resumed the DNS step while systemd still reported "starting"; the Agent's
   host identity could not be read and the step failed with the generic
@@ -26,6 +27,14 @@ targeted VM re-run is owed before any is called proven.
   host identity is read. A host still starting after 10 minutes fails with
   `server_setup_host_not_started`, which names systemd and the commands to
   check.
+- **Another change on the server holds the start, and a run waits.** A start
+  while a Components install ran created a run whose first component the
+  Agent refused at admission (`HOST_MUTATION_BUSY`), and the run failed. The
+  start is now refused before a run exists with `server_setup_host_busy`
+  (another change is running; wait until it finishes, then start). A run that
+  meets it waits with the same code: nothing is created while another
+  operation runs, and a child the Agent refused at admission (nothing ran) is
+  asked again under a new child identity, at most 30 times.
 
 ## October 29 follow-up: fixes from the targeted Beta-1 re-run (alpha.115 source)
 

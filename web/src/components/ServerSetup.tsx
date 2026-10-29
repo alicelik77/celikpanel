@@ -92,6 +92,7 @@ const codeKey: Record<string, TranslationKey> = {
     server_setup_plan_changed_by_rejoin: 'setup.v5.wait.server_setup_plan_changed_by_rejoin',
     server_setup_host_starting: 'setup.v5.wait.server_setup_host_starting',
     server_setup_host_not_started: 'setup.v5.wait.server_setup_host_not_started',
+    server_setup_host_busy: 'setup.v5.wait.server_setup_host_busy',
     server_setup_distribution_updates_changed: 'setup.v5.wait.server_setup_distribution_updates_changed',
     server_setup_distribution_updates_unread: 'setup.v5.wait.server_setup_distribution_updates_unread',
     server_setup_peer_names_unreachable: 'setup.v5.wait.server_setup_peer_names_unreachable',
@@ -572,6 +573,12 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                     if (!reviewed) throw new Error(t('setup.planFailed'));
                     if (alive.current) { setPlan(reviewed); setError(t('setup.packageUpdates.changedBeforeStart')); }
                     return;
+                }
+                if (response.status === 409 && problem?.code === 'server_setup_host_busy') {
+                    // Refused before any run: another change runs on this server.
+                    localStorage.removeItem(markerKey(user.username));
+                    markerRef.current = null; setMarker(null); setAcknowledged(false); setStep('review');
+                    setError(t('setup.hostBusy.start')); return;
                 }
                 if (response.status === 409 && problem?.code === 'server_setup_distribution_updates_unread') {
                     // Refused before any execution: the review stays, unread.
