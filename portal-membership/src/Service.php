@@ -56,6 +56,7 @@ SQL);
             $columns=$this->db->query('PRAGMA table_info(licenses)')->fetchAll(PDO::FETCH_COLUMN,1);
             if (!in_array('key_encrypted',$columns,true)) { $this->db->exec('ALTER TABLE licenses ADD COLUMN key_encrypted TEXT'); }
             if (!in_array('server_ip',$columns,true)) { $this->db->exec('ALTER TABLE licenses ADD COLUMN server_ip TEXT'); }
+            if (!in_array('removed',$columns,true)) { $this->db->exec('ALTER TABLE licenses ADD COLUMN removed INTEGER'); }
             foreach ($this->db->query('SELECT id,created FROM licenses WHERE expires IS NULL')->fetchAll(PDO::FETCH_ASSOC) as $l) {
                 $this->run('UPDATE licenses SET expires=? WHERE id=?',[self::anniversary((int)$l['created']),$l['id']]);
             }
@@ -168,7 +169,7 @@ SQL);
     }
     public function licenses(int $member): array
     {
-        $s = $this->db->prepare('SELECT id,key_suffix,created,activated,expires,hostname,server_id,server_ip,(key_encrypted IS NOT NULL) AS key_available FROM licenses WHERE member_id=? ORDER BY created DESC,id');
+        $s = $this->db->prepare('SELECT id,key_suffix,created,activated,expires,hostname,server_id,server_ip,(key_encrypted IS NOT NULL) AS key_available FROM licenses WHERE member_id=? AND removed IS NULL ORDER BY created DESC,id');
         $s->execute([$member]); return $s->fetchAll(PDO::FETCH_ASSOC);
     }
     public function issue(int $member): array
@@ -187,7 +188,7 @@ SQL);
     {
         $m = $this->one('SELECT password FROM members WHERE id=? AND verified=1', [$member]);
         if (!$m || strlen($password)>128 || !password_verify($password,$m['password'])) { throw new Problem('invalid_login'); }
-        $l = $this->one('SELECT * FROM licenses WHERE id=? AND member_id=?', [$id,$member]);
+        $l = $this->one('SELECT * FROM licenses WHERE id=? AND member_id=? AND removed IS NULL', [$id,$member]);
         if (!$l) { throw new Problem('license_not_found'); }
         return $l;
     }
@@ -223,6 +224,18 @@ SQL);
             $this->owned($member,$id,$password);
             $this->run('UPDATE licenses SET server_id=NULL,server_ip=NULL,hostname=NULL,generation=generation+1 WHERE id=?',[$id]);
             $this->event($member,$id,'server_released');
+        });
+    }
+    // Removal keeps the row and its events as the record; the key stops matching,
+    // the saved copy is erased and the bound server's next refresh is refused.
+    // Kaldirma kaydi saklar; anahtar eslesmez, sunucunun sonraki dogrulamasi reddedilir.
+    public function remove(int $member, string $id, string $password): void
+    {
+        $this->limit('remove:'.$member,10,86400);
+        $this->atomic(function () use ($member,$id,$password): void {
+            $this->owned($member,$id,$password);
+            $this->run('UPDATE licenses SET removed=?,key_hash=?,key_encrypted=NULL,server_id=NULL,server_ip=NULL,generation=generation+1 WHERE id=?',[$this->now(),'removed:'.$id,$id]);
+            $this->event($member,$id,'removed');
         });
     }
     public function rotate(int $member, string $id, string $password): array
