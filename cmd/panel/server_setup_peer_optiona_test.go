@@ -218,11 +218,22 @@ func TestServerSetupPeerDKIMBeforeTheMainIsReadyWaits(t *testing.T) {
 	if kind, code := send(); kind != "failed" || code != "server_setup_peer_dkim_conflict" {
 		t.Fatalf("the owner's record: %s %s", kind, code)
 	}
-	if _, err := db.Exec(`UPDATE server_setup_executions SET status='failed',execution_json=replace(replace(execution_json,'"status":"running"','"status":"failed"'),'"status":"waiting"','"status":"failed"') WHERE id=?`, pair.execution.ID); err != nil {
+	if _, err := db.Exec(`UPDATE pdns_records SET content='"v=DKIM1; k=rsa; p=QUJD"' WHERE name=? AND type='TXT'`, dkimSelector+"._domainkey.example.test"); err != nil {
 		t.Fatal(err)
 	}
-	if kind, code := send(); kind != "wait" || code != "server_setup_peer_dkim_not_running" {
-		t.Fatalf("the main's setup stopped: %s %s", kind, code)
+	// Beta-1 third re-run N3: the main finished while its link is live (it
+	// waits for the backup's report): the backup's DKIM is still taken.
+	if _, err := db.Exec(`UPDATE server_setup_executions SET status='succeeded' WHERE id=?`, pair.execution.ID); err != nil {
+		t.Fatal(err)
+	}
+	if kind, code := send(); kind == "failed" || code == "server_setup_peer_dkim_not_running" {
+		t.Fatalf("the finished main refused the backup's DKIM over a live link: %s %s", kind, code)
+	}
+	if err := pair.first.panel.revokeServerSetupLinkSide(context.Background(), serverSetupLinkRoleFirst); err != nil {
+		t.Fatal(err)
+	}
+	if kind, code := send(); kind != "failed" || code != "server_setup_peer_link_revoked" {
+		t.Fatalf("an ended link: %s %s", kind, code)
 	}
 }
 

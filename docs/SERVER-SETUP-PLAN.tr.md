@@ -44,6 +44,12 @@ kanıtlanmış sayılmadan önce yeni bir hedefli VM koşusu gerekir.
   (saat N saniye geride; siz, sunucu sahibi: saat eşitlemesini açın,
   `timedatectl set-ntp true`, ya da saati düzeltin; sonra yeniden vermek için
   düzeltilmiş planı inceleyin).
+- **Biten ana sunucu, açık bağlantı üzerinden yedeğin DKIM kaydını yine alır.**
+  A seçeneğinde ana sunucu önce bitti; yedeğin DKIM yayımı sonra sonsuza dek
+  `server_setup_peer_dkim_not_running` ile reddedildi. Ana sunucunun bağlantısı
+  açık oldukça (yedek hazır olduğunu bildirene kadar sürer), ana sunucu kendi
+  çalışması sürse de bitse de bağlı katılmanın DKIM kaydını alır ve aynı
+  incelenmiş DNS yolundan yazıp yayımlar. Kapanmış bağlantı onu reddeder.
 
 ## 29 Ekim ek kararı: hedefli Beta-1 yeniden koşusunun düzeltmeleri (alpha.115 kaynağı)
 

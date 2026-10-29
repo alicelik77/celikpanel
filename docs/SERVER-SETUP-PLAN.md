@@ -45,6 +45,13 @@ targeted VM re-run is owed before any is called proven.
   `server_setup_certificate_clock_skew` (the clock is N seconds behind; you,
   the owner: turn on time sync, `timedatectl set-ntp true`, or correct the
   clock; then review a revised plan to issue it again).
+- **The finished main still takes the backup's DKIM over a live link.** In
+  Option A the main finished first; the backup's DKIM publish was then refused
+  with `server_setup_peer_dkim_not_running` for ever. While the main's link is
+  live (it lasts until the backup reports ready), the main accepts the DKIM
+  for the bound join whether its own run is still running or finished, and
+  writes and publishes it through the same reviewed DNS path. An ended link
+  refuses it.
 
 ## October 29 follow-up: fixes from the targeted Beta-1 re-run (alpha.115 source)
 

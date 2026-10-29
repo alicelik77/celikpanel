@@ -382,7 +382,7 @@ type serverSetupPeerDKIMRequest struct {
 // sends its DKIM record to the main DNS server, which writes it into the
 // setup's zone and publishes the zone. Writing the same value again is the
 // same change, so a retry after a lost answer changes nothing twice.
-func (p *Panel) handleServerSetupPeerDKIM(w http.ResponseWriter, r *http.Request) {
+func (p *Panel) handleServerSetupPeerDKIM(w http.ResponseWriter, r *http.Request, role string) {
 	var request serverSetupPeerDKIMRequest
 	if !decodeServerSetupLinkBody(w, r, &request) || refuseServerSetupLinkProtocol(w, request.Protocol) {
 		return
@@ -403,7 +403,19 @@ func (p *Panel) handleServerSetupPeerDKIM(w http.ResponseWriter, r *http.Request
 	// channel, not a standing record interface. Either server can be the
 	// main DNS server, so being bound is not the gate: a second server that
 	// is the main (Option A) has no binding step at all.
-	if execution == nil || !stringIn(execution.Status, "running", "waiting") {
+	// A main whose run finished keeps its link open until the backup reports
+	// ready (P7): while that link is live, the backup's DKIM for the bound
+	// join is still taken (Beta-1 third re-run N3).
+	linkLive := false
+	if execution != nil && execution.Status == "succeeded" {
+		record, err := p.readServerSetupPeerRecord(ctx, role)
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		linkLive = record.Found && record.Live && record.ReadyAt == "" && record.RetiredAt == ""
+	}
+	if execution == nil || (!stringIn(execution.Status, "running", "waiting") && !linkLive) {
 		writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_dkim_not_running", "The main DNS server's setup is not running; the DKIM record is added there in Domains.", nil)
 		return
 	}

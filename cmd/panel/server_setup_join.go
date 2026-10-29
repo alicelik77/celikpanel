@@ -1028,9 +1028,12 @@ func (p *Panel) requireServerSetupLinkMachine(next http.Handler) http.Handler {
 			}
 		case serverSetupPeerDKIMPath:
 			// The main DNS server is either one: the role of this server's
-			// own setup says which credentials it accepts.
-			if p.authenticateServerSetupLink(w, r, p.serverSetupLinkRole(r.Context())) {
-				p.handleServerSetupPeerDKIM(w, r)
+			// own setup says which credentials it accepts (also after its
+			// run finished, while its link is live; N3).
+			if role, err := p.serverSetupOwnLinkRole(r.Context()); err != nil || role == "" {
+				writeServerSetupLinkUnauthorized(w)
+			} else if p.authenticateServerSetupLink(w, r, role) {
+				p.handleServerSetupPeerDKIM(w, r, role)
 			}
 		case serverSetupPeerReadyPath:
 			// The backup reports to the main DNS server, which is either one:
