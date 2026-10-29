@@ -671,10 +671,12 @@ func serverSetupPDNSMainCandidateBlocker(candidate *transport.PDNSFreshPrimaryCa
 	switch {
 	case candidate == nil || candidate.State != "known":
 		return ""
-	case !dnsengineartifact.PDNSFreshPrimaryVersionInTestedSeries(candidate.Version):
-		return "server_setup_pdns_main_untested_version"
+	// The origin first (Beta-1 re-run): a vendor, backports or other
+	// repository build says where it comes from, whatever its version.
 	case !candidate.Official:
 		return "server_setup_pdns_main_not_debian_archive"
+	case !dnsengineartifact.PDNSFreshPrimaryVersionInTestedSeries(candidate.Version):
+		return "server_setup_pdns_main_untested_version"
 	}
 	return ""
 }

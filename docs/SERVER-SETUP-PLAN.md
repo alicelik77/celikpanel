@@ -86,6 +86,11 @@ re-run is owed before any is called proven.
   (`server_setup_dns_installed_differs`: choose that engine in the plan, or
   change it in Server → DNS). An engine without that record still needs the
   migration as before.
+- **A vendor PowerDNS build says where it comes from.** The origin is checked
+  before the version: a build from repo.powerdns.com (for example
+  4.9.18-1pdns.trixie), backports or another repository is refused with
+  `server_setup_pdns_main_not_debian_archive`, as documented, not with
+  `server_setup_pdns_main_untested_version`.
 
 ## October 29 follow-up: fixes from the Beta-1 VM run (alpha.115 source)
 

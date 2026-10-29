@@ -133,8 +133,11 @@ func TestServerSetupBuildPowerDNSMainFollowsTheTestedSeries(t *testing.T) {
 		"4.9.18 from Debian":       {&candidate{State: "known", Version: "4.9.18-0+deb13u1", Official: true}, ""},
 		"4.9.17 from Debian":       {&candidate{State: "known", Version: "4.9.17-0+deb13u1", Official: true}, ""},
 		"other series":             {&candidate{State: "known", Version: "5.0.1-1", Official: true}, "server_setup_pdns_main_untested_version"},
-		"repo.powerdns.com build":  {&candidate{State: "known", Version: "4.9.4-1pdns.trixie"}, "server_setup_pdns_main_untested_version"},
-		"backport":                 {&candidate{State: "known", Version: "4.9.4-1~bpo13+1"}, "server_setup_pdns_main_untested_version"},
+		// Beta-1 re-run: the vendor build in the tested series was refused as
+		// an untested version; the origin is checked first.
+		"repo.powerdns.com build":  {&candidate{State: "known", Version: "4.9.4-1pdns.trixie"}, "server_setup_pdns_main_not_debian_archive"},
+		"vendor 4.9.18 build":      {&candidate{State: "known", Version: "4.9.18-1pdns.trixie"}, "server_setup_pdns_main_not_debian_archive"},
+		"backport":                 {&candidate{State: "known", Version: "4.9.4-1~bpo13+1"}, "server_setup_pdns_main_not_debian_archive"},
 		"epoch":                    {&candidate{State: "known", Version: "1:4.9.18-0+deb13u1", Official: true}, "server_setup_pdns_main_untested_version"},
 		"Debian version elsewhere": {&candidate{State: "known", Version: "4.9.18-0+deb13u1", Official: false}, "server_setup_pdns_main_not_debian_archive"},
 		"unknown":                  {&candidate{State: "unknown"}, ""},

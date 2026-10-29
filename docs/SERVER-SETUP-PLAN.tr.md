@@ -87,6 +87,11 @@ sayılmadan önce yeni bir hedefli VM koşusu gerekir.
   inceleme bunu söyler (`server_setup_dns_installed_differs`: planda o motoru
   seçin ya da Sunucu → DNS'te değiştirin). Bu kaydı olmayan motor önceki gibi
   taşıma ister.
+- **Üretici PowerDNS derlemesi nereden geldiğini söyler.** Kaynak sürümden
+  önce denetlenir: repo.powerdns.com (örneğin 4.9.18-1pdns.trixie), backports
+  ya da başka bir depodan gelen derleme belgelendiği gibi
+  `server_setup_pdns_main_not_debian_archive` ile reddedilir,
+  `server_setup_pdns_main_untested_version` ile değil.
 
 ## 29 Ekim ek kararı: Beta-1 sanal makine koşusunun düzeltmeleri (alpha.115 kaynağı)
 
