@@ -1032,8 +1032,25 @@ func TestPublisherTellsAChangedPublishedTreeApart(t *testing.T) {
 	if _, err := publisher.LoadCurrent(); err != nil {
 		t.Fatal(err)
 	}
-	zonePath := "/var/lib/celikpanel/bind/generations/" + generation.ID + "/zones/" + zoneFileName("example.com")
-	filesystem.nodes[zonePath].data = []byte("$ORIGIN example.com.\n@ 60 IN TXT \"set by the owner\"\n")
+	base := "/var/lib/celikpanel/bind/generations/" + generation.ID
+	// A receipt another Agent version wrote (a field this one does not know)
+	// is unknown, never the owner's change.
+	receipt := filesystem.nodes[base+"/receipt.json"]
+	original := append([]byte(nil), receipt.data...)
+	receipt.data = append([]byte(`{"schema_note":"older agent",`), original[1:]...)
+	if _, err := publisher.LoadCurrent(); err == nil || errors.Is(err, ErrGenerationChanged) {
+		t.Fatalf("a receipt of another schema read as an owner change: %v", err)
+	}
+	receipt.data = original
+	// A mode change of a published file is a change outside CelikPanel.
+	zonePath := base + "/zones/" + zoneFileName("example.com")
+	zone := filesystem.nodes[zonePath]
+	zone.mode = 0o644
+	if _, err := publisher.LoadCurrent(); !errors.Is(err, ErrGenerationChanged) {
+		t.Fatalf("a changed mode: %v", err)
+	}
+	zone.mode = 0o444
+	zone.data = []byte("$ORIGIN example.com.\n@ 60 IN TXT \"set by the owner\"\n")
 	if _, err := publisher.LoadCurrent(); !errors.Is(err, ErrGenerationChanged) {
 		t.Fatalf("a changed zone file: %v", err)
 	}

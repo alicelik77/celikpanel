@@ -29,9 +29,10 @@ const (
 var ErrRollbackPeerUnverified = errors.New("BIND rollback peer authority remains unverified")
 
 // ErrGenerationChanged: a published generation no longer is what CelikPanel
-// wrote (its files, their modes or owners, or their content differ). Only
-// root can change them, so this is a verified change outside the panel, not
-// an unknown read failure. Reading errors stay unwrapped.
+// wrote: a hash, the file set, a mode or an owner differs. Only root can
+// change them, so this is a verified change outside the panel. A read error
+// or a receipt this Agent cannot decode (another version's schema) stays
+// unwrapped: unknown, never an owner change.
 var ErrGenerationChanged = errors.New("BIND generation was changed outside CelikPanel")
 
 func generationChanged(err error) error {
@@ -324,7 +325,12 @@ func (publisher *Publisher) readGeneration(generationPath, expectedID string) (V
 		return VerifiedTree{}, nil, nil, err
 	}
 	receipt, err := DecodeReceipt(receiptBytes)
-	if err != nil || receipt.Generation != expectedID {
+	if err != nil {
+		// A receipt this Agent cannot read (another Agent version's schema,
+		// or a damaged file) is unknown, never the owner's change.
+		return VerifiedTree{}, nil, nil, fmt.Errorf("BIND generation receipt is unreadable: %w", err)
+	}
+	if receipt.Generation != expectedID {
 		return VerifiedTree{}, nil, nil, generationChanged(errors.New("BIND generation receipt identity mismatch"))
 	}
 	configBytes, err := publisher.readImmutableFile(path.Join(generationPath, "zones.conf"))
@@ -366,6 +372,8 @@ func (publisher *Publisher) readGeneration(generationPath, expectedID string) (V
 	if !equalNames(zoneNames, expectedNames) {
 		return VerifiedTree{}, nil, nil, generationChanged(errors.New("BIND generation zone directory does not match its receipt"))
 	}
+	// The receipt decoded above, so what VerifyTree can still refuse is a
+	// hash or a file set that differs: a change outside CelikPanel.
 	tree, err := VerifyTree(receiptBytes, configBytes, files)
 	if err != nil {
 		err = generationChanged(err)
