@@ -306,6 +306,7 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'dashboard.audit.action.server.setup.peer_joined': 'ikinci sunucu koduyla katıldı',
     'dashboard.audit.action.server.setup.peer_connected': 'bu sunucuyu ilk sunucuya bağladı',
     'dashboard.audit.action.server.setup.peer_names': 'ikinci sunucu adlarını gönderdi',
+    'dashboard.audit.action.server.setup.peer_names_changed': 'ikinci sunucu bağlandıktan sonra değişen yanıtlar gönderdi; yeni katılma kodu gerekiyor',
     'dashboard.audit.action.server.setup.peer_dkim': 'diğer sunucu DKIM kaydını gönderdi',
     'dashboard.audit.action.server.setup.draft': 'kurulum seçimlerini kaydetti',
     'dashboard.audit.action.server.setup.extend': 'sunucu kurulumunu genişletmeye başladı',

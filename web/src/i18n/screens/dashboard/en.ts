@@ -325,6 +325,7 @@ export const enDashboardScreens = {
     'dashboard.audit.action.server.setup.peer_joined': 'the second server joined with its code',
     'dashboard.audit.action.server.setup.peer_connected': 'joined this server to the first server',
     'dashboard.audit.action.server.setup.peer_names': 'the second server sent its names',
+    'dashboard.audit.action.server.setup.peer_names_changed': 'the second server sent changed answers after it was bound; a new join code is needed',
     'dashboard.audit.action.server.setup.peer_dkim': 'the other server sent its DKIM record',
     'dashboard.audit.action.server.setup.draft': 'saved the setup choices',
     'dashboard.audit.action.server.setup.extend': 'started extending the server setup',
