@@ -80,11 +80,57 @@ func TestServerSetupStepWaitsWhileTheHostIsStarting(t *testing.T) {
 	f.panel.serverSetupStepOverride = func(_ context.Context, step serverSetupExecutionStep) (bool, error, bool) {
 		return true, bootingHostErrorForTest(), true
 	}
+	// The same episode, still starting past the bound.
+	execution.Status, execution.Error = "waiting", &serviceOperationError{Code: serverSetupHostStartingCode}
 	execution.HostStartingSince = time.Now().Add(-serverSetupHostStartingBound - time.Minute).UTC().Format(time.RFC3339Nano)
 	if _, err := f.panel.advanceServerSetupExecution(plan, &execution); err != nil {
 		t.Fatal(err)
 	}
 	if execution.Status != "failed" || execution.Error == nil || execution.Error.Code != serverSetupHostNotStartedCode || !strings.Contains(execution.Error.Message, "systemctl is-system-running") {
 		t.Fatalf("past the bound: %s %+v", execution.Status, execution.Error)
+	}
+}
+
+// Review fix (item 2): an earlier boot never shortens a later one. A wait
+// of another kind in between ends the first episode; a second reboot hours
+// later waits again instead of failing at once.
+func TestServerSetupHostStartingEpisodesAreSeparate(t *testing.T) {
+	f, state := setupOperationFixture(t)
+	plan := saveSetupPlanForTest(t, f, state)
+	serverSetupRunners.Store(f.panel, true)
+	t.Cleanup(func() { serverSetupRunners.Delete(f.panel) })
+	response := postSetupStartForTest(t, f, plan.ID, strings.Repeat("9", 32))
+	var execution serverSetupExecution
+	if response.Code != 202 || json.Unmarshal(response.Body.Bytes(), &execution) != nil {
+		t.Fatalf("start %d %s", response.Code, response.Body.String())
+	}
+	answer := bootingHostErrorForTest()
+	f.panel.serverSetupStepOverride = func(context.Context, serverSetupExecutionStep) (bool, error, bool) {
+		return true, answer, true
+	}
+	if _, err := f.panel.advanceServerSetupExecution(plan, &execution); err != nil {
+		t.Fatal(err)
+	}
+	if execution.Error == nil || execution.Error.Code != serverSetupHostStartingCode || execution.HostStartingSince == "" {
+		t.Fatalf("first boot: %+v", execution)
+	}
+	// Booted; then the step waits for something else (the main DNS server).
+	answer = &serverSetupPeerWait{Code: "server_setup_primary_dns_required", Message: "waiting for the main DNS server"}
+	if _, err := f.panel.advanceServerSetupExecution(plan, &execution); err != nil {
+		t.Fatal(err)
+	}
+	var raw string
+	f.database.GetDB().QueryRow(`SELECT execution_json FROM server_setup_executions WHERE id=?`, execution.ID).Scan(&raw)
+	if strings.Contains(raw, "host_starting_since") {
+		t.Fatalf("the first episode outlived another wait: %s", raw)
+	}
+	// Hours later the server reboots during that wait.
+	execution.HostStartingSince = time.Now().Add(-3 * time.Hour).UTC().Format(time.RFC3339Nano)
+	answer = bootingHostErrorForTest()
+	if _, err := f.panel.advanceServerSetupExecution(plan, &execution); err != nil {
+		t.Fatal(err)
+	}
+	if execution.Status != "waiting" || execution.Error == nil || execution.Error.Code != serverSetupHostStartingCode {
+		t.Fatalf("a second boot failed at once: %s %+v", execution.Status, execution.Error)
 	}
 }

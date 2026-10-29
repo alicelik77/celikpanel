@@ -59,6 +59,11 @@ func serverSetupHostStarting(err error) bool {
 // verified failure once the bound has passed. It returns nil when the step
 // is to fail with err (wrapped).
 func serverSetupHostStartingWait(execution *serverSetupExecution, now time.Time, cause error) (bool, error) {
+	// A new episode starts whenever the run's last state was not this wait
+	// (review fix, item 2): an earlier boot never shortens a later one.
+	if execution.Error == nil || execution.Error.Code != serverSetupHostStartingCode {
+		execution.HostStartingSince = ""
+	}
 	since, err := time.Parse(time.RFC3339Nano, execution.HostStartingSince)
 	if err != nil || execution.HostStartingSince == "" {
 		since = now

@@ -1243,6 +1243,10 @@ func serverSetupRunSuperseded(state serverSetupState, execution serverSetupExecu
 }
 
 func (p *Panel) persistServerSetupExecution(ctx context.Context, execution serverSetupExecution) error {
+	// Every outcome other than the booting-host wait ends that episode.
+	if execution.Error == nil || execution.Error.Code != serverSetupHostStartingCode {
+		execution.HostStartingSince = ""
+	}
 	encoded, err := json.Marshal(execution)
 	if err != nil {
 		return err
