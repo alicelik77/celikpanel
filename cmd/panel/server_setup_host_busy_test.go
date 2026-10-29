@@ -199,7 +199,9 @@ func TestServerSetupStartHostRefusalsAreCoded(t *testing.T) {
 	// its code and the command to check.
 	f, state := setupOperationFixture(t)
 	plan := saveSetupPlanForTest(t, f, state)
-	f.panel.agentClient = transport.NewReconnectingClientWithContextConnector(nil, func(context.Context) (*rpc.Client, error) { return nil, errors.New("dial unix /run/celikpanel/agent.sock: connect: no such file or directory") })
+	f.panel.agentClient = transport.NewReconnectingClientWithContextConnector(nil, func(context.Context) (*rpc.Client, error) {
+		return nil, errors.New("dial unix /run/celikpanel/agent.sock: connect: no such file or directory")
+	})
 	f.panel.pkgFamilyMu.Lock()
 	f.panel.hostPlatformKnown = false
 	f.panel.pkgFamilyMu.Unlock()
