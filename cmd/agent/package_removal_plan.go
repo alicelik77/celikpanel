@@ -147,6 +147,9 @@ type aptSimulation struct {
 	// Upgrades (alpha.107) are the Inst lines of packages already installed:
 	// "Inst name [old] (new …)".
 	Upgrades map[string]aptUpgrade
+	// Versions are every Inst line's new version and its archives, new
+	// installs and upgrades alike (From is empty for a new install).
+	Versions map[string]aptUpgrade
 }
 
 // aptUpgrade is one installed package's version now and after, and the
@@ -221,6 +224,17 @@ func parseAptSimulation(out []byte) aptSimulation {
 			if !seen["i:"+fields[1]] {
 				seen["i:"+fields[1]] = true
 				sim.Installed = append(sim.Installed, fields[1])
+				if len(fields) >= 3 {
+					version := fields[2]
+					if strings.HasPrefix(version, "[") && len(fields) >= 4 {
+						version = fields[3]
+					}
+					version = strings.TrimPrefix(version, "(")
+					if sim.Versions == nil {
+						sim.Versions = map[string]aptUpgrade{}
+					}
+					sim.Versions[fields[1]] = aptUpgrade{To: version, Origins: aptInstOrigins(line, version)}
+				}
 				if len(fields) >= 4 && strings.HasPrefix(fields[2], "[") && strings.HasSuffix(fields[2], "]") && strings.HasPrefix(fields[3], "(") {
 					if sim.Upgrades == nil {
 						sim.Upgrades = map[string]aptUpgrade{}

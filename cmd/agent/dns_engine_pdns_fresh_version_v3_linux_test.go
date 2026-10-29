@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alicelik/celikpanel/internal/dnsengineartifact"
 	"golang.org/x/sys/unix"
 )
 
@@ -23,8 +24,12 @@ import (
 func TestFreshPDNSVersionPreflightAcceptsTheTestedSeries(t *testing.T) {
 	packages := []string{"pdns-server", "pdns-backend-sqlite3"}
 	const measured, patched = "4.9.17-0+deb13u1", "4.9.18-0+deb13u1"
+	debian := []dnsengineartifact.PDNSArchive{{Origin: "Debian", Suite: "stable"}, {Origin: "Debian-Security", Suite: "stable-security"}}
+	archives := debian
+	var archivesErr error
 	ops := func(installed, candidate map[string]string) freshPDNSVersionOpsV3 {
 		return freshPDNSVersionOpsV3{
+			archives: func(string, string) ([]dnsengineartifact.PDNSArchive, error) { return archives, archivesErr },
 			installed: func(name string) (string, error) {
 				if v, ok := installed[name]; ok {
 					return v, nil
@@ -68,6 +73,14 @@ func TestFreshPDNSVersionPreflightAcceptsTheTestedSeries(t *testing.T) {
 			[]string{"could not read which pdns-backend-sqlite3 version", "apt-cache policy pdns-backend-sqlite3"}},
 		"installed other version": {nil, map[string]string{"pdns-server": "4.8.4-1", "pdns-backend-sqlite3": patched}, nil,
 			[]string{"pdns-server 4.8.4-1 is already installed", "PowerDNS 4.9 release"}},
+		"powerdns repository build": {packages, nil, map[string]string{"pdns-server": "4.9.4-1pdns.trixie", "pdns-backend-sqlite3": "4.9.4-1pdns.trixie"},
+			[]string{"would install pdns-server 4.9.4-1pdns.trixie"}},
+		"backport": {packages, nil, map[string]string{"pdns-server": "4.9.4-1~bpo13+1", "pdns-backend-sqlite3": "4.9.4-1~bpo13+1"},
+			[]string{"would install pdns-server 4.9.4-1~bpo13+1"}},
+		"epoch": {packages, nil, map[string]string{"pdns-server": "1:4.9.18-0+deb13u1", "pdns-backend-sqlite3": "1:4.9.18-0+deb13u1"},
+			[]string{"would install pdns-server 1:4.9.18-0+deb13u1"}},
+		"installed vendor build": {nil, map[string]string{"pdns-server": "4.9.4-1pdns.trixie", "pdns-backend-sqlite3": "4.9.4-1pdns.trixie"}, nil,
+			[]string{"is already installed"}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := preflightFreshPDNSPackageVersionsWithOpsV3(packages, tc.missing, ops(tc.installed, tc.candidate))
@@ -81,6 +94,33 @@ func TestFreshPDNSVersionPreflightAcceptsTheTestedSeries(t *testing.T) {
 				}
 			}
 		})
+	}
+	// Provenance: the Debian version from another archive, or an archive
+	// that cannot be named, is refused before anything changes.
+	both := map[string]string{"pdns-server": patched, "pdns-backend-sqlite3": patched}
+	for name, tc := range map[string]struct {
+		archives []dnsengineartifact.PDNSArchive
+		err      error
+		want     string
+	}{
+		"repo.powerdns.com": {[]dnsengineartifact.PDNSArchive{{Origin: "PowerDNS", Suite: "trixie-auth-49"}}, nil, "would come from PowerDNS trixie-auth-49"},
+		"backports":         {[]dnsengineartifact.PDNSArchive{{Origin: "Debian", Suite: "stable-backports"}}, nil, "only from Debian's own archive"},
+		"unreadable index":  {nil, nil, "an archive APT could not name"},
+		"simulation failed": {nil, errors.New("apt-get -s failed"), "could not read which archive"},
+	} {
+		archives, archivesErr = tc.archives, tc.err
+		_, err := preflightFreshPDNSPackageVersionsWithOpsV3(packages, packages, ops(nil, both))
+		if sentence := operatorSentenceOf(err); err == nil || !strings.Contains(sentence, tc.want) || !strings.Contains(sentence, "nothing was changed") {
+			t.Fatalf("%s: %v", name, err)
+		}
+	}
+	archives, archivesErr = debian, nil
+	sim := parseAptSimulation([]byte("Inst pdns-server (4.9.18-0+deb13u1 Debian:13.2/stable, Debian-Security:13/stable-security [amd64])"))
+	if got := pdnsArchivesOf(sim, "pdns-server", "4.9.18-0+deb13u1"); !dnsengineartifact.PDNSOfficialDebianArchive(got) {
+		t.Fatalf("archives of a simulated install: %+v", got)
+	}
+	if got := pdnsArchivesOf(sim, "pdns-server", "4.9.17-0+deb13u1"); got != nil {
+		t.Fatalf("another version's archives: %+v", got)
 	}
 	if _, err := installFreshPDNSPackagesV3(context.Background(), []string{"pdns-server"}, "5.0.1-1"); err == nil {
 		t.Fatal("an install outside the tested series was attempted")
@@ -144,6 +184,9 @@ func TestFreshPDNSNativeIdentityFollowsTheTestedSeries(t *testing.T) {
 	for name, o := range map[string]freshPDNSIdentityOpsV3{
 		"other series": ops("5.0.1-1", "5.0.1-1", sums),
 		"two builds":   ops("4.9.18-0+deb13u1", "4.9.17-0+deb13u1", sums),
+		"vendor build": ops("4.9.4-1pdns.trixie", "4.9.4-1pdns.trixie", sums),
+		"backport":     ops("4.9.4-1~bpo13+1", "4.9.4-1~bpo13+1", sums),
+		"epoch":        ops("1:4.9.18-0+deb13u1", "1:4.9.18-0+deb13u1", sums),
 		"changed file": ops("4.9.18-0+deb13u1", "4.9.18-0+deb13u1", []byte(hex.EncodeToString(other[:])+"  "+strings.TrimPrefix(binary, "/")+"\n")),
 		"unrecorded":   ops("4.9.18-0+deb13u1", "4.9.18-0+deb13u1", []byte("")),
 	} {

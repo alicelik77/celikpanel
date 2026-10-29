@@ -114,6 +114,7 @@ export function SetupNamesStep({ draft, mail, web, mainDomain, ip, ownDNS, onCha
 const engineReason: Record<string, TranslationKey> = {
     server_setup_pdns_main_untested_system: 'setup.v2.engine.untested',
     server_setup_pdns_main_untested_version: 'setup.v2.engine.untestedVersion',
+    server_setup_pdns_main_not_debian_archive: 'setup.v2.engine.notDebianArchive',
     server_setup_existing_dns_requires_migration: 'setup.v2.engine.existing',
     bind_source_pdns_switch_unsupported: 'setup.v2.engine.existing',
     pdns_primary_switch_paused: 'setup.v2.engine.paused',

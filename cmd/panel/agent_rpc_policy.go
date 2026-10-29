@@ -130,7 +130,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.ListSystemSQLiteDatabases Agent.MailFilterWiringState Agent.MailHealth
 		Agent.NginxInspect Agent.PanelRenewalReadiness Agent.MailHostCertificateStatus Agent.MailEnrollmentStatusV1 Agent.MailEnrollmentPreviewV1 Agent.PkgFamily
 		Agent.PostfixQueue Agent.ReadBackupChunk Agent.ReadFile
-		Agent.ReadSystemSQLiteSnapshotChunk Agent.RepoPackages Agent.ServiceCandidateVersion
+		Agent.ReadSystemSQLiteSnapshotChunk Agent.RepoPackages Agent.ServiceCandidateVersion Agent.PDNSFreshPrimaryCandidateV1
 		Agent.ServiceJournal Agent.ServiceMutationReadiness Agent.ServiceRemovalPreviewV1 Agent.ServiceInstallPreviewV1 Agent.PHPToolBindingsV1 Agent.SiteUsage Agent.Version Agent.VPNStatus
 		Agent.CheckSystemUpdate Agent.SecurityAudit Agent.SystemUpdateStatus
 		Agent.OSUpdatesStatusV1 Agent.RoundcubeUpdateCheckV1 Agent.WebmailProofV1 Agent.WebmailAddressStatusV1 Agent.RestartNeedsV1
@@ -307,11 +307,12 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.ServiceJournal":                agentRPCStandardReadTimeout,
 
 	// Reads that may contact repositories or public DNS.
-	"Agent.CheckRBL":                agentRPCNetworkReadTimeout,
-	"Agent.DNSClusterReadiness":     agentRPCNetworkReadTimeout,
-	"Agent.RepoPackages":            agentRPCNetworkReadTimeout,
-	"Agent.ServiceCandidateVersion": agentRPCNetworkReadTimeout,
-	"Agent.ListNodeLTS":             agentRPCNetworkReadTimeout,
+	"Agent.CheckRBL":                    agentRPCNetworkReadTimeout,
+	"Agent.DNSClusterReadiness":         agentRPCNetworkReadTimeout,
+	"Agent.RepoPackages":                agentRPCNetworkReadTimeout,
+	"Agent.ServiceCandidateVersion":     agentRPCNetworkReadTimeout,
+	"Agent.PDNSFreshPrimaryCandidateV1": agentRPCNetworkReadTimeout,
+	"Agent.ListNodeLTS":                 agentRPCNetworkReadTimeout,
 
 	// Short, bounded host mutations.
 	"Agent.BeginServiceMutation":        agentRPCMutationTimeout,

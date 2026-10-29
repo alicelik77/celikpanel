@@ -420,6 +420,9 @@ type serverSetupCatalogInputs struct {
 	CandidateVersions map[string]string
 	Repos             map[string]serverSetupRepoObservation
 	DNSState          *dnsEngineDBState
+	// PDNSCandidate is the Agent's read of the PowerDNS build a fresh paired
+	// primary would install (nil when not read).
+	PDNSCandidate *transport.PDNSFreshPrimaryCandidateResponse
 }
 
 func (p *Panel) handleServerSetupComponents(w http.ResponseWriter, r *http.Request) {
@@ -457,6 +460,9 @@ func (p *Panel) readServerSetupCatalogInputs(ctx context.Context) serverSetupCat
 	}
 	if state, err := readDNSEngineDBState(ctx, p.db.GetDB()); err == nil {
 		inputs.DNSState = &state
+		if state.ActiveEngine == "" && serverSetupPDNSMainSystemTested(inputs.Host) {
+			inputs.PDNSCandidate = p.readServerSetupPDNSCandidate(ctx)
+		}
 	}
 	for id, observed := range p.readPackageVersionsForScan(ctx, nil, time.Now()) {
 		if _, short, _ := packageVersionView(observed.Packages); short != "" {
@@ -650,14 +656,33 @@ func serverSetupPDNSMainSystemTested(host core.ManagedServiceHostProfile) bool {
 	return host.DistroID == "debian" && host.VersionID == "13" && host.Architecture == "amd64"
 }
 
-// serverSetupPDNSMainVersionTested applies the Agent's own rule
-// (dnsengineartifact.PDNSFreshPrimaryTestedSeries) to the version this server
-// would install, so the wizard offers PowerDNS as the main DNS server only when
-// the DNS step will accept it. An unread version stays unknown, not refused:
-// the Agent reads it again before any effect.
-// Sihirbazin sundugu surum, DNS adiminin kabul ettigi kuraldan gelir.
-func serverSetupPDNSMainVersionTested(version string) bool {
-	return strings.TrimSpace(version) == "" || dnsengineartifact.PDNSFreshPrimaryVersionInTestedSeries(version)
+// serverSetupPDNSMainCandidateBlocker applies the Agent's own rules to the
+// PowerDNS build this server would install, so the wizard offers PowerDNS as
+// the main DNS server only when the DNS step will accept it: Debian's archive
+// build of the tested series (dnsengineartifact), from Debian's own archive.
+// An unread candidate stays unknown, not refused: the Agent reads it again
+// before any effect.
+// Sihirbazin sundugu yapi, DNS adiminin kabul ettigi kuraldan gelir.
+func serverSetupPDNSMainCandidateBlocker(candidate *transport.PDNSFreshPrimaryCandidateResponse) string {
+	switch {
+	case candidate == nil || candidate.State != "known":
+		return ""
+	case !dnsengineartifact.PDNSFreshPrimaryVersionInTestedSeries(candidate.Version):
+		return "server_setup_pdns_main_untested_version"
+	case !candidate.Official:
+		return "server_setup_pdns_main_not_debian_archive"
+	}
+	return ""
+}
+
+// readServerSetupPDNSCandidate asks the Agent, read-only (nil when it cannot
+// answer).
+func (p *Panel) readServerSetupPDNSCandidate(ctx context.Context) *transport.PDNSFreshPrimaryCandidateResponse {
+	var candidate transport.PDNSFreshPrimaryCandidateResponse
+	if err := p.callAgentContext(ctx, "Agent.PDNSFreshPrimaryCandidateV1", &transport.Empty{}, &candidate); err != nil {
+		return nil
+	}
+	return &candidate
 }
 
 // serverSetupDNSEngineChoices applies the review's DNS rules per software and
@@ -691,8 +716,8 @@ func serverSetupDNSEngineChoices(inputs serverSetupCatalogInputs) []serverSetupD
 					choice.Offered, choice.Reason = false, code
 				} else if !serverSetupPDNSMainSystemTested(inputs.Host) {
 					choice.Offered, choice.Reason = false, "server_setup_pdns_main_untested_system"
-				} else if !serverSetupPDNSMainVersionTested(choice.InstalledVersion + choice.CandidateVersion) {
-					choice.Offered, choice.Reason = false, "server_setup_pdns_main_untested_version"
+				} else if code := serverSetupPDNSMainCandidateBlocker(inputs.PDNSCandidate); code != "" {
+					choice.Offered, choice.Reason = false, code
 				}
 			}
 			choices = append(choices, choice)

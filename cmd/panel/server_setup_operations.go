@@ -329,14 +329,10 @@ func setupPDNSPairedPrimaryBlocker(draft serverSetupDraft, state dnsEngineDBStat
 	return code
 }
 
-// serverSetupPDNSMainCandidateTested reads, read-only, the PowerDNS version
-// this server would install and applies the catalogue's rule to it.
-func (p *Panel) serverSetupPDNSMainCandidateTested(ctx context.Context) bool {
-	var version string
-	if err := p.callAgentContext(ctx, "Agent.ServiceCandidateVersion", &transport.InstallServiceRequest{ID: string(transport.DNSEnginePowerDNS)}, &version); err != nil {
-		return true
-	}
-	return serverSetupPDNSMainVersionTested(version)
+// serverSetupPDNSMainCandidateCode reads, read-only, the PowerDNS build this
+// server would install and applies the catalogue's rule to it.
+func (p *Panel) serverSetupPDNSMainCandidateCode(ctx context.Context) string {
+	return serverSetupPDNSMainCandidateBlocker(p.readServerSetupPDNSCandidate(ctx))
 }
 
 func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState, actor serviceOperationActor) (serverSetupPlan, error) {
@@ -422,8 +418,10 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 			addBlocker(code)
 		} else if draft.DNSRole == transport.DNSPairRolePrimary && transport.DNSEngine(draft.DNSEngine) == transport.DNSEnginePowerDNS && !serverSetupPDNSMainSystemTested(p.managedServiceHostProfile()) {
 			addBlocker("server_setup_pdns_main_untested_system")
-		} else if draft.DNSRole == transport.DNSPairRolePrimary && transport.DNSEngine(draft.DNSEngine) == transport.DNSEnginePowerDNS && !p.serverSetupPDNSMainCandidateTested(ctx) {
-			addBlocker("server_setup_pdns_main_untested_version")
+		} else if draft.DNSRole == transport.DNSPairRolePrimary && transport.DNSEngine(draft.DNSEngine) == transport.DNSEnginePowerDNS {
+			if code := p.serverSetupPDNSMainCandidateCode(ctx); code != "" {
+				addBlocker(code)
+			}
 		}
 	} else if draft.DNSMode == "local" {
 		request, local, identityErr := setupDNSIdentity(draft)
@@ -448,9 +446,10 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 				// Same rule as the catalogue: refused at review, not mid-run.
 				addBlocker("server_setup_pdns_main_untested_system")
 			} else if draft.DNSRole == transport.DNSPairRolePrimary && state.ActiveEngine == "" &&
-				transport.DNSEngine(draft.DNSEngine) == transport.DNSEnginePowerDNS &&
-				!p.serverSetupPDNSMainCandidateTested(ctx) {
-				addBlocker("server_setup_pdns_main_untested_version")
+				transport.DNSEngine(draft.DNSEngine) == transport.DNSEnginePowerDNS {
+				if code := p.serverSetupPDNSMainCandidateCode(ctx); code != "" {
+					addBlocker(code)
+				}
 			}
 			if serverSetupSecondaryHosting(draft) {
 				endpoint, err := canonicalRemoteDNSEndpoint(draft.DNSPublisherEndpoint)

@@ -219,6 +219,9 @@ type serviceOperationTestAgent struct {
 	// bindOwnerChanged: BIND runs with its published files changed by the
 	// owner (DNSBackendReadiness reports OwnerChanged).
 	bindOwnerChanged bool
+	// pdnsCandidate answers PDNSFreshPrimaryCandidateV1 (nil: the RPC fails,
+	// as an older Agent's would).
+	pdnsCandidate *transport.PDNSFreshPrimaryCandidateResponse
 	// installPreview answers ServiceInstallPreviewV1 when set.
 	installPreview func(*transport.ServiceInstallPreviewRequest, *transport.ServiceInstallPreviewResponse) error
 	// installRequests are the InstallService requests received, in order.
@@ -580,6 +583,16 @@ func (a *serviceOperationTestAgent) ListServiceInstances(
 			resp.Instances = append(resp.Instances, core.ServiceInstance{Version: version, Managed: true})
 		}
 	}
+	return nil
+}
+
+func (a *serviceOperationTestAgent) PDNSFreshPrimaryCandidateV1(_ *transport.Empty, resp *transport.PDNSFreshPrimaryCandidateResponse) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.pdnsCandidate == nil {
+		return errors.New("PowerDNS candidate not read")
+	}
+	*resp = *a.pdnsCandidate
 	return nil
 }
 

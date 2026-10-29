@@ -4,7 +4,10 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/hex"
+	"regexp"
 	"strings"
+
+	"github.com/alicelik/celikpanel/internal/debversion"
 )
 
 // PDNSFreshPrimaryTestedSeries is the one source of truth for which PowerDNS
@@ -29,28 +32,57 @@ var PDNSFreshPrimaryPackages = []string{"pdns-server", "pdns-backend-sqlite3"}
 // PDNSFreshPrimaryBinary is the package-owned daemon whose identity is checked.
 const PDNSFreshPrimaryBinary = "/usr/sbin/pdns_server"
 
-// PDNSUpstreamVersion returns the upstream part of a distribution package
-// version ("4.9.18" for "4.9.18-0+deb13u1", an epoch removed), or the value
-// itself when it already is one.
-func PDNSUpstreamVersion(version string) string {
-	value := strings.TrimSpace(version)
-	if colon := strings.IndexByte(value, ':'); colon > 0 && allDigits(value[:colon]) {
-		value = value[colon+1:]
+// pdnsDebianArchiveRevision is the revision the Debian archive itself gives a
+// PowerDNS release ("1", "0+deb13u1", "2+deb13u3"). A backport ("~bpo13+1"),
+// the PowerDNS repository's builds ("1pdns.trixie"), an Ubuntu or vendor
+// rebuild carry other revisions.
+var pdnsDebianArchiveRevision = regexp.MustCompile(`^[0-9]+(\+deb[0-9]+u[0-9]+)?$`)
+
+// PDNSFreshPrimaryVersionInTestedSeries reports whether a full package
+// version is the Debian archive's build of a release of the tested series:
+// a valid Debian version with no epoch, a Debian archive revision, and an
+// upstream major.minor.patch with a numeric patch. Pre-releases, other
+// series, epochs, backports and the PowerDNS repository's builds are not.
+// Where the version comes from is checked apart, at the install
+// (PDNSOfficialDebianArchive); an installed package can no longer show it.
+func PDNSFreshPrimaryVersionInTestedSeries(version string) bool {
+	if !debversion.Valid(version) {
+		return false
 	}
-	if dash := strings.LastIndexByte(value, '-'); dash > 0 {
-		value = value[:dash]
+	v, ok := debversion.Parse(version)
+	if !ok || v.Epoch != "" || !pdnsDebianArchiveRevision.MatchString(v.Revision) {
+		return false
 	}
-	return value
+	patch, ok := strings.CutPrefix(v.Upstream, PDNSFreshPrimaryTestedSeries+".")
+	return ok && allDigits(patch)
 }
 
-// PDNSFreshPrimaryVersionInTestedSeries reports whether a package version (a
-// full distribution version or its upstream part) is a release of the tested
-// series: exactly major.minor.patch with a numeric patch. Pre-releases and
-// other series are outside it.
-func PDNSFreshPrimaryVersionInTestedSeries(version string) bool {
-	upstream := PDNSUpstreamVersion(version)
-	patch, ok := strings.CutPrefix(upstream, PDNSFreshPrimaryTestedSeries+".")
-	return ok && allDigits(patch)
+// PDNSArchive is one archive APT names for a candidate version: the Release
+// file's Origin and the archive (suite).
+type PDNSArchive struct {
+	Origin, Suite string
+}
+
+// PDNSOfficialDebianArchive: every archive APT names for the candidate is
+// Debian's own released suite or its security/updates pocket. A vendor or
+// third-party repository (repo.powerdns.com), backports, testing/unstable or
+// no archive at all (an unreadable index) is not.
+func PDNSOfficialDebianArchive(archives []PDNSArchive) bool {
+	if len(archives) == 0 {
+		return false
+	}
+	for _, archive := range archives {
+		if archive.Origin != "Debian" && archive.Origin != "Debian-Security" {
+			return false
+		}
+		suite := strings.ToLower(archive.Suite)
+		for _, refused := range []string{"backports", "proposed", "experimental", "unstable", "testing", "sid"} {
+			if strings.Contains(suite, refused) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // PDNSPackageFileMD5 returns the digest dpkg recorded for one file of an

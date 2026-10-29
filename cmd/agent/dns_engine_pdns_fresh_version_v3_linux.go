@@ -32,6 +32,21 @@ type freshPDNSVersionOpsV3 struct {
 	installed func(string) (string, error)
 	// candidate returns the version apt would install ("" when none).
 	candidate func(string) (string, error)
+	// archives returns the archives APT names for name=version (read-only
+	// simulation); none when it names none.
+	archives func(name, version string) ([]dnsengineartifact.PDNSArchive, error)
+}
+
+// pdnsArchivesText names the archives for a refusal sentence.
+func pdnsArchivesText(archives []dnsengineartifact.PDNSArchive) string {
+	if len(archives) == 0 {
+		return "an archive APT could not name"
+	}
+	names := make([]string, 0, len(archives))
+	for _, archive := range archives {
+		names = append(names, freshPDNSVersionText(archive.Origin+" "+archive.Suite))
+	}
+	return strings.Join(names, ", ")
 }
 
 func freshPDNSVersionText(value string) string {
@@ -42,7 +57,7 @@ func freshPDNSVersionText(value string) string {
 // unless every package of the set is (or would be installed) at one release
 // of the tested series. It returns that version for the pinned install.
 func preflightFreshPDNSPackageVersionsWithOpsV3(packages, missing []string, ops freshPDNSVersionOpsV3) (string, error) {
-	if ops.installed == nil || ops.candidate == nil || len(packages) == 0 {
+	if ops.installed == nil || ops.candidate == nil || ops.archives == nil || len(packages) == 0 {
 		return "", errors.New("v3 PowerDNS version preflight is incomplete")
 	}
 	absent := map[string]bool{}
@@ -77,6 +92,24 @@ func preflightFreshPDNSPackageVersionsWithOpsV3(packages, missing []string, ops 
 						"but CelikPanel installs a fresh paired PowerDNS primary only from the tested PowerDNS %s series. "+
 						"Choose BIND as the main DNS server, or wait for a CelikPanel release that names %s as tested, then start the same change again.",
 					name, freshPDNSVersionText(offered), series, freshPDNSVersionText(offered))}
+			}
+			// Provenance: the build must come from Debian's own archive.
+			archives, err := ops.archives(name, offered)
+			if err != nil {
+				return "", &hostOperatorRefusal{
+					sentence: fmt.Sprintf(
+						"PowerDNS was not installed and nothing was changed: CelikPanel could not read which archive %s %s would come from. "+
+							"Start the same change again; if this repeats, the server owner checks the package sources with `apt-cache policy %s`.",
+						name, freshPDNSVersionText(offered), name),
+					cause: err,
+				}
+			}
+			if !dnsengineartifact.PDNSOfficialDebianArchive(archives) {
+				return "", &hostOperatorRefusal{sentence: fmt.Sprintf(
+					"PowerDNS was not installed and nothing was changed: %s %s would come from %s, "+
+						"but CelikPanel installs a fresh paired PowerDNS primary only from Debian's own archive. "+
+						"Choose BIND as the main DNS server, or the server owner removes or confines that repository (for example repo.powerdns.com or backports) so APT takes Debian's build, then starts the same change again.",
+					name, freshPDNSVersionText(offered), pdnsArchivesText(archives))}
 			}
 			version = offered
 		} else {
@@ -155,7 +188,29 @@ func preflightFreshPDNSPackageVersionsV3(ctx context.Context, profile hostplatfo
 			}
 			return aptInstallCandidateWithExecutable(ctx, aptCache, name)
 		},
+		archives: func(name, version string) ([]dnsengineartifact.PDNSArchive, error) {
+			packageOperationMu.Lock()
+			defer packageOperationMu.Unlock()
+			sim, err := runAptSimulation(ctx, runPackageSimulationCommand, aptGet, aptInstallArgs([]string{name + "=" + version}))
+			if err != nil {
+				return nil, err
+			}
+			return pdnsArchivesOf(sim, name, version), nil
+		},
 	})
+}
+
+// pdnsArchivesOf is the archives a simulation names for name at version.
+func pdnsArchivesOf(sim aptSimulation, name, version string) []dnsengineartifact.PDNSArchive {
+	line, ok := sim.Versions[name]
+	if !ok || line.To != version {
+		return nil
+	}
+	archives := make([]dnsengineartifact.PDNSArchive, 0, len(line.Origins))
+	for _, origin := range line.Origins {
+		archives = append(archives, dnsengineartifact.PDNSArchive{Origin: origin.Origin, Suite: origin.Suite})
+	}
+	return archives
 }
 
 // installFreshPDNSPackagesV3 installs the missing packages at the one tested

@@ -68,3 +68,28 @@ func TestFreshPDNSExecutableProofV3(t *testing.T) {
 		})
 	}
 }
+
+// The recovery attestation accepts what the Agent accepts: Debian's archive
+// build of the tested series, one build for both packages.
+func TestFreshPDNSInstalledVersionV3RefusesOtherBuilds(t *testing.T) {
+	for _, version := range []string{"4.9.17-0+deb13u1", "4.9.18-0+deb13u1"} {
+		if got, ok := freshPDNSInstalledVersionV3("install ok installed\t"+version, ""); !ok || got != version {
+			t.Fatalf("%s refused", version)
+		}
+	}
+	for name, raw := range map[string]string{
+		"powerdns repository": "install ok installed\t4.9.4-1pdns.trixie",
+		"backport":            "install ok installed\t4.9.4-1~bpo13+1",
+		"epoch":               "install ok installed\t1:4.9.18-0+deb13u1",
+		"other series":        "install ok installed\t5.0.1-1",
+		"not installed":       "deinstall ok config-files\t4.9.18-0+deb13u1",
+		"invalid":             "install ok installed\t4.9.18;rm",
+	} {
+		if _, ok := freshPDNSInstalledVersionV3(raw, ""); ok {
+			t.Fatalf("%s accepted", name)
+		}
+	}
+	if _, ok := freshPDNSInstalledVersionV3("install ok installed\t4.9.18-0+deb13u1", "4.9.17-0+deb13u1"); ok {
+		t.Fatal("two builds accepted")
+	}
+}

@@ -213,6 +213,17 @@ const (
 
 // DNSBackendReadinessResponse reports only bounded runtime facts. Detailed
 // probe failures stay in agent logs and are not exposed as raw API errors.
+// PDNSFreshPrimaryCandidateResponse is the PowerDNS build a fresh paired
+// primary would install: State "known" or "unknown" (busy, unreadable, or
+// already installed), Version the one version both packages would get, and
+// Official whether every archive APT names for it is Debian's own.
+// PDNSFreshPrimaryCandidateResponse: kurulacak PowerDNS yapısı ve kaynağı.
+type PDNSFreshPrimaryCandidateResponse struct {
+	State    string `json:"state"`
+	Version  string `json:"version,omitempty"`
+	Official bool   `json:"official,omitempty"`
+}
+
 type DNSBackendRuntimeState struct {
 	Engine    DNSEngine `json:"engine"`
 	Installed bool      `json:"installed"`

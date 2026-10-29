@@ -15,6 +15,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/alicelik/celikpanel/internal/debversion"
 	"github.com/alicelik/celikpanel/internal/dnsengineartifact"
 	"github.com/alicelik/celikpanel/internal/hostplatform"
 )
@@ -48,8 +49,8 @@ func verifyInstalledFreshPDNSNativeVersionV3(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("v3 PowerDNS package %s could not be verified: %w", name, err)
 		}
-		installed, ok := strings.CutPrefix(raw, "install ok installed\t")
-		if !ok || !dnsengineartifact.PDNSFreshPrimaryVersionInTestedSeries(installed) || (version != "" && installed != version) {
+		installed, ok := freshPDNSInstalledVersionV3(raw, version)
+		if !ok {
 			return fmt.Errorf("v3 PowerDNS package %s is not the tested PowerDNS %s build", name, dnsengineartifact.PDNSFreshPrimaryTestedSeries)
 		}
 		version = installed
@@ -74,6 +75,18 @@ func verifyInstalledFreshPDNSNativeVersionV3(ctx context.Context) error {
 		return err
 	}
 	return ctx.Err()
+}
+
+// freshPDNSInstalledVersionV3 reads one dpkg-query "${Status}\t${Version}"
+// record: accepted only for Debian's archive build of the tested series (no
+// epoch, no backport, no PowerDNS repository or vendor build) at the same
+// version as the other package (prior, "" for the first).
+func freshPDNSInstalledVersionV3(raw, prior string) (string, bool) {
+	installed, ok := strings.CutPrefix(raw, "install ok installed\t")
+	if !ok || !debversion.Valid(installed) || !dnsengineartifact.PDNSFreshPrimaryVersionInTestedSeries(installed) || (prior != "" && installed != prior) {
+		return "", false
+	}
+	return installed, true
 }
 
 // The caller supplies only the fixed vendor path and the digest dpkg recorded
