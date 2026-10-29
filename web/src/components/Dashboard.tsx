@@ -83,7 +83,7 @@ interface AuditGroup extends AuditLite {
 interface Extras {
     databases: number;
     mail_accounts: number;
-    expiring_certs: { domain_name: string; days_left: number; waiting_for_owner?: boolean; served_days_left?: number }[];
+    expiring_certs: { domain_name: string; days_left: number; waiting_for_owner?: boolean; served_days_left?: number; renewal_problem?: string }[];
 }
 
 // An answer without the two counts is not "0 databases, 0 mailboxes".
@@ -778,6 +778,20 @@ function AdminDashboard() {
     // yalnız gerçek ve eyleme dönüştürülebilir sorunlar.
     const attention: { key: string; icon: typeof Cpu; text: string; action: string; to: string; danger?: boolean; onAct?: () => void }[] = [];
     for (const c of extras?.expiring_certs || []) {
+        if (c.renewal_problem) {
+            // D-039: the operating system's certbot renews this certificate
+            // and has a problem only the server administrator can solve;
+            // the domain's certificate card names the next action.
+            attention.push({
+                key: `cert-renewal-${c.domain_name}`,
+                icon: Lock,
+                text: t('dashboard.certRenewalProblem', { domain: c.domain_name, days: Math.max(c.days_left, 0) }),
+                action: t('dashboard.openDomain'),
+                to: `/domains/${encodeURIComponent(c.domain_name)}`,
+                danger: c.days_left <= 14 || c.renewal_problem === 'expired' || c.renewal_problem === 'lineage_missing',
+            });
+            continue;
+        }
         if (c.waiting_for_owner) {
             // D-031 step 1b: a certificate waits on the site's configuration
             // file the owner kept; the days are of the one in use.

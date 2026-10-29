@@ -38,6 +38,11 @@ type IssueLetsEncryptResponse struct {
 	// certbot çalışıp sertifika çıkarmadığında doldurulur.
 	Failure       string `json:"failure,omitempty"`
 	FailureDetail string `json:"failure_detail,omitempty"`
+	// RenewalWarning (D-039, additive) says what keeps the operating
+	// system from renewing the issued certificate by itself (its certbot
+	// timer could not be enabled, the deploy hook could not be written or
+	// was changed by the owner). The certificate itself was issued.
+	RenewalWarning string `json:"renewal_warning,omitempty"`
 }
 
 // Why a certbot run did not issue a certificate. Only what certbot's own

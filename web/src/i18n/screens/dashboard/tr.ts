@@ -85,6 +85,7 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'dashboard.certExpires': '{domain} SSL sertifikası {days} gün içinde doluyor',
     'dashboard.certExpired': '{domain} SSL sertifikasının süresi doldu',
     'dashboard.renew': 'Yenile',
+    'dashboard.certRenewalProblem': '{domain}: sertifikanın otomatik yenilemesi sunucu yöneticisini bekliyor ({days} gün kaldı); sonraki adım alan adının sertifikasında yazıyor',
     'dashboard.certWaitingOwner': '{domain}: bir sertifika, sitenin yapılandırma dosyası için seçiminizi bekliyor',
     'dashboard.certWaitingOwnerDays': '{domain}: bir sertifika, sitenin yapılandırma dosyası için seçiminizi bekliyor; kullanılan sertifikanın {days} günü kaldı',
     'dashboard.certWaitingOwnerExpired': '{domain}: bir sertifika, sitenin yapılandırma dosyası için seçiminizi bekliyor; kullanılan sertifikanın süresi {days} gün önce doldu',

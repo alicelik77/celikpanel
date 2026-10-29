@@ -27,6 +27,14 @@ func validateIssuedCertificateLineage(
 	canonicalDomain := strings.ToLower(
 		strings.TrimSuffix(strings.TrimSpace(domain), "."),
 	)
+	if transport.IsNativeSiteLineage(lineage) {
+		// D-039: every issuance, first or replacement, is its own
+		// OS-renewed lineage of this domain identity.
+		if !transport.NativeSiteLineageBelongsTo(lineage, domainID) {
+			return fmt.Errorf("the ACME agent returned a certificate lineage of another domain")
+		}
+		return nil
+	}
 	if !replacement {
 		if lineage != canonicalDomain {
 			return fmt.Errorf(

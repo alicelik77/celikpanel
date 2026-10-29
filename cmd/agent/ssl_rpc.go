@@ -6,7 +6,6 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/ed25519"
-	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
@@ -58,7 +57,6 @@ const (
 )
 
 var siteCertbotSlot = make(chan struct{}, 1)
-var stagedLineageRandomRead = rand.Read
 
 func acquireSiteCertbot() bool {
 	select {
@@ -204,58 +202,6 @@ func certificateLeafFingerprint(path string) ([sha256.Size]byte, error) {
 	return sha256.Sum256(certificates[0].Raw), nil
 }
 
-func buildCertbotIssueArgs(req IssueLetsEncryptRequest, webroot string) []string {
-	return buildCertbotIssueArgsForStorage(
-		req, webroot, isolatedSiteCertbotStorage(), req.Domain,
-	)
-}
-
-func buildCertbotIssueArgsForStorage(
-	req IssueLetsEncryptRequest,
-	webroot string,
-	storage certbotStorage,
-	certName string,
-) []string {
-	args := []string{
-		"certonly",
-	}
-	args = append(args, storage.commandArgs()...)
-	args = append(args,
-		"--webroot",
-		"-w", webroot,
-		"--agree-tos",
-		"--non-interactive",
-		"--cert-name", certName,
-	)
-	if strings.TrimSpace(req.Email) != "" {
-		args = append(args, "--email", strings.TrimSpace(req.Email))
-	}
-	if req.ForceRenewal {
-		args = append(args, "--force-renewal")
-	}
-	if req.ACMEServer != "" {
-		args = append(args, "--server", req.ACMEServer)
-	}
-	if req.EABKeyID != "" && req.EABHMACKey != "" {
-		args = append(args, "--eab-kid", req.EABKeyID, "--eab-hmac-key", req.EABHMACKey)
-	}
-
-	seen := make(map[string]struct{}, len(req.Aliases)+1)
-	for _, domain := range append([]string{req.Domain}, req.Aliases...) {
-		domain = strings.TrimSpace(domain)
-		key := strings.ToLower(domain)
-		if domain == "" {
-			continue
-		}
-		if _, exists := seen[key]; exists {
-			continue
-		}
-		seen[key] = struct{}{}
-		args = append(args, "-d", domain)
-	}
-	return args
-}
-
 func normalizeCurrentLineageName(
 	raw string,
 	domain string,
@@ -273,70 +219,6 @@ func normalizeCurrentLineageName(
 		return "", fmt.Errorf("invalid certificate lineage identity")
 	}
 	return lineage, nil
-}
-
-func newStagedSiteLineage(domainID int) (string, error) {
-	if domainID <= 0 {
-		return "", fmt.Errorf("invalid domain identity")
-	}
-	random := make([]byte, 12)
-	n, err := stagedLineageRandomRead(random)
-	if err != nil {
-		return "", fmt.Errorf("generate staged lineage identity: %w", err)
-	}
-	if n != len(random) {
-		return "", fmt.Errorf("generate staged lineage identity: short random read")
-	}
-	return fmt.Sprintf("cp-site-%d-%x", domainID, random), nil
-}
-
-func selectIssueLineage(
-	req IssueLetsEncryptRequest,
-	isolated certbotStorage,
-	legacyConfigDir string,
-) (certbotStorage, string, error) {
-	storage := isolated
-	lineageName := req.Domain
-	if req.FreshLineage && (!req.StageLineage || !req.ForceRenewal) {
-		return storage, "", fmt.Errorf(
-			"fresh lineage requires an explicit staged replacement request",
-		)
-	}
-	if !req.StageLineage {
-		return storage, lineageName, nil
-	}
-	if !req.ForceRenewal {
-		return storage, "", fmt.Errorf(
-			"staged lineage requires an explicit replacement request",
-		)
-	}
-	if !req.FreshLineage {
-		if strings.TrimSpace(req.CurrentCertPath) == "" {
-			return storage, "", fmt.Errorf(
-				"staged lineage requires the active immutable certificate path",
-			)
-		}
-		currentLineage, err := normalizeCurrentLineageName(
-			req.CurrentLineageName, req.Domain, req.DomainID,
-		)
-		if err != nil {
-			return storage, "", err
-		}
-		storage, err = certbotStorageForExistingLineage(
-			currentLineage,
-			req.CurrentCertPath,
-			storage,
-			legacyConfigDir,
-		)
-		if err != nil {
-			return storage, "", err
-		}
-	}
-	lineageName, err := newStagedSiteLineage(req.DomainID)
-	if err != nil {
-		return storage, "", err
-	}
-	return storage, lineageName, nil
 }
 
 func certbotStorageForExistingLineage(
@@ -395,7 +277,11 @@ func certbotRenewContext(parent context.Context) (context.Context, context.Cance
 	return context.WithTimeout(parent, certbotRenewTimeout)
 }
 
-// IssueLetsEncryptCertificate issues a new Let's Encrypt certificate using certbot
+// IssueLetsEncryptCertificate issues a website certificate into the
+// standard certbot store as a fresh lineage that the operating system's
+// certbot schedule renews (site_cert_native.go, D-039). Every issuance,
+// first or replacement, gets its own lineage, so a failed replacement never
+// touches the lineage that is being served.
 func (a *Agent) IssueLetsEncryptCertificate(req IssueLetsEncryptRequest, resp *IssueLetsEncryptResponse) error {
 	if err := requireExpectedBuildCommit(req.ExpectedBuildCommit, "issuing a site certificate"); err != nil {
 		resp.Success = false
@@ -416,6 +302,21 @@ func (a *Agent) IssueLetsEncryptCertificate(req IssueLetsEncryptRequest, resp *I
 		resp.Error = err.Error()
 		return nil
 	}
+	if req.FreshLineage && (!req.StageLineage || !req.ForceRenewal) {
+		resp.Success = false
+		resp.Error = "fresh lineage requires an explicit staged replacement request"
+		return nil
+	}
+	if req.StageLineage && !req.ForceRenewal {
+		resp.Success = false
+		resp.Error = "staged lineage requires an explicit replacement request"
+		return nil
+	}
+	if req.DomainID <= 0 {
+		resp.Success = false
+		resp.Error = "invalid domain identity"
+		return nil
+	}
 	webroot, err := prepareACMEChallengeRoot(req.SubscriptionID, req.DomainID)
 	if err != nil {
 		resp.Success = false
@@ -429,64 +330,7 @@ func (a *Agent) IssueLetsEncryptCertificate(req IssueLetsEncryptRequest, resp *I
 	}
 	defer releaseSiteCertbot()
 
-	storage := isolatedSiteCertbotStorage()
-	if err := ensureIsolatedSiteCertbotStorage(storage); err != nil {
-		resp.Success = false
-		resp.Error = fmt.Sprintf("failed to prepare site certbot storage: %v", err)
-		return nil
-	}
-	storage, lineageName, err := selectIssueLineage(
-		req, storage, legacyCertbotConfigDir,
-	)
-	if err != nil {
-		resp.Success = false
-		resp.Error = err.Error()
-		return nil
-	}
-	// Return the exact isolated lineage identity even when certbot later
-	// fails. The panel can then request idempotent cleanup of any partial
-	// certbot state without guessing a path or name.
-	resp.LineageName = lineageName
-	args := buildCertbotIssueArgsForStorage(
-		req, webroot, storage, lineageName,
-	)
-
-	// Execute certbot
-	ctx, cancel := certbotRenewContext(context.Background())
-	defer cancel()
-	cmd := exec.CommandContext(ctx, "certbot", args...)
-	cmd.WaitDelay = 2 * time.Second
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		resp.Success = false
-		// What the run came to, for the answer the owner reads. The full
-		// output stays in resp.Error, which reaches the Panel's log only.
-		resp.FailureDetail = certbotFailureLine(string(output))
-		if ctx.Err() == context.DeadlineExceeded {
-			resp.Failure = transport.CertificateFailureTimeout
-			resp.Error = fmt.Sprintf("certbot issue timed out after %s\nOutput: %s", certbotRenewTimeout, string(output))
-			return nil
-		}
-		resp.Failure = certbotFailureKind(string(output))
-		resp.Error = fmt.Sprintf("certbot failed: %v\nOutput: %s", err, string(output))
-		return nil
-	}
-
-	paths, cert, err := snapshotCertbotCertificateFromLineage(
-		lineageName, req.Domain, storage,
-	)
-	if err != nil {
-		resp.Success = false
-		resp.Error = fmt.Sprintf("failed to snapshot issued certificate: %v", err)
-		return nil
-	}
-
-	resp.CertPath = paths.Fullchain
-	resp.KeyPath = paths.Key
-	resp.ChainPath = paths.Chain
-	resp.ExpiresAt = cert.NotAfter
-	resp.DNSNames = append([]string(nil), cert.DNSNames...)
-	resp.Success = true
+	issueNativeSiteCertificate(req, webroot, resp)
 	return nil
 }
 
@@ -502,6 +346,13 @@ func (a *Agent) RenewLetsEncryptCertificate(req RenewCertRequest, resp *RenewCer
 	if err != nil {
 		resp.Success = false
 		resp.Error = err.Error()
+		return nil
+	}
+	if transport.IsNativeSiteLineage(strings.ToLower(strings.TrimSpace(req.LineageName))) {
+		// Only certbot's own schedule renews a native lineage; a second
+		// renewer on the same lineage would race it (D-039).
+		resp.Success = false
+		resp.Error = transport.ErrNativeSiteRenewal
 		return nil
 	}
 	lineageName, err := normalizeCurrentLineageName(
@@ -1272,7 +1123,15 @@ func verifyManagedCertificateSnapshot(
 // certificate file alone is not usable when its private key is missing or
 // belongs to another certificate.
 func (a *Agent) InspectInstalledCertificate(req InspectCertificateRequest, resp *ValidateCertResponse) error {
-	if strings.TrimSpace(req.Domain) != "" {
+	if _, native := nativeSiteLineageOfPath(req.CertPath); native && strings.TrimSpace(req.Domain) != "" {
+		// An OS-renewed lineage: certbot's live files, each resolving into
+		// the lineage's own archive (D-039).
+		if err := verifyNativeSiteCertificatePaths(req.CertPath, req.KeyPath, req.ChainPath); err != nil {
+			resp.Valid = false
+			resp.Error = err.Error()
+			return nil
+		}
+	} else if strings.TrimSpace(req.Domain) != "" {
 		if err := verifyManagedCertificateSnapshot(
 			req.Domain, req.CertPath, req.KeyPath, req.ChainPath,
 		); err != nil {

@@ -10,6 +10,7 @@ import { decodeListIn, lastKnown, useRemote } from '../lib/remote';
 import { formatHSTSRemainingSeconds } from '../lib/hstsRemaining';
 import { sslTier, sslTierLabelFor } from '../lib/sslTier';
 import { useLostAnswer } from '../lib/lostAnswer';
+import { renewalGuidance, renewalLabelKey, type SiteRenewalState } from '../lib/sslRenewal';
 
 interface DomainSSLSettingsProps {
     domainId: number;
@@ -46,6 +47,10 @@ interface SSLCertificate {
     waiting_for_owner?: boolean;
     // certificate | certificate_validation (additive; D-031 step 1b).
     waiting_for_owner_reason?: string;
+    // operating_system | panel (additive; D-039): who renews it.
+    renewal_owner?: string;
+    renewal?: SiteRenewalState | null;
+    renewal_read_error?: string;
 }
 
 interface SSLSettings {
@@ -621,7 +626,14 @@ export function DomainSSLSettings({
         ...managedNames,
         ...(mailAvailable === true && includeMail ? [mailName] : []),
     ]);
-    const renewalState = cert ? renewalStatusMeta(cert.renewal_status) : null;
+    const nativeLabel = cert ? renewalLabelKey(cert) : null;
+    const guide = cert ? renewalGuidance(cert) : null;
+    const toneColor = { ok: 'text-success', info: 'text-fg-muted', warning: 'text-warning', danger: 'text-danger' };
+    const renewalState = cert
+        ? (nativeLabel && guide
+            ? { label: nativeLabel as TranslationKey, color: toneColor[guide.tone] }
+            : renewalStatusMeta(cert.renewal_status))
+        : null;
     const hstsRetirementUntil = activeHSTSRetirement(hstsRetirementEnd(data.settings, observedAt), clockMs);
     const hstsRetirementDate = hstsRetirementUntil
         ? formatHSTSRetirementDate(hstsRetirementUntil, locale)
@@ -715,7 +727,38 @@ export function DomainSSLSettings({
                                             }
                                         />
                                     )}
+                                    {cert.renewal_owner && (
+                                        <Detail
+                                            label={t('ssl.renewedBy')}
+                                            value={t(cert.renewal_owner === 'operating_system' ? 'ssl.renewedBy.os' : 'ssl.renewedBy.panel')}
+                                        />
+                                    )}
                                 </dl>
+                                {guide && guide.tone !== 'ok' && (
+                                    // D-024: the reason, who acts and the next action first;
+                                    // how it resumes last. Nothing here starts an operation.
+                                    <div
+                                        role="status"
+                                        className={`mt-4 rounded-lg border px-3 py-3 text-sm text-fg ${guide.tone === 'danger'
+                                            ? 'border-danger/40 bg-danger/5'
+                                            : guide.tone === 'warning'
+                                                ? 'border-warning-mark/50 bg-warning-mark/20'
+                                                : 'border-border bg-surface-muted'}`}
+                                        data-ssl-renewal-guidance={nativeLabel ?? 'panel'}
+                                    >
+                                        <p className="flex items-start gap-2">
+                                            <AlertTriangle className={`mt-0.5 h-4 w-4 shrink-0 ${toneColor[guide.tone]}`} aria-hidden="true" />
+                                            <span className="break-words">{t(guide.reasonKey as TranslationKey, guide.params)}</span>
+                                        </p>
+                                        {guide.actionKey && (
+                                            <>
+                                                <p className="mt-2 text-fg-muted">{t('ssl.renewalGuide.who')}</p>
+                                                <p className="mt-1 break-words">{t(guide.actionKey as TranslationKey, guide.params)}</p>
+                                            </>
+                                        )}
+                                        <p className="mt-2 text-xs text-fg-subtle">{t(cert.renewal_owner === 'panel' ? 'ssl.renewalGuide.panel.resume' : 'ssl.renewalGuide.resume')}</p>
+                                    </div>
+                                )}
                                 {cert.waiting_for_owner && !cert.activation_pending && (
                                     <p
                                         role="status"
@@ -771,7 +814,7 @@ export function DomainSSLSettings({
                                             checked={cert.auto_renew}
                                             onChange={handleAutoRenewChange}
                                             label={t('ssl.autoRenewOn')}
-                                            hint={t('ssl.autoRenewHint')}
+                                            hint={t(cert.renewal_owner === 'operating_system' ? 'ssl.autoRenewHint.os' : 'ssl.autoRenewHint')}
                                             disabled={readOnly || locked || renewalBusy}
                                         />
                                     </div>

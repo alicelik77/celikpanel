@@ -25,6 +25,14 @@ import (
 var validPanelCertLineage = regexp.MustCompile(`^celikpanel-panel-[a-f0-9]{24}$`)
 var validStagedSiteLineage = regexp.MustCompile(`^cp-site-[1-9][0-9]*-[a-f0-9]{24}$`)
 
+// validAgentGeneratedSiteLineage is a lineage name only the Agent makes: an
+// earlier release's staged name (cp-site-...) or an OS-renewed website lineage
+// (celikpanel-site-..., D-039). Both carry an Agent-generated random part, so
+// deleting exactly such a name never reaches an owner's own lineage.
+func validAgentGeneratedSiteLineage(lineage string) bool {
+	return validStagedSiteLineage.MatchString(lineage) || transport.IsNativeSiteLineage(lineage)
+}
+
 const (
 	managedPanelTLSDir   = "/var/lib/celikpanel/tls"
 	panelACMEVhostPrefix = "celikpanel-panel-acme-"
@@ -542,7 +550,7 @@ func (a *Agent) DeleteCertLineage(req *DeleteCertLineageRequest, resp *DeleteCer
 	normalizedLineages := make([]string, 0, len(req.LineageNames))
 	for _, raw := range req.LineageNames {
 		lineage := strings.ToLower(strings.TrimSpace(raw))
-		if !validStagedSiteLineage.MatchString(lineage) {
+		if !validAgentGeneratedSiteLineage(lineage) {
 			resp.Error = "invalid staged lineage name"
 			return nil
 		}

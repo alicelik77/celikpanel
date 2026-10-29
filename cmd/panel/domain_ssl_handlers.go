@@ -107,6 +107,16 @@ type SSLCertificate struct {
 	// "certificate", a new certificate the file does not use yet;
 	// "certificate_validation", a request or renewal the file stopped.
 	WaitingForOwnerReason string `json:"waiting_for_owner_reason,omitempty"`
+	// RenewalOwner (D-039, additive): "operating_system" when certbot's own
+	// timer renews it (no CelikPanel program needed), "panel" for an
+	// ACME certificate of an earlier release that only the running Panel
+	// renews; "" for an uploaded certificate.
+	RenewalOwner string `json:"renewal_owner,omitempty"`
+	// Renewal is the operating system's renewal state read now (only for
+	// renewal_owner "operating_system"); nil when it could not be read,
+	// which RenewalReadError then says.
+	Renewal          *transport.SiteCertificateRenewalStateResponse `json:"renewal,omitempty"`
+	RenewalReadError string                                         `json:"renewal_read_error,omitempty"`
 }
 
 // SSLSettings represents SSL settings for a domain
@@ -384,6 +394,29 @@ func (p *Panel) handleGetDomainSSL(w http.ResponseWriter, r *http.Request, domai
 		cert.DaysUntilExpiry = int(time.Until(cert.ExpiresAt).Hours() / 24)
 		if cert.Type == "letsencrypt" && strings.TrimSpace(cert.ProviderID) == "" {
 			cert.ProviderID = acmeProviderIDForIssuer(cert.Issuer)
+		}
+		if cert.Type == "letsencrypt" {
+			cert.RenewalOwner = "panel"
+			var lineageName string
+			var subscriptionID int
+			if scanErr := pool.QueryRowContext(ctx, `
+				SELECT COALESCE(c.lineage_name, ''), d.subscription_id
+				FROM ssl_certificates c JOIN domains d ON d.id = c.domain_id
+				WHERE c.id = ?`, cert.ID).Scan(&lineageName, &subscriptionID); scanErr == nil {
+				if lineage, native := nativeSiteLineageOfRow(cert.CertPath, lineageName); native {
+					cert.RenewalOwner = "operating_system"
+					state, readErr := p.readNativeSiteRenewal(ctx, nativeSiteRow{
+						CertID: cert.ID, DomainID: domainID, SubscriptionID: subscriptionID,
+						Domain: domain.Name, CertPath: cert.CertPath, Lineage: lineage, ProviderID: cert.ProviderID,
+					})
+					if readErr != nil {
+						log.Printf("SSL status domain %d: the operating system's renewal state: %v", domainID, readErr)
+						cert.RenewalReadError = "the operating system's renewal state could not be read; nothing is concluded from that"
+					} else {
+						cert.Renewal = &state
+					}
+				}
+			}
 		}
 		runtime, runtimeErr := p.loadCertificateRuntimeStatus(ctx, domainID, managedNames)
 		if runtimeErr != nil {
@@ -688,7 +721,7 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 			KeyPath:         agentResp.KeyPath,
 			ChainPath:       agentResp.ChainPath,
 		}
-		if cleanupTarget.DeleteCanonical {
+		if cleanupTarget.DeleteCanonical && !transport.IsNativeSiteLineage(cleanupTarget.LineageName) {
 			cleanupTarget.LineageName = ""
 		}
 		// A transport error may arrive after net/rpc decoded lineage/path
@@ -721,7 +754,7 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 			KeyPath:         agentResp.KeyPath,
 			ChainPath:       agentResp.ChainPath,
 		}
-		if cleanupTarget.DeleteCanonical {
+		if cleanupTarget.DeleteCanonical && !transport.IsNativeSiteLineage(cleanupTarget.LineageName) {
 			cleanupTarget.LineageName = ""
 		}
 		p.cleanupUncommittedCertificate(cleanupCtx, cleanupTarget)
@@ -882,6 +915,9 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 		action = "ssl.reissue:" + provider.ID
 	}
 	p.audit(r, action, "domain", domainID)
+	if warning := strings.TrimSpace(agentResp.RenewalWarning); warning != "" {
+		log.Printf("SSL issue domain %d: issued; automatic renewal needs the server administrator: %s", domainID, warning)
+	}
 
 	if waitingForOwner {
 		// Issued and stored, not served yet: the answer says so, and the
@@ -891,6 +927,9 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 			"expires_at":     expiresAt,
 			"pending_reason": services.SiteFileReasonCertificate,
 		}
+		if warning := strings.TrimSpace(agentResp.RenewalWarning); warning != "" {
+			answer["renewal_warning"] = warning
+		}
 		validationNotRun.addTo(answer)
 		json.NewEncoder(w).Encode(answer)
 		return
@@ -898,6 +937,9 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	answer := map[string]any{
 		"status":     "success",
 		"expires_at": expiresAt,
+	}
+	if warning := strings.TrimSpace(agentResp.RenewalWarning); warning != "" {
+		answer["renewal_warning"] = warning
 	}
 	validationNotRun.addTo(answer)
 	json.NewEncoder(w).Encode(answer)
@@ -1392,6 +1434,23 @@ func (p *Panel) handleSSLRenewalSetting(
 
 	unlock := lockDomainSSLOperation(domainID)
 	defer unlock()
+	var activePath, activeLineage string
+	if err := p.db.GetDB().QueryRowContext(r.Context(), `
+		SELECT cert_path, COALESCE(lineage_name, '') FROM ssl_certificates
+		WHERE domain_id = ? AND status = 'active' AND type = 'letsencrypt'
+		ORDER BY id DESC LIMIT 1`, domainID).Scan(&activePath, &activeLineage); err == nil {
+		if lineage, native := nativeSiteLineageOfRow(activePath, activeLineage); native {
+			// D-039: certbot's own configuration decides; the ledger
+			// follows only after certbot's file says the same.
+			if err := p.setNativeSiteAutoRenew(r.Context(), domainID, lineage, *req.AutoRenew); err != nil {
+				writeAgentError(w, err, "certbot's renewal setting could not be changed")
+				return
+			}
+		}
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		writeServerError(w, err)
+		return
+	}
 	result, err := p.db.GetDB().ExecContext(r.Context(), `
 		UPDATE ssl_certificates
 		SET auto_renew = ?, updated_at = datetime('now')

@@ -647,7 +647,7 @@ func validatedVhostData(req *ApplyVhostRequest) (services.VhostData, error) {
 		}
 		data.SSLType = "none"
 	case "custom", "letsencrypt":
-		if err := validateVhostCertificatePaths(domain, req.SSLCert, req.SSLKey); err != nil {
+		if err := validateVhostCertificatePathsFor(domain, req.DomainID, req.SSLCert, req.SSLKey); err != nil {
 			return services.VhostData{}, err
 		}
 		if req.HSTSEnabled && (!req.ForceHTTPS || req.HSTSMaxAge <= 0) {
@@ -711,6 +711,23 @@ func validatePHPSocket(socket string, siteID int) error {
 		return fmt.Errorf("PHP-FPM socket does not belong to this site")
 	}
 	return nil
+}
+
+// validateVhostCertificatePathsFor also accepts the live files of an
+// OS-renewed lineage of this domain identity (D-039).
+func validateVhostCertificatePathsFor(domain string, domainID int, certPath, keyPath string) error {
+	if lineage, ok := nativeSiteLineageOfPath(certPath); ok {
+		keyLineage, keyOK := nativeSiteLineageOfPath(keyPath)
+		if !keyOK || keyLineage != lineage ||
+			path.Base(certPath) != "fullchain.pem" || path.Base(keyPath) != "privkey.pem" {
+			return fmt.Errorf("certificate and private key must be the same certbot lineage's full chain and key")
+		}
+		if !transport.NativeSiteLineageBelongsTo(lineage, domainID) {
+			return fmt.Errorf("certificate lineage does not belong to this domain")
+		}
+		return nil
+	}
+	return validateVhostCertificatePaths(domain, certPath, keyPath)
 }
 
 func validateVhostCertificatePaths(domain, certPath, keyPath string) error {

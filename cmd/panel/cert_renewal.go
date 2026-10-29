@@ -11,7 +11,14 @@ import (
 )
 
 // Automatic certificate renewal — what makes "Will be automatically renewed"
-// true instead of a label. A daily loop finds active auto-renew certificates
+// true instead of a label.
+//
+// Since D-039 a certificate issued by this release is renewed by the
+// operating system's certbot timer, not here: observeNativeSiteCertificates
+// (site_cert_native.go) only reads and records what certbot did. The loop
+// below renews only certificates of earlier releases (an immutable snapshot
+// of a lineage in CelikPanel's isolated certbot store), until they are
+// reissued; renewing them still needs the Panel to run. A daily loop finds active auto-renew certificates
 // within 30 days of expiry: Let's Encrypt ones are renewed through the agent
 // and re-applied to the vhost and the mail SNI maps; custom (uploaded) ones
 // cannot be renewed by us, so they are flagged for the UI instead of silently
@@ -39,6 +46,8 @@ func (p *Panel) startCertRenewalScheduler() {
 
 func (p *Panel) runDueCertRenewals() {
 	ctx := context.Background()
+	// OS-renewed certificates first: read only, never a second renewer.
+	p.observeNativeSiteCertificates(ctx)
 	cutoff := time.Now().Add(certRenewWindow).UTC().Format(time.RFC3339)
 	// No auto_renew filter here: the expiring flag must reach certificates
 	// we cannot renew too. auto_renew only gates the actual LE renewal below.
@@ -46,7 +55,8 @@ func (p *Panel) runDueCertRenewals() {
 	// sertifikalara da ulaşmalı. auto_renew yalnız aşağıdaki LE yenilemesini
 	// kapılar.
 	rows, err := p.db.GetDB().QueryContext(ctx, `
-		SELECT sc.id, sc.domain_id, d.name, sc.type, sc.auto_renew, sc.expires_at
+		SELECT sc.id, sc.domain_id, d.name, sc.type, sc.auto_renew, sc.expires_at,
+		       sc.cert_path, COALESCE(sc.lineage_name, '')
 		FROM ssl_certificates sc JOIN domains d ON d.id = sc.domain_id
 		WHERE sc.status = 'active' AND sc.expires_at < ?
 		ORDER BY sc.id`, cutoff)
@@ -57,6 +67,7 @@ func (p *Panel) runDueCertRenewals() {
 	type due struct {
 		certID, domainID       int
 		name, ctype, expiresAt string
+		certPath, lineage      string
 		autoRenew              bool
 	}
 	var jobs []due
@@ -64,6 +75,7 @@ func (p *Panel) runDueCertRenewals() {
 		var j due
 		if err := rows.Scan(
 			&j.certID, &j.domainID, &j.name, &j.ctype, &j.autoRenew, &j.expiresAt,
+			&j.certPath, &j.lineage,
 		); err != nil {
 			log.Printf("cert renewal scheduler scan: %v", err)
 			rows.Close()
@@ -82,6 +94,10 @@ func (p *Panel) runDueCertRenewals() {
 	}
 
 	for _, j := range jobs {
+		if _, native := nativeSiteLineageOfRow(j.certPath, j.lineage); native && j.ctype == "letsencrypt" {
+			// The operating system renews it (observed above).
+			continue
+		}
 		switch {
 		case j.ctype == "letsencrypt" && j.autoRenew:
 			// Each renewal owns a separate hard deadline. A wedged agent,

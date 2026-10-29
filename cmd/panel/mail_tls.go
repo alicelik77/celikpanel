@@ -245,6 +245,20 @@ func (p *Panel) loadMailTLSSnapshotLocked(
 		if certificateCoversHostname(info.DNSNames, name) {
 			names = append(names, name)
 		}
+		if lineage, native := transport.NativeSiteLineageFromPath(cert); native {
+			// The mail SNI map names immutable copies only: copy what the
+			// OS-renewed lineage serves now (content-addressed, so an
+			// unchanged certificate gives the same paths) (D-039).
+			copyCert, copyKey, copyErr := p.snapshotNativeSiteCertificateForMail(ctx, domainID, name, lineage)
+			if copyErr != nil {
+				if isStrictTarget {
+					return "", nil, fmt.Errorf("copy the mail TLS certificate for %s: %w", name, copyErr)
+				}
+				log.Printf("mail TLS snapshot: omit unrelated domain %s (%d): copy its certificate: %v", name, domainID, copyErr)
+				continue
+			}
+			cert, key = copyCert, copyKey
+		}
 		sni = append(sni, transport.MailSNIEntry{
 			Names:    names,
 			CertPath: cert,

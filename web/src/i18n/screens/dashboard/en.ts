@@ -101,6 +101,7 @@ export const enDashboardScreens = {
     'dashboard.certExpires': '{domain} SSL certificate expires in {days} days',
     'dashboard.certExpired': '{domain} SSL certificate has expired',
     'dashboard.renew': 'Renew',
+    'dashboard.certRenewalProblem': '{domain}: the certificate’s automatic renewal needs the server administrator ({days} days left); the domain’s certificate names the next step',
     'dashboard.certWaitingOwner': '{domain}: a certificate is waiting for your choice on the site’s configuration file',
     'dashboard.certWaitingOwnerDays': '{domain}: a certificate is waiting for your choice on the site’s configuration file; the one in use has {days} days left',
     'dashboard.certWaitingOwnerExpired': '{domain}: a certificate is waiting for your choice on the site’s configuration file; the one in use expired {days} days ago',

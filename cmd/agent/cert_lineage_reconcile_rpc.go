@@ -42,7 +42,7 @@ func (a *Agent) ReconcileSiteCertLineages(
 	referenced := make(map[string]struct{}, len(allReferenced))
 	for _, raw := range allReferenced {
 		lineage := strings.ToLower(strings.TrimSpace(raw))
-		if !validStagedSiteLineage.MatchString(lineage) {
+		if !validAgentGeneratedSiteLineage(lineage) {
 			resp.Error = "invalid referenced staged lineage name"
 			return nil
 		}
@@ -66,9 +66,22 @@ func (a *Agent) ReconcileSiteCertLineages(
 			resp.Error = fmt.Sprintf("list staged certbot lineages: %v", err)
 			return nil
 		}
+		if storage.ConfigDir == legacy.ConfigDir {
+			// OS-renewed website lineages live in the standard store
+			// (D-039); one the ledger no longer names would otherwise be
+			// renewed by certbot's timer forever.
+			native, err := filepath.Glob(
+				filepath.Join(storage.ConfigDir, "renewal", transport.NativeSiteLineagePrefix+"*.conf"),
+			)
+			if err != nil {
+				resp.Error = fmt.Sprintf("list certbot website lineages: %v", err)
+				return nil
+			}
+			configs = append(configs, native...)
+		}
 		for _, config := range configs {
 			lineage := strings.TrimSuffix(filepath.Base(config), ".conf")
-			if !validStagedSiteLineage.MatchString(lineage) {
+			if !validAgentGeneratedSiteLineage(lineage) {
 				continue
 			}
 			if _, keep := referenced[lineage]; keep {

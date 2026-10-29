@@ -789,7 +789,7 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case lineage == canonicalDomainName:
 			deleteCanonicalLineage = true
-		case strings.HasPrefix(lineage, "cp-site-"):
+		case strings.HasPrefix(lineage, "cp-site-"), transport.IsNativeSiteLineage(lineage):
 			stagedLineages = append(stagedLineages, lineage)
 		default:
 			lineageRows.Close()

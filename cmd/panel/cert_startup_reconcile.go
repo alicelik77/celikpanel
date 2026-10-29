@@ -54,7 +54,7 @@ func referencedStagedCertificateLineages(
 			return nil, err
 		}
 		lineage := strings.ToLower(strings.TrimSpace(raw))
-		if validReferencedStagedLineage.MatchString(lineage) {
+		if validReferencedStagedLineage.MatchString(lineage) || transport.IsNativeSiteLineage(lineage) {
 			referenced[lineage] = struct{}{}
 		}
 	}

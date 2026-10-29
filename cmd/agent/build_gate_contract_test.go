@@ -249,6 +249,22 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			name: "SetSiteCertificateAutoRenewV1",
+			run: func(expected string) string {
+				var response transport.SetSiteCertificateAutoRenewResponse
+				_ = agent.SetSiteCertificateAutoRenewV1(&transport.SetSiteCertificateAutoRenewRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			name: "SnapshotSiteCertificateV1",
+			run: func(expected string) string {
+				var response transport.SnapshotSiteCertificateResponse
+				_ = agent.SnapshotSiteCertificateV1(&transport.SnapshotSiteCertificateRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
 			name: "RestartPanelSoon",
 			run: func(expected string) string {
 				var response bool
