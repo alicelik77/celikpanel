@@ -1,6 +1,8 @@
 export type LicenseState = 'active' | 'missing' | 'expired' | 'invalid' | 'verification_unavailable' | 'status_unavailable';
+/** Why verification is unavailable, when the server named it (D-039). */
+export type LicenseLapseReason = 'offline_ended' | 'clock_behind';
 /** `until` is a deadline on THIS browser's clock, in seconds. */
-export type AccessObservation = { allowed: boolean | null; until: number; state: LicenseState };
+export type AccessObservation = { allowed: boolean | null; until: number; state: LicenseState; reason?: LicenseLapseReason };
 
 /**
  * A negative boolean alone is not evidence of a missing or invalid license.
@@ -39,5 +41,9 @@ export function parseAccessObservation(value: unknown, now = Date.now() / 1000, 
     if (result.observation === 'known' && ['missing', 'expired', 'invalid'].includes(String(result.state))) {
         return { allowed: false, until: 0, state: result.state as LicenseState };
     }
-    return { allowed: null, until: 0, state: result.state === 'verification_unavailable' ? 'verification_unavailable' : 'status_unavailable' };
+    if (result.state === 'verification_unavailable') {
+        const reason = result.reason === 'offline_ended' || result.reason === 'clock_behind' ? result.reason : undefined;
+        return reason ? { allowed: null, until: 0, state: 'verification_unavailable', reason } : { allowed: null, until: 0, state: 'verification_unavailable' };
+    }
+    return { allowed: null, until: 0, state: 'status_unavailable' };
 }

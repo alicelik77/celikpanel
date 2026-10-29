@@ -29,18 +29,15 @@ func TestAuthenticatedRefreshCoalescesWithoutStaleAdmissionOrIdlePolling(t *test
 		calls.Add(1)
 		entered <- struct{}{}
 		<-release
-		next := c
-		next.IssuedAt = now.Load()
-		next.RefreshAfter = next.IssuedAt + 45
-		next.OfflineUntil = next.IssuedAt + 60
-		_ = json.NewEncoder(w).Encode(sign(t, next, priv))
+		_ = json.NewEncoder(w).Encode(fresh(t, c, priv, now.Load()))
 	}))
 	defer server.Close()
 	m.endpoint = server.URL
 	if !m.CanProvision(context.Background()) || calls.Load() != 0 {
 		t.Fatal("fresh receipt contacted center")
 	}
-	now.Add(60)
+	// Past its offline window the receipt no longer opens management.
+	now.Store(c.OfflineUntil)
 	if m.Status().CanProvision || calls.Load() != 0 {
 		t.Fatal("idle check polled or stale receipt allowed access")
 	}
@@ -74,54 +71,6 @@ func TestAuthenticatedRefreshCoalescesWithoutStaleAdmissionOrIdlePolling(t *test
 	_ = m.Status()
 	if calls.Load() != 1 {
 		t.Fatal("idle server polled")
-	}
-}
-
-func TestOutageHasBoundedGraceBackoffAndRecoversOnUse(t *testing.T) {
-	pub, priv, c, e := fixture(t)
-	now := time.Unix(c.IssuedAt, 0)
-	m, _ := New(filepath.Join(t.TempDir(), "license.json"), pub, c.ServerID)
-	m.clock = func() time.Time { return now }
-	if err := m.save(e); err != nil {
-		t.Fatal(err)
-	}
-	calls := 0
-	fail := true
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls++
-		if fail {
-			w.WriteHeader(503)
-			return
-		}
-		next := c
-		next.IssuedAt = now.Unix()
-		next.RefreshAfter = next.IssuedAt + 45
-		next.OfflineUntil = min(next.IssuedAt+60, next.ExpiresAt)
-		_ = json.NewEncoder(w).Encode(sign(t, next, priv))
-	}))
-	defer server.Close()
-	m.endpoint = server.URL
-	now = now.Add(45 * time.Second)
-	if !m.CanProvision(context.Background()) || calls != 1 {
-		t.Fatal("early renewal should retain the unexpired short receipt")
-	}
-	now = now.Add(15 * time.Second)
-	for i := 0; i < 100; i++ {
-		if m.CanProvision(context.Background()) {
-			t.Fatal("outage authorized stale access")
-		}
-	}
-	if calls != 1 {
-		t.Fatal("outage retried on every request", calls)
-	}
-	now = now.Add(15 * time.Second)
-	fail = false
-	if !m.CanProvision(context.Background()) || calls != 2 {
-		t.Fatal("active request failed to recover")
-	}
-	now = time.Unix(c.ExpiresAt, 0)
-	if m.CanProvision(context.Background()) {
-		t.Fatal("refresh extended annual term")
 	}
 }
 

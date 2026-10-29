@@ -139,9 +139,13 @@ func (p *Panel) handleLicense(w http.ResponseWriter, r *http.Request) {
 		writeCodedError(w, http.StatusServiceUnavailable, errCodeLicenseStatusUnavailable, "license status could not be checked", "")
 		return
 	}
+	var status licensing.Status
 	switch r.Method {
 	case http.MethodGet:
-		_ = p.license.Refresh(r.Context(), false)
+		// Opening the license page joins the shared check when one is due; a
+		// still-valid receipt answers after at most a few seconds even while the
+		// license service is unreachable. "Check again" (POST refresh) forces it.
+		status = p.license.AccessStatus(r.Context())
 	case http.MethodPost:
 		var input struct {
 			Action string `json:"action"`
@@ -172,6 +176,7 @@ func (p *Panel) handleLicense(w http.ResponseWriter, r *http.Request) {
 			writeCodedError(w, 400, "license_action_failed", err.Error(), "")
 			return
 		}
+		status = p.license.Status()
 	default:
 		w.Header().Set("Allow", "GET, POST")
 		w.WriteHeader(405)
@@ -179,7 +184,7 @@ func (p *Panel) handleLicense(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
-	_ = json.NewEncoder(w).Encode(p.license.Status())
+	_ = json.NewEncoder(w).Encode(status)
 }
 
 // Identity recovery, activation and administrator-only signed updates remain available while locked.
@@ -248,6 +253,10 @@ type licenseAccessAnswer struct {
 	ValidForSeconds float64 `json:"valid_for_seconds"`
 	State           string  `json:"state"`
 	Observation     string  `json:"observation"`
+	// Reason is present only for verification_unavailable with a known cause
+	// (offline_ended, clock_behind), so the page can say who acts and how.
+	// Reason, yalnız nedeni bilinen verification_unavailable için gelir.
+	Reason string `json:"reason,omitempty"`
 }
 
 // newLicenseAccessAnswer builds the answer from the licence status at `now`,
@@ -263,7 +272,7 @@ func newLicenseAccessAnswer(status licensing.Status, now time.Time) licenseAcces
 	}
 	return licenseAccessAnswer{
 		CanUsePanel: status.CanProvision, ValidUntil: until, ValidForSeconds: validFor,
-		State: status.State, Observation: status.Observation,
+		State: status.State, Observation: status.Observation, Reason: status.Reason,
 	}
 }
 

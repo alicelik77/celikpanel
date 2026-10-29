@@ -150,25 +150,30 @@ func TestLicenseAccessResponseIsMinimalAndTracksState(t *testing.T) {
 		if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
 			t.Fatal(err)
 		}
-		if state == "active" && result["valid_until"].(float64) > float64(time.Now().Add(time.Minute).Unix()) {
-			t.Fatal("browser deadline exceeds short verification", result)
+		// The fixture's signed offline window ends two hours from now.
+		if state == "active" && result["valid_until"].(float64) > float64(time.Now().Add(2*time.Hour).Unix()) {
+			t.Fatal("browser deadline exceeds the signed offline window", result)
 		}
-		// The time left is the same short deadline, stated on the server's clock
+		// The time left is the same deadline, stated on the server's clock
 		// (a refused licence may still carry its unexpired deadline; the page
 		// reads it only with can_use_panel).
-		// Kalan süre aynı kısa son andır; sunucunun saatiyle söylenir (reddedilen
+		// Kalan süre aynı son andır; sunucunun saatiyle söylenir (reddedilen
 		// lisans dolmamış son anını taşıyabilir; sayfa onu yalnız can_use_panel ile okur).
-		if left, ok := result["valid_for_seconds"].(float64); !ok || left < 0 || left > 60 || (state == "active" && left <= 0) {
+		if left, ok := result["valid_for_seconds"].(float64); !ok || left < 0 || left > 7200 || (state == "active" && left <= 0) {
 			t.Fatal("time left does not follow the deadline", state, result)
 		}
-		wantState, wantObservation := state, "known"
+		wantState, wantObservation, wantFields := state, "known", 5
 		if state == "rejected" {
 			wantState = "invalid"
 		}
 		if state == "verification_unavailable" {
-			wantObservation = "unavailable"
+			// The lapse names its cause, so the page can say who acts.
+			wantObservation, wantFields = "unavailable", 6
+			if result["reason"] != licensing.ReasonOfflineEnded {
+				t.Fatal("lapse without its reason", result)
+			}
 		}
-		if len(result) != 5 || result["state"] != wantState || result["observation"] != wantObservation || result["can_use_panel"] != (state == "active") || w.Header().Get("Cache-Control") != "no-store" {
+		if len(result) != wantFields || result["state"] != wantState || result["observation"] != wantObservation || result["can_use_panel"] != (state == "active") || w.Header().Get("Cache-Control") != "no-store" {
 			t.Fatal(state, result)
 		}
 	}

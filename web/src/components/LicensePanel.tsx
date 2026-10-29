@@ -4,28 +4,34 @@ import { useI18n } from '../i18n';
 import { useNavigate, useSearchParams } from '../router';
 import { Button, inputClass } from './ui';
 import { apiErrorText, readApiError } from '../lib/apiError';
+import { decodeLicenseCheck, licenseCheckGuidance, licenseCheckVars } from '../lib/licenseOffline';
 
 type LicenseStatus = { state: 'active' | 'missing' | 'invalid' | 'expired' | 'verification_unavailable' | 'status_unavailable'; can_provision: boolean; expires_at?: number; license_id?: string };
+type ShownStatus = LicenseStatus & ReturnType<typeof decodeLicenseCheck>;
 const states = ['active', 'missing', 'invalid', 'expired', 'verification_unavailable', 'status_unavailable'] as const;
+// The answer is the contract or it is not shown.
+const contract = (result: LicenseStatus) => states.includes(result.state) && typeof result.can_provision === 'boolean' && !(result.can_provision && result.state !== 'active')
+    && (result.expires_at === undefined || (Number.isSafeInteger(result.expires_at) && result.expires_at > 0));
+const shown = (result: LicenseStatus): ShownStatus => ({ ...result, ...decodeLicenseCheck(result as unknown as Record<string, unknown>) });
 
 export function LicensePanel({ locked = false, onContinue }: { locked?: boolean; onContinue?: () => void }) {
     const { t, locale } = useI18n();
     const [params] = useSearchParams();
     const navigate = useNavigate();
     const setup = locked || params.get('setup') === '1';
-    const [status, setStatus] = useState<LicenseStatus | null>(null);
+    const [status, setStatus] = useState<ShownStatus | null>(null);
     const [key, setKey] = useState('');
     const [showKey, setShowKey] = useState(false);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
     const [keyError, setKeyError] = useState('');
-    async function request(action?: 'activate' | 'refresh', signal?: AbortSignal) {
+    async function request(action?: 'activate' | 'refresh', signal?: AbortSignal, reread = false) {
         const normalizedKey = key.trim();
         if (action === 'activate' && !/^CPK-[a-f0-9]{64}$/.test(normalizedKey)) {
             setKeyError(t('license.keyInvalid'));
             return;
         }
-        setBusy(true); setError(''); setKeyError('');
+        setBusy(true); if (!reread) setError(''); setKeyError('');
         try {
             const response = await fetch('/api/v1/panel/license', action ? {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -47,11 +53,8 @@ export function LicensePanel({ locked = false, onContinue }: { locked?: boolean;
             }
             const result = await response.json() as LicenseStatus;
             if (signal?.aborted) return;
-            if (!states.includes(result.state) || typeof result.can_provision !== 'boolean' || (result.can_provision && result.state !== 'active')
-                || (result.expires_at !== undefined && (!Number.isSafeInteger(result.expires_at) || result.expires_at <= 0))) {
-                throw new Error(t('license.loadFailed'));
-            }
-            setStatus(result);
+            if (!contract(result)) throw new Error(t('license.loadFailed'));
+            setStatus(shown(result));
             if (action === 'activate') { setKey(''); setShowKey(false); }
             // Activation must immediately recheck the shared access gate. Only
             // that server-verified decision can mount the management pages.
@@ -60,19 +63,34 @@ export function LicensePanel({ locked = false, onContinue }: { locked?: boolean;
                 else navigate('/', { replace: true });
             }
         } catch (cause) {
-            if (!signal?.aborted) setError(cause instanceof TypeError ? t('license.lockError') : cause instanceof Error ? cause.message : t('license.loadFailed'));
+            // A re-read after a failed check keeps that check's error.
+            if (!signal?.aborted && !reread) setError(cause instanceof TypeError ? t('license.lockError') : cause instanceof Error ? cause.message : t('license.loadFailed'));
+            // A failed "Check again" leaves the receipt as it was; read the status
+            // again so the page shows how long management stays open and why.
+            if (action === 'refresh') await request(undefined, undefined, true);
         } finally { if (!signal?.aborted) setBusy(false); }
     }
     useEffect(() => { const controller = new AbortController(); void request(undefined, controller.signal); return () => controller.abort(); }, []);
     const Heading = locked ? 'h1' : 'h2';
     const unavailable = status?.state === 'verification_unavailable' || status?.state === 'status_unavailable';
+    // The license check itself (D-039): an unreachable service inside the offline
+    // window, its last 48 hours, a wrong clock, or a lapse with its cause.
+    const guidance = status ? licenseCheckGuidance(status) : null;
+    const vars = status ? licenseCheckVars(status, locale) : {};
+    const lapsed = unavailable && guidance?.tone === 'blocked' ? guidance : null;
     return <section className="rounded-xl border border-border bg-surface p-5 sm:p-6" aria-labelledby="license-heading">
-        <Heading id="license-heading" className="mb-3 flex items-center gap-2 text-lg font-semibold text-fg"><BadgeCheck className="h-5 w-5 shrink-0" />{t(unavailable ? 'recovery.licenseTitle' : setup && status ? status.can_provision ? 'license.readyTitle' : status?.state === 'expired' ? 'license.state.expired' : 'license.setupTitle' : 'license.title')}</Heading>
-        {status && <p className="mb-5 max-w-prose text-sm text-fg-muted">{t(unavailable ? 'recovery.licenseHelp' : status?.state === 'expired' ? 'license.expiredHelp' : setup && !status?.can_provision ? 'license.setupIntro' : 'license.description')}</p>}
+        <Heading id="license-heading" className="mb-3 flex items-center gap-2 text-lg font-semibold text-fg"><BadgeCheck className="h-5 w-5 shrink-0" />{lapsed ? t(lapsed.title) : t(unavailable ? 'recovery.licenseTitle' : setup && status ? status.can_provision ? 'license.readyTitle' : status?.state === 'expired' ? 'license.state.expired' : 'license.setupTitle' : 'license.title')}</Heading>
+        {status && <p className="mb-5 max-w-prose text-sm text-fg-muted">{lapsed ? t(lapsed.help, vars) : t(unavailable ? 'recovery.licenseHelp' : status?.state === 'expired' ? 'license.expiredHelp' : setup && !status?.can_provision ? 'license.setupIntro' : 'license.description')}</p>}
+        {guidance && !lapsed && <div role={guidance.tone === 'warning' ? 'alert' : 'status'} data-license-check={status?.check}
+            className={`mb-5 max-w-prose rounded-lg border p-3 text-sm text-fg ${guidance.tone === 'warning' ? 'border-warning-mark/60 bg-warning-mark/20' : 'border-border bg-bg'}`}>
+            <p className="font-semibold">{t(guidance.title, vars)}</p>
+            <p className="mt-1">{t(guidance.help, vars)}</p>
+        </div>}
         {error && <p role="alert" className="mb-4 rounded-lg border border-danger/30 bg-danger/5 p-3 text-sm text-danger">{error}</p>}
         {status ? <div className="mb-6 space-y-2 text-sm" role="status">
             {!unavailable && (!setup || (!status.can_provision && status.state !== 'missing' && status.state !== 'expired')) && <p className="font-semibold">{t(`license.state.${status.state as Exclude<LicenseStatus['state'], 'status_unavailable'>}`)}</p>}
             {status.expires_at && <p>{t('license.expires')}: {new Date(status.expires_at * 1000).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US')}</p>}
+            {status.state === 'active' && vars.since && <p className="text-fg-muted">{t('license.lastCheck', vars)}</p>}
             {!status.can_provision && !unavailable && <p className="max-w-prose text-fg-muted">{t('license.restricted')}</p>}
             {setup && status.can_provision && <p>{t('license.setupSuccess')}</p>}
         </div> : <p role="status" className="mb-4 text-sm">{busy ? t('common.loading') : t('license.loadFailed')}</p>}

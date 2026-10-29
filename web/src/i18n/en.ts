@@ -60,6 +60,11 @@ export const en = {
     'recovery.handoverAddress': "You can also continue at the Panel’s secure address:",
     'recovery.licenseTitle': "License status could not be checked",
     'recovery.licenseHelp': "The license result is unavailable. This does not establish that your license is missing or expired. This page checks again by itself, and management opens once the server confirms access. You can also check now.",
+    // D-039: a lapse whose cause the server named.
+    'recovery.licenseOfflineEndedTitle': "License check overdue: management paused",
+    'recovery.licenseOfflineEndedHelp': "This server has not reached the license service (celikpanel.net) for more than 7 days. This does not mean your license was removed or expired; sites, mail, DNS and scheduled tasks keep running. The server administrator should make sure this server can open https://celikpanel.net (outbound HTTPS on port 443, working DNS), then check again. Management opens as soon as a check succeeds; this page also checks again by itself.",
+    'recovery.licenseClockBehindTitle': "This server's clock is wrong: management paused",
+    'recovery.licenseClockBehindHelp': "This server's clock is earlier than its last license check, or was set back. Sites, mail, DNS and scheduled tasks keep running. The server administrator should turn on time synchronisation (for example: timedatectl set-ntp true) or correct the clock, then check again.",
     'recovery.bundleTitle': "The panel interface could not be loaded",
     'recovery.bundleHelp': "Reload CelikPanel to load its current interface. Your operation ID is kept. This recovery view can read the same operation without starting it again.",
     'recovery.retry': "Check panel access",

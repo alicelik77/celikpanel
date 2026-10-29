@@ -1,11 +1,11 @@
 # Membership and annual server licensing
 
-*Current-policy reconciliation: September 14, 2026 · [Türkçe](MEMBERSHIP_LICENSING.tr.md) · D-025*
+*Current-policy reconciliation: October 30, 2026 (seven-day offline window, D-039) · [Türkçe](MEMBERSHIP_LICENSING.tr.md) · D-025*
 
-This document distinguishes the annual license term, the current short access
-verification window, and historical behavior. It records existing code and
-required recovery work; it does not change license policy or authorize an update
-on an installed panel.
+This document distinguishes the annual license term, the access verification
+window (seven days offline since D-039, approved by the owner on 2026-10-29), and
+historical behavior. It records existing code and required recovery work; it does
+not authorize an update on an installed panel.
 
 Approved product model: one CelikPanel product, four existing authorization
 roles, and a celikpanel.net member account independent of panel administrators.
@@ -44,15 +44,18 @@ HTTP access gate applies to normal panel management across all four roles, with
 the exact recovery exceptions listed below. Older provisioning-only descriptions
 and broad maintenance exemptions are historical, not the current API contract.
 A central-service outage retains the existing signed receipt; it cannot extend
-that receipt's effective access deadline.
+that receipt's effective access deadline (at most seven days after its last
+successful check, never past the annual expiry).
 
-Server transfer invalidates the old binding centrally. Signed cached leases
-remain usable only until the effective access deadline described below. If the
-annual term is still valid but that deadline has passed, an unreachable verifier
-produces `verification_unavailable` in the license manager. The current access
-endpoint reduces that state to `can_use_panel=false`, which routes the browser
-to activation; the UI does not yet preserve the manager's distinction from
-annual expiry. Existing workloads are not stopped by this HTTP gate.
+Server transfer, key replacement and license removal invalidate the old binding
+centrally; the panel learns of it at its next check, about hourly while in use.
+Signed cached receipts remain usable only until the effective access deadline
+described below. If the annual term is still valid but that deadline has passed,
+an unreachable verifier produces `verification_unavailable` with reason
+`offline_ended` (or `clock_behind`, below). The access endpoint answers
+`can_use_panel=false` with that reason, and the browser shows the recovery screen
+with the cause, who acts and what to do; it does not route to activation. Existing
+workloads are not stopped by this HTTP gate.
 
 Before publication: transactional activation/transfer/renewal tests, auth/CSRF/
 token abuse tests, signed entitlement and server-binding tests, provisioning
@@ -70,11 +73,14 @@ The annual term and this access-verification window are separate:
 
 | Decision | Current implementation |
 |---|---|
-| Effective authorization deadline | The earliest of annual expiry, the signed `offline_until`, and `issued_at + 60 seconds`. The signed format can carry a longer deadline; the current client still applies the one-minute cap. |
-| Ordinary refresh eligibility | At the earlier of signed `refresh_after` and `issued_at + 45 seconds`. Requests share the manager's serialized refresh path. There is no server timer polling an idle installation. |
-| Failed refresh retry | Ordinary requests back off for 30 seconds. Explicit administrator refresh may bypass this backoff; it does not bypass signature or binding verification. |
-| HTTP refresh budget | The license client has a 15-second timeout; request cancellation can end it earlier. |
-| Missing/expired/rejected/unverifiable entitlement | Normal management is denied. The manager retains distinct status values, but the access endpoint currently reduces them to `can_use_panel=false`. |
+| Effective authorization deadline | The earliest of annual expiry, the signed `offline_until` and `issued_at + 7 days`. The service signs `offline_until = min(now + 7 days, expiry)`. A receipt from a service before D-039 (`offline_until = issued_at + 60 s`) keeps exactly that minute. |
+| Ordinary refresh eligibility | At the earlier of signed `refresh_after` (service: `now + 1 hour`) and `issued_at + 1 hour`, minus up to a fifth as deterministic per-server jitter (48–60 minutes). Only authenticated use triggers it; there is no server timer polling an idle installation. Concurrent requests share one refresh. |
+| Request wait for a due refresh | A receipt that no longer opens management waits for the shared refresh. A still-valid receipt waits at most 3 seconds, then the request proceeds on it while the refresh finishes in the background; a reachable service's rejection therefore applies to the discovering request. |
+| Failed refresh retry | While the receipt is valid: 1, 2, 4, 8, 16, then 30 minutes (each shortened by up to a fifth per server), and never later than the moment the receipt lapses. After it lapses: every 30 seconds on use. The administrator's "Check again" bypasses the backoff, never signature or binding verification. |
+| Explicit rejection | `invalid_license`, `invalid_activation`, `license_in_use` or `license_expired` on refresh is persisted at once (`rejected`) and closes management immediately, inside or outside the offline window. |
+| Clock safety | `issued_at` is the service's clock. A server clock more than 5 minutes before `issued_at`, more than 5 minutes below the highest clock reading recorded with the receipt (`seen_at`, local, unsigned), or set back while the panel runs (wall clock vs. monotonic time) gives `verification_unavailable` with reason `clock_behind` until a check succeeds; a reachable service is asked at once. A fresh answer dated more than 5 minutes after this clock is refused with check `clock_behind`. |
+| HTTP refresh budget | The license client has a 15-second timeout; the shared background refresh is bounded at 20 seconds. |
+| Missing/expired/rejected/unverifiable entitlement | Normal management is denied. The access endpoint answers `can_use_panel=false` with state, observation and, for `verification_unavailable`, the reason. The license page (`/api/v1/panel/license`, administrators) also reports `check` (last failed attempt: `unreachable`, `rate_limited`, `invalid_answer`, `clock_behind`), `offline_for_seconds` and `verified_seconds_ago`. |
 | Browser behavior | A failed access request retains only a still-valid decision for the same user, without extending its deadline. Unknown access shows connection recovery; a server denial or `license_required` response locks management. |
 
 The current authenticated exceptions are deliberately narrow. All role,
@@ -99,7 +105,17 @@ An unreachable verifier after the effective deadline produces
 `verification_unavailable` in the manager; it is not proof that the annual
 license expired. Explicit rejection of this installation's refresh can invalidate
 its local receipt. A mistyped replacement key must not revoke a currently valid
-binding. No additional offline grace is granted by this document.
+binding. The seven-day window is the whole offline allowance; nothing extends it.
+
+Clock rollback, stated plainly: the window is anchored on the service's
+`issued_at` and capped by the signed `offline_until`, so moving the clock forward
+never helps and a clock before `issued_at` is refused. Setting the clock back
+inside the window is detected while the panel runs and, across a restart, down to
+the granularity of `seen_at` (written at every successful check and every failed
+attempt, i.e. at least every 30 minutes of use during an outage). The owner is
+root on their own server: restoring an old license file together with a clock set
+back, or patching the binary, is outside what a local check can stop; that is the
+same limit as before D-039, with the window now seven days instead of one minute.
 
 ## Required recovery behavior — not yet fully implemented
 
@@ -146,10 +162,12 @@ IP. Dual-stack egress changes require a binding change just like any IP change.
 Receipts remain v1 and machine-bound locally for compatibility with installed
 clients. Reinstalling at the same bound IP with the key replaces the machine binding
 and invalidates the previous refresh credential, preserving key and expiry.
-The signed v1 format still permits an offline deadline up to seven days after
-issuance, bounded by annual expiry; current access additionally applies the
-one-minute cap described above. Older receipt formats do not grant a current
-client a longer authorization window.
+The signed v1 format permits an offline deadline up to seven days after
+issuance, bounded by annual expiry; since D-039 the service signs exactly that
+and current panels honour it. Panels from v0.1.0-alpha.64 (#134) up to the
+release carrying D-039 still apply their own one-minute cap to a seven-day
+receipt; panels before alpha.64 already honoured the signed window. Older receipt formats do not grant
+a current client a longer authorization window.
 Legacy machine-bound licenses bind the observed IP after proving the original
 machine and key/refresh credential; an already reinstalled legacy server requires
 the owner to release its old binding first.

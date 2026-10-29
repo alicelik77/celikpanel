@@ -124,7 +124,7 @@ export function RecoveryStatus({ username, onUnauthorized, embedded = false, unf
 }
 
 /** Eager shell: no lazy screen catalogue, router, update provider, or mutation API. */
-export function RecoveryAccess({ user, cause, checking = false, failure = null, afterAnswer = false, onRetry, onUnauthorized }: {
+export function RecoveryAccess({ user, cause: given, checking = false, failure = null, afterAnswer = false, licenseReason, onRetry, onUnauthorized }: {
     /**
      * checking: the first session or readiness read is still in flight. loading: the session and readiness are
      * confirmed and the interface itself is still being fetched. Nothing has failed in either, so nothing is
@@ -139,9 +139,14 @@ export function RecoveryAccess({ user, cause, checking = false, failure = null, 
      * an answer, so it is not blanked for the quiet time, and an earlier failure is named only as "last known".
      */
     afterAnswer?: boolean;
+    /** With cause license: the cause the server named for the lapse (D-039), so the page says who acts and how. */
+    licenseReason?: 'offline_ended' | 'clock_behind';
     onRetry: () => void; onUnauthorized?: () => void;
 }) {
     const { t } = useI18n();
+    // A lapse with a named cause has its own title and help (recovery.licenseOfflineEnded*, recovery.licenseClockBehind*).
+    const cause = given === 'license' && licenseReason === 'offline_ended' ? 'licenseOfflineEnded'
+        : given === 'license' && licenseReason === 'clock_behind' ? 'licenseClockBehind' : given;
     // The first wait of this page: no read has answered yet, or only the interface is still on its way.
     const firstWait = cause === 'checking' || cause === 'loading';
     const waiting = firstWait || (checking && !user);
