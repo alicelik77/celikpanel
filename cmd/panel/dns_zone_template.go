@@ -138,7 +138,7 @@ func (p *Panel) createZoneWithTemplate(ctx context.Context, domain string) (int,
 	// istemek absürt olurdu — canlıda yakalandı: panel-sertifika akışı, panelin
 	// adının kaydı olmadığı için tıkandı.
 	panelHost := ""
-	if h, err := os.Hostname(); err == nil {
+	if h, err := localServerName(); err == nil {
 		h = strings.ToLower(strings.TrimSuffix(h, "."))
 		if h != domain && strings.HasSuffix(h, "."+domain) {
 			panelHost = h
