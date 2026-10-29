@@ -91,6 +91,12 @@ re-run is owed before any is called proven.
   4.9.18-1pdns.trixie), backports or another repository is refused with
   `server_setup_pdns_main_not_debian_archive`, as documented, not with
   `server_setup_pdns_main_untested_version`.
+- **A changed join is the run's current state.** When the second server's
+  answers change while the first server's run waits at a step that has
+  started nothing yet (for example primary_dns before its DNS install), the
+  run itself now says `server_setup_peer_join_changed` at the top, not only
+  the peer card. A step with an operation in progress or a known failure
+  keeps its own state.
 
 ## October 29 follow-up: fixes from the Beta-1 VM run (alpha.115 source)
 

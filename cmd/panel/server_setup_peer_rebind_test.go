@@ -68,15 +68,17 @@ func TestServerSetupPeerChangedAnswersRecoverWithANewCode(t *testing.T) {
 	if !errors.As(err, &failure) || failure.Code != "server_setup_peer_names_changed" || !strings.Contains(failure.Message, "new join code on the first server") {
 		t.Fatalf("changed answers on the second server: %v", err)
 	}
-	// The first server says what changed on its setup link (the DNS step
-	// that is waiting keeps its own phase and reason, D-024); asking again
-	// changes nothing and the run does not go on with the old answers.
+	// The first server says what changed, at the top of its run: the DNS
+	// step waited for the main DNS server and had installed nothing, and that
+	// wait cannot end before the join is fixed (Beta-1 re-run: only the peer
+	// card said it). Asking again changes nothing and the run does not go on
+	// with the old answers.
 	for pass := 0; pass < 2; pass++ {
 		if _, err := firstAdvance(); err != nil {
 			t.Fatal(err)
 		}
-		if pair.execution.Status != "waiting" || pair.execution.Phase != "primary_dns" || pair.execution.Error == nil || pair.execution.Error.Code != "server_setup_primary_dns_required" {
-			t.Fatalf("pass %d: the waiting step's state was replaced: %s %s %+v", pass, pair.execution.Status, pair.execution.Phase, pair.execution.Error)
+		if pair.execution.Status != "waiting" || pair.execution.Phase != "peer_join" || pair.execution.Error == nil || pair.execution.Error.Code != "server_setup_peer_join_changed" {
+			t.Fatalf("pass %d: the run does not say the join changed: %s %s %+v", pass, pair.execution.Status, pair.execution.Phase, pair.execution.Error)
 		}
 		view, err := pair.first.panel.serverSetupPeerState(context.Background())
 		if err != nil || !view.Changed {

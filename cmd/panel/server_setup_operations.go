@@ -336,21 +336,55 @@ func setupPDNSPairedPrimaryBlocker(draft serverSetupDraft, state dnsEngineDBStat
 	return code
 }
 
-// serverSetupExecutionStateReplaceable: no step after the join step is
-// running or failed and the run holds no error other than the join's own
-// waits, so saying the join's state replaces nothing the owner must see.
-func serverSetupExecutionStateReplaceable(execution serverSetupExecution) bool {
-	after := false
+// serverSetupExecutionStateReplaceable: no step after the join step failed
+// or runs an operation, and the run holds no error other than the join's own
+// waits or a wait of a step that has started nothing yet, so saying the
+// join's state replaces nothing the owner must see.
+//
+// Beta-1 re-run: the first server's run waited at primary_dns (its DNS step
+// had not admitted its install) while its second server's answers had
+// changed; the run kept saying primary_dns and only the peer card said the
+// change. That wait cannot end before the join is fixed, so the join's state
+// is the current one and is said at the top. A step with an operation (a
+// DNS switch, a component install) or a known failure is never replaced.
+func (p *Panel) serverSetupExecutionStateReplaceable(ctx context.Context, execution serverSetupExecution) bool {
+	after, waitingStep := false, false
 	for _, step := range execution.Steps {
 		if step.Kind == "peer_join" {
 			after = true
 			continue
 		}
-		if after && (step.Status == "running" || step.Status == "failed") {
+		if !after {
+			continue
+		}
+		if step.Status == "failed" {
 			return false
 		}
+		if step.Status == "running" {
+			if !p.serverSetupStepWaitsWithoutChild(ctx, execution, step) {
+				return false
+			}
+			waitingStep = true
+		}
 	}
-	return execution.Error == nil || stringIn(execution.Error.Code, "server_setup_peer_join_changed", "server_setup_peer_join_reopen_required", "server_setup_peer_names_waiting", "server_setup_peer_join_waiting")
+	return execution.Error == nil || waitingStep || stringIn(execution.Error.Code, "server_setup_peer_join_changed", "server_setup_peer_join_reopen_required", "server_setup_peer_names_waiting", "server_setup_peer_join_waiting")
+}
+
+// serverSetupStepWaitsWithoutChild: the run waits at a step that has not
+// admitted anything: a DNS step whose switch does not exist, or a component
+// step before its operation.
+func (p *Panel) serverSetupStepWaitsWithoutChild(ctx context.Context, execution serverSetupExecution, step serverSetupExecutionStep) bool {
+	if execution.Status != "waiting" || step.OperationID != "" {
+		return false
+	}
+	switch step.Kind {
+	case "dns":
+		status, err := p.serverSetupDNSOperationStatus(ctx, step.RequestID)
+		return err == nil && status == "missing"
+	case "service", "runtime", "mail_profile":
+		return true
+	}
+	return false
 }
 
 // serverSetupPDNSMainCandidateCode reads, read-only, the PowerDNS build this
@@ -1229,7 +1263,7 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 			// replaced. A step that is running, or a known failure, keeps
 			// its own phase and error (D-024); the setup link's state says
 			// the change (GET /api/v1/setup/peer: changed).
-			if !serverSetupExecutionStateReplaceable(*execution) {
+			if !p.serverSetupExecutionStateReplaceable(ctx, *execution) {
 				return false, nil
 			}
 			execution.Status, execution.Phase = "waiting", "peer_join"

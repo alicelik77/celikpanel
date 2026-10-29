@@ -92,6 +92,11 @@ sayılmadan önce yeni bir hedefli VM koşusu gerekir.
   ya da başka bir depodan gelen derleme belgelendiği gibi
   `server_setup_pdns_main_not_debian_archive` ile reddedilir,
   `server_setup_pdns_main_untested_version` ile değil.
+- **Değişen katılma çalışmanın güncel durumudur.** İlk sunucunun çalışması
+  henüz hiçbir şey başlatmamış bir adımda beklerken (örneğin DNS kurulumundan
+  önce primary_dns) ikinci sunucunun yanıtları değişirse, artık yalnız eş
+  kartı değil çalışmanın kendisi en üstte `server_setup_peer_join_changed`
+  der. İşlemi süren bir adım ya da bilinen bir hata kendi durumunu korur.
 
 ## 29 Ekim ek kararı: Beta-1 sanal makine koşusunun düzeltmeleri (alpha.115 kaynağı)
 
