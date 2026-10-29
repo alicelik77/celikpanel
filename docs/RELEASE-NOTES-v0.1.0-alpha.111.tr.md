@@ -103,8 +103,11 @@ anahtarlı özet olarak), kurulum bağlantısının mühürlü değerleri ve kur
 kayıtların listesi `panel_settings` ile var olan kurulum ve DNS tablolarında tutulur.
 Bir sunucunun yeniden kullanması gereken her gizli değer kendi anahtar dosyasıyla
 mühürlenir; veritabanının tek başına bir kopyası kod, kimlik bilgisi ya da kayıt
-vermez. Bağlantı kimlik bilgisi ve katılma kodu, kurulum bitince iki sunucudan da
-silinir.
+vermez. Katılma kodu, katılma bitince silinir.
+Bağlantı kimlik bilgisi, ikinci sunucu kurulumunun hazır olduğunu bildirene (ya da
+sahip "Diğer sunucuyu beklemeyi bırak"ı seçene) kadar kalır, sonra iki sunucudan
+da silinir; geç gelen bir bildirimin retten ayrılabilmesi için yalnız biten kimlik
+bilgisinin anahtarlı özeti tutulur.
 
 İki sunucu arasındaki DNS çoğaltması DNS yazılımının kendi bölge aktarımıdır ve
 panele gerek duymaz (D-022). İlk koşuda panel ve ajan durdurulmuşken sahibin yerel

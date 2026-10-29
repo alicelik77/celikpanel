@@ -102,8 +102,11 @@ No schema change (schema 46). The wizard's answers, join codes (only as keyed
 hashes), the setup link's sealed values and the list of records setup wrote are
 kept in `panel_settings` and the existing setup and DNS tables. Every secret a
 server must use again is sealed under its own key file; a copy of the database
-alone gives no code, credential or enrollment. The link credential and the join
-code are removed on both servers when setup completes.
+alone gives no code, credential or enrollment. The join code is removed when the
+join completes. The link credential stays until the second server reports that
+its setup is ready (or the owner chooses "Stop waiting for the other server"),
+then it is removed on both servers; only a keyed hash of the ended credential
+is kept, so a late report is told apart from a refusal.
 
 DNS replication between the two servers is the DNS software's own zone transfer
 and does not need the panel (D-022). In the first run, with the panel and the
