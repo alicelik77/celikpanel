@@ -53,7 +53,16 @@ sayılmadan önce yeni bir hedefli VM koşusu gerekir.
   ancak o zaman kapatır. Katılma kodu yine ana sunucunun kurulumuyla biter.
   Yedek sunucu kendini hazır işaretlemeden önce bildirir; ana sunucuya
   ulaşamazsa bekler (`server_setup_peer_ready_unreachable`) ve kendiliğinden
-  yeniden bildirir. Böylece ana sunucu bittikten sonra başarısız olan yedek
+  yeniden bildirir. Yalnız alındı yanıtı ya da ana sunucunun
+  `server_setup_peer_link_ended` yanıtı bildirilmiş sayılır: kapanan taraf kabul
+  ettiği kimliğin anahtarlı özetini saklar (değerini asla) ve ana sunucu
+  bağlantının kapandığını yalnız tam o kimlik için ve katılmadaki adresten
+  söyler. Başka her ret `server_setup_peer_ready_refused` beklemesidir (siz,
+  sunucu sahibi: ana sunucuda kurulumu açın, gerekirse İkinci sunucuyu
+  beklemeyi bırak'ı seçin); başka TLS anahtarı
+  `server_setup_peer_ready_identity_changed` olur (ana sunucuda yeni katılma
+  kodu oluşturun). Bildirim yalnız kimliğinin doğrulandığı ad alanının
+  kaydına işler; durumu okunamayan bildirim hatadır ve yedek yeniden bildirir. Böylece ana sunucu bittikten sonra başarısız olan yedek
   sunucu yeniden deneyip bitirebilir. Bu arada ana sunucu kendi hizmetleri
   için hazırdır ve kurulum sayfası ikinci sunucunun bitirmediğini söyler
   (`peer_setup: pending`; siz, ikinci sunucuda: kurulumu orada açın; sonra

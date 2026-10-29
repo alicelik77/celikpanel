@@ -333,6 +333,9 @@ type serverSetupJoinRecord struct {
 	// server reports ready over it, or the owner stops waiting for it.
 	PeerReadyAt   string `json:"peer_ready_at,omitempty"`
 	PeerRetiredAt string `json:"peer_retired_at,omitempty"`
+	// EndedCredentialHash: the keyed hash the ended link accepted, kept so an
+	// ended link is told apart from a wrong credential (never the value).
+	EndedCredentialHash string `json:"ended_credential_hash,omitempty"`
 }
 
 type serverSetupJoinFirst struct {
@@ -1030,10 +1033,10 @@ func (p *Panel) requireServerSetupLinkMachine(next http.Handler) http.Handler {
 				p.handleServerSetupPeerDKIM(w, r)
 			}
 		case serverSetupPeerReadyPath:
-			// The backup reports to the main DNS server, which is either one.
-			if p.authenticateServerSetupLink(w, r, p.serverSetupLinkRole(r.Context())) {
-				p.handleServerSetupPeerReady(w, r)
-			}
+			// The backup reports to the main DNS server, which is either one:
+			// the namespace its credential authenticates in is the record it
+			// acts on (review fix, items 1 and 3).
+			p.handleServerSetupPeerReadyLink(w, r)
 		}
 	})
 }
@@ -1096,22 +1099,58 @@ func (p *Panel) serverSetupLinkAuthorized(ctx context.Context, role, id, credent
 }
 
 func (p *Panel) authenticateServerSetupLink(w http.ResponseWriter, r *http.Request, role string) bool {
-	deny := func() bool {
-		writeServerSetupJoinRefusal(w, http.StatusUnauthorized, "server_setup_link_unauthorized", "The server setup link is not valid; join the second server again.", nil)
+	id, credential, ok := serverSetupLinkBearer(r)
+	if !ok || !p.serverSetupLinkAuthorized(r.Context(), role, id, credential) {
+		writeServerSetupLinkUnauthorized(w)
 		return false
 	}
+	return true
+}
+
+func writeServerSetupLinkUnauthorized(w http.ResponseWriter) {
+	writeServerSetupJoinRefusal(w, http.StatusUnauthorized, "server_setup_link_unauthorized", "The server setup link is not valid; join the second server again.", nil)
+}
+
+// serverSetupLinkBearer reads the link's one bearer: link id and credential.
+func serverSetupLinkBearer(r *http.Request) (string, string, bool) {
 	auth := r.Header.Get("Authorization")
 	if !strings.HasPrefix(auth, "Bearer ") || len(r.Header.Values("Authorization")) != 1 {
-		return deny()
+		return "", "", false
 	}
 	id, credential, ok := strings.Cut(strings.TrimPrefix(auth, "Bearer "), ".")
 	if !ok || !validServiceOperationID(id) || !remoteDNSValidSecret(credential) {
-		return deny()
+		return "", "", false
 	}
-	if !p.serverSetupLinkAuthorized(r.Context(), role, id, credential) {
-		return deny()
+	return id, credential, true
+}
+
+// serverSetupLinkAuthenticatedRole is the namespace a credential is live
+// in, each checked against its own record only ("" when none).
+func (p *Panel) serverSetupLinkAuthenticatedRole(ctx context.Context, id, credential string) string {
+	for _, role := range []string{serverSetupLinkRoleFirst, serverSetupLinkRoleSecond} {
+		if p.serverSetupLinkAuthorized(ctx, role, id, credential) {
+			return role
+		}
 	}
-	return true
+	return ""
+}
+
+// serverSetupLinkEnded: the credential is exactly the one an ended side
+// accepted (its tombstone), presented from that pair's joined address.
+func (p *Panel) serverSetupLinkEnded(ctx context.Context, r *http.Request, id, credential string) bool {
+	source, known := p.serverSetupJoinSourceIP(r)
+	if !known {
+		return false
+	}
+	mac := p.serverSetupMAC("link", credential)
+	var join serverSetupJoinRecord
+	if found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join); err == nil && found && join.EndedCredentialHash != "" &&
+		subtle.ConstantTimeCompare([]byte(id), []byte(join.LinkID)) == 1 && serverSetupSameSecret(join.EndedCredentialHash, mac) && source.String() == join.Peer.IPv4 {
+		return true
+	}
+	link, err := p.readServerSetupLink(ctx)
+	return err == nil && link != nil && link.EndedCredentialHash != "" &&
+		subtle.ConstantTimeCompare([]byte(id), []byte(link.LinkID)) == 1 && serverSetupSameSecret(link.EndedCredentialHash, mac) && source.String() == link.Document.First.IPv4
 }
 
 // handleServerSetupPeerNames: the second server's names reach the first

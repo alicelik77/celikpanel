@@ -196,7 +196,7 @@ test('every sentence about the record requested from the primary exists in both 
 // Beta-1 re-run P7: the backup waits to tell the main DNS server it is ready;
 // the reason is said in both languages, not as an unknown wait.
 test('the backup waiting to report ready names that reason in both languages',()=>{
-    for(const code of ['server_setup_peer_ready_unreachable','server_setup_peer_ready_refused']){
+    for(const code of ['server_setup_peer_ready_unreachable','server_setup_peer_ready_refused','server_setup_peer_ready_identity_changed']){
         const guide=setupExecutionGuidance(execution({status:'waiting',phase:'verification',error:{code,message:'x'},steps:[{id:'02-verify',kind:'verify',target:'web',status:'pending'}]}));
         assert.ok(keys(guide).includes(`setup.v5.wait.${code}`),code);
         assert.ok(enScreens[`setup.v5.wait.${code}`]&&trScreens[`setup.v5.wait.${code}`],code);

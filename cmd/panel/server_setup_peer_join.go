@@ -568,22 +568,40 @@ func (p *Panel) revokeServerSetupLink(ctx context.Context) error {
 	if _, err := p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key=?`, serverSetupJoinCodeKey); err != nil {
 		return err
 	}
-	var join serverSetupJoinRecord
-	if found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join); err != nil {
+	if err := p.revokeServerSetupLinkSide(ctx, serverSetupLinkRoleFirst); err != nil {
 		return err
-	} else if found && (join.LinkCredentialHash != "" || join.PeerCredential != "") {
-		join.LinkCredentialHash, join.PeerCredential = "", ""
-		if err := writeServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, join); err != nil {
+	}
+	return p.revokeServerSetupLinkSide(ctx, serverSetupLinkRoleSecond)
+}
+
+// revokeServerSetupLinkSide ends one role's side of the link. It keeps an
+// authenticated tombstone: a keyed hash of the credential that side accepted
+// (never the credential), so a later call with exactly that credential is
+// answered "the link ended" (server_setup_peer_link_ended) rather than with
+// a bare refusal (review fix, item 1, 2026-10-29). Idempotent.
+func (p *Panel) revokeServerSetupLinkSide(ctx context.Context, role string) error {
+	switch role {
+	case serverSetupLinkRoleFirst:
+		var join serverSetupJoinRecord
+		found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join)
+		if err != nil || !found || (join.LinkCredentialHash == "" && join.PeerCredential == "") {
 			return err
 		}
-	}
-	if link, err := p.readServerSetupLink(ctx); err != nil {
-		return err
-	} else if link != nil && link.LinkCredential != "" {
+		if join.LinkCredentialHash != "" {
+			join.EndedCredentialHash = join.LinkCredentialHash
+		}
+		join.LinkCredentialHash, join.PeerCredential = "", ""
+		return writeServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, join)
+	case serverSetupLinkRoleSecond:
+		link, err := p.readServerSetupLink(ctx)
+		if err != nil || link == nil || link.LinkCredential == "" {
+			return err
+		}
+		link.EndedCredentialHash = p.serverSetupMAC("link", serverSetupReverseCredential(link.LinkCredential))
 		link.LinkCredential = ""
 		return p.writeServerSetupLink(ctx, p.db.GetDB(), *link)
 	}
-	return nil
+	return errors.New("unknown setup link role")
 }
 
 // serverSetupPeerTarget is how this server reaches the other one: on the

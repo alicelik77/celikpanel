@@ -52,7 +52,17 @@ re-run is owed before any is called proven.
   /api/v1/setup/peer/retire`, confirmed). Only then does the main end it. The
   join code still ends with the main's setup. The backup reports before it
   marks itself ready; when the main cannot be told it waits
-  (`server_setup_peer_ready_unreachable`) and reports again by itself. So a
+  (`server_setup_peer_ready_unreachable`) and reports again by itself. Only an
+  acknowledgement or the main's `server_setup_peer_link_ended` counts as told:
+  an ended side keeps a keyed hash of the credential it accepted (never the
+  value), and the main says the link ended only for exactly that credential
+  from the joined address. Any other refusal is the wait
+  `server_setup_peer_ready_refused` (you, the owner: on the main open setup
+  and, if needed, choose Stop waiting for the second server); another TLS key
+  is `server_setup_peer_ready_identity_changed` (create a new join code on the
+  main). A report acts only on the record of the namespace its credential
+  authenticates in, and a report whose state cannot be read is an error, so
+  the backup reports again. So a
   backup that fails after the main finished can retry and finish. Meanwhile
   the main is ready for its own services, and its setup page says the second
   server has not finished (`peer_setup: pending`; you, on the second server:

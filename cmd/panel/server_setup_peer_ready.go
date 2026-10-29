@@ -60,6 +60,7 @@ func serverSetupPeerReadyState(ready, retired string) string {
 	return "pending"
 }
 
+
 // serverSetupDraftIsMainDNS / Backup: this server's role in its own pair.
 func serverSetupDraftIsMainDNS(d serverSetupDraft) bool {
 	return d.DNSMode == setupDNSModeLocal && d.DNSRole == transport.DNSPairRolePrimary
@@ -69,72 +70,175 @@ func serverSetupDraftIsBackupDNS(d serverSetupDraft) bool {
 	return d.DNSMode == setupDNSModeLocal && d.DNSRole == transport.DNSPairRoleSecondary
 }
 
-// settleServerSetupLink runs after this server's setup was marked ready. The
-// join code always ends with the setup. The link's credentials end now on
-// the backup (it reported first), and on the main only once the backup has
-// reported or the owner stopped waiting for it.
-func (p *Panel) settleServerSetupLink(ctx context.Context, d serverSetupDraft) error {
-	if !serverSetupDraftIsMainDNS(d) {
-		return p.revokeServerSetupLink(ctx)
+// serverSetupOwnLinkRole is this server's side of the link in its own
+// setup: first when its latest run joins a second server (peer_join),
+// second when it joined a first one (peer_names). A run with neither step (an
+// extension) falls back to the one record that exists; both records with no
+// run to tell them apart is refused, never guessed (review fix, item 3).
+func (p *Panel) serverSetupOwnLinkRole(ctx context.Context) (string, error) {
+	execution, err := p.latestServerSetupExecution(ctx)
+	if err != nil {
+		return "", err
 	}
+	if execution != nil {
+		plan, err := p.loadServerSetupPlan(ctx, execution.PlanID)
+		if err != nil {
+			return "", err
+		}
+		switch {
+		case serverSetupPlanHasStep(plan, "peer_join"):
+			return serverSetupLinkRoleFirst, nil
+		case serverSetupPlanHasStep(plan, "peer_names"):
+			return serverSetupLinkRoleSecond, nil
+		}
+	}
+	link, err := p.readServerSetupLink(ctx)
+	if err != nil {
+		return "", err
+	}
+	var join serverSetupJoinRecord
+	joinFound, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join)
+	if err != nil {
+		return "", err
+	}
+	switch {
+	case link != nil && joinFound:
+		return "", errors.New("this server keeps both sides of setup links and its setup names neither")
+	case link != nil:
+		return serverSetupLinkRoleSecond, nil
+	case joinFound:
+		return serverSetupLinkRoleFirst, nil
+	}
+	return "", nil
+}
+
+// serverSetupPeerRecord is one role's view of its link: whether it exists,
+// whether its credential is live, and the other server's report or the
+// owner's choice.
+type serverSetupPeerRecord struct {
+	Found, Live          bool
+	ReadyAt, RetiredAt   string
+	JoinRequestID        string
+	PeerSource           string
+	checkSourceOnReports bool
+}
+
+func (p *Panel) readServerSetupPeerRecord(ctx context.Context, role string) (serverSetupPeerRecord, error) {
+	switch role {
+	case serverSetupLinkRoleFirst:
+		var join serverSetupJoinRecord
+		found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join)
+		if err != nil || !found {
+			return serverSetupPeerRecord{}, err
+		}
+		return serverSetupPeerRecord{Found: true, Live: join.LinkCredentialHash != "" || join.PeerCredential != "", ReadyAt: join.PeerReadyAt, RetiredAt: join.PeerRetiredAt,
+			JoinRequestID: join.RequestID, PeerSource: join.Peer.IPv4, checkSourceOnReports: true}, nil
+	case serverSetupLinkRoleSecond:
+		link, err := p.readServerSetupLink(ctx)
+		if err != nil || link == nil {
+			return serverSetupPeerRecord{}, err
+		}
+		return serverSetupPeerRecord{Found: true, Live: link.LinkCredential != "", ReadyAt: link.PeerReadyAt, RetiredAt: link.PeerRetiredAt, JoinRequestID: link.RequestID}, nil
+	}
+	return serverSetupPeerRecord{}, nil
+}
+
+// markServerSetupPeerRecord sets the report or the owner's choice on one
+// role's record (the caller holds the join lock).
+func (p *Panel) markServerSetupPeerRecord(ctx context.Context, role string, ready bool, at string) error {
+	switch role {
+	case serverSetupLinkRoleFirst:
+		var join serverSetupJoinRecord
+		found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join)
+		if err != nil {
+			return err
+		}
+		if !found {
+			return errServerSetupPeerRecordMissing
+		}
+		if ready {
+			join.PeerReadyAt = at
+		} else {
+			join.PeerRetiredAt = at
+		}
+		return writeServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, join)
+	case serverSetupLinkRoleSecond:
+		link, err := p.readServerSetupLink(ctx)
+		if err != nil {
+			return err
+		}
+		if link == nil {
+			return errServerSetupPeerRecordMissing
+		}
+		if ready {
+			link.PeerReadyAt = at
+		} else {
+			link.PeerRetiredAt = at
+		}
+		return p.writeServerSetupLink(ctx, p.db.GetDB(), *link)
+	}
+	return errServerSetupPeerRecordMissing
+}
+
+var errServerSetupPeerRecordMissing = errors.New("this server keeps no setup link for that role")
+
+// settleServerSetupLink runs after this server's setup was marked ready. The
+// join code always ends with the setup. On the backup its own side ends (it
+// has reported). On the main it ends once the backup has reported or the
+// owner stopped waiting, and then whenever settle runs again (idempotent).
+func (p *Panel) settleServerSetupLink(ctx context.Context, d serverSetupDraft) error {
 	joinLock := p.serverSetupJoinLock()
 	joinLock.Lock()
 	defer joinLock.Unlock()
 	if _, err := p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key=?`, serverSetupJoinCodeKey); err != nil {
 		return err
 	}
-	finished, err := p.serverSetupPeerFinished(ctx)
-	if err != nil || !finished {
+	role, err := p.serverSetupOwnLinkRole(ctx)
+	if err != nil || role == "" {
 		return err
 	}
-	return p.revokeServerSetupLink(ctx)
+	if serverSetupDraftIsMainDNS(d) {
+		record, err := p.readServerSetupPeerRecord(ctx, role)
+		if err != nil || (record.ReadyAt == "" && record.RetiredAt == "") {
+			return err
+		}
+	}
+	return p.revokeServerSetupLinkSide(ctx, role)
 }
 
-// serverSetupPeerFinished: the other server reported ready or was retired,
-// on whichever side of the link this server is.
-func (p *Panel) serverSetupPeerFinished(ctx context.Context) (bool, error) {
-	link, err := p.readServerSetupLink(ctx)
-	if err != nil {
-		return false, err
-	}
-	if link != nil {
-		return link.PeerReadyAt != "" || link.PeerRetiredAt != "", nil
-	}
-	var join serverSetupJoinRecord
-	found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join)
-	if err != nil || !found {
-		return !found, err
-	}
-	return join.PeerReadyAt != "" || join.PeerRetiredAt != "", nil
-}
+// serverSetupPeerReadyOutcome is what the backup does with the main's answer
+// to its report.
+const (
+	serverSetupPeerReadyRefusedMessage  = "The main DNS server did not accept this server's report that its setup is ready, although this server is ready. You, the owner: on the main DNS server open setup; if it still waits for this server, choose \"Stop waiting for the second server\" there. This server reports again by itself."
+	serverSetupPeerReadyIdentityMessage = "The main DNS server answered with another identity (TLS key) than the one this server joined, so nothing was sent. This is a verified state, not a network problem. You, the owner: on the main DNS server create a new join code and join this server again."
+)
 
 // reportServerSetupReadyToMain: the backup tells the main DNS server, over
-// the link, that its setup is ready. A refused credential means the main
-// already ended the link (it recorded the report, or its owner stopped
-// waiting): nothing more to tell. An unreachable main is a wait (D-024).
+// the link, that its setup is ready. Only an acknowledgement or the main's
+// authenticated "this link ended" counts as told; a bare refusal is a wait
+// for the owner, never taken for the end of the link (review fix, item 1).
 func (p *Panel) reportServerSetupReadyToMain(ctx context.Context, d serverSetupDraft) error {
 	if !serverSetupDraftIsBackupDNS(d) {
 		return nil
 	}
-	var target serverSetupLinkTarget
-	var bearer, joinRequestID string
-	link, err := p.readServerSetupLink(ctx)
+	role, err := p.serverSetupOwnLinkRole(ctx)
 	if err != nil {
 		return err
 	}
-	if link != nil {
-		if link.LinkCredential == "" {
-			return nil
-		}
-		target, bearer, joinRequestID = link.target(), link.bearer(), link.RequestID
-	} else {
-		var join serverSetupJoinRecord
-		found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join)
-		if err != nil {
+	var target serverSetupLinkTarget
+	var bearer, joinRequestID string
+	switch role {
+	case serverSetupLinkRoleSecond:
+		link, err := p.readServerSetupLink(ctx)
+		if err != nil || link == nil || link.LinkCredential == "" {
 			return err
 		}
-		if !found || (join.PeerCredential == "" && join.LinkCredentialHash == "") {
-			return nil
+		target, bearer, joinRequestID = link.target(), link.bearer(), link.RequestID
+	case serverSetupLinkRoleFirst:
+		var join serverSetupJoinRecord
+		found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join)
+		if err != nil || !found || join.PeerCredential == "" {
+			return err
 		}
 		execution, err := p.latestServerSetupExecution(ctx)
 		if err != nil || execution == nil {
@@ -152,6 +256,8 @@ func (p *Panel) reportServerSetupReadyToMain(ctx context.Context, d serverSetupD
 			return err
 		}
 		joinRequestID = join.RequestID
+	default:
+		return nil
 	}
 	var answer struct {
 		State string `json:"state"`
@@ -161,20 +267,45 @@ func (p *Panel) reportServerSetupReadyToMain(ctx context.Context, d serverSetupD
 	switch {
 	case callErr == nil:
 		return nil
-	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_link_unauthorized":
+	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_link_ended":
 		return nil
 	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_version_incompatible":
 		return serverSetupPeerVersionWait()
 	case errors.As(callErr, &refusal):
-		return &serverSetupPeerWait{Code: "server_setup_peer_ready_refused", Message: "The main DNS server refused this server's report that its setup is ready (" + refusal.Code + "). The owner checks the setup link on the main DNS server (its setup page names the second server); this server reports again by itself."}
+		return &serverSetupPeerWait{Code: "server_setup_peer_ready_refused", Message: serverSetupPeerReadyRefusedMessage}
+	case errors.Is(callErr, errServerSetupLinkPinMismatch):
+		return &serverSetupPeerWait{Code: "server_setup_peer_ready_identity_changed", Message: serverSetupPeerReadyIdentityMessage}
 	default:
-		return &serverSetupPeerWait{Code: "server_setup_peer_ready_unreachable", Message: "Everything on this server is ready, but the main DNS server could not be told so yet (it could not be reached, or its answer was lost). Nothing to do if it is only briefly offline; otherwise check that the main DNS server's panel is running. This server reports again by itself and then finishes."}
+		return &serverSetupPeerWait{Code: "server_setup_peer_ready_unreachable", Message: "This server is ready, but the main DNS server could not be told so yet (it could not be reached, or its answer was lost). Nothing to do if it is only briefly offline; otherwise check that the main DNS server's panel is running. This server reports again by itself."}
 	}
 }
 
-// handleServerSetupPeerReady (main DNS server, link machine endpoint): the
-// backup's report. The same report again is answered the same way.
-func (p *Panel) handleServerSetupPeerReady(w http.ResponseWriter, r *http.Request) {
+// handleServerSetupPeerReadyLink authenticates the report in whichever
+// namespace its credential is live, and answers an ended link with its own
+// code for exactly the credential that link accepted, from its joined
+// address. Anything else is the ordinary refusal.
+func (p *Panel) handleServerSetupPeerReadyLink(w http.ResponseWriter, r *http.Request) {
+	id, credential, ok := serverSetupLinkBearer(r)
+	if !ok {
+		writeServerSetupLinkUnauthorized(w)
+		return
+	}
+	role := p.serverSetupLinkAuthenticatedRole(r.Context(), id, credential)
+	if role == "" {
+		if p.serverSetupLinkEnded(r.Context(), r, id, credential) {
+			writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_link_ended", "This server already ended the setup link (the second server reported ready, or the owner stopped waiting for it).", nil)
+			return
+		}
+		writeServerSetupLinkUnauthorized(w)
+		return
+	}
+	p.handleServerSetupPeerReady(w, r, role)
+}
+
+// handleServerSetupPeerReady (main DNS server): the backup's report, on the
+// record of the role its credential authenticated in. The same report again
+// is answered the same way.
+func (p *Panel) handleServerSetupPeerReady(w http.ResponseWriter, r *http.Request, role string) {
 	var request serverSetupPeerReadyRequest
 	if !decodeServerSetupLinkBody(w, r, &request) || refuseServerSetupLinkProtocol(w, request.Protocol) {
 		return
@@ -184,59 +315,44 @@ func (p *Panel) handleServerSetupPeerReady(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	ctx := r.Context()
-	source, sourceKnown := p.serverSetupJoinSourceIP(r)
-	otherJoin := func() {
-		writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_ready_other_join", "This report names another join than the one this server keeps; it is not recorded.", nil)
-	}
 	joinLock := p.serverSetupJoinLock()
 	joinLock.Lock()
 	defer joinLock.Unlock()
-	now := time.Now().UTC().Format(time.RFC3339)
-	link, err := p.readServerSetupLink(ctx)
+	record, err := p.readServerSetupPeerRecord(ctx, role)
 	if err != nil {
 		writeServerError(w, err)
 		return
 	}
-	if link != nil {
-		// The first server calls from wherever it routes; like its DKIM
-		// call, the report is bound by the link credential and the join.
-		if request.JoinRequestID != link.RequestID {
-			otherJoin()
+	if !record.Found || request.JoinRequestID != record.JoinRequestID {
+		writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_ready_other_join", "This report names another join than the one this server keeps; it is not recorded.", nil)
+		return
+	}
+	// The second server's address was checked at the join; its report comes
+	// from that address. (The first server, calling the second, routes from
+	// wherever it does; like its DKIM call it is bound by credential and join.)
+	if record.checkSourceOnReports {
+		if source, known := p.serverSetupJoinSourceIP(r); !known || source.String() != record.PeerSource {
+			writeServerSetupJoinRefusal(w, http.StatusForbidden, "server_setup_peer_ready_source", "This report does not come from the second server's joined address; it is not recorded.", nil)
 			return
 		}
-		if link.PeerReadyAt == "" {
-			link.PeerReadyAt = now
-			if err := p.writeServerSetupLink(ctx, p.db.GetDB(), *link); err != nil {
-				writeServerError(w, err)
-				return
-			}
-			p.audit(r, "server.setup.peer_ready", "", 0)
-		}
-	} else {
-		var join serverSetupJoinRecord
-		found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join)
-		if err != nil {
+	}
+	if record.ReadyAt == "" {
+		if err := p.markServerSetupPeerRecord(ctx, role, true, time.Now().UTC().Format(time.RFC3339)); err != nil {
 			writeServerError(w, err)
 			return
 		}
-		// The second server's address was checked at the join; its report
-		// comes from that address.
-		if !found || request.JoinRequestID != join.RequestID || !sourceKnown || source.String() != join.Peer.IPv4 {
-			otherJoin()
-			return
-		}
-		if join.PeerReadyAt == "" {
-			join.PeerReadyAt = now
-			if err := writeServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, join); err != nil {
-				writeServerError(w, err)
-				return
-			}
-			p.audit(r, "server.setup.peer_ready", "", 0)
-		}
+		p.audit(r, "server.setup.peer_ready", "", 0)
 	}
-	// Both are ready once this server's own setup is: its side ends now.
-	if state, err := p.loadServerSetup(ctx); err == nil && state.Status == "ready" {
-		if err := p.revokeServerSetupLink(ctx); err != nil {
+	// Both are ready once this server's own setup is: its side ends now. A
+	// state that cannot be read is answered as an error, so the backup
+	// reports again; the link is never left open behind a "recorded".
+	state, err := p.loadServerSetup(ctx)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	if state.Status == "ready" {
+		if err := p.revokeServerSetupLinkSide(ctx, role); err != nil {
 			writeServerError(w, err)
 			return
 		}
@@ -246,8 +362,9 @@ func (p *Panel) handleServerSetupPeerReady(w http.ResponseWriter, r *http.Reques
 }
 
 // handleServerSetupPeerRetire (main DNS server, administrator): stop waiting
-// for the second server. Allowed only once this server's setup is ready and
-// the second server has not reported; it ends the link at once.
+// for the second server. Decided under the join lock on this server's own
+// role's record: a missing record is refused, an already reported or retired
+// link only ends what is left of it.
 func (p *Panel) handleServerSetupPeerRetire(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	if !serverSetupAdmin(w, r, http.MethodPost) {
@@ -261,47 +378,51 @@ func (p *Panel) handleServerSetupPeerRetire(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	ctx := r.Context()
-	view, err := p.serverSetupPeerState(ctx)
-	if err != nil {
-		writeServerError(w, err)
-		return
-	}
-	if view.PeerSetup != "pending" {
+	notWaiting := func() {
 		writeCodedError(w, http.StatusConflict, "server_setup_peer_not_waiting", "This server is not waiting for a second server's setup.", "/setup")
-		return
 	}
 	joinLock := p.serverSetupJoinLock()
 	joinLock.Lock()
-	now := time.Now().UTC().Format(time.RFC3339)
-	err = func() error {
-		link, err := p.readServerSetupLink(ctx)
+	retired, err := func() (bool, error) {
+		state, err := p.loadServerSetup(ctx)
 		if err != nil {
-			return err
+			return false, err
 		}
-		if link != nil {
-			link.PeerRetiredAt = now
-			if err := p.writeServerSetupLink(ctx, p.db.GetDB(), *link); err != nil {
-				return err
-			}
-		} else {
-			var join serverSetupJoinRecord
-			if _, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join); err != nil {
-				return err
-			}
-			join.PeerRetiredAt = now
-			if err := writeServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, join); err != nil {
-				return err
-			}
+		role, err := p.serverSetupOwnLinkRole(ctx)
+		if err != nil {
+			return false, err
 		}
-		return p.revokeServerSetupLink(ctx)
+		record, err := p.readServerSetupPeerRecord(ctx, role)
+		if err != nil {
+			return false, err
+		}
+		if role == "" || !record.Found || state.Status != "ready" || !serverSetupDraftIsMainDNS(state.Draft) {
+			return false, errServerSetupPeerRecordMissing
+		}
+		if record.ReadyAt != "" || record.RetiredAt != "" {
+			return false, p.revokeServerSetupLinkSide(ctx, role)
+		}
+		if !record.Live {
+			return false, errServerSetupPeerRecordMissing
+		}
+		if err := p.markServerSetupPeerRecord(ctx, role, false, time.Now().UTC().Format(time.RFC3339)); err != nil {
+			return false, err
+		}
+		return true, p.revokeServerSetupLinkSide(ctx, role)
 	}()
 	joinLock.Unlock()
+	if errors.Is(err, errServerSetupPeerRecordMissing) {
+		notWaiting()
+		return
+	}
 	if err != nil {
 		writeServerError(w, err)
 		return
 	}
-	p.audit(r, "server.setup.peer_retire", "", 0)
-	view, err = p.serverSetupPeerState(ctx)
+	if retired {
+		p.audit(r, "server.setup.peer_retire", "", 0)
+	}
+	view, err := p.serverSetupPeerState(ctx)
 	if err != nil {
 		writeServerError(w, err)
 		return
@@ -311,14 +432,26 @@ func (p *Panel) handleServerSetupPeerRetire(w http.ResponseWriter, r *http.Reque
 }
 
 // serverSetupPeerSetupView fills the main DNS server's view of the second
-// server's setup: only once this server's own setup is ready.
-func (p *Panel) serverSetupPeerSetupView(ctx context.Context, view *serverSetupPeerView, ready, retired string) error {
+// server's setup, from this server's own role's record, once its own setup
+// is ready. A role that cannot be told leaves it empty.
+func (p *Panel) serverSetupPeerSetupView(ctx context.Context, view *serverSetupPeerView) error {
 	state, err := p.loadServerSetup(ctx)
 	if err != nil {
 		return err
 	}
-	if state.Status == "ready" && serverSetupDraftIsMainDNS(state.Draft) {
-		view.PeerSetup = serverSetupPeerReadyState(ready, retired)
+	if state.Status != "ready" || !serverSetupDraftIsMainDNS(state.Draft) {
+		return nil
+	}
+	role, err := p.serverSetupOwnLinkRole(ctx)
+	if err != nil || role == "" {
+		return nil
+	}
+	record, err := p.readServerSetupPeerRecord(ctx, role)
+	if err != nil {
+		return err
+	}
+	if record.Found && (record.Live || record.ReadyAt != "" || record.RetiredAt != "") {
+		view.PeerSetup = serverSetupPeerReadyState(record.ReadyAt, record.RetiredAt)
 	}
 	return nil
 }

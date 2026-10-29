@@ -100,10 +100,10 @@ func TestServerSetupPeerLinkOutlivesTheMainUntilTheBackupReportsReady(t *testing
 	if after, _ := pair.second.panel.readServerSetupLink(context.Background()); after == nil || after.LinkCredential != "" {
 		t.Fatal("the backup kept its side of the link")
 	}
-	// The same report again (a replay with the ended credential) records
-	// nothing new.
+	// The same report again (a replay with the ended credential, from the
+	// joined address) is told the link ended, and records nothing new.
 	replay := joinMachineRequest(t, pair.first, serverSetupPeerReadyPath, link.bearer(), serverSetupPeerReadyRequest{Protocol: serverSetupLinkProtocol, JoinRequestID: link.RequestID})
-	if replay.Code != http.StatusUnauthorized {
+	if replay.Code != http.StatusConflict || !strings.Contains(replay.Body.String(), "server_setup_peer_link_ended") {
 		t.Fatalf("a replay after the link ended: %d %s", replay.Code, replay.Body.String())
 	}
 	if again := firstJoinRecord(t, pair); again.PeerReadyAt != join.PeerReadyAt {

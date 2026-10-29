@@ -53,6 +53,9 @@ type serverSetupLinkRecord struct {
 	// when this second server is the main DNS server (Beta-1 re-run P7).
 	PeerReadyAt   string `json:"peer_ready_at,omitempty"`
 	PeerRetiredAt string `json:"peer_retired_at,omitempty"`
+	// EndedCredentialHash: the keyed hash of the credential the ended link
+	// accepted (the first server's reverse credential), never the value.
+	EndedCredentialHash string `json:"ended_credential_hash,omitempty"`
 }
 
 // serverSetupLinkPending keeps a join whose answer was not received, so the
@@ -501,10 +504,8 @@ func (p *Panel) serverSetupPeerState(ctx context.Context) (serverSetupPeerView, 
 	}
 	if link != nil {
 		view.Role = "second"
-		if link.LinkCredential != "" || link.PeerReadyAt != "" || link.PeerRetiredAt != "" {
-			if err := p.serverSetupPeerSetupView(ctx, &view, link.PeerReadyAt, link.PeerRetiredAt); err != nil {
-				return view, err
-			}
+		if err := p.serverSetupPeerSetupView(ctx, &view); err != nil {
+			return view, err
 		}
 		view.Link = &serverSetupPeerLinkView{Address: link.Address, MainDomain: link.Document.MainDomain, MainDNSServer: link.Document.MainDNSServer, NS1: link.Document.NS1, NS2: link.Document.NS2, First: link.Document.First, JoinedAt: link.JoinedAt}
 		view.Link.First.MailDNS = nil
@@ -541,10 +542,8 @@ func (p *Panel) serverSetupPeerState(ctx context.Context) (serverSetupPeerView, 
 	}
 	if joinFound {
 		view.Changed = join.NamesChanged
-		if join.LinkCredentialHash != "" || join.PeerReadyAt != "" || join.PeerRetiredAt != "" {
-			if err := p.serverSetupPeerSetupView(ctx, &view, join.PeerReadyAt, join.PeerRetiredAt); err != nil {
-				return view, err
-			}
+		if err := p.serverSetupPeerSetupView(ctx, &view); err != nil {
+			return view, err
 		}
 		view.Joined = &serverSetupPeerJoined{ShortName: join.Peer.ShortName, IPv4: join.Peer.IPv4, JoinedAt: join.JoinedAt}
 		if join.Names != nil {
