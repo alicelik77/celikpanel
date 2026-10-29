@@ -10,7 +10,8 @@ awk '/\/\/ BEGIN DOWNLOAD COMMAND POLICY/ { capture=1; next } /\/\/ END DOWNLOAD
 printf '\nprocess.stdout.write(buildInstallCommand() + "\\n");\n' >> "$tmp/policy.js"
 node "$tmp/policy.js" > "$tmp/command"
 dash -n "$tmp/command"
-[[ $(wc -l < "$tmp/command") == 2 ]] || fail 'public command is not two lines'
+[[ $(wc -l < "$tmp/command") == 3 ]] || fail 'public command is not three lines'
+[[ $(head -1 "$tmp/command") == 'timedatectl set-ntp true' ]] || fail 'public command does not start with the clock line'
 python3 - "$index" > "$tmp/html-command" <<'PY'
 import sys,html,re
 text=open(sys.argv[1],encoding='utf-8').read()
@@ -38,12 +39,24 @@ cat > "$tmp/bin/sh" <<'SH'
 [ "$(cat "$1")" = downloaded-bootstrap ] || exit 3
 touch "$TEST_ROOT/executed"
 SH
-chmod +x "$tmp/bin/curl" "$tmp/bin/sh"
+cat > "$tmp/bin/timedatectl" <<'SH'
+#!/bin/sh
+printf '%s
+' "$*" > "$TEST_ROOT/timedatectl-args"
+[ "${TEST_NTP_FAIL:-0}" = 1 ] && exit 1
+exit 0
+SH
+chmod +x "$tmp/bin/curl" "$tmp/bin/sh" "$tmp/bin/timedatectl"
 (cd "$tmp"; TEST_ROOT=$tmp PATH=$tmp/bin:/usr/bin:/bin dash "$tmp/command")
 [[ -f "$tmp/executed" ]] || fail 'successful download did not run'
 for argument in -fL --proto '=https' -o celikpanel-install.sh https://celikpanel.net/get.sh; do
   grep -Fxq -- "$argument" "$tmp/curl-args" || fail "missing curl argument: $argument"
 done
+[[ $(cat "$tmp/timedatectl-args") == 'set-ntp true' ]] || fail 'clock line did not run timedatectl set-ntp true'
+rm "$tmp/executed"
+# A host without NTP support still installs; the clock line only reports it.
+(cd "$tmp"; TEST_ROOT=$tmp TEST_NTP_FAIL=1 PATH=$tmp/bin:/usr/bin:/bin dash "$tmp/command")
+[[ -f "$tmp/executed" ]] || fail 'a failed clock line stopped the installation'
 rm "$tmp/executed"
 if (cd "$tmp"; TEST_ROOT=$tmp TEST_FAIL=1 PATH=$tmp/bin:/usr/bin:/bin dash "$tmp/command"); then
   fail 'download failure was not propagated'

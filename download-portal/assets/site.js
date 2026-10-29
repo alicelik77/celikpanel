@@ -26,7 +26,8 @@ const isCanonicalReleaseVersion = (value) => {
     );
 };
 
-const buildInstallCommand = () => `curl -fL --proto '=https' -o celikpanel-install.sh https://celikpanel.net/get.sh &&
+const buildInstallCommand = () => `timedatectl set-ntp true
+curl -fL --proto '=https' -o celikpanel-install.sh https://celikpanel.net/get.sh &&
 sh celikpanel-install.sh`;
 // END DOWNLOAD COMMAND POLICY
 
