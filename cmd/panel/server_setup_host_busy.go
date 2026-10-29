@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -101,7 +102,8 @@ func (p *Panel) requeueRefusedServiceOperation(ctx context.Context, op serviceOp
 }
 
 // serverSetupHostBusy: another service operation or Agent mutation is
-// active on this server.
+// active on this server. An Agent that cannot be asked is
+// errServerSetupAgentUnreachable (its own refusal at start).
 func (p *Panel) serverSetupHostBusy(ctx context.Context) (bool, error) {
 	active, err := p.activeServiceOperation(ctx)
 	if err != nil || active != nil {
@@ -109,7 +111,33 @@ func (p *Panel) serverSetupHostBusy(ctx context.Context) (bool, error) {
 	}
 	job, err := p.statusAgentMutation(ctx, "")
 	if err != nil {
-		return false, err
+		if errors.Is(err, errHostMutationBusy) {
+			return false, err
+		}
+		return false, fmt.Errorf("%w: %v", errServerSetupAgentUnreachable, err)
 	}
 	return job != nil && agentMutationActive(job.Status), nil
+}
+
+var errServerSetupAgentUnreachable = errors.New("the CelikPanel Agent could not be asked")
+
+const (
+	serverSetupAgentUnreachableCode    = "server_setup_agent_unreachable"
+	serverSetupAgentUnreachableMessage = "CelikPanel could not reach its Agent on this server, so setup did not start and nothing was changed. You, the owner: check that the agent runs (`systemctl status celikpanel-agent`, and `sudo systemctl start celikpanel-agent` if it is stopped); then start setup."
+)
+
+// serverSetupStartHostRefusal: the start's coded answer for a host that is
+// busy, still starting, or whose Agent does not answer.
+func serverSetupStartHostRefusal(err error) (string, string, bool) {
+	switch {
+	case err == nil:
+		return "", "", false
+	case errors.Is(err, errHostMutationBusy):
+		return serverSetupHostBusyCode, serverSetupHostBusyStartMessage, true
+	case serverSetupHostStarting(err) && serverSetupHostStartingBySystemd(err):
+		return serverSetupHostStartingCode, "This server is still starting (systemd does not report it ready yet), so setup did not start and nothing was changed. Nobody needs to act: wait a moment until the server has started, then start setup.", true
+	case errors.Is(err, errAgentRPCPlatformIdentityUnavailable), errors.Is(err, errServerSetupAgentUnreachable):
+		return serverSetupAgentUnreachableCode, serverSetupAgentUnreachableMessage, true
+	}
+	return "", "", false
 }

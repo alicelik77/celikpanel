@@ -3,7 +3,10 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
+	"net/rpc"
 	"strings"
 	"testing"
 	"time"
@@ -170,5 +173,38 @@ func TestServerSetupChildWithoutTheProofIsNeverAdmittedAgain(t *testing.T) {
 	ran := serviceOperation{RequestID: strings.Repeat("6", 32), Status: serviceOperationFailed, Phase: "mail-tls", Error: &serviceOperationError{Code: failure.Code}}
 	if f.panel.serverSetupChildRefusedAtAdmission(context.Background(), ran) {
 		t.Fatal("a mail profile that ran was taken for a refused admission")
+	}
+}
+
+// Review fix (item 4): the start's host check answers with a code, never a
+// bare 500: a busy Agent, a starting host and an Agent that does not answer.
+func TestServerSetupStartHostRefusalsAreCoded(t *testing.T) {
+	for _, test := range []struct {
+		err  error
+		code string
+	}{
+		{&hostMutationBusyError{reason: transport.HostMutationReasonPackageManager}, serverSetupHostBusyCode},
+		{bootingHostErrorForTest(), serverSetupHostStartingCode},
+		{fmt.Errorf("%w: setup child: %w", errAgentRPCPlatformIdentityUnavailable, errAgentRPCClientUnavailable), serverSetupAgentUnreachableCode},
+		{fmt.Errorf("%w: dial", errServerSetupAgentUnreachable), serverSetupAgentUnreachableCode},
+	} {
+		if code, message, ok := serverSetupStartHostRefusal(test.err); !ok || code != test.code || message == "" {
+			t.Fatalf("%v: %q %v", test.err, code, ok)
+		}
+	}
+	if _, _, ok := serverSetupStartHostRefusal(errors.New("database is locked")); ok {
+		t.Fatal("a database error was coded as a host state")
+	}
+	// The handler: an Agent that cannot be reached refuses the start with
+	// its code and the command to check.
+	f, state := setupOperationFixture(t)
+	plan := saveSetupPlanForTest(t, f, state)
+	f.panel.agentClient = transport.NewReconnectingClientWithContextConnector(nil, func(context.Context) (*rpc.Client, error) { return nil, errors.New("dial unix /run/celikpanel/agent.sock: connect: no such file or directory") })
+	f.panel.pkgFamilyMu.Lock()
+	f.panel.hostPlatformKnown = false
+	f.panel.pkgFamilyMu.Unlock()
+	w := postSetupStartForTest(t, f, plan.ID, strings.Repeat("9", 32))
+	if w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), serverSetupAgentUnreachableCode) || !strings.Contains(w.Body.String(), "systemctl status celikpanel-agent") {
+		t.Fatalf("an unreachable Agent: %d %s", w.Code, w.Body.String())
 	}
 }

@@ -1732,21 +1732,23 @@ test('a ready backup whose main was not told yet says so',async()=>{
 
 // Beta-1 third re-run: a start while another change runs is refused before a
 // run exists; the review stays with the reason.
-test('a start refused because another change runs keeps the review with its reason',async()=>{
-    init();const read=fetch;let starts=0;
-    globalThis.fetch=async(url,options)=>{
-        if(url==='/api/v1/setup/start'){starts++;return Response.json({code:'server_setup_host_busy'},{status:409});}
-        return read(url,options);
-    };
-    try{
-        await mount();await toReview();
-        await act(async()=>tree.root.findByProps({type:'checkbox'}).props.onChange({target:{checked:true}}));
-        await act(async()=>findButton('setup.start').props.onClick());
-        assert.equal(starts,1);
-        assert.ok(JSON.stringify(tree.toJSON()).includes('setup.hostBusy.start'));
-        assert.equal(store.size,0,'no start marker is kept');
-        assert.ok(findButton('setup.start'),'still on the review');
-    }finally{await cleanup();}
+test('a start refused because of the host keeps the review with its reason',async()=>{
+    for(const [code,key] of [['server_setup_host_busy','setup.hostBusy.start'],['server_setup_host_starting','setup.hostStarting.start'],['server_setup_agent_unreachable','setup.agentUnreachable.start']]){
+        init();const read=fetch;let starts=0;
+        globalThis.fetch=async(url,options)=>{
+            if(url==='/api/v1/setup/start'){starts++;return Response.json({code},{status:409});}
+            return read(url,options);
+        };
+        try{
+            await mount();await toReview();
+            await act(async()=>tree.root.findByProps({type:'checkbox'}).props.onChange({target:{checked:true}}));
+            await act(async()=>findButton('setup.start').props.onClick());
+            assert.equal(starts,1);
+            assert.ok(JSON.stringify(tree.toJSON()).includes(key),code);
+            assert.equal(store.size,0,'no start marker is kept');
+            assert.ok(findButton('setup.start'),'still on the review');
+        }finally{await cleanup();}
+    }
 });
 
 // Beta-1 third re-run N2/N4: a clock behind the certificate authority is said

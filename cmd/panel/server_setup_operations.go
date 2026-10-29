@@ -1119,6 +1119,27 @@ func (p *Panel) handleServerSetupStart(w http.ResponseWriter, r *http.Request) {
 		writeCodedError(w, http.StatusConflict, serverSetupPackageUpdatesUnreadCode, serverSetupPackageUpdatesUnreadMessage, "")
 		return
 	}
+	// Another change on this server (a Components install, for example):
+	// refused before a run exists, so it never becomes a failed run.
+	// The host itself must answer first: a starting host, an Agent that does
+	// not answer or a busy one is a coded refusal, never a bare 500 (review
+	// fix, item 4).
+	hostErr := p.requireServerSetupHostIdentity(r.Context())
+	busy := false
+	if hostErr == nil {
+		busy, hostErr = p.serverSetupHostBusy(r.Context())
+	}
+	if code, message, coded := serverSetupStartHostRefusal(hostErr); coded {
+		writeCodedError(w, http.StatusConflict, code, message, "")
+		return
+	} else if hostErr != nil {
+		writeServerError(w, hostErr)
+		return
+	}
+	if busy {
+		writeCodedError(w, http.StatusConflict, serverSetupHostBusyCode, serverSetupHostBusyStartMessage, "")
+		return
+	}
 	fresh, err := p.buildServerSetupPlan(r.Context(), state, plan.Actor)
 	if err != nil {
 		writeServerError(w, err)
@@ -1139,15 +1160,6 @@ func (p *Panel) handleServerSetupStart(w http.ResponseWriter, r *http.Request) {
 	}
 	if active {
 		writeCodedError(w, http.StatusConflict, "server_setup_busy", "A setup operation is already active.", "")
-		return
-	}
-	// Another change on this server (a Components install, for example):
-	// refused before a run exists, so it never becomes a failed run.
-	if busy, err := p.serverSetupHostBusy(r.Context()); err != nil {
-		writeServerError(w, err)
-		return
-	} else if busy {
-		writeCodedError(w, http.StatusConflict, serverSetupHostBusyCode, serverSetupHostBusyStartMessage, "")
 		return
 	}
 	execution := serverSetupExecution{ID: request.RequestID, RequestID: request.RequestID, PlanID: plan.ID, Status: "running", Phase: "queued", Steps: []serverSetupExecutionStep{}, PanelURL: fmt.Sprintf("https://%s:%d/", plan.Draft.PanelDomain, panelPort())}

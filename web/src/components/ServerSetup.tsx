@@ -582,11 +582,13 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                     if (alive.current) { setPlan(reviewed); setError(t('setup.packageUpdates.changedBeforeStart')); }
                     return;
                 }
-                if (response.status === 409 && problem?.code === 'server_setup_host_busy') {
-                    // Refused before any run: another change runs on this server.
+                const hostRefusal = ({ server_setup_host_busy: 'setup.hostBusy.start', server_setup_host_starting: 'setup.hostStarting.start', server_setup_agent_unreachable: 'setup.agentUnreachable.start' } as Record<string, TranslationKey>)[String(problem?.code)];
+                if (response.status === 409 && hostRefusal) {
+                    // Refused before any run: the host is busy, still starting
+                    // or its Agent does not answer.
                     localStorage.removeItem(markerKey(user.username));
                     markerRef.current = null; setMarker(null); setAcknowledged(false); setStep('review');
-                    setError(t('setup.hostBusy.start')); return;
+                    setError(t(hostRefusal)); return;
                 }
                 if (response.status === 409 && problem?.code === 'server_setup_distribution_updates_unread') {
                     // Refused before any execution: the review stays, unread.
