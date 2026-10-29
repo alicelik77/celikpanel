@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/core"
+	"github.com/alicelik/celikpanel/internal/debversion"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -235,7 +236,7 @@ func (c installClassification) classifySimulation(sim aptSimulation) []transport
 			}
 		}
 		if item.Reason == notableReasonUpgrade && c.pointUpdates && aptPointUpdate(upgrade.From, upgrade.To) &&
-			(c.vendorOf == nil || c.vendorOf(pkg, upgrade.To) == "") {
+			aptOfficialStableArchive(upgrade.Origins) && (c.vendorOf == nil || c.vendorOf(pkg, upgrade.To) == "") {
 			item.PointUpdate = true
 		}
 		notable = append(notable, item)
@@ -269,27 +270,40 @@ func notableReasonRank(reason string) int {
 }
 
 // aptPointUpdate: from and to are one release of the package (same epoch and
-// upstream version) and only the distribution's revision changes, as a
-// Debian stable/security update (5.40.1-6 -> 5.40.1-6+deb13u1) or an Ubuntu
-// SRU of the same upstream does. A new upstream version is not one.
+// upstream version) and to is newer (dpkg's order), as a Debian stable or
+// security update (5.40.1-6 -> 5.40.1-6+deb13u1) or an Ubuntu SRU of the same
+// upstream is. A new upstream version or a downgrade (a pin) is not one. Where
+// the new version comes from is checked apart (aptOfficialStableArchive).
 func aptPointUpdate(from, to string) bool {
-	split := func(version string) (string, string, bool) {
-		epoch, rest := "0", version
-		if colon := strings.IndexByte(rest, ':'); colon > 0 {
-			epoch, rest = rest[:colon], rest[colon+1:]
-		}
-		dash := strings.LastIndexByte(rest, '-')
-		if dash <= 0 || dash == len(rest)-1 {
-			return "", "", false
-		}
-		return epoch, rest[:dash], true
-	}
-	if from == "" || to == "" || from == to || !validDebianVersion(from) || !validDebianVersion(to) {
+	if !debversion.Valid(from) || !debversion.Valid(to) {
 		return false
 	}
-	fromEpoch, fromUpstream, ok := split(from)
-	toEpoch, toUpstream, ok2 := split(to)
-	return ok && ok2 && fromEpoch == toEpoch && fromUpstream == toUpstream
+	a, _ := debversion.Parse(from)
+	b, _ := debversion.Parse(to)
+	return a.Epoch == b.Epoch && a.Upstream == b.Upstream && debversion.Compare(to, from) > 0
+}
+
+// aptOfficialStableArchive: every archive APT names for the new version is
+// the distribution's own (Debian, Debian-Security, Ubuntu) and a released
+// suite or its security/updates pocket. A PPA, a vendor or third-party
+// repository, backports, proposed, testing/unstable, or a line that named no
+// archive (an unreadable index) is not.
+func aptOfficialStableArchive(origins []aptOrigin) bool {
+	if len(origins) == 0 {
+		return false
+	}
+	for _, origin := range origins {
+		if origin.Origin != "Debian" && origin.Origin != "Debian-Security" && origin.Origin != "Ubuntu" {
+			return false
+		}
+		suite := strings.ToLower(origin.Suite)
+		for _, refused := range []string{"backports", "proposed", "experimental", "unstable", "testing", "sid"} {
+			if strings.Contains(suite, refused) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // unconfirmedNotable is what the owner has not confirmed.

@@ -43,7 +43,8 @@ func TestTheSimulationNamesUpgradesWithTheirVersions(t *testing.T) {
 		"Inst php8.5-fpm (8.5.1-1+0~20251121 deb.sury.org:trixie [amd64])",
 		"Conf libpq5 (18.0-1.pgdg13+1 PostgreSQL for Debian/Ubuntu repository:trixie-pgdg [amd64])",
 	}, "\n")))
-	if len(sim.Installed) != 2 || sim.Upgrades["libpq5"] != (aptUpgrade{From: "17.6-0+deb13u1", To: "18.0-1.pgdg13+1"}) {
+	if len(sim.Installed) != 2 || sim.Upgrades["libpq5"].From != "17.6-0+deb13u1" || sim.Upgrades["libpq5"].To != "18.0-1.pgdg13+1" ||
+		len(sim.Upgrades["libpq5"].Origins) != 1 || sim.Upgrades["libpq5"].Origins[0].Origin != "PostgreSQL for Debian/Ubuntu repository" || aptOfficialStableArchive(sim.Upgrades["libpq5"].Origins) {
 		t.Fatalf("sim = %+v", sim)
 	}
 	if _, ok := sim.Upgrades["php8.5-fpm"]; ok {
