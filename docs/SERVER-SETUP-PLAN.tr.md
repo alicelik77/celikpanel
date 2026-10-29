@@ -55,11 +55,12 @@ koşusu aşağıdaki kusurları buldu; her düzeltmenin bileşen testi var, hiç
   deneme hakkı (50); oluşturmada, yeniden okumada ve retlerde aynıdır.
 - **Sahibin yerel DNS düzenlemesi** DNS yazılımı kartında ve DNS sayfasında tek
   bildirimdir (`engine_owner_changed` / `dns_overview_engine_owner_changed`):
-  CelikPanel dışında değişti, sahip karar verir, korur (asla üzerine
-  yazılmaz) ya da DNS yazılımı sayfasında devralır; asla "Yapılacak bir şey
-  yok" ve asla yabancı DNS sunucusu değildir. Bilinen sınır: etkin BIND için
-  DNS yazılımı sayfası bu kaynakta devralma eylemi sunmaz; bildirim "o sayfa
-  sunduğunda" der.
+  CelikPanel dışında değişti, sahip karar verir, korur (yapılacak bir şey yok;
+  asla üzerine yazılmaz); asla sakin bir "Yapılacak bir şey yok" ve asla
+  yabancı DNS sunucusu değildir. Bilinen sınır: değişiklik durdukça CelikPanel
+  orada DNS değişikliği yayımlamaz (kayıt düzenleyicisi de yayımlayamaz) ve
+  yerel düzenlemeden sonra DNS yazılımını geri vermek bu kaynakta yok; bildirim
+  bunu söyler.
 
 ## 29 Ekim ek kararı: kurulum sihirbazı v2, 5. aşama (v0.1.0-alpha.115 kaynağı)
 

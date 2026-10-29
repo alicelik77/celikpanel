@@ -886,8 +886,8 @@ func dnsOverviewMXMoveOffer(in dnsOverviewInput, result dnsOverview, receiver dn
 const (
 	dnsEngineOwnerChangedReason = "This server's DNS software serves a list that was changed outside CelikPanel (for example with rndc)."
 	dnsEngineOwnerChangedWho    = "You, the owner of this server."
-	dnsEngineOwnerChangedNext   = "Keep your change: CelikPanel does not overwrite it. To have CelikPanel publish this server's DNS again, adopt it on Advanced → DNS software when that page offers it."
-	dnsEngineOwnerChangedThen   = "Until then CelikPanel publishes no DNS change on this server; this page checks again every minute."
+	dnsEngineOwnerChangedNext   = "Keep your change: there is nothing to do, and CelikPanel does not overwrite it."
+	dnsEngineOwnerChangedThen   = "While it stays, CelikPanel publishes no DNS change on this server (the panel's record editor cannot publish either); handing this DNS software back to CelikPanel after a native edit is not available in this release. This page checks again every minute."
 )
 
 func dnsOverviewSay(state, code, reason, who, next, then string, vars map[string]string) dnsOverviewSentence {

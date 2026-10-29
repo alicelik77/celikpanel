@@ -56,10 +56,12 @@ schema, and a targeted VM re-run is still owed before any is called proven.
   attempts (50), the same at creation, on re-read and in a refusal.
 - **An owner's native DNS edit** is one notice on the DNS software card and the
   DNS page (`engine_owner_changed` / `dns_overview_engine_owner_changed`):
-  changed outside CelikPanel, the owner acts, keep it (never overwritten) or
-  adopt it on the DNS software page; never "Nothing to do" and never a foreign
-  DNS server. Known limit: for an active BIND the DNS software page offers no
-  adopt action in this source; the notice says "when that page offers it".
+  changed outside CelikPanel, the owner acts, keep it (nothing to do; never
+  overwritten); never "Nothing to do" as a calm state and never a foreign DNS
+  server. Known limit: while the change stays CelikPanel publishes no DNS
+  change there (the record editor cannot publish either), and handing the DNS
+  software back after a native edit is not available in this source; the
+  notice says so.
 
 ## October 29 follow-up: setup wizard v2, phase 5 (v0.1.0-alpha.115 source)
 
