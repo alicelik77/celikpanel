@@ -136,6 +136,11 @@ func (p *Panel) waitingServerSetupPackageUpdates(ctx context.Context, executionI
 	if index < 0 {
 		return serverSetupExecution{}, "", serverSetupPlan{}, nil, sql.ErrNoRows
 	}
+	// The waiting step has started nothing: no operation under its own
+	// request identity (review fix, item 8).
+	if !p.serverSetupStepChildMissing(ctx, execution.Steps[index]) {
+		return serverSetupExecution{}, "", serverSetupPlan{}, nil, sql.ErrNoRows
+	}
 	plan, err := p.loadServerSetupPlan(ctx, execution.PlanID)
 	if err != nil || validateServerSetupExecution(plan, execution) != nil {
 		return serverSetupExecution{}, "", serverSetupPlan{}, nil, sql.ErrNoRows

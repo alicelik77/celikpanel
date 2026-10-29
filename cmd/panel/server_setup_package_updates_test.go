@@ -309,3 +309,75 @@ func TestServerSetupStartConfirmsOnlyTheListThePageShowed(t *testing.T) {
 		t.Fatalf("the shown list did not start: %d %s", w.Code, w.Body.String())
 	}
 }
+
+// distributionUpdateWaitForTest: a started run whose first component waits
+// on a point update the review did not list.
+func distributionUpdateWaitForTest(t *testing.T) (serviceOperationTestFixture, serverSetupPlan, *serverSetupExecution, int) {
+	t.Helper()
+	f, state := setupOperationFixture(t)
+	var notable []transport.NotableInstall
+	f.panel.serverSetupInstallPreview = func(context.Context, transport.ServiceInstallPreviewRequest) (transport.ServiceInstallPreviewResponse, error) {
+		return transport.ServiceInstallPreviewResponse{State: "known", Notable: notable}, nil
+	}
+	plan := saveSetupPlanForTest(t, f, state)
+	serverSetupRunners.Store(f.panel, true)
+	t.Cleanup(func() { serverSetupRunners.Delete(f.panel) })
+	response := postSetupStartForTest(t, f, plan.ID, strings.Repeat("9", 32))
+	var execution serverSetupExecution
+	if response.Code != http.StatusAccepted || json.Unmarshal(response.Body.Bytes(), &execution) != nil {
+		t.Fatalf("start %d %s", response.Code, response.Body.String())
+	}
+	notable = []transport.NotableInstall{{Package: "libssl3t64", Reason: "upgrade", From: "3.5.7-1~deb13u2", To: "3.5.7-1~deb13u3", PointUpdate: true}}
+	for pass := 0; pass < 4 && execution.Status != "waiting"; pass++ {
+		if _, err := f.panel.advanceServerSetupExecution(plan, &execution); err != nil {
+			t.Fatal(err)
+		}
+	}
+	index := serverSetupPackageUpdatesWaitingStep(execution)
+	if index < 0 {
+		t.Fatalf("no distribution-update wait: %+v", execution)
+	}
+	return f, plan, &execution, index
+}
+
+func packageUpdatesCallForTest(t *testing.T, f serviceOperationTestFixture, body map[string]any) *httptest.ResponseRecorder {
+	t.Helper()
+	raw, _ := json.Marshal(body)
+	w := httptest.NewRecorder()
+	f.panel.handleServerSetupPackageUpdates(w, serviceOperationAdminRequest(t, http.MethodPost, "/api/v1/setup/package-updates", string(raw), f.userID))
+	return w
+}
+
+// Review fix (items 8 and 10): a waiting step whose operation exists under
+// its own request identity (its OperationID not saved yet) has started
+// something: the wait is neither confirmed over nor replaced. Nor is a
+// stopped run.
+func TestServerSetupWaitWithAChildOrAfterAFailureIsNeverConfirmedOrReplaced(t *testing.T) {
+	f, _, execution, index := distributionUpdateWaitForTest(t)
+	step := execution.Steps[index]
+	if !f.panel.serverSetupStepWaitsWithoutChild(context.Background(), *execution, step) {
+		t.Fatal("a step that started nothing was taken for one with a child")
+	}
+	if _, err := f.panel.createServiceOperationRequest(context.Background(), serviceOperationKindInstall, step.Target, step.Qualifier, step.RequestID, serviceOperationActor{UserID: f.userID}); err != nil {
+		t.Fatal(err)
+	}
+	if f.panel.serverSetupStepWaitsWithoutChild(context.Background(), *execution, step) {
+		t.Fatal("an operation under the step's identity was not seen")
+	}
+	for _, action := range []string{"review", "confirm"} {
+		if w := packageUpdatesCallForTest(t, f, map[string]any{"execution_id": execution.ID, "action": action, "updates": []transport.NotableInstall{}}); w.Code != http.StatusConflict {
+			t.Fatalf("%s with a child: %d %s", action, w.Code, w.Body.String())
+		}
+	}
+	// After a failure the run is not waiting: refused, nothing written.
+	g, _, stopped, _ := distributionUpdateWaitForTest(t)
+	if _, err := g.database.GetDB().Exec(`UPDATE server_setup_executions SET status='failed' WHERE id=?`, stopped.ID); err != nil {
+		t.Fatal(err)
+	}
+	if w := packageUpdatesCallForTest(t, g, map[string]any{"execution_id": stopped.ID, "action": "confirm", "updates": []transport.NotableInstall{}}); w.Code != http.StatusConflict {
+		t.Fatalf("confirm after a failure: %d %s", w.Code, w.Body.String())
+	}
+	if confirmed, _ := g.panel.readServerSetupRunPackageUpdates(context.Background(), stopped.ID); len(confirmed) != 0 {
+		t.Fatalf("a stopped run recorded a confirmation: %+v", confirmed)
+	}
+}

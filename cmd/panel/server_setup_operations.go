@@ -396,9 +396,23 @@ func (p *Panel) serverSetupStepWaitsWithoutChild(ctx context.Context, execution 
 		status, err := p.serverSetupDNSOperationStatus(ctx, step.RequestID)
 		return err == nil && status == "missing"
 	case "service", "runtime", "mail_profile":
-		return true
+		return p.serverSetupStepChildMissing(ctx, step)
 	}
 	return false
+}
+
+// serverSetupStepChildMissing: no operation exists under the step's own
+// request identity. The step's OperationID can lag behind the operation (it
+// is saved after the operation is created), so the operation is looked up by
+// the identity it was created with. A lookup that fails is not "missing":
+// the step then counts as having its operation, and nothing is replaced.
+// Review fix (item 8, 2026-10-29).
+func (p *Panel) serverSetupStepChildMissing(ctx context.Context, step serverSetupExecutionStep) bool {
+	if step.OperationID != "" {
+		return false
+	}
+	_, err := p.serviceOperationByRequestID(ctx, step.RequestID)
+	return errors.Is(err, sql.ErrNoRows)
 }
 
 // serverSetupPDNSMainCandidateCode reads, read-only, the PowerDNS build this
