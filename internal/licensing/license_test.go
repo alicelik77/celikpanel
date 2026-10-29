@@ -183,3 +183,21 @@ func TestLicenseMachineIdentity(t *testing.T) {
 		t.Fatal("unstable identity")
 	}
 }
+
+func TestTestsNeverReachTheLiveLicenseService(t *testing.T) {
+	public, _, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := New(filepath.Join(t.TempDir(), "license.json"), public, strings.Repeat("a", 64))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.endpoint != API {
+		t.Fatalf("endpoint = %q", m.endpoint)
+	}
+	err = m.request(context.Background(), "refresh", map[string]string{"license_id": "x"})
+	if err == nil || !strings.Contains(err.Error(), "never contact the live license service") {
+		t.Fatalf("request reached the network path: %v", err)
+	}
+}

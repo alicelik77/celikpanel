@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"testing"
 	"time"
 )
 
@@ -438,6 +439,11 @@ func (m *Manager) request(ctx context.Context, action string, input map[string]s
 	if err != nil {
 		return err
 	}
+	if testing.Testing() && liveNetworkTo(m.client, req) {
+		// A test once reached the live service with fake values (2026-10-30).
+		// Tests must use their own endpoint or transport; never the real one.
+		return errors.New("tests never contact the live license service")
+	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := m.client.Do(req)
 	if err != nil {
@@ -650,4 +656,28 @@ func (m *Manager) startRefresh() <-chan struct{} {
 		close(done)
 	}()
 	return done
+}
+
+// initialDefaultTransport is the standard library's own network transport,
+// captured before any test can swap http.DefaultTransport for a fake.
+var initialDefaultTransport = http.DefaultTransport
+
+// liveNetworkTo reports whether req would leave this machine for the real
+// license service: the production host through the standard network
+// transport, or through any *http.Transport that dials the network itself.
+// A test fake (a swapped DefaultTransport or a custom dialer) is not live.
+// liveNetworkTo, istegin gercek lisans hizmetine gercek agdan gidip gitmeyecegini soyler.
+func liveNetworkTo(client *http.Client, req *http.Request) bool {
+	if req.URL.Hostname() != "celikpanel.net" {
+		return false
+	}
+	transport := http.DefaultTransport
+	if client != nil && client.Transport != nil {
+		transport = client.Transport
+	}
+	if transport == initialDefaultTransport {
+		return true
+	}
+	plain, ok := transport.(*http.Transport)
+	return ok && plain.DialContext == nil && plain.DialTLSContext == nil && plain.Dial == nil && plain.DialTLS == nil //nolint:staticcheck // the deprecated dialers only identify a test dialer
 }
