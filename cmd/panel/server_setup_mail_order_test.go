@@ -104,6 +104,33 @@ func TestServerSetupMailStepsFollowTheDNSIdentityInEveryLayout(t *testing.T) {
 		}
 		serverSetupMailAfterDNSIdentity(t, "standalone", plan.Steps)
 	})
+	// A real plan whose input order has the mail profile before the DNS
+	// step: the joined order still puts mail after the DNS identity.
+	t.Run("mail before dns in the input", func(t *testing.T) {
+		_, plan, _ := joinFirstFixture(t, withMail(joinFirstDraft()))
+		input := []serverSetupPlanStep{}
+		for _, step := range plan.Steps {
+			if step.Kind != "peer_join" {
+				input = append(input, step)
+			}
+		}
+		mailAt, dnsAt := -1, -1
+		for index, step := range input {
+			switch step.Kind {
+			case "mail_profile":
+				mailAt = index
+			case "dns":
+				dnsAt = index
+			}
+		}
+		if mailAt < 0 || dnsAt < 0 {
+			t.Fatalf("plan lacks mail or dns: %+v", input)
+		}
+		mailStep := input[mailAt]
+		input = slices.Delete(input, mailAt, mailAt+1)
+		input = slices.Insert(input, 0, mailStep)
+		serverSetupMailAfterDNSIdentity(t, "reordered input", serverSetupPeerJoinSteps(input, serverSetupPlanStep{Kind: "peer_join", Target: "second"}))
+	})
 	// A service that needs a mail server (SpamAssassin) stays with the mail
 	// profile; components that need no DNS still run before the join.
 	steps := []serverSetupPlanStep{{Kind: "service", Target: "nginx"}, {Kind: "service", Target: "mariadb"}, {Kind: "dns", Target: "local"}, {Kind: "dns_readiness", Target: "local"},

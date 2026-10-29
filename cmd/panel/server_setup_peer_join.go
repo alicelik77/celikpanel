@@ -309,14 +309,26 @@ func (p *Panel) reconcileServerSetupStaleBinding(ctx context.Context, reviewed s
 // which exists only after the DNS waits: they stay in the rest, after them
 // (Beta-1 VM cells a and b failed with mail_profile_dns_identity_not_ready).
 func serverSetupPeerJoinSteps(steps []serverSetupPlanStep, lead serverSetupPlanStep) []serverSetupPlanStep {
-	early, rest := []serverSetupPlanStep{}, []serverSetupPlanStep{}
+	early, rest, mail := []serverSetupPlanStep{}, []serverSetupPlanStep{}, []serverSetupPlanStep{}
 	for _, step := range steps {
-		if step.Kind == "runtime" || (step.Kind == "service" && !serverSetupMailDependent(step.Target)) {
+		switch {
+		case step.Kind == "mail_profile" || (step.Kind == "service" && serverSetupMailDependent(step.Target)):
+			mail = append(mail, step)
+		case step.Kind == "runtime" || step.Kind == "service":
 			early = append(early, step)
-		} else {
+		default:
 			rest = append(rest, step)
 		}
 	}
+	// The mail steps go right after the last DNS step or wait, whatever the
+	// order they came in, keeping their own order.
+	at := 0
+	for index, step := range rest {
+		if slices.Contains([]string{"dns", "dns_readiness", "dns_publisher"}, step.Kind) {
+			at = index + 1
+		}
+	}
+	rest = slices.Concat(rest[:at:at], mail, rest[at:])
 	ordered := []serverSetupPlanStep{}
 	if lead.Kind == "peer_names" {
 		ordered = append(append(append(ordered, lead), early...), rest...)

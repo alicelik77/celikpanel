@@ -131,7 +131,8 @@ func TestServerSetupStandaloneInfrastructureDNSZoneKindMatchesSync(t *testing.T)
 		name       string
 		standalone bool
 		want       string
-	}{{"standalone bind", true, "NATIVE"}, {"paired bind", false, "MASTER"}} {
+		engine     string
+	}{{"standalone bind", true, "NATIVE", "bind"}, {"paired bind", false, "MASTER", "bind"}, {"standalone pdns", true, "NATIVE", "pdns"}, {"paired pdns", false, "MASTER", "pdns"}} {
 		t.Run(test.name, func(t *testing.T) {
 			p := newDNSPanelForTest(t)
 			p.license = testPanelLicense(t, "active")
@@ -144,6 +145,10 @@ func TestServerSetupStandaloneInfrastructureDNSZoneKindMatchesSync(t *testing.T)
 					t.Fatal(err)
 				}
 			}
+			d.DNSEngine = test.engine
+			if test.engine == "pdns" && !test.standalone {
+				setPDNSPairedPrimaryGateForTest(t, true)
+			}
 			attachDNSEngineTestAgent(t, p, newDNSEngineTestAgent())
 			t.Setenv("CELIKPANEL_SERVER_IP", d.LocalIP)
 			if err := p.startServerSetupDNS(context.Background(), d, strings.Repeat("a", 32), serviceOperationActor{UserID: 1}); err != nil {
@@ -151,7 +156,7 @@ func TestServerSetupStandaloneInfrastructureDNSZoneKindMatchesSync(t *testing.T)
 			}
 			agent := newDNSZoneV3TestAgent()
 			agent.pairReady = !test.standalone
-			agent.publisher = transport.DNSEngineBIND
+			agent.publisher = transport.DNSEngine(test.engine)
 			attachInfrastructureDNSAgent(t, p, agent)
 			infra, err := p.buildServerSetupInfrastructureDNSPlan(context.Background(), d)
 			if err != nil {
