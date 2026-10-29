@@ -406,6 +406,7 @@ export const trSetupScreens: Record<SetupScreenKey, string> = {
     "setup.blocker.node": "Kullanılabilir bir Node.js LTS sürümü seçin.",
     "setup.blocker.database": "Desteklenen bir veritabanı motoru seçin.",
     'setup.resumeConfirmed': 'Onaylanan kuruluma devam et',
+    "setup.staleStart": "Bu tarayıcıda, bu sunucunun tanımadığı bir kurulum başlatma kaydı kalmıştı. Sunucu sıfırlanıp yeniden kurulmuş olabilir. Bu sunucuda hiçbir şey başlatılmadı ve eski kayıt silindi. Sizden beklenen: cevaplarınızı yeniden girip planı onaylamanız; kurulum ancak o zaman başlar.",
     "setup.blocker.remote": "Doğrulanmış bir DNS bağlantısı seçin veya bekleyen bağlantının yetkilendirmesini tamamlayın.",
     "setup.remote.title": "DNS sunucusuna bağlan",
     "setup.remote.help": "DNS sunucusunda Sunucu → DNS ve eş sunucular sayfasından bağlantı kodu oluşturun. Güvenilir HTTPS panel adresini ve bu kodu buraya girin. Yalnız bu bağlantıya ait alan adları değiştirilebilir.",

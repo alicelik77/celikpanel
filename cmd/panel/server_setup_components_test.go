@@ -233,6 +233,38 @@ func TestServerSetupCustomizationDependenciesAndNoDeselectionRemoval(t *testing.
 	}
 }
 
+// The DNS software the owner chose is installed by the DNS step, and the
+// review's component list names it with the other components.
+func TestServerSetupReviewListsTheChosenDNSSoftware(t *testing.T) {
+	for _, engine := range []string{"bind", "pdns"} {
+		f, state := setupOperationFixture(t)
+		state.Draft.DNSMode, state.Draft.DNSEngine = "local", engine
+		plan := customSetupPlanForTest(t, f, state, "nginx")
+		count := 0
+		for _, component := range plan.Components {
+			if component.ID == engine {
+				count++
+				if !component.Selected || component.Required {
+					t.Fatalf("%s is the owner's choice, not a dependency: %+v", engine, component)
+				}
+			}
+			if component.ID == map[string]string{"bind": "pdns", "pdns": "bind"}[engine] {
+				t.Fatalf("the other DNS software is listed: %+v", plan.Components)
+			}
+		}
+		if count != 1 {
+			t.Fatalf("%s listed %d times: %+v", engine, count, plan.Components)
+		}
+	}
+	f, state := setupOperationFixture(t)
+	state.Draft.DNSMode = "external"
+	for _, component := range customSetupPlanForTest(t, f, state, "nginx").Components {
+		if component.ID == "bind" || component.ID == "pdns" {
+			t.Fatalf("DNS software listed for a domain kept elsewhere: %+v", component)
+		}
+	}
+}
+
 func TestServerSetupCustomizationMailUsesOnlyAuditedProfiles(t *testing.T) {
 	for _, test := range []struct {
 		selected string

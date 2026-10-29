@@ -738,6 +738,13 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 		if serverSetupNeedsNativeCron(draft) {
 			plan.Components = append(plan.Components, serverSetupPlanComponent{ID: core.NativeCronServiceID, Required: true, Installed: installed[core.NativeCronServiceID]})
 		}
+		// The DNS software the owner chose is installed by the DNS step itself
+		// (the engine workflow, not a service step), so it is listed here with
+		// the other components the plan prepares.
+		// Secilen DNS yazilimini DNS adimi kurar; bilesen listesinde de yer alir.
+		if draft.DNSMode == setupDNSModeLocal && managedDNSEngineServiceID(draft.DNSEngine) {
+			plan.Components = append(plan.Components, serverSetupPlanComponent{ID: draft.DNSEngine, Selected: true, Installed: installed[draft.DNSEngine]})
+		}
 	} else {
 		switch draft.Purpose {
 		case "web", "web_mail":
