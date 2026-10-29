@@ -28,6 +28,16 @@ const (
 // service availability while reporting that the paired peer is still divergent.
 var ErrRollbackPeerUnverified = errors.New("BIND rollback peer authority remains unverified")
 
+// ErrGenerationChanged: a published generation no longer is what CelikPanel
+// wrote (its files, their modes or owners, or their content differ). Only
+// root can change them, so this is a verified change outside the panel, not
+// an unknown read failure. Reading errors stay unwrapped.
+var ErrGenerationChanged = errors.New("BIND generation was changed outside CelikPanel")
+
+func generationChanged(err error) error {
+	return fmt.Errorf("%w: %v", ErrGenerationChanged, err)
+}
+
 // Publisher stages immutable, root-owned BIND generations and atomically
 // changes the current symlink. Cross-process serialization remains the agent's
 // service-mutation lock responsibility; mu protects callers sharing an object.
@@ -307,7 +317,7 @@ func (publisher *Publisher) readGeneration(generationPath, expectedID string) (V
 		return VerifiedTree{}, nil, nil, err
 	}
 	if !equalNames(rootNames, []string{"receipt.json", "zones", "zones.conf"}) {
-		return VerifiedTree{}, nil, nil, errors.New("BIND generation contains unexpected top-level entries")
+		return VerifiedTree{}, nil, nil, generationChanged(errors.New("BIND generation contains unexpected top-level entries"))
 	}
 	receiptBytes, err := publisher.readImmutableFile(path.Join(generationPath, "receipt.json"))
 	if err != nil {
@@ -315,7 +325,7 @@ func (publisher *Publisher) readGeneration(generationPath, expectedID string) (V
 	}
 	receipt, err := DecodeReceipt(receiptBytes)
 	if err != nil || receipt.Generation != expectedID {
-		return VerifiedTree{}, nil, nil, errors.New("BIND generation receipt identity mismatch")
+		return VerifiedTree{}, nil, nil, generationChanged(errors.New("BIND generation receipt identity mismatch"))
 	}
 	configBytes, err := publisher.readImmutableFile(path.Join(generationPath, "zones.conf"))
 	if err != nil {
@@ -354,9 +364,12 @@ func (publisher *Publisher) readGeneration(generationPath, expectedID string) (V
 		files[receipt.Pairing.CatalogFile] = data
 	}
 	if !equalNames(zoneNames, expectedNames) {
-		return VerifiedTree{}, nil, nil, errors.New("BIND generation zone directory does not match its receipt")
+		return VerifiedTree{}, nil, nil, generationChanged(errors.New("BIND generation zone directory does not match its receipt"))
 	}
 	tree, err := VerifyTree(receiptBytes, configBytes, files)
+	if err != nil {
+		err = generationChanged(err)
+	}
 	return tree, receiptBytes, configBytes, err
 }
 
@@ -368,7 +381,7 @@ func (publisher *Publisher) readImmutableFile(name string) ([]byte, error) {
 	if entry.Mode&fs.ModeSymlink != 0 || !entry.Mode.IsRegular() || entry.Size < 0 ||
 		entry.Size > maxGenerationFileBytes || entry.Mode.Perm()&0o222 != 0 ||
 		(entry.OwnerKnown && (entry.UID != 0 || entry.GID != 0)) {
-		return nil, fmt.Errorf("BIND generation file is unsafe: %s", name)
+		return nil, generationChanged(fmt.Errorf("BIND generation file is unsafe: %s", name))
 	}
 	return publisher.fs.ReadFile(name)
 }

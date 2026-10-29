@@ -434,6 +434,9 @@ func (hostDNSEngineBackend) Readiness(
 		publisher, _, publisherErr := newHostBINDPublisher(ctx, layout)
 		if publisherErr == nil {
 			tree, treeErr := publisher.LoadCurrent()
+			// A verified change of the published tree is the owner's, not
+			// a foreign DNS server and not an unknown read (Beta-1 fix).
+			states[0].OwnerChanged = bindOwnerChangedForBackendReadiness(states[0], treeErr)
 			if treeErr == nil {
 				receipt := tree.CurrentReceipt()
 				managedEvidence := receipt.EngineEpoch == state.EngineEpoch &&
@@ -786,6 +789,12 @@ func powerDNSManagedForBackendReadiness(
 	return exactActiveDNSBackendManaged(
 		runtimeState, true, exactActiveRuntimeReady,
 	)
+}
+
+// bindOwnerChangedForBackendReadiness: the running BIND that CelikPanel's
+// state names serves a published tree that was changed outside the panel.
+func bindOwnerChangedForBackendReadiness(runtimeState transport.DNSBackendRuntimeState, treeErr error) bool {
+	return runtimeState.Installed && runtimeState.Running && errors.Is(treeErr, binddns.ErrGenerationChanged)
 }
 
 func exactActiveDNSBackendManaged(

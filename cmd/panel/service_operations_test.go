@@ -216,6 +216,9 @@ type serviceOperationTestAgent struct {
 	// candidateVersions answers Agent.ServiceCandidateVersion; an absent
 	// entry is an unread version (the RPC fails), as before it existed.
 	candidateVersions map[string]string
+	// bindOwnerChanged: BIND runs with its published files changed by the
+	// owner (DNSBackendReadiness reports OwnerChanged).
+	bindOwnerChanged bool
 	// installRequests are the InstallService requests received, in order.
 	installRequests []ServiceOperationInstallRequest
 
@@ -725,6 +728,9 @@ func (a *serviceOperationTestAgent) DNSBackendReadiness(
 			Managed: pdnsInstalled, Unit: "pdns.service",
 		},
 		{Engine: transport.DNSEngineBIND, Unit: "bind9.service"},
+	}
+	if a.bindOwnerChanged {
+		resp.Engines[1] = transport.DNSBackendRuntimeState{Engine: transport.DNSEngineBIND, Installed: true, Running: true, OwnerChanged: true, Unit: "bind9.service"}
 	}
 	return nil
 }

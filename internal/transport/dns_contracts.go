@@ -269,6 +269,14 @@ type DNSBackendRuntimeState struct {
 	// da yüklü ve devre dışı. Yeniden denemek yine ilk kurulumdur. Sahibin
 	// kurduğu bir motor asla true okumaz. Eklemelidir; eski Agent onu göndermez.
 	RollbackStandby bool `json:"rollback_standby,omitempty"`
+	// OwnerChanged (Beta-1 fix): the active engine runs, CelikPanel's state
+	// names it, and the files CelikPanel published for it were changed
+	// outside the panel (for example an owner's native rndc edit). The engine
+	// serves the owner's version; CelikPanel does not overwrite it. A read
+	// that could not be completed never reads true. Additive.
+	// OwnerChanged: etkin motorun panelin yayımladığı dosyaları panel dışında
+	// değişti; panel üzerine yazmaz.
+	OwnerChanged bool `json:"owner_changed,omitempty"`
 }
 
 // The vocabulary of a takeover's difference list. The agent reads these

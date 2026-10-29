@@ -30,6 +30,12 @@ const (
 	dnsEngineStateConflict     = "conflict"
 	dnsEngineStateSwitching    = "switching"
 	dnsEngineStateDegraded     = "degraded"
+
+	// dnsEngineOwnerChangedCode is the one code of a detected owner change
+	// of the active DNS software (Beta-1 fix, D-022/D-024): the engine card's
+	// detail code, and the DNS overview's sentence code with its
+	// "dns_overview_" prefix. Both screens word it from the same text.
+	dnsEngineOwnerChangedCode = "engine_owner_changed"
 )
 
 type nullableDNSEngine struct {
@@ -528,6 +534,11 @@ func deriveDNSEnginePresentation(
 			entry.DetailCode = "port_53_conflict"
 		case state.ActiveEngine == id && runtime.Installed && runtime.Running && runtime.Managed:
 			entry.Status = "active"
+		case state.ActiveEngine == id && runtime.Running && runtime.OwnerChanged && mutationHold == "":
+			// The owner changed the published files: a notice with the
+			// owner's choice, not a foreign DNS server and not an alarm.
+			entry.Status = "unmanaged"
+			entry.DetailCode = dnsEngineOwnerChangedCode
 		case runtime.Running:
 			if state.ActiveEngine == "" || !runtime.Managed {
 				entry.Status = "unmanaged"

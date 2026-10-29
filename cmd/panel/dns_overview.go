@@ -248,6 +248,10 @@ type dnsOverviewInput struct {
 	DomainID    int64
 	Infra       bool
 	IPv4, IPv6  string
+	// EngineOwnerChanged: the DNS software card's state says the active
+	// engine's published files were changed outside the panel; the overview
+	// reads the same engine state and says the same notice.
+	EngineOwnerChanged bool
 	// ZoneDigest is a digest of the main domain zone's records: any write
 	// to the zone, by any path, is a new state and a new check.
 	ZoneDigest string
@@ -305,6 +309,15 @@ func (p *Panel) dnsOverviewInputs(ctx context.Context, edges dnsOverviewSeams) (
 		return in, err
 	}
 	in.Engine, in.EngineTopo = string(engine.ActiveEngine), engine.Topology
+	if engine.ActiveEngine != "" {
+		// The engine card's own reading; an unread state is not a change.
+		if runtimes, _, hold, err := p.readDNSBackendRuntime(ctx); err == nil {
+			_, entries := deriveDNSEnginePresentation(engine, runtimes, nil, hold)
+			for _, entry := range entries {
+				in.EngineOwnerChanged = in.EngineOwnerChanged || (entry.ID == engine.ActiveEngine && entry.DetailCode == dnsEngineOwnerChangedCode)
+			}
+		}
+	}
 	if domain := in.Draft.MainDomain; domain != "" {
 		err := p.db.GetDB().QueryRowContext(ctx, `SELECT id FROM domains WHERE name=?`, domain).Scan(&in.DomainID)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -868,6 +881,15 @@ func dnsOverviewMXMoveOffer(in dnsOverviewInput, result dnsOverview, receiver dn
 	return nil
 }
 
+// The owner-change notice's English text (D-024), shared by the overview's
+// sentence and the engine card's copy (web: dnsov.s.engine_owner_changed).
+const (
+	dnsEngineOwnerChangedReason = "This server's DNS software serves a list that was changed outside CelikPanel (for example with rndc)."
+	dnsEngineOwnerChangedWho    = "You, the owner of this server."
+	dnsEngineOwnerChangedNext   = "Keep your change: CelikPanel does not overwrite it. To have CelikPanel publish this server's DNS again, adopt it on Advanced → DNS software when that page offers it."
+	dnsEngineOwnerChangedThen   = "Until then CelikPanel publishes no DNS change on this server; this page checks again every minute."
+)
+
 func dnsOverviewSay(state, code, reason, who, next, then string, vars map[string]string) dnsOverviewSentence {
 	return dnsOverviewSentence{State: state, Code: code, Reason: reason, Who: who, Next: next, Then: then, Vars: vars}
 }
@@ -884,6 +906,9 @@ func dnsOverviewSentenceFor(in dnsOverviewInput, r dnsOverview) dnsOverviewSente
 	}
 	if in.JoinWaiting {
 		return dnsOverviewSay("prerequisite", "dns_overview_join_waiting", "Setup waits for the second server to join.", "You, on the second server.", "Run the second server's setup and enter this server's address and its join code (make the code below).", "Setup continues by itself once the second server has joined.", vars)
+	}
+	if in.EngineOwnerChanged {
+		return dnsOverviewSay("prerequisite", "dns_overview_"+dnsEngineOwnerChangedCode, dnsEngineOwnerChangedReason, dnsEngineOwnerChangedWho, dnsEngineOwnerChangedNext, dnsEngineOwnerChangedThen, vars)
 	}
 	if !in.Ready && in.Running {
 		return dnsOverviewSay("waiting", "dns_overview_setup_running", "Server setup is still running; DNS is part of it.", "Follow the setup page; it says when you need to act.", "Open Server setup.", "This page shows the finished picture once setup completes.", vars)

@@ -1010,3 +1010,31 @@ func TestPublisherRestoreMissingPointerIsExactAndIdempotent(t *testing.T) {
 		}
 	})
 }
+
+// Beta-1 VM cell a: the owner edited the published zone natively (rndc). A
+// changed published tree is told apart as a change outside CelikPanel
+// (ErrGenerationChanged), so the screens say the owner's change rather than
+// a foreign DNS server; an absent tree is not one.
+func TestPublisherTellsAChangedPublishedTreeApart(t *testing.T) {
+	filesystem := newMemoryFS()
+	runner := &recordingRunner{}
+	publisher := newTestPublisher(t, filesystem, runner)
+	if _, err := publisher.LoadCurrent(); errors.Is(err, ErrGenerationChanged) {
+		t.Fatalf("no tree is not a change: %v", err)
+	}
+	generation := publisherGeneration(t, 1, "192.0.2.1")
+	if err := publisher.Stage(context.Background(), generation); err != nil {
+		t.Fatal(err)
+	}
+	if err := publisher.Activate(generation.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := publisher.LoadCurrent(); err != nil {
+		t.Fatal(err)
+	}
+	zonePath := "/var/lib/celikpanel/bind/generations/" + generation.ID + "/zones/" + zoneFileName("example.com")
+	filesystem.nodes[zonePath].data = []byte("$ORIGIN example.com.\n@ 60 IN TXT \"set by the owner\"\n")
+	if _, err := publisher.LoadCurrent(); !errors.Is(err, ErrGenerationChanged) {
+		t.Fatalf("a changed zone file: %v", err)
+	}
+}

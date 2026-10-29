@@ -72,7 +72,7 @@ const stub = dataModule(`
   export const DNSEngineCard = () => React.createElement('aside', null, 'dns-engine-card');
   export const ServerSetupDNSAccess = () => null, ServerSetupDNSManagement = () => null;
   export const dnsEngineText = (locale, key) => key;
-  export const dnsEngineIdentityStagesATakeover = () => false, dnsEngineMutationsHeld = () => false, dnsEngineIdentityReviewLocked = () => false;
+  export const dnsEngineIdentityStagesATakeover = () => false, dnsEngineMutationsHeld = () => false, dnsEngineOwnerChanged = () => false, dnsEngineIdentityReviewLocked = () => false;
   // A dialog is drawn only where a test asks for it (2026-10-16).
   export const Dialog = (props) => (globalThis.batch3Dialogs ? React.createElement('dialog', null, props.title, props.description, props.children, props.footerLead, props.actions) : null);
   // The settings form is mounted on the route that stages the names before an
