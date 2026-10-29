@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"net/url"
 	"path"
@@ -90,7 +91,43 @@ var prepareVhostChallengeRoot = prepareValidatedVhostChallengeRoot
 // applyManagedVhostsFor is the generator call (a test seam: component tests
 // must not write the host's own nginx tree).
 var applyManagedVhostsFor = func(a *Agent, items []services.ManagedVhostItem) ([]transport.SiteFileResult, error) {
-	return a.nginxGen.ApplyManagedVhosts(items)
+	results, err := a.nginxGen.ApplyManagedVhosts(items)
+	if err == nil && siteFilesReloaded(results) {
+		reconcileDefaultHTTPSFor(a)
+	}
+	return results, err
+}
+
+// siteFilesReloaded: the call wrote a vhost and nginx reloaded it, so which
+// server blocks serve HTTPS may have changed.
+func siteFilesReloaded(results []transport.SiteFileResult) bool {
+	for _, result := range results {
+		if result.Reloaded {
+			return true
+		}
+	}
+	return false
+}
+
+// reconcileDefaultHTTPSFor keeps CelikPanel's default HTTPS server in step
+// with the sites (services.ReconcileDefaultHTTPSServer): after a vhost write
+// and after a webmail address change. It never fails the operation that
+// called it; what it did goes to the Agent's journal. A test seam: component
+// tests must not read or write the host's own nginx tree.
+//
+// Varsayılan HTTPS sunucusunu sitelerle uyumlu tutar; çağıran işlemi asla
+// başarısız yapmaz, sonucu günlüğe yazar.
+var reconcileDefaultHTTPSFor = func(a *Agent) services.DefaultHTTPSServerResult {
+	if a == nil || a.nginxGen == nil {
+		return services.DefaultHTTPSServerResult{Outcome: services.DefaultHTTPSUnknown}
+	}
+	result := a.nginxGen.ReconcileDefaultHTTPSServer()
+	switch result.Outcome {
+	case services.DefaultHTTPSUnchanged, services.DefaultHTTPSNotNeeded:
+	default:
+		log.Printf("nginx default HTTPS server %s: %s %s", result.Path, result.Outcome, result.Detail)
+	}
+	return result
 }
 
 // managedVhostItem is managedVhostItemFor with the validation-only server
