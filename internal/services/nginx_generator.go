@@ -39,6 +39,12 @@ type NginxGenerator struct {
 	// nginxActive is `systemctl is-active nginx` (a test seam); nil asks
 	// systemd, except in development mode (nginxDir), which answers unknown.
 	nginxActive func() string
+	// nginxFeatures is the installed nginx's measurement (a test seam); nil
+	// measures the host (nginx_features.go).
+	nginxFeatures func() NginxFeatures
+	// nginxDump is `nginx -T` (a test seam); nil runs it
+	// (nginx_default_https.go).
+	nginxDump func() (string, error)
 }
 
 // nginxServiceActive is whether nginx runs: "true", "false" or "unknown".
@@ -101,6 +107,9 @@ type VhostData struct {
 	// (D-031 step 1b: the ACME HTTP-01 location), derived from Domain by
 	// Render; callers do not set it.
 	PanelManagedDir string
+	// HTTP2 is the HTTP/2 form of the HTTPS server blocks (NginxHTTP2*),
+	// derived by Render from the installed nginx; callers do not set it.
+	HTTP2 string
 }
 
 // Render executes the vhost template over prepared data, deriving the
@@ -112,6 +121,9 @@ func (ng *NginxGenerator) Render(data VhostData) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// Only the current template reads it; the frozen ones of earlier
+	// releases render what those releases wrote.
+	prepared.HTTP2 = ng.features().HTTP2Form()
 	var buf bytes.Buffer
 	if err := ng.tmpl.Execute(&buf, prepared); err != nil {
 		return "", fmt.Errorf("failed to execute template: %v", err)

@@ -154,12 +154,106 @@ func TestSSLRequestedWithoutCertificateStaysHTTP(t *testing.T) {
 	if !strings.Contains(out, "return 301 https://") {
 		t.Error("with HTTPS able to answer, port 80 should redirect to it")
 	}
-	// nginx ≥1.25 deprecates `listen ... http2`; keeping it prints a warning on
-	// every reload and will eventually be an error.
-	// nginx ≥1.25 `listen ... http2`ı kullanımdan kaldırdı; bırakmak her yeniden
-	// yüklemede uyarı basar ve bir gün hata olur.
-	if strings.Contains(out, "ssl http2;") {
-		t.Error("use the separate `http2 on;` directive, not the deprecated listen parameter")
+}
+
+// The HTTP/2 form follows the installed nginx (2026-10-30). nginx >= 1.25.1
+// deprecates `listen ... http2` (a warning on every test and reload) and has
+// `http2 on;`; nginx 1.24, Ubuntu 24.04's, refuses `http2 on;` ([emerg]
+// unknown directive "http2"), which left a certificate "activation pending"
+// on a real server. An unknown version writes neither: every nginx accepts
+// that.
+// HTTP/2 biçimi kurulu nginx'e göre: 1.25.1 ve sonrası `http2 on;`, 1.24
+// `listen ... ssl http2;`, bilinmeyen sürüm HTTP/2'siz.
+func TestHTTPSListenFollowsTheInstalledNginx(t *testing.T) {
+	data := VhostData{
+		SiteID: 10, Domain: "biovision.health", DocumentRoot: "/var/www/biovision.health",
+		ProjectType: "static", ACMEChallengeRoot: testACMEChallengeRoot, SSLType: "custom",
+		SSLCert: "/etc/letsencrypt/live/biovision.health/fullchain.pem",
+		SSLKey:  "/etc/letsencrypt/live/biovision.health/privkey.pem",
+	}
+	forwarding := data
+	forwarding.ProjectType, forwarding.ForwardTo = "forwarding", "https://example.org"
+	for _, tc := range []struct {
+		name      string
+		features  NginxFeatures
+		directive bool
+		listen    bool
+	}{
+		{"debian 13 nginx 1.26.3", NginxFeatures{Known: true, Version: NginxVersion{1, 26, 3}, HTTP2Module: true}, true, false},
+		{"nginx 1.25.1", NginxFeatures{Known: true, Version: NginxVersion{1, 25, 1}, HTTP2Module: true}, true, false},
+		{"nginx 1.25.0", NginxFeatures{Known: true, Version: NginxVersion{1, 25, 0}, HTTP2Module: true}, false, true},
+		{"ubuntu 24.04 nginx 1.24.0", NginxFeatures{Known: true, Version: NginxVersion{1, 24, 0}, HTTP2Module: true}, false, true},
+		{"built without http_v2", NginxFeatures{Known: true, Version: NginxVersion{1, 26, 3}}, false, false},
+		{"version unknown", NginxFeatures{}, false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ng, err := NewNginxGenerator()
+			if err != nil {
+				t.Fatal(err)
+			}
+			ng.SetNginxFeatures(tc.features)
+			for _, d := range []VhostData{data, forwarding} {
+				out, err := ng.Render(d)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if got := strings.Count(out, "\n    http2 on;\n"); (got == 1) != tc.directive || got > 1 {
+					t.Errorf("%s: `http2 on;` %d times, want directive=%v:\n%s", d.ProjectType, got, tc.directive, out)
+				}
+				hasListen := strings.Contains(out, "\n    listen 443 ssl http2;\n    listen [::]:443 ssl http2;\n")
+				if hasListen != tc.listen {
+					t.Errorf("%s: listen http2 = %v, want %v", d.ProjectType, hasListen, tc.listen)
+				}
+				if !tc.listen && !strings.Contains(out, "\n    listen 443 ssl;\n    listen [::]:443 ssl;\n") {
+					t.Errorf("%s: the plain HTTPS listen lines are missing", d.ProjectType)
+				}
+				if strings.Contains(out, "http2") && !tc.directive && !tc.listen {
+					t.Errorf("%s: HTTP/2 written for %s", d.ProjectType, tc.name)
+				}
+			}
+		})
+	}
+}
+
+// Mozilla intermediate (guidelines 6.0) on every HTTPS server block; nothing
+// the two supported OpenSSL series (3.0 on Ubuntu 24.04, 3.5 on Debian 13)
+// would refuse, and no OCSP stapling (Let's Encrypt ended OCSP in 2025).
+func TestHTTPSServerCarriesTheIntermediateTLSPolicy(t *testing.T) {
+	ng, err := NewNginxGenerator()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ng.SetNginxFeatures(NginxFeatures{Known: true, Version: NginxVersion{1, 24, 0}, HTTP2Module: true})
+	out, err := ng.Render(VhostData{
+		SiteID: 10, Domain: "a.example", DocumentRoot: "/var/www/a", ProjectType: "static",
+		ACMEChallengeRoot: testACMEChallengeRoot, SSLType: "custom",
+		SSLCert: "/etc/ssl/a.crt", SSLKey: "/etc/ssl/a.key",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy, err := NginxTLSPolicy()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "    ssl_session_cache shared:SSL:10m;\n"+policy+"\n") {
+		t.Fatalf("the HTTPS block does not carry the policy lines as one piece:\n%s", out)
+	}
+	for _, want := range []string{
+		"    ssl_protocols TLSv1.2 TLSv1.3;",
+		"    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;",
+		"    ssl_prefer_server_ciphers off;",
+		"    ssl_session_timeout 1d;",
+		"    ssl_session_tickets off;",
+	} {
+		if !strings.Contains(policy, want) {
+			t.Errorf("policy lacks %q", want)
+		}
+	}
+	for _, refused := range []string{"HIGH:", ":DHE-", " DHE-", "ssl_stapling", "ssl_dhparam", "ssl_ecdh_curve", "TLSv1.1", "MLKEM"} {
+		if strings.Contains(out, refused) {
+			t.Errorf("the HTTPS block carries %q", refused)
+		}
 	}
 }
 
