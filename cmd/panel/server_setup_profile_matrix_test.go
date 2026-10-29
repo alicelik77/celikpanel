@@ -5,6 +5,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -116,5 +117,50 @@ func TestServerSetupBuildRefusesPowerDNSMainOnUntestedSystem(t *testing.T) {
 	}
 	if plan.CanStart || !slices.Contains(plan.Blockers, "server_setup_pdns_main_untested_system") {
 		t.Fatalf("PowerDNS main on Ubuntu was not refused at review: %v", plan.Blockers)
+	}
+}
+
+// PowerDNS as the main DNS server is offered and accepted by one rule: a
+// release of the tested series (Beta-1 VM cell b: Debian 13 offered 4.9.18,
+// the DNS step accepted only 4.9.17 and rolled back). A candidate outside the
+// series is refused at review with the wizard's reason, never mid-run.
+func TestServerSetupBuildPowerDNSMainFollowsTheTestedSeries(t *testing.T) {
+	for _, test := range []struct {
+		candidate string
+		refused   bool
+	}{{"4.9.18-0+deb13u1", false}, {"4.9.17-0+deb13u1", false}, {"5.0.1-1", true}, {"", false}} {
+		t.Run(test.candidate, func(t *testing.T) {
+			setPDNSPairedPrimaryGateForTest(t, true)
+			f, state := setupOperationFixture(t)
+			setServerSetupTestHost(f.panel, "debian", "13")
+			caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
+			f.agent.versionCapabilities = &caps
+			if test.candidate != "" {
+				f.agent.candidateVersions = map[string]string{"pdns": test.candidate}
+			}
+			state.Draft.Purpose, state.Draft.DNSMode, state.Draft.DNSEngine, state.Draft.DNSRole = "web", "local", "pdns", "primary"
+			state.Draft.NS1, state.Draft.NS2, state.Draft.PeerNS = "ns1.example.test", "ns2.example.test", "ns2.example.test"
+			state.Draft.LocalIP, state.Draft.PeerIP = "72.62.38.15", "2.25.80.4"
+			plan, err := f.panel.buildServerSetupPlan(context.Background(), state, serviceOperationActor{UserID: f.userID})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := slices.Contains(plan.Blockers, "server_setup_pdns_main_untested_version"); got != test.refused {
+				t.Fatalf("candidate %q refused=%v: %v", test.candidate, got, plan.Blockers)
+			}
+		})
+	}
+	debian := core.ManagedServiceHostProfile{PackageFamily: "apt", DistroID: "debian", VersionID: "13", Architecture: "amd64"}
+	for candidate, offered := range map[string]bool{"4.9.18": true, "4.9.17": true, "5.0.1": false, "4.10.0": false, "": true} {
+		catalog := buildServerSetupComponentCatalogFrom(serverSetupCatalogInputs{Host: debian, InventoryReady: true, DNSState: &dnsEngineDBState{}, CandidateVersions: map[string]string{"pdns": candidate}})
+		for _, choice := range catalog.DNSEngines {
+			if choice.ID != "pdns" {
+				continue
+			}
+			want := offered || choice.Role == "backup"
+			if choice.Offered != want || (!want && choice.Reason != "server_setup_pdns_main_untested_version") {
+				t.Fatalf("candidate %q %s: %+v", candidate, choice.Role, choice)
+			}
+		}
 	}
 }

@@ -4,7 +4,7 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
+	"crypto/md5"
 	"database/sql"
 	"encoding/hex"
 	"errors"
@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 
 	"github.com/alicelik/celikpanel/internal/binddns"
 	"github.com/alicelik/celikpanel/internal/dnsengineartifact"
@@ -440,9 +441,10 @@ func continueFreshPDNSPrimaryV3(
 	}, nil
 }
 
-const freshPDNSDebian13PackageVersionV3 = "4.9.17-0+deb13u1"
-const freshPDNSDebian13BinarySHA256V3 = "c11660ad7647fa3b42f0b0f1ace73cfde3765add380a4351889b6c6d86b46d84"
-
+// verifyFreshPDNSNativeVersionV3 is the post-install identity check of a
+// fresh paired PowerDNS primary: Debian 13 amd64, both packages installed at
+// one release of the tested series (the same rule the preflight and the setup
+// wizard use) and the daemon the installed package's own, unmodified file.
 func verifyFreshPDNSNativeVersionV3(ctx context.Context, profile hostplatform.Profile) error {
 	if profile.ID != "debian" || profile.Version != "13" || profile.Arch != "amd64" ||
 		profile.PackageManager != hostplatform.PackageManagerAPT ||
@@ -453,33 +455,95 @@ func verifyFreshPDNSNativeVersionV3(ctx context.Context, profile hostplatform.Pr
 	if err != nil {
 		return err
 	}
-	for _, name := range []string{"pdns-server", "pdns-backend-sqlite3"} {
-		command := serviceMutationCommand(ctx, dpkg, "-W", "-f", "${Status}\t${Version}", "--", name)
+	query := func(args ...string) (string, error) {
+		command := serviceMutationCommand(ctx, dpkg, args...)
 		command.Env = bindSafeAPTCommandEnvironment()
 		output, err := command.CombinedOutputLimited(64 << 10)
-		if err != nil || string(output) != "install ok installed\t"+freshPDNSDebian13PackageVersionV3 {
-			return fmt.Errorf("v3 native PowerDNS package %s is not the measured version: %w", name, err)
-		}
+		return string(output), err
 	}
-	const binary = "/usr/sbin/pdns_server"
-	info, err := os.Lstat(binary)
+	return verifyFreshPDNSNativeIdentityV3(freshPDNSIdentityOpsV3{
+		status: func(name string) (string, error) {
+			return query("-W", "-f", "${Status}\t${Version}", "--", name)
+		},
+		md5sums: func(name string) ([]byte, error) {
+			path, err := query("--control-path", name, "md5sums")
+			if err != nil {
+				return nil, err
+			}
+			return readDpkgControlFileV3(strings.TrimSpace(path))
+		},
+		binary: dnsengineartifact.PDNSFreshPrimaryBinary,
+	})
+}
+
+type freshPDNSIdentityOpsV3 struct {
+	// status returns dpkg-query's "${Status}\t${Version}" for one package.
+	status func(string) (string, error)
+	// md5sums returns the installed package's md5sums control file.
+	md5sums func(string) ([]byte, error)
+	binary  string
+}
+
+func verifyFreshPDNSNativeIdentityV3(ops freshPDNSIdentityOpsV3) error {
+	version := ""
+	for _, name := range dnsengineartifact.PDNSFreshPrimaryPackages {
+		output, err := ops.status(name)
+		installed, ok := strings.CutPrefix(output, "install ok installed\t")
+		if err != nil || !ok || !validDebianVersion(installed) || !dnsengineartifact.PDNSFreshPrimaryVersionInTestedSeries(installed) {
+			return fmt.Errorf("v3 native PowerDNS package %s is not a release of the tested PowerDNS %s series: %w", name, dnsengineartifact.PDNSFreshPrimaryTestedSeries, err)
+		}
+		if version != "" && installed != version {
+			return fmt.Errorf("v3 native PowerDNS packages are not one build (%s, %s)", freshPDNSVersionText(version), freshPDNSVersionText(installed))
+		}
+		version = installed
+	}
+	info, err := os.Lstat(ops.binary)
 	if err != nil {
 		return err
 	}
 	if !info.Mode().IsRegular() || info.Mode().Perm() != 0o755 {
-		return errors.New("v3 PowerDNS binary type or mode differs from the measured package")
+		return errors.New("v3 PowerDNS binary type or mode differs from the installed package")
 	}
-	f, err := os.Open(binary)
+	sums, err := ops.md5sums(dnsengineartifact.PDNSFreshPrimaryPackages[0])
+	if err != nil {
+		return fmt.Errorf("v3 PowerDNS package file digests could not be read: %w", err)
+	}
+	want, ok := dnsengineartifact.PDNSPackageFileMD5(sums, ops.binary)
+	if !ok {
+		return errors.New("v3 PowerDNS package does not record its daemon")
+	}
+	f, err := os.Open(ops.binary)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	hash := sha256.New()
+	hash := md5.New()
 	if _, err := io.Copy(hash, f); err != nil {
 		return err
 	}
-	if hex.EncodeToString(hash.Sum(nil)) != freshPDNSDebian13BinarySHA256V3 {
-		return errors.New("v3 PowerDNS binary differs from the measured native implementation")
+	if hex.EncodeToString(hash.Sum(nil)) != want {
+		return errors.New("v3 PowerDNS binary differs from the installed package's own file")
 	}
 	return nil
+}
+
+// readDpkgControlFileV3 reads one bounded control file under dpkg's own
+// database directory.
+func readDpkgControlFileV3(path string) ([]byte, error) {
+	if !filepath.IsAbs(path) || filepath.Clean(path) != path || filepath.Dir(path) != "/var/lib/dpkg/info" {
+		return nil, errors.New("dpkg control path is outside the package database")
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	raw, err := io.ReadAll(io.LimitReader(f, 4<<20))
+	if err != nil {
+		return nil, err
+	}
+	if len(raw) >= 4<<20 {
+		return nil, errors.New("dpkg control file is too large")
+	}
+	return raw, nil
 }

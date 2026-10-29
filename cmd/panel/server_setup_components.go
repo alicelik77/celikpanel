@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/core"
+	"github.com/alicelik/celikpanel/internal/dnsengineartifact"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -649,6 +650,16 @@ func serverSetupPDNSMainSystemTested(host core.ManagedServiceHostProfile) bool {
 	return host.DistroID == "debian" && host.VersionID == "13" && host.Architecture == "amd64"
 }
 
+// serverSetupPDNSMainVersionTested applies the Agent's own rule
+// (dnsengineartifact.PDNSFreshPrimaryTestedSeries) to the version this server
+// would install, so the wizard offers PowerDNS as the main DNS server only when
+// the DNS step will accept it. An unread version stays unknown, not refused:
+// the Agent reads it again before any effect.
+// Sihirbazin sundugu surum, DNS adiminin kabul ettigi kuraldan gelir.
+func serverSetupPDNSMainVersionTested(version string) bool {
+	return strings.TrimSpace(version) == "" || dnsengineartifact.PDNSFreshPrimaryVersionInTestedSeries(version)
+}
+
 // serverSetupDNSEngineChoices applies the review's DNS rules per software and
 // role: a server runs one DNS software and an active one is never switched by
 // setup; PowerDNS as the main (paired primary) server is offered only by the
@@ -680,6 +691,8 @@ func serverSetupDNSEngineChoices(inputs serverSetupCatalogInputs) []serverSetupD
 					choice.Offered, choice.Reason = false, code
 				} else if !serverSetupPDNSMainSystemTested(inputs.Host) {
 					choice.Offered, choice.Reason = false, "server_setup_pdns_main_untested_system"
+				} else if !serverSetupPDNSMainVersionTested(choice.InstalledVersion + choice.CandidateVersion) {
+					choice.Offered, choice.Reason = false, "server_setup_pdns_main_untested_version"
 				}
 			}
 			choices = append(choices, choice)

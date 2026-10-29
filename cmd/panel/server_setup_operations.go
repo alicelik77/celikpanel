@@ -317,6 +317,16 @@ func setupPDNSPairedPrimaryBlocker(draft serverSetupDraft, state dnsEngineDBStat
 	return code
 }
 
+// serverSetupPDNSMainCandidateTested reads, read-only, the PowerDNS version
+// this server would install and applies the catalogue's rule to it.
+func (p *Panel) serverSetupPDNSMainCandidateTested(ctx context.Context) bool {
+	var version string
+	if err := p.callAgentContext(ctx, "Agent.ServiceCandidateVersion", &transport.InstallServiceRequest{ID: string(transport.DNSEnginePowerDNS)}, &version); err != nil {
+		return true
+	}
+	return serverSetupPDNSMainVersionTested(version)
+}
+
 func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState, actor serviceOperationActor) (serverSetupPlan, error) {
 	draft := state.Draft
 	plan := serverSetupPlan{Version: serverSetupPlanVersion, Revision: state.Revision, Purpose: draft.Purpose, Draft: draft, Actor: actor,
@@ -389,6 +399,8 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 			addBlocker(code)
 		} else if draft.DNSRole == transport.DNSPairRolePrimary && transport.DNSEngine(draft.DNSEngine) == transport.DNSEnginePowerDNS && !serverSetupPDNSMainSystemTested(p.managedServiceHostProfile()) {
 			addBlocker("server_setup_pdns_main_untested_system")
+		} else if draft.DNSRole == transport.DNSPairRolePrimary && transport.DNSEngine(draft.DNSEngine) == transport.DNSEnginePowerDNS && !p.serverSetupPDNSMainCandidateTested(ctx) {
+			addBlocker("server_setup_pdns_main_untested_version")
 		}
 	} else if draft.DNSMode == "local" {
 		request, local, identityErr := setupDNSIdentity(draft)
@@ -412,6 +424,10 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 				!serverSetupPDNSMainSystemTested(p.managedServiceHostProfile()) {
 				// Same rule as the catalogue: refused at review, not mid-run.
 				addBlocker("server_setup_pdns_main_untested_system")
+			} else if draft.DNSRole == transport.DNSPairRolePrimary && state.ActiveEngine == "" &&
+				transport.DNSEngine(draft.DNSEngine) == transport.DNSEnginePowerDNS &&
+				!p.serverSetupPDNSMainCandidateTested(ctx) {
+				addBlocker("server_setup_pdns_main_untested_version")
 			}
 			if serverSetupSecondaryHosting(draft) {
 				endpoint, err := canonicalRemoteDNSEndpoint(draft.DNSPublisherEndpoint)

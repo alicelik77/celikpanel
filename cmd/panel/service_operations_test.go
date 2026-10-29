@@ -211,6 +211,9 @@ type serviceOperationTestAgent struct {
 	installed    map[string]bool
 	active       map[string]bool
 	nodeVersions map[string]bool
+	// candidateVersions answers Agent.ServiceCandidateVersion; an absent
+	// entry is an unread version (the RPC fails), as before it existed.
+	candidateVersions map[string]string
 
 	// packageVersions answers Agent.InstalledPackageVersionsV1 (alpha.97);
 	// nil answers "unsupported". packageVersionCalls counts the reads.
@@ -567,6 +570,17 @@ func (a *serviceOperationTestAgent) ListServiceInstances(
 			resp.Instances = append(resp.Instances, core.ServiceInstance{Version: version, Managed: true})
 		}
 	}
+	return nil
+}
+
+func (a *serviceOperationTestAgent) ServiceCandidateVersion(req *transport.InstallServiceRequest, out *string) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	version, ok := a.candidateVersions[req.ID]
+	if !ok {
+		return errors.New("candidate version not read")
+	}
+	*out = version
 	return nil
 }
 

@@ -2674,6 +2674,23 @@ step-time bounds of the native proof are single samples. Installed servers
 were not touched; the decision does not authorise updating them (the owner
 starts every panel update from the panel's own update screen).
 
+**Amendment, October 29, 2026 (owner decision after the Beta-1 VM run).** The
+gate pinned the exact measured build (4.9.17-0+deb13u1 and its daemon
+digest) so that what is offered is what was measured. On a fresh Debian 13
+the distribution's candidate had moved to 4.9.18-0+deb13u1, a security
+point release: the wizard offered PowerDNS as the main DNS server and the
+DNS step refused it and rolled back. The gate now holds the tested
+**series** (major.minor, 4.9), not the patch: one shared rule decides what
+the wizard offers, what the Agent's preflight installs (`name=version` for
+the one candidate), what its post-install identity check accepts (both
+packages at one 4.9 release, the daemon the installed package's own file
+by dpkg's recorded digest) and what the independent recovery attestation
+accepts. A candidate outside the series is not offered, with its reason,
+and is refused at review. Host profile, topology and every other limit
+above are unchanged; a new major or minor release needs new measurement.
+Patch releases inside the series are accepted without a new native run, so
+a later point release that changes behaviour is a known limit.
+
 ---
 
 ## D-027 · Acceptance runs use a test-only fixture license; license policy is unchanged

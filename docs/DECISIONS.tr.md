@@ -2668,6 +2668,21 @@ ve gerçek sistemde ortaya çıkmadı. Yerel kanıtın adım süresi sınırlar�
 yetki vermez (her panel güncellemesini sahibi panelin kendi güncelleme
 ekranından başlatır).
 
+**Ek, 29 Ekim 2026 (Beta-1 sanal makine koşusundan sonra sahip kararı).**
+Kapı, sunulanın ölçülen olması için tam ölçülen yapıyı (4.9.17-0+deb13u1 ve
+daemon özeti) sabitliyordu. Temiz bir Debian 13'te dağıtımın adayı bir
+güvenlik yama sürümü olan 4.9.18-0+deb13u1'e geçmişti: sihirbaz PowerDNS'i
+ana DNS sunucusu olarak sundu, DNS adımı reddedip geri aldı. Kapı artık yamayı
+değil denenmiş **seriyi** (major.minor, 4.9) tutar: sihirbazın sunduğunu,
+Agent ön denetiminin kurduğunu (tek aday için `ad=sürüm`), kurulum sonrası
+kimlik denetiminin kabul ettiğini (iki paket tek bir 4.9 sürümünde, daemon
+dpkg'nin kaydettiği özetle kurulu paketin kendi dosyası) ve bağımsız kurtarma
+doğrulamasının kabul ettiğini tek ortak kural belirler. Seri dışındaki aday
+gerekçesiyle sunulmaz ve incelemede reddedilir. Sunucu profili, topoloji ve
+yukarıdaki diğer sınırlar değişmez; yeni major/minor sürüm yeni ölçüm ister.
+Seri içi yama sürümleri yeni gerçek koşu olmadan kabul edilir; davranışı
+değiştiren bir yama sürümü bilinen sınırdır.
+
 ---
 
 ## D-027 · Kabul koşuları yalnız deneyde geçerli lisans kullanır; lisans politikası değişmez

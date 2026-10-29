@@ -3,7 +3,7 @@
 package main
 
 import (
-	"crypto/sha256"
+	"crypto/md5"
 	"encoding/hex"
 	"os"
 	"path/filepath"
@@ -17,7 +17,7 @@ func TestFreshPDNSExecutableProofV3(t *testing.T) {
 		t.Skip("root-owned executable proof; CI runs this test with sudo")
 	}
 	payload := []byte("measured native executable fixture\n")
-	sum := sha256.Sum256(payload)
+	sum := md5.Sum(payload)
 	digest := hex.EncodeToString(sum[:])
 	for _, name := range []string{"regular", "wrong-content", "wrong-mode", "special-mode", "wrong-owner", "symlink", "hardlink"} {
 		t.Run(name, func(t *testing.T) {
@@ -62,7 +62,7 @@ func TestFreshPDNSExecutableProofV3(t *testing.T) {
 				}
 			} else if err == nil {
 				t.Fatal("unsafe or changed executable accepted")
-			} else if name == "wrong-content" && !strings.Contains(err.Error(), "differs from measured") {
+			} else if name == "wrong-content" && !strings.Contains(err.Error(), "differs from the installed package") {
 				t.Fatalf("did not reach content verification: %v", err)
 			}
 		})
