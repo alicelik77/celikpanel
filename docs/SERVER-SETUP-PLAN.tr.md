@@ -16,15 +16,23 @@ koşusu aşağıdaki kusurları buldu; her düzeltmenin bileşen testi var, hiç
 şemayı değiştirmez ve kanıtlanmış sayılmadan önce hedefli bir VM koşusu gerekir.
 
 - **Dağıtım yama güncellemeleri listelenir, reddedilmez.** Bir bileşen kurulumu
-  kurulu paketleri aynı sürüm içinde de güncelliyorsa (APT: aynı epoch ve üst
-  sürüm, yalnız dağıtım revizyonu değişir; örneğin perl-base 5.40.1-6 →
-  5.40.1-6+deb13u1) temiz kurulum artık durmaz. İnceleme kurulum benzetimini
-  bir kez okur ve "Ayrıca güncellenecek dağıtım paketleri" altında listeler;
-  kurulumu başlatmak bunları onaylar ve bunu Agent'a yalnız kurulumun kendi
-  bileşen adımları söyler. Yeni üst sürüm, üretici değişimi, veritabanı
-  sunucusu, Apache, başka PHP sürümü ya da başka bileşen bugünkü onayı korur.
-  Listelenmemiş bir yama güncellemesi getirecek başlatma yeni inceleme ister;
-  okunamayan benzetim bilinmiyor olarak söylenir.
+  kurulu paketleri aynı sürüm içinde de güncelliyorsa temiz kurulum artık
+  durmaz. Yama güncellemesi üçünü birden ister: aynı epoch ve üst sürüm,
+  dpkg sırasına göre daha yeni sürüm ve APT'nin gösterdiği her arşivin
+  dağıtımın kendi yayımlanmış sürümü ya da güvenlik/güncelleme cebi olması
+  (örneğin Debian-Security'den perl-base 5.40.1-6 → 5.40.1-6+deb13u1).
+  İnceleme kurulum benzetimini bir kez okur ve "Ayrıca güncellenecek dağıtım
+  paketleri" altında listeler; kurulumu başlatmak tam olarak bunları
+  (paket=sürüm) onaylar; bunları Agent'a yalnız kurulumun kendi bileşen
+  adımları gönderir ve Agent yalnız birebir eşleşeni kabul eder. Okunamayan
+  inceleme hiçbirini onaylamaz. Her bileşenin ilk kurulumundan önce adım
+  yeniden sorar: incelemenin listelemediği güncelleme
+  `server_setup_distribution_updates_changed` olarak bekler (sahip incelemeyi
+  açıp yeniden başlatır), okunamayan yanıt
+  `server_setup_distribution_updates_unread` olarak bekler; hiçbir şey
+  kurulmaz. PPA, üretici ya da üçüncü taraf depo, backports, sürüm düşürme,
+  yeni üst sürüm, veritabanı sunucusu, Apache, başka PHP sürümü ya da başka
+  bileşen bugünkü onayı korur.
 - **Kendi DNS'ini tutan tek sunucu bölgesini bitirir.** Plan ve her bölge
   eşitlemesi bölge türünü tek kuralla seçer (tek başına `NATIVE`, çiftte
   `MASTER`); incelenen özet artık `infrastructure_dns_changed` döngüsüne
@@ -35,9 +43,11 @@ koşusu aşağıdaki kusurları buldu; her düzeltmenin bileşen testi var, hiç
   beklemelerinden sonra çalışır.
 - **Ana DNS sunucusu olarak PowerDNS: tek denenmiş seri.** Sihirbazın sunduğu,
   incelemenin kabul ettiği ve DNS adımının kurduğu, denenmiş PowerDNS
-  serisinin (4.9.x; D-028 eki) dağıtımdaki güncel sürümüdür. Seri dışındaki
-  aday sunulmaz (`server_setup_pdns_main_untested_version`) ve incelemede
-  reddedilir, çalışma ortasında değil.
+  serisinin (4.9.x, epoch'suz, Debian arşiv revizyonlu, Debian arşivinden;
+  D-028 eki) Debian'ın kendi arşiv yapısıdır. Bunun dışındaki aday sunulmaz
+  (`server_setup_pdns_main_untested_version`, ya da repo.powerdns.com,
+  backports veya başka depo için `server_setup_pdns_main_not_debian_archive`)
+  ve incelemede reddedilir, çalışma ortasında değil.
 - **İkinci sunucunun değişen yanıtları yeni kodla toparlanır.** Bağlama yine
   tek çalışmaya aittir. Onunla hiçbir çalışma başarıyla bitmemişken ikinci
   sunucunun sonradan değişen yanıtları (örneğin DNS yazılımı) katılmayı
@@ -50,9 +60,13 @@ koşusu aşağıdaki kusurları buldu; her düzeltmenin bileşen testi var, hiç
   sonra yanıtlar kesindir ve yeni kod reddedilir; ikisi de açıkça söylenir
   (`server_setup_peer_names_final`, `server_setup_join_finished`).
 - **Başarılı bir çiftten sonra genişletme** onun bağlamasını kullanır; yeni
-  katılma adımı yoktur.
-- **Katılma kodu denemeleri** her yerde tek anlam taşır: kodun kalan yanlış
-  deneme hakkı (50); oluşturmada, yeniden okumada ve retlerde aynıdır.
+  katılma adımı yoktur. İkinci sunucunun aldığını (ortak yanıtlar, adlar,
+  posta) değiştirecek genişletme incelemede reddedilir
+  (`server_setup_extension_needs_second_server`): ortak yanıtları koruyun ya da
+  iki sunucuyu yeniden kurun.
+- **Katılma kodu denemeleri** her yerde aynı söylenir: bir adresten en çok 5
+  yanlış deneme ve kodun toplamda kalan hakkı (oluşturmada 50); yeniden
+  okumada ve retlerde aynıdır.
 - **Sahibin yerel DNS düzenlemesi** DNS yazılımı kartında ve DNS sayfasında tek
   bildirimdir (`engine_owner_changed` / `dns_overview_engine_owner_changed`):
   CelikPanel dışında değişti, sahip karar verir, korur (yapılacak bir şey yok;

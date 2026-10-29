@@ -18,15 +18,22 @@ schema, and a targeted VM re-run is still owed before any is called proven.
 
 - **Distribution point updates are listed, not refused.** A component's
   install that also updates already installed packages within the same
-  release (APT: same epoch and upstream version, only the distribution
-  revision changes, for example perl-base 5.40.1-6 → 5.40.1-6+deb13u1) no
-  longer stops a fresh setup. The review reads the install simulation once and
-  lists them under "Distribution packages also updated" ("Ayrıca güncellenecek
-  dağıtım paketleri"); starting setup confirms them, and only setup's own
-  component steps tell the Agent so. A new upstream version, a vendor
-  replacement, a database server, Apache, another PHP version or another
-  component keeps today's confirmation. A start that would bring an unlisted
-  point update needs a new review; an unread simulation is said as unknown.
+  release no longer stops a fresh setup. A point update needs all three: the
+  same epoch and upstream version, a newer version in dpkg's order, and every
+  archive APT names for it being the distribution's own released suite or its
+  security/updates pocket (for example perl-base 5.40.1-6 →
+  5.40.1-6+deb13u1 from Debian-Security). The review reads the install
+  simulation once and lists them under "Distribution packages also updated"
+  ("Ayrıca güncellenecek dağıtım paketleri"); starting setup confirms exactly
+  those (package=version), and only setup's own component steps send them to
+  the Agent, which accepts only exact matches. An unread review confirms none.
+  Before each component's first install the step asks again: an update the
+  review did not list waits as `server_setup_distribution_updates_changed`
+  (the owner opens the review and starts again), an unread answer waits as
+  `server_setup_distribution_updates_unread`; nothing is installed. A PPA, a
+  vendor or third-party repository, backports, a downgrade, a new upstream
+  version, a database server, Apache, another PHP version or another
+  component keeps today's confirmation.
 - **One server with its own DNS finishes its zone.** The plan and every zone
   sync decide the zone kind with one rule (`NATIVE` alone, `MASTER` in a
   pair), so the reviewed digest no longer loops on
@@ -36,10 +43,12 @@ schema, and a targeted VM re-run is still owed before any is called proven.
   a mail server (SpamAssassin) run after the DNS steps and waits on both
   servers and in every layout.
 - **PowerDNS as the main DNS server: one tested series.** The wizard offers,
-  the review accepts and the DNS step installs the distribution's current
-  release of the tested PowerDNS series (4.9.x; D-028 amendment). A candidate
-  outside it is not offered (`server_setup_pdns_main_untested_version`) and is
-  refused at review, never mid-run.
+  the review accepts and the DNS step installs Debian's own archive build of
+  the tested PowerDNS series (4.9.x, no epoch, a Debian archive revision, from
+  Debian's archive; D-028 amendment). A candidate outside it is not offered
+  (`server_setup_pdns_main_untested_version`, or
+  `server_setup_pdns_main_not_debian_archive` for repo.powerdns.com, backports
+  or another repository) and is refused at review, never mid-run.
 - **Changed second-server answers recover with a new code.** A binding still
   belongs to one run. While no run with it has succeeded, answers the second
   server changed afterwards (for example its DNS software) mark the join
@@ -52,8 +61,13 @@ schema, and a targeted VM re-run is still owed before any is called proven.
   answers are final and a new code is refused, both said plainly
   (`server_setup_peer_names_final`, `server_setup_join_finished`).
 - **Extending after a succeeded pair** reuses its binding: no new join step.
-- **Join code tries** mean one thing everywhere: the code's own remaining wrong
-  attempts (50), the same at creation, on re-read and in a refusal.
+  An extension that would change what the second server received (shared
+  answers, names, mail) is refused at review
+  (`server_setup_extension_needs_second_server`): keep the shared answers, or
+  set up both servers again.
+- **Join code tries** are said the same everywhere: at most 5 wrong tries from
+  one address, and the code's own remaining total (50 at creation), the same on
+  re-read and in a refusal.
 - **An owner's native DNS edit** is one notice on the DNS software card and the
   DNS page (`engine_owner_changed` / `dns_overview_engine_owner_changed`):
   changed outside CelikPanel, the owner acts, keep it (nothing to do; never
