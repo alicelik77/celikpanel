@@ -118,7 +118,7 @@ const screenPartBudgets = {
   // least 25% headroom from its Turkish file: 5.90 / 1.77 KiB. Raised with
   // the Beta-1 re-run fixes (the distribution-update, ready-report and
   // rejoin waits) to keep 25% headroom over 8.38 / 2.37 KiB.
-  setupLink: kib(10.5, 3),
+  setupLink: kib(13, 4),
   // v0.1.0-alpha.115: the DNS page's overview and the first-site offer
   // (dnsov.). A new part, set with at least 25% headroom from its Turkish
   // file: 15.36 / 4.24 KiB. Raised with the alpha.115 review fixes to keep
