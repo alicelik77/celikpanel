@@ -1,6 +1,8 @@
-# v0.1.0-alpha.111 (aday)
+# v0.1.0-alpha.111
 
 [English](RELEASE-NOTES-v0.1.0-alpha.111.md)
+
+> **Yayımlandı.** Bu sürüm 29 Ekim 2026'de (UTC) yayımlandı: sürüm commit'i `34786df48`, GitHub ön sürümü 11:33:42Z, yapıtlar ve imza doğrulanıp dış denetim geçtikten (26/26) sonra indirme portalı yaklaşık 11:44Z. Hiçbir parçası henüz kurulu bir sunucuda değil; kurulu panelleri yalnız sahip günceller. Aşağıdaki aday metni yazıldığı gibi korunur.
 
 Bu sürüm v0.1.0-alpha.110'un ardından gelir. **29 Ekim 2026'da yazılmış bir
 adaydır; yayımlanmadı ve hiçbir parçası kurulu bir sunucuda değil. Kurulu panelleri
