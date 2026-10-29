@@ -581,11 +581,13 @@ var errServerSetupPeerLinkRevoked = errors.New("the setup link to the other serv
 // first server entered on the second, after which setup continues once it
 // is started again. onSecond words it for the second server's screen.
 func serverSetupPeerLinkRevoked(onSecond bool) error {
-	where := "enter it on the second server, in the first step of its setup"
+	// Named by role, not first/second: in Option A the backup DNS server is
+	// the server that created the code (Beta-1 third re-run N6).
+	next := "Create a new join code here, on this server's setup page, and enter it in the first step of the other server's setup"
 	if onSecond {
-		where = "enter it here, in the first step of setup"
+		next = "Create a new join code on the server that created the earlier code (its setup page) and enter it here, in the first step of setup"
 	}
-	return &serverSetupChildFailure{Code: "server_setup_peer_link_revoked", Message: "The setup link between the two servers has ended (a setup finished or was run again), so nothing more is sent over it. Create a new join code on the first server and " + where + "; setup continues when it is started again."}
+	return &serverSetupChildFailure{Code: "server_setup_peer_link_revoked", Message: "The setup link between the two servers has ended (a setup finished, the owner stopped waiting, or setup was run again), so nothing more is sent over it. " + next + "; setup continues when it is started again."}
 }
 
 // runServerSetupPeerNames sends this server's names to the first server at
@@ -624,7 +626,7 @@ func (p *Panel) runServerSetupPeerNames(ctx context.Context, plan serverSetupPla
 		return false, serverSetupPeerLinkRevoked(true)
 	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_names_changed":
 		// Recoverable (Beta-1 P4): the first server waits for a new join.
-		return false, &serverSetupChildFailure{Code: refusal.Code, Message: "The first server already uses this server's earlier answers. Create a new join code on the first server, enter it here in the join step, then review and start this server's plan again; setup then continues with these answers."}
+		return false, &serverSetupChildFailure{Code: refusal.Code, Message: "The server that created the join code already uses this server's earlier answers. Create a new join code there, enter it here in the join step, then review and start this server's plan again; setup then continues with these answers."}
 	case errors.As(callErr, &refusal) && refusal.Code == "server_setup_peer_names_final":
 		return false, &serverSetupChildFailure{Code: refusal.Code, Message: "The first server's setup finished with this server's earlier answers. Changing them after a finished setup is not available in this release; keep the earlier answers in this server's plan."}
 	case errors.As(callErr, &refusal):

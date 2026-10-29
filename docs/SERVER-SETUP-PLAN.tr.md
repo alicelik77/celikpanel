@@ -62,6 +62,12 @@ kanıtlanmış sayılmadan önce yeni bir hedefli VM koşusu gerekir.
   bakışı ortak yanıtın adlandırdığı alıcıyı gösterir. Bu sürümde yalnız
   sunucunun kendi ana bilgisayar adı için posta yoktur; bu yüzden ikinci
   sunucu yanında posta tutamaz.
+- **Kurulum bağlantısının metinleri sunucuları rolüyle adlandırır.** A
+  seçeneğinde yedek DNS sunucusu katılma kodunu oluşturan sunucudur ve
+  `server_setup_peer_link_revoked` ona yeni kodu "ilk sunucuda" oluşturmasını
+  söylüyordu. Bağlantının İngilizce ve Türkçe metinleri artık "katılma kodunu
+  oluşturan sunucu", "öteki sunucu" ya da "ana DNS sunucusu" der; kapanan
+  bağlantı iletisi her tarafa yeni kodun nerede oluşturulacağını söyler.
 
 ## 29 Ekim ek kararı: hedefli Beta-1 yeniden koşusunun düzeltmeleri (alpha.115 kaynağı)
 

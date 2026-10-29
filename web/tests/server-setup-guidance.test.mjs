@@ -219,3 +219,17 @@ test('a booting host is said as a wait, and its bound as a failure',()=>{
         assert.ok(enScreens[`setup.v5.wait.${code}`]&&trScreens[`setup.v5.wait.${code}`],code);
     }
 });
+// Beta-1 third re-run N6: the setup link's texts name the servers by role
+// (the server that created the join code, the main DNS server), never by
+// first/second, which in Option A pointed at the wrong server. The button
+// "Stop waiting for the second server" is quoted by its own name.
+test('the setup link texts name the servers by role',()=>{
+    for(const [key,text] of Object.entries(enScreens).filter(([key])=>key.startsWith('setup.v5.wait.'))){
+        const plain=text.replace('"Stop waiting for the second server"','');
+        assert.ok(!/first server|second server/i.test(plain),`${key}: ${text}`);
+    }
+    for(const [key,text] of Object.entries(trScreens).filter(([key])=>key.startsWith('setup.v5.wait.'))){
+        const plain=text.replace('"İkinci sunucuyu beklemeyi bırak"','');
+        assert.ok(!/ilk sunucu|ikinci sunucu/i.test(plain),`${key}: ${text}`);
+    }
+});

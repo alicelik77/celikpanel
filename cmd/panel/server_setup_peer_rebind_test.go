@@ -65,7 +65,7 @@ func TestServerSetupPeerChangedAnswersRecoverWithANewCode(t *testing.T) {
 	step.serverSetupPlanStep = changed.Steps[0]
 	_, err = pair.second.panel.runServerSetupPeerNames(context.Background(), changed, step)
 	var failure *serverSetupChildFailure
-	if !errors.As(err, &failure) || failure.Code != "server_setup_peer_names_changed" || !strings.Contains(failure.Message, "new join code on the first server") {
+	if !errors.As(err, &failure) || failure.Code != "server_setup_peer_names_changed" || !strings.Contains(failure.Message, "Create a new join code there") {
 		t.Fatalf("changed answers on the second server: %v", err)
 	}
 	// The first server says what changed, at the top of its run: the DNS

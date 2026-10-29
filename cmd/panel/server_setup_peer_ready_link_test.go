@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
@@ -242,5 +243,23 @@ func TestServerSetupPeerReadyToAMainWithAnotherKeySaysSo(t *testing.T) {
 	}
 	if join := firstJoinRecord(t, pair); join.PeerReadyAt != "" {
 		t.Fatal("something was sent to another key")
+	}
+}
+
+// Beta-1 third re-run N6: in Option A the backup DNS server is the server
+// that created the code; the ended-link text told it to make a new code "on
+// the first server". Each side is now told by role where the code is made.
+func TestServerSetupPeerLinkRevokedNamesTheServerByRole(t *testing.T) {
+	var onFirst, onSecond *serverSetupChildFailure
+	if !errors.As(serverSetupPeerLinkRevoked(false), &onFirst) || !errors.As(serverSetupPeerLinkRevoked(true), &onSecond) {
+		t.Fatal("not a coded failure")
+	}
+	for _, message := range []string{onFirst.Message, onSecond.Message} {
+		if strings.Contains(message, "first server") || strings.Contains(message, "second server") {
+			t.Fatalf("named by position: %q", message)
+		}
+	}
+	if !strings.Contains(onFirst.Message, "Create a new join code here") || !strings.Contains(onSecond.Message, "the server that created the earlier code") {
+		t.Fatalf("by role: %q / %q", onFirst.Message, onSecond.Message)
 	}
 }

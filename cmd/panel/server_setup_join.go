@@ -1233,7 +1233,7 @@ func (p *Panel) handleServerSetupPeerNames(w http.ResponseWriter, r *http.Reques
 						p.audit(r, "server.setup.peer_names_changed", "", 0)
 						p.wakeServerSetupRunner()
 					}
-					writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_names_changed", "The first server already uses this server's earlier answers. Create a new join code on the first server and enter it here; setup then continues with these answers.", nil)
+					writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_names_changed", "The server that created the join code already uses this server's earlier answers. Create a new join code there and enter it here; setup then continues with these answers.", nil)
 					return
 				}
 			}

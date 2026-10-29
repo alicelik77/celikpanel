@@ -64,6 +64,12 @@ targeted VM re-run is owed before any is called proven.
   then review again), and the DNS overview names the receiver the shared
   answer names. This release has no mail for a server's own host name only,
   so the second server cannot keep mail beside it.
+- **The setup link's texts name servers by role.** In Option A the backup
+  DNS server is the server that created the join code, and
+  `server_setup_peer_link_revoked` told it to make a new code "on the first
+  server". The link's texts in English and Turkish now say "the server that
+  created the join code", "the other server" or "the main DNS server", and
+  the ended-link message tells each side where the new code is made.
 
 ## October 29 follow-up: fixes from the targeted Beta-1 re-run (alpha.115 source)
 
