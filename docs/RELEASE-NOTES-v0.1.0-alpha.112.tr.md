@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.112.md)
 
+> **Yayımlandı.** Bu sürüm 29 Ekim 2026'da (UTC) yayımlandı: sürüm commit'i `95c23ef41`, GitHub ön sürümü 17:22:09Z, indirme portalı dosyalar ve imza doğrulanıp genel kontrol geçtikten sonra (26/26) yaklaşık 17:28Z. Henüz hiçbir kurulu sunucuda yok; kurulu panelleri yalnız sahip günceller. Aşağıdaki aday metni yazıldığı gibi korunur.
+
 Bu sürüm v0.1.0-alpha.111'in ardından gelir ve yalnız ilk kurulumu düzeltir.
 **2026-10-29'da yazılmış bir adaydır; yayımlanmadı ve hiçbir kurulu sunucuda
 yok. Kurulu panelleri yalnız sahip, panelin kendi güncelleme ekranından
