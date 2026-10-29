@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/core"
+	"github.com/alicelik/celikpanel/internal/mutationpayload"
 	"github.com/alicelik/celikpanel/internal/repositories"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -430,6 +431,37 @@ func (p *Panel) handleGetDomainSSL(w http.ResponseWriter, r *http.Request, domai
 	json.NewEncoder(w).Encode(response)
 }
 
+// errCodeSSLContactEmailRequired: the request named no contact address and the
+// signed-in account has no valid one. Nothing was requested.
+const errCodeSSLContactEmailRequired = "ssl_contact_email_required"
+
+// certificateContactFromAccount returns the signed-in account's address as the
+// certificate authority's contact, validated by the validator the panel
+// certificate request uses. A non-empty second value is the reason there is
+// none (English; the screen shows err.ssl_contact_email_required). An error is
+// a failed read, which is not the same as "no address".
+func (p *Panel) certificateContactFromAccount(ctx context.Context, r *http.Request) (string, string, error) {
+	const none = "no contact email address was given and the signed-in account has no valid one, which the certificate authority needs; nothing was requested; set your email on My account (top-right menu), then request the certificate again"
+	caller := currentCaller(r)
+	if caller == nil {
+		return "", none, nil
+	}
+	var stored string
+	err := p.db.GetDB().QueryRowContext(ctx,
+		`SELECT COALESCE(email, '') FROM users WHERE id = ?`, caller.ID).Scan(&stored)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", none, nil
+	}
+	if err != nil {
+		return "", "", fmt.Errorf("load certificate contact email: %w", err)
+	}
+	email, err := mutationpayload.CanonicalContactEmail(strings.TrimSpace(stored))
+	if err != nil {
+		return "", none, nil
+	}
+	return email, "", nil
+}
+
 // handleIssueLetsEncrypt handles POST /api/v1/domains/:id/ssl/letsencrypt
 func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -461,6 +493,29 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pool := p.db.GetDB()
+
+	// The SSL page types the certificate contact. A request that names none
+	// (the one Add domain sends right after a site is created, where the
+	// person typed no address) uses the signed-in account's own address, as
+	// the panel certificate request does. Nothing has been requested yet when
+	// that address is missing or invalid, and the refusal names the screen
+	// that fixes it.
+	// SSL sayfası iletişim adresini yazdırır. Adres vermeyen istek (site
+	// oluşturulduktan hemen sonra Alan adı ekle'nin gönderdiği), oturum açan
+	// hesabın kendi adresini kullanır.
+	if strings.TrimSpace(req.Email) == "" {
+		email, refusal, err := p.certificateContactFromAccount(ctx, r)
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		if refusal != "" {
+			writeCodedError(w, http.StatusConflict, errCodeSSLContactEmailRequired,
+				refusal, ownEmailAccountAction)
+			return
+		}
+		req.Email = email
+	}
 
 	// Get domain info
 	domainRepo := repositories.NewPostgresDomainRepository(pool)
