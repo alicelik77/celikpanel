@@ -200,10 +200,11 @@ v_postfix() {
     [[ -n "$out" ]] && { printf 'postconf -P: %s\n' "$out"; warn=1; }
     # Start the real daemon (logging to a file) and open each listener once:
     # smtpd reads its -o overrides and the TLS/SNI tables only when it runs.
-    # What the distro's postfix.service does before starting (Debian/Ubuntu
-    # configure-instance.sh): the chroot gets hosts/resolv.conf/services, so
-    # chrooted smtpd can resolve inet:localhost milters.
-    if [[ -d /var/spool/postfix ]]; then
+    # What the distro's postfix.service does before starting: on Debian and
+    # Ubuntu (configure-instance.sh) the chroot gets hosts/resolv.conf/
+    # services; Arch's unit copies nothing, so neither does this harness there
+    # (copying them everywhere hid D3, final alpha.113 acceptance run 2).
+    if [[ "$family" == apt && -d /var/spool/postfix ]]; then
         mkdir -p /var/spool/postfix/etc
         for f in /etc/hosts /etc/resolv.conf /etc/nsswitch.conf /etc/services /etc/host.conf /etc/localtime; do
             [[ -e "$f" ]] && cp -L "$f" "/var/spool/postfix$f" 2>/dev/null
@@ -212,10 +213,15 @@ v_postfix() {
     newaliases >/dev/null 2>&1 || true   # Arch's postfix.service runs it first
     postconf -e maillog_file=/var/log/matrix-postfix.log >/dev/null 2>&1
     : >/var/log/matrix-postfix.log
+    matrix_milters_start || rc=1
     if postfix start >/dev/null 2>&1 </dev/null; then
         sleep 2
-        for port in 25 587 465; do
-            timeout 5 bash -c "exec 3<>/dev/tcp/127.0.0.1/$port; head -c 200 <&3 >/dev/null; printf 'QUIT\r\n' >&3" 2>/dev/null || true
+        # Port 25 runs a whole envelope so every milter event is sent; 587
+        # and 465 are opened as clients connect to them (D3 was logged by
+        # postfix/submission/smtpd at connect).
+        timeout 10 bash -c "exec 3<>/dev/tcp/127.0.0.1/25; head -c 200 <&3 >/dev/null; printf 'EHLO matrix.invalid\r\n' >&3; sleep 1; printf 'MAIL FROM:<sender@example.invalid>\r\n' >&3; sleep 1; printf 'RCPT TO:<postmaster>\r\n' >&3; sleep 1; printf 'QUIT\r\n' >&3; sleep 1" 2>/dev/null || true
+        for port in 587 465; do
+            timeout 5 bash -c "exec 3<>/dev/tcp/127.0.0.1/$port; head -c 200 <&3 >/dev/null; printf 'EHLO matrix.invalid\r\n' >&3; sleep 1; printf 'QUIT\r\n' >&3" 2>/dev/null || true
         done
         sleep 2
         tls_checks "smtpd STARTTLS" 25 smtp mail || rc=1
@@ -225,14 +231,78 @@ v_postfix() {
         printf 'postfix start failed: %s\n' "$(postfix start 2>&1 | tail -3)"
         rc=1
     fi
-    noise='connect to Milter service|host or service localhost:|SSL_accept error|lost connection after CONNECT'
+    matrix_milters_stop
+    # A milter on a unix socket (spamass-milter) has no stand-in here; every
+    # inet milter has one, so a failure to reach it is the case's failure.
+    out=$(grep -Ei 'milter' /var/log/matrix-postfix.log | grep -Ei 'warning|error|fatal' | grep -v 'Milter service unix:' | sed -E 's/^[A-Za-z]{3} +[0-9]+ [0-9:]+ [^ ]+ //' | sort -u)
+    [[ -n "$out" ]] && { printf 'milter unreachable: %s\n' "$out"; rc=1; }
+    noise='Milter service unix:|SSL_accept error|lost connection after CONNECT|milter'
     out=$(grep -Ei 'fatal|error|panic' /var/log/matrix-postfix.log | grep -Ev "$noise" | sed -E 's/^[A-Za-z]{3} +[0-9]+ [0-9:]+ [^ ]+ //' | sort -u)
     [[ -n "$out" ]] && { printf 'postfix runtime: %s\n' "$out"; rc=1; }
     out=$(grep -Ei 'warning' /var/log/matrix-postfix.log | grep -v 'maillog_file' | grep -Ev "$noise" | sed -E 's/^[A-Za-z]{3} +[0-9]+ [0-9:]+ [^ ]+ //' | sort -u)
     [[ -n "$out" ]] && { printf 'postfix runtime: %s\n' "$out"; warn=1; }
+    if [[ -n "$MATRIX_MILTERS" ]]; then
+        printf 'milters %s reached from smtp chroot=%s, submission chroot=%s, smtps chroot=%s\n' "$MATRIX_MILTERS" \
+            "$(postconf -F smtp/inet/chroot 2>/dev/null | sed 's/.*= //')" \
+            "$(postconf -F submission/inet/chroot 2>/dev/null | sed 's/.*= //')" \
+            "$(postconf -F smtps/inet/chroot 2>/dev/null | sed 's/.*= //')"
+    fi
     [[ $rc -ne 0 ]] && return 1
     [[ $warn -ne 0 ]] && return 2
     return 0
+}
+# A real milter on every inet address the case's milter lists name: OpenDKIM
+# in verify mode stands in for OpenDKIM and Rspamd alike, so a Postfix
+# service that cannot reach an address from its real chroot setting logs it
+# (D3) and the case fails. The listener binds exactly the address named; the
+# name "localhost" (releases up to alpha.113) means 127.0.0.1 for an inet
+# socket, as in OpenDKIM's own "inet:8891@localhost".
+MATRIX_MILTERS=
+matrix_milters_start() {
+    local entry hostport host port conf out
+    MATRIX_MILTERS=
+    for entry in $(postconf -h smtpd_milters non_smtpd_milters 2>/dev/null | tr ', \t' '\n\n\n' | sort -u); do
+        [[ "$entry" == inet:* ]] || continue
+        hostport=${entry#inet:} host=${hostport%:*} port=${hostport##*:}
+        [[ "$host" == localhost ]] && host=127.0.0.1
+        if ! command -v opendkim >/dev/null 2>&1; then
+            printf 'no OpenDKIM on this release to stand in for milter %s\n' "$entry"
+            return 1
+        fi
+        conf=/run/matrix-milter-$port.conf
+        printf 'Mode\t\tv\nSocket\t\tinet:%s@%s\nSyslog\t\tno\n' "$port" "$host" >"$conf"
+        id -u opendkim >/dev/null 2>&1 && printf 'UserID\t\topendkim\n' >>"$conf"
+        opendkim -f -x "$conf" >"/run/matrix-milter-$port.log" 2>&1 &
+        printf '%s\n' "$!" >"/run/matrix-milter-$port.pid"
+        MATRIX_MILTERS="$MATRIX_MILTERS${MATRIX_MILTERS:+, }$entry"
+    done
+    [[ -z "$MATRIX_MILTERS" ]] && return 0
+    sleep 2
+    for entry in ${MATRIX_MILTERS//,/ }; do
+        port=${entry##*:}
+        if ! kill -0 "$(cat "/run/matrix-milter-$port.pid")" 2>/dev/null; then
+            printf 'stand-in milter for %s did not start: %s\n' "$entry" "$(tr '\n' ' ' <"/run/matrix-milter-$port.log")"
+            return 1
+        fi
+    done
+    return 0
+}
+matrix_milters_stop() {
+    local file pid port
+    for file in /run/matrix-milter-*.pid; do
+        [[ -f "$file" ]] || continue
+        pid=$(cat "$file") port=${file#/run/matrix-milter-} port=${port%.pid}
+        kill "$pid" 2>/dev/null
+        wait "$pid" 2>/dev/null
+        # The next case binds the same port: wait until nothing answers on
+        # it, and remove any OpenDKIM process of this stand-in still there.
+        for _ in $(seq 1 20); do
+            timeout 1 bash -c "exec 3<>/dev/tcp/127.0.0.1/$port" 2>/dev/null || break
+            sleep 0.5
+        done
+        pkill -9 -f "matrix-milter-$port.conf" 2>/dev/null
+    done
+    rm -f /run/matrix-milter-*.pid /run/matrix-milter-*.conf /run/matrix-milter-*.log
 }
 # --- Delivered mail read back (cases with MAIL_ROOT and MAIL_USERS) ---------
 # A configuration Dovecot accepts can still hide every delivered message:

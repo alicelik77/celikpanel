@@ -708,6 +708,21 @@ func (p *Panel) reconcileCertificateDependentsAtStartupWithLimit(
 		)
 	}
 
+	// A server with no mail identity yet — nothing saved by setup or a mail
+	// profile, a short kernel name such as "frankfurt" with no full name in
+	// /etc/hosts, and no secure-mail certificate — has no mail TLS to publish:
+	// the publication requires a fully qualified name and would only log
+	// "mail server hostname is not a valid FQDN" at every start before
+	// setup (final alpha.113 acceptance run 2). That is waiting, not a
+	// failure; setup's mail step saves the identity and publishes then.
+	// Henüz posta kimliği olmayan sunucunun yayımlayacağı posta TLS'i yoktur;
+	// bu bir bekleyiştir, hata değil. Kurulumun posta adımı kimliği kaydeder
+	// ve o zaman yayımlar.
+	if len(domainIDs) == 0 && !p.mailTLSIdentityKnown(ctx) {
+		log.Printf("certificate startup reconcile: mail TLS publication waits for a mail identity: none is saved yet and this server's name is not fully qualified; server setup's mail step (or a mail profile install) sets it, and nothing needs to be done before then")
+		return 0, nil
+	}
+
 	var reconcileErrors []error
 	if err := p.resyncMailTLS(ctx); err != nil {
 		reconcileErrors = append(

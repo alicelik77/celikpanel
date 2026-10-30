@@ -1,7 +1,10 @@
 package main
 
 import (
+	"errors"
 	"os"
+	"strings"
+	"syscall"
 
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -41,44 +44,65 @@ type UploadFileRequest = transport.UploadFileRequest
 
 // File Manager RPC Methods
 
+// siteFileAnswer turns the file system's own "not there" and "already there"
+// into the exact answers the Panel classifies (transport.SiteFilePathMissing
+// and friends); every other error passes unchanged. Until 30 Oct 2026 a path
+// that did not exist reached the browser as a bare 500 INTERNAL.
+// siteFileAnswer, dosya sisteminin "yok" ve "zaten var" yanıtlarını Panel'in
+// sınıflandırdığı tam yanıtlara çevirir; diğer her hata değişmeden geçer.
+func siteFileAnswer(err error) error {
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, os.ErrNotExist) && strings.Contains(err.Error(), "site document root"):
+		return errors.New(transport.SiteFileRootMissing)
+	case errors.Is(err, os.ErrNotExist), errors.Is(err, syscall.ENOTDIR):
+		return errors.New(transport.SiteFilePathMissing)
+	case errors.Is(err, os.ErrExist):
+		return errors.New(transport.SiteFilePathExists)
+	default:
+		return err
+	}
+}
+
 // ListFiles lists directory contents
 func (a *Agent) ListFiles(req *ListFilesRequest, resp *ListFilesResponse) error {
-	return secureListSiteFiles(req, resp)
+	return siteFileAnswer(secureListSiteFiles(req, resp))
 }
 
 // ReadFile reads file content
 func (a *Agent) ReadFile(req *ReadFileRequest, resp *ReadFileResponse) error {
-	return secureReadSiteFile(req, resp)
+	return siteFileAnswer(secureReadSiteFile(req, resp))
 }
 
 // WriteFile writes content to file
 func (a *Agent) WriteFile(req *WriteFileRequest, resp *bool) error {
-	return secureWriteSiteFile(req, resp)
+	return siteFileAnswer(secureWriteSiteFile(req, resp))
 }
 
 // CreateFileOrDir creates a file or directory
 func (a *Agent) CreateFileOrDir(req *CreateRequest, resp *bool) error {
-	return secureCreateSiteFile(req, resp)
+	return siteFileAnswer(secureCreateSiteFile(req, resp))
 }
 
 // DeleteFileOrDir deletes a file or directory
 func (a *Agent) DeleteFileOrDir(req *DeleteRequest, resp *bool) error {
-	return secureDeleteSiteFile(req, resp)
+	return siteFileAnswer(secureDeleteSiteFile(req, resp))
 }
 
 // ChmodFile changes file permissions
 func (a *Agent) ChmodFile(req *ChmodRequest, resp *bool) error {
-	return secureChmodSiteFile(req, resp)
+	return siteFileAnswer(secureChmodSiteFile(req, resp))
 }
 
 // RenameFile renames or moves a file
 func (a *Agent) RenameFile(req *RenameRequest, resp *bool) error {
-	return secureRenameSiteFile(req, resp)
+	return siteFileAnswer(secureRenameSiteFile(req, resp))
 }
 
 // UploadFile handles file upload
 func (a *Agent) UploadFile(req *UploadFileRequest, resp *bool) error {
-	return secureUploadSiteFile(req, resp)
+	return siteFileAnswer(secureUploadSiteFile(req, resp))
 }
 
 // Helper function to parse octal permissions

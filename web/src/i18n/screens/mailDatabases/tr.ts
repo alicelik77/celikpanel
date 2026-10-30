@@ -173,6 +173,7 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'mailauth.applied': 'Kayıt DNS zone\'una eklendi.',
     'mailauth.generateKey': 'DKIM anahtarı üret',
     'mailauth.keyGenerated': 'DKIM anahtarı üretildi.',
+    'mailauth.keySigningFailed': 'DKIM anahtarı hazır, ancak DKIM imzalama açılamadı; posta hâlâ imzasız çıkıyor. "DKIM anahtarı üret" düğmesine yeniden basın; anahtar korunur, yalnız imzalama yeniden denenir. Yine olmazsa Hizmetler sayfasında OpenDKIM\'i kontrol edin.',
     'mailauth.copy': 'Kopyala',
     'mailauth.copied': 'Kopyalandı.',
     'mailauth.dmarcPolicy': 'DMARC politikası',

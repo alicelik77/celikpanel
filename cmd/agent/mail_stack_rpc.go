@@ -140,10 +140,16 @@ func (a *Agent) ConfigureMailStack(req *ServiceMutationRequest, resp *ConfigureM
 		// Kurulu olan filtreleri Postfix'in İÇİNE bağla. Bu olmadan spam
 		// filtresi posta sunucusunun yanında koşar, içinde değil — kurulu,
 		// "Çalışıyor", hiçbir şey süzmüyor (operatör, 24 Tem).
-		if err := writeMilterChain(ctx); err != nil {
+		milterNote, err := writeMilterChain(ctx)
+		if err != nil {
 			resp.Error = fmt.Sprintf("milter wiring: %v", err)
 			return nil
 		}
+		defer func() {
+			if milterNote != "" && resp.Error == "" {
+				resp.Detail += "; " + milterNote
+			}
+		}()
 		// "Configured" is said only for a Postfix that verifiably runs with
 		// what was written: systemctl's exit status alone is the wrapper
 		// unit's on Ubuntu (mail_service_verify.go, 10 Oct 2026).
@@ -288,16 +294,25 @@ func wireMailFilters(ctx context.Context, resp *WireMailFiltersResponse) error {
 	// outcome is reported beside the milter wiring, never as its failure.
 	// Dovecot'un sanal posta kutusu eki için aynı "yükseltmede" onarım.
 	dovecotNote := reconcileDovecotVirtualDropIn(ctx)
-	if err := applyMilterChain(ctx); err != nil {
+	// Submission and smtps follow the chroot the distribution gives its own
+	// smtp service (D3); applyMilterChain's verified reload below makes the
+	// master daemon read the changed entries.
+	// Submission ve smtps, dağıtımın kendi smtp hizmetine verdiği chroot'u
+	// izler; aşağıdaki doğrulanmış yeniden yükleme değişikliği okutur.
+	// Like the Dovecot repair, its outcome is a note, never the wiring's
+	// failure. Dovecot onarımı gibi sonucu bir nottur, bağlamanın hatası değil.
+	chrootNote := reconcileSubmissionChroot(func(name string, args ...string) ([]byte, error) {
+		return serviceMutationCommand(ctx, name, args...).CombinedOutput()
+	})
+	milterNote, err := applyMilterChain(ctx)
+	if err != nil {
 		resp.Error = err.Error()
-		resp.Detail = dovecotNote
+		resp.Detail = joinNotes(dovecotNote, chrootNote, milterNote)
 		return nil
 	}
 	resp.Wired = true
-	resp.Detail = fmt.Sprintf("milters=%q maps=%s", postconfValue("smtpd_milters"), postfixMapTypeContext(ctx))
-	if dovecotNote != "" {
-		resp.Detail += "; " + dovecotNote
-	}
+	resp.Detail = joinNotes(fmt.Sprintf("milters=%q maps=%s", postconfValue("smtpd_milters"), postfixMapTypeContext(ctx)),
+		dovecotNote, chrootNote, milterNote)
 	return nil
 }
 
@@ -305,7 +320,19 @@ func wireMailFilters(ctx context.Context, resp *WireMailFiltersResponse) error {
 // distro, so there is nothing to discover.
 // rspamdMilter, milter kipindeki rspamd_proxy'dir — her dağıtımda aynı olan bir
 // TCP portu; keşfedilecek bir şey yok.
-const rspamdMilter = "inet:localhost:11332"
+//
+// Every packaged rspamd (Debian, Ubuntu, Arch) binds the proxy worker to
+// "localhost:11332", which rspamd itself expands to 127.0.0.1 and ::1, so
+// the numeric IPv4 address is always served. It is named numerically for the
+// same reason as opendkimMilter: a chrooted smtpd cannot resolve "localhost"
+// on a release whose chroot has no hosts file (Arch, D3).
+// Paketlenmiş her rspamd vekil işçiyi "localhost:11332"ye bağlar; rspamd
+// bunu 127.0.0.1 ve ::1'e açar. Sayısal ad, opendkimMilter ile aynı nedenle.
+const rspamdMilter = "inet:127.0.0.1:11332"
+
+// legacyRspamdMilter is the name releases up to alpha.113 wrote.
+// legacyRspamdMilter, alpha.113'e kadarki sürümlerin yazdığı addır.
+const legacyRspamdMilter = "inet:localhost:11332"
 
 // spamassMilterEndpoint finds where spamass-milter actually listens, instead of
 // hardcoding a path. Two facts make a constant wrong here:
@@ -432,12 +459,13 @@ func postconfExpandedContext(ctx context.Context, key string) (string, error) {
 // "Çalışıyor"ken `smtpd_milters` BOŞTU — daemon ayaktaydı ve içinden tek bir
 // ileti geçmiyordu. Panelin kurduğu filtre gerçekten süzmelidir; her bileşen
 // için geçerli olan aynı kural.
-func applyMilterChain(ctx context.Context) error {
+func applyMilterChain(ctx context.Context) (string, error) {
 	if _, err := exec.LookPath("postconf"); err != nil {
-		return nil // no postfix here, nothing to wire
+		return "", nil // no postfix here, nothing to wire
 	}
-	if err := writeMilterChain(ctx); err != nil {
-		return err
+	note, err := writeMilterChain(ctx)
+	if err != nil {
+		return "", err
 	}
 	// A running Postfix must verifiably take the chain; a stopped one is left
 	// stopped and reads main.cf when it starts. Until 10 Oct 2026 this was
@@ -446,17 +474,28 @@ func applyMilterChain(ctx context.Context) error {
 	// Çalışan Postfix zinciri doğrulanmış biçimde almalıdır; durmuş olan
 	// durmuş bırakılır ve main.cf'i başlarken okur.
 	if _, err := applyPostfixVerified(mailServiceLeaseRunner(ctx), mailServiceReload); err != nil {
-		return fmt.Errorf("the milter chain is written to main.cf, but %w", err)
+		return note, fmt.Errorf("the milter chain is written to main.cf, but %w", err)
 	}
-	return nil
+	return note, nil
 }
 
 // writeMilterChain writes the composed chain to main.cf and reloads nothing.
 // writeMilterChain, bestelenen zinciri main.cf'e yazar; hiçbir şeyi yeniden
 // yüklemez.
-func writeMilterChain(ctx context.Context) error {
+//
+// It returns a note, empty unless a list was left as the server owner wrote it.
+// The milter lists are rewritten only while they hold nothing but entries a
+// CelikPanel release composes (milterListPanelComposed): this is also how a
+// server configured by alpha.113 or earlier moves from "inet:localhost:PORT"
+// to the numeric address at the next Panel start (Agent.WireMailFilters), and
+// why a list the owner extended is reported instead of overwritten.
+// Bir not döndürür; bir liste sunucu sahibinin yazdığı gibi bırakılmadıkça
+// boştur. Listeler yalnız bir CelikPanel sürümünün bestelediği girdileri
+// taşıdıkça yeniden yazılır; sahibin genişlettiği liste üzerine yazılmaz,
+// bildirilir.
+func writeMilterChain(ctx context.Context) (string, error) {
 	if _, err := exec.LookPath("postconf"); err != nil {
-		return nil // no postfix here, nothing to wire
+		return "", nil // no postfix here, nothing to wire
 	}
 
 	spam := ""
@@ -468,20 +507,74 @@ func writeMilterChain(ctx context.Context) error {
 	}
 	incoming, outgoing := composeMilterChain(unitExists("opendkim") && fileExistsAgent(opendkimConfPath()), spam)
 
-	settings := [][2]string{
-		{"smtpd_milters", incoming},
-		{"non_smtpd_milters", outgoing},
-		// A dead filter must never eat mail — accept beats bounce.
-		// Ölü filtre asla posta yutmamalı — kabul, reddi yener.
-		{"milter_default_action", "accept"},
-		{"milter_protocol", "6"},
+	var settings [][2]string
+	var kept []string
+	for _, kv := range [][2]string{{"smtpd_milters", incoming}, {"non_smtpd_milters", outgoing}} {
+		out, err := serviceMutationCommand(ctx, "postconf", "-h", kv[0]).CombinedOutput()
+		current, known := postconfOneValue(out)
+		if err != nil || !known {
+			return "", &postconfUnreadError{setting: kv[0], command: "postconf -h " + kv[0]}
+		}
+		if !milterListPanelComposed(current, spam) {
+			kept = append(kept, fmt.Sprintf("%s = %s", kv[0], current))
+			continue
+		}
+		settings = append(settings, kv)
+	}
+	if len(kept) == 0 {
+		settings = append(settings,
+			// A dead filter must never eat mail — accept beats bounce.
+			// Ölü filtre asla posta yutmamalı — kabul, reddi yener.
+			[2]string{"milter_default_action", "accept"},
+			[2]string{"milter_protocol", "6"},
+		)
 	}
 	for _, kv := range settings {
 		if out, err := serviceMutationCommand(ctx, "postconf", "-e", kv[0]+"="+kv[1]).CombinedOutput(); err != nil {
-			return fmt.Errorf("postconf %s: %s", kv[0], strings.TrimSpace(string(out)))
+			return "", fmt.Errorf("postconf %s: %s", kv[0], strings.TrimSpace(string(out)))
 		}
 	}
-	return nil
+	return ownerMilterListNote(kept), nil
+}
+
+// milterListPanelComposed reports whether a Postfix milter list holds only
+// entries a CelikPanel release writes: the OpenDKIM and Rspamd milters under
+// their current numeric and their earlier "localhost" names, and the
+// spamass-milter endpoint found on this host. Anything else — another
+// filter, a different port, a $variable — is the server owner's (D-022).
+// milterListPanelComposed, bir Postfix milter listesinin yalnız bir CelikPanel
+// sürümünün yazdığı girdileri taşıyıp taşımadığını söyler; başka her şey
+// sunucu sahibinindir.
+func milterListPanelComposed(value, spamEndpoint string) bool {
+	known := map[string]bool{}
+	for _, entry := range []string{opendkimMilter, legacyOpenDKIMMilter, rspamdMilter, legacyRspamdMilter, spamEndpoint} {
+		if entry != "" {
+			known[entry] = true
+		}
+	}
+	for _, entry := range strings.FieldsFunc(value, func(r rune) bool {
+		return r == ',' || r == ' ' || r == '\t' || r == '\n' || r == '\r'
+	}) {
+		if !known[entry] {
+			return false
+		}
+	}
+	return true
+}
+
+// ownerMilterListNote is the D-024 note for lists left as the owner wrote
+// them: what was kept, what that means, and how the owner hands it back.
+// ownerMilterListNote, sahibin yazdığı gibi bırakılan listeler için D-024
+// notudur: neyin korunduğu, anlamı ve sahibin yönetimi nasıl geri vereceği.
+func ownerMilterListNote(kept []string) string {
+	if len(kept) == 0 {
+		return ""
+	}
+	return "Postfix milter settings changed by the server owner were kept as they are (" +
+		strings.Join(kept, "; ") + "): CelikPanel did not add or rewrite its DKIM signing and spam filter entries there, " +
+		"so the owner's list decides which filters mail passes. To let CelikPanel compose the list again, the server " +
+		"owner removes the setting (postconf -X smtpd_milters non_smtpd_milters) and restarts the panel or runs the " +
+		"mail filter step again; nothing is retried by itself"
 }
 
 // composeMilterChain decides the two Postfix milter lists from what is present.

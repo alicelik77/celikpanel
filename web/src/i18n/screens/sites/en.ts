@@ -223,6 +223,10 @@ export const enSitesScreens = {
     'php.toggleFailed': 'Could not toggle the extension.',
 
     'files.up': 'Go up',
+    'files.backToRoot': 'Back to the web folder',
+    'files.notFound': 'This path does not exist in the site’s web folder; it may have been renamed, moved or deleted. The file manager’s top level (/) is the site’s web folder: go back to it or to the parent folder and open the entry from the list again.',
+    'files.rootMissing': 'The site’s web folder does not exist on the server, so there is nothing to show or change. The server owner restores the folder (for example from a backup) or recreates it; the file manager works again as soon as it exists.',
+    'files.nameTaken': 'An entry with this name already exists in this folder. Choose another name, or rename or delete the existing entry first, then try again.',
     'files.newFolder': 'New folder',
     'files.newFile': 'New file',
     'files.upload': 'Upload',

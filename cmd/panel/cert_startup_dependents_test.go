@@ -149,3 +149,51 @@ func TestStartupCertificateDependentsRejectsPartialSnapshotOverLimit(t *testing.
 		)
 	}
 }
+
+// Final alpha.113 acceptance run 2: at the first Panel start, before setup
+// saved a mail identity, the kernel's short name ("frankfurt") made the
+// startup reconcile log "mail server hostname is not a valid FQDN". A server
+// with no mail identity and no secure-mail certificate waits; it does not
+// fail and publishes nothing.
+func TestStartupCertificateDependentsWaitsForMailIdentity(t *testing.T) {
+	p, _ := newMailTLSIsolationFixture(t)
+	agent := &mailTLSIsolationRPCAgent{certificates: map[string]MailTLSInspectRPCResponse{}}
+	attachMailTLSIsolationAgent(t, p, agent)
+	previous := readMailTLSHostname
+	t.Cleanup(func() { readMailTLSHostname = previous })
+	readMailTLSHostname = func() (string, error) { return "frankfurt", nil }
+
+	count, err := p.reconcileCertificateDependentsAtStartup(context.Background())
+	if err != nil || count != 0 {
+		t.Fatalf("startup reconcile without a mail identity = %d, %v; want 0, nil", count, err)
+	}
+	agent.mu.Lock()
+	calls := len(agent.secureCalls)
+	agent.mu.Unlock()
+	if calls != 0 {
+		t.Fatalf("SecureMailTLS calls = %d, want none before a mail identity exists", calls)
+	}
+
+	// The full name, once known, is used as before.
+	readMailTLSHostname = func() (string, error) { return "frankfurt.example.test", nil }
+	if _, err := p.reconcileCertificateDependentsAtStartup(context.Background()); err != nil {
+		t.Fatalf("startup reconcile with a full name: %v", err)
+	}
+	agent.mu.Lock()
+	calls = len(agent.secureCalls)
+	agent.mu.Unlock()
+	if calls != 1 {
+		t.Fatalf("SecureMailTLS calls = %d, want one publication with a full name", calls)
+	}
+
+	// A saved identity that is invalid still refuses: it is never replaced
+	// by the kernel name.
+	readMailTLSHostname = func() (string, error) { return "frankfurt", nil }
+	if err := p.setSetting(context.Background(), settingMailHostname, "not a name"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.reconcileCertificateDependentsAtStartup(context.Background()); err == nil ||
+		!strings.Contains(err.Error(), "not a valid FQDN") {
+		t.Fatalf("invalid saved identity error = %v", err)
+	}
+}

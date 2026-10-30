@@ -1,0 +1,41 @@
+== os: Arch Linux, postfix 3.11.7, release 
+== master.cf (service type private unpriv chroot wakeup maxproc command)
+   smtp inet n - n - - smtpd
+   submission inet n - n - - smtpd
+   smtps inet n - n - - smtpd
+   chroot files: ls: cannot access '/var/spool/postfix/etc': No such file or directory 
+== milters: smtpd_milters='inet:127.0.0.1:8891, inet:127.0.0.1:11332' non_smtpd_milters='inet:127.0.0.1:8891' milter_default_action=accept
+   OpenDKIM Socket inet:8891@127.0.0.1; units: opendkim=active rspamd=active postfix=active
+   listening: 127.0.0.1:11332 127.0.0.1:8891 [::1]:11332 
+== milter warnings in the journal (all boots)
+   count: 0
+== first-setup FQDN line
+   'not a valid FQDN' lines: 0
+2026-10-30T18:48:34+00:00 arch panel[8456]: 2026/10/30 18:48:34 certificate startup reconcile: mail TLS publication waits for a mail identity: none is saved yet and this server's name is not fully qualified; server setup's mail step (or a mail profile install)
+2026-10-30T18:48:36+00:00 arch panel[8523]: 2026/10/30 18:48:36 certificate startup reconcile: mail TLS publication waits for a mail identity: none is saved yet and this server's name is not fully qualified; server setup's mail step (or a mail profile install)
+2026-10-30T18:48:53+00:00 arch panel[416]: 2026/10/30 18:48:53 certificate startup reconcile: mail TLS publication waits for a mail identity: none is saved yet and this server's name is not fully qualified; server setup's mail step (or a mail profile install) 
+   kernel name: arch; hostname -f: /root/q.sh: line 22: hostname: command not found
+== DKIM state
+   signing table: *@archd3.test celik._domainkey.archd3.test;*@shopd3a.test celik._domainkey.shopd3a.test;
+   shopd3a.test key: /var/lib/celikpanel-dkim/keys/shopd3a.test/celik.private root:opendkim 640
+/root/q.sh: line 28: dig: command not found
+   shopd3a.test TXT @127.0.0.1: 
+   opendkim-testkey shopd3a.test: opendkim-testkey: key not secure opendkim-testkey: key OK 
+   archd3.test key: /var/lib/celikpanel-dkim/keys/archd3.test/celik.private root:opendkim 640
+/root/q.sh: line 28: dig: command not found
+   archd3.test TXT @127.0.0.1: 
+   opendkim-testkey archd3.test: opendkim-testkey: key not secure opendkim-testkey: key OK 
+   opendkim-testmsg: /usr/sbin/opendkim-testmsg
+== messages delivered to bob@shopd3a.test
+-- Subject: final-alpha113 d4696a0d1cbc
+   DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=shopd3a.test;
+   signature: d=shopd3a.test s=celik 
+   opendkim-testmsg rc=70 opendkim-testmsg: dkim_chunk(): Syntax error
+-- Subject: d3 php mail d70ff8ad8a8d
+   DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=shopd3a.test;
+   signature: d=shopd3a.test s=celik 
+   opendkim-testmsg rc=0 
+grep: /var/mail/vhosts/shopd3a.test/bob/dovecot.index.cache: binary file matches
+-- 
+
+   opendkim-testmsg rc=70 opendkim-testmsg: dkim_chunk(): Syntax error

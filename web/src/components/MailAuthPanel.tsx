@@ -86,7 +86,17 @@ export function MailAuthPanel({ domainId, readOnly = false }: MailAuthPanelProps
                 showToast('error', t('common.error'));
                 return;
             }
-            showToast('success', t('mailauth.keyGenerated'));
+            // The key can exist while signing with it could not be switched
+            // on; that is said, not hidden behind "key generated".
+            // Anahtar varken imzalama açılamamış olabilir; bu gizlenmez.
+            const body = await res.json() as { signing?: boolean; signing_error?: string };
+            if (body.signing === false) {
+                showToast('warning', body.signing_error
+                    ? `${t('mailauth.keySigningFailed')} (${body.signing_error})`
+                    : t('mailauth.keySigningFailed'));
+            } else {
+                showToast('success', t('mailauth.keyGenerated'));
+            }
             answer.settle();
             await auth.retry();
         } finally {
