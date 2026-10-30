@@ -18,6 +18,11 @@ type MailEnrollmentStartResponse struct {
 	RequestID string `json:"request_id"`
 	Handoff   string `json:"handoff"` // accepted, busy or unknown; never completion
 	Reason    string `json:"reason,omitempty"`
+	// Holder (busy only, 2026-10-30) names the held lock and the process the
+	// kernel listed as holding it, e.g. "the release lock (...) was held by
+	// process 812 (release-recover, celikpanel-release-recovery.service)".
+	// Diagnostic text: no decision depends on it. Older Panels ignore it.
+	Holder string `json:"holder,omitempty"`
 }
 
 // MailEnrollmentHandoffBusy is a verified refusal before any handoff: a lock

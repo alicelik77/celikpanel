@@ -5,8 +5,10 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -213,10 +215,26 @@ func TestMailEnrollmentWorkerWaitsBoundedForABriefHold(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer held.Close()
+	var journal []string
+	oldLog := mailEnrollmentWorkerLog
+	mailEnrollmentWorkerLog = func(format string, args ...any) { journal = append(journal, fmt.Sprintf(format, args...)) }
+	t.Cleanup(func() { mailEnrollmentWorkerLog = oldLog })
 	began := time.Now()
 	err = runMailEnrollmentWithLocks(context.Background(), release, host, hostmutationlock.Owner{}, append(args, "wait"))
 	if !errors.Is(err, errMailEnrollmentWorkerBusy) || time.Since(began) < 600*time.Millisecond {
 		t.Fatalf("a persistent hold: %v after %s", err, time.Since(began))
+	}
+	// The refusal names who held the lock (here: this test process), in the
+	// journal at the first and the last try and in the owner's guidance.
+	self := "process " + strconv.Itoa(os.Getpid())
+	if got := mailEnrollmentLockHolderOf(err); !strings.Contains(got, host) || !strings.Contains(got, self) {
+		t.Fatalf("holder not named: %q", got)
+	}
+	if len(journal) != 2 || !strings.Contains(journal[0], "waiting up to") || !strings.Contains(journal[1], "stopped waiting") || !strings.Contains(journal[1], self) {
+		t.Fatalf("journal: %q", journal)
+	}
+	if got := mailEnrollmentWorkerGuidance(err); !strings.Contains(got, self) {
+		t.Fatalf("guidance does not name the holder: %q", got)
 	}
 	if _, err = os.Stat(filepath.Join(root, "started")); !os.IsNotExist(err) {
 		t.Fatal("the worker ran without the host lock")

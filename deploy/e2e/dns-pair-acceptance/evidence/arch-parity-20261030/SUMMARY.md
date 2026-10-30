@@ -38,3 +38,14 @@ delivery between mailboxes; webmail on its own address on Arch. Product
 observation (not Arch-specific): a Components install preview requested
 while setup ran held the host lock, the mail enrollment worker was refused and
 setup waited for the owner's "Retry reviewed handoff".
+
+Correction (2026-10-30, `fix/setup-lock-holder`): the archive does not show the
+preview holding the lock. `raw/ap-e/0039` (preview, 01:13:16, 1.4 s) ended while
+setup was at `03-service:certbot` (`0032`); `0040` (Fail2ban install) was refused
+`409 server_setup_busy` and `0037` (MariaDB write) `503 PANEL_STARTING`, so neither
+reached the Agent; the driver sent nothing between 01:13:17 and 01:16:44, and at
+01:16:44 (`0042`) step 18 was already `not_recorded` after an accepted hand-off. The
+worker unit's journal is not in the archive, so the holder is not established by
+this evidence. The probe that read the lock took it for an instant (fixed: it now
+reads `/proc/locks`), and a busy refusal now names the holder; see
+docs/OPERATION-GUIDANCE.md, "Who held the lock".

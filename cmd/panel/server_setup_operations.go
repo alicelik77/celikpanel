@@ -91,7 +91,12 @@ type serverSetupExecutionStep struct {
 	// busy refusal that ended the automatic hand-offs past
 	// serverSetupHostBusyBound ("unknown" when none was named); the step then
 	// waits for the owner. Cleared before every hand-off. Older Panels ignore it.
-	BusyReason                  string `json:"busy_reason,omitempty"`
+	BusyReason string `json:"busy_reason,omitempty"`
+	// BusyHolder (mail enrollment only, 2026-10-30) is the Agent's description
+	// of the held lock and the process holding it at the last busy refusal,
+	// shown in the wait so the screen says what is holding it. Diagnostic
+	// only; cleared with BusyReason. Older Panels ignore it.
+	BusyHolder                  string `json:"busy_holder,omitempty"`
 	Status                      string `json:"status"`
 	RequestID                   string `json:"request_id"`
 	OwnerID                     string `json:"owner_id"`

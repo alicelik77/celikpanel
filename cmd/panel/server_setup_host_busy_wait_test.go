@@ -138,6 +138,47 @@ func TestSetupMailEnrollmentStayingBusyAsksTheOwnerAfterTheBound(t *testing.T) {
 	}
 }
 
+// 2026-10-30 (Arch run ap-e could not establish who held the lock): the
+// Agent's named holder reaches the wait, the owner's guidance past the bound
+// and the step record; a hand-off clears it, and an unnamed refusal adds
+// nothing.
+func TestSetupMailEnrollmentBusyWaitNamesTheHolder(t *testing.T) {
+	h, step := newSetupBusyEnrollmentHarness(t)
+	holder := "the release lock (/var/lib/celikpanel-release-transaction/transaction.lock) was held by process 812 (release-recover, celikpanel-release-recovery.service)"
+	h.reply = func(r *transport.MailEnrollmentStartRequest, out *transport.MailEnrollmentStartResponse) error {
+		*out = transport.MailEnrollmentStartResponse{RequestID: r.RequestID, Handoff: transport.MailEnrollmentHandoffBusy, Reason: transport.HostMutationReasonHostLock, Holder: holder}
+		return nil
+	}
+	_, err := h.advance(step)
+	var wait *serverSetupPeerWait
+	if !errors.As(err, &wait) || wait.Code != serverSetupHostBusyCode || !strings.Contains(wait.Message, "Nobody needs to act") || !strings.Contains(wait.Message, holder) || step.BusyHolder != holder {
+		t.Fatalf("wait does not name the holder: %v %+v", err, *step)
+	}
+	step.BusySince = time.Now().Add(-serverSetupHostBusyBound - time.Minute).UTC().Format(time.RFC3339Nano)
+	_, err = h.advance(step)
+	var stayed *serverSetupMailEnrollmentWait
+	if !errors.As(err, &stayed) || stayed.Code != serverSetupMailEnrollmentHostBusyCode || !strings.Contains(stayed.Message, holder) {
+		t.Fatalf("owner guidance does not name the holder: %v", err)
+	}
+	// Observed again without a hand-off: still named.
+	if _, err = h.advance(step); !errors.As(err, &stayed) || !strings.Contains(stayed.Message, holder) {
+		t.Fatalf("observation lost the holder: %v", err)
+	}
+	// An unnamed refusal adds no holder sentence; a hand-off clears the old one.
+	h2, step2 := newSetupBusyEnrollmentHarness(t)
+	h2.busy = 1
+	if _, err = h2.advance(step2); !errors.As(err, &wait) || strings.Contains(wait.Message, "At the last try") || step2.BusyHolder != "" {
+		t.Fatalf("unnamed refusal: %v %+v", err, *step2)
+	}
+	step.BusyHolder = holder
+	h.reply = nil
+	h.state = "not_recorded"
+	step.BusyRetry = true
+	if _, err = h.advance(step); err == nil || step.BusyHolder != "" || h.saved.BusyHolder != "" {
+		t.Fatalf("hand-off kept a stale holder: %v %+v", err, *step)
+	}
+}
+
 // An unknown outcome is never taken for a busy refusal: a lost reply, an
 // untyped error that only reads like "busy", a busy answer for another request
 // and a terminal-uncertain mutation all stay observational and are not re-sent.
@@ -277,10 +318,10 @@ func TestSetupMailEnrollmentOwnerRetryReportsABusyRefusal(t *testing.T) {
 		*o = transport.MailEnrollmentStatusResponse{MailEnrollmentRequest: *r, State: "not_recorded", ObservedAt: time.Now().UTC()}
 		return nil
 	}, func(r *transport.MailEnrollmentStartRequest, o *transport.MailEnrollmentStartResponse) error {
-		*o = transport.MailEnrollmentStartResponse{RequestID: r.RequestID, Handoff: transport.MailEnrollmentHandoffBusy, Reason: transport.HostMutationReasonHostLock}
+		*o = transport.MailEnrollmentStartResponse{RequestID: r.RequestID, Handoff: transport.MailEnrollmentHandoffBusy, Reason: transport.HostMutationReasonHostLock, Holder: "the host lock was held by process 9"}
 		return nil
 	}, true)
-	if err != nil || out.Handoff != transport.MailEnrollmentHandoffBusy || out.Reason != "mail_enrollment_host_busy" || out.RequestID != req.RequestID {
+	if err != nil || out.Handoff != transport.MailEnrollmentHandoffBusy || out.Reason != "mail_enrollment_host_busy" || out.RequestID != req.RequestID || out.Holder != "the host lock was held by process 9" {
 		t.Fatalf("busy owner retry: %+v %v", out, err)
 	}
 }
