@@ -55,7 +55,7 @@ const (
 	DefaultHTTPSWritten     = "written"
 	DefaultHTTPSUnchanged   = "unchanged"
 	DefaultHTTPSRemoved     = "removed"
-	DefaultHTTPSNotNeeded   = "not_needed"   // nothing serves port 443
+	DefaultHTTPSNotNeeded   = "not_needed"    // nothing serves port 443
 	DefaultHTTPSOwnerHasOne = "owner_default" // another block is the default of 443
 	DefaultHTTPSKept        = "kept"          // the file is not CelikPanel's unchanged text
 	DefaultHTTPSUnsupported = "unsupported"   // nginx older than 1.19.4, or its version unknown
