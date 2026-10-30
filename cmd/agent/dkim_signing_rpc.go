@@ -291,10 +291,28 @@ func writeDKIMTables(ctx context.Context, domains []string, confPath, conf strin
 		}
 	}
 	trusted := "127.0.0.1\n::1\nlocalhost\n"
+	tables := []string{
+		filepath.Join(opendkimTablesDir, "keytable"),
+		filepath.Join(opendkimTablesDir, "signingtable"),
+		filepath.Join(opendkimTablesDir, "trustedhosts"),
+	}
+	// The tables belong to the opendkim group, like the keys: Arch's unit
+	// starts opendkim as its own user (Debian's starts it as root and drops
+	// privileges after reading them), so root:celikpanel 0640 tables stopped
+	// it with "dkimf_db_open(): Permission denied" (Arch VM, 2026-10-30).
+	// Tablolar, anahtarlar gibi opendkim grubuna aittir.
+	tablesToGroup := func() (func() error, error) {
+		for _, path := range tables {
+			if err := secureSetMailFileMetadata(path, 0o640, 0, opendkimGID); err != nil {
+				return nil, fmt.Errorf("give the OpenDKIM table %s to the opendkim group: %w", path, err)
+			}
+		}
+		return nil, nil
+	}
 	return applyMailFileMutation(ctx, []mailFileWrite{
-		{path: filepath.Join(opendkimTablesDir, "keytable"), content: []byte(kt.String()), mode: 0o640},
-		{path: filepath.Join(opendkimTablesDir, "signingtable"), content: []byte(st.String()), mode: 0o640},
-		{path: filepath.Join(opendkimTablesDir, "trustedhosts"), content: []byte(trusted), mode: 0o640},
+		{path: tables[0], content: []byte(kt.String()), mode: 0o640},
+		{path: tables[1], content: []byte(st.String()), mode: 0o640},
+		{path: tables[2], content: []byte(trusted), mode: 0o640},
 		{path: confPath, content: []byte(conf), mode: 0o644},
-	}, nil, nil)
+	}, nil, tablesToGroup)
 }
