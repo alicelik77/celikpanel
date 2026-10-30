@@ -557,6 +557,29 @@ edit, delete and re-add, deletion proof, owner enrollment and the
 management-disabled reboot; the wizard states and the host-restart blocker on
 a real host; reinstall after the `dpkg-statoverride` decision.
 
+**2026-10-30, Arch Linux PowerDNS (D-028 amendment)** ([evidence](../deploy/e2e/dns-pair-acceptance/evidence/arch-powerdns-20261030/),
+branch `feat/arch-powerdns`; disposable QEMU guests, acceptance-license
+builds, each cell once): the setup wizard put extra/powerdns 5.1.5-1 on
+Arch Linux as the main DNS server of one server (standalone, 19/19 steps
+with web and mail), as the paired primary with a Debian 13 PowerDNS 4.9.18
+backup and with a Debian 13 BIND backup, and as the paired secondary of a
+Debian 13 BIND primary; every server answered its zone authoritatively with
+the same SOA serial. Two forced cuts of the Arch primary's DNS step (Agent
+SIGKILL plus an immediate reboot): 2 s after the package arrived (before the
+journal) the step rolled back and the owner's revised plan completed; 5 s
+after (journal at target-enable intent, live candidate, unit masked) the
+Agent's pre-start undo stopped on `/etc/powerdns/pdns.d` reporting a link
+count of 1 on btrfs, the journal was retained and the retry could not
+proceed — a product defect, fixed in `2a5f7405`. Two re-runs on that build
+(cuts 5 s and 4 s after) landed later, with the unit already unmasked and
+enabled: systemd started PowerDNS at boot, the Agent completed the V3
+journal forward (state marker `arch-5.1`, archive written) and both servers
+completed with the same SOA serial without an owner action. The exact
+pre-start cut was not reproduced, so the fix has component tests only.
+Observed and not fixed here: in the stopped state of the defect the setup
+page said the installation had been undone while the Agent had kept the
+journal, and the owner's retry showed "running" without guidance.
+
 ## What closed item 1
 
 Item 1's exit condition is: for supported interruptions the same operation

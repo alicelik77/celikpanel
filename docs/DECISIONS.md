@@ -2899,6 +2899,49 @@ needs new measurement. Patch releases inside the series are accepted
 without a new native run, so a later point release that changes behaviour
 is a known limit.
 
+**Amendment, October 30, 2026 (owner decision: "Arch'ta PowerDNS
+kullanacağım").** The tested series is held **per package family**. Debian
+and Ubuntu keep everything above (Debian's archive build of 4.9, dpkg
+md5sums). Arch Linux x86_64 gets its own measured build: `powerdns` 5.1 from
+Arch's official `extra` repository only (never the AUR or a third-party
+repository), daemon `/usr/bin/pdns_server`, user and group `powerdns`,
+`pdns.conf` 0644 root:root. The same one rule decides what the wizard offers,
+what the review accepts, what the Agent installs and what its post-install
+check and the independent recovery attestation accept: a pacman version with
+no epoch, a numeric patch and pkgrel, in 5.1. Provenance is the repository
+pacman names for the candidate (`extra`), read from the current databases
+before any effect and read again from the refreshed databases under the
+package lock immediately before the one `pacman -Su` transaction; nothing is
+installed when it is another series or another repository. File identity
+comes from pacman's own local database: the daemon and the vendor unit must
+equal the SHA-256 the installed package recorded (mtree), so a legitimate
+`pacman -Syu` inside 5.1 changes file and record together and is accepted,
+like a Debian point release; a changed file is not. The same limits as above
+apply (root on the host, a compromised mirror). Journals and state documents
+of an Arch tenure carry their own marker
+(`pdns-fresh-paired-primary/arch-5.1/v1`); a state must carry its own
+journal's marker, and a reader older than this release refuses an Arch
+document rather than misreading it. Measured on a lab guest: the 5.1.5
+producer's start-up SQL change and the 5.1.5 consumer's member rows are
+those 4.9 makes.
+
+On Arch, PowerDNS is installed only as a **first install on a server with no
+DNS software**: one server keeping its own DNS, the paired primary, or the
+paired secondary (`pdns_arch_setup_only` and the Agent refuse anything else
+before any effect: switching an existing DNS server to PowerDNS,
+reinstalling, reconfiguring, adopting an owner-installed PowerDNS). Arch is
+rolling and the owner runs `pacman -Syu` (CelikPanel never upgrades Arch on
+its own). When the candidate leaves 5.1, the wizard stops offering PowerDNS
+as the main DNS server with the reason. When an installed PowerDNS leaves its
+tested series through the owner's update, PowerDNS keeps answering from its
+native configuration (D-022); CelikPanel holds DNS changes into it (they are
+refused before any effect with the reason), shows
+`engine_series_untested` on the DNS screens with who acts and what next
+(D-024), and continues by itself once the installed release is in a tested
+series again, for example after a CelikPanel release that names it. The
+first-install recovery contract of D-026 is unchanged. Evidence:
+[arch-powerdns-20261030](../deploy/e2e/dns-pair-acceptance/evidence/arch-powerdns-20261030/).
+
 ---
 
 ## D-027 · Acceptance runs use a test-only fixture license; license policy is unchanged

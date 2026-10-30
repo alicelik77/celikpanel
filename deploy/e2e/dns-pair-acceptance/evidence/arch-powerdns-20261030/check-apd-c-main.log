@@ -1,0 +1,47 @@
+== check apd-c/main 2026-10-30T09:20:55Z
+-- os
+PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
+ID=debian
+6.12.105+deb13-cloud-amd64
+-- package
+dpkg-query: no packages found matching pdns-server
+dpkg-query: no packages found matching pdns-backend-sqlite3
+-- units
+inactive active active active inactive inactive 
+User=
+Group=
+UnitFileState=
+-- config
+stat: cannot statx '/etc/powerdns': No such file or directory
+stat: cannot statx '/etc/powerdns/pdns.conf': No such file or directory
+stat: cannot statx '/etc/powerdns/pdns.d': No such file or directory
+stat: cannot statx '/etc/powerdns/pdns.d/*': No such file or directory
+stat: cannot statx '/var/lib/powerdns': No such file or directory
+stat: cannot statx '/var/lib/powerdns/*': No such file or directory
+grep: /etc/powerdns/pdns.conf: No such file or directory
+-- DNS answers
+(no dig on this server)
+(no dig on this server)
+(no dig on this server)
+-- catalog
+
+/root/pdnscheck.sh: line 17: sqlite3: command not found
+-- state
+dns-engine-bind-rndc-key.json
+dns-engine-ownership-bind.json
+dns-engine-state.json
+firewall-apply-journal.json
+service-mutations.json
+{"schema":"celikpanel-dns-engine-state/v2","acquisition":{"schema":"celikpanel-dns-engine-acquisition/v1","mode":"switch","engine":"bind","engine_epoch":1,"pair_role":"primary","pair_local_ip":"192.0.3.74","pair_peer_ip":"192.0.3.75","source_revision":1,"manifest_qualifier":"dns-engine-switch/v1:sha256:bc4ee761bfa36d7719020b098cf88e5ec5d3aee02ac1d78943b6d22a7e014208","mutation_request_id":"ce3ef79ad176123a3650db946f57d998","mutation_owner_id":"c9d49f3c66e04acd11e5828aa7f00f3f"},"publication":{"schema":"celikpanel-dns-engine-publication/v1","acquisition_sha256":"17fb0b6b1a6a1f36b8cf9c1cce134092
+-- recovery status
+No DNS switch journal was observed. This does not prove historical completion or current DNS health. The server owner should inspect the native DNS service and the panel's operation status before starting another switch.
+exit=0
+-- agent log (PowerDNS)
+-- from the lab network guest (outside the server)
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 55318
+;; flags: qr aa; QUERY: 1, ANSWER: 1, AUTHORITY: 2, ADDITIONAL: 3
+; EDNS: version: 0, flags:; udp: 1232
+; COOKIE: 467ee4ee25da1244010000006ae46178ffe73603f805d46f (good)
+;; ANSWER SECTION:
+pairbk.test.		3600	IN	SOA	ns1.pairbk.test. hostmaster.pairbk.test. 2026103000 3600 600 604800 300
+ns1.pairbk.test. hostmaster.pairbk.test. 2026103000 3600 600 604800 300

@@ -1,0 +1,239 @@
+== provision 09:23:08 main=arch/pdns backup=debian13/pdns
+== install 09:23:41
+main 0 61.7 True 0
+backup 0 46.0 False 0
+main active
+backup active
+guidance 200 
+guidance 200 
+main-domain 200 {
+ "checks": [],
+ "draft": {
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_role": "primary",
+  "infrastructure_dns": {
+   "zone": "drill2pd.test"
+  },
+  "local_ip": ""
+main-count 200 {
+ "checks": [],
+ "draft": {
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_role": "primary",
+  "infrastructure_dns": {
+   "zone": "drill2pd.test"
+  },
+  "local_ip": ""
+main-name 200 {
+ "checks": [],
+ "draft": {
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_role": "primary",
+  "infrastructure_dns": {
+   "zone": "drill2pd.test"
+  },
+  "local_ip": ""
+main-roles 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_
+main-names 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_
+main-dnshome 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+  "database": "mariadb",
+  "dns_engine": "pdns",
+  "dns_mode": "local",
+  "dns_
+plan main 200 True [] ['01-service:nginx', '02-service:certbot', '03-service:mariadb', '04-service:php-fpm', '05-service:cron', '06-peer_join:second', '07-dns:local', '08-firewall:enable_and_persist', '09-infrastructure_dns:drill2pd.test', '10-access_dns:mainpd.drill2pd.test', '11-panel_certificate:mainpd.drill2pd.test', '12-dns_readiness:local', '13-verify:custom'] 
+Running as unit: apd-drill.service; invocation ID: ba0525ca70f84c2fb0c63403c7876801
+drill armed: main, 5s after /usr/bin/pdns_server appears
+== start main 09:25:25
+start-main 202 {
+ "id": "f7cf2ec658b73863d073e500a40b60eb",
+ "panel_url": "https://mainpd.drill2pd.test:2083/",
+ "phase": "queued",
+ "plan_id": "86ec1bde4d4ad491cc9a351afa3d5241",
+ "request_id": "f7cf2ec658b73863d07
+join-code 200 {
+ "address": "https://192.0.3.78:2083",
+ "attempts_left": 50,
+ "code": "[REDACTED]",
+ "expires_at": "2026-10-31T09:25:28Z",
+ "used": false
+}
+connect 200 {
+ "setup": {
+  "checks": [],
+  "draft": {
+   "database": "mariadb",
+   "dns_engine": "bind",
+   "dns_mode": "local",
+   "dns_publisher_endpoint": "https://mainpd.drill2pd.test:2083",
+   "dns_role": "secondary",
+   "local_ip": "192.0.3.79",
+   "mail_hostname": "",
+   "main_dns_server": "peer",
+   "main_domain": "drill2pd.test",
+   "node_version": "",
+   "ns1": "ns1.drill2pd.test",
+   "ns2": "ns2.drill2pd.test",
+   "panel_domain": "",
+   "peer_ip": "192.0.3.78",
+   "peer_ns": "ns1.drill2pd.test",
+   "purpose": "web",
+   "remote_dns_connection_id": "",
+   "server_count": 2
+  },
+  "guidance": "gu
+backup-roles 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_
+backup-name 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_
+backup-names 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_
+backup-dnshome 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+  "database": "mariadb",
+  "dns_engine": "pdns",
+  "dns_mode": "local",
+  "dns_
+plan backup 200 True [] ['01-peer_names:https://192.0.3.78:2083', '02-service:nginx', '03-service:certbot', '04-service:mariadb', '05-service:php-fpm', '06-service:cron', '07-dns:local', '08-firewall:enable_and_persist', '09-access_dns:backpd.drill2pd.test', '10-panel_certificate:backpd.drill2pd.test', '11-dns_publisher:https://mainpd.drill2pd.test:2083', '12-verify:custom'] 
+== start backup 09:25:39
+start-backup 202 {
+ "id": "14e2e199b50141298bac4eadfd6b473c",
+ "panel_url": "https://backpd.drill2pd.test:2083/",
+ "phase": "queued",
+ "plan_id": "640c2e97113333a0ca6e03dfcfa3a790",
+ "request_id": "14e2e199b50141298bac4eadfd6b473c",
+ "status": "running",
+ "steps": [
+  {
+   "id": "01-peer_names",
+   "kind": "peer_nam
+-- main 09:25:43
+running 02-service null
+01-service=succeeded 02-service=running 03-service=pending 04-service=pending 05-service=pending 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "02-service", "kind": "service", "operation_id": "bdc563962f3aa339328a879a6fd24175", "owner_id": "f8018a49bb78cc1cc0c34a385f40dbe5", "request_id": "b8642361200cb7512b8edad8c021184c", "status": "running", "target": "certbot"}
+-- backup 09:25:44
+running 02-service null
+01-peer_names=succeeded 02-service=running 03-service=pending 04-service=pending 05-service=pending 06-service=pending 07-dns=pending 08-firewall=pending 09-access_dns=pending 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "02-service", "kind": "service", "owner_id": "25b980fe7bdfbc8c6c1e0b2f82f20f1d", "request_id": "4c45c2b3435d417b51d38012b966149f", "status": "running", "target": "nginx"}
+-- main 09:26:04
+running 03-service null
+01-service=succeeded 02-service=succeeded 03-service=running 04-service=pending 05-service=pending 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "03-service", "kind": "service", "operation_id": "3ae0d592eed595e597613341aa8db716", "owner_id": "dc50b4c256d161e0de136f3712706543", "request_id": "6cf2c0b577b4e0936f105d387c8b5e02", "status": "running", "target": "mariadb"}
+-- backup 09:26:05
+running 03-service null
+01-peer_names=succeeded 02-service=succeeded 03-service=running 04-service=pending 05-service=pending 06-service=pending 07-dns=pending 08-firewall=pending 09-access_dns=pending 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "03-service", "kind": "service", "operation_id": "9046ebd85ac907a2e77caa1a6032465e", "owner_id": "eb22bba8bef283676a521268a4ba15ff", "request_id": "17c98b532dfe2614209a8f67419c81e6", "status": "running", "target": "certbot"}
+-- main 09:26:26
+running 04-service null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=running 05-service=pending 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "04-service", "kind": "service", "operation_id": "1d4f666b5dd3e109948b9b3f143be709", "owner_id": "42e8c2eca8529d07d16940d02ba2f5ed", "request_id": "54d1c11fdb6ae75509eaeb5505ed28ac", "status": "running", "target": "php-fpm"}
+-- backup 09:26:26
+running 04-service null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=running 05-service=pending 06-service=pending 07-dns=pending 08-firewall=pending 09-access_dns=pending 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "04-service", "kind": "service", "owner_id": "6c94898ef2f4f2ea952e506281e46c9d", "request_id": "f188923c447b0e1ba9021acf4717f7ad", "status": "running", "target": "mariadb"}
+-- main 09:26:48
+running 05-service null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=running 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "05-service", "kind": "service", "operation_id": "02ce0a285268ac89df7b25b8c2893809", "owner_id": "298f8d09636bb7c900887ae036f5eeb3", "request_id": "ef7bb2d836cd52bcd7322902edcf2c6c", "status": "running", "target": "cron"}
+-- main 09:27:22
+None None "Panel management is still starting. Read-only connection and recovery status remain available."
+-- backup 09:27:22
+running 05-service null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=running 06-service=pending 07-dns=pending 08-firewall=pending 09-access_dns=pending 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "05-service", "kind": "service", "operation_id": "72520c055fd0b4f5a6bef789d7c547e9", "owner_id": "6264b7992564f6aef4a3718f2b2914ba", "request_id": "006fe7e4301c020867188e154adf4388", "status": "running", "target": "php-fpm"}
+-- main 09:27:42
+failed 07-dns {"code": "server_setup_dns_rolled_back", "message": "The DNS engine installation did not complete and CelikPanel undid it: no DNS engine is running on this server, and any packages it installed were kept stopped for the next attempt. Nothing else was changed, and no restart is needed. The server administrator chooses Review a revised plan: keep this DNS software to try the installation again as a new one, or choose the other DNS software in the plan; setup then continues from the new plan."}
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=failed 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "07-dns", "kind": "dns", "owner_id": "2bd18a3ab40c614a7b4b30cbad26bf6c", "request_id": "2cf72dd90ec550ba50ef79ec703d413f", "status": "failed", "target": "local"}
+-- backup 09:27:42
+waiting primary_dns {"code": "server_setup_primary_dns_required", "message": "The primary DNS server ns1.drill2pd.test (192.0.3.78) has not provided its authoritative catalog yet. Start its DNS setup and check TCP port 53. This setup checks again automatically; no primary panel connection is required."}
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-service=succeeded 07-dns=running 08-firewall=pending 09-access_dns=pending 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "07-dns", "kind": "dns", "owner_id": "d631929941a756749904d0a6dd7d4194", "request_id": "86c3e0d7ddeaf30f6b6d3582c8cac94c", "status": "running", "target": "local"}
+-- main 09:28:23
+running 02-dns null
+01-peer_join=succeeded 02-dns=running 03-firewall=pending 04-infrastructure_dns=pending 05-access_dns=pending 06-panel_certificate=pending 07-dns_readiness=pending 08-verify=pending
+{"id": "02-dns", "kind": "dns", "owner_id": "4d9ec9dc853e5aacf06a370e3bd4e424", "request_id": "36e2ef444cbc95e27b2b229c180c9fd8", "status": "running", "target": "local"}

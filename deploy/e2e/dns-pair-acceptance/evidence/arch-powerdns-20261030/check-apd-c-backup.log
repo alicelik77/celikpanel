@@ -1,0 +1,62 @@
+== check apd-c/backup 2026-10-30T09:20:56Z
+-- os
+PRETTY_NAME="Arch Linux"
+ID=arch
+7.2.11-arch1-1
+-- package
+powerdns 5.1.5-1
+-- units
+active active active active inactive inactive 
+UnitFileState=enabled
+ExecStart={ path=/usr/bin/pdns_server ; argv[]=/usr/bin/pdns_server --guardian=no --daemon=no --disable-syslog --log-timestamp=no --write-pid=no
+User=powerdns
+Group=powerdns
+-- config
+755 root:root /etc/powerdns
+644 root:root /etc/powerdns/pdns.conf
+755 root:root /etc/powerdns/pdns.d
+644 root:root /etc/powerdns/pdns.d/celikpanel-cluster.conf
+644 root:root /etc/powerdns/pdns.d/celikpanel.conf
+750 powerdns:powerdns /var/lib/powerdns
+640 powerdns:powerdns /var/lib/powerdns/pdns.sqlite3
+640 powerdns:powerdns /var/lib/powerdns/pdns.sqlite3-shm
+640 powerdns:powerdns /var/lib/powerdns/pdns.sqlite3-wal
+setgid=powerdns
+setuid=powerdns
+include-dir=/etc/powerdns/pdns.d
+primary=yes
+secondary=yes
+allow-axfr-ips=192.0.3.74
+launch=gsqlite3
+gsqlite3-dnssec=yes
+gsqlite3-database=/var/lib/powerdns/pdns.sqlite3
+local-address=192.0.3.75
+zone-cache-refresh-interval=0
+webserver=no
+api=no
+-- DNS answers
+(no dig on this server)
+(no dig on this server)
+(no dig on this server)
+-- catalog
+catalog-c000034a.celikpanel.invalid CONSUMER
+catalog-c000034a.celikpanel.invalid|CONSUMER|192.0.3.74||
+pairbk.test|SLAVE|192.0.3.74||{"consumer": {"unique": "f4399d1b174222ea5ab38cef55f20f6961b31308feee4d2133c414fe."}}
+-- state
+dns-engine-ownership-pdns.json
+dns-engine-state.json
+firewall-apply-journal.json
+panel-certificate-activation.json
+service-mutations.json
+{"schema":"celikpanel-dns-engine-state/v2","acquisition":{"schema":"celikpanel-dns-engine-acquisition/v1","mode":"switch","engine":"pdns","engine_epoch":1,"pair_role":"secondary","pair_local_ip":"192.0.3.75","pair_peer_ip":"192.0.3.74","source_revision":1,"manifest_qualifier":"dns-engine-switch/v1:sha256:c70afb1058017b3568937da87feafca255defd4334aae66bcadace0860924920","mutation_request_id":"4e492b63d15eaac0fa93360caa34813b","mutation_owner_id":"8da4d92b7d20ce75260fe818303ad48f"},"publication":{"schema":"celikpanel-dns-engine-publication/v1","acquisition_sha256":"4f0a6fae2e3ef037e359aa866413e3
+-- recovery status
+No DNS switch journal was observed. This does not prove historical completion or current DNS health. The server owner should inspect the native DNS service and the panel's operation status before starting another switch.
+exit=0
+-- agent log (PowerDNS)
+-- from the lab network guest (outside the server)
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 3082
+;; flags: qr aa; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+; EDNS: version: 0, flags:; udp: 1232
+;; ANSWER SECTION:
+pairbk.test.		3600	IN	SOA	ns1.pairbk.test. hostmaster.pairbk.test. 2026103000 3600 600 604800 300
+ns1.pairbk.test. hostmaster.pairbk.test. 2026103000 3600 600 604800 300

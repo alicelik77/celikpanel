@@ -1,0 +1,77 @@
+== check apd-g/backup 2026-10-30T09:42:13Z
+-- os
+PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
+ID=debian
+6.12.105+deb13-cloud-amd64
+-- package
+pdns-backend-sqlite3	4.9.18-0+deb13u1
+pdns-server	4.9.18-0+deb13u1
+-- units
+active active active active inactive inactive 
+ExecStart={ path=/usr/sbin/pdns_server ; argv[]=/usr/sbin/pdns_server --guardian=no --daemon=no --disable-syslog --log-timestamp=no --write-pid=no
+User=pdns
+Group=pdns
+UnitFileState=enabled
+-- config
+755 root:root /etc/powerdns
+640 root:pdns /etc/powerdns/pdns.conf
+755 root:root /etc/powerdns/pdns.d
+644 root:root /etc/powerdns/pdns.d/celikpanel-cluster.conf
+644 root:root /etc/powerdns/pdns.d/celikpanel.conf
+755 pdns:pdns /var/lib/powerdns
+640 pdns:pdns /var/lib/powerdns/pdns.sqlite3
+640 pdns:pdns /var/lib/powerdns/pdns.sqlite3-shm
+640 pdns:pdns /var/lib/powerdns/pdns.sqlite3-wal
+include-dir=/etc/powerdns/pdns.d
+launch=
+security-poll-suffix=
+primary=yes
+secondary=yes
+allow-axfr-ips=192.0.3.82
+launch=gsqlite3
+gsqlite3-dnssec=yes
+gsqlite3-database=/var/lib/powerdns/pdns.sqlite3
+local-address=192.0.3.83
+zone-cache-refresh-interval=0
+webserver=no
+api=no
+-- DNS answers
+(no dig on this server)
+(no dig on this server)
+(no dig on this server)
+-- catalog
+
+/root/pdnscheck.sh: line 17: sqlite3: command not found
+-- state
+dns-engine-ownership-pdns.json
+dns-engine-state.json
+firewall-apply-journal.json
+panel-certificate-activation.json
+service-mutations.json
+{"schema":"celikpanel-dns-engine-state/v2","acquisition":{"schema":"celikpanel-dns-engine-acquisition/v1","mode":"switch","engine":"pdns","engine_epoch":1,"pair_role":"secondary","pair_local_ip":"192.0.3.83","pair_peer_ip":"192.0.3.82","source_revision":1,"manifest_qualifier":"dns-engine-switch/v1:sha256:fcad38a88737dd5d7dd0a61c7c93fc494d8c7759bdc1ab5267fb2e65a802fcfe","mutation_request_id":"2751ab28ee7236a15dcfd8c49069a88e","mutation_owner_id":"9a686f9586fe18e5651d215a9a74ce00"},"publication":{"schema":"celikpanel-dns-engine-publication/v1","acquisition_sha256":"09c972d51f872f70ac24acf92e8ce8
+-- recovery status
+No DNS switch journal was observed. This does not prove historical completion or current DNS health. The server owner should inspect the native DNS service and the panel's operation status before starting another switch.
+exit=0
+-- agent log (PowerDNS)
+Oct 30 09:41:21 backpd agent[10141]: 2026/10/30 09:41:21 DNS engine change 2751ab28ee7236a15dcfd8c49069a88e: the paired primary at 192.0.3.82 serves catalog catalog-c0000352.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 09:41:25 backpd addgroup[19664]: Adding group `pdns' (GID 105) ...
+Oct 30 09:41:25 backpd groupadd[19667]: group added to /etc/group: name=pdns, GID=105
+Oct 30 09:41:25 backpd groupadd[19667]: group added to /etc/gshadow: name=pdns
+Oct 30 09:41:25 backpd groupadd[19667]: new group: name=pdns, GID=105
+Oct 30 09:41:25 backpd adduser[19671]: Adding system user `pdns' (UID 104) ...
+Oct 30 09:41:25 backpd adduser[19671]: Adding new user `pdns' (UID 104) with group `pdns' ...
+Oct 30 09:41:25 backpd useradd[19675]: new user: name=pdns, UID=104, GID=105, home=/var/spool/powerdns, shell=/bin/false, from=none
+Oct 30 09:41:26 backpd adduser[19671]: Creating home directory `/var/spool/powerdns' ...
+Oct 30 09:41:32 backpd agent[10141]: 2026/10/30 09:41:32 DNS engine change completion 2751ab28ee7236a15dcfd8c49069a88e: the paired primary at 192.0.3.82 serves catalog catalog-c0000352.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 09:41:33 backpd agent[10141]: 2026/10/30 09:41:33 DNS readiness check: the paired primary at 192.0.3.82 serves catalog catalog-c0000352.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 09:42:02 backpd agent[10141]: 2026/10/30 09:42:02 DNS readiness check: the paired primary at 192.0.3.82 serves catalog catalog-c0000352.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 09:42:03 backpd agent[10141]: 2026/10/30 09:42:03 DNS readiness check: the paired primary at 192.0.3.82 serves catalog catalog-c0000352.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 09:42:04 backpd agent[10141]: 2026/10/30 09:42:04 DNS readiness check: the paired primary at 192.0.3.82 serves catalog catalog-c0000352.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 09:42:05 backpd agent[10141]: 2026/10/30 09:42:05 DNS readiness check: the paired primary at 192.0.3.82 serves catalog catalog-c0000352.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+-- from the lab network guest (outside the server)
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 7854
+;; flags: qr aa; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+; EDNS: version: 0, flags:; udp: 1232
+;; ANSWER SECTION:
+drill4pd.test.		3600	IN	SOA	ns1.drill4pd.test. hostmaster.drill4pd.test. 2026103000 3600 600 604800 300
+ns1.drill4pd.test. hostmaster.drill4pd.test. 2026103000 3600 600 604800 300
