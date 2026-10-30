@@ -374,7 +374,7 @@ func (p *Panel) issueAliasCertificateSnapshot(
 		return install, err
 	}
 
-	info, err := p.inspectManagedCertificate(
+	info, err := p.inspectIssuedCertificate(
 		ctx,
 		domainName,
 		agentResp.CertPath,

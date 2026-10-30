@@ -94,7 +94,11 @@ func setupPanelRenewalRouteReady(ctx context.Context, domain, authenticator stri
 	available := filepath.Join("/etc/nginx/sites-available", panelACMEVhostName(domain)+".conf")
 	enabled := filepath.Join("/etc/nginx/sites-enabled", panelACMEVhostName(domain)+".conf")
 	contents, ok := setupProtectedFile(available)
-	if !ok || string(contents) != renderPanelACMEChallengeVhost(domain, hostingpath.PanelACMEChallengeRoot()) {
+	// Either of CelikPanel's forms: everything else 404, or redirected to
+	// https while webmail shares the name (alpha.113). Both answer the check.
+	challengeRoot := hostingpath.PanelACMEChallengeRoot()
+	if !ok || (string(contents) != renderPanelACMEChallengeVhostForm(domain, challengeRoot, false) &&
+		string(contents) != renderPanelACMEChallengeVhostForm(domain, challengeRoot, true)) {
 		return false
 	}
 	target, err := filepath.EvalSymlinks(enabled)

@@ -45,7 +45,7 @@ export const trSitesScreens: Record<SitesScreenKey, string> = {
     'domains.add.sslRequesting.body': 'Bu bir dakikaya kadar sürebilir. Sizin bir şey yapmanız gerekmiyor: sonuç bu pencerede görünür. Pencereyi açık bırakın. Sertifika yalnız bir kez istenir; beklemeniz hiçbir şeyi yeniden göndermez.',
     'domains.add.sslRequesting.button': 'İsteniyor…',
     'domains.add.sslOutcome.title': 'Site oluşturuldu. Sertifikasını kontrol edin',
-    'domains.add.sslIssued': '{name} için sertifika çıkarıldı ve etkin. Kendiliğinden yenilenir.',
+    'domains.add.sslIssued': '{name} için sertifika çıkarıldı ve etkin; http:// adresleri artık https:// adresine yönlendiriliyor (bunu sitenin SSL/TLS sayfasından kapatabilirsiniz). Kendiliğinden yenilenir.',
     'domains.add.sslFailed': '{name} oluşturuldu ancak sertifikası çıkarılamadı. Site şimdilik HTTPS olmadan çalışıyor.',
     'domains.add.sslFailedNext': 'Sitenin kendisi değişmedi ve hiçbir şey sertifikayı kendiliğinden yeniden istemez. Neden giderildiğinde sertifikayı alan adının ayarlarında SSL/TLS bölümünden yeniden isteyin; aşağıdaki düğme orayı açar.',
     'domains.add.sslWaitingForOwner': '{name} için sertifika çıkarıldı ve saklandı; ancak sitenin yapılandırma dosyası sizin ve henüz onu kullanmıyor. Siz seçene kadar hiçbir şey değişmez. Neler yapabileceğinizi görmek için SSL/TLS’yi açın.',

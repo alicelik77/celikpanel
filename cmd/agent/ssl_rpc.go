@@ -477,6 +477,28 @@ func certificateMatchesPrivateKey(cert *x509.Certificate, key crypto.Signer) (bo
 	return bytes.Equal(certPublicKey, privatePublicKey), nil
 }
 
+// certificateClockNow is this server's clock for certificate validity (a
+// test seam).
+var certificateClockNow = time.Now
+
+// certificateValidityProblem says, by this server's clock, whether the
+// certificate is not yet valid or expired, and records which with the time it
+// was checked; "" when it is valid now.
+func certificateValidityProblem(cert *x509.Certificate, now time.Time, resp *ValidateCertResponse) string {
+	resp.CheckedAt = now.UTC()
+	switch {
+	case now.Before(cert.NotBefore):
+		resp.NotYetValid = true
+		return "certificate is not yet valid: valid from " + cert.NotBefore.UTC().Format(time.RFC3339) +
+			", this server's time is " + now.UTC().Format(time.RFC3339)
+	case now.After(cert.NotAfter):
+		resp.Expired = true
+		return "certificate is expired: valid until " + cert.NotAfter.UTC().Format(time.RFC3339) +
+			", this server's time is " + now.UTC().Format(time.RFC3339)
+	}
+	return ""
+}
+
 func populateCertificateInfo(cert *x509.Certificate, resp *ValidateCertResponse) {
 	resp.Valid = true
 	resp.Issuer = cert.Issuer.CommonName
@@ -548,10 +570,10 @@ func (a *Agent) ValidateCertificate(req ValidateCertRequest, resp *ValidateCertR
 	}
 
 	// Check if certificate is expired
-	now := time.Now()
-	if now.Before(cert.NotBefore) || now.After(cert.NotAfter) {
+	now := certificateClockNow()
+	if message := certificateValidityProblem(cert, now, resp); message != "" {
 		resp.Valid = false
-		resp.Error = "certificate is expired or not yet valid"
+		resp.Error = message
 		return nil
 	}
 
@@ -960,12 +982,11 @@ func (a *Agent) GetCertificateInfo(certPath string, resp *ValidateCertResponse) 
 		return nil
 	}
 	cert := certificates[0]
-	now := time.Now()
-	if now.Before(cert.NotBefore) || now.After(cert.NotAfter) {
-		resp.Valid = false
-		resp.Error = "certificate is expired or not yet valid"
+	now := certificateClockNow()
+	if message := certificateValidityProblem(cert, now, resp); message != "" {
 		populateCertificateInfo(cert, resp)
 		resp.Valid = false
+		resp.Error = message
 		return nil
 	}
 

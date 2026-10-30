@@ -291,7 +291,7 @@ func (p *Panel) renewLetsEncrypt(ctx context.Context, certID, domainID int, doma
 		p.recordCertificateRenewalFailure(ctx, certID, domainName, now, err.Error())
 		return
 	}
-	info, err := p.inspectManagedCertificate(
+	info, err := p.inspectIssuedCertificate(
 		ctx,
 		domainName,
 		resp.CertPath,

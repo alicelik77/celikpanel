@@ -14,6 +14,7 @@ export const enErrorsScreens = {
     // ---- alpha.108 slice d ----
     'err.VERSION_NOT_OFFERED': 'Nothing was changed: {name} {version} is not offered to customers on this server. Choose one of the offered versions, or ask your administrator to offer this one — the administrator decides which versions are offered.',
     'err.NO_VERSION_OFFERED': 'Nothing was created: no {name} version is offered to customers on this server. Ask your administrator to offer one, then create the site again.',
+    'err.NO_VERSION_OFFERED.hosting_switch': 'No installed {name} version is offered to customers on this server, so the site was not switched to {name}. Nothing was changed. Ask your administrator to offer one, then switch the site again.',
     'err.panel_certificate_activation_pending': 'A previous panel certificate activation is still being finalized. Wait briefly, then retry. No certificate state was overwritten.',
     'err.USERNAME_RESERVED': 'This username is reserved for CelikPanel’s own actions in the activity log. Nothing was created or changed; choose a different username.',
     'err.DOMAIN_DELETION_PENDING': 'This domain is being deleted. Mail settings cannot be changed until deletion finishes or is safely retried.',
@@ -71,6 +72,7 @@ export const enErrorsScreens = {
     'err.WEB_SERVER_REQUIRED': 'No web server is installed. Install Nginx or Apache from Services, or choose the DNS-only type.',
     'err.WEB_SERVER_REQUIRED.action': 'Install a web server',
     'err.PHP_REQUIRED': 'PHP-FPM is not installed. Install it from Services, or choose the static or DNS-only type.',
+    'err.PHP_REQUIRED.hosting_switch': 'PHP-FPM is not installed on this server, so the site was not switched to PHP. Nothing was changed. The server administrator installs PHP-FPM from Services, then the site is switched to PHP again.',
     'err.PHP_REQUIRED.action': 'Install PHP-FPM',
     'err.NO_SUBSCRIPTION': 'This account has no subscription yet — ask your provider to assign a plan.',
     'err.QUOTA_DOMAINS_EXCEEDED': 'Your plan’s domain limit is reached. Remove a domain or upgrade your plan.',

@@ -4782,6 +4782,23 @@ running with the settings it had") is no longer shown. The ones below are.
   Sunucuda /var/log/celikpanel/certbot/letsencrypt.log dosyasını okuyun, adını
   verdiği şeyi düzeltin, sonra sertifikayı buradan yeniden isteyin. Hiçbir şey
   kendiliğinden yeniden istemez."
+- `ssl.issueFailure.server_clock` (alpha.113)
+  EN: "A certificate was issued for {domain}, but this server's clock does not
+  accept it: it is valid from {valid_from} and this server's time was
+  {server_time}. It was not installed and was removed again; the site is
+  served as before, with the certificate it already had if it had one. Correct
+  this server's clock: run timedatectl on the server and check that “System
+  clock synchronized” says yes (sudo timedatectl set-ntp true turns time
+  synchronisation on), then request the certificate here again. Nothing asks
+  again automatically."
+  TR: "{domain} için sertifika çıkarıldı, ancak bu sunucunun saati onu kabul
+  etmiyor: sertifika {valid_from} itibarıyla geçerli, sunucunun saati ise
+  {server_time} idi. Sertifika kurulmadı ve yeniden kaldırıldı; site eskisi
+  gibi sunuluyor, önceden bir sertifikası varsa o yerinde duruyor. Sunucunun
+  saatini düzeltin: sunucuda timedatectl çalıştırın ve “System clock
+  synchronized” satırının yes dediğini denetleyin (sudo timedatectl set-ntp
+  true zaman eşitlemeyi açar), sonra sertifikayı buradan yeniden isteyin.
+  Hiçbir şey kendiliğinden yeniden istemez."
 - `ssl.issueFailure.said`
   EN: "certbot reported: {detail}"
   TR: "certbot’un bildirdiği: {detail}"

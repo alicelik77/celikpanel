@@ -133,7 +133,7 @@ test('SSL ticked: the site is created, then the certificate is requested once on
     assert.equal(issue.length, 1, 'exactly one certificate request');
     assert.equal(issue[0].url, '/api/v1/domains/7/ssl/letsencrypt');
     // The SSL page's defaults, and no address: the server uses the account's.
-    assert.deepEqual(JSON.parse(issue[0].options.body), { auto_renew: true, include_mail: false, provider: 'letsencrypt', reissue: false });
+    assert.deepEqual(JSON.parse(issue[0].options.body), { auto_renew: true, include_mail: false, provider: 'letsencrypt', reissue: false, redirect_http: true });
     assert.equal(succeeded.length, 1);
     assert.ok(globalThis.currentTest.toasts.some(([tone, message]) => tone === 'success' && message === t('domains.add.sslIssued').replace('{name}', 'example.com')));
     assert.equal(globalThis.currentTest.navigated.length, 0);

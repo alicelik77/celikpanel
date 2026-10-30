@@ -5,8 +5,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -130,26 +132,88 @@ func ensureNginxMainConfigWithWriter(
 	content := string(data)
 	needConfD := !strings.Contains(content, "conf.d/*.conf")
 	needSites := !strings.Contains(content, "sites-enabled/")
-	if !needConfD && !needSites {
-		return false, nil
+	changed := false
+	if needConfD || needSites {
+		var includes strings.Builder
+		includes.WriteString("\n    # Added by CelikPanel so the panel's drop-in configs are served.\n")
+		if needConfD {
+			includes.WriteString("    include /etc/nginx/conf.d/*.conf;\n")
+		}
+		if needSites {
+			includes.WriteString("    include /etc/nginx/sites-enabled/*.conf;\n")
+		}
+		updated, err := insertIntoNginxHTTPBlock(content, includes.String())
+		if err != nil {
+			return false, err
+		}
+		if err := publishNginxMainConfigEdit(ctx, path, run, write, data, updated); err != nil {
+			return false, err
+		}
+		changed = true
+		if data, err = secureReadConfig(path); err != nil {
+			return true, fmt.Errorf("read nginx.conf after adding the includes: %w", err)
+		}
 	}
 
+	// alpha.113: the version nginx names in its Server header and error
+	// pages. Debian 13's nginx.conf already says server_tokens off; Ubuntu's
+	// has it commented out and Arch's does not have it, so nginx said
+	// "nginx/1.30.6". When nginx.conf has no active server_tokens line of its
+	// own, CelikPanel adds `server_tokens off;` to the http block; a line the
+	// owner wrote (on or off) is kept as it is. This is a hardening step: if
+	// nginx refuses it (for example another file already sets server_tokens
+	// in the http block) the previous nginx.conf is put back and readiness
+	// is not affected; the reason is logged.
+	if !nginxServerTokensSet(string(data)) {
+		updated, insertErr := insertIntoNginxHTTPBlock(string(data), nginxServerTokensBlock)
+		if insertErr == nil {
+			insertErr = publishNginxMainConfigEdit(ctx, path, run, write, data, updated)
+		}
+		if insertErr != nil {
+			log.Printf("nginx readiness: server_tokens off was not added to %s: %v", path, insertErr)
+		} else {
+			changed = true
+		}
+	}
+	return changed, nil
+}
+
+// nginxServerTokensBlock is what CelikPanel adds to an http block that has
+// no server_tokens line.
+const nginxServerTokensBlock = "\n    # Added by CelikPanel: nginx does not name its version in the Server header or on error pages.\n" +
+	"    server_tokens off;\n"
+
+var nginxActiveServerTokens = regexp.MustCompile(`(?m)^[ \t]*server_tokens[ \t]`)
+
+// nginxServerTokensSet says whether nginx.conf has an active (uncommented)
+// server_tokens line, whatever its value.
+func nginxServerTokensSet(content string) bool {
+	return nginxActiveServerTokens.MatchString(content)
+}
+
+// insertIntoNginxHTTPBlock adds text right after the opening of the http
+// block.
+func insertIntoNginxHTTPBlock(content, text string) (string, error) {
 	marker := "http {"
 	idx := strings.Index(content, marker)
 	if idx < 0 {
-		return false, errors.New("nginx.conf has no http block to extend")
-	}
-	var includes strings.Builder
-	includes.WriteString("\n    # Added by CelikPanel so the panel's drop-in configs are served.\n")
-	if needConfD {
-		includes.WriteString("    include /etc/nginx/conf.d/*.conf;\n")
-	}
-	if needSites {
-		includes.WriteString("    include /etc/nginx/sites-enabled/*.conf;\n")
+		return "", errors.New("nginx.conf has no http block to extend")
 	}
 	cut := idx + len(marker)
-	updated := content[:cut] + includes.String() + content[cut:]
+	return content[:cut] + text + content[cut:], nil
+}
 
+// publishNginxMainConfigEdit replaces nginx.conf with updated, validates and
+// reloads nginx; on any failure the original bytes are put back, validated
+// and reloaded, and the answer says how far that got.
+func publishNginxMainConfigEdit(
+	ctx context.Context,
+	path string,
+	run nginxReadyCommandRunner,
+	write nginxReadyConfigWriter,
+	data []byte,
+	updated string,
+) error {
 	rollback := func(reason string) error {
 		// Rollback is a safety operation, not ordinary request work. Once the
 		// replacement may have been published it must not be cancelled merely
@@ -195,13 +259,13 @@ func ensureNginxMainConfigWithWriter(
 		// assuming an error means that no bytes changed.
 		current, readErr := secureReadConfig(path)
 		if readErr == nil && bytes.Equal(current, data) {
-			return false, fmt.Errorf("write nginx.conf failed before publication: %w", writeErr)
+			return fmt.Errorf("write nginx.conf failed before publication: %w", writeErr)
 		}
 		reason := fmt.Sprintf("write nginx.conf may have published replacement bytes: %v", writeErr)
 		if readErr != nil {
 			reason = fmt.Sprintf("%s; current nginx.conf could not be verified: %v", reason, readErr)
 		}
-		return false, rollback(reason)
+		return rollback(reason)
 	}
 
 	if out, commandErr := run(ctx, "nginx", "-t"); commandErr != nil {
@@ -209,11 +273,11 @@ func ensureNginxMainConfigWithWriter(
 			"nginx rejected the updated config: %s",
 			firstLine(string(out)),
 		)
-		return false, rollback(reason)
+		return rollback(reason)
 	}
 	if out, commandErr := run(ctx, "systemctl", "reload", "nginx"); commandErr != nil {
 		reason := commandFailureDetail("nginx reload failed", out, commandErr)
-		return false, rollback(reason)
+		return rollback(reason)
 	}
-	return true, nil
+	return nil
 }

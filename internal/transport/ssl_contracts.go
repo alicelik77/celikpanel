@@ -58,6 +58,10 @@ const (
 	CertificateFailureTimeout = "timeout"
 	// certbot exited with an error that is none of the above.
 	CertificateFailureTool = "tool"
+	// The authority issued a certificate that this server's clock does not
+	// yet (or no longer) accept: the server's clock is far from the
+	// authority's. The certificate is not installed (alpha.113).
+	CertificateFailureServerClock = "server_clock"
 )
 
 type RenewCertRequest struct {
@@ -98,6 +102,13 @@ type ValidateCertResponse struct {
 	ExpiresAt    time.Time `json:"expires_at"`
 	DNSNames     []string  `json:"dns_names,omitempty"`
 	Error        string    `json:"error,omitempty"`
+	// NotYetValid and Expired say why a certificate that is otherwise read
+	// is not Valid by this server's clock, which read CheckedAt (alpha.113:
+	// a just-issued certificate whose NotBefore is a few seconds after this
+	// server's time is waited for, not discarded).
+	NotYetValid bool      `json:"not_yet_valid,omitempty"`
+	Expired     bool      `json:"expired,omitempty"`
+	CheckedAt   time.Time `json:"checked_at,omitempty"`
 }
 
 type InstallCertRequest struct {

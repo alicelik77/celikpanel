@@ -338,6 +338,11 @@ const (
 	SitePoolOperationTake     = "take"
 	SitePoolOperationRecreate = "recreate"
 	SitePoolOperationApply    = "apply"
+	// SitePoolOperationCreate writes the site's pool where none is (trigger
+	// "create"): a site that becomes a PHP site after it was created as
+	// another type (static, Node, proxy, forwarding). An existing pool is
+	// classified as for every other write; one the owner changed is kept.
+	SitePoolOperationCreate = "create"
 )
 
 // SitePoolValues are the process-manager settings CelikPanel renders into a

@@ -116,7 +116,10 @@ bir sunucuda hiçbir şey ölçülmedi).
    text/css stil dosyası). Her hatada dosya eski haline döner, sertifika kalır.
    Adı zaten yanıtlayan ya da 80/443'te açık bir genel adresi dinleyen başka bir
    sunucu bloğu dosyasıyla reddedilir; posta sertifikasının kendi 80 sunucusu
-   paylaşılabilir (o zaman `http://` 404 verir, söylenir). Sahibin değiştirdiği
+   paylaşılabilir (alpha.113: adres açıkken o sunucu `https://` adresine
+   yönlendirir, adres kaldırılınca yeniden 404 verir; doğrulama http üzerinden
+   erişilebilir kalır; sahibin değiştirdiği o sunucu olduğu gibi bırakılır,
+   söylenir). Sahibin değiştirdiği
    dosyalar asla üzerine yazılmaz ya da silinmez.
 4. **Roundcube'un kendi ayarları** (`use_https`, `session_samesite` Strict)
    yalnız CelikPanel biçimindeki yapılandırmasına eklenir; sahibin değiştirdiği

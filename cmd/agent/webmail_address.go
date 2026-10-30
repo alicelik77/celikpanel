@@ -75,6 +75,9 @@ const (
 var (
 	webmailAddressConfDir        = "/etc/nginx/conf.d"
 	webmailAddressLetsEncryptDir = "/etc/letsencrypt"
+	// webmailPanelACMEDir holds the port-80 server of a name whose
+	// certificate CelikPanel's own machinery renews (panelACMEVhostName).
+	webmailPanelACMEDir = "/etc/nginx/sites-available"
 )
 
 // webmailAddressOps are the host operations, replaced in tests.
@@ -821,9 +824,7 @@ func enableWebmailAddress(ctx context.Context, ops webmailAddressOps, rawHost, e
 		restore(resp.Error)
 		return
 	}
-	if !withHTTP {
-		resp.Warning = joinWarning(resp.Warning, fmt.Sprintf("port 80 for %s belongs to the mail certificate's check server, so http://%s/ answers 404 instead of redirecting; webmail opens with https://%s/", host, host, host))
-	}
+
 	// 3. Roundcube's own lines for its own origin (only in CelikPanel's
 	// form of its configuration; an owner-edited one is left as it is).
 	settings, settingsErr := ops.roundcubeSettings(true)
@@ -842,6 +843,13 @@ func enableWebmailAddress(ctx context.Context, ops webmailAddressOps, rawHost, e
 		return
 	}
 	resp.Enabled, resp.Proved = true, true
+	// 4b. The name's port 80 belongs to the mail certificate's check server:
+	// it now redirects to webmail's https (alpha.113; it answered 404).
+	if !withHTTP {
+		if err := setPanelACMERedirect(ctx, ops, host, true); err != nil {
+			resp.Warning = joinWarning(resp.Warning, fmt.Sprintf("port 80 for %s belongs to the mail certificate's check server, which was not changed (%v), so http://%s/ does not redirect; webmail opens with https://%s/", host, err, host, host))
+		}
+	}
 	// 5. Changing the address: the previous one goes only now.
 	if replace != "" && replace != host {
 		removed := removeWebmailAddress(ctx, ops, replace, false)
@@ -850,6 +858,67 @@ func enableWebmailAddress(ctx context.Context, ops webmailAddressOps, rawHost, e
 		}
 	}
 	return
+}
+
+// errPanelACMENotShared: the name has no port-80 server of CelikPanel's
+// certificate machinery; there is nothing to change.
+var errPanelACMENotShared = errors.New("no CelikPanel certificate check server for the name")
+
+var panelACMEChallengeRootLine = regexp.MustCompile(`(?m)^        root (/[^;\s]+);$`)
+
+// panelACMEFormOf reads a port-80 check server back into its form: the
+// challenge root and whether it redirects; ok is false for any text that is
+// not exactly one of CelikPanel's two forms (the owner changed it).
+func panelACMEFormOf(host, content string) (challengeRoot string, redirect, ok bool) {
+	m := panelACMEChallengeRootLine.FindStringSubmatch(content)
+	if m == nil {
+		return "", false, false
+	}
+	switch content {
+	case renderPanelACMEChallengeVhostForm(host, m[1], false):
+		return m[1], false, true
+	case renderPanelACMEChallengeVhostForm(host, m[1], true):
+		return m[1], true, true
+	}
+	return m[1], false, false
+}
+
+// webmailAddressSharesPanelACME says whether CelikPanel's webmail serves
+// HTTPS on host without a port-80 server of its own (it shares the mail
+// certificate's check server), read from webmail's address file.
+func webmailAddressSharesPanelACME(host string) bool {
+	content, err := os.ReadFile(webmailAddressConfPath(host))
+	if err != nil {
+		return false
+	}
+	form, managed := parseWebmailAddressConfig(host, string(content))
+	return managed && !form.pending && !form.withHTTP
+}
+
+// setPanelACMERedirect turns the name's shared port-80 check server into the
+// form that redirects to https (or back to 404). Only CelikPanel's own text
+// is changed; a file the owner changed is left as it is. nginx validates the
+// change and a refused one is put back.
+func setPanelACMERedirect(ctx context.Context, ops webmailAddressOps, host string, redirect bool) error {
+	path := filepath.Join(webmailPanelACMEDir, panelACMEVhostName(host)+".conf")
+	content, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		if redirect {
+			return errPanelACMENotShared
+		}
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	challengeRoot, current, ok := panelACMEFormOf(host, string(content))
+	if !ok {
+		return fmt.Errorf("%s was changed outside CelikPanel and is left as it is", path)
+	}
+	if current == redirect {
+		return nil
+	}
+	return applyWebmailNginxMutation(ctx, path, []byte(renderPanelACMEChallengeVhostForm(host, challengeRoot, redirect)), true, ops.run)
 }
 
 // webmailAddressRollbackError: nginx refused the change and the previous file
@@ -918,6 +987,11 @@ func removeWebmailAddress(ctx context.Context, ops webmailAddressOps, rawHost st
 		}
 	}
 	resp.Removed = true
+	// The name's shared port-80 server answers 404 again: nothing serves
+	// https for it any more.
+	if err := setPanelACMERedirect(ctx, ops, host, false); err != nil {
+		resp.Warning = joinWarning(resp.Warning, fmt.Sprintf("http://%s/ still redirects to https (%v); the mail certificate's check server keeps answering the check", host, err))
+	}
 	if len(webmailAddressHosts()) == 0 && ops.roundcubeSettings != nil {
 		if _, err := ops.roundcubeSettings(false); err != nil {
 			resp.Warning = fmt.Sprintf("CelikPanel's lines for the address stay in Roundcube's configuration (%v)", err)

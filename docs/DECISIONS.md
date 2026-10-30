@@ -264,8 +264,11 @@ candidate (not published; nothing measured on an installed server).
    policy, its stylesheet as text/css). Any failure puts the file back as it was
    and keeps the certificate. Another server block that already answers the name,
    or listens on an explicit public address on port 80 or 443, is refused with the
-   file; the mail certificate's own port-80 server may be shared (then `http://`
-   answers 404, said). Files the owner changed are never overwritten or removed.
+   file; the mail certificate's own port-80 server may be shared (alpha.113: that
+   server then redirects to `https://` while the address is enabled and answers
+   404 again when it is removed, the check staying reachable over http; one the
+   owner changed is left as it is, said). Files the owner changed are never
+   overwritten or removed.
 4. **Roundcube's own settings** for the origin (`use_https`, `session_samesite`
    Strict) are added only to its configuration in CelikPanel's form; an
    owner-edited configuration is left as it is and said. IMAP and SMTP stay local.
