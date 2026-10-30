@@ -457,6 +457,10 @@ type serverSetupPeerView struct {
 	// when the owner stopped waiting for it. On the backup, "reporting": ready
 	// here, the main DNS server not told yet. Empty otherwise.
 	PeerSetup string `json:"peer_setup,omitempty"`
+	// Inspection: the automatic deletion-check setup between the two
+	// servers (outcome or current wait), when this server keeps a record of
+	// it for its current join.
+	Inspection *serverSetupPeerInspectionView `json:"inspection,omitempty"`
 }
 
 type serverSetupPeerJoined struct {
@@ -513,6 +517,7 @@ func (p *Panel) serverSetupPeerState(ctx context.Context) (serverSetupPeerView, 
 		if link.Document.Prepared != nil {
 			view.Link.Imported = len(serverSetupImported(serverSetupDraft{ImportedRecords: link.Document.Prepared.ImportedRecords}))
 		}
+		p.serverSetupPeerInspectionViewInto(ctx, &view, link.RequestID, p.serverSetupIsBackupDNS(ctx))
 		return view, nil
 	}
 	var pending serverSetupLinkPending
@@ -546,6 +551,7 @@ func (p *Panel) serverSetupPeerState(ctx context.Context) (serverSetupPeerView, 
 		if err := p.serverSetupPeerSetupView(ctx, &view); err != nil {
 			return view, err
 		}
+		p.serverSetupPeerInspectionViewInto(ctx, &view, join.RequestID, p.serverSetupIsBackupDNS(ctx))
 		view.Joined = &serverSetupPeerJoined{ShortName: join.Peer.ShortName, IPv4: join.Peer.IPv4, JoinedAt: join.JoinedAt}
 		if join.Names != nil {
 			view.Joined.PanelDomain, view.Joined.MailHostname, view.Joined.MainDomainMail = join.Names.PanelDomain, join.Names.MailHostname, join.Names.Mail != nil

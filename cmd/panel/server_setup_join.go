@@ -987,7 +987,8 @@ func serverSetupPublicIPv6() string {
 // --- machine: the link ------------------------------------------------------
 
 func serverSetupLinkMachinePath(path string) bool {
-	return path == serverSetupJoinPath || path == serverSetupPeerNamesPath || path == serverSetupPeerDKIMPath || path == serverSetupPeerReadyPath
+	return path == serverSetupJoinPath || path == serverSetupPeerNamesPath || path == serverSetupPeerDKIMPath || path == serverSetupPeerReadyPath ||
+		path == serverSetupPeerInspectionPath
 }
 
 // serverSetupLinkMachineRequest has the remote DNS machine request's shape:
@@ -1040,6 +1041,10 @@ func (p *Panel) requireServerSetupLinkMachine(next http.Handler) http.Handler {
 			// the namespace its credential authenticates in is the record it
 			// acts on (review fix, items 1 and 3).
 			p.handleServerSetupPeerReadyLink(w, r)
+		case serverSetupPeerInspectionPath:
+			// The backup asks its main DNS server for the main's side of
+			// the deletion check (automatic peer inspection setup).
+			p.serveServerSetupLinkToMain(w, r, p.handleServerSetupPeerInspection)
 		}
 	})
 }

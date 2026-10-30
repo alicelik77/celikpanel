@@ -3071,6 +3071,24 @@ install -d -m 0755 "$PREFIX/bin" "$PREFIX/web"
 install -m 0755 "$SRC/bin/panel" "$PREFIX/bin/panel"
 install -m 0755 "$SRC/bin/agent" "$PREFIX/bin/agent"
 install -m 0644 "$SRC/bin/agent-native-contract.json" "$PREFIX/bin/agent-native-contract.json"
+# The verified release's offline DNS owner tools. Setup of a pair joined by
+# code copies the packaged inspector from here when it sets up the deletion
+# check on the backup (the owner tool's own secondary-install); the owner can
+# also run dns-peer-enroll from here (status, revoke) without the panel.
+# Historical releases have no such directory. Nothing is enrolled here.
+# Sahip araclari: eslesmede silme denetimi buradaki denetciyi kopyalar.
+if [[ -d "$SRC/dns-owner-tools" && ! -L "$SRC/dns-owner-tools" ]]; then
+    [[ ! -L "$PREFIX/dns-owner-tools" ]] || die "$PREFIX/dns-owner-tools is a symbolic link"
+    install -d -m 0755 "$PREFIX/dns-owner-tools"
+    for owner_tool in dns-peer-enroll bind-peer-inspect pdns-peer-inspect; do
+        if [[ -f "$SRC/dns-owner-tools/$owner_tool" && ! -L "$SRC/dns-owner-tools/$owner_tool" ]]; then
+            install -m 0755 "$SRC/dns-owner-tools/$owner_tool" "$PREFIX/dns-owner-tools/$owner_tool"
+        fi
+    done
+    if [[ -f "$SRC/dns-owner-tools/README.md" && ! -L "$SRC/dns-owner-tools/README.md" ]]; then
+        install -m 0644 "$SRC/dns-owner-tools/README.md" "$PREFIX/dns-owner-tools/README.md"
+    fi
+fi
 
 # Replace the exact fixed web root, including hidden entries and empty stale
 # directories. Canonical root-owned boundaries are proven before -delete runs.

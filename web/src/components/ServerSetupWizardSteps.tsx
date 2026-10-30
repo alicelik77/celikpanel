@@ -255,8 +255,20 @@ export interface SetupPeerView {
     // the second server reported its setup ready over the link.
     // On the backup, "reporting": ready here, the main not told yet.
     peer_setup?: 'pending' | 'ready' | 'retired' | 'reporting';
+    // The deletion check between the two servers, set up automatically by
+    // the backup over the setup link: its outcome or current wait.
+    inspection?: SetupPeerInspection;
 }
-const peerRecord = (item: unknown): item is Record<string, unknown> => !!item && typeof item === 'object' && !Array.isArray(item);
+export const setupPeerInspectionCodes = ['ready', 'existing', 'owner_conflict', 'revoked', 'inspector_unavailable', 'unsupported', 'link_ended', 'working',
+    'unreachable', 'main_agent', 'agent', 'main_pair', 'backup_pair', 'ssh_port', 'failed', 'ssh_unreachable', 'ssh_host_key_mismatch', 'ssh_auth_refused', 'ssh_credential'] as const;
+export interface SetupPeerInspection {
+    state: 'ready' | 'attention' | 'working';
+    code: typeof setupPeerInspectionCodes[number];
+    side?: 'main' | 'backup' | '';
+    vars?: { main?: string; backup?: string; ports?: string; reason?: string };
+    message: string;
+}
+const peerRecord =(item: unknown): item is Record<string, unknown> => !!item && typeof item === 'object' && !Array.isArray(item);
 const peerText = (value: unknown, limit = 253) => typeof value === 'string' && value.length <= limit;
 export function decodeSetupPeerView(value: unknown): SetupPeerView {
     const invalid = () => new Error('invalid peer state');
@@ -266,6 +278,16 @@ export function decodeSetupPeerView(value: unknown): SetupPeerView {
     if (joined !== undefined && (!peerRecord(joined) || !peerText(joined.ipv4, 64) || !peerText(joined.joined_at, 64))) throw invalid();
     if (value.changed !== undefined && typeof value.changed !== 'boolean') throw invalid();
     if (value.peer_setup !== undefined && !['pending', 'ready', 'retired', 'reporting'].includes(String(value.peer_setup))) throw invalid();
+    const inspection = value.inspection;
+    if (inspection !== undefined) {
+        // An unknown or malformed inspection line is left out, never invented.
+        const vars = peerRecord(inspection) ? inspection.vars : undefined;
+        const varsValid = vars === undefined || (peerRecord(vars) && Object.entries(vars).every(([key, item]) => ['main', 'backup', 'ports', 'reason'].includes(key) && peerText(item, 64)));
+        if (!peerRecord(inspection) || !['ready', 'attention', 'working'].includes(String(inspection.state)) || !(setupPeerInspectionCodes as readonly string[]).includes(String(inspection.code))
+            || (inspection.side !== undefined && !['main', 'backup', ''].includes(String(inspection.side))) || !varsValid || !peerText(inspection.message, 2000)) {
+            delete (value as Record<string, unknown>).inspection;
+        }
+    }
     if (link !== undefined && (!peerRecord(link) || !peerText(link.address) || !peerText(link.main_domain) || !['first', 'second'].includes(String(link.main_dns_server)) || !peerText(link.ns1) || !peerText(link.ns2)
         || !peerRecord(link.first) || !peerText(link.first.ipv4, 64) || !peerText(link.first.panel_domain) || typeof link.imported !== 'number')) throw invalid();
     return value as unknown as SetupPeerView;
@@ -280,7 +302,22 @@ function publicSetupIPv4(value: string): boolean {
     return !(a === 0 || a === 10 || a === 127 || a >= 224 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127));
 }
 
-type SetupConnectAnswer = { state: 'ok' | 'refused' | 'wrong_server' | 'unreachable' | 'unknown'; code?: string; attempts_left?: number; setup?: unknown };
+// The deletion check's line on either server's finished setup: the outcome
+// or the current wait, in this screen's language with the addresses the
+// server reported. Attention and waits stand out; "ready" is a quiet status.
+export function SetupPeerInspectionLine({ inspection }: { inspection: SetupPeerInspection }) {
+    const { t } = useSetupWizardI18n();
+    const vars = inspection.vars ?? {};
+    const side = inspection.side === 'main' || inspection.side === 'backup' ? t(`setup.v5.inspection.side.${inspection.side}` as TranslationKey) : '';
+    const text = t(`setup.v5.inspection.${inspection.code}` as TranslationKey, { main: vars.main ?? '', backup: vars.backup ?? '', ports: vars.ports ?? '', side });
+    const tone = inspection.state === 'ready' ? '' : 'rounded-lg border border-warning-mark/40 bg-warning-mark/10 p-3';
+    return <div role="status" className={`max-w-2xl space-y-1 text-sm leading-6 ${tone}`} data-setup-peer-inspection={inspection.code}>
+        <p className="font-medium">{t('setup.v5.inspection.title')}</p>
+        <p>{text}</p>
+    </div>;
+}
+
+type SetupConnectAnswer ={ state: 'ok' | 'refused' | 'wrong_server' | 'unreachable' | 'unknown'; code?: string; attempts_left?: number; setup?: unknown };
 
 // On the second server, before its setup starts: the first server's address
 // and code. The answer's state leads (D-024): refused names its reason; a
@@ -421,8 +458,12 @@ export function SetupJoinCard({ joinPending = true, finished = false }: { joinPe
     }
     if (finished) {
         const peerSetup = view?.peer_setup;
-        if (!peerSetup) return null;
-        if (peerSetup !== 'pending') return <p role="status" className="max-w-2xl text-sm leading-6" data-setup-peer-setup={peerSetup}>{t(peerSetup === 'ready' ? 'setup.v5.peerSetup.ready' : peerSetup === 'reporting' ? 'setup.v5.peerSetup.reporting' : 'setup.v5.peerSetup.retired', { server })}</p>;
+        const inspection = view?.inspection ? <SetupPeerInspectionLine inspection={view.inspection} /> : null;
+        if (!peerSetup) return inspection;
+        if (peerSetup !== 'pending') return <>
+            <p role="status" className="max-w-2xl text-sm leading-6" data-setup-peer-setup={peerSetup}>{t(peerSetup === 'ready' ? 'setup.v5.peerSetup.ready' : peerSetup === 'reporting' ? 'setup.v5.peerSetup.reporting' : 'setup.v5.peerSetup.retired', { server })}</p>
+            {inspection}
+        </>;
         return <section aria-labelledby="setup-peer-setup-title" className="max-w-3xl space-y-3" data-setup-peer-setup="pending">
             <h3 id="setup-peer-setup-title" className="sr-only">{t(joined?.short_name ? 'setup.v5.peerSetup.title' : 'setup.v5.peerSetup.titleUnnamed', { server })}</h3>
             <SetupLead title={t(joined?.short_name ? 'setup.v5.peerSetup.title' : 'setup.v5.peerSetup.titleUnnamed', { server })} why={t('setup.v5.peerSetup.why')} who={t('setup.v5.peerSetup.who', { server })} next={t('setup.v5.peerSetup.next', { server })} then={t('setup.v5.peerSetup.then')} />
@@ -434,6 +475,7 @@ export function SetupJoinCard({ joinPending = true, finished = false }: { joinPe
                         <Button type="button" variant="secondary" disabled={stopping === 'sending'} onClick={() => setStopping('idle')}>{t('setup.v5.peerSetup.keepWaiting')}</Button>
                     </div>
                 </div>}
+            {inspection}
             {remote.remote.state === 'unknown' && <p role="status" className="text-sm text-fg-muted">{t('setup.v5.card.readFailed')}</p>}
             {problem && <p role="alert" className="text-sm leading-6 text-danger">{problem}</p>}
         </section>;

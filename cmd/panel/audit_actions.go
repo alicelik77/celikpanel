@@ -157,6 +157,8 @@ var auditActionNames = []string{
 	"server.setup.mail_enrollment.continue",
 	"server.setup.peer_connected",
 	"server.setup.peer_dkim",
+	"server.setup.peer_inspection_activate",
+	"server.setup.peer_inspection_prepare",
 	"server.setup.peer_joined",
 	"server.setup.peer_names",
 	"server.setup.peer_names_changed",

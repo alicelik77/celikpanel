@@ -220,43 +220,9 @@ func (p *Panel) reportServerSetupReadyToMain(ctx context.Context, d serverSetupD
 	if !serverSetupDraftIsBackupDNS(d) {
 		return nil
 	}
-	role, err := p.serverSetupOwnLinkRole(ctx)
-	if err != nil {
+	target, bearer, joinRequestID, live, err := p.serverSetupLinkToMain(ctx)
+	if err != nil || !live {
 		return err
-	}
-	var target serverSetupLinkTarget
-	var bearer, joinRequestID string
-	switch role {
-	case serverSetupLinkRoleSecond:
-		link, err := p.readServerSetupLink(ctx)
-		if err != nil || link == nil || link.LinkCredential == "" {
-			return err
-		}
-		target, bearer, joinRequestID = link.target(), link.bearer(), link.RequestID
-	case serverSetupLinkRoleFirst:
-		var join serverSetupJoinRecord
-		found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join)
-		if err != nil || !found || join.PeerCredential == "" {
-			return err
-		}
-		execution, err := p.latestServerSetupExecution(ctx)
-		if err != nil || execution == nil {
-			return err
-		}
-		plan, err := p.loadServerSetupPlan(ctx, execution.PlanID)
-		if err != nil {
-			return err
-		}
-		target, bearer, err = p.serverSetupPeerTarget(ctx, plan, execution.ID)
-		if errors.Is(err, errServerSetupPeerLinkRevoked) {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		joinRequestID = join.RequestID
-	default:
-		return nil
 	}
 	var answer struct {
 		State string `json:"state"`
@@ -279,11 +245,61 @@ func (p *Panel) reportServerSetupReadyToMain(ctx context.Context, d serverSetupD
 	}
 }
 
+// serverSetupLinkToMain is the backup's live link to its main DNS server in
+// either role: where to call, its bearer and the join both servers share.
+// live is false when this server keeps no live side of a link (nothing to
+// send).
+func (p *Panel) serverSetupLinkToMain(ctx context.Context) (target serverSetupLinkTarget, bearer, joinRequestID string, live bool, err error) {
+	role, err := p.serverSetupOwnLinkRole(ctx)
+	if err != nil {
+		return target, "", "", false, err
+	}
+	switch role {
+	case serverSetupLinkRoleSecond:
+		link, err := p.readServerSetupLink(ctx)
+		if err != nil || link == nil || link.LinkCredential == "" {
+			return target, "", "", false, err
+		}
+		return link.target(), link.bearer(), link.RequestID, true, nil
+	case serverSetupLinkRoleFirst:
+		var join serverSetupJoinRecord
+		found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join)
+		if err != nil || !found || join.PeerCredential == "" {
+			return target, "", "", false, err
+		}
+		execution, err := p.latestServerSetupExecution(ctx)
+		if err != nil || execution == nil {
+			return target, "", "", false, err
+		}
+		plan, err := p.loadServerSetupPlan(ctx, execution.PlanID)
+		if err != nil {
+			return target, "", "", false, err
+		}
+		target, bearer, err = p.serverSetupPeerTarget(ctx, plan, execution.ID)
+		if errors.Is(err, errServerSetupPeerLinkRevoked) {
+			return target, "", "", false, nil
+		}
+		if err != nil {
+			return target, "", "", false, err
+		}
+		return target, bearer, join.RequestID, true, nil
+	}
+	return target, "", "", false, nil
+}
+
 // handleServerSetupPeerReadyLink authenticates the report in whichever
 // namespace its credential is live, and answers an ended link with its own
 // code for exactly the credential that link accepted, from its joined
 // address. Anything else is the ordinary refusal.
 func (p *Panel) handleServerSetupPeerReadyLink(w http.ResponseWriter, r *http.Request) {
+	p.serveServerSetupLinkToMain(w, r, p.handleServerSetupPeerReady)
+}
+
+// serveServerSetupLinkToMain authenticates a backup's request to its main DNS
+// server in whichever namespace its credential is live, and answers an ended
+// link with its own code for exactly the credential that link accepted, from
+// its joined address. Anything else is the ordinary refusal.
+func (p *Panel) serveServerSetupLinkToMain(w http.ResponseWriter, r *http.Request, handle func(http.ResponseWriter, *http.Request, string)) {
 	id, credential, ok := serverSetupLinkBearer(r)
 	if !ok {
 		writeServerSetupLinkUnauthorized(w)
@@ -298,7 +314,7 @@ func (p *Panel) handleServerSetupPeerReadyLink(w http.ResponseWriter, r *http.Re
 		writeServerSetupLinkUnauthorized(w)
 		return
 	}
-	p.handleServerSetupPeerReady(w, r, role)
+	handle(w, r, role)
 }
 
 // handleServerSetupPeerReady (main DNS server): the backup's report, on the
