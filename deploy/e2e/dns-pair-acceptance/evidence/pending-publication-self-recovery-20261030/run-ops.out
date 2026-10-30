@@ -1,0 +1,92 @@
+== pending publication on ppub-a, zones ppz1.test ppz2.test 14:54:58
+-- 1. zone add: two DNS-only domains 14:54:58
+200 {}
+   message: 
+   192.0.3.82 ppz1.test SOA = 'ns1.ppl.test. hostmaster.ppz1.test. 2026103001 10800 3600 604800 3600' after 1s
+   192.0.3.83 ppz1.test SOA = 'ns1.ppl.test. hostmaster.ppz1.test. 2026103001 10800 3600 604800 3600' after 0s
+200 {}
+   message: 
+   192.0.3.82 ppz2.test SOA = 'ns1.ppl.test. hostmaster.ppz2.test. 2026103001 10800 3600 604800 3600' after 0s
+   192.0.3.83 ppz2.test SOA = 'ns1.ppl.test. hostmaster.ppz2.test. 2026103001 10800 3600 604800 3600' after 0s
+   domain ids: ppz1.test=1 ppz2.test=2
+pair_ready True pending_zone_count 0 pending_publications []
+-- 2. the backup cannot reach the main's DNS port; a record change on ppz1.test 14:55:10
+nft: 2 drop rule(s)
+409 {"code": "DNS_PUBLICATION_FAILED", "reason": "dns_peer_catching_up"}
+   message: The DNS change is saved and in effect on this server, but the backup DNS server has not caught up with it yet: it did not confirm the change within its check time (it may be restarting, offline or briefly unreachable). Nobody needs to do anything: CelikPanel re-checks this same publication by itself, first after about 15 seconds and then less often (at most every 5 minutes), and completes it as soon as the backup has caught up; Server → DNS and peer servers shows the next check. Until then other DNS changes wait for it. If this lasts, the server administrator checks that the backup DNS server is running and reachable from this server on TCP port 53.
+   answered after 19s
+   192.0.3.82 late.ppz1.test A = '192.0.2.88' after 0s
+   backup: late.ppz1.test A = '' (not caught up)
+   DNS card:
+pair_ready False pending_zone_count 1 pending_publications [{"automatic": true, "next_check_at": "2026-10-30T14:55:28Z", "zone": "ppz1.test"}]
+-- 3. the backup's DNS service stops too; a change to ppz2.test 14:55:30
+   stop-pdns 3 inactive
+409 {"code": "DNS_PUBLICATION_HELD", "reason": "dns_peer_catching_up", "vars": {"zone": "ppz1.test"}}
+   message: The change is saved on this server but not published yet: an earlier DNS change to ppz1.test is waiting for the backup DNS server to catch up, and DNS changes are published one at a time. Nobody needs to do anything: CelikPanel re-checks the earlier change by itself and then publishes this one too; Server → DNS and peer servers shows the next check. DNS keeps answering with the published records meanwhile. If this lasts, the server administrator checks that the backup DNS server is running and reachable from this server on TCP port 53.
+   answered after 17s
+   saved on the main: True
+   main serves held.ppz2.test TXT: ''
+   DNS card:
+pair_ready False pending_zone_count 2 pending_publications [{"automatic": true, "next_check_at": "2026-10-30T14:56:14Z", "reason": "dns_peer_catching_up", "zone": "ppz1.test"}]
+   the backup stays down 90 s; the panel re-checks by itself meanwhile
+pair_ready False pending_zone_count 2 pending_publications [{"automatic": true, "next_check_at": "2026-10-30T14:57:41Z", "reason": "dns_peer_catching_up", "zone": "ppz1.test"}]
+-- 4. the backup comes back; no owner action from here 14:57:19
+   start-pdns 0 active
+nft: 0 drop rule(s)
+   14:57:21 pair_ready False pending_zone_count 2 pending_publications [{"automatic": true, "next_check_at": "2026-10-30T14:57:41Z", "reason": "dns_peer_catching_up", "zone": "ppz1.test"}]
+   pending publication cleared after 33s: pair_ready True pending_zone_count 0 pending_publications []
+   192.0.3.83 late.ppz1.test A = '192.0.2.88' after 0s
+   192.0.3.82 held.ppz2.test TXT = '"held-change"' after 1s
+   192.0.3.83 held.ppz2.test TXT = '"held-change"' after 0s
+   main panel and agent log:
+-- panel
+2026-10-30T14:55:29+00:00 mainpd panel[21834]: 2026/10/30 14:55:29 [409][dns] publish zone ppz1.test: DNS zone V3 paired propagation recovery is deferred: DNS zone publication is waiting for exact paired propagation recovery
+2026-10-30T14:55:47+00:00 mainpd panel[21834]: 2026/10/30 14:55:47 DNS change held behind pending publication ppz1.test: DNS zone V3 paired propagation recovery is deferred: DNS zone publication is waiting for exact paired propagation recovery
+2026-10-30T14:55:47+00:00 mainpd panel[21834]: 2026/10/30 14:55:47 [409][dns] publish zone ppz2.test: DNS publication is held behind the pending publication of ppz1.test
+2026-10-30T14:56:34+00:00 mainpd panel[21834]: 2026/10/30 14:56:34 pending DNS publication ppz1.test still waits (reason=dns_peer_catching_up); next automatic re-check in 1m7s
+2026-10-30T14:57:46+00:00 mainpd panel[21834]: 2026/10/30 14:57:46 pending DNS publication ppz1.test completed by its automatic re-check (exact=true)
+2026-10-30T14:57:50+00:00 mainpd panel[21834]: 2026/10/30 14:57:50 held DNS change for ppz2.test published after the earlier publication completed
+-- agent
+2026-10-30T14:51:33+00:00 mainpd agent[10138]: 2026/10/30 14:51:33 Panel certificate activation remains pending: open trusted panel TLS directory: no such file or directory
+2026-10-30T14:54:10+00:00 mainpd agent[10138]: 2026/10/30 14:54:10 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-10-30T14:54:12+00:00 mainpd agent[10138]: 2026/10/30 14:54:12 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-10-30T14:54:13+00:00 mainpd agent[10138]: 2026/10/30 14:54:13 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-10-30T14:54:41+00:00 mainpd agent[10138]: 2026/10/30 14:54:41 Panel certificate activation remains pending: connect to panel TLS listener: dial tcp 127.0.0.1:2083: connect: connection refused
+2026-10-30T14:54:51+00:00 mainpd agent[10138]: 2026/10/30 14:54:51 peer inspection setup: pdns enrollment active for peer 192.0.3.83
+2026-10-30T14:55:07+00:00 mainpd agent[10138]: 2026/10/30 14:55:07 DNS peer proof admitted the PowerDNS daemon's re-stamp of catalog catalog-c0000352.celikpanel.invalid (operation zone ppz2.test): serial 1793372050 -> 1793372107, CATALOG-HASH 47DEQpj8HBSa... -> 5ZQIwkrqRcRv..., identity, members and member serials unch
+2026-10-30T14:55:29+00:00 mainpd agent[10138]: 2026/10/30 14:55:29 pdns zone publication remains pending for ppz1.test at epoch 1: paired DNS primary propagation did not converge (check=catalog_pair)
+2026-10-30T14:55:29+00:00 mainpd agent[10138]: dns_peer_catching_up
+2026-10-30T14:55:30+00:00 mainpd agent[10138]: 2026/10/30 14:55:30 pdns primary pair readiness proof failed: DNS catalog member did not converge on the peer
+2026-10-30T14:55:31+00:00 mainpd agent[10138]: 2026/10/30 14:55:31 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-10-30T14:55:47+00:00 mainpd agent[10138]: 2026/10/30 14:55:47 DNS zone V3 recovery remains pending for ppz1.test: paired DNS primary propagation did not converge (check=catalog_pair)
+2026-10-30T14:55:47+00:00 mainpd agent[10138]: dns_peer_catching_up
+2026-10-30T14:55:48+00:00 mainpd agent[10138]: 2026/10/30 14:55:48 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-10-30T14:56:34+00:00 mainpd agent[10138]: 2026/10/30 14:56:34 DNS zone V3 recovery remains pending for ppz1.test: paired DNS primary propagation did not converge (check=catalog_pair)
+2026-10-30T14:56:34+00:00 mainpd agent[10138]: dns_peer_catching_up
+2026-10-30T14:57:19+00:00 mainpd agent[10138]: 2026/10/30 14:57:19 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-10-30T14:57:21+00:00 mainpd agent[10138]: 2026/10/30 14:57:21 pdns primary pair readiness proof failed: DNS catalog member did not converge on the peer
+2026-10-30T14:57:31+00:00 mainpd agent[10138]: 2026/10/30 14:57:31 pdns primary pair readiness proof failed: DNS catalog member did not converge on the peer
+2026-10-30T14:57:42+00:00 mainpd agent[10138]: 2026/10/30 14:57:42 pdns primary pair readiness proof failed: DNS catalog member did not converge on the peer
+-- 5. zone delete (ppz1.test) 14:57:54
+200 {"status": "deleted"}
+   message: 
+   192.0.3.82 ppz1.test SOA after deletion: status: REFUSED (1s)
+   192.0.3.83 ppz1.test SOA after deletion: status: REFUSED (0s)
+   domain list still names it: no
+2026-10-30T14:57:42+00:00 mainpd agent[10138]: 2026/10/30 14:57:42 pdns primary pair readiness proof failed: DNS catalog member did not converge on the peer
+2026-10-30T14:58:09+00:00 mainpd agent[10138]: 2026/10/30 14:58:09 DNS peer proof admitted the PowerDNS daemon's re-stamp of catalog catalog-c0000352.celikpanel.invalid (operation zone ppz1.test): serial 1793372108 -> 1793372288, CATALOG-HASH 5ZQIwkrqRcRv... -> PVfmo3OGXpGF..., identity, members and member serials unch
+2026-10-30T14:58:13+00:00 mainpd agent[10138]: 2026/10/30 14:58:13 DNS peer inspector answer for ppz1.test (PowerDNS secondary): catalog_state=transferred member_state=absent native_state=unloaded; accepted
+2026-10-30T14:58:14+00:00 mainpd agent[10138]: 2026/10/30 14:58:14 DNS peer proof for ppz1.test (PowerDNS secondary) step times: prepare=1.344s challenge_write=5.331s exchange=319ms post_inspection=2.58s consume=6.502s; total 16.075s; outcome verified
+-- 6. a DNS change after the deletion 14:58:15
+200 {"success": true}
+   message: 
+   192.0.3.82 afterdelete.ppl.test TXT = '"published"' after 0s
+   192.0.3.83 afterdelete.ppl.test TXT = '"published"' after 0s
+pair_ready True pending_zone_count 0 pending_publications []
+-- setup state of both servers 14:58:20
+succeeded complete null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-verify=succeeded
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-verify=succeeded
+== done 14:58:20
+OPS EXIT 0

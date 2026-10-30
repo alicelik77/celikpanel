@@ -19,6 +19,7 @@ import {
     DNS_ENGINE_IDS,
     decodeDNSEngineSnapshot,
     decodeDNSEngineSwitchPreview,
+    pendingPublicationText,
     type DNSEngineEntry,
     type DNSEngineID,
     type DNSEngineOperation,
@@ -1105,6 +1106,19 @@ export function DNSEngineCard({
                                 </span>
                             )}
                         </div>
+
+                        {!loadError && snapshot.pending_publications && snapshot.pending_publications.length > 0 && (
+                            // Which publication waits, why, who acts and the
+                            // next automatic re-check (read from the server).
+                            <div className="mt-3 space-y-1 rounded-lg border border-border bg-surface-2/40 px-3 py-2 text-sm leading-6" data-testid="dns-pending-publications">
+                                {snapshot.pending_publications.map((pending) => (
+                                    <p key={pending.zone} className="text-fg" data-testid="dns-pending-publication">
+                                        {pendingPublicationText(pending, et, locale)}
+                                    </p>
+                                ))}
+                                <p className="text-fg-muted">{et('dnsEngine.pendingPublication.held')}</p>
+                            </div>
+                        )}
 
                         {dnsEngineOwnerChanged(snapshot) && (
                             // The overview says the same notice (one code, one text).

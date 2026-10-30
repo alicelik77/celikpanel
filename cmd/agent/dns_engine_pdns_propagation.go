@@ -406,14 +406,29 @@ func completeDNSV3PrimaryPropagationWithNativeAt(
 		}
 		select {
 		case <-proofCtx.Done():
+			// The backup did not serve this server's current catalog within
+			// the wave while this server's own catalog matched: it is
+			// offline, unreachable, restarting or still transferring. That
+			// is a reviewed, transient cause the Panel re-checks by itself
+			// (dns_peer_catching_up); it was carried with no code before
+			// (2026-10-30 pending-publication fix). A local mismatch stays
+			// unclassified.
+			// Yedek, dalga süresinde güncel kataloğa yetişmedi: geçici neden.
 			if plan.Changed.Delete {
 				reason := fmt.Errorf("paired DNS deletion is unverified (check=%s); the peer administrator must check native zone state and DNS access, then retry verification of the same operation", check)
 				if check == dnsV3ProofNativePeer && nativePending != nil {
 					return errors.Join(reason, nativePending)
 				}
+				if check == dnsV3ProofCatalogPair && isDNSPeerBehind(err) {
+					return errors.Join(reason, pendingDNSPeerCause(transport.DNSPeerPendingCatchingUp, reason))
+				}
 				return reason
 			}
-			return fmt.Errorf("paired DNS primary propagation did not converge (check=%s)", check)
+			reason := fmt.Errorf("paired DNS primary propagation did not converge (check=%s)", check)
+			if check == dnsV3ProofCatalogPair && isDNSPeerBehind(err) {
+				return errors.Join(reason, pendingDNSPeerCause(transport.DNSPeerPendingCatchingUp, reason))
+			}
+			return reason
 		case <-time.After(250 * time.Millisecond):
 		}
 	}

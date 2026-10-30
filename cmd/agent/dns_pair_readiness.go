@@ -29,6 +29,23 @@ type dnsPrimaryCatalogEvidence struct {
 	CatalogHash string
 }
 
+// dnsPeerBehindError marks a pair-proof failure observed on the peer (the
+// backup) while this server's own catalog matched its evidence: the peer is
+// offline, unreachable, restarting or has not transferred the current catalog
+// or member serials yet. The text is unchanged and product-authored; the type
+// lets the publication wave report the reviewed, transient
+// dns_peer_catching_up reason (2026-10-30).
+type dnsPeerBehindError struct{ msg string }
+
+func (e *dnsPeerBehindError) Error() string { return e.msg }
+
+func dnsPeerBehind(msg string) error { return &dnsPeerBehindError{msg: msg} }
+
+func isDNSPeerBehind(err error) bool {
+	var behind *dnsPeerBehindError
+	return errors.As(err, &behind)
+}
+
 type dnsPeerAXFRAuthority struct {
 	sourceIP      string
 	peerIP        string
@@ -83,23 +100,23 @@ func verifyDNSPrimaryPairReadyAuthorityAt(
 	)
 	if err != nil {
 		return dnsPeerAXFRAuthority{},
-			errors.New("DNS peer catalog AXFR is unavailable")
+			dnsPeerBehind("DNS peer catalog AXFR is unavailable")
 	}
 	if peerLive.Serial != evidence.Serial ||
 		!slices.Equal(peerLive.Members, members) {
 		return dnsPeerAXFRAuthority{},
-			errors.New("DNS peer catalog differs from the primary")
+			dnsPeerBehind("DNS peer catalog differs from the primary")
 	}
 	peerCatalogSerial, err := exactDNSZoneSerialAtWithProbe(
 		proofCtx, evidence.PeerIP, evidence.Domain, soa,
 	)
 	if err != nil {
 		return dnsPeerAXFRAuthority{},
-			errors.New("DNS peer catalog SOA is unavailable")
+			dnsPeerBehind("DNS peer catalog SOA is unavailable")
 	}
 	if peerCatalogSerial != evidence.Serial {
 		return dnsPeerAXFRAuthority{},
-			errors.New("DNS peer catalog SOA serial differs from the primary")
+			dnsPeerBehind("DNS peer catalog SOA serial differs from the primary")
 	}
 	for index, member := range members {
 		localSerial, localErr := exactDNSZoneSerialAtWithProbe(
@@ -109,10 +126,13 @@ func verifyDNSPrimaryPairReadyAuthorityAt(
 			proofCtx, evidence.PeerIP, member, soa,
 		)
 		expectedSerial := evidence.MemberSerials[index]
-		if localErr != nil || peerErr != nil ||
-			localSerial != expectedSerial || peerSerial != expectedSerial {
+		if localErr != nil || localSerial != expectedSerial {
 			return dnsPeerAXFRAuthority{},
 				errors.New("DNS catalog member did not converge on the peer")
+		}
+		if peerErr != nil || peerSerial != expectedSerial {
+			return dnsPeerAXFRAuthority{},
+				dnsPeerBehind("DNS catalog member did not converge on the peer")
 		}
 	}
 	return dnsPeerAXFRAuthority{
@@ -150,14 +170,14 @@ func verifyDNSLegacyPrimaryPairReadyAuthorityAt(
 	if err != nil || peerLive.Serial != evidence.Serial ||
 		!slices.Equal(peerLive.Members, members) {
 		return dnsPeerAXFRAuthority{},
-			errors.New(`legacy DNS peer catalog AXFR differs from durable evidence`)
+			dnsPeerBehind(`legacy DNS peer catalog AXFR differs from durable evidence`)
 	}
 	peerCatalogSerial, err := exactDNSZoneSerialAtWithProbe(
 		proofCtx, evidence.PeerIP, evidence.Domain, soa,
 	)
 	if err != nil || peerCatalogSerial != evidence.Serial {
 		return dnsPeerAXFRAuthority{},
-			errors.New(`legacy DNS peer catalog SOA differs from durable evidence`)
+			dnsPeerBehind(`legacy DNS peer catalog SOA differs from durable evidence`)
 	}
 	for index, member := range members {
 		localSerial, localErr := exactDNSZoneSerialAtWithProbe(
@@ -167,10 +187,13 @@ func verifyDNSLegacyPrimaryPairReadyAuthorityAt(
 			proofCtx, evidence.PeerIP, member, soa,
 		)
 		expectedSerial := evidence.MemberSerials[index]
-		if localErr != nil || peerErr != nil ||
-			localSerial != expectedSerial || peerSerial != expectedSerial {
+		if localErr != nil || localSerial != expectedSerial {
 			return dnsPeerAXFRAuthority{},
 				errors.New(`legacy DNS catalog member did not converge on the peer`)
+		}
+		if peerErr != nil || peerSerial != expectedSerial {
+			return dnsPeerAXFRAuthority{},
+				dnsPeerBehind(`legacy DNS catalog member did not converge on the peer`)
 		}
 	}
 	return dnsPeerAXFRAuthority{

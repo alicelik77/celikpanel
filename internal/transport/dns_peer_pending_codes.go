@@ -2,8 +2,9 @@ package transport
 
 import "strings"
 
-// These codes describe why an exact, locally committed BIND V3 deletion is
-// awaiting peer verification. They are observations, never proof of absence.
+// These codes describe why an exact, locally committed V3 publication (BIND or
+// PowerDNS; a deletion for every code except dns_peer_catching_up, which also
+// covers additions and record changes) is awaiting peer verification. They are observations, never proof of absence.
 const (
 	DNSPeerPendingEnrollmentRequired = "dns_peer_enrollment_required"
 	DNSPeerPendingEnrollmentChanged  = "dns_peer_enrollment_changed"
@@ -27,6 +28,14 @@ const (
 	// answer was accepted. Nothing was changed on either server and nothing
 	// was consumed; the same publication is retried as a new attempt.
 	DNSPeerPendingProofTimeout = "dns_peer_proof_timeout"
+	// DNSPeerPendingCatchingUp: the change is applied on this server, but
+	// within the propagation check's time the backup (secondary) did not
+	// serve this server's current catalog and member serials: it is offline,
+	// unreachable, restarting or still transferring. Nothing needs to be
+	// undone; re-checking the same accepted publication completes it once the
+	// backup has caught up. Applies to additions, record changes and
+	// deletions alike.
+	DNSPeerPendingCatchingUp = "dns_peer_catching_up"
 )
 
 // Reviewed reasons the owner-enrolled secondary inspector may report for an
@@ -180,7 +189,8 @@ func validDNSPeerPendingReason(code string) bool {
 		DNSPeerPendingOwnerEditUnknown,
 		DNSPeerPendingCatalogTransferRefused,
 		DNSPeerPendingProofInternal,
-		DNSPeerPendingProofTimeout:
+		DNSPeerPendingProofTimeout,
+		DNSPeerPendingCatchingUp:
 		return true
 	default:
 		return false

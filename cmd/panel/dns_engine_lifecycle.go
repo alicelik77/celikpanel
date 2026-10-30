@@ -38,6 +38,31 @@ func writeDNSEngineWorkflowRequired(w http.ResponseWriter) {
 	)
 }
 
+// requireDNSPublisherOrHeldChange gates a zone's record and zone changes.
+// While an exact publication is pending on a paired main, its backup usually
+// has not caught up, so the pair is not ready: the change is then saved and
+// published as soon as the earlier publication completes (one bounded attempt
+// to complete it is made when this change is published), instead of being
+// refused with "nothing was changed" (2026-10-30). Without a pending
+// publication the gate is requireActiveDNSPublisherForMutation unchanged.
+// Bir yayın beklerken eşli birincilde değişiklik kaydedilir, sonra yayımlanır.
+func (p *Panel) requireDNSPublisherOrHeldChange(
+	w http.ResponseWriter,
+	ctx context.Context,
+) bool {
+	identity, ready, err := p.activeDNSPublisher(ctx)
+	if err == nil && ready {
+		return true
+	}
+	if err == nil && identity.PairRole == transport.DNSPairRolePrimary {
+		if leases, listErr := listDNSZoneEngineLeases(ctx, p.db.GetDB()); listErr == nil && len(leases) > 0 {
+			return true
+		}
+	}
+	_, ok := p.requireActiveDNSPublisherForMutation(w, ctx)
+	return ok
+}
+
 func (p *Panel) requireActiveDNSPublisherForMutation(
 	w http.ResponseWriter,
 	ctx context.Context,

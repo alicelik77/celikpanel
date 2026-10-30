@@ -1,3 +1,5 @@
+import type { DNSEngineCopyKey } from '../i18n/dnsEngine';
+
 export const DNS_ENGINE_IDS = ['pdns', 'bind'] as const;
 export type DNSEngineID = (typeof DNS_ENGINE_IDS)[number];
 
@@ -65,9 +67,65 @@ export interface DNSEngineSnapshot {
     dnssec_zone_count: number;
     zone_count: number;
     pending_zone_count: number;
+    // Exact publications waiting to complete (additive; an older Panel omits
+    // it). Malformed items are dropped, never guessed.
+    pending_publications?: DNSPendingPublication[];
     operation_id?: string;
     operation?: DNSEngineOperation;
     engines: DNSEngineEntry[];
+}
+
+// One pending publication: the zone, the reviewed reason, whether CelikPanel
+// re-checks it by itself and when next.
+export interface DNSPendingPublication {
+    zone: string;
+    reason?: string;
+    detail?: string;
+    automatic: boolean;
+    next_check_at?: string;
+}
+
+const pendingPublicationToken = /^[a-z0-9_]{1,64}$/;
+const pendingPublicationZone = /^[a-z0-9.-]{1,253}$/;
+
+export function decodeDNSPendingPublications(value: unknown): DNSPendingPublication[] | undefined {
+    if (!Array.isArray(value)) return undefined;
+    const result: DNSPendingPublication[] = [];
+    for (const item of value.slice(0, 5)) {
+        if (!isRecord(item) || typeof item.zone !== 'string' || !pendingPublicationZone.test(item.zone)
+            || typeof item.automatic !== 'boolean') continue;
+        const entry: DNSPendingPublication = { zone: item.zone, automatic: item.automatic };
+        if (typeof item.reason === 'string' && pendingPublicationToken.test(item.reason)) entry.reason = item.reason;
+        if (typeof item.detail === 'string' && pendingPublicationToken.test(item.detail)) entry.detail = item.detail;
+        if (typeof item.next_check_at === 'string' && !Number.isNaN(Date.parse(item.next_check_at))) {
+            entry.next_check_at = item.next_check_at;
+        }
+        result.push(entry);
+    }
+    return result.length > 0 ? result : undefined;
+}
+
+// pendingPublicationText says why an exact DNS publication waits, who acts and
+// when CelikPanel checks it again by itself (D-024). A cause that needs a
+// person names the domain's page; none of the server's internal codes is shown.
+// Bekleyen yayının nedeni, kimin işlem yapacağı ve bir sonraki kendiliğinden
+// denetim; sunucunun iç kodları gösterilmez.
+export function pendingPublicationText(
+    pending: DNSPendingPublication,
+    text: (key: DNSEngineCopyKey, vars?: Record<string, string | number>) => string,
+    locale: string,
+): string {
+    if (!pending.automatic) return text('dnsEngine.pendingPublication.owner', { zone: pending.zone });
+    const next = pending.next_check_at ? new Date(pending.next_check_at) : null;
+    const time = next && !Number.isNaN(next.getTime())
+        ? next.toLocaleTimeString(locale === 'tr' ? 'tr-TR' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        : '';
+    if (pending.reason === 'dns_peer_catching_up' && time) {
+        return text('dnsEngine.pendingPublication.catchingUp', { zone: pending.zone, time });
+    }
+    return time
+        ? text('dnsEngine.pendingPublication.automatic', { zone: pending.zone, time })
+        : text('dnsEngine.pendingPublication.automaticSoon', { zone: pending.zone });
 }
 
 // The action set is the API's, not the UI's wish list. Every action the panel
@@ -382,6 +440,7 @@ export function decodeDNSEngineSnapshot(value: unknown): DNSEngineSnapshot | nul
     if (activePair && value.pair_role === 'secondary' && value.pair_ready !== false) return null;
     if (value.secondary_ready !== undefined
         && (!activePair || value.pair_role !== 'secondary' || value.pair_ready === true)) return null;
+    const pendingPublications = decodeDNSPendingPublications(value.pending_publications);
 
     return {
         revision: value.revision,
@@ -397,6 +456,7 @@ export function decodeDNSEngineSnapshot(value: unknown): DNSEngineSnapshot | nul
         dnssec_zone_count: value.dnssec_zone_count,
         zone_count: value.zone_count,
         pending_zone_count: value.pending_zone_count,
+        ...(pendingPublications ? { pending_publications: pendingPublications } : {}),
         ...(typeof value.operation_id === 'string' ? { operation_id: value.operation_id } : {}),
         ...(operation ? { operation } : {}),
         engines,
