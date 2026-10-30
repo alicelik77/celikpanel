@@ -300,11 +300,21 @@ export function DomainFileManager({ domainId, readOnly = false }: DomainFileMana
                 </div>
             )}
 
+            {/* A folder that does not exist says so and offers the way back
+                to the web folder; it is not shown as an unreadable one.
+                Olmayan klasör bunu söyler ve web klasörüne dönüş yolunu sunar. */}
+            {listing.remote.state === 'unknown' && listing.remote.reason.code === 'FILE_NOT_FOUND' && currentPath !== '/' && (
+                <div className="mb-3">
+                    <Button onClick={() => setCurrentPath('/')}>{t('files.backToRoot')}</Button>
+                </div>
+            )}
             {/* File table */}
             <RemoteGate
                 remote={listing.remote}
                 checking={t('files.checking')}
-                failed={t('files.unknown')}
+                failed={listing.remote.state === 'unknown' && listing.remote.reason.code?.startsWith('FILE_')
+                    ? apiErrorText(listing.remote.reason, t, 'files.unknown')
+                    : t('files.unknown')}
                 onRetry={loadFiles}
                 busy={listing.reading}
                 className="py-3"

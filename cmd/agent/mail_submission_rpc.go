@@ -180,15 +180,28 @@ service auth {
 	}
 
 	postfixMayHaveChanged = true
-	// Master.cf via postconf -M/-P: idempotent, no hand-editing.
-	// Master.cf, postconf -M/-P ile: idempotent, elle düzenleme yok.
-	if out, err := runMailTLSMutationCommand(ctx, "postconf", "-M",
-		"submission/inet=submission inet n - y - - smtpd"); err != nil {
-		return fail(rollback(mailSubmissionCommandError(ctx, "postconf -M submission", out, err), false))
+	// Master.cf via postconf -M/-P: idempotent, no hand-editing. The chroot
+	// field follows the distribution's own smtp service (D3,
+	// mail_submission_chroot.go); an entry the server owner changed is kept
+	// and only its -o parameters below are set.
+	// Master.cf, postconf -M/-P ile: idempotent, elle düzenleme yok. chroot
+	// alanı dağıtımın kendi smtp hizmetini izler; sahibin değiştirdiği girdi
+	// korunur.
+	readPostconf := func(name string, args ...string) ([]byte, error) {
+		return runMailTLSMutationCommand(ctx, name, args...)
 	}
-	if out, err := runMailTLSMutationCommand(ctx, "postconf", "-M",
-		"smtps/inet=smtps inet n - y - - smtpd"); err != nil {
-		return fail(rollback(mailSubmissionCommandError(ctx, "postconf -M smtps", out, err), false))
+	chroot := distributionSubmissionChroot(readPostconf)
+	var ownerEntries []string
+	for _, service := range submissionServices {
+		if fields, ok := masterServiceFields(readPostconf, service+"/inet"); ok &&
+			!submissionEntryPanelForm(fields, legacySubmissionChroot, chroot) {
+			ownerEntries = append(ownerEntries, service+"/inet")
+			continue
+		}
+		if out, err := runMailTLSMutationCommand(ctx, "postconf", "-M",
+			fmt.Sprintf("%s/inet=%s inet n - %s - - smtpd", service, service, chroot)); err != nil {
+			return fail(rollback(mailSubmissionCommandError(ctx, "postconf -M "+service, out, err), false))
+		}
 	}
 
 	shared := [][2]string{
@@ -250,6 +263,10 @@ service auth {
 
 	resp.Configured = true
 	resp.Detail = "submission on 587 (STARTTLS) and 465 (TLS), SASL via Dovecot, sender spoofing blocked"
+	if len(ownerEntries) > 0 {
+		resp.Detail += "; " + strings.Join(ownerEntries, " and ") +
+			" in /etc/postfix/master.cf were changed by the server owner and kept as written; only their CelikPanel -o settings (TLS, SASL, sender checks) were set"
+	}
 	return nil
 }
 

@@ -293,7 +293,7 @@ func (p *Panel) handleMailAuthDKIM(w http.ResponseWriter, r *http.Request, domai
 	// signature never appears.
 	// Yeni anahtar imzalama tablolarına ulaşmalı; yoksa kayıt var, imza yok.
 	var sign transport.ConfigureDKIMSigningResponse
-	_ = p.withStandaloneAgentMutation(r.Context(), "dkim_signing_configure", "opendkim", "", func(callCtx context.Context, binding agentMutationBinding) error {
+	signErr := p.withStandaloneAgentMutation(r.Context(), "dkim_signing_configure", "opendkim", "", func(callCtx context.Context, binding agentMutationBinding) error {
 		request := transport.ServiceMutationRequest{ServiceMutationBinding: binding}
 		if err := p.callAgentContext(callCtx, "Agent.ConfigureDKIMSigning", &request, &sign); err != nil {
 			return err
@@ -303,12 +303,28 @@ func (p *Panel) handleMailAuthDKIM(w http.ResponseWriter, r *http.Request, domai
 		}
 		return nil
 	})
-	json.NewEncoder(w).Encode(map[string]any{
+	// The key exists either way; whether mail is signed with it is said, not
+	// assumed (until 30 Oct 2026 a failed signing step was discarded and the
+	// screen reported only "key generated" while mail left unsigned).
+	// Anahtar her durumda vardır; postanın onunla imzalanıp imzalanmadığı
+	// varsayılmaz, söylenir.
+	body := map[string]any{
 		"success":     true,
 		"created":     resp.Created,
-		"signing":     sign.Configured,
+		"signing":     sign.Configured && signErr == nil,
 		"recommended": dkimRecommended(resp.PublicKeyB64),
-	})
+	}
+	if signErr != nil || !sign.Configured {
+		reason := sign.Error
+		if reason == "" && signErr != nil {
+			reason = signErr.Error()
+		}
+		log.Printf("[mail-auth] DKIM key for %s is ready but signing was not configured: %s", domain, reason)
+		body["signing_error"] = reason
+	} else if sign.Detail != "" {
+		body["signing_detail"] = sign.Detail
+	}
+	json.NewEncoder(w).Encode(body)
 }
 
 // ensureZone returns the ledger zone id, creating only the authoritative

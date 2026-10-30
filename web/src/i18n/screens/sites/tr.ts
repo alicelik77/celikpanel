@@ -219,6 +219,7 @@ export const trSitesScreens: Record<SitesScreenKey, string> = {
     'php.toggleFailed': 'Eklenti değiştirilemedi.',
 
     'files.up': 'Yukarı git',
+    'files.backToRoot': 'Web klasörüne dön',
     'files.newFolder': 'Yeni klasör',
     'files.newFile': 'Yeni dosya',
     'files.upload': 'Yükle',

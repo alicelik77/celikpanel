@@ -279,6 +279,26 @@ func (p *Panel) loadMailTLSSnapshotLocked(
 	return canonicalHost, sni, nil
 }
 
+// mailTLSIdentityKnown reports whether the mail TLS snapshot has a mail
+// server name to publish: a saved identity (even an invalid one, which
+// loadMailTLSSnapshotLocked must keep refusing) or a fully qualified name of
+// this server (localServerName: the kernel name, or its full name from
+// /etc/hosts). A short kernel name with nothing saved is a server whose mail
+// identity setup has not set yet.
+// mailTLSIdentityKnown, posta TLS anlık görüntüsünün yayımlayacağı bir posta
+// sunucusu adı olup olmadığını söyler.
+func (p *Panel) mailTLSIdentityKnown(ctx context.Context) bool {
+	if p.setting(ctx, settingMailHostname) != "" {
+		return true
+	}
+	host, err := readMailTLSHostname()
+	if err != nil {
+		return true // let the publication report the reading error itself
+	}
+	_, err = hostname.CanonicalFQDN(host)
+	return err == nil
+}
+
 func validateMailTLSResponse(resp transport.SecureMailTLSResponse, expectedSNICount int) error {
 	if resp.Error != "" {
 		return &backupError{resp.Error}

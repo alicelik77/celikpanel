@@ -21,6 +21,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"sort"
@@ -533,6 +534,12 @@ printf '\036' >> "` + logPath + `"
 if [ "$1" = "-h" ] && [ "$2" = "queue_directory" ] && [ -n "$MAIL_SUBMISSION_STATE" ]; then
   printf '%s\n' "$MAIL_SUBMISSION_STATE/spool"
 fi
+# master.cf readings (postconf -F without "=") come from the release's real
+# stock master.cf: the submission chroot follows its smtp service (D3).
+case "$1:$2" in
+-F:*=*) ;;
+-F:*) for p in /usr/sbin/postconf /usr/bin/postconf; do [ -x "$p" ] && exec "$p" "$@"; done ;;
+esac
 exit 0
 `
 	if err := os.WriteFile(filepath.Join(dir, "postconf"), []byte(script), 0o755); err != nil {
@@ -563,7 +570,8 @@ func recordedArgv(t *testing.T, logPath string) [][]string {
 
 func addPostconfCalls(c *configmatrix.Case, calls [][]string) {
 	for _, argv := range calls {
-		if len(argv) > 1 && (argv[1] == "-e" || argv[1] == "-M" || argv[1] == "-P" || argv[1] == "-X" || argv[1] == "-#") {
+		if len(argv) > 1 && (argv[1] == "-e" || argv[1] == "-M" || argv[1] == "-P" || argv[1] == "-X" || argv[1] == "-#" ||
+			(argv[1] == "-F" && strings.Contains(argv[len(argv)-1], "="))) {
 			c.Command(argv...)
 		}
 	}
@@ -869,10 +877,63 @@ func renderMatrixPostfix(t *testing.T, h *matrixHost) {
 			}
 			addPostconfCalls(cc, calls)
 		}
+		// The submission services must reach the milters from their real
+		// chroot setting (D3: Arch's chrooted submission could not resolve
+		// "localhost"). The validator runs a milter on each address.
+		incoming, outgoing := composeMilterChain(true, rspamdMilter)
+		for _, kv := range [][2]string{{"smtpd_milters", incoming}, {"non_smtpd_milters", outgoing}, {"milter_default_action", "accept"}, {"milter_protocol", "6"}} {
+			c.Command("postconf", "-e", kv[0]+"="+kv[1])
+		}
 		h.write(t, c)
 		if dovecot, err := os.ReadFile(env.confPath); err == nil {
 			matrixDovecotSubmission = dovecot
 		}
+	})
+	// 6. A server configured by alpha.113 or earlier: submission/smtps with
+	// chroot "y" and milters named "localhost", then the Panel-start repair
+	// (Agent.WireMailFilters: reconcileSubmissionChroot + writeMilterChain)
+	// against the release's real smtp/inet entry.
+	t.Run("submission-upgrade", func(t *testing.T) {
+		realPostconf := ""
+		for _, p := range []string{"/usr/sbin/postconf", "/usr/bin/postconf"} {
+			if _, err := os.Stat(p); err == nil {
+				realPostconf = p
+				break
+			}
+		}
+		var writes [][]string
+		run := func(name string, args ...string) ([]byte, error) {
+			if len(args) == 2 && args[0] == "-F" && !strings.Contains(args[1], "=") {
+				if service, ok := strings.CutSuffix(args[1], "/inet"); ok && (service == "submission" || service == "smtps") {
+					return []byte(fmt.Sprintf("%[1]s/inet/service = %[1]s\n%[1]s/inet/type = inet\n%[1]s/inet/private = n\n%[1]s/inet/unprivileged = -\n%[1]s/inet/chroot = y\n%[1]s/inet/wakeup = -\n%[1]s/inet/process_limit = -\n%[1]s/inet/command = smtpd\n", service)), nil
+				}
+				return exec.Command(realPostconf, args...).CombinedOutput()
+			}
+			writes = append(writes, append([]string{name}, args...))
+			return nil, nil
+		}
+		note := reconcileSubmissionChroot(run)
+		legacyIncoming := legacyOpenDKIMMilter + ", " + legacyRspamdMilter
+		if !milterListPanelComposed(legacyIncoming, rspamdMilter) || !milterListPanelComposed(legacyOpenDKIMMilter, rspamdMilter) {
+			t.Fatalf("the milter lists alpha.113 wrote must be recognised as CelikPanel's")
+		}
+		c := newPostfixCase("submission-upgrade", "alpha.113 submission/smtps (chroot y, localhost milters) after the Panel-start repair",
+			"cmd/agent/mail_submission_chroot.go reconcileSubmissionChroot + mail_stack_rpc.go writeMilterChain (Agent.WireMailFilters)")
+		c.Extra["NOTE"] = note
+		for _, service := range submissionServices {
+			c.Command("postconf", "-M", fmt.Sprintf("%s/inet=%s inet n - y - - smtpd", service, service))
+			c.Command("postconf", "-P", service+"/inet/syslog_name=postfix/"+service)
+		}
+		c.Command("postconf", "-e", "smtpd_milters="+legacyIncoming)
+		c.Command("postconf", "-e", "non_smtpd_milters="+legacyOpenDKIMMilter)
+		for _, argv := range writes {
+			c.Command(argv...)
+		}
+		incoming, outgoing := composeMilterChain(true, rspamdMilter)
+		for _, kv := range [][2]string{{"smtpd_milters", incoming}, {"non_smtpd_milters", outgoing}, {"milter_default_action", "accept"}, {"milter_protocol", "6"}} {
+			c.Command("postconf", "-e", kv[0]+"="+kv[1])
+		}
+		h.write(t, c)
 	})
 	h.write(t, all)
 }

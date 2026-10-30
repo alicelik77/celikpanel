@@ -223,6 +223,7 @@ export const enSitesScreens = {
     'php.toggleFailed': 'Could not toggle the extension.',
 
     'files.up': 'Go up',
+    'files.backToRoot': 'Back to the web folder',
     'files.newFolder': 'New folder',
     'files.newFile': 'New file',
     'files.upload': 'Upload',

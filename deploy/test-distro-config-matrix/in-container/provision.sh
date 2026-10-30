@@ -20,6 +20,8 @@ apt)
     packages=(
         nginx php-fpm php-cli
         postfix
+        # OpenDKIM: the real milter the postfix cases connect to (D3).
+        opendkim
         dovecot-core dovecot-imapd dovecot-pop3d dovecot-lmtpd
         bind9 bind9-utils
         pdns-server pdns-backend-sqlite3
@@ -37,7 +39,7 @@ apt)
         || { tail -40 /var/log/matrix-provision.log >&2; exit 1; }
     ;;
 pacman)
-    pacman -Syu --noconfirm --needed nginx php php-fpm postfix dovecot bind powerdns nftables systemd sudo openssh mariadb diffutils openssl procps-ng \
+    pacman -Syu --noconfirm --needed nginx php php-fpm postfix opendkim dovecot bind powerdns nftables systemd sudo openssh mariadb diffutils openssl procps-ng \
         >/var/log/matrix-provision.log 2>&1 || { tail -40 /var/log/matrix-provision.log >&2; exit 1; }
     ;;
 *) echo "unknown family: $family" >&2; exit 2 ;;

@@ -148,6 +148,15 @@ const (
 	// Agent sunucuda hiçbir cron uygulaması olmadığını kanıtladı; hiçbir
 	// zamanlanmış görev okunamaz ya da kaydedilemez.
 	errCodeCronNotInstalled = "CRON_NOT_INSTALLED"
+	// The file manager's path does not exist in the site's web folder, the
+	// web folder itself is gone, or the new name is already taken: client
+	// conditions with a next step, never a bare 500 (final alpha.113
+	// acceptance run 2; D-024).
+	// Dosya yöneticisinin yolu sitenin web klasöründe yok, web klasörünün
+	// kendisi yok ya da yeni ad zaten alınmış.
+	errCodeFileNotFound    = "FILE_NOT_FOUND"
+	errCodeFileRootMissing = "FILE_ROOT_MISSING"
+	errCodeFileExists      = "FILE_EXISTS"
 	// Native cron runs every scheduled job on the server, including the
 	// owner's own, so the panel never removes it (D-022).
 	// Yerel cron, sahibinkiler dahil sunucudaki her görevi çalıştırır; panel

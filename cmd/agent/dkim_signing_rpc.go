@@ -36,8 +36,24 @@ const (
 	opendkimAPTConfPath    = "/etc/opendkim.conf"
 	opendkimPacmanConfPath = "/etc/opendkim/opendkim.conf"
 	opendkimTablesDir      = dkimStoreRoot + "/tables"
-	opendkimSocket         = "inet:8891@localhost"
-	opendkimMilter         = "inet:localhost:8891"
+	// Numeric loopback on both sides (D3, final alpha.113 acceptance run 2,
+	// 30 Oct 2026): a chrooted Postfix service resolves "localhost" through
+	// the files inside its chroot and Arch ships none, so submission (587)
+	// and smtps (465) logged "host or service localhost:8891 not found" and
+	// sent every message unsigned under milter_default_action=accept. A
+	// literal address needs no resolver, hosts file or nsswitch anywhere,
+	// and never depends on whether "localhost" means 127.0.0.1 or ::1.
+	// İki tarafta da sayısal geri döngü adresi: chroot'lu bir Postfix
+	// hizmeti "localhost"u chroot içindeki dosyalarla çözer ve Arch hiçbirini
+	// getirmez. Sayısal adres hiçbir çözücüye ihtiyaç duymaz.
+	opendkimSocket = "inet:8891@127.0.0.1"
+	opendkimMilter = "inet:127.0.0.1:8891"
+	// What releases up to alpha.113 wrote; the startup repair recognises
+	// them as the panel's own (mail_milter_repair.go).
+	// alpha.113'e kadarki sürümlerin yazdığı; başlangıç onarımı bunları
+	// panelin kendi yazdığı sayar.
+	legacyOpenDKIMSocket = "inet:8891@localhost"
+	legacyOpenDKIMMilter = "inet:localhost:8891"
 )
 
 // opendkimLayout is where the distribution's own opendkim unit reads its
@@ -83,6 +99,14 @@ func opendkimConfPath() string {
 
 // renderOpenDKIMConf renders CelikPanel's OpenDKIM configuration.
 func renderOpenDKIMConf(layout opendkimLayout) string {
+	return renderOpenDKIMConfWithSocket(layout, opendkimSocket)
+}
+
+// renderOpenDKIMConfWithSocket renders the file around one listening socket,
+// so the startup repair can recognise the exact text an earlier release wrote.
+// renderOpenDKIMConfWithSocket dosyayı tek bir dinleme soketiyle üretir;
+// başlangıç onarımı önceki sürümün yazdığı metni böylece birebir tanır.
+func renderOpenDKIMConfWithSocket(layout opendkimLayout, socket string) string {
 	conf := fmt.Sprintf(`# Managed by CelikPanel — DKIM signing for hosted domains. Do not edit by hand.
 Syslog			yes
 UMask			007
@@ -95,7 +119,7 @@ UserID			opendkim
 KeyTable		%s/keytable
 SigningTable		refile:%s/signingtable
 InternalHosts		%s/trustedhosts
-`, opendkimSocket, opendkimTablesDir, opendkimTablesDir, opendkimTablesDir)
+`, socket, opendkimTablesDir, opendkimTablesDir, opendkimTablesDir)
 	if layout.trustAnchor != "" {
 		conf += "TrustAnchorFile\t\t" + layout.trustAnchor + "\n"
 	}
@@ -175,14 +199,15 @@ func (a *Agent) ConfigureDKIMSigning(req *ServiceMutationRequest, resp *Configur
 	// Milter'ları TEK besteciden bağla: burada doğrudan smtpd_milters yazmak,
 	// önceden bağlanmış bir spam filtresini siliyordu (son yazan kazanır,
 	// sessizce). applyMilterChain bunun yerine kurulu her filtreyi birleştirir.
-	if err := applyMilterChain(ctx); err != nil {
+	milterNote, err := applyMilterChain(ctx)
+	if err != nil {
 		resp.Error = err.Error()
 		return nil
 	}
 
 	resp.Configured = true
 	resp.Domains = len(domains)
-	resp.Detail = fmt.Sprintf("DKIM signing active for %d domain(s)", len(domains))
+	resp.Detail = joinNotes(fmt.Sprintf("DKIM signing active for %d domain(s)", len(domains)), milterNote)
 	return nil
 }
 

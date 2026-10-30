@@ -10,8 +10,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"sync"
 
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -183,7 +185,13 @@ func (a *Agent) EnsureDKIMKey(req *DKIMEnsureRequest, resp *DKIMEnsureResponse) 
 	}
 
 	if key, err := readDKIMKey(path); err == nil {
-		if err := secureChmodMailFile(path, 0o600); err != nil {
+		signerGID := -1
+		if group, err := user.LookupGroup("opendkim"); err == nil {
+			if gid, err := strconv.Atoi(group.Gid); err == nil {
+				signerGID = gid
+			}
+		}
+		if err := secureTightenDKIMKey(path, signerGID); err != nil {
 			resp.Error = fmt.Sprintf("cannot secure existing DKIM key: %v", err)
 			return nil
 		}

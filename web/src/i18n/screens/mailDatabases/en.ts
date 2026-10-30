@@ -179,6 +179,7 @@ export const enMailDatabasesScreens = {
     'mailauth.applied': 'Record added to the DNS zone.',
     'mailauth.generateKey': 'Generate DKIM key',
     'mailauth.keyGenerated': 'DKIM key generated.',
+    'mailauth.keySigningFailed': 'The DKIM key is ready, but DKIM signing could not be switched on, so mail still leaves unsigned. Press "Generate DKIM key" again; the key is kept and only signing is retried. If it fails again, check OpenDKIM on the Services page.',
     'mailauth.copy': 'Copy',
     'mailauth.copied': 'Copied.',
     'mailauth.dmarcPolicy': 'DMARC policy',
