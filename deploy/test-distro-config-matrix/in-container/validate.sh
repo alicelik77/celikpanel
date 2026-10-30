@@ -212,6 +212,10 @@ v_postfix() {
     fi
     newaliases >/dev/null 2>&1 || true   # Arch's postfix.service runs it first
     postconf -e maillog_file=/var/log/matrix-postfix.log >/dev/null 2>&1
+    # The non-SMTP message below is held in the queue, never delivered.
+    local nonsmtp
+    nonsmtp=$(postconf -h non_smtpd_milters 2>/dev/null)
+    [[ -n "$nonsmtp" ]] && postconf -e 'defer_transports=local,virtual,smtp,relay,lmtp,error' >/dev/null 2>&1
     : >/var/log/matrix-postfix.log
     matrix_milters_start || rc=1
     if postfix start >/dev/null 2>&1 </dev/null; then
@@ -223,6 +227,22 @@ v_postfix() {
         for port in 587 465; do
             timeout 5 bash -c "exec 3<>/dev/tcp/127.0.0.1/$port; head -c 200 <&3 >/dev/null; printf 'EHLO matrix.invalid\r\n' >&3; sleep 1; printf 'QUIT\r\n' >&3" 2>/dev/null || true
         done
+        # Mail made without SMTP (a site's PHP mail(), cron): sendmail ->
+        # pickup -> cleanup, which passes non_smtpd_milters from cleanup's
+        # own chroot setting. Since 31 Oct 2026 that list holds Rspamd too.
+        if [[ -n "$nonsmtp" ]]; then
+            printf 'From: matrix@example.invalid\nTo: postmaster@example.invalid\nSubject: matrix non-SMTP\n\nmatrix\n' |
+                timeout 10 sendmail -f matrix@example.invalid postmaster@example.invalid 2>&1 | head -3
+            for _ in $(seq 1 10); do
+                grep -q 'from=<matrix@example.invalid>, size=' /var/log/matrix-postfix.log && break
+                sleep 1
+            done
+            if ! grep -q 'from=<matrix@example.invalid>, size=' /var/log/matrix-postfix.log; then
+                printf 'non-SMTP message was not queued through cleanup (non_smtpd_milters = %s)\n' "$nonsmtp"
+                rc=1
+            fi
+            postsuper -d ALL >/dev/null 2>&1
+        fi
         sleep 2
         tls_checks "smtpd STARTTLS" 25 smtp mail || rc=1
         postfix stop >/dev/null 2>&1
@@ -246,6 +266,20 @@ v_postfix() {
             "$(postconf -F smtp/inet/chroot 2>/dev/null | sed 's/.*= //')" \
             "$(postconf -F submission/inet/chroot 2>/dev/null | sed 's/.*= //')" \
             "$(postconf -F smtps/inet/chroot 2>/dev/null | sed 's/.*= //')"
+    fi
+    if [[ -n "$nonsmtp" ]]; then
+        # Postfix's own bounces and notices must not pass these milters: a
+        # filter rejecting a bounce would lose it. That holds while
+        # internal_mail_filter_classes names no class (the release default;
+        # CelikPanel never sets it).
+        local classes
+        classes=$(postconf -h internal_mail_filter_classes 2>/dev/null)
+        printf 'non_smtpd_milters %s reached from cleanup chroot=%s; internal_mail_filter_classes=%s\n' "$nonsmtp" \
+            "$(postconf -F cleanup/unix/chroot 2>/dev/null | sed 's/.*= //')" "${classes:-(empty)}"
+        if [[ "$classes" =~ bounce|notify ]]; then
+            printf 'Postfix bounces would pass non_smtpd_milters (internal_mail_filter_classes=%s)\n' "$classes"
+            rc=1
+        fi
     fi
     [[ $rc -ne 0 ]] && return 1
     [[ $warn -ne 0 ]] && return 2
