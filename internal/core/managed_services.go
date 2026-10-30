@@ -1020,6 +1020,14 @@ var ManagedServices = []ManagedService{
 		LifecycleInstallFamilies: map[string]bool{
 			"apt": true,
 		},
+		// Arch's extra/powerdns (5.1.x, /usr/bin/pdns_server, user and group
+		// powerdns, pdns.conf 0644 root:root) differs from every artifact the
+		// engine switch, its journals and the independent recovery certify
+		// (Debian/Ubuntu 4.9: dpkg provenance, /usr/sbin, group pdns, 0640).
+		// Until that adapter is built and measured, the row says so.
+		// Arch'ın powerdns paketi, motor geçişinin ve kurtarmanın onayladığı
+		// yapılardan farklıdır; bağdaştırıcı yapılıp ölçülene dek kapalıdır.
+		FamilyInstallBlockReasons: map[string]string{"pacman": PowerDNSPacmanReason},
 		FirewallPorts: []FirewallPort{{53, "tcp"}, {53, "udp"}},
 	},
 	{
@@ -1220,7 +1228,8 @@ const NativeCronRemovalRefusal = "CelikPanel does not remove the server's cron s
 const (
 	RedisPacmanReason        = "Redis is not offered on Arch Linux: its official repositories ship Valkey instead (extra/valkey, which provides redis), and CelikPanel installs official distribution packages only. The server administrator installs Valkey, the compatible cache in the same seat, from the Components page."
 	PHPPgAdminPacmanReason   = "phpPgAdmin is not offered on Arch Linux: it is not in the official repositories (only in the AUR, which CelikPanel does not use). The server administrator manages PostgreSQL with psql on the server, or with a desktop client through an SSH tunnel."
-	SpamAssassinPacmanReason = "SpamAssassin is not offered on Arch Linux: its Postfix bridge, spamass-milter, is not in the official repositories (only in the AUR, which CelikPanel does not use), so SpamAssassin would filter no mail. The server administrator installs Rspamd, the spam filter in the same seat, from the Components page."
+	PowerDNSPacmanReason     = "PowerDNS is not offered on Arch Linux yet: Arch's official powerdns package (version 5.1) differs from the PowerDNS build CelikPanel's DNS engine change and its recovery are proven with (Debian and Ubuntu, 4.9). The server administrator chooses BIND, which CelikPanel runs on Arch as the main or the backup DNS server, or uses a Debian 13 server for PowerDNS."
+	SpamAssassinPacmanReason ="SpamAssassin is not offered on Arch Linux: its Postfix bridge, spamass-milter, is not in the official repositories (only in the AUR, which CelikPanel does not use), so SpamAssassin would filter no mail. The server administrator installs Rspamd, the spam filter in the same seat, from the Components page."
 )
 
 // GetManagedServiceByID returns a managed service by its ID
