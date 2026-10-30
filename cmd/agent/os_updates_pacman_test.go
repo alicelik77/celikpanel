@@ -33,7 +33,9 @@ func TestOSUpdatesPacmanCountsWithoutTouchingTheSystemDatabase(t *testing.T) {
 	audit := filepath.Join(dir, "arch-audit")
 	fakeroot := filepath.Join(dir, "fakeroot")
 	oldCheck, oldAudit, oldFake, oldCommand := checkupdatesPath, archAuditPath, fakerootPath, osUpdatesCommand
-	t.Cleanup(func() { checkupdatesPath, archAuditPath, fakerootPath, osUpdatesCommand = oldCheck, oldAudit, oldFake, oldCommand })
+	t.Cleanup(func() {
+		checkupdatesPath, archAuditPath, fakerootPath, osUpdatesCommand = oldCheck, oldAudit, oldFake, oldCommand
+	})
 	checkupdatesPath, archAuditPath, fakerootPath = check, audit, fakeroot
 
 	resp := &transport.OSUpdatesStatusResponse{}
