@@ -1,0 +1,114 @@
+== DKIM of the after-reboot and panel-off mails 21:28:32
+   "subject": "final-alpha113 2a32d7fbad60",
+   "dkim_signatures": 1,
+     "verify_with_txt_from_192.0.3.107": true,
+     "verify_with_txt_from_192.0.3.108": true,
+   "subject": "final-alpha113 3df114921a5a",
+   "dkim_signatures": 1,
+     "verify_with_txt_from_192.0.3.107": true,
+     "verify_with_txt_from_192.0.3.108": true,
+== site delete r3shop113.test (id 1) 21:28:33
+   before @192.0.3.107 TXT celik._domainkey.r3shop113.test: '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8...'
+   before @192.0.3.108 TXT celik._domainkey.r3shop113.test: '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8...'
+keytable lines for r3shop113.test: 1
+signingtable lines for r3shop113.test: 1
+key files mentioning r3shop113.test:
+200 {
+ "domain": "r3shop113.test",
+ "status": "deleted"
+}
+   answered after 35s
+   after @192.0.3.107 TXT celik._domainkey.r3shop113.test: '' | SOA r3shop113.test: status: REFUSED flags: qr 
+   after @192.0.3.108 TXT celik._domainkey.r3shop113.test: '' | SOA r3shop113.test: status: REFUSED flags: qr 
+keytable lines for r3shop113.test: 0
+signingtable lines for r3shop113.test: 0
+key files mentioning r3shop113.test:
+milter warnings, all boots: 0
+boots: 4
+{"command": "journalctl -u celikpanel-panel -u celikpanel-agent --no-pager -o short-iso --since -3min | grep -iE 'dkim' | tail -n 8 | cut -c1-260", "rc": 0, "seconds": 0.27, "stdout": "", "stderr": "", "at": "2026-10-30T21:29:21.397Z", "label": "dkim-delete-log"}
+   domains list still names it: no
+== site delete done 21:29:21
+== 7. setup operation step timings and busy states 21:29:21
+main operation succeeded complete created None finished None
+   01-service               succeeded           
+   02-service               succeeded           
+   03-service               succeeded           
+   04-service               succeeded           
+   05-service               succeeded           
+   06-peer_join             succeeded           
+   07-dns                   succeeded           
+   08-firewall              succeeded           
+   09-infrastructure_dns    succeeded           
+   10-access_dns            succeeded           
+   11-panel_certificate     succeeded           
+   12-dns_readiness         succeeded           
+   13-mail_profile          succeeded           
+   14-mail_profile          succeeded           
+   15-mail_dns              succeeded           
+   16-access_dns            succeeded           
+   17-mail_certificate      succeeded           
+   18-mail_enrollment       succeeded           
+   19-verify                succeeded           
+   busy/lock mentions in the final record: none
+backup operation succeeded complete created None finished None
+   01-peer_names            succeeded           
+   02-service               succeeded           
+   03-service               succeeded           
+   04-service               succeeded           
+   05-service               succeeded           
+   06-dns                   succeeded           
+   07-firewall              succeeded           
+   08-access_dns            succeeded           
+   09-panel_certificate     succeeded           
+   10-dns_publisher         succeeded           
+   11-verify                succeeded           
+   busy/lock mentions in the final record: none
+-- busy/lock in the whole run's API exchanges
+/var/tmp/cp-beta1/evidence/r3-a/getsh-terminal-main.txt
+/var/tmp/cp-beta1/evidence/r3-a/getsh-terminal-backup.txt
+      1 running 02-service
+      1 running 03-service
+      1 running 04-service
+      1 running 05-service
+      1 waiting primary_dns
+      1 running primary_dns
+      1 waiting access_dns
+      1 running verification
+      1 running 13-mail_profile
+      1 running 14-mail_profile
+      1 running 17-mail_certificate
+      1 running verification
+== 8. journals 21:29:21
+-- main: error-level lines from celikpanel units (all boots)
+count: 0
+-- main: celikpanel lines with level words (error/fatal/panic) at any priority
+2026-10-30T21:00:12+00:00 frankfurt agent[10770]: 2026/10/30 21:00:12 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-10-30T21:00:16+00:00 frankfurt agent[10770]: 2026/10/30 21:00:16 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-10-30T21:00:16+00:00 frankfurt agent[10770]: 2026/10/30 21:00:16 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-10-30T21:00:37+00:00 frankfurt agent[10770]: 2026/10/30 21:00:37 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-10-30T21:12:58+00:00 frankfurt panel[23171]: 2026/10/30 21:12:58 [dkim-auto] r3gone113.test: failed (dns_publish_failed) constraint failed: FOREIGN KEY constraint failed (787)
+2026-10-30T21:25:47+00:00 frankfurt panel[1447]: 2026/10/30 21:25:47 site configuration files at start: 0 written, 1 unchanged, 0 kept (owner-edited), 0 kept (foreign), 0 kept (unknown origin), 0 unreadable or unwritable, 0 missing (not recreated), 0 failed; 0 adopted from an earlier release
+2026-10-30T21:27:30+00:00 frankfurt panel[1447]: 2026/10/30 21:27:30 [panel-update] automatic update check failed (release_unverified): agent reported update discovery failure; next try in 1h0m0s
+count: 0
+-- main: cron can't-lock lines
+2026-10-30T21:29:22+00:00 frankfurt sudo[8684]:    celik : PWD=/home/celik ; USER=root ; COMMAND=/usr/bin/bash -c 'journalctl --no-pager -o short-iso -b all -q 2>/dev/null | grep -iE \'can.t lock|cannot lock|could not lock|unable to lock\' | cut -c1-300 | tail -n 20; echo count: 0'
+count: 0
+-- main: failed units
+{"command": "systemctl --failed --no-legend --no-pager | cut -c1-160", "rc": 0, "seconds": 0.15, "stdout": "", "stderr": "", "at": "2026-10-30T21:29:23.090Z", "label": "failed-main"}
+-- backup: error-level lines from celikpanel units (all boots)
+2026-10-30T20:58:46+00:00 boston mariadb-server.postinst[14421]: 2026-10-30 20:58:46 0 [Warning] You need to use --log-bin to make --expire-logs-days or --binlog-expire-logs-seconds work.
+count: 0
+-- backup: celikpanel lines with level words (error/fatal/panic) at any priority
+2026-10-30T21:03:29+00:00 boston panel[23921]: 2026/10/30 21:03:29 [panel-update] automatic update check failed (release_unverified): agent reported update discovery failure; next try in 1h0m0s
+2026-10-30T21:22:35+00:00 boston panel[1033]: 2026/10/30 21:22:35 [panel-update] automatic update check failed (release_unverified): agent reported update discovery failure; next try in 1h0m0s
+count: 0
+-- backup: cron can't-lock lines
+2026-10-30T21:29:23+00:00 boston sudo[2398]:    celik : PWD=/home/celik ; USER=root ; COMMAND=/usr/bin/bash -c 'journalctl --no-pager -o short-iso -b all -q 2>/dev/null | grep -iE \'can.t lock|cannot lock|could not lock|unable to lock\' | cut -c1-300 | tail -n 20; echo count: 0'
+count: 0
+-- backup: failed units
+{"command": "systemctl --failed --no-legend --no-pager | cut -c1-160", "rc": 0, "seconds": 0.25, "stdout": "", "stderr": "", "at": "2026-10-30T21:29:24.843Z", "label": "failed-backup"}
+== 7/8 done 21:29:24
+milter warnings, all boots: 0
+boots: 4
+milters: smtpd=inet:127.0.0.1:8891, inet:127.0.0.1:11332 non_smtpd=inet:127.0.0.1:8891
+== finalA done 21:29:25

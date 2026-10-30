@@ -1,0 +1,324 @@
+== clocks as the lab gives them (not corrected) 21:06:43
+labnet-CA 21:06:44.793276255
+arch 21:06:43.394409766
+== 2. site archr3shop113.test with Enable SSL at creation 21:06:44
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/1/public_html", "Domain": "archr3shop113.test", "DomainID": 1, "FTPPassword": "[REDACTED]", "FTPUser": "archr3shop113_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 1, "TempDomain": ""}
+   site id 1
+   ok 192.0.3.109 archr3shop113.test A = '192.0.3.109' after 0s
+200 {"status": "success", "expires_at": "2031-10-30T21:06:59Z"}
+   certificate answer after 3s
+200 has_certificate True activated True names ['archr3shop113.test', 'www.archr3shop113.test'] settings {'force_https': True, 'hsts_enabled': False, 'hsts_max_age': 31536000} renewal {'state': 'owner_configured', 'authenticator': 'webroot', 'auto_renew': True, 'hook': 'installed'}
+-- PHP on (Hosting type -> PHP) 21:07:01
+200 {"success": true}
+200 {"project_type": "php", "php_version": "8.5"}
+-- a PHP page through the file manager 21:07:03
+200 {"success": true}
+200 {"success": true}
+resolves (lab resolver 192.0.2.53): archr3shop113.test=192.0.3.109 www.archr3shop113.test=192.0.3.109
+--- http://archr3shop113.test/
+code=301 redirect=https://archr3shop113.test/ ssl_verify=0
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Content-Type: text/html
+Location: https://archr3shop113.test/
+--- https://archr3shop113.test/
+code=200 redirect= ssl_verify=0
+HTTP/2 200 
+server: nginx
+content-type: text/html
+strict-transport-security: max-age=0
+body: 3090 bytes, title: <title>archr3shop113.test
+software words in body: [CelikPanel ]
+--- http://www.archr3shop113.test/
+code=301 redirect=https://www.archr3shop113.test/ ssl_verify=0
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Content-Type: text/html
+Location: https://www.archr3shop113.test/
+--- https://www.archr3shop113.test/
+code=200 redirect= ssl_verify=0
+HTTP/2 200 
+server: nginx
+content-type: text/html
+strict-transport-security: max-age=0
+body: 3090 bytes, title: <title>archr3shop113.test
+software words in body: [CelikPanel ]
+--- certificate served on archr3shop113.test:443
+subject= X509v3 Subject Alternative Name: critical     DNS:archr3shop113.test, DNS:www.archr3shop113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 21:06:59 2031 GMT 
+Verify return code: 0 (ok)
+--- https://archr3shop113.test/hello.php
+code=200
+HTTP/2 200 
+server: nginx
+content-type: text/html; charset=UTF-8
+x-powered-by present: 0
+body: php-ok 5
+--- http://archr3shop113.test/hello.php (redirect?)
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Location: https://archr3shop113.test/hello.php
+code=301 location=https://archr3shop113.test/hello.php
+-- download of a file that is not there (file manager) 21:07:04
+404 {
+ "code": "FILE_NOT_FOUND",
+ "error": "This path does not exist in the site's web folder; it may have been renamed, moved or deleted. The file manager's top level (/) is the site's web folder: go back to it or to the parent folder and open the entry from the list again."
+}
+== 3. mail on archr3shop113.test 21:07:04
+200 {"id": 1, "success": true}
+200 {"id": 2, "success": true}
+200 {"accounts": [{"address": "alice@archr3shop113.test", "id": 1, "quota_mb": 1024}, {"address": "bob@archr3shop113.test", "id": 2, "quota_mb": 1024}]}
+-- DKIM by itself (the card is only read, never pressed) 21:07:05
+   after 201s: {"status": 200, "dkim": {"dns_value": "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxok2HfDgDn+tXQO5pxrEYJP5QBB5synYe3vWgIP9nS9RjRA/nsm3+RroAOIoTDP2G1FqFiaAOYLtYpSWf3gwfOwfC+8tK6uYFpvuqavsQA5EpEhJWcybMB02eXTLR3TGYEJKLezz9m0F+3OzxlEpdLK0qUKS2/d27PL2uR7LNkN6k13ntQZzIhYRVHqfsbxIrjL76yHgjbTgBNi0MDQK1dLdv9HcNOKt/M7tSa75mzrz7aAp3rHnumIWfJ1rFTLxuPtYOTiSq80cxo89odhmLCpAUvtoudngHZTSHuN2CuErERZflVnBADzvLzM7sTb5qEgmkokaYuoZ80exAdCIUQIDAQAB", "name": "celik._domainkey.archr3shop113.test", "recommended": "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxok2HfDgDn+tXQO5pxrEYJP5QBB5synYe3vWgIP9nS9RjRA/nsm3+RroAOIoTDP2G1FqFiaAOYLtYpSWf3gwfOwfC+8tK6uYFpvuqavsQA5EpEhJWcybMB02eXTLR3TGYEJKLezz9m0F+3OzxlEpdLK0qUKS2/d27PL2uR7LNkN6k13ntQZzIhYRVHqfsbxIrjL76yHgjbTgBNi0MDQK1dLdv9HcNOKt/M7tSa75mzrz7aAp3rHnumIWfJ1rFTLxuPtYOTiSq80cxo89odhmLCpAUvtoudngHZTSHuN2CuErERZflVnBADzvLzM7sTb5qEg
+   TXT celik._domainkey.archr3shop113.test @192.0.3.109: '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCA...'
+   TXT celik._domainkey.archr3shop113.test @192.0.3.109: '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCA...'
+-- webmail address: what setup left, then the card's enable (owner action) 21:10:26
+200 {"status": {"managed": false, "present": false}, "address": null, "suggestion": "mail.archr3f113.test"}
+202 {"operation": {"id": "8b217009a6aa9005fda53a854f1fa2ff", "kind": "webmail_address", "package_name": "mail.archr3f113.test", "phase": "queued", "request_id": "a1518b93c0201e1a71bb52bd06d89b6d", "service_id": "roundcube", "started_at": "2026-10-30T21:10:25.514037181Z", "status": "queued"}}
+   200 {"status": {"certificate_expires": "2031-10-30T21:10:26Z", "hosts": ["mail.archr3f113.test"], "managed": true, "present": true, "proved": true}, "address": {"enabled_at": "2026-10-30T21:10:27Z", "host": "mail.archr3f113.test", "url": "https://mail.archr3f113.test/"}, "suggestion": "mail.archr3f113.test"}
+--- http://mail.archr3f113.test/
+code=301 redirect=https://mail.archr3f113.test/ ssl_verify=0
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Content-Type: text/html
+Location: https://mail.archr3f113.test/
+--- https://mail.archr3f113.test/
+code=200 redirect= ssl_verify=0
+HTTP/2 200 
+server: nginx
+content-type: text/html; charset=UTF-8
+strict-transport-security: max-age=31536000
+body: 5330 bytes, title: <title>CelikPanel Webmail :: Welcome to CelikPanel Webmail
+software words in body: [CelikPanel version 3 ]
+-- send 587 and 465, read IMAPS 993 21:10:33
+{
+ "host": "mail.archr3f113.test",
+ "resolved": "192.0.3.109",
+ "smtp_587_cert": {
+  "cn": null,
+  "san": [
+   "mail.archr3f113.test"
+  ],
+  "not_after": "Oct 30 21:05:41 2031 GMT",
+  "issuer_cn": "Pebble Intermediate CA 445eee"
+ },
+ "smtp_send": {
+  "ok": true,
+  "refused": {}
+ },
+ "smtp_465_send": {
+  "ok": true,
+  "refused": {}
+ },
+ "subjects": [
+  "final-alpha113 757a2b8bf6b7",
+  "final-alpha113-465 757a2b8bf6b7"
+ ],
+ "imaps_993_cert": {
+  "cn": null,
+  "san": [
+   "mail.archr3f113.test"
+  ],
+  "not_after": "Oct 30 21:05:41 2031 GMT",
+  "issuer_cn": "Pebble Intermediate CA 445eee"
+ },
+ "imap_read": {
+  "after_seconds": 6.1,
+  "headers": "From: alice@archr3shop113.test\r\nTo: bob@archr3shop113.test\r\nSubject: final-alpha113 757a2b8bf6b7"
+ },
+ "served_certificates": {
+ }
+}
+-- PHP mail() from the site 21:11:16
+200 {"success": true}
+200 {"success": true}
+curl: (77) error setting certificate file: /root/beta1/pebble-root.pem
+   mail.php said: 
+-- DKIM verified independently against the TXT from each DNS server (192.0.3.109) 21:11:29
+{
+ "dns_servers": [
+  "192.0.3.109"
+ ],
+ "mails": [
+  {
+   "subject": "final-alpha113 757a2b8bf6b7",
+   "message_id": "<d21f45ecdfb44b1995586916462cf5af@labnet.test>",
+   "from": "alice@archr3shop113.test",
+   "dkim_signatures": 1,
+   "scan_headers": [],
+   "dkim": [
+    {
+     "d": "archr3shop113.test",
+     "s": "celik",
+     "a": "rsa-sha256",
+     "c": "relaxed/simple",
+     "h": "From:To:Subject:From",
+     "verify_with_txt_from_192.0.3.109": true,
+     "txt_p_prefix_192.0.3.109": "MIIBIjANBgkqhkiG9w0BAQEF"
+    }
+   ]
+  },
+  {
+   "subject": "final-alpha113-465 757a2b8bf6b7",
+   "message_id": "<0c8bfdbbf1fd430e9d14c4f687bd457c@labnet.test>",
+   "from": "alice@archr3shop113.test",
+   "dkim_signatures": 1,
+   "scan_headers": [],
+   "dkim": [
+    {
+     "d": "archr3shop113.test",
+     "s": "celik",
+     "a": "rsa-sha256",
+     "c": "relaxed/simple",
+     "h": "From:To:Subject:From",
+     "verify_with_txt_from_192.0.3.109": true,
+     "txt_p_prefix_192.0.3.109": "MIIBIjANBgkqhkiG9w0BAQEF"
+    }
+   ]
+  }
+ ]
+}
+-- on the server: DKIM tables, rspamd's verdicts, milter warnings (read only) 21:11:29
+opendkim conf /etc/opendkim/opendkim.conf keytable=/var/lib/celikpanel-dkim/tables/keytable signingtable=/var/lib/celikpanel-dkim/tables/signingtable
+keytable lines for archr3shop113.test: 1
+celik._domainkey.archr3shop113.test archr3shop113.test:celik:/var/lib/celikpanel-dkim/keys/archr3shop113.test/celik.private
+signingtable lines for archr3shop113.test: 1
+*@archr3shop113.test celik._domainkey.archr3shop113.test
+key files mentioning archr3shop113.test:
+milter warnings, all boots: 0
+boots: 3
+milters: smtpd=inet:127.0.0.1:8891, inet:127.0.0.1:11332 non_smtpd=inet:127.0.0.1:8891
+smtp inet n
+submission inet n
+smtps inet n
+-- read in webmail (Roundcube login as bob) 21:11:30
+{
+ "login_page": 200,
+ "after_login_url": "https://HOST/?_task=mail&_token=[REDACTED][REDACTED]",
+ "logged_in": true,
+ "inbox_list_status": 200,
+ "test_mails_listed": [
+  "final-alpha113 757a2b8bf6b7"
+ ],
+ "message_count_hint": "Messages 1 to 2 of 2"
+}
+== ops done 21:11:31
+== B mail storage view (read only) 21:11:31
+2.4.5 (0cbb641e3e)
+mail_driver = maildir
+mail_inbox_path = /var/spool/mail/vhosts/%{user | domain}/%{user | username}
+mail_path = /var/spool/mail/vhosts/%{user | domain}/%{user | username}
+/var/mail/vhosts/archr3shop113.test
+/var/mail/vhosts/archr3shop113.test/alice
+/var/mail/vhosts/archr3shop113.test/bob
+/var/mail/vhosts/archr3shop113.test/bob/tmp
+/var/mail/vhosts/archr3shop113.test/bob/cur
+/var/mail/vhosts/archr3shop113.test/bob/new
+0
+== B reboot 21:11:31
+arch rebooted in 25.6 s
+== health [arch-after-reboot] 21:13:27
+-- main units/timers
+active active active active active active active
+enabled enabled
+  php-fpm.service loaded active running The PHP FastCGI Proc
+Sat 2026-10-31 02:20:57 UTC 5h 7min Fri 2026-10-30 21:01:10 UTC - certbot-renew.timer certbot-renew.service
+not-found enabled
+2026-10-30 21:11:42
+d2eb567b-ef14-4f2b-aaf7-e30629be87b5
+succeeded complete null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-mail_profile=succeeded 12-mail_profile=succeeded 13-mail_dns=succeeded 14-service=succeeded 15-access_dns=succeeded 16-mail_certificate=succeeded 17-mail_enrollment=succeeded 18-verify=succeeded
+-- DNS answers
+   @192.0.3.109 SOA archr3f113.test: status: NOERROR flags: qr aa  | A archr3shop113.test: 192.0.3.109 | MX archr3f113.test: 10 mail.archr3f113.test.
+   @192.0.3.109 SOA archr3f113.test: status: NOERROR flags: qr aa  | A archr3shop113.test: 192.0.3.109 | MX archr3f113.test: 10 mail.archr3f113.test.
+-- site
+--- http://archr3shop113.test/
+code=301 redirect=https://archr3shop113.test/ ssl_verify=0
+--- https://archr3shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+body: 3090 bytes, title: <title>archr3shop113.test
+software words in body: [CelikPanel ]
+--- http://www.archr3shop113.test/
+code=301 redirect=https://www.archr3shop113.test/ ssl_verify=0
+--- https://www.archr3shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+body: 3090 bytes, title: <title>archr3shop113.test
+software words in body: [CelikPanel ]
+--- certificate served on archr3shop113.test:443
+--- https://archr3shop113.test/hello.php
+code=200
+server: nginx
+x-powered-by present: 0
+body: php-ok 5
+--- http://archr3shop113.test/hello.php (redirect?)
+code=301 location=https://archr3shop113.test/hello.php
+-- mail
+   smtp 587 send: {'ok': True, 'refused': {}} | cert ['mail.archr3f113.test']
+   imaps 993 read: {'after_seconds': 6.5, 'headers': 'From: alice@archr3shop113.test\r\nTo: bob@archr3shop113.test\r\nSubject: final-alpha113 2c4c4f8aea3a'} | cert ['mail.archr3f113.test'] |  
+   delivered to bob's maildir (files in new+cur): 4
+== B authoritative answers (no recursion, aa flag) 21:13:53
+   @192.0.3.109 archr3f113.test SOA: status: NOERROR flags: qr aa  -> ns1.archr3f113.test. hostmaster.archr3f113.test. 2026103001 3600 600 604800 300
+   @192.0.3.109 archr3f113.test NS: status: NOERROR flags: qr aa  -> ns1.archr3f113.test. ns2.archr3f113.test.
+   @192.0.3.109 archr3f113.test MX: status: NOERROR flags: qr aa  -> 10 mail.archr3f113.test.
+   @192.0.3.109 archr3shop113.test A: status: NOERROR flags: qr aa  -> 192.0.3.109
+   @192.0.3.109 mail.archr3f113.test A: status: NOERROR flags: qr aa  -> 192.0.3.109
+   @192.0.3.109 arch.archr3f113.test A: status: NOERROR flags: qr aa  -> 192.0.3.109
+== site delete archr3shop113.test (id 1) 21:13:55
+   before @192.0.3.109 TXT celik._domainkey.archr3shop113.test: '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8...'
+   before @192.0.3.109 TXT celik._domainkey.archr3shop113.test: '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8...'
+keytable lines for archr3shop113.test: 1
+signingtable lines for archr3shop113.test: 1
+key files mentioning archr3shop113.test:
+202 {
+ "domain": "archr3shop113.test",
+ "message": "Deletion is incomplete but retryable. Retry this deletion.",
+ "stage": "dns_cleanup",
+ "status": "deletion_pending"
+}
+   answered after 13s
+   after @192.0.3.109 TXT celik._domainkey.archr3shop113.test: '' | SOA archr3shop113.test: status: REFUSED flags: qr 
+   after @192.0.3.109 TXT celik._domainkey.archr3shop113.test: '' | SOA archr3shop113.test: status: REFUSED flags: qr 
+keytable lines for archr3shop113.test: 0
+signingtable lines for archr3shop113.test: 0
+key files mentioning archr3shop113.test:
+milter warnings, all boots: 0
+boots: 4
+{"command": "journalctl -u celikpanel-panel -u celikpanel-agent --no-pager -o short-iso --since -3min | grep -iE 'dkim' | tail -n 8 | cut -c1-260", "rc": 0, "seconds": 0.15, "stdout": "", "stderr": "", "at": "2026-10-30T21:14:21.139Z", "label": "dkim-delete-log"}
+   domains list still names it: yes
+== site delete done 21:14:21
+== 7. setup operation step timings and busy states 21:14:21
+main operation succeeded complete created None finished None
+   01-dns                   succeeded           
+   02-service               succeeded           
+   03-service               succeeded           
+   04-firewall              succeeded           
+   05-infrastructure_dns    succeeded           
+   06-access_dns            succeeded           
+   07-panel_certificate     succeeded           
+   08-dns_readiness         succeeded           
+   09-service               succeeded           
+   10-service               succeeded           
+   11-mail_profile          succeeded           
+   12-mail_profile          succeeded           
+   13-mail_dns              succeeded           
+   14-service               succeeded           
+   15-access_dns            succeeded           
+   16-mail_certificate      succeeded           
+   17-mail_enrollment       succeeded           
+   18-verify                succeeded           
+   busy/lock mentions in the final record: none
+-- busy/lock in the whole run's API exchanges
+/var/tmp/cp-beta1/evidence/r3-b/getsh-terminal-main.txt
+== 8. journals 21:14:21
+-- main: error-level lines from celikpanel units (all boots)
+count: 0
+-- main: celikpanel lines with level words (error/fatal/panic) at any priority
+count: 0
+-- main: cron can't-lock lines
+2026-10-30T21:14:22+00:00 arch sudo[2021]:    celik : PWD=/home/celik ; USER=root ; COMMAND=/usr/bin/bash -c 'journalctl --no-pager -o short-iso -b all -q 2>/dev/null | grep -iE \'can.t lock|cannot lock|could not lock|unable to lock\' | cut -c1-300 | tail -n 20; echo count: 0'
+count: 0
+-- main: failed units
+{"command": "systemctl --failed --no-legend --no-pager | cut -c1-160", "rc": 0, "seconds": 0.16, "stdout": "", "stderr": "", "at": "2026-10-30T21:14:22.654Z", "label": "failed-main"}
+== 7/8 done 21:14:22
+== B done 21:14:22

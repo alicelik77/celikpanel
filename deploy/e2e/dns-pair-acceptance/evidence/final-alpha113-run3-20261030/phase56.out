@@ -1,0 +1,133 @@
+== 5. reboot main backup 21:20:02
+main rebooted in 32.0 s
+backup rebooted in 18.2 s
+   waiting 90 s for services to settle
+== health [after-reboot] 21:22:04
+-- main units/timers
+active active active active active active active
+enabled enabled
+  php8.4-fpm.service loaded active running The PHP 8.4 FastC
+Sat 2026-10-31 09:53:28 UTC 12h Fri 2026-10-30 20:57:44 UTC - certbot.timer certbot.service
+enabled not-found
+2026-10-30 21:20:24
+1aaf9fcc-ad84-4f6f-b8aa-7c6d5e4214d9
+succeeded complete null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-access_dns=succeeded 17-mail_certificate=succeeded 18-mail_enrollment=succeeded 19-verify=succeeded
+-- backup units/timers
+active active active active active inactive inactive
+enabled enabled
+  php8.3-fpm.service loaded active running The PHP 8.3 FastC
+Sat 2026-10-31 01:47:30 UTC 4h 25min Fri 2026-10-30 20:58:13 UTC - certbot.timer certbot.service
+enabled not-found
+2026-10-30 21:20:08
+528fb7bc-c852-49da-8932-eaf70966ebd9
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-verify=succeeded
+-- DNS answers
+   @192.0.3.107 SOA r3f113.test: status: NOERROR flags: qr aa  | A r3shop113.test: 192.0.3.107 | MX r3f113.test: 10 mail.r3f113.test.
+   @192.0.3.108 SOA r3f113.test: status: NOERROR flags: qr aa  | A r3shop113.test: 192.0.3.107 | MX r3f113.test: 10 mail.r3f113.test.
+-- site
+--- http://r3shop113.test/
+code=301 redirect=https://r3shop113.test/ ssl_verify=0
+--- https://r3shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+body: 3082 bytes, title: <title>r3shop113.test
+software words in body: [CelikPanel ]
+--- http://www.r3shop113.test/
+code=301 redirect=https://www.r3shop113.test/ ssl_verify=0
+--- https://www.r3shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+body: 3082 bytes, title: <title>r3shop113.test
+software words in body: [CelikPanel ]
+--- certificate served on r3shop113.test:443
+--- https://r3shop113.test/hello.php
+code=200
+server: nginx
+x-powered-by present: 0
+body: php-ok 5
+--- http://r3shop113.test/hello.php (redirect?)
+code=301 location=https://r3shop113.test/hello.php
+-- mail
+   smtp 587 send: {'ok': True, 'refused': {}} | cert ['mail.r3f113.test']
+   imaps 993 read: {'after_seconds': 13.5, 'headers': 'From: alice@r3shop113.test\r\nTo: bob@r3shop113.test\r\nSubject: final-alpha113 2a32d7fbad60'} | cert ['mail.r3f113.test'] |  
+   delivered to bob's maildir (files in new+cur): 5
+== 6. panel off on main: stop + disable CelikPanel panel and agent, reboot 21:22:54
+Removed '/etc/systemd/system/multi-user.target.wants/celikpanel-agent.service'.
+Removed '/etc/systemd/system/multi-user.target.wants/celikpanel-panel.service'.
+disabled disabled
+inactive inactive
+main rebooted in 31.7 s
+   waiting 90 s
+units:
+ celikpanel-agent.service loaded inactive dead CelikPanel privileged agent
+ celikpanel-firewall-restore.service loaded active exited Restore CelikPanel firewall policy before networking
+ celikpanel-mail-enrollment-resume-a47f842905c568eb63f93f3de09e1ff6.service loaded inactive dead Continue recorded CelikPanel mail enrollment
+ celikpanel-mail-renewal.service loaded inactive dead Deploy an already renewed mail host certificate
+ celikpanel-panel.service loaded inactive dead CelikPanel web panel
+● celikpanel-release-recovery.service loaded activating start start CelikPanel verified release transaction recovery
+ celikpanel-mail-renewal.timer loaded active waiting Check retained mail certificate renewal work
+ celikpanel-release-recovery.timer loaded active running CelikPanel release transaction recovery watchdog
+running-binaries:
+1152 sudo -n bash -c echo units:; systemctl list-units --no-legend --all 'celikpanel*' | sed 's/  */ /g'; echo running-binaries:; pgrep -a -f '/opt/celikpanel/bin/' || echo none; ss -ltnp | grep -E ':2083 ' || echo 'port 2083: nothing listening'
+1154 bash -c echo units:; systemctl list-units --no-legend --all 'celikpanel*' | sed 's/  */ /g'; echo running-binaries:; pgrep -a -f '/opt/celikpanel/bin/' || echo none; ss -ltnp | grep -E ':2083 ' || echo 'port 2083: nothing listening'
+port 2083: nothing listening
+== health [panel-off] 21:24:57
+-- main units/timers
+inactive inactive active active active active active
+disabled disabled
+  php8.4-fpm.service loaded active running The PHP 8.4 FastC
+Sat 2026-10-31 11:02:49 UTC 13h Fri 2026-10-30 20:57:44 UTC - certbot.timer certbot.service
+enabled not-found
+2026-10-30 21:23:16
+2cb76be2-fb3d-4856-b46c-76d618cf6588
+-- backup units/timers
+active active active active active inactive inactive
+enabled enabled
+  php8.3-fpm.service loaded active running The PHP 8.3 FastC
+Sat 2026-10-31 01:47:30 UTC 4h 22min Fri 2026-10-30 20:58:13 UTC - certbot.timer certbot.service
+enabled not-found
+2026-10-30 21:20:08
+528fb7bc-c852-49da-8932-eaf70966ebd9
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-verify=succeeded
+-- DNS answers
+   @192.0.3.107 SOA r3f113.test: status: NOERROR flags: qr aa  | A r3shop113.test: 192.0.3.107 | MX r3f113.test: 10 mail.r3f113.test.
+   @192.0.3.108 SOA r3f113.test: status: NOERROR flags: qr aa  | A r3shop113.test: 192.0.3.107 | MX r3f113.test: 10 mail.r3f113.test.
+-- site
+--- http://r3shop113.test/
+code=301 redirect=https://r3shop113.test/ ssl_verify=0
+--- https://r3shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+body: 3082 bytes, title: <title>r3shop113.test
+software words in body: [CelikPanel ]
+--- http://www.r3shop113.test/
+code=301 redirect=https://www.r3shop113.test/ ssl_verify=0
+--- https://www.r3shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+body: 3082 bytes, title: <title>r3shop113.test
+software words in body: [CelikPanel ]
+--- certificate served on r3shop113.test:443
+--- https://r3shop113.test/hello.php
+code=200
+server: nginx
+x-powered-by present: 0
+body: php-ok 5
+--- http://r3shop113.test/hello.php (redirect?)
+code=301 location=https://r3shop113.test/hello.php
+-- mail
+   smtp 587 send: {'ok': True, 'refused': {}} | cert ['mail.r3f113.test']
+   imaps 993 read: {'after_seconds': 13.2, 'headers': 'From: alice@r3shop113.test\r\nTo: bob@r3shop113.test\r\nSubject: final-alpha113 3df114921a5a'} | cert ['mail.r3f113.test'] |  
+   delivered to bob's maildir (files in new+cur): 7
+-- management back on 21:25:46
+Created symlink '/etc/systemd/system/multi-user.target.wants/celikpanel-agent.service' → '/etc/systemd/system/celikpanel-agent.service'.
+Created symlink '/etc/systemd/system/multi-user.target.wants/celikpanel-panel.service' → '/etc/systemd/system/celikpanel-panel.service'.
+active active
+enabled enabled
+succeeded complete null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-access_dns=succeeded 17-mail_certificate=succeeded 18-mail_enrollment=succeeded 19-verify=succeeded
+   DNS card: status 200 pair_ready True pending 0 []
+== 5/6 done 21:26:16

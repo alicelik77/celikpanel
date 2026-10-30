@@ -1,0 +1,40 @@
+== owner: systemctl restart celikpanel-agent 21:16:55
+active
+21:17:01 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:17:21 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:17:41 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:18:02 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:18:22 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:18:42 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:19:02 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:19:22 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:19:43 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:20:03 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:20:23 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:20:44 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:21:04 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:21:24 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:21:44 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:22:04 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:22:25 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:22:45 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:23:05 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:23:26 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:23:46 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:24:06 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:24:26 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:24:47 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:25:07 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:25:27 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:25:47 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:26:08 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:26:28 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+21:26:48 listed=yes 200 {  "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",  "stage": "unknown",  "status": "unknown" }
+2026-10-30T21:15:55+00:00 arch panel[762]: 2026/10/30 21:15:55 pending DNS publication archr3shop113.test: automatic re-check failed (3 in a row): wait for durable DNS V3 publication: the agent is refusing durable mutations; this operation cannot complete (ledger_ambiguous)
+2026-10-30T21:16:55+00:00 arch agent[2380]: 2026/10/30 21:16:55 DEGRADED service-mutations: the durable mutation ledger is unavailable; the agent is serving and will refuse every mutation until this clears: service mutation manager is fail-closed: an operation's durable record or host outcome could 
+2026-10-30T21:16:55+00:00 arch agent[2380]: recover DNS zone V3 host receipt: deleted zone archr3shop113.test absence could not be verified over udp
+2026-10-30T21:18:05+00:00 arch panel[762]: 2026/10/30 21:18:05 pending DNS publication archr3shop113.test: automatic re-check failed (4 in a row): wait for durable DNS V3 publication: the agent is refusing durable mutations; this operation cannot complete (ledger_ambiguous)
+2026-10-30T21:22:40+00:00 arch panel[762]: 2026/10/30 21:22:40 pending DNS publication archr3shop113.test: automatic re-check failed (5 in a row): wait for durable DNS V3 publication: the agent is refusing durable mutations; this operation cannot complete (ledger_ambiguous)
+2026-10-30T21:26:50+00:00 arch panel[762]: 2026/10/30 21:26:50 pending DNS publication archr3shop113.test: automatic re-check failed (6 in a row): wait for durable DNS V3 publication: the agent is refusing durable mutations; this operation cannot complete (ledger_ambiguous)
+pending 1 [{'automatic': False, 'zone': 'archr3shop113.test'}] state ready
+== done 21:27:09

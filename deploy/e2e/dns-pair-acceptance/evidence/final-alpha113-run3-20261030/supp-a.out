@@ -1,0 +1,112 @@
+== supplement on r3-a site r3shop113.test id 1 21:14:33
+-- DKIM card (read only)
+200 {"dkim": {"name": "celik._domainkey.r3shop113.test", "recommended": "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAs9alZd36J3OTKrz1FghqUgLC2NSMDNcMtr+tQ3sAWActa+zUyQOS/HOdVzTm3UADlsjihg+Mxy8Nky4VEssvf9dLJjbKJniU/Hj4+dy0aICW1Upeu6Uh+ncHgCmKNYYo5s4CPGoNZFEnRA4VNrh5zHS+hq+7ReK5/jSmeoeok5PWAcvh4vSB6oCeF2Fhv4h7kXr8SSEuM4ImXjiX2XfBJjFULefu9Aq3YZvleb8bpDOW4PHJ69wAzaIBA5P14uyddHsRX95PhWYqCw1o9meoKToHr8e+Qu3V2+kv2tpPwu7iAMQcPRXH8tlwEZcW0reQsW7ZuWiZf+xce3Cl9C7oFQIDAQAB", "resolved": true, "status": "ok", "zone_value": "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAs9alZd36J3OTKrz1FghqUgLC2NSMDNcMtr+tQ3sAWActa+zUyQOS/HOdVzTm3UADlsjihg+Mxy8Nky4VEssvf9dLJjbKJniU/Hj4+dy0aICW1Upeu6Uh+ncHgCmKNYYo5s4CPGoNZFEnRA4VNrh5zHS+hq+7ReK5/jSmeoeok5PWAcvh4vSB6oCeF2Fhv4h7kXr8SSEuM4ImXjiX2XfBJjFULefu9Aq3YZvleb8bpDOW4PHJ69wAzaIBA5P14uyddHsRX95PhWYqCw1o9meoKToHr8e+Qu3V2+kv2tpPwu7iAMQcPRXH8tlwEZcW0reQsW7ZuWiZf+xce3Cl9C7oFQIDAQAB"}, "dns_value_prefix": "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQ", "dkim_selector": "celik", "dkim_signed": true, "signing_installed": true, "dkim_owner_record": false, "automatic": null, "dns_management_mode": "local"}
+-- panel/agent DKIM lines
+2026-10-30T21:03:05+00:00 frankfurt adduser[32717]: Adding system user `opendkim' (UID 108) ...
+2026-10-30T21:03:05+00:00 frankfurt adduser[32717]: Adding new group `opendkim' (GID 111) ...
+2026-10-30T21:03:05+00:00 frankfurt groupadd[32722]: group added to /etc/group: name=opendkim, GID=111
+2026-10-30T21:03:05+00:00 frankfurt groupadd[32722]: group added to /etc/gshadow: name=opendkim
+2026-10-30T21:03:05+00:00 frankfurt groupadd[32722]: new group: name=opendkim, GID=111
+2026-10-30T21:03:05+00:00 frankfurt adduser[32717]: Adding new user `opendkim' (UID 108) with group `opendkim' ...
+2026-10-30T21:03:05+00:00 frankfurt useradd[32727]: new user: name=opendkim, UID=108, GID=111, home=/run/opendkim, shell=/usr/sbin/nologin, from=none
+2026-10-30T21:03:05+00:00 frankfurt adduser[32717]: Creating home directory `/run/opendkim' ...
+2026-10-30T21:07:12+00:00 frankfurt panel[23171]: 2026/10/30 21:07:12 [dkim-auto] r3shop113.test: DKIM ready (domain_created; record published in r3shop113.test)
+2026-10-30T21:12:58+00:00 frankfurt panel[23171]: 2026/10/30 21:12:58 [dkim-auto] r3gone113.test: failed (dns_publish_failed) constraint failed: FOREIGN KEY constraint failed (787)
+-- PHP mail() from the site 21:14:33
+409 {"code": "FILE_EXISTS", "error": "An entry with this name already exists in this folder. Choose another name, or rename or delete the existing entry first, then try again."}
+200 {"success": true}
+   mail.php said: sent php-mail cbd79a8075a8
+HTTP/2 200  server: nginx
+-- DKIM verified independently against the TXT from each DNS server (192.0.3.107,192.0.3.108) 21:14:49
+{
+ "dns_servers": [
+  "192.0.3.107",
+  "192.0.3.108"
+ ],
+ "mails": [
+  {
+   "subject": "final-alpha113 4a6627883774",
+   "message_id": "<c3777371bb5a44689b41d697f797c7bd@labnet.test>",
+   "from": "alice@r3shop113.test",
+   "dkim_signatures": 1,
+   "scan_headers": [],
+   "dkim": [
+    {
+     "d": "r3shop113.test",
+     "s": "celik",
+     "a": "rsa-sha256",
+     "c": "relaxed/simple",
+     "h": "From:To:Subject:From",
+     "verify_with_txt_from_192.0.3.107": true,
+     "txt_p_prefix_192.0.3.107": "MIIBIjANBgkqhkiG9w0BAQEF",
+     "verify_with_txt_from_192.0.3.108": true,
+     "txt_p_prefix_192.0.3.108": "MIIBIjANBgkqhkiG9w0BAQEF"
+    }
+   ]
+  },
+  {
+   "subject": "final-alpha113-465 4a6627883774",
+   "message_id": "<25c34b807e504aa7b4accdb1607128b5@labnet.test>",
+   "from": "alice@r3shop113.test",
+   "dkim_signatures": 1,
+   "scan_headers": [],
+   "dkim": [
+    {
+     "d": "r3shop113.test",
+     "s": "celik",
+     "a": "rsa-sha256",
+     "c": "relaxed/simple",
+     "h": "From:To:Subject:From",
+     "verify_with_txt_from_192.0.3.107": true,
+     "txt_p_prefix_192.0.3.107": "MIIBIjANBgkqhkiG9w0BAQEF",
+     "verify_with_txt_from_192.0.3.108": true,
+     "txt_p_prefix_192.0.3.108": "MIIBIjANBgkqhkiG9w0BAQEF"
+    }
+   ]
+  },
+  {
+   "subject": "php-mail cbd79a8075a8",
+   "message_id": "<20261030211433.C76BE225F1@mail.r3f113.test>",
+   "from": "alice@r3shop113.test",
+   "dkim_signatures": 1,
+   "scan_headers": [],
+   "dkim": [
+    {
+     "d": "r3shop113.test",
+     "s": "celik",
+     "a": "rsa-sha256",
+     "c": "relaxed/simple",
+     "h": "To:Subject:From:Date:From",
+     "verify_with_txt_from_192.0.3.107": true,
+     "txt_p_prefix_192.0.3.107": "MIIBIjANBgkqhkiG9w0BAQEF",
+     "verify_with_txt_from_192.0.3.108": true,
+     "txt_p_prefix_192.0.3.108": "MIIBIjANBgkqhkiG9w0BAQEF"
+    }
+   ]
+  }
+ ]
+}
+-- on the server: DKIM tables, rspamd verdicts, milters (read only) 21:14:50
+opendkim conf /etc/opendkim.conf keytable=/var/lib/celikpanel-dkim/tables/keytable signingtable=/var/lib/celikpanel-dkim/tables/signingtable
+keytable lines for r3shop113.test: 1
+celik._domainkey.r3shop113.test r3shop113.test:celik:/var/lib/celikpanel-dkim/keys/r3shop113.test/celik.private
+signingtable lines for r3shop113.test: 1
+*@r3shop113.test celik._domainkey.r3shop113.test
+key files mentioning r3shop113.test:
+rspamd lines for c3777371bb5a44689b41d697f797c7bd@labnet.test:
+rspamd_task_write_log: id: <c3777371bb5a44689b41d697f797c7bd@labnet.test>, qid: <
+(default: F (no action): [0.90/15.00] [MISSING_DATE(1.00){}
+rspamd lines for 25c34b807e504aa7b4accdb1607128b5@labnet.test:
+rspamd_task_write_log: id: <25c34b807e504aa7b4accdb1607128b5@labnet.test>, qid: <
+(default: F (no action): [0.90/15.00] [MISSING_DATE(1.00){}
+rspamd lines for 20261030211433.C76BE225F1@mail.r3f113.test:
+milter warnings, all boots: 0
+boots: 2
+milters: smtpd=inet:127.0.0.1:8891, inet:127.0.0.1:11332 non_smtpd=inet:127.0.0.1:8891
+smtp inet y
+submission inet y
+smtps inet y
+-- rspamd log around the test (read only)
+2026-10-30 21:10:40 #36523(normal) <d86575>; task; rspamd_task_write_log: id: <c3777371bb5a44689b41d697f797c7bd@labnet.test>, qid: <A071F225ED>, ip: 192.0.3.1, user: alice@r3shop113.test, from: <alice@r3shop113.test>, (default: F (no action): [0.90/15.00] [MISSING_DATE(1.00){},MIME_GOOD(-0.10){text/plain;},ARC_NA(0.00){},ASN(0.0
+2026-10-30 21:10:49 #36523(normal) <5a964d>; task; rspamd_task_write_log: id: <25c34b807e504aa7b4accdb1607128b5@labnet.test>, qid: <E0EE7225ED>, ip: 192.0.3.1, user: alice@r3shop113.test, from: <alice@r3shop113.test>, (default: F (no action): [0.90/15.00] [MISSING_DATE(1.00){},MIME_GOOD(-0.10){text/plain;},ARC_NA(0.00){},ASN(0.0
+== supplement done 21:14:51
