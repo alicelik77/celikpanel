@@ -234,10 +234,99 @@ v_postfix() {
     [[ $warn -ne 0 ]] && return 2
     return 0
 }
+# --- Delivered mail read back (cases with MAIL_ROOT and MAIL_USERS) ---------
+# A configuration Dovecot accepts can still hide every delivered message:
+# Debian 13's Dovecot 2.4 passed doveconf, doveadm user and auth test while
+# its stock mail_inbox_path sent INBOX to /var/mail (final alpha.113
+# acceptance, 30 Oct 2026). So each case delivers one message the way
+# Postfix's virtual(8) does and reads it back through Dovecot's storage
+# (doveadm fetch) and through IMAP (LOGIN, SELECT INBOX, FETCH), as mail
+# clients and webmail do.
+#
+# The mailbox owner exactly as the Agent creates it (ensureVmailUser: uid and
+# gid 5000) and the mail root as secureEnsureMailRoot leaves it (root:vmail
+# 0710).
+ensure_vmail() { # uid gid
+    getent group vmail >/dev/null 2>&1 || groupadd -g "$2" vmail >/dev/null 2>&1
+    [[ "$(getent group vmail | cut -d: -f3)" == "$2" ]] || groupmod -g "$2" vmail >/dev/null 2>&1
+    if id -u vmail >/dev/null 2>&1; then
+        [[ "$(id -u vmail)" == "$1" ]] || usermod -u "$1" -g "$2" vmail >/dev/null 2>&1
+    else
+        useradd -r -g "$2" -u "$1" -M -d "${MAIL_ROOT:-/nonexistent}" -s /usr/sbin/nologin vmail >/dev/null 2>&1 \
+            || useradd -r -g "$2" -u "$1" -M -s /bin/false vmail >/dev/null 2>&1
+    fi
+    [[ "$(id -u vmail 2>/dev/null)" == "$1" ]]
+}
+# One IMAP command on descriptor 7; prints the server's lines up to the tagged
+# reply and succeeds only on "<tag> OK".
+imap_command() { # tag command
+    local line
+    printf '%s %s\r\n' "$1" "$2" >&7
+    while IFS= read -r -t 10 line <&7; do
+        line=${line%$'\r'}
+        printf '%s\n' "$line"
+        if [[ "$line" == "$1 "* ]]; then
+            [[ "$line" == "$1 OK"* ]]
+            return
+        fi
+    done
+    printf '%s: no tagged reply within 10 s\n' "$1"
+    return 1
+}
+mail_read_check() { # address password uid gid
+    local address=$1 domain=${1#*@} local_part=${1%@*} dir subject file out greeting rc=0
+    dir=$MAIL_ROOT/$domain/$local_part
+    subject="matrix delivery $local_part $(date +%s) $RANDOM"
+    # virtual(8): <base>/<domain>/<user>/{tmp,new,cur} owned by the mailbox
+    # owner, 0700, and the message as one file in new/.
+    install -d -o "$3" -g "$4" -m 0700 "$MAIL_ROOT/$domain" "$dir" "$dir/tmp" "$dir/new" "$dir/cur" || return 1
+    file="$dir/new/$(date +%s).M${RANDOM}P$$.matrix"
+    printf 'Return-Path: <sender@example.invalid>\nDelivered-To: %s\nFrom: sender@example.invalid\nTo: %s\nSubject: %s\nMessage-ID: <%s.%s@matrix.invalid>\n\nDelivered by the distro config matrix.\n' \
+        "$address" "$address" "$subject" "$RANDOM" "$local_part" >"$file"
+    chown "$3:$4" "$file"; chmod 0600 "$file"
+    out=$(doveadm fetch -u "$address" hdr.subject mailbox INBOX all 2>&1)
+    if ! grep -qF "$subject" <<<"$out"; then
+        printf 'delivered message not in INBOX (doveadm fetch -u %s): %s\n' "$address" "${out:-no message}"
+        rc=1
+    fi
+    if exec 7<>/dev/tcp/127.0.0.1/143; then
+        IFS= read -r -t 10 greeting <&7
+        out=$(imap_command a "LOGIN \"$address\" \"$2\"" && imap_command b "SELECT INBOX" \
+            && imap_command c "FETCH 1 (BODY.PEEK[HEADER.FIELDS (SUBJECT)])"; imap_command d LOGOUT)
+        exec 7<&- 7>&-
+        if ! grep -qF "Subject: $subject" <<<"$out"; then
+            printf 'IMAP read of %s INBOX failed (greeting: %s): %s\n' "$address" "${greeting%$'\r'}" "$(head -20 <<<"$out")"
+            rc=1
+        fi
+    else
+        printf 'IMAP: nothing answers on 127.0.0.1:143\n'
+        rc=1
+    fi
+    # Webmail creates Sent and Trash beside INBOX; the delivered message must
+    # stay in INBOX and INBOX must stay listed.
+    out=$(doveadm mailbox create -u "$address" Sent 2>&1) || { printf 'doveadm mailbox create -u %s Sent: %s\n' "$address" "$out"; rc=1; }
+    out=$(doveadm mailbox list -u "$address" 2>&1)
+    if ! grep -qx 'INBOX' <<<"$out" || ! grep -qx 'Sent' <<<"$out"; then
+        printf 'mailboxes of %s after creating Sent: %s\n' "$address" "$out"
+        rc=1
+    fi
+    out=$(doveadm fetch -u "$address" hdr.subject mailbox INBOX all 2>&1)
+    grep -qF "$subject" <<<"$out" || { printf 'INBOX of %s lost the delivered message after creating Sent: %s\n' "$address" "$out"; rc=1; }
+    [[ $rc -eq 0 ]] && printf 'delivered message read back from %s INBOX (doveadm fetch and IMAP)\n' "$address"
+    return $rc
+}
+
 v_dovecot() {
     local out rc=0 warn=0 u
-    ensure_user vmail
-    [[ -n "${MAIL_ROOT:-}" ]] && mkdir -p "$MAIL_ROOT"
+    if [[ -n "${MAIL_UID:-}" ]]; then
+        ensure_vmail "$MAIL_UID" "${MAIL_GID:-$MAIL_UID}" || { printf 'could not create the vmail user with uid %s\n' "$MAIL_UID"; return 1; }
+    else
+        ensure_user vmail
+    fi
+    if [[ -n "${MAIL_ROOT:-}" ]]; then
+        mkdir -p "$MAIL_ROOT"
+        [[ -n "${MAIL_UID:-}" ]] && { chown root:vmail "$MAIL_ROOT"; chmod 0710 "$MAIL_ROOT"; }
+    fi
     # On a server Postfix has run and created its private/ spool directory,
     # where the submission SASL socket lives.
     if command -v postfix >/dev/null 2>&1; then
@@ -257,7 +346,12 @@ v_dovecot() {
             out=$(doveadm user "$u" 2>&1) || { printf 'doveadm user %s: %s\n' "$u" "$out"; rc=1; }
             grep -qi 'warn\|error' <<<"$out" && { printf 'doveadm user %s: %s\n' "$u" "$out"; warn=1; }
             out=$(doveadm auth test "$u" "${MAIL_PASSWORD:-}" 2>&1) || { printf 'doveadm auth test %s: %s\n' "$u" "$out"; rc=1; }
+            if [[ -n "${MAIL_ROOT:-}" && -n "${MAIL_UID:-}" ]]; then
+                mail_read_check "$u" "${MAIL_PASSWORD:-}" "$MAIL_UID" "${MAIL_GID:-$MAIL_UID}" || rc=1
+            fi
         done
+        # The delivered test mail goes; the root stays as the Agent made it.
+        [[ -n "${MAIL_ROOT:-}" && -n "${MAIL_UID:-}" ]] && find "$MAIL_ROOT" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
         timeout 5 bash -c 'exec 3<>/dev/tcp/127.0.0.1/143; head -c 100 <&3 >/dev/null' 2>/dev/null || true
         tls_checks "IMAPS" 993 "" dovecot || rc=1
         doveadm stop >/dev/null 2>&1 || pkill dovecot
@@ -410,7 +504,7 @@ fi
 for dir in "$cases"/*/; do
     [[ -f "$dir/case.env" ]] || continue
     CASE_ID=$(basename "$dir")
-    unset PROGRAM VARIANT VALIDATOR SOURCE TARGET REASON OWNERS RESTORE_DIRS PDNS_USER USERS PHP_VERSION ZONES PRECREATE MAIL_USERS MAIL_PASSWORD MAIL_ROOT NOTE \
+    unset PROGRAM VARIANT VALIDATOR SOURCE TARGET REASON OWNERS RESTORE_DIRS PDNS_USER USERS PHP_VERSION ZONES PRECREATE MAIL_USERS MAIL_PASSWORD MAIL_ROOT MAIL_UID MAIL_GID NOTE \
         KNOWN_NAME EXPECT_DEFAULT TLS_SNI_EXPECT TLS_RENEW_LINEAGE TLS_RENEW_EXPECT
     # shellcheck disable=SC1090,SC1091
     . "$dir/case.env"

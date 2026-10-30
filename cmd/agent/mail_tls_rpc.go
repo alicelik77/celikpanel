@@ -407,7 +407,11 @@ func probePostfixTLSMapType(run mailTLSCommandRunner) (string, error) {
 	if err := os.WriteFile(probe, []byte(probeLine), 0o600); err != nil {
 		return "", fmt.Errorf("prepare Postfix SNI map probe: %w", err)
 	}
-	for _, mapType := range []string{"lmdb", "hash", "btree"} {
+	// Only the types Postfix lists are tried: postmap logs its refusal of an
+	// absent type as a fatal line (postfixMapTypeCandidates).
+	// Yalnız Postfix'in listelediği tipler denenir.
+	listed, listErr := run("postconf", "-m")
+	for _, mapType := range postfixMapTypeCandidates(listed, listErr) {
 		for _, extension := range []string{".db", ".lmdb"} {
 			if err := os.Remove(probe + extension); err != nil && !os.IsNotExist(err) {
 				return "", fmt.Errorf("reset Postfix SNI map probe: %w", err)

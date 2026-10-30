@@ -282,12 +282,22 @@ func wireMailFilters(ctx context.Context, resp *WireMailFiltersResponse) error {
 			return nil
 		}
 	}
+	// The same "on upgrade" repair for Dovecot's virtual-mailbox drop-in: a
+	// release that changes its text reaches servers already running mail,
+	// and an administrator's file is kept (dovecot_virtual_dropin.go). Its
+	// outcome is reported beside the milter wiring, never as its failure.
+	// Dovecot'un sanal posta kutusu eki için aynı "yükseltmede" onarım.
+	dovecotNote := reconcileDovecotVirtualDropIn(ctx)
 	if err := applyMilterChain(ctx); err != nil {
 		resp.Error = err.Error()
+		resp.Detail = dovecotNote
 		return nil
 	}
 	resp.Wired = true
 	resp.Detail = fmt.Sprintf("milters=%q maps=%s", postconfValue("smtpd_milters"), postfixMapTypeContext(ctx))
+	if dovecotNote != "" {
+		resp.Detail += "; " + dovecotNote
+	}
 	return nil
 }
 
@@ -653,6 +663,18 @@ func configureDovecotVirtual() error {
 	}
 	conf := buildDovecotVirtualConfAt(modern, root)
 
+	// The administrator's drop-in is kept, never overwritten: classify it
+	// before anything (the Arch main file included) is written
+	// (dovecot_virtual_dropin.go).
+	// Yöneticinin eki korunur: hiçbir şey yazılmadan önce sınıflanır.
+	existing, err := snapshotMailFile(dovecotVirtualDropInPath)
+	if err != nil {
+		return fmt.Errorf("snapshot dovecot state: %w", err)
+	}
+	if classifyDovecotVirtualDropIn(existing.content, existing.exists, dovecotVirtualEarlierRoots(root)) == dovecotVirtualDropInOwnerEdited {
+		return errors.New(dovecotVirtualOwnerEditedReason)
+	}
+
 	confDir := dovecotConfDirPath
 	snapshots := make([]mailFileSnapshot, 0, 4)
 	if dovecotNeedsArchLayout() {
@@ -673,7 +695,7 @@ func configureDovecotVirtual() error {
 		// yerine bunu söyle.
 		return errors.New(dovecotConfDirMissingReason)
 	}
-	managedConf := confDir + "/99-celikpanel.conf"
+	managedConf := dovecotVirtualDropInPath
 	authConf := confDir + "/10-auth.conf"
 	paths := []string{dovecotUsersPath, managedConf, authConf}
 	usersIndex := len(snapshots)
@@ -1004,8 +1026,9 @@ func postfixMapType() string {
 
 func postfixMapTypeContext(ctx context.Context) string {
 	mapTypeOnce.Do(func() {
-		for _, t := range []string{"lmdb", "hash", "btree"} {
-			if postmapTypeWorksContext(ctx, t) {
+		out, err := postfixMapTypeList(ctx)
+		for _, t := range postfixMapTypeCandidates(out, err) {
+			if postfixMapTypeUsable(ctx, t) {
 				mapTypeCached = t
 				return
 			}
@@ -1013,6 +1036,52 @@ func postfixMapTypeContext(ctx context.Context) string {
 		mapTypeCached = "texthash"
 	})
 	return mapTypeCached
+}
+
+// Seams for component tests: the type list Postfix reports and the postmap
+// trial of one type.
+var (
+	postfixMapTypeList = func(ctx context.Context) ([]byte, error) {
+		return serviceMutationCommand(ctx, "postconf", "-m").Output()
+	}
+	postfixMapTypeUsable = postmapTypeWorksContext
+)
+
+// postfixIndexedMapTypes is the preference order of indexed table types.
+var postfixIndexedMapTypes = []string{"lmdb", "hash", "btree"}
+
+// postfixMapTypeCandidates narrows the postmap trial to the types Postfix
+// itself lists (`postconf -m`). Even with its output captured, postmap writes
+// its refusal of an absent type to the system log: Debian 13 journaled
+// "postfix/postmap: fatal: unsupported map type: lmdb" at error level on
+// every Agent start (final alpha.113 acceptance, 30 Oct 2026), although
+// falling through to hash is the correct outcome there. Asking for the list
+// first logs nothing. The list alone is still not trusted (Arch lists hash
+// without a usable Berkeley DB), so a listed type is tried with postmap as
+// before. When the list cannot be read, every type is tried, as before.
+// postfixMapTypeCandidates, postmap denemesini Postfix'in kendi listelediği
+// tiplerle (`postconf -m`) sınırlar. postmap, olmayan bir tipi reddini çıktısı
+// yakalansa da sistem günlüğüne "fatal" düzeyinde yazar; listeyi önce sormak
+// hiçbir şey yazmaz. Liste tek başına güvenilmez; listelenen tip yine postmap
+// ile denenir. Liste okunamazsa her tip eskisi gibi denenir.
+func postfixMapTypeCandidates(listed []byte, err error) []string {
+	if err != nil {
+		return append([]string(nil), postfixIndexedMapTypes...)
+	}
+	known := make(map[string]bool)
+	for _, field := range strings.Fields(string(listed)) {
+		known[field] = true
+	}
+	if len(known) == 0 {
+		return append([]string(nil), postfixIndexedMapTypes...)
+	}
+	candidates := make([]string, 0, len(postfixIndexedMapTypes))
+	for _, t := range postfixIndexedMapTypes {
+		if known[t] {
+			candidates = append(candidates, t)
+		}
+	}
+	return candidates
 }
 
 func postmapTypeWorks(t string) bool {
