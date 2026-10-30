@@ -1,0 +1,40 @@
+// SCREEN catalogue part "setupInspection": the deletion check between two
+// servers joined by code, set up by the backup over the setup link
+// (setup.v5.inspection., and its waits setup.v5.wait.server_setup_peer_inspection_),
+// split out of "setupLink" for its size budget.
+// "setupInspection" ekran parcasi: iki sunucu arasindaki silme denetimi.
+
+import type { SetupInspectionScreenKey } from './en';
+
+export const trSetupInspectionScreens: Record<SetupInspectionScreenKey, string> = {
+    "setup.v5.wait.server_setup_peer_inspection_unreachable": "Bu sunucu hazır ve ana DNS sunucusuyla birlikte, silinen bir alan adının bu yedekten de kalktığını doğrulayan denetimi kuruyor. Ana DNS sunucusuna ulaşılamadı. Kısa süreli kapalıysa yapılacak bir şey yok; değilse panelinin çalıştığını denetleyin. Bu sunucu kendiliğinden yeniden dener.",
+    "setup.v5.wait.server_setup_peer_inspection_main_agent": "Bu sunucu hazır ve silme denetimini ana DNS sunucusuyla kuruyor; ana sunucunun CelikPanel Agent'ı yanıt vermedi. Sürerse ana sunucunun sahibi orada sudo systemctl status celikpanel-agent ile denetler. Bu sunucu kendiliğinden yeniden dener.",
+    "setup.v5.wait.server_setup_peer_inspection_agent": "Bu sunucu hazır ve silme denetimini ana DNS sunucusuyla kuruyor, ancak bu sunucunun CelikPanel Agent'ı yanıt vermedi. Sürerse burada sudo systemctl status celikpanel-agent ile denetleyin. Bu sunucu kendiliğinden yeniden dener.",
+    "setup.v5.wait.server_setup_peer_inspection_main_pair": "Bu sunucu hazır ve silme denetimini kuruyor. Ana DNS sunucusu DNS eşleşmesinin kendi tarafını henüz bitirmedi. Yapılacak bir şey yok; bu sunucu kendiliğinden yeniden sorar.",
+    "setup.v5.wait.server_setup_peer_inspection_backup_pair": "Bu sunucu hazır ve silme denetimini kuruyor, ancak kendi DNS eşleşmesi henüz kurulmuş olarak kayıtlı değil. Yapılacak bir şey yok; bu sunucu kendiliğinden yeniden sorar.",
+    "setup.v5.wait.server_setup_peer_inspection_ssh_port": "Bu sunucu hazır, ancak silme denetimi kurulamıyor: denetim bu sunucunun SSH'ına 22 numaralı porttan bağlanır, SSH ise burada başka bir portta dinliyor. Sunucu sahibi olarak: OpenSSH'ın 22 numaralı portta da dinlemesini sağlayın (aşağıdaki satıra bakın) ya da denetimi istemiyorsanız ana DNS sunucusunda \"Diğer sunucuyu beklemeyi bırak\" seçin. Bu sunucu kendiliğinden yeniden denetler.",
+    "setup.v5.wait.server_setup_peer_inspection_failed": "Bu sunucu hazır, ancak silme denetimi kurulumunun bir adımı reddedildi; hiçbir şeyin üzerine yazılmadı. Aşağıdaki satır sunucuyu ve nedeni söyler; o sunucunun sahibi nedeni giderir, bu sunucu birkaç dakika içinde kendiliğinden yeniden dener.",
+    "setup.v5.wait.server_setup_peer_inspection_ssh_unreachable": "Silme denetimi iki sunucuda da kuruldu, ancak ana DNS sunucusu bu sunucunun 22 numaralı SSH portuna bağlanamıyor. Sunucu sahibi olarak: bu sunucunun önündeki her güvenlik duvarında (örneğin barındırma sağlayıcısınınkinde) ana DNS sunucusundan gelen TCP 22 bağlantısına izin verin. Bu sunucu kendiliğinden yeniden denetler.",
+    "setup.v5.inspection.title": "İki sunucu arasındaki silme denetimi",
+    "setup.v5.inspection.ready": "Kuruldu: bir alan adı silindiğinde ana DNS sunucusu ({main}) yedeğin ({backup}) de onu kaldırdığını kendiliğinden doğrular. Yapılacak bir şey yok. İki sunucuda da olağan bir yapılandırmadır ve panel olmadan da çalışır.",
+    "setup.v5.inspection.existing": "Sunucu sahibinin daha önce kurduğu bir silme denetimi bulundu ve olduğu gibi bırakıldı; hiçbir şey değiştirilmedi. Silinen alan adları beklemede kalırsa iki sunucuda da dns-peer-enroll sahip aracının durum komutlarıyla karşılaştırın.",
+    "setup.v5.inspection.owner_conflict": "Kendiliğinden kurulmadı: sunuculardan birinde sahibin yaptığı ya da değiştirdiği denetim ayarları, dosyaları veya SSH yapılandırması var ve kurulum bunların üzerine asla yazmaz. Hiçbir şey değiştirilmedi. Bu çözülene kadar silinen bir alan adı beklemede kalır ve sonraki DNS değişiklikleri onun arkasında bekler. Sahip bunları dns-peer-enroll sahip aracının durum komutlarıyla inceler, sonra korur ya da kaldırır ve denetimi o araçla tamamlar.",
+    "setup.v5.inspection.revoked": "Sunucu sahibi silme denetimini yedekte kapattı; kurulum onu yeniden açmaz. Denetim dns-peer-enroll sahip aracıyla yeniden kurulana kadar silinen bir alan adı beklemede kalır; DNS bu sırada yanıt vermeyi sürdürür.",
+    "setup.v5.inspection.inspector_unavailable": "Kendiliğinden kurulmadı: yedekte paketlenmiş denetçi programı yok (önceki bir sürümden güncellenmiş kurulum). Denetim doğrulanmış sürüm arşivindeki dns-peer-enroll sahip aracıyla kurulana kadar silinen bir alan adı beklemede kalır.",
+    "setup.v5.inspection.unsupported": "Kendiliğinden kurulmadı: iki panelden biri bunu henüz sunmuyor. Eski paneli kendi güncelleme ekranından güncelleyin; o zamana kadar denetim dns-peer-enroll sahip aracıyla kurulmadıkça silinen bir alan adı beklemede kalır.",
+    "setup.v5.inspection.link_ended": "Kurulmadı: ana DNS sunucusu, denetim bitmeden yedeği beklemeyi bıraktı. Denetim iki sunucuda dns-peer-enroll sahip aracıyla kurulana kadar silinen bir alan adı beklemede kalır.",
+    "setup.v5.inspection.working": "İki sunucu arasında kuruluyor. Yapılacak bir şey yok.",
+    "setup.v5.inspection.unreachable": "Bekleniyor: yedek, ana DNS sunucusuna ({main}) ulaşamadı. Kendiliğinden yeniden dener.",
+    "setup.v5.inspection.main_agent": "Bekleniyor: ana DNS sunucusunun CelikPanel Agent'ı yanıt vermedi. Kendiliğinden yeniden sorulur.",
+    "setup.v5.inspection.agent": "Bekleniyor: yedeğin CelikPanel Agent'ı yanıt vermedi. Kendiliğinden yeniden sorulur.",
+    "setup.v5.inspection.main_pair": "Ana DNS sunucusunun ({main}) DNS eşleşmesinin kendi tarafını bitirmesi bekleniyor. Yapılacak bir şey yok.",
+    "setup.v5.inspection.backup_pair": "Yedeğin DNS eşleşmesinin kurulmuş olarak kaydedilmesi bekleniyor. Yapılacak bir şey yok.",
+    "setup.v5.inspection.ssh_port": "Sahip bekleniyor: denetim yedeğin ({backup}) SSH'ına 22 numaralı porttan bağlanır, SSH orada {ports} numaralı portta dinliyor. Yedekte /etc/ssh/sshd_config dosyasındaki mevcut Port satırının yanına \"Port 22\" ekleyin, sudo sshd -t çalıştırın, sonra OpenSSH'ı yeniden yükleyin; CelikPanel güvenlik duvarı OpenSSH'ın dinlediği portları açar. Kendiliğinden yeniden denetlenir.",
+    "setup.v5.inspection.failed": "Sahip bekleniyor: {side} sunucusundaki bir adım reddedildi; hiçbir şeyin üzerine yazılmadı ve hazırlanan dosyalar korundu. O sunucunun sahibi nedeni orada sudo journalctl -u celikpanel-agent | grep \"peer inspection\" ile okur ve giderir; adım birkaç dakika içinde kendiliğinden yeniden denenir.",
+    "setup.v5.inspection.ssh_unreachable": "Sahip bekleniyor: ana DNS sunucusu ({main}), yedeğin ({backup}) 22 numaralı SSH portuna bağlanamadı. Yedeğin önündeki her güvenlik duvarında (örneğin barındırma sağlayıcısınınkinde) {main} adresinden gelen TCP 22 bağlantısına izin verin. Kendiliğinden yeniden denetlenir.",
+    "setup.v5.inspection.ssh_host_key_mismatch": "Sahip bekleniyor: ana DNS sunucusu {backup} adresinde 22 numaralı SSH portuna ulaştı, ancak yanıt yedeğinkinden başka bir sunucu anahtarıyla geldi. {backup} adresinin gerçekten yedeğin adresi olduğunu ve arada onun yerine yanıt veren bir şey olmadığını denetleyin. Kendiliğinden yeniden denetlenir.",
+    "setup.v5.inspection.ssh_auth_refused": "Sahip bekleniyor: yedeğin {backup} adresindeki SSH'ı denetimin anahtarını reddetti. Yedekte sudo /opt/celikpanel/dns-owner-tools/dns-peer-enroll secondary-status (PowerDNS için --engine pdns ekleyin) ve SSH günlüğüyle denetleyin. Kendiliğinden yeniden denetlenir.",
+    "setup.v5.inspection.ssh_credential": "Bekleniyor: ana DNS sunucusu denetim için kendi anahtarını okuyamadı. Sahibi orada CelikPanel Agent günlüğüne bakar (sudo journalctl -u celikpanel-agent | grep \"peer inspection\"). Kendiliğinden yeniden denetlenir.",
+    "setup.v5.inspection.side.main": "ana DNS",
+    "setup.v5.inspection.side.backup": "yedek DNS",
+};
