@@ -37,7 +37,7 @@ export function MariaDBManagement({ onBack }: MariaDBManagementProps) {
 
     const known = files.state === 'known' ? files.value : null;
     const preferred = known
-        ? known.find((path) => path.endsWith('50-server.cnf')) ?? known.find((path) => path.endsWith('my.cnf')) ?? known[0]
+        ? known.find((path) => path.endsWith('50-server.cnf') || path === '/etc/my.cnf.d/server.cnf') ?? known.find((path) => path.endsWith('my.cnf')) ?? known[0]
         : undefined;
     const selected = chosen && known?.includes(chosen) ? chosen : preferred;
 

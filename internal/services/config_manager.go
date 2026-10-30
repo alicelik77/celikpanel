@@ -3,6 +3,7 @@ package services
 import (
 	"bufio"
 	"fmt"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -11,7 +12,27 @@ import (
 // ConfigManager manages service configuration files.
 type ConfigManager struct{}
 
-var mysqlServerConfigPath = "/etc/mysql/mariadb.conf.d/50-server.cnf"
+// mysqlServerConfigPath, when set, names the file (tests); empty means the
+// distribution's own server file is found on the host (mysqlServerConfigFile).
+var mysqlServerConfigPath = ""
+
+// mysqlServerConfigCandidates are the server option files the distributions'
+// MariaDB packages ship: Debian/Ubuntu's mariadb.conf.d/50-server.cnf and Arch
+// Linux's /etc/my.cnf.d/server.cnf (included by /etc/my.cnf). Both end with a
+// section the server reads ([mariadb-X.Y]), where a new setting is appended.
+var mysqlServerConfigCandidates = []string{"/etc/mysql/mariadb.conf.d/50-server.cnf", "/etc/my.cnf.d/server.cnf"}
+
+func mysqlServerConfigFile() string {
+	if mysqlServerConfigPath != "" {
+		return mysqlServerConfigPath
+	}
+	for _, candidate := range mysqlServerConfigCandidates {
+		if info, err := os.Lstat(candidate); err == nil && info.Mode().IsRegular() {
+			return candidate
+		}
+	}
+	return mysqlServerConfigCandidates[0]
+}
 
 func NewConfigManager() *ConfigManager { return &ConfigManager{} }
 
@@ -118,7 +139,7 @@ func (cm *ConfigManager) UpdatePHPSettings(phpVersion string, settings *PHPSetti
 }
 
 func (cm *ConfigManager) GetMySQLSettings() (*MySQLSettings, error) {
-	content, err := readManagedConfig(mysqlServerConfigPath)
+	content, err := readManagedConfig(mysqlServerConfigFile())
 	if err != nil {
 		return nil, fmt.Errorf("read database configuration: %w", err)
 	}
@@ -161,7 +182,7 @@ func (cm *ConfigManager) UpdateMySQLSettings(settings *MySQLSettings) error {
 	if err := validateMySQLSettings(settings); err != nil {
 		return err
 	}
-	return mutateManagedConfig(mysqlServerConfigPath, 0o644, func(content []byte) ([]byte, error) {
+	return mutateManagedConfig(mysqlServerConfigFile(), 0o644, func(content []byte) ([]byte, error) {
 		updated := string(content)
 		updated = cm.updateOrAddSetting(updated, "max_connections", strconv.Itoa(settings.MaxConnections))
 		updated = cm.updateOrAddSetting(updated, "innodb_buffer_pool_size", settings.InnodbBufferPool)
