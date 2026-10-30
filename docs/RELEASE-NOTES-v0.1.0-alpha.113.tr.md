@@ -82,11 +82,25 @@ değişmedi).
   `127.0.0.1` üzerinden ulaşır, gönderim hizmeti dağıtımın kendi chroot
   seçimine uyar; mevcut sunucu panelin bir sonraki açılışında onarılır
   (sahibin değiştirdiği satırlar korunur ve adlandırılır).
-- DKIM: "Anahtar oluştur" yeniden basılınca OpenDKIM'in mevcut anahtarı
+- DKIM: "DKIM anahtarı üret" yeniden basılınca OpenDKIM'in mevcut anahtarı
   okuma izni artık kalkmaz; imzalama adımı başarısız olursa "anahtar
   oluşturuldu" yerine bu bildirilir.
-- Dosya yöneticisi, olmayan bir yol ya da zaten var olan bir ad için çıplak
-  hata yerine ne yapılacağını söyler.
+- Sunucuda postası olan her alan adı DKIM anahtarını ve imzalamayı kendiliğinden
+  alır. Bu üç durumda olur: posta kuruluyken alan adı eklendiğinde, alan adına
+  ilk posta kutusu açıldığında ve posta profili Hizmetler'den kurulduğunda (bu
+  kurulum artık OpenDKIM'i de kurar). Önceden sahip "DKIM anahtarı üret"a
+  basana kadar posta imzasız gidiyordu.
+  - Bölge bu sunucuda tutuluyorsa DKIM kaydı orada ve yedek DNS sunucusunda
+    yayımlanır.
+  - DNS başka yerdeyse kart, sağlayıcıya eklenecek kaydı gösterir.
+  - Var olan anahtar ya da bölgede zaten bulunan farklı bir DKIM kaydı
+    korunur ve kart bunu söyler.
+  - Alan adı eklemek bu yüzden hiç beklemez. Kart ne olduğunu, kimin işlem
+    yapacağını ve nasıl süreceğini söyler; "Yeniden dene" düğmesi vardır.
+  - Alan adı silinince CelikPanel'in oluşturduğu anahtar ve kaydı da kalkar;
+    sahibin oluşturduğu anahtar korunur ve adı bildirilir.
+- Dosya yöneticisi; olmayan bir yol, zaten var olan bir ad ya da indirilemeyen
+  bir dosya için çıplak hata yerine ne yapılacağını söyler.
 
 **Lisans (D-039)**
 - Bir başarılı denetim, yönetimi çevrim dışı yedi güne kadar açık tutar;
@@ -149,6 +163,11 @@ değişmedi).
 - Yedeğe ulaşılamazken silinen bir alan adının DNS kısmını panel, yedek
   dönünce kendisi bitirir; alan adının silme durumu kalanı kaldırmak için bir
   kez "Bu silme işlemini yeniden dene" ister.
+- Önceki bir sürümden güncellenen sunucuda mevcut alan adları DKIM anahtarını
+  kendiliğinden almaz; kartları "DKIM anahtarı üret"u sunar. Bu sürümden
+  önce oluşturulmuş anahtarlar, alan adı silinince korunur ve adları bildirilir.
+  cPanel içe aktarmasıyla gelen alan adları ve posta kutuları otomatik DKIM'i
+  başlatmaz.
 - Değişen `/etc/resolv.conf`, nginx vekil hedefine ancak o sitenin yapılandırması
   yeniden yazıldığında ulaşır.
 

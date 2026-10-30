@@ -80,11 +80,25 @@ needed (schema 46, unchanged).
   reaches its filters at `127.0.0.1`, and submission follows the
   distribution's own chroot choice; an existing server is repaired at the
   next Panel start (entries the owner changed are kept and named).
-- DKIM: pressing "Generate key" again no longer removes OpenDKIM's read
+- DKIM: pressing "Generate DKIM key" again no longer removes OpenDKIM's read
   access to an existing key, and a failed signing step is reported instead
   of "key generated".
-- The file manager answers a missing path or an existing name with what to
-  do, not a bare error.
+- Every domain with mail on the server gets a DKIM key and signing by
+  itself. This happens when a domain is added while mail is installed, when
+  it gets its first mailbox, and when the mail profile is installed from
+  Services, which now also sets up OpenDKIM. Before, its mail went unsigned
+  until the owner pressed "Generate DKIM key".
+  - When the zone is kept on this server, the DKIM record is published there
+    and on the backup DNS server.
+  - With external DNS, the card shows the record to add at the provider.
+  - An existing key or a different DKIM record already in the zone is kept,
+    and the card says so.
+  - Adding the domain is never held up by this. The card says what is
+    happening, who acts and how it resumes, with "Try again".
+  - Deleting a domain removes the key CelikPanel made and its record; a key
+    the owner made is kept and named.
+- The file manager answers a missing path, an existing name or a missing
+  download with what to do, not a bare error.
 
 **License (D-039)**
 - One successful check keeps management open for up to seven days offline;
@@ -146,6 +160,11 @@ needed (schema 46, unchanged).
 - If a domain is deleted while the backup is unreachable, the panel finishes
   the DNS part by itself when the backup is back; the domain's deletion
   status then asks for "Retry this deletion" once to remove the rest.
+- On a server updated from an earlier release, existing domains do not get
+  DKIM keys by themselves; their card offers "Generate DKIM key". Keys made
+  before this release are kept and named when their domain is deleted.
+  Domains and mailboxes brought in by cPanel import do not start automatic
+  DKIM.
 - A changed `/etc/resolv.conf` reaches an nginx proxy target only when that
   site's configuration is next written.
 
