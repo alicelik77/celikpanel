@@ -1,0 +1,115 @@
+== redo on r2-b site archr2shop113.test id 1 17:14:08
+-- a PHP page through the file manager (path at the site root) 17:14:08
+200 {"success": true}
+200 {"success": true}
+resolves (lab resolver 192.0.2.53): archr2shop113.test=192.0.3.106 www.archr2shop113.test=192.0.3.106
+--- http://archr2shop113.test/
+code=301 redirect=https://archr2shop113.test/ ssl_verify=0
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Content-Type: text/html
+Location: https://archr2shop113.test/
+--- https://archr2shop113.test/
+code=200 redirect= ssl_verify=0
+HTTP/2 200 
+server: nginx
+content-type: text/html
+strict-transport-security: max-age=0
+body: 3090 bytes, title: <title>archr2shop113.test
+software words in body: [CelikPanel ]
+--- http://www.archr2shop113.test/
+code=301 redirect=https://www.archr2shop113.test/ ssl_verify=0
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Content-Type: text/html
+Location: https://www.archr2shop113.test/
+--- https://www.archr2shop113.test/
+code=200 redirect= ssl_verify=0
+HTTP/2 200 
+server: nginx
+content-type: text/html
+strict-transport-security: max-age=0
+body: 3090 bytes, title: <title>archr2shop113.test
+software words in body: [CelikPanel ]
+--- certificate served on archr2shop113.test:443
+subject= X509v3 Subject Alternative Name: critical     DNS:archr2shop113.test, DNS:www.archr2shop113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 17:07:19 2031 GMT 
+Verify return code: 0 (ok)
+--- https://archr2shop113.test/hello.php
+code=200
+HTTP/2 200 
+server: nginx
+content-type: text/html; charset=UTF-8
+x-powered-by present: 0
+body: php-ok 5
+--- http://archr2shop113.test/hello.php (redirect?)
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Location: https://archr2shop113.test/hello.php
+code=301 location=https://archr2shop113.test/hello.php
+-- mailboxes: delete what the race left, create alice and bob again 17:14:09
+200 {"success": true}
+200 {"id": 2, "success": true}
+200 {"id": 3, "success": true}
+200 {"accounts": [{"address": "alice@archr2shop113.test", "id": 2, "quota_mb": 1024}, {"address": "bob@archr2shop113.test", "id": 3, "quota_mb": 1024}]}
+-- send 587, read IMAPS 993 17:14:10
+{
+ "host": "mail.archr2f113.test",
+ "resolved": "192.0.3.106",
+ "smtp_587_cert": {
+  "cn": null,
+  "san": [
+   "mail.archr2f113.test"
+  ],
+  "not_after": "Oct 30 17:06:21 2031 GMT",
+  "issuer_cn": "Pebble Intermediate CA 445eee"
+ },
+ "smtp_send": {
+  "ok": true,
+  "refused": {}
+ },
+ "imaps_993_cert": {
+  "cn": null,
+  "san": [
+   "mail.archr2f113.test"
+  ],
+  "not_after": "Oct 30 17:06:21 2031 GMT",
+  "issuer_cn": "Pebble Intermediate CA 445eee"
+ },
+ "imap_read": {
+  "after_seconds": 0.1,
+  "headers": "From: alice@archr2shop113.test\r\nTo: bob@archr2shop113.test\r\nSubject: final-alpha113 cfa46435950b"
+ },
+ "served_certificates": {
+ }
+}
+-- read in webmail (Roundcube login as bob) 17:14:11
+{
+ "login_page": 200,
+ "after_login_url": "https://HOST/?_task=mail&_token=[REDACTED][REDACTED]",
+ "logged_in": true,
+ "inbox_list_status": 200,
+ "test_mails_listed": [
+  "final-alpha113 cfa46435950b"
+ ],
+ "message_count_hint": "Messages 1 to 1 of 1"
+}
+-- delivered message headers, milters, localhost (read only) 17:14:12
+---
+inet:localhost:8891, inet:localhost:11332
+inet:localhost:8891
+::1             localhost
+127.0.1.1 arch arch
+127.0.0.1 localhost
+
+::1 localhost ip6-localhost ip6-loopback
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+
+---
+2026-10-30T17:14:11+00:00 arch postfix/smtps/smtpd[1388]: warning: host or service localhost:11332 not found: Temporary failure in name resolution
+2026-10-30T17:14:11+00:00 arch postfix/smtps/smtpd[1388]: warning: connect to Milter service inet:localhost:11332: Cannot assign requested address
+2026-10-30T17:14:11+00:00 arch postfix/smtps/smtpd[1388]: warning: host or service localhost:8891 not found: Temporary failure in name resolution
+2026-10-30T17:14:11+00:00 arch postfix/smtps/smtpd[1388]: warning: connect to Milter service inet:localhost:8891: Cannot assign requested address
+2026-10-30T17:14:11+00:00 arch postfix/smtps/smtpd[1388]: warning: host or service localhost:11332 not found: Temporary failure in name resolution
+2026-10-30T17:14:11+00:00 arch postfix/smtps/smtpd[1388]: warning: connect to Milter service inet:localhost:11332: Cannot assign requested address
+== redo done 17:14:12

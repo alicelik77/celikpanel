@@ -1,0 +1,79 @@
+== 7. setup operation step timings and busy states 17:21:17
+main operation succeeded complete created None finished None
+   01-service               succeeded           
+   02-service               succeeded           
+   03-service               succeeded           
+   04-service               succeeded           
+   05-service               succeeded           
+   06-peer_join             succeeded           
+   07-dns                   succeeded           
+   08-firewall              succeeded           
+   09-infrastructure_dns    succeeded           
+   10-access_dns            succeeded           
+   11-panel_certificate     succeeded           
+   12-dns_readiness         succeeded           
+   13-mail_profile          succeeded           
+   14-mail_profile          succeeded           
+   15-mail_dns              succeeded           
+   16-access_dns            succeeded           
+   17-mail_certificate      succeeded           
+   18-mail_enrollment       succeeded           
+   19-verify                succeeded           
+   busy/lock mentions in the final record: none
+backup operation succeeded complete created None finished None
+   01-peer_names            succeeded           
+   02-service               succeeded           
+   03-service               succeeded           
+   04-service               succeeded           
+   05-service               succeeded           
+   06-dns                   succeeded           
+   07-firewall              succeeded           
+   08-access_dns            succeeded           
+   09-panel_certificate     succeeded           
+   10-dns_publisher         succeeded           
+   11-verify                succeeded           
+   busy/lock mentions in the final record: none
+-- busy/lock in the whole run's API exchanges
+/var/tmp/cp-beta1/evidence/r2-a/getsh-terminal-main.txt
+/var/tmp/cp-beta1/evidence/r2-a/getsh-terminal-backup.txt
+      1 running 02-service
+      1 running 03-service
+      1 running 04-service
+      1 running 05-service
+      1 waiting primary_dns
+      1 running primary_dns
+      1 running 09-panel_certificate
+      1 waiting verification
+      1 running 13-mail_profile
+      1 running 14-mail_profile
+      1 running 15-mail_dns
+      1 running verification
+== 8. journals 17:21:17
+-- main: error-level lines from celikpanel units (all boots)
+count: 0
+-- main: celikpanel lines with level words (error/fatal/panic) at any priority
+2026-10-30T17:00:49+00:00 frankfurt agent[10767]: 2026/10/30 17:00:49 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-10-30T17:00:52+00:00 frankfurt agent[10767]: 2026/10/30 17:00:52 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-10-30T17:00:52+00:00 frankfurt agent[10767]: 2026/10/30 17:00:52 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-10-30T17:01:46+00:00 frankfurt agent[10767]: 2026/10/30 17:01:46 pdns primary pair readiness proof failed: DNS peer catalog differs from the primary
+2026-10-30T17:17:50+00:00 frankfurt panel[1049]: 2026/10/30 17:17:50 [panel-update] automatic update check failed (release_unverified): agent reported update discovery failure; next try in 1h0m0s
+2026-10-30T17:20:38+00:00 frankfurt panel[1447]: 2026/10/30 17:20:38 site configuration files at start: 0 written, 1 unchanged, 0 kept (owner-edited), 0 kept (foreign), 0 kept (unknown origin), 0 unreadable or unwritable, 0 missing (not recreated), 0 failed; 0 adopted from an earlier release
+count: 0
+-- main: cron can't-lock lines
+2026-10-30T17:21:18+00:00 frankfurt sudo[2615]:    celik : PWD=/home/celik ; USER=root ; COMMAND=/usr/bin/bash -c 'journalctl --no-pager -o short-iso -b all -q 2>/dev/null | grep -iE \'can.t lock|cannot lock|could not lock|unable to lock\' | cut -c1-300 | tail -n 20; echo count: 0'
+count: 0
+-- main: failed units
+{"command": "systemctl --failed --no-legend --no-pager | cut -c1-160", "rc": 0, "seconds": 0.14, "stdout": "", "stderr": "", "at": "2026-10-30T17:21:18.888Z", "label": "failed-main"}
+-- backup: error-level lines from celikpanel units (all boots)
+2026-10-30T16:59:41+00:00 boston mariadb-server.postinst[14444]: 2026-10-30 16:59:41 0 [Warning] You need to use --log-bin to make --expire-logs-days or --binlog-expire-logs-seconds work.
+count: 0
+-- backup: celikpanel lines with level words (error/fatal/panic) at any priority
+2026-10-30T17:03:52+00:00 boston panel[23840]: 2026/10/30 17:03:52 [panel-update] automatic update check failed (release_unverified): agent reported update discovery failure; next try in 1h0m0s
+2026-10-30T17:17:29+00:00 boston panel[1040]: 2026/10/30 17:17:29 [panel-update] automatic update check failed (release_unverified): agent reported update discovery failure; next try in 1h0m0s
+count: 0
+-- backup: cron can't-lock lines
+2026-10-30T17:21:19+00:00 boston sudo[2030]:    celik : PWD=/home/celik ; USER=root ; COMMAND=/usr/bin/bash -c 'journalctl --no-pager -o short-iso -b all -q 2>/dev/null | grep -iE \'can.t lock|cannot lock|could not lock|unable to lock\' | cut -c1-300 | tail -n 20; echo count: 0'
+count: 0
+-- backup: failed units
+{"command": "systemctl --failed --no-legend --no-pager | cut -c1-160", "rc": 0, "seconds": 0.21, "stdout": "", "stderr": "", "at": "2026-10-30T17:21:20.598Z", "label": "failed-backup"}
+== 7/8 done 17:21:20
