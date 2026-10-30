@@ -124,6 +124,10 @@ const screenPartBudgets = {
   // file: 15.36 / 4.24 KiB. Raised with the alpha.115 review fixes to keep
   // 25% headroom over 19.34 / 5.16 KiB.
   dnsOverview: kib(26, 7),
+  // v0.1.0-alpha.113 nginx fixes: the default HTTPS server card (nginxdh.),
+  // split out of "componentPages", which had no headroom left. A new part,
+  // set with at least 25% headroom from its Turkish file: 4.63 / 1.73 KiB.
+  nginxDefaultHttps: kib(6.5, 2.4),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

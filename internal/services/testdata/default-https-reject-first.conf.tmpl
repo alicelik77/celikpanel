@@ -1,0 +1,32 @@
+# CelikPanel's default HTTPS server, written by CelikPanel.
+# A visitor who asks this server over HTTPS for a name that has no site here
+# (or for its bare IP address) has the TLS handshake refused, instead of being
+# shown another site's certificate. Plain nginx configuration: it keeps
+# working without CelikPanel. CelikPanel writes this file only while it is
+# CelikPanel's unchanged text, and only while no other server block is the
+# default server of port 443. To use your own default HTTPS server, give it
+# "default_server" and delete this file. To turn this off, replace this
+# file's contents with a comment of your own: CelikPanel never writes over a
+# file it did not write.
+# CelikPanel'in varsayılan HTTPS sunucusu: burada sitesi olmayan bir adla
+# gelen ziyaretçiye başka sitenin sertifikası gösterilmez, el sıkışma
+# reddedilir. Kapatmak için içeriğini kendi açıklamanızla değiştirin.
+server {
+{{- if eq .HTTP2 "listen"}}
+    listen 443 ssl http2 default_server;
+    listen [::]:443 ssl http2 default_server;
+{{- else}}
+    listen 443 ssl default_server;
+    listen [::]:443 ssl default_server;
+{{- end}}
+{{- if eq .HTTP2 "directive"}}
+    http2 on;
+{{- end}}
+    server_name _;
+
+    ssl_reject_handshake on;
+    # nginx negotiates with the default server's settings before it knows the
+    # name asked for; these are the sites' own (Mozilla intermediate).
+    ssl_session_cache shared:SSL:10m;
+{{.TLSPolicy}}
+}

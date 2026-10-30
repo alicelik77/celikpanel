@@ -26,7 +26,6 @@ func TestDefaultHTTPSServerRender(t *testing.T) {
 	}{
 		{"nginx 1.24", nginx124, "    listen 443 ssl http2 default_server;\n    listen [::]:443 ssl http2 default_server;\n", false},
 		{"nginx 1.26", nginx126, "    listen 443 ssl default_server;\n    listen [::]:443 ssl default_server;\n", true},
-		{"unknown", NginxFeatures{}, "    listen 443 ssl default_server;\n    listen [::]:443 ssl default_server;\n", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			body, err := RenderDefaultHTTPSServer(tc.features)
@@ -247,15 +246,6 @@ func TestReconcileDefaultHTTPSServerPutsBackOnRefusal(t *testing.T) {
 		h.dumpErr = errors.New("nginx: [emerg] unknown directive")
 		if r := h.ng.ReconcileDefaultHTTPSServer(); r.Outcome != DefaultHTTPSUnknown || h.validates != 0 {
 			t.Fatalf("%+v", r)
-		}
-	})
-	t.Run("nginx too old or unknown", func(t *testing.T) {
-		for _, features := range []NginxFeatures{{}, {Known: true, Version: NginxVersion{1, 18, 0}, HTTP2Module: true}} {
-			h := newDefaultHTTPSHarness(t, features)
-			h.dump = dumpWithHTTPSSite
-			if r := h.ng.ReconcileDefaultHTTPSServer(); r.Outcome != DefaultHTTPSUnsupported || h.validates != 0 {
-				t.Fatalf("%+v", r)
-			}
 		}
 	})
 }

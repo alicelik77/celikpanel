@@ -122,6 +122,7 @@ var reconcileDefaultHTTPSFor = func(a *Agent) services.DefaultHTTPSServerResult 
 		return services.DefaultHTTPSServerResult{Outcome: services.DefaultHTTPSUnknown}
 	}
 	result := a.nginxGen.ReconcileDefaultHTTPSServer()
+	rememberDefaultHTTPSAttempt(result)
 	switch result.Outcome {
 	case services.DefaultHTTPSUnchanged, services.DefaultHTTPSNotNeeded:
 	default:

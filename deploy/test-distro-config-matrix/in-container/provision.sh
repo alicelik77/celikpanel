@@ -25,6 +25,9 @@ apt)
         pdns-server pdns-backend-sqlite3
         nftables systemd sudo openssh-server mariadb-server
         ca-certificates procps
+        # A validator's TLS client only (v_nginx_tls_default); the panel
+        # itself never needs the openssl command.
+        openssl
     )
     available=()
     for p in "${packages[@]}"; do
@@ -34,7 +37,7 @@ apt)
         || { tail -40 /var/log/matrix-provision.log >&2; exit 1; }
     ;;
 pacman)
-    pacman -Syu --noconfirm --needed nginx php php-fpm postfix dovecot bind nftables systemd sudo openssh mariadb diffutils \
+    pacman -Syu --noconfirm --needed nginx php php-fpm postfix dovecot bind nftables systemd sudo openssh mariadb diffutils openssl \
         >/var/log/matrix-provision.log 2>&1 || { tail -40 /var/log/matrix-provision.log >&2; exit 1; }
     ;;
 *) echo "unknown family: $family" >&2; exit 2 ;;

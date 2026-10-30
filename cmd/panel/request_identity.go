@@ -169,6 +169,12 @@ var requestIdentityRoutePHPToolBind = requestIdentityRoute{
 	pattern: phpToolBindPath, timeout: agentRPCDeploymentTimeout + 5*time.Minute,
 }
 
+// requestIdentityRouteNginxDefaultHTTPS (alpha.113): the default HTTPS
+// server's "Try again" may write a file and reload nginx; once per identity.
+var requestIdentityRouteNginxDefaultHTTPS = requestIdentityRoute{
+	pattern: nginxDefaultHTTPSPath, timeout: agentRPCMutationTimeout + time.Minute,
+}
+
 // requestIdentityRouteServiceUninstall (alpha.104 review): a component or
 // version removal, which may first move up to three PHP tools; its limit
 // covers the moves and the removal.
@@ -193,6 +199,8 @@ func requestIdentityRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 		return requestIdentityRoutePHPToolBind, true
 	case path == serviceUninstallPath:
 		return requestIdentityRouteServiceUninstall, true
+	case path == nginxDefaultHTTPSPath:
+		return requestIdentityRouteNginxDefaultHTTPS, true
 	case path == "/api/v1/import/cpanel/apply":
 		return requestIdentityRouteImportApply, true
 	case path == "/api/v1/vpn/peers":

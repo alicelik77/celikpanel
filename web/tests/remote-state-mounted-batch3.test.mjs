@@ -68,6 +68,9 @@ const stub = dataModule(`
   export const HelpButton = () => null;
   // alpha.107: the repository card has its own mounted tests.
   export const RepoCard = () => null;
+  // alpha.113: the default HTTPS server card reads its own address; it has
+  // its own tests (nginx-default-https-alpha113).
+  export const NginxDefaultHTTPSCard = () => null;
   export const IsolationFact = () => null, AppAccountLine = () => null;
   export const DNSEngineCard = () => React.createElement('aside', null, 'dns-engine-card');
   export const ServerSetupDNSAccess = () => null, ServerSetupDNSManagement = () => null;

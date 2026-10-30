@@ -164,7 +164,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.CreateSite Agent.DeleteSite Agent.InstallWordPress
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostingVHost, `
-		Agent.ApplyVhost Agent.ApplyVhosts
+		Agent.ApplyVhost Agent.ApplyVhosts Agent.ReconcileDefaultHTTPSServerV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostingApp, `
 		Agent.ApplyAppUnit Agent.ControlAppUnit Agent.RemoveAppUnit
@@ -318,15 +318,17 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.ListNodeLTS":                 agentRPCNetworkReadTimeout,
 
 	// Short, bounded host mutations.
-	"Agent.BeginServiceMutation":          agentRPCMutationTimeout,
-	"Agent.CancelServiceMutation":         agentRPCMutationTimeout,
-	"Agent.FinishServiceMutation":         agentRPCMutationTimeout,
-	"Agent.HeartbeatServiceMutation":      agentRPCMutationTimeout,
-	"Agent.ServiceMutationStatus":         agentRPCMutationTimeout,
-	"Agent.AddCronJob":                    agentRPCMutationTimeout,
-	"Agent.AddMailAccount":                agentRPCMutationTimeout,
-	"Agent.ApplyFirewallV2":               agentRPCMutationTimeout,
-	"Agent.ApplyVhost":                    agentRPCMutationTimeout,
+	"Agent.BeginServiceMutation":     agentRPCMutationTimeout,
+	"Agent.CancelServiceMutation":    agentRPCMutationTimeout,
+	"Agent.FinishServiceMutation":    agentRPCMutationTimeout,
+	"Agent.HeartbeatServiceMutation": agentRPCMutationTimeout,
+	"Agent.ServiceMutationStatus":    agentRPCMutationTimeout,
+	"Agent.AddCronJob":               agentRPCMutationTimeout,
+	"Agent.AddMailAccount":           agentRPCMutationTimeout,
+	"Agent.ApplyFirewallV2":          agentRPCMutationTimeout,
+	"Agent.ApplyVhost":               agentRPCMutationTimeout,
+	// One nginx -T, at most one file write, nginx -t and one reload.
+	"Agent.ReconcileDefaultHTTPSServerV1": agentRPCMutationTimeout,
 	"Agent.InspectSiteFile":               agentRPCStandardReadTimeout,
 	"Agent.InspectSitePool":               agentRPCStandardReadTimeout,
 	"Agent.InspectAppUnit":                agentRPCStandardReadTimeout,
