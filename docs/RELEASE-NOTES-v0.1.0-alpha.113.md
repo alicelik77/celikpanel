@@ -132,6 +132,13 @@ needed (schema 46, unchanged).
   backup is back; changes held behind it are then published by themselves.
   Before, it stayed pending and held every later change until the same zone
   was changed again or the panel restarted.
+- Deleting a site or zone on a standalone PowerDNS server (no backup DNS
+  server) finishes. Before, the server answered "not served here" for the
+  deleted zone, the deletion check did not accept that answer, and every
+  later change on the server was held, even after an Agent restart. If the
+  Agent holds changes, the panel now says why and what the owner does
+  (restart the Agent, then retry the same change), instead of "already in
+  progress".
 - Two btrfs fixes in the undo of an interrupted PowerDNS install: a
   directory's link count and a boot-scoped device number are no longer taken
   as identity proof.

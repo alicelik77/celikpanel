@@ -134,6 +134,13 @@ değişmedi).
   kadar) ve yedek dönünce tamamlar; arkasında bekleyen değişiklikler de
   kendiliğinden yayımlanır. Önceden bekler, aynı bölge yeniden değiştirilene
   ya da panel yeniden başlayana kadar sonraki her değişikliği tutardı.
+- Yedek DNS sunucusu olmayan, tek başına PowerDNS çalıştıran sunucuda bir site
+  ya da bölge silme işlemi tamamlanır. Önceden sunucu, silinen bölge için "bu
+  bölgeyi sunmuyorum" diye yanıt veriyordu. Silme denetimi bu yanıtı kabul
+  etmediği için sunucudaki sonraki her değişiklik, Agent yeniden başlatılsa
+  bile, bekletiliyordu. Agent değişiklikleri bekletirse panel artık "zaten
+  sürüyor" demiyor; nedenini ve sahibin ne yapacağını söylüyor: Agent'ı
+  yeniden başlatmak, sonra aynı değişikliği yeniden denemek.
 - Yarıda kalan PowerDNS kurulumunun geri alınmasında iki btrfs düzeltmesi:
   bir klasörün bağlantı sayısı ve açılıştan açılışa değişen aygıt numarası
   artık kimlik kanıtı sayılmaz.
