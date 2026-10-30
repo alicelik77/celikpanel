@@ -75,6 +75,18 @@ değişmedi).
   Dağıtım matrisi artık her sürümde bir ileti teslim edip geri okur.
 - Agent, Debian'da her açılışta `postmap: fatal: unsupported map type: lmdb`
   satırı yazmaz.
+- Kullanıcıların gönderdiği posta (587 ve 465 kapıları) her dağıtımda DKIM
+  ile imzalanır ve spam denetiminden geçer. Arch'ta bu hizmetler,
+  `localhost` adını çözecek dosyalar olmadan kapalı alanda (chroot)
+  çalıştığı için süzgeçler atlanıyordu. Postfix süzgeçlere artık
+  `127.0.0.1` üzerinden ulaşır, gönderim hizmeti dağıtımın kendi chroot
+  seçimine uyar; mevcut sunucu panelin bir sonraki açılışında onarılır
+  (sahibin değiştirdiği satırlar korunur ve adlandırılır).
+- DKIM: "Anahtar oluştur" yeniden basılınca OpenDKIM'in mevcut anahtarı
+  okuma izni artık kalkmaz; imzalama adımı başarısız olursa "anahtar
+  oluşturuldu" yerine bu bildirilir.
+- Dosya yöneticisi, olmayan bir yol ya da zaten var olan bir ad için çıplak
+  hata yerine ne yapılacağını söyler.
 
 **Lisans (D-039)**
 - Bir başarılı denetim, yönetimi çevrim dışı yedi güne kadar açık tutar;

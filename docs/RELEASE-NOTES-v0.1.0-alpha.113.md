@@ -74,6 +74,17 @@ needed (schema 46, unchanged).
   now delivers a message and reads it back on every release.
 - The Agent no longer logs `postmap: fatal: unsupported map type: lmdb` at
   every start on Debian.
+- Mail users send (ports 587 and 465) is DKIM-signed and spam-checked on
+  every distribution. On Arch those services ran chrooted without the files
+  needed to resolve `localhost`, so the filters were skipped. Postfix now
+  reaches its filters at `127.0.0.1`, and submission follows the
+  distribution's own chroot choice; an existing server is repaired at the
+  next Panel start (entries the owner changed are kept and named).
+- DKIM: pressing "Generate key" again no longer removes OpenDKIM's read
+  access to an existing key, and a failed signing step is reported instead
+  of "key generated".
+- The file manager answers a missing path or an existing name with what to
+  do, not a bare error.
 
 **License (D-039)**
 - One successful check keeps management open for up to seven days offline;
