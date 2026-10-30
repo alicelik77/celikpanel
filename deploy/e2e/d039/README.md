@@ -16,16 +16,16 @@ hook's `is-active`/`reload nginx` and the scheduler reader's
 chroot was built on the WSL development guest `CelikPanel-S2-Debian` under
 `/var/tmp` and its services were not touched.
 
-The Agent's `realsystem` test binary (SHA-256 `c81b74fcea9c5ab3…750a8623`) was built from branch `fix/site-cert-native-renewal` at `0b7c626b3`
-(production code; test-only and harness edits recorded in the next commit) and
-copied into the chroot only for its phases; `run.sh` deletes it before every
+The Agent's `realsystem` test binary (SHA-256 `1cda26d50af3ea7d…12291ac8`) was
+built from branch `fix/site-cert-native-renewal` at `cdfeb6263` and copied into the
+chroot only for its phases; `run.sh` deletes it before every
 renewal and checks that no CelikPanel binary or process rooted in the chroot
 exists.
 
 | Step | Result | What it shows |
 |---|---|---|
 | Prepare | PASS | The product's own vhost validation and renderer (`validatedVhostData`, `NginxGenerator.Render`) and the Panel-owned challenge file `/etc/nginx/celikpanel-managed.d/site.test/acme-http-01.conf`; `nginx -t` passes. |
-| Issue (`Agent.IssueLetsEncryptCertificate`, EAB) | PASS | Lineage `celikpanel-site-42-5c892ace…` in `/etc/letsencrypt`; certbot's own renewal configuration says `authenticator = webroot`, `[[webroot_map]]` for both names = the site's challenge root, `server` = the CA; the deploy hook is root `0755`; the EAB HMAC key is in no file under `/etc/letsencrypt` or `/var/log/letsencrypt`; nginx re-rendered with certbot's live paths serves exactly the live certificate. |
+| Issue (`Agent.IssueLetsEncryptCertificate`, EAB) | PASS | Lineage `celikpanel-site-42-dfca0be9…` in `/etc/letsencrypt` (files `root:root`, key `0600`); certbot's own renewal configuration says `authenticator = webroot`, `[[webroot_map]]` for both names = the site's challenge root, `server` = the CA; the deploy hook is root `0755`; the EAB HMAC key is in no file under `/etc/letsencrypt` or `/var/log/letsencrypt`; nginx re-rendered with certbot's live paths serves exactly the live certificate. |
 | 1. certbot dry run, no CelikPanel program | PASS | `certbot renew --dry-run --server <CA> --cert-name <lineage>` with the written configuration. |
 | 2. The OS renews it, no CelikPanel program | PASS | The chroot's `certbot.service` `ExecStart` (`/usr/bin/certbot -q renew --no-random-sleep-on-renew`) exit 0; the hook ran `nginx -t` and reloaded nginx (record `nginx=reloaded`); nginx serves the new certificate (fingerprint changed and equals live). `SiteCertificateRenewalStateV1` reads `scheduled`, the newer expiry, `certbot.timer`, hook `installed`. |
 | 3. A failed renewal | PASS | Challenge file removed (an owner's change): certbot exits 1 and logs `Failed to renew certificate <lineage> with error: Some challenges have failed.`; the Agent reads `failed` with that reason. |
@@ -39,7 +39,7 @@ see D-039); a reboot; an upgrade from a release with isolated-store certificates
 
 Files: `build-chroot.sh`, `run.sh` (the harness; root on a development machine
 only), `cp-d039-evidence.tar.gz` — SHA-256
-`915b84f38542558c10664955d49a70cb81a7166b12d5e51607c35bcf0038fb54` (run log,
+`e80a8041895671b5aa675837d70a48f4fe5b5433fd6a58cc30d78ade349655f0` (run log,
 renewal configuration, hook, vhost, challenge file, the three state readings,
 certbot outputs, Pebble log, systemctl stand-in calls, package versions, test
 binary digest).
