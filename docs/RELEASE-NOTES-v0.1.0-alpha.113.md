@@ -82,6 +82,13 @@ needed (schema 46, unchanged).
   owner-edited `sshd_config` is reported, never replaced. The PowerDNS
   inspector also reads PowerDNS's own catalog row correctly now (this
   affected the manual owner tool too).
+- A DNS change made while the backup is briefly unreachable (reboot,
+  network blip) is saved and served by the main, and the DNS card shows it
+  waiting for the backup with its next check. The panel re-checks the same
+  change by itself (15 s, doubling to 5 minutes) and finishes it when the
+  backup is back; changes held behind it are then published by themselves.
+  Before, it stayed pending and held every later change until the same zone
+  was changed again or the panel restarted.
 - Two btrfs fixes in the undo of an interrupted PowerDNS install: a
   directory's link count and a boot-scoped device number are no longer taken
   as identity proof.
@@ -105,6 +112,9 @@ needed (schema 46, unchanged).
 - The automatic deletion check is set up when a pair is built on this
   release. A pair installed earlier and updated keeps the owner tool path
   (the update does not add the tools directory).
+- If a domain is deleted while the backup is unreachable, the panel finishes
+  the DNS part by itself when the backup is back; the domain's deletion
+  status then asks for "Retry this deletion" once to remove the rest.
 - A changed `/etc/resolv.conf` reaches an nginx proxy target only when that
   site's configuration is next written.
 

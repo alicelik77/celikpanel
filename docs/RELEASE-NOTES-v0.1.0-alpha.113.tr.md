@@ -83,6 +83,13 @@ değişmedi).
   değiştirdiği `sshd_config` bildirilir, üzerine yazılmaz. PowerDNS
   denetçisi PowerDNS'in kendi katalog satırını artık doğru okur (bu, elle
   kullanılan aracı da etkiliyordu).
+- Yedek sunucuya kısa süre ulaşılamazken (yeniden başlatma, ağ kesintisi)
+  yapılan DNS değişikliği kaydedilir ve ana sunucu onu yayımlar; DNS kartı
+  değişikliğin yedeği beklediğini ve bir sonraki denetimi gösterir. Panel aynı
+  değişikliği kendisi yeniden denetler (15 sn, iki katına çıkarak 5 dakikaya
+  kadar) ve yedek dönünce tamamlar; arkasında bekleyen değişiklikler de
+  kendiliğinden yayımlanır. Önceden bekler, aynı bölge yeniden değiştirilene
+  ya da panel yeniden başlayana kadar sonraki her değişikliği tutardı.
 - Yarıda kalan PowerDNS kurulumunun geri alınmasında iki btrfs düzeltmesi:
   bir klasörün bağlantı sayısı ve açılıştan açılışa değişen aygıt numarası
   artık kimlik kanıtı sayılmaz.
@@ -107,6 +114,9 @@ değişmedi).
 - Otomatik silme denetimi, çift bu sürümle kurulduğunda kurulur. Daha önce
   kurulup güncellenen çift, aracın elle kullanıldığı yolu korur (güncelleme
   araç klasörünü eklemez).
+- Yedeğe ulaşılamazken silinen bir alan adının DNS kısmını panel, yedek
+  dönünce kendisi bitirir; alan adının silme durumu kalanı kaldırmak için bir
+  kez "Bu silme işlemini yeniden dene" ister.
 - Değişen `/etc/resolv.conf`, nginx vekil hedefine ancak o sitenin yapılandırması
   yeniden yazıldığında ulaşır.
 
