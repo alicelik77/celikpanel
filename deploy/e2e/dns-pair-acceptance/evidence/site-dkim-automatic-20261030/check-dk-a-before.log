@@ -1,0 +1,42 @@
+== before: os Debian GNU/Linux 13 (trixie), release 
+   units: opendkim=active postfix=active panel=active
+   milters: smtpd='inet:127.0.0.1:8891, inet:127.0.0.1:11332' non_smtpd='inet:127.0.0.1:8891'
+== key store
+   shopdk.test: -rw------- root:celikpanel celik.celikpanel;-rw-r----- root:opendkim celik.private;
+   shopdk.test origin: celikpanel-dkim-key v1 sha256:e08146ecc6...
+   dkf113.test: -rw------- root:celikpanel celik.celikpanel;-rw-r----- root:opendkim celik.private;
+   dkf113.test origin: celikpanel-dkim-key v1 sha256:ede20b927e...
+== OpenDKIM tables
+   signingtable: *@dkf113.test celik._domainkey.dkf113.test;*@shopdk.test celik._domainkey.shopdk.test;
+   keytable: celik._domainkey.dkf113.test;celik._domainkey.shopdk.test;
+   shopdk.test in signingtable: 1 ; in keytable: 1
+/root/q.sh: line 28: dig: command not found
+   shopdk.test TXT @127.0.0.1: 
+   opendkim-testkey shopdk.test: opendkim-testkey: checking key 'celik._domainkey.shopdk.test' opendkim-testkey: 'celik._domainkey.shopdk.test' record not found 
+/root/q.sh: line 28: dig: command not found
+   dkf113.test TXT @127.0.0.1: 
+   opendkim-testkey dkf113.test: opendkim-testkey: checking key 'celik._domainkey.dkf113.test' opendkim-testkey: 'celik._domainkey.dkf113.test' record not found 
+== automatic DKIM and DKIM cleanup in the panel's log
+2026-10-30T20:20:48+00:00 frankfurt panel[22609]: 2026/10/30 20:20:48 [dkim-auto] shopdk.test: DKIM ready (domain_created; record published in shopdk.test)
+   opendkim restarts this boot: 15
+== delivered test messages and their signatures
+-- /var/mail/vhosts/shopdk.test/bob: Subject: final-alpha113 d2246bd6e4c2
+   signature: d=shopdk.test s=celik 
+   opendkim-testmsg rc=70 opendkim-testmsg: dkim_chunk(): Syntax error
+-- /var/mail/vhosts/shopdk.test/bob: Subject: dk php mail 49d743bf0858
+   signature: d=shopdk.test s=celik 
+   opendkim-testmsg rc=0 
+grep: /var/mail/vhosts/shopdk.test/bob/dovecot.index.cache: binary file matches
+-- /var/mail/vhosts/shopdk.test/bob: 
+
+   opendkim-testmsg rc=70 opendkim-testmsg: dkim_chunk(): Syntax error
+-- /var/spool/mail/vhosts/shopdk.test/bob: Subject: final-alpha113 d2246bd6e4c2
+   signature: d=shopdk.test s=celik 
+   opendkim-testmsg rc=70 opendkim-testmsg: dkim_chunk(): Syntax error
+-- /var/spool/mail/vhosts/shopdk.test/bob: Subject: dk php mail 49d743bf0858
+   signature: d=shopdk.test s=celik 
+   opendkim-testmsg rc=0 
+grep: /var/spool/mail/vhosts/shopdk.test/bob/dovecot.index.cache: binary file matches
+-- /var/spool/mail/vhosts/shopdk.test/bob: 
+
+   opendkim-testmsg rc=70 opendkim-testmsg: dkim_chunk(): Syntax error
