@@ -117,6 +117,8 @@ func (s *ServiceScanner) getSearchPaths(serviceName string) []string {
 			"/etc/my.cnf",
 			"/etc/mysql/mariadb.cnf",
 			"/etc/mysql/mariadb.conf.d/50-server.cnf",
+			// Arch Linux: the server option file /etc/my.cnf includes.
+			"/etc/my.cnf.d/server.cnf",
 			"/usr/local/mysql/my.cnf",
 		}
 	} else if strings.Contains(serviceName, "postgres") {

@@ -279,6 +279,34 @@ func RenderDistroMatrix(lang string) string {
 		}
 	}
 
+	// Every closed cell with the reason the Components page gives (D-024):
+	// a dash alone does not say who acts or what to do instead.
+	// Her kapalı hücre, Bileşenler sayfasının verdiği gerekçeyle.
+	if tr {
+		w("## Kapalı hücreler ve gerekçeleri")
+		w("")
+		w("Bileşenler sayfası ve Agent aynı gerekçeyi verir (İngilizce metin, ekranda çevrilir).")
+	} else {
+		w("## Closed cells and their reasons")
+		w("")
+		w("The Components page and the Agent give the same reason.")
+	}
+	w("")
+	w("| %s | %s | %s |", or(tr, "Bileşen", "Component"), or(tr, "Ekosistem", "Ecosystem"), or(tr, "Gerekçe", "Reason"))
+	w("|---|---|---|")
+	for i := range ManagedServices {
+		svc := &ManagedServices[i]
+		if len(svc.Packages) == 0 {
+			continue
+		}
+		for _, f := range families {
+			if block, reason := ManagedServiceInstallBlock(svc, f); block != ManagedServiceInstallBlockNone {
+				w("| %s %s | %s | %s |", svc.Icon, svc.Name, f, strings.ReplaceAll(reason, "|", "\\|"))
+			}
+		}
+	}
+	w("")
+
 	if tr {
 		w("## Resmi sürümden kurulanlar (her dağıtımda aynı)")
 		w("")

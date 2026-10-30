@@ -164,9 +164,10 @@ func mustMailProfile(t *testing.T, id string) mailProfileDefinition {
 }
 
 // upd1 finding P2: on Arch the web_mail plan was admitted and then stopped at
-// the Dovecot configure step. The reviewed plan now refuses mail there, before
-// any mutation, with a typed blocker; web hosting stays admissible.
-func TestServerSetupRefusesMailOnArchBeforeAnyMutation(t *testing.T) {
+// the Dovecot configure step. Since the Arch Dovecot layout (2026-10-30) the
+// Agent can configure mail there, so the reviewed plan admits web_mail on Arch
+// like on Debian, and reviewing a plan still installs nothing.
+func TestServerSetupAdmitsMailOnArchWithoutAnyMutation(t *testing.T) {
 	for _, purpose := range []string{"web_mail", "web"} {
 		t.Run(purpose, func(t *testing.T) {
 			f, state := setupOperationFixture(t)
@@ -186,12 +187,10 @@ func TestServerSetupRefusesMailOnArchBeforeAnyMutation(t *testing.T) {
 			if got := f.panel.managedServiceHostProfile().PackageFamily; got != "pacman" {
 				t.Fatalf("fixture host family=%q", got)
 			}
-			refused := slices.Contains(plan.Blockers, "server_setup_service_unsupported:dovecot")
-			if purpose == "web_mail" && (!refused || plan.CanStart) {
-				t.Fatalf("Arch web_mail plan was admitted: can_start=%v blockers=%v", plan.CanStart, plan.Blockers)
-			}
-			if purpose == "web" && refused {
-				t.Fatalf("Arch web plan was refused for mail: %v", plan.Blockers)
+			for _, blocker := range plan.Blockers {
+				if strings.HasPrefix(blocker, "server_setup_service_unsupported:") {
+					t.Fatalf("Arch %s plan refused a component: %v", purpose, plan.Blockers)
+				}
 			}
 			if f.agent.installCalls.Load() != 0 {
 				t.Fatal("plan review installed a package")
@@ -200,25 +199,20 @@ func TestServerSetupRefusesMailOnArchBeforeAnyMutation(t *testing.T) {
 	}
 }
 
-func TestDovecotInstallIsClosedOnPacmanWithAnActionableReason(t *testing.T) {
+func TestDovecotInstallIsOfferedOnPacman(t *testing.T) {
 	dovecot := core.GetManagedServiceByID("dovecot")
 	if reason := core.ManagedServiceInstallDisabledReason(dovecot, "apt"); reason != "" {
 		t.Fatalf("apt dovecot is blocked: %s", reason)
 	}
 	kind, reason := core.ManagedServiceInstallBlockForHost(dovecot, core.ManagedServiceHostProfile{PackageFamily: "pacman"})
-	if kind != core.ManagedServiceInstallBlockDistribution || reason != core.DovecotPacmanLayoutReason {
+	if kind != core.ManagedServiceInstallBlockNone || reason != "" {
 		t.Fatalf("pacman dovecot block=%v %q", kind, reason)
 	}
-	for _, part := range []string{"Arch Linux", "/etc/dovecot/dovecot.conf", "server administrator", "Web hosting", "operating system's own tools"} {
-		if !strings.Contains(reason, part) {
-			t.Fatalf("reason lacks %q: %s", part, reason)
-		}
-	}
-	// Observation is unchanged: an existing Arch Dovecot stays recognisable.
+	// The package mapping is unchanged.
 	if pkgs := dovecot.Packages["pacman"]; !slices.Equal(pkgs, []string{"dovecot"}) {
 		t.Fatalf("pacman observation map changed: %v", pkgs)
 	}
-	for _, id := range []string{"postfix", "nginx", "php-fpm", "mariadb", "certbot", "rspamd"} {
+	for _, id := range []string{"postfix", "dovecot", "roundcube", "nginx", "php-fpm", "mariadb", "certbot", "rspamd"} {
 		if reason := core.ManagedServiceInstallDisabledReason(core.GetManagedServiceByID(id), "pacman"); reason != "" {
 			t.Fatalf("%s is newly blocked on pacman: %s", id, reason)
 		}

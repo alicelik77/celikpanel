@@ -48,6 +48,10 @@ export function RepoCard({ serviceId }: { serviceId: string }) {
     if (remote.state === 'known' && remote.value.available && !remote.value.enabled && remote.value.lane) {
         return <DefaultLaneCard serviceId={serviceId} info={remote.value} onChanged={() => void handle.retry()} />;
     }
+    // Arch (2026-10-30): no vendor repository; say what the server offers.
+    if (remote.state === 'known' && remote.value.distribution_only === 'pacman') {
+        return <p className="text-sm text-fg-muted" data-repo-distribution-only="pacman"><KeepWords text={t('lane.archOnly')} /></p>;
+    }
     if (remote.state === 'known' && (!remote.value.available || !remote.value.enabled)) return null;
     if (remote.state === 'loading') return null;
     return (

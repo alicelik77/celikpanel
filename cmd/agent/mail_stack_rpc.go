@@ -113,6 +113,13 @@ func (a *Agent) ConfigureMailStack(req *ServiceMutationRequest, resp *ConfigureM
 			resp.Error = fmt.Sprintf("postfix aliases: %v", err)
 			return nil
 		}
+		// Arch's main.cf names no server certificate (postfix_default_cert.go).
+		if err := ensurePostfixDefaultServerCertificate(func(name string, args ...string) ([]byte, error) {
+			return serviceMutationCommand(ctx, name, args...).CombinedOutput()
+		}); err != nil {
+			resp.Error = fmt.Sprintf("postfix tls: %v", err)
+			return nil
+		}
 	}
 
 	if hasDovecot {
@@ -449,7 +456,7 @@ func writeMilterChain(ctx context.Context) error {
 	case unitExists("spamass-milter"):
 		spam = spamassMilterEndpoint()
 	}
-	incoming, outgoing := composeMilterChain(unitExists("opendkim") && fileExistsAgent(opendkimConfPath), spam)
+	incoming, outgoing := composeMilterChain(unitExists("opendkim") && fileExistsAgent(opendkimConfPath()), spam)
 
 	settings := [][2]string{
 		{"smtpd_milters", incoming},
@@ -651,11 +658,22 @@ func configureDovecotVirtual() error {
 	}
 	conf := buildDovecotVirtualConfAt(modern, root)
 
-	confDir := "/etc/dovecot/conf.d"
+	confDir := dovecotConfDirPath
+	snapshots := make([]mailFileSnapshot, 0, 4)
+	if dovecotNeedsArchLayout() {
+		// Arch's single-file layout: make the conf.d drop-ins effective
+		// first, keeping an owner-edited main file (dovecot_arch_layout.go).
+		// Arch'ın tek dosyalı yerleşimi: önce conf.d eklerini etkin kıl.
+		// On error it has already left the main file as it found it.
+		mainSnapshot, err := ensureArchDovecotLayout()
+		if err != nil {
+			return err
+		}
+		snapshots = append(snapshots, mainSnapshot)
+	}
 	if !fileExistsAgent(confDir) {
-		// Dovecot is installed; its layout is the problem (Arch's 2.4 package
-		// ships a single dovecot.conf and no conf.d, upd1 finding P2). Say so
-		// instead of the former, false "dovecot is not installed".
+		// Dovecot is installed; its layout is the problem. Say so instead of
+		// the former, false "dovecot is not installed".
 		// Dovecot kurulu; sorun yerleşimidir. Eski, yanlış "kurulu değil"
 		// yerine bunu söyle.
 		return errors.New(dovecotConfDirMissingReason)
@@ -663,7 +681,7 @@ func configureDovecotVirtual() error {
 	managedConf := confDir + "/99-celikpanel.conf"
 	authConf := confDir + "/10-auth.conf"
 	paths := []string{dovecotUsersPath, managedConf, authConf}
-	snapshots := make([]mailFileSnapshot, 0, len(paths))
+	usersIndex := len(snapshots)
 	for _, path := range paths {
 		snapshot, err := snapshotMailFile(path)
 		if err != nil {
@@ -692,7 +710,7 @@ func configureDovecotVirtual() error {
 	// ama dovecot'un auth süreci dovecot kullanıcısı olarak çalışır, celikpanel
 	// grubunda değildir; root:celikpanel 0640 onu dışarıda bırakır (izin yok,
 	// geçici auth hatası). dovecot grubuna 0640 ver: dovecot okur, başkası okumaz.
-	if !snapshots[0].exists {
+	if !snapshots[usersIndex].exists {
 		if err := secureWriteConfig(dovecotUsersPath, []byte(""), 0o640); err != nil {
 			return rollback(fmt.Errorf("create dovecot users file: %w", err))
 		}

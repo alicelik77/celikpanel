@@ -640,17 +640,67 @@ func roundcubePHPExtensionPackages(family, phpVer string, missing []string) ([]s
 	}
 }
 
+// pacmanRoundcubePHPConfigWithout drops the extension lines another ini file
+// already enables.
+func pacmanRoundcubePHPConfigWithout(enabled map[string]bool) string {
+	var b strings.Builder
+	for _, line := range strings.SplitAfter(pacmanRoundcubePHPConfig, "\n") {
+		if module, ok := strings.CutPrefix(strings.TrimSpace(line), "extension="); ok && enabled[module] {
+			continue
+		}
+		b.WriteString(line)
+	}
+	return b.String()
+}
+
+// pacmanPHPEnabledElsewhere reads the uncommented extension= lines of
+// php.ini (in etcDir) and of every conf.d ini file except CelikPanel's own.
+func pacmanPHPEnabledElsewhere(etcDir, confDir, ownFile string) map[string]bool {
+	files := []string{filepath.Join(etcDir, "php.ini")}
+	if entries, err := os.ReadDir(confDir); err == nil {
+		for _, entry := range entries {
+			if entry.Name() != ownFile && strings.HasSuffix(entry.Name(), ".ini") {
+				files = append(files, filepath.Join(confDir, entry.Name()))
+			}
+		}
+	}
+	enabled := map[string]bool{}
+	for _, path := range files {
+		data, err := os.ReadFile(path)
+		if err != nil || len(data) > 4<<20 {
+			continue
+		}
+		for _, line := range strings.Split(string(data), "\n") {
+			value, ok := strings.CutPrefix(strings.TrimSpace(line), "extension")
+			if !ok {
+				continue
+			}
+			value = strings.TrimSpace(value)
+			if module, ok := strings.CutPrefix(value, "="); ok {
+				module = strings.Trim(strings.TrimSpace(module), `"'`)
+				module = strings.TrimSuffix(strings.TrimPrefix(module, "php_"), ".so")
+				enabled[module] = true
+			}
+		}
+	}
+	return enabled
+}
+
 func enablePacmanRoundcubePHPExtensions() error {
 	for _, dir := range []string{"/etc/php/conf.d", "/etc/php8/conf.d", "/etc/php/php.d"} {
 		fi, err := os.Lstat(dir)
 		if err != nil || fi.Mode()&os.ModeSymlink != 0 || !fi.IsDir() {
 			continue
 		}
+		// Only the modules no other PHP ini file enables: Arch's php.ini
+		// already enables zip, and loading it twice printed "Module zip is
+		// already loaded" on every PHP start (Arch VM, 2026-10-30).
+		elsewhere := pacmanPHPEnabledElsewhere(filepath.Dir(dir), dir, pacmanRoundcubePHPConfigFile)
 		if err := secureWriteConfig(
 			// Keep the previous SQLite-only managed filename so an upgrade
 			// replaces that drop-in instead of loading SQLite twice.
 			filepath.Join(dir, pacmanRoundcubePHPConfigFile),
-			[]byte(pacmanRoundcubePHPConfig),
+			[]byte(pacmanRoundcubePHPConfigWithout(elsewhere)),
 			0o644,
 		); err != nil {
 			return fmt.Errorf("enable PHP extensions for Roundcube: %w", err)

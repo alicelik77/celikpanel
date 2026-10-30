@@ -49,6 +49,9 @@ fi
 if [ "$1" = "-h" ] && [ "$2" = "queue_directory" ]; then
   printf '%s\n' "$MAIL_SUBMISSION_STATE/spool"
 fi
+if [ "$1" = "-h" ] && [ "$2" = "smtpd_tls_cert_file" ]; then
+  printf '%s\n' /etc/ssl/certs/ssl-cert-snakeoil.pem
+fi
 exit 0`)
 	writeMailSubmissionTestCommand(t, binDir, "systemctl", `
 if [ "$1" = "restart" ] && [ "$2" = "dovecot" ] && [ -n "$FAIL_DOVECOT_RESTART_ONCE" ] && [ ! -e "$FAIL_DOVECOT_RESTART_ONCE" ]; then

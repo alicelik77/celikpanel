@@ -7,6 +7,8 @@
 export interface RepoInfo {
     available: boolean;
     enabled: boolean;
+    // "pacman": no vendor repository here; the distribution's own version.
+    distribution_only?: string;
     repairable?: boolean;
     id?: string;
     name?: string;

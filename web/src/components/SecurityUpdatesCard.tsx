@@ -28,7 +28,7 @@ export interface OSUpdates {
     automatic: { state: string; tool?: string; reason?: string };
     last_run?: string;
     last_run_source?: string;
-    pending: { state: string; total: number; security: number; security_names?: string[]; lists_at?: string };
+    pending: { state: string; total: number; security: number; security_names?: string[]; lists_at?: string; reason?: string; security_state?: string };
     vendors: { repo_id: string; name: string; origin?: string; covered: boolean; confined: boolean; packages: number; names?: string[] }[];
     outside: { id: string; versions?: string[] }[];
     drop_in?: { path: string; state: string; origins?: string[]; proposed?: string; proposed_sha256?: string };
@@ -106,12 +106,21 @@ function UpdatesFacts({ value, onChanged }: { value: OSUpdates; onChanged: () =>
         : auto.state === 'unknown' ? '' : t('life.updates.lastRun.none');
     const pending = value.pending;
     const listsAt = lifeDate(pending.lists_at, locale, true);
-    const pendingTone: Tone = pending.state !== 'known' ? 'info' : pending.security > 0 ? 'warn' : 'ok';
+    // Arch (2026-10-30): the count comes from checkupdates, the security
+    // count from arch-audit; either can be missing, and that is said.
+    const archSecurityUnknown = pending.security_state === 'arch_audit_missing' || pending.security_state === 'arch_audit_failed';
+    const pendingTone: Tone = pending.state !== 'known' ? 'info' : pending.security > 0 ? 'warn' : archSecurityUnknown && pending.total > 0 ? 'info' : 'ok';
     const pendingText = pending.state === 'known'
         ? pending.total > 0
-            ? t(listsAt ? 'life.updates.pending.some' : 'life.updates.pending.someNoDate', { total: pending.total, security: pending.security, date: listsAt })
+            ? archSecurityUnknown
+                ? t('life.updates.pending.someSecurityUnknown', { total: pending.total, date: listsAt })
+                : t(listsAt ? 'life.updates.pending.some' : 'life.updates.pending.someNoDate', { total: pending.total, security: pending.security, date: listsAt })
             : t(listsAt ? 'life.updates.pending.none' : 'life.updates.pending.noneNoDate', { date: listsAt })
-        : t(pending.state === 'busy' ? 'life.updates.pending.busy' : 'life.updates.pending.unknown');
+        : pending.reason === 'checkupdates_missing'
+          ? t('life.updates.pending.checkupdatesMissing')
+          : pending.reason === 'checkupdates_failed'
+            ? t('life.updates.pending.checkupdatesFailed')
+            : t(pending.state === 'busy' ? 'life.updates.pending.busy' : 'life.updates.pending.unknown');
     const dropIn = value.drop_in;
     const write = async () => {
         if (!dropIn?.proposed_sha256) return;
