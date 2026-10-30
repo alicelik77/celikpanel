@@ -19,7 +19,8 @@ import (
 // scheduler only reads what the operating system did and records it, so the
 // certificate page and the Dashboard tell the administrator when renewal
 // needs them (D-024). Certificates of earlier releases (immutable snapshots)
-// stay renewed by cert_renewal.go until they are reissued.
+// are moved to a native lineage at their next renewal
+// (site_cert_legacy_move.go) and renewed by cert_renewal.go until then.
 //
 // İşletim sisteminin yenilediği web sitesi sertifikaları: Panel yenilemez,
 // yalnız işletim sisteminin yaptığını okur ve kaydeder.

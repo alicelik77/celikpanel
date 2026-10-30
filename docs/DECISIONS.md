@@ -163,6 +163,50 @@ advanced for websites only; it stays partial and every open acceptance item stay
 open. The update pause of `deploy/panel-tls-snapshot.sh` also holds the website
 renewal for the length of an update, as it already did for webmail and mail.
 
+### Amendment (2026-10-30, clock date): certificates of earlier releases move at their next renewal; Dovecot 2.3, Ubuntu 24.04 and Arch measured
+
+*Branch `fix/cert-mail-known-gaps` from `release/alpha113`; not published; nothing
+measured on an installed server.* Owner's direction for alpha.113: no known problem
+may remain.
+
+1. **Point 9 changes.** A certificate of an earlier release (isolated store, or a
+   lineage named after the domain) is no longer only kept renewing by the running
+   Panel until a person reissues it: at its next renewal (the 12-hour job, within 30
+   days of expiry) the Panel replaces it with a native lineage
+   (`cmd/panel/site_cert_legacy_move.go`) through the same Agent issuance a Reissue
+   uses, with the same names (the mail name when the old certificate covered it),
+   automatic renewal and secure mail. The earlier certificate serves until the new
+   row is active and nginx's tested configuration names its live files; a later
+   failure is the renewal outbox's (`activation_pending`, `dependents_pending`,
+   waiting for the owner). A failed move records `move_failed_<kind>` (additive
+   `renewal_status` values; the row stays active and serving) and is retried every
+   run; from 14 days before expiry the earlier renewal runs instead and the move
+   failure is kept on the card. An answer that never arrived records nothing
+   (unknown); a lineage issued but never recorded is removed by the startup lineage
+   reconcile. The card says "nothing needs to be done", or the failure, who acts,
+   the next action and how it resumes (`legacy_move` additive field). **Not moved by
+   itself:** a certificate from an authority that requires EAB (ZeroSSL, Google Trust
+   Services), because CelikPanel does not keep those credentials; its card keeps
+   "Reissue it once". A replaced earlier-release lineage that lived in
+   `/etc/letsencrypt` itself (releases before the isolated store) is left as it is,
+   as after a manual Reissue.
+2. **Distro config matrix.** The native SNI fixture is certbot's real layout
+   (archive versions, live links); the matrix starts the real Dovecot and Postfix,
+   checks every SNI name's certificate (IMAPS 993, SMTP STARTTLS 25) and the no-SNI
+   default, then switches the live links to the next version as `certbot renew`
+   does, runs the site deploy hook (a stand-in `systemctl` maps reload to each
+   program's own command; containers have no systemd) and checks the renewed
+   certificate is served. Arch's Dovecot is rendered with CelikPanel's Arch main
+   file and MariaDB with Arch's `/etc/my.cnf.d/server.cnf`; the earlier N/A labels
+   for both were outdated.
+3. **Real boot.** `deploy/e2e/cert-mail-boot` boots Ubuntu 24.04 and Arch cloud images
+   under QEMU (packages from the release's mirrors, then no route out), issues with
+   the Agent's own code against a local Pebble, reboots, and lets the release's own
+   timer fire.
+
+Evidence: [cert-mail-20261030](../deploy/e2e/dns-pair-acceptance/evidence/cert-mail-20261030/SUMMARY.md).
+P0.5 stays partial.
+
 ---
 
 ### Amendment (2026-10-26, clock date): webmail on its own address, served by the server's own web server; implemented in source for the v0.1.0-alpha.110 candidate

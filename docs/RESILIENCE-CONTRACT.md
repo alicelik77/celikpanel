@@ -7985,6 +7985,36 @@ lineage gets `autorenew = False`.
   P0.1 to P0.5 stay partial. Mail TLS plan v1's reader accepts native lineage paths
   (additive); an earlier release refuses such a committed plan (mail keeps serving).
 
+### Branch fix/cert-mail-known-gaps (earlier-release website certificates move to the operating system's renewal; Dovecot 2.3 mail SNI, Ubuntu 24.04 and Arch measured; no schema change; invariants 1, 2 and 4; D-040 amendment; D-022; D-024; 2026-10-30)
+
+Invariant 1: a website certificate of an earlier release no longer depends on the
+running Panel past its next renewal; the 12-hour job moves it to a native lineage
+(`cmd/panel/site_cert_legacy_move.go`) through the Reissue path, except an
+EAB-authority certificate (credentials are not kept; its card says Reissue).
+Invariant 2: a failed move is `move_failed_<kind>` with its next action; an answer
+that never arrived records nothing; a later earlier-way renewal does not erase the
+move failure. Invariant 4: the earlier certificate serves until the native row is
+active and nginx's tested configuration names it; later failures are the renewal
+outbox's (`activation_pending`, `dependents_pending`, owner's file); a lineage
+issued but never recorded is removed by the startup lineage reconcile; a moved
+certificate is never moved again; from 14 days before expiry a failing move falls
+back to the earlier renewal.
+
+- **Panel changes.** The move, the fallback window, the `legacy_move` card field and
+  the `move_failed_<kind>` statuses (additive). **Agent changes.** None in
+  production code; the realsystem test also prepares nginx's includes and the Arch
+  Dovecot layout as the product's own setup does.
+- **Matrix.** Certbot's real archive/live layout for the native SNI fixture; IMAPS
+  and SMTP STARTTLS handshakes per SNI name on the real daemons, before and after a
+  simulated `certbot renew` that runs the site deploy hook; Arch Dovecot (CelikPanel's
+  main file) and Arch MariaDB measured instead of N/A.
+- **Schema.** None (46).
+- **Evidence.** [cert-mail-20261030](../deploy/e2e/dns-pair-acceptance/evidence/cert-mail-20261030/SUMMARY.md):
+  the matrix on its five releases and real QEMU boots of Ubuntu 24.04 and Arch
+  against a local Pebble. Not measured: an installed server, a real CA, the move
+  itself against a real Agent and CA (component tests only), snap certbot.
+  **P0.5 stays partial**; every open acceptance item stays open.
+
 ### Candidate v0.1.0-alpha.111 (the Beta 1 setup: setup wizard v2, join by code, the setup link, the DNS page; Agent DNS install, rollback, certificate and point-update paths; no schema change; invariants 1, 2, 4 and 6; D-021 amendments; D-022; D-024; D-025; D-028 amendment; 2026-10-29)
 
 D-025 invariant 1 (the owner retains authority and working services): the two
