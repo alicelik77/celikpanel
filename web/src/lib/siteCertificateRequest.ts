@@ -50,8 +50,10 @@ export async function requestSiteCertificate(domainId: number): Promise<SiteCert
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         // The SSL page's defaults: Let's Encrypt, renewed automatically, the
-        // mail name not included.
-        body: JSON.stringify({ auto_renew: true, include_mail: false, provider: 'letsencrypt', reissue: false }),
+        // mail name not included. SSL was ticked when the site was added, so
+        // once this first certificate is active http:// redirects to
+        // https:// (the owner can turn that off on the SSL/TLS page).
+        body: JSON.stringify({ auto_renew: true, include_mail: false, provider: 'letsencrypt', reissue: false, redirect_http: true }),
     };
     let res: Response | null = null;
     try {
@@ -89,4 +91,5 @@ export const ISSUE_FAILURE_KEYS = {
     rate_limited: 'ssl.issueFailure.rate_limited',
     timeout: 'ssl.issueFailure.timeout',
     tool: 'ssl.issueFailure.tool',
+    server_clock: 'ssl.issueFailure.server_clock',
 } as const;

@@ -37,6 +37,7 @@ const sentences: Record<string, TranslationKey> = {
     rate_limited: 'ssl.issueFailure.rate_limited',
     timeout: 'ssl.issueFailure.timeout',
     tool: 'ssl.issueFailure.tool',
+    server_clock: 'ssl.issueFailure.server_clock',
 };
 
 export function CertificateIssueNotice({
@@ -66,7 +67,7 @@ export function CertificateIssueNotice({
             <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-danger" aria-hidden="true" />
             <div className="min-w-0">
                 <p className="max-w-[75ch] break-words">
-                    {t(sentences[failure.reason ?? ''] ?? 'ssl.issueFailure.tool', { domain: failure.vars?.domain ?? '' })}
+                    {t(sentences[failure.reason ?? ''] ?? 'ssl.issueFailure.tool', { ...failure.vars, domain: failure.vars?.domain ?? '' })}
                 </p>
                 {detail && (
                     <p className="mt-1.5 max-w-[75ch] break-words text-fg-muted">

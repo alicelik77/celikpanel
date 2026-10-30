@@ -142,7 +142,7 @@ function CertificateOutcome({ name, outcome }: { name: string; outcome: SiteCert
                 {isIssueFailure(outcome.error) ? (
                     <div role="alert" className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm leading-relaxed text-fg">
                         <p className="max-w-[75ch] break-words">
-                            {t(ISSUE_FAILURE_KEYS[reason as keyof typeof ISSUE_FAILURE_KEYS] ?? ISSUE_FAILURE_KEYS.tool, { domain: outcome.error.vars?.domain ?? name })}
+                            {t(ISSUE_FAILURE_KEYS[reason as keyof typeof ISSUE_FAILURE_KEYS] ?? ISSUE_FAILURE_KEYS.tool, { ...outcome.error.vars, domain: outcome.error.vars?.domain ?? name })}
                         </p>
                         {outcome.error.vars?.detail && (
                             <p className="mt-1.5 max-w-[75ch] break-words text-fg-muted">

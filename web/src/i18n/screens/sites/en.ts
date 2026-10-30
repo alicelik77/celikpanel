@@ -47,7 +47,7 @@ export const enSitesScreens = {
     'domains.add.sslRequesting.body': 'This can take up to a minute. You do not need to do anything: this window shows the result. Leave it open. The certificate is requested only once; nothing is sent again if you wait.',
     'domains.add.sslRequesting.button': 'Requesting…',
     'domains.add.sslOutcome.title': 'The site is created. Check its certificate',
-    'domains.add.sslIssued': 'The certificate for {name} was issued and is active. It renews automatically.',
+    'domains.add.sslIssued': 'The certificate for {name} was issued and is active, and http:// addresses now redirect to https:// (you can turn that off on the site’s SSL/TLS page). It renews automatically.',
     'domains.add.sslFailed': '{name} was created, but its certificate was not issued. The site works without HTTPS for now.',
     'domains.add.sslFailedNext': 'The site itself was not changed, and nothing asks for the certificate again by itself. When the cause is fixed, request the certificate again under SSL/TLS in the domain’s settings; the button below opens it.',
     'domains.add.sslWaitingForOwner': 'The certificate for {name} was issued and stored, but the site’s configuration file is yours and does not use it yet. Nothing changes until you choose. Open SSL/TLS to see what you can do.',

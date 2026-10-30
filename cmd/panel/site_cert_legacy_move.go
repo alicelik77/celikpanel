@@ -302,7 +302,7 @@ func (p *Panel) moveLegacySiteCertificate(ctx context.Context, certID, domainID 
 	if err := validateIssuedCertificateLineage(domainName, domainID, true, lineage); err != nil {
 		return failed("", err.Error())
 	}
-	info, err := p.inspectManagedCertificate(ctx, domainName, resp.CertPath, resp.KeyPath, resp.ChainPath)
+	info, err := p.inspectIssuedCertificate(ctx, domainName, resp.CertPath, resp.KeyPath, resp.ChainPath)
 	if err != nil {
 		return failed("", "read the new certificate: "+err.Error())
 	}

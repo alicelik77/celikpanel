@@ -186,6 +186,11 @@ type IssueLetsEncryptRequest struct {
 	EABKeyID    string `json:"eab_key_id,omitempty"`
 	EABHMACKey  string `json:"eab_hmac_key,omitempty"`
 	Reissue     bool   `json:"reissue,omitempty"`
+	// RedirectHTTP: the site was added with SSL ticked (Add Domain). When
+	// this request activates the site's first certificate, http:// then
+	// redirects to https:// (the site's force_https, which the owner can turn
+	// off on the SSL/TLS page). alpha.113, the owner's decision.
+	RedirectHTTP bool `json:"redirect_http,omitempty"`
 }
 
 // UploadCertificateRequest represents a request to upload custom certificate
@@ -784,7 +789,7 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 		writeAgentError(w, nil, err.Error())
 		return
 	}
-	info, err := p.inspectManagedCertificate(
+	info, err := p.inspectIssuedCertificate(
 		ctx,
 		domain.Name,
 		agentResp.CertPath,
@@ -793,6 +798,11 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	)
 	if err != nil {
 		writeAgentError(w, err, "inspect issued certificate snapshot")
+		return
+	}
+	if issuedCertificateClockProblem(info) {
+		// The deferred cleanup removes the certificate this request left.
+		writeCertificateClockFailure(w, currentCaller(r), domain.Name, activeCount > 0, info)
 		return
 	}
 	if !info.Valid || !info.TrustChecked || !info.Trusted {
@@ -828,6 +838,9 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	}
 	secureMail := previousSecureMail &&
 		certificateCoversHostname(info.DNSNames, "mail."+domain.Name)
+	// Only the site's first certificate turns the redirect on; a reissue
+	// keeps whatever the owner chose.
+	httpsRedirect := req.RedirectHTTP && activeCount == 0
 
 	// Store certificate in database. issuer is the chosen CA's display name so
 	// the SSL page shows who signed it, not a hardcoded "Let's Encrypt".
@@ -847,6 +860,7 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 		ExpiresAt:      expiresAt,
 		AutoRenew:      req.AutoRenew,
 		SecureMail:     secureMail,
+		RedirectHTTP:   httpsRedirect,
 	})
 	if err != nil {
 		writeServerError(w, err)
@@ -946,6 +960,9 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	answer := map[string]any{
 		"status":     "success",
 		"expires_at": expiresAt,
+	}
+	if httpsRedirect {
+		answer["https_redirect"] = true
 	}
 	if warning := strings.TrimSpace(agentResp.RenewalWarning); warning != "" {
 		answer["renewal_warning"] = warning

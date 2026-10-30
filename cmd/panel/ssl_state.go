@@ -67,6 +67,10 @@ type certificateInstall struct {
 	ExpiresAt      time.Time
 	AutoRenew      bool
 	SecureMail     bool
+	// RedirectHTTP turns the site's http -> https redirect (force_https) on
+	// with the activation, in the same transaction; a rollback of the
+	// activation restores the previous setting (alpha.113).
+	RedirectHTTP bool
 	// validationNotRun: the kept file's probe could not be sent from this
 	// server and the request went ahead (set11 cell A6); not stored.
 	validationNotRun *certificateValidationNotRun
@@ -230,6 +234,13 @@ func applyCertificateActivationTx(
 		WHERE domain_id = ?`,
 		cert.Type, cert.CertPath, cert.KeyPath, domainID); err != nil {
 		return 0, err
+	}
+	if cert.RedirectHTTP {
+		if _, err := tx.ExecContext(ctx, `
+			UPDATE sites SET force_https = true, updated_at = datetime('now')
+			WHERE domain_id = ?`, domainID); err != nil {
+			return 0, err
+		}
 	}
 	return newID, nil
 }
