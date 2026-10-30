@@ -1,0 +1,168 @@
+== clocks as the lab gives them 22:43:04
+labnet 22:43:05.890742817
+frankfurt 22:43:04.732321566
+== site d6mail113.test with Enable SSL at creation 22:43:05
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/5/public_html", "Domain": "d6mail113.test", "DomainID": 5, "FTPPassword": "[REDACTED]", "FTPUser": "d6mail113_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 5, "TempDomain": ""}
+   site id 5
+   ok 192.0.3.121 d6mail113.test A = '192.0.3.121' after 0s
+   ok 192.0.3.122 d6mail113.test A = '192.0.3.121' after 0s
+200 {"status": "success", "expires_at": "2031-10-30T22:43:15Z"}
+200 {"success": true}
+== mail on d6mail113.test 22:43:18
+200 {"id": 3, "success": true}
+200 {"id": 4, "success": true}
+-- DKIM by itself (the card is only read) 22:43:19
+   after 11s: {"status": 200, "dkim_signed": true, "automatic": null}; TXT @192.0.3.121 '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA...' @192.0.3.122 '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA...'
+-- send 587 and 465, read IMAPS 22:43:30
+{
+ "host": "mail.d6f113.test",
+ "resolved": "192.0.3.121",
+ "smtp_587_cert": {
+  "cn": null,
+  "san": [
+   "mail.d6f113.test"
+  ],
+  "not_after": "Oct 30 22:34:31 2031 GMT",
+  "issuer_cn": "Pebble Intermediate CA 445eee"
+ },
+ "smtp_send": {
+  "ok": true,
+  "refused": {}
+ },
+ "smtp_465_send": {
+  "ok": true,
+  "refused": {}
+ },
+ "subjects": [
+  "final-alpha113 930b68db52d0",
+  "final-alpha113-465 930b68db52d0"
+ ],
+ "imaps_993_cert": {
+  "cn": null,
+  "san": [
+   "mail.d6f113.test"
+  ],
+  "not_after": "Oct 30 22:34:31 2031 GMT",
+  "issuer_cn": "Pebble Intermediate CA 445eee"
+ },
+ "imap_read": {
+  "after_seconds": 16.8,
+  "headers": "From: alice@d6mail113.test\r\nTo: bob@d6mail113.test\r\nSubject: final-alpha113 930b68db52d0"
+ },
+ "served_certificates": {
+ }
+}
+-- PHP mail() from the site (own Message-ID so Rspamd's log names it), and one to a mailbox that does not exist (bounce to bob) 22:45:07
+200 {"success": true}
+200 {"success": true}
+   mail.php said: sent php-mail 0b2b5b9bd91d sent2 bounce-test 0b2b5b9bd91d
+-- DKIM verified independently against the TXT from each DNS server (192.0.3.121,192.0.3.122) 22:45:23
+{
+ "dns_servers": [
+  "192.0.3.121",
+  "192.0.3.122"
+ ],
+ "mails": [
+  {
+   "subject": "final-alpha113 930b68db52d0",
+   "message_id": "<aab3121bea30401db97cc2a38fbe1d94@labnet.test>",
+   "from": "alice@d6mail113.test",
+   "dkim_signatures": 1,
+   "scan_headers": [],
+   "dkim": [
+    {
+     "d": "d6mail113.test",
+     "s": "celik",
+     "a": "rsa-sha256",
+     "c": "relaxed/simple",
+     "h": "From:To:Subject:From",
+     "verify_with_txt_from_192.0.3.121": true,
+     "txt_p_prefix_192.0.3.121": "MIIBIjANBgkqhkiG9w0BAQEF",
+     "verify_with_txt_from_192.0.3.122": true,
+     "txt_p_prefix_192.0.3.122": "MIIBIjANBgkqhkiG9w0BAQEF"
+    }
+   ]
+  },
+  {
+   "subject": "final-alpha113-465 930b68db52d0",
+   "message_id": "<d9eab14a1f04488b833e45080eb5fb6f@labnet.test>",
+   "from": "alice@d6mail113.test",
+   "dkim_signatures": 1,
+   "scan_headers": [],
+   "dkim": [
+    {
+     "d": "d6mail113.test",
+     "s": "celik",
+     "a": "rsa-sha256",
+     "c": "relaxed/simple",
+     "h": "From:To:Subject:From",
+     "verify_with_txt_from_192.0.3.121": true,
+     "txt_p_prefix_192.0.3.121": "MIIBIjANBgkqhkiG9w0BAQEF",
+     "verify_with_txt_from_192.0.3.122": true,
+     "txt_p_prefix_192.0.3.122": "MIIBIjANBgkqhkiG9w0BAQEF"
+    }
+   ]
+  },
+  {
+   "subject": "php-mail 0b2b5b9bd91d",
+   "message_id": "<php-0b2b5b9bd91d@d6mail113.test>",
+   "from": "alice@d6mail113.test",
+   "dkim_signatures": 1,
+   "scan_headers": [],
+   "dkim": [
+    {
+     "d": "d6mail113.test",
+     "s": "celik",
+     "a": "rsa-sha256",
+     "c": "relaxed/simple",
+     "h": "To:Subject:From:Date:From",
+     "verify_with_txt_from_192.0.3.121": true,
+     "txt_p_prefix_192.0.3.121": "MIIBIjANBgkqhkiG9w0BAQEF",
+     "verify_with_txt_from_192.0.3.122": true,
+     "txt_p_prefix_192.0.3.122": "MIIBIjANBgkqhkiG9w0BAQEF"
+    }
+   ]
+  },
+  {
+   "subject": "Undelivered Mail Returned to Sender",
+   "message_id": "<20261030224507.AA74222989@mail.d6f113.test>",
+   "from": "Mail Delivery System <MAILER-DAEMON@mail.d6f113.test>",
+   "dkim_signatures": 0,
+   "scan_headers": [],
+   "dkim": []
+  }
+ ]
+}
+-- on the server: Rspamd's verdicts by Message-ID (the PHP mail() one is php-0b2b5b9bd91d@d6mail113.test), milters, the bounce in Postfix's log (read only) 22:45:23
+opendkim conf /etc/opendkim.conf keytable=/var/lib/celikpanel-dkim/tables/keytable signingtable=/var/lib/celikpanel-dkim/tables/signingtable
+keytable lines for d6mail113.test: 1
+celik._domainkey.d6mail113.test d6mail113.test:celik:/var/lib/celikpanel-dkim/keys/d6mail113.test/celik.private
+signingtable lines for d6mail113.test: 1
+*@d6mail113.test celik._domainkey.d6mail113.test
+key files mentioning d6mail113.test:
+rspamd lines for aab3121bea30401db97cc2a38fbe1d94@labnet.test:
+rspamd_task_write_log: id: <aab3121bea30401db97cc2a38fbe1d94@labnet.test>, qid: <
+(default: F (no action): [0.90/15.00] [MISSING_DATE(1.00){}
+rspamd lines for d9eab14a1f04488b833e45080eb5fb6f@labnet.test:
+rspamd_task_write_log: id: <d9eab14a1f04488b833e45080eb5fb6f@labnet.test>, qid: <
+(default: F (no action): [0.90/15.00] [MISSING_DATE(1.00){}
+rspamd lines for php-0b2b5b9bd91d@d6mail113.test:
+rspamd_task_write_log: id: <php-0b2b5b9bd91d@d6mail113.test>, qid: <5EEE422986>, 
+(default: F (no action): [0.19/15.00] [FORGED_SENDER(0.30){alice@d6mail113.test;d6mail113_test@mail.d6f113.test;}
+rspamd lines for 20261030224507.AA74222989@mail.d6f113.test:
+rspamd lines for php-0b2b5b9bd91d@d6mail113.test:
+rspamd_task_write_log: id: <php-0b2b5b9bd91d@d6mail113.test>, qid: <5EEE422986>, 
+(default: F (no action): [0.19/15.00] [FORGED_SENDER(0.30){alice@d6mail113.test;d6mail113_test@mail.d6f113.test;}
+milter warnings, all boots: 0
+boots: 2
+milters: smtpd=inet:127.0.0.1:8891, inet:127.0.0.1:11332 non_smtpd=inet:127.0.0.1:8891, inet:127.0.0.1:11332
+smtp inet y
+submission inet y
+smtps inet y
+2026-10-30T22:45:07+00:00 frankfurt postfix/virtual[67349]: 855F222984: to=<nosuch-d6@d6mail113.test>, relay=virtual, delay=0.3, delays=0.29/0/0/0.01, dsn=5.1.1, status=bounced (unknown user: "nosuch-d6@d6mail113.test")
+2026-10-30T22:45:07+00:00 frankfurt postfix/bounce[67470]: 855F222984: sender non-delivery notification: AA74222989
+
+accept
+inet:127.0.0.1:8891, inet:127.0.0.1:11332
+inet:127.0.0.1:8891, inet:127.0.0.1:11332
+== d6ops done (race skipped) 22:45:25

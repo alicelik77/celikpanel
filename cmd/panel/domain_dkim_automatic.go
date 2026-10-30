@@ -90,6 +90,34 @@ const (
 
 var dkimAutomaticBusyDelay = 30 * time.Second
 
+// errDKIMAutomaticDomainGone: the domain no longer exists or its deletion
+// has started (D6, final alpha.113 acceptance run 3). The automatic work
+// for it stops without a trace: the deletion owns the domain's DKIM key,
+// its record and its zone, so nothing here is a DKIM failure.
+// Alan adı yok ya da silinmesi başladı: otomatik iş iz bırakmadan durur.
+var errDKIMAutomaticDomainGone = errors.New("the domain is being deleted or no longer exists")
+
+// dkimAutomaticDomainLive is the SQL condition (three arguments: id, name,
+// id) that a domain still exists under its name and its deletion has not
+// started. Every write of the automatic work carries it inside the same
+// statement, so it is decided atomically against markDomainDeletionPending
+// (SQLite serializes writers): a write before the marker is undone by the
+// deletion, a write after it changes nothing.
+const dkimAutomaticDomainLive = `EXISTS (SELECT 1 FROM domains d WHERE d.id = ? AND lower(d.name) = ?)
+	AND NOT EXISTS (SELECT 1 FROM domain_deletion_operations o WHERE o.domain_id = ?)`
+
+// dkimAutomaticLive reports whether the domain still exists and is not
+// being deleted (read only).
+func (p *Panel) dkimAutomaticLive(ctx context.Context, domainID int, domain string) (bool, error) {
+	var live int
+	err := p.db.GetDB().QueryRowContext(ctx, `SELECT `+dkimAutomaticDomainLive,
+		domainID, strings.ToLower(strings.TrimSpace(domain)), domainID).Scan(&live)
+	if err != nil {
+		return false, fmt.Errorf("read domain state: %w", err)
+	}
+	return live != 0, nil
+}
+
 type dkimAutomaticRecord struct {
 	Version    int    `json:"version"`
 	DomainID   int    `json:"domain_id"`
@@ -152,8 +180,22 @@ func (p *Panel) writeDKIMAutomaticRecord(ctx context.Context, record dkimAutomat
 	if err != nil {
 		return err
 	}
-	if err := p.setSetting(ctx, dkimAutomaticKey(record.DomainID), string(raw)); err != nil {
+	// Never (re)created for a domain that is gone or being deleted: the
+	// deletion cleared the record and a late answer of the runner must not
+	// leave one behind (D6).
+	result, err := p.db.GetDB().ExecContext(ctx, `
+		INSERT INTO panel_settings (key, value, updated_at)
+		SELECT ?, ?, CURRENT_TIMESTAMP WHERE `+dkimAutomaticDomainLive+`
+		ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`,
+		dkimAutomaticKey(record.DomainID), string(raw),
+		record.DomainID, record.Domain, record.DomainID)
+	if err != nil {
 		return fmt.Errorf("record automatic DKIM state: %w", err)
+	}
+	if changed, err := result.RowsAffected(); err != nil {
+		return fmt.Errorf("confirm automatic DKIM state: %w", err)
+	} else if changed == 0 {
+		return errDKIMAutomaticDomainGone
 	}
 	return nil
 }
@@ -207,6 +249,34 @@ func (p *Panel) listDKIMAutomaticRecords(ctx context.Context) ([]dkimAutomaticRe
 	}
 	return records, rows.Err()
 }
+
+// pruneDKIMAutomaticRecords removes the records of domains that no longer
+// exist under their name or whose deletion has started (D6). It runs before
+// every pass, the first one at Panel start, so a record a release before
+// this fix left for a deleted domain goes too. A record that is not JSON is
+// left alone (it is ignored and named in the log).
+func (p *Panel) pruneDKIMAutomaticRecords(ctx context.Context) {
+	result, err := p.db.GetDB().ExecContext(ctx, `
+		DELETE FROM panel_settings
+		WHERE key LIKE ? AND json_valid(value)
+		  AND NOT (`+dkimAutomaticDomainLiveJSON+`)`, dkimAutomaticKeyPrefix+"%")
+	if err != nil {
+		log.Printf("[dkim-auto] remove records of deleted domains: %v", err)
+		return
+	}
+	if removed, err := result.RowsAffected(); err == nil && removed > 0 {
+		log.Printf("[dkim-auto] removed %d automatic DKIM record(s) of domains that were deleted or are being deleted", removed)
+	}
+}
+
+// dkimAutomaticDomainLiveJSON is dkimAutomaticDomainLive for a stored
+// record, read from its own key and JSON (no arguments).
+const dkimAutomaticDomainLiveJSON = `EXISTS (SELECT 1 FROM domains d
+		WHERE 'dkim_automatic_v1:' || d.id = panel_settings.key
+		  AND d.id = json_extract(panel_settings.value, '$.domain_id')
+		  AND lower(d.name) = json_extract(panel_settings.value, '$.domain'))
+	AND NOT EXISTS (SELECT 1 FROM domain_deletion_operations o
+		WHERE 'dkim_automatic_v1:' || o.domain_id = panel_settings.key)`
 
 // requestAutomaticDKIM queues the automatic DKIM work for a domain. It
 // returns false when the same work is already pending (nothing new is
@@ -389,6 +459,7 @@ func (item dkimAutomaticItem) needsSigning() bool { return item.created || !item
 // runAutomaticDKIMPass handles every pending or waiting record once. It
 // reports whether a record waits for a busy host (the runner repeats).
 func (p *Panel) runAutomaticDKIMPass(ctx context.Context, startup bool) bool {
+	p.pruneDKIMAutomaticRecords(ctx)
 	records, err := p.listDKIMAutomaticRecords(ctx)
 	if err != nil {
 		log.Printf("[dkim-auto] %v", err)
@@ -446,12 +517,35 @@ func (p *Panel) recordAutomaticDKIM(ctx context.Context, record dkimAutomaticRec
 	if line == "" {
 		record.ErrorLine = ""
 	}
-	if err := p.writeDKIMAutomaticRecord(ctx, record); err != nil {
+	if err := p.writeDKIMAutomaticRecord(ctx, record); errors.Is(err, errDKIMAutomaticDomainGone) {
+		// What failed was the work for a domain the owner deleted in the
+		// meantime (for example the zone row it wrote into was gone): not a
+		// DKIM failure, and nothing for anyone to do.
+		p.stopAutomaticDKIMForGoneDomain(ctx, record)
+		return
+	} else if err != nil {
 		log.Printf("[dkim-auto] %s: %v", record.Domain, err)
 	}
 	if state != dkimAutoWaiting {
 		log.Printf("[dkim-auto] %s: %s (%s) %s", record.Domain, state, reason, line)
 	}
+}
+
+// stopAutomaticDKIMForGoneDomain ends the work for a domain that is being
+// deleted or no longer exists: its record goes (the deletion removes the key
+// and the zone) and one plain line says so.
+func (p *Panel) stopAutomaticDKIMForGoneDomain(ctx context.Context, record dkimAutomaticRecord) {
+	if err := p.clearDKIMAutomaticRecord(ctx, record.DomainID); err != nil {
+		log.Printf("[dkim-auto] %s: %v", record.Domain, err)
+	}
+	log.Printf("[dkim-auto] %s: stopped: the domain is being deleted or no longer exists; its deletion removes its DKIM key and record, nothing to do", record.Domain)
+}
+
+// automaticDKIMDomainGone reports that the domain is gone or being deleted
+// (a read error counts as not gone: the caller keeps its own outcome).
+func (p *Panel) automaticDKIMDomainGone(ctx context.Context, record dkimAutomaticRecord) bool {
+	live, err := p.dkimAutomaticLive(ctx, record.DomainID, record.Domain)
+	return err == nil && !live
 }
 
 func (p *Panel) finishAutomaticDKIM(ctx context.Context, record dkimAutomaticRecord, note string) {
@@ -609,6 +703,12 @@ func (p *Panel) zoneTXTValues(ctx context.Context, zoneID int, name string) ([]s
 // the zone, like "Add to DNS", without replacing a different record.
 func (p *Panel) automaticDKIMPublish(ctx context.Context, item dkimAutomaticItem) {
 	record := item.record
+	if p.automaticDKIMDomainGone(ctx, record) {
+		// Deleted while the key or signing step ran: the deletion removed
+		// the key and owns the zone (D6).
+		p.stopAutomaticDKIMForGoneDomain(ctx, record)
+		return
+	}
 	mode, err := p.domainDNSManagementMode(ctx, record.Domain)
 	if err != nil {
 		p.recordAutomaticDKIM(ctx, record, dkimAutoUnknown, dkimReasonDNSPublish, err.Error())
@@ -672,16 +772,44 @@ func (p *Panel) automaticDKIMPublish(ctx context.Context, item dkimAutomaticItem
 		return
 	}
 	if !present {
-		if _, err := p.db.GetDB().ExecContext(ctx,
-			`INSERT INTO pdns_records (domain_id, name, type, content, ttl) VALUES (?, ?, 'TXT', ?, 3600)`,
-			zoneID, name, splitTXTContent(want)); err != nil {
+		// Written only while the zone row exists and the domain is neither
+		// gone nor being deleted, in one statement (D6: a TXT written into a
+		// zone the deletion had just removed failed on its foreign key and
+		// was shown as a DKIM failure of the deleted domain).
+		result, err := p.db.GetDB().ExecContext(ctx, `
+			INSERT INTO pdns_records (domain_id, name, type, content, ttl)
+			SELECT ?, ?, 'TXT', ?, 3600
+			WHERE EXISTS (SELECT 1 FROM pdns_domains WHERE id = ? AND name = ?)
+			  AND `+dkimAutomaticDomainLive,
+			zoneID, name, splitTXTContent(want), zoneID, zoneName,
+			record.DomainID, record.Domain, record.DomainID)
+		if err != nil {
+			if p.automaticDKIMDomainGone(ctx, record) {
+				p.stopAutomaticDKIMForGoneDomain(ctx, record)
+				return
+			}
 			p.recordAutomaticDKIM(ctx, record, dkimAutoFailed, dkimReasonDNSPublish, err.Error())
+			return
+		}
+		if written, err := result.RowsAffected(); err == nil && written == 0 {
+			if p.automaticDKIMDomainGone(ctx, record) {
+				p.stopAutomaticDKIMForGoneDomain(ctx, record)
+				return
+			}
+			// The zone was removed by its owner between the read above and
+			// this write: nothing was written; the owner's "Try again"
+			// reads it again.
+			p.recordAutomaticDKIM(ctx, record, dkimAutoUnknown, dkimReasonDNSPublish,
+				"the zone "+zoneName+" was removed while the record was being written")
 			return
 		}
 	}
 	publishCtx, cancel := context.WithTimeout(ctx, dnsPublishTimeout)
 	defer cancel()
-	if err := p.syncZoneToDNS(publishCtx, zoneName, false); err != nil {
+	if err := p.publishAutomaticDKIMZone(publishCtx, record, zoneName); errors.Is(err, errDKIMAutomaticDomainGone) {
+		p.stopAutomaticDKIMForGoneDomain(ctx, record)
+		return
+	} else if err != nil {
 		// A held publication is saved and completes by itself through the
 		// DNS publication reconciler (the card's record shows "In zone —
 		// waiting for DNS" meanwhile); only a real failure stops here.
@@ -697,6 +825,23 @@ func (p *Panel) automaticDKIMPublish(ctx context.Context, item dkimAutomaticItem
 		return
 	}
 	p.finishAutomaticDKIM(ctx, record, "record published in "+zoneName)
+}
+
+// publishAutomaticDKIMZone publishes the zone like syncZoneToDNS, under the
+// same two locks the deletion's DNS step holds (removeDomainDNSForDeletion).
+// Under them it reads once more that the domain is not being deleted: the
+// deletion marks the domain before its DNS step, so either this publication
+// of a live zone finishes before the deletion removes the zone, or nothing
+// is published into a zone being deleted (D6).
+func (p *Panel) publishAutomaticDKIMZone(ctx context.Context, record dkimAutomaticRecord, zoneName string) error {
+	p.serviceMutationMu.Lock()
+	defer p.serviceMutationMu.Unlock()
+	dnsPublicationMu.Lock()
+	defer dnsPublicationMu.Unlock()
+	if p.automaticDKIMDomainGone(ctx, record) {
+		return errDKIMAutomaticDomainGone
+	}
+	return p.syncZoneToDNSLocked(ctx, zoneName, false)
 }
 
 // handleMailAuthAutomatic is "Try again": it queues the automatic work once.

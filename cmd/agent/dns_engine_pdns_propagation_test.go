@@ -546,7 +546,8 @@ func TestCompleteDNSV3DeletionNamesLastFailedProofWithoutProbeDetails(t *testing
 				ctx, plan, soa, localAXFR, peerCatalog, peerZone,
 			)
 			if err == nil || !strings.Contains(err.Error(), "check="+string(test.check)) ||
-				!strings.Contains(err.Error(), "retry verification of the same operation") ||
+				!strings.Contains(err.Error(), "checks the same operation again automatically") ||
+				strings.Contains(err.Error(), "administrator must") ||
 				strings.Contains(err.Error(), "secret-provider-token") {
 				t.Fatalf("unsafe or unactionable pending guidance: %v", err)
 			}

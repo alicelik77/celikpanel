@@ -1,0 +1,160 @@
+== clocks as the lab gives them 22:53:08
+labnet 22:53:09.767463825
+arch 22:53:08.467010849
+== site archd6shop113.test with Enable SSL at creation 22:53:09
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/1/public_html", "Domain": "archd6shop113.test", "DomainID": 1, "FTPPassword": "[REDACTED]", "FTPUser": "archd6shop113_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 1, "TempDomain": ""}
+   site id 1
+   ok 192.0.3.123 archd6shop113.test A = '192.0.3.123' after 1s
+200 {"status": "success", "expires_at": "2031-10-30T22:53:18Z"}
+200 {"success": true}
+== mail on archd6shop113.test 22:53:21
+200 {"id": 1, "success": true}
+200 {"id": 2, "success": true}
+-- DKIM by itself (the card is only read) 22:53:21
+   after 6s: {"status": 200, "dkim_signed": true, "automatic": null}; TXT @192.0.3.123 '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA...' @192.0.3.123 '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA...'
+-- send 587 and 465, read IMAPS 22:53:27
+{
+ "host": "mail.archd6f113.test",
+ "resolved": "192.0.3.123",
+ "smtp_587_cert": {
+  "cn": null,
+  "san": [
+   "mail.archd6f113.test"
+  ],
+  "not_after": "Oct 30 22:52:27 2031 GMT",
+  "issuer_cn": "Pebble Intermediate CA 445eee"
+ },
+ "smtp_send": {
+  "ok": true,
+  "refused": {}
+ },
+ "smtp_465_send": {
+  "ok": true,
+  "refused": {}
+ },
+ "subjects": [
+  "final-alpha113 ffafa8459fc4",
+  "final-alpha113-465 ffafa8459fc4"
+ ],
+ "imaps_993_cert": {
+  "cn": null,
+  "san": [
+   "mail.archd6f113.test"
+  ],
+  "not_after": "Oct 30 22:52:27 2031 GMT",
+  "issuer_cn": "Pebble Intermediate CA 445eee"
+ },
+ "imap_read": {
+  "after_seconds": 6.2,
+  "headers": "From: alice@archd6shop113.test\r\nTo: bob@archd6shop113.test\r\nSubject: final-alpha113 ffafa8459fc4"
+ },
+ "served_certificates": {
+ }
+}
+-- PHP mail() from the site (own Message-ID so Rspamd's log names it), and one to a mailbox that does not exist (bounce to bob) 22:54:14
+200 {"success": true}
+200 {"success": true}
+   mail.php said: sent php-mail 1394b50b3e8b sent2 bounce-test 1394b50b3e8b
+-- DKIM verified independently against the TXT from each DNS server (192.0.3.123) 22:54:30
+{
+ "dns_servers": [
+  "192.0.3.123"
+ ],
+ "mails": [
+  {
+   "subject": "final-alpha113 ffafa8459fc4",
+   "message_id": "<e2694960c883475294ffedbf1d4c90d4@labnet.test>",
+   "from": "alice@archd6shop113.test",
+   "dkim_signatures": 1,
+   "scan_headers": [],
+   "dkim": [
+    {
+     "d": "archd6shop113.test",
+     "s": "celik",
+     "a": "rsa-sha256",
+     "c": "relaxed/simple",
+     "h": "From:To:Subject:From",
+     "verify_with_txt_from_192.0.3.123": true,
+     "txt_p_prefix_192.0.3.123": "MIIBIjANBgkqhkiG9w0BAQEF"
+    }
+   ]
+  },
+  {
+   "subject": "final-alpha113-465 ffafa8459fc4",
+   "message_id": "<8687a2174c654434b268726e7985d558@labnet.test>",
+   "from": "alice@archd6shop113.test",
+   "dkim_signatures": 1,
+   "scan_headers": [],
+   "dkim": [
+    {
+     "d": "archd6shop113.test",
+     "s": "celik",
+     "a": "rsa-sha256",
+     "c": "relaxed/simple",
+     "h": "From:To:Subject:From",
+     "verify_with_txt_from_192.0.3.123": true,
+     "txt_p_prefix_192.0.3.123": "MIIBIjANBgkqhkiG9w0BAQEF"
+    }
+   ]
+  },
+  {
+   "subject": "php-mail 1394b50b3e8b",
+   "message_id": "<php-1394b50b3e8b@archd6shop113.test>",
+   "from": "alice@archd6shop113.test",
+   "dkim_signatures": 1,
+   "scan_headers": [],
+   "dkim": [
+    {
+     "d": "archd6shop113.test",
+     "s": "celik",
+     "a": "rsa-sha256",
+     "c": "relaxed/simple",
+     "h": "To:Subject:From:Date:From",
+     "verify_with_txt_from_192.0.3.123": true,
+     "txt_p_prefix_192.0.3.123": "MIIBIjANBgkqhkiG9w0BAQEF"
+    }
+   ]
+  },
+  {
+   "subject": "Undelivered Mail Returned to Sender",
+   "message_id": "<20261030225415.42C601875C@mail.archd6f113.test>",
+   "from": "Mail Delivery System <MAILER-DAEMON@mail.archd6f113.test>",
+   "dkim_signatures": 0,
+   "scan_headers": [],
+   "dkim": []
+  }
+ ]
+}
+-- on the server: Rspamd's verdicts by Message-ID (the PHP mail() one is php-1394b50b3e8b@archd6shop113.test), milters, the bounce in Postfix's log (read only) 22:54:31
+opendkim conf /etc/opendkim/opendkim.conf keytable=/var/lib/celikpanel-dkim/tables/keytable signingtable=/var/lib/celikpanel-dkim/tables/signingtable
+keytable lines for archd6shop113.test: 1
+celik._domainkey.archd6shop113.test archd6shop113.test:celik:/var/lib/celikpanel-dkim/keys/archd6shop113.test/celik.private
+signingtable lines for archd6shop113.test: 1
+*@archd6shop113.test celik._domainkey.archd6shop113.test
+key files mentioning archd6shop113.test:
+rspamd lines for e2694960c883475294ffedbf1d4c90d4@labnet.test:
+rspamd_task_write_log: id: <e2694960c883475294ffedbf1d4c90d4@labnet.test>, qid: <
+(default: F (no action): [1.40/15.00] [MISSING_DATE(1.00){}
+rspamd lines for 8687a2174c654434b268726e7985d558@labnet.test:
+rspamd_task_write_log: id: <8687a2174c654434b268726e7985d558@labnet.test>, qid: <
+(default: F (no action): [1.40/15.00] [MISSING_DATE(1.00){}
+rspamd lines for php-1394b50b3e8b@archd6shop113.test:
+rspamd_task_write_log: id: <php-1394b50b3e8b@archd6shop113.test>, qid: <A4AC51875
+(default: F (no action): [0.70/15.00] [R_MISSING_CHARSET(0.50){}
+rspamd lines for 20261030225415.42C601875C@mail.archd6f113.test:
+rspamd lines for php-1394b50b3e8b@archd6shop113.test:
+rspamd_task_write_log: id: <php-1394b50b3e8b@archd6shop113.test>, qid: <A4AC51875
+(default: F (no action): [0.70/15.00] [R_MISSING_CHARSET(0.50){}
+milter warnings, all boots: 0
+boots: 3
+milters: smtpd=inet:127.0.0.1:8891, inet:127.0.0.1:11332 non_smtpd=inet:127.0.0.1:8891, inet:127.0.0.1:11332
+smtp inet n
+submission inet n
+smtps inet n
+2026-10-30T22:54:15+00:00 arch postfix/virtual[14854]: 1552C18758: to=<nosuch-d6@archd6shop113.test>, relay=virtual, delay=0.35, delays=0.33/0/0/0.02, dsn=5.1.1, status=bounced (unknown user: "nosuch-d6@archd6shop113.test")
+2026-10-30T22:54:15+00:00 arch postfix/bounce[14936]: 1552C18758: sender non-delivery notification: 42C601875C
+
+accept
+inet:127.0.0.1:8891, inet:127.0.0.1:11332
+inet:127.0.0.1:8891, inet:127.0.0.1:11332
+== d6ops done (race skipped) 22:54:33

@@ -813,6 +813,9 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 	}
 	lineageRows.Close()
 
+	// From the marker on, a status read of this domain says the deletion is
+	// running until this request answers (domain_deletion_running.go).
+	defer p.deletionsRunning.begin(domainID)()
 	p.mailMutationMu.Lock()
 	firstDeletionAttempt, err := p.markDomainDeletionPending(ctx, domainID)
 	if err != nil {

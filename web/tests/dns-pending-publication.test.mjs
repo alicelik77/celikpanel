@@ -101,6 +101,25 @@ test('a deletion whose DNS removal completed by itself names the one action left
   for (const text of [enScreens[key], trScreens[key]]) assert.doesNotMatch(text, internal);
 });
 
+test('a deletion still running says it waits and re-checks, and names nobody who must act', async () => {
+  const saved = await readSavedDomainDeletionState(response(200, {
+    status: 'deletion_pending', stage: 'running', reason: 'deletion_running',
+  }));
+  assert.deepEqual(saved, { reason: 'deletion_running', detail: '' });
+  assert.deepEqual(await readSavedDomainDeletionState(response(200, {
+    status: 'deletion_pending', stage: 'running', reason: 'dns_peer_inspection_unknown',
+  })), { reason: '', detail: '' });
+  const key = domainDeletionReasonKey('deletion_running');
+  assert.equal(key, 'domains.deletionRunning');
+  assert.match(enScreens[key], /checked again automatically/);
+  assert.match(enScreens[key], /Nobody needs to do anything/);
+  assert.match(trScreens[key], /kendiliğinden yeniden denetlenir/);
+  for (const text of [enScreens[key], trScreens[key]]) {
+    assert.doesNotMatch(text, internal);
+    assert.doesNotMatch(text, /SSH|must check/);
+  }
+});
+
 function readySnapshot(overrides = {}) {
   return {
     revision: 4, engine_epoch: 2, active_engine: 'pdns', state: 'ready', topology: 'paired',

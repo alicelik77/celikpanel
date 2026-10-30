@@ -92,10 +92,17 @@ function reviewedStageFailure(pending: Record<string, unknown>): string {
 const dnsRemovedStage = 'dns_removed';
 const dnsRemovedReason = 'dns_removal_confirmed';
 
+// A deletion request still running on the server: what it saved so far is a
+// moment of it, and a paired DNS step re-checks the backup by itself. Who
+// must act is said only once the request has ended.
+const runningStage = 'running';
+const runningReason = 'deletion_running';
+
 // The translation key for a reviewed reason, or null for the generic text.
 export function domainDeletionReasonKey(reason: string): string | null {
     if (!reason) return null;
     if (reason === dnsRemovedReason) return 'domains.deletionDNSRemoved';
+    if (reason === runningReason) return 'domains.deletionRunning';
     if (Object.values(reviewedStageFailures).includes(reason)) return `err.DOMAIN_DELETION_FAILED.${reason}`;
     return `err.DNS_PUBLICATION_FAILED.${reason}`;
 }
@@ -188,6 +195,9 @@ export async function readSavedDomainDeletionState(
         if (pending.status !== 'deletion_pending') return null;
         if (pending.stage === dnsRemovedStage && pending.reason === dnsRemovedReason) {
             return { reason: dnsRemovedReason, detail: '' };
+        }
+        if (pending.stage === runningStage && pending.reason === runningReason) {
+            return { reason: runningReason, detail: '' };
         }
         if (pending.stage !== 'dns_cleanup') return { reason: '', detail: '' };
         const reason = typeof pending.reason === 'string' && reviewedDNSPeerReasons.has(pending.reason)

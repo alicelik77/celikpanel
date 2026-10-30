@@ -36,6 +36,9 @@ type dkimAutoAgent struct {
 	signError    string
 	busy         bool
 	configLosses int // ConfigureDKIMSigning answers lost (transport error)
+	// onConfigure runs at the start of ConfigureDKIMSigning, before the
+	// agent's own lock: a deletion racing the runner's signing step.
+	onConfigure func()
 }
 
 func newDKIMAutoAgent() *dkimAutoAgent {
@@ -89,6 +92,10 @@ func (a *dkimAutoAgent) GetDKIMStatus(req *transport.DKIMStatusRequest, resp *tr
 }
 
 func (a *dkimAutoAgent) ConfigureDKIMSigning(_ *transport.ServiceMutationRequest, resp *transport.ConfigureDKIMSigningResponse) error {
+	if hook := a.onConfigure; hook != nil {
+		a.onConfigure = nil
+		hook()
+	}
 	a.dmu.Lock()
 	defer a.dmu.Unlock()
 	a.configCalls++
@@ -453,11 +460,13 @@ func TestAutomaticDKIMSkipsDomainsWithoutMailOrBeingDeleted(t *testing.T) {
 	f := newDKIMAutoFixture(t)
 	noMail := f.domain(t, "nomail.example", "external", 0, false)
 	deleting := f.domain(t, "gone.example", "external", 0, true)
+	f.queue(t, noMail, "nomail.example", dkimTriggerDomainCreated)
+	// Queued before its deletion started (a record queued after it is
+	// refused: domain_dkim_deletion_race_test.go).
+	f.queue(t, deleting, "gone.example", dkimTriggerDomainCreated)
 	if _, err := f.p.db.GetDB().Exec(`INSERT INTO domain_deletion_operations (domain_id, previous_status) VALUES (?, 'active')`, deleting); err != nil {
 		t.Fatal(err)
 	}
-	f.queue(t, noMail, "nomail.example", dkimTriggerDomainCreated)
-	f.queue(t, deleting, "gone.example", dkimTriggerDomainCreated)
 	f.pass(t)
 	if f.agent.ensureCalls != 0 {
 		t.Fatalf("a key was made for a domain without mail or being deleted: %d", f.agent.ensureCalls)

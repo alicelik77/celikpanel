@@ -99,6 +99,18 @@ değişmedi).
     yapacağını ve nasıl süreceğini söyler; "Yeniden dene" düğmesi vardır.
   - Alan adı silinince CelikPanel'in oluşturduğu anahtar ve kaydı da kalkar;
     sahibin oluşturduğu anahtar korunur ve adı bildirilir.
+  - Eklendikten hemen sonra silinen bir alan adı bu işle artık yarışmaz:
+    silinmekte olan bölgeye hiçbir şey yazılmaz ya da yayımlanmaz ve silinen
+    alan adı için "başarısız" bir DKIM notu kalmaz. Önceki bir derlemenin
+    silinmiş bir alan adı için bıraktığı not, Panel'in bir sonraki
+    başlangıcında kaldırılır.
+- Bir sitenin PHP `mail()` ile (ve sunucuda `sendmail` kullanan başka her
+  şeyle) gönderdiği posta artık DKIM ile imzalanmanın yanında Rspamd ile de
+  spam denetiminden geçer; 587 ve 465 portlarından gönderilen posta gibi.
+  Postfix'in kendi geri dönüş iletileri süzülmez; durmuş bir Rspamd postayı
+  asla bekletmez. Var olan bir sunucu Panel'in bir sonraki başlangıcında
+  değiştirilir; sahibin değiştirdiği filtre listesi korunur ve adı
+  bildirilir.
 - Dosya yöneticisi; olmayan bir yol, zaten var olan bir ad ya da indirilemeyen
   bir dosya için çıplak hata yerine ne yapılacağını söyler.
 
@@ -147,6 +159,12 @@ değişmedi).
 - Çift sunucuda günlük işler: yedek sunucu yetişirken yapılan değişiklik kısa
   bir süre bekler, sonra "DNS motoru yok" yerine bunu söyler; bekletilen
   yayın nedenini adlandırır.
+- Çift sunucuda bir silme yedek DNS sunucusunun onayını beklerken Agent
+  günlüğü ve alan adının silme durumu beklendiğini ve kendiliğinden yeniden
+  denetlendiğini söyler. Kimin ne yapacağı yalnız bu otomatik denetimler
+  onaysız bittiğinde söylenir (önceden ilk denetimin yanıtı, silme birkaç
+  saniye sonra kendiliğinden bitse de eş sunucunun yöneticisinden işlem
+  istiyordu).
 
 **Hizmetler**
 - Hizmet sürümleri paket veritabanından okunur. Sürümünü sormak için

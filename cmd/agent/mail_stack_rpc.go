@@ -584,8 +584,23 @@ func ownerMilterListNote(kept []string) string {
 //
 // Rules:
 //   - DKIM first: it signs what leaves, so it must see the final content.
-//   - The spam filter judges only ARRIVING mail. Scanning our own outgoing
-//     messages burns CPU and can bounce legitimate mail we created ourselves.
+//   - smtpd_milters covers every SMTP arrival: mail from outside and mail the
+//     owner's users send through 587/465, so both pass DKIM and the spam
+//     filter.
+//   - non_smtpd_milters covers mail made on this server without SMTP: the
+//     sites' PHP mail(), cron and anything else that runs sendmail. Since
+//     31 Oct 2026 (final alpha.113 acceptance run 3) Rspamd scans it too:
+//     before, a site's PHP mail() left signed but never scanned while the
+//     same message sent through 587 was scanned, so a compromised site
+//     script could send spam the filter never saw. Rspamd treats this mail
+//     as local (its local_addrs), so the checks meant for strangers
+//     (greylisting, RBL, SPF of the client) do not apply; a dead or slow
+//     Rspamd is passed by milter_default_action=accept, so mail is never
+//     lost to it. Postfix's own bounces and notices do not pass
+//     non_smtpd_milters at all (internal_mail_filter_classes is empty by
+//     default and CelikPanel never sets it), so a bounce is never rejected.
+//   - spamass-milter stays on arriving mail only: it has no notion of local
+//     mail and was never part of this decision.
 //   - An unknown spam endpoint contributes nothing rather than a broken line.
 //
 // composeMilterChain, iki Postfix milter listesini mevcut olandan karar verir.
@@ -595,8 +610,14 @@ func ownerMilterListNote(kept []string) string {
 //
 // Kurallar:
 //   - Önce DKIM: çıkanı imzalar, bu yüzden nihai içeriği görmelidir.
-//   - Spam filtresi yalnız GELEN postayı yargılar. Kendi çıkan iletilerimizi
-//     taramak CPU yakar ve kendi ürettiğimiz meşru postayı geri çevirebilir.
+//   - smtpd_milters her SMTP girişini kapsar: dışarıdan gelen ve 587/465
+//     üzerinden gönderilen posta.
+//   - non_smtpd_milters SMTP'siz üretilen postayı kapsar (sitelerin PHP
+//     mail()'i, cron, sendmail). 31 Eki 2026'dan beri Rspamd bunu da tarar;
+//     yerel posta sayıldığından yabancılar için olan denetimler uygulanmaz,
+//     ölü Rspamd postayı yutmaz (accept), Postfix'in kendi geri dönüşleri bu
+//     listeden hiç geçmez.
+//   - spamass-milter yalnız gelen postada kalır.
 //   - Bilinmeyen bir spam ucu, bozuk bir satır yerine hiçbir şey katmaz.
 func composeMilterChain(hasDKIM bool, spamEndpoint string) (incoming, outgoing string) {
 	in := []string{}
@@ -609,6 +630,11 @@ func composeMilterChain(hasDKIM bool, spamEndpoint string) (incoming, outgoing s
 	}
 	if spamEndpoint != "" {
 		in = append(in, spamEndpoint)
+	}
+	if spamEndpoint == rspamdMilter {
+		// Locally made mail (PHP mail()) is scanned like 587/465 mail.
+		// Yerel üretilen posta (PHP mail()) 587/465 postası gibi taranır.
+		out = append(out, spamEndpoint)
 	}
 	return strings.Join(in, ", "), strings.Join(out, ", ")
 }

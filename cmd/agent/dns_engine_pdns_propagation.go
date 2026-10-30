@@ -314,6 +314,22 @@ func catalogAXFRProbesForSourceEngine(engine transport.DNSEngine) (dnsCatalogAXF
 	}
 }
 
+// pairedDeletionAwaitingPeer is the Agent's line for a paired deletion that
+// the backup has not confirmed within one completion wave. It is a waiting
+// state, not yet anyone's action (D-024; final alpha.113 acceptance run 3:
+// both pair deletions logged "the peer administrator must check ..." and
+// verified by themselves 18-19 s later). The Panel re-checks the same
+// accepted operation by itself (at once within the request, and through its
+// pending-publication re-check for the transient causes) and only its final
+// answer, once those checks end unconfirmed, names who must act. The check
+// name stays: it is the last proof boundary reached.
+// Yedek DNS sunucusunun silmeyi onaylaması bekleniyor; Panel aynı işlemi
+// kendiliğinden yeniden denetler. Kimin ne yapacağını yalnız otomatik
+// denetimler onaysız bitince Panel söyler.
+func pairedDeletionAwaitingPeer(check dnsV3ProofCheck) error {
+	return fmt.Errorf("paired DNS deletion is not confirmed yet (check=%s): waiting for the backup DNS server to confirm the deletion; the Panel checks the same operation again automatically and says who must act only if those checks end without confirmation", check)
+}
+
 func completeDNSV3PrimaryPropagationAt(
 	ctx context.Context,
 	plan dnsV3PrimaryPropagationPlan,
@@ -391,10 +407,7 @@ func completeDNSV3PrimaryPropagationWithNativeAt(
 			// Once it is inconclusive, later DNS retries cannot repeat that
 			// challenge and must not replace its reviewed reason with a
 			// different final check just before the deadline.
-			return errors.Join(
-				fmt.Errorf("paired DNS deletion is unverified (check=%s); the peer administrator must check native zone state and DNS access, then retry verification of the same operation", dnsV3ProofNativePeer),
-				nativePending,
-			)
+			return errors.Join(pairedDeletionAwaitingPeer(dnsV3ProofNativePeer), nativePending)
 		}
 		// Follow the daemon's own producer re-stamp, and nothing else, at
 		// any point before the native challenge binds a serial.
@@ -415,7 +428,7 @@ func completeDNSV3PrimaryPropagationWithNativeAt(
 			// unclassified.
 			// Yedek, dalga süresinde güncel kataloğa yetişmedi: geçici neden.
 			if plan.Changed.Delete {
-				reason := fmt.Errorf("paired DNS deletion is unverified (check=%s); the peer administrator must check native zone state and DNS access, then retry verification of the same operation", check)
+				reason := pairedDeletionAwaitingPeer(check)
 				if check == dnsV3ProofNativePeer && nativePending != nil {
 					return errors.Join(reason, nativePending)
 				}

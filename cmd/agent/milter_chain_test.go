@@ -35,7 +35,7 @@ func TestComposeMilterChain(t *testing.T) {
 			dkim:         true,
 			spam:         rspamdMilter,
 			wantIncoming: opendkimMilter + ", " + rspamdMilter,
-			wantOutgoing: opendkimMilter,
+			wantOutgoing: opendkimMilter + ", " + rspamdMilter,
 		},
 		{
 			// A spam filter alone must still reach incoming mail — installed
@@ -45,7 +45,16 @@ func TestComposeMilterChain(t *testing.T) {
 			name:         "yalniz spam filtresi",
 			spam:         rspamdMilter,
 			wantIncoming: rspamdMilter,
-			wantOutgoing: "",
+			wantOutgoing: rspamdMilter,
+		},
+		{
+			// spamass-milter judges arriving mail only.
+			// spamass-milter yalnız gelen postayı yargılar.
+			name:         "dkim ve spamass",
+			dkim:         true,
+			spam:         "unix:/spamass/spamass.sock",
+			wantIncoming: opendkimMilter + ", unix:/spamass/spamass.sock",
+			wantOutgoing: opendkimMilter,
 		},
 		{
 			name:         "yalniz dkim",
@@ -85,15 +94,25 @@ func TestComposeMilterChain(t *testing.T) {
 	}
 }
 
-// Spam filtering must never touch mail WE send: it costs CPU on every message
-// the panel's own sites generate, and a false positive on our own notification
-// mail is a bounce nobody can explain.
-// Spam süzme, BİZİM gönderdiğimiz postaya asla dokunmamalı: panelin kendi
-// sitelerinin ürettiği her iletide CPU harcar ve kendi bildirim postamızda bir
-// yanlış pozitif, kimsenin açıklayamayacağı bir geri dönüştür.
-func TestSpamFilterNeverScansOutgoing(t *testing.T) {
+// Mail made on this server without SMTP (a site's PHP mail(), cron) is
+// scanned by Rspamd like mail sent through 587/465, after DKIM signing (final
+// alpha.113 acceptance run 3: PHP mail() passed OpenDKIM only). Bounces do
+// not pass non_smtpd_milters (Postfix's internal_mail_filter_classes, which
+// CelikPanel never sets), and milter_default_action=accept keeps a dead
+// Rspamd from holding mail.
+// Sunucuda SMTP'siz üretilen posta (PHP mail(), cron), 587/465 postası gibi
+// DKIM imzasından sonra Rspamd'den geçer.
+func TestLocallyMadeMailIsSignedThenScannedByRspamd(t *testing.T) {
 	_, outgoing := composeMilterChain(true, rspamdMilter)
-	if outgoing != opendkimMilter {
-		t.Errorf("non_smtpd_milters = %q — only DKIM belongs on outgoing mail", outgoing)
+	if outgoing != opendkimMilter+", "+rspamdMilter {
+		t.Errorf("non_smtpd_milters = %q, want DKIM then Rspamd", outgoing)
+	}
+	// The list stays CelikPanel's own, so the Panel-start repair keeps
+	// composing it (and an owner's list is still kept and named).
+	if !milterListPanelComposed(outgoing, rspamdMilter) {
+		t.Errorf("the new non_smtpd_milters list is not recognised as CelikPanel's")
+	}
+	if milterListPanelComposed(outgoing+", inet:127.0.0.1:9999", rspamdMilter) {
+		t.Errorf("an owner-extended list was taken as CelikPanel's")
 	}
 }

@@ -1,0 +1,257 @@
+== provision 22:22:09 main=debian13/pdns 192.0.3.121 backup=ubuntu2404/pdns 192.0.3.122 zone=d6f113.test dist=ce5f049a748395c0559e6193dc0430c492465bdc
+tail: option used in invalid context -- 2
+== install through get.sh in a root terminal 22:22:51
+main terminal rc 0 93.3 answered ['Admin username', 'Admin email', 'Show password while typing', 'Admin password', 'Confirm password'] problem None restart_required False postinstall rc 0
+  portal requests: 2026-10-30T22:22:53Z https://celikpanel.net/get.sh | 2026-10-30T22:22:54Z https://celikpanel.net/release-signing-ed25519.pem | 2026-10-30T22:22:54Z https://celikpanel.net/releases/v0.1.0-alpha.113/linux/amd64/release-manifest-v2 | 2026-10-30T22:22:54Z https://celikpanel.net/releases/v0.1.0-alpha.113/linux/amd64/release-manifest-v2.sig | 2026-10-30T22:22:55Z https://celikpanel.net/releases/v0.1.0-alpha.113/linux/amd64/celikpanel-v0.1.0-alpha.113-linux-amd64.tar.gz | 2026-10-30T22:22:56Z https://celikpanel.net/releases/v0.1.0-alpha.113/linux/amd64/celikpanel-v0.1.0-alpha.113-linux-amd64.tar.gz.sha256 | -rw-r--r-- 1 root root 72913 Oct 30 22:22 /root/celikpanel-install.sh | 332645f1b6c4b045a4ceedab2986a253ab6c785811bc8056c35039c51aece526  /root/celikpanel-install.sh
+backup terminal rc 0 111.4 answered ['Admin username', 'Admin email', 'Show password while typing', 'Admin password', 'Confirm password'] problem None restart_required False postinstall rc 0
+  portal requests: 2026-10-30T22:22:53Z https://celikpanel.net/get.sh | 2026-10-30T22:22:54Z https://celikpanel.net/release-signing-ed25519.pem | 2026-10-30T22:22:54Z https://celikpanel.net/releases/v0.1.0-alpha.113/linux/amd64/release-manifest-v2 | 2026-10-30T22:22:54Z https://celikpanel.net/releases/v0.1.0-alpha.113/linux/amd64/release-manifest-v2.sig | 2026-10-30T22:22:55Z https://celikpanel.net/releases/v0.1.0-alpha.113/linux/amd64/celikpanel-v0.1.0-alpha.113-linux-amd64.tar.gz | 2026-10-30T22:22:56Z https://celikpanel.net/releases/v0.1.0-alpha.113/linux/amd64/celikpanel-v0.1.0-alpha.113-linux-amd64.tar.gz.sha256 | -rw-r--r-- 1 root root 72913 Oct 30 22:22 /root/celikpanel-install.sh | 332645f1b6c4b045a4ceedab2986a253ab6c785811bc8056c35039c51aece526  /root/celikpanel-install.sh
+main license active acceptance_fixture can_use_panel True
+backup license active acceptance_fixture can_use_panel True
+guidance 200 
+guidance 200 
+main-domain 200 {
+ "checks": [],
+ "draft": {
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_role": "primary",
+  "infrastructure_dns": {
+   "zone": "d6f113.test"
+  },
+  "local_ip": "",
+
+main-count 200 {
+ "checks": [],
+ "draft": {
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_role": "primary",
+  "infrastructure_dns": {
+   "zone": "d6f113.test"
+  },
+  "local_ip": "",
+
+main-name 200 {
+ "checks": [],
+ "draft": {
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_role": "primary",
+  "infrastructure_dns": {
+   "zone": "d6f113.test"
+  },
+  "local_ip": "",
+
+main-roles 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "dovecot",
+    "mariadb",
+    "nginx",
+    "php-fpm",
+    "postfix",
+    "roundcube",
+    "rspamd"
+   ]
+  },
+  "database": "mar
+main-names 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "dovecot",
+    "mariadb",
+    "nginx",
+    "php-fpm",
+    "postfix",
+    "roundcube",
+    "rspamd"
+   ]
+  },
+  "database": "mar
+main-dnshome 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "dovecot",
+    "mariadb",
+    "nginx",
+    "php-fpm",
+    "postfix",
+    "roundcube",
+    "rspamd"
+   ]
+  },
+  "database": "mar
+main-mail 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "dovecot",
+    "mariadb",
+    "nginx",
+    "php-fpm",
+    "postfix",
+    "roundcube",
+    "rspamd"
+   ]
+  },
+  "database": "mar
+plan main 200 True [] ['01-service:nginx', '02-service:certbot', '03-service:mariadb', '04-service:php-fpm', '05-service:cron', '06-peer_join:second', '07-dns:local', '08-firewall:enable_and_persist', '09-infrastructure_dns:d6f113.test', '10-access_dns:frankfurt.d6f113.test', '11-panel_certificate:frankfurt.d6f113.test', '12-dns_readiness:local', '13-mail_profile:webmail', '14-mail_profile:protected-mail', '15-mail_dns:d6f113.test', '16-access_dns:mail.d6f113.test', '17-mail_certificate:mail.d6f113.test', '18-mail_enrollment:mail-renewal', '19-verify:custom'] 
+== start main 22:25:04
+start-main 202 {
+ "id": "ce0963f188a0c581a897e3be8e404c59",
+ "panel_url": "https://frankfurt.d6f113.test:2083/",
+ "phase": "queued",
+ "plan_id": "068eb8c160dc501986aa2b36ff368
+join-code 200 {
+ "address": "https://192.0.3.121:2083",
+ "attempts_left": 
+connect 200 {
+ "setup": {
+  "checks": [],
+  "draft": {
+   "database": "mariadb",
+   "dns_engine": "bind",
+   "dns_mode": "local",
+   "dns_publisher_endpoint": "https://frankfurt.d6f113.test:2083",
+   "dns_role": 
+backup-roles 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_
+backup-name 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_
+backup-names 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_
+backup-dnshome 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+  "database": "mariadb",
+  "dns_engine": "pdns",
+  "dns_mode": "local",
+  "dns_
+plan backup 200 True [] ['01-peer_names:https://192.0.3.121:2083', '02-service:nginx', '03-service:certbot', '04-service:mariadb', '05-service:php-fpm', '06-dns:local', '07-firewall:enable_and_persist', '08-access_dns:boston.d6f113.test', '09-panel_certificate:boston.d6f113.test', '10-dns_publisher:https://frankfurt.d6f113.test:2083', '11-verify:custom'] 
+== start backup 22:25:27
+start-backup 202 {
+ "id": "9cfe226c30d2c78e87733cfde1afbb80",
+ "panel_url": "https://boston.d6f113.test:2083/",
+ "phase": "queued",
+ "plan_id": "444276f20b16592da26ef0a195039b5a
+== wait for both 22:25:35
+-- d6-a/backup 22:25:36
+running 02-service null
+01-peer_names=succeeded 02-service=running 03-service=pending 04-service=pending 05-service=pending 06-dns=pending 07-firewall=pending 08-access_dns=pending 09-panel_certificate=pending 10-dns_publisher=pending 11-verify=pending
+{"id": "02-service", "kind": "service", "owner_id": "dfc535267c7bd1544ab71088206cb6a7", "request_id": "6d3fb507b667fdc32972ef079cd7a8a2", "status": "running", "target": "nginx"}
+-- d6-a/backup 22:26:37
+running 03-service null
+01-peer_names=succeeded 02-service=succeeded 03-service=running 04-service=pending 05-service=pending 06-dns=pending 07-firewall=pending 08-access_dns=pending 09-panel_certificate=pending 10-dns_publisher=pending 11-verify=pending
+{"id": "03-service", "kind": "service", "operation_id": "a40cdee465940eea8ce735194b4adbd6", "owner_id": "b5147d7628f21eabe360512862405b98", "request_id": "f0254e5b885a76898511448540afa0fa", "status": "running", "target": "certbot"}
+-- d6-a/backup 22:26:57
+running 04-service null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=running 05-service=pending 06-dns=pending 07-firewall=pending 08-access_dns=pending 09-panel_certificate=pending 10-dns_publisher=pending 11-verify=pending
+{"id": "04-service", "kind": "service", "owner_id": "55cba000e8a46209cbd4934cfa1846b7", "request_id": "6cb476e696363c9a6bbe88ac7bb7c37a", "status": "running", "target": "mariadb"}
+-- d6-a/backup 22:27:58
+running 05-service null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=running 06-dns=pending 07-firewall=pending 08-access_dns=pending 09-panel_certificate=pending 10-dns_publisher=pending 11-verify=pending
+{"id": "05-service", "kind": "service", "owner_id": "33dc049797f41ff3d8d931d8148119c1", "request_id": "120937935a58451aa2077cc1f0828877", "status": "running", "target": "php-fpm"}
+-- d6-a/backup 22:28:19
+waiting service {"code": "server_setup_distribution_updates_unread", "message": "CelikPanel could not read which distribution packages this component's install would also update, so nothing was installed. Nobody needs to act yet: setup asks again by itself, or you can choose Review the updates on this page to read and confirm them now; setup then continues from this step."}
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=running 06-dns=pending 07-firewall=pending 08-access_dns=pending 09-panel_certificate=pending 10-dns_publisher=pending 11-verify=pending
+{"id": "05-service", "kind": "service", "owner_id": "33dc049797f41ff3d8d931d8148119c1", "request_id": "120937935a58451aa2077cc1f0828877", "status": "running", "target": "php-fpm"}
+-- d6-a/backup 22:28:39
+running 05-service null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=running 06-dns=pending 07-firewall=pending 08-access_dns=pending 09-panel_certificate=pending 10-dns_publisher=pending 11-verify=pending
+{"id": "05-service", "kind": "service", "operation_id": "6d49a263f44e3a8d2d7c5c6196a14ab8", "owner_id": "33dc049797f41ff3d8d931d8148119c1", "request_id": "120937935a58451aa2077cc1f0828877", "status": "running", "target": "php-fpm"}
+-- d6-a/backup 22:29:40
+running 06-dns null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=running 07-firewall=pending 08-access_dns=pending 09-panel_certificate=pending 10-dns_publisher=pending 11-verify=pending
+{"id": "06-dns", "kind": "dns", "owner_id": "666072215f6b7b443936214cc9ea9a59", "request_id": "8bbed0874bfe1abb231fd3f9aa560d7f", "status": "running", "target": "local"}
+-- d6-a/backup 22:30:20
+waiting access_dns {"code": "server_setup_access_dns_required", "message": "Public DNS must resolve boston.d6f113.test to 192.0.3.122 before a certificate is requested. Check this hostname's A/AAAA records and its zone delegation. For DNS managed here, review the infrastructure DNS records in this wizard; otherwise correct them at the primary DNS server or provider. This check resumes automatically when DNS is verified."}
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=running 09-panel_certificate=pending 10-dns_publisher=pending 11-verify=pending
+{"id": "08-access_dns", "kind": "access_dns", "owner_id": "265adb9c7d069101316bf529a5c5fe5d", "qualifier": "192.0.3.122", "request_id": "33f83bc6bc7b41a7bc62fcab31ba913b", "status": "running", "target": "boston.d6f113.test"}
+-- d6-a/backup 22:30:41
+running 10-dns_publisher null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=running 11-verify=pending
+{"id": "10-dns_publisher", "kind": "dns_publisher", "owner_id": "3e7d23672306648f5bf04d4ce4c4b890", "request_id": "096a7990fa8312341abeed33e3860eb6", "status": "running", "target": "https://frankfurt.d6f113.test:2083"}
+-- d6-a/backup 22:31:01
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-verify=succeeded
+-- d6-a/main 22:31:01
+running 13-mail_profile null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=running 14-mail_profile=pending 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-verify=pending
+{"id": "13-mail_profile", "kind": "mail_profile", "operation_id": "ae1c07b9c07982933d4a7e65cb949a77", "owner_id": "b23fed7e6f9c6a16b877ddc6158f77ec", "request_id": "2eb5cda3f8a78176288abb69ca88f60a", "status": "running", "target": "webmail"}
+-- d6-a/main 22:33:02
+running 14-mail_profile null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=running 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-verify=pending
+{"id": "14-mail_profile", "kind": "mail_profile", "operation_id": "5283563ee0ed12fe3d9c8e2963fdbcb5", "owner_id": "3ad450bf2eda000914ed98e2a21a20f5", "request_id": "599bdb40f5ddeaae7346a5432decf7db", "status": "running", "target": "protected-mail"}
+-- d6-a/main 22:34:23
+running 15-mail_dns null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=running 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-verify=pending
+{"id": "15-mail_dns", "kind": "mail_dns", "owner_id": "19db78a600c546054f17d62a5607ede3", "request_id": "21983a57c3ad2871d4df33d0d8da94b6", "status": "running", "target": "d6f113.test"}
+-- d6-a/main 22:34:44
+running 18-mail_enrollment {"code": "server_setup_mail_enrollment_not_recorded", "message": "The mail renewal handoff has no verified admission record yet. The server administrator can inspect the same worker unit and use Retry reviewed handoff to submit the original reviewed request again. Setup will keep checking; it will not create another request."}
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-access_dns=succeeded 17-mail_certificate=succeeded 18-mail_enrollment=running 19-verify=pending
+{"enrollment_dispatch_attempted": true, "id": "18-mail_enrollment", "kind": "mail_enrollment", "owner_id": "3bd182c7113428807fda87264a1abf4c", "qualifier": "ec9274edf4334c54c3331c3d8d2cdae2a7ff3fd63f98520dc362a26e5f398e58", "request_id": "2e1d9dd010ff274ed8344208d35fedb9", "status": "running", "target": "mail-renewal"}
+-- d6-a/main 22:35:04
+succeeded complete null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-access_dns=succeeded 17-mail_certificate=succeeded 18-mail_enrollment=succeeded 19-verify=succeeded
+== end 22:35:04
+succeeded complete null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-access_dns=succeeded 17-mail_certificate=succeeded 18-mail_enrollment=succeeded 19-verify=succeeded
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-verify=succeeded
+== deletion check as each setup page shows it 22:35:05
+main role first peer_setup ready inspection {"code": "ready", "message": "The deletion check between the two servers is set up: when a domain is deleted, the main DNS server confirms by itself that the backup removed it too. Nothing to do. It is native configuration on both servers; either owner can remove it with sudo /opt/celikpanel/dns-owner-tools/dns-peer-enroll secondary-revoke --engine pdns (backup) and primary-revoke --engine pdns (main).", "state": "ready", "vars": {"backup": "192.0.3.122", "main": "192.0.3.121"}}
+backup role second peer_setup None inspection {"code": "ready", "message": "The deletion check between the two servers is set up: when a domain is deleted, the main DNS server confirms by itself that the backup removed it too. Nothing to do. It is native configuration on both servers; either owner can remove it with sudo /opt/celikpanel/dns-owner-tools/dns-peer-enroll secondary-revoke --engine pdns (backup) and primary-revoke --engine pdns (main).", "state": "ready", "vars": {"backup": "192.0.3.122", "main": "192.0.3.121"}}
+== pair done 22:35:05
