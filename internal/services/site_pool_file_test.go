@@ -513,3 +513,49 @@ func TestSitePoolPutBackReloadsOnlyAConfigurationTheCheckAccepts(t *testing.T) {
 		})
 	}
 }
+
+// alpha.113 D2: a site that becomes a PHP site after it was created as
+// another type gets its pool through the "create" operation: an absent pool
+// is written (as site creation writes it), CelikPanel's unchanged pool is
+// left as it is, and a pool the owner changed is kept.
+func TestSitePoolCreateOperation(t *testing.T) {
+	path := withPoolTree(t, "8.3", "site42", seededPool)
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	stubWebServerAccount(t, "www-data")
+	reloads := 0
+	reloadPHPFPM = func(string) error { reloads++; return nil }
+	manager := NewPHPPoolManager()
+
+	result, err := manager.ApplySitePool(sitePoolTestRequest(transport.SitePoolOperationCreate))
+	if err != nil || result.State != transport.SiteFileAbsent || result.Outcome != transport.SiteFileOutcomeWritten || reloads != 1 {
+		t.Fatalf("create on an absent pool: %+v %v reloads=%d", result, err, reloads)
+	}
+	content := readPoolTestFile(t, path)
+	for _, want := range []string{"[site42]", "user = celik_site42", "listen = /var/run/php/php8.3-fpm-site42.sock"} {
+		if !strings.Contains(content, want) {
+			t.Fatalf("created pool lacks %q:\n%s", want, content)
+		}
+	}
+
+	result, err = manager.ApplySitePool(sitePoolTestRequest(transport.SitePoolOperationCreate))
+	if err != nil || result.Outcome != transport.SiteFileOutcomeUnchanged || reloads != 1 {
+		t.Fatalf("create on CelikPanel's pool: %+v %v reloads=%d", result, err, reloads)
+	}
+
+	owner := strings.Replace(content, "pm.max_children = 5", "pm.max_children = 11", 1)
+	if owner == content {
+		t.Fatal("test pool has no pm.max_children = 5 line")
+	}
+	if err := os.WriteFile(path, []byte(owner), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	result, err = manager.ApplySitePool(sitePoolTestRequest(transport.SitePoolOperationCreate))
+	if err != nil || result.Outcome != transport.SiteFileOutcomeKept || result.State != transport.SiteFileOwnerEdited || reloads != 1 {
+		t.Fatalf("create on the owner's pool: %+v %v reloads=%d", result, err, reloads)
+	}
+	if got := readPoolTestFile(t, path); got != owner {
+		t.Fatalf("the owner's pool was rewritten:\n%s", got)
+	}
+}

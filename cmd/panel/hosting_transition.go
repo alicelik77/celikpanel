@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -26,6 +27,12 @@ var (
 	errHostingPortInUse        = errors.New("application port is already assigned")
 	errHostingActivation       = errors.New("hosting activation failed and the previous configuration was restored")
 	errHostingRestore          = errors.New("hosting activation failed and runtime restoration is incomplete")
+	// errHostingPHPMissing: the site becomes a PHP site and this server runs
+	// no PHP-FPM the panel manages. Nothing was changed.
+	errHostingPHPMissing = errors.New("no PHP-FPM is installed on this server")
+	// errHostingPHPNotOffered: a customer's site becomes a PHP site and no
+	// installed PHP version is offered to customers. Nothing was changed.
+	errHostingPHPNotOffered = errors.New("no installed PHP version is offered to customers")
 )
 
 type hostingOperationLock struct {
@@ -119,6 +126,12 @@ type hostingRuntimeState struct {
 	// the site's own user; NULL is the shared web user (every application
 	// made before this release).
 	AppRunAs sql.NullString
+	// PHPVersion and PHPSocket are the site's PHP-FPM pool: recorded when the
+	// site is created as, or becomes, a PHP site, and kept when it becomes
+	// another type, so the site's deletion removes the pool and a return to
+	// PHP finds it (alpha.113, D2).
+	PHPVersion sql.NullString
+	PHPSocket  sql.NullString
 }
 
 func (p *Panel) handleUpdateHosting(w http.ResponseWriter, r *http.Request, domainID int) {
@@ -185,26 +198,30 @@ func (p *Panel) handleUpdateHosting(w http.ResponseWriter, r *http.Request, doma
 	// alpha.108 review: a customer's site that becomes a PHP site again
 	// takes the PHP version recorded for it; no path may land a customer on
 	// a PHP version the administrator does not offer.
+	// A site with no PHP version recorded (one created as a static site)
+	// takes the newest installed version the customer is offered.
+	var phpPolicy *offeredVersions
 	if req.ProjectType == "php" && !callerIsAdministrator(r) {
 		var phpVersion, previousType string
 		err := p.db.GetDB().QueryRowContext(r.Context(), `SELECT COALESCE(php_version, ''), COALESCE(project_type, 'php') FROM sites WHERE domain_id = ?`, domainID).Scan(&phpVersion, &previousType)
-		if err == nil && previousType != "php" && phpVersion != "" {
+		if err == nil && previousType != "php" {
 			policy, err := p.loadOfferedVersions(r.Context())
 			if err != nil {
 				writeServerError(w, fmt.Errorf("versions offered to customers: %w", err))
 				return
 			}
-			if !policy.offered("php", phpVersion) {
+			if phpVersion != "" && !policy.offered("php", phpVersion) {
 				writeVersionNotOffered(w, "php", phpVersion)
 				return
 			}
+			phpPolicy = &policy
 		}
 	}
 
 	ctx, cancel := hostingDurableContext(r.Context())
 	defer cancel()
 	previous, previousErr := p.loadHostingRuntimeState(ctx, domainID)
-	appPort, err := p.transitionHosting(ctx, domainID, req)
+	appPort, err := p.transitionHostingWithPolicy(ctx, domainID, req, phpPolicy)
 	switch {
 	case err == nil:
 		if previousErr == nil {
@@ -220,6 +237,15 @@ func (p *Panel) handleUpdateHosting(w http.ResponseWriter, r *http.Request, doma
 		writeClientError(w, http.StatusConflict, "hosting settings changed; reload and try again")
 	case errors.Is(err, errHostingPortInUse):
 		writeClientError(w, http.StatusConflict, "the selected application port is already assigned")
+	case errors.Is(err, errHostingPHPMissing):
+		writeCodedError(w, http.StatusConflict, errCodePHPRequired,
+			"PHP-FPM is not installed on this server, so the site was not switched to PHP. Nothing was changed. "+
+				"The server administrator installs PHP-FPM from Services, then the site is switched to PHP again.",
+			"/services")
+	case errors.Is(err, errHostingPHPNotOffered):
+		writeCodedError(w, http.StatusConflict, errCodeNoVersionOffered,
+			"No installed PHP version is offered to customers on this server, so the site was not switched to PHP. Nothing was changed. "+
+				"Ask your administrator to offer one, then switch the site to PHP again.", "")
 	case errors.Is(err, errHostingActivation):
 		log.Printf("hosting transition domain %d: %v", domainID, err)
 		writeClientError(
@@ -236,6 +262,17 @@ func (p *Panel) transitionHosting(
 	ctx context.Context,
 	domainID int,
 	req hostingSettings,
+) (int, error) {
+	return p.transitionHostingWithPolicy(ctx, domainID, req, nil)
+}
+
+// transitionHostingWithPolicy is transitionHosting with the versions a
+// customer is offered (nil: an administrator, who is never restricted).
+func (p *Panel) transitionHostingWithPolicy(
+	ctx context.Context,
+	domainID int,
+	req hostingSettings,
+	phpPolicy *offeredVersions,
 ) (int, error) {
 	unlockDomain, err := lockDomainHostingOperation(ctx, domainID)
 	if err != nil {
@@ -302,6 +339,37 @@ func (p *Panel) transitionHosting(
 		target.ForwardCode = sql.NullInt64{Int64: int64(req.ForwardCode), Valid: true}
 	}
 
+	// A site that becomes a PHP site needs its own PHP-FPM pool before nginx
+	// sends PHP to it. A site created as another type (Add Domain creates a
+	// static site, D-013) has none and no socket recorded: the vhost was
+	// refused ("PHP-FPM socket must be the per-site managed socket") and the
+	// change was answered 409 (alpha.113 final acceptance, D2). The pool is
+	// written the way site creation writes it (D-031 trigger "create": an
+	// absent file is written, CelikPanel's unchanged file is kept current, a
+	// file the owner changed is kept), then the socket is recorded with the
+	// type, then the vhost is applied. A pool this transition wrote is
+	// removed again when the transition is undone.
+	var createdPool *hostingCreatedPool
+	if target.ProjectType == "php" && previous.ProjectType != "php" {
+		version, err := p.hostingPHPVersion(ctx, previous, phpPolicy)
+		if err != nil {
+			return 0, err
+		}
+		createdPool, err = p.ensureHostingPHPPool(ctx, previous, version)
+		if err != nil {
+			return 0, err
+		}
+		target.PHPVersion = sql.NullString{String: version, Valid: true}
+		target.PHPSocket = sql.NullString{
+			String: services.PHPFPMSocketPath(version, fmt.Sprintf("site%d", previous.SiteID)),
+			Valid:  true,
+		}
+	}
+	undoCreatedPool := func(err error) error {
+		p.removeCreatedHostingPool(createdPool, err)
+		return err
+	}
+
 	// Start or reconfigure the new application before publishing a vhost that
 	// sends traffic to it. A transport failure is ambiguous because net/rpc
 	// cannot cancel an already dispatched agent method, so every failure takes
@@ -323,11 +391,11 @@ func (p *Panel) transitionHosting(
 		if target.ProjectType == "node" {
 			return 0, p.compensateHostingFailure(err, previous, target, false)
 		}
-		return 0, err
+		return 0, undoCreatedPool(err)
 	}
 
 	if err := p.applyVhostForDomain(ctx, domainID); err != nil {
-		return 0, p.compensateHostingFailure(err, previous, target, true)
+		return 0, undoCreatedPool(p.compensateHostingFailure(err, previous, target, true))
 	}
 
 	// Keep the old Node process alive until nginx no longer points at it.
@@ -351,7 +419,8 @@ func (p *Panel) loadHostingRuntimeState(
 	err := p.db.GetDB().QueryRowContext(ctx, `
 		SELECT s.id, s.domain_id, d.name, s.document_root,
 		       COALESCE(s.project_type, 'php'), s.app_port, s.start_command,
-		       s.runtime_version, s.forward_to, s.forward_code, s.app_run_as
+		       s.runtime_version, s.forward_to, s.forward_code, s.app_run_as,
+		       s.php_version, s.php_fpm_socket
 		FROM sites s
 		JOIN domains d ON d.id = s.domain_id
 		WHERE s.domain_id = ?`, domainID).Scan(
@@ -366,6 +435,8 @@ func (p *Panel) loadHostingRuntimeState(
 		&state.ForwardTo,
 		&state.ForwardCode,
 		&state.AppRunAs,
+		&state.PHPVersion,
+		&state.PHPSocket,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return hostingRuntimeState{}, errHostingSiteNotFound
@@ -396,7 +467,7 @@ func (p *Panel) compareAndSwapHostingState(
 		UPDATE sites
 		SET project_type = ?, app_port = ?, start_command = ?,
 		    runtime_version = ?, forward_to = ?, forward_code = ?,
-		    app_run_as = ?,
+		    app_run_as = ?, php_version = ?, php_fpm_socket = ?,
 		    updated_at = datetime('now')
 		WHERE id = ?
 		  AND COALESCE(project_type, 'php') = ?
@@ -404,7 +475,9 @@ func (p *Panel) compareAndSwapHostingState(
 		  AND start_command IS ?
 		  AND runtime_version IS ?
 		  AND forward_to IS ?
-		  AND forward_code IS ?`,
+		  AND forward_code IS ?
+		  AND php_version IS ?
+		  AND php_fpm_socket IS ?`,
 		to.ProjectType,
 		nullableHostingInt(to.AppPort),
 		nullableHostingString(to.StartCommand),
@@ -412,6 +485,8 @@ func (p *Panel) compareAndSwapHostingState(
 		nullableHostingString(to.ForwardTo),
 		nullableHostingInt(to.ForwardCode),
 		nullableHostingString(to.AppRunAs),
+		nullableHostingString(to.PHPVersion),
+		nullableHostingString(to.PHPSocket),
 		from.SiteID,
 		from.ProjectType,
 		nullableHostingInt(from.AppPort),
@@ -419,6 +494,8 @@ func (p *Panel) compareAndSwapHostingState(
 		nullableHostingString(from.RuntimeVersion),
 		nullableHostingString(from.ForwardTo),
 		nullableHostingInt(from.ForwardCode),
+		nullableHostingString(from.PHPVersion),
+		nullableHostingString(from.PHPSocket),
 	)
 	if err != nil {
 		return err
@@ -544,4 +621,98 @@ func (p *Panel) compensateHostingFailure(
 		)
 	}
 	return fmt.Errorf("%w: %w", errHostingActivation, cause)
+}
+
+// hostingCreatedPool is a PHP-FPM pool a hosting transition wrote where none
+// was: the transition removes it again when it is undone.
+type hostingCreatedPool struct {
+	SiteID     int
+	PHPVersion string
+}
+
+// hostingPHPVersion is the PHP version a site that becomes a PHP site runs:
+// the one recorded for it when this server still runs it, otherwise the
+// newest installed one (for a customer, the newest one offered). Never a
+// version nobody observed on this server.
+func (p *Panel) hostingPHPVersion(
+	ctx context.Context,
+	previous hostingRuntimeState,
+	policy *offeredVersions,
+) (string, error) {
+	discovered, err := p.phpVersionsFromAgent(ctx)
+	if err != nil {
+		return "", err
+	}
+	installed := domainPHPAvailableVersions("", discovered)
+	if len(installed) == 0 {
+		return "", errHostingPHPMissing
+	}
+	if previous.PHPVersion.Valid && containsDomainPHPVersion(installed, previous.PHPVersion.String) {
+		// A customer's recorded version was checked against the offer by
+		// the handler; it is the site's own version and is kept.
+		return previous.PHPVersion.String, nil
+	}
+	if policy != nil {
+		version, offered := customerSitePHPVersion("", installed, *policy)
+		if !offered {
+			return "", errHostingPHPNotOffered
+		}
+		return version, nil
+	}
+	return installed[0], nil
+}
+
+// ensureHostingPHPPool writes the site's pool for version where none is
+// (D-031 trigger "create") and says whether this call created it. A pool
+// that is CelikPanel's unchanged text is kept current; a pool the owner
+// changed is kept as it is (it is the owner's pool for this site, and the
+// Configuration file page shows it); any other file at the pool's path, a
+// write the system refused, or a pool PHP-FPM did not accept (the previous
+// state is put back) is the typed refusal and nothing else is changed.
+func (p *Panel) ensureHostingPHPPool(
+	ctx context.Context,
+	previous hostingRuntimeState,
+	version string,
+) (*hostingCreatedPool, error) {
+	site := siteFileSite{
+		SiteID: previous.SiteID, DomainID: previous.DomainID, Domain: previous.DomainName,
+		ProjectType: "php", PHPVersion: version,
+	}
+	request := p.sitePoolRequest(ctx, site, transport.SitePoolOperationCreate)
+	file, err := p.applySitePool(ctx, site, request)
+	if err != nil {
+		var held *siteFileHeldError
+		if errors.As(err, &held) && held.File.Outcome == transport.SiteFileOutcomeKept &&
+			held.File.State == transport.SiteFileOwnerEdited {
+			log.Printf("hosting transition %s: the PHP-FPM pool %s is the owner's edited file; it is kept and used", previous.DomainName, held.File.Path)
+			return nil, nil
+		}
+		return nil, err
+	}
+	if file != nil && file.State == transport.SiteFileAbsent && file.Outcome == transport.SiteFileOutcomeWritten {
+		return &hostingCreatedPool{SiteID: previous.SiteID, PHPVersion: version}, nil
+	}
+	return nil, nil
+}
+
+// removeCreatedHostingPool removes the pool a transition wrote, after the
+// transition was undone and nginx no longer points at it. A pool that cannot
+// be removed is left in place and logged: no vhost uses it, and the next
+// switch to PHP finds it as CelikPanel's own file.
+func (p *Panel) removeCreatedHostingPool(created *hostingCreatedPool, cause error) {
+	if created == nil {
+		return
+	}
+	if errors.Is(cause, errHostingRestore) {
+		// The previous vhost is not confirmed back: it may still send PHP to
+		// the pool, so the pool stays.
+		log.Printf("hosting transition site %d: PHP-FPM pool kept because the restoration is incomplete", created.SiteID)
+		return
+	}
+	ctx, cancel := hostingCompensationContext()
+	defer cancel()
+	request := transport.DeletePHPPoolRequest{Version: created.PHPVersion, PoolName: fmt.Sprintf("site%d", created.SiteID)}
+	if err := p.callAgentContext(ctx, "Agent.DeletePHPPool", request, &transport.Empty{}); err != nil {
+		log.Printf("hosting transition site %d: remove the PHP-FPM pool written for the undone change: %v", created.SiteID, err)
+	}
 }
