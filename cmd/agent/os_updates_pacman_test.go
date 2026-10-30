@@ -31,9 +31,10 @@ func TestOSUpdatesPacmanCountsWithoutTouchingTheSystemDatabase(t *testing.T) {
 	dir := t.TempDir()
 	check := filepath.Join(dir, "checkupdates")
 	audit := filepath.Join(dir, "arch-audit")
-	oldCheck, oldAudit, oldCommand := checkupdatesPath, archAuditPath, osUpdatesCommand
-	t.Cleanup(func() { checkupdatesPath, archAuditPath, osUpdatesCommand = oldCheck, oldAudit, oldCommand })
-	checkupdatesPath, archAuditPath = check, audit
+	fakeroot := filepath.Join(dir, "fakeroot")
+	oldCheck, oldAudit, oldFake, oldCommand := checkupdatesPath, archAuditPath, fakerootPath, osUpdatesCommand
+	t.Cleanup(func() { checkupdatesPath, archAuditPath, fakerootPath, osUpdatesCommand = oldCheck, oldAudit, oldFake, oldCommand })
+	checkupdatesPath, archAuditPath, fakerootPath = check, audit, fakeroot
 
 	resp := &transport.OSUpdatesStatusResponse{}
 	osUpdatesPacman(context.Background(), resp)
@@ -44,6 +45,15 @@ func TestOSUpdatesPacmanCountsWithoutTouchingTheSystemDatabase(t *testing.T) {
 		if err := os.WriteFile(path, []byte("#!/bin/sh\n"), 0o755); err != nil {
 			t.Fatal(err)
 		}
+	}
+	// checkupdates without fakeroot cannot run: still "missing".
+	resp = &transport.OSUpdatesStatusResponse{}
+	osUpdatesPacman(context.Background(), resp)
+	if resp.Pending.Reason != "checkupdates_missing" {
+		t.Fatalf("missing fakeroot: %+v", resp.Pending)
+	}
+	if err := os.WriteFile(fakeroot, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
 	}
 	var calls [][]string
 	checkResult := func() ([]byte, error) { return []byte("openssl 1 -> 2\nnginx 1 -> 2\n"), nil }

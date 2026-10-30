@@ -79,7 +79,7 @@ export const trLifecycleScreens: Record<LifecycleScreenKey, string> = {
     'life.updates.pending.securityNames': 'Bekleyen güvenlik güncellemeleri: {names}.',
     'life.updates.pending.busy': 'Başka bir paket işlemi çalışıyor; bekleyen güncellemeler sayılmadı. O bitince yeniden denetleyin.',
     'life.updates.pending.unknown': 'Bekleyen güncellemeler sayılamadı.',
-    'life.updates.pending.checkupdatesMissing': 'Bekleyenler sayılamıyor: checkupdates yok. Kurulum: sudo pacman -Syu --needed pacman-contrib arch-audit',
+    'life.updates.pending.checkupdatesMissing': 'Bekleyenler sayılamıyor: checkupdates yok. Kurulum: sudo pacman -Syu --needed pacman-contrib fakeroot arch-audit',
     'life.updates.pending.checkupdatesFailed': 'Bekleyenler sayılamadı: checkupdates yansılara ulaşamadı; bu, bekleyen yok demek değildir.',
     'life.updates.pending.someSecurityUnknown': '{total} güncelleme bekliyor ({date}); açık kapatanlar bilinmiyor (arch-audit yok).',
     'life.updates.vendor.covered': '{name}: otomatik güncellemeler onun düzeltmelerini de kurar.',

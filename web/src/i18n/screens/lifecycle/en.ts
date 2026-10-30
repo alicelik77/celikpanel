@@ -88,7 +88,7 @@ export const enLifecycleScreens = {
     'life.updates.pending.securityNames': 'Security updates waiting: {names}.',
     'life.updates.pending.busy': 'Another package operation is running, so the waiting updates were not counted. Check again when it has finished.',
     'life.updates.pending.unknown': 'The waiting updates could not be counted.',
-    'life.updates.pending.checkupdatesMissing': 'Waiting updates cannot be counted: checkupdates is missing. Install: sudo pacman -Syu --needed pacman-contrib arch-audit',
+    'life.updates.pending.checkupdatesMissing': 'Waiting updates cannot be counted: checkupdates is missing. Install: sudo pacman -Syu --needed pacman-contrib fakeroot arch-audit',
     'life.updates.pending.checkupdatesFailed': 'Waiting updates could not be counted: checkupdates could not reach the mirrors; this does not mean none are waiting.',
     'life.updates.pending.someSecurityUnknown': '{total} updates are waiting ({date}); which fix vulnerabilities is unknown (no arch-audit).',
     'life.updates.vendor.covered': '{name}: the automatic updates install its fixes too.',

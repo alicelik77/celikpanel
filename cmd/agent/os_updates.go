@@ -385,6 +385,7 @@ func (a *Agent) OSUpdatesStatusV1(_ *transport.Empty, resp *transport.OSUpdatesS
 // güncellemeleri sistemin paket veritabanını değiştirmeden okur.
 var (
 	checkupdatesPath = "/usr/bin/checkupdates"
+	fakerootPath     = "/usr/bin/fakeroot"
 	archAuditPath    = "/usr/bin/arch-audit"
 )
 
@@ -417,7 +418,9 @@ func parseArchAuditNames(out string) []string {
 type osUpdatesExitCoder interface{ ExitCode() int }
 
 func osUpdatesPacman(ctx context.Context, resp *transport.OSUpdatesStatusResponse) {
-	if !systemExecutable(checkupdatesPath) {
+	// checkupdates runs pacman under fakeroot even for root ("Cannot find the
+	// fakeroot binary", Arch VM 2026-10-30): both are the tool.
+	if !systemExecutable(checkupdatesPath) || !systemExecutable(fakerootPath) {
 		resp.Pending.State, resp.Pending.Reason = "unknown", "checkupdates_missing"
 		return
 	}

@@ -2560,11 +2560,11 @@ elif [[ $APPLY_ONLY -eq 0 ]] && [ "${SKIP_DEPS:-0}" != "1" ] && [ "${SKIP_SECURI
     # saymak için iki resmi salt-okur araç kurulur.
     step "Security updates (Arch Linux: counted, applied by the administrator)" \
         "Güvenlik güncellemeleri (Arch Linux: sayılır, yönetici uygular)"
-    if "$PACMAN_BIN" -Syu --noconfirm --needed pacman-contrib arch-audit >/dev/null 2>&1; then
-        ok "checkupdates and arch-audit installed" "checkupdates ve arch-audit kuruldu"
+    if "$PACMAN_BIN" -Syu --noconfirm --needed pacman-contrib fakeroot arch-audit >/dev/null 2>&1; then
+        ok "checkupdates, fakeroot and arch-audit installed" "checkupdates, fakeroot ve arch-audit kuruldu"
     else
-        warn "pacman-contrib and arch-audit could not be installed — the panel cannot count waiting updates until 'sudo pacman -Syu --needed pacman-contrib arch-audit' succeeds" \
-            "pacman-contrib ve arch-audit kurulamadı — 'sudo pacman -Syu --needed pacman-contrib arch-audit' başarılı olana dek panel bekleyen güncellemeleri sayamaz"
+        warn "pacman-contrib, fakeroot and arch-audit could not be installed — the panel cannot count waiting updates until 'sudo pacman -Syu --needed pacman-contrib fakeroot arch-audit' succeeds" \
+            "pacman-contrib, fakeroot ve arch-audit kurulamadı — 'sudo pacman -Syu --needed pacman-contrib fakeroot arch-audit' başarılı olana dek panel bekleyen güncellemeleri sayamaz"
     fi
     warn "Arch has no security-only updates and CelikPanel schedules no automatic upgrade: read archlinux.org/news and run 'sudo pacman -Syu' regularly" \
         "Arch'ta yalnız güvenlik güncellemesi yoktur ve CelikPanel otomatik yükseltme zamanlamaz: archlinux.org/news'u okuyup 'sudo pacman -Syu'yu düzenli çalıştırın"

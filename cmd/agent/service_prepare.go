@@ -109,7 +109,58 @@ func prepareArchMariaDB() error {
 	return prepareArchMariaDBContext(context.Background())
 }
 
+// Debian's 50-server.cnf binds MariaDB to 127.0.0.1; Arch's server.cnf names
+// no address, so MariaDB listened on every interface (seen on the Arch VM,
+// 2026-10-30, port 3306 on 0.0.0.0; the firewall dropped it, but a database
+// must not depend on that). CelikPanel writes Debian's default once as its
+// own option file, unless one of /etc/my.cnf.d already names an address.
+// Arch'ta MariaDB tüm arayüzleri dinliyordu; Debian'ın varsayılanı bir kez,
+// başka bir dosya adres belirtmiyorsa yazılır.
+var archMariaDBDropInDir = "/etc/my.cnf.d"
+
+const archMariaDBBindFile = "celikpanel-bind-address.cnf"
+
+const archMariaDBBindText = `# Written once by CelikPanel when MariaDB was installed: Debian's default,
+# MariaDB answers on this server only. Edit or remove it as you need.
+[mysqld]
+bind-address = 127.0.0.1
+`
+
+func prepareArchMariaDBBindAddress() error {
+	info, err := os.Lstat(archMariaDBDropInDir)
+	if err != nil || !info.IsDir() {
+		return nil
+	}
+	entries, err := os.ReadDir(archMariaDBDropInDir)
+	if err != nil {
+		return fmt.Errorf("read %s: %w", archMariaDBDropInDir, err)
+	}
+	for _, entry := range entries {
+		if entry.Name() == archMariaDBBindFile {
+			return nil
+		}
+		data, err := os.ReadFile(filepath.Join(archMariaDBDropInDir, entry.Name()))
+		if err != nil {
+			continue
+		}
+		for _, line := range strings.Split(string(data), "\n") {
+			key, _, _ := strings.Cut(strings.TrimSpace(line), "=")
+			key = strings.ReplaceAll(strings.TrimSpace(key), "_", "-")
+			if key == "bind-address" || key == "skip-networking" {
+				return nil
+			}
+		}
+	}
+	if err := secureWriteConfig(filepath.Join(archMariaDBDropInDir, archMariaDBBindFile), []byte(archMariaDBBindText), 0o644); err != nil {
+		return fmt.Errorf("write MariaDB bind address: %w", err)
+	}
+	return nil
+}
+
 func prepareArchMariaDBContext(ctx context.Context) error {
+	if err := prepareArchMariaDBBindAddress(); err != nil {
+		return err
+	}
 	const dataDir = "/var/lib/mysql"
 	if _, err := os.Stat(filepath.Join(dataDir, "mysql")); err == nil {
 		return nil
