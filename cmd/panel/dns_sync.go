@@ -178,8 +178,8 @@ func writeDNSPublicationConflict(w http.ResponseWriter, err error, safeMessage s
 	// for the backup's confirmation), every later change is held: say that,
 	// not a generic failure (Arch PowerDNS follow-up drill, 2026-10-30).
 	// Önceki bir DNS değişikliği kurtarma beklerken sonrakiler bekletilir.
-	if dnsPublicationHeldBehindPendingRecovery(publicationErr) {
-		writeCodedError(w, http.StatusConflict, errCodeDNSPublicationHeld, dnsPublicationHeldMessage, "/dns-infrastructure")
+	if held, ok := dnsPublicationHeldBehindPendingRecovery(publicationErr); ok {
+		writeDNSPublicationHeld(w, held)
 		return true
 	}
 	writeCodedError(w, http.StatusConflict, errCodeDNSPublicationFailed, safeMessage, "")
@@ -190,18 +190,48 @@ func writeDNSPublicationConflict(w http.ResponseWriter, err error, safeMessage s
 // exact DNS zone V3 publication is pending recovery.
 const dnsAgentPendingRecoveryRefusal = "an exact DNS zone V3 publication is pending recovery"
 
-const dnsPublicationHeldMessage = "The change is saved on this server but not published yet: an earlier DNS change must finish first, and CelikPanel publishes DNS changes one at a time. A common cause is a deleted domain whose removal the backup DNS server has not been shown to complete; that domain's page says what its server administrators do (set up inspection access with the dns-peer-enroll owner tool once, then retry that deletion). DNS keeps answering with the published records meanwhile. After the earlier change finishes, save this change again to publish it."
+const dnsPublicationHeldMessage = "The change is saved on this server but not published yet: an earlier DNS change must finish first, and CelikPanel publishes DNS changes one at a time. A common cause is a deleted domain whose removal the backup DNS server has not been shown to complete; that domain's page says what its server administrators do (set up inspection access with the dns-peer-enroll owner tool once, then retry that deletion). DNS keeps answering with the published records meanwhile. After the earlier change finishes, CelikPanel publishes this change by itself."
 
-func dnsPublicationHeldBehindPendingRecovery(publicationErr *dnsPublicationError) bool {
+// dnsPublicationHeldBehindPendingRecovery reports a result in which every
+// failure is a hold behind an earlier pending publication: the typed hold of
+// settleOtherPendingDNSPublicationsLocked, or the Agent's own refusal. The
+// first typed hold names the cause.
+func dnsPublicationHeldBehindPendingRecovery(publicationErr *dnsPublicationError) (*dnsPublicationHeldError, bool) {
 	if publicationErr == nil || len(publicationErr.Result.Failures) == 0 {
-		return false
+		return nil, false
 	}
+	var named *dnsPublicationHeldError
 	for _, failure := range publicationErr.Result.Failures {
-		if failure.Err == nil || !strings.Contains(failure.Err.Error(), dnsAgentPendingRecoveryRefusal) {
-			return false
+		var held *dnsPublicationHeldError
+		switch {
+		case failure.Err == nil:
+			return nil, false
+		case errors.As(failure.Err, &held):
+			if named == nil {
+				named = held
+			}
+		case strings.Contains(failure.Err.Error(), dnsAgentPendingRecoveryRefusal):
+		default:
+			return nil, false
 		}
 	}
-	return true
+	return named, true
+}
+
+// writeDNSPublicationHeld answers a held change: saved, not published yet,
+// the reviewed cause (nil: only the Agent's untyped refusal is known) and that
+// it is published by itself afterwards.
+func writeDNSPublicationHeld(w http.ResponseWriter, held *dnsPublicationHeldError) {
+	body := apiErrorBody{
+		Error: dnsPublicationHeldMessage, Code: errCodeDNSPublicationHeld,
+		Action: "/dns-infrastructure",
+	}
+	if held != nil {
+		body = held.apiBody()
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusConflict)
+	_ = json.NewEncoder(w).Encode(body)
 }
 
 // syncZoneToDNS publishes one exact desired generation. The in-process lock
@@ -243,9 +273,21 @@ func (p *Panel) syncZoneToDNSLocked(ctx context.Context, domain string, deleted 
 	} else if !errors.Is(leaseErr, sql.ErrNoRows) {
 		return fmt.Errorf("read existing DNS V3 publication lease: %w", leaseErr)
 	}
+	// Another zone's exact publication may be pending (the Agent publishes
+	// one at a time): complete it first with one bounded attempt, or hold
+	// this change, saved, for the reconciler (dns_pending_publication.go).
+	if err := p.settleOtherPendingDNSPublicationsLocked(ctx, canonicalDomain); err != nil {
+		return err
+	}
 	publisher, ready, err := p.activeDNSPublisher(ctx)
 	if err != nil {
 		return &dnsAgentPublicationError{Err: fmt.Errorf("verify active DNS publisher: %w", err)}
+	}
+	if dnsHeldStatusIsPairWait(publisher, ready) {
+		// A paired main whose backup has not yet confirmed the current zone
+		// list: the change is saved and published once it has.
+		p.dnsPendingPublications().armRepublish()
+		return &dnsAgentPublicationError{Err: &dnsPublicationHeldError{Automatic: true}}
 	}
 	if !ready {
 		return &dnsAgentPublicationError{Err: errors.New("no proven active DNS publisher is ready")}

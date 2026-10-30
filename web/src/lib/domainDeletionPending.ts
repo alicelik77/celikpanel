@@ -14,6 +14,9 @@ const reviewedDNSPeerReasons = new Set([
     // A step of the proof of the secondary ran out of its time before the
     // peer's answer was accepted; nothing changed. Retrying now is the action.
     'dns_peer_proof_timeout',
+    // The backup DNS server has not caught up with this server yet; the
+    // Panel re-checks the same publication by itself.
+    'dns_peer_catching_up',
     // Local, not peer: this server's named could not be asked about zone
     // state (no usable rndc key). Same retry action, same pending deletion.
     'bind_rndc_unavailable',
@@ -81,9 +84,15 @@ function reviewedStageFailure(pending: Record<string, unknown>): string {
         : '';
 }
 
+// A deletion whose DNS removal is complete (for example after CelikPanel's own
+// re-check once the backup caught up) while its later stages have not run.
+const dnsRemovedStage = 'dns_removed';
+const dnsRemovedReason = 'dns_removal_confirmed';
+
 // The translation key for a reviewed reason, or null for the generic text.
 export function domainDeletionReasonKey(reason: string): string | null {
     if (!reason) return null;
+    if (reason === dnsRemovedReason) return 'domains.deletionDNSRemoved';
     if (Object.values(reviewedStageFailures).includes(reason)) return `err.DOMAIN_DELETION_FAILED.${reason}`;
     return `err.DNS_PUBLICATION_FAILED.${reason}`;
 }
@@ -152,6 +161,9 @@ export async function readSavedDomainDeletionState(
         // deletion can be retried; an unreviewed failure shows the generic text.
         if (pending.status === 'failed') return { reason: reviewedStageFailure(pending), detail: '' };
         if (pending.status !== 'deletion_pending') return null;
+        if (pending.stage === dnsRemovedStage && pending.reason === dnsRemovedReason) {
+            return { reason: dnsRemovedReason, detail: '' };
+        }
         if (pending.stage !== 'dns_cleanup') return { reason: '', detail: '' };
         const reason = typeof pending.reason === 'string' && reviewedDNSPeerReasons.has(pending.reason)
             ? pending.reason

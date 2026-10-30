@@ -90,6 +90,7 @@ export const trSitesScreens: Record<SitesScreenKey, string> = {
     'domains.loadFailed': 'Alan adları yüklenemedi',
     'domains.deleted': '{name} silindi',
     'domains.deletionPending': 'Silme işlemi hâlâ bekliyor, ancak nedeni doğrulanamadı. Durumu yeniden kontrol edin. Belirsizlik sürerse yeniden denemeden önce sunucu yöneticisinden kayıtlı işlemi incelemesini isteyin.',
+    'domains.deletionDNSRemoved': 'Bu alan adının DNS’ten kaldırılması tamamlandı ve yedek DNS sunucusunda da doğrulandı. Silmenin geri kalanı henüz çalışmadı: alan adını bu sunucudan kaldırmayı bitirmek için “Bu silme işlemini yeniden dene”yi kullanın. Başka bekleyen bir şey yok.',
     'domains.deletionWaiting': '{name} için silme işlemi bekliyor',
     'domains.retryDeletion': 'Bu silme işlemini yeniden dene',
     'domains.checkDeletionStatus': 'Silme durumunu kontrol et',

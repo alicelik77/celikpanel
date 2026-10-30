@@ -268,7 +268,9 @@ func (p *Panel) handleInfrastructureDNSZones(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	if r.Method != http.MethodGet {
-		if _, ready := p.requireActiveDNSPublisherForMutation(w, r.Context()); !ready {
+		// Same gate as a domain's own records: held behind a pending
+		// publication rather than refused (dns_pending_publication.go).
+		if !p.requireDNSPublisherOrHeldChange(w, r.Context()) {
 			return
 		}
 	}

@@ -94,6 +94,7 @@ export const enSitesScreens = {
     'domains.loadFailed': 'Failed to load domains',
     'domains.deleted': 'Domain {name} deleted',
     'domains.deletionPending': 'Deletion is still pending, but its reason could not be verified. Check the status again. If it remains unknown, ask the server administrator to inspect the saved operation before retrying.',
+    'domains.deletionDNSRemoved': 'The DNS removal of this domain is complete and verified, including on the backup DNS server. The rest of the deletion has not run yet: use “Retry this deletion” to finish removing the domain from this server. Nothing else is waiting.',
     'domains.deletionWaiting': 'Deletion of {name} is waiting',
     'domains.retryDeletion': 'Retry this deletion',
     'domains.checkDeletionStatus': 'Check deletion status',

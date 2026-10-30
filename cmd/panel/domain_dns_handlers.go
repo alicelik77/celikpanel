@@ -123,7 +123,7 @@ func (p *Panel) handleDomainDNS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodDelete {
-		if _, ready := p.requireActiveDNSPublisherForMutation(w, r.Context()); !ready {
+		if !p.requireDNSPublisherOrHeldChange(w, r.Context()) {
 			return
 		}
 	}
@@ -513,6 +513,11 @@ func (p *Panel) publishDNSMutation(w http.ResponseWriter, ctx context.Context, d
 		var publicationErr *dnsAgentPublicationError
 		if errors.As(err, &publicationErr) {
 			log.Printf("[409][dns] publish zone %s: %v", domainName, err)
+			var held *dnsPublicationHeldError
+			if errors.As(err, &held) {
+				writeDNSPublicationHeld(w, held)
+				return false
+			}
 			if guidance, ok := dnsPublicationGuidanceAPIError(err); ok {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusConflict)
@@ -520,7 +525,8 @@ func (p *Panel) publishDNSMutation(w http.ResponseWriter, ctx context.Context, d
 				return false
 			}
 			if strings.Contains(publicationErr.Error(), dnsAgentPendingRecoveryRefusal) {
-				writeCodedError(w, http.StatusConflict, errCodeDNSPublicationHeld, dnsPublicationHeldMessage, "/dns-infrastructure")
+				p.dnsPendingPublications().armRepublish()
+				writeDNSPublicationHeld(w, nil)
 				return false
 			}
 			writeCodedError(w, http.StatusConflict, errCodeDNSPublicationFailed,

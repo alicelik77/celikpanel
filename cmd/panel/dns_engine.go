@@ -141,6 +141,9 @@ type dnsEngineSnapshot struct {
 	// kapılar ondan türetilen kelimeyi değil olgunun kendisini okusun diye
 	// anlık görüntüde taşınır. R-050.
 	mutationHold string
+	// PendingPublications: exact publications waiting to complete, with the
+	// reviewed reason and the next automatic re-check (additive; at most 5).
+	PendingPublications []dnsPendingPublicationView `json:"pending_publications,omitempty"`
 }
 
 type dnsEnginePreviewBlocker struct {
@@ -658,6 +661,10 @@ func (p *Panel) dnsEngineSnapshot(ctx context.Context) (dnsEngineSnapshot, error
 	if err != nil {
 		return dnsEngineSnapshot{}, fmt.Errorf("read DNS engine zone counts: %w", err)
 	}
+	pendingPublications, err := p.dnsPendingPublicationViews(ctx)
+	if err != nil {
+		return dnsEngineSnapshot{}, fmt.Errorf("read pending DNS publications: %w", err)
+	}
 	runtimes, port53Conflict, mutationHold, runtimeErr := p.readDNSBackendRuntime(ctx)
 	dnssecCount := 0
 	var dnssecErr error
@@ -745,6 +752,8 @@ func (p *Panel) dnsEngineSnapshot(ctx context.Context) (dnsEngineSnapshot, error
 		dnssecErr:       dnssecErr,
 		pairIdentityErr: pairIdentityErr,
 		mutationHold:    mutationHold,
+
+		PendingPublications: pendingPublications,
 	}, nil
 }
 

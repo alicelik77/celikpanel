@@ -142,6 +142,10 @@ type Panel struct {
 	// SQLite tuple; their snapshot/apply/commit/rollback sequences must never
 	// interleave.
 	dnsTopologyMu sync.Mutex
+	// dnsPendingPublicationsState schedules the automatic re-check of pending
+	// zone-sync V3 publications (dns_pending_publication.go); created lazily.
+	dnsPendingPublicationsOnce  sync.Once
+	dnsPendingPublicationsState *dnsPendingPublicationScheduler
 	// mailMutationMu serializes the database/agent two-phase mail mutations.
 	// Postfix maps are global files, so two tenants must not snapshot and
 	// publish overlapping forwarding or mailbox states concurrently.
@@ -1533,6 +1537,9 @@ func main() {
 	panel.startBackupScheduler()
 	panel.startCertRenewalScheduler()
 	panel.startVPNEntitlementReconciler()
+	// A pending paired DNS publication whose cause is transient (the backup
+	// has not caught up) completes by itself through its exact recovery.
+	panel.startDNSPendingPublicationReconciler(discoveryCtx)
 	// upd11 F2: startup mail work refused only because an update or rollback
 	// still held the host is retried, bounded, once the host is idle.
 	panel.startDeferredStartupMailWork(certificateDeferral, milterWiringDeferred)
