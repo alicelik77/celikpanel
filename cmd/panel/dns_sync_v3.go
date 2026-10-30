@@ -959,7 +959,7 @@ func (p *Panel) reconcileDNSZoneEngineLease(
 		return false, errors.New("DNS V3 publication state contains an invalid durable lease")
 	}
 	identity := lease.identity()
-	job, err := p.statusAgentMutation(ctx, identity.RequestID)
+	job, hold, err := p.statusAgentMutationWithHold(ctx, identity.RequestID)
 	if err != nil {
 		return false, &dnsAgentPublicationError{Err: fmt.Errorf("read durable DNS V3 publication status: %w", err)}
 	}
@@ -973,6 +973,15 @@ func (p *Panel) reconcileDNSZoneEngineLease(
 		return false, err
 	}
 	if agentMutationActive(job.Status) {
+		if hold != "" {
+			// A held Agent never moves this job: it is not "in progress".
+			// The owner's Agent restart re-checks it at start (D-024).
+			// Tutulan Agent bu isi ilerletmez; "devam ediyor" degildir.
+			return false, &dnsAgentPublicationError{Err: errors.Join(
+				&agentMutationHeldError{Hold: hold},
+				errors.New("exact DNS V3 publication is frozen by the Agent hold"),
+			)}
+		}
 		if !waitActive {
 			return false, &dnsAgentPublicationError{Err: errors.New("DNS V3 publication is already in progress")}
 		}

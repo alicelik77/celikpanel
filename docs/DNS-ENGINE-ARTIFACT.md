@@ -2679,3 +2679,73 @@ pending:
   at step" line naming the step and the underlying error;
 - batch 12 `z04`/`z05` as listed in the section above, now also with these
   lines.
+
+## Standalone deletion proof without a served parent (D5, 2026-10-31)
+
+**Defect.** Final alpha.113 lab acceptance, Arch Linux standalone PowerDNS:
+deleting the site `archr3shop113.test` committed the PowerDNS tombstone (zone,
+DKIM key and TXT gone; the server answered REFUSED for the name), but the
+publication proof required an authoritative NXDOMAIN/NODATA carrying exactly
+one strict-ancestor SOA. A standalone server does not serve the parent (`test.`
+in the lab, `com.` for real owners), so PowerDNS answers an empty REFUSED and
+the proof could never pass. `SyncDNSZoneV3` marked the publication ambiguous,
+the service mutation ledger went fail-closed (`ledger_ambiguous`), and the same
+proof ran again in startup recovery (`recover DNS zone V3 host receipt`) on
+every Agent restart, so the hold the guidance told the owner to clear by
+restarting the Agent came back each time. The Panel answered "Retry this
+deletion" with "DNS V3 publication is already in progress" and the saved
+deletion read "status unknown". No site could be created afterwards.
+
+**Scope of the cause.** Every PowerDNS state whose deletion proof used the
+strict DNS-only rule and whose server does not serve the parent: standalone
+PowerDNS on every family (Arch, Debian, Ubuntu; fresh `switch` and `adopt`
+mode). The fresh native V3 paired primary already combined an empty REFUSED
+with its exact database tombstone (`verifyPDNSV3PublishedZoneAuthority`), which
+is why the Debian/Ubuntu pair passed; its peer proof is separate. BIND
+standalone already proves removal with `rndc zonestatus` ("no matching zone in
+any view") plus an empty REFUSED (`verifyBINDDeletedZoneAt`) in publication and
+in `RecoverZone`.
+
+**Change.** `pdnsV3DeletionProofAddress` selects the tombstone-bound proof also
+for a standalone PowerDNS state (no directional pair identity and no managed
+legacy cluster pairing): the exact durable delete receipt with no `domains`
+row is read before and after the DNS observation, and over UDP and TCP from
+the server's own address (the probe socket must report that address) the
+answer must be an authoritative parent-negative (NXDOMAIN/NODATA with one
+strict-ancestor SOA) or an empty REFUSED (no AA, no answer, no SOA in any
+section). A timeout, SERVFAIL, NOTAUTH, an answer or authority still carrying
+the zone's own SOA, a REFUSED with records or the AA bit, or a zone row that
+reappears during the observation fails closed as before. The strict DNS-only
+rule (`validDeletedDNSZoneProof`, `verifyDNSZoneAuthoritiesAt`) and every pair
+proof are unchanged; legacy pairings recorded only in the cluster
+configuration and legacy directional primaries keep the strict rule.
+
+The Panel names a held Agent instead of "already in progress": an exact DNS
+publication whose job is frozen by the Agent's hold returns the reviewed
+reason `agent_mutations_held` (deletion 202 response, deletion-status and DNS
+record edits) with the owner's next step (restart the CelikPanel Agent, then
+retry the same change). The pending-publication reconciler records a terminal
+success the Agent reached by itself (for example its startup recovery after
+the owner's restart) even after its own automatic attempts stopped; recording
+the receipt starts nothing on the server.
+
+**Transition and recovery.** No persisted format changes. A server already
+latched by the earlier proof keeps only the applied ledger job; the hold is
+recomputed at every Agent start. When the Agent of this build starts (the
+owner's restart), startup recovery proves the same operation with the new rule
+and records it `succeeded`; "Retry this deletion" then completes the deletion.
+An unknown answer still holds. The earlier rule never shipped in a published
+release (alpha.113 candidate only). Open: whether the panel's own update can be
+started while an earlier build's Agent holds every change was not verified
+(the update admission refuses while another server operation is active).
+
+**Evidence.** Component tests: `cmd/agent/dns_engine_pdns_v3_zone_verify_test.go`
+(answer forms, address identity, selection by topology),
+`cmd/agent/dns_engine_pdns_v3_standalone_delete_linux_test.go` (real PowerDNS
+database tombstone and engine state; startup recovery of a latched ledger:
+SERVFAIL keeps the hold, empty REFUSED completes and admits the next mutation),
+`cmd/panel/dns_agent_hold_guidance_test.go`. Native lab evidence:
+`deploy/e2e/dns-pair-acceptance/evidence/standalone-zone-delete-proof-20261031/`.
+Invariants: RESILIENCE-CONTRACT 4 (every mutation carries a recovery contract)
+and 6 (readiness and guidance), D-024; P0.4 (DNS artifact contracts) stays
+open.

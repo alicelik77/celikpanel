@@ -37,7 +37,7 @@ const domainDeletionDNSStageDone = "dns_removed"
 // domainDeletionDNSRemovalConfirmedReason names that state for the screen.
 const domainDeletionDNSRemovalConfirmedReason = "dns_removal_confirmed"
 
-const domainDeletionDNSRemovedEnglish = "The DNS removal of this domain is complete and verified, including on the backup DNS server. The rest of the deletion has not run yet: use “Retry this deletion” to finish removing the domain from this server. Nothing else is waiting."
+const domainDeletionDNSRemovedEnglish = "The DNS removal of this domain is complete and verified (on the backup DNS server too, when this server has one). The rest of the deletion has not run yet: use “Retry this deletion” to finish removing the domain from this server. Nothing else is waiting."
 
 // domainDeletionDNSRemovalConfirmed reports a zone whose deletion was applied
 // exactly: no zone row, no publication lease of either version, and an
@@ -228,9 +228,24 @@ func (p *Panel) handleDomainDeletionStatus(w http.ResponseWriter, r *http.Reques
 	}
 	if snapshot.candidate {
 		statusCtx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-		job, statusErr := p.statusAgentMutation(statusCtx, snapshot.lease.RequestID)
+		job, hold, statusErr := p.statusAgentMutationWithHold(statusCtx, snapshot.lease.RequestID)
 		cancel()
-		if statusErr == nil && validateDNSZoneSyncV3PendingJob(job, snapshot.lease.identity()) == nil {
+		if statusErr == nil && hold != "" && job != nil && agentMutationActive(job.Status) &&
+			validateAgentMutationIdentity(job, snapshot.lease.identity()) == nil {
+			// The exact DNS removal is frozen by the Agent's hold: name it and
+			// the owner's next step instead of "unknown" (D-024).
+			result.Status = domainDeletionPendingStatus
+			result.Stage = "dns_cleanup"
+			result.Reason = dnsPublicationAgentHeldReason
+			result.Message = dnsPublicationAgentHeldEnglish
+			after, rereadErr := p.readDomainDeletionStatusSnapshot(r.Context(), domainID)
+			if rereadErr != nil || !sameDomainDeletionStatusSnapshot(snapshot, after) {
+				result.Status = "unknown"
+				result.Stage = "unknown"
+				result.Reason = ""
+				result.Message = "The saved deletion state changed during the read. The server administrator must inspect the operation before retrying."
+			}
+		} else if statusErr == nil && validateDNSZoneSyncV3PendingJob(job, snapshot.lease.identity()) == nil {
 			result.Status = domainDeletionPendingStatus
 			result.Stage = "dns_cleanup"
 			after, rereadErr := p.readDomainDeletionStatusSnapshot(r.Context(), domainID)

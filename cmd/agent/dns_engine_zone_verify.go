@@ -335,7 +335,7 @@ func verifyPDNSPairingAuthority(
 }
 
 type dnsSOAProbeResult struct {
-	LocalIP            string // Local socket IPv4, observed outside the DNS packet.
+	LocalIP            string // Local socket address (canonical IPv4 or IPv6), observed outside the DNS packet.
 	Authoritative      bool
 	RCode              int
 	AnswerCount        int
@@ -570,8 +570,12 @@ func queryDNSZoneSOA(
 	if err != nil {
 		return dnsSOAProbeResult{}, errors.New("DNS probe local endpoint is invalid")
 	}
-	if local := net.ParseIP(localHost).To4(); local != nil {
-		result.LocalIP = local.String()
+	if local := net.ParseIP(localHost); local != nil {
+		if v4 := local.To4(); v4 != nil {
+			result.LocalIP = v4.String()
+		} else {
+			result.LocalIP = local.String()
+		}
 	}
 	return result, nil
 }

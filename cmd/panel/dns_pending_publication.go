@@ -346,6 +346,26 @@ func (p *Panel) readPendingDNSPublicationStatus(
 	return dnsZoneV3PendingCodeFromJob(job), true, false, nil
 }
 
+// exactDNSPublicationSucceeded is a read-only look: the exact Agent job of the
+// lease has a verified terminal success receipt.
+func (p *Panel) exactDNSPublicationSucceeded(
+	ctx context.Context,
+	lease dnsZoneEngineLease,
+) (bool, error) {
+	statusCtx, cancel := context.WithTimeout(ctx, panelMutationFinishTimeout)
+	defer cancel()
+	job, err := p.statusAgentMutation(statusCtx, lease.RequestID)
+	if err != nil || job == nil || job.Status != agentMutationSucceeded {
+		return false, err
+	}
+	identity := lease.identity()
+	if validateAgentMutationIdentity(job, identity) != nil ||
+		validateAgentMutationSucceededReceipt(job, identity) != nil {
+		return false, nil
+	}
+	return true, nil
+}
+
 // resumePendingDNSPublicationLocked makes one exact recovery attempt of the
 // lease. The caller holds serviceMutationMu and dnsPublicationMu. A lease that
 // changed since it was read is not touched.
@@ -406,6 +426,15 @@ func (p *Panel) reconcilePendingDNSPublicationsOnce(ctx context.Context) {
 			scheduler.observeCode(lease, code)
 		}
 		if refreshed, _ := scheduler.entry(lease.RequestID); !refreshed.Automatic {
+			if succeeded, err := p.exactDNSPublicationSucceeded(ctx, lease); err == nil && succeeded {
+				// The Agent itself finished this exact operation (for example
+				// its startup recovery after the owner restarted it). Recording
+				// that receipt starts nothing on the server.
+				// Agent bu islemi kendisi bitirdi; makbuzu kaydetmek sunucuda
+				// hicbir sey baslatmaz.
+				p.attemptPendingDNSPublication(ctx, lease)
+				continue
+			}
 			// A person must act (or automatic attempts ended): keep the
 			// guidance, look again later for a changed cause.
 			scheduler.postpone(lease.RequestID, dnsPendingPublicationOwnerRecheck)
