@@ -6,6 +6,7 @@ export const trErrorsScreens: Record<ErrorsScreenKey, string> = {
     // ---- alpha.108 slice d ----
     'err.VERSION_NOT_OFFERED': 'Hiçbir şey değiştirilmedi: {name} {version} bu sunucuda müşterilere sunulmuyor. Sunulan sürümlerden birini seçin ya da yöneticinizden bunu sunmasını isteyin; hangi sürümlerin sunulacağına yönetici karar verir.',
     'err.NO_VERSION_OFFERED': 'Hiçbir şey oluşturulmadı: bu sunucuda müşterilere hiçbir {name} sürümü sunulmuyor. Yöneticinizden birini sunmasını isteyin, sonra siteyi yeniden oluşturun.',
+    'err.NO_VERSION_OFFERED.hosting_switch': 'Bu sunucuda müşterilere kurulu hiçbir {name} sürümü sunulmuyor; bu yüzden site {name}’ye geçirilmedi. Hiçbir şey değiştirilmedi. Yöneticinizden birini sunmasını isteyin, sonra siteyi yeniden geçirin.',
     'err.panel_certificate_activation_pending': 'Önceki panel sertifikası etkinleştirmesi hâlâ tamamlanıyor. Kısa süre bekleyip yeniden deneyin. Hiçbir sertifika durumu ezilmedi.',
     'err.USERNAME_RESERVED': 'Bu kullanıcı adı, etkinlik günlüğünde CelikPanel’in kendi eylemleri için ayrılmıştır. Hiçbir şey oluşturulmadı ya da değiştirilmedi; başka bir kullanıcı adı seçin.',
     'err.DOMAIN_DELETION_PENDING': 'Bu domain siliniyor. Silme işlemi tamamlanana veya güvenle yeniden denenene kadar posta ayarları değiştirilemez.',
@@ -63,6 +64,7 @@ export const trErrorsScreens: Record<ErrorsScreenKey, string> = {
     'err.WEB_SERVER_REQUIRED': 'Kurulu bir web sunucusu yok. Services sayfasından Nginx ya da Apache kurun ya da yalnız-DNS tipini seçin.',
     'err.WEB_SERVER_REQUIRED.action': 'Web sunucusu kur',
     'err.PHP_REQUIRED': 'PHP-FPM kurulu değil. Services sayfasından kurun ya da statik veya yalnız-DNS tipini seçin.',
+    'err.PHP_REQUIRED.hosting_switch': 'Bu sunucuda PHP-FPM kurulu değil; bu yüzden site PHP’ye geçirilmedi. Hiçbir şey değiştirilmedi. Sunucu yöneticisi PHP-FPM’i Services sayfasından kurar, sonra site yeniden PHP’ye geçirilir.',
     'err.PHP_REQUIRED.action': 'PHP-FPM kur',
     'err.NO_SUBSCRIPTION': 'Bu hesapta henüz abonelik yok — sağlayıcınızdan bir plan atamasını isteyin.',
     'err.QUOTA_DOMAINS_EXCEEDED': 'Planınızın domain sınırına ulaşıldı. Bir domain silin ya da planınızı yükseltin.',

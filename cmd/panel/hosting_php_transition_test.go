@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"net/rpc"
 	"sync"
 	"testing"
@@ -289,5 +292,21 @@ func TestHostingTransitionCustomerTakesNewestOfferedPHP(t *testing.T) {
 	_, err := panel.transitionHostingWithPolicy(context.Background(), domainID, hostingSettings{ProjectType: "php"}, &none)
 	if !errors.Is(err, errHostingPHPNotOffered) {
 		t.Fatalf("transition error = %v, want no PHP version offered", err)
+	}
+}
+
+// The switch's refusals carry their own reason, so the screens say that the
+// site was not switched (the codes' plain sentences belong to Add Domain).
+func TestHostingPHPRefusalsSayTheSiteWasNotSwitched(t *testing.T) {
+	for _, code := range []string{errCodePHPRequired, errCodeNoVersionOffered} {
+		recorder := httptest.NewRecorder()
+		writeHostingPHPRefusal(recorder, code, "/services", "not switched")
+		var body apiErrorBody
+		if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
+			t.Fatal(err)
+		}
+		if recorder.Code != http.StatusConflict || body.Code != code || body.Reason != hostingReasonSwitch || body.Vars["name"] != "PHP" {
+			t.Fatalf("%s refusal = %d %+v", code, recorder.Code, body)
+		}
 	}
 }

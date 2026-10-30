@@ -238,14 +238,13 @@ func (p *Panel) handleUpdateHosting(w http.ResponseWriter, r *http.Request, doma
 	case errors.Is(err, errHostingPortInUse):
 		writeClientError(w, http.StatusConflict, "the selected application port is already assigned")
 	case errors.Is(err, errHostingPHPMissing):
-		writeCodedError(w, http.StatusConflict, errCodePHPRequired,
+		writeHostingPHPRefusal(w, errCodePHPRequired, "/services",
 			"PHP-FPM is not installed on this server, so the site was not switched to PHP. Nothing was changed. "+
-				"The server administrator installs PHP-FPM from Services, then the site is switched to PHP again.",
-			"/services")
+				"The server administrator installs PHP-FPM from Services, then the site is switched to PHP again.")
 	case errors.Is(err, errHostingPHPNotOffered):
-		writeCodedError(w, http.StatusConflict, errCodeNoVersionOffered,
+		writeHostingPHPRefusal(w, errCodeNoVersionOffered, "",
 			"No installed PHP version is offered to customers on this server, so the site was not switched to PHP. Nothing was changed. "+
-				"Ask your administrator to offer one, then switch the site to PHP again.", "")
+				"Ask your administrator to offer one, then switch the site to PHP again.")
 	case errors.Is(err, errHostingActivation):
 		log.Printf("hosting transition domain %d: %v", domainID, err)
 		writeClientError(
@@ -621,6 +620,20 @@ func (p *Panel) compensateHostingFailure(
 		)
 	}
 	return fmt.Errorf("%w: %w", errHostingActivation, cause)
+}
+
+// hostingReasonSwitch is the reason of a refusal of a switch to PHP: the
+// screens' sentence for it says the site was not switched (the code's plain
+// sentence is Add Domain's "nothing was created").
+const hostingReasonSwitch = "hosting_switch"
+
+func writeHostingPHPRefusal(w http.ResponseWriter, code, action, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusConflict)
+	_ = json.NewEncoder(w).Encode(apiErrorBody{
+		Error: message, Code: code, Reason: hostingReasonSwitch, Action: action,
+		Vars: map[string]string{"name": "PHP"},
+	})
 }
 
 // hostingCreatedPool is a PHP-FPM pool a hosting transition wrote where none
