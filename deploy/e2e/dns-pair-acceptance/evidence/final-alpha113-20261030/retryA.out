@@ -1,0 +1,95 @@
+== lab clock: labnet set 5 s behind the lab host (like an ACME CA's backdated NotBefore) 15:24:25
+before: 15:24:26.671270081
+after: 15:24:20.004216033
+host: 15:24:26.114984801
+   site id 1
+== owner presses Request certificate again (SSL page) 15:24:26
+500 {"code": "INTERNAL", "error": "internal server error"}
+   answered after 2s
+200 {"domain_id": 1, "domain_name": "shop113.test", "has_certificate": false, "managed_names": ["shop113.test", "www.shop113.test"], "settings": {"force_https": false, "hsts_enabled": false, "hsts_max_age": 31536000}}
+resolves (lab resolver 192.0.2.53): shop113.test=192.0.3.101 www.shop113.test=192.0.3.101
+--- http://shop113.test/
+code=200 redirect= ssl_verify=0
+HTTP/1.1 200 OK
+Server: nginx
+Content-Type: text/html
+body: 3078 bytes, title: <title>shop113.test
+software words in body: [CelikPanel ]
+--- https://shop113.test/
+curl: (7) Failed to connect to shop113.test port 443 after 0 ms: Could not connect to server
+code=000 redirect= ssl_verify=0
+--- http://www.shop113.test/
+code=200 redirect= ssl_verify=0
+HTTP/1.1 200 OK
+Server: nginx
+Content-Type: text/html
+body: 3078 bytes, title: <title>shop113.test
+software words in body: [CelikPanel ]
+--- https://www.shop113.test/
+curl: (7) Failed to connect to www.shop113.test port 443 after 0 ms: Could not connect to server
+code=000 redirect= ssl_verify=0
+--- certificate served on shop113.test:443
+Could not find certificate from <stdin> 
+== mail 15:24:28
+{
+ "host": "mail.fin113.test",
+ "resolved": "192.0.3.101",
+ "smtp_587_cert": {
+  "cn": null,
+  "san": [
+   "mail.fin113.test"
+  ],
+  "not_after": "Oct 30 15:18:52 2031 GMT",
+  "issuer_cn": "Pebble Intermediate CA 445eee"
+ },
+ "smtp_send": {
+  "ok": true,
+  "refused": {}
+ },
+ "imaps_993_cert": {
+  "cn": null,
+  "san": [
+   "mail.fin113.test"
+  ],
+  "not_after": "Oct 30 15:18:52 2031 GMT",
+  "issuer_cn": "Pebble Intermediate CA 445eee"
+ },
+ "imap_error": "error('command SEARCH illegal in state AUTH, only allowed in states SELECTED')",
+ "imap_read": {
+  "found": false
+ },
+ "served_certificates": {
+  "587/mail.fin113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.fin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:18:52 2031 GMT",
+  "587/shop113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.fin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:18:52 2031 GMT",
+  "587/mail.shop113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.fin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:18:52 2031 GMT",
+  "587/frankfurt.fin113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.fin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:18:52 2031 GMT",
+  "587/no-sni": "subject= X509v3 Subject Alternative Name: critical DNS:mail.fin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:18:52 2031 GMT",
+  "993/mail.fin113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.fin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:18:52 2031 GMT",
+  "993/shop113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.fin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:18:52 2031 GMT",
+  "993/mail.shop113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.fin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:18:52 2031 GMT",
+  "993/frankfurt.fin113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.fin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:18:52 2031 GMT",
+  "993/no-sni": "subject= X509v3 Subject Alternative Name: critical DNS:mail.fin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:18:52 2031 GMT",
+  "465/mail.fin113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.fin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:18:52 2031 GMT",
+  "465/shop113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.fin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:18:52 2031 GMT",
+  "465/mail.shop113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.fin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:18:52 2031 GMT",
+  "465/frankfurt.fin113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.fin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:18:52 2031 GMT",
+  "465/no-sni": "subject= X509v3 Subject Alternative Name: critical DNS:mail.fin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:18:52 2031 GMT"
+ }
+}
+== webmail 15:27:26
+200 {"status": {"managed": false, "present": false}, "address": null, "suggestion": "mail.fin113.test"}
+resolves (lab resolver 192.0.2.53): mail.fin113.test=192.0.3.101 www.mail.fin113.test=none
+--- http://mail.fin113.test/
+code=404 redirect= ssl_verify=0
+HTTP/1.1 404 Not Found
+Server: nginx
+Content-Type: text/html
+--- https://mail.fin113.test/
+curl: (7) Failed to connect to mail.fin113.test port 443 after 0 ms: Could not connect to server
+code=000 redirect= ssl_verify=0
+curl: (6) Could not resolve host: www.mail.fin113.test
+code=000 redirect= ssl_verify=0
+curl: (6) Could not resolve host: www.mail.fin113.test
+code=000 redirect= ssl_verify=0
+--- certificate served on mail.fin113.test:443
+== retry done 15:27:27

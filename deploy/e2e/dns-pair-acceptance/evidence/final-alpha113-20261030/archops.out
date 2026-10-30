@@ -1,0 +1,172 @@
+== B clock: arch set to the lab CA's clock + 4 s (lab blocks NTP; Pebble does not backdate) 15:31:14
+labnet 15:31:15.210641200
+arch 15:31:14.616286172
+arch now 15:31:19.003796148
+== 2. site archshop113.test with Enable SSL at creation 15:31:15
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/1/public_html", "Domain": "archshop113.test", "DomainID": 1, "FTPPassword": "[REDACTED]", "FTPUser": "archshop113_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 1, "TempDomain": ""}
+   site id 1
+   ok 192.0.3.103 archshop113.test A = '192.0.3.103' after 0s
+200 {"status": "success", "expires_at": "2031-10-30T15:31:26Z"}
+   certificate answer after 3s
+200 {"certificate": {"activated": true, "activation_pending": false, "auto_renew": true, "days_until_expiry": 1825, "dependents_pending": false, "dns_names": ["archshop113.test", "www.archshop113.test"], "domain_id": 1, "expires_at": "2031-10-30T15:31:26Z", "id": 1, "issued_at": "2026-10-30T15:31:27Z", "issuer": "Let's Encrypt", "provider_id": "letsencrypt", "renewal": {"authenticator": "webroot", "auto_renew": true, "detail": "certbot's renewal configuration was changed outside CelikPanel; it is kept as it is", "hook": "installed", "last_deploy": {"completed_at": "2026-10-30T15:31:30Z", "dovecot": "not_used", "mail": "not_used", "nginx": "reloaded"}, "leaf_sha256": "1d577d058aad267fc9c295bb6d3e45777a736a0975eabd7cb731b7edbde9eda0", "lineage_name": "celikpanel-site-1-279ad289ac2e8cf73dfce2f7", "not_after": "2031-10-30T15:31:26Z", "not_before": "2026-10-30T15:31:27Z", "renew_after": "2031-09-30T15:31:26Z", "scheduler": {"active": true, "enabled": true, "known": true, "name": "certbot-renew.timer"}, "server": "https://192.0.2.60:14000/dir", "state": "owner_configured"}, "renewal_owner": "operating_system", "status": "active", "subject": "archshop113.test", "trust_status": "trusted", "type": "letsencrypt", "usable": true, "waiting_for_owner": false}}
+   hosting before: {"document_root": "/var/www/celikpanel/subscriptions/2/sites/1/public_html", "forward_code": 301, "project_type": "static"}
+409 {"error": "the hosting change could not be activated; the previous configuration was restored"}
+200 {"project_type": "static"}
+resolves (lab resolver 192.0.2.53): archshop113.test=192.0.3.103 www.archshop113.test=192.0.3.103
+--- http://archshop113.test/
+code=200 redirect= ssl_verify=0
+HTTP/1.1 200 OK
+Server: nginx/1.30.6
+Content-Type: text/html
+body: 3086 bytes, title: <title>archshop113.test
+software words in body: [CelikPanel ]
+--- https://archshop113.test/
+code=200 redirect= ssl_verify=0
+HTTP/2 200 
+server: nginx/1.30.6
+content-type: text/html
+strict-transport-security: max-age=0
+body: 3086 bytes, title: <title>archshop113.test
+software words in body: [CelikPanel ]
+--- http://www.archshop113.test/
+code=200 redirect= ssl_verify=0
+HTTP/1.1 200 OK
+Server: nginx/1.30.6
+Content-Type: text/html
+body: 3086 bytes, title: <title>archshop113.test
+software words in body: [CelikPanel ]
+--- https://www.archshop113.test/
+code=200 redirect= ssl_verify=0
+HTTP/2 200 
+server: nginx/1.30.6
+content-type: text/html
+strict-transport-security: max-age=0
+body: 3086 bytes, title: <title>archshop113.test
+software words in body: [CelikPanel ]
+--- certificate served on archshop113.test:443
+subject= X509v3 Subject Alternative Name: critical     DNS:archshop113.test, DNS:www.archshop113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:31:26 2031 GMT 
+Verify return code: 0 (ok)
+== 3. mail on archshop113.test 15:31:29
+200 {"id": 1, "success": true}
+200 {"id": 2, "success": true}
+200 {"accounts": [{"address": "alice@archshop113.test", "id": 1, "quota_mb": 1024}, {"address": "bob@archshop113.test", "id": 2, "quota_mb": 1024}]}
+200 {"webmail_url": ""}
+{
+ "host": "mail.archfin113.test",
+ "resolved": "192.0.3.103",
+ "smtp_587_cert": {
+  "cn": null,
+  "san": [
+   "mail.archfin113.test"
+  ],
+  "not_after": "Oct 30 15:24:03 2031 GMT",
+  "issuer_cn": "Pebble Intermediate CA 445eee"
+ },
+ "smtp_send": {
+  "ok": true,
+  "refused": {}
+ },
+ "imaps_993_cert": {
+  "cn": null,
+  "san": [
+   "mail.archfin113.test"
+  ],
+  "not_after": "Oct 30 15:24:03 2031 GMT",
+  "issuer_cn": "Pebble Intermediate CA 445eee"
+ },
+ "imap_read": {
+  "after_seconds": 0.2,
+  "headers": "From: alice@archshop113.test\r\nTo: bob@archshop113.test\r\nSubject: final-alpha113 5d2bd737158f"
+ },
+ "served_certificates": {
+  "587/mail.archfin113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.archfin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:24:03 2031 GMT",
+  "587/archshop113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.archfin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:24:03 2031 GMT",
+  "587/mail.archshop113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.archfin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:24:03 2031 GMT",
+  "587/arch.archfin113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.archfin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:24:03 2031 GMT",
+  "587/no-sni": "subject= X509v3 Subject Alternative Name: critical DNS:mail.archfin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:24:03 2031 GMT",
+  "993/mail.archfin113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.archfin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:24:03 2031 GMT",
+  "993/archshop113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.archfin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:24:03 2031 GMT",
+  "993/mail.archshop113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.archfin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:24:03 2031 GMT",
+  "993/arch.archfin113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.archfin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:24:03 2031 GMT",
+  "993/no-sni": "subject= X509v3 Subject Alternative Name: critical DNS:mail.archfin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:24:03 2031 GMT",
+  "465/mail.archfin113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.archfin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:24:03 2031 GMT",
+  "465/archshop113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.archfin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:24:03 2031 GMT",
+  "465/mail.archshop113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.archfin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:24:03 2031 GMT",
+  "465/arch.archfin113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.archfin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:24:03 2031 GMT",
+  "465/no-sni": "subject= X509v3 Subject Alternative Name: critical DNS:mail.archfin113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:24:03 2031 GMT"
+ }
+}
+-- webmail address 15:31:31
+200 {"status": {"managed": false, "present": false}, "address": null, "suggestion": "mail.archfin113.test"}
+200 {"state": "read", "webmail_url": "", "webmail_ready": false}
+resolves (lab resolver 192.0.2.53): mail.archfin113.test=192.0.3.103 www.mail.archfin113.test=none
+--- http://mail.archfin113.test/
+code=404 redirect= ssl_verify=0
+HTTP/1.1 404 Not Found
+Server: nginx/1.30.6
+Content-Type: text/html
+--- https://mail.archfin113.test/
+curl: (35) TLS connect error: error:0A000458:SSL routines::tlsv1 unrecognized name
+code=000 redirect= ssl_verify=1
+--- http://www.mail.archfin113.test/
+curl: (6) Could not resolve host: www.mail.archfin113.test
+code=000 redirect= ssl_verify=0
+--- https://www.mail.archfin113.test/
+curl: (6) Could not resolve host: www.mail.archfin113.test
+== ops done 15:31:32
+== B mail storage view (read only) 15:31:32
+2.4.5 (0cbb641e3e)
+mail_driver = maildir
+mail_path = /var/spool/mail/vhosts/%{user | domain}/%{user | username}
+/var/mail/vhosts/archshop113.test
+/var/mail/vhosts/archshop113.test/alice
+/var/mail/vhosts/archshop113.test/bob
+/var/mail/vhosts/archshop113.test/bob/tmp
+/var/mail/vhosts/archshop113.test/bob/cur
+/var/mail/vhosts/archshop113.test/bob/new
+1
+== B reboot 15:31:33
+arch rebooted in 22.7 s
+== health [arch-after-reboot] 15:33:26
+-- main units/timers
+active active active active active active active
+enabled enabled
+  php-fpm.service loaded active running The PHP FastCGI Proc
+Sat 2026-10-31 00:25:48 UTC 8h Fri 2026-10-30 15:20:21 UTC - certbot-renew.timer certbot-renew.service
+not-found enabled
+2026-10-30 15:31:41
+016aef1e-39c9-4b88-ac39-bc937abbc9d8
+succeeded complete null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-mail_profile=succeeded 12-mail_profile=succeeded 13-mail_dns=succeeded 14-service=succeeded 15-access_dns=succeeded 16-mail_certificate=succeeded 17-mail_enrollment=succeeded 18-verify=succeeded
+-- DNS answers
+   @192.0.3.103 SOA archfin113.test: status: NOERROR flags: qr aa  | A archshop113.test: 192.0.3.103 | MX archfin113.test: 10 mail.archfin113.test.
+   @192.0.3.103 SOA archfin113.test: status: NOERROR flags: qr aa  | A archshop113.test: 192.0.3.103 | MX archfin113.test: 10 mail.archfin113.test.
+-- site
+--- http://archshop113.test/
+code=200 redirect= ssl_verify=0
+body: 3086 bytes, title: <title>archshop113.test
+software words in body: [CelikPanel ]
+--- https://archshop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx/1.30.6
+body: 3086 bytes, title: <title>archshop113.test
+software words in body: [CelikPanel ]
+--- http://www.archshop113.test/
+code=200 redirect= ssl_verify=0
+body: 3086 bytes, title: <title>archshop113.test
+software words in body: [CelikPanel ]
+--- https://www.archshop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx/1.30.6
+-- mail
+   smtp 587 send: {'ok': True, 'refused': {}} | cert ['mail.archfin113.test']
+   imaps 993 read: {'after_seconds': 0.2, 'headers': 'From: alice@archshop113.test\r\nTo: bob@archshop113.test\r\nSubject: final-alpha113 a7d3ee936713'} | cert ['mail.archfin113.test'] |  
+   delivered to bob's maildir (files in new+cur): 2
+== B authoritative answers (no recursion, aa flag) 15:33:29
+   @192.0.3.103 archfin113.test SOA: status: NOERROR flags: qr aa  -> ns1.archfin113.test. hostmaster.archfin113.test. 2026103001 3600 600 604800 300
+   @192.0.3.103 archfin113.test NS: status: NOERROR flags: qr aa  -> ns1.archfin113.test. ns2.archfin113.test.
+   @192.0.3.103 archfin113.test MX: status: NOERROR flags: qr aa  -> 10 mail.archfin113.test.
+   @192.0.3.103 archshop113.test A: status: NOERROR flags: qr aa  -> 192.0.3.103
+   @192.0.3.103 mail.archfin113.test A: status: NOERROR flags: qr aa  -> 192.0.3.103
+   @192.0.3.103 arch.archfin113.test A: status: NOERROR flags: qr aa  -> 192.0.3.103
+== B done 15:33:32

@@ -1,0 +1,63 @@
+== clocks before 15:29:53
+labnet 15:29:54.433872577
+main 15:29:52.762560161
+== clocks after (main set to the lab CA's clock + 4 s) 15:29:54
+labnet 15:29:55.232938664
+main 15:29:58.325390405
+   site id 1
+== owner presses Request certificate again (SSL page) 15:29:54
+200 {"status": "success", "expires_at": "2031-10-30T15:29:55Z"}
+   answered after 3s
+200 {"certificate": {"activated": true, "activation_pending": false, "auto_renew": true, "days_until_expiry": 1825, "dependents_pending": false, "dns_names": ["shop113.test", "www.shop113.test"], "domain_id": 1, "expires_at": "2031-10-30T15:29:55Z", "id": 1, "issued_at": "2026-10-30T15:29:56Z", "issuer": "Let's Encrypt", "provider_id": "letsencrypt", "renewal": {"authenticator": "webroot", "auto_renew": true, "detail": "certbot's renewal configuration was changed outside CelikPanel; it is kept as it is", "hook": "installed", "leaf_sha256": "4564de44189b310bce4f2fe0431199fb1e0fe54ab3eb3e7b69b354e660275a5c", "lineage_name": "celikpanel-site-1-784f01d90d13f2f82ca1188f", "not_after": "2031-10-30T15:29:55Z", "not_before": "2026-10-30T15:29:56Z", "renew_after": "2031-09-30T15:29:55Z", "scheduler": {"active": true, "enabled": true, "known": true, "name": "certbot.timer"}, "server": "https://192.0.2.60:14000/dir", "state": "owner_configured"}, "renewal_owner": "operating_system", "status": "active", "subject": "shop113.test", "trust_status": "trusted", "type": "letsencrypt", "usable": true, "waiting_for_owner": false}}
+resolves (lab resolver 192.0.2.53): shop113.test=192.0.3.101 www.shop113.test=192.0.3.101
+--- http://shop113.test/
+code=200 redirect= ssl_verify=0
+HTTP/1.1 200 OK
+Server: nginx
+Content-Type: text/html
+body: 3078 bytes, title: <title>shop113.test
+software words in body: [CelikPanel ]
+--- https://shop113.test/
+code=200 redirect= ssl_verify=0
+HTTP/2 200 
+server: nginx
+content-type: text/html
+strict-transport-security: max-age=0
+body: 3078 bytes, title: <title>shop113.test
+software words in body: [CelikPanel ]
+--- http://www.shop113.test/
+code=200 redirect= ssl_verify=0
+HTTP/1.1 200 OK
+Server: nginx
+Content-Type: text/html
+body: 3078 bytes, title: <title>shop113.test
+software words in body: [CelikPanel ]
+--- https://www.shop113.test/
+code=200 redirect= ssl_verify=0
+HTTP/2 200 
+server: nginx
+content-type: text/html
+strict-transport-security: max-age=0
+body: 3078 bytes, title: <title>shop113.test
+software words in body: [CelikPanel ]
+--- certificate served on shop113.test:443
+subject= X509v3 Subject Alternative Name: critical     DNS:shop113.test, DNS:www.shop113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 15:29:55 2031 GMT 
+Verify return code: 0 (ok)
+== webmail address card: owner enables the suggested address mail.fin113.test 15:29:58
+202 {"operation": {"id": "5cf8114bc9a13528517d5b45372a584d", "kind": "webmail_address", "package_name": "mail.fin113.test", "phase": "queued", "request_id": "414658455406b7bac4e4e4f89de11827", "service_id": "roundcube", "started_at": "2026-10-30T15:30:02.196927843Z", "status": "queued"}}
+   200 {"status": {"certificate_expires": "2031-10-30T15:29:59Z", "hosts": ["mail.fin113.test"], "managed": true, "present": true, "proved": true}, "address": {"enabled_at": "2026-10-30T15:30:06Z", "host": "mail.fin113.test", "url": "https://mail.fin113.test/"}, "suggestion": "mail.fin113.test"}
+--- http://mail.fin113.test/
+code=404 redirect= ssl_verify=0
+HTTP/1.1 404 Not Found
+Server: nginx
+Content-Type: text/html
+--- https://mail.fin113.test/
+code=200 redirect= ssl_verify=0
+HTTP/2 200 
+server: nginx
+content-type: text/html; charset=UTF-8
+strict-transport-security: max-age=31536000
+body: 5330 bytes, title: <title>CelikPanel Webmail :: Welcome to CelikPanel Webmail
+software words in body: [CelikPanel version 3 ]
+code=000 redirect= ssl_verify=0
+== sslfix done 15:30:05
