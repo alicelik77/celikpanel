@@ -17,8 +17,9 @@ Nothing ran on an installed server; the chroot was built on the WSL development
 guest `CelikPanel-S2-Debian` under `/var/tmp` and its services were not touched.
 
 The Agent's `realsystem` test binary (SHA-256 `28caf1630c481f55…5cac0ef83`) was built
-from branch `fix/site-cert-native-renewal` at `b00885775` (rebased on
-`release/alpha113`) and copied into the chroot only for its phases; `run.sh` deletes
+from branch `fix/site-cert-native-renewal` at `b00885775`, which became `0d46d1493`
+when the branch was rebased onto `release/alpha113` `3d386810e` (that commit changes
+only distro-matrix files, `.gitattributes` and a line-ending test), and copied into the chroot only for its phases; `run.sh` deletes
 it before every renewal and checks that no CelikPanel binary or process rooted in
 the chroot exists.
 
