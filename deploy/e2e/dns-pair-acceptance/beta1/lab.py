@@ -142,6 +142,9 @@ def cloud_init(cell: str, node: str, os_name: str, ip: str, hostname: str, infra
       cell_id={cell}
       node={node}
 """
+    # Arch's cloud image has no sudo group and does not enable sshd (the kill matrix's fixture does the same).
+    admin_group = "wheel" if os_name == "arch" else "sudo"
+    enable_ssh = "  - [systemctl, enable, --now, sshd.service]\n" if os_name == "arch" else ""
     user_data = f"""#cloud-config
 hostname: {hostname}
 fqdn: {hostname}
@@ -150,7 +153,7 @@ users:
   - default
   - name: celik
     gecos: CelikPanel beta1 lab
-    groups: [sudo]
+    groups: [{admin_group}]
     sudo: ["ALL=(ALL) NOPASSWD:ALL"]
     shell: /bin/bash
     lock_passwd: true
@@ -168,7 +171,7 @@ write_files:
       cell={cell}
       node={node}
 runcmd:
-  - [touch, /etc/celikpanel-beta1-lab-ready]
+{enable_ssh}  - [touch, /etc/celikpanel-beta1-lab-ready]
 """
     meta = f"instance-id: beta1-{hashlib.sha256(f'{cell}/{node}/{time.time()}'.encode()).hexdigest()[:16]}\nlocal-hostname: {hostname}\n"
     if infra:
