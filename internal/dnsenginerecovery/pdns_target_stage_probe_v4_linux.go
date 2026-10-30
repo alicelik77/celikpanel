@@ -27,7 +27,7 @@ func VerifyStagedPDNSTargetV4(policy dnsengineartifact.JournalPolicy, journal dn
 	if err != nil {
 		return fmt.Errorf("capture staged PowerDNS candidate: %w", err)
 	}
-	if actual != proof {
+	if !proof.SameCandidate(actual) {
 		return errors.New("staged PowerDNS candidate differs from frozen inode, metadata or bytes")
 	}
 	return verifyPDNSTargetAbsentV4(policy.PDNSDatabasePath, false)

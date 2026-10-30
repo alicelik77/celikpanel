@@ -111,6 +111,29 @@ if [[ $acceptance -eq 1 ]]; then
     chmod 0755 "$work/$root/bin/panel"
     "$GO" version -m "$work/$root/bin/panel" | grep -Fqx $'\tbuild\t-tags=acceptance_license' \
         || { echo "rebuilt panel does not record -tags=acceptance_license" >&2; exit 1; }
+    # bin/agent too (2026-10-30): the tag adds only the armed, one-shot DNS
+    # journal cut (cmd/agent/dns_engine_acceptance_cut_linux.go), inert
+    # without the guest marker and an arm file. The archive's native
+    # contract is the ordinary one with only its agent digest replaced, so
+    # the installed release still binds its exact Agent bytes. The guard
+    # refuses this agent like the panel.
+    if [[ -f $src/cmd/agent/dns_engine_acceptance_cut_linux.go ]]; then
+        old_agent=$(sha256sum "$work/$root/bin/agent" | cut -d' ' -f1)
+        rm -f -- "$work/$root/bin/agent"
+        ( cd "$src" && env -i HOME="$HOME" PATH="$PATH" LC_ALL=C GOTOOLCHAIN=local GOENV=off GOWORK=off CGO_ENABLED=0 \
+            "$GO" build -tags acceptance_license -trimpath -buildvcs=false \
+            -ldflags "-s -w -X main.buildVersion=$version -X main.buildCommit=$full" \
+            -o "$work/$root/bin/agent" ./cmd/agent ) >> "$out/build.log" 2>&1
+        chmod 0755 "$work/$root/bin/agent"
+        "$GO" version -m "$work/$root/bin/agent" | grep -Fqx $'\tbuild\t-tags=acceptance_license' \
+            || { echo "rebuilt agent does not record -tags=acceptance_license" >&2; exit 1; }
+        new_agent=$(sha256sum "$work/$root/bin/agent" | cut -d' ' -f1)
+        contract=$work/$root/bin/agent-native-contract.json
+        [[ $(grep -o "\"agent_sha256\":\"$old_agent\"" "$contract" | wc -l) -eq 1 ]] \
+            || { echo "native contract does not bind the ordinary agent" >&2; exit 1; }
+        sed -i "s/\"agent_sha256\":\"$old_agent\"/\"agent_sha256\":\"$new_agent\"/" "$contract"
+        echo "acceptance agent: $old_agent -> $new_agent" >> "$out/build.log"
+    fi
     cat > "$work/$root/ACCEPTANCE-LICENSE-BUILD.txt" <<EOF
 This archive is NOT a CelikPanel release.
 
@@ -118,8 +141,11 @@ bin/panel was built from commit $full with the acceptance_license test tag
 (deploy/e2e/dns-pair-acceptance/scripts/build-dist.sh --acceptance-license).
 It never contacts the license service and accepts only the acceptance fixture
 license, only on a disposable acceptance guest carrying the fixture marker
-/etc/celikpanel-dns-kill-matrix. Everything else is the ordinary make dist
-output of the same commit. Release packaging refuses this archive.
+/etc/celikpanel-dns-kill-matrix. bin/agent, when rebuilt with the same tag,
+adds only a one-shot DNS journal cut armed by /etc/celikpanel-acceptance-dns-cut
+on such a guest (its native contract names the rebuilt agent's digest).
+Everything else is the ordinary make dist output of the same commit. Release
+packaging refuses this archive.
 Runs with it do not evidence license behaviour.
 EOF
     chmod 0644 "$work/$root/ACCEPTANCE-LICENSE-BUILD.txt"

@@ -102,6 +102,8 @@ const (
 	errCodeAccountSuspended               = "ACCOUNT_SUSPENDED"
 	errCodeDomainDeletionPending          = "DOMAIN_DELETION_PENDING"
 	errCodeDNSServerRequired              = "DNS_SERVER_REQUIRED"
+	errCodeDNSPeerCatchingUp              = "DNS_PEER_CATCHING_UP"
+	errCodeDNSPublicationHeld             = "DNS_PUBLICATION_HELD"
 	errCodeDNSSettingsRequired            = "DNS_SETTINGS_REQUIRED"
 	errCodeDNSSetupRequired               = "DNS_SETUP_REQUIRED"
 	errCodeDNSEngineWorkflowRequired      = "DNS_ENGINE_WORKFLOW_REQUIRED"

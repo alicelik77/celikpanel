@@ -519,6 +519,10 @@ func (p *Panel) publishDNSMutation(w http.ResponseWriter, ctx context.Context, d
 				_ = json.NewEncoder(w).Encode(guidance)
 				return false
 			}
+			if strings.Contains(publicationErr.Error(), dnsAgentPendingRecoveryRefusal) {
+				writeCodedError(w, http.StatusConflict, errCodeDNSPublicationHeld, dnsPublicationHeldMessage, "/dns-infrastructure")
+				return false
+			}
 			writeCodedError(w, http.StatusConflict, errCodeDNSPublicationFailed,
 				"the DNS change is saved, but it could not be published or verified; check the exact DNS operation and retry the same publication", "")
 			return false

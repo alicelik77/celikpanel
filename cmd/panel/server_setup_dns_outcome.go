@@ -127,11 +127,13 @@ func serverSetupDNSAgentFailedMessage(failed *serverSetupDNSAgentFailedError) *s
 	command := serverSetupDNSStatusCommandFront + failed.RequestID
 	reason := strings.TrimSpace(failed.Reason)
 	if failed.Held {
-		message := "The CelikPanel Agent stopped this DNS operation (request " + failed.RequestID + ") without being able to verify its result, and keeps its record so that DNS changes stay blocked until it is resolved."
+		// Never "undone": the Agent released the operation with its journal
+		// kept, so neither completion nor undo is confirmed (drill apd-e).
+		message := "The DNS operation (request " + failed.RequestID + ") did not complete, and the CelikPanel Agent could not finish it or confirm that it was undone. It is not reported as undone. The Agent keeps its record of this operation, so DNS changes stay blocked until it is resolved."
 		if reason != "" {
 			message += " Agent: " + reason
 		}
-		message += " Setup is paused at this step and will not start the operation again. The server administrator should run `" + command + "` on this server and follow what it reports. Setup rechecks this same operation automatically."
+		message += " Setup is paused at this step and will not start the operation again. The server administrator should run `" + command + "` on this server and follow what it reports; it names the recovery command when one applies. Setup rechecks this same operation automatically and continues, or offers a revised plan, once its result is confirmed."
 		return &serviceOperationError{Code: serverSetupDNSRecoveryHeldCode, Message: message}
 	}
 	message := "The CelikPanel Agent recorded this DNS operation (request " + failed.RequestID + ") as failed."
@@ -140,6 +142,39 @@ func serverSetupDNSAgentFailedMessage(failed *serverSetupDNSAgentFailedError) *s
 	}
 	message += " CelikPanel has not confirmed that this server is back to its state before the operation, so setup is paused at this step and will not start the operation again. The server administrator should run `" + command + "` on this server and follow what it reports. Setup rechecks this same operation automatically and continues, or offers a new plan, once its result is confirmed."
 	return &serviceOperationError{Code: serverSetupDNSAgentFailedCode, Message: message}
+}
+
+// serverSetupDNSJournalRetainedCode: setup has not started its DNS install
+// because the Agent keeps an earlier DNS operation's journal that would
+// refuse it (drill apd-e retry, 2026-10-30). An unmet prerequisite, not a
+// failure: the step waits, nothing was started, and the runner rechecks.
+const serverSetupDNSJournalRetainedCode = "server_setup_dns_journal_retained"
+
+type serverSetupDNSJournalRetainedError struct {
+	retained *dnsSwitchJournalRetainedError
+}
+
+func (e *serverSetupDNSJournalRetainedError) Error() string {
+	return "DNS setup waits for a retained DNS switch journal: " + e.retained.Error()
+}
+
+// serverSetupDNSJournalRetainedMessage names the reason, who acts, the exact
+// check and how setup resumes. It never claims the earlier operation undone.
+func serverSetupDNSJournalRetainedMessage(e *serverSetupDNSJournalRetainedError) *serviceOperationError {
+	command := "sudo /usr/libexec/celikpanel/recovery dns-switch-status --quiesced"
+	earlier := "an earlier DNS operation"
+	if !e.retained.Unverified {
+		command += " --request-id " + e.retained.RequestID
+		earlier += " (request " + e.retained.RequestID + ")"
+	}
+	message := "Setup has not started the DNS installation: the CelikPanel Agent still keeps the record of " + earlier +
+		" that was neither finished nor confirmed undone, and that record blocks new DNS changes."
+	if e.retained.Unverified {
+		message = "Setup has not started the DNS installation: the CelikPanel Agent could not confirm that no earlier DNS operation is still recorded, and such a record would block new DNS changes."
+	}
+	message += " Nothing was started. The server administrator should run `" + command +
+		"` on this server and follow what it reports. Setup checks again automatically and starts the installation once that record is resolved."
+	return &serviceOperationError{Code: serverSetupDNSJournalRetainedCode, Message: message}
 }
 
 // serverSetupDNSUnknownFirstSeen keeps, per execution and request, when this

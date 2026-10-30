@@ -1142,10 +1142,14 @@ func renderMatrixBIND(t *testing.T, h *matrixHost) {
 // ------------------------------------------------------------- PowerDNS ---
 
 func renderMatrixPowerDNS(t *testing.T, h *matrixHost) {
-	if h.family == "pacman" {
-		h.notApplicable(t, "powerdns.all", "powerdns", "all", "cmd/agent/dns_engine_pdns_unit.go (APT only)",
-			"the PowerDNS engine switch is certified only on APT hosts; pacman hosts are refused")
-		return
+	// Arch (D-028 amendment, 2026-10-30): extra/powerdns 5.1 as a fresh
+	// first install only, standalone main, paired main or paired backup. The
+	// files are the same renders; the package keeps pdns.conf 0644 root:root
+	// and runs as powerdns. A legacy symmetric pair never existed there.
+	pacman := h.family == "pacman"
+	mainMode, pdnsUser := os.FileMode(0o640), "pdns"
+	if pacman {
+		mainMode, pdnsUser = 0o644, "powerdns"
 	}
 	stockMain := stockFile(dnsMainConf)
 	if stockMain == nil {
@@ -1191,10 +1195,15 @@ func renderMatrixPowerDNS(t *testing.T, h *matrixHost) {
 		{"paired-secondary", "directional pair, secondary", "secondary", false},
 		{"legacy-symmetric", "legacy symmetric pair (PairRole empty)", "", true},
 	} {
+		if pacman && v.legacy {
+			h.notApplicable(t, "powerdns."+v.id, "powerdns", v.variant, "cmd/agent/dns_engine_pdns_fresh_pacman_v3_linux.go",
+				"Arch runs PowerDNS only from a fresh first install; no legacy symmetric pair exists there")
+			continue
+		}
 		c := &configmatrix.Case{ID: "powerdns." + v.id, Program: "powerdns", Variant: v.variant, Validator: "powerdns",
 			Source: "internal/pdnsmanagedconf/render.go:27 Standalone / :57 DirectionalCluster; cmd/agent/dns_cluster_rpc.go:634 dnsClusterConfig",
-			Target: dnsMainConf, Extra: map[string]string{"RESTORE_DIRS": "/etc/powerdns"}}
-		c.File(dnsMainConf, mainDesired, 0o640)
+			Target: dnsMainConf, Extra: map[string]string{"RESTORE_DIRS": "/etc/powerdns", "PDNS_USER": pdnsUser}}
+		c.File(dnsMainConf, mainDesired, mainMode)
 		c.File(dnsManagedConf, standalone, 0o644)
 		c.File("/var/lib/powerdns/pdns.sqlite3", dbBytes, 0o640)
 		switch {
