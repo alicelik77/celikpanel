@@ -25,6 +25,7 @@ func TestCatalogDatabaseAcceptsEitherKnownProducerConsistently(t *testing.T) {
 		t.Fatal(err)
 	}
 	const pdnsLabel = "lf5eijnqp9ob8kmq5mv0vhjaevtcfuus"
+	const nullRow = "<NULL>"
 	type row struct {
 		name, typ, content string
 		ttl                int
@@ -51,6 +52,10 @@ func TestCatalogDatabaseAcceptsEitherKnownProducerConsistently(t *testing.T) {
 		{"duplicate label", append(base(0),
 			row{pdnsLabel + ".zones." + catalog, "PTR", member, 0},
 			row{pdnsLabel + ".zones." + catalog, "PTR", "other.test", 0}), false},
+		// Native lab 2026-10-30: PowerDNS writes the empty non-terminal
+		// zones.<catalog> with NULL type, content and ttl.
+		{"PowerDNS producer with its empty non-terminal", append(base(0), row{pdnsLabel + ".zones." + catalog, "PTR", member, 0}, row{"zones." + catalog, nullRow, "", 0}), true},
+		{"a NULL-typed row under another name", append(base(0), row{pdnsLabel + ".zones." + catalog, "PTR", member, 0}, row{"other." + catalog, nullRow, "", 0}), false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "pdns.sqlite3")
@@ -68,7 +73,12 @@ func TestCatalogDatabaseAcceptsEitherKnownProducerConsistently(t *testing.T) {
 				}
 			}
 			for _, record := range tc.rows {
-				if _, err := db.Exec("INSERT INTO records VALUES(1,?,?,?,?)", record.name, record.typ, record.content, record.ttl); err != nil {
+				statement, args := "INSERT INTO records VALUES(1,?,?,?,?)", []any{record.name, record.typ, record.content, record.ttl}
+				if record.typ == nullRow {
+					// PowerDNS's own empty non-terminal: type, content and ttl NULL.
+					statement, args = "INSERT INTO records VALUES(1,?,NULL,NULL,NULL)", []any{record.name}
+				}
+				if _, err := db.Exec(statement, args...); err != nil {
 					t.Fatal(err)
 				}
 			}
