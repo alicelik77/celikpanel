@@ -50,3 +50,43 @@ func TestEnsureDirCreatesTheReviewedModeUnderARestrictiveUmask(t *testing.T) {
 		t.Fatal("an existing directory was changed")
 	}
 }
+
+// Native lab 2026-10-30, second run: the Agent's Group=celikpanel made every
+// channel file root:celikpanel, and the inspector (which requires root:root)
+// refused its own policy. New directories and files are root:root whatever
+// group the caller or a setgid parent would give them.
+func TestEnsureDirAndWriteExclusiveAreRootRootWhateverTheGroup(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("root-owned directory test")
+	}
+	root, err := os.MkdirTemp("/root", "peer-owner-group-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(root) })
+	// A setgid parent with another group stands in for the Agent's group.
+	if err := os.Chown(root, 0, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(root, 0755|os.ModeSetgid); err != nil {
+		t.Fatal(err)
+	}
+	dir := filepath.Join(root, "channel")
+	if err := ensureDir(dir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(root, "policy.json")
+	if err := writeExclusive(file, []byte("{}\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{dir, file} {
+		st, err := os.Lstat(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		owner := st.Sys().(*syscall.Stat_t)
+		if owner.Uid != 0 || owner.Gid != 0 {
+			t.Fatalf("%s is %d:%d, want root:root", name, owner.Uid, owner.Gid)
+		}
+	}
+}
