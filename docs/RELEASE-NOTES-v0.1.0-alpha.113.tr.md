@@ -42,7 +42,17 @@ değişmedi).
   verir, Uygulamalar'ı yalnız PHP sitelerinde anar ve sunucunun yazılımı
   hakkında bir şey söylemez.
 - Alan adı eklerken "SSL'i etkinleştir" artık sertifikayı ister ve sonucu
-  gösterir (verildi, gerekçesiyle başarısız, bekliyor).
+  gösterir (verildi, gerekçesiyle başarısız, bekliyor). Sertifika etkin
+  olunca http adresi https'e yönlenir (SSL/TLS sayfasından kapatılabilir).
+  Geçerlilik başlangıcı sunucu saatinin birkaç saniye ilerisinde olan
+  sertifika beklenir; daha büyük saat farkı çıplak hata yerine açıklanır
+  (sunucu saatini denetleyin).
+- Statik olarak eklenen site PHP'ye çevrilebilir: geçiş artık sitenin kendi
+  PHP-FPM havuzunu oluşturur (önceden reddediliyordu).
+- Ziyaretçilere yazılım sürümleri söylenmez: nginx sürümünü adlandırmaz
+  (`server_tokens off;`; Ubuntu ve Arch adlandırıyordu), PHP sayfaları
+  `X-Powered-By` göndermez (Arch gönderiyordu).
+- Web posta adresi http'den https'e yönlenir.
 - nginx: HTTP/2 biçimi kurulu nginx'e uyar (Ubuntu 24.04'ün 1.24'ü
   `http2 on;` satırını reddediyordu), Mozilla ara TLS ayarları, sitesi
   olmayan adlar için varsayılan HTTPS sunucusu (nginx 1.18'de de) ve
@@ -57,6 +67,14 @@ değişmedi).
 - Posta TLS'i sunucunun tam adını kullanır; varsayılan posta sertifikalarını
   panelin kendisi üretir (`openssl` gerekmez); Arch'ta Postfix, gönderim
   açılmadan önce sunucu sertifikası alır.
+- Debian 13 (Dovecot 2.4): gelen posta IMAP'ten ve web postadan okunur.
+  Debian'ın kendi `10-mail.conf` dosyası gelen kutusunu `/var/mail`'e
+  yönlendiriyordu; CelikPanel'in ek dosyası artık posta kutusunun maildir
+  yolunu açıkça verir, mevcut sunucuda panelin bir sonraki açılışında
+  onarılır, sahibin elle değiştirdiği dosya üzerine yazılmaz, bildirilir.
+  Dağıtım matrisi artık her sürümde bir ileti teslim edip geri okur.
+- Agent, Debian'da her açılışta `postmap: fatal: unsupported map type: lmdb`
+  satırı yazmaz.
 
 **Lisans (D-039)**
 - Bir başarılı denetim, yönetimi çevrim dışı yedi güne kadar açık tutar;
@@ -111,6 +129,8 @@ değişmedi).
 - Önceki bir sürümün ZeroSSL ya da Google ile verdiği sertifikalar kendiliğinden
   taşınmaz; sertifika kartı bir kez yeniden almayı ister. Snap certbot
   kapsanmaz.
+- Roundcube giriş sayfasında kendi sürümünü gösterir; Roundcube'un bunu
+  gizleyen bir ayarı yok.
 - Otomatik silme denetimi, çift bu sürümle kurulduğunda kurulur. Daha önce
   kurulup güncellenen çift, aracın elle kullanıldığı yolu korur (güncelleme
   araç klasörünü eklemez).

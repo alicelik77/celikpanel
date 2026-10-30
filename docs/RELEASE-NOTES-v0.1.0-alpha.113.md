@@ -42,7 +42,17 @@ needed (schema 46, unchanged).
   mentions Applications only on PHP sites and says nothing about the server's
   software.
 - "Enable SSL" when adding a domain now requests the certificate and shows
-  the outcome (issued, failed with its reason, waiting).
+  the outcome (issued, failed with its reason, waiting). When the
+  certificate becomes active, http is redirected to https (it can be turned
+  off on the SSL/TLS page). A certificate that is valid from a moment a few
+  seconds ahead of the server's clock is waited for; a larger clock gap is
+  explained (check the server clock) instead of a bare error.
+- A site added as static can be switched to PHP: the switch now creates the
+  site's own PHP-FPM pool (before it was refused).
+- Visitors are not told the software versions: nginx no longer names its
+  version (`server_tokens off;`, Ubuntu and Arch named it) and PHP pages no
+  longer send `X-Powered-By` (Arch sent it).
+- The webmail address redirects http to https.
 - nginx: the HTTP/2 form follows the installed nginx (Ubuntu 24.04's 1.24
   refused `http2 on;`), Mozilla intermediate TLS, a default HTTPS server for
   names without a site (also on nginx 1.18), and an unresolvable proxy target
@@ -56,6 +66,14 @@ needed (schema 46, unchanged).
 - Mail TLS uses the full server name; the default mail certificates are made
   by the panel itself (no `openssl` needed); on Arch Postfix gets a server
   certificate before submission is enabled.
+- Debian 13 (Dovecot 2.4): delivered mail can be read over IMAP and in
+  webmail. Debian's own `10-mail.conf` pointed the inbox at `/var/mail`;
+  CelikPanel's drop-in now names the mailbox's maildir explicitly, is
+  repaired at the next Panel start on an existing server, and an
+  owner-edited drop-in is reported instead of overwritten. The distro matrix
+  now delivers a message and reads it back on every release.
+- The Agent no longer logs `postmap: fatal: unsupported map type: lmdb` at
+  every start on Debian.
 
 **License (D-039)**
 - One successful check keeps management open for up to seven days offline;
@@ -109,6 +127,8 @@ needed (schema 46, unchanged).
 - Certificates issued with ZeroSSL or Google by an earlier release are not
   moved automatically; the certificate card asks to reissue once. Snap
   certbot is not covered.
+- Roundcube shows its own version on its login page; Roundcube has no
+  setting to hide it.
 - The automatic deletion check is set up when a pair is built on this
   release. A pair installed earlier and updated keeps the owner tool path
   (the update does not add the tools directory).
