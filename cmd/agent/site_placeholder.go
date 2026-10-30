@@ -35,24 +35,21 @@ func celikPanelSitePlaceholders(domain, projectType string) (string, [][]byte) {
 
 // sitePlaceholderV2 is the welcome page since v0.1.0-alpha.113. Visitors see
 // that the address works and nothing is published yet; the owner sees, in the
-// panel's own words, where to put the site. It names no paths, versions or
-// modules (no phpinfo), runs no script, loads nothing external and follows
-// the visitor's light or dark preference. Only PHP sites have the panel's
-// Applications section, so only their page mentions it.
+// panel's own words, where to put the site. It tells visitors nothing about
+// the server: no software (not even that PHP runs), paths or versions; it runs
+// no script, loads nothing external and follows the visitor's light or dark
+// preference. The PHP page is plain HTML in index.php. Only PHP sites have
+// the panel's Applications section, so only their page mentions it.
 // Ziyaretçi adresin çalıştığını, sahip panelde neyi nereden yapacağını görür;
-// yol, sürüm, modül yazmaz; betik çalıştırmaz; dışarıdan bir şey yüklemez.
+// sunucudaki yazılımı (PHP dahil), yolu, sürümü söylemez; betik çalıştırmaz.
 // Uygulamalar bölümü yalnız PHP sitelerinde olduğundan yalnız onlarda geçer.
 func sitePlaceholderV2(domain, projectType string) []byte {
 	name := html.EscapeString(domain)
 	file := "index.html"
-	status := ""
 	stepTR := `Panelde bu sitenin <b>Dosyalar</b> bölümünden sitenizin dosyalarını yükleyin.`
 	stepEN := `Upload your site's files from this site's <b>Files</b> section in the panel.`
 	if projectType == "php" {
 		file = "index.php"
-		// The PHP line proves execution end to end without naming the version.
-		status = `
-    <p class="status"><span class="dot" aria-hidden="true"></span><?php echo 'PHP çalışıyor · <span lang="en">PHP is running</span>'; ?></p>`
 		stepTR = `Panelde bu sitenin <b>Dosyalar</b> bölümünden sitenizin dosyalarını yükleyin ya da <b>Uygulamalar</b> bölümünden WordPress gibi hazır bir uygulama kurun.`
 		stepEN = `Upload your site's files from this site's <b>Files</b> section in the panel, or install a ready-made application such as WordPress from its <b>Applications</b> section.`
 	}
@@ -64,8 +61,8 @@ func sitePlaceholderV2(domain, projectType string) []byte {
 <meta name="robots" content="noindex">
 <title>{{NAME}}</title>
 <style>
-  :root{--bg:#eef1f5;--card:#ffffff;--ink:#16213a;--muted:#5a6478;--soft:#f5f7fa;--rule:#dde2ea;--accent:#1f5fa8;--ok:#1d7a4c;color-scheme:light}
-  @media (prefers-color-scheme:dark){:root{--bg:#0d1422;--card:#141e31;--ink:#e6ebf3;--muted:#9aa5b8;--soft:#1a263c;--rule:#26334b;--accent:#86b2ea;--ok:#6ccf98;color-scheme:dark}}
+  :root{--bg:#eef1f5;--card:#ffffff;--ink:#16213a;--muted:#5a6478;--soft:#f5f7fa;--rule:#dde2ea;--accent:#1f5fa8;color-scheme:light}
+  @media (prefers-color-scheme:dark){:root{--bg:#0d1422;--card:#141e31;--ink:#e6ebf3;--muted:#9aa5b8;--soft:#1a263c;--rule:#26334b;--accent:#86b2ea;color-scheme:dark}}
   *{box-sizing:border-box}
   html,body{height:100%}
   body{margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;min-height:100vh;padding:32px 16px;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",sans-serif;-webkit-font-smoothing:antialiased}
@@ -75,8 +72,6 @@ func sitePlaceholderV2(domain, projectType string) []byte {
   p{margin:0}
   .lead{font-size:17px;color:var(--ink)}
   .en{margin-top:4px;font-size:14px;color:var(--muted)}
-  .status{display:inline-flex;align-items:center;gap:8px;margin-top:18px;padding:4px 12px;border:1px solid var(--rule);border-radius:999px;font-size:13px;color:var(--ok)}
-  .dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
   section{margin-top:28px;padding:20px 22px;background:var(--soft);border:1px solid var(--rule);border-radius:10px}
   h2{margin:0 0 12px;font-size:15px;font-weight:600}
   h2 span{font-weight:400;color:var(--muted)}
@@ -94,7 +89,7 @@ func sitePlaceholderV2(domain, projectType string) []byte {
   <p class="label">Alan adı hazır · <span lang="en">Domain ready</span></p>
   <h1>{{NAME}}</h1>
   <p class="lead">Bu adres çalışıyor. Site henüz yayımlanmadı.</p>
-  <p class="en" lang="en">This address works. The site has not been published yet.</p>{{STATUS}}
+  <p class="en" lang="en">This address works. The site has not been published yet.</p>
   <section>
     <h2>Sitenin sahibi misiniz? <span lang="en">· Own this site?</span></h2>
     <ol>
@@ -107,7 +102,7 @@ func sitePlaceholderV2(domain, projectType string) []byte {
 </body>
 </html>
 `
-	page = strings.NewReplacer("{{NAME}}", name, "{{FILE}}", file, "{{STATUS}}", status, "{{STEP_TR}}", stepTR, "{{STEP_EN}}", stepEN).Replace(page)
+	page = strings.NewReplacer("{{NAME}}", name, "{{FILE}}", file, "{{STEP_TR}}", stepTR, "{{STEP_EN}}", stepEN).Replace(page)
 	return []byte(page)
 }
 

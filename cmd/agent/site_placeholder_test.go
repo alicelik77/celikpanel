@@ -43,12 +43,14 @@ func TestSitePlaceholderV2(t *testing.T) {
 	name, page = celikPanelSitePlaceholder("shop.example.com", "php")
 	text = string(page)
 	if name != "index.php" || !strings.Contains(text, "<code>index.php</code>") ||
-		!strings.Contains(text, "<?php echo 'PHP çalışıyor · <span lang=\"en\">PHP is running</span>'; ?>") ||
 		!strings.Contains(text, "<b>Uygulamalar</b>") || !strings.Contains(text, "<b>Applications</b>") {
 		t.Fatalf("php page is not the v2 page:\n%s", text)
 	}
-	if strings.Contains(text, "PHP_VERSION") || strings.Contains(text, "phpinfo") {
-		t.Fatal("php page names the PHP version")
+	// Visitors learn nothing about the server's software, not even that PHP runs.
+	for _, leak := range []string{"<?php", "PHP", "<script", "<link", "http://", "https://"} {
+		if strings.Contains(text, leak) {
+			t.Fatalf("php page contains %q", leak)
+		}
 	}
 	_, page = celikPanelSitePlaceholder(`a<b>.example`, "static")
 	if strings.Contains(string(page), "<b>.example") {
