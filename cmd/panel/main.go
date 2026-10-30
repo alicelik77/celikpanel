@@ -1332,6 +1332,7 @@ func main() {
 	// Nginx Management
 	http.HandleFunc("/api/v1/nginx/global", panel.handleNginxGlobalConfig)
 	http.HandleFunc("/api/v1/nginx/ssl", panel.handleNginxSSLConfig)
+	http.HandleFunc(nginxDefaultHTTPSPath, panel.handleNginxDefaultHTTPS)
 	http.HandleFunc("/api/v1/ssl/providers", panel.handleACMEProviders)
 	// The two legacy endpoints remain readable for old clients. Their partial
 	// PUT contracts fail closed; all topology writes go through dns-setup.

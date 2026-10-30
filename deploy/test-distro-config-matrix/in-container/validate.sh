@@ -44,6 +44,52 @@ v_nginx() {
     [[ -n "$warn" ]] && { printf '%s\n' "$warn"; return 2; }
     return 0
 }
+# The default HTTPS server, answered for real: nginx -t, then nginx is
+# started, TLS is opened for the site's own name (KNOWN_NAME must get the
+# site's certificate: nginx is up and serving) and for a name no site has
+# (EXPECT_DEFAULT: "reject" = no certificate at all; "placeholder:<CN>" = the
+# placeholder certificate, never a site's). nginx is stopped afterwards.
+tls_subject() { # server name
+    echo | timeout 10 openssl s_client -connect 127.0.0.1:443 -servername "$1" 2>/dev/null \
+        | openssl x509 -noout -subject 2>/dev/null
+}
+v_nginx_tls_default() {
+    local rc out known unknown i
+    v_nginx; rc=$?
+    [[ $rc -eq 1 ]] && return 1
+    command -v openssl >/dev/null 2>&1 || { echo "openssl is not installed in the container (provision.sh)"; return 1; }
+    # Started in the background with its output in a file: a daemon must not
+    # inherit a command-substitution pipe (the harness would wait forever),
+    # and a stock nginx.conf may run it in the foreground (daemon off).
+    nginx >/var/log/matrix-nginx-start.log 2>&1 </dev/null &
+    local started=$!
+    for i in 1 2 3 4 5 6 7 8 9 10; do
+        timeout 1 bash -c '</dev/tcp/127.0.0.1/443' 2>/dev/null && break
+        sleep 0.5
+    done
+    known=$(tls_subject "$KNOWN_NAME")
+    unknown=$(tls_subject unknown-name.example.invalid)
+    nginx -s stop >/dev/null 2>&1 || kill "$started" 2>/dev/null
+    sleep 1
+    pkill -x nginx 2>/dev/null || true
+    wait "$started" 2>/dev/null
+    out=$(head -c 500 /var/log/matrix-nginx-start.log)
+    [[ -n "$out" ]] && printf 'nginx start: %s\n' "$out"
+    printf 'TLS for %s: %s; for a name with no site: %s\n' "$KNOWN_NAME" "${known:-no certificate}" "${unknown:-no certificate}"
+    if ! grep -Eq "CN ?= ?${KNOWN_NAME//./\\.}\$" <<<"$known"; then
+        echo "the site's own name did not get the site's certificate"
+        return 1
+    fi
+    case "${EXPECT_DEFAULT:-}" in
+    reject)
+        [[ -z "$unknown" ]] || { echo "a name with no site was shown a certificate"; return 1; } ;;
+    placeholder:*)
+        grep -Eq "CN ?= ?${EXPECT_DEFAULT#placeholder:}\$" <<<"$unknown" \
+            || { echo "a name with no site did not get the placeholder certificate"; return 1; } ;;
+    *) echo "EXPECT_DEFAULT is not set"; return 1 ;;
+    esac
+    return $rc
+}
 fpm_binary() {
     if [[ "$family" == pacman ]]; then echo php-fpm; else echo "php-fpm${PHP_VERSION}"; fi
 }
@@ -288,7 +334,7 @@ fi
 for dir in "$cases"/*/; do
     [[ -f "$dir/case.env" ]] || continue
     CASE_ID=$(basename "$dir")
-    unset PROGRAM VARIANT VALIDATOR SOURCE TARGET REASON OWNERS RESTORE_DIRS USERS PHP_VERSION ZONES PRECREATE MAIL_USERS MAIL_PASSWORD MAIL_ROOT NOTE
+    unset PROGRAM VARIANT VALIDATOR SOURCE TARGET REASON OWNERS RESTORE_DIRS USERS PHP_VERSION ZONES PRECREATE MAIL_USERS MAIL_PASSWORD MAIL_ROOT NOTE KNOWN_NAME EXPECT_DEFAULT
     # shellcheck disable=SC1090,SC1091
     . "$dir/case.env"
     case "$VALIDATOR" in

@@ -34,20 +34,65 @@ import (
 // the owner changed. It is there only while nginx serves HTTPS anyway (some
 // other server block listens on port 443), so it never makes nginx take a
 // port that something else may hold; and only while no other server block
-// already is the default server of port 443 (the owner's own choice wins,
+// default server of port 443 (the owner's own choice wins,
 // and two default servers would make nginx refuse its configuration).
+//
+// nginx older than 1.19.4 (Ubuntu 22.04 ships 1.18.0) has no
+// ssl_reject_handshake. There the default server presents a placeholder
+// certificate instead, self-signed for the reserved name
+// celikpanel-default.invalid (it names no site, so no site's name is shown
+// to a stranger), and closes the connection without an answer (444). The
+// pair is made in Go, not with the openssl command (a server need not have
+// it): /etc/nginx/celikpanel-default-https.crt and .key, the key root:root
+// 0600. The same placeholder is used when the nginx version cannot be read:
+// it works on every nginx. A pair that is there is kept, even one the owner
+// put there; one that is not a usable pair is reported, not replaced.
 //
 // CelikPanel'in varsayılan HTTPS sunucusu: sertifikası olmayan bir adla gelen
 // ziyaretçiye başka bir sitenin sertifikası gösterilmez, TLS el sıkışması
 // reddedilir. Düz nginx yapılandırmasıdır; panel olmadan da çalışır. Sahibin
 // değiştirdiği dosyaya dokunulmaz; sahibin kendi varsayılan 443 sunucusu
-// varsa bu dosya yazılmaz.
+// varsa bu dosya yazılmaz. nginx 1.19.4'ten eskiyse (Ubuntu 22.04: 1.18)
+// el sıkışma reddedilemez; o zaman hiçbir siteyi adlandırmayan, Go ile
+// üretilmiş kendinden imzalı bir yer tutucu sertifika gösterilir ve bağlantı
+// yanıtsız kapatılır.
 
 const defaultHTTPSServerFileName = "celikpanel-default-https.conf"
 
 // DefaultHTTPSServerPath is the file of CelikPanel's default HTTPS server.
 func DefaultHTTPSServerPath() string {
 	return filepath.Join(nginxBase(), "conf.d", defaultHTTPSServerFileName)
+}
+
+// DefaultHTTPSPlaceholderName is the name the placeholder certificate is
+// issued for: under .invalid (RFC 2606), a name of no site anywhere.
+const DefaultHTTPSPlaceholderName = "celikpanel-default.invalid"
+
+// DefaultHTTPSPlaceholderCertPath is the placeholder certificate of the
+// default server on nginx older than 1.19.4.
+func DefaultHTTPSPlaceholderCertPath() string {
+	return filepath.Join(nginxBase(), "celikpanel-default-https.crt")
+}
+
+// DefaultHTTPSPlaceholderKeyPath is its key (root:root 0600).
+func DefaultHTTPSPlaceholderKeyPath() string {
+	return filepath.Join(nginxBase(), "celikpanel-default-https.key")
+}
+
+// Modes of the default HTTPS server.
+const (
+	// DefaultHTTPSModeReject: ssl_reject_handshake (nginx >= 1.19.4).
+	DefaultHTTPSModeReject = "reject"
+	// DefaultHTTPSModePlaceholder: the placeholder certificate and 444.
+	DefaultHTTPSModePlaceholder = "placeholder"
+)
+
+// DefaultHTTPSMode is the mode the default server takes on this nginx.
+func DefaultHTTPSMode(features NginxFeatures) string {
+	if features.RejectHandshake() {
+		return DefaultHTTPSModeReject
+	}
+	return DefaultHTTPSModePlaceholder
 }
 
 // Outcomes of ReconcileDefaultHTTPSServer.
@@ -58,7 +103,6 @@ const (
 	DefaultHTTPSNotNeeded   = "not_needed"    // nothing serves port 443
 	DefaultHTTPSOwnerHasOne = "owner_default" // another block is the default of 443
 	DefaultHTTPSKept        = "kept"          // the file is not CelikPanel's unchanged text
-	DefaultHTTPSUnsupported = "unsupported"   // nginx older than 1.19.4, or its version unknown
 	DefaultHTTPSUnknown     = "unknown"       // nginx -T could not be read
 	DefaultHTTPSFailed      = "failed"        // nginx refused; the previous state was put back
 )
@@ -67,11 +111,17 @@ const (
 type DefaultHTTPSServerResult struct {
 	Outcome string
 	Path    string
+	// Mode is the mode written or wanted (DefaultHTTPSMode*), "" when the
+	// reconciliation stopped before it was known.
+	Mode string
 	// Detail is the reason in a sentence for the Agent's journal.
 	Detail string
 }
 
-const defaultHTTPSServerTemplate = `# CelikPanel's default HTTPS server, written by CelikPanel.
+// defaultHTTPSRejectHeader is the comment of the ssl_reject_handshake form,
+// unchanged since that form was first written, so a file already in place
+// stays CelikPanel's unchanged text.
+const defaultHTTPSRejectHeader = `# CelikPanel's default HTTPS server, written by CelikPanel.
 # A visitor who asks this server over HTTPS for a name that has no site here
 # (or for its bare IP address) has the TLS handshake refused, instead of being
 # shown another site's certificate. Plain nginx configuration: it keeps
@@ -84,7 +134,28 @@ const defaultHTTPSServerTemplate = `# CelikPanel's default HTTPS server, written
 # CelikPanel'in varsayılan HTTPS sunucusu: burada sitesi olmayan bir adla
 # gelen ziyaretçiye başka sitenin sertifikası gösterilmez, el sıkışma
 # reddedilir. Kapatmak için içeriğini kendi açıklamanızla değiştirin.
-server {
+`
+
+const defaultHTTPSPlaceholderHeader = `# CelikPanel's default HTTPS server, written by CelikPanel.
+# A visitor who asks this server over HTTPS for a name that has no site here
+# (or for its bare IP address) is shown a placeholder certificate that names
+# no site (` + DefaultHTTPSPlaceholderName + `), and the connection is closed
+# without an answer, instead of being shown another site's certificate. This
+# nginx is older than 1.19.4 (or its version could not be read), so it cannot
+# refuse the handshake itself. Plain nginx configuration: it keeps working
+# without CelikPanel. CelikPanel writes this file only while it is
+# CelikPanel's unchanged text, and only while no other server block is the
+# default server of port 443. To use your own default HTTPS server, give it
+# "default_server" and delete this file. To turn this off, replace this
+# file's contents with a comment of your own: CelikPanel never writes over a
+# file it did not write.
+# CelikPanel'in varsayılan HTTPS sunucusu: burada sitesi olmayan bir adla
+# gelen ziyaretçiye başka sitenin sertifikası değil, hiçbir siteyi
+# adlandırmayan bir yer tutucu sertifika gösterilir ve bağlantı yanıtsız
+# kapatılır. Kapatmak için içeriğini kendi açıklamanızla değiştirin.
+`
+
+const defaultHTTPSServerTemplate = `{{.Header}}server {
 {{- if eq .HTTP2 "listen"}}
     listen 443 ssl http2 default_server;
     listen [::]:443 ssl http2 default_server;
@@ -96,12 +167,23 @@ server {
     http2 on;
 {{- end}}
     server_name _;
+{{- if .Placeholder}}
+
+    ssl_certificate {{.Cert}};
+    ssl_certificate_key {{.Key}};
+{{- else}}
 
     ssl_reject_handshake on;
+{{- end}}
     # nginx negotiates with the default server's settings before it knows the
     # name asked for; these are the sites' own (Mozilla intermediate).
     ssl_session_cache shared:SSL:10m;
 {{.TLSPolicy}}
+{{- if .Placeholder}}
+
+    # Close the connection without an answer.
+    return 444;
+{{- end}}
 }
 `
 
@@ -140,11 +222,16 @@ func RenderDefaultHTTPSServer(features NginxFeatures) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	data := struct {
+		Header, HTTP2, TLSPolicy, Cert, Key string
+		Placeholder                         bool
+	}{Header: defaultHTTPSRejectHeader, HTTP2: features.HTTP2Form(), TLSPolicy: policy}
+	if DefaultHTTPSMode(features) == DefaultHTTPSModePlaceholder {
+		data.Header, data.Placeholder = defaultHTTPSPlaceholderHeader, true
+		data.Cert, data.Key = DefaultHTTPSPlaceholderCertPath(), DefaultHTTPSPlaceholderKeyPath()
+	}
 	var buf bytes.Buffer
-	err = defaultHTTPSServerParsed.Execute(&buf, struct {
-		HTTP2     string
-		TLSPolicy string
-	}{features.HTTP2Form(), policy})
+	err = defaultHTTPSServerParsed.Execute(&buf, data)
 	return buf.String(), err
 }
 
@@ -259,15 +346,9 @@ func (ng *NginxGenerator) ReconcileDefaultHTTPSServer() DefaultHTTPSServerResult
 	}
 
 	features := ng.features()
-	if !features.RejectHandshake() {
-		result.Outcome = DefaultHTTPSUnsupported
-		if features.Known {
-			result.Detail = fmt.Sprintf("nginx %s has no ssl_reject_handshake (1.19.4 and later)", features.Version)
-		} else {
-			result.Detail = "the nginx version could not be read"
-		}
-		return result
-	}
+	// features.RejectHandshake(): nginx >= 1.19.4 refuses the handshake;
+	// older (or unread) nginx shows the placeholder certificate.
+	result.Mode = DefaultHTTPSMode(features)
 
 	dump, err := ng.dumpNginx()
 	if err != nil {
@@ -287,6 +368,15 @@ func (ng *NginxGenerator) ReconcileDefaultHTTPSServer() DefaultHTTPSServerResult
 			return result
 		}
 		next = []byte(SealManagedText(body))
+		if result.Mode == DefaultHTTPSModePlaceholder {
+			// The pair first: the file never names a certificate that is
+			// not on disk.
+			if err := ensureDefaultHTTPSPlaceholderPair(); err != nil {
+				result.Outcome = DefaultHTTPSFailed
+				result.Detail = boundedSiteFileDetail("placeholder certificate: " + err.Error())
+				return result
+			}
+		}
 		if inspected.exists && bytes.Equal(inspected.content, next) {
 			result.Outcome = DefaultHTTPSUnchanged
 			return result

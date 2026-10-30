@@ -45,6 +45,9 @@ type NginxGenerator struct {
 	// nginxDump is `nginx -T` (a test seam); nil runs it
 	// (nginx_default_https.go).
 	nginxDump func() (string, error)
+	// hostResolution is the server's /etc/resolv.conf and /etc/hosts (a test
+	// seam); nil reads them (nginx_proxy_upstream.go).
+	hostResolution func() HostResolution
 }
 
 // nginxServiceActive is whether nginx runs: "true", "false" or "unknown".
@@ -110,6 +113,13 @@ type VhostData struct {
 	// HTTP2 is the HTTP/2 form of the HTTPS server blocks (NginxHTTP2*),
 	// derived by Render from the installed nginx; callers do not set it.
 	HTTP2 string
+	// ProxyOrigin, ProxyRewriteTo and ProxyResolver are the run-time lookup
+	// form of a proxy target that is a host name (nginx_proxy_upstream.go),
+	// derived by Render; ProxyOrigin is empty for the plain form. Callers do
+	// not set them.
+	ProxyOrigin    string
+	ProxyRewriteTo string
+	ProxyResolver  string
 }
 
 // Render executes the vhost template over prepared data, deriving the
@@ -124,6 +134,13 @@ func (ng *NginxGenerator) Render(data VhostData) (string, error) {
 	// Only the current template reads it; the frozen ones of earlier
 	// releases render what those releases wrote.
 	prepared.HTTP2 = ng.features().HTTP2Form()
+	if prepared.ProjectType == "proxy" {
+		if proxy, ok := runtimeResolvedProxy(prepared.Upstream, ng.proxyResolution()); ok {
+			prepared.ProxyOrigin = proxy.Origin
+			prepared.ProxyRewriteTo = proxy.RewriteTo
+			prepared.ProxyResolver = proxy.Resolver
+		}
+	}
 	var buf bytes.Buffer
 	if err := ng.tmpl.Execute(&buf, prepared); err != nil {
 		return "", fmt.Errorf("failed to execute template: %v", err)

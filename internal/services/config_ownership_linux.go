@@ -14,6 +14,15 @@ type managedFileOwnership struct {
 	gid     int
 }
 
+// rootFileOwnership is root:root when the process runs as root (the Agent);
+// a test run by another user keeps its own.
+func rootFileOwnership() managedFileOwnership {
+	if os.Geteuid() != 0 {
+		return managedFileOwnership{}
+	}
+	return managedFileOwnership{present: true}
+}
+
 func managedOwnershipFromInfo(info os.FileInfo) (managedFileOwnership, error) {
 	stat, ok := info.Sys().(*syscall.Stat_t)
 	if !ok {

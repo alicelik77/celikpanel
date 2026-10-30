@@ -255,6 +255,15 @@ func matrixVhostShapes(h *matrixHost) []matrixVhost {
 		{"site-proxy-http", "reverse proxy, HTTP only", func(r *ApplyVhostRequest) {
 			r.ProjectType, r.ForwardTo, r.PHPSocket = "proxy", "https://localhost:8443/base", ""
 		}},
+		// A host name that resolves nowhere (.invalid, RFC 2606): written in
+		// the start-time form, nginx -t failed with "host not found in
+		// upstream" and took every site down; the run-time lookup form
+		// (nginx_proxy_upstream.go) must pass, with this container's own
+		// /etc/resolv.conf as the resolver.
+		{"site-proxy-unresolvable-name", "reverse proxy to a host name that does not resolve, HTTPS + path", func(r *ApplyVhostRequest) {
+			ssl(r)
+			r.ProjectType, r.ForwardTo, r.PHPSocket = "proxy", "http://app.unresolvable-target.invalid:8080/base/", ""
+		}},
 		{"site-forwarding-http", "forwarding (301), HTTP only", func(r *ApplyVhostRequest) {
 			r.ProjectType, r.ForwardTo, r.PHPSocket = "forwarding", "https://destination.example/path", ""
 		}},
@@ -320,6 +329,14 @@ func addMatrixVhost(t *testing.T, h *matrixHost, c *configmatrix.Case, gen *serv
 }
 
 func renderMatrixNginx(t *testing.T, h *matrixHost) {
+	// The matrix measures the release's own nginx on purpose; ordinary test
+	// runs do not (webmail_address_hermetic_test.go). Without this the
+	// webmail origin was rendered without HTTP/2 beside sites with it, and
+	// nginx 1.24 warned "protocol options redefined" for a mix no real
+	// server writes.
+	savedForm := webmailAddressHTTP2Form
+	webmailAddressHTTP2Form = func() string { return services.HostNginxFeatures().HTTP2Form() }
+	t.Cleanup(func() { webmailAddressHTTP2Form = savedForm })
 	gen, err := services.NewNginxGenerator()
 	if err != nil {
 		t.Fatal(err)
@@ -408,28 +425,52 @@ func renderMatrixNginx(t *testing.T, h *matrixHost) {
 	all.File(live+"/privkey.pem", key, 0o600)
 	all.File(dbToolsConfPath, []byte(dbtools), 0o644)
 
-	// The default HTTPS server (conf.d/celikpanel-default-https.conf) refuses
-	// the handshake for names no site serves. ReconcileDefaultHTTPSServer
-	// writes it only when the measured nginx has ssl_reject_handshake and a
-	// server listens on 443; it is rendered here from the same measurement.
+	// The default HTTPS server (conf.d/celikpanel-default-https.conf) answers
+	// names no site serves: nginx >= 1.19.4 refuses the handshake, older
+	// nginx (Ubuntu 22.04's 1.18) shows a placeholder certificate that names
+	// no site. It is rendered here from the same measurement
+	// ReconcileDefaultHTTPSServer makes, and validated by starting nginx and
+	// opening TLS for the site's own name (its certificate) and for a name
+	// no site has (refused, or the placeholder).
 	features := services.HostNginxFeatures()
-	const defaultSource = "internal/services/nginx_default_https.go:138 RenderDefaultHTTPSServer (written by :246 ReconcileDefaultHTTPSServer)"
-	formNote := fmt.Sprintf("measured nginx %s: HTTP/2 form %q", features.Version, features.HTTP2Form())
-	if !features.RejectHandshake() {
-		h.notApplicable(t, "nginx.default-https-server", "nginx", "default HTTPS server", defaultSource,
-			"not written on this release: "+formNote+", and ssl_reject_handshake needs nginx 1.19.4")
-	} else if body, err := services.RenderDefaultHTTPSServer(features); err != nil {
+	const defaultSource = "internal/services/nginx_default_https.go RenderDefaultHTTPSServer (written by ReconcileDefaultHTTPSServer)"
+	mode := services.DefaultHTTPSMode(features)
+	formNote := fmt.Sprintf("measured nginx %s: HTTP/2 form %q, mode %s", features.Version, features.HTTP2Form(), mode)
+	if body, err := services.RenderDefaultHTTPSServer(features); err != nil {
 		h.renderFailure(t, "nginx.default-https-server", "nginx", "default HTTPS server", defaultSource, err)
 	} else {
 		sealed := []byte(services.SealManagedText(body))
-		c := newNginxCase(t, "default-https-server", "default HTTPS server + one HTTPS site ("+formNote+")", defaultSource, services.DefaultHTTPSServerPath(), mainPatch)
+		var placeholderCert, placeholderKey []byte
+		if mode == services.DefaultHTTPSModePlaceholder {
+			placeholderCert, placeholderKey, err = services.NewDefaultHTTPSPlaceholderPair()
+			if err != nil {
+				t.Fatalf("placeholder pair: %v", err)
+			}
+		}
+		addDefault := func(c *configmatrix.Case) {
+			c.File(services.DefaultHTTPSServerPath(), sealed, 0o644)
+			if placeholderCert != nil {
+				c.File(services.DefaultHTTPSPlaceholderCertPath(), placeholderCert, 0o644)
+				c.File(services.DefaultHTTPSPlaceholderKeyPath(), placeholderKey, 0o600)
+			}
+		}
+		c := newNginxCase(t, "default-https-server", "default HTTPS server + one HTTPS site, TLS answered for a known and an unknown name ("+formNote+")", defaultSource, services.DefaultHTTPSServerPath(), mainPatch)
+		c.Validator = "nginx-tls-default"
+		if c.Extra == nil {
+			c.Extra = map[string]string{}
+		}
+		c.Extra["KNOWN_NAME"] = "example.test"
+		c.Extra["EXPECT_DEFAULT"] = "reject"
+		if mode == services.DefaultHTTPSModePlaceholder {
+			c.Extra["EXPECT_DEFAULT"] = "placeholder:" + services.DefaultHTTPSPlaceholderName
+		}
 		if err := addMatrixVhost(t, h, c, gen, 42, 7, 19, "example.test", matrixVhostShapes(h)[3].mutate); err != nil {
 			h.renderFailure(t, c.ID, "nginx", c.Variant, vhostSource, err)
 		} else {
-			c.File(services.DefaultHTTPSServerPath(), sealed, 0o644)
+			addDefault(c)
 			h.write(t, c)
 		}
-		all.File(services.DefaultHTTPSServerPath(), sealed, 0o644)
+		addDefault(all)
 		all.Variant += " + default HTTPS server"
 	}
 	all.Variant += " (" + formNote + ")"

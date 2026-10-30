@@ -114,7 +114,22 @@
     # Reverse proxy to the application / Uygulamaya ters vekil
     location / {
 {{template "www-redirect" .}}
+{{- if .ProxyOrigin}}
+        # The application's address is a host name. nginx looks it up when a
+        # visitor arrives, with this server's DNS servers (/etc/resolv.conf),
+        # not when nginx starts: a name that does not resolve gives this
+        # site's visitors 502 and never stops nginx or the other sites.
+        # Uygulama adresi bir ad; nginx onu ziyaretçi geldiğinde çözer.
+        # Çözülemeyen ad yalnız bu sitede 502 verir, nginx'i durdurmaz.
+        resolver {{.ProxyResolver}};
+        set $celikpanel_upstream {{.ProxyOrigin}};
+{{- if .ProxyRewriteTo}}
+        rewrite (?s)^/(.*)$ {{.ProxyRewriteTo}} break;
+{{- end}}
+        proxy_pass $celikpanel_upstream;
+{{- else}}
         proxy_pass {{.Upstream}};
+{{- end}}
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;

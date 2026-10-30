@@ -41,6 +41,15 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			// alpha.113: the default HTTPS server's "Try again".
+			name: "ReconcileDefaultHTTPSServerV1",
+			run: func(expected string) string {
+				var response transport.ReconcileDefaultHTTPSServerResponse
+				_ = agent.ReconcileDefaultHTTPSServerV1(&transport.ReconcileDefaultHTTPSServerRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
 			name: "InspectSiteFile",
 			run: func(expected string) string {
 				var response transport.InspectSiteFileResponse
