@@ -7207,6 +7207,21 @@ aynı işlemi döndürür.
   Kurulu bir sunucuda ölçülmedi. **Hiçbir P0 işi kapanmaz ya da ilerlemez**; P0.1–P0.5
   kısmi kalır ve her açık kabul işi açık kalır.
 
+### Dal fix/site-cert-native-renewal (web sitesi sertifikalarını işletim sisteminin certbot'u yeniler; Ajan sertifika verme, yenileme durumu ve lineage yolları; şema değişikliği yok; ilke 1, 2 ve 3; D-039; D-022; D-024; D-031; 30 Ekim 2026)
+
+İlke 1: bu değişiklikle verilen web sitesi sertifikası `/etc/letsencrypt` içinde,
+işletim sisteminin zamanlayıcısıyla yenilenen bir certbot lineage'ıdır; nginx live
+dosyaları adlandırır, düz sh kancası nginx'i yeniden yükler; Panel ve Ajan gerekmez.
+İlke 2: yenileme durumu işletim sisteminin kendi dosyalarından okunur; bilinmeyen
+hiçbir şey kaydetmez, bilinen hatanın yerini almaz; sahibin değiştirdiği ayar
+`owner_configured` olarak söylenir ve korunur. İlke 3: Ajan yerel lineage'ı yenilemez;
+yerine yenisi gelen lineage'a `autorenew = False` yazılır. Şema yok (46); ek
+`renewal_status` değerleri `os_<durum>`. Önceki sürüme dönüşte yerel dosyalar sunmaya
+ve yenilenmeye devam eder. Kanıt: bileşen testleri ve atılabilir Debian 13 chroot'ta
+Pebble'a karşı bir deneme ([deploy/e2e/d039](../deploy/e2e/d039/README.md)). P0.5 yalnız
+web sitesi yenilemesi için ilerledi; Panel'siz posta SNI yenilemesi, yeniden başlatma
+ve kalan matris açık; P0.1–P0.5 kısmi kalır.
+
 ### Aday v0.1.0-alpha.111 (Beta 1 kurulumu: kurulum sihirbazı v2, kodla katılma, kurulum bağlantısı, DNS sayfası; Ajan DNS kurulumu, geri alma, sertifika ve nokta güncellemesi yolları; şema değişikliği yok; ilke 1, 2, 4 ve 6; D-021 değişiklikleri; D-022; D-024; D-025; D-028 değişikliği; 29 Ekim 2026)
 
 D-025 ilke 1 (sahip yetkisini ve çalışan hizmetlerini korur): iki sunucu DNS'i DNS

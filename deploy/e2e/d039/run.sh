@@ -120,7 +120,7 @@ cat >"$root/root/pebble.json" <<EOF
   "certificateValidityPeriod": 86400
 }}
 EOF
-inchroot /bin/sh -c 'PEBBLE_VA_NOSLEEP=1 setsid pebble -config /root/pebble.json >/root/pebble.log 2>&1 </dev/null &'
+inchroot /bin/sh -c 'PEBBLE_VA_NOSLEEP=1 PEBBLE_AUTHZREUSE=0 setsid pebble -config /root/pebble.json >/root/pebble.log 2>&1 </dev/null &'
 for _ in $(seq 1 50); do inchroot curl -fsS https://localhost:14000/dir >/dev/null 2>&1 && break; sleep 0.2; done
 inchroot curl -fsS https://localhost:14000/dir >>"$out/run.log" || fail "pebble did not start"
 

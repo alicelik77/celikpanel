@@ -10440,3 +10440,30 @@ aranır, asla iki kez gönderilmez. İşlem sırasında panel yeniden başlarsa 
 sunucunun durumundan salt okunarak uzlaştırılır. Kurulu panelleri yalnız sahipleri,
 panelin kendi güncelleme ekranından günceller. P0.1–P0.5 **kısmi** kalır; bu girdi
 hiçbir şeyi kapatmaz ve ilerletmez.
+
+### Web sitesi sertifikalarını işletim sistemi yeniler (D-039, 30 Ekim 2026)
+
+`fix/site-cert-native-renewal` dalında kaynakta (yayımlanmadı; kurulu sunucuda
+ölçülmedi). **Kim yapar:** çoğunlukla kimse: web sitesi sertifikasını certbot'un kendi
+zamanlayıcısı yeniler ve nginx'i yeniden yükler; CelikPanel durduğunda ya da
+kaldırıldığında da. Sertifika kartındaki **Yenileyen** satırı kimin yenilediğini
+söyler; sunucu yöneticisi gerektiğinde kart önce nedeni, sonra kimin yapacağını,
+somut sonraki adımı ve CelikPanel'in durumu sayfa açıldığında ve 12 saatte bir yeniden
+okuduğunu söyler. Pano alan adını gün sayısından bağımsız listeler.
+
+- **certbot'un son yenilemesi başarısız:** adların bu sunucuyu gösterdiğini ve 80
+  numaralı bağlantı noktasına ulaşılabildiğini sağlayın, sonra `sudo certbot renew
+  --cert-name <lineage>` ya da bir sonraki zamanlanmış çalışmayı bekleyin.
+- **Yenileme gecikti:** `sudo systemctl status certbot.timer`, sonra `sudo certbot
+  renew --cert-name <lineage>`.
+- **Yenilemeyi çalıştıran bir şey yok:** `sudo systemctl enable --now certbot.timer`.
+- **Yenilendi, ancak eski sertifika sunuluyor:** `sudo nginx -t` nedeni gösterir;
+  düzeltin, sonra `sudo systemctl reload nginx`.
+- **Kanca yok ya da değiştirildi / otomatik yenileme kapalı / ayarlar dışarıda
+  değiştirildi / sertifika yok ya da süresi doldu / durum bilinmiyor / önceki sürümün
+  sertifikası:** kart her biri için somut adımı söyler (yeniden alma, anahtarı açma,
+  olduğu gibi bırakma).
+
+**Nasıl devam edilir:** durumu okumak hiçbir şeyi değiştirmez ve yenileme başlatmaz;
+yeniden deneme certbot'un bir sonraki zamanlanmış çalışmasıdır. Kurulu paneller yalnız
+sahiplerince panelin kendi güncelleme ekranından güncellenir. P0.1–P0.5 **kısmi** kalır.

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -86,6 +87,8 @@ type nativeRenewalAgent struct {
 	state transport.SiteCertificateRenewalStateResponse
 	err   error
 	calls []transport.SiteCertificateRenewalStateRequest
+	// autoRenew records SetSiteCertificateAutoRenewV1 calls.
+	autoRenew []transport.SetSiteCertificateAutoRenewRequest
 }
 
 func (a *nativeRenewalAgent) SiteCertificateRenewalStateV1(req *transport.SiteCertificateRenewalStateRequest, resp *transport.SiteCertificateRenewalStateResponse) error {
@@ -97,6 +100,69 @@ func (a *nativeRenewalAgent) SiteCertificateRenewalStateV1(req *transport.SiteCe
 	}
 	*resp = a.state
 	return nil
+}
+
+func (a *nativeRenewalAgent) SetSiteCertificateAutoRenewV1(req *transport.SetSiteCertificateAutoRenewRequest, resp *transport.SetSiteCertificateAutoRenewResponse) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.autoRenew = append(a.autoRenew, *req)
+	resp.Changed = true
+	return nil
+}
+
+func TestObserveNativeSiteCertificatesRetiresReplacedLineages(t *testing.T) {
+	panel, subscriptionID := newStartupVhostBatchFixture(t)
+	domainID := addStartupHostedDomain(t, panel, subscriptionID, "native-retire.example", "static")
+	replaced := "celikpanel-site-" + strconv.Itoa(domainID) + "-ffffffffffffffffffffffff"
+	full, key, chain := transport.NativeSiteLineagePaths(replaced)
+	if _, err := panel.db.GetDB().Exec(`
+		INSERT INTO ssl_certificates (domain_id, type, cert_path, key_path, chain_path, lineage_name,
+			issued_at, expires_at, auto_renew, status)
+		VALUES (?, 'letsencrypt', ?, ?, ?, ?, '2026-09-01T00:00:00Z', '2026-12-01T00:00:00Z', true, 'revoked')`,
+		domainID, full, key, chain, replaced); err != nil {
+		t.Fatal(err)
+	}
+	agent := &nativeRenewalAgent{serviceOperationTestAgent: newServiceOperationTestAgent()}
+	attachStartupVhostBatchAgent(t, panel, agent)
+	panel.runDueCertRenewals()
+	agent.mu.Lock()
+	defer agent.mu.Unlock()
+	if len(agent.autoRenew) != 1 || agent.autoRenew[0].LineageName != replaced || agent.autoRenew[0].AutoRenew ||
+		agent.autoRenew[0].DomainID != domainID {
+		t.Fatalf("calls = %+v", agent.autoRenew)
+	}
+}
+
+func TestRenewalSettingOfANativeCertificateWritesCertbotsOwnSetting(t *testing.T) {
+	panel, subscriptionID := newStartupVhostBatchFixture(t)
+	domainID := addStartupHostedDomain(t, panel, subscriptionID, "native-setting.example", "static")
+	lineage := "celikpanel-site-" + strconv.Itoa(domainID) + "-00112233445566778899aabb"
+	full, key, chain := transport.NativeSiteLineagePaths(lineage)
+	if _, err := panel.db.GetDB().Exec(`
+		INSERT INTO ssl_certificates (domain_id, type, cert_path, key_path, chain_path, lineage_name,
+			issued_at, expires_at, auto_renew, status)
+		VALUES (?, 'letsencrypt', ?, ?, ?, ?, '2026-10-01T00:00:00Z', '2026-12-30T00:00:00Z', true, 'active')`,
+		domainID, full, key, chain, lineage); err != nil {
+		t.Fatal(err)
+	}
+	agent := &nativeRenewalAgent{serviceOperationTestAgent: newServiceOperationTestAgent()}
+	attachStartupVhostBatchAgent(t, panel, agent)
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPut, "/api/v1/domains/x/ssl/renewal", strings.NewReader(`{"auto_renew": false}`))
+	panel.handleSSLRenewalSetting(recorder, request, domainID)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", recorder.Code, recorder.Body.String())
+	}
+	agent.mu.Lock()
+	calls := append([]transport.SetSiteCertificateAutoRenewRequest(nil), agent.autoRenew...)
+	agent.mu.Unlock()
+	if len(calls) != 1 || calls[0].LineageName != lineage || calls[0].AutoRenew {
+		t.Fatalf("calls = %+v", calls)
+	}
+	var autoRenew bool
+	if err := panel.db.GetDB().QueryRow(`SELECT auto_renew FROM ssl_certificates WHERE domain_id = ?`, domainID).Scan(&autoRenew); err != nil || autoRenew {
+		t.Fatalf("ledger auto_renew = %v %v", autoRenew, err)
+	}
 }
 
 func TestObserveNativeSiteCertificatesRecordsWhatTheOperatingSystemDid(t *testing.T) {

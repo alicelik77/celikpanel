@@ -77,7 +77,6 @@ func writeNativeLineage(t *testing.T, lineage string, generation int, leaf, key,
 	}
 }
 
-
 // A renewal configuration as certbot 4.0 (Debian 13) writes it.
 const testRenewalConf = `# renew_before_expiry = 30 days
 version = 4.0.0
@@ -706,6 +705,45 @@ func TestIssueNativeSiteCertificateUsesAFreshLineageAndReportsRenewal(t *testing
 	issueNativeSiteCertificate(IssueLetsEncryptRequest{Domain: "example.test", DomainID: 42, AutoRenew: true}, "/w", &failed)
 	if failed.Success || !transport.NativeSiteLineageBelongsTo(failed.LineageName, 42) || failed.Failure != transport.CertificateFailureValidation {
 		t.Fatalf("failed = %+v", failed)
+	}
+}
+
+func TestSetSiteCertificateAutoRenewWritesCertbotsSetting(t *testing.T) {
+	nativeSiteTestStore(t)
+	leaf, key := makeCertificatePair(t, "ecdsa", []string{"example.test"})
+	writeNativeLineage(t, testNativeLineage, 1, leaf, key, leaf, testRenewalConf)
+	var resp transport.SetSiteCertificateAutoRenewResponse
+	if err := (&Agent{}).SetSiteCertificateAutoRenewV1(&transport.SetSiteCertificateAutoRenewRequest{
+		DomainID: 42, LineageName: testNativeLineage, AutoRenew: false,
+	}, &resp); err != nil || resp.Error != "" || !resp.Changed {
+		t.Fatalf("resp=%+v err=%v", resp, err)
+	}
+	content, _ := os.ReadFile(nativeSiteRenewalConfPath(testNativeLineage))
+	if conf, _ := parseNativeSiteRenewalConf(content); conf.AutoRenew {
+		t.Fatal("certbot would still renew")
+	}
+	resp = transport.SetSiteCertificateAutoRenewResponse{}
+	_ = (&Agent{}).SetSiteCertificateAutoRenewV1(&transport.SetSiteCertificateAutoRenewRequest{
+		DomainID: 43, LineageName: testNativeLineage, AutoRenew: true,
+	}, &resp)
+	if resp.Error == "" {
+		t.Fatal("another domain's lineage was changed")
+	}
+	// A lineage that is gone renews nothing: "off" is satisfied.
+	gone := "celikpanel-site-42-ffffffffffffffffffffffff"
+	resp = transport.SetSiteCertificateAutoRenewResponse{}
+	_ = (&Agent{}).SetSiteCertificateAutoRenewV1(&transport.SetSiteCertificateAutoRenewRequest{
+		DomainID: 42, LineageName: gone, AutoRenew: false,
+	}, &resp)
+	if resp.Error != "" || resp.Changed {
+		t.Fatalf("resp = %+v", resp)
+	}
+	resp = transport.SetSiteCertificateAutoRenewResponse{}
+	_ = (&Agent{}).SetSiteCertificateAutoRenewV1(&transport.SetSiteCertificateAutoRenewRequest{
+		DomainID: 42, LineageName: gone, AutoRenew: true,
+	}, &resp)
+	if resp.Error == "" {
+		t.Fatal("switching renewal on for a missing lineage must say so")
 	}
 }
 

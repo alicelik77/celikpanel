@@ -19,6 +19,131 @@ Code decisions live in git; this file is for strategy. Newest first.
 > D-029. Entries written after this note use the clock date; a dated entry from 10, 11 or
 > 12 October 2026 other than D-029 is genuine.
 
+## D-039 · A website certificate is renewed by the operating system's certbot, not by the Panel
+
+*2026-10-30 (clock date) · Correction of an invariant violation found in source; in source on branch `fix/site-cert-native-renewal`, component-tested and one disposable chroot run against a local test CA; not published, nothing measured on an installed server*
+
+**What was wrong.** D-022 and the constitution (§2) require that panel outage,
+license loss or removal never stops certificate renewal. Every ACME website
+certificate was kept in CelikPanel's isolated certbot store
+(`/etc/celikpanel/certbot`, `/var/lib/celikpanel/certbot`,
+`/var/log/celikpanel/certbot`), copied into an immutable snapshot under
+`/etc/ssl/celikpanel/<domain>/sha256-…/` that nginx named, and renewed only by a
+goroutine in the running Panel every 12 hours. The operating system's
+`certbot.timer` never saw those lineages, and a renewed one could only be served
+after the Panel re-rendered the vhost. With the Panel stopped or removed every site
+certificate expired within 90 days. A failed renewal only wrote
+`renewal_status = 'failed'`; nothing told anyone.
+
+**Decision (planner's, on the owner's standing direction of D-022 and D-025).**
+
+1. **Native store, fresh lineage.** Every website certificate this release issues,
+   first or replacement, is a certbot lineage in the standard store
+   `/etc/letsencrypt`, named `celikpanel-site-<domain id>-<24 hex>`
+   (`transport.IsNativeSiteLineage`). The authenticator is `webroot` with the site's
+   own root-owned challenge root
+   (`/var/lib/celikpanel-agent/acme-http-01/subscriptions/<s>/domains/<d>`), served
+   by the plain nginx file `/etc/nginx/celikpanel-managed.d/<domain>/acme-http-01.conf`
+   that every server block of the site includes. certbot itself writes the renewal
+   configuration (authenticator, `[[webroot_map]]`, ACME server, account). A failed
+   replacement never touches the lineage being served.
+2. **nginx names certbot's live files** (`/etc/letsencrypt/live/<lineage>/fullchain.pem`,
+   `privkey.pem`), so a renewal needs no re-render. The Agent accepts such paths only
+   for the lineage of the same domain identity, only when every live link resolves
+   into that lineage's own `archive/` directory and the key matches.
+3. **Renewal is the operating system's.** `certbot.timer` (Debian, Ubuntu),
+   `certbot-renew.timer`, `snap.certbot.renew.timer` or `/etc/cron.d/certbot` runs
+   `certbot renew`. Issuance enables the timer when it can and says so when it
+   cannot (`renewal_warning`). The Agent refuses to renew a native lineage
+   (`ErrNativeSiteRenewal`), so two renewers never race on one lineage.
+4. **One deploy hook, plain sh, no CelikPanel program:**
+   `/etc/letsencrypt/renewal-hooks/deploy/celikpanel-site-certificates` (root 0755,
+   first line `# celikpanel-site-deploy-hook v1`). For `celikpanel-site-*` lineages
+   only, it runs `nginx -t`, reloads nginx when the test passes, writes one record
+   `/var/lib/celikpanel-site-certificates/<lineage>` (`format=celikpanel-site-deploy-v1`,
+   time, outcome) and exits non-zero when nginx could not load the certificate
+   (certbot 4.0 logs that as a hook warning and still exits 0, measured; the record
+   is what tells the Panel). It is written only when absent;
+   a file the owner changed or removed is kept and named on the page (D-031 style:
+   detected, never overwritten).
+5. **EAB never leaves the issuing run.** ZeroSSL and Google Trust Services
+   credentials go to certbot through a 0600 `--config` file in a 0700 temporary
+   directory removed after the run; they are not on certbot's command line (which
+   certbot logs) and certbot does not copy them into the renewal configuration. The
+   account certbot registers with them stays in `/etc/letsencrypt/accounts`.
+6. **The Panel observes, records and tells.** The 12-hour job (and every opening of
+   the certificate page) reads `Agent.SiteCertificateRenewalStateV1` (read only):
+   certbot's renewal configuration, the certificate the live files name, the deploy
+   record, certbot's own newest "Failed to renew certificate <lineage>" log line, and
+   the scheduler. One state comes out: `scheduled`, `renewed`, `failed`, `overdue`,
+   `expired`, `scheduler_missing`, `disabled`, `deploy_incomplete`, `hook_missing`,
+   `hook_changed`, `owner_configured` (renewal settings changed outside CelikPanel;
+   kept), `lineage_missing`, `unknown`. A later expiry than the ledger's is recorded
+   as a renewal; unknown records nothing and never replaces a known failure; an
+   activation outbox state is never overwritten. The certificate card shows the
+   reason, who acts (the server administrator), the concrete next action
+   (`sudo certbot renew --cert-name <lineage>`, `sudo systemctl enable
+   --now certbot.timer`, `sudo nginx -t` and `sudo systemctl reload nginx`, Reissue)
+   and how it resumes; the Dashboard lists every problem state whatever the days.
+7. **"Renew automatically"** writes certbot's own `autorenew = True|False` line in
+   the lineage's `[renewalparams]`; nothing else in the file changes.
+8. **Mail SNI** (a site certificate that also secures `mail.<domain>`): the mail SNI
+   contract names immutable snapshots only, so the Panel copies what the lineage
+   serves (`Agent.SnapshotSiteCertificateV1`, content-addressed) and publishes it
+   when it observes a renewal and at every start. **Open:** while the Panel is
+   stopped Postfix and Dovecot keep the previous copy, so mail SNI of a site
+   certificate expires up to one lifetime after the Panel stops. Making the hook
+   republish it needs the mail TLS artifact contract to accept native lineages; not
+   done here.
+9. **Certificates of earlier releases** (lineage named after the domain or
+   `cp-site-…`, snapshot paths) are **kept renewing by the running Panel exactly as
+   before, until they are reissued**. They are not migrated automatically: a
+   migration would have to issue a new certificate (a certbot lineage cannot be
+   moved between stores without rewriting certbot's own files) and change the
+   served vhost on every site at once; the owner reinstalls the test servers anyway,
+   and the card says on each such certificate that only the running Panel renews it
+   and that one Reissue moves it to the operating system. Reissuing creates the
+   native lineage; the earlier lineage stays in the isolated store as the rollback
+   record its ledger row is (nothing renews a replaced row). A replaced *native*
+   lineage keeps its files for the same reason, and the Panel writes
+   `autorenew = False` into it, so the operating system does not keep renewing a
+   certificate nothing serves.
+
+**Contracts.** No schema change (46). `ssl_certificates.renewal_status` gains the
+additive values `os_<state>`; `cert_path` of a native row is certbot's live full
+chain, `lineage_name` the native lineage. New Agent RPCs
+`SiteCertificateRenewalStateV1` (read), `SetSiteCertificateAutoRenewV1` and
+`SnapshotSiteCertificateV1` (certificate mutation, build-gated);
+`IssueLetsEncryptCertificate` now always issues into the native store;
+`DeleteCertLineage` and `ReconcileSiteCertLineages` accept native names. New on-disk
+artifacts: the deploy hook v1 and the deploy record v1.
+
+**Going back to an earlier release.** The native files keep serving and renewing.
+That release's Agent refuses the live path when it re-renders the site's vhost (the
+file on disk stays as it is and keeps serving), its renewal job records the native
+certificate as failed (it cannot renew it; the OS still does), and its lineage
+cleanup never names a native lineage. Forward again, everything is read as it is.
+
+**Removal of the Panel.** Retain `/etc/letsencrypt`, the deploy hook, the site's
+nginx files including `/etc/nginx/celikpanel-managed.d/<domain>/` and the challenge
+roots under `/var/lib/celikpanel-agent/acme-http-01/` (no uninstaller exists yet; any
+future one must keep them). The record directory is optional.
+
+**Evidence and limits.** Component tests (Agent, Panel, web). One real-system run in
+a disposable Debian 13 chroot with Debian's certbot 4.0.0, nginx 1.26 and Pebble
+2.6.0 as the CA, EAB required ([deploy/e2e/d039](../deploy/e2e/d039/README.md)):
+the Agent's own code issued; certbot's dry run, then the timer's own command
+renewed and nginx served the new certificate with no CelikPanel program present; a
+failed renewal and an nginx that could not load the renewed certificate were read
+as `failed` and `deploy_incomplete`. **Not shown:** a systemd-driven timer firing on
+a booted system, Ubuntu (snap certbot) and Arch, a real CA, the Panel's observer
+against a real Agent, mail SNI renewal with the Panel absent, reboot. P0.5 is
+advanced for websites only; it stays partial and every open acceptance item stays
+open. The update pause of `deploy/panel-tls-snapshot.sh` also holds the website
+renewal for the length of an update, as it already did for webmail and mail.
+
+---
+
 ### Amendment (2026-10-26, clock date): webmail on its own address, served by the server's own web server; implemented in source for the v0.1.0-alpha.110 candidate
 
 The owner approved on 2026-10-26: webmail must not run on the panel's origin, where

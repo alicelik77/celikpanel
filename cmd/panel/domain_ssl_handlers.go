@@ -1443,7 +1443,15 @@ func (p *Panel) handleSSLRenewalSetting(
 			// D-039: certbot's own configuration decides; the ledger
 			// follows only after certbot's file says the same.
 			if err := p.setNativeSiteAutoRenew(r.Context(), domainID, lineage, *req.AutoRenew); err != nil {
-				writeAgentError(w, err, "certbot's renewal setting could not be changed")
+				var refused *nativeSiteAgentRefusal
+				if errors.As(err, &refused) {
+					// The Agent answered: say what certbot's file did not
+					// take; nothing was changed in the Panel either.
+					writeClientError(w, http.StatusConflict,
+						"automatic renewal was not changed: "+refused.detail+"; the server administrator checks /etc/letsencrypt/renewal/"+lineage+".conf")
+					return
+				}
+				writeServerError(w, err)
 				return
 			}
 		}

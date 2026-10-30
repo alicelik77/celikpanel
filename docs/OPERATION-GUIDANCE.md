@@ -10467,3 +10467,39 @@ and a lost answer is looked up, never sent twice. A panel restart during it is
 reconciled read only from the server's state. Installed panels are updated only by
 their owners from the panel's own update screen. P0.1–P0.5 stay **partial**; this
 entry closes and advances nothing.
+
+### Website certificates renewed by the operating system (D-039, 2026-10-30)
+
+In source on branch `fix/site-cert-native-renewal` (not published; nothing measured
+on an installed server). **Who acts:** usually nobody: certbot's own timer renews a
+website certificate and reloads nginx, also while CelikPanel is stopped or removed.
+The certificate card's **Renewal** line says who renews it; when something needs the
+server administrator, the card says the reason first, then who acts, the concrete
+next action and that CelikPanel reads certbot's state again when the page opens and
+every 12 hours. The Dashboard lists the domain whatever the days.
+
+- **certbot's last renewal failed** (with certbot's own reason): make every name of
+  the certificate point to this server and port 80 reachable, then `sudo certbot
+  renew --cert-name <lineage>` (it renews only a certificate that is due) or wait for
+  the next scheduled run. Its log: `/var/log/letsencrypt/letsencrypt.log`.
+- **Renewal is overdue** (due, not renewed, no failure recorded): `sudo systemctl
+  status certbot.timer`, then `sudo certbot renew --cert-name <lineage>`.
+- **Nothing on this server runs certbot's renewal:** `sudo systemctl enable --now
+  certbot.timer` (on some systems `certbot-renew.timer`).
+- **Renewed, but the web server still serves the previous certificate:** nginx's
+  configuration test failed after the renewal; `sudo nginx -t` shows why, fix it,
+  then `sudo systemctl reload nginx`.
+- **The reload hook is missing or was changed:** Reissue puts CelikPanel's hook back
+  when it is missing; a changed one is the owner's and is kept.
+- **Automatic renewal is off in certbot:** switch "Enable automatic renewal" on; it
+  writes certbot's own `autorenew` line.
+- **Renewal settings changed outside CelikPanel:** kept as they are; renewal is
+  judged from the certificate's dates.
+- **certbot no longer has this certificate / expired:** Reissue it.
+- **Renewal state not known:** nothing is concluded; the page reads it again.
+- **A certificate of an earlier release:** renewed only while CelikPanel runs;
+  Reissue it once and the operating system renews the new one.
+
+**How work resumes:** reading the state never changes anything and never starts a
+renewal; certbot's next scheduled run is the retry. Installed panels are updated only
+by their owners from the panel's own update screen. P0.1–P0.5 stay **partial**.

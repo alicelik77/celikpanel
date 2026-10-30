@@ -73,8 +73,10 @@ const (
 // renewed lineage with RENEWED_LINEAGE set; this one acts only on
 // celikpanel-site-* lineages. It tests nginx's configuration before
 // reloading, records the outcome in one small file the Panel reads, and
-// exits non-zero when nginx could not load the renewed certificate, so
-// certbot's own run (and its systemd unit) is marked failed.
+// exits non-zero when nginx could not load the renewed certificate. certbot
+// 4.0 logs that as "Hook 'deploy-hook' ran with error output" (a warning)
+// and still exits 0 (measured, deploy/e2e/d039), so the record file, not
+// certbot's exit status, is what tells the Panel.
 const nativeSiteDeployHook = nativeSiteHookVersionLine + `
 # Managed by CelikPanel. certbot runs this after it renewed a certificate
 # (certbot.timer or cron). For website certificates named celikpanel-site-*

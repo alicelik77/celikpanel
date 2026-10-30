@@ -19,6 +19,42 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 > kayıtlar saat tarihini kullanır; D-029 dışında 10, 11 veya 12 Ekim 2026 tarihli bir
 > kayıt gerçektir.
 
+## D-039 · Web sitesi sertifikasını Panel değil, işletim sisteminin certbot'u yeniler
+
+*30 Ekim 2026 (saat tarihi) · Kaynakta bulunan bir ilke ihlalinin düzeltmesi; `fix/site-cert-native-renewal` dalında kaynakta, bileşen testli ve yerel bir test CA'ya karşı atılabilir bir chroot denemesi; yayımlanmadı, kurulu sunucuda ölçülmedi. Ayrıntı: [D-039 (İngilizce)](DECISIONS.md)*
+
+**Yanlış olan.** D-022 ve anayasa (§2), panel kesintisinin, lisans kaybının ya da
+kaldırılmasının sertifika yenilemesini durdurmamasını ister. Her ACME web sitesi
+sertifikası CelikPanel'in yalıtılmış certbot deposunda tutuluyor, nginx'in
+adlandırdığı değişmez bir kopyaya (`/etc/ssl/celikpanel/<alan>/sha256-…/`) alınıyor ve
+yalnız çalışan Panel'in 12 saatlik döngüsüyle yenileniyordu. İşletim sisteminin
+`certbot.timer`'ı bu lineage'ları görmüyordu. Panel durursa ya da kaldırılırsa her site
+sertifikası en geç 90 günde bitiyordu; başarısız yenileme yalnız veritabanına
+`failed` yazıyor, kimseye söylenmiyordu.
+
+**Karar.** Bu sürümün verdiği her web sitesi sertifikası standart depoda
+(`/etc/letsencrypt`) kendi lineage'ı olur (`celikpanel-site-<alan kimliği>-<24 hex>`),
+webroot doğrulaması sitenin root'a ait doğrulama kökünden yapılır; yenileme
+yapılandırmasını certbot kendisi yazar. nginx certbot'un live dosyalarını adlandırır;
+yenilemeyi işletim sisteminin zamanlayıcısı yapar; CelikPanel programı gerektirmeyen
+düz sh dağıtım kancası
+(`/etc/letsencrypt/renewal-hooks/deploy/celikpanel-site-certificates`) `nginx -t`
+sonrası nginx'i yeniden yükler ve sonucu kaydeder. Kanca yalnız yoksa yazılır;
+sahibin değiştirdiği kanca korunur ve sayfada söylenir. EAB bilgileri komut satırına
+ve yenileme yapılandırmasına girmez (0600 geçici `--config` dosyası). Panel yerel bir
+lineage'ı asla yenilemez; yalnız okur ve kaydeder; sertifika kartı nedeni, kimin
+yapacağını (sunucu yöneticisi), somut sonraki adımı ve nasıl devam edileceğini
+söyler; Pano her sorunu gün sayısından bağımsız listeler. Önceki sürümlerin
+sertifikaları yeniden alınana kadar çalışan Panel tarafından eskisi gibi yenilenir;
+kart bunu ve bir kez yeniden almanın onları işletim sistemine taşıdığını söyler.
+
+**Açık kalanlar.** Panel dururken posta SNI kopyası yenilenmez (posta TLS sözleşmesi
+yalnız değişmez kopyaları adlandırır); systemd ile açılmış bir sistemde zamanlayıcının
+kendisi, Ubuntu (snap) ve Arch, gerçek bir CA, yeniden başlatma ölçülmedi. Şema
+değişikliği yok (46). P0.5 yalnız web siteleri için ilerledi; kısmi kalır.
+
+---
+
 ### Değişiklik (26 Ekim 2026, saat tarihi): web postası kendi adresinde, sunucunun kendi web sunucusuyla; v0.1.0-alpha.110 adayı için kaynakta uygulandı
 
 Sahip 26 Ekim 2026'da onayladı: web postası panelin kökeninde çalışmamalı; orada

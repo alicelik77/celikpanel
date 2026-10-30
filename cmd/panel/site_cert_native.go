@@ -291,7 +291,13 @@ func (p *Panel) setNativeSiteAutoRenew(ctx context.Context, domainID int, lineag
 		return err
 	}
 	if resp.Error != "" {
-		return errors.New(resp.Error)
+		return &nativeSiteAgentRefusal{detail: resp.Error}
 	}
 	return nil
 }
+
+// nativeSiteAgentRefusal is the Agent's own answer (it was reached and
+// refused), as distinct from a call that did not reach it.
+type nativeSiteAgentRefusal struct{ detail string }
+
+func (e *nativeSiteAgentRefusal) Error() string { return e.detail }
