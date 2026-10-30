@@ -158,6 +158,10 @@ type Panel struct {
 	dkimAutoRunning     bool
 	dkimAutoAgain       bool
 	automaticDKIMKicked func()
+	// deletionsRunning: domain deletion requests running in this process,
+	// so a status read says "running" instead of a moment of its state
+	// (domain_deletion_running.go).
+	deletionsRunning domainDeletionsRunning
 	// dnsEnginePreviews holds short-lived, one-use authorizations for the
 	// separately confirmed DNS engine cutover endpoint.
 	dnsEnginePreviews dnsEnginePreviewCache

@@ -205,6 +205,16 @@ func (p *Panel) handleDomainDeletionStatus(w http.ResponseWriter, r *http.Reques
 		})
 		return
 	}
+	if p.deletionsRunning.isRunning(domainID) {
+		// The request is still working and re-checks by itself; what it
+		// saved so far is not its outcome (D-024).
+		_ = json.NewEncoder(w).Encode(domainDeletionStatusResponse{
+			Status: domainDeletionPendingStatus, Stage: domainDeletionRunningStage,
+			Reason:  domainDeletionRunningReason,
+			Message: domainDeletionRunningEnglish,
+		})
+		return
+	}
 	if snapshot.failed {
 		_ = json.NewEncoder(w).Encode(domainDeletionStatusResponse{
 			Status: domainDeletionStatusFailed, Stage: snapshot.failure.Stage,
