@@ -22,6 +22,18 @@ func inspectHostPDNSVendorUnit(
 		return bindSecureFileIdentity{},
 			errors.New("PowerDNS vendor proof requires a context")
 	}
+	if certifyPacmanPDNSCapabilities(profile) == nil {
+		// Arch: the unit is the installed powerdns package's own,
+		// unmodified file (pacman's local database records its SHA-256).
+		identity, err := pdnsvendor.InspectPacmanUnit()
+		if err != nil {
+			return bindSecureFileIdentity{}, err
+		}
+		return bindSecureFileIdentity{
+			Device: identity.Device, Inode: identity.Inode,
+			Size: identity.Size, Digest: identity.Digest,
+		}, nil
+	}
 	if err := certifyAPTPDNSCapabilities(profile); err != nil {
 		return bindSecureFileIdentity{}, err
 	}

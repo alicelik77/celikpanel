@@ -64,7 +64,7 @@ func bindInverseSourceProof(ctx context.Context, policy dnsengineartifact.Journa
 	if j.InversePlan == nil || j.InversePlan.SourcePDNS == nil {
 		return errors.New("frozen PowerDNS source proof is absent")
 	}
-	gid, err := localServiceGroupID("/etc/group", "pdns")
+	gid, err := localServiceGroupID("/etc/group", installedPDNSServiceGroup())
 	if err != nil {
 		return err
 	}

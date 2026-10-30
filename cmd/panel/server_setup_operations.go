@@ -438,7 +438,7 @@ func (p *Panel) serverSetupStepChildMissing(ctx context.Context, step serverSetu
 // serverSetupPDNSMainCandidateCode reads, read-only, the PowerDNS build this
 // server would install and applies the catalogue's rule to it.
 func (p *Panel) serverSetupPDNSMainCandidateCode(ctx context.Context) string {
-	return serverSetupPDNSMainCandidateBlocker(p.readServerSetupPDNSCandidate(ctx))
+	return serverSetupPDNSMainCandidateBlockerFor(p.managedServiceHostProfile().PackageFamily, p.readServerSetupPDNSCandidate(ctx))
 }
 
 func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState, actor serviceOperationActor) (serverSetupPlan, error) {

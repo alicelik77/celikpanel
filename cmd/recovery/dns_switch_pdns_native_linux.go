@@ -60,7 +60,7 @@ func proveInstalledPDNSAdoptionNative(
 	if err := proveOnlyPDNSActiveUnits(units); err != nil {
 		return pdnsAdoptionNativeProof{}, err
 	}
-	pdnsGID, err := localServiceGroupID("/etc/group", "pdns")
+	pdnsGID, err := localServiceGroupID("/etc/group", installedPDNSServiceGroup())
 	if err != nil {
 		return pdnsAdoptionNativeProof{}, fmt.Errorf("verify local PowerDNS service group: %w", err)
 	}
@@ -95,7 +95,7 @@ func proveInstalledPDNSAdoptionNative(
 	if err := dnsenginerecovery.ProbeAuthorityListeners(ctx, "pdns_server", mainPID, "", dnsenginerecovery.SSListenerRunner); err != nil {
 		return pdnsAdoptionNativeProof{}, fmt.Errorf("recheck PowerDNS listeners after SOA observation: %w", err)
 	}
-	if againGID, err := localServiceGroupID("/etc/group", "pdns"); err != nil || againGID != pdnsGID {
+	if againGID, err := localServiceGroupID("/etc/group", installedPDNSServiceGroup()); err != nil || againGID != pdnsGID {
 		return pdnsAdoptionNativeProof{}, errors.Join(errors.New("PowerDNS service group changed around SOA observation"), err)
 	}
 	if err := dnsenginerecovery.ProbeInstalledPDNSAdoptionConfigs(ctx, policy, journal.ConfigBefore, pdnsGID); err != nil {

@@ -1,0 +1,362 @@
+== provision 09:13:20 main=debian13/bind backup=arch/pdns
+== install 09:13:50
+main 0 52.7 False 0
+backup 0 78.3 True 0
+main active
+backup active
+guidance 200 
+guidance 200 
+main-domain 200 {
+ "checks": [],
+ "draft": {
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_role": "primary",
+  "infrastructure_dns": {
+   "zone": "pairbk.test"
+  },
+  "local_ip": "",
+
+main-count 200 {
+ "checks": [],
+ "draft": {
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_role": "primary",
+  "infrastructure_dns": {
+   "zone": "pairbk.test"
+  },
+  "local_ip": "",
+
+main-name 200 {
+ "checks": [],
+ "draft": {
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_role": "primary",
+  "infrastructure_dns": {
+   "zone": "pairbk.test"
+  },
+  "local_ip": "",
+
+main-roles 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_
+main-names 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_
+main-dnshome 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_
+plan main 200 True [] ['01-service:nginx', '02-service:certbot', '03-service:mariadb', '04-service:php-fpm', '05-service:cron', '06-peer_join:second', '07-dns:local', '08-firewall:enable_and_persist', '09-infrastructure_dns:pairbk.test', '10-access_dns:mainpd.pairbk.test', '11-panel_certificate:mainpd.pairbk.test', '12-dns_readiness:local', '13-verify:custom'] 
+== start main 09:16:07
+start-main 202 {
+ "id": "0a077d626592549a65dcb64b2a7f4d30",
+ "panel_url": "https://mainpd.pairbk.test:2083/",
+ "phase": "queued",
+ "plan_id": "65a67f22e022a85b3c152605ca3a06ac",
+ "request_id": "0a077d626592549a65dcb
+join-code 200 {
+ "address": "https://192.0.3.74:2083",
+ "attempts_left": 50,
+ "code": "[REDACTED]",
+ "expires_at": "2026-10-31T09:16:12Z",
+ "used": false
+}
+connect 200 {
+ "setup": {
+  "checks": [],
+  "draft": {
+   "database": "mariadb",
+   "dns_engine": "bind",
+   "dns_mode": "local",
+   "dns_publisher_endpoint": "https://mainpd.pairbk.test:2083",
+   "dns_role": "secondary",
+   "local_ip": "192.0.3.75",
+   "mail_hostname": "",
+   "main_dns_server": "peer",
+   "main_domain": "pairbk.test",
+   "node_version": "",
+   "ns1": "ns1.pairbk.test",
+   "ns2": "ns2.pairbk.test",
+   "panel_domain": "",
+   "peer_ip": "192.0.3.74",
+   "peer_ns": "ns1.pairbk.test",
+   "purpose": "web",
+   "remote_dns_connection_id": "",
+   "server_count": 2
+  },
+  "guidance": "guided",
+  "
+backup-roles 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_
+backup-name 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_
+backup-names 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_
+backup-dnshome 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+  "database": "mariadb",
+  "dns_engine": "pdns",
+  "dns_mode": "local",
+  "dns_
+plan backup 200 True [] ['01-peer_names:https://192.0.3.74:2083', '02-service:nginx', '03-service:certbot', '04-service:mariadb', '05-service:php-fpm', '06-service:cron', '07-dns:local', '08-firewall:enable_and_persist', '09-access_dns:backpd.pairbk.test', '10-panel_certificate:backpd.pairbk.test', '11-dns_publisher:https://mainpd.pairbk.test:2083', '12-verify:custom'] 
+== start backup 09:16:23
+start-backup 202 {
+ "id": "6492eb25f8fa74c507cd377d068c19f7",
+ "panel_url": "https://backpd.pairbk.test:2083/",
+ "phase": "queued",
+ "plan_id": "24ce27893f9b325c35af8cfdc69f35da",
+ "request_id": "6492eb25f8fa74c507cd377d068c19f7",
+ "status": "running",
+ "steps": [
+  {
+   "id": "01-peer_names",
+   "kind": "peer_names
+-- main 09:16:26
+running 01-service null
+01-service=running 02-service=pending 03-service=pending 04-service=pending 05-service=pending 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "01-service", "kind": "service", "operation_id": "eccf2bc36e411d1670d15ff598bb18ac", "owner_id": "516769363ec0d16fbbef18ea28f2fa46", "request_id": "e00fd0b8ff7805440f95889bc5a968ef", "status": "running", "target": "nginx"}
+-- backup 09:16:27
+running 02-service null
+01-peer_names=succeeded 02-service=running 03-service=pending 04-service=pending 05-service=pending 06-service=pending 07-dns=pending 08-firewall=pending 09-access_dns=pending 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "02-service", "kind": "service", "owner_id": "c727940e474f8c29fcad255d2bb55be7", "request_id": "c15d85f8be91ebae8c772f4b45a01b2b", "status": "running", "target": "nginx"}
+-- main 09:16:47
+running 03-service null
+01-service=succeeded 02-service=succeeded 03-service=running 04-service=pending 05-service=pending 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "03-service", "kind": "service", "owner_id": "22366d52d9d93060ba1af5f05a3497d1", "request_id": "a69c49510c76ed01c4b1cf8bb51797c9", "status": "running", "target": "mariadb"}
+-- backup 09:16:47
+running 03-service null
+01-peer_names=succeeded 02-service=succeeded 03-service=running 04-service=pending 05-service=pending 06-service=pending 07-dns=pending 08-firewall=pending 09-access_dns=pending 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "03-service", "kind": "service", "operation_id": "62a60e9a071c6cc9922037e18ef3165f", "owner_id": "44c8f6376fd6b4c532769c8a213e725c", "request_id": "62e35a3e3c52877b010407dc5118666c", "status": "running", "target": "certbot"}
+-- backup 09:17:08
+running 04-service null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=running 05-service=pending 06-service=pending 07-dns=pending 08-firewall=pending 09-access_dns=pending 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "04-service", "kind": "service", "operation_id": "e576ac59a289c875c5bdcdb5cad32e72", "owner_id": "fc57bd0bb68a98256a5d153c8a6fa03b", "request_id": "c894ca92b05fb9ab546404f8122b173d", "status": "running", "target": "mariadb"}
+-- backup 09:17:29
+running 05-service null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=running 06-service=pending 07-dns=pending 08-firewall=pending 09-access_dns=pending 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "05-service", "kind": "service", "operation_id": "c146d737e522b0c806d1837e69f071a9", "owner_id": "5421201ceadd9b2c88f9cff14d31cbf9", "request_id": "8d2e1750af9e81549a49f9d643d49815", "status": "running", "target": "php-fpm"}
+-- backup 09:17:49
+running 06-service null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-service=running 07-dns=pending 08-firewall=pending 09-access_dns=pending 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "06-service", "kind": "service", "operation_id": "b96c97379c8f7182ad830617a6f43991", "owner_id": "3b757392645389f4c6cea346f976c400", "request_id": "7cc6d99ab038fa11f922caed664c2002", "status": "running", "target": "cron"}
+-- main 09:18:10
+running 04-service null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=running 05-service=pending 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "04-service", "kind": "service", "operation_id": "d22b5cc23fa863ef434ff14a47e10e4e", "owner_id": "ff18d3f7ea5d6941fceef0b87d0f3164", "request_id": "badeb4645d1e1aadfda45f7cc391399e", "status": "running", "target": "php-fpm"}
+-- backup 09:18:10
+waiting primary_dns {"code": "server_setup_primary_dns_required", "message": "The primary DNS server ns1.pairbk.test (192.0.3.74) has not provided its authoritative catalog yet. Start its DNS setup and check TCP port 53. This setup checks again automatically; no primary panel connection is required."}
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-service=succeeded 07-dns=running 08-firewall=pending 09-access_dns=pending 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "07-dns", "kind": "dns", "owner_id": "0ba63c8c3db2d61f138771cd938f96b8", "request_id": "4e492b63d15eaac0fa93360caa34813b", "status": "running", "target": "local"}
+-- main 09:18:51
+running 07-dns null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=running 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "07-dns", "kind": "dns", "owner_id": "f73c40b7c54054d878befb5a6f130082", "request_id": "ce3ef79ad176123a3650db946f57d998", "status": "running", "target": "local"}
+-- main 09:19:32
+waiting infrastructure_dns {"code": "server_setup_infrastructure_dns_required", "message": "The reviewed DNS records are waiting for the native DNS pair or its exact zone transfer. Prepare the secondary ns2.pairbk.test (192.0.3.75) and check TCP/UDP port 53. This setup checks the same operation automatically."}
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=running 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "09-infrastructure_dns", "kind": "infrastructure_dns", "owner_id": "aa42c6f5048da01cbf23d8f92fd5308c", "request_id": "30c5a24c57f14575c650cc65c31fb840", "status": "running", "target": "pairbk.test"}
+-- backup 09:19:33
+waiting access_dns {"code": "server_setup_access_dns_required", "message": "Public DNS must resolve backpd.pairbk.test to 192.0.3.75 before a certificate is requested. Check this hostname's A/AAAA records and its zone delegation. For DNS managed here, review the infrastructure DNS records in this wizard; otherwise correct them at the primary DNS server or provider. This check resumes automatically when DNS is verified."}
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-service=succeeded 07-dns=succeeded 08-firewall=succeeded 09-access_dns=running 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "09-access_dns", "kind": "access_dns", "owner_id": "a5a8c5289b113dc56081e879e74246f8", "qualifier": "192.0.3.75", "request_id": "be79fb3f205f3351505cfb1d1cde80f9", "status": "running", "target": "backpd.pairbk.test"}
+-- main 09:19:53
+running verification null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-verify=pending
+-- main 09:20:13
+succeeded complete null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-verify=succeeded
+-- backup 09:20:54
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-service=succeeded 07-dns=succeeded 08-firewall=succeeded 09-access_dns=succeeded 10-panel_certificate=succeeded 11-dns_publisher=succeeded 12-verify=succeeded
+== end 09:20:54
+== check apd-c/main 2026-10-30T09:20:55Z
+-- os
+PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
+ID=debian
+6.12.105+deb13-cloud-amd64
+-- package
+dpkg-query: no packages found matching pdns-server
+dpkg-query: no packages found matching pdns-backend-sqlite3
+-- units
+inactive active active active inactive inactive 
+User=
+Group=
+UnitFileState=
+-- config
+stat: cannot statx '/etc/powerdns': No such file or directory
+stat: cannot statx '/etc/powerdns/pdns.conf': No such file or directory
+stat: cannot statx '/etc/powerdns/pdns.d': No such file or directory
+stat: cannot statx '/etc/powerdns/pdns.d/*': No such file or directory
+stat: cannot statx '/var/lib/powerdns': No such file or directory
+stat: cannot statx '/var/lib/powerdns/*': No such file or directory
+grep: /etc/powerdns/pdns.conf: No such file or directory
+-- DNS answers
+(no dig on this server)
+(no dig on this server)
+(no dig on this server)
+-- catalog
+
+/root/pdnscheck.sh: line 17: sqlite3: command not found
+-- state
+dns-engine-bind-rndc-key.json
+dns-engine-ownership-bind.json
+dns-engine-state.json
+firewall-apply-journal.json
+service-mutations.json
+{"schema":"celikpanel-dns-engine-state/v2","acquisition":{"schema":"celikpanel-dns-engine-acquisition/v1","mode":"switch","engine":"bind","engine_epoch":1,"pair_role":"primary","pair_local_ip":"192.0.3.74","pair_peer_ip":"192.0.3.75","source_revision":1,"manifest_qualifier":"dns-engine-switch/v1:sha256:bc4ee761bfa36d7719020b098cf88e5ec5d3aee02ac1d78943b6d22a7e014208","mutation_request_id":"ce3ef79ad176123a3650db946f57d998","mutation_owner_id":"c9d49f3c66e04acd11e5828aa7f00f3f"},"publication":{"schema":"celikpanel-dns-engine-publication/v1","acquisition_sha256":"17fb0b6b1a6a1f36b8cf9c1cce134092
+-- recovery status
+No DNS switch journal was observed. This does not prove historical completion or current DNS health. The server owner should inspect the native DNS service and the panel's operation status before starting another switch.
+exit=0
+-- agent log (PowerDNS)
+-- from the lab network guest (outside the server)
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 55318
+;; flags: qr aa; QUERY: 1, ANSWER: 1, AUTHORITY: 2, ADDITIONAL: 3
+; EDNS: version: 0, flags:; udp: 1232
+; COOKIE: 467ee4ee25da1244010000006ae46178ffe73603f805d46f (good)
+;; ANSWER SECTION:
+pairbk.test.		3600	IN	SOA	ns1.pairbk.test. hostmaster.pairbk.test. 2026103000 3600 600 604800 300
+ns1.pairbk.test. hostmaster.pairbk.test. 2026103000 3600 600 604800 300
+== check apd-c/backup 2026-10-30T09:20:56Z
+-- os
+PRETTY_NAME="Arch Linux"
+ID=arch
+7.2.11-arch1-1
+-- package
+powerdns 5.1.5-1
+-- units
+active active active active inactive inactive 
+UnitFileState=enabled
+ExecStart={ path=/usr/bin/pdns_server ; argv[]=/usr/bin/pdns_server --guardian=no --daemon=no --disable-syslog --log-timestamp=no --write-pid=no
+User=powerdns
+Group=powerdns
+-- config
+755 root:root /etc/powerdns
+644 root:root /etc/powerdns/pdns.conf
+755 root:root /etc/powerdns/pdns.d
+644 root:root /etc/powerdns/pdns.d/celikpanel-cluster.conf
+644 root:root /etc/powerdns/pdns.d/celikpanel.conf
+750 powerdns:powerdns /var/lib/powerdns
+640 powerdns:powerdns /var/lib/powerdns/pdns.sqlite3
+640 powerdns:powerdns /var/lib/powerdns/pdns.sqlite3-shm
+640 powerdns:powerdns /var/lib/powerdns/pdns.sqlite3-wal
+setgid=powerdns
+setuid=powerdns
+include-dir=/etc/powerdns/pdns.d
+primary=yes
+secondary=yes
+allow-axfr-ips=192.0.3.74
+launch=gsqlite3
+gsqlite3-dnssec=yes
+gsqlite3-database=/var/lib/powerdns/pdns.sqlite3
+local-address=192.0.3.75
+zone-cache-refresh-interval=0
+webserver=no
+api=no
+-- DNS answers
+(no dig on this server)
+(no dig on this server)
+(no dig on this server)
+-- catalog
+catalog-c000034a.celikpanel.invalid CONSUMER
+catalog-c000034a.celikpanel.invalid|CONSUMER|192.0.3.74||
+pairbk.test|SLAVE|192.0.3.74||{"consumer": {"unique": "f4399d1b174222ea5ab38cef55f20f6961b31308feee4d2133c414fe."}}
+-- state
+dns-engine-ownership-pdns.json
+dns-engine-state.json
+firewall-apply-journal.json
+panel-certificate-activation.json
+service-mutations.json
+{"schema":"celikpanel-dns-engine-state/v2","acquisition":{"schema":"celikpanel-dns-engine-acquisition/v1","mode":"switch","engine":"pdns","engine_epoch":1,"pair_role":"secondary","pair_local_ip":"192.0.3.75","pair_peer_ip":"192.0.3.74","source_revision":1,"manifest_qualifier":"dns-engine-switch/v1:sha256:c70afb1058017b3568937da87feafca255defd4334aae66bcadace0860924920","mutation_request_id":"4e492b63d15eaac0fa93360caa34813b","mutation_owner_id":"8da4d92b7d20ce75260fe818303ad48f"},"publication":{"schema":"celikpanel-dns-engine-publication/v1","acquisition_sha256":"4f0a6fae2e3ef037e359aa866413e3
+-- recovery status
+No DNS switch journal was observed. This does not prove historical completion or current DNS health. The server owner should inspect the native DNS service and the panel's operation status before starting another switch.
+exit=0
+-- agent log (PowerDNS)
+-- from the lab network guest (outside the server)
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 3082
+;; flags: qr aa; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+; EDNS: version: 0, flags:; udp: 1232
+;; ANSWER SECTION:
+pairbk.test.		3600	IN	SOA	ns1.pairbk.test. hostmaster.pairbk.test. 2026103000 3600 600 604800 300
+ns1.pairbk.test. hostmaster.pairbk.test. 2026103000 3600 600 604800 300

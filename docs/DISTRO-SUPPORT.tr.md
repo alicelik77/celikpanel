@@ -65,7 +65,7 @@ Kurallar:
 | Bileşen | Tür | APT paket eşlemesi | pacman paket eşlemesi | Koltuk | Gerekenler |
 |---|---|---|---|---|---|
 | 🌐 BIND | Servis | `bind9` | `bind` | DNS sunucusu | — |
-| ⚡ PowerDNS | Servis | `pdns-server` `pdns-backend-sqlite3` | — | DNS sunucusu | — |
+| ⚡ PowerDNS | Servis | `pdns-server` `pdns-backend-sqlite3` | `powerdns` | DNS sunucusu | — |
 
 ### FTP
 
@@ -105,7 +105,6 @@ Bileşenler sayfası ve Agent aynı gerekçeyi verir (İngilizce metin, ekranda 
 | 📮 Exim | apt | Exim mailbox, TLS and submission integration is not available in CelikPanel yet; use Postfix. |
 | 📮 Exim | pacman | Exim mailbox, TLS and submission integration is not available in CelikPanel yet; use Postfix. |
 | 🛡️ SpamAssassin | pacman | SpamAssassin is not offered on Arch Linux: its Postfix bridge, spamass-milter, is not in the official repositories (only in the AUR, which CelikPanel does not use), so SpamAssassin would filter no mail. The server administrator installs Rspamd, the spam filter in the same seat, from the Components page. |
-| ⚡ PowerDNS | pacman | PowerDNS is not offered on Arch Linux yet: Arch's official powerdns package (version 5.1) differs from the PowerDNS build CelikPanel's DNS engine change and its recovery are proven with (Debian and Ubuntu, 4.9). The server administrator chooses BIND, which CelikPanel runs on Arch as the main or the backup DNS server, or uses a Debian 13 server for PowerDNS. |
 | 📂 vsftpd | apt | vsftpd passive-mode ports, TLS and per-subscription access are not integrated in CelikPanel yet. |
 | 📂 vsftpd | pacman | vsftpd passive-mode ports, TLS and per-subscription access are not integrated in CelikPanel yet. |
 | ⚡ Redis | pacman | Redis is not offered on Arch Linux: its official repositories ship Valkey instead (extra/valkey, which provides redis), and CelikPanel installs official distribution packages only. The server administrator installs Valkey, the compatible cache in the same seat, from the Components page. |

@@ -2789,6 +2789,48 @@ yeni major/minor sürüm yeni ölçüm ister. Seri içi yama sürümleri yeni ge
 koşu olmadan kabul edilir; davranışı değiştiren bir yama sürümü bilinen
 sınırdır.
 
+**Ek, 30 Ekim 2026 (sahip kararı: "Arch'ta PowerDNS kullanacağım").**
+Denenmiş seri artık **paket ailesine göre** tutulur. Debian ve Ubuntu için
+yukarıdaki her şey aynen kalır (Debian arşivinin 4.9 yapısı, dpkg md5sums).
+Arch Linux x86_64 kendi ölçülen yapısını alır: yalnız Arch'ın resmi `extra`
+deposundan `powerdns` 5.1 (AUR ya da üçüncü taraf depo asla), daemon
+`/usr/bin/pdns_server`, kullanıcı ve grup `powerdns`, `pdns.conf` 0644
+root:root. Sihirbazın sunduğunu, incelemenin kabul ettiğini, Agent'ın
+kurduğunu, kurulum sonrası denetimin ve bağımsız kurtarma doğrulamasının
+kabul ettiğini yine tek kural belirler: epoch'suz, yama ve pkgrel'i sayı olan,
+5.1 serisinde bir pacman sürümü. Kaynak kanıtı, pacman'ın aday için gösterdiği
+depodur (`extra`): her etkiden önce mevcut veritabanından, tek `pacman -Su`
+işleminden hemen önce de paket kilidi altında tazelenmiş veritabanından
+yeniden okunur; başka seri ya da başka depo ise hiçbir şey kurulmaz. Dosya
+kimliği pacman'ın kendi yerel veritabanından gelir: daemon ve hizmet birimi,
+kurulu paketin kaydettiği SHA-256 ile (mtree) aynı olmalıdır. Böylece 5.1
+içindeki olağan bir `pacman -Syu` dosyayı ve kaydı birlikte değiştirir ve
+Debian yama sürümü gibi kabul edilir; elle değişmiş dosya kabul edilmez.
+Yukarıdaki sınırlar aynen geçerlidir (sunucudaki root, ele geçirilmiş yansı).
+Arch kurulumunun günlükleri ve durum belgeleri kendi işaretini taşır
+(`pdns-fresh-paired-primary/arch-5.1/v1`); bir durum kendi günlüğünün
+işaretini taşımak zorundadır ve bu sürümden eski bir okuyucu Arch belgesini
+yanlış okumak yerine reddeder. Deneme sanal makinesinde ölçüldü: 5.1.5
+üreticinin açılıştaki SQL değişikliği ve 5.1.5 tüketicinin üye satırları
+4.9'unkiyle aynıdır.
+
+Arch'ta PowerDNS yalnız **DNS yazılımı olmayan bir sunucuya ilk kurulum**
+olarak kurulur: kendi DNS'ini tutan tek sunucu, eşli ana ya da eşli yedek
+sunucu (`pdns_arch_setup_only` ve Agent başka her şeyi her etkiden önce
+reddeder: var olan DNS sunucusunu PowerDNS'e çevirmek, yeniden kurmak, yeniden
+ayarlamak, sahibin kurduğu PowerDNS'i devralmak). Arch sürekli güncellenen bir
+dağıtımdır ve `pacman -Syu`'yu sahip çalıştırır (CelikPanel Arch'ı kendiliğinden
+yükseltmez). Aday 5.1'in dışına çıkınca sihirbaz PowerDNS'i ana DNS sunucusu
+olarak gerekçesiyle sunmaz. Kurulu PowerDNS sahibin güncellemesiyle denenmiş
+serinin dışına çıkarsa PowerDNS kendi yapılandırmasıyla yanıt vermeye devam
+eder (D-022); CelikPanel ona DNS değişikliği yayımlamayı bekletir (değişiklik
+her etkiden önce gerekçesiyle reddedilir), DNS ekranlarında
+`engine_series_untested` ile kimin ne yapacağını söyler (D-024) ve kurulu
+sürüm yeniden denenmiş bir seride olunca (örneğin onu adlandıran bir CelikPanel
+sürümünden sonra) kendiliğinden sürer. D-026'nın ilk kurulum kurtarma sözleşmesi
+değişmez. Kanıt:
+[arch-powerdns-20261030](../deploy/e2e/dns-pair-acceptance/evidence/arch-powerdns-20261030/).
+
 ---
 
 ## D-027 · Kabul koşuları yalnız deneyde geçerli lisans kullanır; lisans politikası değişmez

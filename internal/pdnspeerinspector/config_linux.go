@@ -361,6 +361,12 @@ func reviewedManagedMainConfig(raw string) bool {
 			if value != "" {
 				return false
 			}
+		case "setuid", "setgid":
+			// Arch Linux's package file carries exactly these two active
+			// lines, naming its own service account.
+			if value != "powerdns" {
+				return false
+			}
 		default:
 			return false
 		}

@@ -560,7 +560,7 @@ func applyPDNSV3ZoneDatabaseForState(
 		if state.PairRole == transport.DNSPairRolePrimary {
 			serial, err := readExactPDNSProducerSerialModeTx(
 				ctx, tx, state.PairLocalIP,
-				state.NativeCatalogV3 == dnsengineartifact.NativeCatalogDebian49V3,
+				dnsengineartifact.IsNativeCatalogV3(state.NativeCatalogV3),
 			)
 			if err != nil || serial < state.PrimaryCatalogSerial {
 				if err == nil {
@@ -575,7 +575,7 @@ func applyPDNSV3ZoneDatabaseForState(
 	// producer SOA serial must advance.
 	previousCatalog, err := reconcilePDNSBINDCatalogFromSnapshotModeTx(
 		ctx, tx, catalogEnabled, identity.LocalIP, nil,
-		state.NativeCatalogV3 == dnsengineartifact.NativeCatalogDebian49V3,
+		dnsengineartifact.IsNativeCatalogV3(state.NativeCatalogV3),
 	)
 	if err != nil {
 		return fmt.Errorf("snapshot managed PowerDNS catalog: %w", err)
@@ -592,7 +592,7 @@ func applyPDNSV3ZoneDatabaseForState(
 	}
 	after, err := reconcilePDNSBINDCatalogFromSnapshotModeTx(
 		ctx, tx, catalogEnabled, identity.LocalIP, previous,
-		state.NativeCatalogV3 == dnsengineartifact.NativeCatalogDebian49V3,
+		dnsengineartifact.IsNativeCatalogV3(state.NativeCatalogV3),
 	)
 	if err != nil {
 		return fmt.Errorf("reconcile managed PowerDNS catalog: %w", err)
@@ -958,7 +958,7 @@ func readPDNSV3ZoneSnapshot(
 		if state.PairRole == transport.DNSPairRolePrimary {
 			serial, err := readExactPDNSProducerSerialModeTx(
 				ctx, tx, state.PairLocalIP,
-				state.NativeCatalogV3 == dnsengineartifact.NativeCatalogDebian49V3,
+				dnsengineartifact.IsNativeCatalogV3(state.NativeCatalogV3),
 			)
 			if err != nil || serial < state.PrimaryCatalogSerial {
 				if err == nil {

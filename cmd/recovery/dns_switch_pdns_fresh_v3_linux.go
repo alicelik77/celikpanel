@@ -56,7 +56,7 @@ func assessInstalledFreshPrimaryV3(ctx context.Context, policy dnsengineartifact
 		!freshPDNSRecoveryTargetLoadV3(units[2], j.TargetUnitsBefore[0]) {
 		return unknown, errors.New("v3 native DNS unit topology differs from the frozen fresh target")
 	}
-	pdnsGID, err := localServiceGroupID("/etc/group", "pdns")
+	pdnsGID, err := localServiceGroupID("/etc/group", installedPDNSServiceGroup())
 	if err != nil {
 		return unknown, err
 	}

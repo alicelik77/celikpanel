@@ -696,9 +696,13 @@ func (policy JournalPolicy) ValidatePDNSConfigSnapshot(snapshot FileSnapshot) er
 	}
 	switch snapshot.Path {
 	case policy.PDNSMainPath:
-		if !snapshot.Exists || snapshot.Mode != 0o640 ||
+		// The installed-file contract of each supported package family:
+		// Debian/Ubuntu ship pdns.conf 0640 root:pdns, Arch Linux ships it
+		// 0644 root:root (D-028 amendment, 2026-10-30).
+		if !snapshot.Exists ||
 			!snapshot.OwnerKnown || snapshot.UID != 0 ||
-			snapshot.GID > uint32(1<<31-1) {
+			snapshot.GID > uint32(1<<31-1) ||
+			!(snapshot.Mode == 0o640 || (snapshot.Mode == 0o644 && snapshot.GID == 0)) {
 			return errors.New("PowerDNS main config snapshot differs from its installed-file contract")
 		}
 	case policy.PDNSManagedPath, policy.PDNSClusterPath:

@@ -186,7 +186,7 @@ func completeInstalledFreshPDNSPrestartV3(parent context.Context, request string
 					return err
 				}
 			}
-			pdnsGID, err := localServiceGroupID("/etc/group", "pdns")
+			pdnsGID, err := localServiceGroupID("/etc/group", installedPDNSServiceGroup())
 			if err != nil {
 				return err
 			}

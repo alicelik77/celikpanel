@@ -288,6 +288,15 @@ type DNSBackendRuntimeState struct {
 	// OwnerChanged: etkin motorun panelin yayımladığı dosyaları panel dışında
 	// değişti; panel üzerine yazmaz.
 	OwnerChanged bool `json:"owner_changed,omitempty"`
+	// UntestedVersion (2026-10-30): the active PowerDNS runs a package
+	// release outside its tested series, for example after the owner's
+	// `pacman -Syu` moved Arch's powerdns from 5.1 to 5.2. PowerDNS keeps
+	// answering; CelikPanel holds DNS changes and says so. Empty when the
+	// release is tested, the rule does not apply or the read failed.
+	// Additive: an older Agent omits it.
+	// UntestedVersion: etkin PowerDNS denenmiş serinin dışında bir sürümde;
+	// yanıt vermeye devam eder, panel DNS değişikliklerini bekletir.
+	UntestedVersion string `json:"untested_version,omitempty"`
 }
 
 // The vocabulary of a takeover's difference list. The agent reads these

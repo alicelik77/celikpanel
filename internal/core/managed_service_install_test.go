@@ -21,7 +21,7 @@ func TestManagedServiceInstallDisabledReason(t *testing.T) {
 		{"nginx", "apt", ManagedServiceInstallBlockNone},
 		{"nginx", "dnf", ManagedServiceInstallBlockDistribution},
 		{"pdns", "apt", ManagedServiceInstallBlockNone},
-		{"pdns", "pacman", ManagedServiceInstallBlockDistribution},
+		{"pdns", "pacman", ManagedServiceInstallBlockNone},
 		{"postfix", "apt", ManagedServiceInstallBlockNone},
 		{"spamassassin", "pacman", ManagedServiceInstallBlockDistribution},
 		{"roundcube", "pacman", ManagedServiceInstallBlockNone},
@@ -40,19 +40,27 @@ func TestManagedServiceInstallDisabledReason(t *testing.T) {
 	}
 }
 
-func TestPowerDNSPacmanPackagesRemainObservableButLifecycleIsClosed(t *testing.T) {
+// Arch's PowerDNS adapter (D-028 amendment, 2026-10-30) certifies the pacman
+// lifecycle; the DNS engine workflow stays the only door (never the generic
+// Components install), and PowerDNSPacmanReason names what stays closed.
+func TestPowerDNSPacmanLifecycleIsCertifiedThroughTheDNSWorkflow(t *testing.T) {
 	service := GetManagedServiceByID("pdns")
 	if service == nil {
 		t.Fatal("PowerDNS is missing from the managed-service catalogue")
 	}
 	if got := service.Packages["pacman"]; len(got) != 1 || got[0] != "powerdns" {
-		t.Fatalf("PowerDNS pacman observation packages = %v, want [powerdns]", got)
+		t.Fatalf("PowerDNS pacman packages = %v, want [powerdns]", got)
 	}
-	if len(service.LifecycleInstallFamilies) != 1 || service.LifecycleInstallFamilies["pacman"] {
-		t.Fatal("PowerDNS pacman lifecycle was accidentally certified")
+	if len(service.LifecycleInstallFamilies) != 2 || !service.LifecycleInstallFamilies["pacman"] ||
+		!service.LifecycleInstallFamilies["apt"] {
+		t.Fatalf("PowerDNS lifecycle families = %v, want apt and pacman", service.LifecycleInstallFamilies)
 	}
-	if !service.LifecycleInstallFamilies["apt"] {
-		t.Fatal("PowerDNS APT lifecycle certification is missing")
+	if service.ConflictGroup != "dns-server" || service.FamilyInstallBlockReasons["pacman"] != "" {
+		t.Fatal("PowerDNS must stay a DNS engine workflow component without an Arch catalogue block")
+	}
+	if strings.Contains(PowerDNSPacmanReason, "not offered on Arch Linux yet") ||
+		!strings.Contains(PowerDNSPacmanReason, "keeps answering") {
+		t.Fatalf("Arch PowerDNS reason is not the current owner-facing limit: %q", PowerDNSPacmanReason)
 	}
 
 	bind := GetManagedServiceByID("bind")

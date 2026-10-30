@@ -1232,7 +1232,7 @@ func readManagedPDNSPrimaryCatalogForState(
 	if err != nil || !enabled {
 		return managedPDNSCatalog{}, enabled, err
 	}
-	catalog, primary, err := readManagedPDNSPrimaryCatalogWithIdentityMode(ctx, identity, state.NativeCatalogV3 == dnsengineartifact.NativeCatalogDebian49V3)
+	catalog, primary, err := readManagedPDNSPrimaryCatalogWithIdentityMode(ctx, identity, dnsengineartifact.IsNativeCatalogV3(state.NativeCatalogV3))
 	if err != nil || !primary {
 		return managedPDNSCatalog{}, primary, err
 	}

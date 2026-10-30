@@ -82,7 +82,11 @@ func inspectPDNSTargetConfigParentV4(parentFD int) (unix.Stat_t, error) {
 	if err := unix.Fstat(parentFD, &stat); err != nil {
 		return stat, err
 	}
-	if stat.Mode&unix.S_IFMT != unix.S_IFDIR || stat.Uid != 0 || stat.Gid != 0 || stat.Mode&0o7777 != 0o755 || stat.Nlink < 2 {
+	// A directory's link count is no identity proof: btrfs (the Arch Linux
+	// cloud image's root filesystem) reports 1 for every directory, ext4 and
+	// xfs report 2 or more. Measured on the 2026-10-30 Arch drill, where "< 2"
+	// left a never-started fresh primary's pre-start undo unable to finish.
+	if stat.Mode&unix.S_IFMT != unix.S_IFDIR || stat.Uid != 0 || stat.Gid != 0 || stat.Mode&0o7777 != 0o755 || stat.Nlink < 1 {
 		return stat, errors.New("PowerDNS config parent differs from root-owned vendor directory")
 	}
 	if err := bindroot.RejectACL(parentFD, "PowerDNS config parent"); err != nil {

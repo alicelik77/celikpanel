@@ -1017,18 +1017,21 @@ var ManagedServices = []ManagedService{
 		// Arch'ın powerdns'i sqlite3 arka ucunu ana pakette taşır — orada ayrı
 		// backend paketi yoktur.
 		Packages: map[string][]string{"apt": {"pdns-server", "pdns-backend-sqlite3"}, "pacman": {"powerdns"}},
-		LifecycleInstallFamilies: map[string]bool{
-			"apt": true,
-		},
 		// Arch's extra/powerdns (5.1.x, /usr/bin/pdns_server, user and group
-		// powerdns, pdns.conf 0644 root:root) differs from every artifact the
-		// engine switch, its journals and the independent recovery certify
-		// (Debian/Ubuntu 4.9: dpkg provenance, /usr/sbin, group pdns, 0640).
-		// Until that adapter is built and measured, the row says so.
-		// Arch'ın powerdns paketi, motor geçişinin ve kurtarmanın onayladığı
-		// yapılardan farklıdır; bağdaştırıcı yapılıp ölçülene dek kapalıdır.
-		FamilyInstallBlockReasons: map[string]string{"pacman": PowerDNSPacmanReason},
-		FirewallPorts:             []FirewallPort{{53, "tcp"}, {53, "udp"}},
+		// powerdns, pdns.conf 0644 root:root) has its own adapter since
+		// 2026-10-30 (D-028 amendment): identity from pacman's local
+		// database, series 5.1 from the official extra repository. On Arch
+		// it is set up only by server setup on a server with no DNS software,
+		// as the main or the backup DNS server (PowerDNSPacmanReason names
+		// what stays closed); the DNS engine workflow is the only door for
+		// either family, never the generic Components install.
+		// Arch'ın powerdns paketinin 30 Ekim 2026'dan beri kendi bağdaştırıcısı
+		// vardır; Arch'ta yalnız kurulum sihirbazıyla ana ya da yedek DNS
+		// sunucusu olarak kurulur.
+		LifecycleInstallFamilies: map[string]bool{
+			"apt": true, "pacman": true,
+		},
+		FirewallPorts: []FirewallPort{{53, "tcp"}, {53, "udp"}},
 	},
 	{
 		ID:                    "vsftpd",
@@ -1226,9 +1229,11 @@ const NativeCronRemovalRefusal = "CelikPanel does not remove the server's cron s
 // Arch satırları, resmi depolarda çalışan paket olmadığı için kapalıdır;
 // CelikPanel AUR kullanmaz. Her gerekçe eksik olanı, kimin ne yapacağını söyler.
 const (
-	RedisPacmanReason        = "Redis is not offered on Arch Linux: its official repositories ship Valkey instead (extra/valkey, which provides redis), and CelikPanel installs official distribution packages only. The server administrator installs Valkey, the compatible cache in the same seat, from the Components page."
-	PHPPgAdminPacmanReason   = "phpPgAdmin is not offered on Arch Linux: it is not in the official repositories (only in the AUR, which CelikPanel does not use). The server administrator manages PostgreSQL with psql on the server, or with a desktop client through an SSH tunnel."
-	PowerDNSPacmanReason     = "PowerDNS is not offered on Arch Linux yet: Arch's official powerdns package (version 5.1) differs from the PowerDNS build CelikPanel's DNS engine change and its recovery are proven with (Debian and Ubuntu, 4.9). The server administrator chooses BIND, which CelikPanel runs on Arch as the main or the backup DNS server, or uses a Debian 13 server for PowerDNS."
+	RedisPacmanReason      = "Redis is not offered on Arch Linux: its official repositories ship Valkey instead (extra/valkey, which provides redis), and CelikPanel installs official distribution packages only. The server administrator installs Valkey, the compatible cache in the same seat, from the Components page."
+	PHPPgAdminPacmanReason = "phpPgAdmin is not offered on Arch Linux: it is not in the official repositories (only in the AUR, which CelikPanel does not use). The server administrator manages PostgreSQL with psql on the server, or with a desktop client through an SSH tunnel."
+	// PowerDNSPacmanReason is what stays closed for PowerDNS on Arch Linux
+	// after the 2026-10-30 adapter (pdns_arch_setup_only).
+	PowerDNSPacmanReason     = "On Arch Linux CelikPanel installs PowerDNS only on a server that has no DNS software yet (as the main or the backup DNS server, the way server setup does), from Arch's official powerdns 5.1 package. Changing an existing DNS server to PowerDNS, reinstalling or reconfiguring PowerDNS is not offered on Arch Linux in this release; the current DNS server keeps answering. The server administrator uses BIND, or a Debian 13 server, for those changes."
 	SpamAssassinPacmanReason = "SpamAssassin is not offered on Arch Linux: its Postfix bridge, spamass-milter, is not in the official repositories (only in the AUR, which CelikPanel does not use), so SpamAssassin would filter no mail. The server administrator installs Rspamd, the spam filter in the same seat, from the Components page."
 )
 

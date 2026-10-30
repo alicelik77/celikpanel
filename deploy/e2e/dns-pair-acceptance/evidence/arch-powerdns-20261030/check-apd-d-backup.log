@@ -1,0 +1,55 @@
+== check apd-d/backup 2026-10-30T09:22:09Z
+-- os
+PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
+ID=debian
+6.12.105+deb13-cloud-amd64
+-- package
+dpkg-query: no packages found matching pdns-server
+dpkg-query: no packages found matching pdns-backend-sqlite3
+-- units
+inactive active active active inactive inactive 
+User=
+Group=
+UnitFileState=
+-- config
+stat: cannot statx '/etc/powerdns': No such file or directory
+stat: cannot statx '/etc/powerdns/pdns.conf': No such file or directory
+stat: cannot statx '/etc/powerdns/pdns.d': No such file or directory
+stat: cannot statx '/etc/powerdns/pdns.d/*': No such file or directory
+stat: cannot statx '/var/lib/powerdns': No such file or directory
+stat: cannot statx '/var/lib/powerdns/*': No such file or directory
+grep: /etc/powerdns/pdns.conf: No such file or directory
+-- DNS answers
+(no dig on this server)
+(no dig on this server)
+(no dig on this server)
+-- catalog
+
+/root/pdnscheck.sh: line 17: sqlite3: command not found
+-- state
+dns-engine-bind-rndc-key.json
+dns-engine-ownership-bind.json
+dns-engine-state.json
+firewall-apply-journal.json
+panel-certificate-activation.json
+service-mutations.json
+{"schema":"celikpanel-dns-engine-state/v2","acquisition":{"schema":"celikpanel-dns-engine-acquisition/v1","mode":"switch","engine":"bind","engine_epoch":1,"pair_role":"secondary","pair_local_ip":"192.0.3.77","pair_peer_ip":"192.0.3.76","source_revision":1,"manifest_qualifier":"dns-engine-switch/v1:sha256:ed43b5890afcce93d06bd12bb6bc31ddc49cd5f3a77d4b4e6e90fdc350b27578","mutation_request_id":"537470065dc49617344fd3e06deb750b","mutation_owner_id":"da25acaabe78d0d40434b9a02c7a4419"},"publication":{"schema":"celikpanel-dns-engine-publication/v1","acquisition_sha256":"b32f4a65b309edf0dc1294eb054aca
+-- recovery status
+No DNS switch journal was observed. This does not prove historical completion or current DNS health. The server owner should inspect the native DNS service and the panel's operation status before starting another switch.
+exit=0
+-- agent log (PowerDNS)
+Oct 30 09:21:20 backpd agent[10142]: 2026/10/30 09:21:20 DNS engine change 537470065dc49617344fd3e06deb750b: the paired primary at 192.0.3.76 serves catalog catalog-c000034c.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 09:21:41 backpd agent[10142]: 2026/10/30 09:21:41 DNS engine change completion 537470065dc49617344fd3e06deb750b: the paired primary at 192.0.3.76 serves catalog catalog-c000034c.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 09:21:42 backpd agent[10142]: 2026/10/30 09:21:42 DNS readiness check: the paired primary at 192.0.3.76 serves catalog catalog-c000034c.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 09:21:53 backpd agent[10142]: 2026/10/30 09:21:53 DNS readiness check: the paired primary at 192.0.3.76 serves catalog catalog-c000034c.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 09:21:54 backpd agent[10142]: 2026/10/30 09:21:54 DNS readiness check: the paired primary at 192.0.3.76 serves catalog catalog-c000034c.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 09:21:55 backpd agent[10142]: 2026/10/30 09:21:55 DNS readiness check: the paired primary at 192.0.3.76 serves catalog catalog-c000034c.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 09:21:57 backpd agent[10142]: 2026/10/30 09:21:57 DNS readiness check: the paired primary at 192.0.3.76 serves catalog catalog-c000034c.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+-- from the lab network guest (outside the server)
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 59519
+;; flags: qr aa; QUERY: 1, ANSWER: 1, AUTHORITY: 2, ADDITIONAL: 3
+; EDNS: version: 0, flags:; udp: 1232
+; COOKIE: d9e9716132cf65b2010000006ae461c1bf124f5c89102789 (good)
+;; ANSWER SECTION:
+drillpd.test.		3600	IN	SOA	ns1.drillpd.test. hostmaster.drillpd.test. 2026103000 3600 600 604800 300
+ns1.drillpd.test. hostmaster.drillpd.test. 2026103000 3600 600 604800 300

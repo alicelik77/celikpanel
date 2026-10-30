@@ -76,7 +76,7 @@ func TestFreshPrimaryV3TargetStateBindsObservedSerial(t *testing.T) {
 	_, journal := freshPrimaryV3Fixture(t)
 	journal.Schema = SwitchJournalSchemaV3
 	journal.Phase = SwitchPhaseCommitted
-	journal.PDNSFreshPlan = &PDNSFreshPrimaryPlanV3{Native: &pdnsnative.RecordedTransition{
+	journal.PDNSFreshPlan = &PDNSFreshPrimaryPlanV3{Kind: PDNSFreshPrimaryPlanKindV3, Native: &pdnsnative.RecordedTransition{
 		Observed: pdnsnative.CatalogTransition{SourceSerial: 1, NativeSerial: 1790542951},
 	}}
 	state := StateV1{
@@ -95,9 +95,21 @@ func TestFreshPrimaryV3TargetStateBindsObservedSerial(t *testing.T) {
 		func() StateV1 { s := state; s.PrimaryCatalogSerial = journal.PrimaryCatalogSerial; return s }(),
 		func() StateV1 { s := state; s.NativeCatalogV3 = ""; return s }(),
 		func() StateV1 { s := state; s.PairPeerIP = "192.0.2.12"; return s }(),
+		// The tenure marker is the journal's own build: an Arch marker never
+		// completes a Debian journal (and the reverse).
+		func() StateV1 { s := state; s.NativeCatalogV3 = NativeCatalogArch51V3; return s }(),
 	} {
 		if ExactSwitchTargetStateV1(changed, journal) {
 			t.Fatal("changed native target accepted")
 		}
+	}
+	journal.PDNSFreshPlan.Kind = PDNSFreshPrimaryKindArch51V3
+	arch := state
+	arch.NativeCatalogV3 = NativeCatalogArch51V3
+	if !ExactSwitchTargetStateV1(arch, journal) {
+		t.Fatal("an Arch journal's own marker was rejected")
+	}
+	if ExactSwitchTargetStateV1(state, journal) {
+		t.Fatal("a Debian marker completed an Arch journal")
 	}
 }

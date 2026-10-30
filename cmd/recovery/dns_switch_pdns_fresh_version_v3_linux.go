@@ -5,9 +5,11 @@ package main
 import (
 	"context"
 	"crypto/md5"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash"
 	"io"
 	"os"
 	"os/exec"
@@ -18,6 +20,7 @@ import (
 	"github.com/alicelik/celikpanel/internal/debversion"
 	"github.com/alicelik/celikpanel/internal/dnsengineartifact"
 	"github.com/alicelik/celikpanel/internal/hostplatform"
+	"github.com/alicelik/celikpanel/internal/pacmanlocal"
 )
 
 // verifyInstalledFreshPDNSNativeVersionV3 is independent, read-only recovery
@@ -33,9 +36,16 @@ func verifyInstalledFreshPDNSNativeVersionV3(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	if profile.ID == "arch" && profile.Arch == "amd64" && profile.DistroFamily == hostplatform.DistroFamilyArch &&
+		profile.PackageManager == hostplatform.PackageManagerPacman && profile.ServiceManager == hostplatform.ServiceManagerSystemd {
+		if err := verifyInstalledFreshPDNSPacmanV3(pacmanlocal.DBDir); err != nil {
+			return err
+		}
+		return ctx.Err()
+	}
 	if profile.ID != "debian" || profile.Version != "13" || profile.Arch != "amd64" ||
 		profile.PackageManager != hostplatform.PackageManagerAPT || profile.ServiceManager != hostplatform.ServiceManagerSystemd {
-		return errors.New("v3 native PowerDNS transform is measured only on Debian 13 amd64")
+		return errors.New("v3 native PowerDNS transform is measured only on Debian 13 amd64 and Arch Linux x86_64")
 	}
 	query := func(args ...string) (string, error) {
 		cmd := exec.CommandContext(ctx, "/usr/bin/dpkg-query", args...)
@@ -77,6 +87,31 @@ func verifyInstalledFreshPDNSNativeVersionV3(ctx context.Context) error {
 	return ctx.Err()
 }
 
+// verifyInstalledFreshPDNSPacmanV3 is the Arch attestation, read from
+// pacman's own local database without running pacman: powerdns installed at a
+// release of the tested 5.1 series and the daemon the package's own,
+// unmodified file (its mtree SHA-256). A pacman update inside the series
+// changes the file and its record together and is accepted, like a Debian
+// point release; a release outside the series leaves the target pending.
+func verifyInstalledFreshPDNSPacmanV3(dbDir string) error {
+	build, ok := dnsengineartifact.PDNSFreshPrimaryBuildFor("pacman")
+	if !ok {
+		return errors.New("v3 PowerDNS Arch build is unknown")
+	}
+	pkg, err := pacmanlocal.Installed(dbDir, build.Packages[0])
+	if err != nil {
+		return fmt.Errorf("v3 PowerDNS package %s could not be verified: %w", build.Packages[0], err)
+	}
+	if !build.VersionInTestedSeries(pkg.Version) {
+		return fmt.Errorf("v3 PowerDNS package %s is not the tested PowerDNS %s build", build.Packages[0], build.Series)
+	}
+	digest, err := pacmanlocal.PackageFileSHA256(pkg, build.Binary)
+	if err != nil {
+		return fmt.Errorf("v3 PowerDNS package does not record its daemon: %w", err)
+	}
+	return verifyFreshPDNSExecutableDigestV3(build.Binary, digest, sha256.New)
+}
+
 // freshPDNSInstalledVersionV3 reads one dpkg-query "${Status}\t${Version}"
 // record: accepted only for Debian's archive build of the tested series (no
 // epoch, no backport, no PowerDNS repository or vendor build) at the same
@@ -93,6 +128,11 @@ func freshPDNSInstalledVersionV3(raw, prior string) (string, bool) {
 // for it. Keeping the filesystem proof separate allows real-file regression
 // checks without installing or changing a native DNS service.
 func verifyFreshPDNSExecutableV3(binary, packageMD5 string) error {
+	return verifyFreshPDNSExecutableDigestV3(binary, packageMD5, md5.New)
+}
+
+func verifyFreshPDNSExecutableDigestV3(binary, packageDigest string, newHash func() hash.Hash) error {
+	packageMD5 := packageDigest
 	info, err := os.Lstat(binary)
 	if err != nil {
 		return err
@@ -106,11 +146,11 @@ func verifyFreshPDNSExecutableV3(binary, packageMD5 string) error {
 		return err
 	}
 	defer file.Close()
-	hash := md5.New()
-	if _, err := io.Copy(hash, file); err != nil {
+	digest := newHash()
+	if _, err := io.Copy(digest, file); err != nil {
 		return err
 	}
-	if hex.EncodeToString(hash.Sum(nil)) != packageMD5 {
+	if hex.EncodeToString(digest.Sum(nil)) != packageMD5 {
 		return errors.New("v3 PowerDNS executable differs from the installed package's own file")
 	}
 	again, err := file.Stat()

@@ -98,6 +98,18 @@ func localServiceGroupID(path, group string) (uint32, error) {
 	return gid, nil
 }
 
+// installedPDNSServiceGroup is the PowerDNS service group the distribution
+// package creates: "powerdns" on Arch Linux (pacman), "pdns" on Debian and
+// Ubuntu. An undetectable host keeps the Debian name, whose lookup then fails
+// closed on a host that does not carry it.
+func installedPDNSServiceGroup() string {
+	profile, err := hostplatform.Detect()
+	if err == nil && profile.PackageManager == hostplatform.PackageManagerPacman {
+		return "powerdns"
+	}
+	return "pdns"
+}
+
 // This is a directory and package provenance observation only. It does not
 // establish which immutable generation named loaded or authorize an inverse.
 func installedBINDLayout() (bindroot.Layout, uint32, error) {
