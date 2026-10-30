@@ -542,6 +542,12 @@ func (p *Panel) completeServerSetupOwned(ctx context.Context, revision int, exec
 // DNS server while its backup has not reported ready (Beta-1 re-run P7). A
 // failed settle is logged; the next completion or a new join removes it.
 func (p *Panel) tellMainAndSettleServerSetupLink(ctx context.Context, d serverSetupDraft) error {
+	// While the link is still open, the backup sets up the deletion check
+	// with its main (automatic peer inspection, 2026-10-30); a wait keeps
+	// the link open and is asked again like the report itself.
+	if err := p.enrollServerSetupPeerInspection(ctx, d); err != nil {
+		return err
+	}
 	if err := p.reportServerSetupReadyToMain(ctx, d); err != nil {
 		return err
 	}

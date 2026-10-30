@@ -134,6 +134,9 @@ type Panel struct {
 	// serverSetupStepOverride lets a test answer one setup step's call
 	// (handled=true) instead of the real step; production leaves it nil.
 	serverSetupStepOverride func(context.Context, serverSetupExecutionStep) (done bool, err error, handled bool)
+	// serverSetupPeerInspectionCall lets a test answer the automatic
+	// deletion-check setup's Agent calls (nil: the real Agent).
+	serverSetupPeerInspectionCall func(ctx context.Context, method string, args, reply any) error
 	// dnsTopologyMu serializes every request-time DNS identity mutation. The
 	// setup endpoint and the two legacy endpoints share agent state and one
 	// SQLite tuple; their snapshot/apply/commit/rollback sequences must never

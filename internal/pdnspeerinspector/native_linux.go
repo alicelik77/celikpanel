@@ -497,7 +497,12 @@ func readCatalogDatabase(ctx context.Context, path string, dev, ino uint64, r pd
 	// of the two is accepted, consistently for every version and member row.
 	metadataTTL := int64(-2)
 	seenLabels := map[string]bool{}
-	rows, err := tx.QueryContext(ctx, "SELECT name,type,content,COALESCE(ttl,-1) FROM records WHERE domain_id=? ORDER BY name,type,content", id)
+	// PowerDNS stores the catalog's empty non-terminal "zones.<catalog>" as a
+	// row whose type, content and ttl are NULL (native lab 2026-10-30: every
+	// consumed catalog with a member has it). It is read as "" and accepted
+	// only under that exact name (default case below); any other NULL-typed
+	// row is still refused there.
+	rows, err := tx.QueryContext(ctx, "SELECT name,COALESCE(type,''),COALESCE(content,''),COALESCE(ttl,-1) FROM records WHERE domain_id=? ORDER BY name,type,content", id)
 	if err != nil {
 		return 0, nil, false, err
 	}

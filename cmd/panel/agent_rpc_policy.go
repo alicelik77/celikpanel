@@ -181,6 +181,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityDNS, `
 		Agent.ConfigureDNSClusterV2 Agent.ConfigurePowerDNSSQLite Agent.SecureDNSZoneV2
 		Agent.RecoverDNSZoneV3 Agent.SwitchDNSEngineV1 Agent.SyncDNSZoneV2 Agent.SyncDNSZoneV3
+		Agent.DNSPeerInspectionPrimaryV1 Agent.DNSPeerInspectionSecondaryV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityMail, `
 		Agent.AddMailAccount Agent.ConfigureDKIMSigning Agent.ConfigureMailStack
@@ -335,6 +336,10 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.ChmodFile":                     agentRPCMutationTimeout,
 	"Agent.ClearLogs":                     agentRPCMutationTimeout,
 	"Agent.ConfigureDNSClusterV2":         agentRPCMutationTimeout,
+	// The owner tool's enrollment steps for this pair: a key, a few files,
+	// sshd -t, useradd and one OpenSSH reload, and one bounded SSH probe.
+	"Agent.DNSPeerInspectionPrimaryV1":    agentRPCMutationTimeout,
+	"Agent.DNSPeerInspectionSecondaryV1":  agentRPCMutationTimeout,
 	"Agent.ConfigureDKIMSigning":          agentRPCMutationTimeout,
 	"Agent.ConfigurePowerDNSSQLite":       agentRPCMutationTimeout,
 	"Agent.CreateFileOrDir":               agentRPCMutationTimeout,

@@ -582,8 +582,24 @@ func ensureDir(name string, mode os.FileMode) error {
 	if err := secureComponents(filepath.Join(filepath.Dir(name), "placeholder")); err != nil {
 		return err
 	}
-	if err := os.Mkdir(name, mode); err != nil && !errors.Is(err, os.ErrExist) {
+	created := false
+	if err := os.Mkdir(name, mode); err == nil {
+		created = true
+	} else if !errors.Is(err, os.ErrExist) {
 		return err
+	}
+	if created {
+		// os.Mkdir applies the process umask and the process group: the
+		// Agent runs with UMask=0027 and Group=celikpanel, the owner's root
+		// shell usually with 022 and group root. A directory this call just
+		// created gets exactly its reviewed mode and root:root, as the owner
+		// tool makes it; an existing one is never changed, only checked.
+		if err := os.Lchown(name, 0, 0); err != nil {
+			return err
+		}
+		if err := os.Chmod(name, mode); err != nil {
+			return err
+		}
 	}
 	st, err := os.Lstat(name)
 	if err != nil {
@@ -671,6 +687,12 @@ func writeExclusive(name string, raw []byte, mode os.FileMode) error {
 		return err
 	}
 	f := os.NewFile(uintptr(fd), name)
+	// root:root and the exact mode whatever the caller's group and umask
+	// (the Agent runs as root with Group=celikpanel and UMask=0027).
+	if err := f.Chown(0, 0); err != nil {
+		f.Close()
+		return err
+	}
 	if err := f.Chmod(mode); err != nil {
 		f.Close()
 		return err

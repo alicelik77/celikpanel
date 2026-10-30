@@ -40,6 +40,7 @@ import type { SetupWizardScreenKey } from './screens/setupWizard/en';
 import type { SetupRegistrarScreenKey } from './screens/setupRegistrar/en';
 import type { SetupJoinScreenKey } from './screens/setupJoin/en';
 import type { SetupLinkScreenKey } from './screens/setupLink/en';
+import type { SetupInspectionScreenKey } from './screens/setupInspection/en';
 import type { DnsOverviewScreenKey } from './screens/dnsOverview/en';
 import type { NginxDefaultHttpsScreenKey } from './screens/nginxDefaultHttps/en';
 
@@ -511,6 +512,7 @@ export type ScreenKey =
     | SetupRegistrarScreenKey
     | SetupJoinScreenKey
     | SetupLinkScreenKey
+    | SetupInspectionScreenKey
     | DnsOverviewScreenKey
     | NginxDefaultHttpsScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

@@ -119,6 +119,11 @@ const screenPartBudgets = {
   // the Beta-1 re-run fixes (the distribution-update, ready-report and
   // rejoin waits) to keep 25% headroom over 8.38 / 2.37 KiB.
   setupLink: kib(13, 4),
+  // The automatic deletion check between two servers joined by code
+  // (setup.v5.inspection. and its waits), split out of "setupLink", which it
+  // took over its ceiling. A new part, set with at least 25% headroom from its
+  // Turkish file: 7.54 / 2.13 KiB.
+  setupInspection: kib(10, 2.75),
   // v0.1.0-alpha.115: the DNS page's overview and the first-site offer
   // (dnsov.). A new part, set with at least 25% headroom from its Turkish
   // file: 15.36 / 4.24 KiB. Raised with the alpha.115 review fixes to keep
