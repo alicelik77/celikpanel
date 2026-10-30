@@ -10489,6 +10489,10 @@ every 12 hours. The Dashboard lists the domain whatever the days.
 - **Renewed, but the web server still serves the previous certificate:** nginx's
   configuration test failed after the renewal; `sudo nginx -t` shows why, fix it,
   then `sudo systemctl reload nginx`.
+- **Renewed, the website serves it, but mail does not:** the hook could not rebuild
+  Postfix's SNI map or reload Postfix/Dovecot; `sudo postfix check`, `sudo doveconf
+  -n`, then `sudo postmap -F hash:/etc/postfix/celikpanel_sni` (`lmdb:` where there
+  is no hash) and `sudo systemctl reload postfix dovecot`.
 - **The reload hook is missing or was changed:** Reissue puts CelikPanel's hook back
   when it is missing; a changed one is the owner's and is kept.
 - **Automatic renewal is off in certbot:** switch "Enable automatic renewal" on; it

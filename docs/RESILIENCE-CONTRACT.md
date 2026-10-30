@@ -7966,8 +7966,9 @@ lineage gets `autorenew = False`.
   same domain identity only.
 - **Panel changes.** The 12-hour job observes native certificates and renews only
   earlier-release ones; the certificate page carries `renewal_owner`, `renewal` and
-  the guidance; the Dashboard lists native renewal problems; mail SNI publishes a
-  content-addressed copy of the native certificate.
+  the guidance; the Dashboard lists native renewal problems; a mail SNI entry names
+  the native lineage's live files and the deploy hook rebuilds the map and reloads
+  Postfix and Dovecot.
 - **Schema.** None (46); additive `renewal_status` values `os_<state>`. New on-disk
   artifacts: deploy hook v1, deploy record v1.
 - **Recovery.** Going back to an earlier release keeps the native files serving and
@@ -7979,9 +7980,10 @@ lineage gets `autorenew = False`.
   chroot run with Debian's certbot 4.0.0 and Pebble 2.6.0 (EAB required), no network
   route out ([deploy/e2e/d040](../deploy/e2e/d040/README.md)). Not measured on an
   installed server, under a booted systemd, on Ubuntu or Arch, or against a real CA.
-  **P0.5 is advanced for website certificate renewal only**; mail SNI renewal without
-  the Panel, reboot and the rest of the absence matrix stay open; P0.1 to P0.5 stay
-  partial.
+  **P0.5 is advanced for website certificate renewal (web and its mail SNI) only**;
+  reboot, Dovecot 2.3, other releases and the rest of the absence matrix stay open;
+  P0.1 to P0.5 stay partial. Mail TLS plan v1's reader accepts native lineage paths
+  (additive); an earlier release refuses such a committed plan (mail keeps serving).
 
 ### Candidate v0.1.0-alpha.111 (the Beta 1 setup: setup wizard v2, join by code, the setup link, the DNS page; Agent DNS install, rollback, certificate and point-update paths; no schema change; invariants 1, 2, 4 and 6; D-021 amendments; D-022; D-024; D-025; D-028 amendment; 2026-10-29)
 

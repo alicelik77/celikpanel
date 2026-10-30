@@ -48,9 +48,17 @@ söyler; Pano her sorunu gün sayısından bağımsız listeler. Önceki sürüm
 sertifikaları yeniden alınana kadar çalışan Panel tarafından eskisi gibi yenilenir;
 kart bunu ve bir kez yeniden almanın onları işletim sistemine taşıdığını söyler.
 
-**Açık kalanlar.** Panel dururken posta SNI kopyası yenilenmez (posta TLS sözleşmesi
-yalnız değişmez kopyaları adlandırır); systemd ile açılmış bir sistemde zamanlayıcının
-kendisi, Ubuntu (snap) ve Arch, gerçek bir CA, yeniden başlatma ölçülmedi. Şema
+**Posta SNI.** Site sertifikası `mail.<alan>` için de kullanılıyorsa SNI girdisi
+certbot'un live dosyalarını adlandırır; kanca CelikPanel'in Postfix SNI haritasını
+diskteki hâliyle yeniden derler (`postmap -F`) ve Postfix ile Dovecot'u yeniden
+yükler; yapılandırma yazmaz; sahip haritayı başka yere yönelttiyse dokunmaz. Posta
+sunucusu sertifikasının kendi bağımsız yenilemesi ayrı lineage'larla sürer.
+
+**Açık kalanlar.** Systemd ile açılmış bir sistemde zamanlayıcının
+kendisi, Ubuntu (snap), Arch ve Dovecot 2.3, gerçek bir CA, yeniden başlatma ölçülmedi;
+önceki sürüme dönüşte o sürüm yerel lineage adlandıran posta TLS planını okuyamaz
+(Postfix ve Dovecot sunmaya devam eder, posta TLS değişikliği ileri dönene kadar
+yapılamaz). Şema
 değişikliği yok (46). P0.5 yalnız web siteleri için ilerledi; kısmi kalır.
 
 ---

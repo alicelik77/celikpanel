@@ -59,9 +59,14 @@ certificate expired within 90 days. A failed renewal only wrote
 4. **One deploy hook, plain sh, no CelikPanel program:**
    `/etc/letsencrypt/renewal-hooks/deploy/celikpanel-site-certificates` (root 0755,
    first line `# celikpanel-site-deploy-hook v1`). For `celikpanel-site-*` lineages
-   only, it runs `nginx -t`, reloads nginx when the test passes, writes one record
+   only, it runs `nginx -t` and reloads nginx when the test passes; when CelikPanel's
+   Postfix SNI map names the lineage and Postfix still uses that map, it rebuilds the
+   map as it is on disk (`postmap -F`, which embeds the certificate files) and
+   reloads Postfix; when CelikPanel's Dovecot TLS drop-in names it, it reloads
+   Dovecot. It writes no configuration file. It writes one record
    `/var/lib/celikpanel-site-certificates/<lineage>` (`format=celikpanel-site-deploy-v1`,
-   time, outcome) and exits non-zero when nginx could not load the certificate
+   time, `nginx`, `mail`, `dovecot` outcomes) and exits non-zero when one of them
+   could not load the certificate
    (certbot 4.0 logs that as a hook warning and still exits 0, measured; the record
    is what tells the Panel). It is written only when absent;
    a file the owner changed or removed is kept and named on the page (D-031 style:
@@ -87,14 +92,21 @@ certificate expired within 90 days. A failed renewal only wrote
    and how it resumes; the Dashboard lists every problem state whatever the days.
 7. **"Renew automatically"** writes certbot's own `autorenew = True|False` line in
    the lineage's `[renewalparams]`; nothing else in the file changes.
-8. **Mail SNI** (a site certificate that also secures `mail.<domain>`): the mail SNI
-   contract names immutable snapshots only, so the Panel copies what the lineage
-   serves (`Agent.SnapshotSiteCertificateV1`, content-addressed) and publishes it
-   when it observes a renewal and at every start. **Open:** while the Panel is
-   stopped Postfix and Dovecot keep the previous copy, so mail SNI of a site
-   certificate expires up to one lifetime after the Panel stops. Making the hook
-   republish it needs the mail TLS artifact contract to accept native lineages; not
-   done here.
+8. **Mail SNI** (a site certificate that also secures `mail.<domain>`): an SNI entry
+   may name an OS-renewed lineage's live files (`fullchain.pem`, `privkey.pem`), so
+   Postfix's map `/etc/postfix/celikpanel_sni` and Dovecot's
+   `/etc/dovecot/conf.d/98-celikpanel-tls.conf` name stable paths and a renewal needs
+   no new plan: the deploy hook (point 4) rebuilds the map and reloads both, with no
+   CelikPanel program. The mail TLS plan (v1, `mutationpayload.CanonicalMailTLSSync`)
+   accepts such an entry when its names are one domain and its `mail.` name
+   (`NativeMailSNIDomain`; the lineage name carries no domain), and the Agent checks
+   that the lineage's files resolve into its own archive and that its certificate
+   covers every name. Immutable snapshots (uploaded certificates, earlier releases)
+   are unchanged. The mail host certificate keeps its own independent renewal runtime
+   (lineages `celikpanel-mail-*`, its own hook); the two hooks act on disjoint
+   lineages and the site hook never writes main.cf or the default certificate. A map
+   or reload failure is read as `deploy_incomplete` with its own guidance. An owner
+   who points `tls_server_sni_maps` at another map is left alone (`map_not_used`).
 9. **Certificates of earlier releases** (lineage named after the domain or
    `cp-site-…`, snapshot paths) are **kept renewing by the running Panel exactly as
    before, until they are reissued**. They are not migrated automatically: a
@@ -112,8 +124,10 @@ certificate expired within 90 days. A failed renewal only wrote
 **Contracts.** No schema change (46). `ssl_certificates.renewal_status` gains the
 additive values `os_<state>`; `cert_path` of a native row is certbot's live full
 chain, `lineage_name` the native lineage. New Agent RPCs
-`SiteCertificateRenewalStateV1` (read), `SetSiteCertificateAutoRenewV1` and
-`SnapshotSiteCertificateV1` (certificate mutation, build-gated);
+`SiteCertificateRenewalStateV1` (read) and `SetSiteCertificateAutoRenewV1`
+(certificate mutation, build-gated); the mail TLS plan v1 reader also accepts a
+native lineage's live files in an SNI entry (an additive reader change, same
+version);
 `IssueLetsEncryptCertificate` now always issues into the native store;
 `DeleteCertLineage` and `ReconcileSiteCertLineages` accept native names. New on-disk
 artifacts: the deploy hook v1 and the deploy record v1.
@@ -122,7 +136,11 @@ artifacts: the deploy hook v1 and the deploy record v1.
 That release's Agent refuses the live path when it re-renders the site's vhost (the
 file on disk stays as it is and keeps serving), its renewal job records the native
 certificate as failed (it cannot renew it; the OS still does), and its lineage
-cleanup never names a native lineage. Forward again, everything is read as it is.
+cleanup never names a native lineage. A committed mail TLS plan whose SNI entry names
+a native lineage is refused by that release's plan reader: Postfix and Dovecot keep
+their files and keep serving, but that release cannot change mail TLS until it is
+brought forward again or the domain's mail certificate is switched off and on.
+Forward again, everything is read as it is.
 
 **Removal of the Panel.** Retain `/etc/letsencrypt`, the deploy hook, the site's
 nginx files including `/etc/nginx/celikpanel-managed.d/<domain>/` and the challenge
@@ -133,11 +151,14 @@ future one must keep them). The record directory is optional.
 a disposable Debian 13 chroot with Debian's certbot 4.0.0, nginx 1.26 and Pebble
 2.6.0 as the CA, EAB required ([deploy/e2e/d040](../deploy/e2e/d040/README.md)):
 the Agent's own code issued; certbot's dry run, then the timer's own command
-renewed and nginx served the new certificate with no CelikPanel program present; a
-failed renewal and an nginx that could not load the renewed certificate were read
-as `failed` and `deploy_incomplete`. **Not shown:** a systemd-driven timer firing on
-a booted system, Ubuntu (snap certbot) and Arch, a real CA, the Panel's observer
-against a real Agent, mail SNI renewal with the Panel absent, reboot. P0.5 is
+renewed, nginx served the new certificate and Postfix (STARTTLS, map type `hash`)
+and Dovecot 2.4 (IMAPS) offered it for `mail.<domain>` with no CelikPanel program
+present, their configuration files byte-identical; a failed renewal and an nginx that
+could not load the renewed certificate were read as `failed` and `deploy_incomplete`
+(mail still took it). **Not shown:** a systemd-driven timer firing on a booted
+system, Ubuntu (snap certbot), Arch and Dovecot 2.3's `ssl_cert = <` form, a real
+CA, the Panel's observer against a real Agent, reboot; the distro config matrix
+has the new cases but was not run on its five releases for this change. P0.5 is
 advanced for websites only; it stays partial and every open acceptance item stays
 open. The update pause of `deploy/panel-tls-snapshot.sh` also holds the website
 renewal for the length of an update, as it already did for webmail and mail.

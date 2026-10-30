@@ -7219,7 +7219,7 @@ yerine yenisi gelen lineage'a `autorenew = False` yazılır. Şema yok (46); ek
 `renewal_status` değerleri `os_<durum>`. Önceki sürüme dönüşte yerel dosyalar sunmaya
 ve yenilenmeye devam eder. Kanıt: bileşen testleri ve atılabilir Debian 13 chroot'ta
 Pebble'a karşı bir deneme ([deploy/e2e/d040](../deploy/e2e/d040/README.md)). P0.5 yalnız
-web sitesi yenilemesi için ilerledi; Panel'siz posta SNI yenilemesi, yeniden başlatma
+web sitesi yenilemesi (web ve posta SNI'ı) için ilerledi; yeniden başlatma
 ve kalan matris açık; P0.1–P0.5 kısmi kalır.
 
 ### Aday v0.1.0-alpha.111 (Beta 1 kurulumu: kurulum sihirbazı v2, kodla katılma, kurulum bağlantısı, DNS sayfası; Ajan DNS kurulumu, geri alma, sertifika ve nokta güncellemesi yolları; şema değişikliği yok; ilke 1, 2, 4 ve 6; D-021 değişiklikleri; D-022; D-024; D-025; D-028 değişikliği; 29 Ekim 2026)

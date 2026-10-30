@@ -10457,6 +10457,9 @@ okuduğunu söyler. Pano alan adını gün sayısından bağımsız listeler.
 - **Yenileme gecikti:** `sudo systemctl status certbot.timer`, sonra `sudo certbot
   renew --cert-name <lineage>`.
 - **Yenilemeyi çalıştıran bir şey yok:** `sudo systemctl enable --now certbot.timer`.
+- **Yenilendi, web sitesi sunuyor, posta sunmuyor:** `sudo postfix check`, `sudo
+  doveconf -n`, sonra `sudo postmap -F hash:/etc/postfix/celikpanel_sni` ve `sudo
+  systemctl reload postfix dovecot`.
 - **Yenilendi, ancak eski sertifika sunuluyor:** `sudo nginx -t` nedeni gösterir;
   düzeltin, sonra `sudo systemctl reload nginx`.
 - **Kanca yok ya da değiştirildi / otomatik yenileme kapalı / ayarlar dışarıda
