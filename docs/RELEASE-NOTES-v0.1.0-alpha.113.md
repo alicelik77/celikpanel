@@ -73,6 +73,15 @@ needed (schema 46, unchanged).
 - Components that have no Arch package say so and what to do instead.
 
 **DNS**
+- On a pair built with join by code, deleting a zone no longer needs terminal
+  work. Before, the deletion waited until both administrators set up the
+  read-only deletion check with the `dns-peer-enroll` owner tool, and every
+  later DNS change waited behind it. Pairing now sets that check up itself
+  over the private setup link, with the same native files the owner tool
+  makes (revocable without the panel). An existing owner enrollment or an
+  owner-edited `sshd_config` is reported, never replaced. The PowerDNS
+  inspector also reads PowerDNS's own catalog row correctly now (this
+  affected the manual owner tool too).
 - Two btrfs fixes in the undo of an interrupted PowerDNS install: a
   directory's link count and a boot-scoped device number are no longer taken
   as identity proof.
@@ -93,6 +102,9 @@ needed (schema 46, unchanged).
 - Certificates issued with ZeroSSL or Google by an earlier release are not
   moved automatically; the certificate card asks to reissue once. Snap
   certbot is not covered.
+- The automatic deletion check is set up when a pair is built on this
+  release. A pair installed earlier and updated keeps the owner tool path
+  (the update does not add the tools directory).
 - A changed `/etc/resolv.conf` reaches an nginx proxy target only when that
   site's configuration is next written.
 

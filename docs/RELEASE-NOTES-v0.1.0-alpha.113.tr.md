@@ -74,6 +74,15 @@ değişmedi).
 - Arch paketi olmayan bileşenler bunu ve yerine ne yapılabileceğini söyler.
 
 **DNS**
+- Kodla katılarak kurulan çift sunucuda bir bölgeyi silmek artık terminal
+  işi gerektirmez. Önceden silme, iki yönetici `dns-peer-enroll` aracıyla
+  salt-okur silme denetimini kurana kadar bekliyor, sonraki bütün DNS
+  değişiklikleri de onun arkasında kalıyordu. Eşleştirme bu denetimi özel
+  kurulum bağlantısı üzerinden kendisi kurar; araçla aynı yerel dosyalar
+  oluşur (panel olmadan geri alınabilir). Sahibin mevcut kaydı ya da elle
+  değiştirdiği `sshd_config` bildirilir, üzerine yazılmaz. PowerDNS
+  denetçisi PowerDNS'in kendi katalog satırını artık doğru okur (bu, elle
+  kullanılan aracı da etkiliyordu).
 - Yarıda kalan PowerDNS kurulumunun geri alınmasında iki btrfs düzeltmesi:
   bir klasörün bağlantı sayısı ve açılıştan açılışa değişen aygıt numarası
   artık kimlik kanıtı sayılmaz.
@@ -95,6 +104,9 @@ değişmedi).
 - Önceki bir sürümün ZeroSSL ya da Google ile verdiği sertifikalar kendiliğinden
   taşınmaz; sertifika kartı bir kez yeniden almayı ister. Snap certbot
   kapsanmaz.
+- Otomatik silme denetimi, çift bu sürümle kurulduğunda kurulur. Daha önce
+  kurulup güncellenen çift, aracın elle kullanıldığı yolu korur (güncelleme
+  araç klasörünü eklemez).
 - Değişen `/etc/resolv.conf`, nginx vekil hedefine ancak o sitenin yapılandırması
   yeniden yazıldığında ulaşır.
 
