@@ -256,7 +256,10 @@ v_postfix() {
     # inet milter has one, so a failure to reach it is the case's failure.
     out=$(grep -Ei 'milter' /var/log/matrix-postfix.log | grep -Ei 'warning|error|fatal' | grep -v 'Milter service unix:' | sed -E 's/^[A-Za-z]{3} +[0-9]+ [0-9:]+ [^ ]+ //' | sort -u)
     [[ -n "$out" ]] && { printf 'milter unreachable: %s\n' "$out"; rc=1; }
-    noise='Milter service unix:|SSL_accept error|lost connection after CONNECT|milter'
+    # The non-SMTP test message is held by defer_transports: Postfix logs
+    # that through its "error" delivery agent (postfix/error ... deferred
+    # transport), which is the intended outcome, not a runtime error.
+    noise='Milter service unix:|SSL_accept error|lost connection after CONNECT|milter|status=deferred \(deferred transport\)'
     out=$(grep -Ei 'fatal|error|panic' /var/log/matrix-postfix.log | grep -Ev "$noise" | sed -E 's/^[A-Za-z]{3} +[0-9]+ [0-9:]+ [^ ]+ //' | sort -u)
     [[ -n "$out" ]] && { printf 'postfix runtime: %s\n' "$out"; rc=1; }
     out=$(grep -Ei 'warning' /var/log/matrix-postfix.log | grep -v 'maillog_file' | grep -Ev "$noise" | sed -E 's/^[A-Za-z]{3} +[0-9]+ [0-9:]+ [^ ]+ //' | sort -u)
