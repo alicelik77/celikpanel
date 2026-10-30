@@ -448,7 +448,22 @@ func panelCertLineageName(domain string) string {
 	return fmt.Sprintf("celikpanel-panel-%x", sum[:12])
 }
 
+// renderPanelACMEChallengeVhost is the name's port-80 server in the form it
+// should have now: everything else answers 404, unless CelikPanel's webmail
+// serves HTTPS on the same name (its address shares this port-80 server),
+// in which case everything else redirects to https (alpha.113). certbot's
+// HTTP-01 check is answered over http in both forms.
 func renderPanelACMEChallengeVhost(domain, challengeRoot string) string {
+	return renderPanelACMEChallengeVhostForm(domain, challengeRoot, webmailAddressSharesPanelACME(domain))
+}
+
+// renderPanelACMEChallengeVhostForm is the port-80 server with everything
+// but the HTTP-01 check answered 404 (redirect false) or redirected to https.
+func renderPanelACMEChallengeVhostForm(domain, challengeRoot string, redirect bool) string {
+	rest := "        return 404;\n"
+	if redirect {
+		rest = "        return 301 https://$host$request_uri;\n"
+	}
 	return fmt.Sprintf(
 		"# Managed by CelikPanel. Kept active for certbot renewals.\n"+
 			"server {\n"+
@@ -461,10 +476,10 @@ func renderPanelACMEChallengeVhost(domain, challengeRoot string) string {
 			"        try_files $uri =404;\n"+
 			"    }\n\n"+
 			"    location / {\n"+
-			"        return 404;\n"+
+			"%s"+
 			"    }\n"+
 			"}\n",
-		domain, challengeRoot,
+		domain, challengeRoot, rest,
 	)
 }
 
