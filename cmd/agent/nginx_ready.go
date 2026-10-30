@@ -74,8 +74,8 @@ func (a *Agent) EnsureNginxReady(req *ServiceMutationRequest, resp *EnsureNginxR
 		"/etc/nginx/sites-available",
 		"/etc/nginx/sites-enabled",
 	} {
-		if err := os.MkdirAll(d, 0o755); err != nil {
-			resp.Error = fmt.Sprintf("mkdir %s: %v", d, err)
+		if err := ensureNginxDropInDirectory(d); err != nil {
+			resp.Error = err.Error()
 			return nil
 		}
 	}
