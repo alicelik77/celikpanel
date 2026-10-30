@@ -121,6 +121,7 @@ userdb {
 	// INBOX, Postfix'in teslim ettiği maildir köküdür. mail_inbox_path'i boş
 	// bırakmak aynı şey değildir: Debian 2.4.1'de INBOX'u ".INBOX" klasörüne
 	// koyar ve teslim edilen posta görünmez.
+	// is24 branch only (2.3 returned above): these settings exist from 2.4.
 	userDir := "%{user | domain}/%{user | username}"
 	return dovecotVirtualPreamble + fmt.Sprintf(`mail_driver = maildir
 mail_home = %[1]s/%[2]s
