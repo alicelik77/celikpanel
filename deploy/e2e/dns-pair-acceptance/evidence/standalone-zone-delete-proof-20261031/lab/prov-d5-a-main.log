@@ -1,0 +1,29 @@
+{
+ "node": {
+  "cell": "d5-a",
+  "node": "main",
+  "os": "debian13",
+  "ip": "192.0.3.112",
+  "hostname": "frankfurt",
+  "uuid": "24ffe268-e72c-56f0-bb81-addf8f566215",
+  "tap": "cptdc15d2c3",
+  "mac": "52:54:00:cd:07:39",
+  "image": "debian-13-genericcloud-amd64-20260826-2582.qcow2",
+  "image_digest": {
+   "sha512": "184761b0dad0f9ace02f9298050ca96ce3caa39a461a47706d47ff9698b59933918b91b40177fbd4d392f6446af8b4d18ecb94caca988169b19641606bf34003"
+  },
+  "memory_mb": 4096,
+  "cpus": 2,
+  "started_at": "2026-10-30T22:18:47Z"
+ },
+ "ssh": {
+  "node": "main",
+  "boot_id": "92172d09-93d1-4649-9b6b-63f55ed1531d",
+  "waited_seconds": 46.9
+ },
+ "lab_trust_and_certbot": "# beta1 lab only: certbot uses the lab ACME server (pebble)\nserver = https://192.0.2.60:14000/dir\nno-verify-ssl = true\n1.1.1.1 via 192.0.3.1 dev lab0 src 192.0.3.112 uid 0 \n    cache \n192.0.2.1 via 192.0.3.1 dev lab0 src 192.0.3.112 uid 0 \n    cache \n\nnameserver 127.0.0.53\noptions edns0 trust-ad\nsearch .\nPRETTY_NAME=\"Debian GNU/Linux 13 (trixie)\"\nVERSION_ID=\"13\"\n6.12.105+deb13-cloud-amd64\nfrankfurt\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 52.4
+}

@@ -196,11 +196,28 @@ func dnsPublicationFailureEnglish(reason string) string {
 	}
 }
 
-// dnsPublicationGuidanceAPIError recognizes a reviewed peer pending code or a
-// reviewed local failure reason; anything else keeps the caller's generic text.
+// dnsPublicationAgentHeldReason names an exact DNS publication that the Agent
+// cannot move because it refuses every durable change (its hold). It is a
+// panel-side reason derived from the Agent's read-only status, not an Agent
+// failure reason.
+const dnsPublicationAgentHeldReason = "agent_mutations_held"
+
+// dnsPublicationAgentHeldEnglish: reason, actor, next action and resumption.
+const dnsPublicationAgentHeldEnglish = "The DNS change is saved, but the CelikPanel Agent on this server is holding every change: it could not verify the result of an earlier operation, and the Agent log names that operation. Websites, mail and DNS answers keep running. Next step: the server owner restarts the CelikPanel Agent on this server (sudo systemctl restart celikpanel-agent); at start it checks that same operation again and releases the hold once it is proven. Then retry this same change (for a domain deletion use “Retry this deletion”); it continues from where it stopped and nothing is done twice. If the hold returns after the restart, leave the server as it is and send the output of sudo journalctl -u celikpanel-agent -n 200 to CelikPanel support."
+
+// dnsPublicationGuidanceAPIError recognizes a reviewed peer pending code, a
+// held Agent or a reviewed local failure reason; anything else keeps the
+// caller's generic text.
 func dnsPublicationGuidanceAPIError(err error) (apiErrorBody, bool) {
 	if guidance, ok := dnsPeerPendingAPIError(err); ok {
 		return guidance, true
+	}
+	var held *agentMutationHeldError
+	if errors.As(err, &held) {
+		return apiErrorBody{
+			Code: errCodeDNSPublicationFailed, Reason: dnsPublicationAgentHeldReason,
+			Error: dnsPublicationAgentHeldEnglish,
+		}, true
 	}
 	var failure *dnsPublicationFailureReasonError
 	if !errors.As(err, &failure) || !transport.ValidDNSPublicationFailureReason(failure.Reason) {

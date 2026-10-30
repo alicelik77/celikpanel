@@ -97,7 +97,7 @@ export const enSitesScreens = {
     'domains.deletedDKIMLines': 'Domain {name} deleted. Lines naming it that CelikPanel did not write were kept in the OpenDKIM tables (/var/lib/celikpanel-dkim/tables); remove them by hand if they are no longer needed.',
     'domains.deletedDKIMFailed': 'Domain {name} deleted, but its DKIM key could not be removed, so OpenDKIM may still sign for it. The server owner deletes /var/lib/celikpanel-dkim/keys/{name} on the server; the signing tables follow at the next DKIM change.',
     'domains.deletionPending': 'Deletion is still pending, but its reason could not be verified. Check the status again. If it remains unknown, ask the server administrator to inspect the saved operation before retrying.',
-    'domains.deletionDNSRemoved': 'The DNS removal of this domain is complete and verified, including on the backup DNS server. The rest of the deletion has not run yet: use “Retry this deletion” to finish removing the domain from this server. Nothing else is waiting.',
+    'domains.deletionDNSRemoved': 'The DNS removal of this domain is complete and verified (on the backup DNS server too, when this server has one). The rest of the deletion has not run yet: use “Retry this deletion” to finish removing the domain from this server. Nothing else is waiting.',
     'domains.deletionWaiting': 'Deletion of {name} is waiting',
     'domains.retryDeletion': 'Retry this deletion',
     'domains.checkDeletionStatus': 'Check deletion status',

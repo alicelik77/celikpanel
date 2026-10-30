@@ -33,6 +33,8 @@ type dnsZoneV3TestAgent struct {
 	resumeBeginHook        func(transport.ServiceMutationBeginRequest) error
 	statusHook             func(string, *ServiceOperationMutationJob)
 	expireRecoveryOnStatus bool
+	// mutationHold is the Agent's read-only hold code reported with status.
+	mutationHold string
 }
 
 func newDNSZoneV3TestAgent() *dnsZoneV3TestAgent {
@@ -279,6 +281,7 @@ func (agent *dnsZoneV3TestAgent) ServiceMutationStatus(
 		agent.statusHook(requestID, job)
 	}
 	response.Job = cloneServiceOperationMutationJob(job)
+	response.MutationHold = agent.mutationHold
 	return nil
 }
 

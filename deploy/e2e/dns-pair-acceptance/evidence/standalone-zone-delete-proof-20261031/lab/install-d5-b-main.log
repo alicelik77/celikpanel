@@ -1,0 +1,53 @@
+{
+ "method": "get.sh in a root terminal (ssh -tt), lab portal",
+ "session": "# owner terminal session (lab): only PATH differs, see the curl stand-in\ncd /root\nexport PATH=/root/lab-portal/bin:$PATH\ncurl -fL --proto '=https' -o celikpanel-install.sh https://celikpanel.net/get.sh &&\nsh celikpanel-install.sh\n",
+ "stage": {
+  "rc": 0,
+  "out": "staged\n",
+  "err": ""
+ },
+ "terminal": {
+  "rc": 0,
+  "seconds": 294.7,
+  "answered": [
+   {
+    "prompt": "Admin username",
+    "at_seconds": 289.1
+   },
+   {
+    "prompt": "Admin email",
+    "at_seconds": 289.6
+   },
+   {
+    "prompt": "Show password while typing",
+    "at_seconds": 290.2
+   },
+   {
+    "prompt": "Admin password",
+    "at_seconds": 290.7
+   },
+   {
+    "prompt": "Confirm password",
+    "at_seconds": 291.2
+   }
+  ],
+  "problem": null,
+  "tail": "ional_users.sql\n2026/10/30 22:24:57 Applied migration: 030_domain_deletion_operations.sql\n2026/10/30 22:24:57 Applied migration: 031_service_operation_data.sql\n2026/10/30 22:24:57 Applied migration: 032_dns_zone_sync_state.sql\n2026/10/30 22:24:57 Applied migration: 033_dns_engine_state.sql\n2026/10/30 22:24:57 Applied migration: 034_dns_engine_publication_switch_guard.sql\n2026/10/30 22:24:57 Applied migration: 035_dns_zone_generation_high_water.sql\n2026/10/30 22:24:57 Applied migration: 036_bind_paired_engine.sql\n2026/10/30 22:24:57 Applied migration: 037_dns_pair_identity_immutable.sql\n2026/10/30 22:24:57 Applied migration: 038_database_admin_account.sql\n2026/10/30 22:24:57 Applied migration: 039_server_setup_state.sql\n2026/10/30 22:24:57 Applied migration: 040_dns_management.sql\n2026/10/30 22:24:57 Applied migration: 041_server_setup_execution.sql\n2026/10/30 22:24:57 Applied migration: 042_remote_dns_publish.sql\n2026/10/30 22:24:57 Applied migration: 043_request_identities.sql\n2026/10/30 22:24:57 Applied migration: 044_managed_site_files.sql\n2026/10/30 22:24:57 Applied migration: 045_audit_details_app_account.sql\n2026/10/30 22:24:57 Applied migration: 046_postgresql_clusters.sql\n2026/10/30 22:24:57 Successfully applied 46 migrations\n==> Creating the first administrator / \u0130lk y\u00f6netici olu\u015fturuluyor\n2026/10/30 22:24:58 Starting CelikPanel Backend...\nAdmin username / Y\u00f6netici kullan\u0131c\u0131 ad\u0131: owner\nAdmin email / Y\u00f6netici e-posta: owner@beta1-lab.test\nShow password while typing? / Parola yazarken g\u00f6r\u00fcns\u00fcn m\u00fc? [y/e = yes/evet, Enter = no/hay\u0131r]: \nAdmin password / Y\u00f6netici parolas\u0131: \nConfirm password / Parolay\u0131 do\u011frula: \nCreated administrator / Y\u00f6netici olu\u015fturuldu.\n    \u2713 administrator is ready / y\u00f6netici haz\u0131r\n==> Starting the panel / Panel ba\u015flat\u0131l\u0131yor\n    \u2713 panel is running / panel \u00e7al\u0131\u015f\u0131yor\n==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor\n    \u2713 initial panel certificate is protected / ilk panel sertifikasi korundu\n\nCelikPanel was installed successfully. / CelikPanel ba\u015far\u0131yla kuruldu.\n    Panel:  https://SUNUCU_IP:2083\n    Services / Servisler: systemctl status celikpanel-agent celikpanel-panel\n    Logs / G\u00fcnl\u00fckler: journalctl -u celikpanel-panel -f\n\nRESTART THIS SERVER NOW / BU SUNUCUYU SIMDI YENIDEN BASLATIN\n    This server is running kernel 7.1.8-arch1-3, whose modules are no longer on disk:\n    the prerequisite step upgraded the kernel and replaced them. Until this server\n    is restarted it cannot load nftables or WireGuard, so turning the firewall on\n    or installing the VPN will fail. Everything else is installed and running.\n        reboot\n\n    Bu sunucu, modulleri artik diskte olmayan 7.1.8-arch1-3 cekirdegiyle calisiyor:\n    on gereksinim adimi cekirdegi yukseltti ve modulleri degistirdi. Sunucu\n    yeniden baslatilana kadar nftables veya WireGuard yuklenemez; guvenlik\n    duvarini acmak veya VPN kurmak hata verir. Geri kalan her sey kurulu.\n        reboot\n\u001b]3008;end=dd912101f2aa4d8b9aa7b9253a0462f2\u001b\\",
+  "restart_required": true,
+  "restart_recommended": false
+ },
+ "portal_requests": "2026-10-30T22:20:16Z https://celikpanel.net/get.sh\n2026-10-30T22:20:17Z https://celikpanel.net/release-signing-ed25519.pem\n2026-10-30T22:20:18Z https://celikpanel.net/releases/v0.1.0-alpha.113/linux/amd64/release-manifest-v2\n2026-10-30T22:20:18Z https://celikpanel.net/releases/v0.1.0-alpha.113/linux/amd64/release-manifest-v2.sig\n2026-10-30T22:20:21Z https://celikpanel.net/releases/v0.1.0-alpha.113/linux/amd64/celikpanel-v0.1.0-alpha.113-linux-amd64.tar.gz\n2026-10-30T22:20:21Z https://celikpanel.net/releases/v0.1.0-alpha.113/linux/amd64/celikpanel-v0.1.0-alpha.113-linux-amd64.tar.gz.sha256\n-rw-r--r-- 1 root root 72913 Oct 30 22:20 /root/celikpanel-install.sh\n41bc905431d830301229026321810d90999713f85a0ca9b622b4b31578333911  /root/celikpanel-install.sh\n",
+ "postinstall": {
+  "rc": 0,
+  "out": "active\nactive\nenabled\nenabled\n"
+ },
+ "owner_restart": {
+  "action": "reboot",
+  "node": "main",
+  "boot_id_before": "fd311491-44dd-4f1e-ac83-8bd0a7ddddcf",
+  "boot_id_after": "46bf6582-4288-4565-9bf0-a54d18617b25",
+  "elapsed_seconds": 29.9
+ },
+ "after_restart_units": "active\nactive\n",
+ "seconds": 337.3
+}

@@ -20,6 +20,9 @@ const reviewedDNSPeerReasons = new Set([
     // Local, not peer: this server's named could not be asked about zone
     // state (no usable rndc key). Same retry action, same pending deletion.
     'bind_rndc_unavailable',
+    // The Agent holds every change after an operation it could not verify;
+    // the owner restarts the Agent, then retries the same deletion.
+    'agent_mutations_held',
 ]);
 
 // What the secondary's inspector reported for an incomplete inspection. Only

@@ -1,0 +1,11 @@
+﻿web test exit 0
+ℹ tests 2051
+ℹ pass 2051
+ℹ fail 0
+web build exit 0
+Bundle budget: entry file 263.56 KiB raw / 80.79 KiB gzip; critical boot 345.37 KiB / 105.09 KiB; largest route src/components/DNSPeersPage.tsx 239.49 KiB / 62.37 KiB; largest individual async DNSPeersPage-CeBotryo.js 137.09 KiB / 33.43 KiB
+Bundle budget per part: raw size / limit (headroom) | gzip size / limit (headroom)
+  chunk tr-DocQUCY0.js (src/i18n/screens/errors/tr.ts): 37.13 KiB / 44.00 KiB (6.87 KiB left, 15.6%) | 8.92 KiB / 11.50 KiB (2.58 KiB left, 22.4%)
+  chunk en-L3r1rXKD.js (src/i18n/screens/errors/en.ts): 33.54 KiB / 44.00 KiB (10.46 KiB left, 23.8%) | 8.42 KiB / 11.50 KiB (3.08 KiB left, 26.8%)
+  chunk tr-BKOq3QiN.js (src/i18n/screens/dnsPublication/tr.ts): 7.52 KiB / 10.50 KiB (2.98 KiB left, 28.4%) | 2.35 KiB / 4.00 KiB (1.65 KiB left, 41.4%)
+  chunk en-mFO_6pXy.js (src/i18n/screens/dnsPublication/en.ts): 6.74 KiB / 10.50 KiB (3.76 KiB left, 35.8%) | 2.07 KiB / 4.00 KiB (1.93 KiB left, 48.2%)

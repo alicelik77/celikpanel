@@ -4,10 +4,12 @@ import { domainDeletionDetailKey, readDomainDeletionPending, readDomainDeletionO
 import { en as enShellHalf } from '../src/i18n/en.ts';
 import { enErrorsScreens as enErrorsPart } from '../src/i18n/screens/errors/en.ts';
 // The coded refusals only screens show are the screen part "errors" since v0.1.0-alpha.98.
-const en = { ...enShellHalf, ...enErrorsPart };
+import { enDnsPublicationScreens as enDnsPublicationPart } from '../src/i18n/screens/dnsPublication/en.ts';
+const en = { ...enShellHalf, ...enErrorsPart, ...enDnsPublicationPart };
 import { tr as trShellHalf } from '../src/i18n/tr.ts';
 import { trErrorsScreens as trErrorsPart } from '../src/i18n/screens/errors/tr.ts';
-const tr = { ...trShellHalf, ...trErrorsPart };
+import { trDnsPublicationScreens as trDnsPublicationPart } from '../src/i18n/screens/dnsPublication/tr.ts';
+const tr = { ...trShellHalf, ...trErrorsPart, ...trDnsPublicationPart };
 import { enScreens } from './locale-catalogue.mjs';
 import { trScreens } from './locale-catalogue.mjs';
 
@@ -122,6 +124,26 @@ test('rndc guidance names the reason, the owner, the commands and the retry acti
   assert.ok(tr_.includes(`“${trScreens['domains.retryDeletion']}”`));
   assert.match(en_, /server owner/);
   assert.match(tr_, /sunucunun sahibi/);
+});
+
+test('a held Agent names the hold, the owner, the restart and the retry (2026-10-31)', async () => {
+  assert.equal(await readDomainDeletionPending(response(202, {
+    status: 'deletion_pending', stage: 'dns_cleanup', reason: 'agent_mutations_held',
+  })), 'agent_mutations_held');
+  assert.deepEqual(await readSavedDomainDeletionState(response(200, {
+    status: 'deletion_pending', stage: 'dns_cleanup', reason: 'agent_mutations_held',
+  })), { reason: 'agent_mutations_held', detail: '' });
+  const en_ = en['err.DNS_PUBLICATION_FAILED.agent_mutations_held'];
+  const tr_ = tr['err.DNS_PUBLICATION_FAILED.agent_mutations_held'];
+  for (const text of [en_, tr_]) {
+    assert.match(text, /sudo systemctl restart celikpanel-agent/);
+    assert.match(text, /journalctl -u celikpanel-agent/);
+    assert.doesNotMatch(text, /secret|ledger_ambiguous/i);
+  }
+  assert.ok(en_.includes(`“${enScreens['domains.retryDeletion']}”`));
+  assert.ok(tr_.includes(`“${trScreens['domains.retryDeletion']}”`));
+  assert.match(en_, /server owner/);
+  assert.match(tr_, /sunucu sahibi/);
 });
 
 test('refused local catalog transfer names the secondary owner, the statement, both cases and the retry', async () => {

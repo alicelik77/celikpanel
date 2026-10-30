@@ -133,6 +133,12 @@ const screenPartBudgets = {
   // split out of "componentPages", which had no headroom left. A new part,
   // set with at least 25% headroom from its Turkish file: 4.63 / 1.73 KiB.
   nginxDefaultHttps: kib(6.5, 2.4),
+  // 2026-10-31: the reviewed reasons of an unpublished DNS change
+  // (err.DNS_PUBLICATION_FAILED.<reason>), split out of "errors" when the
+  // held-Agent reason took it over its ceiling (Turkish 44.61 KiB before). A
+  // new part, set with at least 25% headroom from its Turkish file: 7.52 /
+  // 2.35 KiB.
+  dnsPublication: kib(10.5, 4),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

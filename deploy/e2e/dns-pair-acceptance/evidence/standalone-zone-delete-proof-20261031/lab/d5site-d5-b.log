@@ -1,0 +1,46 @@
+== D5 d5-b: site archd5shop113.test with a mailbox 22:33:40
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/1/public_html", "Domain": "archd5shop113.test", "DomainID": 1, "FTPPassword": "[REDACTED]", "FTPUser": "archd5shop113_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 1, "TempDomain": ""}
+   site id 1
+   ok 192.0.3.111 archd5shop113.test A = '192.0.3.111' after 0s
+200 {"id": 1, "success": true}
+-- automatic DKIM (card only read) 22:33:53
+   TXT celik._domainkey.archd5shop113.test after 11s: '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCA...'
+keytable lines for archd5shop113.test: 1
+signingtable lines for archd5shop113.test: 1
+key files mentioning archd5shop113.test:
+dns-engine 200 state ready mutation_hold None pending_zone_count 0 pending null
+== delete archd5shop113.test (owner, Domains screen) 22:34:05
+   DELETE 200 {
+ "domain": "archd5shop113.test",
+ "status": "deleted"
+}
+   answered after 12s
+   after: SOA archd5shop113.test: status: REFUSED flags: qr  | TXT celik._domainkey.archd5shop113.test: '' | A archd5shop113.test: ''
+   domains list still names it: no
+   deletion-status 404 {
+ "error": "domain not found"
+}
+keytable lines for archd5shop113.test: 0
+signingtable lines for archd5shop113.test: 0
+key files mentioning archd5shop113.test:
+dns-engine 200 state ready mutation_hold None pending_zone_count 0 pending null
+2026-10-30T22:33:46+00:00 arch useradd[13666]: new group: name=archd5shop113_test, GID=5001
+2026-10-30T22:33:46+00:00 arch useradd[13666]: new user: name=archd5shop113_test, UID=5001, GID=5001, home=/var/www/celikpanel/subscriptions/2/sites/1, shell=/bin/bash, from=none
+2026-10-30T22:33:46+00:00 arch chpasswd[13693]: pam_unix(chpasswd:chauthtok): password changed for archd5shop113_test
+2026-10-30T22:34:04+00:00 arch panel[3253]: 2026/10/30 22:34:04 [dkim-auto] archd5shop113.test: DKIM ready (domain_created; record published in archd5shop113.test)
+2026-10-30T22:34:06+00:00 arch userdel[15031]: delete user 'archd5shop113_test'
+2026-10-30T22:34:06+00:00 arch userdel[15031]: removed group 'archd5shop113_test' owned by 'archd5shop113_test'
+2026-10-30T22:34:06+00:00 arch userdel[15031]: removed shadow group 'archd5shop113_test' owned by 'archd5shop113_test'
+archd5f113.test
+== another site afterwards: archd5next113.test 22:34:26
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/2/public_html", "Domain": "archd5next113.test", "DomainID": 2, "FTPPassword": "[REDACTED]", "FTPUser": "archd5next113_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 2, "TempDomain": ""}
+   site id 2
+   ok 192.0.3.111 archd5next113.test A = '192.0.3.111' after 0s
+   SOA archd5next113.test: status: NOERROR flags: qr aa 
+--- http://archd5next113.test/
+code=200 redirect= ssl_verify=0
+--- https://archd5next113.test/
+code=000 redirect= ssl_verify=0
+dns-engine 200 state ready mutation_hold None pending_zone_count 0 pending null
+0
+== D5 d5-b done 22:34:36
