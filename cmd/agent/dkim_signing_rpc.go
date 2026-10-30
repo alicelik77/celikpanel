@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"os/user"
 	"path/filepath"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -298,14 +298,11 @@ func writeDKIMTables(ctx context.Context, domains []string, confPath, conf strin
 	if err := secureSetMailDirectoryMetadata(opendkimTablesDir, 0o750, 0, opendkimGID); err != nil {
 		return err
 	}
-	var kt, st strings.Builder
 	for _, d := range domains {
 		key, err := dkimKeyPath(d, signingSelector)
 		if err != nil {
 			return fmt.Errorf("invalid DKIM domain %q: %w", d, err)
 		}
-		fmt.Fprintf(&kt, "%s._domainkey.%s %s:%s:%s\n", signingSelector, d, d, signingSelector, key)
-		fmt.Fprintf(&st, "*@%s %s._domainkey.%s\n", d, signingSelector, d)
 		// OpenDKIM drops to its own user; give the group read access.
 		// OpenDKIM kendi kullanıcısına düşer; gruba okuma izni ver.
 		if err := secureSetMailFileMetadata(key, 0o640, 0, opendkimGID); err != nil {
@@ -321,6 +318,25 @@ func writeDKIMTables(ctx context.Context, domains []string, confPath, conf strin
 		filepath.Join(opendkimTablesDir, "signingtable"),
 		filepath.Join(opendkimTablesDir, "trustedhosts"),
 	}
+	// Lines the owner added to the tables are carried over, not dropped
+	// (30 Oct 2026, D-022): only CelikPanel's own lines are regenerated.
+	// Sahibin tablolara eklediği satırlar korunur; yalnız CelikPanel'inkiler
+	// yeniden üretilir.
+	existingKeys, _, err := readOptionalDKIMTable(tables[0])
+	if err != nil {
+		return err
+	}
+	existingSigning, _, err := readOptionalDKIMTable(tables[1])
+	if err != nil {
+		return err
+	}
+	kt, st, ownerLines, err := renderDKIMTables(existingKeys, existingSigning, domains)
+	if err != nil {
+		return err
+	}
+	if ownerLines > 0 {
+		log.Printf("[dkim] kept %d line(s) the owner added to the OpenDKIM tables in %s", ownerLines, opendkimTablesDir)
+	}
 	// The tables belong to the opendkim group, like the keys: Arch's unit
 	// starts opendkim as its own user (Debian's starts it as root and drops
 	// privileges after reading them), so root:celikpanel 0640 tables stopped
@@ -335,8 +351,8 @@ func writeDKIMTables(ctx context.Context, domains []string, confPath, conf strin
 		return nil, nil
 	}
 	return applyMailFileMutation(ctx, []mailFileWrite{
-		{path: tables[0], content: []byte(kt.String()), mode: 0o640},
-		{path: tables[1], content: []byte(st.String()), mode: 0o640},
+		{path: tables[0], content: kt, mode: 0o640},
+		{path: tables[1], content: st, mode: 0o640},
 		{path: tables[2], content: []byte(trusted), mode: 0o640},
 		{path: confPath, content: []byte(conf), mode: 0o644},
 	}, nil, tablesToGroup)

@@ -150,6 +150,14 @@ type Panel struct {
 	// Postfix maps are global files, so two tenants must not snapshot and
 	// publish overlapping forwarding or mailbox states concurrently.
 	mailMutationMu sync.Mutex
+	// The automatic DKIM runner (domain_dkim_automatic.go): one background
+	// pass at a time; a kick during a pass makes it go round once more.
+	// automaticDKIMKicked replaces the background start in tests (nil in
+	// production).
+	dkimAutoMu          sync.Mutex
+	dkimAutoRunning     bool
+	dkimAutoAgain       bool
+	automaticDKIMKicked func()
 	// dnsEnginePreviews holds short-lived, one-use authorizations for the
 	// separately confirmed DNS engine cutover endpoint.
 	dnsEnginePreviews dnsEnginePreviewCache
@@ -317,7 +325,7 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodOptions}
 	case "mail/forwardings":
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodOptions}
-	case "mail/auth/dkim", "mail/auth/apply":
+	case "mail/auth/dkim", "mail/auth/apply", "mail/auth/automatic":
 		match.kind, match.methods = "mail", []string{http.MethodPost, http.MethodOptions}
 	case "mail/catch-all":
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPut, http.MethodDelete, http.MethodOptions}
@@ -1540,6 +1548,8 @@ func main() {
 	// A pending paired DNS publication whose cause is transient (the backup
 	// has not caught up) completes by itself through its exact recovery.
 	panel.startDNSPendingPublicationReconciler(discoveryCtx)
+	// Automatic DKIM work a restart interrupted resumes from its records.
+	panel.startAutomaticDKIM()
 	// upd11 F2: startup mail work refused only because an update or rollback
 	// still held the host is retried, bounded, once the host is idle.
 	panel.startDeferredStartupMailWork(certificateDeferral, milterWiringDeferred)

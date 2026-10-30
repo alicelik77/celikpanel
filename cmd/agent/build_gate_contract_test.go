@@ -129,6 +129,22 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			// 30 Oct 2026: a deleted domain's DKIM key.
+			name: "RemoveDKIMKey",
+			run: func(expected string) string {
+				var response transport.DKIMRemoveResponse
+				err := agent.RemoveDKIMKey(&transport.DKIMRemoveRequest{
+					ExpectedBuildCommit: expected,
+					Domain:              "example.com",
+					Selector:            "celik",
+				}, &response)
+				if err == nil {
+					return response.Error
+				}
+				return err.Error()
+			},
+		},
+		{
 			name: "UpdateMailPassword",
 			run: func(expected string) string {
 				var response transport.MailMutationResponse

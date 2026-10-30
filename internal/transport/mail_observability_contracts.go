@@ -9,7 +9,11 @@ type DKIMStatusResponse struct {
 	HasKey           bool   `json:"has_key"`
 	PublicKeyB64     string `json:"public_key_b64"`
 	SigningInstalled bool   `json:"signing_installed"`
-	Error            string `json:"error,omitempty"`
+	// Signed: the domain is in the OpenDKIM signing table CelikPanel writes,
+	// so its mail is signed while OpenDKIM runs (30 Oct 2026).
+	// Signed: alan adı CelikPanel'in yazdığı OpenDKIM imzalama tablosunda.
+	Signed bool   `json:"signed"`
+	Error  string `json:"error,omitempty"`
 }
 
 type DKIMEnsureRequest struct {
@@ -21,6 +25,37 @@ type DKIMEnsureResponse struct {
 	Created      bool   `json:"created"`
 	PublicKeyB64 string `json:"public_key_b64"`
 	Error        string `json:"error,omitempty"`
+}
+
+// DKIMRemoveRequest asks the Agent to remove the DKIM key CelikPanel made for
+// a domain that is being deleted (30 Oct 2026). A key CelikPanel did not make
+// is kept and named.
+// DKIMRemoveRequest: silinen alan adı için CelikPanel'in ürettiği DKIM
+// anahtarını kaldırır; CelikPanel'in üretmediği anahtar korunur ve bildirilir.
+type DKIMRemoveRequest struct {
+	ExpectedBuildCommit string `json:"expected_build_commit"`
+	Domain              string `json:"domain"`
+	Selector            string `json:"selector"`
+}
+
+type DKIMRemoveResponse struct {
+	// Removed: CelikPanel's key and its origin record were removed now.
+	Removed bool `json:"removed"`
+	// Absent: there was no key for the domain.
+	Absent bool `json:"absent"`
+	// KeptKey is the path of a key kept because CelikPanel did not make it
+	// (no matching origin record: placed by the owner, or made by a release
+	// before 30 Oct 2026).
+	KeptKey string `json:"kept_key,omitempty"`
+	// OwnerTableLines are lines in CelikPanel's OpenDKIM key or signing
+	// table that name the domain but were not written by CelikPanel; they
+	// are kept.
+	OwnerTableLines []string `json:"owner_table_lines,omitempty"`
+	// SigningConfigured: CelikPanel's OpenDKIM signing table exists on this
+	// host, so the caller regenerates it (ConfigureDKIMSigning) after a
+	// removal.
+	SigningConfigured bool   `json:"signing_configured"`
+	Error             string `json:"error,omitempty"`
 }
 
 type MailPolicy struct {

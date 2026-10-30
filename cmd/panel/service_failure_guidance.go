@@ -53,19 +53,20 @@ var serviceFailureGuidanceCodes = map[string]bool{
 // transaction has returned (runServiceInstall advances only afterwards), so a
 // failure there is the package install.
 var serviceFailurePhaseSteps = map[string]string{
-	"queued":      serviceFailureStepPackageInstall,
-	"preflight":   serviceFailureStepPreflight,
-	"installing":  serviceFailureStepPackageInstall,
-	"downloading": serviceFailureStepPackageInstall,
-	"configuring": serviceFailureStepConfigure,
-	"mail-stack":  serviceFailureStepConfigure,
-	"submission":  serviceFailureStepConfigure,
-	"mail-tls":    serviceFailureStepConfigure,
-	"syncing":     serviceFailureStepConfigure,
-	"syncing_dns": serviceFailureStepConfigure,
-	"starting":    serviceFailureStepUnitStart,
-	"scanning":    serviceFailureStepVerify,
-	"verifying":   serviceFailureStepVerify,
+	"queued":       serviceFailureStepPackageInstall,
+	"preflight":    serviceFailureStepPreflight,
+	"installing":   serviceFailureStepPackageInstall,
+	"downloading":  serviceFailureStepPackageInstall,
+	"configuring":  serviceFailureStepConfigure,
+	"mail-stack":   serviceFailureStepConfigure,
+	"submission":   serviceFailureStepConfigure,
+	"dkim-signing": serviceFailureStepConfigure,
+	"mail-tls":     serviceFailureStepConfigure,
+	"syncing":      serviceFailureStepConfigure,
+	"syncing_dns":  serviceFailureStepConfigure,
+	"starting":     serviceFailureStepUnitStart,
+	"scanning":     serviceFailureStepVerify,
+	"verifying":    serviceFailureStepVerify,
 }
 
 var (

@@ -416,8 +416,13 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 			)
 
 	case serviceMutationStepConfigureDKIMSigning:
+		// A mail profile with Postfix sets up signing itself (30 Oct 2026):
+		// installed from Services, mail is signed without a first manual
+		// "Generate DKIM key".
+		// Postfix içeren posta profili imzalamayı kendisi kurar.
 		return claim.target == "opendkim" && claim.packageName == "" && claim.action == "configure" &&
-			serviceMutationJobMatches(job, "dkim_signing_configure", "opendkim", "")
+			(serviceMutationJobMatches(job, "dkim_signing_configure", "opendkim", "") ||
+				serviceMutationMailProfileContains(job, "postfix"))
 
 	case serviceMutationStepBindPHPTool:
 		// One tool to one PHP version, inside its own "php_tool_bind" job
