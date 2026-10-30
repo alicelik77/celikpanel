@@ -556,20 +556,8 @@ func verifyMailTLSSyncPlan(journal *mailTLSSyncJournal, runner mailTLSCommandRun
 		return fmt.Errorf("verify default mail TLS certificate: %w", err)
 	}
 	for _, entry := range journal.SNI {
-		if _, _, err := requireManagedMailTLSCertificateFile(entry.CertPath, "fullchain.pem", 0o644); err != nil {
-			return err
-		}
-		if _, _, err := requireManagedMailTLSCertificateFile(entry.KeyPath, "privkey.pem", 0o600); err != nil {
-			return err
-		}
-		certDomain, _, err := requireManagedMailTLSCertificateFile(entry.CertPath, "fullchain.pem", 0o644)
-		if err != nil {
-			return err
-		}
-		if err := verifyManagedCertificateSnapshot(
-			certDomain, entry.CertPath, entry.KeyPath, "",
-		); err != nil {
-			return fmt.Errorf("verify committed immutable mail TLS snapshot: %w", err)
+		if _, err := verifyMailSNIEntryFiles(entry.Names, entry.CertPath, entry.KeyPath); err != nil {
+			return fmt.Errorf("verify committed mail TLS certificate: %w", err)
 		}
 	}
 	if err := verifyMailTLSConfiguration(journal, certPath, keyPath, runner, secureReadConfig); err != nil {

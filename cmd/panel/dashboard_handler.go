@@ -33,7 +33,7 @@ type dashboardExpiringCert struct {
 	WaitingForOwner bool `json:"waiting_for_owner,omitempty"`
 	ServedDaysLeft  *int `json:"served_days_left,omitempty"`
 	DomainID        int  `json:"domain_id,omitempty"`
-	// RenewalProblem (D-039, additive) is the operating system's renewal
+	// RenewalProblem (D-040, additive) is the operating system's renewal
 	// state (transport.SiteRenewal*) when it needs the server administrator:
 	// listed whatever the days, because nothing renews it until they act.
 	RenewalProblem string `json:"renewal_problem,omitempty"`

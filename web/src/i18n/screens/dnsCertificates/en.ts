@@ -200,7 +200,7 @@ export const enDnsCertificatesScreens = {
     'ssl.renewal.activationPending': 'Renewed certificate is waiting for web activation',
     'ssl.renewal.dependentsPending': 'Renewed certificate is waiting for mail TLS synchronization',
     'ssl.renewal.waitingForOwner': 'Waiting for the server administrator’s choice on the site’s configuration file',
-    // D-039: who renews a website certificate and what the administrator does.
+    // D-040: who renews a website certificate and what the administrator does.
     'ssl.renewedBy': 'Renewed by',
     'ssl.renewedBy.os': 'The operating system’s certbot (also while CelikPanel is stopped or removed)',
     'ssl.renewedBy.panel': 'CelikPanel, only while it runs',
@@ -237,6 +237,8 @@ export const enDnsCertificatesScreens = {
     'ssl.renewalGuide.disabled.action': 'Switch “Enable automatic renewal” on below, or remove that line from /etc/letsencrypt/renewal/{lineage}.conf.',
     'ssl.renewalGuide.deploy_incomplete': 'sudo certbot renewed the certificate, but nginx could not load it ({nginx}); visitors still get the previous certificate.',
     'ssl.renewalGuide.deploy_incomplete.action': 'Fix nginx’s configuration (sudo nginx -t shows the problem), then run sudo systemctl reload nginx.',
+    'ssl.renewalGuide.deploy_incomplete_mail': 'certbot renewed the certificate and the website serves it, but mail could not load it (Postfix: {mail}, Dovecot: {dovecot}); mail clients still get the previous certificate.',
+    'ssl.renewalGuide.deploy_incomplete_mail.action': 'Check the mail configuration (sudo postfix check, sudo doveconf -n), then run sudo postmap -F hash:/etc/postfix/celikpanel_sni (lmdb: on systems without hash) and sudo systemctl reload postfix dovecot.',
     'ssl.renewalGuide.hook_missing': 'The deploy hook that reloads nginx after a renewal is not on this server, so a renewed certificate is served only after nginx is reloaded.',
     'ssl.renewalGuide.hook_missing.action': 'Reissue the certificate here (Reissue certificate) to put the hook back, or run sudo systemctl reload nginx after each renewal.',
     'ssl.renewalGuide.hook_changed': 'The deploy hook /etc/letsencrypt/renewal-hooks/deploy/celikpanel-site-certificates was changed outside CelikPanel and is kept as it is.',

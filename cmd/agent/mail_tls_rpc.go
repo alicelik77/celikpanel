@@ -454,26 +454,11 @@ func validateMailSNIEntries(entries []MailSNIEntry) ([]MailSNIEntry, error) {
 			names = append(names, canonical)
 		}
 
-		certDomain, certPath, err := requireManagedMailTLSCertificateFile(
-			entry.CertPath, "fullchain.pem", 0o644,
-		)
+		certDomain, err := verifyMailSNIEntryFiles(names, entry.CertPath, entry.KeyPath)
 		if err != nil {
-			return nil, fmt.Errorf("entry %d certificate: %w", entryIndex+1, err)
+			return nil, fmt.Errorf("entry %d: %w", entryIndex+1, err)
 		}
-		keyDomain, keyPath, err := requireManagedMailTLSCertificateFile(
-			entry.KeyPath, "privkey.pem", 0o600,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("entry %d private key: %w", entryIndex+1, err)
-		}
-		if certDomain != keyDomain || filepath.Dir(certPath) != filepath.Dir(keyPath) {
-			return nil, fmt.Errorf("entry %d certificate and private key are not from the same managed snapshot", entryIndex+1)
-		}
-		if err := verifyManagedCertificateSnapshot(
-			certDomain, certPath, keyPath, "",
-		); err != nil {
-			return nil, fmt.Errorf("entry %d immutable certificate snapshot: %w", entryIndex+1, err)
-		}
+		certPath, keyPath := entry.CertPath, entry.KeyPath
 
 		mailName, err := hostname.MailFQDN(certDomain)
 		if err != nil {
@@ -502,6 +487,49 @@ func validateMailSNIEntries(entries []MailSNIEntry) ([]MailSNIEntry, error) {
 		validated = append(validated, entry)
 	}
 	return validated, nil
+}
+
+// verifyMailSNIEntryFiles checks the certificate files one SNI entry names
+// and returns the domain they are for. An immutable snapshot under the
+// managed root names its domain in its path; an OS-renewed website lineage
+// (D-040) is certbot's live files, its domain is the one the entry's names
+// list, and its certificate must cover every one of them.
+func verifyMailSNIEntryFiles(names []string, certPath, keyPath string) (string, error) {
+	if _, native := nativeSiteLineageOfPath(certPath); native {
+		if err := verifyNativeSiteCertificatePaths(certPath, keyPath, ""); err != nil {
+			return "", fmt.Errorf("certbot lineage: %w", err)
+		}
+		domain, ok := mutationpayload.NativeMailSNIDomain(names)
+		if !ok {
+			return "", fmt.Errorf("names do not name one domain and its mail hostname")
+		}
+		lineage, _ := nativeSiteLineageOfPath(certPath)
+		_, leaf, _, err := readNativeSiteLineage(lineage)
+		if err != nil {
+			return "", fmt.Errorf("certbot lineage: %w", err)
+		}
+		for _, name := range names {
+			if err := leaf.VerifyHostname(name); err != nil {
+				return "", fmt.Errorf("the certbot lineage's certificate does not cover %s", name)
+			}
+		}
+		return domain, nil
+	}
+	certDomain, certFile, err := requireManagedMailTLSCertificateFile(certPath, "fullchain.pem", 0o644)
+	if err != nil {
+		return "", fmt.Errorf("certificate: %w", err)
+	}
+	keyDomain, keyFile, err := requireManagedMailTLSCertificateFile(keyPath, "privkey.pem", 0o600)
+	if err != nil {
+		return "", fmt.Errorf("private key: %w", err)
+	}
+	if certDomain != keyDomain || filepath.Dir(certFile) != filepath.Dir(keyFile) {
+		return "", fmt.Errorf("certificate and private key are not from the same managed snapshot")
+	}
+	if err := verifyManagedCertificateSnapshot(certDomain, certFile, keyFile, ""); err != nil {
+		return "", fmt.Errorf("immutable certificate snapshot: %w", err)
+	}
+	return certDomain, nil
 }
 
 func requireManagedMailTLSCertificateFile(rawPath, expectedName string, expectedMode os.FileMode) (string, string, error) {

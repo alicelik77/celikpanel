@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -12,7 +11,7 @@ import (
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
-// Website certificates renewed by the operating system (D-022, D-039).
+// Website certificates renewed by the operating system (D-022, D-040).
 //
 // A certificate issued by this release is a certbot lineage in the standard
 // store; certbot's own timer renews it and its deploy hook reloads nginx,
@@ -248,9 +247,9 @@ func (p *Panel) observeNativeSiteCertificate(ctx context.Context, row nativeSite
 		}
 	}
 	if decision.Renewed && row.SecureMail {
-		// The mail SNI map names immutable copies; a renewed certificate is
-		// copied and published to Postfix and Dovecot here. While the Panel
-		// is stopped mail keeps the previous copy (D-039, open item).
+		// The native deploy hook already rebuilt the SNI map and reloaded
+		// Postfix and Dovecot; this only reconciles the accepted mail TLS
+		// plan (an unchanged plan is a no-op) and the TLSA dependent.
 		if err := p.syncCertificateDependents(ctx, row.DomainID); err != nil {
 			if markErr := p.markCertificatePendingDetached(ctx, row.DomainID, sslPendingDependents, false); markErr != nil {
 				log.Printf("cert renewal %s: mail TLS after the operating system's renewal: %v; pending state: %v", row.Domain, err, markErr)
@@ -259,25 +258,6 @@ func (p *Panel) observeNativeSiteCertificate(ctx context.Context, row nativeSite
 			log.Printf("cert renewal %s: mail TLS after the operating system's renewal failed (%v); Retry activation publishes it", row.Domain, err)
 		}
 	}
-}
-
-// snapshotNativeSiteCertificateForMail returns the immutable copy of the
-// certificate a native lineage serves now, for the mail SNI map.
-func (p *Panel) snapshotNativeSiteCertificateForMail(ctx context.Context, domainID int, domain, lineage string) (string, string, error) {
-	var resp transport.SnapshotSiteCertificateResponse
-	if err := p.callAgentContext(ctx, "Agent.SnapshotSiteCertificateV1", &transport.SnapshotSiteCertificateRequest{
-		ExpectedBuildCommit: strings.TrimSpace(buildCommit),
-		Domain:              domain, DomainID: domainID, LineageName: lineage,
-	}, &resp); err != nil {
-		return "", "", err
-	}
-	if resp.Error != "" {
-		return "", "", errors.New(resp.Error)
-	}
-	if resp.CertPath == "" || resp.KeyPath == "" {
-		return "", "", fmt.Errorf("the Agent returned no copy of the certificate for mail")
-	}
-	return resp.CertPath, resp.KeyPath, nil
 }
 
 // setNativeSiteAutoRenew writes the page's "renew automatically" into

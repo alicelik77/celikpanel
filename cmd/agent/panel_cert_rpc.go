@@ -27,7 +27,7 @@ var validStagedSiteLineage = regexp.MustCompile(`^cp-site-[1-9][0-9]*-[a-f0-9]{2
 
 // validAgentGeneratedSiteLineage is a lineage name only the Agent makes: an
 // earlier release's staged name (cp-site-...) or an OS-renewed website lineage
-// (celikpanel-site-..., D-039). Both carry an Agent-generated random part, so
+// (celikpanel-site-..., D-040). Both carry an Agent-generated random part, so
 // deleting exactly such a name never reaches an owner's own lineage.
 func validAgentGeneratedSiteLineage(lineage string) bool {
 	return validStagedSiteLineage.MatchString(lineage) || transport.IsNativeSiteLineage(lineage)

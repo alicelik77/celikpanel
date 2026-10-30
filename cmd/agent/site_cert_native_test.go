@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alicelik/celikpanel/internal/mutationpayload"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -377,10 +378,7 @@ func TestNativeSiteDeployHookReloadsNginxAndRecordsTheOutcome(t *testing.T) {
 	root := t.TempDir()
 	statusDir := filepath.Join(root, "status")
 	hook := filepath.Join(root, "hook")
-	body := strings.Replace(nativeSiteDeployHook, "dir=/var/lib/celikpanel-site-certificates", "dir="+statusDir, 1)
-	if body == nativeSiteDeployHook || !strings.Contains(nativeSiteDeployHook, "dir="+transport.NativeSiteDeployStatusDir+"\n") {
-		t.Fatal("the hook's record directory is not the contract's")
-	}
+	body := nativeSiteHookForTest(t, root, statusDir)
 	if err := os.WriteFile(hook, []byte(body), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -417,7 +415,8 @@ exit 0
 		t.Fatal(err)
 	}
 	lines := strings.Split(strings.TrimSpace(string(record)), "\n")
-	if len(lines) != 4 || lines[0] != "format="+transport.NativeSiteDeployFormat || lines[1] != "lineage="+testNativeLineage || lines[3] != "nginx=reloaded" {
+	if len(lines) != 6 || lines[0] != "format="+transport.NativeSiteDeployFormat || lines[1] != "lineage="+testNativeLineage ||
+		lines[3] != "nginx=reloaded" || lines[4] != "mail=not_used" || lines[5] != "dovecot=not_used" {
 		t.Fatalf("record = %q", record)
 	}
 	if got, _ := os.ReadFile(calls); !strings.Contains(string(got), "systemctl reload nginx") || !strings.Contains(string(got), "nginx -t") {
@@ -574,6 +573,11 @@ func TestClassifyNativeSiteRenewal(t *testing.T) {
 			f.Deploy = &transport.SiteRenewalDeploy{CompletedAt: f.Leaf.NotBefore.Add(-60 * 24 * time.Hour), Nginx: "reload_failed"}
 			return f
 		}, transport.SiteRenewalScheduled},
+		{"renewed, mail SNI map not rebuilt", func() nativeSiteFacts {
+			f := leaf(1, 90)
+			f.Deploy = &transport.SiteRenewalDeploy{CompletedAt: f.Leaf.NotBefore.Add(time.Minute), Nginx: "reloaded", Mail: "postmap_failed"}
+			return f
+		}, transport.SiteRenewalDeployIncomplete},
 		{"hook missing", func() nativeSiteFacts { f := leaf(10, 90); f.Hook = "missing"; return f }, transport.SiteRenewalHookMissing},
 		{"hook changed", func() nativeSiteFacts { f := leaf(10, 90); f.Hook = "changed"; return f }, transport.SiteRenewalHookChanged},
 		{"owner switched the authenticator", func() nativeSiteFacts { f := leaf(10, 90); f.Conf.Authenticator = "dns-cloudflare"; return f }, transport.SiteRenewalOwnerConfigured},
@@ -791,5 +795,129 @@ func TestReconcileSiteCertLineagesKeepsReferencedNativeLineagesAndDeletesOrphans
 	legacy.ConfigDir = harness.legacy
 	if resp.Error != "" || resp.Deleted != 1 || !reflect.DeepEqual(harness.calls, [][]string{expectedCertificateDeleteArgs(legacy, orphan)}) {
 		t.Fatalf("resp=%+v calls=%v", resp, harness.calls)
+	}
+}
+
+// nativeSiteHookForTest is the shipped hook with only its record directory
+// and its two mail files moved into the test.
+func nativeSiteHookForTest(t *testing.T, root, statusDir string) string {
+	t.Helper()
+	body := nativeSiteDeployHook
+	for _, pair := range [][2]string{
+		{"dir=" + transport.NativeSiteDeployStatusDir + "\n", "dir=" + statusDir + "\n"},
+		{"sni=" + postfixSNIPath + "\n", "sni=" + filepath.Join(root, "celikpanel_sni") + "\n"},
+		{"conf=" + dovecotTLSConf + "\n", "conf=" + filepath.Join(root, "98-celikpanel-tls.conf") + "\n"},
+	} {
+		if !strings.Contains(body, pair[0]) {
+			t.Fatalf("the hook does not use the contract's path %q", pair[0])
+		}
+		body = strings.Replace(body, pair[0], pair[1], 1)
+	}
+	return body
+}
+
+// The hook refreshes mail SNI for a lineage CelikPanel's map names: postmap
+// of the map as it is (the files' contents are embedded), then reloads.
+func TestNativeSiteDeployHookRefreshesMailSNIOnlyForItsOwnMap(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX sh")
+	}
+	root := t.TempDir()
+	statusDir := filepath.Join(root, "status")
+	hook := filepath.Join(root, "hook")
+	if err := os.WriteFile(hook, []byte(nativeSiteHookForTest(t, root, statusDir)), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	sni := filepath.Join(root, "celikpanel_sni")
+	live := "/etc/letsencrypt/live/" + testNativeLineage
+	mapBody := "# Managed by CelikPanel — per-domain mail certificates (SNI).\nmail.example.test " + live + "/privkey.pem " + live + "/fullchain.pem\n"
+	if err := os.WriteFile(sni, []byte(mapBody), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "98-celikpanel-tls.conf"), []byte("local_name mail.example.test {\n  ssl_cert = <"+live+"/fullchain.pem\n}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	bin := filepath.Join(root, "bin")
+	_ = os.MkdirAll(bin, 0o755)
+	calls := filepath.Join(root, "calls")
+	write := func(name, script string) {
+		if err := os.WriteFile(filepath.Join(bin, name), []byte("#!/bin/sh\necho \""+name+" $*\" >>"+calls+"\n"+script), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	run := func(maps, postmapExit string) (string, string) {
+		_ = os.Remove(calls)
+		write("nginx", "exit 0\n")
+		write("systemctl", "exit 0\n")
+		write("postconf", "echo '"+maps+"'\n")
+		write("postmap", "exit "+postmapExit+"\n")
+		cmd := exec.Command("sh", hook)
+		cmd.Env = []string{"PATH=" + bin + ":/usr/bin:/bin", "RENEWED_LINEAGE=" + live}
+		_, _ = cmd.CombinedOutput()
+		record, _ := os.ReadFile(filepath.Join(statusDir, testNativeLineage))
+		got, _ := os.ReadFile(calls)
+		return string(record), string(got)
+	}
+	record, got := run("hash:"+sni, "0")
+	if !strings.Contains(record, "mail=reloaded\n") || !strings.Contains(record, "dovecot=reloaded\n") ||
+		!strings.Contains(got, "postmap -F hash:"+sni) || !strings.Contains(got, "systemctl reload postfix") ||
+		!strings.Contains(got, "systemctl reload dovecot") {
+		t.Fatalf("record=%q calls=%q", record, got)
+	}
+	if after, _ := os.ReadFile(sni); string(after) != mapBody {
+		t.Fatal("the hook changed the map's source")
+	}
+	// The owner pointed Postfix elsewhere: the map is left alone.
+	record, got = run("hash:/etc/postfix/owners_own_sni", "0")
+	if !strings.Contains(record, "mail=map_not_used\n") || strings.Contains(got, "postmap") || strings.Contains(got, "reload postfix") {
+		t.Fatalf("record=%q calls=%q", record, got)
+	}
+	record, _ = run("lmdb:"+sni, "1")
+	if !strings.Contains(record, "mail=postmap_failed\n") {
+		t.Fatalf("record=%q", record)
+	}
+	savedDir := nativeSiteStatusDir
+	nativeSiteStatusDir = statusDir
+	deploy, err := readNativeSiteDeployStatus(testNativeLineage)
+	nativeSiteStatusDir = savedDir
+	if err != nil || deploy.Mail != "postmap_failed" || deploy.Dovecot != "reloaded" {
+		t.Fatalf("deploy=%+v err=%v", deploy, err)
+	}
+}
+
+func TestNativeMailSNIEntriesNameCertbotsLiveFiles(t *testing.T) {
+	full, key, _ := transport.NativeSiteLineagePaths(testNativeLineage)
+	commitment, err := mutationpayload.CanonicalMailTLSSync("/etc/ssl/celikpanel", "mx.example.test", []transport.MailSNIEntry{
+		{Names: []string{"mail.example.test", "example.test"}, CertPath: full, KeyPath: key},
+	})
+	if err != nil || len(commitment.SNI) != 1 || commitment.SNI[0].CertPath != full {
+		t.Fatalf("commitment=%+v err=%v", commitment, err)
+	}
+	for _, bad := range []transport.MailSNIEntry{
+		{Names: []string{"mail.example.test", "other.test"}, CertPath: full, KeyPath: key},
+		{Names: []string{"example.test"}, CertPath: full, KeyPath: key},
+		{Names: []string{"mail.example.test"}, CertPath: full, KeyPath: strings.Replace(key, testNativeLineage, "celikpanel-site-42-ffffffffffffffffffffffff", 1)},
+		{Names: []string{"mail.example.test"}, CertPath: strings.Replace(full, "fullchain.pem", "cert.pem", 1), KeyPath: key},
+	} {
+		if _, err := mutationpayload.CanonicalMailTLSSync("/etc/ssl/celikpanel", "mx.example.test", []transport.MailSNIEntry{bad}); err == nil {
+			t.Errorf("accepted %+v", bad)
+		}
+	}
+	if d, ok := mutationpayload.NativeMailSNIDomain([]string{"mail.mail.example.test", "mail.example.test"}); !ok || d != "mail.example.test" {
+		t.Fatalf("domain = %q %v", d, ok)
+	}
+
+	// The Agent checks the files and that the certificate covers the names.
+	nativeSiteTestStore(t)
+	leaf, privateKey := makeCertificatePair(t, "ecdsa", []string{"example.test", "mail.example.test"})
+	writeNativeLineage(t, testNativeLineage, 1, leaf, privateKey, leaf, testRenewalConf)
+	paths := nativeSiteLivePaths(testNativeLineage)
+	if domain, err := verifyMailSNIEntryFiles([]string{"example.test", "mail.example.test"}, paths.Fullchain, paths.Key); err != nil || domain != "example.test" {
+		t.Fatalf("domain=%q err=%v", domain, err)
+	}
+	other, otherKey := makeCertificatePair(t, "ecdsa", []string{"example.test"})
+	writeNativeLineage(t, testNativeLineage, 2, other, otherKey, other, "")
+	if _, err := verifyMailSNIEntryFiles([]string{"mail.example.test"}, paths.Fullchain, paths.Key); err == nil {
+		t.Fatal("a certificate that does not cover the mail name was accepted")
 	}
 }

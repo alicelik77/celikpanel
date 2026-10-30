@@ -1,5 +1,5 @@
 // Who renews a website certificate and what the administrator does about it
-// (D-039, D-024). A certificate issued since D-039 is renewed by the
+// (D-040, D-024). A certificate issued since D-040 is renewed by the
 // operating system's certbot timer, also while CelikPanel is stopped or
 // removed; the Panel only reads what certbot did. One of an earlier release
 // is renewed by the running Panel until it is reissued.
@@ -14,7 +14,7 @@ export interface SiteRenewalState {
     renew_after?: string;
     scheduler?: { name?: string; enabled: boolean; active: boolean; known: boolean };
     hook?: string;
-    last_deploy?: { completed_at: string; nginx: string } | null;
+    last_deploy?: { completed_at: string; nginx: string; mail?: string; dovecot?: string } | null;
     last_failed?: { at: string; detail: string } | null;
     auto_renew?: boolean;
 }
@@ -97,6 +97,14 @@ export function renewalGuidance(cert: RenewalCertificate): RenewalGuidance | nul
         nginx: renewal?.last_deploy?.nginx || '',
         date: renewal?.renew_after ? renewal.renew_after.slice(0, 10) : '',
     };
+    // Renewed and nginx loaded it, but mail did not: its own sentence.
+    const deploy = renewal?.last_deploy;
+    const mailFailed = deploy && (deploy.mail === 'postmap_failed' || deploy.mail === 'reload_failed' || deploy.dovecot === 'reload_failed');
+    if (known === 'deploy_incomplete' && mailFailed && (deploy.nginx === 'reloaded' || deploy.nginx === 'not_running' || deploy.nginx === 'not_installed')) {
+        params.mail = deploy.mail || '';
+        params.dovecot = deploy.dovecot || '';
+        return { tone: 'warning', reasonKey: 'ssl.renewalGuide.deploy_incomplete_mail', actionKey: 'ssl.renewalGuide.deploy_incomplete_mail.action', params };
+    }
     if (known === 'unknown' && cert.renewal_read_error) {
         return { tone: 'info', reasonKey: 'ssl.renewalGuide.unknown', params };
     }

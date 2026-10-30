@@ -270,6 +270,11 @@ func matrixVhostShapes(h *matrixHost) []matrixVhost {
 			r.SSLKey = "/etc/letsencrypt/live/" + domain + "/privkey.pem"
 			r.ForceHTTPS = true
 		}},
+		{"site-native-lineage", "PHP site, OS-renewed certbot lineage (D-040), HTTPS + force-HTTPS", func(r *ApplyVhostRequest) {
+			r.SSLType = "letsencrypt"
+			r.SSLCert, r.SSLKey, _ = transport.NativeSiteLineagePaths(fmt.Sprintf("celikpanel-site-%d-00112233445566778899aabb", r.DomainID))
+			r.ForceHTTPS = true
+		}},
 	}
 }
 
@@ -532,6 +537,8 @@ func newPostfixCase(id, variant, source string) *configmatrix.Case {
 var matrixSNI = []MailSNIEntry{
 	{Names: []string{"mail.example.test"}, CertPath: "/etc/ssl/celikpanel/example.test/" + matrixManagedCertVersion + "/fullchain.pem", KeyPath: "/etc/ssl/celikpanel/example.test/" + matrixManagedCertVersion + "/privkey.pem"},
 	{Names: []string{"mail.second.test", "smtp.second.test"}, CertPath: "/etc/ssl/celikpanel/second.test/" + matrixManagedCertVersion + "/fullchain.pem", KeyPath: "/etc/ssl/celikpanel/second.test/" + matrixManagedCertVersion + "/privkey.pem"},
+	// An OS-renewed website lineage (D-040): certbot's live files.
+	{Names: []string{"mail.native.test", "native.test"}, CertPath: "/etc/letsencrypt/live/celikpanel-site-7-00112233445566778899aabb/fullchain.pem", KeyPath: "/etc/letsencrypt/live/celikpanel-site-7-00112233445566778899aabb/privkey.pem"},
 }
 
 func addMatrixSNIFixtures(t *testing.T, c *configmatrix.Case) {
@@ -1145,6 +1152,7 @@ func renderMatrixHooks(t *testing.T, h *matrixHost) {
 	for _, v := range []struct{ id, variant, source, target, body string }{
 		{"panel-cert-deploy-hook", "panel certificate certbot deploy hook", "cmd/agent/panel_cert_files_linux.go:481 renderPanelCertDeployHook", "/etc/letsencrypt/renewal-hooks/deploy/celikpanel-panel-cert", renderPanelCertDeployHook()},
 		{"mail-host-cert-legacy-hook", "mail host certificate deploy hook (legacy writer)", "cmd/agent/mail_host_certificate_linux.go:95 -> internal/mailrenewalkit/contract.go:145 LegacyHook", "/etc/letsencrypt/renewal-hooks/deploy/celikpanel-mail-host-cert", renderMailHostCertificateDeployHook()},
+		{"site-cert-deploy-hook", "website certificate deploy hook (D-040: nginx, Postfix SNI map, Dovecot)", "cmd/agent/site_cert_native.go nativeSiteDeployHook", nativeSiteHookPath, nativeSiteDeployHook},
 	} {
 		c := &configmatrix.Case{ID: "hooks." + v.id, Program: "certbot-hook", Variant: v.variant, Validator: "shell", Source: v.source, Target: v.target}
 		c.File(v.target, []byte(v.body), 0o755)

@@ -19,9 +19,9 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 > kayıtlar saat tarihini kullanır; D-029 dışında 10, 11 veya 12 Ekim 2026 tarihli bir
 > kayıt gerçektir.
 
-## D-039 · Web sitesi sertifikasını Panel değil, işletim sisteminin certbot'u yeniler
+## D-040 · Web sitesi sertifikasını Panel değil, işletim sisteminin certbot'u yeniler
 
-*30 Ekim 2026 (saat tarihi) · Kaynakta bulunan bir ilke ihlalinin düzeltmesi; `fix/site-cert-native-renewal` dalında kaynakta, bileşen testli ve yerel bir test CA'ya karşı atılabilir bir chroot denemesi; yayımlanmadı, kurulu sunucuda ölçülmedi. Ayrıntı: [D-039 (İngilizce)](DECISIONS.md)*
+*30 Ekim 2026 (saat tarihi) · Kaynakta bulunan bir ilke ihlalinin düzeltmesi; `fix/site-cert-native-renewal` dalında kaynakta, bileşen testli ve yerel bir test CA'ya karşı atılabilir bir chroot denemesi; yayımlanmadı, kurulu sunucuda ölçülmedi. Ayrıntı: [D-040 (İngilizce)](DECISIONS.md)*
 
 **Yanlış olan.** D-022 ve anayasa (§2), panel kesintisinin, lisans kaybının ya da
 kaldırılmasının sertifika yenilemesini durdurmamasını ister. Her ACME web sitesi

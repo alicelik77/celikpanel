@@ -279,7 +279,7 @@ func certbotRenewContext(parent context.Context) (context.Context, context.Cance
 
 // IssueLetsEncryptCertificate issues a website certificate into the
 // standard certbot store as a fresh lineage that the operating system's
-// certbot schedule renews (site_cert_native.go, D-039). Every issuance,
+// certbot schedule renews (site_cert_native.go, D-040). Every issuance,
 // first or replacement, gets its own lineage, so a failed replacement never
 // touches the lineage that is being served.
 func (a *Agent) IssueLetsEncryptCertificate(req IssueLetsEncryptRequest, resp *IssueLetsEncryptResponse) error {
@@ -350,7 +350,7 @@ func (a *Agent) RenewLetsEncryptCertificate(req RenewCertRequest, resp *RenewCer
 	}
 	if transport.IsNativeSiteLineage(strings.ToLower(strings.TrimSpace(req.LineageName))) {
 		// Only certbot's own schedule renews a native lineage; a second
-		// renewer on the same lineage would race it (D-039).
+		// renewer on the same lineage would race it (D-040).
 		resp.Success = false
 		resp.Error = transport.ErrNativeSiteRenewal
 		return nil
@@ -1125,7 +1125,7 @@ func verifyManagedCertificateSnapshot(
 func (a *Agent) InspectInstalledCertificate(req InspectCertificateRequest, resp *ValidateCertResponse) error {
 	if _, native := nativeSiteLineageOfPath(req.CertPath); native && strings.TrimSpace(req.Domain) != "" {
 		// An OS-renewed lineage: certbot's live files, each resolving into
-		// the lineage's own archive (D-039).
+		// the lineage's own archive (D-040).
 		if err := verifyNativeSiteCertificatePaths(req.CertPath, req.KeyPath, req.ChainPath); err != nil {
 			resp.Valid = false
 			resp.Error = err.Error()

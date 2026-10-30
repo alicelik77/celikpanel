@@ -10441,7 +10441,7 @@ sunucunun durumundan salt okunarak uzlaştırılır. Kurulu panelleri yalnız sa
 panelin kendi güncelleme ekranından günceller. P0.1–P0.5 **kısmi** kalır; bu girdi
 hiçbir şeyi kapatmaz ve ilerletmez.
 
-### Web sitesi sertifikalarını işletim sistemi yeniler (D-039, 30 Ekim 2026)
+### Web sitesi sertifikalarını işletim sistemi yeniler (D-040, 30 Ekim 2026)
 
 `fix/site-cert-native-renewal` dalında kaynakta (yayımlanmadı; kurulu sunucuda
 ölçülmedi). **Kim yapar:** çoğunlukla kimse: web sitesi sertifikasını certbot'un kendi

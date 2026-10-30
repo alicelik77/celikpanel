@@ -68,7 +68,7 @@ func (a *Agent) ReconcileSiteCertLineages(
 		}
 		if storage.ConfigDir == legacy.ConfigDir {
 			// OS-renewed website lineages live in the standard store
-			// (D-039); one the ledger no longer names would otherwise be
+			// (D-040); one the ledger no longer names would otherwise be
 			// renewed by certbot's timer forever.
 			native, err := filepath.Glob(
 				filepath.Join(storage.ConfigDir, "renewal", transport.NativeSiteLineagePrefix+"*.conf"),

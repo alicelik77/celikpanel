@@ -4,7 +4,7 @@ import test from 'node:test';
 import ts from 'typescript';
 import { englishScreens, turkishScreens } from './locale-catalogue.mjs';
 
-// Who renews a website certificate and what the administrator does (D-039,
+// Who renews a website certificate and what the administrator does (D-040,
 // D-024): a certificate the operating system's certbot renews names its
 // reason, then the concrete next action, then how it resumes; one an earlier
 // release issued says that only the running Panel renews it and how to move
@@ -37,6 +37,16 @@ test('every OS renewal state has a label, a reason and, when it needs someone, a
   }
   assert.equal(renewalGuidance(native('failed', { last_failed: { at: '', detail: 'connection refused' } })).params.detail, 'connection refused');
   assert.equal(renewalGuidance(native('overdue', { renew_after: '2026-10-01T00:00:00Z' })).params.date, '2026-10-01');
+});
+
+test('a renewal mail could not load has its own sentence and next step', () => {
+  const guide = renewalGuidance(native('deploy_incomplete', { last_deploy: { completed_at: '', nginx: 'reloaded', mail: 'postmap_failed', dovecot: 'reloaded' } }));
+  assert.equal(guide.reasonKey, 'ssl.renewalGuide.deploy_incomplete_mail');
+  assert.equal(guide.params.mail, 'postmap_failed');
+  for (const catalogue of [englishScreens, turkishScreens]) {
+    assert.ok(catalogue.includes(`'${guide.reasonKey}':`) && catalogue.includes(`'${guide.actionKey}':`));
+  }
+  assert.equal(renewalGuidance(native('deploy_incomplete', { last_deploy: { completed_at: '', nginx: 'config_test_failed', mail: 'not_used' } })).reasonKey, 'ssl.renewalGuide.deploy_incomplete');
 });
 
 test('unknown is not a problem and an unreadable state concludes nothing', () => {

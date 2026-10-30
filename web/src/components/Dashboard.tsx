@@ -779,7 +779,7 @@ function AdminDashboard() {
     const attention: { key: string; icon: typeof Cpu; text: string; action: string; to: string; danger?: boolean; onAct?: () => void }[] = [];
     for (const c of extras?.expiring_certs || []) {
         if (c.renewal_problem) {
-            // D-039: the operating system's certbot renews this certificate
+            // D-040: the operating system's certbot renews this certificate
             // and has a problem only the server administrator can solve;
             // the domain's certificate card names the next action.
             attention.push({

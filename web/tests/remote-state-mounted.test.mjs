@@ -89,7 +89,7 @@ const own = {
   '/auth/domainAccess': domainAccessURL, '/lib/domainDeletionPending': deletionURL, '/lib/subscriptions': subscriptionsURL,
   '/lib/accounts': accountsURL, '/lib/managedServices': managedServicesURL, '/lib/sslTier': sslTierURL, '/lib/hstsRemaining': hstsRemainingURL,
   '/lib/requestIdentity': requestIdentityURL,
-  // Who renews a website certificate and what the administrator does (D-039).
+  // Who renews a website certificate and what the administrator does (D-040).
   '/lib/sslRenewal': compileSource('lib/sslRenewal.ts', () => stub),
   // Reads that run only while the page is visible are the real ones (2026-10-15).
   '/lib/visibleReads': compileSource('lib/visibleReads.ts', () => stub),

@@ -107,7 +107,7 @@ type SSLCertificate struct {
 	// "certificate", a new certificate the file does not use yet;
 	// "certificate_validation", a request or renewal the file stopped.
 	WaitingForOwnerReason string `json:"waiting_for_owner_reason,omitempty"`
-	// RenewalOwner (D-039, additive): "operating_system" when certbot's own
+	// RenewalOwner (D-040, additive): "operating_system" when certbot's own
 	// timer renews it (no CelikPanel program needed), "panel" for an
 	// ACME certificate of an earlier release that only the running Panel
 	// renews; "" for an uploaded certificate.
@@ -1440,7 +1440,7 @@ func (p *Panel) handleSSLRenewalSetting(
 		WHERE domain_id = ? AND status = 'active' AND type = 'letsencrypt'
 		ORDER BY id DESC LIMIT 1`, domainID).Scan(&activePath, &activeLineage); err == nil {
 		if lineage, native := nativeSiteLineageOfRow(activePath, activeLineage); native {
-			// D-039: certbot's own configuration decides; the ledger
+			// D-040: certbot's own configuration decides; the ledger
 			// follows only after certbot's file says the same.
 			if err := p.setNativeSiteAutoRenew(r.Context(), domainID, lineage, *req.AutoRenew); err != nil {
 				var refused *nativeSiteAgentRefusal

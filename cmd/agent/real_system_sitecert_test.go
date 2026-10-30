@@ -11,20 +11,21 @@ import (
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/hostingpath"
+	"github.com/alicelik/celikpanel/internal/mutationpayload"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
-// Real-system evidence for D-039 (website certificates renewed by the
+// Real-system evidence for D-040 (website certificates renewed by the
 // operating system), run only inside a disposable Debian 13 chroot in its
 // own network namespace (build tag realsystem, plus
 // CELIKPANEL_REAL_SYSTEM_SITECERT=1). Never run it on an installed server.
 // The certificate authority is a local Pebble test server, never a real CA.
-// The harness (deploy/e2e/d039/run-in-chroot.sh) runs one phase per
+// The harness (deploy/e2e/d040/run-in-chroot.sh) runs one phase per
 // invocation; between phases this binary is deleted, so certbot's own
 // renewal runs with no CelikPanel program on the system.
 //
-// D-039 gerçek sistem kanıtı; yalnız atılabilir chroot, yerel Pebble.
+// D-040 gerçek sistem kanıtı; yalnız atılabilir chroot, yerel Pebble.
 
 const (
 	sitecertDomain       = "site.test"
@@ -45,7 +46,7 @@ func sitecertEnv(t *testing.T, name string) string {
 func sitecertGuard(t *testing.T) {
 	t.Helper()
 	if os.Getenv("CELIKPANEL_REAL_SYSTEM_SITECERT") != "1" {
-		t.Skip("real-system D-039 run only in the disposable chroot")
+		t.Skip("real-system D-040 run only in the disposable chroot")
 	}
 	if _, err := os.Stat("/etc/celikpanel-sitecert-chroot"); err != nil {
 		t.Fatal("refusing to run outside the disposable chroot (marker /etc/celikpanel-sitecert-chroot missing)")
@@ -64,7 +65,10 @@ func sitecertWriteVhost(t *testing.T, certPath, keyPath string) {
 	req := &ApplyVhostRequest{
 		SiteID: sitecertSiteID, SubscriptionID: sitecertSubscription, DomainID: sitecertDomainID,
 		Domain: sitecertDomain, ServerNames: []string{sitecertDomain, "www." + sitecertDomain},
-		DocumentRoot: documentRoot, ProjectType: "static", SSLType: "none",
+		// The certificate also secures mail: the Panel publishes mail.<domain>
+		// for validation (buildVhostRequest), so renewals validate it too.
+		ACMEChallengeNames: []string{"mail." + sitecertDomain},
+		DocumentRoot:       documentRoot, ProjectType: "static", SSLType: "none",
 	}
 	if certPath != "" {
 		req.SSLType, req.SSLCert, req.SSLKey = "letsencrypt", certPath, keyPath
@@ -116,7 +120,7 @@ func TestRealSystemSiteCertIssue(t *testing.T) {
 	kid, hmac := os.Getenv("SITECERT_EAB_KID"), os.Getenv("SITECERT_EAB_HMAC")
 	var resp IssueLetsEncryptResponse
 	if err := (&Agent{}).IssueLetsEncryptCertificate(IssueLetsEncryptRequest{
-		Domain: sitecertDomain, Aliases: []string{"www." + sitecertDomain}, Email: "admin@site.test",
+		Domain: sitecertDomain, Aliases: []string{"www." + sitecertDomain, "mail." + sitecertDomain}, Email: "admin@site.test",
 		SubscriptionID: sitecertSubscription, DomainID: sitecertDomainID, AutoRenew: true,
 		ACMEServer: server, EABKeyID: kid, EABHMACKey: hmac,
 	}, &resp); err != nil {
@@ -143,7 +147,8 @@ func TestRealSystemSiteCertIssue(t *testing.T) {
 	}
 	root, _ := hostingpath.ACMEChallengeRoot(sitecertSubscription, sitecertDomainID)
 	if parsed.Authenticator != "webroot" || parsed.Server != server || !parsed.AutoRenew || !nativeSiteWebrootMatches(parsed, root) ||
-		parsed.WebrootMap[sitecertDomain] != root || parsed.WebrootMap["www."+sitecertDomain] != root {
+		parsed.WebrootMap[sitecertDomain] != root || parsed.WebrootMap["www."+sitecertDomain] != root ||
+		parsed.WebrootMap["mail."+sitecertDomain] != root {
 		t.Fatalf("certbot's renewal configuration is not what renewal without CelikPanel needs:\n%s", conf)
 	}
 	if hmac != "" && strings.Contains(string(conf), hmac) {
@@ -163,6 +168,47 @@ func TestRealSystemSiteCertIssue(t *testing.T) {
 		if err := os.WriteFile("/root/sitecert."+name, []byte(value+"\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+// TestRealSystemSiteCertMail publishes the certificate to Postfix and
+// Dovecot for mail.<domain> with the Agent's own mail TLS writers and
+// validators (an SNI entry naming certbot's live files, D-040).
+func TestRealSystemSiteCertMail(t *testing.T) {
+	sitecertGuard(t)
+	lineageRaw, err := os.ReadFile("/root/sitecert.lineage")
+	if err != nil {
+		t.Fatal(err)
+	}
+	full, key, _ := transport.NativeSiteLineagePaths(strings.TrimSpace(string(lineageRaw)))
+	entries := []MailSNIEntry{{Names: []string{"mail." + sitecertDomain, sitecertDomain}, CertPath: full, KeyPath: key}}
+	const myhostname = "mx." + sitecertDomain
+	if _, err := mutationpayload.CanonicalMailTLSSync("/etc/ssl/celikpanel", myhostname, entries); err != nil {
+		t.Fatalf("the mail TLS plan contract refused the entry: %v", err)
+	}
+	valid, err := validateMailSNIEntries(entries)
+	if err != nil {
+		t.Fatalf("validateMailSNIEntries: %v", err)
+	}
+	preflight, err := preflightMailTLSCommands(true, runMailTLSCommand)
+	if err != nil {
+		t.Fatalf("preflight: %v", err)
+	}
+	t.Logf("Postfix SNI map type %s, Dovecot 2.4 dialect %v", preflight.sniMapType, preflight.dovecot24)
+	if err := ensureDefaultMailCert(myhostname); err != nil {
+		t.Fatal(err)
+	}
+	if err := configurePostfixTLS(myhostname, valid, preflight.sniMapType, preflight.run); err != nil {
+		t.Fatalf("configurePostfixTLS: %v", err)
+	}
+	if err := configureDovecotTLSForDialect(myhostname, valid, preflight.dovecot24, preflight.run); err != nil {
+		t.Fatalf("configureDovecotTLSForDialect: %v", err)
+	}
+	if err := validatePostfixTLSConfig(preflight.run); err != nil {
+		t.Fatal(err)
+	}
+	if err := validateDovecotTLSConfig(preflight.run); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -200,6 +246,9 @@ func TestRealSystemSiteCertObserve(t *testing.T) {
 	}
 	if want := os.Getenv("SITECERT_EXPECT_DEPLOY"); want != "" && (resp.LastDeploy == nil || resp.LastDeploy.Nginx != want) {
 		t.Fatalf("last deploy %+v, want nginx=%s", resp.LastDeploy, want)
+	}
+	if want := os.Getenv("SITECERT_EXPECT_MAIL"); want != "" && (resp.LastDeploy == nil || resp.LastDeploy.Mail+"/"+resp.LastDeploy.Dovecot != want) {
+		t.Fatalf("last deploy %+v, want mail/dovecot=%s", resp.LastDeploy, want)
 	}
 	if want := os.Getenv("SITECERT_EXPECT_FAILURE"); want != "" && (resp.LastFailed == nil || !strings.Contains(resp.LastFailed.Detail, want)) {
 		t.Fatalf("last failure %+v, want %q", resp.LastFailed, want)

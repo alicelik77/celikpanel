@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// Website certificates renewed by the operating system (D-022, D-039).
+// Website certificates renewed by the operating system (D-022, D-040).
 //
 // A website certificate issued by this release lives in the standard certbot
 // store (/etc/letsencrypt) as its own lineage named
@@ -22,7 +22,7 @@ import (
 //
 // Certificates issued by earlier releases (lineage named after the domain, or
 // cp-site-…, copied into an immutable snapshot under /etc/ssl/celikpanel) stay
-// renewed by the Panel until they are reissued; see D-039.
+// renewed by the Panel until they are reissued; see D-040.
 //
 // İşletim sisteminin yenilediği web sitesi sertifikaları: standart certbot
 // deposunda, nginx certbot'un live dosyalarını adlandırır, certbot'un kendi
@@ -179,6 +179,12 @@ type SiteRenewalDeploy struct {
 	// Nginx: reloaded, not_running, not_installed, config_test_failed,
 	// reload_failed.
 	Nginx string `json:"nginx"`
+	// Mail (Postfix SNI) and Dovecot: not_used, reloaded, not_running,
+	// reload_failed; Mail also postmap_failed and map_not_used (Postfix no
+	// longer uses CelikPanel's map: the owner's choice, left alone). Empty in
+	// a record without them.
+	Mail    string `json:"mail,omitempty"`
+	Dovecot string `json:"dovecot,omitempty"`
 }
 
 // SiteRenewalFailure is certbot's newest logged failure for the lineage.
@@ -223,23 +229,6 @@ type SetSiteCertificateAutoRenewRequest struct {
 type SetSiteCertificateAutoRenewResponse struct {
 	Changed bool   `json:"changed"`
 	Error   string `json:"error,omitempty"`
-}
-
-// SnapshotSiteCertificateRequest copies the certificate a native lineage's
-// live files name now into the immutable snapshot store, for the mail SNI
-// map (whose contract names immutable snapshots only).
-type SnapshotSiteCertificateRequest struct {
-	ExpectedBuildCommit string `json:"expected_build_commit"`
-	Domain              string `json:"domain"`
-	DomainID            int    `json:"domain_id"`
-	LineageName         string `json:"lineage_name"`
-}
-
-type SnapshotSiteCertificateResponse struct {
-	CertPath  string `json:"cert_path"`
-	KeyPath   string `json:"key_path"`
-	ChainPath string `json:"chain_path"`
-	Error     string `json:"error,omitempty"`
 }
 
 // ErrNativeSiteRenewal is the Agent's answer when the Panel asks it to renew

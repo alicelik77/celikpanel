@@ -47,7 +47,7 @@ interface SSLCertificate {
     waiting_for_owner?: boolean;
     // certificate | certificate_validation (additive; D-031 step 1b).
     waiting_for_owner_reason?: string;
-    // operating_system | panel (additive; D-039): who renews it.
+    // operating_system | panel (additive; D-040): who renews it.
     renewal_owner?: string;
     renewal?: SiteRenewalState | null;
     renewal_read_error?: string;

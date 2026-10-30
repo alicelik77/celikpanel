@@ -7207,7 +7207,7 @@ aynı işlemi döndürür.
   Kurulu bir sunucuda ölçülmedi. **Hiçbir P0 işi kapanmaz ya da ilerlemez**; P0.1–P0.5
   kısmi kalır ve her açık kabul işi açık kalır.
 
-### Dal fix/site-cert-native-renewal (web sitesi sertifikalarını işletim sisteminin certbot'u yeniler; Ajan sertifika verme, yenileme durumu ve lineage yolları; şema değişikliği yok; ilke 1, 2 ve 3; D-039; D-022; D-024; D-031; 30 Ekim 2026)
+### Dal fix/site-cert-native-renewal (web sitesi sertifikalarını işletim sisteminin certbot'u yeniler; Ajan sertifika verme, yenileme durumu ve lineage yolları; şema değişikliği yok; ilke 1, 2 ve 3; D-040; D-022; D-024; D-031; 30 Ekim 2026)
 
 İlke 1: bu değişiklikle verilen web sitesi sertifikası `/etc/letsencrypt` içinde,
 işletim sisteminin zamanlayıcısıyla yenilenen bir certbot lineage'ıdır; nginx live
@@ -7218,7 +7218,7 @@ hiçbir şey kaydetmez, bilinen hatanın yerini almaz; sahibin değiştirdiği a
 yerine yenisi gelen lineage'a `autorenew = False` yazılır. Şema yok (46); ek
 `renewal_status` değerleri `os_<durum>`. Önceki sürüme dönüşte yerel dosyalar sunmaya
 ve yenilenmeye devam eder. Kanıt: bileşen testleri ve atılabilir Debian 13 chroot'ta
-Pebble'a karşı bir deneme ([deploy/e2e/d039](../deploy/e2e/d039/README.md)). P0.5 yalnız
+Pebble'a karşı bir deneme ([deploy/e2e/d040](../deploy/e2e/d040/README.md)). P0.5 yalnız
 web sitesi yenilemesi için ilerledi; Panel'siz posta SNI yenilemesi, yeniden başlatma
 ve kalan matris açık; P0.1–P0.5 kısmi kalır.
 

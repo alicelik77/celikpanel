@@ -23,7 +23,7 @@ import (
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
-// Website certificates renewed by the operating system (D-022, D-039).
+// Website certificates renewed by the operating system (D-022, D-040).
 //
 // Issuance runs certbot against the standard store (/etc/letsencrypt) with a
 // fresh lineage celikpanel-site-<domain id>-<24 hex>, the webroot
@@ -71,21 +71,34 @@ const (
 // CelikPanel program, so it keeps working after the Panel and the Agent are
 // removed. certbot runs every file in renewal-hooks/deploy after each
 // renewed lineage with RENEWED_LINEAGE set; this one acts only on
-// celikpanel-site-* lineages. It tests nginx's configuration before
-// reloading, records the outcome in one small file the Panel reads, and
-// exits non-zero when nginx could not load the renewed certificate. certbot
-// 4.0 logs that as "Hook 'deploy-hook' ran with error output" (a warning)
-// and still exits 0 (measured, deploy/e2e/d039), so the record file, not
-// certbot's exit status, is what tells the Panel.
+// celikpanel-site-* lineages:
+//
+//   - nginx: `nginx -t`, then reload;
+//   - mail SNI, only when CelikPanel's Postfix SNI map names this lineage's
+//     live files and Postfix still uses that map (an owner who pointed
+//     tls_server_sni_maps elsewhere is left alone): `postmap -F` of the map
+//     as it is on disk (postmap embeds the certificate files' contents, so
+//     the map must be rebuilt), then a Postfix reload;
+//   - Dovecot, only when CelikPanel's TLS drop-in names the lineage: reload
+//     (Dovecot reads `ssl_cert = <file` at reload).
+//
+// It never writes a configuration file. It records the outcomes in one
+// small file the Panel reads and exits non-zero when one of them could not
+// load the renewed certificate. certbot 4.0 logs that as "Hook
+// 'deploy-hook' ran with error output" (a warning) and still exits 0
+// (measured, deploy/e2e/d040), so the record file, not certbot's exit
+// status, is what tells the Panel.
 const nativeSiteDeployHook = nativeSiteHookVersionLine + `
 # Managed by CelikPanel. certbot runs this after it renewed a certificate
 # (certbot.timer or cron). For website certificates named celikpanel-site-*
-# it checks nginx's configuration and reloads nginx so the renewed
-# certificate is served. It needs no CelikPanel program and keeps working if
-# CelikPanel is removed. If you change or remove this file, CelikPanel leaves
-# it as it is and says so on the certificate's page.
-# CelikPanel tarafından yönetilir: yenilenen web sitesi sertifikası için
-# nginx yapılandırmasını sınar ve nginx'i yeniden yükler. Panel gerekmez.
+# it checks nginx's configuration and reloads nginx, and, when the
+# certificate also secures mail, rebuilds Postfix's SNI map and reloads
+# Postfix and Dovecot, so the renewed certificate is served everywhere. It
+# writes no configuration, needs no CelikPanel program and keeps working if
+# CelikPanel is removed. If you change or remove this file, CelikPanel
+# leaves it as it is and says so on the certificate's page.
+# CelikPanel tarafından yönetilir: yenilenen web sitesi sertifikasını nginx,
+# Postfix ve Dovecot'a yükler. Yapılandırma yazmaz; Panel gerekmez.
 set -u
 lineage=${RENEWED_LINEAGE:-}
 case "$lineage" in
@@ -96,34 +109,60 @@ name=${lineage##*/}
 case "$name" in
   ""|*[!a-z0-9-]*) exit 0 ;;
 esac
+live="/etc/letsencrypt/live/$name/"
+reload_unit() {
+  if systemctl is-active --quiet "$1" >/dev/null 2>&1; then
+    if systemctl reload "$1" >/dev/null 2>&1; then echo reloaded; else echo reload_failed; fi
+  else
+    echo not_running
+  fi
+}
 result=not_installed
 if command -v nginx >/dev/null 2>&1; then
   if ! nginx -t >/dev/null 2>&1; then
     result=config_test_failed
-  elif systemctl is-active --quiet nginx >/dev/null 2>&1; then
-    if systemctl reload nginx >/dev/null 2>&1; then
-      result=reloaded
-    else
-      result=reload_failed
-    fi
   else
-    result=not_running
+    result=$(reload_unit nginx)
   fi
+fi
+mail=not_used
+sni=/etc/postfix/celikpanel_sni
+if [ -f "$sni" ] && grep -qF " $live" "$sni" 2>/dev/null; then
+  maps=$(postconf -h tls_server_sni_maps 2>/dev/null) || maps=
+  case "$maps" in
+    "hash:$sni"|"lmdb:$sni"|"btree:$sni")
+      if postmap -F "$maps" >/dev/null 2>&1; then
+        mail=$(reload_unit postfix)
+      else
+        mail=postmap_failed
+      fi
+      ;;
+    *) mail=map_not_used ;;
+  esac
+fi
+dovecot=not_used
+conf=/etc/dovecot/conf.d/98-celikpanel-tls.conf
+if [ -f "$conf" ] && grep -qF "$live" "$conf" 2>/dev/null; then
+  dovecot=$(reload_unit dovecot)
 fi
 dir=/var/lib/celikpanel-site-certificates
 umask 022
 if mkdir -p "$dir" 2>/dev/null; then
   tmp="$dir/.$name.$$"
-  if printf 'format=celikpanel-site-deploy-v1\nlineage=%s\ncompleted_at=%s\nnginx=%s\n' \
-      "$name" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$result" >"$tmp" 2>/dev/null; then
+  if printf 'format=celikpanel-site-deploy-v1\nlineage=%s\ncompleted_at=%s\nnginx=%s\nmail=%s\ndovecot=%s\n' \
+      "$name" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$result" "$mail" "$dovecot" >"$tmp" 2>/dev/null; then
     mv -f "$tmp" "$dir/$name" 2>/dev/null || rm -f "$tmp"
   fi
 fi
-case "$result" in
-  reloaded|not_running|not_installed) exit 0 ;;
-esac
-echo "celikpanel-site-certificates: $name was renewed but nginx did not load it ($result)" >&2
-exit 1
+failed=0
+case "$result" in reloaded|not_running|not_installed) ;; *) failed=1 ;; esac
+case "$mail" in postmap_failed|reload_failed) failed=1 ;; esac
+case "$dovecot" in reload_failed) failed=1 ;; esac
+if [ "$failed" = 1 ]; then
+  echo "celikpanel-site-certificates: $name was renewed but not every service loaded it (nginx=$result mail=$mail dovecot=$dovecot)" >&2
+  exit 1
+fi
+exit 0
 `
 
 // newNativeSiteLineage is a fresh lineage name for one domain identity.
@@ -518,7 +557,19 @@ func readNativeSiteDeployStatus(lineage string) (*transport.SiteRenewalDeploy, e
 	default:
 		return nil, errors.New("deploy status has an unknown web server outcome")
 	}
-	return &transport.SiteRenewalDeploy{CompletedAt: at.UTC(), Nginx: values["nginx"]}, nil
+	deploy := &transport.SiteRenewalDeploy{CompletedAt: at.UTC(), Nginx: values["nginx"],
+		Mail: values["mail"], Dovecot: values["dovecot"]}
+	switch deploy.Mail {
+	case "", "not_used", "map_not_used", "reloaded", "not_running", "postmap_failed", "reload_failed":
+	default:
+		return nil, errors.New("deploy status has an unknown mail outcome")
+	}
+	switch deploy.Dovecot {
+	case "", "not_used", "reloaded", "not_running", "reload_failed":
+	default:
+		return nil, errors.New("deploy status has an unknown Dovecot outcome")
+	}
+	return deploy, nil
 }
 
 // certbot's log line for a failed renewal (certbot._internal.renewal):
@@ -694,6 +745,14 @@ func classifyNativeSiteRenewal(facts nativeSiteFacts, now time.Time) (string, st
 			return transport.SiteRenewalDeployIncomplete, "certbot renewed it, but nginx's configuration test failed, so nginx was not reloaded"
 		case "reload_failed":
 			return transport.SiteRenewalDeployIncomplete, "certbot renewed it, but nginx could not be reloaded"
+		}
+		switch {
+		case facts.Deploy.Mail == "postmap_failed":
+			return transport.SiteRenewalDeployIncomplete, "certbot renewed it, but Postfix's SNI map could not be rebuilt, so mail still offers the previous certificate"
+		case facts.Deploy.Mail == "reload_failed":
+			return transport.SiteRenewalDeployIncomplete, "certbot renewed it, but Postfix could not be reloaded"
+		case facts.Deploy.Dovecot == "reload_failed":
+			return transport.SiteRenewalDeployIncomplete, "certbot renewed it, but Dovecot could not be reloaded"
 		}
 	}
 	renewAfter, grace := nativeSiteRenewalWindow(leaf, conf.RenewBefore)
@@ -925,41 +984,6 @@ func (a *Agent) SetSiteCertificateAutoRenewV1(req *transport.SetSiteCertificateA
 		return nil
 	}
 	resp.Changed = changed
-	return nil
-}
-
-// SnapshotSiteCertificateV1 copies the certificate a native lineage's live
-// files name now into the immutable snapshot store (content-addressed, so
-// the same certificate always gives the same paths). The mail SNI map names
-// only immutable snapshots.
-func (a *Agent) SnapshotSiteCertificateV1(req *transport.SnapshotSiteCertificateRequest, resp *transport.SnapshotSiteCertificateResponse) error {
-	if req == nil {
-		resp.Error = "certificate snapshot request is required"
-		return nil
-	}
-	if err := requireExpectedBuildCommit(req.ExpectedBuildCommit, "copying a site certificate for mail"); err != nil {
-		resp.Error = err.Error()
-		return nil
-	}
-	domain, err := canonicalCertificateDomain(req.Domain)
-	if err != nil {
-		resp.Error = err.Error()
-		return nil
-	}
-	if !transport.NativeSiteLineageBelongsTo(req.LineageName, req.DomainID) {
-		resp.Error = "the certificate lineage does not belong to this domain"
-		return nil
-	}
-	if _, _, _, err := readNativeSiteLineage(req.LineageName); err != nil {
-		resp.Error = err.Error()
-		return nil
-	}
-	paths, _, err := snapshotCertbotCertificateFromLineage(req.LineageName, domain, nativeSiteStorage())
-	if err != nil {
-		resp.Error = err.Error()
-		return nil
-	}
-	resp.CertPath, resp.KeyPath, resp.ChainPath = paths.Fullchain, paths.Key, paths.Chain
 	return nil
 }
 

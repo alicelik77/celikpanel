@@ -10468,7 +10468,7 @@ reconciled read only from the server's state. Installed panels are updated only 
 their owners from the panel's own update screen. P0.1–P0.5 stay **partial**; this
 entry closes and advances nothing.
 
-### Website certificates renewed by the operating system (D-039, 2026-10-30)
+### Website certificates renewed by the operating system (D-040, 2026-10-30)
 
 In source on branch `fix/site-cert-native-renewal` (not published; nothing measured
 on an installed server). **Who acts:** usually nobody: certbot's own timer renews a

@@ -126,16 +126,36 @@ func canonicalMailTLSSNIEntry(managedRoot string, entry transport.MailSNIEntry) 
 	if len(entry.Names) == 0 || len(entry.Names) > mailTLSSyncMaxNames {
 		return transport.MailSNIEntry{}, errors.New("name count is invalid")
 	}
-	certDomain, certDirectory, err := canonicalMailTLSSnapshotPath(managedRoot, entry.CertPath, "fullchain.pem")
-	if err != nil {
-		return transport.MailSNIEntry{}, errors.New("certificate path is invalid")
-	}
-	keyDomain, keyDirectory, err := canonicalMailTLSSnapshotPath(managedRoot, entry.KeyPath, "privkey.pem")
-	if err != nil {
-		return transport.MailSNIEntry{}, errors.New("private-key path is invalid")
-	}
-	if certDomain != keyDomain || certDirectory != keyDirectory {
-		return transport.MailSNIEntry{}, errors.New("certificate and key are not from the same snapshot")
+	var certDomain string
+	if certLineage, native := transport.NativeSiteLineageFromPath(entry.CertPath); native {
+		// An OS-renewed website lineage (D-040): certbot's stable live
+		// files, so a renewal reaches Postfix and Dovecot through the native
+		// deploy hook without a new plan. The lineage carries no domain; the
+		// entry's own names say which (and the Agent checks the certificate
+		// covers them).
+		keyLineage, keyNative := transport.NativeSiteLineageFromPath(entry.KeyPath)
+		fullchain, privkey, _ := transport.NativeSiteLineagePaths(certLineage)
+		if !keyNative || keyLineage != certLineage || entry.CertPath != fullchain || entry.KeyPath != privkey {
+			return transport.MailSNIEntry{}, errors.New("certificate and key are not the same certbot lineage's full chain and key")
+		}
+		domain, ok := NativeMailSNIDomain(entry.Names)
+		if !ok {
+			return transport.MailSNIEntry{}, errors.New("SNI names do not name one domain and its mail hostname")
+		}
+		certDomain = domain
+	} else {
+		snapshotDomain, certDirectory, err := canonicalMailTLSSnapshotPath(managedRoot, entry.CertPath, "fullchain.pem")
+		if err != nil {
+			return transport.MailSNIEntry{}, errors.New("certificate path is invalid")
+		}
+		keyDomain, keyDirectory, err := canonicalMailTLSSnapshotPath(managedRoot, entry.KeyPath, "privkey.pem")
+		if err != nil {
+			return transport.MailSNIEntry{}, errors.New("private-key path is invalid")
+		}
+		if snapshotDomain != keyDomain || certDirectory != keyDirectory {
+			return transport.MailSNIEntry{}, errors.New("certificate and key are not from the same snapshot")
+		}
+		certDomain = snapshotDomain
 	}
 	mailName, err := hostname.MailFQDN(certDomain)
 	if err != nil {
@@ -170,6 +190,42 @@ func canonicalMailTLSSNIEntry(managedRoot string, entry transport.MailSNIEntry) 
 		CertPath: entry.CertPath,
 		KeyPath:  entry.KeyPath,
 	}, nil
+}
+
+// NativeMailSNIDomain is the one domain D whose names an SNI entry lists:
+// every name is D or mail.D and mail.D is among them. Used for entries that
+// name an OS-renewed lineage, whose path carries no domain (D-040).
+func NativeMailSNIDomain(names []string) (string, bool) {
+	found := ""
+	for _, candidate := range names {
+		rest, ok := strings.CutPrefix(candidate, "mail.")
+		if !ok {
+			continue
+		}
+		domain, err := hostname.CanonicalFQDN(rest)
+		if err != nil || domain != rest {
+			continue
+		}
+		mailName, err := hostname.MailFQDN(domain)
+		if err != nil || mailName != candidate {
+			continue
+		}
+		all := true
+		for _, name := range names {
+			if name != domain && name != mailName {
+				all = false
+				break
+			}
+		}
+		if !all {
+			continue
+		}
+		if found != "" && found != domain {
+			return "", false
+		}
+		found = domain
+	}
+	return found, found != ""
 }
 
 func canonicalMailTLSSnapshotPath(managedRoot, raw, filename string) (string, string, error) {

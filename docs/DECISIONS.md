@@ -19,7 +19,7 @@ Code decisions live in git; this file is for strategy. Newest first.
 > D-029. Entries written after this note use the clock date; a dated entry from 10, 11 or
 > 12 October 2026 other than D-029 is genuine.
 
-## D-039 · A website certificate is renewed by the operating system's certbot, not by the Panel
+## D-040 · A website certificate is renewed by the operating system's certbot, not by the Panel
 
 *2026-10-30 (clock date) · Correction of an invariant violation found in source; in source on branch `fix/site-cert-native-renewal`, component-tested and one disposable chroot run against a local test CA; not published, nothing measured on an installed server*
 
@@ -131,7 +131,7 @@ future one must keep them). The record directory is optional.
 
 **Evidence and limits.** Component tests (Agent, Panel, web). One real-system run in
 a disposable Debian 13 chroot with Debian's certbot 4.0.0, nginx 1.26 and Pebble
-2.6.0 as the CA, EAB required ([deploy/e2e/d039](../deploy/e2e/d039/README.md)):
+2.6.0 as the CA, EAB required ([deploy/e2e/d040](../deploy/e2e/d040/README.md)):
 the Agent's own code issued; certbot's dry run, then the timer's own command
 renewed and nginx served the new certificate with no CelikPanel program present; a
 failed renewal and an nginx that could not load the renewed certificate were read

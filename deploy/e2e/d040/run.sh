@@ -1,5 +1,5 @@
 #!/bin/bash
-# D-039 real-system run: a website certificate issued by the Agent's own
+# D-040 real-system run: a website certificate issued by the Agent's own
 # code keeps renewing and being served by the operating system's certbot
 # with no CelikPanel program on the system, and the Agent reads what
 # happened. Everything runs in the disposable chroot built by
@@ -8,16 +8,16 @@
 #
 # Usage (root, development machine): run.sh <chroot-dir> <source-dir> <out-dir>
 #
-# D-039 gerçek sistem denemesi: Agent'ın verdiği sertifikayı, sistemde hiçbir
+# D-040 gerçek sistem denemesi: Agent'ın verdiği sertifikayı, sistemde hiçbir
 # CelikPanel programı yokken işletim sisteminin certbot'u yeniler ve sunar.
 set -euo pipefail
 root=${1:?chroot directory required}
 src=${2:?source directory required}
 out=${3:?evidence directory required}
-case "$root" in /var/tmp/cp-d039-*) ;; *) echo "refusing chroot $root" >&2; exit 2 ;; esac
+case "$root" in /var/tmp/cp-d040-*) ;; *) echo "refusing chroot $root" >&2; exit 2 ;; esac
 [ -f "$root/etc/celikpanel-sitecert-chroot" ] || { echo "not the disposable chroot" >&2; exit 2; }
-ns=cp-d039
-bin=/var/tmp/cp-d039-agent.test
+ns=cp-d040
+bin=/var/tmp/cp-d040-agent.test
 mkdir -p "$out"
 log() { printf '== %s %s\n' "$(date -u +%H:%M:%S)" "$*" | tee -a "$out/run.log"; }
 fail() { log "FAIL: $*"; exit 1; }
@@ -29,7 +29,7 @@ sha256sum "$bin" | tee -a "$out/run.log"
 (cd "$src" && git rev-parse HEAD 2>/dev/null || true) | tee -a "$out/run.log"
 
 cleanup() {
-  ip netns exec "$ns" chroot "$root" /bin/sh -c 'pkill -x nginx; pkill -x pebble' 2>/dev/null || true
+  ip netns exec "$ns" chroot "$root" /bin/sh -c 'pkill -x nginx; pkill -x pebble; postfix stop; pkill -x dovecot' >/dev/null 2>&1 || true
   rm -f "$root/root/agent.test"
   umount -l "$root/proc" 2>/dev/null || true
   umount -l "$root/dev" 2>/dev/null || true
@@ -61,6 +61,12 @@ phase() {
 }
 served() {
   inchroot /bin/sh -c 'openssl s_client -connect 127.0.0.1:443 -servername site.test </dev/null 2>/dev/null | openssl x509 -noout -fingerprint -sha256 -enddate'
+}
+smtp() {
+  inchroot /bin/sh -c 'openssl s_client -connect 127.0.0.1:25 -starttls smtp -servername mail.site.test </dev/null 2>/dev/null | openssl x509 -noout -fingerprint -sha256 -enddate'
+}
+imaps() {
+  inchroot /bin/sh -c 'openssl s_client -connect 127.0.0.1:993 -servername mail.site.test </dev/null 2>/dev/null | openssl x509 -noout -fingerprint -sha256 -enddate'
 }
 live() {
   inchroot /bin/sh -c "openssl x509 -in /etc/letsencrypt/live/$(cat "$root/root/sitecert.lineage")/cert.pem -noout -fingerprint -sha256 -enddate"
@@ -101,11 +107,11 @@ log "Pebble test CA (local only), EAB required"
 # CA for https://localhost:14000, trusted only inside this chroot.
 inchroot /bin/sh -ec '
   mkdir -p /root/pebble-tls && cd /root/pebble-tls
-  openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 2 -subj "/CN=D-039 throwaway API CA" -keyout ca.key -out ca.pem 2>/dev/null
+  openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 2 -subj "/CN=D-040 throwaway API CA" -keyout ca.key -out ca.pem 2>/dev/null
   openssl req -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -subj "/CN=localhost" -keyout key.pem -out req.pem 2>/dev/null
   printf "subjectAltName=DNS:localhost,IP:127.0.0.1\n" >ext.cnf
   openssl x509 -req -in req.pem -CA ca.pem -CAkey ca.key -CAcreateserial -days 2 -extfile ext.cnf -out cert.pem 2>/dev/null
-  cp ca.pem /usr/local/share/ca-certificates/d039-pebble-api.crt
+  cp ca.pem /usr/local/share/ca-certificates/d040-pebble-api.crt
   update-ca-certificates >/dev/null'
 hmac=$(head -c 32 /dev/urandom | base64 | tr '+/' '-_' | tr -d '=')
 cat >"$root/root/pebble.json" <<EOF
@@ -116,7 +122,7 @@ cat >"$root/root/pebble.json" <<EOF
   "privateKey": "/root/pebble-tls/key.pem",
   "httpPort": 80, "tlsPort": 5001, "ocspResponderURL": "",
   "externalAccountBindingRequired": true,
-  "externalAccountMACKeys": {"kid-d039": "$hmac"},
+  "externalAccountMACKeys": {"kid-d040": "$hmac"},
   "certificateValidityPeriod": 86400
 }}
 EOF
@@ -129,20 +135,29 @@ inchroot curl -fsS https://localhost:14000/dir >>"$out/run.log" || fail "pebble 
 cat >"$root/usr/local/sbin/systemctl" <<'EOF'
 #!/bin/sh
 echo "systemctl $*" >>/root/systemctl.calls
-case "$1 $2" in
-  "is-active nginx"|"is-active --quiet") pgrep -x nginx >/dev/null && { [ "$2" = --quiet ] || echo active; exit 0; }; echo inactive; exit 3 ;;
+quiet=
+if [ "${2:-}" = --quiet ]; then quiet=1; verb=$1; shift 2; set -- "$verb" "$@"; fi
+say() { [ -n "$quiet" ] || echo "$1"; }
+active() { if "$@" >/dev/null 2>&1; then say active; exit 0; fi; say inactive; exit 3; }
+timer=/etc/systemd/system/timers.target.wants/certbot.timer
+case "$1 ${2:-}" in
+  "is-active nginx") active pgrep -x nginx ;;
   "reload nginx") exec nginx -s reload ;;
-  "is-enabled certbot.timer") [ -e /etc/systemd/system/timers.target.wants/certbot.timer ] && { echo enabled; exit 0; }; echo disabled; exit 1 ;;
-  "is-active certbot.timer") [ -e /etc/systemd/system/timers.target.wants/certbot.timer ] && { echo active; exit 0; }; echo inactive; exit 3 ;;
-  "is-enabled "*|"is-active "*) echo not-found; exit 4 ;;
-  "enable --now") ln -sf /usr/lib/systemd/system/certbot.timer /etc/systemd/system/timers.target.wants/certbot.timer; exit 0 ;;
+  "is-active postfix") active postfix status ;;
+  "reload postfix") exec postfix reload ;;
+  "is-active dovecot") active pgrep -x dovecot ;;
+  "reload dovecot") exec doveadm reload ;;
+  "is-enabled certbot.timer") [ -e $timer ] && { say enabled; exit 0; }; say disabled; exit 1 ;;
+  "is-active certbot.timer") active test -e $timer ;;
+  "is-enabled "*|"is-active "*) say not-found; exit 4 ;;
+  "enable --now") ln -sf /usr/lib/systemd/system/certbot.timer $timer; exit 0 ;;
 esac
 exit 0
 EOF
 chmod 0755 "$root/usr/local/sbin/systemctl"
 ls -l "$root/etc/systemd/system/timers.target.wants/" 2>&1 | tee -a "$out/run.log" || true
 
-export_env=(SITECERT_ACME_SERVER=https://localhost:14000/dir SITECERT_EAB_KID=kid-d039 "SITECERT_EAB_HMAC=$hmac" CELIKPANEL_REAL_SYSTEM_SITECERT=1)
+export_env=(SITECERT_ACME_SERVER=https://localhost:14000/dir SITECERT_EAB_KID=kid-d040 "SITECERT_EAB_HMAC=$hmac" CELIKPANEL_REAL_SYSTEM_SITECERT=1)
 phase TestRealSystemSiteCertPrepare CELIKPANEL_REAL_SYSTEM_SITECERT=1
 inchroot nginx -t >>"$out/run.log" 2>&1
 inchroot nginx
@@ -155,6 +170,19 @@ first_notafter=$(cat "$root/root/sitecert.notafter")
 log "lineage $lineage, first certificate until $first_notafter"
 s1=$(served); l1=$(live); log "served: $s1"; log "live:   $l1"
 [ "$s1" = "$l1" ] || fail "nginx does not serve certbot's live certificate"
+
+log "mail: the Agent's own mail TLS writers publish the lineage for mail.site.test"
+if [ ! -f "$root/etc/postfix/main.cf" ]; then cp "$root/usr/share/postfix/main.cf.debian" "$root/etc/postfix/main.cf"; fi
+inchroot postconf -e inet_interfaces=loopback-only inet_protocols=ipv4 mydestination=localhost maillog_file=/var/log/postfix.log
+phase TestRealSystemSiteCertMail CELIKPANEL_REAL_SYSTEM_SITECERT=1
+inchroot postconf -n | grep -E 'tls_server_sni_maps|smtpd_tls_cert_file' | tee -a "$out/run.log"
+cp "$root/etc/postfix/celikpanel_sni" "$out/postfix-celikpanel_sni"
+cp "$root/etc/dovecot/conf.d/98-celikpanel-tls.conf" "$out/dovecot-98-celikpanel-tls.conf"
+inchroot postfix start >>"$out/run.log" 2>&1
+inchroot dovecot >>"$out/run.log" 2>&1
+sleep 2
+m1=$(smtp); i1=$(imaps); log "smtp:   $m1"; log "imaps:  $i1"
+[ "$m1" = "$l1" ] && [ "$i1" = "$l1" ] || fail "Postfix or Dovecot does not offer the lineage's certificate for mail.site.test"
 cp "$root/etc/letsencrypt/renewal/$lineage.conf" "$out/renewal.conf"
 cp "$root/etc/letsencrypt/renewal-hooks/deploy/celikpanel-site-certificates" "$out/deploy-hook"
 stat -c '%a %U:%G %n' "$root/etc/letsencrypt/renewal-hooks/deploy/celikpanel-site-certificates" | tee -a "$out/run.log"
@@ -180,8 +208,17 @@ s2=$(served); l2=$(live); log "served: $s2"; log "live:   $l2"
 [ "$s2" != "$s1" ] || fail "the certificate was not renewed"
 cat "$root/var/lib/celikpanel-site-certificates/$lineage" | tee -a "$out/run.log"
 grep -qx 'nginx=reloaded' "$root/var/lib/celikpanel-site-certificates/$lineage" || fail "hook did not reload nginx"
+grep -qx 'mail=reloaded' "$root/var/lib/celikpanel-site-certificates/$lineage" || fail "hook did not refresh Postfix"
+grep -qx 'dovecot=reloaded' "$root/var/lib/celikpanel-site-certificates/$lineage" || fail "hook did not reload Dovecot"
+sleep 2
+m2=$(smtp); i2=$(imaps); log "smtp:   $m2"; log "imaps:  $i2"
+[ "$m2" = "$l2" ] && [ "$i2" = "$l2" ] || fail "mail does not offer the renewed certificate"
+[ "$m2" != "$m1" ] || fail "mail still offers the first certificate"
+cmp -s "$out/postfix-celikpanel_sni" "$root/etc/postfix/celikpanel_sni" || fail "the hook changed the SNI map's source"
+cmp -s "$out/dovecot-98-celikpanel-tls.conf" "$root/etc/dovecot/conf.d/98-celikpanel-tls.conf" || fail "the hook changed Dovecot's drop-in"
+log "Postfix (STARTTLS) and Dovecot (IMAPS) offer the renewed certificate for mail.site.test; their configuration files are unchanged"
 phase TestRealSystemSiteCertObserve "${export_env[@]}" SITECERT_LABEL=renewed SITECERT_EXPECT_STATE=scheduled \
-  "SITECERT_EXPECT_NEWER_THAN=$first_notafter" SITECERT_EXPECT_DEPLOY=reloaded
+  "SITECERT_EXPECT_NEWER_THAN=$first_notafter" SITECERT_EXPECT_DEPLOY=reloaded SITECERT_EXPECT_MAIL=reloaded/reloaded
 
 log "--- 3. a renewal that fails is read as failed with certbot's own reason"
 mv "$root/etc/nginx/celikpanel-managed.d/site.test/acme-http-01.conf" "$root/root/acme-http-01.conf.saved"
@@ -205,6 +242,9 @@ grep -qx 'nginx=config_test_failed' "$root/var/lib/celikpanel-site-certificates/
 s4=$(served); l4=$(live)
 [ "$s4" = "$s3" ] && [ "$l4" != "$s3" ] || fail "expected the previous certificate served and a newer one in live/"
 log "served still the previous certificate; live/ has the renewed one"
+sleep 2
+m4=$(smtp); [ "$m4" = "$l4" ] || fail "mail should have taken the renewed certificate (its own reload does not depend on nginx)"
+log "mail took the renewed certificate although nginx could not"
 phase TestRealSystemSiteCertObserve "${export_env[@]}" SITECERT_LABEL=deploy SITECERT_EXPECT_STATE=deploy_incomplete SITECERT_EXPECT_DEPLOY=config_test_failed
 rm -f "$root/etc/nginx/celikpanel-sites.d/site.test/broken.conf"
 inchroot nginx -s reload; sleep 1
@@ -215,4 +255,5 @@ cp "$root"/root/sitecert-state-*.json "$out/" 2>/dev/null || true
 cp "$root/root/systemctl.calls" "$out/" 2>/dev/null || true
 cp "$root/root/pebble.log" "$out/" 2>/dev/null || true
 cp "$root/root/package-versions.txt" "$out/" 2>/dev/null || true
+cp "$root/var/log/postfix.log" "$out/" 2>/dev/null || true
 log "PASS"

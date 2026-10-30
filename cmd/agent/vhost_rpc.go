@@ -714,7 +714,7 @@ func validatePHPSocket(socket string, siteID int) error {
 }
 
 // validateVhostCertificatePathsFor also accepts the live files of an
-// OS-renewed lineage of this domain identity (D-039).
+// OS-renewed lineage of this domain identity (D-040).
 func validateVhostCertificatePathsFor(domain string, domainID int, certPath, keyPath string) error {
 	if lineage, ok := nativeSiteLineageOfPath(certPath); ok {
 		keyLineage, keyOK := nativeSiteLineageOfPath(keyPath)

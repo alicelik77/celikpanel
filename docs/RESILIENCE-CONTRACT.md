@@ -7943,7 +7943,7 @@ lock and their own agent jobs; the same request id returns the same operation.
   Not measured on an installed server. **No P0 item is closed or advanced**; P0.1
   to P0.5 stay partial and every open acceptance item stays open.
 
-### Branch fix/site-cert-native-renewal (website certificates renewed by the operating system's certbot; Agent certificate issue, renewal-state and lineage paths; no schema change; invariants 1, 2 and 3; D-039; D-022; D-024; D-031; 2026-10-30)
+### Branch fix/site-cert-native-renewal (website certificates renewed by the operating system's certbot; Agent certificate issue, renewal-state and lineage paths; no schema change; invariants 1, 2 and 3; D-040; D-022; D-024; D-031; 2026-10-30)
 
 D-025 invariant 1 (the owner's services run without the panel): a website
 certificate issued by this change is a certbot lineage in `/etc/letsencrypt`
@@ -7977,7 +7977,7 @@ lineage gets `autorenew = False`.
   reissued.
 - **Evidence.** Component tests (Agent, Panel, web) and one disposable Debian 13
   chroot run with Debian's certbot 4.0.0 and Pebble 2.6.0 (EAB required), no network
-  route out ([deploy/e2e/d039](../deploy/e2e/d039/README.md)). Not measured on an
+  route out ([deploy/e2e/d040](../deploy/e2e/d040/README.md)). Not measured on an
   installed server, under a booted systemd, on Ubuntu or Arch, or against a real CA.
   **P0.5 is advanced for website certificate renewal only**; mail SNI renewal without
   the Panel, reboot and the rest of the absence matrix stay open; P0.1 to P0.5 stay

@@ -13,7 +13,7 @@ import (
 // Automatic certificate renewal — what makes "Will be automatically renewed"
 // true instead of a label.
 //
-// Since D-039 a certificate issued by this release is renewed by the
+// Since D-040 a certificate issued by this release is renewed by the
 // operating system's certbot timer, not here: observeNativeSiteCertificates
 // (site_cert_native.go) only reads and records what certbot did. The loop
 // below renews only certificates of earlier releases (an immutable snapshot

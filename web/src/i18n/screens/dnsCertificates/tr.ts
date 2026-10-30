@@ -194,7 +194,7 @@ export const trDnsCertificatesScreens: Record<DnsCertificatesScreenKey, string> 
     'ssl.renewal.activationPending': 'Yenilenen sertifika web etkinleştirmesini bekliyor',
     'ssl.renewal.dependentsPending': 'Yenilenen sertifika posta TLS eşitlemesini bekliyor',
     'ssl.renewal.waitingForOwner': 'Sunucu yöneticisinin sitenin yapılandırma dosyası için seçimi bekleniyor',
-    // D-039: web sitesi sertifikasını kim yeniler, yönetici ne yapar.
+    // D-040: web sitesi sertifikasını kim yeniler, yönetici ne yapar.
     'ssl.renewedBy': 'Yenileyen',
     'ssl.renewedBy.os': 'İşletim sisteminin certbot’u (CelikPanel durduğunda veya kaldırıldığında da)',
     'ssl.renewedBy.panel': 'CelikPanel, yalnız çalışırken',
@@ -231,6 +231,8 @@ export const trDnsCertificatesScreens: Record<DnsCertificatesScreenKey, string> 
     'ssl.renewalGuide.disabled.action': 'Aşağıda “Otomatik yenilemeyi aç” seçeneğini açın ya da bu satırı /etc/letsencrypt/renewal/{lineage}.conf dosyasından kaldırın.',
     'ssl.renewalGuide.deploy_incomplete': 'certbot sertifikayı yeniledi, ancak nginx onu yükleyemedi ({nginx}); ziyaretçiler hâlâ önceki sertifikayı alıyor.',
     'ssl.renewalGuide.deploy_incomplete.action': 'nginx yapılandırmasını düzeltin (sorunu sudo nginx -t gösterir), sonra sudo systemctl reload nginx komutunu çalıştırın.',
+    'ssl.renewalGuide.deploy_incomplete_mail': 'certbot sertifikayı yeniledi ve web sitesi onu sunuyor, ancak posta onu yükleyemedi (Postfix: {mail}, Dovecot: {dovecot}); posta istemcileri hâlâ önceki sertifikayı alıyor.',
+    'ssl.renewalGuide.deploy_incomplete_mail.action': 'Posta yapılandırmasını denetleyin (sudo postfix check, sudo doveconf -n), sonra sudo postmap -F hash:/etc/postfix/celikpanel_sni (hash olmayan sistemlerde lmdb:) ve sudo systemctl reload postfix dovecot komutlarını çalıştırın.',
     'ssl.renewalGuide.hook_missing': 'Yenilemeden sonra nginx’i yeniden yükleyen dağıtım kancası bu sunucuda yok; yenilenen sertifika ancak nginx yeniden yüklendiğinde sunulur.',
     'ssl.renewalGuide.hook_missing.action': 'Kancayı geri koymak için sertifikayı burada yeniden alın ya da her yenilemeden sonra sudo systemctl reload nginx komutunu çalıştırın.',
     'ssl.renewalGuide.hook_changed': '/etc/letsencrypt/renewal-hooks/deploy/celikpanel-site-certificates dağıtım kancası CelikPanel dışında değiştirildi ve olduğu gibi bırakıldı.',

@@ -173,7 +173,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.DeleteCertLineage Agent.InstallCustomCertificate Agent.IssueLetsEncryptCertificate
 		Agent.IssuePanelCertificateV2 Agent.IssueMailHostCertificateV1 Agent.ReconcileSiteCertLineages
 		Agent.RenewLetsEncryptCertificate Agent.ValidateCertificate
-		Agent.SetSiteCertificateAutoRenewV1 Agent.SnapshotSiteCertificateV1
+		Agent.SetSiteCertificateAutoRenewV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityFirewall, `
 		Agent.ApplyFirewallV2 Agent.Fail2banToggleJail Agent.Fail2banUnban
@@ -338,7 +338,6 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.CreateFileOrDir":               agentRPCMutationTimeout,
 	"Agent.DeleteCertLineage":             agentRPCMutationTimeout,
 	"Agent.SetSiteCertificateAutoRenewV1": agentRPCMutationTimeout,
-	"Agent.SnapshotSiteCertificateV1":     agentRPCMutationTimeout,
 	"Agent.DeleteBackup":                  agentRPCMutationTimeout,
 	"Agent.DeleteCronJob":                 agentRPCMutationTimeout,
 	"Agent.DeleteFileOrDir":               agentRPCMutationTimeout,
