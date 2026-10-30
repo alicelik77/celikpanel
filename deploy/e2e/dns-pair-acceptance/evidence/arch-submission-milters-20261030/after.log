@@ -1,0 +1,34 @@
+=== d3-a after power cut and power-on 19:00:26
+587 send + IMAPS read: {"smtp_send": {"ok": true, "refused": {}}, "imap_read": {"after_seconds": 2.1, "headers": "From: alice@shopd3a.test\r\nTo: bob@shopd3a.test\r\nSubject: final-alpha113 7cf25179bc38"}}
+== master.cf (service type private unpriv chroot wakeup maxproc command)
+   smtp inet n - n - - smtpd
+   submission inet n - n - - smtpd
+   smtps inet n - n - - smtpd
+== milters: smtpd_milters='inet:127.0.0.1:8891, inet:127.0.0.1:11332' non_smtpd_milters='inet:127.0.0.1:8891' milter_default_action=accept
+   listening: 127.0.0.1:11332 127.0.0.1:8891 [::1]:11332 
+== milter warnings in the journal (all boots)
+   count: 0
+   'not a valid FQDN' lines: 0
+{'subject': 'final-alpha113 d4696a0d1cbc', 'dkim_signature': True, 'd': 'shopd3a.test', 's': 'celik', 'c': 'relaxed/simple', 'a': 'rsa-sha256', 'body_hash_ok': True, 'signature_ok': True}
+{'subject': 'd3 php mail d70ff8ad8a8d', 'dkim_signature': True, 'd': 'shopd3a.test', 's': 'celik', 'c': 'relaxed/simple', 'a': 'rsa-sha256', 'body_hash_ok': True, 'signature_ok': True}
+{'subject': 'final-alpha113 7cf25179bc38', 'dkim_signature': True, 'd': 'shopd3a.test', 's': 'celik', 'c': 'relaxed/simple', 'a': 'rsa-sha256', 'body_hash_ok': True, 'signature_ok': True}
+== Rspamd scans (last 4)
+id: <69f725337f6d4b668d4a533fa8b44690@labnet.test>, qid: <961BA1863E>, ip: 192.0.3.1, user: alice@shopd3a.test, from: <alice@shopd3a.test>, (default: F (no action): [1.40/15.00] [MISSING_DATE(1.00){},R_MISSING_CHARSET(0.50){},MIME_GOOD(-0.10){text/plain;},ARC_
+id: <6764254f3723466aab03933ef42fde5e@labnet.test>, qid: <1E585186CE>, ip: 192.0.3.1, user: alice@shopd3a.test, from: <alice@shopd3a.test>, (default: F (no action): [1.40/15.00] [MISSING_DATE(1.00){},R_MISSING_CHARSET(0.50){},MIME_GOOD(-0.10){text/plain;},ARC_
+=== d3-d after power cut and power-on 19:00:43
+587 send + IMAPS read: {"smtp_send": {"ok": true, "refused": {}}, "imap_read": {"after_seconds": 5.5, "headers": "From: alice@shopd3d.test\r\nTo: bob@shopd3d.test\r\nSubject: final-alpha113 7bb99172568c"}}
+== master.cf (service type private unpriv chroot wakeup maxproc command)
+   smtp inet n - y - - smtpd
+   submission inet n - y - - smtpd
+   smtps inet n - y - - smtpd
+== milters: smtpd_milters='inet:127.0.0.1:8891, inet:127.0.0.1:11332' non_smtpd_milters='inet:127.0.0.1:8891' milter_default_action=accept
+   listening: 127.0.0.1:11332 127.0.0.1:8891 [::1]:11332 
+== milter warnings in the journal (all boots)
+   count: 0
+   'not a valid FQDN' lines: 0
+{'subject': 'final-alpha113 fd3f0ba328d6', 'dkim_signature': True, 'd': 'shopd3d.test', 's': 'celik', 'c': 'relaxed/simple', 'a': 'rsa-sha256', 'body_hash_ok': True, 'signature_ok': True}
+{'subject': 'd3 php mail 988b072e060c', 'dkim_signature': True, 'd': 'shopd3d.test', 's': 'celik', 'c': 'relaxed/simple', 'a': 'rsa-sha256', 'body_hash_ok': True, 'signature_ok': True}
+{'subject': 'final-alpha113 7bb99172568c', 'dkim_signature': True, 'd': 'shopd3d.test', 's': 'celik', 'c': 'relaxed/simple', 'a': 'rsa-sha256', 'body_hash_ok': True, 'signature_ok': True}
+== Rspamd scans (last 4)
+id: <5c8939a139cd4eadb2534d1551c86915@labnet.test>, qid: <A9DA9216D0>, ip: 192.0.3.1, user: alice@shopd3d.test, from: <alice@shopd3d.test>, (default: F (no action): [0.90/15.00] [MISSING_DATE(1.00){},MIME_GOOD(-0.10){text/plain;},ARC_NA(0.00){},ASN(0.00){asn:1
+id: <236f801caa7b43b6a92f9087541b3725@labnet.test>, qid: <E9C24214AF>, ip: 192.0.3.1, user: alice@shopd3d.test, from: <alice@shopd3d.test>, (default: F (no action): [0.90/15.00] [MISSING_DATE(1.00){},MIME_GOOD(-0.10){text/plain;},ARC_NA(0.00){},ASN(0.00){asn:1

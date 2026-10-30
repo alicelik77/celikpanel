@@ -1,0 +1,41 @@
+== os: Debian GNU/Linux 13 (trixie), postfix 3.10.13, release 
+== master.cf (service type private unpriv chroot wakeup maxproc command)
+   smtp inet n - y - - smtpd
+   submission inet n - y - - smtpd
+   smtps inet n - y - - smtpd
+   chroot files: host.conf hosts localtime nsswitch.conf resolv.conf services 
+== milters: smtpd_milters='inet:127.0.0.1:8891, inet:127.0.0.1:11332' non_smtpd_milters='inet:127.0.0.1:8891' milter_default_action=accept
+   OpenDKIM Socket inet:8891@127.0.0.1; units: opendkim=active rspamd=active postfix=active
+   listening: 127.0.0.1:11332 127.0.0.1:8891 [::1]:11332 
+== milter warnings in the journal (all boots)
+   count: 0
+== first-setup FQDN line
+   'not a valid FQDN' lines: 0
+2026-10-30T18:47:09+00:00 frankfurt panel[10881]: 2026/10/30 18:47:09 certificate startup reconcile: mail TLS publication waits for a mail identity: none is saved yet and this server's name is not fully qualified; server setup's mail step (or a mail profile in
+2026-10-30T18:47:10+00:00 frankfurt panel[10948]: 2026/10/30 18:47:10 certificate startup reconcile: mail TLS publication waits for a mail identity: none is saved yet and this server's name is not fully qualified; server setup's mail step (or a mail profile in
+2026-10-30T18:48:25+00:00 frankfurt panel[14295]: 2026/10/30 18:48:25 certificate startup reconcile: mail TLS publication waits for a mail identity: none is saved yet and this server's name is not fully qualified; server setup's mail step (or a mail profile in
+   kernel name: frankfurt; hostname -f: frankfurt
+== DKIM state
+   signing table: *@debd3.test celik._domainkey.debd3.test;*@shopd3d.test celik._domainkey.shopd3d.test;
+   shopd3d.test key: /var/lib/celikpanel-dkim/keys/shopd3d.test/celik.private root:opendkim 640
+/root/q.sh: line 28: dig: command not found
+   shopd3d.test TXT @127.0.0.1: 
+   opendkim-testkey shopd3d.test: opendkim-testkey: checking key 'celik._domainkey.shopd3d.test' opendkim-testkey: 'celik._domainkey.shopd3d.test' record not found 
+   debd3.test key: /var/lib/celikpanel-dkim/keys/debd3.test/celik.private root:opendkim 640
+/root/q.sh: line 28: dig: command not found
+   debd3.test TXT @127.0.0.1: 
+   opendkim-testkey debd3.test: opendkim-testkey: checking key 'celik._domainkey.debd3.test' opendkim-testkey: 'celik._domainkey.debd3.test' record not found 
+   opendkim-testmsg: /usr/sbin/opendkim-testmsg
+== messages delivered to bob@shopd3d.test
+-- Subject: d3 php mail 988b072e060c
+   DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=shopd3d.test;
+   signature: d=shopd3d.test s=celik 
+   opendkim-testmsg rc=0 
+-- Subject: final-alpha113 fd3f0ba328d6
+   DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=shopd3d.test;
+   signature: d=shopd3d.test s=celik 
+   opendkim-testmsg rc=70 opendkim-testmsg: dkim_chunk(): Syntax error
+grep: /var/mail/vhosts/shopd3d.test/bob/dovecot.index.cache: binary file matches
+-- 
+
+   opendkim-testmsg rc=70 opendkim-testmsg: dkim_chunk(): Syntax error
