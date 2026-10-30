@@ -52,7 +52,9 @@ func CaptureFreshPrimaryNativeV3(ctx context.Context, policy dnsengineartifact.J
 	if err := validSourceDBStat(before); err != nil {
 		return empty, err
 	}
-	if uint64(before.Dev) != proof.Device || before.Ino != proof.Inode ||
+	// The inode, not the sealed device number: btrfs renumbers subvolume
+	// devices across boots (see PDNSTargetCandidateProofV4.SameCandidate).
+	if before.Ino != proof.Inode ||
 		before.Uid != proof.UID || before.Gid != proof.GID {
 		return empty, errors.New("v3 live PowerDNS main inode differs from sealed candidate")
 	}

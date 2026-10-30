@@ -149,14 +149,15 @@ func ClassifyPDNSTargetLiveV4(proof dnsengineartifact.PDNSTargetCandidateProofV4
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return false, fmt.Errorf("inspect renamed PowerDNS candidate: %w", err)
 	}
-	if _, err := observePDNSTargetDirectory(proof.Path, true); err != nil {
+	privateDir, err := observePDNSTargetDirectory(proof.Path, true)
+	if err != nil {
 		return false, err
 	}
 	liveDir, err := observePDNSTargetDirectory(livePath, false)
 	if err != nil {
 		return false, err
 	}
-	if uint64(liveDir.Dev) != proof.Device {
+	if liveDir.Dev != privateDir.Dev {
 		return true, nil
 	}
 	actual, err := probePDNSTargetFileV4(livePath, false, nil)
@@ -164,7 +165,7 @@ func ClassifyPDNSTargetLiveV4(proof dnsengineartifact.PDNSTargetCandidateProofV4
 		return false, err
 	}
 	actual.Path = proof.Path
-	return actual != proof, nil
+	return !proof.SameCandidate(actual), nil
 }
 
 // FreshPrimaryChangeV3 is what a read-only comparison found not as the fresh
@@ -316,7 +317,7 @@ func classifyFreshPrimaryPrestartChangeV3(ctx context.Context, j dnsengineartifa
 		if err != nil {
 			return FreshPrimaryChangeV3{Prestart: true}, freshPrimaryUnknown(FreshPrimaryChangedDatabaseV3, err)
 		}
-		result.Database = actual != proof
+		result.Database = !proof.SameCandidate(actual)
 	case !sidecars:
 		differs, err := obs.Live(proof, db)
 		if err != nil {

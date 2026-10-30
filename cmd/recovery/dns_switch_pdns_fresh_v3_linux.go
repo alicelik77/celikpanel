@@ -155,7 +155,7 @@ func assessInstalledFreshPrimaryV3(ctx context.Context, policy dnsengineartifact
 			proof := *j.PDNSFreshPlan.Candidate
 			if freshPDNSAllAbsentV3(policy.PDNSDatabasePath, policy.PDNSDatabasePath+"-wal", policy.PDNSDatabasePath+"-shm", policy.PDNSDatabasePath+"-journal") {
 				actual, err := dnsenginerecovery.CapturePDNSTargetCandidateV4(proof.Path)
-				if err != nil || actual != proof {
+				if err != nil || !proof.SameCandidate(actual) {
 					return unknown, errors.Join(errors.New("v3 staged candidate changed"), err)
 				}
 				shape = freshPDNSRecoveryStagedV3

@@ -309,7 +309,7 @@ func activateFreshPDNSPrimaryCandidateV3(journal dnsEngineSwitchJournal) error {
 	}
 	proof := *journal.PDNSFreshPlan.Candidate
 	actual, err := dnsenginerecovery.CapturePDNSTargetCandidateV4(proof.Path)
-	if err != nil || actual != proof {
+	if err != nil || !proof.SameCandidate(actual) {
 		return errors.Join(errors.New("v3 PowerDNS candidate differs before activation"), err)
 	}
 	if err := verifyPDNSTargetStageFilesystemV4(proof.Path); err != nil {

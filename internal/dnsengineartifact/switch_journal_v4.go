@@ -44,6 +44,24 @@ type PDNSTargetCandidateProofV4 struct {
 	NoSidecars bool   `json:"no_sidecars"`
 }
 
+// SameCandidate reports whether a candidate observed now is the sealed one:
+// path, inode, mode, owner, size, SHA-256 and sidecar absence must be equal.
+// The device number is not compared. btrfs (the Arch Linux cloud image's root
+// filesystem) gives every mounted subvolume an anonymous device number that
+// can change at each boot: measured 35 before and 34 after one power cut on
+// 2026-10-30, with the same inode and bytes, which left a never-started fresh
+// primary's pre-start undo refusing its own candidate. Callers that need "the
+// same filesystem" prove it with the devices observed now (both parents of a
+// rename), never with the sealed number. The sealed number stays non-zero as
+// a well-formedness check.
+//
+// Mühürlü aday ile şimdi görüleni aygıt numarası hariç karşılaştırır: btrfs
+// her açılışta alt birime yeni bir anonim aygıt numarası verebilir.
+func (p PDNSTargetCandidateProofV4) SameCandidate(actual PDNSTargetCandidateProofV4) bool {
+	actual.Device = p.Device
+	return actual == p
+}
+
 // PDNSTargetInversePlanV4 has two commitments. Digest freezes the original
 // intent, including the candidate identity, before any DNS config is changed.
 // StagedDigest records the later target-staged phase after config is applied.
