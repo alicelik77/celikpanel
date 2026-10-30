@@ -58,15 +58,23 @@ v_nginx_tls_default() {
     v_nginx; rc=$?
     [[ $rc -eq 1 ]] && return 1
     command -v openssl >/dev/null 2>&1 || { echo "openssl is not installed in the container (provision.sh)"; return 1; }
-    if ! out=$(nginx 2>&1 </dev/null); then printf 'nginx did not start: %s\n' "$out"; return 1; fi
+    # Started in the background with its output in a file: a daemon must not
+    # inherit a command-substitution pipe (the harness would wait forever),
+    # and a stock nginx.conf may run it in the foreground (daemon off).
+    nginx >/var/log/matrix-nginx-start.log 2>&1 </dev/null &
+    local started=$!
     for i in 1 2 3 4 5 6 7 8 9 10; do
         timeout 1 bash -c '</dev/tcp/127.0.0.1/443' 2>/dev/null && break
         sleep 0.5
     done
     known=$(tls_subject "$KNOWN_NAME")
     unknown=$(tls_subject unknown-name.example.invalid)
-    nginx -s stop >/dev/null 2>&1
+    nginx -s stop >/dev/null 2>&1 || kill "$started" 2>/dev/null
     sleep 1
+    pkill -x nginx 2>/dev/null || true
+    wait "$started" 2>/dev/null
+    out=$(head -c 500 /var/log/matrix-nginx-start.log)
+    [[ -n "$out" ]] && printf 'nginx start: %s\n' "$out"
     printf 'TLS for %s: %s; for a name with no site: %s\n' "$KNOWN_NAME" "${known:-no certificate}" "${unknown:-no certificate}"
     if ! grep -Eq "CN ?= ?${KNOWN_NAME//./\\.}\$" <<<"$known"; then
         echo "the site's own name did not get the site's certificate"

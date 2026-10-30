@@ -329,6 +329,14 @@ func addMatrixVhost(t *testing.T, h *matrixHost, c *configmatrix.Case, gen *serv
 }
 
 func renderMatrixNginx(t *testing.T, h *matrixHost) {
+	// The matrix measures the release's own nginx on purpose; ordinary test
+	// runs do not (webmail_address_hermetic_test.go). Without this the
+	// webmail origin was rendered without HTTP/2 beside sites with it, and
+	// nginx 1.24 warned "protocol options redefined" for a mix no real
+	// server writes.
+	savedForm := webmailAddressHTTP2Form
+	webmailAddressHTTP2Form = func() string { return services.HostNginxFeatures().HTTP2Form() }
+	t.Cleanup(func() { webmailAddressHTTP2Form = savedForm })
 	gen, err := services.NewNginxGenerator()
 	if err != nil {
 		t.Fatal(err)
