@@ -164,13 +164,19 @@ func ensureNginxMainConfigWithWriter(
 	// nginx refuses it (for example another file already sets server_tokens
 	// in the http block) the previous nginx.conf is put back and readiness
 	// is not affected; the reason is logged.
-	if !nginxServerTokensSet(string(data)) {
-		updated, insertErr := insertIntoNginxHTTPBlock(string(data), nginxServerTokensBlock)
+	//
+	// The same edit hides PHP's X-Powered-By header (Arch's php.ini has
+	// expose_php = On, so every PHP page said "PHP/8.5.12"):
+	// `fastcgi_hide_header X-Powered-By;` at http level is inherited by every
+	// PHP location CelikPanel writes (none sets its own fastcgi_hide_header).
+	// An owner's own fastcgi_hide_header X-Powered-By line is kept.
+	if hardening := nginxHardeningBlock(string(data)); hardening != "" {
+		updated, insertErr := insertIntoNginxHTTPBlock(string(data), hardening)
 		if insertErr == nil {
 			insertErr = publishNginxMainConfigEdit(ctx, path, run, write, data, updated)
 		}
 		if insertErr != nil {
-			log.Printf("nginx readiness: server_tokens off was not added to %s: %v", path, insertErr)
+			log.Printf("nginx readiness: the version-hiding lines were not added to %s: %v", path, insertErr)
 		} else {
 			changed = true
 		}
@@ -183,12 +189,32 @@ func ensureNginxMainConfigWithWriter(
 const nginxServerTokensBlock = "\n    # Added by CelikPanel: nginx does not name its version in the Server header or on error pages.\n" +
 	"    server_tokens off;\n"
 
+// nginxHidePoweredByBlock is what CelikPanel adds to an http block that does
+// not already hide PHP's X-Powered-By header.
+const nginxHidePoweredByBlock = "\n    # Added by CelikPanel: PHP pages do not name the PHP version (X-Powered-By).\n" +
+	"    fastcgi_hide_header X-Powered-By;\n"
+
 var nginxActiveServerTokens = regexp.MustCompile(`(?m)^[ \t]*server_tokens[ \t]`)
+
+var nginxActiveHidePoweredBy = regexp.MustCompile(`(?mi)^[ \t]*fastcgi_hide_header[ \t]+"?X-Powered-By"?[ \t]*;`)
 
 // nginxServerTokensSet says whether nginx.conf has an active (uncommented)
 // server_tokens line, whatever its value.
 func nginxServerTokensSet(content string) bool {
 	return nginxActiveServerTokens.MatchString(content)
+}
+
+// nginxHardeningBlock is the text to add to the http block: the lines whose
+// setting nginx.conf does not already have; "" when both are present.
+func nginxHardeningBlock(content string) string {
+	block := ""
+	if !nginxServerTokensSet(content) {
+		block += nginxServerTokensBlock
+	}
+	if !nginxActiveHidePoweredBy.MatchString(content) {
+		block += nginxHidePoweredByBlock
+	}
+	return block
 }
 
 // insertIntoNginxHTTPBlock adds text right after the opening of the http
