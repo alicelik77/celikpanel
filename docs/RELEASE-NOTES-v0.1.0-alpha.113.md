@@ -97,6 +97,16 @@ needed (schema 46, unchanged).
     happening, who acts and how it resumes, with "Try again".
   - Deleting a domain removes the key CelikPanel made and its record; a key
     the owner made is kept and named.
+  - A domain deleted right after it was added no longer races this work:
+    nothing is written into or published for a zone being deleted, and no
+    "failed" DKIM note is left for a deleted domain. A note an earlier build
+    left for a deleted domain is removed at the next Panel start.
+- Mail a site sends with PHP `mail()` (and anything else on the server that
+  uses `sendmail`) is now spam-checked by Rspamd as well as DKIM-signed, like
+  mail sent through ports 587 and 465. Postfix's own bounces are not
+  filtered, and a stopped Rspamd never holds mail. An existing server is
+  changed at the next Panel start; a filter list the owner changed is kept
+  and named.
 - The file manager answers a missing path, an existing name or a missing
   download with what to do, not a bare error.
 
@@ -138,6 +148,12 @@ needed (schema 46, unchanged).
 - Daily operations on a pair: a change made while the backup is catching up
   waits briefly, then says so instead of "no DNS engine"; a held publication
   names its cause.
+- While a deletion on a pair waits for the backup DNS server to confirm, the
+  Agent's log and the domain's deletion status say it is waiting and is
+  checked again automatically. Who must act is named only when those
+  automatic checks end without confirmation (before, the first check's
+  answer already asked the peer administrator to act, although the deletion
+  finished by itself seconds later).
 
 **Services**
 - Service versions are read from the package database. Starting a program
