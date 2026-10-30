@@ -251,16 +251,19 @@ func writeNativeSiteEABConfig(req IssueLetsEncryptRequest) (string, func(), erro
 	return file, cleanup, nil
 }
 
+// runNativeSiteCertbot runs certbot through the certificate launcher the
+// Agent's other certbot runs use (bounded by certbotRenewTimeout).
 func runNativeSiteCertbot(ctx context.Context, args ...string) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, "certbot", args...)
-	cmd.WaitDelay = 2 * time.Second
-	return cmd.CombinedOutput()
+	return runPanelCertMutationCommand(ctx, certbotRenewTimeout, "certbot", args...)
 }
 
+// runNativeSiteQuery asks the service manager a read-only question
+// (is-enabled, is-active) through the Agent's launcher.
 func runNativeSiteQuery(ctx context.Context, name string, args ...string) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, name, args...)
-	cmd.WaitDelay = time.Second
-	return cmd.CombinedOutput()
+	if filepath.Base(name) != "systemctl" || len(args) != 2 || (args[0] != "is-enabled" && args[0] != "is-active") {
+		return nil, errors.New("unsupported renewal scheduler query")
+	}
+	return runServiceMutationCombinedOutput(ctx, "systemctl", args...)
 }
 
 // readNativeSiteLineage reads and checks the certificate certbot's live
@@ -990,7 +993,7 @@ func issueNativeSiteCertificate(req IssueLetsEncryptRequest, webroot string, res
 	if err != nil {
 		resp.Success = false
 		resp.FailureDetail = certbotFailureLine(string(output))
-		if ctx.Err() == context.DeadlineExceeded {
+		if ctx.Err() == context.DeadlineExceeded || errors.Is(err, context.DeadlineExceeded) {
 			resp.Failure = transport.CertificateFailureTimeout
 			resp.Error = fmt.Sprintf("certbot issue timed out after %s\nOutput: %s", certbotRenewTimeout, string(output))
 			return
