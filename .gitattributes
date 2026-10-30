@@ -44,3 +44,11 @@ deploy/e2e/dns-kill-matrix/evidence/** -text -whitespace
 deploy/e2e/release-recovery/evidence/** -text -whitespace
 deploy/e2e/dns-pair-acceptance/evidence/** -text -whitespace
 deploy/test-distro-config-matrix/** text eol=lf
+
+# Embedded shell hooks, the embedded signing key and build source lists have
+# no extension the rules above cover. A Windows checkout gave them CRLF, so a
+# build from it embedded `#!/bin/sh\r` hooks (distro config matrix finding 5).
+internal/mailrenewalkit/deploy-hook text eol=lf
+internal/mailrenewalkit/legacy-deploy-hook text eol=lf
+*.asc text eol=lf
+deploy/recovery/*.sources text eol=lf

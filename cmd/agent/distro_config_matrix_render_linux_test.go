@@ -402,6 +402,32 @@ func renderMatrixNginx(t *testing.T, h *matrixHost) {
 	all.File(live+"/fullchain.pem", cert, 0o644)
 	all.File(live+"/privkey.pem", key, 0o600)
 	all.File(dbToolsConfPath, []byte(dbtools), 0o644)
+
+	// The default HTTPS server (conf.d/celikpanel-default-https.conf) refuses
+	// the handshake for names no site serves. ReconcileDefaultHTTPSServer
+	// writes it only when the measured nginx has ssl_reject_handshake and a
+	// server listens on 443; it is rendered here from the same measurement.
+	features := services.HostNginxFeatures()
+	const defaultSource = "internal/services/nginx_default_https.go:138 RenderDefaultHTTPSServer (written by :246 ReconcileDefaultHTTPSServer)"
+	formNote := fmt.Sprintf("measured nginx %s: HTTP/2 form %q", features.Version, features.HTTP2Form())
+	if !features.RejectHandshake() {
+		h.notApplicable(t, "nginx.default-https-server", "nginx", "default HTTPS server", defaultSource,
+			"not written on this release: "+formNote+", and ssl_reject_handshake needs nginx 1.19.4")
+	} else if body, err := services.RenderDefaultHTTPSServer(features); err != nil {
+		h.renderFailure(t, "nginx.default-https-server", "nginx", "default HTTPS server", defaultSource, err)
+	} else {
+		sealed := []byte(services.SealManagedText(body))
+		c := newNginxCase(t, "default-https-server", "default HTTPS server + one HTTPS site ("+formNote+")", defaultSource, services.DefaultHTTPSServerPath(), mainPatch)
+		if err := addMatrixVhost(t, h, c, gen, 42, 7, 19, "example.test", matrixVhostShapes(h)[3].mutate); err != nil {
+			h.renderFailure(t, c.ID, "nginx", c.Variant, vhostSource, err)
+		} else {
+			c.File(services.DefaultHTTPSServerPath(), sealed, 0o644)
+			h.write(t, c)
+		}
+		all.File(services.DefaultHTTPSServerPath(), sealed, 0o644)
+		all.Variant += " + default HTTPS server"
+	}
+	all.Variant += " (" + formNote + ")"
 	h.write(t, all)
 }
 

@@ -4,30 +4,3 @@
 # fails (remove it in the change that fixes it). Every entry names the finding.
 #
 # Columns: release-glob  case-id  status  finding
-debian-12     nginx.everything-together        FAIL  nginx-http2: vhost.conf.tmpl:253,304 "http2 on;" needs nginx >= 1.25.1
-debian-12     nginx.site-aliases-acme-mail     FAIL  nginx-http2: vhost.conf.tmpl:253,304 "http2 on;" needs nginx >= 1.25.1
-debian-12     nginx.site-forwarding-ssl-force  FAIL  nginx-http2: vhost.conf.tmpl:253,304 "http2 on;" needs nginx >= 1.25.1
-debian-12     nginx.site-letsencrypt-lineage   FAIL  nginx-http2: vhost.conf.tmpl:253,304 "http2 on;" needs nginx >= 1.25.1
-debian-12     nginx.site-node-ssl              FAIL  nginx-http2: vhost.conf.tmpl:253,304 "http2 on;" needs nginx >= 1.25.1
-debian-12     nginx.site-php-ssl               FAIL  nginx-http2: vhost.conf.tmpl:253,304 "http2 on;" needs nginx >= 1.25.1
-debian-12     nginx.site-php-ssl-force-hsts    FAIL  nginx-http2: vhost.conf.tmpl:253,304 "http2 on;" needs nginx >= 1.25.1
-debian-12     nginx.site-php-ssl-force-nohsts  FAIL  nginx-http2: vhost.conf.tmpl:253,304 "http2 on;" needs nginx >= 1.25.1
-debian-12     nginx.site-www-redirect-ssl      FAIL  nginx-http2: vhost.conf.tmpl:253,304 "http2 on;" needs nginx >= 1.25.1
-ubuntu-22.04  nginx.everything-together        FAIL  nginx-http2: vhost.conf.tmpl:253,304 "http2 on;" needs nginx >= 1.25.1
-ubuntu-22.04  nginx.site-aliases-acme-mail     FAIL  nginx-http2: vhost.conf.tmpl:253,304 "http2 on;" needs nginx >= 1.25.1
-ubuntu-22.04  nginx.site-forwarding-ssl-force  FAIL  nginx-http2: vhost.conf.tmpl:253,304 "http2 on;" needs nginx >= 1.25.1
-ubuntu-22.04  nginx.site-letsencrypt-lineage   FAIL  nginx-http2: vhost.conf.tmpl:253,304 "http2 on;" needs nginx >= 1.25.1
-ubuntu-22.04  nginx.site-node-ssl              FAIL  nginx-http2: vhost.conf.tmpl:253,304 "http2 on;" needs nginx >= 1.25.1
-ubuntu-22.04  nginx.site-php-ssl               FAIL  nginx-http2: vhost.conf.tmpl:253,304 "http2 on;" needs nginx >= 1.25.1
-ubuntu-22.04  nginx.site-php-ssl-force-hsts    FAIL  nginx-http2: vhost.conf.tmpl:253,304 "http2 on;" needs nginx >= 1.25.1
-ubuntu-22.04  nginx.site-php-ssl-force-nohsts  FAIL  nginx-http2: vhost.conf.tmpl:253,304 "http2 on;" needs nginx >= 1.25.1
-ubuntu-22.04  nginx.site-www-redirect-ssl      FAIL  nginx-http2: vhost.conf.tmpl:253,304 "http2 on;" needs nginx >= 1.25.1
-ubuntu-24.04  nginx.everything-together        FAIL  nginx-http2: vhost.conf.tmpl:253,304 "http2 on;" needs nginx >= 1.25.1
-ubuntu-24.04  nginx.site-aliases-acme-mail     FAIL  nginx-http2: vhost.conf.tmpl:253,304 "http2 on;" needs nginx >= 1.25.1
-ubuntu-24.04  nginx.site-forwarding-ssl-force  FAIL  nginx-http2: vhost.conf.tmpl:253,304 "http2 on;" needs nginx >= 1.25.1
-ubuntu-24.04  nginx.site-letsencrypt-lineage   FAIL  nginx-http2: vhost.conf.tmpl:253,304 "http2 on;" needs nginx >= 1.25.1
-ubuntu-24.04  nginx.site-node-ssl              FAIL  nginx-http2: vhost.conf.tmpl:253,304 "http2 on;" needs nginx >= 1.25.1
-ubuntu-24.04  nginx.site-php-ssl               FAIL  nginx-http2: vhost.conf.tmpl:253,304 "http2 on;" needs nginx >= 1.25.1
-ubuntu-24.04  nginx.site-php-ssl-force-hsts    FAIL  nginx-http2: vhost.conf.tmpl:253,304 "http2 on;" needs nginx >= 1.25.1
-ubuntu-24.04  nginx.site-php-ssl-force-nohsts  FAIL  nginx-http2: vhost.conf.tmpl:253,304 "http2 on;" needs nginx >= 1.25.1
-ubuntu-24.04  nginx.site-www-redirect-ssl      FAIL  nginx-http2: vhost.conf.tmpl:253,304 "http2 on;" needs nginx >= 1.25.1

@@ -8,13 +8,24 @@
       "pattern": "^\\s*http2\\s+on\\s*;",
       "files": [
         "internal/services/templates/nginx/vhost.conf.tmpl",
+        "internal/services/nginx_default_https.go",
         "cmd/agent/*.go"
       ],
-      "guard": "\\{\\{-?\\s*if\\s[^}]*(?i:http2)",
-      "note": "nginx < 1.25.1: [emerg] unknown directive \"http2\". Older form: listen 443 ssl http2;",
-      "known_violations": [
-        "internal/services/templates/nginx/vhost.conf.tmpl"
-      ]
+      "guard": "\\{\\{-?\\s*if\\s[^}]*(?i:http2)|case services\\.NginxHTTP2(Listen|Directive)",
+      "note": "nginx < 1.25.1: [emerg] unknown directive \"http2\". Older form: listen 443 ssl http2;"
+    },
+    {
+      "id": "nginx-listen-http2-deprecated",
+      "program": "nginx",
+      "max_exclusive": "1.25.1",
+      "pattern": "listen\\s+[^;]*\\bssl\\s+http2\\b",
+      "files": [
+        "internal/services/templates/nginx/vhost.conf.tmpl",
+        "internal/services/nginx_default_https.go",
+        "cmd/agent/*.go"
+      ],
+      "guard": "\\{\\{-?\\s*if\\s[^}]*(?i:http2)|case services\\.NginxHTTP2(Listen|Directive)",
+      "note": "nginx >= 1.25.1 warns: the \"listen ... http2\" directive is deprecated, use the \"http2\" directive instead"
     },
     {
       "id": "nginx-listen-quic",
@@ -23,6 +34,7 @@
       "pattern": "listen\\s+[^;]*\\bquic\\b",
       "files": [
         "internal/services/templates/nginx/vhost.conf.tmpl",
+        "internal/services/nginx_default_https.go",
         "cmd/agent/*.go"
       ],
       "guard": "\\{\\{-?\\s*if\\s[^}]*(?i:quic|http3)"
@@ -34,8 +46,14 @@
       "pattern": "ssl_reject_handshake",
       "files": [
         "internal/services/templates/nginx/vhost.conf.tmpl",
+        "internal/services/nginx_default_https.go",
         "cmd/agent/*.go"
-      ]
+      ],
+      "guard_elsewhere": {
+        "file": "internal/services/nginx_default_https.go",
+        "pattern": "features\\.RejectHandshake\\(\\)"
+      },
+      "note": "nginx < 1.19.4: unknown directive. The default HTTPS server is written only when the measured nginx has it (nginx_default_https.go ReconcileDefaultHTTPSServer)."
     },
     {
       "id": "systemd-restart-steps",
