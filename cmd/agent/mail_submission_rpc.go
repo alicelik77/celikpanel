@@ -179,9 +179,17 @@ service auth {
 		return fail(rollback(fmt.Errorf("write postfix sender login map: %w", err), false))
 	}
 
+	// Submission requires TLS: Postfix needs a server certificate before it
+	// is enabled (Arch's main.cf names none; postfix_default_cert.go).
+	postfixMayHaveChanged = true
+	if err := ensurePostfixDefaultServerCertificate(func(name string, args ...string) ([]byte, error) {
+		return runMailTLSMutationCommand(ctx, name, args...)
+	}); err != nil {
+		return fail(rollback(err, false))
+	}
+
 	// Master.cf via postconf -M/-P: idempotent, no hand-editing.
 	// Master.cf, postconf -M/-P ile: idempotent, elle düzenleme yok.
-	postfixMayHaveChanged = true
 	if out, err := runMailTLSMutationCommand(ctx, "postconf", "-M",
 		"submission/inet=submission inet n - y - - smtpd"); err != nil {
 		return fail(rollback(mailSubmissionCommandError(ctx, "postconf -M submission", out, err), false))

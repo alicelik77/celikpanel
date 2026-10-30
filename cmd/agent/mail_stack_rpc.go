@@ -113,6 +113,13 @@ func (a *Agent) ConfigureMailStack(req *ServiceMutationRequest, resp *ConfigureM
 			resp.Error = fmt.Sprintf("postfix aliases: %v", err)
 			return nil
 		}
+		// Arch's main.cf names no server certificate (postfix_default_cert.go).
+		if err := ensurePostfixDefaultServerCertificate(func(name string, args ...string) ([]byte, error) {
+			return serviceMutationCommand(ctx, name, args...).CombinedOutput()
+		}); err != nil {
+			resp.Error = fmt.Sprintf("postfix tls: %v", err)
+			return nil
+		}
 	}
 
 	if hasDovecot {
