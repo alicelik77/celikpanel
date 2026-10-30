@@ -75,7 +75,7 @@ taşınmaz (bilgiler saklanmaz); kart "bir kez yeniden alın" der. Dağıtım ya
 matrisi gerçek Dovecot ve Postfix'te her SNI adının sertifikasını, kancalı yenilemeden
 sonra yenisini denetler; Arch Dovecot ve MariaDB artık "uygulanamaz" değil, ölçülür.
 Ubuntu 24.04 ve Arch, QEMU'da gerçek açılışla ölçüldü. Kanıt:
-[cert-mail-20261030](../deploy/e2e/dns-pair-acceptance/evidence/cert-mail-20261030/SUMMARY.md).
+[cert-mail-20261030](../deploy/e2e/dns-pair-acceptance/evidence/cert-mail-20261030/).
 P0.5 kısmi kalır.
 
 ---

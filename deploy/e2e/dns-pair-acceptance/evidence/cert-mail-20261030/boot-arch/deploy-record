@@ -1,0 +1,6 @@
+format=celikpanel-site-deploy-v1
+lineage=celikpanel-site-42-3cde167dc806f2eef6ee600a
+completed_at=2026-10-30T09:58:52Z
+nginx=reloaded
+mail=reloaded
+dovecot=reloaded

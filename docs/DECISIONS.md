@@ -201,11 +201,28 @@ may remain.
    for both were outdated.
 3. **Real boot.** `deploy/e2e/cert-mail-boot` boots Ubuntu 24.04 and Arch cloud images
    under QEMU (packages from the release's mirrors, then no route out), issues with
-   the Agent's own code against a local Pebble, reboots, and lets the release's own
-   timer fire.
+   the Agent's own code against a local Pebble, lets the release's own timer fire
+   (a runtime drop-in under `/run` moves only its schedule), then reboots.
 
-Evidence: [cert-mail-20261030](../deploy/e2e/dns-pair-acceptance/evidence/cert-mail-20261030/SUMMARY.md).
-P0.5 stays partial.
+**Evidence** ([cert-mail-20261030](../deploy/e2e/dns-pair-acceptance/evidence/cert-mail-20261030/)).
+Matrix on Debian 12, Debian 13, Ubuntu 22.04, Ubuntu 24.04 and Arch: 0 FAIL; Dovecot
+2.3.19/2.3.16/2.3.21 (`ssl_cert = <`) and 2.4.1/2.4.5 serve each SNI name's
+certificate on IMAPS, Postfix on STARTTLS, and the renewed one after the site hook;
+no-SNI clients get the default certificate. Real boot, no CelikPanel program present:
+Ubuntu 24.04 (certbot 2.9.0 deb, `certbot.timer`, Dovecot 2.3.21, Postfix map `hash`)
+and Arch (certbot 5.8.0, `certbot-renew.timer` disabled before and enabled by the
+issuance, Dovecot 2.4.5 with CelikPanel's main file, Postfix map `lmdb`): the timer
+started the package's service, certbot renewed, the hook record read `nginx=reloaded
+mail=reloaded dovecot=reloaded`, https, SMTP and IMAPS served the renewed certificate,
+mail configuration byte-identical; after a reboot the timer is enabled and active and
+the renewed certificate is still served; the Agent reads `scheduled`, hook
+`installed`. Lab notes: Pebble keeps accounts in memory (a renewal across a reboot of
+the lab CA fails `accountDoesNotExist`), and certbot 5 renews at a third of the
+lifetime, so the lab issues ten-minute certificates (Ubuntu ran with one-day ones).
+Panel move: component tests only. **Not shown:** an installed server, a real CA, the
+move against a real Agent and CA, snap certbot, the remaining WARNs of the matrix
+(systemd 252/249 ignore two unit keys; nginx 1.24 "protocol options redefined" in the
+all-files-together case on Ubuntu 24.04). P0.5 stays partial.
 
 ---
 

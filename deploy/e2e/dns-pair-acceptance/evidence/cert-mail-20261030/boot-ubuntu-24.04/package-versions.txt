@@ -1,0 +1,7 @@
+certbot	2.9.0-1
+dovecot-core	1:2.3.21+dfsg1-2ubuntu6.5
+dovecot-imapd	1:2.3.21+dfsg1-2ubuntu6.5
+nginx	1.24.0-2ubuntu7.19
+openssl	3.0.13-0ubuntu3.16
+postfix	3.8.6-1ubuntu0.1
+python3-acme	2.9.0-1

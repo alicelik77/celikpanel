@@ -1,0 +1,14 @@
+nginx	nginx	1.24.0-2ubuntu7.19
+php-fpm	php8.3-fpm	8.3.6-0ubuntu0.24.04.13
+postfix	postfix	3.8.6-1ubuntu0.1
+dovecot	dovecot-core	1:2.3.21+dfsg1-2ubuntu6.5
+bind	bind9	1:9.18.39-0ubuntu0.24.04.8
+powerdns	pdns-server	4.8.3-4build3
+powerdns-sqlite3	pdns-backend-sqlite3	4.8.3-4build3
+nftables	nftables	1.0.9-1ubuntu0.1
+systemd	systemd	255.4-1ubuntu8.18
+mariadb	mariadb-server	1:10.11.14-0ubuntu0.24.04.1
+openssh	openssh-server	1:9.6p1-3ubuntu13.20
+sudo	sudo	1.9.15p5-3ubuntu5.24.04.4
+openssl	openssl	3.0.13-0ubuntu3.16
+apt	apt	2.8.3

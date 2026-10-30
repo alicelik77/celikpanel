@@ -1,0 +1,10 @@
+== 09:50:14 build the Agent's realsystem test binary
+f415a0448fa3683cb2bea2b4854d14bd6218d6c8a57affd3ee25ec820fbba2e8  /var/tmp/cp-certmail-boot/agent.test
+c2fff3622e19cca691d811beb69957965661d0e3f0641344c719426005b6fa93  /var/tmp/cp-certmail-boot/pebble
+== 09:50:16 arch: base image Arch-Linux-x86_64-cloudimg-20260815.573966.qcow2 sha256 5d8be8d28cfd290f…
+== 09:50:36 arch: boot install up (restrict=no)
+== 09:50:36 arch: install the release's packages from its own mirrors
+== 09:51:36 arch: boot first up (restrict=yes)
+no route out (expected)
+== 09:59:19 arch: boot second up (restrict=yes)
+== 09:59:23 arch: exit 0

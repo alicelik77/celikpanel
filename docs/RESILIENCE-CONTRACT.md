@@ -8009,7 +8009,7 @@ back to the earlier renewal.
   simulated `certbot renew` that runs the site deploy hook; Arch Dovecot (CelikPanel's
   main file) and Arch MariaDB measured instead of N/A.
 - **Schema.** None (46).
-- **Evidence.** [cert-mail-20261030](../deploy/e2e/dns-pair-acceptance/evidence/cert-mail-20261030/SUMMARY.md):
+- **Evidence.** [cert-mail-20261030](../deploy/e2e/dns-pair-acceptance/evidence/cert-mail-20261030/):
   the matrix on its five releases and real QEMU boots of Ubuntu 24.04 and Arch
   against a local Pebble. Not measured: an installed server, a real CA, the move
   itself against a real Agent and CA (component tests only), snap certbot.

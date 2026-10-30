@@ -1,0 +1,4 @@
+=== RUN   TestRealSystemSiteCertMail
+    real_system_sitecert_test.go:217: Postfix SNI map type lmdb, Dovecot 2.4 dialect true
+--- PASS: TestRealSystemSiteCertMail (2.97s)
+PASS

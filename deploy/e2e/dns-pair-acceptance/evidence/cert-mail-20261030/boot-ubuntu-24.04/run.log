@@ -1,0 +1,82 @@
+== 09:11:34 Ubuntu 24.04.4 LTS (apt), kernel 6.8.0-138-generic, systemd systemd 255 (255.4-1ubuntu8.17)
+certbot	2.9.0-1
+dovecot-core	1:2.3.21+dfsg1-2ubuntu6.5
+dovecot-imapd	1:2.3.21+dfsg1-2ubuntu6.5
+nginx	1.24.0-2ubuntu7.19
+openssl	3.0.13-0ubuntu3.16
+postfix	3.8.6-1ubuntu0.1
+python3-acme	2.9.0-1
+== 09:11:34 dovecot 2.3.21 (47349e2482), postfix 3.8.6
+== 09:11:34 Pebble test CA on 127.0.0.1:14000 (local only; this guest has no route to the internet)
+{
+   "keyChange": "https://localhost:14000/rollover-account-key",
+   "meta": {
+      "externalAccountRequired": false,
+      "termsOfService": "data:text/plain,Do%20what%20thou%20wilt"
+   },
+   "newAccount": "https://localhost:14000/sign-me-up",
+   "newNonce": "https://localhost:14000/nonce-plz",
+   "newOrder": "https://localhost:14000/order-plz",
+   "renewalInfo": "https://localhost:14000/draft-ietf-acme-ari-03/renewalInfo",
+   "revokeCert": "https://localhost:14000/revoke-cert"
+}== 09:11:36 phase TestRealSystemSiteCertPrepare (Agent code present)
+    real_system_sitecert_test.go:133: nginx.conf includes added: false
+--- PASS: TestRealSystemSiteCertPrepare (0.00s)
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+== 09:11:37 certbot.timer before issuance: enabled=enabled
+== 09:11:37 phase TestRealSystemSiteCertIssue (Agent code present)
+    real_system_sitecert_test.go:152: lineage celikpanel-site-42-7c52fe728e598a2543e59da4, expires 2026-10-31T09:11:37Z, renewal warning ""
+--- PASS: TestRealSystemSiteCertIssue (3.11s)
+== 09:11:40 certbot.timer after issuance: enabled=enabled active=active
+== 09:11:40 phase TestRealSystemSiteCertMail (Agent code present)
+    real_system_sitecert_test.go:217: Postfix SNI map type hash, Dovecot 2.4 dialect false
+--- PASS: TestRealSystemSiteCertMail (3.58s)
+== 09:11:48 phase TestRealSystemSiteCertObserve (Agent code present)
+    real_system_sitecert_test.go:265: {
+--- PASS: TestRealSystemSiteCertObserve (0.01s)
+== 09:11:48 issued: live=1A:82:99:C7:24:5F:DF:3E:33:60:AF:49:5B:38:7A:FE:8D:E1:A6:40:14:71:21:3D:13:85:F7:95:D5:12:1E:30 https=1A:82:99:C7:24:5F:DF:3E:33:60:AF:49:5B:38:7A:FE:8D:E1:A6:40:14:71:21:3D:13:85:F7:95:D5:12:1E:30 smtp(SNI mail.site.test)=1A:82:99:C7:24:5F:DF:3E:33:60:AF:49:5B:38:7A:FE:8D:E1:A6:40:14:71:21:3D:13:85:F7:95:D5:12:1E:30 imaps(SNI mail.site.test)=1A:82:99:C7:24:5F:DF:3E:33:60:AF:49:5B:38:7A:FE:8D:E1:A6:40:14:71:21:3D:13:85:F7:95:D5:12:1E:30 imaps(no SNI)=BD:F9:71:81:C3:9D:59:30:C4:96:D3:96:80:47:B6:60:E8:7C:1C:0E:DD:E9:55:DA:D4:70:0D:DB:94:F4:80:D7
+== 09:11:48 unit certbot.timer: enabled=enabled active=active
+== 09:11:48 unit nginx: enabled=enabled active=active
+== 09:11:48 unit postfix: enabled=enabled active=active
+== 09:11:48 unit dovecot: enabled=enabled active=active
+== 09:11:48 unit lab-pebble: enabled=enabled active=active
+== 09:11:48 no CelikPanel program on the system (no binary, no process)
+== 09:11:48 stage first done; lab.sh reboots the guest
+== 09:11:48 no CelikPanel program on the system (no binary, no process)
+== 09:11:48 certbot.timer: enabled=enabled active=active
+== 09:11:49 runtime drop-in moves certbot.timer to once a minute; waiting for systemd to start certbot.service by itself
+NEXT LEFT LAST                          PASSED UNIT          ACTIVATES
+-       - Fri 2026-10-30 09:11:49 UTC 12ms ago certbot.timer certbot.service
+
+1 timers listed.
+Pass --all to see loaded but inactive timers, too.
+== 09:11:54 systemd: Starting certbot.service - Certbot...|Finished certbot.service - Certbot.|
+== 09:11:54 certbot.service: Result=success ExecMainStatus=0 
+format=celikpanel-site-deploy-v1
+lineage=celikpanel-site-42-7c52fe728e598a2543e59da4
+completed_at=2026-10-30T09:11:52Z
+nginx=reloaded
+mail=reloaded
+dovecot=reloaded
+== 09:11:56 renewed by the operating system's timer: live=02:88:75:50:FF:C8:DB:7E:FC:55:FF:F5:DB:2A:67:42:4F:94:C3:7F:1A:FB:CE:91:B9:8E:C3:71:40:B5:0A:48 https=02:88:75:50:FF:C8:DB:7E:FC:55:FF:F5:DB:2A:67:42:4F:94:C3:7F:1A:FB:CE:91:B9:8E:C3:71:40:B5:0A:48 smtp(SNI mail.site.test)=02:88:75:50:FF:C8:DB:7E:FC:55:FF:F5:DB:2A:67:42:4F:94:C3:7F:1A:FB:CE:91:B9:8E:C3:71:40:B5:0A:48 imaps(SNI mail.site.test)=02:88:75:50:FF:C8:DB:7E:FC:55:FF:F5:DB:2A:67:42:4F:94:C3:7F:1A:FB:CE:91:B9:8E:C3:71:40:B5:0A:48 imaps(no SNI)=BD:F9:71:81:C3:9D:59:30:C4:96:D3:96:80:47:B6:60:E8:7C:1C:0E:DD:E9:55:DA:D4:70:0D:DB:94:F4:80:D7
+/etc/dovecot/conf.d/98-celikpanel-tls.conf: OK
+/etc/postfix/celikpanel_sni: OK
+== 09:11:56 mail configuration byte-identical after the renewal; lab.sh reboots the guest
+== 09:12:21 after reboot: boot id 84993fc3-e1f8-4add-8ee6-a3aec6e3978d, up 17.96s
+== 09:12:21 no CelikPanel program on the system (no binary, no process)
+== 09:12:21 unit certbot.timer: enabled=enabled active=active
+== 09:12:21 unit nginx: enabled=enabled active=active
+== 09:12:21 unit postfix: enabled=enabled active=active
+== 09:12:21 unit dovecot: enabled=enabled active=active
+== 09:12:21 unit lab-pebble: enabled=enabled active=active
+NEXT                            LEFT LAST                        PASSED UNIT          ACTIVATES
+Fri 2026-10-30 12:33:04 UTC 3h 20min Fri 2026-10-30 09:11:49 UTC      - certbot.timer certbot.service
+
+1 timers listed.
+Pass --all to see loaded but inactive timers, too.
+== 09:12:22 after reboot: live=02:88:75:50:FF:C8:DB:7E:FC:55:FF:F5:DB:2A:67:42:4F:94:C3:7F:1A:FB:CE:91:B9:8E:C3:71:40:B5:0A:48 https=02:88:75:50:FF:C8:DB:7E:FC:55:FF:F5:DB:2A:67:42:4F:94:C3:7F:1A:FB:CE:91:B9:8E:C3:71:40:B5:0A:48 smtp(SNI mail.site.test)=02:88:75:50:FF:C8:DB:7E:FC:55:FF:F5:DB:2A:67:42:4F:94:C3:7F:1A:FB:CE:91:B9:8E:C3:71:40:B5:0A:48 imaps(SNI mail.site.test)=02:88:75:50:FF:C8:DB:7E:FC:55:FF:F5:DB:2A:67:42:4F:94:C3:7F:1A:FB:CE:91:B9:8E:C3:71:40:B5:0A:48 imaps(no SNI)=BD:F9:71:81:C3:9D:59:30:C4:96:D3:96:80:47:B6:60:E8:7C:1C:0E:DD:E9:55:DA:D4:70:0D:DB:94:F4:80:D7
+== 09:12:24 phase TestRealSystemSiteCertObserve (Agent code present)
+    real_system_sitecert_test.go:265: {
+--- PASS: TestRealSystemSiteCertObserve (0.04s)
+== 09:12:24 stage observe done

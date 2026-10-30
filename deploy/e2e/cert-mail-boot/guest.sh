@@ -8,14 +8,16 @@
 # (D-040), secures mail.site.test with it (Postfix SNI map, Dovecot SNI
 # drop-in in the release's own dialect), and reads the renewal state. Then
 # the binary is removed; lab.sh reboots the guest.
-# Stage "second": after the reboot, with no CelikPanel program on the
-# system, the operating system's own certbot timer fires (a runtime drop-in
-# under /run moves only its schedule to once a minute), certbot renews the
-# lineage, the site deploy hook reloads nginx, Postfix and Dovecot through
-# the real systemctl, and every listener serves the new certificate. The
+# Stage "renew": with no CelikPanel program on the system, the operating
+# system's own certbot timer fires (a runtime drop-in under /run moves only
+# its schedule to once a minute), certbot renews the lineage, the site
+# deploy hook reloads nginx, Postfix and Dovecot through the real systemctl,
+# and every listener serves the new certificate. lab.sh reboots the guest.
+# Stage "second": after the reboot the timer is still enabled and active and
+# every listener still serves the renewed certificate. Stage "observe": the
 # binary is copied back once to read the state.
 #
-# usage: guest.sh first|second
+# usage: guest.sh first|renew|second|observe
 set -eu
 stage=${1:?stage}
 [ -f /etc/celikpanel-cert-mail-boot-lab ] || { echo "not the disposable lab guest" >&2; exit 2; }
@@ -91,9 +93,13 @@ first)
   log "Pebble test CA on 127.0.0.1:14000 (local only; this guest has no route to the internet)"
   mkdir -p /root/pebble-tls
   cd /root/pebble-tls
-  openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 3 -subj "/CN=cert-mail lab throwaway API CA" -keyout ca.key -out ca.pem 2>/dev/null
+  # Python 3.13's strict verification (Arch's certbot) wants a CA with key
+  # usage and identifiers on both certificates.
+  openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 3 -subj "/CN=cert-mail lab throwaway API CA" \
+    -addext "basicConstraints=critical,CA:TRUE" -addext "keyUsage=critical,keyCertSign,cRLSign" \
+    -addext "subjectKeyIdentifier=hash" -keyout ca.key -out ca.pem 2>/dev/null
   openssl req -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -subj "/CN=localhost" -keyout key.pem -out req.pem 2>/dev/null
-  printf 'subjectAltName=DNS:localhost,IP:127.0.0.1\n' >ext.cnf
+  printf 'subjectAltName=DNS:localhost,IP:127.0.0.1\nbasicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature\nextendedKeyUsage=serverAuth\nsubjectKeyIdentifier=hash\nauthorityKeyIdentifier=keyid\n' >ext.cnf
   openssl x509 -req -in req.pem -CA ca.pem -CAkey ca.key -CAcreateserial -days 3 -extfile ext.cnf -out cert.pem 2>/dev/null
   cd /
   if [ "$family" = apt ]; then
@@ -103,6 +109,9 @@ first)
     cp /root/pebble-tls/ca.pem /etc/ca-certificates/trust-source/anchors/cert-mail-lab-pebble-api.crt
     update-ca-trust
   fi
+  # Ten-minute certificates: certbot 5 (Arch) renews when a third of the
+  # lifetime is left, certbot 2.9 (Ubuntu) whenever 30 days are left, so both
+  # are due within the timer wait of the renew stage.
   cat >/root/pebble.json <<'EOF'
 {"pebble": {
   "listenAddress": "127.0.0.1:14000",
@@ -111,7 +120,7 @@ first)
   "privateKey": "/root/pebble-tls/key.pem",
   "httpPort": 80, "tlsPort": 5001, "ocspResponderURL": "",
   "externalAccountBindingRequired": false,
-  "certificateValidityPeriod": 86400
+  "certificateValidityPeriod": 600
 }}
 EOF
   cat >/etc/systemd/system/lab-pebble.service <<'EOF'
@@ -157,49 +166,62 @@ EOF
   no_celikpanel_program
   log "stage first done; lab.sh reboots the guest"
   ;;
+renew)
+  # Same boot as the issuance: Pebble keeps its ACME accounts only in memory,
+  # so a reboot of the lab CA (not of a real one) would forget the account.
+  no_celikpanel_program
+  before=$(cat /root/sitecert.fp-before)
+  log "$timer: enabled=$(systemctl is-enabled "$timer") active=$(systemctl is-active "$timer")"
+  # Only the schedule changes, and only until the next boot (/run): the unit,
+  # its command and certbot's configuration are the package's own.
+  mkdir -p "/run/systemd/system/$timer.d"
+  printf '[Timer]
+OnCalendar=
+OnCalendar=*:*:00
+RandomizedDelaySec=0
+AccuracySec=1s
+' >"/run/systemd/system/$timer.d/lab-schedule.conf"
+  systemctl daemon-reload
+  log "runtime drop-in moves $timer to once a minute; waiting for systemd to start $service by itself"
+  systemctl list-timers "$timer" --no-pager >>"$out/run.log" 2>&1 || true
+  i=0
+  while [ "$(live_fp)" = "$before" ]; do
+    i=$((i + 1))
+    [ $i -le 120 ] || fail "certbot did not renew within 10 minutes"
+    sleep 5
+  done
+  # Let the deploy hook finish its reloads, then put the schedule back.
+  for _ in $(seq 1 60); do
+    state=$(systemctl show -p ActiveState --value "$service")
+    [ "$state" != activating ] && [ "$state" != active ] && break
+    sleep 2
+  done
+  rm -f "/run/systemd/system/$timer.d/lab-schedule.conf"
+  systemctl daemon-reload
+  journalctl -u "$service" -u "$timer" --no-pager -b >"$out/journal-certbot.txt" 2>&1 || true
+  log "systemd: $(journalctl -u "$service" -b --no-pager -o cat 2>/dev/null | grep -E '^(Starting|Started|Finished)' | tail -2 | tr '
+' '|')"
+  log "$service: $(systemctl show -p Result -p ExecMainStatus "$service" | tr '
+' ' ')"
+  tee -a "$out/run.log" <"/var/lib/celikpanel-site-certificates/$(cat /root/sitecert.lineage)"
+  cp "/var/lib/celikpanel-site-certificates/$(cat /root/sitecert.lineage)" "$out/deploy-record"
+  sleep 2
+  served_all "renewed by the operating system's timer"
+  [ "$(live_fp)" != "$before" ] || fail "the live certificate did not change"
+  live_fp >/root/sitecert.fp-renewed
+  sha256sum -c /root/mail-config.sha256 >>"$out/run.log" 2>&1 || fail "the mail configuration changed during the renewal"
+  log "mail configuration byte-identical after the renewal; lab.sh reboots the guest"
+  ;;
 second)
   log "after reboot: boot id $(cat /proc/sys/kernel/random/boot_id), up $(cut -d' ' -f1 /proc/uptime)s"
   no_celikpanel_program
   units
   [ "$(systemctl is-enabled "$timer")" = enabled ] || fail "$timer is not enabled after the reboot"
   [ "$(systemctl is-active "$timer")" = active ] || fail "$timer is not active after the reboot"
-  for _ in $(seq 1 50); do curl -fsS https://localhost:14000/dir >/dev/null 2>&1 && break; sleep 0.2; done
-  before=$(cat /root/sitecert.fp-before)
-  if [ "$(live_fp)" != "$before" ]; then
-    log "the certificate was already renewed by the timer's catch-up run at boot"
-  else
-    served_all "after reboot, before renewal"
-    # Only the schedule changes, and only until the next boot (/run): the
-    # unit, its command and certbot's configuration are the package's own.
-    mkdir -p "/run/systemd/system/$timer.d"
-    printf '[Timer]\nOnCalendar=\nOnCalendar=*:*:00\nRandomizedDelaySec=0\nAccuracySec=1s\n' >"/run/systemd/system/$timer.d/lab-schedule.conf"
-    systemctl daemon-reload
-    log "runtime drop-in moves $timer to once a minute; waiting for systemd to start $service by itself"
-    systemctl list-timers "$timer" --no-pager >>"$out/run.log" 2>&1 || true
-    i=0
-    while [ "$(live_fp)" = "$before" ]; do
-      i=$((i + 1))
-      [ $i -le 120 ] || fail "certbot did not renew within 10 minutes of the timer firing"
-      sleep 5
-    done
-    # Let the deploy hook finish its reloads.
-    for _ in $(seq 1 60); do
-      [ "$(systemctl show -p ActiveState --value "$service")" != activating ] && [ "$(systemctl show -p ActiveState --value "$service")" != active ] && break
-      sleep 2
-    done
-    rm -f "/run/systemd/system/$timer.d/lab-schedule.conf"
-    systemctl daemon-reload
-  fi
-  journalctl -u "$service" -u "$timer" --no-pager -b >"$out/journal-certbot.txt" 2>&1 || true
-  log "who started $service: $(journalctl -u "$timer" -u "$service" -b --no-pager -o cat 2>/dev/null | grep -E 'Started|Starting|Finished' | tail -3 | tr '\n' '|')"
-  log "$service result: $(systemctl show -p Result -p ExecMainStatus "$service" | tr '\n' ' ')"
-  cat "/var/lib/celikpanel-site-certificates/$(cat /root/sitecert.lineage)" | tee -a "$out/run.log"
-  cp "/var/lib/celikpanel-site-certificates/$(cat /root/sitecert.lineage)" "$out/deploy-record"
-  sleep 2
-  served_all "renewed by the operating system"
-  [ "$(live_fp)" != "$before" ] || fail "the live certificate did not change"
-  sha256sum -c /root/mail-config.sha256 >>"$out/run.log" 2>&1 || fail "the mail configuration changed during the renewal"
-  log "mail configuration byte-identical after the renewal"
+  [ ! -e "/run/systemd/system/$timer.d/lab-schedule.conf" ] || fail "the lab schedule drop-in survived"
+  systemctl list-timers "$timer" --no-pager >>"$out/run.log" 2>&1 || true
+  [ "$(live_fp)" = "$(cat /root/sitecert.fp-renewed)" ] || fail "the live certificate changed across the reboot"
+  served_all "after reboot"
   ;;
 observe)
   # Copied back once, after the renewal, to read what the Agent concludes.

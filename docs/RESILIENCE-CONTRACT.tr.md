@@ -7234,7 +7234,7 @@ sonraki hatalar yenileme kuyruğunundur; kaydedilmeden kalan lineage açılış
 uzlaştırmasıyla silinir; bitimine 14 gün kala başarısız taşıma eski yenilemeye döner.
 Matris gerçek Dovecot/Postfix'te SNI el sıkışmalarını ve kancalı yenilemeyi denetler;
 Arch Dovecot ve MariaDB ölçülür. Şema yok (46). Kanıt:
-[cert-mail-20261030](../deploy/e2e/dns-pair-acceptance/evidence/cert-mail-20261030/SUMMARY.md).
+[cert-mail-20261030](../deploy/e2e/dns-pair-acceptance/evidence/cert-mail-20261030/).
 Kurulu sunucu, gerçek CA ve taşımanın gerçek Ajan/CA ile denemesi ölçülmedi; P0.5 kısmi
 kalır.
 

@@ -1,0 +1,3 @@
+- `arch` powerdns.all: the PowerDNS engine switch is certified only on APT hosts; pacman hosts are refused
+
+report: /var/tmp/cp-certmail/matrix-out/report.md   results: /var/tmp/cp-certmail/matrix-out/results.tsv

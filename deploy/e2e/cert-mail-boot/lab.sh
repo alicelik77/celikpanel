@@ -1,7 +1,8 @@
 #!/bin/bash
 # Real-boot evidence for D-040 on Ubuntu 24.04 and Arch: a website
 # certificate issued by the Agent's own code is renewed by the operating
-# system's certbot timer on a booted system, across a reboot, and served by
+# system's certbot timer on a booted system, still enabled and served after a
+# reboot, by
 # nginx, Postfix and Dovecot (Dovecot 2.3 on Ubuntu, 2.4 with CelikPanel's
 # Arch main file on Arch) with no CelikPanel program present.
 #
@@ -52,7 +53,7 @@ boot() { # os label restrict(yes|no)
   qemu-system-x86_64 -name "cm-$os" -accel kvm -cpu host -smp 2 -m 2048 \
     -drive "file=$nd/overlay.qcow2,if=virtio,format=qcow2" \
     -drive "file=$nd/seed.iso,if=virtio,format=raw,media=cdrom,readonly=on" \
-    -netdev "$net" -device virtio-net-pci,netdev=n0 \
+    -netdev "$net" -device virtio-net-pci,netdev=n0,mac=52:54:00:12:34:56 \
     -pidfile "$nd/qemu.pid" -serial "file:$nd/serial-$label.log" -display none -monitor none -daemonize
   local i
   for i in $(seq 1 120); do gssh "$os" true 2>/dev/null && { log "$os: boot $label up (restrict=$restrict)"; return 0; }; sleep 5; done
@@ -70,8 +71,13 @@ run_os() {
   local os=$1 nd=$work/$1
   rm -rf -- "$nd"
   mkdir -p "$nd/seed"
-  local bootcmd=""
-  [[ "$os" == arch ]] && bootcmd=$'bootcmd:\n  - [systemctl, stop, --no-block, systemd-time-wait-sync.service]\n'
+  local bootcmd="" runcmd=""
+  # Arch's cloud image starts no sshd by itself, and its host keys appear
+  # only in cloud-init's final stage (as in the beta1 lab).
+  if [[ "$os" == arch ]]; then
+    bootcmd=$'bootcmd:\n  - [systemctl, stop, --no-block, systemd-time-wait-sync.service]\n  - [systemctl, enable, sshd.service]\n'
+    runcmd=$'runcmd:\n  - [systemctl, restart, sshd.service]\n'
+  fi
   cat >"$nd/seed/user-data" <<EOF
 #cloud-config
 hostname: cm-$os
@@ -91,9 +97,11 @@ ${bootcmd}write_files:
   - path: /etc/celikpanel-sitecert-chroot
     permissions: '0444'
     content: "disposable lab guest (the realsystem test's marker)\n"
+${runcmd}
 EOF
   printf 'instance-id: cm-%s-%s\nlocal-hostname: cm-%s\n' "$os" "$(date +%s)" "$os" >"$nd/seed/meta-data"
-  printf 'version: 2\nethernets:\n  nic:\n    match: {name: "e*"}\n    dhcp4: true\n' >"$nd/seed/network-config"
+  # Matched by the MAC boot() gives the NIC (Arch's renderer ignored a name glob).
+  printf 'version: 2\nethernets:\n  nic:\n    match: {macaddress: "52:54:00:12:34:56"}\n    set-name: lab0\n    dhcp4: true\n' >"$nd/seed/network-config"
   genisoimage -quiet -output "$nd/seed.iso" -volid cidata -joliet -rock "$nd/seed/user-data" "$nd/seed/meta-data" "$nd/seed/network-config"
   qemu-img create -q -f qcow2 -F qcow2 -b "$images/${image[$os]}" "$nd/overlay.qcow2" 16G
   log "$os: base image ${image[$os]} sha256 $(sha256sum "$images/${image[$os]}" | cut -c1-16)…"
@@ -114,6 +122,7 @@ EOF
   gssh "$os" 'sudo install -m 0700 /tmp/agent.test /root/agent.test && sudo install -m 0755 /tmp/pebble /usr/local/bin/pebble && sudo install -m 0755 /tmp/guest.sh /root/guest.sh && rm -f /tmp/agent.test /tmp/pebble'
   local rc=0
   gssh "$os" 'sudo sh /root/guest.sh first' || rc=$?
+  [[ $rc -eq 0 ]] && { gssh "$os" 'sudo sh /root/guest.sh renew' || rc=$?; }
   if [[ $rc -eq 0 ]]; then
     halt "$os"
     boot "$os" second yes
