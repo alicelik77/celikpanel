@@ -31,6 +31,10 @@ func TestSitePlaceholderV2(t *testing.T) {
 		!strings.Contains(text, "<code>index.html</code>") || strings.Contains(text, "<?php") {
 		t.Fatalf("static page is not the v2 page:\n%s", text)
 	}
+	// Only PHP sites have the panel's Applications section.
+	if strings.Contains(text, "Uygulamalar") || strings.Contains(text, "Applications") {
+		t.Fatal("static page sends the owner to an Applications section it does not have")
+	}
 	for _, leak := range []string{"PHP_VERSION", "phpinfo", "/var/www", "http://", "https://", "<script", "<link"} {
 		if strings.Contains(text, leak) {
 			t.Fatalf("static page contains %q", leak)
@@ -39,7 +43,8 @@ func TestSitePlaceholderV2(t *testing.T) {
 	name, page = celikPanelSitePlaceholder("shop.example.com", "php")
 	text = string(page)
 	if name != "index.php" || !strings.Contains(text, "<code>index.php</code>") ||
-		!strings.Contains(text, "<?php echo 'PHP çalışıyor · PHP is running'; ?>") {
+		!strings.Contains(text, "<?php echo 'PHP çalışıyor · <span lang=\"en\">PHP is running</span>'; ?>") ||
+		!strings.Contains(text, "<b>Uygulamalar</b>") || !strings.Contains(text, "<b>Applications</b>") {
 		t.Fatalf("php page is not the v2 page:\n%s", text)
 	}
 	if strings.Contains(text, "PHP_VERSION") || strings.Contains(text, "phpinfo") {
