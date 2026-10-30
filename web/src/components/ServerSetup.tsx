@@ -125,6 +125,7 @@ const codeKey: Record<string, TranslationKey> = {
     server_setup_dns_rolled_back: 'setup.guide.dnsRolledBack',
     server_setup_dns_agent_failed: 'setup.guide.dnsAgentFailed',
     server_setup_dns_recovery_held: 'setup.guide.dnsRecoveryHeld',
+    server_setup_dns_journal_retained: 'setup.guide.dnsJournalRetained',
     server_setup_dns_result_unknown: 'setup.guide.dnsResultUnknown',
     LICENSE_VERIFICATION_UNAVAILABLE: 'setup.guide.licenseUnverified',
     LICENSE_STATUS_UNAVAILABLE: 'setup.guide.licenseUnverified',

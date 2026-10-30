@@ -1506,6 +1506,16 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 		// step stays unreleased: the Panel has not recorded a rollback, so a
 		// new plan could not start anyway. The runner keeps rereading the
 		// same request every 20 s; reading never starts a mutation.
+		// An earlier DNS operation's journal would refuse this install: the
+		// step waits with that reason, nothing was started, and the runner
+		// rechecks every 20 s instead of showing "running" (drill apd-e).
+		var journalRetained *serverSetupDNSJournalRetainedError
+		if step.Kind == "dns" && errors.As(err, &journalRetained) {
+			execution.Status = "waiting"
+			execution.Error = serverSetupDNSJournalRetainedMessage(journalRetained)
+			log.Printf("server setup step %s: %v", step.ID, err)
+			return false, p.persistServerSetupExecution(ctx, *execution)
+		}
 		var agentFailed *serverSetupDNSAgentFailedError
 		if step.Kind == "dns" && errors.As(err, &agentFailed) {
 			execution.Status = "waiting"

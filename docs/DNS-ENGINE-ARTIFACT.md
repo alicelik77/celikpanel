@@ -1920,6 +1920,25 @@ evidence scope includes the fresh paired PowerDNS primary only while its gate
 is open. The primary's role text tells the owner to start the secondary only
 after this server's DNS step shows as finished.
 
+**Kept journal is never "undone" (Arch PowerDNS drill apd-e, 2026-10-30).**
+After a cut, the Agent's pre-start undo stopped and it released the job with
+its switch journal kept; the Panel's startup recovery still recorded the
+switch as rolled back from a stopped-engine observation alone, so setup said
+"CelikPanel undid it", and the owner's revised plan then sat at "running"
+because the kept journal refused the new install. The Agent's readiness
+answer now names a retained switch journal (`switch_journal_request_id`, or
+`switch_journal_unverified` when it cannot be read; read-only, an older Agent
+reports neither). The Panel's rollback runtime proof refuses while either is
+set, so startup keeps the switch attached and operator-gated (not degraded)
+and setup shows `server_setup_dns_recovery_held`, which says the operation
+is not reported as undone, who acts and the status command. Only after the
+journal is retired does the same step record the proven rollback. A new
+setup DNS install checks the same answer before any staging: with a kept
+journal it waits as `server_setup_dns_journal_retained` (nothing started,
+the status command for that request, starts by itself once resolved).
+Component tests: `cmd/panel/dns_engine_journal_retained_test.go`,
+`cmd/agent/dns_engine_readiness_journal_test.go`.
+
 **License refresh in the background.** The setup runner read a license check
 that only HTTP handlers refreshed, so with no browser request for a minute
 it reported `license_required` for an active license. It now performs the

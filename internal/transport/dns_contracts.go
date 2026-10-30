@@ -473,7 +473,23 @@ type DNSBackendReadinessResponse struct {
 	// ile "başkası bir DNS sunucusu kurmuş" zıt teşhislerdir ve zıt çözümleri
 	// vardır.
 	MutationHold string `json:"mutation_hold,omitempty"`
-	Error        string `json:"error,omitempty"`
+	// SwitchJournalRequestID names the request of a DNS engine switch journal
+	// the Agent still keeps: that operation was neither finished nor
+	// confirmed undone, and the journal blocks every new DNS engine switch.
+	// SwitchJournalUnverified reports that the journal could not be read, so
+	// its absence is not proven. Both are read-only observations (D-024): the
+	// Panel never records a rollback, and setup never starts a new DNS
+	// install, while either is set. An older Agent leaves both empty.
+	//
+	// SwitchJournalRequestID, Agent'ın hâlâ tuttuğu DNS motoru değişim
+	// günlüğünün isteğini adlandırır: o işlem ne bitti ne de geri alındığı
+	// doğrulandı; günlük her yeni DNS değişimini engeller.
+	// SwitchJournalUnverified, günlüğün okunamadığını, yokluğunun
+	// kanıtlanmadığını bildirir. Panel bunlardan biri varken geri alma
+	// kaydetmez, kurulum yeni DNS kurulumu başlatmaz.
+	SwitchJournalRequestID  string `json:"switch_journal_request_id,omitempty"`
+	SwitchJournalUnverified bool   `json:"switch_journal_unverified,omitempty"`
+	Error                   string `json:"error,omitempty"`
 }
 
 type DNSSECRequest struct {

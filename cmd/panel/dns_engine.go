@@ -346,13 +346,63 @@ func validateDNSBackendReadiness(
 func (p *Panel) readDNSBackendRuntime(
 	ctx context.Context,
 ) (map[transport.DNSEngine]transport.DNSBackendRuntimeState, bool, string, error) {
+	response, err := p.readDNSBackendReadinessResponse(ctx)
+	if err != nil {
+		return nil, false, "", err
+	}
+	return validateDNSBackendReadiness(response)
+}
+
+func (p *Panel) readDNSBackendReadinessResponse(
+	ctx context.Context,
+) (transport.DNSBackendReadinessResponse, error) {
 	var response transport.DNSBackendReadinessResponse
 	if err := p.callAgentContext(
 		ctx, "Agent.DNSBackendReadiness", &transport.Empty{}, &response,
 	); err != nil {
-		return nil, false, "", fmt.Errorf("read DNS backend readiness: %w", err)
+		return transport.DNSBackendReadinessResponse{}, fmt.Errorf("read DNS backend readiness: %w", err)
 	}
-	return validateDNSBackendReadiness(response)
+	return response, nil
+}
+
+// dnsSwitchJournalRetainedError: the Agent still keeps a DNS engine switch
+// journal (or cannot prove it has none). That operation was neither finished
+// nor confirmed undone, so no rollback may be recorded and no new DNS install
+// may start until the server owner resolves it (drill apd-e, 2026-10-30;
+// D-024 verified state, D-025 recovery). It unwraps to
+// errAgentMutationRecoveryRequired: startup keeps the switch attached and
+// operator-gated rather than degrading the panel.
+//
+// Agent hâlâ bir DNS değişim günlüğü tutuyor (ya da tutmadığını
+// kanıtlayamıyor): o işlem ne bitti ne de geri alındığı doğrulandı. Geri alma
+// kaydedilmez, yeni DNS kurulumu başlatılmaz.
+type dnsSwitchJournalRetainedError struct {
+	RequestID  string
+	Unverified bool
+}
+
+func (e *dnsSwitchJournalRetainedError) Error() string {
+	if e.Unverified {
+		return "the Agent could not prove that no DNS switch journal is retained"
+	}
+	return "the Agent keeps the DNS switch journal of request " + e.RequestID
+}
+
+func (e *dnsSwitchJournalRetainedError) Unwrap() error { return errAgentMutationRecoveryRequired }
+
+// retainedDNSSwitchJournal reads the Agent's journal observation from one
+// readiness answer. Read only; an older Agent reports nothing.
+func retainedDNSSwitchJournal(response transport.DNSBackendReadinessResponse) *dnsSwitchJournalRetainedError {
+	if response.SwitchJournalUnverified {
+		return &dnsSwitchJournalRetainedError{Unverified: true}
+	}
+	if response.SwitchJournalRequestID == "" {
+		return nil
+	}
+	if !validServiceOperationID(response.SwitchJournalRequestID) {
+		return &dnsSwitchJournalRetainedError{Unverified: true}
+	}
+	return &dnsSwitchJournalRetainedError{RequestID: response.SwitchJournalRequestID}
 }
 
 func (p *Panel) dnsEngineTopology(ctx context.Context) string {
@@ -3449,7 +3499,16 @@ func (p *Panel) verifyDNSEngineRollbackRuntime(
 	ctx context.Context,
 	persisted persistedDNSEngineSwitch,
 ) error {
-	runtimes, port53Conflict, _, err := p.readDNSBackendRuntime(ctx)
+	response, err := p.readDNSBackendReadinessResponse(ctx)
+	if err != nil {
+		return err
+	}
+	// A stopped engine is not an undone operation while the Agent keeps the
+	// switch journal: its undo stopped or was never decided (drill apd-e).
+	if retained := retainedDNSSwitchJournal(response); retained != nil {
+		return retained
+	}
+	runtimes, port53Conflict, _, err := validateDNSBackendReadiness(response)
 	if err != nil {
 		return err
 	}
