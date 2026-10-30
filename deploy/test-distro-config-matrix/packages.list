@@ -28,6 +28,7 @@ memcached          memcached              memcached
 cron               cron                   cronie
 openssh            openssh-server         openssh
 sudo               sudo                   sudo
+openssl            openssl                openssl
 unattended-upgrades unattended-upgrades   -
 phpmyadmin         phpmyadmin             phpmyadmin
 phppgadmin         phppgadmin             -

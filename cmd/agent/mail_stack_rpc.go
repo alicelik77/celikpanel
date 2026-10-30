@@ -114,7 +114,7 @@ func (a *Agent) ConfigureMailStack(req *ServiceMutationRequest, resp *ConfigureM
 			return nil
 		}
 		// Arch's main.cf names no server certificate (postfix_default_cert.go).
-		if err := ensurePostfixDefaultServerCertificate(func(name string, args ...string) ([]byte, error) {
+		if err := ensurePostfixDefaultServerCertificate(ctx, func(name string, args ...string) ([]byte, error) {
 			return serviceMutationCommand(ctx, name, args...).CombinedOutput()
 		}); err != nil {
 			resp.Error = fmt.Sprintf("postfix tls: %v", err)
@@ -551,25 +551,20 @@ func ensureDovecotSSLCert(ctx context.Context) error {
 	if fileExistsAgent(certPath) && fileExistsAgent(keyPath) {
 		return nil
 	}
-	if _, err := exec.LookPath("openssl"); err != nil {
-		return fmt.Errorf("openssl is required to create the mail TLS certificate")
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("service mutation lease ended before the Dovecot default certificate was created: %w", err)
 	}
-
 	host, _ := hostname.LocalFQDN()
 	if host == "" {
 		host = "localhost"
 	}
-	out, err := serviceMutationCommand(ctx, "openssl", "req", "-x509", "-nodes", "-newkey", "rsa:2048",
-		"-days", "3650",
-		"-subj", "/CN="+host,
-		"-keyout", keyPath, "-out", certPath).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("openssl: %s", firstLine(string(out)))
+	// Made in Go like Postfix's default pair (postfix_default_cert.go): no
+	// openssl command is needed on the server. The private key is root-only
+	// (0600); the certificate is public.
+	// Go ile üretilir; sunucuda openssl komutu gerekmez.
+	if err := postfixDefaultPairCreate(certPath, keyPath, host); err != nil {
+		return fmt.Errorf("create the Dovecot default certificate: %w", err)
 	}
-	// The private key is a secret: root-only. The certificate is public.
-	// Özel anahtar bir sırdır: yalnız root. Sertifika geneldir.
-	_ = os.Chmod(keyPath, 0o600)
-	_ = os.Chmod(certPath, 0o644)
 	return nil
 }
 

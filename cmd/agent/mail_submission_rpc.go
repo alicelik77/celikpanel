@@ -179,15 +179,7 @@ service auth {
 		return fail(rollback(fmt.Errorf("write postfix sender login map: %w", err), false))
 	}
 
-	// Submission requires TLS: Postfix needs a server certificate before it
-	// is enabled (Arch's main.cf names none; postfix_default_cert.go).
 	postfixMayHaveChanged = true
-	if err := ensurePostfixDefaultServerCertificate(func(name string, args ...string) ([]byte, error) {
-		return runMailTLSMutationCommand(ctx, name, args...)
-	}); err != nil {
-		return fail(rollback(err, false))
-	}
-
 	// Master.cf via postconf -M/-P: idempotent, no hand-editing.
 	// Master.cf, postconf -M/-P ile: idempotent, elle düzenleme yok.
 	if out, err := runMailTLSMutationCommand(ctx, "postconf", "-M",
@@ -230,6 +222,14 @@ service auth {
 		{"smtpd_tls_wrappermode", "yes"},
 	}); err != nil {
 		return fail(rollback(err, false))
+	}
+	// Submission requires TLS: Postfix needs a server certificate before the
+	// restart below enables it (Arch's main.cf names none;
+	// postfix_default_cert.go). master.cf changes take effect only then.
+	if err := ensurePostfixDefaultServerCertificate(ctx, func(name string, args ...string) ([]byte, error) {
+		return runMailTLSMutationCommand(ctx, name, args...)
+	}); err != nil {
+		return fail(rollback(mailSubmissionCommandError(ctx, "postfix default certificate", nil, err), false))
 	}
 
 	// Both restarts are judged by the daemon, not by systemctl's exit status:
