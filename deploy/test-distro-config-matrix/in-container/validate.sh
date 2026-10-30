@@ -228,9 +228,10 @@ v_bind() {
     return 0
 }
 v_powerdns() {
-    local out rc=0 warn=0
-    chown pdns:pdns /var/lib/powerdns/pdns.sqlite3 2>/dev/null || true
-    chown pdns:pdns /var/lib/powerdns 2>/dev/null || true
+    local out rc=0 warn=0 user=${PDNS_USER:-pdns}
+    # Debian/Ubuntu run as pdns; Arch's extra/powerdns as powerdns.
+    chown "$user:$user" /var/lib/powerdns/pdns.sqlite3 2>/dev/null || true
+    chown "$user:$user" /var/lib/powerdns 2>/dev/null || true
     mkdir -p /run/pdns-matrix
     out=$(timeout 6 pdns_server --daemon=no --guardian=no --disable-syslog --write-pid=no \
         --local-address=127.0.0.1 --local-port=5300 --socket-dir=/run/pdns-matrix 2>&1)
@@ -334,7 +335,7 @@ fi
 for dir in "$cases"/*/; do
     [[ -f "$dir/case.env" ]] || continue
     CASE_ID=$(basename "$dir")
-    unset PROGRAM VARIANT VALIDATOR SOURCE TARGET REASON OWNERS RESTORE_DIRS USERS PHP_VERSION ZONES PRECREATE MAIL_USERS MAIL_PASSWORD MAIL_ROOT NOTE KNOWN_NAME EXPECT_DEFAULT
+    unset PROGRAM VARIANT VALIDATOR SOURCE TARGET REASON OWNERS RESTORE_DIRS PDNS_USER USERS PHP_VERSION ZONES PRECREATE MAIL_USERS MAIL_PASSWORD MAIL_ROOT NOTE KNOWN_NAME EXPECT_DEFAULT
     # shellcheck disable=SC1090,SC1091
     . "$dir/case.env"
     case "$VALIDATOR" in
