@@ -168,25 +168,27 @@ func TestDNSPendingPublicationTransientResolvesByItself(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// The publication itself already made its one immediate exact recovery
-	// attempt (existing behaviour); the reconciler counts from there.
+	// "Backup has not caught up" after the Agent's whole wave: no second
+	// wave at once (lab 2026-10-30: it exceeded the request's budget and
+	// lost the reason); the reconciler re-checks.
 	ctx := context.Background()
-	if _, recoveries := pendingAgentCalls(agent); len(recoveries) != 1 {
+	if _, recoveries := pendingAgentCalls(agent); len(recoveries) != 0 {
 		t.Fatalf("initial publication recoveries=%d", len(recoveries))
 	}
-	panel.reconcilePendingDNSPublicationsOnce(ctx) // discovers, not due yet
-	if _, recoveries := pendingAgentCalls(agent); len(recoveries) != 1 {
+	panel.reconcilePendingDNSPublicationsOnce(ctx) // discovers (reads the reason), not due yet
+	if _, recoveries := pendingAgentCalls(agent); len(recoveries) != 0 {
 		t.Fatalf("re-checked before the first delay: %d", len(recoveries))
 	}
 	views, err := panel.dnsPendingPublicationViews(ctx)
-	if err != nil || len(views) != 1 || views[0].Zone != "a-pending.example" || !views[0].Automatic || views[0].NextCheckAt == "" {
+	if err != nil || len(views) != 1 || views[0].Zone != "a-pending.example" || !views[0].Automatic ||
+		views[0].NextCheckAt == "" || views[0].Reason != transport.DNSPeerPendingCatchingUp {
 		t.Fatalf("pending view=%+v err=%v", views, err)
 	}
 
 	clock.Advance(15 * time.Second)
 	panel.reconcilePendingDNSPublicationsOnce(ctx) // attempt 1: still pending
 	_, recoveries := pendingAgentCalls(agent)
-	if len(recoveries) != 2 {
+	if len(recoveries) != 1 {
 		t.Fatalf("first re-check recoveries=%d", len(recoveries))
 	}
 	entry, ok := scheduler.entry(lease.RequestID)
@@ -202,7 +204,7 @@ func TestDNSPendingPublicationTransientResolvesByItself(t *testing.T) {
 
 	clock.Advance(20 * time.Second)
 	panel.reconcilePendingDNSPublicationsOnce(ctx) // not due
-	if _, recoveries := pendingAgentCalls(agent); len(recoveries) != 2 {
+	if _, recoveries := pendingAgentCalls(agent); len(recoveries) != 1 {
 		t.Fatalf("re-checked before its backoff: %d", len(recoveries))
 	}
 
@@ -210,7 +212,7 @@ func TestDNSPendingPublicationTransientResolvesByItself(t *testing.T) {
 	clock.Advance(10 * time.Second)
 	panel.reconcilePendingDNSPublicationsOnce(ctx)
 	syncs, recoveries := pendingAgentCalls(agent)
-	if len(syncs) != 1 || len(recoveries) != 3 {
+	if len(syncs) != 1 || len(recoveries) != 2 {
 		t.Fatalf("syncs=%d recoveries=%d", len(syncs), len(recoveries))
 	}
 	for _, recovery := range recoveries {
@@ -254,8 +256,8 @@ func TestDNSPendingPublicationSurvivesPanelRestart(t *testing.T) {
 	clock.Advance(dnsPendingPublicationFirstDelay)
 	panel.reconcilePendingDNSPublicationsOnce(context.Background())
 	syncs, recoveries := pendingAgentCalls(agent)
-	if len(syncs) != 1 || len(recoveries) != 2 || recoveries[1].MutationRequestID != syncs[0].MutationRequestID ||
-		recoveries[1].MutationOwnerID != syncs[0].MutationOwnerID || leaseCount(t, panel) != 0 {
+	if len(syncs) != 1 || len(recoveries) != 1 || recoveries[0].MutationRequestID != syncs[0].MutationRequestID ||
+		recoveries[0].MutationOwnerID != syncs[0].MutationOwnerID || leaseCount(t, panel) != 0 {
 		t.Fatalf("after restart syncs=%d recoveries=%+v leases=%d", len(syncs), recoveries, leaseCount(t, panel))
 	}
 }
@@ -338,7 +340,7 @@ func TestDNSPendingPublicationRepeatedFailureEndsAutomaticAttempts(t *testing.T)
 	_, recoveries := pendingAgentCalls(agent)
 	lease, _ := readDNSZoneEngineLease(ctx, panel.db.GetDB(), "failing-pending.example")
 	entry, _ := scheduler.entry(lease.RequestID)
-	if len(recoveries) != 1 || entry.Automatic || !entry.Stopped ||
+	if len(recoveries) != 0 || entry.Automatic || !entry.Stopped ||
 		entry.Failures != dnsPendingPublicationFailureLimit || entry.Attempts != dnsPendingPublicationFailureLimit {
 		t.Fatalf("entry after repeated failures=%+v (recoveries=%d)", entry, len(recoveries))
 	}
@@ -367,8 +369,8 @@ func TestDNSHeldChangeCompletesPendingPublicationThenProceeds(t *testing.T) {
 		t.Fatalf("held change after completing the pending one: %v", err)
 	}
 	syncs, recoveries := pendingAgentCalls(agent)
-	if len(recoveries) != 2 || recoveries[1].Domain != "a-held.example" ||
-		recoveries[1].MutationRequestID != syncs[0].MutationRequestID {
+	if len(recoveries) != 1 || recoveries[0].Domain != "a-held.example" ||
+		recoveries[0].MutationRequestID != syncs[0].MutationRequestID {
 		t.Fatalf("recoveries=%+v syncs=%+v", recoveries, syncs)
 	}
 	if len(syncs) != 2 || syncs[1].Domain != "b-held.example" {
@@ -413,7 +415,7 @@ func TestDNSHeldChangeIsHeldThenPublishedByItself(t *testing.T) {
 		t.Fatalf("second held err=%v", err)
 	}
 	syncs, recoveries := pendingAgentCalls(agent)
-	if len(recoveries) != 2 || len(syncs) != 1 {
+	if len(recoveries) != 1 || len(syncs) != 1 {
 		t.Fatalf("held path syncs=%d recoveries=%d", len(syncs), len(recoveries))
 	}
 	bState, _ := readDNSZoneSyncState(ctx, panel.db.GetDB(), "b-wait.example")
@@ -426,7 +428,7 @@ func TestDNSHeldChangeIsHeldThenPublishedByItself(t *testing.T) {
 	clock.Advance(dnsPendingPublicationMaxDelay)
 	panel.reconcilePendingDNSPublicationsOnce(ctx)
 	syncs, recoveries = pendingAgentCalls(agent)
-	if len(recoveries) != 3 || len(syncs) != 2 || syncs[1].Domain != "b-wait.example" {
+	if len(recoveries) != 2 || len(syncs) != 2 || syncs[1].Domain != "b-wait.example" {
 		t.Fatalf("after backup returned syncs=%+v recoveries=%d", syncs, len(recoveries))
 	}
 	for _, recovery := range recoveries {

@@ -914,6 +914,19 @@ func (p *Panel) settleDNSZoneSyncV3CallError(
 		if err := validateDNSZoneSyncV3PendingJob(job, lease.identity()); err != nil {
 			return false, false, err
 		}
+		if code := dnsZoneV3PendingCodeFromJob(job); code == transport.DNSPeerPendingCatchingUp {
+			// The backup did not catch up within the Agent's whole wave:
+			// a second wave at once only doubles the wait (a lab run
+			// 2026-10-30 exceeded the request's budget and lost the
+			// reason). The exact operation stays pending with its reviewed
+			// reason; the reconciler re-checks it by itself
+			// (dns_pending_publication.go).
+			return false, false, &dnsAgentPublicationError{Err: fmt.Errorf(
+				"%w: %w",
+				errDNSZoneV3PropagationDeferred,
+				errors.Join(&dnsZoneV3PropagationPendingError{Code: code, Exact: true}, callErr),
+			)}
+		}
 		exact, recoverErr := p.recoverPendingDNSZoneV3(ctx, lease)
 		if recoverErr != nil {
 			return false, false, &dnsAgentPublicationError{Err: errors.Join(

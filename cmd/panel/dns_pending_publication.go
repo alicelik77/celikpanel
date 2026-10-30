@@ -61,6 +61,7 @@ type dnsPendingPublicationEntry struct {
 	// Code is the last reviewed pending code read from the exact Agent job;
 	// "" while unknown or unclassified.
 	Code      string
+	Observed  bool // the exact job's status was read at least once
 	Automatic bool
 	// Stopped: automatic attempts ended after repeated failures that were
 	// not a reviewed pending result. Cleared when the observed code changes.
@@ -195,6 +196,7 @@ func (s *dnsPendingPublicationScheduler) observeCode(lease dnsZoneEngineLease, c
 		entry.Stopped = false
 		entry.Failures = 0
 	}
+	entry.Observed = true
 	entry.Code = code
 	entry.Automatic = dnsPeerPendingRetriesAutomatically(code) && !entry.Stopped
 }
@@ -268,6 +270,14 @@ func (s *dnsPendingPublicationScheduler) recordAttempt(
 		entry.NextAt = now.Add(dnsPendingPublicationOwnerRecheck)
 	}
 	return *entry
+}
+
+func (s *dnsPendingPublicationScheduler) markObserved(requestID string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if entry := s.entries[requestID]; entry != nil {
+		entry.Observed = true
+	}
 }
 
 func (s *dnsPendingPublicationScheduler) postpone(requestID string, delay time.Duration) {
@@ -371,6 +381,16 @@ func (p *Panel) reconcilePendingDNSPublicationsOnce(ctx context.Context) {
 	scheduler.syncLeases(leases)
 	for _, lease := range leases {
 		entry, ok := scheduler.entry(lease.RequestID)
+		if ok && !entry.Observed {
+			// Read only, once at discovery: the DNS card names the reason
+			// before the first re-check is due.
+			if code, pending, err := p.readPendingDNSPublicationCode(ctx, lease); err == nil && pending {
+				scheduler.observeCode(lease, code)
+			} else {
+				scheduler.markObserved(lease.RequestID)
+			}
+			entry, ok = scheduler.entry(lease.RequestID)
+		}
 		if !ok || scheduler.now().Before(entry.NextAt) {
 			continue
 		}
