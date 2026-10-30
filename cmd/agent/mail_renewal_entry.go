@@ -323,7 +323,13 @@ func mailEnrollmentResumeGuidance(err error) string {
 func mailEnrollmentWorkerGuidance(err error) string {
 	reason := mailEnrollmentReason(err)
 	if errors.Is(err, errMailEnrollmentWorkerBusy) {
-		return "Mail enrollment is waiting because another operation holds the release or host lock. No enrollment work was started by this worker. The server owner must wait for that operation to finish, then continue the same recorded request or retry the original reviewed tuple if admission never occurred."
+		holder := ""
+		var held interface{ heldBy() string }
+		if errors.As(err, &held) {
+			// Who held it, from the kernel's lock table (2026-10-30).
+			holder = " At the last try " + held.heldBy() + "."
+		}
+		return "Mail enrollment is waiting because another operation holds the release or host lock." + holder + " No enrollment work was started by this worker. The server owner must wait for that operation to finish, then continue the same recorded request or retry the original reviewed tuple if admission never occurred."
 	}
 	return reason + " The server owner must inspect this request's native worker journal and renewal units. Resolve the reported prerequisite, then use --continue-enrollment with the same recorded request; if admission never occurred, retry the original reviewed start tuple. Existing evidence is retained."
 }

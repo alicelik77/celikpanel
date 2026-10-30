@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -47,7 +48,7 @@ const serverSetupMailEnrollmentBusyUnnamed = "unknown"
 func setupMailEnrollmentRefusedBusy(step *serverSetupExecutionStep, reason, requestID string, now time.Time) error {
 	if recordServerSetupHostBusy(step, now) {
 		step.BusyRetry = true
-		return &serverSetupPeerWait{Code: serverSetupHostBusyCode, Message: serverSetupHostBusyWaitMessage}
+		return &serverSetupPeerWait{Code: serverSetupHostBusyCode, Message: serverSetupHostBusyWaitMessage + setupMailEnrollmentBusyHolder(*step)}
 	}
 	step.BusyRetry = false
 	if reason == "" {
@@ -59,7 +60,17 @@ func setupMailEnrollmentRefusedBusy(step *serverSetupExecutionStep, reason, requ
 
 func setupMailEnrollmentStayedBusy(step serverSetupExecutionStep, requestID string) error {
 	return &serverSetupMailEnrollmentWait{serverSetupMailEnrollmentHostBusyCode,
-		"This server stayed busy for more than 30 minutes (" + serverSetupHostBusyCause(step.BusyReason) + "), so the mail renewal request was not handed off and nothing was changed (" + strconv.Itoa(step.BusyAttempts) + " tries). You, the owner: finish or stop the other change on this server, then choose Retry reviewed handoff; setup continues with the same request. If it still does not start, inspect celikpanel-mail-enrollment-" + requestID + ".service."}
+		"This server stayed busy for more than 30 minutes (" + serverSetupHostBusyCause(step.BusyReason) + "), so the mail renewal request was not handed off and nothing was changed (" + strconv.Itoa(step.BusyAttempts) + " tries)." + setupMailEnrollmentBusyHolder(step) + " You, the owner: finish or stop the other change on this server, then choose Retry reviewed handoff; setup continues with the same request. If it still does not start, inspect celikpanel-mail-enrollment-" + requestID + ".service."}
+}
+
+// setupMailEnrollmentBusyHolder names, when the Agent could read it from the
+// kernel's lock table, the lock and the process holding it at the last
+// refusal (2026-10-30: the Arch run ap-e could not establish it).
+func setupMailEnrollmentBusyHolder(step serverSetupExecutionStep) string {
+	if step.BusyHolder == "" {
+		return ""
+	}
+	return " At the last try " + step.BusyHolder + "."
 }
 func setupMailEnrollmentRequest(plan serverSetupPlan, execution *serverSetupExecution, index int) (transport.MailEnrollmentStartRequest, error) {
 	empty := transport.MailEnrollmentStartRequest{}
@@ -150,7 +161,7 @@ func advanceSetupMailEnrollment(ctx context.Context, req transport.MailEnrollmen
 	// The fence is durable before the call: a crash or lost reply from here on
 	// leaves the request observational (BusyRetry cleared), never re-sent.
 	step.EnrollmentDispatchAttempted = true
-	step.BusyRetry, step.BusyReason = false, ""
+	step.BusyRetry, step.BusyReason, step.BusyHolder = false, "", ""
 	if err := persist(); err != nil {
 		return false, err
 	}
@@ -158,6 +169,8 @@ func advanceSetupMailEnrollment(ctx context.Context, req transport.MailEnrollmen
 	err := start(&req, &handed)
 	if err == nil && handed.RequestID == req.RequestID && handed.Handoff == transport.MailEnrollmentHandoffBusy {
 		err = &hostMutationBusyError{reason: handed.Reason}
+		step.BusyHolder = handed.Holder
+		log.Printf("Server setup: mail renewal request %s was refused as busy (nothing started); %s", req.RequestID, firstNonEmpty(handed.Holder, "the Agent did not name the holder"))
 	}
 	if hostMutationRefusedAsBusy(err) {
 		return false, setupMailEnrollmentRefusedBusy(step, hostMutationBusyReason(err), req.RequestID, time.Now())

@@ -161,7 +161,7 @@ func handoffSetupMailEnrollment(ctx context.Context, req transport.MailEnrollmen
 	if err == nil && handed.RequestID == req.RequestID && handed.Handoff == transport.MailEnrollmentHandoffBusy {
 		// The Agent refused before starting a worker: nothing ran. The owner
 		// is told so and can choose the same action again once it is free.
-		out.Handoff, out.Reason = transport.MailEnrollmentHandoffBusy, "mail_enrollment_host_busy"
+		out.Handoff, out.Reason, out.Holder = transport.MailEnrollmentHandoffBusy, "mail_enrollment_host_busy", handed.Holder
 		return out, nil
 	}
 	if err != nil || handed.RequestID != req.RequestID || handed.Handoff != "accepted" {

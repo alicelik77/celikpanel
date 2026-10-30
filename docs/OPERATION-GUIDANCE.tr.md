@@ -10497,3 +10497,25 @@ seçimini bekledi. Kilidi neyin tuttuğu o kanıtla belirlenemiyor; Bileşenler 
 
 **Nasıl devam edilir:** kendiliğinden, aynı kimlikle; durum okuma hiçbir şey göndermez.
 Kurulu paneller yalnız sahiplerince güncellenir. P0 işleri **kısmi** kalır.
+
+#### Kilidi kim tuttu; salt okunur denetim artık kilit almıyor (30 Ekim 2026, devam)
+
+ap-e kanıtı kilidi tutanı adlandıramıyor: arşivde işçi biriminin günlüğü yok, sürücü
+devir aralığında (01:13:17–01:16:44 UTC) hiç istek göndermedi, kurulum önizlemesi
+01:13:17'de, kurulum henüz certbot adımındayken bitti; Fail2ban kurulumu ve MariaDB
+yazımı Agent'a ulaşmadan reddedildi. Koddan çıkanlar:
+
+- **Bir okuma gerçek bir değişikliği meşgul gösteriyordu.** Hazırlık okumaları, sürüm
+  araçları ve devir öncesi denetimin kullandığı danışma denetimi özel kilidi bir an
+  alıyordu; bloklamayan kilit alma girişimi o ana denk gelen gerçek bir değişiklik
+  reddediliyordu. Denetim artık çekirdeğin kilit tablosunu (`/proc/locks`) okur ve
+  kilit almaz; tablo okunamazsa eski kısa kilide döner.
+- **Ret, tutanı adlandırır.** Agent'ın `busy` yanıtı `holder` taşır (kilit, süreç
+  numarası, kısa adı ve systemd birimi; argüman ya da ortam yok); Agent ve Panel
+  günlükleri yazar, adım `busy_holder` olarak saklar ve Teknik ayrıntılardaki bekleme
+  metni tutanı söyler. İşçi de kendi günlüğüne ilk meşgul denemede ve beklemeyi
+  bıraktığında aynı satırı yazar. Bir sonraki gerçek çalışma soruyu yanıtlar.
+
+Yapısal aday: `celikpanel-release-recovery.timer` her 30 saniyede boş işlem dizinini
+sınıflandırırken sürüm kilidini saniyenin altında tutar; işçinin 15 saniyelik beklemesi
+bunu aşar. Burada değiştirilmedi. P0 işleri **kısmi** kalır.

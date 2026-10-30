@@ -10546,3 +10546,31 @@ reached the Agent.
 **How work resumes:** by itself, under the same identity; polling never sends.
 `busy_reason` is an additive field of the setup execution record. Installed panels
 are updated only by their owners. P0 items stay **partial**.
+
+#### Who held the lock, and read-only probes no longer take it (2026-10-30, follow-up)
+
+The ap-e evidence cannot name the holder: the archive has no journal of the
+`celikpanel-mail-enrollment-<request>.service` worker, the driver sent no request
+between 01:13:17 and 01:16:44 UTC (the window of the hand-off), the install preview
+ended at 01:13:17 while setup was still at its certbot step, and the Fail2ban
+install and the MariaDB write were refused (`server_setup_busy`, `PANEL_STARTING`)
+before reaching the Agent. Two things followed from the code instead:
+
+- **A read made a real change look busy.** The advisory probe used by readiness
+  reads, release tooling and the pre-hand-off check took the exclusive flock for an
+  instant; a writer whose non-blocking acquisition fell inside that instant was
+  refused. The probe now reads the kernel's lock table (`/proc/locks`, matched by
+  the file's mount device and inode) and takes no lock; only when that table cannot
+  be read does it fall back to the earlier momentary flock.
+- **The refusal names the holder.** When a lock the worker takes is held, the
+  Agent's busy answer carries `holder` (the lock, the process id, its short name and
+  systemd unit; never arguments or environment), the Agent and Panel journals log
+  it, the step keeps it as `busy_holder` and the wait text in Technical details ends
+  "At the last try the release lock (…) was held by process N (name, unit)". The
+  worker writes the same line to its own journal at its first busy try and when it
+  stops waiting. The next real run therefore answers the question.
+
+A structural candidate for the release lock remains: `celikpanel-release-recovery.timer`
+runs every 30 s and holds the release transaction lock while it classifies an empty
+transaction directory (sub-second); the worker's 15 s wait outlasts it. It is not
+changed here. P0 items stay **partial**.

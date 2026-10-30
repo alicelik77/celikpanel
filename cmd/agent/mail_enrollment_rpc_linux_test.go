@@ -223,23 +223,29 @@ func TestMailEnrollmentRPCRefusesABusyHandoffBeforeDispatch(t *testing.T) {
 				return recoveryruntime.MailEnrollmentObservation{Found: true, Identity: servicemutationledger.MailEnrollmentIdentity{RequestID: req.RequestID, OwnerID: req.OwnerID, ScopeSHA256: strings.Repeat("f", 64)}, Generation: req.Generation, State: "forward"}, nil
 			}
 			probes, starts := 0, 0
-			mailEnrollmentExclusionBusy = func() bool { probes++; return busy }
+			mailEnrollmentExclusionBusy = func() (bool, string) {
+				probes++
+				if busy {
+					return true, "the host lock (/run/celikpanel/service-mutation.lock) was held by process 7 (celikpanel-agent, celikpanel-agent.service)"
+				}
+				return false, ""
+			}
 			dispatch := func(context.Context, string, []string) error { starts++; return nil }
 			var out transport.MailEnrollmentStartResponse
 			err := dispatchMailEnrollmentRPC(context.Background(), &req, &out, req.ExpectedBuildCommit, inspect, observe, dispatch, recordedOnly)
 			if err != nil || probes != 1 {
 				t.Fatalf("recorded=%t busy=%t: err=%v probes=%d", recordedOnly, busy, err, probes)
 			}
-			if busy && (starts != 0 || out.Handoff != transport.MailEnrollmentHandoffBusy || out.Reason != transport.HostMutationReasonHostLock || out.RequestID != req.RequestID) {
+			if busy && (starts != 0 || out.Handoff != transport.MailEnrollmentHandoffBusy || out.Reason != transport.HostMutationReasonHostLock || out.RequestID != req.RequestID || !strings.Contains(out.Holder, "celikpanel-agent.service")) {
 				t.Fatalf("recorded=%t busy: starts=%d %+v", recordedOnly, starts, out)
 			}
-			if !busy && (starts != 1 || out.Handoff != "accepted") {
+			if !busy && (starts != 1 || out.Handoff != "accepted" || out.Holder != "") {
 				t.Fatalf("recorded=%t idle: starts=%d %+v", recordedOnly, starts, out)
 			}
 		}
 	}
 	// A verified refusal earlier in the checks is never turned into "busy".
-	mailEnrollmentExclusionBusy = func() bool { t.Fatal("probed before the source was verified"); return true }
+	mailEnrollmentExclusionBusy = func() (bool, string) { t.Fatal("probed before the source was verified"); return true, "" }
 	req := enrollmentRPCRequest()
 	var out transport.MailEnrollmentStartResponse
 	err := dispatchMailEnrollmentRPC(context.Background(), &req, &out, req.ExpectedBuildCommit, func() (mailEnrollmentRPCInspection, error) {
