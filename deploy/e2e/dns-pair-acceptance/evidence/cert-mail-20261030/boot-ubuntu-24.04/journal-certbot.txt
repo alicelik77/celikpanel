@@ -1,0 +1,5 @@
+Oct 30 09:11:24 cm-ubuntu-24 systemd[1]: Started certbot.timer - Run certbot twice daily.
+Oct 30 09:11:49 cm-ubuntu-24 systemd[1]: Starting certbot.service - Certbot...
+Oct 30 09:11:52 cm-ubuntu-24 systemd[1]: certbot.service: Deactivated successfully.
+Oct 30 09:11:52 cm-ubuntu-24 systemd[1]: Finished certbot.service - Certbot.
+Oct 30 09:11:52 cm-ubuntu-24 systemd[1]: certbot.service: Consumed 1.434s CPU time.

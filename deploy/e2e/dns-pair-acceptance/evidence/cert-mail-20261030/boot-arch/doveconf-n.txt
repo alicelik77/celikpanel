@@ -1,0 +1,29 @@
+# 2.4.5 (0cbb641e3e): /etc/dovecot/dovecot.conf
+# OS: Linux 7.2.11-arch1-1 x86_64  
+# Hostname: cm-arch
+dovecot_config_version = 2.4.5
+dovecot_storage_version = 2.4.5
+protocols {
+  imap = yes
+  pop3 = yes
+  lmtp = yes
+}
+namespace inbox {
+  inbox = yes
+}
+ssl_server {
+  cert_file = /etc/ssl/celikpanel/_mail/default-cert.pem
+  key_file = # hidden, use -P to show it
+}
+local_name mail.site.test {
+  ssl_server {
+    cert_file = /etc/letsencrypt/live/celikpanel-site-42-3cde167dc806f2eef6ee600a/fullchain.pem
+    key_file = # hidden, use -P to show it
+  }
+}
+local_name site.test {
+  ssl_server {
+    cert_file = /etc/letsencrypt/live/celikpanel-site-42-3cde167dc806f2eef6ee600a/fullchain.pem
+    key_file = # hidden, use -P to show it
+  }
+}

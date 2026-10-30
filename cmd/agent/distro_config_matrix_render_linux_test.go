@@ -16,7 +16,9 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path"
@@ -575,22 +577,86 @@ func newPostfixCase(id, variant, source string) *configmatrix.Case {
 	}
 }
 
+// matrixNativeLineage is the OS-renewed website lineage (D-040) the SNI
+// fixtures name through certbot's live files.
+const matrixNativeLineage = "celikpanel-site-7-00112233445566778899aabb"
+
 var matrixSNI = []MailSNIEntry{
 	{Names: []string{"mail.example.test"}, CertPath: "/etc/ssl/celikpanel/example.test/" + matrixManagedCertVersion + "/fullchain.pem", KeyPath: "/etc/ssl/celikpanel/example.test/" + matrixManagedCertVersion + "/privkey.pem"},
 	{Names: []string{"mail.second.test", "smtp.second.test"}, CertPath: "/etc/ssl/celikpanel/second.test/" + matrixManagedCertVersion + "/fullchain.pem", KeyPath: "/etc/ssl/celikpanel/second.test/" + matrixManagedCertVersion + "/privkey.pem"},
 	// An OS-renewed website lineage (D-040): certbot's live files.
-	{Names: []string{"mail.native.test", "native.test"}, CertPath: "/etc/letsencrypt/live/celikpanel-site-7-00112233445566778899aabb/fullchain.pem", KeyPath: "/etc/letsencrypt/live/celikpanel-site-7-00112233445566778899aabb/privkey.pem"},
+	{Names: []string{"mail.native.test", "native.test"}, CertPath: "/etc/letsencrypt/live/" + matrixNativeLineage + "/fullchain.pem", KeyPath: "/etc/letsencrypt/live/" + matrixNativeLineage + "/privkey.pem"},
 }
 
-func addMatrixSNIFixtures(t *testing.T, c *configmatrix.Case) {
+// matrixTLSExpectation is what the validator checks on the running daemon:
+// for each SNI name ("-" = no SNI) the SHA-256 fingerprint of the
+// certificate it must serve, before and after a simulated certbot renewal
+// of the native lineage that runs CelikPanel's own deploy hook.
+type matrixTLSExpectation struct {
+	sni, renewed []string
+}
+
+func (e matrixTLSExpectation) apply(c *configmatrix.Case) {
+	if c.Extra == nil {
+		c.Extra = map[string]string{}
+	}
+	c.Extra["TLS_SNI_EXPECT"] = strings.Join(e.sni, " ")
+	c.Extra["TLS_RENEW_LINEAGE"] = matrixNativeLineage
+	c.Extra["TLS_RENEW_EXPECT"] = strings.Join(e.renewed, " ")
+}
+
+func matrixCertFingerprint(t *testing.T, certPEM []byte) string {
+	t.Helper()
+	certificates, err := parseCertificateBundle(string(certPEM))
+	if err != nil {
+		t.Fatalf("fixture certificate: %v", err)
+	}
+	sum := sha256.Sum256(certificates[0].Raw)
+	return hex.EncodeToString(sum[:])
+}
+
+// addMatrixSNIFixtures writes a certificate for every SNI entry and the
+// default pair. The native lineage gets certbot's real layout: version 1 in
+// archive/ with live/ symbolic links to it, plus a version 2 the validator
+// switches the links to (what `certbot renew` does) before it runs the
+// site deploy hook, which the case also carries.
+func addMatrixSNIFixtures(t *testing.T, c *configmatrix.Case) matrixTLSExpectation {
+	var expect matrixTLSExpectation
 	for _, entry := range matrixSNI {
 		cert, key := fixtureCert(t, entry.Names[0])
+		fingerprint := matrixCertFingerprint(t, cert)
+		if lineage, ok := nativeSiteLineageOfPath(entry.CertPath); ok {
+			archive := "/etc/letsencrypt/archive/" + lineage
+			live := "/etc/letsencrypt/live/" + lineage
+			renewed, renewedKey := fixtureCert(t, entry.Names[0])
+			for version, pair := range map[string][2][]byte{"1": {cert, key}, "2": {renewed, renewedKey}} {
+				c.File(archive+"/cert"+version+".pem", pair[0], 0o644)
+				c.File(archive+"/chain"+version+".pem", pair[0], 0o644)
+				c.File(archive+"/fullchain"+version+".pem", pair[0], 0o644)
+				c.File(archive+"/privkey"+version+".pem", pair[1], 0o600)
+			}
+			for _, name := range []string{"cert", "chain", "fullchain", "privkey"} {
+				c.Symlink(live+"/"+name+".pem", "../../archive/"+lineage+"/"+name+"1.pem")
+			}
+			c.File(nativeSiteHookPath, []byte(nativeSiteDeployHook), 0o755)
+			renewedFingerprint := matrixCertFingerprint(t, renewed)
+			for _, name := range entry.Names {
+				expect.sni = append(expect.sni, name+"="+fingerprint)
+				expect.renewed = append(expect.renewed, name+"="+renewedFingerprint)
+			}
+			continue
+		}
 		c.File(entry.CertPath, cert, 0o644)
 		c.File(entry.KeyPath, key, 0o600)
+		for _, name := range entry.Names {
+			expect.sni = append(expect.sni, name+"="+fingerprint)
+		}
 	}
 	cert, key := fixtureCert(t, "mail.example.test")
 	c.File(defaultMailCert, cert, 0o644)
 	c.File(defaultMailKey, key, 0o600)
+	expect.sni = append(expect.sni, "-="+matrixCertFingerprint(t, cert))
+	return expect
 }
 
 // mailAccountFiles runs the Agent's own account and forwarding RPCs against
@@ -728,7 +794,12 @@ func renderMatrixPostfix(t *testing.T, h *matrixHost) {
 			targets = append(targets, all)
 		}
 		for _, cc := range targets {
-			addMatrixSNIFixtures(t, cc)
+			expect := addMatrixSNIFixtures(t, cc)
+			if v.sni != nil && cc == c {
+				// The real smtpd must answer STARTTLS with each name's
+				// certificate, and the renewed one after the site hook.
+				expect.apply(cc)
+			}
 			if data, err := os.ReadFile(postfixSNIPath); err == nil {
 				cc.File(postfixSNIPath, data, 0o600)
 			}
@@ -815,10 +886,29 @@ func renderMatrixDovecot(t *testing.T, h *matrixHost) {
 		h.notApplicable(t, "dovecot.all", "dovecot", "all", "-", "dovecot is not installed on this release")
 		return
 	}
+	// Arch's package ships a single dovecot.conf and no conf.d. The Agent
+	// then writes its own main file that includes conf.d last
+	// (ensureArchDovecotLayout, dovecot_arch_layout.go), so every case
+	// carries that file, rendered by the same function from the release's
+	// own version lines, and the default pair ensureDovecotSSLCert creates.
+	var archMain []byte
 	if _, err := os.Stat("/etc/dovecot/conf.d"); err != nil {
-		h.notApplicable(t, "dovecot.all", "dovecot", "all", "cmd/agent/mail_stack_rpc.go:631 dovecotConfDirMissingReason",
-			"the release's Dovecot has no /etc/dovecot/conf.d; CelikPanel refuses to configure it (dovecotConfDirMissingReason)")
-		return
+		if h.family != "pacman" {
+			h.notApplicable(t, "dovecot.all", "dovecot", "all", "cmd/agent/mail_stack_rpc.go dovecotConfDirMissingReason",
+				"the release's Dovecot has no /etc/dovecot/conf.d and is not the Arch Linux layout; CelikPanel refuses to configure it (dovecotConfDirMissingReason)")
+			return
+		}
+		stock := stockFile(dovecotMainConfPath)
+		configVersion, storageVersion, ok := archDovecotVersions(stock)
+		if !ok {
+			version, err := installedDovecotVersion()
+			if err != nil {
+				h.renderFailure(t, "dovecot.all", "dovecot", "Arch layout", "cmd/agent/dovecot_arch_layout.go installedDovecotVersion", err)
+				return
+			}
+			configVersion, storageVersion = version, version
+		}
+		archMain = renderArchDovecotMain(configVersion, storageVersion)
 	}
 	is24, err := dovecotIs24()
 	if err != nil {
@@ -829,10 +919,22 @@ func renderMatrixDovecot(t *testing.T, h *matrixHost) {
 	if is24 {
 		dialect = "2.4"
 	}
+	layout := ""
+	if archMain != nil {
+		layout = ", Arch main file"
+	}
 	newCase := func(id, variant, source string) *configmatrix.Case {
-		return &configmatrix.Case{ID: "dovecot." + id, Program: "dovecot", Variant: variant + " (dialect " + dialect + ")",
+		c := &configmatrix.Case{ID: "dovecot." + id, Program: "dovecot", Variant: variant + " (dialect " + dialect + layout + ")",
 			Validator: "dovecot", Source: source, Target: "/etc/dovecot/dovecot.conf",
 			Extra: map[string]string{"RESTORE_DIRS": "/etc/dovecot", "MAIL_PASSWORD": matrixMailPassword}}
+		if archMain != nil {
+			c.Source += " + cmd/agent/dovecot_arch_layout.go renderArchDovecotMain"
+			c.File(dovecotMainConfPath, archMain, 0o644)
+			cert, key := fixtureCert(t, "localhost")
+			c.File("/etc/dovecot/ssl-cert.pem", cert, 0o644)
+			c.File("/etc/dovecot/ssl-key.pem", key, 0o600)
+		}
+		return c
 	}
 	accountFiles, _ := func() (map[string][]byte, [][]string) {
 		var files map[string][]byte
@@ -871,19 +973,31 @@ func renderMatrixDovecot(t *testing.T, h *matrixHost) {
 	tlsConf := buildDovecotTLSConf(is24, defaultMailCert, defaultMailKey, matrixSNI)
 	addTLS := func(c *configmatrix.Case) {
 		c.File(dovecotTLSConf, []byte(tlsConf), 0o644)
-		addMatrixSNIFixtures(t, c)
+		// The real dovecot must answer IMAPS with each name's
+		// certificate, and the renewed one after the site hook.
+		addMatrixSNIFixtures(t, c).apply(c)
 	}
 
 	c := newCase("virtual", "virtual mailboxes + passwd-file users + 10-auth edit", "cmd/agent/dovecot_dialect.go:47 buildDovecotVirtualConfAt + mail_stack_rpc.go:749 disableDovecotSystemAuth + mail_rpc.go users file")
 	addVirtual(c)
 	h.write(t, c)
 
+	// On Arch the main file is written by the same operation that writes
+	// the virtual mailboxes (configureDovecotVirtual), and it drops the
+	// package's PAM login: the TLS and submission drop-ins never exist there
+	// without 99-celikpanel.conf's passdb, so their Arch cases carry it.
 	c = newCase("tls-sni", "TLS default + SNI local_name blocks", "internal/mailtlsconfig/config.go:46 Dovecot (cmd/agent/dovecot_dialect.go:101)")
+	if archMain != nil {
+		addVirtual(c)
+	}
 	addTLS(c)
 	h.write(t, c)
 
 	if matrixDovecotSubmission != nil {
 		c = newCase("submission", "SASL auth socket for Postfix submission", "cmd/agent/mail_submission_rpc.go:145-153 ConfigureMailSubmission (inline literal)")
+		if archMain != nil {
+			addVirtual(c)
+		}
 		c.File("/etc/dovecot/conf.d/97-celikpanel-submission.conf", matrixDovecotSubmission, 0o644)
 		h.write(t, c)
 	}

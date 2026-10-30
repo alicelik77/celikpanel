@@ -1,0 +1,45 @@
+# 2.3.21 (47349e2482): /etc/dovecot/dovecot.conf
+# Pigeonhole version 0.5.21 (f6cd4b8e)
+# OS: Linux 6.8.0-138-generic x86_64 Ubuntu 24.04.4 LTS 
+# Hostname: cm-ubuntu-24
+mail_location = mbox:~/mail:INBOX=/var/mail/%u
+mail_privileged_group = mail
+namespace inbox {
+  inbox = yes
+  location = 
+  mailbox Drafts {
+    special_use = \Drafts
+  }
+  mailbox Junk {
+    special_use = \Junk
+  }
+  mailbox Sent {
+    special_use = \Sent
+  }
+  mailbox "Sent Messages" {
+    special_use = \Sent
+  }
+  mailbox Trash {
+    special_use = \Trash
+  }
+  prefix = 
+}
+passdb {
+  driver = pam
+}
+protocols = " imap"
+ssl_cert = </etc/ssl/celikpanel/_mail/default-cert.pem
+ssl_client_ca_dir = /etc/ssl/certs
+ssl_dh = # hidden, use -P to show it
+ssl_key = # hidden, use -P to show it
+userdb {
+  driver = passwd
+}
+local_name mail.site.test {
+  ssl_cert = </etc/letsencrypt/live/celikpanel-site-42-7c52fe728e598a2543e59da4/fullchain.pem
+  ssl_key = # hidden, use -P to show it
+}
+local_name site.test {
+  ssl_cert = </etc/letsencrypt/live/celikpanel-site-42-7c52fe728e598a2543e59da4/fullchain.pem
+  ssl_key = # hidden, use -P to show it
+}

@@ -1,0 +1,11 @@
+== 09:09:46 build the Agent's realsystem test binary
+f415a0448fa3683cb2bea2b4854d14bd6218d6c8a57affd3ee25ec820fbba2e8  /var/tmp/cp-certmail-boot/agent.test
+c2fff3622e19cca691d811beb69957965661d0e3f0641344c719426005b6fa93  /var/tmp/cp-certmail-boot/pebble
+== 09:09:50 ubuntu-24.04: base image ubuntu-24.04-server-cloudimg-amd64-20260826.img sha256 d0fe84bb5f808534…
+== 09:10:11 ubuntu-24.04: boot install up (restrict=no)
+== 09:10:11 ubuntu-24.04: install the release's packages from its own mirrors
+== 09:11:33 ubuntu-24.04: boot first up (restrict=yes)
+no route out (expected)
+== 09:12:22 ubuntu-24.04: boot second up (restrict=yes)
+== 09:12:50 ubuntu-24.04: exit 0
+== 09:12:50 arch: base image Arch-Linux-x86_64-cloudimg-20260815.573966.qcow2 sha256 5d8be8d28cfd290f…

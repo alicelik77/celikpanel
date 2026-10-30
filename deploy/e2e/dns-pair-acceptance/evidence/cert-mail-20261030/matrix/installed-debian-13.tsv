@@ -1,0 +1,14 @@
+nginx	nginx	1.26.3-3+deb13u10
+php-fpm	php8.4-fpm	8.4.27-1~deb13u1
+postfix	postfix	3.10.13-0+deb13u1
+dovecot	dovecot-core	1:2.4.1+dfsg1-6+deb13u7
+bind	bind9	1:9.20.30-1~deb13u1
+powerdns	pdns-server	4.9.18-0+deb13u1
+powerdns-sqlite3	pdns-backend-sqlite3	4.9.18-0+deb13u1
+nftables	nftables	1.1.3-1
+systemd	systemd	257.13-1~deb13u1
+mariadb	mariadb-server	1:11.8.6-0+deb13u1
+openssh	openssh-server	1:10.0p1-7+deb13u4
+sudo	sudo	1.9.16p2-3+deb13u2
+openssl	openssl	3.5.7-1~deb13u3
+apt	apt	3.0.3

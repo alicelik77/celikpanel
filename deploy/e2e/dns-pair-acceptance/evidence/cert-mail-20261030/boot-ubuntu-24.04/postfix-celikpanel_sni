@@ -1,0 +1,3 @@
+# Managed by CelikPanel — per-domain mail certificates (SNI).
+mail.site.test /etc/letsencrypt/live/celikpanel-site-42-7c52fe728e598a2543e59da4/privkey.pem /etc/letsencrypt/live/celikpanel-site-42-7c52fe728e598a2543e59da4/fullchain.pem
+site.test /etc/letsencrypt/live/celikpanel-site-42-7c52fe728e598a2543e59da4/privkey.pem /etc/letsencrypt/live/celikpanel-site-42-7c52fe728e598a2543e59da4/fullchain.pem

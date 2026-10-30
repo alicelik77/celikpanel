@@ -49,6 +49,9 @@ interface SSLCertificate {
     waiting_for_owner_reason?: string;
     // operating_system | panel (additive; D-040): who renews it.
     renewal_owner?: string;
+    // automatic | reissue (additive): how a certificate of an earlier
+    // release reaches the operating system's renewal.
+    legacy_move?: string;
     renewal?: SiteRenewalState | null;
     renewal_read_error?: string;
 }
@@ -756,7 +759,7 @@ export function DomainSSLSettings({
                                                 <p className="mt-1 break-words">{t(guide.actionKey as TranslationKey, guide.params)}</p>
                                             </>
                                         )}
-                                        <p className="mt-2 text-xs text-fg-subtle">{t(cert.renewal_owner === 'panel' ? 'ssl.renewalGuide.panel.resume' : 'ssl.renewalGuide.resume')}</p>
+                                        <p className="mt-2 text-xs text-fg-subtle">{t((guide.resumeKey ?? (cert.renewal_owner === 'panel' ? 'ssl.renewalGuide.panel.resume' : 'ssl.renewalGuide.resume')) as TranslationKey)}</p>
                                     </div>
                                 )}
                                 {cert.waiting_for_owner && !cert.activation_pending && (
@@ -1340,6 +1343,11 @@ function renewalStatusMeta(status: string): { label: TranslationKey; color: stri
         case 'waiting_for_owner':
             return { label: 'ssl.renewal.waitingForOwner', color: 'text-warning' };
         default:
+            // A certificate of an earlier release whose move to the
+            // operating system's renewal failed (move_failed_<kind>).
+            if (status.startsWith('move_failed_')) {
+                return { label: 'ssl.renewal.moveFailed', color: 'text-warning' };
+            }
             return null;
     }
 }

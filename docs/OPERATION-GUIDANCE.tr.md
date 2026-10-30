@@ -10463,9 +10463,12 @@ okuduğunu söyler. Pano alan adını gün sayısından bağımsız listeler.
 - **Yenilendi, ancak eski sertifika sunuluyor:** `sudo nginx -t` nedeni gösterir;
   düzeltin, sonra `sudo systemctl reload nginx`.
 - **Kanca yok ya da değiştirildi / otomatik yenileme kapalı / ayarlar dışarıda
-  değiştirildi / sertifika yok ya da süresi doldu / durum bilinmiyor / önceki sürümün
-  sertifikası:** kart her biri için somut adımı söyler (yeniden alma, anahtarı açma,
-  olduğu gibi bırakma).
+  değiştirildi / sertifika yok ya da süresi doldu / durum bilinmiyor:** kart her biri
+  için somut adımı söyler (yeniden alma, anahtarı açma, olduğu gibi bırakma).
+- **Önceki sürümün sertifikası:** taşınana kadar yalnız CelikPanel çalışırken
+  yenilenir; bir sonraki yenilemesinde Panel onu kendiliğinden işletim sisteminin
+  yenilemesine taşır (aşağıda "Önceki sürümün sertifikası işletim sisteminin
+  yenilemesine taşınır"); Sertifikayı yeniden al bunu hemen yapar.
 
 **Nasıl devam edilir:** durumu okumak hiçbir şeyi değiştirmez ve yenileme başlatmaz;
 yeniden deneme certbot'un bir sonraki zamanlanmış çalışmasıdır. Kurulu paneller yalnız
@@ -10519,3 +10522,93 @@ yazımı Agent'a ulaşmadan reddedildi. Koddan çıkanlar:
 Yapısal aday: `celikpanel-release-recovery.timer` her 30 saniyede boş işlem dizinini
 sınıflandırırken sürüm kilidini saniyenin altında tutar; işçinin 15 saniyelik beklemesi
 bunu aşar. Burada değiştirilmedi. P0 işleri **kısmi** kalır.
+
+### Site oluştururken SSL (30 Ekim 2026)
+
+`release/alpha113` dalında kaynakta (yayımlanmadı; kurulu sunucuda ölçülmedi).
+**Alan adı ekle**'deki "SSL etkinleştir (Let's Encrypt)" (yalnız-DNS alan adlarında
+sunulmaz) artık hiçbir şey istenmemişken siteyi SSL'li kaydetmez.
+
+- **Ne olur:** önce site oluşturulur (`POST /api/v1/domains`), `ssl_enabled` kapalıdır;
+  site oluşturmak sertifika çıkarmaz. Yanıt yeni alan adını adlandırınca aynı pencere,
+  SSL/TLS sayfasındaki **Sertifika iste** düğmesinin rotasına **tek** istek gönderir:
+  `POST /api/v1/domains/<id>/ssl/letsencrypt`; `auto_renew: true`,
+  `include_mail: false`, `provider: "letsencrypt"`, `reissue: false` ve **iletişim
+  adresi olmadan** (`web/src/lib/siteCertificateRequest.ts`). Aynı sunucu kodu yanıtlar
+  (`handleIssueLetsEncrypt`): sertifika sitenin kendi adlarını kapsar (alan adı, kayıtlı
+  alan adında `www.`, takma adlar); işletim sisteminin certbot'u yeniler (D-040);
+  `ssl_enabled` yalnız **etkin** bir sertifikayla açılır. Alan adı listesi SSL'i yalnız
+  etkin sertifika varken gösterir; sertifikasız SSL diyen eski satır kapalı görünür.
+- **İletişim adresi:** istek adres vermez; sunucu oturum açan hesabın kendi adresini
+  kullanır. Hesapta geçerli adres yoksa hiçbir şey istenmez: `409
+  ssl_contact_email_required`, Hesabım'da e-postanızı girip sertifikayı yeniden isteyin
+  der, eylem `/account#email`. **Kim yapar:** siteyi ekleyen kişi; site oluşmuş kalır.
+- **Sürerken:** "<ad> için sertifika Let's Encrypt'ten isteniyor…", bir dakikaya kadar;
+  bir şey yapmanız gerekmediği, sertifikanın yalnız bir kez istendiği, beklerseniz
+  yeniden gönderilmediği yazar. İstek bir istek kimliği taşır (D-029): kayıp yanıt aynı
+  kimlikle bir kez daha sorulur, iki kez çalıştırılmaz. Yoklama ya da yeniden deneme
+  yoktur.
+- **Verildi ve etkin:** pencere "<ad> için sertifika verildi ve etkin. Kendiliğinden
+  yenilenir." ile kapanır.
+- **Başarısız** (`502 CERTIFICATE_ISSUE_FAILED`, neden `validation`,
+  `authority_unreachable`, `rate_limited`, `timeout` ya da `tool`): o türün cümlesi,
+  yöneticiye certbot'un kendi satırı, sonra sitenin bu istekten sertifika almadığı ve
+  eskisi gibi sunulduğu, hiçbir şeyin kendiliğinden yeniden istemediği. **Sonraki
+  adım:** nedeni giderin (çoğunlukla ad henüz bu sunucuyu göstermiyor ya da 80. kapıya
+  ulaşılamıyor), sonra SSL/TLS'te **Sertifika iste**; **SSL/TLS'i aç** oraya götürür.
+- **Verildi, henüz sunulmuyor:** sitenin yapılandırma dosyası sahibindir
+  (`waiting_for_owner`; SSL/TLS sahibin seçeneklerini söyler); web sunucusu kullanmaya
+  başlayamadı (`ssl_activation_pending`) ya da posta TLS'i izlemedi
+  (`ssl_dependents_pending`): SSL/TLS'te **Etkinleştirmeyi yeniden dene**. Hiçbir şey
+  kendiliğinden yeniden denenmez.
+- **Bilinmiyor:** kendi yanıtı gelmedi ya da oluşturma yanıtı alan adını adlandırmadı:
+  sertifikanın verilip verilmediği bilinmiyor, istek ikinci kez gönderilmedi; SSL/TLS'i
+  açın ve yalnız hiçbir sertifika görünmüyorsa orada isteyin.
+- **DNS kurulumu bitmedi** (oluştururken `409 DNS_PUBLICATION_PENDING`): sertifika
+  istenmez; ad bu sunucuyu gösterince SSL/TLS'ten isteyin.
+- **Öteki retler** SSL sayfasınınkilerdir: farklı yapılı Panel ve Agent (`503`),
+  sürmekte olan başka bir sertifika işlemi (meşgul; hiçbir şey değişmedi, bitince yeniden
+  isteyin), doğrulamayı durduran, sahibin tuttuğu yapılandırma dosyası (durumuyla
+  adlandırılır).
+
+**Nasıl devam edilir:** yalnız bir kişinin SSL/TLS'teki bir sonraki isteğiyle; pencere
+ikinci istek göndermez. Kanıt: yalnız bileşen testleri
+(`cmd/panel/ssl_site_create_certificate_test.go`,
+`web/tests/add-domain-certificate-runtime.test.mjs`). Kurulu paneller yalnız
+sahiplerince güncellenir.
+
+### Önceki sürümün sertifikası işletim sisteminin yenilemesine taşınır (D-040 eki, 30 Ekim 2026)
+
+`fix/cert-mail-known-gaps` dalında kaynakta (yayımlanmadı; yalnız bileşen testleri).
+D-040'tan önce verilen web sitesi sertifikası CelikPanel'in kendi certbot deposundadır
+ve yalnız çalışan Panel yeniler. Bir sonraki yenilemesinde (Panel'in 12 saatlik işi,
+bitimine 30 gün kala) Panel artık onu, standart depoda işletim sisteminin certbot'unun
+yenilediği bir sertifikayla değiştirir (`cmd/panel/site_cert_legacy_move.go`): aynı
+adlar (eski sertifika kapsıyorsa posta adı da), otomatik yenileme ve posta güvenliği
+olduğu gibi.
+
+- **Kim yapar:** kimse. Kart bir şey yapmanın gerekmediğini, yenisi etkinleşene kadar
+  mevcut sertifikanın kullanıldığını ve Sertifikayı yeniden al'ın aynı işi hemen
+  yaptığını söyler. Eski sertifika, yenisi kaydedilip nginx'in denenmiş yapılandırması
+  onu adlandırana kadar sunulur. Yenisini almayan web sunucusu eskisini sunmaya devam
+  eder ve **Etkinleştirmeyi yeniden dene** kaydedilir (`activation_pending`); izlemeyen
+  posta `dependents_pending` kaydeder; sahibin tuttuğu yapılandırma dosyası sahibini
+  bekler; hepsi her yenilemedeki gibi.
+- **Taşıma başarısız** (`renewal_status` `move_failed_<tür>`: `validation`,
+  `authority_unreachable`, `rate_limited`, `timeout`, `tool`, `other`): Yenileme satırı
+  "Henüz işletim sisteminin yenilemesine taşınmadı" der; neden türü adlandırır ve mevcut
+  sertifikanın değişmediğini, kullanıldığını, yalnız CelikPanel çalışırken
+  yenilendiğini söyler. **Kim yapar:** sunucu yöneticisi. **Sonraki adım:** her adın bu
+  sunucuyu gösterdiğini, 80. kapıya ulaşılabildiğini ve sunucunun sertifika
+  sağlayıcısına ulaşabildiğini denetleyin (`/var/log/letsencrypt/letsencrypt.log`;
+  Panel günlüğü nedeni yazar), sonra **Sertifikayı yeniden al** ya da bekleyin.
+- **Nasıl devam edilir:** Panel çalıştıkça taşıma 12 saatte bir yeniden denenir;
+  bitimine 14 gün kala Panel eski sertifikayı bunun yerine eski yolla yeniler (site
+  sertifikasız kalmaz) ve kart taşıma hatasını korur. Verilip kaydedilmemiş yerel
+  sertifika soyu (arada Panel durduysa) açılıştaki soy uzlaştırmasıyla silinir; taşınan
+  sertifika bir daha taşınmaz.
+- **Kendiliğinden taşınmayan:** EAB kimlik bilgisi isteyen sağlayıcının sertifikası
+  (ZeroSSL, Google Trust Services). CelikPanel bu bilgileri saklamaz; kart "bir kez
+  yeniden alın" (bilgilerle) demeye devam eder; o zamana kadar çalışan Panel yeniler.
+
+Kurulu paneller yalnız sahiplerince güncellenir. P0.5 **kısmi** kalır.

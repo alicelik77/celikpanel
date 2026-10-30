@@ -12,6 +12,7 @@ package services
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/alicelik/celikpanel/internal/configmatrix"
@@ -101,14 +102,16 @@ func TestRenderDistroConfigMatrix(t *testing.T) {
 		}
 	}
 
-	// MariaDB: UpdateMySQLSettings (config_manager.go:160) edits the Debian
-	// 50-server.cnf only.
-	const mysqlTarget = "/etc/mysql/mariadb.conf.d/50-server.cnf"
+	// MariaDB: UpdateMySQLSettings (config_manager.go) edits the server
+	// option file the release's package ships (mysqlServerConfigFile:
+	// Debian/Ubuntu 50-server.cnf, Arch /etc/my.cnf.d/server.cnf). Read
+	// before withConfigTestState points the editor at a scratch copy.
+	mysqlTarget := mysqlServerConfigFile()
 	stockCnf, err := os.ReadFile(mysqlTarget)
 	if err != nil {
 		write(&configmatrix.Case{ID: "mariadb.server-settings", Program: "mariadb", Variant: "server settings", Validator: "not-applicable",
-			Source: "internal/services/config_manager.go:14,160 UpdateMySQLSettings",
-			Extra:  map[string]string{"REASON": "UpdateMySQLSettings edits the fixed path " + mysqlTarget + ", which this release does not have"}})
+			Source: "internal/services/config_manager.go mysqlServerConfigFile + UpdateMySQLSettings",
+			Extra:  map[string]string{"REASON": "none of the server option files UpdateMySQLSettings edits (" + strings.Join(mysqlServerConfigCandidates, ", ") + ") exists on this release"}})
 		return
 	}
 	state := withConfigTestState(t, "", string(stockCnf))
@@ -121,7 +124,7 @@ func TestRenderDistroConfigMatrix(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	c := &configmatrix.Case{ID: "mariadb.server-settings", Program: "mariadb", Variant: "max_connections/innodb_buffer_pool_size/query_cache_size/max_allowed_packet",
+	c := &configmatrix.Case{ID: "mariadb.server-settings", Program: "mariadb", Variant: "max_connections/innodb_buffer_pool_size/query_cache_size/max_allowed_packet in " + mysqlTarget,
 		Validator: "mariadb", Source: source, Target: mysqlTarget}
 	c.File(mysqlTarget, edited, 0o644)
 	write(c)

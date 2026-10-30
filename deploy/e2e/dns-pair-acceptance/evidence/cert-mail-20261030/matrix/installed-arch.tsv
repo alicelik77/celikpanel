@@ -1,0 +1,11 @@
+nginx	nginx	1.30.6-2
+php-fpm	php-fpm	8.5.12-1
+postfix	postfix	3.11.7-1
+dovecot	dovecot	2.4.5-1
+bind	bind	9.20.30-1
+nftables	nftables	1:1.1.7-3
+systemd	systemd	262.1-1
+mariadb	mariadb	13.0.2-2
+openssh	openssh	10.6p1-2
+sudo	sudo	1.9.17.p2-6
+openssl	openssl	3.6.5-1

@@ -3,8 +3,10 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -18,8 +20,10 @@ import (
 
 // Real-system evidence for D-040 (website certificates renewed by the
 // operating system), run only inside a disposable Debian 13 chroot in its
-// own network namespace (build tag realsystem, plus
-// CELIKPANEL_REAL_SYSTEM_SITECERT=1). Never run it on an installed server.
+// own network namespace, or a disposable QEMU guest booted from a cloud
+// image with no route to the internet (deploy/e2e/cert-mail-boot), build
+// tag realsystem plus CELIKPANEL_REAL_SYSTEM_SITECERT=1 and the marker
+// file below. Never run it on an installed server.
 // The certificate authority is a local Pebble test server, never a real CA.
 // The harness (deploy/e2e/d040/run-in-chroot.sh) runs one phase per
 // invocation; between phases this binary is deleted, so certbot's own
@@ -111,6 +115,22 @@ func sitecertWriteVhost(t *testing.T, certPath, keyPath string) {
 
 func TestRealSystemSiteCertPrepare(t *testing.T) {
 	sitecertGuard(t)
+	// What EnsureNginxReady does before any site is written: the drop-in
+	// directories and, where the release's nginx.conf includes neither
+	// (Arch), the two include lines (nginx_ready.go).
+	for _, dir := range []string{"/etc/nginx/conf.d", "/etc/nginx/sites-available", "/etc/nginx/sites-enabled"} {
+		if err := ensureNginxDropInDirectory(dir); err != nil {
+			t.Fatal(err)
+		}
+	}
+	changed, err := ensureNginxMainConfig(context.Background(), nginxMainConf,
+		func(ctx context.Context, name string, args ...string) ([]byte, error) {
+			return exec.CommandContext(ctx, name, args...).CombinedOutput()
+		})
+	if err != nil {
+		t.Fatalf("ensureNginxMainConfig: %v", err)
+	}
+	t.Logf("nginx.conf includes added: %v", changed)
 	sitecertWriteVhost(t, "", "")
 }
 
@@ -195,6 +215,17 @@ func TestRealSystemSiteCertMail(t *testing.T) {
 		t.Fatalf("preflight: %v", err)
 	}
 	t.Logf("Postfix SNI map type %s, Dovecot 2.4 dialect %v", preflight.sniMapType, preflight.dovecot24)
+	if dovecotNeedsArchLayout() {
+		// What the mail stack's Dovecot setup does first on Arch
+		// (configureDovecotVirtual): CelikPanel's main file that includes
+		// conf.d last, and the default pair that main file names.
+		if _, err := ensureArchDovecotLayout(); err != nil {
+			t.Fatalf("ensureArchDovecotLayout: %v", err)
+		}
+		if err := ensureDovecotSSLCert(context.Background()); err != nil {
+			t.Fatalf("ensureDovecotSSLCert: %v", err)
+		}
+	}
 	if err := ensureDefaultMailCert(myhostname); err != nil {
 		t.Fatal(err)
 	}

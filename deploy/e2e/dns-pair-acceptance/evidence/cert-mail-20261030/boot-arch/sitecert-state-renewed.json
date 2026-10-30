@@ -1,0 +1,24 @@
+{
+  "state": "scheduled",
+  "lineage_name": "celikpanel-site-42-3cde167dc806f2eef6ee600a",
+  "not_before": "2026-10-30T09:58:51Z",
+  "not_after": "2026-10-30T10:08:50Z",
+  "leaf_sha256": "a7d83af60b03fa94d22366595b29e2e0c2a7b14e082ce641251a30d748b86cd0",
+  "renew_after": "2026-10-30T10:05:30.333333334Z",
+  "scheduler": {
+    "name": "certbot-renew.timer",
+    "enabled": true,
+    "active": true,
+    "known": true
+  },
+  "hook": "installed",
+  "last_deploy": {
+    "completed_at": "2026-10-30T09:58:52Z",
+    "nginx": "reloaded",
+    "mail": "reloaded",
+    "dovecot": "reloaded"
+  },
+  "auto_renew": true,
+  "authenticator": "webroot",
+  "server": "https://localhost:14000/dir"
+}

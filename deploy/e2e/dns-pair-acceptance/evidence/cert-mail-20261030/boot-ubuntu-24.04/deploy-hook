@@ -1,0 +1,75 @@
+# celikpanel-site-deploy-hook v1
+# Managed by CelikPanel. certbot runs this after it renewed a certificate
+# (certbot.timer or cron). For website certificates named celikpanel-site-*
+# it checks nginx's configuration and reloads nginx, and, when the
+# certificate also secures mail, rebuilds Postfix's SNI map and reloads
+# Postfix and Dovecot, so the renewed certificate is served everywhere. It
+# writes no configuration, needs no CelikPanel program and keeps working if
+# CelikPanel is removed. If you change or remove this file, CelikPanel
+# leaves it as it is and says so on the certificate's page.
+# CelikPanel tarafından yönetilir: yenilenen web sitesi sertifikasını nginx,
+# Postfix ve Dovecot'a yükler. Yapılandırma yazmaz; Panel gerekmez.
+set -u
+lineage=${RENEWED_LINEAGE:-}
+case "$lineage" in
+  */live/celikpanel-site-*) ;;
+  *) exit 0 ;;
+esac
+name=${lineage##*/}
+case "$name" in
+  ""|*[!a-z0-9-]*) exit 0 ;;
+esac
+live="/etc/letsencrypt/live/$name/"
+reload_unit() {
+  if systemctl is-active --quiet "$1" >/dev/null 2>&1; then
+    if systemctl reload "$1" >/dev/null 2>&1; then echo reloaded; else echo reload_failed; fi
+  else
+    echo not_running
+  fi
+}
+result=not_installed
+if command -v nginx >/dev/null 2>&1; then
+  if ! nginx -t >/dev/null 2>&1; then
+    result=config_test_failed
+  else
+    result=$(reload_unit nginx)
+  fi
+fi
+mail=not_used
+sni=/etc/postfix/celikpanel_sni
+if [ -f "$sni" ] && grep -qF " $live" "$sni" 2>/dev/null; then
+  maps=$(postconf -h tls_server_sni_maps 2>/dev/null) || maps=
+  case "$maps" in
+    "hash:$sni"|"lmdb:$sni"|"btree:$sni")
+      if postmap -F "$maps" >/dev/null 2>&1; then
+        mail=$(reload_unit postfix)
+      else
+        mail=postmap_failed
+      fi
+      ;;
+    *) mail=map_not_used ;;
+  esac
+fi
+dovecot=not_used
+conf=/etc/dovecot/conf.d/98-celikpanel-tls.conf
+if [ -f "$conf" ] && grep -qF "$live" "$conf" 2>/dev/null; then
+  dovecot=$(reload_unit dovecot)
+fi
+dir=/var/lib/celikpanel-site-certificates
+umask 022
+if mkdir -p "$dir" 2>/dev/null; then
+  tmp="$dir/.$name.$$"
+  if printf 'format=celikpanel-site-deploy-v1\nlineage=%s\ncompleted_at=%s\nnginx=%s\nmail=%s\ndovecot=%s\n' \
+      "$name" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$result" "$mail" "$dovecot" >"$tmp" 2>/dev/null; then
+    mv -f "$tmp" "$dir/$name" 2>/dev/null || rm -f "$tmp"
+  fi
+fi
+failed=0
+case "$result" in reloaded|not_running|not_installed) ;; *) failed=1 ;; esac
+case "$mail" in postmap_failed|reload_failed) failed=1 ;; esac
+case "$dovecot" in reload_failed) failed=1 ;; esac
+if [ "$failed" = 1 ]; then
+  echo "celikpanel-site-certificates: $name was renewed but not every service loaded it (nginx=$result mail=$mail dovecot=$dovecot)" >&2
+  exit 1
+fi
+exit 0

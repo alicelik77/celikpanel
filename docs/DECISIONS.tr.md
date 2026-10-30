@@ -61,6 +61,23 @@ kendisi, Ubuntu (snap), Arch ve Dovecot 2.3, gerçek bir CA, yeniden başlatma �
 yapılamaz). Şema
 değişikliği yok (46). P0.5 yalnız web siteleri için ilerledi; kısmi kalır.
 
+### Ek (30 Ekim 2026, saat tarihi): önceki sürümün sertifikası bir sonraki yenilemesinde taşınır; Dovecot 2.3, Ubuntu 24.04 ve Arch ölçüldü
+
+*`release/alpha113`'ten `fix/cert-mail-known-gaps` dalı; yayımlanmadı; kurulu sunucuda
+ölçülmedi.* Önceki sürümün sertifikası artık yalnız yeniden alınana kadar çalışan
+Panel'ce yenilenmez: bir sonraki yenilemesinde Panel onu, Yeniden al'ın kullandığı aynı
+Ajan çağrısıyla yerel bir lineage'a taşır (`cmd/panel/site_cert_legacy_move.go`); eski
+sertifika, yenisi etkin olup nginx'in denenmiş yapılandırması onu adlandırana kadar
+sunulur. Başarısız taşıma `move_failed_<tür>` kaydeder, her çalışmada yeniden denenir;
+bitimine 14 gün kala eski yolla yenilenir ve hata kartta kalır. Yanıt gelmezse hiçbir
+şey kaydedilmez (bilinmiyor). EAB isteyen sağlayıcıların sertifikası kendiliğinden
+taşınmaz (bilgiler saklanmaz); kart "bir kez yeniden alın" der. Dağıtım yapılandırma
+matrisi gerçek Dovecot ve Postfix'te her SNI adının sertifikasını, kancalı yenilemeden
+sonra yenisini denetler; Arch Dovecot ve MariaDB artık "uygulanamaz" değil, ölçülür.
+Ubuntu 24.04 ve Arch, QEMU'da gerçek açılışla ölçüldü. Kanıt:
+[cert-mail-20261030](../deploy/e2e/dns-pair-acceptance/evidence/cert-mail-20261030/).
+P0.5 kısmi kalır.
+
 ---
 
 ### Değişiklik (26 Ekim 2026, saat tarihi): web postası kendi adresinde, sunucunun kendi web sunucusuyla; v0.1.0-alpha.110 adayı için kaynakta uygulandı

@@ -1,0 +1,4 @@
+=== RUN   TestRealSystemSiteCertIssue
+    real_system_sitecert_test.go:152: lineage celikpanel-site-42-3cde167dc806f2eef6ee600a, expires 2026-10-30T10:01:44Z, renewal warning ""
+--- PASS: TestRealSystemSiteCertIssue (2.77s)
+PASS

@@ -68,6 +68,27 @@ test('a certificate of an earlier release says only the running Panel renews it 
   assert.equal(renewalGuidance({ type: 'custom', renewal_status: '' }), null);
 });
 
+test('a certificate of an earlier release that the Panel moves by itself says so, and a failed move says why', () => {
+  const automatic = renewalGuidance({ type: 'letsencrypt', renewal_status: 'renewed', renewal_owner: 'panel', legacy_move: 'automatic' });
+  assert.equal(automatic.reasonKey, 'ssl.renewalGuide.panel');
+  assert.equal(automatic.actionKey, 'ssl.renewalGuide.panel.automatic');
+  assert.equal(automatic.resumeKey, 'ssl.renewalGuide.panel_move.resume');
+  // An authority that needs EAB credentials keeps the Reissue sentence.
+  assert.equal(renewalGuidance({ type: 'letsencrypt', renewal_status: '', renewal_owner: 'panel', legacy_move: 'reissue' }).actionKey,
+    'ssl.renewalGuide.panel.action');
+  for (const kind of ['validation', 'authority_unreachable', 'rate_limited', 'timeout', 'tool', 'other', 'something-new']) {
+    const guide = renewalGuidance({ type: 'letsencrypt', renewal_status: `move_failed_${kind}`, renewal_owner: 'panel', legacy_move: 'automatic' });
+    const want = kind === 'something-new' ? 'other' : kind;
+    assert.equal(guide.tone, 'warning');
+    assert.equal(guide.reasonKey, `ssl.renewalGuide.panel_move_failed.${want}`);
+    for (const catalogue of [englishScreens, turkishScreens]) {
+      for (const key of [guide.reasonKey, guide.actionKey, guide.resumeKey, 'ssl.renewal.moveFailed', 'ssl.renewalGuide.panel.automatic']) {
+        assert.ok(catalogue.includes(`'${key}':`), key);
+      }
+    }
+  }
+});
+
 test('the next actions are concrete and name the server administrator', () => {
   const sentence = (catalogue, key) => {
     const match = catalogue.match(new RegExp(`'${key.replace(/\./g, '\\.')}': '([^']*)'`));

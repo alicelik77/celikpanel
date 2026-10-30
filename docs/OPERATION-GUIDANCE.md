@@ -10501,8 +10501,10 @@ every 12 hours. The Dashboard lists the domain whatever the days.
   judged from the certificate's dates.
 - **certbot no longer has this certificate / expired:** Reissue it.
 - **Renewal state not known:** nothing is concluded; the page reads it again.
-- **A certificate of an earlier release:** renewed only while CelikPanel runs;
-  Reissue it once and the operating system renews the new one.
+- **A certificate of an earlier release:** renewed only while CelikPanel runs until
+  it is moved: at its next renewal the Panel moves it to the operating system's
+  renewal by itself (see "A certificate of an earlier release moves to the operating
+  system's renewal" below); Reissue does it at once.
 
 **How work resumes:** reading the state never changes anything and never starts a
 renewal; certbot's next scheduled run is the retry. Installed panels are updated only
@@ -10574,3 +10576,99 @@ A structural candidate for the release lock remains: `celikpanel-release-recover
 runs every 30 s and holds the release transaction lock while it classifies an empty
 transaction directory (sub-second); the worker's 15 s wait outlasts it. It is not
 changed here. P0 items stay **partial**.
+
+### SSL at site creation (2026-10-30)
+
+In source on `release/alpha113` (not published; not measured on an installed server).
+"Enable SSL (Let's Encrypt)" on **Add domain** (not offered for DNS-only domains)
+no longer records a site as having SSL while nothing was requested.
+
+- **What happens:** the site is created first (`POST /api/v1/domains`) with
+  `ssl_enabled` off; creating a site never issues a certificate. When that answer
+  names the new domain, the same dialog sends **one** request to the route the
+  SSL/TLS page's **Request certificate** uses: `POST /api/v1/domains/<id>/ssl/letsencrypt`
+  with `auto_renew: true`, `include_mail: false`, `provider: "letsencrypt"`,
+  `reissue: false` and **no contact address** (`web/src/lib/siteCertificateRequest.ts`).
+  The same server code answers (`handleIssueLetsEncrypt`): the certificate covers the
+  site's own names (the domain, `www.` for a registered domain, its aliases); it is a
+  certificate the operating system's certbot renews (D-040); only an **active**
+  certificate turns `ssl_enabled` on. The domain list reports SSL only while a
+  certificate is active, so an older row that says SSL without one is shown as off.
+- **Contact address:** the request names none, so the server uses the signed-in
+  account's own address. When the account has no valid one nothing is requested:
+  `409 ssl_contact_email_required`, "set your email on My account (top-right menu),
+  then request the certificate again", with the action `/account#email`. **Who
+  acts:** the person who added the site; the site stays created.
+- **While it runs:** "Asking Let's Encrypt for the certificate of <name>…", up to about
+  a minute; "You do not need to do anything … The certificate is requested only once;
+  nothing is sent again if you wait." The request carries a request identity (D-029):
+  a lost answer is asked for once more under the same identity and never run twice.
+  Nothing polls or retries.
+- **Issued and active:** the dialog closes with "The certificate for <name> was issued
+  and is active. It renews automatically."
+- **Failed** (`502 CERTIFICATE_ISSUE_FAILED`, reason `validation`,
+  `authority_unreachable`, `rate_limited`, `timeout` or `tool`): the sentence of that
+  kind, certbot's own line for an administrator, then "The site has no certificate
+  from this request and is served as before. Nothing asks again automatically."
+  **Next action:** fix the cause (usually the name does not point to this server yet,
+  or port 80 is not reachable), then **Request certificate** under SSL/TLS; **Open
+  SSL/TLS** goes there.
+- **Issued, not served yet:** the site's configuration file is the owner's
+  (`waiting_for_owner`; SSL/TLS says what the owner can choose); the web server could
+  not start using it (`ssl_activation_pending`) or mail TLS did not follow
+  (`ssl_dependents_pending`): **Retry activation** on SSL/TLS. Nothing retries by
+  itself.
+- **Not known:** no answer of its own arrived, or the create answer did not name the
+  domain: "it is not known whether a certificate was issued. The request was not sent
+  a second time. Open SSL/TLS … and request a certificate there only if none is shown."
+- **DNS setup unfinished** (`409 DNS_PUBLICATION_PENDING` on create): the certificate
+  is not requested ("its DNS setup is not finished"); request it under SSL/TLS once
+  the name points to this server.
+- **Other refusals** are the SSL page's own: a Panel and Agent of different builds
+  (`503`), another certificate operation running (busy; nothing was changed, request
+  again when it has finished), a configuration file the owner kept that stops the
+  validation (named with its state).
+
+**How work resumes:** only by a person's next request on SSL/TLS; the dialog never
+sends a second request. Evidence: component tests only
+(`cmd/panel/ssl_site_create_certificate_test.go`,
+`web/tests/add-domain-certificate-runtime.test.mjs`). Installed panels are updated
+only by their owners.
+
+### A certificate of an earlier release moves to the operating system's renewal (D-040 amendment, 2026-10-30)
+
+In source on `fix/cert-mail-known-gaps` (not published; component-tested only). A
+website certificate issued before D-040 lives in CelikPanel's own certbot store and is
+renewed only by the running Panel. At its next renewal (the Panel's 12-hour job,
+within 30 days of expiry) the Panel now replaces it with a certificate in the standard
+store that the operating system's certbot renews (`cmd/panel/site_cert_legacy_move.go`):
+the same names (the mail name too when the old certificate covered it), automatic
+renewal and secure mail as they were.
+
+- **Who acts:** nobody. The card says "Nothing needs to be done: at its next renewal …
+  CelikPanel replaces it …. The current certificate stays in use until the new one is
+  active. Reissue certificate … does the same now." The earlier certificate keeps
+  serving until the new one is recorded and nginx's tested configuration names it. A
+  web server that does not take it keeps serving the earlier one and records **Retry
+  activation** (`activation_pending`); mail that does not follow records
+  `dependents_pending`; a configuration file the owner kept waits for the owner; all
+  as for any renewal.
+- **The move failed** (`renewal_status` `move_failed_<kind>`: `validation`,
+  `authority_unreachable`, `rate_limited`, `timeout`, `tool`, `other`): the Renewal
+  line reads "Not yet moved to the operating system's renewal"; the reason names the
+  kind and says the current certificate is unchanged, in use and renewed only while
+  CelikPanel runs. **Who acts:** the server administrator. **Next action:** check
+  that every name points to this server, port 80 is reachable and the server can reach
+  the certificate authority (`/var/log/letsencrypt/letsencrypt.log`; the Panel's log
+  names the reason), then **Reissue certificate**, or wait.
+- **How work resumes:** the move is tried again every 12 hours while the Panel runs;
+  from 14 days before expiry the Panel renews the earlier certificate the earlier way
+  instead (the site is never left without one) and the card keeps the move failure. A
+  native lineage that was issued but never recorded (the Panel stopped in between) is
+  removed by the startup lineage reconcile; a moved certificate is never moved again.
+- **Not moved by itself:** a certificate from an authority that requires EAB
+  credentials (ZeroSSL, Google Trust Services). CelikPanel does not keep those
+  credentials, so the card keeps "Reissue it once" (with the credentials); until then
+  the running Panel renews it.
+
+Installed panels are updated only by their owners. P0.5 stays **partial**.

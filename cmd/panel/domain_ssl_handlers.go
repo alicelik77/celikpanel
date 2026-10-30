@@ -112,6 +112,11 @@ type SSLCertificate struct {
 	// ACME certificate of an earlier release that only the running Panel
 	// renews; "" for an uploaded certificate.
 	RenewalOwner string `json:"renewal_owner,omitempty"`
+	// LegacyMove (additive, renewal_owner "panel" only): "automatic" when
+	// the Panel moves the certificate to the operating system's renewal by
+	// itself at its next renewal, "reissue" when only a Reissue with the
+	// authority's EAB credentials can (site_cert_legacy_move.go).
+	LegacyMove string `json:"legacy_move,omitempty"`
 	// Renewal is the operating system's renewal state read now (only for
 	// renewal_owner "operating_system"); nil when it could not be read,
 	// which RenewalReadError then says.
@@ -403,7 +408,11 @@ func (p *Panel) handleGetDomainSSL(w http.ResponseWriter, r *http.Request, domai
 				SELECT COALESCE(c.lineage_name, ''), d.subscription_id
 				FROM ssl_certificates c JOIN domains d ON d.id = c.domain_id
 				WHERE c.id = ?`, cert.ID).Scan(&lineageName, &subscriptionID); scanErr == nil {
-				if lineage, native := nativeSiteLineageOfRow(cert.CertPath, lineageName); native {
+				lineage, native := nativeSiteLineageOfRow(cert.CertPath, lineageName)
+				if !native {
+					cert.LegacyMove = legacyMoveMode(cert.ProviderID, cert.Issuer)
+				}
+				if native {
 					cert.RenewalOwner = "operating_system"
 					state, readErr := p.readNativeSiteRenewal(ctx, nativeSiteRow{
 						CertID: cert.ID, DomainID: domainID, SubscriptionID: subscriptionID,

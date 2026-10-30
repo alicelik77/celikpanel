@@ -18,7 +18,9 @@ import (
 // (site_cert_native.go) only reads and records what certbot did. The loop
 // below renews only certificates of earlier releases (an immutable snapshot
 // of a lineage in CelikPanel's isolated certbot store), until they are
-// reissued; renewing them still needs the Panel to run. A daily loop finds active auto-renew certificates
+// reissued; renewing them still needs the Panel to run. At its renewal such
+// a certificate is first moved to the operating system's renewal
+// (site_cert_legacy_move.go); the earlier renewal below is the fallback. A daily loop finds active auto-renew certificates
 // within 30 days of expiry: Let's Encrypt ones are renewed through the agent
 // and re-applied to the vhost and the mail SNI maps; custom (uploaded) ones
 // cannot be renewed by us, so they are flagged for the UI instead of silently
@@ -104,8 +106,27 @@ func (p *Panel) runDueCertRenewals() {
 			// certificate authority, web-server reload or mail reconcile must
 			// never hold this domain's SSL lock (or stall every later job)
 			// indefinitely.
+			//
+			// A certificate of an earlier release moves to the operating
+			// system's renewal at this renewal (site_cert_legacy_move.go).
+			// The earlier renewal runs only when it cannot be moved by
+			// itself, or once a failing move comes close to expiry.
+			moveCtx, moveCancel := context.WithTimeout(ctx, sslMutationTimeout)
+			outcome := p.moveLegacySiteCertificate(moveCtx, j.certID, j.domainID, j.name)
+			moveCancel()
+			if outcome == legacyMoveDone ||
+				(outcome != legacyMoveNotEligible && !legacyRenewalFallbackDue(j.expiresAt, time.Now())) {
+				continue
+			}
 			jobCtx, cancel := context.WithTimeout(ctx, sslMutationTimeout)
+			moveFailure := ""
+			if outcome == legacyMoveFailed {
+				moveFailure = p.activeRenewalStatus(jobCtx, j.certID)
+			}
 			p.renewLetsEncrypt(jobCtx, j.certID, j.domainID, j.name)
+			if strings.HasPrefix(moveFailure, legacyMoveFailedPrefix) {
+				p.keepLegacyMoveFailure(j.domainID, moveFailure)
+			}
 			cancel()
 		default:
 			// Uploaded certificates renew at their CA, not here. Flag once so

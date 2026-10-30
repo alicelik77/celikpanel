@@ -23,9 +23,17 @@ export interface RenewalCertificate {
     type: string;
     renewal_status: string;
     renewal_owner?: string;
+    // automatic | reissue (additive; renewal_owner "panel" only): whether
+    // the Panel moves it to the operating system's renewal by itself.
+    legacy_move?: string;
     renewal?: SiteRenewalState | null;
     renewal_read_error?: string;
 }
+
+// renewal_status of a certificate of an earlier release whose move to the
+// operating system's renewal failed: "move_failed_<kind>".
+export const LEGACY_MOVE_FAILED_PREFIX = 'move_failed_';
+const legacyMoveKinds = new Set(['authority_unreachable', 'validation', 'rate_limited', 'timeout', 'tool', 'other']);
 
 export const NATIVE_RENEWAL_PREFIX = 'os_';
 
@@ -59,6 +67,8 @@ export interface RenewalGuidance {
     // when nothing needs doing).
     reasonKey: string;
     actionKey?: string;
+    // How it resumes, when it is not the default line of its owner.
+    resumeKey?: string;
     params: Record<string, string>;
 }
 
@@ -83,6 +93,28 @@ const guidance: Record<string, { tone: RenewalTone; action?: boolean }> = {
 export function renewalGuidance(cert: RenewalCertificate): RenewalGuidance | null {
     if (cert.type !== 'letsencrypt') return null;
     if (cert.renewal_owner === 'panel') {
+        // The move to the operating system's renewal failed at its last
+        // try: why, the next action, and that the certificate keeps serving.
+        if (cert.renewal_status.startsWith(LEGACY_MOVE_FAILED_PREFIX)) {
+            const raw = cert.renewal_status.slice(LEGACY_MOVE_FAILED_PREFIX.length);
+            const kind = legacyMoveKinds.has(raw) ? raw : 'other';
+            return {
+                tone: 'warning',
+                reasonKey: `ssl.renewalGuide.panel_move_failed.${kind}`,
+                actionKey: 'ssl.renewalGuide.panel_move_failed.action',
+                resumeKey: 'ssl.renewalGuide.panel_move.resume',
+                params: {},
+            };
+        }
+        if (cert.legacy_move === 'automatic') {
+            return {
+                tone: 'info',
+                reasonKey: 'ssl.renewalGuide.panel',
+                actionKey: 'ssl.renewalGuide.panel.automatic',
+                resumeKey: 'ssl.renewalGuide.panel_move.resume',
+                params: {},
+            };
+        }
         return { tone: 'info', reasonKey: 'ssl.renewalGuide.panel', actionKey: 'ssl.renewalGuide.panel.action', params: {} };
     }
     const state = nativeRenewalState(cert);

@@ -1,0 +1,21 @@
+# /usr/lib/systemd/system/certbot-renew.timer
+[Unit]
+Description=Run Certbot twice daily
+
+[Timer]
+OnCalendar=*-*-* 00/12:00:00
+RandomizedDelaySec=12h
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+
+# /usr/lib/systemd/system/certbot-renew.service
+[Unit]
+Description=Renew certificates acquired via Certbot
+Documentation=https://eff-certbot.readthedocs.io/en/stable/
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/certbot -q renew
+PrivateTmp=true

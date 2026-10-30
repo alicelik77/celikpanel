@@ -1,0 +1,4 @@
+=== RUN   TestRealSystemSiteCertMail
+    real_system_sitecert_test.go:217: Postfix SNI map type hash, Dovecot 2.4 dialect false
+--- PASS: TestRealSystemSiteCertMail (3.58s)
+PASS

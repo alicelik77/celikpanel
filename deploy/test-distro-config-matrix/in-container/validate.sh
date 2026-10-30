@@ -30,6 +30,76 @@ ensure_user() {
 }
 warnings_in() { grep -Ei 'warn|error|fatal|unknown|deprecated|obsolete|invalid|failed|not supported' || true; }
 
+# --- TLS handshakes on the running daemon (cases with TLS_SNI_EXPECT) -------
+# The SHA-256 fingerprint of the certificate a daemon serves for one SNI name
+# ("-" sends none). STARTTLS is the protocol name for openssl -starttls.
+tls_fingerprint() { # port starttls name
+    local args=(-connect "127.0.0.1:$1")
+    [[ -n "$2" ]] && args+=(-starttls "$2")
+    if [[ "$3" == - ]]; then args+=(-noservername); else args+=(-servername "$3"); fi
+    timeout 10 openssl s_client "${args[@]}" </dev/null 2>/dev/null \
+        | openssl x509 -noout -fingerprint -sha256 2>/dev/null | sed 's/.*=//; s/://g' | tr 'A-F' 'a-f'
+}
+# Every "name=fingerprint" entry must be what the daemon serves.
+tls_expect() { # label port starttls entries
+    local entry name want got rc=0 n=0
+    for entry in $4; do
+        name=${entry%%=*} want=${entry#*=}
+        got=$(tls_fingerprint "$2" "$3" "$name")
+        n=$((n + 1))
+        if [[ "$got" != "$want" ]]; then
+            printf '%s: SNI %s on port %s served %s, expected %s\n' "$1" "$name" "$2" "${got:-no certificate}" "${want:0:16}"
+            rc=1
+        fi
+    done
+    [[ $rc -eq 0 ]] && printf '%s: %d SNI name(s) on port %s served their own certificate\n' "$1" "$n" "$2"
+    return $rc
+}
+# What `certbot renew` does to a lineage (live links to the next archive
+# version), then CelikPanel's site deploy hook exactly as certbot runs it.
+# The container has no systemd: a stand-in systemctl answers the hook's two
+# questions (is-active, reload) with each program's own command and logs them.
+tls_renew_with_hook() { # lineage
+    local lineage=$1 f
+    for f in cert chain fullchain privkey; do
+        ln -sfn "../../archive/$lineage/${f}2.pem" "/etc/letsencrypt/live/$lineage/$f.pem"
+    done
+    mkdir -p /run/matrix-shim
+    cat >/run/matrix-shim/systemctl <<'SHIM'
+#!/bin/sh
+echo "systemctl $*" >>/var/log/matrix-systemctl.calls
+verb=$1; shift
+[ "$1" = --quiet ] && shift
+case "$verb:${1%.service}" in
+is-active:dovecot) pgrep -x dovecot >/dev/null ;;
+is-active:postfix) postfix status >/dev/null 2>&1 ;;
+is-active:nginx) pgrep -x nginx >/dev/null ;;
+reload:dovecot) doveadm reload ;;
+reload:postfix) postfix reload >/dev/null 2>&1 ;;
+reload:nginx) nginx -s reload ;;
+*) exit 1 ;;
+esac
+SHIM
+    chmod 0755 /run/matrix-shim/systemctl
+    PATH=/run/matrix-shim:$PATH RENEWED_LINEAGE=/etc/letsencrypt/live/$lineage \
+        sh /etc/letsencrypt/renewal-hooks/deploy/celikpanel-site-certificates
+}
+# The SNI checks, then the renewal and the checks for the renewed lineage.
+tls_checks() { # label port starttls record-field
+    local rc=0 hook_rc record
+    [[ -n "${TLS_SNI_EXPECT:-}" ]] || return 0
+    tls_expect "$1" "$2" "$3" "$TLS_SNI_EXPECT" || rc=1
+    [[ -n "${TLS_RENEW_LINEAGE:-}" ]] || return $rc
+    tls_renew_with_hook "$TLS_RENEW_LINEAGE"; hook_rc=$?
+    record=$(tr '\n' ' ' <"/var/lib/celikpanel-site-certificates/$TLS_RENEW_LINEAGE" 2>/dev/null)
+    printf 'site deploy hook: exit %s, record: %s\n' "$hook_rc" "${record:-none}"
+    grep -q "$4=reloaded" <<<"$record" || { printf 'site deploy hook did not reload %s\n' "$4"; rc=1; }
+    sleep 2
+    tls_expect "$1 after renewal" "$2" "$3" "$TLS_RENEW_EXPECT" || rc=1
+    rm -rf /run/matrix-shim /var/lib/celikpanel-site-certificates
+    return $rc
+}
+
 # Each validator prints its findings and returns 0 (PASS), 1 (FAIL) or 2 (WARN).
 # Warnings the release's stock nginx configuration prints by itself (Arch:
 # types_hash) are not the panel's: they are recorded once as a baseline case
@@ -148,6 +218,7 @@ v_postfix() {
             timeout 5 bash -c "exec 3<>/dev/tcp/127.0.0.1/$port; head -c 200 <&3 >/dev/null; printf 'QUIT\r\n' >&3" 2>/dev/null || true
         done
         sleep 2
+        tls_checks "smtpd STARTTLS" 25 smtp mail || rc=1
         postfix stop >/dev/null 2>&1
         sleep 1
     else
@@ -188,6 +259,7 @@ v_dovecot() {
             out=$(doveadm auth test "$u" "${MAIL_PASSWORD:-}" 2>&1) || { printf 'doveadm auth test %s: %s\n' "$u" "$out"; rc=1; }
         done
         timeout 5 bash -c 'exec 3<>/dev/tcp/127.0.0.1/143; head -c 100 <&3 >/dev/null' 2>/dev/null || true
+        tls_checks "IMAPS" 993 "" dovecot || rc=1
         doveadm stop >/dev/null 2>&1 || pkill dovecot
         sleep 1
     else
@@ -195,7 +267,10 @@ v_dovecot() {
     fi
     out=$(grep -Ei 'fatal|error|panic' /var/log/matrix-dovecot.log | sed -E 's/^[A-Za-z]{3} [0-9]+ [0-9:]+ //' | sort -u)
     [[ -n "$out" ]] && { printf 'dovecot runtime: %s\n' "$out"; rc=1; }
-    out=$(grep -Ei 'warning' /var/log/matrix-dovecot.log | grep -v 'Killed with signal 15' | sed -E 's/^[A-Za-z]{3} [0-9]+ [0-9:]+ //' | sort -u)
+    # The reload the site deploy hook asked for (tls_checks) is logged as a
+    # warning by Dovecot's master; it is the expected effect, not a finding.
+    out=$(grep -Ei 'warning' /var/log/matrix-dovecot.log | grep -v 'Killed with signal 15' \
+        | grep -v 'SIGHUP received - reloading configuration' | sed -E 's/^[A-Za-z]{3} [0-9]+ [0-9:]+ //' | sort -u)
     [[ -n "$out" ]] && { printf 'dovecot runtime: %s\n' "$out"; warn=1; }
     rm -f /etc/dovecot/conf.d/zz-matrix-log.conf
     [[ $rc -ne 0 ]] && return 1
@@ -334,7 +409,7 @@ fi
 for dir in "$cases"/*/; do
     [[ -f "$dir/case.env" ]] || continue
     CASE_ID=$(basename "$dir")
-    unset PROGRAM VARIANT VALIDATOR SOURCE TARGET REASON OWNERS RESTORE_DIRS USERS PHP_VERSION ZONES PRECREATE MAIL_USERS MAIL_PASSWORD MAIL_ROOT NOTE KNOWN_NAME EXPECT_DEFAULT
+    unset PROGRAM VARIANT VALIDATOR SOURCE TARGET REASON OWNERS RESTORE_DIRS USERS PHP_VERSION ZONES PRECREATE MAIL_USERS MAIL_PASSWORD MAIL_ROOT NOTE \n        KNOWN_NAME EXPECT_DEFAULT TLS_SNI_EXPECT TLS_RENEW_LINEAGE TLS_RENEW_EXPECT
     # shellcheck disable=SC1090,SC1091
     . "$dir/case.env"
     case "$VALIDATOR" in
