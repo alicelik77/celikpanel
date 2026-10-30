@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"strings"
 
@@ -43,11 +45,34 @@ func buildDovecotVirtualConf(is24 bool) string {
 }
 
 // buildDovecotVirtualConfAt renders the override for an explicit, already
-// resolved mail root (see managedMailRootPath).
+// resolved mail root (see managedMailRootPath). The first line carries the
+// SHA-256 of everything after it, so a later release can tell its own,
+// unchanged file from one the server administrator edited
+// (classifyDovecotVirtualDropIn).
+// buildDovecotVirtualConfAt, açıkça verilmiş ve çözülmüş posta kökü için eki
+// üretir. İlk satır geri kalanın SHA-256 özetini taşır; sonraki bir sürüm
+// kendi değişmemiş dosyasını yöneticinin düzenlediğinden ayırabilir.
 func buildDovecotVirtualConfAt(is24 bool, root string) string {
+	body := dovecotVirtualBody(is24, root)
+	sum := sha256.Sum256([]byte(body))
+	return dovecotVirtualHeaderStart + hex.EncodeToString(sum[:]) + "\n" + body
+}
+
+// dovecotVirtualHeaderStart opens the managed drop-in's first line; the
+// digest of the body follows it.
+const dovecotVirtualHeaderStart = "# Managed by CelikPanel: Dovecot virtual mailboxes. sha256="
+
+// dovecotVirtualPreamble is the drop-in's own explanation for the person who
+// opens it: what CelikPanel does with the file and where their settings go.
+const dovecotVirtualPreamble = `# CelikPanel rewrites this file only while it is exactly as CelikPanel wrote
+# it. Once you edit it, CelikPanel keeps your version and tells you so.
+# Put your own settings in /etc/dovecot/local.conf, which Dovecot reads after
+# conf.d. Dovecot runs from this file with or without CelikPanel.
+`
+
+func dovecotVirtualBody(is24 bool, root string) string {
 	if !is24 {
-		return fmt.Sprintf(`# Managed by CelikPanel — do not edit by hand / elle düzenlemeyin
-mail_location = maildir:%s/%%d/%%n
+		return dovecotVirtualPreamble + fmt.Sprintf(`mail_location = maildir:%s/%%d/%%n
 mail_uid = %s
 mail_gid = %s
 first_valid_uid = %s
@@ -71,27 +96,52 @@ userdb {
 	// %{user | username}, args → açık ayarlar, default_fields → :default'lu
 	// fields. Kayıtlı özetlerimiz açık {ŞEMA} öneki taşır; default_password_
 	// scheme yalnız yedektir (2.3'teki scheme=CRYPT'in aynası).
+	//
+	// 2.4 split the 2.3 mail_location string into separate settings, and a
+	// later file only replaces the settings it names. Debian 13's stock
+	// conf.d/10-mail.conf names three for its system users: mail_home =
+	// /home/%{user | username}, mail_path = %{home}/mail and mail_inbox_path
+	// = /var/mail/%{user}. With only mail_driver and mail_path here, the
+	// virtual users inherited Debian's INBOX in /var/mail, which they cannot
+	// create ("Failed to autocreate mailbox: Permission denied", final
+	// alpha.113 acceptance, 30 Oct 2026). All three are therefore set: INBOX
+	// is the maildir root Postfix's virtual(8) delivers into
+	// (<root>/<domain>/<user>/new). Leaving mail_inbox_path empty is not the
+	// same: measured on Debian's 2.4.1 it puts INBOX in a ".INBOX" folder
+	// beside the delivered mail, so delivered mail is silently not shown.
+	// mail_privileged_group (Debian: mail) only matters for an mbox INBOX in
+	// a shared spool and is left as the distribution set it; the stock inbox
+	// namespace (inbox = yes, special-use folders) is what the virtual users
+	// need and is not repeated here.
+	// 2.4, 2.3'ün mail_location dizgesini ayrı ayarlara böldü; sonraki dosya
+	// yalnız adını verdiği ayarları değiştirir. Debian 13'ün 10-mail.conf'u
+	// sistem kullanıcıları için mail_home, mail_path ve mail_inbox_path
+	// (/var/mail/%{user}) verir; yalnız mail_driver ve mail_path yazınca sanal
+	// kullanıcılar Debian'ın /var/mail INBOX'unu devralıyordu. Üçü de burada:
+	// INBOX, Postfix'in teslim ettiği maildir köküdür. mail_inbox_path'i boş
+	// bırakmak aynı şey değildir: Debian 2.4.1'de INBOX'u ".INBOX" klasörüne
+	// koyar ve teslim edilen posta görünmez.
 	userDir := "%{user | domain}/%{user | username}"
-	return fmt.Sprintf(`# Managed by CelikPanel — do not edit by hand / elle düzenlemeyin
-mail_driver = maildir
-mail_path = %s/%s
-mail_uid = %s
-mail_gid = %s
-first_valid_uid = %s
+	return dovecotVirtualPreamble + fmt.Sprintf(`mail_driver = maildir
+mail_home = %[1]s/%[2]s
+mail_path = %[1]s/%[2]s
+mail_inbox_path = %[1]s/%[2]s
+mail_uid = %[3]s
+mail_gid = %[4]s
+first_valid_uid = %[3]s
 passdb passwd-file {
   default_password_scheme = CRYPT
-  passwd_file_path = %s
+  passwd_file_path = %[5]s
 }
 userdb passwd-file {
-  passwd_file_path = %s
+  passwd_file_path = %[5]s
   fields {
-    uid:default = %s
-    gid:default = %s
-    home:default = %s/%s
+    uid:default = %[3]s
+    gid:default = %[4]s
+    home:default = %[1]s/%[2]s
   }
 }
-`, root, userDir, vmailUID, vmailGID, vmailUID,
-		dovecotUsersPath, dovecotUsersPath, vmailUID, vmailGID, root, userDir)
+`, root, userDir, vmailUID, vmailGID, dovecotUsersPath)
 }
 
 // buildDovecotTLSConf renders the TLS drop-in (default certificate + one

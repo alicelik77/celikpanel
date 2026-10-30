@@ -969,6 +969,11 @@ func renderMatrixDovecot(t *testing.T, h *matrixHost) {
 		}
 		c.Extra["MAIL_USERS"] = "user@example.test second@example.test"
 		c.Extra["MAIL_ROOT"] = mailRootDir
+		// The validator delivers one message per user into the maildir as
+		// Postfix's virtual(8) does, owned by the Agent's vmail identity,
+		// and reads it back through doveadm and IMAP.
+		c.Extra["MAIL_UID"] = vmailUID
+		c.Extra["MAIL_GID"] = vmailGID
 	}
 	tlsConf := buildDovecotTLSConf(is24, defaultMailCert, defaultMailKey, matrixSNI)
 	addTLS := func(c *configmatrix.Case) {
