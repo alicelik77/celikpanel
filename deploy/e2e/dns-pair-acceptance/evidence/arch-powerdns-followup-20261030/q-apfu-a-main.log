@@ -1,0 +1,66 @@
+== after the cut mainfu 10:39:43
+-- cut record
+{"schema":"celikpanel-acceptance-dns-cut/v1","driver":"pdns-switch","point":"after_write","phase":"target-enable-intent","action":"reset","journal_schema":"celikpanel-dns-engine-switch-journal/v3","mutation_request_id":"3dd578fc5ea58a317cefd4d2704919e0","manifest_qualifier":"dns-engine-switch/v1:sha256:6b81dac33417003869fb882650252c4d5e754c10e456fe50074c0f8229eac3ef","pid":412,"recorded_at":"2026-10-30T10:32:46.441953257Z"}
+-- arm file (must be gone)
+ls: cannot access '/etc/celikpanel-acceptance-dns-cut': No such file or directory
+-- boots
+ -2 72243da44308494eb44d6e70aafcc386 Fri 2026-10-30 10:29:31 UTC Fri 2026-10-30 10:30:43 UTC
+ -1 d011afdeb8be486a9edcfd03c543f6be Fri 2026-10-30 10:30:50 UTC Fri 2026-10-30 10:32:46 UTC
+  0 14704c03b2194d5ea5a143b57ec7fad9 Fri 2026-10-30 10:32:50 UTC Fri 2026-10-30 10:39:43 UTC
+-- filesystem
+btrfs
+-- package
+powerdns 5.1.5-1
+-- units
+LoadState=masked
+ActiveState=inactive
+UnitFileState=masked
+active
+active
+-- files
+/etc/powerdns/pdns.d:
+total 8
+drwxr-xr-x 1 root root  76 Oct 30 10:32 .
+drwxr-xr-x 1 root root  70 Oct 30 10:32 ..
+-rw-r--r-- 1 root root 310 Oct 30 10:32 celikpanel-cluster.conf
+-rw-r--r-- 1 root root 206 Oct 30 10:32 celikpanel.conf
+
+/var/lib/celikpanel-agent-private:
+total 176
+drwx------ 1 root     celikpanel   298 Oct 30 10:33 .
+drwxr-xr-x 1 root     root         598 Oct 30 10:32 ..
+-rw-r----- 1 powerdns powerdns   98304 Oct 30 10:32 .celikpanel-switch-3dd578fc5ea58a317cefd4d2704919e0.sqlite3
+-rw------- 1 root     celikpanel   381 Oct 30 10:32 dns-engine-install-ownership-pdns.json
+-rw------- 1 root     celikpanel 70569 Oct 30 10:32 dns-engine-switch-journal.json
+-rw------- 1 root     celikpanel  3789 Oct 30 10:33 service-mutations.json
+
+/var/lib/powerdns:
+total 0
+drwxr-x--- 1 powerdns powerdns   0 Oct 30 10:32 .
+drwxr-xr-x 1 root     root     598 Oct 30 10:32 ..
+-- recovery dns-switch-status
+DNS switch request 3dd578fc5ea58a317cefd4d2704919e0: released-undecided-with-journal (journal phase target-enable-intent).
+If PowerDNS never started for this fresh paired primary, the server owner can restore the pre-start state with: /usr/libexec/celikpanel/recovery recover-dns-pdns-fresh-prestart --request-id 3dd578fc5ea58a317cefd4d2704919e0. The command checks locks, the accepted worker, native units, configuration and the staged candidate; a started or changed target is refused and its evidence is preserved. This status check does not start recovery.
+The Agent could not prove that this first PowerDNS install as paired primary never started, so it did not undo it and released its lease; the journal is kept. If PowerDNS never started, the server owner can restore the state before the install with the owner recovery command named above; it rechecks locks, owner changes and the native target and refuses a started or changed target. After the reported cause is resolved, restarting the Agent also retries the same automatic undo. The journal blocks a new DNS switch; this read-only status does not start recovery.
+Frozen native inverse shape: pdns-switch. This classification does not prove worker exclusion, owner authority or safe recovery execution.
+The current DNS state receipt is absent. This alone does not prove that an inverse is safe; preserve the journal and inspect native DNS before recovery.
+The journal and current state both have no source receipt. This is not proof that DNS was rolled back or is healthy; the server owner must inspect native DNS before resuming this operation.
+The switch has no previous DNS engine, so no frozen source ownership receipt is required. Native DNS still needs verification before the operation resumes.
+Native unit pdns.service: load=masked active=inactive unit-file=masked.
+These systemd properties were observed at one instant; they do not prove DNS answers, zone content, owner edits or recovery authority.
+exit=0
+-- agent log, previous boot (cut)
+Oct 30 10:32:46 mainfu agent[412]: 2026/10/30 10:32:46 acceptance DNS cut fires at pdns-switch after_write target-enable-intent (reset)
+-- agent log, this boot (DNS)
+Oct 30 10:33:03 mainfu agent[408]: 2026/10/30 10:33:03 Interrupted DNS switch native recovery is unknown; retain exact journal and release only its ledger lease (request 3dd578fc5ea58a317cefd4d2704919e0): fresh PowerDNS primary recovery refused a change it did not make (the PowerDNS database); journal and database retained: the PowerDNS database differs from what this PowerDNS install wrote: staged candidate differs from its sealed identity
+sealed: {'path': '/var/lib/celikpanel-agent-private/.celikpanel-switch-3dd578fc5ea58a317cefd4d2704919e0.sqlite3', 'device': 35, 'inode': 88734, 'mode': 416, 'uid': 967, 'gid': 967, 'size': 98304, 'sha256': 'a4ba931b8a7aa570f289564817926ac0f08a54e17282198feec8036aadd06bb6'}
+phase: target-enable-intent
+now:    dev=34 (0:0) ino=88734 mode=640 uid=967 gid=967 size=98304 /var/lib/celikpanel-agent-private/.celikpanel-switch-3dd578fc5ea58a317cefd4d2704919e0.sqlite3
+a4ba931b8a7aa570f289564817926ac0f08a54e17282198feec8036aadd06bb6  /var/lib/celikpanel-agent-private/.celikpanel-switch-3dd578fc5ea58a317cefd4d2704919e0.sqlite3
+dirs:   dev=34 /var/lib/celikpanel-agent-private
+dirs:   dev=34 /var/lib/powerdns
+dirs:   dev=34 /
+/dev/vda3 btrfs rw,relatime,compress=zstd:1,discard=async,space_cache=v2,subvolid=5,subvol=/
+5
+ -1 d011afdeb8be486a9edcfd03c543f6be Fri 2026-10-30 10:30:50 UTC Fri 2026-10-30 10:32:46 UTC
+  0 14704c03b2194d5ea5a143b57ec7fad9 Fri 2026-10-30 10:32:50 UTC Fri 2026-10-30 10:40:32 UTC

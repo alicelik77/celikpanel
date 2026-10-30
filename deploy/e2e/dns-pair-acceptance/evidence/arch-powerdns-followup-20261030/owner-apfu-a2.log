@@ -1,0 +1,211 @@
+== owner independence: reboot with panel management stopped and disabled 11:02:23
+== management off 11:02:22
+Removed '/etc/systemd/system/multi-user.target.wants/celikpanel-agent.service'.
+Removed '/etc/systemd/system/multi-user.target.wants/celikpanel-panel.service'.
+disabled disabled enabled 
+inactive inactive active 
+  0 931c329dbf0c4cf2a43b9f36c1c0ef28 Fri 2026-10-30 10:53:00 UTC Fri 2026-10-30 11:02:23 UTC
+Running timer as unit: apfu-reboot.timer
+Will run service as unit: apfu-reboot.service
+reboot scheduled
+main reachable again 11:02:51
+== after the reboot with management off 11:03:01
+ -1 931c329dbf0c4cf2a43b9f36c1c0ef28 Fri 2026-10-30 10:53:00 UTC Fri 2026-10-30 11:02:30 UTC
+  0 a2faf224eab0456ea94f407fdfc824f6 Fri 2026-10-30 11:02:36 UTC Fri 2026-10-30 11:03:01 UTC
+disabled disabled enabled 
+inactive inactive active 
+ActiveEnterTimestamp=Fri 2026-10-30 11:02:46 UTC
+MainPID=572
+-- DNS from outside with management off 11:03:02
+   main:   ;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 18433 ;; flags: qr aa; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1 ; EDNS: version: 0, flags:; udp: 1232 ;fua2.test. IN SOA fua2.test. 3600 IN SOA ns1.fua2.test. hostmaster.fua2.test. 2026103000 3600 600 604800 300 
+   backup: ;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 39163 ;; flags: qr aa; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1 ; EDNS: version: 0, flags:; udp: 1232 ;fua2.test. IN SOA fua2.test. 3600 IN SOA ns1.fua2.test. hostmaster.fua2.test. 2026103000 3600 600 604800 300 
+   main TCP: ns1.fua2.test. hostmaster.fua2.test. 2026103000 3600 600 604800 300
+-- management back on 11:03:03
+== after the reboot with management off 11:03:02
+ -1 931c329dbf0c4cf2a43b9f36c1c0ef28 Fri 2026-10-30 10:53:00 UTC Fri 2026-10-30 11:02:30 UTC
+  0 a2faf224eab0456ea94f407fdfc824f6 Fri 2026-10-30 11:02:36 UTC Fri 2026-10-30 11:03:02 UTC
+disabled disabled enabled 
+inactive inactive active 
+ActiveEnterTimestamp=Fri 2026-10-30 11:02:46 UTC
+MainPID=572
+-- management back on 11:03:02
+Created symlink '/etc/systemd/system/multi-user.target.wants/celikpanel-agent.service' → '/etc/systemd/system/celikpanel-agent.service'.
+Created symlink '/etc/systemd/system/multi-user.target.wants/celikpanel-panel.service' → '/etc/systemd/system/celikpanel-panel.service'.
+active active active 
+engine 200 {
+ "active_engine": "pdns",
+ "dnssec_zone_count": 0,
+ "engine_epoch": 1,
+ "engines": [
+  {
+   "id": "pdns",
+   "installed": true,
+   "managed": true,
+   "running": true,
+   "status": "active"
+  },
+  {
+   "id": "bind",
+   "installed": false,
+   "managed": false,
+   "running": false,
+   "status": "available"
+  }
+ ],
+ "operation": {
+  "id": "93dac4c9e460addccf21a8b6498293c6",
+  "phase": "committed",
+  "request_id": "6008dbb0784c2b86d3f3352148fe4972",
+  "started_at": "2026-10-30T10:53:38Z",
+  "status": "succeeded",
+  "target_engine": "pdns",
+  "updated_at": "2026-10-30T10:53:42Z"
+ },
+ "pair_ready"
+== owner's in-series package update of powerdns 11:03:09
+== owner package update 11:03:08
+powerdns 5.1.5-1
+-rw-r----- 1 root root   5727183 Oct 21 13:06 powerdns-5.1.5-1-x86_64.pkg.tar.zst
+-rw-r----- 1 root root       566 Oct 21 13:06 powerdns-5.1.5-1-x86_64.pkg.tar.zst.sig
+desc before: 2026-10-30 10:52:54.216689135 +0000
+reinstalling powerdns...
+:: Running post-transaction hooks...
+(1/4) Creating system user accounts...
+(2/4) Reloading system manager configuration...
+(3/4) Enqueuing marked services...
+(4/4) Arming ConditionNeedsUpdate...
+desc after: 2026-10-30 11:03:09.110736219 +0000
+%INSTALLDATE%
+1793358189
+cb331136ed552c8ef0a3de82ac90732339a6e37d6e9ffebde44346b12c44ad0c  /usr/bin/pdns_server
+4bc3129b997154908bb65f81c021ea965037178367b6f319c68865bb3097d420  /usr/lib/systemd/system/pdns.service
+active
+ActiveEnterTimestamp=Fri 2026-10-30 11:03:09 UTC
+-- DNS after the update 11:03:12
+   main:   ;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 53018 ;; flags: qr aa; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1 ; EDNS: version: 0, flags:; udp: 1232 ;fua2.test. IN SOA fua2.test. 3600 IN SOA ns1.fua2.test. hostmaster.fua2.test. 2026103000 3600 600 604800 300 
+   backup: ;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 42090 ;; flags: qr aa; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1 ; EDNS: version: 0, flags:; udp: 1232 ;fua2.test. IN SOA fua2.test. 3600 IN SOA ns1.fua2.test. hostmaster.fua2.test. 2026103000 3600 600 604800 300 
+engine 200 {
+ "active_engine": "pdns",
+ "dnssec_zone_count": 0,
+ "engine_epoch": 1,
+ "engines": [
+  {
+   "id": "pdns",
+   "installed": true,
+   "managed": true,
+   "running": true,
+   "status": "active"
+  },
+  {
+   "id": "bind",
+   "installed": false,
+   "managed": false,
+   "running": false,
+   "status": "available"
+  }
+ ],
+ "operation": {
+  "id": "93dac4c9e460addccf21a8b6498293c6",
+  "phase": "committed",
+  "request_id": "6008dbb0784c2b86d3f3352148fe4972",
+  "started_at": "2026-10-30T10:53:38Z",
+  "status": "succeeded",
+  "target_engine": "pdns",
+  "updated_at": "2026-10-30T10:53:42Z"
+ },
+ "pair_ready": true,
+ "pair_role": "primary",
+ "pending_zone_count": 1,
+ "revision": 5,
+ "state": "ready",
+ "topo
+engine_series_untested present: False
+== recovery dns-switch-status mainfu 11:03:12
+No DNS switch journal was observed. This does not prove historical completion or current DNS health. The server owner should inspect the native DNS service and the panel's operation status before starting another switch.
+exit=0
+-- agent log about the PowerDNS package identity (this boot)
+-- a DNS change after the update must still be accepted and reach the backup
+== daily operations on apfu-a2, zone pkgfu.test 11:03:13
+-- create the domain (DNS only)
+409
+{
+ "action": "/domains/pkgfu.test?tab=dns",
+ "code": "DNS_PUBLICATION_PENDING",
+ "domain": "pkgfu.test",
+ "domain_id": 2,
+ "error": "the domain was created, but its DNS setup is incomplete; review it in the domain's DNS management page",
+ "partial_success": true,
+ "zone_exists": true
+}
+
+   domain id: 2
+200
+{
+ "id": 3,
+ "name": "pkgfu.test",
+ "type": "MASTER"
+}
+
+   192.0.3.94 pkgfu.test SOA: NOT within 120s (got '')
+== infrastructure zone change after the package update (zone deletion verification pending) 11:08:42
+409 {
+ "code": "DNS_PUBLICATION_FAILED",
+ "error": "the DNS change is saved, but it could not be published or verified; check the exact DNS operation and retry the same publication"
+}
+   192.0.3.94: 
+   192.0.3.95: 
+overview 200 {
+ "checked_at": "2026-10-30T11:08:42Z",
+ "domain": "fua2.test",
+ "fresh_after": 15,
+ "home": "own",
+ "join": {
+  "state": "bound"
+ },
+ "mail": [],
+ "mail_receiver": {
+  "server": "none"
+ },
+ "names": [
+  {
+   "expected": "192.0.3.94",
+   "kind": "ns",
+   "name": "ns1.fua2.test",
+   "seen": [
+    "192.0.3.94"
+   ],
+   "server": "this",
+   "state": "ok",
+   "type": "A",
+   "where": "zone"
+  },
+  {
+   "expected": "192.0.3.95",
+   "kind": "ns",
+   "name": "ns2.fua2.test",
+   "seen": [
+    "192.0.3.95"
+   ],
+   "server": "peer",
+   "state": "ok",
+   "type": "A",
+   "where": "zone"
+  },
+  {
+   "expected": "192.0.3.94",
+   "kind": "panel",
+   "name": "mainfu.fua2.test",
+   "seen": [
+    "192.0.3.94"
+   ],
+   "server": "this",
+   "state": "ok",
+   "type": "A",
+   "where": "zone"
+  },
+  {
+   "expected": "192.0.3.95",
+   "kind": "panel",
+   "name": "backfu.fua2.test",
+   "seen": [
+    "192.0.3.95

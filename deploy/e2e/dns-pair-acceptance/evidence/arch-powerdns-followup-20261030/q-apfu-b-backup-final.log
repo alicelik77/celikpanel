@@ -1,0 +1,56 @@
+== after the cut backfu 11:17:21
+-- cut record
+{"schema":"celikpanel-acceptance-dns-cut/v1","driver":"pdns-switch","point":"after_write","phase":"target-staged","action":"reset","journal_schema":"celikpanel-dns-engine-switch-journal/v1","mutation_request_id":"4c229f7c3e190bc5bc46682dd0565584","manifest_qualifier":"dns-engine-switch/v1:sha256:610b787aa83dffe7b167a07aff9e83aa64d22cd9304a71ea038d297e5d958c68","pid":404,"recorded_at":"2026-10-30T10:58:20.212234748Z"}
+-- arm file (must be gone)
+ls: cannot access '/etc/celikpanel-acceptance-dns-cut': No such file or directory
+-- boots
+ -2 d3db1799d9574d52a28c61d676fe00d2 Fri 2026-10-30 10:54:12 UTC Fri 2026-10-30 10:55:21 UTC
+ -1 96c5064551594c4aba4b6f2dbc58dbb4 Fri 2026-10-30 10:55:27 UTC Fri 2026-10-30 10:58:20 UTC
+  0 143bc258a02743378dc9de7bdf090fb8 Fri 2026-10-30 10:58:25 UTC Fri 2026-10-30 11:17:21 UTC
+-- filesystem
+btrfs
+-- package
+powerdns 5.1.5-1
+-- units
+LoadState=loaded
+ActiveState=active
+UnitFileState=enabled
+active
+active
+-- files
+/etc/powerdns/pdns.d:
+total 8
+drwxr-xr-x 1 root root  76 Oct 30 10:58 .
+drwxr-xr-x 1 root root  70 Oct 30 10:58 ..
+-rw-r--r-- 1 root root 276 Oct 30 10:58 celikpanel-cluster.conf
+-rw-r--r-- 1 root root 206 Oct 30 10:58 celikpanel.conf
+
+/var/lib/celikpanel-agent-private:
+total 20
+drwx------ 1 root celikpanel  200 Oct 30 10:59 .
+drwxr-xr-x 1 root root        630 Oct 30 10:59 ..
+-rw------- 1 root celikpanel  642 Oct 30 10:58 dns-engine-ownership-pdns.json
+-rw------- 1 root celikpanel  638 Oct 30 10:58 dns-engine-state.json
+-rw------- 1 root celikpanel  431 Oct 30 10:59 firewall-apply-journal.json
+-rw------- 1 root celikpanel 7735 Oct 30 10:59 service-mutations.json
+
+/var/lib/powerdns:
+total 312
+drwxr-x--- 1 powerdns powerdns     88 Oct 30 10:58 .
+drwxr-xr-x 1 root     root        630 Oct 30 10:59 ..
+-rw-r----- 1 powerdns powerdns  98304 Oct 30 10:58 pdns.sqlite3
+-rw-r----- 1 powerdns powerdns  32768 Oct 30 11:17 pdns.sqlite3-shm
+-rw-r----- 1 powerdns powerdns 185432 Oct 30 11:17 pdns.sqlite3-wal
+-- recovery dns-switch-status
+No DNS switch journal was observed. This does not prove historical completion or current DNS health. The server owner should inspect the native DNS service and the panel's operation status before starting another switch.
+exit=0
+-- agent log, previous boot (cut)
+Oct 30 10:58:20 backfu agent[404]: 2026/10/30 10:58:20 acceptance DNS cut fires at pdns-switch after_write target-staged (reset)
+-- agent log, this boot (DNS)
+Oct 30 10:58:44 backfu agent[404]: 2026/10/30 10:58:44 DNS engine change db51d2263fc200f46d274e6ba470a319: the paired primary at 192.0.3.92 serves catalog catalog-c000035c.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 10:58:47 backfu agent[404]: 2026/10/30 10:58:47 DNS engine change completion db51d2263fc200f46d274e6ba470a319: the paired primary at 192.0.3.92 serves catalog catalog-c000035c.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 10:58:48 backfu agent[404]: 2026/10/30 10:58:48 DNS readiness check: the paired primary at 192.0.3.92 serves catalog catalog-c000035c.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 10:59:17 backfu agent[404]: 2026/10/30 10:59:17 DNS readiness check: the paired primary at 192.0.3.92 serves catalog catalog-c000035c.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 10:59:18 backfu agent[404]: 2026/10/30 10:59:18 DNS readiness check: the paired primary at 192.0.3.92 serves catalog catalog-c000035c.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 10:59:18 backfu agent[404]: 2026/10/30 10:59:18 DNS readiness check: the paired primary at 192.0.3.92 serves catalog catalog-c000035c.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 10:59:20 backfu agent[404]: 2026/10/30 10:59:20 DNS readiness check: the paired primary at 192.0.3.92 serves catalog catalog-c000035c.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format

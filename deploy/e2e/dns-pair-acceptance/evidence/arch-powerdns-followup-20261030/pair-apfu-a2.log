@@ -1,0 +1,374 @@
+== provision 10:50:06 main=arch/pdns 192.0.3.94 backup=debian13/pdns 192.0.3.95 zone=fua2.test cut=main pdns-switch after_write target-enable-intent reset
+tail: option used in invalid context -- 2
+== install 10:50:32
+main installer rc 0 46.4 postinstall rc 0
+backup installer rc 0 30.7 postinstall rc 0
+main license active
+backup license active
+guidance 200 
+guidance 200 
+main-domain 200 {
+ "checks": [],
+ "draft": {
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_role": "prim
+main-count 200 {
+ "checks": [],
+ "draft": {
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_role": "prim
+main-name 200 {
+ "checks": [],
+ "draft": {
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_role": "prim
+main-roles 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+main-names 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+main-dnshome 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+plan main 200 True [] ['01-service:nginx', '02-service:certbot', '03-service:mariadb', '04-service:php-fpm', '05-service:cron', '06-peer_join:second', '07-dns:local', '08-firewall:enable_and_persist', '09-infrastructure_dns:fua2.test', '10-access_dns:mainfu.fua2.test', '11-panel_certificate:mainfu.fua2.test', '12-dns_readiness:local', '13-verify:custom'] 
+== arm mainfu 10:52:01
+-r--r--r-- 1 root root 69 Oct 30 10:50 /etc/celikpanel-dns-kill-matrix
+agent: /opt/celikpanel/bin/agent
+agent built with -tags=acceptance_license
+600 root:root /etc/celikpanel-acceptance-dns-cut
+pdns-switch after_write target-enable-intent reset
+btrfs
+== start main 10:52:02
+start-main 202 {
+ "id": "a94a30fcf0ef3ada9c8517456d60418c",
+ "panel_url": "https://mainfu.fua2.test:2083/",
+ "phase": "queued",
+ "plan_
+join-code 200 {
+ "address": "https://192.0.3.94:2083",
+ "attempts_left": 5
+connect 200 {
+ "setup": {
+  "checks": [],
+  "draft": {
+   "database": "mariadb",
+   "dns_engine": "bind",
+   "dns_mode": "local",
+   "dns_publisher_endpoint": "https://mainfu.fua2.test:2083",
+   "dns_role": "seco
+backup-roles 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+backup-name 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+backup-names 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+backup-dnshome 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+plan backup 200 True [] ['01-peer_names:https://192.0.3.94:2083', '02-service:nginx', '03-service:certbot', '04-service:mariadb', '05-service:php-fpm', '06-service:cron', '07-dns:local', '08-firewall:enable_and_persist', '09-access_dns:backfu.fua2.test', '10-panel_certificate:backfu.fua2.test', '11-dns_publisher:https://mainfu.fua2.test:2083', '12-verify:custom'] 
+== start backup 10:52:13
+start-backup 202 {
+ "id": "79aae5c6568db12237daa44b62e686c4",
+ "panel_url": "https://backfu.fua2.test:2083/",
+ "phase": "queued",
+ "plan_
+== wait for the cut node's setup to stop (main) 10:52:16
+-- apfu-a2/main 10:52:16
+running 02-service null
+01-service=succeeded 02-service=running 03-service=pending 04-service=pending 05-service=pending 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "02-service", "kind": "service", "operation_id": "5c837936147325d1fdc1efff774ef46a", "owner_id": "141b638af9aced989685d44e99f427fc", "request_id": "140574875ba9f4ab2ed4f56f280ce247", "status": "running", "target": "certbot"}
+-- apfu-a2/main 10:52:36
+running 04-service null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=running 05-service=pending 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "04-service", "kind": "service", "owner_id": "a023f0601e914ce5923e0e4a03700dfd", "request_id": "0aef54d5ff9ce471fca37a7bd99f7364", "status": "running", "target": "php-fpm"}
+-- apfu-a2/main 10:53:16
+None None "Panel management is still starting. Read-only connection and recovery status remain available."
+-- apfu-a2/main 10:53:36
+failed 07-dns {"code": "server_setup_dns_rolled_back", "message": "The DNS engine installation did not complete and CelikPanel undid it: no DNS engine is running on this server, and any packages it installed were kept stopped for the next attempt. Nothing else was changed, and no restart is needed. The server administrator chooses Review a revised plan: keep this DNS software to try the installation again as a new one, or choose the other DNS software in the plan; setup then continues from the new plan."}
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=failed 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "07-dns", "kind": "dns", "owner_id": "62d27200d3a0a87074f9b14bdf44d5fc", "request_id": "67dafd41231cb79ef4705617f701be29", "status": "failed", "target": "local"}
+== the cut node after its setup stopped 10:53:36
+failed 07-dns {"code": "server_setup_dns_rolled_back", "message": "The DNS engine installation did not complete and CelikPanel undid it: no DNS engine is running on this server, and any packages it installed were kept stopped for the next attempt. Nothing else was changed, and no restart is needed. The server administrator chooses Review a revised plan: keep this DNS software to try the installation again as a new one, or choose the other DNS software in the plan; setup then continues from the new plan."}
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=failed 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "07-dns", "kind": "dns", "owner_id": "62d27200d3a0a87074f9b14bdf44d5fc", "request_id": "67dafd41231cb79ef4705617f701be29", "status": "failed", "target": "local"}
+== after the cut mainfu 10:53:36
+-- cut record
+{"schema":"celikpanel-acceptance-dns-cut/v1","driver":"pdns-switch","point":"after_write","phase":"target-enable-intent","action":"reset","journal_schema":"celikpanel-dns-engine-switch-journal/v3","mutation_request_id":"67dafd41231cb79ef4705617f701be29","manifest_qualifier":"dns-engine-switch/v1:sha256:66511dd4c92b6416a32288d6b7924f131cd61c0e955853ff757fde94cb2a272f","pid":404,"recorded_at":"2026-10-30T10:52:56.101426779Z"}
+-- arm file (must be gone)
+ls: cannot access '/etc/celikpanel-acceptance-dns-cut': No such file or directory
+-- boots
+ -2 44cbee2ce8fb4744bbee85e9944fb416 Fri 2026-10-30 10:50:12 UTC Fri 2026-10-30 10:51:21 UTC
+ -1 3867d4178aa144e387b42ab4baede286 Fri 2026-10-30 10:51:27 UTC Fri 2026-10-30 10:52:56 UTC
+  0 931c329dbf0c4cf2a43b9f36c1c0ef28 Fri 2026-10-30 10:53:00 UTC Fri 2026-10-30 10:53:36 UTC
+-- filesystem
+btrfs
+-- package
+powerdns 5.1.5-1
+-- units
+LoadState=masked
+ActiveState=inactive
+UnitFileState=masked
+active
+active
+-- files
+/etc/powerdns/pdns.d:
+total 0
+drwxr-xr-x 1 root root  0 Oct 30 10:53 .
+drwxr-xr-x 1 root root 70 Oct 30 10:53 ..
+
+/var/lib/celikpanel-agent-private:
+total 8
+drwx------ 1 root celikpanel  120 Oct 30 10:53 .
+drwxr-xr-x 1 root root        598 Oct 30 10:52 ..
+-rw------- 1 root celikpanel  381 Oct 30 10:52 dns-engine-install-ownership-pdns.json
+-rw------- 1 root celikpanel 3018 Oct 30 10:53 service-mutations.json
+
+/var/lib/powerdns:
+total 0
+drwxr-x--- 1 powerdns powerdns   0 Oct 30 10:52 .
+drwxr-xr-x 1 root     root     598 Oct 30 10:52 ..
+-- recovery dns-switch-status
+No DNS switch journal was observed. This does not prove historical completion or current DNS health. The server owner should inspect the native DNS service and the panel's operation status before starting another switch.
+exit=0
+-- agent log, previous boot (cut)
+Oct 30 10:52:56 mainfu agent[404]: 2026/10/30 10:52:56 acceptance DNS cut fires at pdns-switch after_write target-enable-intent (reset)
+-- agent log, this boot (DNS)
+== owner: review a revised plan on main 10:53:37
+replan 200 True [] ['01-peer_join:second', '02-dns:local', '03-firewall:enable_and_persist', '04-infrastructure_dns:fua2.test', '05-access_dns:mainfu.fua2.test', '06-panel_certificate:mainfu.fua2.test', '07-dns_readiness:local', '08-verify:custom'] 
+== owner: start 10:53:38
+start 202 {
+ "id": "f24cedb73379fcd3a57cca830a93d9c0",
+ "panel_url": "https://mainfu.fua2.test:2083/",
+ "phase": "queued",
+ "plan_id": "4295beff842f1de9a9366a392b558b2b",
+ "request_id": "f24cedb73379fcd3a57cca8
+== wait for both 10:53:39
+-- apfu-a2/main 10:53:39
+running 02-dns null
+01-peer_join=succeeded 02-dns=running 03-firewall=pending 04-infrastructure_dns=pending 05-access_dns=pending 06-panel_certificate=pending 07-dns_readiness=pending 08-verify=pending
+{"id": "02-dns", "kind": "dns", "owner_id": "9a377755ca8ff12771f19f1189df28f5", "request_id": "6008dbb0784c2b86d3f3352148fe4972", "status": "running", "target": "local"}
+-- apfu-a2/main 10:53:59
+waiting infrastructure_dns {"code": "server_setup_infrastructure_dns_required", "message": "The reviewed DNS records are waiting for the native DNS pair or its exact zone transfer. Prepare the secondary ns2.fua2.test (192.0.3.95) and check TCP/UDP port 53. This setup checks the same operation automatically."}
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=succeeded 04-infrastructure_dns=running 05-access_dns=pending 06-panel_certificate=pending 07-dns_readiness=pending 08-verify=pending
+{"id": "04-infrastructure_dns", "kind": "infrastructure_dns", "owner_id": "5a90260e870f909529a738cd3cd5923e", "request_id": "dcb0cbf5ca82aa6be35fc87a7c4e73cf", "status": "running", "target": "fua2.test"}
+-- apfu-a2/main 10:54:40
+running verification null
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=succeeded 04-infrastructure_dns=succeeded 05-access_dns=succeeded 06-panel_certificate=succeeded 07-dns_readiness=succeeded 08-verify=pending
+-- apfu-a2/main 10:55:00
+succeeded complete null
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=succeeded 04-infrastructure_dns=succeeded 05-access_dns=succeeded 06-panel_certificate=succeeded 07-dns_readiness=succeeded 08-verify=succeeded
+-- apfu-a2/backup 10:55:00
+waiting dns_publisher {"code": "server_setup_dns_publisher_waiting", "message": "Waiting for the main DNS server to accept this server's publishing connection. It does once its DNS pair is ready and its nameservers are public. Setup asks again by itself."}
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-service=succeeded 07-dns=succeeded 08-firewall=succeeded 09-access_dns=succeeded 10-panel_certificate=succeeded 11-dns_publisher=running 12-verify=pending
+{"id": "11-dns_publisher", "kind": "dns_publisher", "owner_id": "14f3bc32193497cd5b4cf7ce9c97e438", "request_id": "8e0789af8b7d8d50c414f75bedf2bb16", "status": "running", "target": "https://mainfu.fua2.test:2083"}
+-- apfu-a2/backup 10:55:20
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-service=succeeded 07-dns=succeeded 08-firewall=succeeded 09-access_dns=succeeded 10-panel_certificate=succeeded 11-dns_publisher=succeeded 12-verify=succeeded
+== end 10:55:20
+succeeded complete null
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=succeeded 04-infrastructure_dns=succeeded 05-access_dns=succeeded 06-panel_certificate=succeeded 07-dns_readiness=succeeded 08-verify=succeeded
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-service=succeeded 07-dns=succeeded 08-firewall=succeeded 09-access_dns=succeeded 10-panel_certificate=succeeded 11-dns_publisher=succeeded 12-verify=succeeded
+== check apfu-a2/main 2026-10-30T10:55:21Z
+-- os
+PRETTY_NAME="Arch Linux"
+ID=arch
+7.2.11-arch1-1
+-- package
+powerdns 5.1.5-1
+-- units
+active active active active inactive inactive 
+UnitFileState=enabled
+ExecStart={ path=/usr/bin/pdns_server ; argv[]=/usr/bin/pdns_server --guardian=no --daemon=no --disable-syslog --log-timestamp=no --write-pid=no
+User=powerdns
+Group=powerdns
+-- config
+755 root:root /etc/powerdns
+644 root:root /etc/powerdns/pdns.conf
+755 root:root /etc/powerdns/pdns.d
+644 root:root /etc/powerdns/pdns.d/celikpanel-cluster.conf
+644 root:root /etc/powerdns/pdns.d/celikpanel.conf
+750 powerdns:powerdns /var/lib/powerdns
+640 powerdns:powerdns /var/lib/powerdns/pdns.sqlite3
+640 powerdns:powerdns /var/lib/powerdns/pdns.sqlite3-shm
+640 powerdns:powerdns /var/lib/powerdns/pdns.sqlite3-wal
+setgid=powerdns
+setuid=powerdns
+include-dir=/etc/powerdns/pdns.d
+primary=yes
+secondary=yes
+allow-axfr-ips=192.0.3.94,192.0.3.95
+also-notify=192.0.3.95
+launch=gsqlite3
+gsqlite3-dnssec=yes
+gsqlite3-database=/var/lib/powerdns/pdns.sqlite3
+local-address=192.0.3.94
+zone-cache-refresh-interval=0
+webserver=no
+api=no
+-- DNS answers
+(no dig on this server)
+(no dig on this server)
+(no dig on this server)
+-- catalog
+catalog-c000035e.celikpanel.invalid PRODUCER
+catalog-c000035e.celikpanel.invalid|PRODUCER||1793357621|
+fua2.test|MASTER||2026103000|
+-- state
+dns-engine-ownership-pdns.json
+dns-engine-state.json
+dns-engine-switch-v3-archive-6008dbb0784c2b86d3f3352148fe4972-c669a35150e3a0aaea32b3eba168cde1c74cb705c9957a14980234340a7eac99.json
+firewall-apply-journal.json
+service-mutations.json
+{"schema":"celikpanel-dns-engine-state/v3","acquisition":{"schema":"celikpanel-dns-engine-acquisition/v1","mode":"switch","engine":"pdns","engine_epoch":1,"pair_role":"primary","pair_local_ip":"192.0.3.94","pair_peer_ip":"192.0.3.95","source_revision":3,"manifest_qualifier":"dns-engine-switch/v1:sha256:1315111dcc63eed65c8c3362e276028f00cdc3259873300d668f51998449bc22","mutation_request_id":"6008dbb0784c2b86d3f3352148fe4972","mutation_owner_id":"32f84db28dd2191c7e50119a72ba0b3f"},"publication":{"schema":"celikpanel-dns-engine-publication/v1","acquisition_sha256":"a9111c5ebee87ae2ef3a46f5bc2da2c2
+-- recovery status
+No DNS switch journal was observed. This does not prove historical completion or current DNS health. The server owner should inspect the native DNS service and the panel's operation status before starting another switch.
+exit=0
+-- agent log (PowerDNS)
+Oct 30 10:52:56 mainfu agent[404]: 2026/10/30 10:52:56 acceptance DNS cut fires at pdns-switch after_write target-enable-intent (reset)
+Oct 30 10:53:42 mainfu agent[409]: 2026/10/30 10:53:42 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+Oct 30 10:53:44 mainfu agent[409]: 2026/10/30 10:53:44 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+Oct 30 10:54:05 mainfu agent[409]: 2026/10/30 10:54:05 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+Oct 30 10:54:40 mainfu agent[409]: 2026/10/30 10:54:40 pdns primary pair readiness proof failed: DNS peer catalog differs from the primary
+-- from the lab network guest (outside the server)
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 23414
+;; flags: qr aa; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+; EDNS: version: 0, flags:; udp: 1232
+;; ANSWER SECTION:
+fua2.test.		3600	IN	SOA	ns1.fua2.test. hostmaster.fua2.test. 2026103000 3600 600 604800 300
+ns1.fua2.test. hostmaster.fua2.test. 2026103000 3600 600 604800 300
+== check apfu-a2/backup 2026-10-30T10:55:22Z
+-- os
+PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
+ID=debian
+6.12.105+deb13-cloud-amd64
+-- package
+pdns-backend-sqlite3	4.9.18-0+deb13u1
+pdns-server	4.9.18-0+deb13u1
+-- units
+active active active active inactive inactive 
+ExecStart={ path=/usr/sbin/pdns_server ; argv[]=/usr/sbin/pdns_server --guardian=no --daemon=no --disable-syslog --log-timestamp=no --write-pid=no
+User=pdns
+Group=pdns
+UnitFileState=enabled
+-- config
+755 root:root /etc/powerdns
+640 root:pdns /etc/powerdns/pdns.conf
+755 root:root /etc/powerdns/pdns.d
+644 root:root /etc/powerdns/pdns.d/celikpanel-cluster.conf
+644 root:root /etc/powerdns/pdns.d/celikpanel.conf
+755 pdns:pdns /var/lib/powerdns
+640 pdns:pdns /var/lib/powerdns/pdns.sqlite3
+640 pdns:pdns /var/lib/powerdns/pdns.sqlite3-shm
+640 pdns:pdns /var/lib/powerdns/pdns.sqlite3-wal
+include-dir=/etc/powerdns/pdns.d
+launch=
+security-poll-suffix=
+primary=yes
+secondary=yes
+allow-axfr-ips=192.0.3.94
+launch=gsqlite3
+gsqlite3-dnssec=yes
+gsqlite3-database=/var/lib/powerdns/pdns.sqlite3
+local-address=192.0.3.95
+zone-cache-refresh-interval=0
+webserver=no
+api=no
+-- DNS answers
+(no dig on this server)
+(no dig on this server)
+(no dig on this server)
+-- catalog
+
+/root/q.sh: line 17: sqlite3: command not found
+-- state
+dns-engine-ownership-pdns.json
+dns-engine-state.json
+firewall-apply-journal.json
+service-mutations.json
+{"schema":"celikpanel-dns-engine-state/v2","acquisition":{"schema":"celikpanel-dns-engine-acquisition/v1","mode":"switch","engine":"pdns","engine_epoch":1,"pair_role":"secondary","pair_local_ip":"192.0.3.95","pair_peer_ip":"192.0.3.94","source_revision":1,"manifest_qualifier":"dns-engine-switch/v1:sha256:62c06d2845f42ec92c18795f00bf19a7c1b760f9f286447f2b3070f1f938470a","mutation_request_id":"6dab354002250a126a755beb91b2ffb1","mutation_owner_id":"f44d486fda7e480997fa729ca95aa7da"},"publication":{"schema":"celikpanel-dns-engine-publication/v1","acquisition_sha256":"fbc2ee820a5eb710a55e57cb176083
+-- recovery status
+No DNS switch journal was observed. This does not prove historical completion or current DNS health. The server owner should inspect the native DNS service and the panel's operation status before starting another switch.
+exit=0
+-- agent log (PowerDNS)
+Oct 30 10:54:00 backfu agent[10146]: 2026/10/30 10:54:00 DNS engine change 6dab354002250a126a755beb91b2ffb1: the paired primary at 192.0.3.94 serves catalog catalog-c000035e.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 10:54:03 backfu addgroup[19673]: Adding group `pdns' (GID 105) ...
+Oct 30 10:54:03 backfu groupadd[19676]: group added to /etc/group: name=pdns, GID=105
+Oct 30 10:54:03 backfu groupadd[19676]: group added to /etc/gshadow: name=pdns
+Oct 30 10:54:03 backfu groupadd[19676]: new group: name=pdns, GID=105
+Oct 30 10:54:03 backfu adduser[19680]: Adding system user `pdns' (UID 104) ...
+Oct 30 10:54:03 backfu adduser[19680]: Adding new user `pdns' (UID 104) with group `pdns' ...
+Oct 30 10:54:04 backfu useradd[19684]: new user: name=pdns, UID=104, GID=105, home=/var/spool/powerdns, shell=/bin/false, from=none
+Oct 30 10:54:04 backfu adduser[19680]: Creating home directory `/var/spool/powerdns' ...
+Oct 30 10:54:09 backfu agent[10146]: 2026/10/30 10:54:09 DNS engine change completion 6dab354002250a126a755beb91b2ffb1: the paired primary at 192.0.3.94 serves catalog catalog-c000035e.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 10:54:10 backfu agent[10146]: 2026/10/30 10:54:10 DNS readiness check: the paired primary at 192.0.3.94 serves catalog catalog-c000035e.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 10:55:02 backfu agent[10146]: 2026/10/30 10:55:02 DNS readiness check: the paired primary at 192.0.3.94 serves catalog catalog-c000035e.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 10:55:03 backfu agent[10146]: 2026/10/30 10:55:03 DNS readiness check: the paired primary at 192.0.3.94 serves catalog catalog-c000035e.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 10:55:04 backfu agent[10146]: 2026/10/30 10:55:04 DNS readiness check: the paired primary at 192.0.3.94 serves catalog catalog-c000035e.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 10:55:05 backfu agent[10146]: 2026/10/30 10:55:05 DNS readiness check: the paired primary at 192.0.3.94 serves catalog catalog-c000035e.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+-- from the lab network guest (outside the server)
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 64741
+;; flags: qr aa; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+; EDNS: version: 0, flags:; udp: 1232
+;; ANSWER SECTION:
+fua2.test.		3600	IN	SOA	ns1.fua2.test. hostmaster.fua2.test. 2026103000 3600 600 604800 300
+ns1.fua2.test. hostmaster.fua2.test. 2026103000 3600 600 604800 300

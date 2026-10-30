@@ -1,0 +1,249 @@
+== provision 10:54:06 main=debian13/pdns 192.0.3.92 backup=arch/pdns 192.0.3.93 zone=fub.test cut=backup pdns-switch after_write target-staged reset
+tail: option used in invalid context -- 2
+== install 10:54:32
+main installer rc 0 30.0 postinstall rc 0
+backup installer rc 0 47.2 postinstall rc 0
+main license active
+backup license active
+guidance 200 
+guidance 200 
+main-domain 200 {
+ "checks": [],
+ "draft": {
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_role": "prim
+main-count 200 {
+ "checks": [],
+ "draft": {
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_role": "prim
+main-name 200 {
+ "checks": [],
+ "draft": {
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_role": "prim
+main-roles 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+main-names 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+main-dnshome 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+plan main 200 True [] ['01-service:nginx', '02-service:certbot', '03-service:mariadb', '04-service:php-fpm', '05-service:cron', '06-peer_join:second', '07-dns:local', '08-firewall:enable_and_persist', '09-infrastructure_dns:fub.test', '10-access_dns:mainfu.fub.test', '11-panel_certificate:mainfu.fub.test', '12-dns_readiness:local', '13-verify:custom'] 
+== start main 10:56:04
+start-main 202 {
+ "id": "1d8f0d19673bec760aeb11f1f0f7897f",
+ "panel_url": "https://mainfu.fub.test:2083/",
+ "phase": "queued",
+ "plan_i
+join-code 200 {
+ "address": "https://192.0.3.92:2083",
+ "attempts_left": 5
+connect 200 {
+ "setup": {
+  "checks": [],
+  "draft": {
+   "database": "mariadb",
+   "dns_engine": "bind",
+   "dns_mode": "local",
+   "dns_publisher_endpoint": "https://mainfu.fub.test:2083",
+   "dns_role": "secon
+backup-roles 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+backup-name 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+backup-names 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+backup-dnshome 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+plan backup 200 True [] ['01-peer_names:https://192.0.3.92:2083', '02-service:nginx', '03-service:certbot', '04-service:mariadb', '05-service:php-fpm', '06-service:cron', '07-dns:local', '08-firewall:enable_and_persist', '09-access_dns:backfu.fub.test', '10-panel_certificate:backfu.fub.test', '11-dns_publisher:https://mainfu.fub.test:2083', '12-verify:custom'] 
+== arm backfu 10:56:16
+-r--r--r-- 1 root root 70 Oct 30 10:54 /etc/celikpanel-dns-kill-matrix
+agent: /opt/celikpanel/bin/agent
+agent built with -tags=acceptance_license
+600 root:root /etc/celikpanel-acceptance-dns-cut
+pdns-switch after_write target-staged reset
+btrfs
+== start backup 10:56:18
+start-backup 202 {
+ "id": "41a30710109bb91dcf36a8e48cc65d4f",
+ "panel_url": "https://backfu.fub.test:2083/",
+ "phase": "queued",
+ "plan_i
+== wait for the cut node's setup to stop (backup) 10:56:21
+-- apfu-b/backup 10:56:21
+running 02-service null
+01-peer_names=succeeded 02-service=running 03-service=pending 04-service=pending 05-service=pending 06-service=pending 07-dns=pending 08-firewall=pending 09-access_dns=pending 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "02-service", "kind": "service", "owner_id": "d1979d86bda55c8b56881156047fbc06", "request_id": "35ce51d77b8945a8a8116ff789398d3e", "status": "running", "target": "nginx"}
+-- apfu-b/backup 10:56:41
+running 04-service null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=running 05-service=pending 06-service=pending 07-dns=pending 08-firewall=pending 09-access_dns=pending 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "04-service", "kind": "service", "owner_id": "9d8b2d0461bf5dde0d7f71e8ba8b073b", "request_id": "281a8405faf4790bd42de7209d55a33b", "status": "running", "target": "mariadb"}
+-- apfu-b/backup 10:57:01
+running 05-service null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=running 06-service=pending 07-dns=pending 08-firewall=pending 09-access_dns=pending 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "05-service", "kind": "service", "operation_id": "3e20d528d5830d765732359fbf98f350", "owner_id": "d9638fd79619106c8240ef924d07f7a7", "request_id": "6a2082104db775220f3b9bfed947f1ac", "status": "running", "target": "php-fpm"}
+-- apfu-b/backup 10:57:21
+waiting primary_dns {"code": "server_setup_primary_dns_required", "message": "The primary DNS server ns1.fub.test (192.0.3.92) has not provided its authoritative catalog yet. Start its DNS setup and check TCP port 53. This setup checks again automatically; no primary panel connection is required."}
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-service=succeeded 07-dns=running 08-firewall=pending 09-access_dns=pending 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "07-dns", "kind": "dns", "owner_id": "d38a701f93ce89cb2ffb002975551b61", "request_id": "4c229f7c3e190bc5bc46682dd0565584", "status": "running", "target": "local"}
+-- apfu-b/backup 10:58:41
+failed 07-dns {"code": "server_setup_dns_rolled_back", "message": "The DNS engine installation did not complete and CelikPanel undid it: no DNS engine is running on this server, and any packages it installed were kept stopped for the next attempt. Nothing else was changed, and no restart is needed. The server administrator chooses Review a revised plan: keep this DNS software to try the installation again as a new one, or choose the other DNS software in the plan; setup then continues from the new plan."}
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-service=succeeded 07-dns=failed 08-firewall=pending 09-access_dns=pending 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "07-dns", "kind": "dns", "owner_id": "d38a701f93ce89cb2ffb002975551b61", "request_id": "4c229f7c3e190bc5bc46682dd0565584", "status": "failed", "target": "local"}
+== the cut node after its setup stopped 10:58:41
+failed 07-dns {"code": "server_setup_dns_rolled_back", "message": "The DNS engine installation did not complete and CelikPanel undid it: no DNS engine is running on this server, and any packages it installed were kept stopped for the next attempt. Nothing else was changed, and no restart is needed. The server administrator chooses Review a revised plan: keep this DNS software to try the installation again as a new one, or choose the other DNS software in the plan; setup then continues from the new plan."}
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-service=succeeded 07-dns=failed 08-firewall=pending 09-access_dns=pending 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "07-dns", "kind": "dns", "owner_id": "d38a701f93ce89cb2ffb002975551b61", "request_id": "4c229f7c3e190bc5bc46682dd0565584", "status": "failed", "target": "local"}
+== after the cut backfu 10:58:42
+-- cut record
+{"schema":"celikpanel-acceptance-dns-cut/v1","driver":"pdns-switch","point":"after_write","phase":"target-staged","action":"reset","journal_schema":"celikpanel-dns-engine-switch-journal/v1","mutation_request_id":"4c229f7c3e190bc5bc46682dd0565584","manifest_qualifier":"dns-engine-switch/v1:sha256:610b787aa83dffe7b167a07aff9e83aa64d22cd9304a71ea038d297e5d958c68","pid":404,"recorded_at":"2026-10-30T10:58:20.212234748Z"}
+-- arm file (must be gone)
+ls: cannot access '/etc/celikpanel-acceptance-dns-cut': No such file or directory
+-- boots
+ -2 d3db1799d9574d52a28c61d676fe00d2 Fri 2026-10-30 10:54:12 UTC Fri 2026-10-30 10:55:21 UTC
+ -1 96c5064551594c4aba4b6f2dbc58dbb4 Fri 2026-10-30 10:55:27 UTC Fri 2026-10-30 10:58:20 UTC
+  0 143bc258a02743378dc9de7bdf090fb8 Fri 2026-10-30 10:58:25 UTC Fri 2026-10-30 10:58:42 UTC
+-- filesystem
+btrfs
+-- package
+powerdns 5.1.5-1
+-- units
+LoadState=masked
+ActiveState=inactive
+UnitFileState=masked
+active
+active
+-- files
+/etc/powerdns/pdns.d:
+total 0
+drwxr-xr-x 1 root root  0 Oct 30 10:58 .
+drwxr-xr-x 1 root root 70 Oct 30 10:58 ..
+
+/var/lib/celikpanel-agent-private:
+total 8
+drwx------ 1 root celikpanel  120 Oct 30 10:58 .
+drwxr-xr-x 1 root root        598 Oct 30 10:58 ..
+-rw------- 1 root celikpanel  381 Oct 30 10:58 dns-engine-install-ownership-pdns.json
+-rw------- 1 root celikpanel 3016 Oct 30 10:58 service-mutations.json
+
+/var/lib/powerdns:
+total 0
+drwxr-x--- 1 powerdns powerdns   0 Oct 30 10:58 .
+drwxr-xr-x 1 root     root     598 Oct 30 10:58 ..
+-- recovery dns-switch-status
+No DNS switch journal was observed. This does not prove historical completion or current DNS health. The server owner should inspect the native DNS service and the panel's operation status before starting another switch.
+exit=0
+-- agent log, previous boot (cut)
+Oct 30 10:58:20 backfu agent[404]: 2026/10/30 10:58:20 acceptance DNS cut fires at pdns-switch after_write target-staged (reset)
+-- agent log, this boot (DNS)
+== owner: review a revised plan on backup 10:58:42
+replan 200 True [] ['01-peer_names:https://192.0.3.92:2083', '02-dns:local', '03-firewall:enable_and_persist', '04-access_dns:backfu.fub.test', '05-panel_certificate:backfu.fub.test', '06-dns_publisher:https://mainfu.fub.test:2083', '07-verify:custom'] 
+== owner: start 10:58:43
+start 202 {
+ "id": "8b848206958173e5276a48301896aabd",
+ "panel_url": "https://backfu.fub.test:2083/",
+ "phase": "queued",
+ "plan_id": "897b7a5df566434ad68a2eb98dc8b050",
+ "request_id": "8b848206958173e5276a4830
+== wait for both 10:58:44
+-- apfu-b/main 10:58:44
+running infrastructure_dns {"code": "server_setup_infrastructure_dns_required", "message": "The reviewed DNS records are waiting for the native DNS pair or its exact zone transfer. Prepare the secondary ns2.fub.test (192.0.3.93) and check TCP/UDP port 53. This setup checks the same operation automatically."}
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=running 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "09-infrastructure_dns", "kind": "infrastructure_dns", "owner_id": "55907909dcf53c552c8b83061b78b482", "request_id": "f980e801b2d3efd261236219d0d3fde2", "status": "running", "target": "fub.test"}
+-- apfu-b/main 10:59:04
+waiting infrastructure_dns {"code": "server_setup_infrastructure_dns_required", "message": "The reviewed DNS records are waiting for the native DNS pair or its exact zone transfer. Prepare the secondary ns2.fub.test (192.0.3.93) and check TCP/UDP port 53. This setup checks the same operation automatically."}
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=running 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "09-infrastructure_dns", "kind": "infrastructure_dns", "owner_id": "55907909dcf53c552c8b83061b78b482", "request_id": "f980e801b2d3efd261236219d0d3fde2", "status": "running", "target": "fub.test"}
+-- apfu-b/main 10:59:25
+running verification null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-verify=pending
+== cell apfu-b main stuck at verification 11:17:11
+running verification null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-verify=pending
+== panel setup log mainfu 11:17:12
+Oct 30 10:59:11 mainfu systemd[1]: Stopping celikpanel-panel.service - CelikPanel web panel...
+Oct 30 10:59:11 mainfu systemd[1]: celikpanel-panel.service: Deactivated successfully.
+Oct 30 10:59:11 mainfu systemd[1]: Stopped celikpanel-panel.service - CelikPanel web panel.
+Oct 30 10:59:11 mainfu systemd[1]: celikpanel-panel.service: Consumed 1.292s CPU time, 148.8M memory peak.
+Oct 30 10:59:11 mainfu systemd[1]: Starting celikpanel-panel.service - CelikPanel web panel...
+Oct 30 10:59:12 mainfu systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+Oct 30 10:59:12 mainfu panel[22065]: 2026/10/30 10:59:12 Starting CelikPanel Backend...
+Oct 30 10:59:12 mainfu panel[22065]: 2026/10/30 10:59:12 ACCEPTANCE FIXTURE — NOT FOR PRODUCTION: this panel was built with the acceptance_license test tag; it never contacts the license service and accepts only the acceptance fixture license on a disposable acceptance guest (guest: verified)
+Oct 30 10:59:12 mainfu panel[22065]: 2026/10/30 10:59:12 Panel startup listener active on :2083 (HTTPS; application gated)
+Oct 30 10:59:12 mainfu panel[22065]: 2026/10/30 10:59:12 Connected to Agent RPC; preparing normal management access
+Oct 30 10:59:12 mainfu panel[22065]: 2026/10/30 10:59:12 milter chain: nothing to wire at startup: no mail server is installed on this server, so there is no Postfix milter chain to compose
+Oct 30 10:59:12 mainfu panel[22065]: 2026/10/30 10:59:12 Panel ready on :2083 (HTTPS)
+Oct 30 10:59:16 mainfu panel[22065]: 2026/10/30 10:59:16 server setup execution 1d8f0d19673bec760aeb11f1f0f7897f: setup prerequisites are not ready
+Oct 30 11:01:03 mainfu panel[22065]: 2026/10/30 11:01:03 [panel-update] automatic update check skipped (setup_running); next try in 1 hour
+active
+active
+active
+== owner: restart the panel service mainfu 11:17:12
+active
+-- apfu-b/main 11:17:18
+succeeded complete null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-verify=succeeded
+succeeded complete null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-verify=succeeded

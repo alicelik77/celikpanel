@@ -1,0 +1,76 @@
+== check apfu-b/main 2026-10-30T11:17:18Z
+-- os
+PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
+ID=debian
+6.12.105+deb13-cloud-amd64
+-- package
+pdns-backend-sqlite3	4.9.18-0+deb13u1
+pdns-server	4.9.18-0+deb13u1
+-- units
+active active active active inactive inactive 
+ExecStart={ path=/usr/sbin/pdns_server ; argv[]=/usr/sbin/pdns_server --guardian=no --daemon=no --disable-syslog --log-timestamp=no --write-pid=no
+User=pdns
+Group=pdns
+UnitFileState=enabled
+-- config
+755 root:root /etc/powerdns
+640 root:pdns /etc/powerdns/pdns.conf
+755 root:root /etc/powerdns/pdns.d
+644 root:root /etc/powerdns/pdns.d/celikpanel-cluster.conf
+644 root:root /etc/powerdns/pdns.d/celikpanel.conf
+755 pdns:pdns /var/lib/powerdns
+640 pdns:pdns /var/lib/powerdns/pdns.sqlite3
+640 pdns:pdns /var/lib/powerdns/pdns.sqlite3-shm
+640 pdns:pdns /var/lib/powerdns/pdns.sqlite3-wal
+include-dir=/etc/powerdns/pdns.d
+launch=
+security-poll-suffix=
+primary=yes
+secondary=yes
+allow-axfr-ips=192.0.3.92,192.0.3.93
+also-notify=192.0.3.93
+launch=gsqlite3
+gsqlite3-dnssec=yes
+gsqlite3-database=/var/lib/powerdns/pdns.sqlite3
+local-address=192.0.3.92
+zone-cache-refresh-interval=0
+webserver=no
+api=no
+-- DNS answers
+(no dig on this server)
+(no dig on this server)
+(no dig on this server)
+-- catalog
+
+/root/q.sh: line 17: sqlite3: command not found
+-- state
+dns-engine-ownership-pdns.json
+dns-engine-state.json
+dns-engine-switch-v3-archive-e9e076db43316a53bc20cb3ce4a82402-ac42f5cc8250fd7c5734ce94f835b51deee6d6863dd8f1434d64ff7b06808358.json
+firewall-apply-journal.json
+service-mutations.json
+{"schema":"celikpanel-dns-engine-state/v3","acquisition":{"schema":"celikpanel-dns-engine-acquisition/v1","mode":"switch","engine":"pdns","engine_epoch":1,"pair_role":"primary","pair_local_ip":"192.0.3.92","pair_peer_ip":"192.0.3.93","source_revision":1,"manifest_qualifier":"dns-engine-switch/v1:sha256:e39535d59feead9becdcd7ce5e92ac621448bfc8fa8f1382bc549aac13a4696f","mutation_request_id":"e9e076db43316a53bc20cb3ce4a82402","mutation_owner_id":"3a20adbaa01595f3d1b7bddfa0983a99"},"publication":{"schema":"celikpanel-dns-engine-publication/v1","acquisition_sha256":"b7711253c854747e62cd195188de76ec
+-- recovery status
+No DNS switch journal was observed. This does not prove historical completion or current DNS health. The server owner should inspect the native DNS service and the panel's operation status before starting another switch.
+exit=0
+-- agent log (PowerDNS)
+Oct 30 10:57:58 mainfu addgroup[19705]: Adding group `pdns' (GID 105) ...
+Oct 30 10:57:58 mainfu groupadd[19708]: group added to /etc/group: name=pdns, GID=105
+Oct 30 10:57:58 mainfu groupadd[19708]: group added to /etc/gshadow: name=pdns
+Oct 30 10:57:58 mainfu groupadd[19708]: new group: name=pdns, GID=105
+Oct 30 10:57:58 mainfu adduser[19712]: Adding system user `pdns' (UID 104) ...
+Oct 30 10:57:58 mainfu adduser[19712]: Adding new user `pdns' (UID 104) with group `pdns' ...
+Oct 30 10:57:58 mainfu useradd[19716]: new user: name=pdns, UID=104, GID=105, home=/var/spool/powerdns, shell=/bin/false, from=none
+Oct 30 10:57:58 mainfu adduser[19712]: Creating home directory `/var/spool/powerdns' ...
+Oct 30 10:58:04 mainfu agent[10145]: 2026/10/30 10:58:04 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+Oct 30 10:58:06 mainfu agent[10145]: 2026/10/30 10:58:06 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+Oct 30 10:58:07 mainfu agent[10145]: 2026/10/30 10:58:07 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+Oct 30 10:58:36 mainfu agent[10145]: 2026/10/30 10:58:36 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+Oct 30 10:58:44 mainfu agent[10145]: 2026/10/30 10:58:44 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+-- from the lab network guest (outside the server)
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 50307
+;; flags: qr aa; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+; EDNS: version: 0, flags:; udp: 1232
+;; ANSWER SECTION:
+fub.test.		3600	IN	SOA	ns1.fub.test. hostmaster.fub.test. 2026103000 3600 600 604800 300
+ns1.fub.test. hostmaster.fub.test. 2026103000 3600 600 604800 300

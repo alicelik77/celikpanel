@@ -1,0 +1,18 @@
+== panel setup log mainfu 11:14:28
+Oct 30 10:59:11 mainfu systemd[1]: Stopping celikpanel-panel.service - CelikPanel web panel...
+Oct 30 10:59:11 mainfu systemd[1]: celikpanel-panel.service: Deactivated successfully.
+Oct 30 10:59:11 mainfu systemd[1]: Stopped celikpanel-panel.service - CelikPanel web panel.
+Oct 30 10:59:11 mainfu systemd[1]: celikpanel-panel.service: Consumed 1.292s CPU time, 148.8M memory peak.
+Oct 30 10:59:11 mainfu systemd[1]: Starting celikpanel-panel.service - CelikPanel web panel...
+Oct 30 10:59:12 mainfu systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+Oct 30 10:59:12 mainfu panel[22065]: 2026/10/30 10:59:12 Starting CelikPanel Backend...
+Oct 30 10:59:12 mainfu panel[22065]: 2026/10/30 10:59:12 ACCEPTANCE FIXTURE — NOT FOR PRODUCTION: this panel was built with the acceptance_license test tag; it never contacts the license service and accepts only the acceptance fixture license on a disposable acceptance guest (guest: verified)
+Oct 30 10:59:12 mainfu panel[22065]: 2026/10/30 10:59:12 Panel startup listener active on :2083 (HTTPS; application gated)
+Oct 30 10:59:12 mainfu panel[22065]: 2026/10/30 10:59:12 Connected to Agent RPC; preparing normal management access
+Oct 30 10:59:12 mainfu panel[22065]: 2026/10/30 10:59:12 milter chain: nothing to wire at startup: no mail server is installed on this server, so there is no Postfix milter chain to compose
+Oct 30 10:59:12 mainfu panel[22065]: 2026/10/30 10:59:12 Panel ready on :2083 (HTTPS)
+Oct 30 10:59:16 mainfu panel[22065]: 2026/10/30 10:59:16 server setup execution 1d8f0d19673bec760aeb11f1f0f7897f: setup prerequisites are not ready
+Oct 30 11:01:03 mainfu panel[22065]: 2026/10/30 11:01:03 [panel-update] automatic update check skipped (setup_running); next try in 1 hour
+active
+active
+active

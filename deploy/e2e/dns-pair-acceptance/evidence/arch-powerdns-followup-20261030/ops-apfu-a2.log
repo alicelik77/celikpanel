@@ -1,0 +1,105 @@
+== daily operations on apfu-a2, zone opsfu.test 10:55:23
+-- create the domain (DNS only)
+200
+{
+ "DocumentRoot": "",
+ "Domain": "opsfu.test",
+ "DomainID": 1,
+ "FTPPassword": "",
+ "FTPUser": "",
+ "PHPVersion": "",
+ "ProjectType": "dnsonly",
+ "SiteID": 1,
+ "TempDomain": ""
+}
+
+   domain id: 1
+200
+{
+ "id": 2,
+ "name": "opsfu.test",
+ "type": "MASTER"
+}
+
+   192.0.3.94 opsfu.test SOA = 'ns1.fua2.test. hostmaster.opsfu.test. 2026103001 10800 3600 604800 3600' after 0s
+   192.0.3.95 opsfu.test SOA = 'ns1.fua2.test. hostmaster.opsfu.test. 2026103001 10800 3600 604800 3600' after 0s
+   SOA @192.0.3.94: 2026103001
+   SOA @192.0.3.95: 2026103001
+-- add record www2 A 192.0.2.55 10:55:29
+200
+{
+ "id": 17,
+ "success": true
+}
+
+   192.0.3.94 www2.opsfu.test A = '192.0.2.55' after 0s
+   192.0.3.95 www2.opsfu.test A = '192.0.2.55' after 0s
+   SOA @192.0.3.94: 2026103002
+   SOA @192.0.3.95: 2026103002
+   record id: 17
+-- edit it to 192.0.2.56 10:55:32
+200
+{
+ "success": true
+}
+
+   192.0.3.94 www2.opsfu.test A = '192.0.2.56' after 0s
+   192.0.3.95 www2.opsfu.test A = '192.0.2.56' after 0s
+   SOA @192.0.3.94: 2026103003
+   SOA @192.0.3.95: 2026103003
+-- add MX and TXT 10:55:36
+200
+{
+ "id": 18,
+ "success": true
+}
+
+   192.0.3.94 opsfu.test TXT = '"ops-check" "v=spf1 a mx ~all"' after 0s
+   192.0.3.95 opsfu.test TXT = '"ops-check" "v=spf1 a mx ~all"' after 0s
+-- delete www2 10:55:40
+409
+{
+ "action": "/dns-infrastructure",
+ "code": "DNS_SERVER_REQUIRED",
+ "error": "no single managed authoritative DNS engine is active and verified"
+}
+
+   192.0.3.94 www2.opsfu.test A: NOT within 60s (got '192.0.2.56')
+   192.0.3.95 www2.opsfu.test A: NOT within 180s (got '192.0.2.56')
+   SOA @192.0.3.94: 2026103004
+   SOA @192.0.3.95: 2026103004
+   main: status: NOERROR  backup: status: NOERROR
+-- delete the zone (delete the domain) 10:59:43
+202
+{
+ "domain": "opsfu.test",
+ "message": "The DNS change is saved on this server, but the secondary has not been shown to have removed the zone: no inspection access is set up between the two servers. The administrators of both servers set it up once with the dns-peer-enroll owner tool (add --engine pdns to each command when the secondary runs PowerDNS): primary-prepare here, secondary-install a
+   deletion-status: 200 {  "message": "The DNS change is saved on this server, but the secondary has not been shown to have removed the zone: no inspection access is set up between the two servers. The administrators of both servers set it up once with the dns-peer-enroll owner tool (add --engine pdns to each command w
+   192.0.3.94 opsfu.test SOA after deletion: status: REFUSED (0s)
+   192.0.3.95 opsfu.test SOA after deletion: status: REFUSED (1s)
+-- infrastructure zone still served 11:02:23
+   192.0.3.94 status: NOERROR
+   192.0.3.95 status: NOERROR
+== daily operations done 11:02:23
+== daily operations on apfu-a2, zone pkgfu.test 11:03:13
+-- create the domain (DNS only)
+409
+{
+ "action": "/domains/pkgfu.test?tab=dns",
+ "code": "DNS_PUBLICATION_PENDING",
+ "domain": "pkgfu.test",
+ "domain_id": 2,
+ "error": "the domain was created, but its DNS setup is incomplete; review it in the domain's DNS management page",
+ "partial_success": true,
+ "zone_exists": true
+}
+
+   domain id: 2
+200
+{
+ "id": 3,
+ "name": "pkgfu.test",
+ "type": "MASTER"
+}
+
+   192.0.3.94 pkgfu.test SOA: NOT within 120s (got '')

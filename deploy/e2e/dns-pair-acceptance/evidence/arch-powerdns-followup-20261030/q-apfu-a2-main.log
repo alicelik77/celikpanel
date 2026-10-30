@@ -1,0 +1,31 @@
+== agent pair readiness log mainfu 11:01:53
+Oct 30 10:53:42 mainfu agent[409]: 2026/10/30 10:53:42 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+Oct 30 10:53:44 mainfu agent[409]: 2026/10/30 10:53:44 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+Oct 30 10:54:05 mainfu agent[409]: 2026/10/30 10:54:05 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+Oct 30 10:54:40 mainfu agent[409]: 2026/10/30 10:54:40 pdns primary pair readiness proof failed: DNS peer catalog differs from the primary
+Oct 30 10:55:40 mainfu agent[409]: 2026/10/30 10:55:40 pdns primary pair readiness proof failed: DNS peer catalog differs from the primary
+Oct 30 10:59:45 mainfu agent[409]: 2026/10/30 10:59:45 pdns zone publication remains pending for opsfu.test at epoch 1: paired DNS deletion is unverified (check=peer_native_zone); the peer administrator must check native zone state and DNS access, then retry verification of the same operation
+Oct 30 10:59:45 mainfu agent[409]: 2026/10/30 10:59:45 DNS zone V3 recovery remains pending for opsfu.test: paired DNS deletion is unverified (check=peer_native_zone); the peer administrator must check native zone state and DNS access, then retry verification of the same operation
+-- panel log
+Oct 30 10:51:17 mainfu panel[7809]: 2026/10/30 10:51:17 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: mail server hostname is not a valid FQDN: invalid hostname "mainfu": a fully qualified DNS name is required; preserve pending outbox: <nil>
+Oct 30 10:51:18 mainfu panel[7874]: 2026/10/30 10:51:18 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: mail server hostname is not a valid FQDN: invalid hostname "mainfu": a fully qualified DNS name is required; preserve pending outbox: <nil>
+Oct 30 10:53:15 mainfu panel[423]: 2026/10/30 10:53:15 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: mail server hostname is not a valid FQDN: invalid hostname "mainfu": a fully qualified DNS name is required; preserve pending outbox: <nil>
+Oct 30 10:53:15 mainfu panel[423]: 2026/10/30 10:53:15 server setup step 07-dns failed: the DNS setup operation was rolled back; review a new plan
+Oct 30 10:54:35 mainfu panel[2932]: 2026/10/30 10:54:35 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: mail server hostname is not a valid FQDN: invalid hostname "mainfu": a fully qualified DNS name is required; preserve pending outbox: <nil>
+Oct 30 10:59:45 mainfu panel[2932]: 2026/10/30 10:59:45 domain deletion pending for opsfu.test at dns_cleanup: publish DNS zone deletion: DNS zone V3 paired propagation recovery is deferred: DNS zone publication is waiting for exact paired propagation recovery
+Oct 30 10:59:45 mainfu panel[2932]: DNS zone publication is waiting for exact paired propagation recovery
+Oct 30 10:59:45 mainfu panel[2932]: DNS zone publication is waiting for exact paired propagation recovery
+== why publications fail mainfu 11:08:52
+Oct 30 10:59:45 mainfu agent[409]: 2026/10/30 10:59:45 pdns zone publication remains pending for opsfu.test at epoch 1: paired DNS deletion is unverified (check=peer_native_zone); the peer administrator must check native zone state and DNS access, then retry verification of the same operation
+Oct 30 10:59:45 mainfu agent[409]: 2026/10/30 10:59:45 DNS zone V3 recovery remains pending for opsfu.test: paired DNS deletion is unverified (check=peer_native_zone); the peer administrator must check native zone state and DNS access, then retry verification of the same operation
+Oct 30 11:03:03 mainfu agent[745]: 2026/10/30 11:03:03 Panel certificate activation remains pending: connect to panel TLS listener: dial tcp 127.0.0.1:2083: connect: connection refused
+Oct 30 11:03:04 mainfu agent[745]: 2026/10/30 11:03:04 DNS zone V3 recovery remains pending for opsfu.test: paired DNS deletion is unverified (check=peer_native_zone); the peer administrator must check native zone state and DNS access, then retry verification of the same operation
+-- panel
+Oct 30 11:03:04 mainfu panel[850]: 2026/10/30 11:03:04 deferring exact DNS V3 publication opsfu.test until paired propagation is ready: DNS zone V3 paired propagation recovery is deferred: DNS zone publication is waiting for exact paired propagation recovery
+Oct 30 11:03:04 mainfu panel[850]: DNS zone publication is waiting for exact paired propagation recovery
+Oct 30 11:03:04 mainfu panel[850]: 2026/10/30 11:03:04 deferring 0 fresh DNS publication(s) behind 1 exact V3 recovery lease(s)
+Oct 30 11:03:04 mainfu panel[850]: 2026/10/30 11:03:04 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: mail server hostname is not a valid FQDN: invalid hostname "mainfu": a fully qualified DNS name is required; preserve pending outbox: <nil>
+Oct 30 11:03:14 mainfu panel[850]: 2026/10/30 11:03:14 dns V3 sync pkgfu.test generation 11: an exact DNS zone V3 publication is pending recovery
+Oct 30 11:03:14 mainfu panel[850]: 2026/10/30 11:03:14 dns zone publication for pkgfu.test: publish DNS zone: an exact DNS zone V3 publication is pending recovery
+Oct 30 11:08:41 mainfu panel[850]: 2026/10/30 11:08:41 dns V3 sync fua2.test generation 11: an exact DNS zone V3 publication is pending recovery
+Oct 30 11:08:41 mainfu panel[850]: 2026/10/30 11:08:41 [409][dns] publish zone fua2.test: an exact DNS zone V3 publication is pending recovery
