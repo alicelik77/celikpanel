@@ -288,14 +288,19 @@ matrix_milters_start() {
     return 0
 }
 matrix_milters_stop() {
-    local file pid
+    local file pid port
     for file in /run/matrix-milter-*.pid; do
         [[ -f "$file" ]] || continue
-        pid=$(cat "$file")
+        pid=$(cat "$file") port=${file#/run/matrix-milter-} port=${port%.pid}
         kill "$pid" 2>/dev/null
-        # The next case binds the same port: wait until this one is gone.
         wait "$pid" 2>/dev/null
-        for _ in 1 2 3 4 5 6 7 8 9 10; do kill -0 "$pid" 2>/dev/null || break; sleep 0.5; done
+        # The next case binds the same port: wait until nothing answers on
+        # it, and remove any OpenDKIM process of this stand-in still there.
+        for _ in $(seq 1 20); do
+            timeout 1 bash -c "exec 3<>/dev/tcp/127.0.0.1/$port" 2>/dev/null || break
+            sleep 0.5
+        done
+        pkill -9 -f "matrix-milter-$port.conf" 2>/dev/null
     done
     rm -f /run/matrix-milter-*.pid /run/matrix-milter-*.conf /run/matrix-milter-*.log
 }
