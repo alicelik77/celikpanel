@@ -13,32 +13,39 @@ func NewVersionDetector() *VersionDetector {
 	return &VersionDetector{}
 }
 
-// DetectVersion attempts to auto-detect version using common patterns
+// DetectVersion returns the version of the few services whose version can be
+// read without starting anything (special cases below), or "unknown". It never
+// runs a service's own program with guessed flags: a daemon that does not know
+// "--version" or "version" starts a second copy instead (Debian's cron logged
+// "DEATH (can't lock /var/run/crond.pid)" on every service list). The Agent
+// fills "unknown" from the package database (UpstreamPackageVersion).
+// DetectVersion hizmet programını tahmini bayraklarla asla çalıştırmaz; cron
+// gibi bir program ikinci kopyasını başlatırdı. Bilinmeyen sürüm paket
+// veritabanından doldurulur.
 func (vd *VersionDetector) DetectVersion(serviceName string) string {
-	// Special cases first (faster)
 	if version := vd.detectSpecialCases(serviceName); version != "" {
 		return version
 	}
-
-	// Try common version flags
-	patterns := [][]string{
-		{serviceName, "--version"},
-		{serviceName, "-v"},
-		{serviceName, "-V"},
-		{serviceName, "version"},
-	}
-
-	for _, args := range patterns {
-		cmd := exec.Command(args[0], args[1:]...)
-		output, err := cmd.CombinedOutput()
-		if err == nil && len(output) > 0 {
-			if version := vd.parseVersionString(string(output)); version != "" {
-				return version
-			}
-		}
-	}
-
 	return "unknown"
+}
+
+var upstreamVersionPrefix = regexp.MustCompile(`^\d+(?:\.\d+)*`)
+
+// UpstreamPackageVersion turns a package database version into the version a
+// screen shows: the epoch ("1:") and the distribution revision ("-0+deb13u1",
+// "-1") are dropped, then the leading numeric part is kept
+// ("1:10.11.13-0+deb13u1" -> "10.11.13", "3.0pl1-197" -> "3.0",
+// "5.1.5-1" -> "5.1.5"). "" when nothing numeric remains.
+// Paket sürümünden ekranda gösterilen sürüm.
+func UpstreamPackageVersion(packageVersion string) string {
+	value := strings.TrimSpace(packageVersion)
+	if _, rest, ok := strings.Cut(value, ":"); ok {
+		value = rest
+	}
+	if i := strings.LastIndex(value, "-"); i > 0 {
+		value = value[:i]
+	}
+	return upstreamVersionPrefix.FindString(value)
 }
 
 // detectSpecialCases handles services with non-standard version commands
@@ -106,48 +113,5 @@ func mariaDBServerProgramVersion(output string) string {
 	if match := mariaDBServerProgramLine.FindStringSubmatch(output); match != nil {
 		return match[1]
 	}
-	return ""
-}
-
-// parseVersionString extracts version number from command output
-func (vd *VersionDetector) parseVersionString(output string) string {
-	output = strings.TrimSpace(output)
-
-	// Common patterns
-	patterns := []struct {
-		regex *regexp.Regexp
-		group int
-	}{
-		// "nginx version: nginx/1.24.0" -> 1.24.0
-		{regexp.MustCompile(`(?i)nginx/(\d+\.\d+[\.\d]*)`), 1},
-
-		// "mariadb Ver 10.11.13-MariaDB" -> 10.11.13
-		{regexp.MustCompile(`(?i)Ver\s+(\d+\.\d+[\.\d]*)`), 1},
-
-		// "certbot 2.7.4" -> 2.7.4
-		{regexp.MustCompile(`(?i)certbot\s+(\d+\.\d+[\.\d]*)`), 1},
-
-		// "Fail2Ban v1.0.2" -> 1.0.2
-		{regexp.MustCompile(`(?i)v(\d+\.\d+[\.\d]*)`), 1},
-
-		// "vsftpd: version 3.0.5" -> 3.0.5
-		{regexp.MustCompile(`(?i)version\s+(\d+\.\d+[\.\d]*)`), 1},
-
-		// "2.3.19.1 (9b53102964)" -> 2.3.19.1 (dovecot style)
-		{regexp.MustCompile(`^(\d+\.\d+[\.\d]*)`), 1},
-
-		// SpamAssassin 3.4.6 or similar
-		{regexp.MustCompile(`(?i)spamassassin\s+(\d+\.\d+[\.\d]*)`), 1},
-	}
-
-	for _, p := range patterns {
-		if matches := p.regex.FindStringSubmatch(output); matches != nil && len(matches) > p.group {
-			version := matches[p.group]
-			// Remove any suffix like -MariaDB
-			version = strings.Split(version, "-")[0]
-			return version
-		}
-	}
-
 	return ""
 }
