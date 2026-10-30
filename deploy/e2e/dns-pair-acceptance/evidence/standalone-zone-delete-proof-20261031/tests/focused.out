@@ -1,0 +1,17 @@
+﻿== gofmt
+== build
+build exit 0
+== vet
+vet exit 0
+== agent focused
+--- PASS: TestRecoveryAgentCheckerStandalone (1.10s)
+ok  	github.com/alicelik/celikpanel/cmd/agent	2.705s
+agent exit 0
+== panel focused
+--- PASS: TestAnInterruptedWebmailAddressOperationIsReconciledReadOnly (0.03s)
+ok  	github.com/alicelik/celikpanel/cmd/panel	2.915s
+panel exit 0
+== internal
+ok  	github.com/alicelik/celikpanel/internal/configmatrix	0.247s
+ok  	github.com/alicelik/celikpanel/internal/transport	5.189s
+internal exit 0

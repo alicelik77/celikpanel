@@ -1,0 +1,36 @@
+== d5-b facts 22:35:06
+PRETTY_NAME="Arch Linux"
+Oct 30 22:35:07 Loading '/usr/lib/powerdns/libbindbackend.so'
+Oct 30 22:35:07 Loading '/usr/lib/powerdns/libgeoipbackend.so'
+bin
+dns-owner-tools
+runtimes
+state file
+{"command": "f=$(ls /var/lib/celikpanel-agent*/service-mutations.json /var/lib/celikpanel*/*/service-mutations.json 2>/dev/null | head -1); python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(\"active\", repr(d.get(\"active_request_id\", d.get(\"ActiveRequestID\"))));\njobs=d.get(\"jobs\") or d.get(\"Jobs\") or {}\nfor j in jobs.values():\n    k=j.get(\"kind\") or j.get(\"Kind\")\n    if k==\"dns_zone_sync\": print(j.get(\"target\") or j.get(\"Target\"), j.get(\"status\") or j.get(\"Status\"), (j.get(\"phase\") or j.get(\"Phase\") or \"\").split(\"/\")[3:4])' $f", "rc": 1, "seconds": 0.19, "stdout": "", "stderr": "  File \"<string>\", line 1\n    import json,sys; d=json.load(open(sys.argv[1])); print(\"active\", repr(d.get(\"active_request_id\", d.get(\"ActiveRequestID\"))));\\njobs=d.get(\"jobs\") or d.get(\"Jobs\") or {}\\nfor j in jobs.values():\\n    k=j.get(\"kind\") or j.get(\"Kind\")\\n    if k==\"dns_zone_sync\": print(j.get(\"target\") or j.get(\"Target\"), j.get(\"status\") or j.get(\"Status\"), (j.get(\"phase\") or j.get(\"Phase\") or \"\").split(\"/\")[3:4])\n                                                                                                                                  ^\nSyntaxError: unexpected character after line continuation character\n", "at": "2026-10-30T22:35:08.253Z", "label": "ledger"}
+0
+2026-10-30T22:34:04+00:00 arch panel[3253]: 2026/10/30 22:34:04 [dkim-auto] archd5shop113.test: DKIM ready (domain_created; record published in archd5shop113.test)
+== d5-b ledger 22:35:33
+engine state: {'schema': 'celikpanel-dns-engine-state/v2', 'mode': None, 'engine': None, 'engine_epoch': None, 'pair_role': None, 'pair_local_ip': None}
+ledger active request: None
+ dns_zone_sync archd5next113.test succeeded commit/dns-zone-sync/v3/published
+ dns_zone_sync archd5f113.test succeeded commit/dns-zone-sync/v3/published
+ dns_zone_sync archd5shop113.test succeeded commit/dns-zone-sync/v3/published
+ dns_zone_sync archd5f113.test succeeded commit/dns-zone-sync/v3/published
+ dns_zone_sync archd5shop113.test succeeded commit/dns-zone-sync/v3/published
+ dns_zone_sync archd5shop113.test succeeded commit/dns-zone-sync/v3/published
+ dns_zone_sync archd5next113.test succeeded commit/dns-zone-sync/v3/published
+== d5-b ledger 22:35:46
+  state schema = celikpanel-dns-engine-state/v2
+  state acquisition.schema = celikpanel-dns-engine-acquisition/v1
+  state acquisition.mode = switch
+  state acquisition.engine = pdns
+  state acquisition.engine_epoch = 1
+  state publication.schema = celikpanel-dns-engine-publication/v1
+ledger active request: None
+ dns_zone_sync archd5next113.test succeeded commit/dns-zone-sync/v3/published
+ dns_zone_sync archd5f113.test succeeded commit/dns-zone-sync/v3/published
+ dns_zone_sync archd5shop113.test succeeded commit/dns-zone-sync/v3/published
+ dns_zone_sync archd5f113.test succeeded commit/dns-zone-sync/v3/published
+ dns_zone_sync archd5shop113.test succeeded commit/dns-zone-sync/v3/published
+ dns_zone_sync archd5shop113.test succeeded commit/dns-zone-sync/v3/published
+ dns_zone_sync archd5next113.test succeeded commit/dns-zone-sync/v3/published

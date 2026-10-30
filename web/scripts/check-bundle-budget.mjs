@@ -136,8 +136,8 @@ const screenPartBudgets = {
   // 2026-10-31: the reviewed reasons of an unpublished DNS change
   // (err.DNS_PUBLICATION_FAILED.<reason>), split out of "errors" when the
   // held-Agent reason took it over its ceiling (Turkish 44.61 KiB before). A
-  // new part, set with at least 25% headroom from its Turkish file (source
-  // 7.87 KiB).
+  // new part, set with at least 25% headroom from its Turkish file: 7.52 /
+  // 2.35 KiB.
   dnsPublication: kib(10.5, 4),
 }
 
