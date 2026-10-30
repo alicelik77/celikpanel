@@ -94,6 +94,7 @@ export const enVendorLanesScreens = {
     // ---- the security updates card ----
     'lane.updates.fix': 'Complete {name}…',
     'lane.updates.fixHint': 'Writes what is missing — the confinement and the origin among the automatic updates — after showing it.',
+    'lane.archOnly': 'Arch Linux: the current version in the official repositories only; no vendor repository or version choice.',
 } as const;
 
 export type VendorLanesScreenKey = keyof typeof enVendorLanesScreens;

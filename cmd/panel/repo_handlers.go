@@ -40,6 +40,10 @@ type repoInfoResp struct {
 	Required   bool     `json:"required,omitempty"`   // without this repo the package does not exist here
 	Packages   []string `json:"packages,omitempty"`   // available version packages (newest first)
 	ErrorCode  string   `json:"error_code,omitempty"`
+	// DistributionOnly names the package family ("pacman") on which this
+	// component's vendor repository is not offered: the distribution's own
+	// version is what the server gets.
+	DistributionOnly string `json:"distribution_only,omitempty"`
 	// The repository card (alpha.107, D-038 §12): the confinement, the
 	// moving default-version packages installed, the signing key, what apt
 	// last downloaded, who enabled it and when (the audit log; the Agent's
@@ -155,8 +159,11 @@ func (p *Panel) handleRepo(w http.ResponseWriter, r *http.Request) {
 		// Yonetilen vendor depolari simdilik yalniz apt icindir. Arch'ta ayni
 		// bilesen yerel pacman deposundan gelebilir; apt-only zorunlu-depo
 		// dugmesi gostermek kurulumu yanlislikla engellerdi.
-		if p.packageFamily() != "apt" {
-			json.NewEncoder(w).Encode(repoInfoResp{Available: false})
+		if family := p.packageFamily(); family != "apt" {
+			// Said, not hidden (2026-10-30): on Arch the component is the
+			// official repositories' current version, with no vendor
+			// repository and no version choice.
+			json.NewEncoder(w).Encode(repoInfoResp{Available: false, DistributionOnly: family})
 			return
 		}
 		json.NewEncoder(w).Encode(p.repoInfoContext(r.Context(), svc.Repo))

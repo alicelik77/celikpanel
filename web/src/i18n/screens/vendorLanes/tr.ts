@@ -86,4 +86,5 @@ export const trVendorLanesScreens: Record<VendorLanesScreenKey, string> = {
     // ---- güvenlik güncellemeleri kartı ----
     'lane.updates.fix': '{name} kurulumunu tamamla…',
     'lane.updates.fixHint': 'Eksik olanı — sınırlamayı ve kaynağın otomatik güncellemelere eklenmesini — önce göstererek yazar.',
+    'lane.archOnly': 'Arch Linux: yalnız resmi depolardaki güncel sürüm; üretici deposu ve sürüm seçimi yok.',
 };
