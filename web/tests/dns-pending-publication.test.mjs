@@ -5,8 +5,8 @@ import { decodeDNSEngineSnapshot, decodeDNSPendingPublications, pendingPublicati
 import { domainDeletionReasonKey, readDomainDeletionOutcome, readSavedDomainDeletionState, readSavedDomainDeletionStatus } from '../src/lib/domainDeletionPending.ts';
 import { enScreens, trScreens } from './locale-catalogue.mjs';
 import { dnsEngineEn, dnsEngineText, dnsEngineTr } from '../src/i18n/dnsEngine.ts';
-import { enErrorsScreens as en } from '../src/i18n/screens/errors/en.ts';
-import { trErrorsScreens as tr } from '../src/i18n/screens/errors/tr.ts';
+import { enDnsPublicationScreens as en } from '../src/i18n/screens/dnsPublication/en.ts';
+import { trDnsPublicationScreens as tr } from '../src/i18n/screens/dnsPublication/tr.ts';
 
 // 2026-10-30: a paired publication whose backup has not caught up is re-checked
 // by CelikPanel itself. Owner text names the reason, says nobody needs to act,

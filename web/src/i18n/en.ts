@@ -43,6 +43,7 @@ import type { SetupLinkScreenKey } from './screens/setupLink/en';
 import type { SetupInspectionScreenKey } from './screens/setupInspection/en';
 import type { DnsOverviewScreenKey } from './screens/dnsOverview/en';
 import type { NginxDefaultHttpsScreenKey } from './screens/nginxDefaultHttps/en';
+import type { DnsPublicationScreenKey } from './screens/dnsPublication/en';
 
 export const en = {
     // ---- alpha.108 tools ----
@@ -514,5 +515,6 @@ export type ScreenKey =
     | SetupLinkScreenKey
     | SetupInspectionScreenKey
     | DnsOverviewScreenKey
-    | NginxDefaultHttpsScreenKey;
+    | NginxDefaultHttpsScreenKey
+    | DnsPublicationScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;
