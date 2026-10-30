@@ -327,7 +327,9 @@ func (p *Panel) runServerSetupPeerInspection(ctx context.Context, record *server
 	case peerInspectionOutcomeUnsupported:
 		return final(peerInspectionOutcomeUnsupported, "backup", "")
 	default:
-		return final(peerInspectionOutcomeNotApplicable, "", "")
+		// This server's Agent does not see itself as the backup of a managed
+		// pair (for example a receipt older than pair roles): said, never silent.
+		return final(peerInspectionOutcomeUnsupported, "backup", "")
 	}
 	// 2. The main prepares (or returns its earlier prepared key).
 	prepared, done, waitErr := p.serverSetupPeerInspectionMain(ctx, record, target, bearer, transport.DNSPeerInspectionActionPrepare)
@@ -358,7 +360,9 @@ func (p *Panel) runServerSetupPeerInspection(ctx context.Context, record *server
 	case transport.DNSPeerInspectionInspectorUnavailable:
 		return final(peerInspectionOutcomeInspector, "backup", "")
 	default:
-		return final(peerInspectionOutcomeNotApplicable, "", "")
+		// This server's Agent does not see itself as the backup of a managed
+		// pair (for example a receipt older than pair roles): said, never silent.
+		return final(peerInspectionOutcomeUnsupported, "backup", "")
 	}
 	// 4. The main activates, pinned to this server's host key.
 	if _, done, waitErr := p.serverSetupPeerInspectionMain(ctx, record, target, bearer, transport.DNSPeerInspectionActionActivate); waitErr != nil || done {
