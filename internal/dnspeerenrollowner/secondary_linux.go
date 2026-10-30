@@ -582,8 +582,20 @@ func ensureDir(name string, mode os.FileMode) error {
 	if err := secureComponents(filepath.Join(filepath.Dir(name), "placeholder")); err != nil {
 		return err
 	}
-	if err := os.Mkdir(name, mode); err != nil && !errors.Is(err, os.ErrExist) {
+	created := false
+	if err := os.Mkdir(name, mode); err == nil {
+		created = true
+	} else if !errors.Is(err, os.ErrExist) {
 		return err
+	}
+	if created {
+		// os.Mkdir applies the process umask: the Agent runs with a
+		// restrictive one (027), the owner's shell usually with 022. A
+		// directory this call just created gets exactly its reviewed mode;
+		// an existing one is never changed, only checked.
+		if err := os.Chmod(name, mode); err != nil {
+			return err
+		}
 	}
 	st, err := os.Lstat(name)
 	if err != nil {
