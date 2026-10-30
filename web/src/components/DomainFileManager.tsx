@@ -7,7 +7,7 @@ import {
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { Button, KnownEmpty, RemoteGate, inputClass } from './ui';
-import { apiErrorText, readApiError } from '../lib/apiError';
+import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { decodeListIn, useRemote } from '../lib/remote';
 
 interface FileItem {
@@ -84,8 +84,20 @@ export function DomainFileManager({ domainId, readOnly = false }: DomainFileMana
             return null;
         }
         if (res.ok) return res;
-        showToast('error', apiErrorText(await readApiError(res), t));
+        showToast('error', fileErrorText(await readApiError(res)));
         return null;
+    };
+    // The file manager's own coded refusals (a path that does not exist, the
+    // web folder gone, a name taken) in this screen's words; any other
+    // refusal through the shared catalogue.
+    // Dosya yöneticisinin kendi kodlu retleri bu ekranın sözleriyle.
+    const fileErrorText = (err: ApiError, fallback?: string) => {
+        switch (err.code) {
+        case 'FILE_NOT_FOUND': return t('files.notFound');
+        case 'FILE_ROOT_MISSING': return t('files.rootMissing');
+        case 'FILE_EXISTS': return t('files.nameTaken');
+        default: return fallback ?? apiErrorText(err, t);
+        }
     };
 
     const navigateTo = (path: string) => {
@@ -312,8 +324,8 @@ export function DomainFileManager({ domainId, readOnly = false }: DomainFileMana
             <RemoteGate
                 remote={listing.remote}
                 checking={t('files.checking')}
-                failed={listing.remote.state === 'unknown' && listing.remote.reason.code?.startsWith('FILE_')
-                    ? apiErrorText(listing.remote.reason, t, 'files.unknown')
+                failed={listing.remote.state === 'unknown'
+                    ? fileErrorText(listing.remote.reason, t('files.unknown'))
                     : t('files.unknown')}
                 onRetry={loadFiles}
                 busy={listing.reading}
