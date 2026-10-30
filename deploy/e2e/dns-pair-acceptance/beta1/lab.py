@@ -143,8 +143,16 @@ def cloud_init(cell: str, node: str, os_name: str, ip: str, hostname: str, infra
       node={node}
 """
     # Arch's cloud image has no sudo group and does not enable sshd (the kill matrix's fixture does the same).
+    # Its systemd-time-wait-sync also holds the boot (and cloud-init's final stage) until NTP answers,
+    # which the lab's filtered network never does: stop that wait early (bootcmd), start sshd without
+    # blocking the boot transaction. The clock stays the host's, as on the Debian guests.
     admin_group = "wheel" if os_name == "arch" else "sudo"
-    enable_ssh = "  - [systemctl, enable, --now, sshd.service]\n" if os_name == "arch" else ""
+    enable_ssh, bootcmd = "", ""
+    if os_name == "arch":
+        enable_ssh = "  - [systemctl, enable, --now, sshd.service]\n"
+        bootcmd = ("bootcmd:\n  - [systemctl, stop, --no-block, systemd-time-wait-sync.service]\n"
+                   "  - [systemctl, enable, sshd.service]\n  - [systemctl, start, --no-block, sshd.service]\n")
+
     user_data = f"""#cloud-config
 hostname: {hostname}
 fqdn: {hostname}
@@ -163,7 +171,7 @@ disable_root: true
 ssh_pwauth: false
 package_update: false
 package_upgrade: false
-write_files:
+{bootcmd}write_files:
 {marker}  - path: /etc/celikpanel-beta1-lab
     owner: root:root
     permissions: '0444'
