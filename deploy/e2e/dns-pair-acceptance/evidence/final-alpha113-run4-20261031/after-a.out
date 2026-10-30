@@ -1,0 +1,189 @@
+== reboot main backup 23:31:11
+main rebooted in 28.9 s
+backup rebooted in 16.5 s
+== health [after-reboot] 23:33:11
+-- main units/timers
+active active active active active active active
+enabled enabled
+  php8.4-fpm.service loaded active running The PHP 8.4 FastC
+Sat 2026-10-31 03:00:05 UTC 3h 26min Fri 2026-10-30 23:20:30 UTC - certbot.timer certbot.service
+enabled not-found
+2026-10-30 23:31:30
+108560a5-b53d-48bd-9d32-5ede43ba8c3d
+succeeded complete null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-access_dns=succeeded 17-mail_certificate=succeeded 18-mail_enrollment=succeeded 19-verify=succeeded
+-- backup units/timers
+active active active active active inactive inactive
+enabled enabled
+  php8.3-fpm.service loaded active running The PHP 8.3 FastC
+Sat 2026-10-31 05:12:39 UTC 5h 39min Fri 2026-10-30 23:20:57 UTC - certbot.timer certbot.service
+enabled not-found
+2026-10-30 23:31:16
+3ca0bd5f-a28e-4fb6-b666-4a9b08bfb9a3
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-verify=succeeded
+-- DNS answers
+   @192.0.3.110 SOA r4f113.test: status: NOERROR flags: qr aa  | A r4shop113.test: 192.0.3.110 | MX r4f113.test: 10 mail.r4f113.test.
+   @192.0.3.111 SOA r4f113.test: status: NOERROR flags: qr aa  | A r4shop113.test: 192.0.3.110 | MX r4f113.test: 10 mail.r4f113.test.
+-- site
+--- http://r4shop113.test/
+code=301 redirect=https://r4shop113.test/ ssl_verify=0
+--- https://r4shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+body: 3082 bytes, title: <title>r4shop113.test
+software words in body: [CelikPanel ]
+--- http://www.r4shop113.test/
+code=301 redirect=https://www.r4shop113.test/ ssl_verify=0
+--- https://www.r4shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+body: 3082 bytes, title: <title>r4shop113.test
+software words in body: [CelikPanel ]
+--- certificate served on r4shop113.test:443
+--- https://r4shop113.test/hello.php
+code=200
+server: nginx
+x-powered-by present: 0
+body: php-ok 5
+--- http://r4shop113.test/hello.php (redirect?)
+code=301 location=https://r4shop113.test/hello.php
+-- mail
+   smtp 587 send: {'ok': True, 'refused': {}} | cert ['mail.r4f113.test']
+   imaps 993 read: {'after_seconds': 13.6, 'headers': 'From: alice@r4shop113.test\r\nTo: bob@r4shop113.test\r\nSubject: final-alpha113 920502793d3f'} | cert ['mail.r4f113.test'] |  
+   delivered to bob's maildir (files in new+cur): 5
+== panel off on main (panel+agent stopped and disabled, reboot) 23:33:59
+Removed '/etc/systemd/system/multi-user.target.wants/celikpanel-agent.service'.
+Removed '/etc/systemd/system/multi-user.target.wants/celikpanel-panel.service'.
+inactive inactive
+main rebooted in 28.6 s
+listeners on 2083: 0
+inactive inactive active active active active active active
+== health [panel-off] 23:35:59
+-- main units/timers
+inactive inactive active active active active active
+disabled disabled
+  php8.4-fpm.service loaded active running The PHP 8.4 FastC
+Sat 2026-10-31 10:42:06 UTC 11h Fri 2026-10-30 23:20:30 UTC - certbot.timer certbot.service
+enabled not-found
+2026-10-30 23:34:19
+088d98d6-dc9f-47b4-8ebc-1e8bc753c1f4
+-- backup units/timers
+active active active active active inactive inactive
+enabled enabled
+  php8.3-fpm.service loaded active running The PHP 8.3 FastC
+Sat 2026-10-31 05:12:39 UTC 5h 36min Fri 2026-10-30 23:20:57 UTC - certbot.timer certbot.service
+enabled not-found
+2026-10-30 23:31:16
+3ca0bd5f-a28e-4fb6-b666-4a9b08bfb9a3
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-verify=succeeded
+-- DNS answers
+   @192.0.3.110 SOA r4f113.test: status: NOERROR flags: qr aa  | A r4shop113.test: 192.0.3.110 | MX r4f113.test: 10 mail.r4f113.test.
+   @192.0.3.111 SOA r4f113.test: status: NOERROR flags: qr aa  | A r4shop113.test: 192.0.3.110 | MX r4f113.test: 10 mail.r4f113.test.
+-- site
+--- http://r4shop113.test/
+code=301 redirect=https://r4shop113.test/ ssl_verify=0
+--- https://r4shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+body: 3082 bytes, title: <title>r4shop113.test
+software words in body: [CelikPanel ]
+--- http://www.r4shop113.test/
+code=301 redirect=https://www.r4shop113.test/ ssl_verify=0
+--- https://www.r4shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+body: 3082 bytes, title: <title>r4shop113.test
+software words in body: [CelikPanel ]
+--- certificate served on r4shop113.test:443
+--- https://r4shop113.test/hello.php
+code=200
+server: nginx
+x-powered-by present: 0
+body: php-ok 5
+--- http://r4shop113.test/hello.php (redirect?)
+code=301 location=https://r4shop113.test/hello.php
+-- mail
+   smtp 587 send: {'ok': True, 'refused': {}} | cert ['mail.r4f113.test']
+   imaps 993 read: {'after_seconds': 13.3, 'headers': 'From: alice@r4shop113.test\r\nTo: bob@r4shop113.test\r\nSubject: final-alpha113 1e2cdf012fab'} | cert ['mail.r4f113.test'] |  
+   delivered to bob's maildir (files in new+cur): 7
+Created symlink '/etc/systemd/system/multi-user.target.wants/celikpanel-agent.service' → '/etc/systemd/system/celikpanel-agent.service'.
+Created symlink '/etc/systemd/system/multi-user.target.wants/celikpanel-panel.service' → '/etc/systemd/system/celikpanel-panel.service'.
+active active
+== site delete r4shop113.test 23:37:10
+   before @192.0.3.110: SOA status: NOERROR flags: qr aa  | TXT celik._domainkey '"v=DKIM1; k=rsa; p=MIIBIjANBgk'
+   before @192.0.3.111: SOA status: NOERROR flags: qr aa  | TXT celik._domainkey '"v=DKIM1; k=rsa; p=MIIBIjANBgk'
+   +0s status: 204 
+   +2s status: 200 deletion_pending running This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked again aut
+   DELETE answered after 25s: 202 {  "domain": "r4shop113.test",  "message": "The DNS change is saved, but its private peer challenge cannot be reconciled. This server's administrator reads the Agent log lines for this deletion on this server with sudo journalctl -u celikpanel-agent | grep peer; they name the step that stopped and its reason. A retry is safe because each challenge can be used only once and a retry starts a new one
+   after @192.0.3.110: SOA status: REFUSED flags: qr  | TXT celik._domainkey ''
+   after @192.0.3.111: SOA status: REFUSED flags: qr  | TXT celik._domainkey ''
+   domains list names it: yes
+keytable lines for r4shop113.test: 0
+signingtable lines for r4shop113.test: 0
+2026-10-30T23:37:28+00:00 frankfurt agent[1358]: 2026/10/30 23:37:28 DNS peer proof admitted the PowerDNS daemon's re-stamp of catalog catalog-c000036e.celikpanel.invalid (operation zone r4shop113.test): serial 1793402914 -> 1793403447, CATALOG-HASH SK0GQ1UPs/g7... -> s7BbuEfz7JX
+2026-10-30T23:37:30+00:00 frankfurt agent[1358]: 2026/10/30 23:37:30 DNS peer proof for r4shop113.test (PowerDNS secondary) stopped at step exchange as dns_peer_inspection_unknown: peer_inspection_unavailable
+2026-10-30T23:37:30+00:00 frankfurt agent[1358]: 2026/10/30 23:37:30 DNS peer proof for r4shop113.test (PowerDNS secondary) step times: prepare=1.409s challenge_write=5.61s exchange=616ms; total 7.635s; outcome pending dns_peer_inspection_unknown
+2026-10-30T23:37:30+00:00 frankfurt agent[1358]: 2026/10/30 23:37:30 pdns zone publication remains pending for r4shop113.test at epoch 1: paired DNS deletion is not confirmed yet (check=peer_native_zone): waiting for the backup DNS server to confirm the deletion; the Panel checks
+2026-10-30T23:37:34+00:00 frankfurt agent[1358]: 2026/10/30 23:37:34 DNS peer proof for r4shop113.test (PowerDNS secondary) stopped at step challenge_write as dns_peer_journal_unknown: challenge publish: pdns_peer_challenge_context_mismatch
+2026-10-30T23:37:34+00:00 frankfurt agent[1358]: 2026/10/30 23:37:34 DNS peer proof for r4shop113.test (PowerDNS secondary) step times: prepare=1.358s challenge_write=1.378s; total 2.736s; outcome pending dns_peer_journal_unknown
+2026-10-30T23:37:34+00:00 frankfurt agent[1358]: 2026/10/30 23:37:34 DNS zone V3 recovery remains pending for r4shop113.test: paired DNS deletion is not confirmed yet (check=peer_native_zone): waiting for the backup DNS server to confirm the deletion; the Panel checks the same op
+2026-10-30T23:37:34+00:00 frankfurt panel[1444]: 2026/10/30 23:37:34 domain deletion pending for r4shop113.test at dns_cleanup: publish DNS zone deletion: DNS zone V3 paired propagation recovery is deferred: DNS zone publication is waiting for exact paired propagation recovery
+2026-10-30T23:37:42+00:00 frankfurt agent[1358]: 2026/10/30 23:37:42 DNS peer proof for r4shop113.test (PowerDNS secondary) stopped at step challenge_write as dns_peer_journal_unknown: challenge publish: pdns_peer_challenge_context_mismatch
+2026-10-30T23:37:42+00:00 frankfurt agent[1358]: 2026/10/30 23:37:42 DNS peer proof for r4shop113.test (PowerDNS secondary) step times: prepare=1.333s challenge_write=1.325s; total 2.658s; outcome pending dns_peer_journal_unknown
+2026-10-30T23:37:42+00:00 frankfurt agent[1358]: 2026/10/30 23:37:42 DNS zone V3 recovery remains pending for r4shop113.test: paired DNS deletion is not confirmed yet (check=peer_native_zone): waiting for the backup DNS server to confirm the deletion; the Panel checks the same op
+2026-10-30T23:37:42+00:00 frankfurt panel[1444]: 2026/10/30 23:37:42 pending DNS publication r4shop113.test still waits (reason=dns_peer_journal_unknown); next automatic re-check in 27s
+   peer_inspection_unavailable seen: backup-side inspector and sshd journal
+2026-10-30T23:37:11+00:00 boston pdns_server[1096]: AXFR-out zone 'catalog-c000036e.celikpanel.invalid', client '192.0.3.110', transfer initiated
+2026-10-30T23:37:19+00:00 boston pdns_server[1096]: AXFR-out zone 'catalog-c000036e.celikpanel.invalid', client '192.0.3.110', transfer initiated
+2026-10-30T23:37:21+00:00 boston pdns_server[1096]: AXFR-in zone: 'catalog-c000036e.celikpanel.invalid', primary: '192.0.3.110', Catalog-Zone backend transaction started
+2026-10-30T23:37:21+00:00 boston pdns_server[1096]: AXFR-in zone: 'catalog-c000036e.celikpanel.invalid', primary: '192.0.3.110', Catalog-Zone delete zone 'r4shop113.test'
+2026-10-30T23:37:22+00:00 boston pdns_server[1096]: AXFR-in zone: 'catalog-c000036e.celikpanel.invalid', primary: '192.0.3.110', Catalog-Zone backend transaction committed
+2026-10-30T23:37:22+00:00 boston pdns_server[1096]: AXFR-in zone: 'catalog-c000036e.celikpanel.invalid', primary: '192.0.3.110', zone committed with serial 1793402914
+2026-10-30T23:37:22+00:00 boston pdns_server[1096]: AXFR-out zone 'catalog-c000036e.celikpanel.invalid', client '192.0.3.110', transfer initiated
+2026-10-30T23:37:22+00:00 boston pdns_server[1096]: AXFR-out zone 'r4shop113.test', client '192.0.3.110', transfer initiated
+2026-10-30T23:37:22+00:00 boston pdns_server[1096]: AXFR-out zone 'r4shop113.test', client '192.0.3.110', failed: not authoritative
+2026-10-30T23:37:28+00:00 boston pdns_server[1096]: AXFR-in zone: 'catalog-c000036e.celikpanel.invalid', primary: '192.0.3.110', zone committed with serial 1793403447
+2026-10-30T23:37:29+00:00 boston sshd[1854]: Accepted publickey for celikpeer from 192.0.3.110 port 33228 ssh2: ED25519 SHA256:MrDvHP8XI7qWH34vFgqpmHEMWikh+GYTsFBujUw0RJg
+2026-10-30T23:37:29+00:00 boston sshd[1854]: pam_unix(sshd:session): session opened for user celikpeer(uid=997) by celikpeer(uid=0)
+2026-10-30T23:37:29+00:00 boston systemd-logind[722]: New session 8 of user celikpeer.
+2026-10-30T23:37:29+00:00 boston (systemd)[1859]: pam_unix(systemd-user:session): session opened for user celikpeer(uid=997) by celikpeer(uid=0)
+2026-10-30T23:37:30+00:00 boston sudo[1927]: celikpeer : PWD=/var/lib/pdns-peer-inspector ; USER=root ; COMMAND=/usr/local/libexec/celikpanel-pdns-peer-inspect
+2026-10-30T23:37:30+00:00 boston sudo[1927]: pam_unix(sudo:session): session opened for user root(uid=0) by celikpeer(uid=997)
+2026-10-30T23:37:30+00:00 boston sudo[1927]: pam_unix(sudo:session): session closed for user root
+2026-10-30T23:37:30+00:00 boston sshd[1854]: pam_unix(sshd:session): session closed for user celikpeer
+2026-10-30T23:37:31+00:00 boston pdns_server[1096]: AXFR-out zone 'catalog-c000036e.celikpanel.invalid', client '192.0.3.110', transfer initiated
+2026-10-30T23:37:31+00:00 boston pdns_server[1096]: AXFR-out zone 'r4shop113.test', client '192.0.3.110', transfer initiated
+2026-10-30T23:37:31+00:00 boston pdns_server[1096]: AXFR-out zone 'r4shop113.test', client '192.0.3.110', failed: not authoritative
+2026-10-30T23:37:39+00:00 boston pdns_server[1096]: AXFR-out zone 'catalog-c000036e.celikpanel.invalid', client '192.0.3.110', transfer initiated
+2026-10-30T23:37:39+00:00 boston pdns_server[1096]: AXFR-out zone 'r4shop113.test', client '192.0.3.110', transfer initiated
+2026-10-30T23:37:39+00:00 boston pdns_server[1096]: AXFR-out zone 'r4shop113.test', client '192.0.3.110', failed: not authoritative
+2026-10-30T23:37:40+00:00 boston (sd-pam)[1860]: pam_unix(systemd-user:session): session closed for user celikpeer
+2026-10-30T23:37:43+00:00 boston sshd[1991]: Accepted publickey for celik from 192.0.3.2 port 41324 ssh2: ED25519 SHA256:t+vKqOqpE6yLYlSzC1FAz/1ABwdnsyaGH//IkuiK1EE
+2026-10-30T23:37:43+00:00 boston sshd[1991]: pam_unix(sshd:session): session opened for user celik(uid=1000) by celik(uid=0)
+2026-10-30T23:37:43+00:00 boston sudo[2055]:    celik : PWD=/home/celik ; USER=root ; COMMAND=/usr/bin/journalctl --no-pager -o short-iso --since '2026-10-30 23:37:11'
+2026-10-30T23:37:43+00:00 boston sudo[2055]: pam_unix(sudo:session): session opened for user root(uid=0) by celik(uid=1000)
+== journals, every boot 23:37:43
+== frankfurt: boots 4
+   [milter service|Milter.*(not found|refused|cannot)]: 0
+   [FQDN]: 0
+   [fail-closed|ambiguous|agent_mutations_held|refusing durable]: 0
+   [FOREIGN KEY]: 0
+   [unsupported map type: lmdb]: 0
+   [can.t lock|cannot lock|could not lock]: 0
+   [panel 500]: 0
+   err-priority lines of celikpanel units: 0
+   failed units: []
+== boston: boots 3
+   [milter service|Milter.*(not found|refused|cannot)]: 0
+   [FQDN]: 0
+   [fail-closed|ambiguous|agent_mutations_held|refusing durable]: 0
+   [FOREIGN KEY]: 0
+   [unsupported map type: lmdb]: 0
+   [can.t lock|cannot lock|could not lock]: 0
+   [panel 500]: 0
+   err-priority lines of celikpanel units: 1
+2026-10-30T23:21:25+00:00 boston mariadb-server.postinst[14418]: 2026-10-30 23:21:25 0 [Warning] You need to use --log-bin to make --expire-logs-days or --binlog-expire-logs-seconds work.
+   failed units: []
+== after done 23:37:45
