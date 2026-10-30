@@ -261,6 +261,8 @@ export const enDashboardScreens = {
     'dashboard.audit.action.domain.create': 'added a domain',
     'dashboard.audit.action.domain.create.dns_pending': 'added a domain; its DNS records are still pending',
     'dashboard.audit.action.domain.delete': 'deleted the domain {target}',
+    'dashboard.audit.action.domain.delete.dkim_kept': 'deleted the domain {target}; a DKIM key or table line CelikPanel did not make was kept, or its key could not be removed',
+    'dashboard.audit.action.mail.dkim.automatic.retry': 'started the automatic DKIM setup of {target} again',
     'dashboard.audit.action.domain.delete.mail_runtime_absent': 'deleted the domain {target}; no mail service was installed to clean up',
     'dashboard.audit.action.domain.delete.pending': 'started deleting the domain {target}; the cleanup is still in progress',
     'dashboard.audit.action.domain.general.update': 'changed a domain’s general settings',

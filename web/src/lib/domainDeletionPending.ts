@@ -146,6 +146,28 @@ export async function readDomainDeletionOutcome(response: Response): Promise<{
 }
 
 
+// What a completed deletion left of the domain's DKIM key (30 Oct 2026). The
+// key CelikPanel made is removed; a key or signing-table line it did not make
+// is kept and named, and a removal that failed is said. null: nothing to say.
+// Silmenin DKIM anahtarından bıraktığı: CelikPanel'in yapmadığı korunur.
+export async function readDomainDeletionDKIM(
+    response: Response,
+): Promise<{ keptKey: string; ownerLines: number; failed: boolean } | null> {
+    try {
+        const body: unknown = await response.json();
+        if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+        const dkim = (body as Record<string, unknown>).dkim;
+        if (!dkim || typeof dkim !== 'object' || Array.isArray(dkim)) return null;
+        const value = dkim as Record<string, unknown>;
+        const keptKey = typeof value.kept_key === 'string' && value.kept_key.startsWith('/') ? value.kept_key : '';
+        const ownerLines = Array.isArray(value.owner_table_lines) ? value.owner_table_lines.length : 0;
+        const failed = typeof value.error === 'string' && value.error !== '';
+        return keptKey || ownerLines || failed ? { keptKey, ownerLines, failed } : null;
+    } catch {
+        return null;
+    }
+}
+
 // null means this GET did not verify an active deletion marker. An empty reason
 // means the marker exists but the exact DNS/Agent reason remains unknown.
 export async function readSavedDomainDeletionState(

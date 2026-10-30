@@ -240,7 +240,7 @@ func TestRemoteDNSConsumerExplicitMailApplyPreservesVerificationAndRejectsRoutin
 	}
 	statusRequest := serviceOperationAdminRequest(t, http.MethodGet, "/api/v1/domains/1/mail/auth", "", 1)
 	statusResponse := httptest.NewRecorder()
-	f.origin.handleMailAuthStatus(statusResponse, statusRequest, domain)
+	f.origin.handleMailAuthStatus(statusResponse, statusRequest, 1, domain)
 	var status mailAuthStatus
 	if err := json.Unmarshal(statusResponse.Body.Bytes(), &status); err != nil || statusResponse.Code != http.StatusOK || status.SPF.ZoneValue != spfRecommended() || status.SPF.Status != "pending" {
 		t.Fatalf("preserved verification TXT obscured pending SPF: %d %s (%v)", statusResponse.Code, statusResponse.Body.String(), err)

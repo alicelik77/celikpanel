@@ -10689,3 +10689,53 @@ renewal and secure mail as they were.
   the running Panel renews it.
 
 Installed panels are updated only by their owners. P0.5 stays **partial**.
+
+### Every site's mail is DKIM-signed by itself (2026-10-30)
+
+A domain that can send mail from this server (the product's own rule: it has a
+mailbox, forwarding or catch-all here, or CelikPanel installed the mail service on
+this server) gets its DKIM key, its place in OpenDKIM's signing table and, where this
+server keeps its DNS zone, its `celik._domainkey` record without the owner pressing
+"Generate DKIM key" or "Add to DNS". It happens when the domain is created while mail
+is installed, when the domain gets its first mailbox, and for every domain when a mail
+profile is installed from Services (which now also sets up OpenDKIM). An existing key,
+the owner's or CelikPanel's, is never replaced; a different DKIM record already at that
+name is kept and the card names it. The work runs in the background and never blocks
+or fails the creation.
+
+The Mail authentication card shows the work while it is not finished
+(`GET /api/v1/domains/{id}/mail/auth` → `automatic`; reading never starts it):
+
+- **Being set up** (`pending`) or **waiting for another change on this server**
+  (`waiting`, `host_busy`): nobody acts; it continues by itself (a busy server is
+  retried for about ten minutes, then at the next Panel start).
+- **Key failed** (`failed`, `key_failed`), **signing failed** (`signing_failed`, with
+  the Agent's first line), **record not published** (`dns_publish_failed`; the record
+  is saved in the zone): verified failures. **Who acts:** the server owner; **next
+  action:** the reason on the card (the key store `/var/lib/celikpanel-dkim/keys`,
+  OpenDKIM on the Services page, the DNS operation under DNS), then **Try again**
+  (`POST /api/v1/domains/{id}/mail/auth/automatic`, answered 202; pressed again while
+  the work is pending it queues nothing).
+- **DNS not ready** (`blocked`, `dns_not_ready`): an unmet prerequisite; mail is
+  already signed. Check the DNS engine under DNS, then **Try again**. A publication
+  held behind another one is not a stop: the record is saved and published by the DNS
+  publication reconciler.
+- **Answer lost** (`unknown`): whether it finished is not known; **Try again** checks
+  and completes it (the key is kept, nothing is done twice).
+- **External DNS:** mail is signed; the card says so and shows the record to add at
+  the provider. **A key outside the signing table** (an older key, or one placed by
+  hand) is named with **Try again**.
+
+Deleting a domain removes the key CelikPanel made (it carries an origin record next
+to it, `celik.celikpanel`) and its signing-table lines, then refreshes OpenDKIM; a key
+or table line CelikPanel did not make (placed by hand, or a key made before this
+release) is kept and the deletion's answer names it, with the file to delete if it is
+no longer needed. The record goes with the zone, or with the subdomain from its
+parent's zone.
+
+Downloading a file that no longer exists shows the file manager's guidance and reads
+the folder again instead of opening a tab with the server's answer.
+
+Schema unchanged (46): the work is a versioned `panel_settings` record per domain
+(`dkim_automatic_v1:<id>`) and one signing refresh request (`dkim_signing_refresh_v1`).
+Installed panels are updated only by their owners.

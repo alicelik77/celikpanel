@@ -1,0 +1,3 @@
+{'domain': 'shop2dk.test', 'key_p_sha256': '47d1fe0343eed0bd'}
+{'subject': 'final-alpha113 8c19366f9222', 'dkim_signature': True, 'd': 'shop2dk.test', 's': 'celik', 'c': 'relaxed/simple', 'a': 'rsa-sha256', 'body_hash_ok': True, 'signature_ok': True}
+{'subject': 'dk php mail ea1661d41fc1', 'dkim_signature': True, 'd': 'shop2dk.test', 's': 'celik', 'c': 'relaxed/simple', 'a': 'rsa-sha256', 'body_hash_ok': True, 'signature_ok': True}

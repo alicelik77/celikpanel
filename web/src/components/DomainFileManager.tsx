@@ -9,6 +9,7 @@ import { useI18n } from '../i18n';
 import { Button, KnownEmpty, RemoteGate, inputClass } from './ui';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { decodeListIn, useRemote } from '../lib/remote';
+import { saveDownload } from '../lib/download';
 
 interface FileItem {
     name: string;
@@ -119,7 +120,7 @@ export function DomainFileManager({ domainId, readOnly = false }: DomainFileMana
         // The file-content API is a POST action and therefore intentionally
         // requires manage access. View access still has a safe GET download.
         if (readOnly) {
-            window.open(`/api/v1/domains/${domainId}/files/download?path=${encodeURIComponent(file.path)}`, '_blank');
+            await downloadFile(file);
             return;
         }
         if (file.size > 1024 * 1024) {
@@ -184,8 +185,18 @@ export function DomainFileManager({ domainId, readOnly = false }: DomainFileMana
         loadFiles();
     };
 
-    const downloadFile = (file: FileItem) => {
-        window.open(`/api/v1/domains/${domainId}/files/download?path=${encodeURIComponent(file.path)}`, '_blank');
+    // The download is read here first, so a refusal (a file renamed, moved
+    // or deleted since the folder was listed) is shown in this screen's words
+    // instead of opening a tab with the server's JSON answer (30 Oct 2026).
+    // A missing entry also reads the folder again. Only a file that arrived
+    // is handed to the browser to save.
+    // İndirme önce burada okunur; ret, sunucunun JSON yanıtını yeni sekmede
+    // açmak yerine bu ekranın sözleriyle gösterilir.
+    const downloadFile = async (file: FileItem) => {
+        const err = await saveDownload(`/api/v1/domains/${domainId}/files/download?path=${encodeURIComponent(file.path)}`, file.name);
+        if (!err) return;
+        showToast('error', fileErrorText(err));
+        if (err.code === 'FILE_NOT_FOUND') loadFiles();
     };
 
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

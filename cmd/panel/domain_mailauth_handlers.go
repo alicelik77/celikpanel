@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -51,6 +52,14 @@ type mailAuthStatus struct {
 	DMARC             mailAuthRecord `json:"dmarc"`
 	DKIMSelector      string         `json:"dkim_selector"`
 	SigningInstalled  bool           `json:"signing_installed"`
+	// DKIMSigned: the key is in CelikPanel's OpenDKIM signing table.
+	DKIMSigned bool `json:"dkim_signed"`
+	// DKIMOwnerRecord: the zone holds a different record at the DKIM name;
+	// CelikPanel keeps it and says so (30 Oct 2026).
+	DKIMOwnerRecord bool `json:"dkim_owner_record"`
+	// Automatic is the automatic DKIM work for this domain while it is not
+	// finished (domain_dkim_automatic.go); absent when there is none.
+	Automatic *dkimAutomaticView `json:"automatic,omitempty"`
 }
 
 // handleMailAuth routes the /mail/auth* endpoints (called from the domain
@@ -67,11 +76,13 @@ func (p *Panel) handleMailAuth(w http.ResponseWriter, r *http.Request, domainID 
 
 	switch {
 	case strings.HasSuffix(r.URL.Path, "/auth") && r.Method == http.MethodGet:
-		p.handleMailAuthStatus(w, r, domainName)
+		p.handleMailAuthStatus(w, r, domainID, domainName)
 	case strings.HasSuffix(r.URL.Path, "/auth/dkim") && r.Method == http.MethodPost:
-		p.handleMailAuthDKIM(w, r, domainName)
+		p.handleMailAuthDKIM(w, r, domainID, domainName)
 	case strings.HasSuffix(r.URL.Path, "/auth/apply") && r.Method == http.MethodPost:
 		p.handleMailAuthApply(w, r, domainName)
+	case strings.HasSuffix(r.URL.Path, "/auth/automatic") && r.Method == http.MethodPost:
+		p.handleMailAuthAutomatic(w, r, domainID, domainName)
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
@@ -177,7 +188,7 @@ func deriveStatus(recommended, zoneValue, dnsValue string, resolved bool) string
 	return "missing"
 }
 
-func (p *Panel) handleMailAuthStatus(w http.ResponseWriter, r *http.Request, domain string) {
+func (p *Panel) handleMailAuthStatus(w http.ResponseWriter, r *http.Request, domainID int, domain string) {
 	ctx := r.Context()
 	w.Header().Set("Content-Type", "application/json")
 
@@ -187,11 +198,24 @@ func (p *Panel) handleMailAuthStatus(w http.ResponseWriter, r *http.Request, dom
 		return
 	}
 	st := mailAuthStatus{Domain: domain, DKIMSelector: dkimSelector, DNSManagementMode: mode}
+	// Read only: the automatic work is shown, never started, by this read.
+	if record, ok, err := p.readDKIMAutomaticRecord(ctx, domainID, domain); err != nil {
+		writeServerError(w, err)
+		return
+	} else if ok {
+		st.Automatic = &dkimAutomaticView{State: record.State, Reason: record.Reason,
+			ErrorLine: record.ErrorLine, Trigger: record.Trigger, RecordedAt: record.RecordedAt}
+	}
 
 	var zoneID int
 	if mode == setupDNSModeLocal {
-		zoneErr := p.db.GetDB().QueryRowContext(ctx, `SELECT id FROM pdns_domains WHERE name = ?`, domain).Scan(&zoneID)
-		st.ZoneExists = zoneErr == nil
+		// A subdomain's records live in its parent's zone.
+		var zoneErr error
+		zoneID, _, st.ZoneExists, zoneErr = p.mailAuthZone(ctx, domain)
+		if zoneErr != nil {
+			writeServerError(w, zoneErr)
+			return
+		}
 	}
 	var remoteRecords []DNSRecord
 	if mode == setupDNSModeExisting {
@@ -222,6 +246,7 @@ func (p *Panel) handleMailAuthStatus(w http.ResponseWriter, r *http.Request, dom
 		return
 	}
 	st.SigningInstalled = dkimSt.SigningInstalled
+	st.DKIMSigned = dkimSt.Signed
 
 	// SPF
 	st.SPF.Name = domain
@@ -242,6 +267,18 @@ func (p *Panel) handleMailAuthStatus(w http.ResponseWriter, r *http.Request, dom
 		}
 		st.DKIM.DNSValue, st.DKIM.Resolved = liveTXT(ctx, dkimName, "v=DKIM1")
 		st.DKIM.Status = deriveStatus(st.DKIM.Recommended, st.DKIM.ZoneValue, st.DKIM.DNSValue, st.DKIM.Resolved)
+		if mode == setupDNSModeLocal && st.ZoneExists {
+			values, err := p.zoneTXTValues(ctx, zoneID, dkimName)
+			if err != nil {
+				writeServerError(w, err)
+				return
+			}
+			st.DKIMOwnerRecord = len(values) > 0 && !slices.Contains(values, st.DKIM.Recommended)
+			if slices.Contains(values, st.DKIM.Recommended) {
+				st.DKIM.ZoneValue = st.DKIM.Recommended
+				st.DKIM.Status = deriveStatus(st.DKIM.Recommended, st.DKIM.ZoneValue, st.DKIM.DNSValue, st.DKIM.Resolved)
+			}
+		}
 	} else {
 		st.DKIM.Status = "no_key"
 	}
@@ -275,7 +312,7 @@ func (p *Panel) handleMailAuthStatus(w http.ResponseWriter, r *http.Request, dom
 // handleMailAuthDKIM generates (or reuses) the DKIM key pair via the agent.
 // handleMailAuthDKIM, DKIM anahtar çiftini agent üzerinden üretir (ya da
 // mevcut olanı kullanır).
-func (p *Panel) handleMailAuthDKIM(w http.ResponseWriter, r *http.Request, domain string) {
+func (p *Panel) handleMailAuthDKIM(w http.ResponseWriter, r *http.Request, domainID int, domain string) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var resp transport.DKIMEnsureResponse
@@ -321,8 +358,16 @@ func (p *Panel) handleMailAuthDKIM(w http.ResponseWriter, r *http.Request, domai
 		}
 		log.Printf("[mail-auth] DKIM key for %s is ready but signing was not configured: %s", domain, reason)
 		body["signing_error"] = reason
-	} else if sign.Detail != "" {
-		body["signing_detail"] = sign.Detail
+	} else {
+		if sign.Detail != "" {
+			body["signing_detail"] = sign.Detail
+		}
+		// The owner's own "Generate" finished what an automatic attempt
+		// stopped at; a stopped (not pending) record is no longer current.
+		if record, ok, err := p.readDKIMAutomaticRecord(r.Context(), domainID, domain); err == nil && ok &&
+			record.State != dkimAutoPending && record.State != dkimAutoWaiting {
+			_ = p.clearDKIMAutomaticRecord(r.Context(), domainID)
+		}
 	}
 	json.NewEncoder(w).Encode(body)
 }
@@ -499,17 +544,27 @@ func (p *Panel) handleMailAuthApply(w http.ResponseWriter, r *http.Request, doma
 		_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "name": name, "value": value})
 		return
 	}
-	zoneID, err := p.ensureZone(r.Context(), domain)
+	// A subdomain's records go into its parent's zone (30 Oct 2026; this
+	// used to create a separate zone for the subdomain).
+	zoneID, zoneName, found, err := p.mailAuthZone(r.Context(), domain)
 	if err != nil {
 		writeServerError(w, err)
 		return
+	}
+	if !found {
+		zoneName = domain
+		zoneID, err = p.ensureZone(r.Context(), domain)
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
 	}
 	if err := p.upsertTXT(r.Context(), zoneID, name, value); err != nil {
 		writeServerError(w, err)
 		return
 	}
 
-	if !p.publishDNSMutation(w, r.Context(), domain) {
+	if !p.publishDNSMutation(w, r.Context(), zoneName) {
 		return
 	}
 	if err := json.NewEncoder(w).Encode(map[string]any{

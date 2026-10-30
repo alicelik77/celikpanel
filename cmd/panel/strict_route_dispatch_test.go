@@ -18,6 +18,7 @@ func TestMatchDomainSubrouteExactRoutes(t *testing.T) {
 		{http.MethodDelete, "/api/v1/domains/7/aliases/www.example.test", "aliases"},
 		{http.MethodPut, "/api/v1/domains/7/dns/records", "dns"},
 		{http.MethodPost, "/api/v1/domains/7/mail/auth/dkim", "mail"},
+		{http.MethodPost, "/api/v1/domains/7/mail/auth/automatic", "mail"},
 		{http.MethodPut, "/api/v1/domains/7/mail/accounts/password", "mail"},
 		{http.MethodDelete, "/api/v1/domains/7/databases/19", "database-delete"},
 	}

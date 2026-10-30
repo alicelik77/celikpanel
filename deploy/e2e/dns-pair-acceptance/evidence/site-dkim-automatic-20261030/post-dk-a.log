@@ -1,0 +1,129 @@
+== second cycle: site shop2dk.test on the pair 20:26:51
+None 
+Traceback (most recent call last):
+  File "/var/tmp/dkimnative/tools-d2323245d830ad1b246fcf488be2886d7a81b5b6/deploy/e2e/dns-pair-acceptance/panel_api.py", line 216, in request
+    response = self.transport(method, path, headers, payload, timeout)
+  File "/var/tmp/dkimnative/tools-d2323245d830ad1b246fcf488be2886d7a81b5b6/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 163, in watching
+    resp = transport(method, path, headers, body, timeout)
+  File "/var/tmp/dkimnative/tools-d2323245d830ad1b246fcf488be2886d7a81b5b6/deploy/e2e/dns-pair-acceptance/panel_api.py", line 105, in __call__
+    connection.connect()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 1520, in connect
+    super().connect()
+    ~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 1051, in connect
+    self.sock = self._create_connection(
+                ~~~~~~~~~~~~~~~~~~~~~~~^
+        (self.host,self.port), self.timeout, self.source_address)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/socket.py", line 874, in create_connection
+    raise exceptions[0]
+  File "/usr/lib/python3.14/socket.py", line 859, in create_connection
+    sock.connect(sa)
+    ~~~~~~~~~~~~^^^^
+OSError: [Errno 113] No route to host
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/tmp/dkimnative/tools-d2323245d830ad1b246fcf488be2886d7a81b5b6/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 523, in <module>
+    sys.exit(main(sys.argv[1:]))
+             ~~~~^^^^^^^^^^^^^^
+  File "/var/tmp/dkimnative/tools-d2323245d830ad1b246fcf488be2886d7a81b5b6/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 517, in main
+    out = globals()[f"cmd_{a.cmd}"](a)
+  File "/var/tmp/dkimnative/tools-d2323245d830ad1b246fcf488be2886d7a81b5b6/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 289, in cmd_api
+    resp = c.request(a.method, a.path, body_arg(a.body), timeout=a.timeout, purpose=a.label)
+  File "/var/tmp/dkimnative/tools-d2323245d830ad1b246fcf488be2886d7a81b5b6/deploy/e2e/dns-pair-acceptance/panel_api.py", line 222, in request
+    raise PanelError(f"GET {path} failed: {exc}") from exc
+panel_api.PanelError: GET /api/v1/domains failed: [Errno 113] No route to host
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+    d=json.load(sys.stdin); b=json.loads(d["body"])
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+   site id 
+   ok 192.0.3.104 shop2dk.test A = ';; communications error to 192.0.3.104#53: timed out ;; no servers could be reached' after 2s
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/dkimauto/dkpost.sh: line 30: $3: unbound variable
+== second cycle: site shop2dk.test on the pair 20:29:06
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/2/public_html", "Domain": "shop2dk.test", "DomainID": 2, "FTPPassword": "[REDACTED]", "FTPUser": "shop2dk_test", "PHPVersion": "8.4", "ProjectType": "php", "SiteID": 2, "TempDomain": ""}
+   site id 2
+   ok 192.0.3.104 shop2dk.test A = '192.0.3.104' after 0s
+200 {"id": 3, "success": true}
+200 {"id": 4, "success": true}
+   200 {"automatic": null, "dkim": "pending", "dkim_signed": true, "dkim_owner_record": false, "mode": "local"}
+   ok 192.0.3.104 celik._domainkey.shop2dk.test TXT = '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAumJMSwJJSU3Lbv1B/os3wtdk01YQ3IF2yM0QpWIxsssIw42c3/xfVgV3/TCqhibF7M47U1fduWj8qjaI1jCndY500ti0j+lwHJj1iGe5FnRv1aonwSNGY0JTwiGmIuOVrJfm9chPsj6iEx5Gt/FK4HJG4Xn1AIvy4fOMFxv571+Zl7Ty0U5jxpRLDVe9qtEWz" "7WaqOSrAR9SHRww3dKgmQQoyivaY1TNBFGnB9JXC+CwpzC5Z45AejcY7JKB66cuX77O4m08g7DNuGmpfCeV85/98V4Tjs0aMafWvJ87O409qPfXquldUhaDOuhN5oinM9qis92gCFCxMXAhYtyMZwIDAQAB"' after 0s
+   ok 192.0.3.105 celik._domainkey.shop2dk.test TXT = '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAumJMSwJJSU3Lbv1B/os3wtdk01YQ3IF2yM0QpWIxsssIw42c3/xfVgV3/TCqhibF7M47U1fduWj8qjaI1jCndY500ti0j+lwHJj1iGe5FnRv1aonwSNGY0JTwiGmIuOVrJfm9chPsj6iEx5Gt/FK4HJG4Xn1AIvy4fOMFxv571+Zl7Ty0U5jxpRLDVe9qtEWz" "7WaqOSrAR9SHRww3dKgmQQoyivaY1TNBFGnB9JXC+CwpzC5Z45AejcY7JKB66cuX77O4m08g7DNuGmpfCeV85/98V4Tjs0aMafWvJ87O409qPfXquldUhaDOuhN5oinM9qis92gCFCxMXAhYtyMZwIDAQAB"' after 1s
+   p= served: main 47d1fe0343eed0bd backup 47d1fe0343eed0bd
+{"smtp_send": {"ok": true, "refused": {}}, "imap_read": {"after_seconds": 6.4, "headers": "From: alice2@shop2dk.test\r\nTo: bob2@shop2dk.test\r\nSubject: final-alpha113 8c19366f9222"}}
+200 {"success": true}
+200 {"success": true}
+--- http://shop2dk.test/hello-mail.php
+code=200
+body: mail-ok
+-- independent verification of shop2dk.test's messages (key public half vs DNS above) 20:30:04
+{'domain': 'shop2dk.test', 'key_p_sha256': '47d1fe0343eed0bd'}
+{'subject': 'final-alpha113 8c19366f9222', 'dkim_signature': True, 'd': 'shop2dk.test', 's': 'celik', 'c': 'relaxed/simple', 'a': 'rsa-sha256', 'body_hash_ok': True, 'signature_ok': True}
+{'subject': 'dk php mail ea1661d41fc1', 'dkim_signature': True, 'd': 'shop2dk.test', 's': 'celik', 'c': 'relaxed/simple', 'a': 'rsa-sha256', 'body_hash_ok': True, 'signature_ok': True}
+== delete shop2dk.test 20:30:04
+200 {"status": "deleted", "domain": "shop2dk.test"}
+   ok 192.0.3.104 celik._domainkey.shop2dk.test TXT = '' after 1s
+   ok 192.0.3.105 celik._domainkey.shop2dk.test TXT = '' after 0s
+== the main domain dkf113.test as a site: its existing key is kept 20:30:48
+   before: {'domain': 'dkf113.test', 'key_p_sha256': '4c0f311243ebf014'}
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/3/public_html", "Domain": "dkf113.test", "DomainID": 3, "FTPPassword": "[REDACTED]", "FTPUser": "dkf113_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 3, "TempDomain": "", "site_records": {"added": [{"content": "192.0.3.104", "name": "dkf113.test", "type": "A"}, {"content": "192.0.3.104", "name": "www.dkf113.test", "type": "A"}], "ipv4": "192.0.3.104", "kept": []}}
+   main domain id 3
+200 {"id": 5, "success": true}
+   200 {"automatic": null, "dkim": "ok", "dkim_signed": true, "dkim_owner_record": false, "mode": "local"}
+   after:  {'domain': 'dkf113.test', 'key_p_sha256': '4c0f311243ebf014'}
+   p= served: main 4c0f311243ebf014 backup 4c0f311243ebf014
+== 587 carol -> carol on dkf113.test after shop2dk.test was deleted 20:30:56
+{"smtp_send": {"ok": true, "refused": {}}, "imap_read": {"after_seconds": 8.1, "headers": "From: carol@dkf113.test\r\nTo: carol@dkf113.test\r\nSubject: final-alpha113 a0979f65b180"}}
+{'domain': 'dkf113.test', 'key_p_sha256': '4c0f311243ebf014'}
+{'subject': 'final-alpha113 a0979f65b180', 'dkim_signature': True, 'd': 'dkf113.test', 's': 'celik', 'c': 'relaxed/simple', 'a': 'rsa-sha256', 'body_hash_ok': True, 'signature_ok': True}
+== guest check after (read only) 20:31:31
+== after2: os Debian GNU/Linux 13 (trixie), release 
+   units: opendkim=active postfix=active panel=active
+   milters: smtpd='inet:127.0.0.1:8891, inet:127.0.0.1:11332' non_smtpd='inet:127.0.0.1:8891'
+== key store
+   shop2dk.test: no key directory
+   dkf113.test: -rw------- root:celikpanel celik.celikpanel;-rw-r----- root:opendkim celik.private;
+   dkf113.test origin: celikpanel-dkim-key v1 sha256:ede20b927e...
+== OpenDKIM tables
+   signingtable: *@dkf113.test celik._domainkey.dkf113.test;
+   keytable: celik._domainkey.dkf113.test;
+   shop2dk.test in signingtable: 0 ; in keytable: 0
+   opendkim-testkey dkf113.test: opendkim-testkey: checking key 'celik._domainkey.dkf113.test' opendkim-testkey: 'celik._domainkey.dkf113.test' record not found 
+== automatic DKIM and DKIM cleanup in the panel's log
+2026-10-30T20:20:48+00:00 frankfurt panel[22609]: 2026/10/30 20:20:48 [dkim-auto] shopdk.test: DKIM ready (domain_created; record published in shopdk.test)
+2026-10-30T20:29:22+00:00 frankfurt panel[1033]: 2026/10/30 20:29:22 [dkim-auto] shop2dk.test: DKIM ready (domain_created; record published in shop2dk.test)
+2026-10-30T20:30:53+00:00 frankfurt panel[1033]: 2026/10/30 20:30:53 [dkim-auto] dkf113.test: DKIM ready (domain_created; the record is already published)
+2026-10-30T20:30:54+00:00 frankfurt panel[1033]: 2026/10/30 20:30:54 [dkim-auto] dkf113.test: DKIM ready (first_mailbox; the record is already published)
+   opendkim restarts this boot: 9
+== delivered test messages and their signatures
+-- /var/mail/vhosts/dkf113.test/carol: Subject: final-alpha113 a0979f65b180
+   signature: d=dkf113.test s=celik 
+   opendkim-testmsg rc=70 opendkim-testmsg: dkim_chunk(): Syntax error
+grep: /var/mail/vhosts/dkf113.test/carol/dovecot.index.cache: binary file matches
+-- /var/mail/vhosts/dkf113.test/carol: 
+
+   opendkim-testmsg rc=70 opendkim-testmsg: dkim_chunk(): Syntax error
+-- /var/spool/mail/vhosts/dkf113.test/carol: Subject: final-alpha113 a0979f65b180
+   signature: d=dkf113.test s=celik 
+   opendkim-testmsg rc=70 opendkim-testmsg: dkim_chunk(): Syntax error
+grep: /var/spool/mail/vhosts/dkf113.test/carol/dovecot.index.cache: binary file matches
+-- /var/spool/mail/vhosts/dkf113.test/carol: 
+
+   opendkim-testmsg rc=70 opendkim-testmsg: dkim_chunk(): Syntax error
+== post done 20:31:32

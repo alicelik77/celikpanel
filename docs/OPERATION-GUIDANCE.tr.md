@@ -10629,3 +10629,52 @@ olduğu gibi.
   yeniden alın" (bilgilerle) demeye devam eder; o zamana kadar çalışan Panel yeniler.
 
 Kurulu paneller yalnız sahiplerince güncellenir. P0.5 **kısmi** kalır.
+
+### Her sitenin postası kendiliğinden DKIM ile imzalanır (30 Ekim 2026)
+
+Bu sunucudan posta gönderebilen bir alan adı (ürünün kendi kuralı: burada posta
+kutusu, yönlendirmesi ya da her şeyi-yakala adresi var ya da posta hizmetini bu
+sunucuya CelikPanel kurdu) DKIM anahtarını, OpenDKIM imzalama tablosundaki yerini ve
+DNS bölgesi bu sunucudaysa `celik._domainkey` kaydını, sahibi "DKIM anahtarı üret" ya
+da "DNS'e ekle"ye basmadan alır. Bu, posta kuruluyken alan adı oluşturulduğunda, alan
+adına ilk posta kutusu açıldığında ve Hizmetler'den posta profili kurulduğunda (artık
+OpenDKIM'i de kurar) her alan adı için olur. Var olan anahtar (sahibinin ya da
+CelikPanel'in) asla değiştirilmez; o adda zaten farklı bir DKIM kaydı varsa korunur ve
+kart onu bildirir. İş arka planda yürür; oluşturmayı asla engellemez, düşürmez.
+
+Posta kimlik doğrulaması kartı bitmemiş işi gösterir
+(`GET /api/v1/domains/{id}/mail/auth` → `automatic`; okuma işi başlatmaz):
+
+- **Kuruluyor** (`pending`) ya da **sunucudaki başka bir değişikliği bekliyor**
+  (`waiting`, `host_busy`): kimse bir şey yapmaz; kendiliğinden sürer (meşgul sunucu
+  yaklaşık on dakika yeniden denenir, sonra bir sonraki Panel açılışında).
+- **Anahtar oluşturulamadı** (`failed`, `key_failed`), **imzalama kurulamadı**
+  (`signing_failed`, Agent'ın ilk satırıyla), **kayıt yayımlanamadı**
+  (`dns_publish_failed`; kayıt bölgede saklı): doğrulanmış hatalar. **Kim:** sunucu
+  sahibi; **sonraki eylem:** karttaki neden (`/var/lib/celikpanel-dkim/keys` anahtar
+  deposu, Hizmetler sayfasında OpenDKIM, DNS bölümünde DNS işlemi), sonra **Yeniden
+  dene** (`POST /api/v1/domains/{id}/mail/auth/automatic`, 202 yanıtı; iş beklerken
+  yeniden basılırsa hiçbir şey kuyruğa girmez).
+- **DNS hazır değil** (`blocked`, `dns_not_ready`): karşılanmamış önkoşul; posta zaten
+  imzalanıyor. DNS bölümünden DNS motorunu denetleyin, sonra **Yeniden dene**. Başka
+  bir yayımın arkasında bekletilen yayım durma değildir: kayıt saklıdır ve DNS yayım
+  uzlaştırıcısı onu yayımlar.
+- **Yanıt kayboldu** (`unknown`): bitip bitmediği bilinmiyor; **Yeniden dene** denetler
+  ve tamamlar (anahtar korunur, hiçbir şey iki kez yapılmaz).
+- **Dış DNS:** posta imzalanıyor; kart bunu söyler ve sağlayıcıya eklenecek kaydı
+  gösterir. **İmzalama tablosunda olmayan anahtar** (eski ya da elle konmuş) **Yeniden
+  dene** ile bildirilir.
+
+Alan adı silinince CelikPanel'in ürettiği anahtar (yanında köken kaydı durur,
+`celik.celikpanel`) ve imzalama tablosu satırları kaldırılır, OpenDKIM yenilenir;
+CelikPanel'in üretmediği anahtar ya da tablo satırı (elle konmuş ya da bu sürümden
+önce üretilmiş anahtar) korunur ve silme yanıtı, gerekmiyorsa silinecek dosyayla
+birlikte onu bildirir. Kayıt bölgeyle, alt alan adındaysa ana bölgeden alt alan adıyla
+birlikte gider.
+
+Artık var olmayan bir dosyayı indirmek, sunucunun yanıtını yeni sekmede açmak yerine
+dosya yöneticisinin yönlendirmesini gösterir ve klasörü yeniden okur.
+
+Şema değişmedi (46): iş, alan adı başına sürümlü bir `panel_settings` kaydıdır
+(`dkim_automatic_v1:<id>`) ve tek bir imzalama yenileme isteği
+(`dkim_signing_refresh_v1`). Kurulu paneller yalnız sahiplerince güncellenir.

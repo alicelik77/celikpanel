@@ -186,7 +186,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityMail, `
 		Agent.AddMailAccount Agent.ConfigureDKIMSigning Agent.ConfigureMailStack
 		Agent.ConfigureMailSubmission Agent.DeleteMailAccount Agent.DeleteMailDomain
-		Agent.EnsureDKIMKey Agent.ImportMailAccount Agent.PostfixQueueAction
+		Agent.EnsureDKIMKey Agent.ImportMailAccount Agent.PostfixQueueAction Agent.RemoveDKIMKey
 		Agent.SetMailPolicy Agent.SyncMailTLSV2 Agent.StartMailEnrollmentV1 Agent.ContinueMailEnrollmentV1
 		Agent.UpdateMailForwarding Agent.UpdateMailPassword Agent.UpdateMailQuota
 		Agent.WireMailFilters
@@ -350,6 +350,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.DeleteFileOrDir":               agentRPCMutationTimeout,
 	"Agent.DeleteMailAccount":             agentRPCMutationTimeout,
 	"Agent.DeleteMailDomain":              agentRPCMutationTimeout,
+	"Agent.RemoveDKIMKey":                 agentRPCMutationTimeout,
 	"Agent.DeletePHPPool":                 agentRPCMutationTimeout,
 	"Agent.Fail2banToggleJail":            agentRPCMutationTimeout,
 	"Agent.Fail2banUnban":                 agentRPCMutationTimeout,

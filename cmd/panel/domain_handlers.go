@@ -562,6 +562,11 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p.audit(r, "domain.create", "domain", result.DomainID)
+	// A domain that can send mail from this server gets its DKIM key,
+	// signing and (where this server keeps the zone) its record by itself,
+	// after this request has published the zone (domain_dkim_automatic.go).
+	// It never fails the creation.
+	defer p.queueAutomaticDKIMForNewDomain(r.Context(), result.DomainID, req.Domain)()
 	if req.DNSManagement == setupDNSModeExternal {
 		_ = json.NewEncoder(w).Encode(result)
 		return
@@ -857,7 +862,19 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 		)
 		return
 	}
+	// The DKIM key CelikPanel made for this domain goes with it; a key or
+	// table line it did not make is kept and named. This never stops the
+	// deletion (domain_dkim_automatic.go).
+	dkimCleanup := p.removeDomainDKIMLocked(ctx, domainID, domain.Name)
 	p.mailMutationMu.Unlock()
+	if dkimCleanup.Removed {
+		p.kickAutomaticDKIM()
+	}
+	if dkimCleanup.worthReporting() {
+		log.Printf("domain deletion for %s: DKIM cleanup: removed=%t kept_key=%q owner_lines=%d error=%q",
+			domain.Name, dkimCleanup.Removed, dkimCleanup.KeptKey, len(dkimCleanup.OwnerTableLines), dkimCleanup.Error)
+		p.audit(r, "domain.delete.dkim_kept:"+domain.Name, "domain", domainID)
+	}
 	if !mailRan {
 		log.Printf("domain deletion for %s: mail runtime cleanup skipped: no mail runtime for this domain on this server", domain.Name)
 		p.audit(r, "domain.delete.mail_runtime_absent:"+domain.Name, "domain", domainID)
@@ -942,8 +959,12 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 	}
 	p.audit(r, "domain.delete:"+domain.Name, "domain", domainID)
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{
+	answer := map[string]any{
 		"status": "deleted",
 		"domain": domain.Name,
-	})
+	}
+	if dkimCleanup.worthReporting() {
+		answer["dkim"] = dkimCleanup
+	}
+	json.NewEncoder(w).Encode(answer)
 }

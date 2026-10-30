@@ -1,0 +1,2 @@
+{'domain': 'dkf113.test', 'key_p_sha256': '4c0f311243ebf014'}
+{'subject': 'final-alpha113 a0979f65b180', 'dkim_signature': True, 'd': 'dkf113.test', 's': 'celik', 'c': 'relaxed/simple', 'a': 'rsa-sha256', 'body_hash_ok': True, 'signature_ok': True}

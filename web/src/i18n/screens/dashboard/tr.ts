@@ -242,6 +242,8 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'dashboard.audit.action.domain.create': 'bir alan adı ekledi',
     'dashboard.audit.action.domain.create.dns_pending': 'bir alan adı ekledi; DNS kayıtları henüz bekliyor',
     'dashboard.audit.action.domain.delete': '{target} alan adını sildi',
+    'dashboard.audit.action.domain.delete.dkim_kept': '{target} alan adını sildi; CelikPanel\'in üretmediği bir DKIM anahtarı ya da tablo satırı korundu ya da anahtar kaldırılamadı',
+    'dashboard.audit.action.mail.dkim.automatic.retry': '{target} için otomatik DKIM kurulumunu yeniden başlattı',
     'dashboard.audit.action.domain.delete.mail_runtime_absent': '{target} alan adını sildi; temizlenecek kurulu bir posta hizmeti yoktu',
     'dashboard.audit.action.domain.delete.pending': '{target} alan adını silmeye başladı; temizlik henüz sürüyor',
     'dashboard.audit.action.domain.general.update': 'bir alan adının genel ayarlarını değiştirdi',
