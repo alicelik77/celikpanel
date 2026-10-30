@@ -10470,3 +10470,30 @@ okuduğunu söyler. Pano alan adını gün sayısından bağımsız listeler.
 **Nasıl devam edilir:** durumu okumak hiçbir şeyi değiştirmez ve yenileme başlatmaz;
 yeniden deneme certbot'un bir sonraki zamanlanmış çalışmasıdır. Kurulu paneller yalnız
 sahiplerince panelin kendi güncelleme ekranından güncellenir. P0.1–P0.5 **kısmi** kalır.
+
+### Sunucu meşgul olduğu için reddedilen kurulum adımı kendiliğinden bekler (30 Ekim 2026)
+
+`release/alpha113` dalında kaynakta (yayımlanmadı; kurulu sunucuda ölçülmedi). Arch
+ap-e çalışmasında görüldü: kurulum sürerken e-posta yenileme işçisi makine kilidini
+bir an tutulmuş buldu, vazgeçti ve kurulum sahibin **Onaylı başlangıcı yeniden ilet**
+seçimini bekledi. Kilidi neyin tuttuğu o kanıtla belirlenemiyor; Bileşenler kurulum
+önizlemesi yalnız Agent'ın süreç içi paket kilidini alır.
+
+- **Kim yapar:** meşgul durum en çok 30 dakika sürdükçe kimse. Ekranda "kimsenin bir
+  şey yapması gerekmiyor" yazar, düğme gösterilmez.
+- **E-posta yenileme devri:** Agent devirden hemen önce işçinin alacağı iki kilidi
+  denetler, meşgulse işçi başlatmadan `busy` yanıtlar; işçi kısa süre tutulan kilidi
+  15 saniyeye kadar bekler. Panel aynı isteği (aynı kimlik, tek denetim kaydı) her
+  20 saniyede yeniden iletir. Kayıp yanıt, tipsiz hata, başka isteğin `busy` yanıtı
+  ya da sonucu belirsiz değişiklik "bilinmiyor" kalır ve yeniden gönderilmez.
+- **30 dakikadan sonra:** `server_setup_mail_enrollment_host_busy`: sunucu meşgul
+  kaldı (biliniyorsa nedeniyle), hiçbir şey değişmedi; sahip öteki değişikliği bitirir
+  ya da durdurur ve **Onaylı başlangıcı yeniden ilet**'i seçer.
+- **Güvenlik duvarı ve posta sertifikası adımları:** Agent defterinde kaydı olmayan
+  kendi isteklerinin saf meşgul reddi aynı biçimde bekler.
+- **Değişmeyenler:** DNS adımları, panel sertifikası, posta DNS imzası (zaten
+  bekliyor), bileşen kurulumları (29 Ekim'den beri bekliyor), kabul edilen devirden
+  sonra reddedilen işçi (mevcut `not_recorded` yolu).
+
+**Nasıl devam edilir:** kendiliğinden, aynı kimlikle; durum okuma hiçbir şey göndermez.
+Kurulu paneller yalnız sahiplerince güncellenir. P0 işleri **kısmi** kalır.

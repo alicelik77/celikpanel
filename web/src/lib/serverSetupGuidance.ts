@@ -353,7 +353,10 @@ export function setupExecutionGuidance(execution: ServerSetupExecution, componen
         result.details.push(text('setup.guide.certificateChecks'));
     } else if (phase === 'mail_enrollment') {
         const code = execution.error?.code;
-        const key = code === 'server_setup_mail_enrollment_not_recorded' ? 'setup.guide.mailEnrollmentUnrecorded'
+        // Busy past its bound (2026-10-30): the owner acts, so it is titled as such.
+        if (code === 'server_setup_mail_enrollment_host_busy') result.title = 'setup.guide.failedTitle';
+        const key = code === 'server_setup_mail_enrollment_host_busy' ? 'setup.guide.mailEnrollmentHostBusy'
+            : code === 'server_setup_mail_enrollment_not_recorded' ? 'setup.guide.mailEnrollmentUnrecorded'
             : code === 'server_setup_mail_enrollment_rollback' ? 'setup.guide.mailEnrollmentRollback'
             : code === 'server_setup_mail_enrollment_running' ? 'setup.guide.mailEnrollmentRecorded'
                 : execution.status === 'failed' ? 'setup.guide.mailEnrollmentFailed' : 'setup.guide.mailEnrollmentUnknown';

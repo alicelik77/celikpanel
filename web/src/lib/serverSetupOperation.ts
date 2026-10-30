@@ -195,7 +195,10 @@ export function continuableMailEnrollment(execution: ServerSetupExecution | null
     return execution.steps.find(step => step.kind === 'mail_enrollment' && step.status === 'running' && step.id === execution.phase) || null;
 }
 
+// Not offered while setup hands the request off again by itself after a busy
+// refusal (status "waiting"); offered again when the busy state outlasted its
+// bound (server_setup_mail_enrollment_host_busy, 2026-10-30).
 export function retryableMailEnrollmentHandoff(execution: ServerSetupExecution | null): SetupPlanStep | null {
-    if (!execution || execution.status !== 'running' || execution.error?.code !== 'server_setup_mail_enrollment_not_recorded') return null;
+    if (!execution || execution.status !== 'running' || !['server_setup_mail_enrollment_not_recorded', 'server_setup_mail_enrollment_host_busy'].includes(execution.error?.code || '')) return null;
     return execution.steps.find(step => step.kind === 'mail_enrollment' && step.status === 'running' && step.id === execution.phase) || null;
 }

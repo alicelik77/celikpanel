@@ -16,9 +16,17 @@ type MailEnrollmentStartRequest struct {
 }
 type MailEnrollmentStartResponse struct {
 	RequestID string `json:"request_id"`
-	Handoff   string `json:"handoff"` // accepted or unknown; never completion
+	Handoff   string `json:"handoff"` // accepted, busy or unknown; never completion
 	Reason    string `json:"reason,omitempty"`
 }
+
+// MailEnrollmentHandoffBusy is a verified refusal before any handoff: a lock
+// the worker must take was held at that moment, so no worker was started and
+// nothing was recorded. Reason then carries a HostMutationReason* code. The
+// same request may be handed off again under the same identity (2026-10-30).
+// Kilit o anda tutuluyordu; işçi başlatılmadı, hiçbir şey kaydedilmedi.
+const MailEnrollmentHandoffBusy = "busy"
+
 type MailEnrollmentStatusResponse struct {
 	MailEnrollmentRequest
 	State      string    `json:"state"` // unknown, not_recorded, forward, rollback, published, restored

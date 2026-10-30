@@ -10,6 +10,8 @@ export const trSetupScreens: Record<SetupScreenKey, string> = {
     "setup.mailEnrollment.sent": "Aynı işlem denetleniyor",
     "setup.mailEnrollment.checking": "Devam isteği gönderildi. Aynı işlem kontrol ediliyor; tamamlandığı henüz doğrulanmadı.",
     "setup.mailEnrollment.unknown": "Devam isteğinin sonucu doğrulanamadı. Aynı işlem kontrol ediliyor. Bu durum sürerse devam etmeden önce teknik ayrıntıları inceleyin.",
+    "setup.mailEnrollment.busy": "Sunucu hâlâ başka bir değişiklikle meşgul; bu yüzden hiçbir şey başlatılmadı. O değişiklik bitince aynı eylemi yeniden seçin; aynı istek korunur.",
+    "setup.guide.mailEnrollmentHostBusy": "Bu sunucu 30 dakikadan uzun süre başka bir değişiklikle meşgul kaldı; bu yüzden e-posta yenileme isteği iletilmedi ve hiçbir şey değişmedi. Siz, sunucu sahibi: öteki değişikliği bitirin ya da durdurun (biliniyorsa Teknik ayrıntılar onu adlandırır), ardından aşağıdan Onaylı başlangıcı yeniden ilet'i seçin. Kurulum aynı istekle sürer.",
     "setup.guide.mailEnrollmentRecorded": "E-posta yenileme hazırlığı kayıtlı; son sonucu henüz doğrulanmadı. Kontroller otomatik sürer. İlerleme durmuşsa sunucu yöneticisi bildirilen nedeni giderip aşağıdan bu kayıtlı işleme devam edebilir.",
     "setup.guide.mailEnrollmentRollback": "E-posta yenileme hazırlığı önceki duruma geri dönüyor. Kontroller otomatik sürer. Geri alma durmuşsa sunucu yöneticisi bildirilen nedeni giderip aşağıdan aynı geri alma işlemine devam edebilir.",
     "setup.guide.mailEnrollmentUnknown": "E-posta yenileme sonucu henüz doğrulanamıyor. Aynı istek kontrol ediliyor. Bu durum sürerse sunucu yöneticisi Teknik ayrıntılarda adı verilen işçiyi incelemeli; başka kurulum başlatmayın.",

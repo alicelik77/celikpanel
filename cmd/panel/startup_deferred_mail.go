@@ -56,9 +56,7 @@ type startupCertificateDeferral struct {
 // busy host is retried. A terminal-uncertain mutation is never retried here;
 // it belongs to exact durable recovery.
 func startupWorkDeferredForBusyHost(err error) bool {
-	return err != nil &&
-		errors.Is(err, errHostMutationBusy) &&
-		!mutationTerminalUncertain(err)
+	return hostMutationRefusedAsBusy(err)
 }
 
 type startupDeferredTask struct {

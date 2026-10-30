@@ -16,6 +16,8 @@ export const enSetupScreens = {
     "setup.mailEnrollment.sent": "Checking the same operation",
     "setup.mailEnrollment.checking": "Continuation requested. Checking the same operation; completion is not yet confirmed.",
     "setup.mailEnrollment.unknown": "Continuation could not be confirmed. The same operation is still being checked. If this persists, inspect its technical details before continuing.",
+    "setup.mailEnrollment.busy": "The server is still busy with another change, so nothing was started. Choose the same action again once that change has finished; the same request is kept.",
+    "setup.guide.mailEnrollmentHostBusy": "This server stayed busy with another change for more than 30 minutes, so the mail renewal request was not handed off and nothing was changed. You, the owner: finish or stop the other change (Technical details name it when it is known), then choose Retry reviewed handoff below. Setup continues with the same request.",
     "setup.guide.mailEnrollmentRecorded": "Mail renewal preparation is recorded; its final result is not yet verified. Checks continue automatically. If progress has stopped, the server administrator can resolve the reported cause and continue this recorded operation below.",
     "setup.guide.mailEnrollmentRollback": "Mail renewal preparation is restoring its previous state. Checks continue automatically. If restoration has stopped, the server administrator can resolve the reported cause and continue the same restoration below.",
     "setup.guide.mailEnrollmentUnknown": "The mail renewal result cannot yet be verified. Checks continue for the same request. If this persists, the server administrator should inspect the worker named in Technical details; do not start another setup.",

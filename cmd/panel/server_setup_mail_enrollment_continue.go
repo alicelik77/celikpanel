@@ -157,7 +157,14 @@ func handoffSetupMailEnrollment(ctx context.Context, req transport.MailEnrollmen
 		return out, err
 	}
 	var handed transport.MailEnrollmentStartResponse
-	if err := dispatch(&req, &handed); err != nil || handed.RequestID != req.RequestID || handed.Handoff != "accepted" {
+	err := dispatch(&req, &handed)
+	if err == nil && handed.RequestID == req.RequestID && handed.Handoff == transport.MailEnrollmentHandoffBusy {
+		// The Agent refused before starting a worker: nothing ran. The owner
+		// is told so and can choose the same action again once it is free.
+		out.Handoff, out.Reason = transport.MailEnrollmentHandoffBusy, "mail_enrollment_host_busy"
+		return out, nil
+	}
+	if err != nil || handed.RequestID != req.RequestID || handed.Handoff != "accepted" {
 		out.Reason = "mail_enrollment_handoff_unknown"
 		return out, nil // Lost reply is neither a proven failure nor permission to retry.
 	}

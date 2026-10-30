@@ -306,7 +306,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     const [error, setError] = useState(() => savedMarker.foreign ? t('setup.staleStart') : '');
     const [reconnecting, setReconnecting] = useState(false);
     const [reconnectSlow, setReconnectSlow] = useState(false);
-    const [enrollmentNotice, setEnrollmentNotice] = useState<'checking' | 'unknown' | null>(null);
+    const [enrollmentNotice, setEnrollmentNotice] = useState<'checking' | 'busy' | 'unknown' | null>(null);
     // The mail enrollment continuation the owner pressed, from the press until
     // a read shows that operation moved on (set18 O3): the button stays
     // disabled and says it is checking, so it is not pressed again meanwhile.
@@ -700,8 +700,9 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         try {
             const response = await setupFetch(`/api/v1/setup/mail-enrollment/${initialRetry ? 'retry' : 'continue'}`, requestOptions({ execution_id: execution.id, step_id: current.id }));
             const result: unknown = response.ok ? await response.json() : null;
-            const accepted = !!result && typeof result === 'object' && 'handoff' in result && result.handoff === 'accepted';
-            if (alive.current) setEnrollmentNotice(accepted ? 'checking' : 'unknown');
+            const handoff = !!result && typeof result === 'object' && 'handoff' in result ? result.handoff : null;
+            // "busy": refused before anything started; the owner may choose it again.
+            if (alive.current) setEnrollmentNotice(handoff === 'accepted' ? 'checking' : handoff === 'busy' ? 'busy' : 'unknown');
         } catch { if (alive.current) setEnrollmentNotice('unknown'); }
         finally {
             // A lost POST reply only triggers a read of the same setup execution.
@@ -864,7 +865,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     const nextPath = setupNextPath(snapshot.draft.purpose, explicitSelection ? selectedComponents : undefined);
     const nextLabel = nextPath === '/dns-infrastructure' ? 'setup.nextDNS' : nextPath === '/services' ? 'setup.nextComponents' : isNode ? 'setup.nextApplication' : 'setup.nextWebsite';
     const progressCurrentStep = execution?.steps.find(item => ['running', 'failed'].includes(item.status));
-    const observingMailEnrollment = progressCurrentStep?.kind === 'mail_enrollment' && execution?.status === 'running' && ['running', 'rollback', 'unknown', 'not_recorded', 'handoff'].some(reason => execution.error?.code === `server_setup_mail_enrollment_${reason}`);
+    const observingMailEnrollment = progressCurrentStep?.kind === 'mail_enrollment' && execution?.status === 'running' && ['running', 'rollback', 'unknown', 'not_recorded', 'handoff', 'host_busy'].some(reason => execution.error?.code === `server_setup_mail_enrollment_${reason}`);
     const mailEnrollmentToRetry = !reconnecting && retryableMailEnrollmentHandoff(execution);
     const mailEnrollmentToContinue = !reconnecting && continuableMailEnrollment(execution);
     const guidance = execution && !reconnecting && !finishing ? setupExecutionGuidance(execution, componentLabel) : null;

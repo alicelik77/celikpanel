@@ -137,6 +137,12 @@ func dispatchMailEnrollmentRPC(ctx context.Context, req *transport.MailEnrollmen
 	if err = ctx.Err(); err != nil {
 		return err
 	}
+	if mailEnrollmentExclusionBusy() {
+		// Verified "not started": nothing was dispatched or recorded, so the
+		// caller may hand the same request off again (D-024, 2026-10-30).
+		resp.Handoff, resp.Reason = transport.MailEnrollmentHandoffBusy, transport.HostMutationReasonHostLock
+		return nil
+	}
 	if err = dispatch(ctx, proof.helper, args); err != nil {
 		resp.Reason = "mail_enrollment_handoff_unknown"
 		return nil

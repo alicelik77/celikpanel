@@ -201,3 +201,53 @@ func TestMailEnrollmentRPCContinuationCannotAdmitOrReplayTerminalWork(t *testing
 		})
 	}
 }
+
+// 2026-10-30 (Arch run ap-e): a handoff while a lock the worker takes is held
+// is refused before anything is dispatched, as a typed "busy" the Panel retries
+// under the same identity. The probe is consulted only after every identity and
+// source check, so a busy host never hides a verified refusal.
+func TestMailEnrollmentRPCRefusesABusyHandoffBeforeDispatch(t *testing.T) {
+	old := mailEnrollmentExclusionBusy
+	t.Cleanup(func() { mailEnrollmentExclusionBusy = old })
+	for _, recordedOnly := range []bool{false, true} {
+		for _, busy := range []bool{true, false} {
+			req := enrollmentRPCRequest()
+			proof := &enrollmentRPCProof{commit: req.ExpectedBuildCommit, digest: strings.Repeat("e", 64)}
+			inspect := func() (mailEnrollmentRPCInspection, error) {
+				return mailEnrollmentRPCInspection{proof, filepath.Join(mailrenewalkit.InstalledRoot, req.Generation, mailrenewalkit.BinaryName), req.Generation, proof.digest}, nil
+			}
+			observe := func(context.Context, *transport.MailEnrollmentRequest) (recoveryruntime.MailEnrollmentObservation, error) {
+				if !recordedOnly {
+					return recoveryruntime.MailEnrollmentObservation{}, nil
+				}
+				return recoveryruntime.MailEnrollmentObservation{Found: true, Identity: servicemutationledger.MailEnrollmentIdentity{RequestID: req.RequestID, OwnerID: req.OwnerID, ScopeSHA256: strings.Repeat("f", 64)}, Generation: req.Generation, State: "forward"}, nil
+			}
+			probes, starts := 0, 0
+			mailEnrollmentExclusionBusy = func() bool { probes++; return busy }
+			dispatch := func(context.Context, string, []string) error { starts++; return nil }
+			var out transport.MailEnrollmentStartResponse
+			err := dispatchMailEnrollmentRPC(context.Background(), &req, &out, req.ExpectedBuildCommit, inspect, observe, dispatch, recordedOnly)
+			if err != nil || probes != 1 {
+				t.Fatalf("recorded=%t busy=%t: err=%v probes=%d", recordedOnly, busy, err, probes)
+			}
+			if busy && (starts != 0 || out.Handoff != transport.MailEnrollmentHandoffBusy || out.Reason != transport.HostMutationReasonHostLock || out.RequestID != req.RequestID) {
+				t.Fatalf("recorded=%t busy: starts=%d %+v", recordedOnly, starts, out)
+			}
+			if !busy && (starts != 1 || out.Handoff != "accepted") {
+				t.Fatalf("recorded=%t idle: starts=%d %+v", recordedOnly, starts, out)
+			}
+		}
+	}
+	// A verified refusal earlier in the checks is never turned into "busy".
+	mailEnrollmentExclusionBusy = func() bool { t.Fatal("probed before the source was verified"); return true }
+	req := enrollmentRPCRequest()
+	var out transport.MailEnrollmentStartResponse
+	err := dispatchMailEnrollmentRPC(context.Background(), &req, &out, req.ExpectedBuildCommit, func() (mailEnrollmentRPCInspection, error) {
+		return mailEnrollmentRPCInspection{}, errors.New("source unverified")
+	}, func(context.Context, *transport.MailEnrollmentRequest) (recoveryruntime.MailEnrollmentObservation, error) {
+		return recoveryruntime.MailEnrollmentObservation{}, nil
+	}, func(context.Context, string, []string) error { t.Fatal("dispatched"); return nil }, false)
+	if err == nil || out.Handoff == transport.MailEnrollmentHandoffBusy {
+		t.Fatalf("unverified source: %+v %v", out, err)
+	}
+}

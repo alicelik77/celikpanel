@@ -54,28 +54,66 @@ func (p *Panel) serverSetupChildRefusedAtAdmission(ctx context.Context, op servi
 // wait, or past the bound a verified failure that names what kept the host
 // busy when that is known.
 func serverSetupHostBusyAttempt(step *serverSetupExecutionStep, op serviceOperation, now time.Time) error {
+	if recordServerSetupHostBusy(step, now) {
+		step.BusyRetry = true
+		return &serverSetupPeerWait{Code: serverSetupHostBusyCode, Message: serverSetupHostBusyWaitMessage}
+	}
+	step.BusyRetry = false
+	return serverSetupHostStayedBusy(step, reasonOf(op), "nothing was installed")
+}
+
+// recordServerSetupHostBusy counts one busy refusal on the step and reports
+// whether the step is still within serverSetupHostBusyBound of its first one.
+func recordServerSetupHostBusy(step *serverSetupExecutionStep, now time.Time) bool {
 	since, err := time.Parse(time.RFC3339Nano, step.BusySince)
 	if err != nil || step.BusySince == "" {
 		since = now
 		step.BusySince = now.UTC().Format(time.RFC3339Nano)
 	}
 	step.BusyAttempts++
-	if now.Sub(since) < serverSetupHostBusyBound {
-		step.BusyRetry = true
-		return &serverSetupPeerWait{Code: serverSetupHostBusyCode, Message: serverSetupHostBusyWaitMessage}
-	}
-	step.BusyRetry = false
+	return now.Sub(since) < serverSetupHostBusyBound
+}
+
+// serverSetupHostBusyCause names what kept the host busy, as far as known.
+func serverSetupHostBusyCause(reason string) string {
 	why := map[string]string{
 		transport.HostMutationReasonPackageManager: "its package manager was busy with another package task",
 		transport.HostMutationReasonAgentMutation:  "another CelikPanel change was running",
 		transport.HostMutationReasonPanelOperation: "another CelikPanel operation was running",
 		transport.HostMutationReasonHostLock:       "an unfinished change was holding it",
-	}[reasonOf(op)]
+	}[reason]
 	if why == "" {
 		why = "another change kept it busy"
 	}
-	return &serverSetupChildFailure{Code: serverSetupHostStayedBusyCode, Reason: reasonOf(op),
-		Message: "This server stayed busy for more than 30 minutes (" + why + "), so this step could not start and nothing was installed (" + strconv.Itoa(step.BusyAttempts) + " tries). You, the owner: finish or stop the other change on this server; then choose Review a revised plan."}
+	return why
+}
+
+func serverSetupHostStayedBusy(step *serverSetupExecutionStep, reason, unchanged string) error {
+	return &serverSetupChildFailure{Code: serverSetupHostStayedBusyCode, Reason: reason,
+		Message: "This server stayed busy for more than 30 minutes (" + serverSetupHostBusyCause(reason) + "), so this step could not start and " + unchanged + " (" + strconv.Itoa(step.BusyAttempts) + " tries). You, the owner: finish or stop the other change on this server; then choose Review a revised plan."}
+}
+
+// serverSetupAgentRequestRefusedBusy (2026-10-30, same rule as the service
+// children above): the firewall and mail certificate steps send their own
+// request straight to the Agent's lease. A pure busy refusal of that request,
+// with no job for it in the Agent's ledger (proven: nothing ran), is a wait:
+// the next pass sends the same request under the same identity, and past the
+// bound the step fails naming the cause. A joined, terminal-uncertain or
+// unobservable refusal is left to the existing failure and reconciliation.
+// Güvenlik duvarı ve posta sertifikası adımı meşgul reddinde aynı kimlikle
+// bekler; kanıt yoksa eski davranış sürer.
+func (p *Panel) serverSetupAgentRequestRefusedBusy(ctx context.Context, step *serverSetupExecutionStep, err error) error {
+	if (step.Kind != "firewall" && step.Kind != "mail_certificate") ||
+		!hostMutationRefusedAsBusy(err) || !isPureWrappedError(err, errHostMutationBusy) {
+		return err
+	}
+	if job, statusErr := p.statusAgentMutation(ctx, step.RequestID); statusErr != nil || job != nil {
+		return err
+	}
+	if recordServerSetupHostBusy(step, time.Now()) {
+		return &serverSetupPeerWait{Code: serverSetupHostBusyCode, Message: serverSetupHostBusyWaitMessage}
+	}
+	return serverSetupHostStayedBusy(step, hostMutationBusyReason(err), "nothing was changed")
 }
 
 func reasonOf(op serviceOperation) string {

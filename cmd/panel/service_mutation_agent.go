@@ -168,6 +168,27 @@ func mutationTerminalUncertain(err error) bool {
 	return errors.As(err, &target) || errors.Is(err, errAgentMutationRecoveryRequired)
 }
 
+// hostMutationRefusedAsBusy is the one retry decision for work refused because
+// the host was busy (first written for deferred startup mail work, upd11 F2;
+// shared with setup steps on 2026-10-30): only a busy refusal is retried, and a
+// terminal-uncertain mutation never is - it belongs to exact durable recovery.
+// An unknown outcome (a lost reply, a transport failure) is not a busy refusal.
+// Yalnız meşgul reddi yeniden denenir; sonucu belirsiz bir değişiklik asla.
+func hostMutationRefusedAsBusy(err error) bool {
+	return err != nil &&
+		errors.Is(err, errHostMutationBusy) &&
+		!mutationTerminalUncertain(err)
+}
+
+// hostMutationBusyReason is the typed reason of a busy refusal, or "".
+func hostMutationBusyReason(err error) string {
+	var busy *hostMutationBusyError
+	if errors.As(err, &busy) {
+		return busy.reason
+	}
+	return ""
+}
+
 type agentMutationIdentity struct {
 	RequestID   string
 	OwnerID     string

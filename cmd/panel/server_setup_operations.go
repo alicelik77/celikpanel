@@ -84,9 +84,14 @@ type serverSetupExecutionStep struct {
 	// child at admission while the host was busy (proven: nothing ran, see
 	// serverSetupChildRefusedAtAdmission). BusyRetry asks the next pass to
 	// admit the same child again (same identity, same operation row).
-	BusySince                   string `json:"busy_since,omitempty"`
-	BusyAttempts                int    `json:"busy_attempts,omitempty"`
-	BusyRetry                   bool   `json:"busy_retry,omitempty"`
+	BusySince    string `json:"busy_since,omitempty"`
+	BusyAttempts int    `json:"busy_attempts,omitempty"`
+	BusyRetry    bool   `json:"busy_retry,omitempty"`
+	// BusyReason (mail enrollment only, 2026-10-30) is the typed reason of the
+	// busy refusal that ended the automatic hand-offs past
+	// serverSetupHostBusyBound ("unknown" when none was named); the step then
+	// waits for the owner. Cleared before every hand-off. Older Panels ignore it.
+	BusyReason                  string `json:"busy_reason,omitempty"`
 	Status                      string `json:"status"`
 	RequestID                   string `json:"request_id"`
 	OwnerID                     string `json:"owner_id"`
@@ -1423,6 +1428,10 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 			done, err = p.runServerSetupStep(ctx, stepPlan, step)
 		} else {
 			done, err = p.runServerSetupStep(ctx, plan, step)
+		}
+		if err != nil {
+			// A busy refusal proven to have started nothing waits (bounded).
+			err = p.serverSetupAgentRequestRefusedBusy(ctx, step, err)
 		}
 		var peerWait *serverSetupPeerWait
 		if errors.As(err, &peerWait) {

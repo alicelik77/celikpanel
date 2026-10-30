@@ -799,6 +799,42 @@ test('reviewed handoff retry is limited to verified absence on the current runni
  for(const status of ['waiting','failed','succeeded'])assert.equal(operations.retryableMailEnrollmentHandoff({...pending,status}),null);
  assert.equal(operations.retryableMailEnrollmentHandoff({...pending,phase:'other'}),null);
  assert.equal(operations.retryableMailEnrollmentHandoff({...pending,steps:[{...pending.steps[0],status:'succeeded'}]}),null);
+ // Busy past the bound: offered again; while setup retries by itself (waiting), never.
+ assert.ok(operations.retryableMailEnrollmentHandoff({...pending,error:{code:'server_setup_mail_enrollment_host_busy',message:'stayed busy'}}));
+ assert.equal(operations.retryableMailEnrollmentHandoff({...pending,status:'waiting',phase:'mail_enrollment',error:{code:'server_setup_host_busy',message:'busy'}}),null);
+});
+
+// 2026-10-30 (Arch run ap-e): while setup hands the request off again by
+// itself after a busy refusal, the page says so and offers no button; past the
+// bound the owner's retry is offered, and a retry refused as busy says so.
+test('a busy mail renewal hand-off shows the automatic wait, then the owner retry past the bound', async()=>{
+    const saved={plan_id:'a'.repeat(32),request_id:'b'.repeat(32),panel_domain:'panel.example.com'};
+    const step={id:'mail-renewal',kind:'mail_enrollment',target:'mail-renewal',qualifier:'c'.repeat(64),status:'running'};
+    init('admin',{status:'running'});
+    store.set('celikpanel.setup.start.admin',JSON.stringify(saved));
+    let current={...execution(saved),status:'waiting',phase:'mail_enrollment',steps:[step],error:{code:'server_setup_host_busy',message:'busy'}};
+    const read=fetch;let posted=0;
+    globalThis.fetch=async(url,options)=>{
+        if(url==='/api/v1/setup/mail-enrollment/retry'){posted++;return Response.json({request_id:'r'.repeat(32),handoff:'busy',reason:'mail_enrollment_host_busy'},{status:202});}
+        if(url.includes('/setup/operation'))return Response.json(current);
+        return read(url,options);
+    };
+    try{
+        await mount();
+        let text=JSON.stringify(tree.toJSON());
+        assert.ok(text.includes('setup.v5.wait.server_setup_host_busy'),'the automatic wait is named');
+        assert.equal(findButton('setup.mailEnrollment.retry'),undefined,'no owner action while setup retries by itself');
+        assert.equal(posted,0);
+        await act(async()=>tree.unmount());tree=null;
+        current={...current,status:'running',phase:'mail-renewal',error:{code:'server_setup_mail_enrollment_host_busy',message:'stayed busy'}};
+        await mount();
+        text=JSON.stringify(tree.toJSON());
+        assert.ok(text.includes('setup.guide.mailEnrollmentHostBusy'));
+        const button=findButton('setup.mailEnrollment.retry');assert.ok(button);assert.equal(posted,0,'polling never posts');
+        await act(async()=>{void button.props.onClick();});
+        assert.equal(posted,1);
+        assert.ok(JSON.stringify(tree.toJSON()).includes('setup.mailEnrollment.busy'));
+    }finally{await cleanup();}
 });
 
 

@@ -10507,3 +10507,42 @@ every 12 hours. The Dashboard lists the domain whatever the days.
 **How work resumes:** reading the state never changes anything and never starts a
 renewal; certbot's next scheduled run is the retry. Installed panels are updated only
 by their owners from the panel's own update screen. P0.1–P0.5 stay **partial**.
+
+### A setup step refused because the server was busy waits by itself (2026-10-30)
+
+In source on `release/alpha113` (not published; not yet measured on an installed
+server). Seen in the Arch run ap-e (`deploy/e2e/dns-pair-acceptance/evidence/arch-parity-20261030/`):
+while setup ran, the mail renewal worker found the host lock held for a moment, gave
+up, and setup waited for the owner's **Retry reviewed handoff**. What held the lock
+is not established by that evidence; the Components install preview takes only the
+Agent's in-process package lock (`pacman -S --print` / `apt-get -s` lock nothing),
+and the install after it was refused by the Panel (`server_setup_busy`) before it
+reached the Agent.
+
+- **Who acts:** nobody, while the busy state lasts at most 30 minutes. The run reads
+  `setup.v5.wait.server_setup_host_busy` ("… Nobody needs to act: setup continues
+  this step by itself once the other change has finished") and offers no button.
+- **Mail renewal hand-off:** the Agent now checks, just before the hand-off, the two
+  locks the worker takes and answers `handoff: "busy"` (reason `host_lock_busy`)
+  without starting a worker; the worker itself waits up to 15 s for a lock held for
+  a moment. On a busy answer the Panel hands the same request (same request, owner
+  and kit identity, one audit row) off again on its next pass, every 20 s. The
+  durable fence still precedes every call; a lost reply, an untyped error, a busy
+  answer for another request or a terminal-uncertain result stays "unknown" and is
+  never re-sent.
+- **Past 30 minutes:** `server_setup_mail_enrollment_host_busy`, titled "Action
+  needed before continuing": the server stayed busy (with the cause when known),
+  nothing was changed; the owner finishes or stops the other change and chooses
+  **Retry reviewed handoff**. A retry refused as busy says so
+  (`setup.mailEnrollment.busy`).
+- **Firewall and mail certificate steps:** a pure busy refusal of the step's own
+  request with no job for it in the Agent's ledger waits the same way and the next
+  pass sends the same request; past 30 minutes `server_setup_host_stayed_busy`.
+- **Left as they were:** the DNS steps (their own reconciliation), the panel
+  certificate (its saga), mail DNS signing (already waits), service children (already
+  wait since 2026-10-29), a worker refused after an accepted hand-off (it records
+  nothing the Panel can read: the existing `not_recorded` owner path).
+
+**How work resumes:** by itself, under the same identity; polling never sends.
+`busy_reason` is an additive field of the setup execution record. Installed panels
+are updated only by their owners. P0 items stay **partial**.
