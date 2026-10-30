@@ -9,7 +9,8 @@ import "github.com/alicelik/celikpanel/internal/transport"
 func ExactSwitchTargetStateV1(state StateV1, journal SwitchJournalV1) bool {
 	if journal.Schema == SwitchJournalSchemaV3 {
 		if journal.PDNSFreshPlan == nil || journal.PDNSFreshPlan.Native == nil ||
-			state.NativeCatalogV3 != NativeCatalogDebian49V3 ||
+			state.NativeCatalogV3 != journal.PDNSFreshPlan.Kind ||
+			!IsNativeCatalogV3(state.NativeCatalogV3) ||
 			state.PrimaryCatalogSerial != journal.PDNSFreshPlan.Native.Observed.NativeSerial {
 			return false
 		}

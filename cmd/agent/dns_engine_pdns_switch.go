@@ -1636,6 +1636,34 @@ func switchToPDNS(
 	})
 }
 
+// pdnsPacmanSwitchAdmission keeps the Arch Linux PowerDNS adapter to what was
+// measured (D-028 amendment, 2026-10-30): a first install on a server with no
+// DNS engine - the setup wizard's main DNS server of one server (standalone)
+// or of a pair (paired primary), or the backup DNS server (paired secondary).
+// A reconfiguration, a reinstall and a switch from BIND stay refused on Arch
+// before any effect, with the reason.
+//
+// Arch'ta PowerDNS yalnız ölçülen biçimde açılır: DNS yazılımı olmayan
+// sunucuda ilk kurulum (tek sunucu, eşli ana ya da yedek).
+func pdnsPacmanSwitchAdmission(
+	profile hostplatform.Profile,
+	manifest mutationpayload.DNSEngineSwitchManifestCommitment,
+	stateExists bool,
+) error {
+	if profile.PackageManager != hostplatform.PackageManagerPacman {
+		return nil
+	}
+	firstInstall := manifest.SourceEngine == "" && !stateExists &&
+		manifest.Mode == transport.DNSEngineSwitchModeSwitch
+	standalone := manifest.Topology == transport.DNSTopologyStandalone && manifest.PairRole == ""
+	paired := manifest.Topology == transport.DNSTopologyPaired &&
+		(manifest.PairRole == transport.DNSPairRolePrimary || manifest.PairRole == transport.DNSPairRoleSecondary)
+	if firstInstall && (standalone || paired) {
+		return nil
+	}
+	return &hostOperatorRefusal{sentence: "Nothing was changed on this server. " + core.PowerDNSPacmanReason}
+}
+
 func switchToPDNSOnCertifiedProfile(
 	ctx context.Context,
 	manifest mutationpayload.DNSEngineSwitchManifestCommitment,
@@ -1661,7 +1689,7 @@ func switchToPDNSOnCertifiedProfile(
 		if err := validateEngineStateCatalogContract(manifest, state); err != nil {
 			return transport.SwitchDNSEngineV1Response{}, err
 		}
-		if state.NativeCatalogV3 == dnsengineartifact.NativeCatalogDebian49V3 {
+		if dnsengineartifact.IsNativeCatalogV3(state.NativeCatalogV3) {
 			if err := verifyFreshPDNSNativeVersionV3(ctx, profile); err != nil {
 				return transport.SwitchDNSEngineV1Response{}, err
 			}
@@ -1696,6 +1724,9 @@ func switchToPDNSOnCertifiedProfile(
 		return transport.SwitchDNSEngineV1Response{}, err
 	}
 	if err := pdnsPairedPrimaryHostAdmission(manifest, stateExists); err != nil {
+		return transport.SwitchDNSEngineV1Response{}, err
+	}
+	if err := pdnsPacmanSwitchAdmission(profile, manifest, stateExists); err != nil {
 		return transport.SwitchDNSEngineV1Response{}, err
 	}
 	sourceProof, err := proveDNSEngineSwitchSource(
@@ -1791,6 +1822,23 @@ func switchToPDNSOnCertifiedProfile(
 			}
 		}
 	}
+	// Arch Linux: every first install (main or backup, one or two servers)
+	// takes the tested build from the official extra repository, read before
+	// any effect, re-read right before the one pacman transaction and checked
+	// after it (D-028 amendment, 2026-10-30).
+	pacmanFreshPDNS := !freshPairedPrimaryV3 &&
+		profile.PackageManager == hostplatform.PackageManagerPacman &&
+		manifest.SourceEngine == "" && !stateExists
+	if pacmanFreshPDNS {
+		if err := validateFreshPDNSPrimaryHostProfileV3(profile); err != nil {
+			return transport.SwitchDNSEngineV1Response{}, err
+		}
+		version, err := preflightFreshPDNSPackageVersionsV3(ctx, profile, packages, missing)
+		if err != nil {
+			return transport.SwitchDNSEngineV1Response{}, err
+		}
+		freshPDNSVersion = version
+	}
 	if err := verifyBINDMaskParentMetadata(); err != nil {
 		return transport.SwitchDNSEngineV1Response{},
 			fmt.Errorf("preflight DNS systemd parent: %w", err)
@@ -1855,7 +1903,7 @@ func switchToPDNSOnCertifiedProfile(
 			func() error {
 				return installOwnedDNSEnginePackages(installReceipt, func() error {
 					install := func() (string, error) {
-						if freshPairedPrimaryV3 {
+						if freshPairedPrimaryV3 || pacmanFreshPDNS {
 							return installFreshPDNSPackagesV3(ctx, missing, freshPDNSVersion)
 						}
 						return installPackagesWithCandidateContext(
@@ -1881,9 +1929,18 @@ func switchToPDNSOnCertifiedProfile(
 		return transport.SwitchDNSEngineV1Response{},
 			fmt.Errorf("verify DNS systemd parent after package preparation: %w", err)
 	}
+	if pacmanFreshPDNS {
+		// The post-install identity check of every Arch first install.
+		if err := verifyFreshPDNSNativeVersionV3(ctx, profile); err != nil {
+			return transport.SwitchDNSEngineV1Response{}, err
+		}
+	}
 	if err := runDNSEngineSwitchPreIntentFaultHook(
 		faultDriver, manifest, binding,
 	); err != nil {
+		return transport.SwitchDNSEngineV1Response{}, err
+	}
+	if err := preparePacmanPDNSDirectoriesV3(profile); err != nil {
 		return transport.SwitchDNSEngineV1Response{}, err
 	}
 	configs, err := preparePDNSConfigMutation(ctx, manifest, managedConfig)

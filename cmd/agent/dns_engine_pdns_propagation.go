@@ -262,7 +262,7 @@ func completePDNSV3Propagation(
 	if err != nil {
 		return dnsZoneV3RecoveryPending(err)
 	}
-	if !plan.Legacy && plan.State.NativeCatalogV3 == dnsengineartifact.NativeCatalogDebian49V3 {
+	if !plan.Legacy && dnsengineartifact.IsNativeCatalogV3(plan.State.NativeCatalogV3) {
 		state := plan.State
 		primaryPlan.RefreshEvidence = func(ctx context.Context) (dnsPrimaryCatalogEvidence, error) {
 			evidence, primary, err := managedPDNSPrimaryCatalogEvidenceForState(ctx, state)

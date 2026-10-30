@@ -42,7 +42,7 @@ func validFreshPDNSTargetUnitBeforeV3(unit UnitSnapshot) bool {
 func (policy JournalPolicy) ValidatePDNSFreshPrimaryPlanV3(journal SwitchJournalV1) error {
 	plan := journal.PDNSFreshPlan
 	if journal.Schema != SwitchJournalSchemaV3 || plan == nil ||
-		plan.Kind != PDNSFreshPrimaryPlanKindV3 ||
+		!IsNativeCatalogV3(plan.Kind) ||
 		journal.Mode != transport.DNSEngineSwitchModeSwitch ||
 		journal.SourceEngine != "" || journal.SourceEpoch != 0 ||
 		journal.TargetEngine != transport.DNSEnginePowerDNS ||

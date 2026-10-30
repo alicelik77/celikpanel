@@ -162,6 +162,16 @@ export function dnsEngineOwnerChanged(
         snapshot.engines.some((entry) => entry.detail_code === 'engine_owner_changed');
 }
 
+// The active PowerDNS runs a release outside its tested series after the
+// system's own update (detail code engine_series_untested): DNS answers,
+// DNS changes wait for a CelikPanel release that names it.
+export function dnsEngineSeriesUntested(
+    snapshot: DNSEngineFlowEvidence | null,
+): boolean {
+    return snapshot !== null &&
+        snapshot.engines.some((entry) => entry.detail_code === 'engine_series_untested');
+}
+
 export function dnsEngineMutationsHeld(
     snapshot: DNSEngineFlowEvidence | null,
 ): boolean {

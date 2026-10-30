@@ -111,6 +111,7 @@ const codeKey: Record<string, TranslationKey> = {
     server_setup_pdns_main_untested_system: 'setup.v2.engine.untested',
     server_setup_pdns_main_untested_version: 'setup.v2.engine.untestedVersion',
     server_setup_pdns_main_not_debian_archive: 'setup.v2.engine.notDebianArchive',
+    server_setup_pdns_main_not_official_repository: 'setup.v2.engine.notOfficialRepository',
     server_setup_version_repository_required: 'setup.v2.blocker.versionRepository',
     server_setup_version_repository_unknown: 'setup.v2.blocker.versionRepositoryUnknown',
     server_setup_dns_publisher_endpoint_required: 'setup.publisher.endpointRequired',

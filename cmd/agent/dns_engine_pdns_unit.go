@@ -33,6 +33,32 @@ func certifyAPTPDNSCapabilities(profile hostplatform.Profile) error {
 	return nil
 }
 
+// certifyPacmanPDNSCapabilities is the Arch Linux (pacman, systemd) host of
+// the PowerDNS adapter (D-028 amendment, 2026-10-30): the vendor unit is the
+// installed powerdns package's own file and the daemon runs from /usr/bin.
+func certifyPacmanPDNSCapabilities(profile hostplatform.Profile) error {
+	if profile.PackageManager != hostplatform.PackageManagerPacman ||
+		profile.DistroFamily != hostplatform.DistroFamilyArch ||
+		profile.ServiceManager != hostplatform.ServiceManagerSystemd {
+		return errors.New(
+			"PowerDNS authority requires a verified pacman package ecosystem and systemd",
+		)
+	}
+	return nil
+}
+
+// certifyPDNSCapabilities accepts the certified PowerDNS host families: APT
+// (Debian, Ubuntu) and pacman (Arch Linux), each with systemd. Adoption of an
+// owner-installed PowerDNS stays APT-only (certifyAPTPDNSCapabilities).
+func certifyPDNSCapabilities(profile hostplatform.Profile) error {
+	if certifyAPTPDNSCapabilities(profile) == nil || certifyPacmanPDNSCapabilities(profile) == nil {
+		return nil
+	}
+	return errors.New(
+		"PowerDNS authority requires a verified APT or pacman package ecosystem and systemd",
+	)
+}
+
 func runCertifiedPDNSTargetMutation(
 	profile hostplatform.Profile,
 	mutation func() (transport.SwitchDNSEngineV1Response, error),
@@ -41,14 +67,21 @@ func runCertifiedPDNSTargetMutation(
 		return transport.SwitchDNSEngineV1Response{},
 			errors.New("PowerDNS target mutation callback is required")
 	}
-	if err := certifyAPTPDNSCapabilities(profile); err != nil {
+	if err := certifyPDNSCapabilities(profile); err != nil {
 		return transport.SwitchDNSEngineV1Response{}, err
 	}
 	return mutation()
 }
 
+// validatePDNSVendorUnitIdentity is the APT vendor unit identity.
 func validatePDNSVendorUnitIdentity(identity dnsUnitIdentity) error {
 	return dnsunitidentity.ValidateAPTPDNSVendorIdentity(identity)
+}
+
+// validatePDNSVendorUnitIdentityForProfile accepts the vendor unit identity
+// of the host's own package family only.
+func validatePDNSVendorUnitIdentityForProfile(profile hostplatform.Profile, identity dnsUnitIdentity) error {
+	return dnsunitidentity.ValidatePDNSVendorIdentityFor(string(profile.PackageManager), identity)
 }
 
 type pdnsInactiveTargetSnapshot struct {
@@ -109,7 +142,7 @@ func verifyPDNSTargetSealedBeforeUnmaskWithOps(
 	profile hostplatform.Profile,
 	ops pdnsSealedTargetOps,
 ) error {
-	if err := certifyAPTPDNSCapabilities(profile); err != nil {
+	if err := certifyPDNSCapabilities(profile); err != nil {
 		return err
 	}
 	if ops.inspectState == nil || ops.inspectIdentity == nil ||
@@ -155,7 +188,7 @@ func verifyPDNSTargetSealedBeforeUnmaskWithOps(
 			if err != nil {
 				return pdnsInactiveTargetSnapshot{}, err
 			}
-			if err := validatePDNSVendorUnitIdentity(identity); err != nil {
+			if err := validatePDNSVendorUnitIdentityForProfile(profile, identity); err != nil {
 				return pdnsInactiveTargetSnapshot{}, err
 			}
 		}
@@ -228,7 +261,7 @@ func inspectVerifiedPDNSInactiveTargetWithOps(
 	allowedUnitFileStates []string,
 	ops pdnsInactiveTargetOps,
 ) (pdnsInactiveTargetSnapshot, error) {
-	if err := certifyAPTPDNSCapabilities(profile); err != nil {
+	if err := certifyPDNSCapabilities(profile); err != nil {
 		return pdnsInactiveTargetSnapshot{}, err
 	}
 	allowed := make(map[string]bool, len(allowedUnitFileStates))
@@ -261,7 +294,7 @@ func inspectVerifiedPDNSInactiveTargetWithOps(
 		if err != nil {
 			return pdnsInactiveTargetSnapshot{}, err
 		}
-		if err := validatePDNSVendorUnitIdentity(identity); err != nil {
+		if err := validatePDNSVendorUnitIdentityForProfile(profile, identity); err != nil {
 			return pdnsInactiveTargetSnapshot{}, err
 		}
 		vendor, err := ops.inspectVendor()

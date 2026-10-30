@@ -37,7 +37,7 @@ func FreshPrimaryTargetStateV3(j SwitchJournalV1) (StateV1, error) {
 		PrimaryCatalogSerial: j.PDNSFreshPlan.Native.Observed.NativeSerial,
 		SourceRevision:       j.SourceRevision, ManifestQualifier: j.ManifestQualifier,
 		MutationRequestID: j.MutationRequestID, MutationOwnerID: j.MutationOwnerID,
-		NativeCatalogV3: NativeCatalogDebian49V3,
+		NativeCatalogV3: j.PDNSFreshPlan.Kind,
 	}
 	if err := ValidateNativeCatalogStateV3(state); err != nil {
 		return StateV1{}, err

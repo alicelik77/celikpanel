@@ -23,7 +23,7 @@ func verifyPDNSV3PublishedZoneAuthority(
 	if !zone.Delete || state.Mode != transport.DNSEngineSwitchModeSwitch ||
 		state.Engine != transport.DNSEnginePowerDNS ||
 		state.PairRole != transport.DNSPairRolePrimary ||
-		state.NativeCatalogV3 != dnsengineartifact.NativeCatalogDebian49V3 {
+		!dnsengineartifact.IsNativeCatalogV3(state.NativeCatalogV3) {
 		return verifyDNSZoneManifestAuthority(ctx, []transport.DNSEngineSwitchZoneSnapshot{zone})
 	}
 	if err := requireHostOwnedDNSPairAddress(state.PairLocalIP); err != nil {

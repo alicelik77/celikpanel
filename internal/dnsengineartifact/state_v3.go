@@ -12,6 +12,11 @@ const StateDocumentSchemaV3 = "celikpanel-dns-engine-state/v3"
 const OwnershipDocumentSchemaV3 = "celikpanel-dns-engine-ownership/v3"
 const NativeCatalogDebian49V3 = "pdns-fresh-paired-primary/debian-4.9/v1"
 
+// NativeCatalogArch51V3 is the Arch Linux tenure (PowerDNS 5.1 from extra).
+// Readers accept every marker of PDNSFreshPrimaryBuildForKind; a reader that
+// predates this marker refuses an Arch document instead of misreading it.
+const NativeCatalogArch51V3 = PDNSFreshPrimaryKindArch51V3
+
 type stateDocumentV3 struct {
 	Schema        string              `json:"schema"`
 	Acquisition   AcquisitionRecordV1 `json:"acquisition"`
@@ -20,7 +25,7 @@ type stateDocumentV3 struct {
 }
 
 func ValidateNativeCatalogStateV3(state StateV1) error {
-	if state.NativeCatalogV3 != NativeCatalogDebian49V3 ||
+	if !IsNativeCatalogV3(state.NativeCatalogV3) ||
 		state.Schema != StateSchemaV1 ||
 		state.Mode != transport.DNSEngineSwitchModeSwitch ||
 		state.Engine != transport.DNSEnginePowerDNS ||
@@ -63,7 +68,7 @@ func decodeDocumentV3(schema string, data []byte) (StateV1, error) {
 	var doc stateDocumentV3
 	var state StateV1
 	err := decodeCanonicalRecord(data, recordLimit, &doc, func() ([]byte, error) {
-		if doc.Schema != schema || doc.NativeCatalog != NativeCatalogDebian49V3 {
+		if doc.Schema != schema || !IsNativeCatalogV3(doc.NativeCatalog) {
 			return nil, errors.New("unsupported native PowerDNS state document")
 		}
 		var err error

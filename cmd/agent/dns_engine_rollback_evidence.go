@@ -414,7 +414,8 @@ func verifiedPowerDNSRollbackTargetHost() (dnsEngineRollbackTargetHost, error) {
 	if err != nil {
 		return dnsEngineRollbackTargetHost{}, err
 	}
-	if profile.PackageManager != hostplatform.PackageManagerAPT {
+	if profile.PackageManager != hostplatform.PackageManagerAPT &&
+		profile.PackageManager != hostplatform.PackageManagerPacman {
 		return dnsEngineRollbackTargetHost{},
 			errors.New("PowerDNS rollback evidence host profile is unsupported")
 	}

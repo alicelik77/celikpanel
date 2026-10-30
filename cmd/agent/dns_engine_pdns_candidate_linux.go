@@ -25,6 +25,17 @@ func (a *Agent) PDNSFreshPrimaryCandidateV1(_ *transport.Empty, resp *transport.
 		return errors.New("PowerDNS candidate reply is required")
 	}
 	*resp = transport.PDNSFreshPrimaryCandidateResponse{State: "unknown"}
+	if detectPkgFamily() == "pacman" {
+		profile, err := verifiedHostProfile("pacman")
+		if err != nil {
+			return nil
+		}
+		if _, err := freshPDNSPrimaryBuildV3(profile); err != nil {
+			return nil
+		}
+		*resp = pdnsFreshCandidatePacmanResponse(context.Background(), profile)
+		return nil
+	}
 	profile, err := verifiedHostProfile("apt")
 	if err != nil {
 		return nil

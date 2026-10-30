@@ -10,6 +10,15 @@ import (
 // BuildPDNSFreshPrimaryJournalV3 creates an empty durable intent before the
 // candidate is created. No service/config effect may precede its readback.
 func (policy JournalPolicy) BuildPDNSFreshPrimaryJournalV3(base SwitchJournalV1, configAfter []FileSnapshot) (SwitchJournalV1, error) {
+	return policy.BuildPDNSFreshPrimaryJournalV3ForKind(base, configAfter, PDNSFreshPrimaryPlanKindV3)
+}
+
+// BuildPDNSFreshPrimaryJournalV3ForKind is BuildPDNSFreshPrimaryJournalV3 for
+// the tested build of one package family (PDNSFreshPrimaryBuild.Kind).
+func (policy JournalPolicy) BuildPDNSFreshPrimaryJournalV3ForKind(base SwitchJournalV1, configAfter []FileSnapshot, kind string) (SwitchJournalV1, error) {
+	if !IsNativeCatalogV3(kind) {
+		return SwitchJournalV1{}, errors.New("v3 fresh PowerDNS plan kind is not a tested build")
+	}
 	if base.Schema != SwitchJournalSchemaV1 || base.Phase != SwitchPhaseIntent ||
 		base.InversePlan != nil || base.PDNSTargetPlan != nil || base.PDNSFreshPlan != nil {
 		return SwitchJournalV1{}, errors.New("v3 fresh PowerDNS plan requires a v1 intent")
@@ -20,7 +29,7 @@ func (policy JournalPolicy) BuildPDNSFreshPrimaryJournalV3(base SwitchJournalV1,
 	journal := base
 	journal.Schema = SwitchJournalSchemaV3
 	journal.PDNSCandidatePath = policy.pdnsCandidatePathV4(base.MutationRequestID)
-	journal.PDNSFreshPlan = &PDNSFreshPrimaryPlanV3{Kind: PDNSFreshPrimaryPlanKindV3, ConfigAfter: cloneFileSnapshotsV2(configAfter)}
+	journal.PDNSFreshPlan = &PDNSFreshPrimaryPlanV3{Kind: kind, ConfigAfter: cloneFileSnapshotsV2(configAfter)}
 	var err error
 	journal.PDNSFreshPlan.IntentDigest, err = pdnsFreshIntentDigestV3(journal)
 	if err != nil {

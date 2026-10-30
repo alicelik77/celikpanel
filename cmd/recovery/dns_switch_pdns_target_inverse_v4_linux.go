@@ -162,7 +162,7 @@ func completeInstalledPDNSTargetInverseV4(ctx context.Context, request string) e
 				return guard(ctx, j)
 			},
 			RestoreNative: func(ctx context.Context, j dnsengineartifact.SwitchJournalV1) error {
-				pdnsGID, err := localServiceGroupID("/etc/group", "pdns")
+				pdnsGID, err := localServiceGroupID("/etc/group", installedPDNSServiceGroup())
 				if err != nil {
 					return err
 				}
