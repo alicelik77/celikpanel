@@ -173,7 +173,34 @@ func writeDNSPublicationConflict(w http.ResponseWriter, err error, safeMessage s
 		return false
 	}
 	log.Printf("[409][dns] %v", err)
+	// The Agent publishes one exact DNS change at a time. While an earlier
+	// one is pending recovery (for example a paired zone deletion that waits
+	// for the backup's confirmation), every later change is held: say that,
+	// not a generic failure (Arch PowerDNS follow-up drill, 2026-10-30).
+	// Önceki bir DNS değişikliği kurtarma beklerken sonrakiler bekletilir.
+	if dnsPublicationHeldBehindPendingRecovery(publicationErr) {
+		writeCodedError(w, http.StatusConflict, errCodeDNSPublicationHeld, dnsPublicationHeldMessage, "/dns-infrastructure")
+		return true
+	}
 	writeCodedError(w, http.StatusConflict, errCodeDNSPublicationFailed, safeMessage, "")
+	return true
+}
+
+// dnsAgentPendingRecoveryRefusal is the Agent's stable refusal while an
+// exact DNS zone V3 publication is pending recovery.
+const dnsAgentPendingRecoveryRefusal = "an exact DNS zone V3 publication is pending recovery"
+
+const dnsPublicationHeldMessage = "The change is saved on this server but not published yet: an earlier DNS change must finish first, and CelikPanel publishes DNS changes one at a time. A common cause is a deleted domain whose removal the backup DNS server has not been shown to complete; that domain's page says what its server administrators do (set up inspection access with the dns-peer-enroll owner tool once, then retry that deletion). DNS keeps answering with the published records meanwhile. After the earlier change finishes, save this change again to publish it."
+
+func dnsPublicationHeldBehindPendingRecovery(publicationErr *dnsPublicationError) bool {
+	if publicationErr == nil || len(publicationErr.Result.Failures) == 0 {
+		return false
+	}
+	for _, failure := range publicationErr.Result.Failures {
+		if failure.Err == nil || !strings.Contains(failure.Err.Error(), dnsAgentPendingRecoveryRefusal) {
+			return false
+		}
+	}
 	return true
 }
 

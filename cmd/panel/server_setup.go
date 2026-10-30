@@ -423,6 +423,23 @@ func serverSetupChecksReady(checks []serverSetupCheck) bool {
 	return blocking > 0
 }
 
+// serverSetupCompletionWaitingCode: every step finished, but a final check
+// (read with the second server's binding) is not ready yet. A wait with its
+// reason, rechecked by the runner; not a failure.
+const serverSetupCompletionWaitingCode = "server_setup_completion_waiting"
+
+func serverSetupCompletionWaiting(checks []serverSetupCheck) *serverSetupPeerWait {
+	pending := "a final check"
+	for _, check := range checks {
+		if !check.Advisory && check.State != "ready" {
+			pending = "the final check " + check.ID + " (" + check.State + ")"
+			break
+		}
+	}
+	return &serverSetupPeerWait{Code: serverSetupCompletionWaitingCode,
+		Message: "Every setup step has finished; setup waits for " + pending + " before it is marked complete. With two servers this is usually the other server still finishing its own setup. Nothing to do here unless it lasts; setup checks again by itself."}
+}
+
 func (p *Panel) completeServerSetup(ctx context.Context, revision int) error {
 	return p.completeServerSetupOwned(ctx, revision, "")
 }
@@ -481,6 +498,14 @@ func (p *Panel) completeServerSetupOwned(ctx context.Context, revision int, exec
 		return err
 	}
 	if !serverSetupChecksReady(checks) {
+		if executionID != "" {
+			// A running setup waits with its reason and is asked again; a
+			// plain error here ended the runner and left the step "running"
+			// without guidance (Arch PowerDNS follow-up drill, 2026-10-30:
+			// the main reached verification while its backup was still
+			// reinstalling after a cut).
+			return serverSetupCompletionWaiting(checks)
+		}
 		return errors.New("setup prerequisites are not ready")
 	}
 	// Recheck ownership in the committing statement: another panel process

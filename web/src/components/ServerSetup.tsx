@@ -75,6 +75,7 @@ const codeKey: Record<string, TranslationKey> = {
     server_setup_peer_link_revoked: 'setup.v5.wait.server_setup_peer_link_revoked',
     server_setup_completion_plan_changed: 'setup.v5.wait.server_setup_completion_plan_changed',
     server_setup_completion_unknown: 'setup.v5.wait.server_setup_completion_unknown',
+    server_setup_completion_waiting: 'setup.v5.wait.server_setup_completion_waiting',
     server_setup_peer_version_incompatible: 'setup.v5.wait.server_setup_peer_version_incompatible',
     server_setup_dns_publisher_refused: 'setup.v5.wait.server_setup_dns_publisher_refused',
     server_setup_peer_dkim_conflict: 'setup.v5.wait.server_setup_peer_dkim_conflict',
