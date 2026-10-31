@@ -22,6 +22,8 @@ import { applySetupRoles, resetSetupCustomization, setupCustomized, setupDraftRo
 import { componentName } from '../lib/componentName';
 import { handoverAddress, handoverSettled, plannedHandoverDrop, setupHandover, setupStartMarkerKey } from '../lib/panelHandover';
 import { startVisibleReads } from '../lib/visibleReads';
+import { SetupPlanProblems, SetupStartReason } from './SetupPlanProblems';
+import { setupStartBlock, type SetupProblemFix } from '../lib/setupProblems';
 
 function useSetupI18n() {
     const i18n = useI18n();
@@ -654,6 +656,18 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         } catch (failure) { if (alive.current) setError(failure instanceof Error ? failure.message : t('setup.planFailed')); }
         finally { pendingRef.current = false; if (alive.current) setBusy(false); }
     }
+    // A fix offered with a plan blocker (SetupPlanProblems): back to the step
+    // that changes the answer, Email removed from the plan, or the plan read
+    // again. The plan is reviewed again when the owner returns to the Summary.
+    // Engelin duzeltmesi: ilgili adima donus, e-postayi cikarma ya da yeniden okuma.
+    function fixPlanProblem(fix: SetupProblemFix) {
+        if (fix.kind === 'recheck') { void refreshReview(); return; }
+        if (fix.kind === 'account') return;
+        if (fix.kind === 'removeMail' && catalog) updateDraft(previous => applySetupRoles(previous, { ...setupDraftRoles(previous, catalog), mail: false }, catalog));
+        const target = fix.kind === 'removeMail' ? 'roles' : fix.step;
+        if (target === 'components') setComponentsOpen(true);
+        setStep(target === 'components' || steps.includes(target) ? target : 'dnshome'); setPlan(null); setAcknowledged(false); setError('');
+    }
     async function verifyManual() {
         if (pendingRef.current) return;
         pendingRef.current = true; setBusy(true); setError('');
@@ -820,6 +834,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         ...(mailSelected && draft.main_domain ? ['mail' as const] : []), 'review', 'progress'];
     // The plan is reviewed when the last editing step is left.
     const lastEdit = steps[steps.indexOf('review') - 1];
+    const startBlock = step === 'review' ? setupStartBlock(plan, acknowledged) : null;
     const serverCount = draft.server_count ?? 2;
     const mainDomain = draft.main_domain ? normalizeSetupDomain(draft.main_domain) : '';
     const proposal = setupProposedNames(validSetupDomain(mainDomain) ? mainDomain : '', draft.short_name || '');
@@ -1059,13 +1074,15 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                     </fieldset>}
                     {step === 'review' && plan && <section aria-labelledby="setup-plan-title">
                         <h2 id="setup-plan-title" className="text-xl font-semibold">{t('setup.reviewTitle')}</h2><p className="mt-3 text-sm leading-6 text-fg-muted">{t('setup.reviewHelp')}</p>
+                        {/* What stops the start comes first, before the lists (owner feedback 2026-10-31). */}
+                        {plan.blockers.length > 0 && <SetupPlanProblems blockers={plan.blockers} fallback={failureText} name={id => componentName(catalog?.components.find(row => row.id === id) ?? { id, name: stepTarget('service', id) }, t)} busy={busy} onFix={fixPlanProblem} />}
                         {handoverNotice && <SetupHandoverNotice host={handoverNotice.host} url={handoverURL} />}
                         {plan.infrastructure_dns && <SetupInfrastructureDNSReview value={plan.infrastructure_dns} />}
                         {extending && <SetupExtensionReview plan={plan} changes={extensionChanges.map(change => ({ key: change.key, label: t(extensionLabels[change.key]), before: extensionValue(change.key, change.before), after: extensionValue(change.key, change.after), beforeLiteral: extensionLiteral(change.key) && change.before !== '', afterLiteral: extensionLiteral(change.key) && change.after !== '' }))} name={(kind, target) => kind === 'service' ? componentName(catalog?.components.find(row => row.id === target) ?? { id: target, name: stepTarget('service', target) }, t) : t(`setup.kind.${kind}` as TranslationKey, { target: stepTarget(kind, target) })} />}
                         {plan.components && !extending && <div className="mt-5"><h3 className="font-semibold">{t('setup.components.reviewTitle')}</h3><ul className="mt-2 divide-y divide-border">{plan.components.map(item => <li key={item.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2 text-sm"><span>{componentName(catalog?.components.find(row => row.id === item.id) ?? { id: item.id, name: stepTarget('service', item.id) }, t)}</span><span className="text-fg-muted">{t(item.installed ? 'setup.components.keep' : item.required ? 'setup.components.dependency' : 'setup.components.toInstall')}</span></li>)}</ul><p className="mt-3 text-sm text-fg-muted">{t('setup.components.preserve')}</p></div>}
                         {plan.package_updates && plan.package_updates.length > 0 && <div className="mt-5" data-setup-package-updates=""><h3 className="font-semibold">{t('setup.packageUpdates.title')}</h3><p className="mt-1 text-sm leading-6 text-fg-muted">{t('setup.packageUpdates.help')}</p><ul className="mt-2 divide-y divide-border">{plan.package_updates.map(item => <li key={item.package} className="flex flex-wrap items-baseline justify-between gap-2 py-2 text-sm"><span className="break-all">{item.package}</span>{item.from && item.to && <span className="break-all tabular-nums text-fg-muted">{item.from} → {item.to}</span>}</li>)}</ul></div>}
                         {/* An unread list is an unmet prerequisite (P5): setup cannot start on it; refreshing the review reads it again and changes nothing on the server. */}
-                        {plan.package_updates_state === 'unknown' && <div role="status" className="mt-5 rounded-lg border border-border bg-surface p-4 text-sm leading-6" data-setup-package-updates="unknown"><p>{t('setup.packageUpdates.unknown')}</p><Button type="button" variant="secondary" className="mt-3" disabled={busy} loading={busy} onClick={() => void refreshReview()}>{t('setup.packageUpdates.refresh')}</Button></div>}
+                        {plan.package_updates_state === 'unknown' && <div id="setup-package-updates" tabIndex={-1} role="status" className="mt-5 rounded-lg border border-border bg-surface p-4 text-sm leading-6" data-setup-package-updates="unknown"><p>{t('setup.packageUpdates.unknown')}</p><Button type="button" variant="secondary" className="mt-3" disabled={busy} loading={busy} onClick={() => void refreshReview()}>{t('setup.packageUpdates.refresh')}</Button></div>}
                         <ol className="mt-5 divide-y divide-border">{plan.steps.map(item => <li key={item.id} className="py-4"><p className="font-medium">{t(`setup.kind.${item.kind}`, { target: stepTarget(item.kind, item.target) })}</p>{item.qualifier && item.kind !== 'mail_enrollment' && <p className="mt-1 text-sm text-fg-muted">{item.qualifier}</p>}{handoverNotice && item.kind === 'panel_certificate' && <p className="mt-1 text-sm text-fg-muted">{t('setup.handover.stepNote')}</p>}</li>)}</ol>
                         <dl className="mt-5 space-y-3 rounded-lg bg-surface-2 p-4 text-sm"><div><dt className="font-semibold">{t('setup.firewallReview')}</dt><dd className="mt-1 leading-6 text-fg-muted">{t('setup.firewallHelp')}</dd></div><div><dt className="font-semibold">TCP</dt><dd className="mt-1 break-words tabular-nums">{plan.tcp_ports.join(', ') || t('setup.noPorts')}</dd></div><div><dt className="font-semibold">UDP</dt><dd className="mt-1 break-words tabular-nums">{plan.udp_ports.join(', ') || t('setup.noPorts')}</dd></div><div><dt className="font-semibold">{t('setup.certificateContact')}</dt><dd className="mt-1 break-all">{plan.contact_email}</dd></div>{plan.hostname_change && <div><dt className="font-semibold">{t('setup.hostnameChange')}</dt><dd className="mt-1 break-all">{plan.hostname_change}</dd></div>}</dl>
                         {automaticPublisher && publisherEndpoint && <div className="mt-5 space-y-2 border-t border-border pt-4 text-sm"><p className="font-semibold">{t('setup.publisher.reviewTitle')}</p><p className="break-all">{publisherEndpoint}</p><p className="leading-6 text-fg-muted">{t('setup.publisher.setupHelp')}</p></div>}
@@ -1073,7 +1090,6 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                         {secondaryHosting && !automaticPublisher && <p className="mt-5 text-sm leading-6 text-fg-muted">{t('setup.publisher.manualHelp')}</p>}
                         {draft.dns_mode === 'external' && <p className="mt-5 text-sm leading-6 text-fg-muted">{t('setup.externalAfter')}</p>}
                         {isMail && <p className="mt-4 text-sm leading-6 text-fg-muted">{t('setup.mailAfter')}</p>}
-                        {plan.blockers.length > 0 && <div role="alert" className="mt-5 rounded-lg border border-warning-mark/40 bg-warning-mark/10 p-4"><p className="font-semibold">{t('setup.planBlocked')}</p><ul className="mt-3 list-disc space-y-2 pl-5 text-sm">{plan.blockers.map(code => <li key={code}>{failureText(code)}{code === 'panel_certificate_contact_email_invalid' && <>{' '}<Link to="/account#email" className="inline-flex min-h-11 items-center font-medium text-primary underline underline-offset-4 sm:min-h-0" data-setup-blocker-action={code}>{t('setup.blocker.contactAction')}</Link></>}<details className="mt-1 text-xs text-fg-muted"><summary className="cursor-pointer">{t('setup.details')}</summary><code className="mt-1 block break-words">{code}</code></details></li>)}</ul></div>}
                         <div className="mt-5 rounded-lg border border-border bg-surface p-4 text-sm leading-6" data-setup-untouched="">
                             <h3 className="font-semibold">{t('setup.v2.review.untouched')}</h3>
                             <ul className="mt-2 list-disc space-y-1 pl-5 text-fg-muted">
@@ -1088,12 +1104,13 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                             </ul>
                         </div>
                         <SetupPanelAccessCard ip={snapshot.server_ip || draft.local_ip} port={window.location.port || '2083'} panelDomain={draft.panel_domain} />
-                        {plan.can_start && <label className="mt-6 flex cursor-pointer items-start gap-3 text-sm leading-6"><input type="checkbox" checked={acknowledged} onChange={event => setAcknowledged(event.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-primary" /><span>{t('setup.confirm')}</span></label>}
+                        {plan.can_start && <label className="mt-6 flex cursor-pointer items-start gap-3 text-sm leading-6"><input id="setup-confirm" type="checkbox" checked={acknowledged} onChange={event => setAcknowledged(event.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-primary" /><span>{t('setup.confirm')}</span></label>}
                     </section>}
                     <div className="setup-actions sticky bottom-0 z-10 mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-bg py-4">
                         {step !== 'domain' && <Button type="button" variant="secondary" disabled={busy} onClick={() => { setStep(steps[Math.max(0, steps.indexOf(step) - 1)]); setPlan(null); setAcknowledged(false); setError(''); }}>{t('setup.back')}</Button>}
                         <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
-                        {step === 'review' ? <Button type="button" variant="primary" disabled={busy || !plan?.can_start || !acknowledged} onClick={() => void start()}>{t('setup.start')}</Button> : <button type="submit" disabled={busy || (step === 'components' && (!catalog || catalog.inventory_state !== 'ready')) || (step === 'dnshome' && (!!dnsSelectionError || (draft.dns_mode === 'local' && dnsNames.mismatch) || (draft.dns_mode === 'existing' && !remoteVerified)))} className="inline-flex items-center gap-3 rounded-lg bg-primary px-5 py-2.5 font-semibold text-primary-fg hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60">{busy ? t('common.loading') : t(step === lastEdit ? 'setup.review' : 'setup.continue')}<ArrowRight className="h-4 w-4" aria-hidden="true" /></button>}
+                        {step === 'review' && startBlock && !busy && <SetupStartReason id="setup-start-reason" block={startBlock} />}
+                        {step === 'review' ? <Button type="button" variant="primary" disabled={busy || !plan?.can_start || !acknowledged} aria-describedby={startBlock && !busy ? 'setup-start-reason' : undefined} onClick={() => void start()}>{t('setup.start')}</Button> : <button type="submit" disabled={busy || (step === 'components' && (!catalog || catalog.inventory_state !== 'ready')) || (step === 'dnshome' && (!!dnsSelectionError || (draft.dns_mode === 'local' && dnsNames.mismatch) || (draft.dns_mode === 'existing' && !remoteVerified)))} className="inline-flex items-center gap-3 rounded-lg bg-primary px-5 py-2.5 font-semibold text-primary-fg hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60">{busy ? t('common.loading') : t(step === lastEdit ? 'setup.review' : 'setup.continue')}<ArrowRight className="h-4 w-4" aria-hidden="true" /></button>}
                         </div>
                     </div>
                 </form>}

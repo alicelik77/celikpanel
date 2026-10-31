@@ -62,6 +62,8 @@ export const SetupCountStep = () => null, SetupMailStep = () => null, SetupOpenT
 export const setupEngineChoice = () => undefined, setupServerLabel = () => 'This server';
 export const inputClass = '';
 export const AddressLink = props => React.createElement('a', { href: props.href }, props.address);
+// The plan's problems and the start reason (components/SetupPlanProblems.tsx) have their own test.
+export const SetupPlanProblems = () => null, SetupStartReason = () => null, setupStartBlock = () => null;
 `);
 const source = compile('../src/components/ServerSetup.tsx').replace(/from ['"]([^'"]+)['"]/g, (_, path) => {
     const url = path === 'react' ? reactURL : path.endsWith('/remoteDNS') ? remoteURL : path.endsWith('/componentName') ? componentNameURL : path.endsWith('/serverSetupComponents') ? componentLibURL

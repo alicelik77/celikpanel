@@ -139,6 +139,10 @@ const screenPartBudgets = {
   // new part, set with at least 25% headroom from its Turkish file: 7.52 /
   // 2.35 KiB.
   dnsPublication: kib(10.5, 4),
+  // 2026-10-31 (alpha.114): the shared problem pattern (problem.) and the
+  // setup Summary's blockers in plain words (setup.problem.). A new part, set
+  // with at least 25% headroom from its Turkish file.
+  problems: kib(17, 6),
 }
 
 // Translation chunks, named by source. The shell halves are held to the
