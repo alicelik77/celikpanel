@@ -8,7 +8,7 @@ import { componentName } from '../lib/componentName';
 import { readApiError } from '../lib/apiError';
 import { decodeServerSetup, setupJoinedMailProposal, setupJoinedMailTaken, setupProposedNames, validSetupDomain, type ServerSetupSnapshot } from '../lib/serverSetup';
 import { decodeSetupExecution, decodeSetupPlan, newSetupRequestID, type ServerSetupExecution, type ServerSetupPlan, type SetupStartMarker } from '../lib/serverSetupOperation';
-import { setupComponentName, setupExecutionGuidance, setupStepState, setupStepStateLabel, type SetupGuidanceText } from '../lib/serverSetupGuidance';
+import { setupComponentName, setupExecutionGuidance, setupStepState, setupStepStateLabel, type SetupCheckLine, type SetupGuidanceText } from '../lib/serverSetupGuidance';
 import { setupStartMarkerKey } from '../lib/panelHandover';
 import { startVisibleReads } from '../lib/visibleReads';
 import { useServerSetup } from './ServerSetupGate';
@@ -120,6 +120,11 @@ export function MailSetupDialog({ profile, profileName, savedHostname, onClose }
     };
     const stepText = (kind: string, target: string) => t(`setup.kind.${kind}` as TranslationKey, { target: label(kind, target) });
     const say = (message: SetupGuidanceText) => t(message.key, message.name ? { ...message.values, check: t(message.name) } : message.values);
+    // An open final check in its typed sentence (who acts, the next action);
+    // without one, the check's name (alpha.114 lab E8: the dialog said only
+    // a general sentence and the owner had nothing to act on).
+    const checkText = (line: SetupCheckLine) => line.text ? say(line.text)
+        : t(['panel_https', 'panel_renewal', 'dns', 'firewall', 'services', 'mail_tls', 'mail_identity', 'mail_delivery', 'mail_identity_ipv6'].includes(line.check.id) ? `setup.check.name.${line.check.id}` as TranslationKey : 'setup.check.name.other');
 
     // Begin the mail-only extension, then read its plan. A lost answer is
     // settled by reading the setup again, never by sending it twice.
@@ -217,6 +222,20 @@ export function MailSetupDialog({ profile, profileName, savedHostname, onClose }
         return startVisibleReads(read, 3000, { setInterval: (callback, ms) => window.setInterval(callback, ms), clearInterval: id => window.clearInterval(id) }, { immediate: true });
     }, [phase, marker, execution?.status, read]);
 
+    // "Check again" at the final check: a read only. The server, not this
+    // window, completes setup on its next pass once every check passes.
+    const [checking, setChecking] = useState(false);
+    async function checkAgain() {
+        if (!setup || checking) return;
+        setChecking(true);
+        try {
+            const latest = await setup.reload('manual');
+            if (alive.current) setup.accept(latest);
+        } catch { if (alive.current) setProblem('svc.mailSetup.unknown'); }
+        finally { if (alive.current) setChecking(false); }
+        await read();
+    }
+
     // Closing before the start stops the extension: the setup is back as it was.
     async function close() {
         if (inFlight.current) return;
@@ -288,7 +307,14 @@ export function MailSetupDialog({ profile, profileName, savedHostname, onClose }
             </div>}
             {phase === 'progress' && <div role={failed ? 'alert' : 'status'} className="space-y-2 rounded-lg border border-border bg-surface p-4 text-sm leading-6" data-mail-setup-outcome={done ? 'done' : failed ? 'failed' : execution?.status || 'unknown'}>
                 <p className="font-medium">{done ? (repairOnly ? t('svc.mailSetup.doneDKIM') : t('svc.mailSetup.done', { host: name || known })) : failed ? t('svc.mailSetup.failed') : t('svc.mailSetup.running')}</p>
-                {guidance && <>{guidance.title && <p className="font-medium">{t(guidance.title)}</p>}{guidance.messages.map((message, index) => <p key={index} className="break-words text-fg-muted">{say(message)}</p>)}</>}
+                {guidance && <>{guidance.title && <p className="font-medium">{t(guidance.title)}</p>}{guidance.messages.map((message, index) => <div key={index}>
+                    <p className="break-words text-fg-muted">{say(message)}</p>
+                    {guidance.checks && guidance.checksAt === index && <ul className="mt-1 list-disc space-y-1 pl-5" data-mail-setup-checks="">{guidance.checks.map(line => <li key={line.check.id} className="break-words" data-check={line.check.id} data-check-reason={line.check.reason || ''}>{checkText(line)}</li>)}</ul>}
+                </div>)}</>}
+                {execution?.status === 'waiting' && execution.phase === 'verification' && <div className="flex flex-wrap gap-2 pt-1">
+                    <Button variant="secondary" disabled={checking} loading={checking} onClick={() => void checkAgain()}>{t('svc.mailSetup.checkAgain')}</Button>
+                    {execution.error?.code === 'server_setup_verification_overdue' && <Button variant="secondary" onClick={() => navigate('/setup?purpose=mail')}>{t('svc.mailSetup.openSetup')}</Button>}
+                </div>}
                 {failed && <p className="text-fg-muted">{t('svc.mailSetup.failedNext')}</p>}
             </div>}
             {steps.length > 0 && phase !== 'name' && phase !== 'reading' && <section aria-labelledby="mail-setup-steps">

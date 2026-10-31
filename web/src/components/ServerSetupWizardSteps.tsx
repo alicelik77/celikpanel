@@ -898,19 +898,22 @@ export function SetupRecordsStep({ draft, update, mainDomain, own }: {
     </section>;
 }
 
-export function SetupMailStep({ draft, update, mainDomain, ip4, ip6 }: {
+export function SetupMailStep({ draft, update, mainDomain, ip4, ip6, joined }: {
     draft: ServerSetupDraft;
     update: (change: (draft: ServerSetupDraft) => ServerSetupDraft) => void;
     mainDomain: string;
     ip4: string;
     ip6: string;
+    /** A server joined by code whose first server keeps the main domain's
+     *  mail (alpha.114 S9): no main-domain record is written from here. */
+    joined?: { server: string; first: string };
 }) {
     const { t } = useSetupWizardI18n();
     const host = draft.mail_hostname || `mail.${mainDomain}`;
     const local = draft.dns_mode === 'local' && draft.dns_role === 'primary';
     const oldMX = setupImportedMX(draft, mainDomain);
     const oldDMARC = setupImportedDMARC(draft, mainDomain);
-    const askMX = oldMX.length > 0 || draft.dns_mode === 'external';
+    const askMX = !joined && (oldMX.length > 0 || draft.dns_mode === 'external');
     const mx = draft.mail_dns?.mx || (askMX ? 'later' : 'now');
     const dmarc = draft.mail_dns?.dmarc || (oldDMARC ? 'keep' : 'add');
     const choose = (key: 'mx' | 'dmarc', value: string) => update(previous => ({ ...previous, mail_dns: { ...previous.mail_dns, [key]: value } }));
@@ -919,6 +922,25 @@ export function SetupMailStep({ draft, update, mainDomain, ip4, ip6 }: {
         if (askMX && !draft.mail_dns?.mx) update(previous => previous.mail_dns?.mx ? previous : { ...previous, mail_dns: { ...previous.mail_dns, mx: 'later' } });
     }, [askMX]);
     const spf = mergeSetupSPF(setupImportedSPF(draft, mainDomain), host);
+    const ptr = <div className="space-y-2 rounded-lg border border-border bg-surface p-4 text-sm leading-6" data-setup-ptr="">
+        <h3 className="font-semibold">{t('setup.v3.mail.ptrTitle')}</h3>
+        <p className="text-fg-muted">{t('setup.v3.mail.ptrHelp', { host })}</p>
+        {ip4 && <div className="grid gap-2 sm:grid-cols-2"><SetupCopyRow label="IPv4" value={ip4} /><SetupCopyRow label="PTR" value={host} /></div>}
+        {ip6 && <div className="grid gap-2 sm:grid-cols-2"><SetupCopyRow label="IPv6" value={ip6} /><SetupCopyRow label="PTR" value={host} /></div>}
+        <p className="text-fg-muted">{t('setup.v3.mail.ptrOpenTask')}</p>
+        <p className="text-fg-muted">{t('setup.v3.mail.port25')}</p>
+    </div>;
+    // A joined server: the main domain's mail stays on the first server, as
+    // the names step and the plan say; this server's own domains get their
+    // own records (S9: the step used to list the main domain's MX, SPF and
+    // DMARC "written there over the setup link").
+    // Katilan sunucu: ana alan adinin postasi ilk sunucuda kalir.
+    if (joined) return <section className="space-y-5" aria-labelledby="setup-mail-title" data-setup-mail="joined">
+        <h2 id="setup-mail-title" className="text-xl font-semibold">{t('setup.v3.mail.joinedTitle')}</h2>
+        <p className="max-w-2xl text-sm leading-6" data-setup-mail-main="kept">{t('setup.v3.mail.joinedMain', { domain: mainDomain, server: joined.server, first: joined.first })}</p>
+        <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v3.mail.joinedOwn', { host })}</p>
+        {ptr}
+    </section>;
     return <section className="space-y-5" aria-labelledby="setup-mail-title" data-setup-mail="">
         <h2 id="setup-mail-title" className="text-xl font-semibold">{t('setup.v3.mail.title')}</h2>
         <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t(local ? 'setup.v3.mail.helpLocal' : draft.dns_mode === 'external' ? 'setup.v3.mail.helpExternal' : draft.dns_mode === 'local' ? 'setup.v3.mail.helpBackup' : 'setup.v3.mail.helpElsewhere', { domain: mainDomain })}</p>
@@ -940,14 +962,7 @@ export function SetupMailStep({ draft, update, mainDomain, ip4, ip6 }: {
                 <Choice name="setup-mail_dmarc" value="add" checked={dmarc === 'add'} onChange={() => choose('dmarc', 'add')} title={t('setup.v3.mail.dmarcAdd')} help={t('setup.v3.mail.dmarcAddHelp')} />
             </div>
         </fieldset>}
-        <div className="space-y-2 rounded-lg border border-border bg-surface p-4 text-sm leading-6" data-setup-ptr="">
-            <h3 className="font-semibold">{t('setup.v3.mail.ptrTitle')}</h3>
-            <p className="text-fg-muted">{t('setup.v3.mail.ptrHelp', { host })}</p>
-            {ip4 && <div className="grid gap-2 sm:grid-cols-2"><SetupCopyRow label="IPv4" value={ip4} /><SetupCopyRow label="PTR" value={host} /></div>}
-            {ip6 && <div className="grid gap-2 sm:grid-cols-2"><SetupCopyRow label="IPv6" value={ip6} /><SetupCopyRow label="PTR" value={host} /></div>}
-            <p className="text-fg-muted">{t('setup.v3.mail.ptrOpenTask')}</p>
-            <p className="text-fg-muted">{t('setup.v3.mail.port25')}</p>
-        </div>
+        {ptr}
     </section>;
 }
 

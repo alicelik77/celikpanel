@@ -205,4 +205,7 @@ export const trSetupWizardScreens: Record<SetupWizardScreenKey, string> = {
     "setup.v6.review.joinedSite": "{domain} ve www.{domain}: kayıtları ilk sunucu {server} üzerinde kalır; bu kurulum onları değiştirmez.",
     "setup.v6.review.joinedMail": "{domain} postası {first} üzerinde kalır; MX, SPF, DKIM ve DMARC kayıtları değişmez. Bu sunucu, üzerinde açacağınız alan adlarının postasını {host} adıyla alır.",
     "setup.v6.blocker.mailHostnameTaken": "Bu sunucunun posta adı ilk sunucu, ana alan adı ya da bir ad sunucusu tarafından zaten kullanılıyor; her sunucunun kendi adı olmalı. Siz, sunucu sahibi: Bu sunucunun adları adımına dönün, bu sunucuya kendi posta adını verin (örneğin mail.<panel adı> ya da panel adının kendisi), sonra planı yeniden inceleyin. Hiçbir şey değiştirilmedi.",
+    "setup.v3.mail.joinedTitle": "Bu sunucudaki posta",
+    "setup.v3.mail.joinedMain": "{domain} postası {server} ({first}) üzerinde kalır. Bu kurulum onun MX, SPF, DMARC ve DKIM kayıtlarını değiştirmez.",
+    "setup.v3.mail.joinedOwn": "Bu sunucu kendi posta adını ({host}) alır ve adresi ana DNS sunucusunda yayımlanır. Bu sunucuda açacağınız her alan adı kendi posta kayıtlarını (MX, SPF, DKIM ve DMARC) alır; bunlar ana DNS sunucusunda kendiliğinden yayımlanır.",
 };

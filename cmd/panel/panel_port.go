@@ -270,14 +270,22 @@ func (p *Panel) panelPortConfig(ctx context.Context) (transport.PanelListenConfi
 // address with its port (a joined pair, or a panel publishing DNS records
 // here). Changing the port would silently break that link, and there is no
 // way yet to tell the other server, so the change is refused with the reason.
+//
+// Pairing is read from records both sides keep after setup (alpha.114 lab
+// E2: a joined server whose setup had finished was not refused, because the
+// link credentials it checked end with the setup). The first server keeps
+// its join record with the second server's names (the address it stores);
+// the joined server keeps its link record. A peer the owner retired is no
+// longer reached.
 func (p *Panel) panelPortPeerRefusal(ctx context.Context) *panelPortRefusal {
 	paired := false
 	var join serverSetupJoinRecord
-	if found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join); err == nil && found && join.LinkCredentialHash != "" {
+	found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join)
+	if err == nil && found && (join.LinkCredentialHash != "" || (join.Names != nil && join.PeerRetiredAt == "")) {
 		paired = true
 	}
 	if !paired {
-		if link, err := p.readServerSetupLink(ctx); err == nil && link != nil && link.LinkCredential != "" {
+		if link, err := p.readServerSetupLink(ctx); err == nil && link != nil && (link.LinkCredential != "" || link.PeerRetiredAt == "") {
 			paired = true
 		}
 	}

@@ -775,8 +775,14 @@ func (p *Panel) automaticDKIMPublish(ctx context.Context, item dkimAutomaticItem
 		p.recordAutomaticDKIM(ctx, record, dkimAutoUnknown, dkimReasonDNSPublish, err.Error())
 		return
 	}
+	if mode == setupDNSModeExisting {
+		// The zone is kept on the main DNS server this server publishes to:
+		// the record goes there (alpha.114 lab E6).
+		p.automaticDKIMPublishRemote(ctx, item)
+		return
+	}
 	if mode != setupDNSModeLocal {
-		// External DNS or a remote DNS server: the card shows the record.
+		// External DNS: the card shows the record.
 		p.finishAutomaticDKIM(ctx, record, "DNS is kept elsewhere; the card shows the record")
 		return
 	}

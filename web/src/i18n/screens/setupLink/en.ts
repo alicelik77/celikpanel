@@ -51,6 +51,10 @@ export const enSetupLinkScreens = {
     "setup.v5.wait.server_setup_peer_dkim_not_bound": "The main DNS server's setup has not taken this server in yet; it does once it has this server's names (check its join step if it waits there). Setup sends the DKIM record again by itself.",
     "setup.v5.check.peerDKIM": "Waiting for the paired server's DKIM record: it is sent here once that server's mail is set up. Nothing to do here; setup checks again by itself.",
     "setup.v5.wait.other": "Waiting for the joining server ({code}). Setup asks again by itself.",
+    "setup.v5.wait.server_setup_dns_publisher_peer_busy": "The main DNS server {server} is busy, restarting or finishing its own setup, so it could not take this server's publishing connection yet. Nobody needs to act: setup asks again by itself.",
+    "setup.v5.wait.server_setup_dns_publisher_peer_license": "The main DNS server {server} answered that its panel license is not active or could not be checked, so it takes no connection now. Its owner activates or renews the license on {server}; setup then continues by itself.",
+    "setup.v5.wait.server_setup_dns_publisher_peer_unexplained": "The main DNS server {server} did not accept this server's publishing connection and did not say why. This happens while it restarts or finishes its own setup. Nobody needs to act yet: setup asks again by itself, and after 30 minutes it says what to check.",
+    "setup.v5.wait.server_setup_dns_publisher_unconfirmed": "For 30 minutes the main DNS server {server} refused this server's publishing connection without saying why. You, the owner: open the panel of {server} and check that its own setup has finished. If it has, create a new join code there, join this server again with it, then review this plan again.",
 } as const;
 
 export type SetupLinkScreenKey = keyof typeof enSetupLinkScreens;

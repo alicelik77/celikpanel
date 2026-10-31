@@ -182,42 +182,84 @@ func (p *Panel) serverSetupLocalSecondaryReadiness(ctx context.Context, draft se
 }
 
 func (p *Panel) serverSetupSecondaryHostingReadiness(ctx context.Context, draft serverSetupDraft) (bool, error) {
+	ready, _, err := p.serverSetupSecondaryHostingReadinessReason(ctx, draft)
+	return ready, err
+}
+
+// Typed reasons of the final DNS check on a joined backup DNS server that
+// hosts its own domains (alpha.114 lab E8). Each says what is missing so
+// the screen can name who acts and the next action.
+const (
+	setupDNSReasonPublisherMissing     = "dns_publisher_missing"
+	setupDNSReasonPublisherUnconfirmed = "dns_publisher_unconfirmed"
+	setupDNSReasonBackupNotServing     = "dns_backup_not_serving"
+	setupDNSReasonSetupChanged         = "dns_setup_changed"
+)
+
+// serverSetupSecondaryHostingReadinessReason is the final DNS check of a
+// joined backup DNS server that hosts its own domains: its publishing
+// connection to the main DNS server, proven live, and its own DNS serving
+// the main server's list.
+//
+// The run that has a dns_publisher step proves its own binding (first
+// setup). A later run without that step, such as a mail-only extension
+// added from Components, or the extension of a server first set up on
+// alpha.113, uses the connection the finished setup committed as the
+// server's default: it is proven again here, live, against the reviewed
+// names and addresses. Until alpha.114 lab E8 such a run looked only for
+// its own binding, found none and waited for ever with no reason.
+// Kurulumun kaydettigi varsayilan baglanti burada canli olarak yeniden
+// kanitlanir; yayimlama adimi olmayan sonraki calisma sonsuza dek beklemez.
+func (p *Panel) serverSetupSecondaryHostingReadinessReason(ctx context.Context, draft serverSetupDraft) (bool, string, error) {
 	execution, err := p.latestServerSetupExecution(ctx)
 	if err != nil || execution == nil {
-		return false, err
+		return false, setupDNSReasonPublisherMissing, err
 	}
 	plan, err := p.loadServerSetupPlan(ctx, execution.PlanID)
 	if err != nil {
-		return false, err
+		return false, "", err
 	}
 	if validateServerSetupExecution(plan, *execution) != nil {
-		return false, nil
+		return false, setupDNSReasonSetupChanged, nil
 	}
 	plan, err = p.effectiveServerSetupPlan(ctx, plan, execution.ID)
 	if err != nil {
-		return false, err
+		return false, "", err
 	}
 	want, _ := json.Marshal(draft)
 	actual, _ := json.Marshal(plan.Draft)
 	if string(want) != string(actual) {
-		return false, nil
-	}
-	binding, err := p.readServerSetupDNSPublisher(ctx, plan, execution.ID)
-	if err != nil || binding == nil {
-		return false, err
+		return false, setupDNSReasonSetupChanged, nil
 	}
 	mode, err := p.setupDNSManagementMode(ctx)
-	if err != nil || mode != setupDNSModeExisting {
-		return false, err
+	if err != nil {
+		return false, "", err
 	}
-	id, err := p.defaultRemoteDNSConnectionID(ctx)
-	if err != nil || id != binding.Connection.ID {
-		return false, err
+	id, idErr := p.defaultRemoteDNSConnectionID(ctx)
+	if serverSetupPlanHasStep(plan, "dns_publisher") {
+		binding, err := p.readServerSetupDNSPublisher(ctx, plan, execution.ID)
+		if err != nil {
+			return false, "", err
+		}
+		if binding == nil || mode != setupDNSModeExisting || idErr != nil || id != binding.Connection.ID {
+			return false, setupDNSReasonPublisherMissing, nil
+		}
+	} else if mode != setupDNSModeExisting || idErr != nil || !validServiceOperationID(id) {
+		return false, setupDNSReasonPublisherMissing, nil
 	}
 	if _, err := p.serverSetupDNSPublisherProof(ctx, draft, id); err != nil {
-		return false, err
+		// Unreachable, not ready, or answering other names or addresses:
+		// not proven now; read again on the next check.
+		return false, setupDNSReasonPublisherUnconfirmed, nil
 	}
-	return p.serverSetupLocalSecondaryReadiness(ctx, draft)
+	ready, err := p.serverSetupLocalSecondaryReadiness(ctx, draft)
+	if err != nil {
+		return false, "", err
+	}
+	if !ready {
+		return false, setupDNSReasonBackupNotServing, nil
+	}
+	return true, "", nil
 }
 
 // serverSetupPublisherStepTarget: the reviewed dns_publisher step names the

@@ -21,6 +21,10 @@ type serverSetupExecutionContext struct {
 	PanelDomain          string                            `json:"panel_domain"`
 	MailHostname         string                            `json:"mail_hostname"`
 	DNSHostingManagement string                            `json:"dns_hosting_management"`
+	// DNSPublisherHost is additive (alpha.114 lab E1/E8): the main DNS
+	// server's panel name this server publishes its domains' records to,
+	// so a wait for it names it.
+	DNSPublisherHost string `json:"dns_publisher_host,omitempty"`
 	// PeerHostRecord is additive (2026-10-16): on a DNS secondary whose
 	// public DNS check waits, whether this server can ask the primary for the
 	// record over the authorized DNS connection and what that request got.
@@ -73,6 +77,9 @@ func (p *Panel) serverSetupOperationResponse(ctx context.Context, execution *ser
 		response.Context.LocalIP = draft.LocalIP
 		response.Context.PeerNameserver = draft.PeerNS
 		response.Context.PeerIP = draft.PeerIP
+		if draft.DNSPublisherEndpoint != "" {
+			response.Context.DNSPublisherHost = serverSetupPublisherHost(draft.DNSPublisherEndpoint)
+		}
 		if serverSetupManualSecondaryHosting(draft) {
 			response.Context.DNSHostingManagement = "manual"
 		} else if serverSetupSecondaryHosting(draft) {

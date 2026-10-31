@@ -587,6 +587,9 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 			writeDomainCreatePartialSuccess(w, result.DomainID, req.Domain, false)
 			return
 		}
+		// The domain's mail records go to the main DNS server too, like a
+		// zone kept here gets them from its template (alpha.114 lab E6).
+		p.publishRemoteDomainMailOnCreate(dnsCtx, result.DomainID, req.Domain)
 		_ = json.NewEncoder(w).Encode(result)
 		return
 	}
