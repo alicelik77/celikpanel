@@ -1,0 +1,35 @@
+== autoresponder on the joined Ubuntu server 20:16:07
+PASS joined Ubuntu: autoresponder on carol@ saved | {'status': 200, 'state': {'applied': True, 'script': 'managed', 'sieve_available': True}}
+PASS joined Ubuntu: exactly one auto-reply, mail delivered | {'count': 1, 'postfix': 'relay=mail.boston.fa114.test[private/dovecot-lmtp]\nstatus=sent (250 2.0.0 <carol@custb114.test> m3TuJZ9M5mo19QAA4JtSzg Saved\nrelay=mail.boston.fa114.test[private/dovecot-lmtp]\nstatus=sent (250 2.0.0 <carol@custb114.test> WBSGF65M5mo19QAA4JtSzg Saved\n2.3.21 (47349e2482)\n'}
+{"shots":2,"errors":[]}
+
+{"shots":2,"errors":[]}
+
+2026-10-31T20:00:15+00:00 frankfurt (sd-exec-[71879]: /usr/lib/systemd/system-generators/systemd-ssh-generator failed with exit status 1.
+2026-10-31T20:14:38+00:00 frankfurt systemd-ssh-generator[80825]: Failed to query local AF_VSOCK CID: Cannot assign requested address
+2026-10-31T20:14:38+00:00 frankfurt (sd-exec-[80812]: /usr/lib/systemd/system-generators/systemd-ssh-generator failed with exit status 1.
+2026-10-31T20:14:39+00:00 frankfurt (sd-exec-[80850]: /usr/lib/systemd/system-generators/systemd-ssh-generator failed with exit status 1.
+2026-10-31T20:14:39+00:00 frankfurt systemd-ssh-generator[80861]: Failed to query local AF_VSOCK CID: Cannot assign requested address
+2026-10-31T20:14:39+00:00 frankfurt systemd-ssh-generator[80899]: Failed to query local AF_VSOCK CID: Cannot assign requested address
+2026-10-31T20:14:39+00:00 frankfurt (sd-exec-[80886]: /usr/lib/systemd/system-generators/systemd-ssh-generator failed with exit status 1.
+2026-10-31T20:16:42+00:00 frankfurt opendkim[80914]: 53F0E21426: key retrieval failed (s=celik, d=custb114.test): 'celik._domainkey.custb114.test' record not found
+-- warn counts
+2
+0
+
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+active active active active active active
+-- err
+2026-10-31T19:21:53+00:00 boston mariadb-server.postinst[19769]: 2026-10-31 19:21:53 0 [Warning] You need to use --log-bin to make --expire-logs-days or --binlog-expire-logs-seconds work.
+2026-10-31T19:48:13+00:00 boston opendkim[55554]: 84C714085B: key retrieval failed (s=celik, d=shop114.test): 'celik._domainkey.shop114.test' record not found
+2026-10-31T20:16:30+00:00 boston opendkim[55554]: 404A74084D: key retrieval failed (s=celik, d=shop114.test): 'celik._domainkey.shop114.test' record not found
+2026-10-31T20:16:31+00:00 boston dovecot[62482]: lmtp(carol@custb114.test)<62773><m3TuJZ9M5mo19QAA4JtSzg>: Error: stat(/var/mail/vhosts/custb114.test/carol/.dovecot.sieve/tmp) failed: Not a directory
+2026-10-31T20:16:46+00:00 boston opendkim[55554]: 2B82F4084D: key retrieval failed (s=celik, d=shop114.test): 'celik._domainkey.shop114.test' record not found
+-- warn counts
+1
+0
+
+{"node":"main","state":"stopped","deleted":true}
+{"node":"backup","state":"stopped","deleted":true}
+               total        used        free      shared  buff/cache   available
+Mem:           15697        7298        6496         149        2369        8399

@@ -1,0 +1,301 @@
+== check 2: the main domain's website opened at setup 19:45:10
+resolves (lab resolver 192.0.2.53): fa114.test=192.0.3.150 www.fa114.test=192.0.3.150
+--- http://fa114.test/
+code=301 redirect=https://fa114.test/ ssl_verify=0
+--- https://fa114.test/
+code=200 redirect= ssl_verify=0
+--- http://www.fa114.test/
+code=301 redirect=https://www.fa114.test/ ssl_verify=0
+--- https://www.fa114.test/
+code=200 redirect= ssl_verify=0
+--- certificate served on fa114.test:443
+subject= X509v3 Subject Alternative Name: critical     DNS:fa114.test, DNS:www.fa114.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 31 19:26:39 2031 GMT 
+Verify return code: 0 (ok)
+-- main domain mail records before anything else (must not change later)
+   @192.0.3.150 fa114.test: MX=[10 mail.fa114.test.] SPF=[v=spf1 mx a:mail.fa114.test ~all] DMARC=["v=DMARC1; p=none; rua=mailto:dmarc@fa114.test"] DKIM=["v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA]
+   @192.0.3.151 fa114.test: MX=[10 mail.fa114.test.] SPF=[v=spf1 mx a:mail.fa114.test ~all] DMARC=["v=DMARC1; p=none; rua=mailto:dmarc@fa114.test"] DKIM=["v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA]
+== run-6 ops on the first server 19:45:12
+== clocks as the lab gives them 19:45:12
+labnet-CA 19:45:13.616721778
+frankfurt 19:45:12.767945427
+== site shop114.test with Enable SSL at creation 19:45:12
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/2/public_html", "Domain": "shop114.test", "DomainID": 2, "FTPPassword": "[REDACTED]", "FTPUser": "shop114_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 2, "TempDomain": ""}
+   site id 2
+   ok 192.0.3.150 shop114.test A = '192.0.3.150' after 0s
+   ok 192.0.3.151 shop114.test A = '192.0.3.150' after 0s
+200 {"status": "success", "expires_at": "2031-10-31T19:45:22Z"}
+   certificate answer after 3s
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+--- http://shop114.test/
+code=301 redirect=https://shop114.test/ ssl_verify=0
+Server: nginx
+Location: https://shop114.test/
+--- https://shop114.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+--- http://www.shop114.test/
+code=301 redirect=https://www.shop114.test/ ssl_verify=0
+Server: nginx
+Location: https://www.shop114.test/
+--- https://www.shop114.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+--- certificate served on shop114.test:443
+subject= X509v3 Subject Alternative Name: critical     DNS:shop114.test, DNS:www.shop114.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 31 19:45:22 2031 GMT 
+Verify return code: 0 (ok)
+--- https://shop114.test/hello.php
+code=200
+HTTP/2 200 
+server: nginx
+content-type: text/html; charset=UTF-8
+x-powered-by present: 0
+body: php-ok 5
+--- http://shop114.test/hello.php (redirect?)
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Location: https://shop114.test/hello.php
+code=301 location=https://shop114.test/hello.php
+== mailboxes; DKIM by itself (card read only) 19:45:26
+200 {"id": 1, "success": true}
+200 {"id": 2, "success": true}
+   after 7s: {"status": 200, "dkim_status": "served", "dkim_signed": true, "signing_installed": true, "owner_record": false, "automatic": null}
+   TXT @192.0.3.150 '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA...'  @192.0.3.151 '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA...'
+   main zone TXT celik._domainkey.fa114.test @192.0.3.150 '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA...'  @192.0.3.151 '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA...'
+2026-10-31T19:45:31+00:00 frankfurt panel[28604]: 2026/10/31 19:45:31 [dkim-auto] shop114.test: DKIM ready (domain_created; record published in shop114.test)
+== webmail address (card enable, owner action) 19:45:35
+202 {"operation": {"id": "cc6c916d81901570df77b222e566ca61", "kind": "webmail_address", "package_name": "mail.fa114.test", "phase": "queued", "request_id": "bbb0d7bde8db1382e4b9a7f43be00dc6", "service_id": "roundcube", "started_at": "2026-10-31T19:45:35.475232309Z", "status": "queued"}}
+== 587 + 465 send, IMAPS read 19:45:40
+   587 {'ok': True, 'refused': {}} | 465 {'ok': True, 'refused': {}} | imaps {'after_seconds': 13.5, 'headers': 'From: alice@shop114.test\r\nTo: bob@shop114.test\r\nSubject: final-alpha113 0df9d0e74b80'}  | cert ['mail.fa114.test']
+== PHP mail() and a bounce 19:46:10
+   mail.php: sent php-mail fa42a5bfa09e
+   bounce.php: sent bounce-test e18a5d798690
+== DKIM verified independently against the TXT from each DNS server (192.0.3.150,192.0.3.151) 19:46:30
+   final-alpha113 0df9d0e74b80 | found | sigs 1 | [{'d': 'shop114.test', 's': 'celik', 'verify_with_txt_from_192.0.3.150': True, 'verify_with_txt_from_192.0.3.151': True}] | mid <1cc1048dd41640f69bfe7ba710b151a8@labnet.test>
+   final-alpha113-465 0df9d0e74b80 | found | sigs 1 | [{'d': 'shop114.test', 's': 'celik', 'verify_with_txt_from_192.0.3.150': True, 'verify_with_txt_from_192.0.3.151': True}] | mid <d32e6d0f32df4745991f6eea7886b5df@labnet.test>
+   php-mail fa42a5bfa09e | found | sigs 1 | [{'d': 'shop114.test', 's': 'celik', 'verify_with_txt_from_192.0.3.150': True, 'verify_with_txt_from_192.0.3.151': True}] | mid <20261031194610.96ABB22508@mail.fa114.test>
+-- bounce in alice's INBOX
+   Undelivered Mail Returned to Sender found Mail Delivery System <MAILER-DAEMON@mail.fa114.test> <20261031194610.D85C02250A@mail.fa114.test>
+-- server side: rspamd verdicts, postfix bounce lines, DKIM tables (read only)
+keytable lines for shop114.test: 1
+signingtable lines for shop114.test: 1
+rspamd lines for 1cc1048dd41640f69bfe7ba710b151a8@labnet.test:
+rspamd_task_write_log: id: <1cc1048dd41640f69bfe7ba710b151a8@labnet.test>, qid: <
+(default: F (no action): [0.90/15.00] [MISSING_DATE(1.00){}
+rspamd lines for d32e6d0f32df4745991f6eea7886b5df@labnet.test:
+rspamd_task_write_log: id: <d32e6d0f32df4745991f6eea7886b5df@labnet.test>, qid: <
+(default: F (no action): [0.90/15.00] [MISSING_DATE(1.00){}
+rspamd lines for 20261031194610.96ABB22508@mail.fa114.test:
+rspamd_task_write_log: id: <20261031194610.96ABB22508@mail.fa114.test>, qid: <96A
+(default: F (no action): [0.19/15.00] [FORGED_SENDER(0.30){alice@shop114.test;shop114_test@mail.fa114.test;}
+milter warnings, all boots: 0
+milters: smtpd=inet:127.0.0.1:8891, inet:127.0.0.1:11332 non_smtpd=inet:127.0.0.1:8891, inet:127.0.0.1:11332
+2026-10-31T19:46:10+00:00 frankfurt postfix/virtual[53389]: C89EB22508: to=<nobody113@shop114.test>, relay=virtual, delay=0.07, delays=0.06/0/0/0.01, dsn=5.1.1, status=bounced (unknown user: "nobody113@shop114.test")
+2026-10-31T19:46:10+00:00 frankfurt postfix/bounce[53433]: C89EB22508: sender non-delivery notification: D85C02250A
+-- Roundcube (bob)
+-- DKIM card now (read only)
+    200 {"dkim.status": "ok", "dkim_signed": true, "automatic": null}
+== DNS-only zone gone114.test created and deleted at once 19:46:34
+200 {"DocumentRoot": "", "Domain": "gone114.test", "DomainID": 3, "FTPPassword": "[REDACTED]", "FTPUser": "", "PHPVersion": "", "ProjectType": "dnsonly", "SiteID": 3, "TempDomain": ""}
+   zone id 3
+   before @192.0.3.150: SOA status: NOERROR flags: qr aa  | TXT celik._domainkey ''
+   before @192.0.3.151: SOA status: NOERROR flags: qr aa  | TXT celik._domainkey ''
+   +0s status: 204 
+   +2s status: 200 deletion_pending running This deletion is running now and is checked automatically. Nobody needs to do anything: check again in a minute. Only if the automatic checks end without confir
+   +32s status: 404 None None 
+   DELETE answered after 34s: 200 {  "domain": "gone114.test",  "status": "deleted" }
+   after @192.0.3.150: SOA status: REFUSED flags: qr  | TXT celik._domainkey ''
+   after @192.0.3.151: SOA status: REFUSED flags: qr  | TXT celik._domainkey ''
+   domains list names it: no
+keytable lines for gone114.test: 0
+signingtable lines for gone114.test: 0
+2026-10-31T19:46:50+00:00 frankfurt panel[28604]: 2026/10/31 19:46:50 [dkim-auto] gone114.test: stopped: the domain is being deleted or no longer exists; its deletion removes its DKIM key and record, nothing to do
+2026-10-31T19:47:11+00:00 frankfurt agent[10768]: 2026/10/31 19:47:11 DNS peer inspector answer for gone114.test (PowerDNS secondary): catalog_state=transferred member_state=absent native_state=unloaded; accepted
+2026-10-31T19:47:12+00:00 frankfurt agent[10768]: 2026/10/31 19:47:12 DNS peer proof for gone114.test (PowerDNS secondary) step times: prepare=1.625s challenge_write=6.204s exchange=659ms post_inspection=2.97s consume=7.393s; total 18.853s; outcome verified
+   backup inspector's own journal (journalctl -t celikpanel-pdns-peer-inspect) for this deletion:
+-- No entries --
+dkim_automatic rows: []
+FOREIGN KEY lines: 1
+== ops done 19:47:22
+== check 3a: a customer domain on the joined server sends and receives both ways 19:47:22
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:98: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS customer domain on the joined server | {'status': 200, 'answer': {'DomainID': 1, 'SiteID': 1, 'Domain': 'custb114.test', 'TempDomain': '', 'DocumentRoot': '/var/www/celikpanel/subscriptions/2/sites/1/public_html', 'ProjectType': 'static', 'FTPUser': 'custb114_test', 'FTPPassword': '[REDACTED]', 'PHPVersion': ''}}
+PASS mailbox carol@ on the joined server | {'status': 200, 'answer': {'id': 1, 'success': True}}
+PASS joined-server domain -> first-server domain delivered (DKIM-signed) | {'send': '{"sent": true, "subject": "joined to first", "from": "carol@custb114.test", "to": "alice@shop114.test"}', 'got': [{'subject': 'joined to first', 'from': 'carol@custb114.test', 'to': 'alice@shop114.test', 'date': 'Sat, 31 Oct 2026 19:48:06 -0000', 'auto_submitted': None, 'dkim': True, 'link_shapes': []}]}
+PASS first-server domain -> joined-server domain delivered | {'send': '{"sent": true, "subject": "first to joined", "from": "alice@shop114.test", "to": "carol@custb114.test"}', 'got': [{'subject': 'first to joined', 'from': 'alice@shop114.test', 'to': 'carol@custb114.test', 'date': 'Sat, 31 Oct 2026 19:48:15 -0000', 'auto_submitted': None, 'dkim': True, 'link_shapes': []}]}
+-- the joined server's customer domain records, from both DNS servers
+   @192.0.3.150 custb114.test: MX=[] SPF=[] DMARC=[] DKIM=[]
+   @192.0.3.151 custb114.test: MX=[] SPF=[] DMARC=[] DKIM=[]
+-- the main domain's mail records afterwards
+   @192.0.3.150 fa114.test: MX=[10 mail.fa114.test.] SPF=[v=spf1 mx a:mail.fa114.test ~all] DMARC=["v=DMARC1; p=none; rua=mailto:dmarc@fa114.test"] DKIM=["v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA]
+   @192.0.3.151 fa114.test: MX=[10 mail.fa114.test.] SPF=[v=spf1 mx a:mail.fa114.test ~all] DMARC=["v=DMARC1; p=none; rua=mailto:dmarc@fa114.test"] DKIM=["v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA]
+   main domain MX/SPF/DMARC/DKIM unchanged
+== check 4: port change refused on a paired server 19:48:47
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:98: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS port view on a paired server | {'port': 1923, 'default_port': 1923, 'legacy_port': 2083, 'blocked': {'code': 'PANEL_PORT_PAIRED', 'reason': 'Another CelikPanel server is linked to this one and reaches it at port 1923 (a joined server, or a panel that publishes DNS records here). Changing the port here would break that link, and this release cannot tell the other server the new address. Keep port 1923 on this server.'}}
+PASS port change refused on a paired server with PANEL_PORT_PAIRED | {'status': 409, 'code': 'PANEL_PORT_PAIRED', 'error': 'Another CelikPanel server is linked to this one and reaches it at port 1923 (a joined server, or a panel that publishes DNS records here). Changing the port here would break that link, and this release cannot tell the other server the new address. Keep port 1923 on this server.'}
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:98: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS port view on a paired server | {'port': 1923, 'default_port': 1923, 'legacy_port': 2083, 'blocked': None}
+FAIL port change refused on a paired server with PANEL_PORT_PAIRED | {'status': 200, 'code': None, 'error': None}
+== check 5: OS updates (Debian, Ubuntu) 19:48:49
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:98: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS main: OS updates read | {'family': 'apt', 'automatic': {'state': 'on', 'tool': 'unattended-upgrades'}, 'auto_config.state': 'stock', 'mode': 'auto', 'path': '/etc/apt/apt.conf.d/20auto-upgrades', 'legacy_state': 'panel', 'timer_state': 'enabled'}
+PASS main: Dashboard OS-updates card data | {'state': 'ready', 'package_family': 'apt', 'pending': {'state': 'known', 'total': 37, 'security': 10, 'lists_at': '2026-10-31T19:04:24Z'}, 'automatic': {'state': 'on', 'tool': 'unattended-upgrades'}}
+PASS main: switch to manual | {'answer': {'effective': True, 'effective_reason': '', 'legacy_removed': True, 'mode': 'manual', 'path': '/etc/apt/apt.conf.d/20auto-upgrades', 'previous_state': 'stock', 'timer_state': 'enabled', 'timers_enabled': None, 'written': True}, 'file': '// Written by CelikPanel at the owner\'s choice (operating-system updates: manual).\n// apt reads this file by itself; CelikPanel does not have to be running.\n// Edit it freely: CelikPanel notices and asks before it replaces your text.\nAPT::Periodic::Update-Package-Lists "1";\nAPT::Periodic::Unattended-Upgrade "0";\n01autoremove\n20auto-upgrades\n'}
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:98: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS main: switch to auto | {'answer': {'effective': True, 'effective_reason': '', 'legacy_removed': False, 'mode': 'auto', 'path': '/etc/apt/apt.conf.d/20auto-upgrades', 'previous_state': 'panel', 'timer_state': 'enabled', 'timers_enabled': None, 'written': True}, 'file': '// Written by CelikPanel at the owner\'s choice (operating-system updates: auto).\n// apt reads this file by itself; CelikPanel does not have to be running.\n// Edit it freely: CelikPanel notices and asks before it replaces your text.\nAPT::Periodic::Update-Package-Lists "1";\nAPT::Periodic::Unattended-Upgrade "1";\n01autoremove\n20auto-upgrades\n'}
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:98: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS main: owner hand edit is detected (auto_config.state=edited) | {'state': 'edited', 'mode': None, 'automatic': {'state': 'off', 'tool': 'unattended-upgrades', 'reason': 'config_off'}}
+PASS main: writing over the owner's edit needs confirmation (OS_UPDATES_MODE_OWNER_EDITED) | {'status': 409, 'code': 'OS_UPDATES_MODE_OWNER_EDITED'}
+PASS main: confirmed write back to auto | {'status': 200, 'answer': {'effective': True, 'effective_reason': '', 'legacy_removed': False, 'mode': 'auto', 'path': '/etc/apt/apt.conf.d/20auto-upgrades', 'previous_state': 'edited', 'timer_state': 'enabled', 'timers_enabled': None, 'written': True}}
+PASS main: with the panel and agent stopped the apt timers stay enabled and scheduled | inactive inactive
+enabled enabled
+active active
+Sun 2026-11-01 06:46:42 UTC 10h - - apt-daily-upgrade.timer apt-daily-upgrade.service
+Sun 2026-11-01 08:31:58 UTC 12h - - apt-daily.timer apt-daily.service
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+active active
+
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:98: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS backup: OS updates read | {'family': 'apt', 'automatic': {'state': 'on', 'tool': 'unattended-upgrades'}, 'auto_config.state': 'stock', 'mode': 'auto', 'path': '/etc/apt/apt.conf.d/20auto-upgrades', 'legacy_state': 'panel', 'timer_state': 'enabled'}
+PASS backup: Dashboard OS-updates card data | {'state': 'ready', 'package_family': 'apt', 'pending': {'state': 'known', 'total': 153, 'security': 120, 'lists_at': '2026-10-31T13:53:45Z'}, 'automatic': {'state': 'on', 'tool': 'unattended-upgrades'}}
+PASS backup: switch to manual | {'answer': {'effective': True, 'effective_reason': '', 'legacy_removed': True, 'mode': 'manual', 'path': '/etc/apt/apt.conf.d/20auto-upgrades', 'previous_state': 'stock', 'timer_state': 'enabled', 'timers_enabled': None, 'written': True}, 'file': '// Written by CelikPanel at the owner\'s choice (operating-system updates: manual).\n// apt reads this file by itself; CelikPanel does not have to be running.\n// Edit it freely: CelikPanel notices and asks before it replaces your text.\nAPT::Periodic::Update-Package-Lists "1";\nAPT::Periodic::Unattended-Upgrade "0";\n01autoremove\n20auto-upgrades\n'}
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:98: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS backup: switch to auto | {'answer': {'effective': True, 'effective_reason': '', 'legacy_removed': False, 'mode': 'auto', 'path': '/etc/apt/apt.conf.d/20auto-upgrades', 'previous_state': 'panel', 'timer_state': 'enabled', 'timers_enabled': None, 'written': True}, 'file': '// Written by CelikPanel at the owner\'s choice (operating-system updates: auto).\n// apt reads this file by itself; CelikPanel does not have to be running.\n// Edit it freely: CelikPanel notices and asks before it replaces your text.\nAPT::Periodic::Update-Package-Lists "1";\nAPT::Periodic::Unattended-Upgrade "1";\n01autoremove\n20auto-upgrades\n'}
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:98: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS backup: owner hand edit is detected (auto_config.state=edited) | {'state': 'edited', 'mode': None, 'automatic': {'state': 'off', 'tool': 'unattended-upgrades', 'reason': 'config_off'}}
+PASS backup: writing over the owner's edit needs confirmation (OS_UPDATES_MODE_OWNER_EDITED) | {'status': 409, 'code': 'OS_UPDATES_MODE_OWNER_EDITED'}
+PASS backup: confirmed write back to auto | {'status': 200, 'answer': {'effective': True, 'effective_reason': '', 'legacy_removed': False, 'mode': 'auto', 'path': '/etc/apt/apt.conf.d/20auto-upgrades', 'previous_state': 'edited', 'timer_state': 'enabled', 'timers_enabled': None, 'written': True}}
+PASS backup: with the panel and agent stopped the apt timers stay enabled and scheduled | inactive inactive
+enabled enabled
+active active
+Sun 2026-11-01 06:40:04 UTC 10h - - apt-daily-upgrade.timer apt-daily-upgrade.service
+Sun 2026-11-01 10:12:23 UTC 14h - - apt-daily.timer apt-daily.service
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+active active
+
+== check 6: accounts 19:49:27
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:98: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  for k, v in r.getheaders():
+PASS mailbox res@shop114.test for the invitation mail | {'status': 200}
+PASS mailbox cust@shop114.test for the invitation mail | {'status': 200}
+PASS mailbox team@shop114.test for the invitation mail | {'status': 200}
+PASS mailbox cust2@shop114.test for the invitation mail | {'status': 200}
+PASS admin creates a reseller with a pool, invited by email | {'status': 200, 'invitation': {'id': 1, 'delivery': 'sent', 'expires_at': '2026-11-07T19:49:29Z'}, 'error': None}
+PASS invitation mail delivered by the server's own Postfix | {'count': 1, 'messages': [{'subject': 'Your CelikPanel account is ready', 'from': 'CelikPanel <no-reply@fa114.test>', 'to': '<res@shop114.test>', 'date': 'Sat, 31 Oct 2026 19:49:29 +0000', 'auto_submitted': 'auto-generated', 'dkim': True, 'link_shapes': ['https://frankfurt.fa114.test:1923/account-link/invitation#t=[REDACTED]']}], 'error': None}
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:98: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  for k, v in r.getheaders():
+PASS invitation link opens (names the account) | {'status': 200, 'answer': {'purpose': 'invitation', 'username': 'res1'}}
+PASS reseller accepts the invitation and sets a password | {'status': 200, 'answer': {'success': True}}
+PASS reseller logs in | {'status': 200}
+PASS plan above the reseller's pool is refused (PLAN_EXCEEDS_POOL) | {'status': 409, 'code': 'PLAN_EXCEEDS_POOL', 'error': 'a plan may not promise more than your pool; lower the limits (0 = unlimited is not possible where your pool is limited), or ask the administrator for a larger pool. Nothing was changed.'}
+PASS reseller creates a plan | {'status': 200, 'answer': {'id': 1, 'success': True}}
+PASS reseller creates a customer by invitation | {'status': 200, 'invitation': {'id': 2, 'delivery': 'sent', 'expires_at': '2026-11-07T19:49:35Z'}}
+PASS a second customer is refused by the pool (max_customers=1) | {'status': 409, 'code': 'RESELLER_CUSTOMER_LIMIT', 'error': 'your pool allows no more customers; remove a customer you no longer serve, or ask the administrator for a larger pool. Nothing was created.'}
+PASS customer's invitation mail delivered (TR) | {'count': 1, 'messages': [{'subject': 'CelikPanel hesabınız hazır', 'from': 'CelikPanel <no-reply@fa114.test>', 'to': '<cust@shop114.test>', 'date': 'Sat, 31 Oct 2026 19:49:35 +0000', 'auto_submitted': 'auto-generated', 'dkim': True, 'link_shapes': ['https://frankfurt.fa114.test:1923/account-link/invitation#t=[REDACTED]']}], 'error': None}
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:98: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  for k, v in r.getheaders():
+PASS customer accepts the invitation | {'status': 200, 'answer': {'success': True}}
+PASS customer logs in | {'status': 200}
+PASS customer sees My plan | {'status': 200, 'answer': {'bandwidth': {'measured': False}, 'contact': {'kind': 'reseller', 'name': 'res1', 'email': 'res@shop114.test'}, 'subscriptions': [{'id': 3, 'name': 'basic', 'status': 'active', 'plan': {'id': 1, 'name': 'basic'}, 'usage': {'disk_used_bytes': 0, 'disk_limit_bytes': 1073741824, 'domains': 0, 'domains_limit': 1, 'databases': 0, 'databases_limit': 1, 'mail_accounts': 0, 'mail_limit': 2}, 'over_limit': []}]}}
+PASS customer adds a domain | {'status': 200, 'answer': {'DomainID': 4, 'SiteID': 4, 'Domain': 'cust114.test', 'TempDomain': '', 'DocumentRoot': '/var/www/celikpanel/subscriptions/3/sites/4/public_html', 'ProjectType': 'static', 'FTPUser': 'cust114_test', 'FTPPassword': '[REDACTED]', 'PHPVersion': ''}}
+FAIL customer gets SSL | {'status': 428, 'answer': {'success': None, 'error': 'This page was opened before CelikPanel was updated, so the server did not accept the change and nothing was changed. Reload the page, then make the change again. (A client that is not the CelikPanel page sends the header X-CelikPanel-Request-Id: 32 lowercase hexadecimal characters, a new value for each action.)', 'code': 'REQUEST_ID_REQUIRED', 'issuer': None, 'expires_at': None}}
+PASS customer adds a mailbox | {'status': 200, 'answer': {'id': 7, 'success': True}}
+PASS customer adds a second mailbox (plan allows 2) | {'status': 200, 'answer': {'id': 8, 'success': True}}
+PASS third mailbox refused by the plan quota | {'status': 409, 'code': 'QUOTA_MAILBOXES_EXCEEDED'}
+FAIL customer adds a database | {'status': 428, 'answer': {'error': 'This page was opened before CelikPanel was updated, so the server did not accept the change and nothing was changed. Reload the page, then make the change again. (A client that is not the CelikPanel page sends the header X-CelikPanel-Request-Id: 32 lowercase hexadecimal characters, a new value for each action.)', 'code': 'REQUEST_ID_REQUIRED'}}
+FAIL customer adds a DNS record | {'status': 500, 'answer': {'error': 'internal server error', 'code': 'INTERNAL'}}
+PASS customer adds a cron job | {'status': 200, 'answer': {'success': True}}
+PASS customer uploads a file | {'status': 200, 'answer': {'success': True}}
+FAIL customer makes a backup | {'status': 428, 'answer': {'error': 'This page was opened before CelikPanel was updated, so the server did not accept the change and nothing was changed. Reload the page, then make the change again. (A client that is not the CelikPanel page sends the header X-CelikPanel-Request-Id: 32 lowercase hexadecimal characters, a new value for each action.)', 'code': 'REQUEST_ID_REQUIRED'}}
+PASS customer sets an autoresponder | {'status': 200, 'answer': {'autoresponder': {'enabled': True, 'subject': 'Away', 'message': 'I am away.', 'start_date': '2026-10-30', 'end_date': '2026-11-07', 'interval_days': 1}, 'state': {'applied': True, 'script': 'managed', 'sieve_available': True}, 'success': True}}
+PASS second domain refused by the plan quota | {'status': 409, 'code': 'QUOTA_DOMAINS_EXCEEDED', 'error': 'subscription limit reached: 1 of 1 domains in use. Remove one, or ask your provider for a larger plan (see My plan).'}
+PASS plan downgrade below usage warns (PLAN_BELOW_USAGE) | {'status': 409, 'code': 'PLAN_BELOW_USAGE', 'details': ['mailboxes: 2 in use, limit 1']}
+PASS admin 'Log in as' the customer: banner data | {'status': 200, 'me': {'username': 'cust1', 'role': 'customer', 'impersonating': True, 'impersonator': 'owner'}}
+PASS audit rows name the operator and acting_as | [{'username': 'owner', 'acting_as': 'cust1', 'action': 'impersonate.stop'}, {'username': 'owner', 'acting_as': 'cust1', 'action': 'impersonate.start:cust1'}]
+PASS customer adds a scoped additional user (dns:view on one domain) | {'status': 201, 'answer': {'team_member': {'id': 5, 'owner_id': 4, 'username': 'team1', 'email': 'team@shop114.test', 'status': 'active', 'access': {'subscription_permissions': [], 'domain_permissions': [{'domain_id': 4, 'domain_name': 'cust114.test', 'capability': 'dns', 'mode': 'view'}]}, 'created_at': '2026-10-31T19:50:04Z', 'updated_at': '2026-10-31T19:50:04Z'}}}
+PASS additional user: may read DNS, may not change it, may not see mail | {'read_dns': 200, 'write_dns': [403, None], 'read_mail': [403, None]}
+PASS forgot password request answers 202 | {'status': 202, 'answer': {'accepted': True}}
+PASS reset mail delivered | {'count': 2, 'messages': [{'subject': 'Your CelikPanel account is ready', 'from': 'CelikPanel <no-reply@fa114.test>', 'to': '<res@shop114.test>', 'date': 'Sat, 31 Oct 2026 19:49:29 +0000', 'auto_submitted': 'auto-generated', 'dkim': True, 'link_shapes': ['https://frankfurt.fa114.test:1923/account-link/invitation#t=[REDACTED]']}, {'subject': 'Reset your CelikPanel password', 'from': 'CelikPanel <no-reply@fa114.test>', 'to': '<res@shop114.test>', 'date': 'Sat, 31 Oct 2026 19:50:04 +0000', 'auto_submitted': 'auto-generated', 'dkim': True, 'link_shapes': ['https://frankfurt.fa114.test:1923/account-link/reset#t=[REDACTED]']}]}
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:98: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  for k, v in r.getheaders():
+PASS password reset | {'status': 200, 'answer': {'success': True}}
+PASS the reseller's old session is dropped by the reset | {'status': 401}
+PASS reseller logs in with the new password | {'status': 200}
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:111: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS admin invites a customer (for the accept page) | {'status': 200, 'invitation': {'id': 4, 'delivery': 'sent', 'expires_at': '2026-11-07T19:50:11Z'}}
+PASS invitation link captured for the screenshot | {'count': 1}
+== check 7: site features 19:50:15
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:111: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS password-protected folder created | {'status': 200, 'answer': {'domain_id': 2, 'protect_available': True, 'redirects_available': True, 'https_enforced': True, 'dirs': [{'id': 1, 'path': '/private', 'realm': 'Private area', 'users': [{'username': 'visitor'}]}], 'redirects': [], 'max_dirs': 20, 'max_users': 50, 'max_redirects': 100}}
+FAIL protected folder: 401 without, 200 with the password | {'without': '401', 'with': '404'}
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:111: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS redirect 301 exact /old created | {'status': 200, 'answer': {'domain_id': 2, 'protect_available': True, 'redirects_available': True, 'https_enforced': True, 'dirs': [{'id': 1, 'path': '/private', 'realm': 'Private area', 'users': [{'username': 'visitor'}]}], 'redirects': [{'id': 1, 'match': 'exact', 'source': '/old', 'target': '/new/', 'code': 301, 'keep_query': True}], 'max_dirs': 20, 'max_users': 50, 'max_redirects': 100}}
+PASS redirect 302 prefix /blog created | {'status': 200, 'answer': {'domain_id': 2, 'protect_available': True, 'redirects_available': True, 'https_enforced': True, 'dirs': [{'id': 1, 'path': '/private', 'realm': 'Private area', 'users': [{'username': 'visitor'}]}], 'redirects': [{'id': 2, 'match': 'prefix', 'source': '/blog', 'target': 'https://example.test/blog', 'code': 302, 'keep_query': False}, {'id': 1, 'match': 'exact', 'source': '/old', 'target': '/new/', 'code': 301, 'keep_query': True}], 'max_dirs': 20, 'max_users': 50, 'max_redirects': 100}}
+PASS 301 exact keeps the query; 302 prefix drops it | {'old': '301 https://shop114.test/new/?x=1&y=2', 'blog': '302 https://example.test/blog'}
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:111: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS redirect injection attempts refused | [(400, 'SITE_FEATURE_INVALID'), (400, 'SITE_FEATURE_INVALID'), (400, 'SITE_FEATURE_INVALID'), (400, 'SITE_FEATURE_INVALID')]
+PASS main: nginx -t after protect/redirects | nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:111: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS autoresponder on bob@ set | {'status': 200, 'answer': {'autoresponder': {'enabled': True, 'subject': 'Out of office', 'message': 'Bob is away until next week.', 'start_date': '2026-10-30', 'end_date': '2026-11-07', 'interval_days': 1}, 'state': {'applied': True, 'script': 'managed', 'sieve_available': True}, 'success': True}}
+FAIL autoresponder applied (Sieve) | {'state': {'applied': False, 'script': 'managed', 'sieve_available': True}}
+FAIL two mails within the interval -> exactly one auto-reply | {'count': 0, 'messages': []}
+FAIL autoresponder answers with the panel and agent stopped | {'panel': 'inactive inactive', 'count': 0, 'messages': []}
+main nginx: configuration file /etc/nginx/nginx.conf test is successful
+backup nginx: configuration file /etc/nginx/nginx.conf test is successful
+== check 9 + 10: owner screens (admin) 19:55:08
+{"shots":68,"errors":[{"name":"users-plans","lang":"en","width":"desktop","error":"Error: no element button,[role=tab] with text Plans|Planlar"},{"name":"users-plans","lang":"tr","width":"desktop","error":"Error: no element button,[role=tab] with text Plans|Planlar"},{"name":"users-plans","lang":"en","width":"phone","error":"Error: no element button,[role=tab] with text Plans|Planlar"},{"name":"users-plans","lang":"tr","width":"phone","error":"Error: no element button,[role=tab] with text Plans|Planlar"}]}
+
+{"shots":20,"errors":[]}
+
+-- reseller and customer views
+{"shots":12,"errors":[{"name":"users-plans","lang":"en","width":"desktop","error":"Error: no element button,[role=tab] with text Plans|Planlar"},{"name":"users-plans","lang":"tr","width":"desktop","error":"Error: no element button,[role=tab] with text Plans|Planlar"},{"name":"users-plans","lang":"en","width":"phone","error":"Error: no element button,[role=tab] with text Plans|Planlar"},{"name":"users-plans","lang":"tr","width":"phone","error":"Error: no element button,[role=tab] with text Plans|Planlar"}]}
+
+{"shots":24,"errors":[]}
+
+{"shots":4,"errors":[]}
+
+-- public pages: login, forgot password, invitation
+{"shots":8,"errors":[]}
+
+{"shots":1,"errors":[]}
+
+-- log in as: the banner
+{"shots":4,"errors":[]}
+
+== check 6b: 2FA recovery codes 20:14:10
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:659: SyntaxWarning: "\(" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\("? A raw string is also an option.
+  out = guest("backup", "journalctl -u postfix -u 'postfix@*' --no-pager -o cat --since -4min | grep -E 'carol@' | grep -oE 'relay=[^,]*|status=[a-z]+ \([^)]{0,120}' | tail -4; doveconf -n 2>/dev/null | grep -n auth_username_format; dovecot --version")
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:112: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS 2FA enabled, recovery codes shown once | {'status': 200, 'recovery_total': 10}
+PASS login with a recovery code; one code used up | {'status': 200, '2fa': {'enabled': True, 'recovery_remaining': 9, 'recovery_total': 10}}
+== check 9: Add domain in the browser, the row appears without a reload 20:14:10
+{"shots":5,"errors":[]}
+
+{"shots":1,"errors":[]}
+
+== A ops done 20:15:59

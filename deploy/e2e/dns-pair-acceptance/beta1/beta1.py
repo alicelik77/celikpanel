@@ -266,6 +266,8 @@ def cmd_install(a) -> dict:
 def cmd_login(a) -> dict:
     st = load_state(a.cell, a.node)
     st.pop("pin", None)
+    # alpha.114: the port may have changed (panel port change, update); read it again.
+    st.pop("panel_port", None)
     rec = Recorder(a.cell, redactor_for(st))
     c = client_for(a.cell, a.node, rec, st)
     identity = c.login(st["username"], st["password"])

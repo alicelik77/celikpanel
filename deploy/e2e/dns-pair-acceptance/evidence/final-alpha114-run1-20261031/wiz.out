@@ -1,0 +1,33 @@
+== provision + install 19:34:35
+main terminal rc 0 71.5 problem None restart_required False postinstall rc 0
+  tail: rolayı doğrula:  | Created administrator / Yönetici oluşturuldu. |     ✓ administrator is ready / yönetici hazır | ==> Starting the panel / Panel başlatılıyor |     ✓ panel is running / panel çalışıyor | ==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor |     ✓ initial panel certificate is protected / ilk panel sertifikasi korundu |  | CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu. |     Panel:  https://192.0.3.155:1923 |     Services / Servisler: systemctl status celikpanel-agent celikpanel-panel |     Logs / Günlükler: journalctl -u celikpanel-panel -f | 
+license active
+== first screens (the owner's clicks) 19:36:03
+{"shots":4,"errors":[]}
+
+{"shots":1,"errors":[]}
+
+{"shots":12,"errors":[]}
+
+wizard data pair-main ['count', 'dnshome', 'domain', 'mail', 'name', 'names', 'roles']
+domain 200 
+count 200 
+name 200 
+roles 200 
+names 200 
+dnshome 200 
+mail 200 
+items ['wizard-domain', 'wizard-count', 'wizard-name', 'wizard-roles', 'wizard-components', 'wizard-names', 'wizard-dnshome', 'wizard-records', 'wizard-mail', 'wizard-review'] revision 9 status draft
+{"shots":40,"errors":[]}
+
+-- the main-site answer No
+main-site-no 200 
+items ['wizard-roles', 'wizard-review'] revision 10 status draft
+{"shots":8,"errors":[]}
+
+-- review with the plan computed (the Summary as the owner reaches it)
+main-site-yes 200 
+items ['wizard-mail'] revision 11 status draft
+{"shots":4,"errors":[]}
+
+== W done 19:44:20

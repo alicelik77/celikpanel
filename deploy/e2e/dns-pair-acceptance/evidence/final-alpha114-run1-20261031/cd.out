@@ -1,0 +1,116 @@
+== C and D set up 20:40:53
+20:01:47 caps=None | dns_overview_ok ok who=Nobody. | [('this', 'main', None, 'frankfurt'), ('peer', 'backup', None, 'boston')] | not-ok: []
+20:02:19 caps=None | dns_overview_ok ok who=Nobody. | [('this', 'main', None, 'frankfurt'), ('peer', 'backup', None, 'boston')] | not-ok: []
+20:02:51 caps=None | dns_overview_ok ok who=Nobody. | [('this', 'main', None, 'frankfurt'), ('peer', 'backup', None, 'boston')] | not-ok: []
+-- the joined server's DNS page
+dns_overview_ok ok who=Nobody. | [('this', 'backup', None, 'boston'), ('peer', 'main', None, 'frankfurt')] | not-ok: []
+succeeded complete null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=suc
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-verify=succeeded
+main role first peer_setup ready inspection {"code": "ready", "message": "The deletion check between the two servers is set up: when a domain is deleted, the main DNS server confirms by itself that the backup removed it too. Nothing to do. It is native configuration on both servers; either owner can
+backup role second peer_setup None inspection {"code": "ready", "message": "The deletion check between the two servers is set up: when a domain is deleted, the main DNS server confirms by itself that the backup removed it too. Nothing to do. It is native configuration on both servers; either owner c
+== pair done 20:03:23
+20:37:33 caps=None | dns_overview_ok ok who=Nobody. | [('this', 'main', None, 'dmain'), ('peer', 'backup', None, 'djoin')] | not-ok: []
+-- the joined server's DNS page
+dns_overview_ok ok who=Nobody. | [('this', 'backup', 'second', 'djoin'), ('peer', 'main', 'first', 'dmain')] | not-ok: []
+succeeded complete null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-verify=succeeded
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-verify=succeeded
+main role first peer_setup ready inspection {"code": "ready", "message": "The deletion check between the two servers is set up: when a domain is deleted, the main DNS server confirms by itself that the backup removed it too. Nothing to do. It is native configuration on both servers; either owner can
+backup role second peer_setup None inspection {"code": "ready", "message": "The deletion check between the two servers is set up: when a domain is deleted, the main DNS server confirms by itself that the backup removed it too. Nothing to do. It is native configuration on both servers; either owner c
+{"shots":20,"errors":[]}
+
+== pair done 20:40:53
+== D mixed pair: ports and DNS from both 20:40:53
+192.0.3.170:1923 closed
+192.0.3.170:2083 open
+192.0.3.171:1923 open
+192.0.3.171:2083 closed
+   @192.0.3.170 SOA d114.test: status: NOERROR flags: qr aa  | A dmain.d114.test=192.0.3.170 djoin=192.0.3.171
+   @192.0.3.171 SOA d114.test: status: NOERROR flags: qr aa  | A dmain.d114.test=192.0.3.170 djoin=192.0.3.171
+== the owner's Update, latest = alpha.114 20:41:04
+v0.1.0-alpha.114
+{"shots":2,"errors":[]}
+
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:659: SyntaxWarning: "\(" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\("? A raw string is also an option.
+  out = guest("backup", "journalctl -u postfix -u 'postfix@*' --no-pager -o cat --since -4min | grep -E 'carol@' | grep -oE 'relay=[^,]*|status=[a-z]+ \([^)]{0,120}' | tail -4; doveconf -n 2>/dev/null | grep -n auth_username_format; dovecot --version")
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:112: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS main: update check offers the candidate | {'status': 200, 'current': 'v0.1.0-alpha.113', 'target': {'version': 'v0.1.0-alpha.114', 'commit': '49c7efd5b68202fe155836cdf295c9b6ea14dc0a', 'sequence': '114', 'os': 'linux', 'arch': 'amd64', 'archive_sha256': '9fd2f986fa021702b579ef67c012a7066dcccc820badcce3eb195adc09b79a34', 'archive_size': '68558050', 'published_at': '2026-10-31T19:01:00Z'}}
+PASS main: update accepted | {'status': 202, 'answer': {'accepted': True, 'status': 'queued'}}
+FAIL main: update ends succeeded | {'timeline': ['10s running/None', '20s failed/None'], 'summary': "!! CELIKPANEL_UPDATE_FAILURE code=update_preflight_refused state=unchanged reason=update preflight step=application_compatibility class=check_failed detail=This application's DNS evidence compatibility could not be verified. The server owner must preserve the DNS files and choose a release or snapshot with a matching supported Agent before resuming the same operation. v3 PowerDNS evidence requ"}
+FAIL main: after the update the release is the candidate and the port stays 2083 | CELIKPANEL_LISTEN=:2083
+LISTEN 0 4096 *:2083 *:* 
+active active active active
+cat: /opt/celikpanel/release.commit: No such file or directory
+
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:659: SyntaxWarning: "\(" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\("? A raw string is also an option.
+  out = guest("backup", "journalctl -u postfix -u 'postfix@*' --no-pager -o cat --since -4min | grep -E 'carol@' | grep -oE 'relay=[^,]*|status=[a-z]+ \([^)]{0,120}' | tail -4; doveconf -n 2>/dev/null | grep -n auth_username_format; dovecot --version")
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:112: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS main: update check offers the candidate | {'status': 200, 'current': 'v0.1.0-alpha.113', 'target': {'version': 'v0.1.0-alpha.114', 'commit': '49c7efd5b68202fe155836cdf295c9b6ea14dc0a', 'sequence': '114', 'os': 'linux', 'arch': 'amd64', 'archive_sha256': '9fd2f986fa021702b579ef67c012a7066dcccc820badcce3eb195adc09b79a34', 'archive_size': '68558050', 'published_at': '2026-10-31T19:01:00Z'}}
+PASS main: update accepted | {'status': 202, 'answer': {'accepted': True, 'status': 'queued'}}
+FAIL main: update ends succeeded | {'timeline': ['10s running/None', '20s failed/None'], 'summary': "!! CELIKPANEL_UPDATE_FAILURE code=update_preflight_refused state=unchanged reason=update preflight step=application_compatibility class=check_failed detail=This application's DNS evidence compatibility could not be verified. The server owner must preserve the DNS files and choose a release or snapshot with a matching supported Agent before resuming the same operation. v3 PowerDNS evidence requ"}
+FAIL main: after the update the release is the candidate and the port stays 2083 | CELIKPANEL_LISTEN=:2083
+LISTEN 0 4096 *:2083 *:* 
+active active active active
+cat: /opt/celikpanel/release.commit: No such file or directory
+
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:659: SyntaxWarning: "\(" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\("? A raw string is also an option.
+  out = guest("backup", "journalctl -u postfix -u 'postfix@*' --no-pager -o cat --since -4min | grep -E 'carol@' | grep -oE 'relay=[^,]*|status=[a-z]+ \([^)]{0,120}' | tail -4; doveconf -n 2>/dev/null | grep -n auth_username_format; dovecot --version")
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:112: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS backup: update check offers the candidate | {'status': 200, 'current': 'v0.1.0-alpha.113', 'target': {'version': 'v0.1.0-alpha.114', 'commit': '49c7efd5b68202fe155836cdf295c9b6ea14dc0a', 'sequence': '114', 'os': 'linux', 'arch': 'amd64', 'archive_sha256': '9fd2f986fa021702b579ef67c012a7066dcccc820badcce3eb195adc09b79a34', 'archive_size': '68558050', 'published_at': '2026-10-31T19:01:00Z'}}
+PASS backup: update accepted | {'status': 202, 'answer': {'accepted': True, 'status': 'queued'}}
+PASS backup: update ends succeeded | {'timeline': ['10s running/None', 'unreachable', 'unreachable', 'unreachable', '50s running/verifying', '60s succeeded/None'], 'summary': None}
+FAIL backup: after the update the release is the candidate and the port stays 2083 | CELIKPANEL_LISTEN=:2083
+LISTEN 0 4096 *:2083 *:* 
+active active active active
+cat: /opt/celikpanel/release.commit: No such file or directory
+
+a4-c:main login after update, license active
+a4-c:backup login after update, license active
+a4-d:main login after update, license active
+== after the update: setup state, DNS overview, pair 20:43:11
+-- a4-c:main: ready extension None
+dns_overview_ok ok who=Nobody. | [('this', 'main', None, 'frankfurt'), ('peer', 'backup', None, 'boston')] | not-ok: []
+-- a4-c:backup: ready extension None
+dns_overview_ok ok who=Nobody. | [('this', 'backup', 'second', 'boston'), ('peer', 'main', 'first', 'frankfurt')] | not-ok: []
+-- a4-d:main: ready extension None
+dns_overview_ok ok who=Nobody. | [('this', 'main', None, 'dmain'), ('peer', 'backup', None, 'djoin')] | not-ok: []
+-- a4-d:backup: ready extension None
+dns_overview_ok ok who=Nobody. | [('this', 'backup', 'second', 'djoin'), ('peer', 'main', 'first', 'dmain')] | not-ok: []
+{"shots":6,"errors":[]}
+
+{"shots":12,"errors":[]}
+
+== check 3b on the upgraded joined server (Boston's case): Components -> mail in place, by API 20:46:50
+   before @192.0.3.160 c114.test MX=[10 mail.c114.test.] SPF=["v=spf1 mx a:mail.c114.test ~all"] DMARC=["v=DMARC1; p=none; rua=mailto:dmarc@c114.test"] DKIM=["v=DKIM1; k=rsa; p=MIIBIjANBgk]
+   before @192.0.3.161 c114.test MX=[10 mail.c114.test.] SPF=["v=spf1 mx a:mail.c114.test ~all"] DMARC=["v=DMARC1; p=none; rua=mailto:dmarc@c114.test"] DKIM=["v=DKIM1; k=rsa; p=MIIBIjANBgk]
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:659: SyntaxWarning: "\(" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\("? A raw string is also an option.
+  out = guest("backup", "journalctl -u postfix -u 'postfix@*' --no-pager -o cat --since -4min | grep -E 'carol@' | grep -oE 'relay=[^,]*|status=[a-z]+ \([^)]{0,120}' | tail -4; doveconf -n 2>/dev/null | grep -n auth_username_format; dovecot --version")
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:112: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS backup: the first server's mail name is refused (server_setup_peer_mail_hostname_taken) | {'status': 200, 'blockers': '["server_setup_peer_mail_hostname_taken"]'}
+PASS backup: the dialog's cancel ends the extension | {'status': 200, 'extension': None}
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:659: SyntaxWarning: "\(" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\("? A raw string is also an option.
+  out = guest("backup", "journalctl -u postfix -u 'postfix@*' --no-pager -o cat --since -4min | grep -E 'carol@' | grep -oE 'relay=[^,]*|status=[a-z]+ \([^)]{0,120}' | tail -4; doveconf -n 2>/dev/null | grep -n auth_username_format; dovecot --version")
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:112: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS backup: mail-only extension begins (no wizard) | {'status': 200, 'code': None, 'draft.mail_hostname': 'mail.boston.c114.test'}
+PASS backup: the plan holds only the mail steps | {'status': 200, 'blockers': [], 'steps': ['01-firewall:enable_and_persist', '02-mail_profile:protected-mail', '03-access_dns:mail.boston.c114.test', '04-mail_certificate:mail.boston.c114.test', '05-mail_enrollment:mail-renewal', '06-verify:custom']}
+Terminated                 python3 -I $H/owner.py a4-c backup mailext mail.boston.c114.test
+   after  @192.0.3.160 c114.test MX=[10 mail.c114.test.] SPF=["v=spf1 mx a:mail.c114.test ~all"] DMARC=["v=DMARC1; p=none; rua=mailto:dmarc@c114.test"] DKIM=["v=DKIM1; k=rsa; p=MIIBIjANBgk] mail.boston A=[192.0.3.161]
+   after  @192.0.3.161 c114.test MX=[10 mail.c114.test.] SPF=["v=spf1 mx a:mail.c114.test ~all"] DMARC=["v=DMARC1; p=none; rua=mailto:dmarc@c114.test"] DKIM=["v=DKIM1; k=rsa; p=MIIBIjANBgk] mail.boston A=[192.0.3.161]
+== check 3b in the browser on the fresh joined server of D (first server alpha.114 now) 20:58:15
+{"shots":7,"errors":[]}
+
+waiting verification null
+01-firewall=succeeded 02-mail_profile=succeeded 03-access_dns=succeeded 04-mail_certificate=succeeded 05-mail_enrollment=succeeded 06-verify=pending
+   @192.0.3.170 mail.djoin.d114.test A=[192.0.3.171] d114.test MX=[]
+   @192.0.3.171 mail.djoin.d114.test A=[192.0.3.171] d114.test MX=[]
+{"shots":6,"errors":[]}
+
+== C/D done 21:10:21

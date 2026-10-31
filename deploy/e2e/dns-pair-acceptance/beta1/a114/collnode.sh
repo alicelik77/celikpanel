@@ -1,0 +1,5 @@
+# collnode.sh CELL NODE  -> journals + versions into the harness evidence (redacted by the driver)
+source /mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/env.sh
+CELL=$1; n=$2
+b1 sh $CELL $n "journalctl -u 'celikpanel*' -u pdns -u nginx -u postfix -u 'postfix@*' -u dovecot -u rspamd --no-pager -o short-iso -b all | grep -vE 'metrics' | tail -n 2000" --label journal-$n --limit 600000 > /dev/null
+b1 sh $CELL $n "cat /opt/celikpanel/release.commit; grep PRETTY_NAME /etc/os-release; grep CELIKPANEL_LISTEN /etc/celikpanel/panel.env; nginx -t 2>&1 | tail -1; systemctl is-active celikpanel-panel celikpanel-agent pdns nginx postfix dovecot | paste -sd' '; systemctl --failed --no-legend | head; echo '-- err'; journalctl -b all -p err --no-pager -o short-iso | grep -v kernel | tail -25; echo '-- warn counts'; journalctl -b all --no-pager | grep -cE 'FOREIGN KEY'; journalctl -u celikpanel-panel -b all --no-pager | grep -c ' 500 '" --label versions-$n --limit 20000 | python3 -c 'import json,sys; print(json.load(sys.stdin)["stdout"][-3000:])'

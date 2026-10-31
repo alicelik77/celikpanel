@@ -1,0 +1,156 @@
+== provision 19:03:57 main=debian13 192.0.3.150 (v0.1.0-alpha.114) backup=ubuntu2404 192.0.3.151 (v0.1.0-alpha.114) zone=fa114.test
+E=\"Debian GNU/Linux 13 (trixie)\"\nVERSION_ID=\"13\"\n6.12.105+deb13-cloud-amd64\nfrankfurt\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 14.7
+}
+
+earch .\nPRETTY_NAME=\"Ubuntu 24.04.4 LTS\"\nVERSION_ID=\"24.04\"\n6.8.0-138-generic\nboston\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 21.5
+}
+
+== install through get.sh in a root terminal 19:04:19
+main terminal rc 0 43.9 problem None restart_required False postinstall rc 0
+  tail: rolayı doğrula:  | Created administrator / Yönetici oluşturuldu. |     ✓ administrator is ready / yönetici hazır | ==> Starting the panel / Panel başlatılıyor |     ✓ panel is running / panel çalışıyor | ==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor |     ✓ initial panel certificate is protected / ilk panel sertifikasi korundu |  | CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu. |     Panel:  https://192.0.3.150:1923 |     Services / Servisler: systemctl status celikpanel-agent celikpanel-panel |     Logs / Günlükler: journalctl -u celikpanel-panel -f | 
+backup terminal rc 0 61.8 problem None restart_required False postinstall rc 0
+  tail: rolayı doğrula:  | Created administrator / Yönetici oluşturuldu. |     ✓ administrator is ready / yönetici hazır | ==> Starting the panel / Panel başlatılıyor |     ✓ panel is running / panel çalışıyor | ==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor |     ✓ initial panel certificate is protected / ilk panel sertifikasi korundu |  | CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu. |     Panel:  https://192.0.3.151:1923 |     Services / Servisler: systemctl status celikpanel-agent celikpanel-panel |     Logs / Günlükler: journalctl -u celikpanel-panel -f | 
+== port (check 4): fresh alpha.114 1923 only; alpha.113 2083 19:05:22
+192.0.3.150:1923 open (from the lab bridge)
+192.0.3.150:2083 closed (from the lab bridge)
+192.0.3.151:1923 open (from the lab bridge)
+192.0.3.151:2083 closed (from the lab bridge)
+main CELIKPANEL_LISTEN=:1923 | LISTEN 0 4096 *:1923 *:*  | 
+backup CELIKPANEL_LISTEN=:1923 | LISTEN 0 4096 *:1923 *:*  | 
+main license active acceptance_fixture can_use_panel True
+backup license active acceptance_fixture can_use_panel True
+== screens: login, first screen, first/join choice 19:05:24
+{"shots":4,"errors":[{"name":"setup-kind-first","lang":"en","width":"desktop","error":"TimeoutError: Waiting for selector `input[name=setup-server_kind][value=first]` failed: Waiting failed: 15000ms exceeded"},{"name":"setup-kind-first","lang":"tr","width":"desktop","error":"TimeoutError: Waiting for selector `input[name=setup-server_kind][value=first]` failed: Waiting failed: 15000ms exceeded"},{"name":"setup-kind-first","lang":"en","width":"phone","error":"TimeoutError: Waiting for selector `input[name=setup-server_kind][value=first]` failed: Waiting failed: 15000ms exceeded"},{"name":"setup-kind-first","lang":"tr","width":"phone","error":"TimeoutError: Waiting for selector `input[name=setup-server_kind][value=first]` failed: Waiting failed: 15000ms exceeded"}]}
+
+{"shots":0,"errors":[{"name":"setup-kind-join","lang":"en","width":"desktop","error":"TimeoutError: Waiting for selector `input[name=setup-server_kind][value=join]` failed: Waiting failed: 15000ms exceeded"},{"name":"setup-kind-join","lang":"tr","width":"desktop","error":"TimeoutError: Waiting for selector `input[name=setup-server_kind][value=join]` failed: Waiting failed: 15000ms exceeded"},{"name":"setup-kind-join","lang":"en","width":"phone","error":"TimeoutError: Waiting for selector `input[name=setup-server_kind][value=join]` failed: Waiting failed: 15000ms exceeded"},{"name":"setup-kind-join","lang":"tr","width":"phone","error":"TimeoutError: Waiting for selector `input[name=setup-server_kind][value=join]` failed: Waiting failed: 15000ms exceeded"}]}
+
+wizard data pair-main ['count', 'dnshome', 'domain', 'mail', 'name', 'names', 'roles']
+wizard data pair-backup-mail ['dnshome', 'name', 'names', 'names2', 'roles']
+guidance-main 200 
+guidance-backup 200 
+main-domain 200 
+main-count 200 
+main-name 200 
+main-roles 200 
+main-names 200 
+main-dnshome 200 
+records 0 200
+main-mail 200 
+items ['wizard-domain', 'wizard-count', 'wizard-name', 'wizard-roles', 'wizard-components', 'wizard-names', 'wizard-dnshome', 'wizard-records', 'wizard-mail', 'wizard-review'] revision 9 status draft
+{"shots":40,"errors":[]}
+
+plan main 200 can_start True blockers [] ['01-service:nginx', '02-service:certbot', '03-service:mariadb', '04-service:php-fpm', '05-service:cron', '06-peer_join:second', '07-dns:local', '08-firewall:enable_and_persist', '09-infrastructure_dns:fa114.test', '10-access_dns:frankfurt.fa114.test', '11-panel_certificate:frankfurt.fa114.test', '12-dns_readiness:local', '13-mail_profile:webmail', '14-mail_profile:protected-mail', '15-mail_dns:fa114.test', '16-access_dns:mail.fa114.test', '17-mail_certificate:mail.fa114.test', '18-mail_enrollment:mail-renewal', '19-main_site:fa114.test', '20-verify:custom'] 
+== start main 19:12:02
+start-main 202 {
+ "id": "9b9a30f19ce9d670b1073abf3cb4c1b8",
+ "panel_url": "https://frankfurt.fa114.test:1923/",
+ "phase": "queued",
+ "plan_id": "c4afbc6fa917a8c852e8856ae08cdc
+{"shots":2,"errors":[{"name":"setup-progress","lang":"en","width":"desktop","error":"TimeoutError: Navigation timeout of 45000 ms exceeded"},{"name":"setup-progress","lang":"tr","width":"desktop","error":"ProtocolError: Runtime.callFunctionOn timed out. Increase the 'protocolTimeout' setting in launch/connect calls for a higher timeout if needed."}]}
+
+join-code 200 {
+ "address": "https://192.0.3.150:1923",
+ "attempts_left": 
+{"shots":4,"errors":[]}
+
+first server's panel port: 1923
+connect 200 {
+ "setup": {
+  "checks": [],
+  "draft": {
+   "database": "mariadb",
+   "dns_engine": "bind",
+   "dns_mode": "local",
+   "dns_publisher_endpoint": "https://frankfurt.fa114.test:1923",
+   "dns_role": "secondary",
+   "local_ip": "192.0.3.151",
+   "mail_hostname": "",
+   "main_dns_server": "peer",
+   "
+backup-roles 200 
+backup-name 200 
+backup-names 200 
+backup-dnshome 200 
+== joined server: the first server's mail name must be refused (check 3a) 19:17:09
+plan backup with mail.fa114.test 200 can_start False blockers ["server_setup_peer_mail_hostname_taken"] ['01-peer_names:https://192.0.3.150:1923', '02-service:nginx', '03-service:certbot', '04-service:mariadb', '05-service:php-fpm', '06-dns:local', '07-firewall:enable_and_persist', '08-access_dns:boston.fa114.test', '09-panel_certificate:boston.fa114.test', '10-dns_publisher:https://frankfurt.fa114.test:1923', '11-mail_profile:webmail', '12-mail_profile:protected-mail', '13-access_dns:mail.fa114.test', '14-mail_certificate:mail.fa114.test', '15-mail_enrollment:mail-renewal', '16-verify:custom'] 
+items ['wizard-names', 'wizard-review'] revision 7 status draft
+{"shots":8,"errors":[]}
+
+backup-names2 200 
+items ['wizard-domain', 'wizard-name', 'wizard-roles', 'wizard-components', 'wizard-names', 'wizard-dnshome', 'wizard-mail', 'wizard-review'] revision 8 status draft
+{"shots":32,"errors":[]}
+
+plan backup 200 can_start True blockers [] ['01-peer_names:https://192.0.3.150:1923', '02-service:nginx', '03-service:certbot', '04-service:mariadb', '05-service:php-fpm', '06-dns:local', '07-firewall:enable_and_persist', '08-access_dns:boston.fa114.test', '09-panel_certificate:boston.fa114.test', '10-dns_publisher:https://frankfurt.fa114.test:1923', '11-mail_profile:webmail', '12-mail_profile:protected-mail', '13-access_dns:mail.boston.fa114.test', '14-mail_certificate:mail.boston.fa114.test', '15-mail_enrollment:mail-renewal', '16-verify:custom'] 
+== start backup 19:20:56
+start-backup 202 {
+ "id": "78d91a74e57cbb1103d25e1bf579cc8b",
+ "panel_url": "https://boston.fa114.test:1923/",
+ "phase": "queued",
+ "plan_id": "c6d5d7db99fd976fd67f295910c70528"
+== first server's DNS page DURING the joined server's setup (check 8) 19:21:01
+19:21:06 caps=none None | dns_overview_setup_running waiting who=Follow the setup page; it says when you need to act. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [('ns1.fa114.test', 'ns', 'A', 'unknown', None), ('ns2.fa114.test', 'ns', 'A', 'unknown', None), ('frankfurt.fa114.test', 'panel', 'A', 'unknown', None), ('mail.fa114.test', 'mail', 'A', 'unknown', None), ('boston.fa114.test', 'panel', 'A', 'unknown', None), ('mail.boston.fa114.test', 'mail', 'A', 'unknown', None)] | backup: running 02-service null
+19:21:46 caps=pair_pending ns2.fa114.test | dns_overview_setup_running waiting who=Follow the setup page; it says when you need to act. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [('ns1.fa114.test', 'ns', 'A', 'unknown', None), ('ns2.fa114.test', 'ns', 'A', 'unknown', None), ('frankfurt.fa114.test', 'panel', 'A', 'unknown', None), ('mail.fa114.test', 'mail', 'A', 'unknown', None), ('boston.fa114.test', 'panel', 'A', 'unknown', None), ('mail.boston.fa114.test', 'mail', 'A', 'unknown', None)] | backup: running 04-service null
+19:22:08 caps=pair_pending ns2.fa114.test | dns_overview_setup_running waiting who=Follow the setup page; it says when you need to act. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [('ns1.fa114.test', 'ns', 'A', 'unknown', None), ('ns2.fa114.test', 'ns', 'A', 'unknown', None), ('frankfurt.fa114.test', 'panel', 'A', 'unknown', None), ('mail.fa114.test', 'mail', 'A', 'unknown', None), ('boston.fa114.test', 'panel', 'A', 'unknown', None), ('mail.boston.fa114.test', 'mail', 'A', 'unknown', None)] | backup: running 05-service null
+19:22:53 caps=ready ns2.fa114.test | dns_overview_setup_running waiting who=Follow the setup page; it says when you need to act. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [('ns1.fa114.test', 'ns', 'A', 'unknown', None), ('ns2.fa114.test', 'ns', 'A', 'unknown', None), ('frankfurt.fa114.test', 'panel', 'A', 'unknown', None), ('mail.fa114.test', 'mail', 'A', 'unknown', None), ('boston.fa114.test', 'panel', 'A', 'unknown', None), ('mail.boston.fa114.test', 'mail', 'A', 'unknown', None)] | backup: waiting access_dns {"code": "server_setup_access_dns_required", "messa
+19:23:18 caps=ready ns2.fa114.test | dns_overview_setup_running waiting who=Follow the setup page; it says when you need to act. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [] | backup: running 09-panel_certificate null
+19:24:35 caps=ready ns2.fa114.test | dns_overview_setup_running waiting who=Follow the setup page; it says when you need to act. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [] | backup: failed 10-dns_publisher {"code": "server_setup_dns_publisher_refused",
+-- a4-a/backup 19:24:35
+failed 10-dns_publisher {"code": "server_setup_dns_publisher_refused", "message": "The main DNS server refused this server's publishing connection: its enrollment code expired, was withdrawn or was already used. On the main DNS server create a new join code, join this server again, then review this plan again."}
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=failed 11-mail_profile=pending 12-mail_profile=pending 13-access_dns=pending 14-mail_certificate=pending 15-mail_enrollment=pending 16-verify=pending
+{"id": "10-dns_publisher", "kind": "dns_publisher", "owner_id": "3704c4a23716264b5e44236c9aac958e", "request_id": "3c16a36a29c41af39aa8464792abf006", "status": "failed", "target": "https://frankfurt.fa114.test:1923"}
+-- a4-a/main 19:24:36
+running 13-mail_profile null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=running 14-mail_profile=pending 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "13-mail_profile", "kind": "mail_profile", "operation_id": "be7326ffcad2e5f9690c6c69ac9975df", "owner_id": "a1a4845bfb6eb8e3b0a128f79fa9c231", "request_id": "4d468d3efee4d1dc8bc45a9f23d4b338", "status": "running", "target": "webmail"}
+-- a4-a/main 19:25:16
+running 14-mail_profile null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=running 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "14-mail_profile", "kind": "mail_profile", "operation_id": "d8301475c7f5cb6684abaa5efc23d1f6", "owner_id": "6eee3dfd7e1096942281f8a4979c3b07", "request_id": "3b87ec8f602f8f588614050e2cfdbc3f", "status": "running", "target": "protected-mail"}
+-- a4-a/main 19:26:16
+running 17-mail_certificate null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-access_dns=succeeded 17-mail_certificate=running 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "17-mail_certificate", "kind": "mail_certificate", "owner_id": "7e6b35ef551ba3699e4fdc9f5be45972", "request_id": "55316b6d3881346afb689200892cca8f", "status": "running", "target": "mail.fa114.test"}
+-- a4-a/main 19:26:36
+running 19-main_site null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-access_dns=succeeded 17-mail_certificate=succeeded 18-mail_enrollment=succeeded 19-main_site=running 20-verify=pending
+{"id": "19-main_site", "kind": "main_site", "owner_id": "b76b6629f1aa34c90f997efac8b64cfd", "request_id": "8d9e5089f475fb13bbdc0326598a71f3", "status": "running", "target": "fa114.test"}
+-- a4-a/main 19:26:56
+succeeded complete null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-access_dns=succeeded 17-mail_certificate=succeeded 18-mail_enrollment=succeeded 19-main_site=succeeded 20-verify=succeeded
+== after both finished: the DNS page settles by itself 19:26:57
+19:26:59 caps=ready | dns_overview_ok ok who=Nobody. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: []
+-- the joined server's DNS page
+dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'backup', 'second', 'boston'), ('peer', 'main', 'first', 'frankfurt')] | not-ok: []
+succeeded complete null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-access_dns=succeeded 17-mail_certificate=succeeded 18-mail_enrollment=succeeded 19-main_site=succeeded 20-verify=succeeded
+failed 10-dns_publisher {"code": "server_setup_dns_publisher_refused", "message": "The main DNS server refused this server's publishing connection: its enrollment code expired, was withdrawn or was already used. On the main DNS server create a new join code, join this server again, then review this plan again."}
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=failed 11-mail_profile=pending 12-mail_profile=pending 13-access_dns=pending 14-mail_certificate=pending 15-mail_enrollment=pending 16-verify=pending
+{"id": "10-dns_publisher", "kind": "dns_publisher", "owner_id": "3704c4a23716264b5e44236c9aac958e", "request_id": "3c16a36a29c41af39aa8464792abf006", "status": "failed", "target": "https://frankfurt.fa114.test:1923"}
+main role first peer_setup pending inspection null
+backup role second peer_setup None inspection null
+main_site step: succeeded {"certificate": "issued", "domain": "fa114.test", "domain_id": 1, "site": "created"}
+== ready screens 19:27:00
+{"shots":20,"errors":[]}
+
+/var/tmp/a114r1/shots-tool/node_modules/puppeteer-core/lib/cjs/puppeteer/cdp/Connection.js:91
+            return Promise.reject(new Error('Protocol error: Connection closed.'));
+                                  ^
+
+Error: Protocol error: Connection closed.
+    at Connection._rawSend (/var/tmp/a114r1/shots-tool/node_modules/puppeteer-core/lib/cjs/puppeteer/cdp/Connection.js:91:35)
+    at Connection.send (/var/tmp/a114r1/shots-tool/node_modules/puppeteer-core/lib/cjs/puppeteer/cdp/Connection.js:84:21)
+    at CdpBrowser._disposeContext (/var/tmp/a114r1/shots-tool/node_modules/puppeteer-core/lib/cjs/puppeteer/cdp/Browser.js:125:32)
+    at CdpBrowserContext.close (/var/tmp/a114r1/shots-tool/node_modules/puppeteer-core/lib/cjs/puppeteer/cdp/BrowserContext.js:138:29)
+    at /var/tmp/a114r1/shot.js:138:17
+
+Node.js v26.13.0
+
+== pair done 19:45:03

@@ -1,0 +1,163 @@
+== run-6 ops on Arch 19:15:39
+== clocks as the lab gives them 19:15:39
+labnet-CA 19:15:40.389139225
+arch 19:15:38.764645678
+== site shopb114.test with Enable SSL at creation 19:15:39
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/1/public_html", "Domain": "shopb114.test", "DomainID": 1, "FTPPassword": "[REDACTED]", "FTPUser": "shopb114_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 1, "TempDomain": ""}
+   site id 1
+   ok 192.0.3.152 shopb114.test A = '192.0.3.152' after 0s
+200 {"status": "success", "expires_at": "2031-10-31T19:15:47Z"}
+   certificate answer after 5s
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+--- http://shopb114.test/
+code=301 redirect=https://shopb114.test/ ssl_verify=0
+Server: nginx
+Location: https://shopb114.test/
+--- https://shopb114.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+--- http://www.shopb114.test/
+code=301 redirect=https://www.shopb114.test/ ssl_verify=0
+Server: nginx
+Location: https://www.shopb114.test/
+--- https://www.shopb114.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+--- certificate served on shopb114.test:443
+subject= X509v3 Subject Alternative Name: critical     DNS:shopb114.test, DNS:www.shopb114.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 31 19:15:47 2031 GMT 
+Verify return code: 0 (ok)
+--- https://shopb114.test/hello.php
+code=200
+HTTP/2 200 
+server: nginx
+content-type: text/html; charset=UTF-8
+x-powered-by present: 0
+body: php-ok 5
+--- http://shopb114.test/hello.php (redirect?)
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Location: https://shopb114.test/hello.php
+code=301 location=https://shopb114.test/hello.php
+== mailboxes; DKIM by itself (card read only) 19:15:53
+200 {"id": 1, "success": true}
+200 {"id": 2, "success": true}
+   after 1s: {"status": 200, "dkim_status": "ok", "dkim_signed": true, "signing_installed": true, "owner_record": false, "automatic": null}
+   TXT @192.0.3.152 '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA...'  @192.0.3.152 '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA...'
+   main zone TXT celik._domainkey.archa114.test @192.0.3.152 '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA...'  @192.0.3.152 '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA...'
+2026-10-31T19:15:52+00:00 arch panel[3504]: 2026/10/31 19:15:52 [dkim-auto] shopb114.test: DKIM ready (domain_created; record published in shopb114.test)
+2026-10-31T19:15:52+00:00 arch panel[3504]: 2026/10/31 19:15:52 [dkim-auto] shopb114.test: DKIM ready (first_mailbox; the record is already published)
+== webmail address (card enable, owner action) 19:15:54
+202 {"operation": {"id": "c8a4aacc0a7b9ce54ec773c18c1c52b2", "kind": "webmail_address", "package_name": "mail.archa114.test", "phase": "queued", "request_id": "c32c9189aeb827545d9bf2a6702b031c", "service_id": "roundcube", "started_at": "2026-10-31T19:15:54.249468093Z", "status": "queued"}}
+== 587 + 465 send, IMAPS read 19:16:00
+   587 {'ok': True, 'refused': {}} | 465 {'ok': True, 'refused': {}} | imaps {'after_seconds': 6.0, 'headers': 'From: alice@shopb114.test\r\nTo: bob@shopb114.test\r\nSubject: final-alpha113 b2448536b608'}  | cert ['mail.archa114.test']
+== PHP mail() and a bounce 19:16:15
+   mail.php: sent php-mail a9d3794e1d45
+   bounce.php: sent bounce-test bcf5f66667a3
+== DKIM verified independently against the TXT from each DNS server (192.0.3.152) 19:16:35
+   final-alpha113 b2448536b608 | found | sigs 1 | [{'d': 'shopb114.test', 's': 'celik', 'verify_with_txt_from_192.0.3.152': True}] | mid <7e7515b979114cd29430578498d0c7da@labnet.test>
+   final-alpha113-465 b2448536b608 | found | sigs 1 | [{'d': 'shopb114.test', 's': 'celik', 'verify_with_txt_from_192.0.3.152': True}] | mid <ab4f0229ee974a8faa63640d627ba5af@labnet.test>
+   php-mail a9d3794e1d45 | found | sigs 1 | [{'d': 'shopb114.test', 's': 'celik', 'verify_with_txt_from_192.0.3.152': True}] | mid <20261031191614.D347F1880F@mail.archa114.test>
+-- bounce in alice's INBOX
+   Undelivered Mail Returned to Sender found Mail Delivery System <MAILER-DAEMON@mail.archa114.test> <20261031191615.37E1418815@mail.archa114.test>
+-- server side: rspamd verdicts, postfix bounce lines, DKIM tables (read only)
+keytable lines for shopb114.test: 1
+signingtable lines for shopb114.test: 1
+rspamd lines for 7e7515b979114cd29430578498d0c7da@labnet.test:
+rspamd_task_write_log: id: <7e7515b979114cd29430578498d0c7da@labnet.test>, qid: <
+(default: F (no action): [1.40/15.00] [MISSING_DATE(1.00){}
+rspamd lines for ab4f0229ee974a8faa63640d627ba5af@labnet.test:
+rspamd_task_write_log: id: <ab4f0229ee974a8faa63640d627ba5af@labnet.test>, qid: <
+(default: F (no action): [1.40/15.00] [MISSING_DATE(1.00){}
+rspamd lines for 20261031191614.D347F1880F@mail.archa114.test:
+rspamd_task_write_log: id: <20261031191614.D347F1880F@mail.archa114.test>, qid: <
+(default: F (no action): [0.70/15.00] [R_MISSING_CHARSET(0.50){}
+milter warnings, all boots: 0
+milters: smtpd=inet:127.0.0.1:8891, inet:127.0.0.1:11332 non_smtpd=inet:127.0.0.1:8891, inet:127.0.0.1:11332
+2026-10-31T19:16:15+00:00 arch postfix/virtual[17835]: 271A318811: to=<nobody113@shopb114.test>, relay=virtual, delay=0.17, delays=0.16/0/0/0.01, dsn=5.1.1, status=bounced (unknown user: "nobody113@shopb114.test")
+2026-10-31T19:16:15+00:00 arch postfix/bounce[17883]: 271A318811: sender non-delivery notification: 37E1418815
+-- Roundcube (bob)
+-- DKIM card now (read only)
+    200 {"dkim.status": "ok", "dkim_signed": true, "automatic": null}
+== ops done 19:16:39
+== check 2 (No path) + check 9: Host a website from the Domains row, no reload 19:16:39
+{"shots":8,"errors":[]}
+
+{"shots":4,"errors":[]}
+
+-- the main domain now opens as a website
+resolves (lab resolver 192.0.2.53): archa114.test=192.0.3.152 www.archa114.test=192.0.3.152
+--- http://archa114.test/
+code=200 redirect= ssl_verify=0
+--- https://archa114.test/
+code=000 redirect= ssl_verify=1
+--- http://www.archa114.test/
+code=200 redirect= ssl_verify=0
+--- https://www.archa114.test/
+code=000 redirect= ssl_verify=1
+--- certificate served on archa114.test:443
+Verify return code: 0 (ok)
+== check 5: OS updates on Arch (guide only) 19:18:09
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:98: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS main: OS updates read | {'family': 'pacman', 'automatic': {'state': 'not_applicable', 'reason': 'arch_full_upgrade_by_owner'}, 'auto_config.state': None, 'mode': None, 'path': None, 'legacy_state': None, 'timer_state': None}
+PASS main: Dashboard OS-updates card data | {'state': 'ready', 'package_family': 'pacman', 'pending': {'state': 'known', 'total': 0, 'security': 0, 'lists_at': '2026-10-31T19:18:11Z', 'security_state': 'known'}, 'automatic': {'state': 'not_applicable', 'reason': 'arch_full_upgrade_by_owner'}}
+PASS Arch: no automatic/manual switch (guide only) | {'status': 409, 'code': 'OS_UPDATES_MODE_UNSUPPORTED_SYSTEM'}
+{"shots":8,"errors":[]}
+
+== check 7: nginx -t 19:19:09
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+
+== check 4: panel port change (standalone) 19:19:10
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:98: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS port view | {'port': 1923, 'default_port': 1923, 'legacy_port': 2083, 'blocked': None, 'change': None}
+PASS port change to 2087 starts a trial | {'status': 200, 'change': {'id': 'pp-78aee7a410a16d94a7a957e99b146c62', 'from_port': 1923, 'to_port': 2087, 'status': 'trial', 'created_at': '2026-10-31T19:19:09Z', 'deadline_at': '2026-10-31T19:29:09Z', 'seconds_left': 598}, 'code': None}
+PASS during the trial both ports listen, the new one is open, panel.env not yet written | LISTEN 0 4096 *:2087 *:*
+LISTEN 0 4096 *:1923 *:*
+		tcp dport { 22, 25, 53, 80, 110, 143, 443, 465, 587, 993, 995, 1923, 2087 } accept
+CELIKPANEL_LISTEN=:1923
+
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:98: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS confirm from the OLD address is refused (PANEL_PORT_CONFIRM_FROM_NEW) | {'status': 409, 'code': 'PANEL_PORT_CONFIRM_FROM_NEW'}
+PASS confirm from the new address | {'status': 200, 'change': {'id': 'pp-78aee7a410a16d94a7a957e99b146c62', 'from_port': 1923, 'to_port': 2087, 'status': 'confirmed', 'reason': 'The panel now uses port 2087. Port 1923 is closed. Update your bookmarks.', 'created_at': '2026-10-31T19:19:09Z', 'deadline_at': '2026-10-31T19:29:09Z', 'finished_at': '2026-10-31T19:19:11Z'}}
+PASS after confirm: panel.env says 2087, only 2087 listens | CELIKPANEL_LISTEN=:2087
+LISTEN 0 4096 *:2087 *:*
+		tcp dport { 22, 25, 53, 80, 110, 143, 443, 465, 587, 993, 995, 2087 } accept
+
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:98: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS port view after confirm | {'port': 2087, 'change': {'id': 'pp-78aee7a410a16d94a7a957e99b146c62', 'from_port': 1923, 'to_port': 2087, 'status': 'confirmed', 'reason': 'The panel now uses port 2087. Port 1923 is closed. Update your bookmarks.', 'created_at': '2026-10-31T19:19:09Z', 'deadline_at': '2026-10-31T19:29:09Z', 'finished_at': '2026-10-31T19:19:11Z'}}
+-- reboot: the new port survives 19:19:20
+{"action":"reboot","node":"main","boot_id_before":"e8686c73-08a4-486f-82ce-5d4ea677642f","boot_id_after":"c9e7f998-1997-4f35-857f-c0cbb3d206a3","elapsed_seconds":21.5}
+192.0.3.152:1923 closed
+192.0.3.152:2087 open
+login after reboot, license active
+{"shots":2,"errors":[]}
+
+-- cancel a trial 19:20:25
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:98: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS trial to 2088 started | {'status': 200, 'change': {'id': 'pp-a178568dfcf8b95cb26006d051062db5', 'from_port': 2087, 'to_port': 2088, 'status': 'trial', 'created_at': '2026-10-31T19:20:25Z', 'deadline_at': '2026-10-31T19:30:25Z', 'seconds_left': 599}, 'code': None}
+PASS cancel rolls back | {'status': 200, 'change': {'id': 'pp-a178568dfcf8b95cb26006d051062db5', 'from_port': 2087, 'to_port': 2088, 'status': 'rolled_back', 'reason_code': 'PANEL_PORT_CANCELLED', 'reason': 'The change was cancelled. The panel stays on port 2087 and port 2088 was closed again.', 'created_at': '2026-10-31T19:20:25Z', 'deadline_at': '2026-10-31T19:30:25Z', 'finished_at': '2026-10-31T19:20:26Z'}}
+PASS after rollback only the confirmed port 2087 listens; 2088 closed again | CELIKPANEL_LISTEN=:2087
+LISTEN 0 4096 *:2087 *:*
+end
+
+-- let a trial time out (10 minutes) 19:20:27
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab/owner.py:98: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS trial to 2089 started | {'status': 200, 'change': {'id': 'pp-a6fa3b50ca1b5ca96e1017d49c62a7d9', 'from_port': 2087, 'to_port': 2089, 'status': 'trial', 'created_at': '2026-10-31T19:20:27Z', 'deadline_at': '2026-10-31T19:30:27Z', 'seconds_left': 599}, 'code': None}
+PASS unconfirmed change rolls back by itself after 10 minutes (PANEL_PORT_TIMEOUT) | {'change': {'id': 'pp-a6fa3b50ca1b5ca96e1017d49c62a7d9', 'from_port': 2087, 'to_port': 2089, 'status': 'rolled_back', 'reason_code': 'PANEL_PORT_TIMEOUT', 'reason': "Nobody confirmed the new port 2089 within 10 minutes, so the panel stays on port 2087 and port 2089 was closed again. If the new address did not open, check the provider's firewall, then try again.", 'created_at': '2026-10-31T19:20:27Z', 'deadline_at': '2026-10-31T19:30:27Z', 'finished_at': '2026-10-31T19:30:28Z'}}
+PASS after rollback only the confirmed port 2087 listens; 2089 closed again | CELIKPANEL_LISTEN=:2087
+LISTEN 0 4096 *:2087 *:*
+end
+
+== B ops done 19:30:58
