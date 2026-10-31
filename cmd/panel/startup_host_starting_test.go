@@ -131,13 +131,50 @@ func TestStartupWaitEndsAtItsBoundWithTheOwnersWayOut(t *testing.T) {
 	}
 }
 
+// D12 (final alpha.113 run 5): systemd stopped the first Panel process 0.2 s
+// into the wait and it logged "still starting after 2m0s". A stop during the
+// pause or during the read says it was stopped, never the timeout text.
 func TestStartupWaitStopsWhenThePanelIsStopped(t *testing.T) {
-	f := &startupHostStartingFixture{cancel: true}
-	if f.wait().run(context.Background()) {
-		t.Fatal("a stopped wait reported the host started")
+	for _, during := range []string{"pause", "probe"} {
+		ctx, stop := context.WithCancel(context.Background())
+		f := &startupHostStartingFixture{}
+		wait := f.wait()
+		if during == "pause" {
+			wait.sleep = func(context.Context, time.Duration) bool { stop(); return false }
+		} else {
+			probe := wait.probe
+			wait.probe = func(c context.Context) error {
+				if f.probes == 1 {
+					stop()
+					return context.Canceled
+				}
+				return probe(c)
+			}
+		}
+		if wait.run(ctx) {
+			t.Fatalf("%s: a stopped wait reported the host started", during)
+		}
+		if len(f.lines) != 2 {
+			t.Fatalf("%s: lines=%q, want the wait and the stop", during, f.lines)
+		}
+		final := f.lines[1]
+		if strings.Contains(final, "2m0s") || strings.Contains(final, "still starting after") || strings.Contains(final, "finished starting") {
+			t.Fatalf("%s: a stop logged a timeout or start line: %s", during, final)
+		}
+		for _, want := range []string{"asked to stop", "nothing was changed", "next Panel start"} {
+			if !strings.Contains(final, want) {
+				t.Fatalf("%s: stop line lacks %q: %s", during, want, final)
+			}
+		}
+		stop()
 	}
-	if f.probes != 1 || len(f.lines) != 2 {
-		t.Fatalf("probes=%d lines=%q", f.probes, f.lines)
+	// A wait that never announced (the first read was already canceled)
+	// writes nothing.
+	ctx, stop := context.WithCancel(context.Background())
+	stop()
+	f := &startupHostStartingFixture{answers: []error{context.Canceled}}
+	if f.wait().run(ctx) || len(f.lines) != 0 {
+		t.Fatalf("canceled before the first read: lines=%q", f.lines)
 	}
 }
 

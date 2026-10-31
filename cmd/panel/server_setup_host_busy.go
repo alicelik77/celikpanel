@@ -103,6 +103,18 @@ func serverSetupHostStayedBusy(step *serverSetupExecutionStep, reason, unchanged
 // Güvenlik duvarı ve posta sertifikası adımı meşgul reddinde aynı kimlikle
 // bekler; kanıt yoksa eski davranış sürer.
 func (p *Panel) serverSetupAgentRequestRefusedBusy(ctx context.Context, step *serverSetupExecutionStep, err error) error {
+	var publishBusy *serverSetupZonePublishBusyError
+	if errors.As(err, &publishBusy) {
+		// A zone publication of the infrastructure or mail DNS step refused at
+		// admission (final alpha.113 run 5, D10): the publication already
+		// proved nothing began (no job for its own request), so this is the
+		// same bounded wait; the step publishes the saved records next pass.
+		// Bölge yayını meşgul reddi: aynı sınırlı bekleme.
+		if recordServerSetupHostBusy(step, time.Now()) {
+			return &serverSetupPeerWait{Code: serverSetupHostBusyCode, Message: publishBusy.waitMessage()}
+		}
+		return serverSetupHostStayedBusy(step, hostMutationBusyReason(err), "nothing was published (the saved records are kept and publish by themselves once the server is free)")
+	}
 	if (step.Kind != "firewall" && step.Kind != "mail_certificate") ||
 		!hostMutationRefusedAsBusy(err) || !isPureWrappedError(err, errHostMutationBusy) {
 		return err

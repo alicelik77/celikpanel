@@ -426,6 +426,15 @@ func (p *Panel) automaticDKIMRunner(startup bool) {
 		p.dkimAutoMu.Unlock()
 
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
+		if p.automaticDKIMHeldBySetup(ctx) {
+			// Server setup is changing this server: no host work starts
+			// beside it (final alpha.113 run 5, D10). The wait does not use
+			// up the busy rounds; the pass runs once setup stops changing
+			// the server.
+			cancel()
+			time.Sleep(dkimAutomaticBusyDelay)
+			continue
+		}
 		retry := p.runAutomaticDKIMPass(ctx, startup)
 		cancel()
 		startup = false
@@ -445,6 +454,34 @@ func (p *Panel) automaticDKIMRunner(startup bool) {
 		}
 		p.dkimAutoMu.Unlock()
 	}
+}
+
+// automaticDKIMHeldBySetup: a server setup run is changing this server
+// (serverSetupExecutionMutating), so the automatic work waits and starts no
+// host change of its own. Setup's own mail step owns the main domain's key,
+// signing and record; an automatic pass beside it raced that step for the
+// host (run 5, D10). Each pending record says so once (waiting, host_busy:
+// another change holds the server; it resumes by itself). A read error does
+// not hold the work (the pass's own busy handling still applies).
+// Kurulum sunucuyu değiştirirken otomatik DKIM bekler; kendiliğinden sürer.
+func (p *Panel) automaticDKIMHeldBySetup(ctx context.Context) bool {
+	if p.db == nil {
+		return false
+	}
+	mutating, err := p.serverSetupExecutionMutating(ctx)
+	if err != nil || !mutating {
+		return false
+	}
+	records, err := p.listDKIMAutomaticRecords(ctx)
+	if err != nil {
+		return true
+	}
+	for _, record := range records {
+		if record.State == dkimAutoPending && !record.Hold {
+			p.recordAutomaticDKIM(ctx, record, dkimAutoWaiting, dkimReasonHostBusy, "")
+		}
+	}
+	return true
 }
 
 type dkimAutomaticItem struct {

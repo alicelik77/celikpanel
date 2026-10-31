@@ -629,6 +629,14 @@ func inspectPanelCertificateActivationDriftLocked(
 		fingerprint,
 	); err == nil {
 		return "", false, nil
+	} else if errors.Is(err, errPanelTLSListenerUnreachable) {
+		// Nobody listens yet (at every boot the Agent starts first and asked
+		// before the Panel listened): that is no evidence the Panel serves
+		// another certificate, and restarting it then only stopped a Panel
+		// that was starting (final alpha.113 run 5, D12). The reconciler asks
+		// again on its next tick, once the Panel answers.
+		// Panel henüz dinlemiyor: farklı sertifika kanıtı değildir.
+		return "", false, nil
 	}
 	return domain, true, nil
 }

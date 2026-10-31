@@ -423,6 +423,12 @@ func decodeStrictPanelCertificateActivationJSON(raw []byte, destination any) err
 	return nil
 }
 
+// errPanelTLSListenerUnreachable: nothing answered on the Panel's loopback
+// TLS port (the Panel is not running yet, or is restarting). It says nothing
+// about which certificate the Panel serves.
+// Panel'in TLS portunda kimse yanıt vermedi; sunulan sertifika hakkında bilgi değil.
+var errPanelTLSListenerUnreachable = errors.New("the panel TLS listener is not accepting connections")
+
 func verifyServedPanelCertificate(
 	ctx context.Context,
 	address, serverName, expectedLeafSHA256 string,
@@ -454,7 +460,7 @@ func verifyServedPanelCertificate(
 	}
 	rawConn, err := panelCertificateActivationDialContext(ctx, "tcp", address)
 	if err != nil {
-		return fmt.Errorf("connect to panel TLS listener: %w", err)
+		return fmt.Errorf("connect to panel TLS listener: %w: %w", errPanelTLSListenerUnreachable, err)
 	}
 	defer rawConn.Close()
 	// The expected leaf fingerprint is the trust decision. Chain verification is

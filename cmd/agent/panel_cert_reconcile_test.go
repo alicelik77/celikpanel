@@ -5,6 +5,8 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -547,5 +549,71 @@ func TestPanelCertificateDriftDiscoveryIgnoresOnlyMissingLineage(t *testing.T) {
 	}
 	if _, found := store.snapshot(); found {
 		t.Fatal("missing lineage created an activation intent")
+	}
+}
+
+// D12 (final alpha.113 run 5): at every boot the Agent asked before the Panel
+// listened, read "connection refused" as drift and restarted the Panel that
+// was starting. A listener that does not answer is no drift: no intent, no
+// restart, no mutation lease; a listener that answers with another leaf is.
+func TestPanelCertificateDriftDiscoveryIgnoresAListenerThatIsNotUpYet(t *testing.T) {
+	store := installPanelCertificateActivationMemoryStore(t)
+	installPanelCertificateReconcileTestSeams(t)
+	panelCertActiveIdentity = func(string) (string, bool, error) {
+		return "panel.example.test", true, nil
+	}
+	panelCertificateActivationReadSource = func(string) (
+		[]byte, []byte, []byte, time.Time, error,
+	) {
+		return []byte("certificate"), []byte("private key"),
+			[]byte("exact leaf DER"),
+			time.Date(2030, time.January, 2, 3, 4, 5, 0, time.UTC),
+			nil
+	}
+	restarts := 0
+	panelCertRunMutationCommand = func(
+		context.Context, time.Duration, string, ...string,
+	) ([]byte, error) {
+		restarts++
+		return nil, nil
+	}
+	panelCertificateActivationVerifyServed = func(
+		context.Context, string, string, string,
+	) error {
+		return fmt.Errorf("connect to panel TLS listener: %w: %w",
+			errPanelTLSListenerUnreachable, errors.New("dial tcp 127.0.0.1:2083: connect: connection refused"))
+	}
+	manager, _ := newMutationTestManager(t)
+	if err := reconcilePanelCertificateActivationOnce(context.Background(), manager); err != nil {
+		t.Fatal(err)
+	}
+	if _, found := store.snapshot(); found || len(store.writes) != 0 || restarts != 0 {
+		t.Fatalf("a listener that was not up yet was treated as drift: writes=%v restarts=%d", store.writes, restarts)
+	}
+	if len(manager.ledger.Jobs) != 0 {
+		t.Fatalf("a listener that was not up yet took the mutation lease: %+v", manager.ledger)
+	}
+	// The same listener answering with another certificate is drift.
+	panelCertificateActivationVerifyServed = func(
+		context.Context, string, string, string,
+	) error {
+		return errors.New("panel TLS listener still serves a different certificate")
+	}
+	domain, drifted, err := inspectPanelCertificateActivationDriftLocked(context.Background())
+	if err != nil || !drifted || domain != "panel.example.test" {
+		t.Fatalf("a different served leaf: domain=%q drifted=%v err=%v", domain, drifted, err)
+	}
+}
+
+func TestVerifyServedPanelCertificateNamesAnUnreachableListener(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	address := listener.Addr().String()
+	listener.Close()
+	err = verifyServedPanelCertificate(context.Background(), address, "panel.example.test", strings.Repeat("a", 64))
+	if !errors.Is(err, errPanelTLSListenerUnreachable) {
+		t.Fatalf("closed port: %v, want errPanelTLSListenerUnreachable", err)
 	}
 }

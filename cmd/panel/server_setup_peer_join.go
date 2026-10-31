@@ -741,6 +741,46 @@ func (p *Panel) sendServerSetupPeerDKIM(ctx context.Context, plan serverSetupPla
 
 // serverSetupJoinStandInPeer is a documentation address standing in for the
 // second server while the plan is reviewed before it joined.
+// serverSetupJoinedReviewBinding is, for a plan review, the second server
+// that already joined this draft: the join this plan's own peer_join step
+// would bind (same join document, its names received and unchanged, valid
+// for this draft). The review then checks the zone with the second server's
+// verified address and names, exactly as the run will, instead of a stand-in
+// address (final alpha.113 run 5, D11: after a failed step on a paired main,
+// "review the plan again" compared ns2's real address in the zone with the
+// stand-in and refused the plan, so the owner could not resume). Nil when
+// no such join exists; a genuine owner change to those records in the zone
+// is still a conflict, because the joined address is what is compared.
+// Planı yeniden gözden geçirirken katılmış ikinci sunucunun doğrulanmış
+// adresi kullanılır; sahibin bölgede yaptığı gerçek değişiklik yine çakışmadır.
+func (p *Panel) serverSetupJoinedReviewBinding(ctx context.Context, d serverSetupDraft) (*serverSetupPeerBinding, error) {
+	if !serverSetupJoinPending(d) || d.DNSRole != transport.DNSPairRolePrimary {
+		return nil, nil
+	}
+	var join serverSetupJoinRecord
+	found, err := readServerSetupJSONSetting(ctx, p.db.GetDB(), serverSetupJoinKey, &join)
+	if err != nil || !found {
+		return nil, err
+	}
+	if join.Digest != serverSetupJoinDocumentDigest(serverSetupJoinDocumentFor(d)) || join.NamesChanged || join.Names == nil || join.PeerRetiredAt != "" {
+		return nil, nil
+	}
+	if _, valid := canonicalIPv4(join.Peer.IPv4); !valid {
+		return nil, nil
+	}
+	names, err := p.openServerSetupPeerNames(*join.Names)
+	if err != nil {
+		// The sealed names cannot be read here: the review keeps its
+		// stand-in, and the run's own join step reports the cause.
+		return nil, nil
+	}
+	if code, _ := canonicalServerSetupPeerNames(&names, d, join); code != "" {
+		return nil, nil
+	}
+	binding := serverSetupPeerBindingFromJoin(join, names)
+	return &binding, nil
+}
+
 func serverSetupJoinStandInPeer(local string) string {
 	if local == "192.0.2.254" {
 		return "192.0.2.253"
