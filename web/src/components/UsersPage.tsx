@@ -12,6 +12,7 @@ import { useNavigate } from '../router';
 import { countText, mapRemote, useRemote } from '../lib/remote';
 import { PLANS_URL, USERS_URL, decodePlans, decodeUsers } from '../lib/accounts';
 import { TeamMembersPage } from './TeamMembersPage';
+import { PendingInvitations, useInvitationOutcome, usePendingInvitations } from './Invitations';
 
 // Account management: the admin/reseller view over the role hierarchy.
 // Everything here mirrors what the API enforces — role options, visibility
@@ -55,10 +56,14 @@ function AccountUsersPage({ role }: { role: 'admin' | 'reseller' }) {
 }
 
 function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const users = useRemote(USERS_URL, decodeUsers);
     const plans = useRemote(PLANS_URL, decodePlans);
+    const invitations = usePendingInvitations();
+    const invitation = useInvitationOutcome();
     const [showForm, setShowForm] = useState(false);
+    // Invite: no password; the person chooses theirs by a link (alpha.114).
+    const [invite, setInvite] = useState(false);
 
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
@@ -87,7 +92,7 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
     const createMissing = [
         ...(!username.trim() ? [t('users.form.username')] : []),
         ...(!email.trim() ? [t('users.form.email')] : []),
-        ...(password.length < 8 ? [t('users.create.passwordRule')] : []),
+        ...(!invite && password.length < 8 ? [t('users.create.passwordRule')] : []),
     ];
 
     // Conflict answers (quota, children, duplicates) carry real reasons from
@@ -123,7 +128,9 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
         setSaving(true);
         setCreateRefusal(null);
         try {
-            const body: Record<string, unknown> = { username, email, password, role: newRole };
+            const body: Record<string, unknown> = invite
+                ? { username, email, role: newRole, invite: true, lang: locale }
+                : { username, email, password, role: newRole };
             if (planID > 0) body.plan_id = planID;
             const res = await send('/api/v1/users', {
                 method: 'POST',
@@ -136,10 +143,21 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
                 return;
             }
             showToast('success', t('users.created'));
+            if (invite) {
+                // The account exists; what happened to its invitation is the
+                // answer's to say, and an unreadable answer says it is not known.
+                try {
+                    invitation.report(((await res.json()) as { invitation?: unknown }).invitation);
+                } catch {
+                    showToast('error', t('common.resultUnknown'));
+                }
+                void invitations.retry();
+            }
             setShowForm(false);
             setUsername('');
             setEmail('');
             setPassword('');
+            setInvite(false);
             load();
         } finally {
             setSaving(false);
@@ -220,7 +238,7 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
                         </label>
                         <label>
                             <span className="mb-1 block text-xs text-fg-muted">{t('users.form.password')}</span>
-                            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
+                            <input type="password" value={invite ? '' : password} disabled={invite} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
                         </label>
                         <label>
                             <span className="mb-1 block text-xs text-fg-muted">{t('users.form.role')}</span>
@@ -246,6 +264,13 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
                             </select>
                         </label>
                     </div>
+                    <label className="mt-3 flex items-start gap-2 text-sm text-fg" data-invite-option="">
+                        <input type="checkbox" className="mt-1" checked={invite} onChange={(e) => setInvite(e.target.checked)} />
+                        <span>
+                            {t('acct.invite.option')}
+                            <span className="block text-xs text-fg-muted">{t('acct.invite.optionHint')}</span>
+                        </span>
+                    </label>
                     <ErrorBanner className="mt-3" error={createRefusal} sentence="users.createFailed" />
                     <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
                         {/* Why Create is off, beside it (owner feedback 2026-10-31). */}
@@ -366,6 +391,8 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
                 </div>
             ))}
             </RemoteGate>
+            <PendingInvitations />
+            {invitation.dialog}
         </div>
     );
 }

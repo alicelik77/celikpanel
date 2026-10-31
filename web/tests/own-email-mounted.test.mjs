@@ -52,6 +52,7 @@ const stub = dataModule(`
   // alpha.114: My plan (customers and resellers) reads its own address.
   export const MyPlanCard = () => null;
   export const useAuth = () => ({ role: 'admin' });
+  export const EmailVerificationCard = () => null;
 `);
 const shared = sharedLayer(stub, { '/lib/requestIdentity': requestIdentityURL });
 const modalURL = shared.compile('components/ChangeEmailModal.tsx');

@@ -40,6 +40,7 @@ const stubbedComponents = [
   'DomainGeneralSettings', 'DomainSSLOverviewCard', 'DomainMailManager', 'ChangePasswordModal', 'ChangeEmailModal',
   // alpha.114: My plan reads its own address.
   'MyPlanCard',
+  'PendingInvitations', 'EmailVerificationCard',
 ];
 for (const name of screenFiles) {
   for (const match of source(`components/${name}.tsx`).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {
@@ -73,6 +74,9 @@ const stub = dataModule(`
   export const availablePanelUpdate = () => null;
   export const wholeVersion = (text) => text;
   export const usePanelUpdateDiscovery = () => ({ status: 'idle', value: null, readAt: 0 });
+  // alpha.114: invitations on the Users page and the address confirmation on My account.
+  export const usePendingInvitations = () => ({ retry: async () => ({ state: 'loading' }) });
+  export const useInvitationOutcome = () => ({ report: () => {}, dialog: null });
   ${stubbedComponents.filter((name) => !icons.has(name)).map((name) => `export const ${name} = (props) => props.children ?? null;`).join('\n')}
 `);
 const shared = sharedLayer(stub);

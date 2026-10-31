@@ -46,6 +46,7 @@ import type { NginxDefaultHttpsScreenKey } from './screens/nginxDefaultHttps/en'
 import type { DnsPublicationScreenKey } from './screens/dnsPublication/en';
 import type { ProblemsScreenKey } from './screens/problems/en';
 import type { RefusalsScreenKey } from './screens/refusals/en';
+import type { AccountAccessScreenKey } from './screens/accountAccess/en';
 
 export const en = {
     // ---- alpha.108 tools ----
@@ -276,6 +277,7 @@ export const en = {
     'login.showPassword': 'Show password',
     'login.hidePassword': 'Hide password',
     'login.signIn': 'Sign in',
+    'login.forgot': 'Forgot password?',
     'login.signingIn': 'Signing in…',
     'login.invalid': 'Invalid username or password.',
     'login.failed': 'Sign-in failed. Please try again.',
@@ -522,5 +524,6 @@ export type ScreenKey =
     | NginxDefaultHttpsScreenKey
     | DnsPublicationScreenKey
     | ProblemsScreenKey
-    | RefusalsScreenKey;
+    | RefusalsScreenKey
+    | AccountAccessScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

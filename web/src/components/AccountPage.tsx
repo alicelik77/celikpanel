@@ -8,6 +8,7 @@ import { readApiError } from '../lib/apiError';
 import { useRemote } from '../lib/remote';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { ChangeEmailModal } from './ChangeEmailModal';
+import { EmailVerificationCard } from './EmailVerificationCard';
 import { useLocation } from '../router';
 import { useAuth } from '../auth/AuthContext';
 import { MyPlanCard } from './MyPlanCard';
@@ -116,6 +117,7 @@ function EmailPanel() {
                     )}
                 </RemoteGate>
             </div>
+            <EmailVerificationCard address={known} />
             <Button
                 variant="secondary"
                 icon={Mail}

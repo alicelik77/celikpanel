@@ -74,6 +74,7 @@ const PostgreSQLManagement = lazyNamed(() => import('./components/PostgreSQLMana
 const MariaDBManagement = lazyNamed(() => import('./components/MariaDBManagement'), 'MariaDBManagement');
 const ComponentDetail = lazyNamed(() => import('./components/ComponentDetail'), 'ComponentDetail');
 const ServiceRecordLookup = lazyNamed(() => import('./components/ServiceRecordLookup'), 'ServiceRecordLookup');
+const AccountLinkPage = lazyNamed(() => import('./components/AccountLinkPage'), 'AccountLinkPage');
 
 // The page of one domain, addressed by its name. Looking the name up, and
 // saying what came of it, belongs to the page's own bundle (DomainDetailByName):
@@ -545,6 +546,18 @@ function StandaloneRecovery({ loading = false }: { loading?: boolean }) {
     afterAnswer={afterAnswer} onRetry={() => void retry()} onUnauthorized={endSession} />;
 }
 
+// A reset, invitation or confirmation link (v0.1.0-alpha.114) opens its page
+// without a session: it is drawn instead of the session gate, so no session is
+// read and no sign-in form is shown over it.
+// Hesap bağlantısı sayfası oturum gerektirmez; oturum kapısının yerine çizilir.
+function AccountLinkSwitch({ children }: { children: ReactNode }) {
+  const location = useLocation();
+  if (location.pathname.startsWith('/account-link/')) {
+    return <Suspense fallback={<PageLoading />}><AccountLinkPage /></Suspense>;
+  }
+  return <>{children}</>;
+}
+
 class RecoveryBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
@@ -557,7 +570,7 @@ function App() {
       <Suspense fallback={<StandaloneRecovery loading />}>
         <SystemUpdateOperationProvider>
           <BrowserRouter>
-            <AuthGate />
+            <AccountLinkSwitch><AuthGate /></AccountLinkSwitch>
           </BrowserRouter>
         </SystemUpdateOperationProvider>
       </Suspense>

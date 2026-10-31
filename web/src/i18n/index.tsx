@@ -126,6 +126,7 @@ const screenParts: Record<Locale, Array<() => Promise<Record<string, unknown>>>>
         () => import('./screens/dnsPublication/en'),
         () => import('./screens/problems/en'),
         () => import('./screens/refusals/en'),
+        () => import('./screens/accountAccess/en'),
     ],
     tr: [
         () => import('./screens/setup/tr'),
@@ -153,6 +154,7 @@ const screenParts: Record<Locale, Array<() => Promise<Record<string, unknown>>>>
         () => import('./screens/dnsPublication/tr'),
         () => import('./screens/problems/tr'),
         () => import('./screens/refusals/tr'),
+        () => import('./screens/accountAccess/tr'),
     ],
 };
 
