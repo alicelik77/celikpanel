@@ -108,4 +108,11 @@ export const trProblemsScreens: Record<ProblemsScreenKey, string> = {
     "setup.problem.mailEnrollBusy.todo": "Bitmesi için bir dakika bekleyin, sonra Yeniden kontrol et’i seçin.",
     "setup.problem.mailEnrollUnknown.what": "Posta sertifikasının otomatik yenilenmesi denetlenemedi.",
     "setup.problem.mailEnrollUnknown.todo": "Yeniden kontrol et’i seçin. Sürerse sunucuyu yeniden başlatıp yeniden kontrol edin.",
+
+    "users.create.missing": "Kullanıcıyı oluşturmak için doldurun: {fields}.",
+    "users.create.passwordRule": "Parola (en az 8 karakter)",
+    "mail.create.missing": "Oluşturmak için doldurun: {fields}.",
+    "mail.failedBecause": "{sentence}. Sunucunun yanıtı: {reason}",
+    "ssl.issue.needsEmail": "Sertifikayı almak için yukarıya bir e-posta adresi girin.",
+    "domains.add.blockedTitle": "Henüz alan adı eklenemiyor",
 };

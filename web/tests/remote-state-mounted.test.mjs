@@ -37,7 +37,7 @@ const icons = new Set(['AlertTriangle', 'XCircle']);
 // Children of the screens under test that are not under test themselves.
 const stubbedComponents = [
   'Link', 'PHPToolVersion', 'RepoCard', 'SecurityUpdatesCard', 'RoundcubeUpdateCard', 'WebmailAddressCard', 'RestartsCard', 'AppAccountLine', 'IsolationFact', 'TeamMembersPage', 'DNSServerSettings', 'SecurityAuditCard', 'ServerSetupSettings',
-  'DomainGeneralSettings', 'DomainSSLOverviewCard', 'DomainMailManager', 'ChangePasswordModal', 'ChangeEmailModal',
+  'DomainGeneralSettings', 'DomainSSLOverviewCard', 'DomainMailManager', 'ChangePasswordModal', 'ChangeEmailModal', 'BlockingProblems',
 ];
 for (const name of screenFiles) {
   for (const match of source(`components/${name}.tsx`).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {

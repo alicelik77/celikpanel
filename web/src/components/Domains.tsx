@@ -6,6 +6,7 @@ import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { Button, CouldNotCheck, KnownEmpty, RemoteGate, SearchInput, StatusDot, UsageBar } from './ui';
 import { PageHeader } from './PageHeader';
+import { BlockingProblems } from './BlockingProblems';
 import { apiErrorText, readApiError } from '../lib/apiError';
 import { domainDeletionDetailKey, domainDeletionReasonKey, readDomainDeletionDKIM, readDomainDeletionOutcome, readSavedDomainDeletion } from '../lib/domainDeletionPending';
 import { decodeList, gateOn, lastKnown, useRemote } from '../lib/remote';
@@ -291,7 +292,7 @@ export function Domains() {
         !isTeamMember || Boolean(domain.access && hasDomainAccess(domain.access, capability, 'view'));
     const addButton = (
         <span title={dnsRequirementText}>
-            <Button variant="primary" icon={Plus} disabled={dnsBlocked !== null} onClick={() => setShowAddModal(true)}>
+            <Button variant="primary" icon={Plus} disabled={dnsBlocked !== null} aria-describedby={dnsBlocked !== null && domains.length > 0 ? 'domains-add-blocked' : undefined} onClick={() => setShowAddModal(true)}>
                 {t('domains.add')}
             </Button>
         </span>
@@ -306,6 +307,16 @@ export function Domains() {
                 breadcrumb={[t('common.home'), t('nav.domains')]}
                 actions={!isTeamMember && addButton}
             />
+
+            {/* Why Add domain is off, at the top and with its fix; the empty
+                list says it in its own place (owner feedback 2026-10-31). */}
+            {dnsBlocked !== null && domains.length > 0 && (
+                <BlockingProblems id="domains-add-blocked" className="mb-4" title={t('domains.add.blockedTitle')} problems={[{
+                    code: dnsBlocked === 'engine' ? 'DNS_SERVER_REQUIRED' : 'DNS_SETTINGS_REQUIRED',
+                    what: dnsRequirementText ?? '',
+                    fix: { label: t(dnsBlocked === 'engine' ? 'err.DNS_SERVER_REQUIRED.action' : 'err.DNS_SETTINGS_REQUIRED.action'), onFix: openDNSRequirement },
+                }]} />
+            )}
 
             {pendingDeletions.map((pending) => (pending.message === null ? (
                 <CouldNotCheck

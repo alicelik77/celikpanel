@@ -248,3 +248,37 @@ for (const locale of ['en', 'tr']) {
         } finally { if (tree) await act(async () => tree.unmount()); restore(); }
     });
 }
+
+// A failure or warning toast stays until it is closed; a confirmation leaves
+// by itself (owner feedback 2026-10-31: failures only in toasts that vanish).
+test('error and warning toasts stay until closed; success leaves after five seconds', async () => {
+    const lucide = dataURL('export const CheckCircle = () => null, XCircle = () => null, Info = () => null, AlertTriangle = () => null, X = () => null;');
+    const toastURL = dataURL(`import React from '${reactURL}';\n` + compile('../src/components/Toast.tsx').replace(/from ['"]([^'"]+)['"]/g, (_, from) => `from '${from === 'react' ? reactURL : lucide}'`));
+    const { ToastContainer, showToast } = await import(toastURL);
+    const timers = [];
+    const previous = globalThis.setTimeout;
+    globalThis.setTimeout = (fn, ms) => { timers.push({ fn, ms }); return 0; };
+    let view;
+    try {
+        await act(async () => { view = Renderer.create(React.createElement(ToastContainer)); });
+        await act(async () => { showToast('error', 'failed'); showToast('warning', 'careful'); showToast('success', 'done'); });
+        assert.deepEqual(timers.map(timer => timer.ms), [5000], 'only the confirmation has a timer');
+        await act(async () => timers[0].fn());
+        const text = textOf(view.toJSON());
+        assert.ok(text.includes('failed') && text.includes('careful') && !text.includes('done'));
+        await act(async () => view.unmount());
+    } finally { globalThis.setTimeout = previous; }
+});
+
+// The disabled main buttons fixed in this round say why, beside them.
+test('Create user, Create mail, Issue certificate and Add domain say why they are off, in both languages', () => {
+    const read = path => readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');
+    for (const [file, id] of [['components/UsersPage.tsx', 'users-create-reason'], ['components/DomainMailManager.tsx', 'mail-create-reason'], ['components/DomainSSLSettings.tsx', 'ssl-issue-reason'], ['components/Domains.tsx', 'domains-add-blocked']]) {
+        const text = read(file);
+        assert.ok(text.includes(`id="${id}"`), `${file} draws the reason`);
+        assert.ok(text.includes(`'${id}'`) && text.includes('aria-describedby'), `${file} describes the button by it`);
+    }
+    for (const key of ['users.create.missing', 'users.create.passwordRule', 'mail.create.missing', 'mail.failedBecause', 'ssl.issue.needsEmail', 'domains.add.blockedTitle']) {
+        assert.ok(enScreens[key] && trScreens[key], `${key} in both languages`);
+    }
+});

@@ -128,6 +128,16 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
     };
     const reloadForwardings = () => void forwardingsRead.retry();
 
+    // A failure keeps the reason the server gave; a lost answer says nothing more.
+    const withReason = (sentence: string, failure: unknown) => {
+        const reason = failure instanceof Error && failure.constructor === Error ? failure.message.trim() : '';
+        return reason ? t('mail.failedBecause', { sentence, reason }) : sentence;
+    };
+    // What still keeps Create off, in the form's own words (owner feedback 2026-10-31).
+    const createMissing = activeTab === 'accounts'
+        ? [...(!user.trim() ? [t('mail.username')] : []), ...(!pass ? [t('mail.password')] : [])]
+        : [...(!fwdSource.trim() ? [t('mail.source')] : []), ...(!fwdDest.trim() ? [t('mail.destination')] : [])];
+
     const createAccount = async () => {
         if (readOnly || !user || !pass) return;
         try {
@@ -137,14 +147,15 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                 body: JSON.stringify({ address: `${user}@${domainName}`, password: pass, quota_mb: quota }),
             });
             const data = await res.json();
-            if (!data.success) throw new Error(data.error);
+            if (!data.success) throw new Error(typeof data.error === 'string' ? data.error : '');
             showToast('success', t('mail.accountCreated'));
             setShowForm(false);
             setUser('');
             setPass('');
             reloadAccounts();
-        } catch {
-            showToast('error', t('mail.createFailed'));
+        } catch (failure) {
+            // The server's reason (taken, quota, plan limit) stays with the sentence.
+            showToast('error', withReason(t('mail.createFailed'), failure));
         }
     };
 
@@ -244,14 +255,14 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                 body: JSON.stringify({ source, destination: fwdDest }),
             });
             const data = await res.json();
-            if (!data.success) throw new Error(data.error);
+            if (!data.success) throw new Error(typeof data.error === 'string' ? data.error : '');
             showToast('success', t('mail.forwarderCreated'));
             setShowForm(false);
             setFwdSource('');
             setFwdDest('');
             reloadForwardings();
-        } catch {
-            showToast('error', t('mail.forwarderFailed'));
+        } catch (failure) {
+            showToast('error', withReason(t('mail.forwarderFailed'), failure));
         }
     };
 
@@ -339,11 +350,12 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                             </label>
                         </div>
                     )}
-                    <div className="mt-3 flex justify-end gap-2">
+                    <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+                        {createMissing.length > 0 && <p id="mail-create-reason" className="mr-auto text-sm text-fg" data-blocked-reason="">{t('mail.create.missing', { fields: createMissing.join(', ') })}</p>}
                         <Button variant="secondary" onClick={() => setShowForm(false)}>
                             {t('mail.cancel')}
                         </Button>
-                        <Button variant="primary" icon={Plus} onClick={activeTab === 'accounts' ? createAccount : createForwarding}>
+                        <Button variant="primary" icon={Plus} disabled={createMissing.length > 0} aria-describedby={createMissing.length > 0 ? 'mail-create-reason' : undefined} onClick={activeTab === 'accounts' ? createAccount : createForwarding}>
                             {t('mail.create')}
                         </Button>
                     </div>

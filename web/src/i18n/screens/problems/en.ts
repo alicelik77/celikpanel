@@ -110,6 +110,14 @@ export const enProblemsScreens = {
     "setup.problem.mailEnrollBusy.todo": "Wait a minute for it to finish, then choose Check again.",
     "setup.problem.mailEnrollUnknown.what": "Automatic renewal of the mail certificate could not be checked.",
     "setup.problem.mailEnrollUnknown.todo": "Choose Check again. If it stays, restart the server and check again.",
+
+    // Disabled main buttons elsewhere say why, beside them (owner feedback 2026-10-31).
+    "users.create.missing": "To create the user, fill in: {fields}.",
+    "users.create.passwordRule": "Password (at least 8 characters)",
+    "mail.create.missing": "To create, fill in: {fields}.",
+    "mail.failedBecause": "{sentence}. The server said: {reason}",
+    "ssl.issue.needsEmail": "To issue the certificate, enter an email address above.",
+    "domains.add.blockedTitle": "You can't add a domain yet",
 } as const;
 
 export type ProblemsScreenKey = keyof typeof enProblemsScreens;

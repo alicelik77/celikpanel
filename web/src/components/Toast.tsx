@@ -10,6 +10,9 @@ interface Toast {
 }
 
 let toastId = 0;
+const toastLimit = 4;
+/** Failures and warnings stay until the person closes them. */
+export const toastStays = (type: ToastType) => type === 'error' || type === 'warning';
 const toastListeners: ((toast: Toast) => void)[] = [];
 
 export function showToast(type: ToastType, message: string) {
@@ -25,8 +28,14 @@ export function ToastContainer() {
     const [toasts, setToasts] = useState<Toast[]>([]);
 
     useEffect(() => {
+        // A failure or a warning stays until it is closed (owner feedback
+        // 2026-10-31): the person has to act on it, and a sentence that is
+        // gone after five seconds cannot be read twice or acted on. A
+        // confirmation leaves by itself. At most the four newest stay.
+        // Hata ve uyari kapatilana dek kalir; onay kendiliginden gider.
         const listener = (toast: Toast) => {
-            setToasts(prev => [...prev, toast]);
+            setToasts(prev => [...prev, toast].slice(-toastLimit));
+            if (toastStays(toast.type)) return;
             setTimeout(() => {
                 setToasts(prev => prev.filter(t => t.id !== toast.id));
             }, 5000);

@@ -78,6 +78,12 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
     const usersKnown = users.remote.state === 'known' && !users.reading;
     const plansKnown = plans.remote.state === 'known';
     const planOptions = plans.remote.state === 'known' ? plans.remote.value : [];
+    // What still keeps Create off, in the form's own words.
+    const createMissing = [
+        ...(!username.trim() ? [t('users.form.username')] : []),
+        ...(!email.trim() ? [t('users.form.email')] : []),
+        ...(password.length < 8 ? [t('users.create.passwordRule')] : []),
+    ];
 
     // Conflict answers (quota, children, duplicates) carry real reasons from
     // the API; the coded contract picks a localized text when the refusal
@@ -228,13 +234,16 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
                             </select>
                         </label>
                     </div>
-                    <div className="mt-3 flex justify-end gap-2">
+                    <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+                        {/* Why Create is off, beside it (owner feedback 2026-10-31). */}
+                        {createMissing.length > 0 && <p id="users-create-reason" className="mr-auto text-sm text-fg" data-blocked-reason="">{t('users.create.missing', { fields: createMissing.join(', ') })}</p>}
                         <Button onClick={() => setShowForm(false)}>{t('users.cancel')}</Button>
                         <Button
                             variant="primary"
                             icon={Plus}
                             onClick={createUser}
-                            disabled={saving || !usersKnown || !username || !email || password.length < 8}
+                            aria-describedby={createMissing.length > 0 ? 'users-create-reason' : undefined}
+                            disabled={saving || !usersKnown || createMissing.length > 0}
                         >
                             {t('users.create')}
                         </Button>

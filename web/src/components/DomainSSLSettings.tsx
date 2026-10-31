@@ -966,7 +966,7 @@ export function DomainSSLSettings({
                                     </Field>
                                 </>
                             )}
-                            <Field label={t('ssl.email')} hint={t('ssl.emailHint')}>
+                            <Field label={`${t('ssl.email')} *`} hint={t('ssl.emailHint')}>
                                 <input
                                     type="email"
                                     value={email}
@@ -1006,6 +1006,7 @@ export function DomainSSLSettings({
                                 variant="primary"
                                 icon={Lock}
                                 onClick={handleIssue}
+                                aria-describedby={!email.trim() && !issuing ? 'ssl-issue-reason' : undefined}
                                 disabled={locked || providersRead.remote.state !== 'known' || issuing || !email || replacementBlockedByMailState}
                                 loading={issuing}
                             >
@@ -1013,6 +1014,8 @@ export function DomainSSLSettings({
                                     ? t(data.has_certificate ? 'ssl.reissuing' : 'ssl.issuing')
                                     : t(data.has_certificate ? 'ssl.reissue' : 'ssl.issue')}
                             </Button>
+                            {/* Why Issue is off, beside it (owner feedback 2026-10-31). */}
+                            {!email.trim() && !issuing && <p id="ssl-issue-reason" className="text-sm text-fg" data-blocked-reason="">{t('ssl.issue.needsEmail')}</p>}
                         </div>
                     ) : (
                         <form onSubmit={handleUpload} className="space-y-3">

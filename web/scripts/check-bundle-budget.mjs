@@ -141,7 +141,8 @@ const screenPartBudgets = {
   dnsPublication: kib(10.5, 4),
   // 2026-10-31 (alpha.114): the shared problem pattern (problem.) and the
   // setup Summary's blockers in plain words (setup.problem.). A new part, set
-  // with at least 25% headroom from its Turkish file.
+  // with at least 25% headroom from its Turkish file (11.88 / 3.47 KiB), and
+  // room for the next screens' problems.
   problems: kib(17, 6),
 }
 
