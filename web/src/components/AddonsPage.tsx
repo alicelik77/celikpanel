@@ -6,6 +6,7 @@ import { useI18n } from '../i18n';
 import { apiErrorText, readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
 import { Button, Card, EmptyState, ErrorBanner, inputClass } from './ui';
 import { PageHeader } from './PageHeader';
+import { invalidate } from '../lib/remote';
 import { useAuth } from '../auth/AuthContext';
 import { StoreCatalogAdmin } from './StoreCatalogAdmin';
 import {
@@ -182,6 +183,7 @@ export function AddonsPage() {
                 : await fetch(`${basePath}/${encodeURIComponent(item.id)}`, { method: 'DELETE' });
             if (!response.ok) throw await readApiError(response);
             showToast('success', t(item.action === 'acquire' ? 'addons.granted' : 'addons.revoked'));
+            invalidate('plans');
             if (selectedRef.current === targetSubscriptionID) {
                 await loadStore(targetSubscriptionID);
             }

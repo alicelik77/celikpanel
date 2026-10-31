@@ -568,7 +568,7 @@ func (p *Panel) handleFirewall(w http.ResponseWriter, r *http.Request) {
 		)
 		if errors.Is(err, errFirewallNoEngine) {
 			writeCodedError(w, http.StatusConflict, errCodeFirewallNoEngine,
-				"the firewall engine (nftables) is not installed — install it from Services first", "/services")
+				"the firewall engine (nftables) is not installed — install it from Components first", "/services")
 			return
 		}
 		if writeFirewallSSHDiscoveryError(w, err) {

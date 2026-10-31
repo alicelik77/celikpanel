@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { invalidate, useInvalidation } from '../lib/remote';
 import { Code2 } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { Button, Checking, CouldNotCheck, KeepWords, Spinner } from './ui';
@@ -63,6 +64,22 @@ export function PHPToolVersion({ serviceId, tool, reconcileDelayMs = 5000 }: { s
         void readPHPTools(controller?.signal).then((next) => { if (!controller?.signal.aborted) setInfo(next); });
         return () => controller?.abort();
     }, [token]);
+
+    // A change to the PHP versions or the tools made anywhere else reaches this
+    // card without a refresh; this card's own changes announce themselves to the
+    // others and skip their own echo. It only reads; the card stays as it is
+    // until the answer arrives.
+    // Başka yerde yapılan PHP sürümü ya da araç değişikliği bu karta yenilemesiz
+    // ulaşır; kendi değişiklikleri başkalarına duyurulur, yankısı atlanır.
+    const announcing = useRef(false);
+    const announceChanged = () => {
+        announcing.current = true;
+        try { invalidate('components'); } finally { announcing.current = false; }
+    };
+    useInvalidation(['components'], () => {
+        if (announcing.current) return;
+        void readPHPTools().then((next) => { if (alive.current && next.state === 'read') setInfo(next); });
+    });
 
     const state = info?.state === 'read' ? info.tools.find((item) => item.tool === tool) : undefined;
     const versions = info?.state === 'read' ? info.versions.map((usage) => usage.version) : [];
@@ -150,6 +167,7 @@ export function PHPToolVersion({ serviceId, tool, reconcileDelayMs = 5000 }: { s
         }
         setMoving(false);
         setToken((n) => n + 1);
+        announceChanged();
     };
 
     // Check again (alpha.108): asks the tool on the version it runs on.
@@ -169,6 +187,7 @@ export function PHPToolVersion({ serviceId, tool, reconcileDelayMs = 5000 }: { s
         else if (answer.kind === 'busy') setResult({ kind: 'checkBusy' });
         else setResult({ kind: 'checkRefused', reason: phpToolCauseText(t, answer.failure?.cause ?? null, answer.failure?.error || '') });
         setToken((n) => n + 1);
+        announceChanged();
     };
 
     const resultText = (r: MoveResult): string => {

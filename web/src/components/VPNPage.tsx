@@ -16,11 +16,13 @@ import {
     Trash2,
 } from 'lucide-react';
 import { showToast } from './Toast';
+import { useNavigate } from '../router';
 import { useI18n } from '../i18n';
 import { useAuth } from '../auth/AuthContext';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { Button, EmptyState, ErrorBanner, ResultUnknown, Spinner, StatusDot, inputClass } from './ui';
 import { useLostAnswer } from '../lib/lostAnswer';
+import { invalidate } from '../lib/remote';
 import { OnceOnlyNotice, resultNotKept } from './OnceOnlyNotice';
 import { PageHeader } from './PageHeader';
 import { HelpButton } from './HelpDrawer';
@@ -163,6 +165,7 @@ function ReadOnlyValue({
 // ve yöneticinin istenen durumun tamamını güvenle yeniden eşitlemesini sağlar.
 export function VPNPage() {
     const { t } = useI18n();
+    const navigate = useNavigate();
     const { role } = useAuth();
     const [view, setView] = useState<VPNView>('overview');
     const [status, setStatus] = useState<VPNStatus | null>(null);
@@ -294,6 +297,10 @@ export function VPNPage() {
                 body: '{}',
             });
             showToast('success', t('vpn.setupDone'));
+            // The VPN service and its firewall rule changed what the component
+            // records and the firewall page show.
+            // VPN hizmeti ve güvenlik duvarı kuralı bileşen kayıtlarını değiştirdi.
+            invalidate('components');
             await load();
         } catch (error) {
             showToast('error', apiErrorText(asApiError(error), t));
@@ -564,7 +571,7 @@ export function VPNPage() {
                                     variant="primary"
                                     icon={Server}
                                     disabled={busyAction !== null}
-                                    onClick={() => window.location.assign('/services')}
+                                    onClick={() => navigate('/services?component=wireguard')}
                                 >
                                     {t('vpn.installWireGuard')}
                                 </Button>

@@ -3,7 +3,8 @@ import { Check, Copy, Link2, MailPlus, Send, XCircle } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { apiErrorText, readApiError } from '../lib/apiError';
-import { useRemote } from '../lib/remote';
+import { invalidate, useRemote } from '../lib/remote';
+import type { AccountInvitationState } from '../lib/api';
 import {
     INVITATIONS_URL,
     decodeInvitationOutcome,
@@ -96,32 +97,60 @@ export function InvitationLinkDialog({ outcome, onClose }: { outcome: Invitation
     );
 }
 
+/**
+ * The status of an account that was invited and has not chosen a password
+ * yet, with what to do next. `cancelledHint` is the page's own way forward
+ * after a cancelled invitation.
+ * Davet edilmiş ama henüz parola belirlememiş hesabın durumu ve sonraki adım.
+ */
+export function InvitedStatus({ invitation, cancelledHint }: { invitation: AccountInvitationState; cancelledHint: string }) {
+    const { t, locale } = useI18n();
+    const label = invitation.state === 'pending'
+        ? t('acct.invite.status.pending')
+        : invitation.state === 'expired' ? t('acct.invite.status.expired') : t('acct.invite.status.cancelled');
+    const hint = invitation.state === 'pending'
+        ? t('acct.invite.status.pendingHint', { date: shownDate(invitation.expires_at, locale) })
+        : invitation.state === 'expired' ? t('acct.invite.status.expiredHint') : cancelledHint;
+    return (
+        <span className="inline-flex flex-col gap-0.5" data-invited-status={invitation.state}>
+            <span className="inline-flex items-center gap-1.5 text-fg-muted">
+                <MailPlus className="h-3.5 w-3.5 text-warning" aria-hidden="true" />
+                {label}
+            </span>
+            <span className="max-w-xs text-xs text-fg-subtle">{hint}</span>
+        </span>
+    );
+}
+
 /** The list's one subscription; a page that creates an invitation reads it again with retry(). */
 export const usePendingInvitations = () => useRemote(INVITATIONS_URL, decodePendingInvitations);
 
-/** The open invitations the signed-in account manages; nothing when there are none. */
-export function PendingInvitations() {
+export type InvitationAction = 'email' | 'link' | 'revoke';
+
+/**
+ * Resend (by email or as a new link to copy) or cancel one open invitation,
+ * by its id. Each click sends one request; afterwards every list that shows
+ * accounts or invitations reads again (users, team members, pending
+ * invitations), so nothing needs a page refresh. An answer that does not
+ * arrive is reported as unknown and nothing is sent again.
+ * Davet yeniden gönderilir ya da iptal edilir; ardından hesapları ve davetleri
+ * gösteren her liste yeniden okunur.
+ */
+export function useInvitationActions() {
     const { t, locale } = useI18n();
-    const list = usePendingInvitations();
     const { report, dialog } = useInvitationOutcome();
     const [busy, setBusy] = useState<number | null>(null);
-
-    if (list.remote.state === 'unknown') {
-        return <p className="mt-4 text-sm text-fg-muted">{t('acct.invite.readFailed')}</p>;
-    }
-    const items = list.remote.state === 'known' ? list.remote.value : [];
-    if (items.length === 0) return dialog;
-
-    const act = async (item: PendingInvitation, delivery: 'email' | 'link' | 'revoke') => {
-        if (delivery === 'revoke' && !window.confirm(t('acct.invite.revokeConfirm', { name: item.username }))) return;
-        setBusy(item.id);
+    const act = async (id: number, username: string, action: InvitationAction) => {
+        if (busy !== null) return;
+        if (action === 'revoke' && !window.confirm(t('acct.invite.revokeConfirm', { name: username }))) return;
+        setBusy(id);
         try {
-            const res = delivery === 'revoke'
-                ? await fetch(`${INVITATIONS_URL}/${item.id}`, { method: 'DELETE' })
-                : await postJSON(`${INVITATIONS_URL}/${item.id}/resend`, { delivery, lang: locale });
+            const res = action === 'revoke'
+                ? await fetch(`${INVITATIONS_URL}/${id}`, { method: 'DELETE' })
+                : await postJSON(`${INVITATIONS_URL}/${id}/resend`, { delivery: action, lang: locale });
             if (!res.ok) {
                 showToast('error', apiErrorText(await readApiError(res), t));
-            } else if (delivery === 'revoke') {
+            } else if (action === 'revoke') {
                 showToast('success', t('acct.invite.revoked'));
             } else {
                 report(((await res.json()) as { invitation?: unknown }).invitation);
@@ -130,9 +159,25 @@ export function PendingInvitations() {
             showToast('error', t('common.resultUnknown'));
         } finally {
             setBusy(null);
-            void list.retry();
+            invalidate('users', 'team');
         }
     };
+    return { act, busy, dialog };
+}
+
+/** The open invitations the signed-in account manages; nothing when there are none. */
+export function PendingInvitations() {
+    const { t, locale } = useI18n();
+    const list = usePendingInvitations();
+    const { act: send, busy, dialog } = useInvitationActions();
+
+    if (list.remote.state === 'unknown') {
+        return <p className="mt-4 text-sm text-fg-muted">{t('acct.invite.readFailed')}</p>;
+    }
+    const items = list.remote.state === 'known' ? list.remote.value : [];
+    if (items.length === 0) return dialog;
+
+    const act = (item: PendingInvitation, action: InvitationAction) => send(item.id, item.username, action);
 
     return (
         <section className="mt-6 rounded-xl border border-border bg-surface p-4" data-pending-invitations="">

@@ -39,6 +39,8 @@ type userResponse struct {
 	Subscriptions int    `json:"subscriptions"`
 	Domains       int    `json:"domains"`
 	CreatedAt     string `json:"created_at"`
+	// Invitation: invited, not signed in yet (alpha.114); absent otherwise.
+	Invitation *accountInvitationState `json:"invitation,omitempty"`
 }
 
 // requireManager rejects callers that are not admin or reseller.
@@ -230,6 +232,18 @@ func (p *Panel) handleListUsers(w http.ResponseWriter, r *http.Request, c *Calle
 		}
 		u.ParentID = parentID
 		users = append(users, u)
+	}
+	ids := make([]int, 0, len(users))
+	for _, u := range users {
+		ids = append(ids, u.ID)
+	}
+	invited, err := p.invitedAccounts(r.Context(), ids)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	for i := range users {
+		users[i].Invitation = invited[users[i].ID]
 	}
 	json.NewEncoder(w).Encode(map[string]any{"users": users})
 }

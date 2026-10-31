@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from '../router';
+import { useNavigate, useSearchParams } from '../router';
 import { Globe, Plus, Trash2, ExternalLink, Settings, Lock, HardDrive, Network } from 'lucide-react';
-import { AddDomainModal } from './AddDomainModal';
+import { AddDomainModal, type SiteRecordsOutcome } from './AddDomainModal';
+import { KeptSiteRecords } from './KeptSiteRecords';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { Button, CouldNotCheck, ErrorBanner, KnownEmpty, RemoteGate, SearchInput, StatusDot, UsageBar } from './ui';
@@ -9,7 +10,7 @@ import { PageHeader } from './PageHeader';
 import { BlockingProblems } from './BlockingProblems';
 import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
 import { domainDeletionDetailKey, domainDeletionReasonKey, readDomainDeletionDKIM, readDomainDeletionOutcome, readSavedDomainDeletion } from '../lib/domainDeletionPending';
-import { decodeList, gateOn, lastKnown, useRemote } from '../lib/remote';
+import { decodeList, gateOn, invalidate, lastKnown, useRemote } from '../lib/remote';
 import { SUBSCRIPTIONS_URL, decodeSubscriptions } from '../lib/subscriptions';
 import { INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones, infrastructureZonePath } from '../lib/infrastructureZones';
 import { dnsBlocker, dnsEngineBlockerText, useHostingCapabilities } from '../lib/hostingCapabilities';
@@ -127,7 +128,16 @@ export function Domains() {
     const { t } = useI18n();
     const { role } = useAuth();
     const isTeamMember = role === 'additional_user';
+    const [searchParams] = useSearchParams();
+    // Opened from the Dashboard's mail card with several domains: mailboxes
+    // live on each domain's page.
+    const forMail = searchParams.get('for') === 'mail';
     const [showAddModal, setShowAddModal] = useState(false);
+    // The name Add domain opens with: a DNS-only zone's "Host a website".
+    const [addName, setAddName] = useState('');
+    // Names the new site found pointing elsewhere, as the create answered.
+    const [kept, setKept] = useState<{ domain: string; outcome: SiteRecordsOutcome } | null>(null);
+    const openAdd = (name = '') => { setAddName(name); setShowAddModal(true); };
     const [query, setQuery] = useState('');
     const [selected, setSelected] = useState<number[]>([]);
     const [pendingDeletions, setPendingDeletions] = useState<PendingDeletion[]>([]);
@@ -243,10 +253,31 @@ export function Domains() {
     }, [listedAt, listCurrent, isTeamMember]);
 
     const reload = () => void list.retry();
+    // After a change, every place that shows domains reads again: this list,
+    // the infrastructure rows, the navigation counter, the dashboard cards and
+    // the plan usage (no page refresh, owner rule 2026-10-31). It only reads.
+    // Degisiklikten sonra alan adlarini gosteren her yer yeniden okunur.
+    const changed = () => { invalidate('domains', 'dns'); };
 
     const handleDelete = async (id: number, name: string) => {
         if (!listCurrent) return;
         if (!confirm(t('domains.confirmDelete', { name }))) return;
+        await deleteDomain(id, name);
+    };
+
+    // One confirmation for a bulk delete, naming the count and the domains;
+    // then each is deleted in turn, each with its own outcome.
+    // Toplu silmede tek onay: sayi ve adlar; sonra her biri sirayla silinir.
+    const handleBulkDelete = async (rows: Domain[]) => {
+        if (!listCurrent || rows.length === 0) return;
+        const question = rows.length === 1
+            ? t('domains.confirmDelete', { name: rows[0].domain_name })
+            : t('domains.confirmBulkDelete', { n: rows.length, names: rows.map((d) => d.domain_name).join('\n') });
+        if (!confirm(question)) return;
+        for (const row of rows) await deleteDomain(row.id, row.domain_name);
+    };
+
+    const deleteDomain = async (id: number, name: string) => {
         try {
             const res = await fetch(`${API_BASE}/domains/${id}`, { method: 'DELETE' });
             const outcome = await readDomainDeletionOutcome(res);
@@ -258,7 +289,7 @@ export function Domains() {
                     { id, name, message },
                 ]);
                 showToast('warning', message);
-                reload();
+                changed();
                 return;
             }
             if (outcome.state === 'error') {
@@ -285,11 +316,11 @@ export function Domains() {
                 showToast('success', t('domains.deleted', { name }));
             }
             setSelected((s) => s.filter((x) => x !== id));
-            reload();
+            changed();
         } catch {
             // No answer: it is not known whether the domain was deleted; the list is read again.
             showToast('error', t('common.resultUnknown'));
-            reload();
+            changed();
         }
     };
 
@@ -303,7 +334,7 @@ export function Domains() {
         !isTeamMember || Boolean(domain.access && hasDomainAccess(domain.access, capability, 'view'));
     const addButton = (
         <span title={dnsRequirementText}>
-            <Button variant="primary" icon={Plus} disabled={dnsBlocked !== null} aria-describedby={dnsBlocked !== null && domains.length > 0 ? 'domains-add-blocked' : undefined} onClick={() => setShowAddModal(true)}>
+            <Button variant="primary" icon={Plus} disabled={dnsBlocked !== null} aria-describedby={dnsBlocked !== null && domains.length > 0 ? 'domains-add-blocked' : undefined} onClick={() => openAdd()}>
                 {t('domains.add')}
             </Button>
         </span>
@@ -330,6 +361,14 @@ export function Domains() {
             )}
 
             <ErrorBanner className="mb-4" error={deleteRefusal} sentence="domains.deleteFailed" />
+
+            {forMail && (
+                <p role="status" className="mb-4 rounded-lg border border-border bg-surface-2 p-3 text-sm text-fg" data-domains-for-mail="">
+                    {t('domains.forMail')}
+                </p>
+            )}
+
+            {kept && <KeptSiteRecords domain={kept.domain} outcome={kept.outcome} onDismiss={() => setKept(null)} />}
 
             {pendingDeletions.map((pending) => (pending.message === null ? (
                 <CouldNotCheck
@@ -375,7 +414,7 @@ export function Domains() {
                                     : t('err.DNS_SETTINGS_REQUIRED.action')}
                             </Button>
                         ) : (
-                            <Button variant="primary" icon={Plus} onClick={() => setShowAddModal(true)}>
+                            <Button variant="primary" icon={Plus} onClick={() => openAdd()}>
                                 {t('domains.add')}
                             </Button>
                         )
@@ -399,12 +438,7 @@ export function Domains() {
                                     variant="danger"
                                     icon={Trash2}
                                     disabled={shown.stale}
-                                    onClick={() => {
-                                        const names = filtered.filter((d) => selected.includes(d.id));
-                                        if (confirm(t('domains.confirmDelete', { name: `${selected.length}` }))) {
-                                            names.forEach((d) => handleDelete(d.id, d.domain_name));
-                                        }
-                                    }}
+                                    onClick={() => void handleBulkDelete(filtered.filter((d) => selected.includes(d.id)))}
                                 >
                                     {t('common.remove')} ({selected.length})
                                 </Button>
@@ -593,9 +627,30 @@ export function Domains() {
                                         <td className="px-4 py-3 text-fg-subtle">—</td>
                                         <td className="px-4 py-3 text-right text-fg-subtle">—</td>
                                         <td className="px-4 py-3 text-right text-fg-subtle">—</td>
-                                        <td className="px-4 py-3 text-fg-muted">{t('domains.infrastructure.status')}</td>
+                                        <td className="px-4 py-3 text-fg-muted">
+                                            {t('domains.infrastructure.status')}
+                                            <span className="block text-xs text-fg-subtle" data-no-website="">{t('domains.infrastructure.noWebsite')}</span>
+                                        </td>
                                         <td className="row-actions px-4 py-3">
-                                            <div className="flex items-center justify-end gap-0.5">
+                                            <div className="flex items-center justify-end gap-1">
+                                                {/* The zone has no website: the one step that
+                                                    gives it one, with the name filled in.
+                                                    Bolgenin web sitesi yok: adi dolu tek adim. */}
+                                                {!isTeamMember && (
+                                                    <span title={dnsRequirementText ?? t('domains.infrastructure.hostWebsiteHelp', { zone: zone.zone })}>
+                                                        <Button
+                                                            variant="secondary"
+                                                            icon={Plus}
+                                                            // The same gate as Add domain: the dialog
+                                                            // also refuses until DNS can publish it.
+                                                            disabled={Boolean(dnsBlocked)}
+                                                            onClick={() => openAdd(zone.zone)}
+                                                            data-host-website={zone.zone}
+                                                        >
+                                                            {t('domains.infrastructure.hostWebsite')}
+                                                        </Button>
+                                                    </span>
+                                                )}
                                                 <IconAction
                                                     onClick={() => navigate(infrastructureZonePath(zone.zone))}
                                                     title={t('domains.infrastructure.manage')}
@@ -619,10 +674,17 @@ export function Domains() {
 
             {!isTeamMember && showAddModal && (
                 <AddDomainModal
+                    initialDomain={addName}
                     onClose={() => setShowAddModal(false)}
-                    onSuccess={() => {
+                    onSuccess={(outcome) => {
                         setShowAddModal(false);
-                        reload();
+                        // The dialog already told every reader of domains;
+                        // this page keeps what the create said about names
+                        // that already point elsewhere (D-024).
+                        const records = outcome?.siteRecords;
+                        const name = outcome?.domain ?? addName;
+                        setKept(records && records.kept.length > 0 && name ? { domain: name, outcome: records } : null);
+                        changed();
                     }}
                 />
             )}

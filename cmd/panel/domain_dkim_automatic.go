@@ -82,6 +82,7 @@ const (
 	dkimReasonHostBusy       = "host_busy"
 	dkimReasonDNSNotReady    = "dns_not_ready"
 	dkimReasonDNSPublish     = "dns_publish_failed"
+	dkimReasonStale          = "stale"
 
 	// How often a pass that waited for a busy host is repeated in this
 	// process before the record is left for the next start or "Try again".
@@ -137,6 +138,27 @@ type dkimAutomaticView struct {
 	ErrorLine  string `json:"error_line,omitempty"`
 	Trigger    string `json:"trigger"`
 	RecordedAt string `json:"recorded_at"`
+}
+
+// dkimAutomaticStaleAfter bounds "updates by itself": a record that stays
+// pending or waiting this long without being rewritten has no live runner
+// behind it (a pass rewrites its record at least every half minute and ends
+// within 20 minutes). The card then says the result is not known and who
+// acts, instead of promising forever (D-024).
+const dkimAutomaticStaleAfter = 30 * time.Minute
+
+// dkimAutomaticViewOf is the card's view of a stored record. It only reads:
+// the stored record is unchanged; "Try again" kicks the runner and the pass
+// rewrites the record with its real outcome.
+func dkimAutomaticViewOf(record dkimAutomaticRecord, now time.Time) *dkimAutomaticView {
+	view := &dkimAutomaticView{State: record.State, Reason: record.Reason,
+		ErrorLine: record.ErrorLine, Trigger: record.Trigger, RecordedAt: record.RecordedAt}
+	if record.State == dkimAutoPending || record.State == dkimAutoWaiting {
+		if at, err := time.Parse(time.RFC3339, record.RecordedAt); err == nil && now.Sub(at) > dkimAutomaticStaleAfter {
+			view.State, view.Reason, view.ErrorLine = dkimAutoUnknown, dkimReasonStale, ""
+		}
+	}
+	return view
 }
 
 func dkimAutomaticKey(domainID int) string {
@@ -286,7 +308,9 @@ func (p *Panel) requestAutomaticDKIM(ctx context.Context, domainID int, domain, 
 	if err != nil {
 		return false, err
 	}
-	if ok && existing.State == dkimAutoPending && !existing.Hold && !hold {
+	// A pending record that went stale (no runner behind it) is queued anew:
+	// that is the "Try again" the card offers then.
+	if ok && existing.State == dkimAutoPending && !existing.Hold && !hold && dkimAutomaticViewOf(existing, time.Now()).State == dkimAutoPending {
 		return false, nil
 	}
 	return true, p.writeDKIMAutomaticRecord(ctx, dkimAutomaticRecord{

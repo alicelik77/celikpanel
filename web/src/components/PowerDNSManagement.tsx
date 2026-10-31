@@ -5,7 +5,9 @@ import { ServiceShell } from './ServiceShell';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { api } from '../lib/api';
-import { Button, Checking, CouldNotCheck } from './ui';
+import { invalidate } from '../lib/remote';
+import { Button, Checking, CouldNotCheck, ErrorBanner } from './ui';
+import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { useComponentConfigFiles } from '../lib/managedServices';
 
 interface PowerDNSManagementProps {
@@ -27,6 +29,11 @@ export function PowerDNSManagement({ onBack }: PowerDNSManagementProps) {
     const { t } = useI18n();
     const navigate = useNavigate();
     const [repairing, setRepairing] = useState(false);
+    // What the last repair came to when it did not succeed: the server's own
+    // reason (a refusal or failure it explained), or "no answer arrived", which
+    // is not a failure: the repair may have run (D-024).
+    // Son onarimin sonucu: sunucunun gerekcesi ya da yanitin gelmedigi.
+    const [repairProblem, setRepairProblem] = useState<{ kind: 'refused'; error: ApiError } | { kind: 'unknown' } | null>(null);
     // Which files PowerDNS has on this server comes from the stored component
     // records, through their one shared read: being read, could not be read,
     // or known (9 Oct 2026). Before, this page read them on its own and showed
@@ -54,16 +61,31 @@ export function PowerDNSManagement({ onBack }: PowerDNSManagementProps) {
     const handleRepair = async () => {
         if (!confirm(t('pdns.repairConfirm'))) return;
         setRepairing(true);
+        setRepairProblem(null);
         try {
             // /pdns/enable reconfigures the gsqlite3 backend AND re-syncs
             // every panel zone into PowerDNS.
             // /pdns/enable gsqlite3 arka ucunu yeniden yapılandırır VE tüm
             // panel bölgelerini PowerDNS'e eşitler.
-            const res = await fetch('/api/v1/pdns/enable', { method: 'POST' });
-            if (!res.ok) throw new Error();
+            let res: Response;
+            try {
+                res = await fetch('/api/v1/pdns/enable', { method: 'POST' });
+            } catch {
+                // No answer: whether the repair ran is not known.
+                setRepairProblem({ kind: 'unknown' });
+                showToast('error', t('common.resultUnknown'));
+                invalidate('dns', 'components');
+                return;
+            }
+            if (!res.ok) {
+                const error = await readApiError(res);
+                setRepairProblem({ kind: 'refused', error });
+                showToast('error', apiErrorText(error, t, 'pdns.repairFailed'));
+                invalidate('dns', 'components');
+                return;
+            }
             showToast('success', t('pdns.repairDone'));
-        } catch {
-            showToast('error', t('pdns.repairFailed'));
+            invalidate('dns', 'components');
         } finally {
             setRepairing(false);
         }
@@ -84,7 +106,7 @@ export function PowerDNSManagement({ onBack }: PowerDNSManagementProps) {
                         <h3 className="text-base font-semibold text-fg">{t('pdns.managed')}</h3>
                         <p className="mt-1 max-w-3xl text-sm leading-relaxed text-fg-muted">{t('pdns.managedDesc')}</p>
                     </div>
-                    <Button variant="secondary" icon={Globe} onClick={() => navigate('/domains')}>
+                    <Button variant="secondary" icon={Globe} onClick={() => navigate('/dns-infrastructure')}>
                         {t('pdns.goDomainRecords')}
                     </Button>
                 </div>
@@ -139,6 +161,14 @@ export function PowerDNSManagement({ onBack }: PowerDNSManagementProps) {
                         <h3 className="text-lg font-semibold text-fg">{t('pdns.repairTitle')}</h3>
                     </div>
                     <p className="mb-6 max-w-xl text-sm leading-relaxed text-fg-muted">{t('pdns.repairDesc')}</p>
+                    {repairProblem && (
+                        <div role="alert" className="mb-4 space-y-2" data-pdns-repair={repairProblem.kind}>
+                            {repairProblem.kind === 'refused'
+                                ? <ErrorBanner error={repairProblem.error} sentence="pdns.repairFailed" />
+                                : <p className="rounded-lg border border-warning-mark/50 bg-warning-mark/20 px-3 py-2.5 text-sm text-fg">{t('pdns.repairUnknown')}</p>}
+                            <p className="max-w-xl text-sm leading-relaxed text-fg-muted">{t(repairProblem.kind === 'refused' ? 'pdns.repairFailedNext' : 'pdns.repairUnknownNext')}</p>
+                        </div>
+                    )}
                     <button
                         onClick={handleRepair}
                         disabled={repairing}

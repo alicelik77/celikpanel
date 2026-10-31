@@ -77,6 +77,8 @@ const stub = dataModule(`
   // alpha.114: invitations on the Users page and the address confirmation on My account.
   export const usePendingInvitations = () => ({ retry: async () => ({ state: 'loading' }) });
   export const useInvitationOutcome = () => ({ report: () => {}, dialog: null });
+  export const useInvitationActions = () => ({ act: async () => {}, busy: null, dialog: null });
+  export const InvitedStatus = () => null;
   ${stubbedComponents.filter((name) => !icons.has(name)).map((name) => `export const ${name} = (props) => props.children ?? null;`).join('\n')}
 `);
 const shared = sharedLayer(stub);
@@ -114,6 +116,8 @@ own['/OnceOnlyNotice'] = shared.compile('components/OnceOnlyNotice.tsx', own);
 own['/BlockingProblems'] = shared.compile('components/BlockingProblems.tsx', own);
 // So is the notice of a certificate request certbot did not fulfil (11 Oct 2026).
 own['/CertificateIssueNotice'] = shared.compile('components/CertificateIssueNotice.tsx', own);
+// alpha.114: the names a new site found pointing elsewhere, the shipped card.
+own['/KeptSiteRecords'] = shared.compile('components/KeptSiteRecords.tsx', own);
 const modalURL = shared.compile('components/AddDomainModal.tsx', own);
 const stripURL = shared.compile('components/DatabaseAccountStrip.tsx', own);
 const load = async (name, more = {}) => (await import(shared.compile(`components/${name}.tsx`, { ...own, ...more })))[name];
@@ -2095,7 +2099,7 @@ test('every infrastructure zone text exists in both languages', () => {
   const keysIn = (text) => [...text.matchAll(/^\s*'((?:domains\.infrastructure\.[A-Za-z]+)|dns\.managedBySetup(?:Hint)?|dns\.requestedByPeer)':\s*'(.*)',\s*$/gm)].map((m) => [m[1], m[2]]);
   const en = new Map(keysIn(catalogue('en')));
   const tr = new Map(keysIn(catalogue('tr')));
-  assert.equal(en.size, 20);
+  assert.equal(en.size, 23); // alpha.114: noWebsite, hostWebsite, hostWebsiteHelp
   for (const [key, value] of en) assert.ok(tr.has(key) && tr.get(key) !== value, key);
 });
 
@@ -2140,4 +2144,91 @@ test('a component page shows the full package version and its source in its head
     assert.equal(versionNode(), undefined, 'a record without a version shows one');
     assert.ok(!has('component.packageVersion'));
   } finally { await cleanup(); }
+});
+
+// alpha.114 (owner, 31 Oct 2026): no change needs a page refresh. Adding a
+// website over a DNS-only zone turns the zone's row into the site's row, and a
+// delete turns it back, on the same screen; every reader of the same
+// addresses (the navigation counter, the dashboard cards) is read again.
+// alpha.114: hicbir degisiklik sayfa yenilemesi istemez.
+function liveDomains(initial) {
+  const state = { ...initial };
+  return {
+    state,
+    table: {
+      ...infraServed,
+      '/api/v1/domains': () => Response.json(state.domains),
+      '/api/v1/dns/infrastructure-zones': () => Response.json({ zones: state.zones }),
+    },
+  };
+}
+const siteRow = (id, name) => ({ id, domain_name: name, status: 'active', created_at: '2026-10-31T00:00:00Z', project_type: 'static' });
+
+test('Domains: "Host a website" on a DNS-only zone opens Add domain with the name, and the rows change without a refresh', async () => {
+  const live = liveDomains({ domains: [], zones: [infraZone()] });
+  serve(live.table, 'admin', {
+    '/api/v1/domains/create': (options) => {
+      assert.equal(JSON.parse(options.body).domain, 'celikhost.com', 'the zone name was not the starting value');
+      live.state.domains = [siteRow(4, 'celikhost.com')];
+      live.state.zones = [infraZone({ domain_id: 4 })];
+      return Response.json({ DomainID: 4, site_records: { added: [{ name: 'celikhost.com', type: 'A', content: '192.0.2.1' }], kept: [{ name: 'www.celikhost.com', type: 'CNAME', content: 'elsewhere.example.net' }], ipv4: '192.0.2.1' } });
+    },
+  });
+  try {
+    await mount(Domains);
+    assert.ok(has('domains.infrastructure.noWebsite'), 'the DNS-only row does not say it has no website');
+    const zoneReads = reads('/api/v1/dns/infrastructure-zones');
+    const listReads = reads('/api/v1/domains');
+    await press(buttons('domains.infrastructure.hostWebsite')[0]);
+    const input = tree.root.findAll((node) => node.type === 'input' && node.props.value === 'celikhost.com');
+    assert.equal(input.length, 1, 'Add domain did not open with the zone name');
+    const form = tree.root.findAll((node) => node.type === 'form')[0];
+    await act(async () => { await form.props.onSubmit({ preventDefault() {} }); await settled(); await settled(); await settled(); });
+    assert.ok(reads('/api/v1/dns/infrastructure-zones') > zoneReads, 'the zone list was not read again');
+    assert.ok(reads('/api/v1/domains') > listReads, 'the domain list was not read again');
+    assert.ok(!has('domains.infrastructure.noWebsite'), 'the old DNS-only row stayed after the site was added');
+    assert.ok(has('domains.infrastructure.siteBadge'), 'the new site row is not shown');
+    assert.ok(has('dnsov.site.keptTitle'), 'the names that point elsewhere are not shown');
+  } finally {
+    await cleanup();
+  }
+});
+
+test('Domains: one confirmation for a bulk delete, and the rows change without a refresh', async () => {
+  const live = liveDomains({ domains: [siteRow(4, 'celikhost.com'), siteRow(5, 'example.org')], zones: [infraZone({ domain_id: 4 })] });
+  serve(live.table, 'admin', {
+    '/api/v1/domains/4': () => { live.state.domains = live.state.domains.filter((row) => row.id !== 4); live.state.zones = [infraZone()]; return Response.json({ success: true }); },
+    '/api/v1/domains/5': () => { live.state.domains = live.state.domains.filter((row) => row.id !== 5); return Response.json({ success: true }); },
+  });
+  const asked = [];
+  try {
+    await mount(Domains);
+    globalThis.confirm = (message) => { asked.push(message); return true; };
+    const boxes = tree.root.findAll((node) => node.type === 'input' && node.props.type === 'checkbox');
+    await act(async () => { boxes[0].props.onChange(); await settled(); });
+    const remove = hostButtons().find((node) => [].concat(node.props.children).flat(Infinity).includes('common.remove'));
+    assert.ok(remove, 'the bulk remove button is not shown');
+    await press(remove);
+    assert.deepEqual(asked, ['domains.confirmBulkDelete'], 'a bulk delete asked more than once, or not by count and names');
+    assert.equal(calls.filter((call) => call.method === 'DELETE').length, 2);
+    await act(async () => { await settled(); await settled(); });
+    assert.ok(!has('example.org'), 'a deleted domain stayed on screen');
+    assert.ok(has('domains.infrastructure.noWebsite'), 'the zone did not return as a DNS-only row');
+  } finally {
+    await cleanup();
+  }
+});
+
+test('Databases with no engine: an administrator is sent to Components; anyone else is told to ask the provider', async () => {
+  for (const role of ['admin', 'customer']) {
+    serve({ '/api/v1/database-servers': json([]) }, role);
+    try {
+      await mount(DatabaseManagementV2);
+      assert.ok(has('databases.noServers'));
+      assert.equal(buttons('domains.goServices').length, role === 'admin' ? 1 : 0, role);
+      assert.equal(has('databases.noServersHintCustomer'), role !== 'admin', role);
+    } finally {
+      await cleanup();
+    }
+  }
 });

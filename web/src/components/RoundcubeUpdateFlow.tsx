@@ -17,6 +17,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../i18n';
 import { Button, Dialog, KeepWords } from './ui';
 import { LifeLine, type Tone } from './LifeLine';
+import { invalidate } from '../lib/remote';
 import { readWebmailUpdateOperation as readOperation, ROUNDCUBE_UPDATE_URL, webmailUpdateOutcome, type WebmailUpdateOperation } from '../lib/roundcubeUpdate';
 import { isWebmailAddressURL } from '../lib/webmailAddress';
 
@@ -75,6 +76,11 @@ export function useRoundcubeUpdate({ current, latest, lastUpdate, onChanged }: {
         if (!alive.current) return;
         followed.current = '';
         setFollowing(false);
+        // The update has ended: the component records, the webmail card and the
+        // dashboard read again, wherever they are shown. Reads only.
+        // Güncelleme bitti: bileşen kayıtları, web posta kartı ve pano nerede
+        // gösteriliyorsa yeniden okunur. Yalnız okur.
+        invalidate('components', 'mail');
         changed.current();
     };
 

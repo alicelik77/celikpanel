@@ -10,7 +10,7 @@ import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/a
 import { useNavigate } from '../router';
 import { Button, CouldNotCheck, ErrorBanner, KnownEmpty, RemoteGate, ResultUnknown, inputClass } from './ui';
 import { CurrentGate, StaleNotice, isStaleWrite, readCurrent, type Current } from './CurrentSettings';
-import { decodeListIn, mapRemote, useRemote } from '../lib/remote';
+import { decodeListIn, invalidate, mapRemote, useRemote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
 import { decodeDomainDatabases } from '../lib/domainDatabases';
 import { saveDownload } from '../lib/download';
@@ -189,6 +189,10 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
                 : t('backup.restored'));
             answer.settle();
             await loadBackups();
+            // A restore can bring databases back or replace them: the database
+            // lists and the dashboard's counter read again.
+            // Geri yükleme veritabanlarını getirebilir ya da değiştirebilir.
+            invalidate('databases');
         } finally {
             setRestoring(null);
         }

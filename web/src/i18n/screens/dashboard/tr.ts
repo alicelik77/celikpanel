@@ -26,7 +26,7 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
 
     'dashboard.title': 'Panel',
     'dashboard.welcome': 'Tekrar hoş geldiniz, {name}',
-    'dashboard.services': 'Servisler',
+    'dashboard.services': 'Bileşenler',
     'dashboard.systemServices': 'Sistem servisleri',
     'dashboard.statusUnknown': 'Bilinmiyor',
     'dashboard.systemServicesChecking': 'Bileşenler kontrol ediliyor\u2026',

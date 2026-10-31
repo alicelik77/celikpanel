@@ -377,6 +377,7 @@ export const trDnsCertificatesScreens: Record<DnsCertificatesScreenKey, string> 
     'dnssrv.requirement.powerdnsTitle': 'PowerDNS gerekli',
     'dnssrv.requirement.powerdnsMissing': 'PowerDNS kurulup çalıştırılana kadar bu sunucu DNS zone’larını yayınlayamaz.',
     'dnssrv.requirement.powerdnsReady': 'PowerDNS hazır',
+    'dnssrv.requirement.openEngine': 'DNS motoru kartına git',
     'dnssrv.requirement.openComponents': 'Bileşenleri aç',
     'dnssrv.readyToSave': 'Kaydetmeye hazır',
     'dnssrv.readyToVerify': 'Kayıtlı kurulum yeniden yayınlanmaya hazır.',

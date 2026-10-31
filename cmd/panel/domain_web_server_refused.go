@@ -137,7 +137,7 @@ func writePHPVersionNotInstalled(w http.ResponseWriter, requested string, instal
 
 func phpVersionNotInstalledMessage(requested, installed string) string {
 	return "Nothing was created: PHP " + requested + " is not installed on this server. Installed: " + installed +
-		". Choose one of these versions and create the site again; another version can be used only after it is installed on this server (Services)."
+		". Choose one of these versions and create the site again; another version can be used only after it is installed on this server (Components)."
 }
 
 // newSitePHPVersion is the PHP version a new site is created with: the one

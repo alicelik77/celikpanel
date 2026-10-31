@@ -3,6 +3,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Button, inputClass } from './ui';
+import { invalidate } from '../lib/remote';
 import { decodeDNSClients, decodeDNSConnection, decodeDNSConnections, remoteDNSEndpoint, remoteDNSIdentity, remoteDNSPost, remoteDNSRequest, RemoteDNSError, type DNSClient, type DNSConnection } from '../lib/remoteDNS';
 
 const remoteErrorKey = (error: unknown): TranslationKey => error instanceof RemoteDNSError && error.code === 'REMOTE_DNS_AUTHORITY_NOT_READY' ? 'setup.remote.authorityNotReady' : 'setup.remote.failed';
@@ -59,6 +60,7 @@ export function ServerSetupDNSConnection({ value, onChange, onValidityChange, re
             const connection = decodeDNSConnection((payload as { connection?: unknown } | null)?.connection);
             if (!connection || (id && connection.id !== id)) throw new Error('connection identity');
             if (alive.current) { setCode(''); setConfirmed(false); if (connection.status === 'ready') onChange(connection.id); }
+            invalidate('dns');
             await load();
         } catch (failure) {
             const list = await load();
@@ -77,6 +79,7 @@ export function ServerSetupDNSConnection({ value, onChange, onValidityChange, re
         try {
             await remoteDNSRequest(`/api/v1/dns/remote/connections?id=${encodeURIComponent(remove.id)}`, { method: 'DELETE' });
             if (alive.current) { if (value === remove.id) onChange(''); setRemove(null); }
+            invalidate('dns');
             await load();
         } catch (failure) { if (alive.current) setError(remoteErrorKey(failure)); }
         finally { inFlight.current = false; if (alive.current) setBusy(false); }
@@ -148,6 +151,7 @@ export function ServerSetupDNSAccess() {
         try {
             await remoteDNSRequest(`/api/v1/dns/remote/clients?id=${encodeURIComponent(remove.id)}`, { method: 'DELETE' });
             if (alive.current) setRemove(null);
+            invalidate('dns');
             await load();
         } catch (failure) { if (alive.current) setError(remoteErrorKey(failure)); }
         finally { inFlight.current = false; if (alive.current) setBusy(false); }

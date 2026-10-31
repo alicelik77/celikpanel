@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"database/sql"
 	"encoding/base64"
@@ -252,6 +253,89 @@ func (p *Panel) handleInvitations(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"invitations": items})
+}
+
+// accountInvitationState marks, in the users and team member lists, an
+// account made by invitation whose person has not chosen a password yet
+// ("Invited, not signed in yet"). It is absent for every other account: one
+// that accepted, got a password or a new address another way, or is
+// suspended. State: "pending" or "expired" (ID is the open link, for resend
+// and cancel), or "cancelled" (no usable link; nobody can sign in yet).
+//
+// Hesap listelerinde davetle açılıp parolası henüz belirlenmemiş hesabı
+// işaretler. Durum: pending/expired (ID açık bağlantı) ya da cancelled.
+type accountInvitationState struct {
+	ID        int64  `json:"id,omitempty"`
+	State     string `json:"state"`
+	ExpiresAt string `json:"expires_at,omitempty"`
+}
+
+// invitedAccounts reads the invitation state of the given accounts. Only
+// reads; the lists that call it are already limited to the caller's accounts.
+func (p *Panel) invitedAccounts(ctx context.Context, userIDs []int) (map[int]*accountInvitationState, error) {
+	states := map[int]*accountInvitationState{}
+	if len(userIDs) == 0 {
+		return states, nil
+	}
+	wanted := make(map[int]bool, len(userIDs))
+	for _, id := range userIDs {
+		wanted[id] = true
+	}
+	rows, err := p.db.GetDB().QueryContext(ctx, `
+		SELECT l.id, l.user_id, l.auth_epoch, l.email, l.expires_at,
+		       l.consumed_at IS NOT NULL, l.revoked_at IS NOT NULL,
+		       u.auth_epoch, u.email, COALESCE(NULLIF(u.status, ''), 'active')
+		FROM account_links l JOIN users u ON u.id = l.user_id
+		WHERE l.purpose = 'invitation'
+		ORDER BY l.user_id, l.id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	type link struct {
+		id                   int64
+		linkEpoch, userEpoch int64
+		linkEmail, userEmail string
+		expires, status      string
+		revoked              bool
+	}
+	accepted := map[int]bool{}
+	latest := map[int]link{}
+	for rows.Next() {
+		var l link
+		var userID int
+		var consumed bool
+		if err := rows.Scan(&l.id, &userID, &l.linkEpoch, &l.linkEmail, &l.expires, &consumed, &l.revoked,
+			&l.userEpoch, &l.userEmail, &l.status); err != nil {
+			return nil, err
+		}
+		if !wanted[userID] {
+			continue
+		}
+		if consumed {
+			accepted[userID] = true
+		}
+		latest[userID] = l // ordered by id: the last one wins
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	now := accountLinkTime(accountLinkNow())
+	for userID, l := range latest {
+		if accepted[userID] || l.linkEpoch != l.userEpoch || l.status != "active" ||
+			!strings.EqualFold(strings.TrimSpace(l.linkEmail), strings.TrimSpace(l.userEmail)) {
+			continue
+		}
+		switch {
+		case l.revoked:
+			states[userID] = &accountInvitationState{State: "cancelled"}
+		case l.expires <= now:
+			states[userID] = &accountInvitationState{ID: l.id, State: "expired", ExpiresAt: l.expires}
+		default:
+			states[userID] = &accountInvitationState{ID: l.id, State: "pending", ExpiresAt: l.expires}
+		}
+	}
+	return states, nil
 }
 
 // handleInvitationByID routes resend and void.

@@ -345,13 +345,13 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 	if req.ProjectType == "php" || req.ProjectType == "static" {
 		if caps.WebServer == "" {
 			writeCodedError(w, http.StatusConflict, errCodeWebServerRequired,
-				"no web server is installed — install Nginx or Apache from Services, or choose the DNS-only type",
+				"no web server is installed — install Nginx or Apache from Components, or choose the DNS-only type",
 				"/services")
 			return
 		}
 		if req.ProjectType == "php" && len(caps.PHPVersions) == 0 {
 			writeCodedError(w, http.StatusConflict, errCodePHPRequired,
-				"PHP-FPM is not installed — install it from Services, or choose the static or DNS-only type",
+				"PHP-FPM is not installed — install it from Components, or choose the static or DNS-only type",
 				"/services")
 			return
 		}

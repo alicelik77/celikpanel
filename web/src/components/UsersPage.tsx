@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, Plus, Trash2, LogIn, Pause, Play, Pencil, Save, X, Layers, Gauge } from 'lucide-react';
+import { Users, Plus, Trash2, LogIn, Pause, Play, Pencil, Save, X, Layers, Gauge, Send, XCircle } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
@@ -9,10 +9,10 @@ import { Button, CouldNotCheck, ErrorBanner, KnownEmpty, RemoteGate, StatusDot, 
 import { PageHeader } from './PageHeader';
 import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
 import { useNavigate } from '../router';
-import { countText, mapRemote, useRemote } from '../lib/remote';
+import { countText, invalidate, mapRemote, useRemote } from '../lib/remote';
 import { PLANS_URL, USERS_URL, decodePlans, decodeUsers } from '../lib/accounts';
 import { TeamMembersPage } from './TeamMembersPage';
-import { PendingInvitations, useInvitationOutcome, usePendingInvitations } from './Invitations';
+import { InvitedStatus, PendingInvitations, useInvitationActions, useInvitationOutcome } from './Invitations';
 
 // Account management: the admin/reseller view over the role hierarchy.
 // Everything here mirrors what the API enforces — role options, visibility
@@ -59,8 +59,9 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
     const { t, locale } = useI18n();
     const users = useRemote(USERS_URL, decodeUsers);
     const plans = useRemote(PLANS_URL, decodePlans);
-    const invitations = usePendingInvitations();
     const invitation = useInvitationOutcome();
+    // Resend or cancel an invitation from its account's row (alpha.114).
+    const rowInvite = useInvitationActions();
     const [showForm, setShowForm] = useState(false);
     // Invite: no password; the person chooses theirs by a link (alpha.114).
     const [invite, setInvite] = useState(false);
@@ -75,9 +76,12 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
     // Aynı anda tek satırın plan ya da havuz paneli açıktır.
     const [panel, setPanel] = useState<{ user: PanelUser; kind: 'plan' | 'pool' } | null>(null);
 
+    // Every change re-reads this list and every other place that shows
+    // accounts, invitations, plans or their usage: no page refresh is needed.
+    // Her değişiklik bu listeyi ve hesapları, davetleri, planları gösteren her
+    // yeri yeniden okutur; sayfa yenilemesi gerekmez.
     const load = () => {
-        void users.retry();
-        void plans.retry();
+        invalidate('users', 'plans');
     };
     // An account is created with one of the plans the server named, and a row
     // is changed as the server last listed it. Neither is offered on a list
@@ -151,7 +155,6 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
                 } catch {
                     showToast('error', t('common.resultUnknown'));
                 }
-                void invitations.retry();
             }
             setShowForm(false);
             setUsername('');
@@ -346,10 +349,15 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">
-                                            <span className="inline-flex items-center gap-1.5 text-fg-muted">
-                                                <StatusDot ok={u.status === 'active'} />
-                                                {u.status === 'active' ? t('users.status.active') : t('users.status.suspended')}
-                                            </span>
+                                            {/* Invited, not signed in yet: not shown as active (alpha.114). */}
+                                            {u.status === 'active' && u.invitation ? (
+                                                <InvitedStatus invitation={u.invitation} cancelledHint={t('acct.invite.status.cancelledUsers')} />
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1.5 text-fg-muted">
+                                                    <StatusDot ok={u.status === 'active'} />
+                                                    {u.status === 'active' ? t('users.status.active') : t('users.status.suspended')}
+                                                </span>
+                                            )}
                                         </td>
                                         {isAdmin && <td className="px-4 py-3 text-fg-muted">{u.parent_name || '—'}</td>}
                                         <td className="px-4 py-3 text-fg-muted">
@@ -358,6 +366,14 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
                                         <td className="px-4 py-3">
                                             {u.role !== 'admin' && (
                                                 <div className="flex items-center justify-end gap-0.5">
+                                                    {u.status === 'active' && u.invitation?.id !== undefined && (
+                                                        <InvitationRowActions
+                                                            id={u.invitation.id}
+                                                            username={u.username}
+                                                            disabled={!usersKnown || rowInvite.busy !== null}
+                                                            act={rowInvite.act}
+                                                        />
+                                                    )}
                                                     <RowBtn disabled={!usersKnown || !plansKnown} title={t('users.changePlan')} onClick={() => setPanel({ user: u, kind: 'plan' })}>
                                                         <Layers className="h-4 w-4" />
                                                     </RowBtn>
@@ -393,6 +409,7 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
             </RemoteGate>
             <PendingInvitations />
             {invitation.dialog}
+            {rowInvite.dialog}
         </div>
     );
 }
@@ -503,6 +520,7 @@ function PoolPanel({ user, onClose }: { user: PanelUser; onClose: () => void }) 
             showToast('success', answer.over_limit && answer.over_limit.length > 0 ? t('users.poolSavedOver') : t('users.poolSaved'));
             setForm(null);
             void read.retry();
+            invalidate('users');
         } catch {
             showToast('error', t('common.resultUnknown'));
             void read.retry();
@@ -568,7 +586,10 @@ function PlansTab({ isAdmin }: { isAdmin: boolean }) {
     const plans = useRemote(PLANS_URL, decodePlans);
     const [editing, setEditing] = useState<ServicePlan | null>(null);
     const [saving, setSaving] = useState(false);
-    const load = () => void plans.retry();
+    // Plans show in the account list and in the plan usage too: all re-read.
+    const load = () => {
+        invalidate('plans');
+    };
     // A plan is added, edited or removed only on the list as the server last
     // gave it.
     // Plan yalnız sunucunun son verdiği liste üzerinde eklenir, düzenlenir ya
@@ -649,9 +670,11 @@ function PlansTab({ isAdmin }: { isAdmin: boolean }) {
                         <NumField label={`${t('plans.col.disk')} (MB)`} value={editing.disk_quota_mb} onChange={(v) => setEditing({ ...editing, disk_quota_mb: v })} />
                     </div>
                     <ErrorBanner className="mt-3" error={planRefusal} sentence="plans.saveFailed" />
-                    <div className="mt-3 flex justify-end gap-2">
+                    <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+                        {/* Why Save is off, beside it (owner rule 2026-10-31). */}
+                        {!editing.name.trim() && <p id="plan-save-reason" className="mr-auto text-sm text-fg" data-blocked-reason="">{t('acct.plan.missing')}</p>}
                         <Button icon={X} onClick={() => { setEditing(null); setPlanRefusal(null); }}>{t('users.cancel')}</Button>
-                        <Button variant="primary" icon={Save} onClick={save} disabled={saving || !plansKnown || !editing.name.trim()}>
+                        <Button variant="primary" icon={Save} onClick={save} aria-describedby={!editing.name.trim() ? 'plan-save-reason' : undefined} disabled={saving || !plansKnown || !editing.name.trim()}>
                             {t('plans.save')}
                         </Button>
                     </div>
@@ -724,6 +747,27 @@ function Tab({ active, onClick, label }: { active: boolean; onClick: () => void;
         >
             {label}
         </button>
+    );
+}
+
+// Resend or cancel the open invitation of an account, from its row.
+// Satırdan açık daveti yeniden gönder ya da iptal et.
+function InvitationRowActions({ id, username, disabled, act }: {
+    id: number;
+    username: string;
+    disabled: boolean;
+    act: (id: number, username: string, action: 'email' | 'revoke') => Promise<void>;
+}) {
+    const { t } = useI18n();
+    return (
+        <>
+            <RowBtn disabled={disabled} title={t('acct.invite.rowResend')} onClick={() => void act(id, username, 'email')}>
+                <Send className="h-4 w-4" />
+            </RowBtn>
+            <RowBtn disabled={disabled} title={t('acct.invite.revoke')} onClick={() => void act(id, username, 'revoke')}>
+                <XCircle className="h-4 w-4" />
+            </RowBtn>
+        </>
     );
 }
 

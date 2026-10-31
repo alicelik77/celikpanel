@@ -385,6 +385,7 @@ export const enDnsCertificatesScreens = {
     'dnssrv.requirement.powerdnsTitle': 'PowerDNS is required',
     'dnssrv.requirement.powerdnsMissing': 'This server cannot publish DNS zones until PowerDNS is installed and running.',
     'dnssrv.requirement.powerdnsReady': 'PowerDNS is ready',
+    'dnssrv.requirement.openEngine': 'Go to the DNS engine card',
     'dnssrv.requirement.openComponents': 'Open Components',
     'dnssrv.readyToSave': 'Ready to save',
     'dnssrv.readyToVerify': 'The saved setup is ready to publish again.',

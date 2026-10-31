@@ -6,7 +6,7 @@ import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/a
 import type { TranslationKey } from '../i18n/en';
 import { useLostAnswer } from '../lib/lostAnswer';
 import { Button, Checking, CouldNotCheck, ErrorBanner, RemoteGate, ResultUnknown } from './ui';
-import { lastKnown, mapRemote, useRemote, type Remote } from '../lib/remote';
+import { invalidate, lastKnown, mapRemote, useRemote, type Remote } from '../lib/remote';
 import { decodeDomainDatabases, type DatabaseEngine, type DatabaseInfo, type DatabaseType } from '../lib/domainDatabases';
 import { useHostingCapabilities, type CapabilitiesRemote } from '../lib/hostingCapabilities';
 
@@ -188,6 +188,7 @@ export function DomainDatabaseManager({
                     setShowCreateForm(false);
                     setDbName('');
                     setDbPassword('');
+                    invalidate('databases');
                 },
             });
             if (!res) return;
@@ -199,7 +200,7 @@ export function DomainDatabaseManager({
                 setShowCreateForm(false);
                 setDbName('');
                 setDbPassword('');
-                void list.retry();
+                invalidate('databases');
             } else {
                 refuse(await readApiError(res), 'ddb.createFailed');
             }
@@ -226,7 +227,7 @@ export function DomainDatabaseManager({
             if (res.ok) {
                 setRefusal(null);
                 showToast('success', t('ddb.deleted', { name: db.name }));
-                void list.retry();
+                invalidate('databases');
             } else {
                 // The server's reason (a user that still has grants…) is kept, on the page too.
                 refuse(await readApiError(res), 'ddb.deleteFailed');
@@ -234,7 +235,7 @@ export function DomainDatabaseManager({
         } catch {
             // No answer: whether it was deleted is not known; the list is read again.
             showToast('error', t('common.resultUnknown'));
-            void list.retry();
+            invalidate('databases');
         }
     };
 

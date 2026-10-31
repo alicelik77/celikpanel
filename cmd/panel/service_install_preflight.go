@@ -93,10 +93,10 @@ func (p *Panel) preflightManagedServiceRepository(
 		}
 		if !status.Enabled {
 			if selectedPackage = strings.TrimSpace(selectedPackage); selectedPackage != "" {
-				return fmt.Errorf("selected package %s requires the %s repository; enable it from Services first",
+				return fmt.Errorf("selected package %s requires the %s repository; enable it from Components first",
 					selectedPackage, managed.Repo.Name)
 			}
-			return fmt.Errorf("%s requires the %s repository; enable it from Services first",
+			return fmt.Errorf("%s requires the %s repository; enable it from Components first",
 				managed.Name, managed.Repo.Name)
 		}
 	}
