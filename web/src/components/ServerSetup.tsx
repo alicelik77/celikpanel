@@ -5,7 +5,7 @@ import { useI18n } from '../i18n';
 import { setupDNSTranslation } from '../i18n/setupDNS';
 import type { TranslationKey } from '../i18n/en';
 import { Link, Navigate } from '../router';
-import { decodeSetupEditorCheckpoint, changeSetupWizardDNSRole, setupJoinPendingDraft, setupDNSNames, setupDetectedIPv4, decodeServerSetup, setupEditorKey, setupExtensionChanges, setupNextPath, normalizeSetupDomain, validSetupDomain, validSetupShortName, setupNameWithin, setupInitialMainDomain, setupProposedNames, setupApplyProposedNames, type ServerSetupCheck, type ServerSetupDraft, type ServerSetupSnapshot, type SetupEditorStep, type SetupExtensionChangeKey, type SetupProposedNames } from '../lib/serverSetup';
+import { decodeSetupEditorCheckpoint, changeSetupWizardDNSRole, setupJoinPendingDraft, setupDNSNames, setupDetectedIPv4, decodeServerSetup, setupEditorKey, setupExtensionChanges, setupNextPath, normalizeSetupDomain, validSetupDomain, validSetupShortName, setupNameWithin, setupInitialMainDomain, setupProposedNames, setupApplyProposedNames, setupJoinedMailProposal, setupApplyJoinedMailName, setupJoinedMailTaken, type ServerSetupCheck, type ServerSetupDraft, type ServerSetupSnapshot, type SetupEditorStep, type SetupExtensionChangeKey, type SetupProposedNames } from '../lib/serverSetup';
 import { retryableMailEnrollmentHandoff, continuableMailEnrollment, decodeSetupExecution, decodeSetupMarker, decodeSetupPlan, newSetupRequestID, safeSetupPanelURL, setupMarkerForInstallation, setupStartRefusedBeforeRun, type ServerSetupExecution, type SetupInfrastructureDNSPlan, type ServerSetupPlan, type SetupStartMarker } from '../lib/serverSetupOperation';
 import { ServerSetupShell, useServerSetup } from './ServerSetupGate';
 import { ServerSetupSteps } from './ServerSetupSteps';
@@ -71,6 +71,7 @@ const codeKey: Record<string, TranslationKey> = {
     server_setup_peer_names_final: 'setup.v5.wait.server_setup_peer_names_final',
     server_setup_peer_names_changed: 'setup.v5.wait.server_setup_peer_names_changed',
     server_setup_peer_mail_both: 'setup.v5.wait.server_setup_peer_mail_both',
+    server_setup_peer_mail_hostname_taken: 'setup.v6.blocker.mailHostnameTaken',
     server_setup_peer_link_missing: 'setup.v5.wait.server_setup_peer_link_missing',
     server_setup_peer_link_revoked: 'setup.v5.wait.server_setup_peer_link_revoked',
     server_setup_completion_plan_changed: 'setup.v5.wait.server_setup_completion_plan_changed',
@@ -822,7 +823,14 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     const lastEdit = steps[steps.indexOf('review') - 1];
     const serverCount = draft.server_count ?? 2;
     const mainDomain = draft.main_domain ? normalizeSetupDomain(draft.main_domain) : '';
-    const proposal = setupProposedNames(validSetupDomain(mainDomain) ? mainDomain : '', draft.short_name || '');
+    const generalProposal = setupProposedNames(validSetupDomain(mainDomain) ? mainDomain : '', draft.short_name || '');
+    // A server joined by code (alpha.114): its mail name is its own, under its
+    // panel name; the first server keeps the main domain's mail name.
+    const joinedNames = joinedLink ? { firstMail: joinedLink.first.mail_hostname || '', firstPanel: joinedLink.first.panel_domain, mainDomain: joinedLink.main_domain, ns1: joinedLink.ns1, ns2: joinedLink.ns2 } : null;
+    const proposal = joinedNames ? setupJoinedMailProposal(generalProposal, draft.panel_domain || generalProposal.panel) : generalProposal;
+    // The first server receives the main domain's mail: this server's mail is
+    // for the domains created on it only, and the main domain's records stay there.
+    const firstKeepsMainMail = !!joinedLink?.first.main_domain_mail;
     const serverLabel = setupServerLabel(t, draft.short_name);
     const emptySelectionInvalid = selectedComponents.size === 0 && draft.dns_mode !== 'local';
     const isDNS = selectedComponents.size === 0;
@@ -851,6 +859,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
             return emptySelectionInvalid && !roles.dns ? 'setup.components.chooseRequired' : null;
         case 'names':
             if (!fullName(draft.panel_domain) || (isMail && !fullName(draft.mail_hostname))) return 'setup.v2.names.invalid';
+            if (joinedNames && isMail && setupJoinedMailTaken(draft.mail_hostname, joinedNames)) return 'setup.v6.names.mailTakenShort';
             if (localPrimary && (!setupNameWithin(draft.panel_domain, mainDomain) || (isMail && !setupNameWithin(draft.mail_hostname, mainDomain)))) return 'setup.v2.names.outsideZoneShort';
             return null;
         case 'dnshome':
@@ -865,7 +874,8 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     function proposeNames() {
         const current = proposal;
         updateDraft(previous => {
-            const next = setupApplyProposedNames(previous, current, proposalRef.current, roles.mail);
+            let next = setupApplyProposedNames(previous, current, proposalRef.current, roles.mail);
+            if (joinedNames && roles.mail) next = setupApplyJoinedMailName(next, current, joinedNames);
             if (next.dns_mode === 'local' && next.dns_role === 'primary') next.main_dns_server = 'this';
             return next;
         });
@@ -1034,7 +1044,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                     {step === 'components' && isNode && <div className="mt-6 max-w-md"><SetupNodeVersion value={draft.node_version} onChange={value => change('node_version', value)} /></div>}
                     {step === 'components' && emptySelectionInvalid && !roles.dns && <p role="alert" className="mt-4 text-sm text-danger">{t('setup.components.chooseRequired')}</p>}
                     {step === 'components' && catalog?.inventory_state === 'unknown' && <div className="mt-4"><Button type="button" disabled={busy} onClick={reloadCatalog}>{t('common.retry')}</Button></div>}
-                    {step === 'names' && <fieldset disabled={busy}><SetupNamesStep draft={draft} mail={isMail} web={roles.web} mainDomain={mainDomain} ip={panelDNSIP || snapshot.server_ip || ''} ownDNS={localPrimary} onChange={(key, value) => change(key, value)} /></fieldset>}
+                    {step === 'names' && <fieldset disabled={busy}><SetupNamesStep draft={draft} mail={isMail} web={roles.web} mainDomain={mainDomain} ip={panelDNSIP || snapshot.server_ip || ''} ownDNS={localPrimary} joined={joinedNames && joinedLink ? { names: joinedNames, server: joinedLink.first.short_name || joinedLink.first.panel_domain, keepsMainMail: firstKeepsMainMail, proposal: proposal.mail } : undefined} onChange={(key, value) => change(key, value)} /></fieldset>}
                     {step === 'records' && <fieldset disabled={busy}><SetupRecordsStep draft={draft} update={updateDraft} mainDomain={mainDomain}
                         own={[draft.panel_domain, draft.mail_hostname, draft.ns1, draft.ns2, draft.infrastructure_dns?.peer_panel_domain || '', draft.infrastructure_dns?.peer_mail_hostname || ''].filter(Boolean)} /></fieldset>}
                     {step === 'mail' && <fieldset disabled={busy}><SetupMailStep draft={draft} update={updateDraft} mainDomain={mainDomain} ip4={draft.dns_mode === 'local' ? draft.local_ip : snapshot.server_ip || ''} ip6={snapshot.server_ipv6 || ''} /></fieldset>}
@@ -1081,9 +1091,11 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                                 {joinFlow && !joinedLink && <li>{t('setup.v5.review.second')}</li>}
                                 {joinedLink && <li>{t('setup.v5.review.joined', { server: joinedLink.first.short_name || t('setup.v5.joined.firstServer'), ip: joinedLink.first.ipv4 })}</li>}
                                 {draft.dns_mode === 'external' && <li>{t('setup.v2.review.provider')}</li>}
-                                {roles.web && mainDomain && !(localPrimary && (draft.imported_records || []).some(item => item.decision === 'import')) && <li>{t('setup.v2.review.site', { domain: mainDomain })}</li>}
+                                {roles.web && mainDomain && joinedLink && <li>{t('setup.v6.review.joinedSite', { domain: mainDomain, server: joinedLink.first.short_name || joinedLink.first.panel_domain })}</li>}
+                                {roles.web && mainDomain && !joinedLink && !(localPrimary && (draft.imported_records || []).some(item => item.decision === 'import')) && <li>{t('setup.v2.review.site', { domain: mainDomain })}</li>}
                                 {localPrimary && !!draft.main_domain && (draft.imported_records || []).length > 0 && <li>{t('setup.v3.review.imported', { imported: (draft.imported_records || []).filter(item => item.decision === 'import').length, skipped: (draft.imported_records || []).filter(item => item.decision === 'skip').length })}</li>}
-                                {mailSelected && mainDomain && <li>{t(draft.mail_dns?.mx === 'now' || !(draft.imported_records || []).some(item => item.decision === 'import' && item.type === 'MX') ? 'setup.v3.review.mailNow' : 'setup.v3.review.mailLater', { domain: mainDomain, host: draft.mail_hostname })}</li>}
+                                {mailSelected && mainDomain && firstKeepsMainMail && <li>{t('setup.v6.review.joinedMail', { domain: mainDomain, first: joinedLink?.first.mail_hostname || '', host: draft.mail_hostname })}</li>}
+                                {mailSelected && mainDomain && !firstKeepsMainMail && <li>{t(draft.mail_dns?.mx === 'now' || !(draft.imported_records || []).some(item => item.decision === 'import' && item.type === 'MX') ? 'setup.v3.review.mailNow' : 'setup.v3.review.mailLater', { domain: mainDomain, host: draft.mail_hostname })}</li>}
                                 <li>{t('setup.v2.review.installed')}</li>
                             </ul>
                         </div>

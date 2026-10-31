@@ -91,11 +91,13 @@ func TestServerSetupPeerOptionAWithMailOnTheFirstServer(t *testing.T) {
 	if answer.State != "ok" || answer.Setup == nil || answer.Setup.Draft.PeerMail == nil || answer.Setup.Draft.PeerMail.Hostname != "mail.example.test" {
 		t.Fatalf("the main takes the first server's mail choice: %+v", answer)
 	}
-	// Beta-1 third re-run N3/N5: mail on both servers is refused on the
-	// main's review; the join's shared answer says the first receives it.
+	// Beta-1 third re-run N3/N5: the join's shared answer says the first
+	// receives the main domain's mail. alpha.114 (owner, 2026-10-31): the
+	// main may still run mail for its own customers' domains; it never takes
+	// the main domain's mail (TestServerSetupJoinedMainDNSServerRunsItsOwnMail).
 	before, _ := pair.second.panel.loadServerSetup(context.Background())
-	if _, both := pair.secondReview(t, func(d *serverSetupDraft) { d.Purpose, d.MailHostname = "web_mail", "mail2.example.test" }); both.CanStart || !strings.Contains(strings.Join(both.Blockers, ","), "server_setup_peer_mail_both") {
-		t.Fatalf("mail on both servers: %v", both.Blockers)
+	if _, both := pair.secondReview(t, func(d *serverSetupDraft) { d.Purpose, d.MailHostname = "web_mail", "mail2.example.test" }); strings.Contains(strings.Join(both.Blockers, ","), "server_setup_peer_mail_both") || serverSetupPlanHasStep(both, "mail_dns") {
+		t.Fatalf("own mail on the main: %v %+v", both.Blockers, both.Steps)
 	}
 	_, plan := pair.secondReview(t, func(d *serverSetupDraft) { d.MailHostname = before.Draft.MailHostname })
 	second := pair.startSecond(t, plan)
@@ -490,9 +492,9 @@ func TestDNSOverviewMailReceiverFollowsTheJoinsSharedAnswer(t *testing.T) {
 	}
 }
 
-// Review fix (item 3): the refusal of a second receiver applies to a first
-// setup only. The link record outlives a finished pair, so an extension of
-// that pair is judged by the extension rules, not refused by it.
+// Review fix (item 3), alpha.114: own mail on the joined server is refused
+// neither in a first setup nor in an extension of a finished pair (the link
+// record outlives a finished pair).
 func TestServerSetupPeerMailBothDoesNotRefuseAnExtension(t *testing.T) {
 	first := joinFirstDraft()
 	first.MainDNSServer, first.Purpose, first.MailHostname = "peer", "web_mail", "mail.example.test"
@@ -501,7 +503,7 @@ func TestServerSetupPeerMailBothDoesNotRefuseAnExtension(t *testing.T) {
 		t.Fatalf("join: %+v", answer)
 	}
 	mail := func(d *serverSetupDraft) { d.Purpose, d.MailHostname = "web_mail", "mail2.example.test" }
-	if _, plan := pair.secondReview(t, mail); !strings.Contains(strings.Join(plan.Blockers, ","), "server_setup_peer_mail_both") {
+	if _, plan := pair.secondReview(t, mail); strings.Contains(strings.Join(plan.Blockers, ","), "server_setup_peer_mail_both") {
 		t.Fatalf("a first setup: %v", plan.Blockers)
 	}
 	// The pair finished earlier (an installed pair); this is its extension.

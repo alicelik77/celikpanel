@@ -199,6 +199,13 @@ export const enSetupWizardScreens = {
     "setup.v3.records.tooMany": "At most 64 records can be imported here; add the rest on the Domains page.",
     "setup.v3.mail.dkimExternal": "its key is created during setup, after mail is installed; you add its TXT record at your provider (shown with the other records).",
     "setup.v3.mail.dkimElsewhere": "not prepared by this server’s setup: set it up for {domain} where its list is kept.",
+    "setup.v6.names.joinedNote": "The records of {domain} (www, mail and the others) stay on the first server {server}. This server’s setup does not read or change them; it adds only this server’s own names.",
+    "setup.v6.names.mailJoinedHelp": "Mail for the main domain keeps going to the first server ({first}). This server gets its own mail name for the domains you create on it, for example {proposal}, or its panel name {panel}.",
+    "setup.v6.names.mailTaken": "{name} is already used by the first server, the main domain or a nameserver. Give this server its own mail name, for example {proposal}.",
+    "setup.v6.names.mailTakenShort": "This server needs its own mail name, not one the first server already uses.",
+    "setup.v6.review.joinedSite": "{domain} and www.{domain}: their records stay on the first server {server}; this setup does not change them.",
+    "setup.v6.review.joinedMail": "Mail for {domain} stays on {first}; its MX, SPF, DKIM and DMARC do not change. This server receives mail for the domains you create on it, at {host}.",
+    "setup.v6.blocker.mailHostnameTaken": "This server’s mail name is already used by the first server, the main domain or a nameserver, and each server needs its own. You, the owner: go back to This server’s names, give this server its own mail name (for example mail.<its panel name>, or its panel name), then review again. Nothing was changed.",
 } as const;
 
 export type SetupWizardScreenKey = keyof typeof enSetupWizardScreens;

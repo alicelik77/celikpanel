@@ -198,4 +198,11 @@ export const trSetupWizardScreens: Record<SetupWizardScreenKey, string> = {
     "setup.v3.records.tooMany": "Burada en çok 64 kayıt aktarılabilir; kalanları Alan adları sayfasından ekleyin.",
     "setup.v3.mail.dkimExternal": "anahtarı kurulum sırasında, posta kurulduktan sonra oluşturulur; TXT kaydını sağlayıcınızda siz eklersiniz (diğer kayıtlarla birlikte gösterilir).",
     "setup.v3.mail.dkimElsewhere": "bu sunucunun kurulumu hazırlamaz: {domain} listesinin tutulduğu yerde ayarlayın.",
+    "setup.v6.names.joinedNote": "{domain} kayıtları (www, mail ve diğerleri) ilk sunucu {server} üzerinde kalır. Bu sunucunun kurulumu onları okumaz ve değiştirmez; yalnız bu sunucunun kendi adlarını ekler.",
+    "setup.v6.names.mailJoinedHelp": "Ana alan adının postası ilk sunucuya ({first}) gitmeye devam eder. Bu sunucu, üzerinde açacağınız alan adları için kendi posta adını alır; örneğin {proposal} ya da panel adı {panel}.",
+    "setup.v6.names.mailTaken": "{name} ilk sunucu, ana alan adı ya da bir ad sunucusu tarafından zaten kullanılıyor. Bu sunucuya kendi posta adını verin; örneğin {proposal}.",
+    "setup.v6.names.mailTakenShort": "Bu sunucunun kendi posta adı olmalı; ilk sunucunun kullandığı bir ad olamaz.",
+    "setup.v6.review.joinedSite": "{domain} ve www.{domain}: kayıtları ilk sunucu {server} üzerinde kalır; bu kurulum onları değiştirmez.",
+    "setup.v6.review.joinedMail": "{domain} postası {first} üzerinde kalır; MX, SPF, DKIM ve DMARC kayıtları değişmez. Bu sunucu, üzerinde açacağınız alan adlarının postasını {host} adıyla alır.",
+    "setup.v6.blocker.mailHostnameTaken": "Bu sunucunun posta adı ilk sunucu, ana alan adı ya da bir ad sunucusu tarafından zaten kullanılıyor; her sunucunun kendi adı olmalı. Siz, sunucu sahibi: Bu sunucunun adları adımına dönün, bu sunucuya kendi posta adını verin (örneğin mail.<panel adı> ya da panel adının kendisi), sonra planı yeniden inceleyin. Hiçbir şey değiştirilmedi.",
 };

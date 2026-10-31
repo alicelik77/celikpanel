@@ -4,7 +4,7 @@ import { setupDNSTranslation } from '../i18n/setupDNS';
 import type { TranslationKey } from '../i18n/en';
 import { componentName } from '../lib/componentName';
 import { setupComponentClosure, setupRolePreset, type SetupComponentCatalog, type SetupDNSEngineChoice, type SetupRoles } from '../lib/serverSetupComponents';
-import { mergeSetupSPF, setupDNSNames, setupImportedDMARC, setupImportedMX, setupImportedSPF, setupNameWithin, type ServerSetupDraft, type SetupImportedRecord } from '../lib/serverSetup';
+import { mergeSetupSPF, setupDNSNames, setupImportedDMARC, setupImportedMX, setupImportedSPF, setupJoinedMailTaken, setupNameWithin, type ServerSetupDraft, type SetupImportedRecord, type SetupJoinedNames } from '../lib/serverSetup';
 import { useRefreshEvery, useRemote } from '../lib/remote';
 import { Button, inputClass, KeepWords } from './ui';
 
@@ -99,21 +99,28 @@ export function SetupRolesStep({ roles, onRoles, catalog, server, serverCount, c
     </fieldset>;
 }
 
-export function SetupNamesStep({ draft, mail, web, mainDomain, ip, ownDNS, onChange }: {
+export function SetupNamesStep({ draft, mail, web, mainDomain, ip, ownDNS, joined, onChange }: {
     draft: ServerSetupDraft; mail: boolean; web: boolean; mainDomain: string; ip: string; ownDNS: boolean;
+    // A server joined by code (alpha.114): the first server's names, and the
+    // mail name proposed for this server. / Koda katilan sunucu.
+    joined?: { names: SetupJoinedNames; server: string; keepsMainMail: boolean; proposal: string };
     onChange: (key: 'panel_domain' | 'mail_hostname', value: string) => void;
 }) {
     const { t } = useSetupWizardI18n();
     const outside = (value: string) => ownDNS && value.trim() !== '' && !setupNameWithin(value, mainDomain) ? t('setup.v2.names.outsideZone', { domain: mainDomain }) : undefined;
+    const mailInvalid = joined && setupJoinedMailTaken(draft.mail_hostname, joined.names) ? t('setup.v6.names.mailTaken', { name: draft.mail_hostname, proposal: joined.proposal }) : outside(draft.mail_hostname);
+    const mailHelp = joined?.keepsMainMail && joined.names.firstMail
+        ? t('setup.v6.names.mailJoinedHelp', { first: joined.names.firstMail, proposal: joined.proposal, panel: draft.panel_domain || joined.proposal })
+        : t('setup.v2.names.mailHelp', { domain: mainDomain || 'example.com' });
     return <section className="space-y-5" aria-labelledby="setup-names-title">
         <h2 id="setup-names-title" className="text-xl font-semibold">{t('setup.v2.names.title')}</h2>
         <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v2.names.help')}</p>
         <div className="grid max-w-2xl gap-5">
             <SetupWizardInput name="panel_domain" label={t('setup.v2.names.panel')} value={draft.panel_domain} onChange={value => onChange('panel_domain', value)} placeholder={`panel.${mainDomain || 'example.com'}`} required invalid={outside(draft.panel_domain)} />
-            {mail && <SetupWizardInput name="mail_hostname" label={t('setup.v2.names.mail')} value={draft.mail_hostname} onChange={value => onChange('mail_hostname', value)} placeholder={`mail.${mainDomain || 'example.com'}`} required help={t('setup.v2.names.mailHelp', { domain: mainDomain || 'example.com' })} invalid={outside(draft.mail_hostname)} />}
+            {mail && <SetupWizardInput name="mail_hostname" label={t('setup.v2.names.mail')} value={draft.mail_hostname} onChange={value => onChange('mail_hostname', value)} placeholder={joined?.proposal || `mail.${mainDomain || 'example.com'}`} required help={mailHelp} invalid={mailInvalid} />}
         </div>
         {ip && <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v2.names.pointTo', { ip })}</p>}
-        {web && mainDomain && <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v2.names.siteNote', { domain: mainDomain })}</p>}
+        {web && mainDomain && <p className="max-w-2xl text-sm leading-6 text-fg-muted">{joined ? t('setup.v6.names.joinedNote', { domain: mainDomain, server: joined.server }) : t('setup.v2.names.siteNote', { domain: mainDomain })}</p>}
     </section>;
 }
 

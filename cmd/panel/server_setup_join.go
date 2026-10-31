@@ -1330,9 +1330,8 @@ func canonicalServerSetupPeerNames(names *serverSetupPeerNames, d serverSetupDra
 			return "server_setup_peer_names_clash", "The second server's name " + own + " is already one of the first server's names. Choose another name on the second server."
 		}
 	}
-	if names.MailHostname != "" && names.MailHostname == names.PanelDomain {
-		return invalid()
-	}
+	// The second server's mail may use its panel name (alpha.114, the
+	// owner's choice): one A record to its address serves both names.
 	if names.Mail != nil && serverSetupHasMail(d) {
 		return "server_setup_peer_mail_both", "The first server already receives the main domain's mail; the second server cannot also take the main domain's mail records."
 	}

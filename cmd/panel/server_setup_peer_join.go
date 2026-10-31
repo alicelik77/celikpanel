@@ -460,7 +460,10 @@ func (p *Panel) handleServerSetupPeerDKIM(w http.ResponseWriter, r *http.Request
 		writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_dkim_not_main", "This server does not keep the main domain's zone.", nil)
 		return
 	}
-	if serverSetupHasMail(d) || d.PeerMail == nil {
+	// The join's shared answer decides (alpha.114): when it names the other
+	// server, its record is written even if this server runs mail for its
+	// own customers' domains.
+	if d.PeerMail == nil {
 		writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_peer_dkim_main_signs", "The main domain's mail is received by the main DNS server itself; the other server's DKIM record is not written.", nil)
 		return
 	}

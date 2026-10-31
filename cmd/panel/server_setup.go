@@ -287,9 +287,9 @@ func canonicalServerSetupWizardAnswers(d *serverSetupDraft) error {
 		mail.Hostname = canonical
 		d.PeerMail = &mail
 		// The join's shared answer is kept even when this server selects
-		// mail too: the review then refuses two receivers
-		// (server_setup_peer_mail_both) instead of silently dropping the
-		// answer (Beta-1 third re-run N3/N5).
+		// mail too (Beta-1 third re-run N3/N5): the other server keeps
+		// receiving the main domain's mail and this server's mail is for its
+		// own customers' domains only (alpha.114, serverSetupMainDomainMail).
 		if d.DNSMode != setupDNSModeLocal || d.DNSRole != transport.DNSPairRolePrimary {
 			d.PeerMail = nil
 		}
