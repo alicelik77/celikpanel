@@ -13,11 +13,14 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/alicelik/celikpanel/internal/core"
 )
 
 // The route × role matrix (ROADMAP B2 addendum, alpha.114). The test reads
 // the REAL route table — every http.HandleFunc/http.Handle registration in
-// main.go plus registerRecoveryRoutes — from the package source, and sends a
+// main.go plus registerRecoveryRoutes and registerAccountRecoveryRoutes — from
+// the package source, and sends a
 // request for every route as an anonymous visitor, the administrator, a
 // reseller, a customer and a team member (additional user) through the real
 // authentication middleware. Each route must be listed in routeRoleMatrix
@@ -149,6 +152,21 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/server/os-release":          gateTenant, // admin-only writes in handler
 	"/api/v1/server/os-release/reviewed": gateTenant, // admin-only in handler
 	"/api/v1/support-table":              gateTenant, // the dated support table, for everyone signed in
+
+	// alpha.114: forgot password, invitations, address confirmation, recovery codes.
+	"/api/v1/auth/2fa/recovery/regenerate":    gateTenant,  // own account only (signed-in self)
+	"/api/v1/auth/email/verification":         gateTenant,  // own address only
+	"/api/v1/auth/recovery/accept-invitation": gatePublic,  // POST with a single-use link token
+	"/api/v1/auth/recovery/link":              gatePublic,  // POST with a single-use link token
+	"/api/v1/auth/recovery/mail-status":       gatePublic,  // GET: can this panel send mail at all
+	"/api/v1/auth/recovery/request":           gatePublic,  // POST, rate-limited, same answer for every name
+	"/api/v1/auth/recovery/reset":             gatePublic,  // POST with a single-use link token
+	"/api/v1/auth/recovery/verify-email":      gatePublic,  // POST with a single-use link token
+	"/api/v1/invitations":                     gateAccount, // only invitees the caller manages (handler); team members refused
+	"/api/v1/invitations/":                    gateAccount, // resend/void only for invitees the caller manages (handler)
+	"/api/v1/panel/port":                      gateAdmin,
+	"/api/v1/security/os-updates/mode":        gateAdmin,
+	"/api/v1/security/os-updates/summary":     gateAdmin,
 
 	// Server, DNS infrastructure, setup and updates: administrator only.
 	"/api/v1/dns/engine":                       gateAdmin,
@@ -318,7 +336,7 @@ func registeredPanelRoutes(t *testing.T) []string {
 	collect(mainFile, "http")
 	for _, file := range files {
 		for _, decl := range file.Decls {
-			if fn, ok := decl.(*ast.FuncDecl); ok && fn.Name.Name == "registerRecoveryRoutes" {
+			if fn, ok := decl.(*ast.FuncDecl); ok && (fn.Name.Name == "registerRecoveryRoutes" || fn.Name.Name == "registerAccountRecoveryRoutes") {
 				collect(fn.Body, "mux")
 			}
 		}
@@ -392,5 +410,40 @@ func TestRouteRoleMatrixCoversTheRealRouteTable(t *testing.T) {
 	}
 	if t.Failed() && os.Getenv("CELIKPANEL_ROUTE_MATRIX_DUMP") != "" {
 		t.Log("\n" + strings.Join(dump, "\n"))
+	}
+}
+
+// alpha.114 domain sub-routes. They sit under the /api/v1/domains/ row (one
+// ownership chokepoint: the administrator, the owning reseller and customer);
+// a team member reaches them only through the capability named here.
+// alpha.114 alan adı alt rotaları: sahiplik denetimi tek noktada; ekip üyesi
+// yalnız burada adı geçen yetkiyle ulaşır.
+func TestAlpha114DomainSubroutesFollowTheirTeamCapability(t *testing.T) {
+	rows := []struct {
+		method, path, kind string
+		capability         core.TeamCapability
+		mode               core.TeamPermissionMode
+	}{
+		{http.MethodGet, "/api/v1/domains/7/protected-dirs", "site-protect", core.TeamCapabilityFiles, core.TeamPermissionView},
+		{http.MethodPost, "/api/v1/domains/7/protected-dirs", "site-protect", core.TeamCapabilityFiles, core.TeamPermissionManage},
+		{http.MethodDelete, "/api/v1/domains/7/protected-dirs", "site-protect", core.TeamCapabilityFiles, core.TeamPermissionManage},
+		{http.MethodPost, "/api/v1/domains/7/protected-dirs/users", "site-protect-users", core.TeamCapabilityFiles, core.TeamPermissionManage},
+		{http.MethodDelete, "/api/v1/domains/7/protected-dirs/users", "site-protect-users", core.TeamCapabilityFiles, core.TeamPermissionManage},
+		{http.MethodGet, "/api/v1/domains/7/redirects", "site-redirects", core.TeamCapabilityFiles, core.TeamPermissionView},
+		{http.MethodPost, "/api/v1/domains/7/redirects", "site-redirects", core.TeamCapabilityFiles, core.TeamPermissionManage},
+		{http.MethodDelete, "/api/v1/domains/7/redirects", "site-redirects", core.TeamCapabilityFiles, core.TeamPermissionManage},
+		{http.MethodGet, "/api/v1/domains/7/mail/autoresponder", "mail", core.TeamCapabilityMail, core.TeamPermissionView},
+		{http.MethodPut, "/api/v1/domains/7/mail/autoresponder", "mail", core.TeamCapabilityMail, core.TeamPermissionManage},
+	}
+	for _, row := range rows {
+		match, ok := matchDomainSubroute(httptest.NewRequest(row.method, row.path, nil))
+		if !ok || match.kind != row.kind || match.domainID != 7 {
+			t.Errorf("%s %s: matched %+v, %v; want kind %s", row.method, row.path, match, ok, row.kind)
+			continue
+		}
+		requirement, ok := teamMemberDomainRequirements[teamMemberRouteKey{kind: row.kind, method: row.method}]
+		if !ok || requirement.capability != row.capability || requirement.mode != row.mode {
+			t.Errorf("%s %s: team requirement %+v, %v; want %s/%s", row.method, row.path, requirement, ok, row.capability, row.mode)
+		}
 	}
 }
