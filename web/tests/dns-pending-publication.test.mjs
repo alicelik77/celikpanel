@@ -111,12 +111,16 @@ test('a deletion still running says it waits and re-checks, and names nobody who
   })), { reason: '', detail: '' });
   const key = domainDeletionReasonKey('deletion_running');
   assert.equal(key, 'domains.deletionRunning');
-  assert.match(enScreens[key], /checked again automatically/);
-  assert.match(enScreens[key], /Nobody needs to do anything/);
-  assert.match(trScreens[key], /kendiliğinden yeniden denetlenir/);
+  assert.match(enScreens[key], /checked automatically/);
+  assert.match(enScreens[key], /Nobody needs to do anything: check again in a minute/);
+  assert.match(trScreens[key], /kendiliğinden denetleniyor/);
+  assert.match(trScreens[key], /Kimsenin bir şey yapması gerekmiyor/);
   for (const text of [enScreens[key], trScreens[key]]) {
     assert.doesNotMatch(text, internal);
     assert.doesNotMatch(text, /SSH|must check/);
+    // Final acceptance run 4: shown on a standalone server too, so it never
+    // names a backup DNS server.
+    assert.doesNotMatch(text, /backup|yedek/i);
   }
 });
 

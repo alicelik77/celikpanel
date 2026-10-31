@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alicelik/celikpanel/internal/dnswire"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -34,8 +35,10 @@ type mailAuthRecord struct {
 	ZoneValue   string `json:"zone_value"`
 	DNSValue    string `json:"dns_value"`
 	Resolved    bool   `json:"resolved"`
-	// Status: ok (live DNS matches), pending (in our zone, not visible in
-	// live DNS), missing (nowhere), no_key (DKIM only), no_zone.
+	// Status: ok (live DNS matches), served (in our zone and answered by
+	// this server's own DNS, while the public lookup from this server could
+	// not read the name at all), pending (in our zone, not confirmed by
+	// either lookup), missing (nowhere), no_key (DKIM only), no_zone.
 	// Durum: ok (canlı DNS eşleşiyor), pending (zone'umuzda var, canlı
 	// DNS'te görünmüyor), missing (hiçbir yerde yok), no_key (yalnız DKIM),
 	// no_zone.
@@ -178,6 +181,57 @@ func liveTXT(ctx context.Context, name, prefix string) (value string, resolved b
 	return "", true
 }
 
+// The card's two lookups; tests replace them.
+var (
+	mailAuthLiveTXT = liveTXT
+	mailAuthOwnTXT  = ownAuthoritativeTXT
+)
+
+// ownAuthoritativeTXT asks this server's own DNS server (its primary
+// address, port 53, without recursion) for the TXT values at name. ok is
+// false when no authoritative answer was read; the caller then keeps what
+// the public lookup said.
+func ownAuthoritativeTXT(ctx context.Context, name string) ([]string, bool) {
+	ip := serverPrimaryIP()
+	if net.ParseIP(ip) == nil {
+		return nil, false
+	}
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	message, err := dnswire.Exchange(ctx, net.JoinHostPort(ip, "53"), name, dnswire.TypeTXT, false)
+	if err != nil || !message.Authoritative || (message.RCode != 0 && message.RCode != 3) {
+		return nil, false
+	}
+	values := []string{}
+	for _, rr := range message.Answer {
+		if rr.Type == dnswire.TypeTXT {
+			values = append(values, rr.Value)
+		}
+	}
+	return values, true
+}
+
+// markServedMailAuthRecord: final alpha.113 acceptance run 4 found the DKIM
+// card saying "In zone — waiting for DNS" while the record was in the zone
+// and both DNS servers answered it; only the public lookup from the panel
+// host could not read the name (a domain not delegated to these servers yet,
+// or a host without a public resolver). Waiting was not true: nothing in
+// CelikPanel was still to happen. When the public lookup could not read the
+// name and this server's own DNS answers the record, the status says that
+// (served); a public answer that differs stays pending, and an unreadable
+// own answer keeps the earlier status (D-024: unknown is not claimed).
+// Kayıt bu sunucunun DNS'inde yayımlanıyorsa ve yalnız genel sorgu adı
+// çözemiyorsa durum "bekleniyor" değil, "bu sunucunun DNS'i yayımlıyor"dur.
+func markServedMailAuthRecord(ctx context.Context, record *mailAuthRecord, matches func(string) bool) {
+	if record.Status != "pending" || record.Resolved || record.Name == "" {
+		return
+	}
+	values, ok := mailAuthOwnTXT(ctx, record.Name)
+	if ok && slices.ContainsFunc(values, matches) {
+		record.Status = "served"
+	}
+}
+
 func deriveStatus(recommended, zoneValue, dnsValue string, resolved bool) string {
 	if resolved && dnsValue == recommended {
 		return "ok"
@@ -254,7 +308,7 @@ func (p *Panel) handleMailAuthStatus(w http.ResponseWriter, r *http.Request, dom
 	if st.ZoneExists {
 		st.SPF.ZoneValue = desiredTXT(domain, "v=spf1")
 	}
-	st.SPF.DNSValue, st.SPF.Resolved = liveTXT(ctx, domain, "v=spf1")
+	st.SPF.DNSValue, st.SPF.Resolved = mailAuthLiveTXT(ctx, domain, "v=spf1")
 	st.SPF.Status = deriveStatus(st.SPF.Recommended, st.SPF.ZoneValue, st.SPF.DNSValue, st.SPF.Resolved)
 
 	// DKIM
@@ -265,7 +319,7 @@ func (p *Panel) handleMailAuthStatus(w http.ResponseWriter, r *http.Request, dom
 		if st.ZoneExists {
 			st.DKIM.ZoneValue = desiredTXT(dkimName, "v=DKIM1")
 		}
-		st.DKIM.DNSValue, st.DKIM.Resolved = liveTXT(ctx, dkimName, "v=DKIM1")
+		st.DKIM.DNSValue, st.DKIM.Resolved = mailAuthLiveTXT(ctx, dkimName, "v=DKIM1")
 		st.DKIM.Status = deriveStatus(st.DKIM.Recommended, st.DKIM.ZoneValue, st.DKIM.DNSValue, st.DKIM.Resolved)
 		if mode == setupDNSModeLocal && st.ZoneExists {
 			values, err := p.zoneTXTValues(ctx, zoneID, dkimName)
@@ -291,7 +345,7 @@ func (p *Panel) handleMailAuthStatus(w http.ResponseWriter, r *http.Request, dom
 	if st.ZoneExists {
 		st.DMARC.ZoneValue = desiredTXT(dmarcName, "v=DMARC1")
 	}
-	st.DMARC.DNSValue, st.DMARC.Resolved = liveTXT(ctx, dmarcName, "v=DMARC1")
+	st.DMARC.DNSValue, st.DMARC.Resolved = mailAuthLiveTXT(ctx, dmarcName, "v=DMARC1")
 	// Any valid DMARC record counts: the policy is the owner's choice.
 	// Geçerli herhangi bir DMARC kaydı sayılır: politika sahibinin seçimidir.
 	switch {
@@ -301,6 +355,13 @@ func (p *Panel) handleMailAuthStatus(w http.ResponseWriter, r *http.Request, dom
 		st.DMARC.Status = "pending"
 	default:
 		st.DMARC.Status = "missing"
+	}
+
+	// Only a zone this server keeps is asked of this server's own DNS.
+	if mode == setupDNSModeLocal && st.ZoneExists {
+		markServedMailAuthRecord(ctx, &st.SPF, func(value string) bool { return value == st.SPF.Recommended })
+		markServedMailAuthRecord(ctx, &st.DKIM, func(value string) bool { return value == st.DKIM.Recommended })
+		markServedMailAuthRecord(ctx, &st.DMARC, func(value string) bool { return strings.HasPrefix(value, "v=DMARC1") })
 	}
 
 	if mode == setupDNSModeExternal || mode == setupDNSModeExisting {

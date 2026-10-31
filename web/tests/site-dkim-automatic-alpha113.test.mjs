@@ -144,6 +144,38 @@ test('a different record kept in the zone and a key outside the signing table ar
   }
 });
 
+// Final alpha.113 acceptance run 4: a signed key whose record this server's
+// DNS serves, while the public lookup could not read the name, is not
+// "waiting for DNS": the card says this server serves it, offers no
+// re-publication, and explains the public lookup and who acts.
+test('a record served by this server while the public lookup cannot read it is not shown as waiting', async () => {
+  serve({ [AUTH]: auth({
+    spf: record('served', { resolved: false }), dkim: record('served', { resolved: false }), dmarc: record('served', { resolved: false }),
+  }) });
+  try {
+    await mount(React.createElement(MailAuthPanel, { domainId: 1 }));
+    assert.ok(text().includes('mailauth.status.served'), text());
+    assert.ok(!text().includes('mailauth.status.pending'));
+    assert.ok(text().includes('mailauth.servedNote'));
+    assert.ok(!text().includes('mailauth.unresolvedNote'), 'the zone-only note contradicts the served note');
+    assert.equal(buttons('mailauth.apply').length, 0, 'a served record was offered for publication again');
+    assert.equal(buttons('mailauth.auto.retry').length, 0);
+  } finally {
+    await cleanup();
+  }
+  // A record that is only in the zone still reads as waiting, with the
+  // zone-only note when the lookup could not run.
+  serve({ [AUTH]: auth({ spf: record('ok', { resolved: false }), dkim: record('pending', { resolved: false }) }) });
+  try {
+    await mount(React.createElement(MailAuthPanel, { domainId: 1 }));
+    assert.ok(text().includes('mailauth.status.pending'));
+    assert.ok(text().includes('mailauth.unresolvedNote'));
+    assert.ok(!text().includes('mailauth.servedNote'));
+  } finally {
+    await cleanup();
+  }
+});
+
 test('downloading a file that no longer exists shows the guidance and reads the folder again', async () => {
   const FILES = '/api/v1/domains/1/files?path=%2F';
   const DOWNLOAD = '/api/v1/domains/1/files/download?path=%2Fgone.txt';

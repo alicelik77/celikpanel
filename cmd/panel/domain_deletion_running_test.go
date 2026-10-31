@@ -37,13 +37,18 @@ func TestDomainDeletionStatusSaysRunningWhileTheRequestRuns(t *testing.T) {
 		body.Stage != domainDeletionRunningStage || body.Reason != domainDeletionRunningReason {
 		t.Fatalf("running deletion status=%d body=%+v", status, body)
 	}
-	for _, want := range []string{"running now", "checked again automatically", "Nobody needs to do anything"} {
+	for _, want := range []string{"running now", "checked automatically", "Nobody needs to do anything", "check again in a minute"} {
 		if !strings.Contains(body.Message, want) {
 			t.Fatalf("running message lacks %q: %s", want, body.Message)
 		}
 	}
 	if strings.Contains(body.Message, "must check") || strings.Contains(body.Message, "SSH") {
 		t.Fatalf("running message escalates: %s", body.Message)
+	}
+	// Final acceptance run 4: a standalone server has no backup DNS server,
+	// so the running text, shown on every server, never names one.
+	if strings.Contains(strings.ToLower(body.Message), "backup") {
+		t.Fatalf("running message names a backup DNS server: %s", body.Message)
 	}
 	// Another domain is not affected.
 	if p.deletionsRunning.isRunning(id + 1) {

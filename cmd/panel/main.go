@@ -1038,6 +1038,24 @@ func main() {
 	panel.agentClient = transport.NewReconnectingClient(rawClient)
 	log.Println("Connected to Agent RPC; preparing normal management access")
 
+	// D8 (final acceptance run 4): after a reboot systemd may still report
+	// the host as starting, and every startup step below that changes the
+	// host is then refused before dispatch. Wait, still gated and bounded,
+	// until the host identity can be read; the wait itself changes nothing.
+	// Sunucu hâlâ açılıyorsa başlangıç adımları sınırlı süre bekler.
+	hostStartCtx, stopHostStartWait := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	panel.waitForHostStartedAtStartup(hostStartCtx, log.Printf)
+	stoppedDuringHostStart := hostStartCtx.Err() != nil
+	stopHostStartWait()
+	if stoppedDuringHostStart {
+		// A stop request during the wait ends the process as it would
+		// while waiting for the Agent; nothing was started.
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), panelHTTPShutdownTimeout)
+		_ = server.Shutdown(shutdownCtx)
+		shutdownCancel()
+		return
+	}
+
 	// A failed reconcile degrades its subsystem; it does not end the process.
 	// The durable markers stay for the next replay, the listener stays bound,
 	// and the operator gets a coded refusal instead of a flapping port (A17).

@@ -109,6 +109,11 @@ needed (schema 46, unchanged).
   and named.
 - The file manager answers a missing path, an existing name or a missing
   download with what to do, not a bare error.
+- The Mail authentication card no longer says "In zone — waiting for DNS"
+  for a record this server's DNS already answers when only the public
+  lookup from the server cannot find the domain (for example before the
+  registrar points to these nameservers). It says "Served by this server's
+  DNS" and who acts if the domain should already be live.
 
 **License (D-039)**
 - One successful check keeps management open for up to seven days offline;
@@ -165,6 +170,12 @@ needed (schema 46, unchanged).
 **Services**
 - Service versions are read from the package database. Starting a program
   to ask its version is gone (it made cron log "can't lock crond.pid").
+- After a reboot the Panel waits, for up to 2 minutes and before management
+  opens, until systemd reports the server started, then runs its startup
+  work (site configuration files, certificate cleanup, mail filter wiring).
+  Before, that work was refused while systemd still said "starting" and did
+  not run again until the next Panel start. The journal says it waits, and
+  then that it continued or, past 2 minutes, what the administrator checks.
 
 ## Known limits
 
@@ -190,6 +201,11 @@ needed (schema 46, unchanged).
   DKIM.
 - A changed `/etc/resolv.conf` reaches an nginx proxy target only when that
   site's configuration is next written.
+- PHP `mail()` leaves with the site's system user as envelope sender, so
+  Rspamd adds a small `FORGED_SENDER` score (0.3; no action). DKIM is
+  aligned with the From domain, so DMARC passes. CelikPanel does not set a
+  site address as envelope sender yet, because a domain whose mail or SPF
+  is elsewhere could then fail SPF.
 
 ## Evidence
 

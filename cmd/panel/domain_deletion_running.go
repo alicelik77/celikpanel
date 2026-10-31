@@ -22,7 +22,9 @@ const (
 	domainDeletionRunningReason = "deletion_running"
 )
 
-const domainDeletionRunningEnglish = "This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked again automatically within the same deletion. Nobody needs to do anything: the result appears here when it ends, usually within a minute or two. Only if the automatic checks end without confirmation does this page say who must act."
+// The text is neutral: a standalone server has no backup DNS server, so it
+// is never told about one (final acceptance run 4, 31 Oct 2026).
+const domainDeletionRunningEnglish = "This deletion is running now and is checked automatically. Nobody needs to do anything: check again in a minute. Only if the automatic checks end without confirmation does this page say who must act."
 
 // domainDeletionsRunning counts the deletion requests of each domain that
 // are running in this process (a domain's deletions are serialized by

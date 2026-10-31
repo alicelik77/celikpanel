@@ -171,6 +171,7 @@ export const enMailDatabasesScreens = {
     'mailauth.dmarcDesc': 'Tells receivers what to do when SPF/DKIM fail, and where to send reports.',
     'mailauth.status.ok': 'Verified in DNS',
     'mailauth.status.pending': 'In zone — waiting for DNS',
+    'mailauth.status.served': 'Served by this server’s DNS',
     'mailauth.status.missing': 'Missing',
     'mailauth.status.no_key': 'No key yet',
     'mailauth.recommended': 'Recommended record',
@@ -187,6 +188,7 @@ export const enMailDatabasesScreens = {
     'mailauth.policy.quarantine': 'quarantine — send to spam',
     'mailauth.policy.reject': 'reject — refuse outright',
     'mailauth.signingMissing': 'No DKIM signing filter (opendkim/rspamd) is installed. The key and DNS record are ready; outgoing mail will be signed once a filter is installed.',
+    'mailauth.servedNote': 'This server’s DNS answers the records marked “Served by this server’s DNS”, but a public lookup from this server could not find the domain. That is expected while the domain’s nameservers at its registrar do not point to this server yet, or while this server cannot reach a public DNS resolver. Nothing in CelikPanel is waiting. If the domain should already be live, you, the domain owner, check its nameservers at the registrar; this card checks again each time it is opened.',
     'mailauth.unresolvedNote': 'Live DNS could not be checked (the name does not resolve from this server). The status reflects the zone only.',
 
     'mail.col.usage': 'Usage',

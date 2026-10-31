@@ -94,7 +94,7 @@ export const trSitesScreens: Record<SitesScreenKey, string> = {
     'domains.deletedDKIMFailed': '{name} silindi, ancak DKIM anahtarı kaldırılamadı; OpenDKIM onun adına imzalamayı sürdürebilir. Sunucu sahibi sunucuda /var/lib/celikpanel-dkim/keys/{name} dizinini siler; imzalama tabloları bir sonraki DKIM değişikliğinde güncellenir.',
     'domains.deletionPending': 'Silme işlemi hâlâ bekliyor, ancak nedeni doğrulanamadı. Durumu yeniden kontrol edin. Belirsizlik sürerse yeniden denemeden önce sunucu yöneticisinden kayıtlı işlemi incelemesini isteyin.',
     'domains.deletionDNSRemoved': 'Bu alan adının DNS’ten kaldırılması tamamlandı ve doğrulandı (bu sunucunun yedek DNS sunucusu varsa orada da). Silmenin geri kalanı henüz çalışmadı: alan adını bu sunucudan kaldırmayı bitirmek için “Bu silme işlemini yeniden dene”yi kullanın. Başka bekleyen bir şey yok.',
-    'domains.deletionRunning': 'Bu silme işlemi şu anda çalışıyor. Yedek DNS sunucusu eşleştirilmişse son adım, yedeğin bölgenin kaldırıldığını onaylamasını bekler; bu, aynı silme içinde kendiliğinden yeniden denetlenir. Kimsenin bir şey yapması gerekmiyor: durumu bir iki dakika sonra yeniden kontrol edin. Kimin ne yapacağı yalnızca otomatik denetimler onaysız biterse bu sayfada söylenir.',
+    'domains.deletionRunning': 'Bu silme işlemi şu anda çalışıyor ve kendiliğinden denetleniyor. Kimsenin bir şey yapması gerekmiyor: bir dakika sonra yeniden bakın. Kimin ne yapacağı yalnızca otomatik denetimler onaysız biterse bu sayfada söylenir.',
     'domains.deletionWaiting': '{name} için silme işlemi bekliyor',
     'domains.retryDeletion': 'Bu silme işlemini yeniden dene',
     'domains.checkDeletionStatus': 'Silme durumunu kontrol et',
