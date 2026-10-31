@@ -214,7 +214,7 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
     // setup needs attention, the second after Add domain asked for a
     // certificate (its outcome tells the person to look here).
     // ?tab=dns ve ?tab=ssl sayfanın o bölümünü açar.
-    const [activeTab, setActiveTab] = useState(requestedTab === 'dns' ? 'dns' : requestedTab === 'ssl' ? 'hosting' : 'overview');
+    const [activeTab, setActiveTab] = useState(requestedTab === 'dns' ? 'dns' : requestedTab === 'mail' ? 'mail' : requestedTab === 'ssl' ? 'hosting' : 'overview');
     const [activeSub, setActiveSub] = useState<Record<string, string>>(requestedTab === 'ssl' ? { hosting: 'ssl' } : {});
 
     const handleCertificateChange = useCallback((status: SSLRuntimeSummary) => {
@@ -226,6 +226,8 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
 
     useEffect(() => {
         if (requestedTab === 'dns') setActiveTab('dns');
+        // The Dashboard's mail card opens the mailboxes of a site directly.
+        if (requestedTab === 'mail') setActiveTab('mail');
         if (requestedTab === 'ssl') {
             setActiveTab('hosting');
             setActiveSub((current) => ({ ...current, hosting: 'ssl' }));
@@ -618,6 +620,23 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
                         <div className="mb-4">
                             <DomainConnection domainId={domain.id} domainName={domain.domain_name} />
                         </div>
+                    )}
+
+                    {/* Add domain created the site but could not publish its DNS
+                        (DNS_PUBLICATION_PENDING): the page it opened says what
+                        needs attention, who acts, what to do and how it resumes,
+                        not only the toast that sent the person here (alpha.114).
+                        Site olustu ama DNS yayimlanamadi: sayfa dikkat gerekeni soyler. */}
+                    {current.id === 'dns' && searchParams.get('attention') === 'dns-publication' && (
+                        <section role="status" data-dns-publication-attention="" className="mb-4 space-y-2 rounded-lg border border-warning-mark/50 bg-warning-mark/10 p-4 text-sm leading-6 text-fg">
+                            <h2 className="font-semibold">{t('domains.attention.dnsTitle', { name: domain.domain_name })}</h2>
+                            <dl className="grid gap-x-4 gap-y-1 sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)]">
+                                <dt className="text-fg-muted">{t('setup.v2.why')}</dt><dd>{t('domains.attention.dnsWhy')}</dd>
+                                <dt className="text-fg-muted">{t('setup.v2.who')}</dt><dd>{t('domains.attention.dnsWho')}</dd>
+                                <dt className="text-fg-muted">{t('setup.v2.next')}</dt><dd>{t('domains.attention.dnsNext')}</dd>
+                                <dt className="text-fg-muted">{t('setup.v2.then')}</dt><dd>{t('domains.attention.dnsThen')}</dd>
+                            </dl>
+                        </section>
                     )}
 
                     {readOnly && (

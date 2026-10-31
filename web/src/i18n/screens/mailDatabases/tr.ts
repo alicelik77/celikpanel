@@ -16,6 +16,7 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'databases.subtitle': 'Tespit edilen sunucularınızdaki veritabanları ve kullanıcılar',
     'databases.noServers': 'Kurulu veritabanı motoru yok',
     'databases.noServersHint': 'Veritabanları MariaDB veya PostgreSQL tarafından sunulur. Bileşenler\'den birini kurun; sonra burada kendiliğinden görünür.',
+    'databases.noServersHintCustomer': 'Veritabanları için bu sunucuda bir veritabanı motoru (MariaDB veya PostgreSQL) gerekir ve kurulu değil. Barındırma sağlayıcınızdan birini kurmasını isteyin; sonra burada kendiliğinden görünür.',
     'databases.default': 'Varsayılan',
     'databases.tab.databases': 'Veritabanları',
     'databases.tab.users': 'Kullanıcılar',

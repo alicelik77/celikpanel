@@ -194,12 +194,16 @@ export function DatabaseManagementV2() {
                         of={shown}
                         icon={Database}
                         title={t('databases.noServers')}
-                        hint={t('databases.noServersHint')}
-                        action={
+                        // Only an administrator can install a database engine;
+                        // anyone else is told who can (alpha.114: the button
+                        // led a customer to a page they cannot open).
+                        // Motoru yalniz yonetici kurar; digerlerine kimin kurabilecegi soylenir.
+                        hint={t(isAdmin ? 'databases.noServersHint' : 'databases.noServersHintCustomer')}
+                        action={isAdmin ? (
                             <Button variant="primary" icon={Server} onClick={() => navigate('/services')}>
                                 {t('domains.goServices')}
                             </Button>
-                        }
+                        ) : undefined}
                     />
                 ) : (
                     <>

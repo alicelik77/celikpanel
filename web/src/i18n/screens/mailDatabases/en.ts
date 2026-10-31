@@ -22,6 +22,7 @@ export const enMailDatabasesScreens = {
     'databases.subtitle': 'Databases and users on your detected servers',
     'databases.noServers': 'No database engine installed',
     'databases.noServersHint': 'Databases are served by MariaDB or PostgreSQL. Install one from Components, then it appears here automatically.',
+    'databases.noServersHintCustomer': 'Databases need a database engine (MariaDB or PostgreSQL) on this server, and none is installed. Ask your hosting provider to install one; it then appears here by itself.',
     'databases.default': 'Default',
     'databases.tab.databases': 'Databases',
     'databases.tab.users': 'Users',

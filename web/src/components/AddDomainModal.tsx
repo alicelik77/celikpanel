@@ -6,7 +6,7 @@ import { useI18n } from '../i18n';
 import { Button, Checking, CouldNotCheck, Dialog, ErrorBanner } from './ui';
 import { readApiError, apiErrorText, type ApiError } from '../lib/apiError';
 import { isSiteWebServerRefused, siteWebServerRefusedIn } from '../lib/siteWebServerRefused';
-import { gateOn } from '../lib/remote';
+import { gateOn, invalidate } from '../lib/remote';
 import {
     ISSUE_FAILURE_KEYS,
     isIssueFailure,
@@ -46,7 +46,7 @@ function readSiteRecords(value: unknown): SiteRecordsOutcome | undefined {
 
 interface AddDomainModalProps {
     onClose: () => void;
-    onSuccess: (outcome?: { siteRecords?: SiteRecordsOutcome }) => void;
+    onSuccess: (outcome?: { siteRecords?: SiteRecordsOutcome; domain?: string }) => void;
     // The name the form opens with (alpha.115: the end of server setup offers
     // the main domain). Only a starting value: nothing is sent until the
     // person submits the form.
@@ -119,6 +119,14 @@ async function readDomainCreatePartialSuccess(res: Response): Promise<DomainCrea
     } catch {
         return null;
     }
+}
+
+// The address the partial-success answer sends to, marked so the domain's
+// page says what needs attention there (D-024): a toast alone is gone in
+// seconds. Only a path inside the panel is followed.
+// Kismi basari yanitinin gonderdigi adres; alan adi sayfasi dikkat gerekeni soyler.
+export function withAttention(action: string): string {
+    return action + (action.includes('?') ? '&' : '?') + 'attention=dns-publication';
 }
 
 // The id of the site that was just created, from the create answer (its keys
@@ -290,7 +298,7 @@ export function AddDomainModal({ onClose, onSuccess, initialDomain = '' }: AddDo
                     // the list, then we continue at the newly created domain.
                     const action = partial.action?.startsWith('/domains/')
                         ? partial.action
-                        : `/domains/${encodeURIComponent(partial.domain)}`;
+                        : `/domains/${encodeURIComponent(partial.domain)}?tab=dns`;
                     showToast('warning', t('domains.add.createdDnsPending', { name: partial.domain }));
                     // The certificate needs the name to resolve to this
                     // server, which the unfinished DNS setup has not done:
@@ -298,8 +306,12 @@ export function AddDomainModal({ onClose, onSuccess, initialDomain = '' }: AddDo
                     // Sertifika, adın bu sunucuya çözülmesini ister; yarım
                     // DNS kurulumu bunu yapmadı: istenmediğini söyle.
                     if (body.ssl_type === 'letsencrypt') showToast('warning', t('domains.add.sslNotRequested', { name: partial.domain }));
+                    // The site exists: every list, counter and card that
+                    // shows domains reads again (no page refresh, 2026-10-31).
+                    invalidate('domains', 'dns');
                     onSuccess();
-                    navigate(action);
+                    // The page opened says what needs attention, not only the toast.
+                    navigate(withAttention(action));
                     return;
                 }
                 const apiErr = await readApiError(res);
@@ -318,13 +330,14 @@ export function AddDomainModal({ onClose, onSuccess, initialDomain = '' }: AddDo
             }
 
             showToast('success', t('domains.add.created', { name: domainName }));
+            invalidate('domains', 'dns');
             // Only read: what happened to the site's names, when the server says.
             let answer: unknown = null;
             try { answer = await res.json(); } catch { answer = null; }
             const records = readSiteRecords(answer);
             const createdId = readCreatedDomainId(answer);
             if (body.ssl_type !== 'letsencrypt') {
-                onSuccess({ siteRecords: records });
+                onSuccess({ siteRecords: records, domain: domainName });
                 return;
             }
             setSiteRecords(records);
@@ -342,7 +355,8 @@ export function AddDomainModal({ onClose, onSuccess, initialDomain = '' }: AddDo
             const outcome = await requestSiteCertificate(createdId);
             if (outcome.kind === 'issued') {
                 showToast('success', t('domains.add.sslIssued', { name: domainName }));
-                onSuccess({ siteRecords: records });
+                invalidate('domains');
+                onSuccess({ siteRecords: records, domain: domainName });
                 return;
             }
             setCertificate({ phase: 'done', name: domainName, outcome });
@@ -361,7 +375,8 @@ export function AddDomainModal({ onClose, onSuccess, initialDomain = '' }: AddDo
     // Site oluşup SSL işaretliyse aynı pencere sertifika isteğinin kendi
     // ekranına döner; forma geri dönüş yoktur.
     const finish = (openSSL: boolean) => {
-        onSuccess({ siteRecords });
+        invalidate('domains');
+        onSuccess({ siteRecords, domain: certificate?.name ?? domainName });
         if (openSSL && certificate) navigate(`/domains/${encodeURIComponent(certificate.name)}?tab=ssl`);
     };
 

@@ -16,6 +16,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import { showToast } from './Toast';
+import { useNavigate } from '../router';
 import { useI18n } from '../i18n';
 import { useAuth } from '../auth/AuthContext';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
@@ -164,6 +165,7 @@ function ReadOnlyValue({
 // ve yöneticinin istenen durumun tamamını güvenle yeniden eşitlemesini sağlar.
 export function VPNPage() {
     const { t } = useI18n();
+    const navigate = useNavigate();
     const { role } = useAuth();
     const [view, setView] = useState<VPNView>('overview');
     const [status, setStatus] = useState<VPNStatus | null>(null);
@@ -569,7 +571,7 @@ export function VPNPage() {
                                     variant="primary"
                                     icon={Server}
                                     disabled={busyAction !== null}
-                                    onClick={() => window.location.assign('/services')}
+                                    onClick={() => navigate('/services?component=wireguard')}
                                 >
                                     {t('vpn.installWireGuard')}
                                 </Button>

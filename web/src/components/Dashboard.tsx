@@ -1319,7 +1319,7 @@ function AdminDashboard() {
                             <CountCard icon={Globe} n={domainsCount(domainList.remote, infrastructureRead.remote)} label={t('dashboard.domains')} to="/domains" />
                             <CountCard icon={Database} n={mapRemote(extrasRead.remote, (value) => value.databases)} label={t('dashboard.databases')} to="/databases" />
                             <CountCard icon={Users} n={mapRemote(usersRead.remote, (rows) => rows.length)} label={t('nav.users')} to="/users" />
-                            <CountCard icon={Mail} n={mapRemote(extrasRead.remote, (value) => value.mail_accounts)} label={t('dashboard.mailAccounts')} to="/domains" />
+                            <CountCard icon={Mail} n={mapRemote(extrasRead.remote, (value) => value.mail_accounts)} label={t('dashboard.mailAccounts')} to={mailCardTarget(domains)} />
                         </div>
                         {recentDomains.length > 0 && (
                             <>
@@ -1853,6 +1853,15 @@ function GaugeCard({
             {hint && <p className="mt-2 text-xs text-fg-subtle">{hint}</p>}
         </div>
     );
+}
+
+// Where the mail accounts card leads (alpha.114): mailboxes belong to a
+// domain, so with one website it opens that site's Mail tab; otherwise the
+// domain list, which then says to open a domain and its Mail tab.
+// Posta kutusu karti: tek sitede onun Posta sekmesi, yoksa alan adlari listesi.
+function mailCardTarget(domains: DomainLite[]): string {
+    const sites = domains.filter((domain) => domain.project_type !== 'dnsonly');
+    return sites.length === 1 ? `/domains/${encodeURIComponent(sites[0].domain_name)}?tab=mail` : '/domains?for=mail';
 }
 
 function CountCard({ icon: Icon, n, label, to }: { icon: typeof Cpu; n: Remote<number>; label: string; to: string }) {

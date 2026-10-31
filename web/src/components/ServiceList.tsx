@@ -612,7 +612,13 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     // adı yazan bir düğmeyle ulaşılıyor — kurulumun tek yolunu gizleyen bir
     // süzgeç, süzgeç değil gizli bir adımdır.
     const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-    const [query, setQuery] = useState('');
+    // ?component=<id> opens this page at one component (alpha.114: another
+    // page's "Install X" leads to X's own row, not to the top of a long list):
+    // the search is filled with its id and the catalogue view shown, so a
+    // component that is not installed is visible with its Install button.
+    // ?component=<id> sayfayi o bilesenin satirinda acar.
+    const linkedComponent = new URLSearchParams(location.search).get('component');
+    const [query, setQuery] = useState(() => linkedComponent ?? '');
     const viewKey = 'celikpanel.components.view';
     // The first visit opens the installed view (D-010). Only an explicit,
     // remembered "catalog" opens the catalogue; a missing, unknown or
@@ -622,6 +628,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     // açık bir "catalog" seçimi açar; olmayan, bilinmeyen ya da okunamayan
     // seçim ilk ziyarettir.
     const [hideNotInstalled, setHideNotInstalled] = useState(() => {
+        if (linkedComponent) return false;
         try {
             return typeof localStorage === 'undefined' || localStorage.getItem(viewKey) !== 'catalog';
         } catch {
@@ -1046,9 +1053,16 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         if (cleanupLinkRef.current || loading || !new URLSearchParams(location.search).has('cleanup')) return;
         if (new URLSearchParams(location.search).get('cleanup') !== 'roundcube') return;
         const roundcube = services.find((service) => service.id === 'roundcube');
-        if (!roundcube || roundcube.is_installed !== false) return;
         cleanupLinkRef.current = true;
-        openWebmailCleanupDialog(roundcube);
+        if (roundcube && roundcube.is_installed === false) {
+            openWebmailCleanupDialog(roundcube);
+        } else {
+            // The link never ends silently: webmail is installed (or not on
+            // this server's list), so there are no leftovers to clean; say
+            // so and what to do instead (alpha.114).
+            // Baglanti sessiz bitmez: temizlenecek kalinti yoksa soyler.
+            showToast('info', t('services.cleanupWebmailNotNeeded'));
+        }
         // The link has done its work: the address loses ?cleanup so a reload
         // does not open the confirmation again (alpha.96). Replace, not push.
         // Bağlantı işini yaptı: yeniden yükleme onayı tekrar açmasın diye
@@ -2036,15 +2050,19 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 <span><KeepWords text={t('services.conflictWith', { name: s.conflict_with })} /></span>
                                                             </span>
                                                         ) : s.not_offered_kind === 'integration' && s.id === 'vsftpd' ? (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => navigate('/domains')}
-                                                                title={t('services.useBuiltInSFTPHint')}
-                                                                className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
-                                                            >
-                                                                {t('services.useBuiltInSFTP')}
-                                                                <ChevronRight className="h-3.5 w-3.5" />
-                                                            </button>
+                                                            /* The why is visible text, not only a tooltip (alpha.114). */
+                                                            <span className="flex max-w-xs flex-col items-end gap-1 text-right" data-builtin-sftp="">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => navigate('/domains')}
+                                                                    aria-describedby={`builtin-sftp-${s.id}`}
+                                                                    className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
+                                                                >
+                                                                    {t('services.useBuiltInSFTP')}
+                                                                    <ChevronRight className="h-3.5 w-3.5" />
+                                                                </button>
+                                                                <span id={`builtin-sftp-${s.id}`} className="text-pretty text-xs text-fg-muted">{t('services.useBuiltInSFTPHint')}</span>
+                                                            </span>
                                                         ) : s.not_offered ? (
                                                             /* Honest instead of a dead Install button that
                                                                fails late in the agent (spamassassin on Arch,
@@ -5068,6 +5086,10 @@ function UninstallServiceDialog({
                 )}
                 {retryCleanup && (
                 <div className="mb-4 rounded-lg border border-danger/30 bg-danger/5 p-3 text-sm text-fg-muted">
+                    {/* Why this dialog is open, before what it removes. */}
+                    <p className="mb-2 text-fg" data-webmail-cleanup-why="">
+                        {t('services.cleanupWebmailWhy')}
+                    </p>
                     <p className="mb-2">
                         {t('services.cleanupWebmailWarn')}
                     </p>
