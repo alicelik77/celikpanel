@@ -163,6 +163,7 @@ export const trDnsCertificatesScreens: Record<DnsCertificatesScreenKey, string> 
     'dns.recordAdded': 'Kayıt eklendi',
     'dns.recordAddFailed': 'Kayıt eklenemedi',
     'dns.recordDeleted': 'Kayıt silindi',
+    'dns.savedPublishing': 'Kaydedildi. DNS sunucuları değişikliği bir dakika içinde alır; bir şey yapmanız gerekmiyor.',
     'dns.recordDeleteFailed': 'Kayıt silinemedi',
     'dns.confirmDelete': 'Bu kayıt silinsin mi?',
     'dns.managedRecord': 'Bu kayıt Sunucu → DNS ve eş sunucular sayfasından yönetilir.',

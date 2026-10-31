@@ -208,6 +208,18 @@ export function DomainDNSManager({
         setRefusal({ problem, sentence: fallback });
         showToast('error', refusalText(problem, t, fallback), refusalToast(problem, t, navigate));
     };
+    // A saved change whose publication waits for the panel database answers
+    // publication "publishing": the panel publishes it by itself.
+    const savedToast = async (res: Response, done: TranslationKey) => {
+        let publishing = false;
+        try {
+            const body = (await res.clone().json()) as { publication?: string } | null;
+            publishing = body?.publication === 'publishing';
+        } catch {
+            publishing = false;
+        }
+        showToast(publishing ? 'info' : 'success', t(publishing ? 'dns.savedPublishing' : done));
+    };
 
     const publishZone = async () => {
         if (!canChange) return;
@@ -270,7 +282,7 @@ export function DomainDNSManager({
                 return;
             }
             setRefusal(null);
-            showToast('success', t('dns.recordAdded'));
+            await savedToast(res, 'dns.recordAdded');
             answer.settle();
             setShowAddForm(false);
             setNewContent('');
@@ -292,7 +304,7 @@ export function DomainDNSManager({
                 return;
             }
             setRefusal(null);
-            showToast('success', t('dns.recordDeleted'));
+            await savedToast(res, 'dns.recordDeleted');
             answer.settle();
             invalidate('dns');
         } finally {

@@ -624,11 +624,12 @@ func (p *Panel) handleMailAuthApply(w http.ResponseWriter, r *http.Request, doma
 		return
 	}
 
-	if !p.publishDNSMutation(w, r.Context(), zoneName) {
+	publication, ok := p.publishDNSMutation(w, r.Context(), zoneName)
+	if !ok {
 		return
 	}
 	if err := json.NewEncoder(w).Encode(map[string]any{
-		"success": true, "name": name, "value": value,
+		"success": true, "name": name, "value": value, "publication": publication,
 	}); err != nil {
 		log.Printf("encode mail authentication result for %s: %v", domain, err)
 	}
