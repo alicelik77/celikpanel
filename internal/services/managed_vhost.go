@@ -1190,6 +1190,7 @@ func (ng *NginxGenerator) RemoveSiteVhost(domain string) (string, error) {
 	}
 	removeStalePending(available)
 	removePanelManagedDir(domain)
+	RemoveSiteAuthFiles(domain)
 	return backup, nil
 }
 

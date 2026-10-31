@@ -188,7 +188,7 @@ func TestOlderReleaseRefusesALedgerWithTheManagedSiteFilesEntry(t *testing.T) {
 		}
 	}
 	// Migrations 45 (alpha.107) and 46 (alpha.108) came after it.
-	if len(older) != len(embedded)-3 || embedded[len(embedded)-1].version != postgresqlClustersMigrationVersion {
+	if len(older) != len(embedded)-(embedded[len(embedded)-1].version-managedSiteFilesMigrationVersion+1) {
 		t.Fatalf("the embedded migrations from %d are not exactly 44, 45 and 46", managedSiteFilesMigrationVersion)
 	}
 	err = database.verifyMigrationLedgerCoverage(t.Context(), older)

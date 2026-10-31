@@ -61,7 +61,7 @@ func TestOlderReleaseRefusesALedgerWithTheAuditDetailsEntry(t *testing.T) {
 		}
 	}
 	// Migration 46 (alpha.108) came after it.
-	if len(older) != len(embedded)-2 || embedded[len(embedded)-1].version != postgresqlClustersMigrationVersion {
+	if len(older) != len(embedded)-(embedded[len(embedded)-1].version-auditDetailsMigrationVersion+1) {
 		t.Fatalf("the embedded migrations from %d are not exactly 45 and 46", auditDetailsMigrationVersion)
 	}
 	err = database.verifyMigrationLedgerCoverage(t.Context(), older)

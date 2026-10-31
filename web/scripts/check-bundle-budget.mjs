@@ -139,6 +139,11 @@ const screenPartBudgets = {
   // new part, set with at least 25% headroom from its Turkish file: 7.52 /
   // 2.35 KiB.
   dnsPublication: kib(10.5, 4),
+  // alpha.114: a domain's protected folders and redirects (siteFeatures.), the
+  // refusal codes of those two screens and the account page's two-factor
+  // recovery codes (account.recovery.). A new part, set with at least 25%
+  // headroom from its Turkish file (about 8.7 / 2.7 KiB as source).
+  siteFeatures: kib(11.5, 4),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

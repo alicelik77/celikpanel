@@ -480,6 +480,37 @@ type ApplyVhostRequest struct {
 	// (the server names and ACMEChallengeNames) instead of reading the file.
 	// Set by certificate operations and the site-config read; nothing else.
 	ProbeValidation bool `json:"probe_validation,omitempty"`
+	// ProtectedDirs and Redirects (alpha.114, additive): the site's
+	// password-protected folders (with the bcrypt hashes of the people who
+	// may open them, never a password) and its free-form redirects. An Agent
+	// that predates them ignores both, and the Panel then sees the build
+	// mismatch gate refuse the request before this matters.
+	ProtectedDirs []SiteProtectedDirRequest `json:"protected_dirs,omitempty"`
+	Redirects     []SiteRedirectRequest     `json:"redirects,omitempty"`
+}
+
+// SiteProtectedDirRequest is one password-protected folder of a site.
+type SiteProtectedDirRequest struct {
+	ID    int                       `json:"id"`
+	Path  string                    `json:"path"`
+	Realm string                    `json:"realm"`
+	Users []SiteProtectedUserRecord `json:"users"`
+}
+
+// SiteProtectedUserRecord is one person who may open a protected folder.
+type SiteProtectedUserRecord struct {
+	Username     string `json:"username"`
+	PasswordHash string `json:"password_hash"`
+}
+
+// SiteRedirectRequest is one redirect of a site: Match is "exact" or
+// "prefix", Code one of 301, 302, 307, 308.
+type SiteRedirectRequest struct {
+	Match     string `json:"match"`
+	Source    string `json:"source"`
+	Target    string `json:"target"`
+	Code      int    `json:"code"`
+	KeepQuery bool   `json:"keep_query"`
 }
 
 type ApplyVhostResponse struct {

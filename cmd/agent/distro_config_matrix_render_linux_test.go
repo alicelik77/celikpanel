@@ -287,6 +287,59 @@ func matrixVhostShapes(h *matrixHost) []matrixVhost {
 			r.SSLCert, r.SSLKey, _ = transport.NativeSiteLineagePaths(fmt.Sprintf("celikpanel-site-%d-00112233445566778899aabb", r.DomainID))
 			r.ForceHTTPS = true
 		}},
+		// alpha.114: password-protected folders (auth_basic + the password
+		// file nginx reads at request time) and free-form redirects (exact
+		// and folder, every status code, query kept or not). The folder's
+		// own PHP/dotfile locations, the nested regular-expression
+		// locations, the `if ($request_uri ~ ...)` with a named capture and
+		// the `auth_basic_user_file` path must pass the release's own nginx.
+		{"site-php-protect-redirect-http", "PHP site, protected folders + exact/folder redirects, HTTP only", func(r *ApplyVhostRequest) {
+			r.ProtectedDirs = matrixProtectedDirs("/private", "/members/area")
+			r.Redirects = matrixRedirects()
+		}},
+		{"site-static-protect-redirect-ssl-force", "static site, protected folder + redirects, HTTPS + force-HTTPS (served in the HTTPS block only)", func(r *ApplyVhostRequest) {
+			ssl(r)
+			r.ForceHTTPS = true
+			r.ProjectType, r.PHPSocket = "static", ""
+			r.ProtectedDirs = matrixProtectedDirs("/docs")
+			r.Redirects = matrixRedirects()
+		}},
+		{"site-php-protect-redirect-ssl-www", "PHP site, protected folder + redirects with the www redirect, HTTPS without force", func(r *ApplyVhostRequest) {
+			ssl(r)
+			r.RedirectWWW = true
+			r.ServerNames = append(r.ServerNames, r.Domain)
+			r.ProtectedDirs = matrixProtectedDirs("/private")
+			r.Redirects = matrixRedirects()
+		}},
+		{"site-proxy-redirect-http", "reverse proxy with redirects, HTTP only", func(r *ApplyVhostRequest) {
+			r.ProjectType, r.ForwardTo, r.PHPSocket = "proxy", "http://127.0.0.1:3000", ""
+			r.Redirects = matrixRedirects()
+		}},
+	}
+}
+
+// matrixAuthHash has the shape of a bcrypt hash (60 characters); nginx -t does
+// not read the password file, so the matrix does not need a real hash.
+var matrixAuthHash = "$2y$10$" + strings.Repeat("a", 53)
+
+func matrixProtectedDirs(paths ...string) []transport.SiteProtectedDirRequest {
+	dirs := make([]transport.SiteProtectedDirRequest, 0, len(paths))
+	for index, path := range paths {
+		dirs = append(dirs, transport.SiteProtectedDirRequest{
+			ID: index + 1, Path: path, Realm: "Restricted area",
+			Users: []transport.SiteProtectedUserRecord{{Username: "matrix", PasswordHash: matrixAuthHash}},
+		})
+	}
+	return dirs
+}
+
+func matrixRedirects() []transport.SiteRedirectRequest {
+	return []transport.SiteRedirectRequest{
+		{Match: "exact", Source: "/", Target: "/home", Code: 302},
+		{Match: "exact", Source: "/old.html", Target: "https://example.org/new?x=1", Code: 301},
+		{Match: "exact", Source: "/search", Target: "/find", Code: 307, KeepQuery: true},
+		{Match: "prefix", Source: "/blog", Target: "https://news.example.org/archive", Code: 308, KeepQuery: true},
+		{Match: "prefix", Source: "/docs-old", Target: "/documentation", Code: 301},
 	}
 }
 
@@ -320,6 +373,15 @@ func addMatrixVhost(t *testing.T, h *matrixHost, c *configmatrix.Case, gen *serv
 	c.Symlink(strings.Replace(available, "/sites-available/", "/sites-enabled/", 1), available)
 	c.File(services.ACMEChallengeFilePath(data.Domain),
 		[]byte(services.SealManagedText(services.RenderACMEChallengeFile(data.Domain, data.ACMEChallengeRoot))), 0o644)
+	// The password files of the protected folders, as the Agent writes them
+	// (0640, the render header, bcrypt lines), next to the vhost that names them.
+	for _, file := range siteAuthFilesFor(&req) {
+		body, err := services.RenderSiteAuthFile(data.Domain, file)
+		if err != nil {
+			return fmt.Errorf("RenderSiteAuthFile: %w", err)
+		}
+		c.File(services.SiteAuthFilePath(data.Domain, file.ID), []byte(services.SealManagedText(body)), 0o640)
+	}
 	if data.SSLCert != "" {
 		cert, key := fixtureCert(t, data.Domain)
 		c.File(data.SSLCert, cert, 0o644)

@@ -51,6 +51,15 @@ const DomainCronManager = lazy(() => import('./DomainCronManager').then((module)
 const DomainLogsViewer = lazy(() => import('./DomainLogsViewer').then((module) => ({
     default: module.DomainLogsViewer,
 })));
+// A domain's protected folders and redirects (alpha.114), fetched when one of
+// the two sub-tabs is opened.
+// Alan adının korumalı klasörleri ve yönlendirmeleri; alt sekme açılınca getirilir.
+const DomainSiteProtect = lazy(() => import('./DomainSiteFeatures').then((module) => ({
+    default: module.DomainSiteProtect,
+})));
+const DomainSiteRedirects = lazy(() => import('./DomainSiteFeatures').then((module) => ({
+    default: module.DomainSiteRedirects,
+})));
 // The site's configuration file (D-031), for an administrator; fetched when
 // it is needed, like the panels above.
 // Sitenin yapılandırma dosyası; gerektiğinde getirilir.
@@ -343,6 +352,12 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
         ...(!isTeamMember && canView('files') ? [
             { id: 'general', labelKey: 'domain.sub.general', capabilities: ['files'], render: () => <DomainGeneralSettings domainId={domain.id} domainName={domain.domain_name} /> } satisfies SubDef,
             { id: 'type', labelKey: 'domain.sub.hostingType', capabilities: ['files'], render: () => <HostingTypePanel domainId={domain.id} domainName={domain.domain_name} /> } satisfies SubDef,
+        ] : []),
+        ...(canView('files') && (projectType === 'php' || projectType === 'static') ? [
+            { id: 'protect', labelKey: 'siteFeatures.protect.title', capabilities: ['files'], render: (readOnly) => <DomainSiteProtect domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef,
+        ] : []),
+        ...(canView('files') && projectType !== 'forwarding' ? [
+            { id: 'redirects', labelKey: 'siteFeatures.redirect.title', capabilities: ['files'], render: (readOnly) => <DomainSiteRedirects domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef,
         ] : []),
         ...(role === 'admin' ? [
             { id: 'config', labelKey: 'siteConfig.tab', capabilities: ['files'], render: () => <DomainSiteConfig domainId={domain.id} domainName={domain.domain_name} onReasonEnded={rereadList} /> } satisfies SubDef,

@@ -22,13 +22,23 @@ type teamMemberDomainRequirement struct {
 }
 
 var teamMemberDomainRequirements = map[teamMemberRouteKey]teamMemberDomainRequirement{
-	{kind: "files", method: http.MethodGet}:              {capability: core.TeamCapabilityFiles, mode: core.TeamPermissionView},
-	{kind: "files", method: http.MethodPost}:             {capability: core.TeamCapabilityFiles, mode: core.TeamPermissionManage},
-	{kind: "files", method: http.MethodOptions}:          {capability: core.TeamCapabilityFiles, mode: core.TeamPermissionView},
-	{kind: "files-download", method: http.MethodGet}:     {capability: core.TeamCapabilityFiles, mode: core.TeamPermissionView},
-	{kind: "databases", method: http.MethodGet}:          {capability: core.TeamCapabilityDatabases, mode: core.TeamPermissionView},
-	{kind: "databases", method: http.MethodPost}:         {capability: core.TeamCapabilityDatabases, mode: core.TeamPermissionManage},
-	{kind: "database-delete", method: http.MethodDelete}: {capability: core.TeamCapabilityDatabases, mode: core.TeamPermissionManage},
+	{kind: "files", method: http.MethodGet}:          {capability: core.TeamCapabilityFiles, mode: core.TeamPermissionView},
+	{kind: "files", method: http.MethodPost}:         {capability: core.TeamCapabilityFiles, mode: core.TeamPermissionManage},
+	{kind: "files", method: http.MethodOptions}:      {capability: core.TeamCapabilityFiles, mode: core.TeamPermissionView},
+	{kind: "files-download", method: http.MethodGet}: {capability: core.TeamCapabilityFiles, mode: core.TeamPermissionView},
+	// alpha.114: password-protected folders and redirects change what the
+	// site serves, so they follow the Files capability (the site's content).
+	{kind: "site-protect", method: http.MethodGet}:          {capability: core.TeamCapabilityFiles, mode: core.TeamPermissionView},
+	{kind: "site-protect", method: http.MethodPost}:         {capability: core.TeamCapabilityFiles, mode: core.TeamPermissionManage},
+	{kind: "site-protect", method: http.MethodDelete}:       {capability: core.TeamCapabilityFiles, mode: core.TeamPermissionManage},
+	{kind: "site-protect-users", method: http.MethodPost}:   {capability: core.TeamCapabilityFiles, mode: core.TeamPermissionManage},
+	{kind: "site-protect-users", method: http.MethodDelete}: {capability: core.TeamCapabilityFiles, mode: core.TeamPermissionManage},
+	{kind: "site-redirects", method: http.MethodGet}:        {capability: core.TeamCapabilityFiles, mode: core.TeamPermissionView},
+	{kind: "site-redirects", method: http.MethodPost}:       {capability: core.TeamCapabilityFiles, mode: core.TeamPermissionManage},
+	{kind: "site-redirects", method: http.MethodDelete}:     {capability: core.TeamCapabilityFiles, mode: core.TeamPermissionManage},
+	{kind: "databases", method: http.MethodGet}:             {capability: core.TeamCapabilityDatabases, mode: core.TeamPermissionView},
+	{kind: "databases", method: http.MethodPost}:            {capability: core.TeamCapabilityDatabases, mode: core.TeamPermissionManage},
+	{kind: "database-delete", method: http.MethodDelete}:    {capability: core.TeamCapabilityDatabases, mode: core.TeamPermissionManage},
 
 	{kind: "mail", method: http.MethodGet}:        {capability: core.TeamCapabilityMail, mode: core.TeamPermissionView},
 	{kind: "mail", method: http.MethodPost}:       {capability: core.TeamCapabilityMail, mode: core.TeamPermissionManage},

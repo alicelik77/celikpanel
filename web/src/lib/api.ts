@@ -429,11 +429,16 @@ class API {
         return parseCurrentUser(payload);
     }
 
-    async loginTOTP(pendingToken: string, code: string): Promise<CurrentUser> {
+    // recovery: `code` is one of the single-use recovery codes, sent in its
+    // own field, instead of an authenticator code (alpha.114).
+    // recovery: `code`, doğrulayıcı kodu yerine tek kullanımlık kurtarma kodlarından biridir.
+    async loginTOTP(pendingToken: string, code: string, recovery = false): Promise<CurrentUser> {
         const res = await fetch(`${API_BASE}/auth/login/totp`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pending_token: pendingToken, code }),
+            body: JSON.stringify(recovery
+                ? { pending_token: pendingToken, recovery_code: code }
+                : { pending_token: pendingToken, code }),
         });
         if (!res.ok) {
             if (res.status === 401) throw new Error('invalid_code');

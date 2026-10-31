@@ -159,6 +159,15 @@ func (p *Panel) buildVhostRequest(
 		req.HSTSMaxAge = hstsMaxAge
 	}
 
+	// alpha.114: every render of a site carries its protected folders and
+	// redirects, so none of the flows that re-render (SSL, startup, renewal)
+	// can drop them.
+	features, err := p.loadSiteFeatureState(ctx, siteID)
+	if err != nil {
+		return applyVhostRPCRequest{}, fmt.Errorf("read the site's protected folders and redirects: %w", err)
+	}
+	req.ProtectedDirs, req.Redirects = siteFeatureRequestFields(features)
+
 	if appPort != nil {
 		req.AppPort = *appPort
 	}

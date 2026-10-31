@@ -44,6 +44,7 @@ import type { SetupInspectionScreenKey } from './screens/setupInspection/en';
 import type { DnsOverviewScreenKey } from './screens/dnsOverview/en';
 import type { NginxDefaultHttpsScreenKey } from './screens/nginxDefaultHttps/en';
 import type { DnsPublicationScreenKey } from './screens/dnsPublication/en';
+import type { SiteFeaturesScreenKey } from './screens/siteFeatures/en';
 
 export const en = {
     // ---- alpha.108 tools ----
@@ -153,6 +154,10 @@ export const en = {
     'nav.addons': 'Store',
     'login.totpLabel': 'Authentication code',
     'login.totpHint': 'Enter the 6-digit code from your authenticator app.',
+    'login.useRecovery': 'Use a recovery code',
+    'login.useAuthenticator': 'Use the authenticator code',
+    'login.recoveryLabel': 'Recovery code',
+    'login.recoveryHint': 'Type one of your saved recovery codes. It works only once.',
     'login.invalidCode': 'Invalid code. Try again.',
     'login.verify': 'Verify',
     'panelUpdate.title': 'CelikPanel updates',
@@ -516,5 +521,6 @@ export type ScreenKey =
     | SetupInspectionScreenKey
     | DnsOverviewScreenKey
     | NginxDefaultHttpsScreenKey
-    | DnsPublicationScreenKey;
+    | DnsPublicationScreenKey
+    | SiteFeaturesScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

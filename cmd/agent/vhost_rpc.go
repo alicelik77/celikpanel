@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -64,7 +65,16 @@ func (a *Agent) ApplyVhost(req *ApplyVhostRequest, resp *ApplyVhostResponse) err
 		resp.Error = err.Error()
 		return nil
 	}
+	// alpha.114: the password files of the site's protected folders are
+	// written before the vhost that reads them, and put back when the vhost
+	// is not applied. A file the owner changed is kept and refuses the change.
+	authChange, err := services.PrepareSiteAuthFiles(data.Domain, siteAuthFilesFor(req))
+	if err != nil {
+		resp.Error = err.Error()
+		return nil
+	}
 	results, applyErr := applyManagedVhostsFor(a, []services.ManagedVhostItem{item})
+	finishSiteAuthChange(authChange, len(results) == 1 && applyErr == nil && siteFileOutcomeApplied(results[0].Outcome))
 	resp.Config = services.SealManagedText(rendered.Config)
 	if len(results) != 1 {
 		if applyErr == nil {
@@ -296,6 +306,7 @@ func (a *Agent) ApplyVhosts(
 	resp.Items = make([]transport.SiteFileBatchItem, len(req.Vhosts))
 	items := make([]services.ManagedVhostItem, 0, len(req.Vhosts))
 	itemIndex := make([]int, 0, len(req.Vhosts))
+	authChanges := make([]*services.SiteAuthChange, 0, len(req.Vhosts))
 	for index := range req.Vhosts {
 		request := &req.Vhosts[index]
 		resp.Items[index] = transport.SiteFileBatchItem{DomainID: request.DomainID, SiteID: request.SiteID}
@@ -306,6 +317,17 @@ func (a *Agent) ApplyVhosts(
 		var item services.ManagedVhostItem
 		if err == nil {
 			item, err = a.managedVhostItem(request, data, rendered.Config)
+		}
+		var authChange *services.SiteAuthChange
+		if err == nil {
+			authChange, err = services.PrepareSiteAuthFiles(data.Domain, siteAuthFilesFor(request))
+			var kept *services.SiteAuthFileKeptError
+			if errors.As(err, &kept) {
+				// A batch re-applies what is already decided (startup); a
+				// password file the owner changed keeps working as it is.
+				log.Printf("vhost batch: %v", err)
+				authChange, err = nil, nil
+			}
 		}
 		if err != nil {
 			resp.Items[index].Error = fmt.Sprintf("vhost batch item %d: %v", index, err)
@@ -319,11 +341,16 @@ func (a *Agent) ApplyVhosts(
 		}
 		items = append(items, item)
 		itemIndex = append(itemIndex, index)
+		authChanges = append(authChanges, authChange)
 	}
 
 	results, applyErr := applyManagedVhostsFor(a, items)
 	for position, result := range results {
 		resp.Items[itemIndex[position]].File = result
+		finishSiteAuthChange(authChanges[position], applyErr == nil && siteFileOutcomeApplied(result.Outcome))
+	}
+	for position := len(results); position < len(authChanges); position++ {
+		finishSiteAuthChange(authChanges[position], false)
 	}
 	counts := countSiteFileResults(resp.Items)
 	resp.Counts = &counts
@@ -610,6 +637,12 @@ func validatedVhostData(req *ApplyVhostRequest) (services.VhostData, error) {
 		RedirectWWW:        req.RedirectWWW,
 		ProjectType:        projectType,
 	}
+
+	protectedDirs, redirects, err := siteFeaturesFromRequest(req)
+	if err != nil {
+		return services.VhostData{}, err
+	}
+	data.ProtectedDirs, data.Redirects = protectedDirs, redirects
 
 	switch projectType {
 	case "php":

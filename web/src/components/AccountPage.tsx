@@ -138,11 +138,39 @@ const TWO_FACTOR_STATUS_URL = '/api/v1/auth/2fa/status';
 // without the field is not "off".
 // Oturum açan hesapta iki faktörlü girişin açık olup olmadığı. Alanı
 // taşımayan yanıt "kapalı" değildir.
-function decodeTwoFactorStatus(raw: unknown): boolean {
+interface TwoFactorStatus {
+    enabled: boolean;
+    // The recovery codes left and the size of the set (alpha.114); null when
+    // the server did not say (an older server, or 2FA is off).
+    recoveryRemaining: number | null;
+    recoveryTotal: number | null;
+}
+
+function decodeTwoFactorStatus(raw: unknown): TwoFactorStatus {
     if (!raw || typeof raw !== 'object' || typeof (raw as { enabled?: unknown }).enabled !== 'boolean') {
         throw new Error('shape');
     }
-    return (raw as { enabled: boolean }).enabled;
+    const body = raw as { enabled: boolean; recovery_remaining?: unknown; recovery_total?: unknown };
+    return {
+        enabled: body.enabled,
+        recoveryRemaining: typeof body.recovery_remaining === 'number' ? body.recovery_remaining : null,
+        recoveryTotal: typeof body.recovery_total === 'number' ? body.recovery_total : null,
+    };
+}
+
+// The recovery codes the server has just made. They are in the answer once;
+// they are read from nowhere else.
+// Sunucunun az önce ürettiği kurtarma kodları; yanıtta bir kez bulunur.
+async function readRecoveryCodes(res: Response): Promise<string[] | null> {
+    try {
+        const codes = ((await res.json()) as { recovery_codes?: unknown } | null)?.recovery_codes;
+        if (!Array.isArray(codes) || codes.length === 0 || !codes.every((code) => typeof code === 'string')) return null;
+        return codes as string[];
+    } catch (error) {
+        // The answer could not be read as the codes; the caller says so.
+        console.warn('recovery codes answer could not be read', error);
+        return null;
+    }
 }
 
 function TwoFactorPanel() {
@@ -180,6 +208,11 @@ function TwoFactorPanel() {
     const [disableCode, setDisableCode] = useState('');
     const [busy, setBusy] = useState(false);
     const [copied, setCopied] = useState(false);
+    // The codes just made, shown until the person says they saved them.
+    const [newCodes, setNewCodes] = useState<string[] | null>(null);
+    const [regenPw, setRegenPw] = useState('');
+    const [regenCode, setRegenCode] = useState('');
+    const [codesCopied, setCodesCopied] = useState(false);
 
     // A change whose answer did not arrive is not known to have failed: the
     // state is read again instead of being assumed.
@@ -219,6 +252,9 @@ function TwoFactorPanel() {
             });
             if (!r.ok) throw new Error((await readApiError(r)).message);
             showToast('success', t('settings.2fa.enabled'));
+            const made = await readRecoveryCodes(r);
+            if (made) setNewCodes(made);
+            else showToast('warning', t('account.recovery.unreadable'));
             setSetup(null);
             setSetupPw('');
             setCode('');
@@ -240,6 +276,7 @@ function TwoFactorPanel() {
             });
             if (!r.ok) throw new Error();
             showToast('success', t('settings.2fa.disabled'));
+            setNewCodes(null);
             setDisablePw('');
             setDisableCode('');
             await status.retry();
@@ -248,6 +285,51 @@ function TwoFactorPanel() {
         } finally {
             setBusy(false);
         }
+    };
+
+    const regenerate = async () => {
+        setBusy(true);
+        try {
+            const r = await fetch('/api/v1/auth/2fa/recovery/regenerate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: regenPw, code: regenCode.trim() }),
+            });
+            if (!r.ok) throw new Error((await readApiError(r)).message);
+            const made = await readRecoveryCodes(r);
+            if (made) {
+                setNewCodes(made);
+                showToast('success', t('account.recovery.done'));
+            } else {
+                showToast('warning', t('account.recovery.unreadable'));
+            }
+            setRegenPw('');
+            setRegenCode('');
+            await status.retry();
+        } catch (e) {
+            if (!lostAnswer(e)) showToast('error', (e as Error).message || t('settings.2fa.reauthFailed'));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const copyCodes = () => {
+        if (!newCodes) return;
+        navigator.clipboard?.writeText(newCodes.join('\n')).then(() => {
+            setCodesCopied(true);
+            setTimeout(() => setCodesCopied(false), 1200);
+        });
+    };
+
+    const downloadCodes = () => {
+        if (!newCodes) return;
+        const text = `${t('account.recovery.fileHeader')}\n\n${newCodes.join('\n')}\n`;
+        const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'celikpanel-recovery-codes.txt';
+        link.click();
+        URL.revokeObjectURL(url);
     };
 
     const copySecret = () => {
@@ -259,7 +341,9 @@ function TwoFactorPanel() {
     };
 
     // "On" and "off" are drawn only for an answer the server gave.
-    const known = status.remote.state === 'known' ? status.remote.value : null;
+    const known = status.remote.state === 'known' ? status.remote.value.enabled : null;
+    const remaining = status.remote.state === 'known' ? status.remote.value.recoveryRemaining : null;
+    const total = status.remote.state === 'known' ? status.remote.value.recoveryTotal : null;
     // A change is offered only on the state as it is now, not while it is
     // being read again and not on an earlier answer.
     const locked = busy || status.reading || status.remote.state !== 'known';
@@ -295,8 +379,64 @@ function TwoFactorPanel() {
                     onRetry={() => void status.retry()}
                     busy={status.reading}
                 >
-                    {({ value: enabled }) => (enabled ? (
+                    {({ value: { enabled } }) => (enabled ? (
                         <div className="space-y-3">
+                            {newCodes && (
+                                <div className="space-y-3 rounded-lg border border-warning/40 bg-warning/10 p-3" role="region" aria-label={t('account.recovery.shownTitle')}>
+                                    <p className="text-sm font-semibold text-fg">{t('account.recovery.shownTitle')}</p>
+                                    <p className="text-sm text-fg-muted">{t('account.recovery.shownOnce')}</p>
+                                    <ul className="grid grid-cols-1 gap-1 font-mono text-sm text-fg sm:grid-cols-2">
+                                        {newCodes.map((code) => <li key={code}>{code}</li>)}
+                                    </ul>
+                                    <div className="flex flex-wrap gap-2">
+                                        <Button variant="secondary" icon={codesCopied ? Check : Copy} onClick={copyCodes}>{t('account.recovery.copyAll')}</Button>
+                                        <Button variant="secondary" onClick={downloadCodes}>{t('account.recovery.download')}</Button>
+                                        <Button variant="primary" icon={Check} onClick={() => setNewCodes(null)}>{t('account.recovery.saved')}</Button>
+                                    </div>
+                                </div>
+                            )}
+                            <div className="space-y-2 border-b border-border pb-4">
+                                <h3 className="text-sm font-semibold text-fg">{t('account.recovery.title')}</h3>
+                                <p className="text-sm text-fg-muted">{t('account.recovery.desc')}</p>
+                                {remaining === null || total === null ? (
+                                    <p className="text-sm text-fg-subtle">{t('account.recovery.unknown')}</p>
+                                ) : (
+                                    <p className={`text-sm ${remaining <= 2 ? 'font-medium text-warning' : 'text-fg'}`}>
+                                        {remaining === 0
+                                            ? t('account.recovery.none')
+                                            : remaining <= 2
+                                                ? t('account.recovery.low', { remaining })
+                                                : t('account.recovery.remaining', { remaining, total })}
+                                    </p>
+                                )}
+                                <p className="text-sm text-fg-muted">{t('account.recovery.regenHint')}</p>
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    <label className="space-y-1 text-sm font-medium text-fg">
+                                        <span>{t('login.password')}</span>
+                                        <input
+                                            type="password"
+                                            value={regenPw}
+                                            onChange={(e) => setRegenPw(e.target.value)}
+                                            autoComplete="current-password"
+                                            className={inputClass}
+                                        />
+                                    </label>
+                                    <label className="space-y-1 text-sm font-medium text-fg">
+                                        <span>{t('settings.2fa.enterCode')}</span>
+                                        <input
+                                            value={regenCode}
+                                            onChange={(e) => setRegenCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                            inputMode="numeric"
+                                            autoComplete="one-time-code"
+                                            placeholder="000000"
+                                            className={`${inputClass} font-mono tracking-widest`}
+                                        />
+                                    </label>
+                                </div>
+                                <Button variant="secondary" icon={KeyRound} loading={busy} disabled={locked || !regenPw || regenCode.length < 6} onClick={regenerate}>
+                                    {busy ? t('account.recovery.working') : t('account.recovery.regenerate')}
+                                </Button>
+                            </div>
                             <p className="text-sm text-fg-muted">{t('settings.2fa.disableHint')}</p>
                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                 <label className="space-y-1 text-sm font-medium text-fg">

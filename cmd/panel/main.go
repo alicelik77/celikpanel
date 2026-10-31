@@ -349,6 +349,14 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "site-config-recreate", []string{http.MethodPost}
 	case "site-config/apply":
 		match.kind, match.methods = "site-config-apply", []string{http.MethodPost}
+	case "protected-dirs":
+		// alpha.114: password-protected folders of the site.
+		match.kind, match.methods = "site-protect", []string{http.MethodGet, http.MethodPost, http.MethodDelete}
+	case "protected-dirs/users":
+		match.kind, match.methods = "site-protect-users", []string{http.MethodPost, http.MethodDelete}
+	case "redirects":
+		// alpha.114: free-form redirects of the site.
+		match.kind, match.methods = "site-redirects", []string{http.MethodGet, http.MethodPost, http.MethodDelete}
 	case "dns/zone":
 		match.kind, match.methods = "dns", getPost
 	case "dns/records":
@@ -450,6 +458,8 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainConnection(w, r, match.domainID)
 	case "dns":
 		p.handleDomainDNS(w, r)
+	case "site-protect", "site-protect-users", "site-redirects":
+		p.handleDomainSiteFeatures(w, r, match.domainID, match.kind)
 	case "site-config":
 		p.handleDomainSiteConfig(w, r, match.domainID, "")
 	case "site-config-keep":
@@ -1343,6 +1353,7 @@ func main() {
 	http.HandleFunc("/api/v1/auth/2fa/setup", panel.handle2FA)
 	http.HandleFunc("/api/v1/auth/2fa/enable", panel.handle2FA)
 	http.HandleFunc("/api/v1/auth/2fa/disable", panel.handle2FA)
+	http.HandleFunc("/api/v1/auth/2fa/recovery/regenerate", panel.handle2FA)
 	http.HandleFunc("/api/v1/auth/unimpersonate", panel.handleUnimpersonate)
 
 	// Managed Services

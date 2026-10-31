@@ -10,7 +10,80 @@
 # satırlarını koruyun: o dizin CelikPanel'indir (sertifika doğrulaması).
 # Site ID: {{.SiteID}} · Project type: {{.ProjectType}}
 
-{{- define "locations"}}
+{{- /* Password-protected folders and free-form redirects of the site
+    (alpha.114). Empty, and writing nothing, for a site that has neither, so
+    such a site's file is exactly what it was. Every value was validated by
+    PrepareSiteFeatures (internal/services/site_features.go); none is escaped
+    here because none can carry nginx syntax.
+    A protected folder is a `^~` location: it ends the search among the regular
+    expression locations, so the folder's own PHP/dotfile rules are repeated
+    inside it, under the same sign-in. The folder without its trailing slash is
+    sent to the slash first, so no address of the folder escapes the sign-in.
+    A folder redirect carries the rest of the address over from
+    $request_uri (the raw, still percent-encoded address), never from $uri:
+    $uri is decoded and would let a CR/LF into the Location header.
+    Parolalı klasörler ve serbest yönlendirmeler (alpha.114). Hiçbiri yoksa
+    hiçbir şey yazılmaz. Değerlerin hepsi doğrulanmıştır; kaçışlama yoktur çünkü
+    hiçbiri nginx sözdizimi taşıyamaz. Klasör yönlendirmesi adresin kalanını
+    $uri'den değil ham $request_uri'den taşır: $uri çözülmüştür ve Location
+    başlığına CR/LF sokabilir. */}}
+{{- define "site-features"}}
+{{- range .Redirects}}
+
+    # Redirect / Yönlendirme: {{.Source}}
+    location = {{.Source}} {
+        return {{.Code}} {{.Target}}{{if .KeepQuery}}$is_args$args{{end}};
+    }
+{{- if eq .Match "prefix"}}
+    location ^~ {{.Source}}/ {
+        if ($request_uri ~ ^{{.SourceRegex}}/(?<celikpanel_rest>{{if .KeepQuery}}.*{{else}}[^?]*{{end}})$) {
+            return {{.Code}} {{.TargetBase}}/$celikpanel_rest;
+        }
+        return {{.Code}} {{.Target}}{{if .KeepQuery}}$is_args$args{{end}};
+    }
+{{- end}}
+{{- end}}
+{{- range .ProtectedDirs}}
+
+    # Password-protected folder / Parolalı klasör: {{.Path}}
+    location = {{.Path}} {
+        return 301 {{.Path}}/$is_args$args;
+    }
+    location ^~ {{.Path}}/ {
+        auth_basic "{{.Realm}}";
+        auth_basic_user_file {{.AuthFile}};
+{{- if eq $.ProjectType "php"}}
+        try_files $uri $uri/ /index.php?$query_string;
+
+        location ~ \.php$ {
+            fastcgi_split_path_info ^(.+?\.php)(/.*)$;
+            try_files $fastcgi_script_name =404;
+            set $path_info $fastcgi_path_info;
+            fastcgi_param PATH_INFO $path_info;
+            fastcgi_index index.php;
+            include fastcgi.conf;
+            fastcgi_pass unix:{{$.PHPSocket}};
+            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+            include fastcgi_params;
+        }
+{{- else}}
+        try_files $uri $uri/ =404;
+
+        location ~ \.(php|phtml|phps|php[0-9])$ {
+            deny all;
+        }
+{{- end}}
+
+        location ~ /\.(?!well-known).* {
+            deny all;
+        }
+    }
+{{- end}}
+{{- if or .Redirects .ProtectedDirs}}
+{{end}}
+{{- end}}
+
+{{- define "locations"}}{{template "site-features" .}}
 {{- if eq .ProjectType "php"}}
     root {{.DocumentRoot}};
     index index.php index.html index.htm;
