@@ -185,3 +185,32 @@ func TestMailAutoresponderRouteIsAMailSubroute(t *testing.T) {
 		t.Fatal("DELETE is allowed")
 	}
 }
+
+// E4 (alpha.114 lab): when Dovecot's LMTP refuses the mailbox, the Agent
+// takes an earlier reply off the server; the stored copy follows.
+func TestMailAutoresponderLMTPRefusalTurnsTheStoredReplyOff(t *testing.T) {
+	agent := &autoresponderPanelAgent{answer: transport.MailAutoresponderResponse{Applied: true, Script: transport.AutoresponderScriptManaged, SieveAvailable: true}}
+	panel, domainID := newAutoresponderPanel(t, agent)
+	if response := putAutoresponder(panel, domainID, `{"id":6201,"enabled":true,"subject":"Away","message":"x"}`); response.Code != http.StatusOK {
+		t.Fatalf("first save: %d %s", response.Code, response.Body.String())
+	}
+	agent.mu.Lock()
+	agent.answer = transport.MailAutoresponderResponse{
+		Refusal: transport.AutoresponderRefusedLMTPRejected, Detail: "550 5.1.1 User doesn't exist", Script: transport.AutoresponderScriptNone,
+	}
+	agent.mu.Unlock()
+	response := putAutoresponder(panel, domainID, `{"id":6201,"enabled":true,"subject":"Away","message":"y"}`)
+	var body apiErrorBody
+	if response.Code != http.StatusConflict || json.Unmarshal(response.Body.Bytes(), &body) != nil ||
+		body.Reason != transport.AutoresponderRefusedLMTPRejected {
+		t.Fatalf("refusal: %d %s", response.Code, response.Body.String())
+	}
+	var enabled int
+	var message string
+	if err := panel.db.GetDB().QueryRow(`SELECT enabled, message FROM email_autoresponders WHERE account_id = 6201`).Scan(&enabled, &message); err != nil {
+		t.Fatal(err)
+	}
+	if enabled != 0 || message != "x" {
+		t.Fatalf("stored enabled=%d message=%q", enabled, message)
+	}
+}
