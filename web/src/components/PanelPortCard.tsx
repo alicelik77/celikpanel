@@ -6,6 +6,7 @@ import { Button, RemoteGate, inputClass } from './ui';
 import { readApiError } from '../lib/apiError';
 import { useRemote } from '../lib/remote';
 import { decodePanelPortView, panelAddressOn, PANEL_PORT_URL } from '../lib/panelPort';
+import { decodePanelCertificate, panelCertificateName, PANEL_CERTIFICATE_URL } from '../lib/panelCertificate';
 
 // The panel's own port (alpha.114, owner decision 2026-10-31). New
 // installations use 1923; one made before keeps 2083 until the owner changes
@@ -22,6 +23,10 @@ const PANEL_PORT_POLL_MS = 5000;
 export function PanelPortCard() {
     const { t } = useI18n();
     const { remote, reading, retry } = useRemote(PANEL_PORT_URL, decodePanelPortView);
+    // The trial link uses the panel's trusted name when it has one (an IP address gives a certificate warning).
+    const certificate = useRemote(PANEL_CERTIFICATE_URL, decodePanelCertificate);
+    const known = certificate.remote.state === 'known' ? certificate.remote.value : certificate.remote.state === 'unknown' ? certificate.remote.previous?.value : undefined;
+    const trustedName = panelCertificateName(known);
     const [port, setPort] = useState('');
     const [busy, setBusy] = useState(false);
     const [refusal, setRefusal] = useState<{ code: string; message: string } | null>(null);
@@ -80,7 +85,7 @@ export function PanelPortCard() {
                 {({ value: view }) => {
                     const change = view.change;
                     const vars = change
-                        ? { from: change.from_port, to: change.to_port, port: view.port, minutes: Math.ceil((change.seconds_left ?? 0) / 60), address: panelAddressOn(change.to_port) }
+                        ? { from: change.from_port, to: change.to_port, port: view.port, minutes: Math.ceil((change.seconds_left ?? 0) / 60), address: panelAddressOn(change.to_port, window.location, trustedName) }
                         : { port: view.port, from: view.port, to: Number(port) || 0, minutes: 10, address: '' };
                     return (
                         <div className="space-y-4 text-sm">

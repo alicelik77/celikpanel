@@ -63,7 +63,7 @@ export function SetupFirstSite({ domain }: { domain: string }) {
             <Button type="button" variant="secondary" onClick={() => choose('later')}>{t('dnsov.site.later')}</Button>
         </div>
         {open && <Suspense fallback={null}>
-            <AddDomainModal initialDomain={domain} onClose={() => setOpen(false)} onSuccess={(outcome) => { setOpen(false); setKept(outcome?.siteRecords ?? null); choose('added'); }} />
+            <AddDomainModal initialDomain={domain} sslByDefault onClose={() => setOpen(false)} onSuccess={(outcome) => { setOpen(false); setKept(outcome?.siteRecords ?? null); choose('added'); }} />
         </Suspense>}
     </section>;
 }

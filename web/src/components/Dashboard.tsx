@@ -368,7 +368,8 @@ function AdminDashboard() {
     // Frankfurt screen, 2026-10-17: "Domains 0" beside a listed zone).
     // Altyapı DNS bölgesi Alan adları'nın yalnız DNS kaydıdır; sayı da onu okur.
     const infrastructureRead = useRemote(INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones);
-    const standaloneZones = (lastKnown(infrastructureRead.remote)?.value ?? []).filter((zone) => zone.domainId === null).length;
+    const standaloneZoneNames = (lastKnown(infrastructureRead.remote)?.value ?? []).filter((zone) => zone.domainId === null).map((zone) => zone.zone);
+    const standaloneZones = standaloneZoneNames.length;
     const usersRead = useRemote(USERS_URL, decodeUsers);
     const extrasRead = useRemote('/api/v1/dashboard', decodeExtras);
     const domains = lastKnown(domainList.remote)?.value ?? NO_DOMAINS;
@@ -906,7 +907,7 @@ function AdminDashboard() {
             key: 'no-av',
             icon: Shield,
             text: t('dashboard.avItem'),
-            action: t('dashboard.installService'),
+            action: t('dashboard.openComponents'),
             to: '/services',
         });
     }
@@ -915,7 +916,7 @@ function AdminDashboard() {
             key: 'no-spam',
             icon: Mail,
             text: t('dashboard.spamItem'),
-            action: t('dashboard.installService'),
+            action: t('dashboard.openComponents'),
             to: '/services',
         });
     }
@@ -1309,6 +1310,22 @@ function AdminDashboard() {
 
             <LicenseNotice />
             <ServerSetupDashboardNotice />
+
+            {/* A domain whose DNS is here but which has no website: say so once, with the one
+                button that adds it. The card leaves by itself when the website exists (the
+                zone list is read again after Add domain).
+                DNS'i burada olup web sitesi olmayan alan adi: bir kez soylenir, tek dugme. */}
+            {standaloneZoneNames.map((zone) => (
+                <section key={zone} aria-label={t('dashboard.noWebsite.title', { domain: zone })} data-dashboard-no-website={zone}
+                    className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border border-border-strong bg-surface p-4">
+                    <Globe className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+                    <div className="min-w-0 flex-1">
+                        <h2 className="break-words font-semibold">{t('dashboard.noWebsite.title', { domain: zone })}</h2>
+                        <p className="mt-1 text-sm text-fg-muted">{t('dashboard.noWebsite.help', { domain: zone })}</p>
+                    </div>
+                    <Button variant="primary" icon={Plus} onClick={() => navigate(`/domains?host=${encodeURIComponent(zone)}`)}>{t('dashboard.noWebsite.action')}</Button>
+                </section>
+            ))}
 
             {/* Hosting + activity / Barındırma + etkinlik */}
             {hasContent && (

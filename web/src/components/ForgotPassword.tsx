@@ -28,6 +28,33 @@ type MailState = { kind: 'checking' } | { kind: 'known'; status: AccountMailStat
 
 const box = 'rounded-lg border px-3 py-2.5 text-sm';
 
+// The command that sets a new administrator password on the server itself
+// (`panel --create-admin`, run as the service user on its data directory, as
+// install.sh runs it). It asks for the user name and the new password; an
+// existing account is kept and only its password is replaced.
+// Sunucuda yeni yonetici parolasi belirleyen komut; var olan hesap kalir.
+export const OWNER_RESET_COMMAND = 'sudo -u celikpanel env CELIKPANEL_DATA_DIR=/var/lib/celikpanel /opt/celikpanel/bin/panel --create-admin';
+
+function OwnerCommand() {
+    const { t } = useI18n();
+    const [copied, setCopied] = useState(false);
+    const copy = () => {
+        try {
+            void navigator.clipboard?.writeText(OWNER_RESET_COMMAND).then(() => setCopied(true), () => setCopied(false));
+        } catch {
+            setCopied(false);
+        }
+    };
+    return (
+        <div className="flex flex-wrap items-start gap-2" data-owner-reset-command="">
+            <code className="min-w-0 flex-1 select-all break-all rounded-lg border border-border bg-surface-2 px-3 py-2 font-mono text-xs text-fg">{OWNER_RESET_COMMAND}</code>
+            <button type="button" onClick={copy} className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-xs font-medium text-fg hover:bg-surface-2">
+                {t(copied ? 'acct.forgot.copied' : 'acct.forgot.copy')}
+            </button>
+        </div>
+    );
+}
+
 export function ForgotPassword({ onBack }: { onBack: () => void }) {
     const { t, locale, screensReady } = useI18n();
     const status = useRemote(RECOVERY_MAIL_STATUS_URL, decodeAccountMailStatus);
@@ -145,6 +172,7 @@ export function ForgotPassword({ onBack }: { onBack: () => void }) {
                 </form>
             )}
             <p className="text-xs text-fg-subtle">{t('acct.forgot.owner')}</p>
+            <OwnerCommand />
             {back}
         </div>
     );

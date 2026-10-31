@@ -128,7 +128,7 @@ export function Domains() {
     const { t } = useI18n();
     const { role } = useAuth();
     const isTeamMember = role === 'additional_user';
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     // Opened from the Dashboard's mail card with several domains: mailboxes
     // live on each domain's page.
     const forMail = searchParams.get('for') === 'mail';
@@ -138,6 +138,8 @@ export function Domains() {
     // Names the new site found pointing elsewhere, as the create answered.
     const [kept, setKept] = useState<{ domain: string; outcome: SiteRecordsOutcome } | null>(null);
     const openAdd = (name = '') => { setAddName(name); setShowAddModal(true); };
+    // A name filled in by a DNS-only zone's "Host a website" is a name whose DNS is served here.
+    const addServedHere = addName !== '';
     const [query, setQuery] = useState('');
     const [selected, setSelected] = useState<number[]>([]);
     const [pendingDeletions, setPendingDeletions] = useState<PendingDeletion[]>([]);
@@ -188,6 +190,21 @@ export function Domains() {
     const capabilities = useHostingCapabilities({ enabled: !isTeamMember });
     const dns = gateOn(capabilities.remote, (value) => dnsBlocker(value, 'website'));
     const dnsBlocked = !isTeamMember && dns.state === 'blocked' ? dns.reason : null;
+    // The Dashboard's "Host a website" card arrives as /domains?host=<name>: the
+    // same dialog as the row button opens once, with the name filled in. The
+    // address is cleaned so a reload does not open it again.
+    // Panonun "Web sitesi barindir" karti /domains?host=<ad> ile gelir.
+    const hostParam = searchParams.get('host');
+    const hostHandled = useRef(false);
+    useEffect(() => {
+        if (!hostParam || hostHandled.current || isTeamMember) return;
+        hostHandled.current = true;
+        openAdd(hostParam);
+        const next = new URLSearchParams(searchParams);
+        next.delete('host');
+        setSearchParams(next, { replace: true });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [hostParam, isTeamMember]);
     // Whether an engine is missing or only its identity is, the DNS
     // infrastructure section is where it gets fixed; the Services page can no
     // longer install a DNS engine (DNS_ENGINE_WORKFLOW_REQUIRED), so a fresh
@@ -675,6 +692,7 @@ export function Domains() {
             {!isTeamMember && showAddModal && (
                 <AddDomainModal
                     initialDomain={addName}
+                    sslByDefault={addServedHere}
                     onClose={() => setShowAddModal(false)}
                     onSuccess={(outcome) => {
                         setShowAddModal(false);
@@ -738,6 +756,14 @@ function fmtBytes(bytes: number = 0): string {
 }
 
 
+// The title of a subscription card. The workspace the Panel made for an
+// administrator is stored under an internal name; the administrator sees it as
+// their own sites, never as "Admin Subscription".
+// Yoneticinin kendi calisma alani ic bir adla saklanir; "Admin Subscription" gorunmez.
+export function subscriptionTitle(s: { name: string; owner: string }, viewer: string | undefined, t: (key: TranslationKey) => string): string {
+    return s.name === 'Admin Subscription' && (!viewer || s.owner === viewer) ? t('quota.ownWorkspace') : s.name;
+}
+
 // A compact usage strip: the caller's subscription(s) with measured disk
 // against the plan limit and resource counts. Real numbers straight from
 // the quota system that gates creation — what you see is what's enforced.
@@ -746,6 +772,8 @@ function fmtBytes(bytes: number = 0): string {
 // gelen gerçek sayılar — gördüğün, uygulanandır.
 function SubscriptionUsage() {
     const { t } = useI18n();
+    const { user } = useAuth();
+    const viewer = user?.username;
     const usage = useRemote(SUBSCRIPTIONS_URL, decodeSubscriptions);
 
     // The strip exists only for subscriptions that carry measured usage, so
@@ -780,8 +808,9 @@ function SubscriptionUsage() {
                     <div key={s.id} className="rounded-xl border border-border bg-surface p-4">
                         <div className="mb-2 flex items-center gap-2">
                             <HardDrive className="h-4 w-4 text-primary" />
-                            <span className="truncate text-base font-semibold text-fg">{s.name}</span>
+                            <span className="truncate text-base font-semibold text-fg">{subscriptionTitle(s, viewer, t)}</span>
                         </div>
+                        {s.owner && s.owner !== viewer && <p className="-mt-1 mb-2 text-xs text-fg-subtle" data-subscription-owner="">{t('quota.accountOf', { owner: s.owner })}</p>}
                         {unlimited ? (
                             <p className="text-sm text-fg-muted">
                                 {fmtBytes(u.disk_used_bytes)} · {t('quota.unlimited')}
@@ -796,9 +825,9 @@ function SubscriptionUsage() {
                         )}
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-fg-subtle">
                             {/* A limit of 0 is unlimited (alpha.114), written ∞. */}
-                            <span>{t('quota.domains', { n: u.domains, max: u.domains_limit > 0 ? u.domains_limit : '∞' })}</span>
-                            <span>{t('quota.databases', { n: u.databases, max: u.databases_limit > 0 ? u.databases_limit : '∞' })}</span>
-                            <span>{t('quota.mail', { n: u.mail_accounts, max: u.mail_limit > 0 ? u.mail_limit : '∞' })}</span>
+                            <span>{u.domains_limit > 0 ? t('quota.domains', { n: u.domains, max: u.domains_limit }) : t('quota.domainsFree', { n: u.domains })}</span>
+                            <span>{u.databases_limit > 0 ? t('quota.databases', { n: u.databases, max: u.databases_limit }) : t('quota.databasesFree', { n: u.databases })}</span>
+                            <span>{u.mail_limit > 0 ? t('quota.mail', { n: u.mail_accounts, max: u.mail_limit }) : t('quota.mailFree', { n: u.mail_accounts })}</span>
                         </div>
                     </div>
                 );

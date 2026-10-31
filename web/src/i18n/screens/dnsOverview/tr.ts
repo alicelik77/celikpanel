@@ -263,11 +263,11 @@ export const trDnsOverviewScreens: Record<DnsOverviewScreenKey, string> = {
     "dnsov.advanced": "Gelişmiş",
     "dnsov.advancedHelp": "DNS yazılımı, eşleşme ve teknik ayarlar; günlük kullanımda gerekmez.",
 
-    "dnsov.site.title": "İlk sitenizi ekleyin",
+    "dnsov.site.title": "Henüz web sitesi yok",
     "dnsov.site.optional": "isteğe bağlı",
     "dnsov.site.why": "{domain} ve www.{domain} bu sunucuda henüz bir site göstermiyor.",
     "dnsov.site.help": "Form ad dolu olarak açılır; orada onaylamadan hiçbir şey oluşturulmaz.",
-    "dnsov.site.add": "Siteyi ekle",
+    "dnsov.site.add": "Web sitesi barındır",
     "dnsov.site.later": "Sonra",
     "dnsov.site.added": "Site eklendi. Dosyalarınızı yükleyin: Alan adları → site → Dosyalar.",
     "dnsov.site.skipped": "Siteleri istediğiniz zaman Alan adları’ndan ekleyebilirsiniz.",

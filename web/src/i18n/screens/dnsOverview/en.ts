@@ -262,11 +262,11 @@ export const enDnsOverviewScreens = {
     "dnsov.advanced": "Advanced",
     "dnsov.advancedHelp": "DNS software, pairing and technical settings; not needed day to day.",
 
-    "dnsov.site.title": "Add your first site",
+    "dnsov.site.title": "No website yet",
     "dnsov.site.optional": "optional",
     "dnsov.site.why": "{domain} and www.{domain} do not show a site on this server yet.",
     "dnsov.site.help": "The form opens with the name filled in; nothing is created until you confirm there.",
-    "dnsov.site.add": "Add the site",
+    "dnsov.site.add": "Host a website",
     "dnsov.site.later": "Later",
     "dnsov.site.added": "Site added. Upload your files: Domains → the site → Files.",
     "dnsov.site.skipped": "You can add sites any time under Domains.",

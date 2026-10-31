@@ -13,6 +13,8 @@ export const trSetupOwnerScreens: Record<SetupOwnerScreenKey, string> = {
     'setup.v7.review.siteHere': '{domain} ve www.{domain}: kurulum son adımında web sitesini bu sunucuda ücretsiz sertifikayla oluşturur. Alan adı ad sunucularınızı gösterdiğinde açılır.',
     'setup.v7.review.siteElsewhere': '{domain} ve www.{domain} bu sunucudan açılmaz: burada yalnız DNS kayıtları tutulur ve onlar için adres içe aktarmadınız. Web sitesi başka yerde çalışıyorsa adresini Mevcut kayıtlar adımında içe aktarın; yoksa ad sunucusu değişikliği yayılınca site açılmaz.',
     'setup.kind.main_site': '{target} web sitesini ve sertifikasını oluştur',
+    'setup.kind.infrastructure_dns': 'Sunucu adreslerinin DNS kayıtlarını hazırla: {target}',
+    'setup.kind.access_dns': 'Sertifikadan önce genel DNS’i doğrula: {target}',
 
     // ---- hazır, kalan işlerle ----
     'setup.v7.ready.tasksOne': '{server} hazır; size 1 iş kaldı',

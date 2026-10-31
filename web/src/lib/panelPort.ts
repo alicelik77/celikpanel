@@ -44,7 +44,12 @@ export function decodePanelPortView(raw: unknown): PanelPortView {
 }
 
 /** The address of this panel on another port, as the browser reaches it now. */
-export function panelAddressOn(port: number, location: Pick<Location, 'protocol' | 'hostname'> = window.location): string {
-    const host = location.hostname.includes(':') ? `[${location.hostname}]` : location.hostname;
+export function panelAddressOn(port: number, location: Pick<Location, 'protocol' | 'hostname'> = window.location, trustedName = ''): string {
+    // Opened by its IP address, a panel that has a trusted name is reached by
+    // that name on the new port: the IP address gives a certificate warning.
+    // IP ile açılan panel, güvenilir adı varsa yeni bağlantı noktasında o adla açılır.
+    const byAddress = location.hostname.includes(':') || /^[\d.]+$/.test(location.hostname);
+    const name = byAddress && trustedName ? trustedName : location.hostname;
+    const host = name.includes(':') ? `[${name}]` : name;
     return `${location.protocol}//${host}:${port}/settings?section=panel`;
 }

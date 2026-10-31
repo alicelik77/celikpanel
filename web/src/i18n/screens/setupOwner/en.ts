@@ -21,6 +21,9 @@ export const enSetupOwnerScreens = {
     'setup.v7.review.siteHere': '{domain} and www.{domain}: setup creates the website on this server, with a free certificate, as its last step. It opens once the domain points to your nameservers.',
     'setup.v7.review.siteElsewhere': '{domain} and www.{domain} will not open from this server: only their DNS records are kept here, and you imported no address for them. If the website runs elsewhere, import its address in Existing records, or the site stops opening once the nameserver change spreads.',
     'setup.kind.main_site': 'Create the website {target} and its certificate',
+    // The mail dialog on Components lists every step kind a plan can hold; these two were only in the setup page's own copy.
+    'setup.kind.infrastructure_dns': 'Prepare server address DNS records: {target}',
+    'setup.kind.access_dns': 'Verify public DNS before certificate issuance: {target}',
 
     // ---- ready, with what is left ----
     'setup.v7.ready.tasksOne': '{server} is ready, with 1 thing left for you',

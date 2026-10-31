@@ -110,6 +110,7 @@ export function InfrastructureZonePage({ zone }: { zone: string }) {
                 <Suspense fallback={null}>
                     <AddDomainModal
                         initialDomain={zone}
+                        sslByDefault
                         onClose={() => setAdding(false)}
                         onSuccess={(outcome) => {
                             setAdding(false);

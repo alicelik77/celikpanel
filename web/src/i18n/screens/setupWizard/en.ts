@@ -91,7 +91,7 @@ export const enSetupWizardScreens = {
     "setup.v2.names.help": "Proposed from your main domain. Change any if you like.",
     "setup.v2.names.panel": "Panel address (you sign in here)",
     "setup.v2.names.mail": "Mail server and webmail address",
-    "setup.v2.names.mailHelp": "If the server that will join also handles mail, each server needs its own mail name (for example mail2.{domain}).",
+    "setup.v2.names.mailHelp": "If the server that will join also handles mail, each server needs its own mail name, made from its own panel name (for example mail.boston.{domain} for the panel boston.{domain}).",
     "setup.v2.names.pointTo": "All of them will point to this server: {ip}.",
     "setup.v2.names.siteNote": "Your domain’s current records ({domain}, www.{domain}, mail and others) are read in the Existing records step; the ones you import keep working on your servers.",
     "setup.v2.names.outsideZone": "With your own DNS, this name must end with {domain}.",

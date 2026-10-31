@@ -73,8 +73,8 @@ test('the wizard asks about the main domain website on the first server only, Ye
 });
 
 test('the ready screen leads with what is left for the owner, each with its action', () => {
-  assert.match(wizard, /readyTasks\.length === 0 \? t\('setup\.v2\.ready'/);
-  assert.match(wizard, /t\(readyTasks\.length === 1 \? 'setup\.v7\.ready\.tasksOne' : 'setup\.v7\.ready\.tasksMany'/);
+  assert.match(wizard, /readyCount === 0 \? t\('setup\.v2\.ready'/);
+  assert.match(wizard, /t\(readyCount === 1 \? 'setup\.v7\.ready\.tasksOne' : 'setup\.v7\.ready\.tasksMany'/);
   // The list is drawn right under the title, before the join card and the first-site offer.
   const ready = wizard.slice(wizard.indexOf('{completed ? <section'));
   assert.ok(ready.indexOf('data-setup-ready-list') < ready.indexOf('<SetupJoinCard') && ready.indexOf('data-setup-ready-list') < ready.indexOf('<SetupFirstSite'));

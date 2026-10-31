@@ -138,6 +138,8 @@ const Dashboard = await pick(lib('components/Dashboard.tsx', {
   '/lib/componentCensus': lib('lib/componentCensus.ts'),
   '/lib/readyBundles': lib('lib/readyBundles.ts', { '/mailProfileText': lib('lib/mailProfileText.ts') }),
   '/lib/infrastructureZones': lib('lib/infrastructureZones.ts'),
+  // The panel's certificate name (alpha.114 screens round).
+  '/lib/panelCertificate': lib('lib/panelCertificate.ts'),
   '/lib/auditAction': lib('lib/auditAction.ts', { '/componentName': lib('lib/componentName.ts') }),
   '/ComponentOperation': operationURL,
 }), 'Dashboard');

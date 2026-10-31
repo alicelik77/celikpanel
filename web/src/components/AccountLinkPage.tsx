@@ -173,7 +173,7 @@ export function AccountLinkPage() {
                                     </label>
                                     {mismatch && <p role="alert" className="text-sm text-danger">{t('acct.link.mismatch')}</p>}
                                     {formProblem && <p role="alert" className="text-sm text-danger">{formProblem}</p>}
-                                    <p className="text-xs text-fg-subtle">{t('acct.link.hint')}</p>
+                                    <p className="text-xs text-fg-subtle">{t(purpose === 'invitation' ? 'acct.link.hintInvitation' : 'acct.link.hint')}</p>
                                     <button
                                         type="submit"
                                         disabled={phase.kind === 'saving' || password.length < 8 || password !== repeat}
