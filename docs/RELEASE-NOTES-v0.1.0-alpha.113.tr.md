@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.113.md)
 
+> **Yayımlandı.** Bu sürüm 31 Ekim 2026'da (UTC) yayımlandı: sürüm commit'i `d3f3a323d`, GitHub ön sürümü 04:36:22Z, indirme portalı dosyalar ve imza doğrulanıp genel kontrol geçtikten sonra (26/26) yaklaşık 04:40Z. Üyelik uygulaması önce hazırlandı. Henüz hiçbir kurulu sunucuda yok; kurulu panelleri yalnız sahip günceller. Aşağıdaki aday metni yazıldığı gibi korunur.
+
 Bu sürüm v0.1.0-alpha.112'nin ardından gelir. CelikPanel başkalarına
 açılmadan önce sahibin sunucularının yeniden kurulacağı sürümdür ve Arch
 Linux'u sunucu seçeneği olarak ekler. **Bu bir aday sürümdür, 2026-10-30'da

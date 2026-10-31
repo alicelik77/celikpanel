@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.113.tr.md)
 
+> **Published.** This release was published on 2026-10-31 (UTC): release commit `d3f3a323d`, GitHub pre-release at 04:36:22Z, download portal at about 04:40Z after the assets and signature were verified and the public check passed (26/26). The membership app was staged first. Nothing from it is on an installed server yet; only the owner updates installed panels. The candidate text below is kept as written.
+
 This release follows v0.1.0-alpha.112. It is the release the owner's servers
 are reinstalled with before CelikPanel is opened to others, and it adds Arch
 Linux as a server option. **It is a candidate, written on 2026-10-30; it is
