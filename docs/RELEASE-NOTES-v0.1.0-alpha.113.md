@@ -157,6 +157,14 @@ needed (schema 46, unchanged).
 - Two btrfs fixes in the undo of an interrupted PowerDNS install: a
   directory's link count and a boot-scoped device number are no longer taken
   as identity proof.
+- On a pair, deleting a site after the servers were rebooted finishes.
+  Before, PowerDNS re-stamped its catalog while the deletion check was being
+  written. Every later check, including "Retry this deletion", was then
+  refused, and the domain stayed listed although its DNS was gone. The
+  backup's read-only check also no longer fails on a connection PowerDNS has
+  not accepted yet. It reads again, and if it still fails it logs the cause
+  on the backup (`journalctl -t celikpanel-pdns-peer-inspect`). While such a
+  check is retried, the panel says it is waiting.
 - Daily operations on a pair: a change made while the backup is catching up
   waits briefly, then says so instead of "no DNS engine"; a held publication
   names its cause.

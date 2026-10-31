@@ -161,6 +161,15 @@ değişmedi).
 - Yarıda kalan PowerDNS kurulumunun geri alınmasında iki btrfs düzeltmesi:
   bir klasörün bağlantı sayısı ve açılıştan açılışa değişen aygıt numarası
   artık kimlik kanıtı sayılmaz.
+- Çift sunucuda, sunucular yeniden başlatıldıktan sonra bir siteyi silmek
+  tamamlanır. Önceden silme denetimi yazılırken PowerDNS kendi katalog
+  kaydını yeniliyordu. Bundan sonraki her denetim, "Bu silme işlemini
+  yeniden dene" de dahil, reddediliyordu; alan adının DNS'i kalktığı hâlde
+  alan adı listede kalıyordu. Yedeğin salt-okur denetimi de PowerDNS'in henüz
+  kabul etmediği bir bağlantı yüzünden artık başarısız olmuyor; yeniden
+  okuyor, yine olmazsa nedenini yedek sunucuda kayda geçiriyor
+  (`journalctl -t celikpanel-pdns-peer-inspect`). Bu denetim yeniden
+  denenirken panel beklendiğini söylüyor.
 - Çift sunucuda günlük işler: yedek sunucu yetişirken yapılan değişiklik kısa
   bir süre bekler, sonra "DNS motoru yok" yerine bunu söyler; bekletilen
   yayın nedenini adlandırır.
