@@ -152,6 +152,11 @@ const screenPartBudgets = {
   // confirmation and invitations (acct., err.account_*). A new part, set with
   // at least 25% headroom from its Turkish file: 9.75 / 2.61 KiB.
   accountAccess: kib(13, 3.5),
+  // alpha.114: a domain's protected folders and redirects (siteFeatures.), the
+  // refusal codes of those two screens and the account page's two-factor
+  // recovery codes (account.recovery.). A new part, set with at least 25%
+  // headroom from its Turkish file (about 8.7 / 2.7 KiB as source).
+  siteFeatures: kib(11.5, 4),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

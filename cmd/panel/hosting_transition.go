@@ -145,6 +145,16 @@ func (p *Panel) handleUpdateHosting(w http.ResponseWriter, r *http.Request, doma
 		return
 	}
 
+	// alpha.114: protected folders and redirects stay until the person removes
+	// them; a type that cannot carry them is refused with the next step.
+	if message, err := p.refuseProjectTypeWithSiteFeatures(r.Context(), domainID, req.ProjectType); err != nil {
+		writeServerError(w, err)
+		return
+	} else if message != "" {
+		writeCodedError(w, http.StatusConflict, errCodeSiteFeatureUnavail, message, "")
+		return
+	}
+
 	switch req.ProjectType {
 	case "node":
 		if strings.TrimSpace(req.StartCommand) == "" {
