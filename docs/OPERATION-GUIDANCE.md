@@ -5017,7 +5017,7 @@ only and has no catalogue entry.
   API: "Nothing was created: PHP {version} is not installed on this server.
   Installed: {installed}. Choose one of these versions and create the site
   again; another version can be used only after it is installed on this server
-  (Services)."
+  (Components)."
 
 **A reload of a service that is not running (`POST /api/v1/service/action`).**
 

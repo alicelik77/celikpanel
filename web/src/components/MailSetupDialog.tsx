@@ -13,7 +13,7 @@ import { setupStartMarkerKey } from '../lib/panelHandover';
 import { startVisibleReads } from '../lib/visibleReads';
 import { useServerSetup } from './ServerSetupGate';
 import { SetupPlanProblems } from './SetupPlanProblems';
-import { readRemote, useRemote } from '../lib/remote';
+import { invalidate, readRemote, useRemote } from '../lib/remote';
 import { Button, Dialog, inputClass } from './ui';
 
 // Adding mail in place (alpha.114, owner decision 2026-10-31).
@@ -109,6 +109,7 @@ export function MailSetupDialog({ profile, profileName, savedHostname, onClose }
     const [marker, setMarker] = useState<SetupStartMarker | null>(null);
     const begun = useRef<ServerSetupSnapshot | null>(null);
     const inFlight = useRef(false);
+    const announced = useRef(false);
     const alive = useRef(true);
     useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
 
@@ -198,6 +199,13 @@ export function MailSetupDialog({ profile, profileName, savedHostname, onClose }
         const next = answer.value;
         if (!next) return;
         setExecution(next); setProblem(null);
+        // A finished run (done or stopped) changed components, mail and DNS
+        // records: every screen showing them reads again, once. Reads only.
+        // Biten calisma bilesenleri, postayi ve DNS'i degistirdi; bir kez okunur.
+        if ((next.status === 'succeeded' || next.status === 'failed') && !announced.current) {
+            announced.current = true;
+            invalidate('components', 'mail', 'dns');
+        }
         if (next.status === 'succeeded' && setup) {
             const latest = await reloadSetup({ reload: () => setup.reload(true) });
             if (latest) setup.accept(latest);

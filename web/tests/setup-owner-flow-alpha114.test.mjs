@@ -119,3 +119,22 @@ test('the Components mail dialog asks the mail name only and runs a mail-only ex
     for (const key of ['svc.mailSetup.title', 'svc.mailSetup.hostname', 'svc.mailSetup.hostnameTaken', 'svc.mailSetup.stepsTitle', 'svc.mailSetup.confirm', 'svc.mailSetup.running', 'svc.mailSetup.done', 'svc.mailSetup.failed', 'svc.mailSetup.failedNext']) assert.ok(catalogue[key], key);
   }
 });
+
+// Integration of the owner-setup and owner-UI work (alpha.114): the in-place
+// mail run tells every screen that shows components, mail or DNS records, once,
+// when it ends (reads only); the setup's first site and Domains share one view
+// of the names that already point elsewhere; the ready screen names the button
+// Domains really shows.
+// Yerinde posta bitince bilesen/posta/DNS okumalari bir kez yenilenir; ilk site
+// ile Alan adlari ayni "baska yere yonelen adlar" gorunumunu kullanir.
+test('the mail run re-reads every screen it changed, and the first site shares the Domains view', () => {
+  assert.match(dialog, /import \{ invalidate, readRemote, useRemote \} from '\.\.\/lib\/remote'/);
+  assert.match(dialog, /if \(\(next\.status === 'succeeded' \|\| next\.status === 'failed'\) && !announced\.current\) \{\s*announced\.current = true;\s*invalidate\('components', 'mail', 'dns'\);/);
+  const firstSite = read('../src/components/SetupFirstSite.tsx');
+  assert.match(firstSite, /<KeptSiteRecords domain=\{domain\} outcome=\{kept\} \/>/);
+  assert.doesNotMatch(firstSite, /dnsov\.site\.keptWhy/, 'one copy of the kept-names view');
+  assert.match(read('../src/components/Domains.tsx'), /t\('domains\.infrastructure\.hostWebsite'\)/);
+  for (const [catalogue, label] of [[enScreens, 'domains.infrastructure.hostWebsite'], [trScreens, 'domains.infrastructure.hostWebsite']]) {
+    for (const key of ['setup.v7.site.elsewhere.help', 'setup.v7.site.failed']) assert.ok(catalogue[key].includes(catalogue[label]), `${key} names “${catalogue[label]}”`);
+  }
+});

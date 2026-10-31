@@ -302,7 +302,9 @@ const modalStub = dataModule(`
   };
 `);
 // The form is loaded lazily (import('./AddDomainModal')); the test gives it a stand-in.
-const compiledFirstSite = shared.compile('components/SetupFirstSite.tsx');
+// The names pointing elsewhere are the one shared view Domains shows too (KeptSiteRecords).
+const keptSiteRecordsURL = shared.compile('components/KeptSiteRecords.tsx');
+const compiledFirstSite = shared.compile('components/SetupFirstSite.tsx', { '/KeptSiteRecords': keptSiteRecordsURL });
 const firstSiteSource = Buffer.from(compiledFirstSite.slice(compiledFirstSite.indexOf(',') + 1), 'base64').toString()
   .replace(/import\(['"]\.\/AddDomainModal['"]\)/, `import('${modalStub}')`);
 const firstSiteURL = dataModule(firstSiteSource);
