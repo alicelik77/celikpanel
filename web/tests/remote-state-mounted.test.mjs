@@ -77,6 +77,8 @@ const stub = dataModule(`
   // alpha.114: invitations on the Users page and the address confirmation on My account.
   export const usePendingInvitations = () => ({ retry: async () => ({ state: 'loading' }) });
   export const useInvitationOutcome = () => ({ report: () => {}, dialog: null });
+  export const useInvitationActions = () => ({ act: async () => {}, busy: null, dialog: null });
+  export const InvitedStatus = () => null;
   ${stubbedComponents.filter((name) => !icons.has(name)).map((name) => `export const ${name} = (props) => props.children ?? null;`).join('\n')}
 `);
 const shared = sharedLayer(stub);

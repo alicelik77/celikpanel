@@ -37,6 +37,12 @@ type createTeamMemberRequest struct {
 	Lang   string `json:"lang,omitempty"`
 }
 
+// teamMemberListItem is a listed member with its invitation state.
+type teamMemberListItem struct {
+	core.TeamMember
+	Invitation *accountInvitationState `json:"invitation,omitempty"`
+}
+
 type updateTeamMemberRequest struct {
 	Username *string                  `json:"username,omitempty"`
 	Email    *string                  `json:"email,omitempty"`
@@ -74,7 +80,21 @@ func (p *Panel) handleTeamMembers(w http.ResponseWriter, r *http.Request) {
 			writeTeamMemberRepositoryError(w, err)
 			return
 		}
-		writeTeamMemberJSON(w, http.StatusOK, map[string]any{"team_members": members})
+		// Each member with its invitation state: invited, not signed in yet (alpha.114).
+		ids := make([]int, 0, len(members))
+		for _, member := range members {
+			ids = append(ids, member.ID)
+		}
+		invited, err := p.invitedAccounts(r.Context(), ids)
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		listed := make([]teamMemberListItem, 0, len(members))
+		for _, member := range members {
+			listed = append(listed, teamMemberListItem{TeamMember: *member, Invitation: invited[member.ID]})
+		}
+		writeTeamMemberJSON(w, http.StatusOK, map[string]any{"team_members": listed})
 
 	case http.MethodPost:
 		if len(r.URL.Query()) != 0 {

@@ -86,6 +86,26 @@ export interface TeamMemberAccess {
     domain_permissions: TeamDomainPermission[];
 }
 
+/**
+ * An account made by invitation whose person has not chosen a password yet
+ * (alpha.114). `id` is the open invitation, for resend and cancel; a
+ * cancelled invitation has none, and nobody can sign in until a password is set.
+ */
+export interface AccountInvitationState {
+    id?: number;
+    state: 'pending' | 'expired' | 'cancelled';
+    expires_at?: string;
+}
+
+export function parseAccountInvitationState(raw: unknown): AccountInvitationState | undefined {
+    if (!isRecord(raw) || (raw.state !== 'pending' && raw.state !== 'expired' && raw.state !== 'cancelled')) return undefined;
+    return {
+        id: isPositiveInteger(raw.id) ? raw.id : undefined,
+        state: raw.state,
+        expires_at: typeof raw.expires_at === 'string' ? raw.expires_at : undefined,
+    };
+}
+
 export interface TeamMember {
     id: number;
     owner_id: number;
@@ -95,14 +115,25 @@ export interface TeamMember {
     access: TeamMemberAccess;
     created_at: string;
     updated_at: string;
+    /** Only in the list: invited, not signed in yet. */
+    invitation?: AccountInvitationState;
 }
 
 export interface TeamMemberCreateInput {
     username: string;
     email: string;
+    /** Empty when `invite` is set: the member chooses theirs by a link. */
     password: string;
     status?: TeamMemberStatus;
     access: TeamMemberAccess;
+    invite?: boolean;
+    lang?: string;
+}
+
+/** A created member, with what happened to its invitation when one was asked for. */
+export interface TeamMemberCreated {
+    member: TeamMember;
+    invitation?: unknown;
 }
 
 export interface TeamMemberUpdateInput {
@@ -243,6 +274,7 @@ function parseTeamMember(raw: unknown): TeamMember {
         access: parseTeamMemberAccess(raw.access),
         created_at: raw.created_at,
         updated_at: raw.updated_at,
+        invitation: parseAccountInvitationState(raw.invitation),
     };
 }
 
@@ -351,6 +383,8 @@ export interface PanelUser {
     subscriptions: number;
     domains: number;
     created_at: string;
+    /** Invited, not signed in yet (alpha.114); absent for every other account. */
+    invitation?: AccountInvitationState;
 }
 
 export interface ServicePlan {
@@ -542,7 +576,7 @@ class API {
         return payload.team_members.map(parseTeamMember);
     }
 
-    async createTeamMember(input: TeamMemberCreateInput, ownerID?: number): Promise<TeamMember> {
+    async createTeamMember(input: TeamMemberCreateInput, ownerID?: number): Promise<TeamMemberCreated> {
         const body: TeamMemberCreateInput & { owner_id?: number } = { ...input };
         if (ownerID !== undefined) {
             if (!Number.isInteger(ownerID) || ownerID <= 0) throw new Error('invalid_team_member_owner');
@@ -555,7 +589,7 @@ class API {
         });
         const payload: unknown = await response.json();
         if (!isRecord(payload)) malformedTeamMemberResponse();
-        return parseTeamMember(payload.team_member);
+        return { member: parseTeamMember(payload.team_member), invitation: payload.invitation };
     }
 
     async updateTeamMember(
