@@ -2739,6 +2739,14 @@ the pricing/license page and the SUPPORT policy are published.
 
 ### Post-1.0 — horizon *(demand persists, fantasies don't)*
 Each only with real demand, in keeping with the deliberate non-goals:
+- **Server cluster (owner's request, 2026-10-31).** One brand domain (for example celikhost.com) with
+  many servers, customers placed on any of them, each customer's site, databases and mail on its own
+  server. Today two servers form a DNS pair joined by code (main and backup DNS), and each hosts its own
+  customers. The cluster adds: three or more servers sharing the zone list, all servers visible from one
+  screen, choosing the server when a customer is created, and moving a customer between servers with
+  proof. Each server keeps running and serving without the others or without CelikPanel (owner
+  independence). Priority rises when the second server nears capacity; it is not started before the
+  two-server pair is proven on the owner's servers.
 - Multi-server (an inter-panel trust model + **sibling-server DNS auto-registration**: a new CelikPanel
   server registers its own hostname A record with the other CelikPanel that is the zone authority for the
   brand domain, using an operator-provided API token — the productized form of today's manual
@@ -2778,6 +2786,8 @@ product itself:
 - ❌ **An in-panel terminal** — attack surface and simplicity; SFTP/SSH key management (v0.5) serves the
   legitimate need.
 - ❌ **Multi-server / cluster (for now)** — no distributed-system dreams before one server is flawless.
+  The owner put the server cluster on the horizon on 2026-10-31 (see Post-1.0); it waits for the
+  two-server pair to be proven.
 - ❌ **External dependencies for the panel itself** (Redis, external DB, message queue) — one binary +
   SQLite stays. Even payments are not embedded in the core; the panel is only a webhook consumer (the
   v0.5 decision).

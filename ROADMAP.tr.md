@@ -2672,6 +2672,14 @@ ve SUPPORT politikası yayında.
 
 ### 1.0 Sonrası — ufuk *(talep sürer, hayal sürmez)*
 Her biri ancak gerçek talep varsa, bilinçli hedef-dışılara uygun biçimde:
+- **Sunucu kümesi (sahibin isteği, 31 Ekim 2026).** Tek marka alan adı (örneğin celikhost.com) ve çok
+  sayıda sunucu; müşteriler herhangi birine yerleşir, her müşterinin sitesi, veritabanları ve postası
+  kendi sunucusundadır. Bugün iki sunucu kodla katılarak bir DNS çifti olur (ana ve yedek DNS) ve her biri
+  kendi müşterilerini barındırır. Küme şunları ekler: bölge listesini paylaşan üç ve daha çok sunucu,
+  bütün sunucuları tek ekrandan görmek, müşteri açılırken sunucuyu seçmek ve bir müşteriyi kanıtla bir
+  sunucudan ötekine taşımak. Her sunucu ötekiler ya da CelikPanel olmadan da çalışmayı ve hizmet vermeyi
+  sürdürür (sahibin bağımsızlığı). Öncelik ikinci sunucu dolmaya yaklaşınca yükselir; iki sunuculu çift
+  sahibin sunucularında kanıtlanmadan başlanmaz.
 - Çoklu sunucu (panel-arası güven modeli + **kardeş sunucu DNS oto-kaydı**: yeni bir CelikPanel sunucusu,
   marka domain'inin zone-otoritesi olan diğer CelikPanel'e kendi hostname A kaydını, operatörün verdiği
   API token'ıyla kaydettirir — bugün elle yapılan boston.celikhost.com adımının ürünleşmiş hali; v0.3'ün
@@ -2706,6 +2714,8 @@ Sadelik hayır diyebilmektir. Bunlar **bilerek** yok — ve retlerin çoğu ür�
   yetinilir; ötesini isteyene dürüst cevap: siteye Plausible/GA koyun. AWStats klonu sadelik süzgecini geçmez.
 - ❌ **Panel-içi terminal** — saldırı yüzeyi ve sadelik; SFTP/SSH anahtar yönetimi (v0.5) meşru ihtiyacı karşılar.
 - ❌ **Çoklu sunucu / cluster (şimdilik)** — tek sunucu kusursuz olmadan dağıtık sistem hayali yok.
+  Sahip sunucu kümesini 31 Ekim 2026'da ufka ekledi (1.0 Sonrası'na bakın); iki sunuculu çiftin
+  kanıtlanmasını bekler.
 - ❌ **Panelin kendisi için dış bağımlılık** (Redis, harici DB, mesaj kuyruğu) — tek binary + SQLite kalır.
   Ödeme bile çekirdeğe gömülmez; panel yalnız webhook tüketicisidir (v0.5 kararı).
 - ❌ **Telemetri / phone-home** — panel dış ağa kendi iradesiyle istek atmaz (operatörün kurduğu
