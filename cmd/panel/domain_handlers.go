@@ -332,9 +332,8 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if (caps.DNSManagementMode == setupDNSModeLocal || req.ProjectType == "dnsonly") && caps.DNSServer == "" {
-		writeCodedError(w, http.StatusConflict, errCodeDNSServerRequired,
-			"no managed authoritative DNS engine is active; choose and activate BIND or PowerDNS first",
-			"/dns-infrastructure")
+		writeDNSServerRequired(w, caps.DNSServerState, caps.DNSServerEngine, caps.DNSServerPeer,
+			"no managed authoritative DNS engine is active; choose and activate BIND or PowerDNS first")
 		return
 	}
 	if (caps.DNSManagementMode == setupDNSModeLocal || req.ProjectType == "dnsonly") && !caps.DNSIdentityReady {
@@ -522,7 +521,11 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 			writeServerError(w, err)
 			return
 		}
-		if req.DNSManagement == setupDNSModeLocal && (caps.DNSServer == "" || !caps.DNSIdentityReady) {
+		if req.DNSManagement == setupDNSModeLocal && caps.DNSServer == "" {
+			writeDNSServerRequired(w, caps.DNSServerState, caps.DNSServerEngine, caps.DNSServerPeer, "the parent domain retains local DNS ownership; its authoritative DNS must be ready")
+			return
+		}
+		if req.DNSManagement == setupDNSModeLocal && !caps.DNSIdentityReady {
 			writeCodedError(w, http.StatusConflict, errCodeDNSServerRequired, "the parent domain retains local DNS ownership; its authoritative DNS must be ready", "/dns-infrastructure")
 			return
 		}

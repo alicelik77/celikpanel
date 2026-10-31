@@ -3,7 +3,7 @@
 import type { DnsCertificatesScreenKey } from './en';
 
 export const trDnsCertificatesScreens: Record<DnsCertificatesScreenKey, string> = {
-    'dns.notServed': 'Bu kayıtlar YAYINLANMIYOR: panel tarafından yönetilen etkin bir yetkili DNS motoru yok. Sunucu → DNS ve eş sunucular sayfasından BIND veya PowerDNS seçip etkinleştirin.',
+    'dns.notServed': "Bu kayıtlar yayınlanmıyor: bu sunucuda çalışan bir DNS yazılımı yok.",
 
     'ssl.status.valid': 'Geçerli',
     'ssl.status.expiring': 'Süresi doluyor',

@@ -2,9 +2,10 @@ import { lazy, useState, useEffect, useRef } from 'react';
 import { Mail, Plus, Trash2, ArrowRight, AtSign, Pencil, Info, KeyRound } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
-import { apiErrorText, readApiError } from '../lib/apiError';
+import { apiErrorText, readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
+import type { TranslationKey } from '../i18n/en';
 import { useRemote, type Remote } from '../lib/remote';
-import { Button, Checking, CouldNotCheck, Dialog, KnownEmpty, RemoteGate, UsageBar, inputClass } from './ui';
+import { Button, Checking, CouldNotCheck, Dialog, ErrorBanner, KnownEmpty, RemoteGate, UsageBar, inputClass } from './ui';
 import { MailAuthPanel } from './MailAuthPanel';
 import { MailSettingsPanel } from './MailSettingsPanel';
 
@@ -128,6 +129,26 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
     };
     const reloadForwardings = () => void forwardingsRead.retry();
 
+    // A refused change stays above the list with its fix until the next one
+    // succeeds (owner feedback 2026-10-31).
+    const [refusal, setRefusal] = useState<{ problem: ApiError; sentence: TranslationKey } | null>(null);
+    const refuse = (problem: ApiError, sentence: TranslationKey) => {
+        setRefusal({ problem, sentence });
+        showToast('error', refusalText(problem, t, sentence), refusalToast(problem, t));
+    };
+    // A failure keeps the reason the server gave; a lost answer says nothing more.
+    const failedCreate = (failure: unknown, sentence: TranslationKey) => {
+        if (failure instanceof Error && failure.constructor === Error) { refuse({ message: failure.message.trim() }, sentence); return; }
+        // No readable answer: whether it was made is not known; the list is read again.
+        showToast('error', t('common.resultUnknown'));
+        reloadAccounts();
+        reloadForwardings();
+    };
+    // What still keeps Create off, in the form's own words (owner feedback 2026-10-31).
+    const createMissing = activeTab === 'accounts'
+        ? [...(!user.trim() ? [t('mail.username')] : []), ...(!pass ? [t('mail.password')] : [])]
+        : [...(!fwdSource.trim() ? [t('mail.source')] : []), ...(!fwdDest.trim() ? [t('mail.destination')] : [])];
+
     const createAccount = async () => {
         if (readOnly || !user || !pass) return;
         try {
@@ -137,14 +158,15 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                 body: JSON.stringify({ address: `${user}@${domainName}`, password: pass, quota_mb: quota }),
             });
             const data = await res.json();
-            if (!data.success) throw new Error(data.error);
+            if (!data.success) throw new Error(typeof data.error === 'string' ? data.error : '');
             showToast('success', t('mail.accountCreated'));
             setShowForm(false);
             setUser('');
             setPass('');
             reloadAccounts();
-        } catch {
-            showToast('error', t('mail.createFailed'));
+        } catch (failure) {
+            // The server's reason (taken, quota, plan limit) stays with the sentence, on the page too.
+            failedCreate(failure, 'mail.createFailed');
         }
     };
 
@@ -156,12 +178,16 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id, quota_mb: quotaDraft }),
             });
-            if (!res.ok) throw new Error();
+            if (!res.ok) { refuse(await readApiError(res), 'mail.quotaFailed'); return; }
+            setRefusal(null);
             showToast('success', t('mail.quotaUpdated'));
             setEditingQuota(null);
             reloadAccounts();
         } catch {
-            showToast('error', t('common.error'));
+            // No answer: whether it changed is not known; the list is read again.
+            showToast('error', t('common.resultUnknown'));
+            reloadAccounts();
+            reloadForwardings();
         }
     };
 
@@ -170,11 +196,15 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
         if (!confirm(t('mail.confirmDeleteAccount', { name: address }))) return;
         try {
             const res = await fetch(`/api/v1/domains/${domainId}/mail/accounts?id=${id}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error();
+            if (!res.ok) { refuse(await readApiError(res), 'mail.deleteAccountFailed'); return; }
+            setRefusal(null);
             showToast('success', t('mail.accountDeleted'));
             reloadAccounts();
         } catch {
-            showToast('error', t('common.error'));
+            // No answer: whether it changed is not known; the list is read again.
+            showToast('error', t('common.resultUnknown'));
+            reloadAccounts();
+            reloadForwardings();
         }
     };
 
@@ -244,14 +274,14 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                 body: JSON.stringify({ source, destination: fwdDest }),
             });
             const data = await res.json();
-            if (!data.success) throw new Error(data.error);
+            if (!data.success) throw new Error(typeof data.error === 'string' ? data.error : '');
             showToast('success', t('mail.forwarderCreated'));
             setShowForm(false);
             setFwdSource('');
             setFwdDest('');
             reloadForwardings();
-        } catch {
-            showToast('error', t('mail.forwarderFailed'));
+        } catch (failure) {
+            failedCreate(failure, 'mail.forwarderFailed');
         }
     };
 
@@ -260,11 +290,15 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
         if (!confirm(t('mail.confirmDeleteForwarder', { name: source }))) return;
         try {
             const res = await fetch(`/api/v1/domains/${domainId}/mail/forwardings?id=${id}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error();
+            if (!res.ok) { refuse(await readApiError(res), 'mail.deleteForwarderFailed'); return; }
+            setRefusal(null);
             showToast('success', t('mail.forwarderDeleted'));
             reloadForwardings();
         } catch {
-            showToast('error', t('common.error'));
+            // No answer: whether it changed is not known; the list is read again.
+            showToast('error', t('common.resultUnknown'));
+            reloadAccounts();
+            reloadForwardings();
         }
     };
 
@@ -307,6 +341,7 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                 )}
             </div>
 
+            <ErrorBanner className="mb-4" error={refusal?.problem ?? null} sentence={refusal?.sentence} />
             {!readOnly && showForm && listed.state === 'known' && (
                 <div className="mb-4 rounded-lg border border-border bg-surface-2/50 p-4">
                     {activeTab === 'accounts' ? (
@@ -339,11 +374,12 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                             </label>
                         </div>
                     )}
-                    <div className="mt-3 flex justify-end gap-2">
+                    <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+                        {createMissing.length > 0 && <p id="mail-create-reason" className="mr-auto text-sm text-fg" data-blocked-reason="">{t('mail.create.missing', { fields: createMissing.join(', ') })}</p>}
                         <Button variant="secondary" onClick={() => setShowForm(false)}>
                             {t('mail.cancel')}
                         </Button>
-                        <Button variant="primary" icon={Plus} onClick={activeTab === 'accounts' ? createAccount : createForwarding}>
+                        <Button variant="primary" icon={Plus} disabled={createMissing.length > 0} aria-describedby={createMissing.length > 0 ? 'mail-create-reason' : undefined} onClick={activeTab === 'accounts' ? createAccount : createForwarding}>
                             {t('mail.create')}
                         </Button>
                     </div>

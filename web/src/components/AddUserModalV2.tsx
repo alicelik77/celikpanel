@@ -2,29 +2,31 @@ import { useState } from 'react';
 import { User, Key } from 'lucide-react';
 import { showToast } from './Toast';
 import { Button, Dialog } from './ui';
-import { readApiError } from '../lib/apiError';
+import { readApiError, refusalText } from '../lib/apiError';
+import { useI18n } from '../i18n';
+import { generatedPassword, type CreatedSecret } from '../lib/generatedPassword';
 
 interface AddUserModalV2Props {
     serverId: number;
     serverName: string;
     onClose: () => void;
     onSuccess: () => void;
+    /** A password the server made up, answered once: the page shows it until closed. */
+    onSecret: (secret: CreatedSecret) => void;
 }
 
-export function AddUserModalV2({ serverId, serverName, onClose, onSuccess }: AddUserModalV2Props) {
+export function AddUserModalV2({ serverId, serverName, onClose, onSuccess, onSecret }: AddUserModalV2Props) {
+    const { t } = useI18n();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
 
+    // A password from the browser's cryptographic generator, shown in the
+    // field; copying is offered, never logged.
     const generatePassword = () => {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-        let pwd = '';
-        for (let i = 0; i < 16; i++) {
-            pwd += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
+        const pwd = generatedPassword();
         setPassword(pwd);
-        navigator.clipboard.writeText(pwd);
-        showToast('success', 'Password generated and copied to clipboard');
+        void navigator.clipboard?.writeText(pwd).then(() => showToast('success', t('dbm.generatedCopied')), () => showToast('info', t('dbm.generated')));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -39,20 +41,20 @@ export function AddUserModalV2({ serverId, serverName, onClose, onSuccess }: Add
             });
 
             if (!res.ok) {
-                throw new Error((await readApiError(res)).message || 'Failed to create user');
+                throw new Error(refusalText(await readApiError(res), t, 'dbm.createUserFailed'));
             }
 
             const data = await res.json();
-            showToast('success', `User created: ${data.username}`);
-            // The server answers a password only when it made one up; the
-            // one typed here is not sent back.
-            // Sunucu parolayı yalnız kendisi ürettiğinde yanıtlar.
-            if (typeof data.password === 'string') showToast('info', `Password: ${data.password}`);
+            showToast('success', t('dbm.userCreated', { name: String(data.username ?? username) }));
+            // The server answers a password only when it made one up; the one
+            // typed here is not sent back. It stays on the page until closed.
+            // Sunucu parolayı yalnız kendisi ürettiğinde yanıtlar; sayfada kalır.
+            if (typeof data.password === 'string') onSecret({ user: String(data.username ?? username), password: data.password });
 
             onSuccess();
             onClose();
-        } catch (err: any) {
-            showToast('error', err.message);
+        } catch (err) {
+            showToast('error', err instanceof Error && err.message ? err.message : t('dbm.createUserFailed'));
         } finally {
             setLoading(false);
         }
@@ -62,18 +64,18 @@ export function AddUserModalV2({ serverId, serverName, onClose, onSuccess }: Add
         <Dialog
             id="add-database-user"
             icon={User}
-            title="Add User"
-            description={`Server: ${serverName}`}
+            title={t('dbm.addUser')}
+            description={t('dbm.server', { name: serverName })}
             busy={loading}
             onDismiss={onClose}
             onSubmit={handleSubmit}
             actions={
                 <>
                     <Button type="button" variant="secondary" onClick={onClose}>
-                        Cancel
+                        {t('common.cancel')}
                     </Button>
                     <Button type="submit" variant="primary" disabled={loading}>
-                        {loading ? 'Creating...' : 'Create User'}
+                        {loading ? t('dbm.creating') : t('dbm.createUser')}
                     </Button>
                 </>
             }
@@ -82,7 +84,7 @@ export function AddUserModalV2({ serverId, serverName, onClose, onSuccess }: Add
                 {/* Username */}
                 <div>
                     <label className="block text-sm font-medium text-fg-muted mb-2">
-                        Username
+                        {t('dbm.username')}
                     </label>
                     <input
                         type="text"
@@ -92,17 +94,17 @@ export function AddUserModalV2({ serverId, serverName, onClose, onSuccess }: Add
                         placeholder="myapp_user"
                         required
                         pattern="[a-zA-Z0-9_]+"
-                        title="Only letters, numbers, and underscores"
+                        title={t('dbm.namePattern')}
                     />
                     <p className="text-xs text-fg-muted mt-1">
-                        The account is created with this subscription's prefix; its full name is shown once it exists.
+                        {t('dbm.prefixNote')}
                     </p>
                 </div>
 
                 {/* Password */}
                 <div>
                     <label className="block text-sm font-medium text-fg-muted mb-2">
-                        Password
+                        {t('dbm.password')}
                     </label>
                     <div className="flex gap-2">
                         <input
@@ -110,28 +112,28 @@ export function AddUserModalV2({ serverId, serverName, onClose, onSuccess }: Add
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             className="flex-1 bg-surface-2 border border-border rounded-lg px-4 py-2 text-fg focus:border-primary"
-                            placeholder="Password"
+                            placeholder={t('dbm.password')}
                             required
                         />
                         <button
                             type="button"
                             onClick={generatePassword}
                             className="px-4 py-2 bg-surface-3 hover:bg-surface-3 text-fg rounded-lg transition-colors flex items-center gap-2"
-                            title="Generate password"
+                            title={t('dbm.generate')}
                         >
                             <Key className="w-4 h-4" />
-                            Generate
+                            {t('dbm.generateShort')}
                         </button>
                     </div>
                     <p className="text-xs text-fg-subtle mt-1">
-                        Password will be copied to clipboard
+                        {t('dbm.generateNote')}
                     </p>
                 </div>
 
                 {/* Info */}
                 <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
                     <p className="text-sm text-primary">
-                        💡 After creating the user, you can grant it access to databases from the Databases tab
+                        {t('dbm.grantNote')}
                     </p>
                 </div>
             </div>

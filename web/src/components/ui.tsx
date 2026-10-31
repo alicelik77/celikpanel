@@ -2,7 +2,8 @@ import { useEffect, useRef, type FormEvent, type ReactNode } from 'react';
 import { AlertTriangle, type LucideIcon } from 'lucide-react';
 import { useNavigate } from '../router';
 import { useI18n } from '../i18n';
-import { apiErrorActionLabel, apiErrorText, type ApiError } from '../lib/apiError';
+import { apiErrorActionLabel, apiErrorText, refusalText, type ApiError } from '../lib/apiError';
+import type { TranslationKey } from '../i18n/en';
 import type { Observed, Remote } from '../lib/remote';
 import type { LostAnswerHandle } from '../lib/lostAnswer';
 // Shared UI primitives so every page speaks one visual language: a page
@@ -858,12 +859,21 @@ function CheckMark() {
 // yerelleştirilmiş metnini ve ret panel-içi çözüm yolu taşıyorsa oraya
 // giden düğmeyi gösterir. Her yeni hata gösterimi bunu kullanır — elle
 // yazılmış kırmızı div'ler eskidir.
-export function ErrorBanner({ error, className }: { error: ApiError | null; className?: string }) {
+export function ErrorBanner({ error, className, sentence }: {
+    error: ApiError | null;
+    className?: string;
+    /**
+     * The screen's own sentence for this refusal (owner feedback 2026-10-31):
+     * an uncoded refusal then says it with the server's reason beside it
+     * (refusalText), and a code stands under Technical details.
+     */
+    sentence?: TranslationKey;
+}) {
     const { t } = useI18n();
     const navigate = useNavigate();
     if (!error) return null;
     const actionLabel = apiErrorActionLabel(error, t);
-    const errorText = apiErrorText(error, t);
+    const errorText = sentence ? refusalText(error, t, sentence) : apiErrorText(error, t);
     return (
         <div
             className={`rounded-lg border border-danger/30 bg-danger/10 px-3 py-2.5 text-sm text-danger ${className ?? ''}`}
@@ -893,6 +903,12 @@ export function ErrorBanner({ error, className }: { error: ApiError | null; clas
                         <li key={d}>{d.startsWith('+') ? t('common.andMore', { n: d.slice(1) }) : d}</li>
                     ))}
                 </ul>
+            )}
+            {sentence && error.code && (
+                <details className="mt-1 text-xs text-fg-muted">
+                    <summary className="cursor-pointer">{t('problem.details')}</summary>
+                    <code className="break-words">{error.code}</code>
+                </details>
             )}
         </div>
     );

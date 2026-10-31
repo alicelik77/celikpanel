@@ -59,6 +59,22 @@ Present that message and action before the detailed step list. Keep diagnostic
 information available without forcing users to interpret internal codes. Turkish
 and English messages, mobile layout and keyboard access are required.
 
+### Blocking problems and disabled actions (2026-10-31)
+
+The owner could not tell from the setup Summary what was wrong or what to do: the
+requirements stood below the long lists and the Start button was only greyed. A
+problem that stops a screen's main action uses the shared pattern
+`components/BlockingProblems.tsx`: it stands at the top of what it blocks; each
+problem says what is wrong in one plain sentence (no internal terms), what to do in
+one concrete action and, where the panel can, offers the fix as a button (go to
+the step, remove a role, check again, open the page); the code stays under
+"Technical details". A disabled main button carries its reason beside it
+(`BlockedReason`, `aria-describedby`) and a way to show the problem. Failure and
+warning toasts stay until closed. Setup Summary blockers are mapped in
+`lib/setupProblems.ts`; a new blocker adds its entry and two catalogue keys
+(`setup.problem.<name>.what/.todo`). Other screens are being moved to the pattern;
+the audit list is not complete.
+
 ## Truth and operation identity
 
 Separate an observed failure from an unmet prerequisite and an unknown result.

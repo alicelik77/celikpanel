@@ -4,14 +4,15 @@ import { Globe, Plus, Trash2, ExternalLink, Settings, Lock, HardDrive, Network }
 import { AddDomainModal } from './AddDomainModal';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
-import { Button, CouldNotCheck, KnownEmpty, RemoteGate, SearchInput, StatusDot, UsageBar } from './ui';
+import { Button, CouldNotCheck, ErrorBanner, KnownEmpty, RemoteGate, SearchInput, StatusDot, UsageBar } from './ui';
 import { PageHeader } from './PageHeader';
-import { apiErrorText, readApiError } from '../lib/apiError';
+import { BlockingProblems } from './BlockingProblems';
+import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
 import { domainDeletionDetailKey, domainDeletionReasonKey, readDomainDeletionDKIM, readDomainDeletionOutcome, readSavedDomainDeletion } from '../lib/domainDeletionPending';
 import { decodeList, gateOn, lastKnown, useRemote } from '../lib/remote';
 import { SUBSCRIPTIONS_URL, decodeSubscriptions } from '../lib/subscriptions';
 import { INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones, infrastructureZonePath } from '../lib/infrastructureZones';
-import { dnsBlocker, useHostingCapabilities } from '../lib/hostingCapabilities';
+import { dnsBlocker, dnsEngineBlockerText, useHostingCapabilities } from '../lib/hostingCapabilities';
 import type { TranslationKey } from '../i18n/en';
 import { useAuth } from '../auth/AuthContext';
 import {
@@ -186,13 +187,18 @@ export function Domains() {
     // (DNS_ENGINE_WORKFLOW_REQUIRED), oraya gönderilen taze sunucunun gidecek
     // yeri yoktu (R-029, ekran tarafı).
     const openDNSRequirement = () => navigate('/dns-infrastructure');
+    const [deleteRefusal, setDeleteRefusal] = useState<ApiError | null>(null);
     // Name the half that is missing: no engine at all, or an engine whose
     // identity is not staged yet. The same key feeds the button label.
     // Eksik yarıyı adlandır: hiç motor yok ya da kimliği henüz hazırlanmamış
     // bir motor var. Aynı anahtar düğme etiketini de besler.
     const dnsRequirementText = dnsBlocked === null
         ? undefined
-        : dnsBlocked === 'engine' ? t('domains.add.needsDns') : t('err.DNS_SETTINGS_REQUIRED');
+        : dnsBlocked === 'engine'
+            // Why the engine half is missing, by its state: a main DNS server
+            // waiting for its backup is not "no DNS" (owner report 2026-10-31).
+            ? capabilities.remote.state === 'known' ? dnsEngineBlockerText(capabilities.remote.value, t) : t('domains.add.needsDns')
+            : t('err.DNS_SETTINGS_REQUIRED');
 
     const pendingMessage = (reason: string, detail = '') => {
         const key = domainDeletionReasonKey(reason) as TranslationKey | null;
@@ -256,10 +262,14 @@ export function Domains() {
                 return;
             }
             if (outcome.state === 'error') {
+                // The refusal and its fix stay at the top of the list until the
+                // next delete (owner feedback 2026-10-31); the toast carries the fix too.
                 const apiError = await readApiError(res);
-                showToast('error', apiErrorText(apiError, t));
+                setDeleteRefusal(apiError);
+                showToast('error', refusalText(apiError, t, 'domains.deleteFailed'), refusalToast(apiError, t, navigate));
                 return;
             }
+            setDeleteRefusal(null);
             pendingReadEpoch.current++;
             setPendingDeletions((current) => current.filter((item) => item.id !== id));
             // A DKIM key or table line CelikPanel did not make was kept, or
@@ -277,7 +287,9 @@ export function Domains() {
             setSelected((s) => s.filter((x) => x !== id));
             reload();
         } catch {
-            showToast('error', t('common.error'));
+            // No answer: it is not known whether the domain was deleted; the list is read again.
+            showToast('error', t('common.resultUnknown'));
+            reload();
         }
     };
 
@@ -291,7 +303,7 @@ export function Domains() {
         !isTeamMember || Boolean(domain.access && hasDomainAccess(domain.access, capability, 'view'));
     const addButton = (
         <span title={dnsRequirementText}>
-            <Button variant="primary" icon={Plus} disabled={dnsBlocked !== null} onClick={() => setShowAddModal(true)}>
+            <Button variant="primary" icon={Plus} disabled={dnsBlocked !== null} aria-describedby={dnsBlocked !== null && domains.length > 0 ? 'domains-add-blocked' : undefined} onClick={() => setShowAddModal(true)}>
                 {t('domains.add')}
             </Button>
         </span>
@@ -306,6 +318,18 @@ export function Domains() {
                 breadcrumb={[t('common.home'), t('nav.domains')]}
                 actions={!isTeamMember && addButton}
             />
+
+            {/* Why Add domain is off, at the top and with its fix; the empty
+                list says it in its own place (owner feedback 2026-10-31). */}
+            {dnsBlocked !== null && domains.length > 0 && (
+                <BlockingProblems id="domains-add-blocked" className="mb-4" title={t('domains.add.blockedTitle')} problems={[{
+                    code: dnsBlocked === 'engine' ? 'DNS_SERVER_REQUIRED' : 'DNS_SETTINGS_REQUIRED',
+                    what: dnsRequirementText ?? '',
+                    fix: { label: t(dnsBlocked === 'engine' ? 'err.DNS_SERVER_REQUIRED.action' : 'err.DNS_SETTINGS_REQUIRED.action'), onFix: openDNSRequirement },
+                }]} />
+            )}
+
+            <ErrorBanner className="mb-4" error={deleteRefusal} sentence="domains.deleteFailed" />
 
             {pendingDeletions.map((pending) => (pending.message === null ? (
                 <CouldNotCheck

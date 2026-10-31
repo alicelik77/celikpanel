@@ -46,6 +46,8 @@ export const ArrowRight=()=>null, Check=()=>null, Circle=()=>null, Loader2=()=>n
 export const ServerSetupDNSConnection=props=>React.createElement('remote-connection',props);
 export const inputClass='';
 export const AddressLink=props=>React.createElement('a',{href:props.href},props.address);
+// The plan's problems and the start reason (components/SetupPlanProblems.tsx) have their own test.
+export const SetupPlanProblems = () => null, SetupStartReason = () => null, setupStartBlock = () => null;
 export const SetupFirstSite=props=>React.createElement('first-site',props);
 `);
 const stepsURL = dataURL(`import React from '${reactURL}';\n` + compile('../src/components/ServerSetupSteps.tsx').replace(/from ['"]([^'"]+)['"]/g, (_, path) => `from '${stub}'`));

@@ -62,6 +62,21 @@ Bu mesaj ve eylem ayrıntılı adım listesinden önce gösterilir. Teknik ayrı
 erişilebilir kalır; kullanıcı iç hata kodlarını yorumlamak zorunda bırakılmaz.
 Türkçe ve İngilizce mesajlar, mobil düzen ve klavye erişimi zorunludur.
 
+### Engelleyen sorunlar ve kapalı düğmeler (2026-10-31)
+
+Sahip kurulum Özeti'ne bakıp sorunun ne olduğunu ve ne yapacağını anlayamadı:
+gereksinimler uzun listelerin altındaydı, Başlat düğmesi yalnız soluktu. Bir
+ekranın ana eylemini durduran sorun ortak `components/BlockingProblems.tsx`
+biçimini kullanır: engellediği yerin en üstünde durur; her sorun ne yanlış
+olduğunu tek sade cümleyle (iç terim olmadan), ne yapılacağını tek somut eylemle
+söyler ve panel yapabiliyorsa düzeltmeyi düğme olarak sunar (adıma git, görevi
+çıkar, yeniden kontrol et, sayfayı aç); kod "Teknik ayrıntılar" altında kalır.
+Kapalı ana düğme nedenini yanında taşır (`BlockedReason`, `aria-describedby`) ve
+sorunu gösterme yolu sunar. Hata ve uyarı bildirimleri kapatılana dek kalır.
+Kurulum Özeti engelleri `lib/setupProblems.ts` içinde eşlenir; yeni bir engel
+kendi satırını ve iki katalog anahtarını (`setup.problem.<ad>.what/.todo`) ekler.
+Diğer ekranlar bu biçime taşınıyor; denetim listesi tamamlanmadı.
+
 ## Doğruluk ve işlem kimliği
 
 Gözlenmiş hata, eksik önkoşul ve bilinmeyen sonuç birbirinden ayrılır.

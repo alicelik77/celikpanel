@@ -27,11 +27,18 @@ import (
 type hostingCapabilities struct {
 	DNSManagementMode  string   `json:"dns_management_mode"`
 	DNSManagementReady bool     `json:"dns_management_ready"`
-	WebServer          string   `json:"web_server"`         // "nginx" or "" when no supported adapter is available
-	PHPVersions        []string `json:"php_versions"`       // installed FPM versions, newest first
-	DNSServer          string   `json:"dns_server"`         // proven active "pdns", "bind" or ""
-	DNSIdentityReady   bool     `json:"dns_identity_ready"` // saved nameserver pair and operating mode
-	MailServer         bool     `json:"mail_server"`        // postfix present
+	WebServer          string   `json:"web_server"`   // "nginx" or "" when no supported adapter is available
+	PHPVersions        []string `json:"php_versions"` // installed FPM versions, newest first
+	DNSServer          string   `json:"dns_server"`   // proven active "pdns", "bind" or ""
+	// Why dns_server is "" (owner report 2026-10-31): none, switching,
+	// port53_conflict, not_running, engine_conflict, secondary, pair_pending,
+	// or ready. Additive; dns_server keeps deciding what is allowed.
+	// dns_server neden bos: ekran bunu aciklar; izin degismez.
+	DNSServerState   string `json:"dns_server_state"`
+	DNSServerEngine  string `json:"dns_server_engine,omitempty"` // the active engine whenever one is active
+	DNSServerPeer    string `json:"dns_server_peer,omitempty"`   // the other server of a DNS pair
+	DNSIdentityReady bool   `json:"dns_identity_ready"`          // saved nameserver pair and operating mode
+	MailServer       bool   `json:"mail_server"`                 // postfix present
 	// All installed database engines — a server can legitimately run both
 	// MariaDB and PostgreSQL side by side (no conflict group).
 	// Kurulu tüm veritabanı motorları — bir sunucu MariaDB ve PostgreSQL'i
@@ -105,9 +112,15 @@ func (p *Panel) hostingCaps(ctx context.Context) (hostingCapabilities, error) {
 	}
 	caps.DNSManagementMode = mode
 	caps.DNSManagementReady = mode == setupDNSModeExternal
-	publisher, publisherReady, err := p.activeDNSPublisher(ctx)
+	status, err := p.dnsPublisherStatus(ctx)
 	if err != nil && mode == setupDNSModeLocal {
 		return hostingCapabilities{}, fmt.Errorf("verify active DNS publisher: %w", err)
+	}
+	publisher, publisherReady := status.Identity, err == nil && status.State == dnsServerStateReady
+	if err == nil {
+		caps.DNSServerState = status.State
+		caps.DNSServerEngine = string(status.Engine)
+		caps.DNSServerPeer = status.Peer
 	}
 	if publisherReady {
 		caps.DNSServer = string(publisher.Engine)
@@ -196,4 +209,42 @@ func (p *Panel) handleHostingCapabilities(w http.ResponseWriter, r *http.Request
 	if err := json.NewEncoder(w).Encode(caps); err != nil {
 		writeServerError(w, err)
 	}
+}
+
+// writeDNSServerRequired is the same refusal as before (DNS_SERVER_REQUIRED,
+// 409, the DNS page as its fix), now saying why the DNS is not ready to take
+// a new change: Reason is the dns_server_state and Vars name the engine and
+// the other server of the pair (owner report 2026-10-31). What is allowed
+// does not change. fallback is the sentence for no engine at all.
+// Ayni ret; neden reason'da, motor ve eş sunucu vars'ta. Izin degismez.
+func writeDNSServerRequired(w http.ResponseWriter, state, engine, peer, fallback string) {
+	body := apiErrorBody{Error: fallback, Code: errCodeDNSServerRequired, Action: "/dns-infrastructure"}
+	if message, ok := dnsServerStateMessages[state]; ok {
+		body.Reason = state
+		body.Error = message
+	}
+	vars := map[string]string{}
+	if engine != "" {
+		vars["engine"] = engine
+	}
+	if peer != "" {
+		vars["peer"] = peer
+	}
+	if len(vars) > 0 {
+		body.Vars = vars
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusConflict)
+	_ = json.NewEncoder(w).Encode(body)
+}
+
+// The server's own sentence for each state that is not "no engine"; the
+// screens have their own words for each reason (err.DNS_SERVER_REQUIRED.<state>).
+var dnsServerStateMessages = map[string]string{
+	dnsServerStatePairPending:    "the zones are served, but new changes wait until the backup DNS server confirms it holds the same zone list",
+	dnsServerStateSecondary:      "this server is the backup DNS server; domains and records are changed on the main DNS server",
+	dnsServerStateSwitching:      "a DNS engine switch is running; new changes wait until it ends",
+	dnsServerStatePort53Conflict: "another program holds DNS port 53, so the DNS engine cannot be verified",
+	dnsServerStateNotRunning:     "the active DNS engine is not running or not managed by CelikPanel",
+	dnsServerStateEngineConflict: "another DNS engine is running beside the active one",
 }

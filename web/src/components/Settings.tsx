@@ -6,7 +6,7 @@ import { useI18n } from '../i18n';
 import { useAuth } from '../auth/AuthContext';
 import { Button, CouldNotCheck, ErrorBanner, RemoteGate, inputClass } from './ui';
 import { PageHeader } from './PageHeader';
-import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
+import { readApiError, type ApiError } from '../lib/apiError';
 import { readRemote, useRemote } from '../lib/remote';
 import { availablePanelUpdate, usePanelUpdateDiscovery, wholeVersion } from '../lib/panelUpdateDiscovery';
 
@@ -533,7 +533,9 @@ function PanelCertificatePanel({ active }: { active: boolean }) {
             if (operation.status === 'failed') {
                 release({ state: 'failed', domain: exactMarker.domain, reason: operation.error?.message ?? '' });
                 setBusy(false);
-                showToast('error', operation.error?.message || t('panelCert.failed'));
+                // The page says it with the reason under Technical details; the
+                // server's own words are not the sentence (owner feedback 2026-10-31).
+                showToast('error', t('panelCert.failed'), operation.error?.message ? { details: { label: t('problem.details'), text: operation.error.message } } : undefined);
                 void retryCertificate();
                 return;
             }
@@ -645,8 +647,8 @@ function PanelCertificatePanel({ active }: { active: boolean }) {
                     issueInFlightRef.current = false;
                     setPendingOperation(null);
                     const problem = await readApiError(res);
-                    if (problem.code && problem.action) setRefusal(problem);
-                    else showToast('error', apiErrorText(problem, t, 'panelCert.failed'));
+                    // Every definitive refusal stays on the card, with its fix when it has one.
+                    setRefusal(problem);
                     setBusy(false);
                 }
                 return;
@@ -657,7 +659,7 @@ function PanelCertificatePanel({ active }: { active: boolean }) {
             // A lost POST response is not proof that the durable row was not
             // created. Keep the exact marker and let polling reconcile it.
             if (!(e instanceof TypeError)) {
-                showToast('error', e instanceof Error && e.message ? e.message : t('panelCert.failed'));
+                showToast('error', t('panelCert.failed'));
             }
         }
     };
@@ -764,18 +766,25 @@ function PanelCertificatePanel({ active }: { active: boolean }) {
                     <div ref={noticeRef} className="scroll-mb-24 scroll-mt-24">
                         {refusal && (
                             <div role="alert" data-panel-certificate-refusal={refusal.code}>
-                                <ErrorBanner className="mb-4" error={refusal} />
+                                <ErrorBanner className="mb-4" error={refusal} sentence="panelCert.failed" />
                             </div>
                         )}
                         {outcome.state === 'failed' && (
-                            <ErrorBanner
-                                className="mb-4"
-                                error={{
-                                    message: outcome.reason
-                                        ? t('panelCert.failedDetail', { domain: outcome.domain, reason: outcome.reason })
-                                        : t('panelCert.failedPlain', { domain: outcome.domain }),
-                                }}
-                            />
+                            <div className="mb-4">
+                                <ErrorBanner
+                                    error={{
+                                        message: outcome.reason
+                                            ? t('panelCert.failedTechnical', { domain: outcome.domain })
+                                            : t('panelCert.failedPlain', { domain: outcome.domain }),
+                                    }}
+                                />
+                                {outcome.reason && (
+                                    <details className="mt-1 text-xs text-fg-muted" data-panel-certificate-reason="">
+                                        <summary className="cursor-pointer">{t('problem.details')}</summary>
+                                        <p className="break-words font-mono">{outcome.reason}</p>
+                                    </details>
+                                )}
+                            </div>
                         )}
                         {outcome.state === 'notRecorded' && (
                             <div role="status" className="mb-4 rounded-lg border border-border bg-surface-2/50 p-3 text-sm leading-relaxed text-fg">

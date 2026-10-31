@@ -101,7 +101,10 @@ test('the Domains page disables Add, and names the fix, only when DNS is known t
   assert.match(domains, /const dnsBlocked = !isTeamMember && dns\.state === 'blocked' \? dns\.reason : null;/);
   assert.match(domains, /disabled=\{dnsBlocked !== null\}/);
   assert.equal(domains.split('disabled={dnsBlocked !== null}').length - 1, 1, 'one Add button definition carries the gate');
-  assert.match(domains, /dnsBlocked === 'engine' \? t\('domains\.add\.needsDns'\) : t\('err\.DNS_SETTINGS_REQUIRED'\)/);
+  // Since 2026-10-31 the engine half says why, by its state (a main DNS
+  // server waiting for its backup is not "no DNS"); no engine is still needsDns.
+  assert.match(domains, /dnsEngineBlockerText\(capabilities\.remote\.value, t\) : t\('domains\.add\.needsDns'\)/);
+  assert.match(domains, /: t\('err\.DNS_SETTINGS_REQUIRED'\)/);
   assert.match(domains, /\/dns-infrastructure/);
   assert.match(domains, /err\.DNS_SETTINGS_REQUIRED\.action/);
   // "No domains yet" is a claim about the server: it needs the answer as proof.
@@ -119,7 +122,7 @@ test('the Add domain dialogue shows the blocker only for a known answer and neve
   assert.match(modal, /\{dns\.state === 'unknown' && \(\s*<CouldNotCheck\s+text=\{t\('domains\.add\.dnsUnknown'\)\}\s+onRetry=\{\(\) => void capabilities\.retry\(\)\}/);
   assert.match(modal, /\{dns\.state === 'checking' && <Checking label=\{t\('dns\.checkingServer'\)\} \/>\}/);
   // The blocker names the half that is missing, from the known answer.
-  assert.match(modal, /dns\.reason === 'identity' \? t\('err\.DNS_SETTINGS_REQUIRED'\) : t\('domains\.add\.needsDns'\)/);
+  assert.match(modal, /dns\.reason === 'identity' \? t\('err\.DNS_SETTINGS_REQUIRED'\) : caps \? dnsEngineBlockerText\(caps, t\) : t\('domains\.add\.needsDns'\)/);
   assert.match(modal, /err\.DNS_SETTINGS_REQUIRED\.action/);
   // The two text keys of a known-missing DNS appear only inside the blocker.
   const blocker = modal.slice(modal.indexOf("{dns.state === 'blocked' && ("), modal.indexOf('{t(\'domains.add.domainName\')}'));

@@ -31,7 +31,7 @@ export const enErrorsScreens = {
     'err.REPO_CONFIGURATION_INVALID': 'The repository configuration has drifted. Use Enable/Repair to validate and publish the trusted recipe again.',
     'err.REPO_STATUS_FAILED': 'The repository configuration could not be verified.',
     'err.REPO_PACKAGES_FAILED': 'The repository package list could not be read.',
-    'err.DNS_SERVER_REQUIRED': 'No managed authoritative DNS engine is active. Choose and activate BIND or PowerDNS before publishing domains.',
+    'err.DNS_SERVER_REQUIRED': "Nothing was changed. This server has no active DNS software: choose and start BIND or PowerDNS under DNS and peer servers.",
     'err.DNS_SERVER_REQUIRED.action': 'Choose a DNS engine',
     'err.DNS_PEER_CATCHING_UP': 'Nothing was changed: the backup DNS server has not yet confirmed this server\'s current zone list. It usually catches up within a minute of the previous change; try again then. If this keeps happening, the server administrator checks that the backup DNS server is running and reachable from this server on TCP port 53.',
     'err.DNS_PEER_CATCHING_UP.action': 'Open DNS and peer servers',

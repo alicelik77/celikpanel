@@ -307,14 +307,19 @@ test('The panel certificate\'s contact refusal leads to My account, in both lang
   }
   // The setup plan's blocker carries the same link, and its words say where.
   const setup = source('components/ServerSetup.tsx');
-  assert.ok(setup.includes(`code === 'panel_certificate_contact_email_invalid' && <>{' '}<Link to="/account#email"`));
-  assert.ok(setup.includes(`{t('setup.blocker.contactAction')}`));
+  // Since 2026-10-31 the plan's problems (components/SetupPlanProblems.tsx) offer it as the fix.
+  const problems = source('components/SetupPlanProblems.tsx');
+  assert.ok(source('lib/setupProblems.ts').includes(`panel_certificate_contact_email_invalid: { name: 'contact', fix: { kind: 'account' } }`));
+  assert.ok(problems.includes(`fix.kind === 'account' ? navigate('/account#email')`));
+  assert.ok(problems.includes(`t('setup.blocker.contactAction')`));
+  assert.ok(setup.includes('<SetupPlanProblems blockers={plan.blockers}'));
   assert.ok(catalogue.en['setup.blocker.contact'].includes('My account (top-right menu)'));
   assert.ok(catalogue.tr['setup.blocker.contact'].includes('Hesabım’da (sağ üst menü)'));
   // A refusal that carries an action stays on the panel certificate card as a banner.
   const settings = source('components/Settings.tsx');
-  assert.ok(settings.includes('if (problem.code && problem.action) setRefusal(problem);'));
-  assert.ok(settings.includes('<ErrorBanner className="mb-4" error={refusal} />'));
+  // Since 2026-10-31 every definitive refusal stays on the card, said with its own sentence.
+  assert.ok(settings.includes('                    setRefusal(problem);'));
+  assert.ok(settings.includes('<ErrorBanner className="mb-4" error={refusal} sentence="panelCert.failed" />'));
 });
 
 test('A lost answer on the email change is asked again once under the same identity (D-029)', async () => {

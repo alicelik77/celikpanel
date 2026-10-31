@@ -150,6 +150,9 @@ test('a certificate request certbot did not fulfil stays on the page with its ki
 });
 
 test('a password the caller typed is not expected back from the server', () => {
-  assert.match(read('../src/components/AddDatabaseModalV2.tsx'), /typeof data\.password === 'string' \? `User: \$\{data\.user\}, Password: \$\{data\.password\}` : `User: \$\{data\.user\}`/);
-  assert.match(read('../src/components/AddUserModalV2.tsx'), /if \(typeof data\.password === 'string'\) showToast\('info', `Password: \$\{data\.password\}`\);/);
+  // Since 2026-10-31 a password the server made up is shown on the page until
+  // closed (OnceOnlyNotice ShownOnceSecret), never in a toast.
+  assert.match(read('../src/components/AddDatabaseModalV2.tsx'), /if \(userMode === 'new' && typeof data\.password === 'string'\) \{\s*onSecret\(/);
+  assert.match(read('../src/components/AddUserModalV2.tsx'), /if \(typeof data\.password === 'string'\) onSecret\(/);
+  for (const file of ['AddDatabaseModalV2.tsx', 'AddUserModalV2.tsx']) assert.doesNotMatch(read(`../src/components/${file}`), /showToast\([^)]*data\.password/);
 });

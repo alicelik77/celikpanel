@@ -6,8 +6,9 @@ import {
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
-import { apiErrorText, readApiError } from '../lib/apiError';
-import { Button, CouldNotCheck, KnownEmpty, RemoteGate, ResultUnknown, inputClass } from './ui';
+import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
+import { useNavigate } from '../router';
+import { Button, CouldNotCheck, ErrorBanner, KnownEmpty, RemoteGate, ResultUnknown, inputClass } from './ui';
 import { CurrentGate, StaleNotice, isStaleWrite, readCurrent, type Current } from './CurrentSettings';
 import { decodeListIn, mapRemote, useRemote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
@@ -53,11 +54,16 @@ const originLabelKey: Record<string, TranslationKey> = {
     pre_restore: 'backup.origin.preRestore',
 };
 
-type Translate = (key: TranslationKey, vars?: Record<string, string | number>) => string;
+// A refusal keeps the server's answer whole (code, action, reason), so the
+// screen can say it with its own sentence and offer the fix.
+// Ret, sunucunun yanitini butun olarak tasir.
+class Refused extends Error {
+    constructor(readonly problem: ApiError) { super(problem.message); }
+}
 
-async function readJSONResponse<T>(res: Response, t: Translate): Promise<T> {
+async function readJSONResponse<T>(res: Response): Promise<T> {
     if (!res.ok) {
-        throw new Error(apiErrorText(await readApiError(res), t));
+        throw new Refused(await readApiError(res));
     }
     const text = (await res.text()).trim();
     if (!text) return {} as T;
@@ -66,19 +72,17 @@ async function readJSONResponse<T>(res: Response, t: Translate): Promise<T> {
     try {
         data = JSON.parse(text);
     } catch {
-        throw new Error(t('common.error'));
+        throw new Refused({ message: '' });
     }
     if (data.success === false || (data.error && data.success !== true)) {
-        throw new Error(data.error || t('common.error'));
+        throw new Refused({ message: typeof data.error === 'string' ? data.error : '' });
     }
     return data;
 }
 
 const decodeBackups = (raw: unknown) => decodeListIn<BackupItem>(raw, 'backups');
 
-function errorText(error: unknown, t: Translate): string {
-    return error instanceof Error && error.message ? error.message : t('common.error');
-}
+const problemOf = (error: unknown): ApiError | null => error instanceof Refused ? error.problem : null;
 
 // Real backups via the agent (tar/dump under /var/backups/celikpanel).
 // Create, restore, download, delete — no invented rows.
@@ -126,11 +130,19 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
     // body that says the change failed, or the data of a change that was made.
     // Değişikliğin yanıtı: sunucunun reddi kendi cümlesiyle, değişikliğin
     // başarısız olduğunu söyleyen gövde ya da yapılan değişikliğin verisi.
-    const answered = async <T,>(res: Response): Promise<T | null> => {
+    // A refusal also stays above the list with its fix until the next change
+    // succeeds (owner feedback 2026-10-31).
+    const navigate = useNavigate();
+    const [refusal, setRefusal] = useState<{ problem: ApiError; sentence: TranslationKey } | null>(null);
+    const answered = async <T,>(res: Response, sentence: TranslationKey): Promise<T | null> => {
         try {
-            return await readJSONResponse<T>(res, t);
+            const data = await readJSONResponse<T>(res);
+            setRefusal(null);
+            return data;
         } catch (error) {
-            showToast('error', errorText(error, t));
+            const problem = problemOf(error) ?? { message: '' };
+            setRefusal({ problem, sentence });
+            showToast('error', refusalText(problem, t, sentence), refusalToast(problem, t, navigate));
             return null;
         }
     };
@@ -150,7 +162,7 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
                 }),
             });
             if (!res) return;
-            if (!(await answered<{ success?: boolean; error?: string }>(res))) return;
+            if (!(await answered<{ success?: boolean; error?: string }>(res, 'backup.createFailed'))) return;
             showToast('success', t('backup.created'));
             answer.settle();
             await loadBackups();
@@ -170,7 +182,7 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
                 body: JSON.stringify({ backup_name: backup.name }),
             });
             if (!res) return;
-            const data = await answered<{ success?: boolean; error?: string; safety_backup?: BackupItem }>(res);
+            const data = await answered<{ success?: boolean; error?: string; safety_backup?: BackupItem }>(res, 'backup.restoreFailed');
             if (!data) return;
             showToast('success', data.safety_backup
                 ? t('backup.restoredWithSafety', { name: data.safety_backup.name })
@@ -191,7 +203,7 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
                 method: 'DELETE',
             });
             if (!res) return;
-            if (!(await answered<{ success?: boolean; error?: string }>(res))) return;
+            if (!(await answered<{ success?: boolean; error?: string }>(res, 'backup.deleteFailed'))) return;
             showToast('success', t('backup.deleted'));
             answer.settle();
             await loadBackups();
@@ -204,7 +216,7 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
         setDownloading(name);
         try {
             const refusal = await saveDownload(`/api/v1/domains/${domainId}/backups/download?name=${encodeURIComponent(name)}`, name);
-            if (refusal) showToast('error', apiErrorText(refusal, t));
+            if (refusal) showToast('error', refusalText(refusal, t, 'backup.downloadFailed'), refusalToast(refusal, t, navigate));
         } finally {
             setDownloading(null);
         }
@@ -331,6 +343,7 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
                 </div>
 
                 <ResultUnknown answer={answer} className="mb-3" />
+                <ErrorBanner className="mb-3" error={refusal?.problem ?? null} sentence={refusal?.sentence} />
 
                 <RemoteGate
                     remote={backups.remote}
@@ -503,6 +516,7 @@ function AutoBackupSection({
     const [backupType, setBackupType] = useState<'files' | 'full'>('files');
     const [retention, setRetention] = useState(7);
     const [saving, setSaving] = useState(false);
+    const [scheduleRefusal, setScheduleRefusal] = useState<ApiError | null>(null);
     const [stale, setStale] = useState(false);
     const url = `/api/v1/domains/${domainId}/backups/schedule`;
     const schedule = current.state === 'known' ? current.value : null;
@@ -545,7 +559,7 @@ function AutoBackupSection({
             if (!r.ok) {
                 const error = await readApiError(r);
                 if (isStaleWrite(error)) setStale(true);
-                else showToast('error', apiErrorText(error, t));
+                else { setScheduleRefusal(error); showToast('error', refusalText(error, t, 'backup.auto.saveFailed'), refusalToast(error, t)); }
                 return;
             }
             const { version } = await r.json();
@@ -555,9 +569,11 @@ function AutoBackupSection({
                     ? { enabled: false, version }
                     : { ...schedule, enabled: true, frequency, backup_type: backupType, retention, version },
             });
+            setScheduleRefusal(null);
             showToast('success', t(off ? 'backup.auto.off' : 'backup.auto.saved'));
-        } catch (error) {
-            showToast('error', errorText(error, t));
+        } catch {
+            // No answer: whether the schedule changed is not known.
+            showToast('error', t('common.resultUnknown'));
         } finally {
             setSaving(false);
         }
@@ -579,6 +595,7 @@ function AutoBackupSection({
             <CurrentGate state={current.state} unknownKey="backup.auto.unknown" onRetry={load} />
             {schedule && <>
             {stale && <StaleNotice textKey="backup.auto.stale" onReload={load} />}
+            <ErrorBanner error={scheduleRefusal} sentence="backup.auto.saveFailed" />
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <label className="text-sm">

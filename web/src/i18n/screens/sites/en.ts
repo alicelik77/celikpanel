@@ -33,7 +33,7 @@ export const enSitesScreens = {
     'domains.add.sslHint': 'A free certificate (Let’s Encrypt) is requested right after the site is created and renews by itself. It only works if the domain already points to this server. If it does not yet, the site is still created and you can request the certificate later under SSL/TLS in the domain’s settings.',
     'domains.add.dnsServed': 'The DNS zone will be served from this server ({server}).',
     'domains.goServices': 'Go to Services',
-    'domains.add.needsDns': 'An active, panel-managed DNS server is required before adding domains. Choose and activate BIND or PowerDNS in Server → DNS and peer servers.',
+    'domains.add.needsDns': "To add domains, this server needs DNS software of its own. Choose and start BIND or PowerDNS under DNS and peer servers.",
     'domains.add.create': 'Create domain',
     'domains.add.creating': 'Creating…',
     'domains.add.created': 'Domain {name} created.',

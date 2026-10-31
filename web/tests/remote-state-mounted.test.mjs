@@ -104,6 +104,8 @@ const own = {
 // ended with, and a change whose one-time result is not kept.
 own['/ServiceActionNotice'] = shared.compile('components/ServiceActionNotice.tsx', own);
 own['/OnceOnlyNotice'] = shared.compile('components/OnceOnlyNotice.tsx', own);
+// The shared problem pattern is the shipped one too (2026-10-31).
+own['/BlockingProblems'] = shared.compile('components/BlockingProblems.tsx', own);
 // So is the notice of a certificate request certbot did not fulfil (11 Oct 2026).
 own['/CertificateIssueNotice'] = shared.compile('components/CertificateIssueNotice.tsx', own);
 const modalURL = shared.compile('components/AddDomainModal.tsx', own);
@@ -376,7 +378,7 @@ const table = [
     negative: ['databases.noServersHint', 'db.teamEngineUnavailable', 'dbtools.install'],
     checking: 'db.checkingEngines', unknown: 'db.enginesUnknown',
     known: [json(caps({ database_servers: [] })), 'databases.noServersHint'],
-    alsoDisabled: 'Create Database',
+    alsoDisabled: 'ddb.create',
   },
   {
     screen: 'Domain databases (team member)', Component: DomainDatabaseManager, props: { ...domain, isAdditionalUser: true }, role: 'additional_user',
@@ -384,7 +386,7 @@ const table = [
     negative: ['db.teamEngineUnavailable', 'databases.empty.databases'],
     checking: 'db.checking', unknown: 'db.unknown',
     known: [json({ databases: [], available_types: [] }), 'db.teamEngineUnavailable'],
-    alsoDisabled: 'Create Database',
+    alsoDisabled: 'ddb.create',
   },
   {
     screen: 'Domain connection card', Component: DomainConnection, props: domain,
@@ -854,7 +856,7 @@ test('Domain databases: nothing is created on an engine the server did not name'
     try {
       await mount(DomainDatabaseManager, domain);
       assert.equal(tree.root.findAll((node) => node.type === 'form').length, 0, 'the create form is shown without a known engine');
-      for (const node of buttons('Create Database')) assert.equal(node.props.disabled, true);
+      for (const node of buttons('ddb.create')) assert.equal(node.props.disabled, true);
       assert.equal(calls.filter((call) => call.method !== 'GET').length, 0);
     } finally {
       await cleanup();
@@ -863,7 +865,7 @@ test('Domain databases: nothing is created on an engine the server did not name'
   serve();
   try {
     await mount(DomainDatabaseManager, domain);
-    await press(buttons('Create Database')[0]);
+    await press(buttons('ddb.create')[0]);
     assert.deepEqual(tree.root.findAll((node) => node.type === 'option').map((node) => node.props.value), ['mysql']);
   } finally {
     await cleanup();
@@ -985,7 +987,7 @@ test('Settings: a certificate request whose poll gets no answer is never called 
   try {
     await mount(Settings);
     await act(async () => { await settled(); await settled(); });
-    assert.ok(!has('panelCert.failed') && !has('panelCert.failedDetail') && !has('panelCert.failedPlain'));
+    assert.ok(!has('panelCert.failed') && !has('panelCert.failedDetail') && !has('panelCert.failedPlain') && !has('panelCert.failedTechnical'));
     assert.deepEqual(globalThis.currentTest.toasts.filter(([kind]) => kind === 'error'), []);
     assert.ok(buttons('panelCert.issu').every((node) => node.props.disabled), 'a second request is offered while the first is not known');
     assert.ok(globalThis.localStorage.getItem('celikpanel.panel-certificate-operation.v1'), 'the exact request was forgotten');
@@ -1520,7 +1522,7 @@ test('every text of the three states exists in both languages, and the could-not
     'databases.checkingUsers', 'databases.deleteDatabase', 'databases.deleteUser',
     // The second batch: sentences that are not a row's checking or could-not-check line.
     'common.resultUnknown', 'settings.2fa.resultUnknown', 'panelCert.notReadable', 'panelCert.unconfirmed', 'panelCert.notRecorded',
-    'panelCert.failedDetail', 'panelCert.failedPlain', 'panelCert.checkAgain', 'panelCert.openSecure', 'panelCert.reopen.title',
+    'panelCert.failedDetail', 'panelCert.failedPlain', 'panelCert.failedTechnical', 'panelCert.checkAgain', 'panelCert.openSecure', 'panelCert.reopen.title',
     'panelCert.reopen.body', 'panelCert.reopen.reload', 'panelCert.reopen.stay', 'panelCert.reopen.stayed', 'plans.checking',
     'files.contentUnknown', 'files.uploadUnreadable', 'ssl.rereading', 'import.checkingSubs', 'import.noSubs', 'import.inspectUnanswered',
     'import.runAgain', 'import.unknown.title', 'import.unknown.body', 'import.unknown.check', 'import.unknown.checkAgain',
