@@ -446,7 +446,9 @@ sieve_vacation_check() { # address uid gid
     dir=$MAIL_ROOT/$domain/$local_part
     install -d -o "$2" -g "$3" -m 0700 "$MAIL_ROOT/$domain" "$dir" "$dir/sieve" || return 1
     install -o "$2" -g "$3" -m 0600 /etc/dovecot/matrix-autoresponder.sieve "$dir/sieve/celikpanel-autoresponder.sieve" || return 1
-    ln -sfn sieve/celikpanel-autoresponder.sieve "$dir/.dovecot.sieve" && chown -h "$2:$3" "$dir/.dovecot.sieve"
+    # The active name has no leading dot (cmd/agent autoresponderLinkName): a
+    # dot name in the maildir root is a Maildir++ folder to Dovecot.
+    ln -sfn sieve/celikpanel-autoresponder.sieve "$dir/dovecot.sieve" && chown -h "$2:$3" "$dir/dovecot.sieve"
     lmtp_send "$address" "friend@example.invalid" "first" || { printf 'LMTP delivery 1 refused: %s\n' "$(tr -d '\r' </var/log/matrix-lmtp.last)"; rc=1; }
     lmtp_send "$address" "friend@example.invalid" "second" || { printf 'LMTP delivery 2 refused: %s\n' "$(tr -d '\r' </var/log/matrix-lmtp.last)"; rc=1; }
     sleep 1

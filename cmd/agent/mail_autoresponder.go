@@ -21,10 +21,25 @@ import (
 // make it work, each one an ordinary file the owner can read and change:
 //
 //  1. /etc/dovecot/conf.d/96-celikpanel-sieve.conf: Dovecot's LMTP listener
-//     inside Postfix's spool (private/dovecot-lmtp) and the Sieve plugin for
-//     LMTP, with the standard personal script location (~/sieve,
-//     active ~/.dovecot.sieve). First line: the SHA-256 of the rest, so an
-//     administrator's edit is detected and kept (never overwritten).
+//     inside Postfix's spool (private/dovecot-lmtp), the Sieve plugin for
+//     LMTP, LMTP's user lookup by the full address, and the personal script
+//     location (~/sieve, active ~/dovecot.sieve). First line: the SHA-256 of
+//     the rest, so an administrator's edit is detected and kept (never
+//     overwritten).
+//
+//     The user lookup: Debian 13's stock conf.d/20-lmtp.conf sets
+//     auth_username_format = %{user | username | lower} for LMTP, which
+//     strips the domain; CelikPanel's passwd-file keys are full addresses,
+//     so Dovecot answered "550 5.1.1 User doesn't exist" and every message
+//     to a mailbox with a reply bounced (alpha.114 lab, E4). The drop-in
+//     sets the full address in the lmtp protocol scope only, and the Agent
+//     asks Dovecot's LMTP for the address (RCPT, no message) before any
+//     mail is routed there.
+//
+//     The active name has no leading dot: the mailbox's home is its maildir
+//     root, where Maildir++ treats every dot name as a folder, so the stock
+//     ~/.dovecot.sieve made Dovecot log "stat(.../.dovecot.sieve/tmp)
+//     failed: Not a directory" on each delivery (Ubuntu 24.04, lab E4).
 //  2. /etc/postfix/celikpanel_transport (transport_maps): only the mailboxes
 //     with a reply are delivered through Dovecot LMTP; every other mailbox
 //     keeps Postfix's virtual(8) delivery exactly as before. A transport_maps
@@ -46,12 +61,16 @@ import (
 const (
 	autoresponderScriptName   = "celikpanel-autoresponder.sieve"
 	autoresponderCompiledName = "celikpanel-autoresponder.svbin"
-	autoresponderLinkName     = ".dovecot.sieve"
-	autoresponderLinkTarget   = "sieve/" + autoresponderScriptName
-	autoresponderScriptHeader = "# Managed by CelikPanel: out-of-office reply. sha256="
-	autoresponderDovecotHead  = "# Managed by CelikPanel: Dovecot Sieve for out-of-office replies. sha256="
-	autoresponderLMTPSocket   = "/var/spool/postfix/private/dovecot-lmtp"
-	autoresponderLMTPNexthop  = "lmtp:unix:private/dovecot-lmtp"
+	autoresponderLinkName     = "dovecot.sieve"
+	// autoresponderLegacyLinkName is the active name the first alpha.114
+	// candidates used. A link there naming CelikPanel's script is taken as
+	// CelikPanel's and removed; anything else there is left alone.
+	autoresponderLegacyLinkName = ".dovecot.sieve"
+	autoresponderLinkTarget     = "sieve/" + autoresponderScriptName
+	autoresponderScriptHeader   = "# Managed by CelikPanel: out-of-office reply. sha256="
+	autoresponderDovecotHead    = "# Managed by CelikPanel: Dovecot Sieve for out-of-office replies. sha256="
+	autoresponderLMTPSocket     = "/var/spool/postfix/private/dovecot-lmtp"
+	autoresponderLMTPNexthop    = "lmtp:unix:private/dovecot-lmtp"
 )
 
 // Seams: production values, replaced by component tests.
@@ -99,16 +118,34 @@ var (
 	}
 	autoresponderSleep = time.Sleep
 	autoresponderStore = mailboxSieveStore(nativeMailboxSieveStore{})
+	// autoresponderLMTPProbe asks Dovecot's LMTP whether it accepts the
+	// address, exactly as Postfix will (RCPT TO, no message is sent).
+	autoresponderLMTPProbe = func(ctx context.Context, email string) error {
+		return probeLMTPRecipient(ctx, autoresponderLMTPSocket, email)
+	}
+	autoresponderProbeAttempts = 3
+	// autoresponderRouted reports whether CelikPanel's transport table
+	// routes the mailbox to Dovecot LMTP (read only).
+	autoresponderRouted = func(email string) (bool, error) {
+		content, err := readMailFile(autoresponderTransportPath)
+		if err != nil {
+			return false, err
+		}
+		return mailFileHasKey(content, email), nil
+	}
 )
 
 // mailboxSieveState is what one mailbox's directory holds.
 type mailboxSieveState struct {
 	// LinkKind: "none", "link" (a symbolic link) or "file" (a regular
-	// .dovecot.sieve, which is always the owner's).
+	// dovecot.sieve, which is always the owner's).
 	LinkKind      string
 	LinkTarget    string
 	ScriptExists  bool
 	ScriptContent []byte
+	// LegacyLink: .dovecot.sieve is a symbolic link to CelikPanel's script
+	// (written by the first alpha.114 candidates); Write and Remove drop it.
+	LegacyLink bool
 }
 
 // mailboxSieveStore reads and writes the mailbox's Sieve files as the mail
@@ -208,6 +245,15 @@ func classifyMailboxSieve(state mailboxSieveState) string {
 }
 
 // renderAutoresponderDovecotConf renders the Sieve drop-in for the dialect.
+//
+// 2.3 (Debian 12, Ubuntu 22.04/24.04): mail_plugins is a string, the
+// %-variables are single letters (%Lu = the full user name, lower case) and
+// the personal script is the plugin { sieve = file:...;active=... } location.
+// 2.4 (Debian 13, Arch): mail_plugins is a boolean list, variables are
+// %{user | lower}, and the personal script is a named sieve_script block
+// (named "personal", as in the stock 90-sieve.conf example).
+// auth_username_format sits inside protocol lmtp only: IMAP, POP3 and SMTP
+// logins keep whatever the server administrator set for them.
 func renderAutoresponderDovecotConf(is24 bool) string {
 	listener := `service lmtp {
   unix_listener ` + autoresponderLMTPSocket + ` {
@@ -222,6 +268,9 @@ func renderAutoresponderDovecotConf(is24 bool) string {
 # It lets Postfix deliver the mailboxes that have an out-of-office reply
 # through Dovecot LMTP, where the Sieve plugin sends the reply. Dovecot runs
 # from this file with or without CelikPanel.
+# LMTP looks mailboxes up by their full address (name@domain), as they are
+# listed in /etc/dovecot/users; the active script is ~/dovecot.sieve because
+# a dot name in the maildir would be taken as a mail folder.
 `
 	var body string
 	if is24 {
@@ -229,19 +278,21 @@ func renderAutoresponderDovecotConf(is24 bool) string {
   mail_plugins {
     sieve = yes
   }
+  auth_username_format = %{user | lower}
 }
 ` + listener + `sieve_script personal {
   driver = file
   path = ~/sieve
-  active_path = ~/.dovecot.sieve
+  active_path = ~/` + autoresponderLinkName + `
 }
 `
 	} else {
 		body = preamble + `protocol lmtp {
   mail_plugins = $mail_plugins sieve
+  auth_username_format = %Lu
 }
 ` + listener + `plugin {
-  sieve = file:~/sieve;active=~/.dovecot.sieve
+  sieve = file:~/sieve;active=~/` + autoresponderLinkName + `
 }
 `
 	}
@@ -307,12 +358,15 @@ const (
 	autoresponderOwnerScriptDetail    = "This mailbox already has its own mail filter (Sieve) script, made outside CelikPanel (for example in a mail program). CelikPanel did not change it. The mailbox owner adds the out-of-office reply to that script, or removes the script so CelikPanel can write its own."
 	autoresponderOwnerDovecotDetail   = "/etc/dovecot/conf.d/96-celikpanel-sieve.conf was changed outside CelikPanel, so CelikPanel left it as it is and changed nothing. The server administrator either keeps it (it must enable Sieve for LMTP and the private/dovecot-lmtp listener) or moves it aside, for example `sudo mv /etc/dovecot/conf.d/96-celikpanel-sieve.conf /root/`, and saves the reply again."
 	autoresponderOwnerTransportDetail = "Postfix's transport_maps is set to a table that is not CelikPanel's, so CelikPanel changed nothing. The server administrator adds `%s` to transport_maps (`sudo postconf -e 'transport_maps = <yours>, %s'`) and saves the reply again."
+	autoresponderDovecotStoppedDetail = "Dovecot is stopped, so CelikPanel could not check that Dovecot accepts this mailbox and changed nothing; mail keeps arriving as before. The server administrator starts Dovecot (`sudo systemctl start dovecot`), then the reply is saved again."
+	autoresponderLMTPRejectedDetail   = "Dovecot's mail delivery (LMTP) did not accept %s (it answered: %s). CelikPanel did not move the mailbox to Dovecot delivery, so mail keeps arriving as before and no reply was set. The server administrator checks Dovecot's LMTP settings (`sudo doveconf -n -P | grep -A3 'protocol lmtp'`; auth_username_format for LMTP must keep the full address) and `journalctl -u dovecot`, then the reply is saved again."
 )
 
 // ensureAutoresponderInfrastructure installs the Sieve package when it is
 // missing, writes the Dovecot drop-in (validated by doveconf, rolled back on
-// refusal), reloads Dovecot and waits for the LMTP socket. It returns a
-// warning sentence when Dovecot is stopped (the reply works once it starts).
+// refusal), reloads Dovecot and waits for the LMTP socket. A stopped Dovecot
+// is a refusal: LMTP cannot be asked whether it accepts the mailbox, so no
+// mail is moved to it (the mailbox keeps Postfix's own delivery).
 func ensureAutoresponderInfrastructure(ctx context.Context) (string, error) {
 	if !autoresponderSieveAvailable() {
 		family := autoresponderPkgFamily()
@@ -361,8 +415,7 @@ func ensureAutoresponderInfrastructure(ctx context.Context) (string, error) {
 				"Dovecot did not load the Sieve settings ("+boundedNativeDetail(err.Error())+"). No mailbox was moved to the new delivery. The server administrator reads `journalctl -u dovecot`.")
 		}
 		if state == mailServiceNotRunning {
-			warning = "Dovecot is stopped. The reply starts working when Dovecot is started."
-			return warning, nil
+			return "", refuseAutoresponder(transport.AutoresponderRefusedDovecotStopped, autoresponderDovecotStoppedDetail)
 		}
 	}
 	deadline := time.Now().Add(autoresponderSocketWait)
@@ -516,6 +569,18 @@ func applyMailAutoresponder(ctx context.Context, email, local, domain string, se
 		return err
 	}
 	resp.SieveAvailable = true
+	// Ask Dovecot's LMTP for the address before any mail goes there. A
+	// mailbox that is already routed (saved before) loses its route and
+	// CelikPanel's script when LMTP refuses it now: mail returns to
+	// Postfix's own delivery instead of bouncing.
+	if err := verifyAutoresponderLMTP(ctx, email); err != nil {
+		rollbackErr := rollbackAutoresponderRoute(ctx, email, domain, local, resp.Script)
+		if rollbackErr != nil {
+			return errors.Join(err, rollbackErr)
+		}
+		resp.Script = transport.AutoresponderScriptNone
+		return err
+	}
 	if err := autoresponderStore.Write(domain, local, []byte(renderAutoresponderSieve(setting))); err != nil {
 		return fmt.Errorf("write the mailbox's Sieve script: %w", err)
 	}
@@ -533,13 +598,51 @@ func applyMailAutoresponder(ctx context.Context, email, local, domain string, se
 	return nil
 }
 
+// verifyAutoresponderLMTP asks Dovecot's LMTP whether it accepts the
+// address. Right after a reload an old LMTP process may still answer, so a
+// refusal is asked again a few times before it counts.
+func verifyAutoresponderLMTP(ctx context.Context, email string) error {
+	var last error
+	for attempt := 0; attempt < autoresponderProbeAttempts; attempt++ {
+		if attempt > 0 {
+			autoresponderSleep(time.Second)
+		}
+		last = autoresponderLMTPProbe(ctx, email)
+		if last == nil {
+			return nil
+		}
+		if ctx.Err() != nil {
+			break
+		}
+	}
+	return refuseAutoresponder(transport.AutoresponderRefusedLMTPRejected,
+		fmt.Sprintf(autoresponderLMTPRejectedDetail, email, boundedNativeDetail(last.Error())))
+}
+
+// rollbackAutoresponderRoute returns the mailbox to Postfix's own delivery:
+// its LMTP route goes first, then CelikPanel's script (never the owner's).
+func rollbackAutoresponderRoute(ctx context.Context, email, domain, local, script string) error {
+	if _, err := setAutoresponderTransport(ctx, email, false); err != nil {
+		return fmt.Errorf("remove the mailbox's LMTP route: %w", err)
+	}
+	if script == transport.AutoresponderScriptManaged {
+		if err := autoresponderStore.Remove(domain, local); err != nil {
+			return fmt.Errorf("remove CelikPanel's Sieve script: %w", err)
+		}
+	}
+	return nil
+}
+
 // MailAutoresponderState reads one mailbox's Sieve state (read only).
+// Applied is true when the server state is whole: CelikPanel's script is
+// active and the mailbox is routed to LMTP, or neither is. A script
+// without its route (or a route without the script) is false.
 func (a *Agent) MailAutoresponderState(req *transport.MailAutoresponderStateRequest, resp *transport.MailAutoresponderResponse) error {
 	if req == nil || resp == nil {
 		return fmt.Errorf("autoresponder state request and response are required")
 	}
 	*resp = transport.MailAutoresponderResponse{}
-	_, local, domain, err := canonicalAgentMailbox(req.Email)
+	email, local, domain, err := canonicalAgentMailbox(req.Email)
 	if err != nil {
 		return err
 	}
@@ -549,6 +652,16 @@ func (a *Agent) MailAutoresponderState(req *transport.MailAutoresponderStateRequ
 		return fmt.Errorf("read the mailbox's Sieve script: %w", err)
 	}
 	resp.Script = classifyMailboxSieve(state)
+	routed, err := autoresponderRouted(email)
+	if err != nil {
+		return fmt.Errorf("read the mailbox's mail route: %w", err)
+	}
+	switch resp.Script {
+	case transport.AutoresponderScriptManaged:
+		resp.Applied = routed
+	case transport.AutoresponderScriptNone:
+		resp.Applied = !routed
+	}
 	if snapshot, err := snapshotMailFile(autoresponderDovecotConfPath); err == nil && snapshot.exists &&
 		!digestHeaderIntact(snapshot.content, autoresponderDovecotHead) {
 		resp.Refusal = transport.AutoresponderRefusedOwnerDovecotConf

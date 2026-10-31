@@ -62,6 +62,7 @@ func TestClassifyMailboxSieveNeverClaimsTheOwnersScript(t *testing.T) {
 		{"ours edited inactive", mailboxSieveState{LinkKind: "none", ScriptExists: true, ScriptContent: edited}, transport.AutoresponderScriptOwner},
 		{"roundcube", mailboxSieveState{LinkKind: "link", LinkTarget: "sieve/roundcube.sieve"}, transport.AutoresponderScriptOwner},
 		{"plain file", mailboxSieveState{LinkKind: "file"}, transport.AutoresponderScriptOwner},
+		{"earlier dot link", mailboxSieveState{LinkKind: "link", LinkTarget: autoresponderLinkTarget, LegacyLink: true, ScriptExists: true, ScriptContent: managed}, transport.AutoresponderScriptManaged},
 	}
 	for _, c := range cases {
 		if got := classifyMailboxSieve(c.state); got != c.want {
@@ -82,12 +83,28 @@ func TestAutoresponderDovecotDropInSpeaksBothDialects(t *testing.T) {
 			t.Fatalf("%s: LMTP listener missing:\n%s", name, conf)
 		}
 	}
-	if !strings.Contains(v23, "mail_plugins = $mail_plugins sieve") || !strings.Contains(v23, "sieve = file:~/sieve;active=~/.dovecot.sieve") {
+	if !strings.Contains(v23, "mail_plugins = $mail_plugins sieve") || !strings.Contains(v23, "sieve = file:~/sieve;active=~/dovecot.sieve") ||
+		!strings.Contains(v23, "protocol lmtp {\n  mail_plugins = $mail_plugins sieve\n  auth_username_format = %Lu\n}") ||
+		strings.Contains(v23, "%{") {
 		t.Fatalf("2.3 dialect:\n%s", v23)
 	}
 	if strings.Contains(v24, "$mail_plugins") || !strings.Contains(v24, "sieve = yes") ||
-		!strings.Contains(v24, "sieve_script personal {") || !strings.Contains(v24, "active_path = ~/.dovecot.sieve") {
+		!strings.Contains(v24, "sieve_script personal {") || !strings.Contains(v24, "active_path = ~/dovecot.sieve") ||
+		!strings.Contains(v24, "  auth_username_format = %{user | lower}\n}") || strings.Contains(v24, "%L") {
 		t.Fatalf("2.4 dialect:\n%s", v24)
+	}
+	// E4: the LMTP lookup keeps the full address (passwd-file keys are
+	// name@domain); the setting stays inside protocol lmtp, and no active
+	// script name starts with a dot (a Maildir++ folder name).
+	for name, conf := range map[string]string{"2.3": v23, "2.4": v24} {
+		lmtp := conf[strings.Index(conf, "protocol lmtp {"):]
+		lmtp = lmtp[:strings.Index(lmtp, "\n}\n")]
+		if strings.Count(conf, "auth_username_format =") != 1 || !strings.Contains(lmtp, "auth_username_format =") {
+			t.Fatalf("%s: auth_username_format outside protocol lmtp:\n%s", name, conf)
+		}
+		if strings.Contains(conf, "| username") || strings.Contains(conf, "%n") || strings.Contains(conf, "~/.dovecot.sieve") {
+			t.Fatalf("%s: domain-stripping format or dot active name:\n%s", name, conf)
+		}
 	}
 	if digestHeaderIntact([]byte(strings.Replace(v24, "0600", "0666", 1)), autoresponderDovecotHead) {
 		t.Fatal("an edited drop-in still counts as CelikPanel's")
