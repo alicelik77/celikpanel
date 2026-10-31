@@ -136,7 +136,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.OSUpdatesStatusV1 Agent.RoundcubeUpdateCheckV1 Agent.WebmailProofV1 Agent.WebmailAddressStatusV1 Agent.RestartNeedsV1
 		Agent.NodePatchesV1 Agent.OSReleaseFactsV1 Agent.RepoConfinePreviewV1 Agent.VendorLanePlanV1
 		Agent.PostgreSQLClustersV1 Agent.PostgreSQLClusterPortPreviewV1 Agent.PostgreSQLSourceCheckV1
-		Agent.SiteCertificateRenewalStateV1
+		Agent.SiteCertificateRenewalStateV1 Agent.MailAutoresponderState
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -189,7 +189,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.EnsureDKIMKey Agent.ImportMailAccount Agent.PostfixQueueAction Agent.RemoveDKIMKey
 		Agent.SetMailPolicy Agent.SyncMailTLSV2 Agent.StartMailEnrollmentV1 Agent.ContinueMailEnrollmentV1
 		Agent.UpdateMailForwarding Agent.UpdateMailPassword Agent.UpdateMailQuota
-		Agent.WireMailFilters
+		Agent.WireMailFilters Agent.SetMailAutoresponder
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityFilesystem, `
 		Agent.ChmodFile Agent.ClearLogs Agent.CreateFileOrDir Agent.DeleteFileOrDir
@@ -260,6 +260,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.GetMailPolicy":                 agentRPCQuickReadTimeout,
 	"Agent.MailFilterWiringState":         agentRPCQuickReadTimeout,
 	"Agent.GetMailQuotaStatus":            agentRPCQuickReadTimeout,
+	"Agent.MailAutoresponderState":        agentRPCQuickReadTimeout,
 	"Agent.GetMySQLConfig":                agentRPCQuickReadTimeout,
 	"Agent.GetPHPConfig":                  agentRPCQuickReadTimeout,
 	"Agent.GetPHPConfiguration":           agentRPCQuickReadTimeout,
@@ -370,6 +371,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.UpdateCronJob":                 agentRPCMutationTimeout,
 	"Agent.UpdateExtendedPHPConfig":       agentRPCMutationTimeout,
 	"Agent.UpdateMailForwarding":          agentRPCMutationTimeout,
+	"Agent.SetMailAutoresponder":          agentRPCMutationTimeout,
 	"Agent.UpdateMailPassword":            agentRPCMutationTimeout,
 	"Agent.UpdateMailQuota":               agentRPCMutationTimeout,
 	"Agent.UpdateMySQLConfig":             agentRPCMutationTimeout,

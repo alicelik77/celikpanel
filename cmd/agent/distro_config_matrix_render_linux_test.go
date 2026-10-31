@@ -1075,6 +1075,25 @@ func renderMatrixDovecot(t *testing.T, h *matrixHost) {
 		c.File("/etc/dovecot/conf.d/97-celikpanel-submission.conf", matrixDovecotSubmission, 0o644)
 	}
 	h.write(t, c)
+
+	// Out-of-office reply (alpha.114): the Sieve drop-in on top of the
+	// virtual mailboxes, and the mailbox script the Agent writes. The
+	// validator delivers two messages through LMTP and wants one reply.
+	if !autoresponderSieveAvailable() {
+		h.notApplicable(t, "dovecot.sieve-autoresponder", "dovecot", "sieve",
+			"cmd/agent/mail_autoresponder.go autoresponderSievePackages",
+			"the release's Dovecot Sieve plugin or LMTP server is not installed in the container (provision.sh installs dovecot-sieve / pigeonhole)")
+	} else {
+		c = newCase("sieve-autoresponder", "virtual + Sieve/LMTP drop-in + out-of-office script", "cmd/agent/mail_autoresponder.go renderAutoresponderDovecotConf + renderAutoresponderSieve")
+		addVirtual(c)
+		c.File(autoresponderDovecotConfPath, []byte(renderAutoresponderDovecotConf(is24)), 0o644)
+		c.File("/etc/dovecot/matrix-autoresponder.sieve", []byte(renderAutoresponderSieve(transport.MailAutoresponder{
+			Enabled: true, Subject: "Away", Message: "I am away until Monday.\nYour message is kept.", IntervalDays: 1,
+			StartDate: "2000-01-01", EndDate: "2999-12-31",
+		})), 0o644)
+		c.Extra["SIEVE_USER"] = "user@example.test"
+		h.write(t, c)
+	}
 }
 
 // ----------------------------------------------------------------- BIND ---

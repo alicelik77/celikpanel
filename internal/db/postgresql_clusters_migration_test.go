@@ -61,8 +61,8 @@ func TestOlderReleaseRefusesALedgerWithThePostgreSQLClustersEntry(t *testing.T) 
 			older = append(older, migration)
 		}
 	}
-	if len(older) != len(embedded)-1 {
-		t.Fatalf("migration %d is not the newest embedded migration", postgresqlClustersMigrationVersion)
+	if len(older) != len(embedded)-2 {
+		t.Fatalf("migration %d is not followed by exactly one embedded migration", postgresqlClustersMigrationVersion)
 	}
 	err = database.verifyMigrationLedgerCoverage(t.Context(), older)
 	database.Close()
