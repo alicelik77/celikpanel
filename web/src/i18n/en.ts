@@ -48,6 +48,8 @@ import type { ProblemsScreenKey } from './screens/problems/en';
 import type { RefusalsScreenKey } from './screens/refusals/en';
 import type { AccountAccessScreenKey } from './screens/accountAccess/en';
 import type { SiteFeaturesScreenKey } from './screens/siteFeatures/en';
+import type { OsUpdatesScreenKey } from './screens/osUpdates/en';
+import type { PanelPortScreenKey } from './screens/panelPort/en';
 
 export const en = {
     // ---- alpha.108 tools ----
@@ -531,5 +533,7 @@ export type ScreenKey =
     | ProblemsScreenKey
     | RefusalsScreenKey
     | AccountAccessScreenKey
-    | SiteFeaturesScreenKey;
+    | SiteFeaturesScreenKey
+    | OsUpdatesScreenKey
+    | PanelPortScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

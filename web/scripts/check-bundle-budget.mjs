@@ -157,6 +157,17 @@ const screenPartBudgets = {
   // recovery codes (account.recovery.). A new part, set with at least 25%
   // headroom from its Turkish file (about 8.7 / 2.7 KiB as source).
   siteFeatures: kib(11.5, 4),
+  // 2026-10-31 (alpha.114 integration): operating-system updates (automatic or
+  // manual, the waiting-updates card, Arch by hand, this system's offers) and
+  // the operating-system release card left "lifecycle" (life.choice.,
+  // life.pending., life.arch., life.osinfo., life.os.), which had run out of
+  // headroom. A new part, set with at least 25% headroom from its Turkish
+  // file: 15.30 / 4.74 KiB.
+  osUpdates: kib(20, 6),
+  // 2026-10-31 (alpha.114 integration): changing the panel port (panelPort.)
+  // left "settings", which had run out of headroom. A new part, set with at
+  // least 25% headroom from its Turkish file: 5.92 / 1.98 KiB.
+  panelPort: kib(8, 2.5),
 }
 
 // Translation chunks, named by source. The shell halves are held to the
