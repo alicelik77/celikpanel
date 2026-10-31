@@ -34,6 +34,10 @@ type durableMutationRPCFixture struct {
 	mu     sync.Mutex
 	active string
 	jobs   map[string]*ServiceOperationMutationJob
+	// busyRefusal, when set and answering busy, refuses Begin the way the
+	// Agent does when the host is busy: HostMutationBusy with its reason and,
+	// when given, the job that held the lease. Nothing is recorded.
+	busyRefusal func(*ServiceOperationMutationBeginRequest) (reason string, holder *ServiceOperationMutationJob, busy bool)
 }
 
 func (f *durableMutationRPCFixture) BeginServiceMutation(
@@ -44,6 +48,15 @@ func (f *durableMutationRPCFixture) BeginServiceMutation(
 	defer f.mu.Unlock()
 	if f.jobs == nil {
 		f.jobs = make(map[string]*ServiceOperationMutationJob)
+	}
+	if f.busyRefusal != nil {
+		if reason, holder, busy := f.busyRefusal(req); busy {
+			resp.ErrorCode = transport.HostMutationBusy
+			resp.Error = "another server change or package-manager task is still running"
+			resp.Reason = reason
+			resp.Job = holder
+			return nil
+		}
 	}
 	if active := f.jobs[f.active]; active != nil && agentMutationActive(active.Status) {
 		resp.Error = "another service mutation owns the host lease"

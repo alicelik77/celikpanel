@@ -36,6 +36,20 @@ needed (schema 46, unchanged).
   page no longer says the change was undone; it says who acts and how setup
   resumes. A paired main whose backup is still finishing waits and rechecks
   instead of sitting at "running" with no reason.
+- Setup's mail DNS and zone steps wait when the server is briefly busy.
+  Before, if another change held the server for a few seconds while setup
+  published the main domain's DKIM record, the step failed ("its publication
+  failed"), the record stayed unpublished and nothing tried again. Now the
+  step says it waits, publishes the same record once the server is free and
+  continues. A DNS change refused only because the server was busy is
+  published again by itself, also after a panel restart. While setup changes
+  the server, automatic DKIM for other domains waits for it. The log names
+  what held the server.
+- A paired main can continue after a failed step. "Review the plan again"
+  refused the plan because it compared the backup's real address in the zone
+  with a placeholder. The review now uses the backup that joined, so the
+  owner reviews and starts again without a new join code. An address the
+  owner changed in the zone is still reported, never overwritten.
 
 **Sites and nginx**
 - A new site's welcome page is clearer, names the panel's own sections,
@@ -184,6 +198,12 @@ needed (schema 46, unchanged).
   Before, that work was refused while systemd still said "starting" and did
   not run again until the next Panel start. The journal says it waits, and
   then that it continued or, past 2 minutes, what the administrator checks.
+  A Panel stopped during that wait now logs that it was stopped, not "still
+  starting after 2m0s".
+- The Agent no longer restarts the Panel right after every boot. It started
+  first, found the Panel not yet listening, and took that for a certificate
+  that needed reloading. A Panel that answers with another certificate is
+  still reloaded.
 
 ## Known limits
 

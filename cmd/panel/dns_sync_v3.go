@@ -258,6 +258,17 @@ func (p *Panel) syncZoneToDNSV3Locked(
 			if retry {
 				continue
 			}
+			if dnsPublicationRefusedBusy(callErr) {
+				// Refused at admission, proven not begun (settle read no job):
+				// the saved change is published by the reconciler once the
+				// host is free (dns_pending_publication.go), and the line
+				// names what held the host when the Agent said (run 5, D10).
+				// Meşgul reddi: kayıtlı değişiklik, sunucu boşalınca kendiliğinden yayımlanır.
+				log.Printf("dns V3 sync %s generation %d: %v (%s); the saved change is published by itself once the host is free",
+					domain, plan.Commitment.DesiredGeneration, callErr, hostMutationBusyLogDetail(callErr))
+				p.dnsPendingPublications().armRepublish()
+				return &dnsAgentPublicationError{Err: callErr}
+			}
 			log.Printf("dns V3 sync %s generation %d: %v",
 				domain, plan.Commitment.DesiredGeneration, callErr)
 			return &dnsAgentPublicationError{Err: callErr}

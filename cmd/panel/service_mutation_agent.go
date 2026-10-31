@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -108,6 +109,12 @@ var errHostMutationBusy = errors.New(
 // panelin dusurdugu tek seyi ekler: uc seyden hangisinin engelledigini.
 type hostMutationBusyError struct {
 	reason string
+	// holder names the other Agent job that held the lease when the Agent
+	// reported it with the refusal (kind and target, never a secret), so a
+	// log line can say what kept the host busy (final alpha.113 run 5, D10:
+	// "no log names the holder"). Empty when the Agent did not say.
+	// Kirayi tutan diger Agent isi (tur ve hedef); bilinmiyorsa bos.
+	holder string
 }
 
 func (e *hostMutationBusyError) Error() string { return errHostMutationBusy.Error() }
@@ -178,6 +185,39 @@ func hostMutationRefusedAsBusy(err error) bool {
 	return err != nil &&
 		errors.Is(err, errHostMutationBusy) &&
 		!mutationTerminalUncertain(err)
+}
+
+// hostMutationBusyHolderName is "<kind> <target>" of the job that held the
+// lease, bounded; kinds and targets are service, domain or step names.
+func hostMutationBusyHolderName(job *agentMutationJob) string {
+	name := strings.TrimSpace(strings.TrimSpace(job.Kind) + " " + strings.TrimSpace(job.Target))
+	if runes := []rune(name); len(runes) > 120 {
+		name = string(runes[:120])
+	}
+	return strings.Map(func(r rune) rune {
+		if r < 0x20 || r == 0x7f {
+			return -1
+		}
+		return r
+	}, name)
+}
+
+// hostMutationBusyLogDetail is what a log line adds to a busy refusal: the
+// typed reason and, when the Agent named it, the job that held the host.
+// Meşgul reddi için günlük ayrıntısı: neden ve biliniyorsa tutan iş.
+func hostMutationBusyLogDetail(err error) string {
+	var busy *hostMutationBusyError
+	if !errors.As(err, &busy) {
+		return ""
+	}
+	detail := "reason=" + busy.reason
+	if busy.reason == "" {
+		detail = "reason=unnamed"
+	}
+	if busy.holder != "" {
+		detail += " held_by=" + strconv.Quote(busy.holder)
+	}
+	return detail
 }
 
 // hostMutationBusyReason is the typed reason of a busy refusal, or "".
@@ -372,6 +412,10 @@ func (p *Panel) beginAgentMutation(
 		return nil, fmt.Errorf("begin agent service mutation: %w", err)
 	}
 	if responseErr := serviceMutationResponseError(response); responseErr != nil {
+		var busy *hostMutationBusyError
+		if errors.As(responseErr, &busy) && response.Job != nil && response.Job.RequestID != op.RequestID {
+			busy.holder = hostMutationBusyHolderName(response.Job)
+		}
 		return response.Job, responseErr
 	}
 	if response.Job == nil || response.Job.RequestID != op.RequestID ||

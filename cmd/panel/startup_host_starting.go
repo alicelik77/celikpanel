@@ -46,6 +46,11 @@ const (
 		"Nothing was changed. The Panel checks again by itself for up to %s and then continues; " +
 		"nobody needs to act: %v"
 	startupHostStartedText = "startup: this server finished starting after %s; startup reconciliation continues"
+	// A Panel stopped while it waits (systemd stops or restarts it) did not
+	// wait out the bound: it says so, never the timeout text (run 5, D12).
+	startupHostStoppedText = "startup: the Panel was asked to stop after waiting %s for this server to finish starting; " +
+		"nothing was changed and the startup reconciliation did not run in this process. " +
+		"Nobody needs to act: the next Panel start waits again and then runs it"
 	// The owner's way out names the commands that show what keeps the boot
 	// from finishing and the restart that runs the reconciliation again.
 	startupHostNotStartedText = "startup: this server was still starting after %s (systemd has not reported it " +
@@ -97,6 +102,14 @@ func (w startupHostStartingWait) run(ctx context.Context) bool {
 		attemptCtx, cancel := context.WithTimeout(ctx, w.attempt)
 		err := w.probe(attemptCtx)
 		cancel()
+		if ctx.Err() != nil {
+			// Stopped (or restarted) while waiting: a stop line, never the
+			// "finished starting" or timeout text (run 5, D12).
+			if announced {
+				w.logf(startupHostStoppedText, w.now().Sub(started).Round(100*time.Millisecond))
+			}
+			return false
+		}
 		if !startupHostStillStarting(err) {
 			if announced {
 				w.logf(startupHostStartedText, w.now().Sub(started).Round(time.Second))
@@ -107,8 +120,16 @@ func (w startupHostStartingWait) run(ctx context.Context) bool {
 			w.logf(startupHostStartingWaitText, w.bound, err)
 			announced = true
 		}
-		if w.now().Sub(started) >= w.bound || !w.sleep(ctx, pause) {
+		if w.now().Sub(started) >= w.bound {
 			w.logf(startupHostNotStartedText, w.bound, err)
+			return false
+		}
+		if !w.sleep(ctx, pause) {
+			if ctx.Err() != nil {
+				w.logf(startupHostStoppedText, w.now().Sub(started).Round(100*time.Millisecond))
+			} else {
+				w.logf(startupHostNotStartedText, w.bound, err)
+			}
 			return false
 		}
 		pause *= 2

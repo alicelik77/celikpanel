@@ -512,10 +512,26 @@ func (p *Panel) publishZoneAfterPendingLocked(ctx context.Context, lease dnsZone
 	}
 }
 
+// dnsPublicationRefusedBusy: a publication the Agent refused at admission
+// because the host was busy (another change or the package manager), and
+// nothing else: the refusal is the whole error chain, so the change never
+// began and is published again unchanged (final alpha.113 run 5, D10).
+// Yalnız meşgul reddi: değişiklik başlamadı, aynen yeniden yayımlanır.
+func dnsPublicationRefusedBusy(err error) bool {
+	return hostMutationRefusedAsBusy(err) && isPureWrappedError(err, errHostMutationBusy)
+}
+
+// dnsZoneSyncStateRefusedBusy: the zone's last publication was refused that
+// way (the exact text the publication recorded for it) and no lease is held.
+func dnsZoneSyncStateRefusedBusy(state dnsZoneSyncState) bool {
+	return state.Status == "error" && !state.hasLease() &&
+		state.LastError.Valid && state.LastError.String == errHostMutationBusy.Error()
+}
+
 // heldDNSZonesForRepublish lists zones saved but not published because an
-// earlier publication was pending: no lease of either version, status pending
-// (or an Agent refusal recorded as error), unchanged for a short while so an
-// in-flight request publishes its own change.
+// earlier publication was pending or the host was busy: no lease of either
+// version, status pending (or an Agent refusal recorded as error), unchanged
+// for a short while so an in-flight request publishes its own change.
 func (p *Panel) heldDNSZonesForRepublish(ctx context.Context) ([]dnsZoneSyncState, error) {
 	settle := int(dnsPendingPublicationRepublishWait / time.Second)
 	rows, err := p.db.GetDB().QueryContext(ctx, `
@@ -523,10 +539,10 @@ func (p *Panel) heldDNSZonesForRepublish(ctx context.Context) ([]dnsZoneSyncStat
 		WHERE s.lease_request_id IS NULL
 		  AND NOT EXISTS (SELECT 1 FROM dns_zone_engine_leases l WHERE l.zone_name = s.zone_name)
 		  AND (s.status = 'pending'
-		       OR (s.status = 'error' AND s.last_error LIKE ?))
+		       OR (s.status = 'error' AND (s.last_error LIKE ? OR s.last_error = ?)))
 		  AND s.updated_at <= datetime('now', ?)
 		ORDER BY s.zone_name`,
-		"%"+dnsAgentPendingRecoveryRefusal+"%", fmt.Sprintf("-%d seconds", settle),
+		"%"+dnsAgentPendingRecoveryRefusal+"%", errHostMutationBusy.Error(), fmt.Sprintf("-%d seconds", settle),
 	)
 	if err != nil {
 		return nil, err
@@ -638,7 +654,8 @@ func (p *Panel) republishHeldDNSZones(ctx context.Context) {
 			// Recorded by the publication itself (verified failure, pending,
 			// or held again): nothing to repeat here.
 			log.Printf("held DNS change for %s: publication did not complete: %v", state.ZoneName, err)
-			if errors.Is(err, errDNSZoneV3PropagationDeferred) {
+			if errors.Is(err, errDNSZoneV3PropagationDeferred) || dnsPublicationRefusedBusy(err) {
+				// Still busy: tried again after the growing pause.
 				retryLater()
 				return
 			}
@@ -652,6 +669,18 @@ func (p *Panel) republishHeldDNSZones(ctx context.Context) {
 	scheduler.mu.Lock()
 	scheduler.republishAttempts = 0
 	scheduler.mu.Unlock()
+}
+
+// dnsBusyRefusedZonesRemain reports (read only) whether a zone's last
+// publication was refused because the host was busy and is not retried yet.
+func (p *Panel) dnsBusyRefusedZonesRemain(ctx context.Context) bool {
+	var count int
+	err := p.db.GetDB().QueryRowContext(ctx, `
+		SELECT count(*) FROM dns_zone_sync_state
+		WHERE status = 'error' AND last_error = ? AND lease_request_id IS NULL`,
+		errHostMutationBusy.Error(),
+	).Scan(&count)
+	return err == nil && count > 0
 }
 
 func (p *Panel) recentlyChangedPendingDNSZones(ctx context.Context) (bool, error) {
@@ -669,6 +698,11 @@ func (p *Panel) recentlyChangedPendingDNSZones(ctx context.Context) (bool, error
 // It starts after startup recovery and only reads until a lease is due.
 func (p *Panel) startDNSPendingPublicationReconciler(ctx context.Context) {
 	scheduler := p.dnsPendingPublications()
+	if p.dnsBusyRefusedZonesRemain(ctx) {
+		// A change refused because the host was busy before this start is
+		// still saved and unpublished: it is published again by itself (D10).
+		scheduler.armRepublish()
+	}
 	go func() {
 		timer := time.NewTimer(dnsPendingPublicationScanInterval)
 		defer timer.Stop()

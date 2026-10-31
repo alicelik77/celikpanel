@@ -859,8 +859,17 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 		reviewed := draft
 		if joinPending {
 			// The records are computed again when the second server is bound;
-			// here they are checked with a stand-in address for it.
-			reviewed = serverSetupEffectiveDraft(draft, serverSetupPeerBinding{PeerIPv4: serverSetupJoinStandInPeer(draft.LocalIP)})
+			// here they are checked with the second server that already
+			// joined this draft (D11), or a stand-in address before it has.
+			joined, joinErr := p.serverSetupJoinedReviewBinding(ctx, draft)
+			if joinErr != nil {
+				return plan, joinErr
+			}
+			if joined != nil {
+				reviewed = serverSetupEffectiveDraft(draft, *joined)
+			} else {
+				reviewed = serverSetupEffectiveDraft(draft, serverSetupPeerBinding{PeerIPv4: serverSetupJoinStandInPeer(draft.LocalIP)})
+			}
 		}
 		plan.InfrastructureDNS, infrastructureErr = p.buildServerSetupInfrastructureDNSPlan(ctx, reviewed)
 		if infrastructureErr != nil {

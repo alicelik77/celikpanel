@@ -36,6 +36,21 @@ değişmedi).
   "geri alındı" demez; kimin ne yapacağını ve kurulumun nasıl süreceğini
   söyler. Yedeği hâlâ bitiren ana sunucu "çalışıyor"da gerekçesiz kalmaz,
   bekler ve yeniden bakar.
+- Kurulumun posta DNS ve bölge adımları, sunucu kısa süre meşgulken bekler.
+  Önceden kurulum ana alan adının DKIM kaydını yayımlarken başka bir değişiklik
+  sunucuyu birkaç saniye tutarsa adım başarısız oluyordu ("yayımlanamadı"),
+  kayıt yayımlanmamış kalıyor ve kimse yeniden denemiyordu. Artık adım
+  beklediğini söyler, sunucu boşalınca aynı kaydı yayımlar ve devam eder.
+  Yalnız sunucu meşgul olduğu için reddedilen bir DNS değişikliği, panel
+  yeniden başlasa da kendiliğinden yeniden yayımlanır. Kurulum sunucuyu
+  değiştirirken diğer alan adlarının otomatik DKIM işi onu bekler. Günlük,
+  sunucuyu neyin tuttuğunu yazar.
+- Eşli ana sunucu, başarısız bir adımdan sonra devam edebilir. "Planı yeniden
+  gözden geçir", bölgedeki yedeğin gerçek adresini bir yer tutucuyla
+  karşılaştırdığı için planı reddediyordu. Gözden geçirme artık katılmış yedeği
+  kullanır; sahip yeni katılım kodu olmadan planı gözden geçirip yeniden
+  başlatır. Sahibin bölgede değiştirdiği adres yine bildirilir, üzerine
+  yazılmaz.
 
 **Siteler ve nginx**
 - Yeni sitenin karşılama sayfası daha açık; panelin kendi bölüm adlarını
@@ -190,7 +205,12 @@ değişmedi).
   çalıştırır. Önceden bu işler systemd hâlâ "starting" derken reddediliyor ve
   Panel'in bir sonraki başlangıcına kadar yeniden çalışmıyordu. Günlük,
   beklendiğini, sonra devam edildiğini ya da 2 dakika geçerse yöneticinin neye
-  bakacağını söyler.
+  bakacağını söyler. Bu bekleme sırasında durdurulan Panel artık "2 dakika
+  sonra hâlâ açılıyordu" değil, durdurulduğunu yazar.
+- Agent, her açılıştan hemen sonra Panel'i artık yeniden başlatmaz. Agent önce
+  açılıyor, Panel'i henüz dinlemiyor bulunca bunu yeniden yüklenmesi gereken
+  bir sertifika sanıyordu. Başka bir sertifikayla yanıt veren Panel yine
+  yeniden yüklenir.
 
 ## Bilinen sınırlar
 
