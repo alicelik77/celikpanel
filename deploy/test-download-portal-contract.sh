@@ -25,11 +25,24 @@ tar -czf "$tmp/$archive" -C "$tmp/source" "celikpanel-$version"
 bash "$builder" "$version" "$commit" "$published_at" \
   "$tmp/$archive" "$tmp/$archive.sha256" "$tmp/site"
 
-for page in index.html technical.html; do
+for page in index.html technical.html systems.html; do
   [[ -s "$tmp/site/$page" ]] || fail "portal page was not generated: $page"
   cmp -s -- "$repo_root/download-portal/$page" "$tmp/site/$page" \
     || fail "portal page bytes changed: $page"
 done
+# alpha.114: the supported-systems page names every supported system, says
+# what Arch does not offer and how updates work in both languages, and the
+# other pages link to it.
+for needle in 'Debian 13 (trixie)' 'Debian 12 (bookworm)' 'Ubuntu 24.04 LTS (noble)' 'Ubuntu 22.04 LTS (jammy)' 'Arch Linux' \
+  'sudo pacman -Syu' 'archlinux.org/news' 'phpPgAdmin' 'SpamAssassin' 'Valkey' 'unattended-upgrades' \
+  'data-en="Supported operating systems."' 'Desteklenen işletim sistemleri' 'data-en="How updates work"' 'Güncellemeler nasıl işler' \
+  'is a separate program and not an update' 'ayrı bir programdır, güncelleme değildir'; do
+  grep -Fq -- "$needle" "$tmp/site/systems.html" || fail "systems page lacks: $needle"
+done
+for page in index.html technical.html systems.html; do
+  grep -Fq 'href="/systems.html"' "$tmp/site/$page" || fail "portal page does not link to the supported systems: $page"
+done
+grep -Fq "dataset.page === 'systems'" "$repo_root/download-portal/assets/site.js" || fail "site script does not title the systems page"
 for asset in site.css site.js favicon-v2.svg \
   product-overview-tr.webp product-overview-en.webp \
   product-domains-tr.webp product-domains-en.webp \
