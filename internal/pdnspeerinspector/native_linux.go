@@ -103,8 +103,8 @@ func (n NativeReader) Read(ctx context.Context, r pdnspeerproof.RequestV1, p Own
 	}
 	_, zoneInDaemon := zones[r.DeletedZone]
 	state := classifyAuthenticatedControlZone(zoneInDB, zoneInDaemon)
-	if !controlSocketMatches(pid, socketPath, socketInode) {
-		return Snapshot{}, errors.New("PowerDNS control socket changed")
+	if err := controlSocketCheck(pid, socketPath, socketInode); err != nil {
+		return Snapshot{}, fmt.Errorf("PowerDNS control socket changed: %w", err)
 	}
 	afterDev, afterIno, err := boundDatabase(pid, DatabasePath)
 	if err != nil || afterDev != dbDev || afterIno != dbIno {
@@ -297,8 +297,20 @@ func findControlSocket(pid uint64) (string, string, error) {
 	return found, foundInode, nil
 }
 func controlSocketMatches(pid uint64, path, wantInode string) bool {
+	return controlSocketCheck(pid, path, wantInode) == nil
+}
+
+// controlSocketCheck is controlSocketMatches with the reason a check failed,
+// for the inspector host's own log (no address or peer data).
+func controlSocketCheck(pid uint64, path, wantInode string) error {
 	inode, err := ownedControlSocketInode(pid, path)
-	return err == nil && inode == wantInode
+	if err != nil {
+		return err
+	}
+	if inode != wantInode {
+		return errors.New("PowerDNS control listener inode differs from the one read before")
+	}
+	return nil
 }
 func ownedControlSocketInode(pid uint64, path string) (string, error) {
 	data, err := os.ReadFile("/proc/net/unix")
@@ -377,8 +389,8 @@ func verifyControlProcess(pid, startTicks uint64, exe, path, listenerInode strin
 	if err != nil || actualTicks != startTicks {
 		return errors.New("PowerDNS control process changed")
 	}
-	if !controlSocketMatches(pid, path, listenerInode) {
-		return errors.New("PowerDNS control listener changed")
+	if err := controlSocketCheck(pid, path, listenerInode); err != nil {
+		return fmt.Errorf("PowerDNS control listener changed: %w", err)
 	}
 	return nil
 }
@@ -387,6 +399,16 @@ func verifyControlProcess(pid, startTicks uint64, exe, path, listenerInode strin
 // control exchange is in flight. Only the listening socket has SO_ACCEPTCON
 // (Flags 00010000), stream Type 0001, and unconnected St 01. Ambiguous or
 // unfamiliar listener rows never establish a daemon-owned control endpoint.
+//
+// A connection the daemon has not accepted yet (the inspector's own, checked
+// between connect and the command) is listed under the same pathname with
+// Flags 00000000, Type 0001 and St 02: the kernel prints SS_CONNECTING for an
+// established socket that has no user socket yet, and SS_DISCONNECTING (St
+// 04) for one whose user socket is already gone. Final alpha.113 acceptance
+// run 4 (D9): such a row made the read fail as an unknown framing, so a
+// slow accept by the daemon failed the first inspection after a catalog
+// change. Neither row can be taken for the listener (no SO_ACCEPTCON, not
+// St 01), so both are ignored like an accepted connection.
 func listeningUnixSocketInode(raw, path string) (string, error) {
 	var inode string
 	for _, line := range strings.Split(raw, "\n") {
@@ -395,9 +417,11 @@ func listeningUnixSocketInode(raw, path string) (string, error) {
 			continue
 		}
 		if fields[3] != "00010000" || fields[4] != "0001" || fields[5] != "01" {
-			// An accepted connection has Flags 00000000 and St 03.
-			// Any other row for this path is unreviewed.
-			if fields[3] != "00000000" || fields[4] != "0001" || fields[5] != "03" {
+			// A connection row (accepted St 03, not yet accepted St 02,
+			// closing St 04) has Flags 00000000. Any other row for this
+			// path is unreviewed.
+			if fields[3] != "00000000" || fields[4] != "0001" ||
+				(fields[5] != "02" && fields[5] != "03" && fields[5] != "04") {
 				// The kernel's flag, type and state columns (no address or
 				// peer data) name the row for the host's own log.
 				return "", fmt.Errorf("PowerDNS control socket framing unknown (row flags %.8s type %.4s state %.2s)",

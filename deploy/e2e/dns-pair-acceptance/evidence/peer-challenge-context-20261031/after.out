@@ -1,0 +1,148 @@
+== reboot main backup 00:38:56
+main rebooted in 17.8 s
+backup rebooted in 15.7 s
+== health [after-reboot] 00:40:45
+-- main units/timers
+active active active active active active active
+enabled enabled
+  php8.4-fpm.service loaded active running The PHP 8.4 FastC
+Sat 2026-10-31 12:36:48 UTC 11h Sat 2026-10-31 00:32:06 UTC - certbot.timer certbot.service
+enabled not-found
+2026-10-31 00:39:06
+7cae6d1c-1dfa-46e5-9555-13a78a9ebe82
+succeeded complete null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-access_dns=succeeded 17-mail_certificate=succeeded 18-mail_enrollment=succeeded 19-verify=succeeded
+-- backup units/timers
+active active active active active inactive inactive
+enabled enabled
+  php8.3-fpm.service loaded active running The PHP 8.3 FastC
+Sat 2026-10-31 20:59:23 UTC 20h Sat 2026-10-31 00:32:29 UTC - certbot.timer certbot.service
+enabled not-found
+2026-10-31 00:39:02
+9136a1d2-4531-456c-87c5-db038aa50df7
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-verify=succeeded
+-- DNS answers
+   @192.0.3.110 SOA pcf113.test: status: NOERROR flags: qr aa  | A pcshop113.test: 192.0.3.110 | MX pcf113.test: 10 mail.pcf113.test.
+   @192.0.3.111 SOA pcf113.test: status: NOERROR flags: qr aa  | A pcshop113.test: 192.0.3.110 | MX pcf113.test: 10 mail.pcf113.test.
+-- site
+--- http://pcshop113.test/
+code=301 redirect=https://pcshop113.test/ ssl_verify=0
+--- https://pcshop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+body: 3082 bytes, title: <title>pcshop113.test
+software words in body: [CelikPanel ]
+--- http://www.pcshop113.test/
+code=301 redirect=https://www.pcshop113.test/ ssl_verify=0
+--- https://www.pcshop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+body: 3082 bytes, title: <title>pcshop113.test
+software words in body: [CelikPanel ]
+--- certificate served on pcshop113.test:443
+--- https://pcshop113.test/hello.php
+code=403
+server: nginx
+x-powered-by present: 0
+body: <html>
+--- http://pcshop113.test/hello.php (redirect?)
+code=301 location=https://pcshop113.test/hello.php
+-- mail
+   (no mail test mailboxes in this run)
+== panel off on main (panel+agent stopped and disabled, reboot) 00:40:48
+Removed '/etc/systemd/system/multi-user.target.wants/celikpanel-agent.service'.
+Removed '/etc/systemd/system/multi-user.target.wants/celikpanel-panel.service'.
+inactive inactive
+main rebooted in 16.6 s
+listeners on 2083: 0
+inactive inactive active active active active active active
+== health [panel-off] 00:42:36
+-- main units/timers
+inactive inactive active active active active active
+disabled disabled
+  php8.4-fpm.service loaded active running The PHP 8.4 FastC
+Sat 2026-10-31 17:17:35 UTC 16h Sat 2026-10-31 00:32:06 UTC - certbot.timer certbot.service
+enabled not-found
+2026-10-31 00:40:55
+43b5275e-473c-42f8-ac85-acbd77d9fd2b
+-- backup units/timers
+active active active active active inactive inactive
+enabled enabled
+  php8.3-fpm.service loaded active running The PHP 8.3 FastC
+Sat 2026-10-31 20:59:23 UTC 20h Sat 2026-10-31 00:32:29 UTC - certbot.timer certbot.service
+enabled not-found
+2026-10-31 00:39:02
+9136a1d2-4531-456c-87c5-db038aa50df7
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-verify=succeeded
+-- DNS answers
+   @192.0.3.110 SOA pcf113.test: status: NOERROR flags: qr aa  | A pcshop113.test: 192.0.3.110 | MX pcf113.test: 10 mail.pcf113.test.
+   @192.0.3.111 SOA pcf113.test: status: NOERROR flags: qr aa  | A pcshop113.test: 192.0.3.110 | MX pcf113.test: 10 mail.pcf113.test.
+-- site
+--- http://pcshop113.test/
+code=301 redirect=https://pcshop113.test/ ssl_verify=0
+--- https://pcshop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+body: 3082 bytes, title: <title>pcshop113.test
+software words in body: [CelikPanel ]
+--- http://www.pcshop113.test/
+code=301 redirect=https://www.pcshop113.test/ ssl_verify=0
+--- https://www.pcshop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+body: 3082 bytes, title: <title>pcshop113.test
+software words in body: [CelikPanel ]
+--- certificate served on pcshop113.test:443
+--- https://pcshop113.test/hello.php
+code=403
+server: nginx
+x-powered-by present: 0
+body: <html>
+--- http://pcshop113.test/hello.php (redirect?)
+code=301 location=https://pcshop113.test/hello.php
+-- mail
+   (no mail test mailboxes in this run)
+Created symlink '/etc/systemd/system/multi-user.target.wants/celikpanel-agent.service' → '/etc/systemd/system/celikpanel-agent.service'.
+Created symlink '/etc/systemd/system/multi-user.target.wants/celikpanel-panel.service' → '/etc/systemd/system/celikpanel-panel.service'.
+active active
+== site delete pcshop113.test 00:43:03
+   before @192.0.3.110: SOA status: NOERROR flags: qr aa  | TXT celik._domainkey '"v=DKIM1; k=rsa; p=MIIBIjANBgk'
+   before @192.0.3.111: SOA status: NOERROR flags: qr aa  | TXT celik._domainkey '"v=DKIM1; k=rsa; p=MIIBIjANBgk'
+   +0s status: 204 
+   +3s status: 200 deletion_pending running This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked again aut
+   DELETE answered after 30s: 200 {  "domain": "pcshop113.test",  "status": "deleted" }
+   after @192.0.3.110: SOA status: REFUSED flags: qr  | TXT celik._domainkey ''
+   after @192.0.3.111: SOA status: REFUSED flags: qr  | TXT celik._domainkey ''
+   domains list names it: no
+keytable lines for pcshop113.test: 0
+signingtable lines for pcshop113.test: 0
+2026-10-31T00:43:29+00:00 frankfurt agent[1278]: 2026/10/31 00:43:29 DNS peer inspector answer for pcshop113.test (PowerDNS secondary): catalog_state=transferred member_state=absent native_state=unloaded; accepted
+2026-10-31T00:43:31+00:00 frankfurt agent[1278]: 2026/10/31 00:43:31 DNS peer proof for pcshop113.test (PowerDNS secondary) step times: prepare=1.371s challenge_write=5.498s exchange=1.226s post_inspection=2.754s consume=6.84s; total 17.689s; outcome verified
+   backup inspector notes (journal tag celikpanel-pdns-peer-inspect, D9):
+2026-10-31T00:43:21+00:00 boston celikpanel-pdns-peer-inspect[1854]: PowerDNS peer inspection for request f0de1cfae900: read 1 of 3 failed (unclassified): native observation 2: PowerDNS control listener changed
+2026-10-31T00:43:22+00:00 boston celikpanel-pdns-peer-inspect[1854]: PowerDNS peer inspection for request f0de1cfae900 answered on read 2 of 3
+== journals, every boot 00:43:41
+== frankfurt: boots 4
+   [milter service|Milter.*(not found|refused|cannot)]: 0
+   [FQDN]: 0
+   [fail-closed|ambiguous|agent_mutations_held|refusing durable]: 0
+   [FOREIGN KEY]: 0
+   [unsupported map type: lmdb]: 0
+   [can.t lock|cannot lock|could not lock]: 0
+   [panel 500]: 0
+   err-priority lines of celikpanel units: 0
+   failed units: []
+== boston: boots 3
+   [milter service|Milter.*(not found|refused|cannot)]: 0
+   [FQDN]: 0
+   [fail-closed|ambiguous|agent_mutations_held|refusing durable]: 0
+   [FOREIGN KEY]: 0
+   [unsupported map type: lmdb]: 0
+   [can.t lock|cannot lock|could not lock]: 0
+   [panel 500]: 0
+   err-priority lines of celikpanel units: 1
+2026-10-31T00:32:55+00:00 boston mariadb-server.postinst[14400]: 2026-10-31  0:32:55 0 [Warning] You need to use --log-bin to make --expire-logs-days or --binlog-expire-logs-seconds work.
+   failed units: []
+== after done 00:43:42
