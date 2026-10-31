@@ -1,0 +1,108 @@
+== clocks as the lab gives them 03:07:10
+labnet-CA 03:07:11.626350476
+frankfurt 03:07:10.547795871
+== site r6shop113.test with Enable SSL at creation 03:07:11
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/1/public_html", "Domain": "r6shop113.test", "DomainID": 1, "FTPPassword": "[REDACTED]", "FTPUser": "r6shop113_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 1, "TempDomain": ""}
+   site id 1
+   ok 192.0.3.116 r6shop113.test A = '192.0.3.116' after 0s
+   ok 192.0.3.117 r6shop113.test A = '192.0.3.116' after 0s
+200 {"status": "success", "expires_at": "2031-10-31T03:07:20Z"}
+   certificate answer after 3s
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+--- http://r6shop113.test/
+code=301 redirect=https://r6shop113.test/ ssl_verify=0
+Server: nginx
+Location: https://r6shop113.test/
+--- https://r6shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+--- http://www.r6shop113.test/
+code=301 redirect=https://www.r6shop113.test/ ssl_verify=0
+Server: nginx
+Location: https://www.r6shop113.test/
+--- https://www.r6shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+--- certificate served on r6shop113.test:443
+subject= X509v3 Subject Alternative Name: critical     DNS:r6shop113.test, DNS:www.r6shop113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 31 03:07:20 2031 GMT 
+Verify return code: 0 (ok)
+--- https://r6shop113.test/hello.php
+code=200
+HTTP/2 200 
+server: nginx
+content-type: text/html; charset=UTF-8
+x-powered-by present: 0
+body: php-ok 5
+--- http://r6shop113.test/hello.php (redirect?)
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Location: https://r6shop113.test/hello.php
+code=301 location=https://r6shop113.test/hello.php
+== mailboxes; DKIM by itself (card read only) 03:07:25
+200 {"id": 1, "success": true}
+200 {"id": 2, "success": true}
+   after 8s: {"status": 200, "dkim_status": "served", "dkim_signed": true, "signing_installed": true, "owner_record": false, "automatic": null}
+   TXT @192.0.3.116 '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA...'  @192.0.3.117 '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA...'
+   main zone TXT celik._domainkey.r6f113.test @192.0.3.116 '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA...'  @192.0.3.117 '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA...'
+2026-10-31T03:07:29+00:00 frankfurt panel[23030]: 2026/10/31 03:07:29 [dkim-auto] r6shop113.test: DKIM ready (domain_created; record published in r6shop113.test)
+== webmail address (card enable, owner action) 03:07:33
+202 {"operation": {"id": "95e4b2a43a711de86385284aed2f7d8c", "kind": "webmail_address", "package_name": "mail.r6f113.test", "phase": "queued", "request_id": "899cb198ccf8bfed62350fcf4c1b29be", "service_id": "roundcube", "started_at": "2026-10-31T03:07:33.600878867Z", "status": "queued"}}
+== 587 + 465 send, IMAPS read 03:07:39
+   587 {'ok': True, 'refused': {}} | 465 {'ok': True, 'refused': {}} | imaps {'after_seconds': 13.1, 'headers': 'From: alice@r6shop113.test\r\nTo: bob@r6shop113.test\r\nSubject: final-alpha113 319e1fedf0a8'}  | cert ['mail.r6f113.test']
+== PHP mail() and a bounce 03:08:08
+   mail.php: sent php-mail d9922c277419
+   bounce.php: sent bounce-test 54bc2acb54e5
+== DKIM verified independently against the TXT from each DNS server (192.0.3.116,192.0.3.117) 03:08:28
+   final-alpha113 319e1fedf0a8 | found | sigs 1 | [{'d': 'r6shop113.test', 's': 'celik', 'verify_with_txt_from_192.0.3.116': True, 'verify_with_txt_from_192.0.3.117': True}] | mid <9228c1a8696d4c89ba8eaf374c73b1f9@labnet.test>
+   final-alpha113-465 319e1fedf0a8 | found | sigs 1 | [{'d': 'r6shop113.test', 's': 'celik', 'verify_with_txt_from_192.0.3.116': True, 'verify_with_txt_from_192.0.3.117': True}] | mid <2963d552f15548318f498e06d4442f06@labnet.test>
+   php-mail d9922c277419 | found | sigs 1 | [{'d': 'r6shop113.test', 's': 'celik', 'verify_with_txt_from_192.0.3.116': True, 'verify_with_txt_from_192.0.3.117': True}] | mid <20261031030808.42FFA224EB@mail.r6f113.test>
+-- bounce in alice's INBOX
+   Undelivered Mail Returned to Sender found Mail Delivery System <MAILER-DAEMON@mail.r6f113.test> <20261031030808.842E3224ED@mail.r6f113.test>
+-- server side: rspamd verdicts, postfix bounce lines, DKIM tables (read only)
+keytable lines for r6shop113.test: 1
+signingtable lines for r6shop113.test: 1
+rspamd lines for 9228c1a8696d4c89ba8eaf374c73b1f9@labnet.test:
+rspamd_task_write_log: id: <9228c1a8696d4c89ba8eaf374c73b1f9@labnet.test>, qid: <
+(default: F (no action): [0.90/15.00] [MISSING_DATE(1.00){}
+rspamd lines for 2963d552f15548318f498e06d4442f06@labnet.test:
+rspamd_task_write_log: id: <2963d552f15548318f498e06d4442f06@labnet.test>, qid: <
+(default: F (no action): [0.90/15.00] [MISSING_DATE(1.00){}
+rspamd lines for 20261031030808.42FFA224EB@mail.r6f113.test:
+rspamd_task_write_log: id: <20261031030808.42FFA224EB@mail.r6f113.test>, qid: <42
+(default: F (no action): [0.19/15.00] [FORGED_SENDER(0.30){alice@r6shop113.test;r6shop113_test@mail.r6f113.test;}
+milter warnings, all boots: 0
+milters: smtpd=inet:127.0.0.1:8891, inet:127.0.0.1:11332 non_smtpd=inet:127.0.0.1:8891, inet:127.0.0.1:11332
+2026-10-31T03:08:08+00:00 frankfurt postfix/virtual[42394]: 71B55224EB: to=<nobody113@r6shop113.test>, relay=virtual, delay=0.08, delays=0.07/0/0/0.01, dsn=5.1.1, status=bounced (unknown user: "nobody113@r6shop113.test")
+2026-10-31T03:08:08+00:00 frankfurt postfix/bounce[42406]: 71B55224EB: sender non-delivery notification: 842E3224ED
+-- Roundcube (bob)
+ "logged_in": true,
+ "message_count_hint": "Messages 1 to 3 of 3"
+-- DKIM card now (read only)
+    200 {"dkim.status": "ok", "dkim_signed": true, "automatic": null}
+== DNS-only zone r6gone113.test created and deleted at once 03:08:31
+200 {"DocumentRoot": "", "Domain": "r6gone113.test", "DomainID": 2, "FTPPassword": "", "FTPUser": "", "PHPVersion": "", "ProjectType": "dnsonly", "SiteID": 2, "TempDomain": ""}
+   zone id 2
+   before @192.0.3.116: SOA status: NOERROR flags: qr aa  | TXT celik._domainkey ''
+   before @192.0.3.117: SOA status: NOERROR flags: qr aa  | TXT celik._domainkey ''
+   +0s status: 204 
+   +2s status: 200 deletion_pending running This deletion is running now and is checked automatically. Nobody needs to do anything: check again in a minute. Only if the automatic checks end without confir
+   DELETE answered after 30s: 200 {  "domain": "r6gone113.test",  "status": "deleted" }
+   after @192.0.3.116: SOA status: REFUSED flags: qr  | TXT celik._domainkey ''
+   after @192.0.3.117: SOA status: REFUSED flags: qr  | TXT celik._domainkey ''
+   domains list names it: no
+keytable lines for r6gone113.test: 0
+signingtable lines for r6gone113.test: 0
+2026-10-31T03:08:41+00:00 frankfurt panel[23030]: 2026/10/31 03:08:41 [dkim-auto] r6gone113.test: stopped: the domain is being deleted or no longer exists; its deletion removes its DKIM key and record, nothing to do
+2026-10-31T03:09:05+00:00 frankfurt agent[10837]: 2026/10/31 03:09:05 DNS peer inspector answer for r6gone113.test (PowerDNS secondary): catalog_state=transferred member_state=absent native_state=unloaded; accepted
+2026-10-31T03:09:07+00:00 frankfurt agent[10837]: 2026/10/31 03:09:07 DNS peer proof for r6gone113.test (PowerDNS secondary) step times: prepare=1.379s challenge_write=5.565s exchange=615ms post_inspection=2.782s consume=6.902s; total 17.242s; outcome verified
+   backup inspector's own journal (journalctl -t celikpanel-pdns-peer-inspect) for this deletion:
+-- No entries --
+dkim_automatic rows: []
+FOREIGN KEY lines: 1
+== ops done 03:09:15
