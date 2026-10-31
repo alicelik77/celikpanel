@@ -23,7 +23,7 @@ export const trErrorsScreens: Record<ErrorsScreenKey, string> = {
     'err.REPO_CONFIGURATION_INVALID': 'Depo yapılandırması beklenen tariften sapmış. Güvenilir tarifi yeniden doğrulayıp yayımlamak için Etkinleştir/Onar işlemini kullanın.',
     'err.REPO_STATUS_FAILED': 'Depo yapılandırması doğrulanamadı.',
     'err.REPO_PACKAGES_FAILED': 'Depo paket listesi okunamadı.',
-    'err.DNS_SERVER_REQUIRED': 'Etkin ve panel tarafından yönetilen bir yetkili DNS motoru yok. Domain yayımlamadan önce BIND veya PowerDNS seçip etkinleştirin.',
+    'err.DNS_SERVER_REQUIRED': "Hiçbir şey değiştirilmedi. Bu sunucuda çalışan bir DNS yazılımı yok: DNS ve eş sunucular sayfasından BIND ya da PowerDNS seçip başlatın.",
     'err.DNS_SERVER_REQUIRED.action': 'DNS motoru seç',
     'err.DNS_PEER_CATCHING_UP': 'Hiçbir şey değiştirilmedi: yedek DNS sunucusu bu sunucunun güncel bölge listesini henüz doğrulamadı. Genellikle önceki değişiklikten sonraki bir dakika içinde yetişir; o zaman yeniden deneyin. Sürerse sunucu yöneticisi yedek DNS sunucusunun çalıştığını ve bu sunucudan TCP 53 portu üzerinden erişilebildiğini kontrol eder.',
     'err.DNS_PEER_CATCHING_UP.action': 'DNS ve eş sunucuları aç',

@@ -55,6 +55,8 @@ const stub = dataModule(`
   export const showToast = (...args) => globalThis.currentTest.toasts.push(args);
   // alpha.107: the application's account line has its own mounted test.
   export const AppAccountLine = () => null, IsolationFact = () => null;
+  // The shared problem pattern has its own test (blocking-problems-mounted).
+  export const BlockingProblems = () => null;
 `);
 const shared = sharedLayer(stub);
 const own = {

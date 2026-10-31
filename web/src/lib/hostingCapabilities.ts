@@ -1,4 +1,5 @@
 import { useRemote, type Remote, type RemoteHandle } from './remote';
+import type { TranslationKey } from '../i18n/en';
 
 // What this server can host right now: GET /api/v1/hosting/capabilities.
 //
@@ -22,6 +23,16 @@ export interface HostingCapabilities {
     php_versions: string[];
     /** The proven active engine ("bind", "pdns"), or "". */
     dns_server: string;
+    /**
+     * Why dns_server is "" (owner report 2026-10-31): a primary waiting for
+     * its backup still serves every zone. "" when the server did not say
+     * (an older server, or the read failed): then nothing is claimed.
+     */
+    dns_server_state: DNSServerState;
+    /** The active engine whenever one is active, also when not ready. */
+    dns_server_engine: string;
+    /** The other server of a DNS pair (its nameserver name or address). */
+    dns_server_peer: string;
     /** The nameserver pair and operating mode are saved. */
     dns_identity_ready: boolean;
     dns_management_mode: 'local' | 'external' | 'existing' | '';
@@ -30,6 +41,9 @@ export interface HostingCapabilities {
     database_servers: string[];
     db_tools: string[];
 }
+
+export type DNSServerState = 'none' | 'switching' | 'port53_conflict' | 'not_running' | 'engine_conflict' | 'secondary' | 'pair_pending' | 'ready' | '';
+const dnsServerStates: DNSServerState[] = ['none', 'switching', 'port53_conflict', 'not_running', 'engine_conflict', 'secondary', 'pair_pending', 'ready'];
 
 export const HOSTING_CAPABILITIES_URL = '/api/v1/hosting/capabilities';
 
@@ -59,6 +73,9 @@ export function decodeHostingCapabilities(raw: unknown): HostingCapabilities {
         web_server: body.web_server,
         php_versions: strings(body.php_versions),
         dns_server: body.dns_server,
+        dns_server_state: dnsServerStates.includes(body.dns_server_state as DNSServerState) ? body.dns_server_state as DNSServerState : '',
+        dns_server_engine: typeof body.dns_server_engine === 'string' ? body.dns_server_engine : '',
+        dns_server_peer: typeof body.dns_server_peer === 'string' ? body.dns_server_peer : '',
         dns_identity_ready: body.dns_identity_ready,
         dns_management_mode: mode === 'local' || mode === 'external' || mode === 'existing' ? mode : '',
         dns_management_ready: body.dns_management_ready === true,
@@ -120,3 +137,48 @@ export function dnsBlocker(caps: HostingCapabilities, purpose: DomainPurpose): D
 }
 
 export type CapabilitiesRemote = Remote<HostingCapabilities>;
+
+// --- Why the local DNS takes no new change ------------------------------------
+//
+// dns_server "" used to be drawn as "NOT PUBLISHED: no active DNS engine",
+// also on a main DNS server whose backup had not yet confirmed the zone list
+// while both answered publicly (owner report 2026-10-31, Frankfurt). The
+// explanation follows dns_server_state; what is allowed does not change.
+// dns_server "" artık durumuna göre açıklanır; izin verilen değişmez.
+export type DNSStateExplained = Exclude<DNSServerState, 'ready' | ''>;
+
+export interface DNSStateExplanation {
+    state: DNSStateExplained;
+    /** The records are still answered (a backup, or a main server waiting for it). */
+    served: boolean;
+    what: TranslationKey;
+    todo: TranslationKey;
+    title: TranslationKey;
+    vars: { engine: string; peer: string };
+}
+
+const engineNames: Record<string, string> = { pdns: 'PowerDNS', bind: 'BIND' };
+
+/** null when the local DNS takes changes, or when nothing is known. */
+export function dnsStateExplanation(caps: HostingCapabilities, t: (key: TranslationKey) => string): DNSStateExplanation | null {
+    if (caps.dns_server !== '') return null;
+    const state: DNSStateExplained = caps.dns_server_state === '' || caps.dns_server_state === 'ready' ? 'none' : caps.dns_server_state;
+    const served = state === 'pair_pending' || state === 'secondary';
+    const peer = caps.dns_server_peer || t(state === 'secondary' ? 'dnsstate.mainServer' : 'dnsstate.backupServer');
+    const engine = engineNames[caps.dns_server_engine] ?? (caps.dns_server_engine || 'DNS');
+    return {
+        state,
+        served,
+        what: state === 'none' ? 'dns.notServed' : `dnsstate.${state}.what` as TranslationKey,
+        todo: `dnsstate.${state}.todo` as TranslationKey,
+        title: state === 'pair_pending' || state === 'switching' ? 'dnsstate.title.waiting' : state === 'secondary' ? 'dnsstate.title.backup' : state === 'none' ? 'dnsstate.title.notServed' : 'dnsstate.title.blocked',
+        vars: { engine, peer },
+    };
+}
+
+/** The sentence an Add domain screen says when the engine half is missing. */
+export function dnsEngineBlockerText(caps: HostingCapabilities, t: (key: TranslationKey, vars?: Record<string, string>) => string): string {
+    const explained = dnsStateExplanation(caps, t);
+    if (!explained || explained.state === 'none') return t('domains.add.needsDns');
+    return `${t(explained.what, explained.vars)} ${t(explained.todo, explained.vars)}`;
+}

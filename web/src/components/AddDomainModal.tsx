@@ -15,6 +15,7 @@ import {
 } from '../lib/siteCertificateRequest';
 import {
     dnsBlocker,
+    dnsEngineBlockerText,
     hostingDNSReady,
     localDNSReady,
     useHostingCapabilities,
@@ -438,7 +439,7 @@ export function AddDomainModal({ onClose, onSuccess, initialDomain = '' }: AddDo
                           bir motora "BIND ya da PowerDNS'i etkinleştir" denmemeli;
                           düğme ile cümle aynı tek düzeltmeyi adlandırır.
                         */}
-                        <span>{dns.reason === 'identity' ? t('err.DNS_SETTINGS_REQUIRED') : t('domains.add.needsDns')}</span>
+                        <span>{dns.reason === 'identity' ? t('err.DNS_SETTINGS_REQUIRED') : caps ? dnsEngineBlockerText(caps, t) : t('domains.add.needsDns')}</span>
                         {/*
                           Both halves of "DNS is missing" are fixed in the same
                           place: the DNS infrastructure section installs and

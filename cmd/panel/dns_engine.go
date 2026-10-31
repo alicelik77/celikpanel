@@ -793,30 +793,84 @@ type dnsPublisherIdentity struct {
 func (p *Panel) activeDNSPublisher(
 	ctx context.Context,
 ) (dnsPublisherIdentity, bool, error) {
-	state, err := readDNSEngineDBState(ctx, p.db.GetDB())
+	status, err := p.dnsPublisherStatus(ctx)
 	if err != nil {
 		return dnsPublisherIdentity{}, false, err
 	}
+	return status.Identity, status.State == dnsServerStateReady, nil
+}
+
+// The DNS state a screen explains (owner report 2026-10-31, Frankfurt: a
+// directional primary whose backup had not yet proven the catalog served
+// every zone publicly while the domain page said "NOT PUBLISHED: no active
+// authoritative DNS engine"). Only ready allows panel-local publication;
+// the others say why not, and pair_pending and secondary still serve.
+// Ekranin acikladigi DNS durumu; yalniz ready yayima izin verir.
+const (
+	dnsServerStateNone           = "none"            // no engine is active
+	dnsServerStateSwitching      = "switching"       // an engine switch is running
+	dnsServerStatePort53Conflict = "port53_conflict" // another program holds port 53
+	dnsServerStateNotRunning     = "not_running"     // the active engine is not installed, running or managed
+	dnsServerStateEngineConflict = "engine_conflict" // another DNS engine is running too
+	dnsServerStateSecondary      = "secondary"       // read-only backup of the main DNS server
+	dnsServerStatePairPending    = "pair_pending"    // main DNS server serving; backup not proven yet
+	dnsServerStateReady          = "ready"
+)
+
+type dnsPublisherStatusView struct {
+	Identity dnsPublisherIdentity
+	State    string
+	// Engine is the active engine whenever one is active, also when not ready.
+	Engine transport.DNSEngine
+	// Peer names the other server of a pair (its nameserver name, else its address).
+	Peer string
+}
+
+func (p *Panel) dnsPublisherStatus(ctx context.Context) (dnsPublisherStatusView, error) {
+	state, err := readDNSEngineDBState(ctx, p.db.GetDB())
+	if err != nil {
+		return dnsPublisherStatusView{}, err
+	}
 	if state.ActiveEngine == "" || state.CurrentSwitchID != "" {
-		return dnsPublisherIdentity{}, false, nil
+		return classifyDNSPublisher(state, nil, false), nil
 	}
 	runtimes, port53Conflict, _, err := p.readDNSBackendRuntime(ctx)
 	if err != nil {
-		return dnsPublisherIdentity{}, false, err
+		return dnsPublisherStatusView{}, err
 	}
-	if port53Conflict {
-		return dnsPublisherIdentity{}, false, nil
+	return classifyDNSPublisher(state, runtimes, port53Conflict), nil
+}
+
+// classifyDNSPublisher is activeDNSPublisher's decision, unchanged, with the
+// reason it is not ready named.
+func classifyDNSPublisher(state dnsEngineDBState, runtimes map[transport.DNSEngine]transport.DNSBackendRuntimeState, port53Conflict bool) dnsPublisherStatusView {
+	view := dnsPublisherStatusView{Engine: state.ActiveEngine, Peer: state.PeerNS}
+	if view.Peer == "" {
+		view.Peer = state.PeerIP
+	}
+	switch {
+	case state.ActiveEngine == "":
+		view.State = dnsServerStateNone
+		return view
+	case state.CurrentSwitchID != "":
+		view.State = dnsServerStateSwitching
+		return view
+	case port53Conflict:
+		view.State = dnsServerStatePort53Conflict
+		return view
 	}
 	runtime := runtimes[state.ActiveEngine]
 	if !runtime.Installed || !runtime.Running || !runtime.Managed {
-		return dnsPublisherIdentity{}, false, nil
+		view.State = dnsServerStateNotRunning
+		return view
 	}
 	for engine, candidate := range runtimes {
 		if engine != state.ActiveEngine && candidate.Running {
-			return dnsPublisherIdentity{}, false, nil
+			view.State = dnsServerStateEngineConflict
+			return view
 		}
 	}
-	identity := dnsPublisherIdentity{
+	view.Identity = dnsPublisherIdentity{
 		Engine: state.ActiveEngine,
 		Epoch:  state.EngineEpoch, PairRole: state.PairRole,
 	}
@@ -824,16 +878,19 @@ func (p *Panel) activeDNSPublisher(
 	// accept panel-local domain or record mutations.  Returning the exact
 	// identity with ready=false keeps read-only engine truth visible while all
 	// hosting publication paths fail closed before acquiring a V3 lease.
-	if identity.PairRole == transport.DNSPairRoleSecondary {
-		return identity, false, nil
+	if view.Identity.PairRole == transport.DNSPairRoleSecondary {
+		view.State = dnsServerStateSecondary
+		return view
 	}
 	// A directional primary becomes a panel-local publisher only after the
 	// agent proves that the peer serves the exact primary catalog and every
 	// catalog member. Engine ownership remains managed while a peer is absent.
-	if identity.PairRole == transport.DNSPairRolePrimary && !runtime.PairReady {
-		return identity, false, nil
+	if view.Identity.PairRole == transport.DNSPairRolePrimary && !runtime.PairReady {
+		view.State = dnsServerStatePairPending
+		return view
 	}
-	return identity, true, nil
+	view.State = dnsServerStateReady
+	return view
 }
 
 func (p *Panel) requireActivePowerDNSPublisher(ctx context.Context) error {

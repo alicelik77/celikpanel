@@ -37,7 +37,7 @@ const icons = new Set(['AlertTriangle', 'XCircle']);
 // Children of the screens under test that are not under test themselves.
 const stubbedComponents = [
   'Link', 'PHPToolVersion', 'RepoCard', 'SecurityUpdatesCard', 'RoundcubeUpdateCard', 'WebmailAddressCard', 'RestartsCard', 'AppAccountLine', 'IsolationFact', 'TeamMembersPage', 'DNSServerSettings', 'SecurityAuditCard', 'ServerSetupSettings',
-  'DomainGeneralSettings', 'DomainSSLOverviewCard', 'DomainMailManager', 'ChangePasswordModal', 'ChangeEmailModal', 'BlockingProblems',
+  'DomainGeneralSettings', 'DomainSSLOverviewCard', 'DomainMailManager', 'ChangePasswordModal', 'ChangeEmailModal',
 ];
 for (const name of screenFiles) {
   for (const match of source(`components/${name}.tsx`).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {
@@ -104,6 +104,8 @@ const own = {
 // ended with, and a change whose one-time result is not kept.
 own['/ServiceActionNotice'] = shared.compile('components/ServiceActionNotice.tsx', own);
 own['/OnceOnlyNotice'] = shared.compile('components/OnceOnlyNotice.tsx', own);
+// The shared problem pattern is the shipped one too (2026-10-31).
+own['/BlockingProblems'] = shared.compile('components/BlockingProblems.tsx', own);
 // So is the notice of a certificate request certbot did not fulfil (11 Oct 2026).
 own['/CertificateIssueNotice'] = shared.compile('components/CertificateIssueNotice.tsx', own);
 const modalURL = shared.compile('components/AddDomainModal.tsx', own);

@@ -293,9 +293,8 @@ func (p *Panel) handleImportApply(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if caps.DNSManagementMode == setupDNSModeLocal && caps.DNSServer == "" {
-		writeCodedError(w, http.StatusConflict, errCodeDNSServerRequired,
-			"choose and activate a managed BIND or PowerDNS engine before importing a domain",
-			"/dns-infrastructure")
+		writeDNSServerRequired(w, caps.DNSServerState, caps.DNSServerEngine, caps.DNSServerPeer,
+			"choose and activate a managed BIND or PowerDNS engine before importing a domain")
 		return
 	}
 	if caps.DNSManagementMode == setupDNSModeLocal && !caps.DNSIdentityReady {

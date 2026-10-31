@@ -31,7 +31,7 @@ export const trSitesScreens: Record<SitesScreenKey, string> = {
     'domains.add.sslHint': 'Site oluşturulur oluşturulmaz ücretsiz bir sertifika (Let’s Encrypt) istenir ve kendiliğinden yenilenir. Yalnız alan adı bu sunucuyu zaten gösteriyorsa çalışır. Henüz göstermiyorsa site yine de oluşturulur; sertifikayı sonra alan adının ayarlarında SSL/TLS bölümünden isteyebilirsiniz.',
     'domains.add.dnsServed': 'DNS bölgesi bu sunucudan yayınlanacak ({server}).',
     'domains.goServices': 'Servisler sayfasına git',
-    'domains.add.needsDns': 'Alan adı eklemeden önce panel tarafından yönetilen etkin bir DNS sunucusu gerekir. Sunucu → DNS ve eş sunucular sayfasından BIND veya PowerDNS seçip etkinleştirin.',
+    'domains.add.needsDns': "Alan adı eklemek için bu sunucunun kendi DNS yazılımı olmalı. DNS ve eş sunucular sayfasından BIND ya da PowerDNS seçip başlatın.",
     'domains.add.create': 'Alan adı oluştur',
     'domains.add.creating': 'Oluşturuluyor…',
     'domains.add.created': '{name} alan adı oluşturuldu.',

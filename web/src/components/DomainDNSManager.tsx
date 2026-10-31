@@ -3,7 +3,8 @@ import { Globe, Plus, Trash2, ShieldCheck, Copy, AlertTriangle, RefreshCw } from
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { Button, Checking, CouldNotCheck, ErrorBanner, KnownEmpty, RemoteGate, ResultUnknown, inputClass } from './ui';
-import { useHostingCapabilities } from '../lib/hostingCapabilities';
+import { dnsStateExplanation, useHostingCapabilities } from '../lib/hostingCapabilities';
+import { BlockingProblems } from './BlockingProblems';
 import { apiErrorText, readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
 import { useNavigate } from '../router';
 import { countText, decodeListIn, lastKnown, mapRemote, useRemote, type Remote } from '../lib/remote';
@@ -160,6 +161,7 @@ export function DomainDNSManager({
     // ancak kesin bilince görünür. Ekip üyeleri için hiçbir şey okunmaz.
     const capabilities = useHostingCapabilities({ enabled: !isAdditionalUser });
     const dnsServer = !isAdditionalUser && capabilities.remote.state === 'known' ? capabilities.remote.value.dns_server : null;
+    const dnsExplained = !isAdditionalUser && capabilities.remote.state === 'known' ? dnsStateExplanation(capabilities.remote.value, t) : null;
 
     // The zone is addressed by its domain, so the server's 404 is an answer:
     // this domain has no zone. Every other refusal, a dropped connection and an
@@ -359,11 +361,16 @@ export function DomainDNSManager({
                 yayınlamaz — 13 satırı canlı gibi bırakmak yerine bunu açıkça
                 söyle. DNSSEC imzalama DNS sunucusunun aracını ister; o kart
                 yalnız biri kuruluyken var olur. */}
-            {!externalDNS && !remoteDNS && dnsServer === '' && (
-                <div className="mb-4 flex items-start gap-2 rounded-lg border border-warning-mark/50 bg-warning-mark/20 p-3 text-sm text-fg">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-                    <span>{t('dns.notServed')}</span>
-                </div>
+            {/* Why this server takes no new DNS change, in its own words: a
+                main DNS server waiting for its backup still serves the zone
+                (owner report 2026-10-31). / Neden yeni DNS değişikliği alınmıyor. */}
+            {!externalDNS && !remoteDNS && dnsExplained && (
+                <BlockingProblems id="dns-not-ready" className="mb-4" title={t(dnsExplained.title, dnsExplained.vars)} problems={[{
+                    code: `DNS_SERVER_REQUIRED${dnsExplained.state === 'none' ? '' : `:${dnsExplained.state}`}`,
+                    what: t(dnsExplained.what, dnsExplained.vars),
+                    todo: t(dnsExplained.todo, dnsExplained.vars),
+                    fix: { label: t('dnsstate.fix'), onFix: () => navigate('/dns-infrastructure') },
+                }]} />
             )}
             {isAdditionalUser && !externalDNS && !remoteDNS && (
                 <div className="mb-4 flex items-start gap-2 rounded-lg border border-info/30 bg-info/10 p-3 text-sm text-fg">

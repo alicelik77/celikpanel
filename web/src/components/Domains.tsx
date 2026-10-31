@@ -12,7 +12,7 @@ import { domainDeletionDetailKey, domainDeletionReasonKey, readDomainDeletionDKI
 import { decodeList, gateOn, lastKnown, useRemote } from '../lib/remote';
 import { SUBSCRIPTIONS_URL, decodeSubscriptions } from '../lib/subscriptions';
 import { INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones, infrastructureZonePath } from '../lib/infrastructureZones';
-import { dnsBlocker, useHostingCapabilities } from '../lib/hostingCapabilities';
+import { dnsBlocker, dnsEngineBlockerText, useHostingCapabilities } from '../lib/hostingCapabilities';
 import type { TranslationKey } from '../i18n/en';
 import { useAuth } from '../auth/AuthContext';
 import {
@@ -194,7 +194,11 @@ export function Domains() {
     // bir motor var. Aynı anahtar düğme etiketini de besler.
     const dnsRequirementText = dnsBlocked === null
         ? undefined
-        : dnsBlocked === 'engine' ? t('domains.add.needsDns') : t('err.DNS_SETTINGS_REQUIRED');
+        : dnsBlocked === 'engine'
+            // Why the engine half is missing, by its state: a main DNS server
+            // waiting for its backup is not "no DNS" (owner report 2026-10-31).
+            ? capabilities.remote.state === 'known' ? dnsEngineBlockerText(capabilities.remote.value, t) : t('domains.add.needsDns')
+            : t('err.DNS_SETTINGS_REQUIRED');
 
     const pendingMessage = (reason: string, detail = '') => {
         const key = domainDeletionReasonKey(reason) as TranslationKey | null;

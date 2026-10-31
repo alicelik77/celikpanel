@@ -100,13 +100,13 @@ func (p *Panel) requireActiveDNSPublisherForMutation(
 		return dnsPublisherIdentity{}, false
 	}
 	if !ready {
-		writeCodedError(
-			w,
-			http.StatusConflict,
-			errCodeDNSServerRequired,
-			"no single managed authoritative DNS engine is active and verified",
-			"/dns-infrastructure",
-		)
+		// Say why (a backup server, a switch, port 53…); the refusal is the same.
+		status, statusErr := p.dnsPublisherStatus(ctx)
+		if statusErr != nil {
+			status = dnsPublisherStatusView{}
+		}
+		writeDNSServerRequired(w, status.State, string(status.Engine), status.Peer,
+			"no single managed authoritative DNS engine is active and verified")
 		return dnsPublisherIdentity{}, false
 	}
 	return identity, true
