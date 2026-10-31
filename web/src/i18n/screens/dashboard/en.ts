@@ -298,6 +298,8 @@ export const enDashboardScreens = {
     'dashboard.audit.action.import.cpanel.complete': 'imported a cPanel account',
     'dashboard.audit.action.import.cpanel.incomplete': 'imported part of a cPanel account',
     'dashboard.audit.action.mail.account.password.rotate': 'changed a mail account’s password',
+    'dashboard.audit.action.mail.autoresponder.disable': 'turned off a mailbox’s automatic reply',
+    'dashboard.audit.action.mail.autoresponder.enable': 'turned on a mailbox’s automatic reply',
     'dashboard.audit.action.mail.configure': 'changed the mail settings',
     'dashboard.audit.action.mail.policy': 'changed the mail policy',
     'dashboard.audit.action.mail.policy.written-not-reloaded': 'saved the mail policy; the mail service did not reload it',

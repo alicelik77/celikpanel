@@ -124,6 +124,8 @@ var auditActionNames = []string{
 	"import.cpanel.complete",
 	"import.cpanel.incomplete",
 	"mail.account.password.rotate",
+	"mail.autoresponder.disable",
+	"mail.autoresponder.enable",
 	"mail.configure",
 	"mail.dkim.automatic.retry",
 	"mail.policy",

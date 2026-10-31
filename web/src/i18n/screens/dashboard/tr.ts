@@ -279,6 +279,8 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'dashboard.audit.action.import.cpanel.complete': 'bir cPanel hesabını içe aktardı',
     'dashboard.audit.action.import.cpanel.incomplete': 'bir cPanel hesabının bir kısmını içe aktardı',
     'dashboard.audit.action.mail.account.password.rotate': 'bir posta hesabının parolasını değiştirdi',
+    'dashboard.audit.action.mail.autoresponder.disable': 'bir posta kutusunun otomatik yanıtını kapattı',
+    'dashboard.audit.action.mail.autoresponder.enable': 'bir posta kutusunun otomatik yanıtını açtı',
     'dashboard.audit.action.mail.configure': 'posta ayarlarını değiştirdi',
     'dashboard.audit.action.mail.policy': 'posta politikasını değiştirdi',
     'dashboard.audit.action.mail.policy.written-not-reloaded': 'posta politikasını kaydetti; posta hizmeti onu yeniden yüklemedi',
