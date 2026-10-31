@@ -276,7 +276,9 @@ func (p *Panel) serverSetupCompletionChecks(ctx context.Context, draft serverSet
 
 	// The other server's DKIM record when it receives the main domain's mail
 	// (alpha.114): written here over the link; completion waits for it.
-	if draft.PeerMail != nil && draft.DNSMode == setupDNSModeLocal && draft.DNSRole == transport.DNSPairRolePrimary && draft.InfrastructureDNS != nil && !serverSetupHasMail(draft) {
+	// It applies whether or not this server runs mail for its own customers'
+	// domains (alpha.114).
+	if draft.PeerMail != nil && draft.DNSMode == setupDNSModeLocal && draft.DNSRole == transport.DNSPairRolePrimary && draft.InfrastructureDNS != nil {
 		present, err := p.serverSetupPeerDKIMPresent(ctx, draft)
 		checks = append(checks, setupCheck("peer_mail_dkim", present, err))
 	}

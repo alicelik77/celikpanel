@@ -10,6 +10,50 @@ This document records that agreement and the implementation acceptance criteria.
 It does not authorize an assistant to update any installed panel; the user starts
 every installed-panel update from CelikPanel itself, as required by [AGENTS.md](../AGENTS.md).
 
+## October 31 follow-up: mail on the server that joined by code (alpha.114 source)
+
+Found live by the owner on alpha.113: Boston, joined to Frankfurt by code,
+could not have mail at all, because Frankfurt already receives the main
+domain's mail and review refused `server_setup_peer_mail_both`. A hosting
+company's servers each host their own customers' web, databases and mail.
+
+- **A joined server may run mail for the domains created on it.** The join's
+  shared answer still names the one server that receives the main domain's
+  mail. When that is the first server, the joined server's mail never claims
+  it: no MX, SPF, DMARC or DKIM of the main domain is written or sent from
+  there (on a backup DNS server no `mail_dns` step; on a joined main DNS
+  server the zone's MX/SPF/DMARC keep naming the first server's mail name and
+  its DKIM is still accepted over the link). The joined server publishes only
+  its own mail host name (an A record to its address): through its names to
+  the first server during its first setup, and through its access DNS step
+  over the authorized DNS connection (`host-record`) otherwise. It gets its
+  own mail certificate, Postfix/Dovecot/Rspamd and Roundcube. Customer
+  domains created on it get their MX, SPF, DKIM and DMARC in their own zones,
+  published to the main DNS server like every hosted zone.
+- **Adding mail later.** A completed joined setup (for example web and DNS
+  only, installed on alpha.113 and updated by the owner) is reopened in
+  Server -> Server setup and mail is added. The extension's names step sends
+  nothing (the link ended when that setup completed, and the first server
+  already has the names); a first setup over an ended link keeps its
+  `server_setup_peer_link_revoked` guidance.
+- **Names.** On a joined server the mail name is proposed as
+  `mail.<this server's panel name>`. A mail name that the first server, the
+  main domain or a nameserver already uses is refused at review with
+  `server_setup_peer_mail_hostname_taken` (you, the owner: go back to This
+  server's names and give this server its own mail name; nothing was
+  changed). The panel name itself may be the mail name: the panel listens on
+  its own port with its own certificate lineage, the mail certificate is a
+  separate lineage issued through the same port-80 check, and webmail is
+  nginx on 443; one A record serves both names (the first server is then
+  sent only the panel name).
+- **Texts.** On a joined server the Names step and the review say that the
+  main domain's records stay on the first server and that this setup does
+  not change them, instead of asking to import them.
+
+Remaining: proven only by component tests; the two-server lab run (first
+server with mail, second joined with websites and DNS, update, mail added
+later, mail both ways for a customer domain) is owed.
+
 ## October 29 follow-up: fixes from the third targeted Beta-1 re-run (alpha.115 source)
 
 The third targeted re-run of product commit cfcadd3f1 found the defects

@@ -9,6 +9,46 @@ bu yönü onayladı. Bu belge anlaşmayı ve uygulamanın kabul ölçütlerini k
 Asistana kurulu panel güncelleme yetkisi vermez; [AGENTS.md](../AGENTS.md) gereği
 kurulu panel güncellemelerini kullanıcı CelikPanel'in kendi arayüzünden başlatır.
 
+## 31 Ekim ek kararı: koda katılan sunucuda posta (alpha.114 kaynağı)
+
+Sahip alpha.113'te canlı buldu: Frankfurt'a kodla katılan Boston'da posta
+hiç kurulamıyordu; Frankfurt ana alan adının postasını zaten aldığı için
+inceleme `server_setup_peer_mail_both` ile reddediyordu. Barındırma
+şirketinin her sunucusu kendi müşterilerinin web, veritabanı ve postasını
+barındırır.
+
+- **Katılan sunucu, üzerinde açılan alan adları için posta çalıştırabilir.**
+  Katılmanın ortak yanıtı ana alan adının postasını alan tek sunucuyu
+  söylemeye devam eder. Bu ilk sunucuysa katılan sunucunun postası onu
+  sahiplenmez: ana alan adının MX, SPF, DMARC ya da DKIM kaydı oradan yazılmaz
+  ve gönderilmez. Katılan sunucu yalnız kendi posta adını (adresine A kaydı)
+  yayımlar: ilk kurulumunda adlarıyla ilk sunucuya, sonrasında erişim DNS
+  adımıyla yetkili DNS bağlantısı üzerinden. Kendi posta sertifikası,
+  Postfix/Dovecot/Rspamd ve Roundcube'u olur. Üzerinde açılan müşteri alan
+  adlarının MX, SPF, DKIM ve DMARC kayıtları kendi bölgelerinde, her
+  barındırılan bölge gibi ana DNS sunucusuna yayımlanır.
+- **Postayı sonradan eklemek.** Tamamlanmış bir katılan kurulum (örneğin
+  alpha.113'te yalnız web ve DNS ile kurulup sahibince güncellenen) Sunucu ->
+  Sunucu kurulumu ile yeniden açılır ve posta eklenir. Genişletmenin adlar
+  adımı hiçbir şey göndermez (bağlantı kurulum tamamlanınca bitti, ilk sunucu
+  adları zaten biliyor); bitmiş bağlantıdaki ilk kurulum
+  `server_setup_peer_link_revoked` yönlendirmesini korur.
+- **Adlar.** Katılan sunucuda posta adı `mail.<bu sunucunun panel adı>`
+  olarak önerilir. İlk sunucunun, ana alan adının ya da bir ad sunucusunun
+  kullandığı posta adı incelemede `server_setup_peer_mail_hostname_taken` ile
+  reddedilir (siz, sunucu sahibi: Bu sunucunun adları adımına dönüp bu
+  sunucuya kendi posta adını verin; hiçbir şey değiştirilmedi). Panel adı da
+  posta adı olabilir: panel kendi bağlantı noktasında kendi sertifika
+  soyuyla dinler, posta sertifikası aynı 80 numaralı kontrol ile verilen ayrı
+  bir soydur, web postası 443'te nginx'tir; tek A kaydı iki ada da yeter.
+- **Metinler.** Katılan sunucuda Adlar adımı ve inceleme, ana alan adının
+  kayıtlarının ilk sunucuda kaldığını ve bu kurulumun onları değiştirmediğini
+  söyler; onları aktarmayı istemez.
+
+Kalan: yalnız bileşen testleriyle kanıtlandı; iki sunuculu laboratuvar koşusu
+(postalı ilk sunucu, web ve DNS ile katılan ikinci, güncelleme, sonradan
+eklenen posta, bir müşteri alan adı için iki yönde posta) borçtur.
+
 ## 29 Ekim ek kararı: üçüncü hedefli Beta-1 yeniden koşusunun düzeltmeleri (alpha.115 kaynağı)
 
 cfcadd3f1 ürün kaydının üçüncü hedefli yeniden koşusu aşağıdaki kusurları

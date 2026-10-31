@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/subtle"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -596,10 +597,22 @@ func serverSetupPeerLinkRevoked(onSecond bool) error {
 	return &serverSetupChildFailure{Code: "server_setup_peer_link_revoked", Message: "The setup link between the two servers has ended (a setup finished, the owner stopped waiting, or setup was run again), so nothing more is sent over it. " + next + "; setup continues when it is started again."}
 }
 
+// serverSetupCompletedBefore: this server's setup completed earlier, so the
+// run is an extension (the completion record is kept while it runs).
+func (p *Panel) serverSetupCompletedBefore(ctx context.Context) (bool, error) {
+	var completed string
+	err := p.db.GetDB().QueryRowContext(ctx, `SELECT completed_at FROM server_setup_state WHERE id=1`).Scan(&completed)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	return completed != "", err
+}
+
 // runServerSetupPeerNames sends this server's names to the first server at
 // the start of its setup. The request carries the step's own identity, so a
 // retry after a lost answer is the same request; the first server accepts
-// the same names again.
+// the same names again. In an extension it sends nothing (alpha.114).
+
 func (p *Panel) runServerSetupPeerNames(ctx context.Context, plan serverSetupPlan, step serverSetupExecutionStep) (bool, error) {
 	link, err := p.readServerSetupLink(ctx)
 	if err != nil {
@@ -607,6 +620,18 @@ func (p *Panel) runServerSetupPeerNames(ctx context.Context, plan serverSetupPla
 	}
 	if link == nil || step.Target != link.Address {
 		return false, &serverSetupChildFailure{Code: "server_setup_peer_link_missing", Message: "This server is no longer joined to the first server. Join it again from the first step of setup, then review the plan."}
+	}
+	if extension, err := p.serverSetupCompletedBefore(ctx); err != nil {
+		return false, err
+	} else if extension {
+		// An extension of a completed joined setup (alpha.114): the first
+		// server took this server's names when that setup ran, and its link
+		// has usually ended since. Nothing is sent again; a name this
+		// extension adds (its mail host name) is published by its own access
+		// DNS step, over the DNS connection to the main DNS server, or in
+		// this server's own zone when it is the main DNS server.
+		// Genisletmede adlar yeniden gonderilmez; yeni ad kendi adimiyla yayimlanir.
+		return true, nil
 	}
 	if link.LinkCredential == "" {
 		// The link ended (this server's earlier setup completed): nothing is
@@ -665,6 +690,12 @@ func (p *Panel) serverSetupOwnNames(ctx context.Context, d serverSetupDraft, lin
 				mail.MX, mail.DMARC = d.MailDNS.MX, d.MailDNS.DMARC
 			}
 			names.Mail = &mail
+		} else if d.MailHostname == d.PanelDomain {
+			// Mail on the panel's own name (the owner's choice, alpha.114):
+			// the panel name's record already is the mail name's, and a
+			// first server of an earlier release refuses the same name twice.
+			// Posta adi panel adiyla ayni: panel adinin kaydi yeterlidir.
+			names.MailHostname = ""
 		}
 	}
 	if link.Document.MainDNSServer == "second" {

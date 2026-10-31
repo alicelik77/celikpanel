@@ -302,6 +302,31 @@ export function setupApplyProposedNames(draft: ServerSetupDraft, proposal: Setup
     if (!draft.peer_ns.trim() || draft.peer_ns === draft[peerKey] || draft.peer_ns === previous?.[peerKey]) next.peer_ns = next[peerKey];
     return next;
 }
+// A server joined by code (alpha.114): the main domain's mail name belongs to
+// the first server, so this server's own mail name is proposed under its own
+// panel name (mail.boston.example.com). Its panel name itself is accepted too.
+// Koda katilan sunucunun posta adi kendi panel adinin altinda onerilir.
+export interface SetupJoinedNames { firstMail: string; firstPanel: string; mainDomain: string; ns1: string; ns2: string }
+const plainName = (value: string) => value.trim().toLowerCase().replace(/\.$/, '');
+export function setupJoinedMailProposal(proposal: SetupProposedNames, panelDomain: string): SetupProposedNames {
+    const panel = plainName(panelDomain);
+    const base = validSetupDomain(panel) ? panel : proposal.panel;
+    return base ? { ...proposal, mail: `mail.${base}` } : proposal;
+}
+// The names a joined server's mail cannot take: the first server's own, the
+// main domain and the pair's nameserver names (the first server refuses them).
+export function setupJoinedMailTaken(name: string, joined: SetupJoinedNames): boolean {
+    const value = plainName(name);
+    return !!value && [joined.firstMail, joined.firstPanel, joined.mainDomain, joined.ns1, joined.ns2].some(item => !!item && plainName(item) === value);
+}
+// The generic proposal of an earlier step (mail.<main domain>) is the first
+// server's mail name on a joined server: it is replaced by this server's own
+// proposal. A name the owner typed is kept (the review refuses a taken one).
+export function setupApplyJoinedMailName(draft: ServerSetupDraft, proposal: SetupProposedNames, joined: SetupJoinedNames): ServerSetupDraft {
+    const current = plainName(draft.mail_hostname || '');
+    if (!proposal.mail || !joined.mainDomain || current !== `mail.${joined.mainDomain}` || !setupJoinedMailTaken(current, joined)) return draft;
+    return { ...draft, mail_hostname: proposal.mail };
+}
 // The DNS role in the wizard: proposed names keep ns1 on the main DNS server
 // whichever server this is; names the owner typed stay with their server
 // (changeSetupDNSRole).

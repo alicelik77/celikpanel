@@ -517,7 +517,7 @@ func dnsOverviewMailInputs(in dnsOverviewInput) (dnsOverviewMailReceiver, server
 	}
 	if host, choice, ok := serverSetupMainDomainMail(d); ok {
 		receiver := dnsOverviewMailReceiver{Server: "this", Host: host, ShortName: d.ShortName}
-		if !serverSetupHasMail(d) {
+		if !serverSetupMainDomainMailHere(d) {
 			receiver.Server, receiver.ShortName = "peer", in.Peer.ShortName
 		}
 		return receiver, choice, true

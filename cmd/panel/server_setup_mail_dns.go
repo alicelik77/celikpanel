@@ -201,27 +201,66 @@ func mergeServerSetupSPF(old, mailHost string) string {
 	return strings.Join(merged, " ")
 }
 
+// serverSetupHasMail: this server runs mail (a mail profile and its own mail
+// host name). It does not say whose mail it receives: on a joined second
+// server whose first server already receives the main domain's mail, this
+// server's mail is for the domains created on it only (alpha.114, the
+// owner's decision 2026-10-31: each server hosts its own customers' web,
+// databases and mail). serverSetupMainDomainMailHere says whether the main
+// domain's mail comes here.
+// Bu sunucuda posta var; kimin postasini aldigini soylemez.
 func serverSetupHasMail(d serverSetupDraft) bool {
 	return d.MainDomain != "" && d.MailHostname != "" && len(serverSetupMailProfileIDs(d)) > 0
 }
 
+// serverSetupMainDomainMailHere: this server has mail and the main domain's
+// mail comes to it. On the main DNS server the join's shared answer
+// (PeerMail) names the other server when that server receives it; then this
+// server's own mail is for its customers' domains only and the main
+// domain's MX, SPF, DMARC and DKIM name the other server. A backup DNS
+// server never writes the main domain's zone; its own decision is
+// serverSetupPeerMailDNSStep, from the join.
+// Ana alan adinin postasi bu sunucuya mi gelir.
+func serverSetupMainDomainMailHere(d serverSetupDraft) bool {
+	return serverSetupHasMail(d) && d.PeerMail == nil
+}
+
 // serverSetupMainDomainMail is the server receiving the main domain's mail,
-// as the zone's records name it: this server when it has mail, otherwise
-// the other server of the pair when it does (alpha.114, PeerMail from the
-// join), with that server's MX and DMARC answers.
-// Ana alan adinin postasini alan sunucu: bu sunucu ya da eslesmis diger sunucu.
+// as the zone's records name it: the other server of the pair when the
+// join's shared answer says it receives it (alpha.114, PeerMail from the
+// join), whatever this server runs itself; otherwise this server when it
+// has mail; with that server's MX and DMARC answers.
+// Ana alan adinin postasini alan sunucu: eslesmis diger sunucu ya da bu sunucu.
 func serverSetupMainDomainMail(d serverSetupDraft) (string, serverSetupMailDNS, bool) {
 	choice := serverSetupMailDNS{}
+	if d.MainDomain != "" && d.PeerMail != nil && d.PeerMail.Hostname != "" {
+		return d.PeerMail.Hostname, serverSetupMailDNS{MX: d.PeerMail.MX, DMARC: d.PeerMail.DMARC}, true
+	}
 	if serverSetupHasMail(d) {
 		if d.MailDNS != nil {
 			choice = *d.MailDNS
 		}
 		return d.MailHostname, choice, true
 	}
-	if d.MainDomain != "" && d.PeerMail != nil && d.PeerMail.Hostname != "" {
-		return d.PeerMail.Hostname, serverSetupMailDNS{MX: d.PeerMail.MX, DMARC: d.PeerMail.DMARC}, true
-	}
 	return "", choice, false
+}
+
+// serverSetupJoinedMailHostnameBlocker: on a server that joined by code, its
+// mail host name must be its own. The first server's panel and mail names,
+// the main domain and the pair's nameserver names are taken: the first
+// server refuses them in the names it receives, and the main domain's mail
+// keeps the first server's mail name. An empty answer means no refusal.
+// Katilan sunucunun posta adi kendi adi olmali.
+func serverSetupJoinedMailHostnameBlocker(d serverSetupDraft, document serverSetupJoinDocument) string {
+	if !serverSetupHasMail(d) {
+		return ""
+	}
+	for _, taken := range []string{document.First.MailHostname, document.First.PanelDomain, document.MainDomain, document.NS1, document.NS2} {
+		if taken != "" && d.MailHostname == taken {
+			return "server_setup_peer_mail_hostname_taken"
+		}
+	}
+	return ""
 }
 
 // serverSetupMailDNSValues are the main domain's mail records the setup
@@ -306,7 +345,7 @@ func serverSetupImportedAndMailDesired(d serverSetupDraft, own map[string]bool) 
 // DKIM adimi: anahtar, imzalama ve bolgede TXT; her parca tekrar edilebilir.
 func (p *Panel) runServerSetupMailDNS(ctx context.Context, plan serverSetupPlan, step serverSetupExecutionStep) (bool, error) {
 	draft := plan.Draft
-	if step.Target != draft.MainDomain || !serverSetupHasMail(draft) {
+	if step.Target != draft.MainDomain || !serverSetupHasMail(draft) || draft.PeerMail != nil {
 		return false, errors.New("mail DNS step does not match its reviewed plan")
 	}
 	if err := p.requireServerSetupAdmission(ctx); err != nil {
@@ -450,7 +489,7 @@ func serverSetupMailDNSSigningIdentity(step serverSetupExecutionStep) serverSetu
 }
 
 func serverSetupNeedsMailDNSStep(d serverSetupDraft) bool {
-	return serverSetupHasMail(d) && ((d.DNSMode == setupDNSModeLocal && d.DNSRole == transport.DNSPairRolePrimary && d.InfrastructureDNS != nil) || d.DNSMode == setupDNSModeExternal)
+	return serverSetupMainDomainMailHere(d) && ((d.DNSMode == setupDNSModeLocal && d.DNSRole == transport.DNSPairRolePrimary && d.InfrastructureDNS != nil) || d.DNSMode == setupDNSModeExternal)
 }
 
 // serverSetupPeerMailDNSStep: a backup DNS server of a joined pair that
