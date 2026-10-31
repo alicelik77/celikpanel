@@ -9,6 +9,8 @@ import { useRemote } from '../lib/remote';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { ChangeEmailModal } from './ChangeEmailModal';
 import { useLocation } from '../router';
+import { useAuth } from '../auth/AuthContext';
+import { MyPlanCard } from './MyPlanCard';
 
 // My account: the signed-in person's own sign-in security, opened from the
 // personal menu at the top right (D-037, owner 2026-10-22). It is what
@@ -24,10 +26,13 @@ import { useLocation } from '../router';
 // her rol bu sayfayı görür; /settings?section=account buraya ulaşır.
 export function AccountPage() {
     const { t } = useI18n();
+    const { role } = useAuth();
     return (
         <div className="p-4 sm:p-6 md:p-8">
             <PageHeader title={t('nav.account')} subtitle={t('account.subtitle')} breadcrumb={[t('common.home'), t('nav.account')]} />
             <div className="grid max-w-3xl gap-5">
+                {/* My plan (alpha.114): a quota refusal's "go fix it" lands here. */}
+                {(role === 'customer' || role === 'reseller') && <MyPlanCard />}
                 <PasswordPanel />
                 <EmailPanel />
                 <TwoFactorPanel />

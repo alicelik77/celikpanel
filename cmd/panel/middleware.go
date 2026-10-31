@@ -57,7 +57,8 @@ func (p *Panel) requireAuth(next http.Handler) http.Handler {
 			writeAuthStatusUnavailable(w)
 			return
 		}
-		userID, err := p.sessions.Validate(r.Context(), cookie.Value)
+		session, err := p.sessions.ValidateIdentity(r.Context(), cookie.Value)
+		userID := session.UserID
 		if err != nil {
 			if errors.Is(err, auth.ErrSessionInvalid) {
 				writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
@@ -146,6 +147,22 @@ func (p *Panel) requireAuth(next http.Handler) http.Handler {
 		if !c.validAuthorizationIdentity() {
 			writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
 			return
+		}
+		// A "Log in as" session lives only while its operator is active and
+		// may still manage this account (alpha.114).
+		// "Farklı giriş yap" oturumu, operatörü etkin olduğu ve bu hesabı hâlâ
+		// yönetebildiği sürece yaşar.
+		if session.ImpersonatorID > 0 {
+			allowed, checkErr := p.impersonationStillAllowed(r.Context(), session.ImpersonatorID, u)
+			if checkErr != nil {
+				writeAuthStatusUnavailable(w)
+				return
+			}
+			if !allowed {
+				writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
+				return
+			}
+			c.ImpersonatorID = session.ImpersonatorID
 		}
 
 		// Additional users are tenant-scoped team members. Server-global and
@@ -306,6 +323,7 @@ func isAdditionalUserRestrictedPath(path string) bool {
 		"/api/v1/team-members",
 		"/api/v1/plans",
 		"/api/v1/subscriptions",
+		"/api/v1/my",
 		"/api/v1/vpn",
 		"/api/v1/runtimes",
 		"/dbtool",

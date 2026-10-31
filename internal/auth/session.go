@@ -99,6 +99,69 @@ func (s *SessionStore) CreateForAuthEpoch(ctx context.Context, userID int, authE
 	return token, nil
 }
 
+// CreateImpersonation issues a session for targetID that records which
+// operator opened it ("Log in as"). The authentication middleware refuses
+// it once the operator is gone, inactive or may no longer manage the target.
+// CreateImpersonation, hedef için hangi operatörün açtığını kaydeden bir
+// oturum açar ("Farklı giriş yap").
+func (s *SessionStore) CreateImpersonation(ctx context.Context, targetID, operatorID int) (string, error) {
+	if operatorID <= 0 || targetID <= 0 || operatorID == targetID {
+		return "", fmt.Errorf("invalid impersonation identities")
+	}
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return "", fmt.Errorf("failed to generate session token: %w", err)
+	}
+	token := hex.EncodeToString(raw)
+	expiresAt := time.Now().Add(SessionDuration).UTC().Format(time.RFC3339)
+	if _, err := s.db.ExecContext(ctx,
+		"INSERT INTO sessions (token_hash, user_id, expires_at, impersonator_id) VALUES (?, ?, ?, ?)",
+		hashToken(token), targetID, expiresAt, operatorID,
+	); err != nil {
+		return "", fmt.Errorf("failed to store session: %w", err)
+	}
+	return token, nil
+}
+
+// SessionIdentity is who a session belongs to and, for a "Log in as"
+// session, the operator who opened it (0 otherwise).
+// SessionIdentity, oturumun sahibi ve "Farklı giriş yap" oturumunda onu
+// açan operatördür (değilse 0).
+type SessionIdentity struct {
+	UserID         int
+	ImpersonatorID int
+}
+
+// ValidateIdentity is Validate plus the session's impersonator.
+// ValidateIdentity, Validate artı oturumun taklitçisidir.
+func (s *SessionStore) ValidateIdentity(ctx context.Context, token string) (SessionIdentity, error) {
+	if token == "" {
+		return SessionIdentity{}, ErrSessionInvalid
+	}
+	var identity SessionIdentity
+	var impersonator sql.NullInt64
+	var expiresAt string
+	err := s.db.QueryRowContext(ctx,
+		"SELECT user_id, impersonator_id, expires_at FROM sessions WHERE token_hash = ?",
+		hashToken(token),
+	).Scan(&identity.UserID, &impersonator, &expiresAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return SessionIdentity{}, ErrSessionInvalid
+	}
+	if err != nil {
+		return SessionIdentity{}, fmt.Errorf("failed to load session: %w", err)
+	}
+	exp, err := time.Parse(time.RFC3339, expiresAt)
+	if err != nil || time.Now().After(exp) {
+		_ = s.Delete(ctx, token)
+		return SessionIdentity{}, ErrSessionInvalid
+	}
+	if impersonator.Valid {
+		identity.ImpersonatorID = int(impersonator.Int64)
+	}
+	return identity, nil
+}
+
 // Validate resolves a raw token to its user ID, rejecting expired ones.
 // Expired rows are cleaned up opportunistically.
 // Validate, ham bir jetonu kullanıcı kimliğine çözer ve süresi dolmuş

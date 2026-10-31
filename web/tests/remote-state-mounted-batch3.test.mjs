@@ -92,6 +92,8 @@ const stub = dataModule(`
   export const DashboardUpdateNotice = () => null;
   // alpha.114: the compact waiting-updates card has its own tests (os-updates-alpha114).
   export const PendingUpdatesCard = () => null;
+  // alpha.114: My plan reads its own address (customers and resellers only).
+  export const MyPlanCard = () => null;
   export const FirewallNoSSHAcknowledgement = () => null, readFirewallSSHReason = () => null, FirewallSSHReasonLine = () => null;
   // What the Components page imports beside these.
   export const useLocation = () => ({ hash: '', pathname: '/services' });

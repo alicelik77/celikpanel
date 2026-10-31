@@ -34,6 +34,11 @@ type Caller struct {
 	Role        string
 	AccountType core.AccountType
 	CustomerID  int
+	// ImpersonatorID is the operator who opened this session with "Log in
+	// as" (0 for an ordinary sign-in). Authorization always uses ID; the
+	// audit trail names the real person through it.
+	// ImpersonatorID, bu oturumu "Farklı giriş yap" ile açan operatördür.
+	ImpersonatorID int
 }
 
 // normalizedAccountType keeps existing account sessions and older focused

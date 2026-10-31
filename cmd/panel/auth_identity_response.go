@@ -28,7 +28,9 @@ type authIdentityResponse struct {
 	AccountType   core.AccountType `json:"account_type"`
 	Email         string           `json:"email"`
 	Impersonating bool             `json:"impersonating"`
-	Features      map[string]bool  `json:"features"`
+	// Impersonator: the operator's username during "Log in as" (alpha.114).
+	Impersonator string          `json:"impersonator,omitempty"`
+	Features     map[string]bool `json:"features"`
 }
 
 func normalizedStoredAccountType(user *core.User) core.AccountType {

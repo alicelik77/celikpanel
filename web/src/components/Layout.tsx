@@ -654,7 +654,9 @@ function ImpersonationBanner() {
     return (
         <div className="flex flex-wrap items-center justify-center gap-2 bg-warning px-4 py-1.5 text-sm font-medium text-warning-fg">
             <UserCheck className="h-4 w-4" />
-            {t('imp.banner', { name: user.username })}
+            {user.impersonator
+                ? t('imp.bannerBy', { name: user.username, operator: user.impersonator })
+                : t('imp.banner', { name: user.username })}
             <button onClick={exit} className="rounded-md bg-black/15 px-2.5 py-0.5 font-semibold hover:bg-black/25">
                 {t('imp.return')}
             </button>

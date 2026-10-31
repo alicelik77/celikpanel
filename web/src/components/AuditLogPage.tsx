@@ -16,6 +16,8 @@ interface AuditEntry {
     created_at: string;
     /** alpha.107: what the action was about (D-038 §16). */
     details?: Record<string, unknown>;
+    /** alpha.114: the account the person acted as through "Log in as". */
+    acting_as?: string;
 }
 
 // The audit trail: a server-wide, newest-first history of who did what, from
@@ -78,7 +80,10 @@ export function AuditLogPage() {
                                         <td className="whitespace-nowrap px-4 py-3 text-fg-muted">
                                             {new Date(e.created_at.replace(' ', 'T') + 'Z').toLocaleString()}
                                         </td>
-                                        <td className="px-4 py-3 text-base font-medium text-fg">{auditActorName(e.username, t)}</td>
+                                        <td className="px-4 py-3 text-base font-medium text-fg">
+                                            {auditActorName(e.username, t)}
+                                            {e.acting_as && <span className="block text-xs font-normal text-fg-subtle">{t('audit.actingAs', { name: e.acting_as })}</span>}
+                                        </td>
                                         <td className="px-4 py-3">
                                             <span className="rounded-md bg-surface-2 px-2 py-0.5 font-mono text-xs text-fg-muted">
                                                 {verb}
