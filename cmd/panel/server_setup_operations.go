@@ -84,9 +84,19 @@ type serverSetupExecutionStep struct {
 	// child at admission while the host was busy (proven: nothing ran, see
 	// serverSetupChildRefusedAtAdmission). BusyRetry asks the next pass to
 	// admit the same child again (same identity, same operation row).
-	BusySince                   string `json:"busy_since,omitempty"`
-	BusyAttempts                int    `json:"busy_attempts,omitempty"`
-	BusyRetry                   bool   `json:"busy_retry,omitempty"`
+	BusySince    string `json:"busy_since,omitempty"`
+	BusyAttempts int    `json:"busy_attempts,omitempty"`
+	BusyRetry    bool   `json:"busy_retry,omitempty"`
+	// BusyReason (mail enrollment only, 2026-10-30) is the typed reason of the
+	// busy refusal that ended the automatic hand-offs past
+	// serverSetupHostBusyBound ("unknown" when none was named); the step then
+	// waits for the owner. Cleared before every hand-off. Older Panels ignore it.
+	BusyReason string `json:"busy_reason,omitempty"`
+	// BusyHolder (mail enrollment only, 2026-10-30) is the Agent's description
+	// of the held lock and the process holding it at the last busy refusal,
+	// shown in the wait so the screen says what is holding it. Diagnostic
+	// only; cleared with BusyReason. Older Panels ignore it.
+	BusyHolder                  string `json:"busy_holder,omitempty"`
 	Status                      string `json:"status"`
 	RequestID                   string `json:"request_id"`
 	OwnerID                     string `json:"owner_id"`
@@ -428,7 +438,7 @@ func (p *Panel) serverSetupStepChildMissing(ctx context.Context, step serverSetu
 // serverSetupPDNSMainCandidateCode reads, read-only, the PowerDNS build this
 // server would install and applies the catalogue's rule to it.
 func (p *Panel) serverSetupPDNSMainCandidateCode(ctx context.Context) string {
-	return serverSetupPDNSMainCandidateBlocker(p.readServerSetupPDNSCandidate(ctx))
+	return serverSetupPDNSMainCandidateBlockerFor(p.managedServiceHostProfile().PackageFamily, p.readServerSetupPDNSCandidate(ctx))
 }
 
 func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState, actor serviceOperationActor) (serverSetupPlan, error) {
@@ -738,6 +748,13 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 		if serverSetupNeedsNativeCron(draft) {
 			plan.Components = append(plan.Components, serverSetupPlanComponent{ID: core.NativeCronServiceID, Required: true, Installed: installed[core.NativeCronServiceID]})
 		}
+		// The DNS software the owner chose is installed by the DNS step itself
+		// (the engine workflow, not a service step), so it is listed here with
+		// the other components the plan prepares.
+		// Secilen DNS yazilimini DNS adimi kurar; bilesen listesinde de yer alir.
+		if draft.DNSMode == setupDNSModeLocal && managedDNSEngineServiceID(draft.DNSEngine) {
+			plan.Components = append(plan.Components, serverSetupPlanComponent{ID: draft.DNSEngine, Selected: true, Installed: installed[draft.DNSEngine]})
+		}
 	} else {
 		switch draft.Purpose {
 		case "web", "web_mail":
@@ -842,8 +859,17 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 		reviewed := draft
 		if joinPending {
 			// The records are computed again when the second server is bound;
-			// here they are checked with a stand-in address for it.
-			reviewed = serverSetupEffectiveDraft(draft, serverSetupPeerBinding{PeerIPv4: serverSetupJoinStandInPeer(draft.LocalIP)})
+			// here they are checked with the second server that already
+			// joined this draft (D11), or a stand-in address before it has.
+			joined, joinErr := p.serverSetupJoinedReviewBinding(ctx, draft)
+			if joinErr != nil {
+				return plan, joinErr
+			}
+			if joined != nil {
+				reviewed = serverSetupEffectiveDraft(draft, *joined)
+			} else {
+				reviewed = serverSetupEffectiveDraft(draft, serverSetupPeerBinding{PeerIPv4: serverSetupJoinStandInPeer(draft.LocalIP)})
+			}
 		}
 		plan.InfrastructureDNS, infrastructureErr = p.buildServerSetupInfrastructureDNSPlan(ctx, reviewed)
 		if infrastructureErr != nil {
@@ -1417,6 +1443,10 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 		} else {
 			done, err = p.runServerSetupStep(ctx, plan, step)
 		}
+		if err != nil {
+			// A busy refusal proven to have started nothing waits (bounded).
+			err = p.serverSetupAgentRequestRefusedBusy(ctx, step, err)
+		}
 		var peerWait *serverSetupPeerWait
 		if errors.As(err, &peerWait) {
 			// A wait with its own reason (the join, the names, the link):
@@ -1485,6 +1515,16 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 		// step stays unreleased: the Panel has not recorded a rollback, so a
 		// new plan could not start anyway. The runner keeps rereading the
 		// same request every 20 s; reading never starts a mutation.
+		// An earlier DNS operation's journal would refuse this install: the
+		// step waits with that reason, nothing was started, and the runner
+		// rechecks every 20 s instead of showing "running" (drill apd-e).
+		var journalRetained *serverSetupDNSJournalRetainedError
+		if step.Kind == "dns" && errors.As(err, &journalRetained) {
+			execution.Status = "waiting"
+			execution.Error = serverSetupDNSJournalRetainedMessage(journalRetained)
+			log.Printf("server setup step %s: %v", step.ID, err)
+			return false, p.persistServerSetupExecution(ctx, *execution)
+		}
 		var agentFailed *serverSetupDNSAgentFailedError
 		if step.Kind == "dns" && errors.As(err, &agentFailed) {
 			execution.Status = "waiting"

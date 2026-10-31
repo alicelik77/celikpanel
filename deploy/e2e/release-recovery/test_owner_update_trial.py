@@ -331,11 +331,17 @@ class FixtureSourceTests(unittest.TestCase):
                 t.fixture_source(Path(directory), "baseline", None)
 
     def test_upd7_seam_hooks_are_the_seam_commits_own_lines(self):
-        # Each hook replacement is present verbatim in the source's license files (seam commit 01a450e6).
+        # Each hook's added lines are present verbatim in the source's license files (seam commit
+        # 01a450e6). The hooks are applied to the tag's license.go; the anchor line they follow there
+        # may have new neighbours in the current source (D-039 added Status fields after
+        # CanProvision), so only the lines a hook adds after its anchor are compared.
         license_go = (REPO / t.SEAM_LICENSE).read_text()
         for original, replacement in t.SEAM_LICENSE_HOOKS:
-            self.assertIn(replacement, license_go)
             self.assertNotEqual(original, replacement)
+            anchor = os.path.commonprefix([original, replacement])
+            anchor = anchor[:anchor.rfind("\n") + 1]
+            self.assertTrue(anchor, original)
+            self.assertIn(replacement[len(anchor):], license_go)
         self.assertIn(t.SEAM_PANEL_HOOK[1], (REPO / t.SEAM_PANEL).read_text())
         self.assertEqual(list(t.BASELINE_REF_PATCHED), sorted(t.BASELINE_REF_PATCHED))
         for path in t.BASELINE_REF_PATCHED:

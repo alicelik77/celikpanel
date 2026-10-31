@@ -202,6 +202,16 @@ func (p *profile) otherEngineArtifactAt(root string) (string, error) {
 	return "", nil
 }
 
+// OtherEngineArtifact names the first channel or evidence file of the engine
+// other than engine on this secondary ("" when none). It only reads.
+func OtherEngineArtifact(engine Engine) (string, error) {
+	p, err := profileFor(engine)
+	if err != nil {
+		return "", err
+	}
+	return p.otherEngineArtifactAt("/")
+}
+
 func (p *profile) refuseOtherEngine() error {
 	o := p.other()
 	name, err := p.otherEngineArtifactAt("/")

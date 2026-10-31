@@ -255,6 +255,9 @@ type dnsOverviewInput struct {
 	// engine's published files were changed outside the panel; the overview
 	// reads the same engine state and says the same notice.
 	EngineOwnerChanged bool
+	// EngineSeriesUntested: the active PowerDNS runs a release outside its
+	// tested series after the system's own update; the same engine reading.
+	EngineSeriesUntested bool
 	// ZoneDigest is a digest of the main domain zone's records: any write
 	// to the zone, by any path, is a new state and a new check.
 	ZoneDigest string
@@ -318,6 +321,7 @@ func (p *Panel) dnsOverviewInputs(ctx context.Context, edges dnsOverviewSeams) (
 			_, entries := deriveDNSEnginePresentation(engine, runtimes, nil, hold)
 			for _, entry := range entries {
 				in.EngineOwnerChanged = in.EngineOwnerChanged || (entry.ID == engine.ActiveEngine && entry.DetailCode == dnsEngineOwnerChangedCode)
+				in.EngineSeriesUntested = in.EngineSeriesUntested || (entry.ID == engine.ActiveEngine && entry.DetailCode == dnsEngineSeriesUntestedCode)
 			}
 		}
 	}
@@ -903,6 +907,15 @@ const (
 	dnsEngineOwnerChangedThen   = "While it stays, CelikPanel publishes no DNS change on this server (the panel's record editor cannot publish either); handing this DNS software back to CelikPanel after a native edit is not available in this release. This page checks again every minute."
 )
 
+// The untested-series notice's English text (D-024), shared by the overview's
+// sentence and the engine card's copy (web: dnsov.s.engine_series_untested).
+const (
+	dnsEngineSeriesUntestedReason = "A system update moved PowerDNS on this server to a release CelikPanel has not tested yet. PowerDNS keeps answering with the records it has."
+	dnsEngineSeriesUntestedWho    = "Nobody has to undo anything on the server; the next step is a CelikPanel update."
+	dnsEngineSeriesUntestedNext   = "Update CelikPanel from its own update screen when a release names this PowerDNS version as tested."
+	dnsEngineSeriesUntestedThen   = "Until then CelikPanel publishes no DNS change on this server (new domains and record edits wait); it continues by itself once the installed PowerDNS is tested. This page checks again every minute."
+)
+
 func dnsOverviewSay(state, code, reason, who, next, then string, vars map[string]string) dnsOverviewSentence {
 	return dnsOverviewSentence{State: state, Code: code, Reason: reason, Who: who, Next: next, Then: then, Vars: vars}
 }
@@ -922,6 +935,9 @@ func dnsOverviewSentenceFor(in dnsOverviewInput, r dnsOverview) dnsOverviewSente
 	}
 	if in.EngineOwnerChanged {
 		return dnsOverviewSay("prerequisite", "dns_overview_"+dnsEngineOwnerChangedCode, dnsEngineOwnerChangedReason, dnsEngineOwnerChangedWho, dnsEngineOwnerChangedNext, dnsEngineOwnerChangedThen, vars)
+	}
+	if in.EngineSeriesUntested {
+		return dnsOverviewSay("prerequisite", "dns_overview_"+dnsEngineSeriesUntestedCode, dnsEngineSeriesUntestedReason, dnsEngineSeriesUntestedWho, dnsEngineSeriesUntestedNext, dnsEngineSeriesUntestedThen, vars)
 	}
 	if !in.Ready && in.Running {
 		return dnsOverviewSay("waiting", "dns_overview_setup_running", "Server setup is still running; DNS is part of it.", "Follow the setup page; it says when you need to act.", "Open Server setup.", "This page shows the finished picture once setup completes.", vars)

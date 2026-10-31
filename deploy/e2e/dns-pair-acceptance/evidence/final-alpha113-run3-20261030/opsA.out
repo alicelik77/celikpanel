@@ -1,0 +1,235 @@
+== clocks as the lab gives them (not corrected) 21:06:43
+labnet-CA 21:06:44.791559098
+frankfurt 21:06:43.845261887
+== 2. site r3shop113.test with Enable SSL at creation 21:06:44
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/1/public_html", "Domain": "r3shop113.test", "DomainID": 1, "FTPPassword": "[REDACTED]", "FTPUser": "r3shop113_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 1, "TempDomain": ""}
+   site id 1
+   ok 192.0.3.107 r3shop113.test A = '192.0.3.107' after 1s
+   ok 192.0.3.108 r3shop113.test A = '192.0.3.107' after 0s
+200 {"status": "success", "expires_at": "2031-10-30T21:07:00Z"}
+   certificate answer after 3s
+200 has_certificate True activated True names ['r3shop113.test', 'www.r3shop113.test'] settings {'force_https': True, 'hsts_enabled': False, 'hsts_max_age': 31536000} renewal {'state': 'owner_configured', 'authenticator': 'webroot', 'auto_renew': True, 'hook': 'installed'}
+-- PHP on (Hosting type -> PHP) 21:07:02
+200 {"success": true}
+200 {"project_type": "php", "php_version": "8.4"}
+-- a PHP page through the file manager 21:07:03
+200 {"success": true}
+200 {"success": true}
+resolves (lab resolver 192.0.2.53): r3shop113.test=192.0.3.107 www.r3shop113.test=192.0.3.107
+--- http://r3shop113.test/
+code=301 redirect=https://r3shop113.test/ ssl_verify=0
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Content-Type: text/html
+Location: https://r3shop113.test/
+--- https://r3shop113.test/
+code=200 redirect= ssl_verify=0
+HTTP/2 200 
+server: nginx
+content-type: text/html
+strict-transport-security: max-age=0
+body: 3082 bytes, title: <title>r3shop113.test
+software words in body: [CelikPanel ]
+--- http://www.r3shop113.test/
+code=301 redirect=https://www.r3shop113.test/ ssl_verify=0
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Content-Type: text/html
+Location: https://www.r3shop113.test/
+--- https://www.r3shop113.test/
+code=200 redirect= ssl_verify=0
+HTTP/2 200 
+server: nginx
+content-type: text/html
+strict-transport-security: max-age=0
+body: 3082 bytes, title: <title>r3shop113.test
+software words in body: [CelikPanel ]
+--- certificate served on r3shop113.test:443
+subject= X509v3 Subject Alternative Name: critical     DNS:r3shop113.test, DNS:www.r3shop113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 21:07:00 2031 GMT 
+Verify return code: 0 (ok)
+--- https://r3shop113.test/hello.php
+code=200
+HTTP/2 200 
+server: nginx
+content-type: text/html; charset=UTF-8
+x-powered-by present: 0
+body: php-ok 5
+--- http://r3shop113.test/hello.php (redirect?)
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Location: https://r3shop113.test/hello.php
+code=301 location=https://r3shop113.test/hello.php
+-- download of a file that is not there (file manager) 21:07:05
+404 {
+ "code": "FILE_NOT_FOUND",
+ "error": "This path does not exist in the site's web folder; it may have been renamed, moved or deleted. The file manager's top level (/) is the site's web folder: go back to it or to the parent folder and open the entry from the list again."
+}
+== 3. mail on r3shop113.test 21:07:05
+200 {"id": 1, "success": true}
+200 {"id": 2, "success": true}
+200 {"accounts": [{"address": "alice@r3shop113.test", "id": 1, "quota_mb": 1024}, {"address": "bob@r3shop113.test", "id": 2, "quota_mb": 1024}]}
+-- DKIM by itself (the card is only read, never pressed) 21:07:07
+   after 201s: {"status": 200, "dkim": {"dns_value": "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAs9alZd36J3OTKrz1FghqUgLC2NSMDNcMtr+tQ3sAWActa+zUyQOS/HOdVzTm3UADlsjihg+Mxy8Nky4VEssvf9dLJjbKJniU/Hj4+dy0aICW1Upeu6Uh+ncHgCmKNYYo5s4CPGoNZFEnRA4VNrh5zHS+hq+7ReK5/jSmeoeok5PWAcvh4vSB6oCeF2Fhv4h7kXr8SSEuM4ImXjiX2XfBJjFULefu9Aq3YZvleb8bpDOW4PHJ69wAzaIBA5P14uyddHsRX95PhWYqCw1o9meoKToHr8e+Qu3V2+kv2tpPwu7iAMQcPRXH8tlwEZcW0reQsW7ZuWiZf+xce3Cl9C7oFQIDAQAB", "name": "celik._domainkey.r3shop113.test", "recommended": "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAs9alZd36J3OTKrz1FghqUgLC2NSMDNcMtr+tQ3sAWActa+zUyQOS/HOdVzTm3UADlsjihg+Mxy8Nky4VEssvf9dLJjbKJniU/Hj4+dy0aICW1Upeu6Uh+ncHgCmKNYYo5s4CPGoNZFEnRA4VNrh5zHS+hq+7ReK5/jSmeoeok5PWAcvh4vSB6oCeF2Fhv4h7kXr8SSEuM4ImXjiX2XfBJjFULefu9Aq3YZvleb8bpDOW4PHJ69wAzaIBA5P14uyddHsRX95PhWYqCw1o9meoKToHr8e+Qu3V2+kv2tpPwu7iAMQcPRXH8tlwEZcW0reQsW7ZuWi
+   TXT celik._domainkey.r3shop113.test @192.0.3.107: '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCA...'
+   TXT celik._domainkey.r3shop113.test @192.0.3.108: '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCA...'
+-- webmail address: what setup left, then the card's enable (owner action) 21:10:28
+200 {"status": {"managed": false, "present": false}, "address": null, "suggestion": "mail.r3f113.test"}
+202 {"operation": {"id": "da9a3388183e36419869e7fc7b6d1f7d", "kind": "webmail_address", "package_name": "mail.r3f113.test", "phase": "queued", "request_id": "b008fadd8179f960cd503139012eca76", "service_id": "roundcube", "started_at": "2026-10-30T21:10:27.791886286Z", "status": "queued"}}
+   200 {"status": {"certificate_expires": "2031-10-30T21:10:28Z", "hosts": ["mail.r3f113.test"], "managed": true, "present": true, "proved": true}, "address": {"enabled_at": "2026-10-30T21:10:30Z", "host": "mail.r3f113.test", "url": "https://mail.r3f113.test/"}, "suggestion": "mail.r3f113.test"}
+--- http://mail.r3f113.test/
+code=301 redirect=https://mail.r3f113.test/ ssl_verify=0
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Content-Type: text/html
+Location: https://mail.r3f113.test/
+--- https://mail.r3f113.test/
+code=200 redirect= ssl_verify=0
+HTTP/2 200 
+server: nginx
+content-type: text/html; charset=UTF-8
+strict-transport-security: max-age=31536000
+body: 5330 bytes, title: <title>CelikPanel Webmail :: Welcome to CelikPanel Webmail
+software words in body: [CelikPanel version 3 ]
+-- send 587 and 465, read IMAPS 993 21:10:35
+{
+ "host": "mail.r3f113.test",
+ "resolved": "192.0.3.107",
+ "smtp_587_cert": {
+  "cn": null,
+  "san": [
+   "mail.r3f113.test"
+  ],
+  "not_after": "Oct 30 21:04:56 2031 GMT",
+  "issuer_cn": "Pebble Intermediate CA 445eee"
+ },
+ "smtp_send": {
+  "ok": true,
+  "refused": {}
+ },
+ "smtp_465_send": {
+  "ok": true,
+  "refused": {}
+ },
+ "subjects": [
+  "final-alpha113 4a6627883774",
+  "final-alpha113-465 4a6627883774"
+ ],
+ "imaps_993_cert": {
+  "cn": null,
+  "san": [
+   "mail.r3f113.test"
+  ],
+  "not_after": "Oct 30 21:04:56 2031 GMT",
+  "issuer_cn": "Pebble Intermediate CA 445eee"
+ },
+ "imap_read": {
+  "after_seconds": 13.8,
+  "headers": "From: alice@r3shop113.test\r\nTo: bob@r3shop113.test\r\nSubject: final-alpha113 4a6627883774"
+ },
+ "served_certificates": {
+ }
+}
+-- PHP mail() from the site 21:12:10
+200 {"success": true}
+200 {"success": true}
+curl: (77) error setting certificate file: /root/beta1/pebble-root.pem
+   mail.php said: 
+-- DKIM verified independently against the TXT from each DNS server (192.0.3.107,192.0.3.108) 21:12:22
+{
+ "dns_servers": [
+  "192.0.3.107",
+  "192.0.3.108"
+ ],
+ "mails": [
+  {
+   "subject": "final-alpha113 4a6627883774",
+   "message_id": "<c3777371bb5a44689b41d697f797c7bd@labnet.test>",
+   "from": "alice@r3shop113.test",
+   "dkim_signatures": 1,
+   "scan_headers": [],
+   "dkim": [
+    {
+     "d": "r3shop113.test",
+     "s": "celik",
+     "a": "rsa-sha256",
+     "c": "relaxed/simple",
+     "h": "From:To:Subject:From",
+     "verify_with_txt_from_192.0.3.107": true,
+     "txt_p_prefix_192.0.3.107": "MIIBIjANBgkqhkiG9w0BAQEF",
+     "verify_with_txt_from_192.0.3.108": true,
+     "txt_p_prefix_192.0.3.108": "MIIBIjANBgkqhkiG9w0BAQEF"
+    }
+   ]
+  },
+  {
+   "subject": "final-alpha113-465 4a6627883774",
+   "message_id": "<25c34b807e504aa7b4accdb1607128b5@labnet.test>",
+   "from": "alice@r3shop113.test",
+   "dkim_signatures": 1,
+   "scan_headers": [],
+   "dkim": [
+    {
+     "d": "r3shop113.test",
+     "s": "celik",
+     "a": "rsa-sha256",
+     "c": "relaxed/simple",
+     "h": "From:To:Subject:From",
+     "verify_with_txt_from_192.0.3.107": true,
+     "txt_p_prefix_192.0.3.107": "MIIBIjANBgkqhkiG9w0BAQEF",
+     "verify_with_txt_from_192.0.3.108": true,
+     "txt_p_prefix_192.0.3.108": "MIIBIjANBgkqhkiG9w0BAQEF"
+    }
+   ]
+  }
+ ]
+}
+-- on the server: DKIM tables, rspamd's verdicts, milter warnings (read only) 21:12:23
+opendkim conf /etc/opendkim.conf keytable=/var/lib/celikpanel-dkim/tables/keytable signingtable=/var/lib/celikpanel-dkim/tables/signingtable
+keytable lines for r3shop113.test: 1
+celik._domainkey.r3shop113.test r3shop113.test:celik:/var/lib/celikpanel-dkim/keys/r3shop113.test/celik.private
+signingtable lines for r3shop113.test: 1
+*@r3shop113.test celik._domainkey.r3shop113.test
+key files mentioning r3shop113.test:
+milter warnings, all boots: 0
+boots: 2
+milters: smtpd=inet:127.0.0.1:8891, inet:127.0.0.1:11332 non_smtpd=inet:127.0.0.1:8891
+smtp inet y
+submission inet y
+smtps inet y
+-- read in webmail (Roundcube login as bob) 21:12:24
+{
+ "login_page": 200,
+ "after_login_url": "https://HOST/?_task=mail&_token=[REDACTED][REDACTED]",
+ "logged_in": true,
+ "inbox_list_status": 200,
+ "test_mails_listed": [
+  "final-alpha113 4a6627883774"
+ ],
+ "message_count_hint": "Messages 1 to 2 of 2"
+}
+== 4. DNS record add/edit/delete on r3shop113.test reach the backup 21:12:24
+200 {"id": 23, "success": true}
+   ok 192.0.3.107 rec113.r3shop113.test A = '192.0.2.77' after 1s
+   ok 192.0.3.108 rec113.r3shop113.test A = '192.0.2.77' after 0s
+   record id 23
+200 {"success": true}
+   ok 192.0.3.107 rec113.r3shop113.test A = '192.0.2.78' after 0s
+   ok 192.0.3.108 rec113.r3shop113.test A = '192.0.2.78' after 1s
+200 {"success": true}
+   ok 192.0.3.107 rec113.r3shop113.test A = '' after 0s
+   ok 192.0.3.108 rec113.r3shop113.test A = '' after 0s
+-- zone delete: DNS-only r3gone113.test 21:12:41
+200 {"DocumentRoot": "", "Domain": "r3gone113.test", "DomainID": 2, "FTPPassword": "", "FTPUser": "", "PHPVersion": "", "ProjectType": "dnsonly", "SiteID": 2, "TempDomain": ""}
+   ok 192.0.3.107 r3gone113.test SOA = 'ns1.r3f113.test. hostmaster.r3gone113.test. 2026103001 10800 3600 604800 3600' after 0s
+   ok 192.0.3.108 r3gone113.test SOA = 'ns1.r3f113.test. hostmaster.r3gone113.test. 2026103001 10800 3600 604800 3600' after 0s
+   zone id 2
+200 {"status": "deleted", "domain": "r3gone113.test"}
+   answered after 40s
+   192.0.3.107 r3gone113.test SOA after deletion: status: REFUSED flags: qr  (0s)
+   192.0.3.108 r3gone113.test SOA after deletion: status: REFUSED flags: qr  (0s)
+   domain list still names it: no
+2026-10-30T21:13:10+00:00 frankfurt agent[10770]: 2026/10/30 21:13:10 DNS peer proof for r3gone113.test (PowerDNS secondary) stopped at step exchange as dns_peer_inspection_unknown: peer_inspection_unavailable
+2026-10-30T21:13:10+00:00 frankfurt agent[10770]: 2026/10/30 21:13:10 DNS peer proof for r3gone113.test (PowerDNS secondary) step times: prepare=1.503s challenge_write=6.54s exchange=704ms; total 8.747s; outcome pending dns_peer_inspection_unknown
+2026-10-30T21:13:29+00:00 frankfurt agent[10770]: 2026/10/30 21:13:29 DNS peer inspector answer for r3gone113.test (PowerDNS secondary): catalog_state=transferred member_state=absent native_state=unloaded; accepted
+2026-10-30T21:13:30+00:00 frankfurt agent[10770]: 2026/10/30 21:13:30 DNS peer proof for r3gone113.test (PowerDNS secondary) step times: prepare=1.491s challenge_write=6.296s exchange=212ms post_inspection=3.806s consume=7.111s; total 18.917s; outcome verified
+== ops done 21:13:32

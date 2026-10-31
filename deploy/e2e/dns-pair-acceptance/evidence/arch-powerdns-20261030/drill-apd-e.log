@@ -1,0 +1,106 @@
+== after the cut, 09:28:09
+-- cut record
+09:27:05.427801745
+/etc/powerdns/pdns.d:
+total 8
+drwxr-xr-x 1 root root  76 Oct 30 09:27 .
+drwxr-xr-x 1 root root  70 Oct 30 09:27 ..
+-rw-r--r-- 1 root root 310 Oct 30 09:27 celikpanel-cluster.conf
+-rw-r--r-- 1 root root 206 Oct 30 09:27 celikpanel.conf
+
+/var/lib/celikpanel-agent-private:
+total 84
+drwx------ 1 root celikpanel   248 Oct 30 09:27 .
+drwxr-xr-x 1 root root         530 Oct 30 09:27 ..
+-rw------- 1 root celikpanel   381 Oct 30 09:26 dns-engine-install-ownership-pdns.json
+-rw------- 1 root celikpanel 70579 Oct 30 09:27 dns-engine-switch-journal.json
+-rw------- 1 root celikpanel  2912 Oct 30 09:27 .service-mutations-2063327322.json
+-rw------- 1 root celikpanel  2984 Oct 30 09:27 service-mutations.json
+
+/var/lib/powerdns:
+total 96
+drwxr-x--- 1 powerdns powerdns    24 Oct 30 09:27 .
+drwxr-xr-x 1 root     root       530 Oct 30 09:27 ..
+-rw-r----- 1 powerdns powerdns 98304 Oct 30 09:27 pdns.sqlite3
+LoadState=masked
+ActiveState=inactive
+UnitFileState=masked
+-- boots
+ -2 1ead42f702b24ab6a42c26e4f09def75 Fri 2026-10-30 09:23:17 UTC Fri 2026-10-30 09:24:46 UTC
+ -1 5b5b2b5d43fe45de8af2e86f3ad8a513 Fri 2026-10-30 09:24:51 UTC Fri 2026-10-30 09:27:05 UTC
+  0 332946fef5c045b1b7f55dfa93e09de7 Fri 2026-10-30 09:27:11 UTC Fri 2026-10-30 09:28:09 UTC
+-- package
+powerdns 5.1.5-1
+-- units
+LoadState=masked
+ActiveState=inactive
+UnitFileState=masked
+active
+active
+-- files
+/etc/powerdns/pdns.d:
+total 8
+drwxr-xr-x 1 root root  76 Oct 30 09:27 .
+drwxr-xr-x 1 root root  70 Oct 30 09:27 ..
+-rw-r--r-- 1 root root 310 Oct 30 09:27 celikpanel-cluster.conf
+-rw-r--r-- 1 root root 206 Oct 30 09:27 celikpanel.conf
+
+/var/lib/celikpanel-agent-private:
+total 176
+drwx------ 1 root     celikpanel   298 Oct 30 09:27 .
+drwxr-xr-x 1 root     root         530 Oct 30 09:27 ..
+-rw-r----- 1 powerdns powerdns   98304 Oct 30 09:27 .celikpanel-switch-2cf72dd90ec550ba50ef79ec703d413f.sqlite3
+-rw------- 1 root     celikpanel   381 Oct 30 09:26 dns-engine-install-ownership-pdns.json
+-rw------- 1 root     celikpanel 70585 Oct 30 09:27 dns-engine-switch-journal.json
+-rw------- 1 root     celikpanel  4050 Oct 30 09:27 service-mutations.json
+
+/var/lib/powerdns:
+total 0
+drwxr-x--- 1 powerdns powerdns   0 Oct 30 09:27 .
+drwxr-xr-x 1 root     root     530 Oct 30 09:27 ..
+-- recovery dns-switch-status
+DNS switch request 2cf72dd90ec550ba50ef79ec703d413f: released-undecided-with-journal (journal phase rolling-back-target-enable).
+If PowerDNS never started for this fresh paired primary, the server owner can restore the pre-start state with: /usr/libexec/celikpanel/recovery recover-dns-pdns-fresh-prestart --request-id 2cf72dd90ec550ba50ef79ec703d413f. The command checks locks, the accepted worker, native units, configuration and the staged candidate; a started or changed target is refused and its evidence is preserved. This status check does not start recovery.
+The Agent could not prove that this first PowerDNS install as paired primary never started, so it did not undo it and released its lease; the journal is kept. If PowerDNS never started, the server owner can restore the state before the install with the owner recovery command named above; it rechecks locks, owner changes and the native target and refuses a started or changed target. After the reported cause is resolved, restarting the Agent also retries the same automatic undo. The journal blocks a new DNS switch; this read-only status does not start recovery.
+Frozen native inverse shape: pdns-switch. This classification does not prove worker exclusion, owner authority or safe recovery execution.
+The current DNS state receipt is absent. This alone does not prove that an inverse is safe; preserve the journal and inspect native DNS before recovery.
+The journal and current state both have no source receipt. This is not proof that DNS was rolled back or is healthy; the server owner must inspect native DNS before resuming this operation.
+The switch has no previous DNS engine, so no frozen source ownership receipt is required. Native DNS still needs verification before the operation resumes.
+Native unit pdns.service: load=masked active=inactive unit-file=masked.
+These systemd properties were observed at one instant; they do not prove DNS answers, zone content, owner edits or recovery authority.
+exit=0
+-- agent log after boot (DNS)
+Oct 30 09:27:24 mainpd agent[401]: 2026/10/30 09:27:24 Interrupted DNS switch native recovery is unknown; retain exact journal and release only its ledger lease (request 2cf72dd90ec550ba50ef79ec703d413f): fresh PowerDNS primary pre-start rollback could not prove the exact pre-start state; journal retained: remove exact PowerDNS config /etc/powerdns/pdns.d/celikpanel.conf: PowerDNS config parent di
+== owner: review a revised plan 09:28:10
+failed 07-dns {"code": "server_setup_dns_rolled_back", "message": "The DNS engine installation did not complete and CelikPanel undid it: no DNS engine is running on this server, and any packages it installed were kept stopped for the next attempt. Nothing else was changed, and no restart is needed. The server administrator chooses Review a revised plan: keep this DNS software to try the installation again as a new one, or choose the other DNS software in the plan; setup then continues from the new plan."}
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=failed 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "07-dns", "kind": "dns", "owner_id": "2bd18a3ab40c614a7b4b30cbad26bf6c", "request_id": "2cf72dd90ec550ba50ef79ec703d413f", "status": "failed", "target": "local"}
+replan 200 True [] ['01-peer_join:second', '02-dns:local', '03-firewall:enable_and_persist', '04-infrastructure_dns:drill2pd.test', '05-access_dns:mainpd.drill2pd.test', '06-panel_certificate:mainpd.drill2pd.test', '07-dns_readiness:local', '08-verify:custom'] 
+== owner: start 09:28:11
+start 202 {
+ "id": "b7915ef9229331e0d25c58cf304f86a7",
+ "panel_url": "https://mainpd.drill2pd.test:2083/",
+ "phase": "queued",
+ "plan_id": "8894a3ee4db80855f98b2d4c2feee7ca",
+ "request_id": "b7915ef9229331e0d25c58cf304f86a7",
+ "status": "running",
+ "steps": [
+  {
+   "id": "01-peer_join",
+   "kind": "peer_join
+== drill apd-e, owner retry on the build with the defect, 09:30:35
+running 02-dns null
+01-peer_join=succeeded 02-dns=running 03-firewall=pending 04-infrastructure_dns=pending 05-access_dns=pending 06-panel_certificate=pending 07-dns_readiness=pending 08-verify=pending
+{"id": "02-dns", "kind": "dns", "owner_id": "4d9ec9dc853e5aacf06a370e3bd4e424", "request_id": "36e2ef444cbc95e27b2b229c180c9fd8", "status": "running", "target": "local"}
+/root/q.sh: line 1: hostname: command not found
+== recovery dns-switch-status  09:30:35
+DNS switch evidence could not be verified. Preserve the private journal and ledger; the server owner must inspect their ownership, native DNS state and compatibility before the same operation resumes. DNS switch journal has no exact active or finalized ledger authority
+exit=3
+-- agent log (DNS switch)
+Oct 30 09:27:24 mainpd agent[401]: 2026/10/30 09:27:24 Interrupted DNS switch native recovery is unknown; retain exact journal and release only its ledger lease (request 2cf72dd90ec550ba50ef79ec703d413f): fresh PowerDNS primary pre-start rollback could not prove the exact pre-start state; journal retained: remove exact PowerDNS config /etc/powerdns/pdns.d/celikpanel.conf: PowerDNS config parent differs from root-owned vendor directory
+1 links 755 root:root /etc/powerdns/pdns.d
+1 links 755 root:root /etc/powerdns
+btrfs
+LoadState=masked
+ActiveState=inactive
+UnitFileState=masked

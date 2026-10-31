@@ -65,6 +65,7 @@ const phaseKeys: Record<string, TranslationKey> = {
     finalizing: 'services.operation.phase.finalizing',
     'mail-stack': 'services.operation.phase.configuring',
     submission: 'services.operation.phase.configuring',
+    'dkim-signing': 'services.operation.phase.configuring',
 };
 
 export function componentOperationPhaseKey(phase: string): TranslationKey {

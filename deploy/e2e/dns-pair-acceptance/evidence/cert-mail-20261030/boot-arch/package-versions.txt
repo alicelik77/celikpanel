@@ -1,0 +1,6 @@
+certbot 5.8.0-1
+python-acme 5.8.0-1
+nginx 1.30.6-2
+postfix 3.11.7-1
+dovecot 2.4.5-1
+openssl 3.6.5-1

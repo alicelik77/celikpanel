@@ -22,19 +22,19 @@ import (
 
 // Background setup license admission (pair2 finding P-C). The runner judges
 // the license through the same refresh the HTTP access gate performs; policy
-// (verification, one-minute check, refresh interval, failure semantics) is
-// unchanged. Component tests only.
+// (verification, offline window, refresh interval, failure semantics) is the
+// gate's. Component tests only.
 
 // staleSetupLicense returns a license whose last verification is older than
-// licensing.CheckInterval but which the license service still renews. The
+// its offline window (licensing.OfflineGrace) but which the service renews. The
 // service is replaced by a transport that answers with fresh (or fails).
 func staleSetupLicense(t *testing.T, serviceUp *atomic.Bool, calls *atomic.Int64) *licensing.Manager {
 	t.Helper()
 	pub, priv, _ := ed25519.GenerateKey(rand.Reader)
 	now := time.Now().Unix()
 	c := licensing.Claims{Format: "celikpanel-license-v1", Product: "celikpanel", LicenseID: strings.Repeat("a", 32), ServerID: strings.Repeat("b", 64),
-		ActivatedAt: now - 3*86400, IssuedAt: now - 2*int64(licensing.CheckInterval/time.Second), ExpiresAt: now + 365*86400,
-		RefreshAfter: now - 60, OfflineUntil: now + 5*86400}
+		ActivatedAt: now - 9*86400, IssuedAt: now - 8*86400, ExpiresAt: now + 365*86400,
+		RefreshAfter: now - 8*86400 + 3600, OfflineUntil: now - 86400}
 	encode := func(c licensing.Claims) []byte {
 		payload, _ := json.Marshal(c)
 		body, _ := json.Marshal(licensing.Envelope{Payload: base64.StdEncoding.EncodeToString(payload),
@@ -42,7 +42,7 @@ func staleSetupLicense(t *testing.T, serviceUp *atomic.Bool, calls *atomic.Int64
 		return body
 	}
 	stale := encode(c)
-	c.IssuedAt, c.RefreshAfter = now, now+3600
+	c.IssuedAt, c.RefreshAfter, c.OfflineUntil = now, now+3600, now+7*86400
 	fresh := encode(c)
 	previous := http.DefaultTransport
 	http.DefaultTransport = licenseTestTransport(func(*http.Request) (*http.Response, error) {

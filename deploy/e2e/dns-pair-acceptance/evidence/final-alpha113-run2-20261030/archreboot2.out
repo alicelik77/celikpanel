@@ -1,0 +1,44 @@
+== 5. reboot main 17:15:13
+main rebooted in 19.6 s
+   waiting 90 s for services to settle
+== health [after-reboot] 17:17:03
+-- main units/timers
+active active active active active active active
+enabled enabled
+  php-fpm.service loaded active running The PHP FastCGI Proc
+Sat 2026-10-31 06:19:01 UTC 13h Fri 2026-10-30 17:01:09 UTC - certbot-renew.timer certbot-renew.service
+not-found enabled
+2026-10-30 17:15:19
+8524527e-e7c3-4d92-b4b7-59bde43469f6
+succeeded complete null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-mail_profile=succeeded 12-mail_profile=succeeded 13-mail_dns=succeeded 14-service=succeeded 15-access_dns=succeeded 16-mail_certificate=succeeded 17-mail_enrollment=succeeded 18-verify=succeeded
+-- DNS answers
+   @192.0.3.106 SOA archr2f113.test: status: NOERROR flags: qr aa  | A archr2shop113.test: 192.0.3.106 | MX archr2f113.test: 10 mail.archr2f113.test.
+   @192.0.3.106 SOA archr2f113.test: status: NOERROR flags: qr aa  | A archr2shop113.test: 192.0.3.106 | MX archr2f113.test: 10 mail.archr2f113.test.
+-- site
+--- http://archr2shop113.test/
+code=301 redirect=https://archr2shop113.test/ ssl_verify=0
+--- https://archr2shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+body: 3090 bytes, title: <title>archr2shop113.test
+software words in body: [CelikPanel ]
+--- http://www.archr2shop113.test/
+code=301 redirect=https://www.archr2shop113.test/ ssl_verify=0
+--- https://www.archr2shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+body: 3090 bytes, title: <title>archr2shop113.test
+software words in body: [CelikPanel ]
+--- certificate served on archr2shop113.test:443
+--- https://archr2shop113.test/hello.php
+code=200
+server: nginx
+x-powered-by present: 0
+body: php-ok 5
+--- http://archr2shop113.test/hello.php (redirect?)
+code=301 location=https://archr2shop113.test/hello.php
+-- mail
+   smtp 587 send: {'ok': True, 'refused': {}} | cert ['mail.archr2f113.test']
+   imaps 993 read: {'after_seconds': 0.2, 'headers': 'From: alice@archr2shop113.test\r\nTo: bob@archr2shop113.test\r\nSubject: final-alpha113 4797aee0af73'} | cert ['mail.archr2f113.test'] |  
+   delivered to bob's maildir (files in new+cur): 2

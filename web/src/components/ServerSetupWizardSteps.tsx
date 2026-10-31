@@ -38,12 +38,14 @@ function Choice({ name, value, checked, disabled, onChange, title, tag, help, ex
     </label>;
 }
 
-export function SetupDomainStep({ value, onChange, invalid }: { value: string; onChange: (value: string) => void; invalid: boolean }) {
+// required: false while the owner is joining a first server by code, since the
+// main domain then comes from that server (the join panel shares this form).
+export function SetupDomainStep({ value, onChange, invalid, required = true }: { value: string; onChange: (value: string) => void; invalid: boolean; required?: boolean }) {
     const { t } = useSetupWizardI18n();
     return <section className="space-y-5" aria-labelledby="setup-domain-title">
         <h2 id="setup-domain-title" className="text-xl font-semibold">{t('setup.v2.domain.title')}</h2>
         <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v2.domain.help', { example: `panel.${value || 'example.com'}` })}</p>
-        <div className="max-w-md"><SetupWizardInput name="main_domain" label={t('setup.v2.domain.label')} value={value} onChange={onChange} placeholder="example.com" required help={t('setup.v2.domain.hint')} invalid={invalid ? t('setup.v2.domain.invalid') : undefined} /></div>
+        <div className="max-w-md"><SetupWizardInput name="main_domain" label={t('setup.v2.domain.label')} value={value} onChange={onChange} placeholder="example.com" required={required} help={t('setup.v2.domain.hint')} invalid={invalid ? t('setup.v2.domain.invalid') : undefined} /></div>
     </section>;
 }
 
@@ -53,18 +55,22 @@ export function SetupCountStep({ value, onChange }: { value: 1 | 2; onChange: (v
         <legend className="text-xl font-semibold">{t('setup.v2.count.title')}</legend>
         <div className="grid gap-3 pt-2">
             <Choice name="setup-server_count" value="1" checked={value === 1} onChange={() => onChange(1)} title={t('setup.v2.count.one')} help={t('setup.v2.count.one.help')} />
-            <Choice name="setup-server_count" value="2" checked={value === 2} onChange={() => onChange(2)} title={t('setup.v2.count.two')} tag={t('setup.v2.recommended')} help={t('setup.v2.count.two.help')} />
+            <Choice name="setup-server_count" value="2" checked={value === 2} onChange={() => onChange(2)} title={t('setup.v2.count.two')} help={t('setup.v2.count.two.help')} />
         </div>
-        {value === 2 && <p className="max-w-2xl text-sm leading-6 text-fg-muted" role="note">{t('setup.v5.dns.second.help')}</p>}
     </fieldset>;
 }
 
 export function SetupNameStep({ value, suggestion, mainDomain, onChange, invalid }: { value: string; suggestion?: string; mainDomain: string; onChange: (value: string) => void; invalid: boolean }) {
     const { t } = useSetupWizardI18n();
+    // The example and the placeholder come from this server's own host name
+    // when it reads like a name a person chose (the suggestion), never from
+    // another server's name; without one they are neutral.
+    // Ornek ve yer tutucu bu sunucunun kendi adindan gelir; yoksa notrdur.
+    const sample = value || suggestion || 'my-server';
     return <section className="space-y-5" aria-labelledby="setup-name-title">
         <h2 id="setup-name-title" className="text-xl font-semibold">{t('setup.v2.name.title')}</h2>
-        <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v2.name.help', { example: `${value || 'frankfurt'}.${mainDomain || 'example.com'}` })}</p>
-        <div className="max-w-sm"><SetupWizardInput name="short_name" label={t('setup.v2.name.label')} value={value} onChange={onChange} placeholder="frankfurt"
+        <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v2.name.help', { example: `${sample}.${mainDomain || 'example.com'}` })}</p>
+        <div className="max-w-sm"><SetupWizardInput name="short_name" label={t('setup.v2.name.label')} value={value} onChange={onChange} placeholder={suggestion || 'my-server'}
             help={suggestion && value === suggestion ? t('setup.v2.name.suggested', { host: suggestion }) : t('setup.v2.name.optional')} invalid={invalid ? t('setup.v2.name.invalid') : undefined} /></div>
     </section>;
 }
@@ -115,6 +121,7 @@ const engineReason: Record<string, TranslationKey> = {
     server_setup_pdns_main_untested_system: 'setup.v2.engine.untested',
     server_setup_pdns_main_untested_version: 'setup.v2.engine.untestedVersion',
     server_setup_pdns_main_not_debian_archive: 'setup.v2.engine.notDebianArchive',
+    server_setup_pdns_main_not_official_repository: 'setup.v2.engine.notOfficialRepository',
     server_setup_existing_dns_requires_migration: 'setup.v2.engine.existing',
     server_setup_dns_installed_differs: 'setup.v2.engine.installedDiffers',
     bind_source_pdns_switch_unsupported: 'setup.v2.engine.existing',
@@ -160,7 +167,7 @@ export function SetupDNSHomeStep({ draft, set, onMode, onMainDNS, catalog, serve
             const choice = engine(id);
             const blocked = !!choice && !choice.offered;
             return <Choice key={id} name="setup-dns_engine" value={id} checked={draft.dns_engine === id} disabled={blocked && draft.dns_engine !== id} onChange={() => set('dns_engine', id)}
-                title={<>{id === 'bind' ? 'BIND' : 'PowerDNS'}{version(id) && <span className="font-normal text-fg-muted">{version(id)}</span>}</>} tag={id === 'bind' ? t('setup.v2.recommended') : undefined} help={engineHelp(id)} />;
+                title={<>{id === 'bind' ? 'BIND' : 'PowerDNS'}{version(id) && <span className="font-normal text-fg-muted">{version(id)}</span>}</>} help={engineHelp(id)} />;
         })}</div>
         {engine(draft.dns_engine) && !engine(draft.dns_engine)!.offered && <p role="alert" className="text-sm leading-6 text-danger">{engineHelp(draft.dns_engine)}</p>}
         <p className="text-sm leading-6 text-fg-muted">{t('setup.v2.dns.oneSoftware')}</p>
@@ -178,7 +185,7 @@ export function SetupDNSHomeStep({ draft, set, onMode, onMainDNS, catalog, serve
             {software}
         </div> : <>
         <div className="grid gap-3">
-            <Choice name="setup-dns" value="local" checked={draft.dns_mode === 'local'} onChange={() => onMode('local')} title={t('setup.v2.dns.local')} tag={oneServer ? undefined : t('setup.v2.recommended')} help={t(oneServer ? 'setup.v5.dns.standalone.help' : 'setup.v2.dns.local.help')} />
+            <Choice name="setup-dns" value="local" checked={draft.dns_mode === 'local'} onChange={() => onMode('local')} title={t('setup.v2.dns.local')} help={t(oneServer ? 'setup.v5.dns.standalone.help' : 'setup.v2.dns.local.help')} />
             <Choice name="setup-dns" value="external" checked={draft.dns_mode === 'external'} onChange={() => onMode('external')} title={t('setup.v2.dns.external')} help={t('setup.v2.dns.external.help')} />
             <Choice name="setup-dns" value="existing" checked={draft.dns_mode === 'existing'} onChange={() => onMode('existing')} title={t('setup.v2.dns.existing')} help={t('setup.v2.dns.existing.help')} />
         </div>
@@ -248,8 +255,20 @@ export interface SetupPeerView {
     // the second server reported its setup ready over the link.
     // On the backup, "reporting": ready here, the main not told yet.
     peer_setup?: 'pending' | 'ready' | 'retired' | 'reporting';
+    // The deletion check between the two servers, set up automatically by
+    // the backup over the setup link: its outcome or current wait.
+    inspection?: SetupPeerInspection;
 }
-const peerRecord = (item: unknown): item is Record<string, unknown> => !!item && typeof item === 'object' && !Array.isArray(item);
+export const setupPeerInspectionCodes = ['ready', 'existing', 'owner_conflict', 'revoked', 'inspector_unavailable', 'unsupported', 'link_ended', 'working',
+    'unreachable', 'main_agent', 'agent', 'main_pair', 'backup_pair', 'ssh_port', 'failed', 'ssh_unreachable', 'ssh_host_key_mismatch', 'ssh_auth_refused', 'ssh_credential'] as const;
+export interface SetupPeerInspection {
+    state: 'ready' | 'attention' | 'working';
+    code: typeof setupPeerInspectionCodes[number];
+    side?: 'main' | 'backup' | '';
+    vars?: { main?: string; backup?: string; ports?: string; reason?: string };
+    message: string;
+}
+const peerRecord =(item: unknown): item is Record<string, unknown> => !!item && typeof item === 'object' && !Array.isArray(item);
 const peerText = (value: unknown, limit = 253) => typeof value === 'string' && value.length <= limit;
 export function decodeSetupPeerView(value: unknown): SetupPeerView {
     const invalid = () => new Error('invalid peer state');
@@ -259,6 +278,16 @@ export function decodeSetupPeerView(value: unknown): SetupPeerView {
     if (joined !== undefined && (!peerRecord(joined) || !peerText(joined.ipv4, 64) || !peerText(joined.joined_at, 64))) throw invalid();
     if (value.changed !== undefined && typeof value.changed !== 'boolean') throw invalid();
     if (value.peer_setup !== undefined && !['pending', 'ready', 'retired', 'reporting'].includes(String(value.peer_setup))) throw invalid();
+    const inspection = value.inspection;
+    if (inspection !== undefined) {
+        // An unknown or malformed inspection line is left out, never invented.
+        const vars = peerRecord(inspection) ? inspection.vars : undefined;
+        const varsValid = vars === undefined || (peerRecord(vars) && Object.entries(vars).every(([key, item]) => ['main', 'backup', 'ports', 'reason'].includes(key) && peerText(item, 64)));
+        if (!peerRecord(inspection) || !['ready', 'attention', 'working'].includes(String(inspection.state)) || !(setupPeerInspectionCodes as readonly string[]).includes(String(inspection.code))
+            || (inspection.side !== undefined && !['main', 'backup', ''].includes(String(inspection.side))) || !varsValid || !peerText(inspection.message, 2000)) {
+            delete (value as Record<string, unknown>).inspection;
+        }
+    }
     if (link !== undefined && (!peerRecord(link) || !peerText(link.address) || !peerText(link.main_domain) || !['first', 'second'].includes(String(link.main_dns_server)) || !peerText(link.ns1) || !peerText(link.ns2)
         || !peerRecord(link.first) || !peerText(link.first.ipv4, 64) || !peerText(link.first.panel_domain) || typeof link.imported !== 'number')) throw invalid();
     return value as unknown as SetupPeerView;
@@ -273,15 +302,31 @@ function publicSetupIPv4(value: string): boolean {
     return !(a === 0 || a === 10 || a === 127 || a >= 224 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127));
 }
 
-type SetupConnectAnswer = { state: 'ok' | 'refused' | 'wrong_server' | 'unreachable' | 'unknown'; code?: string; attempts_left?: number; setup?: unknown };
+// The deletion check's line on either server's finished setup: the outcome
+// or the current wait, in this screen's language with the addresses the
+// server reported. Attention and waits stand out; "ready" is a quiet status.
+export function SetupPeerInspectionLine({ inspection }: { inspection: SetupPeerInspection }) {
+    const { t } = useSetupWizardI18n();
+    const vars = inspection.vars ?? {};
+    const side = inspection.side === 'main' || inspection.side === 'backup' ? t(`setup.v5.inspection.side.${inspection.side}` as TranslationKey) : '';
+    const text = t(`setup.v5.inspection.${inspection.code}` as TranslationKey, { main: vars.main ?? '', backup: vars.backup ?? '', ports: vars.ports ?? '', side });
+    const tone = inspection.state === 'ready' ? '' : 'rounded-lg border border-warning-mark/40 bg-warning-mark/10 p-3';
+    return <div role="status" className={`max-w-2xl space-y-1 text-sm leading-6 ${tone}`} data-setup-peer-inspection={inspection.code}>
+        <p className="font-medium">{t('setup.v5.inspection.title')}</p>
+        <p>{text}</p>
+    </div>;
+}
+
+type SetupConnectAnswer ={ state: 'ok' | 'refused' | 'wrong_server' | 'unreachable' | 'unknown'; code?: string; attempts_left?: number; setup?: unknown };
 
 // On the second server, before its setup starts: the first server's address
 // and code. The answer's state leads (D-024): refused names its reason; a
 // wrong server, an unreachable one and a lost answer say that nothing was
 // sent or that the same join is asked again.
-export function SetupJoinPanel({ onJoined, disabled, serverIP }: { onJoined: (setup: unknown) => void; disabled?: boolean; serverIP?: string }) {
+export function SetupJoinPanel({ onJoined, disabled, serverIP, onOpenChange }: { onJoined: (setup: unknown) => void; disabled?: boolean; serverIP?: string; onOpenChange?: (open: boolean) => void }) {
     const { t } = useSetupWizardI18n();
-    const [open, setOpen] = useState(false);
+    const [open, setOpenState] = useState(false);
+    const setOpen = (value: boolean) => { setOpenState(value); onOpenChange?.(value); };
     const [address, setAddress] = useState('');
     const [code, setCode] = useState('');
     const [publicIPv4, setPublicIPv4] = useState('');
@@ -320,7 +365,12 @@ export function SetupJoinPanel({ onJoined, disabled, serverIP }: { onJoined: (se
     return <section aria-labelledby="setup-join-title" className="mt-8 space-y-3 border-t border-border pt-6" data-setup-join="">
         <h3 id="setup-join-title" className="font-semibold">{t('setup.v5.join.title')}</h3>
         <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v5.join.help')}</p>
-        {!open ? <Button type="button" variant="secondary" disabled={disabled} onClick={() => setOpen(true)}>{t('setup.v5.join.open')}</Button> : <div className="max-w-xl space-y-4">
+        {!open ? <Button type="button" variant="secondary" disabled={disabled} onClick={() => setOpen(true)}>{t('setup.v5.join.open')}</Button> : <div className="max-w-xl space-y-4" data-setup-join-fields=""
+            // This panel sits inside the main domain step's form. Enter in one
+            // of its fields joins; it never submits that form, whose own
+            // required field is a different question.
+            // Katilma alanlarinda Enter katilir; dis formu gondermez.
+            onKeyDown={event => { if (event.key === 'Enter' && (event.target as { tagName?: string }).tagName === 'INPUT') { event.preventDefault(); void join(); } }}>
             <SetupWizardInput name="join_address" label={t('setup.v5.join.address')} value={address} onChange={setAddress} placeholder="https://203.0.113.10:2083" help={t('setup.v5.join.addressHelp')} />
             <SetupWizardInput name="join_code" label={t('setup.v5.join.code')} value={code} onChange={setCode} placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX" help={t('setup.v5.join.codeHelp')} />
             {/* The first server checks the caller's address against the one this
@@ -408,8 +458,12 @@ export function SetupJoinCard({ joinPending = true, finished = false }: { joinPe
     }
     if (finished) {
         const peerSetup = view?.peer_setup;
-        if (!peerSetup) return null;
-        if (peerSetup !== 'pending') return <p role="status" className="max-w-2xl text-sm leading-6" data-setup-peer-setup={peerSetup}>{t(peerSetup === 'ready' ? 'setup.v5.peerSetup.ready' : peerSetup === 'reporting' ? 'setup.v5.peerSetup.reporting' : 'setup.v5.peerSetup.retired', { server })}</p>;
+        const inspection = view?.inspection ? <SetupPeerInspectionLine inspection={view.inspection} /> : null;
+        if (!peerSetup) return inspection;
+        if (peerSetup !== 'pending') return <>
+            <p role="status" className="max-w-2xl text-sm leading-6" data-setup-peer-setup={peerSetup}>{t(peerSetup === 'ready' ? 'setup.v5.peerSetup.ready' : peerSetup === 'reporting' ? 'setup.v5.peerSetup.reporting' : 'setup.v5.peerSetup.retired', { server })}</p>
+            {inspection}
+        </>;
         return <section aria-labelledby="setup-peer-setup-title" className="max-w-3xl space-y-3" data-setup-peer-setup="pending">
             <h3 id="setup-peer-setup-title" className="sr-only">{t(joined?.short_name ? 'setup.v5.peerSetup.title' : 'setup.v5.peerSetup.titleUnnamed', { server })}</h3>
             <SetupLead title={t(joined?.short_name ? 'setup.v5.peerSetup.title' : 'setup.v5.peerSetup.titleUnnamed', { server })} why={t('setup.v5.peerSetup.why')} who={t('setup.v5.peerSetup.who', { server })} next={t('setup.v5.peerSetup.next', { server })} then={t('setup.v5.peerSetup.then')} />
@@ -421,6 +475,7 @@ export function SetupJoinCard({ joinPending = true, finished = false }: { joinPe
                         <Button type="button" variant="secondary" disabled={stopping === 'sending'} onClick={() => setStopping('idle')}>{t('setup.v5.peerSetup.keepWaiting')}</Button>
                     </div>
                 </div>}
+            {inspection}
             {remote.remote.state === 'unknown' && <p role="status" className="text-sm text-fg-muted">{t('setup.v5.card.readFailed')}</p>}
             {problem && <p role="alert" className="text-sm leading-6 text-danger">{problem}</p>}
         </section>;
@@ -534,6 +589,11 @@ export function SetupRegistrarCard({ draft, mainDomain, now }: { draft: ServerSe
     const ready = now || backupReady;
     const shown = ready || (early && !!live?.now_allowed);
     const done = !!live && live.items.length > 0 && live.items.every(item => item.state === 'ok' || (item.state !== 'unknown' && item.vars?.optional === 'true'));
+    // The registrar already lists these nameservers (and every required glue
+    // record): nothing is asked of the owner there; only the servers' own
+    // answers are awaited. / Kayitci zaten bu ad sunucularini gosteriyor.
+    const registrarDone = !!live && live.items.some(item => item.id === 'nameservers' && item.state === 'ok')
+        && live.items.filter(item => item.id.startsWith('glue')).every(item => item.state === 'ok' || item.vars?.optional === 'true');
     // Once everything answers correctly the card stops asking; opening the
     // step again reads once more. / Her sey dogruysa kart sormayi birakir.
     useRefreshEvery(remote, 60_000, !!domain && !done);
@@ -557,10 +617,11 @@ export function SetupRegistrarCard({ draft, mainDomain, now }: { draft: ServerSe
     };
     return <section aria-labelledby="setup-registrar-title" className="mt-5 space-y-4" data-setup-registrar={shown ? 'now' : 'later'}>
         {done ? <SetupLead tone="done" title={t('setup.v4.doneTitle')} why={t('setup.v4.doneWhy')} who={t('setup.v2.provider.whoNone')} next={t('setup.v4.doneNext')} then={t('setup.v2.registrar.then')} />
+            : registrarDone ? <SetupLead title={t('setup.v2.registrar.alreadyTitle')} why={t('setup.v2.registrar.alreadyWhy', { domain: domain || '—' })} who={t('setup.v2.provider.whoNone')} next={t('setup.v2.registrar.alreadyNext')} then={t('setup.v2.registrar.then')} />
             : <SetupLead title={t(shown ? 'setup.v2.registrar.nowTitle' : 'setup.v2.registrar.laterTitle')}
                 why={t(shown ? 'setup.v2.registrar.nowWhy' : 'setup.v2.registrar.laterWhy', { domain: domain || '—', name: draft.panel_domain || '—' })}
                 who={t('setup.v2.registrar.who')} next={t(glue.length ? 'setup.v2.registrar.nextGlue' : 'setup.v2.registrar.next')} then={t('setup.v2.registrar.then')} />}
-        {!ready && <div className="space-y-2 text-sm leading-6">
+        {!ready && !registrarDone && <div className="space-y-2 text-sm leading-6">
             {!early && <Button type="button" variant="secondary" onClick={() => setEarly(true)}>{t('setup.v4.early')}</Button>}
             {early && live && !live.now_allowed && <p role="status" className="text-fg-muted" data-setup-registrar-refused="">{t('setup.v4.earlyRefused')}</p>}
             {early && !live && <p role="status" className="text-fg-muted">{t('setup.v4.reading')}</p>}
@@ -654,6 +715,21 @@ export interface SetupPublicRecords {
     extras: string[];
     records: { name: string; type: string; values: string[]; state: 'found' | 'none' | 'unknown'; not_importable?: Record<string, string> }[];
     checked_at: string;
+    // Present when a name could not be read: where the parent zone points the
+    // domain. 'here': every nameserver is this server or its pair, so nothing
+    // answers only because DNS is not installed yet. 'elsewhere': other
+    // nameservers that did not answer. 'unknown': it could not be read.
+    delegation?: SetupPublicDelegation;
+}
+export interface SetupPublicDelegation { state: 'here' | 'elsewhere' | 'unknown'; nameservers: { name: string; addresses: string[]; server: 'this' | 'peer' | 'other' }[] }
+const setupDelegationServers = (delegation: SetupPublicDelegation) => delegation.nameservers.map(ns => ns.addresses.length ? `${ns.name} (${ns.addresses.join(', ')})` : ns.name).join(', ');
+// Where the main domain points, for the review: read on its own (no record is
+// read) and only for the wording; 'loading' and 'unknown' keep the neutral text.
+export function useSetupDelegation(enabled: boolean): { state: 'loading' | 'here' | 'elsewhere' | 'unknown'; servers: string } {
+    const remote = useRemote(enabled ? '/api/v1/setup/public-records?delegation=only' : null, decodeSetupPublicRecords);
+    if (remote.remote.state === 'loading') return { state: 'loading', servers: '' };
+    const delegation = remote.remote.state === 'known' ? remote.remote.value.delegation : undefined;
+    return delegation ? { state: delegation.state, servers: setupDelegationServers(delegation) } : { state: 'unknown', servers: '' };
 }
 export function decodeSetupPublicRecords(value: unknown): SetupPublicRecords {
     const record = (item: unknown): item is Record<string, unknown> => !!item && typeof item === 'object' && !Array.isArray(item);
@@ -662,6 +738,13 @@ export function decodeSetupPublicRecords(value: unknown): SetupPublicRecords {
     for (const item of value.records) {
         if (!record(item) || typeof item.name !== 'string' || typeof item.type !== 'string' || !Array.isArray(item.values)
             || item.values.some(entry => typeof entry !== 'string') || !['found', 'none', 'unknown'].includes(String(item.state))) throw invalid();
+    }
+    // An unreadable delegation is left out: the unread names keep their neutral wording.
+    const delegation = value.delegation;
+    if (delegation !== undefined && !(record(delegation) && ['here', 'elsewhere', 'unknown'].includes(String(delegation.state)) && Array.isArray(delegation.nameservers) && delegation.nameservers.length <= 16
+        && delegation.nameservers.every(ns => record(ns) && typeof ns.name === 'string' && ns.name.length <= 253 && Array.isArray(ns.addresses) && ns.addresses.length <= 16 && ns.addresses.every(address => typeof address === 'string' && address.length <= 64) && ['this', 'peer', 'other'].includes(String(ns.server))))) {
+        const { delegation: _invalid, ...kept } = value;
+        return kept as unknown as SetupPublicRecords;
     }
     return value as unknown as SetupPublicRecords;
 }
@@ -716,6 +799,7 @@ export function SetupRecordsStep({ draft, update, mainDomain, own }: {
         return { ...previous, imported_records: list.filter((_, position) => !candidates[position].refused) };
     });
     const unread = read?.records.filter(item => item.state === 'unknown') || [];
+    const delegatedHere = unread.length > 0 && read?.delegation?.state === 'here';
     const imported = candidates.filter(item => !item.refused && item.record.decision === 'import').length;
     const mailClash = candidates.some(item => item.clash && item.record.name === draft.mail_hostname);
     return <section className="space-y-5" aria-labelledby="setup-records-title" data-setup-records="">
@@ -724,7 +808,7 @@ export function SetupRecordsStep({ draft, update, mainDomain, own }: {
         {remote.remote.state === 'loading' && <p role="status" className="text-sm text-fg-muted">{t('setup.v3.records.reading')}</p>}
         {remote.remote.state === 'unknown' && <div role="status" className="space-y-2 rounded-lg border border-border bg-surface p-4 text-sm"><p>{t('setup.v3.records.failed')}</p><Button type="button" variant="secondary" onClick={() => void remote.retry()}>{t('common.retry')}</Button></div>}
         {read && (candidates.length === 0
-            ? <p className="text-sm leading-6 text-fg-muted">{t('setup.v3.records.none', { domain: mainDomain })}</p>
+            ? unread.length === 0 && <p className="text-sm leading-6 text-fg-muted">{t('setup.v3.records.none', { domain: mainDomain })}</p>
             : <ul className="divide-y divide-border rounded-lg border border-border bg-surface">{candidates.map((item, index) => {
                 const record = item.record;
                 return <li key={`${record.name}-${record.type}-${record.content}`} className="space-y-2 px-4 py-3 text-sm" data-import={`${record.name} ${record.type}`} data-decision={record.decision}>
@@ -745,8 +829,18 @@ export function SetupRecordsStep({ draft, update, mainDomain, own }: {
             <p>{t('setup.v3.records.mailClash', { name: draft.mail_hostname })}</p>
             <Button type="button" variant="secondary" onClick={() => update(previous => ({ ...previous, mail_hostname: `mail2.${mainDomain}` }))}>{t('setup.v3.records.useMail2', { name: `mail2.${mainDomain}` })}</Button>
         </div>}
-        {unread.length > 0 && <p role="status" className="text-sm leading-6 text-fg-muted">{t('setup.v3.records.unread', { names: [...new Set(unread.map(item => item.name))].join(', ') })}</p>}
-        {read && <p className="text-sm text-fg-muted">{t('setup.v3.records.count', { imported, skipped: candidates.length - imported })}</p>}
+        {/* A name nobody answered has three different causes (D-024: reason, who acts, next action): the domain already points at
+            these servers, where nothing is installed yet; it points at other nameservers that did not answer; or where it points
+            could not be read. Only the last two can be tried again. */}
+        {unread.length > 0 && (delegatedHere
+            ? <p role="status" className="max-w-2xl text-sm leading-6" data-setup-records-state="delegated-here">{t('setup.v3.records.delegatedHere', { domain: mainDomain, servers: setupDelegationServers(read!.delegation!) })}</p>
+            : <div role="status" className="max-w-2xl space-y-2 text-sm leading-6 text-fg-muted" data-setup-records-state={read?.delegation?.state === 'elsewhere' ? 'unanswered' : 'unread'}>
+                <p>{read?.delegation?.state === 'elsewhere'
+                    ? t('setup.v3.records.elsewhereUnread', { domain: mainDomain, servers: setupDelegationServers(read.delegation), names: [...new Set(unread.map(item => item.name))].join(', ') })
+                    : t('setup.v3.records.unread', { domain: mainDomain, names: [...new Set(unread.map(item => item.name))].join(', ') })}</p>
+                <Button type="button" variant="secondary" onClick={() => void remote.retry()}>{t('setup.v3.records.retry')}</Button>
+            </div>)}
+        {read && !delegatedHere && <p className="text-sm text-fg-muted">{t('setup.v3.records.count', { imported, skipped: candidates.length - imported })}</p>}
         <div className="flex max-w-md flex-wrap items-end gap-2">
             <div className="min-w-0 flex-1"><SetupWizardInput name="extra_name" label={t('setup.v3.records.extra')} value={typed} onChange={setTyped} placeholder={`shop.${mainDomain || 'example.com'}`} /></div>
             <Button type="button" variant="secondary" disabled={!typed.trim() || extras.length >= 8} onClick={() => { const label = typed.trim().toLowerCase().replace(/\.$/, '').replace(new RegExp(`\\.${mainDomain.replace(/\./g, '\\.')}$`), ''); if (label && !extras.includes(label)) setExtras([...extras, label]); setTyped(''); }}>{t('setup.v3.records.look')}</Button>

@@ -44,7 +44,7 @@ rejects(fn()=>$s->reveal($member['id'],$license['id'],$password),'key_not_saved'
 $s->db->prepare('UPDATE licenses SET key_encrypted=? WHERE id=?')->execute([$encrypted,$license['id']]);
 $now+=86400*10;
 $e=$s->activate($license['key'],$server,'frankfurt.example.com','8.8.8.8');$c=claims($e,$public);
-check($c['refresh_after']===$now+45 && $c['offline_until']===$now+60,'short signed verification window');
+check($c['refresh_after']===$now+3600 && $c['offline_until']===$now+7*86400,'hourly check, seven-day offline window');
 check($c['expires_at']===(new DateTimeImmutable('2029-02-28T10:00:00Z'))->getTimestamp(),'calendar year leap date');
 $now+=3600;$retry=$s->activate($license['key'],$server,'frankfurt.example.com','8.8.8.8');$r=claims($retry,$public);
 check($c['activated_at']===$r['activated_at']&&$c['expires_at']===$r['expires_at'],'retry preserves term');
@@ -92,6 +92,9 @@ check($s->reveal($member['id'],$rotated['id'],$password)['key']===$rotated['key'
 $s->db->prepare('UPDATE licenses SET key_encrypted=(SELECT key_encrypted FROM licenses WHERE id=?) WHERE id=?')->execute([$license['id'],$ipLicense['id']]);
 rejects(fn()=>$s->reveal($member['id'],$ipLicense['id'],$password),'key_not_saved');
 
+$now=$c['expires_at']-86400;
+$near=claims($s->refresh($license['id'],$other,$moved['activation_token'],'9.9.9.9'),$public);
+check($near['offline_until']===$near['expires_at'] && $near['refresh_after']===$now+3600,'offline window never passes the annual expiry');
 $now=$c['expires_at'];
 rejects(fn()=>$s->activate($replacement['key'],$other,'boston.example.com','9.9.9.9'),'license_expired');
 $expired=claims($s->refresh($license['id'],$other,$moved['activation_token'],'9.9.9.9'),$public);

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
-	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -118,7 +117,7 @@ func lookupNameserverHost(ctx context.Context, host string, resolvers []hostReso
 // celikhost.com. Varsayılan ad sunucusu adları bundan kurulur, çünkü kayıtçı
 // kaydını operatörün zaten yönettiği alan adı odur.
 func panelBaseDomain() string {
-	h, err := os.Hostname()
+	h, err := localServerName()
 	if err != nil {
 		return ""
 	}

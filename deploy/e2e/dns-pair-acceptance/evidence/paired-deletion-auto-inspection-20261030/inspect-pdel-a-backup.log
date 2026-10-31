@@ -1,0 +1,49 @@
+-- host backpd PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
+-- packaged owner tools
+total 22264
+-rw-r--r-- 1 root root    7483 Oct 30 13:32 README.md
+-rwxr-xr-x 1 root root 4935842 Oct 30 13:32 bind-peer-inspect
+-rwxr-xr-x 1 root root 9040034 Oct 30 13:32 dns-peer-enroll
+-rwxr-xr-x 1 root root 8802466 Oct 30 13:32 pdns-peer-inspect
+-- primary-status (main side)
+{"next_action":"Prepare an owner enrollment only if parentless deletion proof is required.","state":"disabled"}
+-- secondary-status (backup side)
+{"state":"configured","reason":"local policy and SSH configuration verified; live authentication is unproven","next_action":"No owner action is needed now. No status command tests live authentication: the primary Agent makes the first authenticated read-only inspector exchange only while reconciling an admitted pending deletion, and reports its result on that operation","primary_ip":"192.0.3.80","peer_ip":"192.0.3.81","catalog_name":"catalog-c0000350.celikpanel.invalid","catalog_account":"celikpanel-peer-catalog-v1","primary_key_sha256":"9941704399873229037feb26aae1e7cccd43946bb589cd97c767fe0a7d6d8897"}
+-- account
+celikpeer:x:995:986::/var/lib/pdns-peer-inspector:/bin/sh
+celikpeer L 2026-10-30 -1 -1 -1 -1
+-- channel files
+-r--r----- 1 root root      82 Oct 30 13:36 /etc/sudoers.d/celikpanel-pdns-peer-inspector
+-rwxr-xr-x 1 root root 8802466 Oct 30 13:36 /usr/local/libexec/celikpanel-pdns-peer-inspect
+-rwxr-xr-x 1 root root     187 Oct 30 13:36 /usr/local/libexec/celikpanel-pdns-peer-inspect-wrapper
+
+/etc/pdns-peer-inspector:
+total 16
+-rw------- 1 root root  202 Oct 30 13:36 policy.json
+-rw------- 1 root root 3446 Oct 30 13:36 sshd-config-original
+-rw------- 1 root root  217 Oct 30 13:36 sshd-config-receipt.json
+-rw-r--r-- 1 root root  475 Oct 30 13:36 sshd-match.conf
+
+/etc/ssh/pdns-peer-inspector:
+total 4
+-rw-r--r-- 1 root root 174 Oct 30 13:36 authorized_keys
+-- ownership
+root:root 644 /etc/ssh/sshd_config
+root:root 750 /etc/pdns-peer-inspector
+root:root 600 /etc/pdns-peer-inspector/policy.json
+root:root 600 /etc/pdns-peer-inspector/sshd-config-original
+root:root 600 /etc/pdns-peer-inspector/sshd-config-receipt.json
+root:root 644 /etc/pdns-peer-inspector/sshd-match.conf
+root:root 755 /etc/ssh/pdns-peer-inspector
+root:root 644 /etc/ssh/pdns-peer-inspector/authorized_keys
+root:root 755 /var/lib/pdns-peer-inspector
+-- sshd_config tail
+ClientAliveInterval 120
+
+Include /etc/pdns-peer-inspector/sshd-match.conf
+-- sshd ports
+port 22
+-- automation marker
+{"schema":"celikpanel-dns-peer-inspection-auto-secondary/v1","engine":"pdns","primary_ip":"192.0.3.80","peer_ip":"192.0.3.81","catalog_name":"catalog-c0000350.celikpanel.invalid","primary_key_sha256":"9941704399873229037feb26aae1e7cccd43946bb589cd97c767fe0a7d6d8897","state":"installed"}
+-- agent log
+2026-10-30T13:36:51+00:00 backpd agent[10130]: 2026/10/30 13:36:51 peer inspection setup: pdns inspector channel installed for primary 192.0.3.80

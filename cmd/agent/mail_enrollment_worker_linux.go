@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -119,10 +120,95 @@ func runIndependentMailEnrollmentWorkerMode(ctx context.Context, accepted []stri
 	if len(accepted) == 3 {
 		args = append([]string{"--enroll-under-lock"}, accepted...)
 	}
-	return runMailEnrollmentWithPreparedLocks(ctx, "/var/lib/celikpanel-release-transaction/transaction.lock", "/run/celikpanel/service-mutation.lock", serviceMutationLockOwner(), args, func(release *os.File) error {
+	return runMailEnrollmentWithPreparedLocks(ctx, mailEnrollmentReleaseLockPath, mailEnrollmentHostLockPath, serviceMutationLockOwner(), args, func(release *os.File) error {
 		return prepareRecordedMailEnrollmentRuntime(ctx, accepted, int(release.Fd()))
 	})
 }
+
+const (
+	mailEnrollmentReleaseLockPath = "/var/lib/celikpanel-release-transaction/transaction.lock"
+	mailEnrollmentHostLockPath    = "/run/celikpanel/service-mutation.lock"
+	mailEnrollmentWorkerLockPoll  = 250 * time.Millisecond
+)
+
+// mailEnrollmentWorkerLockWait bounds how long a worker waits for the two
+// locks while another task holds one of them (2026-10-30, Arch run ap-e: a
+// worker started while the host lock was briefly held and gave up at once, so
+// setup waited for the owner). Every readiness check holds the host lock for an
+// instant; a short wait outlasts such holds. Nothing is held between tries and
+// nothing changes before both locks are held; past the bound the refusal is the
+// same as before.
+// İşçi, kilitlerden biri kısa süre tutuluyorsa sınırlı bir süre bekler.
+var mailEnrollmentWorkerLockWait = 15 * time.Second
+
+// mailEnrollmentExclusionBusy is the advisory read, just before a handoff, of
+// the two locks the worker takes. It holds neither past the read; the worker's
+// own acquisition stays authoritative. A lock that cannot be read is not
+// reported as busy: that is left to the worker's own verified refusal. The read
+// takes no lock (hostmutationlock.ProbeIdle), so it cannot itself make the
+// worker or any other writer refuse as busy. When busy, holder names the lock
+// and the process holding it.
+// İşçinin alacağı iki kilidin devirden hemen önceki salt okunur denetimi.
+var mailEnrollmentExclusionBusy = func() (bool, string) {
+	for _, lock := range []struct {
+		path  string
+		owner hostmutationlock.Owner
+	}{{mailEnrollmentReleaseLockPath, hostmutationlock.Owner{}}, {mailEnrollmentHostLockPath, serviceMutationLockOwner()}} {
+		if errors.Is(hostmutationlock.ProbeIdle(lock.path, lock.owner), hostmutationlock.ErrBusy) {
+			return true, (&mailEnrollmentLockHeld{lock.path, mailEnrollmentLockHolder(lock.path, lock.owner)}).Error()
+		}
+	}
+	return false, ""
+}
+
+// mailEnrollmentLockHeld names a lock found held and, read from the kernel's
+// lock table, who held it (2026-10-30: the Arch run ap-e could not establish
+// which operation held the lock when the worker was refused). It is evidence
+// for the journal and the setup screen only; no decision depends on it.
+// Tutulan kilit ve onu tutan süreç: yalnız günlük ve ekran için kanıt.
+type mailEnrollmentLockHeld struct{ lock, holder string }
+
+func (e *mailEnrollmentLockHeld) Error() string {
+	name := "the host lock"
+	if e.lock == mailEnrollmentReleaseLockPath || filepath.Base(e.lock) == filepath.Base(mailEnrollmentReleaseLockPath) {
+		name = "the release lock"
+	}
+	return name + " (" + e.lock + ") was held by " + e.holder
+}
+
+// heldBy lets the platform-neutral worker guidance name the holder.
+func (e *mailEnrollmentLockHeld) heldBy() string { return e.Error() }
+
+// mailEnrollmentLockHolder reads who holds a lock, without taking it.
+func mailEnrollmentLockHolder(path string, owner hostmutationlock.Owner) string {
+	holders, err := hostmutationlock.Holders(path, owner)
+	switch {
+	case err != nil:
+		return "a process that could not be named (" + err.Error() + ")"
+	case len(holders) == 0:
+		return "a process that released it before it could be named"
+	}
+	return hostmutationlock.DescribeHolders(holders)
+}
+
+func mailEnrollmentLockBusy(path string, owner hostmutationlock.Owner, err error) error {
+	return errors.Join(errMailEnrollmentWorkerBusy, err, &mailEnrollmentLockHeld{path, mailEnrollmentLockHolder(path, owner)})
+}
+
+// mailEnrollmentLockHolderOf is the named holder carried by a busy refusal.
+func mailEnrollmentLockHolderOf(err error) string {
+	var held *mailEnrollmentLockHeld
+	if errors.As(err, &held) {
+		return held.Error()
+	}
+	return ""
+}
+
+// mailEnrollmentWorkerLog writes to the worker unit's journal.
+var mailEnrollmentWorkerLog = func(format string, args ...any) {
+	fmt.Fprintf(os.Stderr, format+"\n", args...)
+}
+
 func runMailEnrollmentWithLocks(ctx context.Context, releasePath, hostPath string, owner hostmutationlock.Owner, args []string) error {
 	return runMailEnrollmentWithPreparedLocks(ctx, releasePath, hostPath, owner, args, nil)
 }
@@ -130,29 +216,11 @@ func runMailEnrollmentWithPreparedLocks(ctx context.Context, releasePath, hostPa
 	if ctx == nil {
 		return servicemutationledger.ErrMailEnrollment
 	}
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	release, err := hostmutationlock.AcquireExisting(releasePath, hostmutationlock.Owner{})
+	release, host, err := waitForMailEnrollmentLocks(ctx, releasePath, hostPath, owner, prepare)
 	if err != nil {
-		if errors.Is(err, hostmutationlock.ErrBusy) {
-			return errors.Join(errMailEnrollmentWorkerBusy, err)
-		}
 		return err
 	}
 	defer release.Close()
-	if prepare != nil {
-		if err = prepare(release); err != nil {
-			return err
-		}
-	}
-	host, err := hostmutationlock.AcquireExisting(hostPath, owner)
-	if err != nil {
-		if errors.Is(err, hostmutationlock.ErrBusy) {
-			return errors.Join(errMailEnrollmentWorkerBusy, err)
-		}
-		return err
-	}
 	defer host.Close()
 	self, err := os.Open("/proc/self/exe")
 	if err != nil {
@@ -167,6 +235,64 @@ func runMailEnrollmentWithPreparedLocks(ctx context.Context, releasePath, hostPa
 	command.WaitDelay = 2 * time.Second
 	command.Stdout, command.Stderr = os.Stdout, os.Stderr
 	return command.Run()
+}
+
+// waitForMailEnrollmentLocks retries only a busy refusal, for at most
+// mailEnrollmentWorkerLockWait; any other error is returned at once.
+func waitForMailEnrollmentLocks(ctx context.Context, releasePath, hostPath string, owner hostmutationlock.Owner, prepare func(*os.File) error) (*os.File, *os.File, error) {
+	deadline := time.Now().Add(mailEnrollmentWorkerLockWait)
+	for tries := 1; ; tries++ {
+		if err := ctx.Err(); err != nil {
+			return nil, nil, err
+		}
+		release, host, err := acquireMailEnrollmentLocks(releasePath, hostPath, owner, prepare)
+		busy := errors.Is(err, errMailEnrollmentWorkerBusy)
+		switch {
+		case err == nil && tries > 1:
+			mailEnrollmentWorkerLog("Mail enrollment obtained the release and host locks after %d tries; continuing.", tries)
+		case busy && tries == 1:
+			mailEnrollmentWorkerLog("Mail enrollment is waiting up to %s and has changed nothing: %s.", mailEnrollmentWorkerLockWait, mailEnrollmentLockHolderOf(err))
+		case busy && !time.Now().Before(deadline):
+			mailEnrollmentWorkerLog("Mail enrollment stopped waiting after %d tries and changed nothing: %s.", tries, mailEnrollmentLockHolderOf(err))
+		}
+		if err == nil || !busy || !time.Now().Before(deadline) {
+			return release, host, err
+		}
+		timer := time.NewTimer(mailEnrollmentWorkerLockPoll)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return nil, nil, ctx.Err()
+		case <-timer.C:
+		}
+	}
+}
+
+// acquireMailEnrollmentLocks takes the release lock, prepares, then takes the
+// host lock. A busy lock releases whatever this attempt took.
+func acquireMailEnrollmentLocks(releasePath, hostPath string, owner hostmutationlock.Owner, prepare func(*os.File) error) (*os.File, *os.File, error) {
+	release, err := hostmutationlock.AcquireExisting(releasePath, hostmutationlock.Owner{})
+	if err != nil {
+		if errors.Is(err, hostmutationlock.ErrBusy) {
+			return nil, nil, mailEnrollmentLockBusy(releasePath, hostmutationlock.Owner{}, err)
+		}
+		return nil, nil, err
+	}
+	if prepare != nil {
+		if err = prepare(release); err != nil {
+			release.Close()
+			return nil, nil, err
+		}
+	}
+	host, err := hostmutationlock.AcquireExisting(hostPath, owner)
+	if err != nil {
+		release.Close()
+		if errors.Is(err, hostmutationlock.ErrBusy) {
+			return nil, nil, mailEnrollmentLockBusy(hostPath, owner, err)
+		}
+		return nil, nil, err
+	}
+	return release, host, nil
 }
 
 // Dispatch only the installed content-addressed helper corresponding to this

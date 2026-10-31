@@ -91,11 +91,8 @@ func probePDNSTopologyOnce(ctx context.Context, units NativeUnitRunner, runtime 
 // ProbePDNSRuntime observes a stable native topology and returns the selected
 // MainPID. It does not certify the vendor unit, executable bytes or database.
 func ProbePDNSRuntime(ctx context.Context, profile hostplatform.Profile, units NativeUnitRunner, runtime BINDRuntimeRunner) (uint64, error) {
-	if ctx == nil || units == nil || runtime == nil ||
-		profile.PackageManager != hostplatform.PackageManagerAPT ||
-		profile.DistroFamily != hostplatform.DistroFamilyDebian ||
-		profile.ServiceManager != hostplatform.ServiceManagerSystemd {
-		return 0, errors.New("PowerDNS observation requires a verified APT/systemd host")
+	if ctx == nil || units == nil || runtime == nil || !certifiedPDNSRecoveryHost(profile) {
+		return 0, errors.New("PowerDNS observation requires a verified APT or pacman systemd host")
 	}
 	before, err := probePDNSTopologyOnce(ctx, units, runtime)
 	if err != nil {

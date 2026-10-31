@@ -1,0 +1,244 @@
+== clocks as the lab gives them 22:35:05
+labnet 22:35:06.901905045
+frankfurt 22:35:05.833847788
+== site d6shop113.test with Enable SSL at creation 22:35:06
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/1/public_html", "Domain": "d6shop113.test", "DomainID": 1, "FTPPassword": "[REDACTED]", "FTPUser": "d6shop113_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 1, "TempDomain": ""}
+   site id 1
+   ok 192.0.3.121 d6shop113.test A = '192.0.3.121' after 0s
+   ok 192.0.3.122 d6shop113.test A = '192.0.3.121' after 1s
+200 {"status": "success", "expires_at": "2031-10-30T22:35:24Z"}
+200 {"success": true}
+== mail on d6shop113.test 22:35:28
+200 {"id": 1, "success": true}
+200 {"id": 2, "success": true}
+-- DKIM by itself (the card is only read) 22:35:30
+   after 12s: {"status": 200, "dkim_signed": true, "automatic": null}; TXT @192.0.3.121 '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA...' @192.0.3.122 '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA...'
+-- send 587 and 465, read IMAPS 22:35:42
+{
+ "host": "mail.d6f113.test",
+ "resolved": "192.0.3.121",
+ "smtp_587_cert": {
+  "cn": null,
+  "san": [
+   "mail.d6f113.test"
+  ],
+  "not_after": "Oct 30 22:34:31 2031 GMT",
+  "issuer_cn": "Pebble Intermediate CA 445eee"
+ },
+ "smtp_send": {
+  "ok": true,
+  "refused": {}
+ },
+ "smtp_465_send": {
+  "ok": true,
+  "refused": {}
+ },
+ "subjects": [
+  "final-alpha113 a5dacb92c5de",
+  "final-alpha113-465 a5dacb92c5de"
+ ],
+ "imaps_993_cert": {
+  "cn": null,
+  "san": [
+   "mail.d6f113.test"
+  ],
+  "not_after": "Oct 30 22:34:31 2031 GMT",
+  "issuer_cn": "Pebble Intermediate CA 445eee"
+ },
+ "imap_read": {
+  "after_seconds": 16.2,
+  "headers": "From: alice@d6shop113.test\r\nTo: bob@d6shop113.test\r\nSubject: final-alpha113 a5dacb92c5de"
+ },
+ "served_certificates": {
+ }
+}
+-- PHP mail() from the site (own Message-ID so Rspamd's log names it), and one to a mailbox that does not exist (bounce to bob) 22:37:18
+200 {"success": true}
+200 {"success": true}
+curl: (77) error setting certificate file: /root/beta1/pebble-root.pem
+   mail.php said: 
+-- DKIM verified independently against the TXT from each DNS server (192.0.3.121,192.0.3.122) 22:37:34
+{
+ "dns_servers": [
+  "192.0.3.121",
+  "192.0.3.122"
+ ],
+ "mails": [
+  {
+   "subject": "final-alpha113 a5dacb92c5de",
+   "message_id": "<a2a77e8e5e854de5a6e059cfd2e72dc4@labnet.test>",
+   "from": "alice@d6shop113.test",
+   "dkim_signatures": 1,
+   "scan_headers": [],
+   "dkim": [
+    {
+     "d": "d6shop113.test",
+     "s": "celik",
+     "a": "rsa-sha256",
+     "c": "relaxed/simple",
+     "h": "From:To:Subject:From",
+     "verify_with_txt_from_192.0.3.121": true,
+     "txt_p_prefix_192.0.3.121": "MIIBIjANBgkqhkiG9w0BAQEF",
+     "verify_with_txt_from_192.0.3.122": true,
+     "txt_p_prefix_192.0.3.122": "MIIBIjANBgkqhkiG9w0BAQEF"
+    }
+   ]
+  },
+  {
+   "subject": "final-alpha113-465 a5dacb92c5de",
+   "message_id": "<a4fc263effa94daba60d679a0d700401@labnet.test>",
+   "from": "alice@d6shop113.test",
+   "dkim_signatures": 1,
+   "scan_headers": [],
+   "dkim": [
+    {
+     "d": "d6shop113.test",
+     "s": "celik",
+     "a": "rsa-sha256",
+     "c": "relaxed/simple",
+     "h": "From:To:Subject:From",
+     "verify_with_txt_from_192.0.3.121": true,
+     "txt_p_prefix_192.0.3.121": "MIIBIjANBgkqhkiG9w0BAQEF",
+     "verify_with_txt_from_192.0.3.122": true,
+     "txt_p_prefix_192.0.3.122": "MIIBIjANBgkqhkiG9w0BAQEF"
+    }
+   ]
+  },
+  {
+   "subject": "php-mail ",
+   "found": false
+  },
+  {
+   "subject": "Undelivered Mail Returned to Sender",
+   "found": false
+  }
+ ]
+}
+-- on the server: Rspamd's verdicts by Message-ID (the PHP mail() one is php-@d6shop113.test), milters, the bounce in Postfix's log (read only) 22:37:35
+opendkim conf /etc/opendkim.conf keytable=/var/lib/celikpanel-dkim/tables/keytable signingtable=/var/lib/celikpanel-dkim/tables/signingtable
+keytable lines for d6shop113.test: 1
+celik._domainkey.d6shop113.test d6shop113.test:celik:/var/lib/celikpanel-dkim/keys/d6shop113.test/celik.private
+signingtable lines for d6shop113.test: 1
+*@d6shop113.test celik._domainkey.d6shop113.test
+key files mentioning d6shop113.test:
+rspamd lines for a2a77e8e5e854de5a6e059cfd2e72dc4@labnet.test:
+rspamd_task_write_log: id: <a2a77e8e5e854de5a6e059cfd2e72dc4@labnet.test>, qid: <
+(default: F (no action): [0.90/15.00] [MISSING_DATE(1.00){}
+rspamd lines for a4fc263effa94daba60d679a0d700401@labnet.test:
+rspamd_task_write_log: id: <a4fc263effa94daba60d679a0d700401@labnet.test>, qid: <
+(default: F (no action): [0.90/15.00] [MISSING_DATE(1.00){}
+rspamd lines for php-@d6shop113.test:
+milter warnings, all boots: 0
+boots: 2
+milters: smtpd=inet:127.0.0.1:8891, inet:127.0.0.1:11332 non_smtpd=inet:127.0.0.1:8891, inet:127.0.0.1:11332
+smtp inet y
+submission inet y
+smtps inet y
+{"command": "journalctl -u postfix -u 'postfix@*' --no-pager -o short-iso --since -5min | grep -E 'nosuch-d6|sender non-delivery|Undelivered|milter-reject|status=bounced|bounce' | cut -c1-260 | tail -n 12", "rc": 0, "seconds": 0.16, "stdout": "", "stderr": "", "at": "2026-10-30T22:37:37.113Z", "label": "bounce-log"}
+
+accept
+inet:127.0.0.1:8891, inet:127.0.0.1:11332
+inet:127.0.0.1:8891, inet:127.0.0.1:11332
+== DNS-only zones created and deleted at once, three times 22:37:37
+-- d6gone1.test 22:37:37
+200 {"DocumentRoot": "", "Domain": "d6gone1.test", "DomainID": 2, "FTPPassword": "", "FTPUser": "", "PHPVersion": "", "ProjectType": "dnsonly", "SiteID": 2, "TempDomain": ""}
+   zone id 2, deleted at once 22:37:45
+200 {"status": "deleted", "domain": "d6gone1.test"}
+   answered after 56s
+   deletion status read while it ran (distinct answers):
+     42  200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+      2  204 None None None |
+   @192.0.3.121 d6gone1.test SOA: status: REFUSED flags: qr 
+   @192.0.3.122 d6gone1.test SOA: status: REFUSED flags: qr 
+   domain list still names it: no
+-- d6gone2.test 22:38:42
+200 {"DocumentRoot": "", "Domain": "d6gone2.test", "DomainID": 3, "FTPPassword": "", "FTPUser": "", "PHPVersion": "", "ProjectType": "dnsonly", "SiteID": 3, "TempDomain": ""}
+   zone id 3, deleted at once 22:38:51
+200 {"status": "deleted", "domain": "d6gone2.test"}
+   answered after 38s
+   deletion status read while it ran (distinct answers):
+     30  200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+      2  204 None None None |
+   @192.0.3.121 d6gone2.test SOA: status: REFUSED flags: qr 
+   @192.0.3.122 d6gone2.test SOA: status: REFUSED flags: qr 
+   domain list still names it: no
+-- d6gone3.test 22:39:31
+200 {"DocumentRoot": "", "Domain": "d6gone3.test", "DomainID": 4, "FTPPassword": "", "FTPUser": "", "PHPVersion": "", "ProjectType": "dnsonly", "SiteID": 4, "TempDomain": ""}
+   zone id 4, deleted at once 22:39:44
+200 {"status": "deleted", "domain": "d6gone3.test"}
+   answered after 62s
+   deletion status read while it ran (distinct answers):
+     45  200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+      3  204 None None None |
+   @192.0.3.121 d6gone3.test SOA: status: REFUSED flags: qr 
+   @192.0.3.122 d6gone3.test SOA: status: REFUSED flags: qr 
+   domain list still names it: no
+-- what is left, and the window's Panel/Agent lines (read only) 22:41:07
+automatic DKIM records: []
+domains rows: [(1, 'd6shop113.test', 'active')]
+key dir for d6gone1.test: none
+table lines naming d6gone1.test: 0
+key dir for d6gone2.test: none
+table lines naming d6gone2.test: 0
+key dir for d6gone3.test: none
+table lines naming d6gone3.test: 0
+-- Panel/Agent lines since 2026-10-30 22:37:37
+2026-10-30T22:37:46+00:00 frankfurt systemd[1]: Stopping opendkim.service - OpenDKIM Milter...
+2026-10-30T22:37:48+00:00 frankfurt systemd[1]: Started opendkim.service - OpenDKIM Milter.
+2026-10-30T22:37:51+00:00 frankfurt panel[22881]: 2026/10/30 22:37:51 [dkim-auto] d6gone1.test: stopped: the domain is being deleted or no longer exists; its deletion removes its DKIM key and record, nothing to do
+2026-10-30T22:38:11+00:00 frankfurt agent[10770]: 2026/10/30 22:38:11 DNS peer proof for d6gone1.test (PowerDNS secondary) stopped at step challenge_write as dns_peer_proof_timeout: native DNS peer proof check ran out of time: native DNS peer proof check active_engine differed: systemctl show failed: signal: killed:
+2026-10-30T22:38:11+00:00 frankfurt agent[10770]: 2026/10/30 22:38:11 DNS peer proof for d6gone1.test (PowerDNS secondary) step times: prepare=1.771s challenge_write=12.03s; total 13.802s; outcome pending dns_peer_proof_timeout
+2026-10-30T22:38:11+00:00 frankfurt agent[10770]: 2026/10/30 22:38:11 pdns zone publication remains pending for d6gone1.test at epoch 1: paired DNS deletion is not confirmed yet (check=peer_native_zone): waiting for the backup DNS server to confirm the deletion; the Panel checks the same operation again automatically and says wh
+2026-10-30T22:38:37+00:00 frankfurt agent[10770]: 2026/10/30 22:38:37 DNS peer inspector answer for d6gone1.test (PowerDNS secondary): catalog_state=transferred member_state=absent native_state=unloaded; accepted
+2026-10-30T22:38:40+00:00 frankfurt agent[10770]: 2026/10/30 22:38:40 DNS peer proof for d6gone1.test (PowerDNS secondary) step times: prepare=2.122s challenge_write=8.292s exchange=1.045s post_inspection=4.439s consume=11.282s; total 27.18s; outcome verified
+2026-10-30T22:38:41+00:00 frankfurt systemd[1]: Stopping opendkim.service - OpenDKIM Milter...
+2026-10-30T22:38:43+00:00 frankfurt systemd[1]: Started opendkim.service - OpenDKIM Milter.
+2026-10-30T22:38:51+00:00 frankfurt systemd[1]: Stopping opendkim.service - OpenDKIM Milter...
+2026-10-30T22:38:53+00:00 frankfurt systemd[1]: Started opendkim.service - OpenDKIM Milter.
+2026-10-30T22:38:57+00:00 frankfurt panel[22881]: 2026/10/30 22:38:57 [dkim-auto] d6gone2.test: stopped: the domain is being deleted or no longer exists; its deletion removes its DKIM key and record, nothing to do
+2026-10-30T22:39:27+00:00 frankfurt agent[10770]: 2026/10/30 22:39:27 DNS peer inspector answer for d6gone2.test (PowerDNS secondary): catalog_state=transferred member_state=absent native_state=unloaded; accepted
+2026-10-30T22:39:28+00:00 frankfurt agent[10770]: 2026/10/30 22:39:28 DNS peer proof for d6gone2.test (PowerDNS secondary) step times: prepare=2.623s challenge_write=8.531s exchange=430ms post_inspection=3.988s consume=11.151s; total 26.722s; outcome verified
+2026-10-30T22:39:29+00:00 frankfurt systemd[1]: Stopping opendkim.service - OpenDKIM Milter...
+2026-10-30T22:39:33+00:00 frankfurt systemd[1]: Started opendkim.service - OpenDKIM Milter.
+2026-10-30T22:39:46+00:00 frankfurt systemd[1]: Stopping opendkim.service - OpenDKIM Milter...
+2026-10-30T22:39:48+00:00 frankfurt systemd[1]: Started opendkim.service - OpenDKIM Milter.
+2026-10-30T22:39:52+00:00 frankfurt panel[22881]: 2026/10/30 22:39:52 [dkim-auto] d6gone3.test: stopped: the domain is being deleted or no longer exists; its deletion removes its DKIM key and record, nothing to do
+2026-10-30T22:39:54+00:00 frankfurt systemd[1]: Stopping opendkim.service - OpenDKIM Milter...
+2026-10-30T22:39:59+00:00 frankfurt systemd[1]: Started opendkim.service - OpenDKIM Milter.
+2026-10-30T22:40:43+00:00 frankfurt agent[10770]: 2026/10/30 22:40:43 DNS peer inspector answer for d6gone3.test (PowerDNS secondary): catalog_state=transferred member_state=absent native_state=unloaded; accepted
+2026-10-30T22:40:46+00:00 frankfurt agent[10770]: 2026/10/30 22:40:46 DNS peer proof for d6gone3.test (PowerDNS secondary) step times: prepare=3.529s challenge_write=9.525s exchange=1.105s post_inspection=4.652s consume=13.461s; total 32.272s; outcome verified
+-- counts since 2026-10-30 22:37:37
+FOREIGN KEY: 0
+peer_inspection_unavailable: 0
+peer administrator must: 0
+not confirmed yet: 1
+\[dkim-auto\].*failed: 0
+\[dkim-auto\].*stopped: 3
+== site delete d6shop113.test (id 1), deletion status read while it runs 22:41:08
+200 {"status": "deleted", "domain": "d6shop113.test"}
+   answered after 62s
+   deletion status read while it ran (distinct answers):
+     49  200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+      1  204 None None None |
+   after @192.0.3.121 TXT celik._domainkey.d6shop113.test: '' | SOA d6shop113.test: status: REFUSED flags: qr 
+   after @192.0.3.122 TXT celik._domainkey.d6shop113.test: '' | SOA d6shop113.test: status: REFUSED flags: qr 
+automatic DKIM records: []
+domains rows: []
+key dir for d6shop113.test: none
+table lines naming d6shop113.test: 0
+-- Panel/Agent lines since 2026-10-30 22:41:08
+2026-10-30T22:41:11+00:00 frankfurt systemd[1]: Stopping opendkim.service - OpenDKIM Milter...
+2026-10-30T22:41:14+00:00 frankfurt systemd[1]: Started opendkim.service - OpenDKIM Milter.
+2026-10-30T22:41:38+00:00 frankfurt agent[10770]: 2026/10/30 22:41:38 DNS peer proof for d6shop113.test (PowerDNS secondary) stopped at step exchange as dns_peer_inspection_unknown: peer_inspection_unavailable
+2026-10-30T22:41:38+00:00 frankfurt agent[10770]: 2026/10/30 22:41:38 DNS peer proof for d6shop113.test (PowerDNS secondary) step times: prepare=2.384s challenge_write=11.932s exchange=1.15s; total 15.466s; outcome pending dns_peer_inspection_unknown
+2026-10-30T22:41:38+00:00 frankfurt agent[10770]: 2026/10/30 22:41:38 pdns zone publication remains pending for d6shop113.test at epoch 1: paired DNS deletion is not confirmed yet (check=peer_native_zone): waiting for the backup DNS server to confirm the deletion; the Panel checks the same operation again automatically and says 
+2026-10-30T22:42:07+00:00 frankfurt agent[10770]: 2026/10/30 22:42:07 DNS peer inspector answer for d6shop113.test (PowerDNS secondary): catalog_state=transferred member_state=absent native_state=unloaded; accepted
+2026-10-30T22:42:09+00:00 frankfurt agent[10770]: 2026/10/30 22:42:09 DNS peer proof for d6shop113.test (PowerDNS secondary) step times: prepare=2.278s challenge_write=10.02s exchange=546ms post_inspection=4.292s consume=11.5s; total 28.637s; outcome verified
+-- counts since 2026-10-30 22:41:08
+FOREIGN KEY: 0
+peer_inspection_unavailable: 1
+peer administrator must: 0
+not confirmed yet: 1
+\[dkim-auto\].*failed: 0
+\[dkim-auto\].*stopped: 0
+== d6ops done 22:42:23

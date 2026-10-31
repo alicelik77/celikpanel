@@ -49,6 +49,9 @@ fi
 if [ "$1" = "-h" ] && [ "$2" = "queue_directory" ]; then
   printf '%s\n' "$MAIL_SUBMISSION_STATE/spool"
 fi
+if [ "$1" = "-h" ] && [ "$2" = "smtpd_tls_cert_file" ]; then
+  printf '%s\n' /etc/ssl/certs/ssl-cert-snakeoil.pem
+fi
 exit 0`)
 	writeMailSubmissionTestCommand(t, binDir, "systemctl", `
 if [ "$1" = "restart" ] && [ "$2" = "dovecot" ] && [ -n "$FAIL_DOVECOT_RESTART_ONCE" ] && [ ! -e "$FAIL_DOVECOT_RESTART_ONCE" ]; then
@@ -186,16 +189,24 @@ func waitForMailSubmissionStep(t *testing.T, manager *serviceMutationManager) {
 	t.Fatal("mail submission RPC did not acquire its durable mutation step")
 }
 
-func waitForMailSubmissionFile(t *testing.T, path string) {
+// waitForMailSubmissionFile waits for a fake command's marker file. Every
+// command before it is registered durably first (fsync), which is slow on a
+// loaded CI runner, so the wait is generous; an RPC that ends before reaching
+// the command is reported at once with its answer.
+func waitForMailSubmissionFile(t *testing.T, path string, result <-chan mailSubmissionTestCall) {
 	t.Helper()
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(60 * time.Second)
 	for time.Now().Before(deadline) {
 		if _, err := os.Stat(path); err == nil {
 			return
 		} else if !errors.Is(err, os.ErrNotExist) {
 			t.Fatal(err)
 		}
-		time.Sleep(5 * time.Millisecond)
+		select {
+		case call := <-result:
+			t.Fatalf("RPC ended before %s appeared: response=%+v err=%v", path, call.response, call.err)
+		case <-time.After(5 * time.Millisecond):
+		}
 	}
 	t.Fatalf("timed out waiting for %s", path)
 }
@@ -378,7 +389,7 @@ func TestConfigureMailSubmissionCancellationStopsCommandsAndRollsBackFiles(t *te
 	go func() {
 		result <- runConfigureMailSubmission(environment.binding)
 	}()
-	waitForMailSubmissionFile(t, started)
+	waitForMailSubmissionFile(t, started, result)
 	if _, err := environment.manager.cancelJob(&ServiceMutationCancelRequest{
 		RequestID:     environment.binding.MutationRequestID,
 		ExpectedOwner: environment.binding.MutationOwnerID,

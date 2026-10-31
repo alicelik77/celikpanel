@@ -201,8 +201,12 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
     // kullanılır ve ikinci kez istek gönderilmez.
     const list = useRemote('/api/v1/domains', decodeList<unknown>, { freshFor: LIST_FRESH_FOR_MS });
     const [changed, setChanged] = useState<Partial<Domain>>({});
-    const [activeTab, setActiveTab] = useState(requestedTab === 'dns' ? 'dns' : 'overview');
-    const [activeSub, setActiveSub] = useState<Record<string, string>>({});
+    // ?tab=dns and ?tab=ssl open that part of the page: the first when a DNS
+    // setup needs attention, the second after Add domain asked for a
+    // certificate (its outcome tells the person to look here).
+    // ?tab=dns ve ?tab=ssl sayfanın o bölümünü açar.
+    const [activeTab, setActiveTab] = useState(requestedTab === 'dns' ? 'dns' : requestedTab === 'ssl' ? 'hosting' : 'overview');
+    const [activeSub, setActiveSub] = useState<Record<string, string>>(requestedTab === 'ssl' ? { hosting: 'ssl' } : {});
 
     const handleCertificateChange = useCallback((status: SSLRuntimeSummary) => {
         setChanged((current) => ({ ...current, ssl_enabled: status.activated }));
@@ -213,6 +217,10 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
 
     useEffect(() => {
         if (requestedTab === 'dns') setActiveTab('dns');
+        if (requestedTab === 'ssl') {
+            setActiveTab('hosting');
+            setActiveSub((current) => ({ ...current, hosting: 'ssl' }));
+        }
     }, [domainId, requestedTab]);
 
     const listed = lastKnown(list.remote);

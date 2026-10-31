@@ -378,13 +378,13 @@ func (a *Agent) NginxInspect(args *transport.Empty, resp *core.NginxInspectResul
 	resp.RateLimits = []core.NginxRateLimit{}
 	// `nginx -T` prints config to stdout; needs root (the agent has it).
 	// `nginx -T` config'i stdout'a yazar; root ister (agent'ta var).
-	out, err := exec.Command("nginx", "-T").CombinedOutput()
+	text, err := runNginxDump()
+	resp.DefaultHTTPS = a.defaultHTTPSStatusFor(text, err)
 	if err != nil {
 		resp.Installed = false
 		return nil
 	}
 	resp.Installed = true
-	text := string(out)
 
 	resp.Global = core.NginxGlobalConfig{
 		WorkerProcesses:   nginxDirective(text, "worker_processes"),
@@ -407,6 +407,16 @@ func (a *Agent) NginxInspect(args *transport.Empty, resp *core.NginxInspectResul
 		}
 	}
 	return nil
+}
+
+// runNginxDump is `nginx -T` (a test seam: tests never read the host's
+// nginx). It only reads and prints the configuration.
+var runNginxDump = func() (string, error) {
+	out, err := exec.Command("nginx", "-T").CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("%v: %s", err, firstLine(string(out)))
+	}
+	return string(out), nil
 }
 
 // nginxDirective returns the value of the first `<name> <value>;` directive

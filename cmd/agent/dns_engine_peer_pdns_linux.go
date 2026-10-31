@@ -211,9 +211,21 @@ func verifyEnrolledPDNSPeerDeletion(ctx context.Context, authority dnsPeerAXFRAu
 		return err
 	}
 	if err := run.step(dnsPeerProofStepChallengeWrite, func(ctx context.Context) error {
-		if err := checks.journalOp(ctx, "challenge publish", func(verify func() error) error {
-			return pdnspeerjournal.Publish(request, enrollment.RecordSHA256, attempt, verify)
-		}); err != nil {
+		// The journal accepts a later challenge of this same operation at a
+		// higher catalog serial only over the identical member set, which it
+		// verifies from these members (the daemon's re-stamp).
+		err := checks.journalOp(ctx, "challenge publish", func(verify func() error) error {
+			return pdnspeerjournal.Publish(request, plan.Evidence.Members, enrollment.RecordSHA256, attempt, verify)
+		})
+		// The publication's own rechecks may admit a daemon re-stamp (final
+		// alpha.113 acceptance run 4, D7): the challenge then binds a serial
+		// the record has left and is not sent. The wave proves the
+		// re-stamped pair and mints the next challenge, which supersedes
+		// this one in the journal.
+		if restampedSinceChallenge(record, request.CatalogSerial, err) {
+			return errDNSProducerCatalogRestampedBeforeExchange
+		}
+		if err != nil {
 			return err
 		}
 		if err := pdnspeerenrollment.Recheck(enrollment); err != nil {

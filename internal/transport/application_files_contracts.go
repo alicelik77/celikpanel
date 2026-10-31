@@ -89,6 +89,21 @@ type InstallWordPressResponse struct {
 // metnin aynısıdır; Panel onu tipli CRON_NOT_INSTALLED yanıtına çevirir.
 const CronNotInstalled = "cron is not installed on this server"
 
+// SiteFilePathMissing, SiteFileRootMissing and SiteFilePathExists are the
+// exact Agent answers of the file-manager RPCs for a path that does not
+// exist, a site whose web folder itself is gone, and a name that is already
+// taken. The Panel turns them into FILE_NOT_FOUND (404), FILE_ROOT_MISSING
+// (404) and FILE_EXISTS (409) with guidance instead of a bare 500 (final
+// alpha.113 acceptance run 2, D-024).
+// SiteFilePathMissing, SiteFileRootMissing ve SiteFilePathExists, dosya
+// yöneticisi RPC'lerinin olmayan yol, kendisi olmayan web klasörü ve zaten
+// alınmış ad için verdiği tam Agent yanıtlarıdır.
+const (
+	SiteFilePathMissing = "site file path does not exist"
+	SiteFileRootMissing = "site web folder does not exist"
+	SiteFilePathExists  = "site file path already exists"
+)
+
 // MailConfigurationBusy and SiteCertificateBusy are the exact Agent answers
 // when another mail-configuration or site-certificate change holds the host
 // lock. The Panel answers them as HOST_MUTATION_BUSY (another CelikPanel

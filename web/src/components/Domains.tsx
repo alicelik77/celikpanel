@@ -7,7 +7,7 @@ import { useI18n } from '../i18n';
 import { Button, CouldNotCheck, KnownEmpty, RemoteGate, SearchInput, StatusDot, UsageBar } from './ui';
 import { PageHeader } from './PageHeader';
 import { apiErrorText, readApiError } from '../lib/apiError';
-import { domainDeletionDetailKey, domainDeletionReasonKey, readDomainDeletionOutcome, readSavedDomainDeletion } from '../lib/domainDeletionPending';
+import { domainDeletionDetailKey, domainDeletionReasonKey, readDomainDeletionDKIM, readDomainDeletionOutcome, readSavedDomainDeletion } from '../lib/domainDeletionPending';
 import { decodeList, gateOn, lastKnown, useRemote } from '../lib/remote';
 import { SUBSCRIPTIONS_URL, decodeSubscriptions } from '../lib/subscriptions';
 import { INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones, infrastructureZonePath } from '../lib/infrastructureZones';
@@ -262,7 +262,18 @@ export function Domains() {
             }
             pendingReadEpoch.current++;
             setPendingDeletions((current) => current.filter((item) => item.id !== id));
-            showToast('success', t('domains.deleted', { name }));
+            // A DKIM key or table line CelikPanel did not make was kept, or
+            // the key could not be removed: said, with what the owner does.
+            const dkim = await readDomainDeletionDKIM(res);
+            if (dkim?.failed) {
+                showToast('warning', t('domains.deletedDKIMFailed', { name }));
+            } else if (dkim?.keptKey) {
+                showToast('warning', t('domains.deletedDKIMKept', { name, path: dkim.keptKey }));
+            } else if (dkim?.ownerLines) {
+                showToast('warning', t('domains.deletedDKIMLines', { name }));
+            } else {
+                showToast('success', t('domains.deleted', { name }));
+            }
             setSelected((s) => s.filter((x) => x !== id));
             reload();
         } catch {

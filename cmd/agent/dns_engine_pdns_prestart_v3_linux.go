@@ -185,7 +185,7 @@ func assessFreshPrimaryPrestartV3(ctx context.Context, j dnsEngineSwitchJournal,
 			shape = freshPrimaryPrestartRestoredV3
 		case obs.absent(append([]string{db}, sidecars...)...):
 			actual, err := obs.candidate(proof.Path)
-			if err != nil || actual != proof {
+			if err != nil || !proof.SameCandidate(actual) {
 				return unknown, freshPrimaryV3Changed(freshPrimaryV3ChangedDatabase, errors.Join(errors.New("staged candidate differs from its sealed identity"), err))
 			}
 			shape = freshPrimaryPrestartStagedV3

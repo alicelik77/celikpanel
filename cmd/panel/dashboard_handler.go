@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/services"
@@ -32,6 +33,10 @@ type dashboardExpiringCert struct {
 	WaitingForOwner bool `json:"waiting_for_owner,omitempty"`
 	ServedDaysLeft  *int `json:"served_days_left,omitempty"`
 	DomainID        int  `json:"domain_id,omitempty"`
+	// RenewalProblem (D-040, additive) is the operating system's renewal
+	// state (transport.SiteRenewal*) when it needs the server administrator:
+	// listed whatever the days, because nothing renews it until they act.
+	RenewalProblem string `json:"renewal_problem,omitempty"`
 }
 
 type dashboardExtras struct {
@@ -91,6 +96,13 @@ func (p *Panel) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		days := int(exp.Sub(now).Hours() / 24)
+		if state, native := strings.CutPrefix(renewal, nativeRenewalStatusPrefix); native &&
+			transport.SiteRenewalStateIsProblem(state) {
+			out.ExpiringCerts = append(out.ExpiringCerts, dashboardExpiringCert{
+				DomainName: name, DaysLeft: days, DomainID: domainID, RenewalProblem: state,
+			})
+			continue
+		}
 		if renewal == sslWaitingForOwner {
 			// Listed whatever the days: the owner's choice is needed.
 			waiting = append(waiting, len(out.ExpiringCerts))
@@ -153,6 +165,9 @@ func sortDashboardCertificates(entries []dashboardExpiringCert) {
 		a, b := entries[i], entries[j]
 		if a.WaitingForOwner != b.WaitingForOwner {
 			return a.WaitingForOwner
+		}
+		if (a.RenewalProblem != "") != (b.RenewalProblem != "") {
+			return a.RenewalProblem != ""
 		}
 		return dashboardServedDays(a) < dashboardServedDays(b)
 	})

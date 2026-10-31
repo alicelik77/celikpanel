@@ -380,9 +380,38 @@ func (p *Panel) runServerSetupMailDNS(ctx context.Context, plan serverSetupPlan,
 		return false, err
 	}
 	if err := p.syncZoneToDNS(ctx, draft.InfrastructureDNS.Zone, false); err != nil {
+		if dnsPublicationRefusedBusy(err) {
+			// Refused because another change held the host (run 5, D10): a
+			// wait, not a failure. The step runs again (same key, signing
+			// already recorded, the same record) and publishes then.
+			return false, &serverSetupZonePublishBusyError{Zone: draft.InfrastructureDNS.Zone, Record: "the DKIM record", Err: err}
+		}
 		return false, p.serverSetupZonePublishOutcome(ctx, draft.InfrastructureDNS.Zone)
 	}
 	return true, nil
+}
+
+// serverSetupZonePublishBusyError: a setup step saved its records in the
+// zone and the zone's publication was refused at admission because the
+// host was busy (another change or the package manager); nothing began.
+// The runner turns it into a bounded wait (serverSetupAgentRequestRefusedBusy)
+// and the step publishes again on its next pass.
+// Kayıt bölgede kayıtlı; yayın meşgul sunucu yüzünden reddedildi, adım bekler.
+type serverSetupZonePublishBusyError struct {
+	Zone   string
+	Record string
+	Err    error
+}
+
+func (e *serverSetupZonePublishBusyError) Error() string {
+	return "publication of " + e.Zone + " refused while the host is busy: " + e.Err.Error()
+}
+
+func (e *serverSetupZonePublishBusyError) Unwrap() error { return e.Err }
+
+func (e *serverSetupZonePublishBusyError) waitMessage() string {
+	return "Another change is running on this server (for example a mail service being configured, or the package manager is busy), so " +
+		e.Record + " is saved in the zone " + e.Zone + " but not published yet. Nobody needs to act: setup publishes it by itself once the other change has finished, and then continues."
 }
 
 // serverSetupZonePublishOutcome says what a failed publication of the setup

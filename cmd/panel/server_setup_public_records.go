@@ -43,6 +43,9 @@ type serverSetupPublicRecords struct {
 	Records        []serverSetupPublicRecord `json:"records"`
 	CheckedAt      string                    `json:"checked_at"`
 	NextCheckAfter int                       `json:"next_check_after"`
+	// Delegation is present only when a name could not be read: where the
+	// parent zone points the domain's nameservers (server_setup_public_delegation.go).
+	Delegation *serverSetupPublicDelegation `json:"delegation,omitempty"`
 }
 
 // setupPublicRecordResolvers are the public resolvers asked. Tests replace
@@ -293,10 +296,24 @@ func (p *Panel) handleServerSetupPublicRecords(w http.ResponseWriter, r *http.Re
 		writeCodedError(w, http.StatusConflict, "server_setup_main_domain_required", "Enter the main domain first; its records are read for that domain only.", "/setup")
 		return
 	}
+	// ?delegation=only (the review): where the domain points, without reading
+	// any record. Same fields; the lists are empty.
+	if r.URL.Query().Get("delegation") == "only" {
+		_ = json.NewEncoder(w).Encode(serverSetupPublicRecords{Domain: state.Draft.MainDomain, Extras: []string{}, Records: []serverSetupPublicRecord{},
+			CheckedAt: time.Now().UTC().Format(time.RFC3339), NextCheckAfter: int(serverSetupProviderRecordsTTL.Seconds()),
+			Delegation: readServerSetupPublicDelegation(r.Context(), state.Draft.MainDomain, serverSetupOwnAddressesFor(state.Draft), setupDelegationOptions())})
+		return
+	}
 	extras, err := serverSetupPublicExtras(r.URL.Query().Get("extra"), state.Draft.MainDomain)
 	if err != nil {
 		writeClientError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	_ = json.NewEncoder(w).Encode(p.serverSetupPublicRecords(r.Context(), state.Draft.MainDomain, extras, time.Now()))
+	result := p.serverSetupPublicRecords(r.Context(), state.Draft.MainDomain, extras, time.Now())
+	// A name nobody could read is explained by where the domain points: the
+	// delegation is read only then, and never kept with the shared answer.
+	if slices.ContainsFunc(result.Records, func(record serverSetupPublicRecord) bool { return record.State == "unknown" }) {
+		result.Delegation = readServerSetupPublicDelegation(r.Context(), state.Draft.MainDomain, serverSetupOwnAddressesFor(state.Draft), setupDelegationOptions())
+	}
+	_ = json.NewEncoder(w).Encode(result)
 }

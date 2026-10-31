@@ -1,0 +1,182 @@
+=== packages
+pacman rc=0
+  -> Early uncompressed CPIO image generation successful
+==> Initcpio image generation successful
+(18/18) Reloading system bus configuration...
+powerdns 5.1.5-1
+sqlite 3.54.0-1
+bind 9.20.30-1
+Repository      : extra
+Version         : 5.1.5-1
+=== facts
+755 root root /etc/powerdns
+644 root root /etc/powerdns/pdns.conf
+755 root root /usr/bin/pdns_server
+644 root root /usr/lib/systemd/system/pdns.service
+ls: cannot access '/etc/powerdns/pdns.d': No such file or directory
+ls: cannot access '/var/lib/powerdns': No such file or directory
+powerdns:x:969:969:PowerDNS Authoritative Server:/:/usr/bin/nologin
+powerdns:x:969:
+powerdns-5.1.5-1
+total 16
+drwxr-xr-x 1 root root   28 Oct 30 08:12 .
+drwxr-xr-x 1 root root 7344 Oct 30 08:12 ..
+-rw-r--r-- 1 root root  714 Oct 30 08:12 desc
+-rw-r--r-- 1 root root 3962 Oct 30 08:12 files
+-rw-r--r-- 1 root root 5542 Oct 21 12:59 mtree
+%NAME%
+powerdns
+
+%VERSION%
+5.1.5-1
+
+%BASE%
+powerdns
+
+%DESC%
+Authoritative DNS server
+
+%URL%
+https://www.powerdns.com/
+
+%ARCH%
+x86_64
+
+%BUILDDATE%
+1792587573
+./usr/bin/pdns_server time=1792587573.0 size=5573232 sha256digest=cb331136ed552c8ef0a3de82ac90732339a6e37d6e9ffebde44346b12c44ad0c
+./usr/lib/systemd/system/pdns.service time=1792587573.0 size=1586 sha256digest=4bc3129b997154908bb65f81c021ea965037178367b6f319c68865bb3097d420
+cb331136ed552c8ef0a3de82ac90732339a6e37d6e9ffebde44346b12c44ad0c  /usr/bin/pdns_server
+4bc3129b997154908bb65f81c021ea965037178367b6f319c68865bb3097d420  /usr/lib/systemd/system/pdns.service
+Id=pdns.service
+Names=pdns.service
+LoadState=loaded
+ActiveState=inactive
+FragmentPath=/usr/lib/systemd/system/pdns.service
+SourcePath=
+DropInPaths=
+UnitFileState=disabled
+Transient=no
+ExecStart={ path=/usr/bin/pdns_server ; argv[]=/usr/bin/pdns_server --guardian=no --daemon=no --disable-syslog --log-timestamp=no --write-pid=no ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }
+User=powerdns
+Group=powerdns
+RuntimeDirectory=pdns
+/usr/lib/systemd/system/pdns.service is owned by powerdns 5.1.5-1
+/usr/bin/pdns_server is owned by powerdns 5.1.5-1
+3.4.0_to_4.0.0_schema.sqlite3.sql
+3.4.0_to_4.1.0_schema.mysql.sql
+3.4.0_to_4.1.0_schema.pgsql.sql
+4.0.0_to_4.2.0_schema.mssql.sql
+4.0.0_to_4.2.0_schema.sqlite3.sql
+4.1.0_to_4.2.0_schema.mysql.sql
+4.1.0_to_4.2.0_schema.pgsql.sql
+4.2.0_to_4.3.0_schema.mssql.sql
+4.2.0_to_4.3.0_schema.mysql.sql
+4.2.0_to_4.3.0_schema.pgsql.sql
+=== stage
+delete
+staged:
+-- domains
+[{"id":1,"name":"catalog-c0000346.celikpanel.invalid","master":null,"last_check":null,"type":"PRODUCER","notified_serial":null,"account":"celikpanel-bind-catalog-v1","options":null,"catalog":null},
+{"id":2,"name":"s1-arch.test","master":null,"last_check":null,"type":"MASTER","notified_serial":null,"account":null,"options":null,"catalog":"catalog-c0000346.celikpanel.invalid"}]
+-- records
+[{"id":1,"domain_id":1,"name":"catalog-c0000346.celikpanel.invalid","type":"SOA","content":"invalid. invalid. 1 60 30 3600 30","ttl":60,"prio":0,"disabled":0,"ordername":null,"auth":1},
+{"id":2,"domain_id":1,"name":"catalog-c0000346.celikpanel.invalid","type":"NS","content":"invalid.","ttl":60,"prio":0,"disabled":0,"ordername":null,"auth":1},
+{"id":3,"domain_id":2,"name":"s1-arch.test","type":"SOA","content":"ns1.s1-arch.test hostmaster.s1-arch.test 2026103001 10800 3600 604800 3600","ttl":3600,"prio":0,"disabled":0,"ordername":null,"auth":1},
+{"id":4,"domain_id":2,"name":"s1-arch.test","type":"NS","content":"ns1.s1-arch.test","ttl":3600,"prio":0,"disabled":0,"ordername":null,"auth":1},
+{"id":5,"domain_id":2,"name":"ns1.s1-arch.test","type":"A","content":"192.0.3.70","ttl":300,"prio":0,"disabled":0,"ordername":null,"auth":1},
+{"id":6,"domain_id":2,"name":"www.s1-arch.test","type":"A","content":"192.0.3.70","ttl":300,"prio":0,"disabled":0,"ordername":null,"auth":1}]
+-- domainmetadata
+f6380af9d1a909627fd2874217075719590a667104a5084f2c7e19fc2d3c0f05  -
+=== start-primary
+start rc=0
+active
+Oct 30 08:12:52 apdm systemd[1]: Starting PowerDNS Authoritative Server...
+Loading '/usr/lib/powerdns/libgsqlite3backend.so'
+This is a standalone pdns
+Listening on controlsocket in '/run/pdns/pdns.controlsocket'
+UDP server bound to 192.0.3.70:53
+TCP server bound to 192.0.3.70:53
+PowerDNS Authoritative Server 5.1.5 (C) PowerDNS.COM BV
+Using 64-bits mode. Built using gcc 16.2.1 20260810.
+PowerDNS comes with ABSOLUTELY NO WARRANTY. This is free software, and you are welcome to redistribute it according to the terms of the GPL version 2.
+Polled security status of version 5.1.5 at startup, no known issues reported: OK
+Creating backend connection for TCP
+Primary/secondary communicator launching
+About to create 3 backend threads for UDP
+Oct 30 08:12:52 apdm systemd[1]: Started PowerDNS Authoritative Server.
+new CATALOG-HASH 'Oy8PnoV/Sm1sTi9jqQLXWPgi2iO9xHebxvY0sqLiLgY=' for zone 'catalog-c0000346.celikpanel.invalid'
+Unable to queue notification of domain 'catalog-c0000346.celikpanel.invalid' to nameserver 'invalid': nameserver does not resolve!
+Done launching threads, ready to distribute questions
+total 152
+drwxr-x--- 1 powerdns powerdns    88 Oct 30 08:12 .
+drwxr-xr-x 1 root     root       190 Oct 30 08:12 ..
+-rw-r----- 1 powerdns powerdns 81920 Oct 30 08:12 pdns.sqlite3
+-rw-r----- 1 powerdns powerdns 32768 Oct 30 08:12 pdns.sqlite3-shm
+-rw-r----- 1 powerdns powerdns 32992 Oct 30 08:12 pdns.sqlite3-wal
+running:
+-- domains
+[{"id":1,"name":"catalog-c0000346.celikpanel.invalid","master":null,"last_check":null,"type":"PRODUCER","notified_serial":1,"account":"celikpanel-bind-catalog-v1","options":null,"catalog":null},
+{"id":2,"name":"s1-arch.test","master":null,"last_check":null,"type":"MASTER","notified_serial":2026103001,"account":null,"options":null,"catalog":"catalog-c0000346.celikpanel.invalid"}]
+-- records
+[{"id":2,"domain_id":1,"name":"catalog-c0000346.celikpanel.invalid","type":"NS","content":"invalid.","ttl":60,"prio":0,"disabled":0,"ordername":null,"auth":1},
+{"id":3,"domain_id":2,"name":"s1-arch.test","type":"SOA","content":"ns1.s1-arch.test hostmaster.s1-arch.test 2026103001 10800 3600 604800 3600","ttl":3600,"prio":0,"disabled":0,"ordername":null,"auth":1},
+{"id":4,"domain_id":2,"name":"s1-arch.test","type":"NS","content":"ns1.s1-arch.test","ttl":3600,"prio":0,"disabled":0,"ordername":null,"auth":1},
+{"id":5,"domain_id":2,"name":"ns1.s1-arch.test","type":"A","content":"192.0.3.70","ttl":300,"prio":0,"disabled":0,"ordername":null,"auth":1},
+{"id":6,"domain_id":2,"name":"www.s1-arch.test","type":"A","content":"192.0.3.70","ttl":300,"prio":0,"disabled":0,"ordername":null,"auth":1},
+{"id":7,"domain_id":1,"name":"catalog-c0000346.celikpanel.invalid","type":"SOA","content":"invalid invalid 1793347972 60 30 3600 30","ttl":60,"prio":0,"disabled":0,"ordername":null,"auth":1}]
+-- domainmetadata
+[{"id":1,"domain_id":1,"kind":"CATALOG-HASH","content":"Oy8PnoV/Sm1sTi9jqQLXWPgi2iO9xHebxvY0sqLiLgY="}]
+f6380af9d1a909627fd2874217075719590a667104a5084f2c7e19fc2d3c0f05  -
+5.1.5
+catalog-c0000346.celikpanel.invalid. 60	IN SOA	invalid. invalid. 1793347972 60 30 3600 30
+catalog-c0000346.celikpanel.invalid. 60	IN NS	invalid.
+version.catalog-c0000346.celikpanel.invalid. 0 IN TXT "2"
+sdla2806veo5vqe7tf3uli84bdqcqus6.zones.catalog-c0000346.celikpanel.invalid. 0 IN PTR s1-arch.test.
+catalog-c0000346.celikpanel.invalid. 60	IN SOA	invalid. invalid. 1793347972 60 30 3600 30
+s1-arch.test.		3600	IN	SOA	ns1.s1-arch.test. hostmaster.s1-arch.test. 2026103001 10800 3600 604800 3600
+=== consumer
+delete
+instance unit present
+consumer start rc=0
+Oct 30 08:12:57 apdm systemd[1]: Starting PowerDNS Authoritative Server consumer...
+Oct 30 08:12:57 apdm pdns_server-consumer[5618]: Loading '/usr/lib/powerdns/libgsqlite3backend.so'
+Oct 30 08:12:57 apdm pdns_server-consumer[5618]: This is a standalone pdns
+Oct 30 08:12:57 apdm pdns_server-consumer[5618]: Listening on controlsocket in '/run/pdns-consumer/pdns-consumer.controlsocket'
+Oct 30 08:12:57 apdm pdns_server-consumer[5618]: UDP server bound to 127.0.0.2:53
+Oct 30 08:12:57 apdm pdns_server-consumer[5618]: TCP server bound to 127.0.0.2:53
+Oct 30 08:12:57 apdm pdns_server-consumer[5618]: PowerDNS Authoritative Server 5.1.5 (C) PowerDNS.COM BV
+Oct 30 08:12:57 apdm pdns_server-consumer[5618]: Using 64-bits mode. Built using gcc 16.2.1 20260810.
+Oct 30 08:12:57 apdm pdns_server-consumer[5618]: PowerDNS comes with ABSOLUTELY NO WARRANTY. This is free software, and you are welcome to redistribute it according to the terms of the GPL version 2.
+Oct 30 08:12:57 apdm pdns_server-consumer[5618]: Polled security status of version 5.1.5 at startup, no known issues reported: OK
+Oct 30 08:12:57 apdm pdns_server-consumer[5618]: Creating backend connection for TCP
+Oct 30 08:12:57 apdm pdns_server-consumer[5618]: Primary/secondary communicator launching
+Oct 30 08:12:57 apdm pdns_server-consumer[5618]: About to create 3 backend threads for UDP
+Oct 30 08:12:57 apdm systemd[1]: Started PowerDNS Authoritative Server consumer.
+Oct 30 08:12:57 apdm pdns_server-consumer[5618]: AXFR-in zone 'catalog-c0000346.celikpanel.invalid', primary '192.0.3.70', Catalog-Zone backend transaction started
+Oct 30 08:12:57 apdm pdns_server-consumer[5618]: AXFR-in zone 'catalog-c0000346.celikpanel.invalid', primary '192.0.3.70', Catalog-Zone create zone 's1-arch.test'
+Oct 30 08:12:57 apdm pdns_server-consumer[5618]: AXFR-in zone 'catalog-c0000346.celikpanel.invalid', primary '192.0.3.70', Catalog-Zone backend transaction committed
+Oct 30 08:12:57 apdm pdns_server-consumer[5618]: AXFR-in zone 'catalog-c0000346.celikpanel.invalid', primary '192.0.3.70', Catalog-Zone zone committed with serial 1793347972
+Oct 30 08:12:57 apdm pdns_server-consumer[5618]: AXFR-in zone 's1-arch.test', primary '192.0.3.70', zone committed with serial 2026103001
+Oct 30 08:12:57 apdm pdns_server-consumer[5618]: Done launching threads, ready to distribute questions
+Oct 30 08:13:00 apdm pdns_server-consumer[5618]: Received NOTIFY for s1-arch.test from 127.0.0.1 which is not a primary (Refused)
+Oct 30 08:13:00 apdm pdns_server-consumer[5618]: Received NOTIFY for catalog-c0000346.celikpanel.invalid from 127.0.0.1 which is not a primary (Refused)
+consumer:
+-- domains
+[{"id":1,"name":"catalog-c0000346.celikpanel.invalid","master":"192.0.3.70","last_check":1793347977,"type":"CONSUMER","notified_serial":null,"account":"celikpanel-peer-catalog-v1","options":null,"catalog":null},
+{"id":2,"name":"s1-arch.test","master":"192.0.3.70","last_check":1793347977,"type":"SLAVE","notified_serial":null,"account":"","options":"{\"consumer\": {\"unique\": \"sdla2806veo5vqe7tf3uli84bdqcqus6.\"}}","catalog":"catalog-c0000346.celikpanel.invalid"}]
+-- records
+[{"id":1,"domain_id":1,"name":"catalog-c0000346.celikpanel.invalid","type":"NS","content":"invalid","ttl":60,"prio":0,"disabled":0,"ordername":null,"auth":1},
+{"id":2,"domain_id":1,"name":"catalog-c0000346.celikpanel.invalid","type":"SOA","content":"invalid invalid 1793347972 60 30 3600 30","ttl":60,"prio":0,"disabled":0,"ordername":null,"auth":1},
+{"id":3,"domain_id":1,"name":"version.catalog-c0000346.celikpanel.invalid","type":"TXT","content":"\"2\"","ttl":0,"prio":0,"disabled":1,"ordername":null,"auth":1},
+{"id":4,"domain_id":1,"name":"sdla2806veo5vqe7tf3uli84bdqcqus6.zones.catalog-c0000346.celikpanel.invalid","type":"PTR","content":"s1-arch.test","ttl":0,"prio":0,"disabled":1,"ordername":null,"auth":1},
+{"id":5,"domain_id":1,"name":"zones.catalog-c0000346.celikpanel.invalid","type":null,"content":null,"ttl":null,"prio":null,"disabled":0,"ordername":null,"auth":1},
+{"id":6,"domain_id":2,"name":"s1-arch.test","type":"SOA","content":"ns1.s1-arch.test hostmaster.s1-arch.test 2026103001 10800 3600 604800 3600","ttl":3600,"prio":0,"disabled":0,"ordername":null,"auth":1},
+{"id":7,"domain_id":2,"name":"ns1.s1-arch.test","type":"A","content":"192.0.3.70","ttl":300,"prio":0,"disabled":0,"ordername":null,"auth":1},
+{"id":8,"domain_id":2,"name":"s1-arch.test","type":"NS","content":"ns1.s1-arch.test","ttl":3600,"prio":0,"disabled":0,"ordername":null,"auth":1},
+{"id":9,"domain_id":2,"name":"www.s1-arch.test","type":"A","content":"192.0.3.70","ttl":300,"prio":0,"disabled":0,"ordername":null,"auth":1}]
+-- domainmetadata
+f6380af9d1a909627fd2874217075719590a667104a5084f2c7e19fc2d3c0f05  -
+s1-arch.test.		3600	IN	SOA	ns1.s1-arch.test. hostmaster.s1-arch.test. 2026103001 10800 3600 604800 3600
+catalog-c0000346.celikpanel.invalid. 60	IN SOA	invalid. invalid. 1793347972 60 30 3600 30
+=== done

@@ -2,6 +2,8 @@ package pdnsvendor
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"strings"
 )
@@ -62,6 +64,44 @@ func VerifyBytes(data []byte) error {
 	if !bytes.Equal(data, []byte(CertifiedDebian13Unit)) &&
 		!bytes.Equal(data, []byte(CertifiedUbuntu2404Unit)) {
 		return errors.New("PowerDNS vendor unit bytes differ from the certified package unit")
+	}
+	return nil
+}
+
+// ArchExecArgv is the daemon command of Arch's extra/powerdns unit.
+const ArchExecArgv = "/usr/bin/pdns_server --guardian=no --daemon=no --disable-syslog --log-timestamp=no --write-pid=no"
+
+// ArchPackage is the Arch Linux package that owns the unit.
+const ArchPackage = "powerdns"
+
+// CertifiedArch51Unit is the pdns.service of Arch's extra/powerdns 5.1.5-1
+// as measured on 2026-10-30 (SHA-256 4bc3129b…d420): the Debian contract
+// with the daemon in /usr/bin and the powerdns service account. On Arch the
+// unit is accepted when it is the installed package's own, unmodified file
+// (its pacman mtree record) and keeps this command and account, so a
+// legitimate package update inside the series is not read as tampering.
+var CertifiedArch51Unit = strings.Replace(
+	strings.Replace(CertifiedDebian13Unit, "ExecStart="+ExecArgv+"\n", "ExecStart="+ArchExecArgv+"\n", 1),
+	"User=pdns\nGroup=pdns\n", "User=powerdns\nGroup=powerdns\n", 1,
+)
+
+// VerifyPacmanUnit accepts an Arch unit file whose SHA-256 is the digest the
+// installed powerdns package recorded for it and that runs the certified
+// daemon command under the powerdns account exactly once.
+func VerifyPacmanUnit(data []byte, packageDigest string) error {
+	sum := sha256.Sum256(data)
+	if packageDigest == "" || hex.EncodeToString(sum[:]) != packageDigest {
+		return errors.New("PowerDNS unit differs from the file the installed powerdns package recorded")
+	}
+	text := string(data)
+	for _, line := range []string{"ExecStart=" + ArchExecArgv, "User=powerdns", "Group=powerdns"} {
+		if strings.Count("\n"+text, "\n"+line+"\n") != 1 {
+			return errors.New("PowerDNS package unit does not run the certified daemon command and account")
+		}
+	}
+	if strings.Count("\n"+text, "\nExecStart") != 1 || strings.Contains(text, "\nExecStartPre") ||
+		strings.Contains(text, "\nExecStartPost") {
+		return errors.New("PowerDNS package unit has an uncertified start command")
 	}
 	return nil
 }

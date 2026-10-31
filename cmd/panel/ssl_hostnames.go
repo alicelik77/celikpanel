@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/hostname"
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -27,6 +29,14 @@ func validateIssuedCertificateLineage(
 	canonicalDomain := strings.ToLower(
 		strings.TrimSuffix(strings.TrimSpace(domain), "."),
 	)
+	if transport.IsNativeSiteLineage(lineage) {
+		// D-040: every issuance, first or replacement, is its own
+		// OS-renewed lineage of this domain identity.
+		if !transport.NativeSiteLineageBelongsTo(lineage, domainID) {
+			return fmt.Errorf("the ACME agent returned a certificate lineage of another domain")
+		}
+		return nil
+	}
 	if !replacement {
 		if lineage != canonicalDomain {
 			return fmt.Errorf(
@@ -206,6 +216,56 @@ func (p *Panel) inspectManagedCertificate(
 	}
 	info.DNSNames = normalizeCertificateDNSNames(info.DNSNames)
 	return info, nil
+}
+
+// issuedCertificateClockWait is the longest a just-issued certificate whose
+// validity starts after this server's time is waited for (alpha.113). A CA
+// whose clock runs a little ahead of this server (or one that does not
+// backdate, like a test CA) issues a certificate that is valid seconds later;
+// it used to be discarded with a bare 500. A larger gap is this server's
+// clock to correct (CERTIFICATE_ISSUE_FAILED, reason server_clock).
+const issuedCertificateClockWait = 5 * time.Minute
+
+// issuedCertificateSleep waits d unless ctx ends first (a test seam).
+var issuedCertificateSleep = func(ctx context.Context, d time.Duration) error {
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
+}
+
+// inspectIssuedCertificate inspects a certificate the CA just issued. When it
+// is valid from a moment at most issuedCertificateClockWait after this
+// server's time, it waits until then and inspects it again; the answer then
+// says what that second reading found.
+func (p *Panel) inspectIssuedCertificate(
+	ctx context.Context,
+	domain, certPath, keyPath, chainPath string,
+) (installedCertificateInfo, error) {
+	info, err := p.inspectManagedCertificate(ctx, domain, certPath, keyPath, chainPath)
+	if err != nil || info.Valid || !info.NotYetValid || info.CheckedAt.IsZero() {
+		return info, err
+	}
+	gap := info.IssuedAt.Sub(info.CheckedAt)
+	if gap <= 0 || gap > issuedCertificateClockWait {
+		return info, nil
+	}
+	log.Printf("certificate for %s is valid from %s, %s after this server's time; waiting for it",
+		domain, info.IssuedAt.UTC().Format(time.RFC3339), gap.Round(time.Second))
+	if err := issuedCertificateSleep(ctx, gap+time.Second); err != nil {
+		return info, err
+	}
+	return p.inspectManagedCertificate(ctx, domain, certPath, keyPath, chainPath)
+}
+
+// issuedCertificateClockProblem says whether a just-issued certificate is
+// one this server's clock does not accept (not yet valid or expired).
+func issuedCertificateClockProblem(info installedCertificateInfo) bool {
+	return !info.Valid && (info.NotYetValid || info.Expired)
 }
 
 func (p *Panel) installedCertificateDNSNames(certPath string) ([]string, error) {

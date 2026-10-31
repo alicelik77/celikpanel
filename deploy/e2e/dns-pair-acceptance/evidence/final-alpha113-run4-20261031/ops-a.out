@@ -1,0 +1,141 @@
+== clocks as the lab gives them 23:27:32
+labnet-CA 23:27:34.094311113
+frankfurt 23:27:32.641000698
+== site r4shop113.test with Enable SSL at creation 23:27:33
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/1/public_html", "Domain": "r4shop113.test", "DomainID": 1, "FTPPassword": "[REDACTED]", "FTPUser": "r4shop113_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 1, "TempDomain": ""}
+   site id 1
+   ok 192.0.3.110 r4shop113.test A = '192.0.3.110' after 0s
+   ok 192.0.3.111 r4shop113.test A = '192.0.3.110' after 0s
+200 {"status": "success", "expires_at": "2031-10-30T23:27:42Z"}
+   certificate answer after 3s
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+--- http://r4shop113.test/
+code=301 redirect=https://r4shop113.test/ ssl_verify=0
+Server: nginx
+Location: https://r4shop113.test/
+--- https://r4shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+--- http://www.r4shop113.test/
+code=301 redirect=https://www.r4shop113.test/ ssl_verify=0
+Server: nginx
+Location: https://www.r4shop113.test/
+--- https://www.r4shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+--- certificate served on r4shop113.test:443
+subject= X509v3 Subject Alternative Name: critical     DNS:r4shop113.test, DNS:www.r4shop113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 23:27:42 2031 GMT 
+Verify return code: 0 (ok)
+--- https://r4shop113.test/hello.php
+code=200
+HTTP/2 200 
+server: nginx
+content-type: text/html; charset=UTF-8
+x-powered-by present: 0
+body: php-ok 5
+--- http://r4shop113.test/hello.php (redirect?)
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Location: https://r4shop113.test/hello.php
+code=301 location=https://r4shop113.test/hello.php
+== mailboxes; DKIM by itself (card read only) 23:27:47
+200 {"id": 1, "success": true}
+200 {"id": 2, "success": true}
+   after 4s: {"status": 200, "dkim_status": "pending", "dkim_signed": true, "signing_installed": true, "owner_record": false, "automatic": null}
+   TXT @192.0.3.110 '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA...'  @192.0.3.111 '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA...'
+2026-10-30T23:27:50+00:00 frankfurt panel[22708]: 2026/10/30 23:27:50 [dkim-auto] r4shop113.test: DKIM ready (domain_created; record published in r4shop113.test)
+== webmail address (card enable, owner action) 23:27:52
+202 {"operation": {"id": "c1c0be0d3ae6ee4e19aa365f8712b324", "kind": "webmail_address", "package_name": "mail.r4f113.test", "phase": "queued", "request_id": "9f464dd65e82f1cff517368a1b469bad", "service_id": "roundcube", "started_at": "2026-10-30T23:27:51.462593828Z", "status": "queued"}}
+== 587 + 465 send, IMAPS read 23:27:57
+   587 {'ok': True, 'refused': {}} | 465 {'ok': True, 'refused': {}} | imaps {'after_seconds': 13.7, 'headers': 'From: alice@r4shop113.test\r\nTo: bob@r4shop113.test\r\nSubject: final-alpha113 0338045d2a85'}  | cert ['mail.r4f113.test']
+== PHP mail() and a bounce 23:28:27
+   mail.php: sent php-mail 0005bf9c0558
+   bounce.php: sent bounce-test e3e188b4a6d1
+== DKIM verified independently against the TXT from each DNS server (192.0.3.110,192.0.3.111) 23:28:48
+   final-alpha113 0338045d2a85 | found | sigs 1 | [{'d': 'r4shop113.test', 's': 'celik', 'verify_with_txt_from_192.0.3.110': True, 'verify_with_txt_from_192.0.3.111': True}] | mid <9e6d72d6dcf542c0a0cc1e9c3e37d2cf@labnet.test>
+   final-alpha113-465 0338045d2a85 | found | sigs 1 | [{'d': 'r4shop113.test', 's': 'celik', 'verify_with_txt_from_192.0.3.110': True, 'verify_with_txt_from_192.0.3.111': True}] | mid <8546cf381f7e416caca634cc35a4730e@labnet.test>
+   php-mail 0005bf9c0558 | found | sigs 1 | [{'d': 'r4shop113.test', 's': 'celik', 'verify_with_txt_from_192.0.3.110': True, 'verify_with_txt_from_192.0.3.111': True}] | mid <20261030232826.DD8B02297E@mail.r4f113.test>
+-- bounce in alice's INBOX
+   Undelivered Mail Returned to Sender found Mail Delivery System <MAILER-DAEMON@mail.r4f113.test> <20261030232827.456DF22981@mail.r4f113.test>
+-- server side: rspamd verdicts, postfix bounce lines, DKIM tables (read only)
+keytable lines for r4shop113.test: 1
+signingtable lines for r4shop113.test: 1
+rspamd lines for 9e6d72d6dcf542c0a0cc1e9c3e37d2cf@labnet.test:
+rspamd_task_write_log: id: <9e6d72d6dcf542c0a0cc1e9c3e37d2cf@labnet.test>, qid: <
+(default: F (no action): [0.90/15.00] [MISSING_DATE(1.00){}
+rspamd lines for 8546cf381f7e416caca634cc35a4730e@labnet.test:
+rspamd_task_write_log: id: <8546cf381f7e416caca634cc35a4730e@labnet.test>, qid: <
+(default: F (no action): [0.90/15.00] [MISSING_DATE(1.00){}
+rspamd lines for 20261030232826.DD8B02297E@mail.r4f113.test:
+rspamd_task_write_log: id: <20261030232826.DD8B02297E@mail.r4f113.test>, qid: <DD
+(default: F (no action): [0.19/15.00] [FORGED_SENDER(0.30){alice@r4shop113.test;r4shop113_test@mail.r4f113.test;}
+milter warnings, all boots: 0
+milters: smtpd=inet:127.0.0.1:8891, inet:127.0.0.1:11332 non_smtpd=inet:127.0.0.1:8891, inet:127.0.0.1:11332
+2026-10-30T23:28:27+00:00 frankfurt postfix/virtual[42050]: 31B862297D: to=<nobody113@r4shop113.test>, relay=virtual, delay=0.18, delays=0.17/0/0/0.01, dsn=5.1.1, status=bounced (unknown user: "nobody113@r4shop113.test")
+2026-10-30T23:28:27+00:00 frankfurt postfix/bounce[42094]: 31B862297D: sender non-delivery notification: 456DF22981
+-- Roundcube (bob)
+ "logged_in": true,
+ "message_count_hint": "Messages 1 to 3 of 3"
+== DNS-only zone r4gone113.test created and deleted at once 23:28:50
+200 {"DocumentRoot": "", "Domain": "r4gone113.test", "DomainID": 2, "FTPPassword": "", "FTPUser": "", "PHPVersion": "", "ProjectType": "dnsonly", "SiteID": 2, "TempDomain": ""}
+   zone id 2
+   before @192.0.3.110: SOA status: NOERROR flags: qr aa  | TXT celik._domainkey ''
+   before @192.0.3.111: SOA status: NOERROR flags: qr aa  | TXT celik._domainkey ''
+   +0s status: 204 
+   +3s status: 200 deletion_pending running This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked again aut
+   DELETE answered after 34s: 200 {  "domain": "r4gone113.test",  "status": "deleted" }
+   after @192.0.3.110: SOA status: REFUSED flags: qr  | TXT celik._domainkey ''
+   after @192.0.3.111: SOA status: REFUSED flags: qr  | TXT celik._domainkey ''
+   domains list names it: no
+keytable lines for r4gone113.test: 0
+signingtable lines for r4gone113.test: 0
+2026-10-30T23:29:00+00:00 frankfurt panel[22708]: 2026/10/30 23:29:00 [dkim-auto] r4gone113.test: stopped: the domain is being deleted or no longer exists; its deletion removes its DKIM key and record, nothing to do
+2026-10-30T23:29:11+00:00 frankfurt agent[10772]: 2026/10/30 23:29:11 DNS peer proof for r4gone113.test (PowerDNS secondary) stopped at step exchange as dns_peer_inspection_unknown: peer_inspection_unavailable
+2026-10-30T23:29:11+00:00 frankfurt agent[10772]: 2026/10/30 23:29:11 DNS peer proof for r4gone113.test (PowerDNS secondary) step times: prepare=1.425s challenge_write=5.91s exchange=575ms; total 7.91s; outcome pending dns_peer_inspection_unknown
+2026-10-30T23:29:11+00:00 frankfurt agent[10772]: 2026/10/30 23:29:11 pdns zone publication remains pending for r4gone113.test at epoch 1: paired DNS deletion is not confirmed yet (check=peer_native_zone): waiting for the backup DNS server to confirm the deletion; the Panel check
+2026-10-30T23:29:28+00:00 frankfurt agent[10772]: 2026/10/30 23:29:28 DNS peer inspector answer for r4gone113.test (PowerDNS secondary): catalog_state=transferred member_state=absent native_state=unloaded; accepted
+2026-10-30T23:29:30+00:00 frankfurt agent[10772]: 2026/10/30 23:29:30 DNS peer proof for r4gone113.test (PowerDNS secondary) step times: prepare=1.415s challenge_write=5.438s exchange=203ms post_inspection=2.713s consume=6.99s; total 16.758s; outcome verified
+   peer_inspection_unavailable seen: backup-side inspector and sshd journal
+2026-10-30T23:28:58+00:00 boston pdns_server[23106]: AXFR-out zone 'catalog-c000036e.celikpanel.invalid', client '192.0.3.110', transfer initiated
+2026-10-30T23:29:01+00:00 boston pdns_server[23106]: AXFR-out zone 'catalog-c000036e.celikpanel.invalid', client '192.0.3.110', transfer initiated
+2026-10-30T23:29:03+00:00 boston pdns_server[23106]: AXFR-in zone: 'catalog-c000036e.celikpanel.invalid', primary: '192.0.3.110', Catalog-Zone backend transaction started
+2026-10-30T23:29:03+00:00 boston pdns_server[23106]: AXFR-in zone: 'catalog-c000036e.celikpanel.invalid', primary: '192.0.3.110', Catalog-Zone delete zone 'r4gone113.test'
+2026-10-30T23:29:03+00:00 boston pdns_server[23106]: AXFR-in zone: 'catalog-c000036e.celikpanel.invalid', primary: '192.0.3.110', Catalog-Zone backend transaction committed
+2026-10-30T23:29:03+00:00 boston pdns_server[23106]: AXFR-in zone: 'catalog-c000036e.celikpanel.invalid', primary: '192.0.3.110', zone committed with serial 1793402913
+2026-10-30T23:29:04+00:00 boston pdns_server[23106]: AXFR-out zone 'catalog-c000036e.celikpanel.invalid', client '192.0.3.110', transfer initiated
+2026-10-30T23:29:04+00:00 boston pdns_server[23106]: AXFR-out zone 'r4gone113.test', client '192.0.3.110', transfer initiated
+2026-10-30T23:29:04+00:00 boston pdns_server[23106]: AXFR-out zone 'r4gone113.test', client '192.0.3.110', failed: not authoritative
+2026-10-30T23:29:11+00:00 boston sshd[24735]: Accepted publickey for celikpeer from 192.0.3.110 port 52886 ssh2: ED25519 SHA256:MrDvHP8XI7qWH34vFgqpmHEMWikh+GYTsFBujUw0RJg
+2026-10-30T23:29:11+00:00 boston sshd[24735]: pam_unix(sshd:session): session opened for user celikpeer(uid=997) by celikpeer(uid=0)
+2026-10-30T23:29:11+00:00 boston systemd-logind[814]: New session 13 of user celikpeer.
+2026-10-30T23:29:11+00:00 boston (systemd)[24740]: pam_unix(systemd-user:session): session opened for user celikpeer(uid=997) by celikpeer(uid=0)
+2026-10-30T23:29:12+00:00 boston sudo[24809]: celikpeer : PWD=/var/lib/pdns-peer-inspector ; USER=root ; COMMAND=/usr/local/libexec/celikpanel-pdns-peer-inspect
+2026-10-30T23:29:12+00:00 boston sudo[24809]: pam_unix(sudo:session): session opened for user root(uid=0) by celikpeer(uid=997)
+2026-10-30T23:29:12+00:00 boston sudo[24809]: pam_unix(sudo:session): session closed for user root
+2026-10-30T23:29:12+00:00 boston sshd[24735]: pam_unix(sshd:session): session closed for user celikpeer
+2026-10-30T23:29:13+00:00 boston pdns_server[23106]: AXFR-out zone 'catalog-c000036e.celikpanel.invalid', client '192.0.3.110', transfer initiated
+2026-10-30T23:29:13+00:00 boston pdns_server[23106]: AXFR-out zone 'r4gone113.test', client '192.0.3.110', transfer initiated
+2026-10-30T23:29:13+00:00 boston pdns_server[23106]: AXFR-out zone 'r4gone113.test', client '192.0.3.110', failed: not authoritative
+2026-10-30T23:29:20+00:00 boston sshd[24824]: Accepted publickey for celikpeer from 192.0.3.110 port 46620 ssh2: ED25519 SHA256:MrDvHP8XI7qWH34vFgqpmHEMWikh+GYTsFBujUw0RJg
+2026-10-30T23:29:20+00:00 boston sshd[24824]: pam_unix(sshd:session): session opened for user celikpeer(uid=997) by celikpeer(uid=0)
+2026-10-30T23:29:20+00:00 boston systemd-logind[814]: New session 15 of user celikpeer.
+2026-10-30T23:29:21+00:00 boston sudo[24873]: celikpeer : PWD=/var/lib/pdns-peer-inspector ; USER=root ; COMMAND=/usr/local/libexec/celikpanel-pdns-peer-inspect
+2026-10-30T23:29:21+00:00 boston sudo[24873]: pam_unix(sudo:session): session opened for user root(uid=0) by celikpeer(uid=997)
+2026-10-30T23:29:21+00:00 boston sudo[24873]: pam_unix(sudo:session): session closed for user root
+2026-10-30T23:29:21+00:00 boston sshd[24824]: pam_unix(sshd:session): session closed for user celikpeer
+2026-10-30T23:29:22+00:00 boston pdns_server[23106]: AXFR-out zone 'catalog-c000036e.celikpanel.invalid', client '192.0.3.110', transfer initiated
+2026-10-30T23:29:22+00:00 boston pdns_server[23106]: AXFR-out zone 'r4gone113.test', client '192.0.3.110', transfer initiated
+2026-10-30T23:29:22+00:00 boston pdns_server[23106]: AXFR-out zone 'r4gone113.test', client '192.0.3.110', failed: not authoritative
+2026-10-30T23:29:38+00:00 boston sshd[24933]: Accepted publickey for celik from 192.0.3.2 port 41304 ssh2: ED25519 SHA256:t+vKqOqpE6yLYlSzC1FAz/1ABwdnsyaGH//IkuiK1EE
+2026-10-30T23:29:38+00:00 boston sshd[24933]: pam_unix(sshd:session): session opened for user celik(uid=1000) by celik(uid=0)
+2026-10-30T23:29:38+00:00 boston sudo[24997]:    celik : PWD=/home/celik ; USER=root ; COMMAND=/usr/bin/journalctl --no-pager -o short-iso --since '2026-10-30 23:28:57'
+2026-10-30T23:29:38+00:00 boston sudo[24997]: pam_unix(sudo:session): session opened for user root(uid=0) by celik(uid=1000)
+dkim_automatic rows: []
+FOREIGN KEY lines: 1
+== ops done 23:29:39

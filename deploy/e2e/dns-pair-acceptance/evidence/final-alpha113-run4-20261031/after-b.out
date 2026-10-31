@@ -1,0 +1,82 @@
+== reboot main 23:28:48
+main rebooted in 21.6 s
+== health [after-reboot] 23:30:40
+-- main units/timers
+active active active active active active active
+enabled enabled
+  php-fpm.service loaded active running The PHP FastCGI Proc
+Sat 2026-10-31 00:41:05 UTC 1h 10min Fri 2026-10-30 23:22:47 UTC - certbot-renew.timer certbot-renew.service
+not-found enabled
+2026-10-30 23:28:55
+f4ed27a3-425d-4da3-982e-58c5659daeec
+succeeded complete null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-mail_profile=succeeded 12-mail_profile=succeeded 13-mail_dns=succeeded 14-service=succeeded 15-access_dns=succeeded 16-mail_certificate=succeeded 17-mail_enrollment=succeeded 18-verify=succeeded
+-- DNS answers
+   @192.0.3.112 SOA archr4f113.test: status: NOERROR flags: qr aa  | A archr4shop113.test: 192.0.3.112 | MX archr4f113.test: 10 mail.archr4f113.test.
+   @192.0.3.112 SOA archr4f113.test: status: NOERROR flags: qr aa  | A archr4shop113.test: 192.0.3.112 | MX archr4f113.test: 10 mail.archr4f113.test.
+-- site
+--- http://archr4shop113.test/
+code=301 redirect=https://archr4shop113.test/ ssl_verify=0
+--- https://archr4shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+body: 3090 bytes, title: <title>archr4shop113.test
+software words in body: [CelikPanel ]
+--- http://www.archr4shop113.test/
+code=301 redirect=https://www.archr4shop113.test/ ssl_verify=0
+--- https://www.archr4shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+body: 3090 bytes, title: <title>archr4shop113.test
+software words in body: [CelikPanel ]
+--- certificate served on archr4shop113.test:443
+--- https://archr4shop113.test/hello.php
+code=200
+server: nginx
+x-powered-by present: 0
+body: php-ok 5
+--- http://archr4shop113.test/hello.php (redirect?)
+code=301 location=https://archr4shop113.test/hello.php
+-- mail
+   smtp 587 send: {'ok': True, 'refused': {}} | cert ['mail.archr4f113.test']
+   imaps 993 read: {'after_seconds': 5.9, 'headers': 'From: alice@archr4shop113.test\r\nTo: bob@archr4shop113.test\r\nSubject: final-alpha113 b964dcc7e241'} | cert ['mail.archr4f113.test'] |  
+   delivered to bob's maildir (files in new+cur): 5
+== site delete archr4shop113.test 23:31:04
+   before @192.0.3.112: SOA status: NOERROR flags: qr aa  | TXT celik._domainkey '"v=DKIM1; k=rsa; p=MIIBIjANBgk'
+   before @192.0.3.112: SOA status: NOERROR flags: qr aa  | TXT celik._domainkey '"v=DKIM1; k=rsa; p=MIIBIjANBgk'
+   +0s status: 204 
+   +2s status: 200 deletion_pending running This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked again aut
+   DELETE answered after 11s: 200 {  "domain": "archr4shop113.test",  "status": "deleted" }
+   after @192.0.3.112: SOA status: REFUSED flags: qr  | TXT celik._domainkey ''
+   after @192.0.3.112: SOA status: REFUSED flags: qr  | TXT celik._domainkey ''
+   domains list names it: no
+keytable lines for archr4shop113.test: 0
+signingtable lines for archr4shop113.test: 0
+{"command": "journalctl -u celikpanel-agent -u celikpanel-panel --no-pager -o short-iso --since '2026-10-30 23:31:05' | grep -iE 'peer proof|inspector|pending|fail-closed|ambiguous|held|FOREIGN|dkim' | cut -c1-280", "rc": 0, "seconds": 0.15, "stdout": "", "stderr": "", "at": "2026-10-30T23:31:23.085Z", "label": "delete-log-archr4shop113.test"}
+== a new site after the delete: archnew113.test 23:31:23
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/2/public_html", "Domain": "archnew113.test", "DomainID": 2, "FTPPassword": "[REDACTED]", "FTPUser": "archnew113_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 2, "TempDomain": ""}
+   new site id 2
+200 {"status": "success", "expires_at": "2031-10-30T23:31:30Z"}
+--- http://archnew113.test/
+code=301 redirect=https://archnew113.test/ ssl_verify=0
+--- https://archnew113.test/
+code=200 redirect= ssl_verify=0
+--- http://www.archnew113.test/
+code=301 redirect=https://www.archnew113.test/ ssl_verify=0
+--- https://www.archnew113.test/
+code=200 redirect= ssl_verify=0
+--- certificate served on archnew113.test:443
+Verify return code: 0 (ok)
+   DNS card: state ready pending 1 [{'automatic': True, 'zone': 'archnew113.test'}]
+== journals, every boot 23:31:34
+== arch: boots 4
+   [milter service|Milter.*(not found|refused|cannot)]: 0
+   [FQDN]: 0
+   [fail-closed|ambiguous|agent_mutations_held|refusing durable]: 0
+   [FOREIGN KEY]: 0
+   [unsupported map type: lmdb]: 0
+   [can.t lock|cannot lock|could not lock]: 0
+   [panel 500]: 0
+   err-priority lines of celikpanel units: 0
+   failed units: []
+== after done 23:31:35

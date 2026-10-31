@@ -1,0 +1,421 @@
+== provision 09:37:13 main=arch/pdns backup=debian13/pdns
+== install 09:37:39
+main 0 47.3 True 0
+backup 0 29.8 False 0
+main active
+backup active
+guidance 200 
+guidance 200 
+main-domain 200 {
+ "checks": [],
+ "draft": {
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_role": "primary",
+  "infrastructure_dns": {
+   "zone": "drill4pd.test"
+  },
+  "local_ip": ""
+main-count 200 {
+ "checks": [],
+ "draft": {
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_role": "primary",
+  "infrastructure_dns": {
+   "zone": "drill4pd.test"
+  },
+  "local_ip": ""
+main-name 200 {
+ "checks": [],
+ "draft": {
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_role": "primary",
+  "infrastructure_dns": {
+   "zone": "drill4pd.test"
+  },
+  "local_ip": ""
+main-roles 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_
+main-names 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_
+main-dnshome 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+  "database": "mariadb",
+  "dns_engine": "pdns",
+  "dns_mode": "local",
+  "dns_
+plan main 200 True [] ['01-service:nginx', '02-service:certbot', '03-service:mariadb', '04-service:php-fpm', '05-service:cron', '06-peer_join:second', '07-dns:local', '08-firewall:enable_and_persist', '09-infrastructure_dns:drill4pd.test', '10-access_dns:mainpd.drill4pd.test', '11-panel_certificate:mainpd.drill4pd.test', '12-dns_readiness:local', '13-verify:custom'] 
+Running as unit: apd-drill.service; invocation ID: 34758c458d6c4954964728a9fbf2ae21
+drill armed: main, 4s after /usr/bin/pdns_server appears
+== start main 09:39:11
+start-main 202 {
+ "id": "6b4a4bb0e12b651e731ba075d13a72d2",
+ "panel_url": "https://mainpd.drill4pd.test:2083/",
+ "phase": "queued",
+ "plan_id": "30b3d75bfd2dc2a5d0d3ace57d439515",
+ "request_id": "6b4a4bb0e12b651e731
+join-code 200 {
+ "address": "https://192.0.3.82:2083",
+ "attempts_left": 50,
+ "code": "[REDACTED]",
+ "expires_at": "2026-10-31T09:39:13Z",
+ "used": false
+}
+connect 200 {
+ "setup": {
+  "checks": [],
+  "draft": {
+   "database": "mariadb",
+   "dns_engine": "bind",
+   "dns_mode": "local",
+   "dns_publisher_endpoint": "https://mainpd.drill4pd.test:2083",
+   "dns_role": "secondary",
+   "local_ip": "192.0.3.83",
+   "mail_hostname": "",
+   "main_dns_server": "peer",
+   "main_domain": "drill4pd.test",
+   "node_version": "",
+   "ns1": "ns1.drill4pd.test",
+   "ns2": "ns2.drill4pd.test",
+   "panel_domain": "",
+   "peer_ip": "192.0.3.82",
+   "peer_ns": "ns1.drill4pd.test",
+   "purpose": "web",
+   "remote_dns_connection_id": "",
+   "server_count": 2
+  },
+  "guidance": "gu
+backup-roles 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_
+backup-name 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_
+backup-names 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_
+backup-dnshome 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+  "database": "mariadb",
+  "dns_engine": "pdns",
+  "dns_mode": "local",
+  "dns_
+plan backup 200 True [] ['01-peer_names:https://192.0.3.82:2083', '02-service:nginx', '03-service:certbot', '04-service:mariadb', '05-service:php-fpm', '06-service:cron', '07-dns:local', '08-firewall:enable_and_persist', '09-access_dns:backpd.drill4pd.test', '10-panel_certificate:backpd.drill4pd.test', '11-dns_publisher:https://mainpd.drill4pd.test:2083', '12-verify:custom'] 
+== start backup 09:39:22
+start-backup 202 {
+ "id": "df87656c4f32d3515e664ef45404573c",
+ "panel_url": "https://backpd.drill4pd.test:2083/",
+ "phase": "queued",
+ "plan_id": "c14e77542bc79daa76adfc9d7c207dda",
+ "request_id": "df87656c4f32d3515e664ef45404573c",
+ "status": "running",
+ "steps": [
+  {
+   "id": "01-peer_names",
+   "kind": "peer_nam
+-- main 09:39:26
+running 02-service null
+01-service=succeeded 02-service=running 03-service=pending 04-service=pending 05-service=pending 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "02-service", "kind": "service", "operation_id": "608c170ab02b618ab4b1fd1f4f471dd8", "owner_id": "c38d6f18dfc5d598fa629b987da1e422", "request_id": "74b30193c581766d7318fec6f2456628", "status": "running", "target": "certbot"}
+-- backup 09:39:26
+running 02-service null
+01-peer_names=succeeded 02-service=running 03-service=pending 04-service=pending 05-service=pending 06-service=pending 07-dns=pending 08-firewall=pending 09-access_dns=pending 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "02-service", "kind": "service", "owner_id": "ebb75083d399e18e2e4b07ce4ce36e17", "request_id": "eab5ad7888abc79fb5cfb08268c60f75", "status": "running", "target": "nginx"}
+-- main 09:39:46
+running 03-service null
+01-service=succeeded 02-service=succeeded 03-service=running 04-service=pending 05-service=pending 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "03-service", "kind": "service", "operation_id": "f8258a43e4258e1cb9fab2704e42ca2b", "owner_id": "5432b8b5e95fe94aaad541860bf6d5a5", "request_id": "3e3980f386f01b39b058157adff92bda", "status": "running", "target": "mariadb"}
+-- backup 09:39:46
+running 03-service null
+01-peer_names=succeeded 02-service=succeeded 03-service=running 04-service=pending 05-service=pending 06-service=pending 07-dns=pending 08-firewall=pending 09-access_dns=pending 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "03-service", "kind": "service", "operation_id": "59946e55a9dca46fe6d7495d57c8f970", "owner_id": "74d51ec1b378ba1d00b721477b180702", "request_id": "76b53f1d3934502e20b5ce0b129e2ee0", "status": "running", "target": "certbot"}
+-- main 09:40:06
+running 05-service null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=running 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "05-service", "kind": "service", "operation_id": "622ac4780449fa4a6cf39787b5939dc8", "owner_id": "4ee774b9ac63bb6baf6e147cdbc06f85", "request_id": "456e47a1c567b7f708cba7f2bfb461bf", "status": "running", "target": "cron"}
+-- backup 09:40:07
+running 04-service null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=running 05-service=pending 06-service=pending 07-dns=pending 08-firewall=pending 09-access_dns=pending 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "04-service", "kind": "service", "operation_id": "40885ad717b28ee0a466309f1acbfe32", "owner_id": "f380b0f19ce00a329b857fe5c845dd6b", "request_id": "1c360363b249365bc82f72d356185fdf", "status": "running", "target": "mariadb"}
+-- main 09:40:29
+Traceback (most recent call last):
+  File "/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/apd/opsum.py", line 2, in <module>
+    d = json.load(sys.stdin)
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+-- main 09:40:49
+waiting infrastructure_dns {"code": "server_setup_infrastructure_dns_required", "message": "The reviewed DNS records are waiting for the native DNS pair or its exact zone transfer. Prepare the secondary ns2.drill4pd.test (192.0.3.83) and check TCP/UDP port 53. This setup checks the same operation automatically."}
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=running 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "09-infrastructure_dns", "kind": "infrastructure_dns", "owner_id": "c46e3d5d891eacdebed60d180a01b123", "request_id": "d6f010bedce361bccf0c1c3580e76bf5", "status": "running", "target": "drill4pd.test"}
+-- backup 09:40:49
+running 05-service null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=running 06-service=pending 07-dns=pending 08-firewall=pending 09-access_dns=pending 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "05-service", "kind": "service", "operation_id": "127aa3e5a96d2cd0fae2fa4801c2daa7", "owner_id": "0b3491184b52fb42fe36ae0f33ee64d3", "request_id": "916151f80d075f343d7d519aaa00d794", "status": "running", "target": "php-fpm"}
+-- backup 09:41:10
+running 06-service null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-service=running 07-dns=pending 08-firewall=pending 09-access_dns=pending 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "06-service", "kind": "service", "operation_id": "69118f71f5ea35cb5022a76d2e2d1fb0", "owner_id": "d7a75108f800278625cb7c15b79aeb44", "request_id": "06a06365a22e72eb0e35ed15c31d54ad", "status": "running", "target": "cron"}
+-- backup 09:41:30
+running 07-dns null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-service=succeeded 07-dns=running 08-firewall=pending 09-access_dns=pending 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "07-dns", "kind": "dns", "owner_id": "71f7ce3339ee5a606e3fa10a07e6de5e", "request_id": "2751ab28ee7236a15dcfd8c49069a88e", "status": "running", "target": "local"}
+-- main 09:41:51
+None None "Panel management is still starting. Read-only connection and recovery status remain available."
+-- backup 09:41:51
+waiting access_dns {"code": "server_setup_access_dns_required", "message": "Public DNS must resolve backpd.drill4pd.test to 192.0.3.83 before a certificate is requested. Check this hostname's A/AAAA records and its zone delegation. For DNS managed here, review the infrastructure DNS records in this wizard; otherwise correct them at the primary DNS server or provider. This check resumes automatically when DNS is verified."}
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-service=succeeded 07-dns=succeeded 08-firewall=succeeded 09-access_dns=running 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "09-access_dns", "kind": "access_dns", "owner_id": "fc3c5b0e8b887563352b067eac5a1c84", "qualifier": "192.0.3.83", "request_id": "ca0b13a6dfaa2c827eca5916a42966a7", "status": "running", "target": "backpd.drill4pd.test"}
+-- main 09:42:11
+succeeded complete null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-verify=succeeded
+-- backup 09:42:11
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-service=succeeded 07-dns=succeeded 08-firewall=succeeded 09-access_dns=succeeded 10-panel_certificate=succeeded 11-dns_publisher=succeeded 12-verify=succeeded
+== end 09:42:11
+-- drill cut record
+09:40:14.868925594
+/etc/powerdns/pdns.d:
+total 8
+drwxr-xr-x 1 root root  76 Oct 30 09:40 .
+drwxr-xr-x 1 root root  70 Oct 30 09:40 ..
+-rw-r--r-- 1 root root 310 Oct 30 09:40 celikpanel-cluster.conf
+-rw-r--r-- 1 root root 206 Oct 30 09:40 celikpanel.conf
+
+/var/lib/celikpanel-agent-private:
+total 84
+drwx------ 1 root celikpanel   248 Oct 30 09:40 .
+drwxr-xr-x 1 root root         530 Oct 30 09:40 ..
+-rw------- 1 root celikpanel   381 Oct 30 09:40 dns-engine-install-ownership-pdns.json
+-rw------- 1 root celikpanel 70579 Oct 30 09:40 dns-engine-switch-journal.json
+-rw------- 1 root celikpanel  2906 Oct 30 09:40 .service-mutations-3611066023.json
+-rw------- 1 root celikpanel  2978 Oct 30 09:40 service-mutations.json
+
+/var/lib/powerdns:
+total 96
+drwxr-x--- 1 powerdns powerdns    24 Oct 30 09:40 .
+drwxr-xr-x 1 root     root       530 Oct 30 09:40 ..
+-rw-r----- 1 powerdns powerdns 98304 Oct 30 09:40 pdns.sqlite3
+LoadState=loaded
+ActiveState=inactive
+UnitFileState=enabled
+== check apd-g/main 2026-10-30T09:42:12Z
+-- os
+PRETTY_NAME="Arch Linux"
+ID=arch
+7.2.11-arch1-1
+-- package
+powerdns 5.1.5-1
+-- units
+active active active active inactive inactive 
+UnitFileState=enabled
+ExecStart={ path=/usr/bin/pdns_server ; argv[]=/usr/bin/pdns_server --guardian=no --daemon=no --disable-syslog --log-timestamp=no --write-pid=no
+User=powerdns
+Group=powerdns
+-- config
+755 root:root /etc/powerdns
+644 root:root /etc/powerdns/pdns.conf
+755 root:root /etc/powerdns/pdns.d
+644 root:root /etc/powerdns/pdns.d/celikpanel-cluster.conf
+644 root:root /etc/powerdns/pdns.d/celikpanel.conf
+750 powerdns:powerdns /var/lib/powerdns
+640 powerdns:powerdns /var/lib/powerdns/pdns.sqlite3
+640 powerdns:powerdns /var/lib/powerdns/pdns.sqlite3-shm
+640 powerdns:powerdns /var/lib/powerdns/pdns.sqlite3-wal
+setgid=powerdns
+setuid=powerdns
+include-dir=/etc/powerdns/pdns.d
+primary=yes
+secondary=yes
+allow-axfr-ips=192.0.3.82,192.0.3.83
+also-notify=192.0.3.83
+launch=gsqlite3
+gsqlite3-dnssec=yes
+gsqlite3-database=/var/lib/powerdns/pdns.sqlite3
+local-address=192.0.3.82
+zone-cache-refresh-interval=0
+webserver=no
+api=no
+-- DNS answers
+(no dig on this server)
+(no dig on this server)
+(no dig on this server)
+-- catalog
+catalog-c0000352.celikpanel.invalid PRODUCER
+catalog-c0000352.celikpanel.invalid|PRODUCER||1|
+drill4pd.test|MASTER|||
+-- state
+dns-engine-ownership-pdns.json
+dns-engine-state.json
+dns-engine-switch-v3-archive-1c6d0e4c312b70c019ef800d4e74a241-af8059b38c45feb1430ed72eb9d2846660ee0fde34ad2a248f0af452442c1b8a.json
+firewall-apply-journal.json
+service-mutations.json
+{"schema":"celikpanel-dns-engine-state/v3","acquisition":{"schema":"celikpanel-dns-engine-acquisition/v1","mode":"switch","engine":"pdns","engine_epoch":1,"pair_role":"primary","pair_local_ip":"192.0.3.82","pair_peer_ip":"192.0.3.83","source_revision":1,"manifest_qualifier":"dns-engine-switch/v1:sha256:114b8c5c91095944de396e44d2509c844a6478f5a23153570dfcf9df13ceb261","mutation_request_id":"1c6d0e4c312b70c019ef800d4e74a241","mutation_owner_id":"dd96009506389a1370af33349db307ea"},"publication":{"schema":"celikpanel-dns-engine-publication/v1","acquisition_sha256":"b6d4744e79641016ab5ef7ad64c95c4d
+-- recovery status
+No DNS switch journal was observed. This does not prove historical completion or current DNS health. The server owner should inspect the native DNS service and the panel's operation status before starting another switch.
+exit=0
+-- agent log (PowerDNS)
+Oct 30 09:40:38 mainpd agent[404]: 2026/10/30 09:40:38 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+Oct 30 09:40:41 mainpd agent[404]: 2026/10/30 09:40:41 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+Oct 30 09:41:01 mainpd agent[404]: 2026/10/30 09:41:01 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+Oct 30 09:41:22 mainpd agent[404]: 2026/10/30 09:41:22 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+-- from the lab network guest (outside the server)
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 35888
+;; flags: qr aa; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+; EDNS: version: 0, flags:; udp: 1232
+;; ANSWER SECTION:
+drill4pd.test.		3600	IN	SOA	ns1.drill4pd.test. hostmaster.drill4pd.test. 2026103000 3600 600 604800 300
+ns1.drill4pd.test. hostmaster.drill4pd.test. 2026103000 3600 600 604800 300
+== check apd-g/backup 2026-10-30T09:42:13Z
+-- os
+PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
+ID=debian
+6.12.105+deb13-cloud-amd64
+-- package
+pdns-backend-sqlite3	4.9.18-0+deb13u1
+pdns-server	4.9.18-0+deb13u1
+-- units
+active active active active inactive inactive 
+ExecStart={ path=/usr/sbin/pdns_server ; argv[]=/usr/sbin/pdns_server --guardian=no --daemon=no --disable-syslog --log-timestamp=no --write-pid=no
+User=pdns
+Group=pdns
+UnitFileState=enabled
+-- config
+755 root:root /etc/powerdns
+640 root:pdns /etc/powerdns/pdns.conf
+755 root:root /etc/powerdns/pdns.d
+644 root:root /etc/powerdns/pdns.d/celikpanel-cluster.conf
+644 root:root /etc/powerdns/pdns.d/celikpanel.conf
+755 pdns:pdns /var/lib/powerdns
+640 pdns:pdns /var/lib/powerdns/pdns.sqlite3
+640 pdns:pdns /var/lib/powerdns/pdns.sqlite3-shm
+640 pdns:pdns /var/lib/powerdns/pdns.sqlite3-wal
+include-dir=/etc/powerdns/pdns.d
+launch=
+security-poll-suffix=
+primary=yes
+secondary=yes
+allow-axfr-ips=192.0.3.82
+launch=gsqlite3
+gsqlite3-dnssec=yes
+gsqlite3-database=/var/lib/powerdns/pdns.sqlite3
+local-address=192.0.3.83
+zone-cache-refresh-interval=0
+webserver=no
+api=no
+-- DNS answers
+(no dig on this server)
+(no dig on this server)
+(no dig on this server)
+-- catalog
+
+/root/pdnscheck.sh: line 17: sqlite3: command not found
+-- state
+dns-engine-ownership-pdns.json
+dns-engine-state.json
+firewall-apply-journal.json
+panel-certificate-activation.json
+service-mutations.json
+{"schema":"celikpanel-dns-engine-state/v2","acquisition":{"schema":"celikpanel-dns-engine-acquisition/v1","mode":"switch","engine":"pdns","engine_epoch":1,"pair_role":"secondary","pair_local_ip":"192.0.3.83","pair_peer_ip":"192.0.3.82","source_revision":1,"manifest_qualifier":"dns-engine-switch/v1:sha256:fcad38a88737dd5d7dd0a61c7c93fc494d8c7759bdc1ab5267fb2e65a802fcfe","mutation_request_id":"2751ab28ee7236a15dcfd8c49069a88e","mutation_owner_id":"9a686f9586fe18e5651d215a9a74ce00"},"publication":{"schema":"celikpanel-dns-engine-publication/v1","acquisition_sha256":"09c972d51f872f70ac24acf92e8ce8
+-- recovery status
+No DNS switch journal was observed. This does not prove historical completion or current DNS health. The server owner should inspect the native DNS service and the panel's operation status before starting another switch.
+exit=0
+-- agent log (PowerDNS)
+Oct 30 09:41:21 backpd agent[10141]: 2026/10/30 09:41:21 DNS engine change 2751ab28ee7236a15dcfd8c49069a88e: the paired primary at 192.0.3.82 serves catalog catalog-c0000352.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 09:41:25 backpd addgroup[19664]: Adding group `pdns' (GID 105) ...
+Oct 30 09:41:25 backpd groupadd[19667]: group added to /etc/group: name=pdns, GID=105
+Oct 30 09:41:25 backpd groupadd[19667]: group added to /etc/gshadow: name=pdns
+Oct 30 09:41:25 backpd groupadd[19667]: new group: name=pdns, GID=105
+Oct 30 09:41:25 backpd adduser[19671]: Adding system user `pdns' (UID 104) ...
+Oct 30 09:41:25 backpd adduser[19671]: Adding new user `pdns' (UID 104) with group `pdns' ...
+Oct 30 09:41:25 backpd useradd[19675]: new user: name=pdns, UID=104, GID=105, home=/var/spool/powerdns, shell=/bin/false, from=none
+Oct 30 09:41:26 backpd adduser[19671]: Creating home directory `/var/spool/powerdns' ...
+Oct 30 09:41:32 backpd agent[10141]: 2026/10/30 09:41:32 DNS engine change completion 2751ab28ee7236a15dcfd8c49069a88e: the paired primary at 192.0.3.82 serves catalog catalog-c0000352.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 09:41:33 backpd agent[10141]: 2026/10/30 09:41:33 DNS readiness check: the paired primary at 192.0.3.82 serves catalog catalog-c0000352.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 09:42:02 backpd agent[10141]: 2026/10/30 09:42:02 DNS readiness check: the paired primary at 192.0.3.82 serves catalog catalog-c0000352.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 09:42:03 backpd agent[10141]: 2026/10/30 09:42:03 DNS readiness check: the paired primary at 192.0.3.82 serves catalog catalog-c0000352.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 09:42:04 backpd agent[10141]: 2026/10/30 09:42:04 DNS readiness check: the paired primary at 192.0.3.82 serves catalog catalog-c0000352.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 09:42:05 backpd agent[10141]: 2026/10/30 09:42:05 DNS readiness check: the paired primary at 192.0.3.82 serves catalog catalog-c0000352.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+-- from the lab network guest (outside the server)
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 7854
+;; flags: qr aa; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+; EDNS: version: 0, flags:; udp: 1232
+;; ANSWER SECTION:
+drill4pd.test.		3600	IN	SOA	ns1.drill4pd.test. hostmaster.drill4pd.test. 2026103000 3600 600 604800 300
+ns1.drill4pd.test. hostmaster.drill4pd.test. 2026103000 3600 600 604800 300

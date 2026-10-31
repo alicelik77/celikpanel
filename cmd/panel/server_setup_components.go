@@ -653,11 +653,14 @@ func serverSetupPackageVersionLabel(pkg string) string {
 }
 
 // serverSetupPDNSMainSystemTested reports whether PowerDNS as the main (paired
-// primary) DNS server was measured on this system: Debian 13 amd64 only. The
-// catalogue and the plan review use the same rule.
-// PowerDNS ana sunucu olarak yalniz olculen sistemde (Debian 13 amd64).
+// primary) DNS server was measured on this system: Debian 13 amd64, or Arch
+// Linux x86_64 (D-028 amendment, 2026-10-30). The catalogue and the plan
+// review use the same rule as the Agent's host preflight.
+// PowerDNS ana sunucu olarak yalniz olculen sistemde (Debian 13 amd64, Arch x86_64).
 func serverSetupPDNSMainSystemTested(host core.ManagedServiceHostProfile) bool {
-	return host.DistroID == "debian" && host.VersionID == "13" && host.Architecture == "amd64"
+	debian13 := host.DistroID == "debian" && host.VersionID == "13" && host.Architecture == "amd64"
+	arch := host.DistroID == "arch" && host.PackageFamily == "pacman" && host.Architecture == "amd64"
+	return debian13 || arch
 }
 
 // serverSetupPDNSMainCandidateBlocker applies the Agent's own rules to the
@@ -668,14 +671,23 @@ func serverSetupPDNSMainSystemTested(host core.ManagedServiceHostProfile) bool {
 // before any effect.
 // Sihirbazin sundugu yapi, DNS adiminin kabul ettigi kuraldan gelir.
 func serverSetupPDNSMainCandidateBlocker(candidate *transport.PDNSFreshPrimaryCandidateResponse) string {
+	return serverSetupPDNSMainCandidateBlockerFor("apt", candidate)
+}
+
+// serverSetupPDNSMainCandidateBlockerFor applies the package family's rule:
+// on Arch the build must be the official extra repository's powerdns of the
+// tested 5.1 series.
+func serverSetupPDNSMainCandidateBlockerFor(packageFamily string, candidate *transport.PDNSFreshPrimaryCandidateResponse) string {
 	switch {
 	case candidate == nil || candidate.State != "known":
 		return ""
 	// The origin first (Beta-1 re-run): a vendor, backports or other
 	// repository build says where it comes from, whatever its version.
+	case !candidate.Official && packageFamily == "pacman":
+		return "server_setup_pdns_main_not_official_repository"
 	case !candidate.Official:
 		return "server_setup_pdns_main_not_debian_archive"
-	case !dnsengineartifact.PDNSFreshPrimaryVersionInTestedSeries(candidate.Version):
+	case !dnsengineartifact.PDNSFreshPrimaryVersionInTestedSeriesFor(packageFamily, candidate.Version):
 		return "server_setup_pdns_main_untested_version"
 	}
 	return ""
@@ -724,7 +736,7 @@ func serverSetupDNSEngineChoices(inputs serverSetupCatalogInputs) []serverSetupD
 					choice.Offered, choice.Reason = false, code
 				} else if !serverSetupPDNSMainSystemTested(inputs.Host) {
 					choice.Offered, choice.Reason = false, "server_setup_pdns_main_untested_system"
-				} else if code := serverSetupPDNSMainCandidateBlocker(inputs.PDNSCandidate); code != "" {
+				} else if code := serverSetupPDNSMainCandidateBlockerFor(inputs.Host.PackageFamily, inputs.PDNSCandidate); code != "" {
 					choice.Offered, choice.Reason = false, code
 				}
 			}

@@ -171,6 +171,7 @@ export const enMailDatabasesScreens = {
     'mailauth.dmarcDesc': 'Tells receivers what to do when SPF/DKIM fail, and where to send reports.',
     'mailauth.status.ok': 'Verified in DNS',
     'mailauth.status.pending': 'In zone — waiting for DNS',
+    'mailauth.status.served': 'Served by this server’s DNS',
     'mailauth.status.missing': 'Missing',
     'mailauth.status.no_key': 'No key yet',
     'mailauth.recommended': 'Recommended record',
@@ -179,6 +180,7 @@ export const enMailDatabasesScreens = {
     'mailauth.applied': 'Record added to the DNS zone.',
     'mailauth.generateKey': 'Generate DKIM key',
     'mailauth.keyGenerated': 'DKIM key generated.',
+    'mailauth.keySigningFailed': 'The DKIM key is ready, but DKIM signing could not be switched on, so mail still leaves unsigned. Press "Generate DKIM key" again; the key is kept and only signing is retried. If it fails again, check OpenDKIM on the Services page.',
     'mailauth.copy': 'Copy',
     'mailauth.copied': 'Copied.',
     'mailauth.dmarcPolicy': 'DMARC policy',
@@ -186,6 +188,7 @@ export const enMailDatabasesScreens = {
     'mailauth.policy.quarantine': 'quarantine — send to spam',
     'mailauth.policy.reject': 'reject — refuse outright',
     'mailauth.signingMissing': 'No DKIM signing filter (opendkim/rspamd) is installed. The key and DNS record are ready; outgoing mail will be signed once a filter is installed.',
+    'mailauth.servedNote': 'This server’s DNS answers the records marked “Served by this server’s DNS”, but a public lookup from this server could not find the domain. That is expected while the domain’s nameservers at its registrar do not point to this server yet, or while this server cannot reach a public DNS resolver. Nothing in CelikPanel is waiting. If the domain should already be live, you, the domain owner, check its nameservers at the registrar; this card checks again each time it is opened.',
     'mailauth.unresolvedNote': 'Live DNS could not be checked (the name does not resolve from this server). The status reflects the zone only.',
 
     'mail.col.usage': 'Usage',
@@ -222,6 +225,19 @@ export const enMailDatabasesScreens = {
     'mail.healthChecking': "Checking deliverability…",
     'mail.healthUnknown': "The deliverability checks of this domain could not be read from the server, so no result is shown. This does not mean a check failed. Nothing was changed. Try again.",
     // --- end of batch 2b ---
+    // ---- automatic DKIM (30 Oct 2026) ----
+    'mailauth.auto.pending': 'CelikPanel is setting up DKIM for this domain: the key, signing and, where this server keeps the DNS zone, the record. Nothing to do; this card updates by itself.',
+    'mailauth.auto.waiting': 'DKIM setup is waiting for another change on this server to finish, then continues by itself. Nothing to do.',
+    'mailauth.auto.unknown': 'The answer of the DKIM setup did not arrive, so whether it finished is not known. Try again checks and completes it; an existing key is kept and nothing is done twice.',
+    'mailauth.auto.dnsNotReady': 'Mail from this domain is signed, but its DKIM record could not be added: this server’s DNS engine is not ready to publish (not active yet, or the backup DNS server has not caught up). Check it under DNS, then press Try again.',
+    'mailauth.auto.keyFailed': 'The DKIM key could not be created (reason below), so mail from this domain leaves unsigned. The server owner checks the key store /var/lib/celikpanel-dkim/keys, then presses Try again. The domain itself is not affected.',
+    'mailauth.auto.signingFailed': 'The DKIM key is ready, but OpenDKIM could not be set up to sign with it (reason below), so mail still leaves unsigned. Check OpenDKIM on the Services page, then press Try again; the key is kept.',
+    'mailauth.auto.dnsFailed': 'Mail is signed, but the DKIM record could not be published (reason below). It is saved in the zone; check the DNS operation under DNS, then press Try again.',
+    'mailauth.auto.retry': 'Try again',
+    'mailauth.auto.queued': 'DKIM setup started.',
+    'mailauth.notSigned': 'This DKIM key is not in OpenDKIM’s signing table, so mail from this domain leaves unsigned. Try again sets up signing; the key is kept.',
+    'mailauth.externalDKIM': 'Mail from this domain is already signed. Add the DKIM record below at your DNS provider; receivers verify the signature once it is published, and this card then says “Verified in DNS”.',
+    'mailauth.ownerRecord': 'The zone already has a different DKIM record at {name}; CelikPanel kept it. Mail is signed with the key below, so receivers cannot verify it until the record matches. If you do not keep that record on purpose, press “Add to DNS” to replace it.',
     'mailauth.checking': 'Checking this domain’s SPF, DKIM and DMARC records…',
     'mailauth.unknown': 'The SPF, DKIM and DMARC records of this domain could not be checked, so their state is not shown and nothing can be published here yet. This does not mean they are missing. Nothing was changed. Try again.',
 

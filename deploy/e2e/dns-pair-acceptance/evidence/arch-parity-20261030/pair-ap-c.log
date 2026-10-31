@@ -1,0 +1,112 @@
+== provision 01:01:09
+== install 01:01:32
+main 0 75.1 False 0
+backup 0 95.1 True 0
+main active
+backup active
+guidance 200 
+guidance 200 
+main-domain 200 
+main-count 200 
+main-name 200 
+main-roles 200 
+main-names 200 
+main-dnshome 200 
+join-code 409 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import json,sys; print(json.dumps({"address":"https://"+sys.argv[2]+":2083","code":open(sys.argv[1]).read().strip()}))
+                                                                                       ~~~~^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/cp-beta1/state/ap-c/main.last-join-code'
+Traceback (most recent call last):
+  File "/mnt/c/CELIKBROS PROJECTS/celikpanel/.claude/worktrees/agent-acbc743dd78a29028/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 523, in <module>
+    sys.exit(main(sys.argv[1:]))
+             ~~~~^^^^^^^^^^^^^^
+  File "/mnt/c/CELIKBROS PROJECTS/celikpanel/.claude/worktrees/agent-acbc743dd78a29028/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 517, in main
+    out = globals()[f"cmd_{a.cmd}"](a)
+  File "/mnt/c/CELIKBROS PROJECTS/celikpanel/.claude/worktrees/agent-acbc743dd78a29028/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 289, in cmd_api
+    resp = c.request(a.method, a.path, body_arg(a.body), timeout=a.timeout, purpose=a.label)
+                                       ~~~~~~~~^^^^^^^^
+  File "/mnt/c/CELIKBROS PROJECTS/celikpanel/.claude/worktrees/agent-acbc743dd78a29028/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 273, in body_arg
+    return json.loads(Path(raw[1:]).read_text())
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import json,sys; d=json.load(sys.stdin); print(sys.argv[1], d.get("status"), (d.get("body") or "")[:int(sys.argv[2])])
+                       ~~~~~~~~~^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+backup-roles 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+   
+backup-name 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+   
+backup-names 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+   
+backup-dnshome 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+   
+plan main 200 True [] ['01-service:nginx', '02-service:certbot', '03-service:mariadb', '04-service:php-fpm', '05-service:cron', '06-peer_join:second', '07-dns:local', '08-firewall:enable_and_persist', '09-infrastructure_dns:pair3.test', '10-access_dns:deb.pair3.test', '11-panel_certificate:deb.pair3.test', '12-dns_readiness:local', '13-verify:custom'] 
+plan backup 200 False ['server_setup_dns_identity_required', 'server_setup_panel_dns_address_unavailable'] ['01-dns:local', '02-service:nginx', '03-service:certbot', '04-firewall:enable_and_persist', '05-access_dns:archb.pair3.test', '06-panel_certificate:archb.pair3.test', '07-dns_readiness:local', '08-service:mariadb', '09-service:php-fpm', '10-service:cron', '11-verify:custom'] 
+== start 01:03:54
+start-main 202 {
+ "id": "ef5f75ca7c3600b7476ee97b3c7501f1",
+ "panel_url": "https://deb.pair3.test:2083/",
+ "phase": "queued",
+ "plan_id": "8fce2567dc2dbf112d8d4c2894382de9",
+ "request_id": "ef5f75ca7c3600b7476ee97b3
+start-backup 409 {
+ "code": "server_setup_plan_blocked",
+ "error": "Resolve the plan requirements before starting."
+}
+-- main 01:03:58
+running 01-service null
+01-service=running 02-service=pending 03-service=pending 04-service=pending 05-service=pending 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "01-service", "kind": "service", "owner_id": "99bf84bf7fac3b9dbed805ad042d430d", "request_id": "cdbf9c1d60694b3d1dc7f5320d62076d", "status": "running", "target": "nginx"}
+-- main 01:04:18
+running 02-service null
+01-service=succeeded 02-service=running 03-service=pending 04-service=pending 05-service=pending 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "02-service", "kind": "service", "operation_id": "779e846060f9c63b5f46c7b4d223908e", "owner_id": "e7e1aa060beabee93b44b713a96349dc", "request_id": "95ad7455df3054ca9fb762414bf532c3", "status": "running", "target": "certbot"}

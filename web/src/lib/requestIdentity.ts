@@ -43,6 +43,9 @@ const REASK_ROUTES = [
     // alpha.104 review: a component or version removal, which may first move
     // the PHP tools. / Bir bileşen ya da sürüm kaldırma; önce araçları taşıyabilir.
     /^\/api\/v1\/service\/uninstall$/,
+    // alpha.113: the default HTTPS server's "Set up now" / "Try again".
+    // Varsayılan HTTPS sunucusunun "Şimdi kur" / "Yeniden dene" düğmesi.
+    /^\/api\/v1\/nginx\/default-https$/,
 ];
 
 // An answer that says nothing about the change: a gateway between the browser

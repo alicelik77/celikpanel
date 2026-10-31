@@ -1,0 +1,167 @@
+== clocks as the lab gives them (not corrected) 17:07:03
+labnet-CA 17:07:04.713632000
+frankfurt 17:07:03.879345248
+NTPSynchronized=no
+== 2. site r2shop113.test with Enable SSL at creation 17:07:04
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/1/public_html", "Domain": "r2shop113.test", "DomainID": 1, "FTPPassword": "[REDACTED]", "FTPUser": "r2shop113_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 1, "TempDomain": ""}
+   site id 1
+   ok 192.0.3.104 r2shop113.test A = '192.0.3.104' after 0s
+   ok 192.0.3.105 r2shop113.test A = '192.0.3.104' after 0s
+200 {"status": "success", "expires_at": "2031-10-30T17:07:19Z"}
+   certificate answer after 4s
+2026-10-30T17:01:28+00:00 frankfurt agent[10767]: 2026/10/30 17:01:28 Panel certificate activation remains pending: connect to panel TLS listener: dial tcp 127.0.0.1:2083: connect: connection refused
+2026-10-30T17:01:30+00:00 frankfurt panel[23070]: 2026/10/30 17:01:30 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: mail server hostname is not a valid FQDN: invalid hostname "frankfurt": a fully qualified DNS name is required; preserve pending outbox: <nil>
+200 has_certificate True activated True issuer Let's Encrypt names ['r2shop113.test', 'www.r2shop113.test'] settings {'force_https': True, 'hsts_enabled': False, 'hsts_max_age': 31536000} renewal {'state': 'owner_configured', 'authenticator': 'webroot', 'auto_renew': True, 'hook': 'installed', 'detail': "certbot's renewal configuration was changed outside CelikPanel; it is kept as it is"}
+-- PHP on (Hosting type -> PHP) 17:07:22
+   hosting before: {"document_root": "/var/www/celikpanel/subscriptions/2/sites/1/public_html", "forward_code": 301, "project_type": "static"}
+200 {"success": true}
+200 {"project_type": "php", "php_version": "8.4"}
+-- a PHP page through the file manager 17:07:23
+500 {"code": "INTERNAL", "error": "internal server error"}
+500 {"code": "INTERNAL", "error": "internal server error"}
+resolves (lab resolver 192.0.2.53): r2shop113.test=192.0.3.104 www.r2shop113.test=192.0.3.104
+--- http://r2shop113.test/
+code=301 redirect=https://r2shop113.test/ ssl_verify=0
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Content-Type: text/html
+Location: https://r2shop113.test/
+--- https://r2shop113.test/
+code=200 redirect= ssl_verify=0
+HTTP/2 200 
+server: nginx
+content-type: text/html
+strict-transport-security: max-age=0
+body: 3082 bytes, title: <title>r2shop113.test
+software words in body: [CelikPanel ]
+--- http://www.r2shop113.test/
+code=301 redirect=https://www.r2shop113.test/ ssl_verify=0
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Content-Type: text/html
+Location: https://www.r2shop113.test/
+--- https://www.r2shop113.test/
+code=200 redirect= ssl_verify=0
+HTTP/2 200 
+server: nginx
+content-type: text/html
+strict-transport-security: max-age=0
+body: 3082 bytes, title: <title>r2shop113.test
+software words in body: [CelikPanel ]
+--- certificate served on r2shop113.test:443
+subject= X509v3 Subject Alternative Name: critical     DNS:r2shop113.test, DNS:www.r2shop113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 17:07:19 2031 GMT 
+Verify return code: 0 (ok)
+--- https://r2shop113.test/hello.php
+code=404
+HTTP/2 404 
+server: nginx
+content-type: text/html
+x-powered-by present: 0
+body: <html>
+<head><title>404 Not Found</title></head>
+<body>
+<center><h1>404 Not Found</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+--- http://r2shop113.test/hello.php (redirect?)
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Location: https://r2shop113.test/hello.php
+code=301 location=https://r2shop113.test/hello.php
+== 3. mail on r2shop113.test 17:07:25
+200 {"id": 1, "success": true}
+200 {"id": 2, "success": true}
+200 {"accounts": [{"address": "alice@r2shop113.test", "id": 1, "quota_mb": 1024}, {"address": "bob@r2shop113.test", "id": 2, "quota_mb": 1024}]}
+-- webmail address: what setup left, then the card's enable (owner action) 17:07:26
+200 {"status": {"managed": false, "present": false}, "address": null, "suggestion": "mail.r2f113.test"}
+202 {"operation": {"id": "d7144f7c18a834bd91c7b201bc80bef6", "kind": "webmail_address", "package_name": "mail.r2f113.test", "phase": "queued", "request_id": "df9fef928d6c0c6383338677a722af2f", "service_id": "roundcube", "started_at": "2026-10-30T17:07:26.318887182Z", "status": "queued"}}
+   200 {"status": {"certificate_expires": "2031-10-30T17:07:28Z", "hosts": ["mail.r2f113.test"], "managed": true, "present": true, "proved": true}, "address": {"enabled_at": "2026-10-30T17:07:30Z", "host": "mail.r2f113.test", "url": "https://mail.r2f113.test/"}, "suggestion": "mail.r2f113.test"}
+--- http://mail.r2f113.test/
+code=301 redirect=https://mail.r2f113.test/ ssl_verify=0
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Content-Type: text/html
+Location: https://mail.r2f113.test/
+--- https://mail.r2f113.test/
+code=200 redirect= ssl_verify=0
+HTTP/2 200 
+server: nginx
+content-type: text/html; charset=UTF-8
+strict-transport-security: max-age=31536000
+body: 5330 bytes, title: <title>CelikPanel Webmail :: Welcome to CelikPanel Webmail
+software words in body: [CelikPanel version 3 ]
+code=000 redirect= ssl_verify=0
+code=000 redirect= ssl_verify=0
+-- send 587, read IMAPS 993 17:07:34
+{
+ "host": "mail.r2f113.test",
+ "resolved": "192.0.3.104",
+ "smtp_587_cert": {
+  "cn": null,
+  "san": [
+   "mail.r2f113.test"
+  ],
+  "not_after": "Oct 30 17:06:13 2031 GMT",
+  "issuer_cn": "Pebble Intermediate CA 445eee"
+ },
+ "smtp_send": {
+  "ok": false,
+  "error": "SMTPAuthenticationError(535, b'5.7.8 Error: authentication failed: (reason unavailable)')"
+ },
+ "imaps_993_cert": {
+  "cn": null,
+  "san": [
+   "mail.r2f113.test"
+  ],
+  "not_after": "Oct 30 17:06:13 2031 GMT",
+  "issuer_cn": "Pebble Intermediate CA 445eee"
+ },
+ "imap_error": "error(b'[AUTHENTICATIONFAILED] Authentication failed.')",
+ "imap_read": {
+  "found": false
+ },
+ "served_certificates": {
+  "587/mail.r2f113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.r2f113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 17:06:13 2031 GMT",
+  "587/r2shop113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.r2f113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 17:06:13 2031 GMT",
+  "587/mail.r2shop113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.r2f113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 17:06:13 2031 GMT",
+  "587/frankfurt.r2f113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.r2f113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 17:06:13 2031 GMT",
+  "587/no-sni": "subject= X509v3 Subject Alternative Name: critical DNS:mail.r2f113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 17:06:13 2031 GMT",
+  "993/mail.r2f113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.r2f113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 17:06:13 2031 GMT",
+  "993/r2shop113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.r2f113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 17:06:13 2031 GMT",
+  "993/mail.r2shop113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.r2f113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 17:06:13 2031 GMT",
+  "993/frankfurt.r2f113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.r2f113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 17:06:13 2031 GMT",
+  "993/no-sni": "subject= X509v3 Subject Alternative Name: critical DNS:mail.r2f113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 17:06:13 2031 GMT",
+  "465/mail.r2f113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.r2f113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 17:06:13 2031 GMT",
+  "465/r2shop113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.r2f113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 17:06:13 2031 GMT",
+  "465/mail.r2shop113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.r2f113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 17:06:13 2031 GMT",
+  "465/frankfurt.r2f113.test": "subject= X509v3 Subject Alternative Name: critical DNS:mail.r2f113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 17:06:13 2031 GMT",
+  "465/no-sni": "subject= X509v3 Subject Alternative Name: critical DNS:mail.r2f113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 17:06:13 2031 GMT"
+ }
+}
+-- read in webmail (Roundcube login as bob) 17:10:14
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/final113r2/opsA.sh: line 71: /var/tmp/final113r2/mpw.json: No such file or directory
+== 4. DNS record add/edit/delete on r2shop113.test reach the backup 17:10:14
+200 {"id": 22, "success": true}
+   ok 192.0.3.104 rec113.r2shop113.test A = '192.0.2.77' after 1s
+   ok 192.0.3.105 rec113.r2shop113.test A = '192.0.2.77' after 0s
+   record id 22
+200 {"success": true}
+   ok 192.0.3.104 rec113.r2shop113.test A = '192.0.2.78' after 0s
+   ok 192.0.3.105 rec113.r2shop113.test A = '192.0.2.78' after 1s
+200 {"success": true}
+   ok 192.0.3.104 rec113.r2shop113.test A = '' after 0s
+   ok 192.0.3.105 rec113.r2shop113.test A = '' after 0s
+-- zone delete: DNS-only r2gone113.test 17:10:28
+200 {"DocumentRoot": "", "Domain": "r2gone113.test", "DomainID": 2, "FTPPassword": "", "FTPUser": "", "PHPVersion": "", "ProjectType": "dnsonly", "SiteID": 2, "TempDomain": ""}
+   ok 192.0.3.104 r2gone113.test SOA = 'ns1.r2f113.test. hostmaster.r2gone113.test. 2026103001 10800 3600 604800 3600' after 1s
+   ok 192.0.3.105 r2gone113.test SOA = 'ns1.r2f113.test. hostmaster.r2gone113.test. 2026103001 10800 3600 604800 3600' after 0s
+   zone id 2
+200 {"status": "deleted", "domain": "r2gone113.test"}
+   answered after 23s
+   192.0.3.104 r2gone113.test SOA after deletion: status: REFUSED flags: qr  (0s)
+   192.0.3.105 r2gone113.test SOA after deletion: status: REFUSED flags: qr  (0s)
+   domain list still names it: no
+2026-10-30T17:10:58+00:00 frankfurt agent[10767]: 2026/10/30 17:10:58 DNS peer inspector answer for r2gone113.test (PowerDNS secondary): catalog_state=transferred member_state=absent native_state=unloaded; accepted
+2026-10-30T17:11:00+00:00 frankfurt agent[10767]: 2026/10/30 17:11:00 DNS peer proof for r2gone113.test (PowerDNS secondary) step times: prepare=1.433s challenge_write=5.719s exchange=650ms post_inspection=2.885s consume=7.224s; total 17.91s; outcome verified
+== ops done 17:11:01

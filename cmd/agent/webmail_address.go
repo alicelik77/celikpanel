@@ -75,6 +75,9 @@ const (
 var (
 	webmailAddressConfDir        = "/etc/nginx/conf.d"
 	webmailAddressLetsEncryptDir = "/etc/letsencrypt"
+	// webmailPanelACMEDir holds the port-80 server of a name whose
+	// certificate CelikPanel's own machinery renews (panelACMEVhostName).
+	webmailPanelACMEDir = "/etc/nginx/sites-available"
 )
 
 // webmailAddressOps are the host operations, replaced in tests.
@@ -207,6 +210,68 @@ func renderWebmailAddressPending(host, challengeRoot string) string {
 // another CelikPanel server block already answers port 80 for the name (the
 // mail host certificate's challenge server, with the same challenge root).
 func renderWebmailAddressConfig(host, challengeRoot, roundcubeRoot, fpmSocket string, withHTTP bool) string {
+	return renderWebmailAddressConfigWith(host, challengeRoot, roundcubeRoot, fpmSocket, withHTTP,
+		webmailAddressHTTP2Form(), webmailAddressTLSLines())
+}
+
+// webmailAddressHTTP2Form is the installed nginx's HTTP/2 form (a test seam).
+// Every HTTPS server block on port 443 must carry the same one: nginx 1.24
+// joins the listen parameters of all blocks on one port and warns "protocol
+// options redefined" when one block has `http2` and another has not
+// (measured on Ubuntu 24.04's nginx 1.24.0, 2026-10-30); from 1.25.1 the
+// webmail server answers HTTP/2 only with its own `http2 on;`.
+var webmailAddressHTTP2Form = func() string {
+	return services.HostNginxFeatures().HTTP2Form()
+}
+
+// webmailAddressHTTP2Forms are the forms a file may carry: the one this
+// nginx takes first, then the others (nginx was upgraded or downgraded since
+// the file was written; alpha.110 to alpha.112 wrote no HTTP/2).
+func webmailAddressHTTP2Forms() []string {
+	current := webmailAddressHTTP2Form()
+	forms := []string{current}
+	for _, form := range []string{services.NginxHTTP2Off, services.NginxHTTP2Listen, services.NginxHTTP2Directive} {
+		if form != current {
+			forms = append(forms, form)
+		}
+	}
+	return forms
+}
+
+// webmailAddressListen is the HTTPS listen lines in an HTTP/2 form.
+func webmailAddressListen(http2 string) string {
+	switch http2 {
+	case services.NginxHTTP2Listen:
+		return "    listen 443 ssl http2;\n    listen [::]:443 ssl http2;\n"
+	case services.NginxHTTP2Directive:
+		return "    listen 443 ssl;\n    listen [::]:443 ssl;\n    http2 on;\n"
+	default:
+		return "    listen 443 ssl;\n    listen [::]:443 ssl;\n"
+	}
+}
+
+// webmailAddressLegacyTLS is the TLS policy alpha.110 to alpha.112 wrote. A
+// file with it is still CelikPanel's own form (parseWebmailAddressConfig);
+// its next write is this release's form.
+const webmailAddressLegacyTLS = `    ssl_session_timeout 10m;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+`
+
+// webmailAddressTLSLines is the sites' TLS policy (Mozilla intermediate, the
+// vhost template's "tls-policy"), after this file's own session cache line.
+// The template is embedded, so it cannot fail at run time; a failure would
+// keep the earlier policy rather than write an HTTPS server without one.
+func webmailAddressTLSLines() string {
+	policy, err := services.NginxTLSPolicy()
+	if err != nil || policy == "" {
+		return webmailAddressLegacyTLS
+	}
+	return policy + "\n"
+}
+
+func renderWebmailAddressConfigWith(host, challengeRoot, roundcubeRoot, fpmSocket string, withHTTP bool, http2, tlsLines string) string {
 	lineage := webmailAddressLineageName(host)
 	live := webmailAddressLiveDir(lineage)
 	var b strings.Builder
@@ -215,19 +280,14 @@ func renderWebmailAddressConfig(host, challengeRoot, roundcubeRoot, fpmSocket st
 		b.WriteString(renderWebmailAddressHTTP(host, challengeRoot))
 		b.WriteString("\n")
 	}
-	fmt.Fprintf(&b, `server {
-    listen 443 ssl;
-    listen [::]:443 ssl;
-    server_name %s;
+	b.WriteString("server {\n")
+	b.WriteString(webmailAddressListen(http2))
+	fmt.Fprintf(&b, `    server_name %s;
 
     ssl_certificate %s/fullchain.pem;
     ssl_certificate_key %s/privkey.pem;
     ssl_session_cache shared:celikpanel_webmail:10m;
-    ssl_session_timeout 10m;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-    ssl_prefer_server_ciphers on;
-
+%s
     # Roundcube on its own origin: nothing of the panel lives here, so its
     # inline start-up script may run; it may only be framed by itself.
     add_header Strict-Transport-Security "max-age=31536000" always;
@@ -266,7 +326,7 @@ func renderWebmailAddressConfig(host, challengeRoot, roundcubeRoot, fpmSocket st
         fastcgi_pass unix:%s;
     }
 }
-`, host, live, live, roundcubeRoot, fpmSocket, phpToolCheckPrefix, phpToolWebmail,
+`, host, live, live, tlsLines, roundcubeRoot, fpmSocket, phpToolCheckPrefix, phpToolWebmail,
 		phpToolCheckScriptPath, strings.Join(phpToolExtensions[phpToolWebmail], ","), fpmSocket)
 	return b.String()
 }
@@ -285,6 +345,10 @@ type webmailAddressForm struct {
 	challenge string
 	root      string
 	fpm       string
+	// legacyTLS: the file has the TLS policy of alpha.110 to alpha.112.
+	legacyTLS bool
+	// otherHTTP2: the file's HTTP/2 form is not this nginx's.
+	otherHTTP2 bool
 }
 
 func parseWebmailAddressConfig(host, content string) (webmailAddressForm, bool) {
@@ -305,14 +369,32 @@ func parseWebmailAddressConfig(host, content string) (webmailAddressForm, bool) 
 	if form.root == "" || form.fpm == "" {
 		return form, false
 	}
-	if form.challenge != "" && content == renderWebmailAddressConfig(host, form.challenge, form.root, form.fpm, true) {
-		form.withHTTP = true
-		return form, true
+	// This release's TLS policy, then the one alpha.110 to alpha.112 wrote,
+	// each in every HTTP/2 form: all are CelikPanel's own form, so an address
+	// file written before the policy changed, or for another nginx version,
+	// is still followed (PHP version) and removable.
+	current := webmailAddressHTTP2Form()
+	for _, tlsLines := range []string{webmailAddressTLSLines(), webmailAddressLegacyTLS} {
+		for _, http2 := range webmailAddressHTTP2Forms() {
+			form.legacyTLS = tlsLines == webmailAddressLegacyTLS
+			form.otherHTTP2 = http2 != current
+			if form.challenge != "" && content == renderWebmailAddressConfigWith(host, form.challenge, form.root, form.fpm, true, http2, tlsLines) {
+				form.withHTTP = true
+				return form, true
+			}
+			if content == renderWebmailAddressConfigWith(host, "", form.root, form.fpm, false, http2, tlsLines) {
+				return form, true
+			}
+		}
 	}
-	if content == renderWebmailAddressConfig(host, "", form.root, form.fpm, false) {
-		return form, true
-	}
+	form.legacyTLS, form.otherHTTP2 = false, false
 	return form, false
+}
+
+// stale: the file is CelikPanel's form of an earlier release or of another
+// nginx version, so its next write is this release's form for this nginx.
+func (form webmailAddressForm) stale() bool {
+	return form.legacyTLS || form.otherHTTP2
 }
 
 // webmailAddressHosts lists the names that have an address file.
@@ -742,9 +824,7 @@ func enableWebmailAddress(ctx context.Context, ops webmailAddressOps, rawHost, e
 		restore(resp.Error)
 		return
 	}
-	if !withHTTP {
-		resp.Warning = joinWarning(resp.Warning, fmt.Sprintf("port 80 for %s belongs to the mail certificate's check server, so http://%s/ answers 404 instead of redirecting; webmail opens with https://%s/", host, host, host))
-	}
+
 	// 3. Roundcube's own lines for its own origin (only in CelikPanel's
 	// form of its configuration; an owner-edited one is left as it is).
 	settings, settingsErr := ops.roundcubeSettings(true)
@@ -763,6 +843,13 @@ func enableWebmailAddress(ctx context.Context, ops webmailAddressOps, rawHost, e
 		return
 	}
 	resp.Enabled, resp.Proved = true, true
+	// 4b. The name's port 80 belongs to the mail certificate's check server:
+	// it now redirects to webmail's https (alpha.113; it answered 404).
+	if !withHTTP {
+		if err := setPanelACMERedirect(ctx, ops, host, true); err != nil {
+			resp.Warning = joinWarning(resp.Warning, fmt.Sprintf("port 80 for %s belongs to the mail certificate's check server, which was not changed (%v), so http://%s/ does not redirect; webmail opens with https://%s/", host, err, host, host))
+		}
+	}
 	// 5. Changing the address: the previous one goes only now.
 	if replace != "" && replace != host {
 		removed := removeWebmailAddress(ctx, ops, replace, false)
@@ -771,6 +858,67 @@ func enableWebmailAddress(ctx context.Context, ops webmailAddressOps, rawHost, e
 		}
 	}
 	return
+}
+
+// errPanelACMENotShared: the name has no port-80 server of CelikPanel's
+// certificate machinery; there is nothing to change.
+var errPanelACMENotShared = errors.New("no CelikPanel certificate check server for the name")
+
+var panelACMEChallengeRootLine = regexp.MustCompile(`(?m)^        root (/[^;\s]+);$`)
+
+// panelACMEFormOf reads a port-80 check server back into its form: the
+// challenge root and whether it redirects; ok is false for any text that is
+// not exactly one of CelikPanel's two forms (the owner changed it).
+func panelACMEFormOf(host, content string) (challengeRoot string, redirect, ok bool) {
+	m := panelACMEChallengeRootLine.FindStringSubmatch(content)
+	if m == nil {
+		return "", false, false
+	}
+	switch content {
+	case renderPanelACMEChallengeVhostForm(host, m[1], false):
+		return m[1], false, true
+	case renderPanelACMEChallengeVhostForm(host, m[1], true):
+		return m[1], true, true
+	}
+	return m[1], false, false
+}
+
+// webmailAddressSharesPanelACME says whether CelikPanel's webmail serves
+// HTTPS on host without a port-80 server of its own (it shares the mail
+// certificate's check server), read from webmail's address file.
+func webmailAddressSharesPanelACME(host string) bool {
+	content, err := os.ReadFile(webmailAddressConfPath(host))
+	if err != nil {
+		return false
+	}
+	form, managed := parseWebmailAddressConfig(host, string(content))
+	return managed && !form.pending && !form.withHTTP
+}
+
+// setPanelACMERedirect turns the name's shared port-80 check server into the
+// form that redirects to https (or back to 404). Only CelikPanel's own text
+// is changed; a file the owner changed is left as it is. nginx validates the
+// change and a refused one is put back.
+func setPanelACMERedirect(ctx context.Context, ops webmailAddressOps, host string, redirect bool) error {
+	path := filepath.Join(webmailPanelACMEDir, panelACMEVhostName(host)+".conf")
+	content, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		if redirect {
+			return errPanelACMENotShared
+		}
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	challengeRoot, current, ok := panelACMEFormOf(host, string(content))
+	if !ok {
+		return fmt.Errorf("%s was changed outside CelikPanel and is left as it is", path)
+	}
+	if current == redirect {
+		return nil
+	}
+	return applyWebmailNginxMutation(ctx, path, []byte(renderPanelACMEChallengeVhostForm(host, challengeRoot, redirect)), true, ops.run)
 }
 
 // webmailAddressRollbackError: nginx refused the change and the previous file
@@ -839,6 +987,11 @@ func removeWebmailAddress(ctx context.Context, ops webmailAddressOps, rawHost st
 		}
 	}
 	resp.Removed = true
+	// The name's shared port-80 server answers 404 again: nothing serves
+	// https for it any more.
+	if err := setPanelACMERedirect(ctx, ops, host, false); err != nil {
+		resp.Warning = joinWarning(resp.Warning, fmt.Sprintf("http://%s/ still redirects to https (%v); the mail certificate's check server keeps answering the check", host, err))
+	}
 	if len(webmailAddressHosts()) == 0 && ops.roundcubeSettings != nil {
 		if _, err := ops.roundcubeSettings(false); err != nil {
 			resp.Warning = fmt.Sprintf("CelikPanel's lines for the address stay in Roundcube's configuration (%v)", err)
@@ -904,7 +1057,7 @@ func refreshWebmailAddresses(ctx context.Context, run webmailCommandRunner, sock
 			continue
 		}
 		form, managed := parseWebmailAddressConfig(host, string(content))
-		if !managed || form.pending || form.fpm == socket {
+		if !managed || form.pending || (form.fpm == socket && !form.stale()) {
 			continue
 		}
 		next := renderWebmailAddressConfig(host, form.challenge, form.root, socket, form.withHTTP)
@@ -1084,6 +1237,9 @@ func (a *Agent) EnableWebmailAddressV1(req *transport.WebmailAddressEnableReques
 	}
 	defer releaseSiteCertbot()
 	*resp = enableWebmailAddress(ctx, hostWebmailAddressOps(), host, strings.TrimSpace(req.Email), req.Replace)
+	if resp.Enabled {
+		reconcileDefaultHTTPSFor(a)
+	}
 	return nil
 }
 
@@ -1110,6 +1266,9 @@ func (a *Agent) RemoveWebmailAddressV1(req *transport.WebmailAddressRemoveReques
 	}
 	defer finishStep()
 	*resp = removeWebmailAddress(ctx, hostWebmailAddressOps(), host, req.RemoveCertificate)
+	if resp.Removed {
+		reconcileDefaultHTTPSFor(a)
+	}
 	return nil
 }
 

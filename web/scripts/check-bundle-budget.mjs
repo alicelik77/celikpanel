@@ -119,11 +119,26 @@ const screenPartBudgets = {
   // the Beta-1 re-run fixes (the distribution-update, ready-report and
   // rejoin waits) to keep 25% headroom over 8.38 / 2.37 KiB.
   setupLink: kib(13, 4),
+  // The automatic deletion check between two servers joined by code
+  // (setup.v5.inspection. and its waits), split out of "setupLink", which it
+  // took over its ceiling. A new part, set with at least 25% headroom from its
+  // Turkish file: 7.54 / 2.13 KiB.
+  setupInspection: kib(10, 2.75),
   // v0.1.0-alpha.115: the DNS page's overview and the first-site offer
   // (dnsov.). A new part, set with at least 25% headroom from its Turkish
   // file: 15.36 / 4.24 KiB. Raised with the alpha.115 review fixes to keep
   // 25% headroom over 19.34 / 5.16 KiB.
   dnsOverview: kib(26, 7),
+  // v0.1.0-alpha.113 nginx fixes: the default HTTPS server card (nginxdh.),
+  // split out of "componentPages", which had no headroom left. A new part,
+  // set with at least 25% headroom from its Turkish file: 4.63 / 1.73 KiB.
+  nginxDefaultHttps: kib(6.5, 2.4),
+  // 2026-10-31: the reviewed reasons of an unpublished DNS change
+  // (err.DNS_PUBLICATION_FAILED.<reason>), split out of "errors" when the
+  // held-Agent reason took it over its ceiling (Turkish 44.61 KiB before). A
+  // new part, set with at least 25% headroom from its Turkish file: 7.52 /
+  // 2.35 KiB.
+  dnsPublication: kib(10.5, 4),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

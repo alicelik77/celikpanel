@@ -252,10 +252,13 @@ func (p *Panel) removeSubdomainFromParentZone(
 	}
 	result.ParentZoneExists = true
 
+	// The subdomain's DKIM record (CelikPanel's selector, under the deleted
+	// name) goes with it: the key it named is removed with the domain.
 	deleteResult, err := tx.ExecContext(ctx,
-		`DELETE FROM pdns_records WHERE domain_id = ? AND name = ?`,
+		`DELETE FROM pdns_records WHERE domain_id = ? AND (name = ? OR (name = ? AND type = 'TXT'))`,
 		zoneID,
 		subName,
+		dkimSelector+"._domainkey."+subName,
 	)
 	if err != nil {
 		return result, fmt.Errorf("remove subdomain DNS records: %w", err)

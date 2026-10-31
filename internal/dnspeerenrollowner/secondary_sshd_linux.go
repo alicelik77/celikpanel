@@ -77,6 +77,12 @@ func (p *profile) installSSHDInclude(primaryIP string, resume bool) error {
 	}
 	tempPath := temp.Name()
 	defer os.Remove(tempPath)
+	// The replacement keeps the live file's owner and group: a temporary
+	// file takes the caller's group (the Agent's is celikpanel).
+	if err := chownLike(temp, st); err != nil {
+		temp.Close()
+		return err
+	}
 	if err := temp.Chmod(st.Mode().Perm()); err != nil {
 		temp.Close()
 		return err
@@ -239,7 +245,7 @@ func (p *profile) restoreOwnerSSHD() RevokeResult {
 	}
 	tempPath := temp.Name()
 	defer os.Remove(tempPath)
-	if temp.Chmod(st.Mode().Perm()) != nil {
+	if chownLike(temp, st) != nil || temp.Chmod(st.Mode().Perm()) != nil {
 		temp.Close()
 		return failed("could not stage the original sshd_config; nothing was changed")
 	}
@@ -321,4 +327,13 @@ func trustedSSHDOriginal() error {
 		return errors.New("sshd_config has metadata this installer cannot preserve")
 	}
 	return nil
+}
+
+// chownLike gives f the owner and group of the file st describes.
+func chownLike(f *os.File, st os.FileInfo) error {
+	stat, ok := st.Sys().(*syscall.Stat_t)
+	if !ok {
+		return errors.New("sshd_config ownership cannot be read")
+	}
+	return f.Chown(int(stat.Uid), int(stat.Gid))
 }

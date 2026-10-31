@@ -41,6 +41,15 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			// alpha.113: the default HTTPS server's "Try again".
+			name: "ReconcileDefaultHTTPSServerV1",
+			run: func(expected string) string {
+				var response transport.ReconcileDefaultHTTPSServerResponse
+				_ = agent.ReconcileDefaultHTTPSServerV1(&transport.ReconcileDefaultHTTPSServerRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
 			name: "InspectSiteFile",
 			run: func(expected string) string {
 				var response transport.InspectSiteFileResponse
@@ -115,6 +124,22 @@ func protectedBuildGateOperations() []buildGateOperation {
 				}, &response)
 				if err == nil {
 					return ""
+				}
+				return err.Error()
+			},
+		},
+		{
+			// 30 Oct 2026: a deleted domain's DKIM key.
+			name: "RemoveDKIMKey",
+			run: func(expected string) string {
+				var response transport.DKIMRemoveResponse
+				err := agent.RemoveDKIMKey(&transport.DKIMRemoveRequest{
+					ExpectedBuildCommit: expected,
+					Domain:              "example.com",
+					Selector:            "celik",
+				}, &response)
+				if err == nil {
+					return response.Error
 				}
 				return err.Error()
 			},
@@ -245,6 +270,14 @@ func protectedBuildGateOperations() []buildGateOperation {
 			run: func(expected string) string {
 				var response RenewCertResponse
 				_ = agent.RenewLetsEncryptCertificate(RenewCertRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			name: "SetSiteCertificateAutoRenewV1",
+			run: func(expected string) string {
+				var response transport.SetSiteCertificateAutoRenewResponse
+				_ = agent.SetSiteCertificateAutoRenewV1(&transport.SetSiteCertificateAutoRenewRequest{ExpectedBuildCommit: expected}, &response)
 				return response.Error
 			},
 		},

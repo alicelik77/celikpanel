@@ -64,11 +64,29 @@ func resolvePDNSGroupGIDWithRunner(
 	getent string,
 	runner pdnsGroupLookupRunner,
 ) (uint32, error) {
-	if ctx == nil || getent == "" || runner == nil {
+	return resolveNamedPDNSGroupGIDWithRunner(ctx, getent, "pdns", runner)
+}
+
+// pdnsServiceGroupForFamily is the PowerDNS service group the distribution
+// package creates: Debian/Ubuntu "pdns", Arch Linux "powerdns".
+func pdnsServiceGroupForFamily(packageManager string) string {
+	if packageManager == "pacman" {
+		return "powerdns"
+	}
+	return "pdns"
+}
+
+func resolveNamedPDNSGroupGIDWithRunner(
+	ctx context.Context,
+	getent string,
+	group string,
+	runner pdnsGroupLookupRunner,
+) (uint32, error) {
+	if ctx == nil || getent == "" || runner == nil || (group != "pdns" && group != "powerdns") {
 		return 0, errors.New("invalid PowerDNS group proof")
 	}
 	lookup := func() (uint32, error) {
-		output, err := runner(ctx, getent, "group", "pdns")
+		output, err := runner(ctx, getent, "group", group)
 		if err != nil {
 			return 0, fmt.Errorf("resolve PowerDNS service group: %w", err)
 		}
@@ -77,7 +95,7 @@ func resolvePDNSGroupGIDWithRunner(
 			return 0, errors.New("getent returned a non-canonical PowerDNS group record")
 		}
 		fields := strings.Split(strings.TrimSuffix(line, "\n"), ":")
-		if len(fields) != 4 || fields[0] != "pdns" || fields[1] != "x" ||
+		if len(fields) != 4 || fields[0] != group || fields[1] != "x" ||
 			fields[2] == "" || fields[3] != "" {
 			return 0, errors.New("getent returned an unsafe PowerDNS group record")
 		}

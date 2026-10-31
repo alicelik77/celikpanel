@@ -147,6 +147,16 @@ func preflightFreshPDNSPackageVersionsWithOpsV3(packages, missing []string, ops 
 }
 
 func preflightFreshPDNSPackageVersionsV3(ctx context.Context, profile hostplatform.Profile, packages, missing []string) (string, error) {
+	if ctx != nil && profile.PackageManager == hostplatform.PackageManagerPacman {
+		build, err := freshPDNSPrimaryBuildV3(profile)
+		if err != nil {
+			return "", err
+		}
+		if len(packages) != 1 || packages[0] != build.Packages[0] {
+			return "", errors.New("v3 PowerDNS pacman preflight names an unexpected package set")
+		}
+		return preflightFreshPDNSPacmanVersionV3(ctx, profile, build, missing)
+	}
 	if ctx == nil || profile.PackageManager != hostplatform.PackageManagerAPT {
 		return "", errors.New("v3 PowerDNS version preflight requires an APT host")
 	}
@@ -215,7 +225,17 @@ func pdnsArchivesOf(sim aptSimulation, name, version string) []dnsengineartifact
 
 // installFreshPDNSPackagesV3 installs the missing packages at the one tested
 // version the preflight read.
+// On Arch the candidate is read again from the refreshed databases right
+// before the one pacman transaction (installFreshPDNSPacmanV3); version is the
+// preflight's read and must already be in the tested series.
 func installFreshPDNSPackagesV3(ctx context.Context, missing []string, version string) (string, error) {
+	if detectPkgFamily() == "pacman" {
+		build, ok := dnsengineartifact.PDNSFreshPrimaryBuildFor("pacman")
+		if !ok || !build.VersionInTestedSeries(version) {
+			return "", errors.New("v3 PowerDNS install version is outside the tested series")
+		}
+		return installFreshPDNSPacmanV3(ctx, build, missing)
+	}
 	if !dnsengineartifact.PDNSFreshPrimaryVersionInTestedSeries(version) {
 		return "", errors.New("v3 PowerDNS install version is outside the tested series")
 	}

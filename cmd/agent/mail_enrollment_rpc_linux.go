@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -136,6 +137,14 @@ func dispatchMailEnrollmentRPC(ctx context.Context, req *transport.MailEnrollmen
 	}
 	if err = ctx.Err(); err != nil {
 		return err
+	}
+	if busy, holder := mailEnrollmentExclusionBusy(); busy {
+		// Verified "not started": nothing was dispatched or recorded, so the
+		// caller may hand the same request off again (D-024, 2026-10-30).
+		// Holder names who held the lock, for the journal and the setup screen.
+		resp.Handoff, resp.Reason, resp.Holder = transport.MailEnrollmentHandoffBusy, transport.HostMutationReasonHostLock, holder
+		log.Printf("Mail enrollment request %s was not handed off and nothing changed: %s; the Panel hands the same request off again.", req.RequestID, holder)
+		return nil
 	}
 	if err = dispatch(ctx, proof.helper, args); err != nil {
 		resp.Reason = "mail_enrollment_handoff_unknown"

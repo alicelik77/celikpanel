@@ -102,10 +102,11 @@ type ServiceOperationMutationJob struct {
 }
 
 type ServiceOperationMutationResponse struct {
-	Job       *ServiceOperationMutationJob
-	ErrorCode string
-	Error     string
-	Reason    string
+	Job          *ServiceOperationMutationJob
+	ErrorCode    string
+	Error        string
+	Reason       string
+	MutationHold string
 }
 
 type ServiceOperationNodeResponse struct {

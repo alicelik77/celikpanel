@@ -7943,6 +7943,78 @@ lock and their own agent jobs; the same request id returns the same operation.
   Not measured on an installed server. **No P0 item is closed or advanced**; P0.1
   to P0.5 stay partial and every open acceptance item stays open.
 
+### Branch fix/site-cert-native-renewal (website certificates renewed by the operating system's certbot; Agent certificate issue, renewal-state and lineage paths; no schema change; invariants 1, 2 and 3; D-040; D-022; D-024; D-031; 2026-10-30)
+
+D-025 invariant 1 (the owner's services run without the panel): a website
+certificate issued by this change is a certbot lineage in `/etc/letsencrypt`
+renewed by the operating system's timer; nginx names certbot's live files and a
+plain-sh deploy hook reloads it, so a renewal is issued, validated, deployed and
+served with no Panel or Agent. Invariant 2 (evidence has a meaning): the Panel's
+renewal state is read from the operating system's own files (renewal configuration,
+the certificate the live files name, the hook's record, certbot's own log line, the
+scheduler); unknown records nothing and never replaces a known failure; a renewal
+setting the owner changed is reported as `owner_configured` and kept. Invariant 3
+(one renewer): the Agent refuses to renew a native lineage, and a replaced native
+lineage gets `autorenew = False`.
+
+- **Agent changes.** `IssueLetsEncryptCertificate` issues every certificate as a
+  fresh native lineage (EAB through a private `--config` file); new
+  `SiteCertificateRenewalStateV1` (read), `SetSiteCertificateAutoRenewV1`,
+  `SnapshotSiteCertificateV1` (build-gated mutations); `RenewLetsEncryptCertificate`
+  refuses native lineages; `InspectInstalledCertificate`, the vhost path validation,
+  `DeleteCertLineage` and `ReconcileSiteCertLineages` accept native lineages of the
+  same domain identity only.
+- **Panel changes.** The 12-hour job observes native certificates and renews only
+  earlier-release ones; the certificate page carries `renewal_owner`, `renewal` and
+  the guidance; the Dashboard lists native renewal problems; a mail SNI entry names
+  the native lineage's live files and the deploy hook rebuilds the map and reloads
+  Postfix and Dovecot.
+- **Schema.** None (46); additive `renewal_status` values `os_<state>`. New on-disk
+  artifacts: deploy hook v1, deploy record v1.
+- **Recovery.** Going back to an earlier release keeps the native files serving and
+  renewing; that release cannot re-render a native site's vhost (the file on disk is
+  kept) and shows its renewal as failed; forward again reads everything as it is.
+  Earlier-release certificates are not migrated: they keep the Panel's renewal until
+  reissued.
+- **Evidence.** Component tests (Agent, Panel, web) and one disposable Debian 13
+  chroot run with Debian's certbot 4.0.0 and Pebble 2.6.0 (EAB required), no network
+  route out ([deploy/e2e/d040](../deploy/e2e/d040/README.md)). Not measured on an
+  installed server, under a booted systemd, on Ubuntu or Arch, or against a real CA.
+  **P0.5 is advanced for website certificate renewal (web and its mail SNI) only**;
+  reboot, Dovecot 2.3, other releases and the rest of the absence matrix stay open;
+  P0.1 to P0.5 stay partial. Mail TLS plan v1's reader accepts native lineage paths
+  (additive); an earlier release refuses such a committed plan (mail keeps serving).
+
+### Branch fix/cert-mail-known-gaps (earlier-release website certificates move to the operating system's renewal; Dovecot 2.3 mail SNI, Ubuntu 24.04 and Arch measured; no schema change; invariants 1, 2 and 4; D-040 amendment; D-022; D-024; 2026-10-30)
+
+Invariant 1: a website certificate of an earlier release no longer depends on the
+running Panel past its next renewal; the 12-hour job moves it to a native lineage
+(`cmd/panel/site_cert_legacy_move.go`) through the Reissue path, except an
+EAB-authority certificate (credentials are not kept; its card says Reissue).
+Invariant 2: a failed move is `move_failed_<kind>` with its next action; an answer
+that never arrived records nothing; a later earlier-way renewal does not erase the
+move failure. Invariant 4: the earlier certificate serves until the native row is
+active and nginx's tested configuration names it; later failures are the renewal
+outbox's (`activation_pending`, `dependents_pending`, owner's file); a lineage
+issued but never recorded is removed by the startup lineage reconcile; a moved
+certificate is never moved again; from 14 days before expiry a failing move falls
+back to the earlier renewal.
+
+- **Panel changes.** The move, the fallback window, the `legacy_move` card field and
+  the `move_failed_<kind>` statuses (additive). **Agent changes.** None in
+  production code; the realsystem test also prepares nginx's includes and the Arch
+  Dovecot layout as the product's own setup does.
+- **Matrix.** Certbot's real archive/live layout for the native SNI fixture; IMAPS
+  and SMTP STARTTLS handshakes per SNI name on the real daemons, before and after a
+  simulated `certbot renew` that runs the site deploy hook; Arch Dovecot (CelikPanel's
+  main file) and Arch MariaDB measured instead of N/A.
+- **Schema.** None (46).
+- **Evidence.** [cert-mail-20261030](../deploy/e2e/dns-pair-acceptance/evidence/cert-mail-20261030/):
+  the matrix on its five releases and real QEMU boots of Ubuntu 24.04 and Arch
+  against a local Pebble. Not measured: an installed server, a real CA, the move
+  itself against a real Agent and CA (component tests only), snap certbot.
+  **P0.5 stays partial**; every open acceptance item stays open.
+
 ### Candidate v0.1.0-alpha.111 (the Beta 1 setup: setup wizard v2, join by code, the setup link, the DNS page; Agent DNS install, rollback, certificate and point-update paths; no schema change; invariants 1, 2, 4 and 6; D-021 amendments; D-022; D-024; D-025; D-028 amendment; 2026-10-29)
 
 D-025 invariant 1 (the owner retains authority and working services): the two

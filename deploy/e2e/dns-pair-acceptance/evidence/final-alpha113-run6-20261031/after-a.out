@@ -1,0 +1,186 @@
+== reboot main backup 03:09:15
+main rebooted in 29.7 s
+backup rebooted in 14.9 s
+== health [after-reboot] 03:11:15
+-- main units/timers
+active active active active active active active
+enabled enabled
+  php8.4-fpm.service loaded active running The PHP 8.4 FastC
+Sat 2026-10-31 20:05:54 UTC 16h Sat 2026-10-31 03:01:04 UTC - certbot.timer certbot.service
+enabled not-found
+2026-10-31 03:09:35
+bb775081-44db-4f31-ae2b-4ce244bc903c
+succeeded complete null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-access_dns=succeeded 17-mail_certificate=succeeded 18-mail_enrollment=succeeded 19-verify=succeeded
+-- backup units/timers
+active active active active active inactive inactive
+enabled enabled
+  php8.3-fpm.service loaded active running The PHP 8.3 FastC
+Sat 2026-10-31 18:18:00 UTC 15h Sat 2026-10-31 03:01:26 UTC - certbot.timer certbot.service
+enabled not-found
+2026-10-31 03:09:19
+78365ff9-b49e-43ff-8840-a948a9339b36
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-verify=succeeded
+-- DNS answers
+   @192.0.3.116 SOA r6f113.test: status: NOERROR flags: qr aa  | A r6shop113.test: 192.0.3.116 | MX r6f113.test: 10 mail.r6f113.test.
+   @192.0.3.117 SOA r6f113.test: status: NOERROR flags: qr aa  | A r6shop113.test: 192.0.3.116 | MX r6f113.test: 10 mail.r6f113.test.
+-- site
+--- http://r6shop113.test/
+code=301 redirect=https://r6shop113.test/ ssl_verify=0
+--- https://r6shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+body: 3082 bytes, title: <title>r6shop113.test
+software words in body: [CelikPanel ]
+--- http://www.r6shop113.test/
+code=301 redirect=https://www.r6shop113.test/ ssl_verify=0
+--- https://www.r6shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+body: 3082 bytes, title: <title>r6shop113.test
+software words in body: [CelikPanel ]
+--- certificate served on r6shop113.test:443
+--- https://r6shop113.test/hello.php
+code=200
+server: nginx
+x-powered-by present: 0
+body: php-ok 5
+--- http://r6shop113.test/hello.php (redirect?)
+code=301 location=https://r6shop113.test/hello.php
+-- mail
+   smtp 587 send: {'ok': True, 'refused': {}} | cert ['mail.r6f113.test']
+   imaps 993 read: {'after_seconds': 13.5, 'headers': 'From: alice@r6shop113.test\r\nTo: bob@r6shop113.test\r\nSubject: final-alpha113 ab0b3e315c5d'} | cert ['mail.r6f113.test'] |  
+   delivered to bob's maildir (files in new+cur): 5
+== panel off on main (panel+agent stopped and disabled, reboot) 03:12:04
+Removed '/etc/systemd/system/multi-user.target.wants/celikpanel-agent.service'.
+Removed '/etc/systemd/system/multi-user.target.wants/celikpanel-panel.service'.
+inactive inactive
+main rebooted in 32.3 s
+listeners on 2083: 0
+inactive inactive active active active active active active
+== health [panel-off] 03:14:08
+-- main units/timers
+inactive inactive active active active active active
+disabled disabled
+  php8.4-fpm.service loaded active running The PHP 8.4 FastC
+Sat 2026-10-31 13:57:09 UTC 10h Sat 2026-10-31 03:01:04 UTC - certbot.timer certbot.service
+enabled not-found
+2026-10-31 03:12:26
+31362879-dc51-491c-88cd-97c8fd6c061f
+-- backup units/timers
+active active active active active inactive inactive
+enabled enabled
+  php8.3-fpm.service loaded active running The PHP 8.3 FastC
+Sat 2026-10-31 18:18:00 UTC 15h Sat 2026-10-31 03:01:26 UTC - certbot.timer certbot.service
+enabled not-found
+2026-10-31 03:09:19
+78365ff9-b49e-43ff-8840-a948a9339b36
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-verify=succeeded
+-- DNS answers
+   @192.0.3.116 SOA r6f113.test: status: NOERROR flags: qr aa  | A r6shop113.test: 192.0.3.116 | MX r6f113.test: 10 mail.r6f113.test.
+   @192.0.3.117 SOA r6f113.test: status: NOERROR flags: qr aa  | A r6shop113.test: 192.0.3.116 | MX r6f113.test: 10 mail.r6f113.test.
+-- site
+--- http://r6shop113.test/
+code=301 redirect=https://r6shop113.test/ ssl_verify=0
+--- https://r6shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+body: 3082 bytes, title: <title>r6shop113.test
+software words in body: [CelikPanel ]
+--- http://www.r6shop113.test/
+code=301 redirect=https://www.r6shop113.test/ ssl_verify=0
+--- https://www.r6shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+body: 3082 bytes, title: <title>r6shop113.test
+software words in body: [CelikPanel ]
+--- certificate served on r6shop113.test:443
+--- https://r6shop113.test/hello.php
+code=200
+server: nginx
+x-powered-by present: 0
+body: php-ok 5
+--- http://r6shop113.test/hello.php (redirect?)
+code=301 location=https://r6shop113.test/hello.php
+-- mail
+   smtp 587 send: {'ok': True, 'refused': {}} | cert ['mail.r6f113.test']
+   imaps 993 read: {'after_seconds': 13.3, 'headers': 'From: alice@r6shop113.test\r\nTo: bob@r6shop113.test\r\nSubject: final-alpha113 90cf93102c95'} | cert ['mail.r6f113.test'] |  
+   delivered to bob's maildir (files in new+cur): 7
+Created symlink '/etc/systemd/system/multi-user.target.wants/celikpanel-agent.service' → '/etc/systemd/system/celikpanel-agent.service'.
+Created symlink '/etc/systemd/system/multi-user.target.wants/celikpanel-panel.service' → '/etc/systemd/system/celikpanel-panel.service'.
+active active
+== site delete r6shop113.test 03:15:20
+   before @192.0.3.116: SOA status: NOERROR flags: qr aa  | TXT celik._domainkey '"v=DKIM1; k=rsa; p=MIIBIjANBgk'
+   before @192.0.3.117: SOA status: NOERROR flags: qr aa  | TXT celik._domainkey '"v=DKIM1; k=rsa; p=MIIBIjANBgk'
+   +0s status: 204 
+   +2s status: 200 deletion_pending running This deletion is running now and is checked automatically. Nobody needs to do anything: check again in a minute. Only if the automatic checks end without confir
+   DELETE answered after 36s: 200 {  "domain": "r6shop113.test",  "status": "deleted" }
+   after @192.0.3.116: SOA status: REFUSED flags: qr  | TXT celik._domainkey ''
+   after @192.0.3.117: SOA status: REFUSED flags: qr  | TXT celik._domainkey ''
+   domains list names it: no
+keytable lines for r6shop113.test: 0
+signingtable lines for r6shop113.test: 0
+2026-10-31T03:15:35+00:00 frankfurt agent[1355]: 2026/10/31 03:15:35 DNS peer proof admitted the PowerDNS daemon's re-stamp of catalog catalog-c0000374.celikpanel.invalid (operation zone r6shop113.test): serial 1793416185 -> 1793416535, CATALOG-HASH Gy2RUvIwy6NZ... -> /6ZXM0Yc9Zb
+2026-10-31T03:15:39+00:00 frankfurt agent[1355]: 2026/10/31 03:15:39 DNS peer proof for r6shop113.test (PowerDNS secondary) step times: prepare=1.366s challenge_write=5.451s; total 6.817s; outcome challenge superseded before its exchange (catalog re-stamped; the wave proves the p
+2026-10-31T03:15:53+00:00 frankfurt agent[1355]: 2026/10/31 03:15:53 DNS peer inspector answer for r6shop113.test (PowerDNS secondary): catalog_state=transferred member_state=absent native_state=unloaded; accepted
+2026-10-31T03:15:54+00:00 frankfurt agent[1355]: 2026/10/31 03:15:54 DNS peer proof for r6shop113.test (PowerDNS secondary) step times: prepare=1.471s challenge_write=5.552s exchange=624ms post_inspection=2.744s consume=5.135s; total 15.526s; outcome verified
+   backup inspector's own journal (journalctl -t celikpanel-pdns-peer-inspect) for this deletion:
+-- No entries --
+== one more site create + delete, no reboot: r6extra113.test 03:16:04
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/3/public_html", "Domain": "r6extra113.test", "DomainID": 3, "FTPPassword": "[REDACTED]", "FTPUser": "r6extra113_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 3, "TempDomain": ""}
+   extra site id 3
+   ok 192.0.3.116 r6extra113.test A = '192.0.3.116' after 0s
+   ok 192.0.3.117 r6extra113.test A = '192.0.3.116' after 0s
+200 {"status": "success", "expires_at": "2031-10-31T03:16:13Z"}
+   before @192.0.3.116: SOA status: NOERROR flags: qr aa  | TXT celik._domainkey '"v=DKIM1; k=rsa; p=MIIBIjANBgk'
+   before @192.0.3.117: SOA status: NOERROR flags: qr aa  | TXT celik._domainkey '"v=DKIM1; k=rsa; p=MIIBIjANBgk'
+   +0s status: 204 
+   +2s status: 200 deletion_pending running This deletion is running now and is checked automatically. Nobody needs to do anything: check again in a minute. Only if the automatic checks end without confir
+   DELETE answered after 26s: 200 {  "domain": "r6extra113.test",  "status": "deleted" }
+   after @192.0.3.116: SOA status: REFUSED flags: qr  | TXT celik._domainkey ''
+   after @192.0.3.117: SOA status: REFUSED flags: qr  | TXT celik._domainkey ''
+   domains list names it: no
+keytable lines for r6extra113.test: 0
+signingtable lines for r6extra113.test: 0
+2026-10-31T03:16:48+00:00 frankfurt agent[1355]: 2026/10/31 03:16:48 DNS peer inspector answer for r6extra113.test (PowerDNS secondary): catalog_state=transferred member_state=absent native_state=unloaded; accepted
+2026-10-31T03:16:49+00:00 frankfurt agent[1355]: 2026/10/31 03:16:49 DNS peer proof for r6extra113.test (PowerDNS secondary) step times: prepare=1.016s challenge_write=4.034s exchange=366ms post_inspection=2.031s consume=5.146s; total 12.593s; outcome verified
+   backup inspector's own journal (journalctl -t celikpanel-pdns-peer-inspect) for this deletion:
+-- No entries --
+== journals, every boot 03:16:59
+== frankfurt: boots 4
+   [milter service|Milter.*(not found|refused|cannot)]: 0
+   [FQDN]: 0
+   [fail-closed|ambiguous|agent_mutations_held|refusing durable]: 0
+   [FOREIGN KEY]: 0
+   [unsupported map type: lmdb]: 0
+   [can.t lock|cannot lock|could not lock]: 0
+   [panel 500]: 0
+   err-priority lines of celikpanel units: 0
+   [systemd is not ready]: 1
+2026-10-31T03:09:43+00:00 frankfurt panel[839]: 2026/10/31 03:09:43 startup: this server is still starting (its system manager, systemd, does not report it ready yet), so the Panel's startup reconciliation (site configuration files, certifi
+   [held_by= / server_setup_host_busy]: 0
+   per boot: boot start | panel starts | 'Stopping celikpanel-panel' | wait line | finished line | timeout lines
+   boot -2: 02:59:13 | starts 3 | stopping 3 | wait - | - | timeout 0
+   boot -1: 03:09:38 | starts 1 | stopping 1 | wait 03:09:43 | 03:09:46 finished starting after 3s | timeout 0
+   boot 0: 03:12:29 | starts 1 | stopping 0 | wait - | - | timeout 0
+   failed units: []
+== boston: boots 3
+   [milter service|Milter.*(not found|refused|cannot)]: 0
+   [FQDN]: 0
+   [fail-closed|ambiguous|agent_mutations_held|refusing durable]: 0
+   [FOREIGN KEY]: 0
+   [unsupported map type: lmdb]: 0
+   [can.t lock|cannot lock|could not lock]: 0
+   [panel 500]: 0
+   err-priority lines of celikpanel units: 1
+2026-10-31T03:01:48+00:00 boston mariadb-server.postinst[14462]: 2026-10-31  3:01:48 0 [Warning] You need to use --log-bin to make --expire-logs-days or --binlog-expire-logs-seconds work.
+   [systemd is not ready]: 1
+2026-10-31T03:09:28+00:00 boston panel[853]: 2026/10/31 03:09:28 startup: this server is still starting (its system manager, systemd, does not report it ready yet), so the Panel's startup reconciliation (site configuration files, certificat
+   [held_by= / server_setup_host_busy]: 0
+   per boot: boot start | panel starts | 'Stopping celikpanel-panel' | wait line | finished line | timeout lines
+   boot -1: 02:59:13 | starts 3 | stopping 3 | wait - | - | timeout 0
+   boot 0: 03:09:23 | starts 1 | stopping 0 | wait 03:09:28 | 03:09:29 finished starting after 1s | timeout 0
+   failed units: []
+== after done 03:17:01

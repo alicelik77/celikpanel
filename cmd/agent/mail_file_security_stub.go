@@ -15,6 +15,10 @@ func secureChmodMailFile(path string, _ os.FileMode) error {
 	return fmt.Errorf("secure mail-map access is unavailable on this operating system: %s", path)
 }
 
+func secureTightenDKIMKey(path string, _ int) error {
+	return fmt.Errorf("secure mail-map access is unavailable on this operating system: %s", path)
+}
+
 func secureSetMailFileMetadata(path string, _ os.FileMode, _, _ int) error {
 	return fmt.Errorf("secure mail-map access is unavailable on this operating system: %s", path)
 }

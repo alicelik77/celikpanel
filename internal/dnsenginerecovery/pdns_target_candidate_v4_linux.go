@@ -39,14 +39,17 @@ func VerifyPDNSTargetLiveV4(proof dnsengineartifact.PDNSTargetCandidateProofV4, 
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("inspect renamed PowerDNS candidate: %w", err)
 	}
-	if _, err := observePDNSTargetDirectory(proof.Path, true); err != nil {
+	privateDir, err := observePDNSTargetDirectory(proof.Path, true)
+	if err != nil {
 		return err
 	}
 	liveDir, err := observePDNSTargetDirectory(livePath, false)
 	if err != nil {
 		return err
 	}
-	if uint64(liveDir.Dev) != proof.Device {
+	// Same filesystem now, never the sealed device number (btrfs renumbers
+	// subvolume devices across boots; see SameCandidate).
+	if liveDir.Dev != privateDir.Dev {
 		return errors.New("PowerDNS target rename crosses a filesystem")
 	}
 	actual, err := probePDNSTargetFileV4(livePath, false, nil)
@@ -54,7 +57,7 @@ func VerifyPDNSTargetLiveV4(proof dnsengineartifact.PDNSTargetCandidateProofV4, 
 		return err
 	}
 	actual.Path = proof.Path // Only the journal-authorized rename may change the name.
-	if actual != proof {
+	if !proof.SameCandidate(actual) {
 		return errors.New("PowerDNS live database differs from the frozen candidate")
 	}
 	return nil
@@ -272,14 +275,14 @@ func removeExactStagedPDNSTargetFileV4(
 	if err != nil {
 		return err
 	}
-	if err := exactPDNSTargetCandidateStatV4(candidate, proof); err != nil {
+	if err := exactPDNSTargetCandidateStatV4(candidate, uint64(held.Dev), proof); err != nil {
 		return err
 	}
 	actual, err := CapturePDNSTargetCandidateV4(proof.Path)
 	if err != nil {
 		return err
 	}
-	if actual != proof {
+	if !proof.SameCandidate(actual) {
 		return errors.New("PowerDNS candidate differs from frozen journal before removal")
 	}
 	if err := guard(); err != nil {
@@ -292,7 +295,7 @@ func removeExactStagedPDNSTargetFileV4(
 	if err != nil {
 		return err
 	}
-	if actual != proof {
+	if !proof.SameCandidate(actual) {
 		return errors.New("PowerDNS candidate was owner-modified before removal")
 	}
 	observed, err = observePDNSTargetDirectory(proof.Path, true)
@@ -306,7 +309,7 @@ func removeExactStagedPDNSTargetFileV4(
 	if err := unix.Fstatat(fd, leaf, &candidate, unix.AT_SYMLINK_NOFOLLOW); err != nil {
 		return err
 	}
-	if err := exactPDNSTargetCandidateStatV4(candidate, proof); err != nil {
+	if err := exactPDNSTargetCandidateStatV4(candidate, uint64(held.Dev), proof); err != nil {
 		return err
 	}
 	if err := unix.Unlinkat(fd, leaf, 0); err != nil {
@@ -326,9 +329,12 @@ func removeExactStagedPDNSTargetFileV4(
 	return verifyPDNSTargetAbsentV4(livePath, false)
 }
 
-func exactPDNSTargetCandidateStatV4(stat unix.Stat_t, proof dnsengineartifact.PDNSTargetCandidateProofV4) error {
+// exactPDNSTargetCandidateStatV4 compares the file's metadata with the sealed
+// proof; its device must be that of the parent directory held now (the
+// sealed device number is not stable across boots on btrfs).
+func exactPDNSTargetCandidateStatV4(stat unix.Stat_t, parentDev uint64, proof dnsengineartifact.PDNSTargetCandidateProofV4) error {
 	if stat.Mode&unix.S_IFMT != unix.S_IFREG || stat.Nlink != 1 ||
-		uint64(stat.Dev) != proof.Device || stat.Ino != proof.Inode ||
+		uint64(stat.Dev) != parentDev || stat.Ino != proof.Inode ||
 		stat.Mode&0o7777 != proof.Mode || stat.Uid != proof.UID ||
 		stat.Gid != proof.GID || uint64(stat.Size) != proof.Size {
 		return errors.New("PowerDNS candidate inode or metadata differs from frozen journal")

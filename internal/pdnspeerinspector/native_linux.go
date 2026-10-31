@@ -40,7 +40,7 @@ func (n NativeReader) Read(ctx context.Context, r pdnspeerproof.RequestV1, p Own
 	}
 	show, err := run(ctx, "/usr/bin/systemctl", "show", "pdns.service", "-p", "ActiveState", "-p", "MainPID")
 	if err != nil {
-		return Snapshot{}, errors.New("PowerDNS service state unavailable")
+		return Snapshot{}, fmt.Errorf("PowerDNS service state unavailable: %w", err)
 	}
 	pid, err := parseServicePID(string(show))
 	if err != nil {
@@ -66,12 +66,17 @@ func (n NativeReader) Read(ctx context.Context, r pdnspeerproof.RequestV1, p Own
 	}
 	listeners, err := run(ctx, "/usr/bin/ss", "-H", "-lnupt", "( sport = :53 )")
 	if err != nil {
-		return Snapshot{}, errors.New("PowerDNS listeners unavailable")
+		return Snapshot{}, fmt.Errorf("PowerDNS listeners unavailable: %w", err)
 	}
 	identities, err := dnslistener.CanonicalPublicListeners(string(listeners), "pdns_server", pid)
-	if err != nil || !dnslistener.HasIPv4Listener(identities, r.PeerIP, pid) ||
-		(shape.requiresLoopbackListeners() && !hasLoopbackListeners(string(listeners), pid)) {
-		return Snapshot{}, errors.New("PowerDNS listeners do not match service")
+	if err != nil {
+		return Snapshot{}, fmt.Errorf("PowerDNS listeners do not match service: %w", err)
+	}
+	if !dnslistener.HasIPv4Listener(identities, r.PeerIP, pid) {
+		return Snapshot{}, errors.New("PowerDNS listeners do not match service: no listener of the service on the enrolled address")
+	}
+	if shape.requiresLoopbackListeners() && !hasLoopbackListeners(string(listeners), pid) {
+		return Snapshot{}, errors.New("PowerDNS listeners do not match service: loopback listeners missing")
 	}
 	dbDev, dbIno, err := boundDatabase(pid, DatabasePath)
 	if err != nil {
@@ -98,8 +103,8 @@ func (n NativeReader) Read(ctx context.Context, r pdnspeerproof.RequestV1, p Own
 	}
 	_, zoneInDaemon := zones[r.DeletedZone]
 	state := classifyAuthenticatedControlZone(zoneInDB, zoneInDaemon)
-	if !controlSocketMatches(pid, socketPath, socketInode) {
-		return Snapshot{}, errors.New("PowerDNS control socket changed")
+	if err := controlSocketCheck(pid, socketPath, socketInode); err != nil {
+		return Snapshot{}, fmt.Errorf("PowerDNS control socket changed: %w", err)
 	}
 	afterDev, afterIno, err := boundDatabase(pid, DatabasePath)
 	if err != nil || afterDev != dbDev || afterIno != dbIno {
@@ -236,8 +241,11 @@ func boundDatabase(pid uint64, path string) (uint64, uint64, error) {
 		return 0, 0, errors.New("PowerDNS database identity unavailable")
 	}
 	found, err := processHasDatabaseInode(pid, path, uint64(info.Dev), info.Ino)
-	if err != nil || !found {
-		return 0, 0, errors.New("PowerDNS process database inode differs")
+	if err != nil {
+		return 0, 0, fmt.Errorf("PowerDNS process database inode differs: %w", err)
+	}
+	if !found {
+		return 0, 0, errors.New("PowerDNS process database inode differs: no daemon descriptor holds the database")
 	}
 	return uint64(info.Dev), info.Ino, nil
 }
@@ -289,8 +297,20 @@ func findControlSocket(pid uint64) (string, string, error) {
 	return found, foundInode, nil
 }
 func controlSocketMatches(pid uint64, path, wantInode string) bool {
+	return controlSocketCheck(pid, path, wantInode) == nil
+}
+
+// controlSocketCheck is controlSocketMatches with the reason a check failed,
+// for the inspector host's own log (no address or peer data).
+func controlSocketCheck(pid uint64, path, wantInode string) error {
 	inode, err := ownedControlSocketInode(pid, path)
-	return err == nil && inode == wantInode
+	if err != nil {
+		return err
+	}
+	if inode != wantInode {
+		return errors.New("PowerDNS control listener inode differs from the one read before")
+	}
+	return nil
 }
 func ownedControlSocketInode(pid uint64, path string) (string, error) {
 	data, err := os.ReadFile("/proc/net/unix")
@@ -369,8 +389,8 @@ func verifyControlProcess(pid, startTicks uint64, exe, path, listenerInode strin
 	if err != nil || actualTicks != startTicks {
 		return errors.New("PowerDNS control process changed")
 	}
-	if !controlSocketMatches(pid, path, listenerInode) {
-		return errors.New("PowerDNS control listener changed")
+	if err := controlSocketCheck(pid, path, listenerInode); err != nil {
+		return fmt.Errorf("PowerDNS control listener changed: %w", err)
 	}
 	return nil
 }
@@ -379,6 +399,16 @@ func verifyControlProcess(pid, startTicks uint64, exe, path, listenerInode strin
 // control exchange is in flight. Only the listening socket has SO_ACCEPTCON
 // (Flags 00010000), stream Type 0001, and unconnected St 01. Ambiguous or
 // unfamiliar listener rows never establish a daemon-owned control endpoint.
+//
+// A connection the daemon has not accepted yet (the inspector's own, checked
+// between connect and the command) is listed under the same pathname with
+// Flags 00000000, Type 0001 and St 02: the kernel prints SS_CONNECTING for an
+// established socket that has no user socket yet, and SS_DISCONNECTING (St
+// 04) for one whose user socket is already gone. Final alpha.113 acceptance
+// run 4 (D9): such a row made the read fail as an unknown framing, so a
+// slow accept by the daemon failed the first inspection after a catalog
+// change. Neither row can be taken for the listener (no SO_ACCEPTCON, not
+// St 01), so both are ignored like an accepted connection.
 func listeningUnixSocketInode(raw, path string) (string, error) {
 	var inode string
 	for _, line := range strings.Split(raw, "\n") {
@@ -387,10 +417,15 @@ func listeningUnixSocketInode(raw, path string) (string, error) {
 			continue
 		}
 		if fields[3] != "00010000" || fields[4] != "0001" || fields[5] != "01" {
-			// An accepted connection has Flags 00000000 and St 03.
-			// Any other row for this path is unreviewed.
-			if fields[3] != "00000000" || fields[4] != "0001" || fields[5] != "03" {
-				return "", errors.New("PowerDNS control socket framing unknown")
+			// A connection row (accepted St 03, not yet accepted St 02,
+			// closing St 04) has Flags 00000000. Any other row for this
+			// path is unreviewed.
+			if fields[3] != "00000000" || fields[4] != "0001" ||
+				(fields[5] != "02" && fields[5] != "03" && fields[5] != "04") {
+				// The kernel's flag, type and state columns (no address or
+				// peer data) name the row for the host's own log.
+				return "", fmt.Errorf("PowerDNS control socket framing unknown (row flags %.8s type %.4s state %.2s)",
+					fields[3], fields[4], fields[5])
 			}
 			continue
 		}
@@ -454,39 +489,51 @@ func nativePDNSCatalogLabel(label string) bool {
 }
 
 func readCatalogDatabase(ctx context.Context, path string, dev, ino uint64, r pdnspeerproof.RequestV1, p OwnerPolicyV1) (uint32, []string, bool, error) {
+	// Each failure names its step; a wrapped error is the local SQLite or
+	// system error (for example "database is locked"), never a row's content.
 	db, err := sql.Open("sqlite", "file:"+path+"?mode=ro")
 	if err != nil {
-		return 0, nil, false, err
+		return 0, nil, false, fmt.Errorf("PowerDNS SQLite open: %w", err)
 	}
 	defer db.Close()
 	db.SetMaxOpenConns(1)
 	conn, err := db.Conn(ctx)
 	if err != nil {
-		return 0, nil, false, err
+		return 0, nil, false, fmt.Errorf("PowerDNS SQLite connection: %w", err)
 	}
 	defer conn.Close()
 	var health string
-	if err := conn.QueryRowContext(ctx, "PRAGMA quick_check").Scan(&health); err != nil || health != "ok" {
-		return 0, nil, false, errors.New("PowerDNS SQLite integrity unverified")
+	if err := conn.QueryRowContext(ctx, "PRAGMA quick_check").Scan(&health); err != nil {
+		return 0, nil, false, fmt.Errorf("PowerDNS SQLite integrity unverified: %w", err)
+	}
+	if health != "ok" {
+		return 0, nil, false, errors.New("PowerDNS SQLite integrity unverified: quick_check did not answer ok")
 	}
 	if err := selfSQLiteConnectionBound(path, dev, ino); err != nil {
 		return 0, nil, false, err
 	}
 	tx, err := conn.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
 	if err != nil {
-		return 0, nil, false, err
+		return 0, nil, false, fmt.Errorf("PowerDNS SQLite read transaction: %w", err)
 	}
 	defer tx.Rollback()
 	var countCatalog int
-	if err := tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM domains WHERE name=?", r.CatalogName).Scan(&countCatalog); err != nil || countCatalog != 1 {
-		return 0, nil, false, errors.New("PowerDNS catalog row is not unique")
+	if err := tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM domains WHERE name=?", r.CatalogName).Scan(&countCatalog); err != nil {
+		return 0, nil, false, fmt.Errorf("PowerDNS catalog row lookup: %w", err)
+	}
+	if countCatalog != 1 {
+		return 0, nil, false, fmt.Errorf("PowerDNS catalog row is not unique (%d rows)", countCatalog)
 	}
 	var id int64
 	var name, kind, master, account string
 	var catalog sql.NullString
 	err = tx.QueryRowContext(ctx, "SELECT id,name,type,master,account,catalog FROM domains WHERE name=?", r.CatalogName).Scan(&id, &name, &kind, &master, &account, &catalog)
-	if err != nil || id <= 0 || name != r.CatalogName || kind != "CONSUMER" || master != r.PrimaryIP || account != p.CatalogAccount || catalog.Valid {
-		return 0, nil, false, errors.New("PowerDNS catalog CONSUMER identity differs")
+	if err != nil {
+		return 0, nil, false, fmt.Errorf("PowerDNS catalog CONSUMER identity unreadable: %w", err)
+	}
+	if id <= 0 || name != r.CatalogName || kind != "CONSUMER" || master != r.PrimaryIP || account != p.CatalogAccount || catalog.Valid {
+		return 0, nil, false, fmt.Errorf("PowerDNS catalog CONSUMER identity differs (type %.16q, primary matches %t, account matches %t, member of a catalog %t)",
+			kind, master == r.PrimaryIP, account == p.CatalogAccount, catalog.Valid)
 	}
 	var serial uint32
 	var members []string
@@ -497,9 +544,14 @@ func readCatalogDatabase(ctx context.Context, path string, dev, ino uint64, r pd
 	// of the two is accepted, consistently for every version and member row.
 	metadataTTL := int64(-2)
 	seenLabels := map[string]bool{}
-	rows, err := tx.QueryContext(ctx, "SELECT name,type,content,COALESCE(ttl,-1) FROM records WHERE domain_id=? ORDER BY name,type,content", id)
+	// PowerDNS stores the catalog's empty non-terminal "zones.<catalog>" as a
+	// row whose type, content and ttl are NULL (native lab 2026-10-30: every
+	// consumed catalog with a member has it). It is read as "" and accepted
+	// only under that exact name (default case below); any other NULL-typed
+	// row is still refused there.
+	rows, err := tx.QueryContext(ctx, "SELECT name,COALESCE(type,''),COALESCE(content,''),COALESCE(ttl,-1) FROM records WHERE domain_id=? ORDER BY name,type,content", id)
 	if err != nil {
-		return 0, nil, false, err
+		return 0, nil, false, fmt.Errorf("PowerDNS catalog records query: %w", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
@@ -559,12 +611,16 @@ func readCatalogDatabase(ctx context.Context, path string, dev, ino uint64, r pd
 			members = append(members, member)
 		default:
 			if name != "zones."+r.CatalogName || typ != "" || content != "" {
-				return 0, nil, false, errors.New("PowerDNS catalog record unsupported")
+				// Owner name and type only: catalog names are not secret.
+				return 0, nil, false, fmt.Errorf("PowerDNS catalog record unsupported (owner %.120q type %.12q)", name, typ)
 			}
 		}
 	}
-	if rows.Err() != nil || soa != 1 || ns != 1 || version != 1 {
-		return 0, nil, false, errors.New("PowerDNS catalog incomplete")
+	if err := rows.Err(); err != nil {
+		return 0, nil, false, fmt.Errorf("PowerDNS catalog records read: %w", err)
+	}
+	if soa != 1 || ns != 1 || version != 1 {
+		return 0, nil, false, fmt.Errorf("PowerDNS catalog incomplete (SOA %d, NS %d, version %d)", soa, ns, version)
 	}
 	sort.Strings(members)
 	for i := 1; i < len(members); i++ {
@@ -574,8 +630,11 @@ func readCatalogDatabase(ctx context.Context, path string, dev, ino uint64, r pd
 	}
 	var count int
 	err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM domains WHERE name=?", r.DeletedZone).Scan(&count)
-	if err != nil || count < 0 || count > 1 {
-		return 0, nil, false, errors.New("PowerDNS member lookup unavailable")
+	if err != nil {
+		return 0, nil, false, fmt.Errorf("PowerDNS member lookup unavailable: %w", err)
+	}
+	if count < 0 || count > 1 {
+		return 0, nil, false, fmt.Errorf("PowerDNS member lookup unavailable (%d rows)", count)
 	}
 	if err := selfSQLiteConnectionBound(path, dev, ino); err != nil {
 		return 0, nil, false, err

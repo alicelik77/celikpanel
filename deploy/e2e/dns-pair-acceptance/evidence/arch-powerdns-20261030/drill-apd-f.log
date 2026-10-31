@@ -1,0 +1,46 @@
+== drill f state 09:36:57
+-- cut record
+09:35:56.368041528
+/etc/powerdns/pdns.d:
+total 8
+drwxr-xr-x 1 root root  76 Oct 30 09:35 .
+drwxr-xr-x 1 root root  70 Oct 30 09:35 ..
+-rw-r--r-- 1 root root 310 Oct 30 09:35 celikpanel-cluster.conf
+-rw-r--r-- 1 root root 206 Oct 30 09:35 celikpanel.conf
+
+/var/lib/celikpanel-agent-private:
+total 80
+drwx------ 1 root celikpanel   180 Oct 30 09:35 .
+drwxr-xr-x 1 root root         530 Oct 30 09:35 ..
+-rw------- 1 root celikpanel   381 Oct 30 09:35 dns-engine-install-ownership-pdns.json
+-rw------- 1 root celikpanel 70579 Oct 30 09:35 dns-engine-switch-journal.json
+-rw------- 1 root celikpanel  2912 Oct 30 09:35 service-mutations.json
+
+/var/lib/powerdns:
+total 96
+drwxr-x--- 1 powerdns powerdns    24 Oct 30 09:35 .
+drwxr-xr-x 1 root     root       530 Oct 30 09:35 ..
+-rw-r----- 1 powerdns powerdns 98304 Oct 30 09:35 pdns.sqlite3
+LoadState=loaded
+ActiveState=inactive
+UnitFileState=enabled
+-- boots
+ -2 c6d4ce6dd3ac41a1bbdde9077c2acc11 Fri 2026-10-30 09:32:37 UTC Fri 2026-10-30 09:34:11 UTC
+ -1 73699840cdce4c3693fc32e81f2bbdac Fri 2026-10-30 09:34:16 UTC Fri 2026-10-30 09:35:56 UTC
+  0 5939e3b61b19408aabc1dcc612149f05 Fri 2026-10-30 09:36:00 UTC Fri 2026-10-30 09:36:57 UTC
+-- agent log (DNS switch, all boots)
+-- units
+LoadState=loaded
+ActiveState=active
+UnitFileState=enabled
+total 96
+drwx------ 1 root celikpanel   528 Oct 30 09:36 .
+drwxr-xr-x 1 root root         562 Oct 30 09:36 ..
+-rw------- 1 root celikpanel   733 Oct 30 09:36 dns-engine-ownership-pdns.json
+-rw------- 1 root celikpanel   729 Oct 30 09:36 dns-engine-state.json
+-rw------- 1 root celikpanel 70863 Oct 30 09:36 dns-engine-switch-v3-archive-41bc209c17e219ff74babc635a7cdb6e-84af3aea5a9ba4bac56617a05be5c7dfde3ccca311ef8b97d0ba08036da0ab46.json
+-rw------- 1 root celikpanel   431 Oct 30 09:36 firewall-apply-journal.json
+-rw------- 1 root root         583 Oct 30 09:36 panel-certificate-activation.json
+-rw------- 1 root celikpanel  7278 Oct 30 09:36 service-mutations.json
+"native_catalog":"pdns-fresh-paired-primary/arch-5.1/v1"
+No DNS switch journal was observed. This does not prove historical completion or current DNS health. The server owner should inspect the native DNS service and the panel's operation status before starting another switch.

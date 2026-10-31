@@ -661,6 +661,33 @@ func (p *Panel) runMailProfileInstall(
 	}
 	result["submission_configured"] = true
 
+	// DKIM signing belongs to a working mail service (30 Oct 2026): OpenDKIM
+	// is installed and wired here, so mail is signed without a first manual
+	// "Generate DKIM key", and every domain gets its key once the profile is
+	// done (queueAutomaticDKIMForAllDomains below). A failure here does not
+	// fail the profile (mail is delivered either way); it is kept in the
+	// result and every domain's card shows it through its automatic record.
+	// DKIM imzalama çalışan posta hizmetinin parçasıdır; hata profili
+	// düşürmez, sonuçta ve her alan adının kartında görünür.
+	if err := advance(mailProfilePhase(profile.ID, "dkim-signing")); err != nil {
+		return result, operationAdvanceFailure(err)
+	}
+	var signing transport.ConfigureDKIMSigningResponse
+	signingErr := p.callAgentContext(ctx, "Agent.ConfigureDKIMSigning", &mutationRequest, &signing)
+	switch {
+	case signingErr != nil:
+		result["dkim_signing"] = false
+		result["dkim_signing_error"] = dkimAutomaticLine(signingErr.Error())
+	case signing.Error != "" || !signing.Configured:
+		result["dkim_signing"] = false
+		result["dkim_signing_error"] = dkimAutomaticLine(signing.Error)
+	default:
+		result["dkim_signing"] = true
+	}
+	if result["dkim_signing"] == false {
+		log.Printf("[mail-profile] %s: DKIM signing was not configured: %v", profile.ID, result["dkim_signing_error"])
+	}
+
 	if err := advance(mailProfilePhase(profile.ID, "verifying")); err != nil {
 		return result, operationAdvanceFailure(err)
 	}
@@ -674,6 +701,10 @@ func (p *Panel) runMailProfileInstall(
 	if err := p.verifyMailProfileRuntimeProof(ctx, profile); err != nil {
 		return result, mailProfileInstallFailure(err)
 	}
+
+	// Existing domains now have mail here: their keys, signing and records
+	// follow in the background once this operation releases the host.
+	p.queueAutomaticDKIMForAllDomains(context.WithoutCancel(ctx))
 
 	result["success"] = true
 	return result, nil

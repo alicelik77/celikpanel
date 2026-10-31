@@ -258,6 +258,17 @@ func (p *Panel) syncZoneToDNSV3Locked(
 			if retry {
 				continue
 			}
+			if dnsPublicationRefusedBusy(callErr) {
+				// Refused at admission, proven not begun (settle read no job):
+				// the saved change is published by the reconciler once the
+				// host is free (dns_pending_publication.go), and the line
+				// names what held the host when the Agent said (run 5, D10).
+				// Meşgul reddi: kayıtlı değişiklik, sunucu boşalınca kendiliğinden yayımlanır.
+				log.Printf("dns V3 sync %s generation %d: %v (%s); the saved change is published by itself once the host is free",
+					domain, plan.Commitment.DesiredGeneration, callErr, hostMutationBusyLogDetail(callErr))
+				p.dnsPendingPublications().armRepublish()
+				return &dnsAgentPublicationError{Err: callErr}
+			}
 			log.Printf("dns V3 sync %s generation %d: %v",
 				domain, plan.Commitment.DesiredGeneration, callErr)
 			return &dnsAgentPublicationError{Err: callErr}
@@ -914,6 +925,19 @@ func (p *Panel) settleDNSZoneSyncV3CallError(
 		if err := validateDNSZoneSyncV3PendingJob(job, lease.identity()); err != nil {
 			return false, false, err
 		}
+		if code := dnsZoneV3PendingCodeFromJob(job); code == transport.DNSPeerPendingCatchingUp {
+			// The backup did not catch up within the Agent's whole wave:
+			// a second wave at once only doubles the wait (a lab run
+			// 2026-10-30 exceeded the request's budget and lost the
+			// reason). The exact operation stays pending with its reviewed
+			// reason; the reconciler re-checks it by itself
+			// (dns_pending_publication.go).
+			return false, false, &dnsAgentPublicationError{Err: fmt.Errorf(
+				"%w: %w",
+				errDNSZoneV3PropagationDeferred,
+				errors.Join(&dnsZoneV3PropagationPendingError{Code: code, Exact: true}, callErr),
+			)}
+		}
 		exact, recoverErr := p.recoverPendingDNSZoneV3(ctx, lease)
 		if recoverErr != nil {
 			return false, false, &dnsAgentPublicationError{Err: errors.Join(
@@ -946,7 +970,7 @@ func (p *Panel) reconcileDNSZoneEngineLease(
 		return false, errors.New("DNS V3 publication state contains an invalid durable lease")
 	}
 	identity := lease.identity()
-	job, err := p.statusAgentMutation(ctx, identity.RequestID)
+	job, hold, err := p.statusAgentMutationWithHold(ctx, identity.RequestID)
 	if err != nil {
 		return false, &dnsAgentPublicationError{Err: fmt.Errorf("read durable DNS V3 publication status: %w", err)}
 	}
@@ -960,6 +984,15 @@ func (p *Panel) reconcileDNSZoneEngineLease(
 		return false, err
 	}
 	if agentMutationActive(job.Status) {
+		if hold != "" {
+			// A held Agent never moves this job: it is not "in progress".
+			// The owner's Agent restart re-checks it at start (D-024).
+			// Tutulan Agent bu isi ilerletmez; "devam ediyor" degildir.
+			return false, &dnsAgentPublicationError{Err: errors.Join(
+				&agentMutationHeldError{Hold: hold},
+				errors.New("exact DNS V3 publication is frozen by the Agent hold"),
+			)}
+		}
 		if !waitActive {
 			return false, &dnsAgentPublicationError{Err: errors.New("DNS V3 publication is already in progress")}
 		}

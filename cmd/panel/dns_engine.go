@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/mutationpayload"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -36,6 +37,11 @@ const (
 	// detail code, and the DNS overview's sentence code with its
 	// "dns_overview_" prefix. Both screens word it from the same text.
 	dnsEngineOwnerChangedCode = "engine_owner_changed"
+
+	// dnsEngineSeriesUntestedCode: the active PowerDNS runs a release
+	// outside its tested series after the operating system's own update
+	// (Arch rolling, 2026-10-30). DNS keeps answering; DNS changes wait.
+	dnsEngineSeriesUntestedCode = "engine_series_untested"
 )
 
 type nullableDNSEngine struct {
@@ -135,6 +141,9 @@ type dnsEngineSnapshot struct {
 	// kapılar ondan türetilen kelimeyi değil olgunun kendisini okusun diye
 	// anlık görüntüde taşınır. R-050.
 	mutationHold string
+	// PendingPublications: exact publications waiting to complete, with the
+	// reviewed reason and the next automatic re-check (additive; at most 5).
+	PendingPublications []dnsPendingPublicationView `json:"pending_publications,omitempty"`
 }
 
 type dnsEnginePreviewBlocker struct {
@@ -340,13 +349,63 @@ func validateDNSBackendReadiness(
 func (p *Panel) readDNSBackendRuntime(
 	ctx context.Context,
 ) (map[transport.DNSEngine]transport.DNSBackendRuntimeState, bool, string, error) {
+	response, err := p.readDNSBackendReadinessResponse(ctx)
+	if err != nil {
+		return nil, false, "", err
+	}
+	return validateDNSBackendReadiness(response)
+}
+
+func (p *Panel) readDNSBackendReadinessResponse(
+	ctx context.Context,
+) (transport.DNSBackendReadinessResponse, error) {
 	var response transport.DNSBackendReadinessResponse
 	if err := p.callAgentContext(
 		ctx, "Agent.DNSBackendReadiness", &transport.Empty{}, &response,
 	); err != nil {
-		return nil, false, "", fmt.Errorf("read DNS backend readiness: %w", err)
+		return transport.DNSBackendReadinessResponse{}, fmt.Errorf("read DNS backend readiness: %w", err)
 	}
-	return validateDNSBackendReadiness(response)
+	return response, nil
+}
+
+// dnsSwitchJournalRetainedError: the Agent still keeps a DNS engine switch
+// journal (or cannot prove it has none). That operation was neither finished
+// nor confirmed undone, so no rollback may be recorded and no new DNS install
+// may start until the server owner resolves it (drill apd-e, 2026-10-30;
+// D-024 verified state, D-025 recovery). It unwraps to
+// errAgentMutationRecoveryRequired: startup keeps the switch attached and
+// operator-gated rather than degrading the panel.
+//
+// Agent hâlâ bir DNS değişim günlüğü tutuyor (ya da tutmadığını
+// kanıtlayamıyor): o işlem ne bitti ne de geri alındığı doğrulandı. Geri alma
+// kaydedilmez, yeni DNS kurulumu başlatılmaz.
+type dnsSwitchJournalRetainedError struct {
+	RequestID  string
+	Unverified bool
+}
+
+func (e *dnsSwitchJournalRetainedError) Error() string {
+	if e.Unverified {
+		return "the Agent could not prove that no DNS switch journal is retained"
+	}
+	return "the Agent keeps the DNS switch journal of request " + e.RequestID
+}
+
+func (e *dnsSwitchJournalRetainedError) Unwrap() error { return errAgentMutationRecoveryRequired }
+
+// retainedDNSSwitchJournal reads the Agent's journal observation from one
+// readiness answer. Read only; an older Agent reports nothing.
+func retainedDNSSwitchJournal(response transport.DNSBackendReadinessResponse) *dnsSwitchJournalRetainedError {
+	if response.SwitchJournalUnverified {
+		return &dnsSwitchJournalRetainedError{Unverified: true}
+	}
+	if response.SwitchJournalRequestID == "" {
+		return nil
+	}
+	if !validServiceOperationID(response.SwitchJournalRequestID) {
+		return &dnsSwitchJournalRetainedError{Unverified: true}
+	}
+	return &dnsSwitchJournalRetainedError{RequestID: response.SwitchJournalRequestID}
 }
 
 func (p *Panel) dnsEngineTopology(ctx context.Context) string {
@@ -534,6 +593,11 @@ func deriveDNSEnginePresentation(
 			entry.DetailCode = "port_53_conflict"
 		case state.ActiveEngine == id && runtime.Installed && runtime.Running && runtime.Managed:
 			entry.Status = "active"
+			if runtime.UntestedVersion != "" && mutationHold == "" {
+				// The system's own update moved PowerDNS outside its tested
+				// series: it serves, the panel holds changes and says so.
+				entry.DetailCode = dnsEngineSeriesUntestedCode
+			}
 		case state.ActiveEngine == id && runtime.Running && runtime.OwnerChanged && mutationHold == "":
 			// The owner changed the published files: a notice with the
 			// owner's choice, not a foreign DNS server and not an alarm.
@@ -596,6 +660,10 @@ func (p *Panel) dnsEngineSnapshot(ctx context.Context) (dnsEngineSnapshot, error
 	zoneCount, pendingCount, zones, err := p.dnsEngineZoneCounts(ctx)
 	if err != nil {
 		return dnsEngineSnapshot{}, fmt.Errorf("read DNS engine zone counts: %w", err)
+	}
+	pendingPublications, err := p.dnsPendingPublicationViews(ctx)
+	if err != nil {
+		return dnsEngineSnapshot{}, fmt.Errorf("read pending DNS publications: %w", err)
 	}
 	runtimes, port53Conflict, mutationHold, runtimeErr := p.readDNSBackendRuntime(ctx)
 	dnssecCount := 0
@@ -684,6 +752,8 @@ func (p *Panel) dnsEngineSnapshot(ctx context.Context) (dnsEngineSnapshot, error
 		dnssecErr:       dnssecErr,
 		pairIdentityErr: pairIdentityErr,
 		mutationHold:    mutationHold,
+
+		PendingPublications: pendingPublications,
 	}, nil
 }
 
@@ -1303,6 +1373,30 @@ const freshPairedPDNSPrimaryOffered = true
 // to exercise the open policy; production never changes it.
 var pdnsPairedPrimaryGateOpen = freshPairedPDNSPrimaryOffered
 
+// pdnsArchSetupOnlyBlocker mirrors the Agent's Arch admission
+// (pdnsPacmanSwitchAdmission, D-028 amendment 2026-10-30): on a pacman host
+// PowerDNS is offered only as a first install on a server with no DNS engine
+// (one server, or the paired primary or secondary). A reinstall or a
+// reconfiguration of PowerDNS on Arch is refused before any token with
+// pdns_arch_setup_only.
+func pdnsArchSetupOnlyBlocker(
+	host core.ManagedServiceHostProfile,
+	snapshot dnsEngineSnapshot,
+	target transport.DNSEngine,
+) string {
+	if host.PackageFamily != "pacman" || target != transport.DNSEnginePowerDNS {
+		return ""
+	}
+	action := dnsEngineAction(snapshot, target)
+	standalone := snapshot.Topology == transport.DNSTopologyStandalone && snapshot.PairRole == ""
+	paired := snapshot.Topology == transport.DNSTopologyPaired &&
+		(snapshot.PairRole == transport.DNSPairRolePrimary || snapshot.PairRole == transport.DNSPairRoleSecondary)
+	if action == "install" && snapshot.ActiveEngine == nil && snapshot.EngineEpoch == 0 && (standalone || paired) {
+		return ""
+	}
+	return "pdns_arch_setup_only"
+}
+
 // pdnsPairedPrimaryBlocker is the Panel's one policy for a PowerDNS install or
 // switch on a paired primary. applies reports whether the transition is one;
 // code is its blocker, or "" when it is offered.
@@ -1851,6 +1945,9 @@ func (p *Panel) makeDNSEnginePreview(
 	blockers := dnsEnginePreviewBlockers(
 		snapshot, request.TargetEngine, source, request.ExpectedRevision,
 	)
+	if code := pdnsArchSetupOnlyBlocker(p.managedServiceHostProfile(), snapshot, request.TargetEngine); code != "" {
+		blockers = addDNSEngineBlocker(blockers, code)
+	}
 	if operationBusy {
 		blockers = addDNSEngineBlocker(blockers, "operation_running")
 	}
@@ -3411,7 +3508,16 @@ func (p *Panel) verifyDNSEngineRollbackRuntime(
 	ctx context.Context,
 	persisted persistedDNSEngineSwitch,
 ) error {
-	runtimes, port53Conflict, _, err := p.readDNSBackendRuntime(ctx)
+	response, err := p.readDNSBackendReadinessResponse(ctx)
+	if err != nil {
+		return err
+	}
+	// A stopped engine is not an undone operation while the Agent keeps the
+	// switch journal: its undo stopped or was never decided (drill apd-e).
+	if retained := retainedDNSSwitchJournal(response); retained != nil {
+		return retained
+	}
+	runtimes, port53Conflict, _, err := validateDNSBackendReadiness(response)
 	if err != nil {
 		return err
 	}
@@ -3864,6 +3970,9 @@ func (p *Panel) writeUnknownDNSEnginePreviewConflict(
 			snapshot, request.TargetEngine,
 			request.ExpectedSource.engine(), request.ExpectedRevision,
 		)
+		if code := pdnsArchSetupOnlyBlocker(p.managedServiceHostProfile(), snapshot, request.TargetEngine); code != "" {
+			blockers = addDNSEngineBlocker(blockers, code)
+		}
 		if len(blockers) != 0 {
 			codes := make([]string, 0, len(blockers))
 			for _, blocker := range blockers {
@@ -4005,6 +4114,9 @@ func (p *Panel) handleDNSEngineSwitch(
 		snapshot, request.TargetEngine, request.ExpectedSource.engine(),
 		request.ExpectedRevision,
 	)
+	if code := pdnsArchSetupOnlyBlocker(p.managedServiceHostProfile(), snapshot, request.TargetEngine); code != "" {
+		blockers = addDNSEngineBlocker(blockers, code)
+	}
 	if len(blockers) != 0 {
 		writeClientError(w, http.StatusConflict,
 			"DNS engine state changed or is not safe to switch")

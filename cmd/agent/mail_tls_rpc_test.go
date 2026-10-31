@@ -204,7 +204,8 @@ func TestReconcileMailTLSRejectsUnsupportedSNIMapBeforeSnapshot(t *testing.T) {
 	if !strings.Contains(response.Error, "no usable indexed table type") {
 		t.Fatalf("unsupported map response = %#v", response)
 	}
-	if got := strings.Join(commands, ","); got != "dovecot,postmap,postmap,postmap" {
+	// postconf -m answers nothing here, so every indexed type is tried.
+	if got := strings.Join(commands, ","); got != "dovecot,postconf,postmap,postmap,postmap" {
 		t.Fatalf("commands before unsupported-map refusal = %q", got)
 	}
 }

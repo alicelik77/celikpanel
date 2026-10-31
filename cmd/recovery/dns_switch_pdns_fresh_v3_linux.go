@@ -56,7 +56,7 @@ func assessInstalledFreshPrimaryV3(ctx context.Context, policy dnsengineartifact
 		!freshPDNSRecoveryTargetLoadV3(units[2], j.TargetUnitsBefore[0]) {
 		return unknown, errors.New("v3 native DNS unit topology differs from the frozen fresh target")
 	}
-	pdnsGID, err := localServiceGroupID("/etc/group", "pdns")
+	pdnsGID, err := localServiceGroupID("/etc/group", installedPDNSServiceGroup())
 	if err != nil {
 		return unknown, err
 	}
@@ -155,7 +155,7 @@ func assessInstalledFreshPrimaryV3(ctx context.Context, policy dnsengineartifact
 			proof := *j.PDNSFreshPlan.Candidate
 			if freshPDNSAllAbsentV3(policy.PDNSDatabasePath, policy.PDNSDatabasePath+"-wal", policy.PDNSDatabasePath+"-shm", policy.PDNSDatabasePath+"-journal") {
 				actual, err := dnsenginerecovery.CapturePDNSTargetCandidateV4(proof.Path)
-				if err != nil || actual != proof {
+				if err != nil || !proof.SameCandidate(actual) {
 					return unknown, errors.Join(errors.New("v3 staged candidate changed"), err)
 				}
 				shape = freshPDNSRecoveryStagedV3

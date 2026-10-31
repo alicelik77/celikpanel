@@ -1,0 +1,32 @@
+22:38:51 204 None None None | 
+22:38:52 204 None None None | 
+22:38:54 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:38:55 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:38:56 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:38:57 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:38:59 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:39:00 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:39:01 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:39:02 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:39:03 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:39:05 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:39:06 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:39:07 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:39:08 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:39:10 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:39:11 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:39:12 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:39:13 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:39:14 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:39:15 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:39:17 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:39:18 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:39:19 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:39:20 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:39:21 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:39:23 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:39:24 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:39:25 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:39:27 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:39:28 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked
+22:39:29 200 deletion_pending running deletion_running | This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked

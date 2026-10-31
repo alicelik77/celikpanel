@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { ShieldCheck, KeyRound, FileCheck2, Copy, Plus, Info, type LucideIcon } from 'lucide-react';
+import { ShieldCheck, KeyRound, FileCheck2, Copy, Plus, Info, RefreshCw, type LucideIcon } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Button, RemoteGate, ResultUnknown, StatusDot, inputClass } from './ui';
-import { useRemote } from '../lib/remote';
+import { useRefreshEvery, useRemote } from '../lib/remote';
 import { useLostAnswer, type LostAnswerHandle } from '../lib/lostAnswer';
+import { apiErrorText, readApiError } from '../lib/apiError';
 
 interface AuthRecord {
     name: string;
@@ -13,7 +14,9 @@ interface AuthRecord {
     zone_value: string;
     dns_value: string;
     resolved: boolean;
-    status: 'ok' | 'pending' | 'missing' | 'no_key';
+    /** served: in this server's zone and answered by its own DNS, while the
+     *  public lookup from this server could not read the name (run 4). */
+    status: 'ok' | 'served' | 'pending' | 'missing' | 'no_key';
 }
 
 interface AuthStatus {
@@ -26,6 +29,41 @@ interface AuthStatus {
     dmarc: AuthRecord;
     dkim_selector: string;
     signing_installed: boolean;
+    /** The key is in CelikPanel's OpenDKIM signing table. */
+    dkim_signed?: boolean;
+    /** A different DKIM record at this name is in the zone; it was kept. */
+    dkim_owner_record?: boolean;
+    /** The automatic DKIM work while it is not finished (30 Oct 2026). */
+    automatic?: AutomaticDKIM;
+}
+
+// What the automatic DKIM setup of this domain is doing or why it stopped.
+// The server sets it; a read of this card never starts it.
+// Bu alan adının otomatik DKIM kurulumunun durumu; okuma onu başlatmaz.
+interface AutomaticDKIM {
+    state: 'pending' | 'waiting' | 'blocked' | 'failed' | 'unknown';
+    reason?: string;
+    error_line?: string;
+}
+
+const automaticStates = ['pending', 'waiting', 'blocked', 'failed', 'unknown'];
+
+// One sentence per state and reason, each naming who acts and how work
+// resumes (D-024). A reason this screen does not know falls back to its
+// state's sentence.
+// Her durum ve neden için kimin ne yapacağını ve işin nasıl süreceğini
+// söyleyen tek cümle.
+function automaticText(auto: AutomaticDKIM): TranslationKey {
+    switch (auto.state) {
+    case 'pending': return 'mailauth.auto.pending';
+    case 'waiting': return 'mailauth.auto.waiting';
+    case 'unknown': return 'mailauth.auto.unknown';
+    case 'blocked': return 'mailauth.auto.dnsNotReady';
+    default:
+        if (auto.reason === 'key_failed') return 'mailauth.auto.keyFailed';
+        if (auto.reason === 'dns_publish_failed') return 'mailauth.auto.dnsFailed';
+        return 'mailauth.auto.signingFailed';
+    }
 }
 
 interface MailAuthPanelProps {
@@ -40,7 +78,7 @@ interface MailAuthPanelProps {
 // E-posta kimlik doğrulaması (yol haritası 3C): kayıt başına bir kart. Durum,
 // sunucu tarafında zone'dan VE canlı DNS sorgusundan türetilir; "doğrulandı"
 // demek dünyanın onu gerçekten görebildiği demektir — asla varsayım değil.
-const recordStates = ['ok', 'pending', 'missing', 'no_key'];
+const recordStates = ['ok', 'served', 'pending', 'missing', 'no_key'];
 
 function authRecord(value: unknown): AuthRecord {
     if (!value || typeof value !== 'object') throw new Error('record');
@@ -58,6 +96,10 @@ function decodeAuthStatus(raw: unknown): AuthStatus {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('shape');
     const body = raw as Record<string, unknown>;
     if (typeof body.signing_installed !== 'boolean') throw new Error('field');
+    if (body.automatic !== undefined) {
+        const auto = body.automatic as Record<string, unknown> | null;
+        if (!auto || typeof auto !== 'object' || typeof auto.state !== 'string' || !automaticStates.includes(auto.state)) throw new Error('automatic');
+    }
     authRecord(body.spf);
     authRecord(body.dkim);
     authRecord(body.dmarc);
@@ -75,6 +117,33 @@ export function MailAuthPanel({ domainId, readOnly = false }: MailAuthPanelProps
     // Kayıt yalnız sunucunun gönderdiği ve yeniden sorulmayan duruma karşı
     // yayımlanır, anahtar da öyle üretilir.
     const settled = auth.remote.state === 'known' && !auth.reading && !answer.holding;
+    // While the automatic setup runs, the card is read again (only read; the
+    // server never starts work on a read).
+    // Otomatik kurulum sürerken kart yeniden okunur (yalnız okunur).
+    const running = auth.remote.state === 'known' &&
+        (auth.remote.value.automatic?.state === 'pending' || auth.remote.value.automatic?.state === 'waiting');
+    useRefreshEvery(auth, 10_000, running);
+
+    // "Try again" queues the automatic setup once; while it is pending the
+    // server answers that it is already running and starts nothing.
+    // "Yeniden dene" otomatik kurulumu bir kez kuyruğa koyar.
+    const retryAutomatic = async () => {
+        if (readOnly || !settled) return;
+        setBusy('dkim-auto');
+        try {
+            const res = await answer.send(`/api/v1/domains/${domainId}/mail/auth/automatic`, { method: 'POST' });
+            if (!res) return;
+            if (!res.ok) {
+                showToast('error', apiErrorText(await readApiError(res), t));
+                return;
+            }
+            showToast('success', t('mailauth.auto.queued'));
+            answer.settle();
+            await auth.retry();
+        } finally {
+            setBusy(null);
+        }
+    };
 
     const generateKey = async () => {
         if (readOnly || !settled) return;
@@ -86,7 +155,17 @@ export function MailAuthPanel({ domainId, readOnly = false }: MailAuthPanelProps
                 showToast('error', t('common.error'));
                 return;
             }
-            showToast('success', t('mailauth.keyGenerated'));
+            // The key can exist while signing with it could not be switched
+            // on; that is said, not hidden behind "key generated".
+            // Anahtar varken imzalama açılamamış olabilir; bu gizlenmez.
+            const body = await res.json() as { signing?: boolean; signing_error?: string };
+            if (body.signing === false) {
+                showToast('warning', body.signing_error
+                    ? `${t('mailauth.keySigningFailed')} (${body.signing_error})`
+                    : t('mailauth.keySigningFailed'));
+            } else {
+                showToast('success', t('mailauth.keyGenerated'));
+            }
             answer.settle();
             await auth.retry();
         } finally {
@@ -152,6 +231,7 @@ export function MailAuthPanel({ domainId, readOnly = false }: MailAuthPanelProps
                     setDmarcPolicy={setDmarcPolicy}
                     onApply={apply}
                     onGenerateKey={generateKey}
+                    onRetryAutomatic={retryAutomatic}
                     onCopy={copy}
                 />
             )}
@@ -169,6 +249,7 @@ function AuthRecords({
     setDmarcPolicy,
     onApply: apply,
     onGenerateKey: generateKey,
+    onRetryAutomatic: retryAutomatic,
     onCopy: copy,
 }: {
     status: AuthStatus;
@@ -181,10 +262,26 @@ function AuthRecords({
     setDmarcPolicy: (policy: 'none' | 'quarantine' | 'reject') => void;
     onApply: (record: 'spf' | 'dkim' | 'dmarc') => void;
     onGenerateKey: () => void;
+    onRetryAutomatic: () => void;
     onCopy: (value: string) => void;
 }) {
     const { t } = useI18n();
     const anyUnresolved = !status.spf.resolved || !status.dmarc.resolved;
+    // A record this server's DNS serves while the public lookup could not
+    // read its name: the note says why and who acts, instead of "waiting".
+    const anyServed = [status.spf, status.dkim, status.dmarc].some(record => record.status === 'served');
+    const auto = status.automatic;
+    const hasKey = status.dkim.status !== 'no_key';
+    // The automatic setup stopped: the owner can start it again.
+    const stopped = !!auto && auto.state !== 'pending' && auto.state !== 'waiting';
+    // A key that is not in the signing table signs nothing (an older key, or
+    // one placed by hand); the same automatic setup puts it there.
+    const unsigned = !auto && hasKey && status.dkim_signed === false;
+    const retryButton = !readOnly && (stopped || unsigned) ? (
+        <Button variant="secondary" icon={RefreshCw} onClick={retryAutomatic} disabled={busy === 'dkim-auto' || !canChange}>
+            {t('mailauth.auto.retry')}
+        </Button>
+    ) : null;
 
     return (
         <div className="space-y-4">
@@ -195,10 +292,31 @@ function AuthRecords({
                 {status.required_records && <section className="rounded-xl border border-border p-4"><h3 className="font-semibold">{t('mailauth.deliveryRecords')}</h3><dl className="mt-3 divide-y divide-border">{status.required_records.filter(record => record.type !== 'TXT').map((record, index) => <div key={`${record.type}:${record.name}:${index}`} className="flex flex-wrap items-start justify-between gap-3 py-3 text-sm"><div className="min-w-0"><dt className="break-all font-medium">{record.type} {record.name}</dt><dd className="mt-1 break-all text-fg-muted">{record.prio ? `${record.prio} ` : ''}{record.content}</dd></div><Button variant="secondary" onClick={() => copy(record.content)}>{t('conn.copy')}</Button></div>)}</dl></section>}
             </>}
 
+            {auto && (
+                <div className="space-y-2">
+                    <Note>{t(automaticText(auto))}</Note>
+                    {stopped && auto.error_line && (
+                        <p className="break-all rounded-lg bg-surface-2/60 px-3 py-2 font-mono text-xs text-fg-muted">{auto.error_line}</p>
+                    )}
+                    {stopped && retryButton}
+                </div>
+            )}
+            {unsigned && (
+                <div className="space-y-2">
+                    <Note>{t('mailauth.notSigned')}</Note>
+                    {retryButton}
+                </div>
+            )}
+            {status.dns_management_mode === 'external' && hasKey && status.dkim.status !== 'ok' && (
+                <Note>{t('mailauth.externalDKIM')}</Note>
+            )}
+            {status.dkim_owner_record && (
+                <Note>{t('mailauth.ownerRecord', { name: status.dkim.name })}</Note>
+            )}
             {!status.signing_installed && status.dkim.status !== 'no_key' && (
                 <Note>{t('mailauth.signingMissing')}</Note>
             )}
-            {anyUnresolved && <Note>{t('mailauth.unresolvedNote')}</Note>}
+            {anyServed ? <Note>{t('mailauth.servedNote')}</Note> : anyUnresolved && <Note>{t('mailauth.unresolvedNote')}</Note>}
 
             <RecordCard
                 icon={ShieldCheck}
@@ -221,7 +339,7 @@ function AuthRecords({
                 onApply={() => apply('dkim')}
                 onCopy={copy}
                 extraAction={
-                    !readOnly && status.dkim.status === 'no_key' ? (
+                    !readOnly && status.dkim.status === 'no_key' && !auto ? (
                         <Button variant="primary" icon={KeyRound} onClick={generateKey} disabled={busy === 'dkim-key' || !canChange}>
                             {t('mailauth.generateKey')}
                         </Button>
@@ -261,6 +379,8 @@ function statusTone(status: AuthRecord['status']): { ok: boolean; labelKey: Tran
     switch (status) {
         case 'ok':
             return { ok: true, labelKey: 'mailauth.status.ok', cls: 'text-success' };
+        case 'served':
+            return { ok: true, labelKey: 'mailauth.status.served', cls: 'text-success' };
         case 'pending':
             return { ok: false, labelKey: 'mailauth.status.pending', cls: 'text-warning' };
         case 'no_key':
@@ -339,7 +459,7 @@ function RecordCard({
                 <div>{extraControls}</div>
                 <div className="flex items-center gap-2">
                     {extraAction}
-                    {!readOnly && record.status !== 'no_key' && record.status !== 'ok' && (
+                    {!readOnly && record.status !== 'no_key' && record.status !== 'ok' && record.status !== 'served' && (
                         <Button variant="primary" icon={Plus} onClick={onApply} disabled={busy}>
                             {t('mailauth.apply')}
                         </Button>

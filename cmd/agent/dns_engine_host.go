@@ -533,6 +533,15 @@ func (hostDNSEngineBackend) Readiness(
 			requireManagedDNSClusterReady,
 			func() error { return requireLegacyPowerDNSReadSafe(ctx, true) },
 		)
+		if exists && state.Engine == transport.DNSEnginePowerDNS && states[1].Running {
+			// A read that fails is not reported as untested (D-024: unknown
+			// is never a verdict); the zone path refuses on its own read.
+			if untested, seriesErr := pdnsUntestedInstalledVersion(ctx, profile, state); seriesErr == nil {
+				states[1].UntestedVersion = untested
+			} else {
+				log.Printf("PowerDNS installed series read failed: %v", seriesErr)
+			}
+		}
 		if states[1].Managed {
 			pairProbes[transport.DNSEnginePowerDNS] = dnsBackendPairReadinessProbes{
 				primary: func(proofCtx context.Context) (bool, error) {
@@ -3099,6 +3108,9 @@ func syncPDNSV3Zone(
 	if err := verifyOnlyPDNSActive(ctx, systemctl); err != nil {
 		return "", err
 	}
+	if err := requirePDNSNativeSeriesForManagement(ctx, profile, state); err != nil {
+		return "", err
+	}
 	if state.PairRole == "" && state.PrimaryCatalogSerial == 0 {
 		evidence, primary, evidenceErr := managedPDNSPrimaryCatalogEvidenceForState(
 			ctx, state,
@@ -3244,7 +3256,7 @@ func verifyOnlyPDNSActive(ctx context.Context, systemctl string) error {
 	if err != nil {
 		return err
 	}
-	if err := certifyAPTPDNSCapabilities(profile); err != nil {
+	if err := certifyPDNSCapabilities(profile); err != nil {
 		return err
 	}
 	ss, err := firstTrustedExecutable(
@@ -3328,7 +3340,7 @@ func inspectVerifiedPDNSRuntimeTopologyWithOps(
 	profile hostplatform.Profile,
 	ops pdnsRuntimeTopologyOps,
 ) (pdnsRuntimeTopologySnapshot, error) {
-	if err := certifyAPTPDNSCapabilities(profile); err != nil {
+	if err := certifyPDNSCapabilities(profile); err != nil {
 		return pdnsRuntimeTopologySnapshot{}, err
 	}
 	if ops.inspectStates == nil || ops.inspectIdentity == nil ||
@@ -3350,7 +3362,7 @@ func inspectVerifiedPDNSRuntimeTopologyWithOps(
 		if err != nil {
 			return pdnsRuntimeTopologySnapshot{}, err
 		}
-		if err := validatePDNSVendorUnitIdentity(identity); err != nil {
+		if err := validatePDNSVendorUnitIdentityForProfile(profile, identity); err != nil {
 			return pdnsRuntimeTopologySnapshot{}, err
 		}
 		vendor, err := ops.inspectVendor()
@@ -3465,7 +3477,7 @@ func verifyOnlyPDNSActiveWithOps(
 	profile hostplatform.Profile,
 	ops pdnsActiveProofOps,
 ) error {
-	if err := certifyAPTPDNSCapabilities(profile); err != nil {
+	if err := certifyPDNSCapabilities(profile); err != nil {
 		return err
 	}
 	if ops.inspectTopology == nil || ops.inspectListeners == nil {

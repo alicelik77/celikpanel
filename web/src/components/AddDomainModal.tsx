@@ -8,6 +8,12 @@ import { readApiError, apiErrorText, type ApiError } from '../lib/apiError';
 import { isSiteWebServerRefused, siteWebServerRefusedIn } from '../lib/siteWebServerRefused';
 import { gateOn } from '../lib/remote';
 import {
+    ISSUE_FAILURE_KEYS,
+    isIssueFailure,
+    requestSiteCertificate,
+    type SiteCertificateOutcome,
+} from '../lib/siteCertificateRequest';
+import {
     dnsBlocker,
     hostingDNSReady,
     localDNSReady,
@@ -114,6 +120,62 @@ async function readDomainCreatePartialSuccess(res: Response): Promise<DomainCrea
     }
 }
 
+// The id of the site that was just created, from the create answer (its keys
+// are the Go field names). null when the answer does not carry one.
+function readCreatedDomainId(value: unknown): number | null {
+    if (!value || typeof value !== 'object') return null;
+    const id = (value as Record<string, unknown>).DomainID;
+    return typeof id === 'number' && Number.isInteger(id) && id > 0 ? id : null;
+}
+
+// What the certificate request came to, in the order D-024 asks for: what
+// happened to the certificate (the site exists in every case), who acts, the
+// next action and how it resumes. A verified failure, a refusal because
+// something is missing, and an unknown result are three different sentences.
+function CertificateOutcome({ name, outcome }: { name: string; outcome: SiteCertificateOutcome }) {
+    const { t } = useI18n();
+    if (outcome.kind === 'failed') {
+        const reason = outcome.error.reason ?? '';
+        return (
+            <div className="space-y-3" data-certificate-outcome={isIssueFailure(outcome.error) ? 'failed' : 'refused'}>
+                <p className="max-w-[75ch] text-sm leading-relaxed text-fg">{t('domains.add.sslFailed', { name })}</p>
+                {isIssueFailure(outcome.error) ? (
+                    <div role="alert" className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm leading-relaxed text-fg">
+                        <p className="max-w-[75ch] break-words">
+                            {t(ISSUE_FAILURE_KEYS[reason as keyof typeof ISSUE_FAILURE_KEYS] ?? ISSUE_FAILURE_KEYS.tool, { ...outcome.error.vars, domain: outcome.error.vars?.domain ?? name })}
+                        </p>
+                        {outcome.error.vars?.detail && (
+                            <p className="mt-1.5 max-w-[75ch] break-words text-fg-muted">
+                                {t('ssl.issueFailure.said', { detail: outcome.error.vars.detail })}
+                            </p>
+                        )}
+                    </div>
+                ) : (
+                    <ErrorBanner error={outcome.error} />
+                )}
+                <p className="max-w-[75ch] text-sm leading-relaxed text-fg-muted">{t('domains.add.sslFailedNext')}</p>
+            </div>
+        );
+    }
+    const key = {
+        waitingForOwner: 'domains.add.sslWaitingForOwner',
+        activationPending: 'domains.add.sslActivationPending',
+        dependentsPending: 'domains.add.sslDependentsPending',
+        unknown: 'domains.add.sslUnknown',
+        issued: 'domains.add.sslIssued',
+    }[outcome.kind] as Parameters<typeof t>[0];
+    const unknown = outcome.kind === 'unknown';
+    return (
+        <p
+            role={unknown ? 'alert' : 'status'}
+            data-certificate-outcome={outcome.kind}
+            className={`max-w-[75ch] rounded-lg border p-3 text-sm leading-relaxed text-fg ${unknown ? 'border-warning-mark/50 bg-warning-mark/20' : 'border-border bg-surface-2/50'}`}
+        >
+            {t(key, { name })}
+        </p>
+    );
+}
+
 export function AddDomainModal({ onClose, onSuccess, initialDomain = '' }: AddDomainModalProps) {
     const { t } = useI18n();
     const navigate = useNavigate();
@@ -136,6 +198,19 @@ export function AddDomainModal({ onClose, onSuccess, initialDomain = '' }: AddDo
     const purpose: Purpose = chosenPurpose ?? (caps && caps.web_server === '' ? 'dnsonly' : 'website');
     const [sslEnabled, setSSLEnabled] = useState(false);
     const [loading, setLoading] = useState(false);
+    // After the site exists and SSL was ticked, the dialog stays open for the
+    // certificate request: `requesting` while its one request is on the way,
+    // `done` once it has an outcome. The site is created in both; the form is
+    // never shown again, so Create cannot be pressed twice.
+    // Site oluştuktan ve SSL işaretlendikten sonra pencere sertifika isteği
+    // için açık kalır; site her iki durumda da oluşmuştur, form bir daha
+    // gösterilmez, böylece Oluştur iki kez basılamaz.
+    const [certificate, setCertificate] = useState<
+        | { phase: 'requesting'; name: string }
+        | { phase: 'done'; name: string; outcome: SiteCertificateOutcome }
+        | null
+    >(null);
+    const [siteRecords, setSiteRecords] = useState<SiteRecordsOutcome | undefined>(undefined);
     // The full contract object, not just text: a coded refusal may carry an
     // in-panel fix path that ErrorBanner turns into a button.
     // Yalnız metin değil sözleşme nesnesi: kodlu ret, ErrorBanner'ın düğmeye
@@ -216,6 +291,12 @@ export function AddDomainModal({ onClose, onSuccess, initialDomain = '' }: AddDo
                         ? partial.action
                         : `/domains/${encodeURIComponent(partial.domain)}`;
                     showToast('warning', t('domains.add.createdDnsPending', { name: partial.domain }));
+                    // The certificate needs the name to resolve to this
+                    // server, which the unfinished DNS setup has not done:
+                    // say that it was not requested and where to do it.
+                    // Sertifika, adın bu sunucuya çözülmesini ister; yarım
+                    // DNS kurulumu bunu yapmadı: istenmediğini söyle.
+                    if (body.ssl_type === 'letsencrypt') showToast('warning', t('domains.add.sslNotRequested', { name: partial.domain }));
                     onSuccess();
                     navigate(action);
                     return;
@@ -239,7 +320,31 @@ export function AddDomainModal({ onClose, onSuccess, initialDomain = '' }: AddDo
             // Only read: what happened to the site's names, when the server says.
             let answer: unknown = null;
             try { answer = await res.json(); } catch { answer = null; }
-            onSuccess({ siteRecords: readSiteRecords(answer) });
+            const records = readSiteRecords(answer);
+            const createdId = readCreatedDomainId(answer);
+            if (body.ssl_type !== 'letsencrypt') {
+                onSuccess({ siteRecords: records });
+                return;
+            }
+            setSiteRecords(records);
+            if (createdId === null) {
+                // The site exists but the answer does not name it, so the
+                // certificate cannot be requested for it from here.
+                setCertificate({ phase: 'done', name: domainName, outcome: { kind: 'unknown' } });
+                return;
+            }
+            // The site exists. Ask once for its certificate and say what came
+            // of it; the site stays created whatever the answer is.
+            // Site var. Sertifikasını bir kez iste ve ne olduğunu söyle; yanıt
+            // ne olursa olsun site oluşmuş kalır.
+            setCertificate({ phase: 'requesting', name: domainName });
+            const outcome = await requestSiteCertificate(createdId);
+            if (outcome.kind === 'issued') {
+                showToast('success', t('domains.add.sslIssued', { name: domainName }));
+                onSuccess({ siteRecords: records });
+                return;
+            }
+            setCertificate({ phase: 'done', name: domainName, outcome });
         } catch {
             const apiErr: ApiError = { message: t('domains.add.failed') };
             setError(apiErr);
@@ -249,27 +354,66 @@ export function AddDomainModal({ onClose, onSuccess, initialDomain = '' }: AddDo
         }
     };
 
+    // Once the site is created and SSL was ticked, the same dialog turns into
+    // the certificate request's own screen: what is happening, or what it came
+    // to, who acts and what to do next. There is no way back to the form.
+    // Site oluşup SSL işaretliyse aynı pencere sertifika isteğinin kendi
+    // ekranına döner; forma geri dönüş yoktur.
+    const finish = (openSSL: boolean) => {
+        onSuccess({ siteRecords });
+        if (openSSL && certificate) navigate(`/domains/${encodeURIComponent(certificate.name)}?tab=ssl`);
+    };
+
     return (
         <Dialog
             id="add-domain"
-            icon={Globe}
+            icon={certificate ? Lock : Globe}
             width="xl"
-            title={t('domains.add.title')}
-            description={t('domains.add.subtitle')}
-            busy={loading}
-            onDismiss={onClose}
-            onSubmit={handleSubmit}
+            title={certificate
+                ? t(certificate.phase === 'requesting' ? 'domains.add.sslRequesting.title' : 'domains.add.sslOutcome.title', { name: certificate.name })
+                : t('domains.add.title')}
+            description={certificate ? t('domains.add.sslCreated', { name: certificate.name }) : t('domains.add.subtitle')}
+            busy={certificate ? certificate.phase === 'requesting' : loading}
+            onDismiss={certificate ? () => finish(false) : onClose}
+            onSubmit={certificate ? undefined : handleSubmit}
             actions={
-                <>
-                    <Button type="button" variant="secondary" onClick={onClose}>
-                        {t('common.cancel')}
-                    </Button>
-                    <Button type="submit" variant="primary" disabled={loading || dns.state !== 'open'}>
-                        {loading ? t('domains.add.creating') : t('domains.add.create')}
-                    </Button>
-                </>
+                certificate ? (
+                    certificate.phase === 'requesting' ? (
+                        <Button type="button" variant="primary" disabled>
+                            {t('domains.add.sslRequesting.button')}
+                        </Button>
+                    ) : (
+                        <>
+                            <Button type="button" variant="secondary" onClick={() => finish(false)}>
+                                {t('domains.add.sslDone')}
+                            </Button>
+                            <Button type="button" variant="primary" onClick={() => finish(true)}>
+                                {t('domains.add.sslOpen')}
+                            </Button>
+                        </>
+                    )
+                ) : (
+                    <>
+                        <Button type="button" variant="secondary" onClick={onClose}>
+                            {t('common.cancel')}
+                        </Button>
+                        <Button type="submit" variant="primary" disabled={loading || dns.state !== 'open'}>
+                            {loading ? t('domains.add.creating') : t('domains.add.create')}
+                        </Button>
+                    </>
+                )
             }
         >
+            {certificate ? (
+                certificate.phase === 'requesting' ? (
+                    <div className="space-y-3">
+                        <Checking label={t('domains.add.sslRequesting.wait', { name: certificate.name })} />
+                        <p className="max-w-[75ch] text-sm leading-relaxed text-fg-muted">{t('domains.add.sslRequesting.body')}</p>
+                    </div>
+                ) : (
+                    <CertificateOutcome name={certificate.name} outcome={certificate.outcome} />
+                )
+            ) : (
             <div className="space-y-4">
                 <ErrorBanner error={error} />
 
@@ -413,6 +557,7 @@ export function AddDomainModal({ onClose, onSuccess, initialDomain = '' }: AddDo
                     )}
                 </div>
             </div>
+            )}
         </Dialog>
     );
 }

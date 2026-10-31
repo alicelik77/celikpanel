@@ -187,7 +187,7 @@ func generateSelfSigned(certPath, keyPath string) error {
 		return fmt.Errorf("serial: %w", err)
 	}
 
-	host, _ := os.Hostname()
+	host, _ := localServerName()
 	if host == "" {
 		host = "celikpanel"
 	}

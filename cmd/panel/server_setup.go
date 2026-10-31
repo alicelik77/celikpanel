@@ -128,6 +128,12 @@ type serverSetupState struct {
 	// ServerIPv6 (alpha.112) is the server's public IPv6 address, for the
 	// reverse DNS rows the owner gives the provider; only the GET carries it.
 	ServerIPv6 string `json:"server_ipv6,omitempty"`
+	// InstallationID identifies this panel installation (the GET answer
+	// carries it). A browser start marker from another installation, for
+	// example one the same address had before it was wiped and installed
+	// again, is dropped when this differs (serverSetupInstallationID).
+	// Kurulum kimligi; baska kurulumdan kalan baslatma isaretini ayirt eder.
+	InstallationID string `json:"installation_id,omitempty"`
 }
 
 func defaultServerSetupDraft() serverSetupDraft {
@@ -417,6 +423,23 @@ func serverSetupChecksReady(checks []serverSetupCheck) bool {
 	return blocking > 0
 }
 
+// serverSetupCompletionWaitingCode: every step finished, but a final check
+// (read with the second server's binding) is not ready yet. A wait with its
+// reason, rechecked by the runner; not a failure.
+const serverSetupCompletionWaitingCode = "server_setup_completion_waiting"
+
+func serverSetupCompletionWaiting(checks []serverSetupCheck) *serverSetupPeerWait {
+	pending := "a final check"
+	for _, check := range checks {
+		if !check.Advisory && check.State != "ready" {
+			pending = "the final check " + check.ID + " (" + check.State + ")"
+			break
+		}
+	}
+	return &serverSetupPeerWait{Code: serverSetupCompletionWaitingCode,
+		Message: "Every setup step has finished; setup waits for " + pending + " before it is marked complete. With two servers this is usually the other server still finishing its own setup. Nothing to do here unless it lasts; setup checks again by itself."}
+}
+
 func (p *Panel) completeServerSetup(ctx context.Context, revision int) error {
 	return p.completeServerSetupOwned(ctx, revision, "")
 }
@@ -475,6 +498,14 @@ func (p *Panel) completeServerSetupOwned(ctx context.Context, revision int, exec
 		return err
 	}
 	if !serverSetupChecksReady(checks) {
+		if executionID != "" {
+			// A running setup waits with its reason and is asked again; a
+			// plain error here ended the runner and left the step "running"
+			// without guidance (Arch PowerDNS follow-up drill, 2026-10-30:
+			// the main reached verification while its backup was still
+			// reinstalling after a cut).
+			return serverSetupCompletionWaiting(checks)
+		}
 		return errors.New("setup prerequisites are not ready")
 	}
 	// Recheck ownership in the committing statement: another panel process
@@ -511,6 +542,12 @@ func (p *Panel) completeServerSetupOwned(ctx context.Context, revision int, exec
 // DNS server while its backup has not reported ready (Beta-1 re-run P7). A
 // failed settle is logged; the next completion or a new join removes it.
 func (p *Panel) tellMainAndSettleServerSetupLink(ctx context.Context, d serverSetupDraft) error {
+	// While the link is still open, the backup sets up the deletion check
+	// with its main (automatic peer inspection, 2026-10-30); a wait keeps
+	// the link open and is asked again like the report itself.
+	if err := p.enrollServerSetupPeerInspection(ctx, d); err != nil {
+		return err
+	}
 	if err := p.reportServerSetupReadyToMain(ctx, d); err != nil {
 		return err
 	}
@@ -578,6 +615,11 @@ func (p *Panel) handleServerSetup(w http.ResponseWriter, r *http.Request) {
 			s.ServerIP = address.String()
 		}
 		s.ShortNameSuggestion = currentServerSetupShortNameSuggestion()
+		// Without an identity (an unreadable settings row) the field is left
+		// out and the page keeps its older behaviour; it is never invented.
+		if id, err := p.serverSetupInstallationID(r.Context()); err == nil {
+			s.InstallationID = id
+		}
 		if address := net.ParseIP(setupMailIPv6()); address != nil && address.To4() == nil && address.IsGlobalUnicast() && !address.IsPrivate() {
 			s.ServerIPv6 = address.String()
 		}

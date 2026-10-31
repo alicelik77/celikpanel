@@ -23,6 +23,57 @@ type domainDeletionStatusSnapshot struct {
 	// failure is the last verified stage failure kept with the marker.
 	failure domainDeletionFailureRecord
 	failed  bool
+	// dnsRemoved: the zone's removal was published and verified (its
+	// deletion marker retired, no zone, no publication pending), for example
+	// by the automatic re-check after the backup caught up; the rest of the
+	// deletion still waits for "Retry this deletion".
+	dnsRemoved bool
+}
+
+// domainDeletionDNSStageDone is the stage of a deletion whose DNS removal is
+// complete while its later stages have not run yet.
+const domainDeletionDNSStageDone = "dns_removed"
+
+// domainDeletionDNSRemovalConfirmedReason names that state for the screen.
+const domainDeletionDNSRemovalConfirmedReason = "dns_removal_confirmed"
+
+const domainDeletionDNSRemovedEnglish = "The DNS removal of this domain is complete and verified (on the backup DNS server too, when this server has one). The rest of the deletion has not run yet: use “Retry this deletion” to finish removing the domain from this server. Nothing else is waiting."
+
+// domainDeletionDNSRemovalConfirmed reports a zone whose deletion was applied
+// exactly: no zone row, no publication lease of either version, and an
+// applied deletion in its sync state (a domain that never had a zone is not
+// reported as removed). Read only.
+func domainDeletionDNSRemovalConfirmed(ctx context.Context, tx *sql.Tx, zone string) (bool, error) {
+	var zones, leases int
+	if err := tx.QueryRowContext(ctx, `
+		SELECT (SELECT count(*) FROM pdns_domains WHERE name = ?),
+		       (SELECT count(*) FROM dns_zone_engine_leases WHERE zone_name = ?)`,
+		zone, zone).Scan(&zones, &leases); err != nil {
+		return false, err
+	}
+	if zones != 0 || leases != 0 {
+		return false, nil
+	}
+	state, err := readDNSZoneSyncState(ctx, tx, zone)
+	if errors.Is(err, sql.ErrNoRows) {
+		// Retiring the deletion marker also removes the applied tombstone
+		// (migration 032); the active engine's application row keeps the
+		// applied deletion.
+		var applied int
+		if err := tx.QueryRowContext(ctx, `
+			SELECT count(*) FROM dns_zone_engine_applications a
+			JOIN dns_engine_state e ON e.singleton_id = 1
+			WHERE a.zone_name = ? AND a.applied_action = 'delete'
+			  AND a.engine = e.active_engine`, zone).Scan(&applied); err != nil {
+			return false, err
+		}
+		return applied == 1, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return !state.hasLease() && state.DesiredAction == "delete" && state.Status == "applied" &&
+		state.AppliedGeneration == state.DesiredGeneration, nil
 }
 
 func (p *Panel) readDomainDeletionStatusSnapshot(ctx context.Context, domainID int) (domainDeletionStatusSnapshot, error) {
@@ -67,7 +118,8 @@ func (p *Panel) readDomainDeletionStatusSnapshot(ctx context.Context, domainID i
 	var markerType string
 	err = tx.QueryRowContext(ctx, `SELECT zone_type FROM dns_zone_deletion_markers WHERE zone_name = ?`, snapshot.domain).Scan(&markerType)
 	if errors.Is(err, sql.ErrNoRows) {
-		return snapshot, nil
+		snapshot.dnsRemoved, err = domainDeletionDNSRemovalConfirmed(ctx, tx, snapshot.domain)
+		return snapshot, err
 	}
 	if err != nil {
 		return snapshot, err
@@ -153,11 +205,29 @@ func (p *Panel) handleDomainDeletionStatus(w http.ResponseWriter, r *http.Reques
 		})
 		return
 	}
+	if p.deletionsRunning.isRunning(domainID) {
+		// The request is still working and re-checks by itself; what it
+		// saved so far is not its outcome (D-024).
+		_ = json.NewEncoder(w).Encode(domainDeletionStatusResponse{
+			Status: domainDeletionPendingStatus, Stage: domainDeletionRunningStage,
+			Reason:  domainDeletionRunningReason,
+			Message: domainDeletionRunningEnglish,
+		})
+		return
+	}
 	if snapshot.failed {
 		_ = json.NewEncoder(w).Encode(domainDeletionStatusResponse{
 			Status: domainDeletionStatusFailed, Stage: snapshot.failure.Stage,
 			Reason: snapshot.failure.Reason, ErrorLine: snapshot.failure.ErrorLine,
 			Message: domainMailCleanupFailedEnglish,
+		})
+		return
+	}
+	if snapshot.dnsRemoved {
+		_ = json.NewEncoder(w).Encode(domainDeletionStatusResponse{
+			Status: domainDeletionPendingStatus, Stage: domainDeletionDNSStageDone,
+			Reason:  domainDeletionDNSRemovalConfirmedReason,
+			Message: domainDeletionDNSRemovedEnglish,
 		})
 		return
 	}
@@ -168,9 +238,24 @@ func (p *Panel) handleDomainDeletionStatus(w http.ResponseWriter, r *http.Reques
 	}
 	if snapshot.candidate {
 		statusCtx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-		job, statusErr := p.statusAgentMutation(statusCtx, snapshot.lease.RequestID)
+		job, hold, statusErr := p.statusAgentMutationWithHold(statusCtx, snapshot.lease.RequestID)
 		cancel()
-		if statusErr == nil && validateDNSZoneSyncV3PendingJob(job, snapshot.lease.identity()) == nil {
+		if statusErr == nil && hold != "" && job != nil && agentMutationActive(job.Status) &&
+			validateAgentMutationIdentity(job, snapshot.lease.identity()) == nil {
+			// The exact DNS removal is frozen by the Agent's hold: name it and
+			// the owner's next step instead of "unknown" (D-024).
+			result.Status = domainDeletionPendingStatus
+			result.Stage = "dns_cleanup"
+			result.Reason = dnsPublicationAgentHeldReason
+			result.Message = dnsPublicationAgentHeldEnglish
+			after, rereadErr := p.readDomainDeletionStatusSnapshot(r.Context(), domainID)
+			if rereadErr != nil || !sameDomainDeletionStatusSnapshot(snapshot, after) {
+				result.Status = "unknown"
+				result.Stage = "unknown"
+				result.Reason = ""
+				result.Message = "The saved deletion state changed during the read. The server administrator must inspect the operation before retrying."
+			}
+		} else if statusErr == nil && validateDNSZoneSyncV3PendingJob(job, snapshot.lease.identity()) == nil {
 			result.Status = domainDeletionPendingStatus
 			result.Stage = "dns_cleanup"
 			after, rereadErr := p.readDomainDeletionStatusSnapshot(r.Context(), domainID)

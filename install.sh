@@ -2547,13 +2547,27 @@ AUTOCONF
             "unattended-upgrades kurulamadı — atlandı (elle kurulabilir)"
     fi
 elif [[ $APPLY_ONLY -eq 0 ]] && [ "${SKIP_DEPS:-0}" != "1" ] && [ "${SKIP_SECURITY_UPDATES:-0}" != "1" ] && [ "$PKG_FAMILY" = "pacman" ]; then
-    # CelikPanel has no verified security-only channel for the pacman ecosystem,
-    # so we say so instead of pretending.
-    # CelikPanel'in pacman ekosistemi için doğrulanmış güvenlik-yalnız yama
-    # kanalı yoktur; öyleymiş gibi yapmak yerine bunu söyleriz.
-    step "Automatic security patches" "Otomatik güvenlik yamaları"
-    warn "The pacman ecosystem has no managed security-only channel — automatic patches were not configured; keep the system current with 'pacman -Syu'" \
-        "Pacman ekosisteminde yönetilen güvenlik-yalnız kanal yok — otomatik yama kurulmadı; sistemi 'pacman -Syu' ile güncel tutun"
+    # Arch has no security-only channel: every update is a full `pacman -Syu`,
+    # which can move PostgreSQL to a new major version (its data must then be
+    # converted by hand) or change PHP under every site. An unattended full
+    # upgrade could stop hosted services, so nothing is scheduled (decision
+    # of 2026-10-30). Instead the two official read-only tools are installed
+    # so Security -> Security updates can count what waits: checkupdates
+    # (extra/pacman-contrib, uses its own database copy, never a partial
+    # upgrade) and arch-audit (extra/arch-audit, the Arch security tracker).
+    # Arch'ta yalnız güvenlik kanalı yoktur; gözetimsiz tam yükseltme
+    # hizmetleri durdurabilir, bu yüzden hiçbir şey zamanlanmaz. Bekleyeni
+    # saymak için iki resmi salt-okur araç kurulur.
+    step "Security updates (Arch Linux: counted, applied by the administrator)" \
+        "Güvenlik güncellemeleri (Arch Linux: sayılır, yönetici uygular)"
+    if "$PACMAN_BIN" -Syu --noconfirm --needed pacman-contrib fakeroot arch-audit >/dev/null 2>&1; then
+        ok "checkupdates, fakeroot and arch-audit installed" "checkupdates, fakeroot ve arch-audit kuruldu"
+    else
+        warn "pacman-contrib, fakeroot and arch-audit could not be installed — the panel cannot count waiting updates until 'sudo pacman -Syu --needed pacman-contrib fakeroot arch-audit' succeeds" \
+            "pacman-contrib, fakeroot ve arch-audit kurulamadı — 'sudo pacman -Syu --needed pacman-contrib fakeroot arch-audit' başarılı olana dek panel bekleyen güncellemeleri sayamaz"
+    fi
+    warn "Arch has no security-only updates and CelikPanel schedules no automatic upgrade: read archlinux.org/news and run 'sudo pacman -Syu' regularly" \
+        "Arch'ta yalnız güvenlik güncellemesi yoktur ve CelikPanel otomatik yükseltme zamanlamaz: archlinux.org/news'u okuyup 'sudo pacman -Syu'yu düzenli çalıştırın"
 fi
 
 # 2. Service user & group ----------------------------------------------------
@@ -3057,6 +3071,24 @@ install -d -m 0755 "$PREFIX/bin" "$PREFIX/web"
 install -m 0755 "$SRC/bin/panel" "$PREFIX/bin/panel"
 install -m 0755 "$SRC/bin/agent" "$PREFIX/bin/agent"
 install -m 0644 "$SRC/bin/agent-native-contract.json" "$PREFIX/bin/agent-native-contract.json"
+# The verified release's offline DNS owner tools. Setup of a pair joined by
+# code copies the packaged inspector from here when it sets up the deletion
+# check on the backup (the owner tool's own secondary-install); the owner can
+# also run dns-peer-enroll from here (status, revoke) without the panel.
+# Historical releases have no such directory. Nothing is enrolled here.
+# Sahip araclari: eslesmede silme denetimi buradaki denetciyi kopyalar.
+if [[ -d "$SRC/dns-owner-tools" && ! -L "$SRC/dns-owner-tools" ]]; then
+    [[ ! -L "$PREFIX/dns-owner-tools" ]] || die "$PREFIX/dns-owner-tools is a symbolic link"
+    install -d -m 0755 "$PREFIX/dns-owner-tools"
+    for owner_tool in dns-peer-enroll bind-peer-inspect pdns-peer-inspect; do
+        if [[ -f "$SRC/dns-owner-tools/$owner_tool" && ! -L "$SRC/dns-owner-tools/$owner_tool" ]]; then
+            install -m 0755 "$SRC/dns-owner-tools/$owner_tool" "$PREFIX/dns-owner-tools/$owner_tool"
+        fi
+    done
+    if [[ -f "$SRC/dns-owner-tools/README.md" && ! -L "$SRC/dns-owner-tools/README.md" ]]; then
+        install -m 0644 "$SRC/dns-owner-tools/README.md" "$PREFIX/dns-owner-tools/README.md"
+    fi
+fi
 
 # Replace the exact fixed web root, including hidden entries and empty stale
 # directories. Canonical root-owned boundaries are proven before -delete runs.

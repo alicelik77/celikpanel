@@ -165,6 +165,7 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'mailauth.dmarcDesc': 'SPF/DKIM başarısız olduğunda alıcıların ne yapacağını ve raporların nereye gideceğini söyler.',
     'mailauth.status.ok': 'DNS\'te doğrulandı',
     'mailauth.status.pending': 'Zone\'da — DNS bekleniyor',
+    'mailauth.status.served': 'Bu sunucunun DNS’i yayımlıyor',
     'mailauth.status.missing': 'Eksik',
     'mailauth.status.no_key': 'Henüz anahtar yok',
     'mailauth.recommended': 'Önerilen kayıt',
@@ -173,6 +174,7 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'mailauth.applied': 'Kayıt DNS zone\'una eklendi.',
     'mailauth.generateKey': 'DKIM anahtarı üret',
     'mailauth.keyGenerated': 'DKIM anahtarı üretildi.',
+    'mailauth.keySigningFailed': 'DKIM anahtarı hazır, ancak DKIM imzalama açılamadı; posta hâlâ imzasız çıkıyor. "DKIM anahtarı üret" düğmesine yeniden basın; anahtar korunur, yalnız imzalama yeniden denenir. Yine olmazsa Hizmetler sayfasında OpenDKIM\'i kontrol edin.',
     'mailauth.copy': 'Kopyala',
     'mailauth.copied': 'Kopyalandı.',
     'mailauth.dmarcPolicy': 'DMARC politikası',
@@ -180,6 +182,7 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'mailauth.policy.quarantine': 'quarantine — spam\'e gönder',
     'mailauth.policy.reject': 'reject — doğrudan reddet',
     'mailauth.signingMissing': 'DKIM imzalama filtresi (opendkim/rspamd) kurulu değil. Anahtar ve DNS kaydı hazır; bir filtre kurulduğunda giden posta imzalanacak.',
+    'mailauth.servedNote': '“Bu sunucunun DNS’i yayımlıyor” olarak işaretli kayıtları bu sunucunun DNS’i yanıtlıyor, ancak bu sunucudan yapılan genel sorgu alan adını bulamadı. Alan adının kayıt firmasındaki ad sunucuları henüz bu sunucuyu göstermiyorsa ya da bu sunucu genel bir DNS çözümleyicisine ulaşamıyorsa bu beklenen bir durumdur. CelikPanel’de bekleyen bir şey yok. Alan adı zaten yayında olmalıysa siz, alan adı sahibi, kayıt firmasındaki ad sunucularını kontrol edin; bu kart her açıldığında yeniden denetler.',
     'mailauth.unresolvedNote': 'Canlı DNS denetlenemedi (ad bu sunucudan çözülmüyor). Durum yalnızca zone\'u yansıtır.',
 
     'mail.col.usage': 'Kullanım',
@@ -216,6 +219,19 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'mail.healthChecking': "Teslim edilebilirlik kontrol ediliyor…",
     'mail.healthUnknown': "Bu alan adının teslim edilebilirlik denetimleri sunucudan okunamadı; bu yüzden sonuç gösterilmiyor. Bu, bir denetimin başarısız olduğu anlamına gelmez. Hiçbir şey değiştirilmedi. Tekrar deneyin.",
     // --- end of batch 2b ---
+    // ---- otomatik DKIM (30 Eki 2026) ----
+    'mailauth.auto.pending': 'CelikPanel bu alan adı için DKIM\'i kuruyor: anahtar, imzalama ve DNS bölgesi bu sunucudaysa kayıt. Yapmanız gereken bir şey yok; bu kart kendiliğinden güncellenir.',
+    'mailauth.auto.waiting': 'DKIM kurulumu bu sunucudaki başka bir değişikliğin bitmesini bekliyor, sonra kendiliğinden sürer. Yapmanız gereken bir şey yok.',
+    'mailauth.auto.unknown': 'DKIM kurulumunun yanıtı gelmedi; bitip bitmediği bilinmiyor. Yeniden dene durumu denetler ve tamamlar; var olan anahtar korunur, hiçbir şey iki kez yapılmaz.',
+    'mailauth.auto.dnsNotReady': 'Bu alan adının postası imzalanıyor, ancak DKIM kaydı eklenemedi: bu sunucunun DNS motoru yayımlamaya hazır değil (henüz etkin değil ya da yedek DNS sunucusu yetişmedi). DNS bölümünden denetleyin, sonra Yeniden dene\'ye basın.',
+    'mailauth.auto.keyFailed': 'DKIM anahtarı oluşturulamadı (neden aşağıda); bu alan adının postası imzasız çıkıyor. Sunucu sahibi /var/lib/celikpanel-dkim/keys anahtar deposunu denetler, sonra Yeniden dene\'ye basar. Alan adının kendisi etkilenmedi.',
+    'mailauth.auto.signingFailed': 'DKIM anahtarı hazır, ancak OpenDKIM onunla imzalayacak biçimde kurulamadı (neden aşağıda); posta hâlâ imzasız çıkıyor. Hizmetler sayfasında OpenDKIM\'i denetleyin, sonra Yeniden dene\'ye basın; anahtar korunur.',
+    'mailauth.auto.dnsFailed': 'Posta imzalanıyor, ancak DKIM kaydı yayımlanamadı (neden aşağıda). Kayıt bölgede saklı; DNS bölümünde DNS işlemini denetleyin, sonra Yeniden dene\'ye basın.',
+    'mailauth.auto.retry': 'Yeniden dene',
+    'mailauth.auto.queued': 'DKIM kurulumu başlatıldı.',
+    'mailauth.notSigned': 'Bu DKIM anahtarı OpenDKIM imzalama tablosunda değil; bu alan adının postası imzasız çıkıyor. Yeniden dene imzalamayı kurar; anahtar korunur.',
+    'mailauth.externalDKIM': 'Bu alan adının postası zaten imzalanıyor. Aşağıdaki DKIM kaydını DNS sağlayıcınızda ekleyin; kayıt yayımlanınca alıcılar imzayı doğrular ve bu kart “DNS\'te doğrulandı” der.',
+    'mailauth.ownerRecord': 'Bölgede {name} adında farklı bir DKIM kaydı zaten var; CelikPanel onu korudu. Posta aşağıdaki anahtarla imzalanıyor; kayıt eşleşene kadar alıcılar imzayı doğrulayamaz. O kaydı bilerek tutmuyorsanız değiştirmek için “DNS\'e ekle” düğmesine basın.',
     'mailauth.checking': 'Bu alan adının SPF, DKIM ve DMARC kayıtları kontrol ediliyor…',
     'mailauth.unknown': 'Bu alan adının SPF, DKIM ve DMARC kayıtları kontrol edilemedi; bu yüzden durumları gösterilmiyor ve şimdilik buradan hiçbir şey yayımlanamıyor. Bu, kayıtların eksik olduğu anlamına gelmez. Hiçbir şey değiştirilmedi. Tekrar deneyin.',
 

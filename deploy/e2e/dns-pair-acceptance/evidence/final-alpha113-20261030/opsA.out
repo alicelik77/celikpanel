@@ -1,0 +1,82 @@
+== 2. site shop113.test with Enable SSL at creation 15:19:35
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/1/public_html", "Domain": "shop113.test", "DomainID": 1, "FTPPassword": "[REDACTED]", "FTPUser": "shop113_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 1, "TempDomain": ""}
+   site id 1
+   ok 192.0.3.101 shop113.test A = '192.0.3.101' after 1s
+   ok 192.0.3.102 shop113.test A = '192.0.3.101' after 0s
+500 {"code": "INTERNAL", "error": "internal server error"}
+   certificate answer after 3s
+200 {"domain_id": 1, "domain_name": "shop113.test", "has_certificate": false, "managed_names": ["shop113.test", "www.shop113.test"], "settings": {"force_https": false, "hsts_enabled": false, "hsts_max_age": 31536000}}
+   hosting before: {"document_root": "/var/www/celikpanel/subscriptions/2/sites/1/public_html", "forward_code": 301, "project_type": "static"}
+409 {"error": "the hosting change could not be activated; the previous configuration was restored"}
+200 {"project_type": "static"}
+resolves: 
+--- http://shop113.test/
+curl: (6) Could not resolve host: shop113.test
+code=000 redirect= ssl_verify=0
+--- https://shop113.test/
+curl: (6) Could not resolve host: shop113.test
+code=000 redirect= ssl_verify=0
+--- http://www.shop113.test/
+curl: (6) Could not resolve host: www.shop113.test
+code=000 redirect= ssl_verify=0
+--- https://www.shop113.test/
+curl: (6) Could not resolve host: www.shop113.test
+code=000 redirect= ssl_verify=0
+--- certificate served on shop113.test:443
+Could not find certificate from <stdin> 
+== 3. mail on shop113.test 15:19:46
+200 {"id": 1, "success": true}
+200 {"id": 2, "success": true}
+200 {"accounts": [{"address": "alice@shop113.test", "id": 1, "quota_mb": 1024}, {"address": "bob@shop113.test", "id": 2, "quota_mb": 1024}]}
+200 {"webmail_url": ""}
+Traceback (most recent call last):
+  File "/root/mailtest.py", line 12, in <module>
+    out = {"host": host, "resolved": socket.gethostbyname(host)}
+                                     ~~~~~~~~~~~~~~~~~~~~^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+-- webmail address 15:19:47
+200 {"status": {"managed": false, "present": false}, "address": null, "suggestion": "mail.fin113.test"}
+200 {"state": "read", "webmail_url": "", "webmail_ready": false}
+resolves: 
+--- http://mail.fin113.test/
+curl: (6) Could not resolve host: mail.fin113.test
+code=000 redirect= ssl_verify=0
+--- https://mail.fin113.test/
+curl: (6) Could not resolve host: mail.fin113.test
+code=000 redirect= ssl_verify=0
+--- http://www.mail.fin113.test/
+curl: (6) Could not resolve host: www.mail.fin113.test
+code=000 redirect= ssl_verify=0
+--- https://www.mail.fin113.test/
+curl: (6) Could not resolve host: www.mail.fin113.test
+code=000 redirect= ssl_verify=0
+--- certificate served on mail.fin113.test:443
+== 4. DNS record add/edit/delete on shop113.test reach the backup 15:19:49
+200 {"id": 22, "success": true}
+   ok 192.0.3.101 rec113.shop113.test A = '192.0.2.77' after 0s
+   ok 192.0.3.102 rec113.shop113.test A = '192.0.2.77' after 0s
+   record id 22
+200 {"success": true}
+   ok 192.0.3.101 rec113.shop113.test A = '192.0.2.78' after 0s
+   ok 192.0.3.102 rec113.shop113.test A = '192.0.2.78' after 0s
+200 {"success": true}
+   ok 192.0.3.101 rec113.shop113.test A = '' after 0s
+   ok 192.0.3.102 rec113.shop113.test A = '' after 0s
+-- zone delete: DNS-only gone113.test 15:20:04
+200 {"DocumentRoot": "", "Domain": "gone113.test", "DomainID": 2, "FTPPassword": "", "FTPUser": "", "PHPVersion": "", "ProjectType": "dnsonly", "SiteID": 2, "TempDomain": ""}
+   ok 192.0.3.101 gone113.test SOA = 'ns1.fin113.test. hostmaster.gone113.test. 2026103001 10800 3600 604800 3600' after 1s
+   ok 192.0.3.102 gone113.test SOA = 'ns1.fin113.test. hostmaster.gone113.test. 2026103001 10800 3600 604800 3600' after 0s
+   zone id 2
+200 {"status": "deleted", "domain": "gone113.test"}
+   answered after 28s
+404 {"error": "domain not found"}
+   192.0.3.101 gone113.test SOA after deletion: status: REFUSED flags: qr  (0s)
+   192.0.3.102 gone113.test SOA after deletion: status: REFUSED flags: qr  (1s)
+   domain list still names it: no
+2026-10-30T15:15:10+00:00 frankfurt agent[10789]: 2026/10/30 15:15:10 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-10-30T15:15:16+00:00 frankfurt agent[10789]: 2026/10/30 15:15:16 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-10-30T15:15:16+00:00 frankfurt agent[10789]: 2026/10/30 15:15:16 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-10-30T15:16:36+00:00 frankfurt agent[10789]: 2026/10/30 15:16:36 peer inspection setup: pdns enrollment active for peer 192.0.3.102
+2026-10-30T15:20:37+00:00 frankfurt agent[10789]: 2026/10/30 15:20:37 DNS peer inspector answer for gone113.test (PowerDNS secondary): catalog_state=transferred member_state=absent native_state=unloaded; accepted
+2026-10-30T15:20:39+00:00 frankfurt agent[10789]: 2026/10/30 15:20:39 DNS peer proof for gone113.test (PowerDNS secondary) step times: prepare=1.945s challenge_write=6.793s exchange=785ms post_inspection=3.617s consume=9.335s; total 22.475s; outcome verified
+== ops done 15:20:41

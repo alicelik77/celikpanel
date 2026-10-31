@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/alicelik/celikpanel/internal/hostname"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -112,6 +113,13 @@ func (a *Agent) ConfigureMailStack(req *ServiceMutationRequest, resp *ConfigureM
 			resp.Error = fmt.Sprintf("postfix aliases: %v", err)
 			return nil
 		}
+		// Arch's main.cf names no server certificate (postfix_default_cert.go).
+		if err := ensurePostfixDefaultServerCertificate(ctx, func(name string, args ...string) ([]byte, error) {
+			return serviceMutationCommand(ctx, name, args...).CombinedOutput()
+		}); err != nil {
+			resp.Error = fmt.Sprintf("postfix tls: %v", err)
+			return nil
+		}
 	}
 
 	if hasDovecot {
@@ -132,10 +140,16 @@ func (a *Agent) ConfigureMailStack(req *ServiceMutationRequest, resp *ConfigureM
 		// Kurulu olan filtreleri Postfix'in İÇİNE bağla. Bu olmadan spam
 		// filtresi posta sunucusunun yanında koşar, içinde değil — kurulu,
 		// "Çalışıyor", hiçbir şey süzmüyor (operatör, 24 Tem).
-		if err := writeMilterChain(ctx); err != nil {
+		milterNote, err := writeMilterChain(ctx)
+		if err != nil {
 			resp.Error = fmt.Sprintf("milter wiring: %v", err)
 			return nil
 		}
+		defer func() {
+			if milterNote != "" && resp.Error == "" {
+				resp.Detail += "; " + milterNote
+			}
+		}()
 		// "Configured" is said only for a Postfix that verifiably runs with
 		// what was written: systemctl's exit status alone is the wrapper
 		// unit's on Ubuntu (mail_service_verify.go, 10 Oct 2026).
@@ -274,12 +288,31 @@ func wireMailFilters(ctx context.Context, resp *WireMailFiltersResponse) error {
 			return nil
 		}
 	}
-	if err := applyMilterChain(ctx); err != nil {
+	// The same "on upgrade" repair for Dovecot's virtual-mailbox drop-in: a
+	// release that changes its text reaches servers already running mail,
+	// and an administrator's file is kept (dovecot_virtual_dropin.go). Its
+	// outcome is reported beside the milter wiring, never as its failure.
+	// Dovecot'un sanal posta kutusu eki için aynı "yükseltmede" onarım.
+	dovecotNote := reconcileDovecotVirtualDropIn(ctx)
+	// Submission and smtps follow the chroot the distribution gives its own
+	// smtp service (D3); applyMilterChain's verified reload below makes the
+	// master daemon read the changed entries.
+	// Submission ve smtps, dağıtımın kendi smtp hizmetine verdiği chroot'u
+	// izler; aşağıdaki doğrulanmış yeniden yükleme değişikliği okutur.
+	// Like the Dovecot repair, its outcome is a note, never the wiring's
+	// failure. Dovecot onarımı gibi sonucu bir nottur, bağlamanın hatası değil.
+	chrootNote := reconcileSubmissionChroot(func(name string, args ...string) ([]byte, error) {
+		return serviceMutationCommand(ctx, name, args...).CombinedOutput()
+	})
+	milterNote, err := applyMilterChain(ctx)
+	if err != nil {
 		resp.Error = err.Error()
+		resp.Detail = joinNotes(dovecotNote, chrootNote, milterNote)
 		return nil
 	}
 	resp.Wired = true
-	resp.Detail = fmt.Sprintf("milters=%q maps=%s", postconfValue("smtpd_milters"), postfixMapTypeContext(ctx))
+	resp.Detail = joinNotes(fmt.Sprintf("milters=%q maps=%s", postconfValue("smtpd_milters"), postfixMapTypeContext(ctx)),
+		dovecotNote, chrootNote, milterNote)
 	return nil
 }
 
@@ -287,7 +320,19 @@ func wireMailFilters(ctx context.Context, resp *WireMailFiltersResponse) error {
 // distro, so there is nothing to discover.
 // rspamdMilter, milter kipindeki rspamd_proxy'dir — her dağıtımda aynı olan bir
 // TCP portu; keşfedilecek bir şey yok.
-const rspamdMilter = "inet:localhost:11332"
+//
+// Every packaged rspamd (Debian, Ubuntu, Arch) binds the proxy worker to
+// "localhost:11332", which rspamd itself expands to 127.0.0.1 and ::1, so
+// the numeric IPv4 address is always served. It is named numerically for the
+// same reason as opendkimMilter: a chrooted smtpd cannot resolve "localhost"
+// on a release whose chroot has no hosts file (Arch, D3).
+// Paketlenmiş her rspamd vekil işçiyi "localhost:11332"ye bağlar; rspamd
+// bunu 127.0.0.1 ve ::1'e açar. Sayısal ad, opendkimMilter ile aynı nedenle.
+const rspamdMilter = "inet:127.0.0.1:11332"
+
+// legacyRspamdMilter is the name releases up to alpha.113 wrote.
+// legacyRspamdMilter, alpha.113'e kadarki sürümlerin yazdığı addır.
+const legacyRspamdMilter = "inet:localhost:11332"
 
 // spamassMilterEndpoint finds where spamass-milter actually listens, instead of
 // hardcoding a path. Two facts make a constant wrong here:
@@ -414,12 +459,13 @@ func postconfExpandedContext(ctx context.Context, key string) (string, error) {
 // "Çalışıyor"ken `smtpd_milters` BOŞTU — daemon ayaktaydı ve içinden tek bir
 // ileti geçmiyordu. Panelin kurduğu filtre gerçekten süzmelidir; her bileşen
 // için geçerli olan aynı kural.
-func applyMilterChain(ctx context.Context) error {
+func applyMilterChain(ctx context.Context) (string, error) {
 	if _, err := exec.LookPath("postconf"); err != nil {
-		return nil // no postfix here, nothing to wire
+		return "", nil // no postfix here, nothing to wire
 	}
-	if err := writeMilterChain(ctx); err != nil {
-		return err
+	note, err := writeMilterChain(ctx)
+	if err != nil {
+		return "", err
 	}
 	// A running Postfix must verifiably take the chain; a stopped one is left
 	// stopped and reads main.cf when it starts. Until 10 Oct 2026 this was
@@ -428,17 +474,28 @@ func applyMilterChain(ctx context.Context) error {
 	// Çalışan Postfix zinciri doğrulanmış biçimde almalıdır; durmuş olan
 	// durmuş bırakılır ve main.cf'i başlarken okur.
 	if _, err := applyPostfixVerified(mailServiceLeaseRunner(ctx), mailServiceReload); err != nil {
-		return fmt.Errorf("the milter chain is written to main.cf, but %w", err)
+		return note, fmt.Errorf("the milter chain is written to main.cf, but %w", err)
 	}
-	return nil
+	return note, nil
 }
 
 // writeMilterChain writes the composed chain to main.cf and reloads nothing.
 // writeMilterChain, bestelenen zinciri main.cf'e yazar; hiçbir şeyi yeniden
 // yüklemez.
-func writeMilterChain(ctx context.Context) error {
+//
+// It returns a note, empty unless a list was left as the server owner wrote it.
+// The milter lists are rewritten only while they hold nothing but entries a
+// CelikPanel release composes (milterListPanelComposed): this is also how a
+// server configured by alpha.113 or earlier moves from "inet:localhost:PORT"
+// to the numeric address at the next Panel start (Agent.WireMailFilters), and
+// why a list the owner extended is reported instead of overwritten.
+// Bir not döndürür; bir liste sunucu sahibinin yazdığı gibi bırakılmadıkça
+// boştur. Listeler yalnız bir CelikPanel sürümünün bestelediği girdileri
+// taşıdıkça yeniden yazılır; sahibin genişlettiği liste üzerine yazılmaz,
+// bildirilir.
+func writeMilterChain(ctx context.Context) (string, error) {
 	if _, err := exec.LookPath("postconf"); err != nil {
-		return nil // no postfix here, nothing to wire
+		return "", nil // no postfix here, nothing to wire
 	}
 
 	spam := ""
@@ -448,22 +505,76 @@ func writeMilterChain(ctx context.Context) error {
 	case unitExists("spamass-milter"):
 		spam = spamassMilterEndpoint()
 	}
-	incoming, outgoing := composeMilterChain(unitExists("opendkim") && fileExistsAgent(opendkimConfPath), spam)
+	incoming, outgoing := composeMilterChain(unitExists("opendkim") && fileExistsAgent(opendkimConfPath()), spam)
 
-	settings := [][2]string{
-		{"smtpd_milters", incoming},
-		{"non_smtpd_milters", outgoing},
-		// A dead filter must never eat mail — accept beats bounce.
-		// Ölü filtre asla posta yutmamalı — kabul, reddi yener.
-		{"milter_default_action", "accept"},
-		{"milter_protocol", "6"},
+	var settings [][2]string
+	var kept []string
+	for _, kv := range [][2]string{{"smtpd_milters", incoming}, {"non_smtpd_milters", outgoing}} {
+		out, err := serviceMutationCommand(ctx, "postconf", "-h", kv[0]).CombinedOutput()
+		current, known := postconfOneValue(out)
+		if err != nil || !known {
+			return "", &postconfUnreadError{setting: kv[0], command: "postconf -h " + kv[0]}
+		}
+		if !milterListPanelComposed(current, spam) {
+			kept = append(kept, fmt.Sprintf("%s = %s", kv[0], current))
+			continue
+		}
+		settings = append(settings, kv)
+	}
+	if len(kept) == 0 {
+		settings = append(settings,
+			// A dead filter must never eat mail — accept beats bounce.
+			// Ölü filtre asla posta yutmamalı — kabul, reddi yener.
+			[2]string{"milter_default_action", "accept"},
+			[2]string{"milter_protocol", "6"},
+		)
 	}
 	for _, kv := range settings {
 		if out, err := serviceMutationCommand(ctx, "postconf", "-e", kv[0]+"="+kv[1]).CombinedOutput(); err != nil {
-			return fmt.Errorf("postconf %s: %s", kv[0], strings.TrimSpace(string(out)))
+			return "", fmt.Errorf("postconf %s: %s", kv[0], strings.TrimSpace(string(out)))
 		}
 	}
-	return nil
+	return ownerMilterListNote(kept), nil
+}
+
+// milterListPanelComposed reports whether a Postfix milter list holds only
+// entries a CelikPanel release writes: the OpenDKIM and Rspamd milters under
+// their current numeric and their earlier "localhost" names, and the
+// spamass-milter endpoint found on this host. Anything else — another
+// filter, a different port, a $variable — is the server owner's (D-022).
+// milterListPanelComposed, bir Postfix milter listesinin yalnız bir CelikPanel
+// sürümünün yazdığı girdileri taşıyıp taşımadığını söyler; başka her şey
+// sunucu sahibinindir.
+func milterListPanelComposed(value, spamEndpoint string) bool {
+	known := map[string]bool{}
+	for _, entry := range []string{opendkimMilter, legacyOpenDKIMMilter, rspamdMilter, legacyRspamdMilter, spamEndpoint} {
+		if entry != "" {
+			known[entry] = true
+		}
+	}
+	for _, entry := range strings.FieldsFunc(value, func(r rune) bool {
+		return r == ',' || r == ' ' || r == '\t' || r == '\n' || r == '\r'
+	}) {
+		if !known[entry] {
+			return false
+		}
+	}
+	return true
+}
+
+// ownerMilterListNote is the D-024 note for lists left as the owner wrote
+// them: what was kept, what that means, and how the owner hands it back.
+// ownerMilterListNote, sahibin yazdığı gibi bırakılan listeler için D-024
+// notudur: neyin korunduğu, anlamı ve sahibin yönetimi nasıl geri vereceği.
+func ownerMilterListNote(kept []string) string {
+	if len(kept) == 0 {
+		return ""
+	}
+	return "Postfix milter settings changed by the server owner were kept as they are (" +
+		strings.Join(kept, "; ") + "): CelikPanel did not add or rewrite its DKIM signing and spam filter entries there, " +
+		"so the owner's list decides which filters mail passes. To let CelikPanel compose the list again, the server " +
+		"owner removes the setting (postconf -X smtpd_milters non_smtpd_milters) and restarts the panel or runs the " +
+		"mail filter step again; nothing is retried by itself"
 }
 
 // composeMilterChain decides the two Postfix milter lists from what is present.
@@ -473,8 +584,23 @@ func writeMilterChain(ctx context.Context) error {
 //
 // Rules:
 //   - DKIM first: it signs what leaves, so it must see the final content.
-//   - The spam filter judges only ARRIVING mail. Scanning our own outgoing
-//     messages burns CPU and can bounce legitimate mail we created ourselves.
+//   - smtpd_milters covers every SMTP arrival: mail from outside and mail the
+//     owner's users send through 587/465, so both pass DKIM and the spam
+//     filter.
+//   - non_smtpd_milters covers mail made on this server without SMTP: the
+//     sites' PHP mail(), cron and anything else that runs sendmail. Since
+//     31 Oct 2026 (final alpha.113 acceptance run 3) Rspamd scans it too:
+//     before, a site's PHP mail() left signed but never scanned while the
+//     same message sent through 587 was scanned, so a compromised site
+//     script could send spam the filter never saw. Rspamd treats this mail
+//     as local (its local_addrs), so the checks meant for strangers
+//     (greylisting, RBL, SPF of the client) do not apply; a dead or slow
+//     Rspamd is passed by milter_default_action=accept, so mail is never
+//     lost to it. Postfix's own bounces and notices do not pass
+//     non_smtpd_milters at all (internal_mail_filter_classes is empty by
+//     default and CelikPanel never sets it), so a bounce is never rejected.
+//   - spamass-milter stays on arriving mail only: it has no notion of local
+//     mail and was never part of this decision.
 //   - An unknown spam endpoint contributes nothing rather than a broken line.
 //
 // composeMilterChain, iki Postfix milter listesini mevcut olandan karar verir.
@@ -484,8 +610,14 @@ func writeMilterChain(ctx context.Context) error {
 //
 // Kurallar:
 //   - Önce DKIM: çıkanı imzalar, bu yüzden nihai içeriği görmelidir.
-//   - Spam filtresi yalnız GELEN postayı yargılar. Kendi çıkan iletilerimizi
-//     taramak CPU yakar ve kendi ürettiğimiz meşru postayı geri çevirebilir.
+//   - smtpd_milters her SMTP girişini kapsar: dışarıdan gelen ve 587/465
+//     üzerinden gönderilen posta.
+//   - non_smtpd_milters SMTP'siz üretilen postayı kapsar (sitelerin PHP
+//     mail()'i, cron, sendmail). 31 Eki 2026'dan beri Rspamd bunu da tarar;
+//     yerel posta sayıldığından yabancılar için olan denetimler uygulanmaz,
+//     ölü Rspamd postayı yutmaz (accept), Postfix'in kendi geri dönüşleri bu
+//     listeden hiç geçmez.
+//   - spamass-milter yalnız gelen postada kalır.
 //   - Bilinmeyen bir spam ucu, bozuk bir satır yerine hiçbir şey katmaz.
 func composeMilterChain(hasDKIM bool, spamEndpoint string) (incoming, outgoing string) {
 	in := []string{}
@@ -498,6 +630,11 @@ func composeMilterChain(hasDKIM bool, spamEndpoint string) (incoming, outgoing s
 	}
 	if spamEndpoint != "" {
 		in = append(in, spamEndpoint)
+	}
+	if spamEndpoint == rspamdMilter {
+		// Locally made mail (PHP mail()) is scanned like 587/465 mail.
+		// Yerel üretilen posta (PHP mail()) 587/465 postası gibi taranır.
+		out = append(out, spamEndpoint)
 	}
 	return strings.Join(in, ", "), strings.Join(out, ", ")
 }
@@ -543,25 +680,20 @@ func ensureDovecotSSLCert(ctx context.Context) error {
 	if fileExistsAgent(certPath) && fileExistsAgent(keyPath) {
 		return nil
 	}
-	if _, err := exec.LookPath("openssl"); err != nil {
-		return fmt.Errorf("openssl is required to create the mail TLS certificate")
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("service mutation lease ended before the Dovecot default certificate was created: %w", err)
 	}
-
-	host, _ := os.Hostname()
+	host, _ := hostname.LocalFQDN()
 	if host == "" {
 		host = "localhost"
 	}
-	out, err := serviceMutationCommand(ctx, "openssl", "req", "-x509", "-nodes", "-newkey", "rsa:2048",
-		"-days", "3650",
-		"-subj", "/CN="+host,
-		"-keyout", keyPath, "-out", certPath).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("openssl: %s", firstLine(string(out)))
+	// Made in Go like Postfix's default pair (postfix_default_cert.go): no
+	// openssl command is needed on the server. The private key is root-only
+	// (0600); the certificate is public.
+	// Go ile üretilir; sunucuda openssl komutu gerekmez.
+	if err := postfixDefaultPairCreate(certPath, keyPath, host); err != nil {
+		return fmt.Errorf("create the Dovecot default certificate: %w", err)
 	}
-	// The private key is a secret: root-only. The certificate is public.
-	// Özel anahtar bir sırdır: yalnız root. Sertifika geneldir.
-	_ = os.Chmod(keyPath, 0o600)
-	_ = os.Chmod(certPath, 0o644)
 	return nil
 }
 
@@ -650,19 +782,42 @@ func configureDovecotVirtual() error {
 	}
 	conf := buildDovecotVirtualConfAt(modern, root)
 
-	confDir := "/etc/dovecot/conf.d"
+	// The administrator's drop-in is kept, never overwritten: classify it
+	// before anything (the Arch main file included) is written
+	// (dovecot_virtual_dropin.go).
+	// Yöneticinin eki korunur: hiçbir şey yazılmadan önce sınıflanır.
+	existing, err := snapshotMailFile(dovecotVirtualDropInPath)
+	if err != nil {
+		return fmt.Errorf("snapshot dovecot state: %w", err)
+	}
+	if classifyDovecotVirtualDropIn(existing.content, existing.exists, dovecotVirtualEarlierRoots(root)) == dovecotVirtualDropInOwnerEdited {
+		return errors.New(dovecotVirtualOwnerEditedReason)
+	}
+
+	confDir := dovecotConfDirPath
+	snapshots := make([]mailFileSnapshot, 0, 4)
+	if dovecotNeedsArchLayout() {
+		// Arch's single-file layout: make the conf.d drop-ins effective
+		// first, keeping an owner-edited main file (dovecot_arch_layout.go).
+		// Arch'ın tek dosyalı yerleşimi: önce conf.d eklerini etkin kıl.
+		// On error it has already left the main file as it found it.
+		mainSnapshot, err := ensureArchDovecotLayout()
+		if err != nil {
+			return err
+		}
+		snapshots = append(snapshots, mainSnapshot)
+	}
 	if !fileExistsAgent(confDir) {
-		// Dovecot is installed; its layout is the problem (Arch's 2.4 package
-		// ships a single dovecot.conf and no conf.d, upd1 finding P2). Say so
-		// instead of the former, false "dovecot is not installed".
+		// Dovecot is installed; its layout is the problem. Say so instead of
+		// the former, false "dovecot is not installed".
 		// Dovecot kurulu; sorun yerleşimidir. Eski, yanlış "kurulu değil"
 		// yerine bunu söyle.
 		return errors.New(dovecotConfDirMissingReason)
 	}
-	managedConf := confDir + "/99-celikpanel.conf"
+	managedConf := dovecotVirtualDropInPath
 	authConf := confDir + "/10-auth.conf"
 	paths := []string{dovecotUsersPath, managedConf, authConf}
-	snapshots := make([]mailFileSnapshot, 0, len(paths))
+	usersIndex := len(snapshots)
 	for _, path := range paths {
 		snapshot, err := snapshotMailFile(path)
 		if err != nil {
@@ -691,7 +846,7 @@ func configureDovecotVirtual() error {
 	// ama dovecot'un auth süreci dovecot kullanıcısı olarak çalışır, celikpanel
 	// grubunda değildir; root:celikpanel 0640 onu dışarıda bırakır (izin yok,
 	// geçici auth hatası). dovecot grubuna 0640 ver: dovecot okur, başkası okumaz.
-	if !snapshots[0].exists {
+	if !snapshots[usersIndex].exists {
 		if err := secureWriteConfig(dovecotUsersPath, []byte(""), 0o640); err != nil {
 			return rollback(fmt.Errorf("create dovecot users file: %w", err))
 		}
@@ -990,8 +1145,9 @@ func postfixMapType() string {
 
 func postfixMapTypeContext(ctx context.Context) string {
 	mapTypeOnce.Do(func() {
-		for _, t := range []string{"lmdb", "hash", "btree"} {
-			if postmapTypeWorksContext(ctx, t) {
+		out, err := postfixMapTypeList(ctx)
+		for _, t := range postfixMapTypeCandidates(out, err) {
+			if postfixMapTypeUsable(ctx, t) {
 				mapTypeCached = t
 				return
 			}
@@ -999,6 +1155,52 @@ func postfixMapTypeContext(ctx context.Context) string {
 		mapTypeCached = "texthash"
 	})
 	return mapTypeCached
+}
+
+// Seams for component tests: the type list Postfix reports and the postmap
+// trial of one type.
+var (
+	postfixMapTypeList = func(ctx context.Context) ([]byte, error) {
+		return serviceMutationCommand(ctx, "postconf", "-m").Output()
+	}
+	postfixMapTypeUsable = postmapTypeWorksContext
+)
+
+// postfixIndexedMapTypes is the preference order of indexed table types.
+var postfixIndexedMapTypes = []string{"lmdb", "hash", "btree"}
+
+// postfixMapTypeCandidates narrows the postmap trial to the types Postfix
+// itself lists (`postconf -m`). Even with its output captured, postmap writes
+// its refusal of an absent type to the system log: Debian 13 journaled
+// "postfix/postmap: fatal: unsupported map type: lmdb" at error level on
+// every Agent start (final alpha.113 acceptance, 30 Oct 2026), although
+// falling through to hash is the correct outcome there. Asking for the list
+// first logs nothing. The list alone is still not trusted (Arch lists hash
+// without a usable Berkeley DB), so a listed type is tried with postmap as
+// before. When the list cannot be read, every type is tried, as before.
+// postfixMapTypeCandidates, postmap denemesini Postfix'in kendi listelediği
+// tiplerle (`postconf -m`) sınırlar. postmap, olmayan bir tipi reddini çıktısı
+// yakalansa da sistem günlüğüne "fatal" düzeyinde yazar; listeyi önce sormak
+// hiçbir şey yazmaz. Liste tek başına güvenilmez; listelenen tip yine postmap
+// ile denenir. Liste okunamazsa her tip eskisi gibi denenir.
+func postfixMapTypeCandidates(listed []byte, err error) []string {
+	if err != nil {
+		return append([]string(nil), postfixIndexedMapTypes...)
+	}
+	known := make(map[string]bool)
+	for _, field := range strings.Fields(string(listed)) {
+		known[field] = true
+	}
+	if len(known) == 0 {
+		return append([]string(nil), postfixIndexedMapTypes...)
+	}
+	candidates := make([]string, 0, len(postfixIndexedMapTypes))
+	for _, t := range postfixIndexedMapTypes {
+		if known[t] {
+			candidates = append(candidates, t)
+		}
+	}
+	return candidates
 }
 
 func postmapTypeWorks(t string) bool {

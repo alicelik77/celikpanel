@@ -1,0 +1,36 @@
+# Programs the panel installs or writes configuration for, and their package
+# names per package-manager family ("-" = not packaged / not mapped there).
+# Source of the mapping: internal/core/managed_services.go (make distro-matrix)
+# plus the validator packages the config matrix needs.
+#
+# Columns: program  apt-package  pacman-package
+nginx              nginx                  nginx
+php-fpm            php-fpm                php-fpm
+postfix            postfix                postfix
+dovecot            dovecot-core           dovecot
+rspamd             rspamd                 rspamd
+opendkim           opendkim               opendkim
+spamassassin       spamassassin           spamassassin
+clamav             clamav-daemon          clamav
+bind               bind9                  bind
+powerdns           pdns-server            powerdns
+powerdns-sqlite3   pdns-backend-sqlite3   -
+nftables           nftables               nftables
+systemd            systemd                systemd
+fail2ban           fail2ban               fail2ban
+certbot            certbot                certbot
+mariadb            mariadb-server         mariadb
+postgresql         postgresql             postgresql
+wireguard          wireguard-tools        wireguard-tools
+redis              redis-server           -
+valkey             valkey-server          valkey
+memcached          memcached              memcached
+cron               cron                   cronie
+openssh            openssh-server         openssh
+sudo               sudo                   sudo
+openssl            openssl                openssl
+unattended-upgrades unattended-upgrades   -
+phpmyadmin         phpmyadmin             phpmyadmin
+phppgadmin         phppgadmin             -
+netdata            netdata                netdata
+apt                apt                    -

@@ -117,14 +117,22 @@ func ProbeBINDVendorIdentity(ctx context.Context, profile hostplatform.Profile, 
 	return second, nil
 }
 
-// ProbePDNSVendorIdentity compares two exact APT/systemd unit identity
-// observations. It does not verify vendor file bytes or database content.
+// certifiedPDNSRecoveryHost is the PowerDNS host class independent recovery
+// observes: APT on Debian/Ubuntu or pacman on Arch Linux, each with systemd.
+func certifiedPDNSRecoveryHost(profile hostplatform.Profile) bool {
+	if profile.ServiceManager != hostplatform.ServiceManagerSystemd {
+		return false
+	}
+	return (profile.PackageManager == hostplatform.PackageManagerAPT && profile.DistroFamily == hostplatform.DistroFamilyDebian) ||
+		(profile.PackageManager == hostplatform.PackageManagerPacman && profile.DistroFamily == hostplatform.DistroFamilyArch)
+}
+
+// ProbePDNSVendorIdentity compares two exact systemd unit identity
+// observations of the host family's vendor unit (APT or pacman). It does not
+// verify vendor file bytes or database content.
 func ProbePDNSVendorIdentity(ctx context.Context, profile hostplatform.Profile, runner BINDIdentityRunner) (dnsunitidentity.Identity, error) {
-	if ctx == nil || runner == nil ||
-		profile.PackageManager != hostplatform.PackageManagerAPT ||
-		profile.DistroFamily != hostplatform.DistroFamilyDebian ||
-		profile.ServiceManager != hostplatform.ServiceManagerSystemd {
-		return dnsunitidentity.Identity{}, errors.New("PowerDNS identity observation requires a verified APT/systemd host")
+	if ctx == nil || runner == nil || !certifiedPDNSRecoveryHost(profile) {
+		return dnsunitidentity.Identity{}, errors.New("PowerDNS identity observation requires a verified APT or pacman systemd host")
 	}
 	read := func() (dnsunitidentity.Identity, error) {
 		raw, err := runner(ctx, "pdns.service")
@@ -138,7 +146,7 @@ func ProbePDNSVendorIdentity(ctx context.Context, profile hostplatform.Profile, 
 		if err != nil {
 			return dnsunitidentity.Identity{}, err
 		}
-		if err := dnsunitidentity.ValidateAPTPDNSVendorIdentity(identity); err != nil {
+		if err := dnsunitidentity.ValidatePDNSVendorIdentityFor(string(profile.PackageManager), identity); err != nil {
 			return dnsunitidentity.Identity{}, err
 		}
 		return identity, nil

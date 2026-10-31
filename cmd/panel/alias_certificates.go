@@ -116,6 +116,11 @@ type certificateCleanupTarget struct {
 }
 
 func (target certificateCleanupTarget) snapshotPath() string {
+	if _, native := transport.NativeSiteLineageFromPath(target.CertPath); native {
+		// certbot's live files of an OS-renewed lineage: deleting the
+		// lineage removes them; there is no immutable copy (D-040).
+		return ""
+	}
 	for _, candidate := range []string{
 		target.CertPath, target.KeyPath, target.ChainPath,
 	} {
@@ -369,7 +374,7 @@ func (p *Panel) issueAliasCertificateSnapshot(
 		return install, err
 	}
 
-	info, err := p.inspectManagedCertificate(
+	info, err := p.inspectIssuedCertificate(
 		ctx,
 		domainName,
 		agentResp.CertPath,

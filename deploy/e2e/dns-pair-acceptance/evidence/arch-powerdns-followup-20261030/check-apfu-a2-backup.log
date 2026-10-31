@@ -1,0 +1,152 @@
+== check apfu-a2/backup 2026-10-30T10:55:22Z
+-- os
+PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
+ID=debian
+6.12.105+deb13-cloud-amd64
+-- package
+pdns-backend-sqlite3	4.9.18-0+deb13u1
+pdns-server	4.9.18-0+deb13u1
+-- units
+active active active active inactive inactive 
+ExecStart={ path=/usr/sbin/pdns_server ; argv[]=/usr/sbin/pdns_server --guardian=no --daemon=no --disable-syslog --log-timestamp=no --write-pid=no
+User=pdns
+Group=pdns
+UnitFileState=enabled
+-- config
+755 root:root /etc/powerdns
+640 root:pdns /etc/powerdns/pdns.conf
+755 root:root /etc/powerdns/pdns.d
+644 root:root /etc/powerdns/pdns.d/celikpanel-cluster.conf
+644 root:root /etc/powerdns/pdns.d/celikpanel.conf
+755 pdns:pdns /var/lib/powerdns
+640 pdns:pdns /var/lib/powerdns/pdns.sqlite3
+640 pdns:pdns /var/lib/powerdns/pdns.sqlite3-shm
+640 pdns:pdns /var/lib/powerdns/pdns.sqlite3-wal
+include-dir=/etc/powerdns/pdns.d
+launch=
+security-poll-suffix=
+primary=yes
+secondary=yes
+allow-axfr-ips=192.0.3.94
+launch=gsqlite3
+gsqlite3-dnssec=yes
+gsqlite3-database=/var/lib/powerdns/pdns.sqlite3
+local-address=192.0.3.95
+zone-cache-refresh-interval=0
+webserver=no
+api=no
+-- DNS answers
+(no dig on this server)
+(no dig on this server)
+(no dig on this server)
+-- catalog
+
+/root/q.sh: line 17: sqlite3: command not found
+-- state
+dns-engine-ownership-pdns.json
+dns-engine-state.json
+firewall-apply-journal.json
+service-mutations.json
+{"schema":"celikpanel-dns-engine-state/v2","acquisition":{"schema":"celikpanel-dns-engine-acquisition/v1","mode":"switch","engine":"pdns","engine_epoch":1,"pair_role":"secondary","pair_local_ip":"192.0.3.95","pair_peer_ip":"192.0.3.94","source_revision":1,"manifest_qualifier":"dns-engine-switch/v1:sha256:62c06d2845f42ec92c18795f00bf19a7c1b760f9f286447f2b3070f1f938470a","mutation_request_id":"6dab354002250a126a755beb91b2ffb1","mutation_owner_id":"f44d486fda7e480997fa729ca95aa7da"},"publication":{"schema":"celikpanel-dns-engine-publication/v1","acquisition_sha256":"fbc2ee820a5eb710a55e57cb176083
+-- recovery status
+No DNS switch journal was observed. This does not prove historical completion or current DNS health. The server owner should inspect the native DNS service and the panel's operation status before starting another switch.
+exit=0
+-- agent log (PowerDNS)
+Oct 30 10:54:00 backfu agent[10146]: 2026/10/30 10:54:00 DNS engine change 6dab354002250a126a755beb91b2ffb1: the paired primary at 192.0.3.94 serves catalog catalog-c000035e.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 10:54:03 backfu addgroup[19673]: Adding group `pdns' (GID 105) ...
+Oct 30 10:54:03 backfu groupadd[19676]: group added to /etc/group: name=pdns, GID=105
+Oct 30 10:54:03 backfu groupadd[19676]: group added to /etc/gshadow: name=pdns
+Oct 30 10:54:03 backfu groupadd[19676]: new group: name=pdns, GID=105
+Oct 30 10:54:03 backfu adduser[19680]: Adding system user `pdns' (UID 104) ...
+Oct 30 10:54:03 backfu adduser[19680]: Adding new user `pdns' (UID 104) with group `pdns' ...
+Oct 30 10:54:04 backfu useradd[19684]: new user: name=pdns, UID=104, GID=105, home=/var/spool/powerdns, shell=/bin/false, from=none
+Oct 30 10:54:04 backfu adduser[19680]: Creating home directory `/var/spool/powerdns' ...
+Oct 30 10:54:09 backfu agent[10146]: 2026/10/30 10:54:09 DNS engine change completion 6dab354002250a126a755beb91b2ffb1: the paired primary at 192.0.3.94 serves catalog catalog-c000035e.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 10:54:10 backfu agent[10146]: 2026/10/30 10:54:10 DNS readiness check: the paired primary at 192.0.3.94 serves catalog catalog-c000035e.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 10:55:02 backfu agent[10146]: 2026/10/30 10:55:02 DNS readiness check: the paired primary at 192.0.3.94 serves catalog catalog-c000035e.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 10:55:03 backfu agent[10146]: 2026/10/30 10:55:03 DNS readiness check: the paired primary at 192.0.3.94 serves catalog catalog-c000035e.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 10:55:04 backfu agent[10146]: 2026/10/30 10:55:04 DNS readiness check: the paired primary at 192.0.3.94 serves catalog catalog-c000035e.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 10:55:05 backfu agent[10146]: 2026/10/30 10:55:05 DNS readiness check: the paired primary at 192.0.3.94 serves catalog catalog-c000035e.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+-- from the lab network guest (outside the server)
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 64741
+;; flags: qr aa; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+; EDNS: version: 0, flags:; udp: 1232
+;; ANSWER SECTION:
+fua2.test.		3600	IN	SOA	ns1.fua2.test. hostmaster.fua2.test. 2026103000 3600 600 604800 300
+ns1.fua2.test. hostmaster.fua2.test. 2026103000 3600 600 604800 300
+== check apfu-a2/backup 2026-10-30T11:10:42Z
+-- os
+PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
+ID=debian
+6.12.105+deb13-cloud-amd64
+-- package
+pdns-backend-sqlite3	4.9.18-0+deb13u1
+pdns-server	4.9.18-0+deb13u1
+-- units
+active active active active inactive inactive 
+ExecStart={ path=/usr/sbin/pdns_server ; argv[]=/usr/sbin/pdns_server --guardian=no --daemon=no --disable-syslog --log-timestamp=no --write-pid=no
+User=pdns
+Group=pdns
+UnitFileState=enabled
+-- config
+755 root:root /etc/powerdns
+640 root:pdns /etc/powerdns/pdns.conf
+755 root:root /etc/powerdns/pdns.d
+644 root:root /etc/powerdns/pdns.d/celikpanel-cluster.conf
+644 root:root /etc/powerdns/pdns.d/celikpanel.conf
+755 pdns:pdns /var/lib/powerdns
+640 pdns:pdns /var/lib/powerdns/pdns.sqlite3
+640 pdns:pdns /var/lib/powerdns/pdns.sqlite3-shm
+640 pdns:pdns /var/lib/powerdns/pdns.sqlite3-wal
+include-dir=/etc/powerdns/pdns.d
+launch=
+security-poll-suffix=
+primary=yes
+secondary=yes
+allow-axfr-ips=192.0.3.94
+launch=gsqlite3
+gsqlite3-dnssec=yes
+gsqlite3-database=/var/lib/powerdns/pdns.sqlite3
+local-address=192.0.3.95
+zone-cache-refresh-interval=0
+webserver=no
+api=no
+-- DNS answers
+(no dig on this server)
+(no dig on this server)
+(no dig on this server)
+-- catalog
+
+/root/q.sh: line 17: sqlite3: command not found
+-- state
+dns-engine-ownership-pdns.json
+dns-engine-state.json
+firewall-apply-journal.json
+service-mutations.json
+{"schema":"celikpanel-dns-engine-state/v2","acquisition":{"schema":"celikpanel-dns-engine-acquisition/v1","mode":"switch","engine":"pdns","engine_epoch":1,"pair_role":"secondary","pair_local_ip":"192.0.3.95","pair_peer_ip":"192.0.3.94","source_revision":1,"manifest_qualifier":"dns-engine-switch/v1:sha256:62c06d2845f42ec92c18795f00bf19a7c1b760f9f286447f2b3070f1f938470a","mutation_request_id":"6dab354002250a126a755beb91b2ffb1","mutation_owner_id":"f44d486fda7e480997fa729ca95aa7da"},"publication":{"schema":"celikpanel-dns-engine-publication/v1","acquisition_sha256":"fbc2ee820a5eb710a55e57cb176083
+-- recovery status
+No DNS switch journal was observed. This does not prove historical completion or current DNS health. The server owner should inspect the native DNS service and the panel's operation status before starting another switch.
+exit=0
+-- agent log (PowerDNS)
+Oct 30 10:54:00 backfu agent[10146]: 2026/10/30 10:54:00 DNS engine change 6dab354002250a126a755beb91b2ffb1: the paired primary at 192.0.3.94 serves catalog catalog-c000035e.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 10:54:03 backfu addgroup[19673]: Adding group `pdns' (GID 105) ...
+Oct 30 10:54:03 backfu groupadd[19676]: group added to /etc/group: name=pdns, GID=105
+Oct 30 10:54:03 backfu groupadd[19676]: group added to /etc/gshadow: name=pdns
+Oct 30 10:54:03 backfu groupadd[19676]: new group: name=pdns, GID=105
+Oct 30 10:54:03 backfu adduser[19680]: Adding system user `pdns' (UID 104) ...
+Oct 30 10:54:03 backfu adduser[19680]: Adding new user `pdns' (UID 104) with group `pdns' ...
+Oct 30 10:54:04 backfu useradd[19684]: new user: name=pdns, UID=104, GID=105, home=/var/spool/powerdns, shell=/bin/false, from=none
+Oct 30 10:54:04 backfu adduser[19680]: Creating home directory `/var/spool/powerdns' ...
+Oct 30 10:54:09 backfu agent[10146]: 2026/10/30 10:54:09 DNS engine change completion 6dab354002250a126a755beb91b2ffb1: the paired primary at 192.0.3.94 serves catalog catalog-c000035e.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 10:54:10 backfu agent[10146]: 2026/10/30 10:54:10 DNS readiness check: the paired primary at 192.0.3.94 serves catalog catalog-c000035e.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 10:55:02 backfu agent[10146]: 2026/10/30 10:55:02 DNS readiness check: the paired primary at 192.0.3.94 serves catalog catalog-c000035e.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 10:55:03 backfu agent[10146]: 2026/10/30 10:55:03 DNS readiness check: the paired primary at 192.0.3.94 serves catalog catalog-c000035e.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 10:55:04 backfu agent[10146]: 2026/10/30 10:55:04 DNS readiness check: the paired primary at 192.0.3.94 serves catalog catalog-c000035e.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+Oct 30 10:55:05 backfu agent[10146]: 2026/10/30 10:55:05 DNS readiness check: the paired primary at 192.0.3.94 serves catalog catalog-c000035e.celikpanel.invalid in the PowerDNS catalog format; this operation reads it in that format
+-- from the lab network guest (outside the server)
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 20807
+;; flags: qr aa; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+; EDNS: version: 0, flags:; udp: 1232
+;; ANSWER SECTION:
+fua2.test.		3600	IN	SOA	ns1.fua2.test. hostmaster.fua2.test. 2026103000 3600 600 604800 300
+ns1.fua2.test. hostmaster.fua2.test. 2026103000 3600 600 604800 300

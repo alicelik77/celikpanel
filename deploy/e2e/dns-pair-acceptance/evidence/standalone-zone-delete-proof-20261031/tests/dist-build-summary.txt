@@ -1,0 +1,11 @@
+web test exit 1
+EXIT 0
+< bootstrap_release_public_key_sha256=7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb
+> bootstrap_release_public_key_sha256=cc86cefdb0eace150488e15f80b1c5941ade3d6d17f2325f41f312dc43e8983e
+format=celikpanel-release-manifest-v2
+sequence=113
+version=v0.1.0-alpha.113
+commit=af289147d0f7dff4243e2af7286c1bdea481a399
+archive=celikpanel-v0.1.0-alpha.113-linux-amd64.tar.gz
+archive_sha256=37415591f8940568a3eb9d1bd8f3c2f07fa373ae70d6752829f9abc3a2d2166b
+archive_size=68185629

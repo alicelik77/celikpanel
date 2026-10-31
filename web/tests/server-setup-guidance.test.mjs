@@ -150,6 +150,27 @@ test('mail enrollment guidance distinguishes recorded forward, inverse, unknown 
     }
 });
 
+// 2026-10-30 (Arch run ap-e): a hand-off refused because the server was busy
+// waits by itself ("nobody needs to act"); only past the bound does the owner
+// get an action, titled as one.
+test('a busy mail renewal hand-off waits without the owner, and asks the owner only past the bound',()=>{
+    const step={id:'18-mail_enrollment',kind:'mail_enrollment',target:'mail-renewal',status:'running'};
+    const waiting=setupExecutionGuidance(execution({status:'waiting',phase:'mail_enrollment',steps:[step],error:{code:'server_setup_host_busy',message:'busy'}}));
+    assert.equal(waiting.title,'setup.guide.waitTitle');
+    assert.deepEqual(keys(waiting),['setup.v5.wait.server_setup_host_busy','setup.guide.monitoring']);
+    assert.match(enScreens['setup.v5.wait.server_setup_host_busy'],/Nobody needs to act/);
+    assert.match(trScreens['setup.v5.wait.server_setup_host_busy'],/Kimsenin bir şey yapması gerekmiyor/);
+    const stayed=setupExecutionGuidance(execution({status:'running',phase:step.id,steps:[step],error:{code:'server_setup_mail_enrollment_host_busy',message:'stayed busy'}}));
+    assert.equal(stayed.title,'setup.guide.failedTitle');
+    assert.equal(stayed.messages[0].key,'setup.guide.mailEnrollmentHostBusy');
+    assert.ok(!keys(stayed).includes('setup.guide.mailEnrollmentUnknown'));
+    for(const screens of [enScreens,trScreens]){
+        assert.ok(screens['setup.guide.mailEnrollmentHostBusy']);
+        assert.ok(screens['setup.mailEnrollment.busy']);
+        assert.ok(screens['setup.guide.mailEnrollmentHostBusy'].includes(screens['setup.mailEnrollment.retry']),'names the button the owner chooses');
+    }
+});
+
 // Second server as a full peer, part 2 (2026-10-16): on a DNS secondary whose
 // public DNS check waits, the guidance says first what the request to the
 // primary got. Applied: nothing to do, and no instruction to add the record

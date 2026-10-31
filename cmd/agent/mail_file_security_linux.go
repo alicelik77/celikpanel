@@ -35,6 +35,35 @@ func secureChmodMailFile(path string, mode os.FileMode) error {
 	return nil
 }
 
+// secureTightenDKIMKey keeps an existing DKIM private key private without
+// undoing the signing grant: root-owned 0600, or 0640 with the OpenDKIM
+// group that writeDKIMTables gives it, stays as it is; anything wider
+// becomes 0600. Until 30 Oct 2026 EnsureDKIMKey set every existing key to
+// 0600, so asking for a key again after signing was configured left OpenDKIM
+// unable to read it and that domain's mail unsigned.
+// secureTightenDKIMKey, var olan DKIM özel anahtarını imzalama iznini
+// geri almadan gizli tutar: root sahipli 0600 ya da OpenDKIM grubuyla 0640
+// olduğu gibi kalır; daha genişi 0600 olur.
+func secureTightenDKIMKey(path string, signerGID int) error {
+	fd, err := openSecureMailFile(path)
+	if err != nil {
+		return err
+	}
+	defer unix.Close(fd)
+	var stat unix.Stat_t
+	if err := unix.Fstat(fd, &stat); err != nil {
+		return fmt.Errorf("inspect DKIM key %s: %w", path, err)
+	}
+	perm := stat.Mode & 0o7777
+	if stat.Uid == 0 && (perm == 0o600 || (perm == 0o640 && signerGID >= 0 && int(stat.Gid) == signerGID)) {
+		return nil
+	}
+	if err := unix.Fchmod(fd, 0o600); err != nil {
+		return fmt.Errorf("set DKIM key mode %s: %w", path, err)
+	}
+	return nil
+}
+
 func secureSetMailFileMetadata(path string, mode os.FileMode, uid, gid int) error {
 	fd, err := openSecureMailFile(path)
 	if err != nil {

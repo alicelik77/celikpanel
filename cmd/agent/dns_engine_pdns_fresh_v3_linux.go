@@ -20,6 +20,7 @@ import (
 	"github.com/alicelik/celikpanel/internal/dnsenginerecovery"
 	"github.com/alicelik/celikpanel/internal/hostplatform"
 	"github.com/alicelik/celikpanel/internal/mutationpayload"
+	"github.com/alicelik/celikpanel/internal/pacmanlocal"
 	"github.com/alicelik/celikpanel/internal/pdnsnative"
 	"github.com/alicelik/celikpanel/internal/transport"
 	"golang.org/x/sys/unix"
@@ -118,13 +119,29 @@ func freshPDNSTargetOwnGuardMaskWithReceiptV3(
 // native catalog transform. It runs before any package, unit or file effect so
 // an unmeasured host is refused while nothing has changed.
 func validateFreshPDNSPrimaryHostProfileV3(profile hostplatform.Profile) error {
-	if profile.ID != "debian" || profile.Version != "13" || profile.Arch != "amd64" ||
-		profile.DistroFamily != hostplatform.DistroFamilyDebian ||
-		profile.PackageManager != hostplatform.PackageManagerAPT ||
-		profile.ServiceManager != hostplatform.ServiceManagerSystemd {
-		return errors.New("PowerDNS as the paired primary is supported only on Debian 13 amd64 in this release; nothing was changed; install BIND as the paired primary on this host instead")
+	_, err := freshPDNSPrimaryBuildV3(profile)
+	return err
+}
+
+// freshPDNSPrimaryBuildV3 is the tested PowerDNS build of a measured host
+// class (D-028, amended 2026-10-30): Debian 13 amd64 with Debian's 4.9 build,
+// or Arch Linux x86_64 with extra/powerdns 5.1. Every other host is refused
+// before any effect.
+func freshPDNSPrimaryBuildV3(profile hostplatform.Profile) (dnsengineartifact.PDNSFreshPrimaryBuild, error) {
+	debian13 := profile.ID == "debian" && profile.Version == "13" && profile.Arch == "amd64" &&
+		profile.DistroFamily == hostplatform.DistroFamilyDebian &&
+		profile.PackageManager == hostplatform.PackageManagerAPT &&
+		profile.ServiceManager == hostplatform.ServiceManagerSystemd
+	arch := profile.ID == "arch" && profile.Arch == "amd64" &&
+		profile.DistroFamily == hostplatform.DistroFamilyArch &&
+		profile.PackageManager == hostplatform.PackageManagerPacman &&
+		profile.ServiceManager == hostplatform.ServiceManagerSystemd
+	if debian13 || arch {
+		if build, ok := dnsengineartifact.PDNSFreshPrimaryBuildFor(string(profile.PackageManager)); ok {
+			return build, nil
+		}
 	}
-	return nil
+	return dnsengineartifact.PDNSFreshPrimaryBuild{}, errors.New("PowerDNS as the paired primary is supported only on Debian 13 amd64 and Arch Linux x86_64 in this release; nothing was changed; install BIND as the paired primary on this host instead")
 }
 
 // prepareFreshPDNSPrimaryIntentV3 binds the prepared config and absent target
@@ -135,11 +152,9 @@ func prepareFreshPDNSPrimaryIntentV3(
 	base dnsEngineSwitchJournal,
 	configs pdnsConfigMutation,
 ) (dnsEngineSwitchJournal, error) {
-	if profile.ID != "debian" || profile.Version != "13" || profile.Arch != "amd64" ||
-		profile.DistroFamily != hostplatform.DistroFamilyDebian ||
-		profile.PackageManager != hostplatform.PackageManagerAPT ||
-		profile.ServiceManager != hostplatform.ServiceManagerSystemd {
-		return dnsEngineSwitchJournal{}, errors.New("v3 fresh PowerDNS primary requires Debian APT and systemd")
+	pdnsBuild, err := freshPDNSPrimaryBuildV3(profile)
+	if err != nil {
+		return dnsEngineSwitchJournal{}, errors.New("v3 fresh PowerDNS primary requires a measured host class")
 	}
 	if base.Schema != dnsengineartifact.SwitchJournalSchemaV1 ||
 		base.Phase != dnsSwitchPhaseIntent ||
@@ -178,7 +193,7 @@ func prepareFreshPDNSPrimaryIntentV3(
 			return dnsEngineSwitchJournal{}, err
 		}
 	}
-	return dnsJournalPolicy().BuildPDNSFreshPrimaryJournalV3(base, configs.desiredSnapshots())
+	return dnsJournalPolicy().BuildPDNSFreshPrimaryJournalV3ForKind(base, configs.desiredSnapshots(), pdnsBuild.Kind)
 }
 
 // stageFreshPDNSPrimaryCandidateV3 runs only after the empty intent is durable.
@@ -294,7 +309,7 @@ func activateFreshPDNSPrimaryCandidateV3(journal dnsEngineSwitchJournal) error {
 	}
 	proof := *journal.PDNSFreshPlan.Candidate
 	actual, err := dnsenginerecovery.CapturePDNSTargetCandidateV4(proof.Path)
-	if err != nil || actual != proof {
+	if err != nil || !proof.SameCandidate(actual) {
 		return errors.Join(errors.New("v3 PowerDNS candidate differs before activation"), err)
 	}
 	if err := verifyPDNSTargetStageFilesystemV4(proof.Path); err != nil {
@@ -416,7 +431,7 @@ func continueFreshPDNSPrimaryV3(
 		Engine: transport.DNSEnginePowerDNS, EngineEpoch: manifest.TargetEpoch,
 		PairRole: transport.DNSPairRolePrimary, PairLocalIP: manifest.LocalIP, PairPeerIP: manifest.PeerIP,
 		PrimaryCatalogSerial: nativeSerial, SourceRevision: manifest.SourceRevision,
-		NativeCatalogV3:   dnsengineartifact.NativeCatalogDebian49V3,
+		NativeCatalogV3:   observed.PDNSFreshPlan.Kind,
 		ManifestQualifier: manifest.Qualifier, MutationRequestID: binding.MutationRequestID,
 		MutationOwnerID: binding.MutationOwnerID,
 	}
@@ -446,10 +461,12 @@ func continueFreshPDNSPrimaryV3(
 // one release of the tested series (the same rule the preflight and the setup
 // wizard use) and the daemon the installed package's own, unmodified file.
 func verifyFreshPDNSNativeVersionV3(ctx context.Context, profile hostplatform.Profile) error {
-	if profile.ID != "debian" || profile.Version != "13" || profile.Arch != "amd64" ||
-		profile.PackageManager != hostplatform.PackageManagerAPT ||
-		profile.ServiceManager != hostplatform.ServiceManagerSystemd {
-		return errors.New("v3 native catalog transform is measured only on Debian 13 amd64")
+	build, err := freshPDNSPrimaryBuildV3(profile)
+	if err != nil {
+		return errors.New("v3 native catalog transform is measured only on Debian 13 amd64 and Arch Linux x86_64")
+	}
+	if build.PackageManager == "pacman" {
+		return verifyFreshPDNSPacmanIdentityV3(pacmanlocal.DBDir, build)
 	}
 	dpkg, err := executableForProfile(profile, string(profile.PackageManager), "dpkg-query")
 	if err != nil {
@@ -474,6 +491,39 @@ func verifyFreshPDNSNativeVersionV3(ctx context.Context, profile hostplatform.Pr
 		},
 		binary: dnsengineartifact.PDNSFreshPrimaryBinary,
 	})
+}
+
+// verifyFreshPDNSPacmanIdentityV3 is the Arch post-install identity check:
+// the powerdns package installed at a release of the tested series, read from
+// pacman's own local database, and the daemon the package's own, unmodified
+// file (its mtree SHA-256). A pacman update inside the series changes the
+// digest together with the record, so it is accepted; a changed file is not.
+//
+// Arch kurulum sonrası kimlik denetimi: denenmiş serideki powerdns paketi ve
+// paketin kendi, değişmemiş daemon dosyası (mtree SHA-256).
+func verifyFreshPDNSPacmanIdentityV3(dbDir string, build dnsengineartifact.PDNSFreshPrimaryBuild) error {
+	if build.PackageManager != "pacman" || len(build.Packages) != 1 {
+		return errors.New("v3 PowerDNS pacman identity requires the Arch build")
+	}
+	pkg, err := pacmanlocal.Installed(dbDir, build.Packages[0])
+	if err != nil {
+		return fmt.Errorf("v3 native PowerDNS package %s is not installed: %w", build.Packages[0], err)
+	}
+	if !build.VersionInTestedSeries(pkg.Version) {
+		return fmt.Errorf("v3 native PowerDNS package %s %s is not a release of the tested PowerDNS %s series",
+			pkg.Name, freshPDNSVersionText(pkg.Version), build.Series)
+	}
+	info, err := os.Lstat(build.Binary)
+	if err != nil {
+		return err
+	}
+	if !info.Mode().IsRegular() || info.Mode().Perm() != 0o755 {
+		return errors.New("v3 PowerDNS binary type or mode differs from the installed package")
+	}
+	if err := pacmanlocal.VerifyPackageFile(pkg, build.Binary); err != nil {
+		return fmt.Errorf("v3 PowerDNS binary differs from the installed package's own file: %w", err)
+	}
+	return nil
 }
 
 type freshPDNSIdentityOpsV3 struct {

@@ -1,0 +1,272 @@
+== 1. guest clock set 3 s BEHIND the lab CA (Pebble does not backdate; no correction) 16:38:46
+labnet 16:38:48.040328234
+server 16:38:44.318793706
+== 2. Add Domain: debshop.test with Enable SSL ticked (create, then the dialog's one certificate request) 16:38:47
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/1/public_html", "Domain": "debshop.test", "DomainID": 1, "FTPPassword": "[REDACTED]", "FTPUser": "debshop_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 1, "TempDomain": ""}
+   site id 1
+   ok 192.0.3.121 debshop.test A = '192.0.3.121' after 0s
+200 {
+ "expires_at": "2031-10-30T16:38:56Z",
+ "https_redirect": true,
+ "status": "success"
+}
+   certificate answer after 6s
+   200 status active usable True not_before 2026-10-30T16:38:57Z settings {"force_https": true, "hsts_enabled": false, "hsts_max_age": 31536000}
+== 3. what a visitor sees: https, http -> https, Server header 16:39:01
+resolves (lab resolver 192.0.2.53): debshop.test=192.0.3.121 www.debshop.test=192.0.3.121
+--- http://debshop.test/
+code=301 redirect=https://debshop.test/ ssl_verify=0
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Content-Type: text/html
+Location: https://debshop.test/
+--- https://debshop.test/
+code=200 redirect= ssl_verify=0
+HTTP/2 200 
+server: nginx
+content-type: text/html
+strict-transport-security: max-age=0
+body: 3078 bytes, title: <title>debshop.test
+software words in body: [CelikPanel ]
+--- http://www.debshop.test/
+code=301 redirect=https://www.debshop.test/ ssl_verify=0
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Content-Type: text/html
+Location: https://www.debshop.test/
+--- https://www.debshop.test/
+code=200 redirect= ssl_verify=0
+HTTP/2 200 
+server: nginx
+content-type: text/html
+strict-transport-security: max-age=0
+body: 3078 bytes, title: <title>debshop.test
+software words in body: [CelikPanel ]
+--- certificate served on debshop.test:443
+subject= X509v3 Subject Alternative Name: critical     DNS:debshop.test, DNS:www.debshop.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 16:38:56 2031 GMT 
+Verify return code: 0 (ok)
+== 4. switch the site to PHP (HostingTypePanel's PUT) 16:39:01
+   hosting before: {"document_root": "/var/www/celikpanel/subscriptions/2/sites/1/public_html", "forward_code": 301, "project_type": "static"}
+   200 {
+ "app_port": 0,
+ "success": true
+}
+   hosting after: 200 {
+ "document_root": "/var/www/celikpanel/subscriptions/2/sites/1/public_html",
+ "php_version": "8.4",
+ "project_type": "php"
+}
+total 8
+-rw-r----- 1 debshop_test www-data   69 Oct 30 16:39 d2check.php
+-rw-r----- 1 debshop_test www-data 3078 Oct 30 16:38 index.html
+-- pools naming the site user debshop_test
+/etc/php/8.4/fpm/pool.d/site1.conf
+srw-rw---- 1 www-data www-data  0 Oct 30 16:38 php8.4-fpm-site1.sock
+code=200
+HTTP/2 200 
+server: nginx
+content-type: text/html; charset=UTF-8
+body: php-ok 8.4.27 as debshop_test 
+code=200
+HTTP/2 200 
+server: nginx
+content-type: text/html
+body: <!doctype html> <html lang="tr"> <head> <meta charset="utf-8"> <meta name="viewport" content="width=device-width, initial-scale=1"> <meta name="robots" content="noindex"> <title>debshop.test</title> <
+== 5. switch back to static 16:39:04
+   200 {
+ "app_port": 0,
+ "success": true
+}
+code=403
+HTTP/2 403 
+server: nginx
+content-type: text/html
+body: <html>
+ <head><title>403 Forbidden</title></head>
+ <body>
+ <center><h1>403 Forbidden</h1></center>
+ <hr><center>nginx</center>
+ </body>
+ </html>
+ 
+code=200
+HTTP/2 200 
+server: nginx
+content-type: text/html
+body: <!doctype html> <html lang="tr"> <head> <meta charset="utf-8"> <meta name="viewport" content="width=device-width, initial-scale=1"> <meta name="robots" content="noindex"> <title>debshop.test</title> <
+== 6. webmail address card: the owner enables mail.d2deb.test 16:39:05
+202 {"operation": {"id": "50b5b335147f699619b5313c94298710", "kind": "webmail_address", "package_name": "mail.d2deb.test", "phase": "queued", "request_id": "3bf2efa3c51af607673a45098c3999ee", "service_id": "roundcube", "started_at": "2026-10-30T16:39:02.020710719Z", "status": "queued"}}
+   200 {"status": {"certificate_expires": "2031-10-30T16:39:06Z", "hosts": ["mail.d2deb.test"], "managed": true, "present": true, "proved": true}, "address": {"enabled_at": "2026-10-30T16:39:06Z", "host": "mail.d2deb.test", "url": "https://mail.d2deb.test/"}, "suggestion": "mail.d2deb.test"}
+--- http://mail.d2deb.test/
+code=301 redirect=https://mail.d2deb.test/ ssl_verify=0
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Content-Type: text/html
+Location: https://mail.d2deb.test/
+--- https://mail.d2deb.test/
+code=200 redirect= ssl_verify=0
+HTTP/2 200 
+server: nginx
+content-type: text/html; charset=UTF-8
+strict-transport-security: max-age=31536000
+body: 5330 bytes, title: <title>CelikPanel Webmail :: Welcome to CelikPanel Webmail
+software words in body: [CelikPanel version 3 ]
+code=000 redirect= ssl_verify=0
+code=000 redirect= ssl_verify=0
+== 7. server facts (read only) 16:39:11
+-- server_tokens in nginx.conf
+22:	server_tokens off; # Recommended practice is to turn this off
+-- nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+-- panel ACME / webmail port-80 servers
+/etc/nginx/sites-available/celikpanel-panel-acme-834b3cb21b005c10937b1e23.conf
+5:    server_name mail.d2deb.test;
+14:        return 301 https://$host$request_uri;
+/etc/nginx/sites-available/celikpanel-panel-acme-b4b837295f5ecdc21d4e6eea.conf
+5:    server_name deb.d2deb.test;
+14:        return 404;
+celikpanel-webmail-origin-mail.d2deb.test.conf
+celikpanel-webmail.conf
+-- panel/agent log lines
+2026-10-30T16:38:54+00:00 deb panel[14272]: 2026/10/30 16:38:54 certificate for debshop.test is valid from 2026-10-30T16:38:57Z, 2s after this server's time; waiting for it
+2026-10-30T16:38:59+00:00 deb agent[10767]: 2026/10/30 16:38:59 ApplySitePool site 1 (create): written absent /etc/php/8.4/fpm/pool.d/site1.conf
+-- clock
+16:39:09.231625046
+== check done 16:39:12
+== 1. guest clock set 3 s BEHIND the lab CA (Pebble does not backdate; no correction) 16:39:12
+labnet 16:39:13.768874372
+server 16:39:10.337750957
+== 2. Add Domain: archshop.test with Enable SSL ticked (create, then the dialog's one certificate request) 16:39:13
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/1/public_html", "Domain": "archshop.test", "DomainID": 1, "FTPPassword": "[REDACTED]", "FTPUser": "archshop_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 1, "TempDomain": ""}
+   site id 1
+   ok 192.0.3.122 archshop.test A = '192.0.3.122' after 0s
+200 {
+ "expires_at": "2031-10-30T16:39:20Z",
+ "https_redirect": true,
+ "status": "success"
+}
+   certificate answer after 6s
+   200 status active usable True not_before 2026-10-30T16:39:21Z settings {"force_https": true, "hsts_enabled": false, "hsts_max_age": 31536000}
+== 3. what a visitor sees: https, http -> https, Server header 16:39:25
+resolves (lab resolver 192.0.2.53): archshop.test=192.0.3.122 www.archshop.test=192.0.3.122
+--- http://archshop.test/
+code=301 redirect=https://archshop.test/ ssl_verify=0
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Content-Type: text/html
+Location: https://archshop.test/
+--- https://archshop.test/
+code=200 redirect= ssl_verify=0
+HTTP/2 200 
+server: nginx
+content-type: text/html
+strict-transport-security: max-age=0
+body: 3080 bytes, title: <title>archshop.test
+software words in body: [CelikPanel ]
+--- http://www.archshop.test/
+code=301 redirect=https://www.archshop.test/ ssl_verify=0
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Content-Type: text/html
+Location: https://www.archshop.test/
+--- https://www.archshop.test/
+code=200 redirect= ssl_verify=0
+HTTP/2 200 
+server: nginx
+content-type: text/html
+strict-transport-security: max-age=0
+body: 3080 bytes, title: <title>archshop.test
+software words in body: [CelikPanel ]
+--- certificate served on archshop.test:443
+subject= X509v3 Subject Alternative Name: critical     DNS:archshop.test, DNS:www.archshop.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 16:39:20 2031 GMT 
+Verify return code: 0 (ok)
+== 4. switch the site to PHP (HostingTypePanel's PUT) 16:39:25
+   hosting before: {"document_root": "/var/www/celikpanel/subscriptions/2/sites/1/public_html", "forward_code": 301, "project_type": "static"}
+   200 {
+ "app_port": 0,
+ "success": true
+}
+   hosting after: 200 {
+ "document_root": "/var/www/celikpanel/subscriptions/2/sites/1/public_html",
+ "php_version": "8.5",
+ "project_type": "php"
+}
+total 8
+-rw-r----- 1 archshop_test http   69 Oct 30 16:39 d2check.php
+-rw-r----- 1 archshop_test http 3080 Oct 30 16:39 index.html
+-- pools naming the site user archshop_test
+/etc/php/php-fpm.d/site1.conf
+srw-rw---- 1 http http 0 Oct 30 16:39 php8.5-fpm-site1.sock
+code=200
+HTTP/2 200 
+server: nginx
+content-type: text/html; charset=UTF-8
+body: php-ok 8.5.12 as archshop_test 
+code=200
+HTTP/2 200 
+server: nginx
+content-type: text/html
+body: <!doctype html> <html lang="tr"> <head> <meta charset="utf-8"> <meta name="viewport" content="width=device-width, initial-scale=1"> <meta name="robots" content="noindex"> <title>archshop.test</title> 
+== 5. switch back to static 16:39:28
+   200 {
+ "app_port": 0,
+ "success": true
+}
+code=403
+HTTP/2 403 
+server: nginx
+content-type: text/html
+body: <html>
+ <head><title>403 Forbidden</title></head>
+ <body>
+ <center><h1>403 Forbidden</h1></center>
+ <hr><center>nginx</center>
+ </body>
+ </html>
+ 
+code=200
+HTTP/2 200 
+server: nginx
+content-type: text/html
+body: <!doctype html> <html lang="tr"> <head> <meta charset="utf-8"> <meta name="viewport" content="width=device-width, initial-scale=1"> <meta name="robots" content="noindex"> <title>archshop.test</title> 
+== 6. webmail address card: the owner enables mail.d2arch.test 16:39:29
+202 {"operation": {"id": "8135621d2c8a16a14535fd273729f698", "kind": "webmail_address", "package_name": "mail.d2arch.test", "phase": "queued", "request_id": "24f7a446c741c822f92ce1ce05aebfe2", "service_id": "roundcube", "started_at": "2026-10-30T16:39:26.413244094Z", "status": "queued"}}
+   200 {"status": {"certificate_expires": "2031-10-30T16:39:29Z", "hosts": ["mail.d2arch.test"], "managed": true, "present": true, "proved": true}, "address": {"enabled_at": "2026-10-30T16:39:29Z", "host": "mail.d2arch.test", "url": "https://mail.d2arch.test/"}, "suggestion": "mail.d2arch.test"}
+--- http://mail.d2arch.test/
+code=301 redirect=https://mail.d2arch.test/ ssl_verify=0
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Content-Type: text/html
+Location: https://mail.d2arch.test/
+--- https://mail.d2arch.test/
+code=200 redirect= ssl_verify=0
+HTTP/2 200 
+server: nginx
+content-type: text/html; charset=UTF-8
+x-powered-by: PHP/8.5.12
+strict-transport-security: max-age=31536000
+body: 5330 bytes, title: <title>CelikPanel Webmail :: Welcome to CelikPanel Webmail
+software words in body: [CelikPanel version 3 ]
+code=000 redirect= ssl_verify=0
+== 7. server facts (read only) 16:39:36
+-- server_tokens in nginx.conf
+22:    server_tokens off;
+-- nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+-- panel ACME / webmail port-80 servers
+/etc/nginx/sites-available/celikpanel-panel-acme-17ace3af5f92b9c53fd1dfbd.conf
+5:    server_name arch.d2arch.test;
+14:        return 404;
+/etc/nginx/sites-available/celikpanel-panel-acme-f579be0670e652c990145d20.conf
+5:    server_name mail.d2arch.test;
+14:        return 301 https://$host$request_uri;
+celikpanel-webmail-origin-mail.d2arch.test.conf
+celikpanel-webmail.conf
+-- panel/agent log lines
+2026-10-30T16:39:19+00:00 arch panel[3211]: 2026/10/30 16:39:19 certificate for archshop.test is valid from 2026-10-30T16:39:21Z, 2s after this server's time; waiting for it
+2026-10-30T16:39:23+00:00 arch agent[410]: 2026/10/30 16:39:23 ApplySitePool site 1 (create): written absent /etc/php/php-fpm.d/site1.conf
+-- clock
+16:39:33.704021619
+== check done 16:39:36

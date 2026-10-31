@@ -152,14 +152,31 @@ export function decodeSetupExecution(value: unknown, marker?: SetupStartMarker |
 }
 // handover: the reviewed plan contained the panel certificate step, so the
 // Panel restarts once during this setup (lib/panelHandover.ts).
-export interface SetupStartMarker { request_id: string; plan_id: string; panel_domain: string; handover?: boolean; package_updates_digest?: string }
+// installation: the identity of the panel installation the start was made on
+// (ServerSetupSnapshot.installation_id). A marker kept by the browser from
+// another installation, such as the same address before the server was wiped
+// and installed again, is not this server's and selects nothing here.
+export interface SetupStartMarker { request_id: string; plan_id: string; panel_domain: string; handover?: boolean; package_updates_digest?: string; installation?: string }
 export function decodeSetupMarker(raw: string | null): SetupStartMarker | null {
     try {
         const value: unknown = JSON.parse(raw || 'null');
         return isRecord(value) && identity(value.request_id) && identity(value.plan_id) && typeof value.panel_domain === 'string'
+            && (value.installation === undefined || identity(value.installation))
             ? value as unknown as SetupStartMarker : null;
     } catch { return null; }
 }
+// A marker made on another installation is dropped; one without an identity
+// (made before the panel named its installation) or a panel that does not
+// name its installation cannot be told apart and is kept.
+// Baska kurulumdan kalan baslatma isareti bu sunucuya ait degildir.
+export function setupMarkerForInstallation(marker: SetupStartMarker | null, installationID: string | undefined): SetupStartMarker | null {
+    if (marker?.installation && installationID && marker.installation !== installationID) return null;
+    return marker;
+}
+// The server's typed refusals that come only before any run exists, so the
+// start request created nothing. Asked again for the same request after a
+// lost answer, they say that request is unknown to this installation.
+export const setupStartRefusedBeforeRun = ['server_setup_review_required', 'server_setup_review_stale', 'server_setup_plan_blocked'];
 export function newSetupRequestID(): string {
     return Array.from(crypto.getRandomValues(new Uint8Array(16)), value => value.toString(16).padStart(2, '0')).join('');
 }
@@ -178,7 +195,10 @@ export function continuableMailEnrollment(execution: ServerSetupExecution | null
     return execution.steps.find(step => step.kind === 'mail_enrollment' && step.status === 'running' && step.id === execution.phase) || null;
 }
 
+// Not offered while setup hands the request off again by itself after a busy
+// refusal (status "waiting"); offered again when the busy state outlasted its
+// bound (server_setup_mail_enrollment_host_busy, 2026-10-30).
 export function retryableMailEnrollmentHandoff(execution: ServerSetupExecution | null): SetupPlanStep | null {
-    if (!execution || execution.status !== 'running' || execution.error?.code !== 'server_setup_mail_enrollment_not_recorded') return null;
+    if (!execution || execution.status !== 'running' || !['server_setup_mail_enrollment_not_recorded', 'server_setup_mail_enrollment_host_busy'].includes(execution.error?.code || '')) return null;
     return execution.steps.find(step => step.kind === 'mail_enrollment' && step.status === 'running' && step.id === execution.phase) || null;
 }

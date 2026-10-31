@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -53,6 +55,49 @@ var certificateIssueFailedMessages = map[string]string{
 	transport.CertificateFailureTool: "No certificate was issued: certbot ended with an error. " +
 		"Which step failed is not classified here; the line from certbot says what it reported. " +
 		"The server owner reads /var/log/celikpanel/certbot/letsencrypt.log on the server, corrects what it names, then requests the certificate here again.",
+}
+
+// certificateClockFailureMessage is the sentence of a certificate the
+// authority issued and this server's clock does not accept (alpha.113).
+const certificateClockFailureMessage = "The certificate authority issued a certificate, but this server's clock does not accept it: " +
+	"it is valid from %s and this server's time was %s. CelikPanel did not install it and removed it again, so no certificate from this request is in place." +
+	" The server administrator corrects this server's clock: run timedatectl and check that \"System clock synchronized\" says yes " +
+	"(sudo timedatectl set-ntp true turns time synchronisation on), then requests the certificate here again."
+
+// writeCertificateClockFailure answers a just-issued certificate that is not
+// yet valid (or already expired) by this server's clock beyond the wait
+// inspectIssuedCertificate allows: 409 CERTIFICATE_ISSUE_FAILED with reason
+// server_clock, never a bare 500. The caller removes the certificate.
+func writeCertificateClockFailure(w http.ResponseWriter, caller *Caller, domain string, hadCertificate bool, info installedCertificateInfo) {
+	validFrom := info.IssuedAt.UTC().Format(time.RFC3339)
+	if info.Expired {
+		validFrom = info.IssuedAt.UTC().Format(time.RFC3339) + " until " + info.ExpiresAt.UTC().Format(time.RFC3339)
+	}
+	serverTime := info.CheckedAt.UTC().Format(time.RFC3339)
+	sentence := fmt.Sprintf(certificateClockFailureMessage, validFrom, serverTime)
+	if hadCertificate {
+		sentence += certificateIssueKept
+	} else {
+		sentence += certificateIssueNone
+	}
+	sentence += certificateIssueResume
+	vars := map[string]string{
+		"domain": domain, "kept": "none",
+		"valid_from": info.IssuedAt.UTC().Format(time.RFC3339), "valid_until": info.ExpiresAt.UTC().Format(time.RFC3339),
+		"server_time": serverTime, "command": "timedatectl",
+	}
+	if hadCertificate {
+		vars["kept"] = "previous"
+	}
+	if caller != nil && caller.Role == roleAdmin {
+		if detail := boundedAgentDiagnostic(info.Error); detail != "" {
+			vars["detail"] = detail
+		}
+	}
+	log.Printf("[409][certificate] %s: %s %s: %s", domain, errCodeCertificateIssueFailed, transport.CertificateFailureServerClock, boundedAgentDiagnostic(info.Error))
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusConflict)
+	_ = json.NewEncoder(w).Encode(apiErrorBody{Error: sentence, Code: errCodeCertificateIssueFailed, Reason: transport.CertificateFailureServerClock, Vars: vars})
 }
 
 // writeCertificateIssueFailure answers a certbot run the Agent classified. It

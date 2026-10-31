@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"net/url"
 	"path"
@@ -90,7 +91,44 @@ var prepareVhostChallengeRoot = prepareValidatedVhostChallengeRoot
 // applyManagedVhostsFor is the generator call (a test seam: component tests
 // must not write the host's own nginx tree).
 var applyManagedVhostsFor = func(a *Agent, items []services.ManagedVhostItem) ([]transport.SiteFileResult, error) {
-	return a.nginxGen.ApplyManagedVhosts(items)
+	results, err := a.nginxGen.ApplyManagedVhosts(items)
+	if err == nil && siteFilesReloaded(results) {
+		reconcileDefaultHTTPSFor(a)
+	}
+	return results, err
+}
+
+// siteFilesReloaded: the call wrote a vhost and nginx reloaded it, so which
+// server blocks serve HTTPS may have changed.
+func siteFilesReloaded(results []transport.SiteFileResult) bool {
+	for _, result := range results {
+		if result.Reloaded {
+			return true
+		}
+	}
+	return false
+}
+
+// reconcileDefaultHTTPSFor keeps CelikPanel's default HTTPS server in step
+// with the sites (services.ReconcileDefaultHTTPSServer): after a vhost write
+// and after a webmail address change. It never fails the operation that
+// called it; what it did goes to the Agent's journal. A test seam: component
+// tests must not read or write the host's own nginx tree.
+//
+// Varsayılan HTTPS sunucusunu sitelerle uyumlu tutar; çağıran işlemi asla
+// başarısız yapmaz, sonucu günlüğe yazar.
+var reconcileDefaultHTTPSFor = func(a *Agent) services.DefaultHTTPSServerResult {
+	if a == nil || a.nginxGen == nil {
+		return services.DefaultHTTPSServerResult{Outcome: services.DefaultHTTPSUnknown}
+	}
+	result := a.nginxGen.ReconcileDefaultHTTPSServer()
+	rememberDefaultHTTPSAttempt(result)
+	switch result.Outcome {
+	case services.DefaultHTTPSUnchanged, services.DefaultHTTPSNotNeeded:
+	default:
+		log.Printf("nginx default HTTPS server %s: %s %s", result.Path, result.Outcome, result.Detail)
+	}
+	return result
 }
 
 // managedVhostItem is managedVhostItemFor with the validation-only server
@@ -610,7 +648,7 @@ func validatedVhostData(req *ApplyVhostRequest) (services.VhostData, error) {
 		}
 		data.SSLType = "none"
 	case "custom", "letsencrypt":
-		if err := validateVhostCertificatePaths(domain, req.SSLCert, req.SSLKey); err != nil {
+		if err := validateVhostCertificatePathsFor(domain, req.DomainID, req.SSLCert, req.SSLKey); err != nil {
 			return services.VhostData{}, err
 		}
 		if req.HSTSEnabled && (!req.ForceHTTPS || req.HSTSMaxAge <= 0) {
@@ -674,6 +712,23 @@ func validatePHPSocket(socket string, siteID int) error {
 		return fmt.Errorf("PHP-FPM socket does not belong to this site")
 	}
 	return nil
+}
+
+// validateVhostCertificatePathsFor also accepts the live files of an
+// OS-renewed lineage of this domain identity (D-040).
+func validateVhostCertificatePathsFor(domain string, domainID int, certPath, keyPath string) error {
+	if lineage, ok := nativeSiteLineageOfPath(certPath); ok {
+		keyLineage, keyOK := nativeSiteLineageOfPath(keyPath)
+		if !keyOK || keyLineage != lineage ||
+			path.Base(certPath) != "fullchain.pem" || path.Base(keyPath) != "privkey.pem" {
+			return fmt.Errorf("certificate and private key must be the same certbot lineage's full chain and key")
+		}
+		if !transport.NativeSiteLineageBelongsTo(lineage, domainID) {
+			return fmt.Errorf("certificate lineage does not belong to this domain")
+		}
+		return nil
+	}
+	return validateVhostCertificatePaths(domain, certPath, keyPath)
 }
 
 func validateVhostCertificatePaths(domain, certPath, keyPath string) error {

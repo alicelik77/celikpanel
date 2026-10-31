@@ -33,12 +33,32 @@ func AcquireExisting(path string, owner Owner) (*os.File, error) {
 // ProbeIdle only observes exclusion. A missing file in a trusted existing parent
 // is idle, preserving the historical pre-initialization probe. This result never
 // grants permission to mutate; a writer must acquire its own lease afterwards.
+//
+// It reads the kernel's lock table and takes no lock itself (2026-10-30, Arch
+// run ap-e). The earlier probe took the exclusive flock for an instant, so a
+// readiness read that coincided with a real writer's non-blocking acquisition
+// (the mail enrollment worker, an Agent mutation, release recovery) made that
+// writer refuse as busy although nothing was changing the host. Only when the
+// lock table cannot be read does it fall back to that momentary flock.
+//
+// ProbeIdle kilit almaz, çekirdeğin kilit tablosunu okur: bir okuma gerçek bir
+// değişikliği "meşgul" gösteremez.
 func ProbeIdle(path string, owner Owner) error {
-	file, err := acquire(path, owner, true, nil)
-	if err != nil || file == nil {
+	holders, observed, err := observe(path, owner)
+	if err != nil {
 		return err
 	}
-	return file.Close()
+	if !observed {
+		file, err := acquire(path, owner, true, nil)
+		if err != nil || file == nil {
+			return err
+		}
+		return file.Close()
+	}
+	if len(holders) > 0 {
+		return ErrBusy
+	}
+	return nil
 }
 
 func trustedDirectory(st unix.Stat_t, owner Owner) bool {

@@ -1,0 +1,70 @@
+== check apd-b/main 2026-10-30T09:11:06Z
+-- os
+PRETTY_NAME="Arch Linux"
+ID=arch
+7.2.11-arch1-1
+-- package
+powerdns 5.1.5-1
+-- units
+active active active active inactive inactive 
+UnitFileState=enabled
+ExecStart={ path=/usr/bin/pdns_server ; argv[]=/usr/bin/pdns_server --guardian=no --daemon=no --disable-syslog --log-timestamp=no --write-pid=no
+User=powerdns
+Group=powerdns
+-- config
+755 root:root /etc/powerdns
+644 root:root /etc/powerdns/pdns.conf
+755 root:root /etc/powerdns/pdns.d
+644 root:root /etc/powerdns/pdns.d/celikpanel-cluster.conf
+644 root:root /etc/powerdns/pdns.d/celikpanel.conf
+750 powerdns:powerdns /var/lib/powerdns
+640 powerdns:powerdns /var/lib/powerdns/pdns.sqlite3
+640 powerdns:powerdns /var/lib/powerdns/pdns.sqlite3-shm
+640 powerdns:powerdns /var/lib/powerdns/pdns.sqlite3-wal
+setgid=powerdns
+setuid=powerdns
+include-dir=/etc/powerdns/pdns.d
+primary=yes
+secondary=yes
+allow-axfr-ips=192.0.3.72,192.0.3.73
+also-notify=192.0.3.73
+launch=gsqlite3
+gsqlite3-dnssec=yes
+gsqlite3-database=/var/lib/powerdns/pdns.sqlite3
+local-address=192.0.3.72
+zone-cache-refresh-interval=0
+webserver=no
+api=no
+-- DNS answers
+(no dig on this server)
+(no dig on this server)
+(no dig on this server)
+-- catalog
+catalog-c0000348.celikpanel.invalid PRODUCER
+catalog-c0000348.celikpanel.invalid|PRODUCER||1793351200|
+pairpd.test|MASTER||2026103000|
+-- state
+dns-engine-ownership-pdns.json
+dns-engine-state.json
+dns-engine-switch-v3-archive-0e9fbff13d41cb22d08b897224fc9abd-48c78ad7db3bc73acb326ad0dbd7178b5f02effb9de41031e34431bc518d0188.json
+firewall-apply-journal.json
+service-mutations.json
+{"schema":"celikpanel-dns-engine-state/v3","acquisition":{"schema":"celikpanel-dns-engine-acquisition/v1","mode":"switch","engine":"pdns","engine_epoch":1,"pair_role":"primary","pair_local_ip":"192.0.3.72","pair_peer_ip":"192.0.3.73","source_revision":1,"manifest_qualifier":"dns-engine-switch/v1:sha256:51b88bf2c3a77aa39b2731ca949af82db3237cab0c4e223ada80b5ee5881d2c5","mutation_request_id":"0e9fbff13d41cb22d08b897224fc9abd","mutation_owner_id":"ae597fb0beb7697fede0cdce523bf74e"},"publication":{"schema":"celikpanel-dns-engine-publication/v1","acquisition_sha256":"8b43e65abc4beeba5bbe3820dd966054
+-- recovery status
+binary: 
+-- agent log (PowerDNS)
+Oct 30 09:06:42 mainpd agent[403]: 2026/10/30 09:06:42 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+Oct 30 09:06:46 mainpd agent[403]: 2026/10/30 09:06:46 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+Oct 30 09:06:46 mainpd agent[403]: 2026/10/30 09:06:46 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+Oct 30 09:07:06 mainpd agent[403]: 2026/10/30 09:07:06 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+-- from the lab network guest (outside the server)
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 59456
+;; flags: qr aa; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+; EDNS: version: 0, flags:; udp: 1232
+;; ANSWER SECTION:
+pairpd.test.		3600	IN	SOA	ns1.pairpd.test. hostmaster.pairpd.test. 2026103000 3600 600 604800 300
+ns1.pairpd.test. hostmaster.pairpd.test. 2026103000 3600 600 604800 300
+/root/q.sh: line 1: hostname: command not found
+== recovery dns-switch-status  09:12:04
+No DNS switch journal was observed. This does not prove historical completion or current DNS health. The server owner should inspect the native DNS service and the panel's operation status before starting another switch.
+exit=0

@@ -1,0 +1,81 @@
+{"powered_on": "dk-a/main", "memory_mb": 4096}
+{"powered_on": "dk-a/backup", "memory_mb": 3072}
+{  "node": "main",  "boot_id": "65c9669e-7c07-4a39-a383-107776f8112e",  "waited_seconds": 15.9}
+
+{  "node": "backup",  "boot_id": "f7fb49e9-caa4-4642-a0b6-e5ec9e9dda03",  "waited_seconds": 2.2}
+
+main panel answers after power-on (1)
+backup panel answers after power-on (1)
+== panel start: automatic DKIM records resumed? (main) 20:29:05
+Oct 30 20:29:02 frankfurt panel[1033]: 2026/10/30 20:29:02 milter wiring at startup: agent RPC platform identity is unavailable: Agent.WireMailFilters: read HostPlatform: detect host platform: systemd is not ready: systemd state "starting" exited with status 1
+== second cycle: site shop2dk.test on the pair 20:29:06
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/2/public_html", "Domain": "shop2dk.test", "DomainID": 2, "FTPPassword": "[REDACTED]", "FTPUser": "shop2dk_test", "PHPVersion": "8.4", "ProjectType": "php", "SiteID": 2, "TempDomain": ""}
+   site id 2
+   ok 192.0.3.104 shop2dk.test A = '192.0.3.104' after 0s
+200 {"id": 3, "success": true}
+200 {"id": 4, "success": true}
+   200 {"automatic": null, "dkim": "pending", "dkim_signed": true, "dkim_owner_record": false, "mode": "local"}
+   ok 192.0.3.104 celik._domainkey.shop2dk.test TXT = '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAumJMSwJJSU3Lbv1B/os3wtdk01YQ3IF2yM0QpWIxsssIw42c3/xfVgV3/TCqhibF7M47U1fduWj8qjaI1jCndY500ti0j+lwHJj1iGe5FnRv1aonwSNGY0JTwiGmIuOVrJfm9chPsj6iEx5Gt/FK4HJG4Xn1AIvy4fOMFxv571+Zl7Ty0U5jxpRLDVe9qtEWz" "7WaqOSrAR9SHRww3dKgmQQoyivaY1TNBFGnB9JXC+CwpzC5Z45AejcY7JKB66cuX77O4m08g7DNuGmpfCeV85/98V4Tjs0aMafWvJ87O409qPfXquldUhaDOuhN5oinM9qis92gCFCxMXAhYtyMZwIDAQAB"' after 0s
+   ok 192.0.3.105 celik._domainkey.shop2dk.test TXT = '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAumJMSwJJSU3Lbv1B/os3wtdk01YQ3IF2yM0QpWIxsssIw42c3/xfVgV3/TCqhibF7M47U1fduWj8qjaI1jCndY500ti0j+lwHJj1iGe5FnRv1aonwSNGY0JTwiGmIuOVrJfm9chPsj6iEx5Gt/FK4HJG4Xn1AIvy4fOMFxv571+Zl7Ty0U5jxpRLDVe9qtEWz" "7WaqOSrAR9SHRww3dKgmQQoyivaY1TNBFGnB9JXC+CwpzC5Z45AejcY7JKB66cuX77O4m08g7DNuGmpfCeV85/98V4Tjs0aMafWvJ87O409qPfXquldUhaDOuhN5oinM9qis92gCFCxMXAhYtyMZwIDAQAB"' after 1s
+   p= served: main 47d1fe0343eed0bd backup 47d1fe0343eed0bd
+{"smtp_send": {"ok": true, "refused": {}}, "imap_read": {"after_seconds": 6.4, "headers": "From: alice2@shop2dk.test\r\nTo: bob2@shop2dk.test\r\nSubject: final-alpha113 8c19366f9222"}}
+200 {"success": true}
+200 {"success": true}
+--- http://shop2dk.test/hello-mail.php
+code=200
+body: mail-ok
+-- independent verification of shop2dk.test's messages (key public half vs DNS above) 20:30:04
+{'domain': 'shop2dk.test', 'key_p_sha256': '47d1fe0343eed0bd'}
+{'subject': 'final-alpha113 8c19366f9222', 'dkim_signature': True, 'd': 'shop2dk.test', 's': 'celik', 'c': 'relaxed/simple', 'a': 'rsa-sha256', 'body_hash_ok': True, 'signature_ok': True}
+{'subject': 'dk php mail ea1661d41fc1', 'dkim_signature': True, 'd': 'shop2dk.test', 's': 'celik', 'c': 'relaxed/simple', 'a': 'rsa-sha256', 'body_hash_ok': True, 'signature_ok': True}
+== delete shop2dk.test 20:30:04
+200 {"status": "deleted", "domain": "shop2dk.test"}
+   ok 192.0.3.104 celik._domainkey.shop2dk.test TXT = '' after 1s
+   ok 192.0.3.105 celik._domainkey.shop2dk.test TXT = '' after 0s
+== the main domain dkf113.test as a site: its existing key is kept 20:30:48
+   before: {'domain': 'dkf113.test', 'key_p_sha256': '4c0f311243ebf014'}
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/3/public_html", "Domain": "dkf113.test", "DomainID": 3, "FTPPassword": "[REDACTED]", "FTPUser": "dkf113_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 3, "TempDomain": "", "site_records": {"added": [{"content": "192.0.3.104", "name": "dkf113.test", "type": "A"}, {"content": "192.0.3.104", "name": "www.dkf113.test", "type": "A"}], "ipv4": "192.0.3.104", "kept": []}}
+   main domain id 3
+200 {"id": 5, "success": true}
+   200 {"automatic": null, "dkim": "ok", "dkim_signed": true, "dkim_owner_record": false, "mode": "local"}
+   after:  {'domain': 'dkf113.test', 'key_p_sha256': '4c0f311243ebf014'}
+   p= served: main 4c0f311243ebf014 backup 4c0f311243ebf014
+== 587 carol -> carol on dkf113.test after shop2dk.test was deleted 20:30:56
+{"smtp_send": {"ok": true, "refused": {}}, "imap_read": {"after_seconds": 8.1, "headers": "From: carol@dkf113.test\r\nTo: carol@dkf113.test\r\nSubject: final-alpha113 a0979f65b180"}}
+{'domain': 'dkf113.test', 'key_p_sha256': '4c0f311243ebf014'}
+{'subject': 'final-alpha113 a0979f65b180', 'dkim_signature': True, 'd': 'dkf113.test', 's': 'celik', 'c': 'relaxed/simple', 'a': 'rsa-sha256', 'body_hash_ok': True, 'signature_ok': True}
+== guest check after (read only) 20:31:31
+== after2: os Debian GNU/Linux 13 (trixie), release 
+   units: opendkim=active postfix=active panel=active
+   milters: smtpd='inet:127.0.0.1:8891, inet:127.0.0.1:11332' non_smtpd='inet:127.0.0.1:8891'
+== key store
+   shop2dk.test: no key directory
+   dkf113.test: -rw------- root:celikpanel celik.celikpanel;-rw-r----- root:opendkim celik.private;
+   dkf113.test origin: celikpanel-dkim-key v1 sha256:ede20b927e...
+== OpenDKIM tables
+   signingtable: *@dkf113.test celik._domainkey.dkf113.test;
+   keytable: celik._domainkey.dkf113.test;
+   shop2dk.test in signingtable: 0 ; in keytable: 0
+   opendkim-testkey dkf113.test: opendkim-testkey: checking key 'celik._domainkey.dkf113.test' opendkim-testkey: 'celik._domainkey.dkf113.test' record not found 
+== automatic DKIM and DKIM cleanup in the panel's log
+2026-10-30T20:20:48+00:00 frankfurt panel[22609]: 2026/10/30 20:20:48 [dkim-auto] shopdk.test: DKIM ready (domain_created; record published in shopdk.test)
+2026-10-30T20:29:22+00:00 frankfurt panel[1033]: 2026/10/30 20:29:22 [dkim-auto] shop2dk.test: DKIM ready (domain_created; record published in shop2dk.test)
+2026-10-30T20:30:53+00:00 frankfurt panel[1033]: 2026/10/30 20:30:53 [dkim-auto] dkf113.test: DKIM ready (domain_created; the record is already published)
+2026-10-30T20:30:54+00:00 frankfurt panel[1033]: 2026/10/30 20:30:54 [dkim-auto] dkf113.test: DKIM ready (first_mailbox; the record is already published)
+   opendkim restarts this boot: 9
+== delivered test messages and their signatures
+-- /var/mail/vhosts/dkf113.test/carol: Subject: final-alpha113 a0979f65b180
+   signature: d=dkf113.test s=celik 
+   opendkim-testmsg rc=70 opendkim-testmsg: dkim_chunk(): Syntax error
+grep: /var/mail/vhosts/dkf113.test/carol/dovecot.index.cache: binary file matches
+-- /var/mail/vhosts/dkf113.test/carol: 
+
+   opendkim-testmsg rc=70 opendkim-testmsg: dkim_chunk(): Syntax error
+-- /var/spool/mail/vhosts/dkf113.test/carol: Subject: final-alpha113 a0979f65b180
+   signature: d=dkf113.test s=celik 
+   opendkim-testmsg rc=70 opendkim-testmsg: dkim_chunk(): Syntax error
+grep: /var/spool/mail/vhosts/dkf113.test/carol/dovecot.index.cache: binary file matches
+-- /var/spool/mail/vhosts/dkf113.test/carol: 
+
+   opendkim-testmsg rc=70 opendkim-testmsg: dkim_chunk(): Syntax error
+== post done 20:31:32

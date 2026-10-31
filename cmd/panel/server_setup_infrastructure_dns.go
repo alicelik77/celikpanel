@@ -681,7 +681,9 @@ func (p *Panel) runServerSetupInfrastructureDNS(ctx context.Context, plan server
 		if stateErr != nil {
 			return false, errServerSetupInfrastructureDNSUnknown
 		}
-		if receipt.Failed || (syncState.Status == "error" && syncState.DesiredGeneration > receipt.PreparedGeneration) {
+		// A publication refused only because the host was busy is not a
+		// failure: it is published again below (run 5, D10).
+		if receipt.Failed || (syncState.Status == "error" && syncState.DesiredGeneration > receipt.PreparedGeneration && !dnsZoneSyncStateRefusedBusy(syncState)) {
 			return false, errors.New("infrastructure DNS publication failed; resolve the DNS operation and review a revised plan")
 		}
 	} else if errors.Is(err, sql.ErrNoRows) {
@@ -718,6 +720,12 @@ func (p *Panel) runServerSetupInfrastructureDNS(ctx context.Context, plan server
 	// syncZoneToDNSLocked first reconciles any exact V3 lease. It never needs a
 	// remote panel API; the native pair transfers the published owner zone.
 	if err := p.syncZoneToDNSLocked(ctx, receipt.Zone, false); err != nil {
+		if dnsPublicationRefusedBusy(err) {
+			// Refused at admission while another change held the host: the
+			// records stay saved under this receipt, and the step publishes
+			// them on its next pass (a bounded wait, D10).
+			return false, &serverSetupZonePublishBusyError{Zone: receipt.Zone, Record: "the server's address records", Err: err}
+		}
 		if _, leaseErr := readDNSZoneEngineLease(ctx, p.db.GetDB(), receipt.Zone); leaseErr == nil {
 			return false, errServerSetupInfrastructureDNSUnknown
 		} else if !errors.Is(leaseErr, sql.ErrNoRows) {

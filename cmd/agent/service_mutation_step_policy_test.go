@@ -119,6 +119,7 @@ func TestServiceMutationStepPolicyAllowsEveryDeclaredWorkflowRow(t *testing.T) {
 		{"configure profile submission", mutationPolicyJob("mail_profile_install", core.MailProfileCore, ""), mutationPolicyClaim(serviceMutationStepConfigureMailSubmission, "postfix", "", "configure")},
 		{"sync mail tls", mutationPolicyJob("mail_tls_sync", "mail-tls", mailTLSQualifier), mutationPolicyClaim(serviceMutationStepSyncMailTLS, "mail-tls", mailTLSQualifier, "sync")},
 		{"configure dkim", mutationPolicyJob("dkim_signing_configure", "opendkim", ""), mutationPolicyClaim(serviceMutationStepConfigureDKIMSigning, "opendkim", "", "configure")},
+		{"configure dkim in mail profile", mutationPolicyJob("mail_profile_install", core.MailProfileCore, ""), mutationPolicyClaim(serviceMutationStepConfigureDKIMSigning, "opendkim", "", "configure")},
 		{"configure phpmyadmin after install", mutationPolicyJob("service_install", "phpmyadmin", ""), mutationPolicyClaim(serviceMutationStepConfigureDBTools, "dbtools", "", "configure")},
 		{"configure phppgadmin after install", mutationPolicyJob("service_install", "phppgadmin", ""), mutationPolicyClaim(serviceMutationStepConfigureDBTools, "dbtools", "", "configure")},
 		{"configure phpmyadmin standalone", mutationPolicyJob("dbtools_configure", "phpmyadmin", ""), mutationPolicyClaim(serviceMutationStepConfigureDBTools, "dbtools", "", "configure")},

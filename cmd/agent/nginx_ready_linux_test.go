@@ -92,7 +92,14 @@ func TestEnsureNginxMainConfigPublishesAtomicallyAndIsIdempotent(t *testing.T) {
 			t.Fatalf("updated config does not contain exactly one %q", include)
 		}
 	}
+	if strings.Count(string(content), "server_tokens off;") != 1 {
+		t.Fatalf("updated config does not contain exactly one server_tokens off: %s", content)
+	}
+	// The includes, then the server_tokens hardening, each validated and
+	// reloaded on its own.
 	wantCommands := [][]string{
+		{"nginx", "-t"},
+		{"systemctl", "reload", "nginx"},
 		{"nginx", "-t"},
 		{"systemctl", "reload", "nginx"},
 	}

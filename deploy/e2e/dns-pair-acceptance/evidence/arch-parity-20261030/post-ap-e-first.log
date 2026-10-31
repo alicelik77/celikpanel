@@ -1,0 +1,216 @@
+== security updates card
+200 {
+ "automatic": {
+  "reason": "arch_full_upgrade_by_owner",
+  "state": "not_applicable"
+ },
+ "last_run": "2026-10-30T01:16:07Z",
+ "last_run_source": "log",
+ "outside": [
+  {
+   "id": "roundcube",
+   "versions": [
+    "1.6.20"
+   ]
+  }
+ ],
+ "package_family": "pacman",
+ "pending": {
+  "lists_at": "2026-10-30T01:35:13Z",
+  "security": 0,
+  "security_state": "known",
+  "state": "known",
+  "total": 0
+ },
+ "state": "read",
+ "vendors": []
+}
+== repo card php-fpm
+200 {
+ "available": false,
+ "distribution_only": "pacman",
+ "enabled": false
+}
+== mariadb settings read
+200 {
+ "innodb_buffer_pool_size": "256M",
+ "max_allowed_packet": "32M",
+ "max_connections": 180,
+ "query_cache_size": "0"
+}
+== mariadb settings write
+200 {
+ "status": "success"
+}
+200 {
+ "innodb_buffer_pool_size": "256M",
+ "max_allowed_packet": "32M",
+ "max_connections": 180,
+ "query_cache_size": "0"
+}
+== fail2ban install via Components
+preview known notable=[] refusals=[]
+202 {
+ "operation": {
+  "id": "d0c66a7043878fe31eb07462363958e8",
+  "kind": "service_install",
+  "phase": "queued",
+  "request_id": "aaff4bb9a482d207d3bac0b77584d75b",
+  "service_id": "fail2ban",
+  "started_at": "2026-10-30T01:35:16.732569625Z",
+  "status": "queued"
+ }
+}
+3 {'read': 3, 'at': '2026-10-30T01:35:27.630Z'} {"operation": {"finished_at": "2026-10-30T01:35:24.794513195Z", "id": "d0c66a7043878fe31eb07462363958e8", "kind": "service_install", "phase": "completed", "request_id": "aaff4bb9a482d207d3bac0b77584d75b", "result": {"installed": true, "success": true}, "service_id": "fail2ban", "started_at": "2026-10-30T01:35:16.732569625Z", "status": "succeeded"}}
+== guest (read-only)
+-- os
+PRETTY_NAME="Arch Linux"
+7.2.11-arch1-1
+-- packages
+dovecot 2.4.5-1
+postfix 3.11.7-1
+nginx 1.30.6-2
+php 8.5.12-1
+php-fpm 8.5.12-1
+mariadb 13.0.2-2
+rspamd 4.2.3-1
+bind 9.20.30-1
+certbot 5.8.0-1
+opendkim 2.11.0beta2-1
+phpmyadmin 5.2.3-1
+fail2ban 1.1.1-1
+pacman-contrib 1.13.1-1
+arch-audit 0.2.0-5
+cronie 1.7.2-2
+-- units
+active
+active
+active
+active
+active
+active
+active
+active
+active
+active
+active
+active
+active
+-- dovecot main file (head)
+# Managed by CelikPanel: Dovecot main file, Arch Linux layout. sha256=9cc3bcfb4ae05fc3121274b706344d2f6e9134b0b9f6c852c0c6b9c7008412f8
+# This file replaces the Arch Linux package's single-file layout with the
+97-celikpanel-submission.conf
+98-celikpanel-tls.conf
+99-celikpanel.conf
+-- doveconf -n
+# 2.4.5 (0cbb641e3e): /etc/dovecot/dovecot.conf
+# OS: Linux 7.2.11-arch1-1 x86_64  btrfs
+# Hostname: archtwo
+dovecot_config_version = 2.4.5
+dovecot_storage_version = 2.4.5
+first_valid_uid = 5000
+mail_driver = maildir
+mail_gid = 5000
+mail_path = /var/spool/mail/vhosts/%{user | domain}/%{user | username}
+mail_uid = 5000
+protocols {
+  imap = yes
+  pop3 = yes
+  lmtp = yes
+}
+namespace inbox {
+  inbox = yes
+}
+ssl_server {
+  cert_file = /etc/ssl/celikpanel/_mail/host/current/fullchain.pem
+}
+service auth {
+  unix_listener /var/spool/postfix/private/auth {
+    group = postfix
+    mode = 0660
+    user = postfix
+  }
+}
+  default_password_scheme = CRYPT
+}
+  fields {
+    gid:default = 5000
+    home:default = /var/spool/mail/vhosts/%{user | domain}/%{user | username}
+    uid:default = 5000
+  }
+}
+-- postfix check
+postfix-check-ok
+-- nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+-- named-checkconf
+named-checkconf-ok
+-- php modules
+iconv
+intl
+mbstring
+mysqli
+pdo_sqlite
+zip
+celikpanel-phpmyadmin.ini
+celikpanel-sqlite.ini
+; Managed by CelikPanel for phpMyAdmin. CelikPanel rewrites this file only while it holds exactly this text.
+extension=mysqli
+extension=iconv
+# Managed by CelikPanel for Roundcube.
+extension=intl
+extension=pdo_sqlite
+extension=sqlite3
+-- opendkim
+total 12
+drwxr-x--- 1 root opendkim  64 Oct 30 01:16 .
+drwxr-x--- 1 root opendkim  20 Oct 30 01:16 ..
+-rw-r----- 1 root opendkim 100 Oct 30 01:16 keytable
+-rw-r----- 1 root opendkim  41 Oct 30 01:16 signingtable
+-rw-r----- 1 root opendkim  24 Oct 30 01:16 trustedhosts
+-- fail2ban
+[DEFAULT]
+banaction = nftables
+banaction_allports = nftables[type=allports]
+
+[sshd]
+backend = systemd
+journalmatch = _SYSTEMD_UNIT=sshd.service + _COMM=sshd
+enabled = true
+Status
+|- Number of jail:	1
+`- Jail list:	sshd
+-- mariadb server file
+max_connections = 180
+innodb_buffer_pool_size = 256M
+query_cache_size = 0
+max_allowed_packet = 32M
+-- nginx dirs
+root:root 755 /etc/nginx/sites-available
+root:root 755 /etc/nginx/sites-enabled
+root:root 755 /etc/nginx/conf.d
+-- TLS
+issuer=CN=Pebble Intermediate CA 25a66d
+Verify return code: 0 (ok)
+issuer=CN=Pebble Intermediate CA 25a66d
+Verify return code: 0 (ok)
+issuer=O=CelikPanel, CN=archtwo
+Verify return code: 18 (self-signed certificate)
+-- listeners
+*:2083 0.0.0.0:110 0.0.0.0:143 0.0.0.0:22 0.0.0.0:25 0.0.0.0:465 0.0.0.0:5355 0.0.0.0:587 0.0.0.0:80 0.0.0.0:993 0.0.0.0:995 127.0.0.1:11332 127.0.0.1:11333 127.0.0.1:11334 127.0.0.1:3306 127.0.0.1:53 127.0.0.1:8306 127.0.0.1:8891 127.0.0.1:953 127.0.0.53%lo:53 127.0.0.54:53 192.0.3.53:53 [::1]:11332 [::1]:11333 [::1]:11334 [::1]:53 [::1]:953 [::]:110 [::]:143 [::]:22 [::]:5355 [::]:80 [::]:993 [::]:995 [fe80::5054:ff:feea:aed9]%lab0:53 
+-- DNS
+ns1.arch4.test. hostmaster.arch4.test. 2026103001 3600 600 604800 300
+10 mail.arch4.test.
+"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsN19nc+FyW2DIF5Td86xoaXoWxP12jKFayhYhT5Mo3bKg4vTdnWrTfg11
+-- webmail
+000
+-- timers
+Fri 2026-10-30 01:35:36 UTC       8s Fri 2026-10-30 01:35:06 UTC  21s ago celikpanel-release-recovery.timer celikpanel-release-recovery.serv
+Fri 2026-10-30 01:40:10 UTC 4min 42s Fri 2026-10-30 01:35:01 UTC  26s ago celikpanel-mail-renewal.timer     celikpanel-mail-renewal.service
+Fri 2026-10-30 18:37:52 UTC      17h -                                  - certbot-renew.timer               certbot-renew.service
+-- security
+0
+total 4
+drwxr-x--- 1 root celikpanel  18 Oct 30 01:35 .
+drwx------ 1 root celikpanel 386 Oct 30 01:35 ..

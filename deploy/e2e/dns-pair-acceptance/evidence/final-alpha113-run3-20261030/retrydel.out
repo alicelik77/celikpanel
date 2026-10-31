@@ -1,0 +1,18 @@
+== owner retries the deletion 21:28:05
+202 {
+ "domain": "archr3shop113.test",
+ "message": "Deletion is incomplete but retryable. Retry this deletion.",
+ "stage": "dns_cleanup",
+ "status": "deletion_pending"
+}
+listed: yes
+200 {
+ "message": "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",
+ "stage": "unknown",
+ "status": "unknown"
+}
+2026-10-30T21:26:50+00:00 arch panel[762]: 2026/10/30 21:26:50 pending DNS publication archr3shop113.test: automatic re-check failed (6 in a row): wait for durable DNS V3 publication: the agent is refusing durable mutations; this operation cannot complete (ledger_ambiguous)
+2026-10-30T21:28:05+00:00 arch panel[762]: 2026/10/30 21:28:05 domain deletion pending for archr3shop113.test at dns_cleanup: publish DNS zone deletion: DNS V3 publication is already in progress
+-- a harmless read-only check that changes are held: setup/operation and the services card
+succeeded complete null
+== done 21:28:11

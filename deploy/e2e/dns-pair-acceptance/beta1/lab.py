@@ -52,6 +52,9 @@ IMAGE_FILES = {
                  "184761b0dad0f9ace02f9298050ca96ce3caa39a461a47706d47ff9698b59933918b91b40177fbd4d392f6446af8b4d18ecb94caca988169b19641606bf34003"),
     "ubuntu2404": ("ubuntu-24.04-server-cloudimg-amd64-20260826.img", "qcow2", "sha256",
                    "d0fe84bb5f80853425fa6be28e2c106f30104c3cfe8611933f2e65c9b63f0e30"),
+    # The kill matrix's pinned official image (../../dns-kill-matrix image lock).
+    "arch": ("Arch-Linux-x86_64-cloudimg-20260815.573966.qcow2", "qcow2", "sha256",
+             "5d8be8d28cfd290f051b0f67df0a6874596ad23de3f3f18b90c91aeb758eb878"),
 }
 INFRA = {"cell": "beta1-lab", "node": "labnet", "os": "debian13", "ip": LAB_GW}
 PATH_ENV = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -139,6 +142,17 @@ def cloud_init(cell: str, node: str, os_name: str, ip: str, hostname: str, infra
       cell_id={cell}
       node={node}
 """
+    # Arch's cloud image has no sudo group and does not enable sshd (the kill matrix's fixture does the same).
+    # Its systemd-time-wait-sync also holds the boot (and cloud-init's final stage) until NTP answers,
+    # which the lab's filtered network never does: stop that wait early (bootcmd), start sshd without
+    # blocking the boot transaction. The clock stays the host's, as on the Debian guests.
+    admin_group = "wheel" if os_name == "arch" else "sudo"
+    enable_ssh, bootcmd = "", ""
+    if os_name == "arch":
+        enable_ssh = "  - [systemctl, enable, --now, sshd.service]\n"
+        bootcmd = ("bootcmd:\n  - [systemctl, stop, --no-block, systemd-time-wait-sync.service]\n"
+                   "  - [systemctl, enable, sshd.service]\n  - [systemctl, start, --no-block, sshd.service]\n")
+
     user_data = f"""#cloud-config
 hostname: {hostname}
 fqdn: {hostname}
@@ -147,7 +161,7 @@ users:
   - default
   - name: celik
     gecos: CelikPanel beta1 lab
-    groups: [sudo]
+    groups: [{admin_group}]
     sudo: ["ALL=(ALL) NOPASSWD:ALL"]
     shell: /bin/bash
     lock_passwd: true
@@ -157,7 +171,7 @@ disable_root: true
 ssh_pwauth: false
 package_update: false
 package_upgrade: false
-write_files:
+{bootcmd}write_files:
 {marker}  - path: /etc/celikpanel-beta1-lab
     owner: root:root
     permissions: '0444'
@@ -165,7 +179,7 @@ write_files:
       cell={cell}
       node={node}
 runcmd:
-  - [touch, /etc/celikpanel-beta1-lab-ready]
+{enable_ssh}  - [touch, /etc/celikpanel-beta1-lab-ready]
 """
     meta = f"instance-id: beta1-{hashlib.sha256(f'{cell}/{node}/{time.time()}'.encode()).hexdigest()[:16]}\nlocal-hostname: {hostname}\n"
     if infra:

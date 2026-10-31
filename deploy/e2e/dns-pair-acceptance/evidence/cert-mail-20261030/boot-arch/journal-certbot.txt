@@ -1,0 +1,7 @@
+Oct 30 09:51:46 cm-arch systemd[1]: Started Run Certbot twice daily.
+Oct 30 09:52:00 cm-arch systemd[1]: Starting Renew certificates acquired via Certbot...
+Oct 30 09:58:52 cm-arch systemd[1]: certbot-renew.service: Deactivated successfully.
+Oct 30 09:58:52 cm-arch systemd[1]: Finished Renew certificates acquired via Certbot.
+Oct 30 09:58:52 cm-arch systemd[1]: Starting Renew certificates acquired via Certbot...
+Oct 30 09:58:53 cm-arch systemd[1]: certbot-renew.service: Deactivated successfully.
+Oct 30 09:58:53 cm-arch systemd[1]: Finished Renew certificates acquired via Certbot.

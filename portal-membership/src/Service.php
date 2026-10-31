@@ -110,7 +110,7 @@ SQL);
         $email = self::email($email);
         // The owner chooses the password only after proving email ownership.
         $hash = password_hash(self::secret(), PASSWORD_ARGON2ID);
-        $this->run('INSERT INTO members(email,password,created,accepted_terms) VALUES(?,?,?,?) ON CONFLICT(email) DO NOTHING', [$email, $hash, $this->now(), '2026-09-10']);
+        $this->run('INSERT INTO members(email,password,created,accepted_terms) VALUES(?,?,?,?) ON CONFLICT(email) DO NOTHING', [$email, $hash, $this->now(), '2026-10-30']);
         // Never replace the password of an unverified account on a duplicate registration.
         $this->requestToken($email, 'verify');
     }
@@ -271,13 +271,21 @@ SQL);
     {
         return hash_hmac('sha256', 'activation-v1:'.$l['id'].':'.$l['server_id'].':'.$l['generation'], $this->signingKey);
     }
+    /** A panel in use asks again after this many seconds (panels subtract up to a fifth as jitter). */
+    public const REFRESH_AFTER = 3600;
+    /**
+     * One successful check keeps an unreachable panel manageable this long, never
+     * past the annual expiry (D-039). The signed v1 format allows at most seven
+     * days; panels before D-039 still cap it at 60 seconds themselves.
+     */
+    public const OFFLINE_GRACE = 7 * 86400;
     private function entitlement(array $l): array
     {
         $now=$this->now();
         $payload=json_encode(['format'=>'celikpanel-license-v1','product'=>'celikpanel','license_id'=>$l['id'],
             'server_id'=>$l['server_id'],'issued_at'=>$now,'activated_at'=>(int)$l['activated'],
-            'expires_at'=>(int)$l['expires'],'refresh_after'=>$now+45,
-            'offline_until'=>min($now+60,(int)$l['expires'])], JSON_THROW_ON_ERROR|JSON_UNESCAPED_SLASHES);
+            'expires_at'=>(int)$l['expires'],'refresh_after'=>$now+self::REFRESH_AFTER,
+            'offline_until'=>min($now+self::OFFLINE_GRACE,(int)$l['expires'])], JSON_THROW_ON_ERROR|JSON_UNESCAPED_SLASHES);
         return ['payload'=>base64_encode($payload),'signature'=>base64_encode(sodium_crypto_sign_detached($payload,$this->signingKey)),
             'activation_token'=>$this->activationToken($l)];
     }

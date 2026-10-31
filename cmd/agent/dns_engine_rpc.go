@@ -142,9 +142,29 @@ func (a *Agent) DNSBackendReadiness(_ *transport.Empty, response *DNSBackendRead
 	// yabancı bir DNS sunucusu bulunduğunu söyler. Tutmayı taşı ki panel takılmış
 	// bir işlemi davetsiz bir misafirden ayırabilsin.
 	readiness.MutationHold = agentMutationHold()
+	// A retained switch journal is the Agent's own statement that a DNS
+	// operation was neither finished nor confirmed undone. Report only its
+	// request identity (or that it could not be read): the Panel must not
+	// call that operation undone, and must not start another DNS install
+	// that the journal would refuse (drill apd-e, 2026-10-30). Read only.
+	// Tutulan değişim günlüğü, bir DNS işleminin ne bittiğini ne de geri
+	// alındığını gösterir. Yalnız isteğin kimliği (ya da okunamadığı) bildirilir.
+	readiness.SwitchJournalRequestID, readiness.SwitchJournalUnverified = "", false
+	if journal, exists, err := readDNSBackendReadinessJournal(); err != nil {
+		readiness.SwitchJournalUnverified = true
+	} else if exists {
+		if validMutationIdentity(journal.MutationRequestID) {
+			readiness.SwitchJournalRequestID = journal.MutationRequestID
+		} else {
+			readiness.SwitchJournalUnverified = true
+		}
+	}
 	*response = readiness
 	return nil
 }
+
+// readDNSBackendReadinessJournal is replaced only by tests.
+var readDNSBackendReadinessJournal = readDNSEngineSwitchJournal
 
 // SyncDNSZoneV3 publishes one complete full-zone snapshot to the engine and
 // epoch selected by the panel. BIND applies a delta to the verified immutable

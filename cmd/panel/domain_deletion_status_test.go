@@ -191,3 +191,49 @@ func TestDomainDeletionStatusKeepsPowerDNSPrimaryPendingReason(t *testing.T) {
 		t.Fatalf("PowerDNS primary pending status=%d body=%+v", status, body)
 	}
 }
+
+// 2026-10-30: when the zone's removal was completed by the automatic re-check
+// (the backup caught up), the saved deletion says so and names the one action
+// left, instead of "the reason could not be verified".
+func TestDomainDeletionStatusNamesCompletedDNSRemoval(t *testing.T) {
+	p := newDNSPanelForTest(t)
+	id, lease := seedExactDeletionStatus(t, p)
+	db := p.db.GetDB()
+	// What recordDNSZoneSyncV3Success leaves after the exact deletion: the
+	// engine's application row, no lease, no zone; retiring the marker also
+	// removes the applied tombstone (migration 032).
+	if _, err := db.Exec(`
+		INSERT INTO dns_zone_engine_applications (
+		  zone_name, engine, engine_epoch, applied_generation, applied_action,
+		  applied_zone_type, qualifier, mutation_request_id, mutation_owner_id, switch_id, revision
+		) VALUES (?, ?, ?, ?, 'delete', ?, ?, ?, ?, NULL, 1)
+		ON CONFLICT(zone_name, engine) DO UPDATE SET
+		  engine_epoch = excluded.engine_epoch, applied_generation = excluded.applied_generation,
+		  applied_action = 'delete', applied_zone_type = excluded.applied_zone_type,
+		  qualifier = excluded.qualifier, mutation_request_id = excluded.mutation_request_id,
+		  mutation_owner_id = excluded.mutation_owner_id, revision = dns_zone_engine_applications.revision + 1`,
+		lease.ZoneName, lease.Engine, lease.EngineEpoch, lease.DesiredGeneration, lease.DesiredZoneType,
+		lease.Qualifier, lease.RequestID, lease.OwnerID); err != nil {
+		t.Fatal(err)
+	}
+	// Before the removal completes it is not reported as complete.
+	if _, body := readDeletionStatusForTest(t, p, id); body.Stage == domainDeletionDNSStageDone {
+		t.Fatalf("pending removal reported as complete: %+v", body)
+	}
+	for _, query := range []string{
+		`DELETE FROM dns_zone_engine_leases WHERE zone_name = ?`,
+		`DELETE FROM pdns_domains WHERE name = ?`,
+		`UPDATE dns_zone_sync_state SET applied_generation = desired_generation, status = 'applied' WHERE zone_name = ?`,
+		`DELETE FROM dns_zone_deletion_markers WHERE zone_name = ?`,
+	} {
+		if _, err := db.Exec(query, lease.ZoneName); err != nil {
+			t.Fatalf("%s: %v", query, err)
+		}
+	}
+	status, body := readDeletionStatusForTest(t, p, id)
+	if status != http.StatusOK || body.Status != domainDeletionPendingStatus ||
+		body.Stage != domainDeletionDNSStageDone || body.Reason != domainDeletionDNSRemovalConfirmedReason ||
+		!strings.Contains(body.Message, "Retry this deletion") {
+		t.Fatalf("completed DNS removal status=%d body=%+v", status, body)
+	}
+}

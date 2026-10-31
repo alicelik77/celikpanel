@@ -243,16 +243,24 @@ func inspectInstallableDocumentRoot(
 	if len(entries) == 0 {
 		return wordpressDocumentRootSnapshot{info: rootInfo}, nil
 	}
-	expectedName, expectedContent := celikPanelSitePlaceholder(domain, "php")
+	expectedName, expectedContents := celikPanelSitePlaceholders(domain, "php")
 	if len(entries) != 1 || entries[0].Name() != expectedName {
 		return wordpressDocumentRootSnapshot{},
 			fmt.Errorf("document root contains customer content; existing content was not changed")
 	}
+	maximum := 0
+	for _, expected := range expectedContents {
+		maximum = max(maximum, len(expected))
+	}
 	content, fileInfo, err := readWordPressPlaceholder(
 		filepath.Join(docRoot, expectedName),
-		int64(len(expectedContent)),
+		int64(maximum),
 	)
-	if err != nil || !fileInfo.Mode().IsRegular() || !bytes.Equal(content, expectedContent) {
+	recognised := false
+	for _, expected := range expectedContents {
+		recognised = recognised || bytes.Equal(content, expected)
+	}
+	if err != nil || !fileInfo.Mode().IsRegular() || !recognised {
 		return wordpressDocumentRootSnapshot{},
 			fmt.Errorf("document root placeholder is not the exact CelikPanel placeholder; existing content was not changed")
 	}

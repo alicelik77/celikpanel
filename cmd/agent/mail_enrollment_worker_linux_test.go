@@ -5,8 +5,10 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -129,6 +131,7 @@ func TestMailEnrollmentWorkerLockHandoff(t *testing.T) {
 		}
 		f.Close()
 	}
+	withMailEnrollmentWorkerLockWait(t, 0)
 	for _, busy := range []string{release, host} {
 		held, e := hostmutationlock.AcquireExisting(busy, hostmutationlock.Owner{})
 		if e != nil {
@@ -163,6 +166,87 @@ func TestMailEnrollmentWorkerLockHandoff(t *testing.T) {
 		t.Fatal("missing lock created")
 	}
 }
+func withMailEnrollmentWorkerLockWait(t *testing.T, wait time.Duration) {
+	t.Helper()
+	old := mailEnrollmentWorkerLockWait
+	mailEnrollmentWorkerLockWait = wait
+	t.Cleanup(func() { mailEnrollmentWorkerLockWait = old })
+}
+
+// 2026-10-30 (Arch run ap-e): a worker that met a lock held for a moment gave
+// up at once and setup waited for the owner. It now waits, bounded, while a
+// lock is busy, takes both locks once they are free and only then runs; past
+// the bound it is refused as before, and nothing ran.
+func TestMailEnrollmentWorkerWaitsBoundedForABriefHold(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("root fixture")
+	}
+	root, err := os.MkdirTemp("/run", "cp-mail-worker-wait-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(root)
+	release, host := filepath.Join(root, "transaction.lock"), filepath.Join(root, "mutation.lock")
+	for _, path := range []string{release, host} {
+		if err = os.WriteFile(path, nil, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	args := []string{"-test.run=^TestMailEnrollmentWorkerLockChild$", "--", root}
+	for _, busy := range []string{release, host} {
+		withMailEnrollmentWorkerLockWait(t, 5*time.Second)
+		held, e := hostmutationlock.AcquireExisting(busy, hostmutationlock.Owner{})
+		if e != nil {
+			t.Fatal(e)
+		}
+		go func() { time.Sleep(600 * time.Millisecond); held.Close() }()
+		began := time.Now()
+		if e = runMailEnrollmentWithLocks(context.Background(), release, host, hostmutationlock.Owner{}, args); e != nil {
+			t.Fatalf("a brief hold of %s was not outwaited: %v", filepath.Base(busy), e)
+		}
+		if time.Since(began) < 500*time.Millisecond {
+			t.Fatal("the worker ran while the lock was held")
+		}
+	}
+	// Past the bound: the same verified refusal, and the child never ran.
+	withMailEnrollmentWorkerLockWait(t, 700*time.Millisecond)
+	held, err := hostmutationlock.AcquireExisting(host, hostmutationlock.Owner{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer held.Close()
+	var journal []string
+	oldLog := mailEnrollmentWorkerLog
+	mailEnrollmentWorkerLog = func(format string, args ...any) { journal = append(journal, fmt.Sprintf(format, args...)) }
+	t.Cleanup(func() { mailEnrollmentWorkerLog = oldLog })
+	began := time.Now()
+	err = runMailEnrollmentWithLocks(context.Background(), release, host, hostmutationlock.Owner{}, append(args, "wait"))
+	if !errors.Is(err, errMailEnrollmentWorkerBusy) || time.Since(began) < 600*time.Millisecond {
+		t.Fatalf("a persistent hold: %v after %s", err, time.Since(began))
+	}
+	// The refusal names who held the lock (here: this test process), in the
+	// journal at the first and the last try and in the owner's guidance.
+	self := "process " + strconv.Itoa(os.Getpid())
+	if got := mailEnrollmentLockHolderOf(err); !strings.Contains(got, host) || !strings.Contains(got, self) {
+		t.Fatalf("holder not named: %q", got)
+	}
+	if len(journal) != 2 || !strings.Contains(journal[0], "waiting up to") || !strings.Contains(journal[1], "stopped waiting") || !strings.Contains(journal[1], self) {
+		t.Fatalf("journal: %q", journal)
+	}
+	if got := mailEnrollmentWorkerGuidance(err); !strings.Contains(got, self) {
+		t.Fatalf("guidance does not name the holder: %q", got)
+	}
+	if _, err = os.Stat(filepath.Join(root, "started")); !os.IsNotExist(err) {
+		t.Fatal("the worker ran without the host lock")
+	}
+	// The release lock is not kept while waiting for the host lock.
+	if f, e := hostmutationlock.AcquireExisting(release, hostmutationlock.Owner{}); e != nil {
+		t.Fatal("release lock retained after the refusal", e)
+	} else {
+		f.Close()
+	}
+}
+
 func TestMailEnrollmentWorkerLockChild(t *testing.T) {
 	index := -1
 	for i, arg := range os.Args {
@@ -223,6 +307,7 @@ func TestMailEnrollmentRuntimePreparationHasReleaseExclusion(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer lock.Close()
+	withMailEnrollmentWorkerLockWait(t, 0)
 	called = false
 	err = runMailEnrollmentWithPreparedLocks(context.Background(), release, host, hostmutationlock.Owner{}, nil, func(*os.File) error { called = true; return nil })
 	if !errors.Is(err, errMailEnrollmentWorkerBusy) || called {

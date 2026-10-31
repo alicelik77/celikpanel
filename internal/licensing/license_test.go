@@ -103,18 +103,19 @@ func TestLicenseManagerOutageExpiryAndRefresh(t *testing.T) {
 	if err := m.Refresh(context.Background(), false); err != nil || calls != 1 {
 		t.Fatal("premature refresh", err, calls)
 	}
-	original, _ := os.ReadFile(m.file)
+	original := signedPart(t, m.file)
 	fail = true
 	now = now.Add(2 * 24 * time.Hour)
 	if err := m.Refresh(context.Background(), false); err == nil {
 		t.Fatal("outage hidden")
 	}
-	after, _ := os.ReadFile(m.file)
-	if string(after) != string(original) || m.Status().CanProvision {
-		t.Fatal("outage must retain renewal credentials but deny stale access")
+	// Inside the signed offline window an outage keeps management open and says so.
+	if got := m.Status(); signedPart(t, m.file) != original || !got.CanProvision || got.State != "active" ||
+		got.Check != CheckUnreachable || got.OfflineForSeconds != 5*86400 || got.VerifiedSecondsAgo != 2*86400 {
+		t.Fatal("outage must retain the receipt and its offline window", got)
 	}
 	now = time.Unix(c.OfflineUntil, 0)
-	if got := m.Status(); got.State != "verification_unavailable" || got.CanProvision {
+	if got := m.Status(); got.State != "verification_unavailable" || got.Reason != ReasonOfflineEnded || got.CanProvision || got.OfflineForSeconds != 0 {
 		t.Fatal(got)
 	}
 	fail = false
@@ -122,8 +123,7 @@ func TestLicenseManagerOutageExpiryAndRefresh(t *testing.T) {
 	if err := m.Refresh(context.Background(), true); err == nil {
 		t.Fatal("accepted bad refresh")
 	}
-	after, _ = os.ReadFile(m.file)
-	if string(after) != string(original) {
+	if signedPart(t, m.file) != original || m.Status().Check != CheckInvalidAnswer {
 		t.Fatal("bad signature replaced good receipt")
 	}
 	tamper = false
@@ -134,8 +134,8 @@ func TestLicenseManagerOutageExpiryAndRefresh(t *testing.T) {
 	if err := m.Refresh(context.Background(), true); err != nil {
 		t.Fatal(err)
 	}
-	if !m.Status().CanProvision {
-		t.Fatal(m.Status())
+	if got := m.Status(); !got.CanProvision || got.Check != "" {
+		t.Fatal(got)
 	}
 	now = time.Unix(c.ExpiresAt, 0)
 	if got := m.Status(); got.State != "expired" || got.CanProvision {
@@ -153,6 +153,21 @@ func TestLicenseManagerOutageExpiryAndRefresh(t *testing.T) {
 		t.Fatal("renewal not effective")
 	}
 }
+
+// signedPart is the receipt as the service signed it, without local fields.
+func signedPart(t *testing.T, file string) string {
+	t.Helper()
+	b, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var e Envelope
+	if err = json.Unmarshal(b, &e); err != nil {
+		t.Fatal(err)
+	}
+	return e.Payload + "|" + e.Signature + "|" + e.ActivationToken
+}
+
 func TestLicenseMachineIdentity(t *testing.T) {
 	for _, bad := range []string{"", strings.Repeat("0", 32), strings.Repeat("z", 32)} {
 		if _, err := ServerID([]byte(bad)); err == nil {
@@ -166,5 +181,23 @@ func TestLicenseMachineIdentity(t *testing.T) {
 	b, _ := ServerID([]byte(strings.Repeat("a", 32) + "\n"))
 	if a != b || !hex64.MatchString(a) {
 		t.Fatal("unstable identity")
+	}
+}
+
+func TestTestsNeverReachTheLiveLicenseService(t *testing.T) {
+	public, _, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := New(filepath.Join(t.TempDir(), "license.json"), public, strings.Repeat("a", 64))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.endpoint != API {
+		t.Fatalf("endpoint = %q", m.endpoint)
+	}
+	err = m.request(context.Background(), "refresh", map[string]string{"license_id": "x"})
+	if err == nil || !strings.Contains(err.Error(), "never contact the live license service") {
+		t.Fatalf("request reached the network path: %v", err)
 	}
 }

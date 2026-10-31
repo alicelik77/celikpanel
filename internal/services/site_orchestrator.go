@@ -227,8 +227,17 @@ func (so *SiteOrchestrator) CreateSite(ctx context.Context, req *CreateSiteReque
 		DocumentRoot: documentRoot,
 		ProjectType:  req.ProjectType,
 		PHPVersion:   req.PHPVersion,
-		SSLEnabled:   req.SSLType != "none",
-		Status:       initialStatus,
+		// A site is created without a certificate: the creation vhost is
+		// rendered with SSL off (cmd/agent/site_rpc.go) and nothing is issued
+		// here. ssl_enabled means "a certificate is active and served", and the
+		// activation of a real certificate is what sets it (cmd/panel/ssl_state.go).
+		// Setting it from the REQUESTED type made lists report SSL on for a site
+		// that had none. The request is carried out afterwards, through the
+		// certificate request the SSL page uses, and its outcome is shown.
+		// Site sertifikasız oluşturulur; ssl_enabled yalnız etkin ve sunulan
+		// gerçek bir sertifikayı belirtir, istenen türü değil.
+		SSLEnabled: false,
+		Status:     initialStatus,
 	}
 
 	siteID, err := so.createSiteRecord(ctx, site)

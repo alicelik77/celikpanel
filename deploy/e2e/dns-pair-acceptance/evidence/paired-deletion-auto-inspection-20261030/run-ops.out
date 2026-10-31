@@ -1,0 +1,71 @@
+== daily operations on pdel-a, zone pdz.test 13:36:57
+-- 1. zone add (create the domain, DNS only) 13:36:57
+200
+{
+ "DocumentRoot": "",
+ "Domain": "pdz.test",
+ "DomainID": 1,
+ "FTPPassword": "",
+ "FTPUser": "",
+ "PHPVersion": "",
+ "ProjectType": "dnsonly",
+ "SiteID": 1,
+ "TempDomain": ""
+}
+
+   domain id: 1
+   192.0.3.80 pdz.test SOA = 'ns1.pdl.test. hostmaster.pdz.test. 2026103001 10800 3600 604800 3600' after 0s
+   192.0.3.81 pdz.test SOA = 'ns1.pdl.test. hostmaster.pdz.test. 2026103001 10800 3600 604800 3600' after 0s
+-- 2. record add, then its delete about 8 s later 13:37:03
+200
+{
+ "id": 17,
+ "success": true
+}
+
+   record id: 17
+   delete sent 8s after the add 13:37:15
+200
+{
+ "success": true
+}
+
+   192.0.3.80 quick.pdz.test A = '' after 0s
+   192.0.3.81 quick.pdz.test A = '' after 0s
+-- 3. zone delete (delete the domain) 13:37:19
+200
+{
+ "domain": "pdz.test",
+ "status": "deleted"
+}
+
+   deletion-status after 0s: 404 {  "error": "domain not found" } 
+   192.0.3.80 pdz.test SOA after deletion: status: REFUSED (1s)
+   192.0.3.81 pdz.test SOA after deletion: status: REFUSED (0s)
+   domain list still names it: no
+   agent log on the main (peer proof):
+2026-10-30T13:32:42+00:00 mainpd agent[10138]: 2026/10/30 13:32:42 Panel certificate activation remains pending: open trusted panel TLS directory: no such file or directory
+2026-10-30T13:35:32+00:00 mainpd agent[10138]: 2026/10/30 13:35:32 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-10-30T13:35:35+00:00 mainpd agent[10138]: 2026/10/30 13:35:35 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-10-30T13:35:36+00:00 mainpd agent[10138]: 2026/10/30 13:35:36 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-10-30T13:36:05+00:00 mainpd agent[10138]: 2026/10/30 13:36:05 Panel certificate activation remains pending: connect to panel TLS listener: dial tcp 127.0.0.1:2083: connect: connection refused
+2026-10-30T13:36:27+00:00 mainpd agent[10138]: 2026/10/30 13:36:27 pdns primary pair readiness proof failed: DNS peer catalog differs from the primary
+2026-10-30T13:36:51+00:00 mainpd agent[10138]: 2026/10/30 13:36:51 peer inspection setup: pdns enrollment active for peer 192.0.3.81
+2026-10-30T13:37:40+00:00 mainpd agent[10138]: 2026/10/30 13:37:40 DNS peer inspector answer for pdz.test (PowerDNS secondary): catalog_state=transferred member_state=absent native_state=unloaded; accepted
+2026-10-30T13:37:42+00:00 mainpd agent[10138]: 2026/10/30 13:37:42 DNS peer proof for pdz.test (PowerDNS secondary) step times: prepare=1.351s challenge_write=5.371s exchange=257ms post_inspection=4.352s consume=7.13s; total 18.461s; outcome verified
+-- 4. a DNS change after the deletion 13:37:43
+200
+{
+ "id": 18,
+ "success": true
+}
+
+   192.0.3.80 afterdelete.pdl.test TXT = '"published"' after 0s
+   192.0.3.81 afterdelete.pdl.test TXT = '"published"' after 0s
+-- setup state of both servers 13:37:48
+succeeded complete null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-verify=succeeded
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-service=succeeded 07-dns=succeeded 08-firewall=succeeded 09-access_dns=succeeded 10-panel_certificate=succeeded 11-dns_publisher=succeeded 12-verify=succeeded
+== daily operations done 13:37:48
+OPS EXIT 0

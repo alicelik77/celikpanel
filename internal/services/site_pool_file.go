@@ -275,6 +275,9 @@ func applySitePoolLocked(request transport.SitePoolRequest) (transport.SiteFileR
 	case transport.SitePoolOperationApply:
 		return ApplyManagedSiteFile(sitePoolFile(request, version, nil, transport.SiteFileTriggerChange),
 			phpValidate(version), phpReload(version))
+	case transport.SitePoolOperationCreate:
+		return ApplyManagedSiteFile(sitePoolFile(request, version, nil, transport.SiteFileTriggerCreate),
+			phpValidate(version), phpReload(version))
 	case transport.SitePoolOperationSwitch:
 		return switchSitePoolLocked(request)
 	}

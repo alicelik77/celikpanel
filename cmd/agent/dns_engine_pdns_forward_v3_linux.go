@@ -155,7 +155,7 @@ func observeFreshPrimaryForwardV3(ctx context.Context, profile hostplatform.Prof
 	if err != nil {
 		return empty, err
 	}
-	started, err := freshPrimaryProcessIdentityV3(first.pdnsProcesses.MainPID)
+	started, err := freshPrimaryProcessIdentityV3(profile, first.pdnsProcesses.MainPID)
 	if err != nil {
 		return empty, err
 	}
@@ -265,7 +265,7 @@ func observeFreshPrimaryForwardV3(ctx context.Context, profile hostplatform.Prof
 	if err != nil || !reflect.DeepEqual(first, last) {
 		return empty, errors.Join(errors.New("v3 daemon or cgroup changed during authority observation"), err)
 	}
-	again, err := freshPrimaryProcessIdentityV3(last.pdnsProcesses.MainPID)
+	again, err := freshPrimaryProcessIdentityV3(profile, last.pdnsProcesses.MainPID)
 	if err != nil || again != started {
 		return empty, errors.Join(errors.New("v3 PowerDNS process executable or start token changed"), err)
 	}
@@ -297,7 +297,11 @@ func publishExactFreshPrimaryStateV3(j dnsEngineSwitchJournal, desired dnsEngine
 	}
 	return nil
 }
-func freshPrimaryProcessIdentityV3(pid uint64) (string, error) {
+func freshPrimaryProcessIdentityV3(profile hostplatform.Profile, pid uint64) (string, error) {
+	build, err := freshPDNSPrimaryBuildV3(profile)
+	if err != nil {
+		return "", err
+	}
 	if pid == 0 || uint64(int(pid)) != pid {
 		return "", errors.New("v3 PowerDNS process identity is invalid")
 	}
@@ -305,7 +309,7 @@ func freshPrimaryProcessIdentityV3(pid uint64) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	installed, err := os.Lstat("/usr/sbin/pdns_server")
+	installed, err := os.Lstat(build.Binary)
 	if err != nil || !installed.Mode().IsRegular() {
 		return "", errors.New("v3 installed PowerDNS executable is unsafe")
 	}

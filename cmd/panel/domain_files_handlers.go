@@ -100,6 +100,37 @@ func displayDomainFilePath(relative string) string {
 	return "/" + relative
 }
 
+// Guidance for the file manager's known client conditions (D-024): what is
+// wrong, who acts, and how the work goes on.
+// Dosya yöneticisinin bilinen istemci durumları için yönlendirme (D-024).
+const (
+	siteFilePathMissingMessage = "This path does not exist in the site's web folder; it may have been renamed, moved or deleted. " +
+		"The file manager's top level (/) is the site's web folder: go back to it or to the parent folder and open the entry from the list again."
+	siteFileRootMissingMessage = "The site's web folder does not exist on the server, so there is nothing to show or change. " +
+		"The server owner restores the folder (for example from a backup) or recreates it; the file manager works again as soon as it exists."
+	siteFilePathExistsMessage = "An entry with this name already exists in this folder. " +
+		"Choose another name, or rename or delete the existing entry first, then try again."
+)
+
+// writeSiteFileError answers an Agent file-manager error: the known
+// conditions as coded client errors with guidance, anything else through
+// writeServerError. Until 30 Oct 2026 a path that did not exist answered a
+// bare 500 INTERNAL ("no such file or directory").
+// writeSiteFileError, Agent dosya yöneticisi hatasını yanıtlar: bilinen
+// durumlar yönlendirmeli kodlu istemci hatası, gerisi writeServerError.
+func writeSiteFileError(w http.ResponseWriter, err error) {
+	switch {
+	case agentAnsweredExactly(err, transport.SiteFilePathMissing):
+		writeCodedError(w, http.StatusNotFound, errCodeFileNotFound, siteFilePathMissingMessage, "")
+	case agentAnsweredExactly(err, transport.SiteFileRootMissing):
+		writeCodedError(w, http.StatusNotFound, errCodeFileRootMissing, siteFileRootMissingMessage, "")
+	case agentAnsweredExactly(err, transport.SiteFilePathExists):
+		writeCodedError(w, http.StatusConflict, errCodeFileExists, siteFilePathExistsMessage, "")
+	default:
+		writeServerError(w, err)
+	}
+}
+
 func (p *Panel) handleDomainFiles(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -175,7 +206,7 @@ func (p *Panel) handleListFiles(w http.ResponseWriter, r *http.Request, relative
 		Path:           relativePath,
 	}, &resp)
 	if err != nil {
-		writeServerError(w, err)
+		writeSiteFileError(w, err)
 		return
 	}
 
@@ -236,7 +267,7 @@ func (p *Panel) handleFileAction(w http.ResponseWriter, r *http.Request, relativ
 			Path:           relativePath,
 		}, &resp)
 		if err != nil {
-			writeServerError(w, err)
+			writeSiteFileError(w, err)
 			return
 		}
 		json.NewEncoder(w).Encode(resp)
@@ -250,7 +281,7 @@ func (p *Panel) handleFileAction(w http.ResponseWriter, r *http.Request, relativ
 			Content:        req.Content,
 		}, &success)
 		if err != nil {
-			writeServerError(w, err)
+			writeSiteFileError(w, err)
 			return
 		}
 		if !success {
@@ -268,7 +299,7 @@ func (p *Panel) handleFileAction(w http.ResponseWriter, r *http.Request, relativ
 			IsDir:          req.IsDir,
 		}, &success)
 		if err != nil {
-			writeServerError(w, err)
+			writeSiteFileError(w, err)
 			return
 		}
 		if !success {
@@ -285,7 +316,7 @@ func (p *Panel) handleFileAction(w http.ResponseWriter, r *http.Request, relativ
 			Path:           relativePath,
 		}, &success)
 		if err != nil {
-			writeServerError(w, err)
+			writeSiteFileError(w, err)
 			return
 		}
 		if !success {
@@ -308,7 +339,7 @@ func (p *Panel) handleFileAction(w http.ResponseWriter, r *http.Request, relativ
 			NewPath:        newRelativePath,
 		}, &success)
 		if err != nil {
-			writeServerError(w, err)
+			writeSiteFileError(w, err)
 			return
 		}
 		if !success {
@@ -326,7 +357,7 @@ func (p *Panel) handleFileAction(w http.ResponseWriter, r *http.Request, relativ
 			Permissions:    req.Permissions,
 		}, &success)
 		if err != nil {
-			writeServerError(w, err)
+			writeSiteFileError(w, err)
 			return
 		}
 		if !success {
@@ -349,7 +380,7 @@ func (p *Panel) handleFileAction(w http.ResponseWriter, r *http.Request, relativ
 			Content:        req.Content,
 		}, &success)
 		if err != nil {
-			writeServerError(w, err)
+			writeSiteFileError(w, err)
 			return
 		}
 		if !success {
@@ -402,7 +433,7 @@ func (p *Panel) handleDomainFileDownload(w http.ResponseWriter, r *http.Request)
 		Path:           relativePath,
 	}, &resp)
 	if err != nil {
-		writeServerError(w, err)
+		writeSiteFileError(w, err)
 		return
 	}
 

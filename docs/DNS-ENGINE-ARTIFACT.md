@@ -1920,6 +1920,25 @@ evidence scope includes the fresh paired PowerDNS primary only while its gate
 is open. The primary's role text tells the owner to start the secondary only
 after this server's DNS step shows as finished.
 
+**Kept journal is never "undone" (Arch PowerDNS drill apd-e, 2026-10-30).**
+After a cut, the Agent's pre-start undo stopped and it released the job with
+its switch journal kept; the Panel's startup recovery still recorded the
+switch as rolled back from a stopped-engine observation alone, so setup said
+"CelikPanel undid it", and the owner's revised plan then sat at "running"
+because the kept journal refused the new install. The Agent's readiness
+answer now names a retained switch journal (`switch_journal_request_id`, or
+`switch_journal_unverified` when it cannot be read; read-only, an older Agent
+reports neither). The Panel's rollback runtime proof refuses while either is
+set, so startup keeps the switch attached and operator-gated (not degraded)
+and setup shows `server_setup_dns_recovery_held`, which says the operation
+is not reported as undone, who acts and the status command. Only after the
+journal is retired does the same step record the proven rollback. A new
+setup DNS install checks the same answer before any staging: with a kept
+journal it waits as `server_setup_dns_journal_retained` (nothing started,
+the status command for that request, starts by itself once resolved).
+Component tests: `cmd/panel/dns_engine_journal_retained_test.go`,
+`cmd/agent/dns_engine_readiness_journal_test.go`.
+
 **License refresh in the background.** The setup runner read a license check
 that only HTTP handlers refreshed, so with no browser request for a minute
 it reported `license_required` for an active license. It now performs the
@@ -2660,3 +2679,147 @@ pending:
   at step" line naming the step and the underlying error;
 - batch 12 `z04`/`z05` as listed in the section above, now also with these
   lines.
+
+## Standalone deletion proof without a served parent (D5, 2026-10-31)
+
+**Defect.** Final alpha.113 lab acceptance, Arch Linux standalone PowerDNS:
+deleting the site `archr3shop113.test` committed the PowerDNS tombstone (zone,
+DKIM key and TXT gone; the server answered REFUSED for the name), but the
+publication proof required an authoritative NXDOMAIN/NODATA carrying exactly
+one strict-ancestor SOA. A standalone server does not serve the parent (`test.`
+in the lab, `com.` for real owners), so PowerDNS answers an empty REFUSED and
+the proof could never pass. `SyncDNSZoneV3` marked the publication ambiguous,
+the service mutation ledger went fail-closed (`ledger_ambiguous`), and the same
+proof ran again in startup recovery (`recover DNS zone V3 host receipt`) on
+every Agent restart, so the hold the guidance told the owner to clear by
+restarting the Agent came back each time. The Panel answered "Retry this
+deletion" with "DNS V3 publication is already in progress" and the saved
+deletion read "status unknown". No site could be created afterwards.
+
+**Scope of the cause.** Every PowerDNS state whose deletion proof used the
+strict DNS-only rule and whose server does not serve the parent: standalone
+PowerDNS on every family (Arch, Debian, Ubuntu; fresh `switch` and `adopt`
+mode). The fresh native V3 paired primary already combined an empty REFUSED
+with its exact database tombstone (`verifyPDNSV3PublishedZoneAuthority`), which
+is why the Debian/Ubuntu pair passed; its peer proof is separate. BIND
+standalone already proves removal with `rndc zonestatus` ("no matching zone in
+any view") plus an empty REFUSED (`verifyBINDDeletedZoneAt`) in publication and
+in `RecoverZone`.
+
+**Change.** `pdnsV3DeletionProofAddress` selects the tombstone-bound proof also
+for a standalone PowerDNS state (no directional pair identity and no managed
+legacy cluster pairing): the exact durable delete receipt with no `domains`
+row is read before and after the DNS observation, and over UDP and TCP from
+the server's own address (the probe socket must report that address) the
+answer must be an authoritative parent-negative (NXDOMAIN/NODATA with one
+strict-ancestor SOA) or an empty REFUSED (no AA, no answer, no SOA in any
+section). A timeout, SERVFAIL, NOTAUTH, an answer or authority still carrying
+the zone's own SOA, a REFUSED with records or the AA bit, or a zone row that
+reappears during the observation fails closed as before. The strict DNS-only
+rule (`validDeletedDNSZoneProof`, `verifyDNSZoneAuthoritiesAt`) and every pair
+proof are unchanged; legacy pairings recorded only in the cluster
+configuration and legacy directional primaries keep the strict rule.
+
+The Panel names a held Agent instead of "already in progress": an exact DNS
+publication whose job is frozen by the Agent's hold returns the reviewed
+reason `agent_mutations_held` (deletion 202 response, deletion-status and DNS
+record edits) with the owner's next step (restart the CelikPanel Agent, then
+retry the same change). The pending-publication reconciler records a terminal
+success the Agent reached by itself (for example its startup recovery after
+the owner's restart) even after its own automatic attempts stopped; recording
+the receipt starts nothing on the server.
+
+**Transition and recovery.** No persisted format changes. A server already
+latched by the earlier proof keeps only the applied ledger job; the hold is
+recomputed at every Agent start. When the Agent of this build starts (the
+owner's restart), startup recovery proves the same operation with the new rule
+and records it `succeeded`; "Retry this deletion" then completes the deletion.
+An unknown answer still holds. The earlier rule never shipped in a published
+release (alpha.113 candidate only). Open: whether the panel's own update can be
+started while an earlier build's Agent holds every change was not verified
+(the update admission refuses while another server operation is active).
+
+**Evidence.** Component tests: `cmd/agent/dns_engine_pdns_v3_zone_verify_test.go`
+(answer forms, address identity, selection by topology),
+`cmd/agent/dns_engine_pdns_v3_standalone_delete_linux_test.go` (real PowerDNS
+database tombstone and engine state; startup recovery of a latched ledger:
+SERVFAIL keeps the hold, empty REFUSED completes and admits the next mutation),
+`cmd/panel/dns_agent_hold_guidance_test.go`. Native lab evidence:
+`deploy/e2e/dns-pair-acceptance/evidence/standalone-zone-delete-proof-20261031/`.
+Invariants: RESILIENCE-CONTRACT 4 (every mutation carries a recovery contract)
+and 6 (readiness and guidance), D-024; P0.4 (DNS artifact contracts) stays
+open.
+
+## PowerDNS peer challenge across a daemon re-stamp; inspector diagnostics (D7, D9, 2026-10-31)
+
+**D7 cause.** Final alpha.113 acceptance run 4 deleted a site after both
+servers rebooted. The proof minted its challenge at the catalog serial the
+wave had proved (1793402914). The rechecks inside the challenge's own journal
+publication then admitted the PowerDNS daemon's re-stamp (to 1793403447), and
+the challenge was written and sent with the old serial. Every later wave of
+the same operation derives its recorded catalog from the producer rows, which
+hold the re-stamped serial; the journal's context rule required an identical
+`CatalogSerial` and `CatalogMembersSHA256`, so each new challenge was refused
+as `pdns_peer_challenge_context_mismatch` (`dns_peer_journal_unknown`) at
+every automatic re-check and every “Retry this deletion”.
+
+**Journal rule.** `pdnspeerjournal.Publish` now receives the member set the
+request's digest was computed from, and verifies it. A later challenge of the
+same operation (request, owner, generation, qualifier, deleted zone, view),
+enrollment, endpoints and peer identity may carry a strictly higher catalog
+serial only over the identical member set: the members must reproduce both
+the stored and the new digest at their own serials. That is exactly the
+daemon's re-stamp. A lower serial, a changed member set, a higher serial with
+the old digest, a foreign enrollment or any other field stays a mismatch;
+attempt+1, a new nonce and a non-decreasing ledger attempt are still
+required. Superseding cannot replay: ConsumeOnce accepts only the journal's
+exact record, so an answer bound to the superseded request is refused. The
+journal v1 bytes are unchanged; only the admission rule changed.
+
+**Agent.** A re-stamp admitted by the publication's rechecks supersedes the
+written challenge before its exchange
+(`errDNSProducerCatalogRestampedBeforeExchange`); the wave proves the
+re-stamped pair and mints the next challenge in the same wave. Each repeat
+needs an admitted re-stamp, so `dnsProducerCatalogRestampLimit` bounds it, and
+a wave still opens at most one SSH inspection. A server left in run 4's state
+recovers at its next automatic re-check or Agent start with this build.
+
+**Guidance.** `dns_peer_journal_unknown` is re-checked automatically, so its
+text is now a waiting state first (nobody needs to act; the Panel re-checks
+with a new challenge; the owner may retry now); reading the Agent log is for a
+message that stays after several checks (D-024).
+
+**D9.** `pdns-peer-inspect` sent only its fixed generic line for an
+unclassified failure and logged nothing on the secondary. It now notes every
+failed read to the secondary's journal (`sudo journalctl -t
+celikpanel-pdns-peer-inspect`): a 12-character request digest prefix, the read
+number and a bounded product-authored text naming the failing native step
+with the wrapped SQLite or system error. The nonce, other request fields,
+keys and file content are never written; the primary still receives only the
+reviewed reason line. An unclassified native observation is read again (at
+most three complete two-observation inspections, 750 ms apart, never closer
+than 5 s to the request's expiry); policy, clock and reviewed-reason failures
+are final.
+
+**D9 cause.** The native check after the fix logged, on the backup, `read 1
+of 3 failed (unclassified): native observation 2: PowerDNS control listener
+changed`, answered on read 2. The listener check runs between the
+inspector's own `connect` and its `LIST-ZONES` command. Linux lists a
+connection the daemon has not accepted yet under the listener's path with
+flags `00000000`, type `0001` and state `02` (SS_CONNECTING). The parser
+accepted only `St 03` beside the listener, so a daemon that accepted slowly
+(just after a catalog change) failed the inspection as an unknown framing.
+The parser now also ignores state `02` and `04` connection rows: without
+SO_ACCEPTCON and `St 01` they can never be taken for the listener. A
+real-kernel test reproduces the row. The listener check keeps its underlying
+reason in the backup's log.
+
+**Evidence.** `internal/pdnspeerjournal/store_linux_test.go`
+(re-stamp advance accepted; lower serial, changed or unbound members, foreign
+enrollment, other operation fields, old nonce, attempt and older ledger
+attempt refused; superseded challenges never consumed),
+`cmd/agent/dns_catalog_evidence_admission_test.go` (re-stamp while the
+challenge is written; loop guard), `internal/pdnspeerinspector/diagnostics_test.go`,
+`cmd/panel/dns_peer_pending_guidance_test.go`, web tests. Native lab evidence:
+`deploy/e2e/dns-pair-acceptance/evidence/peer-challenge-context-20261031/`.
+Invariants: RESILIENCE-CONTRACT 4 and 6, D-024, D-025; P0.4 stays open.

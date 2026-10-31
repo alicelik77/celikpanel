@@ -68,11 +68,14 @@ const stub = dataModule(`
   export const HelpButton = () => null;
   // alpha.107: the repository card has its own mounted tests.
   export const RepoCard = () => null;
+  // alpha.113: the default HTTPS server card reads its own address; it has
+  // its own tests (nginx-default-https-alpha113).
+  export const NginxDefaultHTTPSCard = () => null;
   export const IsolationFact = () => null, AppAccountLine = () => null;
   export const DNSEngineCard = () => React.createElement('aside', null, 'dns-engine-card');
   export const ServerSetupDNSAccess = () => null, ServerSetupDNSManagement = () => null;
   export const dnsEngineText = (locale, key) => key;
-  export const dnsEngineIdentityStagesATakeover = () => false, dnsEngineMutationsHeld = () => false, dnsEngineOwnerChanged = () => false, dnsEngineIdentityReviewLocked = () => false;
+  export const dnsEngineIdentityStagesATakeover = () => false, dnsEngineMutationsHeld = () => false, dnsEngineOwnerChanged = () => false, dnsEngineSeriesUntested = () => false, dnsEngineIdentityReviewLocked = () => false;
   // A dialog is drawn only where a test asks for it (2026-10-16).
   export const Dialog = (props) => (globalThis.batch3Dialogs ? React.createElement('dialog', null, props.title, props.description, props.children, props.footerLead, props.actions) : null);
   // The settings form is mounted on the route that stages the names before an

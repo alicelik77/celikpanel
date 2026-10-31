@@ -134,15 +134,34 @@ type Panel struct {
 	// serverSetupStepOverride lets a test answer one setup step's call
 	// (handled=true) instead of the real step; production leaves it nil.
 	serverSetupStepOverride func(context.Context, serverSetupExecutionStep) (done bool, err error, handled bool)
+	// serverSetupPeerInspectionCall lets a test answer the automatic
+	// deletion-check setup's Agent calls (nil: the real Agent).
+	serverSetupPeerInspectionCall func(ctx context.Context, method string, args, reply any) error
 	// dnsTopologyMu serializes every request-time DNS identity mutation. The
 	// setup endpoint and the two legacy endpoints share agent state and one
 	// SQLite tuple; their snapshot/apply/commit/rollback sequences must never
 	// interleave.
 	dnsTopologyMu sync.Mutex
+	// dnsPendingPublicationsState schedules the automatic re-check of pending
+	// zone-sync V3 publications (dns_pending_publication.go); created lazily.
+	dnsPendingPublicationsOnce  sync.Once
+	dnsPendingPublicationsState *dnsPendingPublicationScheduler
 	// mailMutationMu serializes the database/agent two-phase mail mutations.
 	// Postfix maps are global files, so two tenants must not snapshot and
 	// publish overlapping forwarding or mailbox states concurrently.
 	mailMutationMu sync.Mutex
+	// The automatic DKIM runner (domain_dkim_automatic.go): one background
+	// pass at a time; a kick during a pass makes it go round once more.
+	// automaticDKIMKicked replaces the background start in tests (nil in
+	// production).
+	dkimAutoMu          sync.Mutex
+	dkimAutoRunning     bool
+	dkimAutoAgain       bool
+	automaticDKIMKicked func()
+	// deletionsRunning: domain deletion requests running in this process,
+	// so a status read says "running" instead of a moment of its state
+	// (domain_deletion_running.go).
+	deletionsRunning domainDeletionsRunning
 	// dnsEnginePreviews holds short-lived, one-use authorizations for the
 	// separately confirmed DNS engine cutover endpoint.
 	dnsEnginePreviews dnsEnginePreviewCache
@@ -310,7 +329,7 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodOptions}
 	case "mail/forwardings":
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodOptions}
-	case "mail/auth/dkim", "mail/auth/apply":
+	case "mail/auth/dkim", "mail/auth/apply", "mail/auth/automatic":
 		match.kind, match.methods = "mail", []string{http.MethodPost, http.MethodOptions}
 	case "mail/catch-all":
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPut, http.MethodDelete, http.MethodOptions}
@@ -1019,6 +1038,24 @@ func main() {
 	panel.agentClient = transport.NewReconnectingClient(rawClient)
 	log.Println("Connected to Agent RPC; preparing normal management access")
 
+	// D8 (final acceptance run 4): after a reboot systemd may still report
+	// the host as starting, and every startup step below that changes the
+	// host is then refused before dispatch. Wait, still gated and bounded,
+	// until the host identity can be read; the wait itself changes nothing.
+	// Sunucu hâlâ açılıyorsa başlangıç adımları sınırlı süre bekler.
+	hostStartCtx, stopHostStartWait := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	panel.waitForHostStartedAtStartup(hostStartCtx, log.Printf)
+	stoppedDuringHostStart := hostStartCtx.Err() != nil
+	stopHostStartWait()
+	if stoppedDuringHostStart {
+		// A stop request during the wait ends the process as it would
+		// while waiting for the Agent; nothing was started.
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), panelHTTPShutdownTimeout)
+		_ = server.Shutdown(shutdownCtx)
+		shutdownCancel()
+		return
+	}
+
 	// A failed reconcile degrades its subsystem; it does not end the process.
 	// The durable markers stay for the next replay, the listener stays bound,
 	// and the operator gets a coded refusal instead of a flapping port (A17).
@@ -1332,6 +1369,7 @@ func main() {
 	// Nginx Management
 	http.HandleFunc("/api/v1/nginx/global", panel.handleNginxGlobalConfig)
 	http.HandleFunc("/api/v1/nginx/ssl", panel.handleNginxSSLConfig)
+	http.HandleFunc(nginxDefaultHTTPSPath, panel.handleNginxDefaultHTTPS)
 	http.HandleFunc("/api/v1/ssl/providers", panel.handleACMEProviders)
 	// The two legacy endpoints remain readable for old clients. Their partial
 	// PUT contracts fail closed; all topology writes go through dns-setup.
@@ -1529,6 +1567,11 @@ func main() {
 	panel.startBackupScheduler()
 	panel.startCertRenewalScheduler()
 	panel.startVPNEntitlementReconciler()
+	// A pending paired DNS publication whose cause is transient (the backup
+	// has not caught up) completes by itself through its exact recovery.
+	panel.startDNSPendingPublicationReconciler(discoveryCtx)
+	// Automatic DKIM work a restart interrupted resumes from its records.
+	panel.startAutomaticDKIM()
 	// upd11 F2: startup mail work refused only because an update or rollback
 	// still held the host is retried, bounded, once the host is idle.
 	panel.startDeferredStartupMailWork(certificateDeferral, milterWiringDeferred)

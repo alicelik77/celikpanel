@@ -7207,6 +7207,37 @@ aynı işlemi döndürür.
   Kurulu bir sunucuda ölçülmedi. **Hiçbir P0 işi kapanmaz ya da ilerlemez**; P0.1–P0.5
   kısmi kalır ve her açık kabul işi açık kalır.
 
+### Dal fix/site-cert-native-renewal (web sitesi sertifikalarını işletim sisteminin certbot'u yeniler; Ajan sertifika verme, yenileme durumu ve lineage yolları; şema değişikliği yok; ilke 1, 2 ve 3; D-040; D-022; D-024; D-031; 30 Ekim 2026)
+
+İlke 1: bu değişiklikle verilen web sitesi sertifikası `/etc/letsencrypt` içinde,
+işletim sisteminin zamanlayıcısıyla yenilenen bir certbot lineage'ıdır; nginx live
+dosyaları adlandırır, düz sh kancası nginx'i yeniden yükler; Panel ve Ajan gerekmez.
+İlke 2: yenileme durumu işletim sisteminin kendi dosyalarından okunur; bilinmeyen
+hiçbir şey kaydetmez, bilinen hatanın yerini almaz; sahibin değiştirdiği ayar
+`owner_configured` olarak söylenir ve korunur. İlke 3: Ajan yerel lineage'ı yenilemez;
+yerine yenisi gelen lineage'a `autorenew = False` yazılır. Şema yok (46); ek
+`renewal_status` değerleri `os_<durum>`. Önceki sürüme dönüşte yerel dosyalar sunmaya
+ve yenilenmeye devam eder. Kanıt: bileşen testleri ve atılabilir Debian 13 chroot'ta
+Pebble'a karşı bir deneme ([deploy/e2e/d040](../deploy/e2e/d040/README.md)). P0.5 yalnız
+web sitesi yenilemesi (web ve posta SNI'ı) için ilerledi; yeniden başlatma
+ve kalan matris açık; P0.1–P0.5 kısmi kalır.
+
+### Dal fix/cert-mail-known-gaps (önceki sürümün web sitesi sertifikaları işletim sisteminin yenilemesine taşınır; Dovecot 2.3 posta SNI'ı, Ubuntu 24.04 ve Arch ölçüldü; şema değişikliği yok; ilke 1, 2 ve 4; D-040 eki; D-022; D-024; 30 Ekim 2026)
+
+İlke 1: önceki sürümün web sitesi sertifikası bir sonraki yenilemesinden sonra çalışan
+Panel'e bağlı kalmaz; 12 saatlik iş onu Yeniden al yoluyla yerel lineage'a taşır
+(EAB sağlayıcıları hariç: bilgiler saklanmaz, kart Yeniden al der). İlke 2: başarısız
+taşıma `move_failed_<tür>` ve sonraki adımıyla kaydedilir; gelmeyen yanıt hiçbir şey
+kaydetmez; sonraki eski yol yenilemesi taşıma hatasını silmez. İlke 4: eski sertifika,
+yerel satır etkin olup nginx'in denenmiş yapılandırması onu adlandırana kadar sunulur;
+sonraki hatalar yenileme kuyruğunundur; kaydedilmeden kalan lineage açılış
+uzlaştırmasıyla silinir; bitimine 14 gün kala başarısız taşıma eski yenilemeye döner.
+Matris gerçek Dovecot/Postfix'te SNI el sıkışmalarını ve kancalı yenilemeyi denetler;
+Arch Dovecot ve MariaDB ölçülür. Şema yok (46). Kanıt:
+[cert-mail-20261030](../deploy/e2e/dns-pair-acceptance/evidence/cert-mail-20261030/).
+Kurulu sunucu, gerçek CA ve taşımanın gerçek Ajan/CA ile denemesi ölçülmedi; P0.5 kısmi
+kalır.
+
 ### Aday v0.1.0-alpha.111 (Beta 1 kurulumu: kurulum sihirbazı v2, kodla katılma, kurulum bağlantısı, DNS sayfası; Ajan DNS kurulumu, geri alma, sertifika ve nokta güncellemesi yolları; şema değişikliği yok; ilke 1, 2, 4 ve 6; D-021 değişiklikleri; D-022; D-024; D-025; D-028 değişikliği; 29 Ekim 2026)
 
 D-025 ilke 1 (sahip yetkisini ve çalışan hizmetlerini korur): iki sunucu DNS'i DNS

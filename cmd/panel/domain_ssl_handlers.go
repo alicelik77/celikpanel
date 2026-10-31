@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/core"
+	"github.com/alicelik/celikpanel/internal/mutationpayload"
 	"github.com/alicelik/celikpanel/internal/repositories"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -106,6 +107,21 @@ type SSLCertificate struct {
 	// "certificate", a new certificate the file does not use yet;
 	// "certificate_validation", a request or renewal the file stopped.
 	WaitingForOwnerReason string `json:"waiting_for_owner_reason,omitempty"`
+	// RenewalOwner (D-040, additive): "operating_system" when certbot's own
+	// timer renews it (no CelikPanel program needed), "panel" for an
+	// ACME certificate of an earlier release that only the running Panel
+	// renews; "" for an uploaded certificate.
+	RenewalOwner string `json:"renewal_owner,omitempty"`
+	// LegacyMove (additive, renewal_owner "panel" only): "automatic" when
+	// the Panel moves the certificate to the operating system's renewal by
+	// itself at its next renewal, "reissue" when only a Reissue with the
+	// authority's EAB credentials can (site_cert_legacy_move.go).
+	LegacyMove string `json:"legacy_move,omitempty"`
+	// Renewal is the operating system's renewal state read now (only for
+	// renewal_owner "operating_system"); nil when it could not be read,
+	// which RenewalReadError then says.
+	Renewal          *transport.SiteCertificateRenewalStateResponse `json:"renewal,omitempty"`
+	RenewalReadError string                                         `json:"renewal_read_error,omitempty"`
 }
 
 // SSLSettings represents SSL settings for a domain
@@ -170,6 +186,11 @@ type IssueLetsEncryptRequest struct {
 	EABKeyID    string `json:"eab_key_id,omitempty"`
 	EABHMACKey  string `json:"eab_hmac_key,omitempty"`
 	Reissue     bool   `json:"reissue,omitempty"`
+	// RedirectHTTP: the site was added with SSL ticked (Add Domain). When
+	// this request activates the site's first certificate, http:// then
+	// redirects to https:// (the site's force_https, which the owner can turn
+	// off on the SSL/TLS page). alpha.113, the owner's decision.
+	RedirectHTTP bool `json:"redirect_http,omitempty"`
 }
 
 // UploadCertificateRequest represents a request to upload custom certificate
@@ -384,6 +405,33 @@ func (p *Panel) handleGetDomainSSL(w http.ResponseWriter, r *http.Request, domai
 		if cert.Type == "letsencrypt" && strings.TrimSpace(cert.ProviderID) == "" {
 			cert.ProviderID = acmeProviderIDForIssuer(cert.Issuer)
 		}
+		if cert.Type == "letsencrypt" {
+			cert.RenewalOwner = "panel"
+			var lineageName string
+			var subscriptionID int
+			if scanErr := pool.QueryRowContext(ctx, `
+				SELECT COALESCE(c.lineage_name, ''), d.subscription_id
+				FROM ssl_certificates c JOIN domains d ON d.id = c.domain_id
+				WHERE c.id = ?`, cert.ID).Scan(&lineageName, &subscriptionID); scanErr == nil {
+				lineage, native := nativeSiteLineageOfRow(cert.CertPath, lineageName)
+				if !native {
+					cert.LegacyMove = legacyMoveMode(cert.ProviderID, cert.Issuer)
+				}
+				if native {
+					cert.RenewalOwner = "operating_system"
+					state, readErr := p.readNativeSiteRenewal(ctx, nativeSiteRow{
+						CertID: cert.ID, DomainID: domainID, SubscriptionID: subscriptionID,
+						Domain: domain.Name, CertPath: cert.CertPath, Lineage: lineage, ProviderID: cert.ProviderID,
+					})
+					if readErr != nil {
+						log.Printf("SSL status domain %d: the operating system's renewal state: %v", domainID, readErr)
+						cert.RenewalReadError = "the operating system's renewal state could not be read; nothing is concluded from that"
+					} else {
+						cert.Renewal = &state
+					}
+				}
+			}
+		}
 		runtime, runtimeErr := p.loadCertificateRuntimeStatus(ctx, domainID, managedNames)
 		if runtimeErr != nil {
 			log.Printf("SSL status domain %d: runtime state: %v", domainID, runtimeErr)
@@ -430,6 +478,37 @@ func (p *Panel) handleGetDomainSSL(w http.ResponseWriter, r *http.Request, domai
 	json.NewEncoder(w).Encode(response)
 }
 
+// errCodeSSLContactEmailRequired: the request named no contact address and the
+// signed-in account has no valid one. Nothing was requested.
+const errCodeSSLContactEmailRequired = "ssl_contact_email_required"
+
+// certificateContactFromAccount returns the signed-in account's address as the
+// certificate authority's contact, validated by the validator the panel
+// certificate request uses. A non-empty second value is the reason there is
+// none (English; the screen shows err.ssl_contact_email_required). An error is
+// a failed read, which is not the same as "no address".
+func (p *Panel) certificateContactFromAccount(ctx context.Context, r *http.Request) (string, string, error) {
+	const none = "no contact email address was given and the signed-in account has no valid one, which the certificate authority needs; nothing was requested; set your email on My account (top-right menu), then request the certificate again"
+	caller := currentCaller(r)
+	if caller == nil {
+		return "", none, nil
+	}
+	var stored string
+	err := p.db.GetDB().QueryRowContext(ctx,
+		`SELECT COALESCE(email, '') FROM users WHERE id = ?`, caller.ID).Scan(&stored)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", none, nil
+	}
+	if err != nil {
+		return "", "", fmt.Errorf("load certificate contact email: %w", err)
+	}
+	email, err := mutationpayload.CanonicalContactEmail(strings.TrimSpace(stored))
+	if err != nil {
+		return "", none, nil
+	}
+	return email, "", nil
+}
+
 // handleIssueLetsEncrypt handles POST /api/v1/domains/:id/ssl/letsencrypt
 func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -461,6 +540,29 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pool := p.db.GetDB()
+
+	// The SSL page types the certificate contact. A request that names none
+	// (the one Add domain sends right after a site is created, where the
+	// person typed no address) uses the signed-in account's own address, as
+	// the panel certificate request does. Nothing has been requested yet when
+	// that address is missing or invalid, and the refusal names the screen
+	// that fixes it.
+	// SSL sayfası iletişim adresini yazdırır. Adres vermeyen istek (site
+	// oluşturulduktan hemen sonra Alan adı ekle'nin gönderdiği), oturum açan
+	// hesabın kendi adresini kullanır.
+	if strings.TrimSpace(req.Email) == "" {
+		email, refusal, err := p.certificateContactFromAccount(ctx, r)
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		if refusal != "" {
+			writeCodedError(w, http.StatusConflict, errCodeSSLContactEmailRequired,
+				refusal, ownEmailAccountAction)
+			return
+		}
+		req.Email = email
+	}
 
 	// Get domain info
 	domainRepo := repositories.NewPostgresDomainRepository(pool)
@@ -633,7 +735,7 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 			KeyPath:         agentResp.KeyPath,
 			ChainPath:       agentResp.ChainPath,
 		}
-		if cleanupTarget.DeleteCanonical {
+		if cleanupTarget.DeleteCanonical && !transport.IsNativeSiteLineage(cleanupTarget.LineageName) {
 			cleanupTarget.LineageName = ""
 		}
 		// A transport error may arrive after net/rpc decoded lineage/path
@@ -666,7 +768,7 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 			KeyPath:         agentResp.KeyPath,
 			ChainPath:       agentResp.ChainPath,
 		}
-		if cleanupTarget.DeleteCanonical {
+		if cleanupTarget.DeleteCanonical && !transport.IsNativeSiteLineage(cleanupTarget.LineageName) {
 			cleanupTarget.LineageName = ""
 		}
 		p.cleanupUncommittedCertificate(cleanupCtx, cleanupTarget)
@@ -687,7 +789,7 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 		writeAgentError(w, nil, err.Error())
 		return
 	}
-	info, err := p.inspectManagedCertificate(
+	info, err := p.inspectIssuedCertificate(
 		ctx,
 		domain.Name,
 		agentResp.CertPath,
@@ -696,6 +798,11 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	)
 	if err != nil {
 		writeAgentError(w, err, "inspect issued certificate snapshot")
+		return
+	}
+	if issuedCertificateClockProblem(info) {
+		// The deferred cleanup removes the certificate this request left.
+		writeCertificateClockFailure(w, currentCaller(r), domain.Name, activeCount > 0, info)
 		return
 	}
 	if !info.Valid || !info.TrustChecked || !info.Trusted {
@@ -731,6 +838,9 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	}
 	secureMail := previousSecureMail &&
 		certificateCoversHostname(info.DNSNames, "mail."+domain.Name)
+	// Only the site's first certificate turns the redirect on; a reissue
+	// keeps whatever the owner chose.
+	httpsRedirect := req.RedirectHTTP && activeCount == 0
 
 	// Store certificate in database. issuer is the chosen CA's display name so
 	// the SSL page shows who signed it, not a hardcoded "Let's Encrypt".
@@ -750,6 +860,7 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 		ExpiresAt:      expiresAt,
 		AutoRenew:      req.AutoRenew,
 		SecureMail:     secureMail,
+		RedirectHTTP:   httpsRedirect,
 	})
 	if err != nil {
 		writeServerError(w, err)
@@ -827,6 +938,9 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 		action = "ssl.reissue:" + provider.ID
 	}
 	p.audit(r, action, "domain", domainID)
+	if warning := strings.TrimSpace(agentResp.RenewalWarning); warning != "" {
+		log.Printf("SSL issue domain %d: issued; automatic renewal needs the server administrator: %s", domainID, warning)
+	}
 
 	if waitingForOwner {
 		// Issued and stored, not served yet: the answer says so, and the
@@ -836,6 +950,9 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 			"expires_at":     expiresAt,
 			"pending_reason": services.SiteFileReasonCertificate,
 		}
+		if warning := strings.TrimSpace(agentResp.RenewalWarning); warning != "" {
+			answer["renewal_warning"] = warning
+		}
 		validationNotRun.addTo(answer)
 		json.NewEncoder(w).Encode(answer)
 		return
@@ -843,6 +960,12 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	answer := map[string]any{
 		"status":     "success",
 		"expires_at": expiresAt,
+	}
+	if httpsRedirect {
+		answer["https_redirect"] = true
+	}
+	if warning := strings.TrimSpace(agentResp.RenewalWarning); warning != "" {
+		answer["renewal_warning"] = warning
 	}
 	validationNotRun.addTo(answer)
 	json.NewEncoder(w).Encode(answer)
@@ -1337,6 +1460,31 @@ func (p *Panel) handleSSLRenewalSetting(
 
 	unlock := lockDomainSSLOperation(domainID)
 	defer unlock()
+	var activePath, activeLineage string
+	if err := p.db.GetDB().QueryRowContext(r.Context(), `
+		SELECT cert_path, COALESCE(lineage_name, '') FROM ssl_certificates
+		WHERE domain_id = ? AND status = 'active' AND type = 'letsencrypt'
+		ORDER BY id DESC LIMIT 1`, domainID).Scan(&activePath, &activeLineage); err == nil {
+		if lineage, native := nativeSiteLineageOfRow(activePath, activeLineage); native {
+			// D-040: certbot's own configuration decides; the ledger
+			// follows only after certbot's file says the same.
+			if err := p.setNativeSiteAutoRenew(r.Context(), domainID, lineage, *req.AutoRenew); err != nil {
+				var refused *nativeSiteAgentRefusal
+				if errors.As(err, &refused) {
+					// The Agent answered: say what certbot's file did not
+					// take; nothing was changed in the Panel either.
+					writeClientError(w, http.StatusConflict,
+						"automatic renewal was not changed: "+refused.detail+"; the server administrator checks /etc/letsencrypt/renewal/"+lineage+".conf")
+					return
+				}
+				writeServerError(w, err)
+				return
+			}
+		}
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		writeServerError(w, err)
+		return
+	}
 	result, err := p.db.GetDB().ExecContext(r.Context(), `
 		UPDATE ssl_certificates
 		SET auto_renew = ?, updated_at = datetime('now')

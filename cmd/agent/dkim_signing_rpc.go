@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"os/user"
 	"path/filepath"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -33,11 +33,98 @@ import (
 const signingSelector = "celik"
 
 const (
-	opendkimConfPath  = "/etc/opendkim.conf"
-	opendkimTablesDir = dkimStoreRoot + "/tables"
-	opendkimSocket    = "inet:8891@localhost"
-	opendkimMilter    = "inet:localhost:8891"
+	opendkimAPTConfPath    = "/etc/opendkim.conf"
+	opendkimPacmanConfPath = "/etc/opendkim/opendkim.conf"
+	opendkimTablesDir      = dkimStoreRoot + "/tables"
+	// Numeric loopback on both sides (D3, final alpha.113 acceptance run 2,
+	// 30 Oct 2026): a chrooted Postfix service resolves "localhost" through
+	// the files inside its chroot and Arch ships none, so submission (587)
+	// and smtps (465) logged "host or service localhost:8891 not found" and
+	// sent every message unsigned under milter_default_action=accept. A
+	// literal address needs no resolver, hosts file or nsswitch anywhere,
+	// and never depends on whether "localhost" means 127.0.0.1 or ::1.
+	// İki tarafta da sayısal geri döngü adresi: chroot'lu bir Postfix
+	// hizmeti "localhost"u chroot içindeki dosyalarla çözer ve Arch hiçbirini
+	// getirmez. Sayısal adres hiçbir çözücüye ihtiyaç duymaz.
+	opendkimSocket = "inet:8891@127.0.0.1"
+	opendkimMilter = "inet:127.0.0.1:8891"
+	// What releases up to alpha.113 wrote; the startup repair recognises
+	// them as the panel's own (mail_milter_repair.go).
+	// alpha.113'e kadarki sürümlerin yazdığı; başlangıç onarımı bunları
+	// panelin kendi yazdığı sayar.
+	legacyOpenDKIMSocket = "inet:8891@localhost"
+	legacyOpenDKIMMilter = "inet:localhost:8891"
 )
+
+// opendkimLayout is where the distribution's own opendkim unit reads its
+// configuration, and which packages bring the daemon. Debian/Ubuntu: the
+// unit reads /etc/opendkim.conf (opendkim + opendkim-tools, root anchor from
+// dns-root-data). Arch: the official extra/opendkim unit runs
+// `opendkim -x /etc/opendkim/opendkim.conf`, its sysusers file creates the
+// opendkim user and group, and no DNSSEC root anchor file is installed.
+// opendkimLayout, dağıtımın kendi opendkim unit'inin yapılandırmayı nereden
+// okuduğunu ve hangi paketlerin daemon'u getirdiğini söyler.
+type opendkimLayout struct {
+	confPath    string
+	packages    []string
+	trustAnchor string
+}
+
+func opendkimLayoutFor(family string) (opendkimLayout, bool) {
+	switch family {
+	case "apt":
+		return opendkimLayout{
+			confPath:    opendkimAPTConfPath,
+			packages:    []string{"opendkim", "opendkim-tools"},
+			trustAnchor: "/usr/share/dns/root.key",
+		}, true
+	case "pacman":
+		return opendkimLayout{
+			confPath: opendkimPacmanConfPath,
+			packages: []string{"opendkim"},
+		}, true
+	default:
+		return opendkimLayout{}, false
+	}
+}
+
+// opendkimConfPath is the configuration path on this host, apt's when the
+// host family cannot be verified (the historical behaviour).
+func opendkimConfPath() string {
+	if layout, ok := opendkimLayoutFor(detectPkgFamily()); ok {
+		return layout.confPath
+	}
+	return opendkimAPTConfPath
+}
+
+// renderOpenDKIMConf renders CelikPanel's OpenDKIM configuration.
+func renderOpenDKIMConf(layout opendkimLayout) string {
+	return renderOpenDKIMConfWithSocket(layout, opendkimSocket)
+}
+
+// renderOpenDKIMConfWithSocket renders the file around one listening socket,
+// so the startup repair can recognise the exact text an earlier release wrote.
+// renderOpenDKIMConfWithSocket dosyayı tek bir dinleme soketiyle üretir;
+// başlangıç onarımı önceki sürümün yazdığı metni böylece birebir tanır.
+func renderOpenDKIMConfWithSocket(layout opendkimLayout, socket string) string {
+	conf := fmt.Sprintf(`# Managed by CelikPanel — DKIM signing for hosted domains. Do not edit by hand.
+Syslog			yes
+UMask			007
+Mode			sv
+Canonicalization	relaxed/simple
+OversignHeaders		From
+Socket			%s
+PidFile			/run/opendkim/opendkim.pid
+UserID			opendkim
+KeyTable		%s/keytable
+SigningTable		refile:%s/signingtable
+InternalHosts		%s/trustedhosts
+`, socket, opendkimTablesDir, opendkimTablesDir, opendkimTablesDir)
+	if layout.trustAnchor != "" {
+		conf += "TrustAnchorFile\t\t" + layout.trustAnchor + "\n"
+	}
+	return conf
+}
 
 type ConfigureDKIMSigningResponse = transport.ConfigureDKIMSigningResponse
 
@@ -74,13 +161,14 @@ func (a *Agent) ConfigureDKIMSigning(req *ServiceMutationRequest, resp *Configur
 		resp.Error = "postfix is not installed"
 		return nil
 	}
+	family := detectPkgFamily()
+	layout, supported := opendkimLayoutFor(family)
+	if !supported {
+		resp.Error = "opendkim cannot be installed automatically on this distro yet"
+		return nil
+	}
 	if _, err := exec.LookPath("opendkim"); err != nil {
-		family := detectPkgFamily()
-		if family != "apt" {
-			resp.Error = "opendkim cannot be installed automatically on this distro yet"
-			return nil
-		}
-		if _, err := installPackagesContext(ctx, family, []string{"opendkim", "opendkim-tools"}); err != nil {
+		if _, err := installPackagesContext(ctx, family, layout.packages); err != nil {
 			resp.Error = fmt.Sprintf("opendkim install: %v", err)
 			return nil
 		}
@@ -91,21 +179,7 @@ func (a *Agent) ConfigureDKIMSigning(req *ServiceMutationRequest, resp *Configur
 		resp.Error = err.Error()
 		return nil
 	}
-	conf := fmt.Sprintf(`# Managed by CelikPanel — DKIM signing for hosted domains. Do not edit by hand.
-Syslog			yes
-UMask			007
-Mode			sv
-Canonicalization	relaxed/simple
-OversignHeaders		From
-Socket			%s
-PidFile			/run/opendkim/opendkim.pid
-UserID			opendkim
-KeyTable		%s/keytable
-SigningTable		refile:%s/signingtable
-InternalHosts		%s/trustedhosts
-TrustAnchorFile		/usr/share/dns/root.key
-`, opendkimSocket, opendkimTablesDir, opendkimTablesDir, opendkimTablesDir)
-	if err := writeDKIMTables(ctx, domains, conf); err != nil {
+	if err := writeDKIMTables(ctx, domains, layout.confPath, renderOpenDKIMConf(layout)); err != nil {
 		resp.Error = err.Error()
 		return nil
 	}
@@ -125,14 +199,15 @@ TrustAnchorFile		/usr/share/dns/root.key
 	// Milter'ları TEK besteciden bağla: burada doğrudan smtpd_milters yazmak,
 	// önceden bağlanmış bir spam filtresini siliyordu (son yazan kazanır,
 	// sessizce). applyMilterChain bunun yerine kurulu her filtreyi birleştirir.
-	if err := applyMilterChain(ctx); err != nil {
+	milterNote, err := applyMilterChain(ctx)
+	if err != nil {
 		resp.Error = err.Error()
 		return nil
 	}
 
 	resp.Configured = true
 	resp.Domains = len(domains)
-	resp.Detail = fmt.Sprintf("DKIM signing active for %d domain(s)", len(domains))
+	resp.Detail = joinNotes(fmt.Sprintf("DKIM signing active for %d domain(s)", len(domains)), milterNote)
 	return nil
 }
 
@@ -175,7 +250,7 @@ func dkimSignedDomains() ([]string, error) {
 // the private keys readable by the opendkim group (root keeps ownership).
 // writeDKIMTables, OpenDKIM anahtar/imzalama/güven tablolarını üretir ve
 // özel anahtarları opendkim grubunca okunur yapar (sahiplik root'ta kalır).
-func writeDKIMTables(ctx context.Context, domains []string, conf string) error {
+func writeDKIMTables(ctx context.Context, domains []string, confPath, conf string) error {
 	if err := ensureDKIMStorageMigrated(); err != nil {
 		return err
 	}
@@ -223,14 +298,11 @@ func writeDKIMTables(ctx context.Context, domains []string, conf string) error {
 	if err := secureSetMailDirectoryMetadata(opendkimTablesDir, 0o750, 0, opendkimGID); err != nil {
 		return err
 	}
-	var kt, st strings.Builder
 	for _, d := range domains {
 		key, err := dkimKeyPath(d, signingSelector)
 		if err != nil {
 			return fmt.Errorf("invalid DKIM domain %q: %w", d, err)
 		}
-		fmt.Fprintf(&kt, "%s._domainkey.%s %s:%s:%s\n", signingSelector, d, d, signingSelector, key)
-		fmt.Fprintf(&st, "*@%s %s._domainkey.%s\n", d, signingSelector, d)
 		// OpenDKIM drops to its own user; give the group read access.
 		// OpenDKIM kendi kullanıcısına düşer; gruba okuma izni ver.
 		if err := secureSetMailFileMetadata(key, 0o640, 0, opendkimGID); err != nil {
@@ -241,10 +313,47 @@ func writeDKIMTables(ctx context.Context, domains []string, conf string) error {
 		}
 	}
 	trusted := "127.0.0.1\n::1\nlocalhost\n"
+	tables := []string{
+		filepath.Join(opendkimTablesDir, "keytable"),
+		filepath.Join(opendkimTablesDir, "signingtable"),
+		filepath.Join(opendkimTablesDir, "trustedhosts"),
+	}
+	// Lines the owner added to the tables are carried over, not dropped
+	// (30 Oct 2026, D-022): only CelikPanel's own lines are regenerated.
+	// Sahibin tablolara eklediği satırlar korunur; yalnız CelikPanel'inkiler
+	// yeniden üretilir.
+	existingKeys, _, err := readOptionalDKIMTable(tables[0])
+	if err != nil {
+		return err
+	}
+	existingSigning, _, err := readOptionalDKIMTable(tables[1])
+	if err != nil {
+		return err
+	}
+	kt, st, ownerLines, err := renderDKIMTables(existingKeys, existingSigning, domains)
+	if err != nil {
+		return err
+	}
+	if ownerLines > 0 {
+		log.Printf("[dkim] kept %d line(s) the owner added to the OpenDKIM tables in %s", ownerLines, opendkimTablesDir)
+	}
+	// The tables belong to the opendkim group, like the keys: Arch's unit
+	// starts opendkim as its own user (Debian's starts it as root and drops
+	// privileges after reading them), so root:celikpanel 0640 tables stopped
+	// it with "dkimf_db_open(): Permission denied" (Arch VM, 2026-10-30).
+	// Tablolar, anahtarlar gibi opendkim grubuna aittir.
+	tablesToGroup := func() (func() error, error) {
+		for _, path := range tables {
+			if err := secureSetMailFileMetadata(path, 0o640, 0, opendkimGID); err != nil {
+				return nil, fmt.Errorf("give the OpenDKIM table %s to the opendkim group: %w", path, err)
+			}
+		}
+		return nil, nil
+	}
 	return applyMailFileMutation(ctx, []mailFileWrite{
-		{path: filepath.Join(opendkimTablesDir, "keytable"), content: []byte(kt.String()), mode: 0o640},
-		{path: filepath.Join(opendkimTablesDir, "signingtable"), content: []byte(st.String()), mode: 0o640},
-		{path: filepath.Join(opendkimTablesDir, "trustedhosts"), content: []byte(trusted), mode: 0o640},
-		{path: opendkimConfPath, content: []byte(conf), mode: 0o644},
-	}, nil, nil)
+		{path: tables[0], content: kt, mode: 0o640},
+		{path: tables[1], content: st, mode: 0o640},
+		{path: tables[2], content: []byte(trusted), mode: 0o640},
+		{path: confPath, content: []byte(conf), mode: 0o644},
+	}, nil, tablesToGroup)
 }

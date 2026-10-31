@@ -14,11 +14,12 @@ import {
 import { useI18n } from '../i18n';
 import { dnsEngineText, type DNSEngineCopyKey } from '../i18n/dnsEngine';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
-import { dnsEngineIdentityReviewLocked, dnsEngineMutationsHeld, dnsEngineOwnerChanged } from '../lib/dnsIdentityPlan';
+import { dnsEngineIdentityReviewLocked, dnsEngineMutationsHeld, dnsEngineOwnerChanged, dnsEngineSeriesUntested } from '../lib/dnsIdentityPlan';
 import {
     DNS_ENGINE_IDS,
     decodeDNSEngineSnapshot,
     decodeDNSEngineSwitchPreview,
+    pendingPublicationText,
     type DNSEngineEntry,
     type DNSEngineID,
     type DNSEngineOperation,
@@ -177,6 +178,7 @@ const knownBlockerKeys = {
     paired_topology_unsupported: 'dnsEngine.blocker.pairedTopology',
     pdns_primary_switch_paused: 'dnsEngine.blocker.pdnsPrimarySwitchPaused',
     bind_source_pdns_switch_unsupported: 'dnsEngine.blocker.bindSourcePdnsSwitchUnsupported',
+    pdns_arch_setup_only: 'dnsEngine.blocker.pdnsArchSetupOnly',
     dnssec_unsupported: 'dnsEngine.blocker.dnssec',
     pending_zone_sync: 'dnsEngine.blocker.pendingZones',
     operation_running: 'dnsEngine.blocker.operationRunning',
@@ -1067,7 +1069,9 @@ export function DNSEngineCard({
                                     ? et('dnsEngine.stateHeld')
                                     : dnsEngineOwnerChanged(snapshot)
                                       ? t('dnsov.s.engine_owner_changed.title')
-                                      : et(`dnsEngine.state.${snapshot.state}` as DNSEngineCopyKey)}
+                                      : dnsEngineSeriesUntested(snapshot)
+                                        ? t('dnsov.s.engine_series_untested.title')
+                                        : et(`dnsEngine.state.${snapshot.state}` as DNSEngineCopyKey)}
                             </span>
                             <span className="text-fg-muted">
                                 {et('dnsEngine.zoneSummary', {
@@ -1103,6 +1107,19 @@ export function DNSEngineCard({
                             )}
                         </div>
 
+                        {!loadError && snapshot.pending_publications && snapshot.pending_publications.length > 0 && (
+                            // Which publication waits, why, who acts and the
+                            // next automatic re-check (read from the server).
+                            <div className="mt-3 space-y-1 rounded-lg border border-border bg-surface-2/40 px-3 py-2 text-sm leading-6" data-testid="dns-pending-publications">
+                                {snapshot.pending_publications.map((pending) => (
+                                    <p key={pending.zone} className="text-fg" data-testid="dns-pending-publication">
+                                        {pendingPublicationText(pending, et, locale)}
+                                    </p>
+                                ))}
+                                <p className="text-fg-muted">{et('dnsEngine.pendingPublication.held')}</p>
+                            </div>
+                        )}
+
                         {dnsEngineOwnerChanged(snapshot) && (
                             // The overview says the same notice (one code, one text).
                             <div className="mt-4 space-y-1 rounded-lg border border-border bg-surface-2/40 px-3 py-2 text-sm leading-6" data-testid="dns-engine-owner-changed">
@@ -1110,6 +1127,16 @@ export function DNSEngineCard({
                                 <p className="text-fg-muted">{t('dnsov.s.engine_owner_changed.who')}</p>
                                 <p className="text-fg">{t('dnsov.s.engine_owner_changed.next')}</p>
                                 <p className="text-fg-muted">{t('dnsov.s.engine_owner_changed.then')}</p>
+                            </div>
+                        )}
+
+                        {dnsEngineSeriesUntested(snapshot) && (
+                            // The overview says the same notice (one code, one text).
+                            <div className="mt-4 space-y-1 rounded-lg border border-border bg-surface-2/40 px-3 py-2 text-sm leading-6" data-testid="dns-engine-series-untested">
+                                <p className="font-semibold text-fg">{t('dnsov.s.engine_series_untested.why')}</p>
+                                <p className="text-fg-muted">{t('dnsov.s.engine_series_untested.who')}</p>
+                                <p className="text-fg">{t('dnsov.s.engine_series_untested.next')}</p>
+                                <p className="text-fg-muted">{t('dnsov.s.engine_series_untested.then')}</p>
                             </div>
                         )}
 

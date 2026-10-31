@@ -4,10 +4,12 @@ import { domainDeletionDetailKey, readDomainDeletionPending, readDomainDeletionO
 import { en as enShellHalf } from '../src/i18n/en.ts';
 import { enErrorsScreens as enErrorsPart } from '../src/i18n/screens/errors/en.ts';
 // The coded refusals only screens show are the screen part "errors" since v0.1.0-alpha.98.
-const en = { ...enShellHalf, ...enErrorsPart };
+import { enDnsPublicationScreens as enDnsPublicationPart } from '../src/i18n/screens/dnsPublication/en.ts';
+const en = { ...enShellHalf, ...enErrorsPart, ...enDnsPublicationPart };
 import { tr as trShellHalf } from '../src/i18n/tr.ts';
 import { trErrorsScreens as trErrorsPart } from '../src/i18n/screens/errors/tr.ts';
-const tr = { ...trShellHalf, ...trErrorsPart };
+import { trDnsPublicationScreens as trDnsPublicationPart } from '../src/i18n/screens/dnsPublication/tr.ts';
+const tr = { ...trShellHalf, ...trErrorsPart, ...trDnsPublicationPart };
 import { enScreens } from './locale-catalogue.mjs';
 import { trScreens } from './locale-catalogue.mjs';
 
@@ -124,6 +126,26 @@ test('rndc guidance names the reason, the owner, the commands and the retry acti
   assert.match(tr_, /sunucunun sahibi/);
 });
 
+test('a held Agent names the hold, the owner, the restart and the retry (2026-10-31)', async () => {
+  assert.equal(await readDomainDeletionPending(response(202, {
+    status: 'deletion_pending', stage: 'dns_cleanup', reason: 'agent_mutations_held',
+  })), 'agent_mutations_held');
+  assert.deepEqual(await readSavedDomainDeletionState(response(200, {
+    status: 'deletion_pending', stage: 'dns_cleanup', reason: 'agent_mutations_held',
+  })), { reason: 'agent_mutations_held', detail: '' });
+  const en_ = en['err.DNS_PUBLICATION_FAILED.agent_mutations_held'];
+  const tr_ = tr['err.DNS_PUBLICATION_FAILED.agent_mutations_held'];
+  for (const text of [en_, tr_]) {
+    assert.match(text, /sudo systemctl restart celikpanel-agent/);
+    assert.match(text, /journalctl -u celikpanel-agent/);
+    assert.doesNotMatch(text, /secret|ledger_ambiguous/i);
+  }
+  assert.ok(en_.includes(`“${enScreens['domains.retryDeletion']}”`));
+  assert.ok(tr_.includes(`“${trScreens['domains.retryDeletion']}”`));
+  assert.match(en_, /server owner/);
+  assert.match(tr_, /sunucu sahibi/);
+});
+
 test('refused local catalog transfer names the secondary owner, the statement, both cases and the retry', async () => {
   assert.equal(await readDomainDeletionPending(response(202, {
     status: 'deletion_pending', stage: 'dns_cleanup', reason: 'dns_peer_catalog_transfer_refused',
@@ -238,14 +260,20 @@ test('a proof timeout says nothing changed, who retries now and what to check if
   assert.ok(tr_.includes(`“${trScreens['domains.retryDeletion']}”`));
 });
 
-test('a challenge that cannot be reconciled names the Agent log and why a retry is safe', () => {
+test('a challenge that cannot be reconciled waits for the automatic re-check, then names the Agent log and why a retry is safe', () => {
   const en_ = en['err.DNS_PUBLICATION_FAILED.dns_peer_journal_unknown'];
   const tr_ = tr['err.DNS_PUBLICATION_FAILED.dns_peer_journal_unknown'];
-  assert.match(en_, /private peer challenge cannot be reconciled/);
-  assert.match(tr_, /uzlaştırılamıyor/);
+  assert.match(en_, /could not write or match its single-use check challenge/);
+  assert.match(tr_, /yazamadı ya da eşleştiremedi/);
+  // D-024: while the Panel re-checks by itself it is a waiting state; the
+  // administrator's log step comes only after that, for a lasting result.
+  assert.match(en_, /Nobody needs to do anything now/);
+  assert.match(tr_, /kimsenin bir şey yapması gerekmiyor/);
   for (const text of [en_, tr_]) {
     assert.ok(text.includes('sudo journalctl -u celikpanel-agent | grep peer'));
   }
+  assert.ok(en_.indexOf('Nobody needs to do anything now') < en_.indexOf('journalctl'));
+  assert.ok(tr_.indexOf('kimsenin bir şey yapması gerekmiyor') < tr_.indexOf('journalctl'));
   assert.match(en_, /retry is safe because each challenge can be used only once/);
   assert.match(tr_, /yalnız bir kez kullanılabildiği/);
   assert.match(tr_, /yeniden denemek güvenlidir/);

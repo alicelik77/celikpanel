@@ -284,7 +284,9 @@ func TestDNSPeerProofTimeoutGuidanceNamesRetryAndChecks(t *testing.T) {
 	}
 	_, _, journal, _ := dnsPeerPendingGuidance(transport.DNSPeerPendingJournalUnknown)
 	for _, want := range []string{
-		"private peer challenge cannot be reconciled",
+		"could not write or match its single-use check challenge",
+		"Nobody needs to do anything now",
+		"re-checks this same publication by itself with a new challenge",
 		"sudo journalctl -u celikpanel-agent | grep peer",
 		"retry is safe because each challenge can be used only once",
 		"“Retry this deletion”",
@@ -293,5 +295,11 @@ func TestDNSPeerProofTimeoutGuidanceNamesRetryAndChecks(t *testing.T) {
 		if !strings.Contains(journal, want) {
 			t.Fatalf("journal guidance lacks %q: %s", want, journal)
 		}
+	}
+	// While the Panel's own re-checks run it is a waiting state (D-024): the
+	// waiting sentence comes before the administrator's log step.
+	if strings.Index(journal, "Nobody needs to do anything now") > strings.Index(journal, "journalctl") ||
+		!dnsPeerPendingRetriesAutomatically(transport.DNSPeerPendingJournalUnknown) {
+		t.Fatalf("journal guidance escalates before the automatic re-checks: %s", journal)
 	}
 }

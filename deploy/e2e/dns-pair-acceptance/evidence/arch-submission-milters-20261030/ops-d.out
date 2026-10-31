@@ -1,0 +1,90 @@
+== site shopd3d.test with Enable SSL at creation 18:54:03
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/1/public_html", "Domain": "shopd3d.test", "DomainID": 1, "FTPPassword": "[REDACTED]", "FTPUser": "shopd3d_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 1, "TempDomain": ""}
+   site id 1
+   ok 192.0.3.104 shopd3d.test A = '192.0.3.104' after 0s
+200 {"status": "success", "expires_at": "2031-10-30T18:54:13Z"}
+-- PHP on 18:54:16
+200 {"success": true}
+-- file manager 18:54:17
+200 {"success": true}
+200 {"success": true}
+   missing folder (list):
+404 {"code": "FILE_NOT_FOUND", "error": "This path does not exist in the site's web folder; it may have been renamed, moved or deleted. The file manager's top level (/) is the site's web folder: go back to it or to the parent folder and open the entry from the list again."}
+   missing file (read):
+404 {"code": "FILE_NOT_FOUND", "error": "This path does not exist in the site's web folder; it may have been renamed, moved or deleted. The file manager's top level (/) is the site's web folder: go back to it or to the parent folder and open the entry from the list again."}
+   missing source (rename):
+404 {"code": "FILE_NOT_FOUND", "error": "This path does not exist in the site's web folder; it may have been renamed, moved or deleted. The file manager's top level (/) is the site's web folder: go back to it or to the parent folder and open the entry from the list again."}
+   name taken (create):
+409 {"code": "FILE_EXISTS", "error": "An entry with this name already exists in this folder. Choose another name, or rename or delete the existing entry first, then try again."}
+--- https://shopd3d.test/hello.php
+code=200
+HTTP/2 200 
+server: nginx
+content-type: text/html; charset=UTF-8
+x-powered-by present: 0
+body: php-ok 5
+--- http://shopd3d.test/hello.php (redirect?)
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Location: https://shopd3d.test/hello.php
+code=301 location=https://shopd3d.test/hello.php
+== mailboxes on shopd3d.test 18:54:18
+200 {"id": 1, "success": true}
+200 {"id": 2, "success": true}
+== DKIM for shopd3d.test: what the Mail authentication card shows, then Generate key and Add to DNS 18:54:19
+200 dkim no_key signing_installed True spf ok dmarc ok
+200 {"success": true, "created": true, "signing": true, "signing_error": null, "signing_detail": "DKIM signing active for 2 domain(s)"}
+200 {"success": true}
+   ok 192.0.3.104 celik._domainkey.shopd3d.test TXT = '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqeVcjF+Oaf63FwcTgqU08vLR8vQ2aLy35JZLJ+a2iQG6sIXojcVXhzhS9zmQ3+v0vlTUYtYftLwmipZwFP+CT2d2WsGENzu6JrRyuhSDgE/8fJ5yhlncllauX8iBatmyhH+vQb40rj+6bAvuCKcOqmsd2ePYy0+Mx8AaRbRa62KaOBIIYW81aB9Np0Oc8qDgf" "ylI4JpezhT8b9JfyxXylg6fXq0azr933cjFjIBWjMevzHc/P47C0obqJ3ujxH9zBw7LxjZqeCblC5wC2HNnL/wZJprdT0tP2n4aZBjayHs0xRKA5bDegp3VDDvDBGzeJW2PPYPsfaiA6GaLpBv1fwIDAQAB"' after 0s
+200 dkim ok signing_installed True
+== send 587 alice -> bob, read IMAPS 993 18:54:31
+{"host": "mail.debd3.test", "smtp_send": {"ok": true, "refused": {}}, "imap_read": {"after_seconds": 5.7, "headers": "From: alice@shopd3d.test\r\nTo: bob@shopd3d.test\r\nSubject: final-alpha113 fd3f0ba328d6"}}
+== PHP mail() from the site (sendmail, non_smtpd_milters) 18:54:54
+200 {"success": true}
+200 {"success": true}
+--- https://shopd3d.test/hello-mail.php
+code=200
+body: mail-ok
+== guest check (read only) 18:55:09
+== os: Debian GNU/Linux 13 (trixie), postfix 3.10.13, release 
+== master.cf (service type private unpriv chroot wakeup maxproc command)
+   smtp inet n - y - - smtpd
+   submission inet n - y - - smtpd
+   smtps inet n - y - - smtpd
+   chroot files: host.conf hosts localtime nsswitch.conf resolv.conf services 
+== milters: smtpd_milters='inet:127.0.0.1:8891, inet:127.0.0.1:11332' non_smtpd_milters='inet:127.0.0.1:8891' milter_default_action=accept
+   OpenDKIM Socket inet:8891@127.0.0.1; units: opendkim=active rspamd=active postfix=active
+   listening: 127.0.0.1:11332 127.0.0.1:8891 [::1]:11332 
+== milter warnings in the journal (all boots)
+   count: 0
+== first-setup FQDN line
+   'not a valid FQDN' lines: 0
+2026-10-30T18:47:09+00:00 frankfurt panel[10881]: 2026/10/30 18:47:09 certificate startup reconcile: mail TLS publication waits for a mail identity: none is saved yet and this server's name is not fully qualified; server setup's mail step (or a mail profile in
+2026-10-30T18:47:10+00:00 frankfurt panel[10948]: 2026/10/30 18:47:10 certificate startup reconcile: mail TLS publication waits for a mail identity: none is saved yet and this server's name is not fully qualified; server setup's mail step (or a mail profile in
+2026-10-30T18:48:25+00:00 frankfurt panel[14295]: 2026/10/30 18:48:25 certificate startup reconcile: mail TLS publication waits for a mail identity: none is saved yet and this server's name is not fully qualified; server setup's mail step (or a mail profile in
+   kernel name: frankfurt; hostname -f: frankfurt
+== DKIM state
+   signing table: *@debd3.test celik._domainkey.debd3.test;*@shopd3d.test celik._domainkey.shopd3d.test;
+   shopd3d.test key: /var/lib/celikpanel-dkim/keys/shopd3d.test/celik.private root:opendkim 640
+/root/q.sh: line 28: dig: command not found
+   shopd3d.test TXT @127.0.0.1: 
+   opendkim-testkey shopd3d.test: opendkim-testkey: checking key 'celik._domainkey.shopd3d.test' opendkim-testkey: 'celik._domainkey.shopd3d.test' record not found 
+   debd3.test key: /var/lib/celikpanel-dkim/keys/debd3.test/celik.private root:opendkim 640
+/root/q.sh: line 28: dig: command not found
+   debd3.test TXT @127.0.0.1: 
+   opendkim-testkey debd3.test: opendkim-testkey: checking key 'celik._domainkey.debd3.test' opendkim-testkey: 'celik._domainkey.debd3.test' record not found 
+   opendkim-testmsg: /usr/sbin/opendkim-testmsg
+== messages delivered to bob@shopd3d.test
+-- Subject: d3 php mail 988b072e060c
+   DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=shopd3d.test;
+   signature: d=shopd3d.test s=celik 
+   opendkim-testmsg rc=0 
+-- Subject: final-alpha113 fd3f0ba328d6
+   DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=shopd3d.test;
+   signature: d=shopd3d.test s=celik 
+   opendkim-testmsg rc=70 opendkim-testmsg: dkim_chunk(): Syntax error
+grep: /var/mail/vhosts/shopd3d.test/bob/dovecot.index.cache: binary file matches
+-- 
+
+   opendkim-testmsg rc=70 opendkim-testmsg: dkim_chunk(): Syntax error
+== ops done 18:55:10

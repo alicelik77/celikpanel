@@ -1,0 +1,24 @@
+== full DELETE answer
+202 {
+ "domain": "r4shop113.test",
+ "message": "The DNS change is saved, but its private peer challenge cannot be reconciled. This server's administrator reads the Agent log lines for this deletion on this server with sudo journalctl -u celikpanel-agent | grep peer; they name the step that stopped and its reason. A retry is safe because each challenge can be used only once and a retry starts a new one. CelikPanel re-checks this same publication by itself (first after about 15 seconds, then less often, at most every 5 minutes) and it continues from where it stopped. This server's owner can also retry now with “Retry this deletion”.",
+ "reason": "dns_peer_journal_unknown",
+ "stage": "dns_cleanup",
+ "status": "deletion_pending"
+}
+23:38:06 listed 200 deletion_pending dns_cleanup The DNS change is saved, but its private peer challenge cannot be reconciled. This server's administrator reads the Agent log lines for this deletion on this server with sudo journalctl -u celikpanel-agent | grep peer; they name the step that stopped and its r
+DNS card: pending 1 [{"automatic": true, "next_check_at": "2026-10-30T23:45:14Z", "reason": "dns_peer_journal_unknown", "zone": "r4shop113.test"}]
+2026-10-30T23:37:42+00:00 frankfurt agent[1358]: 2026/10/30 23:37:42 DNS zone V3 recovery remains pending for r4shop113.test: paired DNS deletion is not confirmed yet (check=peer_native_zone): waiting for the backup DNS server to confirm the deletion; the Panel checks the same operation again automa
+2026-10-30T23:37:42+00:00 frankfurt panel[1444]: 2026/10/30 23:37:42 pending DNS publication r4shop113.test still waits (reason=dns_peer_journal_unknown); next automatic re-check in 27s
+2026-10-30T23:38:16+00:00 frankfurt agent[1358]: 2026/10/30 23:38:16 DNS peer proof for r4shop113.test (PowerDNS secondary) stopped at step challenge_write as dns_peer_journal_unknown: challenge publish: pdns_peer_challenge_context_mismatch
+2026-10-30T23:38:16+00:00 frankfurt agent[1358]: 2026/10/30 23:38:16 DNS peer proof for r4shop113.test (PowerDNS secondary) step times: prepare=1.275s challenge_write=1.19s; total 2.465s; outcome pending dns_peer_journal_unknown
+2026-10-30T23:38:16+00:00 frankfurt agent[1358]: 2026/10/30 23:38:16 DNS zone V3 recovery remains pending for r4shop113.test: paired DNS deletion is not confirmed yet (check=peer_native_zone): waiting for the backup DNS server to confirm the deletion; the Panel checks the same operation again automa
+2026-10-30T23:38:16+00:00 frankfurt panel[1444]: 2026/10/30 23:38:16 pending DNS publication r4shop113.test still waits (reason=dns_peer_journal_unknown); next automatic re-check in 1m6s
+2026-10-30T23:39:30+00:00 frankfurt agent[1358]: 2026/10/30 23:39:30 DNS peer proof for r4shop113.test (PowerDNS secondary) stopped at step challenge_write as dns_peer_journal_unknown: challenge publish: pdns_peer_challenge_context_mismatch
+2026-10-30T23:39:30+00:00 frankfurt agent[1358]: 2026/10/30 23:39:30 DNS peer proof for r4shop113.test (PowerDNS secondary) step times: prepare=1.276s challenge_write=1.37s; total 2.646s; outcome pending dns_peer_journal_unknown
+2026-10-30T23:39:30+00:00 frankfurt agent[1358]: 2026/10/30 23:39:30 DNS zone V3 recovery remains pending for r4shop113.test: paired DNS deletion is not confirmed yet (check=peer_native_zone): waiting for the backup DNS server to confirm the deletion; the Panel checks the same operation again automa
+2026-10-30T23:39:30+00:00 frankfurt panel[1444]: 2026/10/30 23:39:30 pending DNS publication r4shop113.test still waits (reason=dns_peer_journal_unknown); next automatic re-check in 1m40s
+2026-10-30T23:41:19+00:00 frankfurt agent[1358]: 2026/10/30 23:41:19 DNS peer proof for r4shop113.test (PowerDNS secondary) stopped at step challenge_write as dns_peer_journal_unknown: challenge publish: pdns_peer_challenge_context_mismatch
+2026-10-30T23:41:19+00:00 frankfurt agent[1358]: 2026/10/30 23:41:19 DNS peer proof for r4shop113.test (PowerDNS secondary) step times: prepare=1.256s challenge_write=1.37s; total 2.626s; outcome pending dns_peer_journal_unknown
+2026-10-30T23:41:19+00:00 frankfurt agent[1358]: 2026/10/30 23:41:19 DNS zone V3 recovery remains pending for r4shop113.test: paired DNS deletion is not confirmed yet (check=peer_native_zone): waiting for the backup DNS server to confirm the deletion; the Panel checks the same operation again automa
+2026-10-30T23:41:19+00:00 frankfurt panel[1444]: 2026/10/30 23:41:19 pending DNS publication r4shop113.test still waits (reason=dns_peer_journal_unknown); next automatic re-check in 3m55s

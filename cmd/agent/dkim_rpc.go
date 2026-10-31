@@ -10,8 +10,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"sync"
 
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -150,6 +152,12 @@ func (a *Agent) GetDKIMStatus(req *DKIMStatusRequest, resp *DKIMStatusResponse) 
 	}
 	resp.HasKey = true
 	resp.PublicKeyB64 = pub
+	signed, err := dkimDomainSigned(req.Domain)
+	if err != nil {
+		resp.Error = err.Error()
+		return nil
+	}
+	resp.Signed = signed
 	return nil
 }
 
@@ -183,7 +191,13 @@ func (a *Agent) EnsureDKIMKey(req *DKIMEnsureRequest, resp *DKIMEnsureResponse) 
 	}
 
 	if key, err := readDKIMKey(path); err == nil {
-		if err := secureChmodMailFile(path, 0o600); err != nil {
+		signerGID := -1
+		if group, err := user.LookupGroup("opendkim"); err == nil {
+			if gid, err := strconv.Atoi(group.Gid); err == nil {
+				signerGID = gid
+			}
+		}
+		if err := secureTightenDKIMKey(path, signerGID); err != nil {
 			resp.Error = fmt.Sprintf("cannot secure existing DKIM key: %v", err)
 			return nil
 		}
@@ -214,6 +228,24 @@ func (a *Agent) EnsureDKIMKey(req *DKIMEnsureRequest, resp *DKIMEnsureResponse) 
 		Type:  "RSA PRIVATE KEY",
 		Bytes: x509.MarshalPKCS1PrivateKey(key),
 	})
+	// The origin record goes first: a key on disk without it is treated as
+	// the owner's and is never removed, so a crash between the two writes
+	// errs on keeping (dkim_origin.go).
+	// Köken kaydı önce yazılır; kaydı olmayan anahtar sahibinin sayılır.
+	newPub, err := dkimPublicB64(key)
+	if err != nil {
+		resp.Error = err.Error()
+		return nil
+	}
+	origin, err := dkimOriginContent(newPub)
+	if err != nil {
+		resp.Error = err.Error()
+		return nil
+	}
+	if err := secureWriteConfig(dkimOriginPath(path), origin, 0o600); err != nil {
+		resp.Error = fmt.Sprintf("cannot write the DKIM origin record: %v", err)
+		return nil
+	}
 	if err := secureWriteConfig(path, pemBytes, 0o600); err != nil {
 		resp.Error = fmt.Sprintf("cannot write key: %v", err)
 		return nil
@@ -223,12 +255,7 @@ func (a *Agent) EnsureDKIMKey(req *DKIMEnsureRequest, resp *DKIMEnsureResponse) 
 		return nil
 	}
 
-	pub, err := dkimPublicB64(key)
-	if err != nil {
-		resp.Error = err.Error()
-		return nil
-	}
 	resp.Created = true
-	resp.PublicKeyB64 = pub
+	resp.PublicKeyB64 = newPub
 	return nil
 }

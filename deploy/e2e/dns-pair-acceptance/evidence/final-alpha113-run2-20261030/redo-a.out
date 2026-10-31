@@ -1,0 +1,111 @@
+== redo on r2-a site r2shop113.test id 1 17:12:18
+-- a PHP page through the file manager (path at the site root) 17:12:18
+200 {"success": true}
+200 {"success": true}
+resolves (lab resolver 192.0.2.53): r2shop113.test=192.0.3.104 www.r2shop113.test=192.0.3.104
+--- http://r2shop113.test/
+code=301 redirect=https://r2shop113.test/ ssl_verify=0
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Content-Type: text/html
+Location: https://r2shop113.test/
+--- https://r2shop113.test/
+code=200 redirect= ssl_verify=0
+HTTP/2 200 
+server: nginx
+content-type: text/html
+strict-transport-security: max-age=0
+body: 3082 bytes, title: <title>r2shop113.test
+software words in body: [CelikPanel ]
+--- http://www.r2shop113.test/
+code=301 redirect=https://www.r2shop113.test/ ssl_verify=0
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Content-Type: text/html
+Location: https://www.r2shop113.test/
+--- https://www.r2shop113.test/
+code=200 redirect= ssl_verify=0
+HTTP/2 200 
+server: nginx
+content-type: text/html
+strict-transport-security: max-age=0
+body: 3082 bytes, title: <title>r2shop113.test
+software words in body: [CelikPanel ]
+--- certificate served on r2shop113.test:443
+subject= X509v3 Subject Alternative Name: critical     DNS:r2shop113.test, DNS:www.r2shop113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 30 17:07:19 2031 GMT 
+Verify return code: 0 (ok)
+--- https://r2shop113.test/hello.php
+code=200
+HTTP/2 200 
+server: nginx
+content-type: text/html; charset=UTF-8
+x-powered-by present: 0
+body: php-ok 5
+--- http://r2shop113.test/hello.php (redirect?)
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Location: https://r2shop113.test/hello.php
+code=301 location=https://r2shop113.test/hello.php
+-- mailboxes: delete what the race left, create alice and bob again 17:12:20
+200 {"success": true}
+200 {"success": true}
+200 {"id": 3, "success": true}
+200 {"id": 4, "success": true}
+200 {"accounts": [{"address": "alice@r2shop113.test", "id": 3, "quota_mb": 1024}, {"address": "bob@r2shop113.test", "id": 4, "quota_mb": 1024}]}
+-- send 587, read IMAPS 993 17:12:21
+{
+ "host": "mail.r2f113.test",
+ "resolved": "192.0.3.104",
+ "smtp_587_cert": {
+  "cn": null,
+  "san": [
+   "mail.r2f113.test"
+  ],
+  "not_after": "Oct 30 17:06:13 2031 GMT",
+  "issuer_cn": "Pebble Intermediate CA 445eee"
+ },
+ "smtp_send": {
+  "ok": true,
+  "refused": {}
+ },
+ "imaps_993_cert": {
+  "cn": null,
+  "san": [
+   "mail.r2f113.test"
+  ],
+  "not_after": "Oct 30 17:06:13 2031 GMT",
+  "issuer_cn": "Pebble Intermediate CA 445eee"
+ },
+ "imap_read": {
+  "after_seconds": 8.7,
+  "headers": "From: alice@r2shop113.test\r\nTo: bob@r2shop113.test\r\nSubject: final-alpha113 bb9de39f13b5"
+ },
+ "served_certificates": {
+ }
+}
+-- read in webmail (Roundcube login as bob) 17:13:51
+{
+ "login_page": 200,
+ "after_login_url": "https://HOST/?_task=mail&_token=[REDACTED][REDACTED]",
+ "logged_in": true,
+ "inbox_list_status": 200,
+ "test_mails_listed": [
+  "final-alpha113 bb9de39f13b5"
+ ],
+ "message_count_hint": "Messages 1 to 1 of 1"
+}
+-- delivered message headers, milters, localhost (read only) 17:13:51
+file:
+---
+inet:localhost:8891, inet:localhost:11332
+inet:localhost:8891
+::1             localhost ip6-localhost ip6-loopback
+127.0.1.1 frankfurt frankfurt
+127.0.0.1 localhost
+
+::1 localhost ip6-localhost ip6-loopback
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+
+---
+== redo done 17:13:52

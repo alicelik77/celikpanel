@@ -1,0 +1,107 @@
+== after the cut, 09:21:04
+-- cut record
+09:17:59.449997079
+/etc/powerdns/pdns.d:
+total 0
+drwxr-xr-x 1 root root  0 Oct 30 09:17 .
+drwxr-xr-x 1 root root 70 Oct 30 09:17 ..
+
+/var/lib/celikpanel-agent-private:
+total 12
+drwx------ 1 root celikpanel  188 Oct 30 09:17 .
+drwxr-xr-x 1 root root        530 Oct 30 09:17 ..
+-rw------- 1 root celikpanel  381 Oct 30 09:17 dns-engine-install-ownership-pdns.json
+-rw------- 1 root celikpanel 2908 Oct 30 09:17 .service-mutations-3367126617.json
+-rw------- 1 root celikpanel 2977 Oct 30 09:17 service-mutations.json
+
+/var/lib/powerdns:
+total 0
+drwxr-x--- 1 powerdns powerdns   0 Oct 30 09:17 .
+drwxr-xr-x 1 root     root     530 Oct 30 09:17 ..
+LoadState=masked
+ActiveState=inactive
+UnitFileState=masked
+-- boots
+ -2 79d72a1e7a4247478b4cd6d00a362a9b Fri 2026-10-30 09:13:28 UTC Fri 2026-10-30 09:15:33 UTC
+ -1 671d1bfba388462083dca5075d8a7e86 Fri 2026-10-30 09:15:39 UTC Fri 2026-10-30 09:17:59 UTC
+  0 5bff532bcba6444484804f521948e6f1 Fri 2026-10-30 09:18:04 UTC Fri 2026-10-30 09:21:04 UTC
+-- package
+powerdns 5.1.5-1
+-- units
+LoadState=masked
+ActiveState=inactive
+UnitFileState=masked
+active
+active
+-- files
+/etc/powerdns/pdns.d:
+total 0
+drwxr-xr-x 1 root root  0 Oct 30 09:17 .
+drwxr-xr-x 1 root root 70 Oct 30 09:17 ..
+
+/var/lib/celikpanel-agent-private:
+total 8
+drwx------ 1 root celikpanel  120 Oct 30 09:18 .
+drwxr-xr-x 1 root root        530 Oct 30 09:17 ..
+-rw------- 1 root celikpanel  381 Oct 30 09:17 dns-engine-install-ownership-pdns.json
+-rw------- 1 root celikpanel 3014 Oct 30 09:18 service-mutations.json
+
+/var/lib/powerdns:
+total 0
+drwxr-x--- 1 powerdns powerdns   0 Oct 30 09:17 .
+drwxr-xr-x 1 root     root     530 Oct 30 09:17 ..
+-- recovery dns-switch-status
+No DNS switch journal was observed. This does not prove historical completion or current DNS health. The server owner should inspect the native DNS service and the panel's operation status before starting another switch.
+exit=0
+-- agent log after boot (DNS)
+== owner: review a revised plan 09:21:05
+failed 07-dns {"code": "server_setup_dns_rolled_back", "message": "The DNS engine installation did not complete and CelikPanel undid it: no DNS engine is running on this server, and any packages it installed were kept stopped for the next attempt. Nothing else was changed, and no restart is needed. The server administrator chooses Review a revised plan: keep this DNS software to try the installation again as a new one, or choose the other DNS software in the plan; setup then continues from the new plan."}
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=failed 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "07-dns", "kind": "dns", "owner_id": "698fb921a53b9a89af00123a7749470f", "request_id": "7b859fe653e1862dab6844e2b445f438", "status": "failed", "target": "local"}
+replan 200 True [] ['01-peer_join:second', '02-dns:local', '03-firewall:enable_and_persist', '04-infrastructure_dns:drillpd.test', '05-access_dns:mainpd.drillpd.test', '06-panel_certificate:mainpd.drillpd.test', '07-dns_readiness:local', '08-verify:custom'] 
+== owner: start 09:21:07
+start 202 {
+ "id": "3b364dfba52c21fb4ab739d81df57adf",
+ "panel_url": "https://mainpd.drillpd.test:2083/",
+ "phase": "queued",
+ "plan_id": "c32791bb3763051e023dd7f8ef50b42f",
+ "request_id": "3b364dfba52c21fb4ab739d81df57adf",
+ "status": "running",
+ "steps": [
+  {
+   "id": "01-peer_join",
+   "kind": "peer_join"
+== pacman state after the drill-d cut (read-only)
+﻿== pacman after the cut 09:22:49
+ls: cannot access '/var/lib/pacman/db.lck': No such file or directory
+Oct 30 09:15:45 mainpd audit[1]: SERVICE_START pid=1 uid=0 auid=4294967295 ses=4294967295 msg='unit=systemd-sysusers comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
+Oct 30 09:15:46 mainpd systemd[1]: Listening on GnuPG network certificate management daemon for /etc/pacman.d/gnupg.
+Oct 30 09:15:46 mainpd systemd[1]: Listening on GnuPG cryptographic agent and passphrase cache (access for web browsers) for /etc/pacman.d/gnupg.
+Oct 30 09:15:46 mainpd systemd[1]: Listening on GnuPG cryptographic agent and passphrase cache (restricted) for /etc/pacman.d/gnupg.
+Oct 30 09:15:46 mainpd systemd[1]: Listening on GnuPG cryptographic agent (ssh-agent emulation) for /etc/pacman.d/gnupg.
+Oct 30 09:15:46 mainpd systemd[1]: Listening on GnuPG cryptographic agent and passphrase cache for /etc/pacman.d/gnupg.
+Oct 30 09:15:46 mainpd systemd[1]: Listening on GnuPG public key management service for /etc/pacman.d/gnupg.
+Oct 30 09:16:56 mainpd audit[1607]: ADD_GROUP pid=1607 uid=0 auid=4294967295 ses=4294967295 msg='op=adding-group acct="mysql" exe="systemd-sysusers" hostname=? addr=? terminal=? res=success'
+Oct 30 09:16:56 mainpd kernel: audit: type=1116 audit(1793351816.102:346): pid=1607 uid=0 auid=4294967295 ses=4294967295 msg='op=adding-group acct="mysql" exe="systemd-sysusers" hostname=? addr=? terminal=? res=success'
+Oct 30 09:16:56 mainpd audit[1607]: ADD_USER pid=1607 uid=0 auid=4294967295 ses=4294967295 msg='op=adding-user acct="mysql" exe="systemd-sysusers" hostname=? addr=? terminal=? res=success'
+Oct 30 09:16:56 mainpd kernel: audit: type=1114 audit(1793351816.103:347): pid=1607 uid=0 auid=4294967295 ses=4294967295 msg='op=adding-user acct="mysql" exe="systemd-sysusers" hostname=? addr=? terminal=? res=success'
+Oct 30 09:17:57 mainpd audit[2833]: ADD_GROUP pid=2833 uid=0 auid=4294967295 ses=4294967295 msg='op=adding-group acct="powerdns" exe="systemd-sysusers" hostname=? addr=? terminal=? res=success'
+Oct 30 09:17:57 mainpd audit[2833]: ADD_USER pid=2833 uid=0 auid=4294967295 ses=4294967295 msg='op=adding-user acct="powerdns" exe="systemd-sysusers" hostname=? addr=? terminal=? res=success'
+[2026-10-30T09:16:55+0000] [ALPM] transaction completed
+[2026-10-30T09:17:33+0000] [ALPM] transaction started
+[2026-10-30T09:17:34+0000] [ALPM] transaction completed
+[2026-10-30T09:17:49+0000] [ALPM] transaction started
+[2026-10-30T09:17:49+0000] [ALPM] transaction completed
+[2026-10-30T09:17:55+0000] [PACMAN] Running '/usr/bin/pacman -Syup --needed --print-format %r %n %v extra/powerdns'
+[2026-10-30T09:17:55+0000] [PACMAN] Running '/usr/bin/pacman -Su --noconfirm --needed extra/powerdns'
+[2026-10-30T09:17:56+0000] [ALPM] transaction started
+[2026-10-30T09:17:57+0000] [ALPM] installed powerdns (5.1.5-1)
+[2026-10-30T09:17:57+0000] [ALPM] transaction completed
+[2026-10-30T09:17:57+0000] [ALPM-SCRIPTLET] Creating group 'powerdns' with GID 967.
+[2026-10-30T09:17:57+0000] [ALPM-SCRIPTLET] Creating user 'powerdns' (PowerDNS Authoritative Server) with UID 967 and GID 967.
+backup file: powerdns: /etc/powerdns/pdns.conf (Size mismatch)
+backup file: powerdns: /etc/powerdns/pdns.conf (SHA256 checksum mismatch)
+powerdns: 115 total files, 0 altered files
+LoadState=loaded
+ActiveState=active
+UnitFileState=enabled

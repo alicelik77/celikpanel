@@ -1,0 +1,67 @@
+== provision 16:57:07 arch/pdns 192.0.3.106 zone=archr2f113.test dist=132e895cf7522aa5c964e3aa1797ac9af6410621
+provision rc 127 PREINSTALL_PRODUCT_LAYOUT=absent
+ 26.1
+== install through get.sh in a root terminal 16:57:33
+terminal rc 0 124.4 answered ['Admin username', 'Admin email', 'Show password while typing', 'Admin password', 'Confirm password'] problem None restart_required True postinstall rc 0 after restart active
+active
+
+  portal requests: 2026-10-30T16:57:34Z https://celikpanel.net/get.sh | 2026-10-30T16:57:34Z https://celikpanel.net/release-signing-ed25519.pem | 2026-10-30T16:57:34Z https://celikpanel.net/releases/v0.1.0-alpha.113/linux/amd64/release-manifest-v2 | 2026-10-30T16:57:34Z https://celikpanel.net/releases/v0.1.0-alpha.113/linux/amd64/release-manifest-v2.sig | 2026-10-30T16:57:34Z https://celikpanel.net/releases/v0.1.0-alpha.113/linux/amd64/celikpanel-v0.1.0-alpha.113-linux-amd64.tar.gz | 2026-10-30T16:57:34Z https://celikpanel.net/releases/v0.1.0-alpha.113/linux/amd64/celikpanel-v0.1.0-alpha.113-linux-amd64.tar.gz.sha256 | -rw-r--r-- 1 root root 72913 Oct 30 16:57 /root/celikpanel-install.sh | f5072de0198b9e0343471980650d56d232b671a36dd50513e04e41596d2a28de  /root/celikpanel-install.sh
+license active acceptance_fixture can_use_panel True
+guidance 200 
+domain 200 
+count 200 
+name 200 
+roles 200 
+names 200 
+dnshome 200 
+mail 200 
+plan 200 True [] ['01-dns:local', '02-service:nginx', '03-service:certbot', '04-firewall:enable_and_persist', '05-infrastructure_dns:archr2f113.test', '06-access_dns:arch.archr2f113.test', '07-panel_certificate:arch.archr2f113.test', '08-dns_readiness:local', '09-service:mariadb', '10-service:php-fpm', '11-mail_profile:webmail', '12-mail_profile:protected-mail', '13-mail_dns:archr2f113.test', '14-service:cron', '15-access_dns:mail.archr2f113.test', '16-mail_certificate:mail.archr2f113.test', '17-mail_enrollment:mail-renewal', '18-verify:custom'] 
+== start 17:00:23
+start 202 {
+ "id": "ff263ec5bff84cdf99f0a1c4d990f4d6",
+ "panel_url": "https://arch.archr2f113.test:2083/",
+ "phase": "queued",
+ "plan_id": "724b07e8aba5b3035b0487b1c01d19
+-- r2-b/main 17:00:27
+running 01-dns null
+01-dns=running 02-service=pending 03-service=pending 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-mail_profile=pending 12-mail_profile=pending 13-mail_dns=pending 14-service=pending 15-access_dns=pending 16-mail_certificate=pending 17-mail_enrollment=pending 18-verify=pending
+{"id": "01-dns", "kind": "dns", "owner_id": "68fb666d3962b74b011743e40a830ec1", "request_id": "9a972ea11366fb75b473c10c1246369d", "status": "running", "target": "local"}
+-- r2-b/main 17:00:47
+running 02-service null
+01-dns=succeeded 02-service=running 03-service=pending 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-mail_profile=pending 12-mail_profile=pending 13-mail_dns=pending 14-service=pending 15-access_dns=pending 16-mail_certificate=pending 17-mail_enrollment=pending 18-verify=pending
+{"id": "02-service", "kind": "service", "operation_id": "11a6caae35135a360df75b8a927d5d87", "owner_id": "991184455926052b9b4b4916e4323284", "request_id": "f7057ffc74b5e4f4fc682bdf4b04c1db", "status": "running", "target": "nginx"}
+-- r2-b/main 17:01:07
+running 07-panel_certificate null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=running 08-dns_readiness=pending 09-service=pending 10-service=pending 11-mail_profile=pending 12-mail_profile=pending 13-mail_dns=pending 14-service=pending 15-access_dns=pending 16-mail_certificate=pending 17-mail_enrollment=pending 18-verify=pending
+{"id": "07-panel_certificate", "kind": "panel_certificate", "operation_id": "777a84890f15549e27cff8c0694ed724", "owner_id": "838f2cbe859fa2459b0bfc07aa68cd7a", "request_id": "2ad7e9b80b8d8f6ff20ef972313a2b96", "status": "running", "target": "arch.archr2f113.test"}
+-- r2-b/main 17:01:28
+running 09-service null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=running 10-service=pending 11-mail_profile=pending 12-mail_profile=pending 13-mail_dns=pending 14-service=pending 15-access_dns=pending 16-mail_certificate=pending 17-mail_enrollment=pending 18-verify=pending
+{"id": "09-service", "kind": "service", "operation_id": "8b8e909eb6c0d2604a654461c5ca583f", "owner_id": "85ebd245cf7fb073c1b6b10cdfdab0ec", "request_id": "4fc88f4f487898f6672140e09943fcbe", "status": "running", "target": "mariadb"}
+-- r2-b/main 17:02:08
+running 10-service null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=running 11-mail_profile=pending 12-mail_profile=pending 13-mail_dns=pending 14-service=pending 15-access_dns=pending 16-mail_certificate=pending 17-mail_enrollment=pending 18-verify=pending
+{"id": "10-service", "kind": "service", "operation_id": "96ad55501123e13ed89601bff3e59398", "owner_id": "aa55e5965c2d4f2833f3734dcbbfaf39", "request_id": "57bf471dc1b0ba3f7f01bed58f5083f1", "status": "running", "target": "php-fpm"}
+-- r2-b/main 17:02:28
+running 11-mail_profile null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-mail_profile=running 12-mail_profile=pending 13-mail_dns=pending 14-service=pending 15-access_dns=pending 16-mail_certificate=pending 17-mail_enrollment=pending 18-verify=pending
+{"id": "11-mail_profile", "kind": "mail_profile", "operation_id": "87a4a77ef203d815e0d53d07c3485669", "owner_id": "75c008b802d6d50560e68543a0a121b8", "request_id": "50aea343c2b56560550def5a7e77b23b", "status": "running", "target": "webmail"}
+-- r2-b/main 17:04:50
+running 12-mail_profile null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-mail_profile=succeeded 12-mail_profile=running 13-mail_dns=pending 14-service=pending 15-access_dns=pending 16-mail_certificate=pending 17-mail_enrollment=pending 18-verify=pending
+{"id": "12-mail_profile", "kind": "mail_profile", "operation_id": "b6dc6f14c0531951d47a1f85542fc471", "owner_id": "ff0df161bf429d88469f0fdf99dfb871", "request_id": "579865085c5655c613fc0c7a65227517", "status": "running", "target": "protected-mail"}
+-- r2-b/main 17:06:10
+running 14-service null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-mail_profile=succeeded 12-mail_profile=succeeded 13-mail_dns=succeeded 14-service=running 15-access_dns=pending 16-mail_certificate=pending 17-mail_enrollment=pending 18-verify=pending
+{"id": "14-service", "kind": "service", "owner_id": "d5dc72cd8c9b8c6fb11b77e0c9d850b2", "request_id": "f4c1d559ebcab1200f9df0835f6917ae", "status": "running", "target": "cron"}
+-- r2-b/main 17:06:31
+running 17-mail_enrollment null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-mail_profile=succeeded 12-mail_profile=succeeded 13-mail_dns=succeeded 14-service=succeeded 15-access_dns=succeeded 16-mail_certificate=succeeded 17-mail_enrollment=running 18-verify=pending
+{"enrollment_dispatch_attempted": true, "id": "17-mail_enrollment", "kind": "mail_enrollment", "owner_id": "2275cfdbd55fe9dbd7d3e7650b8f67b3", "qualifier": "839b256bb9e9d00fcde66f53adc90d253d9d24cfe8b0a41be13ed216cddeb978", "request_id": "01e6b1fc932e39284304f93a6b6d7eed", "status": "running", "target": "mail-renewal"}
+-- r2-b/main 17:06:51
+succeeded complete null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-mail_profile=succeeded 12-mail_profile=succeeded 13-mail_dns=succeeded 14-service=succeeded 15-access_dns=succeeded 16-mail_certificate=succeeded 17-mail_enrollment=succeeded 18-verify=succeeded
+== end 17:06:51
+succeeded complete null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-mail_profile=succeeded 12-mail_profile=succeeded 13-mail_dns=succeeded 14-service=succeeded 15-access_dns=succeeded 16-mail_certificate=succeeded 17-mail_enrollment=succeeded 18-verify=succeeded
+== arch setup done 17:06:51

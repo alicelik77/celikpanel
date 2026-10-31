@@ -316,7 +316,11 @@ func dropOpenDKIMFromPanelGroup(ctx context.Context) {
 		return
 	}
 	detail := firstLine(string(out))
-	if strings.Contains(strings.ToLower(detail), "not a member") {
+	// Arch's gpasswd prints "Removing user opendkim from group celikpanel"
+	// first and "user 'opendkim' is not a member of 'celikpanel'" after it
+	// (exit 3); the whole answer is read, so a non-member is not reported as
+	// a token exposure (Arch VM, 2026-10-30).
+	if strings.Contains(strings.ToLower(string(out)), "not a member") {
 		return
 	}
 	log.Printf(

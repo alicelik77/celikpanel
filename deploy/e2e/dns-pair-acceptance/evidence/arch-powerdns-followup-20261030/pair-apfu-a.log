@@ -1,0 +1,152 @@
+== provision 10:29:24 main=arch/pdns 192.0.3.90 backup=debian13/pdns 192.0.3.91 zone=fua.test cut=main pdns-switch after_write target-enable-intent reset
+tail: option used in invalid context -- 2
+== install 10:29:50
+main installer rc 0 49.1 postinstall rc 0
+backup installer rc 0 34.1 postinstall rc 0
+main license active
+backup license active
+guidance 200 
+guidance 200 
+main-domain 200 {
+ "checks": [],
+ "draft": {
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_role": "prim
+main-count 200 {
+ "checks": [],
+ "draft": {
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_role": "prim
+main-name 200 {
+ "checks": [],
+ "draft": {
+  "database": "mariadb",
+  "dns_engine": "bind",
+  "dns_mode": "local",
+  "dns_role": "prim
+main-roles 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+main-names 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+main-dnshome 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+plan main 200 True [] ['01-service:nginx', '02-service:certbot', '03-service:mariadb', '04-service:php-fpm', '05-service:cron', '06-peer_join:second', '07-dns:local', '08-firewall:enable_and_persist', '09-infrastructure_dns:fua.test', '10-access_dns:mainfu.fua.test', '11-panel_certificate:mainfu.fua.test', '12-dns_readiness:local', '13-verify:custom'] 
+== arm mainfu 10:31:31
+-r--r--r-- 1 root root 68 Oct 30 10:29 /etc/celikpanel-dns-kill-matrix
+agent: /opt/celikpanel/bin/agent
+agent built with -tags=acceptance_license
+600 root:root /etc/celikpanel-acceptance-dns-cut
+pdns-switch after_write target-enable-intent reset
+btrfs
+== start main 10:31:31
+start-main 202 {
+ "id": "fbffa55590ab63b99b5cdccded2146b8",
+ "panel_url": "https://mainfu.fua.test:2083/",
+ "phase": "queued",
+ "plan_i
+join-code 200 {
+ "address": "https://192.0.3.90:2083",
+ "attempts_left": 5
+connect 200 {
+ "setup": {
+  "checks": [],
+  "draft": {
+   "database": "mariadb",
+   "dns_engine": "bind",
+   "dns_mode": "local",
+   "dns_publisher_endpoint": "https://mainfu.fua.test:2083",
+   "dns_role": "secon
+backup-roles 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+backup-name 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+backup-names 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+backup-dnshome 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ]
+  },
+plan backup 200 True [] ['01-peer_names:https://192.0.3.90:2083', '02-service:nginx', '03-service:certbot', '04-service:mariadb', '05-service:php-fpm', '06-service:cron', '07-dns:local', '08-firewall:enable_and_persist', '09-access_dns:backfu.fua.test', '10-panel_certificate:backfu.fua.test', '11-dns_publisher:https://mainfu.fua.test:2083', '12-verify:custom'] 
+== start backup 10:31:53
+start-backup 202 {
+ "id": "d6a7d2f9e33ee1b5dccb361382902b8d",
+ "panel_url": "https://backfu.fua.test:2083/",
+ "phase": "queued",
+ "plan_i
+== wait for the cut node's setup to stop (main) 10:32:01
+-- apfu-a/main 10:32:01
+running 02-service null
+01-service=succeeded 02-service=running 03-service=pending 04-service=pending 05-service=pending 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "02-service", "kind": "service", "operation_id": "3e13e1e1b471704e58118db92cc7ded5", "owner_id": "d5f5a5350db9def0760c3ad6819955e9", "request_id": "caadf9a9ff75e8efefbb6cacbfa2a249", "status": "running", "target": "certbot"}
+-- apfu-a/main 10:32:21
+running 03-service null
+01-service=succeeded 02-service=succeeded 03-service=running 04-service=pending 05-service=pending 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "03-service", "kind": "service", "operation_id": "18fb64b40848801fbe4f644f48b9294b", "owner_id": "4c66fa13904de4adf91ee5567bfa66fc", "request_id": "99b58d480808333a62c9e7e04134b536", "status": "running", "target": "mariadb"}
+-- apfu-a/main 10:32:41
+running 05-service null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=running 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "05-service", "kind": "service", "operation_id": "f2072843069f672790b8d6c534d9e43b", "owner_id": "c9eba8d428f4a3c0633ecf59c029c2a1", "request_id": "7c0443444e40dbe973c0c9fb4e5187b7", "status": "running", "target": "cron"}
+-- apfu-a/main 10:33:02
+None None "Panel management is still starting. Read-only connection and recovery status remain available."
+-- apfu-a/main 10:33:22
+waiting 07-dns {"code": "server_setup_dns_recovery_held", "message": "The DNS operation (request 3dd578fc5ea58a317cefd4d2704919e0) did not complete, and the CelikPanel Agent could not finish it or confirm that it was undone. It is not reported as undone. The Agent keeps its record of this operation, so DNS changes stay blocked until it is resolved. Agent: The first install of PowerDNS as the paired primary found that the PowerDNS database is not as this install wrote it (an administrator edit, PowerDNS behaviour CelikPanel has not measured, or a file it could not read). CelikPanel kept that change and neither continued nor undid the install. The PowerDNS service is not running on this server now, so this server does not answer DNS. The operation's ... Setup is paused at this step and will not start the operation again. The server administrator should run `sudo /usr/libexec/celikpanel/recovery dns-switch-status --quiesced --request-id 3dd578fc5ea58a317cefd4d2704919e0` on this server and follow what it reports; it names the recovery command when one applies. Setup rechecks this same operation automatically and continues, or offers a revised plan, once its result is confirmed."}
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=running 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "07-dns", "kind": "dns", "owner_id": "2da035a2626317aca17e4e92d290cada", "request_id": "3dd578fc5ea58a317cefd4d2704919e0", "status": "running", "target": "local"}

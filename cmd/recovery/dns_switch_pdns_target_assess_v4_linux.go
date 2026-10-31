@@ -54,7 +54,7 @@ func assessInstalledPDNSTargetStageNativeV4(ctx context.Context, policy dnsengin
 	if err := bindInverseSourceUnitIdentity(ctx); err != nil {
 		return unknown, err
 	}
-	pdnsGID, err := localServiceGroupID("/etc/group", "pdns")
+	pdnsGID, err := localServiceGroupID("/etc/group", installedPDNSServiceGroup())
 	if err != nil {
 		return unknown, err
 	}

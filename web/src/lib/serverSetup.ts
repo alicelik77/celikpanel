@@ -72,6 +72,9 @@ export interface ServerSetupSnapshot {
     // alpha.111: the machine host name's first label when it reads like a
     // name a person chose; absent otherwise. Never a guess of the panel's.
     short_name_suggestion?: string;
+    // Identifies this panel installation (the GET answer only). A server wiped
+    // and installed again has another one.
+    installation_id?: string;
     // alpha.112: the server's public IPv6 address, when it has one.
     server_ipv6?: string;
 }
@@ -125,10 +128,16 @@ export function decodeServerSetup(value: unknown): ServerSetupSnapshot | null {
         || !['ready', 'action_required', 'unknown'].includes(String(check.state)) || typeof check.code !== 'string')) return null;
     if (value.server_ip !== undefined && typeof value.server_ip !== 'string') return null;
     if (value.short_name_suggestion !== undefined && (typeof value.short_name_suggestion !== 'string' || value.short_name_suggestion.length > 63)) return null;
+    // A malformed identity is left out rather than refusing the whole answer.
+    let answer: Record<string, unknown> = value;
+    if (value.installation_id !== undefined && (typeof value.installation_id !== 'string' || !/^[a-f0-9]{32}$/.test(value.installation_id))) {
+        const { installation_id: _invalid, ...kept } = value;
+        answer = kept;
+    }
     if (value.status === 'ready' && value.required) return null;
     if (value.extension === true && (value.status === 'ready' || value.required)) return null;
     if (value.guidance !== undefined && !['undecided', 'guided', 'manual'].includes(String(value.guidance))) return null;
-    return value as unknown as ServerSetupSnapshot;
+    return answer as unknown as ServerSetupSnapshot;
 }
 // Pages that stay open while setup is required, so the owner can reach what
 // fixes it. The four pages that were Settings sections until v0.1.0-alpha.98

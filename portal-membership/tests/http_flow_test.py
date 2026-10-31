@@ -74,7 +74,7 @@ _,body,_=request('home&lang=en');check('Your licenses' in body and 'fixture.exam
 check('Remove license' in body and 'timedatectl set-ntp true' in body,'remove link and clock line on the account page')
 _,body,_=request('remove&id='+license_id+'&lang=en')
 check('This license is used by fixture.example.com' in body and 'cannot be undone' in body,'removal names the bound server')
-_,body,_=request('terms&lang=en');check('Terms and data notice' in body and '60 seconds' in body,'terms reachable')
+_,body,_=request('terms&lang=en');check('Terms and data notice' in body and 'up to 7 days' in body and '60 seconds' not in body,'terms reachable')
 with sqlite3.connect(private/'members.sqlite') as db:
  db.execute('UPDATE licenses SET key_encrypted=NULL WHERE id=?',(license_id,))
 _,body,_=request('home&lang=en')

@@ -1,0 +1,106 @@
+join-code 200 {
+ "address": "https://192.0.3.60:2083",
+ "attempts_left": 50,
+ "code": "[REDACTED]",
+ "expires_at": "2026-10-31T01:04:31Z",
+ "used": false
+}
+connect 200 {
+ "setup": {
+  "checks": [],
+  "draft": {
+   "customization": {
+    "components": [
+     "mariadb",
+     "nginx",
+     "php-fpm"
+    ]
+   },
+   "database": "mariadb",
+   "dns_engine": "bind",
+   "dns_mode": "local",
+   "dns_publisher_endpoint": "https://deb.pair3.test:2083",
+   "dns_role": "secondary",
+   "local_ip": "192.0.3.61",
+   "mail_hostname": "",
+   "main_dns_server": "peer",
+   "main_domain": "pair3.test",
+   "node_version": "",
+   "ns1": "ns1.pair3.test",
+   "ns2": "ns2.pair3.test",
+   "panel_domain": "archb.pair3.test",
+   "peer_ip": "192.0.3.60",
+   "peer_ns": "ns1.pair3.test",
+   "purpose": "custom",
+   "remote_dns_connection_id": "",
+   "server_count": 2,
+   "short_name": "archb"
+  },
+  "guidance": "guided",
+  "origin": "fresh",
+  "required": true,
+  "revision": 7,
+  "status": "draft",
+  "version": 1
+ },
+ "state": "ok"
+}
+backup-roles 200 
+backup-name 200 
+backup-names 200 
+backup-dnshome 200 
+plan backup 200 True [] ['01-peer_names:https://192.0.3.60:2083', '02-service:nginx', '03-service:certbot', '04-service:mariadb', '05-service:php-fpm', '06-service:cron', '07-dns:local', '08-firewall:enable_and_persist', '09-access_dns:archb.pair3.test', '10-panel_certificate:archb.pair3.test', '11-dns_publisher:https://deb.pair3.test:2083', '12-verify:custom'] 
+start-backup 202 {
+ "id": "bb21542aee4efd65a98a280eb7ca6791",
+ "panel_url": "https://archb.pair3.test:2083/",
+ "phase": "queued",
+ "plan_id": "0f1a417605eb0d3ea9034dbd40792ee6",
+ "request_id": "bb21542aee4efd65a98a280eb7ca6791",
+ "status": "running",
+ "steps": [
+  {
+   "id": "01-peer_names",
+   "kind": "peer_names",
+-- main 01:04:42
+running 03-service null
+01-service=succeeded 02-service=succeeded 03-service=running 04-service=pending 05-service=pending 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "03-service", "kind": "service", "operation_id": "d88269615915280fd152a66e1543f27b", "owner_id": "92af4f3960441b5b6bb32f003964dff2", "request_id": "892e12f18cede089ecbbe62e69bc0cfe", "status": "running", "target": "mariadb"}
+-- backup 01:04:42
+running 02-service null
+01-peer_names=succeeded 02-service=running 03-service=pending 04-service=pending 05-service=pending 06-service=pending 07-dns=pending 08-firewall=pending 09-access_dns=pending 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "02-service", "kind": "service", "owner_id": "1d35f7372d466642b119bd4ba698abd4", "request_id": "176ba12e993eb1dd54247cd8652cdce1", "status": "running", "target": "nginx"}
+-- backup 01:05:02
+running 04-service null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=running 05-service=pending 06-service=pending 07-dns=pending 08-firewall=pending 09-access_dns=pending 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "04-service", "kind": "service", "operation_id": "8bd3854363d45ccbbdf99cfdd2761e9c", "owner_id": "87fd8bdfd47fb67795762458a7d7d4dd", "request_id": "85e7159ba2376a215f3ab47df263e993", "status": "running", "target": "mariadb"}
+-- main 01:05:23
+running 04-service null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=running 05-service=pending 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "04-service", "kind": "service", "owner_id": "3bedc3f2f5186262afdbf98161b0895b", "request_id": "e61524c42f5bf7731be67e613b0b8b43", "status": "running", "target": "php-fpm"}
+-- backup 01:05:44
+running 05-service null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=running 06-service=pending 07-dns=pending 08-firewall=pending 09-access_dns=pending 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "05-service", "kind": "service", "operation_id": "b694af73e732daafc11c4e0639f73626", "owner_id": "13084b7a74ca13f1f9c07fbf1f374a77", "request_id": "2bb6ef740492b91e14a5caf7264ef96b", "status": "running", "target": "php-fpm"}
+-- main 01:06:04
+running 07-dns null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=running 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "07-dns", "kind": "dns", "owner_id": "b76a975d8598cf08aa12808a0dd99496", "request_id": "2f7378882558a8a25649c66f644c350c", "status": "running", "target": "local"}
+-- backup 01:06:04
+waiting primary_dns {"code": "server_setup_primary_dns_required", "message": "The primary DNS server ns1.pair3.test (192.0.3.60) has not provided its authoritative catalog yet. Start its DNS setup and check TCP port 53. This setup checks again automatically; no primary panel connection is required."}
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-service=succeeded 07-dns=running 08-firewall=pending 09-access_dns=pending 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "07-dns", "kind": "dns", "owner_id": "71f79117c833f16dde46852bc49a2f21", "request_id": "9619768f69e2905605033ce7d810ae73", "status": "running", "target": "local"}
+-- main 01:06:25
+waiting infrastructure_dns {"code": "server_setup_infrastructure_dns_required", "message": "The reviewed DNS records are waiting for the native DNS pair or its exact zone transfer. Prepare the secondary ns2.pair3.test (192.0.3.61) and check TCP/UDP port 53. This setup checks the same operation automatically."}
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=running 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-verify=pending
+{"id": "09-infrastructure_dns", "kind": "infrastructure_dns", "owner_id": "240c359992c2f886e354eb8f896bc9da", "request_id": "75fc9788a06f5cd76b10d77f3dd00f5e", "status": "running", "target": "pair3.test"}
+-- backup 01:06:45
+waiting access_dns {"code": "server_setup_access_dns_required", "message": "Public DNS must resolve archb.pair3.test to 192.0.3.61 before a certificate is requested. Check this hostname's A/AAAA records and its zone delegation. For DNS managed here, review the infrastructure DNS records in this wizard; otherwise correct them at the primary DNS server or provider. This check resumes automatically when DNS is verified."}
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-service=succeeded 07-dns=succeeded 08-firewall=succeeded 09-access_dns=running 10-panel_certificate=pending 11-dns_publisher=pending 12-verify=pending
+{"id": "09-access_dns", "kind": "access_dns", "owner_id": "528a8357d961ad2c75d1b233616f4ebc", "qualifier": "192.0.3.61", "request_id": "cc54c79545975b2a5bf308ca4d105d3f", "status": "running", "target": "archb.pair3.test"}
+-- main 01:07:05
+succeeded complete null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-verify=succeeded
+-- backup 01:07:06
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-service=succeeded 07-dns=succeeded 08-firewall=succeeded 09-access_dns=succeeded 10-panel_certificate=succeeded 11-dns_publisher=succeeded 12-verify=succeeded
+== end 01:07:06

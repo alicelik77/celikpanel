@@ -245,6 +245,9 @@ func (p *Panel) handleAddEmailAccount(w http.ResponseWriter, r *http.Request, do
 		writeServerError(w, err)
 		return
 	}
+	// The domain's first mailbox: its DKIM key and signing follow by
+	// themselves, without blocking this answer (domain_dkim_automatic.go).
+	p.queueAutomaticDKIMForMailbox(context.WithoutCancel(r.Context()), domainID, domain)
 	_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "id": newID})
 }
 

@@ -366,6 +366,13 @@ func attachValidationRestoreAgent(
 	agent *validationRestoreAgent,
 ) {
 	t.Helper()
+	attachValidationRestoreAgentAs(t, p, agent)
+}
+
+// attachValidationRestoreAgentAs serves any receiver (a wrapper of the
+// validation-restore fake with its own methods) as the Agent.
+func attachValidationRestoreAgentAs(t *testing.T, p *Panel, agent any) {
+	t.Helper()
 	p.pkgFamilyVal = "apt"
 	server := rpc.NewServer()
 	if err := server.RegisterName("Agent", agent); err != nil {

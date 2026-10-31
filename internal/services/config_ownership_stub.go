@@ -6,6 +6,8 @@ import "os"
 
 type managedFileOwnership struct{}
 
+func rootFileOwnership() managedFileOwnership { return managedFileOwnership{} }
+
 func managedOwnershipFromInfo(os.FileInfo) (managedFileOwnership, error) {
 	return managedFileOwnership{}, nil
 }

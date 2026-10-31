@@ -30,7 +30,7 @@ type freshPrimaryChangeReader func(ctx context.Context, root string, owner servi
 func installedFreshPrimaryChange(ctx context.Context, root string, owner servicemutationledger.FileOwner,
 	policy dnsengineartifact.JournalPolicy, e dnsenginerecovery.SwitchEvidence,
 	pdns dnsengineartifact.UnitSnapshot) (dnsenginerecovery.FreshPrimaryChangeV3, error) {
-	gid, err := localServiceGroupID("/etc/group", "pdns")
+	gid, err := localServiceGroupID("/etc/group", installedPDNSServiceGroup())
 	if err != nil {
 		return dnsenginerecovery.FreshPrimaryChangeV3{}, &dnsenginerecovery.FreshPrimaryUnknownV3{What: "the PowerDNS service group", Err: err}
 	}

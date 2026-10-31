@@ -50,7 +50,7 @@ Rules:
 | 📧 Postfix | Service | `postfix` | `postfix` | SMTP server | — |
 | 📮 Exim | Service | — | — | SMTP server | — |
 | 🧹 Rspamd | Service | `rspamd` | `rspamd` | spam filter | SMTP server |
-| 📬 Dovecot | Service | `dovecot-imapd` `dovecot-pop3d` `dovecot-lmtpd` | — | IMAP server | — |
+| 📬 Dovecot | Service | `dovecot-imapd` `dovecot-pop3d` `dovecot-lmtpd` | `dovecot` | IMAP server | — |
 | 🛡️ SpamAssassin | Service | `spamassassin` `spamd` `spamass-milter` | — | spam filter | SMTP server |
 
 ### Security
@@ -68,7 +68,7 @@ Rules:
 | Component | Kind | APT package mapping | pacman package mapping | Seat | Needs |
 |---|---|---|---|---|---|
 | 🌐 BIND | Service | `bind9` | `bind` | DNS server | — |
-| ⚡ PowerDNS | Service | `pdns-server` `pdns-backend-sqlite3` | — | DNS server | — |
+| ⚡ PowerDNS | Service | `pdns-server` `pdns-backend-sqlite3` | `powerdns` | DNS server | — |
 
 ### FTP
 
@@ -95,6 +95,22 @@ Rules:
 | Component | Kind | APT package mapping | pacman package mapping | Seat | Needs |
 |---|---|---|---|---|---|
 | ⏰ Scheduled tasks (cron) | Service | `cron` | `cronie` | — | — |
+
+## Closed cells and their reasons
+
+The Components page and the Agent give the same reason.
+
+| Component | Ecosystem | Reason |
+|---|---|---|
+| 🪶 Apache | apt | Apache virtual-host integration is not available in CelikPanel yet; use Nginx. |
+| 🪶 Apache | pacman | Apache virtual-host integration is not available in CelikPanel yet; use Nginx. |
+| 🐘 phpPgAdmin | pacman | phpPgAdmin is not offered on Arch Linux: it is not in the official repositories (only in the AUR, which CelikPanel does not use). The server administrator manages PostgreSQL with psql on the server, or with a desktop client through an SSH tunnel. |
+| 📮 Exim | apt | Exim mailbox, TLS and submission integration is not available in CelikPanel yet; use Postfix. |
+| 📮 Exim | pacman | Exim mailbox, TLS and submission integration is not available in CelikPanel yet; use Postfix. |
+| 🛡️ SpamAssassin | pacman | SpamAssassin is not offered on Arch Linux: its Postfix bridge, spamass-milter, is not in the official repositories (only in the AUR, which CelikPanel does not use), so SpamAssassin would filter no mail. The server administrator installs Rspamd, the spam filter in the same seat, from the Components page. |
+| 📂 vsftpd | apt | vsftpd passive-mode ports, TLS and per-subscription access are not integrated in CelikPanel yet. |
+| 📂 vsftpd | pacman | vsftpd passive-mode ports, TLS and per-subscription access are not integrated in CelikPanel yet. |
+| ⚡ Redis | pacman | Redis is not offered on Arch Linux: its official repositories ship Valkey instead (extra/valkey, which provides redis), and CelikPanel installs official distribution packages only. The server administrator installs Valkey, the compatible cache in the same seat, from the Components page. |
 
 ## Installed from the official release (identical on every distro)
 

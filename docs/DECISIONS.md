@@ -19,6 +19,213 @@ Code decisions live in git; this file is for strategy. Newest first.
 > D-029. Entries written after this note use the clock date; a dated entry from 10, 11 or
 > 12 October 2026 other than D-029 is genuine.
 
+## D-040 · A website certificate is renewed by the operating system's certbot, not by the Panel
+
+*2026-10-30 (clock date) · Correction of an invariant violation found in source; in source on branch `fix/site-cert-native-renewal`, component-tested and one disposable chroot run against a local test CA; not published, nothing measured on an installed server*
+
+**What was wrong.** D-022 and the constitution (§2) require that panel outage,
+license loss or removal never stops certificate renewal. Every ACME website
+certificate was kept in CelikPanel's isolated certbot store
+(`/etc/celikpanel/certbot`, `/var/lib/celikpanel/certbot`,
+`/var/log/celikpanel/certbot`), copied into an immutable snapshot under
+`/etc/ssl/celikpanel/<domain>/sha256-…/` that nginx named, and renewed only by a
+goroutine in the running Panel every 12 hours. The operating system's
+`certbot.timer` never saw those lineages, and a renewed one could only be served
+after the Panel re-rendered the vhost. With the Panel stopped or removed every site
+certificate expired within 90 days. A failed renewal only wrote
+`renewal_status = 'failed'`; nothing told anyone.
+
+**Decision (planner's, on the owner's standing direction of D-022 and D-025).**
+
+1. **Native store, fresh lineage.** Every website certificate this release issues,
+   first or replacement, is a certbot lineage in the standard store
+   `/etc/letsencrypt`, named `celikpanel-site-<domain id>-<24 hex>`
+   (`transport.IsNativeSiteLineage`). The authenticator is `webroot` with the site's
+   own root-owned challenge root
+   (`/var/lib/celikpanel-agent/acme-http-01/subscriptions/<s>/domains/<d>`), served
+   by the plain nginx file `/etc/nginx/celikpanel-managed.d/<domain>/acme-http-01.conf`
+   that every server block of the site includes. certbot itself writes the renewal
+   configuration (authenticator, `[[webroot_map]]`, ACME server, account). A failed
+   replacement never touches the lineage being served.
+2. **nginx names certbot's live files** (`/etc/letsencrypt/live/<lineage>/fullchain.pem`,
+   `privkey.pem`), so a renewal needs no re-render. The Agent accepts such paths only
+   for the lineage of the same domain identity, only when every live link resolves
+   into that lineage's own `archive/` directory and the key matches.
+3. **Renewal is the operating system's.** `certbot.timer` (Debian, Ubuntu),
+   `certbot-renew.timer`, `snap.certbot.renew.timer` or `/etc/cron.d/certbot` runs
+   `certbot renew`. Issuance enables the timer when it can and says so when it
+   cannot (`renewal_warning`). The Agent refuses to renew a native lineage
+   (`ErrNativeSiteRenewal`), so two renewers never race on one lineage.
+4. **One deploy hook, plain sh, no CelikPanel program:**
+   `/etc/letsencrypt/renewal-hooks/deploy/celikpanel-site-certificates` (root 0755,
+   first line `# celikpanel-site-deploy-hook v1`). For `celikpanel-site-*` lineages
+   only, it runs `nginx -t` and reloads nginx when the test passes; when CelikPanel's
+   Postfix SNI map names the lineage and Postfix still uses that map, it rebuilds the
+   map as it is on disk (`postmap -F`, which embeds the certificate files) and
+   reloads Postfix; when CelikPanel's Dovecot TLS drop-in names it, it reloads
+   Dovecot. It writes no configuration file. It writes one record
+   `/var/lib/celikpanel-site-certificates/<lineage>` (`format=celikpanel-site-deploy-v1`,
+   time, `nginx`, `mail`, `dovecot` outcomes) and exits non-zero when one of them
+   could not load the certificate
+   (certbot 4.0 logs that as a hook warning and still exits 0, measured; the record
+   is what tells the Panel). It is written only when absent;
+   a file the owner changed or removed is kept and named on the page (D-031 style:
+   detected, never overwritten).
+5. **EAB never leaves the issuing run.** ZeroSSL and Google Trust Services
+   credentials go to certbot through a 0600 `--config` file in a 0700 temporary
+   directory removed after the run; they are not on certbot's command line (which
+   certbot logs) and certbot does not copy them into the renewal configuration. The
+   account certbot registers with them stays in `/etc/letsencrypt/accounts`.
+6. **The Panel observes, records and tells.** The 12-hour job (and every opening of
+   the certificate page) reads `Agent.SiteCertificateRenewalStateV1` (read only):
+   certbot's renewal configuration, the certificate the live files name, the deploy
+   record, certbot's own newest "Failed to renew certificate <lineage>" log line, and
+   the scheduler. One state comes out: `scheduled`, `renewed`, `failed`, `overdue`,
+   `expired`, `scheduler_missing`, `disabled`, `deploy_incomplete`, `hook_missing`,
+   `hook_changed`, `owner_configured` (renewal settings changed outside CelikPanel;
+   kept), `lineage_missing`, `unknown`. A later expiry than the ledger's is recorded
+   as a renewal; unknown records nothing and never replaces a known failure; an
+   activation outbox state is never overwritten. The certificate card shows the
+   reason, who acts (the server administrator), the concrete next action
+   (`sudo certbot renew --cert-name <lineage>`, `sudo systemctl enable
+   --now certbot.timer`, `sudo nginx -t` and `sudo systemctl reload nginx`, Reissue)
+   and how it resumes; the Dashboard lists every problem state whatever the days.
+7. **"Renew automatically"** writes certbot's own `autorenew = True|False` line in
+   the lineage's `[renewalparams]`; nothing else in the file changes.
+8. **Mail SNI** (a site certificate that also secures `mail.<domain>`): an SNI entry
+   may name an OS-renewed lineage's live files (`fullchain.pem`, `privkey.pem`), so
+   Postfix's map `/etc/postfix/celikpanel_sni` and Dovecot's
+   `/etc/dovecot/conf.d/98-celikpanel-tls.conf` name stable paths and a renewal needs
+   no new plan: the deploy hook (point 4) rebuilds the map and reloads both, with no
+   CelikPanel program. The mail TLS plan (v1, `mutationpayload.CanonicalMailTLSSync`)
+   accepts such an entry when its names are one domain and its `mail.` name
+   (`NativeMailSNIDomain`; the lineage name carries no domain), and the Agent checks
+   that the lineage's files resolve into its own archive and that its certificate
+   covers every name. Immutable snapshots (uploaded certificates, earlier releases)
+   are unchanged. The mail host certificate keeps its own independent renewal runtime
+   (lineages `celikpanel-mail-*`, its own hook); the two hooks act on disjoint
+   lineages and the site hook never writes main.cf or the default certificate. A map
+   or reload failure is read as `deploy_incomplete` with its own guidance. An owner
+   who points `tls_server_sni_maps` at another map is left alone (`map_not_used`).
+9. **Certificates of earlier releases** (lineage named after the domain or
+   `cp-site-…`, snapshot paths) are **kept renewing by the running Panel exactly as
+   before, until they are reissued**. They are not migrated automatically: a
+   migration would have to issue a new certificate (a certbot lineage cannot be
+   moved between stores without rewriting certbot's own files) and change the
+   served vhost on every site at once; the owner reinstalls the test servers anyway,
+   and the card says on each such certificate that only the running Panel renews it
+   and that one Reissue moves it to the operating system. Reissuing creates the
+   native lineage; the earlier lineage stays in the isolated store as the rollback
+   record its ledger row is (nothing renews a replaced row). A replaced *native*
+   lineage keeps its files for the same reason, and the Panel writes
+   `autorenew = False` into it, so the operating system does not keep renewing a
+   certificate nothing serves.
+
+**Contracts.** No schema change (46). `ssl_certificates.renewal_status` gains the
+additive values `os_<state>`; `cert_path` of a native row is certbot's live full
+chain, `lineage_name` the native lineage. New Agent RPCs
+`SiteCertificateRenewalStateV1` (read) and `SetSiteCertificateAutoRenewV1`
+(certificate mutation, build-gated); the mail TLS plan v1 reader also accepts a
+native lineage's live files in an SNI entry (an additive reader change, same
+version);
+`IssueLetsEncryptCertificate` now always issues into the native store;
+`DeleteCertLineage` and `ReconcileSiteCertLineages` accept native names. New on-disk
+artifacts: the deploy hook v1 and the deploy record v1.
+
+**Going back to an earlier release.** The native files keep serving and renewing.
+That release's Agent refuses the live path when it re-renders the site's vhost (the
+file on disk stays as it is and keeps serving), its renewal job records the native
+certificate as failed (it cannot renew it; the OS still does), and its lineage
+cleanup never names a native lineage. A committed mail TLS plan whose SNI entry names
+a native lineage is refused by that release's plan reader: Postfix and Dovecot keep
+their files and keep serving, but that release cannot change mail TLS until it is
+brought forward again or the domain's mail certificate is switched off and on.
+Forward again, everything is read as it is.
+
+**Removal of the Panel.** Retain `/etc/letsencrypt`, the deploy hook, the site's
+nginx files including `/etc/nginx/celikpanel-managed.d/<domain>/` and the challenge
+roots under `/var/lib/celikpanel-agent/acme-http-01/` (no uninstaller exists yet; any
+future one must keep them). The record directory is optional.
+
+**Evidence and limits.** Component tests (Agent, Panel, web). One real-system run in
+a disposable Debian 13 chroot with Debian's certbot 4.0.0, nginx 1.26 and Pebble
+2.6.0 as the CA, EAB required ([deploy/e2e/d040](../deploy/e2e/d040/README.md)):
+the Agent's own code issued; certbot's dry run, then the timer's own command
+renewed, nginx served the new certificate and Postfix (STARTTLS, map type `hash`)
+and Dovecot 2.4 (IMAPS) offered it for `mail.<domain>` with no CelikPanel program
+present, their configuration files byte-identical; a failed renewal and an nginx that
+could not load the renewed certificate were read as `failed` and `deploy_incomplete`
+(mail still took it). **Not shown:** a systemd-driven timer firing on a booted
+system, Ubuntu (snap certbot), Arch and Dovecot 2.3's `ssl_cert = <` form, a real
+CA, the Panel's observer against a real Agent, reboot; the distro config matrix
+has the new cases but was not run on its five releases for this change. P0.5 is
+advanced for websites only; it stays partial and every open acceptance item stays
+open. The update pause of `deploy/panel-tls-snapshot.sh` also holds the website
+renewal for the length of an update, as it already did for webmail and mail.
+
+### Amendment (2026-10-30, clock date): certificates of earlier releases move at their next renewal; Dovecot 2.3, Ubuntu 24.04 and Arch measured
+
+*Branch `fix/cert-mail-known-gaps` from `release/alpha113`; not published; nothing
+measured on an installed server.* Owner's direction for alpha.113: no known problem
+may remain.
+
+1. **Point 9 changes.** A certificate of an earlier release (isolated store, or a
+   lineage named after the domain) is no longer only kept renewing by the running
+   Panel until a person reissues it: at its next renewal (the 12-hour job, within 30
+   days of expiry) the Panel replaces it with a native lineage
+   (`cmd/panel/site_cert_legacy_move.go`) through the same Agent issuance a Reissue
+   uses, with the same names (the mail name when the old certificate covered it),
+   automatic renewal and secure mail. The earlier certificate serves until the new
+   row is active and nginx's tested configuration names its live files; a later
+   failure is the renewal outbox's (`activation_pending`, `dependents_pending`,
+   waiting for the owner). A failed move records `move_failed_<kind>` (additive
+   `renewal_status` values; the row stays active and serving) and is retried every
+   run; from 14 days before expiry the earlier renewal runs instead and the move
+   failure is kept on the card. An answer that never arrived records nothing
+   (unknown); a lineage issued but never recorded is removed by the startup lineage
+   reconcile. The card says "nothing needs to be done", or the failure, who acts,
+   the next action and how it resumes (`legacy_move` additive field). **Not moved by
+   itself:** a certificate from an authority that requires EAB (ZeroSSL, Google Trust
+   Services), because CelikPanel does not keep those credentials; its card keeps
+   "Reissue it once". A replaced earlier-release lineage that lived in
+   `/etc/letsencrypt` itself (releases before the isolated store) is left as it is,
+   as after a manual Reissue.
+2. **Distro config matrix.** The native SNI fixture is certbot's real layout
+   (archive versions, live links); the matrix starts the real Dovecot and Postfix,
+   checks every SNI name's certificate (IMAPS 993, SMTP STARTTLS 25) and the no-SNI
+   default, then switches the live links to the next version as `certbot renew`
+   does, runs the site deploy hook (a stand-in `systemctl` maps reload to each
+   program's own command; containers have no systemd) and checks the renewed
+   certificate is served. Arch's Dovecot is rendered with CelikPanel's Arch main
+   file and MariaDB with Arch's `/etc/my.cnf.d/server.cnf`; the earlier N/A labels
+   for both were outdated.
+3. **Real boot.** `deploy/e2e/cert-mail-boot` boots Ubuntu 24.04 and Arch cloud images
+   under QEMU (packages from the release's mirrors, then no route out), issues with
+   the Agent's own code against a local Pebble, lets the release's own timer fire
+   (a runtime drop-in under `/run` moves only its schedule), then reboots.
+
+**Evidence** ([cert-mail-20261030](../deploy/e2e/dns-pair-acceptance/evidence/cert-mail-20261030/)).
+Matrix on Debian 12, Debian 13, Ubuntu 22.04, Ubuntu 24.04 and Arch: 0 FAIL; Dovecot
+2.3.19/2.3.16/2.3.21 (`ssl_cert = <`) and 2.4.1/2.4.5 serve each SNI name's
+certificate on IMAPS, Postfix on STARTTLS, and the renewed one after the site hook;
+no-SNI clients get the default certificate. Real boot, no CelikPanel program present:
+Ubuntu 24.04 (certbot 2.9.0 deb, `certbot.timer`, Dovecot 2.3.21, Postfix map `hash`)
+and Arch (certbot 5.8.0, `certbot-renew.timer` disabled before and enabled by the
+issuance, Dovecot 2.4.5 with CelikPanel's main file, Postfix map `lmdb`): the timer
+started the package's service, certbot renewed, the hook record read `nginx=reloaded
+mail=reloaded dovecot=reloaded`, https, SMTP and IMAPS served the renewed certificate,
+mail configuration byte-identical; after a reboot the timer is enabled and active and
+the renewed certificate is still served; the Agent reads `scheduled`, hook
+`installed`. Lab notes: Pebble keeps accounts in memory (a renewal across a reboot of
+the lab CA fails `accountDoesNotExist`), and certbot 5 renews at a third of the
+lifetime, so the lab issues ten-minute certificates (Ubuntu ran with one-day ones).
+Panel move: component tests only. **Not shown:** an installed server, a real CA, the
+move against a real Agent and CA, snap certbot, the remaining WARNs of the matrix
+(systemd 252/249 ignore two unit keys; nginx 1.24 "protocol options redefined" in the
+all-files-together case on Ubuntu 24.04). P0.5 stays partial.
+
+---
+
 ### Amendment (2026-10-26, clock date): webmail on its own address, served by the server's own web server; implemented in source for the v0.1.0-alpha.110 candidate
 
 The owner approved on 2026-10-26: webmail must not run on the panel's origin, where
@@ -57,8 +264,11 @@ candidate (not published; nothing measured on an installed server).
    policy, its stylesheet as text/css). Any failure puts the file back as it was
    and keeps the certificate. Another server block that already answers the name,
    or listens on an explicit public address on port 80 or 443, is refused with the
-   file; the mail certificate's own port-80 server may be shared (then `http://`
-   answers 404, said). Files the owner changed are never overwritten or removed.
+   file; the mail certificate's own port-80 server may be shared (alpha.113: that
+   server then redirects to `https://` while the address is enabled and answers
+   404 again when it is removed, the check staying reachable over http; one the
+   owner changed is left as it is, said). Files the owner changed are never
+   overwritten or removed.
 4. **Roundcube's own settings** for the origin (`use_https`, `session_samesite`
    Strict) are added only to its configuration in CelikPanel's form; an
    owner-edited configuration is left as it is and said. IMAP and SMTP stay local.
@@ -83,6 +293,57 @@ disposable test CA instead of Let's Encrypt
 Not measured on an installed server. This amendment closes no P0 item.
 
 ---
+
+## D-039 · One successful license check keeps management open for up to seven days offline; panels in use check about hourly
+
+*October 30, 2026 (clock date) · Owner approval of 2026-10-29 ("ok" to: license verification valid about 7 days offline, checked about hourly) · Source change on `feat/license-offline-grace`; not deployed, no installed panel updated*
+
+**Why.** Since #134 (v0.1.0-alpha.64) the service signed a one-minute window and
+the panel capped every receipt at `issued_at + 60 s`. One central outage of
+celikpanel.net longer than a minute therefore closed the management screens of
+every installed panel at once (sites, mail and DNS kept running). That is a
+single point of failure across all customers, at odds with D-022's owner
+independence.
+
+**Decision.**
+- The membership service signs `refresh_after = now + 3600` and
+  `offline_until = min(now + 7 days, annual expiry)`; the v1 format already
+  permitted seven days, so no format change.
+- The panel honours `min(offline_until, issued_at + 7 days, expiry)` and checks at
+  the earlier of `refresh_after` and one hour, minus up to a fifth as
+  deterministic per-server jitter. Failures back off 1→30 minutes (also jittered),
+  never past the lapse; after a lapse, 30 seconds on use. Only authenticated use
+  or "Check again" contacts the service; an idle server has no timer.
+- A due check waits at most 3 s while the receipt is still valid (single shared
+  refresh), so a reachable service's explicit rejection (`invalid_activation` after
+  remove, release or key replacement; `invalid_license`, `license_in_use`,
+  `license_expired`) still closes management on the very request that discovered
+  it; an unreachable service costs one request at most 3 s per retry delay.
+- Clock safety: the window is anchored on the service's `issued_at`; a clock more
+  than 5 minutes before it, more than 5 minutes below the persisted local
+  high-water mark `seen_at`, or set back while running (wall vs. monotonic) gives
+  `verification_unavailable` / `clock_behind` until a check succeeds.
+- D-024 guidance: the license page and Dashboard say "the license service cannot
+  be reached; nothing to do; works until …", warn in the last 48 hours with who
+  acts (the server administrator: allow outbound HTTPS to celikpanel.net, then
+  Check again), and a lapse names its cause on the recovery screen.
+
+**Compatibility.** Old panels (alpha.64 … this release) accept seven-day receipts
+and keep their own 60-second cap and 45-second refresh; new panels receiving the
+old service's 60-second receipt honour exactly that minute. Panels before
+alpha.64 already honoured the signed window. The local `seen_at` field is ignored
+by older panels on downgrade.
+
+**Resilience contract (D-025).** Affected: access gate and persisted license
+evidence (`license.json` gains the optional local `seen_at`; signed payload
+unchanged). Recovery: a lapse or clock fault recovers by the next successful
+check, on use or "Check again"; nothing is rewritten without a verified answer.
+Evidence: component tests (licensing, cmd/panel, web, PHP service and HTTP flow,
+PHP↔Go interop, an unchanged alpha.112 licensing package against a new-service
+receipt). Remaining gaps: no native multi-day outage run on a real installation;
+root on the server can still defeat any local check (restore an old file and set
+the clock back), as before; the membership service change must be deployed by
+the owner.
 
 ## D-038 · Versions, use and security follow one principle for every component: the owner chooses, the panel recommends and warns, nothing in use is removed, nothing is moved silently, and patches are the operating system's job
 
@@ -2701,6 +2962,49 @@ and every other limit above are unchanged; a new major or minor release
 needs new measurement. Patch releases inside the series are accepted
 without a new native run, so a later point release that changes behaviour
 is a known limit.
+
+**Amendment, October 30, 2026 (owner decision: "Arch'ta PowerDNS
+kullanacağım").** The tested series is held **per package family**. Debian
+and Ubuntu keep everything above (Debian's archive build of 4.9, dpkg
+md5sums). Arch Linux x86_64 gets its own measured build: `powerdns` 5.1 from
+Arch's official `extra` repository only (never the AUR or a third-party
+repository), daemon `/usr/bin/pdns_server`, user and group `powerdns`,
+`pdns.conf` 0644 root:root. The same one rule decides what the wizard offers,
+what the review accepts, what the Agent installs and what its post-install
+check and the independent recovery attestation accept: a pacman version with
+no epoch, a numeric patch and pkgrel, in 5.1. Provenance is the repository
+pacman names for the candidate (`extra`), read from the current databases
+before any effect and read again from the refreshed databases under the
+package lock immediately before the one `pacman -Su` transaction; nothing is
+installed when it is another series or another repository. File identity
+comes from pacman's own local database: the daemon and the vendor unit must
+equal the SHA-256 the installed package recorded (mtree), so a legitimate
+`pacman -Syu` inside 5.1 changes file and record together and is accepted,
+like a Debian point release; a changed file is not. The same limits as above
+apply (root on the host, a compromised mirror). Journals and state documents
+of an Arch tenure carry their own marker
+(`pdns-fresh-paired-primary/arch-5.1/v1`); a state must carry its own
+journal's marker, and a reader older than this release refuses an Arch
+document rather than misreading it. Measured on a lab guest: the 5.1.5
+producer's start-up SQL change and the 5.1.5 consumer's member rows are
+those 4.9 makes.
+
+On Arch, PowerDNS is installed only as a **first install on a server with no
+DNS software**: one server keeping its own DNS, the paired primary, or the
+paired secondary (`pdns_arch_setup_only` and the Agent refuse anything else
+before any effect: switching an existing DNS server to PowerDNS,
+reinstalling, reconfiguring, adopting an owner-installed PowerDNS). Arch is
+rolling and the owner runs `pacman -Syu` (CelikPanel never upgrades Arch on
+its own). When the candidate leaves 5.1, the wizard stops offering PowerDNS
+as the main DNS server with the reason. When an installed PowerDNS leaves its
+tested series through the owner's update, PowerDNS keeps answering from its
+native configuration (D-022); CelikPanel holds DNS changes into it (they are
+refused before any effect with the reason), shows
+`engine_series_untested` on the DNS screens with who acts and what next
+(D-024), and continues by itself once the installed release is in a tested
+series again, for example after a CelikPanel release that names it. The
+first-install recovery contract of D-026 is unchanged. Evidence:
+[arch-powerdns-20261030](../deploy/e2e/dns-pair-acceptance/evidence/arch-powerdns-20261030/).
 
 ---
 

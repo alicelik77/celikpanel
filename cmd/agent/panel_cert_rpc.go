@@ -25,6 +25,14 @@ import (
 var validPanelCertLineage = regexp.MustCompile(`^celikpanel-panel-[a-f0-9]{24}$`)
 var validStagedSiteLineage = regexp.MustCompile(`^cp-site-[1-9][0-9]*-[a-f0-9]{24}$`)
 
+// validAgentGeneratedSiteLineage is a lineage name only the Agent makes: an
+// earlier release's staged name (cp-site-...) or an OS-renewed website lineage
+// (celikpanel-site-..., D-040). Both carry an Agent-generated random part, so
+// deleting exactly such a name never reaches an owner's own lineage.
+func validAgentGeneratedSiteLineage(lineage string) bool {
+	return validStagedSiteLineage.MatchString(lineage) || transport.IsNativeSiteLineage(lineage)
+}
+
 const (
 	managedPanelTLSDir   = "/var/lib/celikpanel/tls"
 	panelACMEVhostPrefix = "celikpanel-panel-acme-"
@@ -440,7 +448,22 @@ func panelCertLineageName(domain string) string {
 	return fmt.Sprintf("celikpanel-panel-%x", sum[:12])
 }
 
+// renderPanelACMEChallengeVhost is the name's port-80 server in the form it
+// should have now: everything else answers 404, unless CelikPanel's webmail
+// serves HTTPS on the same name (its address shares this port-80 server),
+// in which case everything else redirects to https (alpha.113). certbot's
+// HTTP-01 check is answered over http in both forms.
 func renderPanelACMEChallengeVhost(domain, challengeRoot string) string {
+	return renderPanelACMEChallengeVhostForm(domain, challengeRoot, webmailAddressSharesPanelACME(domain))
+}
+
+// renderPanelACMEChallengeVhostForm is the port-80 server with everything
+// but the HTTP-01 check answered 404 (redirect false) or redirected to https.
+func renderPanelACMEChallengeVhostForm(domain, challengeRoot string, redirect bool) string {
+	rest := "        return 404;\n"
+	if redirect {
+		rest = "        return 301 https://$host$request_uri;\n"
+	}
 	return fmt.Sprintf(
 		"# Managed by CelikPanel. Kept active for certbot renewals.\n"+
 			"server {\n"+
@@ -453,10 +476,10 @@ func renderPanelACMEChallengeVhost(domain, challengeRoot string) string {
 			"        try_files $uri =404;\n"+
 			"    }\n\n"+
 			"    location / {\n"+
-			"        return 404;\n"+
+			"%s"+
 			"    }\n"+
 			"}\n",
-		domain, challengeRoot,
+		domain, challengeRoot, rest,
 	)
 }
 
@@ -542,7 +565,7 @@ func (a *Agent) DeleteCertLineage(req *DeleteCertLineageRequest, resp *DeleteCer
 	normalizedLineages := make([]string, 0, len(req.LineageNames))
 	for _, raw := range req.LineageNames {
 		lineage := strings.ToLower(strings.TrimSpace(raw))
-		if !validStagedSiteLineage.MatchString(lineage) {
+		if !validAgentGeneratedSiteLineage(lineage) {
 			resp.Error = "invalid staged lineage name"
 			return nil
 		}

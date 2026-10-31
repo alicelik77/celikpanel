@@ -245,7 +245,17 @@ func (p *Panel) startServerSetupDNS(ctx context.Context, draft serverSetupDraft,
 	if err := p.requireDNSEngineSwitchV1Agent(ctx); err != nil {
 		return err
 	}
-	runtimes, conflict, hold, err := p.readDNSBackendRuntime(ctx)
+	readiness, err := p.readDNSBackendReadinessResponse(ctx)
+	if err != nil {
+		return err
+	}
+	// The Agent keeps an earlier DNS operation's journal: it would refuse
+	// this install, so setup waits with that reason instead of starting an
+	// operation that cannot proceed (drill apd-e retry, 2026-10-30).
+	if retained := retainedDNSSwitchJournal(readiness); retained != nil {
+		return &serverSetupDNSJournalRetainedError{retained: retained}
+	}
+	runtimes, conflict, hold, err := validateDNSBackendReadiness(readiness)
 	if err != nil {
 		return err
 	}

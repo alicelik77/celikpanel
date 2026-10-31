@@ -19,6 +19,67 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 > kayıtlar saat tarihini kullanır; D-029 dışında 10, 11 veya 12 Ekim 2026 tarihli bir
 > kayıt gerçektir.
 
+## D-040 · Web sitesi sertifikasını Panel değil, işletim sisteminin certbot'u yeniler
+
+*30 Ekim 2026 (saat tarihi) · Kaynakta bulunan bir ilke ihlalinin düzeltmesi; `fix/site-cert-native-renewal` dalında kaynakta, bileşen testli ve yerel bir test CA'ya karşı atılabilir bir chroot denemesi; yayımlanmadı, kurulu sunucuda ölçülmedi. Ayrıntı: [D-040 (İngilizce)](DECISIONS.md)*
+
+**Yanlış olan.** D-022 ve anayasa (§2), panel kesintisinin, lisans kaybının ya da
+kaldırılmasının sertifika yenilemesini durdurmamasını ister. Her ACME web sitesi
+sertifikası CelikPanel'in yalıtılmış certbot deposunda tutuluyor, nginx'in
+adlandırdığı değişmez bir kopyaya (`/etc/ssl/celikpanel/<alan>/sha256-…/`) alınıyor ve
+yalnız çalışan Panel'in 12 saatlik döngüsüyle yenileniyordu. İşletim sisteminin
+`certbot.timer`'ı bu lineage'ları görmüyordu. Panel durursa ya da kaldırılırsa her site
+sertifikası en geç 90 günde bitiyordu; başarısız yenileme yalnız veritabanına
+`failed` yazıyor, kimseye söylenmiyordu.
+
+**Karar.** Bu sürümün verdiği her web sitesi sertifikası standart depoda
+(`/etc/letsencrypt`) kendi lineage'ı olur (`celikpanel-site-<alan kimliği>-<24 hex>`),
+webroot doğrulaması sitenin root'a ait doğrulama kökünden yapılır; yenileme
+yapılandırmasını certbot kendisi yazar. nginx certbot'un live dosyalarını adlandırır;
+yenilemeyi işletim sisteminin zamanlayıcısı yapar; CelikPanel programı gerektirmeyen
+düz sh dağıtım kancası
+(`/etc/letsencrypt/renewal-hooks/deploy/celikpanel-site-certificates`) `nginx -t`
+sonrası nginx'i yeniden yükler ve sonucu kaydeder. Kanca yalnız yoksa yazılır;
+sahibin değiştirdiği kanca korunur ve sayfada söylenir. EAB bilgileri komut satırına
+ve yenileme yapılandırmasına girmez (0600 geçici `--config` dosyası). Panel yerel bir
+lineage'ı asla yenilemez; yalnız okur ve kaydeder; sertifika kartı nedeni, kimin
+yapacağını (sunucu yöneticisi), somut sonraki adımı ve nasıl devam edileceğini
+söyler; Pano her sorunu gün sayısından bağımsız listeler. Önceki sürümlerin
+sertifikaları yeniden alınana kadar çalışan Panel tarafından eskisi gibi yenilenir;
+kart bunu ve bir kez yeniden almanın onları işletim sistemine taşıdığını söyler.
+
+**Posta SNI.** Site sertifikası `mail.<alan>` için de kullanılıyorsa SNI girdisi
+certbot'un live dosyalarını adlandırır; kanca CelikPanel'in Postfix SNI haritasını
+diskteki hâliyle yeniden derler (`postmap -F`) ve Postfix ile Dovecot'u yeniden
+yükler; yapılandırma yazmaz; sahip haritayı başka yere yönelttiyse dokunmaz. Posta
+sunucusu sertifikasının kendi bağımsız yenilemesi ayrı lineage'larla sürer.
+
+**Açık kalanlar.** Systemd ile açılmış bir sistemde zamanlayıcının
+kendisi, Ubuntu (snap), Arch ve Dovecot 2.3, gerçek bir CA, yeniden başlatma ölçülmedi;
+önceki sürüme dönüşte o sürüm yerel lineage adlandıran posta TLS planını okuyamaz
+(Postfix ve Dovecot sunmaya devam eder, posta TLS değişikliği ileri dönene kadar
+yapılamaz). Şema
+değişikliği yok (46). P0.5 yalnız web siteleri için ilerledi; kısmi kalır.
+
+### Ek (30 Ekim 2026, saat tarihi): önceki sürümün sertifikası bir sonraki yenilemesinde taşınır; Dovecot 2.3, Ubuntu 24.04 ve Arch ölçüldü
+
+*`release/alpha113`'ten `fix/cert-mail-known-gaps` dalı; yayımlanmadı; kurulu sunucuda
+ölçülmedi.* Önceki sürümün sertifikası artık yalnız yeniden alınana kadar çalışan
+Panel'ce yenilenmez: bir sonraki yenilemesinde Panel onu, Yeniden al'ın kullandığı aynı
+Ajan çağrısıyla yerel bir lineage'a taşır (`cmd/panel/site_cert_legacy_move.go`); eski
+sertifika, yenisi etkin olup nginx'in denenmiş yapılandırması onu adlandırana kadar
+sunulur. Başarısız taşıma `move_failed_<tür>` kaydeder, her çalışmada yeniden denenir;
+bitimine 14 gün kala eski yolla yenilenir ve hata kartta kalır. Yanıt gelmezse hiçbir
+şey kaydedilmez (bilinmiyor). EAB isteyen sağlayıcıların sertifikası kendiliğinden
+taşınmaz (bilgiler saklanmaz); kart "bir kez yeniden alın" der. Dağıtım yapılandırma
+matrisi gerçek Dovecot ve Postfix'te her SNI adının sertifikasını, kancalı yenilemeden
+sonra yenisini denetler; Arch Dovecot ve MariaDB artık "uygulanamaz" değil, ölçülür.
+Ubuntu 24.04 ve Arch, QEMU'da gerçek açılışla ölçüldü. Kanıt:
+[cert-mail-20261030](../deploy/e2e/dns-pair-acceptance/evidence/cert-mail-20261030/).
+P0.5 kısmi kalır.
+
+---
+
 ### Değişiklik (26 Ekim 2026, saat tarihi): web postası kendi adresinde, sunucunun kendi web sunucusuyla; v0.1.0-alpha.110 adayı için kaynakta uygulandı
 
 Sahip 26 Ekim 2026'da onayladı: web postası panelin kökeninde çalışmamalı; orada
@@ -55,7 +116,10 @@ bir sunucuda hiçbir şey ölçülmedi).
    text/css stil dosyası). Her hatada dosya eski haline döner, sertifika kalır.
    Adı zaten yanıtlayan ya da 80/443'te açık bir genel adresi dinleyen başka bir
    sunucu bloğu dosyasıyla reddedilir; posta sertifikasının kendi 80 sunucusu
-   paylaşılabilir (o zaman `http://` 404 verir, söylenir). Sahibin değiştirdiği
+   paylaşılabilir (alpha.113: adres açıkken o sunucu `https://` adresine
+   yönlendirir, adres kaldırılınca yeniden 404 verir; doğrulama http üzerinden
+   erişilebilir kalır; sahibin değiştirdiği o sunucu olduğu gibi bırakılır,
+   söylenir). Sahibin değiştirdiği
    dosyalar asla üzerine yazılmaz ya da silinmez.
 4. **Roundcube'un kendi ayarları** (`use_https`, `session_samesite` Strict)
    yalnız CelikPanel biçimindeki yapılandırmasına eklenir; sahibin değiştirdiği
@@ -81,6 +145,58 @@ bir test CA'sıyla tek gerçek sistem koşusu
 Kurulu bir sunucuda ölçülmedi. Bu değişiklik hiçbir P0 işini kapatmaz.
 
 ---
+
+## D-039 · Bir başarılı lisans kontrolü yönetimi çevrimdışı en çok yedi gün açık tutar; kullanımdaki panel yaklaşık saatte bir kontrol eder
+
+*30 Ekim 2026 (saat tarihi) · Sahibin 2026-10-29 onayı (lisans doğrulaması çevrimdışı yaklaşık 7 gün geçerli, yaklaşık saatte bir kontrol: "ok") · Kaynak değişikliği `feat/license-offline-grace` dalında; yayımlanmadı, kurulu panel güncellenmedi*
+
+**Neden.** #134'ten (v0.1.0-alpha.64) beri hizmet bir dakikalık süre imzalıyor,
+panel de her kaydı `issued_at + 60 sn` ile sınırlıyordu. celikpanel.net'in bir
+dakikadan uzun tek bir kesintisi bu yüzden kurulu bütün panellerin yönetim
+ekranlarını aynı anda kapatıyordu (siteler, e-posta ve DNS çalışmaya devam
+ediyordu). Bu bütün müşteriler için tek hata noktasıdır ve D-022'deki sahip
+bağımsızlığıyla çelişir.
+
+**Karar.**
+- Üyelik hizmeti `refresh_after = şimdi + 3600` ve
+  `offline_until = min(şimdi + 7 gün, yıllık bitiş)` imzalar; v1 biçimi yedi güne
+  zaten izin veriyordu, biçim değişmez.
+- Panel `min(offline_until, issued_at + 7 gün, bitiş)` sınırını uygular; `refresh_after`
+  ile bir saatin erken olanında, sunucuya özgü belirlenimci sapmayla beşte bire kadar
+  erken kontrol eder. Başarısızlıkta 1→30 dakika bekler (o da sapmalı), hiçbir zaman
+  kaydın geçersizleşeceği andan sonra değil; geçersizleşince kullanımda 30 saniyede
+  bir. Hizmete yalnız kimliği doğrulanmış kullanım ya da "Tekrar kontrol et" ulaşır;
+  boştaki sunucuda zamanlayıcı yoktur.
+- Zamanı gelen kontrol, kayıt geçerliyken en çok 3 sn bekler (tek ortak yenileme);
+  böylece erişilebilen hizmetin açık reddi (kaldırma, taşıma ya da anahtar
+  değiştirme sonrası `invalid_activation`; `invalid_license`, `license_in_use`,
+  `license_expired`) yönetimi onu saptayan istekte kapatır; erişilemeyen hizmet her
+  bekleme aralığında en çok bir isteği 3 sn geciktirir.
+- Saat güvenliği: süre hizmetin `issued_at` değerine bağlıdır; ondan 5 dakikadan
+  fazla önceki, kalıcı yerel üst işaret `seen_at`'ın 5 dakikadan fazla altındaki ya
+  da çalışırken geri alınan saat (duvar saati ile monoton zaman) bir kontrol başarılı
+  olana kadar `verification_unavailable` / `clock_behind` verir.
+- D-024 yönlendirmesi: lisans sayfası ve Pano "lisans hizmetine ulaşılamıyor;
+  yapmanız gereken bir şey yok; … tarihine kadar çalışır" der, son 48 saatte kimin ne
+  yapacağını söyler (sunucu yöneticisi: celikpanel.net'e giden HTTPS'e izin verip
+  Tekrar kontrol et), süre dolarsa kurtarma ekranı nedeni adıyla söyler.
+
+**Uyumluluk.** Eski paneller (alpha.64 … bu sürüm) yedi günlük kaydı kabul eder ve
+kendi 60 saniyelik sınırlarını ve 45 saniyelik yenilemelerini korur; eski hizmetin
+60 saniyelik kaydını alan yeni panel tam o dakikayı uygular. alpha.64 öncesi
+paneller imzalı süreyi zaten uyguluyordu. Yerel `seen_at` alanını eski paneller
+geri dönüşte yok sayar.
+
+**Dayanıklılık sözleşmesi (D-025).** Etkilenen: erişim kapısı ve kalıcı lisans
+kanıtı (`license.json` isteğe bağlı yerel `seen_at` alanını kazanır; imzalı içerik
+değişmez). Kurtarma: süre dolması ya da saat sorunu bir sonraki başarılı kontrolle,
+kullanımda ya da "Tekrar kontrol et" ile düzelir; doğrulanmış yanıt olmadan hiçbir
+şey yeniden yazılmaz. Kanıt: bileşen testleri (licensing, cmd/panel, web, PHP hizmeti
+ve HTTP akışı, PHP↔Go birlikte çalışma, değiştirilmemiş alpha.112 licensing paketinin
+yeni hizmet kaydıyla denenmesi). Kalan açıklar: gerçek bir kurulumda çok günlük
+kesinti denemesi yapılmadı; sunucuda root olan kişi her yerel kontrolü yine aşabilir
+(eski dosyayı geri koyup saati geri almak), önceden olduğu gibi; üyelik hizmeti
+değişikliğini sahip yayımlar.
 
 ## D-038 · Sürüm, kullanım ve güvenlik her bileşen için tek ilkeye bağlıdır: sahibi seçer, panel önerir ve uyarır, kullanımda olan kaldırılmaz, hiçbir şey sessizce taşınmaz, yamalar işletim sisteminin işidir
 
@@ -2692,6 +2808,48 @@ reddedilir. Sunucu profili, topoloji ve yukarıdaki diğer sınırlar değişmez
 yeni major/minor sürüm yeni ölçüm ister. Seri içi yama sürümleri yeni gerçek
 koşu olmadan kabul edilir; davranışı değiştiren bir yama sürümü bilinen
 sınırdır.
+
+**Ek, 30 Ekim 2026 (sahip kararı: "Arch'ta PowerDNS kullanacağım").**
+Denenmiş seri artık **paket ailesine göre** tutulur. Debian ve Ubuntu için
+yukarıdaki her şey aynen kalır (Debian arşivinin 4.9 yapısı, dpkg md5sums).
+Arch Linux x86_64 kendi ölçülen yapısını alır: yalnız Arch'ın resmi `extra`
+deposundan `powerdns` 5.1 (AUR ya da üçüncü taraf depo asla), daemon
+`/usr/bin/pdns_server`, kullanıcı ve grup `powerdns`, `pdns.conf` 0644
+root:root. Sihirbazın sunduğunu, incelemenin kabul ettiğini, Agent'ın
+kurduğunu, kurulum sonrası denetimin ve bağımsız kurtarma doğrulamasının
+kabul ettiğini yine tek kural belirler: epoch'suz, yama ve pkgrel'i sayı olan,
+5.1 serisinde bir pacman sürümü. Kaynak kanıtı, pacman'ın aday için gösterdiği
+depodur (`extra`): her etkiden önce mevcut veritabanından, tek `pacman -Su`
+işleminden hemen önce de paket kilidi altında tazelenmiş veritabanından
+yeniden okunur; başka seri ya da başka depo ise hiçbir şey kurulmaz. Dosya
+kimliği pacman'ın kendi yerel veritabanından gelir: daemon ve hizmet birimi,
+kurulu paketin kaydettiği SHA-256 ile (mtree) aynı olmalıdır. Böylece 5.1
+içindeki olağan bir `pacman -Syu` dosyayı ve kaydı birlikte değiştirir ve
+Debian yama sürümü gibi kabul edilir; elle değişmiş dosya kabul edilmez.
+Yukarıdaki sınırlar aynen geçerlidir (sunucudaki root, ele geçirilmiş yansı).
+Arch kurulumunun günlükleri ve durum belgeleri kendi işaretini taşır
+(`pdns-fresh-paired-primary/arch-5.1/v1`); bir durum kendi günlüğünün
+işaretini taşımak zorundadır ve bu sürümden eski bir okuyucu Arch belgesini
+yanlış okumak yerine reddeder. Deneme sanal makinesinde ölçüldü: 5.1.5
+üreticinin açılıştaki SQL değişikliği ve 5.1.5 tüketicinin üye satırları
+4.9'unkiyle aynıdır.
+
+Arch'ta PowerDNS yalnız **DNS yazılımı olmayan bir sunucuya ilk kurulum**
+olarak kurulur: kendi DNS'ini tutan tek sunucu, eşli ana ya da eşli yedek
+sunucu (`pdns_arch_setup_only` ve Agent başka her şeyi her etkiden önce
+reddeder: var olan DNS sunucusunu PowerDNS'e çevirmek, yeniden kurmak, yeniden
+ayarlamak, sahibin kurduğu PowerDNS'i devralmak). Arch sürekli güncellenen bir
+dağıtımdır ve `pacman -Syu`'yu sahip çalıştırır (CelikPanel Arch'ı kendiliğinden
+yükseltmez). Aday 5.1'in dışına çıkınca sihirbaz PowerDNS'i ana DNS sunucusu
+olarak gerekçesiyle sunmaz. Kurulu PowerDNS sahibin güncellemesiyle denenmiş
+serinin dışına çıkarsa PowerDNS kendi yapılandırmasıyla yanıt vermeye devam
+eder (D-022); CelikPanel ona DNS değişikliği yayımlamayı bekletir (değişiklik
+her etkiden önce gerekçesiyle reddedilir), DNS ekranlarında
+`engine_series_untested` ile kimin ne yapacağını söyler (D-024) ve kurulu
+sürüm yeniden denenmiş bir seride olunca (örneğin onu adlandıran bir CelikPanel
+sürümünden sonra) kendiliğinden sürer. D-026'nın ilk kurulum kurtarma sözleşmesi
+değişmez. Kanıt:
+[arch-powerdns-20261030](../deploy/e2e/dns-pair-acceptance/evidence/arch-powerdns-20261030/).
 
 ---
 

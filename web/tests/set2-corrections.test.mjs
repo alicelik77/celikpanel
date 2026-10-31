@@ -45,7 +45,7 @@ const importKeys = [
   'import.part.files', 'import.part.mail', 'import.part.mailbox', 'import.part.forwarders', 'import.part.forwarder', 'import.part.dns',
   'import.part.databases', 'import.part.database', 'import.part.finalize', 'import.detail.noPassword',
 ];
-const certificateKinds = ['authority_unreachable', 'validation', 'rate_limited', 'timeout', 'tool'];
+const certificateKinds = ['authority_unreachable', 'validation', 'rate_limited', 'timeout', 'tool', 'server_clock'];
 const certificateKeys = [...certificateKinds.map((kind) => `ssl.issueFailure.${kind}`), 'ssl.issueFailure.said'];
 const reloadKeys = ['reload', 'reload_reread', 'reload_not_reread', 'not_running'].map((reason) => `err.SERVICE_ACTION_FAILED.${reason}`);
 
@@ -132,7 +132,8 @@ test('a certificate request certbot did not fulfil stays on the page with its ki
   assert.match(notice, /role="alert"/);
   for (const kind of certificateKinds) assert.match(notice, new RegExp(`${kind}: 'ssl\\.issueFailure\\.${kind}'`));
   // A kind this page has no words for gets the general sentence, never a key.
-  assert.match(notice, /t\(sentences\[failure\.reason \?\? ''\] \?\? 'ssl\.issueFailure\.tool', \{ domain: failure\.vars\?\.domain \?\? '' \}\)/);
+  // The answer's own words (alpha.113: the server clock's times) fill it.
+  assert.match(notice, /t\(sentences\[failure\.reason \?\? ''\] \?\? 'ssl\.issueFailure\.tool', \{ \.\.\.failure\.vars, domain: failure\.vars\?\.domain \?\? '' \}\)/);
   assert.match(settings, /if \(isCertificateIssueFailure\(apiError\)\) \{\s*setIssueFailure\(apiError\);\s*return;/);
   assert.match(settings, /<CertificateIssueNotice failure=\{issueFailure\} onClose=\{\(\) => setIssueFailure\(null\)\}/);
   // The next request clears the notice of the one before.

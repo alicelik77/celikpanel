@@ -288,6 +288,15 @@ type DNSBackendRuntimeState struct {
 	// OwnerChanged: etkin motorun panelin yayımladığı dosyaları panel dışında
 	// değişti; panel üzerine yazmaz.
 	OwnerChanged bool `json:"owner_changed,omitempty"`
+	// UntestedVersion (2026-10-30): the active PowerDNS runs a package
+	// release outside its tested series, for example after the owner's
+	// `pacman -Syu` moved Arch's powerdns from 5.1 to 5.2. PowerDNS keeps
+	// answering; CelikPanel holds DNS changes and says so. Empty when the
+	// release is tested, the rule does not apply or the read failed.
+	// Additive: an older Agent omits it.
+	// UntestedVersion: etkin PowerDNS denenmiş serinin dışında bir sürümde;
+	// yanıt vermeye devam eder, panel DNS değişikliklerini bekletir.
+	UntestedVersion string `json:"untested_version,omitempty"`
 }
 
 // The vocabulary of a takeover's difference list. The agent reads these
@@ -464,7 +473,23 @@ type DNSBackendReadinessResponse struct {
 	// ile "başkası bir DNS sunucusu kurmuş" zıt teşhislerdir ve zıt çözümleri
 	// vardır.
 	MutationHold string `json:"mutation_hold,omitempty"`
-	Error        string `json:"error,omitempty"`
+	// SwitchJournalRequestID names the request of a DNS engine switch journal
+	// the Agent still keeps: that operation was neither finished nor
+	// confirmed undone, and the journal blocks every new DNS engine switch.
+	// SwitchJournalUnverified reports that the journal could not be read, so
+	// its absence is not proven. Both are read-only observations (D-024): the
+	// Panel never records a rollback, and setup never starts a new DNS
+	// install, while either is set. An older Agent leaves both empty.
+	//
+	// SwitchJournalRequestID, Agent'ın hâlâ tuttuğu DNS motoru değişim
+	// günlüğünün isteğini adlandırır: o işlem ne bitti ne de geri alındığı
+	// doğrulandı; günlük her yeni DNS değişimini engeller.
+	// SwitchJournalUnverified, günlüğün okunamadığını, yokluğunun
+	// kanıtlanmadığını bildirir. Panel bunlardan biri varken geri alma
+	// kaydetmez, kurulum yeni DNS kurulumu başlatmaz.
+	SwitchJournalRequestID  string `json:"switch_journal_request_id,omitempty"`
+	SwitchJournalUnverified bool   `json:"switch_journal_unverified,omitempty"`
+	Error                   string `json:"error,omitempty"`
 }
 
 type DNSSECRequest struct {

@@ -26,8 +26,8 @@ func resolvePDNSGroupGID(ctx context.Context) (uint32, error) {
 	if err != nil {
 		return 0, err
 	}
-	return resolvePDNSGroupGIDWithRunner(
-		ctx, getent,
+	return resolveNamedPDNSGroupGIDWithRunner(
+		ctx, getent, pdnsServiceGroupForFamily(detectPkgFamily()),
 		func(commandCtx context.Context, name string, args ...string) ([]byte, error) {
 			command := serviceMutationCommand(commandCtx, name, args...)
 			command.Env = aptBINDStatOverrideCommandEnvironment()

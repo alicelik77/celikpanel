@@ -1,0 +1,14 @@
+== owner: Retry this deletion 23:44:30
+202 {  "domain": "r4shop113.test",  "message": "The DNS change is saved, but its private peer challenge cannot be reconciled. This server's administrator reads the Agent log lines for this deletion on this server with sudo journalctl -u celikpanel-agent | grep peer; they name the step that stopped and its reason. A retry is safe because each challenge can be used only once and a retry starts a new one. CelikPanel re-checks this same publication by itself (first after about 15 seconds, then less ofte
+listed: yes
+2026-10-30T23:44:34+00:00 frankfurt agent[1358]: 2026/10/30 23:44:34 DNS peer proof for r4shop113.test (PowerDNS secondary) stopped at step challenge_write as dns_peer_journal_unknown: challenge publish: pdns_peer_challenge_context_mismatch
+2026-10-30T23:44:34+00:00 frankfurt agent[1358]: 2026/10/30 23:44:34 DNS peer proof for r4shop113.test (PowerDNS secondary) step times: prepare=1.312s challenge_write=1.289s; total 2.601s; outcome pending dns_peer_journal_unknown
+2026-10-30T23:44:34+00:00 frankfurt agent[1358]: 2026/10/30 23:44:34 DNS zone V3 recovery remains pending for r4shop113.test: paired DNS deletion is not confirmed yet (check=peer_native_zone): waiting for the backup DNS server to confirm the deletion; the Panel checks the same operation again automa
+---
+2026-10-30T23:37:28+00:00 frankfurt agent[1358]: 2026/10/30 23:37:28 DNS peer proof admitted the PowerDNS daemon's re-stamp of catalog catalog-c000036e.celikpanel.invalid (operation zone r4shop113.test): serial 1793402914 -> 1793403447, CATALOG-HASH SK0GQ1UPs/g7... -> s7BbuEfz7JXq..., identity, memb
+---
+2026-10-30T23:37:11+00:00 frankfurt pdns_server[951]: AXFR-out zone 'catalog-c000036e.celikpanel.invalid', client '192.0.3.110:39624', transfer initiated
+2026-10-30T23:37:19+00:00 frankfurt pdns_server[951]: AXFR-out zone 'catalog-c000036e.celikpanel.invalid', client '192.0.3.110:39650', transfer initiated
+2026-10-30T23:37:21+00:00 frankfurt pdns_server[951]: Cache clear request for 'catalog-c000036e.celikpanel.invalid$' received from operator
+2026-10-30T23:37:21+00:00 frankfurt pdns_server[951]: Notification request to host 192.0.3.111:53 for zone 'catalog-c000036e.celikpanel.invalid' received from operator
+2026-10-30T23:37:22+00:00 frankfurt pdns_server[951]: AXFR-out zone 'catalog-c000036e.celikpanel.invalid', client '192.0.3.111:47367', transfer initiated

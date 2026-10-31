@@ -39,6 +39,15 @@ type NginxGenerator struct {
 	// nginxActive is `systemctl is-active nginx` (a test seam); nil asks
 	// systemd, except in development mode (nginxDir), which answers unknown.
 	nginxActive func() string
+	// nginxFeatures is the installed nginx's measurement (a test seam); nil
+	// measures the host (nginx_features.go).
+	nginxFeatures func() NginxFeatures
+	// nginxDump is `nginx -T` (a test seam); nil runs it
+	// (nginx_default_https.go).
+	nginxDump func() (string, error)
+	// hostResolution is the server's /etc/resolv.conf and /etc/hosts (a test
+	// seam); nil reads them (nginx_proxy_upstream.go).
+	hostResolution func() HostResolution
 }
 
 // nginxServiceActive is whether nginx runs: "true", "false" or "unknown".
@@ -101,6 +110,16 @@ type VhostData struct {
 	// (D-031 step 1b: the ACME HTTP-01 location), derived from Domain by
 	// Render; callers do not set it.
 	PanelManagedDir string
+	// HTTP2 is the HTTP/2 form of the HTTPS server blocks (NginxHTTP2*),
+	// derived by Render from the installed nginx; callers do not set it.
+	HTTP2 string
+	// ProxyOrigin, ProxyRewriteTo and ProxyResolver are the run-time lookup
+	// form of a proxy target that is a host name (nginx_proxy_upstream.go),
+	// derived by Render; ProxyOrigin is empty for the plain form. Callers do
+	// not set them.
+	ProxyOrigin    string
+	ProxyRewriteTo string
+	ProxyResolver  string
 }
 
 // Render executes the vhost template over prepared data, deriving the
@@ -111,6 +130,16 @@ func (ng *NginxGenerator) Render(data VhostData) (string, error) {
 	prepared, err := prepareVhostData(data)
 	if err != nil {
 		return "", err
+	}
+	// Only the current template reads it; the frozen ones of earlier
+	// releases render what those releases wrote.
+	prepared.HTTP2 = ng.features().HTTP2Form()
+	if prepared.ProjectType == "proxy" {
+		if proxy, ok := runtimeResolvedProxy(prepared.Upstream, ng.proxyResolution()); ok {
+			prepared.ProxyOrigin = proxy.Origin
+			prepared.ProxyRewriteTo = proxy.RewriteTo
+			prepared.ProxyResolver = proxy.Resolver
+		}
 	}
 	var buf bytes.Buffer
 	if err := ng.tmpl.Execute(&buf, prepared); err != nil {

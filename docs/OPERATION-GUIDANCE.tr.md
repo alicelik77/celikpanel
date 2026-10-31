@@ -4716,6 +4716,23 @@ cümlesi ve API'nin `reload` gerekçesinin cümlesi ("... önceki ayarlarıyla
   Sunucuda /var/log/celikpanel/certbot/letsencrypt.log dosyasını okuyun, adını
   verdiği şeyi düzeltin, sonra sertifikayı buradan yeniden isteyin. Hiçbir şey
   kendiliğinden yeniden istemez."
+- `ssl.issueFailure.server_clock` (alpha.113)
+  EN: "A certificate was issued for {domain}, but this server's clock does not
+  accept it: it is valid from {valid_from} and this server's time was
+  {server_time}. It was not installed and was removed again; the site is
+  served as before, with the certificate it already had if it had one. Correct
+  this server's clock: run timedatectl on the server and check that “System
+  clock synchronized” says yes (sudo timedatectl set-ntp true turns time
+  synchronisation on), then request the certificate here again. Nothing asks
+  again automatically."
+  TR: "{domain} için sertifika çıkarıldı, ancak bu sunucunun saati onu kabul
+  etmiyor: sertifika {valid_from} itibarıyla geçerli, sunucunun saati ise
+  {server_time} idi. Sertifika kurulmadı ve yeniden kaldırıldı; site eskisi
+  gibi sunuluyor, önceden bir sertifikası varsa o yerinde duruyor. Sunucunun
+  saatini düzeltin: sunucuda timedatectl çalıştırın ve “System clock
+  synchronized” satırının yes dediğini denetleyin (sudo timedatectl set-ntp
+  true zaman eşitlemeyi açar), sonra sertifikayı buradan yeniden isteyin.
+  Hiçbir şey kendiliğinden yeniden istemez."
 - `ssl.issueFailure.said`
   EN: "certbot reported: {detail}"
   TR: "certbot’un bildirdiği: {detail}"
@@ -10440,3 +10457,224 @@ aranır, asla iki kez gönderilmez. İşlem sırasında panel yeniden başlarsa 
 sunucunun durumundan salt okunarak uzlaştırılır. Kurulu panelleri yalnız sahipleri,
 panelin kendi güncelleme ekranından günceller. P0.1–P0.5 **kısmi** kalır; bu girdi
 hiçbir şeyi kapatmaz ve ilerletmez.
+
+### Web sitesi sertifikalarını işletim sistemi yeniler (D-040, 30 Ekim 2026)
+
+`fix/site-cert-native-renewal` dalında kaynakta (yayımlanmadı; kurulu sunucuda
+ölçülmedi). **Kim yapar:** çoğunlukla kimse: web sitesi sertifikasını certbot'un kendi
+zamanlayıcısı yeniler ve nginx'i yeniden yükler; CelikPanel durduğunda ya da
+kaldırıldığında da. Sertifika kartındaki **Yenileyen** satırı kimin yenilediğini
+söyler; sunucu yöneticisi gerektiğinde kart önce nedeni, sonra kimin yapacağını,
+somut sonraki adımı ve CelikPanel'in durumu sayfa açıldığında ve 12 saatte bir yeniden
+okuduğunu söyler. Pano alan adını gün sayısından bağımsız listeler.
+
+- **certbot'un son yenilemesi başarısız:** adların bu sunucuyu gösterdiğini ve 80
+  numaralı bağlantı noktasına ulaşılabildiğini sağlayın, sonra `sudo certbot renew
+  --cert-name <lineage>` ya da bir sonraki zamanlanmış çalışmayı bekleyin.
+- **Yenileme gecikti:** `sudo systemctl status certbot.timer`, sonra `sudo certbot
+  renew --cert-name <lineage>`.
+- **Yenilemeyi çalıştıran bir şey yok:** `sudo systemctl enable --now certbot.timer`.
+- **Yenilendi, web sitesi sunuyor, posta sunmuyor:** `sudo postfix check`, `sudo
+  doveconf -n`, sonra `sudo postmap -F hash:/etc/postfix/celikpanel_sni` ve `sudo
+  systemctl reload postfix dovecot`.
+- **Yenilendi, ancak eski sertifika sunuluyor:** `sudo nginx -t` nedeni gösterir;
+  düzeltin, sonra `sudo systemctl reload nginx`.
+- **Kanca yok ya da değiştirildi / otomatik yenileme kapalı / ayarlar dışarıda
+  değiştirildi / sertifika yok ya da süresi doldu / durum bilinmiyor:** kart her biri
+  için somut adımı söyler (yeniden alma, anahtarı açma, olduğu gibi bırakma).
+- **Önceki sürümün sertifikası:** taşınana kadar yalnız CelikPanel çalışırken
+  yenilenir; bir sonraki yenilemesinde Panel onu kendiliğinden işletim sisteminin
+  yenilemesine taşır (aşağıda "Önceki sürümün sertifikası işletim sisteminin
+  yenilemesine taşınır"); Sertifikayı yeniden al bunu hemen yapar.
+
+**Nasıl devam edilir:** durumu okumak hiçbir şeyi değiştirmez ve yenileme başlatmaz;
+yeniden deneme certbot'un bir sonraki zamanlanmış çalışmasıdır. Kurulu paneller yalnız
+sahiplerince panelin kendi güncelleme ekranından güncellenir. P0.1–P0.5 **kısmi** kalır.
+
+### Sunucu meşgul olduğu için reddedilen kurulum adımı kendiliğinden bekler (30 Ekim 2026)
+
+`release/alpha113` dalında kaynakta (yayımlanmadı; kurulu sunucuda ölçülmedi). Arch
+ap-e çalışmasında görüldü: kurulum sürerken e-posta yenileme işçisi makine kilidini
+bir an tutulmuş buldu, vazgeçti ve kurulum sahibin **Onaylı başlangıcı yeniden ilet**
+seçimini bekledi. Kilidi neyin tuttuğu o kanıtla belirlenemiyor; Bileşenler kurulum
+önizlemesi yalnız Agent'ın süreç içi paket kilidini alır.
+
+- **Kim yapar:** meşgul durum en çok 30 dakika sürdükçe kimse. Ekranda "kimsenin bir
+  şey yapması gerekmiyor" yazar, düğme gösterilmez.
+- **E-posta yenileme devri:** Agent devirden hemen önce işçinin alacağı iki kilidi
+  denetler, meşgulse işçi başlatmadan `busy` yanıtlar; işçi kısa süre tutulan kilidi
+  15 saniyeye kadar bekler. Panel aynı isteği (aynı kimlik, tek denetim kaydı) her
+  20 saniyede yeniden iletir. Kayıp yanıt, tipsiz hata, başka isteğin `busy` yanıtı
+  ya da sonucu belirsiz değişiklik "bilinmiyor" kalır ve yeniden gönderilmez.
+- **30 dakikadan sonra:** `server_setup_mail_enrollment_host_busy`: sunucu meşgul
+  kaldı (biliniyorsa nedeniyle), hiçbir şey değişmedi; sahip öteki değişikliği bitirir
+  ya da durdurur ve **Onaylı başlangıcı yeniden ilet**'i seçer.
+- **Güvenlik duvarı ve posta sertifikası adımları:** Agent defterinde kaydı olmayan
+  kendi isteklerinin saf meşgul reddi aynı biçimde bekler.
+- **Değişmeyenler:** DNS adımları, panel sertifikası, posta DNS imzası (zaten
+  bekliyor), bileşen kurulumları (29 Ekim'den beri bekliyor), kabul edilen devirden
+  sonra reddedilen işçi (mevcut `not_recorded` yolu).
+
+**Nasıl devam edilir:** kendiliğinden, aynı kimlikle; durum okuma hiçbir şey göndermez.
+Kurulu paneller yalnız sahiplerince güncellenir. P0 işleri **kısmi** kalır.
+
+#### Kilidi kim tuttu; salt okunur denetim artık kilit almıyor (30 Ekim 2026, devam)
+
+ap-e kanıtı kilidi tutanı adlandıramıyor: arşivde işçi biriminin günlüğü yok, sürücü
+devir aralığında (01:13:17–01:16:44 UTC) hiç istek göndermedi, kurulum önizlemesi
+01:13:17'de, kurulum henüz certbot adımındayken bitti; Fail2ban kurulumu ve MariaDB
+yazımı Agent'a ulaşmadan reddedildi. Koddan çıkanlar:
+
+- **Bir okuma gerçek bir değişikliği meşgul gösteriyordu.** Hazırlık okumaları, sürüm
+  araçları ve devir öncesi denetimin kullandığı danışma denetimi özel kilidi bir an
+  alıyordu; bloklamayan kilit alma girişimi o ana denk gelen gerçek bir değişiklik
+  reddediliyordu. Denetim artık çekirdeğin kilit tablosunu (`/proc/locks`) okur ve
+  kilit almaz; tablo okunamazsa eski kısa kilide döner.
+- **Ret, tutanı adlandırır.** Agent'ın `busy` yanıtı `holder` taşır (kilit, süreç
+  numarası, kısa adı ve systemd birimi; argüman ya da ortam yok); Agent ve Panel
+  günlükleri yazar, adım `busy_holder` olarak saklar ve Teknik ayrıntılardaki bekleme
+  metni tutanı söyler. İşçi de kendi günlüğüne ilk meşgul denemede ve beklemeyi
+  bıraktığında aynı satırı yazar. Bir sonraki gerçek çalışma soruyu yanıtlar.
+
+Yapısal aday: `celikpanel-release-recovery.timer` her 30 saniyede boş işlem dizinini
+sınıflandırırken sürüm kilidini saniyenin altında tutar; işçinin 15 saniyelik beklemesi
+bunu aşar. Burada değiştirilmedi. P0 işleri **kısmi** kalır.
+
+### Site oluştururken SSL (30 Ekim 2026)
+
+`release/alpha113` dalında kaynakta (yayımlanmadı; kurulu sunucuda ölçülmedi).
+**Alan adı ekle**'deki "SSL etkinleştir (Let's Encrypt)" (yalnız-DNS alan adlarında
+sunulmaz) artık hiçbir şey istenmemişken siteyi SSL'li kaydetmez.
+
+- **Ne olur:** önce site oluşturulur (`POST /api/v1/domains`), `ssl_enabled` kapalıdır;
+  site oluşturmak sertifika çıkarmaz. Yanıt yeni alan adını adlandırınca aynı pencere,
+  SSL/TLS sayfasındaki **Sertifika iste** düğmesinin rotasına **tek** istek gönderir:
+  `POST /api/v1/domains/<id>/ssl/letsencrypt`; `auto_renew: true`,
+  `include_mail: false`, `provider: "letsencrypt"`, `reissue: false` ve **iletişim
+  adresi olmadan** (`web/src/lib/siteCertificateRequest.ts`). Aynı sunucu kodu yanıtlar
+  (`handleIssueLetsEncrypt`): sertifika sitenin kendi adlarını kapsar (alan adı, kayıtlı
+  alan adında `www.`, takma adlar); işletim sisteminin certbot'u yeniler (D-040);
+  `ssl_enabled` yalnız **etkin** bir sertifikayla açılır. Alan adı listesi SSL'i yalnız
+  etkin sertifika varken gösterir; sertifikasız SSL diyen eski satır kapalı görünür.
+- **İletişim adresi:** istek adres vermez; sunucu oturum açan hesabın kendi adresini
+  kullanır. Hesapta geçerli adres yoksa hiçbir şey istenmez: `409
+  ssl_contact_email_required`, Hesabım'da e-postanızı girip sertifikayı yeniden isteyin
+  der, eylem `/account#email`. **Kim yapar:** siteyi ekleyen kişi; site oluşmuş kalır.
+- **Sürerken:** "<ad> için sertifika Let's Encrypt'ten isteniyor…", bir dakikaya kadar;
+  bir şey yapmanız gerekmediği, sertifikanın yalnız bir kez istendiği, beklerseniz
+  yeniden gönderilmediği yazar. İstek bir istek kimliği taşır (D-029): kayıp yanıt aynı
+  kimlikle bir kez daha sorulur, iki kez çalıştırılmaz. Yoklama ya da yeniden deneme
+  yoktur.
+- **Verildi ve etkin:** pencere "<ad> için sertifika verildi ve etkin. Kendiliğinden
+  yenilenir." ile kapanır.
+- **Başarısız** (`502 CERTIFICATE_ISSUE_FAILED`, neden `validation`,
+  `authority_unreachable`, `rate_limited`, `timeout` ya da `tool`): o türün cümlesi,
+  yöneticiye certbot'un kendi satırı, sonra sitenin bu istekten sertifika almadığı ve
+  eskisi gibi sunulduğu, hiçbir şeyin kendiliğinden yeniden istemediği. **Sonraki
+  adım:** nedeni giderin (çoğunlukla ad henüz bu sunucuyu göstermiyor ya da 80. kapıya
+  ulaşılamıyor), sonra SSL/TLS'te **Sertifika iste**; **SSL/TLS'i aç** oraya götürür.
+- **Verildi, henüz sunulmuyor:** sitenin yapılandırma dosyası sahibindir
+  (`waiting_for_owner`; SSL/TLS sahibin seçeneklerini söyler); web sunucusu kullanmaya
+  başlayamadı (`ssl_activation_pending`) ya da posta TLS'i izlemedi
+  (`ssl_dependents_pending`): SSL/TLS'te **Etkinleştirmeyi yeniden dene**. Hiçbir şey
+  kendiliğinden yeniden denenmez.
+- **Bilinmiyor:** kendi yanıtı gelmedi ya da oluşturma yanıtı alan adını adlandırmadı:
+  sertifikanın verilip verilmediği bilinmiyor, istek ikinci kez gönderilmedi; SSL/TLS'i
+  açın ve yalnız hiçbir sertifika görünmüyorsa orada isteyin.
+- **DNS kurulumu bitmedi** (oluştururken `409 DNS_PUBLICATION_PENDING`): sertifika
+  istenmez; ad bu sunucuyu gösterince SSL/TLS'ten isteyin.
+- **Öteki retler** SSL sayfasınınkilerdir: farklı yapılı Panel ve Agent (`503`),
+  sürmekte olan başka bir sertifika işlemi (meşgul; hiçbir şey değişmedi, bitince yeniden
+  isteyin), doğrulamayı durduran, sahibin tuttuğu yapılandırma dosyası (durumuyla
+  adlandırılır).
+
+**Nasıl devam edilir:** yalnız bir kişinin SSL/TLS'teki bir sonraki isteğiyle; pencere
+ikinci istek göndermez. Kanıt: yalnız bileşen testleri
+(`cmd/panel/ssl_site_create_certificate_test.go`,
+`web/tests/add-domain-certificate-runtime.test.mjs`). Kurulu paneller yalnız
+sahiplerince güncellenir.
+
+### Önceki sürümün sertifikası işletim sisteminin yenilemesine taşınır (D-040 eki, 30 Ekim 2026)
+
+`fix/cert-mail-known-gaps` dalında kaynakta (yayımlanmadı; yalnız bileşen testleri).
+D-040'tan önce verilen web sitesi sertifikası CelikPanel'in kendi certbot deposundadır
+ve yalnız çalışan Panel yeniler. Bir sonraki yenilemesinde (Panel'in 12 saatlik işi,
+bitimine 30 gün kala) Panel artık onu, standart depoda işletim sisteminin certbot'unun
+yenilediği bir sertifikayla değiştirir (`cmd/panel/site_cert_legacy_move.go`): aynı
+adlar (eski sertifika kapsıyorsa posta adı da), otomatik yenileme ve posta güvenliği
+olduğu gibi.
+
+- **Kim yapar:** kimse. Kart bir şey yapmanın gerekmediğini, yenisi etkinleşene kadar
+  mevcut sertifikanın kullanıldığını ve Sertifikayı yeniden al'ın aynı işi hemen
+  yaptığını söyler. Eski sertifika, yenisi kaydedilip nginx'in denenmiş yapılandırması
+  onu adlandırana kadar sunulur. Yenisini almayan web sunucusu eskisini sunmaya devam
+  eder ve **Etkinleştirmeyi yeniden dene** kaydedilir (`activation_pending`); izlemeyen
+  posta `dependents_pending` kaydeder; sahibin tuttuğu yapılandırma dosyası sahibini
+  bekler; hepsi her yenilemedeki gibi.
+- **Taşıma başarısız** (`renewal_status` `move_failed_<tür>`: `validation`,
+  `authority_unreachable`, `rate_limited`, `timeout`, `tool`, `other`): Yenileme satırı
+  "Henüz işletim sisteminin yenilemesine taşınmadı" der; neden türü adlandırır ve mevcut
+  sertifikanın değişmediğini, kullanıldığını, yalnız CelikPanel çalışırken
+  yenilendiğini söyler. **Kim yapar:** sunucu yöneticisi. **Sonraki adım:** her adın bu
+  sunucuyu gösterdiğini, 80. kapıya ulaşılabildiğini ve sunucunun sertifika
+  sağlayıcısına ulaşabildiğini denetleyin (`/var/log/letsencrypt/letsencrypt.log`;
+  Panel günlüğü nedeni yazar), sonra **Sertifikayı yeniden al** ya da bekleyin.
+- **Nasıl devam edilir:** Panel çalıştıkça taşıma 12 saatte bir yeniden denenir;
+  bitimine 14 gün kala Panel eski sertifikayı bunun yerine eski yolla yeniler (site
+  sertifikasız kalmaz) ve kart taşıma hatasını korur. Verilip kaydedilmemiş yerel
+  sertifika soyu (arada Panel durduysa) açılıştaki soy uzlaştırmasıyla silinir; taşınan
+  sertifika bir daha taşınmaz.
+- **Kendiliğinden taşınmayan:** EAB kimlik bilgisi isteyen sağlayıcının sertifikası
+  (ZeroSSL, Google Trust Services). CelikPanel bu bilgileri saklamaz; kart "bir kez
+  yeniden alın" (bilgilerle) demeye devam eder; o zamana kadar çalışan Panel yeniler.
+
+Kurulu paneller yalnız sahiplerince güncellenir. P0.5 **kısmi** kalır.
+
+### Her sitenin postası kendiliğinden DKIM ile imzalanır (30 Ekim 2026)
+
+Bu sunucudan posta gönderebilen bir alan adı (ürünün kendi kuralı: burada posta
+kutusu, yönlendirmesi ya da her şeyi-yakala adresi var ya da posta hizmetini bu
+sunucuya CelikPanel kurdu) DKIM anahtarını, OpenDKIM imzalama tablosundaki yerini ve
+DNS bölgesi bu sunucudaysa `celik._domainkey` kaydını, sahibi "DKIM anahtarı üret" ya
+da "DNS'e ekle"ye basmadan alır. Bu, posta kuruluyken alan adı oluşturulduğunda, alan
+adına ilk posta kutusu açıldığında ve Hizmetler'den posta profili kurulduğunda (artık
+OpenDKIM'i de kurar) her alan adı için olur. Var olan anahtar (sahibinin ya da
+CelikPanel'in) asla değiştirilmez; o adda zaten farklı bir DKIM kaydı varsa korunur ve
+kart onu bildirir. İş arka planda yürür; oluşturmayı asla engellemez, düşürmez.
+
+Posta kimlik doğrulaması kartı bitmemiş işi gösterir
+(`GET /api/v1/domains/{id}/mail/auth` → `automatic`; okuma işi başlatmaz):
+
+- **Kuruluyor** (`pending`) ya da **sunucudaki başka bir değişikliği bekliyor**
+  (`waiting`, `host_busy`): kimse bir şey yapmaz; kendiliğinden sürer (meşgul sunucu
+  yaklaşık on dakika yeniden denenir, sonra bir sonraki Panel açılışında).
+- **Anahtar oluşturulamadı** (`failed`, `key_failed`), **imzalama kurulamadı**
+  (`signing_failed`, Agent'ın ilk satırıyla), **kayıt yayımlanamadı**
+  (`dns_publish_failed`; kayıt bölgede saklı): doğrulanmış hatalar. **Kim:** sunucu
+  sahibi; **sonraki eylem:** karttaki neden (`/var/lib/celikpanel-dkim/keys` anahtar
+  deposu, Hizmetler sayfasında OpenDKIM, DNS bölümünde DNS işlemi), sonra **Yeniden
+  dene** (`POST /api/v1/domains/{id}/mail/auth/automatic`, 202 yanıtı; iş beklerken
+  yeniden basılırsa hiçbir şey kuyruğa girmez).
+- **DNS hazır değil** (`blocked`, `dns_not_ready`): karşılanmamış önkoşul; posta zaten
+  imzalanıyor. DNS bölümünden DNS motorunu denetleyin, sonra **Yeniden dene**. Başka
+  bir yayımın arkasında bekletilen yayım durma değildir: kayıt saklıdır ve DNS yayım
+  uzlaştırıcısı onu yayımlar.
+- **Yanıt kayboldu** (`unknown`): bitip bitmediği bilinmiyor; **Yeniden dene** denetler
+  ve tamamlar (anahtar korunur, hiçbir şey iki kez yapılmaz).
+- **Dış DNS:** posta imzalanıyor; kart bunu söyler ve sağlayıcıya eklenecek kaydı
+  gösterir. **İmzalama tablosunda olmayan anahtar** (eski ya da elle konmuş) **Yeniden
+  dene** ile bildirilir.
+
+Alan adı silinince CelikPanel'in ürettiği anahtar (yanında köken kaydı durur,
+`celik.celikpanel`) ve imzalama tablosu satırları kaldırılır, OpenDKIM yenilenir;
+CelikPanel'in üretmediği anahtar ya da tablo satırı (elle konmuş ya da bu sürümden
+önce üretilmiş anahtar) korunur ve silme yanıtı, gerekmiyorsa silinecek dosyayla
+birlikte onu bildirir. Kayıt bölgeyle, alt alan adındaysa ana bölgeden alt alan adıyla
+birlikte gider.
+
+Artık var olmayan bir dosyayı indirmek, sunucunun yanıtını yeni sekmede açmak yerine
+dosya yöneticisinin yönlendirmesini gösterir ve klasörü yeniden okur.
+
+Şema değişmedi (46): iş, alan adı başına sürümlü bir `panel_settings` kaydıdır
+(`dkim_automatic_v1:<id>`) ve tek bir imzalama yenileme isteği
+(`dkim_signing_refresh_v1`). Kurulu paneller yalnız sahiplerince güncellenir.

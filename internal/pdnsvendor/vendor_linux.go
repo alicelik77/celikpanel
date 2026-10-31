@@ -13,6 +13,7 @@ import (
 
 	"github.com/alicelik/celikpanel/internal/bindroot"
 	"github.com/alicelik/celikpanel/internal/hostplatform"
+	"github.com/alicelik/celikpanel/internal/pacmanlocal"
 	"golang.org/x/sys/unix"
 )
 
@@ -81,9 +82,69 @@ func inspectUnitAt(rootFD int) (bindroot.FileIdentity, error) {
 	return second, nil
 }
 
+// PacmanUnitPackageDigest reads, from pacman's own local database, the
+// installed powerdns package and the SHA-256 it recorded for the unit.
+func PacmanUnitPackageDigest() (pacmanlocal.Package, string, error) {
+	pkg, err := pacmanlocal.Installed(pacmanlocal.DBDir, ArchPackage)
+	if err != nil {
+		return pacmanlocal.Package{}, "", fmt.Errorf("read the installed powerdns package: %w", err)
+	}
+	digest, err := pacmanlocal.PackageFileSHA256(pkg, UnitPath)
+	if err != nil {
+		return pacmanlocal.Package{}, "", fmt.Errorf("powerdns package does not record its unit: %w", err)
+	}
+	return pkg, digest, nil
+}
+
+// InspectPacmanUnit proves through secure no-follow reads that the Arch unit
+// is the installed powerdns package's own, unmodified file with the certified
+// command and account. It never changes systemd or DNS.
+func InspectPacmanUnit() (bindroot.FileIdentity, error) {
+	rootFD, err := unix.Open("/", unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
+	if err != nil {
+		return bindroot.FileIdentity{}, fmt.Errorf("open PowerDNS vendor root: %w", err)
+	}
+	defer unix.Close(rootFD)
+	before, digest, err := PacmanUnitPackageDigest()
+	if err != nil {
+		return bindroot.FileIdentity{}, err
+	}
+	read := func() (bindroot.FileIdentity, error) {
+		data, identity, err := bindroot.ReadExactRootOwnedFileAt(rootFD, UnitPath, "PowerDNS vendor unit")
+		if err != nil {
+			return bindroot.FileIdentity{}, err
+		}
+		if err := VerifyPacmanUnit(data, digest); err != nil {
+			return bindroot.FileIdentity{}, err
+		}
+		return identity, nil
+	}
+	first, err := read()
+	if err != nil {
+		return bindroot.FileIdentity{}, err
+	}
+	second, err := read()
+	if err != nil {
+		return bindroot.FileIdentity{}, err
+	}
+	after, afterDigest, err := PacmanUnitPackageDigest()
+	if err != nil {
+		return bindroot.FileIdentity{}, err
+	}
+	if first != second || before != after || digest != afterDigest {
+		return bindroot.FileIdentity{}, errors.New("PowerDNS vendor unit or package changed during observation")
+	}
+	return second, nil
+}
+
 // InspectInstalledUnit observes exact package ownership and reviewed unit
 // bytes through secure no-follow reads. It never changes systemd or DNS.
 func InspectInstalledUnit(ctx context.Context, profile hostplatform.Profile) (bindroot.FileIdentity, error) {
+	if ctx != nil && profile.DistroFamily == hostplatform.DistroFamilyArch &&
+		profile.PackageManager == hostplatform.PackageManagerPacman &&
+		profile.ServiceManager == hostplatform.ServiceManagerSystemd {
+		return InspectPacmanUnit()
+	}
 	if ctx == nil || profile.DistroFamily != hostplatform.DistroFamilyDebian ||
 		profile.PackageManager != hostplatform.PackageManagerAPT ||
 		profile.ServiceManager != hostplatform.ServiceManagerSystemd {

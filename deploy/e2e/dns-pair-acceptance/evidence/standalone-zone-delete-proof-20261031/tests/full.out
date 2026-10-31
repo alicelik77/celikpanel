@@ -1,0 +1,23 @@
+﻿wsl : tar: .: file changed as we read it
+At line:1 char:302
++ ... tch {} } }; wsl -d CelikPanel-S2-Debian -u root -- bash /mnt/c/Users/ ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (tar: .: file changed as we read it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+== gofmt
+== build
+build exit 0
+== vet
+vet exit 0
+== agent full
+ok  	github.com/alicelik/celikpanel/cmd/agent	59.546s
+agent exit 0
+== panel full
+ok  	github.com/alicelik/celikpanel/cmd/panel	364.308s
+panel exit 0
+== internal
+ok  	github.com/alicelik/celikpanel/internal/systemd	0.012s
+ok  	github.com/alicelik/celikpanel/internal/systemsqlite	0.217s
+ok  	github.com/alicelik/celikpanel/internal/transport	5.210s
+internal exit 0

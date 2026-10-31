@@ -1,0 +1,121 @@
+== 5. reboot main backup 15:31:14
+main rebooted in 30.6 s
+backup rebooted in 18.9 s
+   waiting 90 s for services to settle
+== health [after-reboot] 15:33:15
+-- main units/timers
+active active active active active active active
+enabled enabled
+  php8.4-fpm.service loaded active running The PHP 8.4 FastC
+Sat 2026-10-31 06:35:16 UTC 15h Fri 2026-10-30 15:13:19 UTC - certbot.timer certbot.service
+enabled not-found
+2026-10-30 15:31:34
+9e1d1615-46ba-486f-baee-e8b3ee7c51d2
+succeeded complete null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-access_dns=succeeded 17-mail_certificate=succeeded 18-mail_enrollment=succeeded 19-verify=succeeded
+-- backup units/timers
+active active active active active inactive inactive
+enabled enabled
+  php8.3-fpm.service loaded active running The PHP 8.3 FastC
+Sat 2026-10-31 02:37:44 UTC 11h Fri 2026-10-30 15:13:43 UTC - certbot.timer certbot.service
+enabled not-found
+2026-10-30 15:31:20
+4bae380c-0715-4d6c-8045-a428c99fa665
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-verify=succeeded
+-- DNS answers
+   @192.0.3.101 SOA fin113.test: status: NOERROR flags: qr aa  | A shop113.test: 192.0.3.101 | MX fin113.test: 10 mail.fin113.test.
+   @192.0.3.102 SOA fin113.test: status: NOERROR flags: qr aa  | A shop113.test: 192.0.3.101 | MX fin113.test: 10 mail.fin113.test.
+-- site
+--- http://shop113.test/
+code=200 redirect= ssl_verify=0
+body: 3078 bytes, title: <title>shop113.test
+software words in body: [CelikPanel ]
+--- https://shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+body: 3078 bytes, title: <title>shop113.test
+software words in body: [CelikPanel ]
+--- http://www.shop113.test/
+code=200 redirect= ssl_verify=0
+body: 3078 bytes, title: <title>shop113.test
+software words in body: [CelikPanel ]
+--- https://www.shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+-- mail
+   smtp 587 send: {'ok': True, 'refused': {}} | cert ['mail.fin113.test']
+   imaps 993 read: {'found': False} | cert ['mail.fin113.test'] | NO [b'[SERVERBUG] Internal error occurred. Refer to server log for more information. [2026-10-30 15:33:57] (0.001 + 0.000 secs).'] 
+   delivered to bob's maildir (files in new+cur): 2
+== 6. panel off on main: stop + disable CelikPanel panel and agent, reboot 15:34:33
+Removed '/etc/systemd/system/multi-user.target.wants/celikpanel-agent.service'.
+Removed '/etc/systemd/system/multi-user.target.wants/celikpanel-panel.service'.
+disabled disabled
+inactive inactive
+main rebooted in 28.8 s
+   waiting 90 s
+units:
+ celikpanel-agent.service loaded inactive dead CelikPanel privileged agent
+ celikpanel-firewall-restore.service loaded active exited Restore CelikPanel firewall policy before networking
+ celikpanel-mail-enrollment-resume-fb295b34d7257322039a1f9d0c4bf520.service loaded inactive dead Continue recorded CelikPanel mail enrollment
+ celikpanel-mail-renewal.service loaded inactive dead Deploy an already renewed mail host certificate
+ celikpanel-panel.service loaded inactive dead CelikPanel web panel
+ celikpanel-release-recovery.service loaded inactive dead CelikPanel verified release transaction recovery
+ celikpanel-mail-renewal.timer loaded active waiting Check retained mail certificate renewal work
+ celikpanel-release-recovery.timer loaded active waiting CelikPanel release transaction recovery watchdog
+running-binaries:
+1143 sudo -n bash -c echo units:; systemctl list-units --no-legend --all 'celikpanel*' | sed 's/  */ /g'; echo running-binaries:; pgrep -a -f '/opt/celikpanel/bin/' || echo none; ss -ltnp | grep -E ':2083 ' || echo 'port 2083: nothing listening'
+1145 bash -c echo units:; systemctl list-units --no-legend --all 'celikpanel*' | sed 's/  */ /g'; echo running-binaries:; pgrep -a -f '/opt/celikpanel/bin/' || echo none; ss -ltnp | grep -E ':2083 ' || echo 'port 2083: nothing listening'
+port 2083: nothing listening
+== health [panel-off] 15:36:33
+-- main units/timers
+inactive inactive active active active active active
+disabled disabled
+  php8.4-fpm.service loaded active running The PHP 8.4 FastC
+Sat 2026-10-31 04:48:45 UTC 13h Fri 2026-10-30 15:13:19 UTC - certbot.timer certbot.service
+enabled not-found
+2026-10-30 15:34:53
+2f763531-b388-4671-a939-736536ad3248
+-- backup units/timers
+active active active active active inactive inactive
+enabled enabled
+  php8.3-fpm.service loaded active running The PHP 8.3 FastC
+Sat 2026-10-31 02:37:44 UTC 11h Fri 2026-10-30 15:13:43 UTC - certbot.timer certbot.service
+enabled not-found
+2026-10-30 15:31:20
+4bae380c-0715-4d6c-8045-a428c99fa665
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-verify=succeeded
+-- DNS answers
+   @192.0.3.101 SOA fin113.test: status: NOERROR flags: qr aa  | A shop113.test: 192.0.3.101 | MX fin113.test: 10 mail.fin113.test.
+   @192.0.3.102 SOA fin113.test: status: NOERROR flags: qr aa  | A shop113.test: 192.0.3.101 | MX fin113.test: 10 mail.fin113.test.
+-- site
+--- http://shop113.test/
+code=200 redirect= ssl_verify=0
+body: 3078 bytes, title: <title>shop113.test
+software words in body: [CelikPanel ]
+--- https://shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+body: 3078 bytes, title: <title>shop113.test
+software words in body: [CelikPanel ]
+--- http://www.shop113.test/
+code=200 redirect= ssl_verify=0
+body: 3078 bytes, title: <title>shop113.test
+software words in body: [CelikPanel ]
+--- https://www.shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+-- mail
+   smtp 587 send: {'ok': True, 'refused': {}} | cert ['mail.fin113.test']
+   imaps 993 read: {'found': False} | cert ['mail.fin113.test'] | NO [b'[SERVERBUG] Internal error occurred. Refer to server log for more information. [2026-10-30 15:37:15] (0.001 + 0.000 secs).'] 
+   delivered to bob's maildir (files in new+cur): 3
+-- management back on 15:37:51
+Created symlink '/etc/systemd/system/multi-user.target.wants/celikpanel-agent.service' → '/etc/systemd/system/celikpanel-agent.service'.
+Created symlink '/etc/systemd/system/multi-user.target.wants/celikpanel-panel.service' → '/etc/systemd/system/celikpanel-panel.service'.
+active active
+enabled enabled
+succeeded complete null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-access_dns=succeeded 17-mail_certificate=succeeded 18-mail_enrollment=succeeded 19-verify=succeeded
+   DNS card: status 200 pair_ready True pending 0 []
+== 5/6 done 15:38:20

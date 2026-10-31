@@ -1,11 +1,11 @@
 # Üyelik ve yıllık sunucu lisansı
 
-*Güncel politika uyumu: 14 Eylül 2026 · [English](MEMBERSHIP_LICENSING.md) · D-025*
+*Güncel politika uyumu: 30 Ekim 2026 (yedi günlük çevrimdışı süre, D-039) · [English](MEMBERSHIP_LICENSING.md) · D-025*
 
-Bu belge yıllık lisans süresini, erişim doğrulamasının güncel kısa geçerlilik
-aralığını ve geçmiş davranışı ayırır. Mevcut kodu ve gereken kurtarma çalışmalarını
-kaydeder; lisans politikasını değiştirmez ve kurulu bir panelin güncellenmesine
-izin vermez.
+Bu belge yıllık lisans süresini, erişim doğrulama aralığını (D-039'dan beri
+çevrimdışı yedi gün; sahip 2026-10-29'da onayladı) ve geçmiş davranışı ayırır.
+Mevcut kodu ve gereken kurtarma çalışmalarını kaydeder; kurulu bir panelin
+güncellenmesine izin vermez.
 
 Onaylanan ürün modeli: tek CelikPanel ürünü, mevcut dört yetki rolü ve panel
 yöneticilerinden bağımsız bir celikpanel.net üye hesabı. Başlangıçta doğrulanmış
@@ -51,16 +51,18 @@ kurtarma istisnalarıyla birlikte dört rolün tamamında normal panel yönetimi
 uygulanır. Yalnız yeni kaynak oluşturmaya ilişkin eski açıklamalar ve geniş bakım
 istisnaları geçmiş davranışı anlatır; güncel API sözleşmesi değildir. Merkezi
 hizmet kesildiğinde mevcut imzalı kayıt korunur; kesinti bu kaydın fiilî erişim
-son tarihini uzatamaz.
+son tarihini uzatamaz (son başarılı kontrolden en çok yedi gün sonra, hiçbir zaman
+yıllık bitişten sonra değil).
 
-Sunucu taşıma işlemi eski bağı merkezi olarak geçersiz kılar. Önbellekteki imzalı
-yetki belgeleri yalnız aşağıda açıklanan fiilî erişim son tarihine kadar
-kullanılabilir. Yıllık süre hâlâ geçerliyken bu son tarih aşılmışsa doğrulama
-hizmetine erişilememesi, lisans yöneticisinde `verification_unavailable` durumunu
-oluşturur. Güncel erişim uç noktası bu durumu `can_use_panel=false` değerine
-indirger ve tarayıcı etkinleştirme sayfasına yönlenir; arayüz, lisans yöneticisinin
-yıllık sürenin dolmasından yaptığı ayrımı henüz korumaz. Bu HTTP erişim kontrolü
-mevcut iş yüklerini durdurmaz.
+Sunucu taşıma, anahtar değiştirme ve lisans kaldırma eski bağı merkezi olarak
+geçersiz kılar; panel bunu bir sonraki kontrolünde, kullanımdayken yaklaşık saatte
+bir öğrenir. Önbellekteki imzalı kayıtlar yalnız aşağıda açıklanan fiilî erişim son
+tarihine kadar kullanılabilir. Yıllık süre hâlâ geçerliyken bu son tarih aşılmışsa
+doğrulama hizmetine erişilememesi `offline_ended` (ya da aşağıdaki `clock_behind`)
+nedeniyle `verification_unavailable` durumunu oluşturur. Erişim uç noktası bu
+nedenle birlikte `can_use_panel=false` yanıtı verir; tarayıcı kurtarma ekranında
+nedeni, kimin ne yapacağını gösterir ve etkinleştirme sayfasına yönlenmez. Bu HTTP
+erişim kontrolü mevcut iş yüklerini durdurmaz.
 
 Yayımdan önce: etkinleştirme, taşıma ve yenileme işlemlerinin atomikliğini;
 kimlik doğrulama, CSRF ve belirteçlerin kötüye kullanımını; imzalı yetki belgesini
@@ -80,11 +82,14 @@ Yıllık lisans süresi ile bu erişim doğrulama aralığı ayrıdır:
 
 | Karar | Güncel uygulama |
 |---|---|
-| Fiilî yetkilendirme son tarihi | Yıllık bitiş tarihi, imzalı `offline_until` ve `issued_at + 60 saniye` değerlerinin en erken olanı. İmzalı biçim daha ileri bir tarih taşıyabilir; güncel istemci yine de bir dakikalık üst sınırı uygular. |
-| Olağan yenilemenin yapılabileceği zaman | İmzalı `refresh_after` ile `issued_at + 45 saniye` değerlerinin erken olanı. İstekler yöneticinin sırayla yürüttüğü ortak yenileme yolunu kullanır. Boştaki kurulumu sorgulayan bir sunucu zamanlayıcısı yoktur. |
-| Başarısız yenilemeyi yeniden deneme | Olağan istekler 30 saniye bekler. Yöneticinin açık yenileme isteği bu beklemeyi atlayabilir; imza veya bağ doğrulamasını atlayamaz. |
-| HTTP yenileme süresi sınırı | Lisans istemcisinin zaman aşımı 15 saniyedir; isteğin iptali daha erken sonlandırabilir. |
-| Eksik, süresi dolmuş, reddedilmiş veya doğrulanamayan yetki belgesi | Normal yönetim reddedilir. Yönetici farklı durum değerlerini korur; ancak erişim uç noktası bunları şu anda `can_use_panel=false` değerine indirger. |
+| Fiilî yetkilendirme son tarihi | Yıllık bitiş tarihi, imzalı `offline_until` ve `issued_at + 7 gün` değerlerinin en erken olanı. Hizmet `offline_until = min(şimdi + 7 gün, bitiş)` imzalar. D-039 öncesi hizmetin kaydı (`offline_until = issued_at + 60 sn`) tam o bir dakikayı korur. |
+| Olağan yenilemenin yapılabileceği zaman | İmzalı `refresh_after` (hizmet: `şimdi + 1 saat`) ile `issued_at + 1 saat` değerlerinin erken olanından, sunucuya özgü belirlenimci sapmayla beşte bire kadar önce (48–60 dakika). Yalnız kimliği doğrulanmış kullanım tetikler; boştaki kurulumu sorgulayan sunucu zamanlayıcısı yoktur. Eşzamanlı istekler tek yenilemeyi paylaşır. |
+| Zamanı gelen yenilemede isteğin beklemesi | Yönetimi artık açmayan kayıt ortak yenilemeyi bekler. Hâlâ geçerli kayıt en çok 3 saniye bekler, sonra istek o kayıtla devam eder ve yenileme arka planda biter; erişilebilen hizmetin reddi bu yüzden onu saptayan isteğe uygulanır. |
+| Başarısız yenilemeyi yeniden deneme | Kayıt geçerliyken 1, 2, 4, 8, 16, sonra 30 dakika (her biri sunucuya göre beşte bire kadar kısalır) ve hiçbir zaman kaydın geçersizleşeceği andan sonra değil. Geçersizleştikten sonra kullanımda 30 saniyede bir. Yöneticinin "Tekrar kontrol et" isteği beklemeyi atlar; imza veya bağ doğrulamasını atlamaz. |
+| Açık ret | Yenilemede `invalid_license`, `invalid_activation`, `license_in_use` veya `license_expired` hemen kalıcı kaydedilir (`rejected`) ve çevrimdışı süre içinde de dışında da yönetimi hemen kapatır. |
+| Saat güvenliği | `issued_at` hizmetin saatidir. Sunucu saati `issued_at`'tan 5 dakikadan fazla önceyse, kayıtla saklanan en yüksek saat okumasının (`seen_at`, yerel, imzasız) 5 dakikadan fazla altındaysa ya da panel çalışırken geri alındıysa (duvar saati ile monoton zaman karşılaştırılır) bir kontrol başarılı olana kadar `clock_behind` nedeniyle `verification_unavailable` olur; erişilebilen hizmete hemen sorulur. Bu saatten 5 dakikadan fazla sonra tarihli yeni yanıt `clock_behind` kontrol sonucuyla reddedilir. |
+| HTTP yenileme süresi sınırı | Lisans istemcisinin zaman aşımı 15 saniyedir; ortak arka plan yenilemesi 20 saniyeyle sınırlıdır. |
+| Eksik, süresi dolmuş, reddedilmiş veya doğrulanamayan yetki belgesi | Normal yönetim reddedilir. Erişim uç noktası durum, gözlem ve `verification_unavailable` için neden ile `can_use_panel=false` yanıtı verir. Lisans sayfası (`/api/v1/panel/license`, yöneticiler) ayrıca `check` (son başarısız deneme: `unreachable`, `rate_limited`, `invalid_answer`, `clock_behind`), `offline_for_seconds` ve `verified_seconds_ago` bildirir. |
 | Tarayıcı davranışı | Başarısız bir erişim isteğinde yalnız aynı kullanıcı için hâlâ geçerli olan karar, son tarihi uzatılmadan korunur. Bilinmeyen erişim durumunda bağlantıyı kurtarma görünümü gösterilir; sunucunun reddi veya `license_required` yanıtı yönetimi kilitler. |
 
 Kimlik doğrulaması gerektiren güncel istisnalar bilinçli olarak dardır. Rol,
@@ -111,7 +116,18 @@ Fiilî son tarihten sonra doğrulama hizmetine erişilememesi, yöneticide
 `verification_unavailable` durumunu oluşturur; bu, yıllık lisans süresinin
 dolduğunun kanıtı değildir. Bu kurulumun yenileme isteğinin açıkça reddedilmesi,
 yerel imzalı kaydını geçersiz kılabilir. Yeni anahtarın yanlış yazılması, mevcut
-geçerli bağı iptal etmemelidir. Bu belge ek bir çevrimdışı tolerans süresi tanımaz.
+geçerli bağı iptal etmemelidir. Yedi günlük süre çevrimdışı payın tamamıdır;
+hiçbir şey onu uzatmaz.
+
+Saatin geri alınması, açıkça: süre hizmetin `issued_at` değerine bağlıdır ve
+imzalı `offline_until` ile sınırlıdır; saati ileri almak işe yaramaz, `issued_at`
+öncesindeki saat reddedilir. Süre içinde saatin geri alınması panel çalışırken
+saptanır; yeniden başlatmada ise `seen_at` sıklığına kadar saptanır (her başarılı
+kontrolde ve her başarısız denemede yazılır; kesintide kullanımdayken en az 30
+dakikada bir). Sunucunun sahibi kendi sunucusunda root'tur: eski lisans dosyasını
+geri koyup saati de geri almak ya da programı değiştirmek yerel bir kontrolün
+durdurabileceği şey değildir; bu D-039 öncesindeki sınırın aynısıdır, yalnız süre
+bir dakika yerine yedi gündür.
 
 ## Gereken kurtarma davranışı — henüz tamamen uygulanmadı
 
@@ -165,8 +181,10 @@ uyumluluk için imzalı kayıtlar v1 biçiminde ve yerelde makineye bağlı kal�
 Aynı bağlı IP'de anahtarla yeniden kurulum yapmak, anahtarı ve bitiş tarihini
 koruyarak makine bağını değiştirir ve önceki yenileme kimlik bilgisini geçersiz
 kılar. İmzalı v1 biçimi, yıllık bitiş tarihiyle sınırlı olmak üzere oluşturulmadan
-sonra yedi güne kadar çevrimdışı son tarih taşıyabilir; güncel erişim ayrıca
-yukarıda açıklanan bir dakikalık üst sınırı uygular. Eski kayıt biçimleri, güncel
+sonra yedi güne kadar çevrimdışı son tarih taşıyabilir; D-039'dan beri hizmet tam
+bunu imzalar ve güncel paneller uygular. v0.1.0-alpha.64'ten (#134) D-039'u taşıyan
+sürüme kadarki paneller yedi günlük kayda yine kendi bir dakikalık sınırlarını
+uygular; alpha.64 öncesi paneller imzalı süreyi zaten uyguluyordu. Eski kayıt biçimleri, güncel
 istemciye daha uzun bir yetkilendirme aralığı sağlamaz.
 Eski makineye bağlı lisanslar, özgün makine ve anahtar/yenileme kimlik bilgisi
 kanıtlandıktan sonra gözlemlenen IP'ye bağlanır; önceden yeniden kurulmuş eski bir

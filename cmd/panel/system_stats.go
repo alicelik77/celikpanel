@@ -55,7 +55,7 @@ func (p *Panel) handleSystemStats(w http.ResponseWriter, r *http.Request) {
 }
 
 func hostnameOrEmpty() string {
-	h, err := os.Hostname()
+	h, err := localServerName()
 	if err != nil {
 		return ""
 	}

@@ -3,7 +3,10 @@ package main
 import (
 	"context"
 	"errors"
+	"log"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -27,6 +30,48 @@ func setupMailEnrollmentWaiting(reason, requestID string) error {
 	}
 	return &serverSetupMailEnrollmentWait{"server_setup_mail_enrollment_" + reason, strings.ReplaceAll(message, "<request-id>", requestID)}
 }
+
+// A handoff refused because the host was busy (2026-10-30, Arch run ap-e).
+// The Agent refused before starting a worker, so nothing ran and nothing was
+// recorded: the step waits and hands off the same request again by itself, for
+// at most serverSetupHostBusyBound. Only past that bound is the owner asked,
+// with what kept the server busy and what to do.
+//
+// Sunucu meşgulken reddedilen devir: hiçbir şey başlamadı; kurulum aynı isteği
+// kendiliğinden yeniden iletir; yalnız süre aşılırsa sahipten eylem istenir.
+const serverSetupMailEnrollmentHostBusyCode = "server_setup_mail_enrollment_host_busy"
+
+// serverSetupMailEnrollmentBusyUnnamed marks a bound reached by a refusal that
+// named no reason.
+const serverSetupMailEnrollmentBusyUnnamed = "unknown"
+
+func setupMailEnrollmentRefusedBusy(step *serverSetupExecutionStep, reason, requestID string, now time.Time) error {
+	if recordServerSetupHostBusy(step, now) {
+		step.BusyRetry = true
+		return &serverSetupPeerWait{Code: serverSetupHostBusyCode, Message: serverSetupHostBusyWaitMessage + setupMailEnrollmentBusyHolder(*step)}
+	}
+	step.BusyRetry = false
+	if reason == "" {
+		reason = serverSetupMailEnrollmentBusyUnnamed
+	}
+	step.BusyReason = reason
+	return setupMailEnrollmentStayedBusy(*step, requestID)
+}
+
+func setupMailEnrollmentStayedBusy(step serverSetupExecutionStep, requestID string) error {
+	return &serverSetupMailEnrollmentWait{serverSetupMailEnrollmentHostBusyCode,
+		"This server stayed busy for more than 30 minutes (" + serverSetupHostBusyCause(step.BusyReason) + "), so the mail renewal request was not handed off and nothing was changed (" + strconv.Itoa(step.BusyAttempts) + " tries)." + setupMailEnrollmentBusyHolder(step) + " You, the owner: finish or stop the other change on this server, then choose Retry reviewed handoff; setup continues with the same request. If it still does not start, inspect celikpanel-mail-enrollment-" + requestID + ".service."}
+}
+
+// setupMailEnrollmentBusyHolder names, when the Agent could read it from the
+// kernel's lock table, the lock and the process holding it at the last
+// refusal (2026-10-30: the Arch run ap-e could not establish it).
+func setupMailEnrollmentBusyHolder(step serverSetupExecutionStep) string {
+	if step.BusyHolder == "" {
+		return ""
+	}
+	return " At the last try " + step.BusyHolder + "."
+}
 func setupMailEnrollmentRequest(plan serverSetupPlan, execution *serverSetupExecution, index int) (transport.MailEnrollmentStartRequest, error) {
 	empty := transport.MailEnrollmentStartRequest{}
 	if execution == nil || index < 0 || index >= len(execution.Steps) || plan.Version != serverSetupPlanVersion || plan.ID != serverSetupPlanIdentity(plan) || validateServerSetupExecution(plan, *execution) != nil {
@@ -48,6 +93,9 @@ func (p *Panel) runServerSetupMailEnrollment(ctx context.Context, plan serverSet
 	if err != nil {
 		return false, err
 	}
+	// A hand-off again after a busy refusal is the same reviewed request: it is
+	// audited once, at its first hand-off, not once per attempt.
+	busyRetry := execution.Steps[index].BusyRetry
 	return advanceSetupMailEnrollment(ctx, request, &execution.Steps[index], func() error {
 		if err := p.requireServerSetupAdmission(ctx); err != nil {
 			return err
@@ -62,13 +110,17 @@ func (p *Panel) runServerSetupMailEnrollment(ctx context.Context, plan serverSet
 	}, func() error { return p.persistServerSetupExecution(ctx, *execution) }, func(req *transport.MailEnrollmentRequest, out *transport.MailEnrollmentStatusResponse) error {
 		return p.callAgentContext(ctx, "Agent.MailEnrollmentStatusV1", req, out)
 	}, func(req *transport.MailEnrollmentStartRequest, out *transport.MailEnrollmentStartResponse) error {
-		p.auditServiceOperation(ctx, plan.Actor, "server_setup_mail_enrollment_requested")
+		if !busyRetry {
+			p.auditServiceOperation(ctx, plan.Actor, "server_setup_mail_enrollment_requested")
+		}
 		return p.callAgentContext(ctx, "Agent.StartMailEnrollmentV1", req, out)
 	})
 }
 
 // The persisted attempt fence precedes IPC. A crash/lost reply leaves the same
 // request observational; even proven ledger absence cannot authorize redispatch.
+// Only the Agent's typed busy answer to this exact request (no worker started)
+// arms one more hand-off of the same request, bounded in time (2026-10-30).
 func advanceSetupMailEnrollment(ctx context.Context, req transport.MailEnrollmentStartRequest, step *serverSetupExecutionStep, admit, persist func() error, status func(*transport.MailEnrollmentRequest, *transport.MailEnrollmentStatusResponse) error, start func(*transport.MailEnrollmentStartRequest, *transport.MailEnrollmentStartResponse) error) (bool, error) {
 	if ctx == nil || step == nil || step.Status != "running" || req.RequestID != step.RequestID || req.OwnerID != step.OwnerID || req.Generation != step.Qualifier || admit == nil || persist == nil || status == nil || start == nil {
 		return false, errors.New("mail enrollment adapter is unavailable")
@@ -90,7 +142,14 @@ func advanceSetupMailEnrollment(ctx context.Context, req transport.MailEnrollmen
 	case "rollback":
 		return false, setupMailEnrollmentWaiting("rollback", req.RequestID)
 	case "not_recorded":
-		if step.EnrollmentDispatchAttempted {
+		// Handed off again only after the Agent's own busy refusal of the
+		// previous hand-off (BusyRetry): that refusal proved no worker started.
+		// A hand-off whose reply was lost, or that was accepted, is never
+		// repeated here.
+		if step.EnrollmentDispatchAttempted && !step.BusyRetry {
+			if step.BusyReason != "" {
+				return false, setupMailEnrollmentStayedBusy(*step, req.RequestID)
+			}
 			return false, setupMailEnrollmentWaiting("not_recorded", req.RequestID)
 		}
 	default:
@@ -99,12 +158,24 @@ func advanceSetupMailEnrollment(ctx context.Context, req transport.MailEnrollmen
 	if err := admit(); err != nil {
 		return false, err
 	}
+	// The fence is durable before the call: a crash or lost reply from here on
+	// leaves the request observational (BusyRetry cleared), never re-sent.
 	step.EnrollmentDispatchAttempted = true
+	step.BusyRetry, step.BusyReason, step.BusyHolder = false, "", ""
 	if err := persist(); err != nil {
 		return false, err
 	}
 	var handed transport.MailEnrollmentStartResponse
-	if err := start(&req, &handed); err != nil || handed.RequestID != req.RequestID || handed.Handoff != "accepted" {
+	err := start(&req, &handed)
+	if err == nil && handed.RequestID == req.RequestID && handed.Handoff == transport.MailEnrollmentHandoffBusy {
+		err = &hostMutationBusyError{reason: handed.Reason}
+		step.BusyHolder = handed.Holder
+		log.Printf("Server setup: mail renewal request %s was refused as busy (nothing started); %s", req.RequestID, firstNonEmpty(handed.Holder, "the Agent did not name the holder"))
+	}
+	if hostMutationRefusedAsBusy(err) {
+		return false, setupMailEnrollmentRefusedBusy(step, hostMutationBusyReason(err), req.RequestID, time.Now())
+	}
+	if err != nil || handed.RequestID != req.RequestID || handed.Handoff != "accepted" {
 		return false, setupMailEnrollmentWaiting("unknown", req.RequestID)
 	}
 	return false, setupMailEnrollmentWaiting("handoff", req.RequestID)

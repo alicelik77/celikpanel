@@ -28,6 +28,7 @@ type dnsEngineTestAgent struct {
 	readinessCalls            int
 	onReadiness               func(int)
 	readinessAfterSwitchError string
+	retainedJournalRequestID  string
 	dnssec                    bool
 	dnssecUnavailable         bool
 	dnssecCalls               int
@@ -480,6 +481,7 @@ func (agent *dnsEngineTestAgent) DNSBackendReadiness(
 		agent.runtimes[transport.DNSEngineBIND],
 	}
 	response.Port53Conflict = agent.port53Conflict
+	response.SwitchJournalRequestID = agent.retainedJournalRequestID
 	if agent.switchCalls > 0 && agent.readinessAfterSwitchError != "" {
 		response.Error = agent.readinessAfterSwitchError
 	}

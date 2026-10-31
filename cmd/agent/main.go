@@ -40,8 +40,54 @@ func (a *Agent) GetServices(args *transport.Empty, reply *[]core.Service) error 
 	if err != nil {
 		return err
 	}
+	if serviceVersionsUnknown(services) {
+		fillServiceVersionsFromPackages(services, readInstalledPackageVersions(context.Background()))
+	}
 	*reply = services
 	return nil
+}
+
+func serviceVersionsUnknown(services []core.Service) bool {
+	for _, s := range services {
+		if s.Version == "" || s.Version == "unknown" {
+			return true
+		}
+	}
+	return false
+}
+
+// fillServiceVersionsFromPackages gives a service whose version is unknown the
+// version of its catalogue package as the package database reports it. A
+// service's own program is never started to ask (version_detector.go).
+// Sürümü bilinmeyen hizmete paket veritabanındaki sürüm verilir.
+func fillServiceVersionsFromPackages(list []core.Service, packages transport.InstalledPackageVersionsResponse) {
+	if packages.State != transport.PackageVersionsRead {
+		return
+	}
+	byService := map[string]string{}
+	for _, component := range packages.Components {
+		for _, pkg := range component.Packages {
+			if version := services.UpstreamPackageVersion(pkg.Version); version != "" {
+				byService[component.ServiceID] = version
+				break
+			}
+		}
+	}
+	for i := range list {
+		if list[i].Version != "" && list[i].Version != "unknown" {
+			continue
+		}
+		owner := core.ServiceForUnit(list[i].ID)
+		if owner == nil {
+			owner = core.HelperUnitOwner(list[i].ID)
+		}
+		if owner == nil {
+			continue
+		}
+		if version, ok := byService[owner.ID]; ok {
+			list[i].Version = version
+		}
+	}
 }
 
 // configAuthorize decides which path the configuration editor may touch.

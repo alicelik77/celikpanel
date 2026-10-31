@@ -40,6 +40,13 @@ import (
 // AcceptanceFixtureBuild is true only in the acceptance_license test build.
 const AcceptanceFixtureBuild = true
 
+// The fixture re-verifies its local guest marker on the short schedule the
+// customer policy used before the seven-day offline window (D-039): it never
+// contacts the license service, so there is no outage to ride out, and the
+// acceptance runs keep proving a lapse within a minute.
+const acceptanceCheckInterval = time.Minute
+const acceptanceRefreshInterval = 45 * time.Second
+
 const (
 	// AcceptanceFixtureHolder is shown in the license status and scanned for by
 	// release packaging; it must never appear in a release binary.
@@ -298,7 +305,7 @@ func (a *acceptanceFixture) status() Status {
 	}
 	verified := a.verifiedAt.Load()
 	s := Status{State: "active", Observation: ObservationKnown, Product: AcceptanceFixtureProduct, LicenseID: AcceptanceFixtureLicenseID,
-		ExpiresAt: r.ExpiresAt, OfflineUntil: min(r.ExpiresAt, verified+int64(CheckInterval/time.Second)), CanProvision: true, acceptanceStatus: label}
+		ExpiresAt: r.ExpiresAt, OfflineUntil: min(r.ExpiresAt, verified+int64(acceptanceCheckInterval/time.Second)), CanProvision: true, acceptanceStatus: label}
 	switch unix := now.Unix(); {
 	case unix >= r.ExpiresAt:
 		s.State, s.CanProvision = "expired", false
@@ -309,12 +316,12 @@ func (a *acceptanceFixture) status() Status {
 }
 
 // refresh re-verifies the guest marker and the fixture receipt locally, on the
-// same schedule as a customer license. It never opens a network connection.
+// fixture's own short schedule. It never opens a network connection.
 func (a *acceptanceFixture) refresh(_ context.Context, force bool) error {
 	a.m.mu.Lock()
 	defer a.m.mu.Unlock()
 	now := a.m.clock().Unix()
-	if verified := a.verifiedAt.Load(); !force && verified != 0 && now >= verified && now < verified+int64(RefreshInterval/time.Second) {
+	if verified := a.verifiedAt.Load(); !force && verified != 0 && now >= verified && now < verified+int64(acceptanceRefreshInterval/time.Second) {
 		return nil
 	}
 	id, err := a.guest.verify()

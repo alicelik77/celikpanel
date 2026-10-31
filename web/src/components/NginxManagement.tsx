@@ -4,6 +4,7 @@ import { ServiceShell } from './ServiceShell';
 import { useI18n } from '../i18n';
 import { KnownEmpty, RemoteGate } from './ui';
 import { decodeList, useRemote } from '../lib/remote';
+import { NginxDefaultHTTPSCard } from './NginxDefaultHTTPSCard';
 
 interface NginxManagementProps {
     onBack: () => void;
@@ -101,6 +102,9 @@ export function NginxManagement({ onBack }: NginxManagementProps) {
                         )}
                     </RemoteGate>
                 )}
+                {/* Read on its own: a failed TLS-settings read does not hide it.
+                    Kendi okumasıyla: TLS ayarları okunamasa da görünür. */}
+                {tab === 'ssl' && <NginxDefaultHTTPSCard />}
 
                 {tab === 'rate' && (
                     <RemoteGate remote={rate.remote} checking={t('nginx.rate.checking')} failed={t('nginx.rate.unknown')} onRetry={() => void rate.retry()} busy={rate.reading} className="py-2">

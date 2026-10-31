@@ -45,14 +45,14 @@ func restoreRenamedPDNSTargetFileV4(proof dnsengineartifact.PDNSTargetCandidateP
 		return err
 	}
 	defer unix.Close(liveFD)
-	if privateStat.Dev != liveStat.Dev || uint64(liveStat.Dev) != proof.Device {
+	if privateStat.Dev != liveStat.Dev {
 		return errors.New("PowerDNS rename inverse crosses a filesystem")
 	}
 	privateLeaf, liveLeaf := filepath.Base(proof.Path), filepath.Base(livePath)
 	// A crash after rename may have left the candidate back at its original
 	// name. Accept only that exact file while the live path is absent.
 	if err := verifyPDNSTargetAbsentV4(livePath, false); err == nil {
-		if actual, captureErr := CapturePDNSTargetCandidateV4(proof.Path); captureErr == nil && actual == proof {
+		if actual, captureErr := CapturePDNSTargetCandidateV4(proof.Path); captureErr == nil && proof.SameCandidate(actual) {
 			if err := guard(); err != nil {
 				return err
 			}
@@ -96,7 +96,7 @@ func restoreRenamedPDNSTargetFileV4(proof dnsengineartifact.PDNSTargetCandidateP
 	if err := unix.Fstatat(liveFD, liveLeaf, &liveStatNow, unix.AT_SYMLINK_NOFOLLOW); err != nil {
 		return err
 	}
-	if err := exactPDNSTargetCandidateStatV4(liveStatNow, proof); err != nil {
+	if err := exactPDNSTargetCandidateStatV4(liveStatNow, uint64(liveStat.Dev), proof); err != nil {
 		return err
 	}
 	if err := unix.Renameat2(liveFD, liveLeaf, privateFD, privateLeaf, unix.RENAME_NOREPLACE); err != nil {
@@ -132,7 +132,7 @@ func VerifyPDNSTargetCandidateV4Exact(proof dnsengineartifact.PDNSTargetCandidat
 	if err != nil {
 		return err
 	}
-	if actual != proof {
+	if !proof.SameCandidate(actual) {
 		return errors.New("PowerDNS candidate differs from frozen journal")
 	}
 	return nil

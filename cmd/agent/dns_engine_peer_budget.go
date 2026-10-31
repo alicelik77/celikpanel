@@ -210,6 +210,8 @@ func (r *dnsPeerProofRun) finish(err error) {
 	outcome := "verified"
 	switch {
 	case err == nil:
+	case errors.Is(err, errDNSProducerCatalogRestampedBeforeExchange):
+		outcome = "challenge superseded before its exchange (catalog re-stamped; the wave proves the pair again)"
 	case errors.Is(err, errDNSProducerCatalogRestampedBeforeChallenge):
 		outcome = "no challenge (catalog re-stamped; the wave proves the pair again)"
 	default:

@@ -1,0 +1,40 @@
+-- host mainpd PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
+-- packaged owner tools
+total 22264
+-rw-r--r-- 1 root root    7483 Oct 30 14:51 README.md
+-rwxr-xr-x 1 root root 4935842 Oct 30 14:51 bind-peer-inspect
+-rwxr-xr-x 1 root root 9040034 Oct 30 14:51 dns-peer-enroll
+-rwxr-xr-x 1 root root 8802466 Oct 30 14:51 pdns-peer-inspect
+-- primary-status (main side)
+{"catalog_name":"catalog-c0000352.celikpanel.invalid","client_public_key_sha256":"27106913cf4bab49778dc49fa80234e71aaa6d0201ab84511bc50b7d294b2951","enrollment_id":"b1b15b70af1ac9a75d4dbb41a6ca2f66","host_key_sha256":"ccd18b2536dcfbe06bf423da91e15f2bb2bf77261d66cef50abf8e0a2b17147d","peer_ip":"192.0.3.83","primary_ip":"192.0.3.82","state":"configured"}
+-- secondary-status (backup side)
+{"state":"disabled","reason":"reviewed PowerDNS inspector policy is absent","next_action":"Run secondary-install --engine pdns locally with reviewed pair, catalog account and key"}
+-- account
+-- channel files
+ls: cannot access '/etc/pdns-peer-inspector': No such file or directory
+ls: cannot access '/etc/ssh/pdns-peer-inspector': No such file or directory
+ls: cannot access '/usr/local/libexec/celikpanel-pdns-peer-inspect*': No such file or directory
+ls: cannot access '/etc/sudoers.d/celikpanel-pdns-peer-inspector': No such file or directory
+-- ownership
+root:root 644 /etc/ssh/sshd_config
+stat: cannot statx '/etc/pdns-peer-inspector': No such file or directory
+stat: cannot statx '/etc/pdns-peer-inspector/*': No such file or directory
+stat: cannot statx '/etc/ssh/pdns-peer-inspector': No such file or directory
+stat: cannot statx '/etc/ssh/pdns-peer-inspector/*': No such file or directory
+stat: cannot statx '/var/lib/pdns-peer-inspector': No such file or directory
+-- sshd_config tail
+#	PermitTTY no
+#	ForceCommand cvs server
+ClientAliveInterval 120
+-- sshd ports
+port 22
+-- automation marker
+(none)
+-- agent log
+2026-10-30T14:54:51+00:00 mainpd agent[10138]: 2026/10/30 14:54:51 peer inspection setup: pdns enrollment active for peer 192.0.3.83
+-- ssh units (socket activation?)
+ssh.socket active=inactive enabled=disabled
+ssh.service active=active enabled=enabled
+sshd.service active=active enabled=alias
+LISTEN 0      128          0.0.0.0:22        0.0.0.0:*    users:(("sshd",pid=797,fd=6))                                                     
+LISTEN 0      128             [::]:22           [::]:*    users:(("sshd",pid=797,fd=7))                                                     
