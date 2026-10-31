@@ -1441,12 +1441,23 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
-        -- Reverse the account links and address confirmation (migration 47, alpha.114).
+        -- Reverse the mail autoresponders (migration 51, alpha.114).
+        DROP TABLE email_autoresponders;
+
+        -- Reverse protected folders, redirects and recovery codes (migration 50, alpha.114).
+        DROP INDEX idx_two_factor_recovery_codes_user;
+        DROP TABLE two_factor_recovery_codes;
+        DROP TABLE site_redirects;
+        DROP INDEX idx_site_protected_users_dir;
+        DROP TABLE site_protected_users;
+        DROP TABLE site_protected_dirs;
+
+        -- Reverse the account links and address confirmation (migration 49, alpha.114).
         DROP TRIGGER clear_email_verification_on_change;
         DROP TABLE account_links;
         ALTER TABLE users DROP COLUMN email_verified_at;
 
-        -- Reverse accounts, plans and resellers (migration 47, alpha.114).
+        -- Reverse accounts, plans and resellers (migration 48, alpha.114).
         DROP TABLE reseller_pools;
         DROP INDEX idx_sessions_impersonator;
         ALTER TABLE sessions DROP COLUMN impersonator_id;

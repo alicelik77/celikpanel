@@ -8,31 +8,31 @@ import (
 	"testing"
 )
 
-// Migration 47 (alpha.114, accounts, plans and resellers): one new table
+// Migration 48 (alpha.114, accounts, plans and resellers): one new table
 // (reseller_pools) and two NULL columns (sessions.impersonator_id,
-// audit_logs.acting_as). No row is changed: a database at schema 46 with
+// audit_logs.acting_as). No row is changed: a database at schema 47 with
 // users, sessions and audit rows upgrades with every row as it was, every
 // existing session still valid and no reseller limited (no pool row). The
-// release before it refuses a ledger that carries entry 47; a return to it is
+// release before it refuses a ledger that carries entry 48; a return to it is
 // the pre-update snapshot restore, as for every migration.
-const accountsPlansMigrationVersion = 47
+const accountsPlansMigrationVersion = 48
 
-func TestMigration47UpgradesASchema46DatabaseAndChangesNoRow(t *testing.T) {
+func TestMigration48UpgradesASchema47DatabaseAndChangesNoRow(t *testing.T) {
 	embedded, err := loadEmbeddedMigrations()
 	if err != nil {
 		t.Fatal(err)
 	}
-	dsn := fmt.Sprintf("%s?_pragma=foreign_keys(1)", filepath.Join(t.TempDir(), "panel46.sqlite"))
+	dsn := fmt.Sprintf("%s?_pragma=foreign_keys(1)", filepath.Join(t.TempDir(), "panel47.sqlite"))
 	raw, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer raw.Close()
 	raw.SetMaxOpenConns(1)
-	var migration47 *embeddedMigration
+	var migration48 *embeddedMigration
 	for i := range embedded {
 		if embedded[i].version == accountsPlansMigrationVersion {
-			migration47 = &embedded[i]
+			migration48 = &embedded[i]
 			continue
 		}
 		if embedded[i].version > accountsPlansMigrationVersion {
@@ -42,8 +42,8 @@ func TestMigration47UpgradesASchema46DatabaseAndChangesNoRow(t *testing.T) {
 			t.Fatalf("apply %s: %v", embedded[i].filename, err)
 		}
 	}
-	if migration47 == nil {
-		t.Fatal("migration 47 is not embedded")
+	if migration48 == nil {
+		t.Fatal("migration 48 is not embedded")
 	}
 	if _, err := raw.Exec(`
 		INSERT INTO users (id, username, password_hash, email, role, parent_id) VALUES
@@ -54,8 +54,8 @@ func TestMigration47UpgradesASchema46DatabaseAndChangesNoRow(t *testing.T) {
 	`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := raw.Exec(string(migration47.content)); err != nil {
-		t.Fatalf("apply migration 47 to a schema-46 database: %v", err)
+	if _, err := raw.Exec(string(migration48.content)); err != nil {
+		t.Fatalf("apply migration 48 to a schema-47 database: %v", err)
 	}
 	var users, pools int
 	var impersonator, actingAs sql.NullInt64
@@ -92,7 +92,7 @@ func TestMigration47UpgradesASchema46DatabaseAndChangesNoRow(t *testing.T) {
 	}
 }
 
-func TestMigration47IsTheNewestAndAnOlderReleaseRefusesItsLedger(t *testing.T) {
+func TestOlderReleaseRefusesALedgerWithTheAccountsPlansEntry(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "panel.sqlite")
 	database, err := NewSQLiteDB(path)
 	if err != nil {
@@ -108,9 +108,7 @@ func TestMigration47IsTheNewestAndAnOlderReleaseRefusesItsLedger(t *testing.T) {
 			older = append(older, migration)
 		}
 	}
-	if len(older) != len(embedded)-1 {
-		t.Fatalf("migration %d is not the newest embedded migration", accountsPlansMigrationVersion)
-	}
+	requireMigrationsFrom(t, embedded, older, accountsPlansMigrationVersion)
 	err = database.verifyMigrationLedgerCoverage(t.Context(), older)
 	database.Close()
 	if err == nil || !strings.Contains(err.Error(), "no matching embedded migration") {

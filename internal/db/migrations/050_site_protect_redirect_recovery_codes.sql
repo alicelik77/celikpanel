@@ -1,7 +1,7 @@
 -- alpha.114 (Plesk-parity trio: password-protected folders, free-form
 -- redirects, two-factor recovery codes). Four new tables; no existing table or
--- row is changed, so the upgrade from 046 keeps all data. A release before
--- this one refuses a ledger that carries entry 47; a return to it is the
+-- row is changed, so the upgrade from 049 keeps all data. A release before
+-- this one refuses a ledger that carries entry 50; a return to it is the
 -- pre-update snapshot restore, as for every migration (there is no down
 -- migration).
 --

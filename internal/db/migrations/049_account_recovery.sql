@@ -1,6 +1,6 @@
--- 047: Account links: password reset, invitation and email verification
+-- 049: Account links: password reset, invitation and email verification
 -- (v0.1.0-alpha.114, P6; ROADMAP v0.3 "Customer and reseller first-class").
--- 047: Hesap bağlantıları: parola sıfırlama, davet ve e-posta doğrulama.
+-- 049: Hesap bağlantıları: parola sıfırlama, davet ve e-posta doğrulama.
 --
 -- Additive only: one new table, one nullable column and one trigger. Existing
 -- rows keep every value; every existing address starts unverified, so no

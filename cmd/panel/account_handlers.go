@@ -568,7 +568,7 @@ func (p *Panel) handleImpersonate(w http.ResponseWriter, r *http.Request, c *Cal
 		return
 	}
 
-	// The session records its operator (migration 47): the audit trail names
+	// The session records its operator (migration 48): the audit trail names
 	// the real person for every action inside it, and the session ends when
 	// the operator may no longer manage this account.
 	// Oturum operatörünü kaydeder: denetim izi içindeki her eylemde gerçek

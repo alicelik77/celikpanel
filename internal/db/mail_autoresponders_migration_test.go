@@ -6,13 +6,13 @@ import (
 	"testing"
 )
 
-// Migration 47 (alpha.114, out-of-office replies): one new table keyed by
-// the mailbox; no existing row is changed. The release before it (schema 46)
-// refuses a ledger that carries entry 47; a return to it is the pre-update
+// Migration 51 (alpha.114, out-of-office replies): one new table keyed by
+// the mailbox; no existing row is changed. The release before it refuses a
+// ledger that carries entry 51; a return to it is the pre-update
 // snapshot restore, as for every migration.
-const mailAutorespondersMigrationVersion = 47
+const mailAutorespondersMigrationVersion = 51
 
-func TestMigration47AddsTheAutoresponderTableKeyedByMailbox(t *testing.T) {
+func TestMigration51AddsTheAutoresponderTableKeyedByMailbox(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "panel.sqlite")
 	database, err := NewSQLiteDB(path)
 	if err != nil {
@@ -80,9 +80,7 @@ func TestOlderReleaseRefusesALedgerWithTheAutoresponderEntry(t *testing.T) {
 			older = append(older, migration)
 		}
 	}
-	if len(older) != len(embedded)-1 {
-		t.Fatalf("migration %d is not the newest embedded migration", mailAutorespondersMigrationVersion)
-	}
+	requireMigrationsFrom(t, embedded, older, mailAutorespondersMigrationVersion)
 	err = database.verifyMigrationLedgerCoverage(t.Context(), older)
 	database.Close()
 	if err == nil || !strings.Contains(err.Error(), "no matching embedded migration") {

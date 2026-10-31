@@ -8,8 +8,8 @@ import (
 	"testing"
 )
 
-// accountRecoveryMigrationVersion is 047_account_recovery.sql (alpha.114).
-const accountRecoveryMigrationVersion = 47
+// accountRecoveryMigrationVersion is 049_account_recovery.sql (alpha.114).
+const accountRecoveryMigrationVersion = 49
 
 // An older release must refuse a ledger that already holds this migration.
 func TestOlderReleaseRefusesALedgerWithTheAccountRecoveryEntry(t *testing.T) {
@@ -27,9 +27,7 @@ func TestOlderReleaseRefusesALedgerWithTheAccountRecoveryEntry(t *testing.T) {
 			older = append(older, migration)
 		}
 	}
-	if len(older) != len(embedded)-1 {
-		t.Fatalf("migration %d is not the newest embedded migration", accountRecoveryMigrationVersion)
-	}
+	requireMigrationsFrom(t, embedded, older, accountRecoveryMigrationVersion)
 	err = database.verifyMigrationLedgerCoverage(t.Context(), older)
 	database.Close()
 	if err == nil || !strings.Contains(err.Error(), "no matching embedded migration") {

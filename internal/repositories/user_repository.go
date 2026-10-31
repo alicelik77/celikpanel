@@ -200,7 +200,7 @@ func (r *PostgresUserRepository) UpdateAndRevokeSessions(ctx context.Context, us
 		return err
 	}
 	// "Log in as" sessions this person opened as an operator end with their
-	// own sessions (alpha.114, migration 47).
+	// own sessions (alpha.114, migration 48).
 	// Bu kişinin operatör olarak açtığı "Farklı giriş yap" oturumları da biter.
 	if _, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE impersonator_id = ?`, user.ID); err != nil {
 		return err

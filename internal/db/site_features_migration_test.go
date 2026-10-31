@@ -6,14 +6,14 @@ import (
 	"testing"
 )
 
-// Migration 47 (alpha.114): four new tables (a site's password-protected
+// Migration 50 (alpha.114): four new tables (a site's password-protected
 // folders and their users, its redirects, and an account's two-factor recovery
 // codes). Nothing existing is changed, so the upgrade from 46 keeps every row;
-// the release before it (schema 46) refuses a ledger that carries entry 47, and
+// the release before it refuses a ledger that carries entry 50, and
 // a return to it is the pre-update snapshot restore, as for every migration.
-const siteFeaturesMigrationVersion = 47
+const siteFeaturesMigrationVersion = 50
 
-func TestMigration47AddsTheSiteFeatureAndRecoveryCodeTables(t *testing.T) {
+func TestMigration50AddsTheSiteFeatureAndRecoveryCodeTables(t *testing.T) {
 	database, err := NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))
 	if err != nil {
 		t.Fatal(err)
@@ -101,9 +101,7 @@ func TestOlderReleaseRefusesALedgerWithTheSiteFeaturesEntry(t *testing.T) {
 			older = append(older, migration)
 		}
 	}
-	if len(older) != len(embedded)-(embedded[len(embedded)-1].version-siteFeaturesMigrationVersion+1) {
-		t.Fatalf("migration %d is not part of the embedded migrations as expected", siteFeaturesMigrationVersion)
-	}
+	requireMigrationsFrom(t, embedded, older, siteFeaturesMigrationVersion)
 	err = database.verifyMigrationLedgerCoverage(t.Context(), older)
 	database.Close()
 	if err == nil || !strings.Contains(err.Error(), "no matching embedded migration") {
