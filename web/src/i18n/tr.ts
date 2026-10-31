@@ -395,6 +395,9 @@ export const tr: Record<ShellKey, string> = {
     'panelUpdate.outcome.preflightStep.generic': "Neden: salt-okur bir denetim mevcut kurulumu doğrulayamadı.",
     'panelUpdate.outcome.stoppedNext': "Sunucunun aşağıdaki iletisi bu sunucudaki bir durumu (örneğin hâlâ süren başka bir işlemi ya da meşgul paket yöneticisini) belirtmiyorsa sunucuda yapmanız gereken bir şey yok; belirtiyorsa önce bitmesini bekleyin ya da sorunu giderin.",
     'panelUpdate.outcome.stoppedResume': "Hiçbir işlem kendiliğinden sürmez. {target} güncellemesini yeniden başlatmak güvenlidir.",
+    // alpha.114 E7: yeni sürüm sunucunun kayıtlı posta ya da DNS durumunu kabul etmedi; sahip bunu sunucuda düzeltemez.
+    'panelUpdate.outcome.preflightNext.application_compatibility': "Siteleriniz, postanız ve DNS'iniz {previous} ile çalışmaya devam ediyor. Sunucuda yapmanız gereken bir şey yok; posta ve DNS dosyalarına dokunmayın. {target} güncellemesini yeniden başlatmak aynı yerde durur.",
+    'panelUpdate.outcome.preflightResume.application_compatibility': "Bu, sunucunuzda değil CelikPanel'de düzeltilir: daha yeni bir sürüm yayımlandığında güncelleme kartı onu gösterir, siz de her zamanki gibi başlatırsınız. Bunu bildirirken Ayrıntılar altındaki satırı ekleyin.",
     // --- batch 2b (9 Oct 2026): database and mail configuration screens: checking,
     // could not be read, known; saves that carry the version of what was read ---
     // --- end of batch 2b ---

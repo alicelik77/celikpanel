@@ -8069,3 +8069,38 @@ until the backup reports ready.
   link refusal, IPv6 and reverse DNS. Nothing measured on an installed server.
   **No P0 item is closed or advanced**; P0.1 to P0.5 stay partial and every open
   acceptance item stays open.
+
+### Branch fix/a114-f1-update (an alpha.113 PowerDNS main server can take the update and return to alpha.113; v3 DNS evidence gets an explicit Agent declaration; no schema change; invariants 1, 2, 3 and 6; D-022; D-024; D-025; 2026-11-01)
+
+- **Incident.** Lab run 1 of alpha.114 (E7): the owner's update from alpha.113
+  stopped in the read-only check (`update_preflight_refused`,
+  `application_compatibility`, `state=unchanged`) on both PowerDNS main servers.
+  The independent `verify-dns-application` refused every state-v3,
+  ownership-v3 and v3 journal document outright, a gate set in alpha.81 before
+  any release wrote v3; fresh PowerDNS main servers have written it since. The
+  joined PowerDNS backup updated: v3 is a main-server-only tenure
+  (`ValidateNativeCatalogStateV3` requires the primary role), and the backup's
+  separated v2 documents are admitted by the v2 declaration both releases carry.
+  The checker's 210-byte preamble also cut the cause from the 240-byte updater line.
+- **Contract.** The Agent native contract gains the optional, bytes-bound
+  `dns_native_catalog_policy: pdns-native-catalog-v3`; the checker pins it to the
+  Debian 4.9 and Arch 5.1 markers and never widens it (a new marker or document
+  schema needs a new value). alpha.113 wrote v3 before any Agent could declare it:
+  its Agent is admitted by the exact source commit in its signed contract
+  (`d3f3a323d`, with the v2 evidence and adoption-reader declarations), because
+  the DNS evidence package, the Agent DNS engine code, the recovery runtime and the
+  contract were byte-identical between that commit and the alpha.114 integration
+  base. Agents of earlier releases stay refused for v3; v4 journals stay refused.
+- **Recovery.** Application rollback to alpha.113 keeps native DNS evidence in
+  place, and the candidate's runtime admits the restored alpha.113 Agent for it.
+  A refusal still changes nothing; its line now reaches the owner whole, and the
+  notice says that services keep running, that nothing is to be done on the
+  server, that the same version stops the same way and that a corrected version
+  is the next step (EN/TR).
+- **Evidence.** Component tests only: both markers × state, ownership, both,
+  journal and state with a v1 journal × the current, alpha.113, undeclared and
+  foreign-shaped Agents, with evidence bytes unchanged; the joined backup's v2
+  evidence; a test that fails when the newest published release in ROADMAP.md is
+  not declared in `NativeCatalogV3Releases` or its markers are not covered in both
+  directions. The native 113 → 114 update and 114 → 113 rollback of a PowerDNS
+  main server is not yet measured. **No P0 item is closed**; P0.3/P0.4 stay partial.

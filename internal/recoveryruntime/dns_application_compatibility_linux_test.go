@@ -292,3 +292,12 @@ func TestBINDSourceJournalRequiresCompatibleApplication(t *testing.T) {
 		}
 	}
 }
+
+// The recovery entry adds at most 80 bytes; the updater keeps 240 (E7).
+func TestDNSApplicationRefusalsStayShort(t *testing.T) {
+	for _, err := range []error{errDNSSwitchJournalApplication, errDNSSwitchJournalApplicationV4, errDNSApplicationV3, errDNSApplication, fail(ReasonUnsafeMetadata)} {
+		if len(err.Error()) > 160 {
+			t.Fatalf("%d bytes: %s", len(err.Error()), err)
+		}
+	}
+}

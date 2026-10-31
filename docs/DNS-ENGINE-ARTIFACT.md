@@ -129,6 +129,17 @@ unknown schema, unsafe metadata, substituted files, changed target bytes and
 late evidence appearance refuse admission. Any v2 document requires a matching
 binary-bound capability; canonical v1-only/absent evidence adds no v2 requirement.
 
+A fresh PowerDNS main server's state-v3/ownership-v3 documents and v3 journal
+require `dns_native_catalog_policy: pdns-native-catalog-v3` (alpha.114), which
+the checker pins to the Debian 4.9 and Arch 5.1 markers and never widens.
+alpha.113 wrote v3 before that declaration existed; its Agent is admitted by
+the exact source commit of its signed contract (`d3f3a323d`) together with its
+v2 evidence and adoption-reader declarations, because the evidence code was
+byte-identical with the declaring source. `NativeCatalogV3Releases` lists every
+published v3 writer; a test fails when the newest published release is missing
+or its markers are not covered for both update and rollback. Joined PowerDNS
+backups never hold v3 (primary role only) and need only the v2 declaration.
+
 Update checks installed and candidate compatibility before coordinator downtime
 and again under exclusion before publication. Rollback checks the target at both
 boundaries. **Application rollback checks current native DNS evidence**, not an

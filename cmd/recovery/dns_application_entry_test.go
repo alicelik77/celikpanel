@@ -32,3 +32,13 @@ func TestDNSApplicationAdmissionIsReadOnlyOwnerScoped(t *testing.T) {
 		t.Fatal(got)
 	}
 }
+
+// alpha.114 E7: the updater keeps 240 bytes of this line. Every refusal the
+// checker can return (each at most 160 bytes, see recoveryruntime) reaches the
+// owner whole, cause first.
+func TestDNSApplicationRefusalFitsTheUpdaterLine(t *testing.T) {
+	line := dnsApplicationRefusal(errors.New(strings.Repeat("x", 160)))
+	if len(line) > 240 || !strings.HasPrefix(line, "DNS state check failed: x") || !strings.Contains(line, "preserve the DNS files") {
+		t.Fatalf("%d bytes: %q", len(line), line)
+	}
+}

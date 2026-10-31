@@ -35,7 +35,8 @@ func dispatchMailApplicationCompatibility(args []string, uid int, check func(str
 		return exitUsage
 	}
 	if err := check(args[2]); err != nil {
-		report("This application's compatibility with independent mail renewal could not be verified. The server owner must keep the current renewal files and choose a release or snapshot carrying a matching supported Agent contract before resuming the same operation. " + err.Error())
+		// The cause first and the line whole, as dnsApplicationRefusal.
+		report("Mail renewal check failed: " + err.Error() + ". Nothing changed; keep the renewal files.")
 		return exitUnavailable
 	}
 	return exitOK

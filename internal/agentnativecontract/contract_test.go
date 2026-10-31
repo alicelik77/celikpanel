@@ -176,3 +176,37 @@ func TestDNSSwitchJournalCapabilityIsExplicitAndBound(t *testing.T) {
 		t.Fatal("unknown v2 reader claim accepted")
 	}
 }
+
+// alpha.114 E7: the fresh PowerDNS main server's v3 evidence needs its own
+// bound claim. Removing it restores the exact historical bytes; an unknown
+// value or a claim without the separated-evidence reader is refused.
+func TestDNSNativeCatalogCapabilityIsExplicitAndBound(t *testing.T) {
+	agent := []byte("candidate agent")
+	c, err := New(agent, strings.Repeat("a", 40))
+	if err != nil || c.DNSNativeCatalogPolicy != DNSNativeCatalogPolicy {
+		t.Fatal("current producer must bind the native catalog v3 reader", err)
+	}
+	raw, err := Encode(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if parsed, err := Verify(raw, agent); err != nil || parsed != c {
+		t.Fatal("exact Agent capability not bound", err)
+	}
+	if _, err := Verify(raw, []byte("other agent")); err == nil {
+		t.Fatal("foreign Agent gained v3 capability")
+	}
+	historical := c
+	historical.DNSNativeCatalogPolicy = ""
+	old, err := Encode(historical)
+	if err != nil || bytes.Contains(old, []byte("dns_native_catalog_policy")) {
+		t.Fatal("historical contract bytes changed", err)
+	}
+	if parsed, err := Parse(old); err != nil || parsed.DNSNativeCatalogPolicy != "" {
+		t.Fatal("historical Agent gained v3 capability", err)
+	}
+	c.DNSNativeCatalogPolicy = "pdns-native-catalog-v4"
+	if _, err := Encode(c); err == nil {
+		t.Fatal("unsupported v3 claim accepted")
+	}
+}

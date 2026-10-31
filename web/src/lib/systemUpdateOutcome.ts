@@ -40,6 +40,8 @@ export type OutcomeKey =
     | 'panelUpdate.outcome.packageManagerBusyNext'
     | 'panelUpdate.outcome.stoppedNext'
     | 'panelUpdate.outcome.stoppedResume'
+    | 'panelUpdate.outcome.preflightNext.application_compatibility'
+    | 'panelUpdate.outcome.preflightResume.application_compatibility'
     | 'panelUpdate.outcome.cause.generic'
     | 'panelUpdate.outcome.rolledBackNext'
     | 'panelUpdate.outcome.rolledBackResume'
@@ -205,6 +207,17 @@ export function failedUpdateGuidance(observation: RecoveryObservation | null, in
         const firstLine = lineOne.length > 240 ? `${lineOne.slice(0, 239).trimEnd()}…` : lineOne;
         const inline = generic && firstLine !== '';
         const complete = inline && firstLine === reported;
+        // The new version refused this server's recorded mail or DNS state
+        // (alpha.114 E7: every PowerDNS main server on alpha.113). Nothing on
+        // the server fixes that and the same version stops the same way: say
+        // so, and that a corrected version is the next step.
+        // Yeni sürüm kayıtlı posta/DNS durumunu kabul etmedi: sunucuda
+        // düzeltilecek bir şey yok, aynı sürüm aynı yerde durur.
+        const refusedState = !translated && preflight?.step === 'application_compatibility';
+        const next: OutcomeText[] = refusedState
+            ? [{ key: 'panelUpdate.outcome.preflightNext.application_compatibility', vars: versions },
+                { key: 'panelUpdate.outcome.preflightResume.application_compatibility', vars: versions }]
+            : [{ key: 'panelUpdate.outcome.stoppedNext' }, { key: 'panelUpdate.outcome.stoppedResume', vars: versions }];
         return {
             state: 'unchanged',
             tone: 'neutral',
@@ -213,8 +226,7 @@ export function failedUpdateGuidance(observation: RecoveryObservation | null, in
                 { key: 'panelUpdate.outcome.stopped', vars: versions },
                 reason,
                 ...(inline ? [{ key: 'panelUpdate.outcome.serverMessage' as const, vars: { message: firstLine } }] : []),
-                { key: 'panelUpdate.outcome.stoppedNext' },
-                { key: 'panelUpdate.outcome.stoppedResume', vars: versions },
+                ...next,
             ],
             serverMessage: !product && !translated && !complete && reported ? reported : undefined,
         };
