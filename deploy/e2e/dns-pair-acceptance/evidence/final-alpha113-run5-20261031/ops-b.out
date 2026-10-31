@@ -1,0 +1,86 @@
+== clocks as the lab gives them 01:21:16
+labnet-CA 01:21:17.160319083
+arch 01:21:16.279986286
+== site archr5shop113.test with Enable SSL at creation 01:21:16
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/1/public_html", "Domain": "archr5shop113.test", "DomainID": 1, "FTPPassword": "[REDACTED]", "FTPUser": "archr5shop113_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 1, "TempDomain": ""}
+   site id 1
+   ok 192.0.3.115 archr5shop113.test A = '192.0.3.115' after 0s
+200 {"status": "success", "expires_at": "2031-10-31T01:21:24Z"}
+   certificate answer after 3s
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+--- http://archr5shop113.test/
+code=301 redirect=https://archr5shop113.test/ ssl_verify=0
+Server: nginx
+Location: https://archr5shop113.test/
+--- https://archr5shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+--- http://www.archr5shop113.test/
+code=301 redirect=https://www.archr5shop113.test/ ssl_verify=0
+Server: nginx
+Location: https://www.archr5shop113.test/
+--- https://www.archr5shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+--- certificate served on archr5shop113.test:443
+subject= X509v3 Subject Alternative Name: critical     DNS:archr5shop113.test, DNS:www.archr5shop113.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Oct 31 01:21:24 2031 GMT 
+Verify return code: 0 (ok)
+--- https://archr5shop113.test/hello.php
+code=200
+HTTP/2 200 
+server: nginx
+content-type: text/html; charset=UTF-8
+x-powered-by present: 0
+body: php-ok 5
+--- http://archr5shop113.test/hello.php (redirect?)
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Location: https://archr5shop113.test/hello.php
+code=301 location=https://archr5shop113.test/hello.php
+== mailboxes; DKIM by itself (card read only) 01:21:28
+200 {"id": 1, "success": true}
+200 {"id": 2, "success": true}
+   after 4s: {"status": 200, "dkim_status": "served", "dkim_signed": true, "signing_installed": true, "owner_record": false, "automatic": null}
+   TXT @192.0.3.115 '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA...'  @192.0.3.115 '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA...'
+2026-10-31T01:21:32+00:00 arch panel[3214]: 2026/10/31 01:21:32 [dkim-auto] archr5shop113.test: DKIM ready (domain_created; record published in archr5shop113.test)
+== webmail address (card enable, owner action) 01:21:34
+202 {"operation": {"id": "5130956bd998c9190873bfc395463200", "kind": "webmail_address", "package_name": "mail.archr5f113.test", "phase": "queued", "request_id": "5fa6e538c397481c1ba082738fea8407", "service_id": "roundcube", "started_at": "2026-10-31T01:21:34.301428243Z", "status": "queued"}}
+== 587 + 465 send, IMAPS read 01:21:39
+   587 {'ok': True, 'refused': {}} | 465 {'ok': True, 'refused': {}} | imaps {'after_seconds': 5.8, 'headers': 'From: alice@archr5shop113.test\r\nTo: bob@archr5shop113.test\r\nSubject: final-alpha113 218d47774ce4'}  | cert ['mail.archr5f113.test']
+== PHP mail() and a bounce 01:21:54
+   mail.php: sent php-mail 668d040901b7
+   bounce.php: sent bounce-test e37959305caf
+== DKIM verified independently against the TXT from each DNS server (192.0.3.115) 01:22:14
+   final-alpha113 218d47774ce4 | found | sigs 1 | [{'d': 'archr5shop113.test', 's': 'celik', 'verify_with_txt_from_192.0.3.115': True}] | mid <3a09b9603a6b4c3baef34af4b136303d@labnet.test>
+   final-alpha113-465 218d47774ce4 | found | sigs 1 | [{'d': 'archr5shop113.test', 's': 'celik', 'verify_with_txt_from_192.0.3.115': True}] | mid <d3c09b9f3439406da78f98aeb4019754@labnet.test>
+   php-mail 668d040901b7 | found | sigs 1 | [{'d': 'archr5shop113.test', 's': 'celik', 'verify_with_txt_from_192.0.3.115': True}] | mid <20261031012153.DF21C1878A@mail.archr5f113.test>
+-- bounce in alice's INBOX
+   Undelivered Mail Returned to Sender found Mail Delivery System <MAILER-DAEMON@mail.archr5f113.test> <20261031012154.58FCF18790@mail.archr5f113.test>
+-- server side: rspamd verdicts, postfix bounce lines, DKIM tables (read only)
+keytable lines for archr5shop113.test: 1
+signingtable lines for archr5shop113.test: 1
+rspamd lines for 3a09b9603a6b4c3baef34af4b136303d@labnet.test:
+rspamd_task_write_log: id: <3a09b9603a6b4c3baef34af4b136303d@labnet.test>, qid: <
+(default: F (no action): [1.40/15.00] [MISSING_DATE(1.00){}
+rspamd lines for d3c09b9f3439406da78f98aeb4019754@labnet.test:
+rspamd_task_write_log: id: <d3c09b9f3439406da78f98aeb4019754@labnet.test>, qid: <
+(default: F (no action): [1.40/15.00] [MISSING_DATE(1.00){}
+rspamd lines for 20261031012153.DF21C1878A@mail.archr5f113.test:
+rspamd_task_write_log: id: <20261031012153.DF21C1878A@mail.archr5f113.test>, qid:
+(default: F (no action): [0.70/15.00] [R_MISSING_CHARSET(0.50){}
+milter warnings, all boots: 0
+milters: smtpd=inet:127.0.0.1:8891, inet:127.0.0.1:11332 non_smtpd=inet:127.0.0.1:8891, inet:127.0.0.1:11332
+2026-10-31T01:21:54+00:00 arch postfix/virtual[15143]: 467E61878C: to=<nobody113@archr5shop113.test>, relay=virtual, delay=0.26, delays=0.25/0/0/0.01, dsn=5.1.1, status=bounced (unknown user: "nobody113@archr5shop113.test")
+2026-10-31T01:21:54+00:00 arch postfix/bounce[15158]: 467E61878C: sender non-delivery notification: 58FCF18790
+-- Roundcube (bob)
+ "logged_in": true,
+ "message_count_hint": "Messages 1 to 3 of 3"
+-- DKIM card now (read only)
+    200 {"dkim.status": "ok", "dkim_signed": true, "automatic": null}
+== ops done 01:22:17

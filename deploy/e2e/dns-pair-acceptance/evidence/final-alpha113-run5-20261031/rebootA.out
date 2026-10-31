@@ -1,0 +1,43 @@
+== reboot main backup 01:21:37
+main rebooted in 15.2 s
+backup rebooted in 15.1 s
+   main panel API answers (200) after reboot+60s+0s
+   backup panel API answers (200) after reboot+60s+0s
+== frankfurt: boots 3
+   [milter service|Milter.*(not found|refused|cannot)]: 0
+   [FQDN]: 0
+   [fail-closed|ambiguous|agent_mutations_held|refusing durable]: 0
+   [FOREIGN KEY]: 0
+   [unsupported map type: lmdb]: 0
+   [can.t lock|cannot lock|could not lock]: 0
+   [panel 500]: 0
+   err-priority lines of celikpanel units: 0
+   [systemd is not ready]: 3
+2026-10-31T01:21:52+00:00 frankfurt panel[819]: 2026/10/31 01:21:52 startup: this server is still starting (its system manager, systemd, does not report it ready yet), so the Panel's startup reconciliation (site configuration files, certifi
+2026-10-31T01:21:52+00:00 frankfurt panel[819]: 2026/10/31 01:21:52 startup: this server was still starting after 2m0s (systemd has not reported it running), so the Panel continues without waiting longer: its startup reconciliation steps ar
+2026-10-31T01:21:52+00:00 frankfurt panel[1040]: 2026/10/31 01:21:52 startup: this server is still starting (its system manager, systemd, does not report it ready yet), so the Panel's startup reconciliation (site configuration files, certif
+   per boot: boot start | panel start | startup wait line | continues line | listening
+   boot -1: 2026-10-31T01:11:00+00:00 | panel 01:12:02+00:00 | wait - | - | listen -
+   boot 0: 2026-10-31T01:21:46+00:00 | panel 01:21:51+00:00 | wait 01:21:52+00:00 |   | listen -
+   failed units: []
+== boston: boots 3
+   [milter service|Milter.*(not found|refused|cannot)]: 0
+   [FQDN]: 0
+   [fail-closed|ambiguous|agent_mutations_held|refusing durable]: 0
+   [FOREIGN KEY]: 0
+   [unsupported map type: lmdb]: 0
+   [can.t lock|cannot lock|could not lock]: 0
+   [panel 500]: 0
+   err-priority lines of celikpanel units: 1
+2026-10-31T01:13:45+00:00 boston mariadb-server.postinst[14472]: 2026-10-31  1:13:45 0 [Warning] You need to use --log-bin to make --expire-logs-days or --binlog-expire-logs-seconds work.
+   [systemd is not ready]: 3
+2026-10-31T01:21:51+00:00 boston panel[858]: 2026/10/31 01:21:51 startup: this server is still starting (its system manager, systemd, does not report it ready yet), so the Panel's startup reconciliation (site configuration files, certificat
+2026-10-31T01:21:51+00:00 boston panel[858]: 2026/10/31 01:21:51 startup: this server was still starting after 2m0s (systemd has not reported it running), so the Panel continues without waiting longer: its startup reconciliation steps are r
+2026-10-31T01:21:52+00:00 boston panel[1032]: 2026/10/31 01:21:51 startup: this server is still starting (its system manager, systemd, does not report it ready yet), so the Panel's startup reconciliation (site configuration files, certifica
+   per boot: boot start | panel start | startup wait line | continues line | listening
+   boot -1: 2026-10-31T01:11:00+00:00 | panel 01:12:09+00:00 | wait - | - | listen -
+   boot 0: 2026-10-31T01:21:45+00:00 | panel 01:21:50+00:00 | wait 01:21:51+00:00 |   | listen -
+   failed units: []
+   @192.0.3.113 SOA r5f113.test: status: NOERROR flags: qr aa 
+   @192.0.3.114 SOA r5f113.test: status: NOERROR flags: qr aa 
+== done 01:22:56

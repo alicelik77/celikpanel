@@ -1,0 +1,16 @@
+== DNS card before 01:19:53
+pending 1 None state ready
+== owner: review the plan again 01:19:54
+replan 200 False ['server_setup_infrastructure_dns_conflict:infrastructure address for ns2.r5f113.test differs from the reviewed server address'] ['01-peer_join:second', '02-dns:local', '03-firewall:enable_and_persist', '04-access_dns:frankfurt.r5f113.test', '05-dns_readiness:local', '06-mail_profile:webmail', '07-mail_profile:protected-mail', '08-mail_dns:r5f113.test', '09-access_dns:mail.r5f113.test', '10-mail_certificate:mail.r5f113.test', '11-mail_enrollment:mail-renewal', '12-verify:custom'] 
+== owner: start 01:19:55
+start 409 {
+ "code": "server_setup_plan_blocked",
+ "error": "Resolve the plan requirements before starting."
+}
+-- r5-a/main 01:19:56
+failed 15-mail_dns {"code": "server_setup_mail_dns_publish_failed", "message": "The DKIM record was saved but its publication failed. Check Server -> DNS for the DNS operation, then review the plan again."}
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=failed 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-verify=pending
+{"id": "15-mail_dns", "kind": "mail_dns", "owner_id": "25eee95d60fc691945c5430dc53b5816", "request_id": "a1e1bdb27491b47406e1f75882f9e76c", "status": "failed", "target": "r5f113.test"}
+failed 15-mail_dns {"code": "server_setup_mail_dns_publish_failed", "message": "The DKIM record was saved but its publication failed. Check Server -> DNS for the DNS operation, then review the plan again."}
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=failed 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-verify=pending
+== done 01:19:56

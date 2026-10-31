@@ -1,0 +1,90 @@
+== reboot main 01:22:17
+main rebooted in 20.5 s
+== health [after-reboot] 01:24:07
+-- main units/timers
+active active active active active active active
+enabled enabled
+  php-fpm.service loaded active running The PHP FastCGI Proc
+Sat 2026-10-31 16:35:27 UTC 15h Sat 2026-10-31 01:14:58 UTC - certbot-renew.timer certbot-renew.service
+not-found enabled
+2026-10-31 01:22:23
+8c2c51ef-8395-4c64-a47c-2aeb618e43d5
+succeeded complete null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-mail_profile=succeeded 12-mail_profile=succeeded 13-mail_dns=succeeded 14-service=succeeded 15-access_dns=succeeded 16-mail_certificate=succeeded 17-mail_enrollment=succeeded 18-verify=succeeded
+-- DNS answers
+   @192.0.3.115 SOA archr5f113.test: status: NOERROR flags: qr aa  | A archr5shop113.test: 192.0.3.115 | MX archr5f113.test: 10 mail.archr5f113.test.
+   @192.0.3.115 SOA archr5f113.test: status: NOERROR flags: qr aa  | A archr5shop113.test: 192.0.3.115 | MX archr5f113.test: 10 mail.archr5f113.test.
+-- site
+--- http://archr5shop113.test/
+code=301 redirect=https://archr5shop113.test/ ssl_verify=0
+--- https://archr5shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+body: 3090 bytes, title: <title>archr5shop113.test
+software words in body: [CelikPanel ]
+--- http://www.archr5shop113.test/
+code=301 redirect=https://www.archr5shop113.test/ ssl_verify=0
+--- https://www.archr5shop113.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+body: 3090 bytes, title: <title>archr5shop113.test
+software words in body: [CelikPanel ]
+--- certificate served on archr5shop113.test:443
+--- https://archr5shop113.test/hello.php
+code=200
+server: nginx
+x-powered-by present: 0
+body: php-ok 5
+--- http://archr5shop113.test/hello.php (redirect?)
+code=301 location=https://archr5shop113.test/hello.php
+-- mail
+   smtp 587 send: {'ok': True, 'refused': {}} | cert ['mail.archr5f113.test']
+   imaps 993 read: {'after_seconds': 5.6, 'headers': 'From: alice@archr5shop113.test\r\nTo: bob@archr5shop113.test\r\nSubject: final-alpha113 35664c498149'} | cert ['mail.archr5f113.test'] |  
+   delivered to bob's maildir (files in new+cur): 5
+== site delete archr5shop113.test 01:24:31
+   before @192.0.3.115: SOA status: NOERROR flags: qr aa  | TXT celik._domainkey '"v=DKIM1; k=rsa; p=MIIBIjANBgk'
+   before @192.0.3.115: SOA status: NOERROR flags: qr aa  | TXT celik._domainkey '"v=DKIM1; k=rsa; p=MIIBIjANBgk'
+   +0s status: 204 
+   +2s status: 200 deletion_pending running This deletion is running now and is checked automatically. Nobody needs to do anything: check again in a minute. Only if the automatic checks end without confir
+   DELETE answered after 11s: 200 {  "domain": "archr5shop113.test",  "status": "deleted" }
+   after @192.0.3.115: SOA status: REFUSED flags: qr  | TXT celik._domainkey ''
+   after @192.0.3.115: SOA status: REFUSED flags: qr  | TXT celik._domainkey ''
+   domains list names it: no
+keytable lines for archr5shop113.test: 0
+signingtable lines for archr5shop113.test: 0
+{"command": "journalctl -u celikpanel-agent -u celikpanel-panel --no-pager -o short-iso --since '2026-10-31 01:24:32' | grep -iE 'peer proof|inspector|pending|fail-closed|ambiguous|held|FOREIGN|dkim' | cut -c1-280", "rc": 0, "seconds": 0.15, "stdout": "", "stderr": "", "at": "2026-10-31T01:24:49.953Z", "label": "delete-log-archr5shop113.test"}
+== a new site after the delete: archnew5113.test 01:24:50
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/2/public_html", "Domain": "archnew5113.test", "DomainID": 2, "FTPPassword": "[REDACTED]", "FTPUser": "archnew5113_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 2, "TempDomain": ""}
+   new site id 2
+200 {"status": "success", "expires_at": "2031-10-31T01:24:56Z"}
+--- http://archnew5113.test/
+code=301 redirect=https://archnew5113.test/ ssl_verify=0
+--- https://archnew5113.test/
+code=200 redirect= ssl_verify=0
+--- http://www.archnew5113.test/
+code=301 redirect=https://www.archnew5113.test/ ssl_verify=0
+--- https://www.archnew5113.test/
+code=200 redirect= ssl_verify=0
+--- certificate served on archnew5113.test:443
+Verify return code: 0 (ok)
+   DNS card: state ready pending 0 None
+== journals, every boot 01:24:59
+== arch: boots 4
+   [milter service|Milter.*(not found|refused|cannot)]: 0
+   [FQDN]: 0
+   [fail-closed|ambiguous|agent_mutations_held|refusing durable]: 0
+   [FOREIGN KEY]: 0
+   [unsupported map type: lmdb]: 0
+   [can.t lock|cannot lock|could not lock]: 0
+   [panel 500]: 0
+   err-priority lines of celikpanel units: 0
+   [systemd is not ready]: 4
+2026-10-31T01:13:55+00:00 arch panel[416]: 2026/10/31 01:13:55 startup: this server is still starting (its system manager, systemd, does not report it ready yet), so the Panel's startup reconciliation (site configuration files, certificate 
+2026-10-31T01:22:33+00:00 arch panel[494]: 2026/10/31 01:22:33 startup: this server is still starting (its system manager, systemd, does not report it ready yet), so the Panel's startup reconciliation (site configuration files, certificate 
+2026-10-31T01:22:34+00:00 arch panel[494]: 2026/10/31 01:22:34 startup: this server was still starting after 2m0s (systemd has not reported it running), so the Panel continues without waiting longer: its startup reconciliation steps are ref
+   per boot: boot start | panel start | startup wait line | continues line | listening
+   boot -2: 2026-10-31T01:11:31+00:00 | panel 01:13:35+00:00 | wait - | - | listen -
+   boot -1: 2026-10-31T01:13:46+00:00 | panel 01:13:55+00:00 | wait 01:13:55+00:00 |   | listen -
+   boot 0: 2026-10-31T01:22:24+00:00 | panel 01:22:33+00:00 | wait 01:22:33+00:00 |   | listen -
+   failed units: []
+== after done 01:25:00
