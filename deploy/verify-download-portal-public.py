@@ -25,10 +25,10 @@ from typing import BinaryIO, Iterable
 
 
 SMALL_RESPONSE_BUDGET = 1024 * 1024
-# Fixed plan: 14 root files, three selectors, five release metadata files,
+# Fixed plan: 15 root files (systems.html since alpha.114), three selectors, five release metadata files,
 # and exactly one authoritative archive body, plus three membership checks
 # when that surface exists. No historical paths are fetched.
-HARD_REQUEST_LIMIT = 26
+HARD_REQUEST_LIMIT = 27
 MAX_ARCHIVE_SIZE = 2_147_483_648
 CHUNK_SIZE = 128 * 1024
 SAFE_SEGMENT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]*$")
@@ -38,6 +38,7 @@ COMMIT = re.compile(r"^[0-9a-f]{40}$")
 ROOT_CRITICAL = (
     "index.html",
     "technical.html",
+    "systems.html",
     "assets/site.css",
     "assets/site.js",
     "assets/favicon-v2.svg",
