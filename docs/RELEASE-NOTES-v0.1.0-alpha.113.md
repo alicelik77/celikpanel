@@ -241,5 +241,17 @@ Distro config matrix on five releases (Debian 12 and 13, Ubuntu 22.04 and
 24.04, Arch) with 0 failures; real boots of Ubuntu 24.04 and Arch renewing
 certificates with the panel removed; Arch parity and Arch PowerDNS lab runs;
 see `deploy/e2e/dns-pair-acceptance/evidence/*-20261030/SUMMARY.md`.
+
+Six final lab acceptance runs installed the owner's topologies from scratch
+with the owner's `get.sh` command (lab portal, only the pinned key digest
+differs). The topologies were a Debian 13 main with an Ubuntu 24.04 backup
+joined by code, and an Arch standalone PowerDNS server. Each run covered
+setup, a site with SSL and PHP, mail with DKIM and Rspamd, DNS, deletions,
+reboots and the panel switched off.
+
+Runs 1 to 5 found D1 to D12, all fixed here, each with its own native check
+(`*-20261031/SUMMARY.md`). Run 6, on `e8e7ab4e6`, was fully clean on both
+topologies
+(`deploy/e2e/dns-pair-acceptance/evidence/final-alpha113-run6-20261031/SUMMARY.md`).
 Sequence 113, schema 46. No P0 item is closed or advanced; a candidate is
 not acceptance.

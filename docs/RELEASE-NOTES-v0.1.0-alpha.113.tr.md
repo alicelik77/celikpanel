@@ -247,5 +247,18 @@ değişmedi).
 Beş sürümde (Debian 12 ve 13, Ubuntu 22.04 ve 24.04, Arch) dağıtım yapılandırma
 matrisi, 0 hata; panel kaldırılmışken sertifika yenileyen gerçek Ubuntu 24.04
 ve Arch açılışları; Arch eşitliği ve Arch PowerDNS deneme kurulumları; bkz.
-`deploy/e2e/dns-pair-acceptance/evidence/*-20261030/SUMMARY.md`. Sıra 113,
+`deploy/e2e/dns-pair-acceptance/evidence/*-20261030/SUMMARY.md`.
+
+Altı son laboratuvar kabul koşusu, sahibin düzenlerini sahibin `get.sh`
+komutuyla sıfırdan kurdu (laboratuvar portalı; yalnız sabitlenmiş anahtar
+özeti farklı). Düzenler şunlardı: kodla katılan Ubuntu 24.04 yedeğiyle
+Debian 13 ana sunucu, ve tek başına PowerDNS çalıştıran Arch. Her koşu
+kurulumu, SSL ve PHP'li bir siteyi, DKIM ve Rspamd'li postayı, DNS'i,
+silmeleri, yeniden başlatmaları ve panelin kapalı olduğu durumu kapsadı.
+
+1–5. koşular D1–D12 hatalarını buldu; hepsi bu sürümde düzeltildi ve her
+biri kendi gerçek sistem denetimiyle doğrulandı (`*-20261031/SUMMARY.md`).
+`e8e7ab4e6` üzerindeki 6. koşu iki düzende de tamamen temiz geçti
+(`deploy/e2e/dns-pair-acceptance/evidence/final-alpha113-run6-20261031/SUMMARY.md`).
+Sıra 113,
 şema 46. Hiçbir P0 işi kapanmaz ya da ilerlemez; aday sürüm kabul değildir.
