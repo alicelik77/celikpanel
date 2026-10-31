@@ -14,7 +14,9 @@ interface AuthRecord {
     zone_value: string;
     dns_value: string;
     resolved: boolean;
-    status: 'ok' | 'pending' | 'missing' | 'no_key';
+    /** served: in this server's zone and answered by its own DNS, while the
+     *  public lookup from this server could not read the name (run 4). */
+    status: 'ok' | 'served' | 'pending' | 'missing' | 'no_key';
 }
 
 interface AuthStatus {
@@ -76,7 +78,7 @@ interface MailAuthPanelProps {
 // E-posta kimlik doğrulaması (yol haritası 3C): kayıt başına bir kart. Durum,
 // sunucu tarafında zone'dan VE canlı DNS sorgusundan türetilir; "doğrulandı"
 // demek dünyanın onu gerçekten görebildiği demektir — asla varsayım değil.
-const recordStates = ['ok', 'pending', 'missing', 'no_key'];
+const recordStates = ['ok', 'served', 'pending', 'missing', 'no_key'];
 
 function authRecord(value: unknown): AuthRecord {
     if (!value || typeof value !== 'object') throw new Error('record');
@@ -265,6 +267,9 @@ function AuthRecords({
 }) {
     const { t } = useI18n();
     const anyUnresolved = !status.spf.resolved || !status.dmarc.resolved;
+    // A record this server's DNS serves while the public lookup could not
+    // read its name: the note says why and who acts, instead of "waiting".
+    const anyServed = [status.spf, status.dkim, status.dmarc].some(record => record.status === 'served');
     const auto = status.automatic;
     const hasKey = status.dkim.status !== 'no_key';
     // The automatic setup stopped: the owner can start it again.
@@ -311,7 +316,7 @@ function AuthRecords({
             {!status.signing_installed && status.dkim.status !== 'no_key' && (
                 <Note>{t('mailauth.signingMissing')}</Note>
             )}
-            {anyUnresolved && <Note>{t('mailauth.unresolvedNote')}</Note>}
+            {anyServed ? <Note>{t('mailauth.servedNote')}</Note> : anyUnresolved && <Note>{t('mailauth.unresolvedNote')}</Note>}
 
             <RecordCard
                 icon={ShieldCheck}
@@ -374,6 +379,8 @@ function statusTone(status: AuthRecord['status']): { ok: boolean; labelKey: Tran
     switch (status) {
         case 'ok':
             return { ok: true, labelKey: 'mailauth.status.ok', cls: 'text-success' };
+        case 'served':
+            return { ok: true, labelKey: 'mailauth.status.served', cls: 'text-success' };
         case 'pending':
             return { ok: false, labelKey: 'mailauth.status.pending', cls: 'text-warning' };
         case 'no_key':
@@ -452,7 +459,7 @@ function RecordCard({
                 <div>{extraControls}</div>
                 <div className="flex items-center gap-2">
                     {extraAction}
-                    {!readOnly && record.status !== 'no_key' && record.status !== 'ok' && (
+                    {!readOnly && record.status !== 'no_key' && record.status !== 'ok' && record.status !== 'served' && (
                         <Button variant="primary" icon={Plus} onClick={onApply} disabled={busy}>
                             {t('mailauth.apply')}
                         </Button>

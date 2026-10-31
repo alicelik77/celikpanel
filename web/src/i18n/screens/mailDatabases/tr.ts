@@ -165,6 +165,7 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'mailauth.dmarcDesc': 'SPF/DKIM başarısız olduğunda alıcıların ne yapacağını ve raporların nereye gideceğini söyler.',
     'mailauth.status.ok': 'DNS\'te doğrulandı',
     'mailauth.status.pending': 'Zone\'da — DNS bekleniyor',
+    'mailauth.status.served': 'Bu sunucunun DNS’i yayımlıyor',
     'mailauth.status.missing': 'Eksik',
     'mailauth.status.no_key': 'Henüz anahtar yok',
     'mailauth.recommended': 'Önerilen kayıt',
@@ -181,6 +182,7 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'mailauth.policy.quarantine': 'quarantine — spam\'e gönder',
     'mailauth.policy.reject': 'reject — doğrudan reddet',
     'mailauth.signingMissing': 'DKIM imzalama filtresi (opendkim/rspamd) kurulu değil. Anahtar ve DNS kaydı hazır; bir filtre kurulduğunda giden posta imzalanacak.',
+    'mailauth.servedNote': '“Bu sunucunun DNS’i yayımlıyor” olarak işaretli kayıtları bu sunucunun DNS’i yanıtlıyor, ancak bu sunucudan yapılan genel sorgu alan adını bulamadı. Alan adının kayıt firmasındaki ad sunucuları henüz bu sunucuyu göstermiyorsa ya da bu sunucu genel bir DNS çözümleyicisine ulaşamıyorsa bu beklenen bir durumdur. CelikPanel’de bekleyen bir şey yok. Alan adı zaten yayında olmalıysa siz, alan adı sahibi, kayıt firmasındaki ad sunucularını kontrol edin; bu kart her açıldığında yeniden denetler.',
     'mailauth.unresolvedNote': 'Canlı DNS denetlenemedi (ad bu sunucudan çözülmüyor). Durum yalnızca zone\'u yansıtır.',
 
     'mail.col.usage': 'Kullanım',

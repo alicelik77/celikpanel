@@ -113,6 +113,11 @@ değişmedi).
   bildirilir.
 - Dosya yöneticisi; olmayan bir yol, zaten var olan bir ad ya da indirilemeyen
   bir dosya için çıplak hata yerine ne yapılacağını söyler.
+- Posta kimlik doğrulama kartı, bu sunucunun DNS'inin zaten yanıtladığı bir
+  kayıt için, yalnız sunucudan yapılan genel sorgu alan adını bulamıyorsa
+  (örneğin kayıt firması henüz bu ad sunucularını göstermiyorsa) artık
+  "Zone'da — DNS bekleniyor" demez. "Bu sunucunun DNS'i yayımlıyor" der ve
+  alan adı zaten yayında olmalıysa kimin ne yapacağını söyler.
 
 **Lisans (D-039)**
 - Bir başarılı denetim, yönetimi çevrim dışı yedi güne kadar açık tutar;
@@ -170,6 +175,13 @@ değişmedi).
 - Hizmet sürümleri paket veritabanından okunur. Sürümünü sormak için
   programı başlatmak kaldırıldı (cron'un "can't lock crond.pid" yazmasına yol
   açıyordu).
+- Yeniden başlatmadan sonra Panel, yönetim açılmadan önce en çok 2 dakika,
+  systemd sunucunun açıldığını bildirene kadar bekler; sonra başlangıç işlerini
+  (site yapılandırma dosyaları, sertifika temizliği, posta filtresi bağlantısı)
+  çalıştırır. Önceden bu işler systemd hâlâ "starting" derken reddediliyor ve
+  Panel'in bir sonraki başlangıcına kadar yeniden çalışmıyordu. Günlük,
+  beklendiğini, sonra devam edildiğini ya da 2 dakika geçerse yöneticinin neye
+  bakacağını söyler.
 
 ## Bilinen sınırlar
 
@@ -195,6 +207,11 @@ değişmedi).
   başlatmaz.
 - Değişen `/etc/resolv.conf`, nginx vekil hedefine ancak o sitenin yapılandırması
   yeniden yazıldığında ulaşır.
+- PHP `mail()` postası zarf göndereni olarak sitenin sistem kullanıcısıyla
+  çıkar; bu yüzden Rspamd küçük bir `FORGED_SENDER` puanı ekler (0,3; işlem
+  yok). DKIM, From alan adıyla hizalıdır; DMARC geçer. CelikPanel zarf
+  göndereni olarak henüz bir site adresi ayarlamaz, çünkü postası ya da SPF'i
+  başka yerde olan bir alan adı o zaman SPF'ten kalabilir.
 
 ## Kanıt
 
