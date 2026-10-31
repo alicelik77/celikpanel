@@ -21,7 +21,10 @@
     sent to the slash first, so no address of the folder escapes the sign-in.
     A folder redirect carries the rest of the address over from
     $request_uri (the raw, still percent-encoded address), never from $uri:
-    $uri is decoded and would let a CR/LF into the Location header.
+    $uri is decoded and would let a CR/LF into the Location header. Without
+    "keep query" the rest is the path up to the "?" and the pattern has no end
+    anchor: with an end anchor a request with a query string (/blog/post?q=1)
+    did not match and fell through to the bare target (alpha.114 lab, E5).
     Parolalı klasörler ve serbest yönlendirmeler (alpha.114). Hiçbiri yoksa
     hiçbir şey yazılmaz. Değerlerin hepsi doğrulanmıştır; kaçışlama yoktur çünkü
     hiçbiri nginx sözdizimi taşıyamaz. Klasör yönlendirmesi adresin kalanını
@@ -36,7 +39,7 @@
     }
 {{- if eq .Match "prefix"}}
     location ^~ {{.Source}}/ {
-        if ($request_uri ~ ^{{.SourceRegex}}/(?<celikpanel_rest>{{if .KeepQuery}}.*{{else}}[^?]*{{end}})$) {
+        if ($request_uri ~ ^{{.SourceRegex}}/(?<celikpanel_rest>{{if .KeepQuery}}.*)${{else}}[^?]*){{end}}) {
             return {{.Code}} {{.TargetBase}}/$celikpanel_rest;
         }
         return {{.Code}} {{.Target}}{{if .KeepQuery}}$is_args$args{{end}};
