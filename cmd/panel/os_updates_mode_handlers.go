@@ -45,10 +45,10 @@ type osUpdatesSummaryView struct {
 	// State: ready (a reading exists; Stale says whether it is older than the
 	// interval), checking (the first reading is under way), unknown (the
 	// reading failed and there is none to show).
-	State         string `json:"state"`
-	Stale         bool   `json:"stale,omitempty"`
-	CheckedAt     string `json:"checked_at,omitempty"`
-	PackageFamily string `json:"package_family,omitempty"`
+	State         string                        `json:"state"`
+	Stale         bool                          `json:"stale,omitempty"`
+	CheckedAt     string                        `json:"checked_at,omitempty"`
+	PackageFamily string                        `json:"package_family,omitempty"`
 	Pending       *transport.OSUpdatesPending   `json:"pending,omitempty"`
 	Automatic     *transport.OSUpdatesAutomatic `json:"automatic,omitempty"`
 }

@@ -10678,3 +10678,44 @@ dosya yöneticisinin yönlendirmesini gösterir ve klasörü yeniden okur.
 Şema değişmedi (46): iş, alan adı başına sürümlü bir `panel_settings` kaydıdır
 (`dkim_automatic_v1:<id>`) ve tek bir imzalama yenileme isteği
 (`dkim_signing_refresh_v1`). Kurulu paneller yalnız sahiplerince güncellenir.
+
+## Sahibin elinde işletim sistemi güncellemeleri (alpha.114)
+
+Güvenlik → Güvenlik güncellemeleri, Gösterge Paneli ve Sunucu kurulumu → İşletim sistemi.
+
+- **Otomatik ya da elle (Debian, Ubuntu).** Sahibin seçimi apt'nin kendi dosyasıdır:
+  `/etc/apt/apt.conf.d/20auto-upgrades` (`Update-Package-Lists "1"`,
+  `Unattended-Upgrade "1"` ya da `"0"`) ve apt'nin kendi zamanlayıcıları; panel
+  durdurulsa ya da kaldırılsa da çalışır. Gösterilen durum `apt-config dump` ve
+  zamanlayıcıların söylediğidir, panelin son yazdığı değil. **Otomatik**,
+  unattended-upgrades'in almaya ayarlı olduğunu kurar (varsayılanda güvenlik
+  güncellemeleri; kaynaklar apt'den okunur ve gösterilir); sunucuyu yeniden başlatmaz,
+  yeni ana sürüme geçmez. **Elle** kendiliğinden hiçbir şey kurmaz ama listeleri taze
+  tutar; bekleyen sayısı güncel kalır.
+- **Metin kimin.** Dosya, panelin yazacağı metnin aynısıysa panelin; dağıtımın iki
+  standart satırının aynısıysa dağıtımın; başka her durumda (bağlantı dahil) sahibindir.
+  Değişiklik dosyanın şimdiki ve sonraki halini gösterir, gösterilen özeti geri yollar
+  ve sahibin metnini ancak sahip okuduğunu işaretleyince değiştirir
+  (`confirm_owner_edit`). Gösterildikten sonra değişen dosyanın üzerine yazılmaz
+  (`CURRENT_CHANGED`, kart yeniden okur). Kurulumun yazdığı eski
+  `20celikpanel-auto-upgrades` yalnız kurulumun yazdığının aynısıysa kaldırılır;
+  düzenlenmişse kalır ve kart onun öncelikli olduğunu söyler.
+- **Doğrulanmış hata, eksik önkoşul, bilinmeyen sonuç.** Retler "Hiçbir şey değişmedi"
+  der, kimin işlem yapacağını ve komutu verir (`UNATTENDED_NOT_INSTALLED`: paketi kur;
+  `OWNER_EDITED`: seçimi yeniden aç ve onayla; `NOT_REGULAR`: elle değiştir). Yazılan ama
+  apt'nin kullanmadığı seçim (başka dosya öncelikli, maskeli ya da kapalı apt
+  zamanlayıcısı) yöneticinin komutuyla uyarıdır; kapalı zamanlayıcı otomatiği seçince
+  açılır, maskeli olanın maskesi hiçbir zaman kaldırılmaz. Kaybolan yanıt bilinmeyendir:
+  kart bunu söyler, hiçbir şeyi yeniden göndermez ve sistemi okur.
+- **Arch.** Anahtar yok. Kart adımları sıralar (archlinux.org/news'i oku, `sudo pacman
+  -Syu`, başarısız birimler, `nginx -t`, PHP-FPM ve posta, çekirdek değiştiyse yeniden
+  başlat) ve tam yükseltmenin php ile PostgreSQL'i yeni ana sürüme taşıyabileceğini
+  uyarır.
+- **Gösterge Paneli.** Kısa kart (bekleyen, güvenlik, okunma zamanı, bağlantı). Panelin
+  son okumasından sunulur; arka planda aynı anda en çok bir kez ve on dakikadan sık
+  olmamak üzere yenilenir; yeniden sormak ne paket işlemi ne değişiklik başlatır ve
+  bilinmeyen hiçbir zaman "bekleyen yok" diye gösterilmez.
+- **Yeni ana sürüm güncelleme değildir** (16'dan sonra PostgreSQL 17, 8.4'ten sonra PHP
+  8.5): sahibin geçtiği ayrı bir programdır.
+
+Şema değişmedi (46). Kurulu paneller yalnız sahiplerince güncellenir.

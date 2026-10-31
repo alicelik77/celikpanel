@@ -366,7 +366,7 @@ if [[ "$signed_mode" == true ]]; then
   release_dir="$release_dir/$platform_os/$platform_arch"
 fi
 mkdir -p -- "$output/assets" "$release_dir" "$output/.well-known"
-for page in index.html technical.html; do
+for page in index.html technical.html systems.html; do
   [[ -f "$template/$page" && ! -L "$template/$page" ]] \
     || die "reviewed portal page is unavailable: $page"
   cp -- "$template/$page" "$output/$page"

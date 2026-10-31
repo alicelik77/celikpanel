@@ -10739,3 +10739,43 @@ the folder again instead of opening a tab with the server's answer.
 Schema unchanged (46): the work is a versioned `panel_settings` record per domain
 (`dkim_automatic_v1:<id>`) and one signing refresh request (`dkim_signing_refresh_v1`).
 Installed panels are updated only by their owners.
+
+## Operating-system updates in the owner's hands (alpha.114)
+
+Security → Security updates, the Dashboard and Server setup → Operating system.
+
+- **Automatic or manual (Debian, Ubuntu).** The owner's choice is apt's own file
+  `/etc/apt/apt.conf.d/20auto-upgrades` (`Update-Package-Lists "1"`,
+  `Unattended-Upgrade "1"` or `"0"`) and apt's own timers, so it keeps working with the
+  panel stopped or removed. The state shown is what `apt-config dump` and the timers
+  report, never what the panel last wrote. **Automatic** installs what
+  unattended-upgrades is set to take (by default the security updates; the origins are
+  read from apt and shown); it does not restart the server and does not move to a new
+  major version. **Manual** installs nothing by itself but keeps the lists fresh so the
+  waiting count stays current.
+- **Whose text it is.** The file is the panel's when it is exactly what the panel
+  renders, the distribution's when it is exactly the two standard lines, and the
+  owner's otherwise (also a link). A change shows the file now and after, sends the
+  digest that was shown, and replaces an owner's text only after the owner ticks that
+  they read it (`confirm_owner_edit`). A file that changed after it was shown is never
+  replaced (`CURRENT_CHANGED`, the card reads again). The installer's earlier
+  `20celikpanel-auto-upgrades` is removed only when it is exactly what the installer
+  wrote; an edited one stays and the card says it wins.
+- **Verified failure, unmet prerequisite, unknown result.** Refusals say "Nothing was
+  changed", who acts and the command (`UNATTENDED_NOT_INSTALLED`: install the package;
+  `OWNER_EDITED`: open the choice again and confirm; `NOT_REGULAR`: change it by hand).
+  A written choice that apt does not use (another file wins, a masked or disabled apt
+  timer) is a warning with the administrator's command; a disabled timer is enabled by
+  choosing automatic, a masked one is never unmasked. A lost answer is unknown: the card
+  says so, sends nothing again and reads the system.
+- **Arch.** No switch. The card lists the steps (read archlinux.org/news, `sudo pacman
+  -Syu`, failed units, `nginx -t`, PHP-FPM and mail, reboot if the kernel changed) and
+  warns that a full upgrade can move php and PostgreSQL to a new major version.
+- **Dashboard.** A compact card (waiting, security, when read, link). It is served from
+  the Panel's last reading, refreshed in the background at most once at a time and not
+  more often than every ten minutes; asking again starts neither a package operation
+  nor a change, and unknown is never shown as "nothing waiting".
+- **A new major version is not an update** (PostgreSQL 17 after 16, PHP 8.5 after 8.4):
+  it is a separate program the owner moves to.
+
+Schema unchanged (46). Installed panels are updated only by their owners.
