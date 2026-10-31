@@ -1,5 +1,5 @@
 import { lazy, useState, useEffect, useRef } from 'react';
-import { Mail, Plus, Trash2, ArrowRight, AtSign, Pencil, Info, KeyRound } from 'lucide-react';
+import { Mail, Plus, Trash2, ArrowRight, AtSign, Pencil, Info, KeyRound, CalendarClock } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { apiErrorText, readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
@@ -8,6 +8,7 @@ import { useRemote, type Remote } from '../lib/remote';
 import { Button, Checking, CouldNotCheck, Dialog, ErrorBanner, KnownEmpty, RemoteGate, UsageBar, inputClass } from './ui';
 import { MailAuthPanel } from './MailAuthPanel';
 import { MailSettingsPanel } from './MailSettingsPanel';
+import { MailAutoresponderDialog } from './MailAutoresponderDialog';
 
 interface EmailAccount {
     id: number;
@@ -95,6 +96,7 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
     const [editingQuota, setEditingQuota] = useState<number | null>(null);
     const [quotaDraft, setQuotaDraft] = useState(1024);
     const [passwordAccount, setPasswordAccount] = useState<EmailAccount | null>(null);
+    const [autoreplyAccount, setAutoreplyAccount] = useState<EmailAccount | null>(null);
     const [newPassword, setNewPassword] = useState('');
     const [passwordConfirmation, setPasswordConfirmation] = useState('');
     const [passwordSaving, setPasswordSaving] = useState(false);
@@ -500,6 +502,16 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                                                             >
                                                                 <KeyRound className="h-4 w-4" aria-hidden="true" />
                                                             </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setAutoreplyAccount(a)}
+                                                                disabled={stale}
+                                                                aria-label={t('mail.autoreply.openFor', { address: a.address })}
+                                                                title={t('mail.autoreply.openFor', { address: a.address })}
+                                                                className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2 hover:text-primary"
+                                                            >
+                                                                <CalendarClock className="h-4 w-4" aria-hidden="true" />
+                                                            </button>
                                                             <DeleteBtn disabled={stale} label={t('mail.deleteAccountNamed', { name: a.address })} onClick={() => deleteAccount(a.id, a.address)} />
                                                         </span>
                                                     )}
@@ -558,6 +570,14 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                 </>
             )}
 
+            {autoreplyAccount && !readOnly && (
+                <MailAutoresponderDialog
+                    domainId={domainId}
+                    accountId={autoreplyAccount.id}
+                    address={autoreplyAccount.address}
+                    onClose={() => setAutoreplyAccount(null)}
+                />
+            )}
             {passwordAccount && !readOnly && (
                 <Dialog
                     id="mail-password-dialog"

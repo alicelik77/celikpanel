@@ -108,6 +108,7 @@ const (
 	errCodeDNSSetupRequired               = "DNS_SETUP_REQUIRED"
 	errCodeDNSEngineWorkflowRequired      = "DNS_ENGINE_WORKFLOW_REQUIRED"
 	errCodeDNSTopologyUnsupported         = "DNS_TOPOLOGY_UNSUPPORTED"
+	errCodeMailAutoresponderRefused       = "MAIL_AUTORESPONDER_REFUSED"
 	errCodeDNSPairIdentityLocked          = "DNS_PAIR_IDENTITY_LOCKED"
 	errCodeDNSClusterPeerIsLocal          = "DNS_CLUSTER_PEER_IS_LOCAL"
 	errCodeDNSPublicationFailed           = "DNS_PUBLICATION_FAILED"

@@ -423,6 +423,45 @@ mail_read_check() { # address password uid gid
     return $rc
 }
 
+# The out-of-office reply as the Agent installs it: CelikPanel's script in
+# the mailbox's sieve/ directory, the active link, then two messages from the
+# same sender through Dovecot LMTP. Exactly one reply must come out (the
+# vacation interval), and both messages must be in INBOX. The Postfix side
+# (transport_maps -> private/dovecot-lmtp) is checked by the lab run.
+lmtp_send() { # recipient sender subject
+    local line
+    exec 8<>/dev/tcp/127.0.0.1/2424 || return 1
+    IFS= read -r -t 10 line <&8
+    for line in "LHLO matrix.invalid" "MAIL FROM:<$2>" "RCPT TO:<$1>" "DATA"; do
+        printf '%s\r\n' "$line" >&8
+    done
+    printf 'From: %s\r\nTo: %s\r\nSubject: %s\r\nMessage-ID: <%s.%s@matrix.invalid>\r\n\r\nHello.\r\n.\r\nQUIT\r\n' \
+        "$2" "$1" "$3" "$RANDOM" "$$" >&8
+    timeout 10 cat <&8 >/var/log/matrix-lmtp.last 2>/dev/null
+    exec 8<&- 8>&-
+    grep -q '^250 2.0.0 <'"$1"'>' /var/log/matrix-lmtp.last
+}
+sieve_vacation_check() { # address uid gid
+    local address=$1 domain=${1#*@} local_part=${1%@*} dir replies out rc=0
+    dir=$MAIL_ROOT/$domain/$local_part
+    install -d -o "$2" -g "$3" -m 0700 "$MAIL_ROOT/$domain" "$dir" "$dir/sieve" || return 1
+    install -o "$2" -g "$3" -m 0600 /etc/dovecot/matrix-autoresponder.sieve "$dir/sieve/celikpanel-autoresponder.sieve" || return 1
+    ln -sfn sieve/celikpanel-autoresponder.sieve "$dir/.dovecot.sieve" && chown -h "$2:$3" "$dir/.dovecot.sieve"
+    lmtp_send "$address" "friend@example.invalid" "first" || { printf 'LMTP delivery 1 refused: %s\n' "$(tr -d '\r' </var/log/matrix-lmtp.last)"; rc=1; }
+    lmtp_send "$address" "friend@example.invalid" "second" || { printf 'LMTP delivery 2 refused: %s\n' "$(tr -d '\r' </var/log/matrix-lmtp.last)"; rc=1; }
+    sleep 1
+    replies=$(ls /var/log/matrix-vacation.* 2>/dev/null | wc -l)
+    if [[ "$replies" != 1 ]]; then
+        printf 'out-of-office: %s replies for two messages from one sender (want 1)\n' "$replies"; rc=1
+    elif ! grep -q '^Subject: .*Away' /var/log/matrix-vacation.*; then
+        printf 'out-of-office reply has the wrong subject: %s\n' "$(head -20 /var/log/matrix-vacation.*)"; rc=1
+    fi
+    out=$(doveadm fetch -u "$address" hdr.subject mailbox INBOX all 2>&1)
+    { grep -q 'first' <<<"$out" && grep -q 'second' <<<"$out"; } || { printf 'LMTP-delivered messages not in INBOX: %s\n' "$out"; rc=1; }
+    [[ $rc -eq 0 ]] && printf 'out-of-office: one reply for two messages, both delivered through LMTP to %s\n' "$address"
+    return $rc
+}
+
 v_dovecot() {
     local out rc=0 warn=0 u
     if [[ -n "${MAIL_UID:-}" ]]; then
@@ -445,6 +484,15 @@ v_dovecot() {
     [[ $rc -ne 0 ]] && return 1
     printf 'log_path = /var/log/matrix-dovecot.log\n' >/etc/dovecot/conf.d/zz-matrix-log.conf
     : >/var/log/matrix-dovecot.log
+    # Out-of-office cases: a test-only LMTP port the harness can speak to
+    # from bash, and a sendmail that records the replies instead of sending.
+    if [[ -n "${SIEVE_USER:-}" ]]; then
+        printf '#!/bin/sh\ncat >"/var/log/matrix-vacation.$$"\n' >/usr/local/bin/matrix-sendmail
+        chmod 0755 /usr/local/bin/matrix-sendmail
+        rm -f /var/log/matrix-vacation.*
+        printf 'sendmail_path = /usr/local/bin/matrix-sendmail\nservice lmtp {\n  inet_listener lmtp {\n    port = 2424\n  }\n}\n' \
+            >/etc/dovecot/conf.d/zz-matrix-sieve.conf
+    fi
     # The daemon must not inherit a command-substitution pipe (it would
     # hold it open and the harness would wait forever).
     if dovecot >/var/log/matrix-dovecot-start.log 2>&1 </dev/null; then
@@ -457,6 +505,9 @@ v_dovecot() {
                 mail_read_check "$u" "${MAIL_PASSWORD:-}" "$MAIL_UID" "${MAIL_GID:-$MAIL_UID}" || rc=1
             fi
         done
+        if [[ -n "${SIEVE_USER:-}" ]]; then
+            sieve_vacation_check "$SIEVE_USER" "${MAIL_UID:-5000}" "${MAIL_GID:-${MAIL_UID:-5000}}" || rc=1
+        fi
         # The delivered test mail goes; the root stays as the Agent made it.
         [[ -n "${MAIL_ROOT:-}" && -n "${MAIL_UID:-}" ]] && find "$MAIL_ROOT" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
         timeout 5 bash -c 'exec 3<>/dev/tcp/127.0.0.1/143; head -c 100 <&3 >/dev/null' 2>/dev/null || true
@@ -473,7 +524,7 @@ v_dovecot() {
     out=$(grep -Ei 'warning' /var/log/matrix-dovecot.log | grep -v 'Killed with signal 15' \
         | grep -v 'SIGHUP received - reloading configuration' | sed -E 's/^[A-Za-z]{3} [0-9]+ [0-9:]+ //' | sort -u)
     [[ -n "$out" ]] && { printf 'dovecot runtime: %s\n' "$out"; warn=1; }
-    rm -f /etc/dovecot/conf.d/zz-matrix-log.conf
+    rm -f /etc/dovecot/conf.d/zz-matrix-log.conf /etc/dovecot/conf.d/zz-matrix-sieve.conf /var/log/matrix-vacation.*
     [[ $rc -ne 0 ]] && return 1
     [[ $warn -ne 0 ]] && return 2
     return 0

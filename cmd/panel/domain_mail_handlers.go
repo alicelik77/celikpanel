@@ -57,6 +57,8 @@ func (p *Panel) handleDomainMail(w http.ResponseWriter, r *http.Request) {
 		p.handleMailClientSetup(w, r, domain)
 	case strings.HasSuffix(r.URL.Path, "/mail/catch-all"):
 		p.handleMailCatchAll(w, r, domainID)
+	case strings.HasSuffix(r.URL.Path, "/mail/autoresponder"):
+		p.handleMailAutoresponder(w, r, domainID)
 	case strings.HasSuffix(r.URL.Path, "/quota"):
 		p.handleMailQuotaStatus(w, r, domainID)
 	case strings.HasSuffix(r.URL.Path, "/mail/accounts/password"):
