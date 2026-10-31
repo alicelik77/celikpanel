@@ -507,8 +507,8 @@ func TestServiceMutationPrivilegedCallsitesCarryTypedClaims(t *testing.T) {
 		}
 	}
 
-	if len(seenMethods) != 44 {
-		t.Errorf("production requiredServiceMutationStep claim count=%d want=44", len(seenMethods))
+	if len(seenMethods) != 45 {
+		t.Errorf("production requiredServiceMutationStep claim count=%d want=45", len(seenMethods))
 	}
 	for method := range expectedMethods {
 		if seenMethods[method] == "" {

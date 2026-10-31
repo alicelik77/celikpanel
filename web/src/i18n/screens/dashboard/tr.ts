@@ -272,6 +272,8 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'dashboard.audit.action.panel.certificate.failed': '{target} için panel sertifikasını kuramadı',
     'dashboard.audit.action.security.update_origins': 'üretici depolarını işletim sisteminin otomatik güncellemelerine ekledi ({target})',
     'dashboard.audit.action.security.update_origins.failed': 'üretici depolarını işletim sisteminin otomatik güncellemelerine ekleyemedi',
+    'dashboard.audit.action.security.os_updates_mode': 'işletim sistemi güncellemeleri için “{target}” ayarını seçti',
+    'dashboard.audit.action.security.os_updates_mode.failed': 'otomatik ya da elle işletim sistemi güncellemesi seçimini değiştiremedi',
     'dashboard.audit.action.webmail.update': 'web postasını (Roundcube) güncelledi ({target})',
     'dashboard.audit.action.webmail.update.failed': 'web postasını (Roundcube) güncelleyemedi ({target})',
     'dashboard.audit.action.webmail.update.recovered': 'panel yeniden başladıktan sonra web postasının (Roundcube) güncellendiğini doğruladı ({target})',

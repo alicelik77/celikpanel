@@ -143,6 +143,8 @@ var auditActionNames = []string{
 	"runtime.node.install.recovered.failed",
 	"runtime.node.remove",
 	"runtime.node.remove.refresh.failed",
+	"security.os_updates_mode",
+	"security.os_updates_mode.failed",
 	"security.update_origins",
 	"security.update_origins.failed",
 	"server.os_release_reviewed",
