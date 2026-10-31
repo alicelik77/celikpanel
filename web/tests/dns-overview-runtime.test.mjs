@@ -329,3 +329,53 @@ test('the first site opens the existing form with the main domain; names pointin
     delete globalThis.dnsWords;
   }
 });
+
+// Owner report 2026-10-31 (Boston, the server that joined by code): the page
+// called the first server "Second server (frankfurt)". The other server is
+// named by its place, in every place the page names it.
+test('on the server that joined by code the other server is the first one, everywhere it is named', async () => {
+  const value = paired({ sentence: sentence('backup_not_serving', 'failed', { domain: 'example.test', backup: '', backup_who: 'this' }) });
+  value.servers = [
+    { who: 'this', role: 'backup', order: 'second', short_name: 'boston', panel_name: 'boston.example.test', software: 'pdns', ipv4: '198.51.100.20', answers: 'not_serving' },
+    { who: 'peer', role: 'main', order: 'first', short_name: 'frankfurt', panel_name: 'panel.example.test', software: 'pdns', ipv4: '203.0.113.10', answers: 'ok' },
+  ];
+  value.names = [{ name: 'panel.example.test', kind: 'panel', type: 'A', server: 'peer', expected: '203.0.113.10', seen: ['203.0.113.10'], state: 'ok', where: 'main' }];
+  value.own_records_link = { where: 'main', panel_name: 'panel.example.test' };
+  for (const [words, first, second] of [[enScreens, 'First server (frankfurt)', 'Second server'], [trScreens, 'İlk sunucu (frankfurt)', 'İkinci sunucu']]) {
+    await mount(value, { words });
+    try {
+      const text = textOf();
+      assert.ok(text.includes(first), text.slice(0, 600));
+      assert.ok(!text.includes(second), `the first server is never called "${second}"`);
+    } finally { await unmount(); }
+  }
+  // The first server still calls the joined one the second server.
+  assert.equal(lib.dnsOverviewServerLabel((key, vars) => `${key}:${vars?.name ?? ''}`, { who: 'peer', order: 'second', short_name: 'boston' }), 'dnsov.peerServerNamed:boston');
+  assert.throws(() => lib.decodeDNSOverview({ ...value, servers: [{ ...value.servers[0], order: 'third' }] }));
+});
+
+// Owner report 2026-10-31: optional IPv6 glue rows made the card say "a name
+// is not updated everywhere yet, nobody acts, waiting is enough". Waiting
+// never adds them; the card is calm and the row names the registrar action.
+test('an optional IPv6 glue record is an optional registrar task with IPv4 enough, never a wait', async () => {
+  const value = paired({ sentence: sentence('ok_optional_glue', 'ok', { domain: 'example.test', name: 'ns1.example.test', ip: '2001:db8::10' }) });
+  value.names = [...value.names,
+    { name: 'ns1.example.test', kind: 'glue', type: 'A', expected: '203.0.113.10', seen: ['203.0.113.10'], state: 'ok', where: 'registrar' },
+    { name: 'ns1.example.test', kind: 'glue', type: 'AAAA', expected: '2001:db8::10', seen: [], state: 'not_yet', where: 'registrar', optional: true },
+  ];
+  for (const words of [enScreens, trScreens]) {
+    await mount(value, { words });
+    try {
+      const lead = byProp('data-dns-sentence', 'dns_overview_ok_optional_glue')[0];
+      assert.equal(lead.props['data-state'], 'ok');
+      const text = textOf();
+      assert.ok(text.includes(words['dnsov.s.ok_optional_glue.title']));
+      assert.ok(!text.includes(words['dnsov.s.spreading.who']), 'never "waiting is enough"');
+      const task = byProp('data-dns-optional-task', '');
+      assert.equal(task.length, 1, 'only the optional row that is not in place names the task');
+      const note = JSON.stringify(task[0].children);
+      assert.ok(note.includes('ns1.example.test') && note.includes('2001:db8::10') && note.includes('IPv4'), note);
+    } finally { await unmount(); }
+  }
+});
+

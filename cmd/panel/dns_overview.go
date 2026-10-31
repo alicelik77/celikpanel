@@ -112,10 +112,14 @@ type dnsOverviewSentence struct {
 // Answers is what asking it directly for the main domain showed: "ok",
 // "not_serving" (it answered, not for the domain: a verified failure),
 // "unknown" (no answer could be read), "not_joined" (the second server has
-// not joined yet) or "not_applicable".
+// not joined yet) or "not_applicable". Order, with two servers, is "first"
+// (the server whose setup made the join code) or "second" (the server that
+// joined by code), so a joined server names the other one "First server",
+// never "Second server" (owner report 2026-10-31).
 type dnsOverviewServer struct {
 	Who       string `json:"who"`
 	Role      string `json:"role"`
+	Order     string `json:"order,omitempty"`
 	ShortName string `json:"short_name,omitempty"`
 	PanelName string `json:"panel_name,omitempty"`
 	Software  string `json:"software,omitempty"`
@@ -574,11 +578,18 @@ func (p *Panel) checkDNSOverview(ctx context.Context, in dnsOverviewInput, edges
 	}
 	result.Servers = append(result.Servers, dnsOverviewServer{Who: "this", Role: role, ShortName: d.ShortName, PanelName: d.PanelDomain, Software: software, IPv4: firstNonEmpty(d.LocalIP, in.IPv4), Answers: "not_applicable"})
 	if in.twoServers() && role != "standalone" {
+		// A server that joined by code holds the first server's link: the
+		// other server is the first one. Katilan sunucu icin diger sunucu ilktir.
+		thisOrder, peerOrder := "first", "second"
+		if in.Peer.FromLink {
+			thisOrder, peerOrder = "second", "first"
+		}
+		result.Servers[0].Order = thisOrder
 		peerRole := map[string]string{"main": "backup", "backup": "main"}[role]
 		if peerRole == "" {
 			peerRole = "none"
 		}
-		peer := dnsOverviewServer{Who: "peer", Role: peerRole, ShortName: in.Peer.ShortName, PanelName: in.Peer.PanelName, IPv4: in.Peer.IPv4, Answers: "not_applicable"}
+		peer := dnsOverviewServer{Who: "peer", Role: peerRole, Order: peerOrder, ShortName: in.Peer.ShortName, PanelName: in.Peer.PanelName, IPv4: in.Peer.IPv4, Answers: "not_applicable"}
 		if peerRole != "none" {
 			peer.Software = in.Peer.Software
 		}
@@ -1047,7 +1058,7 @@ func dnsOverviewSentenceFor(in dnsOverviewInput, r dnsOverview) dnsOverviewSente
 		}
 	}
 	for _, name := range r.Names {
-		if name.State == "unknown" {
+		if name.State == "unknown" && !name.Optional {
 			vars["name"] = name.Name
 			return dnsOverviewSay("unknown", "dns_overview_some_unknown", "Some names could not be checked from the internet just now.", "Nobody yet.", "Nothing to do now.", "This page asks again in a minute.", vars)
 		}
@@ -1063,13 +1074,16 @@ func dnsOverviewSentenceFor(in dnsOverviewInput, r dnsOverview) dnsOverviewSente
 		return dnsOverviewSay("waiting", "dns_overview_backup_first_copy", "The backup DNS server has not received its first copy of the list yet.", "Nobody: it is copied by itself.", "Nothing to do.", "It answers for the domain once it has its copy; this page checks every minute.", vars)
 	}
 	for _, name := range r.Names {
-		if (name.State == "missing" || name.State == "different") && name.Own == "unknown" {
+		if (name.State == "missing" || name.State == "different") && name.Own == "unknown" && !name.Optional {
 			vars["name"] = name.Name
 			return dnsOverviewSay("unknown", "dns_overview_some_unknown", "A name does not show its address on the internet, and our own DNS server could not be asked just now.", "Nobody yet.", "Nothing to do now.", "This page asks again in a minute.", vars)
 		}
 	}
+	// An optional row (an IPv6 glue record the registry does not have) is
+	// not a change that spreads: waiting never adds it. It is said last,
+	// as the owner's optional registrar task (owner report 2026-10-31).
 	for _, name := range r.Names {
-		if name.State == "missing" || name.State == "different" || name.State == "not_yet" {
+		if (name.State == "missing" || name.State == "different" || name.State == "not_yet") && !name.Optional {
 			vars["name"] = name.Name
 			return dnsOverviewSay("waiting", "dns_overview_spreading", "A name does not show its new address everywhere on the internet yet.", "Nobody: waiting is enough.", "Nothing to do.", "This page checks again every minute; a change can take a few hours to spread.", vars)
 		}
@@ -1089,6 +1103,14 @@ func dnsOverviewSentenceFor(in dnsOverviewInput, r dnsOverview) dnsOverviewSente
 	if r.MXMove != nil {
 		vars["host"] = r.MXMove.ToHost
 		return dnsOverviewSay("ok", "dns_overview_ok_mail_kept", "Your names look correct; the domain's mail still goes to your old mail server, as you chose.", "You, when you are ready.", "Move mail to the new server with the button under Mail records.", "Until then nothing changes for your mail.", vars)
+	}
+	if r.Home == "own" {
+		for _, name := range r.Names {
+			if name.Kind == "glue" && name.Optional && name.State == "not_yet" {
+				vars["name"], vars["ip"] = name.Name, name.Expected
+				return dnsOverviewSay("ok", "dns_overview_ok_optional_glue", "Your names look correct. The registry has no IPv6 address (glue) for "+name.Name+"; everything works over IPv4 without it, and waiting does not add it.", "You, only if the nameservers should also answer over IPv6.", "At your registrar, add the IP record "+name.Name+" → "+name.Expected+".", "This page checks again every minute.", vars)
+			}
+		}
 	}
 	return dnsOverviewSay("ok", "dns_overview_ok", "Your names look correct on the internet.", "Nobody.", "Nothing to do.", "This page checks again every minute.", vars)
 }

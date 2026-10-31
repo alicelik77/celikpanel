@@ -232,6 +232,9 @@ function NamesCard({ value, t }: { value: Overview; t: T }) {
     const where = value.names.find(row => row.where !== 'registrar')?.where;
     const mainPanel = value.servers.find(server => server.role === 'main')?.panel_name || '—';
     const serverOf = (row: DNSOverviewName) => row.server ? dnsOverviewServerLabel(t, value.servers.find(server => server.who === row.server) || { who: row.server }) : '';
+    // An optional row not in place (an IPv6 glue record) is the owner's
+    // choice, never a wait: the registrar action and that IPv4 is enough.
+    const optionalTask = (row: DNSOverviewName) => row.optional && row.kind === 'glue' && row.state !== 'ok' && row.state !== 'unknown';
     return <section aria-labelledby="dns-names-title" className="space-y-3 rounded-lg border border-border bg-surface p-4 sm:p-5">
         <h2 id="dns-names-title" className="font-semibold">{value.domain ? t('dnsov.names.title', { domain: value.domain }) : t('dnsov.names.titleNoDomain')}</h2>
         {value.names.length === 0 ? <p className="text-sm text-fg-muted">{t('dnsov.names.none')}</p>
@@ -243,7 +246,8 @@ function NamesCard({ value, t }: { value: Overview; t: T }) {
                     <span role="cell" className="min-w-0"><span className="block break-all font-mono">{row.name}</span>
                         <span className="block text-xs text-fg-muted">{t(`dnsov.names.kind.${row.kind}`)}{row.optional ? ` · ${t('dnsov.names.optional')}` : ''}</span></span>
                     <span role="cell" className="min-w-0"><span className="block break-all font-mono text-xs">{row.expected || '—'}</span>{serverOf(row) && <span className="block text-xs text-fg-muted">{serverOf(row)}</span>}</span>
-                    <span role="cell" className={`min-w-0 break-words ${stateClass(row.state)}`}>{rowStateText(t, row)}</span>
+                    <span role="cell" className={`min-w-0 break-words ${optionalTask(row) ? 'text-fg-muted' : stateClass(row.state)}`}>{rowStateText(t, row)}
+                        {optionalTask(row) && <span className="block text-xs text-fg-muted" data-dns-optional-task="">{t('dnsov.names.optionalGlue', { name: row.name, ip: row.expected })}</span>}</span>
                 </div>)}
             </div>}
         {where && <p className="text-sm leading-6 text-fg-muted">{t(`dnsov.names.where.${where}`, { panel: mainPanel })}</p>}
