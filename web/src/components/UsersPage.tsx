@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, Plus, Trash2, LogIn, Pause, Play, Pencil, Save, X, Layers } from 'lucide-react';
+import { Users, Plus, Trash2, LogIn, Pause, Play, Pencil, Save, X, Layers, Gauge } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
@@ -44,10 +44,11 @@ function AccountUsersPage({ role }: { role: 'admin' | 'reseller' }) {
 
             <div className="mb-4 flex items-center gap-1 border-b border-border">
                 <Tab active={tab === 'accounts'} onClick={() => setTab('accounts')} label={t('users.tab.accounts')} />
-                {isAdmin && <Tab active={tab === 'plans'} onClick={() => setTab('plans')} label={t('users.tab.plans')} />}
+                {/* Resellers have their own plans too (alpha.114). / Bayilerin de kendi planları var. */}
+                <Tab active={tab === 'plans'} onClick={() => setTab('plans')} label={t('users.tab.plans')} />
             </div>
 
-            {tab === 'accounts' ? <AccountsTab isAdmin={isAdmin} /> : <PlansTab />}
+            {tab === 'accounts' ? <AccountsTab isAdmin={isAdmin} /> : <PlansTab isAdmin={isAdmin} />}
         </div>
     );
 }
@@ -64,6 +65,9 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
     const [newRole, setNewRole] = useState('customer');
     const [planID, setPlanID] = useState(0);
     const [saving, setSaving] = useState(false);
+    // One row's plan or pool panel is open at a time (alpha.114).
+    // Aynı anda tek satırın plan ya da havuz paneli açıktır.
+    const [panel, setPanel] = useState<{ user: PanelUser; kind: 'plan' | 'pool' } | null>(null);
 
     const load = () => {
         void users.retry();
@@ -220,7 +224,7 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
                             <span className="mb-1 block text-xs text-fg-muted">{t('users.form.plan')}</span>
                             <select value={planID} onChange={(e) => setPlanID(Number(e.target.value))} className={inputClass}>
                                 <option value={0}>{t('users.form.noPlan')}</option>
-                                {planOptions.map((p) => (
+                                {planOptions.filter((p) => p.owner_id === undefined || !isAdmin).map((p) => (
                                     <option key={p.id} value={p.id}>
                                         {p.name}
                                     </option>
@@ -241,6 +245,19 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
                     </div>
                 </div>
             )}
+
+            {panel?.kind === 'plan' && (
+                <PlanAssignPanel
+                    user={panel.user}
+                    plans={planOptions.filter((p) => p.owner_id === undefined || panel.user.parent_id === p.owner_id)}
+                    onClose={() => setPanel(null)}
+                    onDone={() => {
+                        setPanel(null);
+                        load();
+                    }}
+                />
+            )}
+            {panel?.kind === 'pool' && <PoolPanel user={panel.user} onClose={() => setPanel(null)} />}
 
             <RemoteGate
                 remote={users.remote}
@@ -298,6 +315,14 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
                                         <td className="px-4 py-3">
                                             {u.role !== 'admin' && (
                                                 <div className="flex items-center justify-end gap-0.5">
+                                                    <RowBtn disabled={!usersKnown || !plansKnown} title={t('users.changePlan')} onClick={() => setPanel({ user: u, kind: 'plan' })}>
+                                                        <Layers className="h-4 w-4" />
+                                                    </RowBtn>
+                                                    {isAdmin && u.role === 'reseller' && (
+                                                        <RowBtn disabled={!usersKnown} title={t('users.pool')} onClick={() => setPanel({ user: u, kind: 'pool' })}>
+                                                            <Gauge className="h-4 w-4" />
+                                                        </RowBtn>
+                                                    )}
                                                     <RowBtn disabled={!usersKnown} title={t('users.loginAs')} onClick={() => impersonate(u)}>
                                                         <LogIn className="h-4 w-4" />
                                                     </RowBtn>
@@ -327,6 +352,157 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
     );
 }
 
+// PlanAssignPanel gives an account a plan or changes it (alpha.114). A plan
+// below current usage is refused first with the list of what is over; the
+// operator may then apply it anyway — nothing is deleted, and new items of
+// those kinds are refused until usage is under the limit.
+// PlanAssignPanel, hesaba plan verir ya da değiştirir. Kullanımın altındaki
+// plan önce aşan kalemlerin listesiyle reddedilir; operatör yine de
+// uygulayabilir — hiçbir şey silinmez.
+function PlanAssignPanel({ user, plans, onClose, onDone }: { user: PanelUser; plans: ServicePlan[]; onClose: () => void; onDone: () => void }) {
+    const { t } = useI18n();
+    const [planID, setPlanID] = useState(plans[0]?.id ?? 0);
+    const [busy, setBusy] = useState(false);
+    const [over, setOver] = useState<string[] | null>(null);
+
+    const apply = async (accept: boolean) => {
+        setBusy(true);
+        try {
+            const res = await fetch(`/api/v1/users/${user.id}/plan`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(accept ? { plan_id: planID, accept_over_usage: true } : { plan_id: planID }),
+            });
+            if (!res.ok) {
+                const err = await readApiError(res);
+                if (err.code === 'PLAN_BELOW_USAGE') {
+                    setOver(err.details ?? []);
+                    return;
+                }
+                showToast('error', apiErrorText(err, t));
+                return;
+            }
+            showToast('success', accept ? t('users.planAppliedOver') : t('users.planApplied'));
+            onDone();
+        } catch {
+            // The answer did not arrive: it is not known whether the plan
+            // changed. Nothing is sent again; the list is read again.
+            showToast('error', t('common.resultUnknown'));
+            onDone();
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    return (
+        <div className="mb-4 rounded-xl border border-border bg-surface-2/50 p-4" data-plan-assign={user.id}>
+            <p className="text-sm font-semibold text-fg">{t('users.planFor', { name: user.username })}</p>
+            {plans.length === 0 ? (
+                <p className="mt-2 text-sm text-fg-muted">{t('users.planNone')}</p>
+            ) : (
+                <label className="mt-3 block max-w-sm">
+                    <span className="mb-1 block text-xs text-fg-muted">{t('users.form.plan')}</span>
+                    <select value={planID} onChange={(e) => { setPlanID(Number(e.target.value)); setOver(null); }} className={inputClass}>
+                        {plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                </label>
+            )}
+            {over && (
+                <div className="mt-3 rounded-md bg-danger/10 p-3 text-sm text-danger" role="alert">
+                    <p className="font-semibold">{t('err.PLAN_BELOW_USAGE')}</p>
+                    <ul className="mt-1 list-disc pl-5">{over.map((line) => <li key={line}>{line}</li>)}</ul>
+                </div>
+            )}
+            <div className="mt-3 flex flex-wrap justify-end gap-2">
+                <Button icon={X} onClick={onClose}>{t('users.cancel')}</Button>
+                {over ? (
+                    <Button variant="primary" onClick={() => apply(true)} disabled={busy}>{t('users.planApplyAnyway')}</Button>
+                ) : (
+                    <Button variant="primary" icon={Save} onClick={() => apply(false)} disabled={busy || planID === 0}>{t('users.planApply')}</Button>
+                )}
+            </div>
+        </div>
+    );
+}
+
+type PoolForm = { max_customers: number; max_domains: number; max_databases: number; max_email_accounts: number; disk_quota_mb: number };
+
+// PoolPanel: the administrator sets what a reseller may hand out (alpha.114).
+// Each 0 is unlimited. A pool below what is already handed out is saved with
+// a warning: nothing is taken away; new allocations in that tree are refused.
+// PoolPanel: yönetici, bayinin dağıtabileceğini belirler. Her 0 sınırsızdır.
+function PoolPanel({ user, onClose }: { user: PanelUser; onClose: () => void }) {
+    const { t } = useI18n();
+    const url = `/api/v1/users/${user.id}/pool`;
+    const read = useRemote(url, (raw: unknown) => {
+        if (!raw || typeof raw !== 'object' || !('allocated' in raw)) throw new Error('shape');
+        return raw as { pool: PoolForm | null; allocated: Record<string, number | boolean>; over_limit: string[] };
+    });
+    const [form, setForm] = useState<PoolForm | null>(null);
+    const [busy, setBusy] = useState(false);
+    const known = read.remote.state === 'known' ? read.remote.value : null;
+    const shown: PoolForm = form ?? known?.pool ?? { max_customers: 0, max_domains: 0, max_databases: 0, max_email_accounts: 0, disk_quota_mb: 0 };
+
+    const save = async (pool: PoolForm | null) => {
+        setBusy(true);
+        try {
+            const res = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pool }) });
+            if (!res.ok) {
+                showToast('error', apiErrorText(await readApiError(res), t));
+                return;
+            }
+            const answer = (await res.json()) as { over_limit?: string[] };
+            showToast('success', answer.over_limit && answer.over_limit.length > 0 ? t('users.poolSavedOver') : t('users.poolSaved'));
+            setForm(null);
+            void read.retry();
+        } catch {
+            showToast('error', t('common.resultUnknown'));
+            void read.retry();
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    return (
+        <div className="mb-4 rounded-xl border border-border bg-surface-2/50 p-4" data-pool-panel={user.id}>
+            <p className="text-sm font-semibold text-fg">{t('users.poolFor', { name: user.username })}</p>
+            <p className="mt-1 text-xs text-fg-subtle">{t('users.poolHint')}</p>
+            <RemoteGate remote={read.remote} checking={t('users.poolChecking')} failed={t('users.poolUnknown')} onRetry={() => void read.retry()} busy={read.reading} className="py-3">
+                {(state) => (
+                    <>
+                        {state.value.over_limit.length > 0 && (
+                            <ul className="mt-2 list-disc pl-5 text-sm text-danger">{state.value.over_limit.map((line) => <li key={line}>{line}</li>)}</ul>
+                        )}
+                        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                            <NumField label={t('myPlan.customers')} value={shown.max_customers} onChange={(v) => setForm({ ...shown, max_customers: v })} />
+                            <NumField label={t('plans.col.domains')} value={shown.max_domains} onChange={(v) => setForm({ ...shown, max_domains: v })} />
+                            <NumField label={t('plans.col.databases')} value={shown.max_databases} onChange={(v) => setForm({ ...shown, max_databases: v })} />
+                            <NumField label={t('plans.col.mail')} value={shown.max_email_accounts} onChange={(v) => setForm({ ...shown, max_email_accounts: v })} />
+                            <NumField label={`${t('plans.col.disk')} (MB)`} value={shown.disk_quota_mb} onChange={(v) => setForm({ ...shown, disk_quota_mb: v })} />
+                        </div>
+                        <p className="mt-2 text-xs text-fg-subtle">
+                            {t('users.poolAllocated', {
+                                customers: String(state.value.allocated.customers ?? 0),
+                                domains: state.value.allocated.unlimited_domains ? '∞' : String(state.value.allocated.domains ?? 0),
+                                disk: state.value.allocated.unlimited_disk ? '∞' : String(state.value.allocated.disk_mb ?? 0),
+                            })}
+                        </p>
+                    </>
+                )}
+            </RemoteGate>
+            <div className="mt-3 flex flex-wrap justify-end gap-2">
+                <Button icon={X} onClick={onClose}>{t('users.cancel')}</Button>
+                {known?.pool && <Button onClick={() => save(null)} disabled={busy}>{t('users.poolRemove')}</Button>}
+                <Button variant="primary" icon={Save} onClick={() => save(shown)} disabled={busy || !known}>{t('plans.save')}</Button>
+            </div>
+        </div>
+    );
+}
+
+// A new plan starts with modest limits; 0 means unlimited. Traffic is not
+// measured yet, so a plan carries no traffic limit (bandwidth stays 0).
+// Yeni plan ölçülü sınırlarla başlar; 0 sınırsızdır. Trafik ölçülmediği için
+// planda trafik sınırı yoktur.
 const emptyPlan: ServicePlan = {
     id: 0,
     name: '',
@@ -334,10 +510,12 @@ const emptyPlan: ServicePlan = {
     max_databases: 10,
     max_email_accounts: 50,
     disk_quota_mb: 10240,
-    bandwidth_quota_mb: 102400,
+    bandwidth_quota_mb: 0,
 };
 
-function PlansTab() {
+const limitText = (n: number, unlimited: string) => (n > 0 ? String(n) : unlimited);
+
+function PlansTab({ isAdmin }: { isAdmin: boolean }) {
     const { t } = useI18n();
     const plans = useRemote(PLANS_URL, decodePlans);
     const [editing, setEditing] = useState<ServicePlan | null>(null);
@@ -391,10 +569,13 @@ function PlansTab() {
         load();
     };
 
-    const fmtGB = (mb: number) => (mb >= 1024 ? `${(mb / 1024).toFixed(0)} GB` : `${mb} MB`);
+    const unlimited = t('plans.unlimited');
+    const fmtGB = (mb: number) => (mb <= 0 ? unlimited : mb >= 1024 ? `${(mb / 1024).toFixed(0)} GB` : `${mb} MB`);
 
     return (
         <div>
+            {/* 0 = unlimited; traffic is not measured yet (alpha.114). */}
+            <p className="mb-3 text-xs text-fg-subtle">{t('plans.hint')}</p>
             <div className="mb-3 flex items-center justify-between">
                 <span className="text-xs text-fg-subtle">{(countText(mapRemote(plans.remote, (rows) => rows.length)) === '1' ? t('common.itemsTotalOne') : t('common.itemsTotal', { n: countText(mapRemote(plans.remote, (rows) => rows.length)) }))}</span>
                 <Button variant="primary" icon={Plus} disabled={!plansKnown} onClick={() => setEditing({ ...emptyPlan })}>
@@ -404,7 +585,7 @@ function PlansTab() {
 
             {editing && (
                 <div className="mb-4 rounded-xl border border-border bg-surface-2/50 p-4">
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                         <label className="col-span-2 sm:col-span-3 lg:col-span-1">
                             <span className="mb-1 block text-xs text-fg-muted">{t('plans.form.name')}</span>
                             <input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} className={inputClass} autoFocus />
@@ -413,7 +594,6 @@ function PlansTab() {
                         <NumField label={t('plans.col.databases')} value={editing.max_databases} onChange={(v) => setEditing({ ...editing, max_databases: v })} />
                         <NumField label={t('plans.col.mail')} value={editing.max_email_accounts} onChange={(v) => setEditing({ ...editing, max_email_accounts: v })} />
                         <NumField label={`${t('plans.col.disk')} (MB)`} value={editing.disk_quota_mb} onChange={(v) => setEditing({ ...editing, disk_quota_mb: v })} />
-                        <NumField label={`${t('plans.col.traffic')} (MB)`} value={editing.bandwidth_quota_mb} onChange={(v) => setEditing({ ...editing, bandwidth_quota_mb: v })} />
                     </div>
                     <div className="mt-3 flex justify-end gap-2">
                         <Button icon={X} onClick={() => setEditing(null)}>{t('users.cancel')}</Button>
@@ -444,7 +624,7 @@ function PlansTab() {
                                     <th className="px-4 py-2.5">{t('plans.col.databases')}</th>
                                     <th className="px-4 py-2.5">{t('plans.col.mail')}</th>
                                     <th className="px-4 py-2.5">{t('plans.col.disk')}</th>
-                                    <th className="px-4 py-2.5">{t('plans.col.traffic')}</th>
+                                    {isAdmin && <th className="px-4 py-2.5">{t('plans.col.owner')}</th>}
                                     <th className="px-4 py-2.5">{t('plans.col.subscribers')}</th>
                                     <th className="px-4 py-2.5" />
                                 </tr>
@@ -453,21 +633,21 @@ function PlansTab() {
                                 {shown.value.map((p) => (
                                     <tr key={p.id} className="border-b border-border last:border-0 hover:bg-surface-2/60">
                                         <td className="px-4 py-3 text-base font-medium text-fg">{p.name}</td>
-                                        <td className="px-4 py-3 text-fg-muted">{p.max_domains}</td>
-                                        <td className="px-4 py-3 text-fg-muted">{p.max_databases}</td>
-                                        <td className="px-4 py-3 text-fg-muted">{p.max_email_accounts}</td>
+                                        <td className="px-4 py-3 text-fg-muted">{limitText(p.max_domains, unlimited)}</td>
+                                        <td className="px-4 py-3 text-fg-muted">{limitText(p.max_databases, unlimited)}</td>
+                                        <td className="px-4 py-3 text-fg-muted">{limitText(p.max_email_accounts, unlimited)}</td>
                                         <td className="px-4 py-3 text-fg-muted">{fmtGB(p.disk_quota_mb)}</td>
-                                        <td className="px-4 py-3 text-fg-muted">{fmtGB(p.bandwidth_quota_mb)}</td>
+                                        {isAdmin && <td className="px-4 py-3 text-fg-muted">{p.owner || t('plans.ownerGlobal')}</td>}
                                         <td className="px-4 py-3 text-fg-muted">{p.subscribers ?? 0}</td>
                                         <td className="px-4 py-3">
-                                            <div className="flex items-center justify-end gap-0.5">
+                                            {p.mine !== false && <div className="flex items-center justify-end gap-0.5">
                                                 <RowBtn disabled={!plansKnown} title={t('plans.edit')} onClick={() => setEditing({ ...p })}>
                                                     <Pencil className="h-4 w-4" />
                                                 </RowBtn>
                                                 <RowBtn danger disabled={!plansKnown || saving} title={t('users.delete')} onClick={() => remove(p)}>
                                                     <Trash2 className="h-4 w-4" />
                                                 </RowBtn>
-                                            </div>
+                                            </div>}
                                         </td>
                                     </tr>
                 ))}

@@ -280,6 +280,7 @@ export const tr: Record<ShellKey, string> = {
     'users.cancel': 'Vazgeç',
 
     'imp.banner': '{name} olarak geziniyorsunuz.',
+    'imp.bannerBy': '{name} olarak görüntülüyorsunuz. Siz {operator} hesabısınız; burada yaptığınız her şey sizin adınıza kaydedilir.',
     'imp.return': 'Hesabıma dön',
 
     'profile.changePassword': 'Parolayı değiştir',

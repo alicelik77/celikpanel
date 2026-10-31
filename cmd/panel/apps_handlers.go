@@ -115,7 +115,7 @@ func (p *Panel) handleAppInstall(w http.ResponseWriter, r *http.Request, domainI
 		return
 	}
 	if err := p.checkSubscriptionQuota(r.Context(), target.SubscriptionID, quotaDBs); err != nil {
-		writeClientError(w, http.StatusConflict, err.Error())
+		writeQuotaRefusal(w, err)
 		return
 	}
 

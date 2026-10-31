@@ -17,6 +17,7 @@ import { useAuth } from '../auth/AuthContext';
 import type { TranslationKey } from '../i18n/en';
 import { Button, Checking, CouldNotCheck, Dialog, KeepWords, Spinner, UsageBar, Card } from './ui';
 import { PageHeader } from './PageHeader';
+import { MyPlanCard } from './MyPlanCard';
 import { showToast } from './Toast';
 import { FirewallNoSSHAcknowledgement, readFirewallSSHReason } from './FirewallSSHNotice';
 import { apiErrorText, readApiError } from '../lib/apiError';
@@ -1724,6 +1725,8 @@ function CustomerDashboard() {
                     </ol>
                 </details>
             </section>}
+
+            {(role === 'customer' || role === 'reseller') && <div className="mb-6"><MyPlanCard /></div>}
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <GaugeCard

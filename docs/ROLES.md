@@ -128,6 +128,24 @@ These changes are **additive** and land alongside authentication in Phase 0.2, s
 
 ---
 
+## What is implemented (v0.1.0-alpha.114)
+
+This section states what the code does today; the design above remains the target.
+
+- **Roles and gates.** `admin`, `reseller`, `customer` and the derived `additional_user` are enforced on the server. A route × role test (`cmd/panel/route_role_matrix_test.go`) reads every route registered in `cmd/panel/main.go` and checks its gate for an anonymous visitor and each role; a route registered without a row fails the test. Account routes are additionally driven with their real handlers (`TestAccountRoutesRoleMatrix`).
+- **Plans.** The administrator's plans are global. A reseller creates its own plans (`service_plans.owner_id`); it sees global plans and its own, edits only its own, and its plans never promise more than its pool. A reseller's plan can be given only to that reseller's customers.
+- **0 means unlimited** for domains, databases, mailboxes and disk — in the plan form, the plan validation, every quota check and every usage answer.
+- **Plan change after creation** (`PUT /api/v1/users/{id}/plan`, admin; reseller for its own customers). Limits are re-copied from the plan. A plan below current usage is refused with the list of what is over (`PLAN_BELOW_USAGE`) until the operator confirms; then nothing is deleted, and new items of the over kinds are refused with guidance (`QUOTA_*_EXCEEDED`, pointing at My plan).
+- **Reseller pool** (`reseller_pools`, set by the administrator at `/api/v1/users/{id}/pool` or when creating the reseller): total domains, databases, mailboxes, disk and number of customers over the reseller's tree. The pool limits *allocation* (the sum of plan limits handed out), so it cannot be oversold. Exceeding it is refused with `RESELLER_POOL_EXCEEDED` / `RESELLER_CUSTOMER_LIMIT`. A pool lowered below what is handed out is saved with a warning; nothing is taken away. A reseller without a pool row has no limits (every reseller from before alpha.114).
+- **Suspend/resume.** A reseller suspends and resumes its own customers; the administrator any account. Both are audited (`user.suspend`, `user.resume`).
+- **My plan** (`GET /api/v1/my/subscription`, a card on the Dashboard and on My account): plan, limits, live usage (the same numbers the quota checks use), whom to contact for a larger plan, and for a reseller its pool. Team members do not see it.
+- **"Log in as" is accountable.** The session records its operator (`sessions.impersonator_id`). Every audit row written inside it names the real person in `user_id` and the account in `acting_as`; `impersonate.start` and `impersonate.stop` are recorded. The session ends when the operator is suspended, changes password, or may no longer manage the account. Nested "Log in as" is refused. A persistent bar says "Viewing as X" with the way back.
+- **Password change** ends every session of that person, including "Log in as" sessions they opened as an operator.
+
+**Not implemented yet:** traffic (bandwidth) is stored but **not measured**, so no traffic limit is applied and the screens say so; subscription suspension/expiry effects, prices, periods and payments; the reseller suspension "chain rule"; OS-level disk enforcement (disk is a soft gate at creation, from cached measurements); the per-capability additional-user model beyond the existing team-member grants.
+
+---
+
 ## Deliberate non-goals (simplicity)
 
 - ❌ **Arbitrary nesting** (resellers under resellers under resellers). The chain is fixed at four levels. A "distributor" tier above resellers can be added later *only if* real demand appears — until then, the administrator fills that role.

@@ -43,6 +43,8 @@ export interface CurrentUser {
     account_type: AccountType;
     email?: string;
     impersonating: boolean;
+    /** The operator's username during "Log in as" (alpha.114). */
+    impersonator?: string;
     features: {
         team_members: boolean;
         [key: string]: unknown;
@@ -316,6 +318,7 @@ export function parseCurrentUser(raw: unknown): CurrentUser {
     }
     if (raw.email !== undefined && typeof raw.email !== 'string') unsupportedAuthIdentity();
     if (raw.impersonating !== undefined && typeof raw.impersonating !== 'boolean') unsupportedAuthIdentity();
+    if (raw.impersonator !== undefined && typeof raw.impersonator !== 'string') unsupportedAuthIdentity();
 
     const rawFeatures = raw.features === undefined ? {} : raw.features;
     if (!isRecord(rawFeatures)) unsupportedAuthIdentity();
@@ -327,6 +330,7 @@ export function parseCurrentUser(raw: unknown): CurrentUser {
         account_type: accountType,
         email: raw.email,
         impersonating: raw.impersonating ?? false,
+        impersonator: raw.impersonator,
         features: {
             ...rawFeatures,
             team_members: rawFeatures.team_members === true
@@ -356,8 +360,14 @@ export interface ServicePlan {
     max_databases: number;
     max_email_accounts: number;
     disk_quota_mb: number;
+    /** Stored for compatibility; traffic is not measured, so it is not shown or enforced. */
     bandwidth_quota_mb: number;
     subscribers?: number;
+    /** A reseller's own plan (alpha.114); absent for a global plan. */
+    owner_id?: number;
+    owner?: string;
+    /** The signed-in account may edit this plan. */
+    mine?: boolean;
 }
 
 export interface DemoAccount {

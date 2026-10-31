@@ -635,7 +635,7 @@ func (p *Panel) handleCreateDatabaseV2(w http.ResponseWriter, r *http.Request) {
 	// Quota is checked only after the complete reference preflight and against
 	// the selected server's subscription.
 	if err := p.checkSubscriptionQuota(ctx, subscriptionID, quotaDBs); err != nil {
-		writeClientError(w, http.StatusConflict, err.Error())
+		writeQuotaRefusal(w, err)
 		return
 	}
 

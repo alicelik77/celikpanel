@@ -426,11 +426,11 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 	// altında yeni siteyi reddeder; çalışan bir betiğin diski doldurmasını
 	// (henüz) sertçe durdurmaz (o, OS dosya sistemi kotası ister).
 	if err := p.checkSubscriptionQuota(r.Context(), req.SubscriptionID, quotaDomains); err != nil {
-		writeCodedError(w, http.StatusConflict, errCodeQuotaDomains, err.Error(), "")
+		writeQuotaRefusal(w, err)
 		return
 	}
 	if err := p.checkSubscriptionQuota(r.Context(), req.SubscriptionID, quotaDisk); err != nil {
-		writeCodedError(w, http.StatusConflict, errCodeQuotaDisk, err.Error(), "")
+		writeQuotaRefusal(w, err)
 		return
 	}
 

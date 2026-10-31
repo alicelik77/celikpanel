@@ -709,9 +709,10 @@ function SubscriptionUsage() {
                             </>
                         )}
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-fg-subtle">
-                            <span>{t('quota.domains', { n: u.domains, max: u.domains_limit })}</span>
-                            <span>{t('quota.databases', { n: u.databases, max: u.databases_limit })}</span>
-                            <span>{t('quota.mail', { n: u.mail_accounts, max: u.mail_limit })}</span>
+                            {/* A limit of 0 is unlimited (alpha.114), written ∞. */}
+                            <span>{t('quota.domains', { n: u.domains, max: u.domains_limit > 0 ? u.domains_limit : '∞' })}</span>
+                            <span>{t('quota.databases', { n: u.databases, max: u.databases_limit > 0 ? u.databases_limit : '∞' })}</span>
+                            <span>{t('quota.mail', { n: u.mail_accounts, max: u.mail_limit > 0 ? u.mail_limit : '∞' })}</span>
                         </div>
                     </div>
                 );

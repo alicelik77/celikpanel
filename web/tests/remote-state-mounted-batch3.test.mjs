@@ -90,6 +90,8 @@ const stub = dataModule(`
   export const ServerSetupDashboardNotice = () => null, LicenseNotice = () => null, PageHeader = () => null;
   // The Dashboard's quiet update row (alpha.96) is its own component.
   export const DashboardUpdateNotice = () => null;
+  // alpha.114: My plan reads its own address (customers and resellers only).
+  export const MyPlanCard = () => null;
   export const FirewallNoSSHAcknowledgement = () => null, readFirewallSSHReason = () => null, FirewallSSHReasonLine = () => null;
   // What the Components page imports beside these.
   export const useLocation = () => ({ hash: '', pathname: '/services' });

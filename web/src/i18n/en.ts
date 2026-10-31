@@ -432,6 +432,7 @@ export const en = {
     'users.cancel': 'Cancel',
 
     'imp.banner': 'You are browsing as {name}.',
+    'imp.bannerBy': 'Viewing as {name}. You are {operator}; everything you do here is recorded under your name.',
     'imp.return': 'Return to my account',
 
     'profile.changePassword': 'Change password',

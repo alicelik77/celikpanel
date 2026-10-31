@@ -202,9 +202,19 @@ func (p *Panel) handleMe(w http.ResponseWriter, r *http.Request) {
 	if _, err := r.Cookie(impersonatorCookieName); err == nil {
 		impersonating = true
 	}
+	response := identity.response(impersonating || caller.ImpersonatorID > 0)
+	// The banner names the real person too (alpha.114): "Viewing as X —
+	// signed in as Y". A failed read leaves only the account's own name.
+	// Şerit gerçek kişiyi de adlandırır; okunamazsa yalnız hesabın adı kalır.
+	if caller.ImpersonatorID > 0 {
+		response.Impersonating = true
+		if operator, err := p.users.GetByID(r.Context(), caller.ImpersonatorID); err == nil && operator != nil {
+			response.Impersonator = operator.Username
+		}
+	}
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(identity.response(impersonating))
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 // sessionCookie builds the session cookie with security attributes. Secure

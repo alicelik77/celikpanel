@@ -180,6 +180,10 @@ func (p *Panel) handleUserByID(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case action == "impersonate" && r.Method == http.MethodPost:
 		p.handleImpersonate(w, r, c, target)
+	case action == "plan":
+		p.handleAssignPlan(w, r, c, target)
+	case action == "pool":
+		p.handleResellerPool(w, r, c, target.ID, target.Role, target.Username)
 	case action == "" && r.Method == http.MethodPut:
 		p.handleUpdateUser(w, r, target)
 	case action == "" && r.Method == http.MethodDelete:
@@ -237,6 +241,8 @@ func (p *Panel) handleCreateUser(w http.ResponseWriter, r *http.Request, c *Call
 		Password string `json:"password"`
 		Role     string `json:"role"`
 		PlanID   int    `json:"plan_id,omitempty"`
+		// Pool: a new reseller's allowance, set by the administrator (alpha.114).
+		Pool *resellerPool `json:"pool,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeClientError(w, http.StatusBadRequest, "invalid request body")
@@ -265,6 +271,10 @@ func (p *Panel) handleCreateUser(w http.ResponseWriter, r *http.Request, c *Call
 	}
 	if !strings.Contains(req.Email, "@") {
 		writeClientError(w, http.StatusBadRequest, "valid email required")
+		return
+	}
+	plan, ok := p.precheckNewAccount(w, r, c, req.Role, req.PlanID, req.Pool)
+	if !ok {
 		return
 	}
 
@@ -297,11 +307,8 @@ func (p *Panel) handleCreateUser(w http.ResponseWriter, r *http.Request, c *Call
 	// (one obvious way to onboard a customer).
 	// İsteğe bağlı: aynı adımda plandan ilk aboneliği oluştur (bir müşteriyi
 	// devreye almanın tek belirgin yolu).
-	if req.PlanID > 0 {
-		if err := p.createSubscriptionFromPlan(r.Context(), user.ID, req.PlanID); err != nil {
-			writeServerError(w, err)
-			return
-		}
+	if !p.finishNewAccount(w, r, user, plan, req.Pool) {
+		return
 	}
 
 	log.Printf("[audit] user %d (%s) created user %d (%s, role=%s)", c.ID, c.Role, user.ID, user.Username, user.Role)
@@ -360,6 +367,19 @@ func (p *Panel) handleUpdateUser(w http.ResponseWriter, r *http.Request, target 
 	}
 	if revokeSessions {
 		revokePendingLogins(target.ID)
+	}
+	// Suspend/resume and password resets by an operator are on the record
+	// (alpha.114; a reseller acts on its own customers only — canManageUser).
+	// Askıya alma/sürdürme ve operatörün parola sıfırlaması kayda geçer.
+	if req.Status != nil {
+		action := "user.resume:"
+		if *req.Status == "suspended" {
+			action = "user.suspend:"
+		}
+		p.audit(r, action+target.Username, "user", target.ID)
+	}
+	if req.Password != nil {
+		p.audit(r, "user.password_reset:"+target.Username, "user", target.ID)
 	}
 
 	// Password resets and suspensions take effect immediately: the transaction
@@ -529,12 +549,26 @@ func (p *Panel) handleImpersonate(w http.ResponseWriter, r *http.Request, c *Cal
 		writeClientError(w, http.StatusConflict, "account is suspended")
 		return
 	}
+	// One step at a time: from inside "Log in as", return to your own
+	// account before opening another one.
+	// Adım adım: "Farklı giriş yap" içindeyken başka hesaba geçmeden önce
+	// kendi hesabınıza dönün.
+	if c.ImpersonatorID > 0 {
+		writeClientError(w, http.StatusConflict, "you are already browsing as another account; return to your own account first")
+		return
+	}
 
-	token, err := p.sessions.Create(r.Context(), target.ID)
+	// The session records its operator (migration 47): the audit trail names
+	// the real person for every action inside it, and the session ends when
+	// the operator may no longer manage this account.
+	// Oturum operatörünü kaydeder: denetim izi içindeki her eylemde gerçek
+	// kişiyi adlandırır.
+	token, err := p.sessions.CreateImpersonation(r.Context(), target.ID, c.ID)
 	if err != nil {
 		writeServerError(w, err)
 		return
 	}
+	p.writeAuditRow(r, c.ID, target.ID, "impersonate.start:"+target.Username, "user", target.ID, nil)
 
 	// Preserve the operator's own session for the way back.
 	// Operatörün kendi oturumunu dönüş yolu için sakla.
@@ -577,7 +611,13 @@ func (p *Panel) handleUnimpersonate(w http.ResponseWriter, r *http.Request) {
 	}
 	// The stored token must still be a valid session.
 	// Saklanan token hâlâ geçerli bir oturum olmalı.
-	if _, err := p.sessions.Validate(r.Context(), imp.Value); err != nil {
+	original, err := p.sessions.ValidateIdentity(r.Context(), imp.Value)
+	// The way back leads only to the operator who opened this session.
+	// Dönüş yolu yalnız bu oturumu açan operatöre çıkar.
+	if c := currentCaller(r); err == nil && c != nil && c.ImpersonatorID > 0 && original.UserID != c.ImpersonatorID {
+		err = auth.ErrSessionInvalid
+	}
+	if err != nil {
 		if !errors.Is(err, auth.ErrSessionInvalid) {
 			writeServerError(w, err)
 			return
@@ -608,6 +648,9 @@ func (p *Panel) handleUnimpersonate(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, p.cookie(impersonatorCookieName, "", -1))
 		writeServerError(w, fmt.Errorf("revoke impersonated session: %w", revokeErr))
 		return
+	}
+	if c := currentCaller(r); c != nil && c.ImpersonatorID > 0 {
+		p.audit(r, "impersonate.stop", "user", c.ID)
 	}
 	http.SetCookie(w, p.cookie(sessionCookieName, imp.Value, 0))
 	http.SetCookie(w, p.cookie(impersonatorCookieName, "", -1))
@@ -686,23 +729,4 @@ func (p *Panel) cookie(name, value string, maxAge int) *http.Cookie {
 		Secure:   p.secureCookies,
 		MaxAge:   maxAge,
 	}
-}
-
-// createSubscriptionFromPlan copies a plan's quotas into a new subscription.
-// createSubscriptionFromPlan, bir planın kotalarını yeni bir aboneliğe kopyalar.
-func (p *Panel) createSubscriptionFromPlan(ctx context.Context, ownerID, planID int) error {
-	var plan core.ServicePlan
-	err := p.db.GetDB().QueryRowContext(ctx, `
-		SELECT id, name, max_domains, max_databases, max_email_accounts, disk_quota_mb, bandwidth_quota_mb
-		FROM service_plans WHERE id = ?`, planID).
-		Scan(&plan.ID, &plan.Name, &plan.MaxDomains, &plan.MaxDatabases, &plan.MaxEmailAccounts, &plan.DiskQuotaMB, &plan.BandwidthQuotaMB)
-	if err != nil {
-		return errors.New("plan not found")
-	}
-
-	_, err = p.db.GetDB().ExecContext(ctx, `
-		INSERT INTO subscriptions (owner_id, name, plan_id, max_domains, max_databases, max_email_accounts, disk_quota_mb, bandwidth_quota_mb, status)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
-		ownerID, plan.Name, plan.ID, plan.MaxDomains, plan.MaxDatabases, plan.MaxEmailAccounts, plan.DiskQuotaMB, plan.BandwidthQuotaMB)
-	return err
 }

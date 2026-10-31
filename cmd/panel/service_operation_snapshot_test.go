@@ -1441,6 +1441,12 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse accounts, plans and resellers (migration 47, alpha.114).
+        DROP TABLE reseller_pools;
+        DROP INDEX idx_sessions_impersonator;
+        ALTER TABLE sessions DROP COLUMN impersonator_id;
+        ALTER TABLE audit_logs DROP COLUMN acting_as;
+
         -- Reverse the PostgreSQL clusters and database moves (migration 46, alpha.108).
         DROP TABLE postgresql_database_moves;
         ALTER TABLE database_servers DROP COLUMN cluster;
