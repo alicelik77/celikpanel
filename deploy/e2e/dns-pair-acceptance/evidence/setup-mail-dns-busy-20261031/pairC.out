@@ -1,0 +1,219 @@
+﻿== provision 02:32:17 cell=sm-c mode=keyfault main=debian13/pdns 192.0.3.125 backup=ubuntu2404/pdns 192.0.3.126 zone=smc113.test dist=2862f8d65f2b7cd642f63c8c9031c6ca395dd88d
+==> /var/tmp/smd/logs/prov-sm-c-main.log <==
+ "seconds": 14.7
+}
+
+==> /var/tmp/smd/logs/prov-sm-c-backup.log <==
+ "seconds": 21.9
+}
+== install through get.sh in a root terminal 02:32:39
+main terminal rc 0 46.5 problem None restart_required False postinstall rc 0
+backup terminal rc 0 50.8 problem None restart_required False postinstall rc 0
+main license active can_use_panel True
+backup license active can_use_panel True
+guidance 200 
+guidance 200 
+main-domain 200 
+main-count 200 
+main-name 200 
+main-roles 200 
+main-names 200 
+main-dnshome 200 
+main-mail 200 
+plan main 200 True [] ['01-service', '02-service', '03-service', '04-service', '05-service', '06-peer_join', '07-dns', '08-firewall', '09-infrastructure_dns', '10-access_dns', '11-panel_certificate', '12-dns_readiness', '13-mail_profile', '14-mail_profile', '15-mail_dns', '16-access_dns', '17-mail_certificate', '18-mail_enrollment', '19-verify'] 
+== LAB FAULT keyfault: unreadable file at the main domain's DKIM key path 02:33:43
+total 4
+-rw------- 1 root root 21 Oct 31 02:33 celik.private
+== start main 02:33:43
+start-main 202 {
+ "id": "f1f80ba6a6c7afe9992d5897c324ddb1",
+ "panel_url": "https://frankfurt.smc113.test:2083/",
+ "phase": "queued",
+ "plan_id": "707c6df32be14ea57685baf2885c5
+join-code 200 {
+ "address": "https://192.0.3.125:2083",
+ "attempts_left": 
+connect 200 {
+ "setup": {
+  "checks": [],
+  "draft": {
+   "database": "mariadb",
+   "dns_engine": "bind",
+   "dns_mode": "local",
+   "dns_publisher_endpoint": "https://frankfurt.smc113.test:2083",
+   "dns_role": 
+backup-roles 200 
+backup-name 200 
+backup-names 200 
+backup-dnshome 200 
+plan backup 200 True [] ['01-peer_names', '02-service', '03-service', '04-service', '05-service', '06-dns', '07-firewall', '08-access_dns', '09-panel_certificate', '10-dns_publisher', '11-verify'] 
+== start backup 02:33:56
+start-backup 202 {
+ "id": "aed0ad1f7158942ed3113779ce4da79a",
+ "panel_url": "https://boston.smc113.test:2083/",
+ "phase": "queued",
+ "plan_id": "552e8aebeb1b825b9f6df30e5eca64b9
+== wait for both 02:34:00
+-- sm-c/backup 02:34:00
+running 02-service null
+01-peer_names=succeeded 02-service=running 03-service=pending 04-service=pending 05-service=pending 06-dns=pending 07-firewall=pending 08-access_dns=pending 09-panel_certificate=pending 10-dns_publisher=pending 11-verify=pending
+{"id": "02-service", "kind": "service", "owner_id": "44a4adb0e07022567a1e8f2b8de56224", "request_id": "ef1614e6e4a4c17f79473e6dd850abc9", "status": "running", "target": "nginx"}
+-- sm-c/backup 02:34:21
+running 03-service null
+01-peer_names=succeeded 02-service=succeeded 03-service=running 04-service=pending 05-service=pending 06-dns=pending 07-firewall=pending 08-access_dns=pending 09-panel_certificate=pending 10-dns_publisher=pending 11-verify=pending
+{"id": "03-service", "kind": "service", "operation_id": "e7b85fde8a5d588c069b3e95df9af0fc", "owner_id": "1e78eab9f5454faec540021861c81877", "request_id": "4b0a804297fe670782eff157d2e70b40", "status": "running", "target": "certbot"}
+-- sm-c/backup 02:34:41
+running 04-service null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=running 05-service=pending 06-dns=pending 07-firewall=pending 08-access_dns=pending 09-panel_certificate=pending 10-dns_publisher=pending 11-verify=pending
+{"id": "04-service", "kind": "service", "operation_id": "7bf526c561c170fcf5b21bae507c1a96", "owner_id": "9fa888c02712e72d2d86d78e48df3fdd", "request_id": "db75991f5ea3eb69c9415277809bd7e0", "status": "running", "target": "mariadb"}
+-- sm-c/backup 02:35:21
+running 05-service null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=running 06-dns=pending 07-firewall=pending 08-access_dns=pending 09-panel_certificate=pending 10-dns_publisher=pending 11-verify=pending
+{"id": "05-service", "kind": "service", "operation_id": "817d79b7807233a0289bdc98f3ae4848", "owner_id": "6a3945bca452fc75add6d9d0ed270c83", "request_id": "1cc1b3dfc37183113630e52bc712c835", "status": "running", "target": "php-fpm"}
+-- sm-c/backup 02:35:41
+waiting primary_dns {"code": "server_setup_primary_dns_required", "message": "The primary DNS server ns1.smc113.test (192.0.3.125) has not provided its authoritative catalog yet. Start its DNS setup and check TCP port 53. This setup checks again automatically; no primary panel connection is required."}
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=running 07-firewall=pending 08-access_dns=pending 09-panel_certificate=pending 10-dns_publisher=pending 11-verify=pending
+{"id": "06-dns", "kind": "dns", "owner_id": "8918a61c28ec321a66afeb07aa91c86b", "request_id": "edc0919d0cde2ef3f49cc620d0f7d861", "status": "running", "target": "local"}
+-- sm-c/backup 02:36:01
+running primary_dns {"code": "server_setup_primary_dns_required", "message": "The primary DNS server ns1.smc113.test (192.0.3.125) has not provided its authoritative catalog yet. Start its DNS setup and check TCP port 53. This setup checks again automatically; no primary panel connection is required."}
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=running 07-firewall=pending 08-access_dns=pending 09-panel_certificate=pending 10-dns_publisher=pending 11-verify=pending
+{"id": "06-dns", "kind": "dns", "owner_id": "8918a61c28ec321a66afeb07aa91c86b", "request_id": "edc0919d0cde2ef3f49cc620d0f7d861", "status": "running", "target": "local"}
+-- sm-c/backup 02:36:21
+waiting access_dns {"code": "server_setup_access_dns_required", "message": "Public DNS must resolve boston.smc113.test to 192.0.3.126 before a certificate is requested. Check this hostname's A/AAAA records and its zone delegation. For DNS managed here, review the infrastructure DNS records in this wizard; otherwise correct them at the primary DNS server or provider. This check resumes automatically when DNS is verified."}
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=running 09-panel_certificate=pending 10-dns_publisher=pending 11-verify=pending
+{"id": "08-access_dns", "kind": "access_dns", "owner_id": "1be8d6e220f2008bd6fce209e6aec414", "qualifier": "192.0.3.126", "request_id": "45905713596063fe64c4ad5ad6e309f5", "status": "running", "target": "boston.smc113.test"}
+-- sm-c/backup 02:36:41
+running 09-panel_certificate null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=running 10-dns_publisher=pending 11-verify=pending
+{"id": "09-panel_certificate", "kind": "panel_certificate", "operation_id": "4e50cbb74f6402ba4c3707a3c808a774", "owner_id": "219cf69660a185a54ff530415692f10e", "request_id": "4748b2abe91409811da5fb0e5def1895", "status": "running", "target": "boston.smc113.test"}
+-- sm-c/backup 02:37:02
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-verify=succeeded
+-- sm-c/main 02:37:02
+running 13-mail_profile null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=running 14-mail_profile=pending 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-verify=pending
+{"id": "13-mail_profile", "kind": "mail_profile", "operation_id": "7aeb367f3103f343914319197169b246", "owner_id": "fcdb5ca26efce5abede04d8b5a82fa55", "request_id": "17fe2395e0f5f94466404093dbc85585", "status": "running", "target": "webmail"}
+-- sm-c/main 02:38:22
+running 14-mail_profile null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=running 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-verify=pending
+{"id": "14-mail_profile", "kind": "mail_profile", "operation_id": "5e1c3fb9494c778f4dcb1b1c08d512fb", "owner_id": "63495f0b585a8f7a0daaa72712449592", "request_id": "537c2f8bb8f53db94fca6612cb9aac67", "status": "running", "target": "protected-mail"}
+-- sm-c/main 02:39:23
+failed 15-mail_dns {"code": "server_setup_mail_dns_dkim_failed", "message": "The DKIM key for the main domain could not be prepared: cannot read existing DKIM key: no PEM block in /var/lib/celikpanel-dkim/keys/smc113.test/celik.private"}
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=failed 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-verify=pending
+{"id": "15-mail_dns", "kind": "mail_dns", "owner_id": "6424082c7df6a73197688733c1b9fbbc", "request_id": "7ac7f4ba393f4e0d2e89ac5c0dd01d9b", "status": "failed", "target": "smc113.test"}
+== end 02:39:23
+failed 15-mail_dns {"code": "server_setup_mail_dns_dkim_failed", "message": "The DKIM key for the main domain could not be prepared: cannot read existing DKIM key: no PEM block in /var/lib/celikpanel-dkim/keys/smc113.test/celik.private"}
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=failed 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-verify=pending
+{"id": "15-mail_dns", "kind": "mail_dns", "owner_id": "6424082c7df6a73197688733c1b9fbbc", "request_id": "7ac7f4ba393f4e0d2e89ac5c0dd01d9b", "status": "failed", "target": "smc113.test"}
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-verify=succeeded
+== owner follows the guidance 02:39:23
+   owner terminal: sudo rm /var/lib/celikpanel-dkim/keys/smc113.test/celik.private (the cause the failure named)
+   DNS card: pending 0 None
+   replan 200 True [] ['01-peer_join', '02-dns', '03-firewall', '04-infrastructure_dns', '05-access_dns', '06-dns_readiness', '07-mail_profile', '08-mail_profile', '09-mail_dns', '10-access_dns', '11-mail_certificate', '12-mail_enrollment', '13-verify'] 
+== LAB FAULT busyhold at the mail DNS publication armed 02:39:25
+== owner: start 02:39:25
+start 202 {
+ "id": "b05b7c6e7857d87e64ad4e39b2a79516",
+ "panel_url": "https://frankfurt.smc113.test:2083/",
+ "phase": "queued",
+ "plan_id": "f7affd8f86104147015b86f9bebd9b2a",
+ "request_id": "b05b7c6e7857d87e64
+-- sm-c/main 02:39:26
+running 03-firewall null
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=running 04-infrastructure_dns=pending 05-access_dns=pending 06-dns_readiness=pending 07-mail_profile=pending 08-mail_profile=pending 09-mail_dns=pending 10-access_dns=pending 11-mail_certificate=pending 12-mail_enrollment=pending 13-verify=pending
+{"id": "03-firewall", "kind": "firewall", "owner_id": "f906d99fa2131b73c58f47def5cc5908", "request_id": "30dd801baafa0321ad76ba2eab82a418", "status": "running", "target": "enable_and_persist"}
+-- sm-c/main 02:39:46
+running 07-mail_profile null
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=succeeded 04-infrastructure_dns=succeeded 05-access_dns=succeeded 06-dns_readiness=succeeded 07-mail_profile=running 08-mail_profile=pending 09-mail_dns=pending 10-access_dns=pending 11-mail_certificate=pending 12-mail_enrollment=pending 13-verify=pending
+{"id": "07-mail_profile", "kind": "mail_profile", "operation_id": "8882ff56d38588ebe5c1ac31b5ad44ad", "owner_id": "06492e403644813b26d7f5b52f6ffb56", "request_id": "77756326953e6e64db5ee69cc5b9b524", "status": "running", "target": "webmail"}
+-- sm-c/main 02:40:46
+running 08-mail_profile null
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=succeeded 04-infrastructure_dns=succeeded 05-access_dns=succeeded 06-dns_readiness=succeeded 07-mail_profile=succeeded 08-mail_profile=running 09-mail_dns=pending 10-access_dns=pending 11-mail_certificate=pending 12-mail_enrollment=pending 13-verify=pending
+{"id": "08-mail_profile", "kind": "mail_profile", "operation_id": "a4004d17366a7ad6989de1ca3caf6c62", "owner_id": "71402b2f7f764f85c16289032b1acc92", "request_id": "35762e912652ed0865eeed6ddf7d69bc", "status": "running", "target": "protected-mail"}
+-- sm-c/main 02:41:26
+running 09-mail_dns null
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=succeeded 04-infrastructure_dns=succeeded 05-access_dns=succeeded 06-dns_readiness=succeeded 07-mail_profile=succeeded 08-mail_profile=succeeded 09-mail_dns=running 10-access_dns=pending 11-mail_certificate=pending 12-mail_enrollment=pending 13-verify=pending
+{"id": "09-mail_dns", "kind": "mail_dns", "owner_id": "74414e4db7866bce7dae3d15e8c70c2f", "request_id": "9f703f3071ff51174d5a186493491e1d", "status": "running", "target": "smc113.test"}
+-- sm-c/main 02:41:47
+waiting mail_dns {"code": "server_setup_host_busy", "message": "Another change is running on this server (for example a mail service being configured, or the package manager is busy), so the DKIM record is saved in the zone smc113.test but not published yet. Nobody needs to act: setup publishes it by itself once the other change has finished, and then continues."}
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=succeeded 04-infrastructure_dns=succeeded 05-access_dns=succeeded 06-dns_readiness=succeeded 07-mail_profile=succeeded 08-mail_profile=succeeded 09-mail_dns=running 10-access_dns=pending 11-mail_certificate=pending 12-mail_enrollment=pending 13-verify=pending
+{"busy_attempts": 1, "busy_since": "2026-10-31T02:41:31.908415996Z", "id": "09-mail_dns", "kind": "mail_dns", "owner_id": "74414e4db7866bce7dae3d15e8c70c2f", "request_id": "9f703f3071ff51174d5a186493491e1d", "status": "running", "target": "smc113.test"}
+-- sm-c/main 02:42:47
+running 12-mail_enrollment {"code": "server_setup_mail_enrollment_handoff", "message": "The independent worker handoff was accepted. Enrollment is not yet confirmed. Setup will check the same request automatically; the server administrator can inspect celikpanel-mail-enrollment-3627cc1d702860b3b2d16756bb51572d.service if it stops."}
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=succeeded 04-infrastructure_dns=succeeded 05-access_dns=succeeded 06-dns_readiness=succeeded 07-mail_profile=succeeded 08-mail_profile=succeeded 09-mail_dns=succeeded 10-access_dns=succeeded 11-mail_certificate=succeeded 12-mail_enrollment=running 13-verify=pending
+{"enrollment_dispatch_attempted": true, "id": "12-mail_enrollment", "kind": "mail_enrollment", "owner_id": "840771e36cf0c5d4c0d7e0220ef24c89", "qualifier": "b03624862f37b51ad6918701018e030579d8dacc4babbc47214372f9372d3b6b", "request_id": "3627cc1d702860b3b2d16756bb51572d", "status": "running", "target": "mail-renewal"}
+-- sm-c/main 02:43:07
+succeeded complete null
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=succeeded 04-infrastructure_dns=succeeded 05-access_dns=succeeded 06-dns_readiness=succeeded 07-mail_profile=succeeded 08-mail_profile=succeeded 09-mail_dns=succeeded 10-access_dns=succeeded 11-mail_certificate=succeeded 12-mail_enrollment=succeeded 13-verify=succeeded
+succeeded complete null
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=succeeded 04-infrastructure_dns=succeeded 05-access_dns=succeeded 06-dns_readiness=succeeded 07-mail_profile=succeeded 08-mail_profile=succeeded 09-mail_dns=succeeded 10-access_dns=succeeded 11-mail_certificate=succeeded 12-mail_enrollment=succeeded 13-verify=succeeded
+== DKIM record of the main domain, served by both 02:43:07
+   ok 192.0.3.125 celik._domainkey.smc113.test TXT = '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsYg9+v6UZJsppYrGQIUPLnlWVepHtQCULUgfgir0luo4FzCiDG75njrutoOShxv7tvYFCvv7huD+7S9V3TaxuLRA/n9IebqMIchwOOuhiw575YM4iUiYLy7+vdiryUM42D0YUx4HoxNLDb0RbP3y+HT2gt5f7BOZiHopz0r2ObSZExj6jHq0159f61gcYVGWY" "y2/FVpEfu/g5jZ4J5GHZgdc4ETDi74ghu1QCGuKuLpBpVgzTylzSvyFF2fSjZDhUke+plXpLGuc7y+HKmt8866Hw7SH04b94kqQEY7N19HDhbnkRZppnusevrJcUjuV3X3sa9GjxhJJsmfWUl2tRwIDAQAB"' after 0s
+   ok 192.0.3.126 celik._domainkey.smc113.test TXT = '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsYg9+v6UZJsppYrGQIUPLnlWVepHtQCULUgfgir0luo4FzCiDG75njrutoOShxv7tvYFCvv7huD+7S9V3TaxuLRA/n9IebqMIchwOOuhiw575YM4iUiYLy7+vdiryUM42D0YUx4HoxNLDb0RbP3y+HT2gt5f7BOZiHopz0r2ObSZExj6jHq0159f61gcYVGWY" "y2/FVpEfu/g5jZ4J5GHZgdc4ETDi74ghu1QCGuKuLpBpVgzTylzSvyFF2fSjZDhUke+plXpLGuc7y+HKmt8866Hw7SH04b94kqQEY7N19HDhbnkRZppnusevrJcUjuV3X3sa9GjxhJJsmfWUl2tRwIDAQAB"' after 1s
+   @192.0.3.125 SOA smc113.test: status: NOERROR flags: qr aa 
+   @192.0.3.126 SOA smc113.test: status: NOERROR flags: qr aa 
+   DNS card: pending 0 None
+== host busy and setup lines in the main's panel log
+2026-10-31T02:33:23+00:00 frankfurt panel[10879]: 2026/10/31 02:33:23 milter chain: nothing to wire at startup: no mail server is installed on this server, so there is no Postfix milter chain to compose
+2026-10-31T02:33:24+00:00 frankfurt panel[10946]: 2026/10/31 02:33:24 milter chain: nothing to wire at startup: no mail server is installed on this server, so there is no Postfix milter chain to compose
+2026-10-31T02:36:30+00:00 frankfurt panel[25011]: 2026/10/31 02:36:30 milter chain: nothing to wire at startup: no mail server is installed on this server, so there is no Postfix milter chain to compose
+2026-10-31T02:39:20+00:00 frankfurt panel[25011]: 2026/10/31 02:39:20 server setup step 15-mail_dns failed: server_setup_mail_dns_dkim_failed: The DKIM key for the main domain could not be prepared: cannot read existing DKIM key: no PEM block in /var/lib/celikpanel-dkim/keys/smc113.test/celik.private
+2026-10-31T02:41:31+00:00 frankfurt panel[25011]: 2026/10/31 02:41:31 dns V3 sync smc113.test generation 16: another server change or package-manager task is still running (reason=package_manager_active); the saved change is published by itself once the host is free
+2026-10-31T02:41:52+00:00 frankfurt panel[25011]: 2026/10/31 02:41:52 dns V3 sync smc113.test generation 17: another server change or package-manager task is still running (reason=package_manager_active); the saved change is published by itself once the host is free
+2026-10-31T02:42:12+00:00 frankfurt panel[25011]: 2026/10/31 02:42:12 dns V3 sync smc113.test generation 18: another server change or package-manager task is still running (reason=package_manager_active); the saved change is published by itself once the host is free
+== sampler: package-manager-named processes seen on the main
+:34:05.012 dpkg-deb          12336   12307 dpkg-deb --fsys-tarfile /tmp/apt-dpkg-install-KdtZJO/2-python3-pytz_2025.2-3_all.deb
+02:34:05.012 .. 02:34:05.012  02:34:05.012 dpkg-deb          12337   12336 [dpkg-deb] <defunct>
+02:34:05.012 .. 02:34:05.012  02:34:05.012 dpkg-deb          12338   12336 dpkg-deb --fsys-tarfile /tmp/apt-dpkg-install-KdtZJO/2-python3-pytz_2025.2-3_all.deb
+02:34:06.554 .. 02:34:08.605  02:34:06.554 dpkg              12428   12263 /usr/bin/dpkg --status-fd 21 --configure --pending
+02:34:10.653 .. 02:34:11.168  02:34:10.653 apt-get           12607   10771 /usr/bin/apt-get -s install -y --no-install-recommends mariadb-server
+02:34:14.756 .. 02:34:15.269  02:34:14.756 apt-get           12792   12787 /usr/bin/apt-get -s install -y --no-install-recommends mariadb-server
+02:34:15.785 .. 02:35:10.124  02:34:15.785 apt-get           12816   12811 /usr/bin/apt-get install -y --no-install-recommends mariadb-server
+02:34:54.676 .. 02:34:54.676  02:34:54.676 dpkg-deb          13576   13575 dpkg-deb --fsys-tarfile /var/cache/apt/archives/perl-base_5.40.1-6+deb13u1_amd64.deb
+02:34:54.676 .. 02:34:54.676  02:34:54.676 dpkg-deb          13579   13576 [dpkg-deb] <defunct>
+02:34:54.676 .. 02:34:54.676  02:34:54.676 dpkg-deb          13580   13576 dpkg-deb --fsys-tarfile /var/cache/apt/archives/perl-base_5.40.1-6+deb13u1_amd64.deb
+02:34:55.191 .. 02:34:55.191  02:34:55.191 dpkg              13603   12816 /usr/bin/dpkg --status-fd 21 --no-triggers --unpack --auto-deconfigure /var/cache/apt/archives/perl-base_5.40.1-6+deb13u1_amd64.deb
+02:34:55.191 .. 02:34:55.191  02:34:55.191 dpkg-deb          13610   13603 dpkg-deb --fsys-tarfile /var/cache/apt/archives/perl-base_5.40.1-6+deb13u1_amd64.deb
+02:34:55.191 .. 02:34:55.191  02:34:55.191 dpkg-deb          13611   13610 [dpkg-deb] <defunct>
+02:34:55.191 .. 02:34:55.191  02:34:55.191 dpkg-deb          13612   13610 dpkg-deb --fsys-tarfile /var/cache/apt/archives/perl-base_5.40.1-6+deb13u1_amd64.deb
+02:34:55.704 .. 02:34:56.218  02:34:55.704 dpkg              13623   12816 /usr/bin/dpkg --status-fd 21 --no-triggers --unpack --auto-deconfigure /var/cache/apt/archives/galera-4_26.4.23-0+deb13u1_amd64.deb /var/cache/apt/archives/libmpfr6_4.2.2-1_amd64.deb /var/cache/apt/archives/libsigsegv2_2.14-1
+02:34:55.704 .. 02:34:55.704  02:34:55.704 dpkg-deb          13630   13623 dpkg-deb --fsys-tarfile /var/cache/apt/archives/galera-4_26.4.23-0+deb13u1_amd64.deb
+02:34:55.704 .. 02:34:55.704  02:34:55.704 dpkg-deb          13631   13630 [dpkg-deb] <defunct>
+02:34:55.704 .. 02:34:55.704  02:34:55.704 dpkg-deb          13632   13630 dpkg-deb --fsys-tarfile /var/cache/apt/archives/galera-4_26.4.23-0+deb13u1_amd64.deb
+02:34:56.730 .. 02:34:59.304  02:34:56.730 dpkg              13672   12816 /usr/bin/dpkg --status-fd 21 --no-triggers --unpack --auto-deconfigure --recursive /tmp/apt-dpkg-install-k1xINA
+02:34:57.244 .. 02:34:57.244  02:34:57.244 dpkg-deb          13729   13672 dpkg-deb --fsys-tarfile /tmp/apt-dpkg-install-k1xINA/03-perl-modules-5.40_5.40.1-6+deb13u1_all.deb
+02:34:57.244 .. 02:34:57.244  02:34:57.244 dpkg-deb          13730   13729 [dpkg-deb] <defunct>
+02:34:57.244 .. 02:34:57.244  02:34:57.244 dpkg-deb          13731   13729 dpkg-deb --fsys-tarfile /tmp/apt-dpkg-install-k1xINA/03-perl-modules-5.40_5.40.1-6+deb13u1_all.deb
+02:34:59.304 .. 02:34:59.304  02:34:59.304 dpkg-deb          13868   13672 dpkg-deb --fsys-tarfile /tmp/apt-dpkg-install-k1xINA/13-mariadb-client-core_1%3a11.8.6-0+deb13u1_amd64.deb
+02:34:59.304 .. 02:34:59.304  02:34:59.304 dpkg-deb          13869   13868 [dpkg-deb] <defunct>
+02:34:59.304 .. 02:34:59.304  02:34:59.304 dpkg-deb          13870   13868 dpkg-deb --fsys-tarfile /tmp/apt-dpkg-install-k1xINA/13-mariadb-client-core_1%3a11.8.6-0+deb13u1_amd64.deb
+02:34:59.816 .. 02:35:00.334  02:34:59.816 dpkg              13892   12816 /usr/bin/dpkg --status-fd 21 --no-triggers --unpack --auto-deconfigure /var/cache/apt/archives/libpcre2-posix3_10.46-1~deb13u3_amd64.deb /var/cache/apt/archives/mariadb-client_1%3a11.8.6-0+deb13u1_amd64.deb /var/cache/apt/arc
+02:35:00.334 .. 02:35:00.334  02:35:00.334 dpkg-deb          13929   13892 dpkg-deb --fsys-tarfile /var/cache/apt/archives/mariadb-server-core_1%3a11.8.6-0+deb13u1_amd64.deb
+02:35:00.334 .. 02:35:00.334  02:35:00.334 dpkg-deb          13930   13929 [dpkg-deb] <defunct>
+02:35:00.334 .. 02:35:00.334  02:35:00.334 dpkg-deb          13931   13929 dpkg-deb --fsys-tarfile /var/cache/apt/archives/mariadb-server-core_1%3a11.8.6-0+deb13u1_amd64.deb
+02:35:00.860 .. 02:35:00.860  02:35:00.860 dpkg              13954   12816 /usr/bin/dpkg --status-fd 21 --no-triggers --configure mysql-common:all mariadb-common:all
+02:35:01.371 .. 02:35:01.371  02:35:01.371 dpkg              13975   12816 /usr/bin/dpkg --status-fd 21 --no-triggers --unpack --auto-deconfigure /var/cache/apt/archives/mariadb-server_1%3a11.8.6-0+deb13u1_amd64.deb
+02:35:01.884 .. 02:35:09.596  02:35:01.884 dpkg              14041   12816 /usr/bin/dpkg --status-fd 21 --configure --pending
+02:35:13.721 .. 02:35:13.721  02:35:13.721 apt-get           14678   10771 /usr/bin/apt-get -s install -y --no-install-recommends php-fpm
+02:35:17.844 .. 02:35:18.360  02:35:17.844 apt-get           14868   14862 /usr/bin/apt-get -s install -y --no-install-recommends php-fpm
+02:35:18.875 .. 02:35:32.225  02:35:18.875 apt-get           14892   14887 /usr/bin/apt-get install -y --no-install-recommends php-fpm
+02:35:22.463 .. 02:35:22.975  02:35:22.463 dpkg              14995   14892 /usr/bin/dpkg --status-fd 21 --no-triggers --unpack --auto-deconfigure --recursive /tmp/apt-dpkg-install-ooXXnY
+02:35:23.486 .. 02:35:32.225  02:35:23.486 dpkg              15105   14892 /usr/bin/dpkg --status-fd 21 --configure --pending
+02:35:35.308 .. 02:35:35.821  02:35:35.308 apt-get           21251   10771 /usr/bin/apt-get -s install -y --no-install-recommends cron
+02:35:39.425 .. 02:35:39.425  02:35:39.425 apt-get           21453   21447 /usr/bin/apt-get -s install -y --no-install-recommends cron
+02:35:39.940 .. 02:35:42.510  02:35:39.940 apt-get           21471   21465 /usr/bin/apt-get install -y --no-install-recommends cron
+02:35:40.969 .. 02:35:40.969  02:35:40.969 dpkg              21518   21471 /usr/bin/dpkg --status-fd 21 --no-triggers --configure cron-daemon-common:all
+02:35:41.481 .. 02:35:41.995  02:35:41.481 dpkg              21546   21471 /usr/bin/dpkg --status-fd 21 --configure --pending
+02:35:46.124 .. 02:35:46.124  02:35:46.124 apt-get           21963   21958 /usr/bin/apt-get -s install -y --no-install-recommends pdns-server=4.9.18-0+deb13u1
+02:35:46.637 .. 02:35:47.152  02:35:46.637 apt-get           21988   21983 /usr/bin/apt-get -s install -y --no-install-recommends pdns-backend-sqlite3=4.9.18-0+deb13u1
+02:35:48.178 .. 02:35:48.693  02:35:48.178 apt-get           22145   22139 /usr/bin/apt-get -s install -y --no-install-recommends pdns-server=4.9.18-0+deb13u1 pdns-backend-sqlite3=4.9.18-0+deb13u1
+02:35:49.207 .. 02:35:52.288  02:35:49.207 apt-get           22169   22164 /usr/bin/apt-get install -y --no-install-recommends pdns-server=4.9.18-0+deb13u1 pdns-backend-sqlite3=4.9.18-0+deb13u1
+02:35:50.751 .. 02:35:50.751  02:35:50.751 dpkg              22212   22169 /usr/bin/dpkg --status-fd 21 --no-triggers --unpack --auto-deconfigure /var/cache/apt/archives/libboost-program-options1.83.0_1.83.0-4.2_amd64.deb /var/cache/apt/archives/libluajit-5.1-common_2.1.0+openresty20250117-2_all.deb
+02:35:51.264 .. 02:35:52.288  02:35:51.264 dpkg              22308   22169 /usr/bin/dpkg --status-fd 21 --configure --pending
+02:36:34.889 .. 02:36:35.404  02:36:34.889 apt-get           25386   25380 /usr/bin/apt-get -s install -y --no-install-recommends postfix
+02:41:25 step mail_dns running
+02:41:31.141445470 signing refresh: 2026-10-31T02:41:30+00:00 frankfurt postfix/postfix-script[53821]: refreshing the Postfix mail system
+02:41:31.144316508 hold started (process name dpkg, pid 53836) for 45s
+02:42:16.146092563 hold ended
+== pair done 02:43:09
