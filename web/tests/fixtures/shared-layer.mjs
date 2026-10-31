@@ -173,6 +173,9 @@ export function sharedLayer(stubURL, extra = {}) {
   if (!extra['/RoundcubeUpdateFlow']) table['/RoundcubeUpdateFlow'] = compileSource('components/RoundcubeUpdateFlow.tsx', resolve);
   if (!extra['/VendorLaneDialog']) table['/VendorLaneDialog'] = compileSource('components/VendorLaneDialog.tsx', resolve);
   if (!extra['/NodePatches']) table['/NodePatches'] = compileSource('components/NodePatches.tsx', resolve);
+  // alpha.114: the owner's automatic/manual choice and Arch's step-by-step guide.
+  if (!extra['/OSUpdatesChoice']) table['/OSUpdatesChoice'] = compileSource('components/OSUpdatesChoice.tsx', resolve);
+  if (!extra['/ArchUpdateGuide']) table['/ArchUpdateGuide'] = compileSource('components/ArchUpdateGuide.tsx', resolve);
   return { uiURL, resolve, compile: (path, more = {}) => compileSource(path, (specifier) => {
     for (const [suffix, url] of Object.entries(more)) if (specifier.endsWith(suffix)) return url;
     return resolve(specifier);

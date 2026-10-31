@@ -116,6 +116,7 @@ function OSReleaseFacts({ value, onChanged }: { value: OSReleaseView; onChanged:
                 value.recorded.recorded_at && <p className="text-fg-subtle">{t('life.os.recorded', { date: lifeDate(value.recorded.recorded_at, locale) })}</p>
             )}
             {failure && <LifeLine tone="bad" attr="os-review-failed">{failure}</LifeLine>}
+            <OSAbout id={current.id} patchedUntil={current.patched_until} />
             <p className="text-fg-muted">{t('life.os.ownerStep')}</p>
             <details className="rounded-lg border border-border/60 px-3 py-2">
                 <summary className="cursor-pointer text-fg">{t('life.os.list', { date: lifeDate(value.checked, locale) })}</summary>
@@ -131,6 +132,26 @@ function OSReleaseFacts({ value, onChanged }: { value: OSReleaseView; onChanged:
                     ))}
                 </ul>
             </details>
+        </div>
+    );
+}
+
+// About this operating system (alpha.114): only the system this panel runs on.
+// How its updates work, what CelikPanel offers and does not offer on it, and
+// that a new major version of a program is a separate program, not an update.
+// Yalnız bu panelin çalıştığı sistem: güncellemeler nasıl işler, CelikPanel ne
+// sunar ve sunmaz; yeni ana sürüm güncelleme değil, ayrı bir programdır.
+function OSAbout({ id, patchedUntil }: { id: string; patchedUntil?: string }) {
+    const { t } = useI18n();
+    if (id !== 'debian' && id !== 'ubuntu' && id !== 'arch') return null;
+    return (
+        <div className="space-y-2 rounded-lg border border-border/60 px-3 py-3" data-os-about={id}>
+            {id === 'arch' && !patchedUntil && <p className="text-fg-muted" data-os-about-rolling="">{t('life.osinfo.rolling')}</p>}
+            <p className="font-medium text-fg">{t('life.osinfo.updatesTitle')}</p>
+            <p className="text-fg-muted" data-os-about-updates="">{t(`life.osinfo.how.${id}` as TranslationKey)}</p>
+            <p className="font-medium text-fg">{t('life.osinfo.offersTitle')}</p>
+            <p className="text-fg-muted" data-os-about-offers="">{t(id === 'arch' ? 'life.osinfo.offers.arch' : 'life.osinfo.offers.apt')}</p>
+            <p className="text-fg-muted" data-os-about-major="">{t('life.osinfo.major')}</p>
         </div>
     );
 }

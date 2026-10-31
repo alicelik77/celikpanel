@@ -3,6 +3,7 @@ import { useNavigate, Link } from '../router';
 import { ServerSetupDashboardNotice } from './ServerSetupGate';
 import { LicenseNotice } from './LicenseNotice';
 import { DashboardUpdateNotice } from './PanelUpdateNotice';
+import { PendingUpdatesCard } from './PendingUpdatesCard';
 import { accountStart } from '../lib/startGuidance';
 import {
     Cpu, MemoryStick, HardDrive, Server, Globe, Database, Activity, Bell,
@@ -954,6 +955,10 @@ function AdminDashboard() {
                 at the top, not an attention item (D-035).
                 Yeni imzali surum: ustte tek sakin satir, dikkat kalemi degil. */}
             <DashboardUpdateNotice admin />
+
+            {/* Waiting operating-system updates (alpha.114): a compact read-only card.
+                Bekleyen işletim sistemi güncellemeleri: kısa, salt-okur kart. */}
+            <PendingUpdatesCard />
 
             {/* Health strip: only living numbers. Firewall state earned no
                 card (operator call, Jul 17): OFF is an alert with a button,

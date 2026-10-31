@@ -487,10 +487,12 @@ func osUpdatesApt(ctx context.Context, aptGet, systemctl string, resp *transport
 	resp.Automatic.Tool = "unattended-upgrades"
 	installed, _ := readDpkgStatusVersions(dpkgStatusPath)
 	var lists map[string][]string
+	var dumpScalars map[string]string
 	if _, err := os.Stat(aptConfigPath); err == nil {
 		if out, err := osUpdatesCommand(ctx, packageCommandEnv(), aptConfigPath, "dump"); err == nil {
 			var scalars map[string]string
 			scalars, lists = parseAptConfigDump(string(out))
+			dumpScalars = scalars
 			switch {
 			case len(installed["unattended-upgrades"]) == 0:
 				resp.Automatic.State = "not_installed"
@@ -543,6 +545,7 @@ func osUpdatesApt(ctx context.Context, aptGet, systemctl string, resp *transport
 		}
 	}
 	resp.DropIn = dropIn
+	resp.AutoConfig = osUpdatesAutoConfig(ctx, systemctl, dumpScalars, lists)
 	resp.NeedrestartAutoRestart = needrestartRestartsAutomatically()
 }
 

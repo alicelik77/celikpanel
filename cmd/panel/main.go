@@ -1427,6 +1427,8 @@ func main() {
 	// alpha.107 (D-038 §4): the operating system's own security updates.
 	http.HandleFunc(osUpdatesPath, panel.handleOSUpdates)
 	http.HandleFunc(osUpdatesOriginsPath, panel.handleOSUpdatesOrigins)
+	http.HandleFunc(osUpdatesModePath, panel.handleOSUpdatesMode)
+	http.HandleFunc(osUpdatesSummaryPath, panel.handleOSUpdatesSummary)
 	// alpha.107 (D-038 §10): services waiting for a restart, a reboot.
 	http.HandleFunc(restartNeedsPath, panel.handleRestartNeeds)
 	http.HandleFunc(osReleaseAPIPath, panel.handleOSRelease)

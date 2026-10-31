@@ -70,6 +70,7 @@ func (p *Panel) handleOSUpdates(w http.ResponseWriter, r *http.Request) {
 		}})
 		return
 	}
+	osUpdatesSummary.remember(response)
 	if response.Vendors == nil {
 		response.Vendors = []transport.OSUpdatesVendorOrigin{}
 	}

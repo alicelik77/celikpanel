@@ -148,7 +148,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityPackageLifecycle, `
 		Agent.ConfigureDBTools Agent.ConfigureWebmail Agent.DisableRepo Agent.EnableRepo
 		Agent.InstallRoundcube Agent.InstallService Agent.RemoveRoundcube Agent.UninstallService
-		Agent.BindPHPToolV1 Agent.ProvePHPToolV1 Agent.ConfineRepoV1 Agent.WriteVendorUpdateOriginsV1 Agent.EnableVendorLaneV1
+		Agent.BindPHPToolV1 Agent.ProvePHPToolV1 Agent.ConfineRepoV1 Agent.WriteVendorUpdateOriginsV1 Agent.SetOSUpdatesModeV1 Agent.EnableVendorLaneV1
 		Agent.UpdateRoundcubeV1 Agent.MoveAppFilesOwnerV1 Agent.EnableWebmailAddressV1 Agent.RemoveWebmailAddressV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityServiceLifecycle, `
@@ -438,6 +438,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.ProvePHPToolV1":              agentRPCDeploymentTimeout,
 	"Agent.ConfineRepoV1":               agentRPCDeploymentTimeout,
 	"Agent.WriteVendorUpdateOriginsV1":  agentRPCDeploymentTimeout,
+	"Agent.SetOSUpdatesModeV1":          agentRPCDeploymentTimeout,
 	"Agent.OSUpdatesStatusV1":           agentRPCNetworkReadTimeout,
 	"Agent.RoundcubeUpdateCheckV1":      agentRPCNetworkReadTimeout,
 	"Agent.WebmailProofV1":              agentRPCNetworkReadTimeout,

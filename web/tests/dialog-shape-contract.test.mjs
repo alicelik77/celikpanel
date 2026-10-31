@@ -175,6 +175,7 @@ test('every dialogue in the product is the shared one', () => {
     'VendorLaneDialog.tsx': 1,
     'RepoCard.tsx': 1,
     'NodePatches.tsx': 1,
+    'OSUpdatesChoice.tsx': 1,
     'RestartsCard.tsx': 1,
     'RoundcubeUpdateFlow.tsx': 1,
     // alpha.110: webmail's own address - add to the zone, set up, remove.

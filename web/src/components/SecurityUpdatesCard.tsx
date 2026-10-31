@@ -19,6 +19,8 @@ import { Button, Dialog, KeepWords, RemoteGate } from './ui';
 import { useRemote } from '../lib/remote';
 import { LifeLine, lifeDate, type Tone } from './LifeLine';
 import { VendorLaneDialog } from './VendorLaneDialog';
+import { OSUpdatesChoice, type OSUpdatesAutoConfig } from './OSUpdatesChoice';
+import { ArchUpdateGuide } from './ArchUpdateGuide';
 import { LANE_FOR_COMPONENT, LANE_SERVICE } from '../lib/vendorLane';
 import { componentName } from '../lib/componentName';
 
@@ -33,6 +35,7 @@ export interface OSUpdates {
     outside: { id: string; versions?: string[] }[];
     drop_in?: { path: string; state: string; origins?: string[]; proposed?: string; proposed_sha256?: string };
     needrestart_auto_restart?: boolean;
+    auto_config?: OSUpdatesAutoConfig;
 }
 
 export function decodeOSUpdates(raw: unknown): OSUpdates {
@@ -164,6 +167,8 @@ function UpdatesFacts({ value, onChanged }: { value: OSUpdates; onChanged: () =>
                 <p className="pl-6 text-sm text-fg-muted"><KeepWords text={t('life.updates.pending.securityNames', { names: (pending.security_names ?? []).join(', ') })} /></p>
             )}
             {value.needrestart_auto_restart && <LifeLine tone="info" attr="needrestart">{t('life.updates.needrestart')}</LifeLine>}
+            {value.package_family === 'apt' && value.auto_config && <OSUpdatesChoice config={value.auto_config} automaticState={auto.state} onChanged={onChanged} />}
+            {value.package_family === 'pacman' && <ArchUpdateGuide />}
             {value.vendors.map((vendor) => (
                 <div key={vendor.repo_id} data-os-updates-vendor={vendor.repo_id} data-covered={vendor.covered ? 'yes' : 'no'}>
                     <LifeLine tone={vendor.covered ? 'ok' : 'warn'} attr={`vendor-${vendor.repo_id}`}>
