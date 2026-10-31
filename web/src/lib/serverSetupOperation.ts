@@ -1,6 +1,6 @@
 import { setupPurposes, type ServerSetupCheck, type SetupPurpose } from './serverSetup';
 
-export interface SetupPlanStep { id: string; kind: 'infrastructure_dns' | 'access_dns' | 'dns' | 'dns_publisher' | 'dns_readiness' | 'service' | 'runtime' | 'mail_profile' | 'mail_enrollment' | 'mail_dns' | 'peer_join' | 'peer_names' | 'firewall' | 'panel_certificate' | 'mail_certificate' | 'verify'; target: string; qualifier?: string }
+export interface SetupPlanStep { id: string; kind: 'infrastructure_dns' | 'access_dns' | 'dns' | 'dns_publisher' | 'dns_readiness' | 'service' | 'runtime' | 'mail_profile' | 'mail_enrollment' | 'mail_dns' | 'peer_join' | 'peer_names' | 'firewall' | 'panel_certificate' | 'mail_certificate' | 'main_site' | 'verify'; target: string; qualifier?: string }
 export interface SetupInfrastructureDNSPlan {
     zone: string; existing_zone_id?: number; expected_digest: string;
     records: { name: string; type: string; content: string; ttl: number; action: 'add' | 'keep' }[];
@@ -20,17 +20,39 @@ export interface ServerSetupPlan {
     package_updates_state?: 'known' | 'unknown';
     // The stored list's digest; the start sends it back (the list the page showed).
     package_updates_digest?: string;
+    // alpha.114: 'mail' for a mail-only extension (mail steps only).
+    scope?: 'mail';
 }
 export interface ServerSetupExecution {
     id: string; request_id: string; plan_id: string;
     status: 'running' | 'waiting' | 'failed' | 'succeeded'; phase: string;
-    steps: (SetupPlanStep & { status: 'pending' | 'running' | 'failed' | 'succeeded' })[];
+    steps: (SetupPlanStep & { status: 'pending' | 'running' | 'failed' | 'succeeded'; main_site?: SetupMainSiteOutcome })[];
     error?: SetupExecutionError; panel_url?: string; checks?: ServerSetupCheck[];
     context?: SetupExecutionContext;
     // The run succeeded and belongs to a completed setup that is now being
     // extended (server answer, set18 D1): it is not the current operation.
     // Genisletilen tamamlanmis kurulumun calismasi; guncel islem degildir.
     superseded?: boolean;
+}
+// What the main-domain website step came to (alpha.114); never fails setup.
+export interface SetupMainSiteOutcome {
+    domain: string; domain_id?: number;
+    site: 'created' | 'existed' | 'failed';
+    certificate: 'issued' | 'active' | 'waiting_owner' | 'pending' | 'not_requested';
+    code?: string; reason?: string; message?: string;
+}
+export function decodeSetupMainSiteOutcome(value: unknown): SetupMainSiteOutcome | null {
+    if (!isRecord(value) || typeof value.domain !== 'string' || value.domain.length > 253
+        || !['created', 'existed', 'failed'].includes(String(value.site))
+        || !['issued', 'active', 'waiting_owner', 'pending', 'not_requested'].includes(String(value.certificate))
+        || (value.domain_id !== undefined && !Number.isSafeInteger(value.domain_id))
+        || ['code', 'reason', 'message'].some(key => value[key] !== undefined && (typeof value[key] !== 'string' || (value[key] as string).length > 400))) return null;
+    return value as unknown as SetupMainSiteOutcome;
+}
+// The outcome of the main-domain website step of a run, when it has one.
+export function setupMainSiteOutcome(execution: ServerSetupExecution | null | undefined): SetupMainSiteOutcome | null {
+    const step = execution?.steps.find(item => item.kind === 'main_site' && item.status === 'succeeded');
+    return step ? decodeSetupMainSiteOutcome(step.main_site) : null;
 }
 // component/step/detail are optional install-failure guidance; detail is one
 // bounded, redacted host line. reason is the typed cause of HOST_MUTATION_BUSY.
@@ -63,7 +85,8 @@ function decodePeerHostRecord(value: unknown): SetupPeerHostRecord | undefined {
     } };
 }
 // mail_dns since alpha.112; peer_join and peer_names since alpha.114.
-const kinds = ['infrastructure_dns', 'access_dns', 'dns', 'dns_publisher', 'dns_readiness', 'service', 'runtime', 'mail_profile', 'mail_enrollment', 'mail_dns', 'peer_join', 'peer_names', 'firewall', 'panel_certificate', 'mail_certificate', 'verify'];
+// main_site since alpha.114 (the main domain's website at setup).
+const kinds = ['infrastructure_dns', 'access_dns', 'dns', 'dns_publisher', 'dns_readiness', 'service', 'runtime', 'mail_profile', 'mail_enrollment', 'mail_dns', 'peer_join', 'peer_names', 'firewall', 'panel_certificate', 'mail_certificate', 'main_site', 'verify'];
 const isRecord = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const identity = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{32}$/.test(value);
 function isStep(value: unknown): value is SetupPlanStep {

@@ -168,6 +168,11 @@ const screenPartBudgets = {
   // left "settings", which had run out of headroom. A new part, set with at
   // least 25% headroom from its Turkish file: 5.92 / 1.98 KiB.
   panelPort: kib(8, 2.5),
+  // 2026-10-31 (alpha.114, owner setup review): the main domain's website at
+  // setup, "Ready, with N things left", the purpose banner and the in-place
+  // mail dialog (setup.v7., svc.mailSetup.). A new part, set with at least 25%
+  // headroom from its Turkish file (about 8.6 KiB as source).
+  setupOwner: kib(12, 4),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

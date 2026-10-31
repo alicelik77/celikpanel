@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { MailSetupDialog } from './MailSetupDialog';
 import { Settings, Play, StopCircle, RotateCw, RefreshCw, ScanSearch, DownloadCloud, ChevronDown, ChevronRight, Trash2, ShieldOff, Layers, Globe, Database, Mail, Network, Shield, Zap, FolderUp, Activity, Boxes, Clock } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { showToast } from './Toast';
@@ -32,10 +33,8 @@ import { VendorLaneDialog } from './VendorLaneDialog';
 import { LANE_FOR_COMPONENT } from '../lib/vendorLane';
 import { testedMark } from '../lib/testedVersions';
 import { lifeDate } from './LifeLine';
-import { useAuth } from '../auth/AuthContext';
 import type { TranslationKey } from '../i18n/en';
 import { useServerSetup } from './ServerSetupGate';
-import { decodeServerSetup, setupEditorKey, type ServerSetupSnapshot } from '../lib/serverSetup';
 import { publishComponentCensus } from '../lib/componentCensus';
 import { componentDescription, componentName } from '../lib/componentName';
 import { mailProfileName, webmailReportsProblem } from '../lib/mailProfileText';
@@ -469,7 +468,6 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     const [mailHostname, setMailHostname] = useState<MailHostnameIdentity | null>(null);
     const [mailDNSGuidance, setMailDNSGuidance] = useState<MailDNSGuidance | null>(null);
     const serverSetup = useServerSetup();
-    const { user } = useAuth();
     // A server whose guided setup has finished (or is being extended, with no
     // run active) adds mail through setup, so mail gets setup's steps and
     // checks: public DNS of the mail host name, the trusted certificate and its
@@ -1293,47 +1291,6 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         if (stateUnverified || !profile.available) return;
         setProfileTarget(profile);
     };
-    // Adds the profile to an extension of the completed setup and opens the
-    // wizard on its access step; the owner reviews and starts it there. Only
-    // the setup record changes here. A lost answer is settled by reading the
-    // setup again, never by sending the request twice.
-    // Profili kurulum genisletmesine ekler; inceleme ve baslatma kurulumdadir.
-    const addProfileThroughSetup = async (chosenHostname: string): Promise<TranslationKey | null> => {
-        const profile = profileTarget;
-        if (!profile || !setupSnapshot || !serverSetup) return 'services.mailProfiles.setupRoute.failed';
-        // code: the server's typed refusal; 'unanswered' when no answer came.
-        let code = 'unanswered';
-        let next: ServerSetupSnapshot | null = null;
-        try {
-            const response = await fetch('/api/v1/setup/extend', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ revision: setupSnapshot.revision, action: 'begin', mail_profile: profile.id, ...(chosenHostname ? { mail_hostname: chosenHostname } : {}) }),
-            });
-            if (!response.ok) {
-                code = (await readApiError(response)).code || 'refused';
-            } else {
-                next = decodeServerSetup(await response.json());
-                code = '';
-            }
-        } catch { code = 'unanswered'; next = null; }
-        if (!next?.extension) {
-            let latest: ServerSetupSnapshot | null = null;
-            try { latest = await serverSetup.reload(); } catch { latest = null; }
-            if (code === 'server_setup_busy') return 'services.mailProfiles.setupRoute.busy';
-            if (code === 'mail_profile_server_hostname_invalid' || code === 'mail_profile_server_hostname_required') return 'services.mailProfiles.hostname.invalid';
-            // Without a confirmed answer the profile is not known to be in the
-            // extension; the owner sees the setup as it is now and can retry.
-            if (!latest?.extension || code !== 'unanswered') return 'services.mailProfiles.setupRoute.failed';
-            next = latest;
-        }
-        serverSetup.accept(next);
-        try {
-            sessionStorage.setItem(setupEditorKey(user.username), JSON.stringify({ version: 1, revision: next.revision, step: 'names', draft: next.draft }));
-        } catch { /* the wizard then opens on its first step */ }
-        setProfileTarget(null);
-        navigate('/setup');
-        return null;
-    };
     const installProfile = async (chosenHostname: string) => {
         const profile = profileTarget;
         if (!profile || stateUnverified || !profile.available) return;
@@ -1412,6 +1369,15 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     // Posta şeridinin tek satırlık notları: posta neden henüz kurulamaz, kim
     // ve nerede işlem yapar.
     const mailSecondary = !dnsIdentityReady && mailDNSGuidance !== null;
+    // The notice's action opens the same in-place mail dialog when setup has
+    // finished (its access step asks the main DNS server for the record);
+    // before that, setup itself, with a banner that says why (alpha.114).
+    // Bildirimin eylemi ayni yerinde posta penceresini acar.
+    const openMailFromNotice = () => {
+        const profile = profiles.find((candidate) => candidate.id === 'protected-mail' && candidate.available) ?? profiles.find((candidate) => candidate.available);
+        if (mailThroughSetup && profile && !stateUnverified) setProfileTarget(profile);
+        else navigate('/setup?purpose=mail');
+    };
     const setupReady = setupSnapshot?.status === 'ready' || setupSnapshot?.extension === true;
     const mailNotice = mailSecondary && mailDNSGuidance ? (
         <div role='status' className='min-w-0 basis-full text-sm text-fg' data-mail-dns-secondary=''>
@@ -1423,7 +1389,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                     <span className={mailDNSGuidance.recordValue ? 'font-mono' : 'text-fg-muted'}>{mailDNSGuidance.recordValue || t('services.mailProfiles.secondary.valueUnknown')}</span>
                 </span>
                 <span className='text-fg-subtle' aria-hidden='true'>·</span>
-                <button type='button' onClick={() => navigate('/setup')} className='font-semibold text-primary underline decoration-1 underline-offset-[3px] hover:decoration-2 max-sm:min-h-11'>
+                <button type='button' onClick={openMailFromNotice} className='font-semibold text-primary underline decoration-1 underline-offset-[3px] hover:decoration-2 max-sm:min-h-11'>
                     {t(setupReady ? 'services.mailProfiles.secondary.extend' : 'services.mailProfiles.secondary.openSetup')}
                 </button>
             </p>
@@ -2277,7 +2243,18 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                         onConfirm={(pkg, confirmed) => doInstall(installTarget, pkg, confirmed)}
                     />
                 )}
-                {profileTarget && (
+                {profileTarget && mailThroughSetup && (
+                    // A finished setup takes mail in place (alpha.114): the
+                    // mail-only extension asks the mail name only and shows
+                    // its steps, progress and outcome in this dialog.
+                    <MailSetupDialog
+                        profile={{ id: profileTarget.id, name: profileTarget.name }}
+                        profileName={mailProfileName(profileTarget, t)}
+                        savedHostname={mailHostname?.source === 'saved' ? mailHostname.hostname : undefined}
+                        onClose={() => { setProfileTarget(null); void loadServices(); }}
+                    />
+                )}
+                {profileTarget && !mailThroughSetup && (
                     <MailProfileInstallDialog
                         profile={profileTarget}
                         services={services}
@@ -2286,7 +2263,6 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                         freshInstall={profileFreshInstall}
                         onCancel={() => setProfileTarget(null)}
                         onConfirm={(chosen) => void installProfile(chosen)}
-                        throughSetup={mailThroughSetup ? addProfileThroughSetup : undefined}
                     />
                 )}
                 {bundleTarget && (

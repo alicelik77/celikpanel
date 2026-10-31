@@ -83,6 +83,11 @@ type serverSetupDNSEngineChoice struct {
 	Reason           string `json:"reason,omitempty"`
 	InstalledVersion string `json:"installed_version,omitempty"`
 	CandidateVersion string `json:"candidate_version,omitempty"`
+	// Active (alpha.114): this is the DNS software the server runs now. Setup
+	// never switches it, so the wizard shows it as one fixed line instead of
+	// a choice whose other card explains the refusal (owner report, Boston).
+	// Sunucunun su an calistirdigi DNS yazilimi; sihirbaz sabit satir gosterir.
+	Active bool `json:"active,omitempty"`
 }
 
 type serverSetupComponentCatalog struct {
@@ -715,6 +720,7 @@ func serverSetupDNSEngineChoices(inputs serverSetupCatalogInputs) []serverSetupD
 		managed := core.GetManagedServiceByID(string(engine))
 		for _, role := range []string{"main", "backup"} {
 			choice := serverSetupDNSEngineChoice{ID: string(engine), Role: role, Offered: true}
+			choice.Active = inputs.InventoryReady && inputs.DNSState != nil && inputs.DNSState.ActiveEngine == engine
 			if inputs.InventoryReady && slices.Contains(inputs.InstalledIDs, string(engine)) {
 				choice.InstalledVersion = inputs.InstalledVersions[string(engine)]
 			} else {

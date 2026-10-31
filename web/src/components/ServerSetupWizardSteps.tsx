@@ -114,8 +114,11 @@ export function SetupRolesStep({ roles, onRoles, catalog, server, serverCount, c
     </fieldset>;
 }
 
-export function SetupNamesStep({ draft, mail, web, mainDomain, ip, ownDNS, joined, onChange }: {
+export function SetupNamesStep({ draft, mail, web, mainDomain, ip, ownDNS, joined, recordsStep = true, onChange }: {
     draft: ServerSetupDraft; mail: boolean; web: boolean; mainDomain: string; ip: string; ownDNS: boolean;
+    // The note names the Existing records step: said only when this plan has it
+    // (never on a joined server or a server without its own zone, alpha.114).
+    recordsStep?: boolean;
     // A server joined by code (alpha.114): the first server's names, and the
     // mail name proposed for this server. / Koda katilan sunucu.
     joined?: { names: SetupJoinedNames; server: string; keepsMainMail: boolean; proposal: string };
@@ -135,7 +138,7 @@ export function SetupNamesStep({ draft, mail, web, mainDomain, ip, ownDNS, joine
             {mail && <SetupWizardInput name="mail_hostname" label={t('setup.v2.names.mail')} value={draft.mail_hostname} onChange={value => onChange('mail_hostname', value)} placeholder={joined?.proposal || `mail.${mainDomain || 'example.com'}`} required help={mailHelp} invalid={mailInvalid} />}
         </div>
         {ip && <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v2.names.pointTo', { ip })}</p>}
-        {web && mainDomain && <p className="max-w-2xl text-sm leading-6 text-fg-muted">{joined ? t('setup.v6.names.joinedNote', { domain: mainDomain, server: joined.server }) : t('setup.v2.names.siteNote', { domain: mainDomain })}</p>}
+        {web && mainDomain && (joined || recordsStep) && <p className="max-w-2xl text-sm leading-6 text-fg-muted" data-setup-names-note={joined ? 'joined' : 'records'}>{joined ? t('setup.v6.names.joinedNote', { domain: mainDomain, server: joined.server }) : t('setup.v2.names.siteNote', { domain: mainDomain })}</p>}
     </section>;
 }
 
@@ -151,6 +154,26 @@ const engineReason: Record<string, TranslationKey> = {
     server_setup_dns_engine_unsupported: 'setup.v2.engine.unsupported',
     server_setup_inventory_unavailable: 'setup.v2.engine.unknown',
 };
+
+// The DNS software this server runs now, as the catalogue marks it.
+export function setupActiveEngine(catalog: SetupComponentCatalog | null, role: 'primary' | 'secondary'): 'bind' | 'pdns' | null {
+    const engine = catalog?.dns_engines?.find(item => item.active && item.role === (role === 'primary' ? 'main' : 'backup'));
+    return engine ? engine.id : null;
+}
+
+// The main domain's website (alpha.114, owner decision 2026-10-31): asked on
+// the first server only; Yes is the default (Plesk's first site).
+// Ana alan adinin web sitesi bu sunucuda mi? Yalniz ilk sunucuda; varsayilan Evet.
+export function SetupMainSiteQuestion({ domain, value, onChange }: { domain: string; value: 'here' | 'elsewhere'; onChange: (value: 'here' | 'elsewhere') => void }) {
+    const { t } = useSetupWizardI18n();
+    return <fieldset className="mt-8 space-y-4" data-setup-main-site={value}>
+        <legend className="text-lg font-semibold">{t('setup.v7.site.title', { domain })}</legend>
+        <div className="grid gap-3 pt-2">
+            <Choice name="setup-main_site" value="here" checked={value === 'here'} onChange={() => onChange('here')} title={t('setup.v7.site.here')} tag={t('setup.v7.site.here.tag')} help={t('setup.v7.site.here.help', { domain })} />
+            <Choice name="setup-main_site" value="elsewhere" checked={value === 'elsewhere'} onChange={() => onChange('elsewhere')} title={t('setup.v7.site.elsewhere')} help={t('setup.v7.site.elsewhere.help', { domain })} />
+        </div>
+    </fieldset>;
+}
 
 export function setupEngineChoice(catalog: SetupComponentCatalog | null, engine: 'bind' | 'pdns', role: 'primary' | 'secondary'): SetupDNSEngineChoice | undefined {
     return catalog?.dns_engines?.find(item => item.id === engine && item.role === (role === 'primary' ? 'main' : 'backup'));
@@ -181,10 +204,16 @@ export function SetupDNSHomeStep({ draft, set, onMode, onMainDNS, catalog, serve
     };
     const version = (id: 'bind' | 'pdns') => engine(id)?.installed_version || engine(id)?.candidate_version || '';
     const oneServer = serverCount === 1 && !joined;
+    // A server that already runs DNS software keeps it (setup never switches
+    // it): one fixed line, never a choice whose other card explains the
+    // refusal (owner report, Boston, alpha.113).
+    // Calisan DNS yazilimi sabit satirdir; secim gosterilmez.
+    const running = setupActiveEngine(catalog, draft.dns_role);
     // ns1 is the main DNS server, ns2 the backup (D-021 Q2): the label says
     // which slot a name fills, whichever server this is.
     const slotLabel = (key: 'ns1' | 'ns2') => t(key === 'ns1' ? 'setup.v5.dns.mainName' : 'setup.v5.dns.backupName');
-    const software = <fieldset className="space-y-3"><legend className="font-semibold">{t('setup.v2.dns.software')}</legend>
+    const software = running ? <p className="max-w-2xl rounded-lg border border-border bg-surface p-4 text-sm leading-6" data-setup-dns-engine-fixed={running}>{t('setup.v7.engine.fixed', { engine: running === 'bind' ? 'BIND' : 'PowerDNS' })}</p>
+        : <fieldset className="space-y-3"><legend className="font-semibold">{t('setup.v2.dns.software')}</legend>
         <div className="grid gap-3 lg:grid-cols-2">{(['bind', 'pdns'] as const).map(id => {
             const choice = engine(id);
             const blocked = !!choice && !choice.offered;

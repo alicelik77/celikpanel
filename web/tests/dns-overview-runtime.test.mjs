@@ -25,6 +25,7 @@ const stub = dataModule(`
   export const useNavigate = () => () => true;
   export const Link = (props) => React.createElement('a', { href: props.to, className: props.className }, props.children);
   export const SetupJoinCard = () => React.createElement('join-card');
+  export const useServerSetup = () => null, MailSetupDialog = () => null;
 `);
 const shared = sharedLayer(stub);
 const libURL = shared.compile('lib/dnsOverview.ts');
@@ -109,7 +110,7 @@ test('all good: the sentence first, both servers by the page\'s own names, the n
     assert.equal(lead.props['data-state'], 'ok');
     assert.equal(byProp('data-dns-sentence-live', 'status').length, 1, 'only the title is the live region, polite');
     const text = textOf();
-    assert.ok(text.includes('All good') && text.includes('This server (alpha)') && text.includes('Second server (beta)'));
+    assert.ok(text.includes('All good') && text.includes('This server (alpha)') && text.includes('Joined server (beta)'));
     assert.ok(text.indexOf('All good') < text.indexOf('Your DNS servers'), 'the sentence comes before the servers');
     assert.ok(!/dnsov\./.test(text), 'no raw key on screen');
     assert.ok(!text.includes('Frankfurt') && !text.includes('Boston'), 'no invented server names');
@@ -137,7 +138,7 @@ test('a verified failure is announced once, when it starts, in Turkish, naming t
     assert.equal(byProp('data-dns-sentence', 'dns_overview_backup_not_serving')[0].props.role, undefined, 'the rest of the sentence is not a live region');
     assert.ok(requests.some((request) => request.url === '/api/v1/dns/overview?fresh=1'), 'Check now asks for a real new check');
     const text = textOf();
-    assert.ok(text.includes('İkinci sunucu (beta) yanıt veriyor ama example.test için değil'), text.slice(0, 400));
+    assert.ok(text.includes('Katılan sunucu (beta) yanıt veriyor ama example.test için değil'), text.slice(0, 400));
     assert.ok(text.includes('Bu sunucu (alpha) üzerinden'));
     assert.equal(byProp('data-dns-server', 'peer')[0].props['data-answers'], 'not_serving');
     assert.ok(!/dnsov\./.test(text));
@@ -275,7 +276,7 @@ test('a failure already there on opening is not an alert; servers without a shor
   try {
     assert.equal(byProp('data-dns-sentence-live', 'alert').length, 0);
     const text = textOf();
-    assert.ok(text.includes('Second server (198.51.100.20) did not answer this check'), text.slice(0, 400));
+    assert.ok(text.includes('Joined server (198.51.100.20) did not answer this check'), text.slice(0, 400));
   } finally { await unmount(); }
 });
 
@@ -341,7 +342,7 @@ test('on the server that joined by code the other server is the first one, every
   ];
   value.names = [{ name: 'panel.example.test', kind: 'panel', type: 'A', server: 'peer', expected: '203.0.113.10', seen: ['203.0.113.10'], state: 'ok', where: 'main' }];
   value.own_records_link = { where: 'main', panel_name: 'panel.example.test' };
-  for (const [words, first, second] of [[enScreens, 'First server (frankfurt)', 'Second server'], [trScreens, 'İlk sunucu (frankfurt)', 'İkinci sunucu']]) {
+  for (const [words, first, second] of [[enScreens, 'First server (frankfurt)', 'Joined server'], [trScreens, 'İlk sunucu (frankfurt)', 'Katılan sunucu']]) {
     await mount(value, { words });
     try {
       const text = textOf();
@@ -349,7 +350,7 @@ test('on the server that joined by code the other server is the first one, every
       assert.ok(!text.includes(second), `the first server is never called "${second}"`);
     } finally { await unmount(); }
   }
-  // The first server still calls the joined one the second server.
+  // The first server still calls the joined one the joined server.
   assert.equal(lib.dnsOverviewServerLabel((key, vars) => `${key}:${vars?.name ?? ''}`, { who: 'peer', order: 'second', short_name: 'boston' }), 'dnsov.peerServerNamed:boston');
   assert.throws(() => lib.decodeDNSOverview({ ...value, servers: [{ ...value.servers[0], order: 'third' }] }));
 });
