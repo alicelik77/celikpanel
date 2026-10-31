@@ -124,6 +124,7 @@ const screenParts: Record<Locale, Array<() => Promise<Record<string, unknown>>>>
         () => import('./screens/dnsOverview/en'),
         () => import('./screens/nginxDefaultHttps/en'),
         () => import('./screens/dnsPublication/en'),
+        () => import('./screens/accountAccess/en'),
     ],
     tr: [
         () => import('./screens/setup/tr'),
@@ -149,6 +150,7 @@ const screenParts: Record<Locale, Array<() => Promise<Record<string, unknown>>>>
         () => import('./screens/dnsOverview/tr'),
         () => import('./screens/nginxDefaultHttps/tr'),
         () => import('./screens/dnsPublication/tr'),
+        () => import('./screens/accountAccess/tr'),
     ],
 };
 

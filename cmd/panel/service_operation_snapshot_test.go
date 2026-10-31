@@ -1441,6 +1441,11 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse the account links and address confirmation (migration 47, alpha.114).
+        DROP TRIGGER clear_email_verification_on_change;
+        DROP TABLE account_links;
+        ALTER TABLE users DROP COLUMN email_verified_at;
+
         -- Reverse the PostgreSQL clusters and database moves (migration 46, alpha.108).
         DROP TABLE postgresql_database_moves;
         ALTER TABLE database_servers DROP COLUMN cluster;

@@ -112,6 +112,8 @@ Yetkiler bir **arayüz** meselesi değildir. "Önce API" ilkesi gereği her kura
 
 Arayüz yalnızca API'nin reddedeceği şeyi gizler — "kurmadığın servis görünmez" ile "yalnızca sahip olduğunu görürsün" böylece aynı mekanizma haline gelir.
 
+**Kendi kimlik bilgileri (v0.1.0-alpha.114).** Yönetici ya da bayi bir hesabı parola yerine *davetle* açabilir; müşteri de ek kullanıcı için aynısını yapabilir: kişi kendi parolasını tek kullanımlık bir bağlantıyla belirler, davet eden parolayı görmez ve seçmez. Hesabı açan (`parent_id`) ya da yönetici daveti yeniden gönderebilir veya iptal edebilir. Adresi onaylanmış her hesap unuttuğu parolayı e-postayla sıfırlayabilir. Bkz. [ACCOUNT-ACCESS.tr.md](ACCOUNT-ACCESS.tr.md).
+
 ---
 
 ## Veri modeli sonuçları (0.2 sprinti için)

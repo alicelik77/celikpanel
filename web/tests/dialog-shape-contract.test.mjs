@@ -186,6 +186,8 @@ test('every dialogue in the product is the shared one', () => {
     'FirewallPanel.tsx': 1,
     'ServiceList.tsx': 7,
     'ServiceShell.tsx': 1,
+    // alpha.114: the one copy of an invitation link the server could not email.
+    'Invitations.tsx': 1,
   });
 });
 

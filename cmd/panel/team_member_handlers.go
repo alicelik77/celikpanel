@@ -32,6 +32,9 @@ type createTeamMemberRequest struct {
 	Password string                  `json:"password"`
 	Status   string                  `json:"status,omitempty"`
 	Access   teamMemberAccessRequest `json:"access"`
+	// Invite: no password; the member chooses theirs by a link (P6).
+	Invite bool   `json:"invite,omitempty"`
+	Lang   string `json:"lang,omitempty"`
 }
 
 type updateTeamMemberRequest struct {
@@ -90,6 +93,9 @@ func (p *Panel) handleTeamMembers(w http.ResponseWriter, r *http.Request) {
 		if request.Status == "" {
 			request.Status = "active"
 		}
+		if !invitationPassword(w, request.Invite, &request.Password) {
+			return
+		}
 		if err := validateTeamMemberIdentity(request.Username, request.Email, request.Password, request.Status, true); err != nil {
 			writeUsernameError(w, err)
 			return
@@ -111,7 +117,11 @@ func (p *Panel) handleTeamMembers(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		p.audit(r, "team_member.create", "team_member", member.ID)
-		writeTeamMemberJSON(w, http.StatusCreated, map[string]any{"team_member": member})
+		created := map[string]any{"team_member": member}
+		if request.Invite {
+			created["invitation"] = p.issueInvitation(r, caller.ID, member.ID, request.Lang, true)
+		}
+		writeTeamMemberJSON(w, http.StatusCreated, created)
 
 	default:
 		w.Header().Set("Allow", "GET, POST")

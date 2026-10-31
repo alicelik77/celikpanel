@@ -1,6 +1,6 @@
 import { PanelAddressHint } from './PanelAddressHint';
 import { BrandMark } from './BrandMark';
-import { useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import { ShieldCheck, Users, User, Eye, EyeOff } from 'lucide-react';
 import { api, type CurrentUser, type DemoAccount } from '../lib/api';
 import { useI18n } from '../i18n';
@@ -8,6 +8,11 @@ import { useAccessGuidance } from '../lib/accessGuidance';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { SkinSwitcher } from './SkinSwitcher';
 import { LanguageSwitcher } from './LanguageSwitcher';
+
+// "Forgot password?" is fetched when it is opened; its copy is screen copy
+// (accountAccess), so the boot path carries only the link's label.
+// "Parolamı unuttum" açıldığında getirilir; açılış yolunda yalnız etiketi var.
+const ForgotPassword = lazy(() => import('./ForgotPassword').then((module) => ({ default: module.ForgotPassword })));
 
 const roleIcon: Record<string, typeof User> = {
     admin: ShieldCheck,
@@ -39,6 +44,7 @@ export function Login({ onSuccess, sessionEnded = false }: { onSuccess: (user: C
     const [pendingToken, setPendingToken] = useState('');
     const [totpCode, setTotpCode] = useState('');
     const [demo, setDemo] = useState<DemoAccount[]>([]);
+    const [forgot, setForgot] = useState(false);
 
     // Demo accounts only come back when the server runs with --demo, so this
     // panel simply never appears in production.
@@ -150,6 +156,10 @@ export function Login({ onSuccess, sessionEnded = false }: { onSuccess: (user: C
                             {submitting ? t('login.signingIn') : t('login.verify')}
                         </button>
                     </form>
+                ) : forgot ? (
+                    <Suspense fallback={null}>
+                        <ForgotPassword onBack={() => setForgot(false)} />
+                    </Suspense>
                 ) : (
                 <form
                     onSubmit={handleSubmit}
@@ -214,6 +224,17 @@ export function Login({ onSuccess, sessionEnded = false }: { onSuccess: (user: C
                         className="w-full rounded-lg bg-primary px-3 py-2.5 font-medium text-primary-fg transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         {submitting ? t('login.signingIn') : t('login.signIn')}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setError('');
+                            setForgot(true);
+                        }}
+                        className="block w-full text-center text-sm font-medium text-primary hover:underline"
+                        data-forgot-open=""
+                    >
+                        {t('login.forgot')}
                     </button>
                 </form>
                 )}

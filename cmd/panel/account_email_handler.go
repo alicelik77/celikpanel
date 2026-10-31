@@ -191,6 +191,9 @@ func (p *Panel) handleChangeOwnEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p.audit(r, "account.email.changed", "user", user.ID)
+	// The new address is unconfirmed (migration 047's trigger): a
+	// confirmation link goes to it, a notice to the old one (P6).
+	p.afterOwnEmailChanged(r, user.ID, user.Email, r.Header.Get("Accept-Language"))
 
 	w.Header().Set("Content-Type", "application/json")
 	// The answer carries no address: the guard keeps it for 24 hours, and the

@@ -49,6 +49,7 @@ const stub = dataModule(`
   export const showToast = (...args) => globalThis.currentTest.toasts.push(args);
   export const PageHeader = (props) => React.createElement('header', null, props.title, props.subtitle);
   export const ChangePasswordModal = () => null;
+  export const EmailVerificationCard = () => null;
 `);
 const shared = sharedLayer(stub, { '/lib/requestIdentity': requestIdentityURL });
 const modalURL = shared.compile('components/ChangeEmailModal.tsx');

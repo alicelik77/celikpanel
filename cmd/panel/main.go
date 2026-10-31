@@ -1276,6 +1276,10 @@ func main() {
 			if _, err := panel.requestIdentities.sweepExpired(context.Background()); err != nil {
 				log.Printf("[request-identity] expired rows could not be removed: %v", err)
 			}
+			// Used, voided and expired account links after 30 days (P6).
+			if err := sweepAccountLinks(context.Background(), panel.db.GetDB()); err != nil {
+				log.Printf("[account-links] old rows could not be removed: %v", err)
+			}
 		}
 	}()
 
@@ -1287,6 +1291,8 @@ func main() {
 	http.HandleFunc("/api/v1/auth/me", panel.handleMe)
 	http.HandleFunc(panelLicenseAccessPath, panel.handleLicenseAccess)
 	panel.registerRecoveryRoutes(http.DefaultServeMux)
+	// Password reset by email, invitations, address confirmation (alpha.114).
+	panel.registerAccountRecoveryRoutes(http.DefaultServeMux)
 
 	// Demo credentials (public, but empty unless --demo is set).
 	// Demo kimlik bilgileri (herkese açık, ama --demo yoksa boş).

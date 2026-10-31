@@ -208,7 +208,10 @@ func isPublicPath(r *http.Request) bool {
 	if r.URL.Path == "/api/v1/auth/login" || r.URL.Path == "/api/v1/auth/demo" || r.URL.Path == "/api/v1/auth/login/totp" {
 		return true
 	}
-	return false
+	// Forgot password, a reset or invitation link, an address confirmation:
+	// the link's token is the credential (account_recovery_handlers.go).
+	// Parolamı unuttum ve hesap bağlantıları: kimlik bilgisi bağlantının jetonudur.
+	return isAccountRecoveryPublicPath(r)
 }
 
 // isAdminOnlyPath matches the server/OS-layer and infrastructure endpoints
@@ -304,6 +307,7 @@ func isAdditionalUserRestrictedPath(path string) bool {
 		"/api/v1/store",
 		"/api/v1/users",
 		"/api/v1/team-members",
+		"/api/v1/invitations",
 		"/api/v1/plans",
 		"/api/v1/subscriptions",
 		"/api/v1/vpn",

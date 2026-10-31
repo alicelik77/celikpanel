@@ -112,6 +112,8 @@ Permissions are **not** a UI concern. Following the "API-first" principle, every
 
 The UI simply hides what the API would reject — that is how "services you didn't install are invisible" and "you only see what you own" become the same mechanism.
 
+**Own credentials (v0.1.0-alpha.114).** An administrator or reseller may create an account with an *invitation* instead of a password, and a customer may do the same for an additional user: the person chooses their own password through a single-use link; the inviter never sees or chooses it. The one who created an account (its `parent_id`) — or the administrator — may resend or cancel its invitation. Every account can reset a forgotten password by email once its address is confirmed. See [ACCOUNT-ACCESS.md](ACCOUNT-ACCESS.md).
+
 ---
 
 ## Data model implications (for the 0.2 sprint)

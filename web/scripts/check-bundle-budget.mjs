@@ -139,6 +139,10 @@ const screenPartBudgets = {
   // new part, set with at least 25% headroom from its Turkish file: 7.52 /
   // 2.35 KiB.
   dnsPublication: kib(10.5, 4),
+  // v0.1.0-alpha.114 (P6): forgot password, account links, address
+  // confirmation and invitations (acct., err.account_*). A new part, set with
+  // at least 25% headroom from its Turkish file: 9.75 / 2.61 KiB.
+  accountAccess: kib(13, 3.5),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

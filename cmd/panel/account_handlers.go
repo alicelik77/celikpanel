@@ -237,9 +237,15 @@ func (p *Panel) handleCreateUser(w http.ResponseWriter, r *http.Request, c *Call
 		Password string `json:"password"`
 		Role     string `json:"role"`
 		PlanID   int    `json:"plan_id,omitempty"`
+		// Invite: no password; the person chooses theirs by a link (P6).
+		Invite bool   `json:"invite,omitempty"`
+		Lang   string `json:"lang,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeClientError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if !invitationPassword(w, req.Invite, &req.Password) {
 		return
 	}
 
@@ -306,7 +312,11 @@ func (p *Panel) handleCreateUser(w http.ResponseWriter, r *http.Request, c *Call
 
 	log.Printf("[audit] user %d (%s) created user %d (%s, role=%s)", c.ID, c.Role, user.ID, user.Username, user.Role)
 	p.audit(r, "user.create:"+user.Username+"/"+user.Role, "user", user.ID)
-	json.NewEncoder(w).Encode(map[string]any{"success": true, "id": user.ID})
+	response := map[string]any{"success": true, "id": user.ID}
+	if req.Invite {
+		response["invitation"] = p.issueInvitation(r, c.ID, user.ID, req.Lang, true)
+	}
+	json.NewEncoder(w).Encode(response)
 }
 
 func (p *Panel) handleUpdateUser(w http.ResponseWriter, r *http.Request, target *core.User) {

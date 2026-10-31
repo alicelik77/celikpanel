@@ -126,6 +126,7 @@ export const tr: Record<ShellKey, string> = {
     'login.showPassword': 'Parolayı göster',
     'login.hidePassword': 'Parolayı gizle',
     'login.signIn': 'Giriş yap',
+    'login.forgot': 'Parolamı unuttum',
     'login.signingIn': 'Giriş yapılıyor…',
     'login.invalid': 'Kullanıcı adı ya da parola hatalı.',
     'login.failed': 'Giriş başarısız. Lütfen tekrar deneyin.',
