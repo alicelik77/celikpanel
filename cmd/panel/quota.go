@@ -78,6 +78,21 @@ func (e *quotaExceededError) code() string {
 // errQuotaSubscriptionMissing: the subscription a creation names does not exist.
 var errQuotaSubscriptionMissing = errors.New("subscription not found")
 
+// administratorWorkspace tells whether a subscription is the one the Panel
+// made for an administrator who hosts sites without a plan (it was seeded with
+// the stored value 999). That workspace has no limit: the old stored 999 would
+// have refused the 1000th domain, and the screens showed it as "2 of 999".
+// An administrator's subscription with a plan is metered like any other.
+// administratorWorkspace, planı olmayan yöneticinin kendi çalışma alanıdır;
+// sınırsızdır. Planı olan yönetici aboneliği diğerleri gibi sınırlanır.
+func (p *Panel) administratorWorkspace(ctx context.Context, subID int) bool {
+	var n int
+	err := p.db.GetDB().QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM subscriptions s JOIN users u ON u.id = s.owner_id
+		WHERE s.id = ? AND u.role = 'admin' AND s.plan_id IS NULL AND s.name = 'Admin Subscription'`, subID).Scan(&n)
+	return err == nil && n > 0
+}
+
 // checkSubscriptionQuota returns nil when one more resource of the given
 // kind fits in the subscription, a *quotaExceededError when the limit is
 // reached, errQuotaSubscriptionMissing when there is no such subscription,
@@ -87,6 +102,11 @@ var errQuotaSubscriptionMissing = errors.New("subscription not found")
 func (p *Panel) checkSubscriptionQuota(ctx context.Context, subID int, kind quotaKind) error {
 	var limit, used int64
 	var err error
+
+	// The administrator's own workspace is not metered (see below).
+	if p.administratorWorkspace(ctx, subID) {
+		return nil
+	}
 
 	switch kind {
 	case quotaDomains:
@@ -206,6 +226,11 @@ func (p *Panel) subscriptionUsageFor(ctx context.Context, subID int) (*subscript
 	}
 	if diskLimitMB > 0 {
 		u.DiskLimitBytes = diskLimitMB * 1024 * 1024
+	}
+	// The administrator's own workspace has no limit; the answer says 0, not 999.
+	// Yoneticinin kendi calisma alani sinirsizdir; yanit 999 degil 0 der.
+	if p.administratorWorkspace(ctx, subID) {
+		u.DomainsLimit, u.DatabasesLimit, u.MailLimit, u.DiskLimitBytes = 0, 0, 0, 0
 	}
 	return &u, nil
 }

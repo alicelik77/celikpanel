@@ -92,12 +92,15 @@ export function MyPlanCard() {
                     const contact = contactText(plan, t);
                     return (
                         <div className="grid gap-3">
+                            {/* A reseller's pool comes first: it is what they hand out to customers.
+                                A plan of their own is only needed to host their own sites.
+                                Bayinin havuzu once gelir; kendi plani yalniz kendi siteleri icindir. */}
+                            {plan.pool && <PoolBlock pool={plan.pool} />}
                             {plan.subscriptions.length === 0 ? (
-                                <p className="text-sm text-fg-muted">{t('myPlan.none')}</p>
+                                <p className="text-sm text-fg-muted" data-my-plan-none={plan.pool ? 'reseller' : 'account'}>{t(plan.pool ? 'myPlan.noneReseller' : 'myPlan.none')}</p>
                             ) : (
                                 plan.subscriptions.map((sub) => <SubscriptionBlock key={sub.id} sub={sub} />)
                             )}
-                            {plan.pool && <PoolBlock pool={plan.pool} />}
                             {!plan.bandwidthMeasured && <p className="text-xs text-fg-subtle">{t('myPlan.trafficNotMeasured')}</p>}
                             {contact && <p className="text-sm text-fg-muted">{contact}</p>}
                         </div>

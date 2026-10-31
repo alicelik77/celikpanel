@@ -3241,7 +3241,8 @@ function RowVersionText({ service, column = false, className = '' }: { service: 
             data-row-version={facts.full}
         >
             {facts.short}
-            <span className="sr-only">{` (${facts.full}, ${source})`}</span>
+            {/* Only the version is read out; where it came from stays in the tooltip. */}
+            <span className="sr-only">{` (${facts.full})`}</span>
         </div>
     );
 }

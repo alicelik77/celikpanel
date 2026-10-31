@@ -36,6 +36,7 @@ type userResponse struct {
 	Status        string `json:"status"`
 	ParentID      *int   `json:"parent_id,omitempty"`
 	ParentName    string `json:"parent_name,omitempty"`
+	AccountType   string `json:"account_type,omitempty"` // "additional_user" for a person added to a customer's account
 	Subscriptions int    `json:"subscriptions"`
 	Domains       int    `json:"domains"`
 	CreatedAt     string `json:"created_at"`
@@ -202,7 +203,7 @@ func (p *Panel) handleListUsers(w http.ResponseWriter, r *http.Request, c *Calle
 	// görünürlük kuralıyla süzülür.
 	query := `
 		SELECT u.id, u.username, u.email, u.role, COALESCE(u.status,'active'),
-		       u.parent_id, COALESCE(pu.username,''),
+		       u.parent_id, COALESCE(pu.username,''), COALESCE(NULLIF(u.account_type,''),'account'),
 		       (SELECT COUNT(*) FROM subscriptions s WHERE s.owner_id = u.id),
 		       (SELECT COUNT(*) FROM domains d JOIN subscriptions s2 ON d.subscription_id = s2.id WHERE s2.owner_id = u.id),
 		       COALESCE(u.created_at,'')
@@ -227,7 +228,7 @@ func (p *Panel) handleListUsers(w http.ResponseWriter, r *http.Request, c *Calle
 		var u userResponse
 		var parentID *int
 		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &u.Role, &u.Status,
-			&parentID, &u.ParentName, &u.Subscriptions, &u.Domains, &u.CreatedAt); err != nil {
+			&parentID, &u.ParentName, &u.AccountType, &u.Subscriptions, &u.Domains, &u.CreatedAt); err != nil {
 			continue
 		}
 		u.ParentID = parentID

@@ -821,6 +821,9 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     // Stopped because its plan was reopened: a known end, not a failure.
     const planReopened = setupPlanReopened(execution);
     const completed = snapshot.status === 'ready';
+    // Whether the joined server's own setup is still open: reported by the card
+    // that shows it, so the headline counts exactly the items on screen.
+    const [readyPeerPending, setReadyPeerPending] = useState(false);
     const extending = snapshot.extension === true;
     const extensionChanges = extending ? setupExtensionChanges(snapshot.extension_base, draft) : [];
     const extensionValue = (key: SetupExtensionChangeKey, value: string) => !value ? t('setup.extend.none')
@@ -858,7 +861,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     // catalog: the Components step would appear for a moment and vanish.
     // Katalog yeniden okunurken adim listesi titremesin.
     const showComponentsStep = componentsOpen || step === 'components' || (catalog ? customized : Object.keys(draft.customization?.versions || {}).length > 0);
-    const steps: Step[] = ['domain', ...(joinedLink ? [] : ['count' as const]), 'name', 'roles', ...(showComponentsStep ? ['components' as const] : []), 'names', 'dnshome',
+    const steps: Step[] = ['domain', ...(joinedLink || kind === 'join' ? [] : ['count' as const]), 'name', 'roles', ...(showComponentsStep ? ['components' as const] : []), 'names', 'dnshome',
         ...(!joinedLink && draft.dns_mode === 'local' && (draft.dns_role === 'primary' || joinFlow) && draft.main_domain ? ['records' as const] : []),
         ...(mailSelected && draft.main_domain ? ['mail' as const] : []), 'review', 'progress'];
     // The plan is reviewed when the last editing step is left.
@@ -932,12 +935,13 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     const isMail = ['postfix', 'dovecot', 'rspamd', 'roundcube'].some(id => selectedComponents.has(id));
     const isNode = selectedComponents.has('node');
     const nextPath = setupNextPath(snapshot.draft.purpose, explicitSelection ? selectedComponents : undefined);
-    const nextLabel = nextPath === '/dns-infrastructure' ? 'setup.nextDNS' : nextPath === '/services' ? 'setup.nextComponents' : isNode ? 'setup.nextApplication' : 'setup.nextWebsite';
     const progressCurrentStep = execution?.steps.find(item => ['running', 'failed'].includes(item.status));
     const observingMailEnrollment = progressCurrentStep?.kind === 'mail_enrollment' && execution?.status === 'running' && ['running', 'rollback', 'unknown', 'not_recorded', 'handoff', 'host_busy'].some(reason => execution.error?.code === `server_setup_mail_enrollment_${reason}`);
     const mailEnrollmentToRetry = !reconnecting && retryableMailEnrollmentHandoff(execution);
     const mailEnrollmentToContinue = !reconnecting && continuableMailEnrollment(execution);
     const guidance = execution && !reconnecting && !finishing ? setupExecutionGuidance(execution, componentLabel) : null;
+    // A refusal the guidance box already says in full is not said a second time below it.
+    const failureAlreadySaid = !!execution?.error && !!guidance && guidance.messages.some(message => say(message) === failureText(execution.error!.code, execution.error!.message, execution.error!.reason));
     // A server that was busy is a typed wait, not a failure: its reason leads the
     // screen, with the action beside it, and the generic paragraphs stay out.
     const hostBusy = execution?.status === 'failed' && !reconnecting ? setupHostBusyGuidance(execution.error) : null;
@@ -988,6 +992,12 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     const readySiteDone = !!readySite && readySite.site !== 'failed' && ['issued', 'active'].includes(readySite.certificate);
     const offerFirstSite = !!readyDomain && setupEffectiveComponents(readyDraft, catalog).has('nginx') && (readyDraft.main_site !== 'here' || (readySite?.site === 'failed' && readySite.code !== 'server_setup_main_site_dns_only'));
 
+    // One way to the same action: when the ready screen offers "Host a website",
+    // the bottom button leads away from it; a site that exists makes the next one "another".
+    const readyCount = readyTasks.length + (readyPeerPending ? 1 : 0);
+    const nextLabel = nextPath === '/dns-infrastructure' ? 'setup.nextDNS' : nextPath === '/services' ? 'setup.nextComponents' : isNode ? 'setup.nextApplication' : offerFirstSite ? 'setup.nextDashboard' : readyDraft.main_site === 'here' || readySiteDone ? 'setup.nextWebsiteMore' : 'setup.nextWebsite';
+    const readyNextPath = offerFirstSite && nextPath === '/domains' && !isNode ? '/' : nextPath;
+
     if (manualExit) return <Navigate to="/" replace />;
     return <ServerSetupShell navigation={!completed ? <ServerSetupSteps steps={steps} current={hasOperation ? 'progress' : step} /> : undefined}>
         <div className="max-w-3xl">
@@ -999,18 +1009,18 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
             </p>}
         </div>
         {completed ? <section className="mt-8 max-w-3xl space-y-6" aria-labelledby="setup-ready-title">
-            <div className="flex items-start gap-3"><Check className="mt-1 h-5 w-5 shrink-0 text-success" aria-hidden="true" /><div><h2 id="setup-ready-title" className="text-lg font-semibold" data-setup-ready-tasks={readyTasks.length}>{readyTasks.length === 0 ? t('setup.v2.ready', { server: readyServer }) : t(readyTasks.length === 1 ? 'setup.v7.ready.tasksOne' : 'setup.v7.ready.tasksMany', { server: readyServer, count: readyTasks.length })}</h2><p className="mt-1 text-sm text-fg-muted">{t(readyTasks.length ? 'setup.v7.ready.tasksHelp' : 'setup.completeServices')}</p></div></div>
+            <div className="flex items-start gap-3"><Check className="mt-1 h-5 w-5 shrink-0 text-success" aria-hidden="true" /><div><h2 id="setup-ready-title" className="text-lg font-semibold" data-setup-ready-tasks={readyCount}>{readyCount === 0 ? t('setup.v2.ready', { server: readyServer }) : t(readyCount === 1 ? 'setup.v7.ready.tasksOne' : 'setup.v7.ready.tasksMany', { server: readyServer, count: readyCount })}</h2><p className="mt-1 text-sm text-fg-muted">{t(readyCount ? 'setup.v7.ready.tasksHelp' : 'setup.completeServices')}</p></div></div>
             {readyTasks.length > 0 && <ol className="space-y-3" data-setup-ready-list="">{readyTasks.map(task => <li key={task.id} className="rounded-lg border border-warning-mark/50 bg-warning-mark/10 p-4 text-sm leading-6" data-setup-task={task.id}>
                 <p className="break-words">{task.text}</p>
                 {task.to && task.label && <Link to={task.to} className="mt-2 inline-flex font-medium text-primary underline underline-offset-4">{t(task.label)}</Link>}
             </li>)}</ol>}
             {readySiteDone && <p className="flex items-start gap-2 text-sm leading-6" data-setup-site="done"><Check className="mt-1 h-4 w-4 shrink-0 text-success" aria-hidden="true" /><span>{t('setup.v7.site.done', { domain: readySite!.domain })}</span></p>}
-            {readyDraft.main_site === 'elsewhere' && readyDomain && <p className="max-w-2xl text-sm leading-6 text-fg-muted" data-setup-site="elsewhere">{t('setup.v7.site.elsewhere.help', { domain: readyDomain })}</p>}
+            {readyDraft.main_site === 'elsewhere' && readyDomain && !offerFirstSite && <p className="max-w-2xl text-sm leading-6 text-fg-muted" data-setup-site="elsewhere">{t('setup.v7.site.elsewhere.help', { domain: readyDomain })}</p>}
             {/* The main DNS server keeps the setup link open until the second server finished (P7). */}
-            <SetupJoinCard joinPending={false} finished />
+            <SetupJoinCard joinPending={false} finished onPending={setReadyPeerPending} />
             {/* The optional first site: the main domain prefilled in the existing Add domain form, when setup did not create it; nothing is created unless the owner confirms there. */}
             {offerFirstSite && <SetupFirstSite domain={readyDomain} />}
-            <Link to={nextPath} className="inline-flex items-center gap-3 rounded-lg bg-primary px-5 py-3 font-semibold text-primary-fg hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">{t(nextLabel)}<ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
+            <Link to={readyNextPath} className="inline-flex items-center gap-3 rounded-lg bg-primary px-5 py-3 font-semibold text-primary-fg hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">{t(nextLabel)}<ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
             {/* What extending does and does not do, said before the action (D-033). */}
             <section aria-labelledby="setup-extend-title" className="border-t border-border pt-6" data-setup-extend="">
                 <h2 id="setup-extend-title" className="text-lg font-semibold">{t('setup.extend.title')}</h2>
@@ -1053,7 +1063,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                         {guidance.details.length > 0 && <details className="mt-3 text-sm leading-6"><summary className="cursor-pointer font-medium text-primary">{t('setup.guide.more')}</summary><ul className="mt-2 list-disc space-y-2 pl-5 text-fg-muted">{guidance.details.map((message, index) => <li key={index}>{say(message)}</li>)}</ul></details>}
                     </aside>}
                     {/* The failure colour is for a verified failure only: a busy server, an unmet prerequisite and a result still being confirmed are not one. */}
-                    {execution?.error && !['dns_publisher', 'dns_readiness'].includes(execution.phase) && <div role={hostBusy ? undefined : confirmingPrevious || waitingDNSPrerequisite || observingMailEnrollment || planReopened ? 'status' : 'alert'} className={`${hostBusy ? 'mt-3' : 'mt-5'} space-y-2 text-sm`}>{!hostBusy && !peerRecordApplied && (!(confirmingPrevious || observingMailEnrollment || planReopened) || !guidance) && <p className={execution.status === 'failed' ? 'text-danger' : confirmingPrevious || waitingDNSPrerequisite ? 'text-fg-muted' : 'text-fg'}>{failureText(execution.error.code, execution.error.message, execution.error.reason)}</p>}<details><summary className="cursor-pointer text-primary">{t('setup.details')}</summary><p className="mt-2 break-words text-fg-muted">{execution.error.message}</p></details></div>}
+                    {execution?.error && !['dns_publisher', 'dns_readiness'].includes(execution.phase) && <div role={hostBusy ? undefined : confirmingPrevious || waitingDNSPrerequisite || observingMailEnrollment || planReopened ? 'status' : 'alert'} className={`${hostBusy ? 'mt-3' : 'mt-5'} space-y-2 text-sm`}>{!hostBusy && !peerRecordApplied && !failureAlreadySaid && (!(confirmingPrevious || observingMailEnrollment || planReopened) || !guidance) && <p className={execution.status === 'failed' ? 'text-danger' : confirmingPrevious || waitingDNSPrerequisite ? 'text-fg-muted' : 'text-fg'}>{failureText(execution.error.code, execution.error.message, execution.error.reason)}</p>}<details><summary className="cursor-pointer text-primary">{t('setup.details')}</summary><p className="mt-2 break-words text-fg-muted">{execution.error.message}</p></details></div>}
                     {execution && setupPackageUpdatesWaiting(execution) && <SetupPackageUpdatesWait key={execution.id} executionID={execution.id} onContinued={next => { if (next) setExecution(next); void reconcile(); }} />}
                     {/* The action a stopped run names sits with its reason, above the step list. */}
                     {execution?.status === 'failed' && guidance && !hostBusy && <div className="mt-5"><Button variant="primary" onClick={editPlan}>{t('setup.revise')}</Button></div>}
@@ -1099,7 +1109,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                 </section> : <form onSubmit={next} className="min-w-0">
                     {step === 'domain' && (joinedLink ? <SetupJoinedSummary link={joinedLink} /> : <>
                         {!extending && <SetupServerKindStep value={kind} disabled={busy} onChange={value => { setServerKind(value); setError(''); }} />}
-                        {kind === 'first' && <div className={extending ? '' : 'mt-8'}><SetupDomainStep value={draft.main_domain || ''} invalid={!!error && !validSetupDomain(mainDomain)} onChange={value => updateDraft(previous => ({ ...previous, main_domain: value }))} /></div>}
+                        {kind === 'first' && <div className={extending ? '' : 'mt-8'}><SetupDomainStep shortName={draft.short_name} value={draft.main_domain || ''} invalid={!!error && !validSetupDomain(mainDomain)} onChange={value => updateDraft(previous => ({ ...previous, main_domain: value }))} /></div>}
                         {/* The join path: the main domain comes from the first server, so only the join (its one primary action) is offered. */}
                         {kind === 'join' && <div className="mt-8">{peer.known ? <SetupJoinPanel disabled={busy} serverIP={snapshot.server_ip} onJoined={value => {
                             const next = decodeServerSetup(value); peer.refresh();

@@ -8,7 +8,8 @@ import { Button, CouldNotCheck, ErrorBanner, RemoteGate, inputClass } from './ui
 import { PageHeader } from './PageHeader';
 import { PanelPortCard } from './PanelPortCard';
 import { readApiError, type ApiError } from '../lib/apiError';
-import { readRemote, useRemote } from '../lib/remote';
+import { readRemote, lastKnown, useRemote } from '../lib/remote';
+import { decodePanelCertificate, panelCertificateName, PANEL_CERTIFICATE_URL } from '../lib/panelCertificate';
 import { availablePanelUpdate, usePanelUpdateDiscovery, wholeVersion } from '../lib/panelUpdateDiscovery';
 
 const LicensePanel = lazy(() => import('./LicensePanel').then((module) => ({ default: module.LicensePanel })));
@@ -391,33 +392,6 @@ function decodePanelCertificateOperation(
     };
 }
 
-// What the Panel says about the certificate it serves. `https_enabled: false`
-// is the server's answer when it found no certificate it could read; that is
-// not "a trusted certificate", which is what an empty issuer used to be drawn
-// as.
-// Panelin sunduğu sertifika hakkında söylediği. `https_enabled: false`,
-// sunucunun okuyabildiği bir sertifika bulamadığındaki yanıtıdır.
-interface PanelCertificateInfo {
-    https_enabled: boolean;
-    self_signed: boolean;
-    issuer: string;
-    expires_at: string;
-}
-
-const PANEL_CERTIFICATE_URL = '/api/v1/panel/certificate';
-
-function decodePanelCertificate(raw: unknown): PanelCertificateInfo {
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('shape');
-    const body = raw as Record<string, unknown>;
-    if (typeof body.https_enabled !== 'boolean' || typeof body.self_signed !== 'boolean') throw new Error('field');
-    return {
-        https_enabled: body.https_enabled,
-        self_signed: body.self_signed,
-        issuer: typeof body.issuer === 'string' ? body.issuer : '',
-        expires_at: typeof body.expires_at === 'string' ? body.expires_at : '',
-    };
-}
-
 // The operation endpoint's answer is checked against the exact request by
 // decodePanelCertificateOperation; here it only has to be JSON.
 const passThrough = (raw: unknown): unknown => raw;
@@ -444,6 +418,11 @@ const PANEL_CERTIFICATE_REOPEN_SECONDS = 10;
 function PanelCertificatePanel({ active }: { active: boolean }) {
     const { t, locale } = useI18n();
     const certificate = useRemote(PANEL_CERTIFICATE_URL, decodePanelCertificate);
+    // The panel already has a trusted address: say which one and offer "Change"
+    // instead of an empty form that reads as if no address were set.
+    // Panelin güvenilir bir adresi varsa onu söyle; boş bir form yerine "Değiştir" sun.
+    const currentName = panelCertificateName(lastKnown(certificate.remote)?.value);
+    const [changing, setChanging] = useState(false);
     const [domain, setDomain] = useState(() =>
         /^[0-9.]+$/.test(window.location.hostname) ? '' : window.location.hostname,
     );
@@ -556,6 +535,9 @@ function PanelCertificatePanel({ active }: { active: boolean }) {
         };
     }, [pendingOperation, restarting, checkNow, retryCertificate, t]);
 
+    // The form shows while no trusted address is known, while the person is
+    // changing it, and for as long as a request or its result is on the card.
+    const showForm = currentName === '' || changing || pendingOperation !== null || outcome.state !== 'none';
     const secureAddress = outcome.state === 'issued'
         ? `https://${outcome.domain}:${window.location.port || '1923'}/`
         : pendingOperation
@@ -757,13 +739,23 @@ function PanelCertificatePanel({ active }: { active: boolean }) {
                 </div>
             )}
 
-            <ol className="mb-5 list-decimal space-y-2 pl-5 text-sm text-fg-muted">
+            {outcome.state !== 'issued' && currentName !== '' && !showForm && (
+                <div className="mb-2 flex flex-wrap items-center gap-3" data-panel-current-address={currentName}>
+                    <p className="min-w-0 flex-1 break-words text-sm text-fg">
+                        {t('panelCert.current', { domain: currentName })}{' '}
+                        <a href={`https://${currentName}:${window.location.port || '1923'}/`} target="_blank" rel="noopener noreferrer" className="font-medium text-primary underline underline-offset-4">{t('panelCert.openCurrent')}</a>
+                    </p>
+                    <Button variant="secondary" onClick={() => setChanging(true)}>{t('panelCert.change')}</Button>
+                </div>
+            )}
+
+            {showForm && <ol className="mb-5 list-decimal space-y-2 pl-5 text-sm text-fg-muted">
                 <li>{t('start.panel.dns')}</li>
                 <li>{t('start.panel.check')}</li>
                 <li>{t('start.panel.issue')}</li>
-            </ol>
+            </ol>}
 
-            {outcome.state !== 'issued' && (
+            {outcome.state !== 'issued' && showForm && (
                 <>
                     <div ref={noticeRef} className="scroll-mb-24 scroll-mt-24">
                         {refusal && (

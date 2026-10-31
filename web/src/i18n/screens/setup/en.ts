@@ -367,6 +367,8 @@ export const enSetupScreens = {
     "setup.extend.continue": "Continue extending",
     "setup.extend.showProgress": "Show its progress",
     "setup.nextWebsite": "Add your first website",
+    "setup.nextWebsiteMore": "Add a website",
+    "setup.nextDashboard": "Go to the dashboard",
     "setup.nextApplication": "Add your application’s domain",
     "setup.nextDNS": "Open DNS and peer servers",
     "setup.blocker.existing": "Choose an authorized CelikPanel DNS connection and verify its current readiness.",

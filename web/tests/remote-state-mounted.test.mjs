@@ -105,6 +105,8 @@ const own = {
   '/lib/componentName': compileSource('lib/componentName.ts', () => stub),
   // The infrastructure DNS zones beside the domains (2026-10-16).
   '/lib/infrastructureZones': compileSource('lib/infrastructureZones.ts', besideRemote),
+  // The panel's certificate name (alpha.114 screens round).
+  '/lib/panelCertificate': compileSource('lib/panelCertificate.ts', () => stub),
   // What the license check itself says (D-039, 2026-10-30).
   '/lib/licenseOffline': compileSource('lib/licenseOffline.ts', () => stub),
 };

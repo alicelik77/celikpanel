@@ -345,7 +345,7 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
                                                           : 'bg-primary/10 text-primary'
                                                 }`}
                                             >
-                                                {t(roleKey(u.role))}
+                                                {u.account_type === 'additional_user' && u.parent_name ? t('users.role.additionalOf', { owner: u.parent_name }) : t(roleKey(u.role))}
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">
@@ -549,8 +549,8 @@ function PoolPanel({ user, onClose }: { user: PanelUser; onClose: () => void }) 
                         <p className="mt-2 text-xs text-fg-subtle">
                             {t('users.poolAllocated', {
                                 customers: String(state.value.allocated.customers ?? 0),
-                                domains: state.value.allocated.unlimited_domains ? '∞' : String(state.value.allocated.domains ?? 0),
-                                disk: state.value.allocated.unlimited_disk ? '∞' : String(state.value.allocated.disk_mb ?? 0),
+                                domains: state.value.allocated.unlimited_domains ? t('users.poolDomainsUnlimited') : t('users.poolDomains', { n: String(state.value.allocated.domains ?? 0) }),
+                                disk: state.value.allocated.unlimited_disk ? t('users.poolDiskUnlimited') : t('users.poolDisk', { n: String(state.value.allocated.disk_mb ?? 0) }),
                             })}
                         </p>
                     </>

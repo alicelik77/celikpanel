@@ -359,6 +359,8 @@ export const trSetupScreens: Record<SetupScreenKey, string> = {
     "setup.extend.continue": "Genişletmeye devam et",
     "setup.extend.showProgress": "İlerlemesini göster",
     "setup.nextWebsite": "İlk web sitenizi ekleyin",
+    "setup.nextWebsiteMore": "Web sitesi ekleyin",
+    "setup.nextDashboard": "Panele gidin",
     "setup.nextApplication": "Uygulamanızın alan adını ekleyin",
     "setup.nextDNS": "DNS ve eş sunucuları açın",
     "setup.blocker.existing": "Yetkili bir CelikPanel DNS bağlantısı seçin ve güncel hazırlığını doğrulayın.",

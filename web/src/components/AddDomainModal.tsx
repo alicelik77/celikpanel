@@ -51,6 +51,11 @@ interface AddDomainModalProps {
     // the main domain). Only a starting value: nothing is sent until the
     // person submits the form.
     initialDomain?: string;
+    // The name's DNS is served by this server (a DNS-only zone getting its
+    // website, or the main domain at the end of setup): the certificate box
+    // starts ticked, as the setup "Yes" path does. The person can untick it.
+    // Adin DNS'i bu sunucuda: sertifika kutusu isaretli baslar.
+    sslByDefault?: boolean;
 }
 
 // What this server can host right now drives which choices the dialog offers
@@ -185,7 +190,7 @@ function CertificateOutcome({ name, outcome }: { name: string; outcome: SiteCert
     );
 }
 
-export function AddDomainModal({ onClose, onSuccess, initialDomain = '' }: AddDomainModalProps) {
+export function AddDomainModal({ onClose, onSuccess, initialDomain = '', sslByDefault = false }: AddDomainModalProps) {
     const { t } = useI18n();
     const navigate = useNavigate();
     const [domainName, setDomainName] = useState(initialDomain);
@@ -205,7 +210,8 @@ export function AddDomainModal({ onClose, onSuccess, initialDomain = '' }: AddDo
     // kişinindir ve korunur.
     const [chosenPurpose, setPurpose] = useState<Purpose | null>(null);
     const purpose: Purpose = chosenPurpose ?? (caps && caps.web_server === '' ? 'dnsonly' : 'website');
-    const [sslEnabled, setSSLEnabled] = useState(false);
+    const [sslChoice, setSSLChoice] = useState<boolean | null>(null);
+    const sslEnabled = sslChoice ?? sslByDefault;
     const [loading, setLoading] = useState(false);
     // After the site exists and SSL was ticked, the dialog stays open for the
     // certificate request: `requesting` while its one request is on the way,
@@ -545,7 +551,7 @@ export function AddDomainModal({ onClose, onSuccess, initialDomain = '' }: AddDo
                             type="checkbox"
                             id="ssl"
                             checked={sslEnabled}
-                            onChange={(e) => setSSLEnabled(e.target.checked)}
+                            onChange={(e) => setSSLChoice(e.target.checked)}
                             className="mt-1"
                         />
                         <div className="flex-1">

@@ -90,7 +90,7 @@ export const trSetupWizardScreens: Record<SetupWizardScreenKey, string> = {
     "setup.v2.names.help": "Ana alan adınızdan önerdik. İsterseniz değiştirin.",
     "setup.v2.names.panel": "Panel adresi (bu panele buradan girersiniz)",
     "setup.v2.names.mail": "E-posta sunucusu ve web postası adresi",
-    "setup.v2.names.mailHelp": "Katılacak sunucuda da e-posta olacaksa her sunucunun kendi posta adı olmalı (örneğin mail2.{domain}).",
+    "setup.v2.names.mailHelp": "Katılacak sunucuda da e-posta olacaksa her sunucunun kendi panel adından türetilmiş kendi posta adı olmalı (örneğin boston.{domain} paneli için mail.boston.{domain}).",
     "setup.v2.names.pointTo": "Hepsi bu sunucuyu gösterecek: {ip}.",
     "setup.v2.names.siteNote": "Alan adınızın mevcut kayıtları ({domain}, www.{domain}, mail ve diğerleri) Mevcut kayıtlar adımında okunur; aktardıklarınız sunucularınızda çalışmaya devam eder.",
     "setup.v2.names.outsideZone": "Kendi DNS’inizi kullanırken bu ad {domain} ile bitmelidir.",

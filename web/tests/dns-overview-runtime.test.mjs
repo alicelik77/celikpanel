@@ -317,7 +317,7 @@ test('the first site opens the existing form with the main domain; names pointin
   try {
     await act(async () => { tree = Renderer.create(React.createElement(SetupFirstSite, { domain: 'example.test' })); });
     assert.equal(tree.root.findAll((node) => node.props?.['data-setup-first-site'] === 'offer').length, 1);
-    await act(async () => button('Add the site').props.onClick());
+    await act(async () => button('Host a website').props.onClick());
     await settle(30);
     assert.equal(tree.root.findAllByType('add-domain-modal')[0].props.initialDomain, 'example.test', 'prefilled; nothing is created until the form is submitted');
     await act(async () => globalThis.firstSiteModal.onSuccess({ siteRecords: { added: [{ name: 'www.example.test', type: 'A', content: '203.0.113.10' }], kept: [{ name: 'example.test', type: 'A', content: '192.0.2.80', expected: '203.0.113.10' }], ipv4: '203.0.113.10' } }));

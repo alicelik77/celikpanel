@@ -55,11 +55,11 @@ export function SetupServerKindStep({ value, onChange, disabled }: { value: Setu
     </fieldset>;
 }
 
-export function SetupDomainStep({ value, onChange, invalid }: { value: string; onChange: (value: string) => void; invalid: boolean }) {
+export function SetupDomainStep({ value, onChange, invalid, shortName }: { value: string; onChange: (value: string) => void; invalid: boolean; shortName?: string }) {
     const { t } = useSetupWizardI18n();
     return <section className="space-y-5" aria-labelledby="setup-domain-title">
         <h2 id="setup-domain-title" className="text-xl font-semibold">{t('setup.v2.domain.title')}</h2>
-        <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v2.domain.help', { example: `panel.${value || 'example.com'}` })}</p>
+        <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v2.domain.help', { example: `${shortName || 'panel'}.${value || 'example.com'}` })}</p>
         <div className="max-w-md"><SetupWizardInput name="main_domain" label={t('setup.v2.domain.label')} value={value} onChange={onChange} placeholder="example.com" required help={t('setup.v2.domain.hint')} invalid={invalid ? t('setup.v2.domain.invalid') : undefined} /></div>
     </section>;
 }
@@ -94,7 +94,9 @@ export function SetupRolesStep({ roles, onRoles, catalog, server, serverCount, c
     roles: SetupRoles; onRoles: (roles: SetupRoles) => void; catalog: SetupComponentCatalog | null; server: string; serverCount: 1 | 2;
     customized: boolean; onCustomize: () => void; onReset: () => void; disabled: boolean;
 }) {
-    const { t } = useSetupWizardI18n();
+    const { t, locale } = useSetupWizardI18n();
+    // The name sits mid-sentence in English ("What will this server (x) do?"); Turkish starts the sentence with it.
+    const titleServer = locale === 'en' ? server.charAt(0).toLowerCase() + server.slice(1) : server;
     const installs = (role: 'web' | 'mail') => catalog ? [...setupComponentClosure(setupRolePreset(role, catalog), catalog)].map(id => componentName(catalog.components.find(row => row.id === id) ?? id, t)).join(', ') : '…';
     const cards: { role: keyof SetupRoles; title: TranslationKey; help: TranslationKey; brings: string }[] = [
         { role: 'web', title: 'setup.v2.role.web', help: 'setup.v2.role.web.help', brings: installs('web') },
@@ -102,7 +104,7 @@ export function SetupRolesStep({ roles, onRoles, catalog, server, serverCount, c
         { role: 'dns', title: 'setup.v2.role.dns', help: serverCount === 2 ? 'setup.v2.role.dns.helpTwo' : 'setup.v5.dns.standalone.help', brings: t('setup.v2.role.dnsInstalls') },
     ];
     return <fieldset className="space-y-4" disabled={disabled}>
-        <legend className="text-xl font-semibold">{t('setup.v2.roles.title', { server })}</legend>
+        <legend className="text-xl font-semibold">{t('setup.v2.roles.title', { server: titleServer })}</legend>
         <p className="max-w-2xl pt-2 text-sm leading-6 text-fg-muted">{t('setup.v2.roles.help')}</p>
         <div className="grid gap-3">{cards.map(card => <Choice key={card.role} type="checkbox" name="setup-role" value={card.role} checked={roles[card.role]} disabled={!catalog && card.role !== 'dns'}
             onChange={() => onRoles({ ...roles, [card.role]: !roles[card.role] })} title={t(card.title)} help={t(card.help)}
@@ -462,7 +464,7 @@ export function SetupJoinedSummary({ link }: { link: SetupPeerLink }) {
 // finished: this server's setup is complete. As the main DNS server it keeps
 // the link open until the second server reports its setup ready (Beta-1
 // re-run P7); the card then says so, and offers to stop waiting.
-export function SetupJoinCard({ joinPending = true, finished = false }: { joinPending?: boolean; finished?: boolean } = {}) {
+export function SetupJoinCard({ joinPending = true, finished = false, onPending }: { joinPending?: boolean; finished?: boolean; onPending?: (pending: boolean) => void } = {}) {
     const { t } = useSetupWizardI18n();
     const remote = useRemote('/api/v1/setup/peer', decodeSetupPeerView);
     useRefreshEvery(remote, 10_000);
@@ -489,6 +491,9 @@ export function SetupJoinCard({ joinPending = true, finished = false }: { joinPe
     }
     const time = (value: string) => new Date(value).toLocaleString();
     const joined = view?.joined;
+    // The ready headline counts this card as one open item while the joined server is still setting up.
+    const peerSetupPending = finished && view?.peer_setup === 'pending';
+    useEffect(() => { onPending?.(peerSetupPending); }, [onPending, peerSetupPending]);
     const server = joined?.short_name || t('setup.v5.card.second');
     const joinedText = joined ? joined.panel_domain
         ? t(joined.mail_hostname ? 'setup.v5.card.namedMail' : 'setup.v5.card.named', { server, ip: joined.ipv4, panel: joined.panel_domain, mail: joined.mail_hostname || '' })

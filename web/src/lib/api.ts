@@ -380,6 +380,8 @@ export interface PanelUser {
     status: string;
     parent_id?: number;
     parent_name?: string;
+    /** `additional_user` for a person added to a customer's account; absent or `account` otherwise. */
+    account_type?: string;
     subscriptions: number;
     domains: number;
     created_at: string;
