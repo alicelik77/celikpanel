@@ -3,7 +3,7 @@ import { CalendarClock } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
-import { readRemote } from '../lib/remote';
+import { invalidate, readRemote } from '../lib/remote';
 import { Button, Dialog, inputClass } from './ui';
 
 // Out-of-office reply for one mailbox (alpha.114). Dovecot sends the reply
@@ -136,6 +136,7 @@ export function MailAutoresponderDialog({
             const body = (await res.json()) as { state?: ServerState };
             showToast('success', enabled ? t('mail.autoreply.savedOn') : t('mail.autoreply.savedOff'));
             if (body.state?.warning) showToast('info', body.state.warning);
+            invalidate('mail');
             onClose();
         } catch {
             // The result is unknown: reading the dialog again shows the server's state.

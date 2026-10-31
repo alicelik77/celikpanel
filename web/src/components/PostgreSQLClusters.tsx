@@ -16,7 +16,7 @@ import { ArrowRightLeft, Database, DownloadCloud, Layers, Network } from 'lucide
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Button, Dialog, KeepWords, RemoteGate } from './ui';
-import { useRemote, type RemoteHandle } from '../lib/remote';
+import { invalidate, useRemote, type RemoteHandle } from '../lib/remote';
 import { LifeLine, type Tone } from './LifeLine';
 import { useComponentOperation } from './ComponentOperation';
 import { InstallPreviewNotes, installPreviewAckKey, installPreviewGate } from './InstallPreviewNotes';
@@ -109,6 +109,7 @@ function ClustersBody({ value, handle }: { value: PGClusters; handle: RemoteHand
         } finally {
             setSyncing(false);
             void handle.retry();
+            invalidate('databases');
         }
     };
     return (
@@ -176,9 +177,9 @@ function ClustersBody({ value, handle }: { value: PGClusters; handle: RemoteHand
                     }}
                 />
             )}
-            {portFor && <PortDialog cluster={portFor} onClose={(done) => { setPortFor(null); if (done) { setResult(done); void handle.retry(); } }} />}
-            {moveFrom && <MoveDialog source={moveFrom} targets={online.filter((cluster) => pgRef(cluster) !== pgRef(moveFrom))} records={value.records[pgRef(moveFrom)] ?? []} onClose={(done) => { setMoveFrom(null); if (done) { setResult(done); void handle.retry(); } }} />}
-            {moveAction && <MoveActionDialog move={moveAction.move} action={moveAction.action} onClose={(done) => { setMoveAction(null); if (done) { setResult(done); void handle.retry(); } }} />}
+            {portFor && <PortDialog cluster={portFor} onClose={(done) => { setPortFor(null); if (done) { setResult(done); void handle.retry(); invalidate('databases'); } }} />}
+            {moveFrom && <MoveDialog source={moveFrom} targets={online.filter((cluster) => pgRef(cluster) !== pgRef(moveFrom))} records={value.records[pgRef(moveFrom)] ?? []} onClose={(done) => { setMoveFrom(null); if (done) { setResult(done); void handle.retry(); invalidate('databases'); } }} />}
+            {moveAction && <MoveActionDialog move={moveAction.move} action={moveAction.action} onClose={(done) => { setMoveAction(null); if (done) { setResult(done); void handle.retry(); invalidate('databases'); } }} />}
         </div>
     );
 }

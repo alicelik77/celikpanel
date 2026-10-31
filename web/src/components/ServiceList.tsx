@@ -8,7 +8,7 @@ import { PageHeader } from './PageHeader';
 import { readApiError, apiErrorText, type ApiError } from '../lib/apiError';
 import { ServiceActionNotice, isServiceActionOutcome } from './ServiceActionNotice';
 import { readServiceActionNote } from '../lib/serviceActionNote';
-import { lastKnown, useRemote } from '../lib/remote';
+import { invalidate, lastKnown, readQuietly, useInvalidation, useRemote } from '../lib/remote';
 import {
     canonicalMailHostname,
     decodeMailHostnameIdentity,
@@ -679,6 +679,21 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         }
     };
 
+    // A change made anywhere else (the dashboard, the setup, a component's own
+    // page) reaches this list without a refresh. This screen's own changes
+    // announce themselves to the others and skip their own echo. It only reads.
+    // Başka yerde yapılan değişiklik bu listeye yenilemesiz ulaşır; buradaki
+    // değişiklikler başkalarına duyurulur, kendi yankısı atlanır. Yalnız okur.
+    const announcingOwnChange = useRef(false);
+    const announceComponentsChanged = () => {
+        announcingOwnChange.current = true;
+        try { invalidate('components'); } finally { announcingOwnChange.current = false; }
+    };
+    useInvalidation(['components'], () => {
+        if (announcingOwnChange.current) return;
+        void quietReread();
+    });
+
     useEffect(() => {
         void loadServices();
         void loadHostMutationReadiness();
@@ -882,6 +897,16 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         }
     };
 
+    // Reads the stored component records again without the loader, the scan or
+    // a warning: the list on screen stays until the answer replaces it, and an
+    // unreadable answer leaves it as it was.
+    // Kayıtlı bileşen kayıtlarını yükleyici, tarama ya da uyarı olmadan yeniden
+    // okur; okunamayan yanıt listeyi olduğu gibi bırakır.
+    const quietReread = async (): Promise<void> => {
+        const stored = await readQuietly('/api/v1/managed-services');
+        if (stored !== null) applySnapshot(stored, 'load');
+    };
+
     const scan = async (): Promise<boolean> => {
         setScanning(true);
         setAutoCheckFailed(false);
@@ -906,6 +931,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                 markStateUnverified({ kind: 'read', error: null });
                 return false;
             }
+            announceComponentsChanged();
             return true;
         } catch {
             showToast('error', t('services.scanFailed'));
@@ -1085,6 +1111,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                     // The partial-success copy directs the operator back to this
                     // dialog, so expose it only after a verified reload proves the
                     // dialog can safely stay open and its Retry action is reachable.
+                    announceComponentsChanged();
                     setUninstallError(error);
                     setRetryCleanup(true);
                     showToast('error', apiErrorText(error, t, 'services.actionFailed'));
@@ -1102,6 +1129,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                     closeUninstallDialog();
                     showToast('error', apiErrorText(error, t, 'services.actionFailed'));
                     if (!(await loadServices())) markStateUnverified();
+                    announceComponentsChanged();
                     return;
                 }
                 setUninstallError(error);
@@ -1115,6 +1143,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                     : t('services.uninstalled', { name: componentName(service, t) }),
             );
             if (!(await loadServices())) markStateUnverified();
+            announceComponentsChanged();
         } catch {
             // A transport/read exception can happen after the server has already
             // removed Roundcube. Reset the stale retry handle before the
@@ -1175,6 +1204,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                     // altında yeniden okunur.
                     setActionOutcome(error);
                     if (!(await loadServices())) markStateUnverified();
+                    announceComponentsChanged();
                     return;
                 }
                 showToast('error', apiErrorText(error, t, 'services.actionFailed'));
@@ -1188,6 +1218,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
             const note = readServiceActionNote(await res.json());
             if (note) setActionOutcome(note);
             if (!(await loadServices())) markStateUnverified();
+            announceComponentsChanged();
         } catch {
             // No answer arrived: the action may have been carried out. That is
             // not a failure; the notice above the list says the state is not
@@ -1233,6 +1264,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                     // altında yeniden okunur.
                     setActionOutcome(error);
                     if (!(await loadServices())) markStateUnverified();
+                    announceComponentsChanged();
                     return;
                 }
                 showToast('error', apiErrorText(error, t, 'services.actionFailed'));
@@ -1246,6 +1278,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
             const note = readServiceActionNote(await res.json());
             if (note) setActionOutcome(note);
             if (!(await loadServices())) markStateUnverified();
+            announceComponentsChanged();
         } catch {
             // No answer arrived: the action may have been carried out. That is
             // not a failure; the notice above the list says the state is not

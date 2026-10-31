@@ -3,6 +3,7 @@ import { ShieldCheck, ShieldOff, DownloadCloud } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { Button, Dialog, KeepWords } from './ui';
+import { invalidate } from '../lib/remote';
 import { readApiError, apiErrorText, type ApiError } from '../lib/apiError';
 import {
     FirewallNoSSHAcknowledgement,
@@ -165,6 +166,9 @@ export function FirewallBar({
             const d = await r.json();
             if (d.error) throw new Error(t('firewall.changeFailed'));
             setSt(d);
+            // Every other screen that shows the firewall reads it again.
+            // Güvenlik duvarını gösteren her ekran yeniden okur.
+            invalidate('components');
             showToast('success', d.enabled ? t('firewall.onDone') : t('firewall.offDone'));
         } catch (e) {
             showToast('error', e instanceof Error && e.message ? e.message : t('common.error'));
@@ -190,6 +194,7 @@ export function FirewallBar({
             if (d.error) throw new Error(t('firewall.persistenceSaveFailed'));
             if (d.persistence_state !== 'ready') throw new Error(d.persistence_error || t('firewall.persistenceSaveFailed'));
             setSt(d);
+            invalidate('components');
             showToast('success', t('firewall.persistenceSaved'));
         } catch (e) {
             showToast('error', e instanceof Error && e.message ? e.message : t('firewall.persistenceSaveFailed'));

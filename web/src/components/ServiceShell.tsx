@@ -15,7 +15,7 @@ import { startVisibleReads } from '../lib/visibleReads';
 import { useNavigate } from '../router';
 import { packageVersionFacts } from '../lib/packageVersion';
 import { isServiceRunning } from '../lib/serviceStatus';
-import { useRemote } from '../lib/remote';
+import { invalidate, useInvalidation, useRemote } from '../lib/remote';
 import { decodeInstallPreview, installPreviewURL } from '../lib/installPreview';
 import { InstallPreviewNotes, installPreviewAckKey, installPreviewGate } from './InstallPreviewNotes';
 import { componentName } from '../lib/componentName';
@@ -215,6 +215,20 @@ export function ServiceShell({
         void load();
     }, [serviceId]);
 
+    // A change made elsewhere (the components list, the dashboard, the setup)
+    // reaches this page without a refresh; this page's own changes announce
+    // themselves to the others and skip their own echo. It only reads.
+    // Başka yerde yapılan değişiklik bu sayfaya yenilemesiz ulaşır; buradaki
+    // değişiklikler başkalarına duyurulur, kendi yankısı atlanır. Yalnız okur.
+    const announcingOwnChange = useRef(false);
+    const announceComponentsChanged = () => {
+        announcingOwnChange.current = true;
+        try { invalidate('components'); } finally { announcingOwnChange.current = false; }
+    };
+    useInvalidation(['components'], () => {
+        if (!announcingOwnChange.current) void load();
+    });
+
     useEffect(() => {
         if (!catalogSnapshot) return;
         publishComponentCensus(catalogSnapshot.services);
@@ -331,6 +345,7 @@ export function ServiceShell({
             setSvc(findService(snapshot.services, serviceId));
             setRecordRead('known');
             refreshedRef.current?.();
+            announceComponentsChanged();
         } catch {
             showToast('error', t('services.scanFailed'));
         } finally {
@@ -390,7 +405,7 @@ export function ServiceShell({
                 // yeniden okunur; hiçbir şey iki kez gönderilmez. Bilinmeyen
                 // sonuç hata değildir ve hata rengiyle gösterilmez.
                 showToast('warning', t('common.resultUnknown'));
-                await load();
+                await load(); announceComponentsChanged();
                 return;
             }
             if (!r.ok) {
@@ -405,7 +420,7 @@ export function ServiceShell({
                     // da bilinmeyen sonuç. Sayfada kalır; işlem durumu
                     // değiştirmiş olabileceği için durum yeniden okunur.
                     setActionOutcome(refusal);
-                    await load();
+                    await load(); announceComponentsChanged();
                     return;
                 }
                 showToast('error', apiErrorText(refusal, t, 'svc.actionFailed'));
@@ -428,6 +443,7 @@ export function ServiceShell({
             if (note) setActionOutcome(note);
             await new Promise((res) => setTimeout(res, 1500));
             await load();
+            announceComponentsChanged();
         } finally {
             setBusy(false);
         }

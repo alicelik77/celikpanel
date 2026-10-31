@@ -177,9 +177,10 @@ test('scan freshness is measured from when the page received the scan, not from 
   assert.match(fn[0], /!Number\.isFinite\(scannedAt\)\) return null/);
   assert.doesNotMatch(fn[0], /scannedAt > now/, 'a stamp later than the browser clock is rejected again');
   assert.doesNotMatch(dashboard, /scannedAt > now/);
-  // Both places that learn of a scan record when they did, with the age the
-  // server reported.
-  assert.equal((dashboard.match(/setServiceScan\(\{ scannedAt: snapshot\.scannedAt, scanAgeSeconds: snapshot\.scanAgeSeconds, observedAt \}\)/g) || []).length, 2);
+  // The three places that learn of a scan record when they did, with the age
+  // the server reported: the first read, the operator's check and the quiet
+  // re-read after a component changed elsewhere (alpha.114).
+  assert.equal((dashboard.match(/setServiceScan\(\{ scannedAt: snapshot\.scannedAt, scanAgeSeconds: snapshot\.scanAgeSeconds, observedAt \}\)/g) || []).length, 3);
   assert.doesNotMatch(dashboard, /setServiceScannedAt/);
   assert.match(dashboard, /const SCAN_WINDOW_SECONDS = 300;/);
 });

@@ -15,7 +15,7 @@ import { RotateCw } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Button, Dialog, KeepWords, RemoteGate, SudoNote } from './ui';
-import { useRemote } from '../lib/remote';
+import { invalidate, useRemote } from '../lib/remote';
 import { LifeLine, type Tone } from './LifeLine';
 
 export interface RestartNeeds {
@@ -96,6 +96,7 @@ function RestartFacts({ value, onChanged }: { value: RestartNeeds; onChanged: ()
             }
             if (res.ok) {
                 setResult({ tone: 'ok', text: t('life.restarts.done', { unit }) });
+                invalidate('components');
             } else {
                 const raw = await res.text();
                 let reason = raw.slice(0, 200);

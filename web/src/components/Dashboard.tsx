@@ -22,7 +22,7 @@ import { MyPlanCard } from './MyPlanCard';
 import { showToast } from './Toast';
 import { FirewallNoSSHAcknowledgement, readFirewallSSHReason } from './FirewallSSHNotice';
 import { apiErrorText, readApiError } from '../lib/apiError';
-import { countText, decodeList, lastKnown, mapRemote, useRemote, type Observed, type Remote } from '../lib/remote';
+import { countText, decodeList, invalidate, lastKnown, mapRemote, readQuietly, useInvalidation, useRemote, type Observed, type Remote } from '../lib/remote';
 import { decodeFirewallStatus, useFirewallStatus, type FirewallStatus } from '../lib/firewall';
 import { isServiceRunning } from '../lib/serviceStatus';
 import { USERS_URL, decodeUsers } from '../lib/accounts';
@@ -462,6 +462,29 @@ function AdminDashboard() {
         };
     }, [scanAttempt]);
 
+    // A component installed, removed or started anywhere else (an install begun
+    // from a card here, the setup, the components page) reaches these cards
+    // without a refresh. A quiet read of the stored records: the figures on
+    // screen stay until the answer replaces them, and an unreadable answer
+    // leaves them as they were. It only reads.
+    // Başka yerde kurulan, kaldırılan ya da başlatılan bileşen bu kartlara
+    // yenilemesiz ulaşır. Kayıtlı kayıtların sessiz okuması; yalnız okur.
+    useInvalidation(['components'], () => {
+        void readQuietly('/api/v1/managed-services')
+            .then((value) => {
+                const snapshot = value === null ? null : decodeDashboardServices(value);
+                if (!snapshot) return;
+                publishComponentCensus(snapshot.services);
+                setServices(snapshot.services);
+                setMailProfiles(snapshot.profiles);
+                setBundles(snapshot.bundles);
+                const observedAt = Date.now();
+                setServiceScan({ scannedAt: snapshot.scannedAt, scanAgeSeconds: snapshot.scanAgeSeconds, observedAt });
+                setFreshnessNow(observedAt);
+                setScanRead('known');
+            });
+    });
+
     useEffect(() => {
         let mounted = true;
         const refresh = async () => {
@@ -765,7 +788,9 @@ function AdminDashboard() {
                 return;
             }
             setFwChanged({ value: changed, observedAt: Date.now() });
-            void firewall.retry();
+            // The firewall read here is among the addresses the name covers;
+            // every other screen that shows it reads again too.
+            invalidate('components');
             setFirewallConfirmationOpen(false);
             showToast('success', t('firewall.onDone'));
         } catch {

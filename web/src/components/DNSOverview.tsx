@@ -4,7 +4,7 @@ import type { TranslationKey } from '../i18n/en';
 import { Link } from '../router';
 import { apiErrorText, readApiError } from '../lib/apiError';
 import { useLostAnswer } from '../lib/lostAnswer';
-import { readRemote, useRemote, type Remote, type RemoteHandle } from '../lib/remote';
+import { invalidate, readRemote, useRemote, type Remote, type RemoteHandle } from '../lib/remote';
 import {
     DNS_OVERVIEW_URL,
     decodeDNSOverview,
@@ -321,13 +321,15 @@ function MailCard({ value, t, rereadOverview }: { value: Overview; t: T; rereadO
             if (!res.ok) {
                 const refusal = await readApiError(res);
                 // Saved in the list, not yet published: a known state of its own.
-                if (refusal.code === 'DNS_PUBLICATION_FAILED') { setMove({ step: 'saved' }); void rereadOverview(); return; }
+                if (refusal.code === 'DNS_PUBLICATION_FAILED') { setMove({ step: 'saved' }); invalidate('dns'); return; }
                 setMove({ step: 'problem', text: t('dnsov.mail.refused', { reason: apiErrorText(refusal, i18n.t, 'common.error') }) });
                 return;
             }
             answer.settle();
             setMove({ step: 'done' });
-            void rereadOverview();
+            // The record list of the zone and the overview read again.
+            // Bölgenin kayıt listesi ve özet yeniden okunur.
+            invalidate('dns');
         } finally {
             inFlight.current = false;
         }

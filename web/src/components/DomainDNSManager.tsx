@@ -7,7 +7,7 @@ import { dnsStateExplanation, useHostingCapabilities } from '../lib/hostingCapab
 import { BlockingProblems } from './BlockingProblems';
 import { apiErrorText, readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
 import { useNavigate } from '../router';
-import { countText, decodeListIn, lastKnown, mapRemote, useRemote, type Remote } from '../lib/remote';
+import { countText, decodeListIn, invalidate, lastKnown, mapRemote, useRemote, type Remote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
 import type { TranslationKey } from '../i18n/en';
 
@@ -228,8 +228,11 @@ export function DomainDNSManager({
             setRefusal(null);
             showToast('success', t(created ? 'dns.zoneCreated' : 'dns.zonePublished'));
             answer.settle();
-            await zone.retry();
-            await records.retry();
+            // The zone and its records, the DNS overview, the navigation's
+            // counter and the dashboard read again wherever they are shown.
+            // Bölge ve kayıtları, DNS özeti, gezinti sayacı ve pano nerede
+            // gösteriliyorsa yeniden okunur.
+            invalidate('dns', 'domains');
         } finally {
             setPublishing(false);
         }
@@ -271,7 +274,7 @@ export function DomainDNSManager({
             answer.settle();
             setShowAddForm(false);
             setNewContent('');
-            await records.retry();
+            invalidate('dns');
         } finally {
             setMutatingRecord(false);
         }
@@ -291,7 +294,7 @@ export function DomainDNSManager({
             setRefusal(null);
             showToast('success', t('dns.recordDeleted'));
             answer.settle();
-            await records.retry();
+            invalidate('dns');
         } finally {
             setMutatingRecord(false);
         }
@@ -647,7 +650,7 @@ function DNSSECSection({ domainId, readOnly = false }: { domainId: number; domai
             }
             showToast('success', t('dnssec.signed'));
             answer.settle();
-            await signing.retry();
+            invalidate('dns');
         } finally {
             setBusy(false);
         }

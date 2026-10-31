@@ -4,7 +4,7 @@ import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { apiErrorText, readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
 import type { TranslationKey } from '../i18n/en';
-import { useRemote, type Remote } from '../lib/remote';
+import { invalidate, useRemote, type Remote } from '../lib/remote';
 import { Button, Checking, CouldNotCheck, Dialog, ErrorBanner, KnownEmpty, RemoteGate, UsageBar, inputClass } from './ui';
 import { MailAuthPanel } from './MailAuthPanel';
 import { MailSettingsPanel } from './MailSettingsPanel';
@@ -125,11 +125,13 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
     // After a change of this screen the list it changed is read again, and
     // with the mailboxes their usage.
     // Bu ekranın bir değişikliğinden sonra değiştirdiği liste yeniden okunur.
-    const reloadAccounts = () => {
-        void accountsRead.retry();
-        void quotaRead.retry();
-    };
-    const reloadForwardings = () => void forwardingsRead.retry();
+    // The change is named, not the list: the mailboxes, the forwarders, the
+    // usage, the dashboard's counter and the plan's usage all read again
+    // wherever they are shown (owner rule 2026-10-31).
+    // Değişiklik adlandırılır: posta kutuları, yönlendirmeler, kullanım, pano
+    // sayacı ve paket kullanımı nerede gösteriliyorsa yeniden okunur.
+    const reloadAccounts = () => { invalidate('mail'); };
+    const reloadForwardings = () => { invalidate('mail'); };
 
     // A refused change stays above the list with its fix until the next one
     // succeeds (owner feedback 2026-10-31).

@@ -21,6 +21,7 @@ import { useAuth } from '../auth/AuthContext';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { Button, EmptyState, ErrorBanner, ResultUnknown, Spinner, StatusDot, inputClass } from './ui';
 import { useLostAnswer } from '../lib/lostAnswer';
+import { invalidate } from '../lib/remote';
 import { OnceOnlyNotice, resultNotKept } from './OnceOnlyNotice';
 import { PageHeader } from './PageHeader';
 import { HelpButton } from './HelpDrawer';
@@ -294,6 +295,10 @@ export function VPNPage() {
                 body: '{}',
             });
             showToast('success', t('vpn.setupDone'));
+            // The VPN service and its firewall rule changed what the component
+            // records and the firewall page show.
+            // VPN hizmeti ve güvenlik duvarı kuralı bileşen kayıtlarını değiştirdi.
+            invalidate('components');
             await load();
         } catch (error) {
             showToast('error', apiErrorText(asApiError(error), t));

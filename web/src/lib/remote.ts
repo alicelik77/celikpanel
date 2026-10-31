@@ -282,6 +282,135 @@ export function refreshRemote(url: string): void {
     if (entry) void read(url, entry, true);
 }
 
+// --- Reads named by what they show (alpha.114) ------------------------------
+//
+// The owner's rule of 31 Oct 2026: no change may need a page refresh. A change
+// names what it changed, and every read on screen that shows that thing reads
+// again: the list it was made on, the counters in the navigation, the
+// dashboard cards, the DNS overview. The screen that made the change does not
+// have to know who else shows its data.
+//
+// `invalidate` only reads. It never sends a change, so a poll or a retry that
+// calls it can never repeat one. A read with nobody on screen is not asked.
+//
+// Sahibin 31 Eki 2026 kuralı: hiçbir değişiklik sayfa yenilemesi istemez. Bir
+// değişiklik neyi değiştirdiğini adlandırır; ekranda onu gösteren her okuma
+// yeniden okur. `invalidate` yalnız okur, hiçbir değişikliği tekrarlamaz.
+export type ReadKey =
+    | 'domains'
+    | 'dns'
+    | 'components'
+    | 'mail'
+    | 'databases'
+    | 'users'
+    | 'plans'
+    | 'team';
+
+// The addresses each name covers. A domain is also counted on the dashboard,
+// in the plan usage and in the DNS overview; a mailbox in the dashboard and in
+// the plan usage; and so on. Addresses only: a screen that reads with its own
+// fetch subscribes with `useInvalidation`.
+// Her adın kapsadığı adresler.
+const SUBSCRIPTION_USAGE = /^\/api\/v1\/(subscriptions|my\/subscription)(\?|$)/;
+const DASHBOARD = /^\/api\/v1\/dashboard(\?|$)/;
+const DNS_OVERVIEW = /^\/api\/v1\/dns\/overview(\?|$)/;
+const READ_KEY_ADDRESSES: Record<ReadKey, readonly RegExp[]> = {
+    domains: [
+        /^\/api\/v1\/domains(\?|$)/,
+        /^\/api\/v1\/dns\/infrastructure-zones(\?|$)/,
+        DNS_OVERVIEW, DASHBOARD, SUBSCRIPTION_USAGE,
+    ],
+    dns: [
+        /^\/api\/v1\/dns\/infrastructure-zones/,
+        /^\/api\/v1\/domains\/\d+\/(dns|dnssec|connection|mail\/auth|mail\/health)(\/|\?|$)/,
+        DNS_OVERVIEW,
+    ],
+    components: [
+        /^\/api\/v1\/managed-services(\?|$)/,
+        /^\/api\/v1\/hosting\/capabilities(\?|$)/,
+        /^\/api\/v1\/service\//,
+        /^\/api\/v1\/firewall(\?|$)/,
+        // The vendor repository, its lane and confinement, and the versions the
+        // owner offers sit beside the component they belong to.
+        // Üretici deposu, hattı, kapsaması ve sunulan sürümler bileşenin yanındadır.
+        /^\/api\/v1\/repo(\/|\?|$)/,
+        /^\/api\/v1\/offered-versions(\?|$)/,
+        DNS_OVERVIEW, DASHBOARD,
+    ],
+    mail: [
+        /^\/api\/v1\/domains\/\d+\/mail\//,
+        /^\/api\/v1\/dovecot\/stats(\?|$)/,
+        DNS_OVERVIEW, DASHBOARD, SUBSCRIPTION_USAGE,
+    ],
+    databases: [
+        /^\/api\/v1\/database-servers(\/|\?|$)/,
+        /^\/api\/v1\/domains\/\d+\/databases(\?|$)/,
+        DASHBOARD, SUBSCRIPTION_USAGE,
+    ],
+    users: [/^\/api\/v1\/users(\/|\?|$)/, /^\/api\/v1\/invitations(\?|$)/, SUBSCRIPTION_USAGE],
+    plans: [/^\/api\/v1\/plans(\/|\?|$)/, /^\/api\/v1\/users(\?|$)/, SUBSCRIPTION_USAGE],
+    team: [/^\/api\/v1\/team-members/, /^\/api\/v1\/invitations(\?|$)/],
+};
+
+/** The read addresses a name covers; exported for tests and audits. */
+export function readKeyCovers(key: ReadKey, url: string): boolean {
+    return READ_KEY_ADDRESSES[key].some((pattern) => pattern.test(url));
+}
+
+// The answer of `url` as the server sent it, or `null` when the read failed,
+// was refused or could not be understood: "unknown", so a caller that keeps its
+// own copy leaves what is on screen as it is. For a screen that is told by
+// `useInvalidation` that its data changed; it only reads.
+// `url`nin sunucunun gönderdiği yanıtı; okunamadıysa `null` ("bilinmiyor").
+export async function readQuietly(url: string): Promise<unknown | null> {
+    const read = await readRemote<unknown>(url, (raw) => raw);
+    return read.state === 'known' ? read.value : null;
+}
+
+const invalidationListeners = new Map<ReadKey, Set<() => void>>();
+
+// invalidate reads again, for whoever is showing it, every mounted read that a
+// name covers, and tells the screens that subscribed to a name with their own
+// read. It returns the addresses it asked again (for tests).
+// invalidate, adın kapsadığı ve ekranda okunan her adresi yeniden okur.
+export function invalidate(...keys: ReadKey[]): string[] {
+    const asked: string[] = [];
+    for (const [url, entry] of [...entries]) {
+        if (keys.some((key) => readKeyCovers(key, url))) {
+            asked.push(url);
+            void read(url, entry, true);
+        }
+    }
+    const told = new Set<() => void>();
+    for (const key of keys) {
+        for (const listener of invalidationListeners.get(key) ?? []) told.add(listener);
+    }
+    for (const listener of told) listener();
+    return asked;
+}
+
+// useInvalidation lets a screen that reads with its own request hear a name:
+// `reread` must only read.
+// useInvalidation, kendi isteğiyle okuyan ekranın bir adı duymasını sağlar;
+// `reread` yalnız okumalıdır.
+export function useInvalidation(keys: readonly ReadKey[], reread: () => void): void {
+    const latest = useRef(reread);
+    latest.current = reread;
+    const signature = keys.join(',');
+    useEffect(() => {
+        const listener = () => latest.current();
+        const names = signature.split(',') as ReadKey[];
+        for (const key of names) {
+            let set = invalidationListeners.get(key);
+            if (!set) { set = new Set(); invalidationListeners.set(key, set); }
+            set.add(listener);
+        }
+        return () => {
+            for (const key of names) invalidationListeners.get(key)?.delete(listener);
+        };
+    }, [signature]);
+}
+
 // useRefreshEvery reads `handle` again every `ms` while the screen is mounted.
 // It only reads. It does not ask while a read is still on its way, so a slow
 // server is never asked faster than it answers and an answer is never thrown

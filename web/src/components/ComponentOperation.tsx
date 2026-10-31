@@ -13,7 +13,7 @@ import { createPortal } from 'react-dom';
 import { useI18n } from '../i18n';
 import { readApiError, type ApiError } from '../lib/apiError';
 import { scanRefusedBySetup } from '../lib/panelHandover';
-import { refreshRemote } from '../lib/remote';
+import { invalidate } from '../lib/remote';
 import { useNavigationBlocker } from '../router';
 import { showToast } from './Toast';
 
@@ -483,7 +483,7 @@ export function decodeManagedMailProfiles(
 // taramayi gosteriyordu. Islem basina bir kez, izleyicinin bitisi taze taramayla
 // dogruladigi noktada cagrilir; yalniz okur.
 function refreshShownComponentRecords() {
-    refreshRemote('/api/v1/managed-services');
+    invalidate('components');
 }
 
 // A terminal operation may unlock the page only after every field consumed by

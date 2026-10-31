@@ -5,6 +5,7 @@ import { ServiceShell } from './ServiceShell';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { api } from '../lib/api';
+import { invalidate } from '../lib/remote';
 import { Button, Checking, CouldNotCheck } from './ui';
 import { useComponentConfigFiles } from '../lib/managedServices';
 
@@ -62,6 +63,7 @@ export function PowerDNSManagement({ onBack }: PowerDNSManagementProps) {
             const res = await fetch('/api/v1/pdns/enable', { method: 'POST' });
             if (!res.ok) throw new Error();
             showToast('success', t('pdns.repairDone'));
+            invalidate('dns', 'components');
         } catch {
             showToast('error', t('pdns.repairFailed'));
         } finally {

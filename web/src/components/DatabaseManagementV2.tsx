@@ -9,7 +9,7 @@ import { useAuth } from '../auth/AuthContext';
 import { Button, ErrorBanner, KnownEmpty, RemoteGate, ResultUnknown, StatusDot } from './ui';
 import { PageHeader } from './PageHeader';
 import { DatabaseAccountStrip } from './DatabaseAccountStrip';
-import { decodeList, lastKnown, useRemote, type Remote } from '../lib/remote';
+import { decodeList, invalidate, lastKnown, useRemote, type Remote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
 import { OnceOnlyNotice, ShownOnceSecret } from './OnceOnlyNotice';
 import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
@@ -141,11 +141,11 @@ export function DatabaseManagementV2() {
             if (!res.ok) { refuse(await readApiError(res), 'databases.deleteDbFailed'); return; }
             setRefusal(null);
             showToast('success', t('databases.dbDeleted'));
-            void databases.retry();
+            invalidate('databases');
         } catch {
             // No answer: whether it was deleted is not known; the list is read again.
             showToast('error', t('common.resultUnknown'));
-            void databases.retry();
+            invalidate('databases');
         }
     };
 
@@ -156,10 +156,10 @@ export function DatabaseManagementV2() {
             if (!res.ok) { refuse(await readApiError(res), 'databases.deleteUserFailed'); return; }
             setRefusal(null);
             showToast('success', t('databases.userDeleted'));
-            void users.retry();
+            invalidate('databases');
         } catch {
             showToast('error', t('common.resultUnknown'));
-            void users.retry();
+            invalidate('databases');
         }
     };
 
@@ -421,8 +421,7 @@ export function DatabaseManagementV2() {
                     onPasswordNotShown={(name, user) => {
                         setPasswordNotShown({ name, user });
                         setShowAddDatabase(false);
-                        void databases.retry();
-                        void users.retry();
+                        invalidate('databases');
                     }}
                     onSecret={setSecret}
                     serverId={selectedServer.id}
@@ -431,8 +430,7 @@ export function DatabaseManagementV2() {
                     onClose={() => setShowAddDatabase(false)}
                     onSuccess={() => {
                         setShowAddDatabase(false);
-                        void databases.retry();
-                        void users.retry();
+                        invalidate('databases');
                     }}
                 />
             )}
@@ -444,7 +442,7 @@ export function DatabaseManagementV2() {
                     onClose={() => setShowAddUser(false)}
                     onSuccess={() => {
                         setShowAddUser(false);
-                        void users.retry();
+                        invalidate('databases');
                     }}
                 />
             )}

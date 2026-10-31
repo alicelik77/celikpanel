@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from '../router';
 import { Network, Server, Check, AlertTriangle, Circle, Loader2 } from 'lucide-react';
-import { readRemote } from '../lib/remote';
+import { invalidate, readRemote } from '../lib/remote';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { dnsEngineText } from '../i18n/dnsEngine';
@@ -462,6 +462,9 @@ function DNSInfrastructureSettings({
             if (!setupResponse.ok) {
                 const error = await readApiError(setupResponse);
                 if (error.code === 'DNS_PUBLICATION_FAILED') {
+                    // The setup was saved; only its publication is pending.
+                    // Kurulum kaydedildi; yalnız yayımlama bekliyor.
+                    invalidate('dns');
                     const reloaded = await load();
                     setNeedsClusterRetry(true);
                     setActiveStep(3);
@@ -492,6 +495,11 @@ function DNSInfrastructureSettings({
                 }
             }
             setNeedsClusterRetry(false);
+            // The nameservers the zones publish changed; a staged identity is
+            // not applied yet and changes nothing shown elsewhere.
+            // Bölgelerin yayımladığı ad sunucuları değişti; hazırlanan kimlik
+            // henüz uygulanmadı.
+            if (!stagingOnly) invalidate('dns');
             if (await load()) {
                 setActiveStep(3);
                 if (stagingOnly) {

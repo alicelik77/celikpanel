@@ -10,7 +10,7 @@ import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { CouldNotCheck, Checking } from './ui';
 import { apiErrorText, readApiError } from '../lib/apiError';
-import { useRemote } from '../lib/remote';
+import { invalidate, useRemote } from '../lib/remote';
 import { useSupportTable } from '../lib/supportTable';
 import { SupportBadge } from './SupportMark';
 import { decodeOfferedVersions, offeredLine, OFFERED_VERSIONS_URL, type OfferedComponent } from '../lib/offeredVersions';
@@ -63,6 +63,10 @@ export function OfferedVersionsCard({ component, installed }: { component: Offer
             setFailure(t('life.offer.lost'));
         }
         await handle.retry();
+        // The other places that show the offered versions (the version pickers)
+        // read again too.
+        // Sunulan sürümleri gösteren diğer yerler (sürüm seçiciler) de yeniden okur.
+        invalidate('components');
         setPending(null);
     };
 

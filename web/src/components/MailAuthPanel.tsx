@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ShieldCheck, KeyRound, FileCheck2, Copy, Plus, Info, RefreshCw, type LucideIcon } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Button, ErrorBanner, RemoteGate, ResultUnknown, StatusDot, inputClass } from './ui';
-import { useRefreshEvery, useRemote } from '../lib/remote';
+import { invalidate, useRefreshEvery, useRemote } from '../lib/remote';
 import { useLostAnswer, type LostAnswerHandle } from '../lib/lostAnswer';
 import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
 
@@ -123,6 +123,18 @@ export function MailAuthPanel({ domainId, readOnly = false }: MailAuthPanelProps
     const running = auth.remote.state === 'known' &&
         (auth.remote.value.automatic?.state === 'pending' || auth.remote.value.automatic?.state === 'waiting');
     useRefreshEvery(auth, 10_000, running);
+    // When the automatic setup ends it has published its records: the zone's
+    // record list and the DNS overview read again. A read only.
+    // Otomatik kurulum bitince kayıtlarını yayımlamıştır; bölge listesi ve DNS
+    // özeti yeniden okunur. Yalnız okur.
+    const wasRunning = useRef(false);
+    const knownNow = auth.remote.state === 'known';
+    useEffect(() => {
+        // Only a known answer decides: a failed poll is not the end of the setup.
+        if (!knownNow) return;
+        if (wasRunning.current && !running) invalidate('mail', 'dns');
+        wasRunning.current = running;
+    }, [running, knownNow]);
 
     // "Try again" queues the automatic setup once; while it is pending the
     // server answers that it is already running and starts nothing.
@@ -139,7 +151,7 @@ export function MailAuthPanel({ domainId, readOnly = false }: MailAuthPanelProps
             }
             setFailure(null); showToast('success', t('mailauth.auto.queued'));
             answer.settle();
-            await auth.retry();
+            invalidate('mail');
         } finally {
             setBusy(null);
         }
@@ -175,7 +187,7 @@ export function MailAuthPanel({ domainId, readOnly = false }: MailAuthPanelProps
                 setFailure(null); showToast('success', t('mailauth.keyGenerated'));
             }
             answer.settle();
-            await auth.retry();
+            invalidate('mail');
         } finally {
             setBusy(null);
         }
@@ -214,7 +226,10 @@ export function MailAuthPanel({ domainId, readOnly = false }: MailAuthPanelProps
             setFailure(null);
             showToast('success', t('mailauth.applied'));
             answer.settle();
-            await auth.retry();
+            // The records now in the zone: the DNS list and the overview read
+            // again as well as the mail status.
+            // Bölgedeki kayıtlar: DNS listesi ve özet de yeniden okunur.
+            invalidate('mail', 'dns');
         } finally {
             setBusy(null);
         }
