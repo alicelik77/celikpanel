@@ -144,6 +144,10 @@ const screenPartBudgets = {
   // with at least 25% headroom from its Turkish file (11.88 / 3.47 KiB), and
   // room for the next screens' problems.
   problems: kib(17, 6),
+  // 2026-10-31 (alpha.114): what refused changes say, the database forms and a
+  // password shown once (refusals). A new part, set with at least 25% headroom
+  // from its Turkish file: 4.14 / 1.47 KiB.
+  refusals: kib(6, 2),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

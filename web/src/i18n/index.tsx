@@ -85,7 +85,7 @@ async function loadShell(locale: Locale): Promise<Catalog> {
 // The screen part is itself stored in several parts per locale, one directory
 // per group of screens under ./screens (setup, sites, siteConfig,
 // dnsCertificates, components, componentPages, mailDatabases, security,
-// dashboard, settings, errors, lifecycle; v0.1.0-alpha.97, componentPages since alpha.106, lifecycle since alpha.107, databaseClusters and vendorLanes since alpha.108, webmailAddress since alpha.110, setupWizard since alpha.111, setupRegistrar since alpha.113, setupJoin and setupLink since alpha.114, setupInspection with the automatic deletion check, dnsOverview since alpha.115, nginxDefaultHttps since alpha.113's nginx fixes, dnsPublication since the held-Agent reason, problems with the shared problem pattern). That is a size split only - each part has its own budget
+// dashboard, settings, errors, lifecycle; v0.1.0-alpha.97, componentPages since alpha.106, lifecycle since alpha.107, databaseClusters and vendorLanes since alpha.108, webmailAddress since alpha.110, setupWizard since alpha.111, setupRegistrar since alpha.113, setupJoin and setupLink since alpha.114, setupInspection with the automatic deletion check, dnsOverview since alpha.115, nginxDefaultHttps since alpha.113's nginx fixes, dnsPublication since the held-Agent reason, problems with the shared problem pattern, refusals with what refused changes say). That is a size split only - each part has its own budget
 // in web/scripts/check-bundle-budget.mjs - so every part is fetched in parallel
 // and merged before `screens` becomes true. No screen can render with only
 // some of them, and a part that fails fails the screen copy as a whole.
@@ -125,6 +125,7 @@ const screenParts: Record<Locale, Array<() => Promise<Record<string, unknown>>>>
         () => import('./screens/nginxDefaultHttps/en'),
         () => import('./screens/dnsPublication/en'),
         () => import('./screens/problems/en'),
+        () => import('./screens/refusals/en'),
     ],
     tr: [
         () => import('./screens/setup/tr'),
@@ -151,6 +152,7 @@ const screenParts: Record<Locale, Array<() => Promise<Record<string, unknown>>>>
         () => import('./screens/nginxDefaultHttps/tr'),
         () => import('./screens/dnsPublication/tr'),
         () => import('./screens/problems/tr'),
+        () => import('./screens/refusals/tr'),
     ],
 };
 

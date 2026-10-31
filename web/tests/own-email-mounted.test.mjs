@@ -317,8 +317,9 @@ test('The panel certificate\'s contact refusal leads to My account, in both lang
   assert.ok(catalogue.tr['setup.blocker.contact'].includes('Hesabım’da (sağ üst menü)'));
   // A refusal that carries an action stays on the panel certificate card as a banner.
   const settings = source('components/Settings.tsx');
-  assert.ok(settings.includes('if (problem.code && problem.action) setRefusal(problem);'));
-  assert.ok(settings.includes('<ErrorBanner className="mb-4" error={refusal} />'));
+  // Since 2026-10-31 every definitive refusal stays on the card, said with its own sentence.
+  assert.ok(settings.includes('                    setRefusal(problem);'));
+  assert.ok(settings.includes('<ErrorBanner className="mb-4" error={refusal} sentence="panelCert.failed" />'));
 });
 
 test('A lost answer on the email change is asked again once under the same identity (D-029)', async () => {

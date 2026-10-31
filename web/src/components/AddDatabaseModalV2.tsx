@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { Database, Key } from 'lucide-react';
 import { showToast } from './Toast';
 import { Button, Dialog, ResultUnknown } from './ui';
-import { apiErrorText, readApiError } from '../lib/apiError';
+import { readApiError, refusalText } from '../lib/apiError';
 import { useI18n } from '../i18n';
 import type { LostAnswerHandle } from '../lib/lostAnswer';
 import { resultNotKept } from './OnceOnlyNotice';
+import { generatedPassword, type CreatedSecret } from '../lib/generatedPassword';
 
 interface AddDatabaseModalV2Props {
     serverId: number;
@@ -17,9 +18,11 @@ interface AddDatabaseModalV2Props {
     answer: LostAnswerHandle;
     /** The database was made; the answer with its new user's password is not kept. */
     onPasswordNotShown: (name: string, user: string) => void;
+    /** A password the server made up, answered once: the page shows it until closed. */
+    onSecret: (secret: CreatedSecret) => void;
 }
 
-export function AddDatabaseModalV2({ serverId, serverName, onClose, onSuccess, existingUsers, answer, onPasswordNotShown }: AddDatabaseModalV2Props) {
+export function AddDatabaseModalV2({ serverId, serverName, onClose, onSuccess, existingUsers, answer, onPasswordNotShown, onSecret }: AddDatabaseModalV2Props) {
     const { t } = useI18n();
     const [databaseName, setDatabaseName] = useState('');
     const [domainId, setDomainId] = useState<number | null>(null);
@@ -39,15 +42,12 @@ export function AddDatabaseModalV2({ serverId, serverName, onClose, onSuccess, e
             .catch(err => console.error('Failed to load domains:', err));
     }, []);
 
+    // A password from the browser's cryptographic generator, shown in the
+    // field; copying is offered, never logged.
     const generatePassword = () => {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-        let password = '';
-        for (let i = 0; i < 16; i++) {
-            password += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
+        const password = generatedPassword();
         setNewPassword(password);
-        navigator.clipboard.writeText(password);
-        showToast('success', 'Password generated and copied to clipboard');
+        void navigator.clipboard?.writeText(password).then(() => showToast('success', t('dbm.generatedCopied')), () => showToast('info', t('dbm.generated')));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -67,14 +67,14 @@ export function AddDatabaseModalV2({ serverId, serverName, onClose, onSuccess, e
 
             if (userMode === 'existing') {
                 if (!selectedUserId) {
-                    showToast('error', 'Please select a user');
+                    showToast('error', t('dbm.selectUser'));
                     setLoading(false);
                     return;
                 }
                 body.user_id = selectedUserId;
             } else {
                 if (!newUsername || !newPassword) {
-                    showToast('error', 'Username and password are required');
+                    showToast('error', t('dbm.userPasswordRequired'));
                     setLoading(false);
                     return;
                 }
@@ -127,23 +127,24 @@ export function AddDatabaseModalV2({ serverId, serverName, onClose, onSuccess, e
                     onPasswordNotShown(name, userMode === 'new' ? newUsername : '');
                     return;
                 }
-                throw new Error(apiErrorText(problem, t, 'common.error'));
+                throw new Error(refusalText(problem, t, 'dbm.createFailed'));
             }
 
             const data = await res.json();
-            showToast('success', `Database created: ${data.name}`);
+            showToast('success', t('dbm.databaseCreated', { name: String(data.name ?? name) }));
 
-            if (userMode === 'new') {
-                // The server answers a password only when it made one up; the
-                // one typed here is not sent back.
-                // Sunucu parolayı yalnız kendisi ürettiğinde yanıtlar.
-                showToast('info', typeof data.password === 'string' ? `User: ${data.user}, Password: ${data.password}` : `User: ${data.user}`);
+            // The server answers a password only when it made one up; the one
+            // typed here is not sent back. It is shown on the page until closed
+            // (owner feedback 2026-10-31: it was a toast that vanished).
+            // Sunucu parolayı yalnız kendisi ürettiğinde yanıtlar; sayfada kapatılana dek kalır.
+            if (userMode === 'new' && typeof data.password === 'string') {
+                onSecret({ user: String(data.user ?? ''), password: data.password, database: String(data.name ?? name) });
             }
 
             onSuccess();
             onClose();
-        } catch (err: any) {
-            showToast('error', err.message);
+        } catch (err) {
+            showToast('error', err instanceof Error && err.message ? err.message : t('dbm.createFailed'));
         } finally {
             setLoading(false);
         }
@@ -153,18 +154,18 @@ export function AddDatabaseModalV2({ serverId, serverName, onClose, onSuccess, e
         <Dialog
             id="add-database"
             icon={Database}
-            title="Add Database"
-            description={`Server: ${serverName}`}
+            title={t('dbm.addDatabase')}
+            description={t('dbm.server', { name: serverName })}
             busy={loading}
             onDismiss={onClose}
             onSubmit={handleSubmit}
             actions={
                 <>
                     <Button type="button" variant="secondary" onClick={onClose}>
-                        Cancel
+                        {t('common.cancel')}
                     </Button>
                     <Button type="submit" variant="primary" disabled={loading || answer.holding}>
-                        {loading ? 'Creating...' : 'Create Database'}
+                        {loading ? t('dbm.creating') : t('dbm.createDatabase')}
                     </Button>
                 </>
             }
@@ -174,7 +175,7 @@ export function AddDatabaseModalV2({ serverId, serverName, onClose, onSuccess, e
                 {/* Database Name */}
                 <div>
                     <label className="block text-sm font-medium text-fg-muted mb-2">
-                        Database Name
+                        {t('dbm.databaseName')}
                     </label>
                     <input
                         type="text"
@@ -184,34 +185,34 @@ export function AddDatabaseModalV2({ serverId, serverName, onClose, onSuccess, e
                         placeholder="myapp_db"
                         required
                         pattern="[a-zA-Z0-9_]+"
-                        title="Only letters, numbers, and underscores"
+                        title={t('dbm.namePattern')}
                     />
                 </div>
 
                 {/* Related Site (Optional) */}
                 <div>
                     <label className="block text-sm font-medium text-fg-muted mb-2">
-                        Related Site <span className="text-fg-subtle text-xs">(Optional)</span>
+                        {t('dbm.relatedSite')} <span className="text-fg-subtle text-xs">{t('dbm.optional')}</span>
                     </label>
                     <select
                         value={domainId || ''}
                         onChange={(e) => setDomainId(e.target.value ? Number(e.target.value) : null)}
                         className="w-full bg-surface-2 border border-border rounded-lg px-4 py-2 text-fg focus:border-primary"
                     >
-                        <option value="">No site (standalone database)</option>
+                        <option value="">{t('dbm.noSite')}</option>
                         {domains.map(domain => (
                             <option key={domain.id} value={domain.id}>{domain.domain_name}</option>
                         ))}
                     </select>
                     <p className="text-xs text-fg-subtle mt-1">
-                        💡 If site is deleted, this database will also be deleted
+                        {t('dbm.siteDeleteNote')}
                     </p>
                 </div>
 
                 {/* User Selection */}
                 <div>
                     <label className="block text-sm font-medium text-fg-muted mb-2">
-                        Database User
+                        {t('dbm.databaseUser')}
                     </label>
                     <div className="flex gap-2 mb-3">
                         <button
@@ -222,7 +223,7 @@ export function AddDatabaseModalV2({ serverId, serverName, onClose, onSuccess, e
                                 : 'bg-surface-2 text-fg-muted hover:bg-surface-3'
                                 }`}
                         >
-                            Create New User
+                            {t('dbm.newUser')}
                         </button>
                         <button
                             type="button"
@@ -233,7 +234,7 @@ export function AddDatabaseModalV2({ serverId, serverName, onClose, onSuccess, e
                                 }`}
                             disabled={existingUsers.length === 0}
                         >
-                            Use Existing User
+                            {t('dbm.existingUser')}
                         </button>
                     </div>
 
@@ -244,7 +245,7 @@ export function AddDatabaseModalV2({ serverId, serverName, onClose, onSuccess, e
                             className="w-full bg-surface-2 border border-border rounded-lg px-4 py-2 text-fg focus:border-primary"
                             required
                         >
-                            <option value={0}>Select a user...</option>
+                            <option value={0}>{t('dbm.selectUserOption')}</option>
                             {existingUsers.map(user => (
                                 <option key={user.id} value={user.id}>{user.username}</option>
                             ))}
@@ -257,7 +258,7 @@ export function AddDatabaseModalV2({ serverId, serverName, onClose, onSuccess, e
                                     value={newUsername}
                                     onChange={(e) => setNewUsername(e.target.value)}
                                     className="w-full bg-surface-2 border border-border rounded-lg px-4 py-2 text-fg focus:border-primary"
-                                    placeholder="Username"
+                                    placeholder={t('dbm.username')}
                                     required={userMode === 'new'}
                                     pattern="[a-zA-Z0-9_]+"
                                 />
@@ -268,14 +269,15 @@ export function AddDatabaseModalV2({ serverId, serverName, onClose, onSuccess, e
                                     value={newPassword}
                                     onChange={(e) => setNewPassword(e.target.value)}
                                     className="flex-1 bg-surface-2 border border-border rounded-lg px-4 py-2 text-fg focus:border-primary"
-                                    placeholder="Password"
+                                    placeholder={t('dbm.password')}
                                     required={userMode === 'new'}
                                 />
                                 <button
                                     type="button"
                                     onClick={generatePassword}
                                     className="px-4 py-2 bg-surface-3 hover:bg-surface-3 text-fg rounded-lg transition-colors"
-                                    title="Generate password"
+                                    title={t('dbm.generate')}
+                                    aria-label={t('dbm.generate')}
                                 >
                                     <Key className="w-4 h-4" />
                                 </button>
@@ -287,15 +289,15 @@ export function AddDatabaseModalV2({ serverId, serverName, onClose, onSuccess, e
                 {/* Privileges */}
                 <div>
                     <label className="block text-sm font-medium text-fg-muted mb-2">
-                        Privileges
+                        {t('dbm.privileges')}
                     </label>
                     <select
                         value={privileges}
                         onChange={(e) => setPrivileges(e.target.value)}
                         className="w-full bg-surface-2 border border-border rounded-lg px-4 py-2 text-fg focus:border-primary"
                     >
-                        <option value="ALL">ALL (Full Access)</option>
-                        <option value="SELECT">SELECT (Read Only)</option>
+                        <option value="ALL">{t('dbm.privAll')}</option>
+                        <option value="SELECT">{t('dbm.privRead')}</option>
                         <option value="SELECT,INSERT,UPDATE">SELECT, INSERT, UPDATE</option>
                         <option value="SELECT,INSERT,UPDATE,DELETE">SELECT, INSERT, UPDATE, DELETE</option>
                     </select>

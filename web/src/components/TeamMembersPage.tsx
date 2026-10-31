@@ -28,7 +28,7 @@ import {
     type TeamPermissionMode,
     type TeamSubscriptionPermission,
 } from '../lib/api';
-import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
+import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
 import { showToast } from './Toast';
 import { Button, EmptyState, ErrorBanner, Spinner, StatusDot, inputClass } from './ui';
 import { PageHeader } from './PageHeader';
@@ -183,6 +183,7 @@ export function TeamMembersPage() {
         void load();
     }, []);
 
+    const [saveRefusal, setSaveRefusal] = useState<ApiError | null>(null);
     const saveDraft = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (!draft) return;
@@ -224,8 +225,12 @@ export function TeamMembersPage() {
                 showToast('success', t('team.updated'));
             }
             setDraft(null);
+            setSaveRefusal(null);
         } catch (error) {
-            showToast('error', apiErrorText(await normalizeApiError(error), t, 'team.saveFailed'));
+            // The refusal also stays in the editor, beside Save (owner feedback 2026-10-31).
+            const problem = await normalizeApiError(error);
+            setSaveRefusal(problem);
+            showToast('error', refusalText(problem, t, 'team.saveFailed'), refusalToast(problem, t));
         } finally {
             setBusy(null);
         }
@@ -244,7 +249,8 @@ export function TeamMembersPage() {
             setMembers((current) => current.map((item) => item.id === member.id ? updated : item));
             showToast('success', t(status === 'active' ? 'team.activated' : 'team.suspended'));
         } catch (error) {
-            showToast('error', apiErrorText(await normalizeApiError(error), t, 'team.actionFailed'));
+            const problem = await normalizeApiError(error);
+            showToast('error', refusalText(problem, t, 'team.actionFailed'), refusalToast(problem, t));
         } finally {
             setBusy(null);
         }
@@ -259,7 +265,8 @@ export function TeamMembersPage() {
             if (draft?.memberID === member.id) setDraft(null);
             showToast('success', t('team.deleted'));
         } catch (error) {
-            showToast('error', apiErrorText(await normalizeApiError(error), t, 'team.actionFailed'));
+            const problem = await normalizeApiError(error);
+            showToast('error', refusalText(problem, t, 'team.actionFailed'), refusalToast(problem, t));
         } finally {
             setBusy(null);
         }
@@ -296,8 +303,9 @@ export function TeamMembersPage() {
                     subscriptions={subscriptions}
                     domains={domains}
                     saving={busy === 'save'}
+                    refusal={saveRefusal}
                     onChange={setDraft}
-                    onCancel={() => setDraft(null)}
+                    onCancel={() => { setDraft(null); setSaveRefusal(null); }}
                     onSubmit={saveDraft}
                 />
             )}
@@ -470,10 +478,12 @@ function MemberEditor({
     subscriptions,
     domains,
     saving,
+    refusal,
     onChange,
     onCancel,
     onSubmit,
 }: {
+    refusal: ApiError | null;
     draft: MemberDraft;
     subscriptions: TeamMemberSubscriptionScope[];
     domains: TeamMemberDomainScope[];
@@ -602,6 +612,7 @@ function MemberEditor({
                 </section>
             </div>
 
+            <ErrorBanner className='mx-4 mb-3' error={refusal} sentence='team.saveFailed' />
             <div className='flex justify-end gap-2 border-t border-border px-4 py-3'>
                 <Button type='button' icon={X} onClick={onCancel} disabled={saving}>
                     {t('team.cancel')}

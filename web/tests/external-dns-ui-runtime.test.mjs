@@ -24,7 +24,7 @@ export const ErrorBanner=()=>null;
 export const StatusDot=()=>null, HelpButton=()=>null;
 export const Globe=()=>null, Plus=()=>null, Trash2=()=>null, ShieldCheck=()=>null, Copy=()=>null, AlertTriangle=()=>null, RefreshCw=()=>null, Check=()=>null, KeyRound=()=>null, FileCheck2=()=>null, Info=()=>null,Lock=()=>null,Server=()=>null,Network=()=>null;
 export const inputClass='';
-export const readApiError=async r=>({message:'failed'}),apiErrorText=error=>error.message;
+export const readApiError=async r=>({message:'failed'}),apiErrorText=error=>error.message,refusalText=error=>error.message,refusalToast=()=>undefined;
 `);
 // These screens read the server's capabilities through the shared remote-state
 // layer (lib/remote.ts, lib/hostingCapabilities.ts), so they are mounted with

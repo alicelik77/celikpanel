@@ -196,3 +196,32 @@ export function apiErrorActionLabel(e: ApiError, t: T): string {
     const s = t(key);
     return s !== key ? s : t('common.goFix');
 }
+
+// refusalText: what a refused change says on a screen (owner feedback
+// 2026-10-31: "the user must see the problem and understand the fix"). A coded
+// refusal with words of its own says them; otherwise the screen's own sentence
+// keeps the server's reason beside it instead of dropping it; with neither,
+// the screen's sentence alone.
+// refusalText: reddedilen degisikligin ekrandaki cumlesi; sunucunun nedeni
+// atilmaz, ekranin cumlesiyle birlikte soylenir.
+export function refusalText(e: ApiError | null, t: T, sentenceKey: TranslationKey): string {
+    if (!e) return t(sentenceKey);
+    if (e.code) {
+        const coded = apiErrorText(e, t, sentenceKey);
+        if (coded && coded !== e.message) return coded;
+    }
+    const reason = e.message.trim();
+    return reason ? t('problem.failedBecause', { sentence: t(sentenceKey), reason }) : t(sentenceKey);
+}
+
+// What a toast carries beside the sentence: the refusal's fix (its action
+// path, opened with the screen's navigate) and its code under Technical
+// details. Undefined when there is neither.
+// Bildirimin cumle yaninda tasidiklari: duzeltme dugmesi ve kod.
+export function refusalToast(e: ApiError | null, t: T, navigate?: (to: string) => void) {
+    if (!e) return undefined;
+    const label = navigate && e.action ? apiErrorActionLabel(e, t) : '';
+    const action = label && navigate && e.action ? { label, run: () => navigate(e.action!) } : undefined;
+    const details = e.code ? { label: t('problem.details'), text: e.code } : undefined;
+    return action || details ? { action, details } : undefined;
+}

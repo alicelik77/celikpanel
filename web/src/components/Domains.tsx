@@ -4,10 +4,10 @@ import { Globe, Plus, Trash2, ExternalLink, Settings, Lock, HardDrive, Network }
 import { AddDomainModal } from './AddDomainModal';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
-import { Button, CouldNotCheck, KnownEmpty, RemoteGate, SearchInput, StatusDot, UsageBar } from './ui';
+import { Button, CouldNotCheck, ErrorBanner, KnownEmpty, RemoteGate, SearchInput, StatusDot, UsageBar } from './ui';
 import { PageHeader } from './PageHeader';
 import { BlockingProblems } from './BlockingProblems';
-import { apiErrorText, readApiError } from '../lib/apiError';
+import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
 import { domainDeletionDetailKey, domainDeletionReasonKey, readDomainDeletionDKIM, readDomainDeletionOutcome, readSavedDomainDeletion } from '../lib/domainDeletionPending';
 import { decodeList, gateOn, lastKnown, useRemote } from '../lib/remote';
 import { SUBSCRIPTIONS_URL, decodeSubscriptions } from '../lib/subscriptions';
@@ -187,6 +187,7 @@ export function Domains() {
     // (DNS_ENGINE_WORKFLOW_REQUIRED), oraya gönderilen taze sunucunun gidecek
     // yeri yoktu (R-029, ekran tarafı).
     const openDNSRequirement = () => navigate('/dns-infrastructure');
+    const [deleteRefusal, setDeleteRefusal] = useState<ApiError | null>(null);
     // Name the half that is missing: no engine at all, or an engine whose
     // identity is not staged yet. The same key feeds the button label.
     // Eksik yarıyı adlandır: hiç motor yok ya da kimliği henüz hazırlanmamış
@@ -257,10 +258,14 @@ export function Domains() {
                 return;
             }
             if (outcome.state === 'error') {
+                // The refusal and its fix stay at the top of the list until the
+                // next delete (owner feedback 2026-10-31); the toast carries the fix too.
                 const apiError = await readApiError(res);
-                showToast('error', apiErrorText(apiError, t));
+                setDeleteRefusal(apiError);
+                showToast('error', refusalText(apiError, t, 'domains.deleteFailed'), refusalToast(apiError, t, navigate));
                 return;
             }
+            setDeleteRefusal(null);
             pendingReadEpoch.current++;
             setPendingDeletions((current) => current.filter((item) => item.id !== id));
             // A DKIM key or table line CelikPanel did not make was kept, or
@@ -278,7 +283,9 @@ export function Domains() {
             setSelected((s) => s.filter((x) => x !== id));
             reload();
         } catch {
-            showToast('error', t('common.error'));
+            // No answer: it is not known whether the domain was deleted; the list is read again.
+            showToast('error', t('common.resultUnknown'));
+            reload();
         }
     };
 
@@ -317,6 +324,8 @@ export function Domains() {
                     fix: { label: t(dnsBlocked === 'engine' ? 'err.DNS_SERVER_REQUIRED.action' : 'err.DNS_SETTINGS_REQUIRED.action'), onFix: openDNSRequirement },
                 }]} />
             )}
+
+            <ErrorBanner className="mb-4" error={deleteRefusal} sentence="domains.deleteFailed" />
 
             {pendingDeletions.map((pending) => (pending.message === null ? (
                 <CouldNotCheck

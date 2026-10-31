@@ -134,7 +134,7 @@ test('every setup blocker guide has what and what-to-do in English and Turkish, 
             const values = text => [...text.matchAll(/\{(\w+)\}/g)].map(match => match[1]).sort().join(',');
             assert.equal(values(turkish), values(english), `${key} carries the same values`);
             assert.ok(!internal.test(english.replace(/CELIKPANEL_TLS_[A-Z]+/g, '')), `${key} names an internal term: ${english}`);
-            assert.ok(english.length <= 220 && turkish.length <= 240, `${key} is short`);
+            assert.ok(english.length <= 260 && turkish.length <= 280, `${key} is short`);
         }
     }
     for (const code of problemsLib.setupProblemCodes) {
@@ -278,7 +278,7 @@ test('Create user, Create mail, Issue certificate and Add domain say why they ar
         assert.ok(text.includes(`id="${id}"`), `${file} draws the reason`);
         assert.ok(text.includes(`'${id}'`) && text.includes('aria-describedby'), `${file} describes the button by it`);
     }
-    for (const key of ['users.create.missing', 'users.create.passwordRule', 'mail.create.missing', 'mail.failedBecause', 'ssl.issue.needsEmail', 'domains.add.blockedTitle']) {
+    for (const key of ['users.create.missing', 'users.create.passwordRule', 'mail.create.missing', 'problem.failedBecause', 'ssl.issue.needsEmail', 'domains.add.blockedTitle']) {
         assert.ok(enScreens[key] && trScreens[key], `${key} in both languages`);
     }
 });

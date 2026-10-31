@@ -2,9 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { Shield, CheckCircle, AlertTriangle, XCircle, Lock, Upload, Unlink, RefreshCw } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
-import { Button, Checking, CouldNotCheck, Field, FormActions, FormSection, ResultUnknown, inputClass } from './ui';
+import { Button, Checking, CouldNotCheck, ErrorBanner, Field, FormActions, FormSection, ResultUnknown, inputClass } from './ui';
 import type { TranslationKey } from '../i18n/en';
-import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
+import { apiErrorText, readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
 import { CertificateIssueNotice, isCertificateIssueFailure } from './CertificateIssueNotice';
 import { decodeListIn, lastKnown, useRemote } from '../lib/remote';
 import { formatHSTSRemainingSeconds } from '../lib/hstsRemaining';
@@ -213,6 +213,8 @@ export function DomainSSLSettings({
     // A certificate request certbot ran and did not fulfil, with its kind.
     // certbot'un çalışıp yerine getirmediği sertifika isteği, türüyle.
     const [issueFailure, setIssueFailure] = useState<ApiError | null>(null);
+    // A refused issue or upload that is not certbot's own result.
+    const [actionRefusal, setActionRefusal] = useState<{ problem: ApiError; sentence: TranslationKey } | null>(null);
     const locked = ssl.remote.state !== 'known' || ssl.reading || issueAnswer.holding;
 
     useEffect(() => {
@@ -322,6 +324,7 @@ export function DomainSSLSettings({
         if (!confirm(t(confirmationKey, { name: domainName, mailName: `mail.${normaliseDNSName(domainName)}`, authority }))) return;
         setIssuing(true);
         setIssueFailure(null);
+        setActionRefusal(null);
         try {
             const res = await issueAnswer.send(`/api/v1/domains/${domainId}/ssl/letsencrypt`, {
                 method: 'POST',
@@ -367,7 +370,10 @@ export function DomainSSLSettings({
                     setIssueFailure(apiError);
                     return;
                 }
-                showToast('error', apiErrorText(apiError, t, isReissue ? 'ssl.reissueFailed' : 'ssl.issueFailed'));
+                // Kept on the page beside the form too (owner feedback 2026-10-31).
+                const sentence: TranslationKey = isReissue ? 'ssl.reissueFailed' : 'ssl.issueFailed';
+                setActionRefusal({ problem: apiError, sentence });
+                showToast('error', refusalText(apiError, t, sentence), refusalToast(apiError, t));
                 return;
             }
             // Issued and stored, but the site's configuration file is the
@@ -404,6 +410,7 @@ export function DomainSSLSettings({
         e.preventDefault();
         if (readOnly || locked) return;
         if (!certFile || !keyFile) return showToast('error', t('ssl.certKeyRequired'));
+        setActionRefusal(null);
         const isReplacement = data?.has_certificate === true;
         if (isReplacement && mailAvailable !== false && secureMail === null) {
             showToast('warning', t('ssl.mailStateUnknownReplacement'));
@@ -439,7 +446,8 @@ export function DomainSSLSettings({
                     await loadSSLData();
                     return;
                 }
-                showToast('error', apiErrorText(apiError, t, 'ssl.uploadFailed'));
+                setActionRefusal({ problem: apiError, sentence: 'ssl.uploadFailed' });
+                showToast('error', refusalText(apiError, t, 'ssl.uploadFailed'), refusalToast(apiError, t));
                 return;
             }
             showToast('success', t('ssl.uploaded'));
@@ -685,6 +693,7 @@ export function DomainSSLSettings({
             ) : null}
             <ResultUnknown answer={issueAnswer} className="mb-4" />
             <CertificateIssueNotice failure={issueFailure} onClose={() => setIssueFailure(null)} className="mb-4" />
+            <ErrorBanner className="mb-4" error={actionRefusal?.problem ?? null} sentence={actionRefusal?.sentence} />
             {/* Certificate status */}
             <FormSection title="SSL/TLS">
                 <div className="flex items-start gap-3">

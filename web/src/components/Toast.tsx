@@ -3,7 +3,17 @@ import { CheckCircle, XCircle, Info, AlertTriangle, X } from 'lucide-react';
 
 type ToastType = 'success' | 'error' | 'info' | 'warning';
 
-interface Toast {
+/**
+ * Beside the sentence (owner feedback 2026-10-31): the fix, as a button that
+ * runs it (the caller's navigate, for example), and the code under Technical
+ * details. The caller translates both labels.
+ */
+export interface ToastExtra {
+    action?: { label: string; run: () => void };
+    details?: { label: string; text: string };
+}
+
+interface Toast extends ToastExtra {
     id: number;
     type: ToastType;
     message: string;
@@ -15,11 +25,12 @@ const toastLimit = 4;
 export const toastStays = (type: ToastType) => type === 'error' || type === 'warning';
 const toastListeners: ((toast: Toast) => void)[] = [];
 
-export function showToast(type: ToastType, message: string) {
+export function showToast(type: ToastType, message: string, extra?: ToastExtra) {
     const toast: Toast = {
         id: toastId++,
         type,
         message,
+        ...extra,
     };
     toastListeners.forEach(listener => listener(toast));
 }
@@ -77,10 +88,27 @@ export function ToastContainer() {
                     role={toast.type === 'error' ? 'alert' : 'status'}
                     aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
                     aria-atomic={true}
-                    className={`flex items-center gap-3 p-4 rounded-lg border backdrop-blur-sm shadow-lg animate-slide-in ${getStyles(toast.type)}`}
+                    className={`flex items-start gap-3 p-4 rounded-lg border backdrop-blur-sm shadow-lg animate-slide-in ${getStyles(toast.type)}`}
                 >
                     {getIcon(toast.type)}
-                    <p className="flex-1 text-sm font-medium">{toast.message}</p>
+                    <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium">{toast.message}</p>
+                        {toast.action && (
+                            <button
+                                type="button"
+                                onClick={() => { removeToast(toast.id); toast.action!.run(); }}
+                                className="mt-2 rounded border border-current px-2 py-1 text-xs font-semibold text-inherit hover:bg-black/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current max-sm:min-h-11"
+                            >
+                                {toast.action.label}
+                            </button>
+                        )}
+                        {toast.details && (
+                            <details className="mt-1 text-xs opacity-90">
+                                <summary className="cursor-pointer">{toast.details.label}</summary>
+                                <code className="break-words">{toast.details.text}</code>
+                            </details>
+                        )}
+                    </div>
                     <button
                         type={'button'}
                         aria-label={'Dismiss notification'}

@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Database, Plus, Trash2, RefreshCw, ExternalLink } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
-import { apiErrorText, readApiError } from '../lib/apiError';
+import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
+import type { TranslationKey } from '../i18n/en';
 import { useLostAnswer } from '../lib/lostAnswer';
-import { Button, Checking, CouldNotCheck, RemoteGate, ResultUnknown } from './ui';
+import { Button, Checking, CouldNotCheck, ErrorBanner, RemoteGate, ResultUnknown } from './ui';
 import { lastKnown, mapRemote, useRemote, type Remote } from '../lib/remote';
 import { decodeDomainDatabases, type DatabaseEngine, type DatabaseInfo, type DatabaseType } from '../lib/domainDatabases';
 import { useHostingCapabilities, type CapabilitiesRemote } from '../lib/hostingCapabilities';
@@ -138,14 +139,23 @@ export function DomainDatabaseManager({
     const dbType = engines.some((engine) => engine.value === chosenType) ? chosenType : engines[0]?.value ?? null;
     const [dbPassword, setDbPassword] = useState('');
 
+    // A refusal stays on the page, with its fix, until the next change
+    // succeeds (owner feedback 2026-10-31).
+    const [refusal, setRefusal] = useState<{ problem: ApiError; sentence: TranslationKey } | null>(null);
+    const refuse = (problem: ApiError, sentence: TranslationKey) => {
+        setRefusal({ problem, sentence });
+        showToast('error', refusalText(problem, t, sentence), refusalToast(problem, t));
+    };
+
     const handleCreateDatabase = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!canCreate || dbType === null) return;
 
         if (!dbName || !dbPassword) {
-            showToast('error', 'Name and password are required');
+            showToast('error', t('ddb.namePasswordRequired'));
             return;
         }
+        setRefusal(null);
 
         setCreating(true);
         try {
@@ -185,18 +195,17 @@ export function DomainDatabaseManager({
 
             if (res.ok) {
                 const data = await res.json();
-                showToast('success', `Database "${data.name}" created successfully`);
+                showToast('success', t('ddb.created', { name: String(data.name ?? name) }));
                 setShowCreateForm(false);
                 setDbName('');
                 setDbPassword('');
                 void list.retry();
             } else {
-                showToast('error', apiErrorText(await readApiError(res), t, 'common.error'));
+                refuse(await readApiError(res), 'ddb.createFailed');
             }
-        } catch (err) {
+        } catch {
             // The answer arrived and could not be read as one.
             // Yanıt geldi ama yanıt olarak okunamadı.
-            console.error(err);
             answer.lose(undefined, 'asked');
         } finally {
             setCreating(false);
@@ -205,7 +214,7 @@ export function DomainDatabaseManager({
 
     const handleDeleteDatabase = async (db: DatabaseInfo) => {
         if (readOnly || list.remote.state !== 'known' || answer.holding) return;
-        if (!confirm(`Delete database "${db.name}"?\n\nThis action cannot be undone. All data will be lost.`)) {
+        if (!confirm(t('ddb.confirmDelete', { name: db.name }))) {
             return;
         }
 
@@ -215,23 +224,26 @@ export function DomainDatabaseManager({
             });
 
             if (res.ok) {
-                showToast('success', `Database "${db.name}" deleted`);
+                setRefusal(null);
+                showToast('success', t('ddb.deleted', { name: db.name }));
                 void list.retry();
             } else {
-                showToast('error', 'Failed to delete database');
+                // The server's reason (a user that still has grants…) is kept, on the page too.
+                refuse(await readApiError(res), 'ddb.deleteFailed');
             }
-        } catch (err) {
-            console.error(err);
-            showToast('error', 'Failed to delete database');
+        } catch {
+            // No answer: whether it was deleted is not known; the list is read again.
+            showToast('error', t('common.resultUnknown'));
+            void list.retry();
         }
     };
 
     return (
         <div className="space-y-6">
             <div>
-                <h3 className="text-lg font-bold text-fg mb-2">Database Management</h3>
+                <h3 className="text-lg font-bold text-fg mb-2">{t('ddb.title')}</h3>
                 <p className="text-sm text-fg-muted">
-                    Manage databases for {domainName}
+                    {t('ddb.subtitle', { domain: domainName })}
                 </p>
             </div>
 
@@ -242,6 +254,7 @@ export function DomainDatabaseManager({
                 bilindiğinde kullanılabilir olur; yanındaki satır henüz neden
                 kullanılamadığını söyler. */}
             <ResultUnknown answer={answer} />
+            <ErrorBanner error={refusal?.problem ?? null} sentence={refusal?.sentence} />
 
             {!readOnly && !showCreateForm && !(engineSource.state === 'known' && engines.length === 0) && (
                 <div className="flex flex-wrap items-center gap-3">
@@ -252,7 +265,7 @@ export function DomainDatabaseManager({
                         kapalıyken okunur. Elle yazılanı, koyu temanın açık
                         birincil rengi üstüne beyaz çiziyordu. */}
                     <Button variant="primary" icon={Plus} disabled={!canCreate} onClick={() => setShowCreateForm(true)}>
-                        Create Database
+                        {t('ddb.create')}
                     </Button>
                     {engineSource.state === 'loading' && <Checking label={t('db.checkingEngines')} />}
                 </div>
@@ -279,10 +292,10 @@ export function DomainDatabaseManager({
             {/* Create Database Form */}
             {showCreateForm && enginesReady && (
                 <div className="bg-surface-2/50 rounded-lg p-6 border border-border">
-                    <h4 className="text-md font-semibold text-fg mb-4">Create New Database</h4>
+                    <h4 className="text-md font-semibold text-fg mb-4">{t('ddb.formTitle')}</h4>
                     <form onSubmit={handleCreateDatabase} className="space-y-4">
                         <div>
-                            <label className="block text-sm text-fg-muted mb-2">Database Name</label>
+                            <label className="block text-sm text-fg-muted mb-2">{t('ddb.name')}</label>
                             <input
                                 type="text"
                                 value={dbName}
@@ -292,12 +305,12 @@ export function DomainDatabaseManager({
                                 required
                             />
                             <p className="text-xs text-fg-subtle mt-1">
-                                Will be prefixed with domain name: {domainName.replace(/\./g, '_')}_{dbName}
+                                {t('ddb.prefix', { name: `${domainName.replace(/\./g, '_')}_${dbName}` })}
                             </p>
                         </div>
 
                         <div>
-                            <label className="block text-sm text-fg-muted mb-2">Database Type</label>
+                            <label className="block text-sm text-fg-muted mb-2">{t('ddb.type')}</label>
                             <select
                                 value={dbType ?? ''}
                                 onChange={(e) => setDbType(e.target.value as DatabaseType)}
@@ -310,12 +323,12 @@ export function DomainDatabaseManager({
                         </div>
 
                         <div>
-                            <label className="block text-sm text-fg-muted mb-2">Password</label>
+                            <label className="block text-sm text-fg-muted mb-2">{t('ddb.password')}</label>
                             <input
                                 type="password"
                                 value={dbPassword}
                                 onChange={(e) => setDbPassword(e.target.value)}
-                                placeholder="Enter a strong password"
+                                placeholder={t('ddb.passwordPlaceholder')}
                                 className="w-full bg-surface border border-border rounded px-4 py-2 text-fg focus:border-primary"
                                 required
                             />
@@ -328,7 +341,7 @@ export function DomainDatabaseManager({
                                 className="px-6 py-2 bg-success text-white rounded hover:bg-success disabled:opacity-50 flex items-center gap-2"
                             >
                                 <Database className="w-4 h-4" />
-                                {creating ? 'Creating...' : 'Create Database'}
+                                {creating ? t('ddb.creating') : t('ddb.create')}
                             </button>
                             <button
                                 type="button"
@@ -339,7 +352,7 @@ export function DomainDatabaseManager({
                                 }}
                                 className="px-6 py-2 bg-surface-3 text-fg rounded hover:bg-surface-3"
                             >
-                                Cancel
+                                {t('common.cancel')}
                             </button>
                         </div>
                     </form>
@@ -351,7 +364,7 @@ export function DomainDatabaseManager({
                 <div className="flex items-center justify-between p-4 border-b border-border">
                     <div className="flex items-center gap-2">
                         <Database className="w-5 h-5 text-primary" />
-                        <h4 className="text-md font-semibold text-fg">Databases</h4>
+                        <h4 className="text-md font-semibold text-fg">{t('databases.tab.databases')}</h4>
                         {listed && (
                             <span className="text-sm text-fg-muted">
                                 ({listed.value.databases.length})
@@ -362,8 +375,8 @@ export function DomainDatabaseManager({
                         onClick={() => void list.retry()}
                         disabled={list.reading}
                         className="p-2 text-fg-muted hover:text-fg transition-colors"
-                        title="Refresh"
-                        aria-label="Refresh"
+                        title={t('files.refresh')}
+                        aria-label={t('files.refresh')}
                     >
                         <RefreshCw className={`w-4 h-4 ${list.reading ? 'animate-spin' : ''}`} />
                     </button>
@@ -406,11 +419,11 @@ export function DomainDatabaseManager({
                                             </div>
                                             <div className="grid grid-cols-2 gap-2 text-sm">
                                                 <div>
-                                                    <span className="text-fg-muted">User:</span>
+                                                    <span className="text-fg-muted">{t('ddb.user')}</span>
                                                     <span className="ml-2 text-fg font-mono">{db.user}</span>
                                                 </div>
                                                 <div>
-                                                    <span className="text-fg-muted">Created:</span>
+                                                    <span className="text-fg-muted">{t('ddb.createdAt')}</span>
                                                     <span className="ml-2 text-fg">
                                                         {new Date(db.created_at).toLocaleDateString()}
                                                     </span>
@@ -423,8 +436,8 @@ export function DomainDatabaseManager({
                                                     onClick={() => handleDeleteDatabase(db)}
                                                     disabled={shown.stale}
                                                     className="p-2 text-danger hover:bg-danger/30 rounded transition-colors disabled:pointer-events-none disabled:opacity-40"
-                                                    title="Delete database"
-                                                    aria-label="Delete database"
+                                                    title={t('databases.deleteDatabase', { name: db.name })}
+                                                    aria-label={t('databases.deleteDatabase', { name: db.name })}
                                                 >
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>

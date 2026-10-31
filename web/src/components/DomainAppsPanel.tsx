@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { LayoutGrid, Download, ExternalLink, Loader2 } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
-import { Button, KnownEmpty, RemoteGate, ResultUnknown } from './ui';
-import { apiErrorText, readApiError } from '../lib/apiError';
+import { Button, ErrorBanner, KnownEmpty, RemoteGate, ResultUnknown } from './ui';
+import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
+import { useNavigate } from '../router';
 import { decodeListIn, useRemote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
 
@@ -41,12 +42,21 @@ export function DomainAppsPanel({ domainId }: { domainId: number; domainName: st
     const answer = useLostAnswer(() => apps.retry());
     const [installing, setInstalling] = useState<string | null>(null);
     const [setupUrl, setSetupUrl] = useState<string | null>(null);
+    // A failed install stays above the catalogue with the server's reason
+    // until the next install (owner feedback 2026-10-31).
+    const navigate = useNavigate();
+    const [failure, setFailure] = useState<ApiError | null>(null);
+    const failed = (problem: ApiError) => {
+        setFailure(problem);
+        showToast('error', refusalText(problem, t, 'apps.installFailed'), refusalToast(problem, t, navigate));
+    };
 
     const install = async (app: App) => {
         if (answer.holding || apps.remote.state !== 'known') return;
         if (!confirm(t('apps.confirmInstall', { name: app.name }))) return;
         setInstalling(app.id);
         setSetupUrl(null);
+        setFailure(null);
         try {
             const res = await answer.send(`/api/v1/domains/${domainId}/apps/install`, {
                 method: 'POST',
@@ -55,7 +65,7 @@ export function DomainAppsPanel({ domainId }: { domainId: number; domainName: st
             });
             if (!res) return;
             if (!res.ok) {
-                showToast('error', apiErrorText(await readApiError(res), t, 'apps.installFailed'));
+                failed(await readApiError(res));
                 return;
             }
             // An accepted request whose body says the install failed is the
@@ -72,7 +82,7 @@ export function DomainAppsPanel({ domainId }: { domainId: number; domainName: st
                 return;
             }
             if (!data.success) {
-                showToast('error', data.error || t('apps.installFailed'));
+                failed({ message: typeof data.error === 'string' ? data.error : '' });
                 return;
             }
             showToast('success', t('apps.installed', { name: app.name }));
@@ -98,6 +108,7 @@ export function DomainAppsPanel({ domainId }: { domainId: number; domainName: st
                     <p className="mb-4 text-sm text-fg-muted">{t('apps.hint')}</p>
 
                     <ResultUnknown answer={answer} where={t('apps.resultUnknownWhere')} className="mb-4" />
+                    <ErrorBanner className="mb-4" error={failure} sentence="apps.installFailed" />
 
                     {setupUrl && (
                         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-success/30 bg-success/10 p-3">

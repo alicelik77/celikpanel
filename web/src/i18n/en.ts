@@ -45,6 +45,7 @@ import type { DnsOverviewScreenKey } from './screens/dnsOverview/en';
 import type { NginxDefaultHttpsScreenKey } from './screens/nginxDefaultHttps/en';
 import type { DnsPublicationScreenKey } from './screens/dnsPublication/en';
 import type { ProblemsScreenKey } from './screens/problems/en';
+import type { RefusalsScreenKey } from './screens/refusals/en';
 
 export const en = {
     // ---- alpha.108 tools ----
@@ -348,6 +349,7 @@ export const en = {
     'common.resultUnknownNotMade': 'The connection dropped before the answer arrived, and nothing was sent a second time. What was read again at {time} does not show the change, so it is not known to have been saved. What you entered is still here. If the server was still working when the connection dropped, the change can appear later: check again before sending it a second time.',
     'common.resultUnknownUnread': 'The connection dropped before the answer arrived, so it is not known whether the change was made. Nothing was sent a second time. The current state could not be read again either, so controls that change or remove something stay off. Check again.',
     'common.checkAgain': 'Check again',
+    'common.technicalDetails': 'Technical details',
     'common.cancel': 'Cancel',
     'common.close': 'Close',
     'common.back': 'Back',
@@ -518,5 +520,6 @@ export type ScreenKey =
     | DnsOverviewScreenKey
     | NginxDefaultHttpsScreenKey
     | DnsPublicationScreenKey
-    | ProblemsScreenKey;
+    | ProblemsScreenKey
+    | RefusalsScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

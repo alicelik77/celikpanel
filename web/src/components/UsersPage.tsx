@@ -5,9 +5,10 @@ import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { useAuth } from '../auth/AuthContext';
 import { type PanelUser, type ServicePlan } from '../lib/api';
-import { Button, CouldNotCheck, KnownEmpty, RemoteGate, StatusDot, inputClass } from './ui';
+import { Button, CouldNotCheck, ErrorBanner, KnownEmpty, RemoteGate, StatusDot, inputClass } from './ui';
 import { PageHeader } from './PageHeader';
-import { readApiError, apiErrorText } from '../lib/apiError';
+import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
+import { useNavigate } from '../router';
 import { countText, mapRemote, useRemote } from '../lib/remote';
 import { PLANS_URL, USERS_URL, decodePlans, decodeUsers } from '../lib/accounts';
 import { TeamMembersPage } from './TeamMembersPage';
@@ -91,8 +92,14 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
     // Çakışma yanıtları (kota, alt hesap, mükerrer) API'den gerçek nedenlerle
     // gelir; kodlu sözleşme, ret kodluysa yerelleştirilmiş metni, değilse
     // sunucu mesajını seçer — asla belirsiz bir genel değil.
-    const apiError = async (res: Response) => {
-        showToast('error', apiErrorText(await readApiError(res), t));
+    // The refusal stays in the toast until it is closed, with its fix; the
+    // create form also keeps it beside its button (owner feedback 2026-10-31).
+    const navigate = useNavigate();
+    const [createRefusal, setCreateRefusal] = useState<ApiError | null>(null);
+    const apiError = async (res: Response, sentence: 'users.createFailed' | 'users.changeFailed' = 'users.changeFailed') => {
+        const problem = await readApiError(res);
+        showToast('error', refusalText(problem, t, sentence), refusalToast(problem, t, navigate));
+        return problem;
     };
     // The answer to a change did not arrive: it is not known whether it was
     // made. Nothing is sent again; the list is read so the person can look.
@@ -110,6 +117,7 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
 
     const createUser = async () => {
         setSaving(true);
+        setCreateRefusal(null);
         try {
             const body: Record<string, unknown> = { username, email, password, role: newRole };
             if (planID > 0) body.plan_id = planID;
@@ -120,7 +128,7 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
             });
             if (!res) return;
             if (!res.ok) {
-                await apiError(res);
+                setCreateRefusal(await apiError(res, 'users.createFailed'));
                 return;
             }
             showToast('success', t('users.created'));
@@ -234,6 +242,7 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
                             </select>
                         </label>
                     </div>
+                    <ErrorBanner className="mt-3" error={createRefusal} sentence="users.createFailed" />
                     <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
                         {/* Why Create is off, beside it (owner feedback 2026-10-31). */}
                         {createMissing.length > 0 && <p id="users-create-reason" className="mr-auto text-sm text-fg" data-blocked-reason="">{t('users.create.missing', { fields: createMissing.join(', ') })}</p>}
@@ -357,6 +366,7 @@ function PlansTab() {
     // Plan yalnız sunucunun son verdiği liste üzerinde eklenir, düzenlenir ya
     // da kaldırılır.
     const plansKnown = plans.remote.state === 'known' && !plans.reading;
+    const [planRefusal, setPlanRefusal] = useState<ApiError | null>(null);
     const send = async (url: string, init: RequestInit): Promise<Response | null> => {
         setSaving(true);
         try {
@@ -380,9 +390,12 @@ function PlansTab() {
         });
         if (!res) return;
         if (!res.ok) {
-            showToast('error', apiErrorText(await readApiError(res), t));
+            const problem = await readApiError(res);
+            setPlanRefusal(problem);
+            showToast('error', refusalText(problem, t, 'plans.saveFailed'), refusalToast(problem, t));
             return;
         }
+        setPlanRefusal(null);
         showToast('success', isNew ? t('plans.created') : t('plans.updated'));
         setEditing(null);
         load();
@@ -393,7 +406,8 @@ function PlansTab() {
         const res = await send(`/api/v1/plans/${p.id}`, { method: 'DELETE' });
         if (!res) return;
         if (!res.ok) {
-            showToast('error', apiErrorText(await readApiError(res), t));
+            const problem = await readApiError(res);
+            showToast('error', refusalText(problem, t, 'plans.deleteFailed'), refusalToast(problem, t));
             return;
         }
         showToast('success', t('plans.deleted'));
@@ -424,8 +438,9 @@ function PlansTab() {
                         <NumField label={`${t('plans.col.disk')} (MB)`} value={editing.disk_quota_mb} onChange={(v) => setEditing({ ...editing, disk_quota_mb: v })} />
                         <NumField label={`${t('plans.col.traffic')} (MB)`} value={editing.bandwidth_quota_mb} onChange={(v) => setEditing({ ...editing, bandwidth_quota_mb: v })} />
                     </div>
+                    <ErrorBanner className="mt-3" error={planRefusal} sentence="plans.saveFailed" />
                     <div className="mt-3 flex justify-end gap-2">
-                        <Button icon={X} onClick={() => setEditing(null)}>{t('users.cancel')}</Button>
+                        <Button icon={X} onClick={() => { setEditing(null); setPlanRefusal(null); }}>{t('users.cancel')}</Button>
                         <Button variant="primary" icon={Save} onClick={save} disabled={saving || !plansKnown || !editing.name.trim()}>
                             {t('plans.save')}
                         </Button>

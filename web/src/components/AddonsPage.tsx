@@ -3,7 +3,7 @@ import { Loader2, Package, RefreshCw, Settings2, ShoppingBag } from 'lucide-reac
 import { useSearchParams } from '../router';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
-import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
+import { apiErrorText, readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
 import { Button, Card, EmptyState, ErrorBanner, inputClass } from './ui';
 import { PageHeader } from './PageHeader';
 import { useAuth } from '../auth/AuthContext';
@@ -86,6 +86,7 @@ export function AddonsPage() {
     const [loadingStore, setLoadingStore] = useState(false);
     const [subscriptionsError, setSubscriptionsError] = useState<ApiError | null>(null);
     const [storeError, setStoreError] = useState<ApiError | null>(null);
+    const [actionError, setActionError] = useState<{ error: ApiError; sentence: 'addons.grantFailed' | 'addons.revokeFailed' } | null>(null);
     const storeRequestSequence = useRef(0);
     const selectedRef = useRef<number | null>(selected);
     selectedRef.current = selected;
@@ -169,7 +170,7 @@ export function AddonsPage() {
         if (item.action === 'remove' && !window.confirm(t('addons.confirmRemove', { name: item.name }))) return;
 
         setBusyItemIDs((current) => new Set(current).add(item.id));
-        setStoreError(null);
+        setActionError(null);
         try {
             const basePath = `/api/v1/subscriptions/${targetSubscriptionID}/entitlements`;
             const response = item.action === 'acquire'
@@ -185,9 +186,12 @@ export function AddonsPage() {
                 await loadStore(targetSubscriptionID);
             }
         } catch (cause) {
-            const error = normalizeError(cause, t('common.error'));
-            setStoreError(error);
-            showToast('error', apiErrorText(error, t));
+            // A refused grant or revoke is not a Store that could not be read:
+            // the list stays, and the refusal stands above it (owner feedback 2026-10-31).
+            const error = cause instanceof TypeError ? { message: '' } : normalizeError(cause, '');
+            const sentence = item.action === 'acquire' ? 'addons.grantFailed' : 'addons.revokeFailed';
+            setActionError({ error, sentence });
+            showToast('error', refusalText(error, t, sentence), refusalToast(error, t));
         } finally {
             setBusyItemIDs((current) => {
                 const next = new Set(current);
@@ -325,6 +329,7 @@ export function AddonsPage() {
                     </Card>
 
                     <ErrorBanner error={storeError} />
+                    <ErrorBanner error={actionError?.error ?? null} sentence={actionError?.sentence} />
 
                     {storeError && selectedSubscription ? (
                         <EmptyState
