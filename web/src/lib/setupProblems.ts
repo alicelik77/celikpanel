@@ -45,6 +45,7 @@ const table: Record<string, { name: string; fix?: SetupProblemFix }> = {
     server_setup_dns_purpose_requires_local: { name: 'dnsPurposeLocal', fix: step('dnshome') },
     server_setup_peer_join_answers_changed: { name: 'answersChanged', fix: step('dnshome') },
     server_setup_peer_mail_both: { name: 'peerMailBoth', fix: { kind: 'removeMail' } },
+    server_setup_peer_mail_hostname_taken: { name: 'peerMailHostnameTaken', fix: step('names') },
     server_setup_dns_identity_required: { name: 'dnsIdentity', fix: step('dnshome') },
     server_setup_existing_dns_requires_migration: { name: 'dnsMigration', fix: step('roles') },
     server_setup_dns_installed_differs: { name: 'dnsInstalledDiffers', fix: step('dnshome') },

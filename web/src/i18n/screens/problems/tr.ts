@@ -41,6 +41,8 @@ export const trProblemsScreens: Record<ProblemsScreenKey, string> = {
     "setup.problem.answersChanged.todo": "Bunları ilk sunucunun verdiği gibi geri alın. Değiştirmek istiyorsanız ilk sunucuda değiştirip yeni bir kodla yeniden katılın.",
     "setup.problem.peerMailBoth.what": "Bu alan adının e-postasını zaten ilk sunucu alıyor. Bir alan adının e-postası yalnızca bir sunucuya gelebilir.",
     "setup.problem.peerMailBoth.todo": "E-postayı bu sunucunun planından çıkarın. E-postayı burada almak istiyorsanız ilk sunucuda e-postayı kaldırıp yeniden katılın.",
+    "setup.problem.peerMailHostnameTaken.what": "Bu sunucunun posta adını ilk sunucu, ana alan adı ya da bir ad sunucusu zaten kullanıyor. Her sunucunun kendi posta adı olmalı.",
+    "setup.problem.peerMailHostnameTaken.todo": "Adlar adımına gidin ve bu sunucuya kendi posta adını verin; örneğin panel adını ya da başına mail. eklenmiş panel adını. Sonra planı yeniden inceleyin.",
     "setup.problem.dnsIdentity.what": "DNS bilgileri eksik: bu sunucunun IPv4 adresi ya da iki ad sunucusu adı boş veya hatalı.",
     "setup.problem.dnsIdentity.todo": "IPv4 adresini ve iki farklı ad sunucusu adını (örneğin ns1 ve ns2) girin.",
     "setup.problem.dnsMigration.what": "Bu sunucuda kurulumun kurmadığı bir DNS yazılımı zaten çalışıyor. Kurulum, kendi kurmadığı DNS’i devralmaz.",

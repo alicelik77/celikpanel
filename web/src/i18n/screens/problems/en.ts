@@ -43,6 +43,8 @@ export const enProblemsScreens = {
     "setup.problem.answersChanged.todo": "Set them back as the first server gave them. To change them, change them on the first server and join again with a new code.",
     "setup.problem.peerMailBoth.what": "The first server already receives this domain's email. A domain's email can arrive at one server only.",
     "setup.problem.peerMailBoth.todo": "Remove Email from this server's plan. To receive email here instead, remove email on the first server and join again.",
+    "setup.problem.peerMailHostnameTaken.what": "This server's mail name is already used by the first server, the main domain or a nameserver. Each server needs its own mail name.",
+    "setup.problem.peerMailHostnameTaken.todo": "Go to Names and give this server its own mail name, for example its panel name or mail. followed by its panel name. Then review again.",
     "setup.problem.dnsIdentity.what": "The DNS details are incomplete: this server's IPv4 address or the two name server names are missing or wrong.",
     "setup.problem.dnsIdentity.todo": "Enter the IPv4 address and two different name server names (for example ns1 and ns2).",
     "setup.problem.dnsMigration.what": "This server already runs DNS software that setup did not install. Setup never takes over DNS it did not set up.",

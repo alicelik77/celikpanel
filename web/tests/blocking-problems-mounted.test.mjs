@@ -147,6 +147,15 @@ test('every setup blocker guide has what and what-to-do in English and Turkish, 
         if (code === 'server_setup_') continue;
         assert.ok(problemsLib.setupProblemCodes.includes(code), `${code} has a plain-language guide`);
     }
+    // Blockers decided by helpers and handed to addBlocker as a value
+    // (components, a joined server's own mail name) need a guide too.
+    for (const file of ['server_setup_components.go', 'server_setup_mail_dns.go']) {
+        const source = readFileSync(new URL(`../../cmd/panel/${file}`, import.meta.url), 'utf8');
+        for (const [, code] of source.matchAll(/return "(server_setup_[a-z_]+)"/g)) {
+            assert.ok(problemsLib.setupProblemCodes.includes(code), `${code} (${file}) has a plain-language guide`);
+        }
+    }
+    assert.deepEqual(problemsLib.setupProblemGuide('server_setup_peer_mail_hostname_taken').fix, { kind: 'step', step: 'names' });
     assert.equal(problemsLib.setupProblemGuide('server_setup_service_unsupported:postfix').fix.kind, 'removeMail');
     assert.equal(problemsLib.setupProblemGuide('server_setup_peer_mail_both').fix.kind, 'removeMail');
     assert.equal(problemsLib.setupProblemGuide('a_code_without_words'), null);
@@ -177,6 +186,8 @@ const submit = () => act(async () => tree.root.findByType('form').props.onSubmit
 const roleStep = () => tree.root.findAll(node => node.type?.name === 'SetupRolesStep')[0];
 async function toReview({ mail = false } = {}) {
     await act(async () => { tree = Renderer.create(React.createElement(Wizard)); });
+    // The first question (alpha.114): this is the first server.
+    await act(async () => tree.root.findByProps({ name: 'setup-server_kind', value: 'first' }).props.onChange());
     await act(async () => tree.root.findByProps({ id: 'setup-main_domain' }).props.onChange({ target: { value: 'example.com' } }));
     await submit(); await submit(); await submit();
     if (mail) await act(async () => roleStep().props.onRoles({ web: true, mail: true, dns: true }));
