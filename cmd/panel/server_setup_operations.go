@@ -73,6 +73,9 @@ type serverSetupPlan struct {
 	// for this plan; the start sends back the one its page showed, so an
 	// update the owner never saw is never confirmed (review fix, 2026-10-29).
 	PackageUpdatesDigest string `json:"package_updates_digest,omitempty"`
+	// Scope (alpha.114): "mail" for a mail-only extension; empty otherwise,
+	// so every earlier plan keeps its identity.
+	Scope string `json:"scope,omitempty"`
 	// peerBound marks a plan completed by its second-server binding
 	// (serverSetupBoundPlan); it is never stored or hashed.
 	peerBound bool
@@ -102,6 +105,8 @@ type serverSetupExecutionStep struct {
 	OwnerID                     string `json:"owner_id"`
 	OperationID                 string `json:"operation_id,omitempty"`
 	EnrollmentDispatchAttempted bool   `json:"enrollment_dispatch_attempted,omitempty"`
+	// MainSite (alpha.114) is what the main-domain website step came to.
+	MainSite *serverSetupMainSiteOutcome `json:"main_site,omitempty"`
 }
 
 type serverSetupExecution struct {
@@ -933,6 +938,9 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 			addStep("mail_enrollment", "mail-renewal", generation)
 		}
 	}
+	if serverSetupMainSiteStep(draft, link != nil) {
+		addStep("main_site", draft.MainDomain, "")
+	}
 	addStep("verify", draft.Purpose, "")
 	plan.Steps = serverSetupDNSBootstrapSteps(draft, plan.Steps)
 	switch {
@@ -940,6 +948,11 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 		plan.Steps = serverSetupPeerJoinSteps(plan.Steps, serverSetupPlanStep{Kind: "peer_join", Target: "second"})
 	case link != nil:
 		plan.Steps = serverSetupPeerJoinSteps(plan.Steps, serverSetupPlanStep{Kind: "peer_names", Target: link.Address})
+	}
+	if state.ExtensionScope == serverSetupExtensionScopeMail {
+		plan.Scope = serverSetupExtensionScopeMail
+		plan.Steps = serverSetupMailScopeSteps(draft, plan.Steps, link != nil, state.ExtensionBase)
+		plan.InfrastructureDNS = nil
 	}
 	plan.CanStart = len(plan.Blockers) == 0
 	if plan.CanStart {
@@ -1729,6 +1742,8 @@ func (p *Panel) runServerSetupStep(ctx context.Context, plan serverSetupPlan, st
 		return p.runServerSetupMailCertificate(ctx, plan, *step)
 	case "mail_dns":
 		return p.runServerSetupMailDNS(ctx, plan, *step)
+	case "main_site":
+		return p.runServerSetupMainSite(ctx, plan, step)
 	case "firewall":
 		return p.runServerSetupFirewall(ctx, plan, *step)
 	case "service", "runtime", "mail_profile", "panel_certificate":

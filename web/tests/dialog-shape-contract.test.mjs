@@ -191,6 +191,7 @@ test('every dialogue in the product is the shared one', () => {
     'Invitations.tsx': 1,
     // alpha.114: a mailbox's out-of-office reply.
     'MailAutoresponderDialog.tsx': 1,
+    'MailSetupDialog.tsx': 1,
   });
 });
 

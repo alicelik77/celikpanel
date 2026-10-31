@@ -62,6 +62,8 @@ const stub = dataModule(`
   export const FirewallNoSSHAcknowledgement = () => null, readFirewallSSHReason = () => null, FirewallSSHReasonLine = () => null;
   export const useAuth = () => ({ role: 'admin', user: { username: 'admin', role: 'admin' } });
   export const useServerSetup = () => null;
+  // alpha.114: the in-place mail dialog has its own mounted tests (batch3).
+  export const MailSetupDialog = () => null;
   export const createPortal = (node) => node;
   export const scanRefusedBySetup = () => false;
 `);

@@ -64,7 +64,7 @@ test('joined-server texts exist in English and Turkish and are used on the Names
     const steps = source('../src/components/ServerSetupWizardSteps.tsx');
     assert.match(wizard, /server_setup_peer_mail_hostname_taken: 'setup\.v6\.blocker\.mailHostnameTaken'/);
     // A joined server never shows the "import them in Existing records" line or the mailNow claim when the first keeps the mail.
-    assert.match(wizard, /roles\.web && mainDomain && !joinedLink && !\(localPrimary/);
+    assert.match(wizard, /roles\.web && mainDomain && !joinedLink && !\(mainSiteAsked && mainSiteAnswer === 'here'\) && !\(localPrimary/);
     assert.match(wizard, /mailSelected && mainDomain && !firstKeepsMainMail && <li>\{t\(draft\.mail_dns/);
     assert.match(wizard, /joinedLink && <li>\{t\('setup\.v6\.review\.joinedSite'/);
     assert.match(steps, /joined \? t\('setup\.v6\.names\.joinedNote'/);

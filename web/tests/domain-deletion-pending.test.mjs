@@ -158,8 +158,8 @@ test('refused local catalog transfer names the secondary owner, the statement, b
     assert.match(text, /::1/);
     assert.match(text, /CelikPanel/);
   }
-  assert.match(en_, /secondary's owner/);
-  assert.match(tr_, /ikincil sunucunun sahibi/);
+  assert.match(en_, /backup DNS server's owner/);
+  assert.match(tr_, /yedek DNS sunucusunun sahibi/);
   assert.ok(en_.includes(`“${enScreens['domains.retryDeletion']}”`));
   assert.ok(tr_.includes(`“${trScreens['domains.retryDeletion']}”`));
 });
@@ -216,7 +216,7 @@ test('an internal proof failure names no owner change, the owner, the log comman
     assert.match(text, /CelikPanel Agent/);
     assert.doesNotMatch(text, /secret|password|parola/i);
   }
-  assert.match(en_, /could not run its own check of the secondary/);
+  assert.match(en_, /could not run its own check of the backup DNS server/);
   assert.match(en_, /No change by either server's owner was found/);
   assert.match(en_, /server owner/);
   assert.match(en_, /Retrying does not help until/);

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Link } from '../router';
@@ -22,6 +22,12 @@ import {
 } from '../lib/dnsOverview';
 import { Button } from './ui';
 import { SetupJoinCard } from './ServerSetupWizardSteps';
+import { useServerSetup } from './ServerSetupGate';
+
+// The missing DKIM key is made by the mail steps of this server's setup, run
+// in place (alpha.114): the same mail-only extension Components uses.
+// Eksik DKIM anahtari yerinde calisan posta adimlariyla olusturulur.
+const MailSetupDialog = lazy(() => import('./MailSetupDialog').then(module => ({ default: module.MailSetupDialog })));
 
 // The DNS page (v0.1.0-alpha.115, the owner-approved draft): one sentence
 // first (why, who acts, the next action, what happens then), the DNS servers,
@@ -137,6 +143,11 @@ function OverviewBody({ value, t, checkNow, reading, freshIn, failedNote, checke
 }) {
     const stem = dnsOverviewSentenceKey(value.sentence.code);
     const vars = dnsOverviewSentenceValues(t, value);
+    const setup = useServerSetup()?.snapshot;
+    const [dkimOpen, setDkimOpen] = useState(false);
+    // In place once setup has finished and no run is active; otherwise setup
+    // itself, with a banner that says why the owner is there.
+    const dkimInPlace = !!setup && (setup.status === 'ready' || (setup.extension === true && !['running', 'waiting'].includes(setup.status)));
     const say = (part: 'title' | 'why' | 'who' | 'next' | 'then', fallback: string) => stem ? t(`${stem}.${part}`, vars) : fallback;
     const tone = dnsOverviewTone(value.sentence.state);
     // Only the title is a live region. It is an alert only when the state
@@ -164,10 +175,14 @@ function OverviewBody({ value, t, checkNow, reading, freshIn, failedNote, checke
             <div className="mt-3 flex flex-wrap items-center gap-3">
                 <Button type="button" variant="secondary" disabled={reading || freshIn > 0} loading={reading} onClick={checkNow}>{t('dnsov.checkNow')}</Button>
                 <span className="text-xs text-fg-muted">{freshIn > 0 ? t('dnsov.checkNowIn', { seconds: freshIn }) : checkedAt}</span>
-                {['dns_overview_setup_running', 'dns_overview_setup_not_done', 'dns_overview_dkim_pending'].includes(value.sentence.code)
-                    ? <Link to="/setup" className="text-sm font-medium text-primary underline underline-offset-4">{t('dnsov.join.openSetup')}</Link> : null}
+                {value.sentence.code === 'dns_overview_dkim_pending'
+                    ? dkimInPlace ? <Button type="button" variant="primary" onClick={() => setDkimOpen(true)}>{t('svc.mailSetup.titleDKIM')}</Button>
+                        : <Link to="/setup?purpose=dkim" className="text-sm font-medium text-primary underline underline-offset-4">{t('dnsov.join.openSetup')}</Link>
+                    : ['dns_overview_setup_running', 'dns_overview_setup_not_done'].includes(value.sentence.code)
+                        ? <Link to="/setup" className="text-sm font-medium text-primary underline underline-offset-4">{t('dnsov.join.openSetup')}</Link> : null}
             </div>
             {failedNote && <p className="mt-2 text-sm text-fg-muted">{failedNote}</p>}
+            {dkimOpen && <Suspense fallback={null}><MailSetupDialog onClose={() => { setDkimOpen(false); void rereadOverview(); }} /></Suspense>}
         </section>
         {value.home === 'own' ? <ServersCard value={value} t={t} /> : value.home !== 'none' && <HomeCard value={value} t={t} />}
         {value.join.state !== 'bound' && <JoinEntry value={value} t={t} />}
