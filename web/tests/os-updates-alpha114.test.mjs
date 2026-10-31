@@ -14,9 +14,11 @@ import Renderer, { act } from 'react-test-renderer';
 import { dataModule, reactURL, sharedLayer } from './fixtures/shared-layer.mjs';
 import { enLifecycleScreens } from '../src/i18n/screens/lifecycle/en.ts';
 import { trLifecycleScreens } from '../src/i18n/screens/lifecycle/tr.ts';
+import { enOsUpdatesScreens } from '../src/i18n/screens/osUpdates/en.ts';
+import { trOsUpdatesScreens } from '../src/i18n/screens/osUpdates/tr.ts';
 
-const en = { ...enLifecycleScreens, 'common.cancel': 'Cancel', 'common.retry': 'Try again' };
-const tr = { ...trLifecycleScreens, 'common.cancel': 'Vazgeç', 'common.retry': 'Tekrar dene' };
+const en = { ...enLifecycleScreens, ...enOsUpdatesScreens, 'common.cancel': 'Cancel', 'common.retry': 'Try again' };
+const tr = { ...trLifecycleScreens, ...trOsUpdatesScreens, 'common.cancel': 'Vazgeç', 'common.retry': 'Tekrar dene' };
 const fill = (text, vars = {}) => Object.entries(vars).reduce((out, [name, value]) => out.split('{' + name + '}').join(String(value)), text);
 globalThis.cardWords = en;
 const stub = dataModule(`
@@ -347,12 +349,12 @@ test('no new text calls a new major version an update', () => {
 });
 
 test('every new sentence exists in English and Turkish with the same placeholders', () => {
-  const keys = Object.keys(enLifecycleScreens).filter((key) => /^life\.(choice|arch|pending|osinfo)\./.test(key));
+  const keys = Object.keys(enOsUpdatesScreens).filter((key) => /^life\.(choice|arch|pending|osinfo)\./.test(key));
   assert.ok(keys.length > 70);
   const holes = (sentence) => [...sentence.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort().join(',');
   for (const key of keys) {
-    assert.ok(trLifecycleScreens[key], `missing Turkish: ${key}`);
-    assert.equal(holes(trLifecycleScreens[key]), holes(enLifecycleScreens[key]), key);
+    assert.ok(trOsUpdatesScreens[key], `missing Turkish: ${key}`);
+    assert.equal(holes(trOsUpdatesScreens[key]), holes(enOsUpdatesScreens[key]), key);
   }
-  for (const key of Object.keys(trLifecycleScreens).filter((name) => /^life\.(choice|arch|pending|osinfo)\./.test(name))) assert.ok(enLifecycleScreens[key], `missing English: ${key}`);
+  for (const key of Object.keys(trOsUpdatesScreens).filter((name) => /^life\.(choice|arch|pending|osinfo)\./.test(name))) assert.ok(enOsUpdatesScreens[key], `missing English: ${key}`);
 });

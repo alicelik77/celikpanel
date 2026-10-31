@@ -9,8 +9,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { decodePanelPortView, panelAddressOn, PANEL_PORT_URL } from '../src/lib/panelPort.ts';
-import { enSettingsScreens as en } from '../src/i18n/screens/settings/en.ts';
-import { trSettingsScreens as tr } from '../src/i18n/screens/settings/tr.ts';
+import { enPanelPortScreens as en } from '../src/i18n/screens/panelPort/en.ts';
+import { trPanelPortScreens as tr } from '../src/i18n/screens/panelPort/tr.ts';
 
 const read = (path) => readFileSync(new URL('../src/' + path, import.meta.url), 'utf8');
 
