@@ -5,8 +5,14 @@ import { componentName } from '../lib/componentName';
 import { decodeSetupComponentCatalog, setupComponentClosure, setupComponentGroups, type SetupComponent, type SetupComponentCatalog } from '../lib/serverSetupComponents';
 import { Button, KeepWords } from './ui';
 
+// The last catalog this page read. The wizard remounts when the language
+// changes; without this the step list guessed from a missing catalog for a
+// moment (an extra "Components" step that then vanished). A fresh read still
+// replaces it. / Dil degisince sihirbaz yeniden kurulur; son katalog korunur.
+let rememberedCatalog: SetupComponentCatalog | null = null;
+
 export function useSetupComponentCatalog(enabled: boolean) {
-    const [catalog, setCatalog] = useState<SetupComponentCatalog | null>(null);
+    const [catalog, setCatalog] = useState<SetupComponentCatalog | null>(rememberedCatalog);
     const [failed, setFailed] = useState(false);
     const [attempt, setAttempt] = useState(0);
     const reload = useCallback(() => setAttempt(value => value + 1), []);
@@ -16,11 +22,11 @@ export function useSetupComponentCatalog(enabled: boolean) {
         const controller = new AbortController();
         const timeout = window.setTimeout(() => controller.abort(), 20000);
         setFailed(false);
-        setCatalog(null);
         void fetch('/api/v1/setup/components', { cache: 'no-store', signal: controller.signal }).then(async response => {
             if (!response.ok) throw new Error('catalog unavailable');
             const next = decodeSetupComponentCatalog(await response.json());
             if (!next) throw new Error('catalog invalid');
+            rememberedCatalog = next;
             if (alive) setCatalog(next);
         }).catch(() => { if (alive) setFailed(true); }).finally(() => window.clearTimeout(timeout));
         return () => { alive = false; controller.abort(); window.clearTimeout(timeout); };

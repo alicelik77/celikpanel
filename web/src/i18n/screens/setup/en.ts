@@ -523,7 +523,7 @@ export const enSetupScreens = {
     'setup.check.mailIdentity.notCanonical': 'The mail host name {name} in the plan is not a full host name (like mail.example.com). Review the plan, correct it, and start setup again.',
     'setup.check.mailIdentity.notCanonicalUnread': 'The mail host name in the plan is not a full host name (like mail.example.com). Review the plan, correct it, and start setup again.',
     // --- end of the setup final-check block ---
-    "setup.step.domain": "Main domain",
+    "setup.step.domain": "This server",
     "setup.step.count": "Number of servers",
     "setup.step.name": "Short name",
     "setup.step.roles": "What it will do",

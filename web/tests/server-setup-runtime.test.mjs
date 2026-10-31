@@ -96,7 +96,9 @@ async function cleanup(){if(tree)await act(async()=>tree.unmount());for(const[ke
 const findButton=label=>tree.root.findAllByType('button').find(button=>button.props.children===label);
 async function submit(){await act(async()=>tree.root.findByType('form').props.onSubmit({preventDefault(){}}));}
 const input=id=>tree.root.findByProps({id});
-async function type(id,value){await act(async()=>input(id).props.onChange({target:{value}}));}
+// The first question comes first: typing the main domain means the owner chose "The first server".
+async function type(id,value){if(id==='setup-main_domain'&&!tree.root.findAllByProps({id}).length)await chooseKind('first');await act(async()=>input(id).props.onChange({target:{value}}));}
+async function chooseKind(kind){await act(async()=>tree.root.findByProps({name:'setup-server_kind',value:kind}).props.onChange());}
 // The wizard v2 path: main domain, server count, short name, roles, names, DNS home, review.
 async function toNames(domain='example.com'){await type('setup-main_domain',domain);await submit();await submit();await submit();await submit();}
 async function toDNSHome(domain){await toNames(domain);await submit();}
@@ -321,7 +323,7 @@ test('guidance failure stays visible and a guided choice can reopen a manually c
         await mount();await act(async()=>findButton('setup.useWizard').props.onClick());
         assert.equal(tree.root.findAllByType('redirect').length,0);assert.ok(JSON.stringify(tree.toJSON()).includes('setup.choiceFailed'));
         fail=false;await act(async()=>findButton('setup.useWizard').props.onClick());
-        assert.equal(tree.root.findAllByProps({id:'setup-main_domain'}).length,1);
+        assert.ok(radio('setup-server_kind','first')&&radio('setup-server_kind','join'),'the wizard opens on the first question');
         assert.equal(state.guidance,'guided');assert.equal(state.status,'new');
     } finally {await cleanup();}
 });
@@ -1275,6 +1277,10 @@ test('wizard v2: the main domain comes first and every name is proposed from it,
     try {
         await mount();
         await submit();
+        assert.equal(putCount(), 0, 'nothing is saved before the first question is answered');
+        assert.ok(textOf().includes('setup.v6.kind.pick'));
+        await chooseKind('first');
+        await submit();
         assert.equal(putCount(), 0, 'an empty main domain is refused before any request');
         assert.ok(textOf().includes('setup.v2.domain.invalid'));
         await type('setup-main_domain', 'https://www.Example.com/');
@@ -1606,7 +1612,7 @@ test('wizard v2: the second server joins with the first server\'s address and co
     };
     try {
         await mount(); await settleReads();
-        await act(async () => findButton('setup.v5.join.open').props.onClick());
+        await chooseKind('join');
         await type('setup-join_address', '203.0.113.10:2083');
         await type('setup-join_code', 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX');
         assert.equal(tree.root.findAllByProps({ 'data-setup-join-ip': '' }).length, 0, 'no address known, no line');
@@ -1618,7 +1624,7 @@ test('wizard v2: the second server joins with the first server\'s address and co
         assert.ok(textOf().includes('setup.v5.join.state.unknown'), 'a lost answer says the same join is asked again');
         await act(async () => findButton('setup.v5.join.retry').props.onClick());
         assert.ok(textOf().includes('setup.v5.join.draftRetry'), 'a join whose answers could not be saved says what to do');
-        assert.ok(input('setup-main_domain'), 'the wizard stays until the answers are applied');
+        assert.equal(tree.root.findAllByProps({ 'data-setup-join': '' }).length, 1, 'the wizard stays on the join until the answers are applied');
         await act(async () => findButton('setup.v5.join.retry').props.onClick());
         await settleReads();
         const sent = calls.filter(call => call.url === '/api/v1/setup/peer/connect').map(call => JSON.parse(call.options.body));
@@ -1833,7 +1839,7 @@ test('a start marker from another installation is dropped and the wizard starts,
     try {
         await mount(); await settleReads();
         assert.equal(store.has('celikpanel.setup.start.admin'), false, 'the foreign marker is removed');
-        assert.ok(input('setup-main_domain'), 'the wizard starts');
+        assert.ok(tree.root.findByProps({ name: 'setup-server_kind', value: 'first' }), 'the wizard starts');
         assert.ok(textOf().includes('setup.staleStart'), 'a plain notice says what happened and who acts');
         assert.equal(calls.some(call => call.url.includes('request_id=')), false, 'the foreign request is never read');
         assert.equal(calls.some(call => call.url === '/api/v1/setup/start'), false, 'nothing is started');
@@ -1895,7 +1901,7 @@ test('an unconfirmed start the server refuses as unknown is dropped; a lost answ
         await act(async () => findButton('setup.resumeConfirmed').props.onClick());
         await settleReads();
         assert.equal(store.has('celikpanel.setup.start.admin'), false, 'the unknown start is dropped');
-        assert.ok(input('setup-main_domain'), 'back at the wizard start');
+        assert.ok(tree.root.findByProps({ name: 'setup-server_kind', value: 'first' }), 'back at the wizard start');
         assert.ok(textOf().includes('setup.staleStart'));
         assert.equal(findButton('setup.resumeConfirmed'), undefined);
         assert.equal(posts.length, 3);
@@ -1918,9 +1924,11 @@ test('wizard: Enter in the join fields joins and never submits the main domain f
     };
     try {
         await mount(); await settleReads();
-        assert.equal(input('setup-main_domain').props.required, true, 'the main domain is required while only the domain is being entered');
-        await act(async () => findButton('setup.v5.join.open').props.onClick());
-        assert.equal(input('setup-main_domain').props.required, false, 'it is not required while the join panel is open');
+        await chooseKind('first');
+        assert.equal(input('setup-main_domain').props.required, true, 'the main domain is required on the first-server path');
+        assert.equal(tree.root.findAllByProps({ 'data-setup-join': '' }).length, 0, 'no join section on the first-server path');
+        await chooseKind('join');
+        assert.equal(tree.root.findAllByProps({ id: 'setup-main_domain' }).length, 0, 'the join path has no main domain field');
         await type('setup-join_address', '203.0.113.10:2083');
         await type('setup-join_code', 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX');
         const fields = tree.root.findByProps({ 'data-setup-join-fields': '' });
@@ -2035,4 +2043,117 @@ test('review: the registrar line says the domain already points here only when t
             assert.ok(calls.some(call => call.url === '/api/v1/setup/public-records?delegation=only'));
         } finally { await cleanup(); }
     }
+});
+
+// --- The first screen: "What will this server be?" (alpha.114) ----------------
+const hasContinue = () => tree.root.findAllByProps({ type: 'submit' }).length > 0;
+
+test('first screen: two clear choices as one radio group, nothing else to press until one is chosen', async () => {
+    init('admin');
+    try {
+        await mount(); await settleReads();
+        const group = tree.root.findByProps({ role: 'radiogroup' });
+        assert.equal(group.props['aria-label'], 'setup.v6.kind.title');
+        assert.equal(radio('setup-server_kind', 'first').props.checked, false);
+        assert.equal(radio('setup-server_kind', 'join').props.checked, false);
+        const text = textOf();
+        for (const key of ['setup.v6.kind.title', 'setup.v6.kind.first', 'setup.v6.kind.first.help', 'setup.v6.kind.join', 'setup.v6.kind.join.help', 'setup.v6.kind.pick']) assert.ok(text.includes(key), key);
+        assert.equal(tree.root.findAllByProps({ id: 'setup-main_domain' }).length, 0, 'no domain field before the choice');
+        assert.equal(tree.root.findAllByProps({ 'data-setup-join': '' }).length, 0, 'no join section before the choice');
+        assert.equal(hasContinue(), false, 'no primary action before the choice');
+    } finally { await cleanup(); }
+});
+
+test('first screen: the first-server path shows the main domain and Continue, no join section; Back returns to the kept choice', async () => {
+    init('admin');
+    try {
+        await mount(); await settleReads();
+        await chooseKind('first');
+        assert.equal(radio('setup-server_kind', 'first').props.checked, true);
+        assert.ok(input('setup-main_domain'));
+        assert.equal(hasContinue(), true, 'Continue is the primary action');
+        assert.equal(tree.root.findAllByProps({ 'data-setup-join': '' }).length, 0, 'no join section');
+        assert.equal(tree.root.findAllByProps({ name: 'setup-join_code' }).length, 0);
+        await type('setup-main_domain', 'example.com');
+        await submit();
+        assert.ok(radio('setup-server_count', '2'), 'Continue goes on');
+        await act(async () => findButton('setup.back').props.onClick());
+        assert.equal(radio('setup-server_kind', 'first').props.checked, true, 'Back returns to the kept choice');
+        assert.equal(input('setup-main_domain').props.value, 'example.com');
+    } finally { await cleanup(); }
+});
+
+test('first screen: the join path hides the main domain and Continue; Join is the one primary action', async () => {
+    init('admin');
+    const base = globalThis.fetch;
+    globalThis.fetch = async (url, options) => url === '/api/v1/setup/peer' ? Response.json({ role: 'none' }) : base(url, options);
+    try {
+        await mount(); await settleReads();
+        await chooseKind('join');
+        assert.equal(radio('setup-server_kind', 'join').props.checked, true);
+        assert.equal(tree.root.findAllByProps({ id: 'setup-main_domain' }).length, 0, 'the main domain comes from the first server');
+        assert.equal(hasContinue(), false, 'Continue is not shown');
+        assert.ok(input('setup-join_code'));
+        const join = findButton('setup.v5.join.submit');
+        assert.ok(join && join.props.variant === 'primary', 'Join is the primary button');
+        await submit();
+        assert.equal(putCount(), 0, 'submitting the form on this path saves nothing');
+        await chooseKind('first');
+        assert.ok(input('setup-main_domain'), 'switching back shows the main domain again');
+        assert.equal(tree.root.findAllByProps({ 'data-setup-join': '' }).length, 0);
+    } finally { await cleanup(); }
+});
+
+test('first screen: the join path says so while this server\'s connection state is unread and offers a retry', async () => {
+    init('admin');
+    const base = globalThis.fetch;
+    globalThis.fetch = async (url, options) => url === '/api/v1/setup/peer' ? Response.json({ error: 'down' }, { status: 503 }) : base(url, options);
+    try {
+        await mount(); await settleReads();
+        await chooseKind('join');
+        await settleReads();
+        assert.equal(tree.root.findAllByProps({ 'data-setup-join-checking': '' }).length, 1);
+        assert.ok(textOf().includes('setup.v6.kind.checking'));
+        assert.equal(tree.root.findAllByProps({ name: 'setup-join_code' }).length, 0, 'no join without the state');
+        assert.equal(hasContinue(), false);
+    } finally { await cleanup(); }
+});
+
+test('first screen: a draft that already has a main domain, and a server already joined, behave as before', async () => {
+    init('admin', { draft: { ...fresh().draft, main_domain: 'example.com', server_count: 2 } });
+    try {
+        await mount(); await settleReads();
+        assert.equal(radio('setup-server_kind', 'first').props.checked, true, 'a saved main domain means the first-server path');
+        assert.equal(input('setup-main_domain').props.value, 'example.com');
+    } finally { await cleanup(); }
+    init('admin', { short_name_suggestion: 'beta' });
+    const base = globalThis.fetch;
+    globalThis.fetch = async (url, options) => url === '/api/v1/setup/peer' ? Response.json({ role: 'second', link: joinedLink }) : base(url, options);
+    try {
+        await mount(); await settleReads();
+        assert.equal(tree.root.findAllByProps({ 'data-setup-joined': '' }).length, 1, 'the shared answers are shown');
+        assert.equal(tree.root.findAllByProps({ name: 'setup-server_kind' }).length, 0, 'a joined server is not asked again');
+        assert.equal(tree.root.findAllByProps({ id: 'setup-main_domain' }).length, 0);
+        assert.equal(hasContinue(), true, 'Continue goes on with this server\'s own names');
+    } finally { await cleanup(); }
+});
+
+test('step list: it does not gain a Components step while the catalog is read again after a language change', async () => {
+    const stepCount = () => tree.root.findAllByType('nav')[0].findAllByType('li').length;
+    const { applySetupRoles } = await import(componentLibURL);
+    const roleDraft = { ...fresh().draft, main_domain: 'example.com', server_count: 2, dns_mode: 'external' };
+    // The owner's roles, not a customized list: with the catalog read it is the plain list of steps.
+    const draft = applySetupRoles(roleDraft, { web: true, mail: false, dns: false }, setupCatalogFixture());
+    init('admin', { status: 'draft', draft });
+    try {
+        await mount(); await settleReads();
+        const before = stepCount();
+        await cleanup();
+        // The language switch remounts the page; the catalog read is still in flight.
+        init('admin', { status: 'draft', draft });
+        const read = globalThis.fetch;
+        globalThis.fetch = async (url, options) => url === '/api/v1/setup/components' ? new Promise(() => {}) : read(url, options);
+        await mount(); await settleReads();
+        assert.equal(stepCount(), before, 'the same steps while the catalog is unread');
+    } finally { await cleanup(); }
 });

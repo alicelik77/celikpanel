@@ -5,9 +5,15 @@
 // "setupJoin" ekran parcasi: ikinci sunucunun kodla katilmasi.
 
 export const enSetupJoinScreens = {
-    "setup.v5.join.title": "Is this the second server?",
-    "setup.v5.join.help": "If another server already started its setup with two servers, join it: enter the address and the code shown on its setup screen. The main domain, the DNS servers and their names then come from that server; here you choose only this server's own roles and names.",
-    "setup.v5.join.open": "Join the first server with a code",
+    "setup.v5.join.title": "Join an existing server",
+    "setup.v5.join.help": "On the first server, open its setup screen and create a join code. Enter its address and the code here. The main domain, the DNS servers and their names then come from that server; here you choose only this server’s own roles and names.",
+    "setup.v6.kind.title": "What will this server be?",
+    "setup.v6.kind.first": "The first server",
+    "setup.v6.kind.first.help": "Choose this for a new setup, whether you will have one server or more. You will enter your main domain here.",
+    "setup.v6.kind.join": "Join an existing server",
+    "setup.v6.kind.join.help": "Choose this if another server is already set up and shows a join code. This server then takes the main domain from it.",
+    "setup.v6.kind.pick": "Choose one to continue.",
+    "setup.v6.kind.checking": "This server’s connection state could not be read yet, so joining is not offered. Nothing was changed. Try again; if it keeps failing, reload the page.",
     "setup.v5.join.address": "The first server's address",
     "setup.v5.join.addressHelp": "As shown on its setup screen, for example https://203.0.113.10:2083.",
     "setup.v5.join.code": "Join code",
