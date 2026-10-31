@@ -85,6 +85,7 @@ func TestServiceMutationStepPolicyAllowsEveryDeclaredWorkflowRow(t *testing.T) {
 		{"drop a moved PostgreSQL database's source", mutationPolicyJob("pg_database_drop", "pgdb-shop", "5432"), mutationPolicyClaim(serviceMutationStepDropPGDatabase, "pgdb-shop", "5432", "drop")},
 		{"add vendor origins to the OS updates", mutationPolicyJob("os_updates_origins", "unattended-upgrades", ""), mutationPolicyClaim(serviceMutationStepWriteVendorOrigins, "unattended-upgrades", "", "origins")},
 		{"choose automatic or manual OS updates", mutationPolicyJob("os_updates_mode", "unattended-upgrades", ""), mutationPolicyClaim(serviceMutationStepSetOSUpdatesMode, "unattended-upgrades", "", "mode")},
+		{"change the panel's own listen port", mutationPolicyJob("panel_port_change", panelListenMutationTarget, "1923"), mutationPolicyClaim(serviceMutationStepSetPanelListen, panelListenMutationTarget, "1923", "port")},
 		{"install node", mutationPolicyJob("runtime_install", "node", "22.14.0"), mutationPolicyClaim(serviceMutationStepInstallNodeVersion, "node", "22.14.0", "install")},
 		{"remove node", mutationPolicyJob("runtime_remove", "node:22.14.0", ""), mutationPolicyClaim(serviceMutationStepRemoveNodeVersion, "node", "22.14.0", "remove")},
 		{"enable repository", mutationPolicyJob("repo_enable", "docker", ""), mutationPolicyClaim(serviceMutationStepEnableRepo, "docker", "", "enable")},
@@ -180,6 +181,7 @@ func TestServiceMutationStepPolicyAllowsEveryDeclaredWorkflowRow(t *testing.T) {
 		serviceMutationStepConfineRepo,
 		serviceMutationStepWriteVendorOrigins,
 		serviceMutationStepSetOSUpdatesMode,
+		serviceMutationStepSetPanelListen,
 		serviceMutationStepVendorLane,
 		serviceMutationStepUpdateRoundcube,
 		serviceMutationStepMoveAppFilesOwner,
@@ -439,6 +441,7 @@ func TestServiceMutationPrivilegedCallsitesCarryTypedClaims(t *testing.T) {
 		"serviceMutationStepConfineRepo":              true,
 		"serviceMutationStepWriteVendorOrigins":       true,
 		"serviceMutationStepSetOSUpdatesMode":         true,
+		"serviceMutationStepSetPanelListen":           true,
 		"serviceMutationStepVendorLane":               true,
 		"serviceMutationStepUpdateRoundcube":          true,
 		"serviceMutationStepEnableWebmailAddress":     true,
@@ -507,8 +510,8 @@ func TestServiceMutationPrivilegedCallsitesCarryTypedClaims(t *testing.T) {
 		}
 	}
 
-	if len(seenMethods) != 45 {
-		t.Errorf("production requiredServiceMutationStep claim count=%d want=45", len(seenMethods))
+	if len(seenMethods) != 46 {
+		t.Errorf("production requiredServiceMutationStep claim count=%d want=46", len(seenMethods))
 	}
 	for method := range expectedMethods {
 		if seenMethods[method] == "" {
