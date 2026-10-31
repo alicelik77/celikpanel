@@ -78,6 +78,7 @@ const codeKey: Record<string, TranslationKey> = {
     server_setup_peer_link_revoked: 'setup.v5.wait.server_setup_peer_link_revoked',
     server_setup_completion_plan_changed: 'setup.v5.wait.server_setup_completion_plan_changed',
     server_setup_completion_unknown: 'setup.v5.wait.server_setup_completion_unknown',
+    server_setup_verification_overdue: 'setup.guide.verificationOverdue',
     server_setup_completion_waiting: 'setup.v5.wait.server_setup_completion_waiting',
     server_setup_peer_inspection_unreachable: 'setup.v5.wait.server_setup_peer_inspection_unreachable',
     server_setup_peer_inspection_main_agent: 'setup.v5.wait.server_setup_peer_inspection_main_agent',
@@ -89,6 +90,7 @@ const codeKey: Record<string, TranslationKey> = {
     server_setup_peer_inspection_ssh_unreachable: 'setup.v5.wait.server_setup_peer_inspection_ssh_unreachable',
     server_setup_peer_version_incompatible: 'setup.v5.wait.server_setup_peer_version_incompatible',
     server_setup_dns_publisher_refused: 'setup.v5.wait.server_setup_dns_publisher_refused',
+    server_setup_dns_publisher_unconfirmed: 'setup.v5.wait.server_setup_dns_publisher_unconfirmed',
     server_setup_peer_dkim_conflict: 'setup.v5.wait.server_setup_peer_dkim_conflict',
     server_setup_peer_dkim_not_running: 'setup.v5.wait.server_setup_peer_dkim_not_running',
     server_setup_peer_dkim_not_bound: 'setup.v5.wait.server_setup_peer_dkim_not_bound',
@@ -1053,7 +1055,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                         {guidance.details.length > 0 && <details className="mt-3 text-sm leading-6"><summary className="cursor-pointer font-medium text-primary">{t('setup.guide.more')}</summary><ul className="mt-2 list-disc space-y-2 pl-5 text-fg-muted">{guidance.details.map((message, index) => <li key={index}>{say(message)}</li>)}</ul></details>}
                     </aside>}
                     {/* The failure colour is for a verified failure only: a busy server, an unmet prerequisite and a result still being confirmed are not one. */}
-                    {execution?.error && !['dns_publisher', 'dns_readiness'].includes(execution.phase) && <div role={hostBusy ? undefined : confirmingPrevious || waitingDNSPrerequisite || observingMailEnrollment || planReopened ? 'status' : 'alert'} className={`${hostBusy ? 'mt-3' : 'mt-5'} space-y-2 text-sm`}>{!hostBusy && !peerRecordApplied && (!(confirmingPrevious || observingMailEnrollment || planReopened) || !guidance) && <p className={execution.status === 'failed' ? 'text-danger' : confirmingPrevious || waitingDNSPrerequisite ? 'text-fg-muted' : 'text-fg'}>{failureText(execution.error.code, execution.error.message, execution.error.reason)}</p>}<details><summary className="cursor-pointer text-primary">{t('setup.details')}</summary><p className="mt-2 break-words text-fg-muted">{execution.error.message}</p></details></div>}
+                    {execution?.error && !['dns_publisher', 'dns_readiness'].includes(execution.phase) && execution.error.code !== 'server_setup_verification_overdue' && <div role={hostBusy ? undefined : confirmingPrevious || waitingDNSPrerequisite || observingMailEnrollment || planReopened ? 'status' : 'alert'} className={`${hostBusy ? 'mt-3' : 'mt-5'} space-y-2 text-sm`}>{!hostBusy && !peerRecordApplied && (!(confirmingPrevious || observingMailEnrollment || planReopened) || !guidance) && <p className={execution.status === 'failed' ? 'text-danger' : confirmingPrevious || waitingDNSPrerequisite ? 'text-fg-muted' : 'text-fg'}>{failureText(execution.error.code, execution.error.message, execution.error.reason)}</p>}<details><summary className="cursor-pointer text-primary">{t('setup.details')}</summary><p className="mt-2 break-words text-fg-muted">{execution.error.message}</p></details></div>}
                     {execution && setupPackageUpdatesWaiting(execution) && <SetupPackageUpdatesWait key={execution.id} executionID={execution.id} onContinued={next => { if (next) setExecution(next); void reconcile(); }} />}
                     {/* The action a stopped run names sits with its reason, above the step list. */}
                     {execution?.status === 'failed' && guidance && !hostBusy && <div className="mt-5"><Button variant="primary" onClick={editPlan}>{t('setup.revise')}</Button></div>}
@@ -1130,7 +1132,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                     {step === 'names' && <fieldset disabled={busy}><SetupNamesStep draft={draft} mail={isMail} web={roles.web} mainDomain={mainDomain} ip={panelDNSIP || snapshot.server_ip || ''} ownDNS={localPrimary} joined={joinedNames && joinedLink ? { names: joinedNames, server: joinedLink.first.short_name || joinedLink.first.panel_domain, keepsMainMail: firstKeepsMainMail, proposal: proposal.mail } : undefined} recordsStep={steps.includes('records')} onChange={(key, value) => change(key, value)} /></fieldset>}
                     {step === 'records' && <fieldset disabled={busy}><SetupRecordsStep draft={draft} update={updateDraft} mainDomain={mainDomain}
                         own={[draft.panel_domain, draft.mail_hostname, draft.ns1, draft.ns2, draft.infrastructure_dns?.peer_panel_domain || '', draft.infrastructure_dns?.peer_mail_hostname || ''].filter(Boolean)} /></fieldset>}
-                    {step === 'mail' && <fieldset disabled={busy}><SetupMailStep draft={draft} update={updateDraft} mainDomain={mainDomain} ip4={draft.dns_mode === 'local' ? draft.local_ip : snapshot.server_ip || ''} ip6={snapshot.server_ipv6 || ''} /></fieldset>}
+                    {step === 'mail' && <fieldset disabled={busy}><SetupMailStep draft={draft} update={updateDraft} mainDomain={mainDomain} ip4={draft.dns_mode === 'local' ? draft.local_ip : snapshot.server_ip || ''} ip6={snapshot.server_ipv6 || ''} joined={joinedLink && firstKeepsMainMail ? { server: joinedLink.first.short_name || joinedLink.first.panel_domain, first: joinedLink.first.mail_hostname || joinedLink.first.panel_domain } : undefined} /></fieldset>}
                     {step === 'dnshome' && <fieldset disabled={busy}><SetupDNSHomeStep draft={draft} catalog={catalog} serverCount={serverCount} mainDomain={mainDomain} detectedIP={detectedIP}
                         set={(key, value) => { if (key === 'local_ip') localIPTouched.current = true; updateDraft(previous => ({ ...previous, [key]: value })); }}
                         onMode={chooseDNSMode}

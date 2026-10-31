@@ -9,6 +9,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -134,22 +135,15 @@ func (p *Panel) authenticateRemoteDNSMachine(w http.ResponseWriter, r *http.Requ
 		if !validServiceOperationID(request.ClientID) || !remoteDNSValidSecret(request.Credential) || !remoteDNSValidLabel(request.Label) {
 			return deny()
 		}
-		var expires int64
-		var consumed string
+		// Only an answer this server verified is a refusal with its typed
+		// code (alpha.114 lab E1); a database it could not read now (busy
+		// during its own setup, or starting) is "try again" (503), which a
+		// joined server waits on instead of asking for a new join code.
+		// Dogrulanmis ret tipli koduyla; okunamayan veritabani 503'tur.
 		codeHash := remoteDNSHash(secret)
-		if err := p.db.GetDB().QueryRowContext(r.Context(), `SELECT expires_at,client_id FROM remote_dns_enrollments WHERE code_hash=?`, codeHash).Scan(&expires, &consumed); err != nil {
-			return deny()
-		}
-		if consumed == "" {
-			if time.Now().Unix() >= expires && !request.Cancel {
-				return deny()
-			}
-		} else {
-			// Consumed codes only reconcile their exact persisted client secret;
-			// expiration never grants a second enrollment after a lost reply.
-			if consumed != request.ClientID || !p.remoteDNSClientCredentialMatches(r.Context(), request.ClientID, remoteDNSHash(request.Credential), request.Cancel) {
-				return deny()
-			}
+		if status, code := p.remoteDNSEnrollmentVerdict(r.Context(), codeHash, request); code != "" {
+			writeRemoteDNSEnrollmentVerdict(w, status, code)
+			return false
 		}
 		claim.enrollmentHash = codeHash
 		claim.accept = &request
@@ -175,6 +169,67 @@ func (p *Panel) authenticateRemoteDNSMachine(w http.ResponseWriter, r *http.Requ
 	}
 	*r = *r.WithContext(context.WithValue(r.Context(), remoteDNSMachineClaimKey{}, claim))
 	return true
+}
+
+// Typed answers of the enrollment (accept) path. Each is told only to a
+// caller holding the exact 256-bit enrollment code, so it reveals nothing
+// a stranger could use. Older joined servers read every 4xx as a refusal and
+// every 5xx as a wait; both stay true.
+const (
+	errCodeRemoteDNSEnrollmentUnknown = "REMOTE_DNS_ENROLLMENT_UNKNOWN" // withdrawn, or never issued here
+	errCodeRemoteDNSEnrollmentExpired = "REMOTE_DNS_ENROLLMENT_EXPIRED"
+	errCodeRemoteDNSEnrollmentUsed    = "REMOTE_DNS_ENROLLMENT_USED" // consumed by another identity
+	errCodeRemoteDNSBusy              = "REMOTE_DNS_BUSY"            // not readable now; ask again
+)
+
+// remoteDNSEnrollmentVerdict reads the enrollment for an accept request. An
+// empty code means the request may go on.
+func (p *Panel) remoteDNSEnrollmentVerdict(ctx context.Context, codeHash string, request remoteDNSAcceptRequest) (int, string) {
+	var expires int64
+	var consumed string
+	err := p.db.GetDB().QueryRowContext(ctx, `SELECT expires_at,client_id FROM remote_dns_enrollments WHERE code_hash=?`, codeHash).Scan(&expires, &consumed)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		return http.StatusUnauthorized, errCodeRemoteDNSEnrollmentUnknown
+	case err != nil:
+		return http.StatusServiceUnavailable, errCodeRemoteDNSBusy
+	}
+	if consumed == "" {
+		if time.Now().Unix() >= expires && !request.Cancel {
+			return http.StatusUnauthorized, errCodeRemoteDNSEnrollmentExpired
+		}
+		return 0, ""
+	}
+	// Consumed codes only reconcile their exact persisted client secret;
+	// expiration never grants a second enrollment after a lost reply.
+	if consumed != request.ClientID {
+		return http.StatusUnauthorized, errCodeRemoteDNSEnrollmentUsed
+	}
+	var stored string
+	var revoked bool
+	err = p.db.GetDB().QueryRowContext(ctx, `SELECT credential_hash,revoked FROM remote_dns_clients WHERE id=?`, request.ClientID).Scan(&stored, &revoked)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		return http.StatusUnauthorized, errCodeRemoteDNSEnrollmentUsed
+	case err != nil:
+		return http.StatusServiceUnavailable, errCodeRemoteDNSBusy
+	case (revoked && !request.Cancel) || !remoteDNSHashEqual(stored, remoteDNSHash(request.Credential)):
+		return http.StatusUnauthorized, errCodeRemoteDNSEnrollmentUsed
+	}
+	return 0, ""
+}
+
+func writeRemoteDNSEnrollmentVerdict(w http.ResponseWriter, status int, code string) {
+	message := map[string]string{
+		errCodeRemoteDNSEnrollmentUnknown: "This enrollment code is not known here: it was withdrawn or never issued by this server",
+		errCodeRemoteDNSEnrollmentExpired: "This enrollment code expired",
+		errCodeRemoteDNSEnrollmentUsed:    "This enrollment code was already used by another connection",
+		errCodeRemoteDNSBusy:              "This server could not read its enrollments now; ask again shortly",
+	}[code]
+	if status == http.StatusServiceUnavailable {
+		w.Header().Set("Retry-After", "10")
+	}
+	writeCodedError(w, status, code, message, "")
 }
 
 func remoteDNSValidLabel(label string) bool {
@@ -303,29 +358,42 @@ func (p *Panel) acceptRemoteDNSClient(w http.ResponseWriter, r *http.Request, cl
 	var expires int64
 	var consumed string
 	err = tx.QueryRowContext(r.Context(), `SELECT expires_at,client_id FROM remote_dns_enrollments WHERE code_hash=?`, claim.enrollmentHash).Scan(&expires, &consumed)
-	if err != nil {
-		writeClientError(w, http.StatusUnauthorized, "Remote DNS enrollment unavailable")
+	if errors.Is(err, sql.ErrNoRows) {
+		writeRemoteDNSEnrollmentVerdict(w, http.StatusUnauthorized, errCodeRemoteDNSEnrollmentUnknown)
 		return
 	}
+	if err != nil {
+		writeRemoteDNSEnrollmentVerdict(w, http.StatusServiceUnavailable, errCodeRemoteDNSBusy)
+		return
+	}
+	writeFailed := false
 	if consumed == "" {
 		if time.Now().Unix() >= expires && !request.Cancel {
-			writeClientError(w, http.StatusUnauthorized, "Remote DNS enrollment expired")
+			writeRemoteDNSEnrollmentVerdict(w, http.StatusUnauthorized, errCodeRemoteDNSEnrollmentExpired)
 			return
 		}
+		// A write this server could not make now (its database busy with
+		// its own setup) is "ask again", never a refusal (lab E1).
 		_, err = tx.ExecContext(r.Context(), `INSERT INTO remote_dns_clients(id,credential_hash,label,created_at,revoked) VALUES(?,?,?,?,?)`, request.ClientID, remoteDNSHash(request.Credential), request.Label, time.Now().UTC().Format(time.RFC3339), request.Cancel)
 		if err == nil {
 			_, err = tx.ExecContext(r.Context(), `UPDATE remote_dns_enrollments SET client_id=? WHERE code_hash=? AND client_id=''`, request.ClientID, claim.enrollmentHash)
 		}
+		writeFailed = err != nil
 	} else {
 		var hash, label string
 		var revoked bool
 		err = tx.QueryRowContext(r.Context(), `SELECT credential_hash,label,revoked FROM remote_dns_clients WHERE id=?`, request.ClientID).Scan(&hash, &label, &revoked)
-		if err == nil && (consumed != request.ClientID || (revoked && !request.Cancel) || label != request.Label || !remoteDNSHashEqual(hash, remoteDNSHash(request.Credential))) {
+		writeFailed = err != nil && !errors.Is(err, sql.ErrNoRows)
+		if errors.Is(err, sql.ErrNoRows) || (err == nil && (consumed != request.ClientID || (revoked && !request.Cancel) || label != request.Label || !remoteDNSHashEqual(hash, remoteDNSHash(request.Credential)))) {
 			err = errors.New("enrollment identity differs")
 		}
 	}
+	if writeFailed {
+		writeRemoteDNSEnrollmentVerdict(w, http.StatusServiceUnavailable, errCodeRemoteDNSBusy)
+		return
+	}
 	if err != nil {
-		writeClientError(w, http.StatusConflict, "Remote DNS enrollment identity is unavailable")
+		writeCodedError(w, http.StatusConflict, errCodeRemoteDNSEnrollmentUsed, "Remote DNS enrollment identity is unavailable", "")
 		return
 	}
 	if request.Cancel {

@@ -22,6 +22,7 @@ const setupLinkCodes = ['server_setup_peer_join_waiting', 'server_setup_peer_nam
     'server_setup_peer_names_outside_domain', 'server_setup_peer_names_invalid', 'server_setup_peer_mail_both', 'server_setup_peer_names_unreachable', 'server_setup_peer_names_unknown',
     'server_setup_dns_publisher_waiting', 'server_setup_dns_publisher_local_waiting', 'server_setup_peer_dkim_zone_waiting', 'server_setup_peer_dkim_publishing',
     'server_setup_peer_dkim_unreachable', 'server_setup_peer_dkim_unknown', 'server_setup_join_certificate_unavailable', 'server_setup_peer_link_missing', 'server_setup_peer_names_bound', 'server_setup_peer_names_final', 'server_setup_peer_names_changed', 'server_setup_peer_join_reopen_required', 'server_setup_peer_version_incompatible', 'server_setup_dns_publisher_refused', 'server_setup_peer_dkim_conflict',
+    'server_setup_dns_publisher_peer_busy', 'server_setup_dns_publisher_peer_license', 'server_setup_dns_publisher_peer_unexplained', 'server_setup_dns_publisher_unconfirmed',
     'server_setup_peer_dkim_not_running', 'server_setup_peer_dkim_not_bound', 'server_setup_peer_link_revoked',
     'server_setup_peer_ready_unreachable', 'server_setup_peer_ready_refused', 'server_setup_peer_ready_identity_changed', 'server_setup_plan_changed_by_rejoin', 'server_setup_host_starting', 'server_setup_host_not_started', 'server_setup_host_busy', 'server_setup_host_stayed_busy', 'mail_tls_sync_host_busy', 'server_setup_agent_not_answering', 'server_setup_peer_dkim_removed', 'server_setup_completion_plan_changed', 'server_setup_completion_unknown', 'server_setup_completion_waiting',
     'server_setup_peer_inspection_unreachable', 'server_setup_peer_inspection_main_agent', 'server_setup_peer_inspection_agent', 'server_setup_peer_inspection_main_pair', 'server_setup_peer_inspection_backup_pair', 'server_setup_peer_inspection_ssh_port', 'server_setup_peer_inspection_failed', 'server_setup_peer_inspection_ssh_unreachable'];
@@ -42,6 +43,7 @@ const address = (value: unknown): value is string => typeof value === 'string' &
 // got no answer (reverse_dns_unknown): said as not known, never as missing.
 // Bilinmeyen kontrolun tek tipli nedeni yanitsiz ters DNS sorgusudur.
 export function setupCheckReasonText(check: ServerSetupCheck): SetupGuidanceText | null {
+    if (check.id === 'dns') return setupDNSCheckReasonText(check);
     if (check.id === 'mail_identity_ipv6' && typeof check.reason === 'string') {
         const { hostname, ip, ptr } = (check.vars && typeof check.vars === 'object' ? check.vars : {}) as Record<string, unknown>;
         if (!address(ip)) return null;
@@ -82,6 +84,31 @@ export function setupCheckReasonText(check: ServerSetupCheck): SetupGuidanceText
         return dnsName(current) ? text('setup.check.mailIdentity.mailName', { current, hostname }) : text('setup.check.mailIdentity.mailNameUnread', { hostname });
     }
     return null;
+}
+// The final DNS check's typed reason (alpha.114 lab E8): who acts and the
+// next action, with the reviewed names. An unexpected reason or a missing
+// name keeps the general sentence.
+// DNS denetiminin tipli nedeni: kim islem yapar ve sonraki eylem.
+const dnsCheckReasons: Record<string, { key: TranslationKey; vars: string[] }> = {
+    dns_publisher_missing: { key: 'setup.check.dns.publisherMissing', vars: ['primary'] },
+    dns_publisher_unconfirmed: { key: 'setup.check.dns.publisherUnconfirmed', vars: ['primary'] },
+    dns_backup_not_serving: { key: 'setup.check.dns.backupNotServing', vars: ['ns1', 'ns2'] },
+    dns_setup_changed: { key: 'setup.check.dns.setupChanged', vars: [] },
+    dns_engine_not_ready: { key: 'setup.check.dns.engineNotReady', vars: [] },
+    dns_pair_not_ready: { key: 'setup.check.dns.pairNotReady', vars: [] },
+    dns_nameservers_not_public: { key: 'setup.check.dns.nameserversNotPublic', vars: ['ns1', 'ns2'] },
+};
+function setupDNSCheckReasonText(check: ServerSetupCheck): SetupGuidanceText | null {
+    const known = typeof check.reason === 'string' ? dnsCheckReasons[check.reason] : undefined;
+    if (!known || check.state === 'ready') return null;
+    const vars = check.vars && typeof check.vars === 'object' && !Array.isArray(check.vars) ? check.vars as Record<string, unknown> : {};
+    const values: Record<string, string> = {};
+    for (const name of known.vars) {
+        const value = vars[name];
+        if (!dnsName(value)) return null;
+        values[name] = value;
+    }
+    return text(known.key, values);
 }
 const checkNames: Record<string, TranslationKey> = {
     panel_https: 'setup.check.name.panel_https', panel_renewal: 'setup.check.name.panel_renewal', dns: 'setup.check.name.dns',
@@ -281,7 +308,9 @@ export function setupExecutionGuidance(execution: ServerSetupExecution, componen
     // Katilma ve kurulum baglantisi: her bekleme ve retin kendi cumlesi var.
     const linkCode = execution.error?.code || '';
     if (setupLinkCodes.includes(linkCode)) {
-        result.messages.push(text(`setup.v5.wait.${linkCode}` as TranslationKey));
+        // The main DNS server a joined server publishes to is named (E1).
+        const server = context?.dns_publisher_host || context?.peer_nameserver || '';
+        result.messages.push(text(`setup.v5.wait.${linkCode}` as TranslationKey, server ? { server } : undefined));
         if (execution.status === 'waiting') result.details.push(text('setup.guide.monitoring'));
         return result;
     }
@@ -399,7 +428,11 @@ export function setupExecutionGuidance(execution: ServerSetupExecution, componen
         // DNS; once made, nothing more is needed in CelikPanel (2026-10-14).
         // Saglayicidaki ters DNS degisikligi genel DNS'e zamanla ulasir.
         if (open.some(reverseDNSWait)) result.messages.push(text('setup.guide.reverseDNSPropagation'));
-        if (execution.status === 'waiting') result.messages.push(text('setup.guide.verificationResume'));
+        // Past its bound the wait is said as overdue: the owner acts now (E8).
+        if (execution.status === 'waiting' && execution.error?.code === 'server_setup_verification_overdue') {
+            result.title = 'setup.guide.failedTitle';
+            result.messages.push(text('setup.guide.verificationOverdue'));
+        } else if (execution.status === 'waiting') result.messages.push(text('setup.guide.verificationResume'));
     }
     if (result.messages.length === 0) result.messages.push(text('setup.guide.unknown'));
     if (execution.status === 'running' || (execution.status === 'waiting' && ['dns_readiness', 'dns_publisher', 'access_dns', 'primary_dns', 'infrastructure_dns'].includes(phase))) {

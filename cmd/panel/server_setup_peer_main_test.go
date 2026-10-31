@@ -97,16 +97,20 @@ func TestServerSetupPeerSecondServerAsMainTakesThePreparedList(t *testing.T) {
 			t.Fatalf("publisher wait: %v", err)
 		}
 	}
-	// A definite refusal is a verified failure with its next action; a main
-	// that is not ready yet, or a server error, is still a wait.
+	// A refusal the main verified and typed is a failure with its next
+	// action; a main that is not ready yet, busy or answering a server error
+	// is a wait, and a refusal without a reason is a bounded wait (alpha.114
+	// lab E1: a valid code was reported as expired while the main was in its
+	// own setup).
 	for _, test := range []struct {
 		err  error
 		code string
 	}{
-		{&remoteDNSHTTPError{StatusCode: http.StatusUnauthorized}, "server_setup_dns_publisher_refused"},
-		{&remoteDNSHTTPError{StatusCode: http.StatusConflict}, "server_setup_dns_publisher_refused"},
+		{&remoteDNSHTTPError{StatusCode: http.StatusUnauthorized, Code: errCodeRemoteDNSEnrollmentExpired}, "server_setup_dns_publisher_refused"},
+		{&remoteDNSHTTPError{StatusCode: http.StatusUnauthorized}, "server_setup_dns_publisher_peer_unexplained"},
+		{&remoteDNSHTTPError{StatusCode: http.StatusConflict}, "server_setup_dns_publisher_peer_unexplained"},
 		{&remoteDNSHTTPError{StatusCode: http.StatusConflict, Code: "REMOTE_DNS_AUTHORITY_NOT_READY"}, "server_setup_dns_publisher_waiting"},
-		{&remoteDNSHTTPError{StatusCode: http.StatusBadGateway}, "server_setup_dns_publisher_waiting"},
+		{&remoteDNSHTTPError{StatusCode: http.StatusBadGateway}, "server_setup_dns_publisher_peer_busy"},
 	} {
 		remoteDNSExchange = func(context.Context, string, string, string, any, any) error { return test.err }
 		_, err := pair.first.panel.autoServerSetupDNSPublisher(context.Background(), effective, pair.execution.ID)

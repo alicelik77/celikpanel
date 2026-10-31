@@ -562,6 +562,14 @@ export const enSetupScreens = {
     "setup.check.mailIdentity6.missing": "The IPv6 address {ip} has no reverse DNS (PTR) naming {hostname}. Set it to {hostname} in your server provider’s panel; mail sent over IPv6 is refused without it. Setup checks again by itself.",
     "setup.check.mailIdentity6.mismatch": "The reverse DNS (PTR) of the IPv6 address {ip} is {ptr}, not {hostname}. Change it to {hostname} in your server provider’s panel. Setup checks again by itself.",
     "setup.check.mailIdentity6.unknown": "The reverse DNS of the IPv6 address {ip} could not be read just now. Nothing needs to be done yet; it is read again shortly.",
+    "setup.check.dns.publisherMissing": "This server has no confirmed connection for publishing its domains' records on the main DNS server {primary}. You, the owner: on {primary} create a new join code, join this server again with it, then review this plan again.",
+    "setup.check.dns.publisherUnconfirmed": "The main DNS server {primary} could not confirm just now that it takes this server's domain records: it did not answer, or its DNS pair is not ready. Nobody needs to act while it restarts or is busy; setup checks again by itself. If this lasts, open the panel of {primary} and look at DNS and peer servers there.",
+    "setup.check.dns.backupNotServing": "This server does not serve the main DNS server's list yet, or the nameserver names {ns1} and {ns2} do not show their addresses on the internet yet. Nobody needs to act while a change spreads; setup checks again by itself. If this lasts, open DNS and peer servers on this server.",
+    "setup.check.dns.setupChanged": "The setup was changed after this run started, so its DNS check no longer applies. You, the owner: review the plan again and start it.",
+    "setup.check.dns.engineNotReady": "This server's DNS software is not installed, running and managed by CelikPanel yet. Open DNS and peer servers on this server to see why; setup checks again by itself.",
+    "setup.check.dns.pairNotReady": "The two DNS servers are not ready as a pair yet: the backup DNS server has not copied this server's list. If the backup DNS server's setup is still running, nobody needs to act; otherwise start or resume setup there. Setup checks again by itself.",
+    "setup.check.dns.nameserversNotPublic": "The nameserver names {ns1} and {ns2} do not show their addresses on the internet yet. Enter them at your registrar as this page shows; once the change spreads, setup finishes by itself.",
+    "setup.guide.verificationOverdue": "This has lasted more than 30 minutes, so it is probably not only a delay. You, the owner: act on the item above, then check again. Setup also keeps checking by itself; everything installed stays as it is.",
 } as const;
 
 export type SetupScreenKey = keyof typeof enSetupScreens;

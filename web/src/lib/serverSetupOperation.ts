@@ -62,6 +62,8 @@ export interface SetupExecutionContext {
     dns_engine: string; local_nameserver: string; local_ip: string; peer_nameserver: string; peer_ip: string;
     panel_domain: string; mail_hostname: string; dns_hosting_management: string;
     access_dns_ip?: string; infrastructure_dns?: SetupInfrastructureDNSPlan;
+    /** The main DNS server's panel name a joined backup publishes to (alpha.114). */
+    dns_publisher_host?: string;
     /** On a DNS secondary whose public DNS check waits (2026-10-16): whether this
      *  server can ask the primary for the record, and what that request got. */
     peer_host_record?: SetupPeerHostRecord;
@@ -161,6 +163,7 @@ export function decodeSetupExecution(value: unknown, marker?: SetupStartMarker |
         || !(context.dns_mode === 'local' ? ['primary', 'secondary'] : ['', 'primary', 'secondary']).includes(String(context.dns_role))
         || (context.infrastructure_dns !== undefined && !isInfrastructureDNSPlan(context.infrastructure_dns))
         || (context.access_dns_ip !== undefined && (typeof context.access_dns_ip !== 'string' || context.access_dns_ip.length > 64))
+        || (context.dns_publisher_host !== undefined && (typeof context.dns_publisher_host !== 'string' || context.dns_publisher_host.length > 253))
         || ['dns_engine', 'local_nameserver', 'local_ip', 'peer_nameserver', 'peer_ip', 'panel_domain', 'mail_hostname', 'dns_hosting_management']
             .some(key => typeof context[key] !== 'string' || (context[key] as string).length > 1024))) {
         const { context: _invalid, ...execution } = value;

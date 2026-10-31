@@ -122,6 +122,10 @@ type serverSetupExecution struct {
 	// HostStartingSince: when the run first found the host still starting
 	// (server_setup_host_starting); cleared once a step goes on.
 	HostStartingSince string `json:"host_starting_since,omitempty"`
+	// VerificationSince: when the final check first found a requirement
+	// not met (alpha.114 lab E8); past serverSetupVerificationOverdueAfter
+	// the wait is said as overdue, with the open checks and the next action.
+	VerificationSince string `json:"verification_since,omitempty"`
 }
 
 var serverSetupRunners sync.Map
@@ -1633,8 +1637,10 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 	execution.Checks = checks
 	if !serverSetupChecksReady(checks) {
 		execution.Status = "waiting"
+		serverSetupVerificationWait(execution, serverSetupVerificationNow())
 		return false, p.persistServerSetupExecution(ctx, *execution)
 	}
+	execution.VerificationSince = ""
 	if err := p.completeServerSetupExecution(ctx, plan.Revision, execution.ID); err != nil {
 		var wait *serverSetupPeerWait
 		if errors.As(err, &wait) {

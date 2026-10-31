@@ -64,4 +64,5 @@ export const trSetupOwnerScreens: Record<SetupOwnerScreenKey, string> = {
     'svc.mailSetup.busy': 'Bu sunucuda başka bir kurulum çalışması sürüyor. Bitmesini bekleyip yeniden deneyin.',
     'svc.mailSetup.unknown': 'Sunucunun yanıtı gelmedi. Bu pencere durumu yeniden okur; hiçbir şey iki kez başlatılmaz.',
     'svc.mailSetup.close': 'Kapat',
+    "svc.mailSetup.checkAgain": "Yeniden kontrol et",
 };

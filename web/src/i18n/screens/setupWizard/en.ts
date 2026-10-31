@@ -206,6 +206,9 @@ export const enSetupWizardScreens = {
     "setup.v6.review.joinedSite": "{domain} and www.{domain}: their records stay on the first server {server}; this setup does not change them.",
     "setup.v6.review.joinedMail": "Mail for {domain} stays on {first}; its MX, SPF, DKIM and DMARC do not change. This server receives mail for the domains you create on it, at {host}.",
     "setup.v6.blocker.mailHostnameTaken": "This server’s mail name is already used by the first server, the main domain or a nameserver, and each server needs its own. You, the owner: go back to This server’s names, give this server its own mail name (for example mail.<its panel name>, or its panel name), then review again. Nothing was changed.",
+    "setup.v3.mail.joinedTitle": "Mail on this server",
+    "setup.v3.mail.joinedMain": "{domain}’s mail stays with {server} ({first}). This setup does not change its MX, SPF, DMARC or DKIM records.",
+    "setup.v3.mail.joinedOwn": "This server gets its own mail name, {host}, and its address is published on the main DNS server. Each domain you add on this server gets its own mail records (MX, SPF, DKIM and DMARC), published on the main DNS server by itself.",
 } as const;
 
 export type SetupWizardScreenKey = keyof typeof enSetupWizardScreens;

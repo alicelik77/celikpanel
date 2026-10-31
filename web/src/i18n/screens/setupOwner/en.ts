@@ -72,6 +72,7 @@ export const enSetupOwnerScreens = {
     'svc.mailSetup.busy': 'Another setup run is in progress on this server. Wait until it finishes, then try again.',
     'svc.mailSetup.unknown': 'The server’s answer did not arrive. This window reads the state again; nothing is started twice.',
     'svc.mailSetup.close': 'Close',
+    "svc.mailSetup.checkAgain": "Check again",
 } as const;
 
 export type SetupOwnerScreenKey = keyof typeof enSetupOwnerScreens;

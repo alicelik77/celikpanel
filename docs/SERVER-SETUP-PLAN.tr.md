@@ -9,6 +9,41 @@ bu yönü onayladı. Bu belge anlaşmayı ve uygulamanın kabul ölçütlerini k
 Asistana kurulu panel güncelleme yetkisi vermez; [AGENTS.md](../AGENTS.md) gereği
 kurulu panel güncellemelerini kullanıcı CelikPanel'in kendi arayüzünden başlatır.
 
+## 1 Kasım ek kararı: laboratuvar koşusu 1 sonrası katılan sunucu (alpha.114 kaynağı)
+
+alpha.114 adayının ilk laboratuvar koşusu, koda katılan sunucuda dört kusur
+buldu. Yalnız bileşen testleri; şema değişmedi; iki sunuculu laboratuvar
+tekrarı (iki sunucu da alpha.114'te ve ilk sunucu alpha.113'te) borçtur.
+
+- **Yeni katılma kodunu yalnız doğrulanmış ret ister (E1).** İlk sunucu
+  kendi kurulumundayken katılan sunucunun yayımlama bağlantısı "kodun süresi
+  doldu" diye başarısız oldu. İlk sunucu artık retlerini tipler
+  (`REMOTE_DNS_ENROLLMENT_UNKNOWN`, `_EXPIRED`, `_USED`) ve kayıtlarını o an
+  okuyamaz ya da yazamazsa 503 `REMOTE_DNS_BUSY` döner. Katılan sunucu meşgul,
+  yeniden başlayan ya da lisansı etkin olmayan ana sunucuda ve her 5xx'te ana
+  DNS sunucusunu adlandırarak bekler; nedensiz ret (alpha.113 her reti aynı
+  verir) en fazla 30 dakika beklenir, sonra
+  `server_setup_dns_publisher_unconfirmed` sahibin neyi kontrol edeceğini söyler.
+- **Eşleşme port değişikliğini iki tarafta da durdurur (E2).** Kurulumla
+  biten bağlantı kimliklerinden değil, iki tarafın kurulumdan sonra tuttuğu
+  kayıtlardan okunur (ilk sunucuda ikincinin adlarını taşıyan katılma kaydı,
+  katılan sunucuda bağlantı kaydı).
+- **Katılan sunucudaki alan adı posta kayıtlarını alır (E6).** Alan adı
+  oluşturma (sunucuda posta varsa) ve otomatik DKIM işi; MX, posta adresi,
+  SPF, DMARC ve DKIM kayıtlarını yetkili yayımlayıcı üzerinden ana DNS
+  sunucusundaki bölgeye ekler; sahibin oradaki kayıtları korunur, değiştirilmez.
+  Alan adı silinince bölgeyle birlikte kalkar. Alan adı başına posta anahtarı
+  yoktur; bir alan adından postayı kaldırmak hâlâ sahibin DNS düzenlemesidir.
+- **Sonraki çalışmanın son denetimi (E8).** Posta genişletmesi (ya da
+  yayımlama adımı olmayan her çalışma), kendi bağını arayıp sonsuza dek
+  beklemek yerine tamamlanan kurulumun kaydettiği bağlantıyı canlı olarak
+  kanıtlar. DNS denetimi adlarla tipli bir neden taşır (kim, sonraki eylem);
+  30 dakika sonra hâlâ açık son denetim `server_setup_verification_overdue`
+  olarak söylenir; çalışma denetlemeyi sürdürür, hiçbir şey geri alınmaz.
+- **Metinler (S9).** Katılan sunucunun posta adımı, ana alan adının
+  kayıtlarını listelemek yerine ana alan adının postasının ilk sunucuda
+  kaldığını ve bu sunucudaki alan adlarının kendi kayıtlarını aldığını söyler.
+
 ## 31 Ekim ek kararı: koda katılan sunucuda posta (alpha.114 kaynağı)
 
 Sahip alpha.113'te canlı buldu: Frankfurt'a kodla katılan Boston'da posta

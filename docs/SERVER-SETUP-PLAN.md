@@ -10,6 +10,44 @@ This document records that agreement and the implementation acceptance criteria.
 It does not authorize an assistant to update any installed panel; the user starts
 every installed-panel update from CelikPanel itself, as required by [AGENTS.md](../AGENTS.md).
 
+## November 1 follow-up: the joined server after lab run 1 (alpha.114 source)
+
+Lab run 1 of the alpha.114 candidate found four defects on a server joined
+by code. Component tests only; no schema change; the two-server lab rerun
+(both servers on alpha.114, and an alpha.113 first server) is owed.
+
+- **Only a verified refusal asks for a new join code (E1).** The joined
+  server's publishing connection failed with "the code expired" while the
+  first server was in its own setup. The first server now types its
+  refusals (`REMOTE_DNS_ENROLLMENT_UNKNOWN`, `_EXPIRED`, `_USED`) and
+  answers 503 `REMOTE_DNS_BUSY` when it cannot read or write its
+  enrollments now. The joined server waits, naming the main DNS server, on
+  a busy, restarting or unlicensed main and on every 5xx; an unexplained
+  refusal (an alpha.113 main answers every refusal alike) is a wait for at
+  most 30 minutes, then `server_setup_dns_publisher_unconfirmed` says what
+  the owner checks.
+- **Pairing blocks a port change on both sides (E2).** It is read from the
+  records both sides keep after setup (the first server's join record with
+  the second server's names, the joined server's link record), not from
+  link credentials that end with the setup.
+- **A domain on the joined server gets its mail records (E6).** Domain
+  creation (when the server runs mail) and the automatic DKIM work add MX,
+  the mail address, SPF, DMARC and DKIM to the domain's zone on the main
+  DNS server through the authorized publisher; records the owner already
+  has there are kept, never replaced. Deleting the domain removes them with
+  the zone. A per-domain mail switch does not exist; removing mail from a
+  domain is still the owner's DNS edit.
+- **The final check of a later run (E8).** A mail extension (or any run
+  without a publishing step) proves the connection the finished setup
+  committed, live, instead of looking for its own binding and waiting for
+  ever. The DNS check carries a typed reason with names (who acts, next
+  action), and a final check still open after 30 minutes is said as
+  `server_setup_verification_overdue`; the run keeps checking, nothing is
+  undone.
+- **Texts (S9).** The joined server's mail step says that the main domain's
+  mail stays on the first server and that its own domains get their own
+  records, instead of listing the main domain's records.
+
 ## October 31 follow-up: mail on the server that joined by code (alpha.114 source)
 
 Found live by the owner on alpha.113: Boston, joined to Frankfurt by code,
