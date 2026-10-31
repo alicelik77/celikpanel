@@ -169,6 +169,7 @@ export const enDnsCertificatesScreens = {
     'dns.recordAdded': 'Record added',
     'dns.recordAddFailed': 'Could not add record',
     'dns.recordDeleted': 'Record deleted',
+    'dns.savedPublishing': 'Saved. The DNS servers get the change within a minute; you do not need to do anything.',
     'dns.recordDeleteFailed': 'Could not delete record',
     'dns.confirmDelete': 'Delete this record?',
     'dns.managedRecord': 'This record is managed in Server → DNS and peer servers.',

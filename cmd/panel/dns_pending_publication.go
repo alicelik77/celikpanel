@@ -661,6 +661,13 @@ func (p *Panel) republishHeldDNSZones(ctx context.Context) {
 			}
 			continue
 		}
+		if sqliteBusy(err) {
+			// The panel database was busy (lab E3): transient, not a
+			// deterministic failure of this zone; tried again after the pause.
+			log.Printf("held DNS change for %s waits for the panel database: %v", state.ZoneName, err)
+			retryLater()
+			return
+		}
 		log.Printf("held DNS change for %s: not republished automatically: %v", state.ZoneName, err)
 		scheduler.mu.Lock()
 		scheduler.republishSkipped[state.ZoneName] = state.DesiredGeneration

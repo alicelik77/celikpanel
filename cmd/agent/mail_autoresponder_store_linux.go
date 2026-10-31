@@ -16,8 +16,11 @@ import (
 // Dovecot (running as vmail) reads and compiles them. Every step opens
 // relative to the managed mail root with RESOLVE_BENEATH|RESOLVE_NO_SYMLINKS:
 // a symbolic link planted anywhere on the path is refused, never followed.
-// The active link .dovecot.sieve is the only symbolic link CelikPanel makes;
-// it is read with readlinkat and replaced atomically with renameat.
+// The active link dovecot.sieve is the only symbolic link CelikPanel makes;
+// it is read with readlinkat and replaced atomically with renameat. The
+// first alpha.114 candidates named it .dovecot.sieve; such a link to
+// CelikPanel's script is read as CelikPanel's and removed on the next write
+// or removal (a dot name in the maildir root is a Maildir++ folder name).
 type nativeMailboxSieveStore struct{}
 
 // autoresponderOpenMailRoot is a seam: component tests open a scratch root.
@@ -110,6 +113,10 @@ func (nativeMailboxSieveStore) Read(domain, local string) (mailboxSieveState, er
 	default:
 		return state, fmt.Errorf("read %s: %w", autoresponderLinkName, err)
 	}
+	state.LegacyLink = legacyAutoresponderLink(mailboxFD)
+	if state.LegacyLink && state.LinkKind == "none" {
+		state.LinkKind, state.LinkTarget = "link", autoresponderLinkTarget
+	}
 	sieveFD, err := unix.Openat2(mailboxFD, "sieve", &unix.OpenHow{
 		Flags:   uint64(unix.O_RDONLY | unix.O_DIRECTORY | unix.O_CLOEXEC | unix.O_NOFOLLOW),
 		Resolve: secureMaildirResolve,
@@ -126,6 +133,26 @@ func (nativeMailboxSieveStore) Read(domain, local string) (mailboxSieveState, er
 		return state, fmt.Errorf("read %s: %w", autoresponderScriptName, err)
 	}
 	return state, nil
+}
+
+// legacyAutoresponderLink reports whether .dovecot.sieve is a symbolic link
+// naming CelikPanel's script.
+func legacyAutoresponderLink(mailboxFD int) bool {
+	buffer := make([]byte, 4096)
+	n, err := unix.Readlinkat(mailboxFD, autoresponderLegacyLinkName, buffer)
+	return err == nil && string(buffer[:n]) == autoresponderLinkTarget
+}
+
+// removeLegacyAutoresponderLink drops .dovecot.sieve only while it is a
+// symbolic link naming CelikPanel's script.
+func removeLegacyAutoresponderLink(mailboxFD int) error {
+	if !legacyAutoresponderLink(mailboxFD) {
+		return nil
+	}
+	if err := unix.Unlinkat(mailboxFD, autoresponderLegacyLinkName, 0); err != nil && !errors.Is(err, unix.ENOENT) {
+		return fmt.Errorf("remove the earlier active link: %w", err)
+	}
+	return nil
 }
 
 func (nativeMailboxSieveStore) Write(domain, local string, script []byte) error {
@@ -200,6 +227,9 @@ func (nativeMailboxSieveStore) Write(domain, local string, script []byte) error 
 		_ = unix.Unlinkat(mailboxFD, linkTemporary, 0)
 		return fmt.Errorf("activate the Sieve script: %w", err)
 	}
+	if err := removeLegacyAutoresponderLink(mailboxFD); err != nil {
+		return err
+	}
 	return unix.Fsync(mailboxFD)
 }
 
@@ -225,6 +255,9 @@ func (nativeMailboxSieveStore) Remove(domain, local string) error {
 		if err := unix.Unlinkat(mailboxFD, autoresponderLinkName, 0); err != nil && !errors.Is(err, unix.ENOENT) {
 			return fmt.Errorf("deactivate the Sieve script: %w", err)
 		}
+	}
+	if err := removeLegacyAutoresponderLink(mailboxFD); err != nil {
+		return err
 	}
 	sieveFD, err := unix.Openat2(mailboxFD, "sieve", &unix.OpenHow{
 		Flags:   uint64(unix.O_RDONLY | unix.O_DIRECTORY | unix.O_CLOEXEC | unix.O_NOFOLLOW),

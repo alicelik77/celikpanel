@@ -83,10 +83,17 @@ const (
 	AutoresponderRefusedMailNotInstalled = "mail_not_installed"
 	// The mailbox does not exist on this server.
 	AutoresponderRefusedNoMailbox = "no_mailbox"
+	// Dovecot is stopped, so LMTP could not be asked; nothing was changed.
+	AutoresponderRefusedDovecotStopped = "dovecot_stopped"
+	// Dovecot's LMTP did not accept the mailbox; the mailbox keeps (or got
+	// back) Postfix's own delivery, so its mail never bounces.
+	AutoresponderRefusedLMTPRejected = "lmtp_rejected"
 )
 
 // MailAutoresponderResponse is both the Set answer and the State answer.
-// Applied is true only when the complete change is in place. Refusal is one
+// Applied is true only when the complete change is in place. In a State
+// answer it is true when the mailbox is whole: CelikPanel's script active
+// with its LMTP route, or neither of them. Refusal is one
 // of the AutoresponderRefused* codes with Detail one bounded line.
 type MailAutoresponderResponse struct {
 	Applied        bool   `json:"applied"`

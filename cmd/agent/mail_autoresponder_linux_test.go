@@ -4,10 +4,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/transport"
 	"golang.org/x/sys/unix"
@@ -21,6 +23,9 @@ type autoresponderFixture struct {
 	reloaded      bool
 	transportMaps string
 	postfixReload int
+	probes        []string
+	probeErr      error
+	dovecotState  string
 }
 
 func newAutoresponderFixture(t *testing.T) *autoresponderFixture {
@@ -52,10 +57,13 @@ func newAutoresponderFixture(t *testing.T) *autoresponderFixture {
 		socket              func() bool
 		installedRepair     func() bool
 		openRoot            func() (int, error)
+		probe               func(context.Context, string) error
+		sleep               func(time.Duration)
 	}{autoresponderDovecotConfPath, autoresponderTransportPath, autoresponderFileExists, autoresponderPkgFamily,
 		autoresponderInstallPackages, autoresponderDovecotIs24, autoresponderApplyDovecotCfg, autoresponderReloadDovecot,
 		autoresponderReloadPostfix, autoresponderPostconfGet, autoresponderPostconfSet, autoresponderMapType,
-		autoresponderSocketReady, dovecotInstalledForRepair, autoresponderOpenMailRoot}
+		autoresponderSocketReady, dovecotInstalledForRepair, autoresponderOpenMailRoot,
+		autoresponderLMTPProbe, autoresponderSleep}
 	t.Cleanup(func() {
 		autoresponderDovecotConfPath, autoresponderTransportPath = saved.conf, saved.transportPath
 		autoresponderFileExists, autoresponderPkgFamily = saved.exists, saved.family
@@ -65,6 +73,7 @@ func newAutoresponderFixture(t *testing.T) *autoresponderFixture {
 		autoresponderPostconfSet, autoresponderMapType = saved.set, saved.mapType
 		autoresponderSocketReady, dovecotInstalledForRepair = saved.socket, saved.installedRepair
 		autoresponderOpenMailRoot = saved.openRoot
+		autoresponderLMTPProbe, autoresponderSleep = saved.probe, saved.sleep
 	})
 	autoresponderDovecotConfPath = filepath.Join(dir, "96-celikpanel-sieve.conf")
 	autoresponderTransportPath = filepath.Join(dir, "celikpanel_transport")
@@ -85,10 +94,16 @@ func newAutoresponderFixture(t *testing.T) *autoresponderFixture {
 		f.confWrites++
 		return os.WriteFile(path, []byte(content), 0o644)
 	}
+	f.dovecotState = mailServiceReloaded
 	autoresponderReloadDovecot = func(context.Context) (string, error) {
-		f.reloaded = true
-		return mailServiceReloaded, nil
+		f.reloaded = f.dovecotState != mailServiceNotRunning
+		return f.dovecotState, nil
 	}
+	autoresponderLMTPProbe = func(_ context.Context, email string) error {
+		f.probes = append(f.probes, email)
+		return f.probeErr
+	}
+	autoresponderSleep = func(time.Duration) {}
 	autoresponderSocketReady = func() bool { return f.reloaded }
 	autoresponderReloadPostfix = func(context.Context) (string, error) {
 		f.postfixReload++
@@ -140,7 +155,7 @@ func TestAutoresponderEnableInstallsSieveRoutesOneMailboxAndDisableRemovesIt(t *
 	if conf, _ := os.ReadFile(autoresponderDovecotConfPath); string(conf) != renderAutoresponderDovecotConf(true) {
 		t.Fatalf("dovecot drop-in:\n%s", conf)
 	}
-	if target, err := os.Readlink(f.mailbox(".dovecot.sieve")); err != nil || target != autoresponderLinkTarget {
+	if target, err := os.Readlink(f.mailbox(autoresponderLinkName)); err != nil || target != autoresponderLinkTarget {
 		t.Fatalf("active link: %q %v", target, err)
 	}
 	script, err := os.ReadFile(f.mailbox("sieve/" + autoresponderScriptName))
@@ -175,7 +190,7 @@ func TestAutoresponderEnableInstallsSieveRoutesOneMailboxAndDisableRemovesIt(t *
 	if routes, _ := os.ReadFile(autoresponderTransportPath); len(routes) != 0 {
 		t.Fatalf("route left: %q", routes)
 	}
-	if _, err := os.Lstat(f.mailbox(".dovecot.sieve")); !os.IsNotExist(err) {
+	if _, err := os.Lstat(f.mailbox(autoresponderLinkName)); !os.IsNotExist(err) {
 		t.Fatalf("active link left: %v", err)
 	}
 	if _, err := os.Stat(f.mailbox("sieve/" + autoresponderScriptName)); !os.IsNotExist(err) {
@@ -192,7 +207,7 @@ func TestAutoresponderKeepsTheMailboxOwnersScript(t *testing.T) {
 	if err := os.WriteFile(f.mailbox("sieve/roundcube.sieve"), []byte(owner), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink("sieve/roundcube.sieve", f.mailbox(".dovecot.sieve")); err != nil {
+	if err := os.Symlink("sieve/roundcube.sieve", f.mailbox(autoresponderLinkName)); err != nil {
 		t.Fatal(err)
 	}
 	for _, enabled := range []bool{true, false} {
@@ -201,7 +216,7 @@ func TestAutoresponderKeepsTheMailboxOwnersScript(t *testing.T) {
 			t.Fatalf("enabled=%v: %+v", enabled, resp)
 		}
 	}
-	if target, _ := os.Readlink(f.mailbox(".dovecot.sieve")); target != "sieve/roundcube.sieve" {
+	if target, _ := os.Readlink(f.mailbox(autoresponderLinkName)); target != "sieve/roundcube.sieve" {
 		t.Fatalf("owner's active script replaced: %q", target)
 	}
 	if len(f.installed) != 0 || f.confWrites != 0 {
@@ -212,7 +227,7 @@ func TestAutoresponderKeepsTheMailboxOwnersScript(t *testing.T) {
 	}
 
 	// CelikPanel's own script edited by hand is the owner's too.
-	if err := os.Remove(f.mailbox(".dovecot.sieve")); err != nil {
+	if err := os.Remove(f.mailbox(autoresponderLinkName)); err != nil {
 		t.Fatal(err)
 	}
 	if resp := f.set(t, transport.MailAutoresponder{Enabled: true, Subject: "Away", Message: "x"}); !resp.Applied {
@@ -246,7 +261,7 @@ func TestAutoresponderRefusesOwnerDovecotAndTransportSettings(t *testing.T) {
 	if after, _ := os.ReadFile(autoresponderDovecotConfPath); string(after) != edited {
 		t.Fatal("owner drop-in overwritten")
 	}
-	if _, err := os.Lstat(f.mailbox(".dovecot.sieve")); !os.IsNotExist(err) {
+	if _, err := os.Lstat(f.mailbox(autoresponderLinkName)); !os.IsNotExist(err) {
 		t.Fatal("a script was activated although Dovecot is not ready")
 	}
 
@@ -261,7 +276,7 @@ func TestAutoresponderRefusesOwnerDovecotAndTransportSettings(t *testing.T) {
 	if f.transportMaps != "hash:/etc/postfix/transport" {
 		t.Fatal("owner transport_maps changed")
 	}
-	if _, err := os.Lstat(f.mailbox(".dovecot.sieve")); !os.IsNotExist(err) {
+	if _, err := os.Lstat(f.mailbox(autoresponderLinkName)); !os.IsNotExist(err) {
 		t.Fatal("a script was left active without its route")
 	}
 	if routes, _ := os.ReadFile(autoresponderTransportPath); len(routes) != 0 {
@@ -280,5 +295,134 @@ func TestAutoresponderStoreRefusesASymlinkedMailbox(t *testing.T) {
 	}
 	if entries, _ := os.ReadDir(outside); len(entries) != 0 {
 		t.Fatalf("files appeared outside the mail root: %v", entries)
+	}
+}
+
+func (f *autoresponderFixture) state(t *testing.T) transport.MailAutoresponderResponse {
+	t.Helper()
+	var resp transport.MailAutoresponderResponse
+	if err := (&Agent{}).MailAutoresponderState(&transport.MailAutoresponderStateRequest{Email: "me@example.test"}, &resp); err != nil {
+		t.Fatal(err)
+	}
+	return resp
+}
+
+// E4 (alpha.114 lab): Debian 13's LMTP stripped the domain and answered
+// 550 for the mailbox, so every message bounced once it was routed there.
+// The Agent now asks LMTP first and never routes (or un-routes) a mailbox
+// LMTP does not accept.
+func TestAutoresponderNeverRoutesAMailboxLMTPRefuses(t *testing.T) {
+	f := newAutoresponderFixture(t)
+	f.probeErr = errors.New("550 5.1.1 <me@example.test> User doesn't exist: me@example.test")
+	resp := f.set(t, transport.MailAutoresponder{Enabled: true, Subject: "Away", Message: "x"})
+	if resp.Applied || resp.Refusal != transport.AutoresponderRefusedLMTPRejected ||
+		!strings.Contains(resp.Detail, "User doesn't exist") || !strings.Contains(resp.Detail, "mail keeps arriving as before") {
+		t.Fatalf("refused LMTP: %+v", resp)
+	}
+	if len(f.probes) != autoresponderProbeAttempts || f.probes[0] != "me@example.test" {
+		t.Fatalf("probes: %v", f.probes)
+	}
+	if routes, _ := os.ReadFile(autoresponderTransportPath); len(routes) != 0 || f.transportMaps != "" {
+		t.Fatalf("mail was routed to LMTP: %q maps=%q", routes, f.transportMaps)
+	}
+	if _, err := os.Lstat(f.mailbox(autoresponderLinkName)); !os.IsNotExist(err) {
+		t.Fatalf("script activated: %v", err)
+	}
+
+	// Saved while LMTP accepted it, then LMTP stops accepting it (for
+	// example the administrator changed 20-lmtp.conf): saving again takes
+	// the route away so mail returns to Postfix's own delivery.
+	f.probeErr, f.probes = nil, nil
+	if resp := f.set(t, transport.MailAutoresponder{Enabled: true, Subject: "Away", Message: "x"}); !resp.Applied || len(f.probes) != 1 {
+		t.Fatalf("enable: %+v probes=%v", resp, f.probes)
+	}
+	if st := f.state(t); !st.Applied || st.Script != transport.AutoresponderScriptManaged {
+		t.Fatalf("state right after enable: %+v", st)
+	}
+	f.probeErr = errors.New("550 5.1.1 User doesn't exist")
+	resp = f.set(t, transport.MailAutoresponder{Enabled: true, Subject: "Away", Message: "y"})
+	if resp.Refusal != transport.AutoresponderRefusedLMTPRejected || resp.Script != transport.AutoresponderScriptNone {
+		t.Fatalf("refused re-save: %+v", resp)
+	}
+	if routes, _ := os.ReadFile(autoresponderTransportPath); len(routes) != 0 {
+		t.Fatalf("route kept although LMTP refuses the mailbox: %q", routes)
+	}
+	if _, err := os.Lstat(f.mailbox(autoresponderLinkName)); !os.IsNotExist(err) {
+		t.Fatalf("script left active: %v", err)
+	}
+	if st := f.state(t); !st.Applied || st.Script != transport.AutoresponderScriptNone {
+		t.Fatalf("state after rollback: %+v", st)
+	}
+}
+
+func TestAutoresponderRefusesWhileDovecotIsStopped(t *testing.T) {
+	f := newAutoresponderFixture(t)
+	f.dovecotState = mailServiceNotRunning
+	resp := f.set(t, transport.MailAutoresponder{Enabled: true, Subject: "Away", Message: "x"})
+	if resp.Applied || resp.Refusal != transport.AutoresponderRefusedDovecotStopped || !strings.Contains(resp.Detail, "systemctl start dovecot") {
+		t.Fatalf("stopped Dovecot: %+v", resp)
+	}
+	if routes, _ := os.ReadFile(autoresponderTransportPath); len(routes) != 0 || len(f.probes) != 0 {
+		t.Fatalf("routed without asking LMTP: %q probes=%v", routes, f.probes)
+	}
+}
+
+// The GET right after a successful PUT showed applied=false (lab E4).
+func TestAutoresponderStateReportsAWholeOrHalfMailbox(t *testing.T) {
+	f := newAutoresponderFixture(t)
+	if st := f.state(t); !st.Applied || st.Script != transport.AutoresponderScriptNone {
+		t.Fatalf("nothing set: %+v", st)
+	}
+	if resp := f.set(t, transport.MailAutoresponder{Enabled: true, Subject: "Away", Message: "x"}); !resp.Applied {
+		t.Fatalf("enable: %+v", resp)
+	}
+	if st := f.state(t); !st.Applied || st.Script != transport.AutoresponderScriptManaged {
+		t.Fatalf("enabled: %+v", st)
+	}
+	// The script without its route is half, not applied.
+	if err := os.WriteFile(autoresponderTransportPath, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if st := f.state(t); st.Applied {
+		t.Fatalf("script without route counted as applied: %+v", st)
+	}
+}
+
+// The first alpha.114 candidates activated the script as .dovecot.sieve in
+// the maildir root, which Maildir++ reads as a folder ("stat(.../.dovecot.sieve/tmp)
+// failed: Not a directory" on Ubuntu 24.04). Saving again moves it.
+func TestAutoresponderMovesTheEarlierDotActiveLink(t *testing.T) {
+	f := newAutoresponderFixture(t)
+	if err := os.MkdirAll(f.mailbox("sieve"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	script := renderAutoresponderSieve(transport.MailAutoresponder{Enabled: true, Subject: "Away", Message: "old", IntervalDays: 1})
+	if err := os.WriteFile(f.mailbox("sieve/"+autoresponderScriptName), []byte(script), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(autoresponderLinkTarget, f.mailbox(autoresponderLegacyLinkName)); err != nil {
+		t.Fatal(err)
+	}
+	if st := f.state(t); st.Script != transport.AutoresponderScriptManaged {
+		t.Fatalf("earlier link not read as CelikPanel's: %+v", st)
+	}
+	if resp := f.set(t, transport.MailAutoresponder{Enabled: true, Subject: "Away", Message: "new"}); !resp.Applied {
+		t.Fatalf("enable: %+v", resp)
+	}
+	if _, err := os.Lstat(f.mailbox(autoresponderLegacyLinkName)); !os.IsNotExist(err) {
+		t.Fatalf("earlier dot link kept: %v", err)
+	}
+	if target, err := os.Readlink(f.mailbox(autoresponderLinkName)); err != nil || target != autoresponderLinkTarget {
+		t.Fatalf("active link: %q %v", target, err)
+	}
+	// An owner's .dovecot.sieve that is not CelikPanel's link stays.
+	if err := os.WriteFile(f.mailbox(autoresponderLegacyLinkName), []byte("keep;\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if resp := f.set(t, transport.MailAutoresponder{Enabled: false, Subject: "Away", Message: "new"}); !resp.Applied {
+		t.Fatalf("disable: %+v", resp)
+	}
+	if body, err := os.ReadFile(f.mailbox(autoresponderLegacyLinkName)); err != nil || string(body) != "keep;\n" {
+		t.Fatalf("owner's file touched: %q %v", body, err)
 	}
 }

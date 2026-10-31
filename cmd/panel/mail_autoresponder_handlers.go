@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -154,8 +155,20 @@ func (p *Panel) handlePutMailAutoresponder(w http.ResponseWriter, r *http.Reques
 		writeServerErrorFor(w, r, err)
 		return
 	}
+	if response.Refusal == transport.AutoresponderRefusedLMTPRejected {
+		// Dovecot's LMTP refused the mailbox, so the Agent took a reply
+		// saved earlier off the server (mail keeps Postfix's own delivery).
+		// The stored copy says so too, so the page never shows an active
+		// reply that is not there.
+		if _, err := p.db.GetDB().ExecContext(r.Context(),
+			`UPDATE email_autoresponders SET enabled = 0, updated_at = datetime('now') WHERE account_id = ? AND enabled = 1`,
+			request.ID); err != nil {
+			log.Printf("[mail] autoresponder %d: mark the stored reply off after the LMTP refusal: %v", request.ID, err)
+		}
+	}
 	if response.Refusal != "" {
-		// Nothing was changed on the server; the code says who acts.
+		// Nothing was changed on the server (an LMTP refusal at most took an
+		// earlier reply off, see above); the code says who acts.
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusConflict)
 		_ = json.NewEncoder(w).Encode(apiErrorBody{
