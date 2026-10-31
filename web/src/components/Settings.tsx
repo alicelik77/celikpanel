@@ -6,6 +6,7 @@ import { useI18n } from '../i18n';
 import { useAuth } from '../auth/AuthContext';
 import { Button, CouldNotCheck, ErrorBanner, RemoteGate, inputClass } from './ui';
 import { PageHeader } from './PageHeader';
+import { PanelPortCard } from './PanelPortCard';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { readRemote, useRemote } from '../lib/remote';
 import { availablePanelUpdate, usePanelUpdateDiscovery, wholeVersion } from '../lib/panelUpdateDiscovery';
@@ -159,6 +160,7 @@ function SettingsWorkspace({
                     <>
                         <div id="settings-panel-panel" role="tabpanel" aria-labelledby="settings-panel-tab" hidden={activeID !== 'panel'}>
                             <PanelCertificatePanel active={activeID === 'panel'} />
+                            {activeID === 'panel' && <PanelPortCard />}
                         </div>
                         <div id="settings-license-panel" role="tabpanel" aria-labelledby="settings-license-tab" hidden={activeID !== 'license'}>
                             {activeID === 'license' && <Suspense fallback={<p role="status">{t('common.loading')}</p>}><LicensePanel /></Suspense>}
@@ -553,9 +555,9 @@ function PanelCertificatePanel({ active }: { active: boolean }) {
     }, [pendingOperation, restarting, checkNow, retryCertificate, t]);
 
     const secureAddress = outcome.state === 'issued'
-        ? `https://${outcome.domain}:${window.location.port || '2083'}/`
+        ? `https://${outcome.domain}:${window.location.port || '1923'}/`
         : pendingOperation
-            ? `https://${pendingOperation.domain}:${window.location.port || '2083'}/`
+            ? `https://${pendingOperation.domain}:${window.location.port || '1923'}/`
             : '';
     // The page moves by itself only where the person is looking at the reason:
     // this section, of the tab that asked, and not after "Stay here".

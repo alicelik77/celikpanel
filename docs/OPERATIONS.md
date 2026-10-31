@@ -373,6 +373,34 @@ That release's `rollback.sh` must validate its root trust chain, the supported
 snapshot contract, provenance, and every checksum before it stops or overwrites
 anything. Repeat all read-only verification after rollback.
 
+## 5a. Panel port
+
+New installations listen on TCP 1923 (alpha.114; 2083 is cPanel's port).
+Installations made before alpha.114 keep 2083: install.sh writes
+`CELIKPANEL_LISTEN` into the root-only `/etc/celikpanel/panel.env` once and
+an update never rewrites it. That file is the single source of truth; the
+Agent reads it to reach the panel for its certificate check, and the firewall
+policy opens the port the running panel listens on.
+
+The owner changes the port in Settings → Panel → Panel port. The panel binds
+the new port first (a port in use is refused before anything changes), opens
+it in this server's firewall, and answers on both ports. The owner opens the
+new address and confirms there; only a confirmation that arrives over the new
+port is accepted. Then the Agent changes that single line of panel.env (only
+if the file is still the one seen at the start; an owner's own edit is
+reported, never overwritten), the old listener closes and the firewall closes
+the old port. Without a confirmation within 10 minutes, on Cancel, or when
+the panel restarts meanwhile, the panel stays on the old port and the trial
+port is closed again. A provider firewall outside the server is the owner's
+to open. Ports below 1024, ports of installed services and well-known
+database/mail-filter ports are refused. A server linked to another CelikPanel
+(a joined pair, or a panel publishing DNS records here) keeps its port in
+this release, because the other server stores it.
+
+Without the panel, the owner changes the port by editing
+`CELIKPANEL_LISTEN=` in `/etc/celikpanel/panel.env`, allowing the new port in
+the firewall, and running `sudo systemctl restart celikpanel-panel`.
+
 ## 6. Firewall persistence ownership
 
 Installation may place the CelikPanel firewall restore unit, but deployment must

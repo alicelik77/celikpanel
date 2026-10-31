@@ -6,12 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/mutationpayload"
+	"github.com/alicelik/celikpanel/internal/panellisten"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -82,13 +81,21 @@ func firewallSSHDiscoveryError(reason string) error {
 // panelPort, panelin dinlediği TCP portunu döndürür; güvenlik duvarı,
 // yönetildiği kapıyı asla kapatmaz.
 func panelPort() int {
-	addr := listenAddr() // ":2083" or "1.2.3.4:2083"
-	if i := strings.LastIndexByte(addr, ':'); i >= 0 {
-		if n, err := strconv.Atoi(addr[i+1:]); err == nil {
-			return n
-		}
+	if port, err := panellisten.Port(listenAddr()); err == nil {
+		return port
 	}
-	return 2083
+	return panellisten.DefaultPort
+}
+
+// panelFirewallPorts are the panel's own ports: its listen port and, while a
+// panel port change waits for the owner's confirmation, the trial port too
+// (panel_port.go), so no firewall sync closes either door meanwhile.
+func panelFirewallPorts() []int {
+	ports := []int{panelPort()}
+	if trial := activePanelPortTrialPort(); trial > 0 && trial != ports[0] {
+		ports = append(ports, trial)
+	}
+	return ports
 }
 
 // desiredFirewallPorts computes the ports that must be open: the panel port
@@ -97,7 +104,7 @@ func panelPort() int {
 // desiredFirewallPorts, açık olması gereken portları hesaplar: panel portu +
 // kurulu her servisin bildirdiği portlar. Yalnız-yerel servisler katkı vermez.
 func (p *Panel) desiredFirewallPorts(extraTCP ...int) (tcp []int, udp []int, err error) {
-	tcp = append(tcp, panelPort())
+	tcp = append(tcp, panelFirewallPorts()...)
 	tcp = append(tcp, extraTCP...)
 
 	// Let's Encrypt renewal answers HTTP-01 on :80. A panel carrying a real

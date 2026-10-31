@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import os
 import shlex
 import socket
 import subprocess
@@ -27,7 +28,8 @@ if str(KILL_MATRIX) not in sys.path:
 import fixture  # noqa: E402  (kill-matrix fixture lifecycle, reused unmodified)
 
 PROBE = HERE / "guest_probe.py"
-PANEL_PORT = 2083
+# alpha.114: fresh installs listen on 1923 (older installs keep 2083).
+PANEL_PORT = int(os.environ.get("CP_PANEL_PORT", "1923"))
 
 
 class GuestError(RuntimeError):
@@ -152,7 +154,7 @@ class Guests:
 
     @contextlib.contextmanager
     def tunnel(self, node: str, local_port: int) -> Iterator[str]:
-        """Loopback-only SSH port forward to the guest panel (127.0.0.1:2083)."""
+        """Loopback-only SSH port forward to the guest panel (127.0.0.1:PANEL_PORT)."""
 
         base = fixture.ssh_command(self.plan["nodes"][node], self.identity)[:-1]
         argv = base[:1] + [

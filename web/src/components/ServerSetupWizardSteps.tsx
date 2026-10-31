@@ -371,7 +371,7 @@ export function SetupJoinPanel({ onJoined, disabled, serverIP, onOpenChange }: {
             // required field is a different question.
             // Katilma alanlarinda Enter katilir; dis formu gondermez.
             onKeyDown={event => { if (event.key === 'Enter' && (event.target as { tagName?: string }).tagName === 'INPUT') { event.preventDefault(); void join(); } }}>
-            <SetupWizardInput name="join_address" label={t('setup.v5.join.address')} value={address} onChange={setAddress} placeholder="https://203.0.113.10:2083" help={t('setup.v5.join.addressHelp')} />
+            <SetupWizardInput name="join_address" label={t('setup.v5.join.address')} value={address} onChange={setAddress} placeholder="https://203.0.113.10:1923" help={t('setup.v5.join.addressHelp')} />
             <SetupWizardInput name="join_code" label={t('setup.v5.join.code')} value={code} onChange={setCode} placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX" help={t('setup.v5.join.codeHelp')} />
             {/* The first server checks the caller's address against the one this
                 server declares. Behind 1:1 NAT the own address is private: the

@@ -483,7 +483,7 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("versions")
     sub.add_parser("ledger")
     current = sub.add_parser("tls")
-    current.add_argument("--port", type=int, default=2083)
+    current.add_argument("--port", type=int, default=1923)
     args = parser.parse_args(argv)
     try:
         if args.command == "dns":

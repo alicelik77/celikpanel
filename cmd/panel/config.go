@@ -3,6 +3,9 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"sync/atomic"
+
+	"github.com/alicelik/celikpanel/internal/panellisten"
 )
 
 // Runtime paths and address. Defaults keep `./bin/panel` working straight
@@ -35,13 +38,25 @@ func webDir() string {
 	return "./web/dist"
 }
 
-// listenAddr is the HTTP bind address (CELIKPANEL_LISTEN, e.g. ":2083" or
-// "127.0.0.1:2083"). 2083 is the port hosting users already know from cPanel.
-// listenAddr, HTTP bağlanma adresidir (CELIKPANEL_LISTEN). 2083, barındırma
-// kullanıcılarının cPanel'den zaten tanıdığı porttur.
+// listenAddr is the HTTP bind address (CELIKPANEL_LISTEN, e.g. ":1923" or
+// "127.0.0.1:1923"). New installations use 1923 (owner decision 2026-10-31:
+// 2083 is cPanel's port); installations made before alpha.114 keep the 2083
+// their panel.env already names. After a confirmed panel port change the
+// running process answers with the new address (panel_port.go), the same one
+// panel.env then names.
+// listenAddr, HTTP bağlanma adresidir (CELIKPANEL_LISTEN). Yeni kurulum
+// 1923'ü kullanır; alpha.114 öncesi kurulumlar panel.env'deki 2083'ü korur.
+// confirmedPanelListen is the listen address after a confirmed panel port
+// change in this process; listenAddr prefers it over the environment the
+// process started with.
+var confirmedPanelListen atomic.Pointer[string]
+
 func listenAddr() string {
+	if a := confirmedPanelListen.Load(); a != nil && *a != "" {
+		return *a
+	}
 	if a := os.Getenv("CELIKPANEL_LISTEN"); a != "" {
 		return a
 	}
-	return ":2083"
+	return panellisten.DefaultListen
 }

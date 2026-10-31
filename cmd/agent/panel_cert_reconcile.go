@@ -13,7 +13,6 @@ import (
 
 const (
 	panelCertificateActivationInterval = 10 * time.Second
-	panelCertificateLoopbackAddress    = "127.0.0.1:2083"
 	panelCertificateActivationKind     = "panel-certificate-activation"
 )
 
@@ -363,7 +362,7 @@ func reconcilePanelCertificateActivationLocked(ctx context.Context) error {
 	}
 	if err := panelCertificateActivationVerifyServed(
 		ctx,
-		panelCertificateLoopbackAddress,
+		panelCertificateLoopbackAddress(),
 		state.Domain,
 		state.LeafSHA256,
 	); err != nil {
@@ -624,7 +623,7 @@ func inspectPanelCertificateActivationDriftLocked(
 	fingerprint := panelCertificateLeafSHA256(leafDER)
 	if err := panelCertificateActivationVerifyServed(
 		ctx,
-		panelCertificateLoopbackAddress,
+		panelCertificateLoopbackAddress(),
 		domain,
 		fingerprint,
 	); err == nil {

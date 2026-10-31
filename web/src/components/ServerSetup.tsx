@@ -971,7 +971,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                     {/* After everything that explains the current state, and still above the step list. */}
                     {handoverNotice && <SetupHandoverNotice host={handoverNotice.host} url={handoverURL} />}
                     {openTasks.length > 0 && <SetupOpenTasks lines={openTasks.map(checkSentence)} />}
-                    {execution && !certificateReady && execution.status !== 'failed' && <SetupPanelAccessCard ip={snapshot.server_ip || draft.local_ip} port={window.location.port || '2083'} panelDomain={marker?.panel_domain || draft.panel_domain} />}
+                    {execution && !certificateReady && execution.status !== 'failed' && <SetupPanelAccessCard ip={snapshot.server_ip || draft.local_ip} port={window.location.port || '1923'} panelDomain={marker?.panel_domain || draft.panel_domain} />}
                     {execution && execution.status !== 'failed' && draft.dns_mode === 'external' && <SetupProviderRecordsCard />}
                     {execution && execution.status !== 'failed' && draft.dns_mode === 'local' && draft.ns1 && draft.ns2 && <SetupRegistrarCard draft={draft} mainDomain={mainDomain} now={execution.phase === 'access_dns' || (draft.dns_role === 'secondary' && execution.status === 'succeeded')} />}
                     <ol className="mt-6 divide-y divide-border" aria-live="polite">
@@ -1050,7 +1050,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                                 <option value="panel">{t('setup.publisher.automatic')}</option>
                             </select></label>
                             {automaticPublisher ? <>
-                                <SetupWizardInput name="dns_publisher_endpoint" label={t('setup.publisher.endpoint')} value={draft.dns_publisher_endpoint || ''} onChange={value => change('dns_publisher_endpoint', value)} placeholder="https://frankfurt.example.com:2083" required />
+                                <SetupWizardInput name="dns_publisher_endpoint" label={t('setup.publisher.endpoint')} value={draft.dns_publisher_endpoint || ''} onChange={value => change('dns_publisher_endpoint', value)} placeholder="https://frankfurt.example.com:1923" required />
                                 <p className="text-sm leading-6 text-fg-muted">{t('setup.publisher.setupHelp')}</p>
                             </> : <p className="text-sm leading-6 text-fg-muted">{t('setup.publisher.manualHelp')}</p>}
                         </div>} />
@@ -1087,7 +1087,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                                 <li>{t('setup.v2.review.installed')}</li>
                             </ul>
                         </div>
-                        <SetupPanelAccessCard ip={snapshot.server_ip || draft.local_ip} port={window.location.port || '2083'} panelDomain={draft.panel_domain} />
+                        <SetupPanelAccessCard ip={snapshot.server_ip || draft.local_ip} port={window.location.port || '1923'} panelDomain={draft.panel_domain} />
                         {plan.can_start && <label className="mt-6 flex cursor-pointer items-start gap-3 text-sm leading-6"><input type="checkbox" checked={acknowledged} onChange={event => setAcknowledged(event.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-primary" /><span>{t('setup.confirm')}</span></label>}
                     </section>}
                     <div className="setup-actions sticky bottom-0 z-10 mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-bg py-4">

@@ -41,7 +41,7 @@ Every feature, commit and design decision passes four filters — in this order:
 Browser — React SPA
    │  HTTPS
    ▼
-Panel — Go HTTP server (port 2083), unprivileged user, SQLite
+Panel — Go HTTP server (port 1923; installs before alpha.114 keep 2083), unprivileged user, SQLite
    │  local RPC (moving to Unix socket + token, Phase 0)
    ▼
 Agent — root daemon; the only component allowed to touch the OS

@@ -233,7 +233,7 @@ func (p *Panel) handleServerSetupPeerConnect(w http.ResponseWriter, r *http.Requ
 	address, addressOK := canonicalServerSetupPeerAddress(request.Address)
 	pin, proof, codeOK := parseServerSetupJoinCode(request.Code)
 	if !addressOK || !codeOK {
-		writeCodedError(w, http.StatusBadRequest, "server_setup_peer_connect_invalid", "Enter the first server's address (as shown on its setup screen) and the 24-character code.", "")
+		writeCodedError(w, http.StatusBadRequest, "server_setup_peer_connect_invalid", "Enter the first server's address with its port, exactly as shown on its setup screen (for example https://203.0.113.10:1923, or :2083 on a server installed before alpha.114), and the 24-character code.", "")
 		return
 	}
 	ctx := r.Context()

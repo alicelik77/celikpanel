@@ -520,7 +520,7 @@ adı firmasının canlı kontrolü ve ana DNS'in taşınması sonraki sürümler
   (`GET /api/v1/setup/provider-records`, salt-okur, dakikada yaklaşık bir
   kontrol, başarısız sorgu bilinmiyor sayılır). *Başka bir CelikPanel'de*:
   bugünkü bağlantı.
-- **Kurulum ekranı.** Panel, adı çözülene kadar `https://IP:2083` adresinde geçici
+- **Kurulum ekranı.** Panel, adı çözülene kadar `https://IP:1923` (alpha.114 öncesi kurulumlarda `:2083`) adresinde geçici
   sertifikayla açılır ve bu açıkça söylenir. Alan adı firması kartı ad
   sunucularını ve ana alan adının içindeki adlar için IP kayıtlarını (glue)
   bugünkü zamanlamayla verir: yedek DNS sunucusu hazır olduktan sonra.

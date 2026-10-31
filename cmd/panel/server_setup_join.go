@@ -387,8 +387,26 @@ func serverSetupJoinPending(d serverSetupDraft) bool {
 }
 
 func serverSetupPanelEndpoint(name string) string {
-	endpoint, _ := canonicalRemoteDNSEndpoint("https://" + net.JoinHostPort(name, strconv.Itoa(panelPort())))
+	return serverSetupPanelEndpointOn(name, panelPort())
+}
+
+// serverSetupPanelEndpointOn is a panel's endpoint on a given port. A peer's
+// endpoint always uses the peer's own port, taken from the address it
+// declared, never this server's: a pair may mix a server installed before
+// alpha.114 (port 2083) with a newer one (port 1923).
+func serverSetupPanelEndpointOn(name string, port int) string {
+	endpoint, _ := canonicalRemoteDNSEndpoint("https://" + net.JoinHostPort(name, strconv.Itoa(port)))
 	return endpoint
+}
+
+// serverSetupAddressPort is the port of a canonical https://IP:port address.
+func serverSetupAddressPort(address string) int {
+	_, portText, err := net.SplitHostPort(strings.TrimSuffix(strings.TrimPrefix(address, "https://"), "/"))
+	if err != nil {
+		return 0
+	}
+	port, _ := strconv.Atoi(portText)
+	return port
 }
 
 // serverSetupJoinDocumentFor is the document for a plan, without its
@@ -1319,7 +1337,7 @@ func canonicalServerSetupPeerNames(names *serverSetupPeerNames, d serverSetupDra
 		// Option A: the second server is the main DNS server; its
 		// publishing endpoint and enrollment code are needed here.
 		endpoint, err := canonicalRemoteDNSEndpoint(names.PublisherEndpoint)
-		if err != nil || endpoint != names.PublisherEndpoint || !remoteDNSValidSecret(names.EnrollmentCode) || names.PublisherEndpoint != serverSetupPanelEndpoint(names.PanelDomain) {
+		if err != nil || endpoint != names.PublisherEndpoint || !remoteDNSValidSecret(names.EnrollmentCode) || names.PublisherEndpoint != serverSetupPanelEndpointOn(names.PanelDomain, serverSetupAddressPort(address)) {
 			return invalid()
 		}
 	} else if names.PublisherEndpoint != "" || names.EnrollmentCode != "" {
@@ -1351,7 +1369,9 @@ func canonicalServerSetupPeerNames(names *serverSetupPeerNames, d serverSetupDra
 }
 
 // canonicalServerSetupPeerAddress: https://<IP literal>:<port>, the form a
-// join uses for a server not yet reachable by name.
+// join uses for a server not yet reachable by name. The port is required:
+// this server's own port says nothing about the other server's (a server
+// installed before alpha.114 uses 2083, a newer one 1923).
 func canonicalServerSetupPeerAddress(raw string) (string, bool) {
 	raw = strings.TrimSpace(raw)
 	if !strings.Contains(raw, "://") {
@@ -1363,7 +1383,7 @@ func canonicalServerSetupPeerAddress(raw string) (string, bool) {
 	rest := strings.TrimSuffix(strings.TrimPrefix(raw, "https://"), "/")
 	host, port, err := net.SplitHostPort(rest)
 	if err != nil {
-		host, port = rest, strconv.Itoa(panelPort())
+		return "", false
 	}
 	ip, err := netip.ParseAddr(host)
 	number, portErr := strconv.Atoi(port)

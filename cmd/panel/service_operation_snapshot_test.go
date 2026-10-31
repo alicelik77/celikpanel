@@ -1441,6 +1441,9 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse the panel port changes (migration 47, alpha.114).
+        DROP TABLE panel_port_changes;
+
         -- Reverse the PostgreSQL clusters and database moves (migration 46, alpha.108).
         DROP TABLE postgresql_database_moves;
         ALTER TABLE database_servers DROP COLUMN cluster;

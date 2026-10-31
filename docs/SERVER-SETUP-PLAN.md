@@ -526,7 +526,7 @@ registrar check and moving the main DNS server come in later releases.
   are shown with their live public state (`GET /api/v1/setup/provider-records`,
   read-only, about one check a minute, a failed lookup is unknown). *On
   another CelikPanel*: today's connection.
-- **Install screen.** The panel is reachable at `https://IP:2083` with a
+- **Install screen.** The panel is reachable at `https://IP:1923` (`:2083` on installs before alpha.114) with a
   temporary certificate until its name resolves, said plainly. The registrar
   card lists the nameservers and, for names inside the main domain, their IP
   records (glue), with today's timing: after the backup DNS server is ready.

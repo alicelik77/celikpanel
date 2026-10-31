@@ -53,7 +53,7 @@ The mechanism a neighbouring product could not truthfully copy without rebuildin
   embedded in a single combined executable. The panel's own HTTP and database
   operation does not require a separate web server or external database.
 - **A structural privilege split.** The web-facing panel runs unprivileged on
-  port 2083. Its privileged requests go to a separate root agent over a local
+  port 1923 (installations made before alpha.114 keep 2083). Its privileged requests go to a separate root agent over a local
   authenticated Unix socket, with authorization and resource checks. This limits
   the web process's authority; it is not proof against every exploit and does
   not restrict the owner's native administration of the OS.
@@ -69,7 +69,9 @@ The mechanism a neighbouring product could not truthfully copy without rebuildin
   capabilities rather than a distribution allowlist; `apt` and `pacman` adapters
   are active and `dnf` is gated in preview (`docs/DECISIONS.md` D-020,
   `docs/DISTRO-SUPPORT.md`).
-- Operators reach the panel over HTTPS on port 2083.
+- Operators reach the panel over HTTPS on port 1923. Installations made
+  before alpha.114 keep port 2083 (also cPanel's port) until the owner
+  changes it in Settings → Panel → Panel port.
 - **Routine product workflows use the panel.** Browser-first operation is the
   default and the ordinary-owner acceptance path. When the interface cannot
   resolve a failure, use the supported owner recovery path with short,
