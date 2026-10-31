@@ -265,6 +265,9 @@ export const en = {
     'panelUpdate.outcome.preflightStep.generic': "Reason: a read-only check could not verify the current installation.",
     'panelUpdate.outcome.stoppedNext': "Nothing needs to be done on the server, unless the server's message below names a condition on this server, such as another operation still running or the package manager busy: then let it finish or fix it first.",
     'panelUpdate.outcome.stoppedResume': "Nothing resumes by itself. Starting the update to {target} again is safe.",
+    // alpha.114 E7: the new version refused this server's recorded mail or DNS state. The owner cannot fix that on the server.
+    'panelUpdate.outcome.preflightNext.application_compatibility': "Your sites, mail and DNS keep working on {previous}. Nothing needs to be done on the server; leave its mail and DNS files as they are. Starting {target} again stops the same way.",
+    'panelUpdate.outcome.preflightResume.application_compatibility': "This is corrected in CelikPanel, not on your server: when a newer version is published, the update card offers it and you start it as usual. When you report this, include the line under Details.",
     'nav.settings': 'Settings',
     'nav.menu': 'Menu',
     'nav.collapse': 'Collapse menu',

@@ -7291,3 +7291,37 @@ bağlantıyı tutar.
   bağlantı reddi, IPv6 ve ters DNS. Kurulu bir sunucuda ölçülmedi. **Hiçbir P0 işi
   kapanmaz ya da ilerlemez**; P0.1–P0.5 kısmi kalır ve her açık kabul işi açık
   kalır.
+
+### Dal fix/a114-f1-update (alpha.113 PowerDNS ana sunucusu güncellemeyi alabilir ve alpha.113'e dönebilir; v3 DNS kanıtına açık Agent bildirimi; şema değişikliği yok; ilke 1, 2, 3 ve 6; D-022; D-024; D-025; 1 Kasım 2026)
+
+- **Olay.** alpha.114 laboratuvar koşusu 1 (E7): sahibin alpha.113'ten
+  güncellemesi iki PowerDNS ana sunucusunda da salt-okur denetimde durdu
+  (`update_preflight_refused`, `application_compatibility`, `state=unchanged`).
+  Bağımsız `verify-dns-application`, alpha.81'de hiçbir sürüm v3 yazmadan konan
+  bir kapıyla her v3 durum, sahiplik ve günlük belgesini reddediyordu; yeni
+  PowerDNS ana sunucuları o günden beri v3 yazıyor. Katılan PowerDNS yedeği
+  güncellendi: v3 yalnız ana sunucuya ait bir kayıttır
+  (`ValidateNativeCatalogStateV3` birincil rol ister) ve yedeğin ayrık v2
+  belgeleri iki sürümün de taşıdığı v2 bildirimiyle kabul edilir. Denetleyicinin
+  210 baytlık girişi ayrıca 240 baytlık güncelleyici satırında nedeni kesiyordu.
+- **Sözleşme.** Agent yerel sözleşmesine baytlara bağlı, isteğe bağlı
+  `dns_native_catalog_policy: pdns-native-catalog-v3` eklenir; denetleyici bunu
+  Debian 4.9 ve Arch 5.1 işaretlerine sabitler, hiç genişletmez (yeni işaret ya da
+  belge şeması yeni değer ister). alpha.113, hiçbir Agent bildiremeden v3 yazdı:
+  Agent'ı imzalı sözleşmesindeki tam kaynak commit'iyle (`d3f3a323d`, v2 kanıt ve
+  benimseme okuyucu bildirimleriyle) kabul edilir; DNS kanıt paketi, Agent DNS motoru
+  kodu, kurtarma çalışma ortamı ve sözleşme o commit ile alpha.114 tümleştirme tabanı
+  arasında bayt bayt aynıydı. Önceki sürümlerin Agent'ları v3 için reddedilmeye,
+  v4 günlükleri reddedilmeye devam eder.
+- **Kurtarma.** alpha.113'e uygulama geri dönüşü yerel DNS kanıtını yerinde
+  bırakır; adayın çalışma ortamı geri gelen alpha.113 Agent'ını bu kanıt için kabul
+  eder. Ret yine hiçbir şeyi değiştirmez; satırı sahibe bütün ulaşır, bildirim
+  hizmetlerin çalıştığını, sunucuda yapılacak bir şey olmadığını, aynı sürümün aynı
+  yerde duracağını ve sonraki adımın düzeltilmiş sürüm olduğunu söyler (TR/EN).
+- **Kanıt.** Yalnız bileşen testleri: iki işaret × durum, sahiplik, ikisi birden,
+  günlük ve v1 günlüklü durum × güncel, alpha.113, bildirimsiz ve yabancı biçimli
+  Agent'lar, kanıt baytları değişmeden; katılan yedeğin v2 kanıtı; ROADMAP.md'deki en
+  yeni yayımlanmış sürüm `NativeCatalogV3Releases` içinde yoksa ya da işaretleri iki
+  yönde karşılanmıyorsa düşen test. PowerDNS ana sunucusunun gerçek 113 → 114
+  güncellemesi ve 114 → 113 geri dönüşü henüz ölçülmedi. **Hiçbir P0 işi kapanmaz**;
+  P0.3/P0.4 kısmi kalır.

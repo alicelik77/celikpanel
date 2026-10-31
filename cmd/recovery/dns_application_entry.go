@@ -12,8 +12,16 @@ func dispatchDNSApplicationCompatibility(args []string, uid int, check func(stri
 		return exitUsage
 	}
 	if err := check(args[2], args[4]); err != nil {
-		report("This application's DNS evidence compatibility could not be verified. The server owner must preserve the DNS files and choose a release or snapshot with a matching supported Agent before resuming the same operation. " + err.Error())
+		report(dnsApplicationRefusal(err))
 		return exitUnavailable
 	}
 	return exitOK
+}
+
+// The updater keeps one diagnostic line of at most 240 bytes (update.sh
+// update_probe_diagnostic) and the Panel bounds it again: the cause comes
+// first and the line stays whole. Before alpha.114 a 210-byte preamble cut
+// the cause mid-word ("v3 PowerDNS evidence requ", E7).
+func dnsApplicationRefusal(err error) string {
+	return "DNS state check failed: " + err.Error() + ". Nothing changed; preserve the DNS files."
 }

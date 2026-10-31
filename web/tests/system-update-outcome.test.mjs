@@ -426,3 +426,32 @@ test('the outcome tone is red only when the owner must act; the repeated renewal
         assert.equal(typeof trAll[key], 'string', key);
     }
 });
+
+// alpha.114 E7: the new version refused this server's recorded mail or DNS
+// state. Nothing changed, nobody can fix it on the server and the same version
+// stops the same way: the notice says that, who acts and what comes next, and
+// the checker's whole line stays under Details.
+test('a refused mail/DNS state says nothing changed, who acts and that the same version stops again', () => {
+    const detail = "DNS state check failed: this Agent does not declare support for the PowerDNS main server's v3 DNS state; preserve that state and use a release that does. Nothing changed; preserve the DNS files.";
+    const message = 'reviewed updater failed: exit status 1: ' + refusedSummary('application_compatibility', 'check_failed', detail);
+    const stop = observed('failed', { failure_code: 'update_preflight_refused' });
+    for (const observation of [stop, null]) {
+        const guidance = failedUpdateGuidance(observation, input({ message }));
+        assert.equal(guidance.state, 'unchanged');
+        assert.deepEqual(guidance.lines.map((value) => value.key), ['panelUpdate.outcome.stopped', 'panelUpdate.outcome.preflightStep.application_compatibility',
+            'panelUpdate.outcome.preflightNext.application_compatibility', 'panelUpdate.outcome.preflightResume.application_compatibility']);
+        assert.equal(guidance.serverMessage, detail);
+        const english = primary(enAll, guidance).join('\n');
+        assert.match(english, /keep working on v0\.1\.0-alpha\.81/);
+        assert.match(english, /Starting v0\.1\.0-alpha\.82 again stops the same way/);
+        assert.match(english, /corrected in CelikPanel, not on your server/);
+        assert.doesNotMatch(english, /again is safe|CELIKPANEL|class=|step=|\{/);
+        const turkish = primary(trAll, guidance).join('\n');
+        assert.match(turkish, /v0\.1\.0-alpha\.81 ile çalışmaya devam ediyor/);
+        assert.match(turkish, /aynı yerde durur/);
+        assert.doesNotMatch(turkish, /\b(The|Reason|Nothing)\b|güvenlidir|class=|step=|\{/);
+    }
+    // Other steps keep the safe-to-retry wording.
+    const other = failedUpdateGuidance(stop, input({ message: refusedSummary('bind_compatibility', 'check_failed', 'x') }));
+    assert.deepEqual(other.lines.slice(-2).map((value) => value.key), ['panelUpdate.outcome.stoppedNext', 'panelUpdate.outcome.stoppedResume']);
+});

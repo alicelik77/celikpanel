@@ -22,6 +22,13 @@ const DNSSwitchJournalPolicy = "bind-inverse-plan-v2"
 const DNSSwitchSourceJournalPolicy = "bind-source-inverse-plan-v2"
 const DNSSwitchAdoptionJournalPolicy = "bind-adoption-inverse-plan-v2"
 const MailEnrollmentPolicy = "retain-enrollment-ledger-v1"
+
+// DNSNativeCatalogPolicy declares that the bound Agent reads, preserves and
+// keeps operating a fresh PowerDNS main server's native catalog evidence:
+// state-v3 and ownership-v3 documents and the v3 switch journal, for exactly
+// the markers the independent checker pins to this value. A new marker or
+// document schema needs a new value; this one never widens (alpha.114, E7).
+const DNSNativeCatalogPolicy = "pdns-native-catalog-v3"
 const MaxSize = 2048
 const MaxAgentSize = 128 << 20
 
@@ -38,6 +45,7 @@ type Contract struct {
 	MailRenewalGeneration  string `json:"mail_renewal_generation,omitempty"`
 	DNSEvidencePolicy      string `json:"dns_evidence_policy,omitempty"`
 	DNSSwitchJournalPolicy string `json:"dns_switch_journal_policy,omitempty"`
+	DNSNativeCatalogPolicy string `json:"dns_native_catalog_policy,omitempty"`
 }
 
 // New is only the reviewed current-source build producer. It must never be used
@@ -49,13 +57,14 @@ func New(agent []byte, commit string) (Contract, error) {
 		return Contract{}, ErrContract
 	}
 	digest := sha256.Sum256(agent)
-	return Contract{Schema: Schema, SourceCommit: commit, AgentSHA256: hex.EncodeToString(digest[:]), MailHookPolicy: MailHookPolicy, MailEnrollmentPolicy: MailEnrollmentPolicy, DNSEvidencePolicy: DNSEvidencePolicy, DNSSwitchJournalPolicy: DNSSwitchAdoptionJournalPolicy}, nil
+	return Contract{Schema: Schema, SourceCommit: commit, AgentSHA256: hex.EncodeToString(digest[:]), MailHookPolicy: MailHookPolicy, MailEnrollmentPolicy: MailEnrollmentPolicy, DNSEvidencePolicy: DNSEvidencePolicy, DNSSwitchJournalPolicy: DNSSwitchAdoptionJournalPolicy, DNSNativeCatalogPolicy: DNSNativeCatalogPolicy}, nil
 }
 func Encode(c Contract) ([]byte, error) {
 	if c.Schema != Schema || !commitPattern.MatchString(c.SourceCommit) || !digestPattern.MatchString(c.AgentSHA256) || c.MailHookPolicy != MailHookPolicy ||
 		(c.MailEnrollmentPolicy != "" && c.MailEnrollmentPolicy != MailEnrollmentPolicy) ||
 		(c.DNSEvidencePolicy != "" && c.DNSEvidencePolicy != DNSEvidencePolicy) ||
 		(c.DNSSwitchJournalPolicy != "" && c.DNSSwitchJournalPolicy != DNSSwitchJournalPolicy && c.DNSSwitchJournalPolicy != DNSSwitchSourceJournalPolicy && c.DNSSwitchJournalPolicy != DNSSwitchAdoptionJournalPolicy) ||
+		(c.DNSNativeCatalogPolicy != "" && c.DNSNativeCatalogPolicy != DNSNativeCatalogPolicy) ||
 		(c.MailRenewalGeneration != "" && (!digestPattern.MatchString(c.MailRenewalGeneration) || c.MailEnrollmentPolicy != MailEnrollmentPolicy)) {
 		return nil, ErrContract
 	}
