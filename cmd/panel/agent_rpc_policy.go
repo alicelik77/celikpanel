@@ -136,7 +136,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.OSUpdatesStatusV1 Agent.RoundcubeUpdateCheckV1 Agent.WebmailProofV1 Agent.WebmailAddressStatusV1 Agent.RestartNeedsV1
 		Agent.NodePatchesV1 Agent.OSReleaseFactsV1 Agent.RepoConfinePreviewV1 Agent.VendorLanePlanV1
 		Agent.PostgreSQLClustersV1 Agent.PostgreSQLClusterPortPreviewV1 Agent.PostgreSQLSourceCheckV1
-		Agent.SiteCertificateRenewalStateV1
+		Agent.SiteCertificateRenewalStateV1 Agent.PanelListenConfigV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -159,6 +159,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.DeletePHPPool Agent.TogglePHPExtension Agent.UpdateConfig
 		Agent.UpdateExtendedPHPConfig Agent.UpdateMySQLConfig Agent.UpdatePHPConfig
 		Agent.UpdatePHPConfiguration Agent.UpdatePHPPoolConfig Agent.ApplySitePool
+		Agent.SetPanelListenPortV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostingSite, `
 		Agent.CreateSite Agent.DeleteSite Agent.InstallWordPress
@@ -253,6 +254,8 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.ContinueMailEnrollmentV1":      agentRPCQuickReadTimeout,
 	"Agent.MailHostCertificateStatus":     agentRPCQuickReadTimeout,
 	"Agent.FirewallStatus":                agentRPCQuickReadTimeout,
+	"Agent.PanelListenConfigV1":           agentRPCQuickReadTimeout,
+	"Agent.SetPanelListenPortV1":          agentRPCMutationTimeout,
 	"Agent.GetCertificateInfo":            agentRPCQuickReadTimeout,
 	"Agent.GetConfig":                     agentRPCQuickReadTimeout,
 	"Agent.GetDKIMStatus":                 agentRPCQuickReadTimeout,

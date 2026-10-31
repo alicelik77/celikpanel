@@ -131,7 +131,7 @@ class GuestsTest(unittest.TestCase):
         argv = captured["argv"]
         self.assertEqual(argv[0], "ssh")
         self.assertIn("ExitOnForwardFailure=yes", argv)
-        self.assertIn("127.0.0.1:28443:127.0.0.1:2083", argv)
+        self.assertIn("127.0.0.1:28443:127.0.0.1:1923", argv)
         self.assertEqual(argv[-1], "celik@127.0.0.1")
         self.assertTrue(captured["terminated"])
 

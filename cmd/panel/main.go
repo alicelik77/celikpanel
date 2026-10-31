@@ -69,6 +69,9 @@ type Panel struct {
 	loginLimiter  *rateLimiter
 	demoMode      bool
 	startupGate   *panelHTTPStartupGate
+	// listenerControl is the running HTTP server's listener set; a panel
+	// port change adds and retires listeners through it (panel_port.go).
+	listenerControl panelListenerControl
 	// requestIdentities answers a re-sent state-changing request from the row
 	// of its first arrival instead of running it again (D-029). Handler tests
 	// that call a handler directly leave it nil.
@@ -1012,6 +1015,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to start panel listener: %v", err)
 	}
+	panel.listenerControl = runningServer
 	// The setup link pins the identity this listener serves on its IP
 	// address, taken from the listener once (server_setup_join.go).
 	panel.captureServerSetupIdentity(server.TLSConfig)
@@ -1423,6 +1427,8 @@ func main() {
 	http.HandleFunc(vendorLanePath, panel.handleVendorLane)
 	http.HandleFunc("/api/v1/hosting/capabilities", panel.handleHostingCapabilities)
 	http.HandleFunc("/api/v1/panel/certificate", panel.handlePanelCertificate)
+	// alpha.114: the panel's own port, changed with the owner's confirmation.
+	http.HandleFunc(panelPortPath, panel.handlePanelPort)
 	http.HandleFunc(securityAuditPath, panel.handleSecurityAudit)
 	// alpha.107 (D-038 §4): the operating system's own security updates.
 	http.HandleFunc(osUpdatesPath, panel.handleOSUpdates)
@@ -1575,6 +1581,9 @@ func main() {
 	// upd11 F2: startup mail work refused only because an update or rollback
 	// still held the host is retried, bounded, once the host is idle.
 	panel.startDeferredStartupMailWork(certificateDeferral, milterWiringDeferred)
+	// alpha.114: a panel port change a previous process left open ends
+	// here (a trial listener never survives a restart).
+	panel.startPanelPortReconciler(discoveryCtx)
 	panel.startPanelUpdateDiscovery(discoveryCtx)
 	// alpha.107 (D-038 §12): vendor repositories enabled before this
 	// release are confined once, in their own jobs.

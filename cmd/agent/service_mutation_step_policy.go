@@ -46,6 +46,7 @@ const (
 	serviceMutationStepRemoveWebmailAddress     serviceMutationStepMethod = "Agent.RemoveWebmailAddressV1"
 	serviceMutationStepMoveAppFilesOwner        serviceMutationStepMethod = "Agent.MoveAppFilesOwnerV1"
 	serviceMutationStepSetPGClusterPort         serviceMutationStepMethod = "Agent.SetPostgreSQLClusterPortV1"
+	serviceMutationStepSetPanelListen           serviceMutationStepMethod = "Agent.SetPanelListenPortV1"
 	serviceMutationStepCopyPGDatabase           serviceMutationStepMethod = "Agent.CopyPostgreSQLDatabaseV1"
 	serviceMutationStepDropPGDatabase           serviceMutationStepMethod = "Agent.DropPostgreSQLDatabaseV1"
 	serviceMutationStepInstallNodeVersion       serviceMutationStepMethod = "Agent.InstallNodeVersion"
@@ -225,6 +226,12 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 		// qualifier is the new port.
 		return strings.HasPrefix(claim.target, "pg-") && claim.packageName != "" && claim.action == "port" &&
 			serviceMutationJobMatches(job, "pg_cluster_port", claim.target, claim.packageName)
+
+	case serviceMutationStepSetPanelListen:
+		// alpha.114: the panel's own listen port, in its own job; the
+		// qualifier is the new port.
+		return claim.target == panelListenMutationTarget && claim.packageName != "" && claim.action == "port" &&
+			serviceMutationJobMatches(job, "panel_port_change", claim.target, claim.packageName)
 
 	case serviceMutationStepCopyPGDatabase:
 		// alpha.108: one database copied between two clusters (source and

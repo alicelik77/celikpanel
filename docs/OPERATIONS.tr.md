@@ -381,6 +381,28 @@ yazmadan önce root güven zincirini, desteklenen snapshot sözleşmesini,
 provenance bilgisini ve bütün checksum'ları doğrulamalıdır. Rollback sonrasında
 bütün salt-okur doğrulamaları tekrarlayın.
 
+## 5a. Panel portu
+
+Yeni kurulumlar TCP 1923'ü dinler (alpha.114; 2083 cPanel'in portudur).
+alpha.114 öncesi kurulumlar 2083'ü korur: install.sh `CELIKPANEL_LISTEN`
+değerini yalnız root'un okuyabildiği `/etc/celikpanel/panel.env` dosyasına bir
+kez yazar; güncelleme onu değiştirmez. Tek doğruluk kaynağı bu dosyadır.
+
+Sahip portu Ayarlar → Panel → Panel portu bölümünden değiştirir. Panel önce
+yeni portu dinlemeye başlar (kullanılan port hiçbir şey değişmeden reddedilir),
+sunucunun güvenlik duvarında açar ve iki portta da yanıt verir. Sahip yeni
+adresi açıp orada onaylar; yalnız yeni porttan gelen onay kabul edilir. Sonra
+Agent panel.env'deki o tek satırı değiştirir (dosya başlangıçta görülenle
+aynıysa; sahibin kendi düzenlemesi bildirilir, üzerine yazılmaz), eski dinleyici
+kapanır ve güvenlik duvarı eski portu kapatır. 10 dakika içinde onay gelmezse,
+iptal edilirse ya da panel bu arada yeniden başlarsa panel eski portta kalır ve
+deneme portu yeniden kapanır. Sunucu dışındaki sağlayıcı güvenlik duvarını
+sahip açar. Başka bir CelikPanel'e bağlı sunucu bu sürümde portunu korur.
+
+Panel olmadan: `/etc/celikpanel/panel.env` içindeki `CELIKPANEL_LISTEN=`
+satırını değiştirin, yeni portu güvenlik duvarında açın ve
+`sudo systemctl restart celikpanel-panel` çalıştırın.
+
 ## 6. Güvenlik duvarı kalıcılığı yetkisi
 
 Kurulum CelikPanel güvenlik duvarı restore unit'ini yerleştirebilir; fakat

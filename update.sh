@@ -2363,7 +2363,9 @@ panel_startup_environment() {
         [[ ${values[$key]} =~ $value_re ]] || return 1
         PANEL_STARTUP_ENV+=("$key=${values[$key]}")
     done
-    PANEL_STARTUP_LISTEN=${values[CELIKPANEL_LISTEN]:-:2083}
+    # The panel binary's own default when neither the unit nor panel.env
+    # names an address (alpha.114: 1923).
+    PANEL_STARTUP_LISTEN=${values[CELIKPANEL_LISTEN]:-:1923}
     PANEL_STARTUP_SCHEME=http
     if [[ ${values[CELIKPANEL_TLS]:-} == 1 || -n ${values[CELIKPANEL_TLS_CERT]:-} ||
           -n ${values[CELIKPANEL_TLS_KEY]:-} ]]; then
@@ -3998,7 +4000,17 @@ done
 echo "==> Trusted release is pinned; Git pull is unavailable / Güvenilir sürüm sabit; Git pull kullanılamaz"
 
 echo "==> Re-running the staged installer / Staged kurucu yeniden çalıştırılıyor"
-current_listen=$(grep -h '^Environment=CELIKPANEL_LISTEN=' "$UNIT_DIR/celikpanel-panel.service" 2>/dev/null | cut -d= -f3- || true)
+# The installation's own address is kept exactly: panel.env first (every
+# installation since panel.env exists), then the installed unit's line, then
+# 2083, the address of every installation older than both. install.sh uses
+# this only when panel.env is missing; it never rewrites an existing one, so
+# an update from alpha.113 stays on 2083 although new installs use 1923.
+# Kurulumun kendi adresi aynen korunur: önce panel.env, sonra kurulu unit,
+# sonra ikisinden de eski kurulumların adresi 2083. Güncelleme 2083'te kalır.
+current_listen=$(grep -h '^CELIKPANEL_LISTEN=' "$PANEL_ENV_FILE" 2>/dev/null | tail -n 1 | cut -d= -f2- || true)
+if [[ -z $current_listen ]]; then
+    current_listen=$(grep -h '^Environment=CELIKPANEL_LISTEN=' "$UNIT_DIR/celikpanel-panel.service" 2>/dev/null | cut -d= -f3- || true)
+fi
 current_listen=${current_listen:-:2083}
 panel_tls_snapshot_assert_source_unchanged \
     "$snap/panel-tls" "$PANEL_TLS_DIR" "$PANEL_CERT_PENDING" "$PANEL_CERT_HOOK" quiesced \

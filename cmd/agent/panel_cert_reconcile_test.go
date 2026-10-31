@@ -318,7 +318,7 @@ func TestPanelCertificateActivationReplaysEveryCrashPhase(t *testing.T) {
 			panelCertificateActivationVerifyServed = func(
 				_ context.Context, address, domain, fingerprint string,
 			) error {
-				if address != panelCertificateLoopbackAddress ||
+				if address != panelCertificateLoopbackAddress() ||
 					domain != state.Domain || fingerprint != state.LeafSHA256 {
 					t.Fatalf("verification target = %q %q %q", address, domain, fingerprint)
 				}
@@ -493,7 +493,7 @@ func TestPanelCertificateActivationRetainsUntilExactListenerProof(t *testing.T) 
 	panelCertificateActivationVerifyServed = func(
 		_ context.Context, address, domain, fingerprint string,
 	) error {
-		if address != panelCertificateLoopbackAddress ||
+		if address != panelCertificateLoopbackAddress() ||
 			domain != state.Domain || fingerprint != state.LeafSHA256 {
 			t.Fatalf("verification target = %q %q %q", address, domain, fingerprint)
 		}

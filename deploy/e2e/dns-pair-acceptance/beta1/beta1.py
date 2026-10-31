@@ -16,7 +16,7 @@ Phases are separate commands so each can be bounded and inspected:
   poll CELL NODE PATH SECONDS EVERY [--until KEY=VALUE ...] [--label L]   read-only; never a mutation
   sh CELL NODE CMD                           root command on the guest, output recorded
   dbcounts CELL NODE [--label L]             read-only row counts of every panel table + audit actions
-  leaf CELL NODE                             TLS leaf served on IP:2083 (read on the guest)
+  leaf CELL NODE                             TLS leaf served on IP:<panel port> (read on the guest)
 """
 from __future__ import annotations
 
@@ -135,9 +135,24 @@ def guest(cell: str, node: str, command: str, stdin: bytes | None = None, timeou
                           env={**os.environ, "PATH": PATH_ENV})
 
 
+# alpha.114: a fresh install listens on 1923; an install made before keeps
+# 2083. The guest's own panel.env is the truth, so a mixed pair (first server
+# on 2083, joined server on 1923) is driven at each server's real port.
+DEFAULT_PANEL_PORT = int(os.environ.get("BETA1_PANEL_PORT", "1923"))
+
+
+def panel_port(cell: str, node: str) -> int:
+    override = os.environ.get(f"BETA1_PANEL_PORT_{node.upper()}")
+    if override:
+        return int(override)
+    out = guest(cell, node, "sudo -n sed -n 's/^CELIKPANEL_LISTEN=.*:\\([0-9][0-9]*\\)$/\\1/p' /etc/celikpanel/panel.env",
+                timeout=60).stdout.decode().split()
+    return int(out[0]) if out and out[0].isdigit() else DEFAULT_PANEL_PORT
+
+
 def leaf(cell: str, node: str) -> str:
     ip = lab.address_of(cell, node)
-    cmd = (f"sudo -n sh -c 'echo | openssl s_client -connect {ip}:2083 -noservername 2>/dev/null "
+    cmd = (f"sudo -n sh -c 'echo | openssl s_client -connect {ip}:{panel_port(cell, node)} -noservername 2>/dev/null "
            "| openssl x509 -outform DER | sha256sum'")
     out = guest(cell, node, cmd, timeout=60).stdout.decode().split()
     if not out or len(out[0]) != 64:
@@ -157,7 +172,9 @@ def client_for(cell: str, node: str, rec: Recorder, st: dict) -> PanelClient:
         rec.write(f"{node}-{method}-{path.replace('/api/v1/', '')}", {**exchange, "at": now(), "label": os.environ.get("BETA1_LABEL", "")})
         exchanges.append(exchange)
 
-    transport = PinnedHTTPSTransport(ip, 2083, pin)
+    port = st.get("panel_port") or panel_port(cell, node)
+    st["panel_port"] = port
+    transport = PinnedHTTPSTransport(ip, port, pin)
 
     def watching(method, path, headers, body, timeout):
         resp = transport(method, path, headers, body, timeout)
@@ -174,7 +191,7 @@ def client_for(cell: str, node: str, rec: Recorder, st: dict) -> PanelClient:
             os.chmod(STATE / cell / f"{node}.last-join-code", 0o600)
         return resp
 
-    c = PanelClient(node, f"https://{ip}:2083", watching, rec.redactor, record)
+    c = PanelClient(node, f"https://{ip}:{port}", watching, rec.redactor, record)
     if st.get("cookie"):
         c.cookie = st["cookie"]
     return c

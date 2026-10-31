@@ -111,7 +111,7 @@ almaz.
 
 ~~~text
 Tarayıcı
-  │ HTTPS :2083
+  │ HTTPS :1923 (alpha.114 öncesi kurulumlar: :2083)
   ▼
 Panel — yetkisiz celikpanel kullanıcısı
   │ SQLite durumu + mühürlü uygulama sırları
