@@ -126,7 +126,7 @@ export const trSecurityScreens: Record<SecurityScreenKey, string> = {
     'vpn.subtitle': 'Yerleşik WireGuard sunucusu üzerinden güvenli uzaktan erişim',
     'vpn.serverRunning': 'VPN sunucusu çalışıyor — {endpoint}',
     'vpn.serverStopped': 'VPN sunucusu kurulu ama çalışmıyor',
-    'vpn.notInstalled': 'WireGuard kurulu değil — önce Servisler bölümünden kurun',
+    'vpn.notInstalled': 'WireGuard kurulu değil — önce Bileşenler sayfasından kurun',
     'vpn.installWireGuard': 'WireGuard’ı kur',
     'vpn.adminInstallRequired': 'Cihaz tanımlanabilmesi için bir sunucu yöneticisinin önce WireGuard’ı kurması gerekir.',
     'vpn.serverHint': 'Sunucu ayağa kalkınca cihaz başına bir config verin.',

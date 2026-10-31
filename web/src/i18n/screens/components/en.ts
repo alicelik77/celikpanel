@@ -134,7 +134,7 @@ export const enComponentsScreens = {
     'services.eolHint': 'This line no longer receives security fixes upstream — install it only for a legacy site that cannot be upgraded.',
     'services.phpVersionsHint': 'Versions install side by side; every site picks its own version in its settings.',
     'services.nodeInstallHint': 'Downloaded from nodejs.org and verified against the official checksums.',
-    'services.noManagePage': 'This service has no dedicated management page yet — its versions and controls live on the Services page.',
+    'services.noManagePage': 'This service has no dedicated management page yet — its versions and controls live on the Components page.',
     'services.repo.note': 'This adds the vendor repository, pinned to its signing key. You can turn it back off.',
     'services.repo.checking': 'Checking whether this component needs an additional package repository…',
     'services.repo.unknown': 'CelikPanel could not check whether {name} needs an additional package repository on this server, so installing is not offered yet. This does not mean a repository is missing. Nothing was changed. Try again.',

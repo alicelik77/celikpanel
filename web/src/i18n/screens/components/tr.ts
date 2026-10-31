@@ -126,7 +126,7 @@ export const trComponentsScreens: Record<ComponentsScreenKey, string> = {
     'services.eolHint': 'Bu hat artık güvenlik yaması almıyor — yalnız yükseltilemeyen eski bir site için kurun.',
     'services.phpVersionsHint': 'Sürümler yan yana kurulur; her site kendi sürümünü kendi ayarından seçer.',
     'services.nodeInstallHint': 'nodejs.org üzerinden indirilir ve resmi sağlama toplamlarıyla doğrulanır.',
-    'services.noManagePage': 'Bu servisin özel bir yönetim sayfası henüz yok — sürümleri ve denetimi Servisler sayfasında.',
+    'services.noManagePage': 'Bu servisin özel bir yönetim sayfası henüz yok — sürümleri ve denetimi Bileşenler sayfasında.',
     'services.repo.note': 'Bu, vendor deposunu imza anahtarına sabitleyerek ekler. İsterseniz geri kapatabilirsiniz.',
     'services.repo.checking': 'Bu bileşenin ek bir paket deposuna ihtiyacı var mı, kontrol ediliyor…',
     'services.repo.unknown': 'CelikPanel, {name} bileşeninin bu sunucuda ek bir paket deposuna ihtiyacı olup olmadığını kontrol edemedi; bu yüzden şimdilik kurulum sunulmuyor. Bu, deponun eksik olduğu anlamına gelmez. Hiçbir şey değiştirilmedi. Tekrar deneyin.',

@@ -32,7 +32,7 @@ export const enDashboardScreens = {
 
     'dashboard.title': 'Dashboard',
     'dashboard.welcome': 'Welcome back, {name}',
-    'dashboard.services': 'Services',
+    'dashboard.services': 'Components',
     'dashboard.systemServices': 'System services',
     'dashboard.statusUnknown': 'Unknown',
     // The card checks the components by itself (12 Oct 2026). Its states:

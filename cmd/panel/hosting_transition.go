@@ -250,7 +250,7 @@ func (p *Panel) handleUpdateHosting(w http.ResponseWriter, r *http.Request, doma
 	case errors.Is(err, errHostingPHPMissing):
 		writeHostingPHPRefusal(w, errCodePHPRequired, "/services",
 			"PHP-FPM is not installed on this server, so the site was not switched to PHP. Nothing was changed. "+
-				"The server administrator installs PHP-FPM from Services, then the site is switched to PHP again.")
+				"The server administrator installs PHP-FPM from Components, then the site is switched to PHP again.")
 	case errors.Is(err, errHostingPHPNotOffered):
 		writeHostingPHPRefusal(w, errCodeNoVersionOffered, "",
 			"No installed PHP version is offered to customers on this server, so the site was not switched to PHP. Nothing was changed. "+

@@ -133,7 +133,7 @@ export const enSecurityScreens = {
     'vpn.subtitle': 'Secure remote access over the built-in WireGuard server',
     'vpn.serverRunning': 'VPN server is running — {endpoint}',
     'vpn.serverStopped': 'VPN server is installed but not running',
-    'vpn.notInstalled': 'WireGuard is not installed — install it from Services first',
+    'vpn.notInstalled': 'WireGuard is not installed — install it from Components first',
     'vpn.installWireGuard': 'Install WireGuard',
     'vpn.adminInstallRequired': 'A server administrator must install WireGuard before devices can be issued.',
     'vpn.serverHint': 'Once the server is up, issue a config per device.',
