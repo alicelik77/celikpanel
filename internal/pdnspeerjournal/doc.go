@@ -14,6 +14,10 @@
 // admission. Never reuse an outstanding request returned by Read: backup
 // restoration can roll this sidecar backwards and this package cannot infer
 // that from its own file. A consumed-before-terminal crash needs a fresh proof.
+// A fresh challenge of the same operation may carry a higher catalog serial
+// only over the identical catalog member set, which the store verifies from
+// the members the caller passes (the PowerDNS daemon's own re-stamp); any
+// other catalog, enrollment or operation change remains a context mismatch.
 // Retire requires exact terminal-ledger proof. Any abandoned private stage blocks proof work until owner review; a crash
 // during staging has no automatic cleanup or silent retry.
 // Missing or unsafe storage is never interpreted as successful deletion.

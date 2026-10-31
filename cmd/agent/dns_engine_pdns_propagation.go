@@ -363,8 +363,12 @@ func completeDNSV3PrimaryPropagationWithNativeAt(
 	record := recordedProducerCatalogFor(plan)
 	plan.catalog = record
 	// One completion wave may retry ordinary DNS observations while the peer
-	// catches up, but it mints at most one durable native challenge and opens
-	// at most one SSH inspection. A later owner retry is a new ledger attempt.
+	// catches up, but it opens at most one SSH inspection, and it sends only
+	// one challenge. A challenge whose publication admitted a daemon re-stamp
+	// is superseded before its exchange (errDNSProducerCatalogRestamped-
+	// BeforeExchange); each such repeat needs an admitted re-stamp, which
+	// dnsProducerCatalogRestampLimit bounds. A later owner retry is a new
+	// ledger attempt.
 	nativeAttempted := false
 	var nativePending error
 	nativeOnce := native
@@ -381,7 +385,8 @@ func completeDNSV3PrimaryPropagationWithNativeAt(
 				return nil
 			}
 			if errors.Is(raw, errDNSProducerCatalogRestampedBeforeChallenge) {
-				// No challenge was minted and no inspection opened: the
+				// No inspection was opened (and no challenge was minted,
+				// or the one written is superseded unsent): the
 				// re-stamped pair is proved again first.
 				nativeAttempted = false
 				return raw

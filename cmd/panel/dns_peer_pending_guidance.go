@@ -11,6 +11,13 @@ import (
 // publication by itself (dns_pending_publication.go).
 const dnsPeerCatchingUpEnglish = "The DNS change is saved and in effect on this server, but the backup DNS server has not caught up with it yet: it did not confirm the change within its check time (it may be restarting, offline or briefly unreachable). Nobody needs to do anything: CelikPanel re-checks this same publication by itself, first after about 15 seconds and then less often (at most every 5 minutes), and completes it as soon as the backup has caught up; Server → DNS and peer servers shows the next check. Until then other DNS changes wait for it. If this lasts, the server administrator checks that the backup DNS server is running and reachable from this server on TCP port 53."
 
+// dnsPeerJournalUnknownEnglish: the backup's confirmation of a deletion is not
+// complete because this server's single-use check challenge could not be
+// written or matched this time. The Panel re-checks with a new challenge by
+// itself, so nobody needs to act yet; only a result that lasts sends the
+// administrator to the Agent log.
+const dnsPeerJournalUnknownEnglish = "The DNS change is saved and in effect on this server; only the confirmation that the backup DNS server removed the zone is not complete: this server could not write or match its single-use check challenge this time. Nobody needs to do anything now: CelikPanel re-checks this same publication by itself with a new challenge, first after about 15 seconds and then less often (at most every 5 minutes); Server → DNS and peer servers shows the next check, and it continues from where it stopped. A retry is safe because each challenge can be used only once and a retry starts a new one; this server's owner can also retry now with “Retry this deletion”. Only if this message stays after several checks does this server's administrator read the Agent log lines for this deletion with sudo journalctl -u celikpanel-agent | grep peer; they name the step that stopped and its reason."
+
 // dnsPeerPendingRetriesAutomatically reports whether the Panel re-checks a
 // pending publication with this code by itself. Only transient causes are
 // re-checked: the backup catching up, a proof step that ran out of time, a
@@ -51,7 +58,10 @@ func dnsPeerPendingEnglish(code string) string {
 	case transport.DNSPeerPendingNativeUnknown:
 		return "The DNS change is saved, but the secondary's native secondary DNS state did not prove the deleted zone absent. The secondary owner must inspect its loaded zones and transfer state, then retry this same publication."
 	case transport.DNSPeerPendingJournalUnknown:
-		return "The DNS change is saved, but its private peer challenge cannot be reconciled. This server's administrator reads the Agent log lines for this deletion on this server with sudo journalctl -u celikpanel-agent | grep peer; they name the step that stopped and its reason. A retry is safe because each challenge can be used only once and a retry starts a new one. CelikPanel re-checks this same publication by itself (first after about 15 seconds, then less often, at most every 5 minutes) and it continues from where it stopped. This server's owner can also retry now with “Retry this deletion”."
+		// A waiting state first (D-024; final alpha.113 acceptance run 4,
+		// D7): the Panel re-checks it by itself, so the administrator step
+		// is only for a result that lasts.
+		return dnsPeerJournalUnknownEnglish
 	case transport.DNSPeerPendingOwnerEditUnknown:
 		return "The DNS change is saved, but local or peer evidence changed during verification. This server's administrator must reconcile the accepted operation with native DNS configuration: compare the catalog zone and zone serials on both servers, then retry this same publication."
 	case transport.DNSPeerPendingCatalogTransferRefused:

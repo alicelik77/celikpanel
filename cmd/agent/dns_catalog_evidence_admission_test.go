@@ -338,6 +338,9 @@ type fakeNativePeerProof struct {
 	// periodic check may fire.
 	beforeRecheck func(call int)
 	afterMint     func()
+	// duringPublish runs while the minted challenge is being written, before
+	// the publication's own recheck (production: the journal's verify).
+	duringPublish func(minted int)
 	calls         int
 	minted        []uint32
 }
@@ -369,6 +372,18 @@ func (p *fakeNativePeerProof) proof(ctx context.Context, authority dnsPeerAXFRAu
 		return errors.New("challenge minted from a serial the pair did not prove")
 	}
 	p.minted = append(p.minted, authority.catalogSerial)
+	if p.duringPublish != nil {
+		p.duringPublish(len(p.minted))
+		// The publication's recheck and its outcome, as in
+		// verifyEnrolledPDNSPeerDeletion's challenge_write step.
+		err := verifyCurrent()
+		if restampedSinceChallenge(record, authority.catalogSerial, err) {
+			return errDNSProducerCatalogRestampedBeforeExchange
+		}
+		if err != nil {
+			return err
+		}
+	}
 	if p.afterMint != nil {
 		p.afterMint()
 	}
@@ -447,6 +462,45 @@ func TestResumedDeletionCompletesAcrossDaemonRestamp(t *testing.T) {
 		if err := native.complete(t, pair.plan(zone)); err != nil || native.calls != 1 ||
 			len(native.minted) != 1 || native.minted[0] != 1790745229 {
 			t.Fatalf("resume: err=%v calls=%d minted=%v", err, native.calls, native.minted)
+		}
+	})
+	// Final alpha.113 acceptance run 4 (D7): the re-stamp was admitted by
+	// the rechecks of the challenge's own publication. The challenge for
+	// the old serial is not sent; the wave proves the re-stamped pair and
+	// mints the next challenge at the new serial, within the same wave.
+	t.Run("re-stamp while the challenge is written (D7)", func(t *testing.T) {
+		logs := captureAgentLog(t)
+		pair := newZeroZoneRestampPair()
+		native := &fakeNativePeerProof{pair: pair, enrolled: true}
+		native.duringPublish = func(minted int) {
+			if minted == 1 {
+				pair.restamp(1790745288, testCatalogHashAfter, 0)
+			}
+		}
+		if err := native.complete(t, pair.plan(zone)); err != nil || native.calls != 2 ||
+			len(native.minted) != 2 || native.minted[0] != 1790745229 || native.minted[1] != 1790745288 {
+			t.Fatalf("resume: err=%v calls=%d minted=%v", err, native.calls, native.minted)
+		}
+		if !strings.Contains(logs.String(), "serial 1790745229 -> 1790745288") {
+			t.Fatalf("log: %q", logs.String())
+		}
+	})
+	t.Run("re-stamp during every publication ends at the loop guard", func(t *testing.T) {
+		pair := newZeroZoneRestampPair()
+		native := &fakeNativePeerProof{pair: pair, enrolled: true}
+		serial := uint32(1790745229)
+		native.duringPublish = func(minted int) {
+			serial += 60
+			hash := testCatalogHashAfter
+			if minted%2 == 0 {
+				hash = testCatalogHashBefore
+			}
+			pair.restamp(serial, hash, 0)
+		}
+		err := native.complete(t, pair.plan(zone))
+		if got := pendingDNSPeerCode(err); got != "dns_peer_owner_edit_unknown:producer_catalog" ||
+			len(native.minted) != dnsProducerCatalogRestampLimit+1 {
+			t.Fatalf("loop guard: code=%q calls=%d minted=%v err=%v", got, native.calls, native.minted, err)
 		}
 	})
 	t.Run("owner member change during the attempt stays an owner edit", func(t *testing.T) {
@@ -565,5 +619,35 @@ func TestNativePeerAfterInspectionNamesTheCheck(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// A challenge is superseded before its exchange only when an admitted
+// re-stamp moved the record past its serial and the publication itself
+// succeeded or failed only as a journal outcome; a reviewed difference or a
+// deadline keeps its own result.
+func TestRestampedSinceChallengeKeepsReviewedResults(t *testing.T) {
+	pair := newZeroZoneRestampPair()
+	record := newDNSRecordedProducerCatalog(pair.plan("s2.s1-kill.test"))
+	const challenge = uint32(1790745229)
+	journal := pendingDNSPeerCause(transport.DNSPeerPendingJournalUnknown, errors.New("challenge publish: x"))
+	ownerEdit := pendingDNSPeerOwnerEdit(dnsPeerOwnerEditf(transport.DNSPeerOwnerEditCheckProducerCatalog, "x"))
+	if restampedSinceChallenge(record, challenge, nil) || restampedSinceChallenge(record, challenge, journal) {
+		t.Fatal("unchanged record reported as re-stamped")
+	}
+	pair.restamp(1790745288, testCatalogHashAfter, 0)
+	if _, err := record.Admit(pair.db()); err != nil {
+		t.Fatal(err)
+	}
+	if !restampedSinceChallenge(record, challenge, nil) || !restampedSinceChallenge(record, challenge, journal) {
+		t.Fatal("admitted re-stamp after the challenge was not reported")
+	}
+	if restampedSinceChallenge(record, challenge, ownerEdit) ||
+		restampedSinceChallenge(record, challenge, dnsPeerProofDeadline(errors.New("late"))) ||
+		restampedSinceChallenge(record, 1790745288, nil) || restampedSinceChallenge(nil, challenge, nil) {
+		t.Fatal("a reviewed result or the current serial was replaced")
+	}
+	if !errors.Is(errDNSProducerCatalogRestampedBeforeExchange, errDNSProducerCatalogRestampedBeforeChallenge) {
+		t.Fatal("the wave would not prove the re-stamped pair again")
 	}
 }

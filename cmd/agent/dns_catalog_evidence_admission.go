@@ -281,6 +281,34 @@ var errDNSProducerCatalogRestampedBeforeChallenge = errors.New(
 	"the producer catalog was re-stamped by the PowerDNS daemon before the peer challenge; the pair is re-proved first",
 )
 
+// errDNSProducerCatalogRestampedBeforeExchange: a daemon re-stamp was
+// admitted by the rechecks of the challenge's own publication (final alpha.113
+// acceptance run 4, D7). The written challenge binds the previous serial; it
+// is not sent, no inspection was opened, and the next challenge of the same
+// operation supersedes it in the journal (pdnspeerjournal admits a higher
+// serial over the identical member set). It is the before-challenge sentinel
+// for the wave: the re-stamped pair is proved again first. Each occurrence
+// needs an admitted re-stamp, so dnsProducerCatalogRestampLimit bounds it.
+var errDNSProducerCatalogRestampedBeforeExchange = fmt.Errorf(
+	"%w (it was admitted while the challenge for the previous serial was written; that challenge is superseded and was not sent)",
+	errDNSProducerCatalogRestampedBeforeChallenge,
+)
+
+// restampedSinceChallenge reports whether the record moved past the
+// challenge's serial through admitted re-stamps while the challenge was being
+// published, and the publication either succeeded or failed only as a
+// journal outcome. A reviewed difference from the rechecks (an owner edit,
+// a changed operation or enrollment) or a step deadline keeps its own result.
+func restampedSinceChallenge(record *dnsRecordedProducerCatalog, challengeSerial uint32, publishErr error) bool {
+	if record == nil || !record.RestampedSince(challengeSerial) {
+		return false
+	}
+	if publishErr == nil {
+		return true
+	}
+	return pendingDNSPeerCode(publishErr) == transport.DNSPeerPendingJournalUnknown
+}
+
 // nativePeerChallengePlan returns the plan a challenge may be minted from:
 // its evidence is the recorded evidence, which must still carry the serial
 // the wave proved at the peer (authority). When an admitted re-stamp moved it,

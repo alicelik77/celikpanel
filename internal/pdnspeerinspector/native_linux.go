@@ -40,7 +40,7 @@ func (n NativeReader) Read(ctx context.Context, r pdnspeerproof.RequestV1, p Own
 	}
 	show, err := run(ctx, "/usr/bin/systemctl", "show", "pdns.service", "-p", "ActiveState", "-p", "MainPID")
 	if err != nil {
-		return Snapshot{}, errors.New("PowerDNS service state unavailable")
+		return Snapshot{}, fmt.Errorf("PowerDNS service state unavailable: %w", err)
 	}
 	pid, err := parseServicePID(string(show))
 	if err != nil {
@@ -66,12 +66,17 @@ func (n NativeReader) Read(ctx context.Context, r pdnspeerproof.RequestV1, p Own
 	}
 	listeners, err := run(ctx, "/usr/bin/ss", "-H", "-lnupt", "( sport = :53 )")
 	if err != nil {
-		return Snapshot{}, errors.New("PowerDNS listeners unavailable")
+		return Snapshot{}, fmt.Errorf("PowerDNS listeners unavailable: %w", err)
 	}
 	identities, err := dnslistener.CanonicalPublicListeners(string(listeners), "pdns_server", pid)
-	if err != nil || !dnslistener.HasIPv4Listener(identities, r.PeerIP, pid) ||
-		(shape.requiresLoopbackListeners() && !hasLoopbackListeners(string(listeners), pid)) {
-		return Snapshot{}, errors.New("PowerDNS listeners do not match service")
+	if err != nil {
+		return Snapshot{}, fmt.Errorf("PowerDNS listeners do not match service: %w", err)
+	}
+	if !dnslistener.HasIPv4Listener(identities, r.PeerIP, pid) {
+		return Snapshot{}, errors.New("PowerDNS listeners do not match service: no listener of the service on the enrolled address")
+	}
+	if shape.requiresLoopbackListeners() && !hasLoopbackListeners(string(listeners), pid) {
+		return Snapshot{}, errors.New("PowerDNS listeners do not match service: loopback listeners missing")
 	}
 	dbDev, dbIno, err := boundDatabase(pid, DatabasePath)
 	if err != nil {
@@ -236,8 +241,11 @@ func boundDatabase(pid uint64, path string) (uint64, uint64, error) {
 		return 0, 0, errors.New("PowerDNS database identity unavailable")
 	}
 	found, err := processHasDatabaseInode(pid, path, uint64(info.Dev), info.Ino)
-	if err != nil || !found {
-		return 0, 0, errors.New("PowerDNS process database inode differs")
+	if err != nil {
+		return 0, 0, fmt.Errorf("PowerDNS process database inode differs: %w", err)
+	}
+	if !found {
+		return 0, 0, errors.New("PowerDNS process database inode differs: no daemon descriptor holds the database")
 	}
 	return uint64(info.Dev), info.Ino, nil
 }
@@ -390,7 +398,10 @@ func listeningUnixSocketInode(raw, path string) (string, error) {
 			// An accepted connection has Flags 00000000 and St 03.
 			// Any other row for this path is unreviewed.
 			if fields[3] != "00000000" || fields[4] != "0001" || fields[5] != "03" {
-				return "", errors.New("PowerDNS control socket framing unknown")
+				// The kernel's flag, type and state columns (no address or
+				// peer data) name the row for the host's own log.
+				return "", fmt.Errorf("PowerDNS control socket framing unknown (row flags %.8s type %.4s state %.2s)",
+					fields[3], fields[4], fields[5])
 			}
 			continue
 		}
@@ -454,39 +465,51 @@ func nativePDNSCatalogLabel(label string) bool {
 }
 
 func readCatalogDatabase(ctx context.Context, path string, dev, ino uint64, r pdnspeerproof.RequestV1, p OwnerPolicyV1) (uint32, []string, bool, error) {
+	// Each failure names its step; a wrapped error is the local SQLite or
+	// system error (for example "database is locked"), never a row's content.
 	db, err := sql.Open("sqlite", "file:"+path+"?mode=ro")
 	if err != nil {
-		return 0, nil, false, err
+		return 0, nil, false, fmt.Errorf("PowerDNS SQLite open: %w", err)
 	}
 	defer db.Close()
 	db.SetMaxOpenConns(1)
 	conn, err := db.Conn(ctx)
 	if err != nil {
-		return 0, nil, false, err
+		return 0, nil, false, fmt.Errorf("PowerDNS SQLite connection: %w", err)
 	}
 	defer conn.Close()
 	var health string
-	if err := conn.QueryRowContext(ctx, "PRAGMA quick_check").Scan(&health); err != nil || health != "ok" {
-		return 0, nil, false, errors.New("PowerDNS SQLite integrity unverified")
+	if err := conn.QueryRowContext(ctx, "PRAGMA quick_check").Scan(&health); err != nil {
+		return 0, nil, false, fmt.Errorf("PowerDNS SQLite integrity unverified: %w", err)
+	}
+	if health != "ok" {
+		return 0, nil, false, errors.New("PowerDNS SQLite integrity unverified: quick_check did not answer ok")
 	}
 	if err := selfSQLiteConnectionBound(path, dev, ino); err != nil {
 		return 0, nil, false, err
 	}
 	tx, err := conn.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
 	if err != nil {
-		return 0, nil, false, err
+		return 0, nil, false, fmt.Errorf("PowerDNS SQLite read transaction: %w", err)
 	}
 	defer tx.Rollback()
 	var countCatalog int
-	if err := tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM domains WHERE name=?", r.CatalogName).Scan(&countCatalog); err != nil || countCatalog != 1 {
-		return 0, nil, false, errors.New("PowerDNS catalog row is not unique")
+	if err := tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM domains WHERE name=?", r.CatalogName).Scan(&countCatalog); err != nil {
+		return 0, nil, false, fmt.Errorf("PowerDNS catalog row lookup: %w", err)
+	}
+	if countCatalog != 1 {
+		return 0, nil, false, fmt.Errorf("PowerDNS catalog row is not unique (%d rows)", countCatalog)
 	}
 	var id int64
 	var name, kind, master, account string
 	var catalog sql.NullString
 	err = tx.QueryRowContext(ctx, "SELECT id,name,type,master,account,catalog FROM domains WHERE name=?", r.CatalogName).Scan(&id, &name, &kind, &master, &account, &catalog)
-	if err != nil || id <= 0 || name != r.CatalogName || kind != "CONSUMER" || master != r.PrimaryIP || account != p.CatalogAccount || catalog.Valid {
-		return 0, nil, false, errors.New("PowerDNS catalog CONSUMER identity differs")
+	if err != nil {
+		return 0, nil, false, fmt.Errorf("PowerDNS catalog CONSUMER identity unreadable: %w", err)
+	}
+	if id <= 0 || name != r.CatalogName || kind != "CONSUMER" || master != r.PrimaryIP || account != p.CatalogAccount || catalog.Valid {
+		return 0, nil, false, fmt.Errorf("PowerDNS catalog CONSUMER identity differs (type %.16q, primary matches %t, account matches %t, member of a catalog %t)",
+			kind, master == r.PrimaryIP, account == p.CatalogAccount, catalog.Valid)
 	}
 	var serial uint32
 	var members []string
@@ -504,7 +527,7 @@ func readCatalogDatabase(ctx context.Context, path string, dev, ino uint64, r pd
 	// row is still refused there.
 	rows, err := tx.QueryContext(ctx, "SELECT name,COALESCE(type,''),COALESCE(content,''),COALESCE(ttl,-1) FROM records WHERE domain_id=? ORDER BY name,type,content", id)
 	if err != nil {
-		return 0, nil, false, err
+		return 0, nil, false, fmt.Errorf("PowerDNS catalog records query: %w", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
@@ -564,12 +587,16 @@ func readCatalogDatabase(ctx context.Context, path string, dev, ino uint64, r pd
 			members = append(members, member)
 		default:
 			if name != "zones."+r.CatalogName || typ != "" || content != "" {
-				return 0, nil, false, errors.New("PowerDNS catalog record unsupported")
+				// Owner name and type only: catalog names are not secret.
+				return 0, nil, false, fmt.Errorf("PowerDNS catalog record unsupported (owner %.120q type %.12q)", name, typ)
 			}
 		}
 	}
-	if rows.Err() != nil || soa != 1 || ns != 1 || version != 1 {
-		return 0, nil, false, errors.New("PowerDNS catalog incomplete")
+	if err := rows.Err(); err != nil {
+		return 0, nil, false, fmt.Errorf("PowerDNS catalog records read: %w", err)
+	}
+	if soa != 1 || ns != 1 || version != 1 {
+		return 0, nil, false, fmt.Errorf("PowerDNS catalog incomplete (SOA %d, NS %d, version %d)", soa, ns, version)
 	}
 	sort.Strings(members)
 	for i := 1; i < len(members); i++ {
@@ -579,8 +606,11 @@ func readCatalogDatabase(ctx context.Context, path string, dev, ino uint64, r pd
 	}
 	var count int
 	err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM domains WHERE name=?", r.DeletedZone).Scan(&count)
-	if err != nil || count < 0 || count > 1 {
-		return 0, nil, false, errors.New("PowerDNS member lookup unavailable")
+	if err != nil {
+		return 0, nil, false, fmt.Errorf("PowerDNS member lookup unavailable: %w", err)
+	}
+	if count < 0 || count > 1 {
+		return 0, nil, false, fmt.Errorf("PowerDNS member lookup unavailable (%d rows)", count)
 	}
 	if err := selfSQLiteConnectionBound(path, dev, ino); err != nil {
 		return 0, nil, false, err
