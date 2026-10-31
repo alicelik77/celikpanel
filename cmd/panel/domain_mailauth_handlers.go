@@ -257,8 +257,7 @@ func (p *Panel) handleMailAuthStatus(w http.ResponseWriter, r *http.Request, dom
 		writeServerError(w, err)
 		return
 	} else if ok {
-		st.Automatic = &dkimAutomaticView{State: record.State, Reason: record.Reason,
-			ErrorLine: record.ErrorLine, Trigger: record.Trigger, RecordedAt: record.RecordedAt}
+		st.Automatic = dkimAutomaticViewOf(record, time.Now())
 	}
 
 	var zoneID int

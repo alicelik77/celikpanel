@@ -843,3 +843,50 @@ func TestDNSOverviewAnEditedDraftKeepsTheCompletedSetupsSecondServer(t *testing.
 		t.Fatalf("the completed setup's pair: %+v %+v", value.Servers, value.Join)
 	}
 }
+
+// A mail record the internet does not show is a wait only when this panel's
+// own list holds it; when the list lacks it, waiting never adds it and the
+// card names who acts (D-024).
+// Posta kaydi listede yoksa "beklemek yeterli" denmez.
+func TestDNSOverviewMailRecordMissingFromOwnListIsNotAWait(t *testing.T) {
+	f, world, _ := overviewMailServer(t)
+	// The zone has no SPF; the internet shows none either.
+	world.set(func(w *overviewWorld) { delete(w.public, "example.test TXT") })
+	now := time.Now()
+	missing, _ := f.panel.dnsOverview(context.Background(), now, false)
+	spf := overviewMailRow(missing, "spf")
+	if spf.State != "missing" || spf.Own != "absent" || missing.Sentence.Code != "dns_overview_mail_not_in_list" || missing.Sentence.State != "prerequisite" ||
+		strings.Contains(missing.Sentence.Who, "waiting") || !strings.Contains(missing.Sentence.Next, "record editor") || missing.Sentence.Vars["kind"] != "SPF" {
+		t.Fatalf("a record the list lacks: %+v %+v", spf, missing.Sentence)
+	}
+	// The list holds an SPF; the internet shows an older one: it is spreading.
+	if _, err := f.database.GetDB().Exec(`INSERT INTO pdns_records(domain_id,name,type,content,ttl) SELECT id,'example.test','TXT','"v=spf1 mx a:mail.example.test ~all"',3600 FROM pdns_domains WHERE name='example.test'`); err != nil {
+		t.Fatal(err)
+	}
+	world.set(func(w *overviewWorld) { w.public["example.test TXT"] = []string{"v=spf1 -all"} })
+	spreading, _ := f.panel.dnsOverview(context.Background(), now.Add(2*time.Minute), false)
+	spf = overviewMailRow(spreading, "spf")
+	if spf.State != "different" || spf.Own != "present" || spreading.Sentence.Code != "dns_overview_mail_spreading" || spreading.Sentence.State != "waiting" {
+		t.Fatalf("a record the list holds: %+v %+v", spf, spreading.Sentence)
+	}
+}
+
+// "Updates by itself" ends: a pending automatic DKIM record nobody has
+// rewritten for over half an hour is shown as not known, with a way forward.
+func TestDKIMAutomaticPendingForeverBecomesUnknownWithARetry(t *testing.T) {
+	now := time.Now()
+	record := func(state string, age time.Duration) dkimAutomaticRecord {
+		return dkimAutomaticRecord{State: state, RecordedAt: now.Add(-age).UTC().Format(time.RFC3339)}
+	}
+	if view := dkimAutomaticViewOf(record(dkimAutoPending, 5*time.Minute), now); view.State != dkimAutoPending {
+		t.Fatalf("a fresh pending record: %+v", view)
+	}
+	for _, state := range []string{dkimAutoPending, dkimAutoWaiting} {
+		if view := dkimAutomaticViewOf(record(state, 31*time.Minute), now); view.State != dkimAutoUnknown || view.Reason != dkimReasonStale {
+			t.Fatalf("a stale %s record: %+v", state, view)
+		}
+	}
+	if view := dkimAutomaticViewOf(record(dkimAutoFailed, 5*time.Hour), now); view.State != dkimAutoFailed {
+		t.Fatalf("a failure stays a failure: %+v", view)
+	}
+}

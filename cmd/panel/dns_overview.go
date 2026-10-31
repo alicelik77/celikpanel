@@ -164,6 +164,12 @@ type dnsOverviewMailRecord struct {
 	Expected string   `json:"expected"`
 	Seen     []string `json:"seen"`
 	State    string   `json:"state"`
+	// Own (a TXT mail record the internet shows missing or different, with
+	// the list on this panel) is what this panel's own list holds: "absent"
+	// (no such record in the list: waiting never adds it), "present" (the
+	// list has it: the change is spreading) or "unknown" (the list could not
+	// be read).
+	Own string `json:"own,omitempty"`
 }
 
 // dnsOverviewMailReceiver: which server receives the main domain's mail.
@@ -742,6 +748,7 @@ func (p *Panel) checkDNSOverview(ctx context.Context, in dnsOverviewInput, edges
 				}
 			}
 		}
+		p.dnsOverviewZoneMailTXT(ctx, in, &result)
 	}
 	if mx := dnsOverviewMXMoveOffer(in, result, receiver); mx != nil {
 		result.MXMove = mx
@@ -874,6 +881,56 @@ func (p *Panel) dnsOverviewZoneMailExchange(ctx context.Context, in dnsOverviewI
 		}
 	}
 	return nil
+}
+
+// dnsOverviewZoneMailTXT says, for each TXT mail record (SPF, DKIM, DMARC)
+// the internet shows missing or different, whether this panel's own list
+// holds such a record. A record that is not in the list is not a delay:
+// waiting never adds it (D-024). Read only; a list that cannot be read leaves
+// the rows "unknown", never "absent".
+func (p *Panel) dnsOverviewZoneMailTXT(ctx context.Context, in dnsOverviewInput, result *dnsOverview) {
+	wanted := false
+	for index := range result.Mail {
+		row := &result.Mail[index]
+		if row.Type == "TXT" && (row.State == "missing" || row.State == "different") {
+			row.Own = "unknown"
+			wanted = true
+		}
+	}
+	if !wanted {
+		return
+	}
+	rows, err := p.db.GetDB().QueryContext(ctx, `SELECT lower(r.name),COALESCE(r.content,'') FROM pdns_records r JOIN pdns_domains d ON d.id=r.domain_id
+		WHERE d.name=? AND r.type='TXT' AND COALESCE(r.disabled,0)=0 ORDER BY r.id LIMIT 256`, in.Draft.MainDomain)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	held := map[string]bool{}
+	for rows.Next() {
+		var name, content string
+		if err := rows.Scan(&name, &content); err != nil {
+			return
+		}
+		held[name+"\x00"+strings.ToLower(strings.TrimSpace(joinTXTSegments(content)))] = true
+	}
+	if rows.Err() != nil {
+		return
+	}
+	prefix := map[string]string{"spf": "v=spf1", "dmarc": "v=dmarc1", "dkim": "v=dkim1"}
+	for index := range result.Mail {
+		row := &result.Mail[index]
+		if row.Own != "unknown" || prefix[row.Kind] == "" {
+			continue
+		}
+		row.Own = "absent"
+		for key := range held {
+			if name, value, _ := strings.Cut(key, "\x00"); name == strings.ToLower(row.Name) && strings.HasPrefix(value, prefix[row.Kind]) {
+				row.Own = "present"
+				break
+			}
+		}
+	}
 }
 
 func dnsOverviewDKIMPublished(seen []string, state string) string {
@@ -1032,6 +1089,15 @@ func dnsOverviewSentenceFor(in dnsOverviewInput, r dnsOverview) dnsOverviewSente
 			return dnsOverviewSay("prerequisite", "dns_overview_mail_no_mx", "The domain's list has no MX record, so no mail can be delivered to the domain.", "You, the owner of the list.", "Add an MX record in the record editor (it names the server that receives the mail).", "This page checks again every minute.", vars)
 		}
 	}
+	// A mail record that the internet does not show and that is not in this
+	// panel's own list either is no delay: waiting never adds it, so someone
+	// must (D-024). Only a record that the list holds is "spreading".
+	for _, mail := range r.Mail {
+		if mail.Own == "absent" && in.Ready {
+			vars["kind"], vars["name"] = strings.ToUpper(mail.Kind), mail.Name
+			return dnsOverviewSay("prerequisite", "dns_overview_mail_not_in_list", mail.Name+" ("+strings.ToUpper(mail.Kind)+") is not in this server's DNS records for "+d.MainDomain+", so waiting will not add it.", "You, the owner of the list.", "Add the "+strings.ToUpper(mail.Kind)+" record in the record editor (the domain's DNS tab) with the value shown under Mail records.", "This page checks again every minute and shows the record once it is in the list.", vars)
+		}
+	}
 	// A finished setup with mail and no DKIM key yet: mail is sent unsigned
 	// and may be marked as spam; that is a task, never "all good".
 	for _, mail := range r.Mail {
@@ -1091,6 +1157,9 @@ func dnsOverviewSentenceFor(in dnsOverviewInput, r dnsOverview) dnsOverviewSente
 	for _, mail := range r.Mail {
 		if mail.State == "missing" || mail.State == "different" {
 			vars["kind"] = mail.Kind
+			if mail.Own == "unknown" {
+				return dnsOverviewSay("unknown", "dns_overview_some_unknown", "A mail record does not show on the internet, and this panel's own list could not be read just now.", "Nobody yet.", "Nothing to do now.", "This page asks again in a minute.", vars)
+			}
 			return dnsOverviewSay("waiting", "dns_overview_mail_spreading", "A mail record does not show everywhere on the internet yet.", "Nobody: waiting is enough.", "Nothing to do.", "This page checks again every minute.", vars)
 		}
 	}

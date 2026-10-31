@@ -57,7 +57,7 @@ function automaticText(auto: AutomaticDKIM): TranslationKey {
     switch (auto.state) {
     case 'pending': return 'mailauth.auto.pending';
     case 'waiting': return 'mailauth.auto.waiting';
-    case 'unknown': return 'mailauth.auto.unknown';
+    case 'unknown': return auto.reason === 'stale' ? 'mailauth.auto.stale' : 'mailauth.auto.unknown';
     case 'blocked': return 'mailauth.auto.dnsNotReady';
     default:
         if (auto.reason === 'key_failed') return 'mailauth.auto.keyFailed';
