@@ -16,6 +16,10 @@ import (
 )
 
 const testNow int64 = 1_800_000_000
+
+// fixtureMembers is the catalog member set of every fixture request.
+var fixtureMembers = []string{"other.example.test"}
+
 const enrollment = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
 func fixture(t *testing.T) (store, pdnspeerproof.RequestV1, string) {
@@ -28,7 +32,7 @@ func fixture(t *testing.T) (store, pdnspeerproof.RequestV1, string) {
 		t.Fatal(err)
 	}
 	s := store{path: filepath.Join(dir, "pdns-peer-challenge-v1.json"), trustRoot: dir, now: func() time.Time { return time.Unix(testNow+1, 0) }}
-	members, err := pdnspeerproof.CatalogMembersSHA256("192.0.2.10", 12, []string{"other.example.test"})
+	members, err := pdnspeerproof.CatalogMembersSHA256("192.0.2.10", 12, fixtureMembers)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,14 +59,14 @@ func TestDurablePublishConsumeReplayAndFreshAttempt(t *testing.T) {
 	if _, err := s.read(); !IsCode(err, Missing) {
 		t.Fatalf("missing: %v", err)
 	}
-	if err := s.publish(request, enrollment, 1, allow, nil); err != nil {
+	if err := s.publish(request, fixtureMembers, enrollment, 1, allow, nil); err != nil {
 		t.Fatal(err)
 	}
 	got, err := s.read()
 	if err != nil || got.State != StateOutstanding || got.RequestSHA256 != digest {
 		t.Fatalf("published: %+v %v", got, err)
 	}
-	if err := s.publish(request, enrollment, 1, allow, nil); !IsCode(err, Replay) {
+	if err := s.publish(request, fixtureMembers, enrollment, 1, allow, nil); !IsCode(err, Replay) {
 		t.Fatalf("duplicate publish: %v", err)
 	}
 	if err := s.consume(request, enrollment, digest, 1, allow, nil); err != nil {
@@ -78,7 +82,7 @@ func TestDurablePublishConsumeReplayAndFreshAttempt(t *testing.T) {
 	next := request
 	next.Nonce = strings.Repeat("1", 64)
 	next.Attempt++
-	if err := s.publish(next, enrollment, 1, allow, nil); err != nil {
+	if err := s.publish(next, fixtureMembers, enrollment, 1, allow, nil); err != nil {
 		t.Fatalf("fresh attempt: %v", err)
 	}
 	if err := s.consume(request, enrollment, digest, 1, allow, nil); !IsCode(err, Mismatch) {
@@ -88,7 +92,7 @@ func TestDurablePublishConsumeReplayAndFreshAttempt(t *testing.T) {
 
 func TestContextAndOwnerEditRefusedWithoutChangingBytes(t *testing.T) {
 	s, request, digest := fixture(t)
-	if err := s.publish(request, enrollment, 1, allow, nil); err != nil {
+	if err := s.publish(request, fixtureMembers, enrollment, 1, allow, nil); err != nil {
 		t.Fatal(err)
 	}
 	before, err := os.ReadFile(s.path)
@@ -104,7 +108,7 @@ func TestContextAndOwnerEditRefusedWithoutChangingBytes(t *testing.T) {
 		edit(&candidate)
 		candidate.Attempt++
 		candidate.Nonce = strings.Repeat("1", 64)
-		if err := s.publish(candidate, enrollment, 1, allow, nil); !IsCode(err, Mismatch) {
+		if err := s.publish(candidate, fixtureMembers, enrollment, 1, allow, nil); !IsCode(err, Mismatch) {
 			t.Fatalf("context edit: %v", err)
 		}
 	}
@@ -126,7 +130,7 @@ func TestCrashAtPublishAndConsumeCheckpoints(t *testing.T) {
 			s, request, _ := fixture(t)
 			func() {
 				defer func() { _ = recover() }()
-				_ = s.publish(request, enrollment, 1, allow, func(at string) {
+				_ = s.publish(request, fixtureMembers, enrollment, 1, allow, func(at string) {
 					if at == point {
 						panic(at)
 					}
@@ -145,7 +149,7 @@ func TestCrashAtPublishAndConsumeCheckpoints(t *testing.T) {
 		})
 		t.Run("consume_"+point, func(t *testing.T) {
 			s, request, digest := fixture(t)
-			if err := s.publish(request, enrollment, 1, allow, nil); err != nil {
+			if err := s.publish(request, fixtureMembers, enrollment, 1, allow, nil); err != nil {
 				t.Fatal(err)
 			}
 			func() {
@@ -183,7 +187,7 @@ func TestCrashAtPublishAndConsumeCheckpoints(t *testing.T) {
 
 func TestConcurrentConsumeOneWinner(t *testing.T) {
 	s, request, digest := fixture(t)
-	if err := s.publish(request, enrollment, 1, allow, nil); err != nil {
+	if err := s.publish(request, fixtureMembers, enrollment, 1, allow, nil); err != nil {
 		t.Fatal(err)
 	}
 	var won atomic.Int32
@@ -207,7 +211,7 @@ func TestUnsafeSidecarFailsClosed(t *testing.T) {
 	for _, kind := range []string{"symlink", "hardlink", "mode"} {
 		t.Run(kind, func(t *testing.T) {
 			s, request, _ := fixture(t)
-			if err := s.publish(request, enrollment, 1, allow, nil); err != nil {
+			if err := s.publish(request, fixtureMembers, enrollment, 1, allow, nil); err != nil {
 				t.Fatal(err)
 			}
 			switch kind {
@@ -236,13 +240,13 @@ func TestUnsafeSidecarFailsClosed(t *testing.T) {
 
 func TestNewAdmissionSupersedesOutstandingAndRejectsLateResponse(t *testing.T) {
 	s, old, oldDigest := fixture(t)
-	if err := s.publish(old, enrollment, 7, allow, nil); err != nil {
+	if err := s.publish(old, fixtureMembers, enrollment, 7, allow, nil); err != nil {
 		t.Fatal(err)
 	}
 	next := old
 	next.Nonce = strings.Repeat("1", 64)
 	next.Attempt++
-	if err := s.publish(next, enrollment, 8, allow, nil); err != nil {
+	if err := s.publish(next, fixtureMembers, enrollment, 8, allow, nil); err != nil {
 		t.Fatalf("fresh admission: %v", err)
 	}
 	if err := s.consume(old, enrollment, oldDigest, 7, allow, nil); !IsCode(err, Mismatch) {
@@ -262,7 +266,7 @@ func TestNewAdmissionSupersedesOutstandingAndRejectsLateResponse(t *testing.T) {
 
 func TestRestartMustMintNewChallengeEvenWithSameLedgerAttempt(t *testing.T) {
 	s, old, oldDigest := fixture(t)
-	if err := s.publish(old, enrollment, 1, allow, nil); err != nil {
+	if err := s.publish(old, fixtureMembers, enrollment, 1, allow, nil); err != nil {
 		t.Fatal(err)
 	}
 	restarted := store{path: s.path, trustRoot: s.trustRoot, now: s.now}
@@ -272,7 +276,7 @@ func TestRestartMustMintNewChallengeEvenWithSameLedgerAttempt(t *testing.T) {
 	next := old
 	next.Nonce = strings.Repeat("1", 64)
 	next.Attempt++
-	if err := restarted.publish(next, enrollment, 1, allow, nil); err != nil {
+	if err := restarted.publish(next, fixtureMembers, enrollment, 1, allow, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := restarted.consume(old, enrollment, oldDigest, 1, allow, nil); !IsCode(err, Mismatch) {
@@ -282,13 +286,13 @@ func TestRestartMustMintNewChallengeEvenWithSameLedgerAttempt(t *testing.T) {
 
 func TestOwnerEditDuringExchangeIsPreservedAsUnknown(t *testing.T) {
 	s, request, digest := fixture(t)
-	if err := s.publish(request, enrollment, 1, allow, nil); err != nil {
+	if err := s.publish(request, fixtureMembers, enrollment, 1, allow, nil); err != nil {
 		t.Fatal(err)
 	}
 	next := request
 	next.Nonce = strings.Repeat("1", 64)
 	next.Attempt++
-	err := s.publish(next, enrollment, 1, allow, func(at string) {
+	err := s.publish(next, fixtureMembers, enrollment, 1, allow, func(at string) {
 		if at != "before_exchange" {
 			return
 		}
@@ -323,7 +327,7 @@ func TestOwnerEditDuringExchangeIsPreservedAsUnknown(t *testing.T) {
 
 func TestTerminalRetirementIsExactAndDurable(t *testing.T) {
 	s, request, digest := fixture(t)
-	if err := s.publish(request, enrollment, 1, allow, nil); err != nil {
+	if err := s.publish(request, fixtureMembers, enrollment, 1, allow, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.retire(request, enrollment, digest, 1, func() error { return errors.New("not terminal") }); !IsCode(err, Unknown) {
@@ -348,7 +352,7 @@ func TestTerminalRetirementIsExactAndDurable(t *testing.T) {
 	other := request
 	other.MutationRequestID = strings.Repeat("1", 32)
 	other.Nonce = strings.Repeat("2", 64)
-	if err := s.publish(other, enrollment, 2, allow, nil); err != nil {
+	if err := s.publish(other, fixtureMembers, enrollment, 2, allow, nil); err != nil {
 		t.Fatalf("later operation blocked: %v", err)
 	}
 }
@@ -364,7 +368,7 @@ func TestUnsafeAncestorRefused(t *testing.T) {
 	if err := os.Chmod(parent, 0770); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.publish(request, enrollment, 1, allow, nil); !IsCode(err, Unknown) {
+	if err := s.publish(request, fixtureMembers, enrollment, 1, allow, nil); !IsCode(err, Unknown) {
 		t.Fatalf("writable ancestor accepted: %v", err)
 	}
 	if err := os.Chmod(parent, 0700); err != nil {
@@ -376,7 +380,7 @@ func TestUnsafeAncestorRefused(t *testing.T) {
 	if err := os.Symlink(root, parent); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.publish(request, enrollment, 1, allow, nil); !IsCode(err, Unknown) {
+	if err := s.publish(request, fixtureMembers, enrollment, 1, allow, nil); !IsCode(err, Unknown) {
 		t.Fatalf("symlink ancestor accepted: %v", err)
 	}
 }
@@ -387,7 +391,7 @@ func TestSingleAbandonedStageBlocksFurtherProof(t *testing.T) {
 	if err := os.WriteFile(name, []byte("interrupted"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.publish(request, enrollment, 1, allow, nil); !IsCode(err, Unknown) {
+	if err := s.publish(request, fixtureMembers, enrollment, 1, allow, nil); !IsCode(err, Unknown) {
 		t.Fatalf("interrupted stage accepted: %v", err)
 	}
 	if _, err := s.read(); !IsCode(err, Unknown) {
@@ -397,7 +401,7 @@ func TestSingleAbandonedStageBlocksFurtherProof(t *testing.T) {
 
 func TestOwnerEditAtTerminalRetirementExchangeIsPreserved(t *testing.T) {
 	s, request, digest := fixture(t)
-	if err := s.publish(request, enrollment, 1, allow, nil); err != nil {
+	if err := s.publish(request, fixtureMembers, enrollment, 1, allow, nil); err != nil {
 		t.Fatal(err)
 	}
 	err := s.retireAt(request, enrollment, digest, 1, allow, func(at string) {
@@ -431,14 +435,14 @@ func TestOwnerEditAtTerminalRetirementExchangeIsPreserved(t *testing.T) {
 	if !retained {
 		t.Fatal("owner terminal edit was not retained")
 	}
-	if err := s.publish(request, enrollment, 1, allow, nil); !IsCode(err, Unknown) {
+	if err := s.publish(request, fixtureMembers, enrollment, 1, allow, nil); !IsCode(err, Unknown) {
 		t.Fatalf("uncertain stage allowed another proof: %v", err)
 	}
 }
 
 func TestPowerDNSJournalRejectsBindSchemaAndWrongPeerNonceAttemptGeneration(t *testing.T) {
 	s, request, digest := fixture(t)
-	if err := s.publish(request, enrollment, 1, allow, nil); err != nil {
+	if err := s.publish(request, fixtureMembers, enrollment, 1, allow, nil); err != nil {
 		t.Fatal(err)
 	}
 	original, err := os.ReadFile(s.path)
@@ -470,5 +474,136 @@ func TestPowerDNSJournalRejectsBindSchemaAndWrongPeerNonceAttemptGeneration(t *t
 	after, err := os.ReadFile(s.path)
 	if err != nil || string(after) != string(original) {
 		t.Fatalf("journal changed after refused evidence: %v", err)
+	}
+}
+
+// restamped returns request as the same operation mints it after the
+// PowerDNS daemon re-stamped its producer catalog to serial: the identical
+// member set, a fresh nonce and the next proof attempt.
+func restamped(t *testing.T, request pdnspeerproof.RequestV1, serial uint32, nonce string) pdnspeerproof.RequestV1 {
+	t.Helper()
+	digest, err := pdnspeerproof.CatalogMembersSHA256(request.PrimaryIP, serial, fixtureMembers)
+	if err != nil {
+		t.Fatal(err)
+	}
+	next := request
+	next.CatalogSerial = serial
+	next.CatalogMembersSHA256 = digest
+	next.Nonce = strings.Repeat(nonce, 64)
+	next.Attempt++
+	return next
+}
+
+// Final alpha.113 acceptance run 4 (D7): the outstanding challenge was bound
+// to the catalog serial from before the daemon's re-stamp; every later
+// challenge of the same operation carried the re-stamped serial and was
+// refused as a context mismatch for ever. The same operation now supersedes
+// it, and the superseded challenge can never be consumed.
+func TestDaemonRestampAdvanceSupersedesOutstandingChallenge(t *testing.T) {
+	s, old, oldDigest := fixture(t)
+	if err := s.publish(old, fixtureMembers, enrollment, 3, allow, nil); err != nil {
+		t.Fatal(err)
+	}
+	next := restamped(t, old, old.CatalogSerial+531, "1")
+	if err := s.publish(next, fixtureMembers, enrollment, 3, allow, nil); err != nil {
+		t.Fatalf("re-stamped challenge of the same operation refused: %v", err)
+	}
+	if err := s.consume(old, enrollment, oldDigest, 3, allow, nil); !IsCode(err, Mismatch) {
+		t.Fatalf("superseded challenge consumed: %v", err)
+	}
+	nextDigest, err := pdnspeerproof.RequestSHA256(next)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A further advance under a later ledger attempt (the owner's retry or
+	// an Agent restart) is accepted too.
+	third := restamped(t, next, next.CatalogSerial+1, "2")
+	if err := s.publish(third, fixtureMembers, enrollment, 4, allow, nil); err != nil {
+		t.Fatalf("second re-stamp advance refused: %v", err)
+	}
+	if err := s.consume(next, enrollment, nextDigest, 3, allow, nil); !IsCode(err, Mismatch) {
+		t.Fatalf("second superseded challenge consumed: %v", err)
+	}
+	thirdDigest, err := pdnspeerproof.RequestSHA256(third)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.consume(third, enrollment, thirdDigest, 4, allow, nil); err != nil {
+		t.Fatalf("current challenge: %v", err)
+	}
+	if err := s.consume(third, enrollment, thirdDigest, 4, allow, nil); !IsCode(err, Replay) {
+		t.Fatalf("consumed challenge replayed: %v", err)
+	}
+	// After consumption (a crash before the terminal ledger result), a fresh
+	// challenge at the same catalog state is still the only way forward.
+	fourth := third
+	fourth.Nonce = strings.Repeat("3", 64)
+	fourth.Attempt++
+	if err := s.publish(fourth, fixtureMembers, enrollment, 4, allow, nil); err != nil {
+		t.Fatalf("fresh challenge after consumption: %v", err)
+	}
+}
+
+func TestCatalogAdvanceRefusedUnlessVerifiedRestampOfSameOperation(t *testing.T) {
+	s, old, _ := fixture(t)
+	if err := s.publish(old, fixtureMembers, enrollment, 3, allow, nil); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.ReadFile(s.path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	advance := func(edit func(*pdnspeerproof.RequestV1)) pdnspeerproof.RequestV1 {
+		r := restamped(t, old, old.CatalogSerial+1, "1")
+		if edit != nil {
+			edit(&r)
+		}
+		return r
+	}
+	changedMembers := []string{"new.example.test", "other.example.test"}
+	changedDigest, err := pdnspeerproof.CatalogMembersSHA256(old.PrimaryIP, old.CatalogSerial+1, changedMembers)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		label      string
+		request    pdnspeerproof.RequestV1
+		members    []string
+		enrollment string
+		ledger     uint64
+		want       Code
+	}{
+		// A lower serial is never the daemon's re-stamp.
+		{"lower serial", restamped(t, old, old.CatalogSerial-1, "1"), fixtureMembers, enrollment, 3, Mismatch},
+		// The member set changed with the serial: not a re-stamp.
+		{"changed members", advance(func(r *pdnspeerproof.RequestV1) { r.CatalogMembersSHA256 = changedDigest }), changedMembers, enrollment, 3, Mismatch},
+		// Members that do not reproduce the request's own digest, or none.
+		{"unbound members", advance(nil), []string{"x.example.test"}, enrollment, 3, Mismatch},
+		{"no members", advance(nil), nil, enrollment, 3, Mismatch},
+		// A higher serial with the old digest is not a consistent request.
+		{"serial without digest", advance(func(r *pdnspeerproof.RequestV1) { r.CatalogMembersSHA256 = old.CatalogMembersSHA256 }), fixtureMembers, enrollment, 3, Mismatch},
+		// A foreign enrollment never supersedes, even with a valid advance.
+		{"foreign enrollment", advance(nil), fixtureMembers, strings.Repeat("2", 64), 3, Mismatch},
+		// Another operation, owner, generation, peer identity or zone.
+		{"other request", advance(func(r *pdnspeerproof.RequestV1) { r.MutationRequestID = strings.Repeat("1", 32) }), fixtureMembers, enrollment, 3, Mismatch},
+		{"other owner", advance(func(r *pdnspeerproof.RequestV1) { r.MutationOwnerID = strings.Repeat("1", 32) }), fixtureMembers, enrollment, 3, Mismatch},
+		{"other generation", advance(func(r *pdnspeerproof.RequestV1) { r.DeletionGeneration++ }), fixtureMembers, enrollment, 3, Mismatch},
+		{"other peer identity", advance(func(r *pdnspeerproof.RequestV1) { r.PeerIdentitySHA256 = strings.Repeat("9", 64) }), fixtureMembers, enrollment, 3, Mismatch},
+		{"other zone", advance(func(r *pdnspeerproof.RequestV1) { r.DeletedZone = "other-gone.example.test" }), fixtureMembers, enrollment, 3, Mismatch},
+		// The old nonce, the same attempt or a skipped attempt are replay.
+		{"old nonce", advance(func(r *pdnspeerproof.RequestV1) { r.Nonce = old.Nonce }), fixtureMembers, enrollment, 3, Replay},
+		{"same attempt", advance(func(r *pdnspeerproof.RequestV1) { r.Attempt = old.Attempt }), fixtureMembers, enrollment, 3, Replay},
+		{"skipped attempt", advance(func(r *pdnspeerproof.RequestV1) { r.Attempt++ }), fixtureMembers, enrollment, 3, Replay},
+		// An older ledger attempt (for example a restored backup) is replay.
+		{"older ledger attempt", advance(nil), fixtureMembers, enrollment, 2, Replay},
+	}
+	for _, c := range cases {
+		if err := s.publish(c.request, c.members, c.enrollment, c.ledger, allow, nil); !IsCode(err, c.want) {
+			t.Fatalf("%s: got %v, want %s", c.label, err, c.want)
+		}
+	}
+	after, err := os.ReadFile(s.path)
+	if err != nil || string(after) != string(before) {
+		t.Fatalf("journal changed after a refused advance: %v", err)
 	}
 }

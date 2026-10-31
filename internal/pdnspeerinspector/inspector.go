@@ -5,6 +5,7 @@ package pdnspeerinspector
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"time"
 
@@ -28,6 +29,19 @@ func (e *ReasonError) Error() string { return e.Message }
 func reasonError(reason, message string) error {
 	return &ReasonError{Reason: reason, Message: message}
 }
+
+// nativeReadError is a failed native observation (Reader.Read) inside one
+// Inspect. It keeps a reviewed reason of the underlying error visible to
+// Reason; only an unclassified one may be read again (inspectNoted).
+type nativeReadError struct {
+	read int
+	err  error
+}
+
+func (e *nativeReadError) Error() string {
+	return fmt.Sprintf("native observation %d: %v", e.read, e.err)
+}
+func (e *nativeReadError) Unwrap() error { return e.err }
 
 // Reason returns the reviewed reason token of an inspection error, or "".
 func Reason(err error) string {
@@ -100,7 +114,9 @@ func Inspect(ctx context.Context, request pdnspeerproof.RequestV1, reader Reader
 	}
 	at := now().Unix()
 	if at < request.IssuedAtUnix-5 || at > request.ExpiresAtUnix {
-		return pdnspeerproof.ResponseV1{}, errors.New("PowerDNS request outside validity interval")
+		// The offsets (no request field) name a clock difference.
+		return pdnspeerproof.ResponseV1{}, fmt.Errorf("PowerDNS request outside validity interval (inspector clock %+ds from issue; valid -5s..%+ds)",
+			at-request.IssuedAtUnix, request.ExpiresAtUnix-request.IssuedAtUnix)
 	}
 	digest, err := pdnspeerproof.RequestSHA256(request)
 	if err != nil {
@@ -108,11 +124,11 @@ func Inspect(ctx context.Context, request pdnspeerproof.RequestV1, reader Reader
 	}
 	first, err := reader.Read(ctx, request, firstPolicy)
 	if err != nil {
-		return pdnspeerproof.ResponseV1{}, err
+		return pdnspeerproof.ResponseV1{}, &nativeReadError{read: 1, err: err}
 	}
 	second, err := reader.Read(ctx, request, firstPolicy)
 	if err != nil {
-		return pdnspeerproof.ResponseV1{}, err
+		return pdnspeerproof.ResponseV1{}, &nativeReadError{read: 2, err: err}
 	}
 	secondPolicy, secondHash, err := policy.Read(ctx)
 	if err != nil || secondHash != firstHash || secondPolicy.ValidateRequest(request) != nil {
@@ -139,7 +155,8 @@ func Inspect(ctx context.Context, request pdnspeerproof.RequestV1, reader Reader
 	}
 	observed := now().Unix()
 	if observed < request.IssuedAtUnix || observed > request.ExpiresAtUnix {
-		return pdnspeerproof.ResponseV1{}, errors.New("PowerDNS observation expired")
+		return pdnspeerproof.ResponseV1{}, fmt.Errorf("PowerDNS observation expired (inspector clock %+ds from issue; valid 0s..%+ds)",
+			observed-request.IssuedAtUnix, request.ExpiresAtUnix-request.IssuedAtUnix)
 	}
 	response := pdnspeerproof.ResponseV1{Schema: pdnspeerproof.ResponseSchemaV1, RequestSHA256: digest, Nonce: request.Nonce, Attempt: request.Attempt, PrimaryIP: request.PrimaryIP, PeerIP: request.PeerIP, CatalogName: request.CatalogName, CatalogSerial: request.CatalogSerial, CatalogMembersSHA256: request.CatalogMembersSHA256, DeletedZone: request.DeletedZone, View: request.View, CatalogState: catalogState, MemberState: memberState, NativeState: nativeState, ObservedAtUnix: observed}
 	if response.Validate() != nil {

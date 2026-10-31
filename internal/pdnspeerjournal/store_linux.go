@@ -33,11 +33,17 @@ func Read() (RecordV1, error) { return store{path: Path, now: time.Now}.read() }
 
 // Publish durably records an outstanding challenge before any network request.
 // Every call must mint a fresh nonce and the next proof-attempt number for the
-// identical operation/catalog/enrollment context. An outstanding attempt may be
-// superseded after a process restart; late responses then fail exact matching.
-// Never reuse Read().Request after restart or rollback, even if outstanding.
-func Publish(request pdnspeerproof.RequestV1, enrollmentSHA256 string, ledgerAttempt uint64, verify VerifyCurrent) error {
-	return store{path: Path, now: time.Now}.publish(request, enrollmentSHA256, ledgerAttempt, verify, nil)
+// same operation/enrollment context. An outstanding attempt may be superseded
+// after a process restart; late responses then fail exact matching. Never
+// reuse Read().Request after restart or rollback, even if outstanding.
+//
+// members is the catalog member set the request's CatalogMembersSHA256 was
+// computed from. It lets the store verify, by itself, the one catalog change
+// a later challenge of the same operation may carry: the PowerDNS daemon's
+// re-stamp of its producer catalog (a strictly higher serial over the
+// identical member set). See admissibleSuccessor.
+func Publish(request pdnspeerproof.RequestV1, members []string, enrollmentSHA256 string, ledgerAttempt uint64, verify VerifyCurrent) error {
+	return store{path: Path, now: time.Now}.publish(request, members, enrollmentSHA256, ledgerAttempt, verify, nil)
 }
 
 // ConsumeOnce durably marks exactly the published challenge consumed. It is
@@ -77,7 +83,7 @@ func (s store) read() (RecordV1, error) {
 	return readAt(dir, name)
 }
 
-func (s store) publish(request pdnspeerproof.RequestV1, enrollment string, ledgerAttempt uint64, verify VerifyCurrent, checkpoint func(string)) error {
+func (s store) publish(request pdnspeerproof.RequestV1, members []string, enrollment string, ledgerAttempt uint64, verify VerifyCurrent, checkpoint func(string)) error {
 	processMu.Lock()
 	defer processMu.Unlock()
 	if os.Geteuid() != 0 || verify == nil || !hex32(enrollment) || ledgerAttempt == 0 {
@@ -86,6 +92,11 @@ func (s store) publish(request pdnspeerproof.RequestV1, enrollment string, ledge
 	digest, err := pdnspeerproof.RequestSHA256(request)
 	if err != nil {
 		return StateError{Unknown}
+	}
+	// The member set must be the one the request is bound to; a caller
+	// cannot claim a re-stamp over members it did not challenge.
+	if bound, bindErr := pdnspeerproof.CatalogMembersSHA256(request.PrimaryIP, request.CatalogSerial, members); bindErr != nil || bound != request.CatalogMembersSHA256 {
+		return StateError{Mismatch}
 	}
 	now := s.now().Unix()
 	if request.IssuedAtUnix > now || now > request.ExpiresAtUnix {
@@ -108,7 +119,7 @@ func (s store) publish(request pdnspeerproof.RequestV1, enrollment string, ledge
 	}
 	if err == nil {
 		next := RecordV1{Schema: SchemaV1, State: StateOutstanding, LedgerAttempt: ledgerAttempt, EnrollmentSHA256: enrollment, RequestSHA256: digest, Request: request}
-		if !sameContext(previous, next) {
+		if !admissibleSuccessor(previous, next, members) {
 			return StateError{Mismatch}
 		}
 		if ledgerAttempt < previous.LedgerAttempt {

@@ -1,0 +1,24 @@
+== cycle: site pccycle2.test create 00:46:26
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/3/public_html", "Domain": "pccycle2.test", "DomainID": 3, "FTPPassword": "[REDACTED]", "FTPUser": "pccycle2_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 3, "TempDomain": ""}
+   site id 3
+   ok 192.0.3.110 pccycle2.test A = '192.0.3.110' after 0s
+   ok 192.0.3.111 pccycle2.test A = '192.0.3.110' after 0s
+200 {"id": 3, "success": true}
+   ok 192.0.3.110 celik._domainkey.pccycle2.test TXT = '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5zhdarWEgzh5nuzwthK/50UD74MukhMJPrZznLsgwg93rKuofWY5Sw5NdCl3dFq4oDerUR4i7soBVPGYUd0PasPzdHbL3sy9LTIg1ELRlrBFzQR7kwvwaUbcDz386oZx4arIBB7khU//QL0HyIIERsPm1UTt6V+Ot97iqwgZxZ4gg90psFbsCD/84zTmJdVev" "XnGOZzCooxYCvgA/zw0FOd4wtkJrfnplbyStHyRuajB5UMbBvOL4aquIPnsjZKGp9iYOxU475kjgk2y1CVY1kKhKcJ3M0BdcAd3Ft5gm7ochGc13Ul+o+A8xltwNqP+8YCE7zftwhm2VjtJJE0aywIDAQAB"' after 13s
+   ok 192.0.3.111 celik._domainkey.pccycle2.test TXT = '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5zhdarWEgzh5nuzwthK/50UD74MukhMJPrZznLsgwg93rKuofWY5Sw5NdCl3dFq4oDerUR4i7soBVPGYUd0PasPzdHbL3sy9LTIg1ELRlrBFzQR7kwvwaUbcDz386oZx4arIBB7khU//QL0HyIIERsPm1UTt6V+Ot97iqwgZxZ4gg90psFbsCD/84zTmJdVev" "XnGOZzCooxYCvgA/zw0FOd4wtkJrfnplbyStHyRuajB5UMbBvOL4aquIPnsjZKGp9iYOxU475kjgk2y1CVY1kKhKcJ3M0BdcAd3Ft5gm7ochGc13Ul+o+A8xltwNqP+8YCE7zftwhm2VjtJJE0aywIDAQAB"' after 0s
+== cycle: delete pccycle2.test 00:46:46
+   before @192.0.3.110: SOA status: NOERROR flags: qr aa  | TXT celik._domainkey '"v=DKIM1; k=rsa; p=MIIBIjANBgk'
+   before @192.0.3.111: SOA status: NOERROR flags: qr aa  | TXT celik._domainkey '"v=DKIM1; k=rsa; p=MIIBIjANBgk'
+   +0s status: 204 
+   +2s status: 200 deletion_pending running This deletion is running now. When a backup DNS server is paired, its last step waits for the backup to confirm that the zone is gone; that is checked again aut
+   DELETE answered after 32s: 200 {  "domain": "pccycle2.test",  "status": "deleted" }
+   after @192.0.3.110: SOA status: REFUSED flags: qr  | TXT celik._domainkey ''
+   after @192.0.3.111: SOA status: REFUSED flags: qr  | TXT celik._domainkey ''
+   domains list names it: no
+keytable lines for pccycle2.test: 0
+signingtable lines for pccycle2.test: 0
+2026-10-31T00:47:16+00:00 frankfurt agent[1278]: 2026/10/31 00:47:16 DNS peer inspector answer for pccycle2.test (PowerDNS secondary): catalog_state=transferred member_state=absent native_state=unloaded; accepted
+2026-10-31T00:47:17+00:00 frankfurt agent[1278]: 2026/10/31 00:47:17 DNS peer proof for pccycle2.test (PowerDNS secondary) step times: prepare=1.429s challenge_write=5.877s exchange=609ms post_inspection=2.879s consume=7.138s; total 17.931s; outcome verified
+   backup inspector notes (journal tag celikpanel-pdns-peer-inspect, D9):
+-- No entries --
+== cycle done 00:47:26

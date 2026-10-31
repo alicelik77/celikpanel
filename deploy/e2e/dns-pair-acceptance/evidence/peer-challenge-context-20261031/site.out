@@ -1,0 +1,21 @@
+== cycle: site pcshop113.test create 00:38:24
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/1/public_html", "Domain": "pcshop113.test", "DomainID": 1, "FTPPassword": "[REDACTED]", "FTPUser": "pcshop113_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 1, "TempDomain": ""}
+   site id 1
+   ok 192.0.3.110 pcshop113.test A = '192.0.3.110' after 0s
+   ok 192.0.3.111 pcshop113.test A = '192.0.3.110' after 0s
+200 {"id": 1, "success": true}
+   ok 192.0.3.110 celik._domainkey.pcshop113.test TXT = '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAld44AvNktOFWMj2sWBqBXja72EU1d9xC/1WlDY7Har2BmZjncqrHs2aswv3BIGapJLfZPQDqRqUKQwdnr68tCoRCu/SFxHMz34iViCIxlJkuAxFZCHWB+Sz2LqtBg50D0KRAACE+Jt6LM2mHIl/sSInYG6MMaFjDBAurY+GvNxhbHshePKvnzcrBuuvtOELtJ" "S7HYDdTdyvRIKtx4P5oIE/0LF+pOm5QTImCXd09XP0VnEq27yiM7IpzkaPeJx0fsC91j1hghVsi41Pkwp0cJV5lFIkURea4JZKvyQVSiaXfxtbGezb9QEjARkW47UHdJsZVDzLQpUK4ap3pSB55NQIDAQAB"' after 6s
+   ok 192.0.3.111 celik._domainkey.pcshop113.test TXT = '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAld44AvNktOFWMj2sWBqBXja72EU1d9xC/1WlDY7Har2BmZjncqrHs2aswv3BIGapJLfZPQDqRqUKQwdnr68tCoRCu/SFxHMz34iViCIxlJkuAxFZCHWB+Sz2LqtBg50D0KRAACE+Jt6LM2mHIl/sSInYG6MMaFjDBAurY+GvNxhbHshePKvnzcrBuuvtOELtJ" "S7HYDdTdyvRIKtx4P5oIE/0LF+pOm5QTImCXd09XP0VnEq27yiM7IpzkaPeJx0fsC91j1hghVsi41Pkwp0cJV5lFIkURea4JZKvyQVSiaXfxtbGezb9QEjARkW47UHdJsZVDzLQpUK4ap3pSB55NQIDAQAB"' after 4s
+200 {"status": "success", "expires_at": "2031-10-31T00:38:43Z"}
+   certificate answer after 2s
+--- http://pcshop113.test/
+code=301 redirect=https://pcshop113.test/ ssl_verify=0
+--- https://pcshop113.test/
+code=200 redirect= ssl_verify=0
+--- http://www.pcshop113.test/
+code=301 redirect=https://www.pcshop113.test/ ssl_verify=0
+--- https://www.pcshop113.test/
+code=200 redirect= ssl_verify=0
+--- certificate served on pcshop113.test:443
+Verify return code: 0 (ok)
+== cycle: pcshop113.test kept for a later delete 00:38:45

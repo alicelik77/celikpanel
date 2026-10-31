@@ -168,10 +168,65 @@ func TestControlListenerInodeIgnoresAcceptedSamePathSocket(t *testing.T) {
 	if err != nil || inode != "7136" {
 		t.Fatalf("listener not separated from accepted connection: %q %v", inode, err)
 	}
-	for _, raw := range []string{accepted, listener + "\n" + listener, listener + "\n" + strings.Replace(accepted, "00000000 0001 03", "00020000 0001 03", 1)} {
+	// Final alpha.113 acceptance run 4 (D9): a connection the daemon has not
+	// accepted yet (St 02) or one being torn down (St 04) is not the listener.
+	pending := "00000000aa034f1b: 00000002 00000000 00000000 0001 02 11125 " + path
+	closing := "00000000bb034f1b: 00000001 00000000 00000000 0001 04 11126 " + path
+	inode, err = listeningUnixSocketInode(listener+"\n"+pending+"\n"+closing+"\n"+accepted+"\n", path)
+	if err != nil || inode != "7136" {
+		t.Fatalf("listener not separated from pending connection: %q %v", inode, err)
+	}
+	for _, raw := range []string{
+		accepted, pending, listener + "\n" + listener,
+		listener + "\n" + strings.Replace(accepted, "00000000 0001 03", "00020000 0001 03", 1),
+		// A pending row that claims SO_ACCEPTCON, a datagram row, an
+		// unconnected non-listener and an unknown state stay refused.
+		listener + "\n" + strings.Replace(pending, "00000000 0001 02", "00010000 0001 02", 1),
+		listener + "\n" + strings.Replace(pending, "00000000 0001 02", "00000000 0002 02", 1),
+		listener + "\n" + strings.Replace(pending, "00000000 0001 02", "00000000 0001 01", 1),
+		listener + "\n" + strings.Replace(pending, "00000000 0001 02", "00000000 0001 05", 1),
+	} {
 		if _, err := listeningUnixSocketInode(raw, path); err == nil {
 			t.Fatalf("accepted ambiguous or unknown control socket rows: %q", raw)
 		}
+	}
+}
+
+// The kernel's own rows for a connection the listener has not accepted yet:
+// the inspector's control check runs exactly then (after connect, before the
+// command). The listener must still be found, and only the listener.
+func TestControlListenerFoundWhileOwnConnectionIsNotAccepted(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "pdns.controlsocket")
+	listener, err := net.Listen("unix", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	want, err := ownedControlSocketInode(uint64(os.Getpid()), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	conn, err := net.Dial("unix", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	table, err := os.ReadFile("/proc/net/unix")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pendingRow := false
+	for _, line := range strings.Split(string(table), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) == 8 && fields[7] == path && fields[3] == "00000000" && fields[5] == "02" {
+			pendingRow = true
+		}
+	}
+	if !pendingRow {
+		t.Skip("this kernel lists no row for a connection that is not accepted yet")
+	}
+	if err := controlSocketCheck(uint64(os.Getpid()), path, want); err != nil {
+		t.Fatalf("own pending connection failed the listener check: %v", err)
 	}
 }
 

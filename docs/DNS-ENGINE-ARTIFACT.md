@@ -2749,3 +2749,77 @@ SERVFAIL keeps the hold, empty REFUSED completes and admits the next mutation),
 Invariants: RESILIENCE-CONTRACT 4 (every mutation carries a recovery contract)
 and 6 (readiness and guidance), D-024; P0.4 (DNS artifact contracts) stays
 open.
+
+## PowerDNS peer challenge across a daemon re-stamp; inspector diagnostics (D7, D9, 2026-10-31)
+
+**D7 cause.** Final alpha.113 acceptance run 4 deleted a site after both
+servers rebooted. The proof minted its challenge at the catalog serial the
+wave had proved (1793402914). The rechecks inside the challenge's own journal
+publication then admitted the PowerDNS daemon's re-stamp (to 1793403447), and
+the challenge was written and sent with the old serial. Every later wave of
+the same operation derives its recorded catalog from the producer rows, which
+hold the re-stamped serial; the journal's context rule required an identical
+`CatalogSerial` and `CatalogMembersSHA256`, so each new challenge was refused
+as `pdns_peer_challenge_context_mismatch` (`dns_peer_journal_unknown`) at
+every automatic re-check and every “Retry this deletion”.
+
+**Journal rule.** `pdnspeerjournal.Publish` now receives the member set the
+request's digest was computed from, and verifies it. A later challenge of the
+same operation (request, owner, generation, qualifier, deleted zone, view),
+enrollment, endpoints and peer identity may carry a strictly higher catalog
+serial only over the identical member set: the members must reproduce both
+the stored and the new digest at their own serials. That is exactly the
+daemon's re-stamp. A lower serial, a changed member set, a higher serial with
+the old digest, a foreign enrollment or any other field stays a mismatch;
+attempt+1, a new nonce and a non-decreasing ledger attempt are still
+required. Superseding cannot replay: ConsumeOnce accepts only the journal's
+exact record, so an answer bound to the superseded request is refused. The
+journal v1 bytes are unchanged; only the admission rule changed.
+
+**Agent.** A re-stamp admitted by the publication's rechecks supersedes the
+written challenge before its exchange
+(`errDNSProducerCatalogRestampedBeforeExchange`); the wave proves the
+re-stamped pair and mints the next challenge in the same wave. Each repeat
+needs an admitted re-stamp, so `dnsProducerCatalogRestampLimit` bounds it, and
+a wave still opens at most one SSH inspection. A server left in run 4's state
+recovers at its next automatic re-check or Agent start with this build.
+
+**Guidance.** `dns_peer_journal_unknown` is re-checked automatically, so its
+text is now a waiting state first (nobody needs to act; the Panel re-checks
+with a new challenge; the owner may retry now); reading the Agent log is for a
+message that stays after several checks (D-024).
+
+**D9.** `pdns-peer-inspect` sent only its fixed generic line for an
+unclassified failure and logged nothing on the secondary. It now notes every
+failed read to the secondary's journal (`sudo journalctl -t
+celikpanel-pdns-peer-inspect`): a 12-character request digest prefix, the read
+number and a bounded product-authored text naming the failing native step
+with the wrapped SQLite or system error. The nonce, other request fields,
+keys and file content are never written; the primary still receives only the
+reviewed reason line. An unclassified native observation is read again (at
+most three complete two-observation inspections, 750 ms apart, never closer
+than 5 s to the request's expiry); policy, clock and reviewed-reason failures
+are final.
+
+**D9 cause.** The native check after the fix logged, on the backup, `read 1
+of 3 failed (unclassified): native observation 2: PowerDNS control listener
+changed`, answered on read 2. The listener check runs between the
+inspector's own `connect` and its `LIST-ZONES` command. Linux lists a
+connection the daemon has not accepted yet under the listener's path with
+flags `00000000`, type `0001` and state `02` (SS_CONNECTING). The parser
+accepted only `St 03` beside the listener, so a daemon that accepted slowly
+(just after a catalog change) failed the inspection as an unknown framing.
+The parser now also ignores state `02` and `04` connection rows: without
+SO_ACCEPTCON and `St 01` they can never be taken for the listener. A
+real-kernel test reproduces the row. The listener check keeps its underlying
+reason in the backup's log.
+
+**Evidence.** `internal/pdnspeerjournal/store_linux_test.go`
+(re-stamp advance accepted; lower serial, changed or unbound members, foreign
+enrollment, other operation fields, old nonce, attempt and older ledger
+attempt refused; superseded challenges never consumed),
+`cmd/agent/dns_catalog_evidence_admission_test.go` (re-stamp while the
+challenge is written; loop guard), `internal/pdnspeerinspector/diagnostics_test.go`,
+`cmd/panel/dns_peer_pending_guidance_test.go`, web tests. Native lab evidence:
+`deploy/e2e/dns-pair-acceptance/evidence/peer-challenge-context-20261031/`.
+Invariants: RESILIENCE-CONTRACT 4 and 6, D-024, D-025; P0.4 stays open.
