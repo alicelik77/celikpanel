@@ -3,6 +3,7 @@ import { CalendarClock } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
+import { readRemote } from '../lib/remote';
 import { Button, Dialog, inputClass } from './ui';
 
 // Out-of-office reply for one mailbox (alpha.114). Dovecot sends the reply
@@ -40,6 +41,14 @@ interface View {
 
 type Load = { state: 'loading' } | { state: 'failed' } | { state: 'known'; view: View };
 
+function decodeView(raw: unknown): View {
+    const view = raw as View | null;
+    if (!view || typeof view !== 'object' || !view.autoresponder || typeof view.autoresponder !== 'object' || typeof view.stored !== 'boolean') {
+        throw new Error('autoresponder answer outside the contract');
+    }
+    return view;
+}
+
 export function MailAutoresponderDialog({
     domainId,
     accountId,
@@ -67,10 +76,15 @@ export function MailAutoresponderDialog({
     useEffect(() => {
         const controller = new AbortController();
         setLoad({ state: 'loading' });
-        fetch(`/api/v1/domains/${domainId}/mail/autoresponder?id=${accountId}`, { signal: controller.signal })
-            .then(async (res) => {
-                if (!res.ok) throw new Error(String(res.status));
-                const view = (await res.json()) as View;
+        // A refused, failed or malformed answer is unknown, never a default.
+        void readRemote(`/api/v1/domains/${domainId}/mail/autoresponder?id=${accountId}`, decodeView, undefined, { signal: controller.signal })
+            .then((read) => {
+                if (controller.signal.aborted) return;
+                if (read.state !== 'known') {
+                    setLoad({ state: 'failed' });
+                    return;
+                }
+                const view = read.value;
                 const s = view.autoresponder;
                 setEnabled(Boolean(s.enabled));
                 setSubject(s.subject || t('mail.autoreply.defaultSubject'));
@@ -80,10 +94,6 @@ export function MailAutoresponderDialog({
                 setDays(s.interval_days || 1);
                 setAddresses((s.addresses || []).join(', '));
                 setLoad({ state: 'known', view });
-            })
-            .catch((error) => {
-                if (error instanceof DOMException && error.name === 'AbortError') return;
-                setLoad({ state: 'failed' });
             });
         return () => controller.abort();
     }, [domainId, accountId, attempt, t]);

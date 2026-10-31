@@ -189,6 +189,8 @@ test('every dialogue in the product is the shared one', () => {
     'ServiceShell.tsx': 1,
     // alpha.114: the one copy of an invitation link the server could not email.
     'Invitations.tsx': 1,
+    // alpha.114: a mailbox's out-of-office reply.
+    'MailAutoresponderDialog.tsx': 1,
   });
 });
 

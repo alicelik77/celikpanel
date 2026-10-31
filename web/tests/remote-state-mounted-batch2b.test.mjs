@@ -57,6 +57,8 @@ const stub = dataModule(`
   export const ServiceShell = (props) => React.createElement('main', null, props.children);
   export const ComponentPanels = () => React.createElement('aside', null, 'component-panels');
   export const MailAuthPanel = () => null;
+  // alpha.114: the out-of-office reply dialog has its own reading.
+  export const MailAutoresponderDialog = () => null;
   // alpha.107: the repository card has its own mounted tests.
   export const RepoCard = () => null;
   // alpha.108: the PostgreSQL clusters card has its own mounted tests.

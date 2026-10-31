@@ -406,6 +406,7 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
 // uygulayabilir — hiçbir şey silinmez.
 function PlanAssignPanel({ user, plans, onClose, onDone }: { user: PanelUser; plans: ServicePlan[]; onClose: () => void; onDone: () => void }) {
     const { t } = useI18n();
+    const navigate = useNavigate();
     const [planID, setPlanID] = useState(plans[0]?.id ?? 0);
     const [busy, setBusy] = useState(false);
     const [over, setOver] = useState<string[] | null>(null);
@@ -424,7 +425,7 @@ function PlanAssignPanel({ user, plans, onClose, onDone }: { user: PanelUser; pl
                     setOver(err.details ?? []);
                     return;
                 }
-                showToast('error', apiErrorText(err, t));
+                showToast('error', refusalText(err, t, 'users.changeFailed'), refusalToast(err, t, navigate));
                 return;
             }
             showToast('success', accept ? t('users.planAppliedOver') : t('users.planApplied'));
@@ -478,6 +479,7 @@ type PoolForm = { max_customers: number; max_domains: number; max_databases: num
 // PoolPanel: yönetici, bayinin dağıtabileceğini belirler. Her 0 sınırsızdır.
 function PoolPanel({ user, onClose }: { user: PanelUser; onClose: () => void }) {
     const { t } = useI18n();
+    const navigate = useNavigate();
     const url = `/api/v1/users/${user.id}/pool`;
     const read = useRemote(url, (raw: unknown) => {
         if (!raw || typeof raw !== 'object' || !('allocated' in raw)) throw new Error('shape');
@@ -493,7 +495,8 @@ function PoolPanel({ user, onClose }: { user: PanelUser; onClose: () => void }) 
         try {
             const res = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pool }) });
             if (!res.ok) {
-                showToast('error', apiErrorText(await readApiError(res), t));
+                const problem = await readApiError(res);
+                showToast('error', refusalText(problem, t, 'users.changeFailed'), refusalToast(problem, t, navigate));
                 return;
             }
             const answer = (await res.json()) as { over_limit?: string[] };
