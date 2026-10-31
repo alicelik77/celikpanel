@@ -4,9 +4,15 @@
 import type { SetupJoinScreenKey } from './en';
 
 export const trSetupJoinScreens: Record<SetupJoinScreenKey, string> = {
-    "setup.v5.join.title": "Bu ikinci sunucu mu?",
-    "setup.v5.join.help": "İki sunucuyla kuruluma başlamış başka bir sunucu varsa ona katılın: onun kurulum ekranındaki adresi ve kodu girin. Ana alan adı, DNS sunucuları ve adları o sunucudan gelir; burada yalnız bu sunucunun kendi görevlerini ve adlarını seçersiniz.",
-    "setup.v5.join.open": "İlk sunucuya kodla katıl",
+    "setup.v5.join.title": "Mevcut bir sunucuya katıl",
+    "setup.v5.join.help": "İlk sunucuda kurulum ekranını açıp bir katılma kodu oluşturun. Onun adresini ve kodu buraya yazın. Ana alan adı, DNS sunucuları ve adları o sunucudan gelir; burada yalnız bu sunucunun kendi görevlerini ve adlarını seçersiniz.",
+    "setup.v6.kind.title": "Bu sunucu ne olacak?",
+    "setup.v6.kind.first": "İlk sunucu",
+    "setup.v6.kind.first.help": "Yeni bir kurulum için, bir veya birden çok sunucu olacak olsa da bunu seçin. Ana alan adınızı burada yazacaksınız.",
+    "setup.v6.kind.join": "Mevcut bir sunucuya katıl",
+    "setup.v6.kind.join.help": "Başka bir sunucunuz zaten kurulmuş ve katılma kodu gösteriyorsa bunu seçin. Ana alan adı o sunucudan alınır.",
+    "setup.v6.kind.pick": "Devam etmek için birini seçin.",
+    "setup.v6.kind.checking": "Bu sunucunun bağlantı durumu henüz okunamadı; bu yüzden katılma sunulmuyor. Hiçbir şey değişmedi. Yeniden deneyin; sürerse sayfayı yenileyin.",
     "setup.v5.join.address": "İlk sunucunun adresi",
     "setup.v5.join.addressHelp": "Onun kurulum ekranında göründüğü gibi, örneğin https://203.0.113.10:2083.",
     "setup.v5.join.code": "Katılma kodu",

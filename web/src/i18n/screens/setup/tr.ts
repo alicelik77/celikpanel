@@ -512,7 +512,7 @@ export const trSetupScreens: Record<SetupScreenKey, string> = {
     'setup.check.mailIdentity.notCanonical': 'Plandaki posta sunucusu adı {name}, tam bir sunucu adı değil (mail.example.com gibi). Planı inceleyin, adı düzeltin ve kurulumu yeniden başlatın.',
     'setup.check.mailIdentity.notCanonicalUnread': 'Plandaki posta sunucusu adı tam bir sunucu adı değil (mail.example.com gibi). Planı inceleyin, adı düzeltin ve kurulumu yeniden başlatın.',
     // --- kurulum son denetim bloğunun sonu ---
-    "setup.step.domain": "Ana alan adı",
+    "setup.step.domain": "Bu sunucu",
     "setup.step.count": "Sunucu sayısı",
     "setup.step.name": "Kısa ad",
     "setup.step.roles": "Ne yapacak?",

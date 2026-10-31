@@ -38,14 +38,29 @@ function Choice({ name, value, checked, disabled, onChange, title, tag, help, ex
     </label>;
 }
 
-// required: false while the owner is joining a first server by code, since the
-// main domain then comes from that server (the join panel shares this form).
-export function SetupDomainStep({ value, onChange, invalid, required = true }: { value: string; onChange: (value: string) => void; invalid: boolean; required?: boolean }) {
+// The first question (alpha.114): is this the first server, which sets up a
+// new main domain, or does it join a server that already started? Only the
+// chosen path's fields and its one primary button follow.
+// Ilk soru: ilk sunucu mu, mevcut sunucuya katilan mi?
+export type SetupServerKind = 'first' | 'join';
+export function SetupServerKindStep({ value, onChange, disabled }: { value: SetupServerKind | null; onChange: (value: SetupServerKind) => void; disabled?: boolean }) {
+    const { t } = useSetupWizardI18n();
+    return <fieldset className="space-y-4" data-setup-kind="" disabled={disabled}>
+        <legend className="text-xl font-semibold">{t('setup.v6.kind.title')}</legend>
+        <div className="grid gap-3 pt-2" role="radiogroup" aria-label={t('setup.v6.kind.title')}>
+            <Choice name="setup-server_kind" value="first" checked={value === 'first'} onChange={() => onChange('first')} title={t('setup.v6.kind.first')} help={t('setup.v6.kind.first.help')} />
+            <Choice name="setup-server_kind" value="join" checked={value === 'join'} onChange={() => onChange('join')} title={t('setup.v6.kind.join')} help={t('setup.v6.kind.join.help')} />
+        </div>
+        {value === null && <p className="text-sm leading-6 text-fg-muted" data-setup-kind-pick="">{t('setup.v6.kind.pick')}</p>}
+    </fieldset>;
+}
+
+export function SetupDomainStep({ value, onChange, invalid }: { value: string; onChange: (value: string) => void; invalid: boolean }) {
     const { t } = useSetupWizardI18n();
     return <section className="space-y-5" aria-labelledby="setup-domain-title">
         <h2 id="setup-domain-title" className="text-xl font-semibold">{t('setup.v2.domain.title')}</h2>
         <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v2.domain.help', { example: `panel.${value || 'example.com'}` })}</p>
-        <div className="max-w-md"><SetupWizardInput name="main_domain" label={t('setup.v2.domain.label')} value={value} onChange={onChange} placeholder="example.com" required={required} help={t('setup.v2.domain.hint')} invalid={invalid ? t('setup.v2.domain.invalid') : undefined} /></div>
+        <div className="max-w-md"><SetupWizardInput name="main_domain" label={t('setup.v2.domain.label')} value={value} onChange={onChange} placeholder="example.com" required help={t('setup.v2.domain.hint')} invalid={invalid ? t('setup.v2.domain.invalid') : undefined} /></div>
     </section>;
 }
 
@@ -323,10 +338,8 @@ type SetupConnectAnswer ={ state: 'ok' | 'refused' | 'wrong_server' | 'unreachab
 // and code. The answer's state leads (D-024): refused names its reason; a
 // wrong server, an unreachable one and a lost answer say that nothing was
 // sent or that the same join is asked again.
-export function SetupJoinPanel({ onJoined, disabled, serverIP, onOpenChange }: { onJoined: (setup: unknown) => void; disabled?: boolean; serverIP?: string; onOpenChange?: (open: boolean) => void }) {
+export function SetupJoinPanel({ onJoined, disabled, serverIP }: { onJoined: (setup: unknown) => void; disabled?: boolean; serverIP?: string }) {
     const { t } = useSetupWizardI18n();
-    const [open, setOpenState] = useState(false);
-    const setOpen = (value: boolean) => { setOpenState(value); onOpenChange?.(value); };
     const [address, setAddress] = useState('');
     const [code, setCode] = useState('');
     const [publicIPv4, setPublicIPv4] = useState('');
@@ -362,13 +375,13 @@ export function SetupJoinPanel({ onJoined, disabled, serverIP, onOpenChange }: {
     const message = answer?.state === 'ok' ? answer.setup ? '' : t('setup.v5.join.draftRetry')
         : answer ? answer.state === 'refused' ? refused(answer)
         : t(answer.state === 'wrong_server' ? 'setup.v5.join.state.wrongServer' : answer.state === 'unreachable' ? 'setup.v5.join.state.unreachable' : 'setup.v5.join.state.unknown') : '';
-    return <section aria-labelledby="setup-join-title" className="mt-8 space-y-3 border-t border-border pt-6" data-setup-join="">
-        <h3 id="setup-join-title" className="font-semibold">{t('setup.v5.join.title')}</h3>
+    return <section aria-labelledby="setup-join-title" className="space-y-5" data-setup-join="">
+        <h2 id="setup-join-title" className="text-xl font-semibold">{t('setup.v5.join.title')}</h2>
         <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v5.join.help')}</p>
-        {!open ? <Button type="button" variant="secondary" disabled={disabled} onClick={() => setOpen(true)}>{t('setup.v5.join.open')}</Button> : <div className="max-w-xl space-y-4" data-setup-join-fields=""
-            // This panel sits inside the main domain step's form. Enter in one
-            // of its fields joins; it never submits that form, whose own
-            // required field is a different question.
+        <div className="max-w-xl space-y-4" data-setup-join-fields=""
+            // This panel sits inside the wizard's form, whose Continue button
+            // is not shown on this path. Enter in one of its fields joins and
+            // never submits that form (the join is this path's one action).
             // Katilma alanlarinda Enter katilir; dis formu gondermez.
             onKeyDown={event => { if (event.key === 'Enter' && (event.target as { tagName?: string }).tagName === 'INPUT') { event.preventDefault(); void join(); } }}>
             <SetupWizardInput name="join_address" label={t('setup.v5.join.address')} value={address} onChange={setAddress} placeholder="https://203.0.113.10:2083" help={t('setup.v5.join.addressHelp')} />
@@ -381,7 +394,7 @@ export function SetupJoinPanel({ onJoined, disabled, serverIP, onOpenChange }: {
             {problem && <p role="alert" className="text-sm leading-6 text-danger">{t(problem)}</p>}
             {message && <p role={answer?.state === 'refused' ? 'alert' : 'status'} className="text-sm leading-6" data-setup-join-state={answer?.state}>{message}</p>}
             <Button type="button" variant="primary" disabled={busy || disabled} loading={busy} onClick={() => void join()}>{t(busy ? 'setup.v5.join.joining' : answer && !(answer.state === 'ok' && answer.setup) ? 'setup.v5.join.retry' : 'setup.v5.join.submit')}</Button>
-        </div>}
+        </div>
     </section>;
 }
 

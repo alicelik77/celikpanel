@@ -13,7 +13,7 @@ import { ServerSetupDNSConnection } from './ServerSetupDNSConnections';
 import { remoteDNSEndpoint } from '../lib/remoteDNS';
 import { ServerSetupChoice, ServerSetupManualAction } from './ServerSetupChoice';
 import { Button, inputClass, KeepWords, Spinner } from './ui';
-import { SetupCountStep, SetupDNSHomeStep, SetupDomainStep, SetupJoinCard, SetupJoinPanel, SetupJoinedSummary, SetupMailStep, SetupOpenTasks, SetupRecordsStep, SetupNameStep, SetupNamesStep, SetupPanelAccessCard, SetupProviderRecordsCard, SetupRegistrarCard, SetupRolesStep, SetupWizardInput, setupEngineChoice, setupServerLabel, useSetupDelegation, useSetupPeerLink } from './ServerSetupWizardSteps';
+import { SetupCountStep, SetupDNSHomeStep, SetupDomainStep, SetupJoinCard, SetupJoinPanel, SetupJoinedSummary, SetupMailStep, SetupOpenTasks, SetupRecordsStep, SetupNameStep, SetupNamesStep, SetupPanelAccessCard, SetupProviderRecordsCard, SetupRegistrarCard, SetupRolesStep, SetupServerKindStep, SetupWizardInput, setupEngineChoice, type SetupServerKind, setupServerLabel, useSetupDelegation, useSetupPeerLink } from './ServerSetupWizardSteps';
 import { AddressLink } from './AddressLink';
 import { SetupFirstSite } from './SetupFirstSite';
 import { ServerSetupComponents, useSetupComponentCatalog } from './ServerSetupComponents';
@@ -274,9 +274,11 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     });
     const proposalRef = useRef<SetupProposedNames | null>(null);
     const [componentsOpen, setComponentsOpen] = useState(false);
-    // The join-by-code panel shares the main domain step's form; while it is
-    // open that step's own field is not required (it comes from the first server).
-    const [joinOpen, setJoinOpen] = useState(false);
+    // The first question: is this the first server (a new main domain) or a
+    // server joining an existing one by code? Kept here, so Back returns to
+    // it; a draft that already has a main domain is a first server.
+    // Ilk soru: ilk sunucu mu, katilan sunucu mu? Geri donunce korunur.
+    const [serverKind, setServerKind] = useState<SetupServerKind | null>(() => setupInitialMainDomain(restoredEditor?.draft || initial.draft) ? 'first' : null);
     const restoreReview = useRef(restoredEditor?.step === 'review');
     const restoredSnapshot = useRef(initial);
     const localIPTouched = useRef(false);
@@ -815,7 +817,15 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     // Two servers with their own DNS join by code: the first server prepares
     // the list whichever server is the main; a joined second server takes it.
     const joinFlow = !!joinedLink || (draft.dns_mode === 'local' && (draft.server_count ?? 2) === 2);
-    const steps: Step[] = ['domain', ...(joinedLink ? [] : ['count' as const]), 'name', 'roles', ...(customized || componentsOpen ? ['components' as const] : []), 'names', 'dnshome',
+    // A completed setup that is being extended, and a server already joined,
+    // never see the question; every other server answers it first.
+    const kind: SetupServerKind | null = extending ? 'first' : serverKind;
+    // While the component catalog is being read again (the page remounts when
+    // the language changes) the list must not guess "customized" from a missing
+    // catalog: the Components step would appear for a moment and vanish.
+    // Katalog yeniden okunurken adim listesi titremesin.
+    const showComponentsStep = componentsOpen || step === 'components' || (catalog ? customized : Object.keys(draft.customization?.versions || {}).length > 0);
+    const steps: Step[] = ['domain', ...(joinedLink ? [] : ['count' as const]), 'name', 'roles', ...(showComponentsStep ? ['components' as const] : []), 'names', 'dnshome',
         ...(!joinedLink && draft.dns_mode === 'local' && (draft.dns_role === 'primary' || joinFlow) && draft.main_domain ? ['records' as const] : []),
         ...(mailSelected && draft.main_domain ? ['mail' as const] : []), 'review', 'progress'];
     // The plan is reviewed when the last editing step is left.
@@ -843,7 +853,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     const fullName = (value: string) => validSetupDomain(value.trim().toLowerCase().replace(/\.$/, ''));
     function stepProblem(): TranslationKey | null {
         switch (step) {
-        case 'domain': return joinedLink || validSetupDomain(mainDomain) ? null : 'setup.v2.domain.invalid';
+        case 'domain': return joinedLink || (kind === 'first' && validSetupDomain(mainDomain)) ? null : kind === 'first' ? 'setup.v2.domain.invalid' : 'setup.v6.kind.pick';
         case 'name': return validSetupShortName((draft.short_name || '').trim().toLowerCase()) ? null : 'setup.v2.name.invalid';
         case 'roles': return roles.web || roles.mail || roles.dns || selectedComponents.size > 0 ? null : 'setup.v2.roles.required';
         case 'components':
@@ -1008,12 +1018,14 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                     </div>}
                 </section> : <form onSubmit={next} className="min-w-0">
                     {step === 'domain' && (joinedLink ? <SetupJoinedSummary link={joinedLink} /> : <>
-                        <SetupDomainStep required={!joinOpen} value={draft.main_domain || ''} invalid={!!error && !validSetupDomain(mainDomain)} onChange={value => updateDraft(previous => ({ ...previous, main_domain: value }))} />
-                        {!extending && peer.known && <SetupJoinPanel disabled={busy} serverIP={snapshot.server_ip} onOpenChange={setJoinOpen} onJoined={value => {
+                        {!extending && <SetupServerKindStep value={kind} disabled={busy} onChange={value => { setServerKind(value); setError(''); }} />}
+                        {kind === 'first' && <div className={extending ? '' : 'mt-8'}><SetupDomainStep value={draft.main_domain || ''} invalid={!!error && !validSetupDomain(mainDomain)} onChange={value => updateDraft(previous => ({ ...previous, main_domain: value }))} /></div>}
+                        {/* The join path: the main domain comes from the first server, so only the join (its one primary action) is offered. */}
+                        {kind === 'join' && <div className="mt-8">{peer.known ? <SetupJoinPanel disabled={busy} serverIP={snapshot.server_ip} onJoined={value => {
                             const next = decodeServerSetup(value); peer.refresh();
                             // The joined draft carries the first server's answers; this server's own name stays the host name's suggestion.
-                            if (next) { accept(next); setDraft({ ...next.draft, short_name: next.draft.short_name ?? (next.short_name_suggestion || snapshot.short_name_suggestion || undefined) }); setJoinOpen(false); setStep('name'); }
-                        }} />}
+                            if (next) { accept(next); setDraft({ ...next.draft, short_name: next.draft.short_name ?? (next.short_name_suggestion || snapshot.short_name_suggestion || undefined) }); setStep('name'); }
+                        }} /> : <div className="space-y-3" role="status" data-setup-join-checking=""><p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v6.kind.checking')}</p><Button type="button" variant="secondary" onClick={() => peer.refresh()}>{t('common.retry')}</Button></div>}</div>}
                     </>)}
                     {step === 'count' && <SetupCountStep value={serverCount} onChange={value => updateDraft(previous => ({ ...previous, server_count: value }))} />}
                     {step === 'name' && <SetupNameStep value={draft.short_name || ''} suggestion={snapshot.short_name_suggestion} mainDomain={mainDomain} invalid={!validSetupShortName((draft.short_name || '').trim().toLowerCase())} onChange={value => updateDraft(previous => ({ ...previous, short_name: value }))} />}
@@ -1093,7 +1105,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                     <div className="setup-actions sticky bottom-0 z-10 mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-bg py-4">
                         {step !== 'domain' && <Button type="button" variant="secondary" disabled={busy} onClick={() => { setStep(steps[Math.max(0, steps.indexOf(step) - 1)]); setPlan(null); setAcknowledged(false); setError(''); }}>{t('setup.back')}</Button>}
                         <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
-                        {step === 'review' ? <Button type="button" variant="primary" disabled={busy || !plan?.can_start || !acknowledged} onClick={() => void start()}>{t('setup.start')}</Button> : <button type="submit" disabled={busy || (step === 'components' && (!catalog || catalog.inventory_state !== 'ready')) || (step === 'dnshome' && (!!dnsSelectionError || (draft.dns_mode === 'local' && dnsNames.mismatch) || (draft.dns_mode === 'existing' && !remoteVerified)))} className="inline-flex items-center gap-3 rounded-lg bg-primary px-5 py-2.5 font-semibold text-primary-fg hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60">{busy ? t('common.loading') : t(step === lastEdit ? 'setup.review' : 'setup.continue')}<ArrowRight className="h-4 w-4" aria-hidden="true" /></button>}
+                        {step === 'review' ? <Button type="button" variant="primary" disabled={busy || !plan?.can_start || !acknowledged} onClick={() => void start()}>{t('setup.start')}</Button> : step === 'domain' && !joinedLink && kind !== 'first' ? null : <button type="submit" disabled={busy || (step === 'components' && (!catalog || catalog.inventory_state !== 'ready')) || (step === 'dnshome' && (!!dnsSelectionError || (draft.dns_mode === 'local' && dnsNames.mismatch) || (draft.dns_mode === 'existing' && !remoteVerified)))} className="inline-flex items-center gap-3 rounded-lg bg-primary px-5 py-2.5 font-semibold text-primary-fg hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60">{busy ? t('common.loading') : t(step === lastEdit ? 'setup.review' : 'setup.continue')}<ArrowRight className="h-4 w-4" aria-hidden="true" /></button>}
                         </div>
                     </div>
                 </form>}
