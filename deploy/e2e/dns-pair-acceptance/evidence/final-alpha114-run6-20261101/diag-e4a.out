@@ -1,0 +1,23 @@
+-- joined server (boston) panel 18:09:15-18:10:00
+2026-11-01T18:09:33+00:00 boston panel[25287]: 2026/11/01 18:09:33 domain deletion pending for custa7.test at dns_cleanup: reconcile the saved remote DNS publication before making another change
+2026-11-01T18:09:54+00:00 boston panel[25287]: 2026/11/01 18:09:54 joined-server deletion of custa7.test: the main DNS server confirmed the removal
+2026-11-01T18:09:54+00:00 boston panel[25287]: 2026/11/01 18:09:54 joined-server deletion of custa7.test: finished by itself after the main DNS server confirmed the removal
+
+
+-- first server (frankfurt) panel 18:09:15-18:10:00
+2026-11-01T18:09:24+00:00 frankfurt pdns_server[22430]: AXFR-out zone 'catalog-c00003b4.celikpanel.invalid', client '192.0.3.180:47294', transfer initiated
+2026-11-01T18:09:25+00:00 frankfurt pdns_server[22430]: AXFR-out zone 'catalog-c00003b4.celikpanel.invalid', client '192.0.3.180:47324', transfer initiated
+2026-11-01T18:09:25+00:00 frankfurt pdns_server[22430]: AXFR-out zone 'catalog-c00003b4.celikpanel.invalid', client '192.0.3.180:54192', transfer initiated
+2026-11-01T18:09:27+00:00 frankfurt pdns_server[22430]: Cache clear request for 'custa7.test$' received from operator
+2026-11-01T18:09:27+00:00 frankfurt pdns_server[22430]: Cache clear request for 'catalog-c00003b4.celikpanel.invalid$' received from operator
+2026-11-01T18:09:27+00:00 frankfurt pdns_server[22430]: Notification request to host 192.0.3.181:53 for zone 'catalog-c00003b4.celikpanel.invalid' received from operator
+2026-11-01T18:09:28+00:00 frankfurt pdns_server[22430]: AXFR-out zone 'catalog-c00003b4.celikpanel.invalid', client '192.0.3.181:57427', transfer initiated
+2026-11-01T18:09:28+00:00 frankfurt pdns_server[22430]: AXFR-out zone 'catalog-c00003b4.celikpanel.invalid', client '192.0.3.180:54232', transfer initiated
+2026-11-01T18:09:38+00:00 frankfurt pdns_server[22430]: AXFR-out zone 'catalog-c00003b4.celikpanel.invalid', client '192.0.3.180:56396', transfer initiated
+2026-11-01T18:09:45+00:00 frankfurt agent[10793]: 2026/11/01 18:09:45 DNS peer inspector answer for custa7.test (PowerDNS secondary): catalog_state=transferred member_state=absent native_state=unloaded; accepted
+2026-11-01T18:09:47+00:00 frankfurt agent[10793]: 2026/11/01 18:09:47 DNS peer proof for custa7.test (PowerDNS secondary) step times: prepare=1.447s challenge_write=5.954s exchange=408ms post_inspection=2.984s consume=7.607s; total 18.4s; outcome verified
+2026-11-01T18:09:47+00:00 frankfurt panel[23921]: 2026/11/01 18:09:47 [500] context canceled
+2026-11-01T18:09:55+00:00 frankfurt pdns_server[22430]: AXFR-out zone 'catalog-c00003b4.celikpanel.invalid', client '192.0.3.180:36820', transfer initiated
+2026-11-01T18:09:55+00:00 frankfurt pdns_server[22430]: AXFR-out zone 'catalog-c00003b4.celikpanel.invalid', client '192.0.3.180:53220', transfer initiated
+
+

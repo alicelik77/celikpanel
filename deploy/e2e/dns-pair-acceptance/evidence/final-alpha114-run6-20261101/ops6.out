@@ -1,0 +1,133 @@
+== Setup confirmation on both servers 18:01:39
+   main: succeeded complete null
+   backup: succeeded complete null
+PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
+active active active active active
+
+cat: /opt/celikpanel/release.commit: No such file or directory
+
+PRETTY_NAME="Ubuntu 24.04.4 LTS"
+active active active active
+0
+
+cat: /opt/celikpanel/release.commit: No such file or directory
+
+== site shopa7.test with alice@ and bob@ on the first server 18:01:41
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/2/public_html", "Domain": "shopa7.test", "DomainID": 2, "FTPPassword": "[REDACTED]", "FTPUser": "shopa7_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 2, "TempDomain": ""}
+   site id 2
+200 {"id": 1, "success": true}
+200 {"id": 2, "success": true}
+== J1 + sanity, Debian 13 (bob@shopa7.test, sender alice@shopa7.test) 18:01:49
+PASS main: autoresponder on bob@ saved, applied | {'status': 200, 'code': None, 'state': {'applied': True, 'script': 'managed', 'sieve_available': True}}
+PASS main: two mails -> 2 delivered, exactly 1 reply, 0 bounces | {'delivered': 2, 'replies': 1, 'bounces_before': 0, 'bounces_now': 0, 'server_bounced': '0'}
+PASS main: lab breaks Dovecot's mailbox lookup (domain-stripping LMTP line) | {'dovecot': '2.4.1-4 (7d8c0e5759)', 'applied': 'active\n'}
+PASS main: saving again is refused as lmtp_rejected | {'status': 409, 'answer': '{"error": "Dovecot\'s mail delivery (LMTP) did not accept bob@shopa7.test (it answered: 550 5.1.1 <bob@shopa7.test> User doesn\'t exist: bob@shopa7.test). CelikPanel did not move the mailbox to Dovecot delivery, so mail keeps arriving as before and no reply was set. The server administrator checks Dovecot\'s LMTP settings (`sudo doveconf -n -P | grep -A3 \'protocol lmtp\'`; auth_username_format for LMTP must keep the full address) and `journalctl -u dovecot`, then the reply is saved again.", "code": "MAIL_AUTORESPONDER_REFUSED", "reason": "lmtp_rejected"}'}
+PASS main: the route is removed from the transport table | 0
+PASS main: J1 mail sent right after the refusal is delivered, 0 bounces | {'delivered': 1, 'bounces': 0, 'server_bounced': '0', 'postfix': 'relay=mail.fa7.test[private/dovecot-lmtp]\nstatus=sent (250 2.0.0 <bob@shopa7.test> KUw1OJ1+52ozrgAAkbi+9g Saved\nrelay=mail.fa7.test[private/dovecot-lmtp]\nstatus=sent (250 2.0.0 <bob@shopa7.test> AV3VDq5+52ozrgAAkbi+9g Saved\nrelay=virtual\nstatus=sent (delivered to maildir\n'}
+PASS main: lab line removed again (lookup restored) | restored
+PASS main: saved again after the restore: applied | {'status': 200, 'code': None, 'state': {'applied': True, 'script': 'managed', 'sieve_available': True}}
+PASS main: mail right after the applied save -> delivered + exactly 1 reply, 0 bounces | {'delivered': 1, 'replies': 1, 'bounces': 0, 'server_bounced': '0', 'postfix': '      6 status=sent\n1\n'}
+PASS main: Dovecot clean (no 'Not a directory', doveconf -n ok) | 0
+== J1 + sanity, Ubuntu 24.04 (carol@custa7.test on the joined server, sender alice@shopa7.test) 18:04:38
+PASS customer domain on the joined server | {'status': 200, 'answer': {'DomainID': 1, 'SiteID': 1, 'Domain': 'custa7.test', 'TempDomain': '', 'DocumentRoot': '/var/www/celikpanel/subscriptions/2/sites/1/public_html', 'ProjectType': 'static', 'FTPUser': 'custa7_test', 'FTPPassword': '[REDACTED]', 'PHPVersion': ''}}
+PASS mailbox carol@ on the joined server | {'status': 200, 'answer': {'id': 1, 'success': True}}
+PASS joined-server domain -> first-server domain delivered (DKIM-signed) | {'send': '{"sent": true, "subject": "joined to first", "from": "carol@custa7.test", "to": "alice@shopa7.test"}', 'got': [{'subject': 'joined to first', 'from': 'carol@custa7.test', 'to': 'alice@shopa7.test', 'date': 'Sun, 01 Nov 2026 18:05:28 -0000', 'auto_submitted': None, 'dkim': True, 'link_shapes': []}]}
+PASS first-server domain -> joined-server domain delivered | {'send': '{"sent": true, "subject": "first to joined", "from": "alice@shopa7.test", "to": "carol@custa7.test"}', 'got': [{'subject': 'first to joined', 'from': 'alice@shopa7.test', 'to': 'carol@custa7.test', 'date': 'Sun, 01 Nov 2026 18:05:37 -0000', 'auto_submitted': None, 'dkim': True, 'link_shapes': []}]}
+PASS backup: autoresponder on carol@ saved, applied | {'status': 200, 'code': None, 'state': {'applied': True, 'script': 'managed', 'sieve_available': True}}
+PASS backup: two mails -> 2 delivered, exactly 1 reply, 0 bounces | {'delivered': 2, 'replies': 1, 'bounces_before': 0, 'bounces_now': 0, 'server_bounced': '0'}
+PASS backup: lab breaks Dovecot's mailbox lookup (domain-stripping LMTP line) | {'dovecot': '2.3.21 (47349e2482)', 'applied': 'active\n'}
+PASS backup: saving again is refused as lmtp_rejected | {'status': 409, 'answer': '{"error": "Dovecot\'s mail delivery (LMTP) did not accept carol@custa7.test (it answered: 550 5.1.1 <carol@custa7.test> User doesn\'t exist: carol@custa7.test). CelikPanel did not move the mailbox to Dovecot delivery, so mail keeps arriving as before and no reply was set. The server administrator checks Dovecot\'s LMTP settings (`sudo doveconf -n -P | grep -A3 \'protocol lmtp\'`; auth_username_format for LMTP must keep the full address) and `journalctl -u dovecot`, then the reply is saved again.", "code": "MAIL_AUTORESPONDER_REFUSED", "reason": "lmtp_rejected"}'}
+PASS backup: the route is removed from the transport table | 0
+PASS backup: J1 mail sent right after the refusal is delivered, 0 bounces | {'delivered': 1, 'bounces': 0, 'server_bounced': '0', 'postfix': 'relay=mail.boston.fa7.test[private/dovecot-lmtp]\nstatus=sent (250 2.0.0 <carol@custa7.test> y0AHFaV/52rTwQAA4JtSzg Saved\nrelay=mail.boston.fa7.test[private/dovecot-lmtp]\nstatus=sent (250 2.0.0 <carol@custa7.test> QN5mArV/52rSwQAA4JtSzg Saved\nrelay=virtual\nstatus=sent (delivered to maildir\n'}
+PASS backup: lab line removed again (lookup restored) | restored
+PASS backup: saved again after the restore: applied | {'status': 200, 'code': None, 'state': {'applied': True, 'script': 'managed', 'sieve_available': True}}
+PASS backup: mail right after the applied save -> delivered + exactly 1 reply, 0 bounces | {'delivered': 1, 'replies': 1, 'bounces': 0, 'server_bounced': '0', 'postfix': '      6 status=sent\n1\n'}
+PASS backup: Dovecot clean (no 'Not a directory', doveconf -n ok) | 0
+== E-new-4(a): delete custa7.test (domain with mail) on the joined server 18:09:22
+   @192.0.3.180 custa7.test: SOA [status: NOERROR flags: qr aa ] MX=[10 mail.custa7.test.]
+   @192.0.3.181 custa7.test: SOA [status: NOERROR flags: qr aa ] MX=[10 mail.custa7.test.]
+   custa7.test id 1
+202 {"reason": "remote_dns_main_unreachable", "status": "deletion_pending", "message": "This server could not get an answer from the main DNS server about this domain's removal. Nobody needs to do anything now: this server asks again by itself (at least every 5 minutes) and then finishes the deletion. If this lasts more than an hour, the main DNS server's owner checks that its panel is running and reachable from this server.", "domain": "custa7.test"}
+   18:09:35 +1s 200 {"status": "deletion_pending", "stage": "dns_cleanup", "reason": "remote_dns_main_unreachable", "message": "This server could not get an answer from the main DNS server about this domain's removal. Nobody needs to do anything now: this server asks again by itself (at least every 5 minutes) and then finishes the deletion. If this lasts more than an hour, the main DNS server's owner checks that its panel is running and reachable from this server."}
+   18:09:56 +22s 404 {}
+   DELSTATUS-NOT-204 within 180s (unknown answers seen: 0)
+   @192.0.3.180 custa7.test: SOA [status: REFUSED flags: qr ] MX=[]
+   @192.0.3.181 custa7.test: SOA [status: REFUSED flags: qr ] MX=[]
+2026-11-01T18:09:33+00:00 boston panel[25287]: 2026/11/01 18:09:33 domain deletion pending for custa7.test at dns_cleanup: reconcile the saved remote DNS publication before making another change
+2026-11-01T18:09:54+00:00 boston panel[25287]: 2026/11/01 18:09:54 joined-server deletion of custa7.test: the main DNS server confirmed the removal
+2026-11-01T18:09:54+00:00 boston panel[25287]: 2026/11/01 18:09:54 joined-server deletion of custa7.test: finished by itself after the main DNS server confirmed the removal
+
+
+== E-new-4(b): first server's panel stopped during a joined-server deletion 18:12:43
+PASS customer domain custb7.test on the joined server | {'status': 200, 'code': None}
+PASS mailbox dave@custb7.test | {'status': 200, 'code': None}
+JID 2
+   @192.0.3.180 custb7.test: SOA [status: NOERROR flags: qr aa ] MX=[10 mail.custb7.test.]
+   @192.0.3.181 custb7.test: SOA [status: NOERROR flags: qr aa ] MX=[10 mail.custb7.test.]
+   custb7.test id 2
+inactive
+
+
+202 {"status": "deletion_pending", "message": "Deletion is incomplete but retryable. Retry this deletion.", "domain": "custb7.test"}
+   18:13:10 +0s 200 {"status": "deletion_pending", "stage": "dns_cleanup", "reason": "remote_dns_removal_confirming", "message": "The main DNS server has removed this domain and is confirming the removal with the backup DNS server. Nobody needs to do anything: this server asks again by itself and then finishes the deletion. This page updates by itself."}
+   18:13:17 +7s 200 {"status": "deletion_pending", "stage": "dns_cleanup", "reason": "remote_dns_main_unreachable", "message": "This server could not get an answer from the main DNS server about this domain's removal. Nobody needs to do anything now: this server asks again by itself (at least every 5 minutes) and then finishes the deletion. If this lasts more than an hour, the main DNS server's owner checks that its panel is running and reachable from this server."}
+   DELSTATUS-NOT-204 within 75s (unknown answers seen: 0)
+-- the first server's panel started again 18:14:25
+active
+
+
+   18:14:29 +0s 200 {"status": "deletion_pending", "stage": "dns_cleanup", "reason": "remote_dns_main_unreachable", "message": "This server could not get an answer from the main DNS server about this domain's removal. Nobody needs to do anything now: this server asks again by itself (at least every 5 minutes) and then finishes the deletion. If this lasts more than an hour, the main DNS server's owner checks that its panel is running and reachable from this server."}
+   18:17:18 +169s 404 {}
+   DELSTATUS-NOT-204 within 480s (unknown answers seen: 0)
+   @192.0.3.180 custb7.test: SOA [status: REFUSED flags: qr ] MX=[]
+   @192.0.3.181 custb7.test: SOA [status: REFUSED flags: qr ] MX=[]
+2026-11-01T18:13:14+00:00 boston panel[25287]: 2026/11/01 18:13:14 joined-server deletion of custb7.test: the main DNS server has not confirmed the removal yet (remote_dns_main_unreachable): remote DNS HTTPS exchange failed; asked again by itself
+2026-11-01T18:13:34+00:00 boston panel[25287]: 2026/11/01 18:13:34 joined-server deletion of custb7.test: the main DNS server has not confirmed the removal yet (remote_dns_main_unreachable): remote DNS HTTPS exchange failed; asked again by itself
+2026-11-01T18:14:04+00:00 boston panel[25287]: 2026/11/01 18:14:04 joined-server deletion of custb7.test: the main DNS server has not confirmed the removal yet (remote_dns_main_unreachable): remote DNS HTTPS exchange failed; asked again by itself
+2026-11-01T18:15:15+00:00 boston panel[25287]: 2026/11/01 18:15:15 joined-server deletion of custb7.test: the main DNS server has not confirmed the removal yet (remote_dns_main_unreachable): reconcile the saved remote DNS publication before making another chan
+2026-11-01T18:17:16+00:00 boston panel[25287]: 2026/11/01 18:17:16 joined-server deletion of custb7.test: the main DNS server confirmed the removal
+2026-11-01T18:17:16+00:00 boston panel[25287]: 2026/11/01 18:17:16 joined-server deletion of custb7.test: finished by itself after the main DNS server confirmed the removal
+
+
+   E-new-4 a+b took 13 min
+== E-new-4(c): as (b), and the joined server reboots while the deletion waits 18:22:39
+PASS customer domain custc7.test on the joined server | {'status': 200, 'code': None}
+PASS mailbox dave@custc7.test | {'status': 200, 'code': None}
+JID 3
+   @192.0.3.180 custc7.test: SOA [status: NOERROR flags: qr aa ] MX=[10 mail.custc7.test.]
+   @192.0.3.181 custc7.test: SOA [status: NOERROR flags: qr aa ] MX=[10 mail.custc7.test.]
+   custc7.test id 3
+inactive
+
+
+202 {"status": "deletion_pending", "message": "Deletion is incomplete but retryable. Retry this deletion.", "domain": "custc7.test"}
+   18:23:12 +0s 200 {"status": "deletion_pending", "stage": "dns_cleanup", "reason": "remote_dns_removal_confirming", "message": "The main DNS server has removed this domain and is confirming the removal with the backup DNS server. Nobody needs to do anything: this server asks again by itself and then finishes the deletion. This page updates by itself."}
+   18:23:18 +6s 200 {"status": "deletion_pending", "stage": "dns_cleanup", "reason": "remote_dns_main_unreachable", "message": "This server could not get an answer from the main DNS server about this domain's removal. Nobody needs to do anything now: this server asks again by itself (at least every 5 minutes) and then finishes the deletion. If this lasts more than an hour, the main DNS server's owner checks that its panel is running and reachable from this server."}
+   DELSTATUS-NOT-204 within 30s (unknown answers seen: 0)
+-- reboot the joined server 18:23:43
+{"action":"reboot","node":"backup","boot_id_before":"fa6c745d-0ac3-4220-b8c2-e8f6b55bbc77","boot_id_after":"2797ce99-ccb8-485d-8df8-31d3e99f52a4","elapsed_seconds":20.7}
+   18:24:37 +1s 503 {}
+   18:24:40 +4s 200 {"status": "deletion_pending", "stage": "dns_cleanup", "reason": "remote_dns_main_unreachable", "message": "This server could not get an answer from the main DNS server about this domain's removal. Nobody needs to do anything now: this server asks again by itself (at least every 5 minutes) and then finishes the deletion. If this lasts more than an hour, the main DNS server's owner checks that its panel is running and reachable from this server."}
+   DELSTATUS-NOT-204 within 45s (unknown answers seen: 0)
+-- the first server's panel started again 18:25:21
+active
+
+
+   18:25:25 +0s 200 {"status": "deletion_pending", "stage": "dns_cleanup", "reason": "remote_dns_main_unreachable", "message": "This server could not get an answer from the main DNS server about this domain's removal. Nobody needs to do anything now: this server asks again by itself (at least every 5 minutes) and then finishes the deletion. If this lasts more than an hour, the main DNS server's owner checks that its panel is running and reachable from this server."}
+   18:28:41 +196s 404 {}
+   DELSTATUS-NOT-204 within 480s (unknown answers seen: 0)
+   @192.0.3.180 custc7.test: SOA [status: REFUSED flags: qr ] MX=[]
+   @192.0.3.181 custc7.test: SOA [status: REFUSED flags: qr ] MX=[]
+2026-11-01T18:23:10+00:00 boston panel[25287]: 2026/11/01 18:23:10 domain deletion pending for custc7.test at dns_cleanup: remote DNS HTTPS exchange failed
+2026-11-01T18:23:16+00:00 boston panel[25287]: 2026/11/01 18:23:16 joined-server deletion of custc7.test: the main DNS server has not confirmed the removal yet (remote_dns_main_unreachable): remote DNS HTTPS exchange failed; asked again by itself
+2026-11-01T18:23:36+00:00 boston panel[25287]: 2026/11/01 18:23:36 joined-server deletion of custc7.test: the main DNS server has not confirmed the removal yet (remote_dns_main_unreachable): remote DNS HTTPS exchange failed; asked again by itself
+2026-11-01T18:24:38+00:00 boston panel[943]: 2026/11/01 18:24:38 joined-server deletion of custc7.test: the main DNS server has not confirmed the removal yet (remote_dns_main_unreachable): remote DNS HTTPS exchange failed; asked again by itself
+2026-11-01T18:24:58+00:00 boston panel[943]: 2026/11/01 18:24:58 joined-server deletion of custc7.test: the main DNS server has not confirmed the removal yet (remote_dns_main_unreachable): remote DNS HTTPS exchange failed; asked again by itself
+2026-11-01T18:25:28+00:00 boston panel[943]: 2026/11/01 18:25:28 joined-server deletion of custc7.test: the main DNS server has not confirmed the removal yet (remote_dns_main_unreachable): remote DNS request was rejected; asked again by itself
+2026-11-01T18:26:39+00:00 boston panel[943]: 2026/11/01 18:26:39 joined-server deletion of custc7.test: the main DNS server has not confirmed the removal yet (remote_dns_main_unreachable): reconcile the saved remote DNS publication before making another change
+2026-11-01T18:28:40+00:00 boston panel[943]: 2026/11/01 18:28:40 joined-server deletion of custc7.test: the main DNS server confirmed the removal
+2026-11-01T18:28:40+00:00 boston panel[943]: 2026/11/01 18:28:40 joined-server deletion of custc7.test: finished by itself after the main DNS server confirmed the removal
+
+
+== A ops done 18:33:33
+OPS-EXIT

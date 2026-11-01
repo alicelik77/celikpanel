@@ -1,0 +1,9 @@
+-- joined server (boston) panel around the (b) and (c) DELETE answers (reasonless 202)
+2026-11-01T18:13:07+00:00 boston panel[25287]: 2026/11/01 18:13:07 [dkim-auto] custb7.test: DKIM ready (domain_created; record published on the main DNS server)
+2026-11-01T18:13:09+00:00 boston panel[25287]: 2026/11/01 18:13:09 domain deletion pending for custb7.test at dns_cleanup: remote DNS HTTPS exchange failed
+2026-11-01T18:13:14+00:00 boston panel[25287]: 2026/11/01 18:13:14 joined-server deletion of custb7.test: the main DNS server has not confirmed the removal yet (remote_dns_main_unreachable): remote DNS HTTPS exchange failed; asked again by itself
+...
+2026-11-01T18:23:09+00:00 boston panel[25287]: 2026/11/01 18:23:09 [dkim-auto] custc7.test: DKIM ready (domain_created; record published on the main DNS server)
+2026-11-01T18:23:10+00:00 boston panel[25287]: 2026/11/01 18:23:10 domain deletion pending for custc7.test at dns_cleanup: remote DNS HTTPS exchange failed
+
+

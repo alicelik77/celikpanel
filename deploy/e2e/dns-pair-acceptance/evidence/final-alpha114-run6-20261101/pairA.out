@@ -1,0 +1,124 @@
+== provision 17:37:41 main=debian13 192.0.3.180 (v0.1.0-alpha.114) backup=ubuntu2404 192.0.3.181 (v0.1.0-alpha.114) zone=fa7.test
+E=\"Debian GNU/Linux 13 (trixie)\"\nVERSION_ID=\"13\"\n6.12.105+deb13-cloud-amd64\nfrankfurt\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 20.3
+}
+
+earch .\nPRETTY_NAME=\"Ubuntu 24.04.4 LTS\"\nVERSION_ID=\"24.04\"\n6.8.0-138-generic\nboston\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 31.2
+}
+
+== install through get.sh in a root terminal 17:38:12
+main terminal rc 0 66.5 problem None restart_required False postinstall rc 0
+  tail: rolayı doğrula:  | Created administrator / Yönetici oluşturuldu. |     ✓ administrator is ready / yönetici hazır | ==> Starting the panel / Panel başlatılıyor |     ✓ panel is running / panel çalışıyor | ==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor |     ✓ initial panel certificate is protected / ilk panel sertifikasi korundu |  | CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu. |     Panel:  https://192.0.3.180:1923 |     Services / Servisler: systemctl status celikpanel-agent celikpanel-panel |     Logs / Günlükler: journalctl -u celikpanel-panel -f | 
+backup terminal rc 0 77.4 problem None restart_required False postinstall rc 0
+  tail: rolayı doğrula:  | Created administrator / Yönetici oluşturuldu. |     ✓ administrator is ready / yönetici hazır | ==> Starting the panel / Panel başlatılıyor |     ✓ panel is running / panel çalışıyor | ==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor |     ✓ initial panel certificate is protected / ilk panel sertifikasi korundu |  | CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu. |     Panel:  https://192.0.3.181:1923 |     Services / Servisler: systemctl status celikpanel-agent celikpanel-panel |     Logs / Günlükler: journalctl -u celikpanel-panel -f | 
+== port (check 4): fresh alpha.114 1923 only; alpha.113 2083 17:39:31
+192.0.3.180:1923 open (from the lab bridge)
+192.0.3.180:2083 closed (from the lab bridge)
+192.0.3.181:1923 open (from the lab bridge)
+192.0.3.181:2083 closed (from the lab bridge)
+main CELIKPANEL_LISTEN=:1923 | LISTEN 0 4096 *:1923 *:*  | 
+backup CELIKPANEL_LISTEN=:1923 | LISTEN 0 4096 *:1923 *:*  | 
+main license active acceptance_fixture can_use_panel True
+backup license active acceptance_fixture can_use_panel True
+wizard data pair-main ['count', 'dnshome', 'domain', 'mail', 'name', 'names', 'roles']
+wizard data pair-backup-mail ['dnshome', 'name', 'names', 'names2', 'roles']
+guidance-main 200 
+guidance-backup 200 
+main-domain 200 
+main-count 200 
+main-name 200 
+main-roles 200 
+main-names 200 
+main-dnshome 200 
+records 0 200
+main-mail 200 
+plan main 200 can_start True blockers [] ['01-service:nginx', '02-service:certbot', '03-service:mariadb', '04-service:php-fpm', '05-service:cron', '06-peer_join:second', '07-dns:local', '08-firewall:enable_and_persist', '09-infrastructure_dns:fa7.test', '10-access_dns:frankfurt.fa7.test', '11-panel_certificate:frankfurt.fa7.test', '12-dns_readiness:local', '13-mail_profile:webmail', '14-mail_profile:protected-mail', '15-mail_dns:fa7.test', '16-access_dns:mail.fa7.test', '17-mail_certificate:mail.fa7.test', '18-mail_enrollment:mail-renewal', '19-main_site:fa7.test', '20-verify:custom'] 
+== start main 17:39:46
+start-main 202 {
+ "id": "0e639e592cf53b9d6466be484e4b9018",
+ "panel_url": "https://frankfurt.fa7.test:1923/",
+ "phase": "queued",
+ "plan_id": "534e88d820132e8e107e257cdf316ded
+join-code 200 {
+ "address": "https://192.0.3.180:1923",
+ "attempts_left": 
+first server's panel port: 1923
+connect 200 {
+ "setup": {
+  "checks": [],
+  "draft": {
+   "database": "mariadb",
+   "dns_engine": "bind",
+   "dns_mode": "local",
+   "dns_publisher_endpoint": "https://frankfurt.fa7.test:1923",
+   "dns_role": "secondary",
+   "local_ip": "192.0.3.181",
+   "mail_hostname": "",
+   "main_dns_server": "peer",
+   "ma
+backup-roles 200 
+backup-name 200 
+backup-names 200 
+backup-dnshome 200 
+== joined server: the first server's mail name must be refused (check 3a) 17:39:57
+plan backup with mail.fa7.test 200 can_start False blockers ["server_setup_peer_mail_hostname_taken"] ['01-peer_names:https://192.0.3.180:1923', '02-service:nginx', '03-service:certbot', '04-service:mariadb', '05-service:php-fpm', '06-dns:local', '07-firewall:enable_and_persist', '08-access_dns:boston.fa7.test', '09-panel_certificate:boston.fa7.test', '10-dns_publisher:https://frankfurt.fa7.test:1923', '11-mail_profile:webmail', '12-mail_profile:protected-mail', '13-access_dns:mail.fa7.test', '14-mail_certificate:mail.fa7.test', '15-mail_enrollment:mail-renewal', '16-verify:custom'] 
+backup-names2 200 
+plan backup 200 can_start True blockers [] ['01-peer_names:https://192.0.3.180:1923', '02-service:nginx', '03-service:certbot', '04-service:mariadb', '05-service:php-fpm', '06-dns:local', '07-firewall:enable_and_persist', '08-access_dns:boston.fa7.test', '09-panel_certificate:boston.fa7.test', '10-dns_publisher:https://frankfurt.fa7.test:1923', '11-mail_profile:webmail', '12-mail_profile:protected-mail', '13-access_dns:mail.boston.fa7.test', '14-mail_certificate:mail.boston.fa7.test', '15-mail_enrollment:mail-renewal', '16-verify:custom'] 
+== start backup 17:40:03
+start-backup 202 {
+ "id": "ed659ddfc3b85293ba301aa0c1d0fed4",
+ "panel_url": "https://boston.fa7.test:1923/",
+ "phase": "queued",
+ "plan_id": "4d2251911094a4fb545b88d9f7e884e6",
+
+== first server's DNS page DURING the joined server's setup (check 8) 17:40:09
+17:40:13 caps=none None | dns_overview_join_waiting prerequisite who=You, on the second server. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: [('ns1.fa7.test', 'ns', 'A', 'unknown', None), ('frankfurt.fa7.test', 'panel', 'A', 'unknown', None), ('mail.fa7.test', 'mail', 'A', 'unknown', None)] | backup: running 02-service null
+17:41:24 caps=none None | dns_overview_join_waiting prerequisite who=You, on the second server. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: [('ns1.fa7.test', 'ns', 'A', 'unknown', None), ('frankfurt.fa7.test', 'panel', 'A', 'unknown', None), ('mail.fa7.test', 'mail', 'A', 'unknown', None)] | backup: failed 02-service {"code": "service_install_failed", "component": "ngi
+-- a7-a/backup 17:41:24
+failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "E: Failed to fetch http://security.ubuntu.com/... Temporary failure resolving 'archive.ubuntu.com'", "message": "The service could not be installed and verified.", "step": "package_install"}
+01-peer_names=succeeded 02-service=failed 03-service=pending 04-service=pending 05-service=pending 06-dns=pending 07-firewall=pending 08-access_dns=pending 09-panel_certificate=pending 10-dns_publisher=pending 11-mail_profile=pending 12-mail_profile=pending 13-access_dns=pending 14-mail_certificate=pending 15-mail_enrollment=pending 16-verify=pending
+{"id": "02-service", "kind": "service", "operation_id": "f0ef4fe158642d813f36cd050483f908", "owner_id": "c773f0b5f29a8851d62744fd40908663", "request_id": "82fc39de718e2c8707d32f29ba1fbafe", "status": "failed", "target": "nginx"}
+-- a7-a/main 17:41:24
+running 01-service null
+01-service=running 02-service=pending 03-service=pending 04-service=pending 05-service=pending 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "01-service", "kind": "service", "operation_id": "b93b7815239674f93e7f739590107479", "owner_id": "3da7f29a93eec95a08d4b440444c6afe", "request_id": "197cb520a93c345749c5889ada95a55e", "status": "running", "target": "nginx"}
+-- a7-a/main 17:42:04
+failed 01-service {"code": "service_install_failed", "component": "nginx", "detail": "E: Failed to fetch https://deb.debian.org/... Could not resolve 'deb.debian.org'", "message": "The service could not be installed and verified.", "step": "package_install"}
+01-service=failed 02-service=pending 03-service=pending 04-service=pending 05-service=pending 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "01-service", "kind": "service", "operation_id": "b93b7815239674f93e7f739590107479", "owner_id": "3da7f29a93eec95a08d4b440444c6afe", "request_id": "197cb520a93c345749c5889ada95a55e", "status": "failed", "target": "nginx"}
+== after both finished: the DNS page settles by itself 17:42:04
+17:42:05 caps=none | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: []
+17:42:36 caps=none | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: []
+17:43:06 caps=none | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: []
+17:43:38 caps=none | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: []
+17:44:09 caps=none | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: []
+17:44:40 caps=none | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: []
+17:45:11 caps=none | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: []
+17:45:42 caps=none | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: []
+17:46:13 caps=none | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: []
+17:46:44 caps=none | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: []
+17:47:14 caps=none | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: []
+17:47:45 caps=none | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: []
+17:48:16 caps=none | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: []
+17:48:46 caps=none | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: []
+17:49:17 caps=none | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: []
+17:49:48 caps=none | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: []
+-- the joined server's DNS page
+dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'backup', 'second', 'boston'), ('peer', 'main', 'first', 'frankfurt')] | not-ok: []
+failed 01-service {"code": "service_install_failed", "component": "nginx", "detail": "E: Failed to fetch https://deb.debian.org/... Could not resolve 'deb.debian.org'", "message": "The service could not be installed and verified.", "step": "package_install"}
+01-service=failed 02-service=pending 03-service=pending 04-service=pending 05-service=pending 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "01-service", "kind": "service", "operation_id": "b93b7815239674f93e7f739590107479", "owner_id": "3da7f29a93eec95a08d4b440444c6afe", "request_id": "197cb520a93c345749c5889ada95a55e", "status": "failed", "target": "nginx"}
+failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "E: Failed to fetch http://security.ubuntu.com/... Temporary failure resolving 'archive.ubuntu.com'", "message": "The service could not be installed and verified.", "step": "package_install"}
+01-peer_names=succeeded 02-service=failed 03-service=pending 04-service=pending 05-service=pending 06-dns=pending 07-firewall=pending 08-access_dns=pending 09-panel_certificate=pending 10-dns_publisher=pending 11-mail_profile=pending 12-mail_profile=pending 13-access_dns=pending 14-mail_certificate=pending 15-mail_enrollment=pending 16-verify=pending
+{"id": "02-service", "kind": "service", "operation_id": "f0ef4fe158642d813f36cd050483f908", "owner_id": "c773f0b5f29a8851d62744fd40908663", "request_id": "82fc39de718e2c8707d32f29ba1fbafe", "status": "failed", "target": "nginx"}
+main role first peer_setup None inspection null
+backup role second peer_setup None inspection null
+main_site step: pending null
+== pair done 17:50:18

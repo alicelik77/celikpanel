@@ -1,0 +1,3 @@
+   18:25:25 +0s 200 {"status": "deletion_pending", "stage": "dns_cleanup", "reason": "remote_dns_main_unreachable", "message": "This server could not get an answer from the main DNS server about this domain's removal. Nobody needs to do anything now: this server asks again by itself (at least every 5 minutes) and then finishes the deletion. If this lasts more than an hour, the main DNS server's owner checks that its panel is running and reachable from this server."}
+   18:28:41 +196s 404 {}
+   DELSTATUS-NOT-204 within 480s (unknown answers seen: 0)

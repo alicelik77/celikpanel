@@ -1,0 +1,93 @@
+== lab resolver check 17:51:51
+146.75.122.132
+185.125.190.82
+91.189.92.23
+   2a04:4e42:8e::644 debian.map.fastlydns.net | 2a06:bc80:0:1000::18 archive.ubuntu.com
+   2a04:4e42:8e::644 debian.map.fastlydns.net deb.debian.org | 2620:2d:4000:1::101 archive.ubuntu.com
+== plan + start again on main 17:51:54
+plan main (retry) 200 can_start True blockers [] ['01-service:nginx', '02-service:certbot', '03-service:mariadb', '04-service:php-fpm', '05-service:cron', '06-peer_join:second', '07-dns:local', '08-firewall:enable_and_persist', '09-infrastructure_dns:fa7.test', '10-access_dns:frankfurt.fa7.test', '11-panel_certificate:frankfurt.fa7.test', '12-dns_readiness:local', '13-mail_profile:webmail', '14-mail_profile:protected-mail', '15-mail_dns:fa7.test', '16-access_dns:mail.fa7.test', '17-mail_certificate:mail.fa7.test', '18-mail_enrollment:mail-renewal', '19-main_site:fa7.test', '20-verify:custom'] 
+start-main 202 {
+ "id": "4d5c8ff40cdee9511ad544ddf8033b38",
+ "panel_url": "https://frankfurt.fa7.test:1923/",
+ "phase": "queued",
+ "plan_id": "534e88d820132e8e107e257cdf316ded",
+ "request_id": "4d5c8ff40cdee9511ad544ddf8033b38",
+ "status": "running",
+ "steps": [
+  {
+   "id": "01-service",
+   "kind": "service",
+   
+== plan + start again on backup 17:52:04
+plan backup (retry) 200 can_start True blockers [] ['01-peer_names:https://192.0.3.180:1923', '02-service:nginx', '03-service:certbot', '04-service:mariadb', '05-service:php-fpm', '06-dns:local', '07-firewall:enable_and_persist', '08-access_dns:boston.fa7.test', '09-panel_certificate:boston.fa7.test', '10-dns_publisher:https://frankfurt.fa7.test:1923', '11-mail_profile:webmail', '12-mail_profile:protected-mail', '13-access_dns:mail.boston.fa7.test', '14-mail_certificate:mail.boston.fa7.test', '15-mail_enrollment:mail-renewal', '16-verify:custom'] 
+start-backup 202 {
+ "id": "a477023559ca2405a453f2d5e1de3daf",
+ "panel_url": "https://boston.fa7.test:1923/",
+ "phase": "queued",
+ "plan_id": "4d2251911094a4fb545b88d9f7e884e6",
+ "request_id": "a477023559ca2405a453f2d5e1de3daf",
+ "status": "running",
+ "steps": [
+  {
+   "id": "01-peer_names",
+   "kind": "peer_names",
+
+-- a7-a/main 17:52:16
+running 01-service null
+01-service=running 02-service=pending 03-service=pending 04-service=pending 05-service=pending 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "01-service", "kind": "service", "operation_id": "a1edcdeb63ae38bb06ee7d0d8d5c9455", "owner_id": "b0897ec337451d69dff81c457b28d2ad", "request_id": "9889d4052d8e9ac79494065df5f6e183", "status": "running", "target": "nginx"}
+-- a7-a/main 17:52:37
+running 03-service null
+01-service=succeeded 02-service=succeeded 03-service=running 04-service=pending 05-service=pending 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "03-service", "kind": "service", "operation_id": "3dc16120bf3e5ff38eff455ebd2fbb60", "owner_id": "d33463df0aaace194b7d456c98d52ac8", "request_id": "bc5ce67ea139f58066ae2b4765307f16", "status": "running", "target": "mariadb"}
+-- a7-a/main 17:53:37
+running 04-service null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=running 05-service=pending 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "04-service", "kind": "service", "owner_id": "1f3371dda4d99b9d18ed9d8b9a61b110", "request_id": "7bd709c1f27a4608ba01e3c7a3f4941d", "status": "running", "target": "php-fpm"}
+-- a7-a/main 17:54:18
+running 07-dns null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=running 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "07-dns", "kind": "dns", "owner_id": "49f9200b367a62eadf7c0ac8dcb40610", "request_id": "2980c74f02630e00826d27b929eb6241", "status": "running", "target": "local"}
+-- a7-a/main 17:54:38
+waiting infrastructure_dns {"code": "server_setup_infrastructure_dns_required", "message": "The reviewed DNS records are waiting for the native DNS pair or its exact zone transfer. Prepare the secondary ns2.fa7.test (192.0.3.181) and check TCP/UDP port 53. This setup checks the same operation automatically."}
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=running 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "09-infrastructure_dns", "kind": "infrastructure_dns", "owner_id": "e5947a4a904b4395dcac128a60b9b4a3", "request_id": "1159c8e155dce84c5501c727c324f960", "status": "running", "target": "fa7.test"}
+-- a7-a/main 17:54:58
+running 11-panel_certificate null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=running 12-dns_readiness=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "11-panel_certificate", "kind": "panel_certificate", "operation_id": "58e53c6656531fd340a405f4383d432e", "owner_id": "bcf3f056dc22fcd14ea34a25694866d2", "request_id": "f19a159e5b76a3b14c2cb5c6eba0655c", "status": "running", "target": "frankfurt.fa7.test"}
+-- a7-a/main 17:55:19
+running 13-mail_profile null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=running 14-mail_profile=pending 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "13-mail_profile", "kind": "mail_profile", "operation_id": "fcdc566182856b01abd3231655ef2b24", "owner_id": "e137d4b2d0f2707936decfad76e68614", "request_id": "c6c38590221c003e793e464f08493028", "status": "running", "target": "webmail"}
+-- a7-a/main 17:57:01
+running 14-mail_profile null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=running 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "14-mail_profile", "kind": "mail_profile", "operation_id": "772bc1000b25c1c65df12f29d98f9c60", "owner_id": "aa2272f42259916b13c30cb77e29e4e9", "request_id": "4c37a1b5c09f0d4c204c41e1a607ee12", "status": "running", "target": "protected-mail"}
+-- a7-a/main 17:58:21
+running 17-mail_certificate null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-access_dns=succeeded 17-mail_certificate=running 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "17-mail_certificate", "kind": "mail_certificate", "owner_id": "d22be525f54c51d80379f0206b49438e", "request_id": "ccf40bb9338f080b05751d660193d3b1", "status": "running", "target": "mail.fa7.test"}
+-- a7-a/main 17:58:42
+running 19-main_site null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-access_dns=succeeded 17-mail_certificate=succeeded 18-mail_enrollment=succeeded 19-main_site=running 20-verify=pending
+{"id": "19-main_site", "kind": "main_site", "owner_id": "ea6fe49b44b8705bc168d945a516593b", "request_id": "357fbd20206c75ad5d7c7804740af5f3", "status": "running", "target": "fa7.test"}
+-- a7-a/main 17:59:02
+succeeded complete null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-access_dns=succeeded 17-mail_certificate=succeeded 18-mail_enrollment=succeeded 19-main_site=succeeded 20-verify=succeeded
+-- a7-a/backup 17:59:02
+running 11-mail_profile null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-mail_profile=running 12-mail_profile=pending 13-access_dns=pending 14-mail_certificate=pending 15-mail_enrollment=pending 16-verify=pending
+{"id": "11-mail_profile", "kind": "mail_profile", "operation_id": "293bc5c195f08b098b348e07b26d7c8e", "owner_id": "f00fa24cf59f7267d210767648b82ea1", "request_id": "173651b43f76667baf0b1d93d07fbb82", "status": "running", "target": "webmail"}
+-- a7-a/backup 17:59:22
+running 12-mail_profile null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-mail_profile=succeeded 12-mail_profile=running 13-access_dns=pending 14-mail_certificate=pending 15-mail_enrollment=pending 16-verify=pending
+{"id": "12-mail_profile", "kind": "mail_profile", "operation_id": "0d82f45f6b1d19cf0e66be069fd5fd94", "owner_id": "4ebede6de35bfa06303300af4fde3391", "request_id": "bbf550102e60d748ab3d77d0a0ab06a0", "status": "running", "target": "protected-mail"}
+-- a7-a/backup 18:01:04
+running 14-mail_certificate null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-mail_profile=succeeded 12-mail_profile=succeeded 13-access_dns=succeeded 14-mail_certificate=running 15-mail_enrollment=pending 16-verify=pending
+{"id": "14-mail_certificate", "kind": "mail_certificate", "owner_id": "b6bb8260548bfe6a172d3fcaa12809ab", "request_id": "f62a99f3fcab5e7cdd311ab1b3eff037", "status": "running", "target": "mail.boston.fa7.test"}
+-- a7-a/backup 18:01:24
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-mail_profile=succeeded 12-mail_profile=succeeded 13-access_dns=succeeded 14-mail_certificate=succeeded 15-mail_enrollment=succeeded 16-verify=succeeded
+== retry done 18:01:24

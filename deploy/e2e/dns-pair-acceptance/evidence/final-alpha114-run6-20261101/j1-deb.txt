@@ -1,0 +1,10 @@
+PASS main: autoresponder on bob@ saved, applied | {'status': 200, 'code': None, 'state': {'applied': True, 'script': 'managed', 'sieve_available': True}}
+PASS main: two mails -> 2 delivered, exactly 1 reply, 0 bounces | {'delivered': 2, 'replies': 1, 'bounces_before': 0, 'bounces_now': 0, 'server_bounced': '0'}
+PASS main: lab breaks Dovecot's mailbox lookup (domain-stripping LMTP line) | {'dovecot': '2.4.1-4 (7d8c0e5759)', 'applied': 'active\n'}
+PASS main: saving again is refused as lmtp_rejected | {'status': 409, 'answer': '{"error": "Dovecot\'s mail delivery (LMTP) did not accept bob@shopa7.test (it answered: 550 5.1.1 <bob@shopa7.test> User doesn\'t exist: bob@shopa7.test). CelikPanel did not move the mailbox to Dovecot delivery, so mail keeps arriving as before and no reply was set. The server administrator checks Dovecot\'s LMTP settings (`sudo doveconf -n -P | grep -A3 \'protocol lmtp\'`; auth_username_format for LMTP must keep the full address) and `journalctl -u dovecot`, then the reply is saved again.", "code": "MAIL_AUTORESPONDER_REFUSED", "reason": "lmtp_rejected"}'}
+PASS main: the route is removed from the transport table | 0
+PASS main: J1 mail sent right after the refusal is delivered, 0 bounces | {'delivered': 1, 'bounces': 0, 'server_bounced': '0', 'postfix': 'relay=mail.fa7.test[private/dovecot-lmtp]\nstatus=sent (250 2.0.0 <bob@shopa7.test> KUw1OJ1+52ozrgAAkbi+9g Saved\nrelay=mail.fa7.test[private/dovecot-lmtp]\nstatus=sent (250 2.0.0 <bob@shopa7.test> AV3VDq5+52ozrgAAkbi+9g Saved\nrelay=virtual\nstatus=sent (delivered to maildir\n'}
+PASS main: lab line removed again (lookup restored) | restored
+PASS main: saved again after the restore: applied | {'status': 200, 'code': None, 'state': {'applied': True, 'script': 'managed', 'sieve_available': True}}
+PASS main: mail right after the applied save -> delivered + exactly 1 reply, 0 bounces | {'delivered': 1, 'replies': 1, 'bounces': 0, 'server_bounced': '0', 'postfix': '      6 status=sent\n1\n'}
+PASS main: Dovecot clean (no 'Not a directory', doveconf -n ok) | 0
