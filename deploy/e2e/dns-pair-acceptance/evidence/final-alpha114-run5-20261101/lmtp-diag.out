@@ -1,0 +1,39 @@
+-- postconf
+virtual_transport = virtual
+virtual_mailbox_domains = hash:/etc/postfix/vmailbox_domains
+transport_maps = hash:/etc/postfix/celikpanel_transport
+mailbox_transport =
+-- transport table
+bob@shopa7.test lmtp:unix:private/dovecot-lmtp
+-- postfix bob@shopa7.test 16:58-17:02
+2026-11-01T16:58:14+00:00 frankfurt postfix/lmtp[46265]: E1E4F226D5: to=<bob@shopa7.test>, relay=mail.fa7.test[private/dovecot-lmtp], delay=0.29, delays=0.26/0/0/0.03, dsn=2.0.0, status=sent (250 2.0.0 <bob@shopa7.test> CVfSCqZv52q6sAAAkbi+9g Saved)
+2026-11-01T16:59:06+00:00 frankfurt postfix/lmtp[46265]: 2A7D52144D: to=<bob@shopa7.test>, relay=mail.fa7.test[private/dovecot-lmtp], delay=0.21, delays=0.19/0/0/0.01, dsn=5.1.1, status=bounced (host mail.fa7.test[private/dovecot-lmtp] said: 550 5.1.1 <bob@shopa7.test> User doesn't exist: bob@shopa7.test (in reply to RCPT TO command))
+2026-11-01T16:59:06+00:00 frankfurt postfix/bounce[46493]: 2A7D52144D: sender non-delivery notification: 5D5AF226D9
+2026-11-01T16:59:06+00:00 frankfurt postfix/virtual[46268]: 5D5AF226D9: to=<alice@shopa7.test>, relay=virtual, delay=0.02, delays=0.01/0/0/0.01, dsn=2.0.0, status=sent (delivered to maildir)
+-- dovecot 16:58-17:02
+2026-11-01T17:01:07+00:00 frankfurt dovecot[46431]: imap-login: Logged in: user=<bob@shopa7.test>, method=PLAIN, rip=192.0.3.1, lip=192.0.3.180, mpid=47171, TLS, session=<ktOz+TlfLoTAAAMB>
+2026-11-01T17:01:07+00:00 frankfurt dovecot[46431]: imap(bob@shopa7.test)<47171><ktOz+TlfLoTAAAMB>: Disconnected: Logged out in=99 out=3351 deleted=0 expunged=0 trashed=0 hdr_count=0 hdr_bytes=0 body_count=2 body_bytes=2316
+2026-11-01T17:01:12+00:00 frankfurt dovecot[46431]: imap-login: Logged in: user=<bob@shopa7.test>, method=PLAIN, rip=192.0.3.1, lip=192.0.3.180, mpid=47173, TLS, session=<BZYA+jlfNITAAAMB>
+2026-11-01T17:01:12+00:00 frankfurt dovecot[46431]: imap(bob@shopa7.test)<47173><BZYA+jlfNITAAAMB>: Disconnected: Logged out in=99 out=3351 deleted=0 expunged=0 trashed=0 hdr_count=0 hdr_bytes=0 body_count=2 body_bytes=2316
+2026-11-01T17:01:17+00:00 frankfurt dovecot[46431]: imap-login: Logged in: user=<bob@shopa7.test>, method=PLAIN, rip=192.0.3.1, lip=192.0.3.180, mpid=47175, TLS, session=<4lBN+jlfTo7AAAMB>
+2026-11-01T17:01:17+00:00 frankfurt dovecot[46431]: imap(bob@shopa7.test)<47175><4lBN+jlfTo7AAAMB>: Disconnected: Logged out in=99 out=3351 deleted=0 expunged=0 trashed=0 hdr_count=0 hdr_bytes=0 body_count=2 body_bytes=2316
+2026-11-01T17:01:17+00:00 frankfurt dovecot[46431]: imap-login: Logged in: user=<alice@shopa7.test>, method=PLAIN, rip=192.0.3.1, lip=192.0.3.180, mpid=47177, TLS, session=<7BVR+jlfUI7AAAMB>
+2026-11-01T17:01:17+00:00 frankfurt dovecot[46431]: imap(alice@shopa7.test)<47177><7BVR+jlfUI7AAAMB>: Disconnected: Logged out in=99 out=5382 deleted=0 expunged=0 trashed=0 hdr_count=0 hdr_bytes=0 body_count=2 body_bytes=4331
+2026-11-01T17:01:17+00:00 frankfurt systemd[1]: Reloading dovecot.service - Dovecot IMAP/POP3 email server...
+2026-11-01T17:01:17+00:00 frankfurt dovecot[38224]: master: Warning: SIGHUP received - reloading configuration
+2026-11-01T17:01:18+00:00 frankfurt systemd[1]: Reloaded dovecot.service - Dovecot IMAP/POP3 email server.
+2026-11-01T17:01:20+00:00 frankfurt systemd[1]: Stopping dovecot.service - Dovecot IMAP/POP3 email server...
+2026-11-01T17:01:20+00:00 frankfurt dovecot[38224]: master: Warning: Killed with signal 15 (by pid=47224 uid=0 code=kill)
+2026-11-01T17:01:20+00:00 frankfurt systemd[1]: dovecot.service: Deactivated successfully.
+2026-11-01T17:01:20+00:00 frankfurt systemd[1]: Stopped dovecot.service - Dovecot IMAP/POP3 email server.
+2026-11-01T17:01:20+00:00 frankfurt systemd[1]: dovecot.service: Consumed 1.517s CPU time, 17.9M memory peak.
+2026-11-01T17:01:20+00:00 frankfurt systemd[1]: Starting dovecot.service - Dovecot IMAP/POP3 email server...
+2026-11-01T17:01:20+00:00 frankfurt dovecot[47248]: master: Dovecot v2.4.1-4 (7d8c0e5759) starting up for imap, lmtp, pop3 (core dumps disabled)
+2026-11-01T17:01:20+00:00 frankfurt systemd[1]: Started dovecot.service - Dovecot IMAP/POP3 email server.
+2026-11-01T17:01:22+00:00 frankfurt dovecot[47250]: lmtp(47255): Connect from local
+2026-11-01T17:01:22+00:00 frankfurt dovecot[47250]: lmtp(47255): Disconnect from local: Connection closed (state=GREETING)
+2026-11-01T17:01:22+00:00 frankfurt dovecot[47250]: lmtp(47255): Connect from local
+2026-11-01T17:01:22+00:00 frankfurt dovecot[47250]: lmtp(47255): Disconnect from local: Connection closed (state=GREETING)
+2026-11-01T17:01:22+00:00 frankfurt dovecot[47250]: lmtp(47255): Connect from local
+2026-11-01T17:01:22+00:00 frankfurt dovecot[47250]: lmtp(47255): Disconnect from local: Logged out (state=READY)
+-- panel/agent autoresponder lines

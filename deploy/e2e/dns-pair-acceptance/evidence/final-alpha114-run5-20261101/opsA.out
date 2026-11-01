@@ -1,0 +1,19 @@
+== site shopa7.test with alice@ and bob@ on the first server 16:57:32
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/2/public_html", "Domain": "shopa7.test", "DomainID": 2, "FTPPassword": "[REDACTED]", "FTPUser": "shopa7_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 2, "TempDomain": ""}
+   site id 2
+200 {"id": 1, "success": true}
+200 {"id": 2, "success": true}
+== Sanity Debian 13 + E-new-3: autoresponder (2 mails -> 1 reply, no bounce), strip line, Dovecot stopped 16:57:39
+PASS main: autoresponder on bob@ saved | {'status': 200, 'state': {'applied': True, 'script': 'managed', 'sieve_available': True}, 'code': None}
+PASS main: GET shows applied=true right after the save | {'state': {'applied': True, 'script': 'managed', 'sieve_available': True}}
+PASS main: two mails from one sender -> 2 delivered, 1 reply, no bounce | {'delivered': 2, 'replies': 1, 'bounces_before': 0, 'bounces_after': 0, 'server': '      2 relay=mail.fa7.test[private/dovecot-lmtp]\n      2 status=sent\nlrwxrwxrwx 1 vmail vmail   36 Nov  1 16:57 dovecot.sieve -> sieve/celikpanel-autoresponder.sieve\ndrwx------ 2 vmail vmail 4096 Nov  1 16:57 sieve\n1\n'}
+PASS main: Dovecot journal and doveconf -n clean | 0
+PASS main: lab puts the domain-stripping LMTP line into /etc/dovecot/local.conf | {'include': '87:!include_try local.conf\n2.4.1-4 (7d8c0e5759)', 'applied': '94:protocol lmtp {\n95-  auth_username_format = %{user | username | lower}\n96-  mail_plugins {\nactive\n'}
+PASS main: saving again is refused as lmtp_rejected | {'status': 409, 'answer': '{"error": "Dovecot\'s mail delivery (LMTP) did not accept bob@shopa7.test (it answered: 550 5.1.1 <bob@shopa7.test> User doesn\'t exist: bob@shopa7.test). CelikPanel did not move the mailbox to Dovecot delivery, so mail keeps arriving as before and no reply was set. The server administrator checks Dovecot\'s LMTP settings (`sudo doveconf -n -P | grep -A3 \'protocol lmtp\'`; auth_username_format for LMTP must keep the full address) and `journalctl -u dovecot`, then the reply is saved again.", "code": "MAIL_AUTORESPONDER_REFUSED", "reason": "lmtp_rejected"}'}
+PASS main: the route is removed (transport table) and the page shows no active reply | {'server': '0\ndrwx------ 2 vmail vmail 4096 Nov  1 16:58 sieve\n', 'state': {'applied': True, 'script': 'none', 'sieve_available': True}, 'enabled': None}
+FAIL main: mail still arrives after the refusal, no bounce | {'delivered': 0, 'bounces': 1}
+PASS main: lab line removed again | restored
+PASS main: with Dovecot stopped the save is refused as dovecot_stopped | {'dovecot': 'inactive\nsrw------- 1 postfix postfix 0 Nov  1 17:01 /var/spool/postfix/private/dovecot-lmtp', 'status': 409, 'answer': '{"error": "Dovecot is stopped, so CelikPanel could not check that Dovecot accepts this mailbox and changed nothing; mail keeps arriving as before. The server administrator starts Dovecot (`sudo systemctl start dovecot`), then the reply is saved again.", "code": "MAIL_AUTORESPONDER_REFUSED", "reason": "dovecot_stopped"}'}
+PASS main: saved again after Dovecot started: applied | {'status': 200, 'state': {'applied': True, 'script': 'managed', 'sieve_available': True}}
+FAILFAST Sanity Debian 13 / E-new-3: see above
+OPS-EXIT 0

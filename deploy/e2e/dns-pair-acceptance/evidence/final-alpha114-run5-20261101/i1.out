@@ -1,0 +1,27 @@
+===== a7-a main
+succeeded complete null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-access_dns=succeeded 17-mail_certificate=succeeded 18-mail_enrollment=succeeded 19-main_site=succeeded 20-verify=succeeded
+PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
+   [firewall waits] panel=0
+   [firewall_sync_failed] panel=0
+   [firewall_sync_host_busy] panel=0
+   [] agent=0 panel=0
+   [] agent=0 panel=0
+-- firewall lines
+-- fail-closed lines
+
+
+===== a7-a backup
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-mail_profile=succeeded 12-mail_profile=succeeded 13-access_dns=succeeded 14-mail_certificate=succeeded 15-mail_enrollment=succeeded 16-verify=succeeded
+PRETTY_NAME="Ubuntu 24.04.4 LTS"
+   [firewall waits] panel=0
+   [firewall_sync_failed] panel=0
+   [firewall_sync_host_busy] panel=0
+   [] agent=0 panel=0
+   [] agent=0 panel=0
+-- firewall lines
+-- fail-closed lines
+
+
+I1 PASS

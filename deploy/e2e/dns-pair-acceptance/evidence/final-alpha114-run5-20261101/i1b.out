@@ -1,0 +1,20 @@
+===== a7-a main
+PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
+panel journal lines: 46; agent journal lines: 249
+firewall-waits (panel): 0
+firewall_sync_failed (panel): 0
+firewall_sync_host_busy (panel): 0
+fail-closed: agent=0 panel=0
+could not be checked: agent=0 panel=0
+-- firewall / busy lines (panel)
+-- setup step lines
+===== a7-a backup
+PRETTY_NAME="Ubuntu 24.04.4 LTS"
+panel journal lines: 40; agent journal lines: 232
+firewall-waits (panel): 0
+firewall_sync_failed (panel): 0
+firewall_sync_host_busy (panel): 0
+fail-closed: agent=0 panel=0
+could not be checked: agent=0 panel=0
+-- firewall / busy lines (panel)
+-- setup step lines

@@ -1,0 +1,26 @@
+-- all postfix lines 16:58:40-16:59:20
+2026-11-01T16:59:06+00:00 frankfurt postfix/submission/smtpd[46259]: warning: hostname labnet does not resolve to address 192.0.3.1: Temporary failure in name resolution
+2026-11-01T16:59:06+00:00 frankfurt postfix/submission/smtpd[46259]: connect from unknown[192.0.3.1]
+2026-11-01T16:59:06+00:00 frankfurt postfix/submission/smtpd[46259]: Anonymous TLS connection established from unknown[192.0.3.1]: TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits) key-exchange x25519 server-signature ECDSA (prime256v1) server-digest SHA256
+2026-11-01T16:59:06+00:00 frankfurt postfix/submission/smtpd[46259]: 2A7D52144D: client=unknown[192.0.3.1], sasl_method=PLAIN, sasl_username=alice@shopa7.test
+2026-11-01T16:59:06+00:00 frankfurt postfix/cleanup[46264]: 2A7D52144D: message-id=<26923207e2aa4c96a2ee3bd7b1de8fc7@labnet.test>
+2026-11-01T16:59:06+00:00 frankfurt postfix/qmgr[45578]: 2A7D52144D: from=<alice@shopa7.test>, size=411, nrcpt=1 (queue active)
+2026-11-01T16:59:06+00:00 frankfurt postfix/submission/smtpd[46259]: disconnect from unknown[192.0.3.1] ehlo=2 starttls=1 auth=1 mail=1 rcpt=1 data=1 quit=1 commands=8
+2026-11-01T16:59:06+00:00 frankfurt postfix/lmtp[46265]: 2A7D52144D: to=<bob@shopa7.test>, relay=mail.fa7.test[private/dovecot-lmtp], delay=0.21, delays=0.19/0/0/0.01, dsn=5.1.1, status=bounced (host mail.fa7.test[private/dovecot-lmtp] said: 550 5.1.1 <bob@shopa7.test> User doesn't exist: bob@shopa7
+2026-11-01T16:59:06+00:00 frankfurt postfix/cleanup[46264]: 5D5AF226D9: message-id=<20261101165906.5D5AF226D9@mail.fa7.test>
+2026-11-01T16:59:06+00:00 frankfurt postfix/bounce[46493]: 2A7D52144D: sender non-delivery notification: 5D5AF226D9
+2026-11-01T16:59:06+00:00 frankfurt postfix/qmgr[45578]: 5D5AF226D9: from=<>, size=2975, nrcpt=1 (queue active)
+2026-11-01T16:59:06+00:00 frankfurt postfix/qmgr[45578]: 2A7D52144D: removed
+2026-11-01T16:59:06+00:00 frankfurt postfix/virtual[46268]: 5D5AF226D9: to=<alice@shopa7.test>, relay=virtual, delay=0.02, delays=0.01/0/0/0.01, dsn=2.0.0, status=sent (delivered to maildir)
+2026-11-01T16:59:06+00:00 frankfurt postfix/qmgr[45578]: 5D5AF226D9: removed
+2026-11-01T16:59:07+00:00 frankfurt postfix/trivial-rewrite[46263]: table hash:/etc/postfix/celikpanel_transport(0,lock|no_regsub|fold_fix|utf8_request) has changed -- restarting
+-- postfix 'changed' / reload lines in the window 16:57-17:02
+2026-11-01T16:57:45+00:00 frankfurt postfix/master[38501]: reload -- version 3.10.13, configuration /etc/postfix
+2026-11-01T16:57:45+00:00 frankfurt postfix/master[38501]: reload -- version 3.10.13, configuration /etc/postfix
+2026-11-01T16:59:07+00:00 frankfurt postfix/trivial-rewrite[46263]: table hash:/etc/postfix/celikpanel_transport(0,lock|no_regsub|fold_fix|utf8_request) has changed -- restarting
+-- agent lines 16:58:40-16:59:10
+-- No entries --
+-- panel lines 16:58:40-16:59:10
+-- No entries --
+-rw-r--r-- 1 root celikpanel    47 2026-11-01 17:01:22.568000000 +0000 /etc/postfix/celikpanel_transport
+-rw-r--r-- 1 root celikpanel 12288 2026-11-01 17:01:22.596000000 +0000 /etc/postfix/celikpanel_transport.db

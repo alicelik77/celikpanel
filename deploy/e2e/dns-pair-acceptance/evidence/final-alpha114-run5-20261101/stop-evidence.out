@@ -1,0 +1,79 @@
+run 5 stopped (fail-fast) at Sanity Debian 13 / E-new-3 on a7-a main Sun Nov  1 05:03:27 PM UTC 2026
+PASS main: autoresponder on bob@ saved | {'status': 200, 'state': {'applied': True, 'script': 'managed', 'sieve_available': True}, 'code': None}
+PASS main: GET shows applied=true right after the save | {'state': {'applied': True, 'script': 'managed', 'sieve_available': True}}
+PASS main: two mails from one sender -> 2 delivered, 1 reply, no bounce | {'delivered': 2, 'replies': 1, 'bounces_before': 0, 'bounces_after': 0, 'server': '      2 relay=mail.fa7.test[private/dovecot-lmtp]\n      2 status=sent\nlrwxrwxrwx 1 vmail vmail   36 Nov  1 16:57 dovecot.sieve -> sieve/celikpanel-autoresponder.sieve\ndrwx------ 2 vmail vmail 4096 Nov  1 16:57 sieve\n1\n'}
+PASS main: Dovecot journal and doveconf -n clean | 0
+PASS main: lab puts the domain-stripping LMTP line into /etc/dovecot/local.conf | {'include': '87:!include_try local.conf\n2.4.1-4 (7d8c0e5759)', 'applied': '94:protocol lmtp {\n95-  auth_username_format = %{user | username | lower}\n96-  mail_plugins {\nactive\n'}
+PASS main: saving again is refused as lmtp_rejected | {'status': 409, 'answer': '{"error": "Dovecot\'s mail delivery (LMTP) did not accept bob@shopa7.test (it answered: 550 5.1.1 <bob@shopa7.test> User doesn\'t exist: bob@shopa7.test). CelikPanel did not move the mailbox to Dovecot delivery, so mail keeps arriving as before and no reply was set. The server administrator checks Dovecot\'s LMTP settings (`sudo doveconf -n -P | grep -A3 \'protocol lmtp\'`; auth_username_format for LMTP must keep the full address) and `journalctl -u dovecot`, then the reply is saved again.", "code": "MAIL_AUTORESPONDER_REFUSED", "reason": "lmtp_rejected"}'}
+PASS main: the route is removed (transport table) and the page shows no active reply | {'server': '0\ndrwx------ 2 vmail vmail 4096 Nov  1 16:58 sieve\n', 'state': {'applied': True, 'script': 'none', 'sieve_available': True}, 'enabled': None}
+FAIL main: mail still arrives after the refusal, no bounce | {'delivered': 0, 'bounces': 1}
+PASS main: lab line removed again | restored
+PASS main: with Dovecot stopped the save is refused as dovecot_stopped | {'dovecot': 'inactive\nsrw------- 1 postfix postfix 0 Nov  1 17:01 /var/spool/postfix/private/dovecot-lmtp', 'status': 409, 'answer': '{"error": "Dovecot is stopped, so CelikPanel could not check that Dovecot accepts this mailbox and changed nothing; mail keeps arriving as before. The server administrator starts Dovecot (`sudo systemctl start dovecot`), then the reply is saved again.", "code": "MAIL_AUTORESPONDER_REFUSED", "reason": "dovecot_stopped"}'}
+PASS main: saved again after Dovecot started: applied | {'status': 200, 'state': {'applied': True, 'script': 'managed', 'sieve_available': True}}
+FAILFAST Sanity Debian 13 / E-new-3: see above
+
+-- postconf
+virtual_transport = virtual
+virtual_mailbox_domains = hash:/etc/postfix/vmailbox_domains
+transport_maps = hash:/etc/postfix/celikpanel_transport
+mailbox_transport =
+-- transport table
+bob@shopa7.test lmtp:unix:private/dovecot-lmtp
+-- postfix bob@shopa7.test 16:58-17:02
+2026-11-01T16:58:14+00:00 frankfurt postfix/lmtp[46265]: E1E4F226D5: to=<bob@shopa7.test>, relay=mail.fa7.test[private/dovecot-lmtp], delay=0.29, delays=0.26/0/0/0.03, dsn=2.0.0, status=sent (250 2.0.0 <bob@shopa7.test> CVfSCqZv52q6sAAAkbi+9g Saved)
+2026-11-01T16:59:06+00:00 frankfurt postfix/lmtp[46265]: 2A7D52144D: to=<bob@shopa7.test>, relay=mail.fa7.test[private/dovecot-lmtp], delay=0.21, delays=0.19/0/0/0.01, dsn=5.1.1, status=bounced (host mail.fa7.test[private/dovecot-lmtp] said: 550 5.1.1 <bob@shopa7.test> User doesn't exist: bob@shopa7.test (in reply to RCPT TO command))
+2026-11-01T16:59:06+00:00 frankfurt postfix/bounce[46493]: 2A7D52144D: sender non-delivery notification: 5D5AF226D9
+2026-11-01T16:59:06+00:00 frankfurt postfix/virtual[46268]: 5D5AF226D9: to=<alice@shopa7.test>, relay=virtual, delay=0.02, delays=0.01/0/0/0.01, dsn=2.0.0, status=sent (delivered to maildir)
+-- dovecot 16:58-17:02
+2026-11-01T17:01:07+00:00 frankfurt dovecot[46431]: imap-login: Logged in: user=<bob@shopa7.test>, method=PLAIN, rip=192.0.3.1, lip=192.0.3.180, mpid=47171, TLS, session=<ktOz+TlfLoTAAAMB>
+2026-11-01T17:01:07+00:00 frankfurt dovecot[46431]: imap(bob@shopa7.test)<47171><ktOz+TlfLoTAAAMB>: Disconnected: Logged out in=99 out=3351 deleted=0 expunged=0 trashed=0 hdr_count=0 hdr_bytes=0 body_count=2 body_bytes=2316
+2026-11-01T17:01:12+00:00 frankfurt dovecot[46431]: imap-login: Logged in: user=<bob@shopa7.test>, method=PLAIN, rip=192.0.3.1, lip=192.0.3.180, mpid=47173, TLS, session=<BZYA+jlfNITAAAMB>
+2026-11-01T17:01:12+00:00 frankfurt dovecot[46431]: imap(bob@shopa7.test)<47173><BZYA+jlfNITAAAMB>: Disconnected: Logged out in=99 out=3351 deleted=0 expunged=0 trashed=0 hdr_count=0 hdr_bytes=0 body_count=2 body_bytes=2316
+2026-11-01T17:01:17+00:00 frankfurt dovecot[46431]: imap-login: Logged in: user=<bob@shopa7.test>, method=PLAIN, rip=192.0.3.1, lip=192.0.3.180, mpid=47175, TLS, session=<4lBN+jlfTo7AAAMB>
+2026-11-01T17:01:17+00:00 frankfurt dovecot[46431]: imap(bob@shopa7.test)<47175><4lBN+jlfTo7AAAMB>: Disconnected: Logged out in=99 out=3351 deleted=0 expunged=0 trashed=0 hdr_count=0 hdr_bytes=0 body_count=2 body_bytes=2316
+2026-11-01T17:01:17+00:00 frankfurt dovecot[46431]: imap-login: Logged in: user=<alice@shopa7.test>, method=PLAIN, rip=192.0.3.1, lip=192.0.3.180, mpid=47177, TLS, session=<7BVR+jlfUI7AAAMB>
+2026-11-01T17:01:17+00:00 frankfurt dovecot[46431]: imap(alice@shopa7.test)<47177><7BVR+jlfUI7AAAMB>: Disconnected: Logged out in=99 out=5382 deleted=0 expunged=0 trashed=0 hdr_count=0 hdr_bytes=0 body_count=2 body_bytes=4331
+2026-11-01T17:01:17+00:00 frankfurt systemd[1]: Reloading dovecot.service - Dovecot IMAP/POP3 email server...
+2026-11-01T17:01:17+00:00 frankfurt dovecot[38224]: master: Warning: SIGHUP received - reloading configuration
+2026-11-01T17:01:18+00:00 frankfurt systemd[1]: Reloaded dovecot.service - Dovecot IMAP/POP3 email server.
+2026-11-01T17:01:20+00:00 frankfurt systemd[1]: Stopping dovecot.service - Dovecot IMAP/POP3 email server...
+2026-11-01T17:01:20+00:00 frankfurt dovecot[38224]: master: Warning: Killed with signal 15 (by pid=47224 uid=0 code=kill)
+2026-11-01T17:01:20+00:00 frankfurt systemd[1]: dovecot.service: Deactivated successfully.
+2026-11-01T17:01:20+00:00 frankfurt systemd[1]: Stopped dovecot.service - Dovecot IMAP/POP3 email server.
+2026-11-01T17:01:20+00:00 frankfurt systemd[1]: dovecot.service: Consumed 1.517s CPU time, 17.9M memory peak.
+2026-11-01T17:01:20+00:00 frankfurt systemd[1]: Starting dovecot.service - Dovecot IMAP/POP3 email server...
+2026-11-01T17:01:20+00:00 frankfurt dovecot[47248]: master: Dovecot v2.4.1-4 (7d8c0e5759) starting up for imap, lmtp, pop3 (core dumps disabled)
+2026-11-01T17:01:20+00:00 frankfurt systemd[1]: Started dovecot.service - Dovecot IMAP/POP3 email server.
+2026-11-01T17:01:22+00:00 frankfurt dovecot[47250]: lmtp(47255): Connect from local
+2026-11-01T17:01:22+00:00 frankfurt dovecot[47250]: lmtp(47255): Disconnect from local: Connection closed (state=GREETING)
+2026-11-01T17:01:22+00:00 frankfurt dovecot[47250]: lmtp(47255): Connect from local
+2026-11-01T17:01:22+00:00 frankfurt dovecot[47250]: lmtp(47255): Disconnect from local: Connection closed (state=GREETING)
+2026-11-01T17:01:22+00:00 frankfurt dovecot[47250]: lmtp(47255): Connect from local
+2026-11-01T17:01:22+00:00 frankfurt dovecot[47250]: lmtp(47255): Disconnect from local: Logged out (state=READY)
+-- panel/agent autoresponder lines
+-- all postfix lines 16:58:40-16:59:20
+2026-11-01T16:59:06+00:00 frankfurt postfix/submission/smtpd[46259]: warning: hostname labnet does not resolve to address 192.0.3.1: Temporary failure in name resolution
+2026-11-01T16:59:06+00:00 frankfurt postfix/submission/smtpd[46259]: connect from unknown[192.0.3.1]
+2026-11-01T16:59:06+00:00 frankfurt postfix/submission/smtpd[46259]: Anonymous TLS connection established from unknown[192.0.3.1]: TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits) key-exchange x25519 server-signature ECDSA (prime256v1) server-digest SHA256
+2026-11-01T16:59:06+00:00 frankfurt postfix/submission/smtpd[46259]: 2A7D52144D: client=unknown[192.0.3.1], sasl_method=PLAIN, sasl_username=alice@shopa7.test
+2026-11-01T16:59:06+00:00 frankfurt postfix/cleanup[46264]: 2A7D52144D: message-id=<26923207e2aa4c96a2ee3bd7b1de8fc7@labnet.test>
+2026-11-01T16:59:06+00:00 frankfurt postfix/qmgr[45578]: 2A7D52144D: from=<alice@shopa7.test>, size=411, nrcpt=1 (queue active)
+2026-11-01T16:59:06+00:00 frankfurt postfix/submission/smtpd[46259]: disconnect from unknown[192.0.3.1] ehlo=2 starttls=1 auth=1 mail=1 rcpt=1 data=1 quit=1 commands=8
+2026-11-01T16:59:06+00:00 frankfurt postfix/lmtp[46265]: 2A7D52144D: to=<bob@shopa7.test>, relay=mail.fa7.test[private/dovecot-lmtp], delay=0.21, delays=0.19/0/0/0.01, dsn=5.1.1, status=bounced (host mail.fa7.test[private/dovecot-lmtp] said: 550 5.1.1 <bob@shopa7.test> User doesn't exist: bob@shopa7
+2026-11-01T16:59:06+00:00 frankfurt postfix/cleanup[46264]: 5D5AF226D9: message-id=<20261101165906.5D5AF226D9@mail.fa7.test>
+2026-11-01T16:59:06+00:00 frankfurt postfix/bounce[46493]: 2A7D52144D: sender non-delivery notification: 5D5AF226D9
+2026-11-01T16:59:06+00:00 frankfurt postfix/qmgr[45578]: 5D5AF226D9: from=<>, size=2975, nrcpt=1 (queue active)
+2026-11-01T16:59:06+00:00 frankfurt postfix/qmgr[45578]: 2A7D52144D: removed
+2026-11-01T16:59:06+00:00 frankfurt postfix/virtual[46268]: 5D5AF226D9: to=<alice@shopa7.test>, relay=virtual, delay=0.02, delays=0.01/0/0/0.01, dsn=2.0.0, status=sent (delivered to maildir)
+2026-11-01T16:59:06+00:00 frankfurt postfix/qmgr[45578]: 5D5AF226D9: removed
+2026-11-01T16:59:07+00:00 frankfurt postfix/trivial-rewrite[46263]: table hash:/etc/postfix/celikpanel_transport(0,lock|no_regsub|fold_fix|utf8_request) has changed -- restarting
+-- postfix 'changed' / reload lines in the window 16:57-17:02
+2026-11-01T16:57:45+00:00 frankfurt postfix/master[38501]: reload -- version 3.10.13, configuration /etc/postfix
+2026-11-01T16:57:45+00:00 frankfurt postfix/master[38501]: reload -- version 3.10.13, configuration /etc/postfix
+2026-11-01T16:59:07+00:00 frankfurt postfix/trivial-rewrite[46263]: table hash:/etc/postfix/celikpanel_transport(0,lock|no_regsub|fold_fix|utf8_request) has changed -- restarting
+-- agent lines 16:58:40-16:59:10
+-- No entries --
+-- panel lines 16:58:40-16:59:10
+-- No entries --
+-rw-r--r-- 1 root celikpanel    47 2026-11-01 17:01:22.568000000 +0000 /etc/postfix/celikpanel_transport
+-rw-r--r-- 1 root celikpanel 12288 2026-11-01 17:01:22.596000000 +0000 /etc/postfix/celikpanel_transport.db
