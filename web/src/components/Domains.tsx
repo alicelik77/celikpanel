@@ -257,8 +257,15 @@ export function Domains() {
         // yanıtın saptadığı, o listeyle birlikte ekranda kalır.
         if (isTeamMember || !listCurrent) return;
         const pending = domains.filter((domain) => domain.status === 'pending');
+        let finished = false;
         void Promise.all(pending.map(async (domain): Promise<PendingDeletion | null> => {
             const saved = await readSavedDomainDeletion(domain.id);
+            if (saved.state === 'gone') {
+                // The deletion finished after the list answered: read again so
+                // the row leaves without a refresh (lab run 6).
+                finished = true;
+                return null;
+            }
             if (saved.state === 'unknown') return { id: domain.id, name: domain.domain_name, message: null };
             return saved.saved === null ? null : {
                 id: domain.id, name: domain.domain_name, message: pendingMessage(saved.saved.reason, saved.saved.detail),
@@ -267,6 +274,7 @@ export function Domains() {
         })).then((observed) => {
             if (epoch === pendingReadEpoch.current) {
                 setPendingDeletions(observed.filter((item): item is PendingDeletion => item !== null));
+                if (finished) invalidate('domains', 'dns');
             }
         });
         // One run per answer of the list: `listedAt` changes with every read.

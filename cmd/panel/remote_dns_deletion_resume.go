@@ -188,6 +188,16 @@ func remoteDNSDeletionReason(err error) (string, bool) {
 			return remoteDNSDeletionUnreachableReason, true
 		}
 	}
+	var exchange *remoteDNSExchangeError
+	if errors.As(err, &exchange) {
+		if exchange.Delivered {
+			// The main DNS server got the removal and has not answered in
+			// time (its check with its backup can take longer): it is
+			// running, so this is a wait, not "unreachable" (lab run 6).
+			return remoteDNSDeletionConfirmingReason, true
+		}
+		return remoteDNSDeletionUnreachableReason, true
+	}
 	if errors.Is(err, errRemoteDNSPublicationPending) || errors.Is(err, errRemoteDNSNotReady) {
 		// No answer (network, timeout), or the connection is not usable now.
 		return remoteDNSDeletionUnreachableReason, true

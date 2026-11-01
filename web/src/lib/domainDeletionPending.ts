@@ -250,8 +250,12 @@ export async function readSavedDomainDeletionState(
 // dropped: it is never "no deletion is waiting".
 // Bir alan adının kayıtlı silme işaretinin tek okumasının saptadığı. `unknown`
 // başarısız, reddedilmiş ya da kopmuş okumadır; "bekleyen silme yok" değildir.
+// `gone` is the server's 404: the domain no longer exists, so its deletion
+// finished between the list's answer and this read (lab run 6).
+// `gone`, sunucunun 404'üdür: alan adı artık yok, silme bitmiştir.
 export type SavedDomainDeletionRead =
     | { state: 'known'; saved: { reason: string; detail: string } | null }
+    | { state: 'gone' }
     | { state: 'unknown' };
 
 // readSavedDomainDeletion only reads; it never retries or starts a deletion.
@@ -260,6 +264,7 @@ export async function readSavedDomainDeletion(domainId: number): Promise<SavedDo
     try {
         const response = await fetch(`/api/v1/domains/${domainId}/deletion-status`);
         if (response.status === 204) return { state: 'known', saved: null };
+        if (response.status === 404) return { state: 'gone' };
         if (response.status !== 200) return { state: 'unknown' };
         return { state: 'known', saved: await readSavedDomainDeletionState(response) };
     } catch {
