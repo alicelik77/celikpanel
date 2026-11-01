@@ -222,7 +222,13 @@ func (p *Panel) writeDomainDeletionPending(
 		"message": "Deletion is incomplete but retryable. Retry this deletion.",
 	}
 	if stage == "dns_cleanup" {
-		if guidance, ok := dnsPublicationGuidanceAPIError(cause); ok {
+		if reason, ok := remoteDNSDeletionReason(cause); ok {
+			// A joined server: the main DNS server's answer, typed, and the
+			// joined server's own next check (E-new-4).
+			response["reason"] = reason
+			response["message"] = remoteDNSDeletionEnglish(reason)
+			p.remoteDNSDeletions().pendingAnswered(domainID, reason)
+		} else if guidance, ok := dnsPublicationGuidanceAPIError(cause); ok {
 			response["reason"] = guidance.Reason
 			response["message"] = guidance.Error
 			if guidance.Detail != "" {

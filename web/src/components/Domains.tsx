@@ -9,7 +9,7 @@ import { Button, CouldNotCheck, ErrorBanner, KnownEmpty, RemoteGate, SearchInput
 import { PageHeader } from './PageHeader';
 import { BlockingProblems } from './BlockingProblems';
 import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
-import { domainDeletionDetailKey, domainDeletionReasonKey, readDomainDeletionDKIM, readDomainDeletionOutcome, readSavedDomainDeletion } from '../lib/domainDeletionPending';
+import { domainDeletionDetailKey, domainDeletionReasonAutomatic, domainDeletionReasonKey, readDomainDeletionDKIM, readDomainDeletionOutcome, readSavedDomainDeletion } from '../lib/domainDeletionPending';
 import { decodeList, gateOn, invalidate, lastKnown, useRemote } from '../lib/remote';
 import { SUBSCRIPTIONS_URL, decodeSubscriptions } from '../lib/subscriptions';
 import { INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones, infrastructureZonePath } from '../lib/infrastructureZones';
@@ -86,6 +86,8 @@ interface PendingDeletion {
     id: number;
     name: string;
     message: string | null;
+    // CelikPanel takes the next step by itself: the page reads again.
+    automatic?: boolean;
 }
 
 const HIDDEN_INVALID_ACCESS = 'One or more domains were hidden because their access information was invalid. / Bir veya daha fazla alan adı, erişim bilgisi geçersiz olduğu için gizlendi.';
@@ -260,6 +262,7 @@ export function Domains() {
             if (saved.state === 'unknown') return { id: domain.id, name: domain.domain_name, message: null };
             return saved.saved === null ? null : {
                 id: domain.id, name: domain.domain_name, message: pendingMessage(saved.saved.reason, saved.saved.detail),
+                automatic: domainDeletionReasonAutomatic(saved.saved.reason),
             };
         })).then((observed) => {
             if (epoch === pendingReadEpoch.current) {
@@ -275,6 +278,18 @@ export function Domains() {
     // the plan usage (no page refresh, owner rule 2026-10-31). It only reads.
     // Degisiklikten sonra alan adlarini gosteren her yer yeniden okunur.
     const changed = () => { invalidate('domains', 'dns'); };
+
+    // While a shown deletion is one CelikPanel continues by itself (for
+    // example a joined server waiting for the main DNS server), every place
+    // that shows domains reads again after 15 s, so a finished deletion leaves
+    // the list without a refresh (owner rule 2026-10-31). It only reads.
+    // Kendiliğinden süren bir silme varken alan adları 15 sn sonra yeniden okunur.
+    const autoRecheck = pendingDeletions.some((item) => item.automatic);
+    useEffect(() => {
+        if (!autoRecheck) return;
+        const timer = window.setTimeout(() => invalidate('domains', 'dns'), 15000);
+        return () => window.clearTimeout(timer);
+    }, [autoRecheck, listedAt]);
 
     const handleDelete = async (id: number, name: string) => {
         if (!listCurrent) return;
@@ -303,7 +318,7 @@ export function Domains() {
                 pendingReadEpoch.current++;
                 setPendingDeletions((current) => [
                     ...current.filter((item) => item.id !== id),
-                    { id, name, message },
+                    { id, name, message, automatic: domainDeletionReasonAutomatic(outcome.reason) },
                 ]);
                 showToast('warning', message);
                 changed();

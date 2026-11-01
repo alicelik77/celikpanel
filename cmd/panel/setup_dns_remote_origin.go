@@ -14,6 +14,20 @@ var remoteDNSOriginMu sync.Mutex
 var errRemoteDNSMailConflict = errors.New("existing mail DNS records conflict with the proposed mail service")
 var errRemoteDNSPublicationPending = errors.New("reconcile the saved remote DNS publication before making another change")
 
+// remoteDNSPublicationPendingError is errRemoteDNSPublicationPending with the
+// exchange's own outcome kept behind it: its text never carries transport or
+// receiver detail (it can reach a screen), while errors.As still finds the
+// main DNS server's typed refusal (remoteDNSHTTPError).
+type remoteDNSPublicationPendingError struct{ cause error }
+
+func (e *remoteDNSPublicationPendingError) Error() string {
+	return errRemoteDNSPublicationPending.Error()
+}
+func (e *remoteDNSPublicationPendingError) Unwrap() error { return e.cause }
+func (e *remoteDNSPublicationPendingError) Is(target error) bool {
+	return target == errRemoteDNSPublicationPending
+}
+
 type remoteDNSDomainTarget struct {
 	ID           int
 	Domain       string
@@ -283,7 +297,9 @@ func (p *Panel) sendRemoteDNSOutbox(ctx context.Context, target remoteDNSDomainT
 	defer cancel()
 	err = remoteDNSExchange(callCtx, c.Endpoint, "/api/v1/dns/remote/receiver/publish", c.ID+"."+c.credential, payload, &receipt)
 	if err != nil {
-		return errRemoteDNSPublicationPending
+		// The text stays the reviewed sentence; the main server's typed
+		// answer stays readable for the deletion's guidance (E-new-4).
+		return &remoteDNSPublicationPendingError{cause: err}
 	}
 	if !receipt.Applied || receipt.ClientID != c.ID || receipt.Domain != target.Domain || receipt.Generation != generation || receipt.PayloadHash != hash || receipt.Deleted != payload.Deleted {
 		return errors.New("remote DNS receipt does not match the saved publication")

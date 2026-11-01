@@ -119,6 +119,56 @@ die() {
     exit 1
 }
 
+# The last command that failed without die (set -e ended the updater there).
+# Set by the ERR trap installed with the EXIT trap; report_update_failure
+# names it only when no die gave a cause (alpha.114 lab E-new-5: such an exit
+# reached the panel as "updater command failed" with no reason at all).
+# die olmadan biten son komut; neden yoksa özet satırı bunu adlandırır.
+update_unhandled_line=
+update_unhandled_status=
+
+# The staged installer runs as a child. Its own last error line becomes the
+# cause: an exit under set -e lost it (alpha.114 lab E-new-5, an unknown key in
+# panel.env stopped install.sh, which update.sh ran without a die). The reason
+# keeps the line's English half,
+# product file names without directories, at most 120 characters, so older
+# panels that keep only a short plain reason still show it; the detail keeps
+# the whole line. stderr is copied unchanged to the worker log as it arrives.
+# Kurucunun son hata satırı nedendir; eski paneller için kısa, düz bir neden.
+installer_failure_reason() {
+    local line=$1 message word
+    local -a words=() kept=()
+    message=${line#ERROR / HATA: }
+    message=${message%% / *}
+    read -r -a words <<< "$message"
+    for word in "${words[@]}"; do
+        [[ $word != */* ]] || word=${word##*/}
+        if [[ -n $word ]]; then kept+=("$word"); fi
+    done
+    message=${kept[*]:-}
+    message=${message//\\/ }
+    [[ -n $message ]] || message='it printed no error line; the update worker log has its output'
+    (( ${#message} <= 101 )) || message="${message:0:98}..."
+    printf 'installer stopped: %s\n' "$message"
+}
+
+run_staged_installer() {
+    local errors status=0 line=
+    errors=$(mktemp -t celikpanel-installer-errors.XXXXXX) \
+        || die "the installer's error output could not be kept before running it"
+    "$@" 2> >(tee -a -- "$errors" >&2) || status=$?
+    # Let the copy finish before reading it (bash 4.4+ waits for $!).
+    wait "$!" 2>/dev/null || true
+    if [[ $status -ne 0 ]]; then
+        line=$(sed -e 's/\x1b\[[0-9;]*m//g' -- "$errors" 2>/dev/null | tr -d '\000-\010\013-\037\177' \
+            | grep -E '^ERROR / HATA: ' | tail -n 1 | cut -c1-600 || true)
+        rm -f -- "$errors"
+        update_failure_detail=${line:-the installer exited with status $status without an error line}
+        die "$(installer_failure_reason "$line")"
+    fi
+    rm -f -- "$errors"
+}
+
 run_update_idle_probe() {
     local output status=0
     update_failure_detail=
@@ -300,6 +350,11 @@ report_update_failure() {
     fi
     if [[ "${update_failure_detail:-}" == *': the host package manager is active'* ]]; then
         code=package_manager_busy
+    fi
+    if [[ -z ${update_failure_reason:-} && -n ${update_unhandled_line:-} ]]; then
+        # At most 120 characters with no path: older panels keep it.
+        update_failure_reason="an update step stopped at update.sh line $update_unhandled_line (exit status ${update_unhandled_status:-1}) without its own message"
+        [[ -n ${update_failure_detail:-} ]] || update_failure_detail='the update worker log has the output of that step'
     fi
     reason=${update_failure_reason:-updater command failed; inspect the update worker log}
     detail=${update_failure_detail:-}
@@ -3224,6 +3279,8 @@ on_exit() {
     local status=$? final_status marker_phase
     final_status=$status
     trap - EXIT
+    # Commands in this cleanup must not replace the recorded unhandled step.
+    trap - ERR
     if ! marker_phase=$(classify_durable_update_marker); then
         preserve_staging=1
         stop_release_coordinators_fail_closed
@@ -3322,6 +3379,12 @@ on_exit() {
     exit "$final_status"
 }
 trap on_exit EXIT
+# errtrace: a step that fails inside a function is recorded too. The trap only
+# remembers where set -e stopped; the latest firing is the one that ended the
+# updater, and die's own cause always takes precedence (report_update_failure).
+# Hata izi: yalnız set -e'nin durduğu yer hatırlanır; die nedeni önceliklidir.
+set -E
+trap 'update_unhandled_status=$? update_unhandled_line=$LINENO' ERR
 
 if [[ $resume_active_update -eq 1 ]]; then
     load_saved_service_states "$tmp_snap/service-states.tsv"
@@ -4084,7 +4147,7 @@ if [[ $BOOTSTRAP_PRE_LEDGER -eq 1 ]]; then
         CELIKPANEL_MUTATION_LOCK_FD="$MUTATION_LOCK_FD" \
         "$TRUSTED_RELEASE_ROOT/bin/agent" --check-initial-service-mutation-ledger-under-external-lock \
         || die "bootstrap ledger changed before the locked installation"
-    env -i \
+    run_staged_installer env -i \
         PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
         HOME=/root LC_ALL=C \
         SKIP_DEPS=1 SKIP_SECURITY_UPDATES=1 SKIP_ADMIN=1 \
@@ -4098,7 +4161,7 @@ if [[ $BOOTSTRAP_PRE_LEDGER -eq 1 ]]; then
         /bin/bash "$TRUSTED_RELEASE_ROOT/install.sh"
 else
     mutation_started=1
-    env -i \
+    run_staged_installer env -i \
         PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
         HOME=/root LC_ALL=C \
         SKIP_DEPS=1 SKIP_SECURITY_UPDATES=1 SKIP_ADMIN=1 \

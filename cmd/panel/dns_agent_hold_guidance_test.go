@@ -104,7 +104,7 @@ func TestDomainDeletionStatusNamesAgentHold(t *testing.T) {
 	agent.durableMutationRPCFixture.mu.Lock()
 	agent.durableMutationRPCFixture.jobs[lease.RequestID].OwnerID = strings.Repeat("d", 32)
 	agent.durableMutationRPCFixture.mu.Unlock()
-	if _, body := readDeletionStatusForTest(t, p, id); body.Reason != "" || body.Status != "unknown" {
+	if _, body := readDeletionStatusForTest(t, p, id); body.Reason != domainDeletionIncompleteReason || body.Status != domainDeletionPendingStatus {
 		t.Fatalf("foreign held job disclosed a reason: %+v", body)
 	}
 	agent.durableMutationRPCFixture.mu.Lock()
@@ -112,7 +112,7 @@ func TestDomainDeletionStatusNamesAgentHold(t *testing.T) {
 	agent.durableMutationRPCFixture.mu.Unlock()
 	// No hold: an active job keeps the earlier conservative answer.
 	agent.mutationHold = ""
-	if _, body := readDeletionStatusForTest(t, p, id); body.Reason != "" || body.Status != "unknown" {
+	if _, body := readDeletionStatusForTest(t, p, id); body.Reason != domainDeletionIncompleteReason || body.Status != domainDeletionPendingStatus {
 		t.Fatalf("unheld active job reported a reason: %+v", body)
 	}
 }

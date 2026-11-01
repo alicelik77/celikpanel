@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { domainDeletionDetailKey, readDomainDeletionPending, readDomainDeletionOutcome, readSavedDomainDeletionStatus, readSavedDomainDeletionState } from '../src/lib/domainDeletionPending.ts';
+import { domainDeletionDetailKey, domainDeletionReasonAutomatic, domainDeletionReasonKey, readDomainDeletionPending, readDomainDeletionOutcome, readSavedDomainDeletionStatus, readSavedDomainDeletionState } from '../src/lib/domainDeletionPending.ts';
 import { en as enShellHalf } from '../src/i18n/en.ts';
 import { enErrorsScreens as enErrorsPart } from '../src/i18n/screens/errors/en.ts';
 // The coded refusals only screens show are the screen part "errors" since v0.1.0-alpha.98.
@@ -326,4 +326,42 @@ test('owner-edit pending names the check that differed through its own sentence'
   // The reason text and its retry of the same publication are unchanged.
   assert.match(en['err.DNS_PUBLICATION_FAILED.dns_peer_owner_edit_unknown'], /same publication/);
   assert.match(tr['err.DNS_PUBLICATION_FAILED.dns_peer_owner_edit_unknown'], /aynı yayını/);
+});
+
+// alpha.114 lab run 2, E-new-4: a joined server's deletion and the typed
+// states that replaced "unknown" each carry their own reason and sentence.
+test('a joined server deletion and the former unknown states read as typed reasons with their own words', async () => {
+  const own = {
+    remote_dns_removal_confirming: ['dns_cleanup', true],
+    remote_dns_main_unreachable: ['dns_cleanup', true],
+    remote_dns_removal_refused: ['dns_cleanup', false],
+    remote_dns_removed_finishing: ['dns_removed', true],
+    deletion_incomplete: ['incomplete', false],
+    deletion_state_changing: ['dns_cleanup', true],
+    deletion_marker_inconsistent: ['marker_check', false],
+  };
+  for (const [reason, [stage, automatic]] of Object.entries(own)) {
+    assert.deepEqual(await readSavedDomainDeletionState(response(200, {
+      status: 'deletion_pending', stage, reason, message: 'server text',
+    })), { reason, detail: '' }, reason);
+    assert.equal(domainDeletionReasonAutomatic(reason), automatic, reason);
+    const key = domainDeletionReasonKey(reason);
+    assert.equal(key, `domains.deletionReason.${reason}`);
+    assert.ok(enScreens[key] && trScreens[key], key);
+    assert.notEqual(enScreens[key], trScreens[key]);
+  }
+  // The joined server's 202 names the main server's answer.
+  assert.deepEqual(await readDomainDeletionOutcome(response(202, {
+    status: 'deletion_pending', stage: 'dns_cleanup', reason: 'remote_dns_removal_confirming',
+  })), { state: 'pending', reason: 'remote_dns_removal_confirming' });
+  // Waiting states say nobody acts; the others name who acts.
+  assert.match(enScreens['domains.deletionReason.remote_dns_removal_confirming'], /^The main DNS server .*Nobody needs to do anything/);
+  assert.match(trScreens['domains.deletionReason.remote_dns_removal_confirming'], /Kimsenin bir şey yapması gerekmiyor/);
+  assert.match(enScreens['domains.deletionReason.remote_dns_removal_refused'], /The server administrator/);
+  assert.match(enScreens['domains.deletionReason.deletion_incomplete'], /Delete the domain again/);
+  assert.match(trScreens['domains.deletionReason.deletion_incomplete'], /yeniden silin/);
+  // An unreviewed reason is still not shown.
+  assert.deepEqual(await readSavedDomainDeletionState(response(200, {
+    status: 'deletion_pending', stage: 'incomplete', reason: 'raw_reason',
+  })), { reason: '', detail: '' });
 });
