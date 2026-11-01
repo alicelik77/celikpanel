@@ -2519,21 +2519,37 @@ require_literal "$UPDATE" 'for unit in celikpanel-agent.service celikpanel-panel
 require_literal "$UPDATE" 'printf '\''%s\t%s\t%s\t%s\n'\'' "$unit" "$state" "$main_pid" "$start_time"'
 require_literal "$UPDATE" 'printf '\''%s\t%s\t0\t0\n'\'' "$unit" "$state"'
 require_literal "$UPDATE" '[[ "$state" == "${saved_active_states[$unit]:-}" ]]'
-require_literal "$UPDATE" 'either|frozen|unfrozen) ;;'
+require_literal "$UPDATE" 'either|frozen|unfrozen|resumable|resumed) ;;'
 require_literal "$UPDATE" 'verify_quiesce_coordinator_stopped() {'
 require_count "$UPDATE" 'freeze_release_service_cgroup celikpanel-panel.service panel panel_frozen' 1
 require_count "$UPDATE" 'freeze_release_service_cgroup celikpanel-agent.service agent agent_frozen' 1
 require_count "$UPDATE" '--signal=SIGCONT' 4
+# A quiesce abort classifies both coordinators before any signal: the exact
+# captured process is resumed (helpers of a running operation may share its
+# cgroup), a proven-stopped one is started only after the marker is removed.
+# Quiesce iptali sinyalden önce iki koordinatörü sınıflar; tam süreç sürdürülür,
+# durduğu kanıtlanan süreç ancak işaretçi kaldırıldıktan sonra başlatılır.
+require_sequence "$UPDATE" \
+    'classify_quiesce_abort_coordinator() {' \
+    'if verify_quiesce_coordinator_identity "$unit" resumable; then' \
+    'verify_quiesce_coordinator_stopped "$unit"; then' \
+    'quiesce_abort_actions["$unit"]=start'
 require_sequence "$UPDATE" \
     'resume_quiesced_release_services() {' \
-    'verify_quiesce_coordinator_identity celikpanel-panel.service either || return 1' \
-    'verify_quiesce_coordinator_identity celikpanel-agent.service either || return 1' \
-    'if service_state_is_active_like "${quiesce_active_states[celikpanel-panel.service]}"; then' \
+    'classify_quiesce_abort_coordinator celikpanel-panel.service || return 1' \
+    'classify_quiesce_abort_coordinator celikpanel-agent.service || return 1' \
+    'if [[ ${quiesce_abort_actions[celikpanel-panel.service]:-} == resume ]]; then' \
     'systemctl kill --kill-whom=all --signal=SIGCONT celikpanel-panel.service' \
-    'if service_state_is_active_like "${quiesce_active_states[celikpanel-agent.service]}"; then' \
+    'if [[ ${quiesce_abort_actions[celikpanel-agent.service]:-} == resume ]]; then' \
     'systemctl kill --kill-whom=all --signal=SIGCONT celikpanel-agent.service' \
-    'verify_quiesce_coordinator_identity celikpanel-panel.service unfrozen || return 1' \
-    'verify_quiesce_coordinator_identity celikpanel-agent.service unfrozen || return 1'
+    'verify_quiesce_coordinator_identity "$unit" resumed || {' \
+    'verify_quiesce_coordinator_stopped "$unit" || {'
+require_function_sequence "$UPDATE" abort_quiesce_before_active \
+    'resume_quiesced_release_services \' \
+    'release_txn_remove_quiesce_marker \' \
+    'transaction_phase=quiesce-removed' \
+    'start_stopped_quiesced_release_services \' \
+    'transaction_phase=none'
 
 # Canonical panel checks tolerate a healthy non-empty WAL. Only the two cold
 # postconditions below may use the immutable checker against the canonical DB.
