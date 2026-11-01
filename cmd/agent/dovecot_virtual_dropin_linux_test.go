@@ -40,6 +40,8 @@ func newDovecotRepairHost(t *testing.T, version string, doveconfOK, running bool
 		"dovecot":   "printf '%s (0000000000)\\n' '" + version + "'\n",
 		"doveconf":  "if [ " + doveconfExit + " -ne 0 ]; then printf 'doveconf: Fatal: Error in configuration file /etc/dovecot/conf.d/99-celikpanel.conf line 2: Unknown setting: mail_inbox_path\\n'; fi\nexit " + doveconfExit + "\n",
 		"systemctl": "if [ \"$1\" = show ]; then printf '" + unit + "'; fi\nexit 0\n",
+		// Dovecot's own record of the reload (dovecotReloadOutcome).
+		"doveadm": "printf 'Nov 01 11:59:43.751803 Warning: master: SIGHUP received - reloading configuration\\n'\n",
 	}
 	for name, body := range scripts {
 		script := "#!/bin/sh\nprintf '%s %s\\n' '" + name + "' \"$*\" >>'" + logPath + "'\n" + body

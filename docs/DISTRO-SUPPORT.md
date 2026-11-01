@@ -50,7 +50,7 @@ Rules:
 | 📧 Postfix | Service | `postfix` | `postfix` | SMTP server | — |
 | 📮 Exim | Service | — | — | SMTP server | — |
 | 🧹 Rspamd | Service | `rspamd` | `rspamd` | spam filter | SMTP server |
-| 📬 Dovecot | Service | `dovecot-imapd` `dovecot-pop3d` `dovecot-lmtpd` | `dovecot` | IMAP server | — |
+| 📬 Dovecot | Service | `dovecot-imapd` `dovecot-pop3d` `dovecot-lmtpd` | `dovecot` `pigeonhole` | IMAP server | — |
 | 🛡️ SpamAssassin | Service | `spamassassin` `spamd` `spamass-milter` | — | spam filter | SMTP server |
 
 ### Security

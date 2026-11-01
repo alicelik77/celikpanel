@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"strings"
 	"time"
@@ -96,7 +97,21 @@ var (
 	autoresponderReloadDovecot   = func(ctx context.Context) (string, error) {
 		return applyDovecotVerified(mailServiceLeaseRunner(ctx), mailServiceReload)
 	}
-	autoresponderReloadPostfix = func(ctx context.Context) (string, error) {
+	autoresponderRestartDovecot = func(ctx context.Context) (string, error) {
+		return applyDovecotVerified(mailServiceLeaseRunner(ctx), mailServiceRestart)
+	}
+	// autoresponderDovecotRunning asks systemd whether dovecot.service runs
+	// (ActiveState, SubState and a main process), read only. A listener file
+	// left in Postfix's spool by a stopped Dovecot says nothing (E-new-2/3).
+	autoresponderDovecotRunning = func(ctx context.Context) (bool, error) {
+		state, failure := dovecotUnit(mailServiceLeaseRunner(ctx))
+		if failure != nil {
+			return false, failure
+		}
+		return state.active, nil
+	}
+	autoresponderRestoreDovecotCfg = restoreMailFile
+	autoresponderReloadPostfix     = func(ctx context.Context) (string, error) {
 		return applyPostfixVerified(mailServiceLeaseRunner(ctx), mailServiceReload)
 	}
 	autoresponderPostconfGet = func(ctx context.Context, key string) (string, error) {
@@ -110,11 +125,17 @@ var (
 		}
 		return nil
 	}
-	autoresponderMapType     = postfixMapTypeContext
-	autoresponderSocketWait  = 10 * time.Second
+	autoresponderMapType    = postfixMapTypeContext
+	autoresponderSocketWait = 10 * time.Second
+	// autoresponderSocketReady connects to the LMTP listener: a socket file
+	// alone may be left over from a Dovecot that is no longer running.
 	autoresponderSocketReady = func() bool {
-		info, err := os.Stat(autoresponderLMTPSocket)
-		return err == nil && info.Mode()&os.ModeSocket != 0
+		conn, err := net.DialTimeout("unix", autoresponderLMTPSocket, 2*time.Second)
+		if err != nil {
+			return false
+		}
+		_ = conn.Close()
+		return true
 	}
 	autoresponderSleep = time.Sleep
 	autoresponderStore = mailboxSieveStore(nativeMailboxSieveStore{})
@@ -367,7 +388,31 @@ const (
 // refusal), reloads Dovecot and waits for the LMTP socket. A stopped Dovecot
 // is a refusal: LMTP cannot be asked whether it accepts the mailbox, so no
 // mail is moved to it (the mailbox keeps Postfix's own delivery).
+//
+// Whether Dovecot runs is asked of systemd first, before anything is
+// installed or written (lab run 2, E-new-3): a stopped Dovecot leaves its
+// listener file in Postfix's spool, so the file said "ready" and the save
+// ended as an LMTP refusal instead of "Dovecot is stopped".
+//
+// The reload is verified from Dovecot's own log (dovecotReloadOutcome), not
+// from systemctl's exit status (E-new-2). A refused reload leaves the running
+// Dovecot on its previous settings; the drop-in written now is put back, so
+// files and the running Dovecot agree and mail keeps its delivery. One refusal
+// is answered by a restart instead: "Unknown section name" or "Unknown
+// setting" for files doveconf -n has just accepted means the running Dovecot
+// started before a plugin was installed (measured on Arch, Dovecot 2.4.5:
+// pigeonhole installed while Dovecot ran; every reload refused sieve_script
+// until Dovecot was restarted). A restart that fails puts the previous file
+// back and starts Dovecot again.
 func ensureAutoresponderInfrastructure(ctx context.Context) (string, error) {
+	running, err := autoresponderDovecotRunning(ctx)
+	if err != nil {
+		return "", refuseAutoresponder(transport.AutoresponderRefusedDovecotRejected,
+			"CelikPanel could not read whether Dovecot is running ("+boundedNativeDetail(err.Error())+"), so it changed nothing and mail keeps arriving as before. Save the reply again; if this repeats, the server administrator checks `systemctl status dovecot`.")
+	}
+	if !running {
+		return "", refuseAutoresponder(transport.AutoresponderRefusedDovecotStopped, autoresponderDovecotStoppedDetail)
+	}
 	if !autoresponderSieveAvailable() {
 		family := autoresponderPkgFamily()
 		packages, ok := autoresponderSievePackages(family)
@@ -409,24 +454,78 @@ func ensureAutoresponderInfrastructure(ctx context.Context) (string, error) {
 	}
 	warning := ""
 	if changed || !autoresponderSocketReady() {
-		state, err := autoresponderReloadDovecot(ctx)
-		if err != nil {
-			return "", refuseAutoresponder(transport.AutoresponderRefusedDovecotRejected,
-				"Dovecot did not load the Sieve settings ("+boundedNativeDetail(err.Error())+"). No mailbox was moved to the new delivery. The server administrator reads `journalctl -u dovecot`.")
-		}
-		if state == mailServiceNotRunning {
-			return "", refuseAutoresponder(transport.AutoresponderRefusedDovecotStopped, autoresponderDovecotStoppedDetail)
+		var err error
+		if warning, err = loadAutoresponderDovecotConf(ctx, snapshot, changed); err != nil {
+			return "", err
 		}
 	}
 	deadline := time.Now().Add(autoresponderSocketWait)
 	for !autoresponderSocketReady() {
 		if time.Now().After(deadline) {
 			return "", refuseAutoresponder(transport.AutoresponderRefusedDovecotRejected,
-				"Dovecot runs, but its LMTP listener "+autoresponderLMTPSocket+" did not appear, so no mailbox was moved to Dovecot delivery and mail keeps arriving as before. The server administrator checks that `protocols` includes lmtp (`doveconf protocols`).")
+				"Dovecot runs with the reply settings loaded, but its LMTP listener "+autoresponderLMTPSocket+" does not answer, so no mailbox was moved to Dovecot delivery and mail keeps arriving as before. The server administrator checks that `protocols` includes lmtp (`doveconf protocols`) and reads `sudo doveadm log errors`.")
 		}
 		autoresponderSleep(200 * time.Millisecond)
 	}
 	return warning, nil
+}
+
+// autoresponderDovecotRestartedWarning is the note for the one restart.
+const autoresponderDovecotRestartedWarning = "Dovecot was restarted once: it had been running since before its Sieve plugin was installed, and a running Dovecot cannot take a new plugin's settings by reloading. Mail programs reconnect by themselves."
+
+// dovecotRefusedUnknownSetting reports a verified reload refusal naming a
+// setting or section the running Dovecot does not know.
+func dovecotRefusedUnknownSetting(err error) bool {
+	var failure *mailServiceError
+	if !errors.As(err, &failure) || failure.unknown || failure.stage != mailServiceStageReload {
+		return false
+	}
+	return strings.Contains(failure.detail, "Unknown section name") || strings.Contains(failure.detail, "Unknown setting")
+}
+
+// loadAutoresponderDovecotConf makes the running Dovecot take the drop-in
+// (ensureAutoresponderInfrastructure says why it may restart once). On any
+// failure the drop-in CelikPanel wrote now is put back.
+func loadAutoresponderDovecotConf(ctx context.Context, snapshot mailFileSnapshot, changed bool) (string, error) {
+	putBack := func() string {
+		if !changed {
+			return ""
+		}
+		if err := autoresponderRestoreDovecotCfg(snapshot); err != nil {
+			return " Putting the previous " + autoresponderDovecotConfPath + " back failed too (" + boundedNativeDetail(err.Error()) + "); the server administrator moves that file aside."
+		}
+		return " CelikPanel put the previous " + autoresponderDovecotConfPath + " back."
+	}
+	state, err := autoresponderReloadDovecot(ctx)
+	if err == nil && state == mailServiceNotRunning {
+		// Stopped between the first look and the reload.
+		restored := putBack()
+		return "", refuseAutoresponder(transport.AutoresponderRefusedDovecotStopped, autoresponderDovecotStoppedDetail+restored)
+	}
+	if err == nil {
+		return "", nil
+	}
+	if dovecotRefusedUnknownSetting(err) {
+		_, restartErr := autoresponderRestartDovecot(ctx)
+		if restartErr == nil {
+			return autoresponderDovecotRestartedWarning, nil
+		}
+		restored := putBack()
+		again := ""
+		if _, startErr := autoresponderRestartDovecot(ctx); startErr != nil {
+			again = " Dovecot did not start again either (" + boundedNativeDetail(startErr.Error()) + "): the server administrator starts it (`sudo systemctl start dovecot`) and reads `sudo journalctl -u dovecot`."
+		}
+		return "", refuseAutoresponder(transport.AutoresponderRefusedDovecotRejected,
+			"Dovecot refused the Sieve settings while running ("+boundedNativeDetail(err.Error())+") and did not restart with them ("+boundedNativeDetail(restartErr.Error())+")."+restored+again+" No mailbox was moved to Dovecot delivery.")
+	}
+	restored := putBack()
+	var failure *mailServiceError
+	if errors.As(err, &failure) && failure.unknown {
+		return "", refuseAutoresponder(transport.AutoresponderRefusedDovecotRejected,
+			"CelikPanel could not confirm that Dovecot loaded the Sieve settings ("+boundedNativeDetail(err.Error())+")."+restored+" No mailbox was moved to Dovecot delivery and mail keeps arriving as before. Save the reply again; if this repeats, the server administrator reads `sudo doveadm log errors`.")
+	}
+	return "", refuseAutoresponder(transport.AutoresponderRefusedDovecotRejected,
+		"Dovecot did not load the Sieve settings and keeps running with its previous ones ("+boundedNativeDetail(err.Error())+")."+restored+" No mailbox was moved to Dovecot delivery and mail keeps arriving as before. The server administrator fixes what Dovecot names (`sudo doveadm log errors`), then the reply is saved again.")
 }
 
 // setAutoresponderTransport adds or removes one mailbox's LMTP route. It

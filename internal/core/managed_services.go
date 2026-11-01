@@ -793,7 +793,18 @@ var ManagedServices = []ManagedService{
 		// adlandırır. İleride Cyrus/Stalwart bu gruba katılır ve aynı
 		// bağımlıları tatmin eder.
 		ConflictGroup: "imap-server",
-		Packages:      map[string][]string{"apt": {"dovecot-imapd", "dovecot-pop3d", "dovecot-lmtpd"}, "pacman": {"dovecot"}},
+		Packages:      map[string][]string{"apt": {"dovecot-imapd", "dovecot-pop3d", "dovecot-lmtpd"}, "pacman": {"dovecot", "pigeonhole"}},
+		// pacman: pigeonhole is Dovecot's Sieve plugin (Arch's official
+		// package; the out-of-office reply runs on it). It is installed with
+		// Dovecot so that Dovecot starts with it: a running Dovecot 2.4 knows
+		// only the settings of the plugins it started with and refuses a
+		// reload that names a newer one ("Unknown section name:
+		// sieve_script", alpha.114 lab run 2, E-new-2). On Debian and Ubuntu
+		// dovecot-sieve is installed by the reply itself; its package restarts
+		// Dovecot.
+		// pacman: pigeonhole, Dovecot'un Sieve eki; Dovecot onunla başlasın
+		// diye birlikte kurulur (çalışan 2.4 sonradan kurulan ekin ayarını
+		// yeniden yüklemede tanımaz).
 		// Arch's Dovecot 2.4 package ships one /etc/dovecot/dovecot.conf whose
 		// own storage, PAM and TLS settings come after its conf.d include, and
 		// no conf.d directory (upd1 finding P2, 30 Sep 2026). Since 2026-10-30

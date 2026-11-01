@@ -208,8 +208,9 @@ func TestDovecotInstallIsOfferedOnPacman(t *testing.T) {
 	if kind != core.ManagedServiceInstallBlockNone || reason != "" {
 		t.Fatalf("pacman dovecot block=%v %q", kind, reason)
 	}
-	// The package mapping is unchanged.
-	if pkgs := dovecot.Packages["pacman"]; !slices.Equal(pkgs, []string{"dovecot"}) {
+	// Dovecot with its Sieve plugin, so Dovecot starts with the plugin
+	// (alpha.114 lab run 2, E-new-2).
+	if pkgs := dovecot.Packages["pacman"]; !slices.Equal(pkgs, []string{"dovecot", "pigeonhole"}) {
 		t.Fatalf("pacman observation map changed: %v", pkgs)
 	}
 	for _, id := range []string{"postfix", "dovecot", "roundcube", "nginx", "php-fpm", "mariadb", "certbot", "rspamd"} {
