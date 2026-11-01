@@ -1,0 +1,11 @@
+[{"name": "domains-delete", "path": "/domains", "wait": 3500, "actions": [
+  {"shot": "before"},
+  {"eval": "(()=>{const row=[...document.querySelectorAll('table tr')].find(r=>r.innerText.includes('@JD@')); const b=row&&row.querySelector('button[title=Delete],button[title=Sil]'); if(b) b.click(); return !!b;})()"},
+  {"wait": 2500},
+  {"shot": "pending"},
+  {"probe": "[...document.querySelectorAll('table tr,[role=status],[role=alert]')].map(e=>e.innerText.replace(/\\s+/g,' ')).filter(t=>t.includes('@JD@')||/delet|silin/i.test(t)).slice(0,6)", "label": "pending row and notices"},
+  {"waitJs": ["![...document.querySelectorAll('table tr')].some(r=>r.innerText.includes('@JD@'))", 240000]},
+  {"wait": 1500},
+  {"shot": "after"},
+  {"probe": "[...document.querySelectorAll('table tr')].filter(r=>r.innerText.includes('@JD@')).length", "label": "rows naming the domain after"}
+]}]

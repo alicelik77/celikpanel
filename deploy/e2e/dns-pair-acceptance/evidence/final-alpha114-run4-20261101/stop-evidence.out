@@ -1,0 +1,205 @@
+Sun Nov  1 02:50:56 PM UTC 2026
+===== a6-a main setup operation
+failed 13-mail_profile {"code": "firewall_sync_failed", "message": "The service changed successfully, but the active firewall policy could not be synchronized."}
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=failed 14-mail_profile=pending 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "13-mail_profile", "kind": "mail_profile", "operation_id": "00742cf2af83ea9b980531ac95ad20e7", "owner_id": "71b9cedaa44efa6dd5c9cd2c9d791261", "request_id": "abde9a209f4b0088df36434a35e37fbb", "status": "failed", "target": "webmail"}
+PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
+2.4.1-4 (7d8c0e5759)
+-- agent/panel lines about firewall
+2026-11-01T14:35:51+00:00 frankfurt panel[10942]: 2026/11/01 14:35:51 panel certificate operation 97bde219209f59fa958cc2479282135f phase panel-certificate/v1/final_firewall_child: panel certificate saga child is not terminal: another server change or package-manager task is still running
+2026-11-01T14:37:41+00:00 frankfurt panel[23253]: 2026/11/01 14:37:41 service operation 00742cf2af83ea9b980531ac95ad20e7 (webmail) failed in profile/webmail/firewall: another server change or package-manager task is still running
+2026-11-01T14:37:41+00:00 frankfurt panel[23253]: 2026/11/01 14:37:41 server setup step 13-mail_profile failed: firewall_sync_failed: The service changed successfully, but the active firewall policy could not be synchronized.
+-- H1 phrases
+[] 0
+[] 0
+-- webmail
+-- nft
+table inet celikpanel_fw {
+	chain input {
+		type filter hook input priority filter; policy drop;
+		iif "lo" accept
+		ct state established,related accept
+		ct state invalid drop
+		meta l4proto icmp accept
+		meta l4proto ipv6-icmp accept
+		tcp dport { 22, 25, 53, 80, 110, 143, 443, 465, 587, 993, 995, 1923 } accept
+		udp dport 53 accept
+	}
+}
+inactive inactive inactive
+active active active active active active
+
+
+===== a6-a backup (Ubuntu) H1 phrases
+[] 0
+[] 0
+
+
+===== a6-a main: the window 14:36:30-14:38:30 (read only)
+2026-11-01T14:37:21+00:00 frankfurt dovecot[32564]: master: Dovecot v2.4.1-4 (7d8c0e5759) starting up for imap, lmtp, pop3 (core dumps disabled)
+2026-11-01T14:37:21+00:00 frankfurt systemd[1]: Started dovecot.service - Dovecot IMAP/POP3 email server.
+2026-11-01T14:37:22+00:00 frankfurt pdns_server[21301]: AXFR-out zone 'catalog-c00003b4.celikpanel.invalid', client '192.0.3.180:48592', transfer initiated
+2026-11-01T14:37:22+00:00 frankfurt postfix/postfix-script[32727]: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-11-01T14:37:23+00:00 frankfurt postfix/postfix-script[32770]: the Postfix mail system is running: PID: 24102
+2026-11-01T14:37:23+00:00 frankfurt systemd[1]: Stopping postfix.service - Postfix Mail Transport Agent (main/default instance)...
+2026-11-01T14:37:23+00:00 frankfurt postfix[32805]: postfix/postlog: stopping the Postfix mail system
+2026-11-01T14:37:23+00:00 frankfurt postfix/postfix-script[32805]: stopping the Postfix mail system
+2026-11-01T14:37:23+00:00 frankfurt postfix/master[24102]: terminating on signal 15
+2026-11-01T14:37:23+00:00 frankfurt systemd[1]: postfix.service: Deactivated successfully.
+2026-11-01T14:37:23+00:00 frankfurt systemd[1]: Stopped postfix.service - Postfix Mail Transport Agent (main/default instance).
+2026-11-01T14:37:23+00:00 frankfurt systemd[1]: Starting postfix.service - Postfix Mail Transport Agent (main/default instance)...
+2026-11-01T14:37:23+00:00 frankfurt postfix[32925]: postfix/postlog: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-11-01T14:37:23+00:00 frankfurt postfix/postfix-script[32925]: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-11-01T14:37:23+00:00 frankfurt pdns_server[21301]: AXFR-out zone 'catalog-c00003b4.celikpanel.invalid', client '192.0.3.180:48652', transfer initiated
+2026-11-01T14:37:23+00:00 frankfurt postfix/master[32955]: daemon started -- version 3.10.13, configuration /etc/postfix
+2026-11-01T14:37:23+00:00 frankfurt systemd[1]: Started postfix.service - Postfix Mail Transport Agent (main/default instance).
+2026-11-01T14:37:23+00:00 frankfurt postfix/postfix-script[32973]: the Postfix mail system is running: PID: 32955
+2026-11-01T14:37:24+00:00 frankfurt pdns_server[21301]: AXFR-out zone 'catalog-c00003b4.celikpanel.invalid', client '192.0.3.180:48664', transfer initiated
+2026-11-01T14:37:25+00:00 frankfurt systemd-timesyncd[365]: Timed out waiting for reply from 185.255.95.207:123 (0.debian.pool.ntp.org).
+2026-11-01T14:37:30+00:00 frankfurt adduser[33278]: Selecting UID from range 100 to 999 ...
+2026-11-01T14:37:30+00:00 frankfurt adduser[33278]: Selecting GID from range 100 to 999 ...
+2026-11-01T14:37:30+00:00 frankfurt adduser[33278]: Adding system user `opendkim' (UID 108) ...
+2026-11-01T14:37:30+00:00 frankfurt adduser[33278]: Adding new group `opendkim' (GID 111) ...
+2026-11-01T14:37:30+00:00 frankfurt groupadd[33283]: group added to /etc/group: name=opendkim, GID=111
+2026-11-01T14:37:30+00:00 frankfurt groupadd[33283]: group added to /etc/gshadow: name=opendkim
+2026-11-01T14:37:30+00:00 frankfurt groupadd[33283]: new group: name=opendkim, GID=111
+2026-11-01T14:37:30+00:00 frankfurt adduser[33278]: Adding new user `opendkim' (UID 108) with group `opendkim' ...
+2026-11-01T14:37:30+00:00 frankfurt useradd[33288]: new user: name=opendkim, UID=108, GID=111, home=/run/opendkim, shell=/usr/sbin/nologin, from=none
+2026-11-01T14:37:30+00:00 frankfurt adduser[33278]: Creating home directory `/run/opendkim' ...
+2026-11-01T14:37:30+00:00 frankfurt systemd[1]: Reload requested from client PID 33302 ('systemctl') (unit celikpanel-agent.service)...
+2026-11-01T14:37:30+00:00 frankfurt systemd[1]: Reloading...
+2026-11-01T14:37:30+00:00 frankfurt systemd-ssh-generator[33331]: Failed to query local AF_VSOCK CID: Cannot assign requested address
+2026-11-01T14:37:30+00:00 frankfurt (sd-exec-[33319]: /usr/lib/systemd/system-generators/systemd-ssh-generator failed with exit status 1.
+2026-11-01T14:37:30+00:00 frankfurt systemd[1]: Reloading finished in 192 ms.
+2026-11-01T14:37:31+00:00 frankfurt systemd[1]: Reload requested from client PID 33348 ('systemctl') (unit celikpanel-agent.service)...
+2026-11-01T14:37:31+00:00 frankfurt systemd[1]: Reloading...
+2026-11-01T14:37:31+00:00 frankfurt systemd-ssh-generator[33377]: Failed to query local AF_VSOCK CID: Cannot assign requested address
+2026-11-01T14:37:31+00:00 frankfurt (sd-exec-[33365]: /usr/lib/systemd/system-generators/systemd-ssh-generator failed with exit status 1.
+2026-11-01T14:37:31+00:00 frankfurt systemd[1]: Reloading finished in 189 ms.
+2026-11-01T14:37:31+00:00 frankfurt systemd[1]: Starting opendkim.service - OpenDKIM Milter...
+2026-11-01T14:37:31+00:00 frankfurt systemd[1]: Started opendkim.service - OpenDKIM Milter.
+2026-11-01T14:37:31+00:00 frankfurt opendkim[33391]: OpenDKIM Filter v2.11.0 starting
+2026-11-01T14:37:32+00:00 frankfurt systemd[1]: Reload requested from client PID 33420 ('systemctl') (unit celikpanel-agent.service)...
+2026-11-01T14:37:32+00:00 frankfurt systemd[1]: Reloading...
+2026-11-01T14:37:32+00:00 frankfurt systemd-ssh-generator[33448]: Failed to query local AF_VSOCK CID: Cannot assign requested address
+2026-11-01T14:37:32+00:00 frankfurt (sd-exec-[33437]: /usr/lib/systemd/system-generators/systemd-ssh-generator failed with exit status 1.
+2026-11-01T14:37:33+00:00 frankfurt systemd[1]: Reloading finished in 207 ms.
+2026-11-01T14:37:33+00:00 frankfurt systemd[1]: Reload requested from client PID 33457 ('systemctl') (unit celikpanel-agent.service)...
+2026-11-01T14:37:33+00:00 frankfurt systemd[1]: Reloading...
+2026-11-01T14:37:33+00:00 frankfurt systemd-ssh-generator[33487]: Failed to query local AF_VSOCK CID: Cannot assign requested address
+2026-11-01T14:37:33+00:00 frankfurt (sd-exec-[33474]: /usr/lib/systemd/system-generators/systemd-ssh-generator failed with exit status 1.
+2026-11-01T14:37:33+00:00 frankfurt systemd[1]: Reloading finished in 245 ms.
+2026-11-01T14:37:33+00:00 frankfurt systemd[1]: Reload requested from client PID 33416 ('systemctl') (unit celikpanel-agent.service)...
+2026-11-01T14:37:33+00:00 frankfurt systemd[1]: Reloading...
+2026-11-01T14:37:33+00:00 frankfurt systemd-ssh-generator[33521]: Failed to query local AF_VSOCK CID: Cannot assign requested address
+2026-11-01T14:37:33+00:00 frankfurt (sd-exec-[33509]: /usr/lib/systemd/system-generators/systemd-ssh-generator failed with exit status 1.
+2026-11-01T14:37:33+00:00 frankfurt systemd[1]: Reloading finished in 231 ms.
+2026-11-01T14:37:33+00:00 frankfurt systemd[1]: Stopping opendkim.service - OpenDKIM Milter...
+2026-11-01T14:37:35+00:00 frankfurt systemd-timesyncd[365]: Timed out waiting for reply from 93.115.79.15:123 (0.debian.pool.ntp.org).
+2026-11-01T14:37:36+00:00 frankfurt systemd[1]: Starting celikpanel-release-recovery.service - CelikPanel verified release transaction recovery...
+2026-11-01T14:37:36+00:00 frankfurt opendkim[33391]: OpenDKIM Filter v2.11.0 terminating with status 0, errno = 0
+2026-11-01T14:37:36+00:00 frankfurt systemd[1]: opendkim.service: Deactivated successfully.
+2026-11-01T14:37:36+00:00 frankfurt systemd[1]: Stopped opendkim.service - OpenDKIM Milter.
+2026-11-01T14:37:36+00:00 frankfurt systemd[1]: Starting opendkim.service - OpenDKIM Milter...
+2026-11-01T14:37:36+00:00 frankfurt opendkim[33539]: OpenDKIM Filter v2.11.0 starting
+2026-11-01T14:37:36+00:00 frankfurt systemd[1]: Started opendkim.service - OpenDKIM Milter.
+2026-11-01T14:37:36+00:00 frankfurt systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-01T14:37:36+00:00 frankfurt systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-11-01T14:37:38+00:00 frankfurt postfix/postfix-script[33713]: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-11-01T14:37:38+00:00 frankfurt postfix/postfix-script[33743]: the Postfix mail system is running: PID: 32955
+2026-11-01T14:37:38+00:00 frankfurt postfix/postfix-script[33762]: refreshing the Postfix mail system
+2026-11-01T14:37:38+00:00 frankfurt postfix/master[32955]: reload -- version 3.10.13, configuration /etc/postfix
+2026-11-01T14:37:39+00:00 frankfurt postfix/postfix-script[33781]: the Postfix mail system is running: PID: 32955
+2026-11-01T14:37:41+00:00 frankfurt panel[23253]: 2026/11/01 14:37:41 service operation 00742cf2af83ea9b980531ac95ad20e7 (webmail) failed in profile/webmail/firewall: another server change or package-manager task is still running
+2026-11-01T14:37:41+00:00 frankfurt panel[23253]: 2026/11/01 14:37:41 server setup step 13-mail_profile failed: firewall_sync_failed: The service changed successfully, but the active firewall policy could not be synchronized.
+2026-11-01T14:37:45+00:00 frankfurt systemd-timesyncd[365]: Timed out waiting for reply from 62.12.173.12:123 (1.debian.pool.ntp.org).
+2026-11-01T14:37:46+00:00 frankfurt pdns_server[21301]: AXFR-out zone 'catalog-c00003b4.celikpanel.invalid', client '192.0.3.180:60672', transfer initiated
+2026-11-01T14:37:47+00:00 frankfurt pdns_server[21301]: AXFR-out zone 'catalog-c00003b4.celikpanel.invalid', client '192.0.3.180:60690', transfer initiated
+2026-11-01T14:37:56+00:00 frankfurt systemd-timesyncd[365]: Timed out waiting for reply from 89.252.135.27:123 (1.debian.pool.ntp.org).
+2026-11-01T14:37:58+00:00 frankfurt panel[23253]: 2026/11/01 14:37:58 [panel-update] discovery refused:
+2026-11-01T14:37:58+00:00 frankfurt panel[23253]: 2026/11/01 14:37:58 [panel-update] automatic update check failed (release_unverified): agent reported update discovery failure; next try in 1h0m0s
+2026-11-01T14:38:06+00:00 frankfurt systemd-timesyncd[365]: Timed out waiting for reply from 185.8.33.137:123 (1.debian.pool.ntp.org).
+2026-11-01T14:38:06+00:00 frankfurt systemd[1]: Starting celikpanel-release-recovery.service - CelikPanel verified release transaction recovery...
+2026-11-01T14:38:07+00:00 frankfurt systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-01T14:38:07+00:00 frankfurt systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-11-01T14:38:08+00:00 frankfurt pdns_server[21301]: AXFR-out zone 'catalog-c00003b4.celikpanel.invalid', client '192.0.3.180:33522', transfer initiated
+2026-11-01T14:38:10+00:00 frankfurt pdns_server[21301]: AXFR-out zone 'catalog-c00003b4.celikpanel.invalid', client '192.0.3.180:33550', transfer initiated
+2026-11-01T14:38:16+00:00 frankfurt systemd-timesyncd[365]: Timed out waiting for reply from 176.235.250.150:123 (1.debian.pool.ntp.org).
+2026-11-01T14:38:26+00:00 frankfurt systemd-timesyncd[365]: Timed out waiting for reply from 45.74.159.19:123 (2.debian.pool.ntp.org).
+
+
+===== H1 phrases, plain
+main could-not-be-checked=0 fail-closed=0
+
+
+backup could-not-be-checked=0 fail-closed=0
+
+
+===== backup setup operation window (what the joined server did then)
+
+
+===== a6-a main: agent + panel units 14:36:00-14:37:45, all levels (read only)
+2026-11-01T14:36:30+00:00 frankfurt adduser[25364]: Adding new group `dovecot' (GID 109) ...
+2026-11-01T14:36:30+00:00 frankfurt groupadd[25369]: group added to /etc/group: name=dovecot, GID=109
+2026-11-01T14:36:30+00:00 frankfurt groupadd[25369]: group added to /etc/gshadow: name=dovecot
+2026-11-01T14:36:30+00:00 frankfurt groupadd[25369]: new group: name=dovecot, GID=109
+2026-11-01T14:36:30+00:00 frankfurt adduser[25364]: Adding new user `dovecot' (UID 106) with group `dovecot' ...
+2026-11-01T14:36:30+00:00 frankfurt useradd[25374]: new user: name=dovecot, UID=106, GID=109, home=/usr/lib/dovecot, shell=/usr/sbin/nologin, from=none
+2026-11-01T14:36:30+00:00 frankfurt adduser[25364]: Not creating home directory `/usr/lib/dovecot' as requested.
+2026-11-01T14:36:30+00:00 frankfurt adduser[25385]: Selecting UID from range 100 to 999 ...
+2026-11-01T14:36:30+00:00 frankfurt adduser[25385]: Selecting GID from range 100 to 999 ...
+2026-11-01T14:36:31+00:00 frankfurt adduser[25385]: Adding system user `dovenull' (UID 107) ...
+2026-11-01T14:36:31+00:00 frankfurt adduser[25385]: Adding new group `dovenull' (GID 110) ...
+2026-11-01T14:36:31+00:00 frankfurt groupadd[25390]: group added to /etc/group: name=dovenull, GID=110
+2026-11-01T14:36:31+00:00 frankfurt groupadd[25390]: group added to /etc/gshadow: name=dovenull
+2026-11-01T14:36:31+00:00 frankfurt groupadd[25390]: new group: name=dovenull, GID=110
+2026-11-01T14:36:31+00:00 frankfurt adduser[25385]: Adding new user `dovenull' (UID 107) with group `dovenull' ...
+2026-11-01T14:36:31+00:00 frankfurt useradd[25395]: new user: name=dovenull, UID=107, GID=110, home=/nonexistent, shell=/usr/sbin/nologin, from=none
+2026-11-01T14:36:31+00:00 frankfurt adduser[25385]: Not creating `/nonexistent'.
+2026-11-01T14:36:44+00:00 frankfurt postfix/postfix-script[28455]: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-11-01T14:36:44+00:00 frankfurt postfix/postfix-script[28485]: the Postfix mail system is running: PID: 24102
+2026-11-01T14:36:44+00:00 frankfurt postfix/postfix-script[28505]: refreshing the Postfix mail system
+2026-11-01T14:36:45+00:00 frankfurt postfix/postfix-script[28524]: the Postfix mail system is running: PID: 24102
+2026-11-01T14:37:04+00:00 frankfurt php8.4-sqlite3[29634]: php_invoke sqlite3: already enabled for PHP 8.4 cli sapi
+2026-11-01T14:37:04+00:00 frankfurt php8.4-sqlite3[29666]: php_invoke sqlite3: already enabled for PHP 8.4 fpm sapi
+2026-11-01T14:37:04+00:00 frankfurt php8.4-sqlite3[29856]: php_invoke pdo_sqlite: already enabled for PHP 8.4 cli sapi
+2026-11-01T14:37:04+00:00 frankfurt php8.4-sqlite3[29888]: php_invoke pdo_sqlite: already enabled for PHP 8.4 fpm sapi
+2026-11-01T14:37:05+00:00 frankfurt php8.4-zip[30079]: php_invoke zip: already enabled for PHP 8.4 cli sapi
+2026-11-01T14:37:05+00:00 frankfurt php8.4-zip[30111]: php_invoke zip: already enabled for PHP 8.4 fpm sapi
+2026-11-01T14:37:06+00:00 frankfurt php8.4-xml[30557]: php_invoke simplexml: already enabled for PHP 8.4 cli sapi
+2026-11-01T14:37:06+00:00 frankfurt php8.4-xml[30779]: php_invoke xml: already enabled for PHP 8.4 cli sapi
+2026-11-01T14:37:06+00:00 frankfurt php8.4-xml[30811]: php_invoke xml: already enabled for PHP 8.4 fpm sapi
+2026-11-01T14:37:06+00:00 frankfurt php8.4-xml[31001]: php_invoke xmlreader: already enabled for PHP 8.4 cli sapi
+2026-11-01T14:37:06+00:00 frankfurt php8.4-xml[31033]: php_invoke xmlreader: already enabled for PHP 8.4 fpm sapi
+2026-11-01T14:37:07+00:00 frankfurt php8.4-xml[31223]: php_invoke xmlwriter: already enabled for PHP 8.4 cli sapi
+2026-11-01T14:37:07+00:00 frankfurt php8.4-xml[31255]: php_invoke xmlwriter: already enabled for PHP 8.4 fpm sapi
+2026-11-01T14:37:07+00:00 frankfurt php8.4-xml[31445]: php_invoke xsl: already enabled for PHP 8.4 cli sapi
+2026-11-01T14:37:07+00:00 frankfurt php8.4-xml[31477]: php_invoke xsl: already enabled for PHP 8.4 fpm sapi
+2026-11-01T14:37:07+00:00 frankfurt php8.4-intl[31668]: php_invoke intl: already enabled for PHP 8.4 cli sapi
+2026-11-01T14:37:07+00:00 frankfurt php8.4-intl[31700]: php_invoke intl: already enabled for PHP 8.4 fpm sapi
+2026-11-01T14:37:08+00:00 frankfurt php8.4-mbstring[31891]: php_invoke mbstring: already enabled for PHP 8.4 cli sapi
+2026-11-01T14:37:08+00:00 frankfurt php8.4-mbstring[31923]: php_invoke mbstring: already enabled for PHP 8.4 fpm sapi
+2026-11-01T14:37:17+00:00 frankfurt postfix/postfix-script[32295]: the Postfix mail system is running: PID: 24102
+2026-11-01T14:37:18+00:00 frankfurt postfix/postfix-script[32334]: the Postfix mail system is running: PID: 24102
+2026-11-01T14:37:22+00:00 frankfurt postfix/postfix-script[32727]: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-11-01T14:37:23+00:00 frankfurt postfix/postfix-script[32770]: the Postfix mail system is running: PID: 24102
+2026-11-01T14:37:23+00:00 frankfurt postfix/postfix-script[32973]: the Postfix mail system is running: PID: 32955
+2026-11-01T14:37:30+00:00 frankfurt adduser[33278]: Selecting UID from range 100 to 999 ...
+2026-11-01T14:37:30+00:00 frankfurt adduser[33278]: Selecting GID from range 100 to 999 ...
+2026-11-01T14:37:30+00:00 frankfurt adduser[33278]: Adding system user `opendkim' (UID 108) ...
+2026-11-01T14:37:30+00:00 frankfurt adduser[33278]: Adding new group `opendkim' (GID 111) ...
+2026-11-01T14:37:30+00:00 frankfurt groupadd[33283]: group added to /etc/group: name=opendkim, GID=111
+2026-11-01T14:37:30+00:00 frankfurt groupadd[33283]: group added to /etc/gshadow: name=opendkim
+2026-11-01T14:37:30+00:00 frankfurt groupadd[33283]: new group: name=opendkim, GID=111
+2026-11-01T14:37:30+00:00 frankfurt adduser[33278]: Adding new user `opendkim' (UID 108) with group `opendkim' ...
+2026-11-01T14:37:30+00:00 frankfurt useradd[33288]: new user: name=opendkim, UID=108, GID=111, home=/run/opendkim, shell=/usr/sbin/nologin, from=none
+2026-11-01T14:37:30+00:00 frankfurt adduser[33278]: Creating home directory `/run/opendkim' ...
+2026-11-01T14:37:38+00:00 frankfurt postfix/postfix-script[33713]: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-11-01T14:37:38+00:00 frankfurt postfix/postfix-script[33743]: the Postfix mail system is running: PID: 32955
+2026-11-01T14:37:38+00:00 frankfurt postfix/postfix-script[33762]: refreshing the Postfix mail system
+2026-11-01T14:37:41+00:00 frankfurt panel[23253]: 2026/11/01 14:37:41 service operation 00742cf2af83ea9b980531ac95ad20e7 (webmail) failed in profile/webmail/firewall: another server change or package-manager task is still running
+2026-11-01T14:37:41+00:00 frankfurt panel[23253]: 2026/11/01 14:37:41 server setup step 13-mail_profile failed: firewall_sync_failed: The service changed successfully, but the active firewall policy could not be synchronized.
+-- service-mutation units then
+2026-11-01T14:37:41+00:00 frankfurt panel[23253]: 2026/11/01 14:37:41 service operation 00742cf2af83ea9b980531ac95ad20e7 (webmail) failed in profile/webmail/firewall: another server change or package-manager task is still running
+
+

@@ -1,0 +1,26 @@
+{
+ "snew1": [
+  {"name": "setup-ready", "path": "/setup", "wait": 3500, "actions": [
+   {"probe": "({host:(document.body.innerText.match(/Host a website|Web sitesi barındır/g)||[]).length, siteAttr:[...document.querySelectorAll('[data-setup-site]')].map(e=>e.getAttribute('data-setup-site'))})", "label": "host-a-website offers"}]},
+  {"name": "dashboard", "path": "/", "wait": 4000, "actions": [
+   {"probe": "({host:(document.body.innerText.match(/Host a website|Web sitesi barındır/g)||[]).length, cards:document.querySelectorAll('[data-dashboard-no-website]').length})", "label": "host-a-website offers"}]}
+ ],
+ "snew2": [
+  {"name": "add-domain", "path": "/domains", "wait": 3500, "actions": [
+   {"clickText": ["button", "Add domain|Alan adı ekle"]},
+   {"wait": 2000},
+   {"probe": "((document.querySelector('[role=dialog]')||document.body).innerText.match(/[^\\n]*(PowerDNS|BIND|pdns|\\(bind\\))[^\\n]*/gi)||[])", "label": "DNS server line"},
+   {"probe": "/\\(pdns\\)|\\(bind\\)/.test((document.querySelector('[role=dialog]')||document.body).innerText)", "label": "raw id shown"}]}
+ ],
+ "snew3": [
+  {"name": "audit", "path": "/audit", "wait": 4000, "actions": [
+   {"probe": "[...document.querySelectorAll('table tr, li')].slice(0,14).map(r=>r.innerText.replace(/\\s+/g,' ').slice(0,160))", "label": "first rows"},
+   {"probe": "((document.querySelector('main')||document.body).innerText.match(/\\b[a-z]+(_[a-z]+)*\\.[a-z_]+(\\.[a-z_]+)*\\b|\\b[a-z]+_[a-z_]+\\b/g)||[]).filter(x=>!/\\.test$/.test(x)).slice(0,30)", "label": "raw code-like tokens (excluding .test names)"}]}
+ ],
+ "s23": [
+  {"name": "forgot-password", "path": "/", "wait": 2500, "actions": [
+   {"click": "[data-forgot-open]"},
+   {"wait": 1500},
+   {"probe": "(document.querySelector('[data-owner-reset-command] code')||{}).innerText", "label": "owner command"}]}
+ ]
+}

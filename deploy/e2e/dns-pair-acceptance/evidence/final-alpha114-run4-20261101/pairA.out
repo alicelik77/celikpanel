@@ -1,0 +1,147 @@
+== provision 14:30:28 main=debian13 192.0.3.180 (v0.1.0-alpha.114) backup=ubuntu2404 192.0.3.181 (v0.1.0-alpha.114) zone=fa5.test
+E=\"Debian GNU/Linux 13 (trixie)\"\nVERSION_ID=\"13\"\n6.12.105+deb13-cloud-amd64\nfrankfurt\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 17.5
+}
+
+earch .\nPRETTY_NAME=\"Ubuntu 24.04.4 LTS\"\nVERSION_ID=\"24.04\"\n6.8.0-138-generic\nboston\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 24.1
+}
+
+== install through get.sh in a root terminal 14:30:53
+main terminal rc 0 45.3 problem None restart_required False postinstall rc 0
+  tail: rolayı doğrula:  | Created administrator / Yönetici oluşturuldu. |     ✓ administrator is ready / yönetici hazır | ==> Starting the panel / Panel başlatılıyor |     ✓ panel is running / panel çalışıyor | ==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor |     ✓ initial panel certificate is protected / ilk panel sertifikasi korundu |  | CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu. |     Panel:  https://192.0.3.180:1923 |     Services / Servisler: systemctl status celikpanel-agent celikpanel-panel |     Logs / Günlükler: journalctl -u celikpanel-panel -f | 
+backup terminal rc 0 53.8 problem None restart_required False postinstall rc 0
+  tail: rolayı doğrula:  | Created administrator / Yönetici oluşturuldu. |     ✓ administrator is ready / yönetici hazır | ==> Starting the panel / Panel başlatılıyor |     ✓ panel is running / panel çalışıyor | ==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor |     ✓ initial panel certificate is protected / ilk panel sertifikasi korundu |  | CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu. |     Panel:  https://192.0.3.181:1923 |     Services / Servisler: systemctl status celikpanel-agent celikpanel-panel |     Logs / Günlükler: journalctl -u celikpanel-panel -f | 
+== port (check 4): fresh alpha.114 1923 only; alpha.113 2083 14:31:47
+192.0.3.180:1923 open (from the lab bridge)
+192.0.3.180:2083 closed (from the lab bridge)
+192.0.3.181:1923 open (from the lab bridge)
+192.0.3.181:2083 closed (from the lab bridge)
+main CELIKPANEL_LISTEN=:1923 | LISTEN 0 4096 *:1923 *:*  | 
+backup CELIKPANEL_LISTEN=:1923 | LISTEN 0 4096 *:1923 *:*  | 
+main license active acceptance_fixture can_use_panel True
+backup license active acceptance_fixture can_use_panel True
+wizard data pair-main ['count', 'dnshome', 'domain', 'mail', 'name', 'names', 'roles']
+wizard data pair-backup-mail ['dnshome', 'name', 'names', 'names2', 'roles']
+guidance-main 200 
+guidance-backup 200 
+main-domain 200 
+main-count 200 
+main-name 200 
+main-roles 200 
+main-names 200 
+main-dnshome 200 
+records 0 200
+main-mail 200 
+plan main 200 can_start True blockers [] ['01-service:nginx', '02-service:certbot', '03-service:mariadb', '04-service:php-fpm', '05-service:cron', '06-peer_join:second', '07-dns:local', '08-firewall:enable_and_persist', '09-infrastructure_dns:fa5.test', '10-access_dns:frankfurt.fa5.test', '11-panel_certificate:frankfurt.fa5.test', '12-dns_readiness:local', '13-mail_profile:webmail', '14-mail_profile:protected-mail', '15-mail_dns:fa5.test', '16-access_dns:mail.fa5.test', '17-mail_certificate:mail.fa5.test', '18-mail_enrollment:mail-renewal', '19-main_site:fa5.test', '20-verify:custom'] 
+== start main 14:32:02
+start-main 202 {
+ "id": "6d5571c18f08b137023acc44060fe1a2",
+ "panel_url": "https://frankfurt.fa5.test:1923/",
+ "phase": "queued",
+ "plan_id": "de41c91d302494e4edc2c397d86f4abe
+join-code 200 {
+ "address": "https://192.0.3.180:1923",
+ "attempts_left": 
+first server's panel port: 1923
+connect 200 {
+ "setup": {
+  "checks": [],
+  "draft": {
+   "database": "mariadb",
+   "dns_engine": "bind",
+   "dns_mode": "local",
+   "dns_publisher_endpoint": "https://frankfurt.fa5.test:1923",
+   "dns_role": "secondary",
+   "local_ip": "192.0.3.181",
+   "mail_hostname": "",
+   "main_dns_server": "peer",
+   "ma
+backup-roles 200 
+backup-name 200 
+backup-names 200 
+backup-dnshome 200 
+== joined server: the first server's mail name must be refused (check 3a) 14:32:13
+plan backup with mail.fa5.test 200 can_start False blockers ["server_setup_peer_mail_hostname_taken"] ['01-peer_names:https://192.0.3.180:1923', '02-service:nginx', '03-service:certbot', '04-service:mariadb', '05-service:php-fpm', '06-dns:local', '07-firewall:enable_and_persist', '08-access_dns:boston.fa5.test', '09-panel_certificate:boston.fa5.test', '10-dns_publisher:https://frankfurt.fa5.test:1923', '11-mail_profile:webmail', '12-mail_profile:protected-mail', '13-access_dns:mail.fa5.test', '14-mail_certificate:mail.fa5.test', '15-mail_enrollment:mail-renewal', '16-verify:custom'] 
+backup-names2 200 
+plan backup 200 can_start True blockers [] ['01-peer_names:https://192.0.3.180:1923', '02-service:nginx', '03-service:certbot', '04-service:mariadb', '05-service:php-fpm', '06-dns:local', '07-firewall:enable_and_persist', '08-access_dns:boston.fa5.test', '09-panel_certificate:boston.fa5.test', '10-dns_publisher:https://frankfurt.fa5.test:1923', '11-mail_profile:webmail', '12-mail_profile:protected-mail', '13-access_dns:mail.boston.fa5.test', '14-mail_certificate:mail.boston.fa5.test', '15-mail_enrollment:mail-renewal', '16-verify:custom'] 
+== start backup 14:32:20
+start-backup 202 {
+ "id": "2e764642b296a28c36ca9c58efce36a2",
+ "panel_url": "https://boston.fa5.test:1923/",
+ "phase": "queued",
+ "plan_id": "c4af171d2fe2a2d8f3163340d7ca6eeb",
+
+== first server's DNS page DURING the joined server's setup (check 8) 14:32:27
+14:32:32 caps=none None | dns_overview_join_waiting prerequisite who=You, on the second server. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: [('ns1.fa5.test', 'ns', 'A', 'unknown', None), ('frankfurt.fa5.test', 'panel', 'A', 'unknown', None), ('mail.fa5.test', 'mail', 'A', 'unknown', None)] | backup: running 02-service null
+14:32:53 caps=none None | dns_overview_join_waiting prerequisite who=You, on the second server. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: [('ns1.fa5.test', 'ns', 'A', 'unknown', None), ('frankfurt.fa5.test', 'panel', 'A', 'unknown', None), ('mail.fa5.test', 'mail', 'A', 'unknown', None)] | backup: running 03-service null
+14:33:18 caps=none None | dns_overview_join_waiting prerequisite who=You, on the second server. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: [('ns1.fa5.test', 'ns', 'A', 'unknown', None), ('frankfurt.fa5.test', 'panel', 'A', 'unknown', None), ('mail.fa5.test', 'mail', 'A', 'unknown', None)] | backup: running 04-service null
+14:34:09 caps=none None | dns_overview_join_waiting prerequisite who=You, on the second server. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: [('ns1.fa5.test', 'ns', 'A', 'unknown', None), ('frankfurt.fa5.test', 'panel', 'A', 'unknown', None), ('mail.fa5.test', 'mail', 'A', 'unknown', None)] | backup: running 05-service null
+14:34:34 caps=none None | dns_overview_join_waiting prerequisite who=You, on the second server. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: [('ns1.fa5.test', 'ns', 'A', 'unknown', None), ('frankfurt.fa5.test', 'panel', 'A', 'unknown', None), ('mail.fa5.test', 'mail', 'A', 'unknown', None)] | backup: waiting primary_dns {"code": "server_setup_primary_dns_required", "mes
+14:35:03 caps=pair_pending ns2.fa5.test | dns_overview_setup_running waiting who=Follow the setup page; it says when you need to act. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [('ns1.fa5.test', 'ns', 'A', 'unknown', None), ('ns2.fa5.test', 'ns', 'A', 'unknown', None), ('frankfurt.fa5.test', 'panel', 'A', 'unknown', None), ('mail.fa5.test', 'mail', 'A', 'unknown', None), ('boston.fa5.test', 'panel', 'A', 'unknown', None), ('mail.boston.fa5.test', 'mail', 'A', 'unknown', None)] | backup: running primary_dns {"code": "server_setup_primary_dns_required", "mes
+14:35:29 caps=ready ns2.fa5.test | dns_overview_setup_running waiting who=Follow the setup page; it says when you need to act. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [('ns1.fa5.test', 'ns', 'A', 'unknown', None), ('ns2.fa5.test', 'ns', 'A', 'unknown', None), ('frankfurt.fa5.test', 'panel', 'A', 'unknown', None), ('mail.fa5.test', 'mail', 'A', 'unknown', None), ('boston.fa5.test', 'panel', 'A', 'unknown', None), ('mail.boston.fa5.test', 'mail', 'A', 'unknown', None)] | backup: waiting access_dns {"code": "server_setup_access_dns_required", "messa
+14:35:51 caps=Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import json,sys; d=json.load(sys.stdin); b=json.loads(d["body"]); print(b.get("dns_server_state"), b.get("dns_server_peer"))
+                       ~~~~~~~~~^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0) | dns_overview_setup_running waiting who=Follow the setup page; it says when you need to act. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [('ns1.fa5.test', 'ns', 'A', 'unknown', None), ('ns2.fa5.test', 'ns', 'A', 'unknown', None), ('frankfurt.fa5.test', 'panel', 'A', 'unknown', None), ('mail.fa5.test', 'mail', 'A', 'unknown', None), ('boston.fa5.test', 'panel', 'A', 'unknown', None), ('mail.boston.fa5.test', 'mail', 'A', 'unknown', None)] | backup: waiting access_dns {"code": "server_setup_access_dns_required", "messa
+14:36:16 caps=ready ns2.fa5.test | dns_overview_setup_running waiting who=Follow the setup page; it says when you need to act. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [] | backup: running 11-mail_profile null
+14:37:48 caps=ready ns2.fa5.test | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [] | backup: running 11-mail_profile null
+14:39:18 caps=ready ns2.fa5.test | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [] | backup: waiting mail_profile {"code": "server_setup_host_busy", "message": "An
+14:39:40 caps=ready ns2.fa5.test | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [] | backup: running 12-mail_profile null
+14:41:34 caps=ready ns2.fa5.test | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [] | backup: running verification null
+14:41:57 caps=ready ns2.fa5.test | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [] | backup: succeeded complete null
+-- a6-a/backup 14:41:57
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-mail_profile=succeeded 12-mail_profile=succeeded 13-access_dns=succeeded 14-mail_certificate=succeeded 15-mail_enrollment=succeeded 16-verify=succeeded
+-- a6-a/main 14:41:57
+failed 13-mail_profile {"code": "firewall_sync_failed", "message": "The service changed successfully, but the active firewall policy could not be synchronized."}
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=failed 14-mail_profile=pending 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "13-mail_profile", "kind": "mail_profile", "operation_id": "00742cf2af83ea9b980531ac95ad20e7", "owner_id": "71b9cedaa44efa6dd5c9cd2c9d791261", "request_id": "abde9a209f4b0088df36434a35e37fbb", "status": "failed", "target": "webmail"}
+== after both finished: the DNS page settles by itself 14:41:57
+14:42:00 caps=ready | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: []
+14:42:32 caps=ready | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: []
+14:43:04 caps=ready | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: []
+14:43:36 caps=ready | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: []
+14:44:08 caps=ready | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: []
+14:44:40 caps=ready | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: []
+14:45:12 caps=ready | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: []
+14:45:44 caps=ready | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: []
+14:46:17 caps=ready | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: []
+14:46:49 caps=ready | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: []
+14:47:21 caps=ready | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: []
+14:47:53 caps=ready | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: []
+14:48:25 caps=ready | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: []
+14:48:57 caps=ready | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: []
+14:49:29 caps=ready | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: []
+14:50:01 caps=ready | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: []
+-- the joined server's DNS page
+dns_overview_mail_spreading waiting who=Nobody: waiting is enough. | [('this', 'backup', 'second', 'boston'), ('peer', 'main', 'first', 'frankfurt')] | not-ok: []
+failed 13-mail_profile {"code": "firewall_sync_failed", "message": "The service changed successfully, but the active firewall policy could not be synchronized."}
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=failed 14-mail_profile=pending 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "13-mail_profile", "kind": "mail_profile", "operation_id": "00742cf2af83ea9b980531ac95ad20e7", "owner_id": "71b9cedaa44efa6dd5c9cd2c9d791261", "request_id": "abde9a209f4b0088df36434a35e37fbb", "status": "failed", "target": "webmail"}
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-mail_profile=succeeded 12-mail_profile=succeeded 13-access_dns=succeeded 14-mail_certificate=succeeded 15-mail_enrollment=succeeded 16-verify=succeeded
+main role first peer_setup None inspection {"code": "ready", "message": "The deletion check between the two servers is set up: when a domain is deleted, the main DNS server confirms by itself that the backup removed it too. Nothing to do. It is native configuration on both servers; either owner can remove it with sudo /opt/celikpanel/dns-owner-tools/dns-peer-enroll secondary-revoke --engine pdns (backup) and primary-revoke --engine pdns (main).", "state": "ready", "vars": {"backup": "192.0.3.181", "main": "192.0.3.180"}}
+backup role second peer_setup None inspection {"code": "ready", "message": "The deletion check between the two servers is set up: when a domain is deleted, the main DNS server confirms by itself that the backup removed it too. Nothing to do. It is native configuration on both servers; either owner can remove it with sudo /opt/celikpanel/dns-owner-tools/dns-peer-enroll secondary-revoke --engine pdns (backup) and primary-revoke --engine pdns (main).", "state": "ready", "vars": {"backup": "192.0.3.181", "main": "192.0.3.180"}}
+main_site step: pending null
+== pair done 14:50:33

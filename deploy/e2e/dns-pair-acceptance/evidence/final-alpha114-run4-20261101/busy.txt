@@ -1,0 +1,5 @@
+START-ANSWER 409 {"error": "another server operation is active", "code": "PANEL_UPDATE_BUSY"}
+BUSY-PROCESSES 31054 /opt/celikpanel/bin/agent --internal-service-mutation-supervisor /run/celikpanel/service-mutation.lock /usr/bin/po | 31060 /usr/bin/postmap lmdb:/etc/postfix/vmailbox | 
+OP-RESULT busy681c.test {"create": 200, "mailbox": 200}
+BUSY-RESULT None stopped-rows=0
+PASS main: busy Agent at update start: panel never stopped; outcome recorded | {'start': {'status': 409, 'answer': {'error': 'another server operation is active', 'code': 'PANEL_UPDATE_BUSY'}}, 'timeline': [], 'final': None, 'live': 'active active\nactive/active port=200\ncat: /opt/celikpanel/release.commit: No such file or directory\n', 'watch': ['14:43:13 active/active port=200'], 'journal': ''}

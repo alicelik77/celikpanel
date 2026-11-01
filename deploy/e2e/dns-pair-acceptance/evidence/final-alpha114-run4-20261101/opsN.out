@@ -1,0 +1,75 @@
+== E-new-2(b): site shopn5.test, mailboxes, autoresponder on the fresh candidate Arch server 14:40:29
+dovecot 2.4.5-1
+pigeonhole 2.4.5-1
+lib90_sieve_plugin.so
+lib95_imap_filter_sieve_plugin.so
+lib95_imap_sieve_plugin.so
+
+
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/2/public_html", "Domain": "shopn5.test", "DomainID": 2, "FTPPassword": "[REDACTED]", "FTPUser": "shopn5_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 2, "TempDomain": ""}
+   site id 2
+200 {"id": 1, "success": true}
+200 {"id": 2, "success": true}
+   a6-n/main v0.1.0-alpha.114 7e5cd5ab0 schema 51
+PASS main: first save answers 200 with no warning | {'status': 200, 'warning': None, 'applied': True, 'code': None, 'reason': None, 'error': None}
+PASS main: server side after the first save (pigeonhole now installed, one restart) | {'before': '1793544036\ndovecot 2.4.5-1\npigeonhole 2.4.5-1\nActiveEnterTimestamp=Sun 2026-11-01 14:39:00 UTC\nMainPID=10750\n4\n', 'after': 'pigeonhole 2.4.5-1\nActiveEnterTimestamp=Sun 2026-11-01 14:39:00 UTC\nMainPID=10750\nactive\n-- doveadm log errors since the save\nNov 01 14:40:36.209871 Warning: master: SIGHUP received - reloading configuration\n-- journal\n2026-11-01T14:40:36+00:00 arch dovecot[10750]: master: Warning: SIGHUP received - reloading configuration\n'}
+PASS main: GET applied=true after the first save | {'state': {'applied': True, 'script': 'managed', 'sieve_available': True}}
+PASS main: autoresponder on bob@ saved | {'status': 200, 'state': {'applied': True, 'script': 'managed', 'sieve_available': True}, 'code': None}
+PASS main: GET shows applied=true right after the save | {'state': {'applied': True, 'script': 'managed', 'sieve_available': True}}
+PASS main: two mails from one sender -> 2 delivered, 1 reply, no bounce | {'delivered': 2, 'replies': 1, 'bounces_before': 0, 'bounces_after': 0, 'server': '      2 relay=mail.ar114.test[private/dovecot-lmtp]\n      2 status=sent\nlrwxrwxrwx 1 vmail vmail   36 Nov  1 14:40 dovecot.sieve -> sieve/celikpanel-autoresponder.sieve\ndrwx------ 1 vmail vmail   60 Nov  1 14:40 sieve\n1\n'}
+PASS main: Dovecot journal and doveconf -n clean | 0
+-- waiting for track R's updates before the portal names 115 14:41:47
+== E-new-5 on the candidate panel: lab 115 label, installer refusal, automatic rollback 14:41:47
+/root/a114-portal/site/releases/v0.1.0-alpha.115
+/root/a114-portal/site/releases/latest.txt
+/root/a114-portal/site/releases/v0.1.0-alpha.113
+/root/a114-portal/site/releases/v0.1.0-alpha.114
+v0.1.0-alpha.115
+v0.1.0-alpha.115
+   CELIKPANEL_LAB_ROLLBACK_PROBE=1
+PASS main: update check offers the candidate | {'status': 200, 'current': 'v0.1.0-alpha.114', 'target': 'v0.1.0-alpha.115', 'previous_attempt': None}
+PASS main: update accepted | {'status': 202, 'answer': {'accepted': True, 'status': 'queued'}}
+FINAL-STATUS {"found": true, "request_id": "082713b861d137e73c02cd568a9bc28d", "status": "failed", "target": {"version": "v0.1.0-alpha.115", "commit": "04e0494ece2cb5c25a32a9b60335b78e88f9ecf7", "sequence": "115", "os": "linux", "arch": "amd64", "archive_sha256": "b3ffef7a5e8804b26751c6e22394adffe637a2f981ef33efeb365128983b96a4", "archive_size": "68623024"}, "created_at": "2026-11-01T14:41:50.628045328Z", "updated_at": "2026-11-01T14:42:19.104857907Z", "summary": "!! CELIKPANEL_UPDATE_FAILURE code=update_failed state=rolled_back reason=installer stopped: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) detail=", "phase": "rolled_back", "plan": {"steps": [{"id": "download", "state": "done", "started_at": "2026-11-01T14:41:50Z"}, {"id": "verify", "state": "done", "finished_at": "2026-11-01T14:41:53Z"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}], "expected_restart_seconds": 90, "restart_bound_seconds": 360}}
+FAIL main: update ends rolled_back | {'timeline': ['10s running/None', 'unreachable', 'unreachable', 'unreachable', '50s failed/rolled_back'], 'status': 'failed', 'summary': '!! CELIKPANEL_UPDATE_FAILURE code=update_failed state=rolled_back reason=installer stopped: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) detail='}
+SUMMARY-LINE-LENGTH 200 | ends: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=rolled_back reason=installer stopped: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) detail=
+CHECK-AFTER {"available": true, "current_version": "v0.1.0-alpha.114", "previous_attempt": {"request_id": "082713b861d137e73c02cd568a9bc28d", "phase": "recovered", "finished_at": "2026-11-01T14:42:40Z"}, "status": null, "reason": null}
+PASS main: version/schema before -> after; port | {'before': {'version': 'v0.1.0-alpha.114', 'commit': '7e5cd5ab0597a98f9a3cb6c539168c6a70a0886a', 'schema_version': 51}, 'after': {'version': 'v0.1.0-alpha.114', 'commit': '7e5cd5ab0597a98f9a3cb6c539168c6a70a0886a', 'schema_version': 51}, 'server': 'CELIKPANEL_LISTEN=:1923\nLISTEN 0 4096 *:1923 *:*\nactive active active active\n'}
+   a6-n/main v0.1.0-alpha.114 7e5cd5ab0 schema 51
+active
+active
+   celik : PWD=/home/celik ; USER=root ; COMMAND=/usr/bin/bash -c 'echo CELIKPANEL_LAB_ROLLBACK_PROBE=1 >> /etc/celikpanel/panel.env; tail -1 /etc/celikpanel/panel.env'
+2026/11/01 14:42:19 System update worker failed: reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) detail=ERROR / HATA: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) / panel.env:5 desteklenmeyen anahtar: CELIKPANEL_LAB_ROLLBACK_PROBE (satr silin, sonra yen
+
+cat: /opt/celikpanel/release.commit: No such file or directory
+
+Traceback (most recent call last):
+  File "/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab4/shots.py", line 13, in <module>
+    items = json.loads(pathlib.Path(a.items).read_text()) if a.items.endswith(".json") else json.loads(a.items)
+                                                                                            ~~~~~~~~~~^^^^^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 361, in raw_decode
+    obj, end = self.scan_once(s, idx)
+               ~~~~~~~~~~~~~~^^^^^^^^
+json.decoder.JSONDecodeError: Invalid \escape: line 1 column 267 (char 266)
+-- trigger removed; the normal update to 115-lab started while the Agent creates a site with mail (H2 extra) 14:42:51
+   trigger lines left: 0
+START-ANSWER 409 {"error": "another server operation is active", "code": "PANEL_UPDATE_BUSY"}
+BUSY-PROCESSES 31054 /opt/celikpanel/bin/agent --internal-service-mutation-supervisor /run/celikpanel/service-mutation.lock /usr/bin/po | 31060 /usr/bin/postmap lmdb:/etc/postfix/vmailbox | 
+OP-RESULT busy681c.test {"create": 200, "mailbox": 200}
+BUSY-RESULT None stopped-rows=0
+PASS main: busy Agent at update start: panel never stopped; outcome recorded | {'start': {'status': 409, 'answer': {'error': 'another server operation is active', 'code': 'PANEL_UPDATE_BUSY'}}, 'timeline': [], 'final': None, 'live': 'active active\nactive/active port=200\ncat: /opt/celikpanel/release.commit: No such file or directory\n', 'watch': ['14:43:13 active/active port=200'], 'journal': ''}
+   a6-n/main v0.1.0-alpha.114 7e5cd5ab0 schema 51
+-- the busy-time update did not end succeeded; the normal update once more after 70 s 14:43:29
+PASS main: update check offers the candidate | {'status': 200, 'current': 'v0.1.0-alpha.114', 'target': 'v0.1.0-alpha.115', 'previous_attempt': {'request_id': '082713b861d137e73c02cd568a9bc28d', 'phase': 'recovered', 'finished_at': '2026-11-01T14:42:40Z'}}
+PASS main: update accepted | {'status': 202, 'answer': {'accepted': True, 'status': 'queued'}}
+FINAL-STATUS {"found": true, "request_id": "902aaec4ad96f74ee2cf15988f647cea", "status": "succeeded", "target": {"version": "v0.1.0-alpha.115", "commit": "04e0494ece2cb5c25a32a9b60335b78e88f9ecf7", "sequence": "115", "os": "linux", "arch": "amd64", "archive_sha256": "b3ffef7a5e8804b26751c6e22394adffe637a2f981ef33efeb365128983b96a4", "archive_size": "68623024"}, "created_at": "2026-11-01T14:44:39.601209698Z", "updated_at": "2026-11-01T14:45:25.852334842Z", "plan": {"steps": [{"id": "download", "state": "done", "started_at": "2026-11-01T14:44:39Z"}, {"id": "verify", "state": "done"}, {"id": "prepare", "state": "done"}, {"id": "restart", "state": "done", "finished_at": "2026-11-01T14:45:15Z"}, {"id": "confirm", "state": "done", "started_at": "2026-11-01T14:45:15Z", "finished_at": "2026-11-01T14:45:25Z", "elapsed_seconds": 10}], "expected_restart_seconds": 90, "restart_bound_seconds": 360}}
+PASS main: update ends succeeded | {'timeline': ['10s running/None', 'unreachable', 'unreachable', '40s running/verifying', '50s succeeded/None'], 'status': 'succeeded', 'summary': None}
+CHECK-AFTER {"available": false, "current_version": "v0.1.0-alpha.115", "previous_attempt": null, "status": null, "reason": null}
+PASS main: version/schema before -> after; port | {'before': {'version': 'v0.1.0-alpha.114', 'commit': '7e5cd5ab0597a98f9a3cb6c539168c6a70a0886a', 'schema_version': 51}, 'after': {'version': 'v0.1.0-alpha.115', 'commit': '04e0494ece2cb5c25a32a9b60335b78e88f9ecf7', 'schema_version': 51}, 'server': 'CELIKPANEL_LISTEN=:1923\nLISTEN 0 4096 *:1923 *:*\nactive active active active\n'}
+   a6-n/main v0.1.0-alpha.115 04e0494ec schema 51
+== N done 14:45:41

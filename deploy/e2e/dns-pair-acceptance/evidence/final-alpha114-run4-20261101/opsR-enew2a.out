@@ -1,0 +1,24 @@
+== H2 journal after the update (read only) 14:41:57
+2026-11-01T14:39:33+00:00 arch systemd[1]: celikpanel-panel.service: Main process exited, code=killed, status=9/KILL
+2026-11-01T14:39:33+00:00 arch systemd[1]: celikpanel-panel.service: Failed with result 'signal'.
+2026-11-01T14:40:29+00:00 arch systemd[1]: celikpanel-panel.service: Main process exited, code=killed, status=9/KILL
+2026-11-01T14:40:29+00:00 arch systemd[1]: celikpanel-panel.service: Failed with result 'signal'.
+● celikpanel-self-update-a98b91c7b35c6affd50eee283e12c3fb.service loaded failed failed [systemd-run] /opt/celikpanel/b
+
+
+== E-new-2(a): first autoresponder save on the updated Arch server 14:41:57
+error: package 'pigeonhole' was not found
+dovecot 2.4.5-1
+ActiveEnterTimestamp=Sun 2026-11-01 14:37:45 UTC
+
+
+PASS main: first save answers 200 with the one-restart warning | {'status': 200, 'warning': "Dovecot was restarted once: it had been running since before its Sieve plugin was installed, and a running Dovecot cannot take a new plugin's settings by reloading. Mail programs reconnect by themselves.; ", 'applied': True, 'code': None, 'reason': None, 'error': None}
+PASS main: server side after the first save (pigeonhole now installed, one restart) | {'before': "1793544117\nerror: package 'pigeonhole' was not found\ndovecot 2.4.5-1\nActiveEnterTimestamp=Sun 2026-11-01 14:37:45 UTC\nMainPID=10505\n0\n", 'after': 'pigeonhole 2.4.5-1\nActiveEnterTimestamp=Sun 2026-11-01 14:41:59 UTC\nMainPID=43834\nactive\n-- doveadm log errors since the save\n-- journal\n2026-11-01T14:41:58+00:00 arch dovecot[10505]: master: Warning: SIGHUP received - reloading configuration\n2026-11-01T14:41:58+00:00 arch dovecot[10505]: master: Error: Failed to read configuration: Failed to read config: Error in configuration file /etc/dovecot/conf.d/96-celikpanel-sieve.conf line 23: Unk\n2026-11-01T14:41:59+00:00 arch systemd[1]: Stopping Dovecot IMAP/POP3 email server...\n2026-11-01T14:41:59+00:00 arch systemd[1]: Stopped Dovecot IMAP/POP3 email server.\n2026-11-01T14:41:59+00:00 arch systemd[1]: Starting Dovecot IMAP/POP3 email server...\n2026-11-01T14:41:59+00:00
+PASS main: GET applied=true after the first save | {'state': {'applied': True, 'script': 'managed', 'sieve_available': True}}
+-- the next save (and mail: 2 delivered, 1 reply, no bounce) 14:42:05
+PASS main: autoresponder on bob@ saved | {'status': 200, 'state': {'applied': True, 'script': 'managed', 'sieve_available': True}, 'code': None}
+PASS main: GET shows applied=true right after the save | {'state': {'applied': True, 'script': 'managed', 'sieve_available': True}}
+PASS main: two mails from one sender -> 2 delivered, 1 reply, no bounce | {'delivered': 2, 'replies': 1, 'bounces_before': 0, 'bounces_after': 0, 'server': '      2 relay=mail.ar113.test[private/dovecot-lmtp]\n      2 status=sent\nlrwxrwxrwx 1 vmail vmail   36 Nov  1 14:42 dovecot.sieve -> sieve/celikpanel-autoresponder.sieve\ndrwx------ 1 vmail vmail   60 Nov  1 14:42 sieve\n1\n'}
+PASS main: Dovecot journal and doveconf -n clean | 0
+PASS main: no new Dovecot error after the second save, and a further reload is clean | {'after_second_save': 'rc=0\n', 'reload': '-- all since 1793544183\nNov 01 14:43:03.931421 Warning: master: SIGHUP received - reloading configuration\n'}
+== R done 14:43:08
