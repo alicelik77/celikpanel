@@ -164,3 +164,18 @@ func TestNormalizeMailAutoresponderRefusesBadInput(t *testing.T) {
 		t.Fatalf("%+v %v", got, err)
 	}
 }
+
+// Lab run 4 (Arch): "Dovecot was restarted once…" ended in a stray "; "
+// because an empty second warning was still joined.
+func TestJoinWarningAddsNothingForAnEmptyWarning(t *testing.T) {
+	for _, test := range []struct{ current, next, want string }{
+		{autoresponderDovecotRestartedWarning, "", autoresponderDovecotRestartedWarning},
+		{"", "b", "b"},
+		{"a", "b", "a; b"},
+		{"", "", ""},
+	} {
+		if got := joinWarning(test.current, test.next); got != test.want {
+			t.Fatalf("joinWarning(%q, %q) = %q, want %q", test.current, test.next, got, test.want)
+		}
+	}
+}
