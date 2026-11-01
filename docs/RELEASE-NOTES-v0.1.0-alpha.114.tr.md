@@ -58,7 +58,7 @@ veya alpha.112 sunucularını güncelleme reddeder; onları yeniden kurun.
   nedeniyle reddedilir.
 - "Planım", hesabın kendi sınırlarını ve kullanımını Panel'de ve Hesabım'da
   gösterir. Kotaya takılan reddedilmiş bir eylem buraya yönlendirir.
-- "Olarak giriş yap" hesap verebilirdir: işlem günlüğü kimin kim adına
+- "Olarak giriş yap" hesap verebilirdir: Denetim günlüğü kimin kim adına
   işlem yaptığını kaydeder, bir şerit işlemi yapanı adlandırır ve oturum
   işlemi yapanın yetkisiyle biter.
 - E-postayla parolamı unuttum: her ad için tek yanıt, hız sınırları, tek
@@ -161,12 +161,12 @@ veya alpha.112 sunucularını güncelleme reddeder; onları yeniden kurun.
 - Bir Türkçe metin dosyasındaki paket boyutu sınırı web derlemesini
   başarısız kılacaktı; dosya bölündü. Kullanıma etkisi yok.
 - Ekranlar (ilk incelemenin 24 bulgusu ve ikincinin 4'ü): sihirbaz, Panel,
-  Alan adları, Planlar, Ayarlar, Kullanıcılar, Bileşenler ve işlem günlüğünde
+  Alan adları, Planlar, Ayarlar, Kullanıcılar, Bileşenler ve Denetim günlüğünde
   metin ve düğmeler. Örnekler: Panel "`<alan adı>` için henüz web sitesi yok"
   der ve Alan adı ekle'yi açan bir düğme sunar (katılan sunucuda değil);
   yöneticinin kendi çalışma alanında plan sınırı ve gizli bir sayı yoktur;
   Alan adı ekle, bu sunucu adın DNS'ini sunuyorsa sertifika kutusu işaretli
-  başlar; işlem günlüğü eylem kodları yerine sözcükler gösterir; tek
+  başlar; Denetim günlüğü eylem kodları yerine sözcükler gösterir; tek
   sunuculuk kurulum artık "katılacak sunucu"dan söz etmez.
 - Her değişiklik onu gösteren her ekranı yeniden okutur; bu yüzden bir eylemden
   sonra liste kendiliğinden güncellenir ve kimsenin sayfayı yenilemesi gerekmez.
