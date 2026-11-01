@@ -9,7 +9,7 @@ default panel port for fresh installs. **It is a candidate, written on
 2026-11-01; it is not published and nothing from it is on an installed
 server. Only the owner updates installed panels, from the panel's own update
 screen.** Branch `release/alpha114-prep`, from the integration candidate
-`release/alpha114-integration` at `d70c1d7ce`; previous release commit
+`release/alpha114-integration` at `1bd1793fe`; previous release commit
 `d3f3a323da46ce8f8dca5ad4385666c5428c353e`.
 
 ## Who should use it, and why
@@ -232,8 +232,8 @@ the update; reinstall them.
 
 ## Evidence
 
-Tests on `d70c1d7ce`: Go 69 packages ok, 7901 tests passed; Agent 5083 passed,
-0 failed; deploy contracts pass; web 2215 passed, type check and the build
+Tests on `1bd1793fe`: Go 69 packages ok, 7901 tests passed; Agent 5084 passed,
+0 failed; deploy contracts pass; web 2216 passed, type check and the build
 with the bundle budget pass. Sequence 114, schema 51 (migrations 047 to 051:
 panel port change, accounts, plans and resellers, account recovery, protected
 folders, redirects and recovery codes, mail autoresponders; all additive).

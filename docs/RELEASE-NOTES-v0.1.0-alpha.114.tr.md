@@ -8,7 +8,7 @@ birkaç küçük özelliği, sahibin elindeki işletim sistemi güncellemelerini
 yeni kurulumlar için yeni bir varsayılan panel portunu ekler. **Bu bir aday
 sürümdür, 2026-11-01'de yazıldı; yayımlanmadı ve kurulu hiçbir sunucuda
 değildir. Kurulu panelleri yalnız sahibi, panelin kendi güncelleme ekranından
-günceller.** Dal `release/alpha114-prep`, `d70c1d7ce` üzerindeki entegrasyon
+günceller.** Dal `release/alpha114-prep`, `1bd1793fe` üzerindeki entegrasyon
 adayı `release/alpha114-integration`'dan; önceki sürüm kaydı
 `d3f3a323da46ce8f8dca5ad4385666c5428c353e`.
 
@@ -229,8 +229,8 @@ veya alpha.112 sunucularını güncelleme reddeder; onları yeniden kurun.
 
 ## Kanıt
 
-`d70c1d7ce` üzerindeki testler: Go 69 paket tamam, 7901 test geçti; Agent 5083
-geçti, 0 başarısız; dağıtım sözleşmeleri geçti; web 2215 geçti, tür kontrolü ve
+`1bd1793fe` üzerindeki testler: Go 69 paket tamam, 7901 test geçti; Agent 5084
+geçti, 0 başarısız; dağıtım sözleşmeleri geçti; web 2216 geçti, tür kontrolü ve
 paket bütçeli derleme geçti. Sıra 114, şema 51 (047'den 051'e geçişler: panel
 portu değişikliği, hesaplar-planlar-bayiler, hesap kurtarma, korumalı
 klasörler-yönlendirmeler-kurtarma kodları, posta otomatik yanıtları; hepsi
