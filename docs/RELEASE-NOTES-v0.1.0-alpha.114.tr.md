@@ -173,6 +173,10 @@ veya alpha.112 sunucularını güncelleme reddeder; onları yeniden kurun.
 - Dovecot posta kutusunu kabul etmediği için ofis dışı yanıtı reddedildiğinde
   sonraki ileti yine de geri dönebiliyordu. Postfix artık ofis dışı
   yönlendirmelerindeki her değişiklikten sonra yeniden yüklenir.
+- Katılan sunucu, silinen bir alan adının ana DNS sunucusunda kaldırılmasını
+  beklerken ekran, ana sunucu yalnız yavaşken ulaşılamıyor diyebiliyor ya da
+  hiç neden vermiyordu. Artık ana sunucu isteği aldıysa "onaylanıyor", yalnız
+  ulaşılamadığında "ulaşılamıyor" der; biten silme listeden kendiliğinden çıkar.
 - Bir Türkçe metin dosyasındaki paket boyutu sınırı web derlemesini
   başarısız kılacaktı; dosya bölündü. Kullanıma etkisi yok.
 - Ekranlar (ilk incelemenin 24 bulgusu ve ikincinin 4'ü): sihirbaz, Panel,
@@ -245,10 +249,26 @@ Laboratuvar kabul koşuları (özetler `lab/alpha114-acceptance` dalında,
   Koşu 2'nin geçenlerinden: bir PowerDNS ilk sunucusunda ve çiftin iki
   sunucusunda 113'ten 114'e güncelleme (şema 46'dan 51'e, port 2083 korundu,
   geri alma doğrulandı, ikinci güncelleme başarılı).
-- Koşu 3 hedefli kontrol: bekliyor
-<!-- RUN3 -->
+- Koşu 3'ten 6'ya kısa, hedefli kontrollerdi (`final-alpha114-run3..run6-20261101`);
+  her biri ilk ciddi hatada durdu, ardından düzeltildi:
+  - Koşu 3 (`aa84d2307`): Debian 13 ve Ubuntu 24.04'te posta kurulumu hiç
+    bitmiyordu (Dovecot yeniden yükleme kontrolü); Arch'ta geri almadan hemen
+    sonra reddedilen güncelleme paneli durmuş bırakıyordu.
+  - Koşu 4 (`449701242`): koşu 3'ün iki kusuru geçti. Arch'ta ofis dışı yanıtı
+    güncellenmiş ve yeni kurulmuş sunucuda geçti. Debian 13 kurulumu meşgul
+    güvenlik duvarı adımında durdu; geri alma kaydının ayrıntısı boştu.
+  - Koşu 5 (`d70c1d7ce`): iki sunucu da kurulumu bitirdi; Dovecot durmuşken
+    kontrolü geçti. Reddedilen bir ofis dışı kaydından sonra bir ileti geri döndü.
+  - Koşu 6 (`69df35d0a`): ofis dışı yanıtı Debian 13 ve Ubuntu 24.04'te, bir
+    retten hemen sonra da geçti. Katılan sunucuda alan adı silme her durumda
+    kendiliğinden bitti ve DNS'i kaldırdı: normalde, ilk sunucunun paneli
+    durmuşken ve katılan sunucu yeniden başlarken. Beklerken gösterilen neden
+    yanlış ya da eksikti; bu metin sonradan düzeltildi ve kaynakta sınandı,
+    laboratuvarda değil.
 
-Koşu 2'den sonra yapılan düzeltmeler kaynakta sınanmıştır (bileşen ve birim
-testleri, Arch ve Debian 13 üzerinde Dovecot 2.4'ün yalıtılmış kontrolleri).
-Koşu 3 kaydedilene kadar laboratuvarda kanıtlanmış değildir. Sıra 114, şema 51.
-Hiçbir P0 işi kapanmaz veya ilerlemez; aday kabul değildir.
+Son düzeltmelerden sonra laboratuvarda, sahibin kısa son deneme seçimiyle
+denenmeyenler: son turun ekranları (katılan sunucu "Web sitesi barındır"
+sunmaz, DNS yazılımı adları, Denetim günlüğü sözcükleri), unutulan yönetici
+komutunun terminalde çalıştırılması ve gerçek bir başarısız güncellemenin geri
+alma ayrıntısı. Bunlar kaynakta sınanmıştır. Sıra 114, şema 51. Hiçbir P0 işi
+kapanmaz veya ilerlemez; aday kabul değildir.

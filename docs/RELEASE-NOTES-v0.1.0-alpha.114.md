@@ -172,6 +172,11 @@ the update; reinstall them.
 - When an out-of-office reply was refused because Dovecot did not accept the
   mailbox, the next message could still bounce. Postfix is now reloaded after
   every change to the out-of-office routes.
+- While a joined server waited for the main DNS server to remove a deleted
+  domain, the screen could say the main server was unreachable while it was
+  only slow, or give no reason at all. It now says "confirming" when the main
+  server got the request, "unreachable" only when it could not be reached,
+  and a finished deletion leaves the list by itself.
 - A build-size limit on one Turkish text file would have failed the web build;
   the file was split. No effect on use.
 - Screens (24 findings of the first review and 4 of the second): wording and
@@ -246,10 +251,26 @@ Lab acceptance runs (summaries are on branch `lab/alpha114-acceptance`, under
   Among run 2's passes: the update 113 to 114 on a PowerDNS first server and
   both pair servers (schema 46 to 51, port 2083 kept, rollback verified, a
   second update succeeded).
-- Run 3 targeted check: pending
-<!-- RUN3 -->
+- Runs 3 to 6 were short, targeted checks (`final-alpha114-run3..run6-20261101`),
+  each stopped at its first serious failure, then fixed:
+  - Run 3 (`aa84d2307`): mail setup never finished on Debian 13 and Ubuntu
+    24.04 (Dovecot reload check), and a refused update right after a rollback
+    left the panel stopped on Arch.
+  - Run 4 (`449701242`): both run 3 defects passed. The Arch out-of-office
+    reply passed on an updated and a fresh server. Debian 13 setup stopped on
+    a busy firewall step; the rollback record had an empty detail.
+  - Run 5 (`d70c1d7ce`): both servers finished setup; Dovecot-stopped passed.
+    One mail bounced after a refused out-of-office save.
+  - Run 6 (`69df35d0a`): the out-of-office reply passed on Debian 13 and
+    Ubuntu 24.04, including right after a refusal. Deleting a domain on the
+    joined server finished by itself and removed its DNS in every case:
+    normally, with the first server's panel stopped, and across a reboot of
+    the joined server. The reason shown while it waited was wrong or missing;
+    that wording was fixed afterwards and is tested in source, not in the lab.
 
-The fixes made after run 2 are tested in source (component and unit tests,
-isolated checks of Dovecot 2.4 on Arch and Debian 13). Until run 3 is
-recorded, they are not proven in the lab. Sequence 114, schema 51. No P0 item
-is closed or advanced; a candidate is not acceptance.
+Not covered in the lab after the last fixes, by the owner's choice of a short
+final run: the screens of the last round (a joined server offers no "Host a
+website", DNS software names, audit log words), the forgotten-admin command
+in a terminal, and the rollback detail of a real failed update. They are
+tested in source. Sequence 114, schema 51. No P0 item is closed or advanced;
+a candidate is not acceptance.
