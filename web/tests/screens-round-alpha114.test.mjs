@@ -58,7 +58,7 @@ test('S2: the phone step strip wraps inside the page and never sets a width of i
 
 test('S3, S12: one way to host the main-domain website; "Add a website" once one exists', () => {
   // The card is the one action; the sentence and the bottom button do not repeat it.
-  assert.match(wizard, /readyDraft\.main_site === 'elsewhere' && readyDomain && !offerFirstSite && <p/);
+  assert.match(wizard, /readyDraft\.main_site === 'elsewhere' && readyDomain && !firstSiteWanted && <p/);
   assert.match(wizard, /offerFirstSite \? 'setup\.nextDashboard' : readyDraft\.main_site === 'here' \|\| readySiteDone \? 'setup\.nextWebsiteMore' : 'setup\.nextWebsite'/);
   assert.match(wizard, /const readyNextPath = offerFirstSite && nextPath === '\/domains' && !isNode \? '\/' : nextPath;/);
   assert.match(wizard, /<Link to=\{readyNextPath\}/);
@@ -78,8 +78,9 @@ test('S13: the ready headline counts the open items shown, the joined server inc
 });
 
 test('S4, S5: the Dashboard says a domain has no website yet, with one button; "Components" is one word', () => {
-  const dashboard = src('Dashboard');
-  assert.match(dashboard, /standaloneZoneNames\.map\(\(zone\) => \(/);
+  const dashboard = src('Dashboard') + src('NoWebsiteCards');
+  assert.match(dashboard, /<NoWebsiteCards zones=\{standaloneZoneNames\} \/>/);
+  assert.match(dashboard, /zones\.map\(\(zone\) => \(/);
   assert.match(dashboard, /navigate\(`\/domains\?host=\$\{encodeURIComponent\(zone\)\}`\)/);
   bothHave(['dashboard.noWebsite.title', 'dashboard.noWebsite.help', 'dashboard.noWebsite.action', 'dashboard.installService', 'dashboard.openComponents']);
   assert.equal(en['dashboard.noWebsite.title'].replace('{domain}', 'example.test'), 'example.test has no website yet');

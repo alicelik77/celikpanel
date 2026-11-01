@@ -116,11 +116,16 @@ export function SetupRolesStep({ roles, onRoles, catalog, server, serverCount, c
     </fieldset>;
 }
 
-export function SetupNamesStep({ draft, mail, web, mainDomain, ip, ownDNS, joined, recordsStep = true, onChange }: {
+export function SetupNamesStep({ draft, mail, web, mainDomain, ip, ownDNS, joined, joinPlanned = true, recordsStep = true, onChange }: {
     draft: ServerSetupDraft; mail: boolean; web: boolean; mainDomain: string; ip: string; ownDNS: boolean;
     // The note names the Existing records step: said only when this plan has it
     // (never on a joined server or a server without its own zone, alpha.114).
     recordsStep?: boolean;
+    // Whether a second server is planned to join (two servers, this one first).
+    // The mail help names "the server that will join" only then: a one-server
+    // setup and the joined server itself never read it (alpha.114, lab run 2).
+    // Katilacak ikinci sunucu planliysa yardim onu anar.
+    joinPlanned?: boolean;
     // A server joined by code (alpha.114): the first server's names, and the
     // mail name proposed for this server. / Koda katilan sunucu.
     joined?: { names: SetupJoinedNames; server: string; keepsMainMail: boolean; proposal: string };
@@ -131,7 +136,7 @@ export function SetupNamesStep({ draft, mail, web, mainDomain, ip, ownDNS, joine
     const mailInvalid = joined && setupJoinedMailTaken(draft.mail_hostname, joined.names) ? t('setup.v6.names.mailTaken', { name: draft.mail_hostname, proposal: joined.proposal }) : outside(draft.mail_hostname);
     const mailHelp = joined?.keepsMainMail && joined.names.firstMail
         ? t('setup.v6.names.mailJoinedHelp', { first: joined.names.firstMail, proposal: joined.proposal, panel: draft.panel_domain || joined.proposal })
-        : t('setup.v2.names.mailHelp', { domain: mainDomain || 'example.com' });
+        : t(joinPlanned && !joined ? 'setup.v2.names.mailHelp' : 'setup.v8.names.mailHelpOwn', { domain: mainDomain || 'example.com' });
     return <section className="space-y-5" aria-labelledby="setup-names-title">
         <h2 id="setup-names-title" className="text-xl font-semibold">{t('setup.v2.names.title')}</h2>
         <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v2.names.help')}</p>
@@ -438,10 +443,10 @@ export function SetupJoinPanel({ onJoined, disabled, serverIP }: { onJoined: (se
 
 // The link state of this server (both sides): read once when the wizard
 // opens and again after a join. / Bu sunucunun baglanti durumu.
-export function useSetupPeerLink(enabled: boolean): { link: SetupPeerLink | null; known: boolean; refresh: () => void } {
+export function useSetupPeerLink(enabled: boolean): { link: SetupPeerLink | null; role: 'none' | 'first' | 'second' | null; known: boolean; refresh: () => void } {
     const remote = useRemote(enabled ? '/api/v1/setup/peer' : null, decodeSetupPeerView);
     const view = remote.remote.state === 'known' ? remote.remote.value : null;
-    return { link: view?.role === 'second' && view.link ? view.link : null, known: remote.remote.state === 'known', refresh: () => { void remote.retry(); } };
+    return { link: view?.role === 'second' && view.link ? view.link : null, role: view?.role ?? null, known: remote.remote.state === 'known', refresh: () => { void remote.retry(); } };
 }
 
 // A joined second server's shared answers, fixed by the first server.

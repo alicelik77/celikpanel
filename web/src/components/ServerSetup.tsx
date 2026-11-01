@@ -312,6 +312,14 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     // answers come from the join. / Kodla katilmis ikinci sunucu.
     const peer = useSetupPeerLink(!['ready'].includes(initial.status));
     const joinedLink = peer.link;
+    // The ready screen does not read the link while the wizard runs, but it must
+    // know this server joined the first one: the main domain's website lives on
+    // the first server, so a joined server never offers to host it (alpha.114,
+    // lab run 2). Read only when the setup was already ready on opening.
+    // Hazir ekrani, bu sunucunun ilk sunucuya katildigini bilmelidir.
+    const readyPeer = useSetupPeerLink(initial.status === 'ready');
+    const joinedHere = !!joinedLink || readyPeer.role === 'second';
+    const peerKnown = initial.status === 'ready' ? readyPeer.known : peer.known;
     const [step, setStep] = useState<Step>(restoredEditor?.step || (initial.status === 'new' || initial.status === 'legacy' || (initial.extension && initial.status === 'draft') || !initial.draft.main_domain ? 'domain' : 'dnshome'));
     const [plan, setPlan] = useState<ServerSetupPlan | null>(null);
     const [execution, setExecution] = useState<ServerSetupExecution | null>(null);
@@ -992,7 +1000,8 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     snapshot.checks.filter(check => check.advisory && check.state !== 'ready').forEach(check => readyTasks.push({ id: `check-${check.id}`, text: checkSentence(check) }));
     const readyServer = setupServerLabel(t, readyDraft.short_name);
     const readySiteDone = !!readySite && readySite.site !== 'failed' && ['issued', 'active'].includes(readySite.certificate);
-    const offerFirstSite = !!readyDomain && setupEffectiveComponents(readyDraft, catalog).has('nginx') && (readyDraft.main_site !== 'here' || (readySite?.site === 'failed' && readySite.code !== 'server_setup_main_site_dns_only'));
+    const firstSiteWanted = !!readyDomain && setupEffectiveComponents(readyDraft, catalog).has('nginx') && (readyDraft.main_site !== 'here' || (readySite?.site === 'failed' && readySite.code !== 'server_setup_main_site_dns_only'));
+    const offerFirstSite = firstSiteWanted && !joinedHere && peerKnown;
 
     // One way to the same action: when the ready screen offers "Host a website",
     // the bottom button leads away from it; a site that exists makes the next one "another".
@@ -1017,7 +1026,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                 {task.to && task.label && <Link to={task.to} className="mt-2 inline-flex font-medium text-primary underline underline-offset-4">{t(task.label)}</Link>}
             </li>)}</ol>}
             {readySiteDone && <p className="flex items-start gap-2 text-sm leading-6" data-setup-site="done"><Check className="mt-1 h-4 w-4 shrink-0 text-success" aria-hidden="true" /><span>{t('setup.v7.site.done', { domain: readySite!.domain })}</span></p>}
-            {readyDraft.main_site === 'elsewhere' && readyDomain && !offerFirstSite && <p className="max-w-2xl text-sm leading-6 text-fg-muted" data-setup-site="elsewhere">{t('setup.v7.site.elsewhere.help', { domain: readyDomain })}</p>}
+            {readyDraft.main_site === 'elsewhere' && readyDomain && !firstSiteWanted && <p className="max-w-2xl text-sm leading-6 text-fg-muted" data-setup-site="elsewhere">{t('setup.v7.site.elsewhere.help', { domain: readyDomain })}</p>}
             {/* The main DNS server keeps the setup link open until the second server finished (P7). */}
             <SetupJoinCard joinPending={false} finished onPending={setReadyPeerPending} />
             {/* The optional first site: the main domain prefilled in the existing Add domain form, when setup did not create it; nothing is created unless the owner confirms there. */}
@@ -1139,7 +1148,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                     {step === 'components' && isNode && <div className="mt-6 max-w-md"><SetupNodeVersion value={draft.node_version} onChange={value => change('node_version', value)} /></div>}
                     {step === 'components' && emptySelectionInvalid && !roles.dns && <p role="alert" className="mt-4 text-sm text-danger">{t('setup.components.chooseRequired')}</p>}
                     {step === 'components' && catalog?.inventory_state === 'unknown' && <div className="mt-4"><Button type="button" disabled={busy} onClick={reloadCatalog}>{t('common.retry')}</Button></div>}
-                    {step === 'names' && <fieldset disabled={busy}><SetupNamesStep draft={draft} mail={isMail} web={roles.web} mainDomain={mainDomain} ip={panelDNSIP || snapshot.server_ip || ''} ownDNS={localPrimary} joined={joinedNames && joinedLink ? { names: joinedNames, server: joinedLink.first.short_name || joinedLink.first.panel_domain, keepsMainMail: firstKeepsMainMail, proposal: proposal.mail } : undefined} recordsStep={steps.includes('records')} onChange={(key, value) => change(key, value)} /></fieldset>}
+                    {step === 'names' && <fieldset disabled={busy}><SetupNamesStep draft={draft} mail={isMail} web={roles.web} mainDomain={mainDomain} ip={panelDNSIP || snapshot.server_ip || ''} ownDNS={localPrimary} joined={joinedNames && joinedLink ? { names: joinedNames, server: joinedLink.first.short_name || joinedLink.first.panel_domain, keepsMainMail: firstKeepsMainMail, proposal: proposal.mail } : undefined} recordsStep={steps.includes('records')} joinPlanned={joinFlow && !joinedLink} onChange={(key, value) => change(key, value)} /></fieldset>}
                     {step === 'records' && <fieldset disabled={busy}><SetupRecordsStep draft={draft} update={updateDraft} mainDomain={mainDomain}
                         own={[draft.panel_domain, draft.mail_hostname, draft.ns1, draft.ns2, draft.infrastructure_dns?.peer_panel_domain || '', draft.infrastructure_dns?.peer_mail_hostname || ''].filter(Boolean)} /></fieldset>}
                     {step === 'mail' && <fieldset disabled={busy}><SetupMailStep draft={draft} update={updateDraft} mainDomain={mainDomain} ip4={draft.dns_mode === 'local' ? draft.local_ip : snapshot.server_ip || ''} ip6={snapshot.server_ipv6 || ''} joined={joinedLink && firstKeepsMainMail ? { server: joinedLink.first.short_name || joinedLink.first.panel_domain, first: joinedLink.first.mail_hostname || joinedLink.first.panel_domain } : undefined} /></fieldset>}

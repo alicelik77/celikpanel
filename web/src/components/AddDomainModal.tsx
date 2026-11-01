@@ -33,6 +33,13 @@ export interface SiteRecordsOutcome {
     ipv4: string;
 }
 
+// The product name of the DNS software the capabilities report by id
+// ("pdns", "bind"); an id this screen does not know is not shown at all.
+// DNS yazilimi kimligi yerine urun adi; bilinmeyen kimlik hic gosterilmez.
+export function dnsServerName(id: string): string {
+    return id === 'pdns' ? 'PowerDNS' : id === 'bind' ? 'BIND' : '';
+}
+
 function readSiteRecords(value: unknown): SiteRecordsOutcome | undefined {
     if (!value || typeof value !== 'object') return undefined;
     const site = (value as Record<string, unknown>).site_records;
@@ -572,9 +579,9 @@ export function AddDomainModal({ onClose, onSuccess, initialDomain = '', sslByDe
                     yerinden oynamaz. */}
                 <div className="min-h-5">
                     {dns.state === 'checking' && <Checking label={t('dns.checkingServer')} />}
-                    {caps && caps.dns_server !== '' && (
+                    {caps && dnsServerName(caps.dns_server) !== '' && (
                         <p className="text-xs leading-5 text-fg-subtle">
-                            {t('domains.add.dnsServed', { server: caps.dns_server })}
+                            {t('domains.add.dnsServed', { server: dnsServerName(caps.dns_server) })}
                         </p>
                     )}
                 </div>
