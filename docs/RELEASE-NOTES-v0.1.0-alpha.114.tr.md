@@ -8,7 +8,7 @@ birkaç küçük özelliği, sahibin elindeki işletim sistemi güncellemelerini
 yeni kurulumlar için yeni bir varsayılan panel portunu ekler. **Bu bir aday
 sürümdür, 2026-11-01'de yazıldı; yayımlanmadı ve kurulu hiçbir sunucuda
 değildir. Kurulu panelleri yalnız sahibi, panelin kendi güncelleme ekranından
-günceller.** Dal `release/alpha114-prep`, `aa84d2307` üzerindeki entegrasyon
+günceller.** Dal `release/alpha114-prep`, `d70c1d7ce` üzerindeki entegrasyon
 adayı `release/alpha114-integration`'dan; önceki sürüm kaydı
 `d3f3a323da46ce8f8dca5ad4385666c5428c353e`.
 
@@ -157,7 +157,19 @@ veya alpha.112 sunucularını güncelleme reddeder; onları yeniden kurun.
   bitirir. Durum hiçbir zaman "bilinmiyor" demez.
 - Bir güncelleme geri alınıp doğrulandıktan sonra güncelleme kaydı "başarısız,
   kurtarma gerekli" diyor ve neden boş kalıyordu. Artık önceki sürümün
-  çalıştığını söyler ve yükleyicinin nedenini verir.
+  çalıştığını söyler, yükleyicinin nedenini verir ve yükleyicinin son satırını
+  ayrıntı olarak saklar (yollar, adresler ve gizli bilgiler çıkarılır).
+- Debian 13 ve Ubuntu 24.04: yeni Dovecot yeniden yükleme kontrolüyle posta
+  kurulumu hiç bitmiyor, ardından Agent her değişikliği bekletiyordu. Kontrol
+  artık yalnız Dovecot'un kendi günlüğü bir reddi kaydettiğinde başarısız olur
+  ve hem 2.3 hem 2.4 günlük sırasını okur.
+- Bir geri almadan birkaç saniye sonra başlatılan güncelleme paneli durmuş
+  bırakabiliyordu. Reddedilen güncelleme artık paneli ve Agent'ı çalışır
+  bırakır; Agent kısa bir işlemi bitirirken güncelleme bir dakikaya kadar
+  bekler.
+- Debian 13: DKIM kurulurken ilk sunucunun kurulumu web posta adımında
+  "güvenlik duvarı eşitlemesi başarısız" ile durabiliyordu. Güvenlik duvarı
+  adımı artık sunucu meşgulken bekler (10 dakikaya kadar) ve bunu söyler.
 - Bir Türkçe metin dosyasındaki paket boyutu sınırı web derlemesini
   başarısız kılacaktı; dosya bölündü. Kullanıma etkisi yok.
 - Ekranlar (ilk incelemenin 24 bulgusu ve ikincinin 4'ü): sihirbaz, Panel,
@@ -210,7 +222,7 @@ veya alpha.112 sunucularını güncelleme reddeder; onları yeniden kurun.
 
 ## Kanıt
 
-`aa84d2307` üzerindeki testler: Go 69 paket tamam, 7897 test geçti; Agent 5081
+`d70c1d7ce` üzerindeki testler: Go 69 paket tamam, 7901 test geçti; Agent 5083
 geçti, 0 başarısız; dağıtım sözleşmeleri geçti; web 2215 geçti, tür kontrolü ve
 paket bütçeli derleme geçti. Sıra 114, şema 51 (047'den 051'e geçişler: panel
 portu değişikliği, hesaplar-planlar-bayiler, hesap kurtarma, korumalı

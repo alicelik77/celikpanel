@@ -9,7 +9,7 @@ default panel port for fresh installs. **It is a candidate, written on
 2026-11-01; it is not published and nothing from it is on an installed
 server. Only the owner updates installed panels, from the panel's own update
 screen.** Branch `release/alpha114-prep`, from the integration candidate
-`release/alpha114-integration` at `aa84d2307`; previous release commit
+`release/alpha114-integration` at `d70c1d7ce`; previous release commit
 `d3f3a323da46ce8f8dca5ad4385666c5428c353e`.
 
 ## Who should use it, and why
@@ -157,7 +157,18 @@ the update; reinstall them.
   status never says "unknown".
 - After an update was rolled back and verified, the update record said
   "failed, recovery required" with an empty cause. It now says the previous
-  version runs and gives the installer's reason.
+  version runs, gives the installer's reason and keeps the installer's last
+  line as the detail (paths, addresses and secrets removed).
+- Debian 13 and Ubuntu 24.04: with the new Dovecot reload check, mail setup
+  never finished and the Agent then held every change. The check now fails
+  only when Dovecot's own log records a refusal, and it reads both the 2.3 and
+  the 2.4 log order.
+- An update started a few seconds after a rollback could leave the panel
+  stopped. A refused update now leaves the panel and the Agent running, and
+  the update waits up to a minute while the Agent finishes a short operation.
+- Debian 13: the first server's setup could stop at the webmail step with
+  "firewall sync failed" while DKIM was being installed. The firewall step now
+  waits while the server is busy (up to 10 minutes) and says so.
 - A build-size limit on one Turkish text file would have failed the web build;
   the file was split. No effect on use.
 - Screens (24 findings of the first review and 4 of the second): wording and
@@ -213,7 +224,7 @@ the update; reinstall them.
 
 ## Evidence
 
-Tests on `aa84d2307`: Go 69 packages ok, 7897 tests passed; Agent 5081 passed,
+Tests on `d70c1d7ce`: Go 69 packages ok, 7901 tests passed; Agent 5083 passed,
 0 failed; deploy contracts pass; web 2215 passed, type check and the build
 with the bundle budget pass. Sequence 114, schema 51 (migrations 047 to 051:
 panel port change, accounts, plans and resellers, account recovery, protected
