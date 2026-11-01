@@ -19,6 +19,48 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 > kayıtlar saat tarihini kullanır; D-029 dışında 10, 11 veya 12 Ekim 2026 tarihli bir
 > kayıt gerçektir.
 
+## D-041 · Yeni kurulum 1923 panel portunda dinler; kurulu sunucu, sahibi değiştirene kadar portunu korur
+
+*2026-10-31 (sahibin kararı) · Kaynak değişikliği `feat/panel-port-1923` dalında, v0.1.0-alpha.114 adayında; yayımlanmadı, kurulu panel güncellenmedi*
+
+**Neden.** 2083 cPanel'in portudur. İnsanların cPanel sunucusu olarak da
+tanıyabileceği bir sunucu aynı numarayı paylaşmamalı ve yeni bir CelikPanel
+sahibi önce onu değiştirmek zorunda kalmamalı.
+
+**Karar.**
+- Yeni kurulum **1923**'te dinler. alpha.114'ten önce kurulan sunucu adresi
+  `/etc/celikpanel/panel.env` içinde korur. Bu dosya tek doğruluk kaynağıdır:
+  `install.sh` onu bir kez yazar, güncelleme onu hiçbir zaman yeniden yazmaz
+  (`update.sh` korunan adresi önce ondan okur). Sahibin Frankfurt ve Boston
+  sunucuları 2083'te kalır.
+- Sahibi portu Ayarlar, Panel, Panel portu'ndan değiştirir. Panel önce yeni
+  portu bağlar, güvenlik duvarında açar ve ikisinde de yanıt verir. Sahibi yeni
+  adresten onaylar. Ancak ondan sonra Agent tek `CELIKPANEL_LISTEN` satırını,
+  başlangıçta gördüğü tam dosya üzerinde yeniden yazar ve eski port kapanır.
+  Zaman aşımı (10 dakika), iptal ya da yeniden başlatma eski portu korur.
+  Sahibi araya dosyayı düzenlediyse bu bildirilir ve dosyanın üzerine hiçbir
+  zaman yazılmaz.
+- Bir eşin portu her zaman bildirdiği adresten gelir, bu sunucunun
+  varsayılanından değil; katılma adresi portu taşımak zorundadır.
+- Bir çiftin parçası olan ya da kendisine sunucu katılmış olan sunucu
+  değişikliği reddeder (`PANEL_PORT_PAIRED`). Diğer sunucu bu sunucunun adresini
+  saklar ve ona yeni adresi bildirmenin henüz bir yolu yoktur. Sahibin çifti,
+  bir eş uç noktası güncellemesi olana kadar 2083'te kalır (alpha.115 için
+  planlandı).
+
+**Dayanıklılık sözleşmesi (D-025).** Etkilenenler: kalıcı yapılandırma kanıtı
+(`panel.env`), bir erişim kapısı (dinleme adresi) ve ayrıcalıklı bir Agent
+talebi (`Agent.SetPanelListenPortV1`). Şema: `047_panel_port_change.sql`
+(alpha.114 paketleri boyunca 047'den 051'e numaralandı; bu 047'dir), tek
+ekleyici tablo. Kurtarma: sahibin yeni adresten onayından önceki her adım eski
+portu yerinde bırakır; tek dosya yazımı işleme noktasıdır. Kanıt: bileşen
+testleri ve laboratuvar koşu 1 ve 2 (port değişikliği, çift reddi, 2083'te
+alpha.113 ilk sunucusu ve 1923'te aday katılan sunucudan oluşan karışık çift).
+Kalan açıklar: deneme sırasında yeniden başlatma ve port geri alma
+laboratuvarda çalıştırılmadı, kurulu sunucuda hiçbir ölçüm yapılmadı.
+
+---
+
 ## D-040 · Web sitesi sertifikasını Panel değil, işletim sisteminin certbot'u yeniler
 
 *30 Ekim 2026 (saat tarihi) · Kaynakta bulunan bir ilke ihlalinin düzeltmesi; `fix/site-cert-native-renewal` dalında kaynakta, bileşen testli ve yerel bir test CA'ya karşı atılabilir bir chroot denemesi; yayımlanmadı, kurulu sunucuda ölçülmedi. Ayrıntı: [D-040 (İngilizce)](DECISIONS.md)*
