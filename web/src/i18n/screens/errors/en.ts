@@ -113,6 +113,7 @@ export const enErrorsScreens = {
     'err.WEBMAIL_UNINSTALL_PARTIAL': 'Roundcube is no longer detected, but its uninstall cleanup and finalization could not be fully verified. Use Retry webmail cleanup in this dialog to finish safely.',
     'err.SERVICE_STATE_REFRESH_FAILED': 'The operation outcome and current service state could not be verified, so the page assumes neither. CelikPanel checks the components again by itself while the Dashboard, the Components page or a component’s page is open; open this page again after that check.',
     'err.firewall_sync_failed': 'The service changed, but the active firewall policy could not be synchronized.',
+    'err.firewall_sync_host_busy': 'The service changed, but this server stayed busy (another change or the package manager), so the firewall was not updated and nothing was started for it. You, the owner: let the other change finish, then run this operation again (in server setup: Review a revised plan); that updates the firewall.',
     'err.mail_profile_confirmation_required': 'Review and accept the mail profile plan before starting.',
     'err.mail_profile_server_hostname_invalid': 'The mail hostname must be a fully qualified domain name, such as mail.example.com.',
     'err.mail_profile_server_hostname_required': 'This server does not have a fully qualified name yet and CelikPanel has none saved for it. Enter the name the mail server should answer as, such as mail.example.com; the installation gives this server that name.',

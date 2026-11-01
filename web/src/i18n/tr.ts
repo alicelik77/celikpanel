@@ -273,6 +273,7 @@ export const tr: Record<ShellKey, string> = {
     'services.operation.phase.scanning': "Kurulu servisler denetleniyor…",
     'services.operation.phase.syncing': "İlgili servis yapılandırması uygulanıyor…",
     'services.operation.phase.syncing_dns': "Gerekli DNS yapılandırması yayımlanıyor…",
+    'services.operation.phase.firewall_waiting': "Bekleniyor: sunucuda başka bir değişiklik ya da paket yöneticisi sürüyor; güvenlik duvarı güncellemesi bekliyor ve hiçbir şey başlatmadı. Kimsenin bir şey yapması gerekmiyor: sunucu boşalınca kendiliğinden devam eder.",
     'services.operation.failed': 'Kurulum sunucuda başarısız oldu.',
     'services.operation.phase.queued': 'Sunucuda sıraya alındı…',
     'services.operation.phase.running': 'Kurulum devam ediyor…',
