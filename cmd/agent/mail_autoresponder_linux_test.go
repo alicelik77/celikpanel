@@ -26,6 +26,13 @@ type autoresponderFixture struct {
 	probes        []string
 	probeErr      error
 	dovecotState  string
+	// The verified reload's error, the restarts and their error.
+	reloadErr  error
+	restarts   int
+	restartErr error
+	// staleSocket: the listener file answers although Dovecot is stopped
+	// (the socket seam); used to show that it is not asked first.
+	staleSocket bool
 }
 
 func newAutoresponderFixture(t *testing.T) *autoresponderFixture {
@@ -59,11 +66,13 @@ func newAutoresponderFixture(t *testing.T) *autoresponderFixture {
 		openRoot            func() (int, error)
 		probe               func(context.Context, string) error
 		sleep               func(time.Duration)
+		restart             func(context.Context) (string, error)
+		running             func(context.Context) (bool, error)
 	}{autoresponderDovecotConfPath, autoresponderTransportPath, autoresponderFileExists, autoresponderPkgFamily,
 		autoresponderInstallPackages, autoresponderDovecotIs24, autoresponderApplyDovecotCfg, autoresponderReloadDovecot,
 		autoresponderReloadPostfix, autoresponderPostconfGet, autoresponderPostconfSet, autoresponderMapType,
 		autoresponderSocketReady, dovecotInstalledForRepair, autoresponderOpenMailRoot,
-		autoresponderLMTPProbe, autoresponderSleep}
+		autoresponderLMTPProbe, autoresponderSleep, autoresponderRestartDovecot, autoresponderDovecotRunning}
 	t.Cleanup(func() {
 		autoresponderDovecotConfPath, autoresponderTransportPath = saved.conf, saved.transportPath
 		autoresponderFileExists, autoresponderPkgFamily = saved.exists, saved.family
@@ -74,6 +83,7 @@ func newAutoresponderFixture(t *testing.T) *autoresponderFixture {
 		autoresponderSocketReady, dovecotInstalledForRepair = saved.socket, saved.installedRepair
 		autoresponderOpenMailRoot = saved.openRoot
 		autoresponderLMTPProbe, autoresponderSleep = saved.probe, saved.sleep
+		autoresponderRestartDovecot, autoresponderDovecotRunning = saved.restart, saved.running
 	})
 	autoresponderDovecotConfPath = filepath.Join(dir, "96-celikpanel-sieve.conf")
 	autoresponderTransportPath = filepath.Join(dir, "celikpanel_transport")
@@ -96,15 +106,29 @@ func newAutoresponderFixture(t *testing.T) *autoresponderFixture {
 	}
 	f.dovecotState = mailServiceReloaded
 	autoresponderReloadDovecot = func(context.Context) (string, error) {
+		if f.reloadErr != nil {
+			return "", f.reloadErr
+		}
 		f.reloaded = f.dovecotState != mailServiceNotRunning
 		return f.dovecotState, nil
+	}
+	autoresponderRestartDovecot = func(context.Context) (string, error) {
+		f.restarts++
+		if f.restartErr != nil {
+			return "", f.restartErr
+		}
+		f.reloaded = true
+		return mailServiceRestarted, nil
+	}
+	autoresponderDovecotRunning = func(context.Context) (bool, error) {
+		return f.dovecotState != mailServiceNotRunning, nil
 	}
 	autoresponderLMTPProbe = func(_ context.Context, email string) error {
 		f.probes = append(f.probes, email)
 		return f.probeErr
 	}
 	autoresponderSleep = func(time.Duration) {}
-	autoresponderSocketReady = func() bool { return f.reloaded }
+	autoresponderSocketReady = func() bool { return f.reloaded || f.staleSocket }
 	autoresponderReloadPostfix = func(context.Context) (string, error) {
 		f.postfixReload++
 		return mailServiceReloaded, nil
@@ -358,12 +382,84 @@ func TestAutoresponderNeverRoutesAMailboxLMTPRefuses(t *testing.T) {
 func TestAutoresponderRefusesWhileDovecotIsStopped(t *testing.T) {
 	f := newAutoresponderFixture(t)
 	f.dovecotState = mailServiceNotRunning
+	// A stopped Dovecot leaves its listener file behind (lab run 2,
+	// E-new-3): systemd's answer comes first, before any package, file or
+	// reload.
+	f.staleSocket = true
 	resp := f.set(t, transport.MailAutoresponder{Enabled: true, Subject: "Away", Message: "x"})
 	if resp.Applied || resp.Refusal != transport.AutoresponderRefusedDovecotStopped || !strings.Contains(resp.Detail, "systemctl start dovecot") {
 		t.Fatalf("stopped Dovecot: %+v", resp)
 	}
 	if routes, _ := os.ReadFile(autoresponderTransportPath); len(routes) != 0 || len(f.probes) != 0 {
 		t.Fatalf("routed without asking LMTP: %q probes=%v", routes, f.probes)
+	}
+	if len(f.installed) != 0 || f.confWrites != 0 || f.restarts != 0 {
+		t.Fatalf("changed something while Dovecot is stopped: installed=%v writes=%d restarts=%d", f.installed, f.confWrites, f.restarts)
+	}
+	if _, err := os.Stat(autoresponderDovecotConfPath); !os.IsNotExist(err) {
+		t.Fatalf("drop-in written while Dovecot is stopped: %v", err)
+	}
+}
+
+// Arch, Dovecot 2.4.5 (lab run 2, E-new-2): pigeonhole was installed while
+// Dovecot ran, and the running Dovecot refused every reload naming
+// sieve_script. The refusal is seen (not systemctl's exit 0) and answered by
+// one restart.
+func TestAutoresponderRestartsADovecotThatPredatesItsSievePlugin(t *testing.T) {
+	f := newAutoresponderFixture(t)
+	f.reloadErr = &mailServiceError{service: "Dovecot", stage: mailServiceStageReload,
+		detail: "Dovecot kept its previous settings: Error in configuration file /etc/dovecot/conf.d/96-celikpanel-sieve.conf line 23: Unknown section name: sieve_script"}
+	resp := f.set(t, transport.MailAutoresponder{Enabled: true, Subject: "Away", Message: "x"})
+	if !resp.Applied || f.restarts != 1 || !strings.Contains(resp.Warning, "restarted once") {
+		t.Fatalf("restart answer: %+v restarts=%d", resp, f.restarts)
+	}
+	if conf, _ := os.ReadFile(autoresponderDovecotConfPath); string(conf) != renderAutoresponderDovecotConf(true) {
+		t.Fatalf("drop-in after the restart:\n%s", conf)
+	}
+	if routes, _ := os.ReadFile(autoresponderTransportPath); !strings.Contains(string(routes), "me@example.test") {
+		t.Fatalf("route: %q", routes)
+	}
+}
+
+// Any other refused reload keeps Dovecot on its previous settings: the drop-in
+// written now is put back and no mailbox is routed. An unreadable result is
+// not success, and a restart that fails also puts the file back and starts
+// Dovecot again.
+func TestAutoresponderPutsTheDropInBackWhenDovecotRefusesIt(t *testing.T) {
+	f := newAutoresponderFixture(t)
+	f.reloadErr = &mailServiceError{service: "Dovecot", stage: mailServiceStageReload,
+		detail: "Dovecot kept its previous settings: Error in configuration file /etc/dovecot/conf.d/10-auth.conf line 4: Invalid value"}
+	resp := f.set(t, transport.MailAutoresponder{Enabled: true, Subject: "Away", Message: "x"})
+	if resp.Applied || resp.Refusal != transport.AutoresponderRefusedDovecotRejected || f.restarts != 0 ||
+		!strings.Contains(resp.Detail, "Invalid value") || !strings.Contains(resp.Detail, "put the previous") ||
+		strings.Contains(resp.Detail, "protocols") {
+		t.Fatalf("refused reload: %+v restarts=%d", resp, f.restarts)
+	}
+	if _, err := os.Stat(autoresponderDovecotConfPath); !os.IsNotExist(err) {
+		t.Fatalf("drop-in kept after the refused reload: %v", err)
+	}
+	if routes, _ := os.ReadFile(autoresponderTransportPath); len(routes) != 0 || len(f.probes) != 0 {
+		t.Fatalf("routed: %q probes=%v", routes, f.probes)
+	}
+
+	f.reloadErr = &mailServiceError{service: "Dovecot", stage: mailServiceStageVerify, unknown: true, detail: "doveadm log errors could not be read"}
+	resp = f.set(t, transport.MailAutoresponder{Enabled: true, Subject: "Away", Message: "x"})
+	if resp.Applied || resp.Refusal != transport.AutoresponderRefusedDovecotRejected || !strings.Contains(resp.Detail, "could not confirm") {
+		t.Fatalf("unknown reload: %+v", resp)
+	}
+	if _, err := os.Stat(autoresponderDovecotConfPath); !os.IsNotExist(err) {
+		t.Fatalf("drop-in kept after an unconfirmed reload: %v", err)
+	}
+
+	f.reloadErr = &mailServiceError{service: "Dovecot", stage: mailServiceStageReload, detail: "Unknown setting: sieve_script_x"}
+	f.restartErr = errors.New("Dovecot is not running with the new configuration")
+	resp = f.set(t, transport.MailAutoresponder{Enabled: true, Subject: "Away", Message: "x"})
+	if resp.Applied || resp.Refusal != transport.AutoresponderRefusedDovecotRejected || f.restarts != 2 ||
+		!strings.Contains(resp.Detail, "did not restart") {
+		t.Fatalf("failed restart: %+v restarts=%d", resp, f.restarts)
+	}
+	if _, err := os.Stat(autoresponderDovecotConfPath); !os.IsNotExist(err) {
+		t.Fatalf("drop-in kept after the failed restart: %v", err)
 	}
 }
 
