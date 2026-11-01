@@ -927,9 +927,15 @@ type webmailAddressRollbackError struct{ err error }
 
 func (e *webmailAddressRollbackError) Error() string { return e.err.Error() }
 
+// joinWarning joins two warnings; an empty one adds nothing (lab run 4: the
+// autoresponder's "Dovecot was restarted once…" ended in a stray "; " when
+// the transport step had no warning of its own).
 func joinWarning(current, next string) string {
 	if current == "" {
 		return next
+	}
+	if next == "" {
+		return current
 	}
 	return current + "; " + next
 }

@@ -32,7 +32,8 @@ func TestPanelUpdateStatusSaysRolledBackOnlyAfterAVerifiedRollback(t *testing.T)
 	if body.Status != "failed" || body.Phase != panelUpdatePhaseRolledBack {
 		t.Fatalf("status/phase = %q/%q", body.Status, body.Phase)
 	}
-	if strings.Contains(body.Summary, "recovery_required") || !strings.Contains(body.Summary, "state=rolled_back reason="+cause+" detail=") {
+	// Lab run 4, I2: the installer's own line stays as the detail.
+	if strings.Contains(body.Summary, "recovery_required") || !strings.HasSuffix(body.Summary, "state=rolled_back reason="+cause+" detail=ERROR / HATA: panel.env line 3 has an unsupported key") {
 		t.Fatalf("summary = %q", body.Summary)
 	}
 

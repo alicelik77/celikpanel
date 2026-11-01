@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -583,19 +584,97 @@ func parseFirewallChildPhase(phase string) (firewallChildIdentity, bool) {
 // outer agent job is exact terminal success. The process mutation lock remains
 // held by launchServiceOperationWithAuditMode through this call and panel-row
 // terminalization.
+//
+// A busy host is a wait, not a failure (lab run 4, I1): when the Agent refuses
+// the firewall child at admission because another change or the package
+// manager is still running, and its ledger holds no job for that child's
+// request (proven: nothing ran), the sync is tried again with a fresh read of
+// the status and ports, every firewallSyncHostBusyInterval for at most
+// firewallSyncHostBusyBound. Between tries the row shows the waiting phase and
+// only the launcher's serviceMutationMu stays held (as during the whole
+// operation; panelFirewallMu is released). What keeps the host busy is the
+// package manager or a job under its own Agent lease, not this lock; the wait
+// is bounded either way. Past the bound the operation fails with
+// firewall_sync_host_busy naming the cause. A joined, terminal-uncertain or
+// unobservable refusal keeps firewall_sync_failed and its reconciliation.
+// Meşgul sunucu beklemedir: hiçbir şey başlamadığı kanıtlanırsa güvenlik
+// duvarı eşitlemesi sınırlı süre yeniden denenir.
 func (p *Panel) syncFirewallAfterOperation(op serviceOperation) *serviceOperationFailure {
+	return p.syncFirewallAfterOperationWithin(op, firewallSyncHostBusyBound)
+}
+
+// Bounds of the busy wait above; variables only so tests can shorten them.
+var (
+	firewallSyncHostBusyBound    = 10 * time.Minute
+	firewallSyncHostBusyInterval = 5 * time.Second
+)
+
+const firewallSyncHostBusyCode = "firewall_sync_host_busy"
+
+func (p *Panel) syncFirewallAfterOperationWithin(op serviceOperation, bound time.Duration) *serviceOperationFailure {
 	if !serviceOperationNeedsFirewallSync(op) {
 		return nil
 	}
-	syncCtx, cancelSync := context.WithTimeout(
-		context.Background(),
-		panelMutationRecoveryTimeout,
-	)
-	defer cancelSync()
-	if err := p.syncFirewallForServiceOperation(syncCtx, op); err != nil {
-		return firewallSyncFailure(err)
+	started := time.Now()
+	for attempts := 1; ; attempts++ {
+		syncCtx, cancelSync := context.WithTimeout(
+			context.Background(),
+			panelMutationRecoveryTimeout,
+		)
+		requestID, err := p.syncFirewallChildForServiceOperation(syncCtx, op)
+		if err == nil {
+			cancelSync()
+			return nil
+		}
+		refused := p.firewallChildRefusedAtAdmission(syncCtx, requestID, err)
+		waiting := refused && time.Since(started) < bound
+		var phaseErr error
+		if waiting {
+			phaseErr = p.updateServiceOperationPhase(syncCtx, op.ID, serviceOperationFirewallWaitPhase(op))
+		}
+		cancelSync()
+		switch {
+		case !refused:
+			return firewallSyncFailure(err)
+		case !waiting:
+			return firewallSyncHostStayedBusy(err, attempts)
+		case phaseErr != nil:
+			return operationAdvanceFailure(phaseErr)
+		}
+		log.Printf("service operation %s (%s): the firewall update waits: the Agent refused it at admission (%s) and nothing ran; trying again (attempt %d)",
+			op.ID, op.ServiceID, hostMutationBusyLogDetail(err), attempts)
+		time.Sleep(firewallSyncHostBusyInterval)
 	}
-	return nil
+}
+
+// firewallChildRefusedAtAdmission is the same proof the setup firewall step
+// uses (serverSetupAgentRequestRefusedBusy): a pure busy refusal of the child
+// that was sent, and no job for its request in the Agent's ledger.
+func (p *Panel) firewallChildRefusedAtAdmission(ctx context.Context, requestID string, err error) bool {
+	if requestID == "" || !hostMutationRefusedAsBusy(err) || !isPureWrappedError(err, errHostMutationBusy) {
+		return false
+	}
+	job, statusErr := p.statusAgentMutation(ctx, requestID)
+	return statusErr == nil && job == nil
+}
+
+func serviceOperationFirewallWaitPhase(op serviceOperation) string {
+	if op.Kind == serviceOperationKindMailProfileInstall {
+		return mailProfilePhase(op.ServiceID, "firewall_waiting")
+	}
+	return "firewall_waiting"
+}
+
+// firewallSyncHostStayedBusy: past the bound, a verified failure that names
+// what kept the host busy; the firewall was never changed by this operation.
+func firewallSyncHostStayedBusy(cause error, attempts int) *serviceOperationFailure {
+	return operationFailure(
+		firewallSyncHostBusyCode,
+		"The service changed successfully, but this server stayed busy ("+serverSetupHostBusyCause(hostMutationBusyReason(cause))+
+			"), so the firewall was not updated and nothing was started for it (attempts: "+strconv.Itoa(attempts)+"). "+
+			"You, the owner: let the other change finish, then run this operation again (in server setup: Review a revised plan); that updates the firewall.",
+		cause,
+	)
 }
 
 // syncMailTLSAfterOperation runs only after the mail-profile agent job is
@@ -1990,7 +2069,9 @@ func (p *Panel) recoverInterruptedServiceOperations(ctx context.Context) (int64,
 				return 0, err
 			}
 		}
-		if syncFailure := p.syncFirewallAfterOperation(*op); syncFailure != nil {
+		// Startup recovery tries once: a busy host fails the operation with
+		// its coded cause instead of holding startup for the busy wait.
+		if syncFailure := p.syncFirewallAfterOperationWithin(*op, 0); syncFailure != nil {
 			if result == nil {
 				result = serviceOperationResult{}
 			}

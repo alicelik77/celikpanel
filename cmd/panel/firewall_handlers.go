@@ -432,44 +432,57 @@ func (p *Panel) syncFirewallForServiceOperation(
 	ctx context.Context,
 	op serviceOperation,
 ) error {
+	_, err := p.syncFirewallChildForServiceOperation(ctx, op)
+	return err
+}
+
+// syncFirewallChildForServiceOperation is syncFirewallForServiceOperation that
+// also returns the request identity of the firewall child it sent to the
+// Agent (empty when none was sent), so a busy refusal can be proven to have
+// started nothing (lab run 4, I1).
+// Ajana gönderilen güvenlik duvarı alt işinin kimliğini de döndürür.
+func (p *Panel) syncFirewallChildForServiceOperation(
+	ctx context.Context,
+	op serviceOperation,
+) (string, error) {
 	if !serviceOperationNeedsFirewallSync(op) {
-		return errors.New("service operation does not require firewall synchronization")
+		return "", errors.New("service operation does not require firewall synchronization")
 	}
 	if _, err := panelMutationBinding(ctx); err == nil {
-		return errFirewallNestedMutation
+		return "", errFirewallNestedMutation
 	}
 	panelFirewallMu.Lock()
 	defer panelFirewallMu.Unlock()
 
 	var status FirewallStatusResp
 	if err := p.callAgentContext(ctx, "Agent.FirewallStatus", &transport.Empty{}, &status); err != nil {
-		return fmt.Errorf("read firewall status: %w", err)
+		return "", fmt.Errorf("read firewall status: %w", err)
 	}
 	if status.Error != "" {
-		return fmt.Errorf("read firewall status: %s", status.Error)
+		return "", fmt.Errorf("read firewall status: %s", status.Error)
 	}
 	if !status.Enabled {
-		return p.updateServiceOperationPhase(ctx, op.ID, serviceOperationFirewallPhase(op))
+		return "", p.updateServiceOperationPhase(ctx, op.ID, serviceOperationFirewallPhase(op))
 	}
 	tcp, udp, err := p.desiredFirewallPorts()
 	if err != nil {
-		return err
+		return "", err
 	}
 	tcp, udp, err = p.setupChildFirewallPorts(ctx, op, status, tcp, udp)
 	if err != nil {
-		return err
+		return "", err
 	}
 	commitment, err := mutationpayload.CanonicalFirewallApply(true, false, tcp, udp)
 	if err != nil {
-		return fmt.Errorf("canonicalize firewall policy: %w", err)
+		return "", fmt.Errorf("canonicalize firewall policy: %w", err)
 	}
 	requestID, err := newServiceOperationID()
 	if err != nil {
-		return fmt.Errorf("create firewall child request identity: %w", err)
+		return "", fmt.Errorf("create firewall child request identity: %w", err)
 	}
 	ownerID, err := newServiceOperationID()
 	if err != nil {
-		return fmt.Errorf("create firewall child owner identity: %w", err)
+		return "", fmt.Errorf("create firewall child owner identity: %w", err)
 	}
 	phase, err := encodeFirewallChildPhase(firewallChildIdentity{
 		RequestID: requestID,
@@ -477,21 +490,21 @@ func (p *Panel) syncFirewallForServiceOperation(
 		Qualifier: commitment.Qualifier,
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
 	if err := p.updateServiceOperationPhase(ctx, op.ID, phase); err != nil {
-		return err
+		return "", err
 	}
 	response, err := p.applyCanonicalFirewallV2Identity(
 		ctx, "firewall_sync", commitment, requestID, ownerID,
 	)
 	if err != nil {
-		return err
+		return requestID, err
 	}
 	if response.Error != "" {
-		return &firewallAgentResponseError{message: response.Error}
+		return requestID, &firewallAgentResponseError{message: response.Error}
 	}
-	return nil
+	return requestID, nil
 }
 
 // handleFirewall: GET status; POST {enabled} turns on/off and the explicit

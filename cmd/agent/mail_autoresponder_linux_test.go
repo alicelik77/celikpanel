@@ -410,7 +410,8 @@ func TestAutoresponderRestartsADovecotThatPredatesItsSievePlugin(t *testing.T) {
 	f.reloadErr = &mailServiceError{service: "Dovecot", stage: mailServiceStageReload,
 		detail: "Dovecot kept its previous settings: Error in configuration file /etc/dovecot/conf.d/96-celikpanel-sieve.conf line 23: Unknown section name: sieve_script"}
 	resp := f.set(t, transport.MailAutoresponder{Enabled: true, Subject: "Away", Message: "x"})
-	if !resp.Applied || f.restarts != 1 || !strings.Contains(resp.Warning, "restarted once") {
+	// Lab run 4: the note ended in a stray "; " when the route step had none.
+	if !resp.Applied || f.restarts != 1 || !strings.Contains(resp.Warning, "restarted once") || strings.HasSuffix(strings.TrimSpace(resp.Warning), ";") {
 		t.Fatalf("restart answer: %+v restarts=%d", resp, f.restarts)
 	}
 	if conf, _ := os.ReadFile(autoresponderDovecotConfPath); string(conf) != renderAutoresponderDovecotConf(true) {

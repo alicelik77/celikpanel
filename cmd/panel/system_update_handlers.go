@@ -360,7 +360,16 @@ func boundedPanelUpdateFailure(value string) string {
 	case !plainPanelUpdateSummary(reason, 120):
 		reason = ""
 	}
-	return panelUpdateFailureMarker + " code=" + code + " state=" + state + " reason=" + reason + " detail="
+	if code != "update_failed" {
+		detail = ""
+	}
+	// An update that failed after it began keeps the installer's own line
+	// as the detail, made safe the same way (lab run 4, I2: after a verified
+	// rollback the record named the installer's stop but "detail=" was empty
+	// while the Agent journal held "ERROR / HATA: …").
+	// Başladıktan sonra başarısız olan güncelleme kurucunun satırını korur.
+	return panelUpdateFailureMarker + " code=" + code + " state=" + state + " reason=" + reason +
+		" detail=" + panelUpdateDiagnostic(detail)
 }
 
 // panelUpdateDiagnosticLimit bounds the diagnostic line the browser receives.
