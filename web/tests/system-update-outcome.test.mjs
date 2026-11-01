@@ -53,7 +53,8 @@ test('a verified rollback names both versions, the typed cause, who acts and how
     for (const [code, causeKey] of [
         ['candidate_panel_startup_check_failed', 'panelUpdate.outcome.cause.candidate_panel_startup_check_failed'],
         ['panel_start_unverified', 'panelUpdate.outcome.cause.panel_start_unverified'],
-        [undefined, 'panelUpdate.outcome.cause.generic'],
+        // No typed cause: the updater's own reason is the cause line (E-new-5).
+        [undefined, 'panelUpdate.outcome.serverMessage'],
     ]) {
         const guidance = failedUpdateGuidance(observed('recovered', code ? { failure_code: code } : {}), input());
         assert.equal(guidance.state, 'rolled_back');
@@ -74,12 +75,40 @@ test('a verified rollback names both versions, the typed cause, who acts and how
     assert.match(turkish, /Sunucuda yapmanız gereken bir şey yok/);
 });
 
+test('a verified rollback without a typed cause shows the updater reason as its cause (alpha.114 E-new-5)', () => {
+    const reason = 'installer stopped: panel.env line 3 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry)';
+    for (const state of ['rolled_back', 'recovery_required']) {
+        const message = `!! CELIKPANEL_UPDATE_FAILURE code=update_failed state=${state} reason=${reason} detail=`;
+        const guidance = failedUpdateGuidance(observed('recovered'), input({ message }));
+        assert.equal(guidance.state, 'rolled_back');
+        assert.equal(guidance.tone, 'warning');
+        assert.deepEqual(guidance.lines[1], { key: 'panelUpdate.outcome.serverMessage', vars: { message: reason } });
+        for (const catalog of [en, tr]) {
+            const text = primary(catalog, guidance).join('\n');
+            assert.ok(text.includes('CELIKPANEL_LAB_ROLLBACK_PROBE'), text);
+            assert.doesNotMatch(text, /CELIKPANEL_UPDATE_FAILURE|recovery_required|rolled_back|\{/);
+        }
+    }
+    // The historical generic text names no cause: the generic cause line stays.
+    const generic = '!! CELIKPANEL_UPDATE_FAILURE code=update_failed state=rolled_back reason=updater command failed; inspect the update worker log detail=';
+    assert.equal(failedUpdateGuidance(observed('recovered'), input({ message: generic })).lines[1].key, 'panelUpdate.outcome.cause.generic');
+    // A typed cause keeps its own words.
+    const typed = failedUpdateGuidance(observed('recovered', { failure_code: 'candidate_panel_startup_check_failed' }), input({
+        message: `!! CELIKPANEL_UPDATE_FAILURE code=candidate_panel_startup_check_failed state=rolled_back reason=${reason} detail=` }));
+    assert.equal(typed.lines[1].key, 'panelUpdate.outcome.cause.candidate_panel_startup_check_failed');
+});
+
 test('an unknown cause code keeps the generic cause', () => {
     const parsed = observed('recovered', { failure_code: 'private_detail' });
     assert.equal(parsed.failure_code, undefined);
     const forced = { ...observed('recovered'), failure_code: 'private_detail' };
+    // (A summary with its own reason would be shown as that reason; the
+    // historical generic summary leaves the generic cause.)
+    const genericSummary = '!! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=updater command failed; inspect the update worker log detail=';
     for (const value of [parsed, forced]) {
-        assert.equal(failedUpdateGuidance(value, input()).lines[1].key, 'panelUpdate.outcome.cause.generic');
+        const guidance = failedUpdateGuidance(value, input({ message: genericSummary }));
+        assert.equal(guidance.lines[1].key, 'panelUpdate.outcome.cause.generic');
+        assert.doesNotMatch(JSON.stringify(guidance.lines), /private_detail/);
     }
     // A later recovery failure hides the update's own cause.
     const later = { ...observed('recovered', { failure_code: 'candidate_panel_startup_check_failed' }), previous_failure: 'recovery_failed' };

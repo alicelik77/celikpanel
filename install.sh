@@ -1294,19 +1294,19 @@ validate_panel_env() {
     local listen= tls= cert= key_path= tls_dir= cookie_flag= demo_flag=
     declare -A seen=()
 
-    [[ -f "$file" && ! -L "$file" ]] || die "panel ortam dosyası eksik veya güvensiz: $file"
+    [[ -f "$file" && ! -L "$file" ]] || die "the panel environment file is missing or unsafe: $file" "panel ortam dosyası eksik veya güvensiz: $file"
     read -r env_owner env_group env_mode < <(stat -Lc '%u %g %a' -- "$file") \
-        || die "panel ortam dosyası incelenemedi"
+        || die "the panel environment file could not be inspected" "panel ortam dosyası incelenemedi"
     [[ "$env_owner" == 0 && "$env_group" == 0 && "$env_mode" == 600 ]] \
-        || die "panel ortam dosyası root:root mode 0600 olmalı"
+        || die "the panel environment file must be root:root mode 0600" "panel ortam dosyası root:root mode 0600 olmalı"
 
     while IFS= read -r line || [[ -n "$line" ]]; do
         ((line_number += 1))
         case "$line" in ''|'#'*) continue ;; esac
-        [[ "$line" == *=* ]] || die "panel.env:$line_number geçersiz satır"
+        [[ "$line" == *=* ]] || die "panel.env line $line_number is not a KEY=value line" "panel.env:$line_number geçersiz satır"
         key=${line%%=*}
         value=${line#*=}
-        [[ -z "${seen[$key]+set}" ]] || die "panel.env:$line_number yinelenen anahtar: $key"
+        [[ -z "${seen[$key]+set}" ]] || die "panel.env line $line_number repeats the key $key" "panel.env:$line_number yinelenen anahtar: $key"
         seen[$key]=1
         case "$key" in
             CELIKPANEL_LISTEN)
@@ -1339,7 +1339,7 @@ validate_panel_env() {
                     || die "panel.env:$line_number geçersiz demo bayrağı"
                 demo_flag=$value
                 ;;
-            *) die "panel.env:$line_number desteklenmeyen anahtar: $key" ;;
+            *) die "panel.env line $line_number has an unsupported key: $key (remove the line, then retry)" "panel.env:$line_number desteklenmeyen anahtar: $key (satırı silin, sonra yeniden deneyin)" ;;
         esac
     done < "$file"
 
