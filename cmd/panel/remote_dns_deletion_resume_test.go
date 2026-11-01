@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -169,11 +170,23 @@ func TestJoinedServerDeletionReasonsAreTyped(t *testing.T) {
 		{&remoteDNSPublicationPendingError{cause: &remoteDNSHTTPError{StatusCode: 503, Code: "REMOTE_DNS_BUSY"}}, remoteDNSDeletionUnreachableReason},
 		{&remoteDNSPublicationPendingError{cause: errors.New("timeout")}, remoteDNSDeletionUnreachableReason},
 		{errRemoteDNSNotReady, remoteDNSDeletionUnreachableReason},
+		// Lab run 6: the main server got the removal and answered after the
+		// timeout while its backup check ran; it is running, so this waits.
+		{&remoteDNSPublicationPendingError{cause: &remoteDNSExchangeError{Delivered: true}}, remoteDNSDeletionConfirmingReason},
+		{&remoteDNSPublicationPendingError{cause: &remoteDNSExchangeError{}}, remoteDNSDeletionUnreachableReason},
+		// Lab run 6: the main panel stopped; the bare exchange failure has a
+		// reason too (the 202 answer gave none).
+		{&remoteDNSExchangeError{}, remoteDNSDeletionUnreachableReason},
+		{fmt.Errorf("publish removal: %w", &remoteDNSExchangeError{}), remoteDNSDeletionUnreachableReason},
 	} {
 		if got, ok := remoteDNSDeletionReason(tc.err); !ok || got != tc.reason {
 			t.Errorf("%v: reason %q, want %q", tc.err, got, tc.reason)
 		}
-		if tc.err.Error() != errRemoteDNSPublicationPending.Error() && !errors.Is(tc.err, errRemoteDNSNotReady) {
+		var exchange *remoteDNSExchangeError
+		if errors.As(tc.err, &exchange) && !strings.HasSuffix(tc.err.Error(), "remote DNS HTTPS exchange failed") && tc.err.Error() != errRemoteDNSPublicationPending.Error() {
+			t.Errorf("transport detail reached the text: %q", tc.err.Error())
+		}
+		if !errors.As(tc.err, &exchange) && tc.err.Error() != errRemoteDNSPublicationPending.Error() && !errors.Is(tc.err, errRemoteDNSNotReady) {
 			t.Errorf("transport detail reached the text: %q", tc.err.Error())
 		}
 	}

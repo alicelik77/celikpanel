@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { domainDeletionDetailKey, domainDeletionReasonAutomatic, domainDeletionReasonKey, readDomainDeletionPending, readDomainDeletionOutcome, readSavedDomainDeletionStatus, readSavedDomainDeletionState } from '../src/lib/domainDeletionPending.ts';
+import { domainDeletionDetailKey, domainDeletionReasonAutomatic, domainDeletionReasonKey, readDomainDeletionPending, readDomainDeletionOutcome, readSavedDomainDeletion, readSavedDomainDeletionStatus, readSavedDomainDeletionState } from '../src/lib/domainDeletionPending.ts';
 import { en as enShellHalf } from '../src/i18n/en.ts';
 import { enErrorsScreens as enErrorsPart } from '../src/i18n/screens/errors/en.ts';
 // The coded refusals only screens show are the screen part "errors" since v0.1.0-alpha.98.
@@ -364,4 +364,18 @@ test('a joined server deletion and the former unknown states read as typed reaso
   assert.deepEqual(await readSavedDomainDeletionState(response(200, {
     status: 'deletion_pending', stage: 'incomplete', reason: 'raw_reason',
   })), { reason: '', detail: '' });
+});
+
+// Lab run 6: a deletion that finished between the list's answer and the
+// status read answers 404. That is "gone", never "unknown".
+test('a deleted domain status read is gone, a failed read stays unknown', async () => {
+  const saved = globalThis.fetch;
+  try {
+    for (const [status, state] of [[404, 'gone'], [204, 'known'], [500, 'unknown'], [403, 'unknown']]) {
+      globalThis.fetch = async () => new Response(null, { status });
+      assert.equal((await readSavedDomainDeletion(7)).state, state, String(status));
+    }
+  } finally {
+    globalThis.fetch = saved;
+  }
 });
