@@ -110,6 +110,8 @@ const stub = dataModule(`
   export const useServerSetup = () => globalThis.batch3Setup ?? null;
   // alpha.114: the review problems have their own tests; none are planned here.
   export const SetupPlanProblems = () => null;
+  // alpha.114: the Dashboard's "no website yet" cards have their own mounted test (remote-state-mounted).
+  export const NoWebsiteCards = () => null;
 `);
 const shared = sharedLayer(stub);
 const lib = (path, more = {}) => shared.compile(path, more);

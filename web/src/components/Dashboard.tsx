@@ -27,6 +27,7 @@ import { decodeFirewallStatus, useFirewallStatus, type FirewallStatus } from '..
 import { isServiceRunning } from '../lib/serviceStatus';
 import { USERS_URL, decodeUsers } from '../lib/accounts';
 import { bundleName, bundlesSummary, decodeReadyBundles, type ReadyBundle } from '../lib/readyBundles';
+import { NoWebsiteCards } from './NoWebsiteCards';
 import { INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones, domainsCount } from '../lib/infrastructureZones';
 import { mailProfileAttemptError, mailProfileName } from '../lib/mailProfileText';
 import { publishComponentCensus } from '../lib/componentCensus';
@@ -1315,17 +1316,7 @@ function AdminDashboard() {
                 button that adds it. The card leaves by itself when the website exists (the
                 zone list is read again after Add domain).
                 DNS'i burada olup web sitesi olmayan alan adi: bir kez soylenir, tek dugme. */}
-            {standaloneZoneNames.map((zone) => (
-                <section key={zone} aria-label={t('dashboard.noWebsite.title', { domain: zone })} data-dashboard-no-website={zone}
-                    className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border border-border-strong bg-surface p-4">
-                    <Globe className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
-                    <div className="min-w-0 flex-1">
-                        <h2 className="break-words font-semibold">{t('dashboard.noWebsite.title', { domain: zone })}</h2>
-                        <p className="mt-1 text-sm text-fg-muted">{t('dashboard.noWebsite.help', { domain: zone })}</p>
-                    </div>
-                    <Button variant="primary" icon={Plus} onClick={() => navigate(`/domains?host=${encodeURIComponent(zone)}`)}>{t('dashboard.noWebsite.action')}</Button>
-                </section>
-            ))}
+            <NoWebsiteCards zones={standaloneZoneNames} />
 
             {/* Hosting + activity / Barındırma + etkinlik */}
             {hasContent && (

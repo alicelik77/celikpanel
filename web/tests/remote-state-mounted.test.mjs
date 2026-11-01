@@ -29,6 +29,8 @@ const screenFiles = [
   'ComponentDetail', 'ServiceRecordLookup', 'ServiceShell', 'DomainDetail',
   // The infrastructure zone's page (2026-10-16).
   'InfrastructureZone',
+  // The Dashboard's "no website yet" cards (alpha.114, lab run 2).
+  'NoWebsiteCards',
   // My account, whose two-factor panel was a Settings section until
   // v0.1.0-alpha.98 (D-037).
   'AccountPage',
@@ -142,6 +144,7 @@ const sslSettingsURL = shared.compile('components/DomainSSLSettings.tsx', own);
 const DomainSSLSettings = (await import(sslSettingsURL)).DomainSSLSettings;
 const ImportPage = await load('ImportPage');
 const LicenseNotice = await load('LicenseNotice');
+const NoWebsiteCards = await load('NoWebsiteCards');
 const MonitoringPage = await load('MonitoringPage');
 const ServiceShell = await load('ServiceShell');
 const ComponentDetail = await load('ComponentDetail', { '/ServiceShell': dataModule(`export const ServiceShell = (props) => props.children;`) });
@@ -1142,6 +1145,35 @@ test('Import: an apply whose answer is lost says the result is unknown, starts n
     } finally {
       await cleanup();
     }
+  }
+});
+
+// alpha.114 lab run 2 (S-new-1, Dashboard): the main domain's website lives on
+// the first server, so the card is never drawn on a server that joined it, nor
+// while the link state is unread; a first or standalone server still gets it.
+test('Dashboard "no website yet" card: not on a joined server, not while unread, yes on a first or standalone server', async () => {
+  const cardCount = () => tree.root.findAll((node) => node.props && node.props['data-dashboard-no-website'] !== undefined && typeof node.type === 'string').length;
+  for (const [answer, drawn] of [
+    [json({ role: 'second', peer_setup: 'reporting' }), 0],
+    [json({ role: 'first' }), 1],
+    [json({ role: 'none' }), 1],
+    ...Object.values(failures).map((answer) => [answer, 0]),
+  ]) {
+    serve({ '/api/v1/setup/peer': answer });
+    try {
+      await mount(NoWebsiteCards, { zones: ['celikhost.com'] });
+      assert.equal(cardCount(), drawn);
+    } finally {
+      await cleanup();
+    }
+  }
+  serve({ '/api/v1/setup/peer': json({ role: 'second' }) });
+  try {
+    await mount(NoWebsiteCards, { zones: [] });
+    assert.equal(tree.toJSON(), null);
+    assert.equal(calls.filter((call) => call.url.includes('/setup/peer')).length, 0, 'the link state is read for nothing');
+  } finally {
+    await cleanup();
   }
 });
 

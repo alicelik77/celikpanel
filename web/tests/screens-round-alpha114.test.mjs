@@ -78,8 +78,9 @@ test('S13: the ready headline counts the open items shown, the joined server inc
 });
 
 test('S4, S5: the Dashboard says a domain has no website yet, with one button; "Components" is one word', () => {
-  const dashboard = src('Dashboard');
-  assert.match(dashboard, /standaloneZoneNames\.map\(\(zone\) => \(/);
+  const dashboard = src('Dashboard') + src('NoWebsiteCards');
+  assert.match(dashboard, /<NoWebsiteCards zones=\{standaloneZoneNames\} \/>/);
+  assert.match(dashboard, /zones\.map\(\(zone\) => \(/);
   assert.match(dashboard, /navigate\(`\/domains\?host=\$\{encodeURIComponent\(zone\)\}`\)/);
   bothHave(['dashboard.noWebsite.title', 'dashboard.noWebsite.help', 'dashboard.noWebsite.action', 'dashboard.installService', 'dashboard.openComponents']);
   assert.equal(en['dashboard.noWebsite.title'].replace('{domain}', 'example.test'), 'example.test has no website yet');
