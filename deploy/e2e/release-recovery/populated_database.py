@@ -36,6 +36,16 @@ MIGRATIONS = {
     # Migration 46 (PostgreSQL majors side by side, alpha.108): one NULL column
     # added to an old table (database_servers.cluster) and one new table.
     46: '6ae063137eaa421a6209c22f3cc5bc185f22f5bf95042c4d05a36a40991bbd69',
+    # alpha.114, all additive: 47 panel port changes (one table); 48 reseller
+    # pools (one table, NULL sessions.impersonator_id and audit_logs.acting_as);
+    # 49 account links (one table, NULL users.email_verified_at, one trigger);
+    # 50 protected folders, redirects, recovery codes (four tables); 51 mail
+    # autoresponders (one table).
+    47: '0d2c9c230782c3d0472f253272f88fe1ba33a0fa336f539d39bd3348a3a04c6f',
+    48: 'c115ee95a9040494d2dfc5ceb9505e3ab2bcb8df73303efab59fc23021815d17',
+    49: '425c64c71e63f97aeb5800f1756b8c7a0f7270855ffbf930298621fd26133cf4',
+    50: '8d23755703e8b2dd84e8609c8acdcf9c1a53231dc3ff953be3e57259df18ba65',
+    51: 'd7cbcde932eda215d26af51a4477ad5de66a63ee61c5bfdcbc4f89e0ba669ece',
 }
 # Exact sqlite_schema SQL from the released SQL, including triggers and indexes.
 # Tests reconstruct it from unmodified migration bytes, never a downgraded ledger.
@@ -46,6 +56,11 @@ SCHEMAS = {
     44: 'afcb7db4bf3b619a605af88277714cbc22e7dbe5279375b80f0eb33f54de06fc',
     45: 'c4eff8ddda771551d6917529d25752fec2a9b93f136f0fb9ee4a8eebcfca908b',
     46: 'b5b65789f63a609cba495807b6c715cead504f6024beaf5cdebde97813c8d084',
+    47: 'd025afa7a437f5f9ff0f16432b70e58e59c78eaf96068b7b9283a6a4b93e569e',
+    48: 'a785af324439ca04a24f2b1ba69240f2eea7cccabff3937220f8e99735cc105b',
+    49: '49772b283c119d3d251ca5a56e0cc0f19de944cef75e5e0e576a47f44e7e7ef4',
+    50: '3513baa14abd1254631b1fbcceb3dc2ee0402be99f4a1bd74946ef93d724b492',
+    51: 'b8c0866268dca7d7ca232bd6d363a412c988f770b40c5b920fdd0f5bf4bd56b6',
 }
 ADMISSION_SCHEMA = 'celikpanel/lab-populated-database-admission/v1'
 MANIFEST_SCHEMA = 'celikpanel/lab-populated-database-manifest/v1'
@@ -60,13 +75,21 @@ NEW_TABLES_44 = NEW_TABLES_43 | {'managed_site_files'}
 NEW_TABLES_45 = NEW_TABLES_44
 # Migration 46 adds the database moves table and one NULL column to an old table.
 NEW_TABLES_46 = NEW_TABLES_45 | {'postgresql_database_moves'}
+NEW_TABLES_47 = NEW_TABLES_46 | {'panel_port_changes'}
+NEW_TABLES_48 = NEW_TABLES_47 | {'reseller_pools'}
+NEW_TABLES_49 = NEW_TABLES_48 | {'account_links'}
+NEW_TABLES_50 = NEW_TABLES_49 | {'site_protected_dirs', 'site_protected_users', 'site_redirects', 'two_factor_recovery_codes'}
+NEW_TABLES_51 = NEW_TABLES_50 | {'email_autoresponders'}
 # Columns a pinned schema added to an old table, left out of the old-row
 # proof and required to be NULL in every old row.
 ADDED_COLUMNS = {45: {'audit_logs': ('details',), 'sites': ('app_run_as',)},
-                 46: {'database_servers': ('cluster',)}}
+                 46: {'database_servers': ('cluster',)},
+                 48: {'sessions': ('impersonator_id',), 'audit_logs': ('acting_as',)},
+                 49: {'users': ('email_verified_at',)}}
 # The tables each pinned schema after the baseline adds to the 55 of schema38.
 # A schema that is not a key here is the baseline itself.
-NEW_TABLES = {42: NEW_TABLES_42, 43: NEW_TABLES_43, 44: NEW_TABLES_44, 45: NEW_TABLES_45, 46: NEW_TABLES_46}
+NEW_TABLES = {42: NEW_TABLES_42, 43: NEW_TABLES_43, 44: NEW_TABLES_44, 45: NEW_TABLES_45, 46: NEW_TABLES_46,
+              47: NEW_TABLES_47, 48: NEW_TABLES_48, 49: NEW_TABLES_49, 50: NEW_TABLES_50, 51: NEW_TABLES_51}
 
 
 def added_columns(version):
@@ -218,7 +241,7 @@ def _connect(path, *, writable=False):
 
 def _schema(connection, version):
     if type(version) is not int or version not in SCHEMAS:
-        raise Refused('only exact schema38, schema42, schema43, schema44, schema45 or schema46 is supported')
+        raise Refused('only exact schema38 or schema42 through schema51 is supported')
     objects = connection.execute('SELECT type,name,tbl_name,sql FROM sqlite_schema ORDER BY type,name').fetchall()
     if _sha(json.dumps(objects, ensure_ascii=True, separators=(',', ':')).encode()) != SCHEMAS[version]:
         raise Refused('schema SQL differs from pinned released schema')

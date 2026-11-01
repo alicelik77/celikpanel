@@ -452,11 +452,11 @@ sieve_vacation_check() { # address uid gid
     lmtp_send "$address" "friend@example.invalid" "first" || { printf 'LMTP delivery 1 refused: %s\n' "$(tr -d '\r' </var/log/matrix-lmtp.last)"; rc=1; }
     lmtp_send "$address" "friend@example.invalid" "second" || { printf 'LMTP delivery 2 refused: %s\n' "$(tr -d '\r' </var/log/matrix-lmtp.last)"; rc=1; }
     sleep 1
-    replies=$(ls /var/log/matrix-vacation.* 2>/dev/null | wc -l)
+    replies=$(ls /var/log/matrix-vacation/reply.* 2>/dev/null | wc -l)
     if [[ "$replies" != 1 ]]; then
         printf 'out-of-office: %s replies for two messages from one sender (want 1)\n' "$replies"; rc=1
-    elif ! grep -q '^Subject: .*Away' /var/log/matrix-vacation.*; then
-        printf 'out-of-office reply has the wrong subject: %s\n' "$(head -20 /var/log/matrix-vacation.*)"; rc=1
+    elif ! grep -q '^Subject: .*Away' /var/log/matrix-vacation/reply.*; then
+        printf 'out-of-office reply has the wrong subject: %s\n' "$(head -20 /var/log/matrix-vacation/reply.*)"; rc=1
     fi
     out=$(doveadm fetch -u "$address" hdr.subject mailbox INBOX all 2>&1)
     { grep -q 'first' <<<"$out" && grep -q 'second' <<<"$out"; } || { printf 'LMTP-delivered messages not in INBOX: %s\n' "$out"; rc=1; }
@@ -489,9 +489,12 @@ v_dovecot() {
     # Out-of-office cases: a test-only LMTP port the harness can speak to
     # from bash, and a sendmail that records the replies instead of sending.
     if [[ -n "${SIEVE_USER:-}" ]]; then
-        printf '#!/bin/sh\ncat >"/var/log/matrix-vacation.$$"\n' >/usr/local/bin/matrix-sendmail
+        # LMTP runs sendmail as the mailbox user (vmail), so the replies go
+        # to a directory that user can write.
+        rm -rf /var/log/matrix-vacation
+        install -d -m 1777 /var/log/matrix-vacation
+        printf '#!/bin/sh\ncat >"/var/log/matrix-vacation/reply.$$"\n' >/usr/local/bin/matrix-sendmail
         chmod 0755 /usr/local/bin/matrix-sendmail
-        rm -f /var/log/matrix-vacation.*
         printf 'sendmail_path = /usr/local/bin/matrix-sendmail\nservice lmtp {\n  inet_listener lmtp {\n    port = 2424\n  }\n}\n' \
             >/etc/dovecot/conf.d/zz-matrix-sieve.conf
     fi
@@ -515,6 +518,9 @@ v_dovecot() {
         timeout 5 bash -c 'exec 3<>/dev/tcp/127.0.0.1/143; head -c 100 <&3 >/dev/null' 2>/dev/null || true
         tls_checks "IMAPS" 993 "" dovecot || rc=1
         doveadm stop >/dev/null 2>&1 || pkill dovecot
+        # The next case starts its own Dovecot: wait for this master to go.
+        for _ in 1 2 3 4 5 6 7 8 9 10; do pgrep -x dovecot >/dev/null || break; sleep 1; done
+        pkill -9 -x dovecot 2>/dev/null || true
         sleep 1
     else
         printf 'dovecot start: %s\n' "$(cat /var/log/matrix-dovecot-start.log)"; rc=1
@@ -526,7 +532,8 @@ v_dovecot() {
     out=$(grep -Ei 'warning' /var/log/matrix-dovecot.log | grep -v 'Killed with signal 15' \
         | grep -v 'SIGHUP received - reloading configuration' | sed -E 's/^[A-Za-z]{3} [0-9]+ [0-9:]+ //' | sort -u)
     [[ -n "$out" ]] && { printf 'dovecot runtime: %s\n' "$out"; warn=1; }
-    rm -f /etc/dovecot/conf.d/zz-matrix-log.conf /etc/dovecot/conf.d/zz-matrix-sieve.conf /var/log/matrix-vacation.*
+    rm -f /etc/dovecot/conf.d/zz-matrix-log.conf /etc/dovecot/conf.d/zz-matrix-sieve.conf
+    rm -rf /var/log/matrix-vacation
     [[ $rc -ne 0 ]] && return 1
     [[ $warn -ne 0 ]] && return 2
     return 0
@@ -664,7 +671,7 @@ fi
 for dir in "$cases"/*/; do
     [[ -f "$dir/case.env" ]] || continue
     CASE_ID=$(basename "$dir")
-    unset PROGRAM VARIANT VALIDATOR SOURCE TARGET REASON OWNERS RESTORE_DIRS PDNS_USER USERS PHP_VERSION ZONES PRECREATE MAIL_USERS MAIL_PASSWORD MAIL_ROOT MAIL_UID MAIL_GID NOTE \
+    unset PROGRAM VARIANT VALIDATOR SOURCE TARGET REASON OWNERS RESTORE_DIRS PDNS_USER USERS PHP_VERSION ZONES PRECREATE MAIL_USERS MAIL_PASSWORD MAIL_ROOT MAIL_UID MAIL_GID SIEVE_USER NOTE \
         KNOWN_NAME EXPECT_DEFAULT TLS_SNI_EXPECT TLS_RENEW_LINEAGE TLS_RENEW_EXPECT
     # shellcheck disable=SC1090,SC1091
     . "$dir/case.env"
