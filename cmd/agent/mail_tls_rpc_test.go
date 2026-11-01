@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestReconcileMailTLSFailsClosedWithoutDovecotBeforeCommands(t *testing.T) {
@@ -48,7 +49,7 @@ func TestMailTLSPreflightPinsAbsoluteCommandsAfterAllLookups(t *testing.T) {
 	t.Cleanup(func() { lookupMailTLSCommand = previousLookup })
 	var calls []string
 	runner := func(name string, args ...string) ([]byte, error) {
-		if got := strings.Join(lookups, ","); got != "postconf,doveconf,postfix,dovecot,systemctl,postmap" {
+		if got := strings.Join(lookups, ","); got != "postconf,doveconf,postfix,dovecot,systemctl,postmap,doveadm" {
 			t.Fatalf("runner called before all lookups completed: %s", got)
 		}
 		calls = append(calls, name)
@@ -77,6 +78,14 @@ func TestMailTLSPreflightPinsAbsoluteCommandsAfterAllLookups(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got, want := calls[len(calls)-1], filepath.Join(binRoot, "postconf"); got != want {
+		t.Fatalf("pinned command = %q, want %q", got, want)
+	}
+	// Lab run 3 (1 Nov 2026): the reload check reads Dovecot's record with
+	// doveadm through this runner; an unpinned doveadm held every change.
+	if _, err := preflight.run("doveadm", "log", "errors", "-s", "1"); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := calls[len(calls)-1], filepath.Join(binRoot, "doveadm"); got != want {
 		t.Fatalf("pinned command = %q, want %q", got, want)
 	}
 	before := len(calls)
@@ -456,5 +465,33 @@ func TestValidateMailSNIEntriesRejectsDuplicateNamesAcrossEntries(t *testing.T) 
 func TestSnapshotMailTLSFileRejectsNonRegularPath(t *testing.T) {
 	if _, err := snapshotMailTLSFile(t.TempDir()); err == nil {
 		t.Fatal("snapshotMailTLSFile() accepted a directory")
+	}
+}
+
+// doveadm is optional: a host without it still gets its mail TLS settings,
+// and the reload is judged by the unit (lab run 3, 1 Nov 2026).
+func TestMailTLSPreflightWithoutDoveadmStillPasses(t *testing.T) {
+	previousLookup := lookupMailTLSCommand
+	binRoot := filepath.Join(t.TempDir(), "bin")
+	lookupMailTLSCommand = func(name string) (string, error) {
+		if name == "doveadm" {
+			return "", fmt.Errorf("not found")
+		}
+		return filepath.Join(binRoot, name), nil
+	}
+	previousSleep := mailServiceSleep
+	mailServiceSleep = func(time.Duration) {}
+	t.Cleanup(func() { lookupMailTLSCommand, mailServiceSleep = previousLookup, previousSleep })
+	preflight, err := preflightMailTLSCommands(false, func(name string, args ...string) ([]byte, error) {
+		if filepath.Base(name) == "dovecot" {
+			return []byte("2.3.21\n"), nil
+		}
+		return nil, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if failure := dovecotReloadOutcome(mailServiceRunner(preflight.run), 1); failure != nil {
+		t.Fatalf("a reload without doveadm must be judged by the unit, got %v", failure)
 	}
 }

@@ -440,7 +440,7 @@ func applyDovecotVerified(run mailServiceRunner, mode mailServiceMode) (string, 
 }
 
 // dovecotReloadOutcome reads Dovecot's own record of a reload (lab run 2,
-// E-new-2, 1 Nov 2026).
+// E-new-2, 1 Nov 2026; corrected after lab run 3).
 //
 // `systemctl reload dovecot` only sends the master a signal and exits 0 when
 // the signal was sent. A master that cannot read its new configuration logs
@@ -453,11 +453,19 @@ func applyDovecotVerified(run mailServiceRunner, mode mailServiceMode) (string, 
 // master's "SIGHUP received" warning says the reload was taken up and an Error
 // or Fatal line of the master after it says it was refused.
 //
+// Only that refusal is a failure. When the record cannot be read (doveadm
+// missing or not allowed on this path) or does not show the reload in time,
+// the caller goes on to its unit check as before this check existed: lab run
+// 3 showed that treating an unreadable record as a failure rolled back a
+// correct mail TLS setup and held every change on the server. Dovecot 2.3
+// (Ubuntu 24.04) writes "master: Warning: SIGHUP received", 2.4 writes
+// "Warning: master: SIGHUP received"; both orders are read.
+//
 // dovecotReloadOutcome, yeniden yüklemenin sonucunu Dovecot'un kendi
 // kaydından okur: systemctl yalnız sinyali gönderir; yeni yapılandırmayı
-// okuyamayan Dovecot eskisiyle çalışmayı sürdürür. "SIGHUP received" satırı
-// yüklemenin alındığını, ardından gelen master hata satırı reddedildiğini
-// söyler. Kayıt okunamazsa sonuç bilinmiyor sayılır.
+// okuyamayan Dovecot eskisiyle çalışmayı sürdürür. Yalnız kayıttaki ret bir
+// hatadır; kayıt okunamazsa ya da yüklemeyi göstermezse birim kontrolüyle
+// eskisi gibi devam edilir.
 func dovecotReloadOutcome(run mailServiceRunner, since int64) *mailServiceError {
 	const service = "Dovecot"
 	sinceArg := strconv.FormatInt(since, 10)
@@ -466,10 +474,7 @@ func dovecotReloadOutcome(run mailServiceRunner, since int64) *mailServiceError 
 		mailServiceSleep(mailServicePollInterval)
 		out, err := run("doveadm", "log", "errors", "-s", sinceArg)
 		if err != nil {
-			failure := mailServiceFailure(service, mailServiceStageVerify, out, err)
-			failure.unknown = true
-			failure.detail = strings.TrimSuffix("systemctl reload dovecot exited 0, but Dovecot's own record of the reload (doveadm log errors) could not be read: "+failure.detail, ": ")
-			return failure
+			return nil
 		}
 		reloaded, refusal := dovecotReloadLog(string(out))
 		if refusal != "" {
@@ -485,23 +490,23 @@ func dovecotReloadOutcome(run mailServiceRunner, since int64) *mailServiceError 
 			seen = true
 		}
 	}
-	return &mailServiceError{service: service, stage: mailServiceStageVerify, unknown: true,
-		detail: "systemctl reload dovecot exited 0, but Dovecot's log (doveadm log errors) does not show that the master received the reload"}
+	return nil
 }
 
 // dovecotReloadLog reads `doveadm log errors` output: whether the master
 // took up a reload, and the master's error after the last one ("" if none).
+// Dovecot 2.4 writes "<Level>: master: ", Dovecot 2.3 "master: <Level>: ".
 func dovecotReloadLog(out string) (reloaded bool, refusal string) {
 	for _, raw := range strings.Split(out, "\n") {
 		line := strings.Join(strings.Fields(raw), " ")
-		if strings.Contains(line, "master: SIGHUP received") {
+		if strings.Contains(line, "master: SIGHUP received") || strings.Contains(line, "master: Warning: SIGHUP received") {
 			reloaded, refusal = true, ""
 			continue
 		}
 		if !reloaded {
 			continue
 		}
-		for _, marker := range []string{"Error: master: ", "Fatal: master: "} {
+		for _, marker := range []string{"Error: master: ", "Fatal: master: ", "master: Error: ", "master: Fatal: "} {
 			if index := strings.Index(line, marker); index >= 0 && refusal == "" {
 				text := line[index+len(marker):]
 				text = strings.TrimPrefix(text, "Failed to read configuration: ")

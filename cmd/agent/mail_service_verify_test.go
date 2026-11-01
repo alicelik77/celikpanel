@@ -395,17 +395,18 @@ func TestDovecotReloadIsJudgedByDovecotsOwnLog(t *testing.T) {
 	_, err = applyDovecotVerified(host.run, mailServiceReloadOrStart)
 	wantMailServiceError(t, err, mailServiceStageReload, false)
 
-	// The log never shows the reload, or cannot be read: unknown.
+	// The log never shows the reload, or cannot be read: only a refusal in
+	// the record fails, so the reload is judged by the unit as before (lab
+	// run 3: an unreadable record rolled back a correct mail TLS setup).
 	host = installFakeMailHost(t)
 	host.dovecotReloadUnseen = true
-	_, err = applyDovecotVerified(host.run, mailServiceReload)
-	wantMailServiceError(t, err, mailServiceStageVerify, true)
+	if state, err := applyDovecotVerified(host.run, mailServiceReload); err != nil || state != mailServiceReloaded {
+		t.Fatalf("unseen reload: state %q err %v", state, err)
+	}
 	host = installFakeMailHost(t)
 	host.dovecotLogUnreadable = true
-	_, err = applyDovecotVerified(host.run, mailServiceReload)
-	wantMailServiceError(t, err, mailServiceStageVerify, true)
-	if dovecotRefusedUnknownSetting(err) {
-		t.Fatal("an unknown result is not a refusal")
+	if state, err := applyDovecotVerified(host.run, mailServiceReload); err != nil || state != mailServiceReloaded {
+		t.Fatalf("unreadable record: state %q err %v", state, err)
 	}
 
 	// A restart is judged by the new main process, not by the log.
@@ -426,6 +427,15 @@ func TestDovecotReloadLogReadsTheMeasuredLines(t *testing.T) {
 	reloaded, refusal := dovecotReloadLog(strings.Join(strings.Split(out, "\n")[:2], "\n"))
 	if !reloaded || refusal != "Error in configuration file /etc/dovecot/conf.d/96-celikpanel-sieve.conf line 23: Unknown section name: sieve_script" {
 		t.Fatalf("refused reload: %v %q", reloaded, refusal)
+	}
+	// Dovecot 2.3 (Ubuntu 24.04) puts the level after the process name.
+	old := "Nov 01 11:12:20 master: Warning: SIGHUP received - reloading configuration\n"
+	if reloaded, refusal := dovecotReloadLog(old); !reloaded || refusal != "" {
+		t.Fatalf("2.3 reload: %v %q", reloaded, refusal)
+	}
+	if reloaded, refusal := dovecotReloadLog(old + "Nov 01 11:12:20 master: Error: Failed to read configuration: Error in configuration file /etc/dovecot/conf.d/98-celikpanel-tls.conf line 3: ssl_cert: Can't open file\n"); !reloaded ||
+		refusal != "Error in configuration file /etc/dovecot/conf.d/98-celikpanel-tls.conf line 3: ssl_cert: Can't open file" {
+		t.Fatalf("2.3 refused reload: %v %q", reloaded, refusal)
 	}
 	if reloaded, refusal := dovecotReloadLog("Nov 01 11:00:00 Error: imap(bob): something else\n"); reloaded || refusal != "" {
 		t.Fatalf("no reload: %v %q", reloaded, refusal)
