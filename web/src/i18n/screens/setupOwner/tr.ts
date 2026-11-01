@@ -67,4 +67,5 @@ export const trSetupOwnerScreens: Record<SetupOwnerScreenKey, string> = {
     'svc.mailSetup.unknown': 'Sunucunun yanıtı gelmedi. Bu pencere durumu yeniden okur; hiçbir şey iki kez başlatılmaz.',
     'svc.mailSetup.close': 'Kapat',
     "svc.mailSetup.checkAgain": "Yeniden kontrol et",
+    'setup.v8.names.mailHelpOwn': 'E-postanın kendi adı olmalı; bu sunucunun panel adından türetilir (örneğin boston.{domain} paneli için mail.boston.{domain}).',
 };

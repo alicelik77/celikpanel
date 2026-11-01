@@ -58,7 +58,7 @@ test('S2: the phone step strip wraps inside the page and never sets a width of i
 
 test('S3, S12: one way to host the main-domain website; "Add a website" once one exists', () => {
   // The card is the one action; the sentence and the bottom button do not repeat it.
-  assert.match(wizard, /readyDraft\.main_site === 'elsewhere' && readyDomain && !offerFirstSite && <p/);
+  assert.match(wizard, /readyDraft\.main_site === 'elsewhere' && readyDomain && !firstSiteWanted && <p/);
   assert.match(wizard, /offerFirstSite \? 'setup\.nextDashboard' : readyDraft\.main_site === 'here' \|\| readySiteDone \? 'setup\.nextWebsiteMore' : 'setup\.nextWebsite'/);
   assert.match(wizard, /const readyNextPath = offerFirstSite && nextPath === '\/domains' && !isNode \? '\/' : nextPath;/);
   assert.match(wizard, /<Link to=\{readyNextPath\}/);

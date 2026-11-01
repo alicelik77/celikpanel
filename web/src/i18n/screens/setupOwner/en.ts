@@ -76,6 +76,7 @@ export const enSetupOwnerScreens = {
     'svc.mailSetup.unknown': 'The server’s answer did not arrive. This window reads the state again; nothing is started twice.',
     'svc.mailSetup.close': 'Close',
     "svc.mailSetup.checkAgain": "Check again",
+    'setup.v8.names.mailHelpOwn': 'Mail needs a name of its own, made from this server’s panel name (for example mail.boston.{domain} for the panel boston.{domain}).',
 } as const;
 
 export type SetupOwnerScreenKey = keyof typeof enSetupOwnerScreens;

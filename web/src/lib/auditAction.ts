@@ -88,6 +88,20 @@ export function auditActionText(action: string, t: Translate): string {
     return said;
 }
 
+// What a row is about, from the resource the Panel recorded: the kind in
+// words, and its number only when the Panel recorded one ("Domain #2", and
+// "Service" alone for a service without an id, never "service #"). A kind
+// this page has no words for (a newer Panel) is said as its words.
+// Satirin neyle ilgili oldugu: tur sozcukle, numara yalniz kayitliysa.
+export function auditResourceText(type: string | undefined, id: number | undefined, t: Translate): string {
+    const kind = (type ?? '').trim();
+    if (!kind) return '';
+    const key = `audit.resource.${kind}` as TranslationKey;
+    const said = t(key);
+    const label = said === key ? kind.replace(/[._:\-/]+/g, ' ').trim() : said;
+    return id !== undefined && id > 0 ? `${label} #${id}` : label;
+}
+
 // Who did it. The Panel writes the reserved name "system" for an action that
 // has no signed-in user (cmd/panel/audit.go); that one name is said in the
 // interface language, every other name is shown exactly as the user typed it.

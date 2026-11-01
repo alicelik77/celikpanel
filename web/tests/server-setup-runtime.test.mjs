@@ -88,6 +88,7 @@ function init(role='admin', overrides={}) {
             state={...state,draft:body.draft,revision:state.revision+1,status:'draft'};return Response.json(state);
         }
         if(url==='/api/v1/setup/plan')return Response.json(plan());
+        if(url==='/api/v1/setup/peer')return Response.json({role:'none'});
         return Response.json(state);
     };
 }
@@ -445,6 +446,21 @@ test('a finished setup with websites offers the first site with the main domain;
             assert.equal(offers.length, offered ? 1 : 0, `${purpose}/${main}`);
             if (offered) assert.equal(offers[0].props.domain, 'example.com');
             assert.ok(calls.every(call => !call.options?.method || call.options.method === 'GET'), 'the offer sends nothing by itself');
+        } finally { await cleanup(); }
+    }
+});
+
+// alpha.114 lab run 2 (S-new-1): the main domain's website lives on the first
+// server, so the ready screen of a server that joined it never offers one; the
+// first server still does, and an unread link state offers nothing yet.
+test('a joined server never offers the main domain website on its ready screen', async () => {
+    for (const [peer, offered] of [[{ role: 'second', peer_setup: 'reporting' }, false], [{ role: 'first' }, true], [{ role: 'none' }, true], [null, false]]) {
+        init('admin', { status: 'ready', required: false, draft: { ...fresh().draft, purpose: 'web', main_domain: 'example.com' } });
+        const base = globalThis.fetch;
+        globalThis.fetch = async (url, options) => url === '/api/v1/setup/peer' ? (peer ? Response.json(peer) : new Response('{}', { status: 500 })) : base(url, options);
+        try {
+            await mount();
+            assert.equal(tree.root.findAllByType('first-site').length, offered ? 1 : 0, JSON.stringify(peer));
         } finally { await cleanup(); }
     }
 });
