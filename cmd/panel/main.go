@@ -165,6 +165,10 @@ type Panel struct {
 	// so a status read says "running" instead of a moment of its state
 	// (domain_deletion_running.go).
 	deletionsRunning domainDeletionsRunning
+	// remoteDNSDeletionsState schedules a joined server's own re-check of a
+	// domain removal the main DNS server is still confirming (E-new-4).
+	remoteDNSDeletionsOnce  sync.Once
+	remoteDNSDeletionsState *remoteDNSDeletionScheduler
 	// dnsEnginePreviews holds short-lived, one-use authorizations for the
 	// separately confirmed DNS engine cutover endpoint.
 	dnsEnginePreviews dnsEnginePreviewCache
@@ -1598,6 +1602,9 @@ func main() {
 	// A pending paired DNS publication whose cause is transient (the backup
 	// has not caught up) completes by itself through its exact recovery.
 	panel.startDNSPendingPublicationReconciler(discoveryCtx)
+	// A joined server's domain deletion whose removal the main DNS server
+	// was still confirming finishes by itself once it is confirmed.
+	panel.startRemoteDNSDeletionReconciler(discoveryCtx)
 	// Automatic DKIM work a restart interrupted resumes from its records.
 	panel.startAutomaticDKIM()
 	// upd11 F2: startup mail work refused only because an update or rollback

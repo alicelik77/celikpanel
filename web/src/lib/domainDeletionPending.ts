@@ -98,9 +98,42 @@ const dnsRemovedReason = 'dns_removal_confirmed';
 const runningStage = 'running';
 const runningReason = 'deletion_running';
 
+// The deletion's own reviewed reasons (alpha.114 lab run 2): a joined
+// server's removal on the main DNS server, and the typed states that replaced
+// an "unknown" answer. Each has its own sentence saying who acts.
+const ownDeletionReasons = new Set([
+    'remote_dns_removal_confirming',
+    'remote_dns_main_unreachable',
+    'remote_dns_removal_refused',
+    'remote_dns_removed_finishing',
+    'deletion_incomplete',
+    'deletion_state_changing',
+    'deletion_marker_inconsistent',
+]);
+
+// Reasons whose next step CelikPanel takes by itself: the page reads again
+// on its own while one is shown (no manual refresh).
+const automaticDeletionReasons = new Set([
+    'deletion_running',
+    'dns_peer_catching_up',
+    'remote_dns_removal_confirming',
+    'remote_dns_main_unreachable',
+    'remote_dns_removed_finishing',
+    'deletion_state_changing',
+]);
+
+export function domainDeletionReasonAutomatic(reason: string): boolean {
+    return automaticDeletionReasons.has(reason);
+}
+
+function ownReason(pending: Record<string, unknown>): string {
+    return typeof pending.reason === 'string' && ownDeletionReasons.has(pending.reason) ? pending.reason : '';
+}
+
 // The translation key for a reviewed reason, or null for the generic text.
 export function domainDeletionReasonKey(reason: string): string | null {
     if (!reason) return null;
+    if (ownDeletionReasons.has(reason)) return `domains.deletionReason.${reason}`;
     if (reason === dnsRemovedReason) return 'domains.deletionDNSRemoved';
     if (reason === runningReason) return 'domains.deletionRunning';
     if (Object.values(reviewedStageFailures).includes(reason)) return `err.DOMAIN_DELETION_FAILED.${reason}`;
@@ -126,6 +159,7 @@ async function readPendingBody(response: Response): Promise<{ reason: string; de
             return { reason: reviewedStageFailure(pending), detail: '' };
         }
         if (pending.status !== 'deletion_pending' || pending.stage !== 'dns_cleanup') return { reason: '', detail: '' };
+        if (ownReason(pending)) return { reason: ownReason(pending), detail: '' };
         const reason = typeof pending.reason === 'string' && reviewedDNSPeerReasons.has(pending.reason)
             ? pending.reason
             : '';
@@ -199,6 +233,7 @@ export async function readSavedDomainDeletionState(
         if (pending.stage === runningStage && pending.reason === runningReason) {
             return { reason: runningReason, detail: '' };
         }
+        if (ownReason(pending)) return { reason: ownReason(pending), detail: '' };
         if (pending.stage !== 'dns_cleanup') return { reason: '', detail: '' };
         const reason = typeof pending.reason === 'string' && reviewedDNSPeerReasons.has(pending.reason)
             ? pending.reason

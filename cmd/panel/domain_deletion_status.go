@@ -28,6 +28,10 @@ type domainDeletionStatusSnapshot struct {
 	// by the automatic re-check after the backup caught up; the rest of the
 	// deletion still waits for "Retry this deletion".
 	dnsRemoved bool
+	// remote: a joined server's deletion (the zone is on the main DNS
+	// server); remoteDNS is what its saved records say.
+	remote    bool
+	remoteDNS remoteDomainDeletionDNS
 }
 
 // domainDeletionDNSStageDone is the stage of a deletion whose DNS removal is
@@ -110,6 +114,11 @@ func (p *Panel) readDomainDeletionStatusSnapshot(ctx context.Context, domainID i
 		// The latest attempt stopped at a recorded stage; the DNS stage was
 		// not reached in that attempt, so no DNS evidence supersedes it.
 		return snapshot, nil
+	}
+	if mode == setupDNSModeExisting {
+		snapshot.remote = true
+		snapshot.remoteDNS, err = readRemoteDomainDeletionDNS(ctx, tx, domainID, snapshot.domain)
+		return snapshot, err
 	}
 	if mode != setupDNSModeLocal || parent.Valid {
 		return snapshot, nil
@@ -200,8 +209,9 @@ func (p *Panel) handleDomainDeletionStatus(w http.ResponseWriter, r *http.Reques
 	}
 	if snapshot.inconsistent {
 		_ = json.NewEncoder(w).Encode(domainDeletionStatusResponse{
-			Status: "unknown", Stage: "unknown",
-			Message: "The saved deletion marker and domain state disagree. The server administrator must inspect the operation before retrying.",
+			Status: domainDeletionPendingStatus, Stage: domainDeletionMarkerCheckStage,
+			Reason:  domainDeletionMarkerInconsistentReason,
+			Message: domainDeletionMarkerInconsistentEnglish,
 		})
 		return
 	}
@@ -223,6 +233,10 @@ func (p *Panel) handleDomainDeletionStatus(w http.ResponseWriter, r *http.Reques
 		})
 		return
 	}
+	if snapshot.remote {
+		_ = json.NewEncoder(w).Encode(p.remoteDomainDeletionStatus(domainID, snapshot.remoteDNS))
+		return
+	}
 	if snapshot.dnsRemoved {
 		_ = json.NewEncoder(w).Encode(domainDeletionStatusResponse{
 			Status: domainDeletionPendingStatus, Stage: domainDeletionDNSStageDone,
@@ -231,11 +245,10 @@ func (p *Panel) handleDomainDeletionStatus(w http.ResponseWriter, r *http.Reques
 		})
 		return
 	}
-	result := domainDeletionStatusResponse{
-		Status:  "unknown",
-		Stage:   "unknown",
-		Message: "Deletion is pending. The server administrator should inspect the saved operation before retrying this same deletion.",
-	}
+	// No running request, no recorded failure and no DNS step waiting on
+	// its own: the deletion stopped before it finished (D-024: never an
+	// untyped answer; the next action is the same deletion again).
+	result := domainDeletionIncompleteStatus()
 	if snapshot.candidate {
 		statusCtx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		job, hold, statusErr := p.statusAgentMutationWithHold(statusCtx, snapshot.lease.RequestID)
@@ -250,19 +263,18 @@ func (p *Panel) handleDomainDeletionStatus(w http.ResponseWriter, r *http.Reques
 			result.Message = dnsPublicationAgentHeldEnglish
 			after, rereadErr := p.readDomainDeletionStatusSnapshot(r.Context(), domainID)
 			if rereadErr != nil || !sameDomainDeletionStatusSnapshot(snapshot, after) {
-				result.Status = "unknown"
-				result.Stage = "unknown"
-				result.Reason = ""
-				result.Message = "The saved deletion state changed during the read. The server administrator must inspect the operation before retrying."
+				result = domainDeletionChangingStatus()
 			}
 		} else if statusErr == nil && validateDNSZoneSyncV3PendingJob(job, snapshot.lease.identity()) == nil {
-			result.Status = domainDeletionPendingStatus
-			result.Stage = "dns_cleanup"
+			// The exact DNS removal is pending; only a reviewed code of its
+			// job names a reason (a raw job error is never shown).
+			result = domainDeletionStatusResponse{
+				Status: domainDeletionPendingStatus, Stage: "dns_cleanup",
+				Message: "The DNS removal of this deletion is still pending. The server administrator should inspect the saved operation before retrying this same deletion.",
+			}
 			after, rereadErr := p.readDomainDeletionStatusSnapshot(r.Context(), domainID)
 			if rereadErr != nil || !sameDomainDeletionStatusSnapshot(snapshot, after) {
-				result.Status = "unknown"
-				result.Stage = "unknown"
-				result.Message = "The saved deletion state changed during the read. The server administrator must inspect the operation before retrying."
+				result = domainDeletionChangingStatus()
 			} else if reason, detail, message, ok := dnsPeerPendingGuidance(
 				dnsZoneV3PendingCodeFromJob(job),
 			); ok {
@@ -273,4 +285,59 @@ func (p *Panel) handleDomainDeletionStatus(w http.ResponseWriter, r *http.Reques
 		}
 	}
 	_ = json.NewEncoder(w).Encode(result)
+}
+
+// Typed states that replace the former "unknown"/"unknown" answer (alpha.114
+// lab run 2, E-new-4; D-024): each names who acts and what happens next.
+const (
+	domainDeletionIncompleteStage   = "incomplete"
+	domainDeletionIncompleteReason  = "deletion_incomplete"
+	domainDeletionIncompleteEnglish = "This deletion stopped before it finished, for example because the panel restarted during it. Nothing is lost and nothing more happens by itself. Delete the domain again to finish it; the steps already done are skipped."
+
+	domainDeletionChangingReason  = "deletion_state_changing"
+	domainDeletionChangingEnglish = "This deletion's saved state changed while it was being read: it is being worked on right now. Nobody needs to do anything; this page checks again by itself."
+
+	domainDeletionMarkerCheckStage          = "marker_check"
+	domainDeletionMarkerInconsistentReason  = "deletion_marker_inconsistent"
+	domainDeletionMarkerInconsistentEnglish = "The saved deletion of this domain and the domain's own saved state disagree, so CelikPanel does not continue it by itself. Nothing was removed by this check and the domain's services keep running. The server administrator contacts CelikPanel support with this domain's name before deleting it again."
+)
+
+func domainDeletionIncompleteStatus() domainDeletionStatusResponse {
+	return domainDeletionStatusResponse{
+		Status: domainDeletionPendingStatus, Stage: domainDeletionIncompleteStage,
+		Reason: domainDeletionIncompleteReason, Message: domainDeletionIncompleteEnglish,
+	}
+}
+
+func domainDeletionChangingStatus() domainDeletionStatusResponse {
+	return domainDeletionStatusResponse{
+		Status: domainDeletionPendingStatus, Stage: "dns_cleanup",
+		Reason: domainDeletionChangingReason, Message: domainDeletionChangingEnglish,
+	}
+}
+
+// remoteDomainDeletionStatus answers for a joined server's deletion from its
+// saved records and this process's last attempt. Read only.
+func (p *Panel) remoteDomainDeletionStatus(domainID int, state remoteDomainDeletionDNS) domainDeletionStatusResponse {
+	if !state.Reached {
+		return domainDeletionIncompleteStatus()
+	}
+	if state.Done {
+		return domainDeletionStatusResponse{
+			Status: domainDeletionPendingStatus, Stage: domainDeletionDNSStageDone,
+			Reason: remoteDNSDeletionFinishingReason, Message: remoteDNSDeletionFinishingEnglish,
+		}
+	}
+	reason := p.remoteDNSDeletions().lastReason(domainID)
+	switch reason {
+	case remoteDNSDeletionUnreachableReason, remoteDNSDeletionRefusedReason:
+	default:
+		// Before this process's first attempt, or while the main server
+		// confirms: the joined server asks again by itself.
+		reason = remoteDNSDeletionConfirmingReason
+	}
+	return domainDeletionStatusResponse{
+		Status: domainDeletionPendingStatus, Stage: "dns_cleanup",
+		Reason: reason, Message: remoteDNSDeletionEnglish(reason),
+	}
 }

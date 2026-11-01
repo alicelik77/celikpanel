@@ -94,7 +94,7 @@ func TestDomainDeletionStatusRequiresExactPendingJobAndStableMarker(t *testing.T
 	}
 	job.OwnerID = strings.Repeat("d", 32)
 	_, body = readDeletionStatusForTest(t, p, id)
-	if body.Reason != "" || body.Status != "unknown" {
+	if body.Reason != domainDeletionIncompleteReason || body.Status != domainDeletionPendingStatus {
 		t.Fatalf("foreign job disclosed reason: %+v", body)
 	}
 	job.OwnerID = lease.OwnerID
@@ -110,7 +110,7 @@ func TestDomainDeletionStatusRequiresExactPendingJobAndStableMarker(t *testing.T
 		}
 	}
 	_, body = readDeletionStatusForTest(t, p, id)
-	if body.Reason != "" || body.Status != "unknown" {
+	if body.Reason != domainDeletionChangingReason || body.Status != domainDeletionPendingStatus {
 		t.Fatalf("stale marker disclosed reason: %+v", body)
 	}
 }
@@ -162,7 +162,7 @@ func TestDomainDeletionStatusMarkerAndTenantAuthorization(t *testing.T) {
 	fixture.panel.handleDomainSubroute(w, request)
 	var body domainDeletionStatusResponse
 	if w.Code != http.StatusOK || json.Unmarshal(w.Body.Bytes(), &body) != nil ||
-		body.Status != "unknown" || body.Reason != "" || body.Stage != "unknown" {
+		body.Status != domainDeletionPendingStatus || body.Reason != domainDeletionIncompleteReason || body.Stage != domainDeletionIncompleteStage {
 		t.Fatalf("generic pending status=%d body=%s", w.Code, w.Body.String())
 	}
 }

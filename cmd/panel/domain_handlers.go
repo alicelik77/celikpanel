@@ -774,50 +774,11 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 	// Capture agent-generated staged lineages before the cascading domain
 	// delete removes the certificate ledger. Canonical legacy/domain lineages
 	// are handled separately by the agent and never authorize global deletion.
-	lineageRows, err := p.db.GetDB().QueryContext(ctx, `
-		SELECT DISTINCT lineage_name
-		FROM ssl_certificates
-		WHERE domain_id = ?
-		  AND type = 'letsencrypt'
-		  AND lineage_name IS NOT NULL`, domainID)
+	deleteCanonicalLineage, stagedLineages, err := domainDeletionCertificateLineages(ctx, p.db.GetDB(), domainID, domain.Name)
 	if err != nil {
 		writeServerError(w, err)
 		return
 	}
-	var (
-		deleteCanonicalLineage bool
-		stagedLineages         []string
-	)
-	canonicalDomainName := strings.ToLower(strings.TrimSpace(domain.Name))
-	for lineageRows.Next() {
-		var lineage string
-		if err := lineageRows.Scan(&lineage); err != nil {
-			lineageRows.Close()
-			writeServerError(w, err)
-			return
-		}
-		lineage = strings.ToLower(strings.TrimSpace(lineage))
-		switch {
-		case lineage == canonicalDomainName:
-			deleteCanonicalLineage = true
-		case strings.HasPrefix(lineage, "cp-site-"), transport.IsNativeSiteLineage(lineage):
-			stagedLineages = append(stagedLineages, lineage)
-		default:
-			lineageRows.Close()
-			writeServerError(w, fmt.Errorf(
-				"refuse unknown managed certificate lineage %q for domain %s",
-				lineage,
-				domain.Name,
-			))
-			return
-		}
-	}
-	if err := lineageRows.Err(); err != nil {
-		lineageRows.Close()
-		writeServerError(w, err)
-		return
-	}
-	lineageRows.Close()
 
 	// From the marker on, a status read of this domain says the deletion is
 	// running until this request answers (domain_deletion_running.go).
@@ -939,6 +900,17 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if domain.DNSManagement == setupDNSModeExisting {
+		// The site and mail are gone: from here the joined server carries the
+		// removal on the main DNS server to its end by itself, even when this
+		// request stops waiting (remote_dns_deletion_resume.go).
+		if err := p.recordRemoteDNSDeletionStage(ctx, domainID, domain.Name); err != nil {
+			p.writeDomainDeletionPending(
+				w, r, domainID, domain.Name, "dns_cleanup", err,
+			)
+			return
+		}
+	}
 	if err := p.removeDomainDNSForDeletion(ctx, domain.Name, parentDomainName); err != nil {
 		p.writeDomainDeletionPending(
 			w, r, domainID, domain.Name, "dns_cleanup", err,
@@ -965,6 +937,10 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 
 	if err := p.clearDomainDeletionFailure(ctx, domainID); err != nil {
 		log.Printf("domain deletion for %s completed; %v", domain.Name, err)
+	}
+	if domain.DNSManagement == setupDNSModeExisting {
+		p.clearRemoteDNSDeletionStage(ctx, domainID)
+		p.remoteDNSDeletions().forget(domainID)
 	}
 	p.audit(r, "domain.delete:"+domain.Name, "domain", domainID)
 	w.WriteHeader(http.StatusOK)
