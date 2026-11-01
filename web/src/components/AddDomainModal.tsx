@@ -6,7 +6,7 @@ import { useI18n } from '../i18n';
 import { Button, Checking, CouldNotCheck, Dialog, ErrorBanner } from './ui';
 import { readApiError, apiErrorText, type ApiError } from '../lib/apiError';
 import { isSiteWebServerRefused, siteWebServerRefusedIn } from '../lib/siteWebServerRefused';
-import { gateOn } from '../lib/remote';
+import { gateOn, invalidate } from '../lib/remote';
 import {
     ISSUE_FAILURE_KEYS,
     isIssueFailure,
@@ -15,6 +15,7 @@ import {
 } from '../lib/siteCertificateRequest';
 import {
     dnsBlocker,
+    dnsEngineBlockerText,
     hostingDNSReady,
     localDNSReady,
     useHostingCapabilities,
@@ -32,6 +33,13 @@ export interface SiteRecordsOutcome {
     ipv4: string;
 }
 
+// The product name of the DNS software the capabilities report by id
+// ("pdns", "bind"); an id this screen does not know is not shown at all.
+// DNS yazilimi kimligi yerine urun adi; bilinmeyen kimlik hic gosterilmez.
+export function dnsServerName(id: string): string {
+    return id === 'pdns' ? 'PowerDNS' : id === 'bind' ? 'BIND' : '';
+}
+
 function readSiteRecords(value: unknown): SiteRecordsOutcome | undefined {
     if (!value || typeof value !== 'object') return undefined;
     const site = (value as Record<string, unknown>).site_records;
@@ -45,11 +53,16 @@ function readSiteRecords(value: unknown): SiteRecordsOutcome | undefined {
 
 interface AddDomainModalProps {
     onClose: () => void;
-    onSuccess: (outcome?: { siteRecords?: SiteRecordsOutcome }) => void;
+    onSuccess: (outcome?: { siteRecords?: SiteRecordsOutcome; domain?: string }) => void;
     // The name the form opens with (alpha.115: the end of server setup offers
     // the main domain). Only a starting value: nothing is sent until the
     // person submits the form.
     initialDomain?: string;
+    // The name's DNS is served by this server (a DNS-only zone getting its
+    // website, or the main domain at the end of setup): the certificate box
+    // starts ticked, as the setup "Yes" path does. The person can untick it.
+    // Adin DNS'i bu sunucuda: sertifika kutusu isaretli baslar.
+    sslByDefault?: boolean;
 }
 
 // What this server can host right now drives which choices the dialog offers
@@ -120,6 +133,14 @@ async function readDomainCreatePartialSuccess(res: Response): Promise<DomainCrea
     }
 }
 
+// The address the partial-success answer sends to, marked so the domain's
+// page says what needs attention there (D-024): a toast alone is gone in
+// seconds. Only a path inside the panel is followed.
+// Kismi basari yanitinin gonderdigi adres; alan adi sayfasi dikkat gerekeni soyler.
+export function withAttention(action: string): string {
+    return action + (action.includes('?') ? '&' : '?') + 'attention=dns-publication';
+}
+
 // The id of the site that was just created, from the create answer (its keys
 // are the Go field names). null when the answer does not carry one.
 function readCreatedDomainId(value: unknown): number | null {
@@ -176,7 +197,7 @@ function CertificateOutcome({ name, outcome }: { name: string; outcome: SiteCert
     );
 }
 
-export function AddDomainModal({ onClose, onSuccess, initialDomain = '' }: AddDomainModalProps) {
+export function AddDomainModal({ onClose, onSuccess, initialDomain = '', sslByDefault = false }: AddDomainModalProps) {
     const { t } = useI18n();
     const navigate = useNavigate();
     const [domainName, setDomainName] = useState(initialDomain);
@@ -196,7 +217,8 @@ export function AddDomainModal({ onClose, onSuccess, initialDomain = '' }: AddDo
     // kişinindir ve korunur.
     const [chosenPurpose, setPurpose] = useState<Purpose | null>(null);
     const purpose: Purpose = chosenPurpose ?? (caps && caps.web_server === '' ? 'dnsonly' : 'website');
-    const [sslEnabled, setSSLEnabled] = useState(false);
+    const [sslChoice, setSSLChoice] = useState<boolean | null>(null);
+    const sslEnabled = sslChoice ?? sslByDefault;
     const [loading, setLoading] = useState(false);
     // After the site exists and SSL was ticked, the dialog stays open for the
     // certificate request: `requesting` while its one request is on the way,
@@ -289,7 +311,7 @@ export function AddDomainModal({ onClose, onSuccess, initialDomain = '' }: AddDo
                     // the list, then we continue at the newly created domain.
                     const action = partial.action?.startsWith('/domains/')
                         ? partial.action
-                        : `/domains/${encodeURIComponent(partial.domain)}`;
+                        : `/domains/${encodeURIComponent(partial.domain)}?tab=dns`;
                     showToast('warning', t('domains.add.createdDnsPending', { name: partial.domain }));
                     // The certificate needs the name to resolve to this
                     // server, which the unfinished DNS setup has not done:
@@ -297,8 +319,12 @@ export function AddDomainModal({ onClose, onSuccess, initialDomain = '' }: AddDo
                     // Sertifika, adın bu sunucuya çözülmesini ister; yarım
                     // DNS kurulumu bunu yapmadı: istenmediğini söyle.
                     if (body.ssl_type === 'letsencrypt') showToast('warning', t('domains.add.sslNotRequested', { name: partial.domain }));
+                    // The site exists: every list, counter and card that
+                    // shows domains reads again (no page refresh, 2026-10-31).
+                    invalidate('domains', 'dns');
                     onSuccess();
-                    navigate(action);
+                    // The page opened says what needs attention, not only the toast.
+                    navigate(withAttention(action));
                     return;
                 }
                 const apiErr = await readApiError(res);
@@ -317,13 +343,14 @@ export function AddDomainModal({ onClose, onSuccess, initialDomain = '' }: AddDo
             }
 
             showToast('success', t('domains.add.created', { name: domainName }));
+            invalidate('domains', 'dns');
             // Only read: what happened to the site's names, when the server says.
             let answer: unknown = null;
             try { answer = await res.json(); } catch { answer = null; }
             const records = readSiteRecords(answer);
             const createdId = readCreatedDomainId(answer);
             if (body.ssl_type !== 'letsencrypt') {
-                onSuccess({ siteRecords: records });
+                onSuccess({ siteRecords: records, domain: domainName });
                 return;
             }
             setSiteRecords(records);
@@ -341,7 +368,8 @@ export function AddDomainModal({ onClose, onSuccess, initialDomain = '' }: AddDo
             const outcome = await requestSiteCertificate(createdId);
             if (outcome.kind === 'issued') {
                 showToast('success', t('domains.add.sslIssued', { name: domainName }));
-                onSuccess({ siteRecords: records });
+                invalidate('domains');
+                onSuccess({ siteRecords: records, domain: domainName });
                 return;
             }
             setCertificate({ phase: 'done', name: domainName, outcome });
@@ -360,7 +388,8 @@ export function AddDomainModal({ onClose, onSuccess, initialDomain = '' }: AddDo
     // Site oluşup SSL işaretliyse aynı pencere sertifika isteğinin kendi
     // ekranına döner; forma geri dönüş yoktur.
     const finish = (openSSL: boolean) => {
-        onSuccess({ siteRecords });
+        invalidate('domains');
+        onSuccess({ siteRecords, domain: certificate?.name ?? domainName });
         if (openSSL && certificate) navigate(`/domains/${encodeURIComponent(certificate.name)}?tab=ssl`);
     };
 
@@ -438,7 +467,7 @@ export function AddDomainModal({ onClose, onSuccess, initialDomain = '' }: AddDo
                           bir motora "BIND ya da PowerDNS'i etkinleştir" denmemeli;
                           düğme ile cümle aynı tek düzeltmeyi adlandırır.
                         */}
-                        <span>{dns.reason === 'identity' ? t('err.DNS_SETTINGS_REQUIRED') : t('domains.add.needsDns')}</span>
+                        <span>{dns.reason === 'identity' ? t('err.DNS_SETTINGS_REQUIRED') : caps ? dnsEngineBlockerText(caps, t) : t('domains.add.needsDns')}</span>
                         {/*
                           Both halves of "DNS is missing" are fixed in the same
                           place: the DNS infrastructure section installs and
@@ -529,7 +558,7 @@ export function AddDomainModal({ onClose, onSuccess, initialDomain = '' }: AddDo
                             type="checkbox"
                             id="ssl"
                             checked={sslEnabled}
-                            onChange={(e) => setSSLEnabled(e.target.checked)}
+                            onChange={(e) => setSSLChoice(e.target.checked)}
                             className="mt-1"
                         />
                         <div className="flex-1">
@@ -550,9 +579,9 @@ export function AddDomainModal({ onClose, onSuccess, initialDomain = '' }: AddDo
                     yerinden oynamaz. */}
                 <div className="min-h-5">
                     {dns.state === 'checking' && <Checking label={t('dns.checkingServer')} />}
-                    {caps && caps.dns_server !== '' && (
+                    {caps && dnsServerName(caps.dns_server) !== '' && (
                         <p className="text-xs leading-5 text-fg-subtle">
-                            {t('domains.add.dnsServed', { server: caps.dns_server })}
+                            {t('domains.add.dnsServed', { server: dnsServerName(caps.dns_server) })}
                         </p>
                     )}
                 </div>

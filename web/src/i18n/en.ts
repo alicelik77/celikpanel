@@ -44,6 +44,14 @@ import type { SetupInspectionScreenKey } from './screens/setupInspection/en';
 import type { DnsOverviewScreenKey } from './screens/dnsOverview/en';
 import type { NginxDefaultHttpsScreenKey } from './screens/nginxDefaultHttps/en';
 import type { DnsPublicationScreenKey } from './screens/dnsPublication/en';
+import type { ProblemsScreenKey } from './screens/problems/en';
+import type { RefusalsScreenKey } from './screens/refusals/en';
+import type { AccountAccessScreenKey } from './screens/accountAccess/en';
+import type { SiteFeaturesScreenKey } from './screens/siteFeatures/en';
+import type { OsUpdatesScreenKey } from './screens/osUpdates/en';
+import type { PanelPortScreenKey } from './screens/panelPort/en';
+import type { SetupOwnerScreenKey } from './screens/setupOwner/en';
+import type { SetupPublishingScreenKey } from './screens/setupPublishing/en';
 
 export const en = {
     // ---- alpha.108 tools ----
@@ -153,6 +161,10 @@ export const en = {
     'nav.addons': 'Store',
     'login.totpLabel': 'Authentication code',
     'login.totpHint': 'Enter the 6-digit code from your authenticator app.',
+    'login.useRecovery': 'Use a recovery code',
+    'login.useAuthenticator': 'Use the authenticator code',
+    'login.recoveryLabel': 'Recovery code',
+    'login.recoveryHint': 'Type one of your saved recovery codes. It works only once.',
     'login.invalidCode': 'Invalid code. Try again.',
     'login.verify': 'Verify',
     'panelUpdate.title': 'CelikPanel updates',
@@ -172,7 +184,7 @@ export const en = {
     'panelUpdate.invalidResponse': 'The update request could not be verified.',
     'panelUpdate.notFoundYet': 'The request record is not visible yet; the same identity is being tracked automatically.',
     'panelUpdate.notAccepted': 'No durable request appeared within the safe verification window. The update was not accepted; check again.',
-    'panelUpdate.identityMismatchCleared': 'The different operation identity is terminal. The local pending marker was cleared; check again.',
+    'panelUpdate.identityMismatchCleared': 'The update this browser was following has already ended on the server, so this browser stopped following it. Nothing else changed. Check for updates again to see where the panel stands now.',
     'panelUpdate.succeeded': 'The update completed. The panel and agent restarted on the new version.',
     'panelUpdate.reloading': 'The update completed. Reloading this page with {version}…',
     'panelUpdate.failed': 'The update could not be completed.',
@@ -254,6 +266,9 @@ export const en = {
     'panelUpdate.outcome.preflightStep.generic': "Reason: a read-only check could not verify the current installation.",
     'panelUpdate.outcome.stoppedNext': "Nothing needs to be done on the server, unless the server's message below names a condition on this server, such as another operation still running or the package manager busy: then let it finish or fix it first.",
     'panelUpdate.outcome.stoppedResume': "Nothing resumes by itself. Starting the update to {target} again is safe.",
+    // alpha.114 E7: the new version refused this server's recorded mail or DNS state. The owner cannot fix that on the server.
+    'panelUpdate.outcome.preflightNext.application_compatibility': "Your sites, mail and DNS keep working on {previous}. Nothing needs to be done on the server; leave its mail and DNS files as they are. Starting {target} again stops the same way.",
+    'panelUpdate.outcome.preflightResume.application_compatibility': "This is corrected in CelikPanel, not on your server: when a newer version is published, the update card offers it and you start it as usual. When you report this, include the line under Details.",
     'nav.settings': 'Settings',
     'nav.menu': 'Menu',
     'nav.collapse': 'Collapse menu',
@@ -274,6 +289,7 @@ export const en = {
     'login.showPassword': 'Show password',
     'login.hidePassword': 'Hide password',
     'login.signIn': 'Sign in',
+    'login.forgot': 'Forgot password?',
     'login.signingIn': 'Signing in…',
     'login.invalid': 'Invalid username or password.',
     'login.failed': 'Sign-in failed. Please try again.',
@@ -347,6 +363,7 @@ export const en = {
     'common.resultUnknownNotMade': 'The connection dropped before the answer arrived, and nothing was sent a second time. What was read again at {time} does not show the change, so it is not known to have been saved. What you entered is still here. If the server was still working when the connection dropped, the change can appear later: check again before sending it a second time.',
     'common.resultUnknownUnread': 'The connection dropped before the answer arrived, so it is not known whether the change was made. Nothing was sent a second time. The current state could not be read again either, so controls that change or remove something stay off. Check again.',
     'common.checkAgain': 'Check again',
+    'common.technicalDetails': 'Technical details',
     'common.cancel': 'Cancel',
     'common.close': 'Close',
     'common.back': 'Back',
@@ -404,11 +421,11 @@ export const en = {
     'services.operation.reconnectingAuto': 'This page asks the server again every few seconds by itself; you do not need to press anything.',
     'services.operation.reconnectSlow': "This page has not had a usable answer from the panel for more than a minute, so the result of this operation is not known yet. This does not mean it failed: the server keeps the operation's record, and this page keeps asking by itself. Do not start the operation again. If the panel still does not answer, check on the server whether it is running: sudo systemctl status celikpanel-panel. If it is stopped, start it with sudo systemctl start celikpanel-panel, then reload this page.",
     'services.operation.refreshing': "Server operation finished. Verifying the current service state…",
-    'services.operation.backgroundHint': 'The job continues on the server. Reloading this page is safe; the panel will reattach with the operation id or its pre-request recovery marker. Other panel actions stay locked until the result is known.',
+    'services.operation.backgroundHint': 'The installation goes on on the server even if you close or reload this page. When you come back, this page finds the same installation and shows how it is going; it never starts a second one. Other changes in the panel wait until the result is known.',
     'services.operation.id': 'Operation: {id}',
     'services.operation.dismiss': 'Dismiss installation error',
     'services.operation.startFailed': 'The installation could not be started. The server did not return an active operation.',
-    'services.operation.recoveryStorageUnavailable': 'The installation was not started because this browser could not preserve a recovery marker. Enable session storage and try again.',
+    'services.operation.recoveryStorageUnavailable': 'The installation was not started. This browser does not let the panel keep the small note it needs to follow an installation across a page reload. Allow this site to store data in your browser, then try again.',
     'services.operation.failedTitle': "{name}: installation failed",
     'services.operation.failedChecking': "Installation failed. Checking the resulting service state.",
     'services.operation.failedCheckingHint': "The error is recorded. CelikPanel is checking what changed before allowing another operation. The installation will not restart automatically.",
@@ -419,6 +436,7 @@ export const en = {
     'services.operation.phase.scanning': "Checking the installed services…",
     'services.operation.phase.syncing': "Applying the related service configuration…",
     'services.operation.phase.syncing_dns': "Publishing the required DNS configuration…",
+    'services.operation.phase.firewall_waiting': "Waiting: another change or the package manager is busy on this server, so the firewall update waits and has started nothing. Nobody needs to act: it continues by itself once the server is free.",
     'services.operation.failed': 'The installation failed on the server.',
     'services.operation.phase.queued': 'Queued on the server…',
     'services.operation.phase.running': 'Installation is running…',
@@ -432,6 +450,7 @@ export const en = {
     'users.cancel': 'Cancel',
 
     'imp.banner': 'You are browsing as {name}.',
+    'imp.bannerBy': 'Viewing as {name}. You are {operator}; everything you do here is recorded under your name.',
     'imp.return': 'Return to my account',
 
     'profile.changePassword': 'Change password',
@@ -516,5 +535,13 @@ export type ScreenKey =
     | SetupInspectionScreenKey
     | DnsOverviewScreenKey
     | NginxDefaultHttpsScreenKey
-    | DnsPublicationScreenKey;
+    | DnsPublicationScreenKey
+    | ProblemsScreenKey
+    | RefusalsScreenKey
+    | AccountAccessScreenKey
+    | SiteFeaturesScreenKey
+    | OsUpdatesScreenKey
+    | PanelPortScreenKey
+    | SetupOwnerScreenKey
+    | SetupPublishingScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

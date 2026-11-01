@@ -40,12 +40,14 @@ const (
 	serviceMutationStepDisableRepo              serviceMutationStepMethod = "Agent.DisableRepo"
 	serviceMutationStepConfineRepo              serviceMutationStepMethod = "Agent.ConfineRepoV1"
 	serviceMutationStepWriteVendorOrigins       serviceMutationStepMethod = "Agent.WriteVendorUpdateOriginsV1"
+	serviceMutationStepSetOSUpdatesMode         serviceMutationStepMethod = "Agent.SetOSUpdatesModeV1"
 	serviceMutationStepVendorLane               serviceMutationStepMethod = "Agent.EnableVendorLaneV1"
 	serviceMutationStepUpdateRoundcube          serviceMutationStepMethod = "Agent.UpdateRoundcubeV1"
 	serviceMutationStepEnableWebmailAddress     serviceMutationStepMethod = "Agent.EnableWebmailAddressV1"
 	serviceMutationStepRemoveWebmailAddress     serviceMutationStepMethod = "Agent.RemoveWebmailAddressV1"
 	serviceMutationStepMoveAppFilesOwner        serviceMutationStepMethod = "Agent.MoveAppFilesOwnerV1"
 	serviceMutationStepSetPGClusterPort         serviceMutationStepMethod = "Agent.SetPostgreSQLClusterPortV1"
+	serviceMutationStepSetPanelListen           serviceMutationStepMethod = "Agent.SetPanelListenPortV1"
 	serviceMutationStepCopyPGDatabase           serviceMutationStepMethod = "Agent.CopyPostgreSQLDatabaseV1"
 	serviceMutationStepDropPGDatabase           serviceMutationStepMethod = "Agent.DropPostgreSQLDatabaseV1"
 	serviceMutationStepInstallNodeVersion       serviceMutationStepMethod = "Agent.InstallNodeVersion"
@@ -226,6 +228,12 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 		return strings.HasPrefix(claim.target, "pg-") && claim.packageName != "" && claim.action == "port" &&
 			serviceMutationJobMatches(job, "pg_cluster_port", claim.target, claim.packageName)
 
+	case serviceMutationStepSetPanelListen:
+		// alpha.114: the panel's own listen port, in its own job; the
+		// qualifier is the new port.
+		return claim.target == panelListenMutationTarget && claim.packageName != "" && claim.action == "port" &&
+			serviceMutationJobMatches(job, "panel_port_change", claim.target, claim.packageName)
+
 	case serviceMutationStepCopyPGDatabase:
 		// alpha.108: one database copied between two clusters (source and
 		// target ports are the qualifier).
@@ -264,6 +272,11 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 		// vendor repositories to the OS's automatic updates.
 		return claim.target == "unattended-upgrades" && claim.packageName == "" && claim.action == "origins" &&
 			serviceMutationJobMatches(job, "os_updates_origins", "unattended-upgrades", "")
+
+	case serviceMutationStepSetOSUpdatesMode:
+		// alpha.114: the owner's automatic/manual choice for the OS updates.
+		return claim.target == "unattended-upgrades" && claim.packageName == "" && claim.action == "mode" &&
+			serviceMutationJobMatches(job, "os_updates_mode", "unattended-upgrades", "")
 
 	case serviceMutationStepVendorLane:
 		// alpha.108: a vendor repository's lane (repository, confinement,

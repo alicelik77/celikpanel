@@ -419,6 +419,10 @@ const applyLanguage = (language) => {
     document.title = currentLanguage === 'en' ? 'CelikPanel | Technical evidence' : 'CelikPanel | Teknik kanıtlar';
     if (description) description.content = currentLanguage === 'en' ? 'CelikPanel operation model, dated test results and release verification.' : 'CelikPanel işlem modeli, tarihli test sonuçları ve sürüm doğrulaması.';
   }
+  if (document.body.dataset.page === 'systems') {
+    document.title = currentLanguage === 'en' ? 'CelikPanel | Supported operating systems' : 'CelikPanel | Desteklenen işletim sistemleri';
+    if (description) description.content = currentLanguage === 'en' ? 'The Debian, Ubuntu and Arch Linux releases CelikPanel installs on: what is offered, what is not and why, and how updates work.' : 'CelikPanel’in kurulduğu Debian, Ubuntu ve Arch Linux sürümleri: nelerin sunulduğu, nelerin sunulmadığı ve güncellemelerin nasıl işlediği.';
+  }
   renderProductView();
   renderReleaseState();
 };

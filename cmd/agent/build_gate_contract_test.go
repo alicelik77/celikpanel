@@ -90,6 +90,17 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			// alpha.114: a mailbox's out-of-office reply (Sieve vacation).
+			name: "SetMailAutoresponder",
+			run: func(expected string) string {
+				var response transport.MailAutoresponderResponse
+				if err := agent.SetMailAutoresponder(&transport.SetMailAutoresponderRequest{ExpectedBuildCommit: expected}, &response); err != nil {
+					return err.Error()
+				}
+				return response.Detail
+			},
+		},
+		{
 			name: "ApplyVhosts",
 			run: func(expected string) string {
 				var response ApplyVhostsResponse

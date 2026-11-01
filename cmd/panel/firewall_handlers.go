@@ -6,12 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/mutationpayload"
+	"github.com/alicelik/celikpanel/internal/panellisten"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -82,13 +81,21 @@ func firewallSSHDiscoveryError(reason string) error {
 // panelPort, panelin dinlediği TCP portunu döndürür; güvenlik duvarı,
 // yönetildiği kapıyı asla kapatmaz.
 func panelPort() int {
-	addr := listenAddr() // ":2083" or "1.2.3.4:2083"
-	if i := strings.LastIndexByte(addr, ':'); i >= 0 {
-		if n, err := strconv.Atoi(addr[i+1:]); err == nil {
-			return n
-		}
+	if port, err := panellisten.Port(listenAddr()); err == nil {
+		return port
 	}
-	return 2083
+	return panellisten.DefaultPort
+}
+
+// panelFirewallPorts are the panel's own ports: its listen port and, while a
+// panel port change waits for the owner's confirmation, the trial port too
+// (panel_port.go), so no firewall sync closes either door meanwhile.
+func panelFirewallPorts() []int {
+	ports := []int{panelPort()}
+	if trial := activePanelPortTrialPort(); trial > 0 && trial != ports[0] {
+		ports = append(ports, trial)
+	}
+	return ports
 }
 
 // desiredFirewallPorts computes the ports that must be open: the panel port
@@ -97,7 +104,7 @@ func panelPort() int {
 // desiredFirewallPorts, açık olması gereken portları hesaplar: panel portu +
 // kurulu her servisin bildirdiği portlar. Yalnız-yerel servisler katkı vermez.
 func (p *Panel) desiredFirewallPorts(extraTCP ...int) (tcp []int, udp []int, err error) {
-	tcp = append(tcp, panelPort())
+	tcp = append(tcp, panelFirewallPorts()...)
 	tcp = append(tcp, extraTCP...)
 
 	// Let's Encrypt renewal answers HTTP-01 on :80. A panel carrying a real
@@ -425,44 +432,57 @@ func (p *Panel) syncFirewallForServiceOperation(
 	ctx context.Context,
 	op serviceOperation,
 ) error {
+	_, err := p.syncFirewallChildForServiceOperation(ctx, op)
+	return err
+}
+
+// syncFirewallChildForServiceOperation is syncFirewallForServiceOperation that
+// also returns the request identity of the firewall child it sent to the
+// Agent (empty when none was sent), so a busy refusal can be proven to have
+// started nothing (lab run 4, I1).
+// Ajana gönderilen güvenlik duvarı alt işinin kimliğini de döndürür.
+func (p *Panel) syncFirewallChildForServiceOperation(
+	ctx context.Context,
+	op serviceOperation,
+) (string, error) {
 	if !serviceOperationNeedsFirewallSync(op) {
-		return errors.New("service operation does not require firewall synchronization")
+		return "", errors.New("service operation does not require firewall synchronization")
 	}
 	if _, err := panelMutationBinding(ctx); err == nil {
-		return errFirewallNestedMutation
+		return "", errFirewallNestedMutation
 	}
 	panelFirewallMu.Lock()
 	defer panelFirewallMu.Unlock()
 
 	var status FirewallStatusResp
 	if err := p.callAgentContext(ctx, "Agent.FirewallStatus", &transport.Empty{}, &status); err != nil {
-		return fmt.Errorf("read firewall status: %w", err)
+		return "", fmt.Errorf("read firewall status: %w", err)
 	}
 	if status.Error != "" {
-		return fmt.Errorf("read firewall status: %s", status.Error)
+		return "", fmt.Errorf("read firewall status: %s", status.Error)
 	}
 	if !status.Enabled {
-		return p.updateServiceOperationPhase(ctx, op.ID, serviceOperationFirewallPhase(op))
+		return "", p.updateServiceOperationPhase(ctx, op.ID, serviceOperationFirewallPhase(op))
 	}
 	tcp, udp, err := p.desiredFirewallPorts()
 	if err != nil {
-		return err
+		return "", err
 	}
 	tcp, udp, err = p.setupChildFirewallPorts(ctx, op, status, tcp, udp)
 	if err != nil {
-		return err
+		return "", err
 	}
 	commitment, err := mutationpayload.CanonicalFirewallApply(true, false, tcp, udp)
 	if err != nil {
-		return fmt.Errorf("canonicalize firewall policy: %w", err)
+		return "", fmt.Errorf("canonicalize firewall policy: %w", err)
 	}
 	requestID, err := newServiceOperationID()
 	if err != nil {
-		return fmt.Errorf("create firewall child request identity: %w", err)
+		return "", fmt.Errorf("create firewall child request identity: %w", err)
 	}
 	ownerID, err := newServiceOperationID()
 	if err != nil {
-		return fmt.Errorf("create firewall child owner identity: %w", err)
+		return "", fmt.Errorf("create firewall child owner identity: %w", err)
 	}
 	phase, err := encodeFirewallChildPhase(firewallChildIdentity{
 		RequestID: requestID,
@@ -470,21 +490,21 @@ func (p *Panel) syncFirewallForServiceOperation(
 		Qualifier: commitment.Qualifier,
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
 	if err := p.updateServiceOperationPhase(ctx, op.ID, phase); err != nil {
-		return err
+		return "", err
 	}
 	response, err := p.applyCanonicalFirewallV2Identity(
 		ctx, "firewall_sync", commitment, requestID, ownerID,
 	)
 	if err != nil {
-		return err
+		return requestID, err
 	}
 	if response.Error != "" {
-		return &firewallAgentResponseError{message: response.Error}
+		return requestID, &firewallAgentResponseError{message: response.Error}
 	}
-	return nil
+	return requestID, nil
 }
 
 // handleFirewall: GET status; POST {enabled} turns on/off and the explicit
@@ -561,7 +581,7 @@ func (p *Panel) handleFirewall(w http.ResponseWriter, r *http.Request) {
 		)
 		if errors.Is(err, errFirewallNoEngine) {
 			writeCodedError(w, http.StatusConflict, errCodeFirewallNoEngine,
-				"the firewall engine (nftables) is not installed — install it from Services first", "/services")
+				"the firewall engine (nftables) is not installed — install it from Components first", "/services")
 			return
 		}
 		if writeFirewallSSHDiscoveryError(w, err) {

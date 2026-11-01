@@ -1,6 +1,6 @@
 import { PanelAddressHint } from './PanelAddressHint';
 import { BrandMark } from './BrandMark';
-import { useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import { ShieldCheck, Users, User, Eye, EyeOff } from 'lucide-react';
 import { api, type CurrentUser, type DemoAccount } from '../lib/api';
 import { useI18n } from '../i18n';
@@ -8,6 +8,11 @@ import { useAccessGuidance } from '../lib/accessGuidance';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { SkinSwitcher } from './SkinSwitcher';
 import { LanguageSwitcher } from './LanguageSwitcher';
+
+// "Forgot password?" is fetched when it is opened; its copy is screen copy
+// (accountAccess), so the boot path carries only the link's label.
+// "Parolamı unuttum" açıldığında getirilir; açılış yolunda yalnız etiketi var.
+const ForgotPassword = lazy(() => import('./ForgotPassword').then((module) => ({ default: module.ForgotPassword })));
 
 const roleIcon: Record<string, typeof User> = {
     admin: ShieldCheck,
@@ -38,7 +43,11 @@ export function Login({ onSuccess, sessionEnded = false }: { onSuccess: (user: C
     const [submitting, setSubmitting] = useState(false);
     const [pendingToken, setPendingToken] = useState('');
     const [totpCode, setTotpCode] = useState('');
+    // alpha.114: a single-use recovery code in place of the authenticator code.
+    const [useRecovery, setUseRecovery] = useState(false);
+    const [recoveryCode, setRecoveryCode] = useState('');
     const [demo, setDemo] = useState<DemoAccount[]>([]);
+    const [forgot, setForgot] = useState(false);
 
     // Demo accounts only come back when the server runs with --demo, so this
     // panel simply never appears in production.
@@ -84,7 +93,7 @@ export function Login({ onSuccess, sessionEnded = false }: { onSuccess: (user: C
         setError('');
         setSubmitting(true);
         try {
-            const user = await api.loginTOTP(pendingToken, totpCode.trim());
+            const user = await api.loginTOTP(pendingToken, useRecovery ? recoveryCode.trim() : totpCode.trim(), useRecovery);
             onSuccess(user);
         } catch (err) {
             const code = (err as Error).message;
@@ -118,22 +127,55 @@ export function Login({ onSuccess, sessionEnded = false }: { onSuccess: (user: C
                         className="space-y-4 rounded-2xl border border-border bg-surface p-6"
                     >
                         <div>
-                            <label htmlFor="totp" className="mb-1.5 block text-sm font-medium text-fg-muted">
-                                {t('login.totpLabel')}
-                            </label>
-                            <input
-                                id="totp"
-                                type="text"
-                                autoFocus
-                                inputMode="numeric"
-                                autoComplete="one-time-code"
-                                value={totpCode}
-                                onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                                placeholder="000000"
-                                className="w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-center font-mono text-lg tracking-[0.4em] text-fg outline-none transition-shadow focus:border-primary"
-                                required
-                            />
-                            <p className="mt-1.5 text-xs text-fg-subtle">{t('login.totpHint')}</p>
+                            {useRecovery ? (
+                                <>
+                                    <label htmlFor="recovery" className="mb-1.5 block text-sm font-medium text-fg-muted">
+                                        {t('login.recoveryLabel')}
+                                    </label>
+                                    <input
+                                        id="recovery"
+                                        type="text"
+                                        autoFocus
+                                        autoComplete="off"
+                                        spellCheck={false}
+                                        value={recoveryCode}
+                                        onChange={(e) => setRecoveryCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 19))}
+                                        placeholder="XXXX-XXXX-XXXX-XXXX"
+                                        className="w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-center font-mono text-lg tracking-widest text-fg outline-none transition-shadow focus:border-primary"
+                                        required
+                                    />
+                                    <p className="mt-1.5 text-xs text-fg-subtle">{t('login.recoveryHint')}</p>
+                                </>
+                            ) : (
+                                <>
+                                    <label htmlFor="totp" className="mb-1.5 block text-sm font-medium text-fg-muted">
+                                        {t('login.totpLabel')}
+                                    </label>
+                                    <input
+                                        id="totp"
+                                        type="text"
+                                        autoFocus
+                                        inputMode="numeric"
+                                        autoComplete="one-time-code"
+                                        value={totpCode}
+                                        onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                        placeholder="000000"
+                                        className="w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-center font-mono text-lg tracking-[0.4em] text-fg outline-none transition-shadow focus:border-primary"
+                                        required
+                                    />
+                                    <p className="mt-1.5 text-xs text-fg-subtle">{t('login.totpHint')}</p>
+                                </>
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setUseRecovery((current) => !current);
+                                    setError('');
+                                }}
+                                className="mt-2 text-xs text-primary hover:underline"
+                            >
+                                {useRecovery ? t('login.useAuthenticator') : t('login.useRecovery')}
+                            </button>
                         </div>
 
                         {error && (
@@ -144,12 +186,16 @@ export function Login({ onSuccess, sessionEnded = false }: { onSuccess: (user: C
 
                         <button
                             type="submit"
-                            disabled={submitting || totpCode.length < 6}
+                            disabled={submitting || (useRecovery ? recoveryCode.replace(/-/g, '').length < 16 : totpCode.length < 6)}
                             className="w-full rounded-lg bg-primary px-3 py-2.5 font-medium text-primary-fg transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             {submitting ? t('login.signingIn') : t('login.verify')}
                         </button>
                     </form>
+                ) : forgot ? (
+                    <Suspense fallback={null}>
+                        <ForgotPassword onBack={() => setForgot(false)} />
+                    </Suspense>
                 ) : (
                 <form
                     onSubmit={handleSubmit}
@@ -214,6 +260,17 @@ export function Login({ onSuccess, sessionEnded = false }: { onSuccess: (user: C
                         className="w-full rounded-lg bg-primary px-3 py-2.5 font-medium text-primary-fg transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         {submitting ? t('login.signingIn') : t('login.signIn')}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setError('');
+                            setForgot(true);
+                        }}
+                        className="block w-full text-center text-sm font-medium text-primary hover:underline"
+                        data-forgot-open=""
+                    >
+                        {t('login.forgot')}
                     </button>
                 </form>
                 )}

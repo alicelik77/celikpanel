@@ -186,6 +186,17 @@ func PDNSFreshPrimaryBuildForKind(kind string) (PDNSFreshPrimaryBuild, bool) {
 	return PDNSFreshPrimaryBuild{}, false
 }
 
+// PDNSFreshPrimaryKinds lists every marker this source can write. The
+// independent application checker pins which markers each declared Agent
+// generation reads; a marker missing there refuses that Agent.
+func PDNSFreshPrimaryKinds() []string {
+	kinds := make([]string, 0, len(pdnsFreshPrimaryBuilds))
+	for _, build := range pdnsFreshPrimaryBuilds {
+		kinds = append(kinds, build.Kind)
+	}
+	return kinds
+}
+
 // IsNativeCatalogV3 reports whether marker is a measured native catalog
 // tenure of any family.
 func IsNativeCatalogV3(marker string) bool {

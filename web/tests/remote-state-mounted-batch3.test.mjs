@@ -90,6 +90,10 @@ const stub = dataModule(`
   export const ServerSetupDashboardNotice = () => null, LicenseNotice = () => null, PageHeader = () => null;
   // The Dashboard's quiet update row (alpha.96) is its own component.
   export const DashboardUpdateNotice = () => null;
+  // alpha.114: the compact waiting-updates card has its own tests (os-updates-alpha114).
+  export const PendingUpdatesCard = () => null;
+  // alpha.114: My plan reads its own address (customers and resellers only).
+  export const MyPlanCard = () => null;
   export const FirewallNoSSHAcknowledgement = () => null, readFirewallSSHReason = () => null, FirewallSSHReasonLine = () => null;
   // What the Components page imports beside these.
   export const useLocation = () => ({ hash: '', pathname: '/services' });
@@ -104,6 +108,10 @@ const stub = dataModule(`
   // The setup state the Components page reads to add mail through setup
   // (2026-10-16); none unless a test gives one.
   export const useServerSetup = () => globalThis.batch3Setup ?? null;
+  // alpha.114: the review problems have their own tests; none are planned here.
+  export const SetupPlanProblems = () => null;
+  // alpha.114: the Dashboard's "no website yet" cards have their own mounted test (remote-state-mounted).
+  export const NoWebsiteCards = () => null;
 `);
 const shared = sharedLayer(stub);
 const lib = (path, more = {}) => shared.compile(path, more);
@@ -132,6 +140,8 @@ const Dashboard = await pick(lib('components/Dashboard.tsx', {
   '/lib/componentCensus': lib('lib/componentCensus.ts'),
   '/lib/readyBundles': lib('lib/readyBundles.ts', { '/mailProfileText': lib('lib/mailProfileText.ts') }),
   '/lib/infrastructureZones': lib('lib/infrastructureZones.ts'),
+  // The panel's certificate name (alpha.114 screens round).
+  '/lib/panelCertificate': lib('lib/panelCertificate.ts'),
   '/lib/auditAction': lib('lib/auditAction.ts', { '/componentName': lib('lib/componentName.ts') }),
   '/ComponentOperation': operationURL,
 }), 'Dashboard');
@@ -147,6 +157,14 @@ const ServiceList = await pick(lib('components/ServiceList.tsx', {
   '/lib/mailProfileText': lib('lib/mailProfileText.ts'),
   '/lib/componentName': lib('lib/componentName.ts'),
   '/lib/serverSetup': lib('lib/serverSetup.ts'),
+  // alpha.114: a finished setup adds mail in place, in this dialog.
+  '/MailSetupDialog': lib('components/MailSetupDialog.tsx', {
+    '/lib/serverSetup': lib('lib/serverSetup.ts'),
+    '/lib/serverSetupOperation': lib('lib/serverSetupOperation.ts', { '/serverSetup': lib('lib/serverSetup.ts') }),
+    '/lib/serverSetupGuidance': lib('lib/serverSetupGuidance.ts'),
+    '/lib/panelHandover': lib('lib/panelHandover.ts'),
+    '/lib/componentName': lib('lib/componentName.ts'),
+  }),
   '/WebmailRepairButton': lib('components/WebmailRepairButton.tsx'),
   '/lib/readyBundles': lib('lib/readyBundles.ts', { '/mailProfileText': lib('lib/mailProfileText.ts') }),
   '/lib/componentIcons': lib('lib/componentIcons.tsx'),
@@ -1219,39 +1237,65 @@ test('Components: on a secondary DNS server the mail box names the primary and t
   } finally { await unmount(); }
 });
 
-test('Components: a server whose setup has finished adds mail through a setup extension and opens setup on its access step', async () => {
+// alpha.114 (owner decision 2026-10-31): a finished setup adds mail in place.
+// The dialog asks the mail name only, shows the steps the server plans, starts
+// them once and shows their progress and outcome; it never opens the wizard.
+const hex = (c) => c.repeat(32);
+const mailPlan = (revision) => ({ id: hex('a'), version: 1, revision, purpose: 'custom', scope: 'mail', blockers: [], can_start: true, tcp_ports: [25, 80], udp_ports: [], preserve_ssh: true, persist_firewall: true, contact_email: 'owner@example.net',
+  steps: [
+    { id: '01-mail_profile', kind: 'mail_profile', target: 'core-mail' }, { id: '02-firewall', kind: 'firewall', target: 'enable_and_persist' },
+    { id: '03-access_dns', kind: 'access_dns', target: 'mail.example.net', qualifier: '198.51.100.7' }, { id: '04-mail_certificate', kind: 'mail_certificate', target: 'mail.example.net' },
+    { id: '05-mail_enrollment', kind: 'mail_enrollment', target: 'mail-renewal', qualifier: 'g1' }, { id: '06-verify', kind: 'verify', target: 'custom' },
+  ] });
+const mailRun = (requestID, status) => ({ id: requestID, request_id: requestID, plan_id: hex('a'), status, phase: status === 'succeeded' ? 'complete' : '01-mail_profile',
+  steps: mailPlan(8).steps.map((step, index) => ({ ...step, status: status === 'succeeded' ? 'succeeded' : index === 0 ? 'running' : 'pending' })) });
+const extendedSetup = () => { const base = readySetup(); return { ...base, revision: 8, status: 'draft', extension: true, extension_scope: 'mail', extension_base: base.draft, draft: { ...base.draft, mail_hostname: 'mail.example.net', customization: { components: ['dovecot', 'mariadb', 'nginx', 'php-fpm', 'postfix'] } } }; };
+
+test('Components: a finished setup adds mail in place: the mail name only, the steps, then progress and outcome in the same dialog', async () => {
   globalThis.batch3Dialogs = true;
   globalThis.batch3Navigated = [];
-  const kept = browserStorage();
+  browserStorage();
+  globalThis.localStorage = globalThis.sessionStorage;
   const context = globalThis.batch3Setup = setupContext(readySetup());
-  let sent = null;
+  let sent = null, started = null;
   serve({
     '/api/v1/managed-services': savedNameScan(),
-    '/api/v1/setup/extend': (init) => {
-      sent = JSON.parse(init.body);
-      const base = readySetup();
-      return answer({ ...base, revision: 8, status: 'draft', extension: true, extension_base: base.draft, draft: { ...base.draft, mail_hostname: 'mail.example.net', customization: { components: ['dovecot', 'mariadb', 'nginx', 'php-fpm', 'postfix'] } } });
-    },
+    '/api/v1/setup/peer': { role: 'none' },
+    '/api/v1/setup/extend': (init) => { sent = JSON.parse(init.body); return answer(extendedSetup()); },
+    '/api/v1/setup/plan': () => answer(mailPlan(8)),
+    '/api/v1/setup/start': (init) => { started = JSON.parse(init.body); return answer(mailRun(started.request_id, 'running')); },
+    '/api/v1/setup/operation': () => answer(mailRun(started.request_id, 'succeeded')),
   });
   await mount(React.createElement(ServiceList, {}));
   try {
-    await settle();
-    // Control for the secondary server's strip: with its DNS identity ready the mail bundles are offered.
-    assert.ok(tree.root.findAll((node) => node.type === 'button' && node.props['data-bundle'] === 'mail.core').length === 1 && !hasNode('data-mail-dns-secondary'));
+    await settle(); await settle();
     await openMailBundle();
-    const shown = text();
-    assert.ok(hasNode('data-mail-profile-route') && shown.includes('services.mailProfiles.setupRoute.note'), shown.slice(0, 800));
-    assert.ok(!shown.includes('services.mailProfiles.plan.acknowledgement'), 'nothing starts here, so nothing is acknowledged here');
-    await press('services.mailProfiles.setupRoute.confirm');
-    assert.deepEqual(sent, { revision: 7, action: 'begin', mail_profile: 'core-mail' });
-    assert.equal(requests.filter((line) => line === 'POST /api/v1/setup/extend').length, 1);
+    await settle(); await settle();
+    // Only the mail name is asked, filled with the saved one.
+    const input = tree.root.find((node) => node.props && node.props.id === 'mail-setup-hostname');
+    assert.equal(input.props.value, 'mail.example.net');
+    assert.ok(!text().includes('services.mailProfiles.setupRoute.confirm') && !hasNode('data-mail-profile-route'), text().slice(0, 800));
+    await press('svc.mailSetup.review');
+    await settle();
+    assert.deepEqual(sent, { revision: 7, action: 'begin', scope: 'mail', mail_profile: 'core-mail' });
+    const steps = tree.root.findAll((node) => node.props && node.props['data-mail-setup-step'] !== undefined).map((node) => node.props['data-mail-setup-step']);
+    assert.deepEqual(steps, ['mail_profile', 'firewall', 'access_dns', 'mail_certificate', 'mail_enrollment', 'verify']);
+    assert.equal(requests.filter((line) => line === 'POST /api/v1/setup/start').length, 0, 'nothing starts before the confirmation');
+    const start = () => buttons().find((node) => label(node).includes('svc.mailSetup.start'));
+    assert.equal(start().props.disabled, true);
+    const confirm = tree.root.findAll((node) => node.type === 'input' && node.props.type === 'checkbox').at(-1);
+    await act(async () => { confirm.props.onChange({ target: { checked: true } }); });
+    await press('svc.mailSetup.start');
+    await settle(); await settle();
+    assert.equal(requests.filter((line) => line === 'POST /api/v1/setup/start').length, 1);
+    assert.equal(started.plan_id, hex('a'));
+    const outcome = tree.root.find((node) => node.props && node.props['data-mail-setup-outcome'] !== undefined);
+    assert.equal(outcome.props['data-mail-setup-outcome'], 'done', text().slice(0, 1200));
+    assert.ok(text().includes('svc.mailSetup.done'), text().slice(0, 1200));
+    assert.deepEqual(globalThis.batch3Navigated, [], 'the wizard was opened');
     assert.equal(requests.filter((line) => line.startsWith('POST /api/v1/service/profile/install')).length, 0, 'the weaker direct install ran');
-    assert.equal(context.snapshot.extension, true);
-    assert.deepEqual(globalThis.batch3Navigated, ['/setup']);
-    const editor = JSON.parse(kept.get('celikpanel.setup.editor.admin'));
-    assert.equal(editor.step, 'names');
-    assert.equal(editor.revision, 8);
-  } finally { await unmount(); delete globalThis.batch3Dialogs; delete globalThis.batch3Setup; delete globalThis.batch3Navigated; delete globalThis.sessionStorage; delete globalThis.document; }
+    assert.equal(context.snapshot.extension_scope, 'mail');
+  } finally { await unmount(); delete globalThis.batch3Dialogs; delete globalThis.batch3Setup; delete globalThis.batch3Navigated; delete globalThis.sessionStorage; delete globalThis.localStorage; delete globalThis.document; }
   // Control: without a finished setup the dialog installs directly and says
   // that its certificate is temporary.
   globalThis.batch3Dialogs = true;
@@ -1263,69 +1307,57 @@ test('Components: a server whose setup has finished adds mail through a setup ex
     await openMailBundle();
     const shown = text();
     assert.ok(shown.includes('services.mailProfiles.directRoute.note') && shown.includes('services.mailProfiles.plan.acknowledgement'), shown.slice(0, 800));
-    assert.ok(!shown.includes('services.mailProfiles.setupRoute.confirm'));
+    assert.ok(!hasNode('data-mail-setup'));
   } finally { await unmount(); delete globalThis.batch3Dialogs; delete globalThis.sessionStorage; delete globalThis.document; }
 });
 
-test('Components: a refused setup extension keeps the dialog open with the reason and opens nothing', async () => {
+test('Components: a refused mail extension keeps the dialog open with the reason and opens nothing', async () => {
   globalThis.batch3Dialogs = true;
   globalThis.batch3Navigated = [];
   browserStorage();
   globalThis.batch3Setup = setupContext(readySetup());
-  let release;
   serve({
     '/api/v1/managed-services': savedNameScan(),
-    '/api/v1/setup/extend': () => new Promise((resolve) => { release = () => resolve(answer({ error: 'busy', code: 'server_setup_busy' }, 409)); }),
+    '/api/v1/setup/peer': { role: 'none' },
+    '/api/v1/setup/extend': () => answer({ error: 'busy', code: 'server_setup_busy' }, 409),
   });
   await mount(React.createElement(ServiceList, {}));
   try {
-    await settle();
+    await settle(); await settle();
     await openMailBundle();
-    await press('services.mailProfiles.hostname.change');
-    await press('services.mailProfiles.setupRoute.confirm');
-    // While setup is asked, nothing in the dialog can change or close what was sent (2026-10-16).
-    const locked = () => ({
-      cancel: buttons().find((node) => label(node).includes('common.cancel')).props.disabled,
-      keep: buttons().find((node) => label(node).includes('services.mailProfiles.hostname.keep')).props.disabled,
-      name: tree.root.find((node) => node.props && node.props.id === 'mail-profile-hostname').props.disabled,
-    });
-    assert.deepEqual(locked(), { cancel: true, keep: true, name: true });
-    await act(async () => { release(); });
     await settle();
-    assert.deepEqual(locked(), { cancel: false, keep: false, name: false });
-    assert.ok(text().includes('services.mailProfiles.setupRoute.busy'), text().slice(0, 800));
+    await press('svc.mailSetup.review');
+    await settle();
+    assert.ok(text().includes('svc.mailSetup.busy'), text().slice(0, 800));
+    assert.ok(hasNode('data-mail-setup'));
     assert.deepEqual(globalThis.batch3Navigated, []);
     assert.equal(requests.filter((line) => line === 'POST /api/v1/setup/extend').length, 1, 'the refused request was sent again');
+    assert.equal(requests.filter((line) => line === 'POST /api/v1/setup/plan').length, 0);
   } finally { await unmount(); delete globalThis.batch3Dialogs; delete globalThis.batch3Setup; delete globalThis.batch3Navigated; delete globalThis.sessionStorage; delete globalThis.document; }
 });
 
-test('Components: a saved mail host name can be corrected, and what changes is said before it is confirmed', async () => {
+test('Components: on a joined server the mail dialog proposes mail.<panel name> and refuses a name the first server uses', async () => {
   globalThis.batch3Dialogs = true;
   globalThis.batch3Navigated = [];
   browserStorage();
   globalThis.batch3Setup = setupContext(readySetup());
-  let sent = null;
   serve({
-    '/api/v1/managed-services': savedNameScan(),
-    '/api/v1/setup/extend': (init) => { sent = JSON.parse(init.body); return answer({ ...readySetup(), revision: 8, status: 'draft', extension: true, extension_base: readySetup().draft }); },
+    '/api/v1/managed-services': freshScan(),
+    '/api/v1/setup/peer': { role: 'second', link: { address: '203.0.113.10', main_domain: 'example.net', main_dns_server: 'first', ns1: 'ns1.example.net', ns2: 'ns2.example.net', imported: 0, joined_at: '2026-10-31T09:00:00Z', first: { ipv4: '203.0.113.10', panel_domain: 'frankfurt.example.net', mail_hostname: 'mail.example.net', dns_engine: 'pdns' } } },
   });
   await mount(React.createElement(ServiceList, {}));
   try {
-    await settle();
+    await settle(); await settle();
     await openMailBundle();
-    assert.ok(text().includes('services.mailProfiles.hostname.settled'), text().slice(0, 800));
-    assert.ok(!hasNode('data-mail-hostname-effects'), 'effects said before any change');
-    await press('services.mailProfiles.hostname.change');
-    const input = tree.root.find((node) => node.props && node.props.id === 'mail-profile-hostname');
-    assert.equal(input.props.value, 'mail.example.net');
-    await act(async () => { input.props.onChange({ target: { value: 'smtp.example.net' } }); });
-    const effects = tree.root.find((node) => node.props && node.props['data-mail-hostname-effects'] !== undefined);
-    assert.equal(label(effects), 'services.mailProfiles.hostname.changeEffects{"old":"mail.example.net","new":"smtp.example.net"}');
-    await press('services.mailProfiles.setupRoute.confirm');
-    assert.deepEqual(sent, { revision: 7, action: 'begin', mail_profile: 'core-mail', mail_hostname: 'smtp.example.net' });
+    await settle(); await settle();
+    const input = () => tree.root.find((node) => node.props && node.props.id === 'mail-setup-hostname');
+    assert.equal(input().props.value, 'mail.boston.example.net', text().slice(0, 800));
+    await act(async () => { input().props.onChange({ target: { value: 'mail.example.net' } }); });
+    const help = tree.root.find((node) => node.props && node.props['data-mail-setup-hostname'] !== undefined);
+    assert.equal(help.props['data-mail-setup-hostname'], 'taken');
+    assert.equal(buttons().find((node) => label(node).includes('svc.mailSetup.review')).props.disabled, true);
   } finally { await unmount(); delete globalThis.batch3Dialogs; delete globalThis.batch3Setup; delete globalThis.batch3Navigated; delete globalThis.sessionStorage; delete globalThis.document; }
 });
-
 
 // Second server as a full peer, part 2 (2026-10-16): the box says whether this
 // secondary has an authorized DNS connection to the primary, so setup asks for

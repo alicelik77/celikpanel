@@ -3,7 +3,7 @@
 import type { DnsCertificatesScreenKey } from './en';
 
 export const trDnsCertificatesScreens: Record<DnsCertificatesScreenKey, string> = {
-    'dns.notServed': 'Bu kayıtlar YAYINLANMIYOR: panel tarafından yönetilen etkin bir yetkili DNS motoru yok. Sunucu → DNS ve eş sunucular sayfasından BIND veya PowerDNS seçip etkinleştirin.',
+    'dns.notServed': "Bu kayıtlar yayınlanmıyor: bu sunucuda çalışan bir DNS yazılımı yok.",
 
     'ssl.status.valid': 'Geçerli',
     'ssl.status.expiring': 'Süresi doluyor',
@@ -163,6 +163,7 @@ export const trDnsCertificatesScreens: Record<DnsCertificatesScreenKey, string> 
     'dns.recordAdded': 'Kayıt eklendi',
     'dns.recordAddFailed': 'Kayıt eklenemedi',
     'dns.recordDeleted': 'Kayıt silindi',
+    'dns.savedPublishing': 'Kaydedildi. DNS sunucuları değişikliği bir dakika içinde alır; bir şey yapmanız gerekmiyor.',
     'dns.recordDeleteFailed': 'Kayıt silinemedi',
     'dns.confirmDelete': 'Bu kayıt silinsin mi?',
     'dns.managedRecord': 'Bu kayıt Sunucu → DNS ve eş sunucular sayfasından yönetilir.',
@@ -377,6 +378,7 @@ export const trDnsCertificatesScreens: Record<DnsCertificatesScreenKey, string> 
     'dnssrv.requirement.powerdnsTitle': 'PowerDNS gerekli',
     'dnssrv.requirement.powerdnsMissing': 'PowerDNS kurulup çalıştırılana kadar bu sunucu DNS zone’larını yayınlayamaz.',
     'dnssrv.requirement.powerdnsReady': 'PowerDNS hazır',
+    'dnssrv.requirement.openEngine': 'DNS motoru kartına git',
     'dnssrv.requirement.openComponents': 'Bileşenleri aç',
     'dnssrv.readyToSave': 'Kaydetmeye hazır',
     'dnssrv.readyToVerify': 'Kayıtlı kurulum yeniden yayınlanmaya hazır.',

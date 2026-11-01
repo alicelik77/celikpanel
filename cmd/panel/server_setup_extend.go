@@ -43,6 +43,8 @@ const (
 	errCodeServerSetupExtendNotActive = "server_setup_extend_not_active"
 	serverSetupExtendNotReadyMessage  = "This server's setup has not finished yet, so there is nothing to extend. Continue the current setup instead."
 	serverSetupExtendNotActiveMessage = "This server's setup is not being extended, so there is nothing to stop."
+	errCodeServerSetupExtendNoMail    = "server_setup_extend_no_mail"
+	serverSetupExtendNoMailMessage    = "This server has no mail service to add or repair. Choose a mail package on the Components page first."
 	serverSetupExtendBusyMessage      = "A setup run is in progress on this server. Its page shows the progress; extend or stop the setup after it has finished."
 )
 
@@ -135,14 +137,17 @@ func (p *Panel) handleServerSetupExtend(w http.ResponseWriter, r *http.Request) 
 		Action       string `json:"action"`
 		MailProfile  string `json:"mail_profile,omitempty"`
 		MailHostname string `json:"mail_hostname,omitempty"`
+		// Scope "mail" (alpha.114): the extension only adds or repairs mail
+		// and its plan holds the mail steps only (server_setup_mail_scope.go).
+		Scope string `json:"scope,omitempty"`
 	}
-	if decodeServiceOperationJSON(w, r, &request) != nil || !stringIn(request.Action, "begin", "cancel") {
+	if decodeServiceOperationJSON(w, r, &request) != nil || !stringIn(request.Action, "begin", "cancel") || !stringIn(request.Scope, "", serverSetupExtensionScopeMail) {
 		writeClientError(w, http.StatusBadRequest, "invalid setup extension request")
 		return
 	}
 	request.MailProfile = strings.TrimSpace(request.MailProfile)
 	request.MailHostname = strings.TrimSpace(request.MailHostname)
-	if request.Action == "cancel" && (request.MailProfile != "" || request.MailHostname != "") {
+	if request.Action == "cancel" && (request.MailProfile != "" || request.MailHostname != "" || request.Scope != "") {
 		writeClientError(w, http.StatusBadRequest, "invalid setup extension request")
 		return
 	}
@@ -220,8 +225,26 @@ func (p *Panel) handleServerSetupExtend(w http.ResponseWriter, r *http.Request) 
 		writeClientError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	if request.Scope == serverSetupExtensionScopeMail && !serverSetupDraftHasMailProfile(draft) {
+		writeCodedError(w, http.StatusBadRequest, errCodeServerSetupExtendNoMail, serverSetupExtendNoMailMessage, "/services")
+		return
+	}
 	if extending && serverSetupDraftsEqual(draft, state.Draft) {
-		json.NewEncoder(w).Encode(state)
+		tx, err := p.db.GetDB().BeginTx(r.Context(), nil)
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		defer tx.Rollback()
+		if err := saveServerSetupExtensionScope(r.Context(), tx, request.Scope); err != nil {
+			writeServerError(w, err)
+			return
+		}
+		if err := tx.Commit(); err != nil {
+			writeServerError(w, err)
+			return
+		}
+		p.writeServerSetupState(w, r)
 		return
 	}
 	raw, err := json.Marshal(draft)
@@ -245,6 +268,10 @@ func (p *Panel) handleServerSetupExtend(w http.ResponseWriter, r *http.Request) 
 			writeServerError(w, err)
 			return
 		}
+	}
+	if err := saveServerSetupExtensionScope(r.Context(), tx, request.Scope); err != nil {
+		writeServerError(w, err)
+		return
 	}
 	// A ready row always carries completed_at; one that does not gets the
 	// time of this extension, so the extension is never taken for a first setup.
@@ -279,7 +306,7 @@ func (p *Panel) cancelServerSetupExtension(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	defer tx.Rollback()
-	if _, err := tx.ExecContext(r.Context(), `DELETE FROM panel_settings WHERE key=?`, settingServerSetupExtensionBase); err != nil {
+	if _, err := tx.ExecContext(r.Context(), `DELETE FROM panel_settings WHERE key IN (?,?)`, settingServerSetupExtensionBase, settingServerSetupExtensionScope); err != nil {
 		writeServerError(w, err)
 		return
 	}

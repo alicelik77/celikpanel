@@ -4,7 +4,7 @@ import { setupDNSTranslation } from '../i18n/setupDNS';
 import type { TranslationKey } from '../i18n/en';
 import { componentName } from '../lib/componentName';
 import { setupComponentClosure, setupRolePreset, type SetupComponentCatalog, type SetupDNSEngineChoice, type SetupRoles } from '../lib/serverSetupComponents';
-import { mergeSetupSPF, setupDNSNames, setupImportedDMARC, setupImportedMX, setupImportedSPF, setupNameWithin, type ServerSetupDraft, type SetupImportedRecord } from '../lib/serverSetup';
+import { mergeSetupSPF, setupDNSNames, setupImportedDMARC, setupImportedMX, setupImportedSPF, setupJoinedMailTaken, setupNameWithin, type ServerSetupDraft, type SetupImportedRecord, type SetupJoinedNames } from '../lib/serverSetup';
 import { useRefreshEvery, useRemote } from '../lib/remote';
 import { Button, inputClass, KeepWords } from './ui';
 
@@ -38,14 +38,29 @@ function Choice({ name, value, checked, disabled, onChange, title, tag, help, ex
     </label>;
 }
 
-// required: false while the owner is joining a first server by code, since the
-// main domain then comes from that server (the join panel shares this form).
-export function SetupDomainStep({ value, onChange, invalid, required = true }: { value: string; onChange: (value: string) => void; invalid: boolean; required?: boolean }) {
+// The first question (alpha.114): is this the first server, which sets up a
+// new main domain, or does it join a server that already started? Only the
+// chosen path's fields and its one primary button follow.
+// Ilk soru: ilk sunucu mu, mevcut sunucuya katilan mi?
+export type SetupServerKind = 'first' | 'join';
+export function SetupServerKindStep({ value, onChange, disabled }: { value: SetupServerKind | null; onChange: (value: SetupServerKind) => void; disabled?: boolean }) {
+    const { t } = useSetupWizardI18n();
+    return <fieldset className="space-y-4" data-setup-kind="" disabled={disabled}>
+        <legend className="text-xl font-semibold">{t('setup.v6.kind.title')}</legend>
+        <div className="grid gap-3 pt-2" role="radiogroup" aria-label={t('setup.v6.kind.title')}>
+            <Choice name="setup-server_kind" value="first" checked={value === 'first'} onChange={() => onChange('first')} title={t('setup.v6.kind.first')} help={t('setup.v6.kind.first.help')} />
+            <Choice name="setup-server_kind" value="join" checked={value === 'join'} onChange={() => onChange('join')} title={t('setup.v6.kind.join')} help={t('setup.v6.kind.join.help')} />
+        </div>
+        {value === null && <p className="text-sm leading-6 text-fg-muted" data-setup-kind-pick="">{t('setup.v6.kind.pick')}</p>}
+    </fieldset>;
+}
+
+export function SetupDomainStep({ value, onChange, invalid, shortName }: { value: string; onChange: (value: string) => void; invalid: boolean; shortName?: string }) {
     const { t } = useSetupWizardI18n();
     return <section className="space-y-5" aria-labelledby="setup-domain-title">
         <h2 id="setup-domain-title" className="text-xl font-semibold">{t('setup.v2.domain.title')}</h2>
-        <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v2.domain.help', { example: `panel.${value || 'example.com'}` })}</p>
-        <div className="max-w-md"><SetupWizardInput name="main_domain" label={t('setup.v2.domain.label')} value={value} onChange={onChange} placeholder="example.com" required={required} help={t('setup.v2.domain.hint')} invalid={invalid ? t('setup.v2.domain.invalid') : undefined} /></div>
+        <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v2.domain.help', { example: `${shortName || 'panel'}.${value || 'example.com'}` })}</p>
+        <div className="max-w-md"><SetupWizardInput name="main_domain" label={t('setup.v2.domain.label')} value={value} onChange={onChange} placeholder="example.com" required help={t('setup.v2.domain.hint')} invalid={invalid ? t('setup.v2.domain.invalid') : undefined} /></div>
     </section>;
 }
 
@@ -79,7 +94,9 @@ export function SetupRolesStep({ roles, onRoles, catalog, server, serverCount, c
     roles: SetupRoles; onRoles: (roles: SetupRoles) => void; catalog: SetupComponentCatalog | null; server: string; serverCount: 1 | 2;
     customized: boolean; onCustomize: () => void; onReset: () => void; disabled: boolean;
 }) {
-    const { t } = useSetupWizardI18n();
+    const { t, locale } = useSetupWizardI18n();
+    // The name sits mid-sentence in English ("What will this server (x) do?"); Turkish starts the sentence with it.
+    const titleServer = locale === 'en' ? server.charAt(0).toLowerCase() + server.slice(1) : server;
     const installs = (role: 'web' | 'mail') => catalog ? [...setupComponentClosure(setupRolePreset(role, catalog), catalog)].map(id => componentName(catalog.components.find(row => row.id === id) ?? id, t)).join(', ') : '…';
     const cards: { role: keyof SetupRoles; title: TranslationKey; help: TranslationKey; brings: string }[] = [
         { role: 'web', title: 'setup.v2.role.web', help: 'setup.v2.role.web.help', brings: installs('web') },
@@ -87,7 +104,7 @@ export function SetupRolesStep({ roles, onRoles, catalog, server, serverCount, c
         { role: 'dns', title: 'setup.v2.role.dns', help: serverCount === 2 ? 'setup.v2.role.dns.helpTwo' : 'setup.v5.dns.standalone.help', brings: t('setup.v2.role.dnsInstalls') },
     ];
     return <fieldset className="space-y-4" disabled={disabled}>
-        <legend className="text-xl font-semibold">{t('setup.v2.roles.title', { server })}</legend>
+        <legend className="text-xl font-semibold">{t('setup.v2.roles.title', { server: titleServer })}</legend>
         <p className="max-w-2xl pt-2 text-sm leading-6 text-fg-muted">{t('setup.v2.roles.help')}</p>
         <div className="grid gap-3">{cards.map(card => <Choice key={card.role} type="checkbox" name="setup-role" value={card.role} checked={roles[card.role]} disabled={!catalog && card.role !== 'dns'}
             onChange={() => onRoles({ ...roles, [card.role]: !roles[card.role] })} title={t(card.title)} help={t(card.help)}
@@ -99,21 +116,36 @@ export function SetupRolesStep({ roles, onRoles, catalog, server, serverCount, c
     </fieldset>;
 }
 
-export function SetupNamesStep({ draft, mail, web, mainDomain, ip, ownDNS, onChange }: {
+export function SetupNamesStep({ draft, mail, web, mainDomain, ip, ownDNS, joined, joinPlanned = true, recordsStep = true, onChange }: {
     draft: ServerSetupDraft; mail: boolean; web: boolean; mainDomain: string; ip: string; ownDNS: boolean;
+    // The note names the Existing records step: said only when this plan has it
+    // (never on a joined server or a server without its own zone, alpha.114).
+    recordsStep?: boolean;
+    // Whether a second server is planned to join (two servers, this one first).
+    // The mail help names "the server that will join" only then: a one-server
+    // setup and the joined server itself never read it (alpha.114, lab run 2).
+    // Katilacak ikinci sunucu planliysa yardim onu anar.
+    joinPlanned?: boolean;
+    // A server joined by code (alpha.114): the first server's names, and the
+    // mail name proposed for this server. / Koda katilan sunucu.
+    joined?: { names: SetupJoinedNames; server: string; keepsMainMail: boolean; proposal: string };
     onChange: (key: 'panel_domain' | 'mail_hostname', value: string) => void;
 }) {
     const { t } = useSetupWizardI18n();
     const outside = (value: string) => ownDNS && value.trim() !== '' && !setupNameWithin(value, mainDomain) ? t('setup.v2.names.outsideZone', { domain: mainDomain }) : undefined;
+    const mailInvalid = joined && setupJoinedMailTaken(draft.mail_hostname, joined.names) ? t('setup.v6.names.mailTaken', { name: draft.mail_hostname, proposal: joined.proposal }) : outside(draft.mail_hostname);
+    const mailHelp = joined?.keepsMainMail && joined.names.firstMail
+        ? t('setup.v6.names.mailJoinedHelp', { first: joined.names.firstMail, proposal: joined.proposal, panel: draft.panel_domain || joined.proposal })
+        : t(joinPlanned && !joined ? 'setup.v2.names.mailHelp' : 'setup.v8.names.mailHelpOwn', { domain: mainDomain || 'example.com' });
     return <section className="space-y-5" aria-labelledby="setup-names-title">
         <h2 id="setup-names-title" className="text-xl font-semibold">{t('setup.v2.names.title')}</h2>
         <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v2.names.help')}</p>
         <div className="grid max-w-2xl gap-5">
             <SetupWizardInput name="panel_domain" label={t('setup.v2.names.panel')} value={draft.panel_domain} onChange={value => onChange('panel_domain', value)} placeholder={`panel.${mainDomain || 'example.com'}`} required invalid={outside(draft.panel_domain)} />
-            {mail && <SetupWizardInput name="mail_hostname" label={t('setup.v2.names.mail')} value={draft.mail_hostname} onChange={value => onChange('mail_hostname', value)} placeholder={`mail.${mainDomain || 'example.com'}`} required help={t('setup.v2.names.mailHelp', { domain: mainDomain || 'example.com' })} invalid={outside(draft.mail_hostname)} />}
+            {mail && <SetupWizardInput name="mail_hostname" label={t('setup.v2.names.mail')} value={draft.mail_hostname} onChange={value => onChange('mail_hostname', value)} placeholder={joined?.proposal || `mail.${mainDomain || 'example.com'}`} required help={mailHelp} invalid={mailInvalid} />}
         </div>
         {ip && <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v2.names.pointTo', { ip })}</p>}
-        {web && mainDomain && <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v2.names.siteNote', { domain: mainDomain })}</p>}
+        {web && mainDomain && (joined || recordsStep) && <p className="max-w-2xl text-sm leading-6 text-fg-muted" data-setup-names-note={joined ? 'joined' : 'records'}>{joined ? t('setup.v6.names.joinedNote', { domain: mainDomain, server: joined.server }) : t('setup.v2.names.siteNote', { domain: mainDomain })}</p>}
     </section>;
 }
 
@@ -129,6 +161,26 @@ const engineReason: Record<string, TranslationKey> = {
     server_setup_dns_engine_unsupported: 'setup.v2.engine.unsupported',
     server_setup_inventory_unavailable: 'setup.v2.engine.unknown',
 };
+
+// The DNS software this server runs now, as the catalogue marks it.
+export function setupActiveEngine(catalog: SetupComponentCatalog | null, role: 'primary' | 'secondary'): 'bind' | 'pdns' | null {
+    const engine = catalog?.dns_engines?.find(item => item.active && item.role === (role === 'primary' ? 'main' : 'backup'));
+    return engine ? engine.id : null;
+}
+
+// The main domain's website (alpha.114, owner decision 2026-10-31): asked on
+// the first server only; Yes is the default (Plesk's first site).
+// Ana alan adinin web sitesi bu sunucuda mi? Yalniz ilk sunucuda; varsayilan Evet.
+export function SetupMainSiteQuestion({ domain, value, onChange }: { domain: string; value: 'here' | 'elsewhere'; onChange: (value: 'here' | 'elsewhere') => void }) {
+    const { t } = useSetupWizardI18n();
+    return <fieldset className="mt-8 space-y-4" data-setup-main-site={value}>
+        <legend className="text-lg font-semibold">{t('setup.v7.site.title', { domain })}</legend>
+        <div className="grid gap-3 pt-2">
+            <Choice name="setup-main_site" value="here" checked={value === 'here'} onChange={() => onChange('here')} title={t('setup.v7.site.here')} tag={t('setup.v7.site.here.tag')} help={t('setup.v7.site.here.help', { domain })} />
+            <Choice name="setup-main_site" value="elsewhere" checked={value === 'elsewhere'} onChange={() => onChange('elsewhere')} title={t('setup.v7.site.elsewhere')} help={t('setup.v7.site.elsewhere.help', { domain })} />
+        </div>
+    </fieldset>;
+}
 
 export function setupEngineChoice(catalog: SetupComponentCatalog | null, engine: 'bind' | 'pdns', role: 'primary' | 'secondary'): SetupDNSEngineChoice | undefined {
     return catalog?.dns_engines?.find(item => item.id === engine && item.role === (role === 'primary' ? 'main' : 'backup'));
@@ -159,10 +211,16 @@ export function SetupDNSHomeStep({ draft, set, onMode, onMainDNS, catalog, serve
     };
     const version = (id: 'bind' | 'pdns') => engine(id)?.installed_version || engine(id)?.candidate_version || '';
     const oneServer = serverCount === 1 && !joined;
+    // A server that already runs DNS software keeps it (setup never switches
+    // it): one fixed line, never a choice whose other card explains the
+    // refusal (owner report, Boston, alpha.113).
+    // Calisan DNS yazilimi sabit satirdir; secim gosterilmez.
+    const running = setupActiveEngine(catalog, draft.dns_role);
     // ns1 is the main DNS server, ns2 the backup (D-021 Q2): the label says
     // which slot a name fills, whichever server this is.
     const slotLabel = (key: 'ns1' | 'ns2') => t(key === 'ns1' ? 'setup.v5.dns.mainName' : 'setup.v5.dns.backupName');
-    const software = <fieldset className="space-y-3"><legend className="font-semibold">{t('setup.v2.dns.software')}</legend>
+    const software = running ? <p className="max-w-2xl rounded-lg border border-border bg-surface p-4 text-sm leading-6" data-setup-dns-engine-fixed={running}>{t('setup.v7.engine.fixed', { engine: running === 'bind' ? 'BIND' : 'PowerDNS' })}</p>
+        : <fieldset className="space-y-3"><legend className="font-semibold">{t('setup.v2.dns.software')}</legend>
         <div className="grid gap-3 lg:grid-cols-2">{(['bind', 'pdns'] as const).map(id => {
             const choice = engine(id);
             const blocked = !!choice && !choice.offered;
@@ -323,10 +381,8 @@ type SetupConnectAnswer ={ state: 'ok' | 'refused' | 'wrong_server' | 'unreachab
 // and code. The answer's state leads (D-024): refused names its reason; a
 // wrong server, an unreachable one and a lost answer say that nothing was
 // sent or that the same join is asked again.
-export function SetupJoinPanel({ onJoined, disabled, serverIP, onOpenChange }: { onJoined: (setup: unknown) => void; disabled?: boolean; serverIP?: string; onOpenChange?: (open: boolean) => void }) {
+export function SetupJoinPanel({ onJoined, disabled, serverIP }: { onJoined: (setup: unknown) => void; disabled?: boolean; serverIP?: string }) {
     const { t } = useSetupWizardI18n();
-    const [open, setOpenState] = useState(false);
-    const setOpen = (value: boolean) => { setOpenState(value); onOpenChange?.(value); };
     const [address, setAddress] = useState('');
     const [code, setCode] = useState('');
     const [publicIPv4, setPublicIPv4] = useState('');
@@ -362,16 +418,16 @@ export function SetupJoinPanel({ onJoined, disabled, serverIP, onOpenChange }: {
     const message = answer?.state === 'ok' ? answer.setup ? '' : t('setup.v5.join.draftRetry')
         : answer ? answer.state === 'refused' ? refused(answer)
         : t(answer.state === 'wrong_server' ? 'setup.v5.join.state.wrongServer' : answer.state === 'unreachable' ? 'setup.v5.join.state.unreachable' : 'setup.v5.join.state.unknown') : '';
-    return <section aria-labelledby="setup-join-title" className="mt-8 space-y-3 border-t border-border pt-6" data-setup-join="">
-        <h3 id="setup-join-title" className="font-semibold">{t('setup.v5.join.title')}</h3>
+    return <section aria-labelledby="setup-join-title" className="space-y-5" data-setup-join="">
+        <h2 id="setup-join-title" className="text-xl font-semibold">{t('setup.v5.join.title')}</h2>
         <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v5.join.help')}</p>
-        {!open ? <Button type="button" variant="secondary" disabled={disabled} onClick={() => setOpen(true)}>{t('setup.v5.join.open')}</Button> : <div className="max-w-xl space-y-4" data-setup-join-fields=""
-            // This panel sits inside the main domain step's form. Enter in one
-            // of its fields joins; it never submits that form, whose own
-            // required field is a different question.
+        <div className="max-w-xl space-y-4" data-setup-join-fields=""
+            // This panel sits inside the wizard's form, whose Continue button
+            // is not shown on this path. Enter in one of its fields joins and
+            // never submits that form (the join is this path's one action).
             // Katilma alanlarinda Enter katilir; dis formu gondermez.
             onKeyDown={event => { if (event.key === 'Enter' && (event.target as { tagName?: string }).tagName === 'INPUT') { event.preventDefault(); void join(); } }}>
-            <SetupWizardInput name="join_address" label={t('setup.v5.join.address')} value={address} onChange={setAddress} placeholder="https://203.0.113.10:2083" help={t('setup.v5.join.addressHelp')} />
+            <SetupWizardInput name="join_address" label={t('setup.v5.join.address')} value={address} onChange={setAddress} placeholder="https://203.0.113.10:1923" help={t('setup.v5.join.addressHelp')} />
             <SetupWizardInput name="join_code" label={t('setup.v5.join.code')} value={code} onChange={setCode} placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX" help={t('setup.v5.join.codeHelp')} />
             {/* The first server checks the caller's address against the one this
                 server declares. Behind 1:1 NAT the own address is private: the
@@ -381,16 +437,16 @@ export function SetupJoinPanel({ onJoined, disabled, serverIP, onOpenChange }: {
             {problem && <p role="alert" className="text-sm leading-6 text-danger">{t(problem)}</p>}
             {message && <p role={answer?.state === 'refused' ? 'alert' : 'status'} className="text-sm leading-6" data-setup-join-state={answer?.state}>{message}</p>}
             <Button type="button" variant="primary" disabled={busy || disabled} loading={busy} onClick={() => void join()}>{t(busy ? 'setup.v5.join.joining' : answer && !(answer.state === 'ok' && answer.setup) ? 'setup.v5.join.retry' : 'setup.v5.join.submit')}</Button>
-        </div>}
+        </div>
     </section>;
 }
 
 // The link state of this server (both sides): read once when the wizard
 // opens and again after a join. / Bu sunucunun baglanti durumu.
-export function useSetupPeerLink(enabled: boolean): { link: SetupPeerLink | null; known: boolean; refresh: () => void } {
+export function useSetupPeerLink(enabled: boolean): { link: SetupPeerLink | null; role: 'none' | 'first' | 'second' | null; known: boolean; refresh: () => void } {
     const remote = useRemote(enabled ? '/api/v1/setup/peer' : null, decodeSetupPeerView);
     const view = remote.remote.state === 'known' ? remote.remote.value : null;
-    return { link: view?.role === 'second' && view.link ? view.link : null, known: remote.remote.state === 'known', refresh: () => { void remote.retry(); } };
+    return { link: view?.role === 'second' && view.link ? view.link : null, role: view?.role ?? null, known: remote.remote.state === 'known', refresh: () => { void remote.retry(); } };
 }
 
 // A joined second server's shared answers, fixed by the first server.
@@ -413,7 +469,7 @@ export function SetupJoinedSummary({ link }: { link: SetupPeerLink }) {
 // finished: this server's setup is complete. As the main DNS server it keeps
 // the link open until the second server reports its setup ready (Beta-1
 // re-run P7); the card then says so, and offers to stop waiting.
-export function SetupJoinCard({ joinPending = true, finished = false }: { joinPending?: boolean; finished?: boolean } = {}) {
+export function SetupJoinCard({ joinPending = true, finished = false, onPending }: { joinPending?: boolean; finished?: boolean; onPending?: (pending: boolean) => void } = {}) {
     const { t } = useSetupWizardI18n();
     const remote = useRemote('/api/v1/setup/peer', decodeSetupPeerView);
     useRefreshEvery(remote, 10_000);
@@ -440,6 +496,9 @@ export function SetupJoinCard({ joinPending = true, finished = false }: { joinPe
     }
     const time = (value: string) => new Date(value).toLocaleString();
     const joined = view?.joined;
+    // The ready headline counts this card as one open item while the joined server is still setting up.
+    const peerSetupPending = finished && view?.peer_setup === 'pending';
+    useEffect(() => { onPending?.(peerSetupPending); }, [onPending, peerSetupPending]);
     const server = joined?.short_name || t('setup.v5.card.second');
     const joinedText = joined ? joined.panel_domain
         ? t(joined.mail_hostname ? 'setup.v5.card.namedMail' : 'setup.v5.card.named', { server, ip: joined.ipv4, panel: joined.panel_domain, mail: joined.mail_hostname || '' })
@@ -849,19 +908,22 @@ export function SetupRecordsStep({ draft, update, mainDomain, own }: {
     </section>;
 }
 
-export function SetupMailStep({ draft, update, mainDomain, ip4, ip6 }: {
+export function SetupMailStep({ draft, update, mainDomain, ip4, ip6, joined }: {
     draft: ServerSetupDraft;
     update: (change: (draft: ServerSetupDraft) => ServerSetupDraft) => void;
     mainDomain: string;
     ip4: string;
     ip6: string;
+    /** A server joined by code whose first server keeps the main domain's
+     *  mail (alpha.114 S9): no main-domain record is written from here. */
+    joined?: { server: string; first: string };
 }) {
     const { t } = useSetupWizardI18n();
     const host = draft.mail_hostname || `mail.${mainDomain}`;
     const local = draft.dns_mode === 'local' && draft.dns_role === 'primary';
     const oldMX = setupImportedMX(draft, mainDomain);
     const oldDMARC = setupImportedDMARC(draft, mainDomain);
-    const askMX = oldMX.length > 0 || draft.dns_mode === 'external';
+    const askMX = !joined && (oldMX.length > 0 || draft.dns_mode === 'external');
     const mx = draft.mail_dns?.mx || (askMX ? 'later' : 'now');
     const dmarc = draft.mail_dns?.dmarc || (oldDMARC ? 'keep' : 'add');
     const choose = (key: 'mx' | 'dmarc', value: string) => update(previous => ({ ...previous, mail_dns: { ...previous.mail_dns, [key]: value } }));
@@ -870,6 +932,25 @@ export function SetupMailStep({ draft, update, mainDomain, ip4, ip6 }: {
         if (askMX && !draft.mail_dns?.mx) update(previous => previous.mail_dns?.mx ? previous : { ...previous, mail_dns: { ...previous.mail_dns, mx: 'later' } });
     }, [askMX]);
     const spf = mergeSetupSPF(setupImportedSPF(draft, mainDomain), host);
+    const ptr = <div className="space-y-2 rounded-lg border border-border bg-surface p-4 text-sm leading-6" data-setup-ptr="">
+        <h3 className="font-semibold">{t('setup.v3.mail.ptrTitle')}</h3>
+        <p className="text-fg-muted">{t('setup.v3.mail.ptrHelp', { host })}</p>
+        {ip4 && <div className="grid gap-2 sm:grid-cols-2"><SetupCopyRow label="IPv4" value={ip4} /><SetupCopyRow label="PTR" value={host} /></div>}
+        {ip6 && <div className="grid gap-2 sm:grid-cols-2"><SetupCopyRow label="IPv6" value={ip6} /><SetupCopyRow label="PTR" value={host} /></div>}
+        <p className="text-fg-muted">{t('setup.v3.mail.ptrOpenTask')}</p>
+        <p className="text-fg-muted">{t('setup.v3.mail.port25')}</p>
+    </div>;
+    // A joined server: the main domain's mail stays on the first server, as
+    // the names step and the plan say; this server's own domains get their
+    // own records (S9: the step used to list the main domain's MX, SPF and
+    // DMARC "written there over the setup link").
+    // Katilan sunucu: ana alan adinin postasi ilk sunucuda kalir.
+    if (joined) return <section className="space-y-5" aria-labelledby="setup-mail-title" data-setup-mail="joined">
+        <h2 id="setup-mail-title" className="text-xl font-semibold">{t('setup.v3.mail.joinedTitle')}</h2>
+        <p className="max-w-2xl text-sm leading-6" data-setup-mail-main="kept">{t('setup.v3.mail.joinedMain', { domain: mainDomain, server: joined.server, first: joined.first })}</p>
+        <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v3.mail.joinedOwn', { host })}</p>
+        {ptr}
+    </section>;
     return <section className="space-y-5" aria-labelledby="setup-mail-title" data-setup-mail="">
         <h2 id="setup-mail-title" className="text-xl font-semibold">{t('setup.v3.mail.title')}</h2>
         <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t(local ? 'setup.v3.mail.helpLocal' : draft.dns_mode === 'external' ? 'setup.v3.mail.helpExternal' : draft.dns_mode === 'local' ? 'setup.v3.mail.helpBackup' : 'setup.v3.mail.helpElsewhere', { domain: mainDomain })}</p>
@@ -891,14 +972,7 @@ export function SetupMailStep({ draft, update, mainDomain, ip4, ip6 }: {
                 <Choice name="setup-mail_dmarc" value="add" checked={dmarc === 'add'} onChange={() => choose('dmarc', 'add')} title={t('setup.v3.mail.dmarcAdd')} help={t('setup.v3.mail.dmarcAddHelp')} />
             </div>
         </fieldset>}
-        <div className="space-y-2 rounded-lg border border-border bg-surface p-4 text-sm leading-6" data-setup-ptr="">
-            <h3 className="font-semibold">{t('setup.v3.mail.ptrTitle')}</h3>
-            <p className="text-fg-muted">{t('setup.v3.mail.ptrHelp', { host })}</p>
-            {ip4 && <div className="grid gap-2 sm:grid-cols-2"><SetupCopyRow label="IPv4" value={ip4} /><SetupCopyRow label="PTR" value={host} /></div>}
-            {ip6 && <div className="grid gap-2 sm:grid-cols-2"><SetupCopyRow label="IPv6" value={ip6} /><SetupCopyRow label="PTR" value={host} /></div>}
-            <p className="text-fg-muted">{t('setup.v3.mail.ptrOpenTask')}</p>
-            <p className="text-fg-muted">{t('setup.v3.mail.port25')}</p>
-        </div>
+        {ptr}
     </section>;
 }
 

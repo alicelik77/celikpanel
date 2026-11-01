@@ -32,6 +32,15 @@ type createTeamMemberRequest struct {
 	Password string                  `json:"password"`
 	Status   string                  `json:"status,omitempty"`
 	Access   teamMemberAccessRequest `json:"access"`
+	// Invite: no password; the member chooses theirs by a link (P6).
+	Invite bool   `json:"invite,omitempty"`
+	Lang   string `json:"lang,omitempty"`
+}
+
+// teamMemberListItem is a listed member with its invitation state.
+type teamMemberListItem struct {
+	core.TeamMember
+	Invitation *accountInvitationState `json:"invitation,omitempty"`
 }
 
 type updateTeamMemberRequest struct {
@@ -71,7 +80,21 @@ func (p *Panel) handleTeamMembers(w http.ResponseWriter, r *http.Request) {
 			writeTeamMemberRepositoryError(w, err)
 			return
 		}
-		writeTeamMemberJSON(w, http.StatusOK, map[string]any{"team_members": members})
+		// Each member with its invitation state: invited, not signed in yet (alpha.114).
+		ids := make([]int, 0, len(members))
+		for _, member := range members {
+			ids = append(ids, member.ID)
+		}
+		invited, err := p.invitedAccounts(r.Context(), ids)
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		listed := make([]teamMemberListItem, 0, len(members))
+		for _, member := range members {
+			listed = append(listed, teamMemberListItem{TeamMember: *member, Invitation: invited[member.ID]})
+		}
+		writeTeamMemberJSON(w, http.StatusOK, map[string]any{"team_members": listed})
 
 	case http.MethodPost:
 		if len(r.URL.Query()) != 0 {
@@ -89,6 +112,9 @@ func (p *Panel) handleTeamMembers(w http.ResponseWriter, r *http.Request) {
 		}
 		if request.Status == "" {
 			request.Status = "active"
+		}
+		if !invitationPassword(w, request.Invite, &request.Password) {
+			return
 		}
 		if err := validateTeamMemberIdentity(request.Username, request.Email, request.Password, request.Status, true); err != nil {
 			writeUsernameError(w, err)
@@ -111,7 +137,11 @@ func (p *Panel) handleTeamMembers(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		p.audit(r, "team_member.create", "team_member", member.ID)
-		writeTeamMemberJSON(w, http.StatusCreated, map[string]any{"team_member": member})
+		created := map[string]any{"team_member": member}
+		if request.Invite {
+			created["invitation"] = p.issueInvitation(r, caller.ID, member.ID, request.Lang, true)
+		}
+		writeTeamMemberJSON(w, http.StatusCreated, created)
 
 	default:
 		w.Header().Set("Allow", "GET, POST")

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ScrollText } from 'lucide-react';
 import { useI18n } from '../i18n';
-import { auditActorName, auditDetailParts } from '../lib/auditAction';
+import { auditActionParts, auditActionText, auditActorName, auditDetailParts, auditResourceText } from '../lib/auditAction';
 import type { TranslationKey } from '../i18n/en';
 import { EmptyState, Spinner } from './ui';
 import { PageHeader } from './PageHeader';
@@ -16,6 +16,8 @@ interface AuditEntry {
     created_at: string;
     /** alpha.107: what the action was about (D-038 §16). */
     details?: Record<string, unknown>;
+    /** alpha.114: the account the person acted as through "Log in as". */
+    acting_as?: string;
 }
 
 // The audit trail: a server-wide, newest-first history of who did what, from
@@ -36,13 +38,6 @@ export function AuditLogPage() {
             .catch(() => {})
             .finally(() => setLoading(false));
     }, []);
-
-    // action is stored as "verb:detail" — split for a readable two-part view.
-    // action "fiil:detay" olarak saklanır — okunur iki parçalı görünüm için ayır.
-    const splitAction = (a: string): [string, string] => {
-        const i = a.indexOf(':');
-        return i < 0 ? [a, ''] : [a.slice(0, i), a.slice(i + 1)];
-    };
 
     return (
         <div className="p-6 md:p-8">
@@ -72,20 +67,26 @@ export function AuditLogPage() {
                         </thead>
                         <tbody>
                             {entries.map((e) => {
-                                const [verb, detail] = splitAction(e.action);
+                                // The action is said as a sentence in the interface language
+                                // (its target inside it); the detail names what the row is about
+                                // only when the sentence does not already.
+                                // Eylem arayuz dilinde cumle olarak soylenir; hedef icindedir.
+                                const hasTarget = auditActionParts(e.action).target !== '';
+                                const about = hasTarget ? '' : auditResourceText(e.resource_type, e.resource_id, t);
                                 return (
                                     <tr key={e.id} className="border-b border-border last:border-0 hover:bg-surface-2/60">
                                         <td className="whitespace-nowrap px-4 py-3 text-fg-muted">
                                             {new Date(e.created_at.replace(' ', 'T') + 'Z').toLocaleString()}
                                         </td>
-                                        <td className="px-4 py-3 text-base font-medium text-fg">{auditActorName(e.username, t)}</td>
+                                        <td className="px-4 py-3 text-base font-medium text-fg">
+                                            {auditActorName(e.username, t)}
+                                            {e.acting_as && <span className="block text-xs font-normal text-fg-subtle">{t('audit.actingAs', { name: e.acting_as })}</span>}
+                                        </td>
                                         <td className="px-4 py-3">
-                                            <span className="rounded-md bg-surface-2 px-2 py-0.5 font-mono text-xs text-fg-muted">
-                                                {verb}
-                                            </span>
+                                            <span data-audit-action="">{auditActionText(e.action, t)}</span>
                                         </td>
                                         <td className="px-4 py-3 text-fg-muted">
-                                            {detail || (e.resource_type ? `${e.resource_type} #${e.resource_id ?? ''}` : '—')}
+                                            {about || (e.details ? null : '—')}
                                             {e.details && (
                                                 <div className="mt-0.5 text-xs text-fg-subtle" data-audit-details="">
                                                     {auditDetailParts(e.details, (key) => {

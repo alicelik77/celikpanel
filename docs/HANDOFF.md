@@ -110,7 +110,7 @@ the documentation-only `main` changes do not replace them.
 
 ~~~text
 Browser
-  │ HTTPS :2083
+  │ HTTPS :1923 (installs before alpha.114: :2083)
   ▼
 Panel — unprivileged celikpanel user
   │ SQLite state + sealed application secrets

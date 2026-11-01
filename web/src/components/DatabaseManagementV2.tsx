@@ -6,12 +6,15 @@ import { AddDatabaseModalV2 } from './AddDatabaseModalV2';
 import { AddUserModalV2 } from './AddUserModalV2';
 import { useI18n } from '../i18n';
 import { useAuth } from '../auth/AuthContext';
-import { Button, KnownEmpty, RemoteGate, ResultUnknown, StatusDot } from './ui';
+import { Button, ErrorBanner, KnownEmpty, RemoteGate, ResultUnknown, StatusDot } from './ui';
 import { PageHeader } from './PageHeader';
 import { DatabaseAccountStrip } from './DatabaseAccountStrip';
-import { decodeList, lastKnown, useRemote, type Remote } from '../lib/remote';
+import { decodeList, invalidate, lastKnown, useRemote, type Remote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
-import { OnceOnlyNotice } from './OnceOnlyNotice';
+import { OnceOnlyNotice, ShownOnceSecret } from './OnceOnlyNotice';
+import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
+import type { CreatedSecret } from '../lib/generatedPassword';
+import type { TranslationKey } from '../i18n/en';
 
 // One API surface (B1, Jul 18): the former /api/v2 lives under /api/v1 now.
 // Tek API yüzeyi (B1, 18 Tem): eski /api/v2 artık /api/v1 altında.
@@ -121,15 +124,28 @@ export function DatabaseManagementV2() {
     const countOf = (remote: Remote<unknown[]>) =>
         remote.state === 'known' ? String(remote.value.length) : remote.state === 'loading' ? '…' : '–';
 
+    // A refused delete keeps the server's reason (a user that still has
+    // grants…) on the page until the next change succeeds; a password the
+    // server made up stays until it is closed (owner feedback 2026-10-31).
+    const [refusal, setRefusal] = useState<{ problem: ApiError; sentence: TranslationKey } | null>(null);
+    const refuse = (problem: ApiError, sentence: TranslationKey) => {
+        setRefusal({ problem, sentence });
+        showToast('error', refusalText(problem, t, sentence), refusalToast(problem, t, navigate));
+    };
+    const [secret, setSecret] = useState<CreatedSecret | null>(null);
+
     const handleDeleteDatabase = async (id: number, name: string) => {
         if (!confirm(t('databases.confirmDeleteDb', { name }))) return;
         try {
             const res = await fetch(`${API_BASE}/databases/${id}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error();
+            if (!res.ok) { refuse(await readApiError(res), 'databases.deleteDbFailed'); return; }
+            setRefusal(null);
             showToast('success', t('databases.dbDeleted'));
-            void databases.retry();
+            invalidate('databases');
         } catch {
-            showToast('error', t('common.error'));
+            // No answer: whether it was deleted is not known; the list is read again.
+            showToast('error', t('common.resultUnknown'));
+            invalidate('databases');
         }
     };
 
@@ -137,11 +153,13 @@ export function DatabaseManagementV2() {
         if (!confirm(t('databases.confirmDeleteUser', { name }))) return;
         try {
             const res = await fetch(`${API_BASE}/database-users/${id}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error();
+            if (!res.ok) { refuse(await readApiError(res), 'databases.deleteUserFailed'); return; }
+            setRefusal(null);
             showToast('success', t('databases.userDeleted'));
-            void users.retry();
+            invalidate('databases');
         } catch {
-            showToast('error', t('common.error'));
+            showToast('error', t('common.resultUnknown'));
+            invalidate('databases');
         }
     };
 
@@ -176,12 +194,16 @@ export function DatabaseManagementV2() {
                         of={shown}
                         icon={Database}
                         title={t('databases.noServers')}
-                        hint={t('databases.noServersHint')}
-                        action={
+                        // Only an administrator can install a database engine;
+                        // anyone else is told who can (alpha.114: the button
+                        // led a customer to a page they cannot open).
+                        // Motoru yalniz yonetici kurar; digerlerine kimin kurabilecegi soylenir.
+                        hint={t(isAdmin ? 'databases.noServersHint' : 'databases.noServersHintCustomer')}
+                        action={isAdmin ? (
                             <Button variant="primary" icon={Server} onClick={() => navigate('/services')}>
                                 {t('domains.goServices')}
                             </Button>
-                        }
+                        ) : undefined}
                     />
                 ) : (
                     <>
@@ -243,6 +265,14 @@ export function DatabaseManagementV2() {
                 text={passwordNotShown === null ? null : t('databases.passwordNotShown', passwordNotShown)}
                 onClose={() => setPasswordNotShown(null)}
             />
+            {secret && <ShownOnceSecret
+                className="mb-4"
+                title={t(secret.database ? 'secret.dbCreatedTitle' : 'secret.userCreatedTitle', { name: secret.database ?? secret.user })}
+                rows={[{ label: t('dbm.username'), value: secret.user }, ...(secret.database ? [{ label: t('dbm.databaseName'), value: secret.database }] : [])]}
+                secret={{ label: t('dbm.password'), value: secret.password }}
+                onClose={() => setSecret(null)}
+            />}
+            <ErrorBanner className="mb-4" error={refusal?.problem ?? null} sentence={refusal?.sentence} />
 
             {selectedServer && (
                 <div className="rounded-xl border border-border-strong bg-surface">
@@ -395,28 +425,28 @@ export function DatabaseManagementV2() {
                     onPasswordNotShown={(name, user) => {
                         setPasswordNotShown({ name, user });
                         setShowAddDatabase(false);
-                        void databases.retry();
-                        void users.retry();
+                        invalidate('databases');
                     }}
+                    onSecret={setSecret}
                     serverId={selectedServer.id}
                     serverName={selectedServer.name}
                     existingUsers={knownUsers.map((u) => ({ id: u.id, username: u.username }))}
                     onClose={() => setShowAddDatabase(false)}
                     onSuccess={() => {
                         setShowAddDatabase(false);
-                        void databases.retry();
-                        void users.retry();
+                        invalidate('databases');
                     }}
                 />
             )}
             {showAddUser && selectedServer && (
                 <AddUserModalV2
+                    onSecret={setSecret}
                     serverId={selectedServer.id}
                     serverName={selectedServer.name}
                     onClose={() => setShowAddUser(false)}
                     onSuccess={() => {
                         setShowAddUser(false);
-                        void users.retry();
+                        invalidate('databases');
                     }}
                 />
             )}

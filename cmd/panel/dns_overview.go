@@ -112,10 +112,14 @@ type dnsOverviewSentence struct {
 // Answers is what asking it directly for the main domain showed: "ok",
 // "not_serving" (it answered, not for the domain: a verified failure),
 // "unknown" (no answer could be read), "not_joined" (the second server has
-// not joined yet) or "not_applicable".
+// not joined yet) or "not_applicable". Order, with two servers, is "first"
+// (the server whose setup made the join code) or "second" (the server that
+// joined by code), so a joined server names the other one "First server",
+// never "Second server" (owner report 2026-10-31).
 type dnsOverviewServer struct {
 	Who       string `json:"who"`
 	Role      string `json:"role"`
+	Order     string `json:"order,omitempty"`
 	ShortName string `json:"short_name,omitempty"`
 	PanelName string `json:"panel_name,omitempty"`
 	Software  string `json:"software,omitempty"`
@@ -160,6 +164,12 @@ type dnsOverviewMailRecord struct {
 	Expected string   `json:"expected"`
 	Seen     []string `json:"seen"`
 	State    string   `json:"state"`
+	// Own (a TXT mail record the internet shows missing or different, with
+	// the list on this panel) is what this panel's own list holds: "absent"
+	// (no such record in the list: waiting never adds it), "present" (the
+	// list has it: the change is spreading) or "unknown" (the list could not
+	// be read).
+	Own string `json:"own,omitempty"`
 }
 
 // dnsOverviewMailReceiver: which server receives the main domain's mail.
@@ -517,7 +527,7 @@ func dnsOverviewMailInputs(in dnsOverviewInput) (dnsOverviewMailReceiver, server
 	}
 	if host, choice, ok := serverSetupMainDomainMail(d); ok {
 		receiver := dnsOverviewMailReceiver{Server: "this", Host: host, ShortName: d.ShortName}
-		if !serverSetupHasMail(d) {
+		if !serverSetupMainDomainMailHere(d) {
 			receiver.Server, receiver.ShortName = "peer", in.Peer.ShortName
 		}
 		return receiver, choice, true
@@ -574,11 +584,18 @@ func (p *Panel) checkDNSOverview(ctx context.Context, in dnsOverviewInput, edges
 	}
 	result.Servers = append(result.Servers, dnsOverviewServer{Who: "this", Role: role, ShortName: d.ShortName, PanelName: d.PanelDomain, Software: software, IPv4: firstNonEmpty(d.LocalIP, in.IPv4), Answers: "not_applicable"})
 	if in.twoServers() && role != "standalone" {
+		// A server that joined by code holds the first server's link: the
+		// other server is the first one. Katilan sunucu icin diger sunucu ilktir.
+		thisOrder, peerOrder := "first", "second"
+		if in.Peer.FromLink {
+			thisOrder, peerOrder = "second", "first"
+		}
+		result.Servers[0].Order = thisOrder
 		peerRole := map[string]string{"main": "backup", "backup": "main"}[role]
 		if peerRole == "" {
 			peerRole = "none"
 		}
-		peer := dnsOverviewServer{Who: "peer", Role: peerRole, ShortName: in.Peer.ShortName, PanelName: in.Peer.PanelName, IPv4: in.Peer.IPv4, Answers: "not_applicable"}
+		peer := dnsOverviewServer{Who: "peer", Role: peerRole, Order: peerOrder, ShortName: in.Peer.ShortName, PanelName: in.Peer.PanelName, IPv4: in.Peer.IPv4, Answers: "not_applicable"}
 		if peerRole != "none" {
 			peer.Software = in.Peer.Software
 		}
@@ -731,6 +748,7 @@ func (p *Panel) checkDNSOverview(ctx context.Context, in dnsOverviewInput, edges
 				}
 			}
 		}
+		p.dnsOverviewZoneMailTXT(ctx, in, &result)
 	}
 	if mx := dnsOverviewMXMoveOffer(in, result, receiver); mx != nil {
 		result.MXMove = mx
@@ -863,6 +881,56 @@ func (p *Panel) dnsOverviewZoneMailExchange(ctx context.Context, in dnsOverviewI
 		}
 	}
 	return nil
+}
+
+// dnsOverviewZoneMailTXT says, for each TXT mail record (SPF, DKIM, DMARC)
+// the internet shows missing or different, whether this panel's own list
+// holds such a record. A record that is not in the list is not a delay:
+// waiting never adds it (D-024). Read only; a list that cannot be read leaves
+// the rows "unknown", never "absent".
+func (p *Panel) dnsOverviewZoneMailTXT(ctx context.Context, in dnsOverviewInput, result *dnsOverview) {
+	wanted := false
+	for index := range result.Mail {
+		row := &result.Mail[index]
+		if row.Type == "TXT" && (row.State == "missing" || row.State == "different") {
+			row.Own = "unknown"
+			wanted = true
+		}
+	}
+	if !wanted {
+		return
+	}
+	rows, err := p.db.GetDB().QueryContext(ctx, `SELECT lower(r.name),COALESCE(r.content,'') FROM pdns_records r JOIN pdns_domains d ON d.id=r.domain_id
+		WHERE d.name=? AND r.type='TXT' AND COALESCE(r.disabled,0)=0 ORDER BY r.id LIMIT 256`, in.Draft.MainDomain)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	held := map[string]bool{}
+	for rows.Next() {
+		var name, content string
+		if err := rows.Scan(&name, &content); err != nil {
+			return
+		}
+		held[name+"\x00"+strings.ToLower(strings.TrimSpace(joinTXTSegments(content)))] = true
+	}
+	if rows.Err() != nil {
+		return
+	}
+	prefix := map[string]string{"spf": "v=spf1", "dmarc": "v=dmarc1", "dkim": "v=dkim1"}
+	for index := range result.Mail {
+		row := &result.Mail[index]
+		if row.Own != "unknown" || prefix[row.Kind] == "" {
+			continue
+		}
+		row.Own = "absent"
+		for key := range held {
+			if name, value, _ := strings.Cut(key, "\x00"); name == strings.ToLower(row.Name) && strings.HasPrefix(value, prefix[row.Kind]) {
+				row.Own = "present"
+				break
+			}
+		}
+	}
 }
 
 func dnsOverviewDKIMPublished(seen []string, state string) string {
@@ -1021,6 +1089,15 @@ func dnsOverviewSentenceFor(in dnsOverviewInput, r dnsOverview) dnsOverviewSente
 			return dnsOverviewSay("prerequisite", "dns_overview_mail_no_mx", "The domain's list has no MX record, so no mail can be delivered to the domain.", "You, the owner of the list.", "Add an MX record in the record editor (it names the server that receives the mail).", "This page checks again every minute.", vars)
 		}
 	}
+	// A mail record that the internet does not show and that is not in this
+	// panel's own list either is no delay: waiting never adds it, so someone
+	// must (D-024). Only a record that the list holds is "spreading".
+	for _, mail := range r.Mail {
+		if mail.Own == "absent" && in.Ready {
+			vars["kind"], vars["name"] = strings.ToUpper(mail.Kind), mail.Name
+			return dnsOverviewSay("prerequisite", "dns_overview_mail_not_in_list", mail.Name+" ("+strings.ToUpper(mail.Kind)+") is not in this server's DNS records for "+d.MainDomain+", so waiting will not add it.", "You, the owner of the list.", "Add the "+strings.ToUpper(mail.Kind)+" record in the record editor (the domain's DNS tab) with the value shown under Mail records.", "This page checks again every minute and shows the record once it is in the list.", vars)
+		}
+	}
 	// A finished setup with mail and no DKIM key yet: mail is sent unsigned
 	// and may be marked as spam; that is a task, never "all good".
 	for _, mail := range r.Mail {
@@ -1047,7 +1124,7 @@ func dnsOverviewSentenceFor(in dnsOverviewInput, r dnsOverview) dnsOverviewSente
 		}
 	}
 	for _, name := range r.Names {
-		if name.State == "unknown" {
+		if name.State == "unknown" && !name.Optional {
 			vars["name"] = name.Name
 			return dnsOverviewSay("unknown", "dns_overview_some_unknown", "Some names could not be checked from the internet just now.", "Nobody yet.", "Nothing to do now.", "This page asks again in a minute.", vars)
 		}
@@ -1063,13 +1140,16 @@ func dnsOverviewSentenceFor(in dnsOverviewInput, r dnsOverview) dnsOverviewSente
 		return dnsOverviewSay("waiting", "dns_overview_backup_first_copy", "The backup DNS server has not received its first copy of the list yet.", "Nobody: it is copied by itself.", "Nothing to do.", "It answers for the domain once it has its copy; this page checks every minute.", vars)
 	}
 	for _, name := range r.Names {
-		if (name.State == "missing" || name.State == "different") && name.Own == "unknown" {
+		if (name.State == "missing" || name.State == "different") && name.Own == "unknown" && !name.Optional {
 			vars["name"] = name.Name
 			return dnsOverviewSay("unknown", "dns_overview_some_unknown", "A name does not show its address on the internet, and our own DNS server could not be asked just now.", "Nobody yet.", "Nothing to do now.", "This page asks again in a minute.", vars)
 		}
 	}
+	// An optional row (an IPv6 glue record the registry does not have) is
+	// not a change that spreads: waiting never adds it. It is said last,
+	// as the owner's optional registrar task (owner report 2026-10-31).
 	for _, name := range r.Names {
-		if name.State == "missing" || name.State == "different" || name.State == "not_yet" {
+		if (name.State == "missing" || name.State == "different" || name.State == "not_yet") && !name.Optional {
 			vars["name"] = name.Name
 			return dnsOverviewSay("waiting", "dns_overview_spreading", "A name does not show its new address everywhere on the internet yet.", "Nobody: waiting is enough.", "Nothing to do.", "This page checks again every minute; a change can take a few hours to spread.", vars)
 		}
@@ -1077,6 +1157,9 @@ func dnsOverviewSentenceFor(in dnsOverviewInput, r dnsOverview) dnsOverviewSente
 	for _, mail := range r.Mail {
 		if mail.State == "missing" || mail.State == "different" {
 			vars["kind"] = mail.Kind
+			if mail.Own == "unknown" {
+				return dnsOverviewSay("unknown", "dns_overview_some_unknown", "A mail record does not show on the internet, and this panel's own list could not be read just now.", "Nobody yet.", "Nothing to do now.", "This page asks again in a minute.", vars)
+			}
 			return dnsOverviewSay("waiting", "dns_overview_mail_spreading", "A mail record does not show everywhere on the internet yet.", "Nobody: waiting is enough.", "Nothing to do.", "This page checks again every minute.", vars)
 		}
 	}
@@ -1089,6 +1172,14 @@ func dnsOverviewSentenceFor(in dnsOverviewInput, r dnsOverview) dnsOverviewSente
 	if r.MXMove != nil {
 		vars["host"] = r.MXMove.ToHost
 		return dnsOverviewSay("ok", "dns_overview_ok_mail_kept", "Your names look correct; the domain's mail still goes to your old mail server, as you chose.", "You, when you are ready.", "Move mail to the new server with the button under Mail records.", "Until then nothing changes for your mail.", vars)
+	}
+	if r.Home == "own" {
+		for _, name := range r.Names {
+			if name.Kind == "glue" && name.Optional && name.State == "not_yet" {
+				vars["name"], vars["ip"] = name.Name, name.Expected
+				return dnsOverviewSay("ok", "dns_overview_ok_optional_glue", "Your names look correct. The registry has no IPv6 address (glue) for "+name.Name+"; everything works over IPv4 without it, and waiting does not add it.", "You, only if the nameservers should also answer over IPv6.", "At your registrar, add the IP record "+name.Name+" → "+name.Expected+".", "This page checks again every minute.", vars)
+			}
+		}
 	}
 	return dnsOverviewSay("ok", "dns_overview_ok", "Your names look correct on the internet.", "Nobody.", "Nothing to do.", "This page checks again every minute.", vars)
 }

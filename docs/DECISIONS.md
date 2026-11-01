@@ -19,6 +19,48 @@ Code decisions live in git; this file is for strategy. Newest first.
 > D-029. Entries written after this note use the clock date; a dated entry from 10, 11 or
 > 12 October 2026 other than D-029 is genuine.
 
+## D-041 · A fresh install listens on panel port 1923; an existing install keeps its port until the owner changes it
+
+*2026-10-31 (owner's decision) · Source change on `feat/panel-port-1923`, in the v0.1.0-alpha.114 candidate; not published, no installed panel updated*
+
+**Why.** 2083 is cPanel's port. A server that people may also know as a cPanel
+host should not share the number, and a new CelikPanel owner should not have
+to change it first.
+
+**Decision.**
+- A fresh install listens on **1923**. A server installed before alpha.114 keeps
+  the address in `/etc/celikpanel/panel.env`. That file is the single source of
+  truth: `install.sh` writes it once and an update never rewrites it
+  (`update.sh` reads the kept address from it first). The owner's Frankfurt and
+  Boston stay on 2083.
+- The owner changes the port from Settings, Panel, Panel port. The panel first
+  binds the new port, opens it in the firewall and answers on both. The owner
+  confirms from the new address. Only then does the Agent rewrite the single
+  `CELIKPANEL_LISTEN` line, over the exact file it saw at the start, and the
+  old port closes. A timeout (10 minutes), a cancel or a restart keeps the old
+  port. If the owner edited the file in the meantime, that is reported and the
+  file is never overwritten.
+- A peer's port always comes from its declared address, never from this
+  server's default; a join address must carry its port.
+- A server that is part of a pair, or has a server joined to it, refuses the
+  change (`PANEL_PORT_PAIRED`). The other server stores this server's address,
+  and there is no way yet to tell it the new one. The owner's pair stays on
+  2083 until a peer endpoint update exists (planned for alpha.115).
+
+**Resilience contract (D-025).** Affected: persisted configuration evidence
+(`panel.env`), an access gate (the listen address) and a privileged Agent
+claim (`Agent.SetPanelListenPortV1`). Schema: `047_panel_port_change.sql`
+(numbered 047 to 051 across the alpha.114 packages; this one is 047), one
+additive table. Recovery: any step before the owner's confirmation from the new
+address leaves the old port in place; the single file write is the commit
+point. Evidence: component tests and lab runs 1 and 2 (port change, the pair
+refusal, a mixed pair with an alpha.113 first server on 2083 and a candidate
+joined server on 1923). Remaining gaps: a restart during the trial and port
+rollback were not run in the lab, and nothing was measured on an installed
+server.
+
+---
+
 ## D-040 · A website certificate is renewed by the operating system's certbot, not by the Panel
 
 *2026-10-30 (clock date) · Correction of an invariant violation found in source; in source on branch `fix/site-cert-native-renewal`, component-tested and one disposable chroot run against a local test CA; not published, nothing measured on an installed server*

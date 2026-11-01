@@ -120,6 +120,12 @@ type VhostData struct {
 	ProxyOrigin    string
 	ProxyRewriteTo string
 	ProxyResolver  string
+	// ProtectedDirs and Redirects are the site's password-protected folders
+	// and free-form redirects (site_features.go). Render validates both and
+	// derives their extra fields; empty for a site that has none, and then
+	// the rendered text is exactly what it was before they existed.
+	ProtectedDirs []SiteProtectedDir
+	Redirects     []SiteRedirect
 }
 
 // Render executes the vhost template over prepared data, deriving the
@@ -187,6 +193,14 @@ func prepareVhostData(data VhostData) (VhostData, error) {
 	if data.ForwardCode == 0 {
 		data.ForwardCode = 301
 	}
+	dirs, redirects, err := PrepareSiteFeatures(
+		data.ProjectType, data.ServerNames, data.ProtectedDirs, data.Redirects,
+		func(id int) string { return SiteAuthFilePath(data.Domain, id) },
+	)
+	if err != nil {
+		return VhostData{}, err
+	}
+	data.ProtectedDirs, data.Redirects = dirs, redirects
 	data.OwnerIncludeDir = OwnerIncludeDir(data.Domain)
 	data.PanelManagedDir = PanelManagedDir(data.Domain)
 	return data, nil

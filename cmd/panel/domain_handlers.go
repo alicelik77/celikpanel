@@ -332,9 +332,8 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if (caps.DNSManagementMode == setupDNSModeLocal || req.ProjectType == "dnsonly") && caps.DNSServer == "" {
-		writeCodedError(w, http.StatusConflict, errCodeDNSServerRequired,
-			"no managed authoritative DNS engine is active; choose and activate BIND or PowerDNS first",
-			"/dns-infrastructure")
+		writeDNSServerRequired(w, caps.DNSServerState, caps.DNSServerEngine, caps.DNSServerPeer,
+			"no managed authoritative DNS engine is active; choose and activate BIND or PowerDNS first")
 		return
 	}
 	if (caps.DNSManagementMode == setupDNSModeLocal || req.ProjectType == "dnsonly") && !caps.DNSIdentityReady {
@@ -346,13 +345,13 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 	if req.ProjectType == "php" || req.ProjectType == "static" {
 		if caps.WebServer == "" {
 			writeCodedError(w, http.StatusConflict, errCodeWebServerRequired,
-				"no web server is installed — install Nginx or Apache from Services, or choose the DNS-only type",
+				"no web server is installed — install Nginx or Apache from Components, or choose the DNS-only type",
 				"/services")
 			return
 		}
 		if req.ProjectType == "php" && len(caps.PHPVersions) == 0 {
 			writeCodedError(w, http.StatusConflict, errCodePHPRequired,
-				"PHP-FPM is not installed — install it from Services, or choose the static or DNS-only type",
+				"PHP-FPM is not installed — install it from Components, or choose the static or DNS-only type",
 				"/services")
 			return
 		}
@@ -426,11 +425,11 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 	// altında yeni siteyi reddeder; çalışan bir betiğin diski doldurmasını
 	// (henüz) sertçe durdurmaz (o, OS dosya sistemi kotası ister).
 	if err := p.checkSubscriptionQuota(r.Context(), req.SubscriptionID, quotaDomains); err != nil {
-		writeCodedError(w, http.StatusConflict, errCodeQuotaDomains, err.Error(), "")
+		writeQuotaRefusal(w, err)
 		return
 	}
 	if err := p.checkSubscriptionQuota(r.Context(), req.SubscriptionID, quotaDisk); err != nil {
-		writeCodedError(w, http.StatusConflict, errCodeQuotaDisk, err.Error(), "")
+		writeQuotaRefusal(w, err)
 		return
 	}
 
@@ -522,7 +521,11 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 			writeServerError(w, err)
 			return
 		}
-		if req.DNSManagement == setupDNSModeLocal && (caps.DNSServer == "" || !caps.DNSIdentityReady) {
+		if req.DNSManagement == setupDNSModeLocal && caps.DNSServer == "" {
+			writeDNSServerRequired(w, caps.DNSServerState, caps.DNSServerEngine, caps.DNSServerPeer, "the parent domain retains local DNS ownership; its authoritative DNS must be ready")
+			return
+		}
+		if req.DNSManagement == setupDNSModeLocal && !caps.DNSIdentityReady {
 			writeCodedError(w, http.StatusConflict, errCodeDNSServerRequired, "the parent domain retains local DNS ownership; its authoritative DNS must be ready", "/dns-infrastructure")
 			return
 		}
@@ -584,6 +587,9 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 			writeDomainCreatePartialSuccess(w, result.DomainID, req.Domain, false)
 			return
 		}
+		// The domain's mail records go to the main DNS server too, like a
+		// zone kept here gets them from its template (alpha.114 lab E6).
+		p.publishRemoteDomainMailOnCreate(dnsCtx, result.DomainID, req.Domain)
 		_ = json.NewEncoder(w).Encode(result)
 		return
 	}
@@ -768,50 +774,11 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 	// Capture agent-generated staged lineages before the cascading domain
 	// delete removes the certificate ledger. Canonical legacy/domain lineages
 	// are handled separately by the agent and never authorize global deletion.
-	lineageRows, err := p.db.GetDB().QueryContext(ctx, `
-		SELECT DISTINCT lineage_name
-		FROM ssl_certificates
-		WHERE domain_id = ?
-		  AND type = 'letsencrypt'
-		  AND lineage_name IS NOT NULL`, domainID)
+	deleteCanonicalLineage, stagedLineages, err := domainDeletionCertificateLineages(ctx, p.db.GetDB(), domainID, domain.Name)
 	if err != nil {
 		writeServerError(w, err)
 		return
 	}
-	var (
-		deleteCanonicalLineage bool
-		stagedLineages         []string
-	)
-	canonicalDomainName := strings.ToLower(strings.TrimSpace(domain.Name))
-	for lineageRows.Next() {
-		var lineage string
-		if err := lineageRows.Scan(&lineage); err != nil {
-			lineageRows.Close()
-			writeServerError(w, err)
-			return
-		}
-		lineage = strings.ToLower(strings.TrimSpace(lineage))
-		switch {
-		case lineage == canonicalDomainName:
-			deleteCanonicalLineage = true
-		case strings.HasPrefix(lineage, "cp-site-"), transport.IsNativeSiteLineage(lineage):
-			stagedLineages = append(stagedLineages, lineage)
-		default:
-			lineageRows.Close()
-			writeServerError(w, fmt.Errorf(
-				"refuse unknown managed certificate lineage %q for domain %s",
-				lineage,
-				domain.Name,
-			))
-			return
-		}
-	}
-	if err := lineageRows.Err(); err != nil {
-		lineageRows.Close()
-		writeServerError(w, err)
-		return
-	}
-	lineageRows.Close()
 
 	// From the marker on, a status read of this domain says the deletion is
 	// running until this request answers (domain_deletion_running.go).
@@ -933,6 +900,17 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if domain.DNSManagement == setupDNSModeExisting {
+		// The site and mail are gone: from here the joined server carries the
+		// removal on the main DNS server to its end by itself, even when this
+		// request stops waiting (remote_dns_deletion_resume.go).
+		if err := p.recordRemoteDNSDeletionStage(ctx, domainID, domain.Name); err != nil {
+			p.writeDomainDeletionPending(
+				w, r, domainID, domain.Name, "dns_cleanup", err,
+			)
+			return
+		}
+	}
 	if err := p.removeDomainDNSForDeletion(ctx, domain.Name, parentDomainName); err != nil {
 		p.writeDomainDeletionPending(
 			w, r, domainID, domain.Name, "dns_cleanup", err,
@@ -959,6 +937,10 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 
 	if err := p.clearDomainDeletionFailure(ctx, domainID); err != nil {
 		log.Printf("domain deletion for %s completed; %v", domain.Name, err)
+	}
+	if domain.DNSManagement == setupDNSModeExisting {
+		p.clearRemoteDNSDeletionStage(ctx, domainID)
+		p.remoteDNSDeletions().forget(domainID)
 	}
 	p.audit(r, "domain.delete:"+domain.Name, "domain", domainID)
 	w.WriteHeader(http.StatusOK)

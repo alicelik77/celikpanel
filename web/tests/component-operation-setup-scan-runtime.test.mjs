@@ -41,7 +41,7 @@ const stub = dataModule(`import React from '${reactURL}';
  export const createPortal = node => node;
  // The tracker tells the shared read of the component records to read again
  // when an operation has ended; the test records each call.
- export const refreshRemote = url => { (fixture().refreshed ??= []).push(url); };
+ export const invalidate = (...keys) => { (fixture().refreshed ??= []).push(...keys); return []; };
  export default function OperationOverlay(props) { return React.createElement('operation-overlay', props); }
 `);
 const providerURL = dataModule(`import React from '${reactURL}';\n` + compile(read('../src/components/ComponentOperation.tsx'))
@@ -154,7 +154,7 @@ function assertReleased(scannedAt, message) {
   // The verified end tells every screen that shows the stored component records
   // to read them again: once for the operation, not once per poll (open item of
   // 2026-10-09: a page opened after an install listed the earlier scan for 30 s).
-  assert.deepEqual(globalThis.operationTest.refreshed, ['/api/v1/managed-services'], `${message}: the shared component records must be re-read exactly once`);
+  assert.deepEqual(globalThis.operationTest.refreshed, ['components'], `${message}: the shared component records must be re-read exactly once`);
 }
 
 test('success and an accepted scan: released once, on the fresh snapshot', async () => {

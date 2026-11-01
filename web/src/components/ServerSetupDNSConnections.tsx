@@ -3,6 +3,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Button, inputClass } from './ui';
+import { invalidate } from '../lib/remote';
 import { decodeDNSClients, decodeDNSConnection, decodeDNSConnections, remoteDNSEndpoint, remoteDNSIdentity, remoteDNSPost, remoteDNSRequest, RemoteDNSError, type DNSClient, type DNSConnection } from '../lib/remoteDNS';
 
 const remoteErrorKey = (error: unknown): TranslationKey => error instanceof RemoteDNSError && error.code === 'REMOTE_DNS_AUTHORITY_NOT_READY' ? 'setup.remote.authorityNotReady' : 'setup.remote.failed';
@@ -59,6 +60,7 @@ export function ServerSetupDNSConnection({ value, onChange, onValidityChange, re
             const connection = decodeDNSConnection((payload as { connection?: unknown } | null)?.connection);
             if (!connection || (id && connection.id !== id)) throw new Error('connection identity');
             if (alive.current) { setCode(''); setConfirmed(false); if (connection.status === 'ready') onChange(connection.id); }
+            invalidate('dns');
             await load();
         } catch (failure) {
             const list = await load();
@@ -77,6 +79,7 @@ export function ServerSetupDNSConnection({ value, onChange, onValidityChange, re
         try {
             await remoteDNSRequest(`/api/v1/dns/remote/connections?id=${encodeURIComponent(remove.id)}`, { method: 'DELETE' });
             if (alive.current) { if (value === remove.id) onChange(''); setRemove(null); }
+            invalidate('dns');
             await load();
         } catch (failure) { if (alive.current) setError(remoteErrorKey(failure)); }
         finally { inFlight.current = false; if (alive.current) setBusy(false); }
@@ -98,7 +101,7 @@ export function ServerSetupDNSConnection({ value, onChange, onValidityChange, re
         {remove && <div className="rounded-lg border border-danger/30 p-4 text-sm" role="group" aria-label={t('setup.remote.disconnect')}><p>{t('setup.remote.disconnectConfirm', { endpoint: remove.endpoint })}</p><div className="mt-3 flex flex-wrap gap-3"><Button type="button" variant="danger" onClick={() => void disconnect()}>{t('setup.remote.disconnect')}</Button><Button type="button" variant="secondary" onClick={() => setRemove(null)}>{t('common.cancel')}</Button></div></div>}
         <details className="rounded-lg border border-border p-4" open={ready.length === 0 && pending.length === 0}>
             <summary className="cursor-pointer text-sm font-semibold text-primary">{t(requiredEndpoint ? 'setup.remote.authorize' : 'setup.remote.connect')}</summary>
-            <div className="mt-4 space-y-4"><label className="block" htmlFor="setup-remote-endpoint"><span className="mb-2 block text-sm font-medium">{t('setup.remote.endpoint')}</span><input id="setup-remote-endpoint" type="url" value={endpoint} readOnly={!!requiredEndpoint} onChange={event => { setEndpoint(event.target.value); setConfirmed(false); }} placeholder="https://dns-panel.example.com:2083" spellCheck={false} autoCapitalize="none" className={`${inputClass} w-full`} /></label>
+            <div className="mt-4 space-y-4"><label className="block" htmlFor="setup-remote-endpoint"><span className="mb-2 block text-sm font-medium">{t('setup.remote.endpoint')}</span><input id="setup-remote-endpoint" type="url" value={endpoint} readOnly={!!requiredEndpoint} onChange={event => { setEndpoint(event.target.value); setConfirmed(false); }} placeholder="https://dns-panel.example.com:1923" spellCheck={false} autoCapitalize="none" className={`${inputClass} w-full`} /></label>
                 <label className="block" htmlFor="setup-remote-code"><span className="mb-2 block text-sm font-medium">{t('setup.remote.code')}</span><input id="setup-remote-code" type="password" value={code} onChange={event => { setCode(event.target.value); setConfirmed(false); }} autoComplete="off" spellCheck={false} autoCapitalize="none" className={`${inputClass} w-full`} /></label>
                 <label className="flex items-start gap-3 text-sm leading-6"><input type="checkbox" checked={confirmed} disabled={!target || !code.trim()} onChange={event => setConfirmed(event.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-primary" /><span>{t('setup.remote.connectConfirm', { endpoint: target || t('setup.remote.endpoint') })}</span></label>
                 <Button type="button" variant="secondary" disabled={busy || connections === null || !!error || !target || !code.trim() || !confirmed} onClick={() => void connect()}>{t('setup.remote.authorize')}</Button>
@@ -148,6 +151,7 @@ export function ServerSetupDNSAccess() {
         try {
             await remoteDNSRequest(`/api/v1/dns/remote/clients?id=${encodeURIComponent(remove.id)}`, { method: 'DELETE' });
             if (alive.current) setRemove(null);
+            invalidate('dns');
             await load();
         } catch (failure) { if (alive.current) setError(remoteErrorKey(failure)); }
         finally { inFlight.current = false; if (alive.current) setBusy(false); }

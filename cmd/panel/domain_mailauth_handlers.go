@@ -257,8 +257,7 @@ func (p *Panel) handleMailAuthStatus(w http.ResponseWriter, r *http.Request, dom
 		writeServerError(w, err)
 		return
 	} else if ok {
-		st.Automatic = &dkimAutomaticView{State: record.State, Reason: record.Reason,
-			ErrorLine: record.ErrorLine, Trigger: record.Trigger, RecordedAt: record.RecordedAt}
+		st.Automatic = dkimAutomaticViewOf(record, time.Now())
 	}
 
 	var zoneID int
@@ -625,11 +624,12 @@ func (p *Panel) handleMailAuthApply(w http.ResponseWriter, r *http.Request, doma
 		return
 	}
 
-	if !p.publishDNSMutation(w, r.Context(), zoneName) {
+	publication, ok := p.publishDNSMutation(w, r.Context(), zoneName)
+	if !ok {
 		return
 	}
 	if err := json.NewEncoder(w).Encode(map[string]any{
-		"success": true, "name": name, "value": value,
+		"success": true, "name": name, "value": value, "publication": publication,
 	}); err != nil {
 		log.Printf("encode mail authentication result for %s: %v", domain, err)
 	}

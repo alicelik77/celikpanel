@@ -405,7 +405,7 @@ def wrong_server(on: bool) -> dict:
             sh(["openssl", "req", "-x509", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:P-256", "-nodes", "-days", "5",
                 "-subj", "/CN=beta1-wrong-server", "-addext", "subjectAltName=IP:192.0.3.1",
                 "-keyout", str(d / "key.pem"), "-out", str(d / "cert.pem")])
-        start_unit("beta1-wrongserver.service", ["openssl", "s_server", "-quiet", "-accept", "192.0.3.1:2083",
+        start_unit("beta1-wrongserver.service", ["openssl", "s_server", "-quiet", "-accept", "192.0.3.1:" + os.environ.get("BETA1_PANEL_PORT", "1923"),
                                                  "-cert", str(d / "cert.pem"), "-key", str(d / "key.pem"), "-www"])
     log({"event": "wrong-server", "on": on})
     return {"wrong_server": on}

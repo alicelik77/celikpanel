@@ -7,7 +7,7 @@ import { siteWebServerRefusedIn } from '../lib/siteWebServerRefused';
 import type { TranslationKey } from '../i18n/en';
 import { Button, Checking, CouldNotCheck, ErrorBanner, inputClass } from './ui';
 import { useNavigate } from '../router';
-import { decodeList, readRemote, useRemote } from '../lib/remote';
+import { decodeList, invalidate, readRemote, useRemote } from '../lib/remote';
 import { SUBSCRIPTIONS_URL, decodeSubscriptions } from '../lib/subscriptions';
 import { PageHeader } from './PageHeader';
 import { REQUEST_ID_HEADER, newRequestId } from '../lib/requestIdentity';
@@ -339,6 +339,10 @@ export function ImportPage() {
                 setUnknownResult(null);
                 return;
             }
+            // Whatever the answer says, the import may have changed domains,
+            // DNS, mailboxes and databases: every screen showing them reads
+            // again (no page refresh, 2026-10-31). Only reads.
+            invalidate('domains', 'dns', 'mail', 'databases');
             const answered = readImportResult(await res.json(), domain);
             if (!answered) throw new Error('steps');
             applyRequest.current = null;
@@ -354,6 +358,7 @@ export function ImportPage() {
             // içe aktarmış ya da hiçbir şey yapmamış olabilir. Bu sayfada söylenir
             // ve orada kalır; "İçe aktarımı başlat" kendiliğinden geri gelmez.
             setUnknownResult({ check: 'unchecked', domain, why });
+            invalidate('domains', 'dns', 'mail', 'databases');
         } finally {
             setBusy(false);
         }
@@ -593,6 +598,22 @@ export function ImportPage() {
                                 {t('import.resultTitle')}
                             </h3>
                             <p className="mt-1.5 max-w-[75ch] break-words text-sm text-fg-muted">{t('import.result.complete', { domain: result.domain })}</p>
+                            {/* The next step after a complete import: the site, its
+                                DNS records and its mailboxes (alpha.114).
+                                Tam ice aktarmadan sonraki adim: site, DNS, posta. */}
+                            <div className="mt-4 flex flex-wrap gap-3" data-import-next="">
+                                <Button type="button" variant="primary" onClick={() => navigate(`/domains/${encodeURIComponent(result.domain)}`)}>
+                                    {t('import.unknown.open', { domain: result.domain })}
+                                </Button>
+                                <Button type="button" onClick={() => navigate(`/domains/${encodeURIComponent(result.domain)}?tab=dns`)}>
+                                    {t('import.result.openDNS')}
+                                </Button>
+                                {(preview?.mail_accounts.length ?? 0) > 0 && (
+                                    <Button type="button" onClick={() => navigate(`/domains/${encodeURIComponent(result.domain)}?tab=mail`)}>
+                                        {t('import.result.openMail')}
+                                    </Button>
+                                )}
+                            </div>
                         </>
                     )}
                     <h4 className="mb-2 mt-6 text-sm font-semibold text-fg">{t('import.stepsTitle')}</h4>
@@ -617,7 +638,7 @@ export function ImportPage() {
                         ))}
                     </ul>
                     <div className="mt-4 flex justify-end">
-                        <Button variant={result.partial ? 'secondary' : 'primary'} onClick={reset}>
+                        <Button variant="secondary" onClick={reset}>
                             {t('import.importAnother')}
                         </Button>
                     </div>

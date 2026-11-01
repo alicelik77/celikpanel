@@ -28,6 +28,40 @@ func setupCheck(id string, ready bool, err error) serverSetupCheck {
 	return check
 }
 
+const (
+	setupDNSReasonEngineNotReady       = "dns_engine_not_ready"
+	setupDNSReasonPairNotReady         = "dns_pair_not_ready"
+	setupDNSReasonNameserversNotPublic = "dns_nameservers_not_public"
+)
+
+// setupDNSCheck is the final DNS check with its typed reason and the names
+// the sentence needs (no secret, only reviewed names and addresses). A
+// publishing connection that could not be proven now is "unknown", not an
+// action: nobody may need to act (D-024).
+func setupDNSCheck(draft serverSetupDraft, ready bool, reason string, err error) serverSetupCheck {
+	check := setupCheck("dns", ready, err)
+	if ready || reason == "" || err != nil {
+		return check
+	}
+	if reason == setupDNSReasonPublisherUnconfirmed {
+		check.State, check.Code = "unknown", "dns_unavailable"
+	}
+	check.Reason = reason
+	vars := map[string]string{}
+	for key, value := range map[string]string{"ns1": draft.NS1, "ns2": draft.NS2, "local_ip": draft.LocalIP, "peer_ip": draft.PeerIP} {
+		if value != "" {
+			vars[key] = value
+		}
+	}
+	if draft.DNSPublisherEndpoint != "" {
+		vars["primary"] = serverSetupPublisherHost(draft.DNSPublisherEndpoint)
+	}
+	if len(vars) > 0 {
+		check.Vars = vars
+	}
+	return check
+}
+
 func setupTLSReady(ctx context.Context, domain string) bool {
 	if domain == "" {
 		return false
@@ -76,27 +110,41 @@ func (p *Panel) serverSetupCompletionChecks(ctx context.Context, draft serverSet
 	// below; a saved enabled flag cannot prove that current workloads are reachable.
 	mode, modeErr := p.setupDNSManagementMode(ctx)
 	dnsReady := false
+	// dnsReason: what the DNS check still waits for, typed, so the screen
+	// says who acts and the next action instead of a general sentence
+	// (alpha.114 lab E8, D-024).
+	dnsReason := ""
 	if serverSetupManualSecondaryHosting(draft) {
 		dnsReady, modeErr = p.serverSetupManualSecondaryHostingReadiness(ctx, draft)
+		dnsReason = setupDNSReasonBackupNotServing
 	} else if serverSetupSecondaryHosting(draft) {
-		dnsReady, modeErr = p.serverSetupSecondaryHostingReadiness(ctx, draft)
+		dnsReady, dnsReason, modeErr = p.serverSetupSecondaryHostingReadinessReason(ctx, draft)
 	} else if modeErr == nil && mode == draft.DNSMode && !(draft.Purpose == "dns" && mode != "local") {
 		dnsReady, modeErr = p.setupDNSModeReadiness(ctx, mode)
+		dnsReason = setupDNSReasonEngineNotReady
+		if mode == setupDNSModeExisting {
+			dnsReason = setupDNSReasonPublisherUnconfirmed
+		}
+	} else if modeErr == nil {
+		dnsReason = setupDNSReasonSetupChanged
 	}
 	if dnsReady && mode == setupDNSModeExisting && !serverSetupSecondaryHosting(draft) {
 		var connectionID string
 		connectionID, modeErr = p.defaultRemoteDNSConnectionID(ctx)
 		dnsReady = modeErr == nil && connectionID == draft.RemoteDNSConnectionID
+		dnsReason = setupDNSReasonPublisherMissing
 	}
-	if dnsReady && mode == setupDNSModeLocal && serverSetupNeedsDNSPublisher(draft) {
+	if dnsReady && mode == setupDNSModeLocal && serverSetupNeedsDNSPublisher(draft) && !serverSetupSecondaryHosting(draft) {
 		_, dnsReady, modeErr = p.activeDNSPublisher(ctx)
+		dnsReason = setupDNSReasonPairNotReady
 	}
-	if dnsReady && mode == setupDNSModeLocal {
+	if dnsReady && mode == setupDNSModeLocal && !serverSetupSecondaryHosting(draft) {
 		dnsReady, modeErr = p.setupDNSNameserverReadiness(ctx)
+		dnsReason = setupDNSReasonNameserversNotPublic
 	}
-	dnsCheck := setupCheck("dns", dnsReady, modeErr)
+	dnsCheck := setupDNSCheck(draft, dnsReady, dnsReason, modeErr)
 	if errors.Is(modeErr, errSetupDNSPeerIPv6Unverified) {
-		dnsCheck.State, dnsCheck.Code = "action_required", "dns_peer_ipv6_unverified"
+		dnsCheck.State, dnsCheck.Code, dnsCheck.Reason, dnsCheck.Vars = "action_required", "dns_peer_ipv6_unverified", "", nil
 	}
 	checks = append(checks, dnsCheck)
 	var installed []string
@@ -276,7 +324,9 @@ func (p *Panel) serverSetupCompletionChecks(ctx context.Context, draft serverSet
 
 	// The other server's DKIM record when it receives the main domain's mail
 	// (alpha.114): written here over the link; completion waits for it.
-	if draft.PeerMail != nil && draft.DNSMode == setupDNSModeLocal && draft.DNSRole == transport.DNSPairRolePrimary && draft.InfrastructureDNS != nil && !serverSetupHasMail(draft) {
+	// It applies whether or not this server runs mail for its own customers'
+	// domains (alpha.114).
+	if draft.PeerMail != nil && draft.DNSMode == setupDNSModeLocal && draft.DNSRole == transport.DNSPairRolePrimary && draft.InfrastructureDNS != nil {
 		present, err := p.serverSetupPeerDKIMPresent(ctx, draft)
 		checks = append(checks, setupCheck("peer_mail_dkim", present, err))
 	}

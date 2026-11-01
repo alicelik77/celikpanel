@@ -127,7 +127,8 @@ func TestDNSSettingsGuidedPairingContract(t *testing.T) {
 		`t('dnssrv.blocker.powerdns')`,
 		`t('dnssrv.saveAndPublish')`,
 		`t('dnssrv.retryPublication')`,
-		`to="/services"`,
+		// alpha.114: a missing DNS engine is chosen on this page's own engine card.
+		`onClick={focusEngineCard}`,
 		`const dnsServiceMissing = dnsServiceKnown && !dnsServiceReady;`,
 		`id="dns-peer-ip-invalid"`,
 		`id="dns-peer-ip-same"`,

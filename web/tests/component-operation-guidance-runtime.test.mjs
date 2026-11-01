@@ -138,6 +138,9 @@ test('real mail profile and service scan stages are readable, unknown phases nev
     assert.equal(componentOperationPhaseKey('profile/core-mail/scanning'),'services.operation.phase.scanning');
     assert.equal(componentOperationPhaseKey('profile/protected-mail/preflight'),'services.operation.phase.preparing');
     assert.equal(componentOperationPhaseKey('scanning'),'services.operation.phase.scanning');
+    // A busy host makes the firewall update wait, never fail (lab run 4, I1).
+    assert.equal(componentOperationPhaseKey('firewall_waiting'),'services.operation.phase.firewall_waiting');
+    assert.equal(componentOperationPhaseKey('profile/webmail/firewall_waiting'),'services.operation.phase.firewall_waiting');
     assert.equal(componentOperationPhaseKey('constructor'),'services.operation.running');
     assert.equal(componentOperationPhaseKey('profile/untrusted/service/installing'),'services.operation.running');
 });

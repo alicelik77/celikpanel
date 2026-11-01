@@ -222,7 +222,6 @@ class PopulatedDatabaseTests(unittest.TestCase):
         # Migration 46 (alpha.108, PostgreSQL majors side by side):
         # database_servers.cluster, NULL in every old row, and the empty
         # postgresql_database_moves table.
-        self.assertEqual(len(self.sql), 46, 'a migration after 46 needs its own pin before a candidate carries it')
         result = self.build()
         connection = sqlite3.connect(result['database'])
         connection.execute('PRAGMA foreign_keys=ON')
@@ -239,6 +238,34 @@ class PopulatedDatabaseTests(unittest.TestCase):
         self.assertEqual(p.NEW_TABLES[46] - p.NEW_TABLES[45], {'postgresql_database_moves'})
         self.assertEqual(p.added_columns(46), {'audit_logs': ('details',), 'sites': ('app_run_as',), 'database_servers': ('cluster',)})
         for version in (47, '46', True):
+            with self.subTest(version=version), self.assertRaises(p.Refused):
+                self.verify(result, version)
+
+    def test_actual_39_through_51_migrations_add_tables_and_null_columns_and_change_no_old_row(self):
+        # alpha.114 (47-51), all additive: eight new tables; NULL
+        # sessions.impersonator_id, audit_logs.acting_as and
+        # users.email_verified_at in every old row.
+        self.assertEqual(len(self.sql), 51, 'a migration after 51 needs its own pin before a candidate carries it')
+        result = self.build()
+        connection = sqlite3.connect(result['database'])
+        connection.execute('PRAGMA foreign_keys=ON')
+        apply(connection, self.sql[38:51])
+        connection.close()
+        for wrong in (49, 50):
+            with self.assertRaises(p.Refused):
+                self.verify(result, wrong)
+        proof = self.verify(result, 51)
+        self.assertEqual(proof['schema_version'], 51)
+        self.assertEqual(proof['table_count'], 76)
+        self.assertEqual(proof['old_rows_missing_or_changed'], 0)
+        self.assertEqual(proof['tables']['schema_migrations']['added'], 13)
+        self.assertEqual(p.NEW_TABLES[51] - p.NEW_TABLES[46], {
+            'panel_port_changes', 'reseller_pools', 'account_links', 'site_protected_dirs',
+            'site_protected_users', 'site_redirects', 'two_factor_recovery_codes', 'email_autoresponders'})
+        self.assertEqual(p.added_columns(51), {
+            'audit_logs': ('details', 'acting_as'), 'sites': ('app_run_as',), 'database_servers': ('cluster',),
+            'sessions': ('impersonator_id',), 'users': ('email_verified_at',)})
+        for version in (52, '51', True):
             with self.subTest(version=version), self.assertRaises(p.Refused):
                 self.verify(result, version)
 

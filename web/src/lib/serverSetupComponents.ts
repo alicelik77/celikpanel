@@ -35,6 +35,8 @@ export interface SetupDNSEngineChoice {
     reason?: string;
     installed_version?: string;
     candidate_version?: string;
+    // alpha.114: the DNS software this server runs now (setup never switches it).
+    active?: boolean;
 }
 export interface SetupComponentCatalog {
     version: 1;
@@ -72,7 +74,7 @@ export function decodeSetupComponentCatalog(value: unknown): SetupComponentCatal
     }
     if (value.dns_engines !== undefined && (!Array.isArray(value.dns_engines) || value.dns_engines.length > 8 || value.dns_engines.some(engine => !isRecord(engine)
         || !['bind', 'pdns'].includes(String(engine.id)) || !['main', 'backup'].includes(String(engine.role)) || typeof engine.offered !== 'boolean'
-        || (engine.reason !== undefined && typeof engine.reason !== 'string')))) return null;
+        || (engine.reason !== undefined && typeof engine.reason !== 'string') || (engine.active !== undefined && typeof engine.active !== 'boolean')))) return null;
     const rows = value.components as SetupComponent[];
     const known = new Set(rows.map(row => row.id));
     if (known.size !== rows.length || value.required_components.some(id => !known.has(id))) return null;

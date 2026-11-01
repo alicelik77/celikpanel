@@ -413,7 +413,7 @@ func (p *Panel) prepareDNSZoneSyncV3Plan(
 		zoneType = p.dnsZoneType(ctx)
 	}
 
-	tx, err := p.db.GetDB().BeginTx(ctx, nil)
+	tx, err := beginDNSWriteTx(ctx, p.db.GetDB())
 	if err != nil {
 		return dnsZoneSyncV3Plan{}, fmt.Errorf("begin DNS V3 publication snapshot: %w", err)
 	}
@@ -561,7 +561,7 @@ func (p *Panel) recordDNSZoneSyncV3Success(
 	if !lease.valid() {
 		return false, errors.New("DNS V3 publication success has no exact lease")
 	}
-	tx, err := p.db.GetDB().BeginTx(ctx, nil)
+	tx, err := beginDNSWriteTx(ctx, p.db.GetDB())
 	if err != nil {
 		return false, err
 	}
@@ -677,7 +677,7 @@ func (p *Panel) recordDNSZoneSyncV3Failure(
 	if !lease.valid() {
 		return errors.New("DNS V3 publication failure has no exact lease")
 	}
-	tx, err := p.db.GetDB().BeginTx(ctx, nil)
+	tx, err := beginDNSWriteTx(ctx, p.db.GetDB())
 	if err != nil {
 		return err
 	}
@@ -733,7 +733,7 @@ func (p *Panel) releaseDNSZoneEngineLease(
 	if !lease.valid() {
 		return errors.New("DNS V3 publication release has no exact lease")
 	}
-	tx, err := p.db.GetDB().BeginTx(ctx, nil)
+	tx, err := beginDNSWriteTx(ctx, p.db.GetDB())
 	if err != nil {
 		return err
 	}

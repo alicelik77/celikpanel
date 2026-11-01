@@ -172,7 +172,10 @@ test('activation rejection preserves the key and offers no exploration bypass', 
     globalThis.fetch = async () => Response.json({ code: 'license_action_failed', error: 'license: license_in_use' }, { status: 409 });
     await submit();
     assert.equal(input().props.value, key);
-    assert.equal(tree.root.findByProps({ role: 'alert' }).props.children, 'license.inUse');
+    // The page's own sentence; the server's code under Technical details (2026-10-31).
+    const alert = tree.root.findByProps({ role: 'alert' });
+    assert.equal(alert.findByType('p').props.children, 'license.inUse');
+    assert.equal(alert.findByType('code').props.children, 'license_action_failed');
     assert.equal(button('license.activate').props.disabled, false);
     assert.equal(button('license.explore'), undefined);
     assert.equal(navigations.length, 0);
@@ -356,7 +359,7 @@ test('license status fetch failure does not ask for a replacement key',async()=>
  try {
   await mount(LicensePanel);
   assert.equal(tree.root.findAllByType('form').length,0);
-  assert.equal(tree.root.findByProps({role:'alert'}).props.children,'license.lockError');
+  assert.equal(tree.root.findByProps({role:'alert'}).findByType('p').props.children,'license.lockError');
   assert.ok(button('license.refresh'));
  }finally{await cleanup()}
 });
@@ -698,7 +701,7 @@ test('license page: a failed Check again keeps its error and reads the status ag
     await mount(LicensePanel); await flush();
     await act(async () => button('license.refresh').props.onClick()); await flush(); await flush();
     assert.deepEqual(calls.map(call => call.options?.method ?? 'GET'), ['GET', 'POST', 'GET']);
-    assert.equal(tree.root.findAll(node => node.props?.role === 'alert' && typeof node.type === 'string' && node.props.children === 'license.unavailable').length, 1, 'the failed check is still said');
+    assert.equal(tree.root.findAll(node => node.props?.role === 'alert' && typeof node.type === 'string' && node.findAllByType('p').some(p => p.props.children === 'license.unavailable')).length, 1, 'the failed check is still said');
     assert.ok(drawn().includes('license.offline.title'), 'the re-read shows how long management stays open');
     assert.equal(button('license.refresh').props.disabled, false);
   } finally { await cleanup(); }

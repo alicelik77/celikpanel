@@ -4,7 +4,7 @@ import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { apiErrorText, readApiError } from '../lib/apiError';
 import { decodeMailSetup, mailSetupURL, type MailProtocol } from '../lib/mailSetup';
-import { LOADING, readRemote, useRemote, type Remote } from '../lib/remote';
+import { invalidate, LOADING, readRemote, useRemote, type Remote } from '../lib/remote';
 import { isStaleWrite, StaleNotice } from './CurrentSettings';
 import { Button, Checking, CouldNotCheck, RemoteGate, inputClass } from './ui';
 
@@ -214,7 +214,11 @@ function CatchAllSection({ domainId, domainName, readOnly }: { domainId: number;
                 return;
             }
             showToast('success', t(method === 'PUT' ? 'mail.catchAllSaved' : 'mail.catchAllRemoved'));
-            await retry();
+            // The catch-all, the mail settings and the dashboard's mail figures
+            // read again wherever they are shown.
+            // Tüm-adresleri-yakala ve posta ayarları nerede gösteriliyorsa
+            // yeniden okunur.
+            invalidate('mail');
         } catch {
             setRefused(t('mail.catchAll.notSaved'));
         } finally {

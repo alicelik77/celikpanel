@@ -11,10 +11,12 @@ import (
 	"mime"
 	"net"
 	"net/http"
+	"net/http/httptrace"
 	"net/netip"
 	"net/url"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/hostname"
@@ -53,6 +55,16 @@ func remoteDNSRefusalCode(body io.Reader) string {
 }
 
 func (e *remoteDNSHTTPError) Error() string { return "remote DNS request was rejected" }
+
+// remoteDNSExchangeError is an exchange that ended without an HTTP answer.
+// Delivered is true when the whole request reached the main DNS server before
+// the exchange ended (for example its answer took longer than the timeout):
+// the main server is running and may still apply it, so it is not
+// "unreachable" (lab run 6). The text never carries transport detail.
+// Yanıtsız biten alışveriş; Delivered, isteğin karşıya tamamen ulaştığıdır.
+type remoteDNSExchangeError struct{ Delivered bool }
+
+func (e *remoteDNSExchangeError) Error() string { return "remote DNS HTTPS exchange failed" }
 
 func canonicalRemoteDNSEndpoint(raw string) (string, error) {
 	invalid := errors.New("remote DNS endpoint must be an HTTPS panel address")
@@ -202,9 +214,17 @@ func remoteDNSHTTPJSONWith(ctx context.Context, endpoint, path, secret string, r
 	req.Header.Set("Authorization", "Bearer "+secret)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
+	var delivered atomic.Bool
+	req = req.WithContext(httptrace.WithClientTrace(req.Context(), &httptrace.ClientTrace{
+		WroteRequest: func(info httptrace.WroteRequestInfo) {
+			if info.Err == nil {
+				delivered.Store(true)
+			}
+		},
+	}))
 	resp, err := client.Do(req)
 	if err != nil {
-		return errors.New("remote DNS HTTPS exchange failed")
+		return &remoteDNSExchangeError{Delivered: delivered.Load()}
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {

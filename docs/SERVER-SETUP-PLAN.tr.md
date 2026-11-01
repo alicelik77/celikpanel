@@ -9,6 +9,81 @@ bu yönü onayladı. Bu belge anlaşmayı ve uygulamanın kabul ölçütlerini k
 Asistana kurulu panel güncelleme yetkisi vermez; [AGENTS.md](../AGENTS.md) gereği
 kurulu panel güncellemelerini kullanıcı CelikPanel'in kendi arayüzünden başlatır.
 
+## 1 Kasım ek kararı: laboratuvar koşusu 1 sonrası katılan sunucu (alpha.114 kaynağı)
+
+alpha.114 adayının ilk laboratuvar koşusu, koda katılan sunucuda dört kusur
+buldu. Yalnız bileşen testleri; şema değişmedi; iki sunuculu laboratuvar
+tekrarı (iki sunucu da alpha.114'te ve ilk sunucu alpha.113'te) borçtur.
+
+- **Yeni katılma kodunu yalnız doğrulanmış ret ister (E1).** İlk sunucu
+  kendi kurulumundayken katılan sunucunun yayımlama bağlantısı "kodun süresi
+  doldu" diye başarısız oldu. İlk sunucu artık retlerini tipler
+  (`REMOTE_DNS_ENROLLMENT_UNKNOWN`, `_EXPIRED`, `_USED`) ve kayıtlarını o an
+  okuyamaz ya da yazamazsa 503 `REMOTE_DNS_BUSY` döner. Katılan sunucu meşgul,
+  yeniden başlayan ya da lisansı etkin olmayan ana sunucuda ve her 5xx'te ana
+  DNS sunucusunu adlandırarak bekler; nedensiz ret (alpha.113 her reti aynı
+  verir) en fazla 30 dakika beklenir, sonra
+  `server_setup_dns_publisher_unconfirmed` sahibin neyi kontrol edeceğini söyler.
+- **Eşleşme port değişikliğini iki tarafta da durdurur (E2).** Kurulumla
+  biten bağlantı kimliklerinden değil, iki tarafın kurulumdan sonra tuttuğu
+  kayıtlardan okunur (ilk sunucuda ikincinin adlarını taşıyan katılma kaydı,
+  katılan sunucuda bağlantı kaydı).
+- **Katılan sunucudaki alan adı posta kayıtlarını alır (E6).** Alan adı
+  oluşturma (sunucuda posta varsa) ve otomatik DKIM işi; MX, posta adresi,
+  SPF, DMARC ve DKIM kayıtlarını yetkili yayımlayıcı üzerinden ana DNS
+  sunucusundaki bölgeye ekler; sahibin oradaki kayıtları korunur, değiştirilmez.
+  Alan adı silinince bölgeyle birlikte kalkar. Alan adı başına posta anahtarı
+  yoktur; bir alan adından postayı kaldırmak hâlâ sahibin DNS düzenlemesidir.
+- **Sonraki çalışmanın son denetimi (E8).** Posta genişletmesi (ya da
+  yayımlama adımı olmayan her çalışma), kendi bağını arayıp sonsuza dek
+  beklemek yerine tamamlanan kurulumun kaydettiği bağlantıyı canlı olarak
+  kanıtlar. DNS denetimi adlarla tipli bir neden taşır (kim, sonraki eylem);
+  30 dakika sonra hâlâ açık son denetim `server_setup_verification_overdue`
+  olarak söylenir; çalışma denetlemeyi sürdürür, hiçbir şey geri alınmaz.
+- **Metinler (S9).** Katılan sunucunun posta adımı, ana alan adının
+  kayıtlarını listelemek yerine ana alan adının postasının ilk sunucuda
+  kaldığını ve bu sunucudaki alan adlarının kendi kayıtlarını aldığını söyler.
+
+## 31 Ekim ek kararı: koda katılan sunucuda posta (alpha.114 kaynağı)
+
+Sahip alpha.113'te canlı buldu: Frankfurt'a kodla katılan Boston'da posta
+hiç kurulamıyordu; Frankfurt ana alan adının postasını zaten aldığı için
+inceleme `server_setup_peer_mail_both` ile reddediyordu. Barındırma
+şirketinin her sunucusu kendi müşterilerinin web, veritabanı ve postasını
+barındırır.
+
+- **Katılan sunucu, üzerinde açılan alan adları için posta çalıştırabilir.**
+  Katılmanın ortak yanıtı ana alan adının postasını alan tek sunucuyu
+  söylemeye devam eder. Bu ilk sunucuysa katılan sunucunun postası onu
+  sahiplenmez: ana alan adının MX, SPF, DMARC ya da DKIM kaydı oradan yazılmaz
+  ve gönderilmez. Katılan sunucu yalnız kendi posta adını (adresine A kaydı)
+  yayımlar: ilk kurulumunda adlarıyla ilk sunucuya, sonrasında erişim DNS
+  adımıyla yetkili DNS bağlantısı üzerinden. Kendi posta sertifikası,
+  Postfix/Dovecot/Rspamd ve Roundcube'u olur. Üzerinde açılan müşteri alan
+  adlarının MX, SPF, DKIM ve DMARC kayıtları kendi bölgelerinde, her
+  barındırılan bölge gibi ana DNS sunucusuna yayımlanır.
+- **Postayı sonradan eklemek.** Tamamlanmış bir katılan kurulum (örneğin
+  alpha.113'te yalnız web ve DNS ile kurulup sahibince güncellenen) Sunucu ->
+  Sunucu kurulumu ile yeniden açılır ve posta eklenir. Genişletmenin adlar
+  adımı hiçbir şey göndermez (bağlantı kurulum tamamlanınca bitti, ilk sunucu
+  adları zaten biliyor); bitmiş bağlantıdaki ilk kurulum
+  `server_setup_peer_link_revoked` yönlendirmesini korur.
+- **Adlar.** Katılan sunucuda posta adı `mail.<bu sunucunun panel adı>`
+  olarak önerilir. İlk sunucunun, ana alan adının ya da bir ad sunucusunun
+  kullandığı posta adı incelemede `server_setup_peer_mail_hostname_taken` ile
+  reddedilir (siz, sunucu sahibi: Bu sunucunun adları adımına dönüp bu
+  sunucuya kendi posta adını verin; hiçbir şey değiştirilmedi). Panel adı da
+  posta adı olabilir: panel kendi bağlantı noktasında kendi sertifika
+  soyuyla dinler, posta sertifikası aynı 80 numaralı kontrol ile verilen ayrı
+  bir soydur, web postası 443'te nginx'tir; tek A kaydı iki ada da yeter.
+- **Metinler.** Katılan sunucuda Adlar adımı ve inceleme, ana alan adının
+  kayıtlarının ilk sunucuda kaldığını ve bu kurulumun onları değiştirmediğini
+  söyler; onları aktarmayı istemez.
+
+Kalan: yalnız bileşen testleriyle kanıtlandı; iki sunuculu laboratuvar koşusu
+(postalı ilk sunucu, web ve DNS ile katılan ikinci, güncelleme, sonradan
+eklenen posta, bir müşteri alan adı için iki yönde posta) borçtur.
+
 ## 29 Ekim ek kararı: üçüncü hedefli Beta-1 yeniden koşusunun düzeltmeleri (alpha.115 kaynağı)
 
 cfcadd3f1 ürün kaydının üçüncü hedefli yeniden koşusu aşağıdaki kusurları
@@ -520,7 +595,7 @@ adı firmasının canlı kontrolü ve ana DNS'in taşınması sonraki sürümler
   (`GET /api/v1/setup/provider-records`, salt-okur, dakikada yaklaşık bir
   kontrol, başarısız sorgu bilinmiyor sayılır). *Başka bir CelikPanel'de*:
   bugünkü bağlantı.
-- **Kurulum ekranı.** Panel, adı çözülene kadar `https://IP:2083` adresinde geçici
+- **Kurulum ekranı.** Panel, adı çözülene kadar `https://IP:1923` (alpha.114 öncesi kurulumlarda `:2083`) adresinde geçici
   sertifikayla açılır ve bu açıkça söylenir. Alan adı firması kartı ad
   sunucularını ve ana alan adının içindeki adlar için IP kayıtlarını (glue)
   bugünkü zamanlamayla verir: yedek DNS sunucusu hazır olduktan sonra.

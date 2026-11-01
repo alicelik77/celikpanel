@@ -227,7 +227,7 @@ func TestSavedDeletionStatusIgnoresForeignOrMalformedFailureRecord(t *testing.T)
 			t.Fatal(err)
 		}
 		code, saved := readDeletionStatusForTest(t, p, domainID)
-		if code != http.StatusOK || saved.Status != "unknown" || saved.Reason != "" {
+		if code != http.StatusOK || saved.Status != domainDeletionPendingStatus || saved.Reason != domainDeletionIncompleteReason {
 			t.Fatalf("value %s: saved status = %d %+v", value, code, saved)
 		}
 	}

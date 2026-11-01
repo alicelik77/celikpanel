@@ -1499,7 +1499,8 @@ class Set3PublishedBaselineTests(unittest.TestCase):
         # Schema 44 (managed site files, D-031), schema 45 (audit details and
         # site application accounts, D-038) and schema 46 (PostgreSQL clusters
         # and database moves, alpha.108) are pinned beside the published ones.
-        self.assertEqual(sorted(pins["migrations"]), [38, 42, 43, 44, 45, 46])
+        # alpha.114 pins schemas 47 to 51 (all additive) the same way.
+        self.assertEqual(sorted(pins["migrations"]), [38, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51])
 
         def reading(version, guarded):
             return {"schema_version": version, "ledger_rows": version, "ledger_contiguous": True,
@@ -2206,7 +2207,12 @@ class H10CardModelTests(unittest.TestCase):
         self.assertEqual(card["missing_keys"], [])
         self.assertIsNone(card["server_message"])
         defective = self.card(UPD3_DEF_STATUS, UPD3_DEF_RECOVERY)
-        self.assertIn("panelUpdate.outcome.cause.generic", defective["keys"])
+        # alpha.114 (E-new-5): without a typed cause, the updater's own reason
+        # is the cause line (not the generic one); the full line stays last,
+        # behind Details.
+        self.assertNotIn("panelUpdate.outcome.cause.generic", defective["keys"])
+        self.assertEqual(defective["keys"][2], "panelUpdate.outcome.serverMessage")
+        self.assertIn("offline panel database migration failed", defective["texts"]["en"][2])
         self.assertEqual(defective["keys"][-1], "panelUpdate.outcome.serverMessage")
         for language in ("en", "tr"):                                                  # O6 shape, recorded
             prefix = self.translator.text("panelUpdate.outcome.serverMessage", language=language).split("{message}")[0]
@@ -3817,7 +3823,9 @@ class Upd5ClassificationTests(unittest.TestCase):
         self.assertIn('update_failure_reason="update preflight step=$step class=$class: $reason"', update)
         handlers = (REPO / "cmd/panel/system_update_handlers.go").read_text(encoding="utf-8")
         self.assertIn('reason = "update preflight step=" + parts[1] + " class=" + parts[2]', handlers)
-        self.assertIn('" state=" + state + " reason=" + reason + " detail="', handlers)
+        # alpha.114 (I2): the detail is kept, sanitized, for update_failed too.
+        self.assertIn('" state=" + state + " reason=" + reason +', handlers)
+        self.assertIn('" detail=" + panelUpdateDiagnostic(detail)', handlers)
 
 
 class Upd5KindNotReachedTests(unittest.TestCase):

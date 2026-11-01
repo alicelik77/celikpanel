@@ -14,6 +14,12 @@ const contract = (result: LicenseStatus) => states.includes(result.state) && typ
     && (result.expires_at === undefined || (Number.isSafeInteger(result.expires_at) && result.expires_at > 0));
 const shown = (result: LicenseStatus): ShownStatus => ({ ...result, ...decodeLicenseCheck(result as unknown as Record<string, unknown>) });
 
+// A failure this page has its own sentence for, with what the server said
+// (a code or its words) kept for Technical details.
+class LicenseFailure extends Error {
+    constructor(message: string, readonly detail: string) { super(message); }
+}
+
 export function LicensePanel({ locked = false, onContinue }: { locked?: boolean; onContinue?: () => void }) {
     const { t, locale } = useI18n();
     const [params] = useSearchParams();
@@ -24,6 +30,7 @@ export function LicensePanel({ locked = false, onContinue }: { locked?: boolean;
     const [showKey, setShowKey] = useState(false);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
+    const [errorDetail, setErrorDetail] = useState('');
     const [keyError, setKeyError] = useState('');
     async function request(action?: 'activate' | 'refresh', signal?: AbortSignal, reread = false) {
         const normalizedKey = key.trim();
@@ -31,7 +38,7 @@ export function LicensePanel({ locked = false, onContinue }: { locked?: boolean;
             setKeyError(t('license.keyInvalid'));
             return;
         }
-        setBusy(true); if (!reread) setError(''); setKeyError('');
+        setBusy(true); if (!reread) { setError(''); setErrorDetail(''); } setKeyError('');
         try {
             const response = await fetch('/api/v1/panel/license', action ? {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -47,9 +54,11 @@ export function LicensePanel({ locked = false, onContinue }: { locked?: boolean;
                         : message === 'license: rate_limited' ? 'license.tryLater'
                         : problem.code === 'license_unavailable' || message === 'license service unavailable; existing license retained' ? 'license.unavailable'
                         : 'license.actionFailed';
-                    throw new Error(t(reason));
+                    throw new LicenseFailure(t(reason), problem.code || problem.message);
                 }
-                throw new Error(apiErrorText(problem, t));
+                // The page's own sentence; the server's words under Technical details.
+                const text = apiErrorText(problem, t, 'license.loadFailed');
+                throw new LicenseFailure(problem.code && text !== problem.message ? text : t('license.loadFailed'), problem.code || problem.message);
             }
             const result = await response.json() as LicenseStatus;
             if (signal?.aborted) return;
@@ -64,7 +73,13 @@ export function LicensePanel({ locked = false, onContinue }: { locked?: boolean;
             }
         } catch (cause) {
             // A re-read after a failed check keeps that check's error.
-            if (!signal?.aborted && !reread) setError(cause instanceof TypeError ? t('license.lockError') : cause instanceof Error ? cause.message : t('license.loadFailed'));
+            // Only this page's own sentences are shown; anything else (a reply
+            // that is not JSON…) is the could-not-load sentence, with what was
+            // seen under Technical details (owner feedback 2026-10-31).
+            if (!signal?.aborted && !reread) {
+                setError(cause instanceof TypeError ? t('license.lockError') : cause instanceof LicenseFailure ? cause.message : t('license.loadFailed'));
+                setErrorDetail(cause instanceof LicenseFailure ? cause.detail : cause instanceof Error && !(cause instanceof TypeError) && cause.name !== 'Error' ? cause.name : '');
+            }
             // A failed "Check again" leaves the receipt as it was; read the status
             // again so the page shows how long management stays open and why.
             if (action === 'refresh') await request(undefined, undefined, true);
@@ -86,7 +101,7 @@ export function LicensePanel({ locked = false, onContinue }: { locked?: boolean;
             <p className="font-semibold">{t(guidance.title, vars)}</p>
             <p className="mt-1">{t(guidance.help, vars)}</p>
         </div>}
-        {error && <p role="alert" className="mb-4 rounded-lg border border-danger/30 bg-danger/5 p-3 text-sm text-danger">{error}</p>}
+        {error && <div role="alert" className="mb-4 rounded-lg border border-danger/30 bg-danger/5 p-3 text-sm text-danger"><p>{error}</p>{errorDetail && <details className="mt-1 text-xs text-fg-muted"><summary className="cursor-pointer">{t('common.technicalDetails')}</summary><code className="break-words">{errorDetail}</code></details>}</div>}
         {status ? <div className="mb-6 space-y-2 text-sm" role="status">
             {!unavailable && (!setup || (!status.can_provision && status.state !== 'missing' && status.state !== 'expired')) && <p className="font-semibold">{t(`license.state.${status.state as Exclude<LicenseStatus['state'], 'status_unavailable'>}`)}</p>}
             {status.expires_at && <p>{t('license.expires')}: {new Date(status.expires_at * 1000).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US')}</p>}

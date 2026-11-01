@@ -204,7 +204,7 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 	// atlatılamayan uygulayıcı agent'tır.
 	installed := a.installedServiceSetWithProfile(profile)
 	if missing := core.RequirementsMissing(svc, installed); len(missing) > 0 {
-		resp.Error = fmt.Sprintf("%s requires %s — install that first from Services",
+		resp.Error = fmt.Sprintf("%s requires %s — install that first from Components",
 			svc.Name, strings.Join(missing, ", "))
 		return nil
 	}
@@ -364,9 +364,9 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 		}
 		if repoStatus.Error != "" || !repoStatus.Enabled {
 			if req.Package != "" {
-				resp.Error = fmt.Sprintf("selected package %s requires the %s repository; enable it from Services first", req.Package, svc.Repo.Name)
+				resp.Error = fmt.Sprintf("selected package %s requires the %s repository; enable it from Components first", req.Package, svc.Repo.Name)
 			} else {
-				resp.Error = fmt.Sprintf("%s requires the %s repository; enable it from Services first", svc.Name, svc.Repo.Name)
+				resp.Error = fmt.Sprintf("%s requires the %s repository; enable it from Components first", svc.Name, svc.Repo.Name)
 			}
 			return nil
 		}

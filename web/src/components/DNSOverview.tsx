@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Link } from '../router';
 import { apiErrorText, readApiError } from '../lib/apiError';
 import { useLostAnswer } from '../lib/lostAnswer';
-import { readRemote, useRemote, type Remote, type RemoteHandle } from '../lib/remote';
+import { invalidate, readRemote, useRemote, type Remote, type RemoteHandle } from '../lib/remote';
 import {
     DNS_OVERVIEW_URL,
     decodeDNSOverview,
@@ -22,6 +22,12 @@ import {
 } from '../lib/dnsOverview';
 import { Button } from './ui';
 import { SetupJoinCard } from './ServerSetupWizardSteps';
+import { useServerSetup } from './ServerSetupGate';
+
+// The missing DKIM key is made by the mail steps of this server's setup, run
+// in place (alpha.114): the same mail-only extension Components uses.
+// Eksik DKIM anahtari yerinde calisan posta adimlariyla olusturulur.
+const MailSetupDialog = lazy(() => import('./MailSetupDialog').then(module => ({ default: module.MailSetupDialog })));
 
 // The DNS page (v0.1.0-alpha.115, the owner-approved draft): one sentence
 // first (why, who acts, the next action, what happens then), the DNS servers,
@@ -137,6 +143,11 @@ function OverviewBody({ value, t, checkNow, reading, freshIn, failedNote, checke
 }) {
     const stem = dnsOverviewSentenceKey(value.sentence.code);
     const vars = dnsOverviewSentenceValues(t, value);
+    const setup = useServerSetup()?.snapshot;
+    const [dkimOpen, setDkimOpen] = useState(false);
+    // In place once setup has finished and no run is active; otherwise setup
+    // itself, with a banner that says why the owner is there.
+    const dkimInPlace = !!setup && (setup.status === 'ready' || (setup.extension === true && !['running', 'waiting'].includes(setup.status)));
     const say = (part: 'title' | 'why' | 'who' | 'next' | 'then', fallback: string) => stem ? t(`${stem}.${part}`, vars) : fallback;
     const tone = dnsOverviewTone(value.sentence.state);
     // Only the title is a live region. It is an alert only when the state
@@ -164,10 +175,14 @@ function OverviewBody({ value, t, checkNow, reading, freshIn, failedNote, checke
             <div className="mt-3 flex flex-wrap items-center gap-3">
                 <Button type="button" variant="secondary" disabled={reading || freshIn > 0} loading={reading} onClick={checkNow}>{t('dnsov.checkNow')}</Button>
                 <span className="text-xs text-fg-muted">{freshIn > 0 ? t('dnsov.checkNowIn', { seconds: freshIn }) : checkedAt}</span>
-                {['dns_overview_setup_running', 'dns_overview_setup_not_done', 'dns_overview_dkim_pending'].includes(value.sentence.code)
-                    ? <Link to="/setup" className="text-sm font-medium text-primary underline underline-offset-4">{t('dnsov.join.openSetup')}</Link> : null}
+                {value.sentence.code === 'dns_overview_dkim_pending'
+                    ? dkimInPlace ? <Button type="button" variant="primary" onClick={() => setDkimOpen(true)}>{t('svc.mailSetup.titleDKIM')}</Button>
+                        : <Link to="/setup?purpose=dkim" className="text-sm font-medium text-primary underline underline-offset-4">{t('dnsov.join.openSetup')}</Link>
+                    : ['dns_overview_setup_running', 'dns_overview_setup_not_done'].includes(value.sentence.code)
+                        ? <Link to="/setup" className="text-sm font-medium text-primary underline underline-offset-4">{t('dnsov.join.openSetup')}</Link> : null}
             </div>
             {failedNote && <p className="mt-2 text-sm text-fg-muted">{failedNote}</p>}
+            {dkimOpen && <Suspense fallback={null}><MailSetupDialog onClose={() => { setDkimOpen(false); void rereadOverview(); }} /></Suspense>}
         </section>
         {value.home === 'own' ? <ServersCard value={value} t={t} /> : value.home !== 'none' && <HomeCard value={value} t={t} />}
         {value.join.state !== 'bound' && <JoinEntry value={value} t={t} />}
@@ -232,6 +247,9 @@ function NamesCard({ value, t }: { value: Overview; t: T }) {
     const where = value.names.find(row => row.where !== 'registrar')?.where;
     const mainPanel = value.servers.find(server => server.role === 'main')?.panel_name || '—';
     const serverOf = (row: DNSOverviewName) => row.server ? dnsOverviewServerLabel(t, value.servers.find(server => server.who === row.server) || { who: row.server }) : '';
+    // An optional row not in place (an IPv6 glue record) is the owner's
+    // choice, never a wait: the registrar action and that IPv4 is enough.
+    const optionalTask = (row: DNSOverviewName) => row.optional && row.kind === 'glue' && row.state !== 'ok' && row.state !== 'unknown';
     return <section aria-labelledby="dns-names-title" className="space-y-3 rounded-lg border border-border bg-surface p-4 sm:p-5">
         <h2 id="dns-names-title" className="font-semibold">{value.domain ? t('dnsov.names.title', { domain: value.domain }) : t('dnsov.names.titleNoDomain')}</h2>
         {value.names.length === 0 ? <p className="text-sm text-fg-muted">{t('dnsov.names.none')}</p>
@@ -243,7 +261,8 @@ function NamesCard({ value, t }: { value: Overview; t: T }) {
                     <span role="cell" className="min-w-0"><span className="block break-all font-mono">{row.name}</span>
                         <span className="block text-xs text-fg-muted">{t(`dnsov.names.kind.${row.kind}`)}{row.optional ? ` · ${t('dnsov.names.optional')}` : ''}</span></span>
                     <span role="cell" className="min-w-0"><span className="block break-all font-mono text-xs">{row.expected || '—'}</span>{serverOf(row) && <span className="block text-xs text-fg-muted">{serverOf(row)}</span>}</span>
-                    <span role="cell" className={`min-w-0 break-words ${stateClass(row.state)}`}>{rowStateText(t, row)}</span>
+                    <span role="cell" className={`min-w-0 break-words ${optionalTask(row) ? 'text-fg-muted' : stateClass(row.state)}`}>{rowStateText(t, row)}
+                        {optionalTask(row) && <span className="block text-xs text-fg-muted" data-dns-optional-task="">{t('dnsov.names.optionalGlue', { name: row.name, ip: row.expected })}</span>}</span>
                 </div>)}
             </div>}
         {where && <p className="text-sm leading-6 text-fg-muted">{t(`dnsov.names.where.${where}`, { panel: mainPanel })}</p>}
@@ -317,13 +336,15 @@ function MailCard({ value, t, rereadOverview }: { value: Overview; t: T; rereadO
             if (!res.ok) {
                 const refusal = await readApiError(res);
                 // Saved in the list, not yet published: a known state of its own.
-                if (refusal.code === 'DNS_PUBLICATION_FAILED') { setMove({ step: 'saved' }); void rereadOverview(); return; }
+                if (refusal.code === 'DNS_PUBLICATION_FAILED') { setMove({ step: 'saved' }); invalidate('dns'); return; }
                 setMove({ step: 'problem', text: t('dnsov.mail.refused', { reason: apiErrorText(refusal, i18n.t, 'common.error') }) });
                 return;
             }
             answer.settle();
             setMove({ step: 'done' });
-            void rereadOverview();
+            // The record list of the zone and the overview read again.
+            // Bölgenin kayıt listesi ve özet yeniden okunur.
+            invalidate('dns');
         } finally {
             inFlight.current = false;
         }

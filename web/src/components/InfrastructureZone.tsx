@@ -1,4 +1,5 @@
-import { ArrowLeft, Globe, ServerCog } from 'lucide-react';
+import { lazy, Suspense, useState } from 'react';
+import { ArrowLeft, Globe, Plus, ServerCog } from 'lucide-react';
 import { Link, useNavigate } from '../router';
 import { useI18n } from '../i18n';
 import { PageHeader } from './PageHeader';
@@ -6,6 +7,11 @@ import { DomainDNSManager } from './DomainDNSManager';
 import { Button, Checking, CouldNotCheck, KnownEmpty } from './ui';
 import { lastKnown, useRemote } from '../lib/remote';
 import { INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones } from '../lib/infrastructureZones';
+import { useAuth } from '../auth/AuthContext';
+import { KeptSiteRecords } from './KeptSiteRecords';
+import type { SiteRecordsOutcome } from './AddDomainModal';
+
+const AddDomainModal = lazy(() => import('./AddDomainModal').then((module) => ({ default: module.AddDomainModal })));
 
 // The infrastructure zone's page (2026-10-16, the owner's decision 2): the
 // zone server setup created on the primary opens the same DNS record editor as
@@ -21,6 +27,10 @@ export function InfrastructureZonePage({ zone }: { zone: string }) {
     const zones = useRemote(INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones);
     const shown = lastKnown(zones.remote);
     const entry = shown?.value.find((item) => item.zone === zone);
+    const { role } = useAuth();
+    const [adding, setAdding] = useState(false);
+    // What the create said about names that already point elsewhere.
+    const [kept, setKept] = useState<SiteRecordsOutcome | null>(null);
 
     const header = (
         <PageHeader
@@ -72,6 +82,19 @@ export function InfrastructureZonePage({ zone }: { zone: string }) {
                 </p>
                 <p className="text-fg-muted">{t('domains.infrastructure.yours')}</p>
                 {entry.peerRecords > 0 && <p className="text-fg-muted">{t('domains.infrastructure.peer')}</p>}
+                {/* No website yet: say so, and offer the one step that adds
+                    it with the name filled in. The dialog tells every reader
+                    of domains, so this note turns into the one below without
+                    a page refresh (owner rule 2026-10-31).
+                    Henuz web sitesi yok: soyle ve adi dolu tek adimi sun. */}
+                {entry.domainId === null && role === 'admin' && (
+                    <div role="note" className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface-2 p-3" data-no-website="">
+                        <span className="min-w-0 flex-1">{t('domains.infrastructure.noWebsite')} {t('domains.infrastructure.hostWebsiteHelp', { zone })}</span>
+                        <Button variant="secondary" icon={Plus} onClick={() => setAdding(true)} data-host-website={zone}>
+                            {t('domains.infrastructure.hostWebsite')}
+                        </Button>
+                    </div>
+                )}
                 {entry.domainId !== null && (
                     <p role="note" className="rounded-lg border border-border bg-surface-2 p-3">
                         {t('domains.infrastructure.site')}{' '}
@@ -81,7 +104,22 @@ export function InfrastructureZonePage({ zone }: { zone: string }) {
                     </p>
                 )}
             </section>
+            {kept && <KeptSiteRecords domain={zone} outcome={kept} onDismiss={() => setKept(null)} />}
             <DomainDNSManager domainId={0} domainName={zone} infrastructureZone />
+            {adding && (
+                <Suspense fallback={null}>
+                    <AddDomainModal
+                        initialDomain={zone}
+                        sslByDefault
+                        onClose={() => setAdding(false)}
+                        onSuccess={(outcome) => {
+                            setAdding(false);
+                            const records = outcome?.siteRecords;
+                            setKept(records && records.kept.length > 0 ? records : null);
+                        }}
+                    />
+                </Suspense>
+            )}
         </div>
     );
 }

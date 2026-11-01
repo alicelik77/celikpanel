@@ -76,6 +76,13 @@ type serverSetupDraft struct {
 	// (its mail host and MX/DMARC answers) when that server, not this one,
 	// receives the main domain's mail. Taken from the join, never typed.
 	PeerMail *serverSetupPeerMail `json:"peer_mail,omitempty"`
+	// MainSite (alpha.114, owner decision 2026-10-31): on the first server,
+	// whether the main domain's website is on this server ("here": setup
+	// creates it with its certificate, server_setup_main_site.go) or
+	// elsewhere ("elsewhere": the zone keeps only its DNS records). Empty in
+	// every older draft, which keeps its plan identity and creates no site.
+	// Ana alan adinin web sitesi bu sunucuda mi; bos eski taslakta site yok.
+	MainSite string `json:"main_site,omitempty"`
 }
 
 // Reason and Vars are additive (2026-10-10): the typed cause of a check that
@@ -120,6 +127,10 @@ type serverSetupState struct {
 	// yalniz degisenleri gostermek ve genisletmeyi durdurmak icin tutulur.
 	Extension     bool              `json:"extension,omitempty"`
 	ExtensionBase *serverSetupDraft `json:"extension_base,omitempty"`
+	// ExtensionScope (alpha.114): "mail" while the extension only adds or
+	// repairs mail, started from Components or the DNS page; the plan then
+	// holds the mail steps only (server_setup_mail_scope.go). Empty otherwise.
+	ExtensionScope string `json:"extension_scope,omitempty"`
 	// ShortNameSuggestion (alpha.111) is the machine host name's first label
 	// when it reads like a name a person chose; otherwise empty
 	// (serverSetupShortNameSuggestion). Only the GET answer carries it.
@@ -263,6 +274,10 @@ func canonicalServerSetupWizardAnswers(d *serverSetupDraft) error {
 	if !stringIn(d.MainDNSServer, "", "this", "peer") {
 		return errors.New("invalid main DNS server choice")
 	}
+	d.MainSite = strings.TrimSpace(d.MainSite)
+	if !stringIn(d.MainSite, "", serverSetupMainSiteHere, serverSetupMainSiteElsewhere) {
+		return errors.New("invalid main domain website choice")
+	}
 	if d.MainDomain == "" {
 		return nil
 	}
@@ -287,9 +302,9 @@ func canonicalServerSetupWizardAnswers(d *serverSetupDraft) error {
 		mail.Hostname = canonical
 		d.PeerMail = &mail
 		// The join's shared answer is kept even when this server selects
-		// mail too: the review then refuses two receivers
-		// (server_setup_peer_mail_both) instead of silently dropping the
-		// answer (Beta-1 third re-run N3/N5).
+		// mail too (Beta-1 third re-run N3/N5): the other server keeps
+		// receiving the main domain's mail and this server's mail is for its
+		// own customers' domains only (alpha.114, serverSetupMainDomainMail).
 		if d.DNSMode != setupDNSModeLocal || d.DNSRole != transport.DNSPairRolePrimary {
 			d.PeerMail = nil
 		}
@@ -338,6 +353,7 @@ func (p *Panel) loadServerSetup(ctx context.Context) (serverSetupState, error) {
 	s.Required = s.Status != "legacy" && s.Status != "ready" && !s.Extension
 	if s.Extension {
 		s.ExtensionBase = p.serverSetupExtensionBase(ctx)
+		s.ExtensionScope = p.serverSetupExtensionScope(ctx, s)
 	}
 	if s.Guidance == "" {
 		s.Guidance = "guided"
@@ -527,7 +543,7 @@ func (p *Panel) completeServerSetupOwned(ctx context.Context, revision int, exec
 	// A finished extension has no base any more. A leftover row is harmless
 	// (the next extension replaces it), so a failed delete is only logged.
 	// Biten genisletmenin tabani silinir; kalan satir zararsizdir.
-	if _, err := p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key=?`, settingServerSetupExtensionBase); err != nil {
+	if _, err := p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key IN (?,?)`, settingServerSetupExtensionBase, settingServerSetupExtensionScope); err != nil {
 		log.Printf("server setup extension base not cleared: %v", err)
 	}
 	// Durably ready here: only now the backup tells the main DNS server,

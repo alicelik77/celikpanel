@@ -1,0 +1,91 @@
+<!doctype html><html lang="tr"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>CelikPanel | Desteklenen işletim sistemleri</title><meta name="description" content="CelikPanel’in kurulduğu Debian, Ubuntu ve Arch Linux sürümleri: nelerin sunulduğu, nelerin sunulmadığı ve güncellemelerin nasıl işlediği."/>
+<meta name="theme-color" content="#0d2247"/><link rel="icon" type="image/svg+xml" href="/assets/favicon-v2.svg"/>
+<link rel="stylesheet" href="/assets/site.css"/></head><body data-page="systems">
+<!--
+THESIS: Say, before installation, which operating systems CelikPanel supports, what each one offers and does not, and how its updates work.
+OWN-WORLD: The technical evidence page's white and navy, the same ruled table, plain sentences.
+STORY: Find your system in the list; read what is and is not offered and why; learn who updates it and how; return to installation.
+FIRST VIEWPORT: A headline and a qualified introduction lead to in-page links. Shared navigation stays fully visible on mobile.
+-->
+<a class="skip-link" href="#ana-icerik"><span data-en="Skip to main content" >Ana içeriğe geç</span></a>
+<header class="site-header"><div class="container nav-shell">
+<a class="brand" href="/" aria-label="CelikPanel ana sayfa"><svg class="brand-mark" viewBox="0 0 32 32" width="36" height="36" aria-hidden="true" focusable="false"><path fill="currentColor" d="M11 3H29V10H14L10 14V18L14 22H29V29H11L3 21V11Z M20 13H29V19H20Z"/></svg><span class="brand-name">Celik<span>Panel</span></span></a>
+<nav class="site-nav" aria-label="Ana menü">
+<a data-en="Explore the panel" href="/#panel">Paneli keşfet</a>
+<a data-en="Features" href="/#ozellikler">Özellikler</a>
+<a data-en="Technical evidence" href="/technical.html">Teknik kanıtlar</a>
+<a data-en="Supported systems" href="/systems.html">Desteklenen sistemler</a>
+<a data-en="My account" href="/account/">Hesabım</a>
+<a data-en="Support" href="/#destek">Destek</a></nav>
+<div class="nav-tools"><div class="language-switch" role="group" aria-label="Dil seçimi">
+<button type="button" data-language="tr" lang="tr" aria-label="Türkçe" aria-pressed="true">TR</button>
+<button type="button" data-language="en" lang="en" aria-label="English" aria-pressed="false">EN</button></div>
+<a data-en="Try it free" class="button button-primary nav-cta" href="/#kurulum">Ücretsiz dene</a></div></div></header><main id="ana-icerik" class="technical-page systems-page"><section class="technical-intro"><div class="container">
+<h1 data-en="Supported operating systems.">Desteklenen işletim sistemleri.</h1>
+<p data-en="CelikPanel installs on Debian, Ubuntu and Arch Linux. This page says what is offered on each, what is not and why, and how updates work, so you can choose before you install." class="section-lede">CelikPanel Debian, Ubuntu ve Arch Linux üzerine kurulur. Bu sayfa her birinde nelerin sunulduğunu, nelerin sunulmadığını ve nedenini, güncellemelerin nasıl işlediğini söyler; böylece kurmadan önce seçebilirsiniz.</p>
+<nav class="technical-nav"><a data-en="The list" href="#liste">Liste</a><a data-en="Debian and Ubuntu" href="#debian-ubuntu">Debian ve Ubuntu</a><a data-en="Arch Linux" href="#arch">Arch Linux</a><a data-en="Installation" href="/#kurulum">Kurulum</a></nav></div></section>
+<section class="system-block" id="liste" aria-labelledby="systems-list-title"><div class="container">
+<div class="section-head"><h2 id="systems-list-title" data-en="The list">Liste</h2>
+<p data-en="Tested means every release candidate of CelikPanel is run on that system before it is published. Supported means CelikPanel installs and runs on it, but release candidates are not run on it. Dates are the distributions’ own support dates, checked on 24 October 2026." class="section-lede">Test edilen, CelikPanel’in her sürüm adayının yayımlanmadan önce o sistemde çalıştırıldığı anlamına gelir. Desteklenen, CelikPanel’in orada kurulup çalıştığı ama sürüm adaylarının orada çalıştırılmadığı anlamına gelir. Tarihler dağıtımların kendi destek tarihleridir; 24 Ekim 2026’da kontrol edilmiştir.</p></div>
+<div class="table-scroll" tabindex="0" role="region" aria-labelledby="systems-list-title">
+<table class="interlock-table systems-table">
+<caption class="sr-only" data-en="Operating systems CelikPanel supports">CelikPanel’in desteklediği işletim sistemleri</caption>
+<thead><tr>
+<th scope="col" data-en="System">Sistem</th>
+<th scope="col" data-en="Status">Durum</th>
+<th scope="col" data-en="Patched by the distribution until">Dağıtım yamaları şu tarihe kadar yapar</th>
+<th scope="col" data-en="Updates">Güncellemeler</th>
+</tr></thead>
+<tbody>
+<tr><th scope="row">Debian 13 (trixie)</th><td data-en="Tested">Test edilen</td><td>30.06.2030</td><td data-en="Automatic or manual, your choice">Otomatik ya da elle, seçim sizin</td></tr>
+<tr><th scope="row">Ubuntu 24.04 LTS (noble)</th><td data-en="Tested">Test edilen</td><td data-en="May 2029">Mayıs 2029</td><td data-en="Automatic or manual, your choice">Otomatik ya da elle, seçim sizin</td></tr>
+<tr><th scope="row">Debian 12 (bookworm)</th><td data-en="Supported">Desteklenen</td><td>30.06.2028</td><td data-en="Automatic or manual, your choice">Otomatik ya da elle, seçim sizin</td></tr>
+<tr><th scope="row">Ubuntu 22.04 LTS (jammy)</th><td data-en="Supported">Desteklenen</td><td data-en="May 2027">Mayıs 2027</td><td data-en="Automatic or manual, your choice">Otomatik ya da elle, seçim sizin</td></tr>
+<tr><th scope="row">Arch Linux</th><td data-en="Supported, rolling release">Desteklenen, sürekli yenilenen sürüm</td><td data-en="No end date">Bitiş tarihi yok</td><td data-en="By hand, after reading the Arch news">Elle, Arch haberlerini okuduktan sonra</td></tr>
+</tbody></table></div>
+<p class="scroll-hint" data-en="The table scrolls sideways.">Tablo yana kayar.</p>
+<p class="proof-note" data-en="Other systems are not supported yet. Red Hat family systems (RHEL, AlmaLinux, Rocky Linux 9) are recognised, and the installer refuses them for now instead of half-installing. A system that is not on this list has not been checked." >Başka sistemler henüz desteklenmiyor. Red Hat ailesi sistemler (RHEL, AlmaLinux, Rocky Linux 9) tanınır; kurulum şimdilik yarım kurmak yerine reddeder. Bu listede olmayan bir sistem denetlenmemiştir.</p>
+</div></section>
+<section class="system-block" id="debian-ubuntu" aria-labelledby="debian-ubuntu-title"><div class="container">
+<div class="section-head"><h2 id="debian-ubuntu-title" data-en="Debian and Ubuntu">Debian ve Ubuntu</h2></div>
+<div class="system-columns">
+<div><h3 data-en="What is offered">Neler sunulur</h3>
+<p data-en="All of CelikPanel’s components: web server and PHP, MariaDB and PostgreSQL, mail with Rspamd, DNS with BIND or PowerDNS, certificates, firewall, backups and the security tools. Packages come from the distribution. Where a newer version is wanted, the panel offers a vendor repository only as a deliberate, confined, tracked choice.">CelikPanel’in tüm bileşenleri: web sunucusu ve PHP, MariaDB ve PostgreSQL, Rspamd ile posta, BIND ya da PowerDNS ile DNS, sertifikalar, güvenlik duvarı, yedekler ve güvenlik araçları. Paketler dağıtımdan gelir. Daha yeni bir sürüm istenirse panel dış depoyu yalnız bilerek yapılan, sınırlı ve izlenen bir seçenek olarak sunar.</p></div>
+<div><h3 data-en="What is not offered">Neler sunulmaz</h3>
+<p data-en="Apache, Exim and FTP (vsftpd) are not offered yet, on any system: their integration is not finished, so use Nginx and Postfix. Everything else in the catalogue is offered. Versions differ by release: for example Debian 13 ships PHP 8.4 and PostgreSQL 17, Ubuntu 24.04 ships PHP 8.3 and PostgreSQL 16. The panel shows what your release offers.">Apache, Exim ve FTP (vsftpd) henüz hiçbir sistemde sunulmuyor: bütünleşmeleri bitmedi; Nginx ve Postfix kullanın. Katalogdaki diğer her şey sunulur. Sürümler yayına göre değişir: örneğin Debian 13 PHP 8.4 ve PostgreSQL 17, Ubuntu 24.04 PHP 8.3 ve PostgreSQL 16 ile gelir. Panel, sürümünüzün neler sunduğunu gösterir.</p></div>
+<div><h3 data-en="How updates work">Güncellemeler nasıl işler</h3>
+<p data-en="Fixes come from the distribution’s security and update archives. The system’s own tool, unattended-upgrades, can install them every day by itself, or you install them by hand. You choose in the panel under Security, Security updates. The choice is one apt file on your server, so it keeps working if CelikPanel is stopped or removed. If you edit that file yourself, the panel notices and asks before it replaces your text. The panel never restarts the server by itself.">Düzeltmeler dağıtımın güvenlik ve güncelleme arşivlerinden gelir. Sistemin kendi aracı unattended-upgrades bunları her gün kendiliğinden kurabilir ya da siz elle kurarsınız. Seçimi panelde Güvenlik, Güvenlik güncellemeleri altında yaparsınız. Seçim sunucunuzdaki tek bir apt dosyasıdır; bu yüzden CelikPanel durdurulsa ya da kaldırılsa da çalışmaya devam eder. Dosyayı kendiniz düzenlerseniz panel bunu fark eder ve metninizin üzerine yazmadan önce sorar. Panel sunucuyu kendiliğinden yeniden başlatmaz.</p></div>
+<div><h3 data-en="New major versions">Yeni ana sürümler</h3>
+<p data-en="A new major version of a program, such as PostgreSQL 17 after 16 or PHP 8.5 after 8.4, is a separate program and not an update. Updates fix the version you have. You move to a new major version yourself, when you decide.">Bir programın yeni ana sürümü (16’dan sonra PostgreSQL 17, 8.4’ten sonra PHP 8.5 gibi) ayrı bir programdır, güncelleme değildir. Güncellemeler elinizdeki sürümü düzeltir. Yeni ana sürüme ne zaman geçeceğinize siz karar verirsiniz.</p></div>
+</div></div></section>
+<section class="system-block" id="arch" aria-labelledby="arch-title"><div class="container">
+<div class="section-head"><h2 id="arch-title" data-en="Arch Linux">Arch Linux</h2></div>
+<div class="system-columns">
+<div><h3 data-en="What is offered">Neler sunulur</h3>
+<p data-en="The server roles work with official Arch packages only: web, PHP, MariaDB, PostgreSQL, mail, certificates, firewall and backups. PowerDNS comes from Arch’s extra repository as a first install. Valkey is offered where other systems offer Redis.">Sunucu rolleri yalnız resmî Arch paketleriyle çalışır: web, PHP, MariaDB, PostgreSQL, posta, sertifikalar, güvenlik duvarı ve yedekler. PowerDNS, Arch’ın extra deposundan ilk kurulum olarak gelir. Diğer sistemlerde Redis’in sunulduğu yerde Valkey sunulur.</p></div>
+<div><h3 data-en="What is not offered, and why">Neler sunulmaz ve neden</h3>
+<ul>
+<li data-en="phpPgAdmin and SpamAssassin: Arch’s official repositories carry no working package (only the AUR does, and CelikPanel does not use it). Manage PostgreSQL with psql, and use Rspamd as the spam filter.">phpPgAdmin ve SpamAssassin: Arch’ın resmî depolarında çalışan bir paket yok (yalnız AUR’da var ve CelikPanel onu kullanmaz). PostgreSQL’i psql ile yönetin, spam süzgeci olarak Rspamd’yi kullanın.</li>
+<li data-en="Redis: Arch ships the compatible Valkey instead, so Valkey is offered.">Redis: Arch bunun yerine uyumlu Valkey’i sunar; bu yüzden Valkey sunulur.</li>
+<li data-en="Apache, Exim and FTP (vsftpd): not offered yet on any system. Use Nginx and Postfix.">Apache, Exim ve FTP (vsftpd): henüz hiçbir sistemde sunulmuyor. Nginx ve Postfix kullanın.</li>
+<li data-en="Switching an existing BIND server to PowerDNS: PowerDNS is offered as a first install only.">Var olan bir BIND sunucusunu PowerDNS’e geçirmek: PowerDNS yalnız ilk kurulum olarak sunulur.</li>
+<li data-en="Automatic upgrades: Arch has no security-only updates, and an unattended full upgrade can stop your services.">Otomatik yükseltme: Arch’ta yalnız güvenlik güncellemesi yoktur ve gözetimsiz tam yükseltme hizmetlerinizi durdurabilir.</li>
+</ul></div>
+<div><h3 data-en="How updates work">Güncellemeler nasıl işler</h3>
+<p data-en="Arch is a rolling release. An update is always a full upgrade that you run on the server: read archlinux.org/news first, then run sudo pacman -Syu, then check failed units, nginx -t, PHP-FPM and the mail services, and restart the server if the kernel changed. The panel counts what is waiting and shows these steps; it never runs the upgrade for you.">Arch sürekli yenilenen bir sürümdür. Güncelleme her zaman sunucuda sizin çalıştırdığınız tam yükseltmedir: önce archlinux.org/news sayfasını okuyun, sonra sudo pacman -Syu çalıştırın, sonra başarısız birimlere, nginx -t sonucuna, PHP-FPM’e ve posta hizmetlerine bakın; çekirdek değiştiyse sunucuyu yeniden başlatın. Panel bekleyenleri sayar ve bu adımları gösterir; yükseltmeyi sizin yerinize hiçbir zaman çalıştırmaz.</p></div>
+<div><h3 data-en="Before a big upgrade">Büyük bir yükseltmeden önce</h3>
+<p data-en="A full upgrade can move Arch’s php package to a new major version, and PostgreSQL to a new major version whose data directory must then be upgraded before the server starts again. Test your sites after the upgrade, or on a copy of the server first.">Tam yükseltme Arch’ın php paketini yeni bir ana sürüme, PostgreSQL’i de veri dizini yükseltilmeden sunucunun yeniden başlamayacağı yeni bir ana sürüme taşıyabilir. Yükseltmeden sonra sitelerinizi deneyin ya da önce sunucunun bir kopyasında deneyin.</p></div>
+</div></div></section>
+<section class="evidence-sources"><div class="container"><div class="section-intro"><h2 data-en="Your server stays yours.">Sunucunuz sizin kalır.</h2><p data-en="CelikPanel operates your server; it does not own it. Sites, mail, DNS, databases, scheduled jobs and certificate renewal keep running with the panel stopped or removed, on every system above.">CelikPanel sunucunuzu yönetir; sahibi olmaz. Siteler, posta, DNS, veritabanları, zamanlanmış işler ve sertifika yenileme, yukarıdaki her sistemde panel durdurulsa ya da kaldırılsa da çalışmaya devam eder.</p></div><div class="source-links">
+<a data-en="What is offered on which system, in detail" href="https://github.com/alicelik77/celikpanel/blob/main/docs/DISTRO-SUPPORT.tr.md" data-localized-href data-href-tr="https://github.com/alicelik77/celikpanel/blob/main/docs/DISTRO-SUPPORT.tr.md" data-href-en="https://github.com/alicelik77/celikpanel/blob/main/docs/DISTRO-SUPPORT.md">Hangi sistemde neler sunulur, ayrıntılı</a>
+<a data-en="Technical evidence" href="/technical.html">Teknik kanıtlar</a>
+<a data-en="Install CelikPanel" href="/#kurulum">CelikPanel’i kur</a>
+</div></div></section></main><footer class="site-footer" id="destek"><div class="container footer-main">
+<div><a class="brand" href="/" aria-label="CelikPanel"><svg class="brand-mark" viewBox="0 0 32 32" width="36" height="36" aria-hidden="true" focusable="false"><path fill="currentColor" d="M11 3H29V10H14L10 14V18L14 22H29V29H11L3 21V11Z M20 13H29V19H20Z"/></svg><span class="brand-name">Celik<span>Panel</span></span></a><p data-en="Your server. Your control." class="footer-description">Sunucunuz sizin. Yönetimi de öyle.</p></div>
+<div class="footer-links"><nav aria-label="Alt menü"><a data-en="Installation" href="/#kurulum">Kurulum</a><a data-en="Technical evidence" href="/technical.html">Teknik kanıtlar</a><a data-en="Supported systems" href="/systems.html">Desteklenen sistemler</a><a data-en="Common questions" href="/#sss">Sık sorulanlar</a></nav>
+<nav aria-label="Destek">
+<a data-en="Report a bug" href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=bug_tr.yml" data-localized-href data-href-tr="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=bug_tr.yml" data-href-en="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=bug_en.yml">Hata bildir</a>
+<a data-en="Suggest a feature" href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=feature_tr.yml" data-localized-href data-href-tr="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=feature_tr.yml" data-href-en="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=feature_en.yml">Öneri gönder</a>
+<a data-en="Private security report" href="https://github.com/alicelik77/celikpanel-feedback/security/advisories/new">Gizli güvenlik bildirimi</a>
+</nav></div></div><div class="container footer-bottom"><span>© 2026 CelikPanel</span><span data-en="Free during alpha · Linux amd64" >Alfa boyunca ücretsiz · Linux amd64</span></div></footer><script src="/assets/site.js" defer></script></body></html>

@@ -54,43 +54,6 @@ test('panel HTTPS cannot be completed by site SSL, an expired certificate or an 
   }
 });
 
-const { StartGuide } = load('../src/components/StartGuide.tsx', {
-  'lucide-react': { Check: () => null, ArrowRight: () => null },
-  '../i18n': { useI18n: () => ({t: (key) => key}) },
-  '../router': { Link: ({to, children, ...props}) => React.createElement('a', {...props, href: to}, children) },
-  './ui': { Button: ({children, ...props}) => React.createElement('button', props, children) },
-});
-
-test('DNS is first; security remains accessible while DNS is incomplete; actions use existing handlers', () => {
-  let confirmations = 0;
-  let scans = 0;
-  const tree = renderer.create(React.createElement(StartGuide, {
-    dnsReady: false, scanFresh: false, scanning: false, onScan: () => scans++,
-    panelSecured: null, firewallReady: false, onFirewall: () => confirmations++, firewallBusy: false,
-  }));
-  const links = tree.root.findAllByType('a').map((a) => a.props.href);
-  assert.equal(links[0], '/dns-infrastructure');
-  // Panel HTTPS stays in Settings; the account and the security audit have
-  // their own pages since v0.1.0-alpha.98 (D-037).
-  for (const link of ['/settings?section=panel', '/account', '/security']) assert.ok(links.includes(link), link);
-  assert.ok(!links.includes('/services#bundles'));
-  assert.equal(confirmations, 0);
-  tree.root.findAllByType('button').find((b) => b.children.includes('firewall.turnOn')).props.onClick();
-  tree.root.findAllByType('button').find((b) => b.children.includes('start.scan.action')).props.onClick();
-  assert.equal(confirmations, 1);
-  assert.equal(scans, 1);
-  assert.ok(JSON.stringify(tree.toJSON()).includes('dashboard.statusUnknown'));
-  tree.unmount();
-});
-
-test('ready DNS exposes optional hosting choices without counting mail as mandatory completion', () => {
-  const tree = renderer.create(React.createElement(StartGuide, {
-    dnsReady: true, scanFresh: true, scanning: false, onScan: () => {},
-    panelSecured: true, firewallReady: true, firewallBusy: false,
-  }));
-  const links = tree.root.findAllByType('a').map((a) => a.props.href);
-  assert.ok(links.includes('/domains'));
-  assert.ok(links.includes('/services#bundles'));
-  assert.equal(tree.root.findAllByType('button').length, 0);
-  tree.unmount();
-});
+// The StartGuide component was deleted in alpha.114: it was imported nowhere
+// and held stale guidance; the Dashboard's own start section is tested in
+// dashboard-truth-contract.test.mjs. The policy above is still the shipped one.

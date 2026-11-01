@@ -25,6 +25,7 @@ const stub = dataModule(`
   export const useNavigate = () => () => true;
   export const Link = (props) => React.createElement('a', { href: props.to, className: props.className }, props.children);
   export const SetupJoinCard = () => React.createElement('join-card');
+  export const useServerSetup = () => null, MailSetupDialog = () => null;
 `);
 const shared = sharedLayer(stub);
 const libURL = shared.compile('lib/dnsOverview.ts');
@@ -109,7 +110,7 @@ test('all good: the sentence first, both servers by the page\'s own names, the n
     assert.equal(lead.props['data-state'], 'ok');
     assert.equal(byProp('data-dns-sentence-live', 'status').length, 1, 'only the title is the live region, polite');
     const text = textOf();
-    assert.ok(text.includes('All good') && text.includes('This server (alpha)') && text.includes('Second server (beta)'));
+    assert.ok(text.includes('All good') && text.includes('This server (alpha)') && text.includes('Joined server (beta)'));
     assert.ok(text.indexOf('All good') < text.indexOf('Your DNS servers'), 'the sentence comes before the servers');
     assert.ok(!/dnsov\./.test(text), 'no raw key on screen');
     assert.ok(!text.includes('Frankfurt') && !text.includes('Boston'), 'no invented server names');
@@ -137,7 +138,7 @@ test('a verified failure is announced once, when it starts, in Turkish, naming t
     assert.equal(byProp('data-dns-sentence', 'dns_overview_backup_not_serving')[0].props.role, undefined, 'the rest of the sentence is not a live region');
     assert.ok(requests.some((request) => request.url === '/api/v1/dns/overview?fresh=1'), 'Check now asks for a real new check');
     const text = textOf();
-    assert.ok(text.includes('İkinci sunucu (beta) yanıt veriyor ama example.test için değil'), text.slice(0, 400));
+    assert.ok(text.includes('Katılan sunucu (beta) yanıt veriyor ama example.test için değil'), text.slice(0, 400));
     assert.ok(text.includes('Bu sunucu (alpha) üzerinden'));
     assert.equal(byProp('data-dns-server', 'peer')[0].props['data-answers'], 'not_serving');
     assert.ok(!/dnsov\./.test(text));
@@ -275,7 +276,7 @@ test('a failure already there on opening is not an alert; servers without a shor
   try {
     assert.equal(byProp('data-dns-sentence-live', 'alert').length, 0);
     const text = textOf();
-    assert.ok(text.includes('Second server (198.51.100.20) did not answer this check'), text.slice(0, 400));
+    assert.ok(text.includes('Joined server (198.51.100.20) did not answer this check'), text.slice(0, 400));
   } finally { await unmount(); }
 });
 
@@ -301,7 +302,9 @@ const modalStub = dataModule(`
   };
 `);
 // The form is loaded lazily (import('./AddDomainModal')); the test gives it a stand-in.
-const compiledFirstSite = shared.compile('components/SetupFirstSite.tsx');
+// The names pointing elsewhere are the one shared view Domains shows too (KeptSiteRecords).
+const keptSiteRecordsURL = shared.compile('components/KeptSiteRecords.tsx');
+const compiledFirstSite = shared.compile('components/SetupFirstSite.tsx', { '/KeptSiteRecords': keptSiteRecordsURL });
 const firstSiteSource = Buffer.from(compiledFirstSite.slice(compiledFirstSite.indexOf(',') + 1), 'base64').toString()
   .replace(/import\(['"]\.\/AddDomainModal['"]\)/, `import('${modalStub}')`);
 const firstSiteURL = dataModule(firstSiteSource);
@@ -314,7 +317,7 @@ test('the first site opens the existing form with the main domain; names pointin
   try {
     await act(async () => { tree = Renderer.create(React.createElement(SetupFirstSite, { domain: 'example.test' })); });
     assert.equal(tree.root.findAll((node) => node.props?.['data-setup-first-site'] === 'offer').length, 1);
-    await act(async () => button('Add the site').props.onClick());
+    await act(async () => button('Host a website').props.onClick());
     await settle(30);
     assert.equal(tree.root.findAllByType('add-domain-modal')[0].props.initialDomain, 'example.test', 'prefilled; nothing is created until the form is submitted');
     await act(async () => globalThis.firstSiteModal.onSuccess({ siteRecords: { added: [{ name: 'www.example.test', type: 'A', content: '203.0.113.10' }], kept: [{ name: 'example.test', type: 'A', content: '192.0.2.80', expected: '203.0.113.10' }], ipv4: '203.0.113.10' } }));
@@ -329,3 +332,53 @@ test('the first site opens the existing form with the main domain; names pointin
     delete globalThis.dnsWords;
   }
 });
+
+// Owner report 2026-10-31 (Boston, the server that joined by code): the page
+// called the first server "Second server (frankfurt)". The other server is
+// named by its place, in every place the page names it.
+test('on the server that joined by code the other server is the first one, everywhere it is named', async () => {
+  const value = paired({ sentence: sentence('backup_not_serving', 'failed', { domain: 'example.test', backup: '', backup_who: 'this' }) });
+  value.servers = [
+    { who: 'this', role: 'backup', order: 'second', short_name: 'boston', panel_name: 'boston.example.test', software: 'pdns', ipv4: '198.51.100.20', answers: 'not_serving' },
+    { who: 'peer', role: 'main', order: 'first', short_name: 'frankfurt', panel_name: 'panel.example.test', software: 'pdns', ipv4: '203.0.113.10', answers: 'ok' },
+  ];
+  value.names = [{ name: 'panel.example.test', kind: 'panel', type: 'A', server: 'peer', expected: '203.0.113.10', seen: ['203.0.113.10'], state: 'ok', where: 'main' }];
+  value.own_records_link = { where: 'main', panel_name: 'panel.example.test' };
+  for (const [words, first, second] of [[enScreens, 'First server (frankfurt)', 'Joined server'], [trScreens, 'İlk sunucu (frankfurt)', 'Katılan sunucu']]) {
+    await mount(value, { words });
+    try {
+      const text = textOf();
+      assert.ok(text.includes(first), text.slice(0, 600));
+      assert.ok(!text.includes(second), `the first server is never called "${second}"`);
+    } finally { await unmount(); }
+  }
+  // The first server still calls the joined one the joined server.
+  assert.equal(lib.dnsOverviewServerLabel((key, vars) => `${key}:${vars?.name ?? ''}`, { who: 'peer', order: 'second', short_name: 'boston' }), 'dnsov.peerServerNamed:boston');
+  assert.throws(() => lib.decodeDNSOverview({ ...value, servers: [{ ...value.servers[0], order: 'third' }] }));
+});
+
+// Owner report 2026-10-31: optional IPv6 glue rows made the card say "a name
+// is not updated everywhere yet, nobody acts, waiting is enough". Waiting
+// never adds them; the card is calm and the row names the registrar action.
+test('an optional IPv6 glue record is an optional registrar task with IPv4 enough, never a wait', async () => {
+  const value = paired({ sentence: sentence('ok_optional_glue', 'ok', { domain: 'example.test', name: 'ns1.example.test', ip: '2001:db8::10' }) });
+  value.names = [...value.names,
+    { name: 'ns1.example.test', kind: 'glue', type: 'A', expected: '203.0.113.10', seen: ['203.0.113.10'], state: 'ok', where: 'registrar' },
+    { name: 'ns1.example.test', kind: 'glue', type: 'AAAA', expected: '2001:db8::10', seen: [], state: 'not_yet', where: 'registrar', optional: true },
+  ];
+  for (const words of [enScreens, trScreens]) {
+    await mount(value, { words });
+    try {
+      const lead = byProp('data-dns-sentence', 'dns_overview_ok_optional_glue')[0];
+      assert.equal(lead.props['data-state'], 'ok');
+      const text = textOf();
+      assert.ok(text.includes(words['dnsov.s.ok_optional_glue.title']));
+      assert.ok(!text.includes(words['dnsov.s.spreading.who']), 'never "waiting is enough"');
+      const task = byProp('data-dns-optional-task', '');
+      assert.equal(task.length, 1, 'only the optional row that is not in place names the task');
+      const note = JSON.stringify(task[0].children);
+      assert.ok(note.includes('ns1.example.test') && note.includes('2001:db8::10') && note.includes('IPv4'), note);
+    } finally { await unmount(); }
+  }
+});
+

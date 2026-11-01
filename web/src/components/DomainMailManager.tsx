@@ -1,12 +1,14 @@
 import { lazy, useState, useEffect, useRef } from 'react';
-import { Mail, Plus, Trash2, ArrowRight, AtSign, Pencil, Info, KeyRound } from 'lucide-react';
+import { Mail, Plus, Trash2, ArrowRight, AtSign, Pencil, Info, KeyRound, CalendarClock } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
-import { apiErrorText, readApiError } from '../lib/apiError';
-import { useRemote, type Remote } from '../lib/remote';
-import { Button, Checking, CouldNotCheck, Dialog, KnownEmpty, RemoteGate, UsageBar, inputClass } from './ui';
+import { apiErrorText, readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
+import type { TranslationKey } from '../i18n/en';
+import { invalidate, useRemote, type Remote } from '../lib/remote';
+import { Button, Checking, CouldNotCheck, Dialog, ErrorBanner, KnownEmpty, RemoteGate, UsageBar, inputClass } from './ui';
 import { MailAuthPanel } from './MailAuthPanel';
 import { MailSettingsPanel } from './MailSettingsPanel';
+import { MailAutoresponderDialog } from './MailAutoresponderDialog';
 
 interface EmailAccount {
     id: number;
@@ -94,6 +96,7 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
     const [editingQuota, setEditingQuota] = useState<number | null>(null);
     const [quotaDraft, setQuotaDraft] = useState(1024);
     const [passwordAccount, setPasswordAccount] = useState<EmailAccount | null>(null);
+    const [autoreplyAccount, setAutoreplyAccount] = useState<EmailAccount | null>(null);
     const [newPassword, setNewPassword] = useState('');
     const [passwordConfirmation, setPasswordConfirmation] = useState('');
     const [passwordSaving, setPasswordSaving] = useState(false);
@@ -122,11 +125,33 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
     // After a change of this screen the list it changed is read again, and
     // with the mailboxes their usage.
     // Bu ekranın bir değişikliğinden sonra değiştirdiği liste yeniden okunur.
-    const reloadAccounts = () => {
-        void accountsRead.retry();
-        void quotaRead.retry();
+    // The change is named, not the list: the mailboxes, the forwarders, the
+    // usage, the dashboard's counter and the plan's usage all read again
+    // wherever they are shown (owner rule 2026-10-31).
+    // Değişiklik adlandırılır: posta kutuları, yönlendirmeler, kullanım, pano
+    // sayacı ve paket kullanımı nerede gösteriliyorsa yeniden okunur.
+    const reloadAccounts = () => { invalidate('mail'); };
+    const reloadForwardings = () => { invalidate('mail'); };
+
+    // A refused change stays above the list with its fix until the next one
+    // succeeds (owner feedback 2026-10-31).
+    const [refusal, setRefusal] = useState<{ problem: ApiError; sentence: TranslationKey } | null>(null);
+    const refuse = (problem: ApiError, sentence: TranslationKey) => {
+        setRefusal({ problem, sentence });
+        showToast('error', refusalText(problem, t, sentence), refusalToast(problem, t));
     };
-    const reloadForwardings = () => void forwardingsRead.retry();
+    // A failure keeps the reason the server gave; a lost answer says nothing more.
+    const failedCreate = (failure: unknown, sentence: TranslationKey) => {
+        if (failure instanceof Error && failure.constructor === Error) { refuse({ message: failure.message.trim() }, sentence); return; }
+        // No readable answer: whether it was made is not known; the list is read again.
+        showToast('error', t('common.resultUnknown'));
+        reloadAccounts();
+        reloadForwardings();
+    };
+    // What still keeps Create off, in the form's own words (owner feedback 2026-10-31).
+    const createMissing = activeTab === 'accounts'
+        ? [...(!user.trim() ? [t('mail.username')] : []), ...(!pass ? [t('mail.password')] : [])]
+        : [...(!fwdSource.trim() ? [t('mail.source')] : []), ...(!fwdDest.trim() ? [t('mail.destination')] : [])];
 
     const createAccount = async () => {
         if (readOnly || !user || !pass) return;
@@ -137,14 +162,15 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                 body: JSON.stringify({ address: `${user}@${domainName}`, password: pass, quota_mb: quota }),
             });
             const data = await res.json();
-            if (!data.success) throw new Error(data.error);
+            if (!data.success) throw new Error(typeof data.error === 'string' ? data.error : '');
             showToast('success', t('mail.accountCreated'));
             setShowForm(false);
             setUser('');
             setPass('');
             reloadAccounts();
-        } catch {
-            showToast('error', t('mail.createFailed'));
+        } catch (failure) {
+            // The server's reason (taken, quota, plan limit) stays with the sentence, on the page too.
+            failedCreate(failure, 'mail.createFailed');
         }
     };
 
@@ -156,12 +182,16 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id, quota_mb: quotaDraft }),
             });
-            if (!res.ok) throw new Error();
+            if (!res.ok) { refuse(await readApiError(res), 'mail.quotaFailed'); return; }
+            setRefusal(null);
             showToast('success', t('mail.quotaUpdated'));
             setEditingQuota(null);
             reloadAccounts();
         } catch {
-            showToast('error', t('common.error'));
+            // No answer: whether it changed is not known; the list is read again.
+            showToast('error', t('common.resultUnknown'));
+            reloadAccounts();
+            reloadForwardings();
         }
     };
 
@@ -170,11 +200,15 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
         if (!confirm(t('mail.confirmDeleteAccount', { name: address }))) return;
         try {
             const res = await fetch(`/api/v1/domains/${domainId}/mail/accounts?id=${id}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error();
+            if (!res.ok) { refuse(await readApiError(res), 'mail.deleteAccountFailed'); return; }
+            setRefusal(null);
             showToast('success', t('mail.accountDeleted'));
             reloadAccounts();
         } catch {
-            showToast('error', t('common.error'));
+            // No answer: whether it changed is not known; the list is read again.
+            showToast('error', t('common.resultUnknown'));
+            reloadAccounts();
+            reloadForwardings();
         }
     };
 
@@ -244,14 +278,14 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                 body: JSON.stringify({ source, destination: fwdDest }),
             });
             const data = await res.json();
-            if (!data.success) throw new Error(data.error);
+            if (!data.success) throw new Error(typeof data.error === 'string' ? data.error : '');
             showToast('success', t('mail.forwarderCreated'));
             setShowForm(false);
             setFwdSource('');
             setFwdDest('');
             reloadForwardings();
-        } catch {
-            showToast('error', t('mail.forwarderFailed'));
+        } catch (failure) {
+            failedCreate(failure, 'mail.forwarderFailed');
         }
     };
 
@@ -260,11 +294,15 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
         if (!confirm(t('mail.confirmDeleteForwarder', { name: source }))) return;
         try {
             const res = await fetch(`/api/v1/domains/${domainId}/mail/forwardings?id=${id}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error();
+            if (!res.ok) { refuse(await readApiError(res), 'mail.deleteForwarderFailed'); return; }
+            setRefusal(null);
             showToast('success', t('mail.forwarderDeleted'));
             reloadForwardings();
         } catch {
-            showToast('error', t('common.error'));
+            // No answer: whether it changed is not known; the list is read again.
+            showToast('error', t('common.resultUnknown'));
+            reloadAccounts();
+            reloadForwardings();
         }
     };
 
@@ -307,6 +345,7 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                 )}
             </div>
 
+            <ErrorBanner className="mb-4" error={refusal?.problem ?? null} sentence={refusal?.sentence} />
             {!readOnly && showForm && listed.state === 'known' && (
                 <div className="mb-4 rounded-lg border border-border bg-surface-2/50 p-4">
                     {activeTab === 'accounts' ? (
@@ -339,11 +378,12 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                             </label>
                         </div>
                     )}
-                    <div className="mt-3 flex justify-end gap-2">
+                    <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+                        {createMissing.length > 0 && <p id="mail-create-reason" className="mr-auto text-sm text-fg" data-blocked-reason="">{t('mail.create.missing', { fields: createMissing.join(', ') })}</p>}
                         <Button variant="secondary" onClick={() => setShowForm(false)}>
                             {t('mail.cancel')}
                         </Button>
-                        <Button variant="primary" icon={Plus} onClick={activeTab === 'accounts' ? createAccount : createForwarding}>
+                        <Button variant="primary" icon={Plus} disabled={createMissing.length > 0} aria-describedby={createMissing.length > 0 ? 'mail-create-reason' : undefined} onClick={activeTab === 'accounts' ? createAccount : createForwarding}>
                             {t('mail.create')}
                         </Button>
                     </div>
@@ -464,6 +504,16 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                                                             >
                                                                 <KeyRound className="h-4 w-4" aria-hidden="true" />
                                                             </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setAutoreplyAccount(a)}
+                                                                disabled={stale}
+                                                                aria-label={t('mail.autoreply.openFor', { address: a.address })}
+                                                                title={t('mail.autoreply.openFor', { address: a.address })}
+                                                                className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2 hover:text-primary"
+                                                            >
+                                                                <CalendarClock className="h-4 w-4" aria-hidden="true" />
+                                                            </button>
                                                             <DeleteBtn disabled={stale} label={t('mail.deleteAccountNamed', { name: a.address })} onClick={() => deleteAccount(a.id, a.address)} />
                                                         </span>
                                                     )}
@@ -522,6 +572,14 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                 </>
             )}
 
+            {autoreplyAccount && !readOnly && (
+                <MailAutoresponderDialog
+                    domainId={domainId}
+                    accountId={autoreplyAccount.id}
+                    address={autoreplyAccount.address}
+                    onClose={() => setAutoreplyAccount(null)}
+                />
+            )}
             {passwordAccount && !readOnly && (
                 <Dialog
                     id="mail-password-dialog"

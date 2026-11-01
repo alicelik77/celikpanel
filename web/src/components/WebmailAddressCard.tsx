@@ -18,7 +18,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Globe } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { apiErrorText, readApiError } from '../lib/apiError';
-import { useRemote } from '../lib/remote';
+import { invalidate, useRemote } from '../lib/remote';
 import { Button, Checking, Dialog, Field, inputClass, KeepWords, RemoteGate } from './ui';
 import { LifeLine, lifeDate } from './LifeLine';
 import { Link } from '../router';
@@ -50,7 +50,7 @@ export function WebmailAddressCard() {
             </header>
             <div className="space-y-3 p-5">
                 <RemoteGate remote={handle.remote} checking={t('life.addr.checking')} failed={t('life.addr.unknown')} onRetry={() => void handle.retry()} busy={handle.reading}>
-                    {({ value }) => <AddressFacts value={value} onChanged={() => void handle.retry()} />}
+                    {({ value }) => <AddressFacts value={value} onChanged={() => { void handle.retry(); invalidate('components'); }} />}
                 </RemoteGate>
             </div>
         </section>
@@ -175,6 +175,10 @@ function AddressFacts({ value, onChanged }: { value: WebmailAddressRead; onChang
                 if (notice) setZoneNotice(notice);
             }
         }
+        // Records may have been added even when a later one failed: the zone's
+        // record list and the DNS overview read again wherever they are shown.
+        // Kayıtlar sonraki biri başarısız olsa da eklenmiş olabilir.
+        invalidate('dns');
         // One check, as pressed by the user; never a loop.
         if (alive.current) await runCheck(check.host, true);
     };

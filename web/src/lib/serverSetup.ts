@@ -36,6 +36,10 @@ export interface ServerSetupDraft {
     mail_dns?: { mx?: 'now' | 'later' | ''; dmarc?: 'keep' | 'add' | '' };
     // alpha.114: the other server's main-domain mail, taken from the join.
     peer_mail?: { hostname: string; mx?: string; dmarc?: string };
+    // alpha.114 (owner decision 2026-10-31): on the first server, whether the
+    // main domain's website is on this server ('here': setup creates it with
+    // its certificate) or elsewhere (the zone keeps only its DNS records).
+    main_site?: 'here' | 'elsewhere';
 }
 export interface SetupImportedRecord {
     name: string;
@@ -69,6 +73,9 @@ export interface ServerSetupSnapshot {
     // completion record; extension_base is the draft as it was completed.
     extension?: boolean;
     extension_base?: ServerSetupDraft;
+    // alpha.114: 'mail' while the extension only adds or repairs mail (begun
+    // from Components or the DNS page); its plan holds the mail steps only.
+    extension_scope?: 'mail';
     // alpha.111: the machine host name's first label when it reads like a
     // name a person chose; absent otherwise. Never a guess of the panel's.
     short_name_suggestion?: string;
@@ -107,6 +114,7 @@ function validDraft(draft: unknown): draft is Record<string, unknown> {
     if (draft.server_count !== undefined && draft.server_count !== 1 && draft.server_count !== 2) return false;
     if (draft.short_name !== undefined && (typeof draft.short_name !== 'string' || draft.short_name.length > 63)) return false;
     if (draft.main_dns_server !== undefined && draft.main_dns_server !== 'this' && draft.main_dns_server !== 'peer') return false;
+    if (draft.main_site !== undefined && draft.main_site !== 'here' && draft.main_site !== 'elsewhere') return false;
     if (draft.peer_mail !== undefined && (!record(draft.peer_mail) || typeof draft.peer_mail.hostname !== 'string' || draft.peer_mail.hostname.length > 253)) return false;
     const imported = draft.imported_records;
     if (imported !== undefined && (!Array.isArray(imported) || imported.length > 64 || imported.some(item => !record(item)
@@ -127,6 +135,7 @@ export function decodeServerSetup(value: unknown): ServerSetupSnapshot | null {
     if (value.checks.some(check => !record(check) || typeof check.id !== 'string'
         || !['ready', 'action_required', 'unknown'].includes(String(check.state)) || typeof check.code !== 'string')) return null;
     if (value.server_ip !== undefined && typeof value.server_ip !== 'string') return null;
+    if (value.extension_scope !== undefined && (value.extension !== true || value.extension_scope !== 'mail')) return null;
     if (value.short_name_suggestion !== undefined && (typeof value.short_name_suggestion !== 'string' || value.short_name_suggestion.length > 63)) return null;
     // A malformed identity is left out rather than refusing the whole answer.
     let answer: Record<string, unknown> = value;
@@ -301,6 +310,31 @@ export function setupApplyProposedNames(draft: ServerSetupDraft, proposal: Setup
     const peerKey = next.dns_role === 'primary' ? 'ns2' : 'ns1';
     if (!draft.peer_ns.trim() || draft.peer_ns === draft[peerKey] || draft.peer_ns === previous?.[peerKey]) next.peer_ns = next[peerKey];
     return next;
+}
+// A server joined by code (alpha.114): the main domain's mail name belongs to
+// the first server, so this server's own mail name is proposed under its own
+// panel name (mail.boston.example.com). Its panel name itself is accepted too.
+// Koda katilan sunucunun posta adi kendi panel adinin altinda onerilir.
+export interface SetupJoinedNames { firstMail: string; firstPanel: string; mainDomain: string; ns1: string; ns2: string }
+const plainName = (value: string) => value.trim().toLowerCase().replace(/\.$/, '');
+export function setupJoinedMailProposal(proposal: SetupProposedNames, panelDomain: string): SetupProposedNames {
+    const panel = plainName(panelDomain);
+    const base = validSetupDomain(panel) ? panel : proposal.panel;
+    return base ? { ...proposal, mail: `mail.${base}` } : proposal;
+}
+// The names a joined server's mail cannot take: the first server's own, the
+// main domain and the pair's nameserver names (the first server refuses them).
+export function setupJoinedMailTaken(name: string, joined: SetupJoinedNames): boolean {
+    const value = plainName(name);
+    return !!value && [joined.firstMail, joined.firstPanel, joined.mainDomain, joined.ns1, joined.ns2].some(item => !!item && plainName(item) === value);
+}
+// The generic proposal of an earlier step (mail.<main domain>) is the first
+// server's mail name on a joined server: it is replaced by this server's own
+// proposal. A name the owner typed is kept (the review refuses a taken one).
+export function setupApplyJoinedMailName(draft: ServerSetupDraft, proposal: SetupProposedNames, joined: SetupJoinedNames): ServerSetupDraft {
+    const current = plainName(draft.mail_hostname || '');
+    if (!proposal.mail || !joined.mainDomain || current !== `mail.${joined.mainDomain}` || !setupJoinedMailTaken(current, joined)) return draft;
+    return { ...draft, mail_hostname: proposal.mail };
 }
 // The DNS role in the wizard: proposed names keep ns1 on the main DNS server
 // whichever server this is; names the owner typed stay with their server

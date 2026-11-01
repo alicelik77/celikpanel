@@ -9,7 +9,7 @@
 // eklenir; büyüyen parçanın bölünmesi check-bundle-budget.mjs başlığında.
 
 export const enDnsCertificatesScreens = {
-    'dns.notServed': 'These records are NOT being served: no managed authoritative DNS engine is active. Choose and activate BIND or PowerDNS in Server → DNS and peer servers.',
+    'dns.notServed': "These records are not being served: this server has no active DNS software.",
 
     'ssl.status.valid': 'Valid',
     'ssl.status.expiring': 'Expiring soon',
@@ -169,6 +169,7 @@ export const enDnsCertificatesScreens = {
     'dns.recordAdded': 'Record added',
     'dns.recordAddFailed': 'Could not add record',
     'dns.recordDeleted': 'Record deleted',
+    'dns.savedPublishing': 'Saved. The DNS servers get the change within a minute; you do not need to do anything.',
     'dns.recordDeleteFailed': 'Could not delete record',
     'dns.confirmDelete': 'Delete this record?',
     'dns.managedRecord': 'This record is managed in Server → DNS and peer servers.',
@@ -385,6 +386,7 @@ export const enDnsCertificatesScreens = {
     'dnssrv.requirement.powerdnsTitle': 'PowerDNS is required',
     'dnssrv.requirement.powerdnsMissing': 'This server cannot publish DNS zones until PowerDNS is installed and running.',
     'dnssrv.requirement.powerdnsReady': 'PowerDNS is ready',
+    'dnssrv.requirement.openEngine': 'Go to the DNS engine card',
     'dnssrv.requirement.openComponents': 'Open Components',
     'dnssrv.readyToSave': 'Ready to save',
     'dnssrv.readyToVerify': 'The saved setup is ready to publish again.',

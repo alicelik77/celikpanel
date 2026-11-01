@@ -9,7 +9,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useI18n } from '../i18n';
 import { navItemsForRole, navGroups, type NavAccessContext, type NavItem } from '../nav';
 import { publishComponentCensus, useComponentCensus } from '../lib/componentCensus';
-import { decodeList, lastKnown, useRemote } from '../lib/remote';
+import { decodeList, lastKnown, useInvalidation, useRemote } from '../lib/remote';
 import { INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones, domainsCount } from '../lib/infrastructureZones';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { SkinSwitcher } from './SkinSwitcher';
@@ -153,6 +153,12 @@ export function Layout({ children, currentPage = '', onPageChange, mode = 'panel
     );
     const hasDesktopPageHeader = desktopPageHeaderCount > 0;
 
+    const seedCensus = () => {
+        api.getServices()
+            .then(publishComponentCensus)
+            .catch(() => {});
+    };
+
     // Live counts feed the sidebar badges. Failures are silent — a missing
     // badge is better than a broken shell.
     // Canlı sayılar kenar çubuğu rozetlerini besler. Hatalar sessizdir —
@@ -183,11 +189,19 @@ export function Layout({ children, currentPage = '', onPageChange, mode = 'panel
             // ekran aldıysa alsın son sistem geneli yükün söylediğini çizer;
             // operatörün panoda ya da bileşen sayfasında çalıştırdığı kontrol
             // rozeti yeniden yükleme olmadan oynatır.
-            api.getServices()
-                .then(publishComponentCensus)
-                .catch(() => {});
+            seedCensus();
         }
     }, [role, setupMode]);
+
+    // A component installed or removed while no screen that publishes the
+    // census is open still moves the badge: the stored records are read again.
+    // It only reads.
+    // Sayımı yayımlayan hiçbir ekran açık değilken kurulan ya da kaldırılan
+    // bileşen de rozeti oynatır: kayıtlı kayıtlar yeniden okunur. Yalnız okur.
+    useInvalidation(['components'], () => {
+        if (setupMode || role !== 'admin') return;
+        seedCensus();
+    });
 
     // One number, read from where every screen publishes it. Non-admins never
     // see this item, so they never carry its count.
@@ -654,7 +668,9 @@ function ImpersonationBanner() {
     return (
         <div className="flex flex-wrap items-center justify-center gap-2 bg-warning px-4 py-1.5 text-sm font-medium text-warning-fg">
             <UserCheck className="h-4 w-4" />
-            {t('imp.banner', { name: user.username })}
+            {user.impersonator
+                ? t('imp.bannerBy', { name: user.username, operator: user.impersonator })
+                : t('imp.banner', { name: user.username })}
             <button onClick={exit} className="rounded-md bg-black/15 px-2.5 py-0.5 font-semibold hover:bg-black/25">
                 {t('imp.return')}
             </button>

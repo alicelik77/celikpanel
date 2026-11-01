@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import {
     Globe2,
     Layers,
@@ -7,10 +7,12 @@ import {
     Play,
     Plus,
     Save,
+    Send,
     ShieldCheck,
     Trash2,
     Users,
     X,
+    XCircle,
 } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
@@ -28,10 +30,12 @@ import {
     type TeamPermissionMode,
     type TeamSubscriptionPermission,
 } from '../lib/api';
-import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
+import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
 import { showToast } from './Toast';
 import { Button, EmptyState, ErrorBanner, Spinner, StatusDot, inputClass } from './ui';
 import { PageHeader } from './PageHeader';
+import { invalidate, useInvalidation } from '../lib/remote';
+import { InvitedStatus, useInvitationActions, useInvitationOutcome } from './Invitations';
 
 type ScopeKind = 'subscription' | 'domain';
 type PermissionChoice = TeamPermissionMode | 'none';
@@ -42,6 +46,8 @@ interface MemberDraft {
     username: string;
     email: string;
     password: string;
+    // New member only: invite by email instead of setting a password (alpha.114).
+    invite: boolean;
     status: TeamMemberStatus;
     permissions: PermissionSelection;
 }
@@ -57,6 +63,7 @@ function emptyDraft(): MemberDraft {
         username: '',
         email: '',
         password: '',
+        invite: false,
         status: 'active',
         permissions: {},
     };
@@ -79,6 +86,7 @@ function draftFromMember(member: TeamMember): MemberDraft {
         username: member.username,
         email: member.email,
         password: '',
+        invite: false,
         status: member.status,
         permissions,
     };
@@ -150,7 +158,7 @@ function capabilityKey(capability: TeamCapability): TranslationKey {
 }
 
 export function TeamMembersPage() {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const [members, setMembers] = useState<TeamMember[]>([]);
     const [subscriptions, setSubscriptions] = useState<TeamMemberSubscriptionScope[]>([]);
     const [domains, setDomains] = useState<TeamMemberDomainScope[]>([]);
@@ -159,9 +167,17 @@ export function TeamMembersPage() {
     const [loadError, setLoadError] = useState<ApiError | null>(null);
     const [busy, setBusy] = useState<string | null>(null);
 
-    const load = async () => {
-        setLoading(true);
-        setLoadError(null);
+    // load only reads. The first read (and Retry after a failure) shows the
+    // spinner; a re-read after a change keeps the list on screen until the
+    // answer arrives, and only the newest answer is shown.
+    // load yalnız okur. Değişiklik sonrası okuma listeyi ekranda tutar.
+    const readSeq = useRef(0);
+    const load = async (quiet = false) => {
+        const seq = ++readSeq.current;
+        if (!quiet) {
+            setLoading(true);
+            setLoadError(null);
+        }
         try {
             const [nextMembers, nextSubscriptions, nextDomains] = await Promise.all([
                 api.getTeamMembers(),
@@ -169,20 +185,31 @@ export function TeamMembersPage() {
                 api.getTeamMemberDomainScopes(),
             ]);
             assertMemberScopes(nextMembers, nextSubscriptions, nextDomains);
+            if (seq !== readSeq.current) return;
             setMembers(nextMembers);
             setSubscriptions(nextSubscriptions);
             setDomains(nextDomains);
+            setLoadError(null);
         } catch (error) {
-            setLoadError(await normalizeApiError(error));
+            const problem = await normalizeApiError(error);
+            if (seq === readSeq.current) setLoadError(problem);
         } finally {
-            setLoading(false);
+            if (seq === readSeq.current) setLoading(false);
         }
     };
 
     useEffect(() => {
         void load();
     }, []);
+    // Any change to members or invitations, here or elsewhere, re-reads the
+    // list: no page refresh is needed (owner rule 2026-10-31).
+    useInvalidation(['team'], () => void load(true));
+    // After a change: this list and every other place that shows accounts.
+    const changed = () => invalidate('team', 'users');
+    const invitation = useInvitationOutcome();
+    const rowInvite = useInvitationActions();
 
+    const [saveRefusal, setSaveRefusal] = useState<ApiError | null>(null);
     const saveDraft = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (!draft) return;
@@ -203,15 +230,20 @@ export function TeamMembersPage() {
             const access = accessFromDraft(draft, subscriptions, domains);
             let saved: TeamMember;
             if (draft.memberID === null) {
-                saved = await api.createTeamMember({
+                const created = await api.createTeamMember({
                     username: draft.username.trim(),
                     email: draft.email.trim(),
-                    password: draft.password,
+                    // An invitation carries no password: the member chooses it.
+                    password: draft.invite ? '' : draft.password,
                     status: draft.status,
                     access,
+                    ...(draft.invite ? { invite: true, lang: locale } : {}),
                 });
+                saved = created.member;
                 setMembers((current) => [...current, saved].sort((a, b) => a.username.localeCompare(b.username)));
                 showToast('success', t('team.created'));
+                // What happened to the invitation: emailed, or a link to pass on.
+                if (draft.invite) invitation.report(created.invitation);
             } else {
                 saved = await api.updateTeamMember(draft.memberID, {
                     username: draft.username.trim(),
@@ -224,10 +256,15 @@ export function TeamMembersPage() {
                 showToast('success', t('team.updated'));
             }
             setDraft(null);
+            setSaveRefusal(null);
         } catch (error) {
-            showToast('error', apiErrorText(await normalizeApiError(error), t, 'team.saveFailed'));
+            // The refusal also stays in the editor, beside Save (owner feedback 2026-10-31).
+            const problem = await normalizeApiError(error);
+            setSaveRefusal(problem);
+            showToast('error', refusalText(problem, t, 'team.saveFailed'), refusalToast(problem, t));
         } finally {
             setBusy(null);
+            changed();
         }
     };
 
@@ -244,9 +281,11 @@ export function TeamMembersPage() {
             setMembers((current) => current.map((item) => item.id === member.id ? updated : item));
             showToast('success', t(status === 'active' ? 'team.activated' : 'team.suspended'));
         } catch (error) {
-            showToast('error', apiErrorText(await normalizeApiError(error), t, 'team.actionFailed'));
+            const problem = await normalizeApiError(error);
+            showToast('error', refusalText(problem, t, 'team.actionFailed'), refusalToast(problem, t));
         } finally {
             setBusy(null);
+            changed();
         }
     };
 
@@ -259,9 +298,11 @@ export function TeamMembersPage() {
             if (draft?.memberID === member.id) setDraft(null);
             showToast('success', t('team.deleted'));
         } catch (error) {
-            showToast('error', apiErrorText(await normalizeApiError(error), t, 'team.actionFailed'));
+            const problem = await normalizeApiError(error);
+            showToast('error', refusalText(problem, t, 'team.actionFailed'), refusalToast(problem, t));
         } finally {
             setBusy(null);
+            changed();
         }
     };
 
@@ -296,8 +337,9 @@ export function TeamMembersPage() {
                     subscriptions={subscriptions}
                     domains={domains}
                     saving={busy === 'save'}
+                    refusal={saveRefusal}
                     onChange={setDraft}
-                    onCancel={() => setDraft(null)}
+                    onCancel={() => { setDraft(null); setSaveRefusal(null); }}
                     onSubmit={saveDraft}
                 />
             )}
@@ -326,12 +368,17 @@ export function TeamMembersPage() {
             ) : (
                 <MemberTable
                     members={members}
-                    busy={busy}
+                    busy={busy ?? (rowInvite.busy !== null ? 'invitation' : null)}
                     onEdit={(member) => setDraft(draftFromMember(member))}
                     onStatus={setStatus}
                     onDelete={remove}
+                    onInvitation={(member, action) => {
+                        if (member.invitation?.id !== undefined) void rowInvite.act(member.invitation.id, member.username, action);
+                    }}
                 />
             )}
+            {invitation.dialog}
+            {rowInvite.dialog}
         </div>
     );
 }
@@ -342,12 +389,14 @@ function MemberTable({
     onEdit,
     onStatus,
     onDelete,
+    onInvitation,
 }: {
     members: TeamMember[];
     busy: string | null;
     onEdit: (member: TeamMember) => void;
     onStatus: (member: TeamMember, status: TeamMemberStatus) => Promise<void>;
     onDelete: (member: TeamMember) => Promise<void>;
+    onInvitation: (member: TeamMember, action: 'email' | 'revoke') => void;
 }) {
     const { t } = useI18n();
     return (
@@ -371,16 +420,39 @@ function MemberTable({
                                     <div className='text-xs text-fg-subtle'>{member.email}</div>
                                 </td>
                                 <td className='px-4 py-3'>
-                                    <span className='inline-flex items-center gap-1.5 text-fg-muted'>
-                                        <StatusDot ok={member.status === 'active'} />
-                                        {t(member.status === 'active' ? 'team.status.active' : 'team.status.suspended')}
-                                    </span>
+                                    {/* Invited, not signed in yet: not shown as active (alpha.114). */}
+                                    {member.status === 'active' && member.invitation ? (
+                                        <InvitedStatus invitation={member.invitation} cancelledHint={t('acct.invite.status.cancelledTeam')} />
+                                    ) : (
+                                        <span className='inline-flex items-center gap-1.5 text-fg-muted'>
+                                            <StatusDot ok={member.status === 'active'} />
+                                            {t(member.status === 'active' ? 'team.status.active' : 'team.status.suspended')}
+                                        </span>
+                                    )}
                                 </td>
                                 <td className='px-4 py-3 text-fg-muted'>
                                     <AccessSummary member={member} />
                                 </td>
                                 <td className='px-4 py-3'>
                                     <div className='flex items-center justify-end gap-0.5'>
+                                        {member.status === 'active' && member.invitation?.id !== undefined && (
+                                            <>
+                                                <RowButton
+                                                    title={t('acct.invite.rowResend')}
+                                                    onClick={() => onInvitation(member, 'email')}
+                                                    disabled={Boolean(busy)}
+                                                >
+                                                    <Send className='h-4 w-4' />
+                                                </RowButton>
+                                                <RowButton
+                                                    title={t('acct.invite.revoke')}
+                                                    onClick={() => onInvitation(member, 'revoke')}
+                                                    disabled={Boolean(busy)}
+                                                >
+                                                    <XCircle className='h-4 w-4' />
+                                                </RowButton>
+                                            </>
+                                        )}
                                         <RowButton
                                             title={t('team.edit')}
                                             onClick={() => onEdit(member)}
@@ -470,10 +542,12 @@ function MemberEditor({
     subscriptions,
     domains,
     saving,
+    refusal,
     onChange,
     onCancel,
     onSubmit,
 }: {
+    refusal: ApiError | null;
     draft: MemberDraft;
     subscriptions: TeamMemberSubscriptionScope[];
     domains: TeamMemberDomainScope[];
@@ -484,10 +558,20 @@ function MemberEditor({
 }) {
     const { t } = useI18n();
     const isNew = draft.memberID === null;
-    const passwordValid = isNew
-        ? draft.password.length >= 8
-        : draft.password.length === 0 || draft.password.length >= 8;
+    const inviting = isNew && draft.invite;
+    const passwordValid = inviting
+        ? true
+        : isNew
+            ? draft.password.length >= 8
+            : draft.password.length === 0 || draft.password.length >= 8;
     const canSave = draft.username.trim() !== '' && draft.email.trim() !== '' && passwordValid;
+    // What still keeps Save off, in the form's own words (owner rule 2026-10-31).
+    const missing = [
+        ...(draft.username.trim() === '' ? [t('team.username')] : []),
+        ...(draft.email.trim() === '' ? [t('team.email')] : []),
+        ...(isNew && !inviting && draft.password.length < 8 ? [t('acct.team.passwordRule')] : []),
+    ];
+    const newPasswordShort = !isNew && !passwordValid;
     const subscriptionResources = subscriptions.map((scope) => ({ id: scope.id, label: scope.name }));
     const domainResources = domains.map((scope) => ({ id: scope.id, label: scope.domain_name }));
 
@@ -539,23 +623,29 @@ function MemberEditor({
                                 required
                             />
                         </label>
-                        <label>
-                            <span className='mb-1 block text-xs text-fg-muted'>
-                                {t(isNew ? 'team.password' : 'team.newPassword')}
-                            </span>
-                            <input
-                                type='password'
-                                value={draft.password}
-                                onChange={(event) => onChange({ ...draft, password: event.target.value })}
-                                className={inputClass}
-                                autoComplete='new-password'
-                                minLength={8}
-                                required={isNew}
-                            />
-                            <span className='mt-1 block text-xs text-fg-subtle'>
-                                {t(isNew ? 'team.passwordHint' : 'team.newPasswordHint')}
-                            </span>
-                        </label>
+                        {inviting ? (
+                            <p className='self-end text-xs text-fg-muted' data-invite-instead-of-password=''>
+                                {t('acct.team.inviteHint')}
+                            </p>
+                        ) : (
+                            <label>
+                                <span className='mb-1 block text-xs text-fg-muted'>
+                                    {t(isNew ? 'team.password' : 'team.newPassword')}
+                                </span>
+                                <input
+                                    type='password'
+                                    value={draft.password}
+                                    onChange={(event) => onChange({ ...draft, password: event.target.value })}
+                                    className={inputClass}
+                                    autoComplete='new-password'
+                                    minLength={8}
+                                    required={isNew}
+                                />
+                                <span className='mt-1 block text-xs text-fg-subtle'>
+                                    {t(isNew ? 'team.passwordHint' : 'team.newPasswordHint')}
+                                </span>
+                            </label>
+                        )}
                         <label>
                             <span className='mb-1 block text-xs text-fg-muted'>{t('team.status')}</span>
                             <select
@@ -571,6 +661,20 @@ function MemberEditor({
                             </select>
                         </label>
                     </div>
+                    {isNew && (
+                        <label className='mt-3 flex items-start gap-2 text-sm text-fg' data-invite-option=''>
+                            <input
+                                type='checkbox'
+                                className='mt-1'
+                                checked={draft.invite}
+                                onChange={(event) => onChange({ ...draft, invite: event.target.checked, password: '' })}
+                            />
+                            <span>
+                                {t('acct.invite.option')}
+                                <span className='block text-xs text-fg-muted'>{t('acct.invite.optionHint')}</span>
+                            </span>
+                        </label>
+                    )}
                     {!isNew && <p className='mt-3 text-xs text-warning'>{t('team.securityNote')}</p>}
                 </section>
 
@@ -602,11 +706,27 @@ function MemberEditor({
                 </section>
             </div>
 
-            <div className='flex justify-end gap-2 border-t border-border px-4 py-3'>
+            <ErrorBanner className='mx-4 mb-3' error={refusal} sentence='team.saveFailed' />
+            <div className='flex flex-wrap items-center justify-end gap-2 border-t border-border px-4 py-3'>
+                {/* Why Save is off, beside it. / Kaydet neden kapalı, yanında. */}
+                {!canSave && (
+                    <p id='team-save-reason' className='mr-auto text-sm text-fg' data-blocked-reason=''>
+                        {[
+                            ...(missing.length > 0 ? [t('acct.team.missing', { fields: missing.join(', ') })] : []),
+                            ...(newPasswordShort ? [t('acct.team.newPasswordShort')] : []),
+                        ].join(' ')}
+                    </p>
+                )}
                 <Button type='button' icon={X} onClick={onCancel} disabled={saving}>
                     {t('team.cancel')}
                 </Button>
-                <Button type='submit' variant='primary' icon={Save} disabled={saving || !canSave}>
+                <Button
+                    type='submit'
+                    variant='primary'
+                    icon={Save}
+                    aria-describedby={!canSave ? 'team-save-reason' : undefined}
+                    disabled={saving || !canSave}
+                >
                     {t(isNew ? 'team.create' : 'team.save')}
                 </Button>
             </div>

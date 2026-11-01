@@ -58,10 +58,13 @@ export const ServerSetupSteps = () => null;
 export const ServerSetupComponents = () => null;
 export const useSetupComponentCatalog = () => ({ catalog: null, failed: false, reload() {} });
 export const ServerSetupChoice = () => null, ServerSetupManualAction = () => null;
-export const SetupCountStep = () => null, SetupMailStep = () => null, SetupOpenTasks = () => null, SetupRecordsStep = () => null, SetupDNSHomeStep = () => null, SetupDomainStep = () => null, SetupNameStep = () => null, SetupNamesStep = () => null, SetupPanelAccessCard = () => null, SetupProviderRecordsCard = () => null, SetupRegistrarCard = () => null, SetupRolesStep = () => null, SetupWizardInput = () => null, SetupJoinCard = () => null, SetupJoinPanel = () => null, SetupJoinedSummary = () => null, SetupFirstSite = () => null, useSetupPeerLink = () => ({ link: null, known: false, refresh() {} }), useSetupDelegation = () => ({ state: 'unknown', servers: '' });
+export const SetupCountStep = () => null, SetupMailStep = () => null, SetupOpenTasks = () => null, SetupRecordsStep = () => null, SetupDNSHomeStep = () => null, SetupDomainStep = () => null, SetupNameStep = () => null, SetupNamesStep = () => null, SetupPanelAccessCard = () => null, SetupProviderRecordsCard = () => null, SetupRegistrarCard = () => null, SetupRolesStep = () => null, SetupWizardInput = () => null, SetupServerKindStep = () => null, SetupJoinCard = () => null, SetupJoinPanel = () => null, SetupJoinedSummary = () => null, SetupFirstSite = () => null, useSetupPeerLink = () => ({ link: null, known: false, refresh() {} }), useSetupDelegation = () => ({ state: 'unknown', servers: '' });
+export const SetupMainSiteQuestion = () => null, setupActiveEngine = () => null;
 export const setupEngineChoice = () => undefined, setupServerLabel = () => 'This server';
 export const inputClass = '';
 export const AddressLink = props => React.createElement('a', { href: props.href }, props.address);
+// The plan's problems and the start reason (components/SetupPlanProblems.tsx) have their own test.
+export const SetupPlanProblems = () => null, SetupStartReason = () => null, setupStartBlock = () => null;
 `);
 const source = compile('../src/components/ServerSetup.tsx').replace(/from ['"]([^'"]+)['"]/g, (_, path) => {
     const url = path === 'react' ? reactURL : path.endsWith('/remoteDNS') ? remoteURL : path.endsWith('/componentName') ? componentNameURL : path.endsWith('/serverSetupComponents') ? componentLibURL

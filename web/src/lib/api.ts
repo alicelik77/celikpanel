@@ -43,6 +43,8 @@ export interface CurrentUser {
     account_type: AccountType;
     email?: string;
     impersonating: boolean;
+    /** The operator's username during "Log in as" (alpha.114). */
+    impersonator?: string;
     features: {
         team_members: boolean;
         [key: string]: unknown;
@@ -84,6 +86,26 @@ export interface TeamMemberAccess {
     domain_permissions: TeamDomainPermission[];
 }
 
+/**
+ * An account made by invitation whose person has not chosen a password yet
+ * (alpha.114). `id` is the open invitation, for resend and cancel; a
+ * cancelled invitation has none, and nobody can sign in until a password is set.
+ */
+export interface AccountInvitationState {
+    id?: number;
+    state: 'pending' | 'expired' | 'cancelled';
+    expires_at?: string;
+}
+
+export function parseAccountInvitationState(raw: unknown): AccountInvitationState | undefined {
+    if (!isRecord(raw) || (raw.state !== 'pending' && raw.state !== 'expired' && raw.state !== 'cancelled')) return undefined;
+    return {
+        id: isPositiveInteger(raw.id) ? raw.id : undefined,
+        state: raw.state,
+        expires_at: typeof raw.expires_at === 'string' ? raw.expires_at : undefined,
+    };
+}
+
 export interface TeamMember {
     id: number;
     owner_id: number;
@@ -93,14 +115,25 @@ export interface TeamMember {
     access: TeamMemberAccess;
     created_at: string;
     updated_at: string;
+    /** Only in the list: invited, not signed in yet. */
+    invitation?: AccountInvitationState;
 }
 
 export interface TeamMemberCreateInput {
     username: string;
     email: string;
+    /** Empty when `invite` is set: the member chooses theirs by a link. */
     password: string;
     status?: TeamMemberStatus;
     access: TeamMemberAccess;
+    invite?: boolean;
+    lang?: string;
+}
+
+/** A created member, with what happened to its invitation when one was asked for. */
+export interface TeamMemberCreated {
+    member: TeamMember;
+    invitation?: unknown;
 }
 
 export interface TeamMemberUpdateInput {
@@ -241,6 +274,7 @@ function parseTeamMember(raw: unknown): TeamMember {
         access: parseTeamMemberAccess(raw.access),
         created_at: raw.created_at,
         updated_at: raw.updated_at,
+        invitation: parseAccountInvitationState(raw.invitation),
     };
 }
 
@@ -316,6 +350,7 @@ export function parseCurrentUser(raw: unknown): CurrentUser {
     }
     if (raw.email !== undefined && typeof raw.email !== 'string') unsupportedAuthIdentity();
     if (raw.impersonating !== undefined && typeof raw.impersonating !== 'boolean') unsupportedAuthIdentity();
+    if (raw.impersonator !== undefined && typeof raw.impersonator !== 'string') unsupportedAuthIdentity();
 
     const rawFeatures = raw.features === undefined ? {} : raw.features;
     if (!isRecord(rawFeatures)) unsupportedAuthIdentity();
@@ -327,6 +362,7 @@ export function parseCurrentUser(raw: unknown): CurrentUser {
         account_type: accountType,
         email: raw.email,
         impersonating: raw.impersonating ?? false,
+        impersonator: raw.impersonator,
         features: {
             ...rawFeatures,
             team_members: rawFeatures.team_members === true
@@ -344,9 +380,13 @@ export interface PanelUser {
     status: string;
     parent_id?: number;
     parent_name?: string;
+    /** `additional_user` for a person added to a customer's account; absent or `account` otherwise. */
+    account_type?: string;
     subscriptions: number;
     domains: number;
     created_at: string;
+    /** Invited, not signed in yet (alpha.114); absent for every other account. */
+    invitation?: AccountInvitationState;
 }
 
 export interface ServicePlan {
@@ -356,8 +396,14 @@ export interface ServicePlan {
     max_databases: number;
     max_email_accounts: number;
     disk_quota_mb: number;
+    /** Stored for compatibility; traffic is not measured, so it is not shown or enforced. */
     bandwidth_quota_mb: number;
     subscribers?: number;
+    /** A reseller's own plan (alpha.114); absent for a global plan. */
+    owner_id?: number;
+    owner?: string;
+    /** The signed-in account may edit this plan. */
+    mine?: boolean;
 }
 
 export interface DemoAccount {
@@ -429,11 +475,16 @@ class API {
         return parseCurrentUser(payload);
     }
 
-    async loginTOTP(pendingToken: string, code: string): Promise<CurrentUser> {
+    // recovery: `code` is one of the single-use recovery codes, sent in its
+    // own field, instead of an authenticator code (alpha.114).
+    // recovery: `code`, doğrulayıcı kodu yerine tek kullanımlık kurtarma kodlarından biridir.
+    async loginTOTP(pendingToken: string, code: string, recovery = false): Promise<CurrentUser> {
         const res = await fetch(`${API_BASE}/auth/login/totp`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pending_token: pendingToken, code }),
+            body: JSON.stringify(recovery
+                ? { pending_token: pendingToken, recovery_code: code }
+                : { pending_token: pendingToken, code }),
         });
         if (!res.ok) {
             if (res.status === 401) throw new Error('invalid_code');
@@ -527,7 +578,7 @@ class API {
         return payload.team_members.map(parseTeamMember);
     }
 
-    async createTeamMember(input: TeamMemberCreateInput, ownerID?: number): Promise<TeamMember> {
+    async createTeamMember(input: TeamMemberCreateInput, ownerID?: number): Promise<TeamMemberCreated> {
         const body: TeamMemberCreateInput & { owner_id?: number } = { ...input };
         if (ownerID !== undefined) {
             if (!Number.isInteger(ownerID) || ownerID <= 0) throw new Error('invalid_team_member_owner');
@@ -540,7 +591,7 @@ class API {
         });
         const payload: unknown = await response.json();
         if (!isRecord(payload)) malformedTeamMemberResponse();
-        return parseTeamMember(payload.team_member);
+        return { member: parseTeamMember(payload.team_member), invitation: payload.invitation };
     }
 
     async updateTeamMember(

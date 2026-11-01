@@ -10,9 +10,11 @@ import Renderer, { act } from 'react-test-renderer';
 import { dataModule, reactURL, sharedLayer } from './fixtures/shared-layer.mjs';
 import { enLifecycleScreens } from '../src/i18n/screens/lifecycle/en.ts';
 import { trLifecycleScreens } from '../src/i18n/screens/lifecycle/tr.ts';
+import { enOsUpdatesScreens } from '../src/i18n/screens/osUpdates/en.ts';
+import { trOsUpdatesScreens } from '../src/i18n/screens/osUpdates/tr.ts';
 
-const en = { ...enLifecycleScreens, 'common.cancel': 'Cancel', 'common.retry': 'Try again' };
-const tr = { ...trLifecycleScreens, 'common.cancel': 'Vazgeç', 'common.retry': 'Tekrar dene' };
+const en = { ...enLifecycleScreens, ...enOsUpdatesScreens, 'common.cancel': 'Cancel', 'common.retry': 'Try again' };
+const tr = { ...trLifecycleScreens, ...trOsUpdatesScreens, 'common.cancel': 'Vazgeç', 'common.retry': 'Tekrar dene' };
 const fill = (text, vars = {}) => Object.entries(vars).reduce((out, [name, value]) => out.split('{' + name + '}').join(String(value)), text);
 globalThis.cardWords = en;
 const stub = dataModule(`

@@ -134,6 +134,7 @@ func (e *mailServiceError) Error() string {
 // Testlerde değiştirilir.
 var (
 	mailServiceSleep    = time.Sleep
+	mailServiceNow      = time.Now
 	mailServiceReadFile = os.ReadFile
 	// mailServiceIsDirectory reports that path is an existing directory. An
 	// error, a missing entry and anything that is not a directory are all
@@ -407,8 +408,14 @@ func applyDovecotVerified(run mailServiceRunner, mode mailServiceMode) (string, 
 	if !before.active {
 		state = mailServiceStarted
 	}
+	since := mailServiceNow().Unix()
 	if out, err := run("systemctl", action, "dovecot"); err != nil {
 		return "", mailServiceFailure(service, stage, out, err)
+	}
+	if before.active && stage == mailServiceStageReload {
+		if failure := dovecotReloadOutcome(run, since); failure != nil {
+			return "", failure
+		}
 	}
 	var seen dovecotUnitState
 	for attempt := 0; attempt < mailServiceStartPolls; attempt++ {
@@ -430,6 +437,86 @@ func applyDovecotVerified(run mailServiceRunner, mode mailServiceMode) (string, 
 	}
 	return "", &mailServiceError{service: service, stage: mailServiceStageVerify,
 		detail: "systemctl " + action + " dovecot reported success, but dovecot.service is not running afterwards"}
+}
+
+// dovecotReloadOutcome reads Dovecot's own record of a reload (lab run 2,
+// E-new-2, 1 Nov 2026; corrected after lab run 3).
+//
+// `systemctl reload dovecot` only sends the master a signal and exits 0 when
+// the signal was sent. A master that cannot read its new configuration logs
+// "Failed to read configuration" and keeps running with the previous one, so
+// neither systemctl nor the unit state shows the refusal. Measured on Arch's
+// Dovecot 2.4.5: a running Dovecot refused a valid drop-in naming a plugin it
+// had not started with ("Unknown section name: sieve_script"), while doveconf
+// -n accepted the same files. `doveadm log errors` lists the warnings and
+// errors Dovecot's log process kept in memory, whatever log_path says; the
+// master's "SIGHUP received" warning says the reload was taken up and an Error
+// or Fatal line of the master after it says it was refused.
+//
+// Only that refusal is a failure. When the record cannot be read (doveadm
+// missing or not allowed on this path) or does not show the reload in time,
+// the caller goes on to its unit check as before this check existed: lab run
+// 3 showed that treating an unreadable record as a failure rolled back a
+// correct mail TLS setup and held every change on the server. Dovecot 2.3
+// (Ubuntu 24.04) writes "master: Warning: SIGHUP received", 2.4 writes
+// "Warning: master: SIGHUP received"; both orders are read.
+//
+// dovecotReloadOutcome, yeniden yüklemenin sonucunu Dovecot'un kendi
+// kaydından okur: systemctl yalnız sinyali gönderir; yeni yapılandırmayı
+// okuyamayan Dovecot eskisiyle çalışmayı sürdürür. Yalnız kayıttaki ret bir
+// hatadır; kayıt okunamazsa ya da yüklemeyi göstermezse birim kontrolüyle
+// eskisi gibi devam edilir.
+func dovecotReloadOutcome(run mailServiceRunner, since int64) *mailServiceError {
+	const service = "Dovecot"
+	sinceArg := strconv.FormatInt(since, 10)
+	seen := false
+	for attempt := 0; attempt < mailServiceStartPolls; attempt++ {
+		mailServiceSleep(mailServicePollInterval)
+		out, err := run("doveadm", "log", "errors", "-s", sinceArg)
+		if err != nil {
+			return nil
+		}
+		reloaded, refusal := dovecotReloadLog(string(out))
+		if refusal != "" {
+			return &mailServiceError{service: service, stage: mailServiceStageReload,
+				detail: "Dovecot kept its previous settings: " + refusal}
+		}
+		if reloaded {
+			if seen {
+				return nil
+			}
+			// Read once more: the refusal is logged right after the
+			// SIGHUP line.
+			seen = true
+		}
+	}
+	return nil
+}
+
+// dovecotReloadLog reads `doveadm log errors` output: whether the master
+// took up a reload, and the master's error after the last one ("" if none).
+// Dovecot 2.4 writes "<Level>: master: ", Dovecot 2.3 "master: <Level>: ".
+func dovecotReloadLog(out string) (reloaded bool, refusal string) {
+	for _, raw := range strings.Split(out, "\n") {
+		line := strings.Join(strings.Fields(raw), " ")
+		if strings.Contains(line, "master: SIGHUP received") || strings.Contains(line, "master: Warning: SIGHUP received") {
+			reloaded, refusal = true, ""
+			continue
+		}
+		if !reloaded {
+			continue
+		}
+		for _, marker := range []string{"Error: master: ", "Fatal: master: ", "master: Error: ", "master: Fatal: "} {
+			if index := strings.Index(line, marker); index >= 0 && refusal == "" {
+				text := line[index+len(marker):]
+				text = strings.TrimPrefix(text, "Failed to read configuration: ")
+				text = strings.TrimPrefix(text, "Failed to read config: ")
+				text, _, _ = strings.Cut(text, " - doveconf execution fallback")
+				refusal = hostcmd.Bounded(text, 300)
+			}
+		}
+	}
+	return reloaded, refusal
 }
 
 // postfixMasterProcess reads from the kernel whether the Postfix master is

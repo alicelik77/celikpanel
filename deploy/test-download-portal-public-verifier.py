@@ -54,6 +54,7 @@ def build_site(root: Path) -> tuple[int, set[str], int]:
     root_files = {
         "index.html": b"<!doctype html><title>CelikPanel</title>\n",
         "technical.html": b"<!doctype html><title>Technical details</title>\n",
+        "systems.html": b"<!doctype html><title>Supported systems</title>\n",
         "assets/favicon-v2.svg": b'<svg xmlns="http://www.w3.org/2000/svg"/>\n',
         "assets/site.css": b"body { color: #10213a; }\n",
         "assets/site.js": b"document.documentElement.dataset.ready = 'true';\n",
@@ -303,7 +304,7 @@ class PublicPortalVerifierTests(unittest.TestCase):
     def test_membership_extends_one_plan_without_fetching_php_source(self):
         self.membership_fixture(b'<body class="member-page"><input name="csrf" value="' + b'a'*64 + b'"></body>')
         summary = self.verify()
-        self.assertEqual(summary["requests"], 26)
+        self.assertEqual(summary["requests"], 27)
         self.assertEqual(summary["archive_gets"], 1)
         self.assertEqual(self.server.request_paths.count("/account/index.php"), 1)
 
@@ -323,16 +324,16 @@ class PublicPortalVerifierTests(unittest.TestCase):
         self.assertEqual(summary["status"], "ok")
         self.assertEqual(summary["policy"], "single-full-pass-after-exchange")
         self.assertEqual(summary["phase"], "full")
-        self.assertEqual(summary["requests"], 23)
+        self.assertEqual(summary["requests"], 24)
         self.assertEqual(summary["request_limit"], VERIFIER.HARD_REQUEST_LIMIT)
         expected_visual_paths = {
-            "/technical.html", "/assets/favicon-v2.svg",
+            "/technical.html", "/systems.html", "/assets/favicon-v2.svg",
             *(f"/assets/product-{feature}-{language}.webp"
               for feature in ("overview", "domains", "databases")
               for language in ("tr", "en")),
         }
         self.assertTrue(expected_visual_paths.issubset(self.server.request_paths))
-        self.assertEqual(len(set(self.server.request_paths)), 23)
+        self.assertEqual(len(set(self.server.request_paths)), 24)
         self.assertEqual(summary["requests"], len(self.server.request_paths))
         self.assertEqual(summary["archive_gets"], 1)
         self.assertEqual(self.server.request_paths.count(ARCHIVE_PUBLIC_PATH), 1)
@@ -359,7 +360,7 @@ class PublicPortalVerifierTests(unittest.TestCase):
         self.assertEqual(self.server.historical_requests, [])
 
     def test_visual_asset_tampering_fails_before_archive(self):
-        for relative in ("technical.html", "assets/favicon-v2.svg", *(
+        for relative in ("technical.html", "systems.html", "assets/favicon-v2.svg", *(
             f"assets/product-{feature}-{language}.webp"
             for feature in ("overview", "domains", "databases")
             for language in ("tr", "en")

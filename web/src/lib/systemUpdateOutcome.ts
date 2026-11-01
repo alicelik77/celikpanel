@@ -40,6 +40,8 @@ export type OutcomeKey =
     | 'panelUpdate.outcome.packageManagerBusyNext'
     | 'panelUpdate.outcome.stoppedNext'
     | 'panelUpdate.outcome.stoppedResume'
+    | 'panelUpdate.outcome.preflightNext.application_compatibility'
+    | 'panelUpdate.outcome.preflightResume.application_compatibility'
     | 'panelUpdate.outcome.cause.generic'
     | 'panelUpdate.outcome.rolledBackNext'
     | 'panelUpdate.outcome.rolledBackResume'
@@ -151,6 +153,15 @@ function preflightReasonLine(preflight: { step: string; reasonClass?: string } |
         : { key: generic };
 }
 
+// The updater's own reason from its reviewed summary line, or '' for none or
+// for its historical generic text (that one names no cause).
+const GENERIC_UPDATER_REASON = 'updater command failed; inspect the update worker log';
+function updaterReason(message: string): string {
+    const match = /(?:^|: )!! CELIKPANEL_UPDATE_FAILURE code=[a-z_]{1,64} state=[a-z_]{1,40} reason=(.*?) detail=/.exec(message);
+    const reason = match ? match[1].trim() : '';
+    return reason === GENERIC_UPDATER_REASON || !/[A-Za-z0-9]/.test(reason) ? '' : reason;
+}
+
 export function failedUpdateGuidance(observation: RecoveryObservation | null, input: Input): FailedUpdateGuidance {
     const product = input.message !== '' && input.productMessages.includes(input.message);
     // upd4 O7: never the raw line; omitted when a reviewed translation says it.
@@ -205,6 +216,17 @@ export function failedUpdateGuidance(observation: RecoveryObservation | null, in
         const firstLine = lineOne.length > 240 ? `${lineOne.slice(0, 239).trimEnd()}…` : lineOne;
         const inline = generic && firstLine !== '';
         const complete = inline && firstLine === reported;
+        // The new version refused this server's recorded mail or DNS state
+        // (alpha.114 E7: every PowerDNS main server on alpha.113). Nothing on
+        // the server fixes that and the same version stops the same way: say
+        // so, and that a corrected version is the next step.
+        // Yeni sürüm kayıtlı posta/DNS durumunu kabul etmedi: sunucuda
+        // düzeltilecek bir şey yok, aynı sürüm aynı yerde durur.
+        const refusedState = !translated && preflight?.step === 'application_compatibility';
+        const next: OutcomeText[] = refusedState
+            ? [{ key: 'panelUpdate.outcome.preflightNext.application_compatibility', vars: versions },
+                { key: 'panelUpdate.outcome.preflightResume.application_compatibility', vars: versions }]
+            : [{ key: 'panelUpdate.outcome.stoppedNext' }, { key: 'panelUpdate.outcome.stoppedResume', vars: versions }];
         return {
             state: 'unchanged',
             tone: 'neutral',
@@ -213,8 +235,7 @@ export function failedUpdateGuidance(observation: RecoveryObservation | null, in
                 { key: 'panelUpdate.outcome.stopped', vars: versions },
                 reason,
                 ...(inline ? [{ key: 'panelUpdate.outcome.serverMessage' as const, vars: { message: firstLine } }] : []),
-                { key: 'panelUpdate.outcome.stoppedNext' },
-                { key: 'panelUpdate.outcome.stoppedResume', vars: versions },
+                ...next,
             ],
             serverMessage: !product && !translated && !complete && reported ? reported : undefined,
         };
@@ -222,13 +243,19 @@ export function failedUpdateGuidance(observation: RecoveryObservation | null, in
     if (observation?.observation === 'known' && observation.phase === 'recovered'
         && observation.terminal_proof === 'rollback_verified') {
         // The secondary line keeps the server's words without internal tokens.
+        // Without a typed cause, the updater's own reason (for example the
+        // installer's line naming a panel.env key, alpha.114 lab E-new-5) is
+        // the cause line itself, not hidden behind Details.
+        const typedCause = causeKey(observation.previous_failure === 'update_failed' ? observation.failure_code : undefined);
+        const reported = typedCause === 'panelUpdate.outcome.cause.generic' && observation.previous_failure === 'update_failed'
+            ? updaterReason(input.message) : '';
         return {
             state: 'rolled_back',
             tone: 'warning',
             title: { key: 'panelUpdate.outcome.rolledBackTitle' },
             lines: [
                 { key: 'panelUpdate.outcome.rolledBack', vars: versions },
-                { key: causeKey(observation.previous_failure === 'update_failed' ? observation.failure_code : undefined) },
+                reported ? { key: 'panelUpdate.outcome.serverMessage', vars: { message: reported } } : { key: typedCause },
                 { key: 'panelUpdate.outcome.rolledBackNext', vars: versions },
                 { key: 'panelUpdate.outcome.rolledBackResume', vars: versions },
             ],

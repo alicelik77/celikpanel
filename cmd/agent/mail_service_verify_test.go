@@ -46,11 +46,32 @@ type fakeMailHost struct {
 	dovecotSame     bool // `systemctl restart dovecot` leaves the same process
 	// `systemctl stop dovecot` exits 0 and the main process keeps running.
 	dovecotStopLeaves bool
+	// The master's error after a reload, as `doveadm log errors` shows it
+	// ("": the reload was taken up). dovecotReloadUnseen: the log never
+	// shows the reload; dovecotLogUnreadable: doveadm cannot be run.
+	dovecotReloadRefusal string
+	dovecotReloadUnseen  bool
+	dovecotLogUnreadable bool
+	dovecotReloads       int
 }
 
 func (h *fakeMailHost) run(name string, args ...string) ([]byte, error) {
 	call := name + " " + strings.Join(args, " ")
 	h.calls = append(h.calls, call)
+	if strings.HasPrefix(call, "doveadm log errors -s ") {
+		if h.dovecotLogUnreadable {
+			return nil, errors.New("fork/exec /usr/bin/doveadm: no such file or directory")
+		}
+		log := "Oct 31 23:59:58.000001 Warning: auth: an older line\n"
+		if h.dovecotReloads > 0 && !h.dovecotReloadUnseen {
+			log += "Nov 01 11:59:43.751803 Warning: master: SIGHUP received - reloading configuration\n"
+			if h.dovecotReloadRefusal != "" {
+				log += "Nov 01 11:59:43.751803 Error: master: Failed to read configuration: Failed to read config: " +
+					h.dovecotReloadRefusal + " - doveconf execution fallback is disabled\n"
+			}
+		}
+		return []byte(log), nil
+	}
 	switch call {
 	case "postfix check":
 		if h.checkOutput != "" {
@@ -99,6 +120,8 @@ func (h *fakeMailHost) run(name string, args ...string) ([]byte, error) {
 	case "systemctl restart dovecot", "systemctl reload-or-restart dovecot":
 		if !h.dovecotSame && call == "systemctl restart dovecot" {
 			h.dovecotPID += 1000
+		} else if h.dovecotPID != 0 {
+			h.dovecotReloads++
 		}
 		h.dovecotReadings = 0
 		return nil, nil
@@ -122,6 +145,7 @@ func (h *fakeMailHost) run(name string, args ...string) ([]byte, error) {
 		if h.dovecotPID == 0 {
 			return []byte("dovecot.service is not active, cannot reload.\n"), fakeExit{"exit status 1"}
 		}
+		h.dovecotReloads++
 		h.dovecotReadings = 0
 		return nil, nil
 	}
@@ -341,6 +365,83 @@ func TestDovecotRestartIsJudgedByTheRunningProcess(t *testing.T) {
 	}
 }
 
+// lab run 2, E-new-2 (Arch, Dovecot 2.4.5): `systemctl reload dovecot`
+// exited 0 while the master logged "Failed to read configuration" and kept
+// its previous settings. The answer comes from Dovecot's own log.
+func TestDovecotReloadIsJudgedByDovecotsOwnLog(t *testing.T) {
+	host := installFakeMailHost(t)
+	state, err := applyDovecotVerified(host.run, mailServiceReload)
+	if err != nil || state != mailServiceReloaded {
+		t.Fatalf("state %q err %v", state, err)
+	}
+	if !readDovecotLog(host.calls) {
+		t.Fatalf("the reload was not read from Dovecot's log: %v", host.calls)
+	}
+
+	host = installFakeMailHost(t)
+	host.dovecotReloadRefusal = "Error in configuration file /etc/dovecot/conf.d/96-celikpanel-sieve.conf line 23: Unknown section name: sieve_script"
+	_, err = applyDovecotVerified(host.run, mailServiceReload)
+	failure := wantMailServiceError(t, err, mailServiceStageReload, false)
+	if !strings.Contains(failure.detail, "line 23: Unknown section name: sieve_script") || strings.Contains(failure.detail, "fallback") {
+		t.Fatalf("detail = %q", failure.detail)
+	}
+	if !dovecotRefusedUnknownSetting(err) {
+		t.Fatal("an unknown section refused by the running Dovecot must be recognised")
+	}
+
+	// The TLS path's reload-or-restart on a running Dovecot is a reload too.
+	host = installFakeMailHost(t)
+	host.dovecotReloadRefusal = "Error in configuration file /etc/dovecot/conf.d/98-celikpanel-tls.conf line 3: ssl_server_cert_file: open failed"
+	_, err = applyDovecotVerified(host.run, mailServiceReloadOrStart)
+	wantMailServiceError(t, err, mailServiceStageReload, false)
+
+	// The log never shows the reload, or cannot be read: only a refusal in
+	// the record fails, so the reload is judged by the unit as before (lab
+	// run 3: an unreadable record rolled back a correct mail TLS setup).
+	host = installFakeMailHost(t)
+	host.dovecotReloadUnseen = true
+	if state, err := applyDovecotVerified(host.run, mailServiceReload); err != nil || state != mailServiceReloaded {
+		t.Fatalf("unseen reload: state %q err %v", state, err)
+	}
+	host = installFakeMailHost(t)
+	host.dovecotLogUnreadable = true
+	if state, err := applyDovecotVerified(host.run, mailServiceReload); err != nil || state != mailServiceReloaded {
+		t.Fatalf("unreadable record: state %q err %v", state, err)
+	}
+
+	// A restart is judged by the new main process, not by the log.
+	host = installFakeMailHost(t)
+	if _, err := applyDovecotVerified(host.run, mailServiceRestart); err != nil || readDovecotLog(host.calls) {
+		t.Fatalf("restart: %v %v", err, host.calls)
+	}
+}
+
+func TestDovecotReloadLogReadsTheMeasuredLines(t *testing.T) {
+	// Captured from Arch's Dovecot 2.4.5 (isolated check, 1 Nov 2026).
+	out := "Nov 01 11:59:43.751803 Warning: master: SIGHUP received - reloading configuration\n" +
+		"Nov 01 11:59:43.751803 Error: master: Failed to read configuration: Failed to read config: Error in configuration file /etc/dovecot/conf.d/96-celikpanel-sieve.conf line 23: Unknown section name: sieve_script - doveconf execution fallback is disabled\n" +
+		"Nov 01 11:59:48.873958 Warning: master: SIGHUP received - reloading configuration\n"
+	if reloaded, refusal := dovecotReloadLog(out); !reloaded || refusal != "" {
+		t.Fatalf("a later successful reload: %v %q", reloaded, refusal)
+	}
+	reloaded, refusal := dovecotReloadLog(strings.Join(strings.Split(out, "\n")[:2], "\n"))
+	if !reloaded || refusal != "Error in configuration file /etc/dovecot/conf.d/96-celikpanel-sieve.conf line 23: Unknown section name: sieve_script" {
+		t.Fatalf("refused reload: %v %q", reloaded, refusal)
+	}
+	// Dovecot 2.3 (Ubuntu 24.04) puts the level after the process name.
+	old := "Nov 01 11:12:20 master: Warning: SIGHUP received - reloading configuration\n"
+	if reloaded, refusal := dovecotReloadLog(old); !reloaded || refusal != "" {
+		t.Fatalf("2.3 reload: %v %q", reloaded, refusal)
+	}
+	if reloaded, refusal := dovecotReloadLog(old + "Nov 01 11:12:20 master: Error: Failed to read configuration: Error in configuration file /etc/dovecot/conf.d/98-celikpanel-tls.conf line 3: ssl_cert: Can't open file\n"); !reloaded ||
+		refusal != "Error in configuration file /etc/dovecot/conf.d/98-celikpanel-tls.conf line 3: ssl_cert: Can't open file" {
+		t.Fatalf("2.3 refused reload: %v %q", reloaded, refusal)
+	}
+	if reloaded, refusal := dovecotReloadLog("Nov 01 11:00:00 Error: imap(bob): something else\n"); reloaded || refusal != "" {
+		t.Fatalf("no reload: %v %q", reloaded, refusal)
+	}
+}
+
 func TestMailServiceLineIsOneBoundedLineWithoutPasswords(t *testing.T) {
 	line := mailServiceLine([]byte("\npostfix/postfix-script: warning: not owned by root: /var/spool/postfix/etc/resolv.conf\n" +
 		"postfix: fatal: bad string length 0 < 1: smtp_sasl_password = hunter2\nmore\n"))
@@ -353,4 +454,14 @@ func TestMailServiceLineIsOneBoundedLineWithoutPasswords(t *testing.T) {
 	if got := mailServiceLine(nil); got != "" {
 		t.Fatalf("line of nothing = %q", got)
 	}
+}
+
+// readDovecotLog reports whether Dovecot's log of a reload was read.
+func readDovecotLog(calls []string) bool {
+	for _, call := range calls {
+		if strings.HasPrefix(call, "doveadm log errors -s ") {
+			return true
+		}
+	}
+	return false
 }

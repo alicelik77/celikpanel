@@ -90,6 +90,9 @@ type OSUpdatesStatusResponse struct {
 	Vendors       []OSUpdatesVendorOrigin `json:"vendors"`
 	Outside       []OSUpdatesOutside      `json:"outside"`
 	DropIn        *OSUpdatesDropIn        `json:"drop_in,omitempty"`
+	// AutoConfig is the owner's automatic/manual choice on apt systems
+	// (alpha.114), read from apt's own file.
+	AutoConfig *OSUpdatesAutoConfig `json:"auto_config,omitempty"`
 	// NeedrestartAutoRestart (Ubuntu): needrestart is configured to restart
 	// services by itself after updates (what the OS does, not the panel).
 	NeedrestartAutoRestart bool   `json:"needrestart_auto_restart,omitempty"`
@@ -111,4 +114,70 @@ type WriteVendorUpdateOriginsResponse struct {
 	Effective bool   `json:"effective"`
 	Error     string `json:"error,omitempty"`
 	ErrorCode string `json:"error_code,omitempty"`
+}
+
+// OSUpdatesAutoConfig is the file that holds the owner's choice between
+// automatic and manual updates on Debian and Ubuntu (alpha.114):
+// /etc/apt/apt.conf.d/20auto-upgrades, apt's own file.
+type OSUpdatesAutoConfig struct {
+	Path string `json:"path"`
+	// State: absent, panel (exactly the text CelikPanel writes), stock
+	// (exactly the two standard lines a distribution writes), edited (the
+	// owner's own text), unknown.
+	State string `json:"state"`
+	// Mode (auto or manual) is what a panel or stock file says.
+	Mode string `json:"mode,omitempty"`
+	// CurrentSHA256 is the file's digest, empty when absent; a change must
+	// send it back so a file edited in between is never replaced.
+	CurrentSHA256 string `json:"current_sha256,omitempty"`
+	// Current is the file's text (bounded), so the owner reads it before
+	// confirming a change.
+	Current    string `json:"current,omitempty"`
+	Unreadable bool   `json:"unreadable,omitempty"`
+	// LegacyPath names the file the earlier installer wrote; LegacyState is
+	// "" (absent), panel (exactly what the installer wrote) or edited.
+	LegacyPath  string `json:"legacy_path,omitempty"`
+	LegacyState string `json:"legacy_state,omitempty"`
+	// Overridden: apt's effective value differs from what the file says,
+	// because another file wins.
+	Overridden bool `json:"overridden,omitempty"`
+	// TimerState: enabled, disabled, masked, unknown (apt's two timers).
+	TimerState string `json:"timer_state"`
+	// Covers are the origins unattended-upgrades is set to install from, as
+	// apt reports them (bounded).
+	Covers []string `json:"covers,omitempty"`
+	// ProposedAuto and ProposedManual are the exact texts a change would
+	// write, shown before the owner confirms.
+	ProposedAuto   string `json:"proposed_auto,omitempty"`
+	ProposedManual string `json:"proposed_manual,omitempty"`
+}
+
+type SetOSUpdatesModeRequest struct {
+	ServiceMutationBinding
+	// Mode: auto or manual.
+	Mode string `json:"mode"`
+	// ExpectedCurrentSHA256 is the CurrentSHA256 the owner saw (empty when
+	// the file was absent); a different file is never replaced.
+	ExpectedCurrentSHA256 string `json:"expected_current_sha256"`
+	// ConfirmOwnerEdit: the owner read the text of their own file and agrees
+	// to replace it.
+	ConfirmOwnerEdit bool `json:"confirm_owner_edit"`
+}
+
+type SetOSUpdatesModeResponse struct {
+	Written       bool     `json:"written"`
+	Path          string   `json:"path,omitempty"`
+	Mode          string   `json:"mode,omitempty"`
+	PreviousState string   `json:"previous_state,omitempty"`
+	LegacyRemoved bool     `json:"legacy_removed,omitempty"`
+	TimersEnabled []string `json:"timers_enabled,omitempty"`
+	TimerState    string   `json:"timer_state,omitempty"`
+	// Effective: apt-config dump, run after the write, shows the choice and
+	// (for automatic) apt's timers are not disabled or masked.
+	Effective bool `json:"effective"`
+	// EffectiveReason when not effective: overridden_by_other_file,
+	// timer_masked, timer_disabled, apt_config_unreadable.
+	EffectiveReason string `json:"effective_reason,omitempty"`
+	Error           string `json:"error,omitempty"`
+	ErrorCode       string `json:"error_code,omitempty"`
 }

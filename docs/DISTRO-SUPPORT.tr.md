@@ -47,7 +47,7 @@ Kurallar:
 | 📧 Postfix | Servis | `postfix` | `postfix` | SMTP sunucusu | — |
 | 📮 Exim | Servis | — | — | SMTP sunucusu | — |
 | 🧹 Rspamd | Servis | `rspamd` | `rspamd` | spam filtresi | SMTP sunucusu |
-| 📬 Dovecot | Servis | `dovecot-imapd` `dovecot-pop3d` `dovecot-lmtpd` | `dovecot` | IMAP sunucusu | — |
+| 📬 Dovecot | Servis | `dovecot-imapd` `dovecot-pop3d` `dovecot-lmtpd` | `dovecot` `pigeonhole` | IMAP sunucusu | — |
 | 🛡️ SpamAssassin | Servis | `spamassassin` `spamd` `spamass-milter` | — | spam filtresi | SMTP sunucusu |
 
 ### Güvenlik

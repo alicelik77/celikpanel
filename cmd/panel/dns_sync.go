@@ -474,7 +474,7 @@ func (p *Panel) prepareDNSZoneSyncPlan(
 		zoneType = p.dnsZoneType(ctx)
 	}
 
-	tx, err := p.db.GetDB().BeginTx(ctx, nil)
+	tx, err := beginDNSWriteTx(ctx, p.db.GetDB())
 	if err != nil {
 		return dnsZoneSyncPlan{}, fmt.Errorf("begin DNS publication snapshot: %w", err)
 	}
@@ -673,7 +673,7 @@ func (p *Panel) recordDNSZoneSyncSuccess(
 	if !lease.hasLease() {
 		return false, errors.New("DNS publication success has no exact lease")
 	}
-	tx, err := p.db.GetDB().BeginTx(ctx, nil)
+	tx, err := beginDNSWriteTx(ctx, p.db.GetDB())
 	if err != nil {
 		return false, err
 	}

@@ -175,6 +175,7 @@ test('every dialogue in the product is the shared one', () => {
     'VendorLaneDialog.tsx': 1,
     'RepoCard.tsx': 1,
     'NodePatches.tsx': 1,
+    'OSUpdatesChoice.tsx': 1,
     'RestartsCard.tsx': 1,
     'RoundcubeUpdateFlow.tsx': 1,
     // alpha.110: webmail's own address - add to the zone, set up, remove.
@@ -186,6 +187,11 @@ test('every dialogue in the product is the shared one', () => {
     'FirewallPanel.tsx': 1,
     'ServiceList.tsx': 7,
     'ServiceShell.tsx': 1,
+    // alpha.114: the one copy of an invitation link the server could not email.
+    'Invitations.tsx': 1,
+    // alpha.114: a mailbox's out-of-office reply.
+    'MailAutoresponderDialog.tsx': 1,
+    'MailSetupDialog.tsx': 1,
   });
 });
 

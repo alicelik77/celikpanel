@@ -29,6 +29,8 @@ const screenFiles = [
   'ComponentDetail', 'ServiceRecordLookup', 'ServiceShell', 'DomainDetail',
   // The infrastructure zone's page (2026-10-16).
   'InfrastructureZone',
+  // The Dashboard's "no website yet" cards (alpha.114, lab run 2).
+  'NoWebsiteCards',
   // My account, whose two-factor panel was a Settings section until
   // v0.1.0-alpha.98 (D-037).
   'AccountPage',
@@ -36,8 +38,11 @@ const screenFiles = [
 const icons = new Set(['AlertTriangle', 'XCircle']);
 // Children of the screens under test that are not under test themselves.
 const stubbedComponents = [
-  'Link', 'PHPToolVersion', 'RepoCard', 'SecurityUpdatesCard', 'RoundcubeUpdateCard', 'WebmailAddressCard', 'RestartsCard', 'AppAccountLine', 'IsolationFact', 'TeamMembersPage', 'DNSServerSettings', 'SecurityAuditCard', 'ServerSetupSettings',
+  'Link', 'PHPToolVersion', 'PanelPortCard', 'RepoCard', 'SecurityUpdatesCard', 'RoundcubeUpdateCard', 'WebmailAddressCard', 'RestartsCard', 'AppAccountLine', 'IsolationFact', 'TeamMembersPage', 'DNSServerSettings', 'SecurityAuditCard', 'ServerSetupSettings',
   'DomainGeneralSettings', 'DomainSSLOverviewCard', 'DomainMailManager', 'ChangePasswordModal', 'ChangeEmailModal',
+  // alpha.114: My plan reads its own address.
+  'MyPlanCard',
+  'PendingInvitations', 'EmailVerificationCard',
 ];
 for (const name of screenFiles) {
   for (const match of source(`components/${name}.tsx`).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {
@@ -71,6 +76,11 @@ const stub = dataModule(`
   export const availablePanelUpdate = () => null;
   export const wholeVersion = (text) => text;
   export const usePanelUpdateDiscovery = () => ({ status: 'idle', value: null, readAt: 0 });
+  // alpha.114: invitations on the Users page and the address confirmation on My account.
+  export const usePendingInvitations = () => ({ retry: async () => ({ state: 'loading' }) });
+  export const useInvitationOutcome = () => ({ report: () => {}, dialog: null });
+  export const useInvitationActions = () => ({ act: async () => {}, busy: null, dialog: null });
+  export const InvitedStatus = () => null;
   ${stubbedComponents.filter((name) => !icons.has(name)).map((name) => `export const ${name} = (props) => props.children ?? null;`).join('\n')}
 `);
 const shared = sharedLayer(stub);
@@ -97,6 +107,8 @@ const own = {
   '/lib/componentName': compileSource('lib/componentName.ts', () => stub),
   // The infrastructure DNS zones beside the domains (2026-10-16).
   '/lib/infrastructureZones': compileSource('lib/infrastructureZones.ts', besideRemote),
+  // The panel's certificate name (alpha.114 screens round).
+  '/lib/panelCertificate': compileSource('lib/panelCertificate.ts', () => stub),
   // What the license check itself says (D-039, 2026-10-30).
   '/lib/licenseOffline': compileSource('lib/licenseOffline.ts', () => stub),
 };
@@ -104,8 +116,12 @@ const own = {
 // ended with, and a change whose one-time result is not kept.
 own['/ServiceActionNotice'] = shared.compile('components/ServiceActionNotice.tsx', own);
 own['/OnceOnlyNotice'] = shared.compile('components/OnceOnlyNotice.tsx', own);
+// The shared problem pattern is the shipped one too (2026-10-31).
+own['/BlockingProblems'] = shared.compile('components/BlockingProblems.tsx', own);
 // So is the notice of a certificate request certbot did not fulfil (11 Oct 2026).
 own['/CertificateIssueNotice'] = shared.compile('components/CertificateIssueNotice.tsx', own);
+// alpha.114: the names a new site found pointing elsewhere, the shipped card.
+own['/KeptSiteRecords'] = shared.compile('components/KeptSiteRecords.tsx', own);
 const modalURL = shared.compile('components/AddDomainModal.tsx', own);
 const stripURL = shared.compile('components/DatabaseAccountStrip.tsx', own);
 const load = async (name, more = {}) => (await import(shared.compile(`components/${name}.tsx`, { ...own, ...more })))[name];
@@ -128,6 +144,7 @@ const sslSettingsURL = shared.compile('components/DomainSSLSettings.tsx', own);
 const DomainSSLSettings = (await import(sslSettingsURL)).DomainSSLSettings;
 const ImportPage = await load('ImportPage');
 const LicenseNotice = await load('LicenseNotice');
+const NoWebsiteCards = await load('NoWebsiteCards');
 const MonitoringPage = await load('MonitoringPage');
 const ServiceShell = await load('ServiceShell');
 const ComponentDetail = await load('ComponentDetail', { '/ServiceShell': dataModule(`export const ServiceShell = (props) => props.children;`) });
@@ -376,7 +393,7 @@ const table = [
     negative: ['databases.noServersHint', 'db.teamEngineUnavailable', 'dbtools.install'],
     checking: 'db.checkingEngines', unknown: 'db.enginesUnknown',
     known: [json(caps({ database_servers: [] })), 'databases.noServersHint'],
-    alsoDisabled: 'Create Database',
+    alsoDisabled: 'ddb.create',
   },
   {
     screen: 'Domain databases (team member)', Component: DomainDatabaseManager, props: { ...domain, isAdditionalUser: true }, role: 'additional_user',
@@ -384,7 +401,7 @@ const table = [
     negative: ['db.teamEngineUnavailable', 'databases.empty.databases'],
     checking: 'db.checking', unknown: 'db.unknown',
     known: [json({ databases: [], available_types: [] }), 'db.teamEngineUnavailable'],
-    alsoDisabled: 'Create Database',
+    alsoDisabled: 'ddb.create',
   },
   {
     screen: 'Domain connection card', Component: DomainConnection, props: domain,
@@ -854,7 +871,7 @@ test('Domain databases: nothing is created on an engine the server did not name'
     try {
       await mount(DomainDatabaseManager, domain);
       assert.equal(tree.root.findAll((node) => node.type === 'form').length, 0, 'the create form is shown without a known engine');
-      for (const node of buttons('Create Database')) assert.equal(node.props.disabled, true);
+      for (const node of buttons('ddb.create')) assert.equal(node.props.disabled, true);
       assert.equal(calls.filter((call) => call.method !== 'GET').length, 0);
     } finally {
       await cleanup();
@@ -863,7 +880,7 @@ test('Domain databases: nothing is created on an engine the server did not name'
   serve();
   try {
     await mount(DomainDatabaseManager, domain);
-    await press(buttons('Create Database')[0]);
+    await press(buttons('ddb.create')[0]);
     assert.deepEqual(tree.root.findAll((node) => node.type === 'option').map((node) => node.props.value), ['mysql']);
   } finally {
     await cleanup();
@@ -985,7 +1002,7 @@ test('Settings: a certificate request whose poll gets no answer is never called 
   try {
     await mount(Settings);
     await act(async () => { await settled(); await settled(); });
-    assert.ok(!has('panelCert.failed') && !has('panelCert.failedDetail') && !has('panelCert.failedPlain'));
+    assert.ok(!has('panelCert.failed') && !has('panelCert.failedDetail') && !has('panelCert.failedPlain') && !has('panelCert.failedTechnical'));
     assert.deepEqual(globalThis.currentTest.toasts.filter(([kind]) => kind === 'error'), []);
     assert.ok(buttons('panelCert.issu').every((node) => node.props.disabled), 'a second request is offered while the first is not known');
     assert.ok(globalThis.localStorage.getItem('celikpanel.panel-certificate-operation.v1'), 'the exact request was forgotten');
@@ -1128,6 +1145,35 @@ test('Import: an apply whose answer is lost says the result is unknown, starts n
     } finally {
       await cleanup();
     }
+  }
+});
+
+// alpha.114 lab run 2 (S-new-1, Dashboard): the main domain's website lives on
+// the first server, so the card is never drawn on a server that joined it, nor
+// while the link state is unread; a first or standalone server still gets it.
+test('Dashboard "no website yet" card: not on a joined server, not while unread, yes on a first or standalone server', async () => {
+  const cardCount = () => tree.root.findAll((node) => node.props && node.props['data-dashboard-no-website'] !== undefined && typeof node.type === 'string').length;
+  for (const [answer, drawn] of [
+    [json({ role: 'second', peer_setup: 'reporting' }), 0],
+    [json({ role: 'first' }), 1],
+    [json({ role: 'none' }), 1],
+    ...Object.values(failures).map((answer) => [answer, 0]),
+  ]) {
+    serve({ '/api/v1/setup/peer': answer });
+    try {
+      await mount(NoWebsiteCards, { zones: ['celikhost.com'] });
+      assert.equal(cardCount(), drawn);
+    } finally {
+      await cleanup();
+    }
+  }
+  serve({ '/api/v1/setup/peer': json({ role: 'second' }) });
+  try {
+    await mount(NoWebsiteCards, { zones: [] });
+    assert.equal(tree.toJSON(), null);
+    assert.equal(calls.filter((call) => call.url.includes('/setup/peer')).length, 0, 'the link state is read for nothing');
+  } finally {
+    await cleanup();
   }
 });
 
@@ -1520,7 +1566,7 @@ test('every text of the three states exists in both languages, and the could-not
     'databases.checkingUsers', 'databases.deleteDatabase', 'databases.deleteUser',
     // The second batch: sentences that are not a row's checking or could-not-check line.
     'common.resultUnknown', 'settings.2fa.resultUnknown', 'panelCert.notReadable', 'panelCert.unconfirmed', 'panelCert.notRecorded',
-    'panelCert.failedDetail', 'panelCert.failedPlain', 'panelCert.checkAgain', 'panelCert.openSecure', 'panelCert.reopen.title',
+    'panelCert.failedDetail', 'panelCert.failedPlain', 'panelCert.failedTechnical', 'panelCert.checkAgain', 'panelCert.openSecure', 'panelCert.reopen.title',
     'panelCert.reopen.body', 'panelCert.reopen.reload', 'panelCert.reopen.stay', 'panelCert.reopen.stayed', 'plans.checking',
     'files.contentUnknown', 'files.uploadUnreadable', 'ssl.rereading', 'import.checkingSubs', 'import.noSubs', 'import.inspectUnanswered',
     'import.runAgain', 'import.unknown.title', 'import.unknown.body', 'import.unknown.check', 'import.unknown.checkAgain',
@@ -2087,7 +2133,7 @@ test('every infrastructure zone text exists in both languages', () => {
   const keysIn = (text) => [...text.matchAll(/^\s*'((?:domains\.infrastructure\.[A-Za-z]+)|dns\.managedBySetup(?:Hint)?|dns\.requestedByPeer)':\s*'(.*)',\s*$/gm)].map((m) => [m[1], m[2]]);
   const en = new Map(keysIn(catalogue('en')));
   const tr = new Map(keysIn(catalogue('tr')));
-  assert.equal(en.size, 20);
+  assert.equal(en.size, 23); // alpha.114: noWebsite, hostWebsite, hostWebsiteHelp
   for (const [key, value] of en) assert.ok(tr.has(key) && tr.get(key) !== value, key);
 });
 
@@ -2132,4 +2178,91 @@ test('a component page shows the full package version and its source in its head
     assert.equal(versionNode(), undefined, 'a record without a version shows one');
     assert.ok(!has('component.packageVersion'));
   } finally { await cleanup(); }
+});
+
+// alpha.114 (owner, 31 Oct 2026): no change needs a page refresh. Adding a
+// website over a DNS-only zone turns the zone's row into the site's row, and a
+// delete turns it back, on the same screen; every reader of the same
+// addresses (the navigation counter, the dashboard cards) is read again.
+// alpha.114: hicbir degisiklik sayfa yenilemesi istemez.
+function liveDomains(initial) {
+  const state = { ...initial };
+  return {
+    state,
+    table: {
+      ...infraServed,
+      '/api/v1/domains': () => Response.json(state.domains),
+      '/api/v1/dns/infrastructure-zones': () => Response.json({ zones: state.zones }),
+    },
+  };
+}
+const siteRow = (id, name) => ({ id, domain_name: name, status: 'active', created_at: '2026-10-31T00:00:00Z', project_type: 'static' });
+
+test('Domains: "Host a website" on a DNS-only zone opens Add domain with the name, and the rows change without a refresh', async () => {
+  const live = liveDomains({ domains: [], zones: [infraZone()] });
+  serve(live.table, 'admin', {
+    '/api/v1/domains/create': (options) => {
+      assert.equal(JSON.parse(options.body).domain, 'celikhost.com', 'the zone name was not the starting value');
+      live.state.domains = [siteRow(4, 'celikhost.com')];
+      live.state.zones = [infraZone({ domain_id: 4 })];
+      return Response.json({ DomainID: 4, site_records: { added: [{ name: 'celikhost.com', type: 'A', content: '192.0.2.1' }], kept: [{ name: 'www.celikhost.com', type: 'CNAME', content: 'elsewhere.example.net' }], ipv4: '192.0.2.1' } });
+    },
+  });
+  try {
+    await mount(Domains);
+    assert.ok(has('domains.infrastructure.noWebsite'), 'the DNS-only row does not say it has no website');
+    const zoneReads = reads('/api/v1/dns/infrastructure-zones');
+    const listReads = reads('/api/v1/domains');
+    await press(buttons('domains.infrastructure.hostWebsite')[0]);
+    const input = tree.root.findAll((node) => node.type === 'input' && node.props.value === 'celikhost.com');
+    assert.equal(input.length, 1, 'Add domain did not open with the zone name');
+    const form = tree.root.findAll((node) => node.type === 'form')[0];
+    await act(async () => { await form.props.onSubmit({ preventDefault() {} }); await settled(); await settled(); await settled(); });
+    assert.ok(reads('/api/v1/dns/infrastructure-zones') > zoneReads, 'the zone list was not read again');
+    assert.ok(reads('/api/v1/domains') > listReads, 'the domain list was not read again');
+    assert.ok(!has('domains.infrastructure.noWebsite'), 'the old DNS-only row stayed after the site was added');
+    assert.ok(has('domains.infrastructure.siteBadge'), 'the new site row is not shown');
+    assert.ok(has('dnsov.site.keptTitle'), 'the names that point elsewhere are not shown');
+  } finally {
+    await cleanup();
+  }
+});
+
+test('Domains: one confirmation for a bulk delete, and the rows change without a refresh', async () => {
+  const live = liveDomains({ domains: [siteRow(4, 'celikhost.com'), siteRow(5, 'example.org')], zones: [infraZone({ domain_id: 4 })] });
+  serve(live.table, 'admin', {
+    '/api/v1/domains/4': () => { live.state.domains = live.state.domains.filter((row) => row.id !== 4); live.state.zones = [infraZone()]; return Response.json({ success: true }); },
+    '/api/v1/domains/5': () => { live.state.domains = live.state.domains.filter((row) => row.id !== 5); return Response.json({ success: true }); },
+  });
+  const asked = [];
+  try {
+    await mount(Domains);
+    globalThis.confirm = (message) => { asked.push(message); return true; };
+    const boxes = tree.root.findAll((node) => node.type === 'input' && node.props.type === 'checkbox');
+    await act(async () => { boxes[0].props.onChange(); await settled(); });
+    const remove = hostButtons().find((node) => [].concat(node.props.children).flat(Infinity).includes('common.remove'));
+    assert.ok(remove, 'the bulk remove button is not shown');
+    await press(remove);
+    assert.deepEqual(asked, ['domains.confirmBulkDelete'], 'a bulk delete asked more than once, or not by count and names');
+    assert.equal(calls.filter((call) => call.method === 'DELETE').length, 2);
+    await act(async () => { await settled(); await settled(); });
+    assert.ok(!has('example.org'), 'a deleted domain stayed on screen');
+    assert.ok(has('domains.infrastructure.noWebsite'), 'the zone did not return as a DNS-only row');
+  } finally {
+    await cleanup();
+  }
+});
+
+test('Databases with no engine: an administrator is sent to Components; anyone else is told to ask the provider', async () => {
+  for (const role of ['admin', 'customer']) {
+    serve({ '/api/v1/database-servers': json([]) }, role);
+    try {
+      await mount(DatabaseManagementV2);
+      assert.ok(has('databases.noServers'));
+      assert.equal(buttons('domains.goServices').length, role === 'admin' ? 1 : 0, role);
+      assert.equal(has('databases.noServersHintCustomer'), role !== 'admin', role);
+    } finally {
+      await cleanup();
+    }
+  }
 });

@@ -44,6 +44,7 @@ func init() {
 		postfixVirtualPath = filepath.Join(d, "virtual")
 		postfixDomainsPath = filepath.Join(d, "vmailbox_domains")
 		dovecotUsersPath = filepath.Join(d, "dovecot-users")
+		autoresponderTransportPath = filepath.Join(d, "celikpanel_transport")
 		mailRootDir = filepath.Join(d, "vhosts")
 		_ = os.MkdirAll(d, 0o700)
 	}
@@ -404,10 +405,19 @@ func (a *Agent) DeleteMailAccount(req *transport.DeleteMailAccountRequest, resp 
 	}
 	ctx, cancel := newMailMutationContext()
 	defer cancel()
-	if err := applyMailFileMutation(ctx, []mailFileWrite{
+	writes := []mailFileWrite{
 		{path: dovecotUsersPath, content: newUsers, mode: 0o640},
 		{path: postfixVBoxPath, content: newVBoxes, mode: 0o644},
-	}, []string{postfixVBoxPath}, nil); err != nil {
+	}
+	postmaps := []string{postfixVBoxPath}
+	// The mailbox's out-of-office route (mail_autoresponder.go) goes with it.
+	if routes, err := readMailFile(autoresponderTransportPath); err == nil {
+		if remaining, removed := removeMailLine(routes, email); removed {
+			writes = append(writes, mailFileWrite{path: autoresponderTransportPath, content: remaining, mode: 0o644})
+			postmaps = append(postmaps, autoresponderTransportPath)
+		}
+	}
+	if err := applyMailFileMutation(ctx, writes, postmaps, nil); err != nil {
 		return err
 	}
 	resp.Applied = true

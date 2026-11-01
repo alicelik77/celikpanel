@@ -216,11 +216,12 @@ func (p *Panel) handleCreateDNSZone(w http.ResponseWriter, r *http.Request, doma
 		writeServerError(w, err)
 		return
 	}
-	if !p.publishDNSMutation(w, r.Context(), domainName) {
+	publication, ok := p.publishDNSMutation(w, r.Context(), domainName)
+	if !ok {
 		return
 	}
 	if err := json.NewEncoder(w).Encode(map[string]interface{}{
-		"success": true, "id": zoneID, "created": created,
+		"success": true, "id": zoneID, "created": created, "publication": publication,
 	}); err != nil {
 		log.Printf("encode DNS zone creation %s: %v", domainName, err)
 	}
@@ -504,7 +505,22 @@ func managedDNSRecord(zoneName, ownerName, recordType string) bool {
 	return recordType == "SOA" || (recordType == "NS" && ownerName == zoneName)
 }
 
-func (p *Panel) publishDNSMutation(w http.ResponseWriter, ctx context.Context, domainName string) bool {
+// What a saved DNS change answers about its publication.
+const (
+	// The zone is published and verified.
+	dnsPublicationPublished = "published"
+	// The change is saved; its publication waits for the panel database
+	// (another DNS write held it longer than the busy timeout) and the
+	// reconciler publishes it by itself, nobody has to act.
+	dnsPublicationPublishing = "publishing"
+)
+
+// publishDNSMutation publishes a zone whose change is already committed. It
+// returns the publication state for the success answer, or false after it
+// wrote the refusal. A publication delayed by a busy panel database is not a
+// failure (lab E3: the saved record answered HTTP 500): it answers success
+// with "publishing" and the reconciler finishes it.
+func (p *Panel) publishDNSMutation(w http.ResponseWriter, ctx context.Context, domainName string) (string, bool) {
 	// The ledger mutation is already committed. A disconnected browser must
 	// not cancel the corresponding authoritative publication halfway through.
 	publishCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), dnsPublishTimeout)
@@ -516,28 +532,43 @@ func (p *Panel) publishDNSMutation(w http.ResponseWriter, ctx context.Context, d
 			var held *dnsPublicationHeldError
 			if errors.As(err, &held) {
 				writeDNSPublicationHeld(w, held)
-				return false
+				return "", false
 			}
 			if guidance, ok := dnsPublicationGuidanceAPIError(err); ok {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusConflict)
 				_ = json.NewEncoder(w).Encode(guidance)
-				return false
+				return "", false
 			}
 			if strings.Contains(publicationErr.Error(), dnsAgentPendingRecoveryRefusal) {
 				p.dnsPendingPublications().armRepublish()
 				writeDNSPublicationHeld(w, nil)
-				return false
+				return "", false
 			}
 			writeCodedError(w, http.StatusConflict, errCodeDNSPublicationFailed,
-				"the DNS change is saved, but it could not be published or verified; check the exact DNS operation and retry the same publication", "")
-			return false
+				dnsSavedNotPublishedMessage, "")
+			return "", false
 		}
+		if sqliteBusy(err) {
+			// Nothing of the publication was stored (its transaction rolled
+			// back) or its exact lease is kept for recovery; the zone stays
+			// pending and the reconciler publishes it once the database is
+			// free. No second publication is started from here.
+			log.Printf("[dns] publish zone %s waits for the panel database: %v", domainName, err)
+			scheduler := p.dnsPendingPublications()
+			scheduler.armRepublish()
+			scheduler.poke()
+			return dnsPublicationPublishing, true
+		}
+		// A ledger the publication cannot read (for example a zone without
+		// its SOA) stays an internal error, as before.
 		writeServerError(w, fmt.Errorf("publish DNS zone %s: %w", domainName, err))
-		return false
+		return "", false
 	}
-	return true
+	return dnsPublicationPublished, true
 }
+
+const dnsSavedNotPublishedMessage = "the DNS change is saved, but it could not be published or verified; check the exact DNS operation and retry the same publication"
 
 func (p *Panel) handleAddDNSRecord(w http.ResponseWriter, r *http.Request, domainName string) bool {
 	var request dnsRecordCreateRequest
@@ -562,7 +593,7 @@ func (p *Panel) handleAddDNSRecord(w http.ResponseWriter, r *http.Request, domai
 		writeDNSZoneLookupError(w, err)
 		return false
 	}
-	tx, err := p.db.GetDB().BeginTx(r.Context(), nil)
+	tx, err := beginDNSWriteTx(r.Context(), p.db.GetDB())
 	if err != nil {
 		writeServerError(w, err)
 		return false
@@ -623,10 +654,11 @@ func (p *Panel) handleAddDNSRecord(w http.ResponseWriter, r *http.Request, domai
 		writeServerError(w, fmt.Errorf("commit DNS record: %w", err))
 		return false
 	}
-	if !p.publishDNSMutation(w, r.Context(), domainName) {
+	publication, ok := p.publishDNSMutation(w, r.Context(), domainName)
+	if !ok {
 		return false
 	}
-	if err := json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "id": recordID}); err != nil {
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "id": recordID, "publication": publication}); err != nil {
 		log.Printf("encode DNS record creation for %s: %v", domainName, err)
 	}
 	return true
@@ -644,7 +676,7 @@ func (p *Panel) handleDeleteDNSRecord(w http.ResponseWriter, r *http.Request, do
 		return false
 	}
 
-	tx, err := p.db.GetDB().BeginTx(r.Context(), nil)
+	tx, err := beginDNSWriteTx(r.Context(), p.db.GetDB())
 	if err != nil {
 		writeServerError(w, err)
 		return false
@@ -693,10 +725,11 @@ func (p *Panel) handleDeleteDNSRecord(w http.ResponseWriter, r *http.Request, do
 		writeServerError(w, fmt.Errorf("commit DNS record deletion: %w", err))
 		return false
 	}
-	if !p.publishDNSMutation(w, r.Context(), domainName) {
+	publication, ok := p.publishDNSMutation(w, r.Context(), domainName)
+	if !ok {
 		return false
 	}
-	if err := json.NewEncoder(w).Encode(map[string]bool{"success": true}); err != nil {
+	if err := json.NewEncoder(w).Encode(map[string]any{"success": true, "publication": publication}); err != nil {
 		log.Printf("encode DNS record deletion for %s: %v", domainName, err)
 	}
 	return true
@@ -717,7 +750,7 @@ func (p *Panel) handleUpdateDNSRecord(w http.ResponseWriter, r *http.Request, do
 		return false
 	}
 
-	tx, err := p.db.GetDB().BeginTx(r.Context(), nil)
+	tx, err := beginDNSWriteTx(r.Context(), p.db.GetDB())
 	if err != nil {
 		writeServerError(w, err)
 		return false
@@ -782,10 +815,11 @@ func (p *Panel) handleUpdateDNSRecord(w http.ResponseWriter, r *http.Request, do
 		writeServerError(w, fmt.Errorf("commit DNS record update: %w", err))
 		return false
 	}
-	if !p.publishDNSMutation(w, r.Context(), domainName) {
+	publication, ok := p.publishDNSMutation(w, r.Context(), domainName)
+	if !ok {
 		return false
 	}
-	if err := json.NewEncoder(w).Encode(map[string]bool{"success": true}); err != nil {
+	if err := json.NewEncoder(w).Encode(map[string]any{"success": true, "publication": publication}); err != nil {
 		log.Printf("encode DNS record update for %s: %v", domainName, err)
 	}
 	return true

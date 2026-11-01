@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from '../router';
 import { Network, Server, Check, AlertTriangle, Circle, Loader2 } from 'lucide-react';
-import { readRemote } from '../lib/remote';
+import { invalidate, readRemote } from '../lib/remote';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { dnsEngineText } from '../i18n/dnsEngine';
@@ -183,6 +182,20 @@ function SetupStep({ number, title, description, complete = false }: {
     );
 }
 
+
+// The DNS engine is chosen and started on this page's engine card, never on
+// Components (which sends DNS engines back here): the "missing DNS engine"
+// notes scroll to that card and focus it instead of leaving the page
+// (alpha.114, the Components <-> DNS ping-pong).
+// DNS motoru bu sayfadaki motor kartinda secilir; not o karta kaydirir.
+const ENGINE_CARD_ID = 'dns-engine-card';
+function focusEngineCard() {
+    const card = document.getElementById(ENGINE_CARD_ID);
+    if (!card) return;
+    card.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    card.focus({ preventScroll: true });
+}
+
 export function DNSServerSettings() {
     const { locale } = useI18n();
     const et = (key: Parameters<typeof dnsEngineText>[1]) => dnsEngineText(locale, key);
@@ -248,12 +261,14 @@ export function DNSServerSettings() {
                     />
                 </div>
             )}
-            <DNSEngineCard
-                key={engineRefreshKey}
-                onSnapshotChange={setEngine}
-                identityPlanCurrent={!actionsLocked && (!identityStaging || identityPlanCurrent)}
-                actionsLocked={actionsLocked}
-            />
+            <div id={ENGINE_CARD_ID} tabIndex={-1} className="outline-none">
+                <DNSEngineCard
+                    key={engineRefreshKey}
+                    onSnapshotChange={setEngine}
+                    identityPlanCurrent={!actionsLocked && (!identityStaging || identityPlanCurrent)}
+                    actionsLocked={actionsLocked}
+                />
+            </div>
             {engine && !identityStaging && (activeEngine ? (
                 <DNSInfrastructureSettings
                     key={activeEngine}
@@ -462,6 +477,9 @@ function DNSInfrastructureSettings({
             if (!setupResponse.ok) {
                 const error = await readApiError(setupResponse);
                 if (error.code === 'DNS_PUBLICATION_FAILED') {
+                    // The setup was saved; only its publication is pending.
+                    // Kurulum kaydedildi; yalnız yayımlama bekliyor.
+                    invalidate('dns');
                     const reloaded = await load();
                     setNeedsClusterRetry(true);
                     setActiveStep(3);
@@ -492,6 +510,11 @@ function DNSInfrastructureSettings({
                 }
             }
             setNeedsClusterRetry(false);
+            // The nameservers the zones publish changed; a staged identity is
+            // not applied yet and changes nothing shown elsewhere.
+            // Bölgelerin yayımladığı ad sunucuları değişti; hazırlanan kimlik
+            // henüz uygulanmadı.
+            if (!stagingOnly) invalidate('dns');
             if (await load()) {
                 setActiveStep(3);
                 if (stagingOnly) {
@@ -910,12 +933,13 @@ function DNSInfrastructureSettings({
                                     )}
                                 </div>
                                 {!dnsServiceReady && (
-                                    <Link
-                                        to="/services"
+                                    <button
+                                        type="button"
+                                        onClick={focusEngineCard}
                                         className="rounded-lg border border-warning-mark/60 bg-surface px-3 py-2 text-xs font-semibold text-fg hover:border-warning"
                                     >
-                                        {t('dnssrv.requirement.openComponents')}
-                                    </Link>
+                                        {t('dnssrv.requirement.openEngine')}
+                                    </button>
                                 )}
                             </div>
                         </div>
@@ -1210,12 +1234,13 @@ function DNSInfrastructureSettings({
                             <p className="min-w-0 flex-1 text-xs leading-relaxed text-fg-muted">
                                 {t('dnssrv.requirement.powerdnsMissing')}
                             </p>
-                            <Link
-                                to="/services"
+                            <button
+                                type="button"
+                                onClick={focusEngineCard}
                                 className="rounded-lg border border-warning-mark/60 bg-surface px-3 py-2 text-xs font-semibold text-fg hover:border-warning"
                             >
-                                {t('dnssrv.requirement.openComponents')}
-                            </Link>
+                                {t('dnssrv.requirement.openEngine')}
+                            </button>
                         </div>
                     )}
                     {apiError && <ErrorBanner error={apiError} className="mb-3" />}

@@ -39,7 +39,7 @@ const stub = dataModule(`import React from '${reactURL}';
  export const useNavigationBlocker = () => {};
  export const showToast = () => {};
  export const createPortal = node => node;
- export const refreshRemote = () => {};
+ export const invalidate = () => [];
  export const Button = props => React.createElement('button', props);
  export const ErrorBanner = props => React.createElement('error-banner', props);
  export const KeepWords = props => props.text;

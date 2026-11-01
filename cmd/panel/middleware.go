@@ -57,7 +57,8 @@ func (p *Panel) requireAuth(next http.Handler) http.Handler {
 			writeAuthStatusUnavailable(w)
 			return
 		}
-		userID, err := p.sessions.Validate(r.Context(), cookie.Value)
+		session, err := p.sessions.ValidateIdentity(r.Context(), cookie.Value)
+		userID := session.UserID
 		if err != nil {
 			if errors.Is(err, auth.ErrSessionInvalid) {
 				writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
@@ -147,6 +148,22 @@ func (p *Panel) requireAuth(next http.Handler) http.Handler {
 			writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
 			return
 		}
+		// A "Log in as" session lives only while its operator is active and
+		// may still manage this account (alpha.114).
+		// "Farklı giriş yap" oturumu, operatörü etkin olduğu ve bu hesabı hâlâ
+		// yönetebildiği sürece yaşar.
+		if session.ImpersonatorID > 0 {
+			allowed, checkErr := p.impersonationStillAllowed(r.Context(), session.ImpersonatorID, u)
+			if checkErr != nil {
+				writeAuthStatusUnavailable(w)
+				return
+			}
+			if !allowed {
+				writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
+				return
+			}
+			c.ImpersonatorID = session.ImpersonatorID
+		}
 
 		// Additional users are tenant-scoped team members. Server-global and
 		// account-management surfaces are not inherited from a parent customer.
@@ -208,7 +225,10 @@ func isPublicPath(r *http.Request) bool {
 	if r.URL.Path == "/api/v1/auth/login" || r.URL.Path == "/api/v1/auth/demo" || r.URL.Path == "/api/v1/auth/login/totp" {
 		return true
 	}
-	return false
+	// Forgot password, a reset or invitation link, an address confirmation:
+	// the link's token is the credential (account_recovery_handlers.go).
+	// Parolamı unuttum ve hesap bağlantıları: kimlik bilgisi bağlantının jetonudur.
+	return isAccountRecoveryPublicPath(r)
 }
 
 // isAdminOnlyPath matches the server/OS-layer and infrastructure endpoints
@@ -304,8 +324,10 @@ func isAdditionalUserRestrictedPath(path string) bool {
 		"/api/v1/store",
 		"/api/v1/users",
 		"/api/v1/team-members",
+		"/api/v1/invitations",
 		"/api/v1/plans",
 		"/api/v1/subscriptions",
+		"/api/v1/my",
 		"/api/v1/vpn",
 		"/api/v1/runtimes",
 		"/dbtool",

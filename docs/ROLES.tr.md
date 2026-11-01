@@ -112,6 +112,8 @@ Yetkiler bir **arayüz** meselesi değildir. "Önce API" ilkesi gereği her kura
 
 Arayüz yalnızca API'nin reddedeceği şeyi gizler — "kurmadığın servis görünmez" ile "yalnızca sahip olduğunu görürsün" böylece aynı mekanizma haline gelir.
 
+**Kendi kimlik bilgileri (v0.1.0-alpha.114).** Yönetici ya da bayi bir hesabı parola yerine *davetle* açabilir; müşteri de ek kullanıcı için aynısını yapabilir: kişi kendi parolasını tek kullanımlık bir bağlantıyla belirler, davet eden parolayı görmez ve seçmez. Hesabı açan (`parent_id`) ya da yönetici daveti yeniden gönderebilir veya iptal edebilir. Adresi onaylanmış her hesap unuttuğu parolayı e-postayla sıfırlayabilir. Bkz. [ACCOUNT-ACCESS.tr.md](ACCOUNT-ACCESS.tr.md).
+
 ---
 
 ## Veri modeli sonuçları (0.2 sprinti için)
@@ -125,6 +127,24 @@ Mevcut şema omurgayı zaten içeriyor: `users(role)` ve `subscriptions(owner_id
 - Her veri erişim repository'sine bir sahiplik filtresi eklenir; hiçbir handler sahiplik kontrolü olmadan ham ID ile sorgu yapmaz.
 
 Bu değişiklikler **eklemeli** olup Faz 0.2'de kimlik doğrulamayla birlikte gelir; böylece model ve onu uygulayan kurallar birlikte yayınlanır — arkasındaki kurallar olmadan asla bir giriş ekranı çıkmaz.
+
+---
+
+## Uygulanmış olanlar (v0.1.0-alpha.114)
+
+Bu bölüm kodun bugün ne yaptığını söyler; yukarıdaki tasarım hedef olarak kalır.
+
+- **Roller ve kapılar.** `admin`, `reseller`, `customer` ve türetilmiş `additional_user` sunucuda uygulanır. Rota × rol testi (`cmd/panel/route_role_matrix_test.go`) `cmd/panel/main.go` içindeki her rotayı okur ve kapısını anonim ziyaretçi ve her rol için denetler; satırı olmayan yeni rota testi düşürür. Hesap rotaları ayrıca gerçek işleyicileriyle sürülür (`TestAccountRoutesRoleMatrix`).
+- **Planlar.** Yöneticinin planları geneldir. Bayi kendi planlarını oluşturur (`service_plans.owner_id`); genel planları ve kendininkileri görür, yalnız kendininkileri düzenler; planları havuzundan fazlasını vaat edemez. Bayinin planı yalnız o bayinin müşterilerine verilir.
+- **0 sınırsız demektir:** domain, veritabanı, posta kutusu ve disk için; plan formunda, plan doğrulamasında, her kota denetiminde ve her kullanım yanıtında.
+- **Oluşturmadan sonra plan değişikliği** (`PUT /api/v1/users/{id}/plan`; yönetici, bayi kendi müşterileri için). Sınırlar plandan yeniden kopyalanır. Mevcut kullanımın altındaki plan, aşan kalemlerin listesiyle (`PLAN_BELOW_USAGE`) operatör onaylayana dek reddedilir; onaydan sonra hiçbir şey silinmez, aşan türlerde yenisi yönlendirmeyle reddedilir (`QUOTA_*_EXCEEDED`, Planım'a işaret eder).
+- **Bayi havuzu** (`reseller_pools`; yönetici `/api/v1/users/{id}/pool` adresinden ya da bayiyi oluştururken belirler): bayi ağacı üzerinde toplam domain, veritabanı, posta kutusu, disk ve müşteri sayısı. Havuz *dağıtımı* (verilen plan sınırlarının toplamını) sınırlar; aşırı satılamaz. Aşım `RESELLER_POOL_EXCEEDED` / `RESELLER_CUSTOMER_LIMIT` ile reddedilir. Dağıtılanın altına indirilen havuz uyarıyla kaydedilir; hiçbir şey geri alınmaz. Havuz satırı olmayan bayinin sınırı yoktur (alpha.114 öncesindeki her bayi).
+- **Askıya alma/sürdürme.** Bayi kendi müşterilerini, yönetici her hesabı askıya alır ve sürdürür; ikisi de denetim izine yazılır.
+- **Planım** (`GET /api/v1/my/subscription`, Pano'da ve Hesabım'da bir kart): plan, sınırlar, canlı kullanım (kota denetimlerinin kullandığı aynı sayılar), daha büyük plan için kime başvurulacağı ve bayi için havuzu. Ek kullanıcılar görmez.
+- **"Farklı giriş yap" hesap verir.** Oturum operatörünü kaydeder (`sessions.impersonator_id`). İçinde yazılan her denetim satırı gerçek kişiyi `user_id`, hesabı `acting_as` ile adlandırır; `impersonate.start` ve `impersonate.stop` kaydedilir. Operatör askıya alınınca, parolasını değiştirince ya da hesabı artık yönetemeyince oturum biter. İç içe geçiş reddedilir. Kalıcı bir şerit "X olarak görüntülüyorsunuz" der ve dönüş yolunu gösterir.
+- **Parola değişikliği** o kişinin bütün oturumlarını, operatör olarak açtığı "Farklı giriş yap" oturumlarıyla birlikte bitirir.
+
+**Henüz uygulanmayanlar:** trafik (bant genişliği) saklanır ama **ölçülmez**; bu yüzden trafik sınırı uygulanmaz ve ekranlar bunu söyler; abonelik askıya alma/süre bitimi etkileri, fiyatlar, dönemler ve ödemeler; bayi askıya alma "zincir kuralı"; işletim sistemi düzeyinde disk kotası (disk, oluşturmada önbellekli ölçümlerle yumuşak bir kapıdır); mevcut ekip üyesi izinlerinin ötesindeki yetenek modeli.
 
 ---
 

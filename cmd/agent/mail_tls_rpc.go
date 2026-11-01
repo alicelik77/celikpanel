@@ -366,6 +366,13 @@ func preflightMailTLSCommands(needsSNIMap bool, execute mailTLSCommandRunner) (m
 		}
 		resolved[name] = commandPath
 	}
+	// doveadm reads Dovecot's own record of a reload (dovecotReloadOutcome).
+	// It is optional: without it the reload is judged by the unit as before
+	// (lab run 3, 1 Nov 2026: an unpinned doveadm held every change).
+	if commandPath, err := lookupMailTLSCommand("doveadm"); err == nil &&
+		commandPath == strings.TrimSpace(commandPath) && filepath.IsAbs(commandPath) && filepath.Clean(commandPath) == commandPath {
+		resolved["doveadm"] = commandPath
+	}
 	pinned := func(name string, args ...string) ([]byte, error) {
 		commandPath, ok := resolved[name]
 		if !ok {

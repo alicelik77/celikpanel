@@ -5,15 +5,15 @@ import { useI18n } from '../i18n';
 import { setupDNSTranslation } from '../i18n/setupDNS';
 import type { TranslationKey } from '../i18n/en';
 import { Link, Navigate } from '../router';
-import { decodeSetupEditorCheckpoint, changeSetupWizardDNSRole, setupJoinPendingDraft, setupDNSNames, setupDetectedIPv4, decodeServerSetup, setupEditorKey, setupExtensionChanges, setupNextPath, normalizeSetupDomain, validSetupDomain, validSetupShortName, setupNameWithin, setupInitialMainDomain, setupProposedNames, setupApplyProposedNames, type ServerSetupCheck, type ServerSetupDraft, type ServerSetupSnapshot, type SetupEditorStep, type SetupExtensionChangeKey, type SetupProposedNames } from '../lib/serverSetup';
-import { retryableMailEnrollmentHandoff, continuableMailEnrollment, decodeSetupExecution, decodeSetupMarker, decodeSetupPlan, newSetupRequestID, safeSetupPanelURL, setupMarkerForInstallation, setupStartRefusedBeforeRun, type ServerSetupExecution, type SetupInfrastructureDNSPlan, type ServerSetupPlan, type SetupStartMarker } from '../lib/serverSetupOperation';
+import { decodeSetupEditorCheckpoint, changeSetupWizardDNSRole, setupJoinPendingDraft, setupDNSNames, setupDetectedIPv4, decodeServerSetup, setupEditorKey, setupExtensionChanges, setupNextPath, normalizeSetupDomain, validSetupDomain, validSetupShortName, setupNameWithin, setupInitialMainDomain, setupProposedNames, setupApplyProposedNames, setupJoinedMailProposal, setupApplyJoinedMailName, setupJoinedMailTaken, type ServerSetupCheck, type ServerSetupDraft, type ServerSetupSnapshot, type SetupEditorStep, type SetupExtensionChangeKey, type SetupProposedNames } from '../lib/serverSetup';
+import { retryableMailEnrollmentHandoff, continuableMailEnrollment, decodeSetupExecution, decodeSetupMarker, decodeSetupPlan, newSetupRequestID, safeSetupPanelURL, setupMainSiteOutcome, setupMarkerForInstallation, setupStartRefusedBeforeRun, type ServerSetupExecution, type SetupInfrastructureDNSPlan, type ServerSetupPlan, type SetupStartMarker } from '../lib/serverSetupOperation';
 import { ServerSetupShell, useServerSetup } from './ServerSetupGate';
 import { ServerSetupSteps } from './ServerSetupSteps';
 import { ServerSetupDNSConnection } from './ServerSetupDNSConnections';
 import { remoteDNSEndpoint } from '../lib/remoteDNS';
 import { ServerSetupChoice, ServerSetupManualAction } from './ServerSetupChoice';
 import { Button, inputClass, KeepWords, Spinner } from './ui';
-import { SetupCountStep, SetupDNSHomeStep, SetupDomainStep, SetupJoinCard, SetupJoinPanel, SetupJoinedSummary, SetupMailStep, SetupOpenTasks, SetupRecordsStep, SetupNameStep, SetupNamesStep, SetupPanelAccessCard, SetupProviderRecordsCard, SetupRegistrarCard, SetupRolesStep, SetupWizardInput, setupEngineChoice, setupServerLabel, useSetupDelegation, useSetupPeerLink } from './ServerSetupWizardSteps';
+import { SetupCountStep, SetupDNSHomeStep, SetupDomainStep, SetupJoinCard, SetupJoinPanel, SetupJoinedSummary, SetupMailStep, SetupOpenTasks, SetupRecordsStep, SetupNameStep, SetupNamesStep, SetupPanelAccessCard, SetupProviderRecordsCard, SetupRegistrarCard, SetupRolesStep, SetupServerKindStep, SetupWizardInput, setupEngineChoice, setupActiveEngine, SetupMainSiteQuestion, type SetupServerKind, setupServerLabel, useSetupDelegation, useSetupPeerLink } from './ServerSetupWizardSteps';
 import { AddressLink } from './AddressLink';
 import { SetupFirstSite } from './SetupFirstSite';
 import { ServerSetupComponents, useSetupComponentCatalog } from './ServerSetupComponents';
@@ -22,6 +22,8 @@ import { applySetupRoles, resetSetupCustomization, setupCustomized, setupDraftRo
 import { componentName } from '../lib/componentName';
 import { handoverAddress, handoverSettled, plannedHandoverDrop, setupHandover, setupStartMarkerKey } from '../lib/panelHandover';
 import { startVisibleReads } from '../lib/visibleReads';
+import { SetupPlanProblems, SetupStartReason } from './SetupPlanProblems';
+import { setupStartBlock, type SetupProblemFix } from '../lib/setupProblems';
 
 function useSetupI18n() {
     const i18n = useI18n();
@@ -71,10 +73,12 @@ const codeKey: Record<string, TranslationKey> = {
     server_setup_peer_names_final: 'setup.v5.wait.server_setup_peer_names_final',
     server_setup_peer_names_changed: 'setup.v5.wait.server_setup_peer_names_changed',
     server_setup_peer_mail_both: 'setup.v5.wait.server_setup_peer_mail_both',
+    server_setup_peer_mail_hostname_taken: 'setup.v6.blocker.mailHostnameTaken',
     server_setup_peer_link_missing: 'setup.v5.wait.server_setup_peer_link_missing',
     server_setup_peer_link_revoked: 'setup.v5.wait.server_setup_peer_link_revoked',
     server_setup_completion_plan_changed: 'setup.v5.wait.server_setup_completion_plan_changed',
     server_setup_completion_unknown: 'setup.v5.wait.server_setup_completion_unknown',
+    server_setup_verification_overdue: 'setup.guide.verificationOverdue',
     server_setup_completion_waiting: 'setup.v5.wait.server_setup_completion_waiting',
     server_setup_peer_inspection_unreachable: 'setup.v5.wait.server_setup_peer_inspection_unreachable',
     server_setup_peer_inspection_main_agent: 'setup.v5.wait.server_setup_peer_inspection_main_agent',
@@ -86,6 +90,7 @@ const codeKey: Record<string, TranslationKey> = {
     server_setup_peer_inspection_ssh_unreachable: 'setup.v5.wait.server_setup_peer_inspection_ssh_unreachable',
     server_setup_peer_version_incompatible: 'setup.v5.wait.server_setup_peer_version_incompatible',
     server_setup_dns_publisher_refused: 'setup.v5.wait.server_setup_dns_publisher_refused',
+    server_setup_dns_publisher_unconfirmed: 'setup.v5.wait.server_setup_dns_publisher_unconfirmed',
     server_setup_peer_dkim_conflict: 'setup.v5.wait.server_setup_peer_dkim_conflict',
     server_setup_peer_dkim_not_running: 'setup.v5.wait.server_setup_peer_dkim_not_running',
     server_setup_peer_dkim_not_bound: 'setup.v5.wait.server_setup_peer_dkim_not_bound',
@@ -274,9 +279,11 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     });
     const proposalRef = useRef<SetupProposedNames | null>(null);
     const [componentsOpen, setComponentsOpen] = useState(false);
-    // The join-by-code panel shares the main domain step's form; while it is
-    // open that step's own field is not required (it comes from the first server).
-    const [joinOpen, setJoinOpen] = useState(false);
+    // The first question: is this the first server (a new main domain) or a
+    // server joining an existing one by code? Kept here, so Back returns to
+    // it; a draft that already has a main domain is a first server.
+    // Ilk soru: ilk sunucu mu, katilan sunucu mu? Geri donunce korunur.
+    const [serverKind, setServerKind] = useState<SetupServerKind | null>(() => setupInitialMainDomain(restoredEditor?.draft || initial.draft) ? 'first' : null);
     const restoreReview = useRef(restoredEditor?.step === 'review');
     const restoredSnapshot = useRef(initial);
     const localIPTouched = useRef(false);
@@ -286,10 +293,33 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         setDraft(previous => previous.local_ip ? previous : { ...previous, local_ip: detectedIP });
     }, [detectedIP, snapshot.status]);
     const dnsNames = setupDNSNames(draft);
+    // The DNS software this server runs is fixed (setup never switches it):
+    // the plan names that one, whatever an older answer said (owner report,
+    // Boston: BIND running, the PowerDNS card explaining a refusal).
+    // Calisan DNS yazilimi plana yazilir.
+    const runningEngine = setupActiveEngine(catalog, draft.dns_role);
+    useEffect(() => {
+        if (runningEngine && draft.dns_mode === 'local' && draft.dns_engine !== runningEngine) setDraft(previous => ({ ...previous, dns_engine: runningEngine }));
+    }, [runningEngine, draft.dns_mode, draft.dns_engine]);
+    // Opened from another page for one purpose (?purpose=mail|dkim), or a
+    // mail-only extension: a banner says why the owner is here (alpha.114).
+    // Baska sayfadan bir amacla acildi: bant nedenini soyler.
+    const [urlPurpose] = useState<'mail' | 'dkim' | null>(() => {
+        try { const value = new URLSearchParams(window.location.search).get('purpose'); return value === 'mail' || value === 'dkim' ? value : null; }
+        catch { return null; }
+    });
     // A second server that joined the first by code (alpha.114): its shared
     // answers come from the join. / Kodla katilmis ikinci sunucu.
     const peer = useSetupPeerLink(!['ready'].includes(initial.status));
     const joinedLink = peer.link;
+    // The ready screen does not read the link while the wizard runs, but it must
+    // know this server joined the first one: the main domain's website lives on
+    // the first server, so a joined server never offers to host it (alpha.114,
+    // lab run 2). Read only when the setup was already ready on opening.
+    // Hazir ekrani, bu sunucunun ilk sunucuya katildigini bilmelidir.
+    const readyPeer = useSetupPeerLink(initial.status === 'ready');
+    const joinedHere = !!joinedLink || readyPeer.role === 'second';
+    const peerKnown = initial.status === 'ready' ? readyPeer.known : peer.known;
     const [step, setStep] = useState<Step>(restoredEditor?.step || (initial.status === 'new' || initial.status === 'legacy' || (initial.extension && initial.status === 'draft') || !initial.draft.main_domain ? 'domain' : 'dnshome'));
     const [plan, setPlan] = useState<ServerSetupPlan | null>(null);
     const [execution, setExecution] = useState<ServerSetupExecution | null>(null);
@@ -552,7 +582,10 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     async function saveDraft(): Promise<ServerSetupSnapshot> {
         // The new flow never sends a typed peer: the second server joins by
         // code; a joined second server keeps what the join gave it.
-        const sent = joinedLink ? draft : setupJoinPendingDraft(draft);
+        const base = joinedLink ? draft : setupJoinPendingDraft(draft);
+        // The main domain's website answer is sent only where it is asked
+        // (the first server hosting websites); Yes is the default.
+        const sent: ServerSetupDraft = { ...base, main_site: mainSiteAsked ? mainSiteAnswer : undefined };
         const response = await setupFetch('/api/v1/setup', { ...requestOptions({ revision: snapshot.revision, draft: { ...sent, ...(sent.main_domain ? { main_domain: normalizeSetupDomain(sent.main_domain) } : {}), ...(sent.short_name !== undefined ? { short_name: sent.short_name.trim().toLowerCase() || undefined } : {}), ...(secondaryHosting && !joinFlow ? { dns_hosting_management: hostingDNSManagement, ...(hostingDNSManagement === 'manual' ? { dns_publisher_endpoint: '' } : {}) } : {}) } }), method: 'PUT' });
         if (response.status === 409) throw new Error(t('setup.conflict'));
         if (!response.ok) throw new Error(t('setup.saveFailed'));
@@ -653,6 +686,18 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
             if (alive.current) { setPlan(reviewed); setAcknowledged(false); }
         } catch (failure) { if (alive.current) setError(failure instanceof Error ? failure.message : t('setup.planFailed')); }
         finally { pendingRef.current = false; if (alive.current) setBusy(false); }
+    }
+    // A fix offered with a plan blocker (SetupPlanProblems): back to the step
+    // that changes the answer, Email removed from the plan, or the plan read
+    // again. The plan is reviewed again when the owner returns to the Summary.
+    // Engelin duzeltmesi: ilgili adima donus, e-postayi cikarma ya da yeniden okuma.
+    function fixPlanProblem(fix: SetupProblemFix) {
+        if (fix.kind === 'recheck') { void refreshReview(); return; }
+        if (fix.kind === 'account') return;
+        if (fix.kind === 'removeMail' && catalog) updateDraft(previous => applySetupRoles(previous, { ...setupDraftRoles(previous, catalog), mail: false }, catalog));
+        const target = fix.kind === 'removeMail' ? 'roles' : fix.step;
+        if (target === 'components') setComponentsOpen(true);
+        setStep(target === 'components' || steps.includes(target) ? target : 'dnshome'); setPlan(null); setAcknowledged(false); setError('');
     }
     async function verifyManual() {
         if (pendingRef.current) return;
@@ -786,6 +831,9 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     // Stopped because its plan was reopened: a known end, not a failure.
     const planReopened = setupPlanReopened(execution);
     const completed = snapshot.status === 'ready';
+    // Whether the joined server's own setup is still open: reported by the card
+    // that shows it, so the headline counts exactly the items on screen.
+    const [readyPeerPending, setReadyPeerPending] = useState(false);
     const extending = snapshot.extension === true;
     const extensionChanges = extending ? setupExtensionChanges(snapshot.extension_base, draft) : [];
     const extensionValue = (key: SetupExtensionChangeKey, value: string) => !value ? t('setup.extend.none')
@@ -815,14 +863,34 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     // Two servers with their own DNS join by code: the first server prepares
     // the list whichever server is the main; a joined second server takes it.
     const joinFlow = !!joinedLink || (draft.dns_mode === 'local' && (draft.server_count ?? 2) === 2);
-    const steps: Step[] = ['domain', ...(joinedLink ? [] : ['count' as const]), 'name', 'roles', ...(customized || componentsOpen ? ['components' as const] : []), 'names', 'dnshome',
+    // A completed setup that is being extended, and a server already joined,
+    // never see the question; every other server answers it first.
+    const kind: SetupServerKind | null = extending ? 'first' : serverKind;
+    // While the component catalog is being read again (the page remounts when
+    // the language changes) the list must not guess "customized" from a missing
+    // catalog: the Components step would appear for a moment and vanish.
+    // Katalog yeniden okunurken adim listesi titremesin.
+    const showComponentsStep = componentsOpen || step === 'components' || (catalog ? customized : Object.keys(draft.customization?.versions || {}).length > 0);
+    const steps: Step[] = ['domain', ...(joinedLink || kind === 'join' ? [] : ['count' as const]), 'name', 'roles', ...(showComponentsStep ? ['components' as const] : []), 'names', 'dnshome',
         ...(!joinedLink && draft.dns_mode === 'local' && (draft.dns_role === 'primary' || joinFlow) && draft.main_domain ? ['records' as const] : []),
         ...(mailSelected && draft.main_domain ? ['mail' as const] : []), 'review', 'progress'];
     // The plan is reviewed when the last editing step is left.
     const lastEdit = steps[steps.indexOf('review') - 1];
+    const startBlock = step === 'review' ? setupStartBlock(plan, acknowledged) : null;
     const serverCount = draft.server_count ?? 2;
     const mainDomain = draft.main_domain ? normalizeSetupDomain(draft.main_domain) : '';
-    const proposal = setupProposedNames(validSetupDomain(mainDomain) ? mainDomain : '', draft.short_name || '');
+    // The main domain's website (alpha.114, owner decision 2026-10-31): asked
+    // on the first server when it hosts websites; Yes by default.
+    const mainSiteAsked = !joinedLink && roles.web && validSetupDomain(mainDomain) && (draft.dns_mode !== 'local' || draft.dns_role === 'primary');
+    const mainSiteAnswer: 'here' | 'elsewhere' = draft.main_site ?? 'here';
+    const generalProposal = setupProposedNames(validSetupDomain(mainDomain) ? mainDomain : '', draft.short_name || '');
+    // A server joined by code (alpha.114): its mail name is its own, under its
+    // panel name; the first server keeps the main domain's mail name.
+    const joinedNames = joinedLink ? { firstMail: joinedLink.first.mail_hostname || '', firstPanel: joinedLink.first.panel_domain, mainDomain: joinedLink.main_domain, ns1: joinedLink.ns1, ns2: joinedLink.ns2 } : null;
+    const proposal = joinedNames ? setupJoinedMailProposal(generalProposal, draft.panel_domain || generalProposal.panel) : generalProposal;
+    // The first server receives the main domain's mail: this server's mail is
+    // for the domains created on it only, and the main domain's records stay there.
+    const firstKeepsMainMail = !!joinedLink?.first.main_domain_mail;
     const serverLabel = setupServerLabel(t, draft.short_name);
     const emptySelectionInvalid = selectedComponents.size === 0 && draft.dns_mode !== 'local';
     const isDNS = selectedComponents.size === 0;
@@ -831,6 +899,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     // The review's registrar line is true only when the domain does not already
     // point at these servers: read where it points (no record is read).
     const delegation = useSetupDelegation(step === 'review' && localPrimary && !!mainDomain);
+    const readyDelegation = useSetupDelegation(snapshot.status === 'ready' && snapshot.draft.dns_mode === 'local' && snapshot.draft.dns_role === 'primary' && !!snapshot.draft.main_domain);
     const panelDNSIP = draft.dns_mode === 'local' ? draft.local_ip : snapshot.server_ip;
     const secondaryHosting = needsDNSPublisher && draft.dns_mode === 'local' && draft.dns_role === 'secondary';
     const hostingDNSManagement = draft.dns_hosting_management || (draft.dns_publisher_endpoint ? 'panel' : 'manual');
@@ -843,7 +912,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     const fullName = (value: string) => validSetupDomain(value.trim().toLowerCase().replace(/\.$/, ''));
     function stepProblem(): TranslationKey | null {
         switch (step) {
-        case 'domain': return joinedLink || validSetupDomain(mainDomain) ? null : 'setup.v2.domain.invalid';
+        case 'domain': return joinedLink || (kind === 'first' && validSetupDomain(mainDomain)) ? null : kind === 'first' ? 'setup.v2.domain.invalid' : 'setup.v6.kind.pick';
         case 'name': return validSetupShortName((draft.short_name || '').trim().toLowerCase()) ? null : 'setup.v2.name.invalid';
         case 'roles': return roles.web || roles.mail || roles.dns || selectedComponents.size > 0 ? null : 'setup.v2.roles.required';
         case 'components':
@@ -851,6 +920,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
             return emptySelectionInvalid && !roles.dns ? 'setup.components.chooseRequired' : null;
         case 'names':
             if (!fullName(draft.panel_domain) || (isMail && !fullName(draft.mail_hostname))) return 'setup.v2.names.invalid';
+            if (joinedNames && isMail && setupJoinedMailTaken(draft.mail_hostname, joinedNames)) return 'setup.v6.names.mailTakenShort';
             if (localPrimary && (!setupNameWithin(draft.panel_domain, mainDomain) || (isMail && !setupNameWithin(draft.mail_hostname, mainDomain)))) return 'setup.v2.names.outsideZoneShort';
             return null;
         case 'dnshome':
@@ -865,7 +935,8 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     function proposeNames() {
         const current = proposal;
         updateDraft(previous => {
-            const next = setupApplyProposedNames(previous, current, proposalRef.current, roles.mail);
+            let next = setupApplyProposedNames(previous, current, proposalRef.current, roles.mail);
+            if (joinedNames && roles.mail) next = setupApplyJoinedMailName(next, current, joinedNames);
             if (next.dns_mode === 'local' && next.dns_role === 'primary') next.main_dns_server = 'this';
             return next;
         });
@@ -874,12 +945,13 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     const isMail = ['postfix', 'dovecot', 'rspamd', 'roundcube'].some(id => selectedComponents.has(id));
     const isNode = selectedComponents.has('node');
     const nextPath = setupNextPath(snapshot.draft.purpose, explicitSelection ? selectedComponents : undefined);
-    const nextLabel = nextPath === '/dns-infrastructure' ? 'setup.nextDNS' : nextPath === '/services' ? 'setup.nextComponents' : isNode ? 'setup.nextApplication' : 'setup.nextWebsite';
     const progressCurrentStep = execution?.steps.find(item => ['running', 'failed'].includes(item.status));
     const observingMailEnrollment = progressCurrentStep?.kind === 'mail_enrollment' && execution?.status === 'running' && ['running', 'rollback', 'unknown', 'not_recorded', 'handoff', 'host_busy'].some(reason => execution.error?.code === `server_setup_mail_enrollment_${reason}`);
     const mailEnrollmentToRetry = !reconnecting && retryableMailEnrollmentHandoff(execution);
     const mailEnrollmentToContinue = !reconnecting && continuableMailEnrollment(execution);
     const guidance = execution && !reconnecting && !finishing ? setupExecutionGuidance(execution, componentLabel) : null;
+    // A refusal the guidance box already says in full is not said a second time below it.
+    const failureAlreadySaid = !!execution?.error && !!guidance && guidance.messages.some(message => say(message) === failureText(execution.error!.code, execution.error!.message, execution.error!.reason));
     // A server that was busy is a typed wait, not a failure: its reason leads the
     // screen, with the action beside it, and the generic paragraphs stay out.
     const hostBusy = execution?.status === 'failed' && !reconnecting ? setupHostBusyGuidance(execution.error) : null;
@@ -907,20 +979,59 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         : verifiedBlockers.length > 0 ? 'setup.verifyStillWaiting'
         : finishing ? 'setup.finishing' : finishingRun && finishingSlow ? 'setup.finishingSlow' : null;
 
+    const purpose: 'mail' | 'dkim' | null = urlPurpose || (snapshot.extension_scope === 'mail' ? 'mail' : null);
+    // "Ready, with N things left for you" (alpha.114, owner review): the open
+    // tasks lead the ready screen, each with its action; the main domain's
+    // website says what its step came to.
+    // Hazir ekraninda kalan isler once gelir; her biri eylemiyle.
+    const readyDraft = snapshot.draft;
+    const readyDomain = readyDraft.main_domain ? normalizeSetupDomain(readyDraft.main_domain) : '';
+    const readySite = completed ? setupMainSiteOutcome(execution) : null;
+    const readyTasks: { id: string; text: string; to?: string; label?: TranslationKey }[] = [];
+    if (readySite) {
+        const reason = readySite.message || t('setup.v7.site.reasonUnknown');
+        const domainPage = `/domains/${encodeURIComponent(readySite.domain)}`;
+        if (readySite.site === 'failed' && readySite.code === 'server_setup_main_site_dns_only') readyTasks.push({ id: 'site', text: t('setup.v7.site.dnsOnly', { domain: readySite.domain }), to: domainPage, label: 'setup.v7.action.domain' });
+        else if (readySite.site === 'failed') readyTasks.push({ id: 'site', text: t('setup.v7.site.failed', { domain: readySite.domain, reason }) });
+        else if (readySite.certificate === 'pending' || readySite.certificate === 'not_requested') readyTasks.push({ id: 'site', text: t('setup.v7.site.certPending', { domain: readySite.domain, reason }), to: `${domainPage}?tab=ssl`, label: 'setup.v7.action.ssl' });
+        else if (readySite.certificate === 'waiting_owner') readyTasks.push({ id: 'site', text: t('setup.v7.site.certWaitingOwner', { domain: readySite.domain }), to: `${domainPage}?tab=ssl`, label: 'setup.v7.action.ssl' });
+    }
+    if (readyDelegation.state === 'elsewhere' && readyDomain) readyTasks.push({ id: 'registrar', text: t('setup.v7.task.registrar', { domain: readyDomain, servers: [readyDraft.ns1, readyDraft.ns2].filter(Boolean).join(', ') }), to: '/dns-infrastructure', label: 'setup.v7.action.dns' });
+    snapshot.checks.filter(check => check.advisory && check.state !== 'ready').forEach(check => readyTasks.push({ id: `check-${check.id}`, text: checkSentence(check) }));
+    const readyServer = setupServerLabel(t, readyDraft.short_name);
+    const readySiteDone = !!readySite && readySite.site !== 'failed' && ['issued', 'active'].includes(readySite.certificate);
+    const firstSiteWanted = !!readyDomain && setupEffectiveComponents(readyDraft, catalog).has('nginx') && (readyDraft.main_site !== 'here' || (readySite?.site === 'failed' && readySite.code !== 'server_setup_main_site_dns_only'));
+    const offerFirstSite = firstSiteWanted && !joinedHere && peerKnown;
+
+    // One way to the same action: when the ready screen offers "Host a website",
+    // the bottom button leads away from it; a site that exists makes the next one "another".
+    const readyCount = readyTasks.length + (readyPeerPending ? 1 : 0);
+    const nextLabel = nextPath === '/dns-infrastructure' ? 'setup.nextDNS' : nextPath === '/services' ? 'setup.nextComponents' : isNode ? 'setup.nextApplication' : offerFirstSite ? 'setup.nextDashboard' : readyDraft.main_site === 'here' || readySiteDone ? 'setup.nextWebsiteMore' : 'setup.nextWebsite';
+    const readyNextPath = offerFirstSite && nextPath === '/domains' && !isNode ? '/' : nextPath;
+
     if (manualExit) return <Navigate to="/" replace />;
     return <ServerSetupShell navigation={!completed ? <ServerSetupSteps steps={steps} current={hasOperation ? 'progress' : step} /> : undefined}>
         <div className="max-w-3xl">
             <h1 ref={heading} tabIndex={-1} className="text-2xl font-semibold leading-tight outline-none focus-visible:outline-none sm:text-3xl">{t(completed ? 'setup.completeTitle' : extending ? 'setup.extend.title' : 'setup.title')}</h1>
             <p className="mt-3 max-w-2xl text-fg-muted">{t(completed ? 'setup.completeHelp' : hasOperation ? 'setup.guide.progressIntro' : extending ? 'setup.extend.intro' : 'setup.intro')}</p>
+            {purpose && <p role="status" className="mt-4 flex max-w-2xl flex-wrap items-baseline gap-x-3 gap-y-1 rounded-lg border border-primary/40 bg-primary/5 p-3 text-sm leading-6" data-setup-purpose={purpose}>
+                <span className="font-medium">{t(purpose === 'dkim' ? 'setup.v7.purpose.dkim' : 'setup.v7.purpose.mail')}</span>
+                {urlPurpose && <button type="button" onClick={() => window.history.back()} className="font-medium text-primary underline underline-offset-4">{t('setup.v7.purpose.back')}</button>}
+            </p>}
         </div>
         {completed ? <section className="mt-8 max-w-3xl space-y-6" aria-labelledby="setup-ready-title">
-            <div className="flex items-start gap-3"><Check className="mt-1 h-5 w-5 shrink-0 text-success" aria-hidden="true" /><div><h2 id="setup-ready-title" className="text-lg font-semibold">{t('setup.v2.ready', { server: setupServerLabel(t, snapshot.draft.short_name) })}</h2><p className="mt-1 text-sm text-fg-muted">{t('setup.completeServices')}</p></div></div>
+            <div className="flex items-start gap-3"><Check className="mt-1 h-5 w-5 shrink-0 text-success" aria-hidden="true" /><div><h2 id="setup-ready-title" className="text-lg font-semibold" data-setup-ready-tasks={readyCount}>{readyCount === 0 ? t('setup.v2.ready', { server: readyServer }) : t(readyCount === 1 ? 'setup.v7.ready.tasksOne' : 'setup.v7.ready.tasksMany', { server: readyServer, count: readyCount })}</h2><p className="mt-1 text-sm text-fg-muted">{t(readyCount ? 'setup.v7.ready.tasksHelp' : 'setup.completeServices')}</p></div></div>
+            {readyTasks.length > 0 && <ol className="space-y-3" data-setup-ready-list="">{readyTasks.map(task => <li key={task.id} className="rounded-lg border border-warning-mark/50 bg-warning-mark/10 p-4 text-sm leading-6" data-setup-task={task.id}>
+                <p className="break-words">{task.text}</p>
+                {task.to && task.label && <Link to={task.to} className="mt-2 inline-flex font-medium text-primary underline underline-offset-4">{t(task.label)}</Link>}
+            </li>)}</ol>}
+            {readySiteDone && <p className="flex items-start gap-2 text-sm leading-6" data-setup-site="done"><Check className="mt-1 h-4 w-4 shrink-0 text-success" aria-hidden="true" /><span>{t('setup.v7.site.done', { domain: readySite!.domain })}</span></p>}
+            {readyDraft.main_site === 'elsewhere' && readyDomain && !firstSiteWanted && <p className="max-w-2xl text-sm leading-6 text-fg-muted" data-setup-site="elsewhere">{t('setup.v7.site.elsewhere.help', { domain: readyDomain })}</p>}
             {/* The main DNS server keeps the setup link open until the second server finished (P7). */}
-            <SetupJoinCard joinPending={false} finished />
-            {snapshot.checks.some(check => check.advisory && check.state !== 'ready') && <SetupOpenTasks lines={snapshot.checks.filter(check => check.advisory && check.state !== 'ready').map(checkSentence)} />}
-            {/* The optional first site (alpha.115): the main domain prefilled in the existing Add domain form; nothing is created unless the owner confirms there. */}
-            {snapshot.draft.main_domain && setupEffectiveComponents(snapshot.draft, catalog).has('nginx') && <SetupFirstSite domain={normalizeSetupDomain(snapshot.draft.main_domain)} />}
-            <Link to={nextPath} className="inline-flex items-center gap-3 rounded-lg bg-primary px-5 py-3 font-semibold text-primary-fg hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">{t(nextLabel)}<ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
+            <SetupJoinCard joinPending={false} finished onPending={setReadyPeerPending} />
+            {/* The optional first site: the main domain prefilled in the existing Add domain form, when setup did not create it; nothing is created unless the owner confirms there. */}
+            {offerFirstSite && <SetupFirstSite domain={readyDomain} />}
+            <Link to={readyNextPath} className="inline-flex items-center gap-3 rounded-lg bg-primary px-5 py-3 font-semibold text-primary-fg hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">{t(nextLabel)}<ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
             {/* What extending does and does not do, said before the action (D-033). */}
             <section aria-labelledby="setup-extend-title" className="border-t border-border pt-6" data-setup-extend="">
                 <h2 id="setup-extend-title" className="text-lg font-semibold">{t('setup.extend.title')}</h2>
@@ -963,7 +1074,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                         {guidance.details.length > 0 && <details className="mt-3 text-sm leading-6"><summary className="cursor-pointer font-medium text-primary">{t('setup.guide.more')}</summary><ul className="mt-2 list-disc space-y-2 pl-5 text-fg-muted">{guidance.details.map((message, index) => <li key={index}>{say(message)}</li>)}</ul></details>}
                     </aside>}
                     {/* The failure colour is for a verified failure only: a busy server, an unmet prerequisite and a result still being confirmed are not one. */}
-                    {execution?.error && !['dns_publisher', 'dns_readiness'].includes(execution.phase) && <div role={hostBusy ? undefined : confirmingPrevious || waitingDNSPrerequisite || observingMailEnrollment || planReopened ? 'status' : 'alert'} className={`${hostBusy ? 'mt-3' : 'mt-5'} space-y-2 text-sm`}>{!hostBusy && !peerRecordApplied && (!(confirmingPrevious || observingMailEnrollment || planReopened) || !guidance) && <p className={execution.status === 'failed' ? 'text-danger' : confirmingPrevious || waitingDNSPrerequisite ? 'text-fg-muted' : 'text-fg'}>{failureText(execution.error.code, execution.error.message, execution.error.reason)}</p>}<details><summary className="cursor-pointer text-primary">{t('setup.details')}</summary><p className="mt-2 break-words text-fg-muted">{execution.error.message}</p></details></div>}
+                    {execution?.error && !['dns_publisher', 'dns_readiness'].includes(execution.phase) && execution.error.code !== 'server_setup_verification_overdue' && <div role={hostBusy ? undefined : confirmingPrevious || waitingDNSPrerequisite || observingMailEnrollment || planReopened ? 'status' : 'alert'} className={`${hostBusy ? 'mt-3' : 'mt-5'} space-y-2 text-sm`}>{!hostBusy && !peerRecordApplied && !failureAlreadySaid && (!(confirmingPrevious || observingMailEnrollment || planReopened) || !guidance) && <p className={execution.status === 'failed' ? 'text-danger' : confirmingPrevious || waitingDNSPrerequisite ? 'text-fg-muted' : 'text-fg'}>{failureText(execution.error.code, execution.error.message, execution.error.reason)}</p>}<details><summary className="cursor-pointer text-primary">{t('setup.details')}</summary><p className="mt-2 break-words text-fg-muted">{execution.error.message}</p></details></div>}
                     {execution && setupPackageUpdatesWaiting(execution) && <SetupPackageUpdatesWait key={execution.id} executionID={execution.id} onContinued={next => { if (next) setExecution(next); void reconcile(); }} />}
                     {/* The action a stopped run names sits with its reason, above the step list. */}
                     {execution?.status === 'failed' && guidance && !hostBusy && <div className="mt-5"><Button variant="primary" onClick={editPlan}>{t('setup.revise')}</Button></div>}
@@ -971,7 +1082,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                     {/* After everything that explains the current state, and still above the step list. */}
                     {handoverNotice && <SetupHandoverNotice host={handoverNotice.host} url={handoverURL} />}
                     {openTasks.length > 0 && <SetupOpenTasks lines={openTasks.map(checkSentence)} />}
-                    {execution && !certificateReady && execution.status !== 'failed' && <SetupPanelAccessCard ip={snapshot.server_ip || draft.local_ip} port={window.location.port || '2083'} panelDomain={marker?.panel_domain || draft.panel_domain} />}
+                    {execution && !certificateReady && execution.status !== 'failed' && <SetupPanelAccessCard ip={snapshot.server_ip || draft.local_ip} port={window.location.port || '1923'} panelDomain={marker?.panel_domain || draft.panel_domain} />}
                     {execution && execution.status !== 'failed' && draft.dns_mode === 'external' && <SetupProviderRecordsCard />}
                     {execution && execution.status !== 'failed' && draft.dns_mode === 'local' && draft.ns1 && draft.ns2 && <SetupRegistrarCard draft={draft} mainDomain={mainDomain} now={execution.phase === 'access_dns' || (draft.dns_role === 'secondary' && execution.status === 'succeeded')} />}
                     <ol className="mt-6 divide-y divide-border" aria-live="polite">
@@ -1008,12 +1119,14 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                     </div>}
                 </section> : <form onSubmit={next} className="min-w-0">
                     {step === 'domain' && (joinedLink ? <SetupJoinedSummary link={joinedLink} /> : <>
-                        <SetupDomainStep required={!joinOpen} value={draft.main_domain || ''} invalid={!!error && !validSetupDomain(mainDomain)} onChange={value => updateDraft(previous => ({ ...previous, main_domain: value }))} />
-                        {!extending && peer.known && <SetupJoinPanel disabled={busy} serverIP={snapshot.server_ip} onOpenChange={setJoinOpen} onJoined={value => {
+                        {!extending && <SetupServerKindStep value={kind} disabled={busy} onChange={value => { setServerKind(value); setError(''); }} />}
+                        {kind === 'first' && <div className={extending ? '' : 'mt-8'}><SetupDomainStep shortName={draft.short_name} value={draft.main_domain || ''} invalid={!!error && !validSetupDomain(mainDomain)} onChange={value => updateDraft(previous => ({ ...previous, main_domain: value }))} /></div>}
+                        {/* The join path: the main domain comes from the first server, so only the join (its one primary action) is offered. */}
+                        {kind === 'join' && <div className="mt-8">{peer.known ? <SetupJoinPanel disabled={busy} serverIP={snapshot.server_ip} onJoined={value => {
                             const next = decodeServerSetup(value); peer.refresh();
                             // The joined draft carries the first server's answers; this server's own name stays the host name's suggestion.
-                            if (next) { accept(next); setDraft({ ...next.draft, short_name: next.draft.short_name ?? (next.short_name_suggestion || snapshot.short_name_suggestion || undefined) }); setJoinOpen(false); setStep('name'); }
-                        }} />}
+                            if (next) { accept(next); setDraft({ ...next.draft, short_name: next.draft.short_name ?? (next.short_name_suggestion || snapshot.short_name_suggestion || undefined) }); setStep('name'); }
+                        }} /> : <div className="space-y-3" role="status" data-setup-join-checking=""><p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v6.kind.checking')}</p><Button type="button" variant="secondary" onClick={() => peer.refresh()}>{t('common.retry')}</Button></div>}</div>}
                     </>)}
                     {step === 'count' && <SetupCountStep value={serverCount} onChange={value => updateDraft(previous => ({ ...previous, server_count: value }))} />}
                     {step === 'name' && <SetupNameStep value={draft.short_name || ''} suggestion={snapshot.short_name_suggestion} mainDomain={mainDomain} invalid={!validSetupShortName((draft.short_name || '').trim().toLowerCase())} onChange={value => updateDraft(previous => ({ ...previous, short_name: value }))} />}
@@ -1023,6 +1136,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                             onCustomize={() => { if (!catalog) return; setComponentsOpen(true); updateDraft(previous => ({ ...previous, purpose: 'custom', customization: previous.customization || { components: setupRolesPreset(roles, catalog) } })); setStep('components'); }}
                             onReset={() => { if (catalog) { setComponentsOpen(false); updateDraft(previous => resetSetupCustomization(previous, catalog)); } }} />
                         {catalogFailed && <p role="alert" className="mt-3 text-sm text-fg-muted">{t('setup.components.loadFailed')} <Button type="button" onClick={reloadCatalog}>{t('common.retry')}</Button></p>}
+                        {mainSiteAsked && <SetupMainSiteQuestion domain={mainDomain} value={mainSiteAnswer} onChange={value => updateDraft(previous => ({ ...previous, main_site: value }))} />}
                     </>}
                     {step === 'components' && (catalog ? <ServerSetupComponents catalog={catalog} selected={draft.customization?.components || []} disabled={busy}
                         versions={draft.customization?.versions || {}}
@@ -1034,10 +1148,10 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                     {step === 'components' && isNode && <div className="mt-6 max-w-md"><SetupNodeVersion value={draft.node_version} onChange={value => change('node_version', value)} /></div>}
                     {step === 'components' && emptySelectionInvalid && !roles.dns && <p role="alert" className="mt-4 text-sm text-danger">{t('setup.components.chooseRequired')}</p>}
                     {step === 'components' && catalog?.inventory_state === 'unknown' && <div className="mt-4"><Button type="button" disabled={busy} onClick={reloadCatalog}>{t('common.retry')}</Button></div>}
-                    {step === 'names' && <fieldset disabled={busy}><SetupNamesStep draft={draft} mail={isMail} web={roles.web} mainDomain={mainDomain} ip={panelDNSIP || snapshot.server_ip || ''} ownDNS={localPrimary} onChange={(key, value) => change(key, value)} /></fieldset>}
+                    {step === 'names' && <fieldset disabled={busy}><SetupNamesStep draft={draft} mail={isMail} web={roles.web} mainDomain={mainDomain} ip={panelDNSIP || snapshot.server_ip || ''} ownDNS={localPrimary} joined={joinedNames && joinedLink ? { names: joinedNames, server: joinedLink.first.short_name || joinedLink.first.panel_domain, keepsMainMail: firstKeepsMainMail, proposal: proposal.mail } : undefined} recordsStep={steps.includes('records')} joinPlanned={joinFlow && !joinedLink} onChange={(key, value) => change(key, value)} /></fieldset>}
                     {step === 'records' && <fieldset disabled={busy}><SetupRecordsStep draft={draft} update={updateDraft} mainDomain={mainDomain}
                         own={[draft.panel_domain, draft.mail_hostname, draft.ns1, draft.ns2, draft.infrastructure_dns?.peer_panel_domain || '', draft.infrastructure_dns?.peer_mail_hostname || ''].filter(Boolean)} /></fieldset>}
-                    {step === 'mail' && <fieldset disabled={busy}><SetupMailStep draft={draft} update={updateDraft} mainDomain={mainDomain} ip4={draft.dns_mode === 'local' ? draft.local_ip : snapshot.server_ip || ''} ip6={snapshot.server_ipv6 || ''} /></fieldset>}
+                    {step === 'mail' && <fieldset disabled={busy}><SetupMailStep draft={draft} update={updateDraft} mainDomain={mainDomain} ip4={draft.dns_mode === 'local' ? draft.local_ip : snapshot.server_ip || ''} ip6={snapshot.server_ipv6 || ''} joined={joinedLink && firstKeepsMainMail ? { server: joinedLink.first.short_name || joinedLink.first.panel_domain, first: joinedLink.first.mail_hostname || joinedLink.first.panel_domain } : undefined} /></fieldset>}
                     {step === 'dnshome' && <fieldset disabled={busy}><SetupDNSHomeStep draft={draft} catalog={catalog} serverCount={serverCount} mainDomain={mainDomain} detectedIP={detectedIP}
                         set={(key, value) => { if (key === 'local_ip') localIPTouched.current = true; updateDraft(previous => ({ ...previous, [key]: value })); }}
                         onMode={chooseDNSMode}
@@ -1050,7 +1164,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                                 <option value="panel">{t('setup.publisher.automatic')}</option>
                             </select></label>
                             {automaticPublisher ? <>
-                                <SetupWizardInput name="dns_publisher_endpoint" label={t('setup.publisher.endpoint')} value={draft.dns_publisher_endpoint || ''} onChange={value => change('dns_publisher_endpoint', value)} placeholder="https://frankfurt.example.com:2083" required />
+                                <SetupWizardInput name="dns_publisher_endpoint" label={t('setup.publisher.endpoint')} value={draft.dns_publisher_endpoint || ''} onChange={value => change('dns_publisher_endpoint', value)} placeholder="https://frankfurt.example.com:1923" required />
                                 <p className="text-sm leading-6 text-fg-muted">{t('setup.publisher.setupHelp')}</p>
                             </> : <p className="text-sm leading-6 text-fg-muted">{t('setup.publisher.manualHelp')}</p>}
                         </div>} />
@@ -1059,13 +1173,15 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                     </fieldset>}
                     {step === 'review' && plan && <section aria-labelledby="setup-plan-title">
                         <h2 id="setup-plan-title" className="text-xl font-semibold">{t('setup.reviewTitle')}</h2><p className="mt-3 text-sm leading-6 text-fg-muted">{t('setup.reviewHelp')}</p>
+                        {/* What stops the start comes first, before the lists (owner feedback 2026-10-31). */}
+                        {plan.blockers.length > 0 && <SetupPlanProblems blockers={plan.blockers} fallback={failureText} name={id => componentName(catalog?.components.find(row => row.id === id) ?? { id, name: stepTarget('service', id) }, t)} busy={busy} onFix={fixPlanProblem} />}
                         {handoverNotice && <SetupHandoverNotice host={handoverNotice.host} url={handoverURL} />}
                         {plan.infrastructure_dns && <SetupInfrastructureDNSReview value={plan.infrastructure_dns} />}
                         {extending && <SetupExtensionReview plan={plan} changes={extensionChanges.map(change => ({ key: change.key, label: t(extensionLabels[change.key]), before: extensionValue(change.key, change.before), after: extensionValue(change.key, change.after), beforeLiteral: extensionLiteral(change.key) && change.before !== '', afterLiteral: extensionLiteral(change.key) && change.after !== '' }))} name={(kind, target) => kind === 'service' ? componentName(catalog?.components.find(row => row.id === target) ?? { id: target, name: stepTarget('service', target) }, t) : t(`setup.kind.${kind}` as TranslationKey, { target: stepTarget(kind, target) })} />}
                         {plan.components && !extending && <div className="mt-5"><h3 className="font-semibold">{t('setup.components.reviewTitle')}</h3><ul className="mt-2 divide-y divide-border">{plan.components.map(item => <li key={item.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2 text-sm"><span>{componentName(catalog?.components.find(row => row.id === item.id) ?? { id: item.id, name: stepTarget('service', item.id) }, t)}</span><span className="text-fg-muted">{t(item.installed ? 'setup.components.keep' : item.required ? 'setup.components.dependency' : 'setup.components.toInstall')}</span></li>)}</ul><p className="mt-3 text-sm text-fg-muted">{t('setup.components.preserve')}</p></div>}
                         {plan.package_updates && plan.package_updates.length > 0 && <div className="mt-5" data-setup-package-updates=""><h3 className="font-semibold">{t('setup.packageUpdates.title')}</h3><p className="mt-1 text-sm leading-6 text-fg-muted">{t('setup.packageUpdates.help')}</p><ul className="mt-2 divide-y divide-border">{plan.package_updates.map(item => <li key={item.package} className="flex flex-wrap items-baseline justify-between gap-2 py-2 text-sm"><span className="break-all">{item.package}</span>{item.from && item.to && <span className="break-all tabular-nums text-fg-muted">{item.from} → {item.to}</span>}</li>)}</ul></div>}
                         {/* An unread list is an unmet prerequisite (P5): setup cannot start on it; refreshing the review reads it again and changes nothing on the server. */}
-                        {plan.package_updates_state === 'unknown' && <div role="status" className="mt-5 rounded-lg border border-border bg-surface p-4 text-sm leading-6" data-setup-package-updates="unknown"><p>{t('setup.packageUpdates.unknown')}</p><Button type="button" variant="secondary" className="mt-3" disabled={busy} loading={busy} onClick={() => void refreshReview()}>{t('setup.packageUpdates.refresh')}</Button></div>}
+                        {plan.package_updates_state === 'unknown' && <div id="setup-package-updates" tabIndex={-1} role="status" className="mt-5 rounded-lg border border-border bg-surface p-4 text-sm leading-6" data-setup-package-updates="unknown"><p>{t('setup.packageUpdates.unknown')}</p><Button type="button" variant="secondary" className="mt-3" disabled={busy} loading={busy} onClick={() => void refreshReview()}>{t('setup.packageUpdates.refresh')}</Button></div>}
                         <ol className="mt-5 divide-y divide-border">{plan.steps.map(item => <li key={item.id} className="py-4"><p className="font-medium">{t(`setup.kind.${item.kind}`, { target: stepTarget(item.kind, item.target) })}</p>{item.qualifier && item.kind !== 'mail_enrollment' && <p className="mt-1 text-sm text-fg-muted">{item.qualifier}</p>}{handoverNotice && item.kind === 'panel_certificate' && <p className="mt-1 text-sm text-fg-muted">{t('setup.handover.stepNote')}</p>}</li>)}</ol>
                         <dl className="mt-5 space-y-3 rounded-lg bg-surface-2 p-4 text-sm"><div><dt className="font-semibold">{t('setup.firewallReview')}</dt><dd className="mt-1 leading-6 text-fg-muted">{t('setup.firewallHelp')}</dd></div><div><dt className="font-semibold">TCP</dt><dd className="mt-1 break-words tabular-nums">{plan.tcp_ports.join(', ') || t('setup.noPorts')}</dd></div><div><dt className="font-semibold">UDP</dt><dd className="mt-1 break-words tabular-nums">{plan.udp_ports.join(', ') || t('setup.noPorts')}</dd></div><div><dt className="font-semibold">{t('setup.certificateContact')}</dt><dd className="mt-1 break-all">{plan.contact_email}</dd></div>{plan.hostname_change && <div><dt className="font-semibold">{t('setup.hostnameChange')}</dt><dd className="mt-1 break-all">{plan.hostname_change}</dd></div>}</dl>
                         {automaticPublisher && publisherEndpoint && <div className="mt-5 space-y-2 border-t border-border pt-4 text-sm"><p className="font-semibold">{t('setup.publisher.reviewTitle')}</p><p className="break-all">{publisherEndpoint}</p><p className="leading-6 text-fg-muted">{t('setup.publisher.setupHelp')}</p></div>}
@@ -1073,7 +1189,6 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                         {secondaryHosting && !automaticPublisher && <p className="mt-5 text-sm leading-6 text-fg-muted">{t('setup.publisher.manualHelp')}</p>}
                         {draft.dns_mode === 'external' && <p className="mt-5 text-sm leading-6 text-fg-muted">{t('setup.externalAfter')}</p>}
                         {isMail && <p className="mt-4 text-sm leading-6 text-fg-muted">{t('setup.mailAfter')}</p>}
-                        {plan.blockers.length > 0 && <div role="alert" className="mt-5 rounded-lg border border-warning-mark/40 bg-warning-mark/10 p-4"><p className="font-semibold">{t('setup.planBlocked')}</p><ul className="mt-3 list-disc space-y-2 pl-5 text-sm">{plan.blockers.map(code => <li key={code}>{failureText(code)}{code === 'panel_certificate_contact_email_invalid' && <>{' '}<Link to="/account#email" className="inline-flex min-h-11 items-center font-medium text-primary underline underline-offset-4 sm:min-h-0" data-setup-blocker-action={code}>{t('setup.blocker.contactAction')}</Link></>}<details className="mt-1 text-xs text-fg-muted"><summary className="cursor-pointer">{t('setup.details')}</summary><code className="mt-1 block break-words">{code}</code></details></li>)}</ul></div>}
                         <div className="mt-5 rounded-lg border border-border bg-surface p-4 text-sm leading-6" data-setup-untouched="">
                             <h3 className="font-semibold">{t('setup.v2.review.untouched')}</h3>
                             <ul className="mt-2 list-disc space-y-1 pl-5 text-fg-muted">
@@ -1081,19 +1196,23 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                                 {joinFlow && !joinedLink && <li>{t('setup.v5.review.second')}</li>}
                                 {joinedLink && <li>{t('setup.v5.review.joined', { server: joinedLink.first.short_name || t('setup.v5.joined.firstServer'), ip: joinedLink.first.ipv4 })}</li>}
                                 {draft.dns_mode === 'external' && <li>{t('setup.v2.review.provider')}</li>}
-                                {roles.web && mainDomain && !(localPrimary && (draft.imported_records || []).some(item => item.decision === 'import')) && <li>{t('setup.v2.review.site', { domain: mainDomain })}</li>}
+                                {roles.web && mainDomain && joinedLink && <li>{t('setup.v6.review.joinedSite', { domain: mainDomain, server: joinedLink.first.short_name || joinedLink.first.panel_domain })}</li>}
+                                {mainSiteAsked && mainSiteAnswer === 'here' && <li data-setup-review-site="here">{t('setup.v7.review.siteHere', { domain: mainDomain })}</li>}
+                                {roles.web && mainDomain && !joinedLink && !(mainSiteAsked && mainSiteAnswer === 'here') && !(localPrimary && (draft.imported_records || []).some(item => item.decision === 'import' && ['A', 'AAAA', 'CNAME'].includes(item.type))) && <li data-setup-review-site="elsewhere">{t('setup.v7.review.siteElsewhere', { domain: mainDomain })}</li>}
                                 {localPrimary && !!draft.main_domain && (draft.imported_records || []).length > 0 && <li>{t('setup.v3.review.imported', { imported: (draft.imported_records || []).filter(item => item.decision === 'import').length, skipped: (draft.imported_records || []).filter(item => item.decision === 'skip').length })}</li>}
-                                {mailSelected && mainDomain && <li>{t(draft.mail_dns?.mx === 'now' || !(draft.imported_records || []).some(item => item.decision === 'import' && item.type === 'MX') ? 'setup.v3.review.mailNow' : 'setup.v3.review.mailLater', { domain: mainDomain, host: draft.mail_hostname })}</li>}
+                                {mailSelected && mainDomain && firstKeepsMainMail && <li>{t('setup.v6.review.joinedMail', { domain: mainDomain, first: joinedLink?.first.mail_hostname || '', host: draft.mail_hostname })}</li>}
+                                {mailSelected && mainDomain && !firstKeepsMainMail && <li>{t(draft.mail_dns?.mx === 'now' || !(draft.imported_records || []).some(item => item.decision === 'import' && item.type === 'MX') ? 'setup.v3.review.mailNow' : 'setup.v3.review.mailLater', { domain: mainDomain, host: draft.mail_hostname })}</li>}
                                 <li>{t('setup.v2.review.installed')}</li>
                             </ul>
                         </div>
-                        <SetupPanelAccessCard ip={snapshot.server_ip || draft.local_ip} port={window.location.port || '2083'} panelDomain={draft.panel_domain} />
-                        {plan.can_start && <label className="mt-6 flex cursor-pointer items-start gap-3 text-sm leading-6"><input type="checkbox" checked={acknowledged} onChange={event => setAcknowledged(event.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-primary" /><span>{t('setup.confirm')}</span></label>}
+                        <SetupPanelAccessCard ip={snapshot.server_ip || draft.local_ip} port={window.location.port || '1923'} panelDomain={draft.panel_domain} />
+                        {plan.can_start && <label className="mt-6 flex cursor-pointer items-start gap-3 text-sm leading-6"><input id="setup-confirm" type="checkbox" checked={acknowledged} onChange={event => setAcknowledged(event.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-primary" /><span>{t('setup.confirm')}</span></label>}
                     </section>}
                     <div className="setup-actions sticky bottom-0 z-10 mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-bg py-4">
                         {step !== 'domain' && <Button type="button" variant="secondary" disabled={busy} onClick={() => { setStep(steps[Math.max(0, steps.indexOf(step) - 1)]); setPlan(null); setAcknowledged(false); setError(''); }}>{t('setup.back')}</Button>}
                         <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
-                        {step === 'review' ? <Button type="button" variant="primary" disabled={busy || !plan?.can_start || !acknowledged} onClick={() => void start()}>{t('setup.start')}</Button> : <button type="submit" disabled={busy || (step === 'components' && (!catalog || catalog.inventory_state !== 'ready')) || (step === 'dnshome' && (!!dnsSelectionError || (draft.dns_mode === 'local' && dnsNames.mismatch) || (draft.dns_mode === 'existing' && !remoteVerified)))} className="inline-flex items-center gap-3 rounded-lg bg-primary px-5 py-2.5 font-semibold text-primary-fg hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60">{busy ? t('common.loading') : t(step === lastEdit ? 'setup.review' : 'setup.continue')}<ArrowRight className="h-4 w-4" aria-hidden="true" /></button>}
+                        {step === 'review' && startBlock && !busy && <SetupStartReason id="setup-start-reason" block={startBlock} />}
+                        {step === 'review' ? <Button type="button" variant="primary" disabled={busy || !plan?.can_start || !acknowledged} aria-describedby={startBlock && !busy ? 'setup-start-reason' : undefined} onClick={() => void start()}>{t('setup.start')}</Button> : step === 'domain' && !joinedLink && kind !== 'first' ? null : <button type="submit" disabled={busy || (step === 'components' && (!catalog || catalog.inventory_state !== 'ready')) || (step === 'dnshome' && (!!dnsSelectionError || (draft.dns_mode === 'local' && dnsNames.mismatch) || (draft.dns_mode === 'existing' && !remoteVerified)))} className="inline-flex items-center gap-3 rounded-lg bg-primary px-5 py-2.5 font-semibold text-primary-fg hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60">{busy ? t('common.loading') : t(step === lastEdit ? 'setup.review' : 'setup.continue')}<ArrowRight className="h-4 w-4" aria-hidden="true" /></button>}
                         </div>
                     </div>
                 </form>}

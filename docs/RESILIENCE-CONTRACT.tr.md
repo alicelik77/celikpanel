@@ -7291,3 +7291,75 @@ bağlantıyı tutar.
   bağlantı reddi, IPv6 ve ters DNS. Kurulu bir sunucuda ölçülmedi. **Hiçbir P0 işi
   kapanmaz ya da ilerlemez**; P0.1–P0.5 kısmi kalır ve her açık kabul işi açık
   kalır.
+
+### Dal fix/a114-f1-update (alpha.113 PowerDNS ana sunucusu güncellemeyi alabilir ve alpha.113'e dönebilir; v3 DNS kanıtına açık Agent bildirimi; şema değişikliği yok; ilke 1, 2, 3 ve 6; D-022; D-024; D-025; 1 Kasım 2026)
+
+- **Olay.** alpha.114 laboratuvar koşusu 1 (E7): sahibin alpha.113'ten
+  güncellemesi iki PowerDNS ana sunucusunda da salt-okur denetimde durdu
+  (`update_preflight_refused`, `application_compatibility`, `state=unchanged`).
+  Bağımsız `verify-dns-application`, alpha.81'de hiçbir sürüm v3 yazmadan konan
+  bir kapıyla her v3 durum, sahiplik ve günlük belgesini reddediyordu; yeni
+  PowerDNS ana sunucuları o günden beri v3 yazıyor. Katılan PowerDNS yedeği
+  güncellendi: v3 yalnız ana sunucuya ait bir kayıttır
+  (`ValidateNativeCatalogStateV3` birincil rol ister) ve yedeğin ayrık v2
+  belgeleri iki sürümün de taşıdığı v2 bildirimiyle kabul edilir. Denetleyicinin
+  210 baytlık girişi ayrıca 240 baytlık güncelleyici satırında nedeni kesiyordu.
+- **Sözleşme.** Agent yerel sözleşmesine baytlara bağlı, isteğe bağlı
+  `dns_native_catalog_policy: pdns-native-catalog-v3` eklenir; denetleyici bunu
+  Debian 4.9 ve Arch 5.1 işaretlerine sabitler, hiç genişletmez (yeni işaret ya da
+  belge şeması yeni değer ister). alpha.113, hiçbir Agent bildiremeden v3 yazdı:
+  Agent'ı imzalı sözleşmesindeki tam kaynak commit'iyle (`d3f3a323d`, v2 kanıt ve
+  benimseme okuyucu bildirimleriyle) kabul edilir; DNS kanıt paketi, Agent DNS motoru
+  kodu, kurtarma çalışma ortamı ve sözleşme o commit ile alpha.114 tümleştirme tabanı
+  arasında bayt bayt aynıydı. Önceki sürümlerin Agent'ları v3 için reddedilmeye,
+  v4 günlükleri reddedilmeye devam eder.
+- **Kurtarma.** alpha.113'e uygulama geri dönüşü yerel DNS kanıtını yerinde
+  bırakır; adayın çalışma ortamı geri gelen alpha.113 Agent'ını bu kanıt için kabul
+  eder. Ret yine hiçbir şeyi değiştirmez; satırı sahibe bütün ulaşır, bildirim
+  hizmetlerin çalıştığını, sunucuda yapılacak bir şey olmadığını, aynı sürümün aynı
+  yerde duracağını ve sonraki adımın düzeltilmiş sürüm olduğunu söyler (TR/EN).
+- **Kanıt.** Yalnız bileşen testleri: iki işaret × durum, sahiplik, ikisi birden,
+  günlük ve v1 günlüklü durum × güncel, alpha.113, bildirimsiz ve yabancı biçimli
+  Agent'lar, kanıt baytları değişmeden; katılan yedeğin v2 kanıtı; ROADMAP.md'deki en
+  yeni yayımlanmış sürüm `NativeCatalogV3Releases` içinde yoksa ya da işaretleri iki
+  yönde karşılanmıyorsa düşen test. PowerDNS ana sunucusunun gerçek 113 → 114
+  güncellemesi ve 114 → 113 geri dönüşü henüz ölçülmedi. **Hiçbir P0 işi kapanmaz**;
+  P0.3/P0.4 kısmi kalır.
+
+### Dal fix/a114-h2-update-quiesce (reddedilen güncelleme panel ve Agent'ı çalışır bırakır; durmuş quiesce aşaması kurtarılabilir; şema değişikliği yok; ilke 1, 3 ve 4; P0.3; D-024; D-025; 1 Kasım 2026)
+
+- **Olay.** alpha.114 lab koşusu 3 (Arch): tamamlanan geri alma denemesinden 11 sn
+  sonra alpha.113'ten güncelleme quiesce aşamasını yayımladığında panelin kendi
+  30 saniyelik yeniden denemesi ayrıcalıklı bir Agent işlemi başlatmıştı. Ön Agent
+  denetimi doğru biçimde reddetti (`agent_idle`). İptal ise her koordinatörün
+  cgroup'unda yalnız MainPID olmasını istedi; meşgul Agent'ın cgroup'unda o işlemin
+  yardımcı süreçleri de vardı. İptal güvenli kapalı kaldı, `quiesce.pending`
+  korunarak iki koordinatör de durduruldu. Sonraki her kurtarma denemesi ve sahibe
+  yazdırılan tek seferlik yeniden deneme özgün süreçlerin yeniden canlı olmasını
+  istediği için hiç başaramazdı: panel `failed`, Agent `inactive`, kurtarma üç
+  denemeden sonra durdu. Barındırılan hizmetler çalışmaya devam etti. İptal kodu
+  alpha.113'tekiyle aynıydı.
+- **Sözleşme.** İptal her koordinatörü bir kez sınıflar: kaydedilmiş tam süreç
+  (durum, MainPID, başlangıç zamanı) sürdürülür, MainPID yanında yardımcı süreçlere
+  izin verilir; durduğu kanıtlanan kayıtlı etkin süreç (önceki güvenli kapalı iptal,
+  çökme ya da yeniden başlatma; başlangıç koruması systemd'nin onu yenilemesini
+  engelledi) ancak tam işaretçi kaldırıldıktan sonra, önce Agent sonra panel olmak
+  üzere yeniden başlatılır ve doğrulanır; başka her süreç güvenli kapalı kalır.
+  Dondurma ve yükseltme kanıtları katı tek-PID kuralını korur. Kilitsiz ön Agent
+  denetimleri (quiesce yayımından önce ve hemen sonra) süren Agent işleminin ya da
+  paket yöneticisinin bitmesi için en çok 60 sn, 3 sn aralıkla bekler; bilinmeyen
+  veya güvensiz kanıt ile kilitli ve dondurulmuş kanıtlar hiç beklemez.
+- **Kurtarma.** Ret artık `update_preflight_refused`, adım `agent_idle`,
+  `state=unchanged` ile ve iki koordinatör çalışırken biter. Koşu 3 durumunda kalan
+  sunucu, bu güncelleyiciyi taşıyan sürümle bir sonraki otomatik denemede ya da
+  sahibin yeniden denemesinde kurtulur. Başarısız yeniden başlatma tam işaretçiyi
+  yeniden kurar ve kurtarma zamanlayıcısıyla sınırlı kalır. Kalan açık: kurtarma
+  süreci işaretçi kaldırılması ile yeniden başlatma arasında öldürülürse
+  koordinatörler, yeniden açılışa ya da `systemctl start` komutuna kadar işaretçisiz
+  ve durmuş kalır.
+- **Kanıt.** Yalnız bileşen testleri (`deploy/test-update-quiesce-exit-contract.sh`,
+  `deploy/test-update-enrollment-preflight.sh`, `deploy/test-bootstrap-update-contract.sh`):
+  meşgul, dondurulmamış ve yardımcılı Agent ile koşu 3 reddi; yardımcılı askıdaki
+  Agent; iki koordinatör durmuş; biri çalışan biri durmuş; başarısız yeniden
+  başlatma; beklenmeyen çalışan birim. Gerçek Arch dizisi henüz yeniden ölçülmedi.
+  **Hiçbir P0 işi kapanmaz**; P0.1/P0.3 kısmi kalır.

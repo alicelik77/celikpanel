@@ -53,7 +53,8 @@ test('a verified rollback names both versions, the typed cause, who acts and how
     for (const [code, causeKey] of [
         ['candidate_panel_startup_check_failed', 'panelUpdate.outcome.cause.candidate_panel_startup_check_failed'],
         ['panel_start_unverified', 'panelUpdate.outcome.cause.panel_start_unverified'],
-        [undefined, 'panelUpdate.outcome.cause.generic'],
+        // No typed cause: the updater's own reason is the cause line (E-new-5).
+        [undefined, 'panelUpdate.outcome.serverMessage'],
     ]) {
         const guidance = failedUpdateGuidance(observed('recovered', code ? { failure_code: code } : {}), input());
         assert.equal(guidance.state, 'rolled_back');
@@ -74,12 +75,40 @@ test('a verified rollback names both versions, the typed cause, who acts and how
     assert.match(turkish, /Sunucuda yapmanız gereken bir şey yok/);
 });
 
+test('a verified rollback without a typed cause shows the updater reason as its cause (alpha.114 E-new-5)', () => {
+    const reason = 'installer stopped: panel.env line 3 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry)';
+    for (const state of ['rolled_back', 'recovery_required']) {
+        const message = `!! CELIKPANEL_UPDATE_FAILURE code=update_failed state=${state} reason=${reason} detail=`;
+        const guidance = failedUpdateGuidance(observed('recovered'), input({ message }));
+        assert.equal(guidance.state, 'rolled_back');
+        assert.equal(guidance.tone, 'warning');
+        assert.deepEqual(guidance.lines[1], { key: 'panelUpdate.outcome.serverMessage', vars: { message: reason } });
+        for (const catalog of [en, tr]) {
+            const text = primary(catalog, guidance).join('\n');
+            assert.ok(text.includes('CELIKPANEL_LAB_ROLLBACK_PROBE'), text);
+            assert.doesNotMatch(text, /CELIKPANEL_UPDATE_FAILURE|recovery_required|rolled_back|\{/);
+        }
+    }
+    // The historical generic text names no cause: the generic cause line stays.
+    const generic = '!! CELIKPANEL_UPDATE_FAILURE code=update_failed state=rolled_back reason=updater command failed; inspect the update worker log detail=';
+    assert.equal(failedUpdateGuidance(observed('recovered'), input({ message: generic })).lines[1].key, 'panelUpdate.outcome.cause.generic');
+    // A typed cause keeps its own words.
+    const typed = failedUpdateGuidance(observed('recovered', { failure_code: 'candidate_panel_startup_check_failed' }), input({
+        message: `!! CELIKPANEL_UPDATE_FAILURE code=candidate_panel_startup_check_failed state=rolled_back reason=${reason} detail=` }));
+    assert.equal(typed.lines[1].key, 'panelUpdate.outcome.cause.candidate_panel_startup_check_failed');
+});
+
 test('an unknown cause code keeps the generic cause', () => {
     const parsed = observed('recovered', { failure_code: 'private_detail' });
     assert.equal(parsed.failure_code, undefined);
     const forced = { ...observed('recovered'), failure_code: 'private_detail' };
+    // (A summary with its own reason would be shown as that reason; the
+    // historical generic summary leaves the generic cause.)
+    const genericSummary = '!! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=updater command failed; inspect the update worker log detail=';
     for (const value of [parsed, forced]) {
-        assert.equal(failedUpdateGuidance(value, input()).lines[1].key, 'panelUpdate.outcome.cause.generic');
+        const guidance = failedUpdateGuidance(value, input({ message: genericSummary }));
+        assert.equal(guidance.lines[1].key, 'panelUpdate.outcome.cause.generic');
+        assert.doesNotMatch(JSON.stringify(guidance.lines), /private_detail/);
     }
     // A later recovery failure hides the update's own cause.
     const later = { ...observed('recovered', { failure_code: 'candidate_panel_startup_check_failed' }), previous_failure: 'recovery_failed' };
@@ -425,4 +454,33 @@ test('the outcome tone is red only when the owner must act; the repeated renewal
         assert.equal(typeof enAll[key], 'string', key);
         assert.equal(typeof trAll[key], 'string', key);
     }
+});
+
+// alpha.114 E7: the new version refused this server's recorded mail or DNS
+// state. Nothing changed, nobody can fix it on the server and the same version
+// stops the same way: the notice says that, who acts and what comes next, and
+// the checker's whole line stays under Details.
+test('a refused mail/DNS state says nothing changed, who acts and that the same version stops again', () => {
+    const detail = "DNS state check failed: this Agent does not declare support for the PowerDNS main server's v3 DNS state; preserve that state and use a release that does. Nothing changed; preserve the DNS files.";
+    const message = 'reviewed updater failed: exit status 1: ' + refusedSummary('application_compatibility', 'check_failed', detail);
+    const stop = observed('failed', { failure_code: 'update_preflight_refused' });
+    for (const observation of [stop, null]) {
+        const guidance = failedUpdateGuidance(observation, input({ message }));
+        assert.equal(guidance.state, 'unchanged');
+        assert.deepEqual(guidance.lines.map((value) => value.key), ['panelUpdate.outcome.stopped', 'panelUpdate.outcome.preflightStep.application_compatibility',
+            'panelUpdate.outcome.preflightNext.application_compatibility', 'panelUpdate.outcome.preflightResume.application_compatibility']);
+        assert.equal(guidance.serverMessage, detail);
+        const english = primary(enAll, guidance).join('\n');
+        assert.match(english, /keep working on v0\.1\.0-alpha\.81/);
+        assert.match(english, /Starting v0\.1\.0-alpha\.82 again stops the same way/);
+        assert.match(english, /corrected in CelikPanel, not on your server/);
+        assert.doesNotMatch(english, /again is safe|CELIKPANEL|class=|step=|\{/);
+        const turkish = primary(trAll, guidance).join('\n');
+        assert.match(turkish, /v0\.1\.0-alpha\.81 ile çalışmaya devam ediyor/);
+        assert.match(turkish, /aynı yerde durur/);
+        assert.doesNotMatch(turkish, /\b(The|Reason|Nothing)\b|güvenlidir|class=|step=|\{/);
+    }
+    // Other steps keep the safe-to-retry wording.
+    const other = failedUpdateGuidance(stop, input({ message: refusedSummary('bind_compatibility', 'check_failed', 'x') }));
+    assert.deepEqual(other.lines.slice(-2).map((value) => value.key), ['panelUpdate.outcome.stoppedNext', 'panelUpdate.outcome.stoppedResume']);
 });

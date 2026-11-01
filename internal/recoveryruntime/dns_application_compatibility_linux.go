@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/alicelik/celikpanel/internal/agentnativecontract"
 	"github.com/alicelik/celikpanel/internal/dnsengineartifact"
@@ -16,7 +17,8 @@ import (
 var errDNSSwitchJournalApplication = errors.New("active DNS switch journal requires an Agent that reads the exact v2 BIND inverse plan; preserve the evidence and choose a compatible release")
 var errDNSSwitchJournalApplicationV4 = errors.New("active v4 PowerDNS target journal requires a proved independent recovery runtime; preserve the evidence and choose a compatible release")
 
-var errDNSApplicationV3 = errors.New("v3 PowerDNS evidence requires an explicitly compatible Agent and independent recovery runtime; preserve the evidence and choose a compatible release")
+// The text is the updater's diagnostic line: short enough to reach the owner whole.
+var errDNSApplicationV3 = errors.New("this Agent does not declare support for the PowerDNS main server's v3 DNS state; preserve that state and use a release that does")
 
 var errDNSApplication = errors.New("DNS evidence requires an Agent with separated acquisition/publication support; preserve the evidence and choose a compatible release")
 
@@ -45,7 +47,8 @@ func checkDNSApplicationCompatibility(bin, root string, beforeRevalidate func())
 	required := false
 	requireSwitchV2 := false
 	requireSwitchV4 := false
-	requireFreshV3 := false
+	// Markers of fresh PowerDNS main server (v3) evidence present on this host.
+	freshV3 := map[string]bool{}
 	requireSourceProof := false
 	requireAdoptionProof := false
 	if parent != nil {
@@ -104,7 +107,10 @@ func checkDNSApplicationCompatibility(bin, root string, beforeRevalidate func())
 				}
 				requireSwitchV2 = journal.Schema == dnsengineartifact.SwitchJournalSchemaV2
 				requireSwitchV4 = journal.Schema == dnsengineartifact.SwitchJournalSchemaV4
-				requireFreshV3 = requireFreshV3 || journal.Schema == dnsengineartifact.SwitchJournalSchemaV3
+				if journal.Schema == dnsengineartifact.SwitchJournalSchemaV3 {
+					// The decoder proved the plan and its tested marker.
+					freshV3[journal.PDNSFreshPlan.Kind] = true
+				}
 				requireSourceProof = requireSwitchV2 && journal.InversePlan != nil && journal.InversePlan.SourcePDNS != nil
 				requireAdoptionProof = requireSwitchV2 && journal.InversePlan != nil && journal.InversePlan.SourceBIND != nil
 				continue
@@ -120,16 +126,13 @@ func checkDNSApplicationCompatibility(bin, root string, beforeRevalidate func())
 				return fail(ReasonUnsupported)
 			}
 			required = required || separated
-			requireFreshV3 = requireFreshV3 || receipt.NativeCatalogV3 != ""
+			if receipt.NativeCatalogV3 != "" {
+				freshV3[receipt.NativeCatalogV3] = true
+			}
 		}
 	}
-	// V3 has no accepted application/recovery compatibility declaration yet.
-	// A legacy separated-evidence marker cannot stand in for that contract.
-	if requireFreshV3 {
-		return errDNSApplicationV3
-	}
 	var target *CompatibleMailAgent
-	if required || requireSwitchV2 {
+	if required || requireSwitchV2 || len(freshV3) > 0 {
 		target, err = InspectCompatibleMailAgent(bin)
 		if err != nil {
 			return err
@@ -137,6 +140,12 @@ func checkDNSApplicationCompatibility(bin, root string, beforeRevalidate func())
 		defer target.Close()
 		if required && target.Contract.DNSEvidencePolicy != agentnativecontract.DNSEvidencePolicy {
 			return errDNSApplication
+		}
+		// V3 needs its own declaration; the separated-evidence marker alone
+		// cannot stand in for it (alpha.81). This checker is the candidate's
+		// independent runtime and decoded every marker itself above.
+		if len(freshV3) > 0 && !readsNativeCatalogV3(target.Contract, freshV3) {
+			return errDNSApplicationV3
 		}
 		if requireSwitchV2 && !supportsBINDJournalPolicy(target.Contract.DNSSwitchJournalPolicy, requireSourceProof, requireAdoptionProof) {
 			return errDNSSwitchJournalApplication
@@ -175,4 +184,64 @@ func supportsBINDJournalPolicy(policy string, sourceProof, adoptionProof bool) b
 	default:
 		return false
 	}
+}
+
+// nativeCatalogV3PolicyKinds pins the markers each declared Agent generation
+// reads. A value never widens: a new marker or document schema gets a new
+// agentnativecontract value, so an older Agent is refused for it instead of
+// misreading it.
+var nativeCatalogV3PolicyKinds = map[string][]string{
+	agentnativecontract.DNSNativeCatalogPolicy: {dnsengineartifact.NativeCatalogDebian49V3, dnsengineartifact.NativeCatalogArch51V3},
+}
+
+// NativeCatalogV3Release is a published release whose Agent writes fresh
+// PowerDNS main server (v3) evidence, and how the checker admits that Agent:
+// by its declared Policy, or, for a release published before the declaration
+// existed, by the exact source commit its signed native contract names.
+type NativeCatalogV3Release struct {
+	Version      string
+	SourceCommit string
+	Policy       string
+	Kinds        []string
+}
+
+// NativeCatalogV3Releases lists every published release whose Agent writes v3
+// evidence; the release record adds each new one (a test requires the newest
+// published release here). Releases before alpha.113 are not listed: their
+// Agents stay refused for v3 evidence.
+//
+// alpha.113 (release commit d3f3a323d) wrote state-v3/ownership-v3 documents
+// and v3 journals for both markers before any Agent could declare them. Its
+// Agent is admitted by that exact commit: the DNS evidence package, the
+// Agent's DNS engine code, the independent recovery runtime and the native
+// contract were byte-identical between that commit and the alpha.114
+// integration source that added the declaration, so it reads and keeps what
+// alpha.114 writes, and the reverse. Application rollback keeps native DNS
+// evidence in place; the restored alpha.113 Agent operates it unchanged.
+var NativeCatalogV3Releases = []NativeCatalogV3Release{
+	{Version: "v0.1.0-alpha.113", SourceCommit: "d3f3a323da46ce8f8dca5ad4385666c5428c353e",
+		Kinds: []string{dnsengineartifact.NativeCatalogDebian49V3, dnsengineartifact.NativeCatalogArch51V3}},
+}
+
+func readsNativeCatalogV3(contract agentnativecontract.Contract, present map[string]bool) bool {
+	var kinds []string
+	if contract.DNSNativeCatalogPolicy != "" {
+		kinds = nativeCatalogV3PolicyKinds[contract.DNSNativeCatalogPolicy]
+	} else if contract.DNSEvidencePolicy == agentnativecontract.DNSEvidencePolicy &&
+		contract.DNSSwitchJournalPolicy == agentnativecontract.DNSSwitchAdoptionJournalPolicy {
+		for _, release := range NativeCatalogV3Releases {
+			if release.Policy == "" && release.SourceCommit == contract.SourceCommit {
+				kinds = release.Kinds
+			}
+		}
+	}
+	if len(kinds) == 0 {
+		return false
+	}
+	for kind := range present {
+		if !slices.Contains(kinds, kind) {
+			return false
+		}
+	}
+	return true
 }

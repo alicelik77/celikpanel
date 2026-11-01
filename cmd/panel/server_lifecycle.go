@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -67,6 +68,124 @@ type runningPanelHTTPServer struct {
 	server      *http.Server
 	addr        net.Addr
 	serveResult <-chan error
+
+	// The listeners this server accepts on, by configured listen address.
+	// A panel port change (panel_port.go) adds a trial listener, and on the
+	// owner's confirmation promotes it and retires the previous one. Only the
+	// primary listener's end stops the process.
+	// Panel portu değişikliği deneme dinleyicisi ekler; onayda onu birincil
+	// yapar ve öncekini kapatır. Yalnız birincil dinleyicinin sonu süreci bitirir.
+	tlsOn     bool
+	results   chan error
+	mu        sync.Mutex
+	primary   string
+	listeners map[string]*panelHTTPListener
+}
+
+type panelHTTPListener struct {
+	listener net.Listener
+	primary  atomic.Bool
+	retired  atomic.Bool
+}
+
+func (running *runningPanelHTTPServer) serveListener(listen string, listener net.Listener, primary bool) {
+	entry := &panelHTTPListener{listener: listener}
+	entry.primary.Store(primary)
+	running.listeners[listen] = entry
+	go func() {
+		var err error
+		if running.tlsOn {
+			err = running.server.ServeTLS(listener, "", "")
+		} else {
+			err = running.server.Serve(listener)
+		}
+		if entry.retired.Load() || (!entry.primary.Load() && !errors.Is(err, http.ErrServerClosed)) {
+			// A retired or trial listener ending is not the panel ending.
+			return
+		}
+		select {
+		case running.results <- err:
+		default:
+		}
+	}()
+}
+
+// AddListener starts accepting on one more address with the same handler and
+// TLS identity. It fails when the address cannot be bound (in use).
+func (running *runningPanelHTTPServer) AddListener(listen string) error {
+	if running == nil || running.server == nil {
+		return errors.New("panel HTTP server was not started")
+	}
+	running.mu.Lock()
+	defer running.mu.Unlock()
+	if _, exists := running.listeners[listen]; exists {
+		return nil
+	}
+	listener, err := net.Listen("tcp", listen)
+	if err != nil {
+		return err
+	}
+	running.serveListener(listen, listener, false)
+	return nil
+}
+
+// RemoveListener stops accepting on a non-primary address. Connections
+// already accepted finish normally.
+func (running *runningPanelHTTPServer) RemoveListener(listen string) error {
+	if running == nil {
+		return errors.New("panel HTTP server was not started")
+	}
+	running.mu.Lock()
+	defer running.mu.Unlock()
+	entry, exists := running.listeners[listen]
+	if !exists {
+		return nil
+	}
+	if listen == running.primary {
+		return errors.New("the primary panel listener cannot be removed")
+	}
+	entry.retired.Store(true)
+	delete(running.listeners, listen)
+	return entry.listener.Close()
+}
+
+// PromoteListener makes listen the primary listener and retires the previous
+// primary one.
+func (running *runningPanelHTTPServer) PromoteListener(listen string) error {
+	if running == nil {
+		return errors.New("panel HTTP server was not started")
+	}
+	running.mu.Lock()
+	defer running.mu.Unlock()
+	entry, exists := running.listeners[listen]
+	if !exists {
+		return errors.New("the panel does not listen on " + listen)
+	}
+	if listen == running.primary {
+		return nil
+	}
+	previous := running.listeners[running.primary]
+	entry.primary.Store(true)
+	running.addr = entry.listener.Addr()
+	oldKey := running.primary
+	running.primary = listen
+	if previous != nil {
+		previous.retired.Store(true)
+		delete(running.listeners, oldKey)
+		return previous.listener.Close()
+	}
+	return nil
+}
+
+// HasListener reports whether the server accepts on listen now.
+func (running *runningPanelHTTPServer) HasListener(listen string) bool {
+	if running == nil {
+		return false
+	}
+	running.mu.Lock()
+	defer running.mu.Unlock()
+	_, exists := running.listeners[listen]
+	return exists
 }
 
 // startPanelHTTP binds and starts the listener before startup recovery. When
@@ -89,20 +208,20 @@ func startPanelHTTP(
 	if err != nil {
 		return nil, err
 	}
-	serveResult := make(chan error, 1)
-	go func() {
-		if tlsOn {
-			serveResult <- server.ServeTLS(listener, "", "")
-			return
-		}
-		serveResult <- server.Serve(listener)
-	}()
-
-	return &runningPanelHTTPServer{
+	results := make(chan error, 1)
+	running := &runningPanelHTTPServer{
 		server:      server,
 		addr:        listener.Addr(),
-		serveResult: serveResult,
-	}, nil
+		serveResult: results,
+		tlsOn:       tlsOn,
+		results:     results,
+		primary:     server.Addr,
+		listeners:   map[string]*panelHTTPListener{},
+	}
+	running.mu.Lock()
+	running.serveListener(server.Addr, listener, true)
+	running.mu.Unlock()
+	return running, nil
 }
 
 // configurePanelHTTPTLS loads and pairs the certificate exactly as the listener

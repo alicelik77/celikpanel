@@ -213,6 +213,7 @@ func (p *Panel) changeTOTPStateAndRevokeSessions(
 	expectedEpoch int64,
 	change totpStateChange,
 	storedSecret string,
+	recoveryHashes []string,
 ) (int64, error) {
 	tx, err := p.db.GetDB().BeginTx(ctx, nil)
 	if err != nil {
@@ -249,6 +250,19 @@ func (p *Panel) changeTOTPStateAndRevokeSessions(
 	}
 	if affected != 1 {
 		return 0, errTOTPStateChanged
+	}
+	// Recovery codes follow the second factor in the same transaction: the
+	// set is made when 2FA is turned on, and removed when it is turned off (or
+	// when a new setup starts), so a code never outlives its authenticator.
+	switch change {
+	case totpStateEnable:
+		if err := replaceRecoveryCodesTx(ctx, tx, userID, recoveryHashes); err != nil {
+			return 0, err
+		}
+	case totpStateSetup, totpStateDisable:
+		if err := replaceRecoveryCodesTx(ctx, tx, userID, nil); err != nil {
+			return 0, err
+		}
 	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, userID); err != nil {
 		return 0, fmt.Errorf("revoke sessions after TOTP state change: %w", err)
@@ -300,6 +314,9 @@ func (p *Panel) handleLoginTOTP(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		PendingToken string `json:"pending_token"`
 		Code         string `json:"code"`
+		// RecoveryCode (alpha.114) stands in for Code: a single-use code
+		// made when 2FA was turned on.
+		RecoveryCode string `json:"recovery_code"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeClientError(w, http.StatusBadRequest, "invalid request body")
@@ -334,12 +351,31 @@ func (p *Panel) handleLoginTOTP(w http.ResponseWriter, r *http.Request) {
 		writeClientError(w, http.StatusUnauthorized, "sign-in expired, start again")
 		return
 	}
-	if !state.totpEnabled || !auth.ValidateTOTP(state.totpSecret, req.Code) {
-		writeClientError(w, http.StatusUnauthorized, "invalid code")
-		return
-	}
 	if p.sessions == nil {
 		writeSignInStatusUnavailable(w)
+		return
+	}
+	usedRecovery := false
+	if req.RecoveryCode != "" {
+		// A recovery code is spent before the session is made: a session
+		// that fails to be created afterwards has cost the person one code,
+		// never the other way round (one code used twice).
+		if !state.totpEnabled {
+			writeClientError(w, http.StatusUnauthorized, "invalid code")
+			return
+		}
+		spent, err := p.consumeRecoveryCode(r.Context(), pending.userID, req.RecoveryCode)
+		if err != nil {
+			writeSignInStateError(w, err)
+			return
+		}
+		if !spent {
+			writeClientError(w, http.StatusUnauthorized, "invalid code")
+			return
+		}
+		usedRecovery = true
+	} else if !state.totpEnabled || !auth.ValidateTOTP(state.totpSecret, req.Code) {
+		writeClientError(w, http.StatusUnauthorized, "invalid code")
 		return
 	}
 	token, err := p.sessions.CreateForAuthEpoch(r.Context(), pending.userID, pending.authEpoch, true)
@@ -348,7 +384,11 @@ func (p *Panel) handleLoginTOTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.SetCookie(w, p.sessionCookie(token, time.Now().Add(auth.SessionDuration)))
-	p.auditAs(r, pending.userID, "auth.login.2fa", "", 0)
+	if usedRecovery {
+		p.auditAs(r, pending.userID, "auth.login.2fa.recovery", "", 0)
+	} else {
+		p.auditAs(r, pending.userID, "auth.login.2fa", "", 0)
+	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(identity.response(false))
 }
@@ -369,7 +409,19 @@ func (p *Panel) handle2FA(w http.ResponseWriter, r *http.Request) {
 			writeServerError(w, err)
 			return
 		}
-		json.NewEncoder(w).Encode(map[string]any{"enabled": enabled})
+		status := map[string]any{"enabled": enabled}
+		if enabled {
+			remaining, total, err := p.recoveryCodeCounts(r.Context(), c.ID)
+			if err != nil {
+				writeServerError(w, err)
+				return
+			}
+			status["recovery_remaining"] = remaining
+			status["recovery_total"] = total
+		}
+		json.NewEncoder(w).Encode(status)
+	case "/api/v1/auth/2fa/recovery/regenerate":
+		p.handle2FARecoveryRegenerate(w, r, c.ID)
 	case "/api/v1/auth/2fa/setup":
 		p.handle2FASetup(w, r, c.ID)
 	case "/api/v1/auth/2fa/enable":
@@ -434,7 +486,7 @@ func (p *Panel) handle2FASetup(w http.ResponseWriter, r *http.Request, userID in
 		return
 	}
 	newEpoch, err := p.changeTOTPStateAndRevokeSessions(
-		r.Context(), userID, state.authEpoch, totpStateSetup, storedSecret,
+		r.Context(), userID, state.authEpoch, totpStateSetup, storedSecret, nil,
 	)
 	if errors.Is(err, errTOTPStateChanged) {
 		writeClientError(w, http.StatusConflict, "two-factor state changed; reload and try again")
@@ -495,8 +547,13 @@ func (p *Panel) handle2FAEnable(w http.ResponseWriter, r *http.Request, userID i
 		writeClientError(w, http.StatusUnauthorized, "password or code incorrect")
 		return
 	}
+	recoveryCodes, recoveryHashes, err := newRecoveryCodeSet()
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
 	newEpoch, err := p.changeTOTPStateAndRevokeSessions(
-		r.Context(), userID, state.authEpoch, totpStateEnable, "",
+		r.Context(), userID, state.authEpoch, totpStateEnable, "", recoveryHashes,
 	)
 	if errors.Is(err, errTOTPStateChanged) {
 		writeClientError(w, http.StatusConflict, "two-factor state changed; reload and try again")
@@ -512,7 +569,14 @@ func (p *Panel) handle2FAEnable(w http.ResponseWriter, r *http.Request, userID i
 		return
 	}
 	p.audit(r, "2fa.enable", "user", userID)
-	json.NewEncoder(w).Encode(map[string]any{"success": true})
+	p.audit(r, "2fa.recovery.generate", "user", userID)
+	// The plain codes are in this answer only; the database has their digests.
+	json.NewEncoder(w).Encode(map[string]any{
+		"success":            true,
+		"recovery_codes":     recoveryCodes,
+		"recovery_remaining": len(recoveryCodes),
+		"recovery_total":     len(recoveryCodes),
+	})
 }
 
 // handle2FADisable turns 2FA off, requiring the account password and a current
@@ -555,7 +619,7 @@ func (p *Panel) handle2FADisable(w http.ResponseWriter, r *http.Request, userID 
 		return
 	}
 	newEpoch, err := p.changeTOTPStateAndRevokeSessions(
-		r.Context(), userID, state.authEpoch, totpStateDisable, "",
+		r.Context(), userID, state.authEpoch, totpStateDisable, "", nil,
 	)
 	if errors.Is(err, errTOTPStateChanged) {
 		writeClientError(w, http.StatusConflict, "two-factor state changed; reload and try again")

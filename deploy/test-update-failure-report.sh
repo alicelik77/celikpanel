@@ -282,4 +282,88 @@ done
 grep -Fq 'candidate_panel_startup_check_failed|panel_start_unverified|recovery_runtime_preflight_failed|update_preflight_refused|update_finishing_scheduler) ;;' \
     "$repo_root/deploy/release-recovery-observation.sh" || fail 'observation library refuses the finishing code'
 
-echo 'PASS: causal failure survives cleanup; legacy worker bound; busy/unsafe outcomes; typed preflight stop; initial record for a historical worker; typed scheduler finishing step; no retry or host mutation'
+# alpha.114 lab E-new-5: the staged installer stopped on an unknown panel.env
+# key while the active marker selected automatic rollback. update.sh ran it
+# without a die, so set -e ended the updater and the summary carried only the
+# generic reason with an empty detail. The installer's own error line is the
+# cause now, short and path-free for older panels, whole in the detail. A step
+# that still fails without a die is named by its line.
+# Kurucunun kendi hata satırı neden olur; die'siz adım satırıyla adlandırılır.
+for name in installer_failure_reason run_staged_installer; do
+    source <(extract "$name")
+done
+cat > "$bind_fixture/install.sh" <<'INSTALLER'
+#!/usr/bin/env bash
+c() { printf '\033[%sm%s\033[0m\n' "$1" "$2"; }
+echo '==> Re-running / progress'
+c '33' '    a warning on stderr' >&2
+c '1;31' 'ERROR / HATA: panel.env line 3 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) / panel.env:3 desteklenmeyen anahtar: CELIKPANEL_LAB_ROLLBACK_PROBE (satırı silin, sonra yeniden deneyin)' >&2
+exit 1
+INSTALLER
+installer_case() (
+    set -euo pipefail
+    mutation_started=1 transaction_started=1 quiesce_abort_failed=0
+    transaction_phase=active fixture_marker=active
+    transaction_completion_verified=0 scheduler_restore_verified=0
+    update_failure_reason= update_failure_detail= update_failure_code=
+    trap on_exit EXIT
+    set -E
+    trap 'update_unhandled_status=$? update_unhandled_line=$LINENO' ERR
+    run_staged_installer env -i PATH=/usr/bin:/bin /bin/bash "$1"
+    echo 'installer admitted' >&2
+)
+status=0
+output=$(installer_case "$bind_fixture/install.sh" 2>&1) || status=$?
+last=${output##*$'\n'}
+[[ $status == 1 && $output != *'installer admitted'* ]] || fail "failed installer did not stop the update: $status"
+[[ $output == *'a warning on stderr'* && $output == *'desteklenmeyen anahtar'* ]] || fail 'installer stderr was not passed to the worker log'
+[[ $last == '!! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped: panel.env line 3 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) detail=ERROR / HATA: panel.env line 3 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE'* ]] ||
+    fail "installer cause lost: $last"
+reason=${last#*reason=}; reason=${reason%% detail=*}
+[[ ${#reason} -le 120 && $reason != */* && $reason != *\* ]] || fail "installer reason exceeds the legacy panel contract: $reason"
+[[ $last != *$'\e'* ]] || fail 'colour codes reached the summary'
+# A path in the installer's line keeps only its file name in the reason.
+printf '%s\n' '#!/usr/bin/env bash' "printf '\033[1;31m%s\033[0m\n' 'ERROR / HATA: the panel environment file is missing or unsafe: /etc/celikpanel/panel.env / panel ortam dosyası eksik veya güvensiz: /etc/celikpanel/panel.env' >&2" 'exit 1' > "$bind_fixture/install-path.sh"
+output=$(installer_case "$bind_fixture/install-path.sh" 2>&1) || true
+[[ ${output##*$'\n'} == *'reason=installer stopped: the panel environment file is missing or unsafe: panel.env detail='* ]] ||
+    fail "installer path not reduced: ${output##*$'\n'}"
+# No error line at all still says that it was the installer.
+printf '%s\n' '#!/usr/bin/env bash' 'exit 7' > "$bind_fixture/install-silent.sh"
+output=$(installer_case "$bind_fixture/install-silent.sh" 2>&1) || true
+[[ ${output##*$'\n'} == *'reason=installer stopped: it printed no error line; the update worker log has its output detail=the installer exited with status 7 without an error line' ]] ||
+    fail "silent installer not explained: ${output##*$'\n'}"
+# A successful installer passes through and leaves no failure.
+printf '%s\n' '#!/usr/bin/env bash' 'echo installed' > "$bind_fixture/install-ok.sh"
+output=$(installer_case "$bind_fixture/install-ok.sh" 2>&1) || true
+[[ $output == *'installer admitted'* ]] || fail "successful installer was not admitted: $output"
+# Any other step that ends the updater without a die is named by its line,
+# and die's own cause still wins over that record.
+unhandled_case() (
+    set -euo pipefail
+    mutation_started=1 transaction_started=1 quiesce_abort_failed=0
+    transaction_phase=active fixture_marker=active
+    transaction_completion_verified=0 scheduler_restore_verified=0
+    update_failure_reason= update_failure_detail= update_failure_code=
+    trap on_exit EXIT
+    set -E
+    trap 'update_unhandled_status=$? update_unhandled_line=$LINENO' ERR
+    guarded() { false; }
+    if ! guarded; then :; fi
+    [[ $1 == die ]] && die 'the exact cause'
+    ( exit 4 )
+)
+# Not in an || list: set -e (and the ERR trap) must be live inside, as in update.sh.
+set +e
+output=$(unhandled_case plain 2>&1)
+set -e
+[[ ${output##*$'\n'} =~ reason=an\ update\ step\ stopped\ at\ update\.sh\ line\ [0-9]+\ \(exit\ status\ 4\)\ without\ its\ own\ message\ detail=the\ update\ worker\ log\ has\ the\ output\ of\ that\ step$ ]] ||
+    fail "unhandled step not named: ${output##*$'\n'}"
+set +e
+output=$(unhandled_case die 2>&1)
+set -e
+[[ ${output##*$'\n'} == *'reason=the exact cause detail='* ]] || fail "die cause replaced by the unhandled record: ${output##*$'\n'}"
+installer_calls=$(grep -c '/bin/bash "$TRUSTED_RELEASE_ROOT/install.sh"$' "$candidate")
+[[ $installer_calls -ge 1 && $(grep -c '^    run_staged_installer env -i ' "$candidate") == "$installer_calls" ]] ||
+    fail 'an installer call in update.sh does not keep its cause'
+
+echo 'PASS: causal failure survives cleanup; legacy worker bound; busy/unsafe outcomes; typed preflight stop; initial record for a historical worker; typed scheduler finishing step; installer cause kept; unhandled step named; no retry or host mutation'

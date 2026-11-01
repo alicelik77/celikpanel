@@ -13,6 +13,8 @@ export type DNSOverviewRowState = 'ok' | 'missing' | 'different' | 'not_yet' | '
 export interface DNSOverviewServer {
     who: 'this' | 'peer';
     role: 'main' | 'backup' | 'standalone' | 'none';
+    /** With two servers: the one whose setup made the join code is "first", the one that joined is "second". */
+    order?: 'first' | 'second';
     short_name?: string;
     panel_name?: string;
     software?: string;
@@ -70,7 +72,7 @@ export const DNS_OVERVIEW_CODES = [
     'setup_not_done', 'setup_running', 'join_waiting', 'main_not_serving', 'backup_not_serving', 'peer_not_joined',
     'registrar_not_pointing', 'domain_not_registered', 'glue_missing', 'provider_records', 'remote_records',
     'provider_mail', 'remote_mail', 'server_unknown', 'some_unknown', 'spreading', 'mail_spreading',
-    'owner_changed', 'engine_owner_changed', 'engine_series_untested', 'mail_no_mx', 'backup_first_copy', 'ok_mail_kept', 'ok_mail_elsewhere', 'dkim_pending', 'ok', 'check_running',
+    'owner_changed', 'engine_owner_changed', 'engine_series_untested', 'mail_no_mx', 'mail_not_in_list', 'backup_first_copy', 'ok_mail_kept', 'ok_mail_elsewhere', 'ok_optional_glue', 'dkim_pending', 'ok', 'check_running',
 ] as const;
 
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
@@ -92,6 +94,7 @@ export function decodeDNSOverview(raw: unknown): DNSOverview {
     for (const server of raw.servers) {
         if (!record(server) || !oneOf(server.who, ['this', 'peer']) || !oneOf(server.role, ['main', 'backup', 'standalone', 'none'])
             || !oneOf(server.answers, ['ok', 'not_serving', 'waiting', 'unknown', 'not_joined', 'not_applicable'])
+            || (server.order !== undefined && !oneOf(server.order, ['first', 'second']))
             || !optionalText(server.short_name) || !optionalText(server.panel_name) || !optionalText(server.software) || !optionalText(server.ipv4)) throw invalid('server');
     }
     if (!Array.isArray(raw.names) || raw.names.length > 32) throw invalid('names');
@@ -133,10 +136,15 @@ export function dnsOverviewTone(state: DNSOverviewState): 'bad' | 'task' | 'done
 
 type Translate = (key: string, values?: Record<string, string | number>) => string;
 
-/** A server as the screens say it: "This server (name)" / "Second server (name)", never an invented name. */
-export function dnsOverviewServerLabel(t: Translate, server: Pick<DNSOverviewServer, 'who' | 'short_name'> | undefined): string {
+/**
+ * A server as the screens say it: "This server (name)", and the other one
+ * by its place: "First server (name)" on a server that joined by code,
+ * "Second server (name)" on the first server. Never an invented name.
+ */
+export function dnsOverviewServerLabel(t: Translate, server: Pick<DNSOverviewServer, 'who' | 'short_name' | 'order'> | undefined): string {
     if (!server) return t('dnsov.peerServer');
     if (server.who === 'this') return server.short_name ? t('dnsov.thisServerNamed', { name: server.short_name }) : t('dnsov.thisServer');
+    if (server.order === 'first') return server.short_name ? t('dnsov.firstServerNamed', { name: server.short_name }) : t('dnsov.firstServer');
     return server.short_name ? t('dnsov.peerServerNamed', { name: server.short_name }) : t('dnsov.peerServer');
 }
 
@@ -149,11 +157,12 @@ export function dnsOverviewSentenceValues(t: Translate, overview: DNSOverview): 
     // The page names every server itself (short name, or "This server" /
     // "Second server"); the server's own values are never shown raw.
     vars.main = dnsOverviewServerLabel(t, main || { who: 'this' });
-    vars.backup = dnsOverviewServerLabel(t, backup || { who: 'peer' });
+    const peerOrder = overview.servers.find(server => server.who === 'peer')?.order;
+    vars.backup = dnsOverviewServerLabel(t, backup || { who: 'peer', order: peerOrder });
     const named = overview.servers.find(server => server.who === vars.server_who)
         || (vars.ip ? overview.servers.find(server => server.ipv4 === vars.ip) : undefined)
         || (vars.host ? overview.servers.find(server => server.who === overview.mx_move?.to) : undefined);
-    vars.server = dnsOverviewServerLabel(t, named || { who: vars.server_who === 'peer' ? 'peer' : 'this' });
+    vars.server = dnsOverviewServerLabel(t, named || { who: vars.server_who === 'peer' ? 'peer' : 'this', order: peerOrder });
     for (const key of ['seen', 'names']) if (vars[key] === '') vars[key] = '—';
     return vars;
 }

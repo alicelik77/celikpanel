@@ -41,7 +41,7 @@ Her özellik, her commit, her tasarım kararı şu dört süzgeçten sırayla ge
 Tarayıcı — React SPA
    │  HTTPS
    ▼
-Panel — Go HTTP sunucusu (port 2083), düşük yetkili kullanıcı, SQLite
+Panel — Go HTTP sunucusu (port 1923; alpha.114 öncesi kurulumlar 2083’ü korur), düşük yetkili kullanıcı, SQLite
    │  yerel RPC (Faz 0'da Unix socket + token'a geçiyor)
    ▼
 Agent — root daemon; işletim sistemine dokunabilen tek bileşen
@@ -148,7 +148,7 @@ curl --fail --show-error --location --proto '=https' --tlsv1.2 \
 sh /tmp/celikpanel-get.sh
 
 # Veya tam bir değişmez sürümü sabitleyin
-sh /tmp/celikpanel-get.sh --version v0.1.0-alpha.113
+sh /tmp/celikpanel-get.sh --version v0.1.0-alpha.114
 ```
 
 İlk kurulum sırasında terminal bağlantısı kesilirse aynı kurulum komutunu
@@ -236,8 +236,8 @@ izlenir ve sabitlenir.
 `make dist-sign` yalnız isteğe bağlı yerel GPG ürün akışı için kullanılabilir:
 
 ```bash
-make dist-sign VERSION=v0.1.0-alpha.113 SIGNING_KEY=<tam-anahtar-parmak-izi>
-gpg --verify dist/celikpanel-v0.1.0-alpha.113.tar.gz.asc dist/celikpanel-v0.1.0-alpha.113.tar.gz
+make dist-sign VERSION=v0.1.0-alpha.114 SIGNING_KEY=<tam-anahtar-parmak-izi>
+gpg --verify dist/celikpanel-v0.1.0-alpha.114.tar.gz.asc dist/celikpanel-v0.1.0-alpha.114.tar.gz
 ```
 
 İsteğe bağlı `.asc` dosyası altı kanonik herkese açık üründen biri değildir;

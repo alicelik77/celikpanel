@@ -59,6 +59,22 @@ Present that message and action before the detailed step list. Keep diagnostic
 information available without forcing users to interpret internal codes. Turkish
 and English messages, mobile layout and keyboard access are required.
 
+### Blocking problems and disabled actions (2026-10-31)
+
+The owner could not tell from the setup Summary what was wrong or what to do: the
+requirements stood below the long lists and the Start button was only greyed. A
+problem that stops a screen's main action uses the shared pattern
+`components/BlockingProblems.tsx`: it stands at the top of what it blocks; each
+problem says what is wrong in one plain sentence (no internal terms), what to do in
+one concrete action and, where the panel can, offers the fix as a button (go to
+the step, remove a role, check again, open the page); the code stays under
+"Technical details". A disabled main button carries its reason beside it
+(`BlockedReason`, `aria-describedby`) and a way to show the problem. Failure and
+warning toasts stay until closed. Setup Summary blockers are mapped in
+`lib/setupProblems.ts`; a new blocker adds its entry and two catalogue keys
+(`setup.problem.<name>.what/.todo`). Other screens are being moved to the pattern;
+the audit list is not complete.
+
 ## Truth and operation identity
 
 Separate an observed failure from an unmet prerequisite and an unknown result.
@@ -5001,7 +5017,7 @@ only and has no catalogue entry.
   API: "Nothing was created: PHP {version} is not installed on this server.
   Installed: {installed}. Choose one of these versions and create the site
   again; another version can be used only after it is installed on this server
-  (Services)."
+  (Components)."
 
 **A reload of a service that is not running (`POST /api/v1/service/action`).**
 
@@ -10739,3 +10755,43 @@ the folder again instead of opening a tab with the server's answer.
 Schema unchanged (46): the work is a versioned `panel_settings` record per domain
 (`dkim_automatic_v1:<id>`) and one signing refresh request (`dkim_signing_refresh_v1`).
 Installed panels are updated only by their owners.
+
+## Operating-system updates in the owner's hands (alpha.114)
+
+Security → Security updates, the Dashboard and Server setup → Operating system.
+
+- **Automatic or manual (Debian, Ubuntu).** The owner's choice is apt's own file
+  `/etc/apt/apt.conf.d/20auto-upgrades` (`Update-Package-Lists "1"`,
+  `Unattended-Upgrade "1"` or `"0"`) and apt's own timers, so it keeps working with the
+  panel stopped or removed. The state shown is what `apt-config dump` and the timers
+  report, never what the panel last wrote. **Automatic** installs what
+  unattended-upgrades is set to take (by default the security updates; the origins are
+  read from apt and shown); it does not restart the server and does not move to a new
+  major version. **Manual** installs nothing by itself but keeps the lists fresh so the
+  waiting count stays current.
+- **Whose text it is.** The file is the panel's when it is exactly what the panel
+  renders, the distribution's when it is exactly the two standard lines, and the
+  owner's otherwise (also a link). A change shows the file now and after, sends the
+  digest that was shown, and replaces an owner's text only after the owner ticks that
+  they read it (`confirm_owner_edit`). A file that changed after it was shown is never
+  replaced (`CURRENT_CHANGED`, the card reads again). The installer's earlier
+  `20celikpanel-auto-upgrades` is removed only when it is exactly what the installer
+  wrote; an edited one stays and the card says it wins.
+- **Verified failure, unmet prerequisite, unknown result.** Refusals say "Nothing was
+  changed", who acts and the command (`UNATTENDED_NOT_INSTALLED`: install the package;
+  `OWNER_EDITED`: open the choice again and confirm; `NOT_REGULAR`: change it by hand).
+  A written choice that apt does not use (another file wins, a masked or disabled apt
+  timer) is a warning with the administrator's command; a disabled timer is enabled by
+  choosing automatic, a masked one is never unmasked. A lost answer is unknown: the card
+  says so, sends nothing again and reads the system.
+- **Arch.** No switch. The card lists the steps (read archlinux.org/news, `sudo pacman
+  -Syu`, failed units, `nginx -t`, PHP-FPM and mail, reboot if the kernel changed) and
+  warns that a full upgrade can move php and PostgreSQL to a new major version.
+- **Dashboard.** A compact card (waiting, security, when read, link). It is served from
+  the Panel's last reading, refreshed in the background at most once at a time and not
+  more often than every ten minutes; asking again starts neither a package operation
+  nor a change, and unknown is never shown as "nothing waiting".
+- **A new major version is not an update** (PostgreSQL 17 after 16, PHP 8.5 after 8.4):
+  it is a separate program the owner moves to.
+
+Schema unchanged (46). Installed panels are updated only by their owners.

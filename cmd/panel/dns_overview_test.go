@@ -208,6 +208,9 @@ func TestDNSOverviewPairedMainServerAllGood(t *testing.T) {
 	if this.Role != "main" || this.ShortName != "alpha" || this.Answers != "ok" || this.Serial != 2026102801 || peer.Role != "backup" || peer.ShortName != "beta" || peer.Software != "bind" || peer.Answers != "ok" {
 		t.Fatalf("servers: %+v", value.Servers)
 	}
+	if this.Order != "first" || peer.Order != "second" {
+		t.Fatalf("the first server's order: this %q, peer %q", this.Order, peer.Order)
+	}
 	for _, check := range []struct{ kind, name, server string }{{"panel", "panel.example.test", "this"}, {"panel", "beta.example.test", "peer"}, {"ns", "ns1.example.test", "this"}, {"ns", "ns2.example.test", "peer"}} {
 		row := overviewName(value, check.kind, check.name)
 		if row.State != "ok" || row.Server != check.server || row.Where != "zone" {
@@ -235,6 +238,62 @@ func TestDNSOverviewPairedMainServerAllGood(t *testing.T) {
 	// Reading changes nothing: no agent work, no setup change.
 	if f.agent.installCalls.Load() != 0 || len(f.agent.capturedMutationEvents()) != 0 {
 		t.Fatal("the overview mutated the host")
+	}
+}
+
+// An IPv6 glue record the registry does not have is optional: waiting never
+// adds it, so it is never the "spreading, nobody acts" card (owner report
+// 2026-10-31). Everything else correct: the card is calm and names the
+// optional registrar task; the row stays visible as optional.
+// Istege bagli IPv6 glue kaydi "bekleyin" karti uretmez.
+func TestDNSOverviewOptionalIPv6GlueIsAnOptionalTaskNeverAWait(t *testing.T) {
+	f, world := overviewPairedFirst(t)
+	seedInfrastructureDNSZone(t, f.panel, "example.test")
+	var zoneID int64
+	if err := f.database.GetDB().QueryRow(`SELECT id FROM pdns_domains WHERE name='example.test'`).Scan(&zoneID); err != nil {
+		t.Fatal(err)
+	}
+	owner, _ := json.Marshal(serverSetupInfrastructureDNSOwner{Zone: "example.test", ZoneID: zoneID, PlanID: infrastructureTestPlanID})
+	if _, err := f.database.GetDB().Exec(`INSERT INTO panel_settings(key,value) VALUES(?,?)`, serverSetupInfrastructureDNSOwnerKey("example.test"), string(owner)); err != nil {
+		t.Fatal(err)
+	}
+	f.panel.dnsOverviewSeams.IPv6 = func() string { return "2001:db8::10" }
+	world.set(func(w *overviewWorld) {
+		for name := range map[string]bool{"panel.example.test": true, "ns1.example.test": true} {
+			w.public[name+" AAAA"] = []string{"2001:db8::10"}
+		}
+	})
+	value := readDNSOverview(t, f.panel)
+	var optional []dnsOverviewName
+	for _, row := range value.Names {
+		if row.Kind == "glue" && row.Type == "AAAA" {
+			optional = append(optional, row)
+		}
+	}
+	if len(optional) == 0 {
+		t.Fatalf("no IPv6 glue row: %+v", value.Names)
+	}
+	for _, row := range optional {
+		if !row.Optional || row.State != "not_yet" || row.Expected != "2001:db8::10" || row.Where != "registrar" {
+			t.Fatalf("IPv6 glue row: %+v", row)
+		}
+	}
+	if value.Sentence.State != "ok" || value.Sentence.Code != "dns_overview_ok_optional_glue" || value.Sentence.Vars["ip"] != "2001:db8::10" ||
+		!strings.Contains(value.Sentence.Next, "2001:db8::10") || strings.Contains(value.Sentence.Who, "waiting") {
+		t.Fatalf("an optional row drove the card: %+v", value.Sentence)
+	}
+	// A required change that spreads still says so first.
+	world.set(func(w *overviewWorld) {
+		delete(w.public, "beta.example.test A")
+		w.zone["beta.example.test"] = "198.51.100.20"
+	})
+	now := time.Now().Add(2 * time.Minute)
+	later, err := f.panel.dnsOverview(context.Background(), now, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if later.Sentence.Code != "dns_overview_spreading" || later.Sentence.Vars["name"] != "beta.example.test" {
+		t.Fatalf("spreading of a required name: %+v", later.Sentence)
 	}
 }
 
@@ -456,6 +515,11 @@ func TestDNSOverviewSecondServerIsTheBackupAndKeepsSecretsOut(t *testing.T) {
 	this, peer := overviewServer(value, "this"), overviewServer(value, "peer")
 	if this.Role != "backup" || this.Answers != "ok" || peer.Role != "main" || peer.ShortName != "alpha" || peer.Software != "pdns" || peer.Answers != "ok" {
 		t.Fatalf("servers: %+v", value.Servers)
+	}
+	// On the server that joined by code the other server is the first one
+	// (owner report 2026-10-31: Boston called Frankfurt "Second server").
+	if this.Order != "second" || peer.Order != "first" {
+		t.Fatalf("a joined server's order: this %q, peer %q", this.Order, peer.Order)
 	}
 	if value.OwnRecordsLink.Where != "main" || value.OwnRecordsLink.PanelName != "panel.example.test" || value.Join.State != "bound" || value.Sentence.Code != "dns_overview_ok" {
 		t.Fatalf("backup view: %+v %+v %+v", value.OwnRecordsLink, value.Join, value.Sentence)
@@ -777,5 +841,52 @@ func TestDNSOverviewAnEditedDraftKeepsTheCompletedSetupsSecondServer(t *testing.
 	value := readDNSOverview(t, f.panel)
 	if peer := overviewServer(value, "peer"); peer.ShortName != "beta" || peer.Answers != "ok" || value.Join.State != "bound" || overviewServer(value, "this").ShortName != "alpha" {
 		t.Fatalf("the completed setup's pair: %+v %+v", value.Servers, value.Join)
+	}
+}
+
+// A mail record the internet does not show is a wait only when this panel's
+// own list holds it; when the list lacks it, waiting never adds it and the
+// card names who acts (D-024).
+// Posta kaydi listede yoksa "beklemek yeterli" denmez.
+func TestDNSOverviewMailRecordMissingFromOwnListIsNotAWait(t *testing.T) {
+	f, world, _ := overviewMailServer(t)
+	// The zone has no SPF; the internet shows none either.
+	world.set(func(w *overviewWorld) { delete(w.public, "example.test TXT") })
+	now := time.Now()
+	missing, _ := f.panel.dnsOverview(context.Background(), now, false)
+	spf := overviewMailRow(missing, "spf")
+	if spf.State != "missing" || spf.Own != "absent" || missing.Sentence.Code != "dns_overview_mail_not_in_list" || missing.Sentence.State != "prerequisite" ||
+		strings.Contains(missing.Sentence.Who, "waiting") || !strings.Contains(missing.Sentence.Next, "record editor") || missing.Sentence.Vars["kind"] != "SPF" {
+		t.Fatalf("a record the list lacks: %+v %+v", spf, missing.Sentence)
+	}
+	// The list holds an SPF; the internet shows an older one: it is spreading.
+	if _, err := f.database.GetDB().Exec(`INSERT INTO pdns_records(domain_id,name,type,content,ttl) SELECT id,'example.test','TXT','"v=spf1 mx a:mail.example.test ~all"',3600 FROM pdns_domains WHERE name='example.test'`); err != nil {
+		t.Fatal(err)
+	}
+	world.set(func(w *overviewWorld) { w.public["example.test TXT"] = []string{"v=spf1 -all"} })
+	spreading, _ := f.panel.dnsOverview(context.Background(), now.Add(2*time.Minute), false)
+	spf = overviewMailRow(spreading, "spf")
+	if spf.State != "different" || spf.Own != "present" || spreading.Sentence.Code != "dns_overview_mail_spreading" || spreading.Sentence.State != "waiting" {
+		t.Fatalf("a record the list holds: %+v %+v", spf, spreading.Sentence)
+	}
+}
+
+// "Updates by itself" ends: a pending automatic DKIM record nobody has
+// rewritten for over half an hour is shown as not known, with a way forward.
+func TestDKIMAutomaticPendingForeverBecomesUnknownWithARetry(t *testing.T) {
+	now := time.Now()
+	record := func(state string, age time.Duration) dkimAutomaticRecord {
+		return dkimAutomaticRecord{State: state, RecordedAt: now.Add(-age).UTC().Format(time.RFC3339)}
+	}
+	if view := dkimAutomaticViewOf(record(dkimAutoPending, 5*time.Minute), now); view.State != dkimAutoPending {
+		t.Fatalf("a fresh pending record: %+v", view)
+	}
+	for _, state := range []string{dkimAutoPending, dkimAutoWaiting} {
+		if view := dkimAutomaticViewOf(record(state, 31*time.Minute), now); view.State != dkimAutoUnknown || view.Reason != dkimReasonStale {
+			t.Fatalf("a stale %s record: %+v", state, view)
+		}
+	}
+	if view := dkimAutomaticViewOf(record(dkimAutoFailed, 5*time.Hour), now); view.State != dkimAutoFailed {
+		t.Fatalf("a failure stays a failure: %+v", view)
 	}
 }

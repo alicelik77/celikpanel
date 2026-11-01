@@ -64,7 +64,7 @@ func (p *Panel) createZoneWithTemplate(ctx context.Context, domain string) (int,
 		return 0, false, err
 	}
 
-	tx, err := pool.BeginTx(ctx, nil)
+	tx, err := beginDNSWriteTx(ctx, pool)
 	if err != nil {
 		return 0, false, err
 	}

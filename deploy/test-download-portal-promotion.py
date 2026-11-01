@@ -360,7 +360,7 @@ class DownloadPortalPromotionTests(unittest.TestCase):
     def test_verifier_cannot_raise_fixed_request_ceiling(self):
         source = self.fixture.verifier.read_text(encoding="utf-8")
         self.fixture.verifier.write_text(
-            source.replace("HARD_REQUEST_LIMIT = 23", "HARD_REQUEST_LIMIT = 27"),
+            source.replace("HARD_REQUEST_LIMIT = 23", "HARD_REQUEST_LIMIT = 28"),
             encoding="utf-8",
         )
         self.fixture.verifier_size = self.fixture.verifier.stat().st_size

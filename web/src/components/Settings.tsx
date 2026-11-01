@@ -6,8 +6,10 @@ import { useI18n } from '../i18n';
 import { useAuth } from '../auth/AuthContext';
 import { Button, CouldNotCheck, ErrorBanner, RemoteGate, inputClass } from './ui';
 import { PageHeader } from './PageHeader';
-import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
-import { readRemote, useRemote } from '../lib/remote';
+import { PanelPortCard } from './PanelPortCard';
+import { readApiError, type ApiError } from '../lib/apiError';
+import { readRemote, lastKnown, useRemote } from '../lib/remote';
+import { decodePanelCertificate, panelCertificateName, PANEL_CERTIFICATE_URL } from '../lib/panelCertificate';
 import { availablePanelUpdate, usePanelUpdateDiscovery, wholeVersion } from '../lib/panelUpdateDiscovery';
 
 const LicensePanel = lazy(() => import('./LicensePanel').then((module) => ({ default: module.LicensePanel })));
@@ -159,6 +161,7 @@ function SettingsWorkspace({
                     <>
                         <div id="settings-panel-panel" role="tabpanel" aria-labelledby="settings-panel-tab" hidden={activeID !== 'panel'}>
                             <PanelCertificatePanel active={activeID === 'panel'} />
+                            {activeID === 'panel' && <PanelPortCard />}
                         </div>
                         <div id="settings-license-panel" role="tabpanel" aria-labelledby="settings-license-tab" hidden={activeID !== 'license'}>
                             {activeID === 'license' && <Suspense fallback={<p role="status">{t('common.loading')}</p>}><LicensePanel /></Suspense>}
@@ -389,33 +392,6 @@ function decodePanelCertificateOperation(
     };
 }
 
-// What the Panel says about the certificate it serves. `https_enabled: false`
-// is the server's answer when it found no certificate it could read; that is
-// not "a trusted certificate", which is what an empty issuer used to be drawn
-// as.
-// Panelin sunduğu sertifika hakkında söylediği. `https_enabled: false`,
-// sunucunun okuyabildiği bir sertifika bulamadığındaki yanıtıdır.
-interface PanelCertificateInfo {
-    https_enabled: boolean;
-    self_signed: boolean;
-    issuer: string;
-    expires_at: string;
-}
-
-const PANEL_CERTIFICATE_URL = '/api/v1/panel/certificate';
-
-function decodePanelCertificate(raw: unknown): PanelCertificateInfo {
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('shape');
-    const body = raw as Record<string, unknown>;
-    if (typeof body.https_enabled !== 'boolean' || typeof body.self_signed !== 'boolean') throw new Error('field');
-    return {
-        https_enabled: body.https_enabled,
-        self_signed: body.self_signed,
-        issuer: typeof body.issuer === 'string' ? body.issuer : '',
-        expires_at: typeof body.expires_at === 'string' ? body.expires_at : '',
-    };
-}
-
 // The operation endpoint's answer is checked against the exact request by
 // decodePanelCertificateOperation; here it only has to be JSON.
 const passThrough = (raw: unknown): unknown => raw;
@@ -442,6 +418,11 @@ const PANEL_CERTIFICATE_REOPEN_SECONDS = 10;
 function PanelCertificatePanel({ active }: { active: boolean }) {
     const { t, locale } = useI18n();
     const certificate = useRemote(PANEL_CERTIFICATE_URL, decodePanelCertificate);
+    // The panel already has a trusted address: say which one and offer "Change"
+    // instead of an empty form that reads as if no address were set.
+    // Panelin güvenilir bir adresi varsa onu söyle; boş bir form yerine "Değiştir" sun.
+    const currentName = panelCertificateName(lastKnown(certificate.remote)?.value);
+    const [changing, setChanging] = useState(false);
     const [domain, setDomain] = useState(() =>
         /^[0-9.]+$/.test(window.location.hostname) ? '' : window.location.hostname,
     );
@@ -533,7 +514,9 @@ function PanelCertificatePanel({ active }: { active: boolean }) {
             if (operation.status === 'failed') {
                 release({ state: 'failed', domain: exactMarker.domain, reason: operation.error?.message ?? '' });
                 setBusy(false);
-                showToast('error', operation.error?.message || t('panelCert.failed'));
+                // The page says it with the reason under Technical details; the
+                // server's own words are not the sentence (owner feedback 2026-10-31).
+                showToast('error', t('panelCert.failed'), operation.error?.message ? { details: { label: t('problem.details'), text: operation.error.message } } : undefined);
                 void retryCertificate();
                 return;
             }
@@ -552,10 +535,13 @@ function PanelCertificatePanel({ active }: { active: boolean }) {
         };
     }, [pendingOperation, restarting, checkNow, retryCertificate, t]);
 
+    // The form shows while no trusted address is known, while the person is
+    // changing it, and for as long as a request or its result is on the card.
+    const showForm = currentName === '' || changing || pendingOperation !== null || outcome.state !== 'none';
     const secureAddress = outcome.state === 'issued'
-        ? `https://${outcome.domain}:${window.location.port || '2083'}/`
+        ? `https://${outcome.domain}:${window.location.port || '1923'}/`
         : pendingOperation
-            ? `https://${pendingOperation.domain}:${window.location.port || '2083'}/`
+            ? `https://${pendingOperation.domain}:${window.location.port || '1923'}/`
             : '';
     // The page moves by itself only where the person is looking at the reason:
     // this section, of the tab that asked, and not after "Stay here".
@@ -645,8 +631,8 @@ function PanelCertificatePanel({ active }: { active: boolean }) {
                     issueInFlightRef.current = false;
                     setPendingOperation(null);
                     const problem = await readApiError(res);
-                    if (problem.code && problem.action) setRefusal(problem);
-                    else showToast('error', apiErrorText(problem, t, 'panelCert.failed'));
+                    // Every definitive refusal stays on the card, with its fix when it has one.
+                    setRefusal(problem);
                     setBusy(false);
                 }
                 return;
@@ -657,7 +643,7 @@ function PanelCertificatePanel({ active }: { active: boolean }) {
             // A lost POST response is not proof that the durable row was not
             // created. Keep the exact marker and let polling reconcile it.
             if (!(e instanceof TypeError)) {
-                showToast('error', e instanceof Error && e.message ? e.message : t('panelCert.failed'));
+                showToast('error', t('panelCert.failed'));
             }
         }
     };
@@ -753,29 +739,46 @@ function PanelCertificatePanel({ active }: { active: boolean }) {
                 </div>
             )}
 
-            <ol className="mb-5 list-decimal space-y-2 pl-5 text-sm text-fg-muted">
+            {outcome.state !== 'issued' && currentName !== '' && !showForm && (
+                <div className="mb-2 flex flex-wrap items-center gap-3" data-panel-current-address={currentName}>
+                    <p className="min-w-0 flex-1 break-words text-sm text-fg">
+                        {t('panelCert.current', { domain: currentName })}{' '}
+                        <a href={`https://${currentName}:${window.location.port || '1923'}/`} target="_blank" rel="noopener noreferrer" className="font-medium text-primary underline underline-offset-4">{t('panelCert.openCurrent')}</a>
+                    </p>
+                    <Button variant="secondary" onClick={() => setChanging(true)}>{t('panelCert.change')}</Button>
+                </div>
+            )}
+
+            {showForm && <ol className="mb-5 list-decimal space-y-2 pl-5 text-sm text-fg-muted">
                 <li>{t('start.panel.dns')}</li>
                 <li>{t('start.panel.check')}</li>
                 <li>{t('start.panel.issue')}</li>
-            </ol>
+            </ol>}
 
-            {outcome.state !== 'issued' && (
+            {outcome.state !== 'issued' && showForm && (
                 <>
                     <div ref={noticeRef} className="scroll-mb-24 scroll-mt-24">
                         {refusal && (
                             <div role="alert" data-panel-certificate-refusal={refusal.code}>
-                                <ErrorBanner className="mb-4" error={refusal} />
+                                <ErrorBanner className="mb-4" error={refusal} sentence="panelCert.failed" />
                             </div>
                         )}
                         {outcome.state === 'failed' && (
-                            <ErrorBanner
-                                className="mb-4"
-                                error={{
-                                    message: outcome.reason
-                                        ? t('panelCert.failedDetail', { domain: outcome.domain, reason: outcome.reason })
-                                        : t('panelCert.failedPlain', { domain: outcome.domain }),
-                                }}
-                            />
+                            <div className="mb-4">
+                                <ErrorBanner
+                                    error={{
+                                        message: outcome.reason
+                                            ? t('panelCert.failedTechnical', { domain: outcome.domain })
+                                            : t('panelCert.failedPlain', { domain: outcome.domain }),
+                                    }}
+                                />
+                                {outcome.reason && (
+                                    <details className="mt-1 text-xs text-fg-muted" data-panel-certificate-reason="">
+                                        <summary className="cursor-pointer">{t('problem.details')}</summary>
+                                        <p className="break-words font-mono">{outcome.reason}</p>
+                                    </details>
+                                )}
+                            </div>
                         )}
                         {outcome.state === 'notRecorded' && (
                             <div role="status" className="mb-4 rounded-lg border border-border bg-surface-2/50 p-3 text-sm leading-relaxed text-fg">

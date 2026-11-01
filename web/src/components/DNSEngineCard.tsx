@@ -27,6 +27,7 @@ import {
     type DNSEngineAdoptedDirective,
     type DNSEngineSwitchPreview,
 } from '../lib/dnsEngineContract';
+import { invalidate } from '../lib/remote';
 import { Button, Dialog } from './ui';
 import { showToast } from './Toast';
 import {
@@ -599,6 +600,11 @@ export function DNSEngineCard({
         setOperationGuard((current) => current?.requestID === guard.requestID ? null : current);
         operationLeaseRef.current?.release();
         operationLeaseRef.current = null;
+        // The engine switch has ended, either way: the zones, the DNS overview,
+        // the dashboard and the component records are read again. Reads only.
+        // Motor geçişi bitti: bölgeler, DNS özeti, pano ve bileşen kayıtları
+        // yeniden okunur. Yalnız okur.
+        invalidate('dns', 'components');
         if (operationSucceeded) {
             showToast('success', et('dnsEngine.switchCompleted'));
         } else if (guard.completionToast) {

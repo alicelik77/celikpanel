@@ -3,6 +3,7 @@ import { useNavigate, Link } from '../router';
 import { ServerSetupDashboardNotice } from './ServerSetupGate';
 import { LicenseNotice } from './LicenseNotice';
 import { DashboardUpdateNotice } from './PanelUpdateNotice';
+import { PendingUpdatesCard } from './PendingUpdatesCard';
 import { accountStart } from '../lib/startGuidance';
 import {
     Cpu, MemoryStick, HardDrive, Server, Globe, Database, Activity, Bell,
@@ -17,14 +18,16 @@ import { useAuth } from '../auth/AuthContext';
 import type { TranslationKey } from '../i18n/en';
 import { Button, Checking, CouldNotCheck, Dialog, KeepWords, Spinner, UsageBar, Card } from './ui';
 import { PageHeader } from './PageHeader';
+import { MyPlanCard } from './MyPlanCard';
 import { showToast } from './Toast';
 import { FirewallNoSSHAcknowledgement, readFirewallSSHReason } from './FirewallSSHNotice';
 import { apiErrorText, readApiError } from '../lib/apiError';
-import { countText, decodeList, lastKnown, mapRemote, useRemote, type Observed, type Remote } from '../lib/remote';
+import { countText, decodeList, invalidate, lastKnown, mapRemote, readQuietly, useInvalidation, useRemote, type Observed, type Remote } from '../lib/remote';
 import { decodeFirewallStatus, useFirewallStatus, type FirewallStatus } from '../lib/firewall';
 import { isServiceRunning } from '../lib/serviceStatus';
 import { USERS_URL, decodeUsers } from '../lib/accounts';
 import { bundleName, bundlesSummary, decodeReadyBundles, type ReadyBundle } from '../lib/readyBundles';
+import { NoWebsiteCards } from './NoWebsiteCards';
 import { INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones, domainsCount } from '../lib/infrastructureZones';
 import { mailProfileAttemptError, mailProfileName } from '../lib/mailProfileText';
 import { publishComponentCensus } from '../lib/componentCensus';
@@ -366,7 +369,8 @@ function AdminDashboard() {
     // Frankfurt screen, 2026-10-17: "Domains 0" beside a listed zone).
     // Altyapı DNS bölgesi Alan adları'nın yalnız DNS kaydıdır; sayı da onu okur.
     const infrastructureRead = useRemote(INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones);
-    const standaloneZones = (lastKnown(infrastructureRead.remote)?.value ?? []).filter((zone) => zone.domainId === null).length;
+    const standaloneZoneNames = (lastKnown(infrastructureRead.remote)?.value ?? []).filter((zone) => zone.domainId === null).map((zone) => zone.zone);
+    const standaloneZones = standaloneZoneNames.length;
     const usersRead = useRemote(USERS_URL, decodeUsers);
     const extrasRead = useRemote('/api/v1/dashboard', decodeExtras);
     const domains = lastKnown(domainList.remote)?.value ?? NO_DOMAINS;
@@ -459,6 +463,29 @@ function AdminDashboard() {
             current = false;
         };
     }, [scanAttempt]);
+
+    // A component installed, removed or started anywhere else (an install begun
+    // from a card here, the setup, the components page) reaches these cards
+    // without a refresh. A quiet read of the stored records: the figures on
+    // screen stay until the answer replaces them, and an unreadable answer
+    // leaves them as they were. It only reads.
+    // Başka yerde kurulan, kaldırılan ya da başlatılan bileşen bu kartlara
+    // yenilemesiz ulaşır. Kayıtlı kayıtların sessiz okuması; yalnız okur.
+    useInvalidation(['components'], () => {
+        void readQuietly('/api/v1/managed-services')
+            .then((value) => {
+                const snapshot = value === null ? null : decodeDashboardServices(value);
+                if (!snapshot) return;
+                publishComponentCensus(snapshot.services);
+                setServices(snapshot.services);
+                setMailProfiles(snapshot.profiles);
+                setBundles(snapshot.bundles);
+                const observedAt = Date.now();
+                setServiceScan({ scannedAt: snapshot.scannedAt, scanAgeSeconds: snapshot.scanAgeSeconds, observedAt });
+                setFreshnessNow(observedAt);
+                setScanRead('known');
+            });
+    });
 
     useEffect(() => {
         let mounted = true;
@@ -763,7 +790,9 @@ function AdminDashboard() {
                 return;
             }
             setFwChanged({ value: changed, observedAt: Date.now() });
-            void firewall.retry();
+            // The firewall read here is among the addresses the name covers;
+            // every other screen that shows it reads again too.
+            invalidate('components');
             setFirewallConfirmationOpen(false);
             showToast('success', t('firewall.onDone'));
         } catch {
@@ -879,7 +908,7 @@ function AdminDashboard() {
             key: 'no-av',
             icon: Shield,
             text: t('dashboard.avItem'),
-            action: t('dashboard.installService'),
+            action: t('dashboard.openComponents'),
             to: '/services',
         });
     }
@@ -888,7 +917,7 @@ function AdminDashboard() {
             key: 'no-spam',
             icon: Mail,
             text: t('dashboard.spamItem'),
-            action: t('dashboard.installService'),
+            action: t('dashboard.openComponents'),
             to: '/services',
         });
     }
@@ -954,6 +983,10 @@ function AdminDashboard() {
                 at the top, not an attention item (D-035).
                 Yeni imzali surum: ustte tek sakin satir, dikkat kalemi degil. */}
             <DashboardUpdateNotice admin />
+
+            {/* Waiting operating-system updates (alpha.114): a compact read-only card.
+                Bekleyen işletim sistemi güncellemeleri: kısa, salt-okur kart. */}
+            <PendingUpdatesCard />
 
             {/* Health strip: only living numbers. Firewall state earned no
                 card (operator call, Jul 17): OFF is an alert with a button,
@@ -1279,6 +1312,12 @@ function AdminDashboard() {
             <LicenseNotice />
             <ServerSetupDashboardNotice />
 
+            {/* A domain whose DNS is here but which has no website: say so once, with the one
+                button that adds it. The card leaves by itself when the website exists (the
+                zone list is read again after Add domain).
+                DNS'i burada olup web sitesi olmayan alan adi: bir kez soylenir, tek dugme. */}
+            <NoWebsiteCards zones={standaloneZoneNames} />
+
             {/* Hosting + activity / Barındırma + etkinlik */}
             {hasContent && (
                 <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
@@ -1288,7 +1327,7 @@ function AdminDashboard() {
                             <CountCard icon={Globe} n={domainsCount(domainList.remote, infrastructureRead.remote)} label={t('dashboard.domains')} to="/domains" />
                             <CountCard icon={Database} n={mapRemote(extrasRead.remote, (value) => value.databases)} label={t('dashboard.databases')} to="/databases" />
                             <CountCard icon={Users} n={mapRemote(usersRead.remote, (rows) => rows.length)} label={t('nav.users')} to="/users" />
-                            <CountCard icon={Mail} n={mapRemote(extrasRead.remote, (value) => value.mail_accounts)} label={t('dashboard.mailAccounts')} to="/domains" />
+                            <CountCard icon={Mail} n={mapRemote(extrasRead.remote, (value) => value.mail_accounts)} label={t('dashboard.mailAccounts')} to={mailCardTarget(domains)} />
                         </div>
                         {recentDomains.length > 0 && (
                             <>
@@ -1725,6 +1764,8 @@ function CustomerDashboard() {
                 </details>
             </section>}
 
+            {(role === 'customer' || role === 'reseller') && <div className="mb-6"><MyPlanCard /></div>}
+
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <GaugeCard
                     icon={Cpu}
@@ -1820,6 +1861,15 @@ function GaugeCard({
             {hint && <p className="mt-2 text-xs text-fg-subtle">{hint}</p>}
         </div>
     );
+}
+
+// Where the mail accounts card leads (alpha.114): mailboxes belong to a
+// domain, so with one website it opens that site's Mail tab; otherwise the
+// domain list, which then says to open a domain and its Mail tab.
+// Posta kutusu karti: tek sitede onun Posta sekmesi, yoksa alan adlari listesi.
+function mailCardTarget(domains: DomainLite[]): string {
+    const sites = domains.filter((domain) => domain.project_type !== 'dnsonly');
+    return sites.length === 1 ? `/domains/${encodeURIComponent(sites[0].domain_name)}?tab=mail` : '/domains?for=mail';
 }
 
 function CountCard({ icon: Icon, n, label, to }: { icon: typeof Cpu; n: Remote<number>; label: string; to: string }) {

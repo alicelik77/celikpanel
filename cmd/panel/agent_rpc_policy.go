@@ -136,7 +136,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.OSUpdatesStatusV1 Agent.RoundcubeUpdateCheckV1 Agent.WebmailProofV1 Agent.WebmailAddressStatusV1 Agent.RestartNeedsV1
 		Agent.NodePatchesV1 Agent.OSReleaseFactsV1 Agent.RepoConfinePreviewV1 Agent.VendorLanePlanV1
 		Agent.PostgreSQLClustersV1 Agent.PostgreSQLClusterPortPreviewV1 Agent.PostgreSQLSourceCheckV1
-		Agent.SiteCertificateRenewalStateV1
+		Agent.SiteCertificateRenewalStateV1 Agent.PanelListenConfigV1 Agent.MailAutoresponderState
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -148,7 +148,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityPackageLifecycle, `
 		Agent.ConfigureDBTools Agent.ConfigureWebmail Agent.DisableRepo Agent.EnableRepo
 		Agent.InstallRoundcube Agent.InstallService Agent.RemoveRoundcube Agent.UninstallService
-		Agent.BindPHPToolV1 Agent.ProvePHPToolV1 Agent.ConfineRepoV1 Agent.WriteVendorUpdateOriginsV1 Agent.EnableVendorLaneV1
+		Agent.BindPHPToolV1 Agent.ProvePHPToolV1 Agent.ConfineRepoV1 Agent.WriteVendorUpdateOriginsV1 Agent.SetOSUpdatesModeV1 Agent.EnableVendorLaneV1
 		Agent.UpdateRoundcubeV1 Agent.MoveAppFilesOwnerV1 Agent.EnableWebmailAddressV1 Agent.RemoveWebmailAddressV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityServiceLifecycle, `
@@ -159,6 +159,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.DeletePHPPool Agent.TogglePHPExtension Agent.UpdateConfig
 		Agent.UpdateExtendedPHPConfig Agent.UpdateMySQLConfig Agent.UpdatePHPConfig
 		Agent.UpdatePHPConfiguration Agent.UpdatePHPPoolConfig Agent.ApplySitePool
+		Agent.SetPanelListenPortV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostingSite, `
 		Agent.CreateSite Agent.DeleteSite Agent.InstallWordPress
@@ -189,7 +190,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.EnsureDKIMKey Agent.ImportMailAccount Agent.PostfixQueueAction Agent.RemoveDKIMKey
 		Agent.SetMailPolicy Agent.SyncMailTLSV2 Agent.StartMailEnrollmentV1 Agent.ContinueMailEnrollmentV1
 		Agent.UpdateMailForwarding Agent.UpdateMailPassword Agent.UpdateMailQuota
-		Agent.WireMailFilters
+		Agent.WireMailFilters Agent.SetMailAutoresponder
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityFilesystem, `
 		Agent.ChmodFile Agent.ClearLogs Agent.CreateFileOrDir Agent.DeleteFileOrDir
@@ -253,6 +254,8 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.ContinueMailEnrollmentV1":      agentRPCQuickReadTimeout,
 	"Agent.MailHostCertificateStatus":     agentRPCQuickReadTimeout,
 	"Agent.FirewallStatus":                agentRPCQuickReadTimeout,
+	"Agent.PanelListenConfigV1":           agentRPCQuickReadTimeout,
+	"Agent.SetPanelListenPortV1":          agentRPCMutationTimeout,
 	"Agent.GetCertificateInfo":            agentRPCQuickReadTimeout,
 	"Agent.GetConfig":                     agentRPCQuickReadTimeout,
 	"Agent.GetDKIMStatus":                 agentRPCQuickReadTimeout,
@@ -260,6 +263,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.GetMailPolicy":                 agentRPCQuickReadTimeout,
 	"Agent.MailFilterWiringState":         agentRPCQuickReadTimeout,
 	"Agent.GetMailQuotaStatus":            agentRPCQuickReadTimeout,
+	"Agent.MailAutoresponderState":        agentRPCQuickReadTimeout,
 	"Agent.GetMySQLConfig":                agentRPCQuickReadTimeout,
 	"Agent.GetPHPConfig":                  agentRPCQuickReadTimeout,
 	"Agent.GetPHPConfiguration":           agentRPCQuickReadTimeout,
@@ -370,6 +374,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.UpdateCronJob":                 agentRPCMutationTimeout,
 	"Agent.UpdateExtendedPHPConfig":       agentRPCMutationTimeout,
 	"Agent.UpdateMailForwarding":          agentRPCMutationTimeout,
+	"Agent.SetMailAutoresponder":          agentRPCMutationTimeout,
 	"Agent.UpdateMailPassword":            agentRPCMutationTimeout,
 	"Agent.UpdateMailQuota":               agentRPCMutationTimeout,
 	"Agent.UpdateMySQLConfig":             agentRPCMutationTimeout,
@@ -438,6 +443,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.ProvePHPToolV1":              agentRPCDeploymentTimeout,
 	"Agent.ConfineRepoV1":               agentRPCDeploymentTimeout,
 	"Agent.WriteVendorUpdateOriginsV1":  agentRPCDeploymentTimeout,
+	"Agent.SetOSUpdatesModeV1":          agentRPCDeploymentTimeout,
 	"Agent.OSUpdatesStatusV1":           agentRPCNetworkReadTimeout,
 	"Agent.RoundcubeUpdateCheckV1":      agentRPCNetworkReadTimeout,
 	"Agent.WebmailProofV1":              agentRPCNetworkReadTimeout,

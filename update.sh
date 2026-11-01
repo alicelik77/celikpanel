@@ -119,6 +119,56 @@ die() {
     exit 1
 }
 
+# The last command that failed without die (set -e ended the updater there).
+# Set by the ERR trap installed with the EXIT trap; report_update_failure
+# names it only when no die gave a cause (alpha.114 lab E-new-5: such an exit
+# reached the panel as "updater command failed" with no reason at all).
+# die olmadan biten son komut; neden yoksa özet satırı bunu adlandırır.
+update_unhandled_line=
+update_unhandled_status=
+
+# The staged installer runs as a child. Its own last error line becomes the
+# cause: an exit under set -e lost it (alpha.114 lab E-new-5, an unknown key in
+# panel.env stopped install.sh, which update.sh ran without a die). The reason
+# keeps the line's English half,
+# product file names without directories, at most 120 characters, so older
+# panels that keep only a short plain reason still show it; the detail keeps
+# the whole line. stderr is copied unchanged to the worker log as it arrives.
+# Kurucunun son hata satırı nedendir; eski paneller için kısa, düz bir neden.
+installer_failure_reason() {
+    local line=$1 message word
+    local -a words=() kept=()
+    message=${line#ERROR / HATA: }
+    message=${message%% / *}
+    read -r -a words <<< "$message"
+    for word in "${words[@]}"; do
+        [[ $word != */* ]] || word=${word##*/}
+        if [[ -n $word ]]; then kept+=("$word"); fi
+    done
+    message=${kept[*]:-}
+    message=${message//\\/ }
+    [[ -n $message ]] || message='it printed no error line; the update worker log has its output'
+    (( ${#message} <= 101 )) || message="${message:0:98}..."
+    printf 'installer stopped: %s\n' "$message"
+}
+
+run_staged_installer() {
+    local errors status=0 line=
+    errors=$(mktemp -t celikpanel-installer-errors.XXXXXX) \
+        || die "the installer's error output could not be kept before running it"
+    "$@" 2> >(tee -a -- "$errors" >&2) || status=$?
+    # Let the copy finish before reading it (bash 4.4+ waits for $!).
+    wait "$!" 2>/dev/null || true
+    if [[ $status -ne 0 ]]; then
+        line=$(sed -e 's/\x1b\[[0-9;]*m//g' -- "$errors" 2>/dev/null | tr -d '\000-\010\013-\037\177' \
+            | grep -E '^ERROR / HATA: ' | tail -n 1 | cut -c1-600 || true)
+        rm -f -- "$errors"
+        update_failure_detail=${line:-the installer exited with status $status without an error line}
+        die "$(installer_failure_reason "$line")"
+    fi
+    rm -f -- "$errors"
+}
+
 run_update_idle_probe() {
     local output status=0
     update_failure_detail=
@@ -233,12 +283,53 @@ handoff_independent_capture_rollback() {
     die "independent rollback handoff failed"
 }
 
+# An Agent operation that is already running (the panel's own retries right
+# after a restart, alpha.114 lab run 3) or a host package-manager run usually
+# ends within seconds. While nothing has been changed and both coordinators
+# still serve, the unlocked preliminary Agent probe waits a bounded time for
+# exactly those states; every other refusal is immediate. The final proofs
+# under the held lock and while frozen never wait.
+# Zaten çalışan bir Agent işlemi veya paket yöneticisi genelde saniyeler içinde
+# biter. Hiçbir şey değişmemişken ve iki koordinatör hizmet verirken kilitsiz ön
+# Agent denetimi yalnız bu durumlar için sınırlı süre bekler; son kanıtlar beklemez.
+UPDATE_AGENT_IDLE_WAIT_SECONDS=60
+UPDATE_AGENT_IDLE_POLL_SECONDS=3
+update_agent_refusal_is_transient() {
+    case "${update_failure_detail:-}" in
+        *'privileged mutation '*' is active'*|*'privileged mutation '*' has active status '*) return 0 ;;
+        *': the host package manager is active'*|*': the host package manager or mutation lock is busy'*) return 0 ;;
+    esac
+    return 1
+}
+
+run_update_agent_idle_probe_waiting() {
+    local waited=0 status=0
+    run_update_idle_probe "$@" 2>/dev/null && return 0
+    while update_agent_refusal_is_transient && (( waited < UPDATE_AGENT_IDLE_WAIT_SECONDS )); do
+        if (( waited == 0 )); then
+            echo "==> The Agent is finishing another server operation; waiting up to ${UPDATE_AGENT_IDLE_WAIT_SECONDS} s for it before the update continues (nothing needs to be done)"
+            echo "==> Agent başka bir sunucu işlemini bitiriyor; güncelleme devam etmeden önce en çok ${UPDATE_AGENT_IDLE_WAIT_SECONDS} sn bekleniyor (bir şey yapmanız gerekmiyor)"
+        fi
+        sleep "$UPDATE_AGENT_IDLE_POLL_SECONDS"
+        waited=$((waited + UPDATE_AGENT_IDLE_POLL_SECONDS))
+        status=0
+        run_update_idle_probe "$@" 2>/dev/null || status=$?
+        if [[ $status -eq 0 ]]; then
+            echo "==> The Agent finished its operation after about ${waited} s; the update continues"
+            echo "==> Agent işlemini yaklaşık ${waited} sn sonra bitirdi; güncelleme sürüyor"
+            return 0
+        fi
+    done
+    [[ -z ${update_failure_detail:-} ]] || printf '%s\n' "$update_failure_detail" >&2
+    return 1
+}
+
 # Reject durable reservations while the management interface is still reachable.
 # Final idle proofs under exclusion remain mandatory after this early check.
 preflight_mutations_before_quiesce() {
     [[ $BOOTSTRAP_PRE_LEDGER -eq 0 ]] || return 0
     if ! CELIKPANEL_AGENT_STATE_DIR="$AGENT_STATE_DIR" CELIKPANEL_MUTATION_LOCK="$MUTATION_LOCK" \
-        run_update_idle_probe "$PREFLIGHT_AGENT" --check-service-mutation-idle; then
+        run_update_agent_idle_probe_waiting "$PREFLIGHT_AGENT" --check-service-mutation-idle; then
         fail_update_preflight agent_idle "an existing server operation requires completion or exact recovery before update; coordinators remain available"
     fi
 }
@@ -300,6 +391,11 @@ report_update_failure() {
     fi
     if [[ "${update_failure_detail:-}" == *': the host package manager is active'* ]]; then
         code=package_manager_busy
+    fi
+    if [[ -z ${update_failure_reason:-} && -n ${update_unhandled_line:-} ]]; then
+        # At most 120 characters with no path: older panels keep it.
+        update_failure_reason="an update step stopped at update.sh line $update_unhandled_line (exit status ${update_unhandled_status:-1}) without its own message"
+        [[ -n ${update_failure_detail:-} ]] || update_failure_detail='the update worker log has the output of that step'
     fi
     reason=${update_failure_reason:-updater command failed; inspect the update worker log}
     detail=${update_failure_detail:-}
@@ -1285,6 +1381,47 @@ terminate_frozen_release_service() {
 # Quiesce iptali, start barrier kaldırılmadan önce mevcut koordinatörleri aynen
 # sürdürür. Böylece kaldırma öncesindeki çökme sürdürülebilir kalır; kaldırma
 # sonrasındaki çökme ise servisleri donmuş değil normal çalışır durumda bırakır.
+#
+# Each coordinator gets one abort action (alpha.114 lab run 3, Arch):
+#   resume - the exact captured process (state, MainPID, /proc start time),
+#            frozen or not. A running Agent may own helper processes of the
+#            operation it is finishing, so its cgroup must contain the MainPID
+#            but may hold more; every process in it receives SIGCONT.
+#   start  - a captured active process that is proven gone (an earlier
+#            fail-closed abort, a crash or a reboot; the quiesce start guard kept
+#            systemd from replacing it). It is started again only after the
+#            marker is removed, then verified.
+#   none   - a captured inactive row whose unit is still empty.
+# Any other observation (a different live process) remains fail-closed.
+# Her koordinatör tek bir iptal eylemi alır: tam kaydedilmiş süreç sürdürülür
+# (çalışan Agent'ın yardımcı süreçleri olabilir), kanıtlanmış biçimde durmuş
+# süreç işaretçi kaldırıldıktan sonra yeniden başlatılıp doğrulanır, pasif satır
+# boş kalır. Başka her gözlem güvenli kapalı kalır.
+declare -A quiesce_abort_actions=()
+quiesce_abort_detail=
+
+classify_quiesce_abort_coordinator() {
+    local unit=$1 observed_state observed_pid
+    coordinator_cgroup_detail=
+    if verify_quiesce_coordinator_identity "$unit" resumable; then
+        if service_state_is_active_like "${quiesce_active_states[$unit]}"; then
+            quiesce_abort_actions["$unit"]=resume
+        else
+            quiesce_abort_actions["$unit"]=none
+        fi
+        return 0
+    fi
+    if service_state_is_active_like "${quiesce_active_states[$unit]:-}" &&
+       verify_quiesce_coordinator_stopped "$unit"; then
+        quiesce_abort_actions["$unit"]=start
+        return 0
+    fi
+    observed_state=$(systemctl show --property=ActiveState --value "$unit" 2>/dev/null || true)
+    observed_pid=$(systemctl show --property=MainPID --value "$unit" 2>/dev/null || true)
+    quiesce_abort_detail="$unit is neither the exact captured coordinator nor proven stopped (captured ${quiesce_active_states[$unit]:-unknown}/${quiesce_main_pids[$unit]:-unknown}, observed ${observed_state:-unknown}/${observed_pid:-unknown}${coordinator_cgroup_detail:+; $coordinator_cgroup_detail})"
+    return 1
+}
+
 resume_quiesced_release_services() {
     # The durable quiesce marker may outlive the shell assignment that records a
     # successful SIGSTOP. Signal only a captured active-like identity; a canonical
@@ -1292,25 +1429,72 @@ resume_quiesced_release_services() {
     # Kalıcı quiesce işaretçisi, başarılı SIGSTOP kaydını yapan kabuk atamasından
     # uzun yaşayabilir. Yalnız kaydedilmiş aktif-benzeri kimliğe sinyal gönder;
     # kanonik pasif state/0/0 satırında sürdürülecek süreç yoktur.
-    verify_quiesce_coordinator_identity celikpanel-panel.service either || return 1
-    verify_quiesce_coordinator_identity celikpanel-agent.service either || return 1
-    if service_state_is_active_like "${quiesce_active_states[celikpanel-panel.service]}"; then
+    local unit
+    quiesce_abort_actions=()
+    classify_quiesce_abort_coordinator celikpanel-panel.service || return 1
+    classify_quiesce_abort_coordinator celikpanel-agent.service || return 1
+    if [[ ${quiesce_abort_actions[celikpanel-panel.service]:-} == resume ]]; then
         systemctl kill --kill-whom=all --signal=SIGCONT celikpanel-panel.service >/dev/null 2>&1 \
             || return 1
     fi
-    if service_state_is_active_like "${quiesce_active_states[celikpanel-agent.service]}"; then
+    if [[ ${quiesce_abort_actions[celikpanel-agent.service]:-} == resume ]]; then
         systemctl kill --kill-whom=all --signal=SIGCONT celikpanel-agent.service >/dev/null 2>&1 \
             || return 1
     fi
     panel_frozen=0
     agent_frozen=0
-    verify_quiesce_coordinator_identity celikpanel-panel.service unfrozen || return 1
-    verify_quiesce_coordinator_identity celikpanel-agent.service unfrozen || return 1
+    for unit in celikpanel-panel.service celikpanel-agent.service; do
+        case ${quiesce_abort_actions[$unit]:-} in
+            resume|none)
+                verify_quiesce_coordinator_identity "$unit" resumed || {
+                    quiesce_abort_detail="$unit did not resume as the exact captured coordinator (${coordinator_cgroup_detail:-no cgroup detail})"
+                    return 1
+                }
+                ;;
+            start)
+                verify_quiesce_coordinator_stopped "$unit" || {
+                    quiesce_abort_detail="$unit changed while it was expected to stay stopped"
+                    return 1
+                }
+                ;;
+            *) return 1 ;;
+        esac
+    done
 }
 
+# Start, after the quiesce marker is gone, each coordinator that was running
+# before the update and is proven stopped. Agent first: the panel needs it.
+# Güncellemeden önce çalışan ve durduğu kanıtlanan koordinatörleri, quiesce
+# işaretçisi kaldırıldıktan sonra başlat. Önce Agent: panel ona ihtiyaç duyar.
+start_stopped_quiesced_release_services() {
+    local unit label
+    for unit in celikpanel-agent.service celikpanel-panel.service; do
+        [[ ${quiesce_abort_actions[$unit]:-} == start ]] || continue
+        label=${unit#celikpanel-}
+        label=${label%.service}
+        echo "==> Starting the stopped $label service again (the update was stopped before anything changed)" >&2
+        echo "==> Durdurulmuş $label hizmeti yeniden başlatılıyor (güncelleme hiçbir şey değişmeden durdu)" >&2
+        systemctl start "$unit" || {
+            quiesce_abort_detail="$unit could not be started again"
+            return 1
+        }
+    done
+    for unit in celikpanel-agent.service celikpanel-panel.service; do
+        [[ ${quiesce_abort_actions[$unit]:-} == start ]] || continue
+        verify_release_service_resumed "$unit" "$unit" || {
+            quiesce_abort_detail="$unit did not stay running after it was started again"
+            return 1
+        }
+    done
+}
+
+# A resumed or restarted coordinator is verified by state, a live unfrozen
+# MainPID and that MainPID's membership of the unit's cgroup. Helpers of an
+# operation the coordinator is finishing may share the cgroup.
+# Sürdürülen ya da yeniden başlatılan koordinatör durum, canlı ve askıda olmayan
+# MainPID ve bu PID'in birim cgroup'unda bulunmasıyla doğrulanır.
 verify_release_service_resumed() {
     local unit=$1 label=$2 expected state main_pid process_state pid_output
-    local -a pids=()
     expected=${saved_active_states[$unit]:-}
     [[ -n "$expected" ]] || return 1
     state=$(systemctl show --property=ActiveState --value "$unit") || return 1
@@ -1324,11 +1508,7 @@ verify_release_service_resumed() {
             sleep 0.02
         done
         [[ -n "$process_state" && "$process_state" != T && "$process_state" != t ]] || return 1
-        pid_output=$(service_cgroup_pids "$unit") || return 1
-        if [[ -n "$pid_output" ]]; then
-            mapfile -t pids <<< "$pid_output"
-        fi
-        [[ ${#pids[@]} -eq 1 && "${pids[0]}" == "$main_pid" ]] || return 1
+        coordinator_cgroup_contains_pid "$unit" "$main_pid" || return 1
     else
         case "$state" in
             inactive|failed) ;;
@@ -1374,23 +1554,30 @@ fail_closed_quiesce_abort() {
     preserve_quiesce_recovery_marker
     stop_release_coordinators_fail_closed
     echo "!! Quiesce abort verification failed; recovery state was preserved and both coordinators were stopped." >&2
+    [[ -z ${quiesce_abort_detail:-} ]] || echo "!! Quiesce abort check: $quiesce_abort_detail" >&2
     return 1
 }
 
 abort_quiesce_before_active() {
+    local unit
     transaction_started=1
     transaction_phase=quiesce
     preserve_staging=1
+    quiesce_abort_detail=
     release_txn_validate_quiesce_token \
         "$RELEASE_TRANSACTION_ROOT" "$release_transaction_token" update "$snapshot_name" \
         "$SNAP_ROOT" "$stage_root" \
         || { fail_closed_quiesce_abort; return 1; }
     resume_quiesced_release_services \
         || { fail_closed_quiesce_abort; return 1; }
-    verify_release_service_resumed celikpanel-panel.service panel \
-        || { fail_closed_quiesce_abort; return 1; }
-    verify_release_service_resumed celikpanel-agent.service agent \
-        || { fail_closed_quiesce_abort; return 1; }
+    for unit in celikpanel-panel.service celikpanel-agent.service; do
+        [[ ${quiesce_abort_actions[$unit]:-} == start ]] && continue
+        verify_release_service_resumed "$unit" "$unit" || {
+            quiesce_abort_detail="$unit did not resume as it was before the update"
+            fail_closed_quiesce_abort
+            return 1
+        }
+    done
     release_txn_validate_quiesce_token \
         "$RELEASE_TRANSACTION_ROOT" "$release_transaction_token" update "$snapshot_name" \
         "$SNAP_ROOT" "$stage_root" \
@@ -1402,9 +1589,17 @@ abort_quiesce_before_active() {
         "$SNAP_ROOT" "$stage_root" \
         || { fail_closed_quiesce_abort; return 1; }
     transaction_phase=quiesce-removed
+    release_release_mutation_lock || true
+    # Nothing installed changed in the quiesce phase, so a coordinator proven
+    # stopped returns to its state from before the update. A failed start
+    # recreates the exact marker, so the bounded automatic recovery retries it.
+    # Quiesce aşamasında kurulu hiçbir şey değişmedi; durduğu kanıtlanan
+    # koordinatör güncelleme öncesi durumuna döner. Başlatılamazsa tam işaretçi
+    # yeniden kurulur ve sınırlı otomatik kurtarma yeniden dener.
+    start_stopped_quiesced_release_services \
+        || { fail_closed_quiesce_abort; return 1; }
     transaction_started=0
     preserve_staging=0
-    release_release_mutation_lock || true
     transaction_phase=none
 }
 # systemd removes RuntimeDirectory when the agent stops. Recreate only the
@@ -1488,6 +1683,25 @@ coordinator_cgroup_matches_pid() {
     else
         [[ ${#pids[@]} -eq 0 ]]
     fi
+}
+
+# Resuming a coordinator only returns control to the same process: its exact
+# MainPID must be in the unit's cgroup, helper processes may be there too.
+# Freeze and promotion proofs keep the strict one-PID rule above.
+# Sürdürme yalnız aynı sürece denetimi geri verir: tam MainPID birim
+# cgroup'unda olmalıdır, yardımcı süreçler de bulunabilir. Dondurma ve
+# yükseltme kanıtları yukarıdaki katı tek-PID kuralını korur.
+coordinator_cgroup_contains_pid() {
+    local unit=$1 expected_pid=$2 pid_output pid
+    coordinator_cgroup_detail="expected_pid=$expected_pid observed_pids=unavailable"
+    [[ "$expected_pid" =~ ^[0-9]+$ && "$expected_pid" -gt 1 ]] || return 1
+    pid_output=$(service_cgroup_pids "$unit") || return 1
+    coordinator_cgroup_detail="expected_pid=$expected_pid observed_pids=${pid_output//$'\n'/,}"
+    coordinator_cgroup_detail=${coordinator_cgroup_detail:0:350}
+    while IFS= read -r pid; do
+        [[ "$pid" != "$expected_pid" ]] || return 0
+    done <<< "$pid_output"
+    return 1
 }
 
 # Before publishing quiesce, let short-lived status helpers exit naturally.
@@ -1649,8 +1863,12 @@ load_quiesce_coordinator_identities() {
 verify_quiesce_coordinator_identity() {
     local unit=$1 process_requirement=$2 expected_state expected_pid expected_start
     local state main_pid start_time process_state
+    # resumable/resumed are the quiesce-abort forms of either/unfrozen: the
+    # same exact identity, with helper processes allowed beside the MainPID.
+    # resumable/resumed, either/unfrozen'ın quiesce iptali biçimidir: aynı tam
+    # kimlik, MainPID yanında yardımcı süreçlere izin verilir.
     case "$process_requirement" in
-        either|frozen|unfrozen) ;;
+        either|frozen|unfrozen|resumable|resumed) ;;
         *) return 1 ;;
     esac
     expected_state=${quiesce_active_states[$unit]:-}
@@ -1664,12 +1882,15 @@ verify_quiesce_coordinator_identity() {
         [[ "$main_pid" == "$expected_pid" ]] || return 1
         start_time=$(coordinator_process_start_time "$main_pid") || return 1
         [[ "$start_time" == "$expected_start" ]] || return 1
-        coordinator_cgroup_matches_pid "$unit" "$main_pid" || return 1
+        case "$process_requirement" in
+            resumable|resumed) coordinator_cgroup_contains_pid "$unit" "$main_pid" || return 1 ;;
+            *) coordinator_cgroup_matches_pid "$unit" "$main_pid" || return 1 ;;
+        esac
         process_state=$(awk '/^State:/ {print $2}' "/proc/$main_pid/status" 2>/dev/null || true)
         [[ -n "$process_state" ]] || return 1
         case "$process_requirement" in
             frozen) [[ "$process_state" == T || "$process_state" == t ]] || return 1 ;;
-            unfrozen) [[ "$process_state" != T && "$process_state" != t ]] || return 1 ;;
+            unfrozen|resumed) [[ "$process_state" != T && "$process_state" != t ]] || return 1 ;;
         esac
     else
         [[ "$expected_pid" == 0 && "$expected_start" == 0 && "$main_pid" == 0 ]] || return 1
@@ -2363,7 +2584,9 @@ panel_startup_environment() {
         [[ ${values[$key]} =~ $value_re ]] || return 1
         PANEL_STARTUP_ENV+=("$key=${values[$key]}")
     done
-    PANEL_STARTUP_LISTEN=${values[CELIKPANEL_LISTEN]:-:2083}
+    # The panel binary's own default when neither the unit nor panel.env
+    # names an address (alpha.114: 1923).
+    PANEL_STARTUP_LISTEN=${values[CELIKPANEL_LISTEN]:-:1923}
     PANEL_STARTUP_SCHEME=http
     if [[ ${values[CELIKPANEL_TLS]:-} == 1 || -n ${values[CELIKPANEL_TLS_CERT]:-} ||
           -n ${values[CELIKPANEL_TLS_KEY]:-} ]]; then
@@ -3222,6 +3445,8 @@ on_exit() {
     local status=$? final_status marker_phase
     final_status=$status
     trap - EXIT
+    # Commands in this cleanup must not replace the recorded unhandled step.
+    trap - ERR
     if ! marker_phase=$(classify_durable_update_marker); then
         preserve_staging=1
         stop_release_coordinators_fail_closed
@@ -3320,6 +3545,12 @@ on_exit() {
     exit "$final_status"
 }
 trap on_exit EXIT
+# errtrace: a step that fails inside a function is recorded too. The trap only
+# remembers where set -e stopped; the latest firing is the one that ended the
+# updater, and die's own cause always takes precedence (report_update_failure).
+# Hata izi: yalnız set -e'nin durduğu yer hatırlanır; die nedeni önceliklidir.
+set -E
+trap 'update_unhandled_status=$? update_unhandled_line=$LINENO' ERR
 
 if [[ $resume_active_update -eq 1 ]]; then
     load_saved_service_states "$tmp_snap/service-states.tsv"
@@ -3491,8 +3722,12 @@ else
         run_update_live_panel_probe "$PREFLIGHT_PANEL" --check-service-operations-idle-wal-aware; then
         fail_update_preflight idle_probe "panel service operations are not idle; update refused"
     fi
+    # The published quiesce marker already stops the Agent from admitting a
+    # new operation; one that began just before it may still be finishing.
+    # Yayımlanmış quiesce işaretçisi yeni Agent işlemini engeller; hemen önce
+    # başlamış olan işlem hâlâ bitiyor olabilir.
     if ! CELIKPANEL_AGENT_STATE_DIR="$AGENT_STATE_DIR" CELIKPANEL_MUTATION_LOCK="$MUTATION_LOCK" \
-        run_update_idle_probe "$PREFLIGHT_AGENT" --check-service-mutation-idle; then
+        run_update_agent_idle_probe_waiting "$PREFLIGHT_AGENT" --check-service-mutation-idle; then
         fail_update_preflight agent_idle "agent/package mutations are not idle; update refused"
     fi
 fi
@@ -3998,7 +4233,17 @@ done
 echo "==> Trusted release is pinned; Git pull is unavailable / Güvenilir sürüm sabit; Git pull kullanılamaz"
 
 echo "==> Re-running the staged installer / Staged kurucu yeniden çalıştırılıyor"
-current_listen=$(grep -h '^Environment=CELIKPANEL_LISTEN=' "$UNIT_DIR/celikpanel-panel.service" 2>/dev/null | cut -d= -f3- || true)
+# The installation's own address is kept exactly: panel.env first (every
+# installation since panel.env exists), then the installed unit's line, then
+# 2083, the address of every installation older than both. install.sh uses
+# this only when panel.env is missing; it never rewrites an existing one, so
+# an update from alpha.113 stays on 2083 although new installs use 1923.
+# Kurulumun kendi adresi aynen korunur: önce panel.env, sonra kurulu unit,
+# sonra ikisinden de eski kurulumların adresi 2083. Güncelleme 2083'te kalır.
+current_listen=$(grep -h '^CELIKPANEL_LISTEN=' "$PANEL_ENV_FILE" 2>/dev/null | tail -n 1 | cut -d= -f2- || true)
+if [[ -z $current_listen ]]; then
+    current_listen=$(grep -h '^Environment=CELIKPANEL_LISTEN=' "$UNIT_DIR/celikpanel-panel.service" 2>/dev/null | cut -d= -f3- || true)
+fi
 current_listen=${current_listen:-:2083}
 panel_tls_snapshot_assert_source_unchanged \
     "$snap/panel-tls" "$PANEL_TLS_DIR" "$PANEL_CERT_PENDING" "$PANEL_CERT_HOOK" quiesced \
@@ -4072,7 +4317,7 @@ if [[ $BOOTSTRAP_PRE_LEDGER -eq 1 ]]; then
         CELIKPANEL_MUTATION_LOCK_FD="$MUTATION_LOCK_FD" \
         "$TRUSTED_RELEASE_ROOT/bin/agent" --check-initial-service-mutation-ledger-under-external-lock \
         || die "bootstrap ledger changed before the locked installation"
-    env -i \
+    run_staged_installer env -i \
         PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
         HOME=/root LC_ALL=C \
         SKIP_DEPS=1 SKIP_SECURITY_UPDATES=1 SKIP_ADMIN=1 \
@@ -4086,7 +4331,7 @@ if [[ $BOOTSTRAP_PRE_LEDGER -eq 1 ]]; then
         /bin/bash "$TRUSTED_RELEASE_ROOT/install.sh"
 else
     mutation_started=1
-    env -i \
+    run_staged_installer env -i \
         PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
         HOME=/root LC_ALL=C \
         SKIP_DEPS=1 SKIP_SECURITY_UPDATES=1 SKIP_ADMIN=1 \

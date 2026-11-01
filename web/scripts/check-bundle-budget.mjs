@@ -139,6 +139,45 @@ const screenPartBudgets = {
   // new part, set with at least 25% headroom from its Turkish file: 7.52 /
   // 2.35 KiB.
   dnsPublication: kib(10.5, 4),
+  // 2026-10-31 (alpha.114): the shared problem pattern (problem.) and the
+  // setup Summary's blockers in plain words (setup.problem.). A new part, set
+  // with at least 25% headroom from its Turkish file (11.88 / 3.47 KiB), and
+  // room for the next screens' problems.
+  problems: kib(17, 6),
+  // 2026-10-31 (alpha.114): what refused changes say, the database forms and a
+  // password shown once (refusals). A new part, set with at least 25% headroom
+  // from its Turkish file: 4.14 / 1.47 KiB.
+  refusals: kib(6, 2),
+  // v0.1.0-alpha.114 (P6): forgot password, account links, address
+  // confirmation and invitations (acct., err.account_*). A new part, set with
+  // at least 25% headroom from its Turkish file: 9.75 / 2.61 KiB.
+  accountAccess: kib(13, 3.5),
+  // alpha.114: a domain's protected folders and redirects (siteFeatures.), the
+  // refusal codes of those two screens and the account page's two-factor
+  // recovery codes (account.recovery.). A new part, set with at least 25%
+  // headroom from its Turkish file (about 8.7 / 2.7 KiB as source).
+  siteFeatures: kib(11.5, 4),
+  // 2026-10-31 (alpha.114 integration): operating-system updates (automatic or
+  // manual, the waiting-updates card, Arch by hand, this system's offers) and
+  // the operating-system release card left "lifecycle" (life.choice.,
+  // life.pending., life.arch., life.osinfo., life.os.), which had run out of
+  // headroom. A new part, set with at least 25% headroom from its Turkish
+  // file: 15.30 / 4.74 KiB.
+  osUpdates: kib(20, 6),
+  // 2026-10-31 (alpha.114 integration): changing the panel port (panelPort.)
+  // left "settings", which had run out of headroom. A new part, set with at
+  // least 25% headroom from its Turkish file: 5.92 / 1.98 KiB.
+  panelPort: kib(8, 2.5),
+  // 2026-10-31 (alpha.114, owner setup review): the main domain's website at
+  // setup, "Ready, with N things left", the purpose banner and the in-place
+  // mail dialog (setup.v7., svc.mailSetup.). A new part, set with at least 25%
+  // headroom from its Turkish file (about 8.6 KiB as source).
+  setupOwner: kib(12, 4),
+  // 2026-11-01 (alpha.114, lab run 2): the setup link's DNS-publisher and DKIM
+  // waits, split out of "setupLink", which the run-2 wording took over its
+  // ceiling (Turkish 13.35 KiB). A new part, set with at least 25% headroom
+  // from its Turkish file: 4.51 / 1.42 KiB.
+  setupPublishing: kib(6, 2),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

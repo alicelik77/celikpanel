@@ -13,7 +13,11 @@
 # Environment knobs / Ortam ayarları:
 #   SKIP_DEPS=1     do not install prerequisites (tar, xz, curl, iproute2)
 #   SKIP_ADMIN=1    do not prompt to create the first administrator
-#   LISTEN=:2083    panel bind address
+#   LISTEN=:1923    panel bind address for a NEW installation (alpha.114;
+#                   2083 is cPanel's port). An existing installation keeps
+#                   the address its /etc/celikpanel/panel.env already names.
+#                   Yeni kurulumun panel adresi; mevcut kurulum panel.env'deki
+#                   adresi (öncekilerde 2083) korur.
 #   DEMO=1          R&D mode: quick-login accounts on the login screen
 #                   (admin/reseller/customer @ demo1234) and cookies that
 #                   work over plain HTTP. NEVER on an internet-facing server.
@@ -143,7 +147,7 @@ readonly SELINUX_OS_RELEASE SELINUX_ENFORCE_FILE RHEL_DNF_BIN \
 SELINUX_PLATFORM_MODE=unverified
 SVC_USER=celikpanel
 SVC_GROUP=celikpanel
-LISTEN="${LISTEN:-:2083}"
+LISTEN="${LISTEN:-:1923}"
 case "${CELIKPANEL_APPLY_ONLY:-0}" in
     0|1) ;;
     *) printf '%s\n' "ERROR / HATA: CELIKPANEL_APPLY_ONLY must be 0 or 1 / yalnız 0 veya 1 olabilir" >&2; exit 1 ;;
@@ -1290,19 +1294,19 @@ validate_panel_env() {
     local listen= tls= cert= key_path= tls_dir= cookie_flag= demo_flag=
     declare -A seen=()
 
-    [[ -f "$file" && ! -L "$file" ]] || die "panel ortam dosyası eksik veya güvensiz: $file"
+    [[ -f "$file" && ! -L "$file" ]] || die "the panel environment file is missing or unsafe: $file" "panel ortam dosyası eksik veya güvensiz: $file"
     read -r env_owner env_group env_mode < <(stat -Lc '%u %g %a' -- "$file") \
-        || die "panel ortam dosyası incelenemedi"
+        || die "the panel environment file could not be inspected" "panel ortam dosyası incelenemedi"
     [[ "$env_owner" == 0 && "$env_group" == 0 && "$env_mode" == 600 ]] \
-        || die "panel ortam dosyası root:root mode 0600 olmalı"
+        || die "the panel environment file must be root:root mode 0600" "panel ortam dosyası root:root mode 0600 olmalı"
 
     while IFS= read -r line || [[ -n "$line" ]]; do
         ((line_number += 1))
         case "$line" in ''|'#'*) continue ;; esac
-        [[ "$line" == *=* ]] || die "panel.env:$line_number geçersiz satır"
+        [[ "$line" == *=* ]] || die "panel.env line $line_number is not a KEY=value line" "panel.env:$line_number geçersiz satır"
         key=${line%%=*}
         value=${line#*=}
-        [[ -z "${seen[$key]+set}" ]] || die "panel.env:$line_number yinelenen anahtar: $key"
+        [[ -z "${seen[$key]+set}" ]] || die "panel.env line $line_number repeats the key $key" "panel.env:$line_number yinelenen anahtar: $key"
         seen[$key]=1
         case "$key" in
             CELIKPANEL_LISTEN)
@@ -1335,7 +1339,7 @@ validate_panel_env() {
                     || die "panel.env:$line_number geçersiz demo bayrağı"
                 demo_flag=$value
                 ;;
-            *) die "panel.env:$line_number desteklenmeyen anahtar: $key" ;;
+            *) die "panel.env line $line_number has an unsupported key: $key (remove the line, then retry)" "panel.env:$line_number desteklenmeyen anahtar: $key (satırı silin, sonra yeniden deneyin)" ;;
         esac
     done < "$file"
 

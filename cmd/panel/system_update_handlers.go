@@ -109,7 +109,9 @@ type panelUpdateStatusResponse struct {
 	// Phase is additive (2026-10-10): "verifying" while the record is still
 	// running and the Panel answering is already the target build, so the
 	// new version is installed and the updater is finishing its checks.
-	// Absent otherwise. It never changes the status.
+	// "rolled_back" (alpha.114) for a failed record whose automatic return to
+	// the previous release the recovery verified. Absent otherwise. It never
+	// changes the status.
 	// Phase eklemedir: kayit hala calisirken yanit veren Panel hedef surumse
 	// "verifying"; yeni surum kurulu, guncelleyici denetimlerini bitiriyor.
 	Phase string `json:"phase,omitempty"`
@@ -358,7 +360,16 @@ func boundedPanelUpdateFailure(value string) string {
 	case !plainPanelUpdateSummary(reason, 120):
 		reason = ""
 	}
-	return panelUpdateFailureMarker + " code=" + code + " state=" + state + " reason=" + reason + " detail="
+	if code != "update_failed" {
+		detail = ""
+	}
+	// An update that failed after it began keeps the installer's own line
+	// as the detail, made safe the same way (lab run 4, I2: after a verified
+	// rollback the record named the installer's stop but "detail=" was empty
+	// while the Agent journal held "ERROR / HATA: …").
+	// Başladıktan sonra başarısız olan güncelleme kurucunun satırını korur.
+	return panelUpdateFailureMarker + " code=" + code + " state=" + state + " reason=" + reason +
+		" detail=" + panelUpdateDiagnostic(detail)
 }
 
 // panelUpdateDiagnosticLimit bounds the diagnostic line the browser receives.
@@ -787,11 +798,47 @@ func (p *Panel) handlePanelUpdateStatus(w http.ResponseWriter, r *http.Request) 
 		writePanelUpdateAgentFailure(w, errors.New("agent returned invalid update status identity"))
 		return
 	}
+	summary := sanitizePanelUpdateSummary(reply.Error)
+	phase := panelUpdateStatusPhase(reply.Status, target)
+	if p.panelUpdateRolledBack(reply.Status, target, requestID) {
+		phase = panelUpdatePhaseRolledBack
+		summary = panelUpdateRolledBackSummary(summary)
+	}
 	_ = json.NewEncoder(w).Encode(panelUpdateStatusResponse{
 		Found: true, RequestID: requestID, Status: reply.Status, Target: &target,
 		CreatedAt: reply.CreatedAt, UpdatedAt: reply.UpdatedAt,
-		Summary: sanitizePanelUpdateSummary(reply.Error),
-		Phase:   panelUpdateStatusPhase(reply.Status, target),
+		Summary: summary,
+		Phase:   phase,
 		Plan:    p.panelUpdatePlanFromStatus(r.Context(), reply, target, panelUpdateNow()),
 	})
+}
+
+// panelUpdatePhaseRolledBack is the status phase of a failed update whose
+// automatic return to the previous release the server's recovery verified
+// (alpha.114 lab E-new-5). The status stays failed: the update did not happen.
+const panelUpdatePhaseRolledBack = "rolled_back"
+
+// panelUpdateRolledBack reports a failed request whose native recovery record
+// verified the rollback (phase recovered, terminal proof rollback_verified)
+// while this Panel is not the target build. Read only (P0 resilience: recovery
+// evidence is never inferred, only read).
+func (p *Panel) panelUpdateRolledBack(status string, target panelUpdateTarget, requestID string) bool {
+	if status != "failed" || (target.Version == buildVersion && target.Commit == buildCommit) {
+		return false
+	}
+	record := p.readPanelUpdateRecovery(requestID)
+	return record.Observation == "known" && record.Phase == "recovered" && record.TerminalProof == "rollback_verified"
+}
+
+// panelUpdateRolledBackSummary keeps the updater's cause and replaces only the
+// recovery state it reported when it exited: recovery was required then, and
+// the server's recovery has since verified it. The agent journal keeps the
+// original line. "recovery_required" is shown only while it is still true.
+// Geri alma doğrulandıysa özet "recovery_required" demez; neden aynen kalır.
+func panelUpdateRolledBackSummary(summary string) string {
+	const before, after = " state=recovery_required reason=", " state=rolled_back reason="
+	if !strings.HasPrefix(summary, panelUpdateFailureMarker+" ") && !strings.Contains(summary, ": "+panelUpdateFailureMarker+" ") {
+		return summary
+	}
+	return strings.Replace(summary, before, after, 1)
 }

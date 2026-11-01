@@ -100,7 +100,7 @@ API = {
     ]},
     '/api/v1/managed-services': {'scanned_at': now, 'services': SERVICES},
     '/api/v1/firewall': (
-        {'enabled': True, 'tcp_ports': [22, 2083, 80, 443, 25], 'udp_ports': [53], 'ssh_ports': [22]}
+        {'enabled': True, 'tcp_ports': [22, 1923, 80, 443, 25], 'udp_ports': [53], 'ssh_ports': [22]}
         if FIREWALL_ON else
         {'enabled': False, 'tcp_ports': [], 'udp_ports': [], 'ssh_ports': [22]}
     ),

@@ -12,7 +12,7 @@ const dataURL=value=>`data:text/javascript;base64,${Buffer.from(value).toString(
 const compile=path=>ts.transpileModule(readFileSync(new URL(path,import.meta.url),'utf8'),{compilerOptions:{jsx:ts.JsxEmit.React,module:ts.ModuleKind.ES2022,target:ts.ScriptTarget.ES2020}}).outputText;
 const contractURL=dataURL(compile('../src/lib/remoteDNS.ts'));
 const contract=await import(contractURL);
-const stubURL=dataURL(`import React from '${reactURL}'; export const useAuth=()=>({role:globalThis.remoteFixture.role}); export const useI18n=()=>({t:(key,vars)=>key}); export const Button=props=>React.createElement('button',props); export const inputClass='';`);
+const stubURL=dataURL(`import React from '${reactURL}'; export const invalidate=()=>[]; export const useAuth=()=>({role:globalThis.remoteFixture.role}); export const useI18n=()=>({t:(key,vars)=>key}); export const Button=props=>React.createElement('button',props); export const inputClass='';`);
 const source=compile('../src/components/ServerSetupDNSConnections.tsx').replace(/from ['"]([^'"]+)['"]/g,(_,path)=>`from '${path==='react'?reactURL:path.endsWith('/remoteDNS')?contractURL:stubURL}'`);
 const {ServerSetupDNSConnection:Connection,ServerSetupDNSAccess:Access}=await import(dataURL(`import React from '${reactURL}';\n${source}`));
 const original={fetch:globalThis.fetch,window:globalThis.window,localStorage:globalThis.localStorage};

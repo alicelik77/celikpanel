@@ -73,6 +73,9 @@ type serverSetupPlan struct {
 	// for this plan; the start sends back the one its page showed, so an
 	// update the owner never saw is never confirmed (review fix, 2026-10-29).
 	PackageUpdatesDigest string `json:"package_updates_digest,omitempty"`
+	// Scope (alpha.114): "mail" for a mail-only extension; empty otherwise,
+	// so every earlier plan keeps its identity.
+	Scope string `json:"scope,omitempty"`
 	// peerBound marks a plan completed by its second-server binding
 	// (serverSetupBoundPlan); it is never stored or hashed.
 	peerBound bool
@@ -102,6 +105,8 @@ type serverSetupExecutionStep struct {
 	OwnerID                     string `json:"owner_id"`
 	OperationID                 string `json:"operation_id,omitempty"`
 	EnrollmentDispatchAttempted bool   `json:"enrollment_dispatch_attempted,omitempty"`
+	// MainSite (alpha.114) is what the main-domain website step came to.
+	MainSite *serverSetupMainSiteOutcome `json:"main_site,omitempty"`
 }
 
 type serverSetupExecution struct {
@@ -117,6 +122,10 @@ type serverSetupExecution struct {
 	// HostStartingSince: when the run first found the host still starting
 	// (server_setup_host_starting); cleared once a step goes on.
 	HostStartingSince string `json:"host_starting_since,omitempty"`
+	// VerificationSince: when the final check first found a requirement
+	// not met (alpha.114 lab E8); past serverSetupVerificationOverdueAfter
+	// the wait is said as overdue, with the open checks and the next action.
+	VerificationSince string `json:"verification_since,omitempty"`
 }
 
 var serverSetupRunners sync.Map
@@ -527,15 +536,20 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 		// A joined second server keeps the answers the first server gave.
 		addBlocker("server_setup_peer_join_answers_changed")
 	}
-	// Only a first setup that has not completed: the link record is kept
-	// after a pair finished, and an extension keeps its own rules (review
-	// fix, item 3).
-	if link != nil && link.Document.First.MainDomainMail && serverSetupHasMail(draft) && state.CompletedAt == "" {
-		// One server receives the main domain's mail, and the join's shared
-		// answer says which: the server that created the join code already
-		// does (Beta-1 third re-run N3/N5: both claimed it). The wizard has
-		// no mail for this server's own host name only, so it is refused.
-		addBlocker("server_setup_peer_mail_both")
+	// A joined server may run mail for its own customers' domains (alpha.114,
+	// the owner's decision 2026-10-31; alpha.113 refused it with
+	// server_setup_peer_mail_both). One server still receives the main
+	// domain's mail and the join's shared answer says which: when the first
+	// server does, this server's mail never claims it (no MX, SPF, DMARC or
+	// DKIM of the main domain from here: serverSetupMainDomainMail,
+	// serverSetupPeerMailDNSStep). Its mail host name must be its own, in a
+	// first setup and in an extension alike.
+	// Katilan sunucu kendi musterileri icin posta calistirabilir; ana alan
+	// adinin postasi ilk sunucuda kalir. Posta adi kendine ait olmalidir.
+	if link != nil {
+		if code := serverSetupJoinedMailHostnameBlocker(draft, link.Document); code != "" {
+			addBlocker(code)
+		}
 	}
 	if draft.DNSMode == "local" && joinPending {
 		// The second server joins by code after this plan starts: its
@@ -928,6 +942,9 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 			addStep("mail_enrollment", "mail-renewal", generation)
 		}
 	}
+	if serverSetupMainSiteStep(draft, link != nil) {
+		addStep("main_site", draft.MainDomain, "")
+	}
 	addStep("verify", draft.Purpose, "")
 	plan.Steps = serverSetupDNSBootstrapSteps(draft, plan.Steps)
 	switch {
@@ -935,6 +952,11 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 		plan.Steps = serverSetupPeerJoinSteps(plan.Steps, serverSetupPlanStep{Kind: "peer_join", Target: "second"})
 	case link != nil:
 		plan.Steps = serverSetupPeerJoinSteps(plan.Steps, serverSetupPlanStep{Kind: "peer_names", Target: link.Address})
+	}
+	if state.ExtensionScope == serverSetupExtensionScopeMail {
+		plan.Scope = serverSetupExtensionScopeMail
+		plan.Steps = serverSetupMailScopeSteps(draft, plan.Steps, link != nil, state.ExtensionBase)
+		plan.InfrastructureDNS = nil
 	}
 	plan.CanStart = len(plan.Blockers) == 0
 	if plan.CanStart {
@@ -1615,8 +1637,10 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 	execution.Checks = checks
 	if !serverSetupChecksReady(checks) {
 		execution.Status = "waiting"
+		serverSetupVerificationWait(execution, serverSetupVerificationNow())
 		return false, p.persistServerSetupExecution(ctx, *execution)
 	}
+	execution.VerificationSince = ""
 	if err := p.completeServerSetupExecution(ctx, plan.Revision, execution.ID); err != nil {
 		var wait *serverSetupPeerWait
 		if errors.As(err, &wait) {
@@ -1724,6 +1748,8 @@ func (p *Panel) runServerSetupStep(ctx context.Context, plan serverSetupPlan, st
 		return p.runServerSetupMailCertificate(ctx, plan, *step)
 	case "mail_dns":
 		return p.runServerSetupMailDNS(ctx, plan, *step)
+	case "main_site":
+		return p.runServerSetupMainSite(ctx, plan, step)
 	case "firewall":
 		return p.runServerSetupFirewall(ctx, plan, *step)
 	case "service", "runtime", "mail_profile", "panel_certificate":

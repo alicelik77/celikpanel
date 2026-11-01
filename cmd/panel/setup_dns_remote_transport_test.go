@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestRemoteDNSEndpointAndPublicAddressRestrictions(t *testing.T) {
@@ -193,5 +194,42 @@ func TestRemoteDNSTransportRejectsInvalidRequestBeforeResolution(t *testing.T) {
 	}
 	if resolved {
 		t.Fatal("invalid input caused network activity")
+	}
+}
+
+// Lab run 6: a main DNS server that got the request but answered after the
+// timeout is running (Delivered); one that could not be reached is not.
+func TestRemoteDNSTransportTellsADeliveredSlowAnswerFromNoConnection(t *testing.T) {
+	release := make(chan struct{})
+	endpoint, deps, _ := remoteDNSTestTransport(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.Copy(io.Discard, r.Body)
+		select {
+		case <-r.Context().Done():
+		case <-release:
+		}
+	}))
+	// Registered after the server, so it runs before the server's Close
+	// waits for this handler.
+	t.Cleanup(func() { close(release) })
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	defer cancel()
+	err := remoteDNSHTTPJSONWith(ctx, endpoint, "/api/v1/dns/remote/receiver/status", "test-secret", map[string]bool{"probe": true}, &struct{}{}, deps)
+	var exchange *remoteDNSExchangeError
+	if !errors.As(err, &exchange) || !exchange.Delivered {
+		t.Fatalf("slow answer: %#v", err)
+	}
+	if reason, ok := remoteDNSDeletionReason(err); !ok || reason != remoteDNSDeletionConfirmingReason {
+		t.Fatalf("slow answer reason %q %v", reason, ok)
+	}
+
+	deps.dial = func(context.Context, string, string) (net.Conn, error) {
+		return nil, errors.New("connection refused")
+	}
+	err = remoteDNSHTTPJSONWith(context.Background(), endpoint, "/api/v1/dns/remote/receiver/status", "test-secret", map[string]bool{"probe": true}, &struct{}{}, deps)
+	if !errors.As(err, &exchange) || exchange.Delivered || err.Error() != "remote DNS HTTPS exchange failed" {
+		t.Fatalf("no connection: %#v", err)
+	}
+	if reason, ok := remoteDNSDeletionReason(err); !ok || reason != remoteDNSDeletionUnreachableReason {
+		t.Fatalf("no connection reason %q %v", reason, ok)
 	}
 }

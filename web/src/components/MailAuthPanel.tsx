@@ -1,12 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ShieldCheck, KeyRound, FileCheck2, Copy, Plus, Info, RefreshCw, type LucideIcon } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
-import { Button, RemoteGate, ResultUnknown, StatusDot, inputClass } from './ui';
-import { useRefreshEvery, useRemote } from '../lib/remote';
+import { Button, ErrorBanner, RemoteGate, ResultUnknown, StatusDot, inputClass } from './ui';
+import { invalidate, useRefreshEvery, useRemote } from '../lib/remote';
 import { useLostAnswer, type LostAnswerHandle } from '../lib/lostAnswer';
-import { apiErrorText, readApiError } from '../lib/apiError';
+import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
 
 interface AuthRecord {
     name: string;
@@ -57,7 +57,7 @@ function automaticText(auto: AutomaticDKIM): TranslationKey {
     switch (auto.state) {
     case 'pending': return 'mailauth.auto.pending';
     case 'waiting': return 'mailauth.auto.waiting';
-    case 'unknown': return 'mailauth.auto.unknown';
+    case 'unknown': return auto.reason === 'stale' ? 'mailauth.auto.stale' : 'mailauth.auto.unknown';
     case 'blocked': return 'mailauth.auto.dnsNotReady';
     default:
         if (auto.reason === 'key_failed') return 'mailauth.auto.keyFailed';
@@ -123,6 +123,18 @@ export function MailAuthPanel({ domainId, readOnly = false }: MailAuthPanelProps
     const running = auth.remote.state === 'known' &&
         (auth.remote.value.automatic?.state === 'pending' || auth.remote.value.automatic?.state === 'waiting');
     useRefreshEvery(auth, 10_000, running);
+    // When the automatic setup ends it has published its records: the zone's
+    // record list and the DNS overview read again. A read only.
+    // Otomatik kurulum bitince kayıtlarını yayımlamıştır; bölge listesi ve DNS
+    // özeti yeniden okunur. Yalnız okur.
+    const wasRunning = useRef(false);
+    const knownNow = auth.remote.state === 'known';
+    useEffect(() => {
+        // Only a known answer decides: a failed poll is not the end of the setup.
+        if (!knownNow) return;
+        if (wasRunning.current && !running) invalidate('mail', 'dns');
+        wasRunning.current = running;
+    }, [running, knownNow]);
 
     // "Try again" queues the automatic setup once; while it is pending the
     // server answers that it is already running and starts nothing.
@@ -134,15 +146,23 @@ export function MailAuthPanel({ domainId, readOnly = false }: MailAuthPanelProps
             const res = await answer.send(`/api/v1/domains/${domainId}/mail/auth/automatic`, { method: 'POST' });
             if (!res) return;
             if (!res.ok) {
-                showToast('error', apiErrorText(await readApiError(res), t));
+                refuse(await readApiError(res), 'mailauth.autoFailed');
                 return;
             }
-            showToast('success', t('mailauth.auto.queued'));
+            setFailure(null); showToast('success', t('mailauth.auto.queued'));
             answer.settle();
-            await auth.retry();
+            invalidate('mail');
         } finally {
             setBusy(null);
         }
+    };
+
+    // A refused change stays above the records until the next one succeeds
+    // (owner feedback 2026-10-31).
+    const [failure, setFailure] = useState<{ problem: ApiError; sentence: TranslationKey } | null>(null);
+    const refuse = (problem: ApiError, sentence: TranslationKey) => {
+        setFailure({ problem, sentence });
+        showToast('error', refusalText(problem, t, sentence), refusalToast(problem, t));
     };
 
     const generateKey = async () => {
@@ -152,7 +172,7 @@ export function MailAuthPanel({ domainId, readOnly = false }: MailAuthPanelProps
             const res = await answer.send(`/api/v1/domains/${domainId}/mail/auth/dkim`, { method: 'POST' });
             if (!res) return;
             if (!res.ok) {
-                showToast('error', t('common.error'));
+                refuse(await readApiError(res), 'mailauth.keyFailed');
                 return;
             }
             // The key can exist while signing with it could not be switched
@@ -160,14 +180,14 @@ export function MailAuthPanel({ domainId, readOnly = false }: MailAuthPanelProps
             // Anahtar varken imzalama açılamamış olabilir; bu gizlenmez.
             const body = await res.json() as { signing?: boolean; signing_error?: string };
             if (body.signing === false) {
-                showToast('warning', body.signing_error
-                    ? `${t('mailauth.keySigningFailed')} (${body.signing_error})`
-                    : t('mailauth.keySigningFailed'));
+                // The signer's own words are technical: under Technical details.
+                showToast('warning', t('mailauth.keySigningFailed'), body.signing_error
+                    ? { details: { label: t('problem.details'), text: body.signing_error } } : undefined);
             } else {
-                showToast('success', t('mailauth.keyGenerated'));
+                setFailure(null); showToast('success', t('mailauth.keyGenerated'));
             }
             answer.settle();
-            await auth.retry();
+            invalidate('mail');
         } finally {
             setBusy(null);
         }
@@ -197,12 +217,19 @@ export function MailAuthPanel({ domainId, readOnly = false }: MailAuthPanelProps
                     code = '';
                 }
                 const keys: Record<string, TranslationKey> = { REMOTE_DNS_MAIL_RECORD_CONFLICT: 'mailauth.remoteConflict', REMOTE_DNS_MAIL_ADDRESS_REQUIRED: 'mailauth.remoteAddressRequired', REMOTE_DNS_UNAVAILABLE: 'mailauth.remoteUnavailable' };
-                showToast('error', t(keys[code] || 'common.error'));
+                // The code stays under Technical details; the remote words are not shown.
+                const problem: ApiError = { message: keys[code] ? t(keys[code]) : '', ...(code ? { code } : {}) };
+                setFailure({ problem, sentence: 'mailauth.applyFailed' });
+                showToast('error', keys[code] ? t(keys[code]) : t('mailauth.applyFailed'), refusalToast(code ? { message: '', code } : null, t));
                 return;
             }
+            setFailure(null);
             showToast('success', t('mailauth.applied'));
             answer.settle();
-            await auth.retry();
+            // The records now in the zone: the DNS list and the overview read
+            // again as well as the mail status.
+            // Bölgedeki kayıtlar: DNS listesi ve özet de yeniden okunur.
+            invalidate('mail', 'dns');
         } finally {
             setBusy(null);
         }
@@ -227,6 +254,7 @@ export function MailAuthPanel({ domainId, readOnly = false }: MailAuthPanelProps
                     canChange={settled && !shown.stale}
                     busy={busy}
                     answer={answer}
+                    failure={failure}
                     dmarcPolicy={dmarcPolicy}
                     setDmarcPolicy={setDmarcPolicy}
                     onApply={apply}
@@ -245,6 +273,7 @@ function AuthRecords({
     canChange,
     busy,
     answer,
+    failure,
     dmarcPolicy,
     setDmarcPolicy,
     onApply: apply,
@@ -258,6 +287,7 @@ function AuthRecords({
     canChange: boolean;
     busy: string | null;
     answer: LostAnswerHandle;
+    failure: { problem: ApiError; sentence: TranslationKey } | null;
     dmarcPolicy: 'none' | 'quarantine' | 'reject';
     setDmarcPolicy: (policy: 'none' | 'quarantine' | 'reject') => void;
     onApply: (record: 'spf' | 'dkim' | 'dmarc') => void;
@@ -287,6 +317,7 @@ function AuthRecords({
         <div className="space-y-4">
             <p className="text-sm text-fg-muted">{t('mailauth.intro')}</p>
             <ResultUnknown answer={answer} />
+            <ErrorBanner error={failure?.problem ?? null} sentence={failure?.sentence} />
             {(status.dns_management_mode === 'external' || status.dns_management_mode === 'existing') && <>
                 <Note>{t(status.dns_management_mode === 'external' ? 'mailauth.externalHelp' : 'mailauth.remoteHelp')}</Note>
                 {status.required_records && <section className="rounded-xl border border-border p-4"><h3 className="font-semibold">{t('mailauth.deliveryRecords')}</h3><dl className="mt-3 divide-y divide-border">{status.required_records.filter(record => record.type !== 'TXT').map((record, index) => <div key={`${record.type}:${record.name}:${index}`} className="flex flex-wrap items-start justify-between gap-3 py-3 text-sm"><div className="min-w-0"><dt className="break-all font-medium">{record.type} {record.name}</dt><dd className="mt-1 break-all text-fg-muted">{record.prio ? `${record.prio} ` : ''}{record.content}</dd></div><Button variant="secondary" onClick={() => copy(record.content)}>{t('conn.copy')}</Button></div>)}</dl></section>}

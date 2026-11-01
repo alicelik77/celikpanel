@@ -1,17 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from '../router';
+import { useNavigate, useSearchParams } from '../router';
 import { Globe, Plus, Trash2, ExternalLink, Settings, Lock, HardDrive, Network } from 'lucide-react';
-import { AddDomainModal } from './AddDomainModal';
+import { AddDomainModal, type SiteRecordsOutcome } from './AddDomainModal';
+import { KeptSiteRecords } from './KeptSiteRecords';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
-import { Button, CouldNotCheck, KnownEmpty, RemoteGate, SearchInput, StatusDot, UsageBar } from './ui';
+import { Button, CouldNotCheck, ErrorBanner, KnownEmpty, RemoteGate, SearchInput, StatusDot, UsageBar } from './ui';
 import { PageHeader } from './PageHeader';
-import { apiErrorText, readApiError } from '../lib/apiError';
-import { domainDeletionDetailKey, domainDeletionReasonKey, readDomainDeletionDKIM, readDomainDeletionOutcome, readSavedDomainDeletion } from '../lib/domainDeletionPending';
-import { decodeList, gateOn, lastKnown, useRemote } from '../lib/remote';
+import { BlockingProblems } from './BlockingProblems';
+import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
+import { domainDeletionDetailKey, domainDeletionReasonAutomatic, domainDeletionReasonKey, readDomainDeletionDKIM, readDomainDeletionOutcome, readSavedDomainDeletion } from '../lib/domainDeletionPending';
+import { decodeList, gateOn, invalidate, lastKnown, useRemote } from '../lib/remote';
 import { SUBSCRIPTIONS_URL, decodeSubscriptions } from '../lib/subscriptions';
 import { INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones, infrastructureZonePath } from '../lib/infrastructureZones';
-import { dnsBlocker, useHostingCapabilities } from '../lib/hostingCapabilities';
+import { dnsBlocker, dnsEngineBlockerText, useHostingCapabilities } from '../lib/hostingCapabilities';
 import type { TranslationKey } from '../i18n/en';
 import { useAuth } from '../auth/AuthContext';
 import {
@@ -84,6 +86,8 @@ interface PendingDeletion {
     id: number;
     name: string;
     message: string | null;
+    // CelikPanel takes the next step by itself: the page reads again.
+    automatic?: boolean;
 }
 
 const HIDDEN_INVALID_ACCESS = 'One or more domains were hidden because their access information was invalid. / Bir veya daha fazla alan adı, erişim bilgisi geçersiz olduğu için gizlendi.';
@@ -126,7 +130,18 @@ export function Domains() {
     const { t } = useI18n();
     const { role } = useAuth();
     const isTeamMember = role === 'additional_user';
+    const [searchParams, setSearchParams] = useSearchParams();
+    // Opened from the Dashboard's mail card with several domains: mailboxes
+    // live on each domain's page.
+    const forMail = searchParams.get('for') === 'mail';
     const [showAddModal, setShowAddModal] = useState(false);
+    // The name Add domain opens with: a DNS-only zone's "Host a website".
+    const [addName, setAddName] = useState('');
+    // Names the new site found pointing elsewhere, as the create answered.
+    const [kept, setKept] = useState<{ domain: string; outcome: SiteRecordsOutcome } | null>(null);
+    const openAdd = (name = '') => { setAddName(name); setShowAddModal(true); };
+    // A name filled in by a DNS-only zone's "Host a website" is a name whose DNS is served here.
+    const addServedHere = addName !== '';
     const [query, setQuery] = useState('');
     const [selected, setSelected] = useState<number[]>([]);
     const [pendingDeletions, setPendingDeletions] = useState<PendingDeletion[]>([]);
@@ -177,6 +192,21 @@ export function Domains() {
     const capabilities = useHostingCapabilities({ enabled: !isTeamMember });
     const dns = gateOn(capabilities.remote, (value) => dnsBlocker(value, 'website'));
     const dnsBlocked = !isTeamMember && dns.state === 'blocked' ? dns.reason : null;
+    // The Dashboard's "Host a website" card arrives as /domains?host=<name>: the
+    // same dialog as the row button opens once, with the name filled in. The
+    // address is cleaned so a reload does not open it again.
+    // Panonun "Web sitesi barindir" karti /domains?host=<ad> ile gelir.
+    const hostParam = searchParams.get('host');
+    const hostHandled = useRef(false);
+    useEffect(() => {
+        if (!hostParam || hostHandled.current || isTeamMember) return;
+        hostHandled.current = true;
+        openAdd(hostParam);
+        const next = new URLSearchParams(searchParams);
+        next.delete('host');
+        setSearchParams(next, { replace: true });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [hostParam, isTeamMember]);
     // Whether an engine is missing or only its identity is, the DNS
     // infrastructure section is where it gets fixed; the Services page can no
     // longer install a DNS engine (DNS_ENGINE_WORKFLOW_REQUIRED), so a fresh
@@ -186,13 +216,18 @@ export function Domains() {
     // (DNS_ENGINE_WORKFLOW_REQUIRED), oraya gönderilen taze sunucunun gidecek
     // yeri yoktu (R-029, ekran tarafı).
     const openDNSRequirement = () => navigate('/dns-infrastructure');
+    const [deleteRefusal, setDeleteRefusal] = useState<ApiError | null>(null);
     // Name the half that is missing: no engine at all, or an engine whose
     // identity is not staged yet. The same key feeds the button label.
     // Eksik yarıyı adlandır: hiç motor yok ya da kimliği henüz hazırlanmamış
     // bir motor var. Aynı anahtar düğme etiketini de besler.
     const dnsRequirementText = dnsBlocked === null
         ? undefined
-        : dnsBlocked === 'engine' ? t('domains.add.needsDns') : t('err.DNS_SETTINGS_REQUIRED');
+        : dnsBlocked === 'engine'
+            // Why the engine half is missing, by its state: a main DNS server
+            // waiting for its backup is not "no DNS" (owner report 2026-10-31).
+            ? capabilities.remote.state === 'known' ? dnsEngineBlockerText(capabilities.remote.value, t) : t('domains.add.needsDns')
+            : t('err.DNS_SETTINGS_REQUIRED');
 
     const pendingMessage = (reason: string, detail = '') => {
         const key = domainDeletionReasonKey(reason) as TranslationKey | null;
@@ -222,25 +257,67 @@ export function Domains() {
         // yanıtın saptadığı, o listeyle birlikte ekranda kalır.
         if (isTeamMember || !listCurrent) return;
         const pending = domains.filter((domain) => domain.status === 'pending');
+        let finished = false;
         void Promise.all(pending.map(async (domain): Promise<PendingDeletion | null> => {
             const saved = await readSavedDomainDeletion(domain.id);
+            if (saved.state === 'gone') {
+                // The deletion finished after the list answered: read again so
+                // the row leaves without a refresh (lab run 6).
+                finished = true;
+                return null;
+            }
             if (saved.state === 'unknown') return { id: domain.id, name: domain.domain_name, message: null };
             return saved.saved === null ? null : {
                 id: domain.id, name: domain.domain_name, message: pendingMessage(saved.saved.reason, saved.saved.detail),
+                automatic: domainDeletionReasonAutomatic(saved.saved.reason),
             };
         })).then((observed) => {
             if (epoch === pendingReadEpoch.current) {
                 setPendingDeletions(observed.filter((item): item is PendingDeletion => item !== null));
+                if (finished) invalidate('domains', 'dns');
             }
         });
         // One run per answer of the list: `listedAt` changes with every read.
     }, [listedAt, listCurrent, isTeamMember]);
 
     const reload = () => void list.retry();
+    // After a change, every place that shows domains reads again: this list,
+    // the infrastructure rows, the navigation counter, the dashboard cards and
+    // the plan usage (no page refresh, owner rule 2026-10-31). It only reads.
+    // Degisiklikten sonra alan adlarini gosteren her yer yeniden okunur.
+    const changed = () => { invalidate('domains', 'dns'); };
+
+    // While a shown deletion is one CelikPanel continues by itself (for
+    // example a joined server waiting for the main DNS server), every place
+    // that shows domains reads again after 15 s, so a finished deletion leaves
+    // the list without a refresh (owner rule 2026-10-31). It only reads.
+    // Kendiliğinden süren bir silme varken alan adları 15 sn sonra yeniden okunur.
+    const autoRecheck = pendingDeletions.some((item) => item.automatic);
+    useEffect(() => {
+        if (!autoRecheck) return;
+        const timer = window.setTimeout(() => invalidate('domains', 'dns'), 15000);
+        return () => window.clearTimeout(timer);
+    }, [autoRecheck, listedAt]);
 
     const handleDelete = async (id: number, name: string) => {
         if (!listCurrent) return;
         if (!confirm(t('domains.confirmDelete', { name }))) return;
+        await deleteDomain(id, name);
+    };
+
+    // One confirmation for a bulk delete, naming the count and the domains;
+    // then each is deleted in turn, each with its own outcome.
+    // Toplu silmede tek onay: sayi ve adlar; sonra her biri sirayla silinir.
+    const handleBulkDelete = async (rows: Domain[]) => {
+        if (!listCurrent || rows.length === 0) return;
+        const question = rows.length === 1
+            ? t('domains.confirmDelete', { name: rows[0].domain_name })
+            : t('domains.confirmBulkDelete', { n: rows.length, names: rows.map((d) => d.domain_name).join('\n') });
+        if (!confirm(question)) return;
+        for (const row of rows) await deleteDomain(row.id, row.domain_name);
+    };
+
+    const deleteDomain = async (id: number, name: string) => {
         try {
             const res = await fetch(`${API_BASE}/domains/${id}`, { method: 'DELETE' });
             const outcome = await readDomainDeletionOutcome(res);
@@ -249,17 +326,21 @@ export function Domains() {
                 pendingReadEpoch.current++;
                 setPendingDeletions((current) => [
                     ...current.filter((item) => item.id !== id),
-                    { id, name, message },
+                    { id, name, message, automatic: domainDeletionReasonAutomatic(outcome.reason) },
                 ]);
                 showToast('warning', message);
-                reload();
+                changed();
                 return;
             }
             if (outcome.state === 'error') {
+                // The refusal and its fix stay at the top of the list until the
+                // next delete (owner feedback 2026-10-31); the toast carries the fix too.
                 const apiError = await readApiError(res);
-                showToast('error', apiErrorText(apiError, t));
+                setDeleteRefusal(apiError);
+                showToast('error', refusalText(apiError, t, 'domains.deleteFailed'), refusalToast(apiError, t, navigate));
                 return;
             }
+            setDeleteRefusal(null);
             pendingReadEpoch.current++;
             setPendingDeletions((current) => current.filter((item) => item.id !== id));
             // A DKIM key or table line CelikPanel did not make was kept, or
@@ -275,9 +356,11 @@ export function Domains() {
                 showToast('success', t('domains.deleted', { name }));
             }
             setSelected((s) => s.filter((x) => x !== id));
-            reload();
+            changed();
         } catch {
-            showToast('error', t('common.error'));
+            // No answer: it is not known whether the domain was deleted; the list is read again.
+            showToast('error', t('common.resultUnknown'));
+            changed();
         }
     };
 
@@ -291,7 +374,7 @@ export function Domains() {
         !isTeamMember || Boolean(domain.access && hasDomainAccess(domain.access, capability, 'view'));
     const addButton = (
         <span title={dnsRequirementText}>
-            <Button variant="primary" icon={Plus} disabled={dnsBlocked !== null} onClick={() => setShowAddModal(true)}>
+            <Button variant="primary" icon={Plus} disabled={dnsBlocked !== null} aria-describedby={dnsBlocked !== null && domains.length > 0 ? 'domains-add-blocked' : undefined} onClick={() => openAdd()}>
                 {t('domains.add')}
             </Button>
         </span>
@@ -306,6 +389,26 @@ export function Domains() {
                 breadcrumb={[t('common.home'), t('nav.domains')]}
                 actions={!isTeamMember && addButton}
             />
+
+            {/* Why Add domain is off, at the top and with its fix; the empty
+                list says it in its own place (owner feedback 2026-10-31). */}
+            {dnsBlocked !== null && domains.length > 0 && (
+                <BlockingProblems id="domains-add-blocked" className="mb-4" title={t('domains.add.blockedTitle')} problems={[{
+                    code: dnsBlocked === 'engine' ? 'DNS_SERVER_REQUIRED' : 'DNS_SETTINGS_REQUIRED',
+                    what: dnsRequirementText ?? '',
+                    fix: { label: t(dnsBlocked === 'engine' ? 'err.DNS_SERVER_REQUIRED.action' : 'err.DNS_SETTINGS_REQUIRED.action'), onFix: openDNSRequirement },
+                }]} />
+            )}
+
+            <ErrorBanner className="mb-4" error={deleteRefusal} sentence="domains.deleteFailed" />
+
+            {forMail && (
+                <p role="status" className="mb-4 rounded-lg border border-border bg-surface-2 p-3 text-sm text-fg" data-domains-for-mail="">
+                    {t('domains.forMail')}
+                </p>
+            )}
+
+            {kept && <KeptSiteRecords domain={kept.domain} outcome={kept.outcome} onDismiss={() => setKept(null)} />}
 
             {pendingDeletions.map((pending) => (pending.message === null ? (
                 <CouldNotCheck
@@ -351,7 +454,7 @@ export function Domains() {
                                     : t('err.DNS_SETTINGS_REQUIRED.action')}
                             </Button>
                         ) : (
-                            <Button variant="primary" icon={Plus} onClick={() => setShowAddModal(true)}>
+                            <Button variant="primary" icon={Plus} onClick={() => openAdd()}>
                                 {t('domains.add')}
                             </Button>
                         )
@@ -375,12 +478,7 @@ export function Domains() {
                                     variant="danger"
                                     icon={Trash2}
                                     disabled={shown.stale}
-                                    onClick={() => {
-                                        const names = filtered.filter((d) => selected.includes(d.id));
-                                        if (confirm(t('domains.confirmDelete', { name: `${selected.length}` }))) {
-                                            names.forEach((d) => handleDelete(d.id, d.domain_name));
-                                        }
-                                    }}
+                                    onClick={() => void handleBulkDelete(filtered.filter((d) => selected.includes(d.id)))}
                                 >
                                     {t('common.remove')} ({selected.length})
                                 </Button>
@@ -569,9 +667,30 @@ export function Domains() {
                                         <td className="px-4 py-3 text-fg-subtle">—</td>
                                         <td className="px-4 py-3 text-right text-fg-subtle">—</td>
                                         <td className="px-4 py-3 text-right text-fg-subtle">—</td>
-                                        <td className="px-4 py-3 text-fg-muted">{t('domains.infrastructure.status')}</td>
+                                        <td className="px-4 py-3 text-fg-muted">
+                                            {t('domains.infrastructure.status')}
+                                            <span className="block text-xs text-fg-subtle" data-no-website="">{t('domains.infrastructure.noWebsite')}</span>
+                                        </td>
                                         <td className="row-actions px-4 py-3">
-                                            <div className="flex items-center justify-end gap-0.5">
+                                            <div className="flex items-center justify-end gap-1">
+                                                {/* The zone has no website: the one step that
+                                                    gives it one, with the name filled in.
+                                                    Bolgenin web sitesi yok: adi dolu tek adim. */}
+                                                {!isTeamMember && (
+                                                    <span title={dnsRequirementText ?? t('domains.infrastructure.hostWebsiteHelp', { zone: zone.zone })}>
+                                                        <Button
+                                                            variant="secondary"
+                                                            icon={Plus}
+                                                            // The same gate as Add domain: the dialog
+                                                            // also refuses until DNS can publish it.
+                                                            disabled={Boolean(dnsBlocked)}
+                                                            onClick={() => openAdd(zone.zone)}
+                                                            data-host-website={zone.zone}
+                                                        >
+                                                            {t('domains.infrastructure.hostWebsite')}
+                                                        </Button>
+                                                    </span>
+                                                )}
                                                 <IconAction
                                                     onClick={() => navigate(infrastructureZonePath(zone.zone))}
                                                     title={t('domains.infrastructure.manage')}
@@ -595,10 +714,18 @@ export function Domains() {
 
             {!isTeamMember && showAddModal && (
                 <AddDomainModal
+                    initialDomain={addName}
+                    sslByDefault={addServedHere}
                     onClose={() => setShowAddModal(false)}
-                    onSuccess={() => {
+                    onSuccess={(outcome) => {
                         setShowAddModal(false);
-                        reload();
+                        // The dialog already told every reader of domains;
+                        // this page keeps what the create said about names
+                        // that already point elsewhere (D-024).
+                        const records = outcome?.siteRecords;
+                        const name = outcome?.domain ?? addName;
+                        setKept(records && records.kept.length > 0 && name ? { domain: name, outcome: records } : null);
+                        changed();
                     }}
                 />
             )}
@@ -652,6 +779,14 @@ function fmtBytes(bytes: number = 0): string {
 }
 
 
+// The title of a subscription card. The workspace the Panel made for an
+// administrator is stored under an internal name; the administrator sees it as
+// their own sites, never as "Admin Subscription".
+// Yoneticinin kendi calisma alani ic bir adla saklanir; "Admin Subscription" gorunmez.
+export function subscriptionTitle(s: { name: string; owner: string }, viewer: string | undefined, t: (key: TranslationKey) => string): string {
+    return s.name === 'Admin Subscription' && (!viewer || s.owner === viewer) ? t('quota.ownWorkspace') : s.name;
+}
+
 // A compact usage strip: the caller's subscription(s) with measured disk
 // against the plan limit and resource counts. Real numbers straight from
 // the quota system that gates creation — what you see is what's enforced.
@@ -660,6 +795,8 @@ function fmtBytes(bytes: number = 0): string {
 // gelen gerçek sayılar — gördüğün, uygulanandır.
 function SubscriptionUsage() {
     const { t } = useI18n();
+    const { user } = useAuth();
+    const viewer = user?.username;
     const usage = useRemote(SUBSCRIPTIONS_URL, decodeSubscriptions);
 
     // The strip exists only for subscriptions that carry measured usage, so
@@ -694,8 +831,9 @@ function SubscriptionUsage() {
                     <div key={s.id} className="rounded-xl border border-border bg-surface p-4">
                         <div className="mb-2 flex items-center gap-2">
                             <HardDrive className="h-4 w-4 text-primary" />
-                            <span className="truncate text-base font-semibold text-fg">{s.name}</span>
+                            <span className="truncate text-base font-semibold text-fg">{subscriptionTitle(s, viewer, t)}</span>
                         </div>
+                        {s.owner && s.owner !== viewer && <p className="-mt-1 mb-2 text-xs text-fg-subtle" data-subscription-owner="">{t('quota.accountOf', { owner: s.owner })}</p>}
                         {unlimited ? (
                             <p className="text-sm text-fg-muted">
                                 {fmtBytes(u.disk_used_bytes)} · {t('quota.unlimited')}
@@ -709,9 +847,10 @@ function SubscriptionUsage() {
                             </>
                         )}
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-fg-subtle">
-                            <span>{t('quota.domains', { n: u.domains, max: u.domains_limit })}</span>
-                            <span>{t('quota.databases', { n: u.databases, max: u.databases_limit })}</span>
-                            <span>{t('quota.mail', { n: u.mail_accounts, max: u.mail_limit })}</span>
+                            {/* A limit of 0 is unlimited (alpha.114), written ∞. */}
+                            <span>{u.domains_limit > 0 ? t('quota.domains', { n: u.domains, max: u.domains_limit }) : t('quota.domainsFree', { n: u.domains })}</span>
+                            <span>{u.databases_limit > 0 ? t('quota.databases', { n: u.databases, max: u.databases_limit }) : t('quota.databasesFree', { n: u.databases })}</span>
+                            <span>{u.mail_limit > 0 ? t('quota.mail', { n: u.mail_accounts, max: u.mail_limit }) : t('quota.mailFree', { n: u.mail_accounts })}</span>
                         </div>
                     </div>
                 );

@@ -226,7 +226,7 @@ deliberately never runs the installer (`../dns-kill-matrix/README.md`
 "Guest bootstrap"). The admin password is random, held in memory, sent only on
 stdin, registered with the redactor and never written.
 
-**Panel access.** A loopback SSH port forward to the guest's `127.0.0.1:2083`.
+**Panel access.** A loopback SSH port forward to the guest's `127.0.0.1:1923` (`CP_PANEL_PORT`; installs before alpha.114 use 2083).
 The self-signed leaf is pinned to the SHA-256 the guest itself reports over
 the fixture SSH channel. Unsafe methods send `Origin: https://127.0.0.1:<port>`
 as a browser does (`cmd/panel/security.go:49-90`); there is no CSRF token.

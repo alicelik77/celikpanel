@@ -10,6 +10,88 @@ This document records that agreement and the implementation acceptance criteria.
 It does not authorize an assistant to update any installed panel; the user starts
 every installed-panel update from CelikPanel itself, as required by [AGENTS.md](../AGENTS.md).
 
+## November 1 follow-up: the joined server after lab run 1 (alpha.114 source)
+
+Lab run 1 of the alpha.114 candidate found four defects on a server joined
+by code. Component tests only; no schema change; the two-server lab rerun
+(both servers on alpha.114, and an alpha.113 first server) is owed.
+
+- **Only a verified refusal asks for a new join code (E1).** The joined
+  server's publishing connection failed with "the code expired" while the
+  first server was in its own setup. The first server now types its
+  refusals (`REMOTE_DNS_ENROLLMENT_UNKNOWN`, `_EXPIRED`, `_USED`) and
+  answers 503 `REMOTE_DNS_BUSY` when it cannot read or write its
+  enrollments now. The joined server waits, naming the main DNS server, on
+  a busy, restarting or unlicensed main and on every 5xx; an unexplained
+  refusal (an alpha.113 main answers every refusal alike) is a wait for at
+  most 30 minutes, then `server_setup_dns_publisher_unconfirmed` says what
+  the owner checks.
+- **Pairing blocks a port change on both sides (E2).** It is read from the
+  records both sides keep after setup (the first server's join record with
+  the second server's names, the joined server's link record), not from
+  link credentials that end with the setup.
+- **A domain on the joined server gets its mail records (E6).** Domain
+  creation (when the server runs mail) and the automatic DKIM work add MX,
+  the mail address, SPF, DMARC and DKIM to the domain's zone on the main
+  DNS server through the authorized publisher; records the owner already
+  has there are kept, never replaced. Deleting the domain removes them with
+  the zone. A per-domain mail switch does not exist; removing mail from a
+  domain is still the owner's DNS edit.
+- **The final check of a later run (E8).** A mail extension (or any run
+  without a publishing step) proves the connection the finished setup
+  committed, live, instead of looking for its own binding and waiting for
+  ever. The DNS check carries a typed reason with names (who acts, next
+  action), and a final check still open after 30 minutes is said as
+  `server_setup_verification_overdue`; the run keeps checking, nothing is
+  undone.
+- **Texts (S9).** The joined server's mail step says that the main domain's
+  mail stays on the first server and that its own domains get their own
+  records, instead of listing the main domain's records.
+
+## October 31 follow-up: mail on the server that joined by code (alpha.114 source)
+
+Found live by the owner on alpha.113: Boston, joined to Frankfurt by code,
+could not have mail at all, because Frankfurt already receives the main
+domain's mail and review refused `server_setup_peer_mail_both`. A hosting
+company's servers each host their own customers' web, databases and mail.
+
+- **A joined server may run mail for the domains created on it.** The join's
+  shared answer still names the one server that receives the main domain's
+  mail. When that is the first server, the joined server's mail never claims
+  it: no MX, SPF, DMARC or DKIM of the main domain is written or sent from
+  there (on a backup DNS server no `mail_dns` step; on a joined main DNS
+  server the zone's MX/SPF/DMARC keep naming the first server's mail name and
+  its DKIM is still accepted over the link). The joined server publishes only
+  its own mail host name (an A record to its address): through its names to
+  the first server during its first setup, and through its access DNS step
+  over the authorized DNS connection (`host-record`) otherwise. It gets its
+  own mail certificate, Postfix/Dovecot/Rspamd and Roundcube. Customer
+  domains created on it get their MX, SPF, DKIM and DMARC in their own zones,
+  published to the main DNS server like every hosted zone.
+- **Adding mail later.** A completed joined setup (for example web and DNS
+  only, installed on alpha.113 and updated by the owner) is reopened in
+  Server -> Server setup and mail is added. The extension's names step sends
+  nothing (the link ended when that setup completed, and the first server
+  already has the names); a first setup over an ended link keeps its
+  `server_setup_peer_link_revoked` guidance.
+- **Names.** On a joined server the mail name is proposed as
+  `mail.<this server's panel name>`. A mail name that the first server, the
+  main domain or a nameserver already uses is refused at review with
+  `server_setup_peer_mail_hostname_taken` (you, the owner: go back to This
+  server's names and give this server its own mail name; nothing was
+  changed). The panel name itself may be the mail name: the panel listens on
+  its own port with its own certificate lineage, the mail certificate is a
+  separate lineage issued through the same port-80 check, and webmail is
+  nginx on 443; one A record serves both names (the first server is then
+  sent only the panel name).
+- **Texts.** On a joined server the Names step and the review say that the
+  main domain's records stay on the first server and that this setup does
+  not change them, instead of asking to import them.
+
+Remaining: proven only by component tests; the two-server lab run (first
+server with mail, second joined with websites and DNS, update, mail added
+later, mail both ways for a customer domain) is owed.
+
 ## October 29 follow-up: fixes from the third targeted Beta-1 re-run (alpha.115 source)
 
 The third targeted re-run of product commit cfcadd3f1 found the defects
@@ -526,7 +608,7 @@ registrar check and moving the main DNS server come in later releases.
   are shown with their live public state (`GET /api/v1/setup/provider-records`,
   read-only, about one check a minute, a failed lookup is unknown). *On
   another CelikPanel*: today's connection.
-- **Install screen.** The panel is reachable at `https://IP:2083` with a
+- **Install screen.** The panel is reachable at `https://IP:1923` (`:2083` on installs before alpha.114) with a
   temporary certificate until its name resolves, said plainly. The registrar
   card lists the nameservers and, for names inside the main domain, their IP
   records (glue), with today's timing: after the backup DNS server is ready.

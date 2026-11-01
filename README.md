@@ -41,7 +41,7 @@ Every feature, commit and design decision passes four filters — in this order:
 Browser — React SPA
    │  HTTPS
    ▼
-Panel — Go HTTP server (port 2083), unprivileged user, SQLite
+Panel — Go HTTP server (port 1923; installs before alpha.114 keep 2083), unprivileged user, SQLite
    │  local RPC (moving to Unix socket + token, Phase 0)
    ▼
 Agent — root daemon; the only component allowed to touch the OS
@@ -152,7 +152,7 @@ curl --fail --show-error --location --proto '=https' --tlsv1.2 https://celikpane
 sh /tmp/celikpanel-get.sh
 
 # Or require the exact version pinned by the downloaded bootstrap
-sh /tmp/celikpanel-get.sh --version v0.1.0-alpha.113
+sh /tmp/celikpanel-get.sh --version v0.1.0-alpha.114
 ```
 
 If the terminal disconnects during first setup, run the same installation
@@ -245,8 +245,8 @@ environment; the public verification key is tracked and pinned by the product.
 workflow:
 
 ```bash
-make dist-sign VERSION=v0.1.0-alpha.113 SIGNING_KEY=<full-key-fingerprint>
-gpg --verify dist/celikpanel-v0.1.0-alpha.113.tar.gz.asc dist/celikpanel-v0.1.0-alpha.113.tar.gz
+make dist-sign VERSION=v0.1.0-alpha.114 SIGNING_KEY=<full-key-fingerprint>
+gpg --verify dist/celikpanel-v0.1.0-alpha.114.tar.gz.asc dist/celikpanel-v0.1.0-alpha.114.tar.gz
 ```
 
 That optional `.asc` file is not one of the six canonical public assets, does

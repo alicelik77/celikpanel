@@ -18,7 +18,7 @@ import { LifeLine, lifeDate, type Tone } from './LifeLine';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Button, Dialog, KeepWords, RemoteGate } from './ui';
-import { useRemote } from '../lib/remote';
+import { invalidate, useRemote } from '../lib/remote';
 import { decodeRepoInfo, type RepoInfo } from '../lib/componentRepo';
 import { componentName } from '../lib/componentName';
 import { RepoConfineDialog } from './RepoConfineDialog';
@@ -46,7 +46,7 @@ export function RepoCard({ serviceId }: { serviceId: string }) {
     // choice (alpha.108); another repository is offered by the install
     // dialogue.
     if (remote.state === 'known' && remote.value.available && !remote.value.enabled && remote.value.lane) {
-        return <DefaultLaneCard serviceId={serviceId} info={remote.value} onChanged={() => void handle.retry()} />;
+        return <DefaultLaneCard serviceId={serviceId} info={remote.value} onChanged={() => invalidate('components')} />;
     }
     // Arch (2026-10-30): no vendor repository; say what the server offers.
     if (remote.state === 'known' && remote.value.distribution_only === 'pacman') {
@@ -64,7 +64,7 @@ export function RepoCard({ serviceId }: { serviceId: string }) {
             </header>
             <div className="p-5">
                 <RemoteGate remote={remote} checking={t('life.repo.checking')} failed={t('life.repo.unknown')} onRetry={() => void handle.retry()} busy={handle.reading}>
-                    {({ value }) => <RepoFacts serviceId={serviceId} info={value} onChanged={() => void handle.retry()} />}
+                    {({ value }) => <RepoFacts serviceId={serviceId} info={value} onChanged={() => invalidate('components')} />}
                 </RemoteGate>
             </div>
         </section>

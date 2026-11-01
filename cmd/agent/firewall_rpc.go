@@ -526,7 +526,7 @@ func applyFirewallLocked(runner firewallCommandRunner, store firewallStateStore,
 		// operator's explicit act, done from Services).
 		// Panel "Turn on"u EngineAvailable'a kapılar; bu ek bir emniyet — asla
 		// oto-kurmaz (D-008: kurulum operatörün açık eylemi, Servisler'den).
-		resp.Error = "firewall engine (nftables) is not installed — install it from Services first"
+		resp.Error = "firewall engine (nftables) is not installed — install it from Components first"
 		return nil
 	}
 	resp.EngineAvailable = true

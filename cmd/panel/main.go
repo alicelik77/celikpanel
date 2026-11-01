@@ -69,6 +69,9 @@ type Panel struct {
 	loginLimiter  *rateLimiter
 	demoMode      bool
 	startupGate   *panelHTTPStartupGate
+	// listenerControl is the running HTTP server's listener set; a panel
+	// port change adds and retires listeners through it (panel_port.go).
+	listenerControl panelListenerControl
 	// requestIdentities answers a re-sent state-changing request from the row
 	// of its first arrival instead of running it again (D-029). Handler tests
 	// that call a handler directly leave it nil.
@@ -162,6 +165,10 @@ type Panel struct {
 	// so a status read says "running" instead of a moment of its state
 	// (domain_deletion_running.go).
 	deletionsRunning domainDeletionsRunning
+	// remoteDNSDeletionsState schedules a joined server's own re-check of a
+	// domain removal the main DNS server is still confirming (E-new-4).
+	remoteDNSDeletionsOnce  sync.Once
+	remoteDNSDeletionsState *remoteDNSDeletionScheduler
 	// dnsEnginePreviews holds short-lived, one-use authorizations for the
 	// separately confirmed DNS engine cutover endpoint.
 	dnsEnginePreviews dnsEnginePreviewCache
@@ -333,6 +340,8 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "mail", []string{http.MethodPost, http.MethodOptions}
 	case "mail/catch-all":
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPut, http.MethodDelete, http.MethodOptions}
+	case "mail/autoresponder":
+		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPut, http.MethodOptions}
 	case "apps/install":
 		match.kind, match.methods = "app-install", []string{http.MethodPost}
 	case "usage":
@@ -349,6 +358,14 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "site-config-recreate", []string{http.MethodPost}
 	case "site-config/apply":
 		match.kind, match.methods = "site-config-apply", []string{http.MethodPost}
+	case "protected-dirs":
+		// alpha.114: password-protected folders of the site.
+		match.kind, match.methods = "site-protect", []string{http.MethodGet, http.MethodPost, http.MethodDelete}
+	case "protected-dirs/users":
+		match.kind, match.methods = "site-protect-users", []string{http.MethodPost, http.MethodDelete}
+	case "redirects":
+		// alpha.114: free-form redirects of the site.
+		match.kind, match.methods = "site-redirects", []string{http.MethodGet, http.MethodPost, http.MethodDelete}
 	case "dns/zone":
 		match.kind, match.methods = "dns", getPost
 	case "dns/records":
@@ -450,6 +467,8 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainConnection(w, r, match.domainID)
 	case "dns":
 		p.handleDomainDNS(w, r)
+	case "site-protect", "site-protect-users", "site-redirects":
+		p.handleDomainSiteFeatures(w, r, match.domainID, match.kind)
 	case "site-config":
 		p.handleDomainSiteConfig(w, r, match.domainID, "")
 	case "site-config-keep":
@@ -1012,6 +1031,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to start panel listener: %v", err)
 	}
+	panel.listenerControl = runningServer
 	// The setup link pins the identity this listener serves on its IP
 	// address, taken from the listener once (server_setup_join.go).
 	panel.captureServerSetupIdentity(server.TLSConfig)
@@ -1276,6 +1296,10 @@ func main() {
 			if _, err := panel.requestIdentities.sweepExpired(context.Background()); err != nil {
 				log.Printf("[request-identity] expired rows could not be removed: %v", err)
 			}
+			// Used, voided and expired account links after 30 days (P6).
+			if err := sweepAccountLinks(context.Background(), panel.db.GetDB()); err != nil {
+				log.Printf("[account-links] old rows could not be removed: %v", err)
+			}
 		}
 	}()
 
@@ -1287,6 +1311,8 @@ func main() {
 	http.HandleFunc("/api/v1/auth/me", panel.handleMe)
 	http.HandleFunc(panelLicenseAccessPath, panel.handleLicenseAccess)
 	panel.registerRecoveryRoutes(http.DefaultServeMux)
+	// Password reset by email, invitations, address confirmation (alpha.114).
+	panel.registerAccountRecoveryRoutes(http.DefaultServeMux)
 
 	// Demo credentials (public, but empty unless --demo is set).
 	// Demo kimlik bilgileri (herkese açık, ama --demo yoksa boş).
@@ -1303,6 +1329,7 @@ func main() {
 	http.HandleFunc("/api/v1/plans/", panel.handlePlanByID)
 	http.HandleFunc("/api/v1/subscriptions", panel.handleSubscriptions)
 	http.HandleFunc("/api/v1/subscriptions/", panel.handleSubscriptionEntitlements)
+	http.HandleFunc(mySubscriptionPath, panel.handleMySubscription)
 	http.HandleFunc("/api/v1/products", panel.handleProducts)
 	http.HandleFunc("/api/v1/store", panel.handleStore)
 	http.HandleFunc("/api/v1/store/", panel.handleStore)
@@ -1343,6 +1370,7 @@ func main() {
 	http.HandleFunc("/api/v1/auth/2fa/setup", panel.handle2FA)
 	http.HandleFunc("/api/v1/auth/2fa/enable", panel.handle2FA)
 	http.HandleFunc("/api/v1/auth/2fa/disable", panel.handle2FA)
+	http.HandleFunc("/api/v1/auth/2fa/recovery/regenerate", panel.handle2FA)
 	http.HandleFunc("/api/v1/auth/unimpersonate", panel.handleUnimpersonate)
 
 	// Managed Services
@@ -1423,10 +1451,14 @@ func main() {
 	http.HandleFunc(vendorLanePath, panel.handleVendorLane)
 	http.HandleFunc("/api/v1/hosting/capabilities", panel.handleHostingCapabilities)
 	http.HandleFunc("/api/v1/panel/certificate", panel.handlePanelCertificate)
+	// alpha.114: the panel's own port, changed with the owner's confirmation.
+	http.HandleFunc(panelPortPath, panel.handlePanelPort)
 	http.HandleFunc(securityAuditPath, panel.handleSecurityAudit)
 	// alpha.107 (D-038 §4): the operating system's own security updates.
 	http.HandleFunc(osUpdatesPath, panel.handleOSUpdates)
 	http.HandleFunc(osUpdatesOriginsPath, panel.handleOSUpdatesOrigins)
+	http.HandleFunc(osUpdatesModePath, panel.handleOSUpdatesMode)
+	http.HandleFunc(osUpdatesSummaryPath, panel.handleOSUpdatesSummary)
 	// alpha.107 (D-038 §10): services waiting for a restart, a reboot.
 	http.HandleFunc(restartNeedsPath, panel.handleRestartNeeds)
 	http.HandleFunc(osReleaseAPIPath, panel.handleOSRelease)
@@ -1570,11 +1602,17 @@ func main() {
 	// A pending paired DNS publication whose cause is transient (the backup
 	// has not caught up) completes by itself through its exact recovery.
 	panel.startDNSPendingPublicationReconciler(discoveryCtx)
+	// A joined server's domain deletion whose removal the main DNS server
+	// was still confirming finishes by itself once it is confirmed.
+	panel.startRemoteDNSDeletionReconciler(discoveryCtx)
 	// Automatic DKIM work a restart interrupted resumes from its records.
 	panel.startAutomaticDKIM()
 	// upd11 F2: startup mail work refused only because an update or rollback
 	// still held the host is retried, bounded, once the host is idle.
 	panel.startDeferredStartupMailWork(certificateDeferral, milterWiringDeferred)
+	// alpha.114: a panel port change a previous process left open ends
+	// here (a trial listener never survives a restart).
+	panel.startPanelPortReconciler(discoveryCtx)
 	panel.startPanelUpdateDiscovery(discoveryCtx)
 	// alpha.107 (D-038 §12): vendor repositories enabled before this
 	// release are confined once, in their own jobs.
