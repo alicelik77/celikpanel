@@ -1,0 +1,216 @@
+== run-6 ops on Arch 00:25:08
+== clocks as the lab gives them 00:25:08
+labnet-CA 00:25:09.849796809
+arch 00:25:08.834639509
+== site shopb114.test with Enable SSL at creation 00:25:09
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/1/public_html", "Domain": "shopb114.test", "DomainID": 1, "FTPPassword": "[REDACTED]", "FTPUser": "shopb114_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 1, "TempDomain": ""}
+   site id 1
+   ok 192.0.3.152 shopb114.test A = '192.0.3.152' after 0s
+200 {"status": "success", "expires_at": "2031-11-01T00:25:17Z"}
+   certificate answer after 3s
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+200 {"success": true}
+--- http://shopb114.test/
+code=301 redirect=https://shopb114.test/ ssl_verify=0
+Server: nginx
+Location: https://shopb114.test/
+--- https://shopb114.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+--- http://www.shopb114.test/
+code=301 redirect=https://www.shopb114.test/ ssl_verify=0
+Server: nginx
+Location: https://www.shopb114.test/
+--- https://www.shopb114.test/
+code=200 redirect= ssl_verify=0
+server: nginx
+--- certificate served on shopb114.test:443
+subject= X509v3 Subject Alternative Name: critical     DNS:shopb114.test, DNS:www.shopb114.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Nov  1 00:25:17 2031 GMT 
+Verify return code: 0 (ok)
+--- https://shopb114.test/hello.php
+code=200
+HTTP/2 200 
+server: nginx
+content-type: text/html; charset=UTF-8
+x-powered-by present: 0
+body: php-ok 5
+--- http://shopb114.test/hello.php (redirect?)
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Location: https://shopb114.test/hello.php
+code=301 location=https://shopb114.test/hello.php
+== mailboxes; DKIM by itself (card read only) 00:25:22
+200 {"id": 1, "success": true}
+200 {"id": 2, "success": true}
+   after 4s: {"status": 200, "dkim_status": "served", "dkim_signed": true, "signing_installed": true, "owner_record": false, "automatic": null}
+   TXT @192.0.3.152 '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA...'  @192.0.3.152 '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA...'
+   main zone TXT celik._domainkey.archa114.test @192.0.3.152 '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA...'  @192.0.3.152 '"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BA...'
+2026-11-01T00:25:26+00:00 arch panel[6588]: 2026/11/01 00:25:26 [dkim-auto] shopb114.test: DKIM ready (domain_created; record published in shopb114.test)
+== webmail address (card enable, owner action) 00:25:28
+202 {"operation": {"id": "e8cc6fd9c2f517707a14e15a84f3cfba", "kind": "webmail_address", "package_name": "mail.archa114.test", "phase": "queued", "request_id": "0671dc9e385467671b53b9de9e87bc78", "service_id": "roundcube", "started_at": "2026-11-01T00:25:28.265204505Z", "status": "queued"}}
+== 587 + 465 send, IMAPS read 00:25:33
+   587 {'ok': True, 'refused': {}} | 465 {'ok': True, 'refused': {}} | imaps {'after_seconds': 5.9, 'headers': 'From: alice@shopb114.test\r\nTo: bob@shopb114.test\r\nSubject: final-alpha113 a0a7685cdad0'}  | cert ['mail.archa114.test']
+== PHP mail() and a bounce 00:25:48
+   mail.php: sent php-mail fe36d3837ca4
+   bounce.php: sent bounce-test 2ca4e6937423
+== DKIM verified independently against the TXT from each DNS server (192.0.3.152) 00:26:08
+   final-alpha113 a0a7685cdad0 | found | sigs 1 | [{'d': 'shopb114.test', 's': 'celik', 'verify_with_txt_from_192.0.3.152': True}] | mid <0f042d4d59b5491a9250bb8c7bc4d99b@labnet.test>
+   final-alpha113-465 a0a7685cdad0 | found | sigs 1 | [{'d': 'shopb114.test', 's': 'celik', 'verify_with_txt_from_192.0.3.152': True}] | mid <b0081c582e524a99a79f3e8877445b69@labnet.test>
+   php-mail fe36d3837ca4 | found | sigs 1 | [{'d': 'shopb114.test', 's': 'celik', 'verify_with_txt_from_192.0.3.152': True}] | mid <20261101002548.156B518818@mail.archa114.test>
+-- bounce in alice's INBOX
+   Undelivered Mail Returned to Sender found Mail Delivery System <MAILER-DAEMON@mail.archa114.test> <20261101002548.643001881E@mail.archa114.test>
+-- server side: rspamd verdicts, postfix bounce lines, DKIM tables (read only)
+keytable lines for shopb114.test: 1
+signingtable lines for shopb114.test: 1
+rspamd lines for 0f042d4d59b5491a9250bb8c7bc4d99b@labnet.test:
+rspamd_task_write_log: id: <0f042d4d59b5491a9250bb8c7bc4d99b@labnet.test>, qid: <
+(default: F (no action): [1.40/15.00] [MISSING_DATE(1.00){}
+rspamd lines for b0081c582e524a99a79f3e8877445b69@labnet.test:
+rspamd_task_write_log: id: <b0081c582e524a99a79f3e8877445b69@labnet.test>, qid: <
+(default: F (no action): [1.40/15.00] [MISSING_DATE(1.00){}
+rspamd lines for 20261101002548.156B518818@mail.archa114.test:
+rspamd_task_write_log: id: <20261101002548.156B518818@mail.archa114.test>, qid: <
+(default: F (no action): [0.70/15.00] [R_MISSING_CHARSET(0.50){}
+milter warnings, all boots: 0
+milters: smtpd=inet:127.0.0.1:8891, inet:127.0.0.1:11332 non_smtpd=inet:127.0.0.1:8891, inet:127.0.0.1:11332
+2026-11-01T00:25:48+00:00 arch postfix/virtual[21220]: 516751881A: to=<nobody113@shopb114.test>, relay=virtual, delay=0.1, delays=0.09/0/0/0.02, dsn=5.1.1, status=bounced (unknown user: "nobody113@shopb114.test")
+2026-11-01T00:25:48+00:00 arch postfix/bounce[21235]: 516751881A: sender non-delivery notification: 643001881E
+-- Roundcube (bob)
+-- DKIM card now (read only)
+    200 {"dkim.status": "ok", "dkim_signed": true, "automatic": null}
+== ops done 00:26:12
+== check 2 No path: Dashboard card 'no website' -> Add domain with SSL ticked, the row converts without reload 00:26:12
+{"shots":2,"errors":[{"name":"dashboard-card","lang":"en","width":"desktop","error":"TimeoutError: Waiting for selector `[role=dialog] form button[type=submit]` failed: Waiting failed: 15000ms exceeded"}],"wide":[],"probes":[{"n":"dashboard-card","l":"en","w":"desktop","p":"card text","v":"archa114.test has no website yet\n\nIts DNS records are kept on this server. Host a website to make archa114.test open from here.\n\nHost a website","reloads":0},{"n":"dashboard-card","l":"en","w":"desktop","p":"dialog fields","v":{"domain":"archa114.test","checks":["ssl=true"]},"reloads":2}]}
+
+-- the main domain now opens as a website (https, apex and www)
+resolves (lab resolver 192.0.2.53): archa114.test= www.archa114.test=none
+--- http://archa114.test/
+code=000 redirect= ssl_verify=0
+--- https://archa114.test/
+code=000 redirect= ssl_verify=0
+--- http://www.archa114.test/
+code=000 redirect= ssl_verify=0
+--- https://www.archa114.test/
+code=000 redirect= ssl_verify=0
+--- certificate served on archa114.test:443
+== E5: folder redirect with a query 00:26:52
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab2/owner.py:659: SyntaxWarning: "\(" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\("? A raw string is also an option.
+  out = guest("backup", "journalctl -u postfix -u 'postfix@*' --no-pager -o cat --since -4min | grep -E 'carol@' | grep -oE 'relay=[^,]*|status=[a-z]+ \([^)]{0,120}' | tail -4; doveconf -n 2>/dev/null | grep -n auth_username_format; dovecot --version")
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab2/owner.py:966: SyntaxWarning: "\." is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\."? A raw string is also an option.
+  {"probe": "(document.querySelector('main')||document.body).innerText.match(/[a-z0-9.-]+\.archa114\.test[^\s]*/g)", "label": "panel address shown"}]}])
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab2/owner.py:112: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab2/owner.py:112: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS E5 /blog/post?q=1 -> 302 .../blog/post without keep-query; .../blog/post?q=1 with keep-query | {'without': (200, '302 https://example.test/blog/post', '302 https://example.test/blog/post'), 'with': (200, '302 https://example.test/blog/post?q=1', '302 https://example.test/blog/post')}
+PASS main: nginx -t | nginx: configuration file /etc/nginx/nginx.conf test is successful
+
+== autoresponder on Arch 00:26:59
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab2/owner.py:659: SyntaxWarning: "\(" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\("? A raw string is also an option.
+  out = guest("backup", "journalctl -u postfix -u 'postfix@*' --no-pager -o cat --since -4min | grep -E 'carol@' | grep -oE 'relay=[^,]*|status=[a-z]+ \([^)]{0,120}' | tail -4; doveconf -n 2>/dev/null | grep -n auth_username_format; dovecot --version")
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab2/owner.py:966: SyntaxWarning: "\." is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\."? A raw string is also an option.
+  {"probe": "(document.querySelector('main')||document.body).innerText.match(/[a-z0-9.-]+\.archa114\.test[^\s]*/g)", "label": "panel address shown"}]}])
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab2/owner.py:112: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+FAIL main: autoresponder on bob@ saved | {'status': 409, 'state': None, 'code': 'MAIL_AUTORESPONDER_REFUSED'}
+PASS main: GET shows applied=true right after the save | {'state': {'applied': True, 'script': 'none', 'sieve_available': True}}
+FAIL main: two mails from one sender -> 2 delivered, 1 reply, no bounce | {'delivered': 2, 'replies': 0, 'bounces_before': 1, 'bounces_after': 1, 'server': '      2 relay=virtual\n      2 status=sent\ngrep: /etc/postfix/celikpanel_transport: No such file or directory\n'}
+PASS main: Dovecot journal and doveconf -n clean | 0
+doveconf-rc=0
+2.4.5 (0cbb641e3e)
+
+doveconf-clean
+2.4.5 (0cbb641e3e)
+0
+
+== check 5: OS updates on Arch (guide only) 00:30:18
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab2/owner.py:659: SyntaxWarning: "\(" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\("? A raw string is also an option.
+  out = guest("backup", "journalctl -u postfix -u 'postfix@*' --no-pager -o cat --since -4min | grep -E 'carol@' | grep -oE 'relay=[^,]*|status=[a-z]+ \([^)]{0,120}' | tail -4; doveconf -n 2>/dev/null | grep -n auth_username_format; dovecot --version")
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab2/owner.py:966: SyntaxWarning: "\." is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\."? A raw string is also an option.
+  {"probe": "(document.querySelector('main')||document.body).innerText.match(/[a-z0-9.-]+\.archa114\.test[^\s]*/g)", "label": "panel address shown"}]}])
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab2/owner.py:112: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS main: OS updates read | {'family': 'pacman', 'automatic': {'state': 'not_applicable', 'reason': 'arch_full_upgrade_by_owner'}, 'auto_config.state': None, 'mode': None, 'path': None, 'legacy_state': None, 'timer_state': None}
+PASS main: Dashboard OS-updates card data | {'state': 'ready', 'package_family': 'pacman', 'pending': {'state': 'known', 'total': 0, 'security': 0, 'lists_at': '2026-11-01T00:30:20Z', 'security_state': '[REDACTED]'}, 'automatic': {'state': 'not_applicable', 'reason': 'arch_full_upgrade_by_owner'}}
+PASS Arch: no automatic/manual switch (guide only) | {'status': 409, 'code': 'OS_UPDATES_MODE_UNSUPPORTED_SYSTEM'}
+== check 7: nginx -t 00:30:21
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+
+{"shots":8,"errors":[],"wide":[],"probes":[{"n":"settings-panel-port","l":"en","w":"desktop","p":"addresses shown","v":null,"reloads":0},{"n":"settings-panel-port","l":"tr","w":"desktop","p":"addresses shown","v":null,"reloads":0},{"n":"settings-panel-port","l":"en","w":"phone","p":"addresses shown","v":null,"reloads":0},{"n":"settings-panel-port","l":"tr","w":"phone","p":"addresses shown","v":null,"reloads":0}]}
+
+== check 4: panel address and port trial screens (S16, S17) 00:31:18
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab2/owner.py:659: SyntaxWarning: "\(" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\("? A raw string is also an option.
+  out = guest("backup", "journalctl -u postfix -u 'postfix@*' --no-pager -o cat --since -4min | grep -E 'carol@' | grep -oE 'relay=[^,]*|status=[a-z]+ \([^)]{0,120}' | tail -4; doveconf -n 2>/dev/null | grep -n auth_username_format; dovecot --version")
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab2/owner.py:966: SyntaxWarning: "\." is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\."? A raw string is also an option.
+  {"probe": "(document.querySelector('main')||document.body).innerText.match(/[a-z0-9.-]+\.archa114\.test[^\s]*/g)", "label": "panel address shown"}]}])
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab2/owner.py:112: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS trial to 2089 started (for the screens) | {'status': 200, 'change': {'id': 'pp-77e85c98ae6d49568845fd2c89e9b319', 'from_port': 1923, 'to_port': 2089, 'status': 'trial', 'created_at': '2026-11-01T00:31:18Z', 'deadline_at': '2026-11-01T00:41:18Z', 'seconds_left': 598}, 'code': None}
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab2/owner.py:112: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+{"shots":4,"errors":[],"wide":[],"probes":[{"n":"settings-panel-port-trial","l":"en","w":"desktop","p":"trial link","v":["Open port 2089 -> https://arch.archa114.test:2089/settings?section=panel"],"reloads":0},{"n":"settings-panel-port-trial","l":"en","w":"desktop","p":"panel address shown","v":["arch.archa114.test.","arch.archa114.test:2089/settings?section=panel"],"reloads":0},{"n":"settings-panel-port-trial","l":"tr","w":"desktop","p":"trial link","v":["2089 portunu aç -> https://arch.archa114.test:2089/settings?section=panel"],"reloads":0},{"n":"settings-panel-port-trial","l":"tr","w":"desktop","p":"panel address shown","v":["arch.archa114.test.","arch.archa114.test:2089/settings?section=panel"],"reloads":0},{"n":"settings-panel-port-trial","l":"en","w":"phone","p":"trial link","v":["Open port 2089 -> https://arch.archa114.test:2089/settings?section=panel"],"reloads":0},{"n":"settings-panel-port-trial","l":"en","w":"phone","p":"panel address shown","v":["arch.archa114.test.","arch.archa114.test:2089/settings?section=panel"],"reloads":0},{"n":"settings-panel-port-trial","l":"tr","w":"phone","p":"trial link","v":["2089 portunu aç -> https://arch.archa114.test:2089/settings?section=panel"],"reloads":0},{"n":"settings-panel-port-trial","l":"tr","w":"phone","p":"panel address shown","v":["arch.archa114.test.","arch.archa114.test:2089/settings?section=panel"],"reloads":0}]}
+
+
+PASS trial cancelled after the screens | {'status': 200, 'change': {'id': 'pp-77e85c98ae6d49568845fd2c89e9b319', 'from_port': 1923, 'to_port': 2089, 'status': 'rolled_back', 'reason_code': 'PANEL_PORT_CANCELLED', 'reason': 'The change was cancelled. The panel stays on port 1923 and port 2089 was closed again.', 'created_at': '2026-11-01T00:31:18Z', 'deadline_at': '2026-11-01T00:41:18Z', 'finished_at': '2026-11-01T00:31:57Z'}}
+== check 4: port change confirm path, survives a reboot 00:31:58
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab2/owner.py:659: SyntaxWarning: "\(" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\("? A raw string is also an option.
+  out = guest("backup", "journalctl -u postfix -u 'postfix@*' --no-pager -o cat --since -4min | grep -E 'carol@' | grep -oE 'relay=[^,]*|status=[a-z]+ \([^)]{0,120}' | tail -4; doveconf -n 2>/dev/null | grep -n auth_username_format; dovecot --version")
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab2/owner.py:966: SyntaxWarning: "\." is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\."? A raw string is also an option.
+  {"probe": "(document.querySelector('main')||document.body).innerText.match(/[a-z0-9.-]+\.archa114\.test[^\s]*/g)", "label": "panel address shown"}]}])
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab2/owner.py:112: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS port view | {'port': 1923, 'default_port': 1923, 'legacy_port': 2083, 'blocked': None, 'change': {'id': 'pp-77e85c98ae6d49568845fd2c89e9b319', 'from_port': 1923, 'to_port': 2089, 'status': 'rolled_back', 'reason_code': 'PANEL_PORT_CANCELLED', 'reason': 'The change was cancelled. The panel stays on port 1923 and port 2089 was closed again.', 'created_at': '2026-11-01T00:31:18Z', 'deadline_at': '2026-11-01T00:41:18Z', 'finished_at': '2026-11-01T00:31:57Z'}}
+PASS port change to 2087 starts a trial | {'status': 200, 'change': {'id': 'pp-e118f20a92b0a148a0facb0655052fc9', 'from_port': 1923, 'to_port': 2087, 'status': 'trial', 'created_at': '2026-11-01T00:31:58Z', 'deadline_at': '2026-11-01T00:41:58Z', 'seconds_left': 598}, 'code': None}
+PASS during the trial both ports listen, the new one is open, panel.env not yet written | LISTEN 0 4096 *:2087 *:*
+LISTEN 0 4096 *:1923 *:*
+		tcp dport { 22, 25, 53, 80, 110, 143, 443, 465, 587, 993, 995, 1923, 2087 } accept
+CELIKPANEL_LISTEN=:1923
+
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab2/owner.py:112: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS confirm from the OLD address is refused (PANEL_PORT_CONFIRM_FROM_NEW) | {'status': 409, 'code': 'PANEL_PORT_CONFIRM_FROM_NEW'}
+PASS confirm from the new address | {'status': 200, 'change': {'id': 'pp-e118f20a92b0a148a0facb0655052fc9', 'from_port': 1923, 'to_port': 2087, 'status': 'confirmed', 'reason': 'The panel now uses port 2087. Port 1923 is closed. Update your bookmarks.', 'created_at': '2026-11-01T00:31:58Z', 'deadline_at': '2026-11-01T00:41:58Z', 'finished_at': '2026-11-01T00:32:00Z'}}
+PASS after confirm: panel.env says 2087, only 2087 listens | CELIKPANEL_LISTEN=:2087
+LISTEN 0 4096 *:2087 *:*
+		tcp dport { 22, 25, 53, 80, 110, 143, 443, 465, 587, 993, 995, 2087 } accept
+
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab2/owner.py:112: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS port view after confirm | {'port': 2087, 'change': {'id': 'pp-e118f20a92b0a148a0facb0655052fc9', 'from_port': 1923, 'to_port': 2087, 'status': 'confirmed', 'reason': 'The panel now uses port 2087. Port 1923 is closed. Update your bookmarks.', 'created_at': '2026-11-01T00:31:58Z', 'deadline_at': '2026-11-01T00:41:58Z', 'finished_at': '2026-11-01T00:32:00Z'}}
+{"action":"reboot","node":"main","boot_id_before":"864fc011-96a2-40aa-9e5c-6b90b2fbe4ba","boot_id_after":"60939a56-7db5-4fa2-bd94-27713de70f0d","elapsed_seconds":21.7}
+192.0.3.152:1923 closed
+192.0.3.152:2087 open
+login after reboot, license active
+{"shots":2,"errors":[],"wide":[],"probes":[]}
+
+-- a restart during a trial rolls it back 00:33:14
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab2/owner.py:659: SyntaxWarning: "\(" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\("? A raw string is also an option.
+  out = guest("backup", "journalctl -u postfix -u 'postfix@*' --no-pager -o cat --since -4min | grep -E 'carol@' | grep -oE 'relay=[^,]*|status=[a-z]+ \([^)]{0,120}' | tail -4; doveconf -n 2>/dev/null | grep -n auth_username_format; dovecot --version")
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab2/owner.py:966: SyntaxWarning: "\." is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\."? A raw string is also an option.
+  {"probe": "(document.querySelector('main')||document.body).innerText.match(/[a-z0-9.-]+\.archa114\.test[^\s]*/g)", "label": "panel address shown"}]}])
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab2/owner.py:112: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS trial to 2088 started | {'status': 200, 'change': {'id': 'pp-bca510819bb6a9507e8463b504b78e3a', 'from_port': 2087, 'to_port': 2088, 'status': 'trial', 'created_at': '2026-11-01T00:33:14Z', 'deadline_at': '2026-11-01T00:43:14Z', 'seconds_left': 598}, 'code': None}
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab2/owner.py:112: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS a restart during the trial rolls it back: only 2087 listens, 2088 closed, panel.env unchanged | {'before': 'CELIKPANEL_LISTEN=:2087\nLISTEN 0 4096 *:2087 *:*\nLISTEN 0 4096 *:2088 *:*\n', 'after': 'CELIKPANEL_LISTEN=:2087\nLISTEN 0 4096 *:2087 *:*\nend\n', 'change': {'id': 'pp-bca510819bb6a9507e8463b504b78e3a', 'from_port': 2087, 'to_port': 2088, 'status': 'rolled_back', 'reason_code': 'PANEL_PORT_RESTARTED', 'reason': 'The panel restarted before the new port 2088 was confirmed, so it stays on port 2087. Start the change again when you are ready.', 'created_at': '2026-11-01T00:33:14Z', 'deadline_at': '2026-11-01T00:43:14Z', 'finished_at': '2026-11-01T00:33:52Z'}, 'reboot_rc': 0}
+-- cancel a trial 00:34:20
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab2/owner.py:659: SyntaxWarning: "\(" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\("? A raw string is also an option.
+  out = guest("backup", "journalctl -u postfix -u 'postfix@*' --no-pager -o cat --since -4min | grep -E 'carol@' | grep -oE 'relay=[^,]*|status=[a-z]+ \([^)]{0,120}' | tail -4; doveconf -n 2>/dev/null | grep -n auth_username_format; dovecot --version")
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab2/owner.py:966: SyntaxWarning: "\." is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\."? A raw string is also an option.
+  {"probe": "(document.querySelector('main')||document.body).innerText.match(/[a-z0-9.-]+\.archa114\.test[^\s]*/g)", "label": "panel address shown"}]}])
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab2/owner.py:112: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  f.write(red(json.dumps({"at": dt.datetime.utcnow().isoformat() + "Z", "node": self.node, "session": self.name,
+PASS trial to 2090 started | {'status': 200, 'change': {'id': 'pp-7c8058d17437d1a996c1b5c586786e6d', 'from_port': 2087, 'to_port': 2090, 'status': 'trial', 'created_at': '2026-11-01T00:34:20Z', 'deadline_at': '2026-11-01T00:44:20Z', 'seconds_left': 598}, 'code': None}
+PASS cancel rolls back | {'status': 200, 'change': {'id': 'pp-7c8058d17437d1a996c1b5c586786e6d', 'from_port': 2087, 'to_port': 2090, 'status': 'rolled_back', 'reason_code': 'PANEL_PORT_CANCELLED', 'reason': 'The change was cancelled. The panel stays on port 2087 and port 2090 was closed again.', 'created_at': '2026-11-01T00:34:20Z', 'deadline_at': '2026-11-01T00:44:20Z', 'finished_at': '2026-11-01T00:34:22Z'}}
+PASS after rollback only the confirmed port 2087 listens; 2090 closed again | CELIKPANEL_LISTEN=:2087
+LISTEN 0 4096 *:2087 *:*
+end
+
+== B ops done 00:34:22

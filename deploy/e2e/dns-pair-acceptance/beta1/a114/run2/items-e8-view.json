@@ -1,0 +1,11 @@
+[{"name":"components-mail-view","path":"/services","wait":4000,"actions":[
+ {"shot":"page"},
+ {"click":"button[data-bundle=\"mail.protected\"]"},{"wait":3000},
+ {"probe":"(()=>{const i=document.querySelector('#mail-setup-hostname'); const h=document.querySelector('#mail-setup-hostname-help'); const d=document.querySelector('[role=dialog]'); return {value: i&&i.value, help: h&&h.innerText, title: d&&(d.querySelector('h1,h2')||{}).innerText}})()","label":"hostname proposal"},
+ {"shot":"dialog-name"},
+ {"clickText":["[role=dialog] button","Show the steps|Adımları göster"]},{"wait":8000},
+ {"shot":"dialog-steps"},
+ {"probe":"[...document.querySelectorAll('[data-mail-setup-step]')].map(e=>e.getAttribute('data-mail-setup-step')+': '+e.innerText.replace(/\\s+/g,' ').slice(0,140))","label":"steps"},
+ {"probe":"(()=>{const t=document.body.innerText; const m=t.match(/[a-z]+\\.[a-z_]+\\.[a-z_.]+/g)||[]; return m.filter(x=>!/\\.test$|\\.com$|\\.net$|example/.test(x)).slice(0,10)})()","label":"raw-key-like tokens"},
+ {"clickText":["[role=dialog] button","Close|Kapat|Cancel|Vazgeç"]},{"wait":2500}
+]}]

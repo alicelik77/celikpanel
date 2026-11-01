@@ -1,0 +1,96 @@
+== provision 07:52:06
+main terminal rc 0 44.7 problem None restart_required False postinstall rc 0
+backup terminal rc 0 54.1 problem None restart_required False postinstall rc 0
+wizard data pair-main ['count', 'dnshome', 'domain', 'mail', 'name', 'names', 'roles']
+wizard data pair-backup-web ['dnshome', 'name', 'names', 'roles']
+guidance-main 200 
+guidance-backup 200 
+main-domain 200 
+main-count 200 
+main-name 200 
+main-roles 200 
+main-names 200 
+main-dnshome 200 
+main-mail 200 
+plan main 200 can_start True blockers [] ['01-service:nginx', '02-service:certbot', '03-service:mariadb', '04-service:php-fpm', '05-service:cron', '06-peer_join:second', '07-dns:local', '08-firewall:enable_and_persist', '09-infrastructure_dns:fa114.test', '10-access_dns:frankfurt.fa114.test', '11-panel_certificate:frankfurt.fa114.test', '12-dns_readiness:local', '13-mail_profile:webmail', '14-mail_profile:protected-mail', '15-mail_dns:fa114.test', '16-access_dns:mail.fa114.test', '17-mail_certificate:mail.fa114.test', '18-mail_enrollment:mail-renewal', '19-main_site:fa114.test', '20-verify:custom'] 
+== start main 07:53:34
+start-main 202 {
+ "id": "e9053d295f0bd05b61f9894dace3ab0f",
+ "panel_url": "https://frankfurt.fa114.test:1923/",
+ "p
+join-code 200 {
+ "address": "https://192.0.3.150:1923"
+connect 200 {
+ "setup": {
+  "checks": [],
+  "draft": {
+   "database": "mariadb",
+   "dns_engine": "bind",
+   "dns_mode": "local",
+   "dns_publisher_endpoint": "https://frankfurt.fa114.test:1923",
+   "dns_role": "
+backup-roles 200 
+backup-name 200 
+backup-names 200 
+backup-dnshome 200 
+plan backup 200 can_start True blockers [] ['01-peer_names:https://192.0.3.150:1923', '02-service:nginx', '03-service:certbot', '04-service:mariadb', '05-service:php-fpm', '06-dns:local', '07-firewall:enable_and_persist', '08-access_dns:boston.fa114.test', '09-panel_certificate:boston.fa114.test', '10-dns_publisher:https://frankfurt.fa114.test:1923', '11-verify:custom'] 
+== start backup 07:53:48
+start-backup 202 {
+ "id": "5dc9fe2d0ce6293d88d2a421eaa02e9a",
+ "panel_url": "https://boston.fa114.test:1923/",
+ "phas
+-- a4-a/backup 07:53:52
+running 02-service null
+01-peer_names=succeeded 02-service=running 03-service=pending 04-service=pending 05-service=pending 06-dns=pending 07-firewall=pending 08-access_dns=pending 09-panel_certificate=pending 10-dns_publisher=pending 11-verify=pending
+{"id": "02-service", "kind": "service", "owner_id": "198d6fcca1bfc2f282fef4b1e08967d1", "request_id": "494e734fc8e9759c27d3b48081b8d82e", "status": "running", "target": "nginx"}
+-- a4-a/backup 07:54:13
+running 03-service null
+01-peer_names=succeeded 02-service=succeeded 03-service=running 04-service=pending 05-service=pending 06-dns=pending 07-firewall=pending 08-access_dns=pending 09-panel_certificate=pending 10-dns_publisher=pending 11-verify=pending
+{"id": "03-service", "kind": "service", "owner_id": "99606164fe6a27c817b8d325363cfa32", "request_id": "9847b2aa54c763270ba811798fc50fab", "status": "running", "target": "certbot"}
+-- a4-a/backup 07:54:33
+running 04-service null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=running 05-service=pending 06-dns=pending 07-firewall=pending 08-access_dns=pending 09-panel_certificate=pending 10-dns_publisher=pending 11-verify=pending
+{"id": "04-service", "kind": "service", "operation_id": "b44dee390eba0cb17c3059b548f48e20", "owner_id": "fc70d17d045adaf6b6fec9fc3782f067", "request_id": "9566d2cee0eade647a58927783dd5f3e", "status": "running", "target": "mariadb"}
+-- a4-a/backup 07:55:13
+running 05-service null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=running 06-dns=pending 07-firewall=pending 08-access_dns=pending 09-panel_certificate=pending 10-dns_publisher=pending 11-verify=pending
+{"id": "05-service", "kind": "service", "operation_id": "0400bf75939572590d4c684eeabe83fb", "owner_id": "6fc2486803d8c025f5b6008ca8225a28", "request_id": "fd634d7781419796913750d45ecacdd8", "status": "running", "target": "php-fpm"}
+-- a4-a/backup 07:55:53
+waiting primary_dns {"code": "server_setup_primary_dns_required", "message": "The primary DNS server ns1.fa114.test (192.0.3.150) has not provided its authoritative catalog yet. Start its DNS setup and check TCP port 53. This setup checks again automatically; no primary panel connection is required."}
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=running 07-firewall=pending 08-access_dns=pending 09-panel_certificate=pending 10-dns_publisher=pending 11-verify=pending
+{"id": "06-dns", "kind": "dns", "owner_id": "2ea01eaf57f25f811568fecfb2ffe7e1", "request_id": "f7e753c4a4086af7db750519d4611568", "status": "running", "target": "local"}
+-- a4-a/backup 07:56:13
+running primary_dns {"code": "server_setup_primary_dns_required", "message": "The primary DNS server ns1.fa114.test (192.0.3.150) has not provided its authoritative catalog yet. Start its DNS setup and check TCP port 53. This setup checks again automatically; no primary panel connection is required."}
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=running 07-firewall=pending 08-access_dns=pending 09-panel_certificate=pending 10-dns_publisher=pending 11-verify=pending
+{"id": "06-dns", "kind": "dns", "owner_id": "2ea01eaf57f25f811568fecfb2ffe7e1", "request_id": "f7e753c4a4086af7db750519d4611568", "status": "running", "target": "local"}
+-- a4-a/backup 07:56:34
+waiting access_dns {"code": "server_setup_access_dns_required", "message": "Public DNS must resolve boston.fa114.test to 192.0.3.151 before a certificate is requested. Check this hostname's A/AAAA records and its zone delegation. For DNS managed here, review the infrastructure DNS records in this wizard; otherwise correct them at the primary DNS server or provider. This check resumes automatically when DNS is verified."}
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=running 09-panel_certificate=pending 10-dns_publisher=pending 11-verify=pending
+{"id": "08-access_dns", "kind": "access_dns", "owner_id": "164e410269c47eaab16c0cc4e689a9b1", "qualifier": "192.0.3.151", "request_id": "b3ae3c06c92cae6c192eeb74f3c629f3", "status": "running", "target": "boston.fa114.test"}
+-- a4-a/backup 07:56:54
+waiting verification {"code": "server_setup_completion_waiting", "message": "Every setup step has finished; setup waits for the final check dns (action_required) before it is marked complete. With two servers this is usually the other server still finishing its own setup. Nothing to do here unless it lasts; setup checks again by itself."}
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-verify=pending
+-- a4-a/backup 07:57:34
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-verify=succeeded
+-- a4-a/main 07:57:34
+running 13-mail_profile null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=running 14-mail_profile=pending 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "13-mail_profile", "kind": "mail_profile", "operation_id": "ab28726831fc64f10b706d913eebc618", "owner_id": "a66b2f513e1a61fc2acd1443076f4f56", "request_id": "b51c43af80b54a74440e56d17a1cb029", "status": "running", "target": "webmail"}
+-- a4-a/main 07:58:14
+running 14-mail_profile null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=running 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "14-mail_profile", "kind": "mail_profile", "operation_id": "494c7b2cb18223fb109efcdf39223e38", "owner_id": "24b085d46e716175f13a98eb849f5b5a", "request_id": "b42bca87b77edaf77d86571ff67b90b7", "status": "running", "target": "protected-mail"}
+-- a4-a/main 07:59:35
+running 17-mail_certificate null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-access_dns=succeeded 17-mail_certificate=running 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "17-mail_certificate", "kind": "mail_certificate", "owner_id": "30592c1218b9fc071eaaecac96ba302b", "request_id": "4e4b1c9a902d40b634deb799edcd8c4e", "status": "running", "target": "mail.fa114.test"}
+-- a4-a/main 07:59:55
+running 19-main_site null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-access_dns=succeeded 17-mail_certificate=succeeded 18-mail_enrollment=succeeded 19-main_site=running 20-verify=pending
+{"id": "19-main_site", "kind": "main_site", "owner_id": "d593da76d6ab05630af4a6dcb4a06cd3", "request_id": "6d532665163d0d2e9a36a5dc30d9704d", "status": "running", "target": "fa114.test"}
+-- a4-a/main 08:00:15
+succeeded complete null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-access_dns=succeeded 17-mail_certificate=succeeded 18-mail_enrollment=succeeded 19-main_site=succeeded 20-verify=succeeded
+dns_overview_ok ok who=Nobody. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: []
+== pair done 08:00:16

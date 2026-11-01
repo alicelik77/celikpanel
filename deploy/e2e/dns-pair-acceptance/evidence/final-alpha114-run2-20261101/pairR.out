@@ -1,0 +1,118 @@
+== provision 06:35:36
+main terminal rc 0 52.7 problem None restart_required False postinstall rc 0
+backup terminal rc 0 58.1 problem None restart_required False postinstall rc 0
+wizard data pair-main ['count', 'dnshome', 'domain', 'mail', 'name', 'names', 'roles']
+wizard data pair-backup-web ['dnshome', 'name', 'names', 'roles']
+guidance-main 200 
+guidance-backup 200 
+main-domain 200 
+main-count 200 
+main-name 200 
+main-roles 200 
+main-names 200 
+main-dnshome 200 
+main-mail 200 
+plan main 200 can_start True blockers [] ['01-service:nginx', '02-service:certbot', '03-service:mariadb', '04-service:php-fpm', '05-service:cron', '06-peer_join:second', '07-dns:local', '08-firewall:enable_and_persist', '09-infrastructure_dns:fa114.test', '10-access_dns:frankfurt.fa114.test', '11-panel_certificate:frankfurt.fa114.test', '12-dns_readiness:local', '13-mail_profile:webmail', '14-mail_profile:protected-mail', '15-mail_dns:fa114.test', '16-access_dns:mail.fa114.test', '17-mail_certificate:mail.fa114.test', '18-mail_enrollment:mail-renewal', '19-main_site:fa114.test', '20-verify:custom'] 
+== start main 06:37:11
+start-main 202 {
+ "id": "cb1650f8123c0f76cc1d5aa37f189f7d",
+ "panel_url": "https://frankfurt.fa114.test:1923/",
+ "p
+join-code 200 {
+ "address": "https://192.0.3.150:1923"
+connect 200 {
+ "setup": {
+  "checks": [],
+  "draft": {
+   "database": "mariadb",
+   "dns_engine": "bind",
+   "dns_mode": "local",
+   "dns_publisher_endpoint": "https://frankfurt.fa114.test:1923",
+   "dns_role": "
+backup-roles 200 
+backup-name 200 
+backup-names 200 
+backup-dnshome 200 
+-- the first server finishes its own setup before the joined server starts (check 8 order)
+-- a4-a/main 06:37:21
+running 01-service null
+01-service=running 02-service=pending 03-service=pending 04-service=pending 05-service=pending 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "01-service", "kind": "service", "operation_id": "cc9c62ae77a0be04ba97afb20900e94d", "owner_id": "17edcd63a7a992a4c312c334cd88d98d", "request_id": "8c948e3bd6cf865b6f157b7f7509a857", "status": "running", "target": "nginx"}
+-- a4-a/main 06:37:41
+running 02-service null
+01-service=succeeded 02-service=running 03-service=pending 04-service=pending 05-service=pending 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "02-service", "kind": "service", "operation_id": "c3800e09a9381da31f766fe616085ea4", "owner_id": "7125651090f540191e7f0332fd68d0f0", "request_id": "62d3efa7bd9d5ebd244cd433387bc8b3", "status": "running", "target": "certbot"}
+-- a4-a/main 06:38:01
+running 03-service null
+01-service=succeeded 02-service=succeeded 03-service=running 04-service=pending 05-service=pending 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "03-service", "kind": "service", "operation_id": "39c4137ccc725ce19d63b33787ef4de3", "owner_id": "f18c8ca2aabe10a9e914bc220996e051", "request_id": "df89286f150fe916a72465bca5c3c250", "status": "running", "target": "mariadb"}
+-- a4-a/main 06:38:21
+running 04-service null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=running 05-service=pending 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "04-service", "kind": "service", "operation_id": "14895e1b1a64ab2597fe24aa8d60a1a6", "owner_id": "a8101bae1246c4d698c052e4a27a6019", "request_id": "702cccc62e56872c5a50e2a913d394bb", "status": "running", "target": "php-fpm"}
+-- a4-a/main 06:38:41
+running 05-service null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=running 06-peer_join=pending 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "05-service", "kind": "service", "operation_id": "6f8b44dfd76ad7e4784b61197a0b6b57", "owner_id": "d18d4f5a0acd61cc133a96fe6f95bc33", "request_id": "450437b21e2bfc844f9b55800e711763", "status": "running", "target": "cron"}
+-- a4-a/main 06:39:01
+waiting peer_join {"code": "server_setup_peer_names_waiting", "message": "The second server joined; waiting for its own setup to start, which sends its names here."}
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=running 07-dns=pending 08-firewall=pending 09-infrastructure_dns=pending 10-access_dns=pending 11-panel_certificate=pending 12-dns_readiness=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "06-peer_join", "kind": "peer_join", "owner_id": "cfb7db0521865b2153859f077ab2f5b0", "request_id": "01e02f01558a3d18ef518fb64293db9e", "status": "running", "target": "second"}
+== resume: joined setup starts now (the first server waits for it) 06:44:10
+plan backup 200 can_start True blockers [] ['01-peer_names:https://192.0.3.150:1923', '02-service:nginx', '03-service:certbot', '04-service:mariadb', '05-service:php-fpm', '06-dns:local', '07-firewall:enable_and_persist', '08-access_dns:boston.fa114.test', '09-panel_certificate:boston.fa114.test', '10-dns_publisher:https://frankfurt.fa114.test:1923', '11-verify:custom'] 
+start-backup 202 {
+ "id": "59a8c6c6ceca80dcba6682995b210c84",
+ "panel_url": "https://boston.fa114.test:1923/",
+ "phas
+06:44:19 E1 backup: running cur=02-service | publisher: {"kind": "dns_publisher", "owner_id": "aefdf117d3cc883c3973ea1102f883f8", "request_id": "6659320593fd5bb6980e9ad31181437f", "status": "pending", "target": "https://frankfurt.fa114.test:1923"} | error: null | 
+         main: running 07-dns null
+06:44:40 E1 backup: running cur=03-service | publisher: {"kind": "dns_publisher", "owner_id": "aefdf117d3cc883c3973ea1102f883f8", "request_id": "6659320593fd5bb6980e9ad31181437f", "status": "pending", "target": "https://frankfurt.fa114.test:1923"} | error: null | 
+         main: waiting infrastructure_dns {"code": "server_setup_infrastructure_dns_r
+06:45:01 E1 backup: running cur=04-service | publisher: {"kind": "dns_publisher", "owner_id": "aefdf117d3cc883c3973ea1102f883f8", "request_id": "6659320593fd5bb6980e9ad31181437f", "status": "pending", "target": "https://frankfurt.fa114.test:1923"} | error: null | 
+         main: waiting infrastructure_dns {"code": "server_setup_infrastructure_dns_r
+06:45:33 E1 backup: running cur=05-service | publisher: {"kind": "dns_publisher", "owner_id": "aefdf117d3cc883c3973ea1102f883f8", "request_id": "6659320593fd5bb6980e9ad31181437f", "status": "pending", "target": "https://frankfurt.fa114.test:1923"} | error: null | 
+         main: waiting infrastructure_dns {"code": "server_setup_infrastructure_dns_r
+06:46:05 E1 backup: running cur=06-dns | publisher: {"kind": "dns_publisher", "owner_id": "aefdf117d3cc883c3973ea1102f883f8", "request_id": "6659320593fd5bb6980e9ad31181437f", "status": "pending", "target": "https://frankfurt.fa114.test:1923"} | error: null | 
+         main: waiting infrastructure_dns {"code": "server_setup_infrastructure_dns_r
+06:46:20 E1 backup: running cur=07-firewall | publisher: {"kind": "dns_publisher", "owner_id": "aefdf117d3cc883c3973ea1102f883f8", "request_id": "6659320593fd5bb6980e9ad31181437f", "status": "pending", "target": "https://frankfurt.fa114.test:1923"} | error: null | 
+         main: running infrastructure_dns {"code": "server_setup_infrastructure_dns_r
+06:46:26 E1 backup: running cur=09-panel_certificate | publisher: {"kind": "dns_publisher", "owner_id": "aefdf117d3cc883c3973ea1102f883f8", "request_id": "6659320593fd5bb6980e9ad31181437f", "status": "pending", "target": "https://frankfurt.fa114.test:1923"} | error: null | 
+         main: running 11-panel_certificate null
+06:46:26 LAB: the first server's panel is stopped for 90 s (as in run 1, a restart while the joined server publishes)
+06:46:32 E1 backup: waiting cur=10-dns_publisher | publisher: {"kind": "dns_publisher", "owner_id": "aefdf117d3cc883c3973ea1102f883f8", "request_id": "6659320593fd5bb6980e9ad31181437f", "status": "running", "target": "https://frankfurt.fa114.test:1923"} | error: {"code": "server_setup_dns_publisher_peer_busy", "message": "The main DNS server frankfurt.fa114.test is busy, restarting or finishing its own setup, so it could not take this server's publishing connection yet. Nobody needs to act; this server asks again by itself."} | 
+         main: waiting dns_readiness {"code": "server_setup_dns_readiness_required", 
+06:47:39 photographed the joined server's setup page (1)
+06:47:45 E1 backup: succeeded cur=None | publisher: {"kind": "dns_publisher", "owner_id": "aefdf117d3cc883c3973ea1102f883f8", "request_id": "6659320593fd5bb6980e9ad31181437f", "status": "succeeded", "target": "https://frankfurt.fa114.test:1923"} | error: null | 
+         main: running 13-mail_profile null
+06:48:33 photographed the joined server's setup page (2)
+06:48:36 LAB: the first server's panel started again
+-- a4-a/main 06:48:36
+running 13-mail_profile null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=running 14-mail_profile=pending 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "13-mail_profile", "kind": "mail_profile", "operation_id": "9e64a59b7962b74146fdccbf9ca323cf", "owner_id": "c00bf9cfb0e9f89a0889aaa4ee5a48c7", "request_id": "a6fe7eff16c48327282a48cfda4b6791", "status": "running", "target": "webmail"}
+-- a4-a/main 06:48:57
+running 14-mail_profile null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=running 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "14-mail_profile", "kind": "mail_profile", "operation_id": "dd2ed8057f908df0640d5c7658de06c3", "owner_id": "4a832e26da039ffcd8b8544bbe30a9de", "request_id": "0ce1395c7e05904182a04064d02de330", "status": "running", "target": "protected-mail"}
+-- a4-a/main 06:49:57
+running 15-mail_dns null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=running 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "15-mail_dns", "kind": "mail_dns", "owner_id": "92e0b76471938c08344049d2b4e6e7d8", "request_id": "a9bbb583917a2747e4993b1e1f8b50bb", "status": "running", "target": "fa114.test"}
+-- a4-a/main 06:50:17
+running 18-mail_enrollment null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-access_dns=succeeded 17-mail_certificate=succeeded 18-mail_enrollment=running 19-main_site=pending 20-verify=pending
+{"enrollment_dispatch_attempted": true, "id": "18-mail_enrollment", "kind": "mail_enrollment", "owner_id": "3a4b088db000282555d5bd38d04704d9", "qualifier": "57127cd8ea597383a2cbcf11624da7aa0593f993f93906a621104181304209cd", "request_id": "410a4c3d585fda9f7ac2b39dda7b641a", "status": "running", "target": "mail-renewal"}
+-- a4-a/main 06:50:37
+running verification null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-access_dns=succeeded 17-mail_certificate=succeeded 18-mail_enrollment=succeeded 19-main_site=succeeded 20-verify=pending
+-- a4-a/main 06:50:58
+succeeded complete null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-access_dns=succeeded 17-mail_certificate=succeeded 18-mail_enrollment=succeeded 19-main_site=succeeded 20-verify=succeeded
+== after both finished: the first server's DNS page settles by itself 06:50:58
+06:50:59 dns_overview_ok ok who=Nobody. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: []
+dns_overview_ok ok who=Nobody. | [('this', 'backup', 'second', 'boston'), ('peer', 'main', 'first', 'frankfurt')] | not-ok: []
+{"shots":8,"errors":[],"wide":[],"probes":[]}
+
+{"shots":4,"errors":[],"wide":[],"probes":[]}
+
+== pair done 06:52:42

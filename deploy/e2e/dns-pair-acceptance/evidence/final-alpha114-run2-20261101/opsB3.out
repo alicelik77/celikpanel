@@ -1,0 +1,33 @@
+== Arch: Dovecot reload refusal evidence (journal) 00:34:53
+2026-11-01T00:32:34+00:00 arch dovecot[711]: master: Warning: SIGHUP received - reloading configuration
+
+
+== autoresponder on Arch after a Dovecot restart (the reboot) 00:34:53
+PASS main: autoresponder on bob@ saved | {'status': 200, 'state': {'applied': True, 'script': 'managed', 'sieve_available': True}, 'code': None}
+PASS main: GET shows applied=true right after the save | {'state': {'applied': True, 'script': 'managed', 'sieve_available': True}}
+PASS main: two mails from one sender -> 2 delivered, 1 reply, no bounce | {'delivered': 2, 'replies': 1, 'bounces_before': 1, 'bounces_after': 1, 'server': '      2 relay=mail.archa114.test[private/dovecot-lmtp]\n      2 status=sent\nlrwxrwxrwx 1 vmail vmail   36 Nov  1 00:34 dovecot.sieve -> sieve/celikpanel-autoresponder.sieve\ndrwx------ 1 vmail vmail   60 Nov  1 00:34 sieve\n1\n'}
+PASS main: Dovecot journal and doveconf -n clean | 0
+lrwxrwxrwx 1 vmail vmail   36 Nov  1 00:34 dovecot.sieve -> sieve/celikpanel-autoresponder.sieve
+drwx------ 1 vmail vmail   60 Nov  1 00:34 sieve
+doveconf-clean
+master: Error: Failed to read configuration: Failed to read config: Error in configuration file /etc/dovecot/conf.d/96-celikpanel-sieve.conf line 23: Unknown section name: sieve_script - doveconf execution fallback is disabled
+master: Error: Failed to read configuration: Failed to read config: Error in configuration file /etc/dovecot/conf.d/96-celikpanel-sieve.conf line 23: Unknown section name: sieve_script - doveconf execution fallback is disabled
+srw------- 1 postfix postfix 0 Nov  1 00:33 /var/spool/postfix/private/dovecot-lmtp
+
+
+== Dashboard card -> Add domain (SSL ticked) -> Create domain, no reload 00:35:45
+{"shots":3,"errors":[],"wide":[],"probes":[{"n":"dashboard-card","l":"en","w":"desktop","wt":"No website for this name yet","ok":true,"s":0,"reloads":2},{"n":"dashboard-card","l":"en","w":"desktop","p":"card still shown after SPA navigation","v":false,"reloads":2}]}
+
+resolves (lab resolver 192.0.2.53): archa114.test=192.0.3.152 www.archa114.test=192.0.3.152
+--- http://archa114.test/
+code=301 redirect=https://archa114.test/ ssl_verify=0
+--- https://archa114.test/
+code=200 redirect= ssl_verify=0
+--- http://www.archa114.test/
+code=301 redirect=https://www.archa114.test/ ssl_verify=0
+--- https://www.archa114.test/
+code=200 redirect= ssl_verify=0
+--- certificate served on archa114.test:443
+subject= X509v3 Subject Alternative Name: critical     DNS:archa114.test, DNS:www.archa114.test issuer=CN=Pebble Intermediate CA 445eee notAfter=Nov  1 00:36:11 2031 GMT 
+Verify return code: 0 (ok)
+== B3 done 00:36:30

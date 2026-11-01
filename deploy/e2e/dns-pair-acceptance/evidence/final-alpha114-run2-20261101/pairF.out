@@ -1,0 +1,58 @@
+== provision 06:49:37
+main terminal rc 0 46.2 problem None restart_required False postinstall rc 0
+backup terminal rc 0 45.8 problem None restart_required False postinstall rc 0
+wizard data pair-main-web ['count', 'dnshome', 'domain', 'name', 'names', 'roles']
+wizard data pair-backup-mail ['dnshome', 'name', 'names', 'names2', 'roles']
+guidance-main 200 
+guidance-backup 200 
+main-domain 200 
+main-count 200 
+main-name 200 
+main-roles 200 
+main-names 200 
+main-dnshome 200 
+plan main 200 can_start True blockers [] ['01-service:nginx', '02-service:certbot', '03-service:mariadb', '04-service:php-fpm', '05-service:cron', '06-peer_join:second', '07-dns:local', '08-firewall:enable_and_persist', '09-infrastructure_dns:f114.test', '10-access_dns:fmain.f114.test', '11-panel_certificate:fmain.f114.test', '12-dns_readiness:local', '13-verify:custom'] 
+== start main 06:50:54
+start-main 202 {
+ "id": "e99659aed551d7c3f7c1392876d4593e",
+ "panel_url": "https://fmain.f114.test:1923/",
+ "phase"
+join-code 200 {
+ "address": "https://192.0.3.180:1923"
+connect 200 {
+ "setup": {
+  "checks": [],
+  "draft": {
+   "database": "mariadb",
+   "dns_engine": "bind",
+   "dns_mode": "local",
+   "dns_publisher_endpoint": "https://fmain.f114.test:1923",
+   "dns_role": "secon
+backup-roles 200 
+backup-name 200 
+backup-names 200 
+backup-names2 200 
+backup-dnshome 200 
+plan backup 200 can_start True blockers [] ['01-peer_names:https://192.0.3.180:1923', '02-service:nginx', '03-service:certbot', '04-service:mariadb', '05-service:php-fpm', '06-service:cron', '07-dns:local', '08-firewall:enable_and_persist', '09-access_dns:fjoin.f114.test', '10-panel_certificate:fjoin.f114.test', '11-dns_publisher:https://fmain.f114.test:1923', '12-mail_profile:webmail', '13-mail_profile:protected-mail', '14-mail_dns:f114.test', '15-access_dns:mail.fjoin.f114.test', '16-mail_certificate:mail.fjoin.f114.test', '17-mail_enrollment:mail-renewal', '18-verify:custom'] 
+== start backup 06:51:08
+start-backup 202 {
+ "id": "bb02c79485bbe15cbc4a1ff2543d8e3d",
+ "panel_url": "https://fjoin.f114.test:1923/",
+ "phase"
+06:51:16 check8 main: dns_overview_join_waiting prerequisite who=You, on the second server. | [('this', 'main', 'first', 'fmain'), ('peer', 'backup', 'second', None)] | not-ok: [('ns1.f114.test', 'ns', 'A', 'unknown', None), ('fmain.f114.test', 'panel', 'A', 'unknown', None)] | main: running 01-service null | backup: running 02-service null
+06:55:48 check8 main: dns_overview_setup_running waiting who=Follow the setup page; it says when you need to act. | [('this', 'main', 'first', 'fmain'), ('peer', 'backup', 'second', 'fjoin')] | not-ok: [] | main: waiting verification null | backup: running 12-mail_profile null
+06:56:59 check8 main: dns_overview_setup_running waiting who=Follow the setup page; it says when you need to act. | [('this', 'main', 'first', 'fmain'), ('peer', 'backup', 'second', 'fjoin')] | not-ok: [] | main: waiting verification null | backup: running 13-mail_profile null
+06:58:13 check8 main: dns_overview_setup_running waiting who=Follow the setup page; it says when you need to act. | [('this', 'main', 'first', 'fmain'), ('peer', 'backup', 'second', 'fjoin')] | not-ok: [] | main: waiting verification null | backup: running 14-mail_dns null
+06:58:26 check8 main: dns_overview_ok ok who=Nobody. | [('this', 'main', 'first', 'fmain'), ('peer', 'backup', 'second', 'fjoin')] | not-ok: [] | main: succeeded complete null | backup: running 16-mail_certificate null
+06:58:26 the first server finished while the joined server is: running 16-mail_certificate null
+06:59:34 check8 main: dns_overview_ok ok who=Nobody. | [('this', 'main', 'first', 'fmain'), ('peer', 'backup', 'second', 'fjoin')] | not-ok: [] | main: succeeded complete null | backup: succeeded complete null
+-- a4-f/main 06:59:34
+succeeded complete null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-verify=succeeded
+== after: the DNS page settles by itself 06:59:34
+06:59:35 dns_overview_ok ok who=Nobody. | [('this', 'main', 'first', 'fmain'), ('peer', 'backup', 'second', 'fjoin')] | not-ok: []
+{"shots":4,"errors":[],"wide":[],"probes":[]}
+
+{"node":"main","state":"stopped","deleted":true}
+{"node":"backup","state":"stopped","deleted":true}
+== pair F done 07:00:17
