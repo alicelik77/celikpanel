@@ -169,6 +169,9 @@ the update; reinstall them.
 - Debian 13: the first server's setup could stop at the webmail step with
   "firewall sync failed" while DKIM was being installed. The firewall step now
   waits while the server is busy (up to 10 minutes) and says so.
+- When an out-of-office reply was refused because Dovecot did not accept the
+  mailbox, the next message could still bounce. Postfix is now reloaded after
+  every change to the out-of-office routes.
 - A build-size limit on one Turkish text file would have failed the web build;
   the file was split. No effect on use.
 - Screens (24 findings of the first review and 4 of the second): wording and

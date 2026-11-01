@@ -170,6 +170,9 @@ veya alpha.112 sunucularını güncelleme reddeder; onları yeniden kurun.
 - Debian 13: DKIM kurulurken ilk sunucunun kurulumu web posta adımında
   "güvenlik duvarı eşitlemesi başarısız" ile durabiliyordu. Güvenlik duvarı
   adımı artık sunucu meşgulken bekler (10 dakikaya kadar) ve bunu söyler.
+- Dovecot posta kutusunu kabul etmediği için ofis dışı yanıtı reddedildiğinde
+  sonraki ileti yine de geri dönebiliyordu. Postfix artık ofis dışı
+  yönlendirmelerindeki her değişiklikten sonra yeniden yüklenir.
 - Bir Türkçe metin dosyasındaki paket boyutu sınırı web derlemesini
   başarısız kılacaktı; dosya bölündü. Kullanıma etkisi yok.
 - Ekranlar (ilk incelemenin 24 bulgusu ve ikincinin 4'ü): sihirbaz, Panel,
