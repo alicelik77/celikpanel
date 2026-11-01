@@ -1,0 +1,20 @@
+[{"name":"components-mail-run","path":"/services","wait":4000,"actions":[
+ {"click":"button[data-bundle=\"mail.protected\"]"},{"wait":3000},
+ {"probe":"(()=>{const i=document.querySelector('#mail-setup-hostname'); return i&&i.value})()","label":"hostname"},
+ {"clickText":["[role=dialog] button","Show the steps"]},{"wait":8000},
+ {"probe":"(()=>{const b=[...document.querySelectorAll('[role=dialog] button')].find(x=>x.innerText.trim()==='Start'); return b? {disabled:b.disabled}: 'no start button'})()","label":"start before tick"},
+ {"click":"[role=dialog] input[type=checkbox]"},{"wait":800},
+ {"clickText":["[role=dialog] button","Start"]},
+ {"wait":30000},{"shot":"progress-30s"},
+ {"waitText":["Mail is installed and secured|Installing mail stopped|Check again",1200000]},
+ {"shot":"first-outcome"},
+ {"probe":"(()=>{const o=document.querySelector('[data-mail-setup-outcome]'); return o && {outcome:o.getAttribute('data-mail-setup-outcome'), text:o.innerText.slice(0,700), checks:[...document.querySelectorAll('[data-check]')].map(c=>c.getAttribute('data-check')+'|'+c.getAttribute('data-check-reason')+'|'+c.innerText.slice(0,200))}})()","label":"outcome 1"},
+ {"clickIf":"[data-mail-setup-outcome] button"},
+ {"wait":20000},
+ {"waitText":["Mail is installed and secured|Installing mail stopped",900000]},
+ {"shot":"end"},
+ {"probe":"(()=>{const o=document.querySelector('[data-mail-setup-outcome]'); return o && {outcome:o.getAttribute('data-mail-setup-outcome'), text:o.innerText.slice(0,700)}})()","label":"outcome end"},
+ {"clickText":["[role=dialog] button","Close"]},{"wait":4000},
+ {"shot":"after-close"},
+ {"probe":"(()=>{const b=document.querySelector('[data-bundle=\"mail.protected\"]'); return b && {state:b.getAttribute('data-bundle-state'), status:b.getAttribute('data-bundle-status'), text:b.innerText}})()","label":"card after close, no reload"}
+]}]

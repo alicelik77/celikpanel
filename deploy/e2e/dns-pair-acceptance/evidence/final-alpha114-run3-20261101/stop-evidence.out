@@ -1,0 +1,141 @@
+Sun Nov  1 11:21:06 AM UTC 2026
+===== a5-a main setup operation
+running 13-mail_profile {"code": "server_setup_reconciling", "message": "The previous operation is being reconciled. Its saved identity will be checked before continuing."}
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-mail_profile=running 14-mail_profile=pending 15-mail_dns=pending 16-access_dns=pending 17-mail_certificate=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+{"id": "13-mail_profile", "kind": "mail_profile", "operation_id": "5ad6f25d4d606f5796f839602a79db53", "owner_id": "a9f2063a7ae4182c403a31dbac379b59", "request_id": "a7ab371309013d67786e4c4199ab16b1", "status": "running", "target": "webmail"}
+PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
+2.4.1-4 (7d8c0e5759)
+-- first refusal lines
+2026-11-01T11:12:26+00:00 frankfurt agent[10769]: 2026/11/01 11:12:26 Mail TLS V2 convergence failed after durable intent: mail TLS convergence did not confirm the committed plan: dovecot reload: reload dovecot: Dovecot could not be checked (verify): systemctl reload dovecot exited 0, but Dovecot's own record of the reload (doveadm log errors) could not be read: mail TLS command "doveadm" was not pinned during preflight; rollback incomplete: rollback dovecot reload: reload dovecot: Dovecot could not be checked (verify): systemctl reload dovecot exited 0, but Dovecot's own record of the reload (doveadm log errors) could not be read: mail TLS command "doveadm" was not pinned during preflight; 
+2026-11-01T11:12:26+00:00 frankfurt agent[10769]: mail TLS sync convergence: mail TLS convergence did not confirm the committed plan: dovecot reload: reload dovecot: Dovecot could not be checked (verify): systemctl reload dovecot exited 0, but Dovecot's own record of the reload (doveadm log errors) could not be read: mail TLS command "doveadm" was not pinned during preflight; rollback incomplete: rollback dovecot reload: reload dovecot: Dovecot could not be checked (verify): systemctl reload dovecot exited 0, but Dovecot's own record of the reload (doveadm log errors) could not be read: mail TLS command "doveadm" was not pinned during preflight
+2026-11-01T11:12:28+00:00 frankfurt agent[10769]: 2026/11/01 11:12:28 Panel certificate activation remains pending: begin durable panel certificate activation: service mutation manager is fail-closed: an operation's durable record or host outcome could not be verified, so the Agent stopped accepting changes by decision; this does not by itself mean a ledger write was ambiguous. Every change on this server is held; running services are not stopped. Next step: the server owner restarts the CelikPanel Agent (systemctl restart celikpanel-agent), whose startup recovery re-examines the same operation; the Agent log names the operation and cause
+2026-11-01T11:12:28+00:00 frankfurt agent[10769]: mail TLS sync convergence: mail TLS convergence did not confirm the committed plan: dovecot reload: reload dovecot: Dovecot could not be checked (verify): systemctl reload dovecot exited 0, but Dovecot's own record of the reload (doveadm log errors) could not be read: mail TLS command "doveadm" was not pinned during preflight; rollback incomplete: rollback dovecot reload: reload dovecot: Dovecot could not be checked (verify): systemctl reload dovecot exited 0, but Dovecot's own record of the reload (doveadm log errors) could not be read: mail TLS command "doveadm" was not pinned during preflight
+-- counts
+54
+53
+-- doveadm log errors (SIGHUP lines, read only)
+Nov 01 11:12:20.961172 Warning: master: SIGHUP received - reloading configuration
+Nov 01 11:12:26.239977 Warning: master: SIGHUP received - reloading configuration
+master: Warning: SIGHUP received - reloading configuration
+active active active active
+
+
+===== a5-a backup setup operation
+running 11-mail_profile {"code": "server_setup_reconciling", "message": "The previous operation is being reconciled. Its saved identity will be checked before continuing."}
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-mail_profile=running 12-mail_profile=pending 13-access_dns=pending 14-mail_certificate=pending 15-mail_enrollment=pending 16-verify=pending
+{"id": "11-mail_profile", "kind": "mail_profile", "operation_id": "78e7b64e41d3e52a30021746bcd4929c", "owner_id": "0bcdc4856f524c3d7f3b4e6ac8dc6259", "request_id": "f40e69a9cbd4e1fa01410b9a8e874574", "status": "running", "target": "webmail"}
+PRETTY_NAME="Ubuntu 24.04.4 LTS"
+2.3.21 (47349e2482)
+-- first refusal lines
+2026-11-01T11:13:34+00:00 boston agent[11451]: 2026/11/01 11:13:34 Mail TLS V2 convergence failed after durable intent: mail TLS convergence did not confirm the committed plan: dovecot reload: reload dovecot: Dovecot could not be checked (verify): systemctl reload dovecot exited 0, but Dovecot's own record of the reload (doveadm log errors) could not be read: mail TLS command "doveadm" was not pinned during preflight; rollback incomplete: rollback dovecot reload: reload dovecot: Dovecot could not be checked (verify): systemctl reload dovecot exited 0, but Dovecot's own record of the reload (doveadm log errors) could not be read: mail TLS command "doveadm" was not pinned during preflight; poi
+2026-11-01T11:13:34+00:00 boston agent[11451]: mail TLS sync convergence: mail TLS convergence did not confirm the committed plan: dovecot reload: reload dovecot: Dovecot could not be checked (verify): systemctl reload dovecot exited 0, but Dovecot's own record of the reload (doveadm log errors) could not be read: mail TLS command "doveadm" was not pinned during preflight; rollback incomplete: rollback dovecot reload: reload dovecot: Dovecot could not be checked (verify): systemctl reload dovecot exited 0, but Dovecot's own record of the reload (doveadm log errors) could not be read: mail TLS command "doveadm" was not pinned during preflight
+2026-11-01T11:13:37+00:00 boston agent[11451]: 2026/11/01 11:13:37 Panel certificate activation remains pending: begin durable panel certificate activation: service mutation manager is fail-closed: an operation's durable record or host outcome could not be verified, so the Agent stopped accepting changes by decision; this does not by itself mean a ledger write was ambiguous. Every change on this server is held; running services are not stopped. Next step: the server owner restarts the CelikPanel Agent (systemctl restart celikpanel-agent), whose startup recovery re-examines the same operation; the Agent log names the operation and cause
+2026-11-01T11:13:37+00:00 boston agent[11451]: mail TLS sync convergence: mail TLS convergence did not confirm the committed plan: dovecot reload: reload dovecot: Dovecot could not be checked (verify): systemctl reload dovecot exited 0, but Dovecot's own record of the reload (doveadm log errors) could not be read: mail TLS command "doveadm" was not pinned during preflight; rollback incomplete: rollback dovecot reload: reload dovecot: Dovecot could not be checked (verify): systemctl reload dovecot exited 0, but Dovecot's own record of the reload (doveadm log errors) could not be read: mail TLS command "doveadm" was not pinned during preflight
+-- counts
+47
+46
+-- doveadm log errors (SIGHUP lines, read only)
+master: Warning: SIGHUP received - reloading configuration
+active active active active
+
+
+{"shots":2,"errors":[],"wide":[],"dialogs":[],"deletes":[],"probes":[]}
+
+{"shots":1,"errors":[],"wide":[],"dialogs":[],"deletes":[],"probes":[]}
+
+===== a5-r main (alpha.113 Arch, the normal update after the rollback probe)
+Traceback (most recent call last):
+  File "/var/tmp/a114r3/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 216, in request
+    response = self.transport(method, path, headers, payload, timeout)
+  File "/var/tmp/a114r3/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 180, in watching
+    resp = transport(method, path, headers, body, timeout)
+  File "/var/tmp/a114r3/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 105, in __call__
+    connection.connect()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 1520, in connect
+    super().connect()
+    ~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 1051, in connect
+    self.sock = self._create_connection(
+                ~~~~~~~~~~~~~~~~~~~~~~~^
+        (self.host,self.port), self.timeout, self.source_address)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/socket.py", line 874, in create_connection
+    raise exceptions[0]
+  File "/usr/lib/python3.14/socket.py", line 859, in create_connection
+    sock.connect(sa)
+    ~~~~~~~~~~~~^^^^
+ConnectionRefusedError: [Errno 111] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/tmp/a114r3/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 542, in <module>
+    sys.exit(main(sys.argv[1:]))
+             ~~~~^^^^^^^^^^^^^^
+  File "/var/tmp/a114r3/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 536, in main
+    out = globals()[f"cmd_{a.cmd}"](a)
+  File "/var/tmp/a114r3/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 308, in cmd_api
+    resp = c.request(a.method, a.path, body_arg(a.body), timeout=a.timeout, purpose=a.label)
+  File "/var/tmp/a114r3/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 222, in request
+    raise PanelError(f"GET {path} failed: {exc}") from exc
+panel_api.PanelError: GET /api/v1/panel/version failed: [Errno 111] Connection refused
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import json,sys; d=json.load(sys.stdin); print(d.get("status"), (d.get("body") or "")[:300])
+                       ~~~~~~~~~^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+update status 200 {"found": true, "request_id": "2b1af03798bedff60a4438b8fc18c385", "status": "failed", "target": {"version": "v0.1.0-alpha.114", "commit": "650d4becfd804cf09b23ae063eb2a2d8d62de2a2", "sequence": "114", "os": "linux", "arch": "amd64", "archive_sha256": "077e193852ab991e68ef185f6101ab5668ca47d4c7af403bd70fa5bcab314296", "archive_size": "68617288"}, "created_at": "2026-11-01T11:15:11.515899191Z", "updated_at": "2026-11-01T11:15:40.735857863Z", "summary": "!! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) detail=", "plan": {"steps": [{"id": "download", "state": "done", "started_at": "2026-11-01T11:15:11Z"}, {"id": "verify", "state": "done", "finished_at": "2026-11-01T11:15:15Z"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "
+update start 202 {"accepted": true, "request_id": "ebff6d69e973af8fb181f6d377108309", "status": "queued", "target": {"version": "v0.1.0-alpha.114", "commit": "650d4becfd804cf09b23ae063eb2a2d8d62de2a2", "sequence": "114", "os": "linux", "arch": "amd64", "archive_sha256": "077e193852ab991e68ef185f6101ab5668ca47d4c7af403bd70fa5bcab314296", "archive_size": "68617288", "published_at": "2026-11-01T11:02:45Z"}, "plan": {"steps": [{"id": "download", "state": "running", "started_at": "2026-11-01T11:16:13Z", "elapsed_seconds": 0}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}], "expected_restart_seconds": 90, "restart_bound_seconds": 360}}
+update status 200 {"found": true, "request_id": "ebff6d69e973af8fb181f6d377108309", "status": "running", "target": {"version": "v0.1.0-alpha.114", "commit": "650d4becfd804cf09b23ae063eb2a2d8d62de2a2", "sequence": "114", "os": "linux", "arch": "amd64", "archive_sha256": "077e193852ab991e68ef185f6101ab5668ca47d4c7af403bd70fa5bcab314296", "archive_size": "68617288"}, "created_at": "2026-11-01T11:16:13.052440858Z", "updated_at": "2026-11-01T11:16:13.14818066Z", "plan": {"steps": [{"id": "download", "state": "done", "started_at": "2026-11-01T11:16:13Z", "finished_at": "2026-11-01T11:16:13Z", "elapsed_seconds": 0}, {"id": "verify", "state": "running", "started_at": "2026-11-01T11:16:13Z", "elapsed_seconds": 10}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}], "expected_restart_seconds": 90, "restart_bound_seconds": 360}}
+  celikpanel-release-recovery.service                             loaded inactive dead    CelikPanel verified release transaction recovery
+● celikpanel-self-update-2b1af03798bedff60a4438b8fc18c385.service loaded failed   failed  [systemd-run] /opt/celikpanel/bin/agent --self-update-worker 2b1af03
+● celikpanel-self-update-ebff6d69e973af8fb181f6d377108309.service loaded failed   failed  [systemd-run] /opt/celikpanel/bin/agent --self-update-worker ebff6d6
+  celikpanel-release-recovery.timer                               loaded active   waiting CelikPanel release transaction recovery watchdog
+Usage: recovery status --request-id <32 lowercase hex characters> [--json] [--lang en|tr]
+       recovery version [--json] [--lang en|tr]
+
+2026-11-01T11:05:28+00:00 archlinux kernel: e820: update [mem 0x00000000-0x00000fff] System RAM ==> device reserved
+2026-11-01T11:05:40+00:00 arch pacman-key[437]: ==> Generating pacman master key. This may take some time.
+2026-11-01T11:05:41+00:00 arch pacman-key[437]: ==> Updating trust database...
+2026-11-01T11:05:41+00:00 arch pacman-key[531]: ==> Appending keys from archlinux.gpg...
+2026-11-01T11:05:45+00:00 arch pacman-key[531]: ==> Locally signing trusted keys in keyring...
+2026-11-01T11:05:45+00:00 arch pacman-key[531]: ==> Importing owner trust values...
+2026-11-01T11:05:45+00:00 arch pacman-key[531]: ==> Disabling revoked keys in keyring...
+2026-11-01T11:05:46+00:00 arch pacman-key[531]: ==> Updating trust database...
+2026-11-01T11:07:17+00:00 arch mkinitcpio[9113]: ==> Starting build: 'none'
+2026-11-01T11:07:18+00:00 arch mkinitcpio[9113]: ==> Build complete.
+2026-11-01T11:07:24+00:00 archlinux kernel: e820: update [mem 0x00000000-0x00000fff] System RAM ==> device reserved
+2026-11-01T11:15:40+00:00 arch agent[15488]: 2026/11/01 11:15:40 System update worker failed: reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PRO
+2026-11-01T11:15:44+00:00 arch release-recovery[24976]: ==> Verified snapshot / Doğrulanmış snapshot: /var/backups/celikpanel/update-snapshots/20261101T111526Z-from-unknown-to-650d4becfd804cf09b23ae063eb2a2d8d62de2a2-b3edb3aa265ae2c51158e352a526db14
+2026-11-01T11:15:44+00:00 arch release-recovery[24976]: ==> Stopping CelikPanel services / CelikPanel servisleri durduruluyor
+2026-11-01T11:16:02+00:00 arch release-recovery[24976]: ==> Rollback complete / Geri alma tamamlandı
+2026-11-01T11:16:28+00:00 arch agent[29095]: 2026/11/01 11:16:28 System update worker failed: reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=update preflight step=agent_idle class=check_failed: agent/package mutations are not id
+2026-11-01T11:16:31+00:00 arch release-recovery[35032]: !! Quiesce abort verification failed; recovery state was preserved and both coordinators were stopped.
+2026-11-01T11:16:31+00:00 arch release-recovery[35032]: !! quiesce recovery could not resume coordinators and remove the exact phase
+2026-11-01T11:16:31+00:00 arch release-recovery[35032]: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=quiesce recovery could not resume coordinators and remove the exact phase detail=
+2026-11-01T11:16:31+00:00 arch release-recovery[33891]: !! release recovery child failed with status 1
+2026-11-01T11:17:05+00:00 arch release-recovery[37133]: !! Quiesce abort verification failed; recovery state was preserved and both coordinators were stopped.
+2026-11-01T11:17:05+00:00 arch release-recovery[37133]: !! quiesce recovery could not resume coordinators and remove the exact phase
+2026-11-01T11:17:05+00:00 arch release-recovery[37133]: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=quiesce recovery could not resume coordinators and remove the exact phase detail=
+2026-11-01T11:17:05+00:00 arch release-recovery[36007]: !! release recovery child failed with status 1
+2026-11-01T11:17:39+00:00 arch release-recovery[39248]: !! Quiesce abort verification failed; recovery state was preserved and both coordinators were stopped.
+2026-11-01T11:17:39+00:00 arch release-recovery[39248]: !! quiesce recovery could not resume coordinators and remove the exact phase
+2026-11-01T11:17:39+00:00 arch release-recovery[39248]: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=quiesce recovery could not resume coordinators and remove the exact phase detail=
+2026-11-01T11:17:39+00:00 arch release-recovery[38116]: !! release recovery child failed with status 1
+2026-11-01T11:20:31+00:00 arch sudo[45417]:    celik : PWD=/home/celik ; USER=root ; COMMAND=/usr/bin/bash -c 'journalctl --no-pager -o short-iso --since -9min | grep -E \'self-update|update\\.sh|==>|!!|could not be checked|not pinned\' | cut -c1-260 | tail -14'
+
+

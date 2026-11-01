@@ -1,0 +1,33 @@
+== site shopr5.test with alice@ and bob@ on the alpha.113 Arch server 11:13:56
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/1/public_html", "Domain": "shopr5.test", "DomainID": 1, "FTPPassword": "[REDACTED]", "FTPUser": "shopr5_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 1, "TempDomain": ""}
+   site id 1
+200 {"id": 1, "success": true}
+200 {"id": 2, "success": true}
+   a5-r/main v0.1.0-alpha.113 d3f3a323d schema 46
+error: package 'pigeonhole' was not found
+dovecot 2.4.5-1
+2.4.5 (0cbb641e3e)
+
+
+v0.1.0-alpha.114
+== E-new-5 (113 -> candidate): lab trigger, an unknown key in panel.env; the candidate's installer refuses it 11:14:02
+   CELIKPANEL_LAB_ROLLBACK_PROBE=1
+FAIL main: update check offers the candidate | {'status': 503, 'current': None, 'target': None, 'previous_attempt': None}
+   a5-r/main v0.1.0-alpha.113 d3f3a323d schema 46
+
+cat: /opt/celikpanel/release.commit: No such file or directory
+
+-- trigger removed, the normal update
+   trigger lines left: 0
+FAIL main: update check offers the candidate | {'status': 503, 'current': None, 'target': None, 'previous_attempt': None}
+   a5-r/main v0.1.0-alpha.113 d3f3a323d schema 46
+== E-new-2(a): first autoresponder save on the updated Arch server 11:14:04
+error: package 'pigeonhole' was not found
+dovecot 2.4.5-1
+ActiveEnterTimestamp=Sun 2026-11-01 11:12:11 UTC
+
+
+FAIL main: first save answers 200 with the one-restart warning | {'status': 404, 'warning': None, 'applied': None, 'code': None, 'reason': None, 'error': None}
+PASS main: server side after the first save (pigeonhole now installed, one restart) | {'before': "1793531644\nerror: package 'pigeonhole' was not found\ndovecot 2.4.5-1\nActiveEnterTimestamp=Sun 2026-11-01 11:12:11 UTC\nMainPID=10161\n0\n", 'after': "error: package 'pigeonhole' was not found\nActiveEnterTimestamp=Sun 2026-11-01 11:12:11 UTC\nMainPID=10161\nactive\n-- doveadm log errors since the save\n-- journal\n"}
+FAIL main: GET applied=true after the first save | {'state': '404 page not found\n'}
+-- the next save (and mail: 2 delivered, 1 reply, no bounce) 11:14:05

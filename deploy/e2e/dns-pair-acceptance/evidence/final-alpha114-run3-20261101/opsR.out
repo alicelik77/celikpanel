@@ -1,0 +1,23 @@
+v0.1.0-alpha.114
+   a5-r/main v0.1.0-alpha.113 d3f3a323d schema 46
+error: package 'pigeonhole' was not found
+dovecot 2.4.5-1
+2.4.5 (0cbb641e3e)
+
+
+v0.1.0-alpha.114
+== E-new-5 (113 -> candidate): lab trigger, an unknown key in panel.env; the candidate's installer refuses it 11:15:11
+   CELIKPANEL_LAB_ROLLBACK_PROBE=1
+PASS main: update check offers the candidate | {'status': 200, 'current': 'v0.1.0-alpha.113', 'target': 'v0.1.0-alpha.114', 'previous_attempt': None}
+PASS main: update accepted | {'status': 202, 'answer': {'accepted': True, 'status': 'queued'}}
+FINAL-STATUS {"status": "failed", "phase": null, "summary": "!! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) detail=", "target": {"version": "v0.1.0-alpha.114", "commit": "650d4becfd804cf09b23ae063eb2a2d8d62de2a2", "sequence": "114", "os": "linux", "arch": "amd64", "archive_sha256": "077e193852ab991e68ef185f6101ab5668ca47d4c7af403bd70fa5bcab314296", "archive_size": "68617288"}, "updated_at": "2026-11-01T11:15:40.735857863Z"}
+PASS main: update ends failed | {'timeline': ['10s running/None', 'unreachable', 'unreachable', 'unreachable', '50s failed/None'], 'status': 'failed', 'summary': '!! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) detail='}
+SUMMARY-LINE-LENGTH 206 | ends: IKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) detail=
+PASS main: version/schema before -> after; port | {'before': {'version': 'v0.1.0-alpha.113', 'commit': 'd3f3a323da46ce8f8dca5ad4385666c5428c353e', 'schema_version': 46}, 'after': {'version': 'v0.1.0-alpha.113', 'commit': 'd3f3a323da46ce8f8dca5ad4385666c5428c353e', 'schema_version': 46}, 'server': 'CELIKPANEL_LISTEN=:2083\nLISTEN 0 4096 *:2083 *:*\nactive active active active\n'}
+   a5-r/main v0.1.0-alpha.113 d3f3a323d schema 46
+2026/11/01 11:15:40 System update worker failed: reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) detail=ERROR / HATA: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, th
+
+cat: /opt/celikpanel/release.commit: No such file or directory
+
+-- trigger removed, the normal update
+   trigger lines left: 0

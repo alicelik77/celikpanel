@@ -1,0 +1,88 @@
+== provision 11:05:20 arch 192.0.3.182 zone=ar113.test version=v0.1.0-alpha.113
+ uid 0 \n    cache \n192.0.2.1 via 192.0.3.1 dev lab0 src 192.0.3.182 uid 0 \n    cache \n\nnameserver 127.0.0.53\noptions edns0 trust-ad\nsearch .\nPRETTY_NAME=\"Arch Linux\"\n7.1.8-arch1-3\n",
+ "rc": 127,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 29.2
+}
+
+-- lab portal trust (update topology)
+v0.1.0-alpha.113
+== install through get.sh in a root terminal 11:05:50
+main terminal rc 0 86.2 problem None restart_required True postinstall rc 0
+  tail: raded the kernel and replaced them. Until this server |     is restarted it cannot load nftables or WireGuard, so turning the firewall on |     or installing the VPN will fail. Everything else is installed and running. |         reboot |  |     Bu sunucu, modulleri artik diskte olmayan 7.1.8-arch1-3 cekirdegiyle calisiyor: |     on gereksinim adimi cekirdegi yukseltti ve modulleri degistirdi. Sunucu |     yeniden baslatilana kadar nftables veya WireGuard yuklenemez; guvenlik |     duvarini acmak veya VPN kurmak hata verir. Geri kalan her sey kurulu. |         reboot | ]3008;end=d09abbe7ea0f4a5597bdc66701c7b96b\
+license active acceptance_fixture can_use_panel True
+CELIKPANEL_LISTEN=:2083
+error: package 'dovecot' was not found
+error: package 'pigeonhole' was not found
+
+wizard data single ['count', 'dnshome', 'domain', 'mail', 'name', 'names', 'roles']
+guidance 200 
+domain 200 
+count 200 
+name 200 
+roles 200 
+names 200 
+dnshome 200 
+mail 200 
+plan 200 can_start True blockers [] ['01-dns:local', '02-service:nginx', '03-service:certbot', '04-firewall:enable_and_persist', '05-infrastructure_dns:ar113.test', '06-access_dns:arch.ar113.test', '07-panel_certificate:arch.ar113.test', '08-dns_readiness:local', '09-service:mariadb', '10-service:php-fpm', '11-mail_profile:webmail', '12-mail_profile:protected-mail', '13-mail_dns:ar113.test', '14-service:cron', '15-access_dns:mail.ar113.test', '16-mail_certificate:mail.ar113.test', '17-mail_enrollment:mail-renewal', '18-verify:custom'] 
+== start 11:08:02
+start 202 {
+ "id": "7f04405cefb3a86e2a8291364e854ad6",
+ "panel_url": "https://arch.ar113.test:2083/",
+ "phase": "queued",
+ "plan_id": "7e428fd6ae954515b120f0a6c3fe3737",
+
+-- a5-r/main 11:08:07
+running 01-dns null
+01-dns=running 02-service=pending 03-service=pending 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-mail_profile=pending 12-mail_profile=pending 13-mail_dns=pending 14-service=pending 15-access_dns=pending 16-mail_certificate=pending 17-mail_enrollment=pending 18-verify=pending
+{"id": "01-dns", "kind": "dns", "owner_id": "fe313325139540d83fbee7e2af4fe0ee", "request_id": "09f66df82e9a794a746a7acdbc5980ff", "status": "running", "target": "local"}
+-- a5-r/main 11:08:27
+running 02-service null
+01-dns=succeeded 02-service=running 03-service=pending 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-mail_profile=pending 12-mail_profile=pending 13-mail_dns=pending 14-service=pending 15-access_dns=pending 16-mail_certificate=pending 17-mail_enrollment=pending 18-verify=pending
+{"id": "02-service", "kind": "service", "operation_id": "cb89ea78264c4562aa50d23494ae0812", "owner_id": "ec571fe19698f66832fc853e68626c98", "request_id": "9f0c30be5a0e3588ab4fbc178ed84337", "status": "running", "target": "nginx"}
+-- a5-r/main 11:08:48
+running 05-infrastructure_dns null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=running 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-mail_profile=pending 12-mail_profile=pending 13-mail_dns=pending 14-service=pending 15-access_dns=pending 16-mail_certificate=pending 17-mail_enrollment=pending 18-verify=pending
+{"id": "05-infrastructure_dns", "kind": "infrastructure_dns", "owner_id": "5827f8f0b88b7377dbae4a184accd10a", "request_id": "55508fdf01a0960023ce2d7f013a7f5c", "status": "running", "target": "ar113.test"}
+-- a5-r/main 11:09:08
+waiting access_dns {"code": "server_setup_access_dns_required", "message": "Public DNS must resolve arch.ar113.test to 192.0.3.182 before a certificate is requested. Check this hostname's A/AAAA records and its zone delegation. For DNS managed here, review the infrastructure DNS records in this wizard; otherwise correct them at the primary DNS server or provider. This check resumes automatically when DNS is verified."}
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=running 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-mail_profile=pending 12-mail_profile=pending 13-mail_dns=pending 14-service=pending 15-access_dns=pending 16-mail_certificate=pending 17-mail_enrollment=pending 18-verify=pending
+{"id": "06-access_dns", "kind": "access_dns", "owner_id": "d963682c412d30edd52580ee9982c053", "qualifier": "192.0.3.182", "request_id": "a7a86a4b54d2eb4c299fe5a109b06d5d", "status": "running", "target": "arch.ar113.test"}
+-- a5-r/main 11:09:28
+running 09-service null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=running 10-service=pending 11-mail_profile=pending 12-mail_profile=pending 13-mail_dns=pending 14-service=pending 15-access_dns=pending 16-mail_certificate=pending 17-mail_enrollment=pending 18-verify=pending
+{"id": "09-service", "kind": "service", "operation_id": "c301bc4f8e6a22051dc4750d3de4179d", "owner_id": "acbeb08357a84418f9c64c9434c88f31", "request_id": "7704a328764cdd029d926d47de68310a", "status": "running", "target": "mariadb"}
+-- a5-r/main 11:10:08
+running 11-mail_profile null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-mail_profile=running 12-mail_profile=pending 13-mail_dns=pending 14-service=pending 15-access_dns=pending 16-mail_certificate=pending 17-mail_enrollment=pending 18-verify=pending
+{"id": "11-mail_profile", "kind": "mail_profile", "operation_id": "ea125a5a5b332f17ec218a71c46f33aa", "owner_id": "9a13f9ddbad37077112f0d5c3325e654", "request_id": "30e15ee7292f1afa0cff76cc8ada86c6", "status": "running", "target": "webmail"}
+-- a5-r/main 11:11:29
+running 12-mail_profile null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-mail_profile=succeeded 12-mail_profile=running 13-mail_dns=pending 14-service=pending 15-access_dns=pending 16-mail_certificate=pending 17-mail_enrollment=pending 18-verify=pending
+{"id": "12-mail_profile", "kind": "mail_profile", "operation_id": "47d83559b67b674b24cadfd62786fc6b", "owner_id": "e938281962975879d170d28fc036bb1c", "request_id": "cda47b630cc1f967ed3326e8108ea339", "status": "running", "target": "protected-mail"}
+-- a5-r/main 11:12:49
+waiting service {"code": "server_setup_host_busy", "message": "Another change is running on this server (for example a component installing from Components, or the package manager is busy), so this step waits and started nothing. Nobody needs to act: setup continues this step by itself once the other change has finished."}
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-mail_profile=succeeded 12-mail_profile=succeeded 13-mail_dns=succeeded 14-service=running 15-access_dns=pending 16-mail_certificate=pending 17-mail_enrollment=pending 18-verify=pending
+{"id": "14-service", "kind": "service", "owner_id": "7b4ecf685c69853733611e6d37b6e8d3", "request_id": "f7509ec8dd0b1ee0d3d0ed6b3d1034f4", "status": "running", "target": "cron"}
+-- a5-r/main 11:13:10
+running 14-service null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-mail_profile=succeeded 12-mail_profile=succeeded 13-mail_dns=succeeded 14-service=running 15-access_dns=pending 16-mail_certificate=pending 17-mail_enrollment=pending 18-verify=pending
+{"id": "14-service", "kind": "service", "operation_id": "167104cfcef54a0c75d7573d459203be", "owner_id": "7b4ecf685c69853733611e6d37b6e8d3", "request_id": "f7509ec8dd0b1ee0d3d0ed6b3d1034f4", "status": "running", "target": "cron"}
+-- a5-r/main 11:13:30
+running 17-mail_enrollment {"code": "server_setup_mail_enrollment_not_recorded", "message": "The mail renewal handoff has no verified admission record yet. The server administrator can inspect the same worker unit and use Retry reviewed handoff to submit the original reviewed request again. Setup will keep checking; it will not create another request."}
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-mail_profile=succeeded 12-mail_profile=succeeded 13-mail_dns=succeeded 14-service=succeeded 15-access_dns=succeeded 16-mail_certificate=succeeded 17-mail_enrollment=running 18-verify=pending
+{"enrollment_dispatch_attempted": true, "id": "17-mail_enrollment", "kind": "mail_enrollment", "owner_id": "8e91ad7256a3e26db5eba23c42a57edc", "qualifier": "72b2c5a613e3540bc7bce1f6e313650e37d1e2ef853bbbe49671a0fffb3b59aa", "request_id": "115b23c0c32fdc431ed08fed5a27e935", "status": "running", "target": "mail-renewal"}
+-- a5-r/main 11:13:50
+succeeded complete null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-mail_profile=succeeded 12-mail_profile=succeeded 13-mail_dns=succeeded 14-service=succeeded 15-access_dns=succeeded 16-mail_certificate=succeeded 17-mail_enrollment=succeeded 18-verify=succeeded
+== end 11:13:50
+succeeded complete null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-mail_profile=succeeded 12-mail_profile=succeeded 13-mail_dns=succeeded 14-service=succeeded 15-access_dns=succeeded 16-mail_certificate=succeeded 17-mail_enrollment=succeeded 18-verify=succeeded
+error: package 'pigeonhole' was not found
+dovecot 2.4.5-1
+2.4.5 (0cbb641e3e)
+active
+active
+
+== single done 11:13:51
