@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -549,9 +550,10 @@ func setAutoresponderTransport(ctx context.Context, email string, enabled bool) 
 	if err != nil {
 		return "", fmt.Errorf("read Postfix transport_maps: %w", err)
 	}
-	setMaps := false
+	setMaps, inUse := false, false
 	switch {
 	case transportMapsIncludesOurs(value):
+		inUse = true
 	case strings.TrimSpace(value) == "":
 		setMaps = enabled
 	default:
@@ -561,19 +563,31 @@ func setAutoresponderTransport(ctx context.Context, email string, enabled bool) 
 				fmt.Sprintf(autoresponderOwnerTransportDetail, ours, ours))
 		}
 	}
+	if bytes.Equal(current, next) && !setMaps {
+		return "", nil
+	}
 	if err := applyMailFileMutation(ctx, []mailFileWrite{
 		{path: autoresponderTransportPath, content: next, mode: 0o644},
 	}, []string{autoresponderTransportPath}, nil); err != nil {
 		return "", err
 	}
-	if !setMaps {
+	if setMaps {
+		if err := autoresponderPostconfSet(ctx, "transport_maps", autoresponderTransportValue(ctx)); err != nil {
+			// The table is written but unused: mail keeps its old delivery.
+			return "", err
+		}
+	} else if !inUse {
 		return "", nil
 	}
-	if err := autoresponderPostconfSet(ctx, "transport_maps", autoresponderTransportValue(ctx)); err != nil {
-		// The table is written but unused: mail keeps its old delivery.
-		return "", err
-	}
+	// Postfix's address resolver keeps the table it opened and notices a
+	// change only after it has answered one more lookup, so the next mail
+	// would still take the old route (lab run 5: a mailbox whose route was
+	// just removed bounced once). Every change to a table in use is
+	// followed by a reload.
 	if _, err := autoresponderReloadPostfix(ctx); err != nil {
+		if !enabled {
+			return "Postfix did not confirm the reload (" + boundedNativeDetail(err.Error()) + "); the next message may still go to Dovecot until the server administrator reloads Postfix (`sudo systemctl reload postfix`).", nil
+		}
 		return "Postfix did not confirm the reload (" + boundedNativeDetail(err.Error()) + "); the reply starts with Postfix's next reload (`sudo systemctl reload postfix`).", nil
 	}
 	return "", nil
@@ -673,11 +687,15 @@ func applyMailAutoresponder(ctx context.Context, email, local, domain string, se
 	// CelikPanel's script when LMTP refuses it now: mail returns to
 	// Postfix's own delivery instead of bouncing.
 	if err := verifyAutoresponderLMTP(ctx, email); err != nil {
-		rollbackErr := rollbackAutoresponderRoute(ctx, email, domain, local, resp.Script)
+		reloadWarning, rollbackErr := rollbackAutoresponderRoute(ctx, email, domain, local, resp.Script)
 		if rollbackErr != nil {
 			return errors.Join(err, rollbackErr)
 		}
 		resp.Script = transport.AutoresponderScriptNone
+		var refusal *autoresponderRefusal
+		if reloadWarning != "" && errors.As(err, &refusal) {
+			refusal.detail += " " + reloadWarning
+		}
 		return err
 	}
 	if err := autoresponderStore.Write(domain, local, []byte(renderAutoresponderSieve(setting))); err != nil {
@@ -720,16 +738,17 @@ func verifyAutoresponderLMTP(ctx context.Context, email string) error {
 
 // rollbackAutoresponderRoute returns the mailbox to Postfix's own delivery:
 // its LMTP route goes first, then CelikPanel's script (never the owner's).
-func rollbackAutoresponderRoute(ctx context.Context, email, domain, local, script string) error {
-	if _, err := setAutoresponderTransport(ctx, email, false); err != nil {
-		return fmt.Errorf("remove the mailbox's LMTP route: %w", err)
+func rollbackAutoresponderRoute(ctx context.Context, email, domain, local, script string) (string, error) {
+	warning, err := setAutoresponderTransport(ctx, email, false)
+	if err != nil {
+		return "", fmt.Errorf("remove the mailbox's LMTP route: %w", err)
 	}
 	if script == transport.AutoresponderScriptManaged {
 		if err := autoresponderStore.Remove(domain, local); err != nil {
-			return fmt.Errorf("remove CelikPanel's Sieve script: %w", err)
+			return "", fmt.Errorf("remove CelikPanel's Sieve script: %w", err)
 		}
 	}
-	return nil
+	return warning, nil
 }
 
 // MailAutoresponderState reads one mailbox's Sieve state (read only).

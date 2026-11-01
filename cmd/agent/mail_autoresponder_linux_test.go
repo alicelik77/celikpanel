@@ -214,6 +214,11 @@ func TestAutoresponderEnableInstallsSieveRoutesOneMailboxAndDisableRemovesIt(t *
 	if routes, _ := os.ReadFile(autoresponderTransportPath); len(routes) != 0 {
 		t.Fatalf("route left: %q", routes)
 	}
+	// Postfix's resolver serves one more lookup from the old table unless
+	// it is reloaded (lab run 5).
+	if f.postfixReload != 2 {
+		t.Fatalf("removing the route reloads Postfix: reloads %d", f.postfixReload)
+	}
 	if _, err := os.Lstat(f.mailbox(autoresponderLinkName)); !os.IsNotExist(err) {
 		t.Fatalf("active link left: %v", err)
 	}
@@ -364,6 +369,7 @@ func TestAutoresponderNeverRoutesAMailboxLMTPRefuses(t *testing.T) {
 		t.Fatalf("state right after enable: %+v", st)
 	}
 	f.probeErr = errors.New("550 5.1.1 User doesn't exist")
+	reloadsBefore := f.postfixReload
 	resp = f.set(t, transport.MailAutoresponder{Enabled: true, Subject: "Away", Message: "y"})
 	if resp.Refusal != transport.AutoresponderRefusedLMTPRejected || resp.Script != transport.AutoresponderScriptNone {
 		t.Fatalf("refused re-save: %+v", resp)
@@ -371,11 +377,36 @@ func TestAutoresponderNeverRoutesAMailboxLMTPRefuses(t *testing.T) {
 	if routes, _ := os.ReadFile(autoresponderTransportPath); len(routes) != 0 {
 		t.Fatalf("route kept although LMTP refuses the mailbox: %q", routes)
 	}
+	// Lab run 5: without a reload the next message still went to Dovecot
+	// and bounced, although the refusal said mail keeps arriving as before.
+	if f.postfixReload != reloadsBefore+1 {
+		t.Fatalf("route removal after the refusal did not reload Postfix: %d -> %d", reloadsBefore, f.postfixReload)
+	}
 	if _, err := os.Lstat(f.mailbox(autoresponderLinkName)); !os.IsNotExist(err) {
 		t.Fatalf("script left active: %v", err)
 	}
 	if st := f.state(t); !st.Applied || st.Script != transport.AutoresponderScriptNone {
 		t.Fatalf("state after rollback: %+v", st)
+	}
+}
+
+func TestAutoresponderRefusalSaysWhenPostfixDidNotReloadTheRemovedRoute(t *testing.T) {
+	f := newAutoresponderFixture(t)
+	if resp := f.set(t, transport.MailAutoresponder{Enabled: true, Subject: "Away", Message: "x"}); !resp.Applied {
+		t.Fatalf("enable: %+v", resp)
+	}
+	autoresponderReloadPostfix = func(context.Context) (string, error) {
+		f.postfixReload++
+		return "", errors.New("postfix reload timed out")
+	}
+	f.probeErr = errors.New("550 5.1.1 User doesn't exist")
+	resp := f.set(t, transport.MailAutoresponder{Enabled: true, Subject: "Away", Message: "y"})
+	if resp.Refusal != transport.AutoresponderRefusedLMTPRejected ||
+		!strings.Contains(resp.Detail, "sudo systemctl reload postfix") || !strings.Contains(resp.Detail, "may still go to Dovecot") {
+		t.Fatalf("refusal hides the missing reload: %+v", resp)
+	}
+	if routes, _ := os.ReadFile(autoresponderTransportPath); len(routes) != 0 {
+		t.Fatalf("route kept: %q", routes)
 	}
 }
 
