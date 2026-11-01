@@ -8104,3 +8104,40 @@ until the backup reports ready.
   not declared in `NativeCatalogV3Releases` or its markers are not covered in both
   directions. The native 113 → 114 update and 114 → 113 rollback of a PowerDNS
   main server is not yet measured. **No P0 item is closed**; P0.3/P0.4 stay partial.
+
+### Branch fix/a114-h2-update-quiesce (a refused update leaves the panel and Agent running; a stopped quiesce phase is recoverable; no schema change; invariants 1, 3 and 4; P0.3; D-024; D-025; 2026-11-01)
+
+- **Incident.** Lab run 3 of alpha.114 (Arch): 11 s after a completed rollback
+  probe, an update from alpha.113 published its quiesce phase while the panel's
+  own 30-second retry had just started a privileged Agent mutation. The
+  preliminary Agent probe refused (`agent_idle`), which is correct. The abort
+  then required each coordinator's cgroup to hold only its MainPID; the busy
+  Agent's cgroup also held that mutation's helper processes, so the abort failed
+  closed and stopped both coordinators with `quiesce.pending` kept. Every later
+  recovery attempt, and the owner's printed one-time retry, required the original
+  processes to be alive again, so it could never succeed: panel `failed`, Agent
+  `inactive`, recovery paused after three attempts. Hosted services kept running.
+  The abort code was unchanged from alpha.113.
+- **Contract.** The abort classifies each coordinator once: the exact captured
+  process (state, MainPID, start time) is resumed, with helper processes allowed
+  beside the MainPID; a captured active process proven gone (an earlier fail-closed
+  abort, a crash or a reboot; the start guard kept systemd from replacing it) is
+  started again only after the exact marker is removed, Agent before panel, and
+  verified; any other process stays fail-closed. Freeze and promotion proofs keep
+  the strict one-PID rule. The unlocked preliminary Agent probes (before and just
+  after quiesce publication) wait at most 60 s, polling every 3 s, for a running
+  Agent operation or package-manager run to end; unknown or unsafe evidence and
+  every locked or frozen proof are never waited for.
+- **Recovery.** A refusal now ends `update_preflight_refused`, step `agent_idle`,
+  `state=unchanged`, with both coordinators running. A host left in the run 3
+  state recovers on the next automatic attempt or the owner's retry with a
+  release that carries this updater. A failed restart recreates the exact marker
+  and stays bounded by the recovery timer. Remaining gap: if the recovery process
+  is killed between marker removal and the restart, the coordinators stay stopped
+  without a marker until a reboot or `systemctl start`.
+- **Evidence.** Component tests only (`deploy/test-update-quiesce-exit-contract.sh`,
+  `deploy/test-update-enrollment-preflight.sh`, `deploy/test-bootstrap-update-contract.sh`):
+  the run 3 refusal with a busy, unfrozen Agent and a helper; a frozen Agent with a
+  helper; both coordinators stopped; one running and one stopped; a failed restart;
+  an unexpected running unit. The native Arch sequence is not yet re-measured.
+  **No P0 item is closed**; P0.1/P0.3 stay partial.

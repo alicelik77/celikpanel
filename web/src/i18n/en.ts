@@ -436,6 +436,7 @@ export const en = {
     'services.operation.phase.scanning': "Checking the installed services…",
     'services.operation.phase.syncing': "Applying the related service configuration…",
     'services.operation.phase.syncing_dns': "Publishing the required DNS configuration…",
+    'services.operation.phase.firewall_waiting': "Waiting: another change or the package manager is busy on this server, so the firewall update waits and has started nothing. Nobody needs to act: it continues by itself once the server is free.",
     'services.operation.failed': 'The installation failed on the server.',
     'services.operation.phase.queued': 'Queued on the server…',
     'services.operation.phase.running': 'Installation is running…',

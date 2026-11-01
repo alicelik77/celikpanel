@@ -62,6 +62,7 @@ const phaseKeys: Record<string, TranslationKey> = {
     scanning: 'services.operation.phase.scanning',
     syncing: 'services.operation.phase.syncing',
     syncing_dns: 'services.operation.phase.syncing_dns',
+    firewall_waiting: 'services.operation.phase.firewall_waiting',
     finalizing: 'services.operation.phase.finalizing',
     'mail-stack': 'services.operation.phase.configuring',
     submission: 'services.operation.phase.configuring',

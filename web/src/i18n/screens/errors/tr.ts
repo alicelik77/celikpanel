@@ -104,6 +104,7 @@ export const trErrorsScreens: Record<ErrorsScreenKey, string> = {
     'err.WEBMAIL_UNINSTALL_PARTIAL': 'Roundcube artık algılanmıyor ancak kaldırma temizliği ve sonlandırması tam olarak doğrulanamadı. Güvenle tamamlamak için bu penceredeki Web posta temizliğini yeniden dene düğmesini kullanın.',
     'err.SERVICE_STATE_REFRESH_FAILED': 'İşlemin sonucu ve servisin güncel durumu doğrulanamadı; sayfa ikisini de varsaymıyor. CelikPanel, Panel, Bileşenler sayfası ya da bir bileşenin sayfası açıkken bileşenleri kendiliğinden yeniden denetler; o denetimden sonra bu sayfayı yeniden açın.',
     'err.firewall_sync_failed': 'Servis değişti ancak etkin güvenlik duvarı politikası senkronlanamadı.',
+    'err.firewall_sync_host_busy': 'Servis değişti ancak sunucu meşgul kaldı (başka bir değişiklik ya da paket yöneticisi); bu yüzden güvenlik duvarı güncellenmedi ve onun için hiçbir şey başlatılmadı. Siz, sunucu sahibi: diğer değişikliğin bitmesini bekleyin, sonra bu işlemi yeniden çalıştırın (sunucu kurulumunda: Düzeltilmiş planı incele); bu, güvenlik duvarını günceller.',
     'err.mail_profile_confirmation_required': 'Başlatmadan önce posta profili planını inceleyip onaylayın.',
     'err.mail_profile_server_hostname_invalid': 'Posta ana bilgisayar adı tam nitelikli bir alan adı olmalı; örneğin mail.example.com.',
     'err.mail_profile_server_hostname_required': 'Bu sunucunun henüz tam nitelikli bir adı yok ve CelikPanel’de de kayıtlı bir ad yok. Posta sunucusunun hangi adla yanıt vereceğini yazın, örneğin mail.example.com; kurulum bu sunucuya o adı verir.',
