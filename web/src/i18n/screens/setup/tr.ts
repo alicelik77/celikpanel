@@ -306,6 +306,7 @@ export const trSetupScreens: Record<SetupScreenKey, string> = {
     "setup.start": "İncelenen kurulumu başlat",
     "setup.conflict": "Kurulum başka bir oturumda değiştirildi. Devam etmeden önce kaydedilen değerleri görmek için sayfayı yenileyin.",
     "setup.saveFailed": "Kurulum taslağınız kaydedilemedi. Bağlantıyı kontrol edip yeniden deneyin.",
+    "setup.saveRefused": "Sunucu bu cevabı kabul etmedi ({reason}). Bu adımda ya da ilgili adıma dönüp düzeltin, sonra devam edin.",
     "setup.planFailed": "Plan doğrulanamadı. Bilgileri kontrol edip planı yeniden inceleyin.",
     "setup.storageFailed": "Tarayıcı devam etme bilgisini kaydedemediği için kurulum başlatılmadı. Site depolamasına izin verip yeniden deneyin.",
     "setup.resuming": "Mevcut kurulum işlemi kontrol ediliyor…",

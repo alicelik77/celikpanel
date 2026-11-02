@@ -294,7 +294,7 @@ const server = createServer(async (req, res) => {
     }
     if (state.mode === 'down' && state.assetsDown) { req.socket.destroy(); return; }
     try {
-        const name = path.startsWith('/assets/') || ['/recovery-worker.js', '/recovery-offline.html', '/vite.svg'].includes(path) ? path.slice(1) : 'index.html';
+        const name = path.startsWith('/assets/') || ['/recovery-worker.js', '/recovery-offline.html', '/favicon.svg'].includes(path) ? path.slice(1) : 'index.html';
         if (!/^(index\.html|recovery-offline\.html|recovery-worker\.js|vite\.svg|assets\/[A-Za-z0-9_.-]+)$/.test(name)) throw Error('unknown asset');
         if (state.assetDown && name.includes(state.assetDown)) throw Error('this asset is withheld');
         const bytes = await readFile(join(dist, name));
