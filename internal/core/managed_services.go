@@ -1044,17 +1044,22 @@ var ManagedServices = []ManagedService{
 		},
 		FirewallPorts: []FirewallPort{{53, "tcp"}, {53, "udp"}},
 	},
+	// alpha.117: FTP over TLS for hosting accounts with file access. The
+	// Agent replaces the package's configuration right after installing it
+	// (TLS required, only accounts given file access, chrooted), so plain
+	// FTP is never served. Passive data ports are opened explicitly: TLS
+	// hides the PASV reply from connection tracking.
+	// alpha.117: dosya erişimi olan hesaplar için TLS'li FTP; düz FTP yok.
 	{
-		ID:                    "vsftpd",
-		Name:                  "vsftpd",
-		Description:           "FTP Server",
-		Icon:                  "📂",
-		Category:              "ftp",
-		Kind:                  KindService,
-		SystemNames:           []string{"vsftpd"},
-		Packages:              map[string][]string{"apt": {"vsftpd"}, "pacman": {"vsftpd"}},
-		InstallDisabledReason: "vsftpd passive-mode ports, TLS and per-subscription access are not integrated in CelikPanel yet.",
-		FirewallPorts:         []FirewallPort{{21, "tcp"}},
+		ID:            "vsftpd",
+		Name:          "vsftpd",
+		Description:   "FTP Server",
+		Icon:          "📂",
+		Category:      "ftp",
+		Kind:          KindService,
+		SystemNames:   []string{"vsftpd"},
+		Packages:      map[string][]string{"apt": {"vsftpd"}, "pacman": {"vsftpd"}},
+		FirewallPorts: vsftpdFirewallPorts(),
 	},
 	{
 		ID:          "redis",
@@ -1267,4 +1272,15 @@ func GetManagedServicesByCategory(category string) []ManagedService {
 		}
 	}
 	return services
+}
+
+// vsftpdFirewallPorts: the FTP control port and the passive data range
+// 40000-40049 (internal/fileaccess.PassiveMin/PassiveMax; a test there keeps
+// the two equal).
+func vsftpdFirewallPorts() []FirewallPort {
+	ports := []FirewallPort{{21, "tcp"}}
+	for port := 40000; port <= 40049; port++ {
+		ports = append(ports, FirewallPort{port, "tcp"})
+	}
+	return ports
 }

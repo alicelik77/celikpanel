@@ -351,6 +351,13 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "usage", []string{http.MethodGet}
 	case "connection":
 		match.kind, match.methods = "connection", []string{http.MethodGet}
+	case "access":
+		// alpha.117: FTP over TLS, SFTP and SSH of the site's account.
+		// Not mapped for additional users: the account's password and
+		// keys belong to the subscription's owner.
+		match.kind, match.methods = "file-access", []string{http.MethodGet, http.MethodPut}
+	case "access/preview":
+		match.kind, match.methods = "file-access-preview", []string{http.MethodPost}
 	case "site-config":
 		match.kind, match.methods = "site-config", []string{http.MethodGet}
 	case "site-config/keep":
@@ -472,6 +479,10 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainUsage(w, r)
 	case "connection":
 		p.handleDomainConnection(w, r, match.domainID)
+	case "file-access":
+		p.handleDomainFileAccess(w, r, match.domainID, false)
+	case "file-access-preview":
+		p.handleDomainFileAccess(w, r, match.domainID, true)
 	case "dns":
 		p.handleDomainDNS(w, r)
 	case "site-protect", "site-protect-users", "site-redirects":

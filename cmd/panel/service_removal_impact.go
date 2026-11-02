@@ -59,9 +59,9 @@ type serviceRemovalHosted struct {
 	// mail_addresses, mail_domains, mailboxes, certificates (certbot: the
 	// certificates the Panel renews with it), firewall (nftables: the panel
 	// firewall it enforces), vpn_peers (WireGuard: the VPN peers the Panel
-	// records), ftp_accounts (vsftpd: the FTP accounts the Panel records; SFTP accounts do not depend on vsftpd),
-	// unrecorded (caches: the Panel does not record which sites use them, so
-	// nothing is claimed either way).
+	// records), ftp_accounts (no longer produced since alpha.117; kept for
+	// older screens), unrecorded (caches and vsftpd: the Panel does not
+	// record which sites use them, so nothing is claimed either way).
 	Kind  string   `json:"kind"`
 	Count int      `json:"count"`
 	Names []string `json:"names"`
@@ -370,13 +370,10 @@ func removalHosted(ctx context.Context, db *sql.DB, svc *core.ManagedService, fa
 			return nil, err
 		}
 		return &serviceRemovalHosted{Kind: "vpn_peers", Count: count, Names: names}, nil
-	case svc.ID == "vsftpd":
-		count, names, err := hostedLabels(ctx, db, `SELECT username FROM ftp_accounts WHERE access_type = 'ftp' ORDER BY username`)
-		if err != nil {
-			return nil, err
-		}
-		return &serviceRemovalHosted{Kind: "ftp_accounts", Count: count, Names: names}, nil
-	case svc.ID == "redis" || svc.ID == "valkey" || svc.ID == "memcached":
+	case svc.ID == "redis" || svc.ID == "valkey" || svc.ID == "memcached" || svc.ID == "vsftpd":
+		// alpha.117: which sites use FTP is recorded on the server (the
+		// Agent's sshd drop-in), not in the Panel, so the answer says so
+		// and never "nothing depends on it". SFTP does not depend on vsftpd.
 		return &serviceRemovalHosted{Kind: "unrecorded", Names: []string{}}, nil
 	case svc.ID == "roundcube":
 		// These mailboxes lose webmail; their mail stays.

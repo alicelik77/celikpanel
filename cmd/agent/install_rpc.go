@@ -433,6 +433,15 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 		resp.Error = fmt.Sprintf("service preparation failed: %v", err)
 		return nil
 	}
+	// alpha.117: vsftpd gets CelikPanel's TLS-only configuration before the
+	// firewall opens port 21. A vsftpd the owner installed earlier keeps the
+	// owner's configuration.
+	if req.ID == "vsftpd" {
+		if err := prepareInstalledVsftpd(ctx, len(missingPackages) > 0); err != nil {
+			resp.Error = fmt.Sprintf("FTP preparation failed: %v", err)
+			return nil
+		}
+	}
 
 	// After a version pick, enable the unit that version actually brought —
 	// firstPresentUnit returns the NEWEST present unit, which after installing

@@ -2,7 +2,7 @@ import { Fragment, Suspense, lazy, useCallback, useState, useEffect, type ReactN
 import { useSearchParams } from '../router';
 import {
     ArrowLeft, Globe, Lock, ExternalLink,
-    LayoutGrid, Server, Network, Mail, Database, Folder, Wrench, AppWindow,
+    LayoutGrid, Server, Network, Mail, Database, Folder, Wrench, AppWindow, KeyRound,
 } from 'lucide-react';
 import { DomainPHPSettings } from './DomainPHPSettings';
 import { DomainGeneralSettings } from './DomainGeneralSettings';
@@ -68,6 +68,10 @@ const DomainSiteConfig = lazy(() => import('./DomainSiteConfig').then((module) =
 })));
 const SiteConfigNotice = lazy(() => import('./DomainSiteConfig').then((module) => ({
     default: module.SiteConfigNotice,
+})));
+// The site's FTP, SFTP and SSH access (alpha.117), fetched when the tab opens.
+const DomainFileAccess = lazy(() => import('./DomainFileAccess').then((module) => ({
+    default: module.DomainFileAccess,
 })));
 
 interface Domain {
@@ -406,6 +410,7 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
         ...(canView('databases') && (isTeamMember || !tabCaps || tabCaps.database_servers.length > 0) ? [{ id: 'databases', labelKey: 'domain.tab.databases', icon: Database, capabilities: ['databases'], render: (readOnly) => <DomainDatabaseManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} isAdditionalUser={isTeamMember} /> } satisfies TabDef] : []),
         ...(!isTeamMember && projectType === 'php' && canView('files') && canView('php') ? [{ id: 'apps', labelKey: 'domain.tab.apps', icon: AppWindow, capabilities: ['files', 'php'], render: () => <DomainAppsPanel domainId={domain.id} domainName={domain.domain_name} /> } satisfies TabDef] : []),
         ...(!isDnsOnly && canView('files') ? [{ id: 'files', labelKey: 'domain.tab.files', icon: Folder, capabilities: ['files'], render: (readOnly) => <DomainFileManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies TabDef] : []),
+        ...(!isTeamMember && !isDnsOnly ? [{ id: 'access', labelKey: 'fileAccess.tab', icon: KeyRound, render: () => <DomainFileAccess domainId={domain.id} domainName={domain.domain_name} isAdmin={role === 'admin'} /> } satisfies TabDef] : []),
         ...(!isDnsOnly && advancedSubs.length > 0 ? [{
             id: 'advanced', labelKey: 'domain.tab.advanced', icon: Wrench,
             subs: advancedSubs,

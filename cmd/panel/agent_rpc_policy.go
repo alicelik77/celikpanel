@@ -137,6 +137,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.NodePatchesV1 Agent.OSReleaseFactsV1 Agent.RepoConfinePreviewV1 Agent.VendorLanePlanV1
 		Agent.PostgreSQLClustersV1 Agent.PostgreSQLClusterPortPreviewV1 Agent.PostgreSQLSourceCheckV1
 		Agent.SiteCertificateRenewalStateV1 Agent.PanelListenConfigV1 Agent.MailAutoresponderState
+		Agent.FileAccessStateV1 Agent.FileAccessPreviewV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -162,7 +163,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.SetPanelListenPortV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostingSite, `
-		Agent.CreateSite Agent.DeleteSite Agent.InstallWordPress
+		Agent.CreateSite Agent.DeleteSite Agent.InstallWordPress Agent.ApplyFileAccessV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostingVHost, `
 		Agent.ApplyVhost Agent.ApplyVhosts Agent.ReconcileDefaultHTTPSServerV1
@@ -466,6 +467,11 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.ImportCpmoveDatabase": agentRPCBulkImportTimeout,
 	"Agent.CreateBackup":         agentRPCBulkImportTimeout,
 	"Agent.RestoreBackup":        agentRPCBulkImportTimeout,
+
+	// alpha.117: file access of a site (sshd, vsftpd, jail copy).
+	"Agent.FileAccessStateV1":   agentRPCStandardReadTimeout,
+	"Agent.FileAccessPreviewV1": agentRPCStandardReadTimeout,
+	"Agent.ApplyFileAccessV1":   agentRPCDatabaseTimeout,
 }
 
 var agentRPCPolicies = buildAgentRPCPolicies()
