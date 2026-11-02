@@ -376,9 +376,20 @@ func (p *Panel) performTransfer(w http.ResponseWriter, r *http.Request, c *Calle
 		}
 		transferID = requestRow.ID
 	}
+	// The reseller cause follows the new owner: into a suspended reseller's
+	// field the subscription is suspended, out of it the cause clears (a
+	// manual or expiry cause stays). Same transaction.
+	suspensionChanged, err := p.syncResellerSuspensionCauseTx(ctx, tx, subID, uid)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
 	if err := tx.Commit(); err != nil {
 		writeServerError(w, err)
 		return
+	}
+	if suspensionChanged {
+		p.kickSuspensionWorker()
 	}
 
 	requestRef := 0

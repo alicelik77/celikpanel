@@ -299,7 +299,7 @@ func planSuspension(ctx context.Context, q sqlQueryer, subscriptionID int, actio
 }
 
 // createSuspensionOperation inserts an operation and its effect checkpoints.
-func (p *Panel) createSuspensionOperation(ctx context.Context, tx *sql.Tx, subscriptionID int, kind, trigger string, actorID int) (string, error) {
+func (p *Panel) createSuspensionOperation(ctx context.Context, tx sqlQueryer, subscriptionID int, kind, trigger string, actorID int) (string, error) {
 	id, err := newServiceOperationID()
 	if err != nil {
 		return "", err

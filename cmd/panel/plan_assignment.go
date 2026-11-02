@@ -171,6 +171,11 @@ func (p *Panel) handleAssignPlan(w http.ResponseWriter, r *http.Request, c *Call
 			writeServerError(w, err)
 			return
 		}
+		// Under a suspended reseller the new subscription is suspended too.
+		if err := p.syncResellerSuspensionCause(ctx, id, c.ID); err != nil {
+			writeServerError(w, err)
+			return
+		}
 		p.auditDetailed(r, "subscription.plan_assign:"+target.Username, "subscription", id,
 			map[string]any{"plan": plan.Name, "plan_id": plan.ID})
 		writePlanAssignment(w, id, []string{})

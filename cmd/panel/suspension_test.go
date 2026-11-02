@@ -755,3 +755,63 @@ func TestSuspensionMirrorsReasonIntoSubscriptions(t *testing.T) {
 		t.Fatalf("manual and expired: %q", got)
 	}
 }
+
+// An account created under a suspended reseller starts suspended with the
+// reseller as cause; a transfer out of that reseller's field clears it.
+func TestNewAccountUnderSuspendedResellerStartsSuspended(t *testing.T) {
+	f := newSuspensionFixture(t)
+	ctx := context.Background()
+	wantStatus(t, f.as(t, 9701, http.MethodPost, "/api/v1/users/9702/suspension", `{"action":"suspend","reason":"reseller unpaid"}`), http.StatusAccepted, "")
+	f.run(t)
+
+	// What finishNewAccount does for a new customer of the reseller.
+	f.exec(t, `INSERT INTO users (id, username, password_hash, email, role, parent_id, status) VALUES (9790, 'late-customer', 'x', 'late@example.test', 'customer', 9702, 'active')`)
+	tx, err := f.panel.db.GetDB().BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	subID, err := insertBareSubscription(ctx, tx, 9790, builtinUnlimitedName, planLimits{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	changed, err := f.panel.syncNewAccountResellerSuspension(ctx, tx, 9790, 9702)
+	if err != nil || !changed {
+		t.Fatalf("sync: %v %v", changed, err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	if f.status(t, subID) != "suspended" {
+		t.Fatal("a new account under a suspended reseller started active")
+	}
+	row, err := loadSuspensionRow(ctx, f.panel.db.GetDB(), subID)
+	if err != nil || row.Causes.ResellerID != 9702 || row.Causes.Manual || row.Reason != "reseller unpaid" {
+		t.Fatalf("cause: %+v %v", row, err)
+	}
+	f.run(t)
+
+	// A customer of an active parent (the admin) starts active.
+	f.exec(t, `INSERT INTO users (id, username, password_hash, email, role, parent_id, status) VALUES (9791, 'free-customer', 'x', 'free@example.test', 'customer', 9701, 'active')`)
+	free, err := insertBareSubscription(ctx, f.panel.db.GetDB(), 9791, builtinUnlimitedName, planLimits{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.panel.syncResellerSuspensionCause(ctx, free, 9701); err != nil || f.status(t, free) != "active" {
+		t.Fatalf("free customer: %s %v", f.status(t, free), err)
+	}
+
+	// Transferred to the admin's customer: the reseller cause goes with the
+	// old field and the subscription resumes.
+	f.exec(t, `UPDATE subscriptions SET owner_id = 9791 WHERE id = ?`, subID)
+	if err := f.panel.syncResellerSuspensionCause(ctx, subID, 9701); err != nil {
+		t.Fatal(err)
+	}
+	if f.status(t, subID) != "active" {
+		t.Fatal("moved out of the suspended reseller's field but still suspended")
+	}
+	// And back into it: suspended again.
+	f.exec(t, `UPDATE subscriptions SET owner_id = 9790 WHERE id = ?`, subID)
+	if err := f.panel.syncResellerSuspensionCause(ctx, subID, 9701); err != nil || f.status(t, subID) != "suspended" {
+		t.Fatalf("moved into the suspended reseller's field: %s %v", f.status(t, subID), err)
+	}
+}

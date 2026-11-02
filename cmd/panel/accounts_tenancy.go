@@ -234,6 +234,16 @@ func (p *Panel) finishNewAccount(w http.ResponseWriter, r *http.Request, user *c
 			_, err = p.insertSubscriptionFromPlan(ctx, tx, user.ID, *planned.Plan)
 		}
 	}
+	// An account created under a suspended reseller starts suspended, with
+	// the reseller as its cause, in this same transaction.
+	suspended := false
+	if err == nil {
+		actorID := 0
+		if c := currentCaller(r); c != nil {
+			actorID = c.ID
+		}
+		suspended, err = p.syncNewAccountResellerSuspension(ctx, tx, user.ID, actorID)
+	}
 	if err == nil {
 		err = tx.Commit()
 	}
@@ -241,7 +251,28 @@ func (p *Panel) finishNewAccount(w http.ResponseWriter, r *http.Request, user *c
 		writeServerError(w, err)
 		return false
 	}
+	if suspended {
+		p.kickSuspensionWorker()
+	}
 	return true
+}
+
+// syncNewAccountResellerSuspension applies the reseller cause to every
+// subscription the new account owns.
+func (p *Panel) syncNewAccountResellerSuspension(ctx context.Context, tx sqlQueryer, ownerID, actorID int) (bool, error) {
+	ids, err := accountSubscriptionIDs(ctx, tx, ownerID, false)
+	if err != nil {
+		return false, err
+	}
+	changedAny := false
+	for _, id := range ids {
+		changed, err := p.syncResellerSuspensionCauseTx(ctx, tx, id, actorID)
+		if err != nil {
+			return false, err
+		}
+		changedAny = changedAny || changed
+	}
+	return changedAny, nil
 }
 
 // insertBareSubscription makes a subscription without a plan with the given

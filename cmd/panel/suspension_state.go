@@ -166,12 +166,27 @@ type suspensionAccept struct {
 // (errSuspensionBusy); a cascade or expiry change is stored anyway and the
 // worker starts the following operation when the running one ends.
 func (p *Panel) acceptSuspensionChange(ctx context.Context, subscriptionID int, change suspensionCauseChange, refuseWhenBusy bool) (suspensionAccept, error) {
-	var result suspensionAccept
 	tx, err := p.db.GetDB().BeginTx(ctx, nil)
+	if err != nil {
+		return suspensionAccept{}, err
+	}
+	defer tx.Rollback()
+	result, err := p.acceptSuspensionChangeTx(ctx, tx, subscriptionID, change, refuseWhenBusy)
 	if err != nil {
 		return result, err
 	}
-	defer tx.Rollback()
+	if err := tx.Commit(); err != nil {
+		return result, err
+	}
+	p.kickSuspensionWorker()
+	return result, nil
+}
+
+// acceptSuspensionChangeTx is acceptSuspensionChange inside the caller's
+// write transaction (account creation, transfer); the caller commits and
+// kicks the worker.
+func (p *Panel) acceptSuspensionChangeTx(ctx context.Context, tx sqlQueryer, subscriptionID int, change suspensionCauseChange, refuseWhenBusy bool) (suspensionAccept, error) {
+	var result suspensionAccept
 	// Take the write lock first so the read below cannot go stale.
 	if _, err := tx.ExecContext(ctx, `UPDATE subscriptions SET updated_at = updated_at WHERE id = ?`, subscriptionID); err != nil {
 		return result, err
@@ -283,11 +298,49 @@ func (p *Panel) acceptSuspensionChange(ctx context.Context, subscriptionID int, 
 			result.OperationID, result.Started = id, true
 		}
 	}
-	if err := tx.Commit(); err != nil {
-		return result, err
-	}
-	p.kickSuspensionWorker()
 	return result, nil
+}
+
+// resellerSuspensionFor is the suspended reseller a subscription's owner
+// belongs to (the owner itself when it is a reseller): its id and reason,
+// 0 when that reseller is not suspended.
+func resellerSuspensionFor(ctx context.Context, q sqlQueryer, subscriptionID int) (int, string, error) {
+	var id int
+	var reason sql.NullString
+	err := q.QueryRowContext(ctx, `
+		SELECT rs.reseller_id, rs.reason
+		FROM subscriptions s
+		JOIN users u ON u.id = s.owner_id
+		JOIN reseller_suspensions rs
+		  ON rs.reseller_id = CASE WHEN u.role = 'reseller' THEN u.id ELSE u.parent_id END
+		WHERE s.id = ?`, subscriptionID).Scan(&id, &reason)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, "", nil
+	}
+	return id, reason.String, err
+}
+
+// syncResellerSuspensionCauseTx makes a subscription's reseller cause match
+// its owner's reseller, inside the caller's transaction: an account created
+// under a suspended reseller starts suspended, and a transfer carries the
+// cause to the new owner's reseller (or clears it). It reports whether a
+// cause changed (the caller kicks the worker after committing).
+func (p *Panel) syncResellerSuspensionCauseTx(ctx context.Context, tx sqlQueryer, subscriptionID, actorID int) (bool, error) {
+	want, reason, err := resellerSuspensionFor(ctx, tx, subscriptionID)
+	if err != nil {
+		return false, err
+	}
+	row, err := loadSuspensionRow(ctx, tx, subscriptionID)
+	if err != nil {
+		return false, err
+	}
+	if row.Causes.ResellerID == want {
+		return false, nil
+	}
+	_, err = p.acceptSuspensionChangeTx(ctx, tx, subscriptionID, suspensionCauseChange{
+		ResellerID: &want, Reason: reason, ActorID: actorID, Trigger: suspensionTriggerReseller,
+	}, false)
+	return err == nil, err
 }
 
 func nullIfEmpty(value string) any {
@@ -456,4 +509,25 @@ type suspensionWorkerState struct {
 	once sync.Once
 	kick chan struct{}
 	mu   sync.Mutex
+}
+
+// syncResellerSuspensionCause is syncResellerSuspensionCauseTx in its own
+// transaction, for a subscription created outside one (plan assignment).
+func (p *Panel) syncResellerSuspensionCause(ctx context.Context, subscriptionID, actorID int) error {
+	tx, err := p.db.GetDB().BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	changed, err := p.syncResellerSuspensionCauseTx(ctx, tx, subscriptionID, actorID)
+	if err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	if changed {
+		p.kickSuspensionWorker()
+	}
+	return nil
 }
