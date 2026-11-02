@@ -45,6 +45,8 @@ const stubbedComponents = [
   'PendingInvitations', 'EmailVerificationCard',
   // 2 Nov 2026: the suspension dialogue and the Deletable list are their own screens.
   'SuspensionDialog', 'DeletableAccounts',
+  // alpha.117: transfers read their own addresses (SubscriptionTransfer).
+  'TransferRowAction', 'TransferRequestsList', 'TransferRequestCard',
 ];
 for (const name of screenFiles) {
   for (const match of source(`components/${name}.tsx`).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {

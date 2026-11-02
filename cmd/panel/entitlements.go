@@ -154,6 +154,11 @@ func (p *Panel) handleSubscriptionEntitlements(w http.ResponseWriter, r *http.Re
 		p.handleSubscriptionSuspension(w, r, id)
 		return
 	}
+	// alpha.117 (D-042 section 8): /api/v1/subscriptions/{id}/transfer...
+	if subID, action, ok := parseSubscriptionTransferPath(r.URL.Path); ok {
+		p.handleSubscriptionTransfer(w, r, subID, action)
+		return
+	}
 	path, ok := parseEntitlementPath(r.URL.Path)
 	if !ok {
 		http.NotFound(w, r)

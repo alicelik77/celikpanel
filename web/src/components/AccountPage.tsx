@@ -12,6 +12,7 @@ import { EmailVerificationCard } from './EmailVerificationCard';
 import { useLocation } from '../router';
 import { useAuth } from '../auth/AuthContext';
 import { MyPlanCard } from './MyPlanCard';
+import { TransferRequestCard } from './SubscriptionTransfer';
 
 // My account: the signed-in person's own sign-in security, opened from the
 // personal menu at the top right (D-037, owner 2026-10-22). It is what
@@ -34,6 +35,8 @@ export function AccountPage() {
             <div className="grid max-w-3xl gap-5">
                 {/* My plan (alpha.114): a quota refusal's "go fix it" lands here. */}
                 {(role === 'customer' || role === 'reseller') && <MyPlanCard />}
+                {/* alpha.117: a customer asks for a transfer (D-042 K3). */}
+                {role === 'customer' && <TransferRequestCard />}
                 <PasswordPanel />
                 <EmailPanel />
                 <TwoFactorPanel />

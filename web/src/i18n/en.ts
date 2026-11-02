@@ -54,6 +54,7 @@ import type { SetupOwnerScreenKey } from './screens/setupOwner/en';
 import type { SetupPublishingScreenKey } from './screens/setupPublishing/en';
 import type { FileAccessScreenKey } from './screens/fileAccess/en';
 import type { SuspensionScreenKey } from './screens/suspension/en';
+import type { TransfersScreenKey } from './screens/transfers/en';
 
 export const en = {
     // ---- alpha.108 tools ----
@@ -547,5 +548,6 @@ export type ScreenKey =
     | SetupOwnerScreenKey
     | SetupPublishingScreenKey
     | FileAccessScreenKey
-    | SuspensionScreenKey;
+    | SuspensionScreenKey
+    | TransfersScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

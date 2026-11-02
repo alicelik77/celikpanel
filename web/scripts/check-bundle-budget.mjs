@@ -177,6 +177,10 @@ const screenPartBudgets = {
   // refusal codes (err.FILE_ACCESS_). A new part, set with at least 25%
   // headroom from its Turkish file: 9.38 / 3.04 KiB.
   fileAccess: kib(12.5, 4),
+  // alpha.117: transferring a subscription and the transfer requests
+  // (transfer., err.TRANSFER_). A new part, set with at least 25% headroom
+  // from its Turkish file: 8.41 / 2.89 KiB.
+  transfers: kib(12, 4),
   // 2026-11-01 (alpha.114, lab run 2): the setup link's DNS-publisher and DKIM
   // waits, split out of "setupLink", which the run-2 wording took over its
   // ceiling (Turkish 13.35 KiB). A new part, set with at least 25% headroom

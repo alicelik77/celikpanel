@@ -346,6 +346,7 @@ func isAdditionalUserRestrictedPath(path string) bool {
 		"/api/v1/reseller-plans",
 		"/api/v1/rights",
 		"/api/v1/subscriptions",
+		"/api/v1/transfer-requests",
 		"/api/v1/my",
 		"/api/v1/suspensions",
 		"/api/v1/vpn",

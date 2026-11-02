@@ -305,7 +305,8 @@ export type ReadKey =
     | 'users'
     | 'plans'
     | 'team'
-    | 'suspension';
+    | 'suspension'
+    | 'transfers';
 
 // The addresses each name covers. A domain is also counted on the dashboard,
 // in the plan usage and in the DNS overview; a mailbox in the dashboard and in
@@ -354,6 +355,8 @@ const READ_KEY_ADDRESSES: Record<ReadKey, readonly RegExp[]> = {
     // Subscription suspension (2 Nov 2026): an account's and a subscription's
     // own reads, and the list of what is deletable.
     suspension: [/^\/api\/v1\/(users|subscriptions)\/\d+\/suspension(\?|$)/, /^\/api\/v1\/suspensions\/deletable(\?|$)/],
+    // A transfer changes owners, usage and the requests (alpha.117).
+    transfers: [/^\/api\/v1\/transfer-requests(\?|$)/, /^\/api\/v1\/users(\?|$)/, SUBSCRIPTION_USAGE],
 };
 
 /** The read addresses a name covers; exported for tests and audits. */

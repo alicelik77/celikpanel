@@ -469,6 +469,11 @@ export const enDashboardScreens = {
     'dashboard.audit.action.subscription.plan_change': 'changed the plan of {target}',
     // alpha.117 (D-042): rights.
     'dashboard.audit.action.subscription.rights': 'changed the rights of a subscription ({target})',
+    'dashboard.audit.action.subscription.transfer': 'transferred the subscription {target} to another owner',
+    'dashboard.audit.action.subscription.transfer_request': 'asked for the subscription {target} to be transferred',
+    'dashboard.audit.action.subscription.transfer_request_approve': 'approved the transfer request for {target}',
+    'dashboard.audit.action.subscription.transfer_request_reject': 'rejected the transfer request for {target}',
+    'dashboard.audit.action.subscription.transfer_request_cancel': 'withdrew the transfer request for {target}',
     'dashboard.audit.action.reseller.rights': 'changed the rights of the reseller {target}',
     'dashboard.audit.action.reseller.rights_custom': 'made the reseller {target} Custom',
     'dashboard.audit.action.reseller_plan.create': 'created the reseller plan {target}',

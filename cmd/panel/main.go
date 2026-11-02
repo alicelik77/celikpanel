@@ -1355,6 +1355,8 @@ func main() {
 	http.HandleFunc(rightsPathPrefix, panel.handleRightsRoutes)
 	http.HandleFunc("/api/v1/subscriptions", panel.handleSubscriptions)
 	http.HandleFunc("/api/v1/subscriptions/", panel.handleSubscriptionEntitlements)
+	http.HandleFunc(transferRequestsPath, panel.handleTransferRequests)
+	http.HandleFunc(transferRequestsPath+"/", panel.handleTransferRequests)
 	http.HandleFunc(mySubscriptionPath, panel.handleMySubscription)
 	http.HandleFunc(suspensionDeletablePath, panel.handleSuspensionDeletable)
 	http.HandleFunc("/api/v1/products", panel.handleProducts)
