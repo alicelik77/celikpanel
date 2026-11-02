@@ -482,7 +482,15 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 			plan.Blockers = append(plan.Blockers, code)
 		}
 	}
+	// While deferMail is set, steps are held in mailSteps and added after the
+	// mail host certificate (serverSetupMailCertificateFirst).
+	deferMail := false
+	mailSteps := []serverSetupPlanStep{}
 	addStep := func(kind, target, qualifier string) {
+		if deferMail {
+			mailSteps = append(mailSteps, serverSetupPlanStep{Kind: kind, Target: target, Qualifier: qualifier})
+			return
+		}
 		plan.Steps = append(plan.Steps, serverSetupPlanStep{ID: fmt.Sprintf("%02d-%s", len(plan.Steps)+1, kind), Kind: kind, Target: target, Qualifier: qualifier})
 	}
 	if extensionChangesJoin {
@@ -804,6 +812,13 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 		}
 	}
 	mailProfiles := serverSetupMailProfileIDs(draft)
+	// Certificate first, mail after (owner, 2 Nov 2026): on a server without
+	// Postfix and Dovecot the mail host certificate is obtained before the
+	// mail profile, which then installs with it instead of a temporary
+	// self-signed one. A server that already has a mail service keeps the
+	// earlier order: its accepted mail configuration is updated first.
+	mailCertificateFirst := len(mailProfiles) > 0 && !installed["postfix"] && !installed["dovecot"]
+	deferMail = mailCertificateFirst
 	if len(mailProfiles) > 0 {
 		if canonical, err := hostname.CanonicalFQDN(draft.MailHostname); err != nil || canonical != draft.MailHostname {
 			addBlocker("server_setup_mail_hostname_invalid")
@@ -836,6 +851,7 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 	} else if serverSetupPeerMailDNSStep(draft, link != nil && link.Document.First.MainDomainMail) && (link != nil || joinPending) {
 		addStep("mail_dns", draft.MainDomain, "")
 	}
+	deferMail = false
 	if serverSetupNeedsNativeCron(draft) {
 		addService(core.NativeCronServiceID)
 	}
@@ -926,11 +942,18 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 		if err := p.callAgentContext(ctx, "Agent.Version", &transport.Empty{}, &agent); err != nil {
 			return plan, err
 		}
-		if err := requireKnownAgentCapabilities(agent.Capabilities, transport.AgentCapabilityMailHostCertificateV1); err != nil {
+		required := []string{transport.AgentCapabilityMailHostCertificateV1}
+		if mailCertificateFirst {
+			required = append(required, transport.AgentCapabilityMailHostCertificateStageV1)
+		}
+		if err := requireKnownAgentCapabilities(agent.Capabilities, required...); err != nil {
 			addBlocker("server_setup_mail_certificate_unavailable")
 		}
 		addStep("access_dns", draft.MailHostname, plan.ServerIP)
 		addStep("mail_certificate", draft.MailHostname, "")
+		for _, step := range mailSteps {
+			addStep(step.Kind, step.Target, step.Qualifier)
+		}
 		var renewal transport.MailEnrollmentPreviewResponse
 		renewalErr := p.callAgentContext(ctx, "Agent.MailEnrollmentPreviewV1", &transport.MailEnrollmentSourceRequest{ExpectedBuildCommit: plan.BuildCommit}, &renewal)
 		generation, previewErr := setupMailEnrollmentPlanGeneration(renewal, plan.BuildCommit)
@@ -2326,7 +2349,12 @@ func (p *Panel) runServerSetupMailCertificate(ctx context.Context, plan serverSe
 	if err := p.callAgentContext(ctx, "Agent.Version", &transport.Empty{}, &agent); err != nil {
 		return false, err
 	}
-	if err := requireKnownAgentCapabilities(agent.Capabilities, transport.AgentCapabilityMailHostCertificateV1); err != nil {
+	certificateFirst := serverSetupMailCertificateFirst(plan.Steps)
+	required := []string{transport.AgentCapabilityMailHostCertificateV1}
+	if certificateFirst {
+		required = append(required, transport.AgentCapabilityMailHostCertificateStageV1)
+	}
+	if err := requireKnownAgentCapabilities(agent.Capabilities, required...); err != nil {
 		return false, err
 	}
 	if err := p.authorizeAgentRPCContext(ctx, "Agent.IssueMailHostCertificateV1"); err != nil {
@@ -2339,9 +2367,40 @@ func (p *Panel) runServerSetupMailCertificate(ctx context.Context, plan serverSe
 		if err := p.callAgentContext(bound, "Agent.IssueMailHostCertificateV1", &req, &response); err != nil {
 			return err
 		}
-		return serverSetupMailCertificateResponseError(response)
+		if err := serverSetupMailCertificateResponseError(response); err != nil {
+			return err
+		}
+		return serverSetupMailCertificateStagedError(response, certificateFirst)
 	})
 	return err == nil, err
+}
+
+// serverSetupMailCertificateStagedError: a certificate published while no
+// mail service was installed (Staged) is the reviewed outcome only when the
+// plan installs the mail profile after it. A plan that installed mail first
+// expected it applied to the running mail services.
+func serverSetupMailCertificateStagedError(response transport.IssueMailHostCertificateResponse, certificateFirst bool) error {
+	if response.Staged && !certificateFirst {
+		return errors.New("mail host certificate was published but no mail service is installed to use it")
+	}
+	return nil
+}
+
+// serverSetupMailCertificateFirst: the plan obtains the mail host
+// certificate before it installs the mail profile. Plans reviewed before
+// 2 Nov 2026, and plans for a server that already had mail, have the
+// profile first.
+func serverSetupMailCertificateFirst(steps []serverSetupPlanStep) bool {
+	certificate, profile := -1, -1
+	for index, step := range steps {
+		switch {
+		case step.Kind == "mail_certificate" && certificate < 0:
+			certificate = index
+		case step.Kind == "mail_profile" && profile < 0:
+			profile = index
+		}
+	}
+	return certificate >= 0 && profile > certificate
 }
 
 // serverSetupMailCertificateResponseError: the mail host certificate's

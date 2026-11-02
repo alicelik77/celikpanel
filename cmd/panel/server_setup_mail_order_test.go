@@ -76,7 +76,7 @@ func TestServerSetupMailStepsFollowTheDNSIdentityInEveryLayout(t *testing.T) {
 	})
 	t.Run("external DNS", func(t *testing.T) {
 		f, state := setupOperationFixture(t)
-		caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailTLSSyncV2}
+		caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailHostCertificateStageV1, transport.AgentCapabilityMailTLSSyncV2}
 		f.agent.versionCapabilities = &caps
 		draft := state.Draft
 		draft.Purpose, draft.MainDomain, draft.MailHostname = "web_mail", "example.test", "mail.example.test"

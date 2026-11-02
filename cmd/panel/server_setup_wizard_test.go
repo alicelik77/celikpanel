@@ -347,7 +347,7 @@ func TestServerSetupCatalogMailDependentServicesFollowMailProfile(t *testing.T) 
 	core.ManagedServices = append(append([]core.ManagedService{}, saved...), core.ManagedService{ID: "mail-addon", Name: "Mail add-on", Category: "email", Kind: core.KindService, Requires: []string{"smtp-server"}})
 	serverSetupSelectableComponents = serverSetupSelectableFromCatalogue()
 	f, state := setupOperationFixture(t)
-	capabilities := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
+	capabilities := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailHostCertificateStageV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
 	f.agent.versionCapabilities = &capabilities
 	state.Draft.Purpose = "custom"
 	state.Draft.MailHostname = "mail.example.test"

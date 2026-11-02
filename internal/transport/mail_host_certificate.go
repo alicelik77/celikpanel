@@ -4,6 +4,13 @@ import "time"
 
 const AgentCapabilityMailHostCertificateV1 = "mail_host_certificate_v1"
 
+// AgentCapabilityMailHostCertificateStageV1 (2 Nov 2026): the Agent issues the
+// mail host certificate on a server where Postfix and Dovecot are not yet
+// installed. It publishes the certificate in the managed mail host directory
+// and answers Staged; the mail profile install then configures mail with it.
+// Setup plans that obtain the certificate before installing mail require it.
+const AgentCapabilityMailHostCertificateStageV1 = "mail_host_certificate_stage_v1"
+
 type IssueMailHostCertificateRequest struct {
 	ServiceMutationBinding
 	Domain              string `json:"domain"`
@@ -14,6 +21,10 @@ type IssueMailHostCertificateRequest struct {
 type IssueMailHostCertificateResponse struct {
 	Issued    bool      `json:"issued"`
 	ExpiresAt time.Time `json:"expires_at"`
+	// Staged: the certificate was published while no mail service was
+	// installed, so nothing serves it yet; the mail profile install selects
+	// it. False when it was applied to the running mail services (additive).
+	Staged bool `json:"staged,omitempty"`
 	// ErrorCode / ClockSkewSeconds: CertificateClockSkewErrorCode when the
 	// issued leaf is not valid yet by this server's clock (additive).
 	ErrorCode        string `json:"error_code,omitempty"`

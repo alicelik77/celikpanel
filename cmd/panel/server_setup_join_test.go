@@ -87,7 +87,7 @@ func joinFirstFixture(t *testing.T, draft serverSetupDraft) (serviceOperationTes
 	f, state := setupOperationFixture(t)
 	// An Agent that can issue the mail host certificate (a first server with
 	// the main domain's mail).
-	caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailTLSSyncV2}
+	caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailHostCertificateStageV1, transport.AgentCapabilityMailTLSSyncV2}
 	f.agent.versionCapabilities = &caps
 	t.Setenv("CELIKPANEL_SERVER_IP", draft.LocalIP)
 	saved, err := f.panel.saveServerSetupDraft(context.Background(), state.Revision, draft)
