@@ -314,6 +314,7 @@ export const enSetupScreens = {
     "setup.start": "Start reviewed setup",
     "setup.conflict": "Setup was changed in another session. Reload this page to review the saved values before continuing.",
     "setup.saveFailed": "Your setup draft could not be saved. Check the connection and try again.",
+    "setup.saveRefused": "The server did not accept this answer ({reason}). Correct it on this step or go back to the step it belongs to, then continue.",
     "setup.planFailed": "The plan could not be verified. Check the inputs and try reviewing it again.",
     "setup.storageFailed": "Setup was not started because this browser could not save a recovery marker. Allow site storage and try again.",
     "setup.resuming": "Checking for an existing setup operation…",

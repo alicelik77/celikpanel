@@ -276,6 +276,21 @@ const dnsLabel = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 export function normalizeSetupDomain(value: string): string {
     return value.trim().toLowerCase().replace(/^[a-z][a-z0-9+.-]*:\/\//, '').replace(/[/?#].*$/, '').replace(/:\d+$/, '').replace(/^www\./, '').replace(/\.$/, '');
 }
+// The records step's answers belong to the domain they were read from: a
+// changed main domain drops them, and the records step reads the new domain's
+// own. The mail2 name offered for the old domain goes too, so the names step
+// proposes one under the new domain. (Owner, 2 November 2026: a draft kept
+// celikpanel.net's records after the domain became celikhost.com and the
+// server refused it.)
+// Ana alan adi degisince eski alan adinin kayit cevaplari ve mail2 adi dusulur.
+export function setupWithMainDomain(draft: ServerSetupDraft, value: string): ServerSetupDraft {
+    const before = normalizeSetupDomain(draft.main_domain || '');
+    const next: ServerSetupDraft = { ...draft, main_domain: value };
+    if (!before || normalizeSetupDomain(value) === before) return next;
+    delete next.imported_records;
+    if (normalizeSetupDomain(next.mail_hostname || '') === `mail2.${before}`) next.mail_hostname = '';
+    return next;
+}
 export function validSetupDomain(value: string): boolean {
     const labels = value.split('.');
     return value.length <= 253 && labels.length >= 2 && labels.every(item => dnsLabel.test(item)) && !/^\d+$/.test(labels[labels.length - 1]);

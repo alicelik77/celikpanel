@@ -5,7 +5,7 @@ import { useI18n } from '../i18n';
 import { setupDNSTranslation } from '../i18n/setupDNS';
 import type { TranslationKey } from '../i18n/en';
 import { Link, Navigate } from '../router';
-import { decodeSetupEditorCheckpoint, changeSetupWizardDNSRole, setupJoinPendingDraft, setupDNSNames, setupDetectedIPv4, decodeServerSetup, setupEditorKey, setupExtensionChanges, setupNextPath, normalizeSetupDomain, validSetupDomain, validSetupShortName, setupNameWithin, setupInitialMainDomain, setupProposedNames, setupApplyProposedNames, setupJoinedMailProposal, setupApplyJoinedMailName, setupJoinedMailTaken, type ServerSetupCheck, type ServerSetupDraft, type ServerSetupSnapshot, type SetupEditorStep, type SetupExtensionChangeKey, type SetupProposedNames } from '../lib/serverSetup';
+import { decodeSetupEditorCheckpoint, changeSetupWizardDNSRole, setupJoinPendingDraft, setupDNSNames, setupDetectedIPv4, decodeServerSetup, setupEditorKey, setupExtensionChanges, setupNextPath, normalizeSetupDomain, validSetupDomain, validSetupShortName, setupNameWithin, setupInitialMainDomain, setupWithMainDomain, setupProposedNames, setupApplyProposedNames, setupJoinedMailProposal, setupApplyJoinedMailName, setupJoinedMailTaken, type ServerSetupCheck, type ServerSetupDraft, type ServerSetupSnapshot, type SetupEditorStep, type SetupExtensionChangeKey, type SetupProposedNames } from '../lib/serverSetup';
 import { retryableMailEnrollmentHandoff, continuableMailEnrollment, decodeSetupExecution, decodeSetupMarker, decodeSetupPlan, newSetupRequestID, safeSetupPanelURL, setupMainSiteOutcome, setupMarkerForInstallation, setupStartRefusedBeforeRun, type ServerSetupExecution, type SetupInfrastructureDNSPlan, type ServerSetupPlan, type SetupStartMarker } from '../lib/serverSetupOperation';
 import { ServerSetupShell, useServerSetup } from './ServerSetupGate';
 import { ServerSetupSteps } from './ServerSetupSteps';
@@ -15,6 +15,7 @@ import { ServerSetupChoice, ServerSetupManualAction } from './ServerSetupChoice'
 import { Button, inputClass, KeepWords, Spinner } from './ui';
 import { SetupCountStep, SetupDNSHomeStep, SetupDomainStep, SetupJoinCard, SetupJoinPanel, SetupJoinedSummary, SetupMailStep, SetupOpenTasks, SetupRecordsStep, SetupNameStep, SetupNamesStep, SetupPanelAccessCard, SetupProviderRecordsCard, SetupRegistrarCard, SetupRolesStep, SetupServerKindStep, SetupWizardInput, setupEngineChoice, setupActiveEngine, SetupMainSiteQuestion, type SetupServerKind, setupServerLabel, useSetupDelegation, useSetupPeerLink } from './ServerSetupWizardSteps';
 import { AddressLink } from './AddressLink';
+import { readApiError } from '../lib/apiError';
 import { SetupFirstSite } from './SetupFirstSite';
 import { ServerSetupComponents, useSetupComponentCatalog } from './ServerSetupComponents';
 import { setupCheckLine, setupComponentName, setupExecutionGuidance, setupHostBusyGuidance, setupHostingRootBlockerValues, setupPlanReopened, setupStepState, setupStepStateLabel, type SetupGuidanceText } from '../lib/serverSetupGuidance';
@@ -588,6 +589,12 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
         const sent: ServerSetupDraft = { ...base, main_site: mainSiteAsked ? mainSiteAnswer : undefined };
         const response = await setupFetch('/api/v1/setup', { ...requestOptions({ revision: snapshot.revision, draft: { ...sent, ...(sent.main_domain ? { main_domain: normalizeSetupDomain(sent.main_domain) } : {}), ...(sent.short_name !== undefined ? { short_name: sent.short_name.trim().toLowerCase() || undefined } : {}), ...(secondaryHosting && !joinFlow ? { dns_hosting_management: hostingDNSManagement, ...(hostingDNSManagement === 'manual' ? { dns_publisher_endpoint: '' } : {}) } : {}) } }), method: 'PUT' });
         if (response.status === 409) throw new Error(t('setup.conflict'));
+        // A refused draft is not a connection problem: the server's reason is
+        // said (owner, 2 November 2026). / Reddedilen taslak bağlantı sorunu değildir.
+        if (response.status === 400) {
+            const refusal = await readApiError(response);
+            throw new Error(refusal.message ? t('setup.saveRefused', { reason: refusal.message }) : t('setup.saveFailed'));
+        }
         if (!response.ok) throw new Error(t('setup.saveFailed'));
         const next = decodeServerSetup(await response.json());
         if (!next) throw new Error(t('setup.loadFailed'));
@@ -1120,7 +1127,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                 </section> : <form onSubmit={next} className="min-w-0">
                     {step === 'domain' && (joinedLink ? <SetupJoinedSummary link={joinedLink} /> : <>
                         {!extending && <SetupServerKindStep value={kind} disabled={busy} onChange={value => { setServerKind(value); setError(''); }} />}
-                        {kind === 'first' && <div className={extending ? '' : 'mt-8'}><SetupDomainStep shortName={draft.short_name} value={draft.main_domain || ''} invalid={!!error && !validSetupDomain(mainDomain)} onChange={value => updateDraft(previous => ({ ...previous, main_domain: value }))} /></div>}
+                        {kind === 'first' && <div className={extending ? '' : 'mt-8'}><SetupDomainStep shortName={draft.short_name} value={draft.main_domain || ''} invalid={!!error && !validSetupDomain(mainDomain)} onChange={value => updateDraft(previous => setupWithMainDomain(previous, value))} /></div>}
                         {/* The join path: the main domain comes from the first server, so only the join (its one primary action) is offered. */}
                         {kind === 'join' && <div className="mt-8">{peer.known ? <SetupJoinPanel disabled={busy} serverIP={snapshot.server_ip} onJoined={value => {
                             const next = decodeServerSetup(value); peer.refresh();
