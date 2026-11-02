@@ -609,23 +609,37 @@ function PlansTab({ isAdmin }: { isAdmin: boolean }) {
         }
     };
 
-    const save = async () => {
+    // A save below what some accounts use now is refused with the list; it is
+    // shown only for the very form values it was answered for, and the
+    // operator may confirm it (nothing is deleted).
+    // Bazı hesapların kullanımının altına inen kayıt, listeyle reddedilir;
+    // yalnız yanıtlandığı form değerleri için gösterilir, onaylanabilir.
+    const [planOver, setPlanOver] = useState<{ lines: string[]; form: string } | null>(null);
+    const overShown = editing && planOver && planOver.form === JSON.stringify(editing) ? planOver.lines : null;
+
+    const save = async (accept = false) => {
         if (!editing) return;
         const isNew = editing.id === 0;
         const res = await send(isNew ? '/api/v1/plans' : `/api/v1/plans/${editing.id}`, {
             method: isNew ? 'POST' : 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(editing),
+            body: JSON.stringify(accept ? { ...editing, accept_over_usage: true } : editing),
         });
         if (!res) return;
         if (!res.ok) {
             const problem = await readApiError(res);
+            if (problem.code === 'PLAN_BELOW_USAGE') {
+                setPlanRefusal(null);
+                setPlanOver({ lines: problem.details ?? [], form: JSON.stringify(editing) });
+                return;
+            }
             setPlanRefusal(problem);
             showToast('error', refusalText(problem, t, 'plans.saveFailed'), refusalToast(problem, t));
             return;
         }
         setPlanRefusal(null);
-        showToast('success', isNew ? t('plans.created') : t('plans.updated'));
+        setPlanOver(null);
+        showToast('success', isNew ? t('plans.created') : accept ? t('plans.updatedOver') : t('plans.updated'));
         setEditing(null);
         load();
     };
@@ -670,13 +684,25 @@ function PlansTab({ isAdmin }: { isAdmin: boolean }) {
                         <NumField label={`${t('plans.col.disk')} (MB)`} value={editing.disk_quota_mb} onChange={(v) => setEditing({ ...editing, disk_quota_mb: v })} />
                     </div>
                     <ErrorBanner className="mt-3" error={planRefusal} sentence="plans.saveFailed" />
+                    {overShown && (
+                        <div className="mt-3 rounded-md bg-danger/10 p-3 text-sm text-danger" role="alert" data-plan-below-usage="">
+                            <p className="font-semibold">{t('plans.belowUsage')}</p>
+                            <ul className="mt-1 list-disc pl-5">{overShown.map((line) => <li key={line}>{line}</li>)}</ul>
+                        </div>
+                    )}
                     <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
                         {/* Why Save is off, beside it (owner rule 2026-10-31). */}
                         {!editing.name.trim() && <p id="plan-save-reason" className="mr-auto text-sm text-fg" data-blocked-reason="">{t('acct.plan.missing')}</p>}
-                        <Button icon={X} onClick={() => { setEditing(null); setPlanRefusal(null); }}>{t('users.cancel')}</Button>
-                        <Button variant="primary" icon={Save} onClick={save} aria-describedby={!editing.name.trim() ? 'plan-save-reason' : undefined} disabled={saving || !plansKnown || !editing.name.trim()}>
-                            {t('plans.save')}
-                        </Button>
+                        <Button icon={X} onClick={() => { setEditing(null); setPlanRefusal(null); setPlanOver(null); }}>{t('users.cancel')}</Button>
+                        {overShown ? (
+                            <Button variant="primary" onClick={() => void save(true)} disabled={saving || !plansKnown}>
+                                {t('plans.saveAnyway')}
+                            </Button>
+                        ) : (
+                            <Button variant="primary" icon={Save} onClick={() => void save()} aria-describedby={!editing.name.trim() ? 'plan-save-reason' : undefined} disabled={saving || !plansKnown || !editing.name.trim()}>
+                                {t('plans.save')}
+                            </Button>
+                        )}
                     </div>
                 </div>
             )}

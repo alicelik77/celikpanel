@@ -471,6 +471,13 @@ func (p *Panel) handleImportApply(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
+			// The subscription's mailbox limit applies to imported mailboxes too.
+			// Abonelik posta kutusu sınırı içe aktarılan kutular için de geçerlidir.
+			if quotaErr := p.checkSubscriptionQuota(ctx, req.SubscriptionID, quotaMail); quotaErr != nil {
+				fail("mail:"+email, quotaErr)
+				continue
+			}
+
 			p.mailMutationMu.Lock()
 			if guardErr := p.ensureMailDomainMutable(ctx, domainID); guardErr != nil {
 				p.mailMutationMu.Unlock()
@@ -664,6 +671,13 @@ func (p *Panel) handleImportApply(w http.ResponseWriter, r *http.Request) {
 			}
 			for _, db := range preview.Databases {
 				if err != nil {
+					continue
+				}
+
+				// The subscription's database limit applies to imported databases too.
+				// Abonelik veritabanı sınırı içe aktarılan veritabanları için de geçerlidir.
+				if quotaErr := p.checkSubscriptionQuota(ctx, req.SubscriptionID, quotaDBs); quotaErr != nil {
+					fail("database:"+db.Name, quotaErr)
 					continue
 				}
 
