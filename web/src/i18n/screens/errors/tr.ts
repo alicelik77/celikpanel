@@ -75,7 +75,7 @@ export const trErrorsScreens: Record<ErrorsScreenKey, string> = {
     'err.QUOTA_DATABASES_EXCEEDED.action': 'Planıma bak',
     'err.QUOTA_MAILBOXES_EXCEEDED': 'Planınızın posta kutusu sınırına ulaşıldı. Hiçbir şey oluşturulmadı. Kullanmadığınız bir posta kutusunu silin ya da sağlayıcınızdan daha büyük bir plan isteyin (kim olduğu Planım bölümünde yazar).',
     'err.QUOTA_MAILBOXES_EXCEEDED.action': 'Planıma bak',
-    'err.RESELLER_POOL_EXCEEDED': 'Bu, bayi havuzunun izin verdiğinden fazlasını dağıtır. Hiçbir şey değiştirilmedi. Daha küçük bir plan seçin, başka bir müşteriyi daha küçük plana alın ya da yöneticiden daha büyük bir havuz isteyin.',
+    'err.RESELLER_POOL_EXCEEDED': 'Hiçbir şey oluşturulmadı: hizmet sağlayıcınızın toplam payı, bütün hesaplarının gerçek kullanımıyla doldu. Artık gerekmeyen bir şeyi kaldırın ya da hizmet sağlayıcınızdan daha fazlasını isteyin; bayi, yöneticiden daha büyük bir havuz ister.',
     'err.RESELLER_CUSTOMER_LIMIT': 'Havuzunuz daha fazla müşteriye izin vermiyor. Hiçbir şey oluşturulmadı. Artık hizmet vermediğiniz bir müşteriyi kaldırın ya da yöneticiden daha büyük bir havuz isteyin.',
     'err.PLAN_EXCEEDS_POOL': 'Bir plan havuzunuzdan fazlasını vaat edemez. Hiçbir şey kaydedilmedi. Sınırları düşürün (havuzunuzun sınırı olan yerde sınırsız olamaz) ya da yöneticiden daha büyük bir havuz isteyin.',
     'err.PLAN_BELOW_USAGE': 'Bu plan, hesabın şu anki kullanımının altında. Hiçbir şey değiştirilmedi. Yine de uygularsanız hiçbir şey silinmez; listelenen türlerde kullanım sınırın altına inene dek yenisi oluşturulamaz.',

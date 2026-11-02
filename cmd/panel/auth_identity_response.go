@@ -133,6 +133,8 @@ func (p *Panel) identityResponse(
 		CustomerID:  identity.identity.CustomerID,
 	}
 	response.Features["vpn"] = p.vpnOfferedTo(ctx, caller)
+	// alpha.117 (D-042): the navigation follows the account's rights too.
+	p.narrowFeaturesByRights(ctx, caller, response.Features)
 	return response
 }
 

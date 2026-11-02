@@ -117,12 +117,34 @@ export async function readApiError(res: Response): Promise<ApiError> {
 
 type T = (key: TranslationKey, vars?: Record<string, string | number>) => string;
 
+// Rights refusals (alpha.117, D-042): the server names the right and who can
+// open it in English (`vars.name`, `vars.grantor`). The one place a screen
+// turns them into the reader's language: the permission by its catalogue
+// label, and "the administrator" or "your provider (<name>)" by the
+// catalogue's words. Without those words the server's own stay.
+// Hak retleri: sunucu hakkı ve kimin açabileceğini İngilizce adlandırır;
+// ekran bunları burada okurun diline çevirir.
+function refusalVars(e: ApiError, t: T): Record<string, string> | undefined {
+    if (e.code !== 'RIGHT_NOT_GRANTED' && e.code !== 'NOT_OFFERED') return e.vars;
+    const vars: Record<string, string> = { ...(e.vars ?? {}) };
+    const say = (key: string, values?: Record<string, string>) => {
+        const text = t(key as TranslationKey, values);
+        return text === key ? null : text;
+    };
+    if (vars.right) vars.name = say('rights.perm.' + vars.right) ?? vars.name ?? vars.right;
+    const provider = /^your provider \((.+)\)$/.exec(vars.grantor ?? '');
+    const grantor = provider ? say('rights.grantor.provider', { name: provider[1] }) : say('rights.grantor.administrator');
+    if (grantor) vars.grantor = grantor;
+    return vars;
+}
+
 // apiErrorText prefers the localized text of a coded refusal and falls back
 // to the server message, then to a generic error.
 // apiErrorText, kodlu reddin yerelleştirilmiş metnini tercih eder; sunucu
 // mesajına, o da yoksa genel hataya düşer.
 export function apiErrorText(e: ApiError, t: T, fallbackKey: TranslationKey = 'common.error'): string {
     if (e.code) {
+        const vars = refusalVars(e, t);
         // The refined sentence first: a refusal that named which of several
         // causes it was deserves the words for that cause, not the words that
         // cover all of them. R-068 is the case this was written for - "another
@@ -176,11 +198,11 @@ export function apiErrorText(e: ApiError, t: T, fallbackKey: TranslationKey = 'c
         }
         if (e.reason) {
             const refined = ('err.' + e.code + '.' + e.reason) as TranslationKey;
-            const named = t(refined, e.vars);
+            const named = t(refined, vars);
             if (named !== refined) return named;
         }
         const key = ('err.' + e.code) as TranslationKey;
-        const s = t(key, e.vars);
+        const s = t(key, vars);
         if (s !== key) return s;
     }
     return e.message || t(fallbackKey);

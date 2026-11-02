@@ -199,6 +199,8 @@ export const tr: Record<ShellKey, string> = {
     'common.resultUnknown': 'Yanıt gelmeden bağlantı koptu; bu yüzden değişikliğin yapılıp yapılmadığı bilinmiyor. Hiçbir şey ikinci kez gönderilmez. Gösterilen yeniden okunuyor; işlemi yinelemeden önce ona bakın.',
     'common.technicalDetails': 'Teknik ayrıntılar',
     'common.cancel': 'İptal',
+    'rights.grantor.administrator': 'yöneticiden',
+    'rights.grantor.provider': 'hizmet sağlayıcınızdan ({name})',
     'common.resultUnknownRead': 'Yanıt gelmeden bağlantı koptu; bu yüzden değişikliğin yapılıp yapılmadığı bilinmiyor. Hiçbir şey ikinci kez gönderilmedi. Burada gösterilen, saat {time} itibarıyla yeniden okundu: işlemi yinelemeden önce ona bakın.',
     'common.resultUnknownMade': 'Yanıt gelmeden bağlantı koptu ve hiçbir şey ikinci kez gönderilmedi. Saat {time} itibarıyla yeniden okunan durum değişikliği gösteriyor; yani kaydedildi. Hiçbir şeyin yeniden gönderilmesi gerekmiyor.',
     'common.resultUnknownNotMade': 'Yanıt gelmeden bağlantı koptu ve hiçbir şey ikinci kez gönderilmedi. Saat {time} itibarıyla yeniden okunan durum değişikliği göstermiyor; bu yüzden kaydedildiği bilinmiyor. Girdikleriniz hâlâ burada. Bağlantı koptuğunda sunucu hâlâ çalışıyorduysa değişiklik sonradan görünebilir: ikinci kez göndermeden önce tekrar kontrol edin.',

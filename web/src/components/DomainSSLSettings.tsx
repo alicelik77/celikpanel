@@ -18,6 +18,13 @@ interface DomainSSLSettingsProps {
     mailAvailable: boolean | null;
     readOnly?: boolean;
     onCertificateChange?: (status: SSLRuntimeSummary) => void;
+    /**
+     * What the subscription's rights hold (alpha.117, D-042): a free
+     * certificate, an uploaded one. A closed source is not offered; the
+     * server refuses it anyway.
+     */
+    acmeOpen?: boolean;
+    customOpen?: boolean;
 }
 
 export interface SSLRuntimeSummary {
@@ -132,6 +139,8 @@ export function DomainSSLSettings({
     mailAvailable,
     readOnly = false,
     onCertificateChange,
+    acmeOpen = true,
+    customOpen = true,
 }: DomainSSLSettingsProps) {
     const { t, locale } = useI18n();
     // Another domain is another address: its answer never appears under this
@@ -145,7 +154,9 @@ export function DomainSSLSettings({
     const [email, setEmail] = useState('');
     const [autoRenew, setAutoRenew] = useState(true);
     const [includeMail, setIncludeMail] = useState(false);
-    const [certSource, setCertSource] = useState<'letsencrypt' | 'custom'>('letsencrypt');
+    const [chosenSource, setCertSource] = useState<'letsencrypt' | 'custom'>(acmeOpen ? 'letsencrypt' : 'custom');
+    // A source the rights close is never shown; the open one stands in for it.
+    const certSource: 'letsencrypt' | 'custom' = (chosenSource === 'letsencrypt' ? acmeOpen : customOpen) ? chosenSource : (acmeOpen ? 'letsencrypt' : 'custom');
     // The CA the cert is issued from (operator, 23 Jul: "a few kinds of SSL").
     // The list comes from the server registry — the UI never hardcodes a CA.
     // Sertifikanın alındığı CA (operatör, 23 Tem: "birkaç çeşit SSL"). Liste
@@ -901,8 +912,8 @@ export function DomainSSLSettings({
                     }
                 >
                     <div className="mb-4 flex gap-1 border-b border-border">
-                        <TabBtn active={certSource === 'letsencrypt'} onClick={() => setCertSource('letsencrypt')} icon={Shield} label={t('ssl.tab.letsencrypt')} />
-                        <TabBtn active={certSource === 'custom'} onClick={() => setCertSource('custom')} icon={Upload} label={t('ssl.tab.custom')} />
+                        {acmeOpen && <TabBtn active={certSource === 'letsencrypt'} onClick={() => setCertSource('letsencrypt')} icon={Shield} label={t('ssl.tab.letsencrypt')} />}
+                        {customOpen && <TabBtn active={certSource === 'custom'} onClick={() => setCertSource('custom')} icon={Upload} label={t('ssl.tab.custom')} />}
                     </div>
 
                     {replacementBlockedByMailState && (

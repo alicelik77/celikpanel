@@ -304,7 +304,11 @@ export type ReadKey =
     | 'databases'
     | 'users'
     | 'plans'
-    | 'team';
+    | 'team'
+    // alpha.117 (D-042): an account's or a plan's rights, the administrator's
+    // offer, the notices; also what the rights decide on other screens (the
+    // domain tabs, the choosers, My plan).
+    | 'rights';
 
 // The addresses each name covers. A domain is also counted on the dashboard,
 // in the plan usage and in the DNS overview; a mailbox in the dashboard and in
@@ -350,6 +354,17 @@ const READ_KEY_ADDRESSES: Record<ReadKey, readonly RegExp[]> = {
     users: [/^\/api\/v1\/users(\/|\?|$)/, /^\/api\/v1\/invitations(\?|$)/, SUBSCRIPTION_USAGE],
     plans: [/^\/api\/v1\/plans(\/|\?|$)/, /^\/api\/v1\/users(\?|$)/, SUBSCRIPTION_USAGE],
     team: [/^\/api\/v1\/team-members/, /^\/api\/v1\/invitations(\?|$)/],
+    rights: [
+        /^\/api\/v1\/rights\//,
+        /^\/api\/v1\/subscriptions\/\d+\/rights(\/|\?|$)/,
+        /^\/api\/v1\/users(\/\d+\/rights)?(\/|\?|$)/,
+        /^\/api\/v1\/reseller-plans(\/|\?|$)/,
+        /^\/api\/v1\/plans(\/|\?|$)/,
+        /^\/api\/v1\/offered-versions(\?|$)/,
+        /^\/api\/v1\/hosting\/capabilities(\?|$)/,
+        /^\/api\/v1\/domains(\?|$)/,
+        SUBSCRIPTION_USAGE,
+    ],
 };
 
 /** The read addresses a name covers; exported for tests and audits. */

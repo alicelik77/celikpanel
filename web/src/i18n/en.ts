@@ -53,6 +53,7 @@ import type { PanelPortScreenKey } from './screens/panelPort/en';
 import type { SetupOwnerScreenKey } from './screens/setupOwner/en';
 import type { SetupPublishingScreenKey } from './screens/setupPublishing/en';
 import type { FileAccessScreenKey } from './screens/fileAccess/en';
+import type { RightsScreenKey } from './screens/rights/en';
 
 export const en = {
     // ---- alpha.108 tools ----
@@ -366,6 +367,9 @@ export const en = {
     'common.checkAgain': 'Check again',
     'common.technicalDetails': 'Technical details',
     'common.cancel': 'Cancel',
+    // alpha.117 (D-042): who can open a refused right, read by lib/apiError.ts.
+    'rights.grantor.administrator': 'the administrator',
+    'rights.grantor.provider': 'your provider ({name})',
     'common.close': 'Close',
     'common.back': 'Back',
     // Plural by the count: '1 item', '{n} items' (alpha.92 Domains: "1 items total").
@@ -545,5 +549,6 @@ export type ScreenKey =
     | PanelPortScreenKey
     | SetupOwnerScreenKey
     | SetupPublishingScreenKey
-    | FileAccessScreenKey;
+    | FileAccessScreenKey
+    | RightsScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;
