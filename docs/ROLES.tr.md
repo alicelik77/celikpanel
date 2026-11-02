@@ -82,6 +82,8 @@ Bir ek kullanıcı, ait olduğu tek müşterinin dışındaki kaynakları asla g
 
 Yönetici, bayi ve müşterinin yetkileri rolleri tarafından sabitlenmiştir — paneli basit tutan şey budur. **Ayrıntılı yetkilendirme tam olarak tek bir yerde vardır: ek kullanıcı**, yani müşterinin *kendi* yetkilerinin bir alt kümesini devrettiği yer.
 
+**Planlanan (D-042):** bayi ve müşterilerin hakları bir plandan gelecek ya da yöneticinin sunduğu çerçevede hesaba özel seçilecek; bayi yalnız daraltabilir. Bkz. [PLANS-AND-RIGHTS.tr.md](PLANS-AND-RIGHTS.tr.md). Onaylandı ama uygulanmadı; yukarıdaki paragraf bugünkü davranışı anlatır.
+
 Yetkiler kaynağa göre gruplanır. Ek kullanıcı tanımlayan müşteri, **kendi** setinden seçer:
 
 | Yetki grubu | Görüntüle | Yönet |
@@ -151,5 +153,5 @@ Bu bölüm kodun bugün ne yaptığını söyler; yukarıdaki tasarım hedef ola
 ## Bilinçli yapılmayacaklar (sadelik)
 
 - ❌ **Sınırsız iç içe geçme** (bayinin altında bayi, onun altında bayi). Zincir dört katmanda sabittir. Bayilerin üzerine bir "dağıtıcı" katmanı ancak gerçek talep doğarsa *sonra* eklenebilir — o zamana kadar yönetici bu rolü doldurur.
-- ❌ **Müşteri/bayiler için elle kurulan özel yetki setleriyle özel roller.** Yalnızca ek kullanıcılar ayrıntılıdır; diğer herkes kendi rolüdür. Bu, cPanel/Plesk kafa karışıklığının en büyük kaynağıdır ve bilerek reddediyoruz.
+- ✅ **Her hesabın hakları ya bir plandan gelir ya da o hesaba özel seçilir (D-042); kişi başına ayrı rol yoktur.** Kişi başına yetki modeli yalnız ek kullanıcılarda vardır; plan şablondur ve plandan ayrılan hesap açıkça "Özel" olur — asla "plan + ek" olmaz.
 - ❌ **"Tek domain"den daha ince kayıt-başı ACL'ler.** En küçük kapsam bir domaindir.
