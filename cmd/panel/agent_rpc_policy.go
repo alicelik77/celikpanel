@@ -170,7 +170,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.ApplyVhost Agent.ApplyVhosts Agent.ReconcileDefaultHTTPSServerV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostingApp, `
-		Agent.ApplyAppUnit Agent.ControlAppUnit Agent.RemoveAppUnit
+		Agent.ApplyAppUnit Agent.ControlAppUnit Agent.RemoveAppUnit Agent.SetAppUnitSuspensionV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityCertificate, `
 		Agent.DeleteCertLineage Agent.InstallCustomCertificate Agent.IssueLetsEncryptCertificate
@@ -384,6 +384,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.SetSiteAccountSuspensionV1":    agentRPCMutationTimeout,
 	"Agent.SetMailDomainSuspensionV1":     agentRPCMutationTimeout,
 	"Agent.SetDatabaseUserSuspensionV1":   agentRPCMutationTimeout,
+	"Agent.SetAppUnitSuspensionV1":        agentRPCMutationTimeout,
 	"Agent.UpdateMySQLConfig":             agentRPCMutationTimeout,
 	"Agent.UpdatePHPConfig":               agentRPCMutationTimeout,
 	"Agent.UpdatePHPConfiguration":        agentRPCMutationTimeout,

@@ -2,29 +2,69 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"sort"
 	"strings"
 
+	"github.com/alicelik/celikpanel/internal/hostcmd"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
-// A suspended mail domain is out of Postfix's virtual mailbox domain map, so
-// Postfix refuses its mail (relay denied), and each mailbox's Dovecot
-// passwd-file line carries nologin=y as its first extra field, so Dovecot
-// refuses IMAP, POP3 and SMTP AUTH (Postfix authenticates through Dovecot
-// SASL). Mailboxes and maildirs are never deleted. The token goes first in the
+// A suspended mail domain stays in Postfix's virtual mailbox domain map and
+// gets one line in CelikPanel's suspended recipient map,
+// "<domain> 450 4.7.1 Mailbox temporarily unavailable". smtpd_recipient_
+// restrictions starts with "check_recipient_access hash:<that map>" while the
+// map has a line, so Postfix answers the domain's mail with a temporary 450:
+// senders keep it queued and retry, and nothing is lost when the subscription
+// resumes within days. Each mailbox's Dovecot passwd-file line carries
+// nologin=y as its first extra field, so Dovecot refuses IMAP, POP3 and SMTP
+// AUTH. Mailboxes and maildirs are never deleted. The token goes first in the
 // extra fields because UpdateMailQuota rewrites from "userdb_quota_rule=" to
 // the end of the line; a token in front of it survives a quota change.
 //
-// Askıya alınmış posta alan adı Postfix'in sanal posta kutusu alan adı
-// haritasından çıkar (posta reddedilir); her posta kutusunun Dovecot
-// satırının ilk ek alanı nologin=y olur (IMAP, POP3 ve SMTP girişi
-// reddedilir). Hiçbir posta kutusu silinmez.
+// A resume removes the map line; when the map has no line left, the managed
+// restriction element is removed again and main.cf is back to the owner's
+// value. A restriction element the owner moved is left alone (with an empty
+// map it changes nothing).
+//
+// Askıya alınmış posta alan adı haritada kalır; CelikPanel'in askı haritasına
+// "450 4.7.1" satırı eklenir, Postfix postayı geçici olarak reddeder ve
+// gönderen yeniden dener. Her posta kutusunun Dovecot satırının ilk ek alanı
+// nologin=y olur. Hiçbir posta kutusu silinmez.
 
-const suspensionNologinToken = "nologin=y"
+const (
+	suspensionNologinToken      = "nologin=y"
+	suspensionMailDeferReply    = "450 4.7.1 Mailbox temporarily unavailable"
+	suspensionRecipientAccess   = "check_recipient_access"
+	suspensionRestrictionsParam = "smtpd_recipient_restrictions"
+)
+
+// postfixSuspendedRecipientsPath is the suspended recipient map, compiled
+// with this server's indexed map type like CelikPanel's other maps.
+var (
+	postfixSuspendedRecipientsPath = "/etc/postfix/celikpanel_suspended_recipients"
+	suspensionMapType              = func() string { return postfixMapTypeContext(context.Background()) }
+)
+
+func suspensionDeferLine(domain string) string {
+	return domain + " " + suspensionMailDeferReply
+}
+
+// suspensionRestrictionPrefix is the managed element; mapType is Postfix's
+// indexed map type on this server (hash, lmdb, ...).
+func suspensionRestrictionPrefix(mapType string) string {
+	return suspensionRecipientAccess + " " + mapType + ":" + postfixSuspendedRecipientsPath
+}
+
+// suspensionMapOperand: a restriction operand that names our map, any type.
+func suspensionMapOperand(text string) bool {
+	index := strings.IndexByte(text, ':')
+	return index > 0 && text[index+1:] == postfixSuspendedRecipientsPath
+}
 
 // dovecotUsersExtraIndex returns where the extra fields of a passwd-file line
 // start (just after the 7th ':'; user:pass:uid:gid:gecos:home:shell:extra),
@@ -124,9 +164,10 @@ func suspensionUsersLineIndexes(lines []string, mailbox string) []int {
 	return indexes
 }
 
-// mailDomainSuspensionState reads the state of one domain from the two maps'
-// contents. Duplicate lines make the state unknown.
-func mailDomainSuspensionState(domainsRaw, usersRaw []byte, domain string, mailboxes []string) (transport.MailDomainState, error) {
+// mailDomainSuspensionState reads the state of one domain from the domain
+// map, the suspended recipient map and the users file. Duplicate lines make
+// the state unknown.
+func mailDomainSuspensionState(domainsRaw, deferRaw, usersRaw []byte, domain string, mailboxes []string) (transport.MailDomainState, error) {
 	state := transport.MailDomainState{LoginRefused: map[string]bool{}}
 	domainLines := splitMailFile(domainsRaw)
 	indexes, err := suspensionDomainLineIndexes(domainLines, domain)
@@ -140,6 +181,14 @@ func mailDomainSuspensionState(domainsRaw, usersRaw []byte, domain string, mailb
 		state.DomainListed = true
 		state.DomainLine = domainLines[indexes[0]]
 	}
+	deferIndexes, err := suspensionDomainLineIndexes(splitMailFile(deferRaw), domain)
+	if err != nil {
+		return transport.MailDomainState{}, fmt.Errorf("the suspended recipient map: %w", err)
+	}
+	if len(deferIndexes) > 1 {
+		return transport.MailDomainState{}, fmt.Errorf("the suspended recipient map lists %s %d times", domain, len(deferIndexes))
+	}
+	state.MailDeferred = len(deferIndexes) == 1
 	userLines := splitMailFile(usersRaw)
 	for _, mailbox := range mailboxes {
 		lineIndexes := suspensionUsersLineIndexes(userLines, mailbox)
@@ -153,61 +202,53 @@ func mailDomainSuspensionState(domainsRaw, usersRaw []byte, domain string, mailb
 	return state, nil
 }
 
-// mailSuspensionPlan is the complete change for one domain; it is written as
-// one transaction or not at all.
+// mailSuspensionPlan is the complete file change for one domain; it is
+// written as one transaction or not at all. The domain map is not changed.
 type mailSuspensionPlan struct {
-	domains        []byte
-	domainsChanged bool
-	users          []byte
-	usersChanged   bool
-	conflicts      []string
+	deferral        []byte
+	deferralChanged bool
+	users           []byte
+	usersChanged    bool
+	conflicts       []string
 }
 
-// planMailDomainSuspension computes the compare-and-set change. Restore
-// re-inserts a missing domain line by appending it to the map. A mailbox the
-// before-image does not name (created after inspection) is suspended too, and
-// on restore is treated as not refused before: only the token suspension put
-// in front of its extra fields is removed, so it cannot stay refused.
+// planMailDomainSuspension computes the compare-and-set change. Suspend adds
+// the domain's 450 line to the suspended recipient map; restore removes only
+// that exact line. A mailbox the before-image does not name (created after
+// inspection) is suspended too, and on restore is treated as not refused
+// before: only the token suspension put in front of its extra fields is
+// removed, so it cannot stay refused.
 func planMailDomainSuspension(
-	domainsRaw, usersRaw []byte,
+	deferRaw, usersRaw []byte,
 	domain string,
 	mailboxes []string,
 	suspend bool,
 	before transport.MailDomainState,
 ) (mailSuspensionPlan, error) {
-	plan := mailSuspensionPlan{domains: domainsRaw, users: usersRaw}
+	plan := mailSuspensionPlan{deferral: deferRaw, users: usersRaw}
 
-	domainLines := splitMailFile(domainsRaw)
-	indexes, err := suspensionDomainLineIndexes(domainLines, domain)
+	deferLines := splitMailFile(deferRaw)
+	indexes, err := suspensionDomainLineIndexes(deferLines, domain)
 	if err != nil {
-		return mailSuspensionPlan{}, fmt.Errorf("the virtual mailbox domain map: %w", err)
+		return mailSuspensionPlan{}, fmt.Errorf("the suspended recipient map: %w", err)
 	}
+	ours := suspensionDeferLine(domain)
 	switch {
 	case len(indexes) > 1:
-		plan.conflicts = append(plan.conflicts, fmt.Sprintf("the virtual mailbox domain map lists %s %d times", domain, len(indexes)))
-	case suspend && len(indexes) == 1:
-		line := domainLines[indexes[0]]
-		if before.DomainListed && line == before.DomainLine {
-			domainLines = append(domainLines[:indexes[0]], domainLines[indexes[0]+1:]...)
-			plan.domainsChanged = true
-		} else {
-			plan.conflicts = append(plan.conflicts, fmt.Sprintf(
-				"the virtual mailbox domain map has %q, but the line recorded before suspension was %s",
-				line, describeRecordedDomainLine(before)))
-		}
-	case !suspend && before.DomainListed && len(indexes) == 0:
-		domainLines = append(domainLines, before.DomainLine)
-		plan.domainsChanged = true
-	case !suspend && len(indexes) == 1:
-		line := domainLines[indexes[0]]
-		if !before.DomainListed || line != before.DomainLine {
-			plan.conflicts = append(plan.conflicts, fmt.Sprintf(
-				"the virtual mailbox domain map has %q while the domain is suspended, but the line recorded before suspension was %s",
-				line, describeRecordedDomainLine(before)))
-		}
+		plan.conflicts = append(plan.conflicts, fmt.Sprintf("the suspended recipient map lists %s %d times", domain, len(indexes)))
+	case len(indexes) == 1 && deferLines[indexes[0]] != ours:
+		plan.conflicts = append(plan.conflicts, fmt.Sprintf(
+			"the suspended recipient map has %q, not the line CelikPanel writes (%q)", deferLines[indexes[0]], ours))
+	case suspend && len(indexes) == 0:
+		deferLines = append(deferLines, ours)
+		plan.deferralChanged = true
+	case !suspend && !before.MailDeferred && len(indexes) == 1:
+		deferLines = append(deferLines[:indexes[0]], deferLines[indexes[0]+1:]...)
+		plan.deferralChanged = true
 	}
-	if plan.domainsChanged {
-		plan.domains = renderMailFile(domainLines)
+	if plan.deferralChanged {
+		plan.deferral = renderMailFile(deferLines)
+		plan.deferralChanged = !bytes.Equal(plan.deferral, deferRaw)
 	}
 
 	userLines := splitMailFile(usersRaw)
@@ -264,25 +305,16 @@ func planMailDomainSuspension(
 		plan.users = renderMailFile(userLines)
 		plan.usersChanged = !bytes.Equal(plan.users, usersRaw)
 	}
-	if plan.domainsChanged {
-		plan.domainsChanged = !bytes.Equal(plan.domains, domainsRaw)
-	}
 	return plan, nil
 }
 
-func describeRecordedDomainLine(before transport.MailDomainState) string {
-	if !before.DomainListed {
-		return "none"
-	}
-	return fmt.Sprintf("%q", before.DomainLine)
-}
-
-// mailDomainStateMeetsTarget: suspended means unlisted and every mailbox with
-// a line refused; restored means the recorded line (or none) and each
-// mailbox refused exactly as recorded (a mailbox not recorded: not refused).
+// mailDomainStateMeetsTarget: suspended means the 450 line is present and
+// every mailbox with a line is refused; restored means the line is as
+// recorded (normally absent) and each mailbox refused exactly as recorded (a
+// mailbox not recorded: not refused). The domain map is not part of either.
 func mailDomainStateMeetsTarget(state transport.MailDomainState, suspend bool, before transport.MailDomainState) bool {
 	if suspend {
-		if state.DomainListed {
+		if !state.MailDeferred {
 			return false
 		}
 		for _, refused := range state.LoginRefused {
@@ -292,7 +324,7 @@ func mailDomainStateMeetsTarget(state transport.MailDomainState, suspend bool, b
 		}
 		return true
 	}
-	if state.DomainListed != before.DomainListed || (before.DomainListed && state.DomainLine != before.DomainLine) {
+	if state.MailDeferred != before.MailDeferred {
 		return false
 	}
 	for mailbox, refused := range state.LoginRefused {
@@ -301,6 +333,72 @@ func mailDomainStateMeetsTarget(state transport.MailDomainState, suspend bool, b
 		}
 	}
 	return true
+}
+
+// suspensionRestrictionPlan is the main.cf change for the managed
+// check_recipient_access element: set (postconf -e) or unset (postconf -X).
+type suspensionRestrictionPlan struct {
+	change bool
+	unset  bool
+	value  string
+}
+
+// planSuspensionRestriction keeps the managed element at the front of
+// smtpd_recipient_restrictions while the map has a line (want) and takes
+// exactly that prefix off again when it has none. The owner's own elements
+// are never reordered or rewritten. An element the owner moved elsewhere is
+// left as it is.
+func planSuspensionRestriction(current string, want bool, mapType string) (suspensionRestrictionPlan, error) {
+	elements, ok := splitRecipientRestrictions(current)
+	if !ok {
+		return suspensionRestrictionPlan{}, errors.New("smtpd_recipient_restrictions has unbalanced braces")
+	}
+	present := false
+	for index := 0; index+1 < len(elements); index++ {
+		if elements[index].text == suspensionRecipientAccess && suspensionMapOperand(elements[index+1].text) {
+			present = true
+		}
+	}
+	trimmed := strings.TrimSpace(current)
+	leads := len(elements) >= 2 && elements[0].text == suspensionRecipientAccess && suspensionMapOperand(elements[1].text)
+	switch {
+	case want && !present && trimmed == "":
+		return suspensionRestrictionPlan{change: true, value: suspensionRestrictionPrefix(mapType)}, nil
+	case want && !present:
+		return suspensionRestrictionPlan{change: true, value: suspensionRestrictionPrefix(mapType) + ", " + trimmed}, nil
+	case !want && leads && len(elements) == 2:
+		// The default value is empty; unsetting leaves main.cf as before.
+		return suspensionRestrictionPlan{change: true, unset: true}, nil
+	case !want && leads:
+		// Only the two leading elements go; the owner's text after them stays.
+		at := strings.Index(trimmed, elements[1].text) + len(elements[1].text)
+		return suspensionRestrictionPlan{change: true, value: strings.TrimLeft(trimmed[at:], ", \t\r\n")}, nil
+	}
+	return suspensionRestrictionPlan{}, nil
+}
+
+func suspensionMapHasLines(raw []byte) bool {
+	for _, line := range splitMailFile(raw) {
+		trimmed := strings.TrimSpace(line)
+		if trimmed != "" && !strings.HasPrefix(trimmed, "#") {
+			return true
+		}
+	}
+	return false
+}
+
+func applySuspensionRestriction(plan suspensionRestrictionPlan) error {
+	if !plan.change {
+		return nil
+	}
+	args := []string{"-e", suspensionRestrictionsParam + "=" + plan.value}
+	if plan.unset {
+		args = []string{"-X", suspensionRestrictionsParam}
+	}
+	if out, err := mailPolicyPostconf(args...); err != nil {
+		return fmt.Errorf("postconf could not change %s: %s", suspensionRestrictionsParam, hostcmd.Diagnostic(out, err))
+	}
+	return nil
 }
 
 // canonicalSuspensionMailDomain canonicalizes the domain and its mailboxes;
@@ -360,24 +458,42 @@ func canonicalSuspensionMailBefore(domain string, before transport.MailDomainSta
 	return out, nil
 }
 
-// readSuspensionMailMaps reads the domain map (missing = empty) and the
-// Dovecot users file (missing = empty; an existing one must pass its strict
-// metadata contract).
-func readSuspensionMailMaps() (domainsRaw []byte, domainsExist bool, usersRaw []byte, usersExist bool, err error) {
-	domainsRaw, err = secureReadConfig(postfixDomainsPath)
+// suspensionMailMaps is what one call reads: the domain map, the suspended
+// recipient map (missing = empty) and the Dovecot users file (missing =
+// empty; an existing one must pass its strict metadata contract).
+type suspensionMailMaps struct {
+	domains, deferral, users []byte
+	deferralExists           bool
+}
+
+func readSuspensionMailMaps() (suspensionMailMaps, error) {
+	var maps suspensionMailMaps
+	var err error
+	maps.domains, err = secureReadConfig(postfixDomainsPath)
 	switch {
 	case errors.Is(err, os.ErrNotExist):
-		domainsRaw, err = []byte{}, nil
+		maps.domains = []byte{}
 	case err != nil:
-		return nil, false, nil, false, fmt.Errorf("the virtual mailbox domain map could not be read: %w", err)
+		return maps, fmt.Errorf("the virtual mailbox domain map could not be read: %w", err)
+	}
+	maps.deferral, err = secureReadConfig(postfixSuspendedRecipientsPath)
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		maps.deferral = []byte{}
+	case err != nil:
+		return maps, fmt.Errorf("the suspended recipient map could not be read: %w", err)
 	default:
-		domainsExist = true
+		maps.deferralExists = true
 	}
-	usersRaw, usersExist, err = readDovecotUsersFileForMutation(dovecotUsersPath, false)
+	maps.users, _, err = readDovecotUsersFileForMutation(dovecotUsersPath, false)
 	if err != nil {
-		return nil, false, nil, false, fmt.Errorf("the Dovecot users file could not be read: %w", err)
+		return maps, fmt.Errorf("the Dovecot users file could not be read: %w", err)
 	}
-	return domainsRaw, domainsExist, usersRaw, usersExist, nil
+	return maps, nil
+}
+
+func (m suspensionMailMaps) state(domain string, mailboxes []string) (transport.MailDomainState, error) {
+	return mailDomainSuspensionState(m.domains, m.deferral, m.users, domain, mailboxes)
 }
 
 func inspectSuspensionMailDomains(domains []transport.SuspensionMailDomain) []transport.MailDomainObservation {
@@ -385,7 +501,7 @@ func inspectSuspensionMailDomains(domains []transport.SuspensionMailDomain) []tr
 	if len(domains) == 0 {
 		return observations
 	}
-	domainsRaw, _, usersRaw, _, readErr := readSuspensionMailMaps()
+	maps, readErr := readSuspensionMailMaps()
 	for _, requested := range domains {
 		observation := transport.MailDomainObservation{Domain: requested}
 		if readErr != nil {
@@ -395,7 +511,7 @@ func inspectSuspensionMailDomains(domains []transport.SuspensionMailDomain) []tr
 		}
 		domain, mailboxes, err := canonicalSuspensionMailDomain(requested)
 		if err == nil {
-			observation.State, err = mailDomainSuspensionState(domainsRaw, usersRaw, domain, mailboxes)
+			observation.State, err = maps.state(domain, mailboxes)
 		}
 		if err != nil {
 			observation.Error = err.Error()
@@ -406,7 +522,8 @@ func inspectSuspensionMailDomains(domains []transport.SuspensionMailDomain) []tr
 }
 
 // SetMailDomainSuspensionV1 suspends or restores one mail domain and its
-// mailboxes in Postfix's and Dovecot's own maps, in one transaction.
+// mailboxes in Postfix's and Dovecot's own maps, in one transaction, and
+// keeps the managed recipient restriction in main.cf in step with the map.
 //
 // SetMailDomainSuspensionV1 bir posta alan adını ve posta kutularını
 // Postfix ve Dovecot'un kendi haritalarında tek işlemle askıya alır ya da
@@ -436,21 +553,27 @@ func (a *Agent) SetMailDomainSuspensionV1(
 
 	// TryLock, like UpdateMailPassword: a call must not queue behind another
 	// mail change and apply after its Panel caller gave up. The Panel retries.
+	// main.cf is shared with the mail policy, so its lock is taken too.
 	if !mailMutex.TryLock() {
 		resp.Error = transport.MailConfigurationBusy
 		return nil
 	}
 	defer mailMutex.Unlock()
+	if !mailPolicyMu.TryLock() {
+		resp.Error = transport.MailConfigurationBusy
+		return nil
+	}
+	defer mailPolicyMu.Unlock()
 
-	domainsRaw, domainsExist, usersRaw, _, err := readSuspensionMailMaps()
+	maps, err := readSuspensionMailMaps()
 	if err != nil {
 		resp.Error = err.Error() + "; nothing was changed"
 		return nil
 	}
-	if current, stateErr := mailDomainSuspensionState(domainsRaw, usersRaw, domain, mailboxes); stateErr == nil {
+	if current, stateErr := maps.state(domain, mailboxes); stateErr == nil {
 		resp.State = current
 	}
-	plan, err := planMailDomainSuspension(domainsRaw, usersRaw, domain, mailboxes, req.Suspend, before)
+	plan, err := planMailDomainSuspension(maps.deferral, maps.users, domain, mailboxes, req.Suspend, before)
 	if err != nil {
 		resp.Conflict = true
 		resp.Error = err.Error() + "; nothing was changed. The server owner corrects the map, then the operation can be retried"
@@ -466,47 +589,86 @@ func (a *Agent) SetMailDomainSuspensionV1(
 		return nil
 	}
 
+	// main.cf is read before anything is written: a write is never built
+	// from a failed read.
+	if _, err := mailPolicyLookPath("postconf"); err != nil {
+		resp.Error = "Postfix's postconf was not found, so the mail refusal cannot be set; nothing was changed. " +
+			"The administrator installs or repairs Postfix, then the operation can be retried"
+		return nil
+	}
+	currentRestrictions, err := mailPolicyPostconf("-h", suspensionRestrictionsParam)
+	if err != nil {
+		resp.Error = "smtpd_recipient_restrictions could not be read: " + hostcmd.Diagnostic(currentRestrictions, err) + "; nothing was changed"
+		return nil
+	}
+	restriction, err := planSuspensionRestriction(strings.TrimSpace(string(currentRestrictions)), suspensionMapHasLines(plan.deferral), suspensionMapType())
+	if err != nil {
+		resp.Conflict = true
+		resp.Error = err.Error() + "; nothing was changed. The server owner corrects main.cf, then the operation can be retried"
+		return nil
+	}
+
 	var writes []mailFileWrite
-	if plan.domainsChanged {
-		writes = append(writes, mailFileWrite{path: postfixDomainsPath, content: plan.domains, mode: 0o644})
+	if plan.deferralChanged {
+		writes = append(writes, mailFileWrite{path: postfixSuspendedRecipientsPath, content: plan.deferral, mode: 0o644})
 	}
 	if plan.usersChanged {
 		writes = append(writes, mailFileWrite{path: dovecotUsersPath, content: plan.users, mode: 0o640})
 	}
-	// The domain map is compiled again even when its text is already right:
-	// an earlier call may have stopped after writing the text and before
+	// The map is compiled again even when its text is already right: an
+	// earlier call may have stopped after writing the text and before
 	// postmap, and Postfix reads the compiled index.
 	var postmaps []string
-	if domainsExist || plan.domainsChanged {
-		postmaps = append(postmaps, postfixDomainsPath)
+	if maps.deferralExists || plan.deferralChanged {
+		postmaps = append(postmaps, postfixSuspendedRecipientsPath)
 	}
-	if len(writes) > 0 || len(postmaps) > 0 {
+	// The main.cf change comes after the maps, inside the same transaction:
+	// if postconf fails, the map and users files are put back.
+	var afterWrite func() (func() error, error)
+	if restriction.change {
+		afterWrite = func() (func() error, error) {
+			return nil, applySuspensionRestriction(restriction)
+		}
+	}
+	if len(writes) > 0 || len(postmaps) > 0 || afterWrite != nil {
 		ctx, cancel := newMailMutationContext()
 		defer cancel()
-		if err := applyMailFileMutation(ctx, writes, postmaps, nil); err != nil {
+		if err := applyMailFileMutation(ctx, writes, postmaps, afterWrite); err != nil {
 			resp.Error = "the mail maps could not be changed; what was written is put back unless this detail says the rollback failed too: " + err.Error()
-			if afterDomains, _, afterUsers, _, readErr := readSuspensionMailMaps(); readErr == nil {
-				if after, stateErr := mailDomainSuspensionState(afterDomains, afterUsers, domain, mailboxes); stateErr == nil {
-					resp.State = after
+			if after, readErr := readSuspensionMailMaps(); readErr == nil {
+				if state, stateErr := after.state(domain, mailboxes); stateErr == nil {
+					resp.State = state
 				}
 			}
 			return nil
 		}
 	}
-	resp.Changed = len(writes) > 0
+	resp.Changed = len(writes) > 0 || restriction.change
 
-	afterDomains, _, afterUsers, _, err := readSuspensionMailMaps()
+	// A verified reload makes a running Postfix take main.cf. It runs on every
+	// call, so a retry after a lost reload does not skip it; a map-only
+	// change alone would need none, Postfix rereads hash maps by itself. A
+	// stopped Postfix stays stopped.
+	if _, err := mailPolicyReload(); err != nil {
+		log.Printf("mail suspension of %s: postfix reload failed: %v", domain, err)
+		resp.Error = "the mail maps of " + domain + " are written, but Postfix could not be reloaded, so it may not refuse or accept the domain's mail yet: " +
+			hostcmd.Bounded(strings.Join(strings.Fields(err.Error()), " "), 300) +
+			". The administrator checks Postfix (postfix check), then the operation is retried"
+		return nil
+	}
+
+	after, err := readSuspensionMailMaps()
 	if err != nil {
 		resp.Error = "the change finished but the mail maps could not be read back, so the result is unknown: " + err.Error()
 		return nil
 	}
-	after, err := mailDomainSuspensionState(afterDomains, afterUsers, domain, mailboxes)
+	state, err := after.state(domain, mailboxes)
 	if err != nil {
 		resp.Error = "the change finished but the mail maps could not be read back, so the result is unknown: " + err.Error()
 		return nil
 	}
-	resp.State = after
-	if !mailDomainStateMeetsTarget(after, req.Suspend, before) {
+	resp.State = state
+	if !mailDomainStateMeetsTarget(state, req.Suspend, before) {
 		resp.Error = fmt.Sprintf("the mail maps of %s do not read as the wanted state after the change", domain)
 		return nil
 	}

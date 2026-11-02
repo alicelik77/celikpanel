@@ -37,6 +37,7 @@ export const enSuspensionScreens = {
     'susp.preview.suspendHead': 'Confirming will stop:',
     'susp.preview.resumeHead': 'Confirming will start working again:',
     'susp.preview.sites': 'Websites:',
+    'susp.preview.apps': 'Node.js apps:',
     'susp.preview.mailDomains': 'Mail domains:',
     'susp.preview.mailboxes': 'Mailboxes:',
     'susp.preview.databaseUsers': 'Database users:',

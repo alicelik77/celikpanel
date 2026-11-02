@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -28,12 +29,14 @@ type fakeSuspensionNative struct {
 	siteCalls   int
 	siteFailAt  int               // fail (unknown result) on this site call number, after applying
 	domainLine  map[string]string // domain -> map line, "" = absent
+	deferred    map[string]bool   // domain -> its mail answered 450 (suspended)
 	nologin     map[string]bool
 	mailCalls   int
 	mailFail    func() error
 	dbLocked    map[string]bool
 	dbCalls     []transport.SetDatabaseUserSuspensionRequest
 	vpnSyncs    int
+	apps        map[int]transport.AppUnitState // site id -> app unit
 	statusAtWeb []bool
 	panel       *Panel
 }
@@ -43,6 +46,8 @@ func newFakeSuspensionNative(p *Panel) *fakeSuspensionNative {
 		siteExpiry: map[string]string{"customer.matrix.test": ""},
 		domainLine: map[string]string{"customer.matrix.test": "customer.matrix.test OK"},
 		nologin:    map[string]bool{"box@customer.matrix.test": false},
+		deferred:   map[string]bool{},
+		apps:       map[int]transport.AppUnitState{},
 		dbLocked:   map[string]bool{"cust_user": false, "owner_locked": true},
 		panel:      p,
 	}
@@ -79,6 +84,7 @@ func (f *fakeSuspensionNative) inspect(_ context.Context, req transport.Suspensi
 		state := transport.MailDomainState{LoginRefused: map[string]bool{}}
 		state.DomainLine = f.domainLine[d.Domain]
 		state.DomainListed = state.DomainLine != ""
+		state.MailDeferred = f.deferred[d.Domain]
 		for _, m := range d.Mailboxes {
 			if v, ok := f.nologin[m]; ok {
 				state.LoginRefused[m] = v
@@ -89,6 +95,9 @@ func (f *fakeSuspensionNative) inspect(_ context.Context, req transport.Suspensi
 	for _, u := range req.DatabaseUsers {
 		locked, ok := f.dbLocked[u.Username]
 		resp.DatabaseUsers = append(resp.DatabaseUsers, transport.DatabaseUserObservation{User: u, State: transport.DatabaseUserState{Present: ok, Locked: locked}})
+	}
+	for _, site := range req.AppSites {
+		resp.AppUnits = append(resp.AppUnits, transport.AppUnitObservation{SiteID: site, State: f.apps[site]})
 	}
 	return resp, nil
 }
@@ -147,16 +156,15 @@ func (f *fakeSuspensionNative) setMailDomain(_ context.Context, req transport.Se
 	}
 	d := req.Domain.Domain
 	if req.Suspend {
-		f.domainLine[d] = ""
+		// The domain stays hosted; its mail is answered with a temporary 450.
+		f.deferred[d] = true
 		for _, m := range req.Domain.Mailboxes {
 			if _, ok := f.nologin[m]; ok {
 				f.nologin[m] = true
 			}
 		}
 	} else {
-		if req.Before.DomainListed {
-			f.domainLine[d] = req.Before.DomainLine
-		}
+		f.deferred[d] = req.Before.MailDeferred
 		for _, m := range req.Domain.Mailboxes {
 			if _, ok := f.nologin[m]; ok {
 				f.nologin[m] = req.Before.LoginRefused[m]
@@ -193,6 +201,25 @@ func (f *fakeSuspensionNative) setDatabaseUser(_ context.Context, req transport.
 	return resp, nil
 }
 
+func (f *fakeSuspensionNative) setAppUnit(_ context.Context, req transport.SetAppUnitSuspensionRequest) (transport.SetAppUnitSuspensionResponse, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var resp transport.SetAppUnitSuspensionResponse
+	current, ok := f.apps[req.SiteID]
+	if !ok || !current.Present {
+		resp.Error = "app unit is absent: none"
+		return resp, nil
+	}
+	target := transport.AppUnitState{Present: true}
+	if !req.Suspend {
+		target = req.Before
+	}
+	resp.Applied, resp.Changed = true, current != target
+	f.apps[req.SiteID] = target
+	resp.State = target
+	return resp, nil
+}
+
 func (f *fakeSuspensionNative) syncVPN(context.Context) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -224,7 +251,9 @@ func newSuspensionFixture(t *testing.T) suspensionFixture {
 	if err := base.panel.db.GetDB().QueryRow(`SELECT id FROM database_server_types WHERE name = 'mariadb'`).Scan(&typeID); err != nil {
 		t.Fatal(err)
 	}
-	f.exec(t, `INSERT INTO sites (domain_id, document_root, project_type) VALUES (9902, '/srv/c', 'php')`)
+	// A Node.js site whose app runs and starts at boot.
+	f.exec(t, `INSERT INTO sites (id, domain_id, document_root, project_type) VALUES (9930, 9902, '/srv/c', 'node')`)
+	native.apps[9930] = transport.AppUnitState{Present: true, Active: true, Enabled: true}
 	f.exec(t, `INSERT INTO email_accounts (domain_id, address, password_hash) VALUES (9902, 'box@customer.matrix.test', 'x')`)
 	f.exec(t, `INSERT INTO database_servers (id, subscription_id, type_id, name, host, port) VALUES (9921, 9802, ?, 'local', 'localhost', 3306)`, typeID)
 	f.exec(t, `INSERT INTO database_servers (id, subscription_id, type_id, name, host, port) VALUES (9922, 9802, ?, 'remote', 'db.example.net', 3306)`, typeID)
@@ -302,11 +331,12 @@ func TestSuspensionSuspendAndResumeRestoresExactly(t *testing.T) {
 	if len(f.native.renders) != 1 || !f.native.statusAtWeb[0] {
 		t.Fatalf("web render: %v %v", f.native.renders, f.native.statusAtWeb)
 	}
-	if f.native.siteExpiry["customer.matrix.test"] != "1" || f.native.domainLine["customer.matrix.test"] != "" ||
-		!f.native.nologin["box@customer.matrix.test"] || !f.native.dbLocked["cust_user"] || f.native.vpnSyncs != 1 {
+	if f.native.siteExpiry["customer.matrix.test"] != "1" || !f.native.deferred["customer.matrix.test"] || f.native.domainLine["customer.matrix.test"] != "customer.matrix.test OK" ||
+		!f.native.nologin["box@customer.matrix.test"] || !f.native.dbLocked["cust_user"] || f.native.vpnSyncs != 1 ||
+		f.native.apps[9930] != (transport.AppUnitState{Present: true}) {
 		t.Fatalf("server state after suspend: %+v", f.native)
 	}
-	if n := f.count(t, `SELECT COUNT(*) FROM suspension_before_images WHERE subscription_id = 9802`); n != 4 {
+	if n := f.count(t, `SELECT COUNT(*) FROM suspension_before_images WHERE subscription_id = 9802`); n != 5 {
 		t.Fatalf("before-images: %d", n)
 	}
 	if !v.CanResume || v.CanSuspend || v.Preview.Action != "resume" || !v.Causes.Manual || v.Reason != "unpaid" {
@@ -328,8 +358,9 @@ func TestSuspensionSuspendAndResumeRestoresExactly(t *testing.T) {
 	if v.Operation.State != "completed" || v.Operation.Kind != "resume" {
 		t.Fatalf("resume: %+v", v.Operation)
 	}
-	if f.native.siteExpiry["customer.matrix.test"] != "" || f.native.domainLine["customer.matrix.test"] != "customer.matrix.test OK" ||
-		f.native.nologin["box@customer.matrix.test"] || f.native.dbLocked["cust_user"] {
+	if f.native.siteExpiry["customer.matrix.test"] != "" || f.native.domainLine["customer.matrix.test"] != "customer.matrix.test OK" || f.native.deferred["customer.matrix.test"] ||
+		f.native.nologin["box@customer.matrix.test"] || f.native.dbLocked["cust_user"] ||
+		f.native.apps[9930] != (transport.AppUnitState{Present: true, Active: true, Enabled: true}) {
 		t.Fatalf("not restored exactly: %+v", f.native)
 	}
 	// The owner had locked this user before: it stays locked.
@@ -491,15 +522,13 @@ func TestSuspensionResellerCascadeKeepsManualCause(t *testing.T) {
 func TestSuspensionEndDateSuspendsOncePerDate(t *testing.T) {
 	f := newSuspensionFixture(t)
 	ctx := context.Background()
-	// Without the ends_at column (before the plans-and-rights migration)
-	// nothing expires.
+	// 052's ends_at is NULL: it never ends, nothing expires.
 	if err := f.panel.checkSubscriptionExpiry(ctx); err != nil {
 		t.Fatal(err)
 	}
 	if f.status(t, 9802) != "active" {
 		t.Fatal("expired without an end date")
 	}
-	f.exec(t, `ALTER TABLE subscriptions ADD COLUMN ends_at TEXT`)
 	f.exec(t, `UPDATE subscriptions SET ends_at = '2026-01-01 00:00:00' WHERE id = 9802`)
 	f.exec(t, `UPDATE subscriptions SET ends_at = '2999-01-01 00:00:00' WHERE id = 9803`)
 	if err := f.panel.checkSubscriptionExpiry(ctx); err != nil {
@@ -675,5 +704,54 @@ func TestSuspendedSubscriptionDomainsAreRefusedToTheirOwner(t *testing.T) {
 	}
 	if got := check(f.tokens[9702], 9902); got != http.StatusNoContent {
 		t.Fatalf("the reseller cannot manage it: %d", got)
+	}
+}
+
+// One read of subscriptions tells the state: suspension mirrors its cause
+// into 052's suspend_reason and suspended_at, and clears both on resume.
+func TestSuspensionMirrorsReasonIntoSubscriptions(t *testing.T) {
+	f := newSuspensionFixture(t)
+	read := func(sub int) (status, reason, since string) {
+		t.Helper()
+		var r, s sql.NullString
+		if err := f.panel.db.GetDB().QueryRow(`SELECT status, suspend_reason, suspended_at FROM subscriptions WHERE id = ?`, sub).Scan(&status, &r, &s); err != nil {
+			t.Fatal(err)
+		}
+		return status, r.String, s.String
+	}
+	path := "/api/v1/subscriptions/9803/suspension"
+	wantStatus(t, f.as(t, 9701, http.MethodPost, path, `{"action":"suspend","reason":"unpaid"}`), http.StatusAccepted, "")
+	if status, reason, since := read(9803); status != "suspended" || reason != suspendReasonManual || since == "" {
+		t.Fatalf("manual: %s %q %q", status, reason, since)
+	}
+	if l, err := readSubscriptionLifecycle(context.Background(), f.panel.db.GetDB(), 9803); err != nil || l.SuspendReason != suspendReasonManual || l.SuspendedAt == nil {
+		t.Fatalf("lifecycle: %+v %v", l, err)
+	}
+	f.run(t)
+	wantStatus(t, f.as(t, 9701, http.MethodPost, path, `{"action":"resume"}`), http.StatusAccepted, "")
+	if status, reason, since := read(9803); status != "active" || reason != "" || since != "" {
+		t.Fatalf("resumed: %s %q %q", status, reason, since)
+	}
+	f.run(t)
+
+	// The reseller's suspension cascades as manual (052 has no reseller value).
+	wantStatus(t, f.as(t, 9701, http.MethodPost, "/api/v1/users/9702/suspension", `{"action":"suspend","reason":"reseller unpaid"}`), http.StatusAccepted, "")
+	if status, reason, since := read(9802); status != "suspended" || reason != suspendReasonManual || since == "" {
+		t.Fatalf("cascade: %s %q %q", status, reason, since)
+	}
+	f.run(t)
+	wantStatus(t, f.as(t, 9701, http.MethodPost, "/api/v1/users/9702/suspension", `{"action":"resume"}`), http.StatusAccepted, "")
+	f.run(t)
+
+	// A passed end date reads as expired.
+	f.exec(t, `UPDATE subscriptions SET ends_at = '2026-01-01 00:00:00' WHERE id = 9803`)
+	if err := f.panel.checkSubscriptionExpiry(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if status, reason, since := read(9803); status != "suspended" || reason != suspendReasonExpired || since == "" {
+		t.Fatalf("expired: %s %q %q", status, reason, since)
+	}
+	if got := suspendReasonFor(suspensionCauses{Manual: true, Expired: true}); got != suspendReasonManual {
+		t.Fatalf("manual and expired: %q", got)
 	}
 }

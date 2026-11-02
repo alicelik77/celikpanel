@@ -40,6 +40,7 @@ export interface SuspensionOperation {
 export interface SuspensionPreview {
     action: 'suspend' | 'resume';
     sites: string[];
+    apps: string[];
     mail_domains: string[];
     mailboxes: number;
     database_users: string[];
@@ -137,6 +138,7 @@ function decodeSubscription(raw: unknown): SubscriptionSuspensionView {
         preview: {
             action: preview.action === 'resume' ? 'resume' : 'suspend',
             sites: list(preview.sites),
+            apps: list(preview.apps),
             mail_domains: list(preview.mail_domains),
             mailboxes: count(preview.mailboxes),
             database_users: list(preview.database_users),

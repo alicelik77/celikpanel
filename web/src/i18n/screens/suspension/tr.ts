@@ -31,6 +31,7 @@ export const trSuspensionScreens: Record<SuspensionScreenKey, string> = {
     'susp.preview.suspendHead': 'Onaylarsanız şunlar durur:',
     'susp.preview.resumeHead': 'Onaylarsanız şunlar yeniden çalışır:',
     'susp.preview.sites': 'Web siteleri:',
+    'susp.preview.apps': 'Node.js uygulamaları:',
     'susp.preview.mailDomains': 'Posta alan adları:',
     'susp.preview.mailboxes': 'Posta kutuları:',
     'susp.preview.databaseUsers': 'Veritabanı kullanıcıları:',

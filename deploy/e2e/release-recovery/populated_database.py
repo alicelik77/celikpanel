@@ -53,8 +53,8 @@ MIGRATIONS = {
     # without a subscription a new 'Unlimited' one); 53 suspension (five
     # tables); 54 transfers (one table, one trigger).
     52: '2b791b775f07d0823bddb1a9449a8ff7ddcd7e3cdc81903445dac0ea0ca365c0',
-    53: 'a11929f21c476464e049269d5b6b514b55b544b02c1b0e77b38596762323cb4b',
-    54: '424f9c2e1608e83ad8327bbc103536fdf0bac495fc6ad2892645df798c2eeab7',
+    53: '52f42f2d5b9e0f399b0069961dc90328a9099543de4f2803af3119c21e6be113',
+    54: '93ae8c0a7f5e2cd9c7d30b7bffc4b9f7c7a08cae6d7f3bef4d44907705e1ed88',
 }
 # Exact sqlite_schema SQL from the released SQL, including triggers and indexes.
 # Tests reconstruct it from unmodified migration bytes, never a downgraded ledger.
@@ -71,8 +71,8 @@ SCHEMAS = {
     50: '3513baa14abd1254631b1fbcceb3dc2ee0402be99f4a1bd74946ef93d724b492',
     51: 'b8c0866268dca7d7ca232bd6d363a412c988f770b40c5b920fdd0f5bf4bd56b6',
     52: '2c99a5ca6371526a26feea7977a14d41b5e55b87e8b12b5c0f08bf9fdc09e261',
-    53: '0d19dcbd1f40b55221487cd503964ca108c7b9405bdb76326b2a1cd7decc4621',
-    54: '9338a55bcdb0fddb47e86edd0ca66e3998c893cba54b0e84b5097ebdfd0c1a60',
+    53: '31a9ff22d4fe320125dca4c77784cf8d4ba7b72061c4cb80f2061156dd5b5267',
+    54: 'e286b815a959ab0b3e288ab2765b6f88c87ce06f790e6ade3838a1a44498bf95',
 }
 ADMISSION_SCHEMA = 'celikpanel/lab-populated-database-admission/v1'
 MANIFEST_SCHEMA = 'celikpanel/lab-populated-database-manifest/v1'

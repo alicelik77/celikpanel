@@ -83,5 +83,16 @@ func (a *Agent) SuspensionInspectV1(
 		}
 		resp.DatabaseUsers = append(resp.DatabaseUsers, observation)
 	}
+
+	for _, siteID := range req.AppSites {
+		observation := transport.AppUnitObservation{SiteID: siteID}
+		state, err := inspectSuspensionAppUnit(siteID)
+		if err != nil {
+			observation.Error = err.Error()
+		} else {
+			observation.State = state
+		}
+		resp.AppUnits = append(resp.AppUnits, observation)
+	}
 	return nil
 }

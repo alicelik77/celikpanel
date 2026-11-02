@@ -277,6 +277,7 @@ function Preview({ preview }: { preview: SuspensionPreview }) {
     const { t } = useI18n();
     const rows: Array<[TranslationKey, string]> = [
         ['susp.preview.sites', preview.sites.join(', ')],
+        ['susp.preview.apps', preview.apps.join(', ')],
         ['susp.preview.mailDomains', preview.mail_domains.join(', ')],
         ['susp.preview.mailboxes', preview.mailboxes > 0 ? String(preview.mailboxes) : ''],
         ['susp.preview.databaseUsers', preview.database_users.join(', ')],

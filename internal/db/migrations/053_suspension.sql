@@ -64,7 +64,7 @@ CREATE INDEX idx_suspension_operations_subscription
 CREATE TABLE suspension_effects (
     operation_id TEXT NOT NULL,
     seq INTEGER NOT NULL CHECK (seq >= 0),
-    kind TEXT NOT NULL CHECK (kind IN ('web', 'site_account', 'mail', 'database', 'vpn')),
+    kind TEXT NOT NULL CHECK (kind IN ('web', 'app', 'site_account', 'mail', 'database', 'vpn')),
     target TEXT NOT NULL,
     ref TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(ref)),
     state TEXT NOT NULL DEFAULT 'pending' CHECK (state IN ('pending', 'captured', 'done', 'kept', 'failed', 'manual')),
@@ -75,11 +75,12 @@ CREATE TABLE suspension_effects (
 
 -- suspension_before_images: the native state found before the first
 -- suspension of a subscription, per resource, as JSON (no secret is stored:
--- an expiry field, map line and nologin flags, a lock flag). A resume restores
--- these and then removes them.
+-- an expiry field, the mail refusal and nologin flags, a lock flag, a Node.js app
+-- unit's running and boot state). A resume restores these and then
+-- removes them.
 CREATE TABLE suspension_before_images (
     subscription_id INTEGER NOT NULL CHECK (subscription_id > 0),
-    kind TEXT NOT NULL CHECK (kind IN ('site_account', 'mail', 'database')),
+    kind TEXT NOT NULL CHECK (kind IN ('app', 'site_account', 'mail', 'database')),
     target TEXT NOT NULL,
     before TEXT NOT NULL CHECK (json_valid(before)),
     captured_at TEXT NOT NULL DEFAULT (datetime('now')),

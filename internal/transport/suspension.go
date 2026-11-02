@@ -49,6 +49,9 @@ type MailDomainState struct {
 	// map; DomainLine is that line exactly.
 	DomainListed bool   `json:"domain_listed"`
 	DomainLine   string `json:"domain_line,omitempty"`
+	// MailDeferred: the domain has CelikPanel's line in the suspended
+	// recipient map, so Postfix answers its mail with a temporary 450.
+	MailDeferred bool `json:"mail_deferred,omitempty"`
 	// LoginRefused maps each mailbox found in Dovecot's users file to whether
 	// its line carries the nologin field. A mailbox without a line is absent.
 	LoginRefused map[string]bool `json:"login_refused"`
@@ -76,6 +79,24 @@ type SuspensionInspectRequest struct {
 	SiteAccounts  []SuspensionSiteAccount  `json:"site_accounts,omitempty"`
 	MailDomains   []SuspensionMailDomain   `json:"mail_domains,omitempty"`
 	DatabaseUsers []SuspensionDatabaseUser `json:"database_users,omitempty"`
+	// AppSites are site ids whose Node.js app unit (celikapp-<id>) is read.
+	AppSites []int `json:"app_sites,omitempty"`
+}
+
+// AppUnitState is the systemd state of a site's Node.js app unit.
+type AppUnitState struct {
+	Present bool `json:"present"`
+	// Active: running (active, activating or reloading).
+	Active bool `json:"active"`
+	// Enabled: started at boot (enabled or enabled-runtime).
+	Enabled bool `json:"enabled"`
+}
+
+// AppUnitObservation is one inspected app unit.
+type AppUnitObservation struct {
+	SiteID int          `json:"site_id"`
+	State  AppUnitState `json:"state"`
+	Error  string       `json:"error,omitempty"`
 }
 
 // SiteAccountObservation is one inspected site account; Error is set when it
@@ -105,6 +126,7 @@ type SuspensionInspectResponse struct {
 	SiteAccounts  []SiteAccountObservation  `json:"site_accounts"`
 	MailDomains   []MailDomainObservation   `json:"mail_domains"`
 	DatabaseUsers []DatabaseUserObservation `json:"database_users"`
+	AppUnits      []AppUnitObservation      `json:"app_units,omitempty"`
 	Error         string                    `json:"error,omitempty"`
 }
 
@@ -137,9 +159,10 @@ type SetSiteAccountSuspensionResponse struct {
 }
 
 // SetMailDomainSuspensionRequest suspends or restores one mail domain:
-// suspended means its line is out of the virtual mailbox domain map (Postfix
-// refuses its mail) and every listed mailbox carries nologin (Dovecot refuses
-// IMAP, POP3 and SMTP authentication). Nothing is deleted.
+// suspended means the domain has a "450 4.7.1" line in CelikPanel's
+// suspended recipient map (Postfix refuses its mail temporarily, senders
+// retry) and every listed mailbox carries nologin (Dovecot refuses IMAP, POP3
+// and SMTP authentication). Nothing is deleted.
 type SetMailDomainSuspensionRequest struct {
 	ExpectedBuildCommit string               `json:"expected_build_commit"`
 	Domain              SuspensionMailDomain `json:"domain"`
@@ -166,4 +189,19 @@ type SetDatabaseUserSuspensionRequest struct {
 type SetDatabaseUserSuspensionResponse struct {
 	SuspensionApplyResult
 	State DatabaseUserState `json:"state"`
+}
+
+// SetAppUnitSuspensionRequest stops and disables (Suspend) a site's Node.js
+// app unit, or restores the running and boot state recorded in Before.
+type SetAppUnitSuspensionRequest struct {
+	ExpectedBuildCommit string       `json:"expected_build_commit"`
+	SiteID              int          `json:"site_id"`
+	Suspend             bool         `json:"suspend"`
+	Before              AppUnitState `json:"before"`
+}
+
+// SetAppUnitSuspensionResponse carries the state after the call.
+type SetAppUnitSuspensionResponse struct {
+	SuspensionApplyResult
+	State AppUnitState `json:"state"`
 }

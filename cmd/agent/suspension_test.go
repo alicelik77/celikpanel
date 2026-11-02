@@ -325,12 +325,13 @@ func TestSuspensionNologinTokenRoundTrip(t *testing.T) {
 func TestMailDomainSuspensionStateAndPlan(t *testing.T) {
 	hash := "{SHA512-CRYPT}$6$salt$HASH"
 	domains := "other.com OK\nexample.com OK\nexample.net OK\n"
+	deferral := "other.com " + suspensionMailDeferReply + "\n"
 	users := "a@example.com:" + hash + "::::::userdb_quota_rule=*:storage=1M\n" +
 		"b@example.com:" + hash + "::::::userdb_quota_rule=*:storage=1M nologin=y\n" +
 		"c@other.com:" + hash + "::::::\n"
 	mailboxes := []string{"a@example.com", "b@example.com", "gone@example.com"}
 
-	before, err := mailDomainSuspensionState([]byte(domains), []byte(users), "example.com", mailboxes)
+	before, err := mailDomainSuspensionState([]byte(domains), []byte(deferral), []byte(users), "example.com", mailboxes)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -342,12 +343,13 @@ func TestMailDomainSuspensionStateAndPlan(t *testing.T) {
 		t.Fatalf("state = %+v, want %+v", before, wantBefore)
 	}
 
-	plan, err := planMailDomainSuspension([]byte(domains), []byte(users), "example.com", mailboxes, true, before)
-	if err != nil || len(plan.conflicts) != 0 || !plan.domainsChanged || !plan.usersChanged {
+	plan, err := planMailDomainSuspension([]byte(deferral), []byte(users), "example.com", mailboxes, true, before)
+	if err != nil || len(plan.conflicts) != 0 || !plan.deferralChanged || !plan.usersChanged {
 		t.Fatalf("suspend plan = %+v, %v", plan, err)
 	}
-	if string(plan.domains) != "other.com OK\nexample.net OK\n" {
-		t.Fatalf("suspended domains = %q", plan.domains)
+	// The domain stays in the domain map; its mail is answered with a 450.
+	if string(plan.deferral) != deferral+"example.com 450 4.7.1 Mailbox temporarily unavailable\n" {
+		t.Fatalf("suspended deferral map = %q", plan.deferral)
 	}
 	wantUsers := "a@example.com:" + hash + "::::::nologin=y userdb_quota_rule=*:storage=1M\n" +
 		"b@example.com:" + hash + "::::::userdb_quota_rule=*:storage=1M nologin=y\n" +
@@ -355,33 +357,33 @@ func TestMailDomainSuspensionStateAndPlan(t *testing.T) {
 	if string(plan.users) != wantUsers {
 		t.Fatalf("suspended users = %q", plan.users)
 	}
-	suspended, _ := mailDomainSuspensionState(plan.domains, plan.users, "example.com", mailboxes)
-	if !mailDomainStateMeetsTarget(suspended, true, before) {
+	suspended, _ := mailDomainSuspensionState([]byte(domains), plan.deferral, plan.users, "example.com", mailboxes)
+	if !mailDomainStateMeetsTarget(suspended, true, before) || !suspended.DomainListed {
 		t.Fatalf("suspended state does not meet the target: %+v", suspended)
 	}
 
 	// Already suspended: nothing to write.
-	again, _ := planMailDomainSuspension(plan.domains, plan.users, "example.com", mailboxes, true, before)
-	if again.domainsChanged || again.usersChanged || len(again.conflicts) != 0 {
+	again, _ := planMailDomainSuspension(plan.deferral, plan.users, "example.com", mailboxes, true, before)
+	if again.deferralChanged || again.usersChanged || len(again.conflicts) != 0 {
 		t.Fatalf("second suspend plan = %+v", again)
 	}
 
-	// Restore re-appends the recorded line and removes only our token.
-	restore, err := planMailDomainSuspension(plan.domains, plan.users, "example.com", mailboxes, false, before)
+	// Restore removes exactly our line and only our token.
+	restore, err := planMailDomainSuspension(plan.deferral, plan.users, "example.com", mailboxes, false, before)
 	if err != nil || len(restore.conflicts) != 0 {
 		t.Fatalf("restore plan = %+v, %v", restore, err)
 	}
-	if string(restore.domains) != "other.com OK\nexample.net OK\nexample.com OK\n" {
-		t.Fatalf("restored domains = %q", restore.domains)
+	if string(restore.deferral) != deferral {
+		t.Fatalf("restored deferral map = %q", restore.deferral)
 	}
 	if string(restore.users) != users {
 		t.Fatalf("restored users = %q, want %q", restore.users, users)
 	}
-	restored, _ := mailDomainSuspensionState(restore.domains, restore.users, "example.com", mailboxes)
+	restored, _ := mailDomainSuspensionState([]byte(domains), restore.deferral, restore.users, "example.com", mailboxes)
 	if !mailDomainStateMeetsTarget(restored, false, before) {
 		t.Fatalf("restored state does not meet the target: %+v", restored)
 	}
-	if again, _ := planMailDomainSuspension(restore.domains, restore.users, "example.com", mailboxes, false, before); again.domainsChanged || again.usersChanged || len(again.conflicts) != 0 {
+	if again, _ := planMailDomainSuspension(restore.deferral, restore.users, "example.com", mailboxes, false, before); again.deferralChanged || again.usersChanged || len(again.conflicts) != 0 {
 		t.Fatalf("second restore plan = %+v", again)
 	}
 }
@@ -389,24 +391,24 @@ func TestMailDomainSuspensionStateAndPlan(t *testing.T) {
 func TestMailDomainSuspensionPlanConflicts(t *testing.T) {
 	hash := "{SHA512-CRYPT}$6$salt$HASH"
 	users := "a@example.com:" + hash + "::::::\n"
+	ours := "example.com " + suspensionMailDeferReply + "\n"
 	before := transport.MailDomainState{DomainListed: true, DomainLine: "example.com OK", LoginRefused: map[string]bool{"a@example.com": false}}
 	for _, tc := range []struct {
-		name           string
-		domains, users string
-		suspend        bool
-		before         transport.MailDomainState
+		name            string
+		deferral, users string
+		suspend         bool
+		before          transport.MailDomainState
 	}{
-		{"suspend: domain line differs", "example.com REJECT\n", users, true, before},
-		{"suspend: domain listed twice", "example.com OK\nexample.com OK\n", users, true, before},
-		{"suspend: domain present but recorded absent", "example.com OK\n", users, true, transport.MailDomainState{}},
-		{"suspend: short users line", "example.com OK\n", "a@example.com:" + hash + "\n", true, before},
-		{"suspend: recorded nologin removed", "example.com OK\n", users, true,
+		{"suspend: someone else's line for the domain", "example.com REJECT\n", users, true, before},
+		{"suspend: domain listed twice", ours + ours, users, true, before},
+		{"suspend: short users line", "", "a@example.com:" + hash + "\n", true, before},
+		{"suspend: recorded nologin removed", "", users, true,
 			transport.MailDomainState{DomainListed: true, DomainLine: "example.com OK", LoginRefused: map[string]bool{"a@example.com": true}}},
-		{"restore: line re-added differently", "example.com REJECT\n", "a@example.com:" + hash + "::::::nologin=y\n", false, before},
+		{"restore: line changed while suspended", "example.com 554 gone\n", "a@example.com:" + hash + "::::::nologin=y\n", false, before},
 		{"restore: nologin placed by someone else", "", "a@example.com:" + hash + "::::::foo=1 nologin=y\n", false, before},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			plan, err := planMailDomainSuspension([]byte(tc.domains), []byte(tc.users), "example.com", []string{"a@example.com"}, tc.suspend, tc.before)
+			plan, err := planMailDomainSuspension([]byte(tc.deferral), []byte(tc.users), "example.com", []string{"a@example.com"}, tc.suspend, tc.before)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -427,14 +429,55 @@ func TestMailDomainSuspensionUnrecordedMailbox(t *testing.T) {
 	// n@example.com was created after inspection: suspend refuses it too...
 	before := transport.MailDomainState{DomainListed: true, DomainLine: "example.com OK", LoginRefused: map[string]bool{}}
 	users := "n@example.com:" + hash + "::::::\n"
-	plan, _ := planMailDomainSuspension([]byte("example.com OK\n"), []byte(users), "example.com", []string{"n@example.com"}, true, before)
+	plan, _ := planMailDomainSuspension(nil, []byte(users), "example.com", []string{"n@example.com"}, true, before)
 	if len(plan.conflicts) != 0 || string(plan.users) != "n@example.com:"+hash+"::::::nologin=y\n" {
 		t.Fatalf("suspend plan = %+v", plan)
 	}
 	// ...and restore opens it again rather than leaving it refused.
-	restore, _ := planMailDomainSuspension(plan.domains, plan.users, "example.com", []string{"n@example.com"}, false, before)
-	if len(restore.conflicts) != 0 || string(restore.users) != users {
+	restore, _ := planMailDomainSuspension(plan.deferral, plan.users, "example.com", []string{"n@example.com"}, false, before)
+	if len(restore.conflicts) != 0 || string(restore.users) != users || len(restore.deferral) != 0 {
 		t.Fatalf("restore plan = %+v", restore)
+	}
+}
+
+// The managed check_recipient_access element goes in front of the owner's
+// restrictions while a domain is suspended and comes off exactly.
+func TestSuspensionRestrictionPlanKeepsTheOwnersValue(t *testing.T) {
+	old := postfixSuspendedRecipientsPath
+	postfixSuspendedRecipientsPath = "/etc/postfix/celikpanel_suspended_recipients"
+	t.Cleanup(func() { postfixSuspendedRecipientsPath = old })
+	owner := "permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination, {check_policy_service inet:127.0.0.1:10023}"
+	prefix := "check_recipient_access hash:/etc/postfix/celikpanel_suspended_recipients"
+
+	add, err := planSuspensionRestriction(owner, true, "hash")
+	if err != nil || !add.change || add.unset || add.value != prefix+", "+owner {
+		t.Fatalf("add = %+v, %v", add, err)
+	}
+	if same, _ := planSuspensionRestriction(add.value, true, "hash"); same.change {
+		t.Fatalf("present element changed again: %+v", same)
+	}
+	remove, err := planSuspensionRestriction(add.value, false, "hash")
+	if err != nil || !remove.change || remove.unset || remove.value != owner {
+		t.Fatalf("remove = %+v, %v", remove, err)
+	}
+	// An empty (default) value: the element alone, then unset again.
+	add, _ = planSuspensionRestriction("", true, "lmdb")
+	if add.value != "check_recipient_access lmdb:/etc/postfix/celikpanel_suspended_recipients" {
+		t.Fatalf("empty add = %+v", add)
+	}
+	if remove, _ := planSuspensionRestriction(add.value, false, "lmdb"); !remove.change || !remove.unset {
+		t.Fatalf("empty remove = %+v", remove)
+	}
+	// Moved by the owner: left alone. Nothing to do without suspension.
+	moved := "permit_mynetworks, " + prefix
+	if plan, _ := planSuspensionRestriction(moved, false, "hash"); plan.change {
+		t.Fatalf("moved element was rewritten: %+v", plan)
+	}
+	if plan, _ := planSuspensionRestriction(owner, false, "hash"); plan.change {
+		t.Fatalf("an unsuspended server was changed: %+v", plan)
+	}
+	if _, err := planSuspensionRestriction("permit_mynetworks, {broken", true, "hash"); err == nil {
+		t.Fatal("unbalanced braces accepted")
 	}
 }
 

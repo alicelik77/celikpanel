@@ -124,45 +124,31 @@ func subscriptionStatusSuspended(status string) bool {
 	return status == "suspended" || status == "expired"
 }
 
-// subscriptionsHaveEndsAt reports whether subscriptions carries ends_at (it
-// comes with the plans-and-rights migration; missing means "never ends").
-func subscriptionsHaveEndsAt(ctx context.Context, q sqlQueryer) (bool, error) {
-	rows, err := q.QueryContext(ctx, `PRAGMA table_info(subscriptions)`)
-	if err != nil {
-		return false, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var (
-			cid        int
-			name, kind string
-			notNull    int
-			def        sql.NullString
-			pk         int
-		)
-		if err := rows.Scan(&cid, &name, &kind, &notNull, &def, &pk); err != nil {
-			return false, err
-		}
-		if name == "ends_at" {
-			return true, nil
-		}
-	}
-	return false, rows.Err()
-}
-
-// subscriptionEndsAt is the subscription's end date, "" when it has none or
-// the column does not exist yet.
+// subscriptionEndsAt is the subscription's end date (052's ends_at), ""
+// when it has none (never ends, K7).
 func subscriptionEndsAt(ctx context.Context, q sqlQueryer, subscriptionID int) (string, error) {
-	has, err := subscriptionsHaveEndsAt(ctx, q)
-	if err != nil || !has {
-		return "", err
-	}
 	var endsAt sql.NullString
-	err = q.QueryRowContext(ctx, `SELECT ends_at FROM subscriptions WHERE id = ?`, subscriptionID).Scan(&endsAt)
+	err := q.QueryRowContext(ctx, `SELECT ends_at FROM subscriptions WHERE id = ?`, subscriptionID).Scan(&endsAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", nil
 	}
 	return strings.TrimSpace(endsAt.String), err
+}
+
+// suspendReasonFor maps the causes to 052's subscriptions.suspend_reason:
+// manual -> manual, end date passed -> expired, reseller cascade -> manual
+// (an operator suspended the reseller; 052 has no reseller value). "" when
+// nothing suspends it.
+func suspendReasonFor(c suspensionCauses) string {
+	switch {
+	case c.Manual:
+		return suspendReasonManual
+	case c.Expired:
+		return suspendReasonExpired
+	case c.ResellerID > 0:
+		return suspendReasonManual
+	}
+	return ""
 }
 
 // suspensionAccept is the result of accepting a cause change.
@@ -267,7 +253,13 @@ func (p *Panel) acceptSuspensionChange(ctx context.Context, subscriptionID int, 
 	if want {
 		status = "suspended"
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE subscriptions SET status = ?, updated_at = datetime('now') WHERE id = ?`, status, subscriptionID); err != nil {
+	// One read of subscriptions tells the state: status, and 052's
+	// suspend_reason and suspended_at mirror the cause row (cleared on resume).
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE subscriptions SET status = ?, suspend_reason = ?,
+			suspended_at = (SELECT suspended_at FROM subscription_suspensions WHERE subscription_id = ?),
+			updated_at = datetime('now')
+		WHERE id = ?`, status, nullIfEmpty(suspendReasonFor(causes)), subscriptionID, subscriptionID); err != nil {
 		return result, err
 	}
 	result.Suspended = want
@@ -398,13 +390,9 @@ func (p *Panel) reconcileSuspensionOperations(ctx context.Context) error {
 // checkSubscriptionExpiry suspends every subscription whose end date has
 // passed (once per end date: an operator's resume waives that date) and
 // clears the expiry cause of one whose end date moved into the future or was
-// removed. Without an ends_at column nothing ever expires (K7: infinite).
+// removed. It reads 052's ends_at; NULL never expires (K7: infinite).
 func (p *Panel) checkSubscriptionExpiry(ctx context.Context) error {
 	db := p.db.GetDB()
-	has, err := subscriptionsHaveEndsAt(ctx, db)
-	if err != nil || !has {
-		return err
-	}
 	type item struct {
 		id      int
 		endsAt  string

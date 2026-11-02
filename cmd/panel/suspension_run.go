@@ -37,6 +37,7 @@ const (
 // Effect kinds in the order they run.
 const (
 	suspensionEffectWeb         = "web"
+	suspensionEffectApp         = "app"
 	suspensionEffectSiteAccount = "site_account"
 	suspensionEffectMail        = "mail"
 	suspensionEffectDatabase    = "database"
@@ -61,6 +62,7 @@ type suspensionNative interface {
 	setMailDomain(ctx context.Context, req transport.SetMailDomainSuspensionRequest) (transport.SetMailDomainSuspensionResponse, error)
 	setDatabaseUser(ctx context.Context, req transport.SetDatabaseUserSuspensionRequest) (transport.SetDatabaseUserSuspensionResponse, error)
 	syncVPN(ctx context.Context) error
+	setAppUnit(ctx context.Context, req transport.SetAppUnitSuspensionRequest) (transport.SetAppUnitSuspensionResponse, error)
 }
 
 type panelSuspensionNative struct{ p *Panel }
@@ -93,6 +95,13 @@ func (n panelSuspensionNative) setDatabaseUser(ctx context.Context, req transpor
 	req.ExpectedBuildCommit = strings.TrimSpace(buildCommit)
 	var resp transport.SetDatabaseUserSuspensionResponse
 	err := n.p.callAgentContext(ctx, "Agent.SetDatabaseUserSuspensionV1", &req, &resp)
+	return resp, err
+}
+
+func (n panelSuspensionNative) setAppUnit(ctx context.Context, req transport.SetAppUnitSuspensionRequest) (transport.SetAppUnitSuspensionResponse, error) {
+	req.ExpectedBuildCommit = strings.TrimSpace(buildCommit)
+	var resp transport.SetAppUnitSuspensionResponse
+	err := n.p.callAgentContext(ctx, "Agent.SetAppUnitSuspensionV1", &req, &resp)
 	return resp, err
 }
 
@@ -136,6 +145,7 @@ func (p *Panel) suspensionNativeOps() suspensionNative {
 type suspensionEffectRef struct {
 	SubscriptionID int    `json:"subscription_id,omitempty"`
 	DomainID       int    `json:"domain_id,omitempty"`
+	SiteID         int    `json:"site_id,omitempty"`
 	Domain         string `json:"domain,omitempty"`
 	Engine         string `json:"engine,omitempty"`
 	Port           int    `json:"port,omitempty"`
@@ -154,6 +164,7 @@ type suspensionPlanItem struct {
 type suspensionPreview struct {
 	Action        string   `json:"action"`
 	Sites         []string `json:"sites"`
+	Apps          []string `json:"apps"`
 	MailDomains   []string `json:"mail_domains"`
 	Mailboxes     int      `json:"mailboxes"`
 	DatabaseUsers []string `json:"database_users"`
@@ -173,12 +184,13 @@ func localDatabaseHost(host string) bool {
 // planSuspension reads the subscription's resources: the affected-resource
 // list of the operation and the preview. Read-only.
 func planSuspension(ctx context.Context, q sqlQueryer, subscriptionID int, action string) ([]suspensionPlanItem, suspensionPreview, error) {
-	preview := suspensionPreview{Action: action, Sites: []string{}, MailDomains: []string{}, DatabaseUsers: []string{}, SiteAccounts: []string{}, Notes: []string{}}
-	var web, accounts, mail, dbs, vpn []suspensionPlanItem
+	preview := suspensionPreview{Action: action, Sites: []string{}, Apps: []string{}, MailDomains: []string{}, DatabaseUsers: []string{}, SiteAccounts: []string{}, Notes: []string{}}
+	var web, apps, accounts, mail, dbs, vpn []suspensionPlanItem
 
 	rows, err := q.QueryContext(ctx, `
 		SELECT d.id, d.name,
 		       EXISTS (SELECT 1 FROM sites s WHERE s.domain_id = d.id),
+		       COALESCE((SELECT s.id FROM sites s WHERE s.domain_id = d.id AND s.project_type = 'node'), 0),
 		       (SELECT COUNT(*) FROM email_accounts e WHERE e.domain_id = d.id),
 		       EXISTS (SELECT 1 FROM email_forwardings f WHERE f.domain_id = d.id)
 		FROM domains d WHERE d.subscription_id = ? ORDER BY d.name`, subscriptionID)
@@ -186,10 +198,10 @@ func planSuspension(ctx context.Context, q sqlQueryer, subscriptionID int, actio
 		return nil, preview, err
 	}
 	for rows.Next() {
-		var id, mailboxes int
+		var id, nodeSite, mailboxes int
 		var name string
 		var hasSite, hasForward bool
-		if err := rows.Scan(&id, &name, &hasSite, &mailboxes, &hasForward); err != nil {
+		if err := rows.Scan(&id, &name, &hasSite, &nodeSite, &mailboxes, &hasForward); err != nil {
 			rows.Close()
 			return nil, preview, err
 		}
@@ -199,6 +211,12 @@ func planSuspension(ctx context.Context, q sqlQueryer, subscriptionID int, actio
 			accounts = append(accounts, suspensionPlanItem{suspensionEffectSiteAccount, name, ref})
 			preview.Sites = append(preview.Sites, name)
 			preview.SiteAccounts = append(preview.SiteAccounts, name)
+		}
+		if nodeSite > 0 {
+			appRef := ref
+			appRef.SiteID = nodeSite
+			apps = append(apps, suspensionPlanItem{suspensionEffectApp, name, appRef})
+			preview.Apps = append(preview.Apps, name)
 		}
 		if mailboxes > 0 || hasForward {
 			mail = append(mail, suspensionPlanItem{suspensionEffectMail, name, ref})
@@ -270,12 +288,13 @@ func planSuspension(ctx context.Context, q sqlQueryer, subscriptionID int, actio
 	if action == suspensionKindSuspend {
 		preview.Notes = append(preview.Notes,
 			"Nothing is deleted: files, mailboxes, databases and settings stay and come back exactly when the subscription is resumed.",
-			"Mail sent to these domains is refused while suspended; mail already stored is kept.")
+			"Mail sent to these domains is refused temporarily while suspended (senders keep it and retry for several days); mail already stored is kept.",
+			"Node.js apps are stopped and do not start at boot; on resume only the apps that were running are started again.")
 	} else {
 		preview.Notes = append(preview.Notes,
 			"Everything CelikPanel changed when suspending is put back as it was; anything changed on the server since then by its owner is kept.")
 	}
-	plan := append(append(append(append(web, accounts...), mail...), dbs...), vpn...)
+	plan := append(append(append(append(append(web, apps...), accounts...), mail...), dbs...), vpn...)
 	return plan, preview, nil
 }
 
@@ -519,7 +538,8 @@ func (p *Panel) beforeImage(ctx context.Context, subscriptionID int, kind, targe
 }
 
 func absentError(message string) bool {
-	return strings.HasPrefix(message, "site account is absent") || strings.HasPrefix(message, "database user is absent")
+	return strings.HasPrefix(message, "site account is absent") || strings.HasPrefix(message, "database user is absent") ||
+		strings.HasPrefix(message, "app unit is absent")
 }
 
 // applyResult turns the Agent's compare-and-set answer into a checkpoint.
@@ -564,6 +584,49 @@ func (p *Panel) runSuspensionEffect(ctx context.Context, native suspensionNative
 			return effectDone, "serves the suspended page (503); nginx validated and reloaded", nil
 		}
 		return effectDone, "serves the site again; nginx validated and reloaded", nil
+
+	case suspensionEffectApp:
+		var before transport.AppUnitState
+		var capture func() (any, error)
+		if suspend {
+			capture = func() (any, error) {
+				resp, err := native.inspect(ctx, transport.SuspensionInspectRequest{AppSites: []int{e.Ref.SiteID}})
+				if err != nil {
+					return nil, unknownResult(err)
+				}
+				if resp.Error != "" || len(resp.AppUnits) != 1 {
+					return nil, unknownResult(fmt.Errorf("inspection: %s", resp.Error))
+				}
+				if resp.AppUnits[0].Error != "" {
+					return nil, unknownResult(errors.New(resp.AppUnits[0].Error))
+				}
+				return resp.AppUnits[0].State, nil
+			}
+		}
+		found, err := p.beforeImage(ctx, op.SubscriptionID, e.Kind, e.Target, capture, &before)
+		if err != nil {
+			return "", "", err
+		}
+		if !found {
+			return effectDone, "nothing was changed when suspending; nothing to restore", nil
+		}
+		if suspend {
+			_ = p.setEffectState(ctx, op.ID, e.Seq, effectCaptured, "")
+		}
+		if !before.Present {
+			return effectDone, "the site has no Node.js app unit; nothing to change", nil
+		}
+		resp, err := native.setAppUnit(ctx, transport.SetAppUnitSuspensionRequest{SiteID: e.Ref.SiteID, Suspend: suspend, Before: before})
+		if err != nil {
+			return "", "", unknownResult(err)
+		}
+		if suspend {
+			return applyResult(resp.SuspensionApplyResult, "Node.js app stopped and kept from starting at boot", "already stopped")
+		}
+		if !before.Active {
+			return applyResult(resp.SuspensionApplyResult, "boot setting put back; the app was not running before, so it was not started", "already as it was")
+		}
+		return applyResult(resp.SuspensionApplyResult, "Node.js app started again", "already running")
 
 	case suspensionEffectSiteAccount:
 		account := transport.SuspensionSiteAccount{SubscriptionID: e.Ref.SubscriptionID, DomainID: e.Ref.DomainID, Domain: e.Ref.Domain}
@@ -647,7 +710,7 @@ func (p *Panel) runSuspensionEffect(ctx context.Context, native suspensionNative
 			return "", "", unknownResult(err)
 		}
 		if suspend {
-			return applyResult(resp.SuspensionApplyResult, "incoming mail refused; mailbox sign-in refused", "already refused")
+			return applyResult(resp.SuspensionApplyResult, "incoming mail refused temporarily (450, senders retry); mailbox sign-in refused", "already refused")
 		}
 		return applyResult(resp.SuspensionApplyResult, "mail accepted and sign-in allowed again", "already as it was")
 

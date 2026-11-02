@@ -66,6 +66,14 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			name: "SetAppUnitSuspensionV1",
+			run: func(expected string) string {
+				var response transport.SetAppUnitSuspensionResponse
+				_ = agent.SetAppUnitSuspensionV1(&transport.SetAppUnitSuspensionRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
 			// alpha.113: the default HTTPS server's "Try again".
 			name: "ReconcileDefaultHTTPSServerV1",
 			run: func(expected string) string {

@@ -45,6 +45,7 @@ func init() {
 		postfixDomainsPath = filepath.Join(d, "vmailbox_domains")
 		dovecotUsersPath = filepath.Join(d, "dovecot-users")
 		autoresponderTransportPath = filepath.Join(d, "celikpanel_transport")
+		postfixSuspendedRecipientsPath = filepath.Join(d, "celikpanel_suspended_recipients")
 		mailRootDir = filepath.Join(d, "vhosts")
 		_ = os.MkdirAll(d, 0o700)
 	}
