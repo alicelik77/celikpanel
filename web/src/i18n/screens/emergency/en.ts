@@ -1,0 +1,122 @@
+// SCREEN catalogue part "emergency": the security emergency of a component or
+// one of its versions (D-043, alpha.117) on the Components page, and the
+// notice its customers and resellers see. Key prefixes kept here: emg.,
+// notice.emg., err.EMERGENCY_, err.VERSION_WITHDRAWN,
+// err.SECURITY_EMERGENCY_MAINTENANCE.
+// One part of the screen copy; ../../index.tsx fetches every part in
+// parallel and no screen renders before all of them have arrived.
+//
+// EKRAN katalogu parçası "emergency": bir bileşenin ya da sürümünün güvenlik
+// acil durumu ve müşterilerinin gördüğü bildirim.
+
+export const enEmergencyScreens = {
+    // The section in the version drawer.
+    'emg.title': 'Security emergency',
+    'emg.intro': 'Use this only when {name} has a security hole and no patch is available. Four separate steps, lightest first: withdraw, stop, move the sites, remove. No customer data is ever deleted.',
+    'emg.open': 'Open the security emergency steps',
+    'emg.close': 'Hide',
+    'emg.version': 'Version',
+    'emg.reason': 'Reason (for example the CVE number); customers are told it',
+    'emg.recommended': 'Recommended alternative for customers (optional)',
+    'emg.recommendedNone': 'No recommendation',
+    'emg.withdraw': 'Withdraw {name} for security (step 1)',
+    'emg.withdrawHelp': 'Nobody can choose it for anything new; sites that use it keep running. You can undo it.',
+    'emg.reading': 'Reading the emergency…',
+    'emg.readFailed': 'The emergency could not be read. It may still be running; this screen tries again.',
+
+    // The emergency card: guidance first, then steps.
+    'emg.stage.withdrawn': 'Withdrawn for security',
+    'emg.stage.stopped': 'Stopped and locked',
+    'emg.stage.removed': 'Removed',
+    'emg.stage.resolved': 'Resolved',
+    'emg.guidance.now': 'Now',
+    'emg.guidance.who': 'Who acts',
+    'emg.guidance.next': 'Next',
+    'emg.guidance.resumes': 'How it goes on',
+    'emg.who.administrator': 'You, the administrator',
+    'emg.who.nobody': 'Nobody needs to act',
+    'emg.reasonLine': 'Reason: {reason}',
+    'emg.step.stop': 'Emergency stop (step 2)',
+    'emg.step.stopHelp': 'Stops and locks it so it cannot start; every affected site shows “This site is temporarily under maintenance”.',
+    'emg.step.move': 'Move the sites (step 3)',
+    'emg.step.moveHelp': 'Moves each affected site to another version, one by one, and lists the sites that could not be moved.',
+    'emg.step.remove': 'Emergency removal (step 4)',
+    'emg.step.removeHelp': 'Removes the package even though sites use it. Files, databases and mailboxes stay; the sites stay on the maintenance page.',
+    'emg.step.reenable': 'Re-enable (patch installed)',
+    'emg.step.reenableHelp': 'Unlocks and starts it as it was, shows the sites that still use it again and tells their customers it is resolved.',
+    'emg.step.cancel': 'Undo the withdrawal',
+    'emg.step.continue': 'Continue',
+    'emg.progress': '{done} of {total} steps done',
+    'emg.effect.done': 'Done',
+    'emg.effect.pending': 'Waiting',
+    'emg.effect.captured': 'In progress',
+    'emg.effect.failed': 'Failed',
+    'emg.effect.kept': 'Left as the owner changed it',
+    'emg.effect.manual': 'Outside this server',
+    'emg.sites': 'Affected sites ({n})',
+    'emg.sitesNone': 'No site uses it now.',
+    'emg.siteMaintenance': 'maintenance page',
+    'emg.siteMoved': 'moved to {version}',
+    'emg.notices': 'Notices: {total} in the panel, {seen} seen; e-mail sent {sent}, waiting {pending}, failed {failed}, without an address {none}.',
+    'emg.noticesNoMail': 'E-mail could not be sent from this server, so the notices are in the panel only.',
+
+    // The confirmation.
+    'emg.confirm.title': '{step}: {name}',
+    'emg.confirm.affects': 'This affects',
+    'emg.confirm.customers': 'Customers ({n})',
+    'emg.confirm.resellers': 'Resellers ({n})',
+    'emg.confirm.offeredBy': 'Offered by these plans and rights sets',
+    'emg.confirm.reason': 'Reason for this step (for example the CVE number)',
+    'emg.confirm.target': 'Move the sites to',
+    'emg.confirm.targetNone': 'No other installed version that is not withdrawn. Install one first.',
+    'emg.confirm.typeName': 'Type {name} to confirm',
+    'emg.confirm.password': 'Your password',
+    'emg.confirm.keepWithdrawn': 'Keep it withdrawn from new choices',
+    'emg.confirm.submit': 'Confirm',
+    'emg.confirm.started': 'Accepted. The steps continue on their own; this screen follows them.',
+    'emg.confirm.lost': 'The answer did not arrive, so whether the step started is not known. This screen reads the emergency again; do not press twice.',
+
+    // The notice customers and resellers see.
+    'notice.emg.title': 'Security notice: {name}',
+    'notice.emg.what': 'The administrator stopped {name} on this server because of a security problem.',
+    'notice.emg.why': 'Reason: {reason}',
+    'notice.emg.sites': 'These sites now show “This site is temporarily under maintenance”:',
+    'notice.emg.sitesReseller': 'Sites of your customers (and yours) that now show the maintenance page:',
+    'notice.emg.nothingLost': 'Nothing was deleted: files, databases and mailboxes stay.',
+    'notice.emg.todo': 'What to do: switch the site to another version. It comes back as soon as it runs there.',
+    'notice.emg.todoWhole': 'What to do: nothing is needed now; the sites come back when the administrator re-enables {name}. Ask your provider if you need help.',
+    'notice.emg.switch': 'Switch {site} to {name} {version}',
+    'notice.emg.switched': '{site} now runs {name} {version}.',
+    'notice.emg.switchLost': 'The answer did not arrive, so whether {site} was switched is not known. Open the site to check.',
+    'notice.emg.resolvedTitle': 'Resolved: {name}',
+    'notice.emg.resolved': 'The security problem in {name} is resolved; the sites show their own pages again. There is nothing you need to do.',
+    'notice.emg.seen': 'Mark as seen',
+
+    // The audit trail's sentences (Dashboard "Recent activity").
+    'dashboard.audit.action.security.emergency.withdraw': 'withdrew {target} for security',
+    'dashboard.audit.action.security.emergency.withdraw_cancel': 'undid the security withdrawal of {target}',
+    'dashboard.audit.action.security.emergency.stop': 'stopped {target} in a security emergency',
+    'dashboard.audit.action.security.emergency.move': 'moved the sites off {target} in a security emergency',
+    'dashboard.audit.action.security.emergency.remove': 'removed {target} in a security emergency (no customer data deleted)',
+    'dashboard.audit.action.security.emergency.reenable': 're-enabled {target} after a security emergency',
+    'dashboard.audit.action.security.emergency.continue': 'continued a security emergency step for {target}',
+    'dashboard.audit.action.security.emergency.confirm_refused': 'was refused confirming a security emergency step for {target} (wrong password)',
+    'dashboard.audit.action.security.emergency.finished': 'finished a security emergency step ({target})',
+    'dashboard.audit.action.security.emergency.failed': 'could not finish a security emergency step ({target})',
+
+    // Coded refusals.
+    'err.EMERGENCY_EXISTS': 'An emergency for this component is already open. Continue it below.',
+    'err.EMERGENCY_BUSY': 'Another step of this emergency is running. Wait for it to finish; this screen follows it. Nothing was started.',
+    'err.EMERGENCY_WRONG_STAGE': 'This step does not apply now. Follow the next step shown above.',
+    'err.EMERGENCY_BAD_TARGET': 'Choose a component and, for PHP and Node.js, a version.',
+    'err.EMERGENCY_BAD_MOVE_TARGET': 'Choose another installed version that is not withdrawn.',
+    'err.EMERGENCY_REASON_REQUIRED': 'Write the reason (for example the CVE number). Nothing was changed.',
+    'err.EMERGENCY_NAME_MISMATCH': 'The name you typed does not match exactly. Nothing was changed.',
+    'err.EMERGENCY_WRONG_PASSWORD': 'The password is not correct. Nothing was changed.',
+    'err.EMERGENCY_IMPERSONATION_REFUSED': 'This cannot be confirmed while signed in as another account. Return to your own account first.',
+    'err.EMERGENCY_TOO_MANY_ATTEMPTS': 'Too many password attempts. Wait a few minutes, then try again. Nothing was changed.',
+    'err.VERSION_WITHDRAWN': '{name} is withdrawn for security on this server. Choose another one. Nothing was changed.',
+    'err.SECURITY_EMERGENCY_MAINTENANCE': 'This application was stopped because its version has a security problem. Switch the site to another version; it starts there.',
+} as const;
+
+export type EmergencyScreenKey = keyof typeof enEmergencyScreens;
