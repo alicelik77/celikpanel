@@ -770,11 +770,12 @@ func (p *Panel) syncMailTLSAfterOperation(
 	}
 	tlsResult := mailProfileTLSResult{
 		Configured: true, SNICount: response.SNICount,
-		FallbackOnly: response.SNICount == 0,
+		FallbackOnly:    response.SNICount == 0,
+		HostCertificate: mailProfileHostCertificateState(response.HostCertificate),
 	}
 	result["mail_tls"] = tlsResult
 	if tlsResult.FallbackOnly {
-		result["warnings"] = []string{mailProfileFallbackWarning}
+		result["warnings"] = []string{mailProfileTLSWarning(tlsResult.HostCertificate)}
 	}
 	return nil
 }

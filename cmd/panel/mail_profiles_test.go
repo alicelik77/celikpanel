@@ -44,6 +44,9 @@ type mailProfileTestAgent struct {
 	hostnameError       string
 	hostnameRequests    []string
 	tlsHostnames        []string
+	// stackHostnames: the mail name each ConfigureMailStack carried.
+	stackHostnames  []string
+	hostCertificate string // answered by ConfigureMailStack and SyncMailTLSV2
 }
 
 func (a *mailProfileTestAgent) SetServerHostname(
@@ -213,10 +216,14 @@ func (a *mailProfileTestAgent) ListServiceInstances(
 }
 
 func (a *mailProfileTestAgent) ConfigureMailStack(
-	request *transport.ServiceMutationRequest,
+	request *transport.ConfigureMailStackRequest,
 	response *transport.ConfigureMailStackResponse,
 ) error {
 	a.record("mail-stack", "", request.ServiceMutationBinding)
+	a.profileMu.Lock()
+	a.stackHostnames = append(a.stackHostnames, request.MailHostname)
+	response.HostCertificate = a.hostCertificate
+	a.profileMu.Unlock()
 	response.Configured = true
 	return nil
 }
@@ -281,6 +288,9 @@ func (a *mailProfileTestAgent) SyncMailTLSV2(
 	response.Configured = true
 	response.SNICount = len(request.SNI) + a.tlsCountOffset
 	response.DefaultCert = transport.DefaultMailTLSCertificatePath
+	a.profileMu.Lock()
+	response.HostCertificate = a.hostCertificate
+	a.profileMu.Unlock()
 	return nil
 }
 
@@ -1039,6 +1049,54 @@ func TestMailProfileFallbackWarningAndFinalGates(t *testing.T) {
 		warnings := result.Warnings
 		if len(warnings) != 1 || warnings[0] != mailProfileFallbackWarning {
 			t.Fatalf("warnings = %v", warnings)
+		}
+	})
+
+	// The trusted mail host certificate serves: the receipt keeps its
+	// contract (fallback_only == no SNI, one warning) and says what serves.
+	t.Run("zero SNI with the managed host certificate", func(t *testing.T) {
+		fixture, agent := newMailProfileTestFixture(t)
+		agent.hostCertificate = transport.MailHostCertificateManaged
+		recorder, queued := postMailProfile(
+			t, fixture, "core-mail", mustServiceOperationRequestID(t),
+		)
+		if recorder.Code != http.StatusAccepted {
+			t.Fatalf("profile status=%d body=%s", recorder.Code, recorder.Body.String())
+		}
+		completed, _ := waitForServiceOperation(
+			t, fixture.panel, fixture.userID, queued.ID, serviceOperationSucceeded,
+		)
+		var result struct {
+			MailTLS                  mailProfileTLSResult `json:"mail_tls"`
+			Warnings                 []string             `json:"warnings"`
+			MailStackHostCertificate string               `json:"mail_stack_host_certificate"`
+		}
+		if err := json.Unmarshal(completed.Result, &result); err != nil {
+			t.Fatal(err)
+		}
+		if !result.MailTLS.FallbackOnly || result.MailTLS.SNICount != 0 ||
+			result.MailTLS.HostCertificate != transport.MailHostCertificateManaged ||
+			result.MailStackHostCertificate != transport.MailHostCertificateManaged {
+			t.Fatalf("result = %+v", result)
+		}
+		if len(result.Warnings) != 1 || result.Warnings[0] != mailProfileHostCertificateWarning {
+			t.Fatalf("warnings = %v", result.Warnings)
+		}
+		profile, _ := mailProfileByID("core-mail")
+		if !mailProfileReceiptVerified(profile, string(completed.Result)) {
+			t.Fatal("the receipt with host_certificate no longer verifies")
+		}
+		agent.profileMu.Lock()
+		names := append([]string(nil), agent.stackHostnames...)
+		tlsNames := append([]string(nil), agent.tlsHostnames...)
+		agent.profileMu.Unlock()
+		if len(names) == 0 || len(tlsNames) != 1 {
+			t.Fatalf("stack names=%v tls names=%v", names, tlsNames)
+		}
+		for _, name := range names {
+			if name != tlsNames[0] {
+				t.Fatalf("mail stack carried %q, mail TLS uses %q", name, tlsNames[0])
+			}
 		}
 	})
 

@@ -107,6 +107,29 @@ type serverSetupExecutionStep struct {
 	EnrollmentDispatchAttempted bool   `json:"enrollment_dispatch_attempted,omitempty"`
 	// MainSite (alpha.114) is what the main-domain website step came to.
 	MainSite *serverSetupMainSiteOutcome `json:"main_site,omitempty"`
+	// MailCertificate (2 Nov 2026) is where the mail host certificate step
+	// left the certificate: staged | applied | unknown (serverSetupMailCertificate*).
+	// Additive; older pages ignore it.
+	MailCertificate string `json:"mail_certificate,omitempty"`
+}
+
+// Placement of the mail host certificate, recorded on its setup step.
+const (
+	// Published while no mail service was installed; the mail profile
+	// install starts Postfix and Dovecot with it.
+	serverSetupMailCertificateStaged = "staged"
+	// Applied to mail services that were already running.
+	serverSetupMailCertificateApplied = "applied"
+	// The step completed but the Agent's reply was lost, so where it was
+	// placed is not known from this step.
+	serverSetupMailCertificateUnknown = "unknown"
+)
+
+func serverSetupMailCertificatePlacement(response transport.IssueMailHostCertificateResponse) string {
+	if response.Staged {
+		return serverSetupMailCertificateStaged
+	}
+	return serverSetupMailCertificateApplied
 }
 
 type serverSetupExecution struct {
@@ -1768,7 +1791,7 @@ func (p *Panel) runServerSetupStep(ctx context.Context, plan serverSetupPlan, st
 		}
 		return true, p.startServerSetupDNS(ctx, plan.Draft, step.RequestID, plan.Actor)
 	case "mail_certificate":
-		return p.runServerSetupMailCertificate(ctx, plan, *step)
+		return p.runServerSetupMailCertificate(ctx, plan, step)
 	case "mail_dns":
 		return p.runServerSetupMailDNS(ctx, plan, *step)
 	case "main_site":
@@ -2299,7 +2322,7 @@ func (p *Panel) finishServerSetupRunner(lastID string) {
 	}
 }
 
-func (p *Panel) runServerSetupMailCertificate(ctx context.Context, plan serverSetupPlan, step serverSetupExecutionStep) (bool, error) {
+func (p *Panel) runServerSetupMailCertificate(ctx context.Context, plan serverSetupPlan, step *serverSetupExecutionStep) (bool, error) {
 	commitment, err := mutationpayload.CanonicalMailHostCertificate(step.Target, plan.ContactEmail, plan.BuildCommit)
 	if err != nil {
 		return false, err
@@ -2315,7 +2338,14 @@ func (p *Panel) runServerSetupMailCertificate(ctx context.Context, plan serverSe
 			return false, err
 		}
 		if job.Status == agentMutationSucceeded {
-			return true, validateAgentMutationSucceededReceipt(job, identity)
+			if err := validateAgentMutationSucceededReceipt(job, identity); err != nil {
+				return true, err
+			}
+			// The job proves completion, not where the certificate went.
+			if step.MailCertificate == "" {
+				step.MailCertificate = serverSetupMailCertificateUnknown
+			}
+			return true, nil
 		}
 		if agentMutationActive(job.Status) {
 			return false, nil
@@ -2361,6 +2391,7 @@ func (p *Panel) runServerSetupMailCertificate(ctx context.Context, plan serverSe
 		return false, err
 	}
 	p.auditServiceOperation(ctx, plan.Actor, "server_setup_mail_certificate_requested")
+	placement := ""
 	err = p.withStandaloneAgentMutationIdentity(ctx, op, step.OwnerID, func(bound context.Context, binding agentMutationBinding) error {
 		var response transport.IssueMailHostCertificateResponse
 		req := transport.IssueMailHostCertificateRequest{ServiceMutationBinding: binding, Domain: commitment.Domain, Email: commitment.Email, ExpectedBuildCommit: commitment.ExpectedBuildCommit}
@@ -2370,9 +2401,21 @@ func (p *Panel) runServerSetupMailCertificate(ctx context.Context, plan serverSe
 		if err := serverSetupMailCertificateResponseError(response); err != nil {
 			return err
 		}
-		return serverSetupMailCertificateStagedError(response, certificateFirst)
+		if err := serverSetupMailCertificateStagedError(response, certificateFirst); err != nil {
+			return err
+		}
+		placement = serverSetupMailCertificatePlacement(response)
+		return nil
 	})
-	return err == nil, err
+	if err != nil {
+		return false, err
+	}
+	if placement == "" {
+		// Success was proven from the job after the reply was lost.
+		placement = serverSetupMailCertificateUnknown
+	}
+	step.MailCertificate = placement
+	return true, nil
 }
 
 // serverSetupMailCertificateStagedError: a certificate published while no

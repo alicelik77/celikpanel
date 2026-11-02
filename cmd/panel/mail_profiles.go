@@ -36,6 +36,7 @@ const (
 	mailProfileAttemptFailed     = "failed"
 
 	mailProfileFallbackWarning        = "No active trusted Secure Mail certificate was found. Mail submission is using the local self-signed fallback; activate a trusted certificate with Secure Mail enabled."
+	mailProfileHostCertificateWarning = "Mail uses this server's trusted mail host certificate. No domain has an active trusted Secure Mail certificate yet, so a mail client that connects by a domain's own mail name is shown the host certificate; to give a domain its own, activate a trusted certificate with Secure Mail enabled."
 	mailProfileReconciliationWarning  = "Components are running. Run Repair to verify and reconcile the complete mail profile, including mail TLS and authenticated submission."
 	mailProfileServerHostnameMessage  = "The mail hostname must be a fully qualified domain name, such as mail.example.com."
 	mailProfileServerHostnameRequired = "This server does not have a fully qualified name yet and CelikPanel has none saved for it. Enter the name the mail server should answer as, such as mail.example.com; the installation gives this server that name."
@@ -128,6 +129,30 @@ type mailProfileTLSResult struct {
 	Configured   bool `json:"configured"`
 	SNICount     int  `json:"sni_count"`
 	FallbackOnly bool `json:"fallback_only"`
+	// HostCertificate (additive, 2 Nov 2026): "managed" when the server
+	// certificate is the trusted mail host certificate, "default" for the
+	// self-signed one, empty when unknown. FallbackOnly keeps its contract
+	// (no domain SNI entry); this says what that fallback is.
+	HostCertificate string `json:"host_certificate,omitempty"`
+}
+
+// mailProfileHostCertificateState keeps only the two known Agent answers.
+func mailProfileHostCertificateState(value string) string {
+	switch value {
+	case transport.MailHostCertificateManaged, transport.MailHostCertificateDefault:
+		return value
+	default:
+		return ""
+	}
+}
+
+// mailProfileTLSWarning: the warning a result without domain certificates
+// carries. The receipt contract needs one; its text follows what serves.
+func mailProfileTLSWarning(hostCertificate string) string {
+	if hostCertificate == transport.MailHostCertificateManaged {
+		return mailProfileHostCertificateWarning
+	}
+	return mailProfileFallbackWarning
 }
 
 type mailProfileProofReceipt struct {
@@ -636,7 +661,8 @@ func (p *Panel) runMailProfileInstall(
 		return result, operationAdvanceFailure(err)
 	}
 	var mailStack transport.ConfigureMailStackResponse
-	if err := p.callAgentContext(ctx, "Agent.ConfigureMailStack", &mutationRequest, &mailStack); err != nil {
+	mailStackRequest := p.configureMailStackRequest(ctx, binding)
+	if err := p.callAgentContext(ctx, "Agent.ConfigureMailStack", &mailStackRequest, &mailStack); err != nil {
 		return result, mailProfileInstallFailure(fmt.Errorf("final mail stack configuration: %w", err))
 	}
 	if mailStack.Error != "" {
@@ -644,6 +670,9 @@ func (p *Panel) runMailProfileInstall(
 	}
 	if !mailStack.Configured {
 		return result, mailProfileInstallFailure(errors.New("agent did not confirm final mail stack configuration"))
+	}
+	if mailStack.HostCertificate != "" {
+		result["mail_stack_host_certificate"] = mailStack.HostCertificate
 	}
 
 	if err := advance(mailProfilePhase(profile.ID, "submission")); err != nil {
@@ -897,6 +926,8 @@ func (p *Panel) reconstructSucceededMailProfileResult(
 	}
 	result := newMailProfileResult(profile)
 	result["completed_services"] = append([]string(nil), profile.Services...)
+	// The host certificate in use is not re-read here: unknown, and the
+	// warning keeps the earlier text.
 	result["mail_tls"] = mailProfileTLSResult{
 		Configured:   true,
 		SNICount:     len(sni),

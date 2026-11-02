@@ -1172,8 +1172,9 @@ func forgetFileAccessAccount(username string) {
 // the package's own configuration (plain FTP, every local account) is
 // replaced by CelikPanel's (TLS only, nobody listed yet) before the
 // firewall opens port 21, and a running daemon is restarted with it. The
-// distro file is kept next to it.
-func prepareInstalledVsftpd(ctx context.Context, freshInstall bool) error {
+// distro file is kept next to it. held: the package start guard keeps the
+// unit masked and stopped, so there is nothing to restart.
+func prepareInstalledVsftpd(ctx context.Context, freshInstall, held bool) error {
 	before, exists, err := fileAccessReadFile(fileaccess.VsftpdConfPath)
 	if err != nil {
 		return fmt.Errorf("read %s: %w", fileaccess.VsftpdConfPath, err)
@@ -1222,8 +1223,12 @@ func prepareInstalledVsftpd(ctx context.Context, freshInstall bool) error {
 		}
 	}
 	fileAccessEnsureLogFile()
-	// Debian's package starts vsftpd with its own configuration; restart it
-	// with CelikPanel's. Arch's package does not start it.
+	if held {
+		return nil
+	}
+	// A vsftpd started before the guard existed (or by the owner) is
+	// restarted with CelikPanel's configuration. Arch's package does not
+	// start it.
 	if out, err := fileAccessRun(ctx, nil, "systemctl", "try-restart", "vsftpd.service"); err != nil {
 		return fmt.Errorf("restart vsftpd with the TLS-only configuration: %s", firstLine(string(out)))
 	}

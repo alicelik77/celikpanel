@@ -67,7 +67,7 @@ func TestCertificateClockSkewSurvivesALostReply(t *testing.T) {
 	f.agent.mutationJobs[step.RequestID] = &ServiceOperationMutationJob{RequestID: step.RequestID, OwnerID: step.OwnerID, Kind: "mail_host_certificate", Target: step.Target, PackageName: commitment.Qualifier,
 		Status: agentMutationFailed, ErrorCode: failure.Code, ErrorMessage: failure.Message}
 	f.agent.mu.Unlock()
-	_, err = f.panel.runServerSetupMailCertificate(context.Background(), plan, step)
+	_, err = f.panel.runServerSetupMailCertificate(context.Background(), plan, &step)
 	var child *serverSetupChildFailure
 	if !errors.As(err, &child) || child.Code != certificateClockSkewCode {
 		t.Fatalf("mail certificate after a lost reply: %v", err)
