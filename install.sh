@@ -1166,8 +1166,47 @@ rhel_preview_prerequisite_command() {
         policycoreutils libselinux-utils
 }
 
+# Name of the detected system for the refusal message. Display only: the
+# value is cut down to plain characters so it cannot carry terminal escapes.
+bootstrap_platform_display_name() {
+    local file=$1 line name= keep='[^[:alnum:] ._/()+:-]'
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ "$line" == PRETTY_NAME=* ]]; then
+            name=${line#PRETTY_NAME=}
+            break
+        fi
+    done < "$file"
+    name=${name//[\"\']/}
+    name=${name//$keep/}
+    name=${name:0:60}
+    if [[ -z "$name" ]]; then
+        name=$BOOTSTRAP_DISTRO_ID${BOOTSTRAP_DISTRO_VERSION_ID:+ $BOOTSTRAP_DISTRO_VERSION_ID}
+    fi
+    printf '%s' "$name"
+}
+
+# The one supported-system gate. The list is exactly the one on
+# https://celikpanel.net/systems.html. The decision uses ID and VERSION_ID only;
+# ID_LIKE never admits a derivative (Kali, Mint, Rocky and so on are refused).
+# Arch is rolling and has no version number. This only reads os-release, so a
+# refusal happens before anything on the server is changed.
+require_supported_platform() {
+    local os_release=$1 name
+    parse_bootstrap_os_release "$os_release"
+    case "$BOOTSTRAP_DISTRO_ID:$BOOTSTRAP_DISTRO_VERSION_ID" in
+        debian:12|debian:13|ubuntu:22.04|ubuntu:24.04) return 0 ;;
+        arch:*) return 0 ;;
+    esac
+    name=$(bootstrap_platform_display_name "$os_release")
+    die "This system is not supported: $name. Nothing was changed on this server. CelikPanel runs on Debian 12 and 13, Ubuntu 22.04 and 24.04, and Arch Linux. Install one of these on a clean server and run the command again. Full list: https://celikpanel.net/systems.html" \
+        "Bu sistem desteklenmiyor: $name. Bu sunucuda hiçbir şey değiştirilmedi. CelikPanel Debian 12 ve 13, Ubuntu 22.04 ve 24.04 ile Arch Linux üzerinde çalışır. Bunlardan birini temiz bir sunucuya kurup komutu yeniden çalıştırın. Tam liste: https://celikpanel.net/systems.html"
+}
+
 preflight_bootstrap_platform() {
     local os_release=$1 machine=$2
+    # Apply-only runs only on a host that is already installed and is started
+    # from its own update screen; the gate is for installing.
+    [[ $APPLY_ONLY -eq 1 ]] || require_supported_platform "$os_release"
     classify_bootstrap_platform "$os_release" "$machine"
     verify_live_selinux_preflight
     if [[ "$SELINUX_PLATFORM_MODE" == dnf-preview ]]; then

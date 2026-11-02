@@ -1080,6 +1080,35 @@ preflight_first_administrator_download_admission() {
     "Etkileşimsiz imzalı genel kurulum host değişikliğinden önce terminal gerektirir; terminalle yeniden çalıştırın veya doğrulanmış sürümün install.sh komutunu CELIKPANEL_ADMIN_CREDENTIALS_FILE=/mutlak/root-sahipli/dosya ile doğrudan çalıştırın (kurucu bunu panel --admin-credentials-file=- olarak içeride aktarır)."
 }
 
+# Value of one os-release field, read as plain text (the file is never run).
+os_release_value() {
+  awk -F= -v key="$2" '$1 == key { print substr($0, length(key) + 2); exit }' "$1" 2>/dev/null \
+    | tr -d "\"'"
+}
+
+# Supported-system gate for a new installation. The list is exactly the one on
+# https://celikpanel.net/systems.html and the decision uses ID and VERSION_ID
+# only, never ID_LIKE. It only reads os-release, and it runs before this script
+# creates any file, lock or record, so a refusal changes nothing. install.sh
+# checks the same list again.
+require_supported_platform() {
+  platform_id=$(os_release_value "$1" ID)
+  platform_version=$(os_release_value "$1" VERSION_ID)
+  case "$platform_id:$platform_version" in
+    debian:12|debian:13|ubuntu:22.04|ubuntu:24.04) return 0 ;;
+    arch:*) return 0 ;;
+  esac
+  # Display only: reduced to plain characters and cut to 60.
+  platform_name=$(os_release_value "$1" PRETTY_NAME \
+    | tr -cd '[:alnum:] ._/()+:-' | awk '{ $1 = $1; print substr($0, 1, 60) }')
+  [ -n "$platform_name" ] || platform_name=$(printf '%s %s' "$platform_id" "$platform_version" \
+    | tr -cd '[:alnum:] ._/()+:-' | awk '{ $1 = $1; print substr($0, 1, 60) }')
+  [ -n "$platform_name" ] || platform_name=unknown
+  fail \
+    "This system is not supported: $platform_name. Nothing was changed on this server. CelikPanel runs on Debian 12 and 13, Ubuntu 22.04 and 24.04, and Arch Linux. Install one of these on a clean server and run the command again. Full list: https://celikpanel.net/systems.html" \
+    "Bu sistem desteklenmiyor: $platform_name. Bu sunucuda hiçbir şey değiştirilmedi. CelikPanel Debian 12 ve 13, Ubuntu 22.04 ve 24.04 ile Arch Linux üzerinde çalışır. Bunlardan birini temiz bir sunucuya kurup komutu yeniden çalıştırın. Tam liste: https://celikpanel.net/systems.html"
+}
+
 marker_state=absent
 if [ -e /etc/celikpanel/install.complete ] || [ -L /etc/celikpanel/install.complete ]; then
   marker_state=invalid
@@ -1216,6 +1245,10 @@ else
   fi
 fi
 
+# A new installation must be on a supported system. Everything before this line
+# only reads; prepare_release_storage below is the first step that creates files.
+# Updates of an installed panel are not blocked here.
+[ "$operation" != install ] || require_supported_platform /etc/os-release
 preflight_first_administrator_download_admission "$operation" "$any_install"
 prepare_release_storage
 workdir=$(mktemp -d "$releases_root/.download.XXXXXXXX")

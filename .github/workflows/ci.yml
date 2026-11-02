@@ -96,6 +96,9 @@ jobs:
       # Keep the RHEL preview probe blocked-only, default-dry-run and injection-safe.
       - run: bash deploy/e2e/rhel9/test-contract.sh
       - run: bash deploy/test-install-localization-contract.sh
+      # Only the systems on the public supported list may install.
+      # Yalnız herkese açık desteklenen listedeki sistemler kurulabilir.
+      - run: bash deploy/test-unsupported-platform-gate.sh
       # R-054: a prerequisite step that replaces the running kernel must be
       # noticed, and the restart must be the last thing the operator reads.
       # R-054: calisan cekirdegi degistiren bir on gereksinim adimi fark
