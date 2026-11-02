@@ -332,10 +332,12 @@ func switchSitePoolLocked(request transport.SitePoolRequest) (transport.SiteFile
 	if removeErr == nil {
 		removeErr = phpFPMConfigTest(oldVersion)
 		if removeErr == nil {
-			removeErr = reloadPHPFPM(oldVersion)
+			// A stopped source version (a security emergency, D-043) has
+			// nothing to reload; it reads its pools when it next starts.
+			removeErr = reloadPHPFPMIfRunning(oldVersion)
 		}
 		if removeErr != nil {
-			sourceRestoreErr = errors.Join(restoreManagedSiteFile(source.Path, sourceInspected), reloadPHPFPM(oldVersion))
+			sourceRestoreErr = errors.Join(restoreManagedSiteFile(source.Path, sourceInspected), reloadPHPFPMIfRunning(oldVersion))
 			removeErr = errors.Join(removeErr, sourceRestoreErr)
 		}
 	}

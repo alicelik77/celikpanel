@@ -74,6 +74,15 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			// alpha.117 (D-043): a security emergency's unit lock.
+			name: "SetEmergencyUnitLockV1",
+			run: func(expected string) string {
+				var response transport.SetEmergencyUnitLockResponse
+				_ = agent.SetEmergencyUnitLockV1(&transport.SetEmergencyUnitLockRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
 			// alpha.113: the default HTTPS server's "Try again".
 			name: "ReconcileDefaultHTTPSServerV1",
 			run: func(expected string) string {

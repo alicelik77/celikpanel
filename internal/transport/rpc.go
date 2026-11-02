@@ -491,6 +491,11 @@ type ApplyVhostRequest struct {
 	// The vhost then answers every request with the "this site is suspended"
 	// page (503) and serves no site content; certificate validation stays.
 	Suspended bool `json:"suspended,omitempty"`
+	// Maintenance (alpha.117, additive, D-043): the site's runtime is under a
+	// security emergency. The vhost then answers every request with the
+	// "temporarily under maintenance" page (503); certificate validation
+	// stays. Suspended wins when both are set.
+	Maintenance bool `json:"maintenance,omitempty"`
 }
 
 // SiteProtectedDirRequest is one password-protected folder of a site.
