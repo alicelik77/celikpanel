@@ -79,13 +79,22 @@ kurulu  ∩  yöneticinin sunduğu  ∩  bayinin hak seti  ∩  aboneliğin hak 
 Bayi kendisinde olmayan bir hakkı hiçbir müşterisine veremez. Ne planla ne
 özel ayarla ne de devirle.
 
-**İ3 — Hak seti olmayan hesap yoktur.** Her abonelik açık bir hak setiyle
-doğar. Hak setinin iki kaynağı var:
+**İ3 — Her hesabın hakları ya bir plandan gelir ya da o hesaba özel seçilir.**
+(Sahip, 2 Kasım 2026; ROLES.md'deki "bayi ve müşteriye elle izin seti yok"
+kuralının yerine geçer.) Üç durum vardır ve her ekranda adıyla yazar:
+- **Sınırsız:** Hiçbir plan seçilmemiş ve hiçbir şey özel olarak
+  belirlenmemişse hesap Sınırsız plandadır. Sahip: "Bir plana bağlı olmayanlar
+  Sınırsız plana dahil olurlar."
 - **Plana bağlı:** Hak seti, bağlı olduğu planınkiyle birebir aynıdır. Plan
-  değişince abonelik de değişir.
-- **Özel:** Hak seti aboneliğe aittir. Ya plan seçilmeden tek tek seçilmiştir
-  ya da bir plana bağlıyken üzerinde tek bir şey bile değiştirilmiştir. O anda
-  abonelik plandan çıkar ve "Özel" olur. "Plan + ek" diye bir ara durum yoktur.
+  değişince hesap da değişir.
+- **Özel:** Hak seti hesaba aittir. Ya plan seçilmeden tek tek seçilmiştir ya
+  da bir plana bağlıyken tek bir şey bile değiştirilmiştir. O anda hesap
+  plandan çıkar ve "Özel" olur. "Plan + ek" diye bir ara durum yoktur.
+
+**Planın amacı hız.** Sahip: "Plan seçimi, bayiye ya da müşteriye haklarını
+hızlı bir şekilde şablon olarak yapıştırmak için. Yoksa her bayi ya da müşteri
+için her şeyi tek tek seçmek gerekir." Plan bir zorunluluk değil, hazır bir
+şablondur.
 
 **İ4 — "Sınırsız" da bir plandır ve adı davranışını söyler.** Panel iki hazır
 planla gelir: müşteriler için **Sınırsız** ve bayiler için **Sınırsız bayi**.
@@ -236,8 +245,19 @@ tasarımdır.
   çıkamaz.
 - Müşterilerine kendi planlarından birini ya da yöneticinin bayiye açtığı
   genel planlardan birini bağlar, ya da özel hak seti verir.
-- Havuz, dağıtılan miktarların toplamını sınırlar; kullanılanı değil
-  (bugünkü gibi). Böylece fazla satış olmaz (bkz. Karar K2).
+- **Havuz gerçek kullanımı sınırlar, dağıtımı değil.** Sahip: "Bayiye 1 TB
+  veri transferi izni verirsin, bayi 10 müşterisine her biri için 500 GB
+  verir. Toplam teoride geçer ama pratikte geçememeli." Yani bayi
+  müşterilerine havuzundan fazlasını dağıtabilir; ama bütün müşterilerinin
+  **gerçek** toplam kullanımı havuzu aşamaz. Toplam havuza ulaşınca o bayinin
+  hiçbir müşterisi daha fazlasını kullanamaz; yeni kullanım, kimin ne yapması
+  gerektiği yazılarak reddedilir. Yüzde 80'de ve 100'de bayiye ve yöneticiye
+  uyarı gider. Bu, bugünkü kuralın tersidir: bugün dağıtılan toplam
+  sınırlanıyor.
+- Sayı kalemlerinde (alan adı, veritabanı, posta kutusu, müşteri) gerçek
+  kullanım zaten sayıdır: oluşturulmuş olanlar sayılır.
+- Trafik ölçülmeye başlayana kadar trafik havuzu uygulanmaz ve ekranda böyle
+  yazar.
 
 **Müşteri**
 - Yalnız kendi hak setinde açık olanı görür ve kullanır.
@@ -251,14 +271,18 @@ Müşterinin kendisinde olmayan bir yetkiyi ek kullanıcı hiç alamaz.
 
 ## 6. Plan ve abonelik davranışı
 
-**6.1 Hesap oluşturma.** Formda "Haklar" bölümü zorunludur. İki yol var:
-- **Plan seç:** Liste, oluşturanın verebileceği planları gösterir. Sınırsız
-  planı adıyla seçili gelir.
+**6.1 Hesap oluşturma.** Formda "Haklar" bölümü her zaman görünür. Üç yol
+var:
+- **Sınırsız:** Formda adıyla seçili gelir. Hiçbir şey değiştirilmezse hesap
+  Sınırsız olur. Bu bilerek görülen bir seçimdir; bugünkü gibi sessiz
+  değildir.
+- **Plan seç:** Liste, oluşturanın verebileceği planları gösterir.
 - **Özel belirle:** Üç bölüm tek tek doldurulur. Yalnız oluşturanın kendi hak
   setindeki kalemler seçilebilir.
 
-Bayi oluştururken de aynı bölüm sorulur: bayi planı ya da özel bayi hak seti.
-Hak seti seçilmeden hesap oluşmaz.
+Bayi oluştururken de aynı bölüm görünür: Sınırsız bayi, bir bayi planı ya da
+özel bayi hak seti. Bir bayinin oluşturduğu müşteri için "Sınırsız", o bayinin
+kendi hak setinin tamamı demektir; bayinin alanının dışına çıkmaz.
 
 **6.2 Plandan özel olmaya geçiş.** Plana bağlı bir abonelikte tek bir kalem
 değiştirildiğinde, kaydetmeden önce şu sorulur:
@@ -345,8 +369,8 @@ kayıtlarıdır.
 |---|---|
 | Plana bağlı abonelik | Aynı plana bağlı. Plan bugünkü sayılarını korur; yetki ve yazılım bölümleri "yöneticinin sunduğu her şey" olarak doldurulur. Davranış değişmez. |
 | Plansız abonelik (elle sayılar) | Özel. Bugünkü sayılar korunur; yetki ve yazılım "sunulan her şey". |
-| Aboneliği olmayan müşteri | Sınırsız plana bağlı yeni bir abonelik. Bugün bu hesap hiçbir şey oluşturamıyor; geçişten sonra oluşturabilir. **Bu bir davranış değişikliğidir** (bkz. Karar K4). |
-| Havuzu olmayan bayi | Sınırsız bayi planına bağlı. Davranış değişmez. |
+| Aboneliği olmayan müşteri | Sınırsız (İ3: plana bağlı olmayan Sınırsız'dadır). Bugün bu hesap hiçbir şey oluşturamıyor; geçişten sonra oluşturabilir. **Bu bir davranış değişikliğidir;** geçişten sonra yöneticiye bu hesapların listesi gösterilir. |
+| Havuzu olmayan bayi | Sınırsız bayi. Davranış değişmez. |
 | Havuzu olan bayi | Özel bayi hak seti: bugünkü havuz sayıları; yetki ve yazılım "sunulan her şey". |
 | VPN ve uygulama kurucu ürün izinleri | Aboneliğin hak setinde yetki olarak. İzni olmayanda kapalı. |
 | "Müşterilere gösterilen sürümler" listesi | Yöneticinin "sunulan" katmanı. |
@@ -358,6 +382,49 @@ hangi planda ya da özel olduğunu görür ve daraltmaya başlayabilir.
 geri dönülürse, eski panel yeni tabloları görmez ve bugünkü gibi çalışır.
 Uygulama aşamasında bu, D-025'in istediği gibi bir geri dönüş denemesiyle
 kanıtlanır.
+
+---
+
+## 9A. Abonelik bitince: askıya alma
+
+Sahip, 2 Kasım 2026: "Müşterinin ya da bayinin aboneliği biterse ilgili tüm
+siteler askıya alınmalı. Bir şey askıya alındıysa 'bu site askıya alınmıştır'
+denir. Hiçbir servis, VPN olsun veritabanı olsun, hizmet vermez. Belki hosting
+değil sadece veritabanı olarak kullanıyor olabilir; izin vermemek lazım."
+Önceki cevap: "Belli bir süre sonra elle silinir."
+
+**Ne zaman.** Aboneliğin bitiş tarihi geçtiğinde ya da yönetici veya bayi
+aboneliği bitirdiğinde. Bir bayinin aboneliği bitince, o bayinin bütün
+müşterilerinin abonelikleri de askıya alınır.
+
+**Ne olur.** Askıya alınan aboneliğin hiçbir hizmeti çalışmaz:
+
+| Hizmet | Askıdayken |
+|---|---|
+| Web siteleri | Ziyaretçi "Bu site askıya alınmıştır" sayfasını görür |
+| Posta | Gelen posta kabul edilmez; posta kutularına giriş yapılamaz |
+| Veritabanları | Veritabanı kullanıcıları bağlanamaz |
+| VPN | Cihazlar bağlanamaz |
+| Zamanlanmış görevler | Çalışmaz |
+| Dosya erişimi (FTP/SFTP) | Giriş yapılamaz |
+| Panel | Hesap sahibi giriş yapınca yalnız "Aboneliğiniz askıda; şu kişiye başvurun" ekranını görür |
+
+**Hiçbir şey silinmez.** Dosyalar, posta kutuları, veritabanları ve
+yapılandırma olduğu gibi durur. Abonelik yeniden başlatılınca her şey aynen
+geri gelir.
+
+**Silme elle yapılır.** Askıdaki bir abonelik belirli bir süre sonra
+yöneticinin ya da bayinin listesinde "silinebilir" olarak görünür. Silmeyi
+yalnız bir kişi başlatır; panel kendiliğinden silmez. Bekleme süresi K6'da.
+
+**Güvenlik ve dayanıklılık.**
+- Askıya alma ve geri alma birer değişikliktir (D-025): önce neyin
+  değişeceği gösterilir, sunucuda kontrol noktalarıyla yapılır, yarıda kalırsa
+  aynı işlem kaldığı yerden sürer.
+- Askıya alma, her hizmetin kendi standart ayarıyla yapılır (D-022). Panel
+  kaldırılsa bile askıdaki site askıda, açık site açık kalır.
+- Bugünkü panelde siteyi askıya alma yok; hesap dondurulabiliyor ama siteler
+  çalışmaya devam ediyor. Bu bölüm yeni bir parçadır.
 
 ---
 
@@ -373,7 +440,7 @@ Kaynaklar: Plesk Obsidian ve cPanel/WHM belgeleri ile destek makaleleri
 | Plesk: kaldırılan PHP sürümünü kullanan siteler 503 verir; planlarda eski referans kalır | Kullanılan sürüm kaldırılamaz; kaldırma ekranı planları da gösterir. |
 | cPanel: PHP sürüm kısıtı yalnız ekranda, `.htaccess` ile aşılır | Kural sunucuda zorlanır (İ6). |
 | cPanel: hesap paketinden kopabilir, paket değişikliğinin hesaplara gidip gitmediği belirsiz | Plana bağlı hesap her zaman planla aynıdır; özel hesap hiç etkilenmez. Ara durum yoktur. |
-| cPanel: bayi sınırları varsayılan olarak kapalı | Bayi hak seti zorunlu; sınırsızlık yalnız adı görünen bir planla. |
+| cPanel: bayi sınırları varsayılan olarak kapalı ve görünmez | Her bayinin durumu adıyla yazar: Sınırsız bayi, bir plan ya da Özel. Sınırsızlık görünür bir seçimdir. |
 | Plesk: devirde alan bayinin kapasitesi denetlenir (iyi örnek) | Aynısı, yetki ve yazılım kalemleri de eklenerek. |
 
 ---
@@ -396,25 +463,24 @@ doğrulanacak:
 
 ## 12. Sahibin vermesi gereken kararlar
 
-- **K1 — Rol belgesindeki eski kural.** ROLES.md "bayi ve müşteri için elle
-  kurulan izin setleri yapılmayacak" diyor. Bu taslak izni plana ve özel hak
-  setine bağlıyor. Öneri: o madde "izin kişiye değil hak setine verilir; hak
-  seti plandan ya da özel olarak gelir; kişi başına ayrı rol yoktur" diye
-  güncellensin.
-- **K2 — Fazla satış.** Bayinin havuzu, dağıttığı miktarların toplamını mı
-  sınırlasın (fazla satış yok), yoksa yönetici isterse kullanılan miktarı mı
-  (fazla satış serbest)? Öneri: kapalı; yönetici bayi bazında bilerek
-  açabilsin.
-- **K3 — Müşterinin devir isteği.** Müşteri kendi aboneliği için devir isteği
-  gönderebilsin mi? Öneri: istek gönderebilsin; bayisi ya da yönetici onaylasın.
-- **K4 — Aboneliği olmayan müşteri.** Geçişte Sınırsız plana mı bağlansın
-  (oluşturma yapabilir hale gelir), yoksa "Haklar atanmalı" uyarısıyla mı
-  beklesin (bugünkü gibi hiçbir şey oluşturamaz)? Öneri: uyarıyla beklesin;
-  sessizce yetki genişlemesin.
+- **K1 — Rol kuralı. KARARLANDI:** "Her hesabın hakları ya bir plandan gelir
+  ya da o hesaba özel seçilir." ROLES.md buna göre güncellenecek (İ3).
+- **K2 — Fazla satış. KARARLANDI:** Dağıtım havuzu aşabilir; gerçek toplam
+  kullanım aşamaz (Bölüm 5, Bayi).
+- **K3 — Müşterinin devir isteği. KARARLANDI:** Müşteri istek gönderir; bayisi
+  ya da yönetici onaylar.
+- **K4 — Plansız hesaplar. KARARLANDI:** Bir plana bağlı olmayan ve özel hakkı
+  olmayan hesap Sınırsız'dadır (İ3). Abonelik bitince askıya alınır, belirli
+  bir süre sonra elle silinir (Bölüm 9A).
 - **K5 — Sınırsız plan ve yeni gelenler. KARARLANDI (sahip, 2 Kasım 2026):**
   Sınırsız plan yönetici tarafından sunulan her yeni şeyi kendiliğinden alır;
   almıyorsa adı Sınırsız olamaz. Üçüncü taraf yazılım için güvenlik kapısı
   "sunma" adımıdır (Bölüm 4.4).
+- **K6 — Askıdaki abonelik ne zaman "silinebilir" olur?** Öneri: 30 gün;
+  yönetici bu süreyi değiştirebilir. Silme her zaman elle yapılır.
+- **K7 — Abonelik bitiş tarihi kimde?** Bugün panelde fiyat ve ödeme yok.
+  Öneri: yönetici ve bayi her aboneliğe isteğe bağlı bir bitiş tarihi girer;
+  tarih yoksa abonelik kendiliğinden bitmez, yalnız elle bitirilir.
 
 ---
 
