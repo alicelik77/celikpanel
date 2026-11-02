@@ -87,10 +87,15 @@ doğar. Hak setinin iki kaynağı var:
   ya da bir plana bağlıyken üzerinde tek bir şey bile değiştirilmiştir. O anda
   abonelik plandan çıkar ve "Özel" olur. "Plan + ek" diye bir ara durum yoktur.
 
-**İ4 — "Sınırsız" da bir plandır.** Panel iki hazır planla gelir: müşteriler
-için **Sınırsız** ve bayiler için **Sınırsız bayi**. Sınırsız plan, yöneticinin
-sunduğu her şeyi açar ve hiçbir sayı sınırı koymaz. Formda adıyla görünür;
-gizli bir varsayılan değildir.
+**İ4 — "Sınırsız" da bir plandır ve adı davranışını söyler.** Panel iki hazır
+planla gelir: müşteriler için **Sınırsız** ve bayiler için **Sınırsız bayi**.
+Sınırsız plan, yöneticinin sunduğu her şeyi açar ve hiçbir sayı sınırı koymaz.
+Yönetici yeni bir şey sunduğunda (yeni bir PHP sürümü, yeni bir yetki, yeni bir
+yazılım) Sınırsız plan onu **kendiliğinden** alır. Sahip, 2 Kasım 2026: "Yeni
+bir şey ya da özellik gelince bu plana eklenmiyorsa adı Sınırsız olmaz, A planı
+olur." Bu yüzden Sınırsız planın kalemleri tek tek seçilemez. Daraltılmak
+istenirse o plan Sınırsız olmaktan çıkar: yönetici ondan yeni adlı bir plan
+türetir. Sınırsız plan formda adıyla görünür; gizli bir varsayılan değildir.
 
 **İ5 — Daraltma çalışanı bozmaz** (D-038). Bir kalem kapatıldığında, onu
 kullanan site ya da hizmet çalışmaya devam eder. Yalnız yeni kullanım
@@ -183,10 +188,12 @@ olur. Aynı kesişim kuralı geçerlidir; üçüncü taraf yazılım için ayrı
 sistemi kurulmaz (D-017: tek teklif kimliği alanı). Kimlik örneği:
 `extension:<üretici>:<ad>`. Güvenlik için ek kurallar:
 
-- **Kendiliğinden açılmaz.** Yeni bir üçüncü taraf yazılım kurulduğunda hiçbir
-  planda açık değildir, Sınırsız planda bile. Yönetici her plana ya da hak
-  setine bilerek ekler. Sınırsız planın "sunulan her şeyi kapsar" kuralı
-  yalnız panelin kendi bileşenleri içindir.
+- **Kurulmak sunulmak değildir.** Üçüncü taraf yazılım kurulduğunda hiçbir
+  hesaba açık değildir. Yönetici onu önce **sunulan** katmana alır; bunu
+  yaparken yazılımın istediği izinleri görür ve onaylar. Sunulduğu anda
+  Sınırsız plan onu kendiliğinden alır (İ4); diğer planlara ve özel hak
+  setlerine yönetici ya da bayi bilerek ekler. Güvenlik kapısı böylece
+  "sunma" adımındadır ve Sınırsız planın adı doğru kalır.
 - **Neye dokunacağını önceden söyler.** Üçüncü taraf yazılım, ihtiyaç duyduğu
   izinleri bir bildirimle açıkça listeler; örneğin "müşterinin dosyalarını
   okur", "veritabanı oluşturur", "dışarıya bağlantı kurar". Yönetici kurmadan
@@ -404,9 +411,10 @@ doğrulanacak:
   (oluşturma yapabilir hale gelir), yoksa "Haklar atanmalı" uyarısıyla mı
   beklesin (bugünkü gibi hiçbir şey oluşturamaz)? Öneri: uyarıyla beklesin;
   sessizce yetki genişlemesin.
-- **K5 — Üçüncü taraf yazılım ve Sınırsız plan.** Yeni kurulan bir üçüncü
-  taraf yazılım Sınırsız planda kendiliğinden açık olsun mu? Öneri: hayır;
-  yönetici her plana bilerek eklesin (Bölüm 4.4).
+- **K5 — Sınırsız plan ve yeni gelenler. KARARLANDI (sahip, 2 Kasım 2026):**
+  Sınırsız plan yönetici tarafından sunulan her yeni şeyi kendiliğinden alır;
+  almıyorsa adı Sınırsız olamaz. Üçüncü taraf yazılım için güvenlik kapısı
+  "sunma" adımıdır (Bölüm 4.4).
 
 ---
 
