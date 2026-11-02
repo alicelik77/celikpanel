@@ -138,6 +138,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.PostgreSQLClustersV1 Agent.PostgreSQLClusterPortPreviewV1 Agent.PostgreSQLSourceCheckV1
 		Agent.SiteCertificateRenewalStateV1 Agent.PanelListenConfigV1 Agent.MailAutoresponderState
 		Agent.FileAccessStateV1 Agent.FileAccessPreviewV1 Agent.SuspensionInspectV1
+		Agent.EmergencyUnitsInspectV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -154,7 +155,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityServiceLifecycle, `
 		Agent.EnsureNginxReady Agent.ResetFailedUnitMutation Agent.ServiceMutationAction
-		Agent.StartServiceMutation
+		Agent.StartServiceMutation Agent.SetEmergencyUnitLockV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostConfig, `
 		Agent.DeletePHPPool Agent.TogglePHPExtension Agent.UpdateConfig
@@ -385,6 +386,8 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.SetMailDomainSuspensionV1":     agentRPCMutationTimeout,
 	"Agent.SetDatabaseUserSuspensionV1":   agentRPCMutationTimeout,
 	"Agent.SetAppUnitSuspensionV1":        agentRPCMutationTimeout,
+	"Agent.EmergencyUnitsInspectV1":       agentRPCStandardReadTimeout,
+	"Agent.SetEmergencyUnitLockV1":        agentRPCMutationTimeout,
 	"Agent.UpdateMySQLConfig":             agentRPCMutationTimeout,
 	"Agent.UpdatePHPConfig":               agentRPCMutationTimeout,
 	"Agent.UpdatePHPConfiguration":        agentRPCMutationTimeout,

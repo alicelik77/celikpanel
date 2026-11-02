@@ -486,6 +486,11 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 			writePHPVersionNotInstalled(w, req.PHPVersion, caps.PHPVersions)
 			return
 		}
+		// alpha.117 (D-043): a version withdrawn for security is never a
+		// new site's version, the administrator's either.
+		if p.refuseWithdrawnVersion(w, r, "php", "", version) {
+			return
+		}
 		req.PHPVersion = version
 	}
 	if req.ProjectType != "php" {

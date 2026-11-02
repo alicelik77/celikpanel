@@ -250,6 +250,10 @@ func (p *Panel) handleDomainPHPSettings(w http.ResponseWriter, r *http.Request) 
 			// 502 veriyordu. Başarısız regen başarısız istektir: operatör
 			// "güncellendi" değil, sitenin karanlık olduğunu okumalı.
 			if err == nil {
+				// D-043: a site that leaves a version under a security
+				// emergency leaves its maintenance list; the render below
+				// shows the site again.
+				p.noteEmergencySiteMoved(r.Context(), domainID)
 				if verr := p.applySiteVhost(r.Context(), domainID); verr != nil {
 					log.Printf("vhost regen after php switch (domain %d): %v", domainID, verr)
 					writeServerError(w, verr)

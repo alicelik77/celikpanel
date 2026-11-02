@@ -480,6 +480,17 @@ func (p *Panel) requireSubscriptionRight(w http.ResponseWriter, r *http.Request,
 // requireSubscriptionOffering: the same for a software item. anyVersion
 // accepts any version of the named component.
 func (p *Panel) requireSubscriptionOffering(w http.ResponseWriter, r *http.Request, subID int, offeringID, name string, anyVersion bool) bool {
+	// D-043: a database engine withdrawn for security is refused to everyone.
+	switch offeringID {
+	case "component:mariadb":
+		if p.refuseWithdrawnVersion(w, r, "mariadb", "", "*") {
+			return false
+		}
+	case "component:postgresql":
+		if p.refuseWithdrawnVersion(w, r, "postgresql", "", "*") {
+			return false
+		}
+	}
 	if callerIsAdministrator(r) {
 		return true
 	}

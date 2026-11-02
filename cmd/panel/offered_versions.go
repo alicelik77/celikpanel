@@ -77,10 +77,13 @@ type offeredVersions struct {
 	// allow narrows the policy to one subscription's rights (rights_gate.go);
 	// nil for the server-wide policy. It is never stored.
 	allow func(component, line string) bool
+	// withdrawn (alpha.117, D-043): versions withdrawn for security by an
+	// open emergency. Read from security_emergencies; never stored here.
+	withdrawn map[string]map[string]bool
 }
 
 func (o offeredVersions) normalized() offeredVersions {
-	out := offeredVersions{Hidden: map[string][]string{}, allow: o.allow}
+	out := offeredVersions{Hidden: map[string][]string{}, allow: o.allow, withdrawn: o.withdrawn}
 	for component := range offeredComponents {
 		lines := []string{}
 		seen := map[string]bool{}
@@ -98,6 +101,9 @@ func (o offeredVersions) normalized() offeredVersions {
 
 // offered: whether a version is offered to customers.
 func (o offeredVersions) offered(component, version string) bool {
+	if versionWithdrawn(o.withdrawn, component, version) {
+		return false
+	}
 	line := offeredVersionLine(component, version)
 	for _, hidden := range o.Hidden[component] {
 		if hidden == line {
@@ -124,18 +130,23 @@ func (o offeredVersions) filter(component string, versions []string) []string {
 var errOfferedVersionsUnreadable = errors.New("the versions offered to customers could not be read")
 
 func (p *Panel) loadOfferedVersions(ctx context.Context) (offeredVersions, error) {
+	withdrawn, err := withdrawnVersions(ctx, p.db.GetDB())
+	if err != nil {
+		return offeredVersions{}, err
+	}
 	var raw string
-	err := p.db.GetDB().QueryRowContext(ctx, `SELECT value FROM panel_settings WHERE key = ?`, settingOfferedVersions).Scan(&raw)
+	err = p.db.GetDB().QueryRowContext(ctx, `SELECT value FROM panel_settings WHERE key = ?`, settingOfferedVersions).Scan(&raw)
 	if errors.Is(err, sql.ErrNoRows) {
-		return offeredVersions{}.normalized(), nil
+		return offeredVersions{withdrawn: withdrawn}.normalized(), nil
 	}
 	if err != nil {
 		return offeredVersions{}, err
 	}
 	var stored offeredVersions
 	if err := json.Unmarshal([]byte(raw), &stored); err != nil {
-		return offeredVersions{}, errOfferedVersionsUnreadable
+		return offeredVersions{withdrawn: withdrawn}, errOfferedVersionsUnreadable
 	}
+	stored.withdrawn = withdrawn
 	return stored.normalized(), nil
 }
 
@@ -172,6 +183,10 @@ func versionChoiceKeeps(component, current, requested string) bool {
 // the choice may go on. An administrator is never refused, and a site
 // keeping what it runs is never refused.
 func (p *Panel) refuseVersionNotOffered(w http.ResponseWriter, r *http.Request, domainID int, component, current, requested string) bool {
+	// D-043: a version withdrawn for security is refused to everyone.
+	if p.refuseWithdrawnVersion(w, r, component, current, requested) {
+		return true
+	}
 	if callerIsAdministrator(r) || versionChoiceKeeps(component, current, requested) {
 		return false
 	}
