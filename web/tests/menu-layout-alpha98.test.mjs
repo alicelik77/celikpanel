@@ -77,13 +77,26 @@ test('the administrator rail is the approved layout, in order', () => {
 });
 
 test('resellers, customers and additional users see what they saw before, without an empty Settings', () => {
-    assert.deepEqual(ids(rail('reseller')), ['dashboard', 'domains', 'databases', 'users', 'addons', 'vpn']);
-    assert.deepEqual(ids(rail('customer')), ['dashboard', 'domains', 'databases', 'vpn']);
-    assert.deepEqual(ids(rail('customer', { accountType: 'account', teamMembers: true })), ['dashboard', 'domains', 'databases', 'users', 'vpn']);
+    // VPN is drawn only when the server offers it to the person (features.vpn).
+    const vpn = { vpn: true };
+    assert.deepEqual(ids(rail('reseller', vpn)), ['dashboard', 'domains', 'databases', 'users', 'addons', 'vpn']);
+    assert.deepEqual(ids(rail('customer', vpn)), ['dashboard', 'domains', 'databases', 'vpn']);
+    assert.deepEqual(ids(rail('customer', { accountType: 'account', teamMembers: true, vpn: true })), ['dashboard', 'domains', 'databases', 'users', 'vpn']);
     assert.deepEqual(ids(rail('additional_user')), ['dashboard', 'domains']);
     for (const role of ['reseller', 'customer', 'additional_user']) {
         assert.ok(!ids(rail(role)).includes('settings'), `${role} must not see an empty Settings`);
     }
+});
+
+test('VPN is hidden from a reseller or customer the server does not offer it to, never from the administrator', () => {
+    for (const access of [undefined, {}, { vpn: false }]) {
+        assert.ok(!ids(rail('reseller', access)).includes('vpn'));
+        assert.ok(!ids(rail('customer', access)).includes('vpn'));
+    }
+    assert.ok(ids(rail('admin')).includes('vpn'));
+    assert.ok(ids(rail('admin', { vpn: false })).includes('vpn'));
+    // The route stays open for them: the page says so in one sentence.
+    assert.equal(nav.canAccessPath('customer', '/vpn'), true);
 });
 
 test('each moved page keeps the roles it had inside Settings', () => {
@@ -371,6 +384,11 @@ test('the drawn rail matches the approved layout, and only an administrator sees
             assert.ok(!labels.includes('nav.settings'), role);
             assert.ok(!labels.includes('nav.account'), `${role}: My account belongs to the personal menu`);
         });
+    }
+    // The VPN entry follows the server's offer (features.vpn from /auth/me).
+    for (const role of ['reseller', 'customer']) {
+        await withShell(role, async (renderer) => assert.ok(!railLabels(renderer).includes('nav.vpn'), role));
+        await withShell(role, async (renderer) => assert.ok(railLabels(renderer).includes('nav.vpn'), role), { features: { vpn: true } });
     }
 });
 

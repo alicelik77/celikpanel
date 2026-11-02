@@ -47,6 +47,8 @@ export interface CurrentUser {
     impersonator?: string;
     features: {
         team_members: boolean;
+        /** The server offers VPN to this person (WireGuard installed, add-on present). */
+        vpn?: boolean;
         [key: string]: unknown;
     };
 }
@@ -368,6 +370,7 @@ export function parseCurrentUser(raw: unknown): CurrentUser {
             team_members: rawFeatures.team_members === true
                 && accountType === 'account'
                 && effectiveRole === 'customer',
+            vpn: rawFeatures.vpn === true,
         },
     };
 }

@@ -117,6 +117,18 @@ test('profile success needs fresh complete state and full operation evidence', (
   assert.doesNotMatch(proof, /profile\.warning/);
   assert.match(operationSource, /verifiedProfileResult\?\.fallbackOnly/);
   assert.match(operationSource, /showToast\('warning', t\('services\.mailProfiles\.fallbackWarning'/);
+  // A step of a server setup run never raises the warning: the setup issues
+  // the mail host certificate after this install and verifies mail TLS itself.
+  assert.match(operationSource, /verifiedProfileResult\?\.fallbackOnly && next\.setup_child !== true/);
+  assert.match(operationSource, /candidate\.setup_child === true \? \{ setup_child: true \}/);
+});
+
+test('the fallback warning states only what the install proves, in both languages', () => {
+  for (const [language, catalogue] of [['en', englishCatalogue], ['tr', turkishCatalogue]]) {
+    const line = catalogue.split('\n').find((candidate) => candidate.includes("'services.mailProfiles.fallbackWarning'"));
+    assert.ok(line, language);
+    assert.doesNotMatch(line, /self-signed|kendinden imzal/i, `${language}: the install does not prove the certificate is self-signed`);
+  }
 });
 
 // alpha.94 (D-034): the mail stack cards became the email strip's ready

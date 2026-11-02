@@ -286,6 +286,9 @@ export interface ComponentOperation {
     finished_at?: string;
     error?: unknown;
     result?: unknown;
+    // The Panel says this operation is a step of a server setup run.
+    // Panel, bu işlemin bir sunucu kurulumu adımı olduğunu söyler.
+    setup_child?: boolean;
 }
 
 export interface ManagedServicesSnapshot {
@@ -899,6 +902,7 @@ function decodeOperation(payload: unknown): ComponentOperation | null {
         finished_at: typeof candidate.finished_at === 'string' ? candidate.finished_at : undefined,
         error: candidate.error,
         result: candidate.result,
+        ...(candidate.setup_child === true ? { setup_child: true } : {}),
     };
 }
 
@@ -1967,7 +1971,14 @@ export function ComponentOperationProvider({ children }: { children: ReactNode }
                 setConnectionInterrupted(false);
                 setFailure(null);
                 const installedName = label || next.service_id || t('services.install');
-                if (verifiedProfileResult?.fallbackOnly) {
+                // A server setup run installs the mail profile before it issues
+                // the mail host certificate and verifies mail TLS itself at the
+                // end, so the default certificate this install saw is not the
+                // final state: no warning for a step of that run.
+                // Kurulum posta profilini posta ana bilgisayar sertifikasindan
+                // once kurar ve sonunda posta TLS durumunu kendisi dogrular;
+                // bu kurulumun gordugu varsayilan sertifika son durum degildir.
+                if (verifiedProfileResult?.fallbackOnly && next.setup_child !== true) {
                     showToast('warning', t('services.mailProfiles.fallbackWarning', {
                         name: installedName,
                     }));
