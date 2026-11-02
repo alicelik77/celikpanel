@@ -56,3 +56,24 @@ type SetEmergencyUnitLockResponse struct {
 	SuspensionApplyResult
 	Units []EmergencyUnitObservation `json:"units"`
 }
+
+// SetEmergencyAppLockRequest (alpha.117, D-043) writes or removes the start
+// lock of one Node.js application: a systemd drop-in that refuses to start
+// the application while its unit runs the withdrawn Node.js version. The
+// Agent writes only its own file and removes it only while it is exactly
+// what it wrote; a file changed on the server is left as it is.
+type SetEmergencyAppLockRequest struct {
+	ExpectedBuildCommit string `json:"expected_build_commit"`
+	SiteID              int    `json:"site_id"`
+	// NodeVersion is the withdrawn Node.js version the lock refuses.
+	NodeVersion string `json:"node_version"`
+	Lock        bool   `json:"lock"`
+}
+
+// SetEmergencyAppLockResponse: Applied when the lock reads as wanted
+// (Changed when the file was written or removed); Conflict when the file
+// was changed on the server and kept (Error and Path say which).
+type SetEmergencyAppLockResponse struct {
+	SuspensionApplyResult
+	Path string `json:"path,omitempty"`
+}

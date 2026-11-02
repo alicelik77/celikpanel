@@ -172,6 +172,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostingApp, `
 		Agent.ApplyAppUnit Agent.ControlAppUnit Agent.RemoveAppUnit Agent.SetAppUnitSuspensionV1
+		Agent.SetEmergencyAppLockV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityCertificate, `
 		Agent.DeleteCertLineage Agent.InstallCustomCertificate Agent.IssueLetsEncryptCertificate
@@ -391,6 +392,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.SetAppUnitSuspensionV1":        agentRPCMutationTimeout,
 	"Agent.EmergencyUnitsInspectV1":       agentRPCStandardReadTimeout,
 	"Agent.SetEmergencyUnitLockV1":        agentRPCMutationTimeout,
+	"Agent.SetEmergencyAppLockV1":         agentRPCMutationTimeout,
 	"Agent.UpdateMySQLConfig":             agentRPCMutationTimeout,
 	"Agent.UpdatePHPConfig":               agentRPCMutationTimeout,
 	"Agent.UpdatePHPConfiguration":        agentRPCMutationTimeout,

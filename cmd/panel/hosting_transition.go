@@ -35,6 +35,14 @@ var (
 	errHostingPHPNotOffered = errors.New("no installed PHP version is offered to customers")
 )
 
+// hostingPHPWithdrawnError: the site becomes a PHP site and every installed
+// PHP version is withdrawn for security (D-043). Nothing was changed.
+type hostingPHPWithdrawnError struct{ versions []string }
+
+func (e *hostingPHPWithdrawnError) Error() string {
+	return "every installed PHP version is withdrawn for security: " + strings.Join(e.versions, ", ")
+}
+
 type hostingOperationLock struct {
 	token chan struct{}
 	refs  int
@@ -260,6 +268,18 @@ func (p *Panel) handleUpdateHosting(w http.ResponseWriter, r *http.Request, doma
 		writeHostingPHPRefusal(w, errCodePHPRequired, "/services",
 			"PHP-FPM is not installed on this server, so the site was not switched to PHP. Nothing was changed. "+
 				"The server administrator installs PHP-FPM from Components, then the site is switched to PHP again.")
+	case errors.As(err, new(*hostingPHPWithdrawnError)):
+		var withdrawn *hostingPHPWithdrawnError
+		errors.As(err, &withdrawn)
+		name := "PHP " + strings.Join(withdrawn.versions, ", ")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		_ = json.NewEncoder(w).Encode(apiErrorBody{
+			Error: "Nothing was changed: " + name + " is withdrawn for security on this server, so the site was not switched to PHP. " +
+				"The administrator installs a PHP version that is not withdrawn, or re-enables " + name + " once it is patched; then the site is switched to PHP again.",
+			Code: errCodeSecurityEmergencyWithdrawn, Reason: hostingReasonSwitch, Action: "/services",
+			Vars: map[string]string{"name": name},
+		})
 	case errors.Is(err, errHostingPHPNotOffered):
 		writeHostingPHPRefusal(w, errCodeNoVersionOffered, "",
 			"No installed PHP version is offered to customers on this server, so the site was not switched to PHP. Nothing was changed. "+
@@ -679,6 +699,22 @@ func (p *Panel) hostingPHPVersion(
 	if len(installed) == 0 {
 		return "", errHostingPHPMissing
 	}
+	// D-043 (release decision e): a version withdrawn for security is never
+	// picked, for the administrator either.
+	withdrawn, err := withdrawnVersions(ctx, p.db.GetDB())
+	if err != nil {
+		return "", err
+	}
+	usable := []string{}
+	for _, version := range installed {
+		if !versionWithdrawn(withdrawn, "php", version) {
+			usable = append(usable, version)
+		}
+	}
+	if len(usable) == 0 {
+		return "", &hostingPHPWithdrawnError{versions: installed}
+	}
+	installed = usable
 	if previous.PHPVersion.Valid && containsDomainPHPVersion(installed, previous.PHPVersion.String) {
 		// A customer's recorded version was checked against the offer by
 		// the handler; it is the site's own version and is kept.

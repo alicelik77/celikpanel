@@ -481,6 +481,24 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 			}
 			req.PHPVersion = chosen
 		}
+		if req.PHPVersion == "" {
+			// D-043: the default pick skips a version withdrawn for security
+			// (with every one withdrawn, the refusal below names it).
+			withdrawn, err := withdrawnVersions(r.Context(), p.db.GetDB())
+			if err != nil {
+				writeServerError(w, err)
+				return
+			}
+			var usable []string
+			for _, candidate := range caps.PHPVersions {
+				if !versionWithdrawn(withdrawn, "php", candidate) {
+					usable = append(usable, candidate)
+				}
+			}
+			if len(usable) > 0 {
+				caps.PHPVersions = usable
+			}
+		}
 		version, installed := newSitePHPVersion(req.PHPVersion, caps.PHPVersions)
 		if !installed {
 			writePHPVersionNotInstalled(w, req.PHPVersion, caps.PHPVersions)

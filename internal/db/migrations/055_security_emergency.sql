@@ -111,7 +111,7 @@ CREATE TABLE security_notices (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     emergency_id TEXT NOT NULL,
     user_id INTEGER NOT NULL CHECK (user_id > 0),
-    kind TEXT NOT NULL CHECK (kind IN ('emergency', 'resolved')),
+    kind TEXT NOT NULL CHECK (kind IN ('emergency', 'moved', 'resolved')),
     audience TEXT NOT NULL CHECK (audience IN ('customer', 'reseller')),
     body TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(body)),
     mail_state TEXT NOT NULL DEFAULT 'pending' CHECK (mail_state IN ('pending', 'sent', 'not_available', 'no_address', 'failed')),

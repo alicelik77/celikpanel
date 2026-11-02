@@ -36,8 +36,8 @@ func TestSecurityEmergencySchemaGuards(t *testing.T) {
 	if err := raw.QueryRow(`SELECT MAX(version) FROM schema_migrations`).Scan(&version); err != nil {
 		t.Fatal(err)
 	}
-	if version != securityEmergencyMigrationVersion {
-		t.Fatalf("ledger at %d, want %d", version, securityEmergencyMigrationVersion)
+	if version != newestMigrationVersion {
+		t.Fatalf("ledger at %d, want the newest %d", version, newestMigrationVersion)
 	}
 
 	mustExec(`INSERT INTO security_emergencies (id, component, version, reason) VALUES ('emergency-000001', 'php', '8.5', 'CVE-2026-0001')`)
@@ -74,5 +74,9 @@ func TestSecurityEmergencySchemaGuards(t *testing.T) {
 	mustFail("a second notice of the same kind to the same person",
 		`INSERT INTO security_notices (emergency_id, user_id, kind, audience) VALUES ('emergency-000002', 7, 'emergency', 'reseller')`)
 	mustExec(`INSERT INTO security_notices (emergency_id, user_id, kind, audience) VALUES ('emergency-000002', 7, 'resolved', 'customer')`)
+	// "Your site was moved" (alpha.117 release decision d).
+	mustExec(`INSERT INTO security_notices (emergency_id, user_id, kind, audience) VALUES ('emergency-000002', 7, 'moved', 'customer')`)
+	mustFail("an unknown notice kind",
+		`INSERT INTO security_notices (emergency_id, user_id, kind, audience) VALUES ('emergency-000002', 8, 'deleted', 'customer')`)
 	mustFail("an unknown mail state", `UPDATE security_notices SET mail_state = 'bounced'`)
 }

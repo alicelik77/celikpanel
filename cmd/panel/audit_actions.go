@@ -268,6 +268,7 @@ var auditActionNames = []string{
 	"ssl.detach",
 	"ssl.issue",
 	"ssl.issue.dependents_partial",
+	"ssl.issue.not_pointed_allowed",
 	"ssl.issue.partial",
 	"ssl.mail.off",
 	"ssl.mail.on",

@@ -431,6 +431,7 @@ export const enDashboardScreens = {
     'dashboard.audit.action.ssl.issue': 'got a website certificate',
     'dashboard.audit.action.ssl.issue.dependents_partial': 'got a website certificate; mail encryption is still being updated',
     'dashboard.audit.action.ssl.issue.partial': 'got a website certificate; it could not be fully activated',
+    'dashboard.audit.action.ssl.issue.not_pointed_allowed': 'asked for a website certificate although a name does not point to this server',
     'dashboard.audit.action.ssl.mail.off': 'turned off mail encryption for a domain',
     'dashboard.audit.action.ssl.mail.on': 'turned on mail encryption for a domain',
     'dashboard.audit.action.ssl.reissue': 'renewed a website certificate',

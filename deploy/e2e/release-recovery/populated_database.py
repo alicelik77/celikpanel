@@ -56,9 +56,9 @@ MIGRATIONS = {
     53: 'e2966efa9fb98e5e6bd4e5bcc1372edb2e857222ed66c1dab0193704cb38aef1',
     54: '921c62f4c73b21071d91f263fca4a3ca93f9857540db3dd446fb77d1ec63d99b',
     # alpha.117 (D-043): 55 security emergency (six tables, no old one changed).
-    55: 'b0edf792edb782f567aac802825a9fc25622f63e2fa81e9b9cb2a2aacddca0f3',
+    55: '3c7ebe17eed3d48122fbf01ceb87003a269abd94daea6598a835ab1860fe0703',
     # alpha.117: 56 transfer credential rotation (two tables, no old one changed).
-    56: 'dbc12ca489b4b3a665ef142621aac15e12833e6d8d7ea7ec71d65d5f4af82bb3',
+    56: 'a9453db6b3fb5ee946183707c0c6026642c51ab6875bd3b1da9ccf3645765782',
 }
 # Exact sqlite_schema SQL from the released SQL, including triggers and indexes.
 # Tests reconstruct it from unmodified migration bytes, never a downgraded ledger.
@@ -77,8 +77,8 @@ SCHEMAS = {
     52: '2c99a5ca6371526a26feea7977a14d41b5e55b87e8b12b5c0f08bf9fdc09e261',
     53: '31a9ff22d4fe320125dca4c77784cf8d4ba7b72061c4cb80f2061156dd5b5267',
     54: 'e286b815a959ab0b3e288ab2765b6f88c87ce06f790e6ade3838a1a44498bf95',
-    55: '97693401cf70fb68153420710c0ef3fc9d169984a742df1f9329b6701a553d7d',
-    56: '614c44848706d3f63b33aa0382309974f28adf15cd9e41342cd7b7861aa30ead',
+    55: '01067ff45af1f3d4d6570e82796ea6bc78478b3d5c41618769a7d75a3767891d',
+    56: '8082cf8319c8d582f89cc10450208279970dd9c7d87c3d401da0d542a8c1f994',
 }
 ADMISSION_SCHEMA = 'celikpanel/lab-populated-database-admission/v1'
 MANIFEST_SCHEMA = 'celikpanel/lab-populated-database-manifest/v1'

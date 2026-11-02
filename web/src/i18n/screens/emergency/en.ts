@@ -1,7 +1,7 @@
 // SCREEN catalogue part "emergency": the security emergency of a component or
 // one of its versions (D-043, alpha.117) on the Components page, and the
 // notice its customers and resellers see. Key prefixes kept here: emg.,
-// notice.emg., err.EMERGENCY_, err.VERSION_WITHDRAWN,
+// notice.emg., err.EMERGENCY_, err.VERSION_WITHDRAWN, err.SECURITY_EMERGENCY_WITHDRAWN,
 // err.SECURITY_EMERGENCY_MAINTENANCE.
 // One part of the screen copy; ../../index.tsx fetches every part in
 // parallel and no screen renders before all of them have arrived.
@@ -91,6 +91,10 @@ export const enEmergencyScreens = {
     'notice.emg.resolvedTitle': 'Resolved: {name}',
     'notice.emg.resolved': 'The security problem in {name} is resolved; the sites show their own pages again. There is nothing you need to do.',
     'notice.emg.seen': 'Mark as seen',
+    'notice.emg.movedTitle': 'Your site was moved: {name}',
+    'notice.emg.moved': 'Because of the security problem in {name}, the administrator moved these sites to another version; they show their own pages again:',
+    'notice.emg.movedSite': '{site} now runs {name} {version}',
+    'notice.emg.movedTodo': 'Nothing was deleted. What to do: open the site and check that it works; if something is wrong, contact your provider.',
 
     // The audit trail's sentences (Dashboard "Recent activity").
     'dashboard.audit.action.security.emergency.withdraw': 'withdrew {target} for security',
@@ -116,6 +120,7 @@ export const enEmergencyScreens = {
     'err.EMERGENCY_IMPERSONATION_REFUSED': 'This cannot be confirmed while signed in as another account. Return to your own account first.',
     'err.EMERGENCY_TOO_MANY_ATTEMPTS': 'Too many password attempts. Wait a few minutes, then try again. Nothing was changed.',
     'err.VERSION_WITHDRAWN': '{name} is withdrawn for security on this server. Choose another one. Nothing was changed.',
+    'err.SECURITY_EMERGENCY_WITHDRAWN': 'Nothing was changed: {name} is withdrawn for security on this server, so it is not installed or chosen. The administrator re-enables it on the Security emergency screen once a patched version exists, or uses another version.',
     'err.SECURITY_EMERGENCY_MAINTENANCE': 'This application was stopped because its version has a security problem. Switch the site to another version; it starts there.',
 } as const;
 

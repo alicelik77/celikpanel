@@ -148,6 +148,24 @@ test("a customer's notice switches the site through its ordinary version change"
   assert.deepEqual(switchRequest({ domain_id: 3, domain: 'a', kind: 'node', to: '22.12.0' }), { url: '/api/v1/domains/3/app/node-version', body: { version: '22.12.0' } });
 });
 
+test('a moved notice says where each site went and offers no switch', async () => {
+  const notice = {
+    id: 5, kind: 'moved', audience: 'reseller',
+    body: { component: 'node', version: '22.11.0', name: 'Node.js 22.11.0', reason: 'CVE-2026-0002', sites: [{ domain_id: 11, domain: 'app.example.com', customer: 'ada', maintenance: false, moved_to: '22.12.0' }] },
+    actions: [],
+  };
+  serve({ 'GET /api/v1/security-notices': { body: { notices: [notice] } }, 'POST /api/v1/security-notices/5/seen': { body: { seen: true } } });
+  try {
+    await mount(React.createElement(SecurityNoticeBanner));
+    const page = text();
+    assert.equal(byData('data-security-notice', 'moved').length, 1);
+    for (const words of ['notice.emg.movedTitle', 'notice.emg.movedSite', '22.12.0', 'app.example.com', '(ada)', 'CVE-2026-0002', 'notice.emg.movedTodo']) assert.ok(page.includes(words), words);
+    assert.equal(byData('data-security-switch', 11).length, 0);
+    assert.ok(calls.every((call) => call.method === 'GET'), 'reading never sends a change');
+  } finally { await cleanup(); }
+  assert.ok(enEmergencyScreens['err.SECURITY_EMERGENCY_WITHDRAWN'] && trEmergencyScreens['err.SECURITY_EMERGENCY_WITHDRAWN']);
+});
+
 test('an administrator gets no notice read', async () => {
   serve({ role: 'admin' });
   try {

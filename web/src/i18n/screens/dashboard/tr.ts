@@ -412,6 +412,7 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'dashboard.audit.action.ssl.issue': 'bir web sitesi sertifikası aldı',
     'dashboard.audit.action.ssl.issue.dependents_partial': 'bir web sitesi sertifikası aldı; posta şifrelemesi henüz güncelleniyor',
     'dashboard.audit.action.ssl.issue.partial': 'bir web sitesi sertifikası aldı; sertifika tam etkinleştirilemedi',
+    'dashboard.audit.action.ssl.issue.not_pointed_allowed': 'bir ad bu sunucuyu göstermese de web sitesi sertifikası istedi',
     'dashboard.audit.action.ssl.mail.off': 'bir alan adı için posta şifrelemesini kapattı',
     'dashboard.audit.action.ssl.mail.on': 'bir alan adı için posta şifrelemesini açtı',
     'dashboard.audit.action.ssl.reissue': 'bir web sitesi sertifikasını yeniledi',

@@ -100,6 +100,15 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			// alpha.117 (D-043): a Node.js application's start lock.
+			name: "SetEmergencyAppLockV1",
+			run: func(expected string) string {
+				var response transport.SetEmergencyAppLockResponse
+				_ = agent.SetEmergencyAppLockV1(&transport.SetEmergencyAppLockRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
 			// alpha.113: the default HTTPS server's "Try again".
 			name: "ReconcileDefaultHTTPSServerV1",
 			run: func(expected string) string {

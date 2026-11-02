@@ -3,8 +3,9 @@
 // happened to the sites, what to do, and a one-click switch of each site to
 // the recommended version through the ordinary site settings path (the
 // server checks the person's rights as for any other change). It stays until
-// marked as seen; a "resolved" notice follows when the administrator
-// re-enables the component.
+// marked as seen; a "moved" notice says where the administrator moved a
+// site, and a "resolved" notice follows when the administrator re-enables
+// the component.
 //
 // Güvenlik bildirimi: ne oldu, neden, sitelere ne oldu, ne yapmalı; her site
 // için önerilen sürüme tek tıkla geçiş. Görüldü işaretlenene dek durur.
@@ -20,9 +21,9 @@ export const SECURITY_NOTICES_URL = '/api/v1/security-notices';
 
 export interface SecurityNotice {
     id: number;
-    kind: 'emergency' | 'resolved';
+    kind: 'emergency' | 'moved' | 'resolved';
     audience: 'customer' | 'reseller';
-    body: { component: string; version: string; name: string; reason: string; recommended?: string; sites: { domain_id: number; domain: string; customer?: string; maintenance: boolean }[] };
+    body: { component: string; version: string; name: string; reason: string; recommended?: string; sites: { domain_id: number; domain: string; customer?: string; maintenance: boolean; moved_to?: string }[] };
     actions: { domain_id: number; domain: string; kind: 'php' | 'node'; to: string }[];
 }
 
@@ -71,6 +72,25 @@ export function SecurityNoticeBanner() {
             <ErrorBanner error={error} />
             {read.remote.value.map((notice) => {
                 const name = notice.body.name;
+                if (notice.kind === 'moved') {
+                    return (
+                        <section key={notice.id} className="rounded-lg border border-warning/40 bg-warning/10 p-4 text-sm leading-6 text-fg" role="status" data-security-notice="moved">
+                            <h3 className="font-semibold">{t('notice.emg.movedTitle', { name })}</h3>
+                            <p className="mt-1 max-w-[75ch]">{t('notice.emg.moved', { name })}</p>
+                            <ul className="ml-4 list-disc">
+                                {notice.body.sites.map((site) => (
+                                    <li key={site.domain_id}>
+                                        {t('notice.emg.movedSite', { site: site.domain, name: componentName(notice.body.component), version: site.moved_to ?? '' })}
+                                        {site.customer ? ` (${site.customer})` : ''}
+                                    </li>
+                                ))}
+                            </ul>
+                            <p className="max-w-[75ch]">{t('notice.emg.why', { reason: notice.body.reason })}</p>
+                            <p className="mt-1 max-w-[75ch] font-semibold">{t('notice.emg.movedTodo')}</p>
+                            <Button icon={Check} className="mt-2 max-sm:min-h-11" onClick={() => void act(`seen-${notice.id}`, `${SECURITY_NOTICES_URL}/${notice.id}/seen`, {})} disabled={busy !== null}>{t('notice.emg.seen')}</Button>
+                        </section>
+                    );
+                }
                 if (notice.kind === 'resolved') {
                     return (
                         <section key={notice.id} className="rounded-lg border border-success/40 bg-success/10 p-4 text-sm leading-6 text-fg" role="status" data-security-notice="resolved">

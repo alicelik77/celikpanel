@@ -84,6 +84,10 @@ export const trEmergencyScreens: Record<EmergencyScreenKey, string> = {
     'notice.emg.resolvedTitle': 'Çözüldü: {name}',
     'notice.emg.resolved': '{name} güvenlik sorunu giderildi; siteler yeniden kendi sayfalarını gösteriyor. Yapmanız gereken bir şey yok.',
     'notice.emg.seen': 'Görüldü olarak işaretle',
+    'notice.emg.movedTitle': 'Siteniz taşındı: {name}',
+    'notice.emg.moved': '{name} güvenlik sorunu nedeniyle yönetici bu siteleri başka bir sürüme taşıdı; siteler yeniden kendi sayfalarını gösteriyor:',
+    'notice.emg.movedSite': '{site} artık {name} {version} ile çalışıyor',
+    'notice.emg.movedTodo': 'Hiçbir şey silinmedi. Ne yapmalı: siteyi açıp çalıştığını kontrol edin; bir sorun varsa sağlayıcınıza başvurun.',
 
     // Denetim izinin cümleleri (Pano "Son etkinlik").
     'dashboard.audit.action.security.emergency.withdraw': '{target} sürümünü güvenlik için geri çekti',
@@ -109,5 +113,6 @@ export const trEmergencyScreens: Record<EmergencyScreenKey, string> = {
     'err.EMERGENCY_IMPERSONATION_REFUSED': 'Başka bir hesap olarak girmişken bu onaylanamaz. Önce kendi hesabınıza dönün.',
     'err.EMERGENCY_TOO_MANY_ATTEMPTS': 'Çok fazla parola denemesi. Birkaç dakika bekleyip yeniden deneyin. Hiçbir şey değişmedi.',
     'err.VERSION_WITHDRAWN': '{name} bu sunucuda güvenlik için geri çekildi. Başka birini seçin. Hiçbir şey değişmedi.',
+    'err.SECURITY_EMERGENCY_WITHDRAWN': 'Hiçbir şey değişmedi: {name} bu sunucuda güvenlik için geri çekildi; kurulmaz ve seçilmez. Yönetici yamalı sürüm çıkınca onu Güvenlik acil durumu ekranından yeniden açar ya da başka bir sürüm kullanır.',
     'err.SECURITY_EMERGENCY_MAINTENANCE': 'Bu uygulama, sürümünde bir güvenlik sorunu olduğu için durduruldu. Siteyi başka bir sürüme geçirin; orada başlar.',
 };

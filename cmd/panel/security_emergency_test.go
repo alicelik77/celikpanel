@@ -34,6 +34,9 @@ type fakeEmergencyNative struct {
 	moveFail  map[int]error
 	removed   []string
 	removeErr error
+	// appLocks: site -> the withdrawn Node.js version its start lock refuses.
+	appLocks    map[int]string
+	editedLocks map[int]bool
 }
 
 func (f *fakeEmergencyNative) renderSite(ctx context.Context, domainID int) error {
@@ -124,9 +127,39 @@ func (f *fakeEmergencyNative) movePHP(ctx context.Context, domainID int, from, t
 	return err
 }
 
-func (f *fakeEmergencyNative) moveNode(ctx context.Context, domainID int, from, to string) error {
+func (f *fakeEmergencyNative) moveNode(ctx context.Context, domainID int, from, to string) (string, error) {
 	_, err := f.panel.db.GetDB().ExecContext(ctx, `UPDATE sites SET runtime_version = ? WHERE domain_id = ? AND runtime_version = ?`, to, domainID, from)
-	return err
+	return "", err
+}
+
+// setAppLock keeps the start locks by site; edited marks a lock the owner
+// changed on the server.
+func (f *fakeEmergencyNative) setAppLock(_ context.Context, req transport.SetEmergencyAppLockRequest) (transport.SetEmergencyAppLockResponse, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	resp := transport.SetEmergencyAppLockResponse{Path: "/etc/systemd/system/celikapp.service.d/celikpanel-security-emergency.conf"}
+	if f.appLocks == nil {
+		f.appLocks = map[int]string{}
+	}
+	if f.editedLocks[req.SiteID] {
+		resp.Conflict, resp.Error = true, "changed on the server"
+		return resp, nil
+	}
+	current, present := f.appLocks[req.SiteID]
+	if present && current != req.NodeVersion {
+		resp.Conflict, resp.Error = true, "changed on the server"
+		return resp, nil
+	}
+	if req.Lock && !present {
+		f.appLocks[req.SiteID] = req.NodeVersion
+		resp.Changed = true
+	}
+	if !req.Lock && present {
+		delete(f.appLocks, req.SiteID)
+		resp.Changed = true
+	}
+	resp.Applied = true
+	return resp, nil
 }
 
 func (f *fakeEmergencyNative) removePackage(_ context.Context, service, version string) (string, error) {

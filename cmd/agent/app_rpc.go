@@ -341,6 +341,11 @@ func (a *Agent) ApplyAppUnit(req *AppApplyRequest, resp *AppApplyResponse) error
 		// The owner's choice changes the file, not whether the app runs.
 		steps = [][]string{systemctlArgs("try-restart", name)}
 	}
+	if req.KeepStopped {
+		// D-043: the unit is written for a withdrawn version and must not
+		// run there; it stays stopped and off at boot.
+		steps = [][]string{systemctlArgs("stop", name), systemctlArgs("disable", name)}
+	}
 	for _, args := range steps {
 		if out, err := appUnitSystemctl(args...); err != nil {
 			resp.Error = fmt.Sprintf("systemctl %s: %v: %s", strings.Join(args, " "), err, strings.TrimSpace(string(out)))

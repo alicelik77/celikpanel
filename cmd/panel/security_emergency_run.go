@@ -37,10 +37,13 @@ type emergencyNative interface {
 	// movePHP moves one site's PHP; sourceGone: the source version was
 	// removed, so the site's pool is written anew on the target.
 	movePHP(ctx context.Context, domainID int, from, to string, sourceGone bool) error
-	// moveNode moves one site's Node.js application and proves it answers;
-	// on failure it puts the site back and stops the application again.
-	moveNode(ctx context.Context, domainID int, from, to string) error
+	// moveNode moves one site's Node.js application and proves it answers
+	// (a note for the detail); on failure the application stays stopped on
+	// the maintenance page and never runs on the old version.
+	moveNode(ctx context.Context, domainID int, from, to string) (string, error)
 	removePackage(ctx context.Context, service, version string) (string, error)
+	// setAppLock writes or removes a Node.js application's start lock.
+	setAppLock(ctx context.Context, req transport.SetEmergencyAppLockRequest) (transport.SetEmergencyAppLockResponse, error)
 }
 
 type panelEmergencyNative struct{ p *Panel }
@@ -91,32 +94,156 @@ func (n panelEmergencyNative) movePHP(ctx context.Context, domainID int, from, t
 	return n.p.moveSitePHPVersion(ctx, domainID, from, to, sourceGone)
 }
 
-func (n panelEmergencyNative) moveNode(ctx context.Context, domainID int, from, to string) error {
+func (n panelEmergencyNative) setAppLock(ctx context.Context, req transport.SetEmergencyAppLockRequest) (transport.SetEmergencyAppLockResponse, error) {
+	req.ExpectedBuildCommit = strings.TrimSpace(buildCommit)
+	var resp transport.SetEmergencyAppLockResponse
+	err := n.p.callAgentContext(ctx, "Agent.SetEmergencyAppLockV1", &req, &resp)
+	return resp, err
+}
+
+func (n panelEmergencyNative) moveNode(ctx context.Context, domainID int, from, to string) (string, error) {
 	p := n.p
 	state, err := p.loadHostingRuntimeState(ctx, domainID)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if state.ProjectType != "node" || !state.AppPort.Valid {
-		return verifiedFailure("the site is not a Node.js application any more")
+		return "", verifiedFailure("the site is not a Node.js application any more")
 	}
 	moveCtx, cancel := hostingDurableContext(ctx)
 	defer cancel()
-	failure := transitionHostingForMove(p, moveCtx, domainID, hostingSettingsOf(state, to))
+	return p.nodeEmergencyMoveSteps(n, state, from, to).run(moveCtx, from, to)
+}
+
+// nodeEmergencyMove moves a Node.js site off a withdrawn version (D-043,
+// release decision c). The start lock on the withdrawn version stays in
+// place during the move, so neither the move nor its undo can start the
+// application there. A failed move stops the application and puts the site
+// back on its old record without starting it: it stays on the maintenance
+// page and is listed as not moved. The lock goes only after a proven move.
+type nodeEmergencyMove struct {
+	// lock writes (true) or removes (false) the start lock; a lock changed
+	// on the server is reported as kept, never overwritten.
+	lock func(ctx context.Context, lock bool) (kept string, err error)
+	// move runs the application on the new version and proves it answers.
+	move func(ctx context.Context) error
+	// stop stops the application and keeps it from starting at boot.
+	stop func(ctx context.Context) error
+	// putBack writes the old record and unit again, not started, and
+	// renders the maintenance page.
+	putBack func(ctx context.Context) error
+}
+
+// run returns a note for the move's detail, or why the site was not moved.
+func (m nodeEmergencyMove) run(ctx context.Context, from, to string) (string, error) {
+	kept, err := m.lock(ctx, true)
+	if err != nil {
+		return "", err
+	}
+	if kept != "" {
+		return "", &suspensionStepError{kind: "prerequisite", err: fmt.Errorf(
+			"%s; without CelikPanel's lock the application could start on Node.js %s while it moves. The administrator reviews or deletes that file on the server, then moves the site again", kept, from)}
+	}
+	failure := m.move(ctx)
 	if failure == nil {
-		failure = proveAppAnswers(moveCtx, int(state.AppPort.Int64))
-		if failure == nil {
+		kept, err := m.lock(ctx, false)
+		switch {
+		case err != nil:
+			return "the start lock for Node.js " + from + " is still on the server (" + err.Error() + "); it only refuses " + from + ", so the application runs", nil
+		case kept != "":
+			return kept, nil
+		}
+		return "", nil
+	}
+	stopErr := m.stop(ctx)
+	backErr := m.putBack(ctx)
+	if stopErr != nil || backErr != nil {
+		return "", unknownResult(fmt.Errorf("the application did not run on Node.js %s (%v); stopping it and putting the site back on the maintenance page did not complete: %v",
+			to, failure, errors.Join(stopErr, backErr)))
+	}
+	return "", verifiedFailure("the application did not run on Node.js %s (%v); it is stopped and the site stays on the maintenance page on %s, which never started", to, failure, from)
+}
+
+// nodeEmergencyMoveSteps are the production steps of one site's move.
+func (p *Panel) nodeEmergencyMoveSteps(native emergencyNative, state hostingRuntimeState, from, to string) nodeEmergencyMove {
+	return nodeEmergencyMove{
+		lock: func(ctx context.Context, lock bool) (string, error) {
+			return emergencyAppLockStep(ctx, native, state.SiteID, from, lock)
+		},
+		move: func(ctx context.Context) error {
+			if err := transitionHostingForMove(p, ctx, state.DomainID, hostingSettingsOf(state, to)); err != nil {
+				return err
+			}
+			return proveAppAnswers(ctx, int(state.AppPort.Int64))
+		},
+		stop: func(ctx context.Context) error {
+			resp, err := native.setAppUnit(ctx, transport.SetAppUnitSuspensionRequest{SiteID: state.SiteID, Suspend: true})
+			if err != nil {
+				return err
+			}
+			if !resp.Applied && resp.Error != "" && !absentError(resp.Error) {
+				return errors.New(resp.Error)
+			}
 			return nil
+		},
+		putBack: func(ctx context.Context) error {
+			return p.putNodeSiteBackStopped(ctx, state)
+		},
+	}
+}
+
+// emergencyAppLockStep writes or removes one application's start lock. kept
+// names a lock file changed on the server (left as it is, D-022).
+func emergencyAppLockStep(ctx context.Context, native emergencyNative, siteID int, version string, lock bool) (string, error) {
+	resp, err := native.setAppLock(ctx, transport.SetEmergencyAppLockRequest{SiteID: siteID, NodeVersion: version, Lock: lock})
+	if err != nil {
+		return "", unknownResult(err)
+	}
+	switch {
+	case resp.Conflict:
+		return "the start lock " + resp.Path + " was changed on the server and kept as it is", nil
+	case resp.Applied:
+		return "", nil
+	case resp.Error != "":
+		return "", verifiedFailure("%s", resp.Error)
+	}
+	return "", unknownResult(errors.New("the Agent confirmed nothing about the start lock"))
+}
+
+// putNodeSiteBackStopped puts a Node.js site back on the record it had
+// before a failed move: the record, then the unit, written but neither
+// enabled nor started, then the page (the maintenance page while the
+// version is under an emergency).
+func (p *Panel) putNodeSiteBackStopped(ctx context.Context, original hostingRuntimeState) error {
+	unlock, err := lockDomainHostingOperation(ctx, original.DomainID)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	current, err := p.loadHostingRuntimeState(ctx, original.DomainID)
+	if err != nil {
+		return err
+	}
+	if current.ProjectType != "node" {
+		return fmt.Errorf("the site is a %s site now, so it was not put back", current.ProjectType)
+	}
+	if current.RuntimeVersion != original.RuntimeVersion {
+		if err := p.compareAndSwapHostingState(ctx, current, original); err != nil {
+			return fmt.Errorf("put the record back: %w", err)
 		}
 	}
-	// Put it back on the old version and stop it again: the old version is
-	// the one with the security hole.
-	backErr := transitionHostingForMove(p, moveCtx, domainID, hostingSettingsOf(state, from))
-	_, stopErr := n.setAppUnit(moveCtx, transport.SetAppUnitSuspensionRequest{SiteID: state.SiteID, Suspend: true})
-	if backErr != nil || stopErr != nil {
-		return unknownResult(fmt.Errorf("the application did not run on Node.js %s (%v); putting it back did not complete: %v %v", to, failure, backErr, stopErr))
+	request := hostingAppRequest(original)
+	request.Trigger = transport.SiteFileTriggerChange
+	request.RecordedSHA256 = p.recordedSiteFileSHA256(ctx, original.SiteID, transport.SiteFileKindAppUnit)
+	request.KeepStopped = true
+	site := siteFileSite{SiteID: original.SiteID, DomainID: original.DomainID, Domain: original.DomainName, ProjectType: original.ProjectType}
+	if _, err := p.applyAppUnit(ctx, site, request); err != nil {
+		return fmt.Errorf("write the unit back, stopped: %w", err)
 	}
-	return verifiedFailure("the application did not run on Node.js %s (%v); it was put back on %s and stopped", to, failure, from)
+	if err := p.applyVhostForDomain(ctx, original.DomainID); err != nil {
+		return fmt.Errorf("render the maintenance page: %w", err)
+	}
+	return nil
 }
 
 // moveSitePHPVersion is the site PHP change of the PHP settings page
@@ -367,6 +494,19 @@ func (p *Panel) finishEmergencyOperation(ctx context.Context, e securityEmergenc
 		return nil
 	}
 	switch op.Kind {
+	case emergencyOpMove:
+		// Each customer (and reseller) whose site the administrator moved is
+		// told where it went (release decision d). Every move of this
+		// emergency counts, so a second move renews the notice with all.
+		sites, err := emergencyAdminMovedSites(ctx, tx, e.ID)
+		if err != nil {
+			return err
+		}
+		if len(sites) > 0 {
+			if err := createEmergencyNotices(ctx, tx, e, sites, "moved"); err != nil {
+				return err
+			}
+		}
 	case emergencyOpRemove:
 		if _, err := tx.ExecContext(ctx, `UPDATE security_emergencies SET stage = 'removed', updated_at = datetime('now') WHERE id = ?`, e.ID); err != nil {
 			return err
@@ -399,6 +539,47 @@ func (p *Panel) finishEmergencyOperation(ctx context.Context, e securityEmergenc
 	p.auditEmergencySystem(ctx, op.ActorID, "security.emergency.finished:"+op.Kind+":"+e.Name, map[string]any{
 		"emergency": e.ID, "operation": op.ID, "step": op.Kind, "target": e.Name, "state": final, "sites_not_moved": failedSites})
 	return nil
+}
+
+// emergencyAdminMovedSites are the recorded sites a move operation of this
+// emergency moved (not the ones their customers moved themselves), each with
+// the version it was moved to.
+func emergencyAdminMovedSites(ctx context.Context, q sqlQueryer, emergencyID string) ([]emergencySite, error) {
+	rows, err := q.QueryContext(ctx, `
+		SELECT json_extract(ef.ref, '$.domain_id'), json_extract(ef.ref, '$.to')
+		FROM security_emergency_effects ef
+		JOIN security_emergency_operations o ON o.id = ef.operation_id
+		WHERE o.emergency_id = ? AND o.kind = 'move' AND ef.kind = 'move' AND ef.state = 'done' AND ef.detail LIKE 'moved to %'
+		ORDER BY o.created_at, o.rowid, ef.seq`, emergencyID)
+	if err != nil {
+		return nil, err
+	}
+	movedTo := map[int]string{}
+	for rows.Next() {
+		var domainID int
+		var to string
+		if err := rows.Scan(&domainID, &to); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		movedTo[domainID] = to
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	recorded, err := emergencyRecordedSites(ctx, q, emergencyID)
+	if err != nil {
+		return nil, err
+	}
+	out := []emergencySite{}
+	for _, site := range recorded {
+		if to, ok := movedTo[site.DomainID]; ok {
+			site.MovedTo = to
+			out = append(out, site)
+		}
+	}
+	return out, nil
 }
 
 // emergencyBeforeImage loads or captures one before-image (see beforeImage
@@ -562,6 +743,15 @@ func (p *Panel) runEmergencyEffect(ctx context.Context, native emergencyNative, 
 			return effectDone, "the site has no Node.js app unit; nothing to change", nil
 		}
 		if !stop {
+			// The start lock goes first; a lock changed on the server is kept
+			// and the app is not started (it could not start anyway).
+			kept, err := emergencyAppLockStep(ctx, native, effect.Ref.SiteID, e.Version, false)
+			if err != nil {
+				return "", "", err
+			}
+			if kept != "" {
+				return effectKept, kept + "; the application was not started. The administrator reviews or deletes that file, then starts the application from the site's page", nil
+			}
 			if !onVersion {
 				return effectDone, "the site moved to another version; nothing to restore", nil
 			}
@@ -578,7 +768,20 @@ func (p *Panel) runEmergencyEffect(ctx context.Context, native emergencyNative, 
 			return "", "", unknownResult(err)
 		}
 		if stop {
-			return applyResult(resp.SuspensionApplyResult, "Node.js app stopped and kept from starting at boot", "already stopped")
+			state, detail, err := applyResult(resp.SuspensionApplyResult, "Node.js app stopped and kept from starting at boot", "already stopped")
+			if err != nil {
+				return "", "", err
+			}
+			// The start lock: systemd itself refuses to start it on this
+			// version, whatever asks (release decision a).
+			kept, err := emergencyAppLockStep(ctx, native, effect.Ref.SiteID, e.Version, true)
+			if err != nil {
+				return "", "", err
+			}
+			if kept != "" {
+				return effectKept, detail + "; " + kept, nil
+			}
+			return state, detail + "; systemd refuses to start it on Node.js " + e.Version, nil
 		}
 		if !before.Active {
 			return applyResult(resp.SuspensionApplyResult, "boot setting put back; the app was not running before, so it was not started", "already as it was")
@@ -590,12 +793,13 @@ func (p *Panel) runEmergencyEffect(ctx context.Context, native emergencyNative, 
 		if err != nil {
 			return "", "", err
 		}
+		note := ""
 		if onVersion {
 			switch e.Component {
 			case "php":
 				err = native.movePHP(ctx, effect.Ref.DomainID, effect.Ref.From, effect.Ref.To, e.Stage == emergencyStageRemoved)
 			case "node":
-				err = native.moveNode(ctx, effect.Ref.DomainID, effect.Ref.From, effect.Ref.To)
+				note, err = native.moveNode(ctx, effect.Ref.DomainID, effect.Ref.From, effect.Ref.To)
 			default:
 				err = verifiedFailure("a whole component has no other version to move to")
 			}
@@ -617,6 +821,9 @@ func (p *Panel) runEmergencyEffect(ctx context.Context, native emergencyNative, 
 		}
 		if !onVersion {
 			return effectDone, "already on " + current + "; its page is shown again", nil
+		}
+		if note != "" {
+			return effectDone, "moved to " + effect.Ref.To + " and verified; its page is shown again; " + note, nil
 		}
 		return effectDone, "moved to " + effect.Ref.To + " and verified; its page is shown again", nil
 

@@ -24,6 +24,10 @@ type AppApplyRequest struct {
 	// ExpectedBuildCommit binds ApplyAppUnit and InspectAppUnit to the
 	// Panel's build, as the pool's RPCs are (2026-10-11).
 	ExpectedBuildCommit string `json:"expected_build_commit"`
+	// KeepStopped (alpha.117, additive): write the unit but neither enable
+	// nor start it. A failed security emergency move puts the application
+	// back on its withdrawn version this way, so it never runs there.
+	KeepStopped bool `json:"keep_stopped,omitempty"`
 }
 
 type AppApplyResponse struct {

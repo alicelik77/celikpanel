@@ -86,6 +86,10 @@ func (p *Panel) handleNodeRuntimes(w http.ResponseWriter, r *http.Request) {
 			writeAcceptedServiceOperation(w, existing)
 			return
 		}
+		// D-043: a withdrawn Node.js version is refused before anything queues.
+		if p.refuseWithdrawnInstall(w, r, "node", req.Version, "") {
+			return
+		}
 		release, busy := p.beginServiceMutation(w, r)
 		if busy {
 			return

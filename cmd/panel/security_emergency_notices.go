@@ -31,6 +31,9 @@ type securityNoticeSite struct {
 	Domain      string `json:"domain"`
 	Customer    string `json:"customer,omitempty"`
 	Maintenance bool   `json:"maintenance"`
+	// MovedTo: the version the administrator moved the site to (a "moved"
+	// notice, alpha.117 release decision d).
+	MovedTo string `json:"moved_to,omitempty"`
 }
 
 type securityNoticeBody struct {
@@ -69,6 +72,9 @@ func createEmergencyNotices(ctx context.Context, tx sqlQueryer, e securityEmerge
 	}
 	for _, site := range sites {
 		entry := securityNoticeSite{DomainID: site.DomainID, Domain: site.Domain, Maintenance: kind == "emergency"}
+		if kind == "moved" {
+			entry.MovedTo = site.MovedTo
+		}
 		add(site.CustomerID, "customer", entry)
 		if site.ResellerID > 0 && site.ResellerID != site.CustomerID {
 			entry.Customer = site.Customer
@@ -110,6 +116,36 @@ func securityNoticeMail(kind, audience string, body securityNoticeBody, baseURL 
 		}
 	}
 	list := strings.Join(domains, "\n")
+	if kind == "moved" {
+		component := emergencyComponents[body.Component].Name
+		moved := []string{}
+		for _, site := range body.Sites {
+			line := "  - " + site.Domain + " -> " + component + " " + site.MovedTo
+			if site.Customer != "" {
+				line += " (" + site.Customer + ")"
+			}
+			moved = append(moved, line)
+		}
+		movedList := strings.Join(moved, "\n")
+		subject := "Your site was moved: " + body.Name + " / Siteniz taşındı: " + body.Name
+		return subject, strings.Join([]string{
+			"Because of the security problem in " + body.Name + ", the administrator moved these sites to another version; they show their own pages again:",
+			movedList,
+			"Reason: " + body.Reason,
+			"",
+			"Nothing was deleted. What to do: open the site and check that it works; if something is wrong, contact your provider.",
+			"",
+			"---",
+			"",
+			body.Name + " güvenlik sorunu nedeniyle yönetici bu siteleri başka bir sürüme taşıdı; siteler yeniden kendi sayfalarını gösteriyor:",
+			movedList,
+			"Neden: " + body.Reason,
+			"",
+			"Hiçbir şey silinmedi. Ne yapmalı: siteyi açıp çalıştığını kontrol edin; bir sorun varsa sağlayıcınıza başvurun.",
+			"",
+			baseURL,
+		}, "\n")
+	}
 	if kind == "resolved" {
 		subject := "Resolved: " + body.Name + " / Çözüldü: " + body.Name
 		return subject, strings.Join([]string{

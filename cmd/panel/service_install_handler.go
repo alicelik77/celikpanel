@@ -44,6 +44,10 @@ func (p *Panel) runServiceInstall(
 	if err := p.preflightManagedServiceInstall(ctx, req.ServiceID, req.Package); err != nil {
 		return result, serviceInstallFailure(err)
 	}
+	// D-043: a withdrawn version or engine is not installed.
+	if failure := p.withdrawnInstallFailure(ctx, req.ServiceID, req.Package, req.PHPVersion); failure != nil {
+		return result, failure
+	}
 	mutationRequest := transport.ServiceMutationRequest{ServiceMutationBinding: binding}
 
 	// Roundcube is not a distro package (D-004: one path on every Linux) — it
