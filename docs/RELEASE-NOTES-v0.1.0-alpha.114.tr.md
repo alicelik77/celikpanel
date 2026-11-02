@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.114.md)
 
+> **Yayımlandı.** Bu sürüm 2 Kasım 2026'da (UTC) yayımlandı: sürüm commit'i `e71a71bd3`, GitHub ön sürümü 00:07:54Z, yapıtlar ve imza doğrulanıp dış denetim geçtikten (27/27) sonra indirme portalı yaklaşık 00:12Z. Hiçbir parçası henüz kurulu bir sunucuda değil; kurulu panelleri yalnız sahip günceller. Aşağıdaki aday metni yazıldığı gibi korunur.
+
 Bu sürüm v0.1.0-alpha.113'ün ardından gelir. İlk gerçek sunucuların gösterdiği
 sorunları düzeltir; kullanıcıları ve bayileri, Plesk kullananların beklediği
 birkaç küçük özelliği, sahibin elindeki işletim sistemi güncellemelerini ve
