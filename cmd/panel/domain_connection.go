@@ -105,7 +105,11 @@ type connectionCheck struct {
 	// yapılandırılmış eşte olmalıdır. O zamana dek A yolu sunulmamalıdır.
 	NameserversUsable bool             `json:"nameservers_usable"`
 	NameserverFacts   []nameserverFact `json:"nameserver_facts,omitempty"`
-	CheckedAt         string           `json:"checked_at"`
+	// CertificateNames is where each name of a certificate request resolves
+	// (domain, www, aliases, mail.<domain>). Only with ?names=certificate: the
+	// SSL/TLS screen reads it before it offers the request.
+	CertificateNames []certificateNameCheck `json:"certificate_names,omitempty"`
+	CheckedAt        string                 `json:"checked_at"`
 }
 
 type connectionDNSResolver interface {
@@ -374,6 +378,24 @@ func (p *Panel) handleDomainConnection(w http.ResponseWriter, r *http.Request, d
 		out.Nameservers = []string{ns1, ns2}
 	}
 
+	// The SSL/TLS screen also asks where each name of a certificate request
+	// resolves; it runs beside the lookups below so the answer is not slower.
+	var certificateNames chan []certificateNameCheck
+	if r.URL.Query().Get("names") == "certificate" {
+		siteNames, namesErr := p.managedSiteHostnames(r.Context(), domainID)
+		if namesErr != nil {
+			writeServerError(w, namesErr)
+			return
+		}
+		mailName, _ := mailCertificateHostname(name)
+		certificateNames = make(chan []certificateNameCheck, 1)
+		go func() {
+			namesCtx, cancelNames := context.WithTimeout(r.Context(), 4*time.Second)
+			defer cancelNames()
+			certificateNames <- checkCertificateNames(namesCtx, siteNames, mailName)
+		}()
+	}
+
 	// Ask independent public caches. A single machine/ISP cache is not "the
 	// real world", especially immediately after a registrar change.
 	lookupCtx, cancelLookup := context.WithTimeout(r.Context(), 4*time.Second)
@@ -427,6 +449,10 @@ func (p *Panel) handleDomainConnection(w http.ResponseWriter, r *http.Request, d
 				facts,
 			)
 		}
+	}
+
+	if certificateNames != nil {
+		out.CertificateNames = <-certificateNames
 	}
 
 	json.NewEncoder(w).Encode(out)
