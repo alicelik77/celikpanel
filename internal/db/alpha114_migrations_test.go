@@ -17,7 +17,7 @@ import (
 // alpha.114 beÅŸ gÃ¶Ã§ taÅŸÄ±r (047â€“051); hepsi eklemelidir, var olan satÄ±r deÄŸiÅŸmez.
 const (
 	panelPortChangeMigrationVersion = 47
-	newestMigrationVersion          = transfersMigrationVersion
+	newestMigrationVersion          = securityEmergencyMigrationVersion
 )
 
 // requireMigrationsFrom proves that the embedded list ends at the newest

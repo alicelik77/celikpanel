@@ -274,7 +274,6 @@ class PopulatedDatabaseTests(unittest.TestCase):
         # row sets expires_at). 52 also writes rights rows: each plan-less
         # customer subscription becomes Custom; every customer here already
         # has a subscription, so no 'Unlimited' one and no notice is added.
-        self.assertEqual(len(self.sql), 54, 'a migration after 54 needs its own pin before a candidate carries it')
         result = self.build()
         connection = sqlite3.connect(result['database'])
         connection.execute('PRAGMA foreign_keys=ON')
@@ -305,6 +304,30 @@ class PopulatedDatabaseTests(unittest.TestCase):
         self.assertEqual(connection.execute('SELECT count(*) FROM rights_notices').fetchone(), (0,))
         connection.close()
         for version in (55, '54', True):
+            with self.subTest(version=version), self.assertRaises(p.Refused):
+                self.verify(result, version)
+
+    def test_actual_39_through_55_migrations_add_tables_and_change_no_old_row(self):
+        # alpha.117 (55, D-043): six new tables; no old table gains a column.
+        self.assertEqual(len(self.sql), 55, 'a migration after 55 needs its own pin before a candidate carries it')
+        result = self.build()
+        connection = sqlite3.connect(result['database'])
+        connection.execute('PRAGMA foreign_keys=ON')
+        apply(connection, self.sql[38:55])
+        connection.close()
+        for wrong in (53, 54):
+            with self.subTest(wrong=wrong), self.assertRaises(p.Refused):
+                self.verify(result, wrong)
+        proof = self.verify(result, 55)
+        self.assertEqual(proof['schema_version'], 55)
+        self.assertEqual(proof['table_count'], 93)
+        self.assertEqual(proof['old_rows_missing_or_changed'], 0)
+        self.assertEqual(proof['tables']['schema_migrations']['added'], 17)
+        self.assertEqual(p.NEW_TABLES[55] - p.NEW_TABLES[54], {
+            'security_emergencies', 'security_emergency_operations', 'security_emergency_effects',
+            'security_emergency_sites', 'security_emergency_before_images', 'security_notices'})
+        self.assertEqual(p.added_columns(55), p.added_columns(54))
+        for version in (56, '55', True):
             with self.subTest(version=version), self.assertRaises(p.Refused):
                 self.verify(result, version)
 
