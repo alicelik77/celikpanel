@@ -43,6 +43,8 @@ const stubbedComponents = [
   // alpha.114: My plan reads its own address.
   'MyPlanCard',
   'PendingInvitations', 'EmailVerificationCard',
+  // 2 Nov 2026: the suspension dialogue and the Deletable list are their own screens.
+  'SuspensionDialog', 'DeletableAccounts',
 ];
 for (const name of screenFiles) {
   for (const match of source(`components/${name}.tsx`).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {
@@ -97,7 +99,7 @@ const hstsRemainingURL = compileSource('lib/hstsRemaining.ts', () => stub);
 const requestIdentityURL = compileSource('lib/requestIdentity.ts', () => stub);
 const own = {
   '/auth/domainAccess': domainAccessURL, '/lib/domainDeletionPending': deletionURL, '/lib/subscriptions': subscriptionsURL,
-  '/lib/accounts': accountsURL, '/lib/managedServices': managedServicesURL, '/lib/sslTier': sslTierURL, '/lib/hstsRemaining': hstsRemainingURL,
+  '/lib/accounts': accountsURL, '/lib/suspension': compileSource('lib/suspension.ts', besideRemote), '/lib/managedServices': managedServicesURL, '/lib/sslTier': sslTierURL, '/lib/hstsRemaining': hstsRemainingURL,
   '/lib/requestIdentity': requestIdentityURL,
   // Who renews a website certificate and what the administrator does (D-040).
   '/lib/sslRenewal': compileSource('lib/sslRenewal.ts', () => stub),

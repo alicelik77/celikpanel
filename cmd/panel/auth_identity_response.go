@@ -33,6 +33,8 @@ type authIdentityResponse struct {
 	// Impersonator: the operator's username during "Log in as" (alpha.114).
 	Impersonator string          `json:"impersonator,omitempty"`
 	Features     map[string]bool `json:"features"`
+	// Suspended: the account sees only the suspended screen (alpha.117).
+	Suspended *meSuspension `json:"suspended,omitempty"`
 }
 
 func normalizedStoredAccountType(user *core.User) core.AccountType {

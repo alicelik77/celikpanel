@@ -182,6 +182,11 @@ const screenPartBudgets = {
   // ceiling (Turkish 13.35 KiB). A new part, set with at least 25% headroom
   // from its Turkish file: 4.51 / 1.42 KiB.
   setupPublishing: kib(6, 2),
+  // 2026-11-02: suspending and resuming the services of an account or a
+  // subscription, the Deletable list and the suspended owner's plain screen
+  // (susp., suspended.). A new part, set with at least 25% headroom from its
+  // Turkish file (about 9.5 / 3.2 KiB as source).
+  suspension: kib(13, 4.5),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

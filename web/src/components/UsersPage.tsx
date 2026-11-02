@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, Plus, Trash2, LogIn, Pause, Play, Pencil, Save, X, Layers, Gauge, Send, XCircle } from 'lucide-react';
+import { Users, Plus, Trash2, LogIn, Pause, Play, Pencil, Save, X, Layers, Gauge, Send, XCircle, Ban, Power } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
@@ -13,6 +13,9 @@ import { countText, invalidate, mapRemote, useRemote } from '../lib/remote';
 import { PLANS_URL, USERS_URL, decodePlans, decodeUsers } from '../lib/accounts';
 import { TeamMembersPage } from './TeamMembersPage';
 import { InvitedStatus, PendingInvitations, useInvitationActions, useInvitationOutcome } from './Invitations';
+import { SuspensionDialog, type SuspensionTarget } from './SuspensionDialog';
+import { DeletableAccounts } from './DeletableAccounts';
+import { useSuspendedOwners } from '../lib/suspension';
 
 // Account management: the admin/reseller view over the role hierarchy.
 // Everything here mirrors what the API enforces — role options, visibility
@@ -34,7 +37,7 @@ export function UsersPage() {
 function AccountUsersPage({ role }: { role: 'admin' | 'reseller' }) {
     const { t } = useI18n();
     const isAdmin = role === 'admin';
-    const [tab, setTab] = useState<'accounts' | 'plans'>('accounts');
+    const [tab, setTab] = useState<'accounts' | 'plans' | 'deletable'>('accounts');
 
     return (
         <div className="p-6 md:p-8">
@@ -48,9 +51,11 @@ function AccountUsersPage({ role }: { role: 'admin' | 'reseller' }) {
                 <Tab active={tab === 'accounts'} onClick={() => setTab('accounts')} label={t('users.tab.accounts')} />
                 {/* Resellers have their own plans too (alpha.114). / Bayilerin de kendi planları var. */}
                 <Tab active={tab === 'plans'} onClick={() => setTab('plans')} label={t('users.tab.plans')} />
+                {/* Suspended subscriptions, with what they still hold (2 Nov 2026). / Askıdaki abonelikler. */}
+                <Tab active={tab === 'deletable'} onClick={() => setTab('deletable')} label={t('susp.del.tab')} />
             </div>
 
-            {tab === 'accounts' ? <AccountsTab isAdmin={isAdmin} /> : <PlansTab isAdmin={isAdmin} />}
+            {tab === 'accounts' ? <AccountsTab isAdmin={isAdmin} /> : tab === 'plans' ? <PlansTab isAdmin={isAdmin} /> : <DeletableAccounts />}
         </div>
     );
 }
@@ -75,6 +80,12 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
     // One row's plan or pool panel is open at a time (alpha.114).
     // Aynı anda tek satırın plan ya da havuz paneli açıktır.
     const [panel, setPanel] = useState<{ user: PanelUser; kind: 'plan' | 'pool' } | null>(null);
+    // The dialogue that suspends or resumes every service of one account, and the
+    // accounts that own a suspended subscription (marked in the list).
+    // Bir hesabın tüm hizmetlerini askıya alan / açan pencere ve askıda
+    // aboneliği olan hesaplar (listede işaretlenir).
+    const [suspension, setSuspension] = useState<SuspensionTarget | null>(null);
+    const suspended = useSuspendedOwners();
 
     // Every change re-reads this list and every other place that shows
     // accounts, invitations, plans or their usage: no page refresh is needed.
@@ -358,6 +369,12 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
                                                     {u.status === 'active' ? t('users.status.active') : t('users.status.suspended')}
                                                 </span>
                                             )}
+                                            {/* Services suspended (not the sign-in block above). / Hizmetler askıda. */}
+                                            {suspended.owners.has(u.id) && (
+                                                <span className="mt-1 block w-fit rounded-md bg-warning/15 px-2 py-0.5 text-xs font-medium text-warning" data-services-suspended={u.id}>
+                                                    {t('susp.badge')}
+                                                </span>
+                                            )}
                                         </td>
                                         {isAdmin && <td className="px-4 py-3 text-fg-muted">{u.parent_name || '—'}</td>}
                                         <td className="px-4 py-3 text-fg-muted">
@@ -385,6 +402,18 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
                                                     <RowBtn disabled={!usersKnown} title={t('users.loginAs')} onClick={() => impersonate(u)}>
                                                         <LogIn className="h-4 w-4" />
                                                     </RowBtn>
+                                                    {/* Every service of the account: sites, mail, databases, VPN,
+                                                        cron and file access (2 Nov 2026). The dialogue reads what
+                                                        would change and says it before anything is sent. */}
+                                                    {u.account_type !== 'additional_user' && (
+                                                        <RowBtn
+                                                            disabled={!usersKnown}
+                                                            title={t(suspended.owners.has(u.id) ? 'susp.row.resume' : suspended.known ? 'susp.row.suspend' : 'susp.row.either')}
+                                                            onClick={() => setSuspension({ kind: 'user', id: u.id, name: u.username })}
+                                                        >
+                                                            {suspended.owners.has(u.id) ? <Power className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                                                        </RowBtn>
+                                                    )}
                                                     {u.status === 'active' ? (
                                                         <RowBtn disabled={!usersKnown} title={t('users.suspend')} onClick={() => setStatus(u, 'suspended')}>
                                                             <Pause className="h-4 w-4" />
@@ -408,6 +437,7 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
             ))}
             </RemoteGate>
             <PendingInvitations />
+            {suspension && <SuspensionDialog target={suspension} onClose={() => setSuspension(null)} />}
             {invitation.dialog}
             {rowInvite.dialog}
         </div>

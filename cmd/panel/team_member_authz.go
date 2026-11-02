@@ -240,6 +240,39 @@ func (p *Panel) authorizeDomainSubroute(
 	domainID int,
 	kind string,
 ) bool {
+	if !p.authorizeDomainSubrouteOwner(w, r, domainID, kind) {
+		return false
+	}
+	// alpha.117: after ownership is proven, the owner of a suspended
+	// subscription (and its team) cannot use its domains; the administrator
+	// and the reseller still manage them.
+	caller := currentCaller(r)
+	if caller != nil && caller.ImpersonatorID == 0 && (caller.hasAccountRole(roleCustomer) || caller.isAdditionalUser()) {
+		subID, err := p.domainSubscriptionID(r.Context(), domainID)
+		if err != nil {
+			writeServerError(w, err)
+			return false
+		}
+		suspended, err := p.subscriptionSuspended(r.Context(), subID)
+		if err != nil {
+			writeServerError(w, err)
+			return false
+		}
+		if suspended {
+			writeCodedError(w, http.StatusForbidden, errCodeSubscriptionSuspended,
+				"this domain's subscription is suspended; contact the reseller or administrator who manages it", "")
+			return false
+		}
+	}
+	return true
+}
+
+func (p *Panel) authorizeDomainSubrouteOwner(
+	w http.ResponseWriter,
+	r *http.Request,
+	domainID int,
+	kind string,
+) bool {
 	caller := currentCaller(r)
 	if caller == nil || !caller.isAdditionalUser() {
 		return p.authorizeDomain(w, r, domainID)

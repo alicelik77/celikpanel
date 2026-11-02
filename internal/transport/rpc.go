@@ -487,6 +487,10 @@ type ApplyVhostRequest struct {
 	// mismatch gate refuse the request before this matters.
 	ProtectedDirs []SiteProtectedDirRequest `json:"protected_dirs,omitempty"`
 	Redirects     []SiteRedirectRequest     `json:"redirects,omitempty"`
+	// Suspended (alpha.117, additive): the site's subscription is suspended.
+	// The vhost then answers every request with the "this site is suspended"
+	// page (503) and serves no site content; certificate validation stays.
+	Suspended bool `json:"suspended,omitempty"`
 }
 
 // SiteProtectedDirRequest is one password-protected folder of a site.

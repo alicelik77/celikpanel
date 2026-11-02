@@ -150,6 +150,10 @@ func (p *Panel) handleSubscriptionEntitlements(w http.ResponseWriter, r *http.Re
 		p.handleSubscriptionRights(w, r, subID, preview)
 		return
 	}
+	if id, ok := parseSubscriptionSuspensionPath(r.URL.Path); ok {
+		p.handleSubscriptionSuspension(w, r, id)
+		return
+	}
 	path, ok := parseEntitlementPath(r.URL.Path)
 	if !ok {
 		http.NotFound(w, r)

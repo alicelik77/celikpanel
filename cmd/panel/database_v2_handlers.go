@@ -973,6 +973,11 @@ func (p *Panel) handleCreateDatabaseV2User(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	subscriptionID := server.SubscriptionID
+	// alpha.117: a new database user of a suspended subscription would not be
+	// locked; nothing new is added until it is resumed.
+	if p.refuseSuspendedTenantSubscription(w, ctx, subscriptionID) {
+		return
+	}
 	// alpha.117 (D-042): databases and this engine must be open.
 	if !p.requireDatabaseServerRights(w, r, subscriptionID, server.TypeID) {
 		return

@@ -133,6 +133,7 @@ const screenParts: Record<Locale, Array<() => Promise<Record<string, unknown>>>>
         () => import('./screens/setupOwner/en'),
         () => import('./screens/setupPublishing/en'),
         () => import('./screens/fileAccess/en'),
+        () => import('./screens/suspension/en'),
     ],
     tr: [
         () => import('./screens/setup/tr'),
@@ -167,6 +168,7 @@ const screenParts: Record<Locale, Array<() => Promise<Record<string, unknown>>>>
         () => import('./screens/setupOwner/tr'),
         () => import('./screens/setupPublishing/tr'),
         () => import('./screens/fileAccess/tr'),
+        () => import('./screens/suspension/tr'),
     ],
 };
 
