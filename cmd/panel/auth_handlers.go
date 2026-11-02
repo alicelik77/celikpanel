@@ -135,7 +135,7 @@ func (p *Panel) handleLogin(w http.ResponseWriter, r *http.Request) {
 	p.auditAs(r, user.ID, "auth.login", "", 0)
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(identity.response(false))
+	_ = json.NewEncoder(w).Encode(p.identityResponse(r.Context(), identity, false))
 }
 
 // handleLogout deletes the current session and clears the cookie.
@@ -202,7 +202,7 @@ func (p *Panel) handleMe(w http.ResponseWriter, r *http.Request) {
 	if _, err := r.Cookie(impersonatorCookieName); err == nil {
 		impersonating = true
 	}
-	response := identity.response(impersonating || caller.ImpersonatorID > 0)
+	response := p.identityResponse(r.Context(), identity, impersonating || caller.ImpersonatorID > 0)
 	// The banner names the real person too (alpha.114): "Viewing as X —
 	// signed in as Y". A failed read leaves only the account's own name.
 	// Şerit gerçek kişiyi de adlandırır; okunamazsa yalnız hesabın adı kalır.

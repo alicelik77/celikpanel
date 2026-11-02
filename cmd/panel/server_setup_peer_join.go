@@ -335,7 +335,10 @@ func (p *Panel) reconcileServerSetupStaleBinding(ctx context.Context, reviewed s
 // (SpamAssassin) need this server's DNS identity (mailProfileDNSIdentityReady),
 // which exists only after the DNS waits: they stay in the rest, after them
 // (Beta-1 VM cells a and b failed with mail_profile_dns_identity_not_ready).
+// A plan that obtains the mail host certificate first (2 Nov 2026) keeps the
+// mail steps right after that certificate, which itself follows the DNS waits.
 func serverSetupPeerJoinSteps(steps []serverSetupPlanStep, lead serverSetupPlanStep) []serverSetupPlanStep {
+	certificateFirst := serverSetupMailCertificateFirst(steps)
 	early, rest, mail := []serverSetupPlanStep{}, []serverSetupPlanStep{}, []serverSetupPlanStep{}
 	for _, step := range steps {
 		switch {
@@ -351,7 +354,7 @@ func serverSetupPeerJoinSteps(steps []serverSetupPlanStep, lead serverSetupPlanS
 	// order they came in, keeping their own order.
 	at := 0
 	for index, step := range rest {
-		if slices.Contains([]string{"dns", "dns_readiness", "dns_publisher"}, step.Kind) {
+		if slices.Contains([]string{"dns", "dns_readiness", "dns_publisher"}, step.Kind) || (certificateFirst && step.Kind == "mail_certificate") {
 			at = index + 1
 		}
 	}

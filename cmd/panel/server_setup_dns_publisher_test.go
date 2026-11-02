@@ -22,7 +22,7 @@ func TestServerSetupSecondaryHostingReviewPlansBootstrapBeforePublishingAndMail(
 		for _, engine := range []string{"pdns", "bind"} {
 			t.Run(purpose+"/"+engine, func(t *testing.T) {
 				f, state := setupOperationFixture(t)
-				caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailTLSSyncV2}
+				caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailHostCertificateStageV1, transport.AgentCapabilityMailTLSSyncV2}
 				f.agent.versionCapabilities = &caps
 				draft := secondaryHostingDraft()
 				draft.Purpose, draft.DNSEngine = purpose, engine
@@ -109,7 +109,7 @@ func newSecondaryHostingFixture(t *testing.T) *secondaryHostingFixture {
 	setupDNSReadyPrimaryCatalog(t)
 	t.Helper()
 	f, state := setupOperationFixture(t)
-	caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailTLSSyncV2}
+	caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailHostCertificateStageV1, transport.AgentCapabilityMailTLSSyncV2}
 	f.agent.versionCapabilities = &caps
 	state, err := f.panel.saveServerSetupDraft(context.Background(), state.Revision, secondaryHostingDraft())
 	if err != nil {
@@ -309,7 +309,7 @@ func TestServerSetupManualSecondaryHostingPlansNativeReadinessWithoutPanel(t *te
 		for _, engine := range []string{"bind", "pdns"} {
 			t.Run(purpose+"/"+engine, func(t *testing.T) {
 				f, state := setupOperationFixture(t)
-				caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailTLSSyncV2}
+				caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailHostCertificateStageV1, transport.AgentCapabilityMailTLSSyncV2}
 				f.agent.versionCapabilities = &caps
 				draft := secondaryHostingDraft()
 				draft.Purpose, draft.DNSEngine = purpose, engine

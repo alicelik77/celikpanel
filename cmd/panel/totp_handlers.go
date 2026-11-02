@@ -390,7 +390,7 @@ func (p *Panel) handleLoginTOTP(w http.ResponseWriter, r *http.Request) {
 		p.auditAs(r, pending.userID, "auth.login.2fa", "", 0)
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(identity.response(false))
+	_ = json.NewEncoder(w).Encode(p.identityResponse(r.Context(), identity, false))
 }
 
 // handle2FA routes the self-service 2FA endpoints for the signed-in user.

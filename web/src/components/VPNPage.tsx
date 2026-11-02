@@ -164,9 +164,36 @@ function ReadOnlyValue({
 // ve ham WireGuard metni sürüm tarafından yönetilir; arayüz etkin durumu gösterir
 // ve yöneticinin istenen durumun tamamını güvenle yeniden eşitlemesini sağlar.
 export function VPNPage() {
+    const { role, user } = useAuth();
+    // Anyone but an administrator is offered this page only when the server
+    // says so (/auth/me): WireGuard installed and the VPN add-on present.
+    // Yönetici dışında kimseye bu sayfa, sunucu öyle dediğinde sunulur
+    // (/auth/me): WireGuard kurulu ve VPN eklentisi var.
+    if (role !== 'admin' && user?.features?.vpn !== true) {
+        return <VPNNotOffered />;
+    }
+    return <VPNPageBody />;
+}
+
+// One plain sentence for a person who has no VPN here; there is nothing for
+// them to install or fix.
+// Burada VPN'i olmayan kişiye tek düz cümle; kurulacak ya da düzeltilecek bir
+// şey yoktur.
+function VPNNotOffered() {
+    const { t } = useI18n();
+    return (
+        <div className="p-4 sm:p-6 md:p-8">
+            <PageHeader title={t('vpn.title')} />
+            <p className="text-sm text-fg-muted">{t('vpn.notOffered')}</p>
+        </div>
+    );
+}
+
+function VPNPageBody() {
     const { t } = useI18n();
     const navigate = useNavigate();
     const { role } = useAuth();
+    const isAdmin = role === 'admin';
     const [view, setView] = useState<VPNView>('overview');
     const [status, setStatus] = useState<VPNStatus | null>(null);
     const [peers, setPeers] = useState<VPNPeer[]>([]);
@@ -474,6 +501,12 @@ export function VPNPage() {
         );
     }
 
+    // The server stopped offering VPN since the page was opened.
+    // Sayfa açıldıktan sonra sunucu VPN sunmayı bıraktı.
+    if (status && !status.installed && !isAdmin) {
+        return <VPNNotOffered />;
+    }
+
     if (!status) {
         return (
             <div className="p-4 sm:p-6 md:p-8">
@@ -524,7 +557,7 @@ export function VPNPage() {
                     ['overview', t('vpn.tabOverview')],
                     ['devices', t('vpn.tabDevices')],
                     ['policy', t('vpn.tabPolicy')],
-                ] as Array<[VPNView, string]>).map(([id, label]) => (
+                ] as Array<[VPNView, string]>).filter(([id]) => isAdmin || id !== 'policy').map(([id, label]) => (
                     <button
                         key={id}
                         type="button"
@@ -553,7 +586,7 @@ export function VPNPage() {
                                     <StateBadge tone={status?.running ? 'success' : 'warning'}>
                                         {status?.running ? t('vpn.running') : t('vpn.notRunning')}
                                     </StateBadge>
-                                    <StateBadge tone="neutral">{t('vpn.releaseManaged')}</StateBadge>
+                                    {isAdmin && <StateBadge tone="neutral">{t('vpn.releaseManaged')}</StateBadge>}
                                 </div>
                                 <p className="mt-1 text-sm text-fg-muted">
                                     {status?.running
@@ -562,9 +595,6 @@ export function VPNPage() {
                                             ? t('vpn.serverStopped')
                                             : t('vpn.notInstalled')}
                                 </p>
-                                {!status.installed && role !== 'admin' && (
-                                    <p className="mt-2 text-xs text-warning">{t('vpn.adminInstallRequired')}</p>
-                                )}
                             </div>
                             {role === 'admin' && !status.installed && (
                                 <Button
@@ -589,15 +619,19 @@ export function VPNPage() {
                         </div>
                         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                             <ReadOnlyValue label={t('vpn.endpoint')} value={endpoint} mono />
-                            <ReadOnlyValue label={t('vpn.protocolPort')} value={protocolPort} />
+                            {isAdmin && <ReadOnlyValue label={t('vpn.protocolPort')} value={protocolPort} />}
                             <ReadOnlyValue label={t('vpn.activeDevices')} value={String(activePeers)} />
-                            <ReadOnlyValue
-                                label={t('vpn.desiredLedger')}
-                                value={syncReady ? t('vpn.syncReady') : t('vpn.syncAttention')}
-                            />
+                            {isAdmin && status.installed && (
+                                <ReadOnlyValue
+                                    label={t('vpn.desiredLedger')}
+                                    value={syncReady ? t('vpn.syncReady') : t('vpn.syncAttention')}
+                                />
+                            )}
                         </div>
                     </section>
 
+                    {/* The sync box is for the administrator, and only once WireGuard is installed. */}
+                    {isAdmin && status.installed && (
                     <section className={`rounded-xl border p-5 ${
                         syncReady
                             ? 'border-success/30 bg-success/5'
@@ -619,19 +653,19 @@ export function VPNPage() {
                                 </p>
                                 <p className="mt-2 text-xs text-fg-subtle">{t('vpn.sqliteDesiredState')}</p>
                             </div>
-                            {role === 'admin' && (
-                                <Button
-                                    icon={RefreshCw}
-                                    disabled={busyAction !== null || !status?.configured}
-                                    onClick={() => void resync()}
-                                >
-                                    {t('vpn.resync')}
-                                </Button>
-                            )}
+                            <Button
+                                icon={RefreshCw}
+                                disabled={busyAction !== null || !status?.configured}
+                                onClick={() => void resync()}
+                            >
+                                {t('vpn.resync')}
+                            </Button>
                         </div>
                     </section>
+                    )}
 
                     <div className="grid gap-4 lg:grid-cols-3">
+                        {isAdmin && (
                         <section className="rounded-xl border border-border bg-surface p-5">
                             <Server className="h-5 w-5 text-primary" />
                             <h3 className="mt-3 font-semibold text-fg">{t('vpn.serverPolicyCard')}</h3>
@@ -644,6 +678,7 @@ export function VPNPage() {
                                 {t('vpn.viewPolicy')}
                             </button>
                         </section>
+                        )}
                         <section className="rounded-xl border border-border bg-surface p-5">
                             <Laptop className="h-5 w-5 text-primary" />
                             <h3 className="mt-3 font-semibold text-fg">{t('vpn.deviceCard')}</h3>
@@ -658,6 +693,7 @@ export function VPNPage() {
                                 {t('vpn.manageDevices')}
                             </button>
                         </section>
+                        {isAdmin && (
                         <section className="rounded-xl border border-border bg-surface p-5">
                             <KeyRound className="h-5 w-5 text-primary" />
                             <h3 className="mt-3 font-semibold text-fg">{t('vpn.keyCard')}</h3>
@@ -665,6 +701,7 @@ export function VPNPage() {
                                 {status?.server_public_key || t('vpn.valueUnavailable')}
                             </p>
                         </section>
+                        )}
                     </div>
                 </div>
             )}
@@ -795,7 +832,7 @@ export function VPNPage() {
                         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                             <div>
                                 <h3 className="font-semibold text-fg">{t('vpn.peers')}</h3>
-                                <p className="text-sm text-fg-muted">{t('vpn.deviceStateHint')}</p>
+                                {isAdmin && <p className="text-sm text-fg-muted">{t('vpn.deviceStateHint')}</p>}
                             </div>
                             {role === 'admin' && (
                                 <Button
@@ -817,8 +854,12 @@ export function VPNPage() {
                                             <th scope="col" className="px-4 py-3 font-medium">{t('vpn.colName')}</th>
                                             <th scope="col" className="px-4 py-3 font-medium">{t('vpn.subscription')}</th>
                                             <th scope="col" className="px-4 py-3 font-medium">{t('vpn.colIP')}</th>
-                                            <th scope="col" className="px-4 py-3 font-medium">{t('vpn.desiredState')}</th>
-                                            <th scope="col" className="px-4 py-3 font-medium">{t('vpn.syncState')}</th>
+                                            <th scope="col" className="px-4 py-3 font-medium">
+                                                {isAdmin ? t('vpn.desiredState') : t('vpn.colState')}
+                                            </th>
+                                            {isAdmin && (
+                                                <th scope="col" className="px-4 py-3 font-medium">{t('vpn.syncState')}</th>
+                                            )}
                                             <th scope="col" className="px-4 py-3 font-medium">{t('vpn.colStatus')}</th>
                                             <th scope="col" className="px-4 py-3 font-medium">{t('vpn.colTraffic')}</th>
                                             <th scope="col" className="px-4 py-3" />
@@ -833,12 +874,23 @@ export function VPNPage() {
                                                 </td>
                                                 <td className="px-4 py-3 font-mono text-xs text-fg-muted">{peer.ip}</td>
                                                 <td className="px-4 py-3">
-                                                    <StateBadge tone={peer.desired_state === 'active' ? 'success' : 'warning'}>
-                                                        {peer.desired_state === 'active'
-                                                            ? t('vpn.desiredActive')
-                                                            : t('vpn.desiredRevoked')}
-                                                    </StateBadge>
+                                                    {isAdmin || peer.desired_state !== 'active' || peer.sync_state === 'applied' ? (
+                                                        <StateBadge tone={peer.desired_state === 'active' ? 'success' : 'warning'}>
+                                                            {peer.desired_state === 'active'
+                                                                ? t('vpn.desiredActive')
+                                                                : t('vpn.desiredRevoked')}
+                                                        </StateBadge>
+                                                    ) : (
+                                                        // One plain status for a customer: the applied
+                                                        // state is folded into it.
+                                                        // Müşteri için tek düz durum: uygulanan durum
+                                                        // içine katılır.
+                                                        <StateBadge tone={peer.sync_state === 'error' ? 'danger' : 'warning'}>
+                                                            {t(`vpn.sync.${peer.sync_state}`)}
+                                                        </StateBadge>
+                                                    )}
                                                 </td>
+                                                {isAdmin && (
                                                 <td className="px-4 py-3">
                                                     <div className="space-y-1">
                                                         <StateBadge
@@ -857,6 +909,7 @@ export function VPNPage() {
                                                         )}
                                                     </div>
                                                 </td>
+                                                )}
                                                 <td className="px-4 py-3">
                                                     <span className="flex items-center gap-1.5 text-xs">
                                                         <StatusDot ok={isOnline(peer)} />

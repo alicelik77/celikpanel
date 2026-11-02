@@ -186,9 +186,9 @@ func (p *Panel) handleUpdateHosting(w http.ResponseWriter, r *http.Request, doma
 			req.ForwardCode = 301
 		}
 	case "proxy":
-		if !strings.HasPrefix(req.ForwardTo, "http://") &&
-			!strings.HasPrefix(req.ForwardTo, "https://") {
-			writeClientError(w, http.StatusBadRequest, "forward_to (upstream URL) is required for proxy projects")
+		// nginx fetches this address on the server: only a public address
+		// of another machine is accepted, for every caller (proxy_target.go).
+		if p.refuseProxyTarget(r.Context(), w, req.ForwardTo) {
 			return
 		}
 	}

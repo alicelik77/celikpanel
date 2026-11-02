@@ -316,7 +316,7 @@ func TestServerSetupCatalogProviderMailRowsAndIPv6PTR(t *testing.T) {
 
 func TestServerSetupBuildMailDNSStepFollowsTheMailProfile(t *testing.T) {
 	f, state := setupOperationFixture(t)
-	capabilities := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
+	capabilities := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailHostCertificateStageV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
 	f.agent.versionCapabilities = &capabilities
 	state.Draft.MainDomain = "example.test"
 	state.Draft.MailHostname = "mail.example.test"

@@ -104,7 +104,7 @@ func TestSetupMailEnrollmentNativeRPCDisposableVM(t *testing.T) {
 	}
 	f := newServiceOperationTestFixture(t)
 	f.panel.license = testPanelLicense(t, "active")
-	caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
+	caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailHostCertificateStageV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
 	f.agent.versionCapabilities = &caps
 	for _, key := range []string{"CELIKPANEL_TLS_CERT", "CELIKPANEL_TLS_KEY"} {
 		t.Setenv(key, "")

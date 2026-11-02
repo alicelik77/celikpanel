@@ -261,6 +261,14 @@ func (p *Panel) handleCreateDatabase(w http.ResponseWriter, r *http.Request, dom
 		return
 	}
 
+	// The subscription's database limit applies on this path too, with the
+	// same refusal as the Databases page (0 = unlimited).
+	// Abonelik veritabanı sınırı bu yolda da geçerlidir.
+	if err := p.checkSubscriptionQuota(ctx, domain.SubscriptionID, quotaDBs); err != nil {
+		writeQuotaRefusal(w, err)
+		return
+	}
+
 	// Create database via agent RPC
 	var agentResp transport.CreateDatabaseResponse
 

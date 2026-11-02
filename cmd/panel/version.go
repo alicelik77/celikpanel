@@ -87,19 +87,20 @@ func (p *Panel) requirePanelCertificateSagaAgentCapabilities(ctx context.Context
 
 func requireKnownAgentCapabilities(capabilities []string, required ...string) error {
 	known := map[string]struct{}{
-		transport.AgentCapabilityMailHostCertificateV1:   {},
-		transport.AgentCapabilityFirewallApplyV2:         {},
-		transport.AgentCapabilityPanelCertificateIssueV2: {},
-		transport.AgentCapabilityDNSZoneSyncV2:           {},
-		transport.AgentCapabilityDNSSECSecureV2:          {},
-		transport.AgentCapabilityDNSClusterConfigureV2:   {},
-		transport.AgentCapabilityDNSZoneSyncV3:           {},
-		transport.AgentCapabilityDNSZoneRecoverV1:        {},
-		transport.AgentCapabilityDNSEngineSwitchV1:       {},
-		transport.AgentCapabilityMailTLSSyncV2:           {},
-		transport.AgentCapabilitySystemUpdateV1:          {},
-		transport.AgentCapabilitySystemUpdateAbandonV1:   {},
-		transport.AgentCapabilitySecurityAuditV1:         {},
+		transport.AgentCapabilityMailHostCertificateV1:      {},
+		transport.AgentCapabilityMailHostCertificateStageV1: {},
+		transport.AgentCapabilityFirewallApplyV2:            {},
+		transport.AgentCapabilityPanelCertificateIssueV2:    {},
+		transport.AgentCapabilityDNSZoneSyncV2:              {},
+		transport.AgentCapabilityDNSSECSecureV2:             {},
+		transport.AgentCapabilityDNSClusterConfigureV2:      {},
+		transport.AgentCapabilityDNSZoneSyncV3:              {},
+		transport.AgentCapabilityDNSZoneRecoverV1:           {},
+		transport.AgentCapabilityDNSEngineSwitchV1:          {},
+		transport.AgentCapabilityMailTLSSyncV2:              {},
+		transport.AgentCapabilitySystemUpdateV1:             {},
+		transport.AgentCapabilitySystemUpdateAbandonV1:      {},
+		transport.AgentCapabilitySecurityAuditV1:            {},
 	}
 	seen := make(map[string]struct{}, len(capabilities))
 	for _, raw := range capabilities {

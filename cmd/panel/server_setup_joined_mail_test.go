@@ -28,7 +28,7 @@ func joinedMailFirstDraft() serverSetupDraft {
 func joinedMailPair(t *testing.T) *peerPair {
 	t.Helper()
 	pair := newPeerPair(t, joinedMailFirstDraft())
-	caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailTLSSyncV2}
+	caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailHostCertificateStageV1, transport.AgentCapabilityMailTLSSyncV2}
 	pair.second.agent.versionCapabilities = &caps
 	if answer := pair.connect(t, issueJoinCode(t, pair.first).Code); answer.State != "ok" {
 		t.Fatalf("join: %+v", answer)
@@ -233,7 +233,7 @@ func TestServerSetupJoinedMainDNSServerRunsItsOwnMail(t *testing.T) {
 	first := joinedMailFirstDraft()
 	first.MainDNSServer = "peer"
 	pair := newPeerPair(t, first)
-	caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailTLSSyncV2}
+	caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailHostCertificateStageV1, transport.AgentCapabilityMailTLSSyncV2}
 	pair.second.agent.versionCapabilities = &caps
 	if answer := pair.connect(t, issueJoinCode(t, pair.first).Code); answer.State != "ok" || answer.Setup.Draft.PeerMail == nil {
 		t.Fatalf("join: %+v", answer)

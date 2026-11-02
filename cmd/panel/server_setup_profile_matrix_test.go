@@ -30,7 +30,7 @@ func TestServerSetupProfileDNSMatrixPreservesIdentityAndServiceScope(t *testing.
 							setPDNSPairedPrimaryGateForTest(t, gateOpen)
 							f, state := setupOperationFixture(t)
 							setServerSetupTestHost(f.panel, "debian", "13")
-							caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
+							caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailHostCertificateStageV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
 							f.agent.versionCapabilities = &caps
 							state.Draft.Purpose, state.Draft.DNSMode = purpose, mode
 							state.Draft.DNSEngine, state.Draft.DNSRole = engine, role
@@ -106,7 +106,7 @@ func TestServerSetupBuildRefusesPowerDNSMainOnUntestedSystem(t *testing.T) {
 	setPDNSPairedPrimaryGateForTest(t, true)
 	f, state := setupOperationFixture(t)
 	setServerSetupTestHost(f.panel, "ubuntu", "24.04")
-	caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
+	caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailHostCertificateStageV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
 	f.agent.versionCapabilities = &caps
 	state.Draft.Purpose, state.Draft.DNSMode, state.Draft.DNSEngine, state.Draft.DNSRole = "web", "local", "pdns", "primary"
 	state.Draft.NS1, state.Draft.NS2, state.Draft.PeerNS = "ns1.example.test", "ns2.example.test", "ns2.example.test"
@@ -147,7 +147,7 @@ func TestServerSetupBuildPowerDNSMainFollowsTheTestedSeries(t *testing.T) {
 			setPDNSPairedPrimaryGateForTest(t, true)
 			f, state := setupOperationFixture(t)
 			setServerSetupTestHost(f.panel, "debian", "13")
-			caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
+			caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailHostCertificateStageV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
 			f.agent.versionCapabilities = &caps
 			f.agent.pdnsCandidate = test.candidate
 			state.Draft.Purpose, state.Draft.DNSMode, state.Draft.DNSEngine, state.Draft.DNSRole = "web", "local", "pdns", "primary"

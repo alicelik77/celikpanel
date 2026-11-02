@@ -122,6 +122,19 @@ func reconcilePersistedMailHostCertificateHostAt(
 			}
 			_ = leafDER
 			_ = notAfter
+			if !mailHostCertificateUsesScopedRenewal(ctx) {
+				// Staged before mail was installed: no mail service can
+				// serve it, so there is nothing to reload. The mail
+				// profile install selects it.
+				absent, absentErr := mailHostStackAbsent()
+				if absentErr != nil {
+					return absentErr
+				}
+				if absent {
+					success = true
+					return nil
+				}
+			}
 			if err := reloadMailHostCertificateSelection(ctx, domain); err != nil {
 				return err
 			}

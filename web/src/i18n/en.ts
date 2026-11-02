@@ -404,7 +404,7 @@ export const en = {
     'services.notable.repoName.pgdg': 'PostgreSQL (PGDG)',
     'services.notable.repoName.netdata': 'Netdata',
     'services.phpToolProblem.extensionsFailed': 'The PHP extensions {tool} needs could not be installed for PHP {version}, so {tool} may not work. Open {tool} in Components and choose PHP {version} again in Manage, or another version.',
-    'services.mailProfiles.fallbackWarning': '{name} installed with a self-signed fallback certificate. Mail clients will show a trust warning until a matching trusted certificate is configured.',
+    'services.mailProfiles.fallbackWarning': '{name} is installed. No domain has an active trusted Secure Mail certificate yet, so mail clients are served the server’s default certificate. They show a trust warning unless a trusted certificate covers the mail host name. To give a domain its own, activate a trusted certificate with Secure Mail enabled.',
     'services.operation.title': 'Installing {name}',
     'services.operation.activeCheckInProgress': 'The panel is still checking for an active package operation. Try again in a moment.',
     'services.operation.actionLocked': 'Another package operation or safety check is already in progress.',

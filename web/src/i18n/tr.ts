@@ -242,7 +242,7 @@ export const tr: Record<ShellKey, string> = {
     'services.notable.repoName.pgdg': 'PostgreSQL (PGDG)',
     'services.notable.repoName.netdata': 'Netdata',
     'services.phpToolProblem.extensionsFailed': '{tool} aracının ihtiyaç duyduğu PHP eklentileri PHP {version} için kurulamadı; bu yüzden çalışmayabilir. Bileşenler’de {tool} aracını açıp Yönet’te PHP {version} sürümünü yeniden ya da başka bir sürümü seçin.',
-    'services.mailProfiles.fallbackWarning': '{name}, kendinden imzalı yedek sertifikayla kuruldu. Eşleşen güvenilir bir sertifika yapılandırılana kadar posta istemcileri güven uyarısı gösterecektir.',
+    'services.mailProfiles.fallbackWarning': '{name} kuruldu. Hiçbir alan adında etkin ve güvenilir bir Güvenli Posta sertifikası yok; bu yüzden posta istemcilerine sunucunun varsayılan sertifikası sunulur. Posta ana bilgisayar adını kapsayan güvenilir bir sertifika yoksa istemciler güven uyarısı gösterir. Bir alan adına kendi sertifikasını vermek için Güvenli Posta açıkken güvenilir bir sertifika etkinleştirin.',
     'services.operation.title': '{name} kuruluyor',
     'services.operation.activeCheckInProgress': 'Panel hâlâ etkin bir paket işlemini denetliyor. Biraz sonra yeniden deneyin.',
     'services.operation.actionLocked': 'Başka bir paket işlemi veya güvenlik denetimi zaten devam ediyor.',

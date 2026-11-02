@@ -33,6 +33,13 @@ export interface NavItem {
 export interface NavAccessContext {
     accountType?: string;
     teamMembers?: boolean;
+    // The server offers VPN to this person (WireGuard installed and the VPN
+    // add-on on a subscription they reach). Only /auth/me knows; an
+    // administrator always has the page.
+    // Sunucu bu kişiye VPN sunuyor (WireGuard kurulu ve erişebildiği
+    // abonelikte VPN eklentisi var). Yalnız /auth/me bilir; yöneticinin sayfası
+    // her zaman vardır.
+    vpn?: boolean;
 }
 
 const ACCOUNT_ROLES: Role[] = ['admin', 'reseller', 'customer'];
@@ -110,7 +117,12 @@ export function isNavItemAllowed(item: NavItem, role: Role, access?: NavAccessCo
 }
 
 export function navItemsForRole(role: Role, access?: NavAccessContext): NavItem[] {
-    return navItems.filter((item) => isNavItemAllowed(item, role, access));
+    // VPN is not drawn for a person the server does not offer it to. The route
+    // stays open: /vpn then says so in one sentence instead of bouncing home.
+    // VPN, sunucunun sunmadığı kişi için çizilmez. Rota açık kalır: /vpn eve
+    // atmak yerine bunu tek cümleyle söyler.
+    return navItems.filter((item) => isNavItemAllowed(item, role, access)
+        && !(item.id === 'vpn' && role !== 'admin' && access?.vpn !== true));
 }
 
 // canAccessPath guards routes from the same fail-closed navigation contract.

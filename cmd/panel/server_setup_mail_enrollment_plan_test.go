@@ -32,7 +32,7 @@ func TestSetupMailEnrollmentNewPlanBindsKitAndPreservesIndependentSchedule(t *te
 		t.Run(scenario, func(t *testing.T) {
 			f, state := setupOperationFixture(t)
 			t.Setenv("CELIKPANEL_SERVER_IP", "192.0.2.10")
-			caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
+			caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailHostCertificateStageV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
 			f.agent.versionCapabilities = &caps
 			state.Draft.Purpose = "web_mail"
 			state.Draft.MailHostname = "mail.example.test"
@@ -96,8 +96,17 @@ func TestSetupMailEnrollmentNewPlanBindsKitAndPreservesIndependentSchedule(t *te
 				}
 			}
 			enroll := scenario == "fresh" || scenario == "legacy"
-			if (index >= 0) != enroll || enroll && (cert < 0 || index != cert+1 || plan.Steps[index+1].Kind != "verify") {
+			if (index >= 0) != enroll || enroll && (cert < 0 || index <= cert || plan.Steps[index+1].Kind != "verify") {
 				t.Fatal("wrong enrollment order", plan.Steps)
+			}
+			// Since 2 Nov 2026 the mail profile installs between the
+			// certificate and the renewal enrollment; nothing else does.
+			if enroll {
+				for _, step := range plan.Steps[cert+1 : index] {
+					if step.Kind != "mail_profile" && step.Kind != "mail_dns" && (step.Kind != "service" || !serverSetupMailDependent(step.Target)) {
+						t.Fatal("wrong enrollment order", plan.Steps)
+					}
+				}
 			}
 			if plan.ID != serverSetupPlanIdentity(plan) {
 				t.Fatal("step was not included in immutable review")

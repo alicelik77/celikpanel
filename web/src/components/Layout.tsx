@@ -111,6 +111,7 @@ export function Layout({ children, currentPage = '', onPageChange, mode = 'panel
     const navAccess: NavAccessContext = {
         accountType: typeof user?.account_type === 'string' ? user.account_type : undefined,
         teamMembers: user?.features?.team_members === true,
+        vpn: user?.features?.vpn === true,
     };
     // The domain badge reads the address the Domains page and a domain's own
     // page read, so the rail adds no request of its own and follows theirs: a
