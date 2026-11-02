@@ -13,6 +13,7 @@ import { countText, invalidate, mapRemote, useRemote } from '../lib/remote';
 import { PLANS_URL, USERS_URL, decodePlans, decodeUsers } from '../lib/accounts';
 import { TeamMembersPage } from './TeamMembersPage';
 import { InvitedStatus, PendingInvitations, useInvitationActions, useInvitationOutcome } from './Invitations';
+import { TransferRequestsList, TransferRowAction } from './SubscriptionTransfer';
 
 // Account management: the admin/reseller view over the role hierarchy.
 // Everything here mirrors what the API enforces — role options, visibility
@@ -382,6 +383,7 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
                                                             <Gauge className="h-4 w-4" />
                                                         </RowBtn>
                                                     )}
+                                                    <TransferRowAction user={u} disabled={!usersKnown} />
                                                     <RowBtn disabled={!usersKnown} title={t('users.loginAs')} onClick={() => impersonate(u)}>
                                                         <LogIn className="h-4 w-4" />
                                                     </RowBtn>
@@ -408,6 +410,7 @@ function AccountsTab({ isAdmin }: { isAdmin: boolean }) {
             ))}
             </RemoteGate>
             <PendingInvitations />
+            <TransferRequestsList />
             {invitation.dialog}
             {rowInvite.dialog}
         </div>

@@ -43,6 +43,8 @@ const stubbedComponents = [
   // alpha.114: My plan reads its own address.
   'MyPlanCard',
   'PendingInvitations', 'EmailVerificationCard',
+  // alpha.117: transfers read their own addresses (SubscriptionTransfer).
+  'TransferRowAction', 'TransferRequestsList', 'TransferRequestCard',
 ];
 for (const name of screenFiles) {
   for (const match of source(`components/${name}.tsx`).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {

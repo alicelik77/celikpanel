@@ -344,7 +344,8 @@ func TestTransferRequestApproveRejectCancel(t *testing.T) {
 	// Who sees and decides it.
 	reqPath := transferRequestsPath + "/" + itoa(id)
 	list := f.do(t, authzMatrixResellerID, http.MethodGet, transferRequestsPath, "")
-	if decodeBody(t, list)["waiting"] != float64(1) || !strings.Contains(list.Body.String(), `"selling the shop"`) {
+	if decodeBody(t, list)["waiting"] != float64(1) || !strings.Contains(list.Body.String(), `"selling the shop"`) ||
+		!strings.Contains(list.Body.String(), `"can_decide":true`) {
 		t.Fatalf("reseller list = %s", list.Body.String())
 	}
 	if strings.Contains(f.do(t, 9707, http.MethodGet, transferRequestsPath, "").Body.String(), `"selling the shop"`) {

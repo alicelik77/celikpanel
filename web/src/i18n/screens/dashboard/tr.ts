@@ -450,6 +450,11 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'dashboard.audit.action.subscription.plan_change': '{target} hesabının planını değiştirdi',
     // alpha.117 (D-042): haklar.
     'dashboard.audit.action.subscription.rights': 'bir aboneliğin haklarını değiştirdi ({target})',
+    'dashboard.audit.action.subscription.transfer': '{target} aboneliğini başka bir sahibe devretti',
+    'dashboard.audit.action.subscription.transfer_request': '{target} aboneliğinin devrini istedi',
+    'dashboard.audit.action.subscription.transfer_request_approve': '{target} için devir isteğini onayladı',
+    'dashboard.audit.action.subscription.transfer_request_reject': '{target} için devir isteğini reddetti',
+    'dashboard.audit.action.subscription.transfer_request_cancel': '{target} için devir isteğini geri çekti',
     'dashboard.audit.action.reseller.rights': '{target} bayisinin haklarını değiştirdi',
     'dashboard.audit.action.reseller.rights_custom': '{target} bayisini Özel yaptı',
     'dashboard.audit.action.reseller_plan.create': '{target} bayi planını oluşturdu',

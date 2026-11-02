@@ -660,6 +660,9 @@ func (p *Panel) listTransferRequests(w http.ResponseWriter, r *http.Request, c *
 			writeServerError(w, err)
 			return
 		}
+		row.FromYou = row.From.ID == c.ID
+		row.ToYou = row.To != nil && row.To.ID == c.ID
+		row.CanDecide = row.Status == transferRequested && transferApprover(c, row)
 		list = append(list, row)
 	}
 	if err := rows.Err(); err != nil {

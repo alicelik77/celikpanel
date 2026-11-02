@@ -680,12 +680,21 @@ type transferRow struct {
 	Result             json.RawMessage `json:"result,omitempty"`
 	CreatedAt          string          `json:"created_at"`
 	DecidedAt          string          `json:"decided_at,omitempty"`
+	ReceiverSeen       bool            `json:"receiver_seen"`
+	RequesterSeen      bool            `json:"requester_seen"`
+	// IsRequest: made by a customer's request (not a direct transfer).
+	IsRequest bool `json:"is_request"`
+	// For the caller of a list: the row is about it, or it may decide it.
+	ToYou     bool `json:"to_you,omitempty"`
+	FromYou   bool `json:"from_you,omitempty"`
+	CanDecide bool `json:"can_decide,omitempty"`
 }
 
 const transferRowColumns = `t.id, t.request_id, t.subscription_id, t.subscription_name, t.status,
 	t.from_owner_id, COALESCE(fu.username, ''), COALESCE(t.to_owner_id, 0), COALESCE(tu.username, ''),
 	t.requested_to, t.note, COALESCE(t.approver_reseller_id, 0), t.requested_by,
-	COALESCE(t.decision_request_id, ''), t.decision_reason, COALESCE(t.result, ''), t.created_at, COALESCE(t.decided_at, '')`
+	COALESCE(t.decision_request_id, ''), t.decision_reason, COALESCE(t.result, ''), t.created_at, COALESCE(t.decided_at, ''),
+	t.receiver_seen_at IS NOT NULL, t.requester_seen_at IS NOT NULL`
 
 const transferRowFrom = ` FROM subscription_transfers t
 	LEFT JOIN users fu ON fu.id = t.from_owner_id
@@ -699,7 +708,8 @@ func scanTransferRow(s rowScanner) (transferRow, error) {
 	var toName, result string
 	if err := s.Scan(&row.ID, &row.RequestID, &row.SubscriptionID, &row.SubscriptionName, &row.Status,
 		&row.From.ID, &row.From.Username, &toID, &toName, &row.RequestedTo, &row.Note, &row.ApproverResellerID,
-		&row.RequestedBy, &row.DecisionRequestID, &row.DecisionReason, &result, &row.CreatedAt, &row.DecidedAt); err != nil {
+		&row.RequestedBy, &row.DecisionRequestID, &row.DecisionReason, &result, &row.CreatedAt, &row.DecidedAt,
+		&row.ReceiverSeen, &row.RequesterSeen); err != nil {
 		return row, err
 	}
 	if toID > 0 {
@@ -712,6 +722,7 @@ func scanTransferRow(s rowScanner) (transferRow, error) {
 	if result != "" {
 		row.Result = json.RawMessage(result)
 	}
+	row.IsRequest = row.Status != transferCompleted || row.DecisionRequestID != ""
 	return row, nil
 }
 
