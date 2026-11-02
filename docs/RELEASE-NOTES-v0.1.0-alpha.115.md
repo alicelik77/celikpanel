@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.115.tr.md)
 
+> **Published** on 2026-11-02 (UTC): release commit `ac05968aa`, GitHub pre-release at 10:22:27Z, download portal at about 10:27Z (public check 27/27).
+
 A small fix release after v0.1.0-alpha.114, for what the owner hit while
 reinstalling the first server. **Only the owner updates installed panels, from
 the panel's own update screen.**

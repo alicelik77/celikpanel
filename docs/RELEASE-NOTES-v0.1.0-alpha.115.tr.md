@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.115.md)
 
+> **Yayımlandı**, 2 Kasım 2026 (UTC): sürüm commit'i `ac05968aa`, GitHub ön sürümü 10:22:27Z, indirme portalı yaklaşık 10:27Z (dış denetim 27/27).
+
 v0.1.0-alpha.114'ten sonra, sahibin ilk sunucuyu yeniden kurarken karşılaştığı
 sorun için küçük bir düzeltme sürümü. **Kurulu panelleri yalnız sahibi, panelin
 kendi güncelleme ekranından günceller.**

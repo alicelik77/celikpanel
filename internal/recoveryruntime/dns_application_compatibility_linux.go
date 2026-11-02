@@ -225,6 +225,8 @@ var NativeCatalogV3Releases = []NativeCatalogV3Release{
 	// declares the markers it writes.
 	{Version: "v0.1.0-alpha.114", Policy: "pdns-native-catalog-v3",
 		Kinds: []string{dnsengineartifact.NativeCatalogDebian49V3, dnsengineartifact.NativeCatalogArch51V3}},
+	{Version: "v0.1.0-alpha.115", Policy: "pdns-native-catalog-v3",
+		Kinds: []string{dnsengineartifact.NativeCatalogDebian49V3, dnsengineartifact.NativeCatalogArch51V3}},
 }
 
 func readsNativeCatalogV3(contract agentnativecontract.Contract, present map[string]bool) bool {
