@@ -157,27 +157,45 @@ yazılır.
 | Uygulama kurucu (WordPress) | Bugünkü ürün izninin yerine geçer |
 | VPN | Menü görünmez; bugünkü ürün izninin yerine geçer |
 | Ek kullanıcılar (ekip) | Menü görünmez |
-| Dosya erişimi: SFTP | Erişim sekmesinde SFTP bölümü görünmez |
-| Dosya erişimi: FTP (şifreli, FTPS) | FTP bölümü görünmez; varsayılan kapalı |
-| SSH (komut satırı) | Yalnız SFTP; komut satırına girilemez |
+| Dosya erişimi (FTP ve SFTP) | Erişim sekmesi görünmez; dosya yalnız panelin dosya yöneticisiyle yüklenir |
+| SSH (komut satırı) | Komut satırına girilemez; dosya erişimi etkilenmez |
 
 **Dosya erişimi bugün yok.** Sahip, 2 Kasım 2026'da bir alan adının FTP ve SSH
 ayarlarını aradı ve bulamadı. Koddan doğrulandı: panelde FTP, SFTP ya da SSH
 hesabı oluşturan bir yol yok; FTP bileşeninin kurulumu kapalı ("abonelik
 başına erişim henüz bağlanmadı"). Bu ayrı bir özellik olarak yapılacak.
+
+Sahip: "FTP ve SSH en temel bağlantı şekli; dosya nasıl yüklenecek? SSH
+güvenlik gereği kapalı olabilir, erişime izin verilmeyebilir; bu izne tabi.
+Güvenlik önemli. Sadece kendi kumunda oynayabilmeli; bağlanıp sunucuya
+musallat olmamalı."
+
 Önerilen biçim:
 - Her aboneliğin bir **Erişim** sekmesi olur: kullanıcı adı, parola ya da SSH
-  anahtarı, bağlantı adresi ve portu.
-- **SFTP** varsayılan yoldur; hesap yalnız kendi dizinini görür.
-- **SSH** (komut satırı) yalnız hak setinde açıksa verilir; kullanıcı yalnız
-  kendi dizininde kalır.
-- **Düz FTP hiç verilmez;** FTP yalnız şifreli (FTPS) olarak, hak setinde
-  açıksa ve sunucuda kuruluysa sunulur.
+  anahtarı, bağlantı adresi ve portu, FileZilla gibi programlar için kısa
+  bağlantı tarifi.
+- **Dosya erişimi (FTP ve SFTP)** bir yetkidir; Sınırsız planda açıktır.
+  - **FTP:** Bağlantı şifrelidir (FTP üzerinden TLS). FileZilla gibi
+    programlar bunu kendiliğinden kullanır; müşteri için fark yoktur. Parolanın
+    şifresiz gittiği eski düz FTP kullanılmaz.
+  - **SFTP:** Aynı kullanıcı adı ve parolayla SSH bağlantısı üzerinden dosya
+    aktarımı. Komut satırı açmaz.
+- **SSH (komut satırı)** ayrı bir yetkidir ve izne tabidir. Yönetici bunu
+  sunucu genelinde de kapatabilir.
+- **Kendi kumunda kalır.** FTP, SFTP ya da SSH ile bağlanan kullanıcı yalnız
+  kendi aboneliğinin klasörünü görür. Sunucunun geri kalanını, başka
+  müşterilerin dosyalarını ve sistem dosyalarını göremez; yönetici komutu
+  çalıştıramaz. SSH açık olsa bile kullanıcı kendi klasörüne kapatılmış
+  (chroot) bir ortamdadır ve yalnız izin verilen temel araçlar oradadır.
+  Sunucuya zarar verebilecek her şey (başka kullanıcıların işlemleri, sistem
+  ayarları, ağ ayarları) bu ortamın dışındadır.
+- **Kaba kuvvete karşı:** Hatalı girişler fail2ban ile engellenir; parola
+  kuralları panelin hesap parolalarıyla aynıdır; SSH anahtarı önerilir.
 - Askıya alınan abonelikte bütün erişim kapanır (Bölüm 9A).
-- Not: bugün site kullanıcıları sunucuda `/bin/bash` kabuğuyla oluşturuluyor
+- Bugün site kullanıcıları sunucuda `/bin/bash` kabuğuyla oluşturuluyor
   (`internal/services/user_manager.go`). Parolaları olmadığı için bugün giriş
-  yapamıyorlar, ama Erişim özelliği gelmeden önce bu varsayılan güvenli hale
-  getirilecek.
+  yapamıyorlar, ama Erişim özelliğinden önce bu varsayılan güvenli hale
+  getirilecek: SSH yetkisi olmayan kullanıcının komut satırı kabuğu olmaz.
 
 ### 4.3 Yazılım (hangi bileşen, hangi sürüm)
 
@@ -434,9 +452,11 @@ müşterilerinin abonelikleri de askıya alınır.
 yapılandırma olduğu gibi durur. Abonelik yeniden başlatılınca her şey aynen
 geri gelir.
 
-**Silme elle yapılır.** Askıdaki bir abonelik belirli bir süre sonra
-yöneticinin ya da bayinin listesinde "silinebilir" olarak görünür. Silmeyi
-yalnız bir kişi başlatır; panel kendiliğinden silmez. Bekleme süresi K6'da.
+**Silme elle yapılır.** Askıya alınan abonelik hemen yöneticinin ya da
+bayinin "silinebilir" listesinde görünür (K6). Silmeyi yalnız bir kişi
+başlatır; panel kendiliğinden silmez. Silmeden önce neyin silineceği
+(siteler, posta kutuları, veritabanları, yedekler) gösterilir ve onay
+istenir.
 
 **Güvenlik ve dayanıklılık.**
 - Askıya alma ve geri alma birer değişikliktir (D-025): önce neyin
@@ -497,8 +517,9 @@ doğrulanacak:
   Sınırsız plan yönetici tarafından sunulan her yeni şeyi kendiliğinden alır;
   almıyorsa adı Sınırsız olamaz. Üçüncü taraf yazılım için güvenlik kapısı
   "sunma" adımıdır (Bölüm 4.4).
-- **K6 — Askıdaki abonelik ne zaman "silinebilir" olur?** Öneri: 30 gün;
-  yönetici bu süreyi değiştirebilir. Silme her zaman elle yapılır.
+- **K6 — Silinebilir listesi. KARARLANDI:** Sahip: "Askıya alınan hesap hemen
+  silinebilir listesine düşsün; zaten elle sileceğiz." Bekleme süresi yoktur;
+  silme her zaman elle ve önizlemeyle yapılır.
 - **K7 — Bitiş tarihi. KARARLANDI:** Sahip: "İleride ödeme ve abonelik
   sistemi olacak, ona göre hazırlık yap. Bitiş tarihi şimdilik sonsuz
   olabilir, ama abonelik sistemi gelince bitiş tarihi olacak." Bugün her
