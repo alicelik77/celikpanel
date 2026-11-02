@@ -19,6 +19,54 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 > kayıtlar saat tarihini kullanır; D-029 dışında 10, 11 veya 12 Ekim 2026 tarihli bir
 > kayıt gerçektir.
 
+## D-043 · Güvenlik acil durumunda kullanılan bir bileşen durdurulabilir ya da kaldırılabilir: geri çek, durdur, taşı, kaldır; veri asla silinmez
+
+*2026-11-02 (sahibin onayı: "ok. hepsi uygun") · Yalnız güvenlik acil durumları için D-038'in 2. maddesini ("kullanılan şey kaldırılmaz") değiştirir; bir ilkedir, uygulama alpha.117'de planlandı*
+
+**Neden.** Sahip: "Bir program var ve güvenlik açığı var; mesela PHP 8.5'te
+güvenlik açığı var ve yama yayımlanmıyor. Bu servisi acil olarak
+kapatabilmeliyim. Kapatmak güvenlik riskini engellemiyorsa kaldırabilmeliyim.
+Siteler ne olursa olsun, ama ciddi bir onay sürecinden geçmeli. Gerekirse
+kullanan müşterilere uyarı mesajı göndermeliyiz: başka servis kullansın."
+D-038'in 2. maddesi kullanılan şeyin kaldırılmasını hiç kabul etmiyordu; bu,
+sunucu risk altındayken yöneticinin elini bağlıyordu.
+
+**Karar.** Acil durum dışında D-038'in 2. maddesi aynen geçerlidir. Güvenlik
+acil durumunda yöneticinin dört adımı vardır; her biri ayrıdır, en hafifinden
+başlanır:
+
+1. **Geri çek:** Sürüm ya da bileşen "güvenlik nedeniyle geri çekildi" olur;
+   kimse yeni bir şey için seçemez (D-042'nin sunulan katmanı). Siteler
+   çalışmaya devam eder.
+2. **Acil durdur:** Hizmet durdurulur ve yeniden başlamayacak şekilde
+   kilitlenir; etkilenen siteler "Bu site geçici olarak bakımdadır" sayfası
+   gösterir.
+3. **Toplu taşı (isteğe bağlı):** Yönetici etkilenen siteleri bilerek başka bir
+   sürüme taşır (örneğin PHP 8.4); taşınamayan siteler listelenir. "Hiçbir şey
+   sessizce taşınmaz" kuralının tek istisnası budur: açık, onaylı ve denetim
+   kaydına yazılan bir işlemdir, asla kendiliğinden olmaz.
+4. **Acil kaldır:** Durdurmak riski kaldırmıyorsa paket kaldırılır. Siteler
+   bakım sayfasında kalır.
+
+**Onay.** Önce etkilenen her site, müşteri, bayi ve plan listelenir; yönetici
+bir neden yazar (örneğin CVE), bileşenin adını elle yazar ve parolasını yeniden
+girer. Her adım neden ve kişiyle denetim kaydına yazılır.
+
+**Bildirim.** Etkilenen her müşteriye ve bayisine e-posta ve panelde bant:
+ne oldu, neden, sitesine ne oldu, ne yapmalı; önerilen alternatife tek tıkla
+geçiş. Bayi etkilenen müşterilerinin listesini görür.
+
+**Geri dönüş.** Yama yayımlanınca yönetici bileşeni yeniden açar; bakım
+sayfasındaki siteler geri gelir ve "sorun giderildi" bildirimi gider.
+
+**Değişmeyen.** Acil durumda bile müşteri verisi silinmez (D-038'in 8.
+maddesi): dosyalar, posta kutuları ve veritabanları kalır; veri silmek her
+zaman ayrı ve açıkça istenen bir işlemdir. Her adım D-025'e (önizleme, kalıcı
+kontrol noktaları, kaldığı yerden sürme, son kanıt) ve D-024'e (neden, kim, ne
+yapılacak) uyar.
+
+---
+
 ## D-042 · Haklar bir plandan gelir ya da hesaba özel seçilir: kurulu olmak vermek değildir, alanı yönetici çizer, bayi yalnız daraltır
 
 *2026-11-02 (sahibin onayı: "Onay veriyorum") · Bir ilkedir, yayımlanmış yetenek değil; uygulama tek sürümde (alpha.117) planlandı, henüz hiçbir şey yapılmadı*

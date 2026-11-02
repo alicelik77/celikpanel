@@ -19,6 +19,55 @@ Code decisions live in git; this file is for strategy. Newest first.
 > D-029. Entries written after this note use the clock date; a dated entry from 10, 11 or
 > 12 October 2026 other than D-029 is genuine.
 
+## D-043 · A security emergency may stop or remove a component that is in use: withdraw, stop, move, remove — never delete data
+
+*2026-11-02 (owner's approval: "ok. hepsi uygun") · Amends D-038 point 2 ("nothing in use is removed") for security emergencies only; a principle, implementation planned in alpha.117*
+
+**Why.** The owner: "A program has a security hole, say PHP 8.5, and no patch is
+published. I must be able to shut this service down urgently. If shutting it
+down does not remove the risk, I must be able to remove it. Whatever happens to
+the sites, but it must go through a serious confirmation. If needed we send the
+customers who use it a warning: use another service." D-038 point 2 refused any
+removal of something in use; that tied the administrator's hands exactly when
+the server is at risk.
+
+**Decision.** Outside an emergency, D-038 point 2 stands unchanged. In a
+security emergency the administrator has four steps, each separate, lightest
+first:
+
+1. **Withdraw:** the version or component is marked "withdrawn for security";
+   nobody can choose it for anything new (the offered layer of D-042). Sites
+   keep running.
+2. **Emergency stop:** the service is stopped and locked so it cannot start
+   again; the affected sites show "This site is temporarily under maintenance".
+3. **Bulk move (optional):** the administrator deliberately moves the affected
+   sites to another version (for example PHP 8.4); sites that cannot be moved
+   are listed. This is the one exception to "nothing is moved silently": it is
+   an explicit, confirmed, audited action, never automatic.
+4. **Emergency remove:** if stopping does not remove the risk, the package is
+   removed. Sites stay on the maintenance page.
+
+**Confirmation.** Every affected site, customer, reseller and plan is listed
+first; the administrator writes a reason (for example the CVE), types the
+component's name and enters the password again. Every step is in the audit log
+with reason and person.
+
+**Notice.** Each affected customer and its reseller get an e-mail and a banner
+in the panel: what happened, why, what happened to the site, what to do, with a
+one-click switch to the recommended alternative. A reseller sees the list of
+its affected customers.
+
+**Return.** When a patch is published the administrator re-enables the
+component; sites on the maintenance page come back and a "resolved" notice is
+sent.
+
+**Unchanged.** Even in an emergency no customer data is deleted (D-038 point
+8): files, mailboxes and databases stay; deleting data is always a separate,
+explicitly requested operation. Every step follows D-025 (preview, durable
+checkpoints, resume, terminal proof) and D-024 (reason, who acts, next action).
+
+---
+
 ## D-042 · Rights come from a plan or are chosen for the account: installed is not granted, the administrator draws the field, a reseller only narrows
 
 *2026-11-02 (owner's approval: "Onay veriyorum") · A principle, not shipped capability; implementation is planned in one release (alpha.117), nothing is built yet*
