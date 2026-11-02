@@ -231,6 +231,7 @@ function MainLayout({ children, currentPath }: { children: React.ReactNode; curr
   const navAccess: NavAccessContext = {
     accountType: typeof user?.account_type === 'string' ? user.account_type : undefined,
     teamMembers: user?.features?.team_members === true,
+    vpn: user?.features?.vpn === true,
   };
 
   // Longest matching path wins so "/domains/x" resolves to the domains item.

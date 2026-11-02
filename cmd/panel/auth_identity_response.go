@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/repositories"
+	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 var errInvalidCanonicalAuthIdentity = errors.New("invalid canonical authentication identity")
@@ -112,4 +114,84 @@ func (identity canonicalAuthIdentity) response(impersonating bool) authIdentityR
 			"team_members": identity.accountType == core.AccountTypeAccount && identity.identity.Role == roleCustomer,
 		},
 	}
+}
+
+// identityResponse is response() plus the features that need the panel's own
+// data. The navigation reads them so it does not draw an entry that leads to
+// a page the person can do nothing on.
+// identityResponse, response() artı panelin kendi verisini isteyen özellikler.
+// Gezinme bunları okur; kişinin hiçbir şey yapamayacağı sayfaya giden girdi
+// çizilmez.
+func (p *Panel) identityResponse(
+	ctx context.Context, identity canonicalAuthIdentity, impersonating bool,
+) authIdentityResponse {
+	response := identity.response(impersonating)
+	caller := &Caller{
+		ID:          identity.identity.UserID,
+		Role:        identity.identity.Role,
+		AccountType: identity.accountType,
+		CustomerID:  identity.identity.CustomerID,
+	}
+	response.Features["vpn"] = p.vpnOfferedTo(ctx, caller)
+	return response
+}
+
+// vpnOfferedTo reports whether the VPN page has anything for this person. An
+// administrator always manages it. Anyone else needs WireGuard installed on
+// this server and a subscription they can reach with an active VPN add-on.
+// Any doubt (no add-on, agent not answering) is "not offered".
+// vpnOfferedTo, VPN sayfasında bu kişi için bir şey olup olmadığını söyler.
+// Yönetici her zaman yönetir. Diğerleri için bu sunucuda WireGuard kurulu ve
+// erişebildikleri bir abonelikte etkin VPN eklentisi gerekir. Şüphede sonuç
+// "sunulmuyor"dur.
+func (p *Panel) vpnOfferedTo(ctx context.Context, caller *Caller) bool {
+	if caller.hasAccountRole(roleAdmin) {
+		return true
+	}
+	if p.db == nil {
+		return false
+	}
+	ids, all, err := p.visibleOwnerIDs(ctx, caller)
+	if err != nil || all || len(ids) == 0 {
+		return false
+	}
+	owners := make([]any, 0, len(ids))
+	for id := range ids {
+		owners = append(owners, id)
+	}
+	rows, err := p.db.GetDB().QueryContext(ctx, `
+		SELECT id FROM subscriptions WHERE owner_id IN (`+
+		strings.TrimSuffix(strings.Repeat("?,", len(owners)), ",")+`)`, owners...)
+	if err != nil {
+		return false
+	}
+	var subscriptions []int
+	for rows.Next() {
+		var id int
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return false
+		}
+		subscriptions = append(subscriptions, id)
+	}
+	failed := rows.Err() != nil
+	rows.Close()
+	if failed {
+		return false
+	}
+	entitled := false
+	for _, id := range subscriptions {
+		if p.hasEntitlement(ctx, id, vpnProductID) {
+			entitled = true
+			break
+		}
+	}
+	if !entitled {
+		return false
+	}
+	var status transport.VPNStatusResponse
+	if err := p.callAgentContext(ctx, "Agent.VPNStatus", &transport.Empty{}, &status); err != nil {
+		return false
+	}
+	return status.Installed
 }

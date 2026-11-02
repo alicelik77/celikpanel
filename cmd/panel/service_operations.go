@@ -130,6 +130,42 @@ type serviceOperation struct {
 	Result        json.RawMessage        `json:"result,omitempty"`
 	Error         *serviceOperationError `json:"error,omitempty"`
 	OperationData string                 `json:"-"`
+	// SetupChild marks an operation that a server setup run started as one of
+	// its own steps. It is derived when the operation is read, not stored: the
+	// run's execution record names the operation's request id.
+	// SetupChild, bir sunucu kurulumunun kendi adımı olarak başlattığı işlemi
+	// işaretler. Okunurken türetilir, saklanmaz.
+	SetupChild bool `json:"setup_child,omitempty"`
+}
+
+// markServerSetupChild sets SetupChild when a server setup execution lists the
+// operation's request id as one of its steps. A lookup that fails leaves it
+// false: the operation is then treated as an ordinary one.
+// markServerSetupChild, bir sunucu kurulumu yürütmesi işlemin istek kimliğini
+// adımı olarak listeliyorsa SetupChild'ı ayarlar. Arama başarısız olursa false
+// kalır; işlem sıradan sayılır.
+func (p *Panel) markServerSetupChild(ctx context.Context, op serviceOperation) serviceOperation {
+	if !validServiceOperationID(op.RequestID) {
+		return op
+	}
+	var found int
+	err := p.db.GetDB().QueryRowContext(ctx, `
+		SELECT 1 FROM server_setup_executions
+		WHERE instr(execution_json, ?) > 0 LIMIT 1`,
+		`"request_id":"`+op.RequestID+`"`,
+	).Scan(&found)
+	if err == nil {
+		op.SetupChild = true
+	}
+	return op
+}
+
+func (p *Panel) markServerSetupChildPtr(ctx context.Context, op *serviceOperation) *serviceOperation {
+	if op == nil {
+		return nil
+	}
+	marked := p.markServerSetupChild(ctx, *op)
+	return &marked
 }
 
 type serviceOperationActor struct {
@@ -1329,7 +1365,7 @@ func (p *Panel) handleServiceOperation(w http.ResponseWriter, r *http.Request) {
 			writeServerError(w, err)
 			return
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"operation": op})
+		_ = json.NewEncoder(w).Encode(map[string]any{"operation": p.markServerSetupChild(r.Context(), op)})
 		return
 	}
 	if requestID != "" {
@@ -1346,7 +1382,7 @@ func (p *Panel) handleServiceOperation(w http.ResponseWriter, r *http.Request) {
 			writeServerError(w, err)
 			return
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"operation": op})
+		_ = json.NewEncoder(w).Encode(map[string]any{"operation": p.markServerSetupChild(r.Context(), op)})
 		return
 	}
 	if activePresent {
@@ -1355,7 +1391,7 @@ func (p *Panel) handleServiceOperation(w http.ResponseWriter, r *http.Request) {
 			writeServerError(w, err)
 			return
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"operation": op})
+		_ = json.NewEncoder(w).Encode(map[string]any{"operation": p.markServerSetupChildPtr(r.Context(), op)})
 		return
 	}
 	op, err := p.latestServiceOperation(r.Context())
@@ -1363,7 +1399,7 @@ func (p *Panel) handleServiceOperation(w http.ResponseWriter, r *http.Request) {
 		writeServerError(w, err)
 		return
 	}
-	_ = json.NewEncoder(w).Encode(map[string]any{"operation": op})
+	_ = json.NewEncoder(w).Encode(map[string]any{"operation": p.markServerSetupChildPtr(r.Context(), op)})
 }
 
 func validDirectVPNPeerSync(job *agentMutationJob) bool {
