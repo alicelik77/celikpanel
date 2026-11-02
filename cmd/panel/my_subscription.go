@@ -33,6 +33,8 @@ type mySubscriptionEntry struct {
 	Plan      *myPlanRef         `json:"plan"`
 	Usage     *subscriptionUsage `json:"usage"`
 	OverLimit []string           `json:"over_limit"`
+	// Rights (alpha.117): "unlimited", "plan" or "custom".
+	Rights string `json:"rights"`
 }
 
 type myContact struct {
@@ -45,7 +47,9 @@ type myContact struct {
 type myPoolAnswer struct {
 	Limits    *resellerPool  `json:"limits"`
 	Allocated poolAllocation `json:"allocated"`
-	OverLimit []string       `json:"over_limit"`
+	// Used (alpha.117): the tree's real use, which the pool limits.
+	Used      poolUsage `json:"used"`
+	OverLimit []string  `json:"over_limit"`
 }
 
 func (p *Panel) handleMySubscription(w http.ResponseWriter, r *http.Request) {
@@ -99,6 +103,13 @@ func (p *Panel) handleMySubscription(w http.ResponseWriter, r *http.Request) {
 		}
 		entries[i].Usage = usage
 		entries[i].OverLimit = usage.overLimits()
+		// alpha.117 (D-042): Unlimited, the plan, or Custom.
+		state, err := subscriptionRightsState(ctx, db, entries[i].ID)
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		entries[i].Rights = state.State
 	}
 
 	contact, err := p.upgradeContact(r, c)
@@ -124,12 +135,25 @@ func (p *Panel) handleMySubscription(w http.ResponseWriter, r *http.Request) {
 			writeServerError(w, err)
 			return
 		}
-		shown := myPoolAnswer{Allocated: allocation, OverLimit: []string{}}
+		usage, err := resellerTreeUsage(ctx, db, c.ID)
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		// alpha.117 (K2): the pool limits real use; what is handed out is
+		// shown for information only.
+		shown := myPoolAnswer{Allocated: allocation, Used: usage, OverLimit: []string{}}
 		if ok {
 			shown.Limits = &pool
-			shown.OverLimit = poolViolations(pool, allocation)
+			shown.OverLimit = poolOverUsage(pool, usage)
 		}
 		answer["pool"] = shown
+		state, err := resellerRightsState(ctx, db, c.ID)
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		answer["reseller_rights"] = map[string]any{"state": state.State, "plan_id": state.PlanID, "plan_name": state.PlanName}
 	}
 	if err := json.NewEncoder(w).Encode(answer); err != nil {
 		log.Printf("encode my subscription: %v", err)

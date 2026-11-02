@@ -70,7 +70,38 @@ func (p *Panel) handleACMEProviders(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	json.NewEncoder(w).Encode(map[string]any{"providers": core.ACMEProviders})
+	// alpha.117 (D-017 #4, D-042): a customer is listed the providers its
+	// subscription may choose.
+	providers := core.ACMEProviders
+	if !callerIsAdministrator(r) {
+		subID, ok, handled := p.listingSubscription(w, r)
+		if handled {
+			return
+		}
+		var rights *effectiveRights
+		if ok {
+			loaded, err := p.effectiveSubscriptionRights(r.Context(), subID)
+			if err != nil {
+				writeServerError(w, err)
+				return
+			}
+			rights = loaded
+		} else {
+			admin, err := p.loadAdminOfferLayer(r.Context())
+			if err != nil {
+				writeServerError(w, err)
+				return
+			}
+			rights = &effectiveRights{admin: admin, Own: rightsState{Set: allOfferedRightsSet()}}
+		}
+		providers = []core.ACMEProvider{}
+		for _, provider := range core.ACMEProviders {
+			if rights.offers("integration:acme:" + provider.ID) {
+				providers = append(providers, provider)
+			}
+		}
+	}
+	json.NewEncoder(w).Encode(map[string]any{"providers": providers})
 }
 
 // SSL Certificate Management Handlers
@@ -652,6 +683,11 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	provider := core.ACMEProviderByID(providerID)
 	if provider == nil {
 		writeClientError(w, http.StatusBadRequest, "unknown ACME provider")
+		return
+	}
+	// alpha.117 (D-042, D-017): the certificate provider must be open to the
+	// subscription (the ACME permission was checked by the dispatcher).
+	if !p.requireSubscriptionOffering(w, r, subscriptionID, "integration:acme:"+provider.ID, provider.Name, false) {
 		return
 	}
 	if !provider.NeedsEAB {

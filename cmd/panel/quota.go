@@ -141,7 +141,7 @@ func (p *Panel) checkSubscriptionQuota(ctx context.Context, subID int, kind quot
 			return quotaReadError(err)
 		}
 		if quotaUnlimited(limit) || usedBytes < limit*1024*1024 {
-			return nil
+			return p.checkResellerPoolUsage(ctx, subID, kind)
 		}
 		return &quotaExceededError{Kind: quotaDisk, Used: usedBytes / (1024 * 1024), Limit: limit}
 	default:
@@ -151,7 +151,8 @@ func (p *Panel) checkSubscriptionQuota(ctx context.Context, subID int, kind quot
 		return quotaReadError(err)
 	}
 	if quotaUnlimited(limit) || used < limit {
-		return nil
+		// alpha.117 (K2): the reseller's pool limits the tree's real use.
+		return p.checkResellerPoolUsage(ctx, subID, kind)
 	}
 	return &quotaExceededError{Kind: kind, Used: used, Limit: limit}
 }
@@ -170,9 +171,13 @@ func quotaReadError(err error) error {
 // writeQuotaRefusal, başarısız bir kota denetimini yanıtlar.
 func writeQuotaRefusal(w http.ResponseWriter, err error) {
 	var exceeded *quotaExceededError
+	var pool *resellerPoolExceededError
 	switch {
 	case errors.As(err, &exceeded):
 		writeCodedError(w, http.StatusConflict, exceeded.code(), exceeded.Error(), myPlanPagePath)
+	case errors.As(err, &pool):
+		writeCodedErrorDetails(w, http.StatusConflict, errCodeResellerPoolExceeded, pool.Error(), myPlanPagePath,
+			[]string{fmt.Sprintf("%s: %d of %d", pool.Kind, pool.Used, pool.Limit)})
 	case errors.Is(err, errQuotaSubscriptionMissing):
 		writeCodedError(w, http.StatusConflict, errCodeNoSubscription,
 			"this account has no subscription yet; ask your provider to assign a plan", myPlanPagePath)

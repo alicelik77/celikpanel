@@ -452,7 +452,8 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 			// alpha.108 (D-038 §14): a customer's new site takes a version
 			// the administrator offers — the one asked for, or the newest
 			// offered one. An administrator is never restricted.
-			policy, policyErr := p.loadOfferedVersions(r.Context())
+			// alpha.117 (D-042): narrowed by the subscription's rights.
+			policy, rights, policyErr := p.subscriptionVersionPolicy(r.Context(), req.SubscriptionID)
 			if policyErr != nil {
 				writeServerError(w, policyErr)
 				return
@@ -460,9 +461,9 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 			chosen, offered := customerSitePHPVersion(req.PHPVersion, caps.PHPVersions, policy)
 			if !offered {
 				if req.PHPVersion == "" {
-					writeNoVersionOffered(w, "php")
+					writeNoVersionRefusal(w, rights, "php", caps.PHPVersions)
 				} else {
-					writeVersionNotOffered(w, "php", req.PHPVersion)
+					writeVersionRefusal(w, rights, "php", req.PHPVersion)
 				}
 				return
 			}

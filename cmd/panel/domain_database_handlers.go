@@ -131,6 +131,21 @@ func (p *Panel) handleGetDomainDatabases(w http.ResponseWriter, r *http.Request,
 		http.Error(w, "Failed to load databases", http.StatusInternalServerError)
 		return
 	}
+	// alpha.117 (D-042): only the engines the subscription may choose.
+	if !callerIsAdministrator(r) {
+		rights, err := p.effectiveSubscriptionRights(ctx, domain.SubscriptionID)
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		open := []string{}
+		for _, engine := range availableTypes {
+			if rights.hasPermission(rightDatabases) && rights.anyVersionRefusal(databaseEngineOffering(engine)) == "" {
+				open = append(open, engine)
+			}
+		}
+		availableTypes = open
+	}
 
 	// The first granted user is the one this endpoint auto-created with the
 	// database, so it matches what create returned.
@@ -208,6 +223,12 @@ func (p *Panel) handleCreateDatabase(w http.ResponseWriter, r *http.Request, dom
 	domain, err := domainRepo.GetByID(ctx, domainID)
 	if err != nil {
 		http.Error(w, "Domain not found", http.StatusNotFound)
+		return
+	}
+
+	// alpha.117 (D-042): the engine must be open to the subscription (the
+	// databases permission was checked by the domain dispatcher).
+	if !p.requireSubscriptionOffering(w, r, domain.SubscriptionID, databaseEngineOffering(req.Type), req.Type, true) {
 		return
 	}
 

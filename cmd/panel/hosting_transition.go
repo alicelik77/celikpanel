@@ -186,6 +186,10 @@ func (p *Panel) handleUpdateHosting(w http.ResponseWriter, r *http.Request, doma
 			req.ForwardCode = 301
 		}
 	case "proxy":
+		// alpha.117 (D-042): the proxy type is a right of the subscription.
+		if !p.requireDomainRight(w, r, domainID, rightSiteProxy) {
+			return
+		}
 		// nginx fetches this address on the server: only a public address
 		// of another machine is accepted, for every caller (proxy_target.go).
 		if p.refuseProxyTarget(r.Context(), w, req.ForwardTo) {
@@ -201,7 +205,7 @@ func (p *Panel) handleUpdateHosting(w http.ResponseWriter, r *http.Request, doma
 		if state, err := p.loadHostingRuntimeState(r.Context(), domainID); err == nil && state.ProjectType == "node" && state.RuntimeVersion.Valid {
 			current = state.RuntimeVersion.String
 		}
-		if p.refuseVersionNotOffered(w, r, "node", current, strings.TrimSpace(req.RuntimeVersion)) {
+		if p.refuseVersionNotOffered(w, r, domainID, "node", current, strings.TrimSpace(req.RuntimeVersion)) {
 			return
 		}
 	}
@@ -215,13 +219,18 @@ func (p *Panel) handleUpdateHosting(w http.ResponseWriter, r *http.Request, doma
 		var phpVersion, previousType string
 		err := p.db.GetDB().QueryRowContext(r.Context(), `SELECT COALESCE(php_version, ''), COALESCE(project_type, 'php') FROM sites WHERE domain_id = ?`, domainID).Scan(&phpVersion, &previousType)
 		if err == nil && previousType != "php" {
-			policy, err := p.loadOfferedVersions(r.Context())
+			subID, subErr := p.domainSubscriptionID(r.Context(), domainID)
+			if subErr != nil {
+				writeClientError(w, http.StatusNotFound, "domain not found")
+				return
+			}
+			policy, rights, err := p.subscriptionVersionPolicy(r.Context(), subID)
 			if err != nil {
 				writeServerError(w, fmt.Errorf("versions offered to customers: %w", err))
 				return
 			}
 			if phpVersion != "" && !policy.offered("php", phpVersion) {
-				writeVersionNotOffered(w, "php", phpVersion)
+				writeVersionRefusal(w, rights, "php", phpVersion)
 				return
 			}
 			phpPolicy = &policy
