@@ -37,6 +37,10 @@ type planPayload struct {
 	DiskQuotaMB      int    `json:"disk_quota_mb"`
 	BandwidthQuotaMB int    `json:"bandwidth_quota_mb"`
 	Subscribers      int    `json:"subscribers,omitempty"`
+	// Confirms an edit that lowers a limit below what a subscriber uses now
+	// (PLAN_BELOW_USAGE); nothing is deleted.
+	// Bir abonenin kullandığının altına inen düzenlemeyi onaylar.
+	AcceptOverUsage bool `json:"accept_over_usage,omitempty"`
 	// Read-only facts of a listed plan; a client may send them back and they
 	// are ignored (ownership never comes from a request body).
 	// Listelenen planın salt-okur bilgileri; istemci geri gönderebilir,
@@ -170,6 +174,54 @@ func planAuditDetails(pl planPayload) map[string]any {
 	}
 }
 
+// planEditOverUsage lists, per subscription on the plan, the kinds whose
+// current usage would be above the new limits. Empty when nothing is over.
+// planEditOverUsage, yeni sınırların üstünde kalacak abonelik/kalemleri listeler.
+func (p *Panel) planEditOverUsage(ctx context.Context, planID int, limits planLimits) ([]string, error) {
+	rows, err := p.db.GetDB().QueryContext(ctx, `
+		SELECT s.id, s.name, COALESCE(u.username, '')
+		FROM subscriptions s LEFT JOIN users u ON u.id = s.owner_id
+		WHERE s.plan_id = ? ORDER BY s.id`, planID)
+	if err != nil {
+		return nil, fmt.Errorf("list subscriptions on service plan: %w", err)
+	}
+	type subRef struct {
+		id          int
+		name, owner string
+	}
+	var subs []subRef
+	for rows.Next() {
+		var s subRef
+		if err := rows.Scan(&s.id, &s.name, &s.owner); err != nil {
+			rows.Close()
+			return nil, fmt.Errorf("scan subscription on service plan: %w", err)
+		}
+		subs = append(subs, s)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return nil, fmt.Errorf("read subscriptions on service plan: %w", err)
+	}
+	rows.Close()
+
+	over := []string{}
+	for _, s := range subs {
+		usage, err := p.subscriptionUsageFor(ctx, s.id)
+		if err != nil {
+			return nil, fmt.Errorf("read usage of subscription %d: %w", s.id, err)
+		}
+		usage.DomainsLimit, usage.DatabasesLimit, usage.MailLimit = limits.Domains, limits.Databases, limits.Mailboxes
+		usage.DiskLimitBytes = 0
+		if limits.DiskMB > 0 {
+			usage.DiskLimitBytes = int64(limits.DiskMB) * 1024 * 1024
+		}
+		for _, line := range usage.overLimits() {
+			over = append(over, fmt.Sprintf("%s (%s, #%d) - %s", s.owner, s.name, s.id, line))
+		}
+	}
+	return over, nil
+}
+
 func writePlanExceedsPool(w http.ResponseWriter, pool resellerPool) {
 	writeCodedErrorDetails(w, http.StatusConflict, errCodePlanExceedsPool,
 		"a plan may not promise more than your pool; lower the limits (0 = unlimited is not possible where your pool is limited), or ask the administrator for a larger pool. Nothing was changed.",
@@ -236,6 +288,21 @@ func (p *Panel) handlePlanByID(w http.ResponseWriter, r *http.Request) {
 		// Plan edits also refresh subscriptions born from the plan — that is
 		// the point of a template (Plesk: "apply changes to subscribers").
 		// Plan düzenlemeleri, plandan doğan abonelikleri de tazeler.
+		// A lowered limit below what a subscriber uses now is refused with the
+		// list until the operator confirms (same rule as giving a plan to an
+		// account); nothing is deleted and new items of those kinds are refused.
+		// Abonenin kullanımının altına inen sınır, onaylanana kadar liste ile reddedilir.
+		over, err := p.planEditOverUsage(r.Context(), id, pl.limits())
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		if len(over) > 0 && !pl.AcceptOverUsage {
+			writeCodedErrorDetails(w, http.StatusConflict, errCodePlanBelowUsage,
+				"these limits are below what some accounts on this plan use now. Nothing was changed. To save anyway, confirm: nothing is deleted, and new items of these kinds are refused until usage is under the limit.",
+				"", over)
+			return
+		}
 		tx, err := p.db.GetDB().BeginTx(r.Context(), nil)
 		if err != nil {
 			writeServerError(w, fmt.Errorf("begin service plan update: %w", err))
@@ -311,7 +378,17 @@ func (p *Panel) handlePlanByID(w http.ResponseWriter, r *http.Request) {
 			writeServerError(w, fmt.Errorf("commit service plan update: %w", err))
 			return
 		}
-		p.auditDetailed(r, "plan.update:"+pl.Name, "service_plan", id, planAuditDetails(pl))
+		details := planAuditDetails(pl)
+		if len(over) > 0 {
+			// The audit row is size-bounded; keep the first entries and the total.
+			shown := over
+			if len(shown) > 40 {
+				shown = shown[:40]
+			}
+			details["over_limit"] = shown
+			details["over_total"] = len(over)
+		}
+		p.auditDetailed(r, "plan.update:"+pl.Name, "service_plan", id, details)
 		if err := json.NewEncoder(w).Encode(map[string]bool{"success": true}); err != nil {
 			log.Printf("encode service plan update: %v", err)
 		}
