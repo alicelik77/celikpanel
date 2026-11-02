@@ -706,6 +706,15 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// A name the public DNS shows somewhere else cannot be validated, so the
+	// request is refused before the web server or the authority is touched
+	// (2 Nov 2026). A lookup that failed is unknown and does not refuse.
+	// Genel DNS'in başka yerde gösterdiği ad doğrulanamaz; istek, web sunucusuna
+	// ya da yetkiliye dokunulmadan reddedilir. Başarısız sorgu bilinmeyendir.
+	if p.refuseCertificateDomainNotPointed(ctx, w, domain.Name, managedNames, mailName) {
+		return
+	}
+
 	// Publish every requested name on port 80 before asking the CA to validate
 	// it. The HTTP vhost keeps the ACME challenge path reachable even when
 	// Force HTTPS is enabled.

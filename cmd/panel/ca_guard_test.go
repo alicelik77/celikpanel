@@ -13,4 +13,8 @@ func blockRealCertificateAuthority() {
 	for _, name := range []string{"NO_PROXY", "no_proxy"} {
 		_ = os.Setenv(name, "localhost,127.0.0.1,::1")
 	}
+	// The "does the name point here" check asks public DNS. Tests ask nobody:
+	// no resolver means unknown, which never refuses. A test of the check sets
+	// its own resolvers.
+	certificateNameResolvers = func() []namedConnectionResolver { return nil }
 }

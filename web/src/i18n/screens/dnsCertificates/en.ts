@@ -411,6 +411,27 @@ export const enDnsCertificatesScreens = {
     'dnssrv.reviewTitle': 'Review before saving',
     'dnssrv.saveRole': 'Save DNS topology',
     'dnssrv.roleSaved': 'DNS topology saved',
+    // Get certificate is off while a name does not point to this server (owner, 2 Nov 2026).
+    "ssl.reach.checking": "Checking whether {name} points to this server…",
+    "ssl.reach.blockedTitle": "A certificate cannot be requested yet",
+    "ssl.reach.unknownTitle": "Could not check whether the domain points to this server",
+    "ssl.reach.reason.one": "{names} does not point to this server yet",
+    "ssl.reach.reason.many": "{names} do not point to this server yet",
+    "ssl.reach.nsNow": "(nameservers now: {live})",
+    "ssl.reach.action.ns": "At the company where you bought the domain, set the nameservers to {ns} (or point the A record to {ip}).",
+    "ssl.reach.action.record": "At the company that runs the DNS of {names}, point the A record to {ip}.",
+    "ssl.reach.resume": "A certificate can be requested once the change has spread; this usually takes a few hours. Choose Check again to see whether it has.",
+    "ssl.reach.mailOnly.reason": "{mail} does not point to this server yet, so it cannot be part of the certificate.",
+    "ssl.reach.mailOnly.action": "Point the A record of {mail} to {ip}, or request the certificate without it.",
+    "ssl.reach.leaveOutMail": "Request without {mail}",
+    "ssl.reach.recheck": "Check again",
+    "ssl.reach.rechecking": "Checking…",
+    "ssl.reach.inline.blocked": "Not available yet: the domain has to point to this server first. See the steps at the top of this page.",
+    "ssl.reach.inline.mailOnly": "Not available with the mail name: {mail} does not point to this server yet.",
+    "ssl.reach.unknown": "We could not check whether {names} resolve to this server. You can still request the certificate; if the domain does not point here yet, the request fails and nothing is changed.",
+    "ssl.reach.inline.unknown": "The domain’s DNS could not be checked; you can still try the request.",
+    'err.CERTIFICATE_DOMAIN_NOT_POINTED': 'No certificate was requested and nothing was changed: these names do not point to this server yet: {names}. At the company that runs the DNS of the domain, point the A record to {ip} (if you bought the domain there, set the nameservers to the ones shown on the domain’s Overview). Request the certificate again once the change has spread; this usually takes a few hours.',
+    'err.CERTIFICATE_DOMAIN_NOT_POINTED.mail_name': 'No certificate was requested and nothing was changed: {names} does not point to this server yet. Point its A record to {ip}, or untick the mail name and request the certificate without it. Request again once the change has spread; this usually takes a few hours.',
 } as const;
 
 export type DnsCertificatesScreenKey = keyof typeof enDnsCertificatesScreens;
