@@ -82,6 +82,8 @@ An additional user never sees resources outside the one customer they belong to,
 
 Administrators, resellers and customers have their capabilities fixed by their role — that is what keeps the panel simple. **Granularity exists in exactly one place: the additional user**, where a customer delegates a subset of *their own* capabilities.
 
+**Planned (D-042):** the rights of resellers and customers will come from a plan or be chosen for the account, within what the administrator offers; a reseller can only narrow. See [PLANS-AND-RIGHTS.md](PLANS-AND-RIGHTS.md). This is approved but not implemented; the paragraph above describes today's behavior.
+
 Capabilities are grouped by resource. A customer delegating an additional user picks from **their own** set:
 
 | Capability group | View | Manage |
@@ -151,5 +153,5 @@ This section states what the code does today; the design above remains the targe
 ## Deliberate non-goals (simplicity)
 
 - ❌ **Arbitrary nesting** (resellers under resellers under resellers). The chain is fixed at four levels. A "distributor" tier above resellers can be added later *only if* real demand appears — until then, the administrator fills that role.
-- ❌ **Custom roles with hand-built permission sets for customers/resellers.** Only additional users are granular; everyone else is their role. This is the single biggest source of cPanel/Plesk confusion, and we refuse it on purpose.
+- ✅ **Each account's rights come from a plan or are chosen for that account (D-042); there are still no per-person custom roles.** Only additional users have a per-person grant model; a plan is a template, and an account that departs from its plan becomes plainly "Custom" — never "plan + extra".
 - ❌ **Per-record ACLs finer than "one domain."** The smallest scope is a domain.

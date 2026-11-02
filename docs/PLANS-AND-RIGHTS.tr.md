@@ -1,5 +1,7 @@
 # Planlar, haklar ve hareket alanı
 
+*[English](PLANS-AND-RIGHTS.md)*
+
 *2 Kasım 2026 · Durum: **ONAYLANDI** (sahip, 2 Kasım 2026: "Onay veriyorum"). Henüz uygulanmadı;
 uygulama Bölüm 13'teki sırayla yapılır. Bu belge yapılmış bir şeyi anlatmaz.*
 

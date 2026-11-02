@@ -19,6 +19,64 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 > kayıtlar saat tarihini kullanır; D-029 dışında 10, 11 veya 12 Ekim 2026 tarihli bir
 > kayıt gerçektir.
 
+## D-042 · Haklar bir plandan gelir ya da hesaba özel seçilir: kurulu olmak vermek değildir, alanı yönetici çizer, bayi yalnız daraltır
+
+*2026-11-02 (sahibin onayı: "Onay veriyorum") · Bir ilkedir, yayımlanmış yetenek değil; uygulama tek sürümde (alpha.117) planlandı, henüz hiçbir şey yapılmadı*
+
+**Karar.** Sahip [PLANS-AND-RIGHTS.tr.md](PLANS-AND-RIGHTS.tr.md) belgesini
+onayladı ([English](PLANS-AND-RIGHTS.md)). Bu karar D-014 ve D-017'yi genişletir;
+D-038 (kullanılan şey kaldırılmaz), D-022 ve D-024'e uyar. İki eski kuralın yerine
+geçer: ROLES.tr.md'deki "müşteri/bayiler için elle kurulan özel yetki setleriyle
+özel roller" yapılmayacak maddesi ve alpha.114'ün "bayi havuzu dağıtımı sınırlar"
+kuralı.
+
+**İlkeler (İ1-İ7).**
+- **İ1** Kurulu olmak izin vermez: kurmak bir şeyi yalnız *verilebilir* yapar;
+  hesap onu ancak hak setinde varsa kullanır.
+- **İ2** Alanı yönetici çizer, bayi yalnız daraltır. Müşterinin kullanabildiği:
+  kurulu, yöneticinin sunduğu, bayinin hak setinde ve aboneliğin hak setinde olan.
+  Bayi kendisinde olmayanı veremez.
+- **İ3** Her hesabın hakları bir plandan gelir ya da o hesaba özel seçilir. Her
+  ekranda adı yazan üç durum: **Sınırsız** (plan yok, özel bir şey yok),
+  **plana bağlı** (planla birebir aynı) ve **Özel**. Plana bağlı hesapta tek bir şey
+  değişse bile hesap Özel olur; "plan + ek" yoktur. Plan hız için bir şablondur,
+  zorunluluk değildir.
+- **İ4** Sınırsız da bir plandır (Sınırsız, Sınırsız bayi). Yöneticinin yeni sunduğu
+  her şeyi kendiliğinden alır; almayan plan Sınırsız olamaz.
+- **İ5** Daraltma çalışanı bozmaz; yalnız yeni kullanım reddedilir (D-038).
+- **İ6** Kuralı sunucu zorlar; ekran yalnız gösterir.
+- **İ7** Sessiz değişiklik yok: plan değişikliği, Özel'e geçiş, bağlama ve devir
+  önizlenir, onaylanır ve denetim kaydına yazılır.
+
+**Hak seti.** Miktarlar, yetkiler (DNS düzenleme, posta, zamanlanmış görev, yedek,
+VPN, uygulama kurucu gibi işler) ve teklif kimliğiyle yazılım (D-017; birim
+sürümdür). Üçüncü taraf yazılım aynı alanda ayrı bir kalemdir ve "sunma" adımında
+kapıya tabidir: kurulu olan sunulmuş olmaz; yönetici sunarken yazılımın istediği
+izinleri görür ve onaylar.
+
+**Dosya erişimi.** FTP (TLS üzerinden) ve SFTP tek yetkidir, SSH ayrı yetkidir ve
+her kullanıcı kendi abonelik klasörüne kapatılır. Düz FTP kullanılmaz. Bugün
+panelde FTP/SFTP/SSH hesabı oluşturan bir yol yoktur.
+
+**Bayi havuzu (K2).** Havuz, dağıtılanın toplamını değil gerçek toplam kullanımı
+sınırlar; bayi havuzdan fazlasını dağıtabilir ama bütün müşterilerinin gerçek
+kullanımı havuzu aşamaz. Bu, alpha.114'ün dağıtım kuralının yerine geçer.
+
+**Devir (K3).** Birim bir aboneliktir. Müşteri istek gönderir; bayisi ya da
+yönetici onaylar. Bir şey değişmeden önce alan tarafın havuzu ve hak seti
+için ön denetim yapılır.
+
+**Abonelik bitişi (9A, K6, K7).** Abonelik bitince bütün hizmetler (siteler,
+posta, veritabanları, VPN, zamanlanmış görevler, dosya erişimi) askıya alınır ve
+hiçbir şey silinmez. Askıya alınan abonelik hemen silinebilir listesine düşer;
+silme her zaman elle ve önizlemeyle yapılır. Her abonelik bir başlangıç tarihi ve
+boş olabilen (sonsuz) bir bitiş tarihi taşır, ödeme sistemine hazırdır; fiyat,
+dönem ve ödeme, ödeme sistemi gelene kadar eklenmez.
+
+**İddia edilmeyen.** Burada hiçbir şey uygulanmış değildir. Geçiş mevcut bütün
+site, posta, veritabanı ve hizmeti değiştirmez; tablo ekler, sütun silmez. Sürüm,
+D-025'in istediği geri dönüş denemesini ve gerçek sunucu denemesini kanıtlamalıdır.
+
 ## D-041 · Yeni kurulum 1923 panel portunda dinler; kurulu sunucu, sahibi değiştirene kadar portunu korur
 
 *2026-10-31 (sahibin kararı) · Kaynak değişikliği `feat/panel-port-1923` dalında, v0.1.0-alpha.114 adayında; yayımlanmadı, kurulu panel güncellenmedi*
