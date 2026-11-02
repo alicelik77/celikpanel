@@ -414,7 +414,9 @@ reject_literal "$INSTALL" 'pacman -Sy --noconfirm'
 
 # Fresh-install authorization comes from a complete, fixed-path vendor
 # toolchain. os-release fields are inert hints that may disambiguate a foreign
-# package manager, never a distro/version allowlist.
+# package manager, never a distro/version allowlist. The allowed systems are a
+# separate, earlier gate (require_supported_platform in preflight_bootstrap_platform,
+# tested in test-unsupported-platform-gate.sh); classification below is unchanged.
 platform_defs=
 for function_name in \
     validate_vendor_directory_chain \
@@ -435,6 +437,8 @@ for function_name in \
     verify_live_selinux_preflight \
     verify_rhel_preview_host \
     rhel_preview_prerequisite_command \
+    bootstrap_platform_display_name \
+    require_supported_platform \
     preflight_bootstrap_platform
 do
     function_source=$(extract_function_source "$INSTALL" "$function_name") \
@@ -815,6 +819,10 @@ printf 'ID=almalinux\nVERSION_ID=9.6\n' > "$platform_tmp/os-release"
 run_rhel_preview_preflight() (
     local missing_role=${1:-} apply_only=${2:-0}
     eval "$platform_defs"
+    # The supported-system gate refuses this fixture (AlmaLinux) first. These
+    # checks cover the older DNF preview path below the gate, so step over it
+    # here; the gate itself is tested in test-unsupported-platform-gate.sh.
+    require_supported_platform() { :; }
     APPLY_ONLY=$apply_only
     SELINUX_ENFORCE_FILE=$selinux_enforce
     RHEL_DNF_BIN=$fake_dnf
