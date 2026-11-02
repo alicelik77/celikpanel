@@ -221,6 +221,10 @@ type NativeCatalogV3Release struct {
 var NativeCatalogV3Releases = []NativeCatalogV3Release{
 	{Version: "v0.1.0-alpha.113", SourceCommit: "d3f3a323da46ce8f8dca5ad4385666c5428c353e",
 		Kinds: []string{dnsengineartifact.NativeCatalogDebian49V3, dnsengineartifact.NativeCatalogArch51V3}},
+	// alpha.114 (release commit e71a71bd3) is the first release whose Agent
+	// declares the markers it writes.
+	{Version: "v0.1.0-alpha.114", Policy: "pdns-native-catalog-v3",
+		Kinds: []string{dnsengineartifact.NativeCatalogDebian49V3, dnsengineartifact.NativeCatalogArch51V3}},
 }
 
 func readsNativeCatalogV3(contract agentnativecontract.Contract, present map[string]bool) bool {

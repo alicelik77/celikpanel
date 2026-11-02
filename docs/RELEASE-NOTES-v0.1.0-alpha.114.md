@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.114.tr.md)
 
+> **Published.** This release was published on 2026-11-02 (UTC): release commit `e71a71bd3`, GitHub pre-release at 00:07:54Z, download portal at about 00:12Z after the assets and signature were verified and the public check passed (27/27). Nothing from it is on an installed server yet; only the owner updates installed panels. The candidate text below is kept as written.
+
 This release follows v0.1.0-alpha.113. It fixes what the first real servers
 showed, and it adds users and resellers, a few small features that Plesk
 users expect, operating-system updates in the owner's hands, and a new
