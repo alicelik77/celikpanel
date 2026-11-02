@@ -11,7 +11,7 @@ import { invalidate, useRemote } from '../lib/remote';
 import { PLANS_URL, decodePlans } from '../lib/accounts';
 import {
     NO_LIMITS, RESELLER_PLANS_URL, RIGHTS_CATALOG_URL, assignablePlans, decodeCatalog, decodeResellerPlans, decodeSubscriptionRights,
-    decodeUserRights, itemLabel, limitWords, overLimitText, payloadOf, selectionOf, sendRights, stateName, subscriptionRightsURL, userRightsURL,
+    decodeUserRights, itemLabel, limitWords, overLimitText, payloadOf, selectionOf, sendRights, stateName, subscriptionEndsAtURL, subscriptionRightsURL, userRightsURL,
     type NewAccountRights, type Numbers,
     type ResellerRights as ResellerRightsAnswer, type RightsPreview, type RightsSelection, type RightsState, type RightsView,
 } from '../lib/rights';
@@ -340,6 +340,7 @@ function SubscriptionRights({ subscriptionId, user, grantor, isAdmin, onClose, o
                 return (
                     <div className="grid gap-4">
                         <CurrentState view={view} numbers={numbers} reseller={false} t={t} />
+                        <EndDateField subscriptionId={subscriptionId} endsAt={view.ends_at} />
                         <RemoteGate remote={plans.remote} checking={t('rights.plansChecking')} failed={t('rights.plansUnknown')} onRetry={() => void plans.retry()} busy={plans.reading}>
                             {(list) => (
                                 <RightsChangeForm
@@ -356,6 +357,55 @@ function SubscriptionRights({ subscriptionId, user, grantor, isAdmin, onClose, o
                 );
             }}
         </RemoteGate>
+    );
+}
+
+// A subscription's end date (K7): empty means it never ends. When the date
+// passes the subscription is suspended; a date already passed suspends it
+// at once, which the field says before saving.
+function EndDateField({ subscriptionId, endsAt }: { subscriptionId: number; endsAt: string | null }) {
+    const { t } = useI18n();
+    const stored = endsAt ? endsAt.slice(0, 10) : '';
+    const [value, setValue] = useState(stored);
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState<ApiError | null>(null);
+    const today = new Date().toISOString().slice(0, 10);
+    const save = async (next: string | null) => {
+        setBusy(true);
+        setError(null);
+        const result = await sendRights(subscriptionEndsAtURL(subscriptionId), 'PUT', { ends_at: next });
+        setBusy(false);
+        if (result.kind === 'refused') {
+            setError(result.error);
+            return;
+        }
+        if (result.kind === 'lost') {
+            // The change may or may not have been made: the reread says which.
+            showToast('error', t('rights.endsAt.lost'));
+        } else {
+            showToast('success', next ? t('rights.endsAt.saved', { date: next }) : t('rights.endsAt.cleared'));
+        }
+        invalidate('rights', 'users', 'suspension');
+    };
+    return (
+        <div className="rounded-lg border border-border p-3 text-sm" data-ends-at={subscriptionId}>
+            <p className="font-medium">{t('rights.endsAt.title')}</p>
+            <p className="text-fg-muted">{stored ? t('rights.endsAt.current', { date: stored }) : t('rights.endsAt.never')}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+                <input type="date" className={inputClass} value={value} min="2000-01-01" onChange={(e) => setValue(e.target.value)} aria-label={t('rights.endsAt.title')} />
+                <Button disabled={busy || value === '' || value === stored} onClick={() => void save(value)}>
+                    <Save className="h-4 w-4" /> {t('rights.endsAt.save')}
+                </Button>
+                {stored && (
+                    <Button variant="secondary" disabled={busy} onClick={() => void save(null)}>
+                        <X className="h-4 w-4" /> {t('rights.endsAt.clear')}
+                    </Button>
+                )}
+            </div>
+            {value !== '' && value !== stored && value <= today && <p className="mt-1 text-warning">{t('rights.endsAt.pastWarning')}</p>}
+            <p className="mt-1 text-xs text-fg-subtle">{t('rights.endsAt.hint')}</p>
+            {error && <ErrorBanner error={error} />}
+        </div>
     );
 }
 

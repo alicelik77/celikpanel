@@ -815,3 +815,50 @@ func TestNewAccountUnderSuspendedResellerStartsSuspended(t *testing.T) {
 		t.Fatalf("moved into the suspended reseller's field: %s %v", f.status(t, subID), err)
 	}
 }
+
+// The administrator or the account's reseller sets or clears an end date;
+// a date that has passed suspends at once and clearing lifts it (K7).
+func TestSubscriptionEndsAtIsSetClearedAndAudited(t *testing.T) {
+	f := newSuspensionFixture(t)
+	endsAt := func(sub int) string {
+		t.Helper()
+		var v sql.NullString
+		if err := f.panel.db.GetDB().QueryRow(`SELECT ends_at FROM subscriptions WHERE id = ?`, sub).Scan(&v); err != nil {
+			t.Fatal(err)
+		}
+		return v.String
+	}
+	put := func(user, sub int, body string) *httptest.ResponseRecorder {
+		return f.as(t, user, http.MethodPut, "/api/v1/subscriptions/"+strconv.Itoa(sub)+"/ends-at", body)
+	}
+	wantStatus(t, put(9701, 9803, `{"ends_at":"2999-01-31"}`), http.StatusOK, "")
+	if endsAt(9803) != "2999-01-31 00:00:00" || f.status(t, 9803) != "active" {
+		t.Fatalf("future date: %q %s", endsAt(9803), f.status(t, 9803))
+	}
+	// The reseller for its customer; not for the administrator's customer.
+	wantStatus(t, put(9702, 9802, `{"ends_at":"2999-02-01T12:00:00Z"}`), http.StatusOK, "")
+	if endsAt(9802) != "2999-02-01 12:00:00" {
+		t.Fatalf("reseller date: %q", endsAt(9802))
+	}
+	wantStatus(t, put(9702, 9803, `{"ends_at":null}`), http.StatusNotFound, "")
+	wantStatus(t, put(9703, 9802, `{"ends_at":null}`), http.StatusNotFound, "")
+	wantStatus(t, put(9701, 9803, `{"ends_at":"31.01.2027"}`), http.StatusBadRequest, errCodeEndsAtInvalid)
+	wantStatus(t, f.as(t, 9701, http.MethodGet, "/api/v1/subscriptions/9803/ends-at", ""), http.StatusMethodNotAllowed, "")
+	if endsAt(9803) != "2999-01-31 00:00:00" {
+		t.Fatal("a refused date changed the stored one")
+	}
+
+	// A date that has passed suspends now; clearing it resumes.
+	wantStatus(t, put(9701, 9803, `{"ends_at":"2026-01-01"}`), http.StatusOK, "")
+	if f.status(t, 9803) != "suspended" {
+		t.Fatal("a passed end date did not suspend")
+	}
+	f.run(t)
+	wantStatus(t, put(9701, 9803, `{"ends_at":null}`), http.StatusOK, "")
+	if endsAt(9803) != "" || f.status(t, 9803) != "active" {
+		t.Fatalf("cleared: %q %s", endsAt(9803), f.status(t, 9803))
+	}
+	if n := f.count(t, `SELECT COUNT(*) FROM audit_logs WHERE action LIKE 'subscription.ends_at:%'`); n != 4 {
+		t.Fatalf("audit rows: %d", n)
+	}
+}

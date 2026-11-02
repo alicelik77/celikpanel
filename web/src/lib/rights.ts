@@ -20,6 +20,7 @@ export const RIGHTS_NOTICES_URL = '/api/v1/rights/notices';
 export const RESELLER_PLANS_URL = '/api/v1/reseller-plans';
 export const OFFERED_URL = '/api/v1/offered-versions';
 export const subscriptionRightsURL = (id: number) => `/api/v1/subscriptions/${id}/rights`;
+export const subscriptionEndsAtURL = (id: number) => `/api/v1/subscriptions/${id}/ends-at`;
 export const userRightsURL = (id: number) => `/api/v1/users/${id}/rights`;
 
 /** The closed set of permissions, in the server's order (section 4.2). */
@@ -80,6 +81,8 @@ export interface PoolUsage {
 
 export interface SubscriptionRights extends RightsView {
     limits: Limits;
+    /** The end date (UTC, "YYYY-MM-DD ..."), or null: it never ends (K7). */
+    ends_at: string | null;
 }
 
 export interface ResellerRights {
@@ -201,7 +204,9 @@ export function decodeCatalog(raw: unknown): RightsView {
 /** GET /api/v1/subscriptions/{id}/rights. */
 export function decodeSubscriptionRights(raw: unknown): SubscriptionRights {
     if (!isRecord(raw)) throw new Error('shape');
-    return { ...decodeRightsView(raw), limits: decodeLimits(raw.limits) };
+    const lifecycle = isRecord(raw.lifecycle) ? raw.lifecycle : {};
+    const endsAt = typeof lifecycle.ends_at === 'string' && lifecycle.ends_at !== '' ? lifecycle.ends_at : null;
+    return { ...decodeRightsView(raw), limits: decodeLimits(raw.limits), ends_at: endsAt };
 }
 
 export function decodePoolUsage(raw: unknown): PoolUsage {

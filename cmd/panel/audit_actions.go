@@ -268,6 +268,7 @@ var auditActionNames = []string{
 	"ssl.upload.partial",
 	"store.catalog.update",
 	"subscription.bootstrap",
+	"subscription.ends_at",
 	"subscription.plan_assign",
 	"subscription.plan_change",
 	"subscription.resume",

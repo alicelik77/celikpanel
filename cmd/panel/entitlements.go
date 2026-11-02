@@ -150,6 +150,11 @@ func (p *Panel) handleSubscriptionEntitlements(w http.ResponseWriter, r *http.Re
 		p.handleSubscriptionRights(w, r, subID, preview)
 		return
 	}
+	// alpha.117 (K7): /api/v1/subscriptions/{id}/ends-at.
+	if id, ok := parseSubscriptionEndsAtPath(r.URL.Path); ok {
+		p.handleSubscriptionEndsAt(w, r, id)
+		return
+	}
 	if id, ok := parseSubscriptionSuspensionPath(r.URL.Path); ok {
 		p.handleSubscriptionSuspension(w, r, id)
 		return
