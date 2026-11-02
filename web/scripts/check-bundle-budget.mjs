@@ -173,6 +173,10 @@ const screenPartBudgets = {
   // mail dialog (setup.v7., svc.mailSetup.). A new part, set with at least 25%
   // headroom from its Turkish file (about 8.6 KiB as source).
   setupOwner: kib(12, 4),
+  // alpha.117: a site's FTP, SFTP and SSH access (fileAccess.) and its
+  // refusal codes (err.FILE_ACCESS_). A new part, set with at least 25%
+  // headroom from its Turkish file: 9.38 / 3.04 KiB.
+  fileAccess: kib(12.5, 4),
   // 2026-11-01 (alpha.114, lab run 2): the setup link's DNS-publisher and DKIM
   // waits, split out of "setupLink", which the run-2 wording took over its
   // ceiling (Turkish 13.35 KiB). A new part, set with at least 25% headroom

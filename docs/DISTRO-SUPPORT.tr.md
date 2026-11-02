@@ -71,7 +71,7 @@ Kurallar:
 
 | Bileşen | Tür | APT paket eşlemesi | pacman paket eşlemesi | Koltuk | Gerekenler |
 |---|---|---|---|---|---|
-| 📂 vsftpd | Servis | — | — | — | — |
+| 📂 vsftpd | Servis | `vsftpd` | `vsftpd` | — | — |
 
 ### Önbellek
 
@@ -105,8 +105,6 @@ Bileşenler sayfası ve Agent aynı gerekçeyi verir (İngilizce metin, ekranda 
 | 📮 Exim | apt | Exim mailbox, TLS and submission integration is not available in CelikPanel yet; use Postfix. |
 | 📮 Exim | pacman | Exim mailbox, TLS and submission integration is not available in CelikPanel yet; use Postfix. |
 | 🛡️ SpamAssassin | pacman | SpamAssassin is not offered on Arch Linux: its Postfix bridge, spamass-milter, is not in the official repositories (only in the AUR, which CelikPanel does not use), so SpamAssassin would filter no mail. The server administrator installs Rspamd, the spam filter in the same seat, from the Components page. |
-| 📂 vsftpd | apt | vsftpd passive-mode ports, TLS and per-subscription access are not integrated in CelikPanel yet. |
-| 📂 vsftpd | pacman | vsftpd passive-mode ports, TLS and per-subscription access are not integrated in CelikPanel yet. |
 | ⚡ Redis | pacman | Redis is not offered on Arch Linux: its official repositories ship Valkey instead (extra/valkey, which provides redis), and CelikPanel installs official distribution packages only. The server administrator installs Valkey, the compatible cache in the same seat, from the Components page. |
 
 ## Resmi sürümden kurulanlar (her dağıtımda aynı)

@@ -101,6 +101,17 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			// alpha.117: FTP, SFTP and SSH access of a hosting account.
+			name: "ApplyFileAccessV1",
+			run: func(expected string) string {
+				var response transport.ApplyFileAccessResponse
+				if err := agent.ApplyFileAccessV1(&transport.ApplyFileAccessRequest{ExpectedBuildCommit: expected}, &response); err != nil {
+					return err.Error()
+				}
+				return response.Detail
+			},
+		},
+		{
 			name: "ApplyVhosts",
 			run: func(expected string) string {
 				var response ApplyVhostsResponse

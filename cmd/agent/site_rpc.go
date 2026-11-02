@@ -65,6 +65,9 @@ type siteLifecycleOps struct {
 	removeVhost    func(string) error
 	removeAppUnit  func(int) error
 	removeAll      func(string) error
+	// forgetAccess removes a deleted account's file access (sshd entry,
+	// keys, FTP files). Nil skips it (component tests).
+	forgetAccess func(string)
 }
 
 func (a *Agent) resolvedSiteLifecycleOps() siteLifecycleOps {
@@ -140,7 +143,8 @@ func (a *Agent) resolvedSiteLifecycleOps() siteLifecycleOps {
 			}
 			return err
 		},
-		removeAll: os.RemoveAll,
+		removeAll:    os.RemoveAll,
+		forgetAccess: forgetFileAccessAccount,
 	}
 }
 
@@ -660,6 +664,9 @@ func (a *Agent) DeleteSite(req *DeleteSiteRequest, resp *DeleteSiteResponse) err
 	// 4. Sistem kullanıcısı — istense bile asla bir sistem hesabı değil.
 	if req.Username != "" {
 		keepFailure("system user", removeSiteUser(ops, req.Username, cleanHome))
+		if ops.forgetAccess != nil {
+			ops.forgetAccess(req.Username)
+		}
 	}
 
 	// 5. Files — userdel -r usually removed the home already.

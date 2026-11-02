@@ -91,7 +91,7 @@ func TestServerSetupCustomizationCanonicalAndLegacyWireIdentity(t *testing.T) {
 	}
 	// alpha.111: the choices come from the catalogue (owner decision of
 	// 2026-10-26); what the catalogue cannot offer through setup stays refused.
-	for _, id := range []string{"apache", "exim", "vsftpd", "bind", "pdns", "netdata", "cron", "nftables", "certbot", "../../bin/sh"} {
+	for _, id := range []string{"apache", "exim", "bind", "pdns", "netdata", "cron", "nftables", "certbot", "../../bin/sh"} {
 		draft.Customization = &serverSetupCustomization{Components: []string{id}}
 		if _, err := canonicalServerSetupDraft(draft); err == nil {
 			t.Fatalf("unsupported arbitrary input accepted: %s", id)
