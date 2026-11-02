@@ -1441,6 +1441,32 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse the subscription transfers (migration 54, alpha.117).
+        DROP TRIGGER subscription_transfers_close_on_delete;
+        DROP TABLE subscription_transfers;
+
+        -- Reverse the suspension tables (migration 53, alpha.117).
+        DROP TABLE suspension_before_images;
+        DROP TABLE suspension_effects;
+        DROP TABLE suspension_operations;
+        DROP TABLE reseller_suspensions;
+        DROP TABLE subscription_suspensions;
+
+        -- Reverse the rights sets and subscription lifecycle (migration 52, alpha.117).
+        DROP TRIGGER rights_sets_follow_subscription;
+        DROP TRIGGER rights_sets_follow_plan;
+        DROP TRIGGER rights_sets_follow_reseller_plan;
+        DROP TRIGGER rights_sets_follow_user;
+        DROP TABLE rights_notices;
+        DROP TABLE reseller_plan_bindings;
+        DROP TABLE reseller_plans;
+        DROP TABLE rights_set_items;
+        DROP TABLE rights_sets;
+        ALTER TABLE subscriptions DROP COLUMN suspended_at;
+        ALTER TABLE subscriptions DROP COLUMN suspend_reason;
+        ALTER TABLE subscriptions DROP COLUMN ends_at;
+        ALTER TABLE subscriptions DROP COLUMN starts_at;
+
         -- Reverse the mail autoresponders (migration 51, alpha.114).
         DROP TABLE email_autoresponders;
 
