@@ -120,6 +120,9 @@ test('profile success needs fresh complete state and full operation evidence', (
   // A step of a server setup run never raises the warning: the setup issues
   // the mail host certificate after this install and verifies mail TLS itself.
   assert.match(operationSource, /verifiedProfileResult\?\.fallbackOnly && next\.setup_child !== true/);
+  // Nor does a fallback that is the trusted mail host certificate.
+  assert.match(operationSource, /&& !verifiedProfileResult\.hostCertificateManaged\)/);
+  assert.match(proof, /hostCertificateManaged: tls\.host_certificate === 'managed'/);
   assert.match(operationSource, /candidate\.setup_child === true \? \{ setup_child: true \}/);
 });
 

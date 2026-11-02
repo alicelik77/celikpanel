@@ -1984,9 +1984,8 @@ export function ComponentOperationProvider({ children }: { children: ReactNode }
                 // once kurar ve sonunda posta TLS durumunu kendisi dogrular;
                 // bu kurulumun gordugu varsayilan sertifika son durum degildir.
                 // A trusted mail host certificate serves: no trust warning.
-                if (verifiedProfileResult?.fallbackOnly
-                    && !verifiedProfileResult.hostCertificateManaged
-                    && next.setup_child !== true) {
+                if (verifiedProfileResult?.fallbackOnly && next.setup_child !== true
+                    && !verifiedProfileResult.hostCertificateManaged) {
                     showToast('warning', t('services.mailProfiles.fallbackWarning', {
                         name: installedName,
                     }));
