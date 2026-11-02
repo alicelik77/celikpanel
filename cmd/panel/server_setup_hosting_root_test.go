@@ -51,7 +51,7 @@ func TestServerSetupReviewNamesABlockingHostingRoot(t *testing.T) {
 			if purpose == "application" {
 				state.Draft.NodeVersion = "22.1.0"
 			}
-			caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
+			caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailHostCertificateStageV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
 			f.agent.versionCapabilities = &caps
 			plan, err := f.panel.buildServerSetupPlan(context.Background(), state, serviceOperationActor{UserID: f.userID})
 			if err != nil {

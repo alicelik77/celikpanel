@@ -46,7 +46,7 @@ func TestServerSetupNativeCronFollowsSiteHostingProfiles(t *testing.T) {
 		t.Run(purpose, func(t *testing.T) {
 			f, state := setupOperationFixture(t)
 			state.Draft.Purpose = purpose
-			caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
+			caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailHostCertificateStageV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
 			f.agent.versionCapabilities = &caps
 			if purpose == "web_mail" {
 				state.Draft.MailHostname = "mail.example.test"

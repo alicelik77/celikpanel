@@ -174,7 +174,7 @@ func TestServerSetupAdmitsMailOnArchWithoutAnyMutation(t *testing.T) {
 			f.panel.pkgFamilyMu.Lock()
 			f.panel.pkgFamilyVal = "pacman"
 			f.panel.pkgFamilyMu.Unlock()
-			caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
+			caps := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailHostCertificateStageV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
 			f.agent.versionCapabilities = &caps
 			state.Draft.Purpose = purpose
 			if purpose == "web_mail" {

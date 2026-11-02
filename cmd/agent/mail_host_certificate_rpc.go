@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os/exec"
 	"path/filepath"
 	"time"
 
@@ -16,6 +17,24 @@ const managedMailHostTLSDir = mutationpayload.MailHostCertificateDirectory
 const mailHostCertificateCapability = transport.AgentCapabilityMailHostCertificateV1
 
 func mailHostCertLineageName(domain string) string { return mailhostartifact.LineageName(domain) }
+
+// mailHostStackAbsent reports whether neither Postfix nor Dovecot is
+// installed (postconf and doveconf are not found). No mail service can then
+// present the host certificate: issuing it only publishes it in the managed
+// directory, and the mail profile install selects it
+// (selectedMailHostCertificate). Any other lookup error is unknown, not absent.
+var mailHostStackAbsent = func() (bool, error) {
+	for _, name := range []string{"postconf", "doveconf"} {
+		_, err := lookupMailTLSCommand(name)
+		if err == nil {
+			return false, nil
+		}
+		if !errors.Is(err, exec.ErrNotFound) {
+			return false, fmt.Errorf("inspect installed mail services: %w", err)
+		}
+	}
+	return true, nil
+}
 
 // This endpoint issues only the explicitly reviewed host identity. It cannot
 // name customer certificate paths or replace customer SNI entries.
@@ -49,9 +68,19 @@ func (a *Agent) IssueMailHostCertificateV1(req *transport.IssueMailHostCertifica
 		resp.Error = "install certbot before issuing the host certificate"
 		return nil
 	}
-	if err = preflightMailHostCertificate(ctx, commitment.Domain); err != nil {
+	// Setup may obtain the certificate before it installs mail (owner, 2 Nov
+	// 2026). With no mail service there is no accepted mail configuration to
+	// verify; otherwise the existing preflight runs before any ACME order.
+	stageOnly, err := mailHostStackAbsent()
+	if err != nil {
 		resp.Error = err.Error()
 		return nil
+	}
+	if !stageOnly {
+		if err = preflightMailHostCertificate(ctx, commitment.Domain); err != nil {
+			resp.Error = err.Error()
+			return nil
+		}
 	}
 	args, err := a.panelCertificateChallengeArgs(ctx, commitment.Domain)
 	if err != nil {
@@ -83,7 +112,11 @@ func (a *Agent) IssueMailHostCertificateV1(req *transport.IssueMailHostCertifica
 		_, _, _, _, readErr := readMailHostCertificateSource(commitment.Domain)
 		return readErr
 	})
-	expires, err := publishMailHostCertificateSource(ctx, commitment.Domain, req.MutationRequestID, commitment.Qualifier, "")
+	publish := publishMailHostCertificateSource
+	if stageOnly {
+		publish = stageMailHostCertificateSource
+	}
+	expires, err := publish(ctx, commitment.Domain, req.MutationRequestID, commitment.Qualifier, "")
 	if err != nil {
 		resp.Error = err.Error()
 		if seconds, ok := issuedCertificateClockSkew(err); ok {
@@ -92,8 +125,49 @@ func (a *Agent) IssueMailHostCertificateV1(req *transport.IssueMailHostCertifica
 		return nil
 	}
 	resp.Issued = true
+	resp.Staged = stageOnly
 	resp.ExpiresAt = expires
 	return nil
+}
+
+// stageMailHostCertificateSource publishes the issued certificate in the
+// managed directory while no mail service is installed. It changes no mail
+// configuration and reloads nothing; the receipt is the same as an applied
+// one, so recovery after an Agent restart finds it (it then reloads nothing
+// either while the mail stack is absent). If a mail service appeared since the
+// issue began, it stops: that host needs the preflighted path.
+func stageMailHostCertificateSource(ctx context.Context, domain, requestID, qualifier, expectedLeaf string) (expires time.Time, err error) {
+	if expectedLeaf != "" || mailHostCertificateUsesScopedRenewal(ctx) {
+		return expires, errors.New("a renewal cannot stage the mail host certificate")
+	}
+	err = panelCertWithPublishLock(func() error {
+		absent, absentErr := mailHostStackAbsent()
+		if absentErr != nil {
+			return absentErr
+		}
+		if !absent {
+			return errors.New("mail services were installed while the mail host certificate was issued; review the setup plan again")
+		}
+		cert, key, leaf, notAfter, readErr := readMailHostCertificateSource(domain)
+		if readErr != nil {
+			return readErr
+		}
+		receipt, receiptErr := newMailHostCertificateReceipt(requestID, qualifier, domain, leaf)
+		if receiptErr != nil {
+			return receiptErr
+		}
+		stage, stageErr := stageMailHostCertificateMaterial(domain, managedMailHostTLSDir, cert, key, receipt)
+		if stageErr != nil {
+			return stageErr
+		}
+		defer stage.close()
+		if _, commitErr := commitStandaloneMailHostCertificateStep(ctx, stage.publish); commitErr != nil {
+			return commitErr
+		}
+		expires = notAfter
+		return nil
+	})
+	return
 }
 
 func publishMailHostCertificateSource(ctx context.Context, domain, requestID, qualifier, expectedLeaf string) (expires time.Time, err error) {

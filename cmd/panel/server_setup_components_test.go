@@ -274,7 +274,7 @@ func TestServerSetupCustomizationMailUsesOnlyAuditedProfiles(t *testing.T) {
 	} {
 		t.Run(test.selected, func(t *testing.T) {
 			f, state := setupOperationFixture(t)
-			capabilities := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
+			capabilities := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailHostCertificateStageV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
 			f.agent.versionCapabilities = &capabilities
 			state.Draft.Purpose = "custom"
 			state.Draft.MailHostname = "mail.example.test"

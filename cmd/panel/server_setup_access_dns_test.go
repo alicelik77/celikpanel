@@ -92,7 +92,7 @@ func TestServerSetupNewPlansVerifyAddressesBeforePanelAndMailCertificates(t *tes
 			state.Draft = secondaryHostingDraft()
 			state.Draft.DNSMode = mode
 			state.Draft.DNSHostingManagement = "manual"
-			capabilities := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
+			capabilities := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailHostCertificateStageV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
 			f.agent.versionCapabilities = &capabilities
 			state.Draft.Purpose = "web_mail"
 			state.Draft.MailHostname = "mail.panel.example.test"
@@ -165,7 +165,7 @@ func TestServerSetupDNSWaitRevisionPreventsStaleRunnerProbe(t *testing.T) {
 
 func TestServerSetupMailDNSWaitCanReviseAfterPanelDNSCompletion(t *testing.T) {
 	f, state := setupOperationFixture(t)
-	capabilities := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
+	capabilities := []string{transport.AgentCapabilityMailHostCertificateV1, transport.AgentCapabilityMailHostCertificateStageV1, transport.AgentCapabilityMailTLSSyncV2, transport.AgentCapabilityFirewallApplyV2, transport.AgentCapabilityPanelCertificateIssueV2}
 	f.agent.versionCapabilities = &capabilities
 	state.Draft.Purpose = "web_mail"
 	state.Draft.MailHostname = "mail.example.test"
