@@ -19,6 +19,10 @@ import (
 // behind the network seam, with only its final paired publication replaced.
 func TestJoinedServerDeletionFinishesItselfOnceTheMainConfirmsTheRemoval(t *testing.T) {
 	f := newRemoteConsumerIntegrationFixture(t)
+	// The test publishes the DKIM record itself below; the background runner
+	// that creating the domain would start races the DNS engine seed for the
+	// database (SQLITE_BUSY seen in CI).
+	f.origin.automaticDKIMKicked = func() {}
 	ctx := context.Background()
 	const domain = "custb.example.test"
 
