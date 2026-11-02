@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.116.tr.md)
 
+> **Published** on 2026-11-02 (UTC): release commit `3ab50130a`, GitHub pre-release at 18:53:20Z, download portal at about 18:59Z (public check 27/27).
+
 A fix release after v0.1.0-alpha.115: one security fix and the problems the
 owner found while using the reinstalled servers. **Only the owner updates
 installed panels, from the panel's own update screen.**
@@ -25,9 +27,13 @@ installed panels, from the panel's own update screen.**
   before anything changes, with a bilingual message naming the system and the
   supported list (Debian 12/13, Ubuntu 22.04/24.04, Arch Linux).
 - **Server setup gets the mail certificate before installing mail.** On a
-  server without mail, setup now issues the trusted mail certificate first,
-  so Postfix and Dovecot start with it. Servers that already run mail keep the
-  previous order.
+  server without mail, setup now issues the trusted mail certificate first.
+  Correction after the lab run: during the package install Postfix and
+  Dovecot still start for about two to three minutes on a self-signed
+  certificate, then switch to the trusted one within the same setup, before
+  the mail records are published and before setup says ready. Starting them
+  on the trusted certificate from the first moment is planned for alpha.117.
+  Servers that already run mail keep the previous order.
 - **No misleading certificate warning during setup.** The "self-signed
   fallback" warning is no longer shown for setup steps; outside setup its text
   now says only what the install proves.
