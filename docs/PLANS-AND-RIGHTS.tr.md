@@ -1,9 +1,9 @@
-# Planlar, haklar ve hareket alanı — TASLAK
+# Planlar, haklar ve hareket alanı
 
-*2 Kasım 2026 · Durum: **TASLAK, sahibin onayını bekliyor.** Onaylanmadan hiçbir
-madde uygulanmaz. Bu belge yapılmış bir şeyi anlatmaz; ne yapılacağını önerir.*
+*2 Kasım 2026 · Durum: **ONAYLANDI** (sahip, 2 Kasım 2026: "Onay veriyorum"). Henüz uygulanmadı;
+uygulama Bölüm 13'teki sırayla yapılır. Bu belge yapılmış bir şeyi anlatmaz.*
 
-Bu taslak, sahibin 2 Kasım 2026'da verdiği yönü ve kararları tek yerde toplar.
+Bu belge, sahibin 2 Kasım 2026'da verdiği yönü ve kararları tek yerde toplar.
 Temmuz'da alınan iki kararı genişletir ama değiştirmez:
 D-014 ("yönetici kurar, bayi sunar, müşteri kullanır; birim sürümdür") ve
 D-017 (her seçim tek bir teklif kimliği alanından geçer). Sürüm ilkesine (D-038:
@@ -534,17 +534,25 @@ doğrulanacak:
 
 ---
 
-## 13. Önerilen uygulama sırası (onaydan sonra)
+## 13. Uygulama (sahip, 2 Kasım 2026: "hepsini yap")
 
-Her adım ayrı, küçük bir sürümdür; her biri kendi testleriyle çıkar.
-1. **Veri modeli ve geçiş:** Hak seti tabloları, iki Sınırsız plan, mevcut
-   kayıtların taşınması. Ekranda yalnız "Plan: X / Özel" görünür. Gerçek
-   sunucuda bir güncelleme ve bir geri dönüş denemesi.
-2. **Sunucu tarafı kapılar:** Her seçim ve oluşturma yolu kesişim kuralını
-   uygular; reddetme mesajları kimin ne yapacağını söyler.
-3. **Ekranlar:** Hesap oluşturma formu, plan düzenleme önizlemesi, abonelik
+Bütün parçalar **tek sürümde** (alpha.117) çıkar; parçalar aynı anda
+yazılır, sürümün sonunda bir kez denenir:
+1. **Veri modeli ve geçiş:** hak seti tabloları, iki Sınırsız plan, mevcut
+   kayıtların taşınması, abonelik tarihleri ve durumu.
+2. **Sunucu tarafı kapılar:** her seçim ve oluşturma yolu kesişim kuralını
+   uygular; ret mesajları kimin ne yapacağını söyler; bayi havuzu gerçek
+   kullanımı sınırlar.
+3. **Ekranlar:** hesap oluşturma formu, plan düzenleme önizlemesi, abonelik
    sayfası, menü ve sekme gizleme, "Planım" kartı.
-4. **Devir:** Ön denetim, önizleme ve gerekiyorsa sunucu tarafı işlem.
+4. **Askıya alma:** her hizmetin kendi ayarıyla, geri alınabilir.
+5. **Devir:** ön denetim, önizleme, istek ve onay.
+6. **Dosya erişimi:** FTP (TLS), SFTP, izne bağlı SSH; kendi klasörüne
+   kapatılmış.
+
+Deneme: değişen parçaların testleri, GitHub kontrolleri ve sürüm sonunda bir
+kez gerçek sunucuda güncelleme, geri dönüş, askıya alma ve SSH kum havuzu
+denemesi.
 
 **Kapsam dışı:** fiyat, dönem ve ödeme; trafik ölçümü; işletim sistemi disk
 kotası; tek bir alan adının abonelikler arasında taşınması.
