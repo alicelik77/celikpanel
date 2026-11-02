@@ -173,6 +173,40 @@ hemen görür.
 | DNS düzenleme | yok | var |
 | Zamanlanmış görev | var | var |
 
+### 4.4 Üçüncü taraf yazılımlar (ileride)
+
+Sahip, 2 Kasım 2026: "Daha sonra üçüncü parti yazılımlara da izin vereceğiz;
+bunlar da bu haklarda olacak veya olmayacak. Güvenlik önemli, dikkat edelim."
+
+Mağazadan ya da bir üreticiden gelen her yazılım, hak setinde ayrı bir kalem
+olur. Aynı kesişim kuralı geçerlidir; üçüncü taraf yazılım için ayrı bir izin
+sistemi kurulmaz (D-017: tek teklif kimliği alanı). Kimlik örneği:
+`extension:<üretici>:<ad>`. Güvenlik için ek kurallar:
+
+- **Kendiliğinden açılmaz.** Yeni bir üçüncü taraf yazılım kurulduğunda hiçbir
+  planda açık değildir, Sınırsız planda bile. Yönetici her plana ya da hak
+  setine bilerek ekler. Sınırsız planın "sunulan her şeyi kapsar" kuralı
+  yalnız panelin kendi bileşenleri içindir.
+- **Neye dokunacağını önceden söyler.** Üçüncü taraf yazılım, ihtiyaç duyduğu
+  izinleri bir bildirimle açıkça listeler; örneğin "müşterinin dosyalarını
+  okur", "veritabanı oluşturur", "dışarıya bağlantı kurar". Yönetici kurmadan
+  önce bu listeyi görür ve onaylar. Listede olmayan bir şeyi yapamaz.
+- **Hak setinin dışına çıkamaz.** Üçüncü taraf yazılım bir müşteri adına
+  çalışırken o müşterinin hak setiyle sınırlıdır. Kendi başına hak veremez,
+  hak genişletemez, plan değiştiremez.
+- **Kapı panelde.** İzin denetimini üçüncü taraf yazılım değil panel yapar.
+  Yazılımın kendi ekranı "izin var" dese bile panel reddederse işlem olmaz.
+- **İmzalı ve kayıtlı.** Yalnız imzası doğrulanan paketler kurulabilir (bugünkü
+  sürüm imzası düzeninin aynısı). Kurulum, izin onayı ve her plan değişikliği
+  denetim kaydına yazılır.
+- **Kaldırma çalışanı bozmaz, ama güvenlik önce gelir.** Kullanılan bir üçüncü
+  taraf yazılım normalde kaldırılamaz (D-038). Ancak bir güvenlik sorunu
+  bildirildiğinde yönetici onu hemen **durdurabilir**; neyin etkileneceği
+  ekranda yazar.
+
+Bu bölüm bir ilke koyar; mağaza ve üçüncü taraf paket düzeni ayrı bir
+tasarımdır.
+
 ---
 
 ## 5. Roller ve hareket alanı
@@ -370,6 +404,9 @@ doğrulanacak:
   (oluşturma yapabilir hale gelir), yoksa "Haklar atanmalı" uyarısıyla mı
   beklesin (bugünkü gibi hiçbir şey oluşturamaz)? Öneri: uyarıyla beklesin;
   sessizce yetki genişlemesin.
+- **K5 — Üçüncü taraf yazılım ve Sınırsız plan.** Yeni kurulan bir üçüncü
+  taraf yazılım Sınırsız planda kendiliğinden açık olsun mu? Öneri: hayır;
+  yönetici her plana bilerek eklesin (Bölüm 4.4).
 
 ---
 
