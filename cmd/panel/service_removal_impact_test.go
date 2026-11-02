@@ -529,8 +529,9 @@ func TestRemovalImpactVPNPeersAndFTPAccounts(t *testing.T) {
 	if wg.Hosted == nil || wg.Hosted.Kind != "vpn_peers" || wg.Hosted.Count != 2 || wg.Hosted.BlocksRemoval || !slices.Equal(wg.Hosted.Names, []string{"laptop", "phone"}) {
 		t.Fatalf("wireguard = %+v", wg.Hosted)
 	}
+	// alpha.117: FTP access is recorded on the server, not in the Panel.
 	ftp := removalImpactFor(t, "vsftpd", "apt", removalInstalled("vsftpd"))
-	if ftp.Hosted == nil || ftp.Hosted.Kind != "ftp_accounts" || ftp.Hosted.Count != 1 || ftp.Hosted.BlocksRemoval {
+	if ftp.Hosted == nil || ftp.Hosted.Kind != "unrecorded" || ftp.Hosted.BlocksRemoval {
 		t.Fatalf("vsftpd = %+v", ftp.Hosted)
 	}
 }
