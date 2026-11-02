@@ -71,7 +71,7 @@ const wizardStepsURL = load('../src/components/ServerSetupWizardSteps.tsx', { ..
 const componentUIURL = load('../src/components/ServerSetupComponents.tsx', libs);
 const stepsURL = load('../src/components/ServerSetupSteps.tsx');
 const choiceURL = load('../src/components/ServerSetupChoice.tsx', libs);
-const { ServerSetup: Wizard } = await import(load('../src/components/ServerSetup.tsx', { ...libs, ServerSetupWizardSteps: wizardStepsURL, ServerSetupComponents: componentUIURL, ServerSetupSteps: stepsURL, ServerSetupChoice: choiceURL }));
+const { ServerSetup: Wizard } = await import(load('../src/components/ServerSetup.tsx', { ...libs, ServerSetupWizardSteps: wizardStepsURL, ServerSetupComponents: componentUIURL, ServerSetupSteps: stepsURL, ServerSetupChoice: choiceURL, apiError: dataURL(compile('../src/lib/apiError.ts')) }));
 
 const original = { fetch: globalThis.fetch, window: globalThis.window, document: globalThis.document, localStorage: globalThis.localStorage, sessionStorage: globalThis.sessionStorage };
 function restore() {

@@ -69,7 +69,7 @@ export const SetupPlanProblems = () => null, SetupStartReason = () => null, setu
 const source = compile('../src/components/ServerSetup.tsx').replace(/from ['"]([^'"]+)['"]/g, (_, path) => {
     const url = path === 'react' ? reactURL : path.endsWith('/remoteDNS') ? remoteURL : path.endsWith('/componentName') ? componentNameURL : path.endsWith('/serverSetupComponents') ? componentLibURL
         : path.endsWith('/setupDNS') ? dnsCopyURL : path.endsWith('/visibleReads') ? visibleReadsURL : path.endsWith('/panelHandover') ? handoverURL : path.endsWith('/serverSetupGuidance') ? guidanceURL
-            : path.endsWith('/serverSetupOperation') ? operationURL : path.endsWith('/serverSetup') ? setupURL : stub;
+            : path.endsWith('/serverSetupOperation') ? operationURL : path.endsWith('/apiError') ? dataURL(compile('../src/lib/apiError.ts')) : path.endsWith('/serverSetup') ? setupURL : stub;
     return `from '${url}'`;
 });
 const { ServerSetup } = await import(dataURL(`import React from '${reactURL}';\n${source}`));
