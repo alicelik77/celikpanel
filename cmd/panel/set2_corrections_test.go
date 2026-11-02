@@ -306,6 +306,9 @@ func TestImportHandlerNeverAnswersAccepted(t *testing.T) {
 // O9. A certbot run that did not issue is answered with what it came to,
 // never "internal server error".
 func TestCertificateIssueFailureIsTypedAndPlain(t *testing.T) {
+	// A recorded certbot line, not a live run: nothing here starts certbot or
+	// reaches a CA. The log is captured so this text does not read as one.
+	logs := captureLog(t)
 	measured := "An unexpected error occurred: requests.exceptions.SSLError: HTTPSConnectionPool(host='acme-v02.api.letsencrypt.org', port=443): Max retries exceeded with url: /directory"
 	for kind, fragments := range map[string][]string{
 		transport.CertificateFailureAuthorityUnreachable: {"could not reach the certificate authority", "no request was placed", "outbound port 443"},
@@ -343,6 +346,10 @@ func TestCertificateIssueFailureIsTypedAndPlain(t *testing.T) {
 				t.Fatalf("%s: vars %v", kind, body.Vars)
 			}
 		}
+	}
+	// The server log keeps the Agent's cause for the administrator.
+	if !strings.Contains(logs.String(), "[502][certificate] shop.example") || !strings.Contains(logs.String(), "Max retries exceeded") {
+		t.Fatalf("server log lacks the cause: %s", logs.String())
 	}
 
 	// certbot's line can name this server's paths and hosts: it is for an
