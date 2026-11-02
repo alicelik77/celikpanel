@@ -8,7 +8,7 @@ import { type PanelUser, type ServicePlan } from '../lib/api';
 import { Button, CouldNotCheck, ErrorBanner, KnownEmpty, RemoteGate, StatusDot, inputClass } from './ui';
 import { PageHeader } from './PageHeader';
 import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
-import { NEW_PLAN, UNLIMITED_CHOICE, assignablePlans, editedFromCustomerPlan, newAccountRightsBody, newAccountRightsMissing, rightsSummary, sendRights, type EditedPlan, type NewAccountRights } from '../lib/rights';
+import { NEW_PLAN, UNLIMITED_CHOICE, assignablePlans, editedFromCustomerPlan, newAccountRightsBody, newAccountRightsMissing, rightsSummary, sendRights, stateName, type EditedPlan, type NewAccountRights } from '../lib/rights';
 import { AccountRightsPanel, NewAccountRightsSection } from './AccountRights';
 import { BuiltinPlanRow, OfferedItemsTab, PlanEditorGate, ResellerPlansTab } from './PlanRights';
 import { AdminRightsNotices } from './RightsNotices';
@@ -360,6 +360,7 @@ function AccountsTab({ isAdmin, onCreatePlan }: { isAdmin: boolean; onCreatePlan
                                     <th className="px-4 py-2.5">{t('users.col.status')}</th>
                                     {isAdmin && <th className="px-4 py-2.5">{t('users.col.parent')}</th>}
                                     <th className="px-4 py-2.5">{t('users.col.usage')}</th>
+                                    <th className="px-4 py-2.5">{t('users.col.rights')}</th>
                                     <th className="px-4 py-2.5" />
                                 </tr>
                             </thead>
@@ -403,6 +404,10 @@ function AccountsTab({ isAdmin, onCreatePlan }: { isAdmin: boolean; onCreatePlan
                                         {isAdmin && <td className="px-4 py-3 text-fg-muted">{u.parent_name || '—'}</td>}
                                         <td className="px-4 py-3 text-fg-muted">
                                             {u.subscriptions} / {u.domains}
+                                        </td>
+                                        {/* Unlimited, Plan: X or Custom (D-042 P3). / Haklar. */}
+                                        <td className="px-4 py-3 text-fg-muted" data-rights-state={u.rights?.state ?? ''}>
+                                            {u.rights ? accountRightsText(u.rights, u.role === 'reseller', t) : '—'}
                                         </td>
                                         <td className="px-4 py-3">
                                             {u.role !== 'admin' && (
@@ -468,6 +473,13 @@ function AccountsTab({ isAdmin, onCreatePlan }: { isAdmin: boolean; onCreatePlan
 }
 
 const limitText = (n: number, unlimited: string) => (n > 0 ? String(n) : unlimited);
+
+// The Rights column: the state's name; "mixed" for a customer whose
+// subscriptions differ.
+function accountRightsText(rights: { state: string; plan_name?: string }, reseller: boolean, t: (key: TranslationKey, vars?: Record<string, string | number>) => string): string {
+    if (rights.state === 'mixed') return t('users.rights.mixed');
+    return stateName(rights.state, rights.plan_name, t, reseller);
+}
 
 function PlansTab({ isAdmin }: { isAdmin: boolean }) {
     const { t } = useI18n();

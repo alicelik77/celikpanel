@@ -126,6 +126,8 @@ export const trSettingsScreens: Record<SettingsScreenKey, string> = {
     'users.col.status': 'Durum',
     'users.col.parent': 'Sahip',
     'users.col.usage': 'Abonelik / Domain',
+    'users.col.rights': 'Haklar',
+    'users.rights.mixed': 'Aboneliğe göre değişir',
     'users.role.admin': 'Yönetici',
     'users.role.reseller': 'Bayi',
     'users.role.customer': 'Müşteri',

@@ -138,6 +138,8 @@ export const enSettingsScreens = {
     'users.col.status': 'Status',
     'users.col.parent': 'Owner',
     'users.col.usage': 'Subscriptions / Domains',
+    'users.col.rights': 'Rights',
+    'users.rights.mixed': 'Differs per subscription',
     'users.role.admin': 'Administrator',
     'users.role.reseller': 'Reseller',
     'users.role.customer': 'Customer',

@@ -430,6 +430,8 @@ export interface PanelUser {
     created_at: string;
     /** Invited, not signed in yet (alpha.114); absent for every other account. */
     invitation?: AccountInvitationState;
+    /** Where the rights come from (D-042 P3); absent for the administrator, additional users, or unread. */
+    rights?: { state: string; plan_name?: string };
 }
 
 export interface ServicePlan {

@@ -42,6 +42,52 @@ type userResponse struct {
 	CreatedAt     string `json:"created_at"`
 	// Invitation: invited, not signed in yet (alpha.114); absent otherwise.
 	Invitation *accountInvitationState `json:"invitation,omitempty"`
+	// Rights: where a reseller's or a customer's rights come from (D-042 P3);
+	// absent for the administrator and additional users, or when unreadable.
+	Rights *accountRightsSummary `json:"rights,omitempty"`
+}
+
+// accountRightsSummary is the Accounts list's small rights field: state is
+// "unlimited", "plan" (plan_name set) or "custom"; a customer whose
+// subscriptions differ reads "mixed".
+type accountRightsSummary struct {
+	State    string `json:"state"`
+	PlanName string `json:"plan_name,omitempty"`
+}
+
+// accountRightsSummaryFor reads one listed account's rights state.
+func accountRightsSummaryFor(ctx context.Context, q sqlQueryer, u userResponse) (*accountRightsSummary, error) {
+	if u.AccountType != "" && u.AccountType != "account" {
+		return nil, nil
+	}
+	switch u.Role {
+	case roleReseller:
+		state, err := resellerRightsState(ctx, q, u.ID)
+		if err != nil {
+			return nil, err
+		}
+		return &accountRightsSummary{State: state.State, PlanName: state.PlanName}, nil
+	case roleCustomer:
+		ids, err := accountSubscriptionIDs(ctx, q, u.ID, false)
+		if err != nil {
+			return nil, err
+		}
+		// No subscription yet: Unlimited (P3, K4).
+		summary := &accountRightsSummary{State: rightsStateUnlimited}
+		for i, id := range ids {
+			state, err := subscriptionRightsState(ctx, q, id)
+			if err != nil {
+				return nil, err
+			}
+			next := accountRightsSummary{State: state.State, PlanName: state.PlanName}
+			if i > 0 && next != *summary {
+				return &accountRightsSummary{State: "mixed"}, nil
+			}
+			*summary = next
+		}
+		return summary, nil
+	}
+	return nil, nil
 }
 
 // requireManager rejects callers that are not admin or reseller.
@@ -250,6 +296,11 @@ func (p *Panel) handleListUsers(w http.ResponseWriter, r *http.Request, c *Calle
 	}
 	for i := range users {
 		users[i].Invitation = invited[users[i].ID]
+		// A rights state that cannot be read is left out (unknown), never
+		// shown as Unlimited.
+		if summary, err := accountRightsSummaryFor(r.Context(), p.db.GetDB(), users[i]); err == nil {
+			users[i].Rights = summary
+		}
 	}
 	json.NewEncoder(w).Encode(map[string]any{"users": users})
 }

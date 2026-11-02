@@ -606,3 +606,46 @@ func TestAccountRoutesRoleMatrix(t *testing.T) {
 		}
 	}
 }
+
+// The Accounts list names each account's rights state (D-042 P3).
+func TestUsersListNamesTheRightsState(t *testing.T) {
+	f := newAccountsFixture(t)
+	gold := createPlan(t, f, authzMatrixAdminID, `{"name":"Gold","max_domains":3,"max_databases":3,"max_email_accounts":3,"disk_quota_mb":100,"bandwidth_quota_mb":0}`)
+	f.exec(t, `UPDATE subscriptions SET plan_id = ? WHERE id = 9803`, gold)
+	f.exec(t, `UPDATE subscriptions SET max_domains = 0, max_databases = 0, max_email_accounts = 0, disk_quota_mb = 0 WHERE id = 9802`)
+	recorder := f.as(t, authzMatrixAdminID, http.MethodGet, "/api/v1/users", "")
+	wantStatus(t, recorder, http.StatusOK, "")
+	var answer struct {
+		Users []userResponse `json:"users"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &answer); err != nil {
+		t.Fatal(err)
+	}
+	got := map[int]*accountRightsSummary{}
+	for _, u := range answer.Users {
+		got[u.ID] = u.Rights
+	}
+	if r := got[9704]; r == nil || r.State != rightsStatePlan || r.PlanName != "Gold" {
+		t.Fatalf("plan-bound customer: %+v", r)
+	}
+	if r := got[9703]; r == nil || r.State != rightsStateUnlimited {
+		t.Fatalf("unlimited customer: %+v", r)
+	}
+	if r := got[9702]; r == nil || r.State != rightsStateUnlimited {
+		t.Fatalf("reseller: %+v", r)
+	}
+	if r, ok := got[9701]; ok && r != nil {
+		t.Fatalf("the administrator has a rights field: %+v", r)
+	}
+	// Two subscriptions in different states read as mixed.
+	f.exec(t, `INSERT INTO subscriptions (id, owner_id, name, status, max_domains) VALUES (9899, 9704, 'second', 'active', 7)`)
+	recorder = f.as(t, authzMatrixAdminID, http.MethodGet, "/api/v1/users", "")
+	if err := json.Unmarshal(recorder.Body.Bytes(), &answer); err != nil {
+		t.Fatal(err)
+	}
+	for _, u := range answer.Users {
+		if u.ID == 9704 && (u.Rights == nil || u.Rights.State != "mixed") {
+			t.Fatalf("mixed: %+v", u.Rights)
+		}
+	}
+}
