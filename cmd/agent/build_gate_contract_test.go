@@ -66,6 +66,23 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			// alpha.117: credential rotation after a subscription transfer.
+			name: "RotateDatabaseUserPasswordV1",
+			run: func(expected string) string {
+				var response transport.RotateDatabaseUserPasswordResponse
+				_ = agent.RotateDatabaseUserPasswordV1(&transport.RotateDatabaseUserPasswordRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			name: "EndMailSessionsV1",
+			run: func(expected string) string {
+				var response transport.EndMailSessionsResponse
+				_ = agent.EndMailSessionsV1(&transport.EndMailSessionsRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
 			name: "SetAppUnitSuspensionV1",
 			run: func(expected string) string {
 				var response transport.SetAppUnitSuspensionResponse

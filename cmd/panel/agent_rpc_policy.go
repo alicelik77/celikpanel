@@ -193,6 +193,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.SetMailPolicy Agent.SyncMailTLSV2 Agent.StartMailEnrollmentV1 Agent.ContinueMailEnrollmentV1
 		Agent.UpdateMailForwarding Agent.UpdateMailPassword Agent.UpdateMailQuota
 		Agent.WireMailFilters Agent.SetMailAutoresponder Agent.SetMailDomainSuspensionV1
+		Agent.EndMailSessionsV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityFilesystem, `
 		Agent.ChmodFile Agent.ClearLogs Agent.CreateFileOrDir Agent.DeleteFileOrDir
@@ -214,7 +215,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.CreateDatabase Agent.DeleteDatabase Agent.ImportCpmoveDatabase
 		Agent.ProvisionDatabaseAdminAccount Agent.RemoveDatabaseAdminAccount
 		Agent.SetPostgreSQLClusterPortV1 Agent.CopyPostgreSQLDatabaseV1 Agent.DropPostgreSQLDatabaseV1
-		Agent.SetDatabaseUserSuspensionV1
+		Agent.SetDatabaseUserSuspensionV1 Agent.RotateDatabaseUserPasswordV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilitySystemSQLite, `
 		Agent.CreateSystemSQLiteSnapshot Agent.OptimizeSystemSQLiteDatabase
@@ -384,6 +385,8 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.SetSiteAccountSuspensionV1":    agentRPCMutationTimeout,
 	"Agent.SetMailDomainSuspensionV1":     agentRPCMutationTimeout,
 	"Agent.SetDatabaseUserSuspensionV1":   agentRPCMutationTimeout,
+	"Agent.RotateDatabaseUserPasswordV1":  agentRPCMutationTimeout,
+	"Agent.EndMailSessionsV1":             agentRPCMutationTimeout,
 	"Agent.SetAppUnitSuspensionV1":        agentRPCMutationTimeout,
 	"Agent.UpdateMySQLConfig":             agentRPCMutationTimeout,
 	"Agent.UpdatePHPConfig":               agentRPCMutationTimeout,

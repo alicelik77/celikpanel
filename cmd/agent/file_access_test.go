@@ -325,3 +325,46 @@ func TestFileAccessForeignAccountIsRefused(t *testing.T) {
 		t.Fatalf("response %+v commands %v", response, host.commands)
 	}
 }
+
+// After a transfer: the password is replaced by "no password" (a later
+// unlock cannot bring the old one back), every key goes, access closes.
+func TestFileAccessRevokeCredentialsRemovesPasswordAndKeys(t *testing.T) {
+	host := installFileAccessFakeHost(t)
+	key := "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOx0Cx3yZ6eXn0Qd3B1sJ8yQnQ6m3u5W9k4bH2pY7d1F old-owner"
+	if response := fileAccessApply(t, transport.ApplyFileAccessRequest{Site: exampleSite, Enabled: true, SSH: true, Password: "a long secret", AddKeys: []string{key}}); !response.Applied {
+		t.Fatalf("enable %+v", response)
+	}
+	keysPath := fileaccess.KeysDir + "/example_com"
+	if _, ok := host.files[keysPath]; !ok {
+		t.Fatal("the key was not written")
+	}
+	// Opening while revoking is refused before anything changes.
+	host.commands = nil
+	refused := fileAccessApply(t, transport.ApplyFileAccessRequest{Site: exampleSite, Enabled: true, RevokeCredentials: true})
+	if refused.Refusal != transport.FileAccessRefusedInvalid || host.index("usermod") >= 0 || host.index("write") >= 0 {
+		t.Fatalf("revoke while enabling: %+v %v", refused, host.commands)
+	}
+	host.commands = nil
+	response := fileAccessApply(t, transport.ApplyFileAccessRequest{Site: exampleSite, Enabled: false, RevokeCredentials: true})
+	if !response.Applied {
+		t.Fatalf("revoke %+v", response)
+	}
+	if host.index("usermod -p * example_com") < 0 || host.index("usermod -L") >= 0 {
+		t.Fatalf("password not replaced: %v", host.commands)
+	}
+	if _, ok := host.files[keysPath]; ok || host.index("remove "+keysPath) < 0 {
+		t.Fatalf("keys stayed: %v", host.commands)
+	}
+	_, body := fileaccess.Classify([]byte(host.files[fileaccess.SSHDropInPath]), true)
+	if strings.Contains(body, "Match User example_com") {
+		t.Fatalf("access stayed open:\n%s", body)
+	}
+	// A locked password is replaced too.
+	account := host.accounts["example_com"]
+	account.Password = fileaccess.PasswordLocked
+	host.accounts["example_com"] = account
+	host.commands = nil
+	if again := fileAccessApply(t, transport.ApplyFileAccessRequest{Site: exampleSite, Enabled: false, RevokeCredentials: true}); !again.Applied || host.index("usermod -p * example_com") < 0 {
+		t.Fatalf("locked password kept: %+v %v", again, host.commands)
+	}
+}

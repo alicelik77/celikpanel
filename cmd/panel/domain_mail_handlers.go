@@ -296,6 +296,24 @@ func (p *Panel) handleUpdateEmailPassword(w http.ResponseWriter, r *http.Request
 		writeServerError(w, errors.New("stored mailbox identity is invalid"))
 		return
 	}
+	// After a transfer: an unfinished rotation step for this mailbox becomes
+	// the new owner's own change, so the worker cannot overwrite it.
+	claimed, err := p.claimReplacedCredential(r.Context(), rotationEffectMailbox, strings.ToLower(address))
+	if errors.Is(err, errRotationStepRunning) {
+		writeCodedError(w, http.StatusConflict, errCodeTransferRotationRunning,
+			"the transfer's change of this mailbox's password is running right now; nothing was changed. Try again in a minute.", "")
+		return
+	}
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	succeeded := false
+	defer func() {
+		if claimed && !succeeded {
+			p.releaseReplacedCredential(context.WithoutCancel(r.Context()), rotationEffectMailbox, strings.ToLower(address))
+		}
+	}()
 
 	var response transport.MailMutationResponse
 	if err := p.callAgentContext(r.Context(), "Agent.UpdateMailPassword", &transport.UpdateMailPasswordRequest{
@@ -326,8 +344,17 @@ func (p *Panel) handleUpdateEmailPassword(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	succeeded = true
+	answer := map[string]any{"success": true}
+	if claimed {
+		// The previous owner's open mail sessions end with the transfer's step.
+		ended, endErr := p.rotationNativeOps().endMailSessions(r.Context(), address)
+		if endErr != nil || !ended.Applied {
+			answer["warning"] = "the new password is set, but mail programs that were already signed in could not be disconnected; they stop when they reconnect"
+		}
+	}
 	p.audit(r, "mail.account.password.rotate", "email_account", request.ID)
-	_ = json.NewEncoder(w).Encode(map[string]bool{"success": true})
+	_ = json.NewEncoder(w).Encode(answer)
 }
 
 func (p *Panel) handleDeleteEmailAccount(w http.ResponseWriter, r *http.Request, domainID int) {
