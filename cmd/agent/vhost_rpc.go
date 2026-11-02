@@ -656,6 +656,10 @@ func validatedVhostData(req *ApplyVhostRequest) (services.VhostData, error) {
 		}
 		data.AppPort = req.AppPort
 	case "proxy", "forwarding":
+		// Which proxy upstreams are allowed is checked when the site is saved
+		// (cmd/panel/proxy_target.go). Not here: every render (startup batch,
+		// certificates) re-sends existing sites, and a refusal would break
+		// sites the owner already runs.
 		forwardTarget, err := normalizeForwardTarget(req.ForwardTo)
 		if err != nil {
 			return services.VhostData{}, err
