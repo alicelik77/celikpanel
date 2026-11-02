@@ -108,6 +108,9 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/postfix/queue":         gateAdmin,
 	"/api/v1/postfix/summary":       gateAdmin,
 	"/api/v1/products":              gateAccount,
+	"/api/v1/reseller-plans":        gateAccount, // administrator only (handler)
+	"/api/v1/reseller-plans/":       gateAccount, // administrator only (handler)
+	"/api/v1/rights/":               gateAccount, // catalog for each account's own scope; notices admin + reseller (handler)
 	"/api/v1/repo":                  gateAdmin,
 	"/api/v1/runtimes/node":         gateAccount, // admin-only in handler
 	"/api/v1/runtimes/node/":        gateAccount, // admin-only in handler

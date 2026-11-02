@@ -773,6 +773,10 @@ func (p *Panel) createVPNPeer(w http.ResponseWriter, r *http.Request, caller *Ca
 	if !p.requireActiveVPNEntitlement(w, r, *subscriptionID) {
 		return
 	}
+	// alpha.117 (D-042): the VPN permission of the subscription's rights.
+	if !p.requireSubscriptionRight(w, r, *subscriptionID, rightVPN) {
+		return
+	}
 	if p.secrets == nil {
 		writeServerError(w, errors.New("VPN secret storage is unavailable"))
 		return

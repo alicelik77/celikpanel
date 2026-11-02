@@ -49,6 +49,9 @@ type hostingCapabilities struct {
 	// Kurulu veritabanı web araçları (phpmyadmin, phppgadmin) — Veritabanı
 	// sayfaları her biri için /dbtool/<id>/ üzerinden bir açma düğmesi gösterir.
 	DBTools []string `json:"db_tools"`
+	// ProjectTypes (alpha.117, D-042): the site types the subscription may
+	// choose; absent for the administrator, who is not narrowed.
+	ProjectTypes []string `json:"project_types,omitempty"`
 }
 
 func supportedHostingWebServer(installed []string) string {
@@ -198,13 +201,26 @@ func (p *Panel) handleHostingCapabilities(w http.ResponseWriter, r *http.Request
 	}
 	// alpha.108 (D-038 §14): a customer is shown the PHP versions the
 	// administrator offers; the administrator sees every installed one.
+	// alpha.117 (D-042): narrowed by the subscription's rights (the one named
+	// by ?subscription_id=, or the caller's only one): PHP versions, database
+	// engines and the site types it may choose.
 	if !callerIsAdministrator(r) {
-		policy, err := p.loadOfferedVersions(r.Context())
-		if err != nil {
-			writeServerError(w, err)
+		policy, rights, ok := p.listingVersionPolicy(w, r)
+		if !ok {
 			return
 		}
+		installedPHP := caps.PHPVersions
 		caps.PHPVersions = policy.filter("php", caps.PHPVersions)
+		if rights != nil && !rights.Unrestricted {
+			engines := []string{}
+			for _, engine := range caps.DatabaseServers {
+				if rights.hasPermission(rightDatabases) && rights.anyVersionRefusal(databaseEngineOffering(engine)) == "" {
+					engines = append(engines, engine)
+				}
+			}
+			caps.DatabaseServers = engines
+		}
+		caps.ProjectTypes = projectTypesFor(rights, policy, installedPHP)
 	}
 	if err := json.NewEncoder(w).Encode(caps); err != nil {
 		writeServerError(w, err)

@@ -96,7 +96,13 @@ func (p *Panel) handleDomainPHPSettings(w http.ResponseWriter, r *http.Request) 
 		// alpha.108 (D-038 §14): a customer is offered what the administrator
 		// offers; the site's own version stays listed (it keeps it).
 		if !callerIsAdministrator(r) {
-			if policy, policyErr := p.loadOfferedVersions(r.Context()); policyErr == nil {
+			// alpha.117 (D-042): and what the subscription's rights open.
+			subID, subErr := p.domainSubscriptionID(r.Context(), domainID)
+			policy, _, policyErr := p.subscriptionVersionPolicy(r.Context(), subID)
+			if subErr != nil {
+				policyErr = subErr
+			}
+			if policyErr == nil {
 				kept := []string{}
 				for _, version := range availableVersions {
 					if version == phpVersion || policy.offered("php", version) {
@@ -177,7 +183,7 @@ func (p *Panel) handleDomainPHPSettings(w http.ResponseWriter, r *http.Request) 
 		}
 		// alpha.108 (D-038 §14): a customer chooses among the versions the
 		// administrator offers; the version the site already runs is kept.
-		if p.refuseVersionNotOffered(w, r, "php", phpVersion, req.PHPVersion) {
+		if p.refuseVersionNotOffered(w, r, domainID, "php", phpVersion, req.PHPVersion) {
 			return
 		}
 		discoveredVersions, err := p.phpVersionsFromAgent(r.Context())

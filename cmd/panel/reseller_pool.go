@@ -5,31 +5,29 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
 )
 
-// Reseller pools (alpha.114, ROADMAP v0.3 "the reseller pool"): what the
-// administrator lets one reseller hand out, as totals over the reseller's
-// whole tree — the reseller's own subscriptions and every subscription of its
-// customers — plus the number of customers. The pool is an allocation limit:
-// what counts is the sum of the subscription limits handed out (a plan's
-// limits are what the customer may use), not today's usage, so the pool can
-// never be oversold. Each limit of 0 is unlimited, the same meaning a plan's
-// 0 has; a reseller without a pool row has no limits at all, which keeps
-// every reseller created before this release working exactly as before.
+// Reseller pools (alpha.114; real-use rule since alpha.117, owner decision
+// K2 in D-042): the quantity part of a reseller's rights set. Each limit is a
+// total over the reseller's whole tree — the reseller's own subscriptions and
+// every subscription of its customers — plus the number of customers. The
+// pool limits REAL use, not what is handed out: a reseller may give its
+// customers more than the pool in total, but the tree's real use cannot pass
+// it (rights_pool.go refuses the creation). Each limit of 0 is unlimited; a
+// reseller without a pool row has no limits at all.
 //
-// Bayi havuzları (alpha.114): yöneticinin bir bayiye dağıtma izni verdiği
-// toplamlar. Sayılan, dağıtılmış abonelik sınırlarının toplamıdır (bugünkü
-// kullanım değil); böylece havuz asla aşırı satılamaz. Her 0 sınırsızdır;
-// havuz satırı olmayan bayinin sınırı yoktur.
+// Bayi havuzu, bayinin hak kümesinin sayı kısmıdır. Havuz GERÇEK kullanımı
+// sınırlar (K2): dağıtım havuzu aşabilir, gerçek toplam aşamaz.
 
 const (
 	errCodeResellerPoolExceeded   = "RESELLER_POOL_EXCEEDED"
 	errCodeResellerCustomersLimit = "RESELLER_CUSTOMER_LIMIT"
-	errCodePlanExceedsPool        = "PLAN_EXCEEDS_POOL"
+	// errCodePlanExceedsPool is no longer produced (K2); kept for screens
+	// that still name it.
+	errCodePlanExceedsPool = "PLAN_EXCEEDS_POOL"
 )
 
 // planLimits is the four limits a plan and a subscription carry (0 = unlimited).
@@ -46,9 +44,14 @@ type resellerPool struct {
 	planLimits
 }
 
+func (pool resellerPool) valid() bool {
+	return pool.MaxCustomers >= 0 && pool.Domains >= 0 && pool.Databases >= 0 && pool.Mailboxes >= 0 && pool.DiskMB >= 0
+}
+
 // poolAllocation is what a reseller's tree has been handed: per kind the sum
 // of the limits, and whether any subscription in the tree is unlimited there.
-// poolAllocation, bir bayi ağacına dağıtılmış olandır.
+// Shown for information; the pool limits real use (poolUsage).
+// poolAllocation, bir bayi ağacına dağıtılmış olandır (bilgi içindir).
 type poolAllocation struct {
 	Customers          int   `json:"customers"`
 	Domains            int64 `json:"domains"`
@@ -82,33 +85,6 @@ func (a *poolAllocation) add(l planLimits) {
 	} else {
 		a.DiskMB += int64(l.DiskMB)
 	}
-}
-
-// poolViolations names every kind where the allocation does not fit the
-// pool. An unlimited allocation never fits a limited pool.
-// poolViolations, dağıtımın havuza sığmadığı her türü adlandırır.
-func poolViolations(pool resellerPool, a poolAllocation) []string {
-	out := []string{}
-	check := func(name string, limit int, allocated int64, unlimited bool, unit string) {
-		if limit <= 0 {
-			return
-		}
-		if unlimited {
-			out = append(out, fmt.Sprintf("%s: an unlimited allocation does not fit the pool of %d%s", name, limit, unit))
-			return
-		}
-		if allocated > int64(limit) {
-			out = append(out, fmt.Sprintf("%s: %d%s allocated, pool %d%s", name, allocated, unit, limit, unit))
-		}
-	}
-	check("domains", pool.Domains, a.Domains, a.UnlimitedDomains, "")
-	check("databases", pool.Databases, a.Databases, a.UnlimitedDatabases, "")
-	check("mailboxes", pool.Mailboxes, a.Mailboxes, a.UnlimitedMailboxes, "")
-	check("disk", pool.DiskMB, a.DiskMB, a.UnlimitedDisk, " MB")
-	if pool.MaxCustomers > 0 && a.Customers > pool.MaxCustomers {
-		out = append(out, fmt.Sprintf("customers: %d, pool %d", a.Customers, pool.MaxCustomers))
-	}
-	return out
 }
 
 type rowQueryer interface {
@@ -161,7 +137,7 @@ func loadResellerPool(ctx context.Context, q rowQueryer, resellerID int) (resell
 }
 
 // resellerAllocation sums the limits handed out in a reseller's tree,
-// leaving out excludeSubID (the subscription being changed; 0 for none).
+// leaving out excludeSubID (0 for none).
 // resellerAllocation, bir bayi ağacında dağıtılmış sınırları toplar.
 func resellerAllocation(ctx context.Context, q rowQueryer, resellerID, excludeSubID int) (poolAllocation, error) {
 	var a poolAllocation
@@ -196,104 +172,12 @@ func resellerAllocation(ctx context.Context, q rowQueryer, resellerID, excludeSu
 	return a, rows.Err()
 }
 
-// checkResellerPoolFor answers whether giving ownerID one more subscription
-// with limits (or changing excludeSubID to them) still fits the pool of the
-// reseller whose tree ownerID is in. newCustomer counts one more customer.
-// It returns the violations (empty when it fits or there is no pool).
-// checkResellerPoolFor, ownerID'ye bu sınırlarla bir abonelik vermenin
-// havuza hâlâ sığıp sığmadığını yanıtlar.
-func checkResellerPoolFor(ctx context.Context, q rowQueryer, ownerID, excludeSubID int, limits *planLimits, newCustomer bool) (int, []string, error) {
-	resellerID, err := treeResellerID(ctx, q, ownerID)
-	if err != nil || resellerID == 0 {
-		return 0, nil, err
-	}
-	violations, err := checkResellerPool(ctx, q, resellerID, excludeSubID, limits, newCustomer)
-	return resellerID, violations, err
-}
-
-// checkResellerPool is checkResellerPoolFor for a known reseller (used before
-// the new customer's own row exists).
-func checkResellerPool(ctx context.Context, q rowQueryer, resellerID, excludeSubID int, limits *planLimits, newCustomer bool) ([]string, error) {
-	pool, ok, err := loadResellerPool(ctx, q, resellerID)
-	if err != nil || !ok {
-		return nil, err
-	}
-	before, err := resellerAllocation(ctx, q, resellerID, 0)
-	if err != nil {
-		return nil, err
-	}
-	after, err := resellerAllocation(ctx, q, resellerID, excludeSubID)
-	if err != nil {
-		return nil, err
-	}
-	if newCustomer {
-		after.Customers++
-	}
-	if limits != nil {
-		after.add(*limits)
-	}
-	return worsenedPoolViolations(pool, before, after, newCustomer), nil
-}
-
-// worsenedPoolViolations names the kinds that end over the pool AND that
-// this request made larger. A pool the administrator lowered below what is
-// already handed out is not this request's fault, so a change that keeps or
-// shrinks a kind is never refused for it.
-// worsenedPoolViolations, havuzun üstünde biten VE bu isteğin büyüttüğü
-// türleri adlandırır. Küçülten ya da aynı bırakan değişiklik reddedilmez.
-func worsenedPoolViolations(pool resellerPool, before, after poolAllocation, newCustomer bool) []string {
-	out := []string{}
-	check := func(name, unit string, limit int, old, now int64, oldUnlimited, nowUnlimited bool) {
-		if limit <= 0 {
-			return
-		}
-		over := nowUnlimited || now > int64(limit)
-		worse := (nowUnlimited && !oldUnlimited) || (!nowUnlimited && !oldUnlimited && now > old)
-		if !over || !worse {
-			return
-		}
-		if nowUnlimited {
-			out = append(out, fmt.Sprintf("%s: an unlimited allocation does not fit the pool of %d%s", name, limit, unit))
-			return
-		}
-		out = append(out, fmt.Sprintf("%s: %d%s would be allocated, pool %d%s", name, now, unit, limit, unit))
-	}
-	check("domains", "", pool.Domains, before.Domains, after.Domains, before.UnlimitedDomains, after.UnlimitedDomains)
-	check("databases", "", pool.Databases, before.Databases, after.Databases, before.UnlimitedDatabases, after.UnlimitedDatabases)
-	check("mailboxes", "", pool.Mailboxes, before.Mailboxes, after.Mailboxes, before.UnlimitedMailboxes, after.UnlimitedMailboxes)
-	check("disk", " MB", pool.DiskMB, before.DiskMB, after.DiskMB, before.UnlimitedDisk, after.UnlimitedDisk)
-	if newCustomer && pool.MaxCustomers > 0 && after.Customers > pool.MaxCustomers {
-		out = append(out, fmt.Sprintf("customers: %d would exist, pool %d", after.Customers, pool.MaxCustomers))
-	}
-	return out
-}
-
-// limitsWithinPool reports whether one plan's limits fit inside a pool on
-// their own (a reseller's own plan may never promise more than its pool).
-// limitsWithinPool, tek bir planın sınırlarının havuza tek başına sığıp
-// sığmadığını bildirir.
-func limitsWithinPool(pool resellerPool, l planLimits) bool {
-	fits := func(poolLimit, planLimit int) bool {
-		return poolLimit <= 0 || (planLimit > 0 && planLimit <= poolLimit)
-	}
-	return fits(pool.Domains, l.Domains) && fits(pool.Databases, l.Databases) &&
-		fits(pool.Mailboxes, l.Mailboxes) && fits(pool.DiskMB, l.DiskMB)
-}
-
-// writePoolRefusal is the coded 409 for a request that would exceed a
-// reseller's pool. Who acts: the reseller lowers another customer's plan, or
-// asks the administrator for a larger pool.
-// writePoolRefusal, bir bayinin havuzunu aşacak istek için kodlu 409'dur.
-func writePoolRefusal(w http.ResponseWriter, violations []string) {
-	writeCodedErrorDetails(w, http.StatusConflict, errCodeResellerPoolExceeded,
-		"this would exceed the reseller's pool; move a customer to a smaller plan, or ask the administrator for a larger pool. Nothing was changed.",
-		"", violations)
-}
-
 // handleResellerPool serves /api/v1/users/{id}/pool for the administrator:
-// GET reads the pool with what is handed out, PUT sets it. A pool set below
-// what is already handed out is stored with warnings: nothing is taken
-// away, and new allocations in that tree are refused until it fits again.
+// GET reads the pool with the tree's real use, PUT sets it. Changing the pool
+// of a reseller bound to a reseller plan makes it Custom (P3); giving a pool
+// to an Unlimited reseller makes it Custom with everything offered. A pool
+// below today's real use is stored with the list of what is over: nothing is
+// taken away, and new creations of those kinds are refused.
 // handleResellerPool, yönetici için /api/v1/users/{id}/pool'a hizmet eder.
 func (p *Panel) handleResellerPool(w http.ResponseWriter, r *http.Request, c *Caller, targetID int, targetRole, targetName string) {
 	if !c.hasAccountRole(roleAdmin) || c.ImpersonatorID > 0 {
@@ -312,16 +196,11 @@ func (p *Panel) handleResellerPool(w http.ResponseWriter, r *http.Request, c *Ca
 			writeServerError(w, err)
 			return
 		}
-		allocation, err := resellerAllocation(ctx, p.db.GetDB(), targetID, 0)
-		if err != nil {
-			writeServerError(w, err)
-			return
-		}
 		var shown *resellerPool
 		if ok {
 			shown = &pool
 		}
-		writePoolAnswer(w, shown, allocation)
+		p.writePoolAnswer(w, r, targetID, shown)
 	case http.MethodPut:
 		var body struct {
 			Pool *resellerPool `json:"pool"`
@@ -337,40 +216,48 @@ func (p *Panel) handleResellerPool(w http.ResponseWriter, r *http.Request, c *Ca
 			writeClientError(w, http.StatusBadRequest, "invalid pool")
 			return
 		}
-		if body.Pool == nil {
-			// No pool: the reseller has no limits again.
-			if _, err := p.db.GetDB().ExecContext(ctx, `DELETE FROM reseller_pools WHERE reseller_id = ?`, targetID); err != nil {
-				writeServerError(w, err)
-				return
-			}
-			p.auditDetailed(r, "reseller.pool:"+targetName, "user", targetID, map[string]any{"pool": "none"})
-			allocation, err := resellerAllocation(ctx, p.db.GetDB(), targetID, 0)
-			if err != nil {
-				writeServerError(w, err)
-				return
-			}
-			writePoolAnswer(w, nil, allocation)
-			return
-		}
-		pool := *body.Pool
-		if pool.MaxCustomers < 0 || pool.Domains < 0 || pool.Databases < 0 || pool.Mailboxes < 0 || pool.DiskMB < 0 {
+		if body.Pool != nil && !body.Pool.valid() {
 			writeClientError(w, http.StatusBadRequest, "pool limits must be 0 (unlimited) or more")
 			return
 		}
-		if err := upsertResellerPool(ctx, p.db.GetDB(), targetID, pool); err != nil {
-			writeServerError(w, err)
-			return
-		}
-		allocation, err := resellerAllocation(ctx, p.db.GetDB(), targetID, 0)
+		tx, err := p.db.GetDB().BeginTx(ctx, nil)
 		if err != nil {
 			writeServerError(w, err)
 			return
 		}
-		p.auditDetailed(r, "reseller.pool:"+targetName, "user", targetID, map[string]any{
-			"max_customers": pool.MaxCustomers, "max_domains": pool.Domains, "max_databases": pool.Databases,
-			"max_email_accounts": pool.Mailboxes, "disk_quota_mb": pool.DiskMB,
-		})
-		writePoolAnswer(w, &pool, allocation)
+		defer tx.Rollback()
+		converted, err := resellerToCustom(ctx, tx, targetID, body.Pool != nil)
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		if body.Pool == nil {
+			// No pool: the reseller has no quantity limits again.
+			if _, err := tx.ExecContext(ctx, `DELETE FROM reseller_pools WHERE reseller_id = ?`, targetID); err != nil {
+				writeServerError(w, err)
+				return
+			}
+		} else if err := upsertResellerPool(ctx, tx, targetID, *body.Pool); err != nil {
+			writeServerError(w, err)
+			return
+		}
+		if err := tx.Commit(); err != nil {
+			writeServerError(w, err)
+			return
+		}
+		if converted != "" {
+			p.auditDetailed(r, "reseller.rights_custom:"+targetName, "user", targetID, map[string]any{"from": converted})
+		}
+		if body.Pool == nil {
+			p.auditDetailed(r, "reseller.pool:"+targetName, "user", targetID, map[string]any{"pool": "none"})
+		} else {
+			pool := *body.Pool
+			p.auditDetailed(r, "reseller.pool:"+targetName, "user", targetID, map[string]any{
+				"max_customers": pool.MaxCustomers, "max_domains": pool.Domains, "max_databases": pool.Databases,
+				"max_email_accounts": pool.Mailboxes, "disk_quota_mb": pool.DiskMB,
+			})
+		}
+		p.writePoolAnswer(w, r, targetID, body.Pool)
 	default:
 		rejectRouteMethod(w, []string{http.MethodGet, http.MethodPut})
 	}
@@ -392,16 +279,28 @@ func upsertResellerPool(ctx context.Context, db sqlExecer, resellerID int, pool 
 	return err
 }
 
-// writePoolAnswer: the pool (null = no limits), what is handed out, and the
-// kinds already over the pool (stored anyway; new allocations are refused).
-func writePoolAnswer(w http.ResponseWriter, pool *resellerPool, allocation poolAllocation) {
+// writePoolAnswer: the pool (null = no limits), the tree's real use, what is
+// handed out (information) and the kinds whose real use is over the pool.
+func (p *Panel) writePoolAnswer(w http.ResponseWriter, r *http.Request, resellerID int, pool *resellerPool) {
+	db := p.db.GetDB()
+	allocation, err := resellerAllocation(r.Context(), db, resellerID, 0)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	usage, err := resellerTreeUsage(r.Context(), db, resellerID)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
 	over := []string{}
 	if pool != nil {
-		over = poolViolations(*pool, allocation)
+		over = poolOverUsage(*pool, usage)
 	}
 	if err := json.NewEncoder(w).Encode(map[string]any{
 		"success":    true,
 		"pool":       pool,
+		"used":       usage,
 		"allocated":  allocation,
 		"over_limit": over,
 	}); err != nil {

@@ -187,6 +187,9 @@ type Panel struct {
 	// "Check for updates" button and the check made when the update screen
 	// opens wait for each other; none runs beside another. Zero value ready.
 	updateCheckGate panelUpdateCheckGate
+	// rightsInstalledOfferings replaces the Agent's installed list in tests
+	// (rights_gate.go installedOfferingIDs); nil in production.
+	rightsInstalledOfferings func(context.Context) ([]string, error)
 	// The DNS page's overview (alpha.115, dns_overview.go): its network edges,
 	// set only by tests before the first read (nil in production), and the
 	// one shared answer per panel. Zero value ready.
@@ -396,6 +399,10 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !p.authorizeDomainSubroute(w, r, match.domainID, match.kind) {
+		return
+	}
+	// D-042: the subscription's rights decide new use and changes.
+	if !p.enforceDomainSubrouteRight(w, r, match.domainID, match.kind) {
 		return
 	}
 	switch match.kind {
@@ -1327,6 +1334,10 @@ func main() {
 	http.HandleFunc("/api/v1/team-members/", panel.handleTeamMemberByID)
 	http.HandleFunc("/api/v1/plans", panel.handlePlans)
 	http.HandleFunc("/api/v1/plans/", panel.handlePlanByID)
+	// alpha.117 (D-042): reseller plans, the rights catalog and notices.
+	http.HandleFunc(resellerPlansPath, panel.handleResellerPlans)
+	http.HandleFunc(resellerPlansPath+"/", panel.handleResellerPlanByID)
+	http.HandleFunc(rightsPathPrefix, panel.handleRightsRoutes)
 	http.HandleFunc("/api/v1/subscriptions", panel.handleSubscriptions)
 	http.HandleFunc("/api/v1/subscriptions/", panel.handleSubscriptionEntitlements)
 	http.HandleFunc(mySubscriptionPath, panel.handleMySubscription)
