@@ -336,8 +336,12 @@ export function DomainSSLSettings({
         return loadSSLData();
     };
 
-    const handleIssue = async () => {
-        if (readOnly || locked || providersRead.remote.state !== 'known' || reachHolds) return;
+    // allowNotPointed: the owner states the names are behind a proxy such as
+    // Cloudflare. Only the "not pointed here" check is skipped, by the server
+    // too; a failure is then the certificate authority's own answer.
+    const handleIssue = async (allowNotPointed = false) => {
+        if (readOnly || locked || providersRead.remote.state !== 'known') return;
+        if (reachHolds && !(allowNotPointed && gate.kind === 'blocked')) return;
         if (!email) return showToast('error', t('ssl.emailRequired'));
         const isReissue = data?.has_certificate === true;
         if (isReissue && mailAvailable !== false && secureMail === null) {
@@ -371,6 +375,7 @@ export function DomainSSLSettings({
                     eab_key_id: eabKid,
                     eab_hmac_key: eabHmac,
                     reissue: isReissue,
+                    ...(allowNotPointed ? { allow_not_pointed: true } : {}),
                 }),
             });
             // No result of its own: the notice is up and the certificate is
@@ -742,6 +747,8 @@ export function DomainSSLSettings({
                     onRecheck={() => void reach.retry()}
                     rechecking={reach.reading}
                     onLeaveOutMail={() => setIncludeMail(false)}
+                    onRequestAnyway={() => void handleIssue(true)}
+                    requestAnywayDisabled={issuing || !email.trim() || locked}
                     className="mb-4"
                 />
             )}
@@ -1065,7 +1072,7 @@ export function DomainSSLSettings({
                             <Button
                                 variant="primary"
                                 icon={Lock}
-                                onClick={handleIssue}
+                                onClick={() => handleIssue()}
                                 aria-describedby={
                                     !email.trim() && !issuing
                                         ? 'ssl-issue-reason'
@@ -1089,6 +1096,8 @@ export function DomainSSLSettings({
                                     onRecheck={() => void reach.retry()}
                                     rechecking={reach.reading}
                                     onLeaveOutMail={() => setIncludeMail(false)}
+                                    onRequestAnyway={() => void handleIssue(true)}
+                                    requestAnywayDisabled={issuing || !email.trim() || locked}
                                 />
                             )}
                             {/* Why Issue is off, beside it (owner feedback 2026-10-31). */}

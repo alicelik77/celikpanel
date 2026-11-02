@@ -430,6 +430,8 @@ export const enDnsCertificatesScreens = {
     "ssl.reach.inline.mailOnly": "Not available with the mail name: {mail} does not point to this server yet.",
     "ssl.reach.unknown": "We could not check whether {names} resolve to this server. You can still request the certificate; if the domain does not point here yet, the request fails and nothing is changed.",
     "ssl.reach.inline.unknown": "The domain’s DNS could not be checked; you can still try the request.",
+    "ssl.reach.requestAnyway": "My domain is behind a proxy such as Cloudflare — request anyway",
+    "ssl.reach.proxyHint": "If a proxy such as Cloudflare answers for the domain, the certificate authority can still reach this server through it. The request is then sent anyway; if it fails, the authority’s reason is shown.",
     'err.CERTIFICATE_DOMAIN_NOT_POINTED': 'No certificate was requested and nothing was changed: these names do not point to this server yet: {names}. At the company that runs the DNS of the domain, point the A record to {ip} (if you bought the domain there, set the nameservers to the ones shown on the domain’s Overview). Request the certificate again once the change has spread; this usually takes a few hours.',
     'err.CERTIFICATE_DOMAIN_NOT_POINTED.mail_name': 'No certificate was requested and nothing was changed: {names} does not point to this server yet. Point its A record to {ip}, or untick the mail name and request the certificate without it. Request again once the change has spread; this usually takes a few hours.',
 } as const;

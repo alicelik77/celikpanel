@@ -422,6 +422,8 @@ export const trDnsCertificatesScreens: Record<DnsCertificatesScreenKey, string> 
     "ssl.reach.inline.mailOnly": "Posta adıyla kullanılamaz: {mail} henüz bu sunucuya yönlenmiyor.",
     "ssl.reach.unknown": "{names} adının bu sunucuya çözülüp çözülmediği kontrol edilemedi. Sertifikayı yine de isteyebilirsiniz; alan adı henüz buraya yönlenmiyorsa istek başarısız olur ve hiçbir şey değişmez.",
     "ssl.reach.inline.unknown": "Alan adının DNS’i kontrol edilemedi; isteği yine de deneyebilirsiniz.",
+    "ssl.reach.requestAnyway": "Alan adım Cloudflare gibi bir vekilin arkasında — yine de iste",
+    "ssl.reach.proxyHint": "Alan adı adına Cloudflare gibi bir vekil yanıt veriyorsa sertifika otoritesi yine de bu sunucuya vekil üzerinden ulaşabilir. İstek o zaman yine de gönderilir; başarısız olursa otoritenin nedeni gösterilir.",
     'err.CERTIFICATE_DOMAIN_NOT_POINTED': 'Sertifika istenmedi ve hiçbir şey değişmedi: şu adlar henüz bu sunucuya yönlenmiyor: {names}. Alan adının DNS’ini yöneten şirkette A kaydını {ip} adresine yöneltin (alan adını orada satın aldıysanız ad sunucularını alan adının Genel Bakış sayfasında gösterilenlere ayarlayın). Değişiklik yayıldıktan sonra sertifikayı yeniden isteyin; bu genellikle birkaç saat sürer.',
     'err.CERTIFICATE_DOMAIN_NOT_POINTED.mail_name': 'Sertifika istenmedi ve hiçbir şey değişmedi: {names} henüz bu sunucuya yönlenmiyor. Bu adın A kaydını {ip} adresine yöneltin ya da posta adının işaretini kaldırıp sertifikayı onsuz isteyin. Değişiklik yayıldıktan sonra yeniden isteyin; bu genellikle birkaç saat sürer.',
 };

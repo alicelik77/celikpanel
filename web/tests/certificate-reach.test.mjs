@@ -88,7 +88,7 @@ for (const [locale, catalogue] of [['en', enScreens], ['tr', trScreens]]) {
         const calls = [];
         const blocked = certificateReachGate(
             reach([site(DOMAIN, 'elsewhere'), site(`www.${DOMAIN}`, 'elsewhere')]), false, DOMAIN, false);
-        const make = await mountNotice(blocked, { onRecheck: () => calls.push('recheck'), onLeaveOutMail: () => calls.push('mail') });
+        const make = await mountNotice(blocked, { onRecheck: () => calls.push('recheck'), onLeaveOutMail: () => calls.push('mail'), onRequestAnyway: () => calls.push('anyway') });
 
         let top;
         await act(async () => { top = make({ variant: 'top' }); });
@@ -102,6 +102,12 @@ for (const [locale, catalogue] of [['en', enScreens], ['tr', trScreens]]) {
         const button = top.root.findAll(node => node.type === 'button' && textOf(node) === catalogue['ssl.reach.recheck'])[0];
         await act(async () => button.props.onClick());
         assert.deepEqual(calls, ['recheck']);
+        // Behind a proxy such as Cloudflare: the owner can ask anyway.
+        assert.ok(text.includes(catalogue['ssl.reach.proxyHint']));
+        const anyway = top.root.findAll(node => node.type === 'button' && textOf(node) === catalogue['ssl.reach.requestAnyway'])[0];
+        assert.ok(anyway, `${locale}: the request-anyway action is offered for a known negative`);
+        await act(async () => anyway.props.onClick());
+        assert.deepEqual(calls, ['recheck', 'anyway']);
 
         let inline;
         await act(async () => { inline = make({ variant: 'inline' }); });
@@ -130,6 +136,7 @@ for (const [locale, catalogue] of [['en', enScreens], ['tr', trScreens]]) {
         const text = textOf(view.toJSON());
         assert.ok(text.includes(catalogue['ssl.reach.unknownTitle']) && text.includes(DOMAIN));
         assert.ok(!text.includes(catalogue['ssl.reach.blockedTitle']), 'unknown is not called blocked');
+        assert.ok(!text.includes(catalogue['ssl.reach.requestAnyway']), 'unknown needs no override: the attempt is allowed');
         await act(async () => view.unmount());
     });
 }
@@ -139,7 +146,8 @@ test('the SSL screen turns Get certificate off for a known negative, reads again
     assert.match(source, /connection\?names=certificate/);
     assert.match(source, /reachHolds = gate\.kind === 'blocked' \|\| gate\.kind === 'checking'/);
     assert.match(source, /disabled=\{locked \|\| providersRead\.remote\.state !== 'known' \|\| issuing \|\| !email \|\| replacementBlockedByMailState \|\| reachHolds\}/);
-    assert.match(source, /reachHolds\) return;/, 'the handler does not start a request either');
+    assert.match(source, /reachHolds && !\(allowNotPointed && gate\.kind === 'blocked'\)\) return;/, 'the handler does not start a request either, except the owner\'s explicit override');
+    assert.match(source, /allowNotPointed \? \{ allow_not_pointed: true \} : \{\}/);
     assert.match(source, /onRecheck=\{\(\) => void reach\.retry\(\)\}/);
     assert.match(source, /code === 'CERTIFICATE_DOMAIN_NOT_POINTED'\) void reach\.retry\(\)/);
     assert.doesNotMatch(source, /gate\.kind === 'unknown'[^\n]*disabled/);

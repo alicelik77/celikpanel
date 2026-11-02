@@ -222,6 +222,11 @@ type IssueLetsEncryptRequest struct {
 	// redirects to https:// (the site's force_https, which the owner can turn
 	// off on the SSL/TLS page). alpha.113, the owner's decision.
 	RedirectHTTP bool `json:"redirect_http,omitempty"`
+	// AllowNotPointed: the owner states the names are behind a proxy or CDN
+	// (the public DNS shows the proxy's address, but it forwards the
+	// challenge here). Skips only the CERTIFICATE_DOMAIN_NOT_POINTED refusal;
+	// the override is audited and a failure is the authority's own answer.
+	AllowNotPointed bool `json:"allow_not_pointed,omitempty"`
 }
 
 // UploadCertificateRequest represents a request to upload custom certificate
@@ -711,7 +716,7 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	// (2 Nov 2026). A lookup that failed is unknown and does not refuse.
 	// Genel DNS'in başka yerde gösterdiği ad doğrulanamaz; istek, web sunucusuna
 	// ya da yetkiliye dokunulmadan reddedilir. Başarısız sorgu bilinmeyendir.
-	if p.refuseCertificateDomainNotPointed(ctx, w, domain.Name, managedNames, mailName) {
+	if p.refuseCertificateDomainNotPointed(ctx, w, r, domainID, domain.Name, managedNames, mailName, req.AllowNotPointed) {
 		return
 	}
 

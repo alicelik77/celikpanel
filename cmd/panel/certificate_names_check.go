@@ -190,14 +190,29 @@ func (p *Panel) certificateNameservers(ctx context.Context, domainName string) [
 // when the check knows a requested name does not point here, and reports true.
 // An unknown answer never refuses. Nothing has been requested or changed when
 // this answers (D-024: the reason, who acts, the next action).
+//
+// allowNotPointed is the owner's explicit "my domain is behind a proxy such as
+// Cloudflare": the name reads as another server's address but the proxy
+// forwards the challenge here, so the authority can still validate it. Only
+// this refusal is skipped, and the override is written to the audit log before
+// the request goes on (so it is recorded whatever the authority answers).
+// allowNotPointed, sahibin açık "alan adım Cloudflare gibi bir vekilin
+// arkasında" beyanıdır; yalnız bu ret atlanır ve geçiş denetim günlüğüne yazılır.
 func (p *Panel) refuseCertificateDomainNotPointed(
-	ctx context.Context, w http.ResponseWriter, domainName string, siteNames []string, mailName string,
+	ctx context.Context, w http.ResponseWriter, r *http.Request, domainID int, domainName string,
+	siteNames []string, mailName string, allowNotPointed bool,
 ) bool {
 	checkCtx, cancel := context.WithTimeout(ctx, 4*time.Second)
 	checks := checkCertificateNames(checkCtx, siteNames, mailName)
 	cancel()
 	names, mailOnly := certificateNamesNotPointed(checks)
 	if len(names) == 0 {
+		return false
+	}
+	if allowNotPointed {
+		p.auditDetailed(r, "ssl.issue.not_pointed_allowed", "domain", domainID, map[string]any{
+			"names": strings.Join(names, ", "), "reason": "owner stated the names are behind a proxy",
+		})
 		return false
 	}
 	server := certificateServerAddresses()

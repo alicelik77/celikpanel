@@ -1729,6 +1729,30 @@ test('Domain certificate: only the mail name failing is offered without it', asy
   } finally { await cleanup(); }
 });
 
+test('Domain certificate: behind a proxy, "request anyway" sends allow_not_pointed and nothing else changes', async () => {
+  const none = { domain_id: 1, domain_name: 'example.com', has_certificate: false, managed_names: ['example.com', 'www.example.com'], settings: { force_https: false, hsts_enabled: false, hsts_max_age: 300 } };
+  const checks = [
+    { name: 'example.com', kind: 'site', state: 'elsewhere', ips: ['198.51.100.9'] }, { name: 'www.example.com', kind: 'site', state: 'elsewhere', ips: [] },
+  ];
+  serve({ '/api/v1/domains/1/ssl': () => Response.json(none), '/api/v1/domains/1/connection': json(connection({ certificate_names: checks })) }, 'admin', {
+    '/api/v1/domains/1/ssl/letsencrypt': () => Response.json({ error: 'authority said no', code: 'CERTIFICATE_ISSUE_FAILED', reason: 'validation' }, { status: 502 }),
+  });
+  const issueButton = () => buttons('ssl.issue').find((node) => node.props.disabled !== undefined);
+  try {
+    await mount(DomainSSLSettings, { ...domain, mailAvailable: true });
+    const anyway = () => buttons('ssl.reach.requestAnyway');
+    assert.ok(anyway().length > 0 && anyway().every((node) => node.props.disabled), 'asking anyway waits for the contact email like the request itself');
+    await act(async () => { tree.root.findAllByProps({ type: 'email' })[0].props.onChange({ target: { value: 'owner@example.com' } }); await settled(); });
+    assert.equal(issueButton().props.disabled, true, 'the plain request stays off');
+    await press(anyway()[0]);
+    const posts = calls.filter((call) => call.method === 'POST');
+    assert.equal(posts.length, 1);
+    assert.equal(JSON.parse(posts[0].body).allow_not_pointed, true);
+    assert.ok(has('ssl.issueFailure.validation') || has('ssl.issueFailure'), 'a failure is the authority’s own answer, shown in place');
+    assert.equal(issueButton().props.disabled, true, 'the plain request is still off afterwards');
+  } finally { await cleanup(); }
+});
+
 test('Panel certificate: while the request runs the button spins', async () => {
   let finish;
   serve({ '/api/v1/panel/certificate': json({ https_enabled: false, self_signed: true, issuer: '', expires_at: '' }) }, 'admin', {

@@ -22,6 +22,8 @@ export function CertificateReachNotice({
     onRecheck,
     rechecking,
     onLeaveOutMail,
+    onRequestAnyway,
+    requestAnywayDisabled = false,
     className = '',
 }: {
     gate: CertificateReachGate;
@@ -30,6 +32,9 @@ export function CertificateReachNotice({
     onRecheck: () => void;
     rechecking: boolean;
     onLeaveOutMail: () => void;
+    /** The owner states the names are behind a proxy such as Cloudflare: send the request anyway. */
+    onRequestAnyway: () => void;
+    requestAnywayDisabled?: boolean;
     className?: string;
 }) {
     const { t } = useI18n();
@@ -64,6 +69,11 @@ export function CertificateReachNotice({
             {blocked && gate.mailOnly && (
                 <Button type="button" variant="secondary" onClick={onLeaveOutMail}>
                     {t('ssl.reach.leaveOutMail', { mail: mailName })}
+                </Button>
+            )}
+            {blocked && (
+                <Button type="button" variant="secondary" onClick={onRequestAnyway} disabled={requestAnywayDisabled}>
+                    {t('ssl.reach.requestAnyway')}
                 </Button>
             )}
         </div>
@@ -112,6 +122,7 @@ export function CertificateReachNotice({
             </p>
             {action && <p className="mt-2 break-words">{action}</p>}
             {blocked && <p className="mt-2 text-xs text-fg-subtle">{t('ssl.reach.resume')}</p>}
+            {blocked && <p className="mt-1 text-xs text-fg-subtle">{t('ssl.reach.proxyHint')}</p>}
             {actions}
         </div>
     );
