@@ -252,7 +252,8 @@ func (p *Panel) runServiceInstall(
 	// kutularına bağlanana dek yarım kalır.
 	if req.ServiceID == "postfix" || req.ServiceID == "dovecot" {
 		var mailResp transport.ConfigureMailStackResponse
-		if err := p.callAgentContext(ctx, "Agent.ConfigureMailStack", &mutationRequest, &mailResp); err != nil {
+		mailRequest := p.configureMailStackRequest(ctx, binding)
+		if err := p.callAgentContext(ctx, "Agent.ConfigureMailStack", &mailRequest, &mailResp); err != nil {
 			return result, serviceInstallFailure(fmt.Errorf("mail stack configuration: %w", err))
 		}
 		if mailResp.Error != "" {
@@ -260,6 +261,10 @@ func (p *Panel) runServiceInstall(
 		}
 		if !mailResp.Configured {
 			return result, serviceInstallFailure(errors.New("agent did not confirm mail stack configuration"))
+		}
+		// Evidence: the certificate the mail service starts with below.
+		if mailResp.HostCertificate != "" {
+			result["host_certificate"] = mailResp.HostCertificate
 		}
 		// The agent starts a unit the moment its package lands, which is BEFORE
 		// this configuration ran — on Arch that first start failed (no TLS cert

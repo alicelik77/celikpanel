@@ -425,10 +425,31 @@ type ConfigureDKIMSigningResponse struct {
 	Error      string `json:"error,omitempty"`
 }
 
+// ConfigureMailStackRequest (2 Nov 2026): MailHostname is the mail name the
+// mail TLS step will use. When the trusted mail host certificate for exactly
+// that name is current, Postfix and Dovecot start with it instead of a
+// self-signed default. Empty keeps the earlier behavior (additive; gob
+// accepts it from and to an older peer).
+type ConfigureMailStackRequest struct {
+	ServiceMutationBinding
+	MailHostname string `json:"mail_hostname,omitempty"`
+}
+
+// MailHostCertificate* name the server certificate the mail services use:
+// the trusted managed mail host certificate, or a self-signed default.
+const (
+	MailHostCertificateManaged = "managed"
+	MailHostCertificateDefault = "default"
+)
+
 type ConfigureMailStackResponse struct {
 	Configured bool   `json:"configured"`
 	Detail     string `json:"detail,omitempty"`
-	Error      string `json:"error,omitempty"`
+	// HostCertificate: MailHostCertificateManaged when every configured mail
+	// service uses the managed mail host certificate, otherwise
+	// MailHostCertificateDefault. Empty from an older Agent (additive).
+	HostCertificate string `json:"host_certificate,omitempty"`
+	Error           string `json:"error,omitempty"`
 }
 
 type WireMailFiltersResponse struct {

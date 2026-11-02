@@ -372,6 +372,18 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 		}
 	}
 
+	// An unfinished guarded install of this service is continued: its units
+	// are still masked and its preparation runs again as a fresh install.
+	var startGuard *packageStartGuard
+	if packageStartGuardApplies(req.ID, family) {
+		resumed, err := resumePackageStartGuard(defaultPackageStartGuardOps(systemctl), req.ID)
+		if err != nil {
+			resp.Error = err.Error()
+			return nil
+		}
+		startGuard = resumed
+	}
+
 	missingPackages := make([]string, 0, len(pkgs))
 	for _, pkg := range pkgs {
 		if !packageInstalledForProfile(profile, pkg) {
@@ -396,6 +408,22 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 		var installErr error
 		if serviceUsesBINDPackageInstallGuard(req.ID) {
 			_, installErr = installBINDPackagesWithGuard(ctx, systemctl, installMissingPackages)
+		} else if packageStartGuardApplies(req.ID, family) {
+			if startGuard == nil {
+				guard, err := beginPackageStartGuard(ctx, defaultPackageStartGuardOps(systemctl), req.ID)
+				if err != nil {
+					resp.Error = fmt.Sprintf("%s could not be held stopped for its package install, so nothing was installed: %v", svc.Name, err)
+					return nil
+				}
+				startGuard = guard
+			}
+			_, installErr = installMissingPackages()
+			if installErr != nil {
+				// A failed package transaction leaves the host as before.
+				if releaseErr := startGuard.releaseAfterFailure(ctx); releaseErr != nil {
+					installErr = errors.Join(installErr, fmt.Errorf("release the package start guard: %w; %s", releaseErr, startGuard.heldNotice()))
+				}
+			}
 		} else {
 			_, installErr = installMissingPackages()
 		}
@@ -437,10 +465,21 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 	// firewall opens port 21. A vsftpd the owner installed earlier keeps the
 	// owner's configuration.
 	if req.ID == "vsftpd" {
-		if err := prepareInstalledVsftpd(ctx, len(missingPackages) > 0); err != nil {
+		fresh := len(missingPackages) > 0 || startGuard.wasResumed()
+		if err := prepareInstalledVsftpd(ctx, fresh, startGuard.held()); err != nil {
 			resp.Error = fmt.Sprintf("FTP preparation failed: %v", err)
+			if notice := startGuard.heldNotice(); notice != "" {
+				resp.Error += "; " + notice
+			}
 			return nil
 		}
+	}
+	// CelikPanel's configuration is in place: the units the package brought
+	// are unmasked, still stopped; they start below with that configuration
+	// (Postfix and Dovecot only after the mail stack configuration).
+	if err := startGuard.release(ctx); err != nil {
+		resp.Error = fmt.Sprintf("%s was installed but its units could not be released: %v; %s", svc.Name, err, startGuard.heldNotice())
+		return nil
 	}
 
 	// After a version pick, enable the unit that version actually brought —
@@ -948,6 +987,10 @@ func (a *Agent) UninstallService(req *InstallServiceRequest, resp *UninstallServ
 	ops, err := defaultServiceUninstallOps(ctx)
 	if err != nil {
 		resp.Error = fmt.Sprintf("detect host platform: %v", err)
+		return nil
+	}
+	if err := releasePackageStartGuardForRemoval(ctx, svc.ID); err != nil {
+		resp.Error = fmt.Sprintf("the units an unfinished install of %s left masked could not be released, so nothing was removed: %v", svc.Name, err)
 		return nil
 	}
 	return a.uninstallServiceWithOps(req, resp, ops)

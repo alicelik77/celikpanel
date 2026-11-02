@@ -38,7 +38,9 @@ const (
 
 type ConfigureMailStackResponse = transport.ConfigureMailStackResponse
 
-func (a *Agent) ConfigureMailStack(req *ServiceMutationRequest, resp *ConfigureMailStackResponse) error {
+type ConfigureMailStackRequest = transport.ConfigureMailStackRequest
+
+func (a *Agent) ConfigureMailStack(req *ConfigureMailStackRequest, resp *ConfigureMailStackResponse) error {
 	*resp = ConfigureMailStackResponse{}
 	if req == nil {
 		return fmt.Errorf("mail stack configuration request is required")
@@ -84,6 +86,19 @@ func (a *Agent) ConfigureMailStack(req *ServiceMutationRequest, resp *ConfigureM
 		resp.Error = fmt.Sprintf("vmail user: %v", err)
 		return nil
 	}
+	// The trusted mail host certificate setup may already have published for
+	// this mail name; Postfix and Dovecot then start with it.
+	managedCert, managedKey, certNote := mailStackHostCertificate(req.MailHostname)
+	postfixManaged, dovecotManaged := false, false
+	defer func() {
+		if resp.Error != "" {
+			return
+		}
+		resp.HostCertificate = mailStackHostCertificateState(req.MailHostname, managedCert, hasPostfix, postfixManaged, hasDovecot, dovecotManaged)
+		if certNote != "" {
+			resp.Detail += "; " + certNote
+		}
+	}()
 
 	if hasPostfix {
 		// Ensure the map files exist before postmap/postfix reference them.
@@ -113,13 +128,16 @@ func (a *Agent) ConfigureMailStack(req *ServiceMutationRequest, resp *ConfigureM
 			resp.Error = fmt.Sprintf("postfix aliases: %v", err)
 			return nil
 		}
-		// Arch's main.cf names no server certificate (postfix_default_cert.go).
-		if err := ensurePostfixDefaultServerCertificate(ctx, func(name string, args ...string) ([]byte, error) {
+		// The managed mail host pair, or the default when Postfix has none
+		// (Arch's main.cf names none; postfix_default_cert.go).
+		managed, err := ensurePostfixServerCertificate(ctx, func(name string, args ...string) ([]byte, error) {
 			return serviceMutationCommand(ctx, name, args...).CombinedOutput()
-		}); err != nil {
+		}, managedCert, managedKey)
+		if err != nil {
 			resp.Error = fmt.Sprintf("postfix tls: %v", err)
 			return nil
 		}
+		postfixManaged = managed
 	}
 
 	if hasDovecot {
@@ -131,6 +149,14 @@ func (a *Agent) ConfigureMailStack(req *ServiceMutationRequest, resp *ConfigureM
 			resp.Error = fmt.Sprintf("dovecot: %v", err)
 			return nil
 		}
+		managed, err := ensureDovecotHostCertificate(req.MailHostname, managedCert, func(name string, args ...string) ([]byte, error) {
+			return serviceMutationCommand(ctx, name, args...).CombinedOutput()
+		})
+		if err != nil {
+			resp.Error = fmt.Sprintf("dovecot tls: %v", err)
+			return nil
+		}
+		dovecotManaged = managed
 	}
 
 	if hasPostfix {

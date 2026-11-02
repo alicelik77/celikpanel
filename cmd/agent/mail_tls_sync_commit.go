@@ -438,7 +438,8 @@ func publishMailTLSSyncResponse(
 	}
 	*response = SecureMailTLSResponse{
 		Configured: true, DefaultCert: defaultMailCert, SNICount: len(journal.SNI),
-		Detail: fmt.Sprintf("mail TLS active (%d SNI entries)", len(journal.SNI)),
+		HostCertificate: mailTLSHostCertificateState(journal.Myhostname),
+		Detail:          fmt.Sprintf("mail TLS active (%d SNI entries)", len(journal.SNI)),
 	}
 	return true
 }

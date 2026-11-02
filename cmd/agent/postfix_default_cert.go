@@ -52,6 +52,93 @@ func postfixHasServerCertificate(run postfixCommandRunner) (bool, error) {
 	return strings.TrimSpace(string(out)) != "", nil
 }
 
+// debianSnakeoilCert is the pair Debian's and Ubuntu's main.cf name.
+const debianSnakeoilCert = "/etc/ssl/certs/ssl-cert-snakeoil.pem"
+
+type postfixCertAction int
+
+const (
+	// postfixCertKeep: leave the setting (the owner's, or already managed).
+	postfixCertKeep postfixCertAction = iota
+	// postfixCertManaged: point Postfix at the managed mail host pair.
+	postfixCertManaged
+	// postfixCertDefault: no certificate at all; use CelikPanel's default.
+	postfixCertDefault
+)
+
+// decidePostfixServerCertificate: the trusted managed pair replaces only a
+// certificate the distribution or CelikPanel put there; any other path, or
+// chain files, is the owner's and stays.
+func decidePostfixServerCertificate(certFile, chainFiles, managedCert string) postfixCertAction {
+	certFile, chainFiles = strings.TrimSpace(certFile), strings.TrimSpace(chainFiles)
+	if chainFiles != "" {
+		return postfixCertKeep
+	}
+	if managedCert != "" {
+		switch certFile {
+		case managedCert:
+			return postfixCertKeep
+		case "", postfixDefaultCertPath, debianSnakeoilCert, defaultMailCert:
+			return postfixCertManaged
+		default:
+			return postfixCertKeep
+		}
+	}
+	if certFile == "" {
+		return postfixCertDefault
+	}
+	return postfixCertKeep
+}
+
+func postconfSingleValue(run postfixCommandRunner, name string) (string, error) {
+	out, err := run("postconf", "-h", name)
+	if err != nil {
+		return "", fmt.Errorf("read the Postfix setting %s: %s", name, firstLine(string(out)))
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// ensurePostfixServerCertificate gives Postfix its server certificate before
+// its first start: the managed mail host pair when one is current for the
+// mail name (managedCert non-empty), otherwise the self-signed default when
+// Postfix has none. It reports whether Postfix uses the managed pair.
+func ensurePostfixServerCertificate(ctx context.Context, run postfixCommandRunner, managedCert, managedKey string) (bool, error) {
+	if ctx == nil {
+		return false, fmt.Errorf("the Postfix server certificate needs a service mutation context")
+	}
+	if (managedCert == "") != (managedKey == "") {
+		return false, fmt.Errorf("the managed mail host certificate pair is incomplete")
+	}
+	certFile, err := postconfSingleValue(run, "smtpd_tls_cert_file")
+	if err != nil {
+		return false, err
+	}
+	chainFiles, err := postconfSingleValue(run, "smtpd_tls_chain_files")
+	if err != nil {
+		return false, err
+	}
+	switch decidePostfixServerCertificate(certFile, chainFiles, managedCert) {
+	case postfixCertManaged:
+		if err := ctx.Err(); err != nil {
+			return false, fmt.Errorf("service mutation lease ended before Postfix was given the mail host certificate: %w", err)
+		}
+		for _, setting := range [][2]string{
+			{"smtpd_tls_cert_file", managedCert},
+			{"smtpd_tls_key_file", managedKey},
+			{"smtpd_tls_security_level", "may"},
+		} {
+			if out, err := run("postconf", "-e", setting[0]+"="+setting[1]); err != nil {
+				return false, fmt.Errorf("postconf %s: %s", setting[0], firstLine(string(out)))
+			}
+		}
+		return true, nil
+	case postfixCertDefault:
+		return false, ensurePostfixDefaultServerCertificate(ctx, run)
+	default:
+		return managedCert != "" && certFile == managedCert && strings.TrimSpace(chainFiles) == "", nil
+	}
+}
+
 func ensurePostfixDefaultServerCertificate(ctx context.Context, run postfixCommandRunner) error {
 	if ctx == nil {
 		return fmt.Errorf("the Postfix default certificate needs a service mutation context")

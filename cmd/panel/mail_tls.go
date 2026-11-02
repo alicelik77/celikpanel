@@ -262,21 +262,41 @@ func (p *Panel) loadMailTLSSnapshotLocked(
 		return "", nil, fmt.Errorf("target domain %d is not active in the secure-mail ledger", strictDomainID)
 	}
 
-	// Preserve legacy installations without a saved mail identity. Once an
-	// explicit identity exists, never fall back to the OS on invalid input.
+	canonicalHost, err := p.mailTLSHostname(ctx)
+	if err != nil {
+		return "", nil, err
+	}
+	return canonicalHost, sni, nil
+}
+
+// mailTLSHostname is the mail name the mail TLS step publishes.
+// Preserve legacy installations without a saved mail identity. Once an
+// explicit identity exists, never fall back to the OS on invalid input.
+func (p *Panel) mailTLSHostname(ctx context.Context) (string, error) {
 	host := p.setting(ctx, settingMailHostname)
 	if host == "" {
 		var err error
 		host, err = readMailTLSHostname()
 		if err != nil {
-			return "", nil, fmt.Errorf("read mail server hostname: %w", err)
+			return "", fmt.Errorf("read mail server hostname: %w", err)
 		}
 	}
 	canonicalHost, err := hostname.CanonicalFQDN(host)
 	if err != nil {
-		return "", nil, fmt.Errorf("mail server hostname is not a valid FQDN: %w", err)
+		return "", fmt.Errorf("mail server hostname is not a valid FQDN: %w", err)
 	}
-	return canonicalHost, sni, nil
+	return canonicalHost, nil
+}
+
+// configureMailStackRequest carries the mail name so a mail service's first
+// start can use the managed mail host certificate for exactly that name. No
+// usable name: empty, and the Agent keeps its default certificate.
+func (p *Panel) configureMailStackRequest(ctx context.Context, binding transport.ServiceMutationBinding) transport.ConfigureMailStackRequest {
+	name, err := p.mailTLSHostname(ctx)
+	if err != nil {
+		name = ""
+	}
+	return transport.ConfigureMailStackRequest{ServiceMutationBinding: binding, MailHostname: name}
 }
 
 // mailTLSIdentityKnown reports whether the mail TLS snapshot has a mail
