@@ -157,6 +157,27 @@ yazılır.
 | Uygulama kurucu (WordPress) | Bugünkü ürün izninin yerine geçer |
 | VPN | Menü görünmez; bugünkü ürün izninin yerine geçer |
 | Ek kullanıcılar (ekip) | Menü görünmez |
+| Dosya erişimi: SFTP | Erişim sekmesinde SFTP bölümü görünmez |
+| Dosya erişimi: FTP (şifreli, FTPS) | FTP bölümü görünmez; varsayılan kapalı |
+| SSH (komut satırı) | Yalnız SFTP; komut satırına girilemez |
+
+**Dosya erişimi bugün yok.** Sahip, 2 Kasım 2026'da bir alan adının FTP ve SSH
+ayarlarını aradı ve bulamadı. Koddan doğrulandı: panelde FTP, SFTP ya da SSH
+hesabı oluşturan bir yol yok; FTP bileşeninin kurulumu kapalı ("abonelik
+başına erişim henüz bağlanmadı"). Bu ayrı bir özellik olarak yapılacak.
+Önerilen biçim:
+- Her aboneliğin bir **Erişim** sekmesi olur: kullanıcı adı, parola ya da SSH
+  anahtarı, bağlantı adresi ve portu.
+- **SFTP** varsayılan yoldur; hesap yalnız kendi dizinini görür.
+- **SSH** (komut satırı) yalnız hak setinde açıksa verilir; kullanıcı yalnız
+  kendi dizininde kalır.
+- **Düz FTP hiç verilmez;** FTP yalnız şifreli (FTPS) olarak, hak setinde
+  açıksa ve sunucuda kuruluysa sunulur.
+- Askıya alınan abonelikte bütün erişim kapanır (Bölüm 9A).
+- Not: bugün site kullanıcıları sunucuda `/bin/bash` kabuğuyla oluşturuluyor
+  (`internal/services/user_manager.go`). Parolaları olmadığı için bugün giriş
+  yapamıyorlar, ama Erişim özelliği gelmeden önce bu varsayılan güvenli hale
+  getirilecek.
 
 ### 4.3 Yazılım (hangi bileşen, hangi sürüm)
 
@@ -478,9 +499,17 @@ doğrulanacak:
   "sunma" adımıdır (Bölüm 4.4).
 - **K6 — Askıdaki abonelik ne zaman "silinebilir" olur?** Öneri: 30 gün;
   yönetici bu süreyi değiştirebilir. Silme her zaman elle yapılır.
-- **K7 — Abonelik bitiş tarihi kimde?** Bugün panelde fiyat ve ödeme yok.
-  Öneri: yönetici ve bayi her aboneliğe isteğe bağlı bir bitiş tarihi girer;
-  tarih yoksa abonelik kendiliğinden bitmez, yalnız elle bitirilir.
+- **K7 — Bitiş tarihi. KARARLANDI:** Sahip: "İleride ödeme ve abonelik
+  sistemi olacak, ona göre hazırlık yap. Bitiş tarihi şimdilik sonsuz
+  olabilir, ama abonelik sistemi gelince bitiş tarihi olacak." Bugün her
+  aboneliğin bir başlangıç tarihi ve **boş olabilen** bir bitiş tarihi olur;
+  boşsa abonelik sonsuzdur ve yalnız elle bitirilir. Yönetici ve bayi bitiş
+  tarihi girebilir. Ödeme sistemi geldiğinde bitiş tarihini o yönetir;
+  askıya alma (Bölüm 9A) aynı yolu kullanır. Hazırlık için abonelik kaydı
+  baştan şu alanları taşır: başlangıç, bitiş (boş olabilir), durum (etkin,
+  askıda, bitti), askıya alınma nedeni (süre doldu, elle, ödeme) ve askıya
+  alınma zamanı. Fiyat, dönem ve ödeme alanları ödeme sistemiyle gelir; şimdi
+  boş alan olarak eklenmez (dürüstlük kuralı).
 
 ---
 
