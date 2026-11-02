@@ -1,13 +1,14 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"os/exec"
 	"regexp"
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -24,9 +25,16 @@ import (
 
 var emergencyPHPVersionRe = regexp.MustCompile(`^[0-9]{1,2}\.[0-9]{1,2}$`)
 
-// emergencySystemctl runs systemctl (a test seam).
+// emergencySystemctl runs the host's resolved systemctl through the agent's
+// tracked launcher, with a deadline (a test seam).
 var emergencySystemctl = func(args ...string) ([]byte, error) {
-	return exec.Command("systemctl", args...).CombinedOutput()
+	systemctl, err := serviceMutationSystemctlResolver()
+	if err != nil {
+		return nil, fmt.Errorf("systemd client failed security validation: %w", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	return serviceMutationCommand(ctx, systemctl, args...).CombinedOutputLimited(16 * 1024)
 }
 
 // emergencyUnitCandidates names the component's units (a test seam).
