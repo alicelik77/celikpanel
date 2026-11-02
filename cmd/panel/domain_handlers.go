@@ -36,6 +36,11 @@ type DomainResponse struct {
 	// SiteConfig is the vhost's last observed state (D-031), for an
 	// administrator only. Absent when nothing was observed yet.
 	SiteConfig *domainSiteConfigSummary `json:"site_config,omitempty"`
+	// RightsClosed (alpha.117, D-042): the permissions the domain's
+	// subscription may not use now, so the page does not draw their tabs.
+	// The server refuses them anyway; absent when nothing is closed and for
+	// the administrator, whom the gates do not narrow.
+	RightsClosed []string `json:"rights_closed,omitempty"`
 }
 
 const (
@@ -139,6 +144,12 @@ func (p *Panel) handleDomains(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// The closed rights of each subscription, read once per subscription.
+	var closedRights *closedPermissionsCache
+	if caller != nil && !caller.hasAccountRole(roleAdmin) {
+		closedRights = p.newClosedPermissionsCache()
+	}
+
 	// Build response with proper field names for frontend
 	response := make([]DomainResponse, 0, len(domains))
 	for _, domain := range domains {
@@ -215,18 +226,19 @@ func (p *Panel) handleDomains(w http.ResponseWriter, r *http.Request) {
 		}
 
 		response = append(response, DomainResponse{
-			ID:          domain.ID,
-			DomainName:  domain.Name,
-			PHPVersion:  phpVersionResponse,
-			SSLEnabled:  sslEnabledResponse,
-			Status:      domain.Status,
-			ProjectType: projectTypeResponse,
-			CreatedAt:   domain.CreatedAt.Format("2006-01-02T15:04:05Z"),
-			DiskUsage:   diskUsageResponse,
-			Bandwidth:   bandwidthResponse,
-			ParentID:    parentID,
-			Access:      access,
-			SiteConfig:  siteConfigFor(siteConfigs, domain.ID),
+			ID:           domain.ID,
+			DomainName:   domain.Name,
+			PHPVersion:   phpVersionResponse,
+			SSLEnabled:   sslEnabledResponse,
+			Status:       domain.Status,
+			ProjectType:  projectTypeResponse,
+			CreatedAt:    domain.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			DiskUsage:    diskUsageResponse,
+			Bandwidth:    bandwidthResponse,
+			ParentID:     parentID,
+			Access:       access,
+			SiteConfig:   siteConfigFor(siteConfigs, domain.ID),
+			RightsClosed: domainRightsClosed(r.Context(), closedRights, domain.SubscriptionID),
 		})
 	}
 

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import React from 'react';
 import Renderer, { act } from 'react-test-renderer';
-import { compileSource, dataModule, reactURL, remoteURL, sharedLayer } from './fixtures/shared-layer.mjs';
+import { apiErrorURL, compileSource, dataModule, reactURL, remoteURL, sharedLayer } from './fixtures/shared-layer.mjs';
 import { englishCatalogue, englishScreens, turkishCatalogue, turkishScreens } from './locale-catalogue.mjs';
 
 // NO NEGATIVE UI UNLESS KNOWN, on the mounted screens (9 Oct 2026, D-024).
@@ -47,6 +47,9 @@ const stubbedComponents = [
   'SuspensionDialog', 'DeletableAccounts',
   // alpha.117: transfers read their own addresses (SubscriptionTransfer).
   'TransferRowAction', 'TransferRequestsList', 'TransferRequestCard',
+  // alpha.117 (D-042): the rights panels and tabs of the Accounts page read
+  // their own addresses; the Accounts list and the plans list are under test.
+  'AccountRightsPanel', 'NewAccountRightsSection', 'BuiltinPlanRow', 'OfferedItemsTab', 'PlanEditorGate', 'ResellerPlansTab', 'AdminRightsNotices',
 ];
 for (const name of screenFiles) {
   for (const match of source(`components/${name}.tsx`).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {
@@ -115,6 +118,8 @@ const own = {
   '/lib/panelCertificate': compileSource('lib/panelCertificate.ts', () => stub),
   // What the license check itself says (D-039, 2026-10-30).
   '/lib/licenseOffline': compileSource('lib/licenseOffline.ts', () => stub),
+  // Plans and rights (alpha.117): the shipped decoders and helpers.
+  '/lib/rights': compileSource('lib/rights.ts', (specifier) => (specifier.endsWith('/apiError') ? apiErrorURL : stub)),
 };
 // The two notices of 10 Oct 2026 are the shipped ones: what a service action
 // ended with, and a change whose one-time result is not kept.

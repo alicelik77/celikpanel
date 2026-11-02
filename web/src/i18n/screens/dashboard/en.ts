@@ -45,6 +45,8 @@ export const enDashboardScreens = {
     'audit.resource.system_database': 'System database',
     'audit.resource.team_member': 'Team member',
     'audit.resource.user': 'User',
+    'audit.resource.reseller_plan': 'Reseller plan',
+    'audit.resource.rights_notice': 'Rights notice',
     'audit.resource.vpn_peer': 'VPN device',
 
     'dashboard.title': 'Dashboard',

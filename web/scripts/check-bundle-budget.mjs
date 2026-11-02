@@ -181,6 +181,11 @@ const screenPartBudgets = {
   // (transfer., err.TRANSFER_). A new part, set with at least 25% headroom
   // from its Turkish file: 8.41 / 2.89 KiB.
   transfers: kib(12, 4),
+  // alpha.117 (D-042): plans and rights - the account form's Rights section,
+  // an account's rights, the plan editors and previews, the offered layer,
+  // the notices (rights.) and the rights refusals. A new part, set with at
+  // least 25% headroom from its Turkish file: 14.28 / 4.15 KiB.
+  rights: kib(18, 5.5),
   // 2026-11-01 (alpha.114, lab run 2): the setup link's DNS-publisher and DKIM
   // waits, split out of "setupLink", which the run-2 wording took over its
   // ceiling (Turkish 13.35 KiB). A new part, set with at least 25% headroom

@@ -49,6 +49,8 @@ export interface CurrentUser {
         team_members: boolean;
         /** The server offers VPN to this person (WireGuard installed, add-on present). */
         vpn?: boolean;
+        /** The account's rights hold databases (alpha.117); absent from older servers. */
+        databases?: boolean;
         [key: string]: unknown;
     };
     /**
@@ -407,6 +409,7 @@ export function parseCurrentUser(raw: unknown): CurrentUser {
                 && accountType === 'account'
                 && effectiveRole === 'customer',
             vpn: rawFeatures.vpn === true,
+            databases: rawFeatures.databases !== false,
         },
         ...(suspended ? { suspended } : {}),
     };
@@ -444,6 +447,8 @@ export interface ServicePlan {
     owner?: string;
     /** The signed-in account may edit this plan. */
     mine?: boolean;
+    /** Its permission and software parts (alpha.117, D-042). */
+    rights?: { all_permissions: boolean; all_software: boolean; permissions: string[]; software: string[] };
 }
 
 export interface DemoAccount {

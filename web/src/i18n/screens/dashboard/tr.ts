@@ -39,6 +39,8 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'audit.resource.system_database': 'Sistem veritabanı',
     'audit.resource.team_member': 'Ekip üyesi',
     'audit.resource.user': 'Kullanıcı',
+    'audit.resource.reseller_plan': 'Bayi planı',
+    'audit.resource.rights_notice': 'Hak bildirimi',
     'audit.resource.vpn_peer': 'VPN cihazı',
 
     'dashboard.title': 'Panel',
