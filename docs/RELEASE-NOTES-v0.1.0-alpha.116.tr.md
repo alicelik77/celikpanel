@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.116.md)
 
+> **Yayımlandı**, 2 Kasım 2026 (UTC): sürüm commit'i `3ab50130a`, indirme portalı yaklaşık 18:59Z (dış denetim 27/27).
+
 v0.1.0-alpha.115'ten sonra bir düzeltme sürümü: bir güvenlik düzeltmesi ve
 sahibin yeniden kurulan sunucuları kullanırken bulduğu sorunlar. **Kurulu
 panelleri yalnız sahibi, panelin kendi güncelleme ekranından günceller.**
@@ -25,8 +27,12 @@ panelleri yalnız sahibi, panelin kendi güncelleme ekranından günceller.**
   değiştirilmeden, sistemi adlandıran ve desteklenen listeyi (Debian 12/13,
   Ubuntu 22.04/24.04, Arch Linux) veren iki dilli bir mesajla reddedilir.
 - **Kurulum posta sertifikasını postadan önce alır.** Postası olmayan bir
-  sunucuda kurulum önce güvenilir posta sertifikasını alır; Postfix ve Dovecot
-  onunla başlar. Postası zaten olan sunucular eski sırayı korur.
+  sunucuda kurulum önce güvenilir posta sertifikasını alır. Laboratuvar
+  denemesinden sonra düzeltme: paket kurulurken Postfix ve Dovecot iki üç
+  dakika kendi imzalı sertifikayla açılır, sonra aynı kurulum içinde, posta
+  kayıtları yayımlanmadan ve kurulum "hazır" demeden önce güvenilir
+  sertifikaya geçer. İlk andan güvenilir sertifikayla açılmaları alpha.117'de.
+  Postası zaten olan sunucular eski sırayı korur.
 - **Kurulumda yanıltıcı sertifika uyarısı yok.** "Kendi imzalı yedek
   sertifika" uyarısı kurulum adımlarında artık gösterilmez; kurulum dışında
   metni yalnız kurulumun kanıtladığını söyler.
