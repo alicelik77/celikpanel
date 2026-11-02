@@ -33,6 +33,7 @@ export const trRefusalsScreens: Record<RefusalsScreenKey, string> = {
     "secret.copyFailed": "Kopyalanamadı. Parolayı seçip elle kopyalayın.",
     "secret.dbCreatedTitle": "{name} veritabanı yeni bir kullanıcıyla oluşturuldu",
     "secret.userCreatedTitle": "{name} veritabanı kullanıcısı oluşturuldu",
+    "secret.userPasswordTitle": "{name} veritabanı kullanıcısının yeni parolası",
 
     "dbm.addDatabase": "Veritabanı oluştur",
     "dbm.addUser": "Veritabanı kullanıcısı oluştur",

@@ -691,25 +691,37 @@ func (p *Panel) runRotationStep(ctx context.Context, native rotationNative, op r
 		return rotationStepDone, "the devices were removed from the live WireGuard configuration", "", nil
 
 	case rotationEffectMailbox:
-		var exists int
-		if err := p.db.GetDB().QueryRowContext(ctx, `SELECT COUNT(*) FROM email_accounts WHERE id = ?`, e.Ref.MailboxID).Scan(&exists); err != nil {
+		// The address exactly as the mail files have it (the Agent refuses
+		// another spelling), from the row, not from the step's target.
+		var stored, domain string
+		err := p.db.GetDB().QueryRowContext(ctx, `
+			SELECT a.address, d.name FROM email_accounts a JOIN domains d ON d.id = a.domain_id WHERE a.id = ?`,
+			e.Ref.MailboxID).Scan(&stored, &domain)
+		if errors.Is(err, sql.ErrNoRows) {
+			return rotationStepDone, "the mailbox no longer exists", "", nil
+		}
+		if err != nil {
 			return "", "", "", err
 		}
-		if exists == 0 {
-			return rotationStepDone, "the mailbox no longer exists", "", nil
+		address, err := transport.CanonicalMailboxForDomain(stored, domain)
+		if err != nil {
+			return "", "", "", verifiedFailure("the stored mailbox address is not valid; it was not changed")
 		}
 		secret, err := newRotationSecret()
 		if err != nil {
 			return "", "", "", err
 		}
-		applied, err := native.setMailboxPassword(ctx, e.Target, secret)
+		// One mail change at a time, as the Mail screen does.
+		p.mailMutationMu.Lock()
+		applied, err := native.setMailboxPassword(ctx, address, secret)
+		p.mailMutationMu.Unlock()
 		if err != nil {
 			return "", "", "", unknownResult(err)
 		}
 		if !applied {
 			return "", "", "", unknownResult(errors.New("the Agent did not confirm the password change"))
 		}
-		ended, err := native.endMailSessions(ctx, e.Target)
+		ended, err := native.endMailSessions(ctx, address)
 		if err != nil {
 			return "", "", "", unknownResult(fmt.Errorf("password changed; ending open sessions: %w", err))
 		}

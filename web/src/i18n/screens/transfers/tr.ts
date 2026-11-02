@@ -5,7 +5,7 @@ import type { TransfersScreenKey } from './en';
 export const trTransfersScreens: Record<TransfersScreenKey, string> = {
     'transfer.action': 'Aboneliği devret',
     'transfer.title': 'Aboneliği devret',
-    'transfer.desc': 'Abonelik içindeki her şeyle birlikte başka bir sahibe geçer. Sunucuda hiçbir şey değişmez.',
+    'transfer.desc': 'Abonelik içindeki her şeyle birlikte başka bir sahibe geçer. Hizmetleri çalışmayı sürdürür; varsayılan olarak önceki sahibin bildiği tüm parola ve anahtarlar değiştirilir.',
     'transfer.subscription': 'Abonelik',
     'transfer.subscriptionsChecking': 'Abonelikler okunuyor…',
     'transfer.subscriptionsUnknown': 'Abonelikler okunamadı. Hiçbir şey değişmedi. Yeniden deneyin.',

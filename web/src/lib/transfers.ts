@@ -15,7 +15,7 @@ export const TRANSFER_REQUESTS_URL = '/api/v1/transfer-requests';
 export const transferURL = (subscriptionID: number, part: '' | '/preview' | '/receivers' = '') =>
     `/api/v1/subscriptions/${subscriptionID}/transfer${part}`;
 export const transferRequestURL = (subscriptionID: number) => `/api/v1/subscriptions/${subscriptionID}/transfer-request`;
-export const transferRequestActionURL = (id: number, action: 'preview' | 'approve' | 'reject' | 'cancel' | 'seen') =>
+export const transferRequestActionURL = (id: number, action: 'preview' | 'approve' | 'reject' | 'cancel' | 'seen' | 'rotation-retry') =>
     `${TRANSFER_REQUESTS_URL}/${id}/${action}`;
 
 export interface TransferParty {
@@ -50,6 +50,48 @@ export interface TransferInUse {
     item: string;
     count: number;
     what: string;
+}
+
+/** The credentials a transfer changes (owner decision, 2 November 2026). */
+export interface TransferRotationPreview {
+    site_accounts: string[];
+    vpn_devices: string[];
+    mailboxes: string[];
+    database_users: { username: string; app_domain?: string; host?: string; legacy?: boolean }[];
+    protected_users: { domain: string; users: number }[];
+    legacy_ftp_accounts: number;
+    total: number;
+    /** What the new owner does after: mail_clients, database_apps, file_access, vpn_devices, protected_folders. */
+    after: string[];
+    /** What CelikPanel does not hold: app_admin_accounts, own_app_secrets, legacy_ftp_accounts. */
+    not_covered: string[];
+}
+
+export interface RotationGuidance {
+    result: 'in_progress' | 'done' | 'prerequisite' | 'verified_failure' | 'unknown' | string;
+    reason: string;
+    who_acts: string;
+    next_action: string;
+    resumes: string;
+}
+
+export interface RotationStep {
+    kind: 'site_account' | 'vpn' | 'mailbox' | 'database_user' | 'protected_dir' | string;
+    target: string;
+    state: 'pending' | 'running' | 'done' | 'failed' | 'manual' | 'replaced' | string;
+    detail?: string;
+}
+
+/** The change of passwords and keys after a completed transfer. */
+export interface TransferRotation {
+    id: string;
+    state: 'running' | 'completed' | 'failed' | string;
+    attempts: number;
+    created_at: string;
+    finished_at?: string;
+    guidance: RotationGuidance;
+    counts: { total: number; done: number; pending: number; failed: number; manual: number; replaced: number };
+    effects: RotationStep[];
 }
 
 export interface TransferPreview {
@@ -89,6 +131,8 @@ export interface TransferPreview {
     receiver_subscriptions_after: number;
     host_changes: string;
     installed_unknown?: boolean;
+    rotate_credentials: boolean;
+    rotation: TransferRotationPreview;
 }
 
 export interface TransferRefusal {
@@ -125,6 +169,10 @@ export interface TransferRow {
     to_you?: boolean;
     from_you?: boolean;
     can_decide?: boolean;
+    /** Only for those who act on it: the administrator, the new owner and its provider. */
+    rotation?: TransferRotation;
+    /** The stored preview of the transfer (what it changed). */
+    result?: unknown;
 }
 
 export interface TransferList {
@@ -139,6 +187,34 @@ const list = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
 const previewShape = (raw: unknown): raw is Record<string, unknown> =>
     isRecord(raw) && typeof raw.subscription_id === 'number' && isRecord(raw.from) && isRecord(raw.to) && isRecord(raw.moves);
 
+export function decodeRotationPreview(raw: unknown): TransferRotationPreview {
+    const r = isRecord(raw) ? raw : {};
+    return {
+        site_accounts: list<string>(r.site_accounts),
+        vpn_devices: list<string>(r.vpn_devices),
+        mailboxes: list<string>(r.mailboxes),
+        database_users: list<TransferRotationPreview['database_users'][number]>(r.database_users),
+        protected_users: list<TransferRotationPreview['protected_users'][number]>(r.protected_users),
+        legacy_ftp_accounts: typeof r.legacy_ftp_accounts === 'number' ? r.legacy_ftp_accounts : 0,
+        total: typeof r.total === 'number' ? r.total : 0,
+        after: list<string>(r.after),
+        not_covered: list<string>(r.not_covered),
+    };
+}
+
+/** The rotation a row carries, or null when it has none or it is not the contract. */
+export function decodeRotation(raw: unknown): TransferRotation | null {
+    if (!isRecord(raw) || typeof raw.id !== 'string' || typeof raw.state !== 'string' || !isRecord(raw.guidance) || !isRecord(raw.counts)) return null;
+    return { ...(raw as unknown as TransferRotation), effects: list<RotationStep>(raw.effects) };
+}
+
+/** The credential list the stored transfer result names (for the new owner's guidance). */
+export function rowRotationPreview(row: TransferRow): TransferRotationPreview | null {
+    return isRecord(row.result) && isRecord(row.result.rotation) && row.result.rotate_credentials === true
+        ? decodeRotationPreview(row.result.rotation)
+        : null;
+}
+
 function decodePreview(raw: unknown): TransferPreview {
     if (!previewShape(raw)) throw new Error('shape');
     return {
@@ -150,6 +226,9 @@ function decodePreview(raw: unknown): TransferPreview {
         pool: list<TransferPoolLine>(raw.pool),
         pool_exceeded: list<string>(raw.pool_exceeded),
         grants_removed: list<TransferGrantLine>(raw.grants_removed),
+        // An older server sends no rotation: nothing is changed then.
+        rotate_credentials: raw.rotate_credentials === true,
+        rotation: decodeRotationPreview(raw.rotation),
     };
 }
 
@@ -184,7 +263,9 @@ export function decodeReceivers(raw: unknown): TransferReceiver[] {
 
 export function decodeTransferList(raw: unknown): TransferList {
     if (!isRecord(raw) || !Array.isArray(raw.requests) || !isRecord(raw.unseen)) throw new Error('shape');
-    const rows = raw.requests.filter((r): r is TransferRow => isRecord(r) && typeof r.id === 'number' && isRecord(r.from));
+    const rows = raw.requests
+        .filter((r): r is TransferRow => isRecord(r) && typeof r.id === 'number' && isRecord(r.from))
+        .map((r) => ({ ...r, rotation: decodeRotation(r.rotation) ?? undefined }));
     const received = typeof raw.unseen.received === 'number' ? raw.unseen.received : 0;
     const decided = typeof raw.unseen.decided === 'number' ? raw.unseen.decided : 0;
     return { rows, unseen: { received, decided }, waiting: typeof raw.waiting === 'number' ? raw.waiting : 0 };
@@ -217,4 +298,5 @@ export const TRANSFER_CODES = [
     'TRANSFER_NOT_ALLOWED', 'TRANSFER_REQUEST_ONLY', 'TRANSFER_NEEDS_ADMINISTRATOR', 'TRANSFER_RECEIVER_INVALID',
     'TRANSFER_SAME_OWNER', 'TRANSFER_ADMIN_WORKSPACE', 'TRANSFER_RIGHTS_OUTSIDE_RECEIVER', 'TRANSFER_POOL_EXCEEDED',
     'TRANSFER_STALE', 'TRANSFER_REQUEST_ID_REUSED', 'TRANSFER_REQUEST_OPEN', 'TRANSFER_REQUEST_CLOSED',
+    'TRANSFER_ROTATION_PENDING', 'TRANSFER_ROTATION_RUNNING', 'TRANSFER_ROTATION_NOTHING_TO_RETRY',
 ] as const;
