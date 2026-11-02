@@ -399,6 +399,35 @@ yapılandırması değiştirmesi gerekip gerekmediği, uygulama tasarımında
 doğrulanacak (bkz. Bölüm 11). Gerekiyorsa devir, D-025'teki değişiklik
 kurallarına uyan bir işlem olur: önizleme, kalıcı kontrol noktaları, geri alma.
 
+*Uygulamada doğrulandı (alpha.117):* sahiplik değişikliğinin kendisi sunucuda bir şey
+değiştirmez; oradaki her şey abonelik ve alan adı kimliğine bağlıdır (`cmd/panel/transfer.go`).
+
+**Parolalar ve anahtarlar (sahip kararı, 2 Kasım 2026).** Onay ekranında "Tüm parola ve
+anahtarları değiştir" işaretli gelir. Önceki sahip devirden sonra hiçbir kimlik bilgisini
+kullanamamalı; yeni sahip yenilerini panelde belirler. Onaylayan işareti kaldırabilir; ekran o
+zaman her parolanın, anahtarın ve VPN cihazının önceki sahip için çalışmayı sürdürdüğünü uyarır.
+
+- Önizleme her kimlik bilgisini listeler: site hesapları (dosya erişimi), VPN cihazları, posta
+  kutuları, veritabanı kullanıcıları (CelikPanel'in kurduğu WordPress adıyla; başka sunucudaki ya
+  da eski sürümün kaydettiği kullanıcı "orada değiştirin" diye), korumalı klasör kullanıcıları;
+  yeni sahibin sonra ne yapacağı; CelikPanel'in tutmadıkları (uygulama içi hesaplar, sitenin kendi
+  dosyalarındaki gizli bilgiler).
+- Sıra: önce sahiplik değişir. Aynı işlemde kimlik bilgisi değişikliği kalıcı bir işlem olarak
+  yazılır ve VPN cihazları panelde iptal edilir. Sonra işçi sunucuyu adım adım değiştirir: dosya
+  erişimi kapanır, parola kaldırılır ve tüm SSH anahtarları silinir (ilk adım: bir kabuk yeni
+  parolaları okuyabilirdi); cihazlar WireGuard'dan çıkar; bu sunucudaki her posta kutusu ve
+  veritabanı kullanıcısı kimseye gösterilmeyen rastgele bir parola alır ve açık oturumları kapanır;
+  CelikPanel'in kurduğu WordPress'in wp-config.php dosyası hâlâ o veritabanını ve kullanıcıyı
+  gösteriyorsa yeni parolayı alır (göstermiyorsa adım durur, site çalışır ve ekran ne yapılacağını
+  söyler); korumalı klasör kullanıcıları rastgele parola alır.
+- Çökme aynı işlemi sürdürür; doğrulanamayan adım üç kez yeniden denenir; duran adım onaylayana ve
+  yeni sahibe "yapılacak" olarak ve Yeniden dene ile gösterilir. Yeni sahibin önce belirlediği
+  kimlik bilgisi onundur: adım onun üzerine çalışmaz. Dosya erişimini açmak o adım bitene dek
+  bekler. Mühürlü veritabanı kullanıcı kaydı dışında parola saklanmaz.
+- Yeni sahip parolaları zaten belirlediği yerlerde belirler (Posta, dosya erişimi, VPN, korumalı
+  klasörler); veritabanı kullanıcısı için Veritabanları altında "Yeni parola" vardır (bir kez
+  gösterilir).
+
 ---
 
 ## 9. Mevcut kurulumlara geçiş

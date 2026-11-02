@@ -359,7 +359,6 @@ class PopulatedDatabaseTests(unittest.TestCase):
 
     def test_actual_39_through_55_migrations_add_tables_and_change_no_old_row(self):
         # alpha.117 (55, D-043): six new tables; no old table gains a column.
-        self.assertEqual(len(self.sql), 55, 'a migration after 55 needs its own pin before a candidate carries it')
         result = self.build()
         connection = sqlite3.connect(result['database'])
         connection.execute('PRAGMA foreign_keys=ON')
@@ -378,6 +377,28 @@ class PopulatedDatabaseTests(unittest.TestCase):
             'security_emergency_sites', 'security_emergency_before_images', 'security_notices'})
         self.assertEqual(p.added_columns(55), p.added_columns(54))
         for version in (56, '55', True):
+            with self.subTest(version=version), self.assertRaises(p.Refused):
+                self.verify(result, version)
+
+    def test_actual_39_through_56_migrations_add_tables_and_change_no_old_row(self):
+        # alpha.117 (56): two transfer rotation tables; no old table gains a column.
+        self.assertEqual(len(self.sql), 56, 'a migration after 56 needs its own pin before a candidate carries it')
+        result = self.build()
+        connection = sqlite3.connect(result['database'])
+        connection.execute('PRAGMA foreign_keys=ON')
+        apply(connection, self.sql[38:56])
+        connection.close()
+        for wrong in (54, 55):
+            with self.subTest(wrong=wrong), self.assertRaises(p.Refused):
+                self.verify(result, wrong)
+        proof = self.verify(result, 56)
+        self.assertEqual(proof['schema_version'], 56)
+        self.assertEqual(proof['table_count'], 95)
+        self.assertEqual(proof['old_rows_missing_or_changed'], 0)
+        self.assertEqual(proof['tables']['schema_migrations']['added'], 18)
+        self.assertEqual(p.NEW_TABLES[56] - p.NEW_TABLES[55], {'transfer_rotations', 'transfer_rotation_effects'})
+        self.assertEqual(p.added_columns(56), p.added_columns(55))
+        for version in (57, '56', True):
             with self.subTest(version=version), self.assertRaises(p.Refused):
                 self.verify(result, version)
 

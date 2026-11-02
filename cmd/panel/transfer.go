@@ -13,8 +13,8 @@ import (
 // Subscription transfer (D-042, docs/PLANS-AND-RIGHTS.md section 8, K3).
 // The unit is one subscription with everything in it.
 //
-// Host impact: none. Everything on the server is keyed by ids that do not
-// change in a transfer: site homes are .../subscriptions/<subscription
+// Host impact of the owner change: none. Everything on the server is keyed
+// by ids that do not change in a transfer: site homes are .../subscriptions/<subscription
 // id>/sites/<domain id> (internal/hostingpath, services.SiteOrchestrator),
 // each site runs as its own system user named from its domain
 // (services.SiteUsername), database and database-user names carry the
@@ -29,6 +29,11 @@ import (
 // the before-image. Access is decided per request from owner_id, so the old
 // owner and every "Log in as" session of the old owner lose the
 // subscription with the commit.
+//
+// Credentials (owner decision, 2 November 2026): unless the approver unticks
+// it, the same transaction also writes a rotation operation and marks the
+// subscription's VPN peers revoked; after the commit the worker changes every
+// password and key the old owner knew (transfer_rotation.go).
 //
 // Devir yalnız panel kayıtlarını değiştirir: sunucudaki her şey abonelik ve
 // alan adı kimliğine bağlıdır; bu kimlikler devirde değişmez.
@@ -176,6 +181,10 @@ type transferPreview struct {
 	HostChanges           string `json:"host_changes"`
 	InstalledUnknown      bool   `json:"installed_unknown,omitempty"`
 	Message               string `json:"message"`
+	// RotateCredentials: every password and key the old owner knew is
+	// changed after the owner change (default; the approver may untick it).
+	RotateCredentials bool                    `json:"rotate_credentials"`
+	Rotation          transferRotationPreview `json:"rotation"`
 
 	planned *plannedTransfer
 }
@@ -411,8 +420,11 @@ func (p *Panel) planTransfer(ctx context.Context, q rowQueryer, c *Caller, subID
 	}
 	preview.FromLeftWithout = fromCount <= 1
 	preview.ReceiverSubscriptions = toCount + 1
+	if _, preview.Rotation, err = planTransferRotation(ctx, q, subID); err != nil {
+		return nil, nil, err
+	}
 	preview.planned = planned
-	preview.Message = transferMessage(preview)
+	preview.setRotation(true)
 
 	if len(preview.Missing) > 0 {
 		r := refuseTransfer(409, errCodeTransferRightsOutside,
@@ -544,9 +556,19 @@ func transferMoves(ctx context.Context, q rowQueryer, subID int) (transferConten
 	return m, err
 }
 
+// setRotation records the approver's choice and what it changes.
+func (p *transferPreview) setRotation(rotate bool) {
+	p.RotateCredentials = rotate
+	p.HostChanges = "none"
+	if rotate && p.Rotation.Total > 0 {
+		p.HostChanges = "credentials"
+	}
+	p.Message = transferMessage(p)
+}
+
 func transferMessage(p *transferPreview) string {
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("The subscription \"%s\" moves from %s to %s with everything in it. Nothing changes on the server: sites, mail, databases, certificates, scheduled tasks and VPN devices keep running as they are.",
+	b.WriteString(fmt.Sprintf("The subscription \"%s\" moves from %s to %s with everything in it. Sites, mail, databases, certificates and scheduled tasks keep running as they are.",
 		p.SubscriptionName, p.From.Username, p.To.Username))
 	if p.PlanConverted {
 		b.WriteString(fmt.Sprintf(" The plan \"%s\" belongs to another reseller, so the subscription becomes Custom with the same items and numbers.", p.RightsFromPlanName))
@@ -557,7 +579,15 @@ func transferMessage(p *transferPreview) string {
 	if len(p.GrantsRemoved) > 0 {
 		b.WriteString(fmt.Sprintf(" %d additional user(s) of %s lose their access to it.", len(p.GrantsRemoved), p.From.Username))
 	}
-	b.WriteString(" Passwords, keys and VPN devices the previous owner knows keep working until the new owner changes them. Confirm to continue.")
+	switch {
+	case p.RotateCredentials && p.Rotation.Total > 0:
+		b.WriteString(fmt.Sprintf(" Right after the transfer every password and key the previous owner knew is changed (%d in all): mailboxes, database users, file access, VPN devices and protected folders. The new owner then sets new ones in the panel; mail programs and other apps that sign in need the new password.", p.Rotation.Total))
+	case p.RotateCredentials:
+		b.WriteString(" The subscription holds no password or key to change.")
+	default:
+		b.WriteString(" Warning: passwords, keys and VPN devices are NOT changed. The previous owner can keep using them until the new owner changes each one.")
+	}
+	b.WriteString(" Confirm to continue.")
 	return b.String()
 }
 
@@ -688,6 +718,8 @@ type transferRow struct {
 	ToYou     bool `json:"to_you,omitempty"`
 	FromYou   bool `json:"from_you,omitempty"`
 	CanDecide bool `json:"can_decide,omitempty"`
+	// Rotation: the change of passwords and keys after a completed transfer.
+	Rotation *transferRotationView `json:"rotation,omitempty"`
 }
 
 const transferRowColumns = `t.id, t.request_id, t.subscription_id, t.subscription_name, t.status,
@@ -741,7 +773,15 @@ func transferAuditDetails(preview *transferPreview, transferID, requestRowID int
 		"to_user_id": preview.To.ID, "to": preview.To.Username,
 		"rights_from": preview.RightsFrom, "rights_to": preview.RightsTo,
 		"plan_converted": preview.PlanConverted, "capped": preview.Capped,
-		"grants_removed": len(preview.GrantsRemoved), "host_changes": "none",
+		"grants_removed": len(preview.GrantsRemoved), "host_changes": preview.HostChanges,
+		"rotate_credentials": preview.RotateCredentials,
+	}
+	if preview.RotateCredentials {
+		details["rotation"] = map[string]int{
+			"site_accounts": len(preview.Rotation.SiteAccounts), "vpn_devices": len(preview.Rotation.VPNDevices),
+			"mailboxes": len(preview.Rotation.Mailboxes), "database_users": len(preview.Rotation.DatabaseUsers),
+			"protected_sites": len(preview.Rotation.ProtectedUsers),
+		}
 	}
 	if preview.FromReseller != nil {
 		details["from_reseller"] = preview.FromReseller.Username

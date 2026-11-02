@@ -5,7 +5,7 @@ import type { TransfersScreenKey } from './en';
 export const trTransfersScreens: Record<TransfersScreenKey, string> = {
     'transfer.action': 'Aboneliği devret',
     'transfer.title': 'Aboneliği devret',
-    'transfer.desc': 'Abonelik içindeki her şeyle birlikte başka bir sahibe geçer. Sunucuda hiçbir şey değişmez.',
+    'transfer.desc': 'Abonelik içindeki her şeyle birlikte başka bir sahibe geçer. Hizmetleri çalışmayı sürdürür; varsayılan olarak önceki sahibin bildiği tüm parola ve anahtarlar değiştirilir.',
     'transfer.subscription': 'Abonelik',
     'transfer.subscriptionsChecking': 'Abonelikler okunuyor…',
     'transfer.subscriptionsUnknown': 'Abonelikler okunamadı. Hiçbir şey değişmedi. Yeniden deneyin.',
@@ -22,7 +22,6 @@ export const trTransfersScreens: Record<TransfersScreenKey, string> = {
     'transfer.done': '{name} aboneliği artık {owner} hesabının.',
     'transfer.resultUnknown': 'Yanıt gelmedi; devrin olup olmadığı bilinmiyor. Devret’e yeniden basın: aynı istek iki kez uygulanmaz.',
     'transfer.summary': '“{name}” içindeki her şeyle birlikte {from} hesabından {to} hesabına geçer.',
-    'transfer.hostNone': 'Sunucuda hiçbir şey değişmez: siteler, posta, veritabanları, sertifikalar, zamanlanmış görevler ve VPN cihazları olduğu gibi çalışmaya devam eder.',
     'transfer.moves': 'Beraberinde {domains} alan adı, {sites} site, {mailboxes} posta kutusu, {databases} veritabanı, {certificates} sertifika ve {vpn} VPN cihazı gider.',
     'transfer.rightsStay': 'Hakları olduğu gibi kalır: {state}.',
     'transfer.state.unlimited': 'Sınırsız',

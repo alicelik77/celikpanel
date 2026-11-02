@@ -11,7 +11,7 @@
 export const enTransfersScreens = {
     'transfer.action': 'Transfer a subscription',
     'transfer.title': 'Transfer a subscription',
-    'transfer.desc': 'The subscription moves to another owner with everything in it. Nothing changes on the server.',
+    'transfer.desc': 'The subscription moves to another owner with everything in it. Its services keep running; by default every password and key the previous owner knew is changed.',
     'transfer.subscription': 'Subscription',
     'transfer.subscriptionsChecking': 'Reading the subscriptions…',
     'transfer.subscriptionsUnknown': 'The subscriptions could not be read. Nothing was changed. Try again.',
@@ -28,7 +28,6 @@ export const enTransfersScreens = {
     'transfer.done': 'The subscription {name} now belongs to {owner}.',
     'transfer.resultUnknown': 'The answer did not arrive, so it is not known whether the transfer happened. Press Transfer again: the same request is never applied twice.',
     'transfer.summary': '“{name}” moves from {from} to {to} with everything in it.',
-    'transfer.hostNone': 'Nothing changes on the server: sites, mail, databases, certificates, scheduled tasks and VPN devices keep running as they are.',
     'transfer.moves': 'It takes along {domains} domains, {sites} sites, {mailboxes} mailboxes, {databases} databases, {certificates} certificates and {vpn} VPN devices.',
     'transfer.rightsStay': 'Its rights stay as they are: {state}.',
     'transfer.state.unlimited': 'Unlimited',

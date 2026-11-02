@@ -1441,6 +1441,10 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse the transfer credential rotation (migration 56, alpha.117).
+        DROP TABLE transfer_rotation_effects;
+        DROP TABLE transfer_rotations;
+
         -- Reverse the security emergency (migration 55, alpha.117).
         DROP TABLE security_notices;
         DROP TABLE security_emergency_before_images;

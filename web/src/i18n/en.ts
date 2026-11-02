@@ -56,6 +56,7 @@ import type { FileAccessScreenKey } from './screens/fileAccess/en';
 import type { SuspensionScreenKey } from './screens/suspension/en';
 import type { EmergencyScreenKey } from './screens/emergency/en';
 import type { TransfersScreenKey } from './screens/transfers/en';
+import type { TransferRotationScreenKey } from './screens/transferRotation/en';
 import type { RightsScreenKey } from './screens/rights/en';
 
 export const en = {
@@ -555,6 +556,7 @@ export type ScreenKey =
     | FileAccessScreenKey
     | SuspensionScreenKey
     | TransfersScreenKey
+    | TransferRotationScreenKey
     | RightsScreenKey
     | EmergencyScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

@@ -95,6 +95,9 @@ type Panel struct {
 	// in tests (nil in production); emergencyWorker runs them (D-043).
 	emergencyNative emergencyNative
 	emergencyWorker emergencyWorkerState
+	// rotationNative replaces the Agent for transfer credential rotation in
+	// tests (nil in production; transfer_rotation.go).
+	rotationNative rotationNative
 	// lastUpdateAttempt is injectable only for handler tests. Production leaves
 	// it nil and reads the native recovery observations directly.
 	lastUpdateAttempt func(commit string) (recoveryobs.Attempt, bool)
@@ -555,10 +558,15 @@ func matchDatabaseSubroute(r *http.Request, prefix string) (databaseSubroute, bo
 			return databaseSubroute{}, false
 		}
 	case "/api/v1/database-users/":
-		if len(segments) != 1 {
+		switch {
+		case len(segments) == 1:
+			match.kind, match.methods = "user-delete", []string{http.MethodDelete}
+		// A new password (after a transfer, or whenever the owner wants one).
+		case len(segments) == 2 && segments[1] == "password":
+			match.kind, match.methods = "user-password", []string{http.MethodPost}
+		default:
 			return databaseSubroute{}, false
 		}
-		match.kind, match.methods = "user-delete", []string{http.MethodDelete}
 	case "/api/v1/database-grants/":
 		if len(segments) != 1 {
 			return databaseSubroute{}, false
@@ -614,6 +622,8 @@ func (p *Panel) handleDatabaseSubroute(w http.ResponseWriter, r *http.Request, p
 		}
 	case "user-delete":
 		p.handleDeleteDatabaseV2User(w, r)
+	case "user-password":
+		p.handleSetDatabaseUserPassword(w, r, match.resourceID)
 	case "grant-delete":
 		p.handleRevokeDatabaseAccess(w, r)
 	default:

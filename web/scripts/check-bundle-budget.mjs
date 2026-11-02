@@ -181,6 +181,11 @@ const screenPartBudgets = {
   // (transfer., err.TRANSFER_). A new part, set with at least 25% headroom
   // from its Turkish file: 8.41 / 2.89 KiB.
   transfers: kib(12, 4),
+  // alpha.117 (owner decision of 2 November 2026): changing every password
+  // and key after a transfer (transfer.rotate., transfer.rotation.,
+  // err.TRANSFER_ROTATION_), split out of "transfers". A new part, set with
+  // at least 25% headroom from its Turkish file: 6.18 / 2.08 KiB.
+  transferRotation: kib(8.5, 3),
   // alpha.117 (D-042): plans and rights - the account form's Rights section,
   // an account's rights, the plan editors and previews, the offered layer,
   // the notices (rights.) and the rights refusals. A new part, set with at

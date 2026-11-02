@@ -37,6 +37,10 @@ type ApplyFileAccessRequest struct {
 	AddKeys             []string         `json:"add_keys,omitempty"`
 	RemoveKeys          []string         `json:"remove_keys,omitempty"`
 	Reconcile           []FileAccessSite `json:"reconcile,omitempty"`
+	// RevokeCredentials (with Enabled false): the password is replaced by
+	// "no password" ("*", which a later unlock cannot bring back) and every
+	// SSH key is removed. Used after a subscription transfer.
+	RevokeCredentials bool `json:"revoke_credentials,omitempty"`
 }
 
 // FileAccessPreviewRequest asks what an apply would change (read only).

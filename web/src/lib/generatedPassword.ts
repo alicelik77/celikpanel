@@ -18,4 +18,6 @@ export interface CreatedSecret {
     user: string;
     password: string;
     database?: string;
+    /** A new password for an existing user (not a new user). */
+    renewed?: boolean;
 }

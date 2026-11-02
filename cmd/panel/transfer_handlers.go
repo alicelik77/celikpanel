@@ -15,14 +15,19 @@ import (
 //
 //	GET  /api/v1/subscriptions/{id}/transfer/receivers   who the caller may choose
 //	POST /api/v1/subscriptions/{id}/transfer/preview     {to_user_id}
-//	POST /api/v1/subscriptions/{id}/transfer             {to_user_id, from_user_id, request_id, confirm}
+//	POST /api/v1/subscriptions/{id}/transfer             {to_user_id, from_user_id, request_id, confirm, rotate_credentials}
 //	POST /api/v1/subscriptions/{id}/transfer-request     customer: {request_id, to_username, note}
 //	GET  /api/v1/transfer-requests                       requests, history and what the caller has not seen
 //	POST /api/v1/transfer-requests/{id}/preview          approver: {to_user_id}
-//	POST /api/v1/transfer-requests/{id}/approve          approver: {to_user_id, from_user_id, request_id, confirm}
+//	POST /api/v1/transfer-requests/{id}/approve          approver: {to_user_id, from_user_id, request_id, confirm, rotate_credentials}
 //	POST /api/v1/transfer-requests/{id}/reject           approver: {request_id, reason}
 //	POST /api/v1/transfer-requests/{id}/cancel           the requesting customer
 //	POST /api/v1/transfer-requests/{id}/seen             the receiver or the requester
+//	POST /api/v1/transfer-requests/{id}/rotation-retry   continue a failed credential rotation
+//
+// rotate_credentials is true when it is left out (owner decision, 2 November
+// 2026): every password and key the old owner knew is changed after the
+// owner change (transfer_rotation.go).
 //
 // Devir API'leri: önce önizleme, sonra istek kimliğiyle onaylı çağrı.
 
@@ -33,7 +38,11 @@ type transferBody struct {
 	FromUserID int    `json:"from_user_id,omitempty"`
 	RequestID  string `json:"request_id,omitempty"`
 	Confirm    bool   `json:"confirm,omitempty"`
+	// RotateCredentials: nil is true.
+	RotateCredentials *bool `json:"rotate_credentials,omitempty"`
 }
+
+func (b transferBody) rotate() bool { return b.RotateCredentials == nil || *b.RotateCredentials }
 
 // parseSubscriptionTransferPath: /api/v1/subscriptions/{id}/transfer[/preview|/receivers]
 // and /api/v1/subscriptions/{id}/transfer-request.
@@ -229,7 +238,7 @@ func (p *Panel) writeTransferPreview(w http.ResponseWriter, r *http.Request, c *
 // transferReplay answers a request id that was used before: the stored
 // result when the call is the same, else a refusal. handled is false when
 // the id is new.
-func (p *Panel) transferReplay(w http.ResponseWriter, r *http.Request, subID, toID int, requestID string, requestRow *transferRow) bool {
+func (p *Panel) transferReplay(w http.ResponseWriter, r *http.Request, subID, toID int, rotate bool, requestID string, requestRow *transferRow) bool {
 	row, err := loadTransferRow(r.Context(), p.db.GetDB(), `t.request_id = ? OR t.decision_request_id = ?`, requestID, requestID)
 	if errors.Is(err, errNotFound) {
 		return false
@@ -239,6 +248,12 @@ func (p *Panel) transferReplay(w http.ResponseWriter, r *http.Request, subID, to
 		return true
 	}
 	same := row.Status == transferCompleted && row.SubscriptionID == subID && row.To != nil && row.To.ID == toID
+	var stored struct {
+		RotateCredentials *bool `json:"rotate_credentials"`
+	}
+	if len(row.Result) > 0 && json.Unmarshal(row.Result, &stored) == nil && stored.RotateCredentials != nil {
+		same = same && *stored.RotateCredentials == rotate
+	}
 	if requestRow == nil {
 		same = same && row.RequestID == requestID && row.DecisionRequestID == ""
 	} else {
@@ -249,6 +264,7 @@ func (p *Panel) transferReplay(w http.ResponseWriter, r *http.Request, subID, to
 			"this request id was already used for another change; nothing was changed. Open the transfer again to get a new one.", "")
 		return true
 	}
+	p.attachRotation(r.Context(), &row)
 	writeRightsJSON(w, http.StatusOK, map[string]any{"success": true, "replayed": true, "transfer": row})
 	return true
 }
@@ -262,7 +278,7 @@ func (p *Panel) performTransfer(w http.ResponseWriter, r *http.Request, c *Calle
 			"request_id is required: 8 to 80 letters, digits or . _ : - (a new one for every transfer)", "")
 		return
 	}
-	if p.transferReplay(w, r, subID, body.ToUserID, body.RequestID, requestRow) {
+	if p.transferReplay(w, r, subID, body.ToUserID, body.rotate(), body.RequestID, requestRow) {
 		return
 	}
 	if requestRow != nil && requestRow.Status != transferRequested {
@@ -282,6 +298,7 @@ func (p *Panel) performTransfer(w http.ResponseWriter, r *http.Request, c *Calle
 		return
 	}
 	preview.InstalledUnknown = unknown
+	preview.setRotation(body.rotate())
 	if !body.Confirm {
 		writeTransferRefusal(w, &transferRefusal{Status: http.StatusConflict, Code: errCodeTransferConfirm, Message: preview.Message}, preview)
 		return
@@ -323,6 +340,7 @@ func (p *Panel) performTransfer(w http.ResponseWriter, r *http.Request, c *Calle
 	}
 	final.CappedInUse = preview.CappedInUse
 	final.InstalledUnknown = unknown
+	final.setRotation(body.rotate())
 	img, err := applyTransfer(ctx, tx, final)
 	if errors.Is(err, errTransferStale) {
 		writeTransferRefusal(w, &transferRefusal{Status: http.StatusConflict, Code: errCodeTransferStale,
@@ -344,6 +362,7 @@ func (p *Panel) performTransfer(w http.ResponseWriter, r *http.Request, c *Calle
 		return
 	}
 	var transferID int
+	rotationID := ""
 	if requestRow == nil {
 		res, err := tx.ExecContext(ctx, `
 			INSERT INTO subscription_transfers
@@ -376,6 +395,14 @@ func (p *Panel) performTransfer(w http.ResponseWriter, r *http.Request, c *Calle
 		}
 		transferID = requestRow.ID
 	}
+	// The rotation is written with the owner change: after the commit it is
+	// durable, and the worker changes the server.
+	if final.RotateCredentials {
+		if rotationID, err = createTransferRotation(ctx, tx, transferID, subID, uid); err != nil {
+			writeServerError(w, err)
+			return
+		}
+	}
 	// The reseller cause follows the new owner: into a suspended reseller's
 	// field the subscription is suspended, out of it the cause clears (a
 	// manual or expiry cause stays). Same transaction.
@@ -388,7 +415,7 @@ func (p *Panel) performTransfer(w http.ResponseWriter, r *http.Request, c *Calle
 		writeServerError(w, err)
 		return
 	}
-	if suspensionChanged {
+	if suspensionChanged || rotationID != "" {
 		p.kickSuspensionWorker()
 	}
 
@@ -406,6 +433,7 @@ func (p *Panel) performTransfer(w http.ResponseWriter, r *http.Request, c *Calle
 		writeServerError(w, err)
 		return
 	}
+	p.attachRotation(ctx, &row)
 	writeRightsJSON(w, http.StatusOK, map[string]any{"success": true, "transfer": row, "preview": final})
 }
 
@@ -413,7 +441,7 @@ func (p *Panel) performTransfer(w http.ResponseWriter, r *http.Request, c *Calle
 // answered like a replay; anything else is a server error.
 func (p *Panel) transferWriteFailed(w http.ResponseWriter, r *http.Request, subID int, body transferBody, requestRow *transferRow, err error) {
 	if strings.Contains(err.Error(), "UNIQUE") {
-		if p.transferReplay(w, r, subID, body.ToUserID, body.RequestID, requestRow) {
+		if p.transferReplay(w, r, subID, body.ToUserID, body.rotate(), body.RequestID, requestRow) {
 			return
 		}
 	}
@@ -603,6 +631,8 @@ func (p *Panel) handleTransferRequests(w http.ResponseWriter, r *http.Request) {
 		case "reject":
 			p.rejectTransferRequest(w, r, row)
 		}
+	case "rotation-retry":
+		p.retryTransferRotationRequest(w, r, c, row)
 	case "cancel":
 		p.cancelTransferRequest(w, r, c, row)
 	case "seen":
@@ -679,6 +709,14 @@ func (p *Panel) listTransferRequests(w http.ResponseWriter, r *http.Request, c *
 	if err := rows.Err(); err != nil {
 		writeServerError(w, err)
 		return
+	}
+	rows.Close()
+	// The credential rotation, for those who act on it (not for a previous
+	// owner who only gave the subscription away).
+	for i := range list {
+		if list[i].Status == transferCompleted && p.rotationViewer(ctx, c, list[i]) {
+			p.attachRotation(ctx, &list[i])
+		}
 	}
 	// What the caller has not seen yet, and what waits for its decision.
 	var received, decided, waiting int
@@ -795,4 +833,63 @@ func (p *Panel) writeTransferRowAnswer(w http.ResponseWriter, r *http.Request, i
 	if err := json.NewEncoder(w).Encode(map[string]any{"success": true, "request": row}); err != nil {
 		log.Printf("encode transfer request: %v", err)
 	}
+}
+
+// rotationViewer: the administrator, the new owner, or a reseller whose
+// accounts include the new owner.
+func (p *Panel) rotationViewer(ctx context.Context, c *Caller, row transferRow) bool {
+	if c.hasAccountRole(roleAdmin) {
+		return true
+	}
+	if row.To == nil {
+		return false
+	}
+	if row.To.ID == c.ID {
+		return true
+	}
+	if !c.hasAccountRole(roleReseller) {
+		return false
+	}
+	ids, _, err := p.visibleOwnerIDs(ctx, c)
+	return err == nil && ids[row.To.ID]
+}
+
+func (p *Panel) attachRotation(ctx context.Context, row *transferRow) {
+	view, err := p.transferRotationView(ctx, row.ID)
+	if err != nil {
+		log.Printf("[transfer rotation] read %d: %v", row.ID, err)
+		return
+	}
+	row.Rotation = view
+}
+
+// retryTransferRotationRequest continues a failed rotation (D-024: the
+// same operation, from the steps not finished).
+func (p *Panel) retryTransferRotationRequest(w http.ResponseWriter, r *http.Request, c *Caller, row transferRow) {
+	if row.Status != transferCompleted || !p.rotationViewer(r.Context(), c, row) {
+		writeCodedError(w, http.StatusForbidden, errCodeTransferNotAllowed,
+			"only the administrator, the new owner or the new owner's provider continues this change of passwords and keys", "")
+		return
+	}
+	started, err := p.retryTransferRotation(r.Context(), row.ID)
+	if errors.Is(err, errRotationNothingToRetry) {
+		writeCodedError(w, http.StatusConflict, errCodeTransferRotationNothing,
+			"nothing is left to retry: the passwords and keys of this transfer were already changed, or it changed none", "")
+		return
+	}
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	if started {
+		p.auditDetailed(r, "subscription.transfer_rotate_retry:"+row.SubscriptionName, "subscription", row.SubscriptionID,
+			map[string]any{"transfer_id": row.ID})
+	}
+	answer, err := loadTransferRow(r.Context(), p.db.GetDB(), `t.id = ?`, row.ID)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	p.attachRotation(r.Context(), &answer)
+	writeRightsJSON(w, http.StatusAccepted, map[string]any{"success": true, "started": started, "transfer": answer})
 }

@@ -266,6 +266,17 @@ func (p *Panel) handlePutFileAccess(w http.ResponseWriter, r *http.Request, site
 				"this subscription's plan does not include the command line (SSH); file access is not affected", "")
 			return
 		}
+		// After a transfer the previous owner's password and keys are removed
+		// first; opening access waits until that step has finished.
+		if open, err := p.siteAccountRotationOpen(r.Context(), site.DomainID); err != nil {
+			writeServerError(w, err)
+			return
+		} else if open && !preview {
+			writeCodedError(w, http.StatusConflict, errCodeTransferRotationPending,
+				"this site came with a subscription transfer, and the previous owner's password and SSH keys are not removed yet; nothing was changed. "+
+					"Wait until the transfer's change of passwords and keys has finished (Account page), or retry it there if it stopped, then open file access with a new password.", "")
+			return
+		}
 	} else if request.Password != "" || len(request.AddKeys) > 0 {
 		writeCodedError(w, http.StatusBadRequest, errCodeFileAccessInvalid,
 			"a password or a key is set only while file access is on", "")

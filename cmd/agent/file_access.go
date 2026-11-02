@@ -367,6 +367,10 @@ func buildFileAccessPlan(ctx context.Context, req transport.ApplyFileAccessReque
 	}
 	ssh := req.Enabled && req.SSH
 	plan.entry = fileaccess.Entry{Username: site.Username, SubscriptionID: site.SubscriptionID, DomainID: site.DomainID, SSH: ssh}
+	// Revoking credentials closes access; it never sets a password or a key.
+	if req.RevokeCredentials && (req.Enabled || req.Password != "" || len(req.AddKeys) > 0) {
+		return plan, refuseFileAccess(transport.FileAccessRefusedInvalid, "revoking credentials closes access; it sets no password or key")
+	}
 	if req.Password != "" {
 		if err := fileaccess.ValidatePassword(req.Password); err != nil {
 			return plan, refuseFileAccess(transport.FileAccessRefusedInvalid, "%v", err)
@@ -446,6 +450,9 @@ func buildFileAccessPlan(ctx context.Context, req transport.ApplyFileAccessReque
 		return plan, refuseFileAccess(transport.FileAccessRefusedKeysOwner, "read %s: %v", keysPath, err)
 	}
 	keys = mergeFileAccessKeys(keys, added, req.RemoveKeys)
+	if req.RevokeCredentials {
+		keys = nil
+	}
 	if len(keys) > fileaccess.MaxKeys {
 		return plan, refuseFileAccess(transport.FileAccessRefusedInvalid, "at most %d keys per account", fileaccess.MaxKeys)
 	}
@@ -466,6 +473,9 @@ func buildFileAccessPlan(ctx context.Context, req transport.ApplyFileAccessReque
 		change.shell = shell
 	}
 	switch {
+	case req.RevokeCredentials && (account.Password == fileaccess.PasswordSet || account.Password == fileaccess.PasswordLocked):
+		// A locked hash would come back with a later unlock: replace it.
+		change.restrict = "revoke"
 	case !req.Enabled && account.Password == fileaccess.PasswordSet:
 		change.restrict = "lock"
 	case account.Password == fileaccess.PasswordEmpty:
@@ -544,6 +554,8 @@ func (p *fileAccessPlan) addAccountChange(change fileAccessAccountChange) {
 			p.note("account", change.name, "set", "password unlocked")
 		case "clear":
 			p.note("account", change.name, "set", "empty password replaced by no password")
+		case "revoke":
+			p.note("account", change.name, "set", "password removed (a new one is set when access is opened again)")
 		case "star":
 			p.note("account", change.name, "set", "locked account opened for keys only")
 		}
@@ -786,7 +798,7 @@ func applyFileAccessAccounts(ctx context.Context, plan *fileAccessPlan, grant bo
 			out, err = fileAccessRun(ctx, nil, "usermod", "-U", change.name)
 		case "lock":
 			out, err = fileAccessRun(ctx, nil, "usermod", "-L", change.name)
-		case "star", "clear":
+		case "star", "clear", "revoke":
 			out, err = fileAccessRun(ctx, nil, "usermod", "-p", "*", change.name)
 		}
 		if err != nil {

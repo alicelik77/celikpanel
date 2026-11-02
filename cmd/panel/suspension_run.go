@@ -873,6 +873,10 @@ func (p *Panel) startSuspensionWorker() {
 				if err := p.runPendingSuspensionOperations(ctx); err != nil {
 					log.Printf("[suspension] %v", err)
 				}
+				// Transfer credential rotation shares this worker and its lock.
+				if err := p.runPendingTransferRotations(ctx); err != nil {
+					log.Printf("[transfer rotation] %v", err)
+				}
 				cancel()
 				select {
 				case <-ticker.C:

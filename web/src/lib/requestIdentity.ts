@@ -46,6 +46,9 @@ const REASK_ROUTES = [
     // alpha.113: the default HTTPS server's "Set up now" / "Try again".
     // Varsayılan HTTPS sunucusunun "Şimdi kur" / "Yeniden dene" düğmesi.
     /^\/api\/v1\/nginx\/default-https$/,
+    // alpha.117: a database user's new password (shown once when made up).
+    // Bir veritabanı kullanıcısının yeni parolası.
+    /^\/api\/v1\/database-users\/\d+\/password$/,
 ];
 
 // An answer that says nothing about the change: a gateway between the browser
