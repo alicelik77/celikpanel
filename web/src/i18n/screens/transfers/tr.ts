@@ -22,7 +22,6 @@ export const trTransfersScreens: Record<TransfersScreenKey, string> = {
     'transfer.done': '{name} aboneliği artık {owner} hesabının.',
     'transfer.resultUnknown': 'Yanıt gelmedi; devrin olup olmadığı bilinmiyor. Devret’e yeniden basın: aynı istek iki kez uygulanmaz.',
     'transfer.summary': '“{name}” içindeki her şeyle birlikte {from} hesabından {to} hesabına geçer.',
-    'transfer.hostNone': 'Sunucuda hiçbir şey değişmez: siteler, posta, veritabanları, sertifikalar, zamanlanmış görevler ve VPN cihazları olduğu gibi çalışmaya devam eder.',
     'transfer.moves': 'Beraberinde {domains} alan adı, {sites} site, {mailboxes} posta kutusu, {databases} veritabanı, {certificates} sertifika ve {vpn} VPN cihazı gider.',
     'transfer.rightsStay': 'Hakları olduğu gibi kalır: {state}.',
     'transfer.state.unlimited': 'Sınırsız',
