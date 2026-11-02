@@ -19,6 +19,66 @@ Code decisions live in git; this file is for strategy. Newest first.
 > D-029. Entries written after this note use the clock date; a dated entry from 10, 11 or
 > 12 October 2026 other than D-029 is genuine.
 
+## D-042 · Rights come from a plan or are chosen for the account: installed is not granted, the administrator draws the field, a reseller only narrows
+
+*2026-11-02 (owner's approval: "Onay veriyorum") · A principle, not shipped capability; implementation is planned in one release (alpha.117), nothing is built yet*
+
+**Decision.** The owner approved [PLANS-AND-RIGHTS.md](PLANS-AND-RIGHTS.md)
+([Türkçe](PLANS-AND-RIGHTS.tr.md)). It extends D-014 and D-017 and follows
+D-038 (what is in use is not removed), D-022 and D-024. It supersedes two
+earlier rules: the ROLES.md non-goal "custom roles with hand-built permission
+sets for customers/resellers", and the alpha.114 rule that the reseller pool
+"limits allocation".
+
+**Principles (P1-P7).**
+- **P1** Installed does not grant: installing makes a thing only *grantable*;
+  an account uses it only if it is in the account's rights set.
+- **P2** The administrator draws the field, a reseller only narrows. What a
+  customer can use is: installed, offered by the administrator, in the
+  reseller's rights set, in the subscription's rights set. A reseller cannot
+  hand out what the reseller does not have.
+- **P3** Every account's rights come from a plan or are chosen for that account.
+  Three states, named on every screen: **Unlimited** (no plan and nothing set),
+  **bound to a plan** (identical to the plan) and **Custom**. Changing even one
+  thing on a plan-bound account makes it Custom; there is no "plan + extra".
+  A plan is a template for speed, not a requirement.
+- **P4** Unlimited is a plan too (Unlimited, Unlimited reseller). It takes
+  everything the administrator newly offers; a plan that does not is not
+  Unlimited.
+- **P5** Narrowing does not break what runs; only new use is refused (D-038).
+- **P6** The server enforces; the screen only shows.
+- **P7** No silent change: plan change, turning Custom, binding and transfer
+  are previewed, approved and audited.
+
+**Rights set.** Quantities, permissions (jobs such as DNS editing, mail,
+scheduled tasks, backup, VPN, app installer) and software by offering ID
+(D-017; the unit is the version). Third-party software is a separate item in
+the same space and is gated at "offering": installed is not offered, and the
+administrator sees and approves the permissions it asks for when offering it.
+
+**File access.** FTP over TLS and SFTP are one permission, SSH is a separate
+permission, and every user is jailed to their own subscription folder. Plain
+FTP is not used. There is no FTP/SFTP/SSH account creation in the panel today.
+
+**Reseller pool (K2).** The pool limits real total usage, not the sum of what
+is allocated; a reseller may allocate more than the pool, but the real usage
+of all customers cannot pass it. This replaces the alpha.114 allocation rule.
+
+**Transfer (K3).** The unit is a subscription. A customer sends a request; the
+reseller or the administrator approves. A pre-check of the receiving side's
+pool and rights set runs before anything changes.
+
+**Subscription end (9A, K6, K7).** When a subscription ends, every service
+(sites, mail, databases, VPN, scheduled tasks, file access) is suspended and
+nothing is deleted. A suspended subscription is at once on the deletable list;
+deletion is always manual, with a preview. Every subscription carries a start
+date and an end date that may be empty (infinite), ready for billing; price,
+period and payment are not added until a payment system exists.
+
+**Not claimed.** Nothing here is implemented. Migration keeps every existing
+site, mail, database and service unchanged and adds tables without deleting
+columns. The release must prove a rollback (D-025) and a real-server trial.
+
 ## D-041 · A fresh install listens on panel port 1923; an existing install keeps its port until the owner changes it
 
 *2026-10-31 (owner's decision) · Source change on `feat/panel-port-1923`, in the v0.1.0-alpha.114 candidate; not published, no installed panel updated*
