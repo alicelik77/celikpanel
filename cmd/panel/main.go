@@ -91,6 +91,10 @@ type Panel struct {
 	// (nil in production); suspensionWorker runs them (suspension_run.go).
 	suspensionNative suspensionNative
 	suspensionWorker suspensionWorkerState
+	// emergencyNative replaces the Agent for security emergency operations
+	// in tests (nil in production); emergencyWorker runs them (D-043).
+	emergencyNative emergencyNative
+	emergencyWorker emergencyWorkerState
 	// lastUpdateAttempt is injectable only for handler tests. Production leaves
 	// it nil and reads the native recovery observations directly.
 	lastUpdateAttempt func(commit string) (recoveryobs.Attempt, bool)
@@ -1359,6 +1363,12 @@ func main() {
 	http.HandleFunc(transferRequestsPath+"/", panel.handleTransferRequests)
 	http.HandleFunc(mySubscriptionPath, panel.handleMySubscription)
 	http.HandleFunc(suspensionDeletablePath, panel.handleSuspensionDeletable)
+	// alpha.117 (D-043): security emergencies (administrator) and the
+	// notices their customers and resellers read.
+	http.HandleFunc(securityEmergenciesPath, panel.handleSecurityEmergencies)
+	http.HandleFunc(securityEmergenciesPath+"/", panel.handleSecurityEmergencies)
+	http.HandleFunc(securityNoticesPath, panel.handleSecurityNotices)
+	http.HandleFunc(securityNoticesPath+"/", panel.handleSecurityNotices)
 	http.HandleFunc("/api/v1/products", panel.handleProducts)
 	http.HandleFunc("/api/v1/store", panel.handleStore)
 	http.HandleFunc("/api/v1/store/", panel.handleStore)
@@ -1630,6 +1640,9 @@ func main() {
 	panel.startVPNEntitlementReconciler()
 	// Suspensions: continue what a restart interrupted, check end dates.
 	panel.startSuspensionWorker()
+	// Security emergencies (D-043): continue what a restart interrupted,
+	// hand pending notices to the mail system.
+	panel.startEmergencyWorker()
 	// A pending paired DNS publication whose cause is transient (the backup
 	// has not caught up) completes by itself through its exact recovery.
 	panel.startDNSPendingPublicationReconciler(discoveryCtx)

@@ -616,6 +616,15 @@ func (p *Panel) runSuspensionEffect(ctx context.Context, native suspensionNative
 		if !before.Present {
 			return effectDone, "the site has no Node.js app unit; nothing to change", nil
 		}
+		// D-043: a security emergency still holds this app; it stays
+		// stopped and the emergency restores the earliest state it knows.
+		if !suspend {
+			if handed, err := p.handSuspensionAppToEmergency(ctx, op.SubscriptionID, e.Ref.DomainID, e.Target); err != nil {
+				return "", "", err
+			} else if handed {
+				return effectDone, "kept stopped: a security emergency holds this Node.js app; it starts again when the emergency is re-enabled", nil
+			}
+		}
 		resp, err := native.setAppUnit(ctx, transport.SetAppUnitSuspensionRequest{SiteID: e.Ref.SiteID, Suspend: suspend, Before: before})
 		if err != nil {
 			return "", "", unknownResult(err)

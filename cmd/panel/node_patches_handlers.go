@@ -167,6 +167,8 @@ func (p *Panel) handleDomainAppNodeVersion(w http.ResponseWriter, r *http.Reques
 		json.NewEncoder(w).Encode(map[string]any{"error": failure.Error(), "code": "NODE_MOVE_FAILED"})
 		return
 	}
+	// D-043: the site left a version under a security emergency.
+	p.noteEmergencySiteMoved(ctx, domainID)
 	details := map[string]any{"site": state.DomainName, "component": "node", "from": from, "to": req.Version, "proved": true}
 	for key, value := range versionSupportDetails("node", req.Version) {
 		if key != "version" {

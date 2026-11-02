@@ -129,6 +129,9 @@ type VhostData struct {
 	// Suspended renders the "this site is suspended" vhost (alpha.117):
 	// 503 for every request, certificate validation kept, no site content.
 	Suspended bool
+	// Maintenance renders the "temporarily under maintenance" vhost (D-043):
+	// 503 for every request, certificate validation kept. Suspended wins.
+	Maintenance bool
 }
 
 // Render executes the vhost template over prepared data, deriving the

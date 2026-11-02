@@ -54,6 +54,7 @@ import type { SetupOwnerScreenKey } from './screens/setupOwner/en';
 import type { SetupPublishingScreenKey } from './screens/setupPublishing/en';
 import type { FileAccessScreenKey } from './screens/fileAccess/en';
 import type { SuspensionScreenKey } from './screens/suspension/en';
+import type { EmergencyScreenKey } from './screens/emergency/en';
 import type { TransfersScreenKey } from './screens/transfers/en';
 import type { RightsScreenKey } from './screens/rights/en';
 
@@ -554,5 +555,6 @@ export type ScreenKey =
     | FileAccessScreenKey
     | SuspensionScreenKey
     | TransfersScreenKey
-    | RightsScreenKey;
+    | RightsScreenKey
+    | EmergencyScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

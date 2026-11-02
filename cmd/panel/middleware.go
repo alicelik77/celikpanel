@@ -276,6 +276,10 @@ func isAdminOnlyPath(path string) bool {
 	if path == storeCatalogAdminPath || strings.HasPrefix(path, storeCatalogAdminPath+"/") {
 		return true
 	}
+	// alpha.117 (D-043): a security emergency is the administrator's alone.
+	if path == securityEmergenciesPath || strings.HasPrefix(path, securityEmergenciesPath+"/") {
+		return true
+	}
 	// /api/v2/ is deliberately NOT here anymore (B1 role split, Jul 17):
 	// its DB/user/grant endpoints are tenant-scoped inside their handlers
 	// (callerSubscriptionID + canAccessDBServer); only SERVER REGISTRATION

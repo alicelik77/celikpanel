@@ -1441,6 +1441,14 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse the security emergency (migration 55, alpha.117).
+        DROP TABLE security_notices;
+        DROP TABLE security_emergency_before_images;
+        DROP TABLE security_emergency_sites;
+        DROP TABLE security_emergency_effects;
+        DROP TABLE security_emergency_operations;
+        DROP TABLE security_emergencies;
+
         -- Reverse the subscription transfers (migration 54, alpha.117).
         DROP TRIGGER subscription_transfers_close_on_delete;
         DROP TABLE subscription_transfers;

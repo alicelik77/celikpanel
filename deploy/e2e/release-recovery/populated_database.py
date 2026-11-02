@@ -55,6 +55,8 @@ MIGRATIONS = {
     52: '60a76230c1142db0e2e6ad715400101a5f40ced3ac3a25bd80c5389102fb8561',
     53: 'e2966efa9fb98e5e6bd4e5bcc1372edb2e857222ed66c1dab0193704cb38aef1',
     54: '921c62f4c73b21071d91f263fca4a3ca93f9857540db3dd446fb77d1ec63d99b',
+    # alpha.117 (D-043): 55 security emergency (six tables, no old one changed).
+    55: 'b0edf792edb782f567aac802825a9fc25622f63e2fa81e9b9cb2a2aacddca0f3',
 }
 # Exact sqlite_schema SQL from the released SQL, including triggers and indexes.
 # Tests reconstruct it from unmodified migration bytes, never a downgraded ledger.
@@ -73,6 +75,7 @@ SCHEMAS = {
     52: '2c99a5ca6371526a26feea7977a14d41b5e55b87e8b12b5c0f08bf9fdc09e261',
     53: '31a9ff22d4fe320125dca4c77784cf8d4ba7b72061c4cb80f2061156dd5b5267',
     54: 'e286b815a959ab0b3e288ab2765b6f88c87ce06f790e6ade3838a1a44498bf95',
+    55: '97693401cf70fb68153420710c0ef3fc9d169984a742df1f9329b6701a553d7d',
 }
 ADMISSION_SCHEMA = 'celikpanel/lab-populated-database-admission/v1'
 MANIFEST_SCHEMA = 'celikpanel/lab-populated-database-manifest/v1'
@@ -96,6 +99,8 @@ NEW_TABLES_52 = NEW_TABLES_51 | {'rights_sets', 'rights_set_items', 'reseller_pl
 NEW_TABLES_53 = NEW_TABLES_52 | {'subscription_suspensions', 'reseller_suspensions', 'suspension_operations',
                                  'suspension_effects', 'suspension_before_images'}
 NEW_TABLES_54 = NEW_TABLES_53 | {'subscription_transfers'}
+NEW_TABLES_55 = NEW_TABLES_54 | {'security_emergencies', 'security_emergency_operations', 'security_emergency_effects',
+                                 'security_emergency_sites', 'security_emergency_before_images', 'security_notices'}
 # Columns a pinned schema added to an old table, left out of the old-row
 # proof and required to be NULL in every old row (52 leaves ends_at NULL even
 # where the unused expires_at is set).
@@ -108,7 +113,7 @@ ADDED_COLUMNS = {45: {'audit_logs': ('details',), 'sites': ('app_run_as',)},
 # A schema that is not a key here is the baseline itself.
 NEW_TABLES = {42: NEW_TABLES_42, 43: NEW_TABLES_43, 44: NEW_TABLES_44, 45: NEW_TABLES_45, 46: NEW_TABLES_46,
               47: NEW_TABLES_47, 48: NEW_TABLES_48, 49: NEW_TABLES_49, 50: NEW_TABLES_50, 51: NEW_TABLES_51,
-              52: NEW_TABLES_52, 53: NEW_TABLES_53, 54: NEW_TABLES_54}
+              52: NEW_TABLES_52, 53: NEW_TABLES_53, 54: NEW_TABLES_54, 55: NEW_TABLES_55}
 
 
 def added_columns(version):
@@ -260,7 +265,7 @@ def _connect(path, *, writable=False):
 
 def _schema(connection, version):
     if type(version) is not int or version not in SCHEMAS:
-        raise Refused('only exact schema38 or schema42 through schema54 is supported')
+        raise Refused('only exact schema38 or schema42 through schema55 is supported')
     objects = connection.execute('SELECT type,name,tbl_name,sql FROM sqlite_schema ORDER BY type,name').fetchall()
     if _sha(json.dumps(objects, ensure_ascii=True, separators=(',', ':')).encode()) != SCHEMAS[version]:
         raise Refused('schema SQL differs from pinned released schema')

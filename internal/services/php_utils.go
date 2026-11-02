@@ -2,6 +2,8 @@ package services
 
 import (
 	"os/exec"
+
+	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 // reloadPHPFPM is a shared utility to reload PHP-FPM. A variable so tests can
@@ -15,4 +17,16 @@ var reloadPHPFPM = func(version string) error {
 	// single `php-fpm` on Arch (php_layout.go).
 	cmd := exec.Command("systemctl", "reload", phpLayoutFor(version).unit())
 	return cmd.Run()
+}
+
+// reloadPHPFPMIfRunning reloads a PHP-FPM unless systemd says it is not
+// running: a stopped PHP-FPM reads its pools when it next starts. A site
+// moving off a version stopped in a security emergency (D-043) must not fail
+// because that version cannot be reloaded (a masked unit refuses it). An
+// unknown answer still reloads, as before.
+func reloadPHPFPMIfRunning(version string) error {
+	if phpFPMActive(version) == transport.SiteFileServiceActiveFalse {
+		return nil
+	}
+	return reloadPHPFPM(version)
 }

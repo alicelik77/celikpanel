@@ -175,6 +175,14 @@ func (p *Panel) buildVhostRequest(
 		return applyVhostRPCRequest{}, fmt.Errorf("read the subscription's suspension: %w", err)
 	}
 	req.Suspended = suspended
+	// alpha.117 (D-043): a site whose runtime is under a security emergency
+	// renders the maintenance page, in every flow that re-renders. Kept
+	// apart from Suspended so neither overwrites the other's restore.
+	maintenance, err := siteUnderEmergencyMaintenance(ctx, p.db.GetDB(), domainID)
+	if err != nil {
+		return applyVhostRPCRequest{}, fmt.Errorf("read the site's security emergency: %w", err)
+	}
+	req.Maintenance = maintenance
 
 	if appPort != nil {
 		req.AppPort = *appPort

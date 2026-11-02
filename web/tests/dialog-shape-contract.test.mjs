@@ -196,6 +196,8 @@ test('every dialogue in the product is the shared one', () => {
     'MailSetupDialog.tsx': 1,
     // 2 Nov 2026: suspending or resuming the services of an account or a subscription.
     'SuspensionDialog.tsx': 1,
+    // alpha.117 (D-043): the serious confirmation of a security emergency step.
+    'SecurityEmergency.tsx': 1,
   });
 });
 

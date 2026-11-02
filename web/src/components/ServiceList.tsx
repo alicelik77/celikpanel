@@ -28,6 +28,7 @@ import { OpenWebmailLink, RoundcubeUpdateDialog, RoundcubeUpdateProgress, useRou
 import { supportFor, useSupportTable, type SupportComponent } from '../lib/supportTable';
 import { SupportBadge, supportConfirmation } from './SupportMark';
 import { NodePatches } from './NodePatches';
+import { SecurityEmergencySection } from './SecurityEmergency';
 import { InstallPreviewNotes, installPreviewAckKey, installPreviewGate } from './InstallPreviewNotes';
 import { VendorLaneDialog } from './VendorLaneDialog';
 import { LANE_FOR_COMPONENT } from '../lib/vendorLane';
@@ -2268,6 +2269,12 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                         />
                                                         </div>
                                                     )}
+                                                    {/* alpha.117 (D-043): a database engine's security emergency, closed until opened. */}
+                                                    {(s.id === 'mariadb' || s.id === 'postgresql') && s.is_installed === true && (
+                                                        <div className="basis-full xl:col-span-full">
+                                                            <SecurityEmergencySection component={s.id} name={componentName(s, t)} versions={[]} />
+                                                        </div>
+                                                    )}
                                                 </li>
                                             );
                                         })}
@@ -3828,6 +3835,14 @@ function VersionDrawer({
                         </>
                     )}
                 </div>
+            )}
+            {/* alpha.117 (D-043): the security emergency of a version. */}
+            {(service.id === 'php-fpm' || service.id === 'node') && instances.some((i) => i.managed) && (
+                <SecurityEmergencySection
+                    component={service.id === 'php-fpm' ? 'php' : 'node'}
+                    name={componentName(service, t)}
+                    versions={instances.filter((i) => i.managed).map((i) => i.version)}
+                />
             )}
             {repoAction && repo?.lane && (
                 <VendorLaneDialog

@@ -41,6 +41,9 @@ function lazyNamed<TModule, TKey extends keyof TModule>(
   }));
 }
 
+// alpha.117 (D-043): a customer's security notice; screen copy, so it loads
+// beside the screens and shows only once their copy is here.
+const SecurityNoticeBanner = lazyNamed(() => import('./components/SecurityNoticeBanner'), 'SecurityNoticeBanner');
 const SystemUpdateOperationProvider = lazyNamed(() => import('./components/SystemUpdateOperation'), 'SystemUpdateOperationProvider');
 const ServerSetupGate = lazyNamed(() => import('./components/ServerSetupGate'), 'ServerSetupGate');
 const ServerSetup = lazyNamed(() => import('./components/ServerSetup'), 'ServerSetup');
@@ -296,7 +299,7 @@ function ScreenCopyGate({ children }: { children: ReactNode }) {
   const { screensReady, screensFailed, t } = useI18n();
   if (screensFailed) return <PageLoadFailed message={t('app.pageLoadFailed')} reloadLabel={t('app.reload')} />;
   if (!screensReady) return <PageLoading />;
-  return <>{children}</>;
+  return <><SecurityNoticeBanner />{children}</>;
 }
 
 function PageLoadFailed({ message, reloadLabel }: { message: string; reloadLabel: string }) {

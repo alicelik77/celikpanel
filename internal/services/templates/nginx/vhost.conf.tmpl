@@ -364,7 +364,19 @@ server {
     }
 {{- end}}
 
-{{- if .Suspended}}
+{{- define "maintenance-site"}}
+    # celikpanel-maintenance: a security emergency on this site's runtime / güvenlik acil durumu
+    add_header Retry-After 3600 always;
+    add_header Cache-Control "no-store" always;
+
+    location / {
+        default_type text/html;
+        charset utf-8;
+        return 503 '<!doctype html><html><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>Under maintenance</title></head><body style="font-family:sans-serif;max-width:40em;margin:4em auto;padding:0 1em"><h1>This site is temporarily under maintenance</h1><p>Bu site geçici olarak bakımdadır.</p><p>Please try again later. / Lütfen daha sonra yeniden deneyin.</p></body></html>';
+    }
+{{- end}}
+
+{{- if or .Suspended .Maintenance}}
 server {
     listen 80;
     listen [::]:80;
@@ -373,7 +385,7 @@ server {
     access_log /var/log/nginx/{{.Domain}}-access.log;
     error_log /var/log/nginx/{{.Domain}}-error.log;
 {{template "panel-include" .}}
-{{template "suspended-site" .}}
+{{if .Suspended}}{{template "suspended-site" .}}{{else}}{{template "maintenance-site" .}}{{end}}
 }
 {{- if and (ne .SSLType "none") .SSLCert}}
 
@@ -385,7 +397,7 @@ server {
     access_log /var/log/nginx/{{.Domain}}-access.log;
     error_log /var/log/nginx/{{.Domain}}-error.log;
 {{template "panel-include" .}}
-{{template "suspended-site" .}}
+{{if .Suspended}}{{template "suspended-site" .}}{{else}}{{template "maintenance-site" .}}{{end}}
 }
 {{- end}}
 {{- else if eq .ProjectType "forwarding"}}

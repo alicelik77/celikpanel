@@ -238,6 +238,9 @@ const (
 	accountMailInvitation   accountMailKind = "invitation"
 	accountMailVerify       accountMailKind = "email_verify"
 	accountMailEmailChanged accountMailKind = "email_changed"
+	// accountMailSecurityNotice (alpha.117, D-043): a security emergency
+	// notice; its subject and body are written by security_emergency_notices.go.
+	accountMailSecurityNotice accountMailKind = "security_notice"
 )
 
 type accountMailContent struct {
@@ -246,6 +249,8 @@ type accountMailContent struct {
 	username string
 	inviter  string
 	link     string
+	subject  string
+	body     string
 }
 
 // accountMailLang keeps only the two languages the panel ships.
@@ -263,6 +268,8 @@ func accountMailText(content accountMailContent, host string) (string, string) {
 	tr := content.lang == "tr"
 	user, inviter, link := content.username, content.inviter, content.link
 	switch content.kind {
+	case accountMailSecurityNotice:
+		return content.subject, content.body
 	case accountMailReset:
 		if tr {
 			return "CelikPanel parolanızı sıfırlayın", strings.Join([]string{
