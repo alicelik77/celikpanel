@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -366,5 +367,23 @@ func TestFileAccessRevokeCredentialsRemovesPasswordAndKeys(t *testing.T) {
 	host.commands = nil
 	if again := fileAccessApply(t, transport.ApplyFileAccessRequest{Site: exampleSite, Enabled: false, RevokeCredentials: true}); !again.Applied || host.index("usermod -p * example_com") < 0 {
 		t.Fatalf("locked password kept: %+v %v", again, host.commands)
+	}
+}
+
+func TestFileAccessKeysDirLetsTheAccountReachItsOwnFile(t *testing.T) {
+	dir := t.TempDir()
+	keys := filepath.Join(dir, "keys")
+	if err := os.Mkdir(keys, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := prepareFileAccessKeysDir(keys); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(keys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := info.Mode().Perm(); got != 0o711 {
+		t.Fatalf("keys directory mode %o, want 711 so sshd can read the file as the account", got)
 	}
 }

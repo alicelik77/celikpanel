@@ -66,6 +66,11 @@ var (
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			return err
 		}
+		if filepath.Dir(path) == fileaccess.KeysDir {
+			if err := prepareFileAccessKeysDir(fileaccess.KeysDir); err != nil {
+				return err
+			}
+		}
 		return secureWriteConfig(path, content, mode)
 	}
 	fileAccessRemoveFile = func(path string) error {
@@ -1255,4 +1260,20 @@ func sortedFileAccessNames(accounts []fileAccessAccount) []string {
 	}
 	sort.Strings(names)
 	return names
+}
+
+// prepareFileAccessKeysDir makes the keys directory root-owned and 0711.
+// sshd reads AuthorizedKeysFile as the account itself, so the account must be
+// able to pass through the directory; 0711 lets it open its own file by name
+// without listing the others. The Agent runs with group celikpanel and umask
+// 027, which made the directory 0750 root:celikpanel and key login
+// impossible (lab run 1 of alpha.117).
+func prepareFileAccessKeysDir(dir string) error {
+	if err := os.Chmod(dir, 0o711); err != nil {
+		return err
+	}
+	if os.Geteuid() == 0 {
+		return os.Chown(dir, 0, 0)
+	}
+	return nil
 }

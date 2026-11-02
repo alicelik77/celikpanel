@@ -60,11 +60,13 @@ func suspensionDatabaseSQL(engine, username string) (suspensionDatabaseStatement
 			return suspensionDatabaseStatements{}, fmt.Errorf("invalid database user name: %w", err)
 		}
 		// Panel-created MariaDB accounts are 'name'@'localhost'. MariaDB
-		// (10.4+) keeps the lock in mysql.global_priv as account_locked.
+		// (10.4+) keeps the lock in mysql.global_priv as account_locked;
+		// JSON_VALUE answers 'true' on some versions and '1' on others
+		// (11.8 on Debian 13, lab run 1 of alpha.117), so both mean locked.
 		// KILL ... USER 'name' (host %) ends every session of that name.
 		return suspensionDatabaseStatements{
 			inspect: "SELECT CONCAT('state=', CASE WHEN COUNT(*) = 0 THEN 'absent' " +
-				"WHEN MAX(JSON_VALUE(Priv, '$.account_locked')) = 'true' THEN 'locked' ELSE 'open' END) " +
+				"WHEN MAX(JSON_VALUE(Priv, '$.account_locked')) IN ('true', '1') THEN 'locked' ELSE 'open' END) " +
 				"FROM mysql.global_priv WHERE User = " + literal + " AND Host = 'localhost';",
 			lock:       "ALTER USER " + literal + "@'localhost' ACCOUNT LOCK;",
 			disconnect: "KILL CONNECTION USER " + literal + ";",

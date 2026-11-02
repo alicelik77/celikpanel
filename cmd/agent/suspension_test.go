@@ -509,7 +509,7 @@ func TestSuspensionDatabaseSQL(t *testing.T) {
 		t.Fatal(err)
 	}
 	wantMySQL := suspensionDatabaseStatements{
-		inspect:    "SELECT CONCAT('state=', CASE WHEN COUNT(*) = 0 THEN 'absent' WHEN MAX(JSON_VALUE(Priv, '$.account_locked')) = 'true' THEN 'locked' ELSE 'open' END) FROM mysql.global_priv WHERE User = 'shop_user' AND Host = 'localhost';",
+		inspect:    "SELECT CONCAT('state=', CASE WHEN COUNT(*) = 0 THEN 'absent' WHEN MAX(JSON_VALUE(Priv, '$.account_locked')) IN ('true', '1') THEN 'locked' ELSE 'open' END) FROM mysql.global_priv WHERE User = 'shop_user' AND Host = 'localhost';",
 		lock:       "ALTER USER 'shop_user'@'localhost' ACCOUNT LOCK;",
 		disconnect: "KILL CONNECTION USER 'shop_user';",
 		unlock:     "ALTER USER 'shop_user'@'localhost' ACCOUNT UNLOCK;",
