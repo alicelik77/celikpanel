@@ -270,10 +270,10 @@ class PopulatedDatabaseTests(unittest.TestCase):
 
     def test_actual_39_through_54_migrations_add_tables_and_null_columns_and_change_no_old_row(self):
         # alpha.117 (52-54): eleven new tables; NULL subscriptions.starts_at,
-        # ends_at, suspend_reason and suspended_at in every old row (no old
-        # row sets expires_at). 52 also writes rights rows: each plan-less
-        # customer subscription becomes Custom; every customer here already
-        # has a subscription, so no 'Unlimited' one and no notice is added.
+        # ends_at, suspend_reason and suspended_at in every old row. 52 also
+        # writes rights rows: each plan-less customer subscription becomes
+        # Custom; every customer here already has a subscription, so no
+        # 'Unlimited' one and no notice is added (see the next test).
         self.assertEqual(len(self.sql), 54, 'a migration after 54 needs its own pin before a candidate carries it')
         result = self.build()
         connection = sqlite3.connect(result['database'])
@@ -289,6 +289,7 @@ class PopulatedDatabaseTests(unittest.TestCase):
         self.assertEqual(proof['old_rows_missing_or_changed'], 0)
         self.assertEqual(proof['tables']['schema_migrations']['added'], 16)
         self.assertEqual(proof['tables']['subscriptions']['added'], 0)
+        self.assertEqual(proof['unlimited_subscriptions_52'], 0)
         self.assertEqual(p.NEW_TABLES[54] - p.NEW_TABLES[51], {
             'rights_sets', 'rights_set_items', 'reseller_plans', 'reseller_plan_bindings', 'rights_notices',
             'subscription_suspensions', 'reseller_suspensions', 'suspension_operations', 'suspension_effects',
@@ -307,6 +308,55 @@ class PopulatedDatabaseTests(unittest.TestCase):
         for version in (55, '54', True):
             with self.subTest(version=version), self.assertRaises(p.Refused):
                 self.verify(result, version)
+
+    def migrated_54_with_unlimited_customer(self, tamper=None):
+        # Old data 52 acts on: customer 91 without a subscription, its team
+        # member 92 (gets nothing), and subscription 83 with the unused
+        # 001 expires_at set to a past date.
+        self.change_source("INSERT INTO users(id,username,password_hash,email,role,created_at) "
+                           "VALUES(91,'no-subscription','!','none@example.test','customer','1999-01-01')")
+        self.change_source("INSERT INTO users(id,username,password_hash,email,role,parent_id,account_type,created_at) "
+                           "VALUES(92,'member','!','member@example.test','customer',91,'additional_user','1999-01-01')")
+        self.change_source("UPDATE subscriptions SET expires_at='2001-01-01 00:00:00' WHERE id=83")
+        result = self.build()
+        connection = sqlite3.connect(result['database'])
+        connection.execute('PRAGMA foreign_keys=ON')
+        apply(connection, self.sql[38:54])
+        if tamper:
+            connection.execute(tamper)
+            connection.commit()
+        connection.close()
+        return result
+
+    def test_migration52_unlimited_subscription_and_unused_expiry_are_verified_exactly(self):
+        # K4: the customer without a subscription gets one 'Unlimited'
+        # subscription and a notice; the subscriptions counter advances to
+        # it. expires_at is not copied, so ends_at stays NULL (no suspension
+        # at the first start after the update).
+        result = self.migrated_54_with_unlimited_customer()
+        proof = self.verify(result, 54)
+        self.assertEqual(proof['old_rows_missing_or_changed'], 0)
+        self.assertEqual(proof['unlimited_subscriptions_52'], 1)
+        self.assertEqual(proof['tables']['subscriptions']['added'], 1)
+        connection = sqlite3.connect(Path(result['database']).as_uri() + '?mode=ro&immutable=1', uri=True)
+        self.assertEqual(connection.execute('SELECT expires_at,ends_at FROM subscriptions WHERE id=83').fetchone(),
+                         ('2001-01-01 00:00:00', None))
+        self.assertEqual(connection.execute("SELECT owner_id,name FROM subscriptions WHERE owner_id IN (91,92)").fetchall(),
+                         [(91, 'Unlimited')])
+        connection.close()
+
+    def test_migration52_transform_is_the_only_accepted_change(self):
+        for tamper in ("UPDATE subscriptions SET max_domains=1 WHERE name='Unlimited'",
+                       "INSERT INTO subscriptions(owner_id,name) VALUES(81,'second')",
+                       "INSERT INTO subscriptions(owner_id,name,status,starts_at) VALUES(81,'Unlimited','active','2000-01-01 00:00:00')",
+                       "DELETE FROM rights_notices WHERE kind='unlimited_after_migration'",
+                       "UPDATE sqlite_sequence SET seq=seq+5 WHERE name='subscriptions'",
+                       "UPDATE subscriptions SET ends_at=expires_at WHERE id=83"):
+            with self.subTest(tamper=tamper):
+                self.setUp()
+                result = self.migrated_54_with_unlimited_customer(tamper)
+                with self.assertRaises(p.Refused):
+                    self.verify(result, 54)
 
     def test_schema42_copy_is_not_accepted_as_schema43(self):
         result = self.build()

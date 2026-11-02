@@ -11,9 +11,9 @@ import (
 
 // Migration 52 (alpha.117, D-042, docs/PLANS-AND-RIGHTS.md section 9): the
 // rights tables, the subscription lifecycle columns and the migration of
-// every existing account shape. No existing value changes; the only new rows
-// outside the new tables are the Unlimited subscriptions of customers that
-// had none. The release before it refuses a ledger that carries entry 52; a
+// every existing account shape. No existing value changes (expires_at is not
+// copied into ends_at); the only new rows outside the new tables are the
+// Unlimited subscriptions of customers that had none. The release before it refuses a ledger that carries entry 52; a
 // return to it is the pre-update snapshot restore, as for every migration.
 const rightsSetsMigrationVersion = 52
 
@@ -200,11 +200,17 @@ func TestMigration52MapsEveryExistingAccountShape(t *testing.T) {
 	if err := raw.QueryRow(`SELECT max_domains FROM reseller_pools WHERE reseller_id = 20`).Scan(&poolDomains); err != nil || poolDomains != 50 {
 		t.Fatalf("pool changed: %d %v", poolDomains, err)
 	}
-	// Lifecycle: the unused 001 expiry is copied into ends_at; nothing else
-	// of the existing rows changes.
-	var endsAt sql.NullString
-	if err := raw.QueryRow(`SELECT ends_at FROM subscriptions WHERE id = 310`).Scan(&endsAt); err != nil || endsAt.String != "2030-01-01T00:00:00Z" {
-		t.Fatalf("ends_at = %v, %v", endsAt, err)
+	// Lifecycle: the unused 001 expiry is not copied; every existing
+	// subscription starts with no end date and the four new columns NULL,
+	// so the first start after the update suspends nothing.
+	var lifecycleSet int
+	if err := raw.QueryRow(`SELECT COUNT(*) FROM subscriptions WHERE id IN (100, 300, 310, 330)
+		AND (starts_at IS NOT NULL OR ends_at IS NOT NULL OR suspend_reason IS NOT NULL OR suspended_at IS NOT NULL)`).Scan(&lifecycleSet); err != nil || lifecycleSet != 0 {
+		t.Fatalf("existing subscriptions with a lifecycle value = %d, %v", lifecycleSet, err)
+	}
+	var expiresAt sql.NullString
+	if err := raw.QueryRow(`SELECT expires_at FROM subscriptions WHERE id = 310`).Scan(&expiresAt); err != nil || expiresAt.String != "2030-01-01T00:00:00Z" {
+		t.Fatalf("expires_at = %v, %v", expiresAt, err)
 	}
 	after := dumpRows(t, raw, "subscriptions WHERE id IN (100, 300, 310, 330)", oldColumns)
 	if !strings.HasPrefix(subscriptionsBefore, after) || after == "" {

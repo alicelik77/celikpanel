@@ -49,12 +49,12 @@ MIGRATIONS = {
     # alpha.117: 52 rights sets (five tables, NULL subscriptions.starts_at,
     # ends_at, suspend_reason and suspended_at, four triggers; it also writes
     # rights_sets rows for existing plans, plan-less subscriptions and pooled
-    # resellers, copies a set expires_at into ends_at, and gives a customer
-    # without a subscription a new 'Unlimited' one); 53 suspension (five
-    # tables); 54 transfers (one table, one trigger).
-    52: '2b791b775f07d0823bddb1a9449a8ff7ddcd7e3cdc81903445dac0ea0ca365c0',
-    53: '52f42f2d5b9e0f399b0069961dc90328a9099543de4f2803af3119c21e6be113',
-    54: '93ae8c0a7f5e2cd9c7d30b7bffc4b9f7c7a08cae6d7f3bef4d44907705e1ed88',
+    # resellers, and gives a customer without a subscription a new
+    # 'Unlimited' one, verified by _unlimited_subscriptions_52); 53
+    # suspension (five tables); 54 transfers (one table, one trigger).
+    52: '60a76230c1142db0e2e6ad715400101a5f40ced3ac3a25bd80c5389102fb8561',
+    53: 'e2966efa9fb98e5e6bd4e5bcc1372edb2e857222ed66c1dab0193704cb38aef1',
+    54: '921c62f4c73b21071d91f263fca4a3ca93f9857540db3dd446fb77d1ec63d99b',
 }
 # Exact sqlite_schema SQL from the released SQL, including triggers and indexes.
 # Tests reconstruct it from unmodified migration bytes, never a downgraded ledger.
@@ -97,9 +97,8 @@ NEW_TABLES_53 = NEW_TABLES_52 | {'subscription_suspensions', 'reseller_suspensio
                                  'suspension_effects', 'suspension_before_images'}
 NEW_TABLES_54 = NEW_TABLES_53 | {'subscription_transfers'}
 # Columns a pinned schema added to an old table, left out of the old-row
-# proof and required to be NULL in every old row. (52 copies a set
-# subscriptions.expires_at into ends_at; an old row with expires_at set is
-# therefore refused, not silently accepted.)
+# proof and required to be NULL in every old row (52 leaves ends_at NULL even
+# where the unused expires_at is set).
 ADDED_COLUMNS = {45: {'audit_logs': ('details',), 'sites': ('app_run_as',)},
                  46: {'database_servers': ('cluster',)},
                  48: {'sessions': ('impersonator_id',), 'audit_logs': ('acting_as',)},
@@ -330,6 +329,61 @@ def _retained(before, after):
     return changes
 
 
+def _unlimited_subscriptions_52(connection, tables):
+    """Migration 52, step 3 (K4): each old customer account without a
+    subscription gets exactly one 'Unlimited' subscription and one notice.
+
+    Those rows are the only rows 52 adds to an old table, and the only old
+    row they change is sqlite_sequence's 'subscriptions' counter. Every
+    other added subscription, and any other counter change, stays refused.
+    Returns the expected old-row evidence with that one counter advanced,
+    and the number of such subscriptions.
+    """
+    old_subscriptions = {rowid for rowid, _ in tables['subscriptions']['rows']}
+    old_users = {rowid for rowid, _ in tables['users']['rows']}
+    subscriptions = connection.execute(
+        'SELECT rowid,owner_id,name,plan_id,max_domains,max_databases,max_email_accounts,disk_quota_mb,'
+        'bandwidth_quota_mb,status,expires_at,starts_at,ends_at,suspend_reason,suspended_at '
+        'FROM subscriptions ORDER BY rowid').fetchall()
+    old_owners = {row[1] for row in subscriptions if row[0] in old_subscriptions}
+    eligible = {}
+    for rowid, username, role, account_type in connection.execute(
+            'SELECT rowid,username,role,account_type FROM users ORDER BY rowid'):
+        if (rowid in old_users and role == 'customer' and (account_type or 'account') == 'account'
+                and rowid not in old_owners):
+            eligible[rowid] = username
+    added = [row for row in subscriptions if row[0] not in old_subscriptions]
+    if sorted(row[1] for row in added) != sorted(eligible):
+        raise Refused('migration52 Unlimited subscriptions differ from old customers without one')
+    for row in added:
+        if (row[2:11] != ('Unlimited', None, 0, 0, 0, 0, 0, 'active', None) or row[12:] != (None, None, None)
+                or not isinstance(row[11], str)
+                or not re.fullmatch(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}', row[11])):
+            raise Refused('migration52 Unlimited subscription differs')
+    notices = connection.execute(
+        "SELECT user_id,subject,detail FROM rights_notices WHERE kind='unlimited_after_migration' ORDER BY user_id").fetchall()
+    if notices != sorted((user, 'customer', name) for user, name in eligible.items()):
+        raise Refused('migration52 Unlimited notices differ')
+    if not added:
+        return tables, 0
+    ids = [row[0] for row in added]
+    if ids != list(range(ids[0], ids[0] + len(ids))) or ids[0] <= max(old_subscriptions, default=0):
+        raise Refused('migration52 Unlimited subscription ids are not the next ones')
+    counter = connection.execute("SELECT rowid,name,seq FROM sqlite_sequence WHERE name='subscriptions'").fetchall()
+    if len(counter) != 1 or counter[0][2] != ids[-1]:
+        raise Refused('migration52 subscriptions counter differs')
+    sequence = tables['sqlite_sequence']
+    old_rows = dict(sequence['rows'])
+    rowid = counter[0][0]
+    if rowid not in old_rows:
+        return tables, len(added)
+    if (sequence['columns'] != ['name', 'seq']
+            or old_rows[rowid] != _row_digest((rowid, 'subscriptions', ids[0] - 1))):
+        raise Refused('old subscriptions counter differs from the one migration52 advanced')
+    rows = [[r, _row_digest((rowid, 'subscriptions', ids[-1])) if r == rowid else d] for r, d in sequence['rows']]
+    return dict(tables, sqlite_sequence=dict(sequence, rows=rows)), len(added)
+
+
 def _names(nonce):
     main = 'fixture-' + nonce + '.example.test'
     return {'main': main, 'child': 'app.' + main, 'alias': 'alias-' + nonce + '.example.test',
@@ -536,8 +590,11 @@ def verify_copy(database: Path, manifest: dict, *, manifest_sha256: str, expecte
             if proof['columns'] != columns:
                 raise Refused('every old column must be included in order')
         _relations(connection, admission['nonce'], manifest['fixture_ids'], expected_version)
-        projected = _projections(connection, tables)
-        changes = _retained(tables, projected)
+        expected, unlimited = tables, 0
+        if expected_version >= 52:
+            expected, unlimited = _unlimited_subscriptions_52(connection, tables)
+        projected = _projections(connection, expected)
+        changes = _retained(expected, projected)
         if migrated:
             for rowid, _ in tables['domains']['rows']:
                 if connection.execute('SELECT dns_management,dns_remote_connection_id FROM domains WHERE rowid=?', (rowid,)).fetchone() != ('local', ''):
@@ -557,6 +614,6 @@ def verify_copy(database: Path, manifest: dict, *, manifest_sha256: str, expecte
             'table_count': len(actual_tables), 'old_table_count': 55, 'old_row_count': total,
             'old_rows_missing_or_changed': 0, 'tables': changes, 'excluded_tables': [],
             'fixture_domain_count': 2, 'fixture_alias_count': 1, 'fixture_hostname_reservations': 6,
-            'domain_defaults_40_42_verified': migrated,
+            'domain_defaults_40_42_verified': migrated, 'unlimited_subscriptions_52': unlimited,
             'database_sha256': _sha(raw), 'manifest_sha256': manifest_sha256,
             'global_bytes_equal_to_populated': _sha(raw) == manifest['populated_sha256']}
