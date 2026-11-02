@@ -52,6 +52,7 @@ import type { OsUpdatesScreenKey } from './screens/osUpdates/en';
 import type { PanelPortScreenKey } from './screens/panelPort/en';
 import type { SetupOwnerScreenKey } from './screens/setupOwner/en';
 import type { SetupPublishingScreenKey } from './screens/setupPublishing/en';
+import type { SuspensionScreenKey } from './screens/suspension/en';
 
 export const en = {
     // ---- alpha.108 tools ----
@@ -543,5 +544,6 @@ export type ScreenKey =
     | OsUpdatesScreenKey
     | PanelPortScreenKey
     | SetupOwnerScreenKey
-    | SetupPublishingScreenKey;
+    | SetupPublishingScreenKey
+    | SuspensionScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

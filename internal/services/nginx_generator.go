@@ -126,6 +126,9 @@ type VhostData struct {
 	// the rendered text is exactly what it was before they existed.
 	ProtectedDirs []SiteProtectedDir
 	Redirects     []SiteRedirect
+	// Suspended renders the "this site is suspended" vhost (alpha.117):
+	// 503 for every request, certificate validation kept, no site content.
+	Suspended bool
 }
 
 // Render executes the vhost template over prepared data, deriving the

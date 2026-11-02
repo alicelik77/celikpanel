@@ -168,6 +168,14 @@ func (p *Panel) buildVhostRequest(
 	}
 	req.ProtectedDirs, req.Redirects = siteFeatureRequestFields(features)
 
+	// alpha.117: a suspended subscription's site renders the suspended page,
+	// in every flow that re-renders (startup batch, certificates, settings).
+	suspended, err := p.subscriptionSuspended(ctx, subscriptionID)
+	if err != nil {
+		return applyVhostRPCRequest{}, fmt.Errorf("read the subscription's suspension: %w", err)
+	}
+	req.Suspended = suspended
+
 	if appPort != nil {
 		req.AppPort = *appPort
 	}

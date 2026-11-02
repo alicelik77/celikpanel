@@ -213,6 +213,13 @@ func (p *Panel) handleMe(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	suspension, err := p.accountServiceSuspension(r.Context(), caller)
+	if err != nil {
+		writeAuthStatusUnavailable(w)
+		return
+	}
+	response.Suspended = suspension
+
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(response)
 }

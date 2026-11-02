@@ -125,6 +125,7 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/store/":                gateAccount,
 	"/api/v1/subscriptions":         gateAccount, // ownership-filtered list
 	"/api/v1/subscriptions/":        gateAccount, // ownership-checked entitlements
+	"/api/v1/suspensions/deletable": gateAccount, // admin + reseller (handler); customers refused
 	"/api/v1/system-databases":      gateAdmin,
 	"/api/v1/system-databases/":     gateAdmin,
 	"/api/v1/system/check":          gateAdmin,

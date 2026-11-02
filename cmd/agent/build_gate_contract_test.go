@@ -41,6 +41,31 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			// alpha.117: subscription suspension, one native resource per call.
+			name: "SetSiteAccountSuspensionV1",
+			run: func(expected string) string {
+				var response transport.SetSiteAccountSuspensionResponse
+				_ = agent.SetSiteAccountSuspensionV1(&transport.SetSiteAccountSuspensionRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			name: "SetMailDomainSuspensionV1",
+			run: func(expected string) string {
+				var response transport.SetMailDomainSuspensionResponse
+				_ = agent.SetMailDomainSuspensionV1(&transport.SetMailDomainSuspensionRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			name: "SetDatabaseUserSuspensionV1",
+			run: func(expected string) string {
+				var response transport.SetDatabaseUserSuspensionResponse
+				_ = agent.SetDatabaseUserSuspensionV1(&transport.SetDatabaseUserSuspensionRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
 			// alpha.113: the default HTTPS server's "Try again".
 			name: "ReconcileDefaultHTTPSServerV1",
 			run: func(expected string) string {

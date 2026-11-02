@@ -49,6 +49,41 @@ export interface CurrentUser {
         team_members: boolean;
         [key: string]: unknown;
     };
+    /**
+     * Present when this account's services are suspended (a customer whose
+     * subscriptions are all suspended, its team members, a suspended reseller):
+     * the pages are not drawn, a plain screen names who to contact.
+     */
+    suspended?: SuspendedAccount;
+}
+
+/** What `GET /auth/me` says about an account whose services are suspended. */
+export interface SuspendedAccount {
+    kind: 'subscription' | 'reseller';
+    reason?: string;
+    since?: string;
+    contact: { kind: 'reseller' | 'administrator' | 'none'; name?: string; email?: string };
+}
+
+// parseSuspended reads that field fail-closed: a `suspended` field that is not
+// the contract still keeps the pages away (an unreadable contact is "none").
+// parseSuspended alanı güvenli tarafta okur: sözleşme olmayan bir `suspended`
+// alanı da sayfaları uzak tutar (okunamayan iletişim "yok" sayılır).
+export function parseSuspended(raw: unknown): SuspendedAccount | undefined {
+    if (raw === undefined || raw === null) return undefined;
+    const record = isRecord(raw) ? raw : {};
+    const contact = isRecord(record.contact) ? record.contact : {};
+    const text = (value: unknown) => (typeof value === 'string' && value ? value : undefined);
+    return {
+        kind: record.kind === 'reseller' ? 'reseller' : 'subscription',
+        reason: text(record.reason),
+        since: text(record.since),
+        contact: {
+            kind: contact.kind === 'reseller' || contact.kind === 'administrator' ? contact.kind : 'none',
+            name: text(contact.name),
+            email: text(contact.email),
+        },
+    };
 }
 
 export const TEAM_CAPABILITIES = [
@@ -355,6 +390,7 @@ export function parseCurrentUser(raw: unknown): CurrentUser {
     const rawFeatures = raw.features === undefined ? {} : raw.features;
     if (!isRecord(rawFeatures)) unsupportedAuthIdentity();
 
+    const suspended = parseSuspended(raw.suspended);
     return {
         username,
         role,
@@ -369,6 +405,7 @@ export function parseCurrentUser(raw: unknown): CurrentUser {
                 && accountType === 'account'
                 && effectiveRole === 'customer',
         },
+        ...(suspended ? { suspended } : {}),
     };
 }
 

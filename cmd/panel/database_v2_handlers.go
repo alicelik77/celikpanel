@@ -954,6 +954,11 @@ func (p *Panel) handleCreateDatabaseV2User(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	subscriptionID := server.SubscriptionID
+	// alpha.117: a new database user of a suspended subscription would not be
+	// locked; nothing new is added until it is resumed.
+	if p.refuseSuspendedTenantSubscription(w, ctx, subscriptionID) {
+		return
+	}
 
 	// The account name is resolved before the driver, so a name no engine can
 	// hold is refused as a 400 rather than becoming an engine-side 500.

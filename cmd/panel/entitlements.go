@@ -145,6 +145,10 @@ func (p *Panel) handleSubscriptionEntitlements(w http.ResponseWriter, r *http.Re
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "private, no-store")
 	w.Header().Set("Pragma", "no-cache")
+	if id, ok := parseSubscriptionSuspensionPath(r.URL.Path); ok {
+		p.handleSubscriptionSuspension(w, r, id)
+		return
+	}
 	path, ok := parseEntitlementPath(r.URL.Path)
 	if !ok {
 		http.NotFound(w, r)

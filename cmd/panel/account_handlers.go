@@ -185,6 +185,8 @@ func (p *Panel) handleUserByID(w http.ResponseWriter, r *http.Request) {
 		p.handleImpersonate(w, r, c, target)
 	case action == "plan":
 		p.handleAssignPlan(w, r, c, target)
+	case action == "suspension":
+		p.handleUserSuspension(w, r, c, target)
 	case action == "pool":
 		p.handleResellerPool(w, r, c, target.ID, target.Role, target.Username)
 	case action == "" && r.Method == http.MethodPut:
