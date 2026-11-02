@@ -1,8 +1,10 @@
 -- 052 (alpha.117, D-042, docs/PLANS-AND-RIGHTS.md): plans, rights and the
--- room to play. Additive only: new tables, new nullable columns, no column is
--- dropped and no existing value is changed. The release before this one
--- refuses a ledger that carries entry 52; going back is the pre-update
--- snapshot restore, as for every migration.
+-- room to play. New tables and new NULL columns; no column is dropped and
+-- no existing value is changed. The only rows added to an old table are the
+-- 'Unlimited' subscriptions of step 3 (with their sqlite_sequence counter).
+-- The release before this one refuses a ledger that carries entry 52; going
+-- back is the pre-update snapshot restore, as for every migration, and it
+-- drops everything written after the update.
 --
 -- A rights set has three parts. Quantities stay where the quota checks
 -- already read them (service_plans.max_*, subscriptions.max_*,
@@ -85,13 +87,15 @@ CREATE INDEX idx_rights_notices_user ON rights_notices(user_id);
 -- keeps its 001 values (active, suspended, expired). ends_at NULL = never.
 -- starts_at NULL on an older row means created_at. suspend_reason is one of
 -- manual, expired, payment, security (validated in code). The 001 column
--- expires_at was never read or written by the Panel; its value is copied
--- once into ends_at and it stays unused.
+-- expires_at was never read or written by the Panel and is not copied: a
+-- value in it never ended anything, and as ends_at it would suspend that
+-- subscription's services at the first start after the update. Every
+-- existing subscription starts with no end date (K7) and expires_at stays
+-- unused.
 ALTER TABLE subscriptions ADD COLUMN starts_at TEXT;
 ALTER TABLE subscriptions ADD COLUMN ends_at TEXT;
 ALTER TABLE subscriptions ADD COLUMN suspend_reason TEXT;
 ALTER TABLE subscriptions ADD COLUMN suspended_at TEXT;
-UPDATE subscriptions SET ends_at = expires_at WHERE expires_at IS NOT NULL AND ends_at IS NULL;
 
 CREATE TRIGGER rights_sets_follow_subscription
 AFTER DELETE ON subscriptions
