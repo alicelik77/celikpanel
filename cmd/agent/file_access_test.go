@@ -231,6 +231,11 @@ func TestFileAccessEnableConfinesBeforeTheAccountCanSignIn(t *testing.T) {
 
 func TestFileAccessSSHBuildsTheJailBeforeTheShell(t *testing.T) {
 	host := installFileAccessFakeHost(t)
+	// A site account made since alpha.117 has no login shell until SSH is
+	// granted, so the grant has to set one.
+	account := host.accounts["example_com"]
+	account.Shell = fileaccess.NoLoginShell
+	host.accounts["example_com"] = account
 	response := fileAccessApply(t, transport.ApplyFileAccessRequest{Site: exampleSite, Enabled: true, SSH: true})
 	if !response.Applied {
 		t.Fatalf("response %+v", response)
