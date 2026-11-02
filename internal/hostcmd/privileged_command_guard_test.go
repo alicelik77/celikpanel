@@ -186,7 +186,6 @@ var privilegedCommandAllowlist = map[string]string{
 	"internal/services/user_manager.go:groupadd":       "creates the site users' system group (alpha.117 file access, -r -f: no change when it exists) - debt",
 	"internal/services/user_manager.go:useradd":        "creates a system user - debt",
 	"internal/services/user_manager.go:userdel":        "deletes a system user - debt",
-	"internal/services/user_manager.go:chpasswd":       "sets a system password; its stdin carries the password - debt",
 	"internal/services/user_manager.go:chown":          "sets ownership of a user's tree - debt",
 	"internal/systemd/manager.go:systemctl":            "the systemd manager - debt",
 	"internal/systemd/state.go:systemctl":              "reads and sets unit state - debt",
