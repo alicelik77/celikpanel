@@ -245,7 +245,6 @@ class PopulatedDatabaseTests(unittest.TestCase):
         # alpha.114 (47-51), all additive: eight new tables; NULL
         # sessions.impersonator_id, audit_logs.acting_as and
         # users.email_verified_at in every old row.
-        self.assertEqual(len(self.sql), 51, 'a migration after 51 needs its own pin before a candidate carries it')
         result = self.build()
         connection = sqlite3.connect(result['database'])
         connection.execute('PRAGMA foreign_keys=ON')
@@ -266,6 +265,46 @@ class PopulatedDatabaseTests(unittest.TestCase):
             'audit_logs': ('details', 'acting_as'), 'sites': ('app_run_as',), 'database_servers': ('cluster',),
             'sessions': ('impersonator_id',), 'users': ('email_verified_at',)})
         for version in (52, '51', True):
+            with self.subTest(version=version), self.assertRaises(p.Refused):
+                self.verify(result, version)
+
+    def test_actual_39_through_54_migrations_add_tables_and_null_columns_and_change_no_old_row(self):
+        # alpha.117 (52-54): eleven new tables; NULL subscriptions.starts_at,
+        # ends_at, suspend_reason and suspended_at in every old row (no old
+        # row sets expires_at). 52 also writes rights rows: each plan-less
+        # customer subscription becomes Custom; every customer here already
+        # has a subscription, so no 'Unlimited' one and no notice is added.
+        self.assertEqual(len(self.sql), 54, 'a migration after 54 needs its own pin before a candidate carries it')
+        result = self.build()
+        connection = sqlite3.connect(result['database'])
+        connection.execute('PRAGMA foreign_keys=ON')
+        apply(connection, self.sql[38:54])
+        connection.close()
+        for wrong in (51, 52, 53):
+            with self.subTest(wrong=wrong), self.assertRaises(p.Refused):
+                self.verify(result, wrong)
+        proof = self.verify(result, 54)
+        self.assertEqual(proof['schema_version'], 54)
+        self.assertEqual(proof['table_count'], 87)
+        self.assertEqual(proof['old_rows_missing_or_changed'], 0)
+        self.assertEqual(proof['tables']['schema_migrations']['added'], 16)
+        self.assertEqual(proof['tables']['subscriptions']['added'], 0)
+        self.assertEqual(p.NEW_TABLES[54] - p.NEW_TABLES[51], {
+            'rights_sets', 'rights_set_items', 'reseller_plans', 'reseller_plan_bindings', 'rights_notices',
+            'subscription_suspensions', 'reseller_suspensions', 'suspension_operations', 'suspension_effects',
+            'suspension_before_images', 'subscription_transfers'})
+        self.assertEqual(p.added_columns(54), {
+            'audit_logs': ('details', 'acting_as'), 'sites': ('app_run_as',), 'database_servers': ('cluster',),
+            'sessions': ('impersonator_id',), 'users': ('email_verified_at',),
+            'subscriptions': ('starts_at', 'ends_at', 'suspend_reason', 'suspended_at')})
+        connection = sqlite3.connect(Path(result['database']).as_uri() + '?mode=ro&immutable=1', uri=True)
+        subscriptions = [row[0] for row in connection.execute('SELECT id FROM subscriptions WHERE plan_id IS NULL ORDER BY id')]
+        self.assertEqual(connection.execute(
+            "SELECT owner_id,all_permissions,all_software FROM rights_sets WHERE owner_kind='subscription' ORDER BY owner_id").fetchall(),
+            [(i, 0, 1) for i in subscriptions])
+        self.assertEqual(connection.execute('SELECT count(*) FROM rights_notices').fetchone(), (0,))
+        connection.close()
+        for version in (55, '54', True):
             with self.subTest(version=version), self.assertRaises(p.Refused):
                 self.verify(result, version)
 
