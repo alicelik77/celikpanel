@@ -54,6 +54,9 @@ type adminOfferLayer struct {
 	// Unlike other items an application is offered only when chosen
 	// (third-party software is gated at the offer step, D-042).
 	apps map[string]bool
+	// serviceApps: the catalog service apps the administrator offers and
+	// has not put on a security hold (alpha.118). Closed by default.
+	serviceApps map[string]bool
 }
 
 func (p *Panel) loadHiddenOfferings(ctx context.Context) (map[string]bool, error) {
@@ -106,7 +109,11 @@ func (p *Panel) loadAdminOfferLayer(ctx context.Context) (adminOfferLayer, error
 	if err != nil {
 		return adminOfferLayer{}, fmt.Errorf("applications offered to customers: %w", err)
 	}
-	return adminOfferLayer{versions: versions, hidden: hidden, apps: apps}, nil
+	serviceApps, err := p.loadOfferedServiceApps(ctx)
+	if err != nil {
+		return adminOfferLayer{}, fmt.Errorf("service apps offered to customers: %w", err)
+	}
+	return adminOfferLayer{versions: versions, hidden: hidden, apps: apps, serviceApps: serviceApps}, nil
 }
 
 func (a adminOfferLayer) permits(permission string) bool {
@@ -116,6 +123,15 @@ func (a adminOfferLayer) permits(permission string) bool {
 func (a adminOfferLayer) offers(offeringID string) bool {
 	if a.hidden[offeringID] {
 		return false
+	}
+	// alpha.118: one "app:<id>" namespace, two catalogs with their own offer
+	// rule. A service app (AI and automation) is closed until the
+	// administrator offers it after reading its risk summary; it is matched
+	// first, by its exact catalog id. Every other "app:" id belongs to the
+	// application catalog, offered only when the administrator chose it
+	// (WordPress alone before any choice); an unknown one is not offered.
+	if appID, ok := serviceAppOfferingApp(offeringID); ok {
+		return a.serviceApps[appID]
 	}
 	if id, ok := appcatalog.IDFromOffering(offeringID); ok {
 		return a.apps[id]
@@ -395,7 +411,9 @@ func (p *Panel) installedOfferingIDs(ctx context.Context) ([]string, error) {
 	for _, provider := range core.ACMEProviders {
 		out = append(out, "integration:acme:"+provider.ID)
 	}
-	return append(out, catalogOfferingIDs()...), nil
+	out = append(out, catalogOfferingIDs()...)
+	out = append(out, serviceAppCandidateOfferings()...)
+	return out, nil
 }
 
 // writeRightNotGranted: the refusal of a permission, with who can open it.
@@ -575,6 +593,10 @@ var domainSubrouteRights = map[string]domainSubrouteRight{
 	"backup-remote-send":      {right: rightBackups},
 	"backup-remote-restore":   {right: rightBackups},
 	"backup-remote-operation": {right: rightBackups},
+	// alpha.118: installing or updating a service app is new use; reading,
+	// stopping, logs and removal stay open (D-042 P5).
+	"service-apps-install": {right: rightServiceApps},
+	"service-apps-update":  {right: rightServiceApps},
 }
 
 // domainSubrouteRightFor: the permission a request needs, "" when none.

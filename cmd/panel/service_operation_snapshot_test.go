@@ -1441,6 +1441,10 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse the service apps (migration 61, alpha.118).
+        DROP TABLE service_app_operations;
+        DROP TABLE service_app_installs;
+        DROP TABLE service_app_offerings;
         -- Reverse the remote backups (migration 60, alpha.118).
         DROP TABLE remote_backup_operations;
         DROP TABLE remote_backup_policies;

@@ -152,6 +152,9 @@ type suspensionEffectRef struct {
 	Username       string `json:"username,omitempty"`
 	Host           string `json:"host,omitempty"`
 	Local          bool   `json:"local,omitempty"`
+	// InstallID (alpha.118): the effect is a service app's unit
+	// (celiksvc-<id>) rather than the site's Node.js app unit.
+	InstallID int `json:"install_id,omitempty"`
 }
 
 type suspensionPlanItem struct {
@@ -284,6 +287,13 @@ func planSuspension(ctx context.Context, q sqlQueryer, subscriptionID int, actio
 	if preview.VPNPeers > 0 {
 		vpn = append(vpn, suspensionPlanItem{suspensionEffectVPN, "wireguard", suspensionEffectRef{SubscriptionID: subscriptionID}})
 	}
+
+	// alpha.118: the subscription's service apps stop like its Node.js apps.
+	serviceApps, err := planServiceAppSuspension(ctx, q, subscriptionID, &preview)
+	if err != nil {
+		return nil, preview, err
+	}
+	apps = append(apps, serviceApps...)
 
 	if action == suspensionKindSuspend {
 		preview.Notes = append(preview.Notes,
@@ -586,6 +596,9 @@ func (p *Panel) runSuspensionEffect(ctx context.Context, native suspensionNative
 		return effectDone, "serves the site again; nginx validated and reloaded", nil
 
 	case suspensionEffectApp:
+		if e.Ref.InstallID > 0 {
+			return p.runServiceAppSuspensionEffect(ctx, op, e)
+		}
 		var before transport.AppUnitState
 		var capture func() (any, error)
 		if suspend {

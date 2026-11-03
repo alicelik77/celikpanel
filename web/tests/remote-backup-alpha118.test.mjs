@@ -162,11 +162,13 @@ test('sending and restoring are identified changes, asked again once when the an
   assert.match(guard, /\/api\/v1\/domains\/\{id\}\/backups\/remote\/restore/);
 });
 
-test('the new right is listed last, as on the server, with its name in both languages', () => {
+test('the new right follows ssh, as on the server, with its name in both languages', () => {
+  // alpha.118 integration: the other alpha.118 rights (service_apps, then the
+  // site tools that rights_site_tools.go appends) follow it in the same order.
   const rights = read('../src/lib/rights.ts');
-  assert.match(rights, /'file_access', 'ssh',\s*(?:\/\/[^\n]*\n\s*)*'remote_backup_destinations',\s*\] as const;/);
+  assert.match(rights, /'file_access', 'ssh',\s*(?:\/\/[^\n]*\n\s*)*'remote_backup_destinations', 'service_apps', 'wordpress_tools', 'malware_scan',\s*\] as const;/);
   const server = read('../../cmd/panel/rights_model.go');
-  assert.match(server, /rightFileAccess, rightSSH,\s*rightRemoteBackupDestinations,\s*\}/);
+  assert.match(server, /rightFileAccess, rightSSH,\s*rightRemoteBackupDestinations,\s*rightServiceApps,\s*\}/);
   for (const catalogue of [englishCatalogue, turkishCatalogue]) {
     assert.match(catalogue, /'rights\.perm\.remote_backup_destinations':/);
     assert.match(catalogue, /'transfer\.permission\.remote_backup_destinations':/);

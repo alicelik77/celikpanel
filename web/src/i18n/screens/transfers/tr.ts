@@ -64,6 +64,7 @@ export const trTransfersScreens: Record<TransfersScreenKey, string> = {
     'transfer.permission.wordpress_tools': 'WordPress araçları',
     'transfer.permission.malware_scan': 'Zararlı yazılım taraması sonuçları',
     'transfer.permission.remote_backup_destinations': 'Kendi uzak yedek hedefleri',
+    'transfer.permission.service_apps': 'Yapay zekâ ve otomasyon uygulamaları',
     'transfer.item.acme': '{provider} sertifikaları',
 
     'transfer.requests.title': 'Devir istekleri',

@@ -2,7 +2,7 @@ import { Fragment, Suspense, lazy, useCallback, useState, useEffect, type ReactN
 import { useSearchParams } from '../router';
 import {
     ArrowLeft, Globe, Lock, ExternalLink,
-    LayoutGrid, Server, Network, Mail, Database, Folder, Wrench, AppWindow, KeyRound,
+    LayoutGrid, Server, Network, Mail, Database, Folder, Wrench, AppWindow, KeyRound, Bot,
 } from 'lucide-react';
 import { DomainPHPSettings } from './DomainPHPSettings';
 import { DomainGeneralSettings } from './DomainGeneralSettings';
@@ -83,6 +83,11 @@ const SiteConfigNotice = lazy(() => import('./DomainSiteConfig').then((module) =
 // The site's FTP, SFTP and SSH access (alpha.117), fetched when the tab opens.
 const DomainFileAccess = lazy(() => import('./DomainFileAccess').then((module) => ({
     default: module.DomainFileAccess,
+})));
+// AI and automation apps of the site (alpha.118), fetched when the tab opens.
+// Kept apart from the PHP app catalogue of the Apps tab.
+const DomainServiceApps = lazy(() => import('./DomainServiceApps').then((module) => ({
+    default: module.DomainServiceApps,
 })));
 
 interface Domain {
@@ -435,6 +440,9 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
         ...(canView('mail') && open('mail') && (isTeamMember || !tabCaps || tabCaps.mail_server) ? [{ id: 'mail', labelKey: 'domain.tab.mail', icon: Mail, capabilities: ['mail'], render: (readOnly) => <DomainMailManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies TabDef] : []),
         ...(canView('databases') && open('databases') && (isTeamMember || !tabCaps || tabCaps.database_servers.length > 0) ? [{ id: 'databases', labelKey: 'domain.tab.databases', icon: Database, capabilities: ['databases'], render: (readOnly) => <DomainDatabaseManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} isAdditionalUser={isTeamMember} /> } satisfies TabDef] : []),
         ...(!isTeamMember && projectType === 'php' && canView('files') && canView('php') && (open('app_installer') || wpTools) ? [{ id: 'apps', labelKey: 'domain.tab.apps', icon: AppWindow, capabilities: ['files', 'php'], render: () => <>{open('app_installer') && <DomainAppsPanel domainId={domain.id} domainName={domain.domain_name} />}{wpTools && <WordPressToolsPanel domainId={domain.id} />}</> } satisfies TabDef] : []),
+        // alpha.118: an app that runs stays manageable (stop, log, removal)
+        // even when the right was closed later (D-042 P5).
+        ...(!isTeamMember && !isDnsOnly && (open('service_apps') || projectType === 'service_app') ? [{ id: 'ai', labelKey: 'svcapps.tab', icon: Bot, render: () => <DomainServiceApps domainId={domain.id} domainName={domain.domain_name} /> } satisfies TabDef] : []),
         ...(!isDnsOnly && canView('files') && open('file_manager') ? [{ id: 'files', labelKey: 'domain.tab.files', icon: Folder, capabilities: ['files'], render: (readOnly) => <DomainFileManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies TabDef] : []),
         ...(!isTeamMember && !isDnsOnly && (open('file_access') || open('ssh')) ? [{ id: 'access', labelKey: 'fileAccess.tab', icon: KeyRound, render: () => <DomainFileAccess domainId={domain.id} domainName={domain.domain_name} isAdmin={role === 'admin'} /> } satisfies TabDef] : []),
         ...(!isDnsOnly && advancedSubs.length > 0 ? [{

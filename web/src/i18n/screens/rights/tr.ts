@@ -90,6 +90,7 @@ export const trRightsScreens: Record<RightsScreenKey, string> = {
     'rights.perm.wordpress_tools': 'WordPress araçları',
     'rights.perm.malware_scan': 'Zararlı yazılım taraması sonuçları',
     'rights.perm.remote_backup_destinations': 'Kendi uzak yedek hedefleri',
+    'rights.perm.service_apps': 'Yapay zekâ ve otomasyon uygulamaları',
 
     'rights.review': 'Değişikliği gözden geçir',
     'rights.back': 'Düzenlemeye dön',

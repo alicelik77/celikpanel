@@ -731,6 +731,10 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "domain not found", http.StatusNotFound)
 		return
 	}
+	// alpha.118: an AI or automation app on the domain is removed first.
+	if p.refuseDomainDeleteWithServiceApp(w, r, domainID) {
+		return
+	}
 	if domain.DNSManagement == setupDNSModeLocal {
 		if _, ready := p.requireActiveDNSPublisherForMutation(w, r.Context()); !ready {
 			return

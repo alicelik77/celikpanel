@@ -382,6 +382,23 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 	case "apps":
 		// alpha.118: the domain's application catalog (read only).
 		match.kind, match.methods = "app-catalog", []string{http.MethodGet}
+	case "service-apps":
+		// alpha.118: AI and automation apps of the site (docs/AI-APPS.md).
+		// Not mapped for additional users: installing runs a service under
+		// the site's account and takes the owner's keys.
+		match.kind, match.methods = "service-apps", []string{http.MethodGet}
+	case "service-apps/install":
+		match.kind, match.methods = "service-apps-install", []string{http.MethodPost}
+	case "service-apps/update":
+		match.kind, match.methods = "service-apps-update", []string{http.MethodPost}
+	case "service-apps/control":
+		match.kind, match.methods = "service-apps-control", []string{http.MethodPost}
+	case "service-apps/logs":
+		match.kind, match.methods = "service-apps-logs", []string{http.MethodGet}
+	case "service-apps/secrets":
+		match.kind, match.methods = "service-apps-secrets", []string{http.MethodPut}
+	case "service-apps/uninstall":
+		match.kind, match.methods = "service-apps-uninstall", []string{http.MethodPost}
 	case "usage":
 		match.kind, match.methods = "usage", []string{http.MethodGet}
 	case "connection":
@@ -522,6 +539,9 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainAppCatalog(w, r, match.domainID)
 	case "app-operation":
 		p.routeAppOperation(w, r, match.domainID)
+	case "service-apps", "service-apps-install", "service-apps-update", "service-apps-control",
+		"service-apps-logs", "service-apps-secrets", "service-apps-uninstall":
+		p.handleDomainServiceApps(w, r, match.domainID, match.kind)
 	case "usage":
 		p.handleDomainUsage(w, r)
 	case "connection":
@@ -1444,6 +1464,9 @@ func main() {
 	http.HandleFunc("/api/v1/store/", panel.handleStore)
 	http.HandleFunc("/api/v1/admin/store-catalog", panel.handleStoreCatalogAdmin)
 	http.HandleFunc("/api/v1/admin/store-catalog/", panel.handleStoreCatalogAdmin)
+	// alpha.118: the administrator's AI and automation app catalog.
+	http.HandleFunc(serviceAppsAdminPath, panel.handleServiceAppsAdmin)
+	http.HandleFunc(serviceAppsAdminPath+"/", panel.handleServiceAppsAdmin)
 	http.HandleFunc("/api/v1/audit-logs", panel.handleAuditLogs)
 	http.HandleFunc("/api/v1/dashboard", panel.handleDashboard)
 	http.HandleFunc("/api/v1/dns/remote/enrollments", panel.handleRemoteDNSAdmin)
@@ -1724,6 +1747,9 @@ func main() {
 	// Security emergencies (D-043): continue what a restart interrupted,
 	// hand pending notices to the mail system.
 	panel.startEmergencyWorker()
+	// Service apps (alpha.118): continue install, update and removal
+	// operations a restart interrupted.
+	panel.resumeServiceAppOperations()
 	// A pending paired DNS publication whose cause is transient (the backup
 	// has not caught up) completes by itself through its exact recovery.
 	panel.startDNSPendingPublicationReconciler(discoveryCtx)

@@ -152,6 +152,11 @@ func (p *Panel) handleUpdateHosting(w http.ResponseWriter, r *http.Request, doma
 		writeClientError(w, http.StatusBadRequest, "project_type must be one of php, static, node, proxy, forwarding")
 		return
 	}
+	// alpha.118: a domain that serves an AI or automation app keeps its type
+	// until the app is removed.
+	if p.refuseHostingChangeWithServiceApp(w, r, domainID) {
+		return
+	}
 
 	// alpha.114: protected folders and redirects stay until the person removes
 	// them; a type that cannot carry them is refused with the next step.

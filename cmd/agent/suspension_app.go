@@ -46,7 +46,12 @@ func inspectSuspensionAppUnit(siteID int) (transport.AppUnitState, error) {
 	if siteID <= 0 {
 		return transport.AppUnitState{}, errors.New("a positive site identity is required")
 	}
-	name := appUnitName(siteID)
+	return inspectUnitSuspensionState(appUnitName(siteID))
+}
+
+// inspectUnitSuspensionState reads one unit's presence, running and boot
+// state (Node.js app units and, since alpha.118, service-app units).
+func inspectUnitSuspensionState(name string) (transport.AppUnitState, error) {
 	out, err := appUnitSystemctl(systemctlArgs("show", name, "--property=LoadState,ActiveState,UnitFileState")...)
 	if err != nil {
 		return transport.AppUnitState{}, fmt.Errorf("systemctl show %s: %v: %s", name, err, strings.TrimSpace(string(out)))
@@ -76,21 +81,27 @@ func (a *Agent) SetAppUnitSuspensionV1(
 	}
 	unlock := lockAppUnitMutation(req.SiteID)
 	defer unlock()
-	name := appUnitName(req.SiteID)
+	applyUnitSuspension(appUnitName(req.SiteID), req.Suspend, req.Before, resp)
+	return nil
+}
 
-	current, err := inspectSuspensionAppUnit(req.SiteID)
+// applyUnitSuspension stops and disables one unit, or restores its recorded
+// running and boot state compare-and-set. The caller holds the unit's
+// mutation lock. Shared by Node.js app units and service-app units.
+func applyUnitSuspension(name string, suspend bool, before transport.AppUnitState, resp *transport.SetAppUnitSuspensionResponse) {
+	current, err := inspectUnitSuspensionState(name)
 	if err != nil {
 		resp.Error = "the app unit could not be read, so nothing was changed: " + err.Error()
-		return nil
+		return
 	}
 	resp.State = current
 	if !current.Present {
 		resp.Error = "app unit is absent: " + name + " is not installed"
-		return nil
+		return
 	}
 
 	var steps [][]string
-	if req.Suspend {
+	if suspend {
 		if current.Active {
 			steps = append(steps, []string{"stop", name})
 		}
@@ -98,13 +109,13 @@ func (a *Agent) SetAppUnitSuspensionV1(
 			steps = append(steps, []string{"disable", name})
 		}
 	} else {
-		target := req.Before
+		target := before
 		target.Present = true
 		switch suspensionDecide(current, target, transport.AppUnitState{Present: true}) {
 		case suspensionConflict:
 			resp.Conflict = true
 			resp.Error = fmt.Sprintf("%s was changed while suspended (running %v, starts at boot %v); it is left as it is", name, current.Active, current.Enabled)
-			return nil
+			return
 		case suspensionChange:
 			if target.Enabled {
 				steps = append(steps, []string{"enable", name})
@@ -117,28 +128,27 @@ func (a *Agent) SetAppUnitSuspensionV1(
 	for _, step := range steps {
 		if out, err := appUnitSystemctl(systemctlArgs(step...)...); err != nil {
 			resp.Error = fmt.Sprintf("systemctl %s %s failed: %v: %s", step[0], name, err, strings.TrimSpace(string(out)))
-			if after, readErr := inspectSuspensionAppUnit(req.SiteID); readErr == nil {
+			if after, readErr := inspectUnitSuspensionState(name); readErr == nil {
 				resp.State = after
 			}
-			return nil
+			return
 		}
 		resp.Changed = true
 	}
 
-	after, err := inspectSuspensionAppUnit(req.SiteID)
+	after, err := inspectUnitSuspensionState(name)
 	if err != nil {
 		resp.Error = "the change finished but the app unit could not be read back, so the result is unknown: " + err.Error()
-		return nil
+		return
 	}
 	resp.State = after
 	wanted := after.Present && !after.Active && !after.Enabled
-	if !req.Suspend {
-		wanted = after.Active == req.Before.Active && after.Enabled == req.Before.Enabled
+	if !suspend {
+		wanted = after.Active == before.Active && after.Enabled == before.Enabled
 	}
 	if !wanted {
 		resp.Error = fmt.Sprintf("%s does not read as the wanted state after the change (running %v, starts at boot %v)", name, after.Active, after.Enabled)
-		return nil
+		return
 	}
 	resp.Applied = true
-	return nil
 }

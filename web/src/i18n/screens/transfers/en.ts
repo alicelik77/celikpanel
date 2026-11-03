@@ -70,6 +70,7 @@ export const enTransfersScreens = {
     'transfer.permission.wordpress_tools': 'WordPress tools',
     'transfer.permission.malware_scan': 'Malware scan results',
     'transfer.permission.remote_backup_destinations': 'Own remote backup destinations',
+    'transfer.permission.service_apps': 'AI and automation apps',
     'transfer.item.acme': 'Certificates from {provider}',
 
     'transfer.requests.title': 'Transfer requests',
