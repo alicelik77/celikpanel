@@ -205,7 +205,7 @@ const screenPartBudgets = {
   // mscan., err.WORDPRESS_, err.MALWARE_, and their audit words
   // dashboard.audit.action.wordpress./.malware., since "dashboard" had no
   // headroom left). A new part, set with at least 25% headroom from its
-  // Turkish file: 11.53 / 3.71 KiB.
+  // Turkish file: 11.69 / 3.78 KiB.
   siteTools: kib(16.5, 5.5),
 }
 

@@ -57,15 +57,20 @@ CREATE TABLE wordpress_site_settings (
 
 -- malware_scans: one scan of a site (domain_id) or of a whole subscription
 -- (domain_id NULL). One runs at a time on the server; at most one is open
--- per scope. 'prerequisite' = ClamAV was not ready (who acts: the
--- administrator); 'interrupted' = the Panel restarted during the scan.
+-- per scope. 'prerequisite' = ClamAV or its signatures are missing (who
+-- acts: the administrator); 'interrupted' = the Panel restarted during the
+-- scan. Signatures older than a week do not block: the scan runs,
+-- signatures_age_hours records their age, and a result without findings is
+-- 'clean_old_signatures', never plain 'clean'.
 CREATE TABLE malware_scans (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     subscription_id INTEGER NOT NULL,
     domain_id INTEGER,
     origin TEXT NOT NULL DEFAULT 'manual' CHECK (origin IN ('manual', 'scheduled')),
     status TEXT NOT NULL CHECK (status IN (
-        'queued', 'running', 'clean', 'infected', 'failed', 'prerequisite', 'interrupted')),
+        'queued', 'running', 'clean', 'clean_old_signatures', 'infected', 'failed',
+        'prerequisite', 'interrupted')),
+    signatures_age_hours INTEGER NOT NULL DEFAULT 0 CHECK (signatures_age_hours >= 0),
     sites_total INTEGER NOT NULL DEFAULT 0,
     sites_done INTEGER NOT NULL DEFAULT 0,
     files_scanned INTEGER NOT NULL DEFAULT 0,

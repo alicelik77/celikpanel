@@ -152,11 +152,15 @@ type MalwareFinding struct {
 }
 
 type MalwareScanSiteResponse struct {
-	State        string           `json:"state"` // scanner state; "ready" when the scan ran
-	FilesScanned int              `json:"files_scanned"`
-	Findings     []MalwareFinding `json:"findings"`
-	Truncated    bool             `json:"truncated,omitempty"`
-	Error        string           `json:"error,omitempty"`
+	// State is the scanner's state: "ready", or "signatures_old" when the
+	// scan ran with signatures older than a week (it still runs; the result
+	// carries a warning).
+	State              string           `json:"state"`
+	SignaturesAgeHours int              `json:"signatures_age_hours,omitempty"`
+	FilesScanned       int              `json:"files_scanned"`
+	Findings           []MalwareFinding `json:"findings"`
+	Truncated          bool             `json:"truncated,omitempty"`
+	Error              string           `json:"error,omitempty"`
 }
 
 type MalwareQuarantineRequest struct {
