@@ -10795,3 +10795,30 @@ Security → Security updates, the Dashboard and Server setup → Operating syst
   it is a separate program the owner moves to.
 
 Schema unchanged (46). Installed panels are updated only by their owners.
+
+## Components: PostgreSQL on its own, a tool left without its database, the security emergency tools (alpha.118)
+
+In source for the alpha.118 candidate (owner's Boston screens, Ubuntu 24.04, alpha.117;
+nothing measured on an installed server). **Who acts:** the administrator, from
+Components. Nothing starts by itself; every action opens its ordinary dialog.
+
+- **PostgreSQL is not installed and only the bundle is offered.** The installed view
+  (first since alpha.100) hides what is not installed, and since alpha.101 the database
+  bundle is PostgreSQL with phpPgAdmin. **Next action:** under the bundles of Databases,
+  "Or install one on its own" names PostgreSQL (and MariaDB or Nginx when they are
+  missing); it opens PostgreSQL's own install dialog with its versions (PGDG when chosen).
+  The Catalogue view shows the same row.
+- **phpPgAdmin (or phpMyAdmin) is installed but its database is not.** The tool's row
+  says it cannot work and offers **Install PostgreSQL** or **Remove phpPgAdmin**; both
+  open their ordinary dialogs and nothing changes before you confirm. Removing the tool
+  removes its package and its web entry only; no database and no data are touched.
+- **Removing PostgreSQL or MariaDB** offers its own web admin tool, ticked, in the same
+  confirmation. Untick it to keep the tool. The tool is removed only after the engine's
+  removal fully succeeded; if the tool's removal then fails, its row says what to do.
+- **Security emergency tools** under MariaDB and PostgreSQL (and in the PHP-FPM and
+  Node.js version drawers) are a quiet, closed tool: "Nothing is wrong. Use these only
+  if … has a security hole and no fix is available yet." The section turns red, with
+  the emergency's name, only while an emergency is open for that component. A click
+  opens or closes it; it no longer opens the component's page.
+
+Schema unchanged. Installed panels are updated only by their owners.

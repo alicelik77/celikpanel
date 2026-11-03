@@ -127,6 +127,16 @@ type serviceRemovalImpactResponse struct {
 	// RequiredBy are installed components whose requirement this one is the
 	// only thing meeting (catalogue Requires, groups included), by id.
 	RequiredBy []string `json:"required_by"`
+	// CompanionTools (alpha.118) are the installed web admin tools made for
+	// this component alone (their catalogue Requires names it by id:
+	// phpPgAdmin for PostgreSQL, phpMyAdmin for MariaDB). The dialog offers
+	// to remove them after it, ticked; the owner may keep them. A tool that
+	// needs a seat ("web-server") is not one: another member can serve it.
+	// Empty for one version of a runtime. Removing a tool never deletes a
+	// database.
+	// Yalnız bu bileşen için yapılmış kurulu web yönetim araçları; pencere
+	// onları da kaldırmayı işaretli sunar. Araç kaldırmak veritabanı silmez.
+	CompanionTools []string `json:"companion_tools"`
 	// Bundles are ready bundles complete today that this removal leaves
 	// incomplete.
 	Bundles []serviceRemovalBundle `json:"bundles"`
@@ -244,6 +254,20 @@ func removalRequiredBy(target *core.ManagedService, installed map[string]bool) [
 			continue
 		}
 		if len(core.RequirementsMissing(svc, without)) > len(core.RequirementsMissing(svc, installed)) {
+			out = append(out, svc.ID)
+		}
+	}
+	return out
+}
+
+// removalCompanionTools lists the installed tools whose catalogue Requires
+// names the target by id, in catalogue order.
+// Katalog Requires'ı hedefi kimliğiyle adlandıran kurulu araçlar.
+func removalCompanionTools(target *core.ManagedService, installed map[string]bool) []string {
+	out := []string{}
+	for i := range core.ManagedServices {
+		svc := &core.ManagedServices[i]
+		if svc.Kind == core.KindTool && svc.ID != target.ID && installed[svc.ID] && slices.Contains(svc.Requires, target.ID) {
 			out = append(out, svc.ID)
 		}
 	}
@@ -401,6 +425,7 @@ func serviceRemovalImpact(ctx context.Context, db *sql.DB, svc *core.ManagedServ
 		HasUnits:                  len(svc.SystemNames) > 0 || svc.SystemNamePattern != "" || len(svc.HelperUnits) > 0,
 		SetupRequired:             slices.Contains(serverSetupRequiredComponents, svc.ID),
 		RequiredBy:                removalRequiredBy(svc, installed),
+		CompanionTools:            removalCompanionTools(svc, installed),
 		Bundles:                   removalBundles(svc.ID, installed),
 	}
 	switch {
@@ -510,16 +535,17 @@ func (p *Panel) handleServiceRemovalImpact(w http.ResponseWriter, r *http.Reques
 // RUNTIME_IN_USE); the component itself stays.
 func serviceVersionRemovalImpact(ctx context.Context, db *sql.DB, svc *core.ManagedService, family, packageName, version string) (serviceRemovalImpactResponse, error) {
 	response := serviceRemovalImpactResponse{
-		ServiceID:     svc.ID,
-		Removal:       "packages",
-		PackageFamily: family,
-		Packages:      []string{packageName},
-		FirewallPorts: []string{},
-		RequiredBy:    []string{},
-		Bundles:       []serviceRemovalBundle{},
-		HasUnits:      true,
-		Package:       packageName,
-		Version:       version,
+		ServiceID:      svc.ID,
+		Removal:        "packages",
+		PackageFamily:  family,
+		Packages:       []string{packageName},
+		FirewallPorts:  []string{},
+		RequiredBy:     []string{},
+		CompanionTools: []string{},
+		Bundles:        []serviceRemovalBundle{},
+		HasUnits:       true,
+		Package:        packageName,
+		Version:        version,
 	}
 	count, lines, err := runtimeVersionBlockers(ctx, db, svc.ID, version)
 	if err != nil {

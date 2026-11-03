@@ -157,11 +157,19 @@ const restoreTracker = () => { globalThis.bundleTracker.state.startInstall = ori
 let tree;
 let requests;
 const answer = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+// alpha.118: a test may answer more routes (method and path) and read every
+// full address asked for, query included.
+let extraRoutes = {};
+let urls = [];
 function serve(managed) {
   requests = [];
+  urls = [];
   globalThis.fetch = async (input, init = {}) => {
     const path = String(input).split('?')[0];
     requests.push(`${init.method || 'GET'} ${path}`);
+    urls.push({ method: init.method || 'GET', url: String(input), body: init.body });
+    const extra = extraRoutes[`${init.method || 'GET'} ${path}`];
+    if (extra) return answer(...extra);
     if (path === '/api/v1/managed-services' || path === '/api/v1/managed-services/scan') return answer(managed);
     if (path === '/api/v1/host-mutation-readiness') return answer(readiness);
     if (path === '/api/v1/firewall') return answer({ enabled: true, engine_available: true, tcp_ports: [22, 80, 443], udp_ports: [], ssh_ports: [22], persistence_state: 'ready' });
@@ -894,4 +902,112 @@ test('a chosen PHP version that cannot serve the tool is refused with what it la
     assert.ok(dialogText().includes(say('services.installPreview.unknown', { why: '' })), dialogText());
     assert.equal(confirmButton(3).props.disabled, false);
   } finally { await unmount(); }
+});
+
+// --- alpha.118: the owner's Boston screens (Ubuntu 24.04, alpha.117) ------------------
+// The installed view (first since alpha.100) hid the PostgreSQL row, and the
+// bundle (PostgreSQL alone until alpha.101) became "PostgreSQL + phpPgAdmin":
+// the bundle was the only database offer. Then PostgreSQL was removed and
+// phpPgAdmin stayed "Installed" without it.
+// Kurulu görünüm PostgreSQL satırını gizliyordu; tek teklif paketti.
+const PG_BUNDLE = ['postgresql', 'nginx', 'php-fpm', 'phppgadmin'];
+const pgBundle = (extra) => bundle('db.postgresql', 'database', PG_BUNDLE, { missing_components: ['postgresql', 'phppgadmin'], ...extra });
+function databaseServer({ postgresql = false, phppgadmin = false, needs } = {}) {
+  const answer = payload({ nginx: true, phpfpm: true, bundles: [pgBundle(), dbBundle()] });
+  answer.services.push(
+    component('postgresql', 'database', postgresql, { name: 'PostgreSQL' }),
+    component('phppgadmin', 'database', phppgadmin, phppgadmin ? { kind: 'tool', status: 'installed', ...(needs ? { needs_missing: needs } : {}) } : { kind: 'tool', requires_missing: ['postgresql'] }),
+  );
+  return answer;
+}
+const pgImpact = {
+  service_id: 'postgresql', removal: 'packages', has_units: true, setup_required: false, package_family: 'apt', packages: ['postgresql'],
+  all_versions: true, firewall_ports: [], mail_filter_rewired: false, database_tools_reconfigured: false,
+  required_by: ['phppgadmin'], companion_tools: ['phppgadmin'], bundles: [], hosted: null, simulation: null,
+};
+const rowOf = (id) => tree.root.findAll((node) => node.type === 'li' && node.props['data-component-row'] === ''
+  && node.findAll((child) => child.type === 'a' && label(child) === nameOf(id)).length > 0)[0];
+const posts = () => urls.filter((call) => call.method === 'POST' && call.url === '/api/v1/service/uninstall').map((call) => JSON.parse(call.body).service_id);
+
+test('PostgreSQL that is not installed is offered on its own beside the bundle, through its own install dialog with its versions', async () => {
+  await mount(databaseServer());
+  try {
+    assert.equal(rowOf('postgresql'), undefined, 'the installed view hides the PostgreSQL row');
+    const alone = tree.root.findAll((node) => node.props && node.props['data-bundle-alone-install'] !== undefined);
+    assert.deepEqual(alone.map((node) => node.props['data-bundle-alone-install']), ['postgresql'], 'MariaDB is installed; only PostgreSQL is offered alone');
+    assert.ok(stripText('database').includes(say('services.bundles.alone')), stripText('database'));
+    await press(alone[0]);
+    assert.ok(dialogText().includes(say('services.installTitle', { name: nameOf('postgresql') })), dialogText());
+    // The version choice is the install dialog's own: it asks for PostgreSQL's repository and candidate.
+    assert.ok(urls.some((call) => call.url === '/api/v1/repo?service_id=postgresql'), urls.map((call) => call.url).join(', '));
+    assert.ok(urls.some((call) => call.url === '/api/v1/service/candidate?id=postgresql'));
+    assert.equal(urls.filter((call) => call.method === 'POST' && !call.url.startsWith('/api/v1/managed-services/scan')).length, 0, 'opening the dialog sends nothing');
+  } finally { await unmount(); }
+});
+
+test('a blocked bundle (phpPgAdmin on Arch) still lets PostgreSQL be installed on its own', async () => {
+  const answer = databaseServer();
+  answer.bundles = [pgBundle({ status: 'blocked', action: 'none', blocked_code: 'component_not_installable', blocked_vars: { component: 'phpPgAdmin' } }), dbBundle()];
+  await mount(answer);
+  try {
+    const alone = tree.root.findAll((node) => node.props && node.props['data-bundle-alone-install'] === 'postgresql');
+    assert.equal(alone.length, 1);
+  } finally { await unmount(); }
+});
+
+test('an installed phpPgAdmin without PostgreSQL says it cannot work and offers install PostgreSQL or remove phpPgAdmin; nothing is sent', async () => {
+  await mount(databaseServer({ phppgadmin: true, needs: ['postgresql'] }));
+  try {
+    const notice = tree.root.find((node) => node.props && node.props['data-tool-needs'] === 'postgresql');
+    assert.ok(label(notice).includes(say('services.toolNeeds', { name: nameOf('phppgadmin'), needs: nameOf('postgresql') })), label(notice));
+    assert.match(notice.props.className, /\brelative\b/, 'the actions sit above the row link');
+    await press(notice.find((node) => node.props['data-tool-needs-install'] === 'postgresql'));
+    assert.ok(dialogText().includes(say('services.installTitle', { name: nameOf('postgresql') })), dialogText());
+    assert.equal(posts().length, 0);
+  } finally { await unmount(); }
+  extraRoutes = { 'GET /api/v1/service/removal-impact': [{ ...pgImpact, service_id: 'phppgadmin', packages: ['phppgadmin'], all_versions: false, required_by: [], companion_tools: [], database_tools_reconfigured: true }] };
+  await mount(databaseServer({ phppgadmin: true, needs: ['postgresql'] }));
+  try {
+    await press(tree.root.find((node) => node.props && node.props['data-tool-needs-remove'] === ''));
+    assert.ok(dialogText().includes(say('services.uninstallTitle', { name: nameOf('phppgadmin') })), dialogText());
+    assert.ok(urls.some((call) => call.url === '/api/v1/service/removal-impact?service_id=phppgadmin'));
+    assert.equal(posts().length, 0, 'the removal waits for the confirmation');
+  } finally { await unmount(); extraRoutes = {}; }
+  // A tool with everything it needs says nothing.
+  await mount(databaseServer({ postgresql: true, phppgadmin: true }));
+  try {
+    assert.equal(tree.root.findAll((node) => node.props && node.props['data-tool-needs'] !== undefined).length, 0);
+  } finally { await unmount(); }
+});
+
+async function removePostgreSQL({ keepTool }) {
+  extraRoutes = {
+    'GET /api/v1/service/removal-impact': [pgImpact],
+    'POST /api/v1/service/uninstall': [{ success: true }],
+  };
+  await mount(databaseServer({ postgresql: true, phppgadmin: true }));
+  await press(rowOf('postgresql').find((node) => node.type === 'button' && node.props.title === say('services.uninstall')));
+  await settle();
+  const choice = tree.root.find((node) => node.props && node.props['data-removal-companions'] === 'phppgadmin');
+  assert.ok(label(choice).includes(say('services.removal.alsoTools', { name: nameOf('postgresql'), tools: nameOf('phppgadmin') })), label(choice));
+  const box = choice.find((node) => node.type === 'input');
+  assert.equal(box.props.checked, true, 'ticked by default');
+  assert.equal(posts().length, 0);
+  if (keepTool) await act(async () => { box.props.onChange({ target: { checked: false } }); });
+  const dialog = tree.root.findAll((node) => node.props && node.props.role === 'dialog')[0];
+  await press(dialog.findAll((node) => node.type === 'button' && label(node) === say('services.uninstall'))[0]);
+  await settle();
+  return posts();
+}
+
+test('removing PostgreSQL offers phpPgAdmin, ticked, and removes it after PostgreSQL', async () => {
+  try {
+    assert.deepEqual(await removePostgreSQL({ keepTool: false }), ['postgresql', 'phppgadmin']);
+  } finally { await unmount(); extraRoutes = {}; }
+});
+
+test('removing PostgreSQL with phpPgAdmin unticked keeps phpPgAdmin', async () => {
+  try {
+    assert.deepEqual(await removePostgreSQL({ keepTool: true }), ['postgresql']);
+  } finally { await unmount(); extraRoutes = {}; }
 });

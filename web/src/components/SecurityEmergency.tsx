@@ -87,7 +87,12 @@ async function post(url: string, body: unknown): Promise<{ ok: true } | { ok: fa
 export function SecurityEmergencySection({ component, name, versions }: { component: EmergencyComponent; name: string; versions: string[] }) {
     const { t } = useI18n();
     const [open, setOpen] = useState(false);
-    const list = useRemote(open ? SECURITY_EMERGENCIES_URL : null, decodeEmergencyList);
+    // alpha.118 (owner's Boston screens): the list is read while closed too,
+    // only to know whether an emergency is open: the section then looks like
+    // the alarm it is; otherwise it is a quiet tool. One shared GET for every
+    // section of the page; reading never starts anything.
+    // Kapalıyken de okunur, yalnız açık acil durum var mı diye; okumak hiçbir şey başlatmaz.
+    const list = useRemote(SECURITY_EMERGENCIES_URL, decodeEmergencyList);
     const openOnes = list.remote.state === 'known' ? openEmergenciesFor(list.remote.value, component) : [];
     // While a step runs the list is read again every few seconds: the screen
     // moves by itself and never starts anything (D-033).
@@ -100,13 +105,18 @@ export function SecurityEmergencySection({ component, name, versions }: { compon
     const busyVersions = new Set(openOnes.map((item) => item.emergency.version));
     const free = versions.filter((version) => !busyVersions.has(version));
     return (
-        <section className="mt-4 rounded-lg border border-border p-3" data-security-emergency={component}>
+        // relative: on a Components row the row's link stretches over the
+        // whole row; without it a click here opened the component's page
+        // instead of this section (alpha.118, owner's Boston screens).
+        // relative: satır bağlantısı bütün satıra yayılır; yoksa tıklama sayfayı açıyordu.
+        <section className={`relative mt-4 rounded-lg border p-3 ${openOnes.length > 0 ? 'border-danger/40' : 'border-border'}`} data-security-emergency={component} data-emergency-open={openOnes.length}>
             <button type="button" className="flex w-full items-center gap-2 text-left text-sm font-semibold text-fg max-sm:min-h-11" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
                 {open ? <ChevronDown className="h-4 w-4" aria-hidden="true" /> : <ChevronRight className="h-4 w-4" aria-hidden="true" />}
-                <ShieldOff className="h-4 w-4 text-danger" aria-hidden="true" />
-                <span>{t('emg.title')}</span>
+                {openOnes.length > 0 ? <ShieldOff className="h-4 w-4 text-danger" aria-hidden="true" /> : <Shield className="h-4 w-4 text-fg-muted" aria-hidden="true" />}
+                <span>{t(openOnes.length > 0 ? 'emg.title' : 'emg.toolsTitle')}</span>
                 {openOnes.length > 0 && <span className="ml-auto rounded bg-danger/10 px-2 py-0.5 text-xs text-danger">{openOnes.map((item) => item.emergency.name).join(', ')}</span>}
             </button>
+            {!open && openOnes.length === 0 && <p className="mt-1 pl-6 text-xs text-fg-muted">{t('emg.toolsHint', { name })}</p>}
             {open && (
                 <div className="mt-3 space-y-4">
                     <p className="max-w-[75ch] text-sm leading-6 text-fg-muted">{t('emg.intro', { name })}</p>

@@ -31,6 +31,9 @@ export const enComponentsScreens = {
     'services.notInstalled': 'Not installed',
     'services.installedLabel': 'Installed',
     'services.requiresLabel': 'Needs {names}',
+    // alpha.118: an installed tool whose own component is gone (phpPgAdmin without PostgreSQL).
+    'services.toolNeeds': '{name} cannot work: {needs} is not installed. Install {needs} again, or remove {name}.',
+    'services.toolNeedsRemove': 'Remove {name}',
     'services.requiresHint': 'Install {names} first, then this becomes available.',
     'services.start': 'Start',
     'services.repair': 'Repair and start',
@@ -204,6 +207,8 @@ export const enComponentsScreens = {
     'services.removal.more': '+{n} more',
     'services.removal.blocks': 'CelikPanel does not remove {name} while these exist: move or delete them first.',
     'services.removal.requiredBy': 'Components that need {name} and stop working: {names}',
+    'services.removal.alsoTools': 'Also remove {tools}, the web admin tool for {name}; it cannot work without {name}. No database is deleted.',
+    'services.removal.alsoToolsFailed': '{name} was removed, but {tool} could not be removed. Its row says what to do.',
     'services.removal.bundle': 'The ready bundle “{bundle}” becomes incomplete.',
     'services.removal.bundleUnnamed': 'Ready bundle',
     'services.removal.ports': 'If the firewall is on, it is set again from what stays installed: {ports} close unless the panel or another installed component needs them.',
@@ -325,6 +330,8 @@ export const enComponentsScreens = {
     'services.bundles.chip.db_mariadb_phpmyadmin': 'MariaDB + phpMyAdmin',
     'services.bundles.chip.web_nginx_php': 'Nginx + PHP-FPM',
     'services.bundles.chip.install': 'Install',
+    // alpha.118: the bundle's main component on its own, through its ordinary install dialog (version choice included).
+    'services.bundles.alone': 'Or install one on its own (its install window shows the versions):',
     'services.bundles.chip.add': 'Add',
     'services.bundles.chip.progress': '{n} of {total} installed',
     'services.bundles.chip.included': 'included',

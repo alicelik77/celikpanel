@@ -1,5 +1,7 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { MailSetupDialog } from './MailSetupDialog';
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+// Fetched when the in-place mail setup opens, as on the DNS page (alpha.118:
+// the route's budget had 0.33 KiB left). / Posta kurulumu açılınca getirilir.
+const MailSetupDialog = lazy(() => import('./MailSetupDialog').then((module) => ({ default: module.MailSetupDialog })));
 import { Settings, Play, StopCircle, RotateCw, RefreshCw, ScanSearch, DownloadCloud, ChevronDown, ChevronRight, Trash2, ShieldOff, Layers, Globe, Database, Mail, Network, Shield, Zap, FolderUp, Activity, Boxes, Clock } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { showToast } from './Toast';
@@ -96,6 +98,8 @@ interface ManagedService {
     not_offered_kind?: 'integration' | 'distribution';
     not_offered_reason?: string;
     requires_missing?: string[];
+    /** alpha.118: an installed tool's requirements that are gone (phpPgAdmin without PostgreSQL). */
+    needs_missing?: string[];
     kind?: 'service' | 'runtime' | 'tool';
     packages?: string[];
     ports?: string[];
@@ -1082,7 +1086,10 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         setRetryCleanup(false);
         setCleanupAttempt(null);
     };
-    const doUninstall = async (service: ManagedService) => {
+    // also: the engine's own web admin tools the owner left ticked (alpha.118);
+    // removed one by one only after the engine's removal fully succeeded.
+    // Motorun kaldırılması tam başarılı olduktan sonra işaretli araçlar kaldırılır.
+    const doUninstall = async (service: ManagedService, also: string[] = []) => {
         if (stateUnverified) {
             showToast('error', t('services.stateUnverifiedHint'));
             return;
@@ -1159,6 +1166,15 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                     ? t('services.webmailCleanupCompleted')
                     : t('services.uninstalled', { name: componentName(service, t) }),
             );
+            for (const id of also) {
+                const name = componentName(services.find((item) => item.id === id) ?? id, t);
+                const tool = await fetch('/api/v1/service/uninstall', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ service_id: id }) });
+                if (!tool.ok) {
+                    showToast('error', t('services.removal.alsoToolsFailed', { name: componentName(service, t), tool: name }));
+                    break;
+                }
+                showToast('success', t('services.uninstalled', { name }));
+            }
             if (!(await loadServices())) markStateUnverified();
             announceComponentsChanged();
         } catch {
@@ -1859,6 +1875,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                         notice={cat === 'email' ? mailNotice : undefined}
                                         onMail={openMailBundle}
                                         onComponents={openComponentBundle}
+                                        onAlone={hideNotInstalled ? (id) => setInstallTarget(services.find((item) => item.id === id) ?? null) : undefined}
                                     />
                                 )}
                                 {isOpen && group.length > 0 && (
@@ -1909,6 +1926,20 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 <KeepWords text={componentName(s, t)} />
                                                             </Link>
                                                             <div className="text-pretty text-xs text-fg-subtle">{componentDescription(s, t)}</div>
+                                                            {/* alpha.118: an installed tool whose own component is
+                                                                gone (owner's Boston screens: phpPgAdmin stayed after
+                                                                PostgreSQL). Read from the scan; the two actions only
+                                                                open their ordinary dialogs. relative: above the row link.
+                                                                Kurulu aracın bileşeni gitmiş; iki eylem olağan pencereleri açar. */}
+                                                            {s.is_installed === true && s.needs_missing?.length ? (
+                                                                <div className="relative mt-1 flex flex-wrap gap-x-3 text-pretty text-xs text-warning" data-tool-needs={s.needs_missing.join(' ')}>
+                                                                    <span>{t('services.toolNeeds', { name: componentName(s, t), needs: reqNames(s.needs_missing) })}</span>
+                                                                    {services.filter((item) => s.needs_missing?.includes(item.id) && item.is_installed === false && !item.not_offered).map((item) => (
+                                                                        <button key={item.id} type="button" className="font-semibold text-primary underline max-sm:min-h-11" disabled={mutationControlsDisabled} onClick={() => setInstallTarget(item)} data-tool-needs-install={item.id}>{t('services.installTitle', { name: componentName(item, t) })}</button>
+                                                                    ))}
+                                                                    <button type="button" className="font-semibold text-primary underline max-sm:min-h-11" disabled={mutationControlsDisabled} onClick={() => openRemovalFlow(s)} data-tool-needs-remove="">{t('services.toolNeedsRemove', { name: componentName(s, t) })}</button>
+                                                                </div>
+                                                            ) : null}
                                                             {/* What "Clean up leftovers" is about, said on the
                                                                 row only when the Panel's own record shows a
                                                                 Roundcube install or removal that did not finish
@@ -2345,12 +2376,12 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                     // A finished setup takes mail in place (alpha.114): the
                     // mail-only extension asks the mail name only and shows
                     // its steps, progress and outcome in this dialog.
-                    <MailSetupDialog
+                    <Suspense fallback={null}><MailSetupDialog
                         profile={{ id: profileTarget.id, name: profileTarget.name }}
                         profileName={mailProfileName(profileTarget, t)}
                         savedHostname={mailHostname?.source === 'saved' ? mailHostname.hostname : undefined}
                         onClose={() => { setProfileTarget(null); void loadServices(); }}
-                    />
+                    /></Suspense>
                 )}
                 {profileTarget && !mailThroughSetup && (
                     <MailProfileInstallDialog
@@ -2390,7 +2421,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                         retryCleanup={retryCleanup}
                         cleanupAttempt={cleanupAttempt}
                         onCancel={closeUninstallDialog}
-                        onConfirm={() => doUninstall(uninstallTarget)}
+                        onConfirm={(also) => doUninstall(uninstallTarget, also)}
                         onRemoveComponent={busy === uninstallTarget.id ? undefined : removeComponentById}
                         nameOf={(id) => componentName(services.find((service) => service.id === id) ?? id, t)}
                         bundleNameOf={(id, nameCode) => {
@@ -4307,6 +4338,8 @@ export interface RemovalImpact {
     mail_filter_rewired: boolean;
     database_tools_reconfigured: boolean;
     required_by: string[];
+    /** alpha.118: installed web admin tools made for this engine alone; [] from an older Panel. */
+    companion_tools: string[];
     bundles: { id: string; name_code: string }[];
     hosted: {
         kind: RemovalHostedKind; count: number; names: string[]; blocks_removal: boolean;
@@ -4414,6 +4447,7 @@ export function decodeRemovalImpact(value: unknown): RemovalImpact | null {
         mail_filter_rewired: v.mail_filter_rewired,
         database_tools_reconfigured: v.database_tools_reconfigured,
         required_by: v.required_by,
+        companion_tools: isStrings(v.companion_tools) ? v.companion_tools : [],
         bundles: (v.bundles as { id: string; name_code: string }[]).map((b) => ({ id: b.id, name_code: b.name_code })),
         hosted,
         simulation: decodeRemovalSimulation(v.simulation),
@@ -5049,7 +5083,7 @@ function UninstallServiceDialog({
     retryCleanup: boolean;
     cleanupAttempt: 'initial' | 'retry' | null;
     onCancel: () => void;
-    onConfirm: () => void;
+    onConfirm: (also: string[]) => void;
     nameOf: (id: string) => string;
     bundleNameOf: (id: string, nameCode: string) => string;
     onRemoveComponent?: (id: string) => void;
@@ -5058,6 +5092,10 @@ function UninstallServiceDialog({
     // The leftovers cleanup has its own fixed list; only a removal reads
     // what it affects.
     const impact = useRemovalImpact(service.id, !retryCleanup);
+    // alpha.118: the engine's own web admin tools, offered ticked; the owner may keep them.
+    // Motorun kendi web yönetim araçları işaretli sunulur; sahip tutabilir.
+    const companions = impact.read.state === 'known' ? impact.read.impact.companion_tools : [];
+    const [keepTools, setKeepTools] = useState(false);
     // alpha.104: a removal the Panel would refuse is not offered; since
     // alpha.106 the dialog says so first, the button reads "Can't remove"
     // and Close is the action.
@@ -5089,7 +5127,7 @@ function UninstallServiceDialog({
             actions={refused ? <RefusedActions onClose={onCancel} busy={busy} /> : (
                 <>
                     <Button variant="secondary" onClick={onCancel} disabled={busy}>{t('common.cancel')}</Button>
-                    <Button variant="danger" onClick={onConfirm} disabled={busy} icon={Trash2}>
+                    <Button variant="danger" onClick={() => onConfirm(keepTools ? [] : companions)} disabled={busy} icon={Trash2}>
                         {busy
                             ? t(retryCleanup
                                 ? (cleanupAttempt === 'retry' ? 'services.retryingWebmailCleanup' : 'services.cleaningWebmail')
@@ -5114,6 +5152,12 @@ function UninstallServiceDialog({
                             packages={service.id === 'roundcube' ? [] : service.packages && service.packages.length > 0 ? service.packages : [service.id]}
                             onRemoveComponent={onRemoveComponent}
                         />
+                        {companions.length > 0 && !refused && (
+                            <label className="mt-3 flex items-start gap-2 text-sm text-fg" data-removal-companions={companions.join(' ')}>
+                                <input type="checkbox" className="mt-1" checked={!keepTools} disabled={busy} onChange={(event) => setKeepTools(!event.target.checked)} />
+                                <span>{t('services.removal.alsoTools', { name, tools: companions.map(nameOf).join(', ') })}</span>
+                            </label>
+                        )}
                     </div>
                 )}
                 {retryCleanup && (

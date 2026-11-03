@@ -73,6 +73,16 @@ type ManagedServiceResponse struct {
 	// RequiresMissing: kurulumu engelleyen karşılanmamış gereksinimler (servis
 	// id'leri ya da grup adları) — UI Kur'u kapatır ve önce neyin kurulacağını söyler.
 	RequiresMissing []string `json:"requires_missing,omitempty"`
+	// NeedsMissing (alpha.118): for an INSTALLED tool (phpPgAdmin,
+	// phpMyAdmin, Roundcube), the requirements it no longer has on this
+	// server, read from the same scan, so it cannot work (owner's Boston
+	// screens: PostgreSQL was removed and phpPgAdmin stayed "Installed").
+	// The page says so on the tool's row with its two actions: install the
+	// requirement again, or remove the tool. Read-only; nothing is changed.
+	// A requirement nobody has observed is not claimed missing.
+	// NeedsMissing: KURULU bir aracın bu sunucuda artık sahip olmadığı
+	// gereksinimler; araç çalışamaz. Satır bunu iki eylemle söyler. Salt okur.
+	NeedsMissing []string `json:"needs_missing,omitempty"`
 	// NotOffered: this component installs from distro packages and has no
 	// package mapping for THIS server's family — deliberately not offered here
 	// ("installed means working" cannot be promised; see docs/DISTRO-SUPPORT).
@@ -520,6 +530,38 @@ func catalogView(obs []serviceObservation, pkgFamily string) []ManagedServiceRes
 	return catalogViewForHost(obs, core.ManagedServiceHostProfile{PackageFamily: pkgFamily})
 }
 
+// toolNeedsMissing is RequirementsMissing for an installed tool, kept to
+// what the scan has actually observed: a requirement whose own row (or, for
+// a seat such as "web-server", any member's row) was never observed is not
+// claimed missing, because an unobserved row is unknown, not absent.
+// Kurulu bir aracın eksik gereksinimleri; gözlenmemiş satır "yok" sayılmaz.
+func toolNeedsMissing(tool *core.ManagedService, byID map[string]serviceObservation, installed map[string]bool) []string {
+	var out []string
+	for _, requirement := range core.RequirementsMissing(tool, installed) {
+		observed := false
+		if _, ok := byID[requirement]; ok {
+			observed = true
+		} else {
+			observed = true
+			members := 0
+			for i := range core.ManagedServices {
+				if core.ManagedServices[i].ConflictGroup != requirement {
+					continue
+				}
+				members++
+				if _, ok := byID[core.ManagedServices[i].ID]; !ok {
+					observed = false
+				}
+			}
+			observed = observed && members > 0
+		}
+		if observed {
+			out = append(out, requirement)
+		}
+	}
+	return out
+}
+
 func catalogViewForHost(obs []serviceObservation, host core.ManagedServiceHostProfile) []ManagedServiceResponse {
 	pkgFamily := host.PackageFamily
 	byID := make(map[string]serviceObservation, len(obs))
@@ -595,7 +637,7 @@ func catalogViewForHost(obs []serviceObservation, host core.ManagedServiceHostPr
 		}
 		status := o.Status
 		conflictWith := ""
-		var requiresMissing []string
+		var requiresMissing, needsMissing []string
 		repairPackage, repairAvailable := repairSelection(&managed, o, pkgFamily)
 
 		// Not-installed catalogue services are listed too, so the panel can
@@ -648,6 +690,9 @@ func catalogViewForHost(obs []serviceObservation, host core.ManagedServiceHostPr
 		default:
 			installedTrue := true
 			isInstalled = &installedTrue
+			if managed.Kind == core.KindTool {
+				needsMissing = toolNeedsMissing(&managed, byID, installedSet)
+			}
 		}
 
 		var packageVersion, packageVersionShort string
@@ -677,6 +722,7 @@ func catalogViewForHost(obs []serviceObservation, host core.ManagedServiceHostPr
 			InstalledEvidence: core.InstalledEvidenceFor(&managed, pkgFamily),
 			ConflictWith:      conflictWith,
 			RequiresMissing:   requiresMissing,
+			NeedsMissing:      needsMissing,
 			NotOffered:        notOffered,
 			NotOfferedKind:    notOfferedKind,
 			NotOfferedReason:  notOfferedReason,

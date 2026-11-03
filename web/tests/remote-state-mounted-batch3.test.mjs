@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import React from 'react';
 import Renderer, { act } from 'react-test-renderer';
-import { dataModule, reactURL, remoteURL, sharedLayer } from './fixtures/shared-layer.mjs';
+import { dataModule, reactURL, remoteURL, replaceLazyImport, sharedLayer } from './fixtures/shared-layer.mjs';
 import { readAllowList, scanTree } from './remote-state-ratchet.mjs';
 import { fileURLToPath } from 'node:url';
 import { en as enShellHalf } from '../src/i18n/en.ts';
@@ -147,7 +147,8 @@ const Dashboard = await pick(lib('components/Dashboard.tsx', {
 }), 'Dashboard');
 // The Components page, with the real decoders of ComponentOperation and an
 // operation tracker that is idle.
-const ServiceList = await pick(lib('components/ServiceList.tsx', {
+// alpha.118: the page fetches the mail dialog lazily; the test hands it the real one.
+const ServiceList = await pick(replaceLazyImport(lib('components/ServiceList.tsx', {
   '/ComponentOperation': dataModule(`
     export * from '${operationURL}';
     const idle = { startInstall: async () => true, catalogSnapshot: null, locked: false, checking: false, operation: null, failure: null };
@@ -157,14 +158,6 @@ const ServiceList = await pick(lib('components/ServiceList.tsx', {
   '/lib/mailProfileText': lib('lib/mailProfileText.ts'),
   '/lib/componentName': lib('lib/componentName.ts'),
   '/lib/serverSetup': lib('lib/serverSetup.ts'),
-  // alpha.114: a finished setup adds mail in place, in this dialog.
-  '/MailSetupDialog': lib('components/MailSetupDialog.tsx', {
-    '/lib/serverSetup': lib('lib/serverSetup.ts'),
-    '/lib/serverSetupOperation': lib('lib/serverSetupOperation.ts', { '/serverSetup': lib('lib/serverSetup.ts') }),
-    '/lib/serverSetupGuidance': lib('lib/serverSetupGuidance.ts'),
-    '/lib/panelHandover': lib('lib/panelHandover.ts'),
-    '/lib/componentName': lib('lib/componentName.ts'),
-  }),
   '/WebmailRepairButton': lib('components/WebmailRepairButton.tsx'),
   '/lib/readyBundles': lib('lib/readyBundles.ts', { '/mailProfileText': lib('lib/mailProfileText.ts') }),
   '/lib/componentIcons': lib('lib/componentIcons.tsx'),
@@ -174,7 +167,13 @@ const ServiceList = await pick(lib('components/ServiceList.tsx', {
     '/lib/readyBundles': lib('lib/readyBundles.ts', { '/mailProfileText': lib('lib/mailProfileText.ts') }),
     '/lib/componentIcons': lib('lib/componentIcons.tsx'),
   }),
-}), 'ServiceList');
+}), './MailSetupDialog', lib('components/MailSetupDialog.tsx', {
+  '/lib/serverSetup': lib('lib/serverSetup.ts'),
+  '/lib/serverSetupOperation': lib('lib/serverSetupOperation.ts', { '/serverSetup': lib('lib/serverSetup.ts') }),
+  '/lib/serverSetupGuidance': lib('lib/serverSetupGuidance.ts'),
+  '/lib/panelHandover': lib('lib/panelHandover.ts'),
+  '/lib/componentName': lib('lib/componentName.ts'),
+})), 'ServiceList');
 globalThis.window ??= globalThis;
 // The real DNS engine card, mounted with the real decoder of its state. What
 // stands in for the tracker is the lock it would draw: every view the card

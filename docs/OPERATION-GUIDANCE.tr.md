@@ -10734,3 +10734,31 @@ Güvenlik → Güvenlik güncellemeleri, Gösterge Paneli ve Sunucu kurulumu →
   8.5): sahibin geçtiği ayrı bir programdır.
 
 Şema değişmedi (46). Kurulu paneller yalnız sahiplerince güncellenir.
+
+## Bileşenler: tek başına PostgreSQL, veritabanı olmadan kalan araç, güvenlik acil durumu araçları (alpha.118)
+
+alpha.118 adayının kaynağında (sahibin Boston ekranları, Ubuntu 24.04, alpha.117;
+kurulu sunucuda ölçülmedi). **Kim yapar:** yönetici, Bileşenler sayfasından. Hiçbir
+şey kendiliğinden başlamaz; her eylem olağan penceresini açar.
+
+- **PostgreSQL kurulu değil ve yalnız paket sunuluyor.** Kurulu görünüm (alpha.100'den
+  beri ilk görünüm) kurulu olmayanı gizler; alpha.101'den beri veritabanı paketi
+  PostgreSQL ile phpPgAdmin'dir. **Sonraki adım:** Veritabanları'nın hazır paketlerinin
+  altında "Ya da birini tek başına kurun" PostgreSQL'i (eksikse MariaDB ya da Nginx'i)
+  adlandırır; PostgreSQL'in kendi kurulum penceresini sürümleriyle açar (seçilirse PGDG).
+  Katalog görünümü aynı satırı gösterir.
+- **phpPgAdmin (ya da phpMyAdmin) kurulu, veritabanı kurulu değil.** Aracın satırı
+  çalışamadığını söyler ve **PostgreSQL kur** ya da **phpPgAdmin aracını kaldır** sunar;
+  ikisi de olağan penceresini açar, onaylamadan hiçbir şey değişmez. Aracı kaldırmak
+  yalnız paketini ve web girişini kaldırır; hiçbir veritabanına ve veriye dokunulmaz.
+- **PostgreSQL ya da MariaDB kaldırılırken** kendi web yönetim aracı aynı onayda,
+  işaretli olarak sunulur. Aracı tutmak için işareti kaldırın. Araç yalnız motorun
+  kaldırılması tam başarılı olduktan sonra kaldırılır; aracın kaldırılması başarısız
+  olursa satırı ne yapılacağını söyler.
+- MariaDB ve PostgreSQL altındaki (ve PHP-FPM ile Node.js sürüm çekmecelerindeki)
+  **güvenlik acil durumu araçları** sakin, kapalı bir araçtır: "Bir sorun yok. Bunları
+  yalnız … bileşeninde bir güvenlik açığı varsa ve henüz düzeltmesi yoksa kullanın."
+  Bölüm yalnız o bileşen için açık bir acil durum varken, adıyla birlikte kırmızı olur.
+  Tıklama bölümü açar ya da kapatır; artık bileşenin sayfasını açmaz.
+
+Şema değişmedi. Kurulu paneller yalnız sahiplerince güncellenir.
