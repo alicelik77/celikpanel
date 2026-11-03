@@ -70,8 +70,23 @@ from the panel's own update screen.**
   Nothing opens until the administrator offers it after reading its risk
   summary, and the administrator can put an application on a security hold.
 - n8n starts without the parts that run commands or read server files.
+- n8n's licence limits selling it as a hosted service, so for now the
+  administrator can offer n8n only to the administrator's own customers, not
+  through resellers. The screen says why.
 - Applications that run commands by themselves (OpenClaw, Hermes Agent,
   Paperclip) are listed but not offered yet; the catalogue says why.
+
+## Fixed
+
+- If the server was busy when first-run setup began installing DNS, setup no
+  longer stays on "result still unknown". It waits, says nothing was changed and
+  continues by itself. If the server stays busy for more than 30 minutes, setup
+  stops and asks you to review a revised plan.
+- When Debian or Ubuntu's own PHP version is chosen in Components, it installs
+  from the distribution's packages without the Sury repository, together with the
+  PHP extensions the application catalogue needs.
+- A file-handle bug that could break large unpacks and other file reads running
+  at the same time is fixed.
 
 ## New rights
 
@@ -93,6 +108,13 @@ a custom rights list get them only when someone chooses them.
 - For n8n and Open WebUI only the main package is pinned; packages they fetch
   while installing are not each verified. Open WebUI is several GB and runs on
   Debian 12 and Ubuntu 24.04 only; n8n uses the panel's Node.js 24 runtime.
+- On Arch Linux, missing PHP extensions are named but the panel cannot switch
+  them on yet (the owner adds `extension=` in `/etc/php/conf.d`). A PHP version
+  other than the distribution's own still needs the Sury repository.
+- Servers installed earlier without logrotate show "logrotate is not installed"
+  until the administrator installs it (`sudo apt install logrotate`, or
+  `sudo pacman -Syu --needed logrotate`); traffic is still counted. On Arch, a
+  failed first ClamAV signature download still fails the ClamAV install.
 - Remote backups are full copies (no incremental backups); restore through the
   panel works into the same site.
 - A rollback to alpha.117 restores the database copy taken before the update;

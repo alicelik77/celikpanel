@@ -69,8 +69,23 @@ sahibi, panelin kendi güncelleme ekranından günceller.**
   Yönetici risk özetini okuyup sunmadan hiçbiri açılmaz; yönetici bir uygulamayı
   güvenlik beklemesine alabilir.
 - n8n, komut çalıştıran ve sunucu dosyalarını okuyan parçaları kapalı başlar.
+- n8n'in lisansı onu barındırma hizmeti olarak satmayı kısıtlar; bu yüzden şimdilik
+  yönetici n8n'i yalnız kendi müşterilerine sunabilir, bayiler üzerinden
+  sunamaz. Ekran nedenini söyler.
 - Kendi başına komut çalıştıran uygulamalar (OpenClaw, Hermes Agent, Paperclip)
   listede görünür ama henüz sunulmaz; katalog nedenini söyler.
+
+## Düzeltilenler
+
+- İlk kurulum DNS'i kurmaya başladığında sunucu meşgulse, kurulum artık "sonuç
+  hâlâ bilinmiyor" durumunda kalmıyor. Bekliyor, hiçbir şeyin değişmediğini
+  söylüyor ve kendiliğinden sürüyor. Sunucu 30 dakikadan uzun meşgul kalırsa
+  kurulum duruyor ve düzeltilmiş planı incelemenizi istiyor.
+- Bileşenler'de Debian ya da Ubuntu'nun kendi PHP sürümü seçilince, uygulama
+  kataloğunun istediği PHP eklentileriyle birlikte dağıtımın paketlerinden kurulur;
+  Sury deposu gerekmez.
+- Büyük arşivlerin açılmasını ve aynı anda yapılan dosya okumalarını
+  bozabilen bir dosya tanıtıcı hatası giderildi.
 
 ## Yeni haklar
 
@@ -91,6 +106,13 @@ hak listesi olan hesaplar yalnız biri seçerse alır.
 - n8n ve Open WebUI'de yalnız ana paket sabitlenir; kurulumda çektikleri paketler
   tek tek denetlenmez. Open WebUI birkaç GB'tır ve yalnız Debian 12 ile Ubuntu
   24.04'te çalışır; n8n panelin Node.js 24 ortamını kullanır.
+- Arch Linux'ta eksik PHP eklentileri adlandırılır ama panel henüz açamaz (sahip
+  `/etc/php/conf.d` içine `extension=` ekler). Dağıtımınkinden başka bir PHP
+  sürümü hâlâ Sury deposunu ister.
+- Daha önce logrotate olmadan kurulmuş sunucular, yönetici kurana dek
+  (`sudo apt install logrotate` ya da `sudo pacman -Syu --needed logrotate`)
+  "logrotate kurulu değil" gösterir; trafik yine sayılır. Arch'ta ilk ClamAV imza
+  indirmesi başarısız olursa ClamAV kurulumu hâlâ hata verir.
 - Uzak yedekler tam kopyadır (artımlı yedek yok); panelden geri yükleme aynı
   siteye yapılır.
 - alpha.117'ye geri dönüş güncellemeden önce alınan veritabanı kopyasını geri
