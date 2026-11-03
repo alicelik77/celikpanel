@@ -33,6 +33,7 @@ export const enDashboardScreens = {
     'audit.resource.dns_engine': 'DNS software',
     'audit.resource.dns_zone': 'DNS zone',
     'audit.resource.domain': 'Domain',
+    'audit.resource.remote_backup_destination': 'Remote backup destination',
     'audit.resource.email_account': 'Mailbox',
     'audit.resource.node': 'Server',
     'audit.resource.panel_settings': 'Panel settings',

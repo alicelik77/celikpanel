@@ -27,6 +27,8 @@ export const userRightsURL = (id: number) => `/api/v1/users/${id}/rights`;
 export const PERMISSION_IDS = [
     'dns_edit', 'dnssec', 'mail', 'databases', 'cron', 'file_manager', 'backups', 'ssl_acme', 'ssl_custom',
     'site_protect_redirects', 'site_proxy', 'app_installer', 'vpn', 'team_members', 'file_access', 'ssh',
+    // alpha.118 (W4): own remote backup destinations.
+    'remote_backup_destinations',
 ] as const;
 export type PermissionId = (typeof PERMISSION_IDS)[number];
 

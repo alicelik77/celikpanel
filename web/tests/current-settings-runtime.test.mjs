@@ -7,7 +7,7 @@ import React from 'react';
 import Renderer, { act } from 'react-test-renderer';
 import ts from 'typescript';
 import { englishCatalogue, turkishCatalogue } from './locale-catalogue.mjs';
-import { sharedLayer } from './fixtures/shared-layer.mjs';
+import { replaceLazyImport, sharedLayer } from './fixtures/shared-layer.mjs';
 
 // The rule these three screens follow (8 Oct 2026): nothing is shown as a
 // setting, an empty list or an editable form until the server's current state
@@ -22,7 +22,7 @@ const compilerOptions = { jsx: ts.JsxEmit.React, module: ts.ModuleKind.ES2022, t
 const source = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 
 const icons = ['Mail', 'Activity', 'Trash2', 'RefreshCw', 'RotateCw', 'Archive', 'Download', 'RotateCcw', 'HardDrive',
-  'Database', 'Clock', 'Info', 'Plus', 'Edit2', 'Play', 'Pause', 'Save', 'X', 'AlertTriangle'];
+  'Database', 'Clock', 'Info', 'Plus', 'Edit2', 'Play', 'Pause', 'Save', 'X', 'AlertTriangle', 'UploadCloud'];
 const stub = dataModule(`
   import React from '${reactURL}';
   ${icons.map((name) => `export const ${name} = () => null;`).join('\n')}
@@ -38,7 +38,11 @@ const shared = sharedLayer(stub);
 const currentURL = shared.compile('components/CurrentSettings.tsx');
 const load = async (name) => (await import(shared.compile(`components/${name}.tsx`, { '/CurrentSettings': currentURL })))[name];
 const PostfixManagement = await load('PostfixManagement');
-const DomainBackupManager = await load('DomainBackupManager');
+// The remote copies section (alpha.118) has its own test; here it is a stand-in.
+const remoteSectionStub = dataModule('export const DomainRemoteBackups = () => null;');
+const DomainBackupManager = (await import(replaceLazyImport(
+  shared.compile('components/DomainBackupManager.tsx', { '/CurrentSettings': currentURL }), './DomainRemoteBackups', remoteSectionStub,
+))).DomainBackupManager;
 const DomainCronManager = await load('DomainCronManager');
 
 const originalFetch = globalThis.fetch;

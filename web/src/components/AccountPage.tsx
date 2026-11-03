@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Shield, ShieldCheck, ShieldOff, Copy, Check, KeyRound, Mail } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
@@ -13,6 +13,11 @@ import { useLocation } from '../router';
 import { useAuth } from '../auth/AuthContext';
 import { MyPlanCard } from './MyPlanCard';
 import { TransferRequestCard } from './SubscriptionTransfer';
+
+// alpha.118 (W4): a reseller's or customer's own remote backup destinations,
+// or who can grant them. Its own chunk, fetched with this page.
+// Bayi ya da müşterinin kendi uzak yedek hedefleri; ya da bu hakkı kimin verebileceği.
+const RemoteBackupDestinations = lazy(() => import('./RemoteBackupDestinations').then((module) => ({ default: module.RemoteBackupDestinations })));
 
 // My account: the signed-in person's own sign-in security, opened from the
 // personal menu at the top right (D-037, owner 2026-10-22). It is what
@@ -37,6 +42,11 @@ export function AccountPage() {
                 {(role === 'customer' || role === 'reseller') && <MyPlanCard />}
                 {/* alpha.117: a customer asks for a transfer (D-042 K3). */}
                 {role === 'customer' && <TransferRequestCard />}
+                {(role === 'customer' || role === 'reseller') && (
+                    <section id="remote-backups" className="scroll-mt-24 rounded-xl border border-border bg-surface p-5" data-account-section="remote-backups">
+                        <Suspense fallback={null}><RemoteBackupDestinations admin={false} /></Suspense>
+                    </section>
+                )}
                 <PasswordPanel />
                 <EmailPanel />
                 <TwoFactorPanel />

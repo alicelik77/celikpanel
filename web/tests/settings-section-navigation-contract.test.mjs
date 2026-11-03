@@ -103,11 +103,13 @@ test('the horizontally scrolling mobile tab list keeps the active section visibl
 // the system databases have their own pages; no administrator-wide security
 // policy exists. v0.1.0-alpha.100 (owner 2026-10-22): Server setup has its own
 // page under Server, so Settings has three sections, in this order.
-test('Settings shows only the three remaining sections, in the approved order', () => {
+// alpha.118 (W4, remote backups): where backups are copied off this server is
+// chosen once and decides how the panel behaves, so it is a fourth section.
+test('Settings shows only the remaining sections, in the approved order', () => {
   const adminSections = sourceBetween("const sections: SettingsSection[] = role === 'admin'", ': [];');
   const ids = [...adminSections.matchAll(/id:\s*'([a-z-]+)'\s+as const/g)].map((match) => match[1]);
-  assert.deepEqual(ids, ['panel', 'license', 'updates']);
-  assert.match(settings, /type SettingsSectionID = 'panel' \| 'license' \| 'updates';/);
+  assert.deepEqual(ids, ['panel', 'license', 'updates', 'remote-backups']);
+  assert.match(settings, /type SettingsSectionID = 'panel' \| 'license' \| 'updates' \| 'remote-backups';/);
   for (const moved of ['account', 'security', 'dns', 'system-databases', 'setup']) {
     assert.ok(!settings.includes(`id="settings-${moved}-panel"`), `Settings still draws the ${moved} section`);
   }

@@ -84,6 +84,7 @@ export const trRightsScreens: Record<RightsScreenKey, string> = {
     'rights.perm.team_members': 'Ek kullanıcılar (ekip)',
     'rights.perm.file_access': 'Dosya erişimi (FTP ve SFTP)',
     'rights.perm.ssh': 'Komut satırı (SSH)',
+    'rights.perm.remote_backup_destinations': 'Kendi uzak yedek hedefleri',
 
     'rights.review': 'Değişikliği gözden geçir',
     'rights.back': 'Düzenlemeye dön',

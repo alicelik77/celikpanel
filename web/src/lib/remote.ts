@@ -310,7 +310,10 @@ export type ReadKey =
     // alpha.117 (D-042): an account's or a plan's rights, the administrator's
     // offer, the notices; also what the rights decide on other screens (the
     // domain tabs, the choosers, My plan).
-    | 'rights';
+    | 'rights'
+    // alpha.118: remote backup destinations, schedules and a site's remote
+    // copies (its overview and the list at a destination).
+    | 'remoteBackups';
 
 // The addresses each name covers. A domain is also counted on the dashboard,
 // in the plan usage and in the DNS overview; a mailbox in the dashboard and in
@@ -372,6 +375,7 @@ const READ_KEY_ADDRESSES: Record<ReadKey, readonly RegExp[]> = {
         /^\/api\/v1\/domains(\?|$)/,
         SUBSCRIPTION_USAGE,
     ],
+    remoteBackups: [/^\/api\/v1\/remote-backup\//, /^\/api\/v1\/domains\/\d+\/backups\/remote(\/|\?|$)/],
 };
 
 /** The read addresses a name covers; exported for tests and audits. */

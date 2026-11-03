@@ -27,6 +27,7 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'audit.resource.dns_engine': 'DNS yazılımı',
     'audit.resource.dns_zone': 'DNS bölgesi',
     'audit.resource.domain': 'Alan adı',
+    'audit.resource.remote_backup_destination': 'Uzak yedek hedefi',
     'audit.resource.email_account': 'Posta kutusu',
     'audit.resource.node': 'Sunucu',
     'audit.resource.panel_settings': 'Panel ayarları',

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test, { mock } from 'node:test';
 import React from 'react';
 import Renderer, { act } from 'react-test-renderer';
-import { dataModule, reactURL, remoteURL, sharedLayer } from './fixtures/shared-layer.mjs';
+import { dataModule, reactURL, remoteURL, replaceLazyImport, sharedLayer } from './fixtures/shared-layer.mjs';
 import { readAllowList, scanTree } from './remote-state-ratchet.mjs';
 import { fileURLToPath } from 'node:url';
 
@@ -71,7 +71,11 @@ const DomainGeneralSettings = await pick('DomainGeneralSettings');
 const DomainAppsPanel = await pick('DomainAppsPanel');
 const MailAuthPanel = await pick('MailAuthPanel');
 const DomainLogsViewer = await pick('DomainLogsViewer');
-const DomainBackupManager = await pick('DomainBackupManager');
+// The remote copies section (alpha.118) has its own test; here it is a stand-in.
+const DomainBackupManager = (await import(replaceLazyImport(
+  shared.compile('components/DomainBackupManager.tsx', own), './DomainRemoteBackups',
+  dataModule('export const DomainRemoteBackups = () => null;'),
+))).DomainBackupManager;
 const DomainCronManager = await pick('DomainCronManager');
 const { useRefreshEvery, useRemote } = await import(remoteURL);
 globalThis.window ??= globalThis;
