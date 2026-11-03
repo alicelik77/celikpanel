@@ -85,6 +85,9 @@ from the panel's own update screen.**
 - When Debian or Ubuntu's own PHP version is chosen in Components, it installs
   from the distribution's packages without the Sury repository, together with the
   PHP extensions the application catalogue needs.
+- After saving FTP/SFTP/SSH access, its warnings appear on the page instead of
+  pop-ups over the page's buttons; what the page already says is not repeated,
+  and missing command-line tools are named, with who installs them.
 - A file-handle bug that could break large unpacks and other file reads running
   at the same time is fixed.
 

@@ -58,7 +58,8 @@ export const trFileAccessScreens: Record<FileAccessScreenKey, string> = {
     'fileAccess.warn.fail2ban_owner_config': 'Fail2ban’ın FTP kuralı elle değiştirilmiş; CelikPanel onu korudu.',
     'fileAccess.warn.ssh_password_auth_off': 'Bu sunucu SFTP için yalnız SSH anahtarı kabul ediyor; bir anahtar ekleyin ya da FTP’yi parolayla kullanın.',
     'fileAccess.warn.jail_no_devices': 'Komut satırının klasörü aygıt dosyası olmadan bağlanmış bir diskte; bazı araçlar çalışmayabilir.',
-    'fileAccess.warn.jail_programs_missing': 'Bazı komut satırı araçları bu sunucuda kurulu değil; komut satırında yer almıyorlar.',
+    'fileAccess.warn.jail_programs_missing': 'Bazı komut satırı araçları bu sunucuda kurulu değil, bu yüzden komut satırında yoklar. Komut satırının geri kalanı çalışır. Sunucu yöneticisi bunları dağıtımın paketlerinden kurup erişimi burada yeniden kaydedebilir.',
+    'fileAccess.warn.jail_programs_missing_named': 'Bu sunucuda kurulu olmadığı için komut satırında yok: {names}. Komut satırının geri kalanı çalışır. Sunucu yöneticisi bunları dağıtımın paketlerinden kurup erişimi burada yeniden kaydedebilir.',
 
     'fileAccess.recipe.title': 'FileZilla ile bağlanın',
     'fileAccess.recipe.ftpHost': 'FTP sunucusu',

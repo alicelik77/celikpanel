@@ -142,6 +142,28 @@ function decodePreview(raw: unknown): Preview {
     };
 }
 
+// Warnings the page already shows as a standing note are not repeated.
+const SHOWN_ON_PAGE = new Set(['ftp_not_installed', 'ftp_owner_config', 'ftp_self_signed', 'fail2ban_missing', 'ssh_password_auth_off']);
+const MISSING_PREFIX = 'not on this server: ';
+
+function changeWarnings(answered: Preview, t: (key: TranslationKey) => string): Array<{ key: TranslationKey; vars?: Record<string, string> }> {
+    const out: Array<{ key: TranslationKey; vars?: Record<string, string> }> = [];
+    for (const warning of answered.warnings) {
+        if (SHOWN_ON_PAGE.has(warning)) continue;
+        if (warning === 'jail_programs_missing') {
+            const note = answered.changes.find((c) => c.kind === 'jail' && c.detail.startsWith(MISSING_PREFIX));
+            const names = note ? note.detail.slice(MISSING_PREFIX.length).trim() : '';
+            if (names) {
+                out.push({ key: 'fileAccess.warn.jail_programs_missing_named', vars: { names } });
+                continue;
+            }
+        }
+        const key = `fileAccess.warn.${warning}` as TranslationKey;
+        if (t(key) !== key) out.push({ key });
+    }
+    return out;
+}
+
 function Notice({ tone, children }: { tone: 'warning' | 'danger' | 'info'; children: ReactNode }) {
     const colors = tone === 'danger'
         ? 'border-danger/40 bg-danger/10'
@@ -162,6 +184,9 @@ export function DomainFileAccess({ domainId, isAdmin = false }: { domainId: numb
     const [preview, setPreview] = useState<Preview | null>(null);
     const [busy, setBusy] = useState(false);
     const [problem, setProblem] = useState('');
+    // What the last saved change reported and the page does not already
+    // show: kept beside the form, not as pop-ups over the page.
+    const [lastWarnings, setLastWarnings] = useState<Array<{ key: TranslationKey; vars?: Record<string, string> }>>([]);
 
     const reset = () => {
         setEnabled(null);
@@ -244,11 +269,7 @@ export function DomainFileAccess({ domainId, isAdmin = false }: { domainId: numb
                             return;
                         }
                         answer.settle();
-                        for (const warning of answered.warnings) {
-                            const key = `fileAccess.warn.${warning}` as TranslationKey;
-                            const text = t(key);
-                            if (text !== key) showToast('warning', text);
-                        }
+                        setLastWarnings(changeWarnings(answered, t));
                         showToast('success', t(wantEnabled ? 'fileAccess.saved' : 'fileAccess.closed'));
                         reset();
                         await access.retry();
@@ -268,6 +289,11 @@ export function DomainFileAccess({ domainId, isAdmin = false }: { domainId: numb
                         </div>
                         <ResultUnknown answer={answer} />
                         <AccessBlockers view={view} isAdmin={isAdmin} />
+                        {lastWarnings.length > 0 && (
+                            <div className="space-y-2">
+                                {lastWarnings.map((w) => <Notice key={w.key} tone="warning">{t(w.key, w.vars)}</Notice>)}
+                            </div>
+                        )}
 
                         {current && view.available && (
                             <div className="rounded-xl border border-border bg-surface p-4 space-y-4">

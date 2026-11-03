@@ -84,6 +84,9 @@ sahibi, panelin kendi güncelleme ekranından günceller.**
 - Bileşenler'de Debian ya da Ubuntu'nun kendi PHP sürümü seçilince, uygulama
   kataloğunun istediği PHP eklentileriyle birlikte dağıtımın paketlerinden kurulur;
   Sury deposu gerekmez.
+- FTP/SFTP/SSH erişimi kaydedilince uyarılar artık sayfanın düğmelerini örten
+  açılır kutular yerine sayfada görünüyor; sayfanın zaten söylediği tekrarlanmıyor,
+  eksik komut satırı araçları adıyla ve kimin kuracağıyla yazılıyor.
 - Büyük arşivlerin açılmasını ve aynı anda yapılan dosya okumalarını
   bozabilen bir dosya tanıtıcı hatası giderildi.
 

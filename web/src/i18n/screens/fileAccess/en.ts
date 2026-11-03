@@ -63,7 +63,8 @@ export const enFileAccessScreens = {
     'fileAccess.warn.fail2ban_owner_config': 'Fail2ban’s FTP rule was changed by hand, so CelikPanel kept it.',
     'fileAccess.warn.ssh_password_auth_off': 'This server accepts only SSH keys for SFTP; add a key, or use FTP with the password.',
     'fileAccess.warn.jail_no_devices': 'The command line’s folder is on a disk mounted without device files, so some tools may not work.',
-    'fileAccess.warn.jail_programs_missing': 'Some command-line tools are not installed on this server, so they are not in the command line.',
+    'fileAccess.warn.jail_programs_missing': 'Some command-line tools are not installed on this server, so they are not in the command line. The rest of the command line works. The server administrator can install them from the distribution’s packages and then save access here again.',
+    'fileAccess.warn.jail_programs_missing_named': 'Not installed on this server, so not in the command line: {names}. The rest of the command line works. The server administrator can install them from the distribution’s packages and then save access here again.',
 
     'fileAccess.recipe.title': 'Connect with FileZilla',
     'fileAccess.recipe.ftpHost': 'FTP server',
