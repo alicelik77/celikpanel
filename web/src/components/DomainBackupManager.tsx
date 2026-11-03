@@ -52,6 +52,7 @@ const originLabelKey: Record<string, TranslationKey> = {
     manual: 'backup.origin.manual',
     scheduled: 'backup.origin.scheduled',
     pre_restore: 'backup.origin.preRestore',
+    pre_update: 'backup.origin.preUpdate',
 };
 
 // A refusal keeps the server's answer whole (code, action, reason), so the

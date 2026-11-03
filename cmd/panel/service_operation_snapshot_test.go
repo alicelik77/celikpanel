@@ -1441,6 +1441,14 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse the site tools (migration 59, alpha.118).
+        DROP TABLE malware_notices;
+        DROP TABLE malware_findings;
+        DROP TABLE malware_scans;
+        DROP TABLE wordpress_site_settings;
+        DROP TABLE wordpress_operations;
+        -- Reverse the application catalog operations (migration 58, alpha.118).
+        DROP TABLE app_catalog_operations;
         -- Reverse the usage limits (migration 57, alpha.118).
         ALTER TABLE subscription_suspensions DROP COLUMN cause_disk;
         ALTER TABLE reseller_plans DROP COLUMN traffic_quota_mb;

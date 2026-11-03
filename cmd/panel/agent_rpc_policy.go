@@ -20,6 +20,9 @@ const (
 	agentRPCDatabaseTimeout     = 10 * time.Minute
 	agentRPCDeploymentTimeout   = 20 * time.Minute
 	agentRPCBulkImportTimeout   = 30 * time.Minute
+	// alpha.118: a whole-site malware scan or WordPress copy; the Agent
+	// bounds its own work at two hours.
+	agentRPCSiteLongTimeout = 135 * time.Minute
 )
 
 type agentRPCEffect uint8
@@ -141,6 +144,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.TrafficCollectV1 Agent.SubscriptionDiskUsageV1
 		Agent.AppPrerequisitesV1
 		Agent.EmergencyUnitsInspectV1
+		Agent.WordPressStatusV1 Agent.MalwareScannerStatusV1 Agent.MalwareScanSiteV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -169,6 +173,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.CreateSite Agent.DeleteSite Agent.InstallWordPress Agent.ApplyFileAccessV1
 		Agent.InstallCatalogAppV1 Agent.SetupCatalogAppV1 Agent.RemoveCatalogAppV1
 		Agent.SetSiteAccountSuspensionV1
+		Agent.WordPressUpdateV1 Agent.WordPressCloneV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostingVHost, `
 		Agent.ApplyVhost Agent.ApplyVhosts Agent.ReconcileDefaultHTTPSServerV1
@@ -203,6 +208,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityFilesystem, `
 		Agent.ChmodFile Agent.ClearLogs Agent.CreateFileOrDir Agent.DeleteFileOrDir
 		Agent.RenameFile Agent.UploadFile Agent.WriteFile
+		Agent.MalwareQuarantineV1 Agent.MalwareRestoreV1 Agent.MalwareDeleteQuarantinedV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityCron, `
 		Agent.AddCronJob Agent.DeleteCronJob Agent.UpdateCronJob
@@ -497,6 +503,16 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.FileAccessStateV1":   agentRPCStandardReadTimeout,
 	"Agent.FileAccessPreviewV1": agentRPCStandardReadTimeout,
 	"Agent.ApplyFileAccessV1":   agentRPCDatabaseTimeout,
+
+	// alpha.118: WordPress tools and malware scanning of hosted sites.
+	"Agent.WordPressStatusV1":          agentRPCNetworkReadTimeout,
+	"Agent.WordPressUpdateV1":          agentRPCBulkImportTimeout,
+	"Agent.WordPressCloneV1":           agentRPCSiteLongTimeout,
+	"Agent.MalwareScannerStatusV1":     agentRPCQuickReadTimeout,
+	"Agent.MalwareScanSiteV1":          agentRPCSiteLongTimeout,
+	"Agent.MalwareQuarantineV1":        agentRPCMutationTimeout,
+	"Agent.MalwareRestoreV1":           agentRPCMutationTimeout,
+	"Agent.MalwareDeleteQuarantinedV1": agentRPCMutationTimeout,
 }
 
 var agentRPCPolicies = buildAgentRPCPolicies()

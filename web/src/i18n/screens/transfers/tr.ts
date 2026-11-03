@@ -61,6 +61,8 @@ export const trTransfersScreens: Record<TransfersScreenKey, string> = {
     'transfer.permission.team_members': 'Ek kullanıcılar',
     'transfer.permission.file_access': 'Dosya erişimi (FTP ve SFTP)',
     'transfer.permission.ssh': 'SSH (komut satırı)',
+    'transfer.permission.wordpress_tools': 'WordPress araçları',
+    'transfer.permission.malware_scan': 'Zararlı yazılım taraması sonuçları',
     'transfer.item.acme': '{provider} sertifikaları',
 
     'transfer.requests.title': 'Devir istekleri',

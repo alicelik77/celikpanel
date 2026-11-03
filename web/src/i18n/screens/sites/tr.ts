@@ -386,6 +386,7 @@ export const trSitesScreens: Record<SitesScreenKey, string> = {
     'backup.origin.manual': 'Elle oluşturuldu',
     'backup.origin.scheduled': 'Zamanlanmış',
     'backup.origin.preRestore': 'Geri yükleme öncesi güvenlik kopyası',
+    'backup.origin.preUpdate': 'WordPress güncellemesi öncesi',
     'backup.origin.unknown': 'Kaynak bilinmiyor',
     'backup.format.current': 'Güncel biçim',
     'backup.format.legacy': 'Eski biçim',

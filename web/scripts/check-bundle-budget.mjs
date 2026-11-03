@@ -212,6 +212,12 @@ const screenPartBudgets = {
   // appOffer., err.APP_). A new part, set with at least 25% headroom from its
   // Turkish file (about 9.5 / 3.4 KiB as source).
   appCatalog: kib(13, 4.5),
+  // alpha.118: WordPress tools and malware scanning of hosted sites (wpt.,
+  // mscan., err.WORDPRESS_, err.MALWARE_, and their audit words
+  // dashboard.audit.action.wordpress./.malware., since "dashboard" had no
+  // headroom left). A new part, set with at least 25% headroom from its
+  // Turkish file: 11.69 / 3.78 KiB.
+  siteTools: kib(16.5, 5.5),
 }
 
 // Translation chunks, named by source. The shell halves are held to the
