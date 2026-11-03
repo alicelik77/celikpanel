@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alicelik/celikpanel/internal/appcatalog"
 	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -49,6 +50,10 @@ const (
 type adminOfferLayer struct {
 	versions offeredVersions
 	hidden   map[string]bool
+	// apps (alpha.118): the catalog applications the administrator offers.
+	// Unlike other items an application is offered only when chosen
+	// (third-party software is gated at the offer step, D-042).
+	apps map[string]bool
 }
 
 func (p *Panel) loadHiddenOfferings(ctx context.Context) (map[string]bool, error) {
@@ -97,7 +102,11 @@ func (p *Panel) loadAdminOfferLayer(ctx context.Context) (adminOfferLayer, error
 	if err != nil {
 		return adminOfferLayer{}, fmt.Errorf("items offered to customers: %w", err)
 	}
-	return adminOfferLayer{versions: versions, hidden: hidden}, nil
+	apps, err := p.loadOfferedApps(ctx)
+	if err != nil {
+		return adminOfferLayer{}, fmt.Errorf("applications offered to customers: %w", err)
+	}
+	return adminOfferLayer{versions: versions, hidden: hidden, apps: apps}, nil
 }
 
 func (a adminOfferLayer) permits(permission string) bool {
@@ -107,6 +116,9 @@ func (a adminOfferLayer) permits(permission string) bool {
 func (a adminOfferLayer) offers(offeringID string) bool {
 	if a.hidden[offeringID] {
 		return false
+	}
+	if id, ok := appcatalog.IDFromOffering(offeringID); ok {
+		return a.apps[id]
 	}
 	parts := strings.SplitN(offeringID, ":", 3)
 	if len(parts) == 3 && parts[0] == "component" {
@@ -383,7 +395,7 @@ func (p *Panel) installedOfferingIDs(ctx context.Context) ([]string, error) {
 	for _, provider := range core.ACMEProviders {
 		out = append(out, "integration:acme:"+provider.ID)
 	}
-	return out, nil
+	return append(out, catalogOfferingIDs()...), nil
 }
 
 // writeRightNotGranted: the refusal of a permission, with who can open it.
@@ -552,6 +564,8 @@ var domainSubrouteRights = map[string]domainSubrouteRight{
 	"site-protect-users": {right: rightSiteProtect},
 	"site-redirects":     {right: rightSiteProtect},
 	"app-install":        {right: rightAppInstaller},
+	"app-catalog":        {right: rightAppInstaller},
+	"app-operation":      {right: rightAppInstaller},
 }
 
 // domainSubrouteRightFor: the permission a request needs, "" when none.

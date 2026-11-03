@@ -1251,6 +1251,8 @@ func removePanelManagedDir(domain string) {
 		_ = os.Remove(path)
 	}
 	removeTrafficInclude(domain)
+	// alpha.118: the application rules and setup lock of a deleted site.
+	removeUnchangedAppIncludes(domain)
 	directory := PanelManagedDir(domain)
 	if info, err := os.Lstat(directory); err == nil && info.IsDir() {
 		_ = os.Remove(directory) // fails, and leaves it, when not empty

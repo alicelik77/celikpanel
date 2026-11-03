@@ -80,8 +80,9 @@ func knownPermission(id string) bool {
 }
 
 // Offering ids of D-017: component:<id>[:<version>], integration:acme:<id>,
-// extension:<vendor>:<name>. Lowercase, bounded.
-var offeringIDPattern = regexp.MustCompile(`^(component:[a-z0-9][a-z0-9-]{0,40}(:[0-9][0-9a-z.]{0,20})?|integration:acme:[a-z0-9][a-z0-9-]{0,40}|extension:[a-z0-9][a-z0-9-]{0,40}:[a-z0-9][a-z0-9-]{0,60})$`)
+// extension:<vendor>:<name>, app:<id> (alpha.118, the application catalog).
+// Lowercase, bounded.
+var offeringIDPattern = regexp.MustCompile(`^(component:[a-z0-9][a-z0-9-]{0,40}(:[0-9][0-9a-z.]{0,20})?|integration:acme:[a-z0-9][a-z0-9-]{0,40}|extension:[a-z0-9][a-z0-9-]{0,40}:[a-z0-9][a-z0-9-]{0,60}|app:[a-z][a-z0-9-]{1,40})$`)
 
 func validOfferingID(id string) bool { return offeringIDPattern.MatchString(id) }
 

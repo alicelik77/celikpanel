@@ -49,6 +49,10 @@ type wordpressConfigFile struct {
 	dirFD   int
 	content []byte
 	stat    unix.Stat_t
+	// name is the file's name in dirFD; format is set for a catalog
+	// application (alpha.118), nil for WordPress's wp-config.php.
+	name   string
+	format *appConfigFormat
 }
 
 func (f *wordpressConfigFile) close() {
@@ -61,6 +65,16 @@ func (f *wordpressConfigFile) close() {
 // openWordPressConfigForRotation returns the file when it names dbName and
 // dbUser, else a reason it is not the file to update.
 func openWordPressConfigForRotation(app transport.DatabaseUserApp, dbUser string) (*wordpressConfigFile, string) {
+	fileRel := "wp-config.php"
+	var format *appConfigFormat
+	if app.Kind != "wordpress" {
+		found, ok := appConfigFormatFor(app.Kind)
+		if !ok {
+			return nil, "the application " + app.Kind + " has no configuration file CelikPanel can update"
+		}
+		format, fileRel = &found, found.file
+	}
+	fileName := filepath.Base(fileRel)
 	uid, err := wordpressConfigOwnerUID(app.SiteUsername)
 	if err != nil {
 		return nil, "the site user " + app.SiteUsername + " was not found"
@@ -75,7 +89,7 @@ func openWordPressConfigForRotation(app transport.DatabaseUserApp, dbUser string
 	if err := unix.Fstat(sitesFD, &sitesStat); err != nil || sitesStat.Uid != wordpressConfigRootOwner || sitesStat.Mode&0o022 != 0 {
 		return nil, "the subscription's sites folder is not root-owned and protected"
 	}
-	dirFD, err := unix.Openat2(sitesFD, filepath.Join(strconv.Itoa(app.DomainID), "public_html"), &unix.OpenHow{
+	dirFD, err := unix.Openat2(sitesFD, filepath.Join(strconv.Itoa(app.DomainID), "public_html", filepath.Dir(filepath.FromSlash(fileRel))), &unix.OpenHow{
 		Flags:   uint64(unix.O_PATH | unix.O_DIRECTORY | unix.O_CLOEXEC),
 		Resolve: unix.RESOLVE_BENEATH | unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS,
 	})
@@ -88,42 +102,58 @@ func openWordPressConfigForRotation(app transport.DatabaseUserApp, dbUser string
 			_ = unix.Close(dirFD)
 		}
 	}()
-	fd, err := unix.Openat(dirFD, "wp-config.php", unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC|unix.O_NONBLOCK, 0)
+	fd, err := unix.Openat(dirFD, fileName, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC|unix.O_NONBLOCK, 0)
 	if err != nil {
-		return nil, "wp-config.php is not in the site's document root"
+		return nil, fileRel + " is not in the site's document root"
 	}
-	file := os.NewFile(uintptr(fd), "wp-config.php")
+	file := os.NewFile(uintptr(fd), fileName)
 	defer file.Close()
 	var st unix.Stat_t
 	if err := unix.Fstat(fd, &st); err != nil {
-		return nil, "wp-config.php could not be read"
+		return nil, fileRel + " could not be read"
 	}
 	if st.Mode&unix.S_IFMT != unix.S_IFREG || st.Nlink != 1 || int(st.Uid) != uid || st.Size > wordpressConfigMaxBytes {
-		return nil, "wp-config.php is not a plain file of the site user"
+		return nil, fileRel + " is not a plain file of the site user"
 	}
 	content, err := io.ReadAll(io.LimitReader(file, wordpressConfigMaxBytes+1))
 	if err != nil || len(content) > wordpressConfigMaxBytes {
-		return nil, "wp-config.php could not be read"
+		return nil, fileRel + " could not be read"
 	}
-	if reason := wordpressConfigMatches(content, app.DBName, dbUser); reason != "" {
+	reason := ""
+	if format != nil {
+		reason = format.matches(content, app.DBName, dbUser)
+	} else {
+		reason = wordpressConfigMatches(content, app.DBName, dbUser)
+	}
+	if reason != "" {
 		return nil, reason
 	}
 	keep = true
-	return &wordpressConfigFile{dirFD: dirFD, content: content, stat: st}, ""
+	return &wordpressConfigFile{dirFD: dirFD, content: content, stat: st, name: fileName, format: format}, ""
 }
 
 // writePassword replaces DB_PASSWORD's value: a new file with the old one's
 // owner and mode, written and synced, then renamed over the old one.
 func (f *wordpressConfigFile) writePassword(password string) error {
-	next, err := replaceWordPressDBPassword(f.content, password)
+	var next []byte
+	var err error
+	if f.format != nil {
+		next, err = f.format.replacePassword(f.content, password)
+	} else {
+		next, err = replaceWordPressDBPassword(f.content, password)
+	}
 	if err != nil {
 		return err
+	}
+	name := f.name
+	if name == "" {
+		name = "wp-config.php"
 	}
 	suffix := make([]byte, 8)
 	if _, err := rand.Read(suffix); err != nil {
 		return err
 	}
-	tmp := ".wp-config.php.celikpanel-" + hex.EncodeToString(suffix)
+	tmp := "." + name + ".celikpanel-" + hex.EncodeToString(suffix)
 	fd, err := unix.Openat(f.dirFD, tmp, unix.O_WRONLY|unix.O_CREAT|unix.O_EXCL|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0o600)
 	if err != nil {
 		return fmt.Errorf("create the new file: %w", err)
@@ -150,7 +180,7 @@ func (f *wordpressConfigFile) writePassword(password string) error {
 		_ = unix.Unlinkat(f.dirFD, tmp, 0)
 		return fmt.Errorf("close: %w", err)
 	}
-	if err := unix.Renameat(f.dirFD, tmp, f.dirFD, "wp-config.php"); err != nil {
+	if err := unix.Renameat(f.dirFD, tmp, f.dirFD, name); err != nil {
 		_ = unix.Unlinkat(f.dirFD, tmp, 0)
 		return fmt.Errorf("replace: %w", err)
 	}

@@ -347,8 +347,15 @@ export function softwareName(id: string): string {
     }
     if (parts[0] === 'integration' && parts[1] === 'acme') return ACME_NAMES[parts[2]] ?? parts[2];
     if (parts[0] === 'extension') return parts[3] ? `${parts[2]} (${parts[1]})` : (parts[2] ?? id);
+    if (parts[0] === 'app') return APP_NAMES[parts[1]] ?? parts[1];
     return id;
 }
+
+// The catalog applications (alpha.118): product names, the same in every language.
+const APP_NAMES: Record<string, string> = {
+    wordpress: 'WordPress', prestashop: 'PrestaShop', nextcloud: 'Nextcloud', drupal: 'Drupal',
+    joomla: 'Joomla', mediawiki: 'MediaWiki', phpbb: 'phpBB',
+};
 
 /** The group a software item is shown under. */
 export function softwareGroup(id: string): string {
@@ -359,10 +366,11 @@ export function softwareGroup(id: string): string {
 }
 
 /** A group's heading: a product name, or a word the caller translates. */
-export function softwareGroupName(group: string): { product?: string; key?: 'acme' | 'extension' } {
+export function softwareGroupName(group: string): { product?: string; key?: 'acme' | 'extension' | 'app' } {
     const [kind, name] = group.split(':');
     if (kind === 'component') return { product: COMPONENT_NAMES[name] ?? name };
     if (kind === 'integration' && name === 'acme') return { key: 'acme' };
+    if (kind === 'app') return { key: 'app' };
     return { key: 'extension' };
 }
 

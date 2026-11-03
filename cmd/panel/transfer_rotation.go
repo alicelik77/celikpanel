@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/alicelik/celikpanel/internal/appcatalog"
 	"log"
 	"strconv"
 	"strings"
@@ -82,6 +83,9 @@ type rotationRef struct {
 	AppDomainID int    `json:"app_domain_id,omitempty"`
 	AppDomain   string `json:"app_domain,omitempty"`
 	AppDBName   string `json:"app_db_name,omitempty"`
+	// AppKind (alpha.118): which application ("wordpress" when empty, as an
+	// older plan recorded it, or a catalog application id).
+	AppKind string `json:"app_kind,omitempty"`
 }
 
 type rotationPlanItem struct {
@@ -208,14 +212,21 @@ func planTransferRotation(ctx context.Context, q rowQueryer, subID int) ([]rotat
 	// Database users, with the WordPress CelikPanel installed for each.
 	rows, err = q.QueryContext(ctx, `
 		SELECT du.id, du.server_id, du.username, LOWER(t.name), COALESCE(ds.host, ''), COALESCE(ds.port, 0),
-		       COALESCE(app.domain_id, 0), COALESCE(app.domain_name, ''), COALESCE(app.database_name, '')
+		       COALESCE(app.domain_id, 0), COALESCE(app.domain_name, ''), COALESCE(app.database_name, ''),
+		       COALESCE(app.app_kind, '')
 		FROM database_users du
 		JOIN database_servers ds ON ds.id = du.server_id
 		JOIN database_server_types t ON t.id = ds.type_id
 		LEFT JOIN (
-			SELECT a.database_server_id, a.database_user, a.database_name, a.domain_id, d.name AS domain_name
+			SELECT a.database_server_id, a.database_user, a.database_name, a.domain_id, d.name AS domain_name,
+			       'wordpress' AS app_kind
 			FROM application_install_operations a JOIN domains d ON d.id = a.domain_id
 			WHERE a.status = 'applied' AND a.subscription_id = ?1
+			UNION ALL
+			SELECT c.database_server_id, c.database_user, c.database_name, c.domain_id, d.name AS domain_name,
+			       c.app_id AS app_kind
+			FROM app_catalog_operations c JOIN domains d ON d.id = c.domain_id
+			WHERE c.status IN ('applied', 'setup_failed') AND c.subscription_id = ?1
 		) app ON app.database_server_id = du.server_id AND app.database_user = du.username
 		WHERE du.subscription_id = ?1
 		ORDER BY du.username, du.id`, subID)
@@ -224,8 +235,8 @@ func planTransferRotation(ctx context.Context, q rowQueryer, subID int) ([]rotat
 	}
 	for rows.Next() {
 		var id, serverID, port, appDomainID int
-		var username, engine, host, appDomain, appDB string
-		if err := rows.Scan(&id, &serverID, &username, &engine, &host, &port, &appDomainID, &appDomain, &appDB); err != nil {
+		var username, engine, host, appDomain, appDB, appKind string
+		if err := rows.Scan(&id, &serverID, &username, &engine, &host, &port, &appDomainID, &appDomain, &appDB, &appKind); err != nil {
 			rows.Close()
 			return nil, preview, err
 		}
@@ -238,7 +249,7 @@ func planTransferRotation(ctx context.Context, q rowQueryer, subID int) ([]rotat
 			continue
 		}
 		ref := rotationRef{SubscriptionID: subID, DBUserID: id, Engine: engine, Host: host, Port: port, Username: username,
-			AppDomainID: appDomainID, AppDomain: appDomain, AppDBName: appDB}
+			AppDomainID: appDomainID, AppDomain: appDomain, AppDBName: appDB, AppKind: appKind}
 		item := rotationPlanItem{Kind: rotationEffectDatabaseUser, Target: strconv.Itoa(serverID) + ":" + username, Ref: ref}
 		line := rotationDBUserLine{Username: username, AppDomain: appDomain}
 		if !localDatabaseHost(host) {
@@ -795,7 +806,11 @@ func (p *Panel) runDatabaseUserRotation(ctx context.Context, native rotationNati
 		NewPassword: secret,
 	}
 	if e.Ref.AppDomainID > 0 {
-		req.App = &transport.DatabaseUserApp{Kind: "wordpress", SubscriptionID: e.Ref.SubscriptionID, DomainID: e.Ref.AppDomainID,
+		kind := e.Ref.AppKind
+		if kind == "" {
+			kind = "wordpress"
+		}
+		req.App = &transport.DatabaseUserApp{Kind: kind, SubscriptionID: e.Ref.SubscriptionID, DomainID: e.Ref.AppDomainID,
 			SiteUsername: services.SiteUsername(e.Ref.AppDomain), DBName: e.Ref.AppDBName, Required: true}
 	}
 	resp, err := native.rotateDatabaseUser(ctx, req)
@@ -813,15 +828,15 @@ func (p *Panel) runDatabaseUserRotation(ctx context.Context, native rotationNati
 		return rotationStepDone, "the user does not exist on the database engine; nothing to change", "", nil
 	case resp.AppConflict:
 		return "", "", "", &suspensionStepError{kind: "prerequisite", err: fmt.Errorf(
-			"WordPress on %s: %s. Its database password was not changed so the site keeps working; the new owner sets a new password for %s under Databases and puts it into the site's configuration",
-			e.Ref.AppDomain, resp.AppDetail, e.Ref.Username)}
+			"%s on %s: %s. Its database password was not changed so the site keeps working; the new owner sets a new password for %s under Databases and puts it into the site's configuration",
+			rotationAppName(e.Ref.AppKind), e.Ref.AppDomain, resp.AppDetail, e.Ref.Username)}
 	case resp.Error != "":
 		return "", "", "", verifiedFailure("%s", resp.Error)
 	case !resp.Applied:
 		return "", "", "", unknownResult(errors.New("the Agent confirmed nothing"))
 	}
 	if resp.AppUpdated {
-		return rotationStepDone, "new password set on the engine (not shown to anyone), open sessions ended, WordPress on " + e.Ref.AppDomain + " updated", "", nil
+		return rotationStepDone, "new password set on the engine (not shown to anyone), open sessions ended, " + rotationAppName(e.Ref.AppKind) + " on " + e.Ref.AppDomain + " updated", "", nil
 	}
 	return rotationStepDone, "new password set on the engine (not shown to anyone); open sessions ended", "", nil
 }
@@ -1117,4 +1132,16 @@ func (p *Panel) siteAccountRotationOpen(ctx context.Context, domainID int) (bool
 		WHERE e.kind = 'site_account' AND json_extract(e.ref, '$.domain_id') = ?
 		  AND e.state IN ('pending', 'running', 'failed') AND o.state IN ('running', 'failed')`, domainID).Scan(&n)
 	return n > 0, err
+}
+
+// rotationAppName names the application of a database user ("WordPress"
+// when an older plan did not record one).
+func rotationAppName(kind string) string {
+	if kind == "" {
+		return "WordPress"
+	}
+	if app, ok := appcatalog.Lookup(kind); ok {
+		return app.Name
+	}
+	return kind
 }

@@ -366,6 +366,9 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPut, http.MethodOptions}
 	case "apps/install":
 		match.kind, match.methods = "app-install", []string{http.MethodPost}
+	case "apps":
+		// alpha.118: the domain's application catalog (read only).
+		match.kind, match.methods = "app-catalog", []string{http.MethodGet}
 	case "usage":
 		match.kind, match.methods = "usage", []string{http.MethodGet}
 	case "connection":
@@ -402,6 +405,11 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 	default:
 		if len(tail) == 2 && tail[0] == "aliases" {
 			match.kind, match.methods = "aliases", []string{http.MethodDelete}
+		} else if len(tail) == 2 && tail[0] == "apps" && validHexOperationID(tail[1]) {
+			// alpha.118: remove an installed catalog application.
+			match.kind, match.methods = "app-operation", []string{http.MethodDelete}
+		} else if len(tail) == 3 && tail[0] == "apps" && validHexOperationID(tail[1]) && (tail[2] == "retry" || tail[2] == "credentials") {
+			match.kind, match.methods = "app-operation", []string{http.MethodPost}
 		} else if len(tail) == 2 && tail[0] == "databases" {
 			if _, ok := strictPositiveID(tail[1]); !ok {
 				return domainSubroute{}, false
@@ -494,6 +502,10 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainMail(w, r)
 	case "app-install":
 		p.handleAppInstall(w, r, match.domainID)
+	case "app-catalog":
+		p.handleDomainAppCatalog(w, r, match.domainID)
+	case "app-operation":
+		p.routeAppOperation(w, r, match.domainID)
 	case "usage":
 		p.handleDomainUsage(w, r)
 	case "connection":
@@ -1151,6 +1163,12 @@ func main() {
 		)
 	} else if recovered > 0 {
 		log.Printf("Marked %d interrupted application install(s) for review", recovered)
+	}
+	if recovered, err := panel.recoverInterruptedCatalogAppOperations(context.Background()); err != nil {
+		panel.markSubsystemDegraded(degradedSubsystemAppInstalls, errCodeStartupRecoveryFailed, err)
+		log.Printf("DEGRADED %s: failed to recover interrupted catalog applications: %v", degradedSubsystemAppInstalls, err)
+	} else if recovered > 0 {
+		log.Printf("Marked %d interrupted catalog application operation(s) for retry or review", recovered)
 	}
 
 	// One-time repair of pre-A4 rows: seal any database root password that

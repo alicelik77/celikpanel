@@ -19,7 +19,7 @@ export const enTransferRotationScreens = {
     'transfer.rotate.mailboxes': 'Mailboxes {names}: a new random password nobody is shown; open mail sessions end',
     'transfer.rotate.dbUsers': 'Database users: a new random password nobody is shown',
     'transfer.rotate.dbPlain': '{name}',
-    'transfer.rotate.dbApp': '{name}: the WordPress on {domain} gets it in its configuration, so the site keeps working',
+    'transfer.rotate.dbApp': '{name}: the application CelikPanel installed on {domain} gets it in its configuration, so the site keeps working',
     'transfer.rotate.dbRemote': '{name}: on {host}, so CelikPanel cannot change it; change it there',
     'transfer.rotate.dbLegacy': '{name}: recorded by an older CelikPanel version; change it on the database server',
     'transfer.rotate.protected': 'Users of protected folders on {domain} ({n}): a new random password',
