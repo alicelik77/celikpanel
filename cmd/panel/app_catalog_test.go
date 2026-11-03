@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/alicelik/celikpanel/internal/appcatalog"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -205,6 +206,36 @@ func TestCatalogInstallRefusesMissingExtensionsBeforeChangingAnything(t *testing
 	recorder = installCatalogApp(t, f, "nextcloud")
 	if recorder.Code != http.StatusConflict || !strings.Contains(recorder.Body.String(), errCodeAppPHPUnsupported) || agent.prereqCalls != before {
 		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+// alpha.118 lab round 2: a prerequisite check without an answer says why.
+// A refusal by the agent and an answer that did not come in time (other work
+// on the server) each have their own reason; nothing is created.
+func TestCatalogPrerequisitesWithoutAnswerSayWhy(t *testing.T) {
+	f, agent := newCatalogFixture(t)
+	agent.prereq = transport.AppPrerequisitesResponse{Error: `"wordpress" is not an application this agent can install`}
+	recorder := installCatalogApp(t, f, "prestashop")
+	var body apiErrorBody
+	_ = json.Unmarshal(recorder.Body.Bytes(), &body)
+	if recorder.Code != http.StatusServiceUnavailable || body.Code != errCodeAppPrereqUnknown || body.Reason != appPrereqRefused ||
+		!strings.Contains(body.Error, "is not an application") || body.Vars["app"] != "PrestaShop" || !strings.Contains(body.Vars["cause"], "is not an application") {
+		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	var operations int
+	_ = f.panel.db.GetDB().QueryRow(`SELECT COUNT(*) FROM app_catalog_operations`).Scan(&operations)
+	if creates, _, _ := agent.snapshot(); len(creates) != 0 || len(agent.filesCalls) != 0 || operations != 0 {
+		t.Fatalf("something changed: creates=%d files=%d operations=%d", len(creates), len(agent.filesCalls), operations)
+	}
+
+	app, _ := appcatalog.Lookup("wordpress")
+	reason, message := appPrereqFailure(app, context.DeadlineExceeded, transport.AppPrerequisitesResponse{})
+	if reason != appPrereqBusy || !strings.Contains(message, "Nobody needs to fix anything") || !strings.Contains(message, "install again") {
+		t.Fatalf("busy: %q %q", reason, message)
+	}
+	reason, message = appPrereqFailure(app, errAgentRPCClientUnavailable, transport.AppPrerequisitesResponse{})
+	if reason != "" || !strings.Contains(message, "agent is running") {
+		t.Fatalf("unreachable: %q %q", reason, message)
 	}
 }
 

@@ -171,6 +171,14 @@ They are listed in the catalog with this reason; the server refuses to offer or 
   tarball against the registry's integrity and `npm audit signatures` checks the registry
   signatures. Open WebUI pins most direct dependencies exactly (`==`), but pip resolves them from
   PyPI without `--require-hashes` (a full hash lock for each Python version is a later step).
+- **n8n is installed with npm's `--force` (alpha.118 lab round 2).** n8n-nodes-base 2.46.x lists
+  the Alpine (musl) builds of `@napi-rs/canvas` and `@napi-rs/image` as ordinary dependencies, not
+  optional ones, so a plain `npm install` stops with `EBADPLATFORM` on every glibc server (Debian,
+  Ubuntu, Arch). `--force` is npm's only switch for that; it also stores those unused binaries
+  (a few MB) and lets npm continue past peer-dependency conflicts it would otherwise refuse.
+  Integrity checks and `npm audit signatures` still apply. Only n8n gets it
+  (`NPMPlatformDepsRequired` in `internal/serviceapps/catalog.go`); drop it when n8n makes those
+  dependencies optional again.
 - **Install scripts run.** `--ignore-scripts` would break both apps (n8n: sqlite3 and isolated-vm
   native modules; sqlite3's script downloads a prebuilt binary from its GitHub release without a
   pinned hash). They run as the site's user inside the sandbox. Without a prebuilt binary they

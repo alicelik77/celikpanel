@@ -115,8 +115,16 @@ type catalogSite struct {
 // resolveCatalogSite validates the request's identity against the catalog
 // and derives every path.
 func resolveCatalogSite(appID string, site transport.AppSiteIdentity) (catalogSite, error) {
+	return resolveCatalogSiteFor(appID, site, false)
+}
+
+// resolveCatalogSiteFor: withLegacy also accepts WordPress, whose install
+// stays Agent.InstallWordPress; only the read-only prerequisite check uses
+// it (alpha.118 lab round 2: the check refused WordPress, so the Panel said
+// "could not be asked" instead of naming the missing mysqli).
+func resolveCatalogSiteFor(appID string, site transport.AppSiteIdentity, withLegacy bool) (catalogSite, error) {
 	app, ok := catalogAppLookup(appID)
-	if !ok || app.Kind != appcatalog.KindPHPSite || app.Legacy() {
+	if !ok || app.Kind != appcatalog.KindPHPSite || (app.Legacy() && !withLegacy) {
 		return catalogSite{}, fmt.Errorf("%q is not an application this agent can install", appID)
 	}
 	domain, err := hostname.CanonicalFQDN(site.Domain)
@@ -147,7 +155,7 @@ func (a *Agent) AppPrerequisitesV1(req *AppPrerequisitesRequest, resp *AppPrereq
 		return errors.New("request and response are required")
 	}
 	*resp = AppPrerequisitesResponse{}
-	site, err := resolveCatalogSite(req.AppID, req.Site)
+	site, err := resolveCatalogSiteFor(req.AppID, req.Site, true)
 	if err != nil {
 		resp.Error = err.Error()
 		return nil

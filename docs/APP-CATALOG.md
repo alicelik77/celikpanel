@@ -61,7 +61,13 @@ on Debian, Ubuntu and Arch is proven in the release's lab round; until then the 
    **without** the Sury repository (alpha.118); other versions still need it. Arch Linux ships
    one PHP: the refusal names `php-gd`/`php-intl`-style packages or the extensions to switch
    on in `/etc/php/conf.d`; the panel has no button for that yet. WordPress runs the same
-   check (at least `mysqli`) before its database is created (alpha.118).
+   check (at least `mysqli`) before its database is created (alpha.118; until lab round 2 the
+   Agent refused the check for WordPress, so it always read "could not be asked"). The check
+   takes no host lease and changes nothing. Without an answer it says why
+   (`APP_PREREQUISITES_UNKNOWN` with a reason): **busy** (no answer in 40 s, usually other work
+   on the server: nobody acts, install again in a minute or two), **refused** (the Agent refused
+   the request: try again, then report the message), or the Agent could not be reached (the
+   administrator checks that it runs).
 3. **Database** and its user, recorded and counted like any database (the WordPress saga).
 4. **Files**: download, verify, unpack into a root-private staging folder with the WordPress
    limits, give to the site's user, write the **setup lock** (every address answers "being set

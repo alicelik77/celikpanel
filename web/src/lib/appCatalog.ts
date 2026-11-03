@@ -57,6 +57,8 @@ export interface AppRequirements {
     /** The Components install that brings every missing extension ("php8.4-fpm"). */
     install_package?: string;
     detail?: string;
+    /** Why an "unknown" had no answer: busy (no answer in time), refused (the agent refused the check). */
+    reason?: 'busy' | 'refused';
 }
 
 export interface DomainApp extends CatalogApp {
@@ -123,6 +125,7 @@ function decodeRequirements(raw: unknown): AppRequirements | undefined {
         disk_reason: str(raw.disk_reason) || undefined, detail: str(raw.detail) || undefined,
         php_line: str(raw.php_line) || undefined,
         install_package: /^php[0-9]+\.[0-9]+-fpm$/.test(str(raw.install_package)) ? str(raw.install_package) : undefined,
+        reason: raw.reason === 'busy' || raw.reason === 'refused' ? raw.reason : undefined,
     };
 }
 

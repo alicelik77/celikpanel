@@ -530,10 +530,13 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 	} else {
 		unit = a.firstPresentUnitWithExecutable(svc, systemctl)
 	}
-	// ClamAV's daemon waits for its first signatures (alpha.118 lab, D6):
-	// freshclam starts first; if the download outlasts a bounded wait, the
-	// install ends "waiting" and systemd starts the daemon when they land.
+	// ClamAV's daemon waits for its first signatures (alpha.118 lab, D6,
+	// rounds 1 and 2): freshclam starts first; the socket and daemon start
+	// once main AND daily are on disk. A download that outlasts the bounded
+	// wait ends "waiting", and a standard systemd path unit starts the
+	// daemon when the signatures are complete (clamav_first_signatures.go).
 	clamAVWaiting := false
+	clamAVNote := ""
 	if req.ID == "clamav" && unit != "" {
 		ready, err := clamAVAwaitFirstSignatures(ctx, systemctl, svc.HelperUnits)
 		if err != nil {
@@ -544,8 +547,10 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 	}
 	if unit != "" {
 		var err error
-		if clamAVWaiting {
-			err = clamAVArmFirstStart(ctx, systemctl, unit)
+		if req.ID == "clamav" && clamAVWaiting {
+			clamAVWaiting, clamAVNote, err = clamAVArmFirstStart(ctx, systemctl, unit)
+		} else if req.ID == "clamav" {
+			clamAVNote, err = clamAVStartWithSignatures(ctx, systemctl, unit)
 		} else if serviceUsesBINDPackageInstallGuard(req.ID) {
 			// BIND's package-maintainer auto-start guard deliberately leaves both
 			// distro unit names masked. The explicit panel configuration/switch
@@ -605,7 +610,10 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 	}
 	if clamAVWaiting {
 		resp.Waiting = transport.InstallWaitingFirstSignatures
-		resp.Detail += " — waiting for the first virus signature download; the daemon starts by itself when it finishes"
+		resp.Detail += " — waiting for the first virus signature download; " + clamAVFirstStartPathUnit + " starts the daemon when it is complete"
+	}
+	if clamAVNote != "" {
+		resp.Detail += " — " + clamAVNote
 	}
 	return nil
 }
@@ -1023,7 +1031,17 @@ func (a *Agent) UninstallService(req *InstallServiceRequest, resp *UninstallServ
 		resp.Error = fmt.Sprintf("the units an unfinished install of %s left masked could not be released, so nothing was removed: %v", svc.Name, err)
 		return nil
 	}
-	return a.uninstallServiceWithOps(req, resp, ops)
+	err = a.uninstallServiceWithOps(req, resp, ops)
+	// The path unit that would start ClamAV after its first signatures
+	// goes with ClamAV (only the files CelikPanel wrote unchanged).
+	if err == nil && resp.Removed && svc.ID == "clamav" {
+		if systemctl, resolveErr := serviceMutationSystemctlResolver(); resolveErr == nil {
+			if note := clamAVRetireFirstStart(ctx, systemctl); note != "" {
+				resp.Detail += " — " + note
+			}
+		}
+	}
+	return err
 }
 
 // serviceRemovalWork is everything a removal will do, computed read-only

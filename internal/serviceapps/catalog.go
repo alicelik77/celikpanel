@@ -101,6 +101,14 @@ type App struct {
 
 	// NodeMajors are the Node.js major versions the app supports (Node apps).
 	NodeMajors []int `json:"node_majors,omitempty"`
+	// NPMPlatformDepsRequired (Node apps): the app's own package lists
+	// prebuilt binaries for other platforms as ordinary (not optional)
+	// dependencies, which npm refuses on any other platform (EBADPLATFORM).
+	// npm's only switch for that is --force; the install then also stores
+	// those unused binaries. Every package is still checked against the
+	// registry's integrity value and signature. alpha.118 lab round 2:
+	// n8n-nodes-base 2.46.x requires @napi-rs/{canvas,image}-linux-*-musl.
+	NPMPlatformDepsRequired bool `json:"-"`
 	// PythonMinors are the Python 3 minor versions it supports (Python apps).
 	PythonMinors []int `json:"python_minors,omitempty"`
 
@@ -144,8 +152,12 @@ var catalog = []App{
 		ArtifactHash:      "sha512-Ek/AlWCxbNfULfr5Z4kzS+SwcHfVTpcVIVmughdfqM905EGw0rIGjVLHbBTvgnYsV15Ajwih8spQndc5+Xr1Wg==",
 		HashKind:          HashNPMIntegrity,
 		NodeMajors:        []int{24},
-		CustomerOfferable: true,
-		ResellerClosed:    "sustainable_use",
+		// n8n-nodes-base 2.46.4 depends (not optionally) on the Alpine
+		// binaries @napi-rs/canvas-linux-{x64,arm64}-musl and
+		// @napi-rs/image-linux-{x64,arm64}-musl (registry, 3 Nov 2026).
+		NPMPlatformDepsRequired: true,
+		CustomerOfferable:       true,
+		ResellerClosed:          "sustainable_use",
 		Defaults:          Resources{MemoryMB: 1536, CPUPercent: 100, TasksMax: 512, DiskMB: 1600, InstallMemoryMB: 3072},
 		Risk: Risk{
 			CanDo:    []string{"workflows_outbound", "stores_credentials", "webhooks_public", "code_node_sandboxed"},

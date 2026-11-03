@@ -271,6 +271,36 @@ func TestAppPrerequisitesNameTheMissingPackagesAndChangeNothing(t *testing.T) {
 	}
 }
 
+// alpha.118 lab round 2: the read-only check refused WordPress (its install
+// is Agent.InstallWordPress), so the Panel answered "could not be asked"
+// (APP_PREREQUISITES_UNKNOWN) instead of naming the missing mysqli. The
+// check answers for WordPress; its installs stay refused here.
+func TestAppPrerequisitesAnswerForWordPress(t *testing.T) {
+	site := newCatalogTestSite(t, "8.4.11")
+	previousFamily, previousProbe, previousFree := catalogPkgFamily, catalogPHPExtensions, catalogFreeDiskMB
+	t.Cleanup(func() {
+		catalogPkgFamily, catalogPHPExtensions, catalogFreeDiskMB = previousFamily, previousProbe, previousFree
+	})
+	catalogPkgFamily = func() string { return "apt" }
+	catalogFreeDiskMB = func(string) int64 { return 0 }
+	catalogPHPExtensions = func(_ context.Context, line string, extensions []string) ([]string, error) {
+		if line != "8.4" || strings.Join(extensions, ",") != "mysqli" {
+			t.Fatalf("the probe asked PHP %q for %v", line, extensions)
+		}
+		return []string{"mysqli"}, nil
+	}
+	var resp transport.AppPrerequisitesResponse
+	if err := (&Agent{}).AppPrerequisitesV1(&transport.AppPrerequisitesRequest{AppID: "wordpress", Site: site.site}, &resp); err != nil || resp.Error != "" {
+		t.Fatalf("err=%v resp=%+v", err, resp)
+	}
+	if !resp.PHPOK || resp.ExtensionsUnknown || len(resp.Missing) != 1 || resp.Missing[0].Package != "php8.4-mysql" {
+		t.Fatalf("unexpected answer %+v", resp)
+	}
+	if _, err := resolveCatalogSite("wordpress", site.site); err == nil {
+		t.Fatal("the catalog's install path must keep refusing WordPress")
+	}
+}
+
 func TestSetupPlansKeepSecretsOffTheCommandLine(t *testing.T) {
 	site := newCatalogTestSite(t, "8.3")
 	previousPrepend := setupPrependPath
