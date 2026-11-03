@@ -152,3 +152,42 @@ func TestChrootSafety(t *testing.T) {
 		t.Fatal("group-writable accepted")
 	}
 }
+
+// alpha.118 (D-044): a full disk makes FTP and SFTP read-only; the record
+// lives in the drop-in's own entry lines and reads back.
+func TestReadOnlyEntriesCloseUploadsAndReadBack(t *testing.T) {
+	entries := []Entry{
+		{Username: "full_example", SubscriptionID: 7, DomainID: 70, ReadOnly: true},
+		{Username: "free_example", SubscriptionID: 8, DomainID: 80},
+	}
+	text, err := RenderSSHDropIn(entries)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(text, "ForceCommand internal-sftp -R -d /70 -u 0027") || !strings.Contains(text, "ForceCommand internal-sftp -d /80 -u 0027") {
+		t.Fatalf("drop-in:\n%s", text)
+	}
+	_, body := Classify([]byte(text), true)
+	parsed, err := ParseSSHDropInEntries(body)
+	if err != nil || len(parsed) != 2 || parsed[0].ReadOnly == parsed[1].ReadOnly {
+		t.Fatalf("parsed %+v %v", parsed, err)
+	}
+	if ExpectedSSHDEffective(entries[0], true)["forcecommand"] != "internal-sftp -R -d /70 -u 0027" {
+		t.Fatal("the effective check does not expect read-only")
+	}
+	ftp, err := RenderVsftpdUserConf(entries[0])
+	if err != nil || !strings.Contains(ftp, "write_enable=NO") {
+		t.Fatalf("vsftpd user conf: %q %v", ftp, err)
+	}
+	if open, _ := RenderVsftpdUserConf(entries[1]); strings.Contains(open, "write_enable") {
+		t.Fatal("a free subscription is read-only")
+	}
+	// A drop-in written before this release (no readonly field) reads as writable.
+	old, err := ParseSSHDropInEntries(entryMarker + "user=old_example subscription=1 domain=2 ssh=0\n")
+	if err != nil || len(old) != 1 || old[0].ReadOnly {
+		t.Fatalf("an earlier entry line: %+v %v", old, err)
+	}
+	if _, err := ParseSSHDropInEntries(entryMarker + "user=old_example subscription=1 domain=2 ssh=0 readonly=yes\n"); err == nil {
+		t.Fatal("a malformed readonly field was accepted")
+	}
+}

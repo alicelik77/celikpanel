@@ -108,6 +108,9 @@ func (p *Panel) runUsageRound(ctx context.Context) {
 	if err := p.evaluateDiskLimits(ctx); err != nil {
 		log.Printf("[disk] limits: %v", err)
 	}
+	if err := p.applyUploadBlocks(ctx); err != nil {
+		log.Printf("[disk] uploads: %v", err)
+	}
 	s := &p.usageWorker
 	s.stateMu.Lock()
 	due := s.lastQuota.IsZero() || usageNow().Sub(s.lastQuota) >= mailQuotaInterval

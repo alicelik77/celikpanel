@@ -318,6 +318,14 @@ func (p *Panel) handlePutFileAccess(w http.ResponseWriter, r *http.Request, site
 		RemoveKeys:          request.RemoveKeys,
 		Reconcile:           reconcile,
 	}
+	// alpha.118 (D-044): a full disk keeps the subscription's FTP and SFTP
+	// read-only whatever else this change does.
+	if blocked, err := subscriptionUploadsBlocked(r.Context(), p.db.GetDB(), site.SubscriptionID); err != nil {
+		writeServerError(w, err)
+		return
+	} else {
+		change.ReadOnly = blocked
+	}
 	var response transport.ApplyFileAccessResponse
 	if preview {
 		change.Password = ""

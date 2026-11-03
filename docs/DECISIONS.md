@@ -45,8 +45,12 @@ measured by the Agent at the lowest CPU and I/O priority (every 6 hours, every
 hour while the hosting file system has less than 10% free, and soon after a
 restore, an import or an app install). At 100% nothing new that grows the
 subscription is accepted (domains, mailboxes, databases, app installs, manual
-backups and restores) and the file manager refuses uploads; the sites keep
-running. Seven days over the limit suspend the subscription with the
+backups and restores) and new uploads close at once: the file manager
+refuses them, FTP and SFTP become read-only (`write_enable=NO`,
+`internal-sftp -R`; an account with a command line keeps it) and the
+subscription's PHP pools get `php_admin_flag[file_uploads] = off`. The sites
+keep running, and everything opens again by itself after a measurement under
+the limit. Seven days over the limit suspend the subscription with the
 alpha.117 suspension, cause "disk". It resumes by itself when a measurement is
 under the limit; an operator's resume clears the disk cause and starts a new
 7-day period. A disk cause never clears a manual, reseller or expiry cause.
@@ -65,15 +69,22 @@ service before it accepts mail, so mail to a full mailbox is refused with
 "552 5.2.2 Mailbox is full"; if the service does not answer, Postfix accepts
 the mail as before (fail-open). Mail clients that read the IMAP quota
 (Roundcube does) show how full a mailbox is; the panel's disk notices at 80%
-and 100% go to the customer. A message to the mailbox user at 90% (Dovecot's
-quota_warning with a delivery script) is an open item.
+and 100% go to the customer. At 90% the mailbox user gets one plain message in
+English and Turkish, once per crossing: Dovecot's own quota warning runs
+CelikPanel's script when a save through Dovecot crosses 90%, and an hourly
+systemd timer runs the same script for mail Postfix delivered straight into
+the maildir (which never goes through Dovecot; measured on 2.4.1).
 
 **Owner independence (D-022).** Every part is native configuration with
 CelikPanel's render header, written only while absent or still CelikPanel's
 unchanged text: the nginx log format (conf.d/celikpanel-traffic.conf), each
-site's traffic log line (celikpanel-managed.d/<domain>/traffic-log.conf), the
+site's traffic log line (celikpanel-managed.d/<domain>/access-log.traffic), the
 logrotate file (/etc/logrotate.d/celikpanel-traffic), the Dovecot quota
-drop-in (conf.d/90-celikpanel-quota.conf) and one Postfix restriction element.
+drop-in (conf.d/90-celikpanel-quota.conf), the 90% warning script and timer
+(/usr/local/libexec/celikpanel-quota-warning,
+/etc/systemd/system/celikpanel-quota-warning.{service,timer}), the read-only
+marks in the file access drop-in and vsftpd's per-account files, the PHP pool
+line, and one Postfix restriction element.
 Without the Panel nothing is measured or limited, the sites keep working, the
 traffic logs stay small, and the mailbox sizes stay enforced.
 
@@ -82,9 +93,10 @@ default) were never shown or applied; migration 057 sets them to unlimited
 and tells the administrator once, so no website closes on a number nobody
 chose.
 
-**Not claimed.** FTP/SFTP read-only mode and PHP `file_uploads=off` for a full
-disk, and the 90% message to the mailbox user, are not part of this release; only the panel's file manager refuses
-uploads. Hard operating-system disk limits are not set. The release still
+**Not claimed.** An SSH account (command line) cannot be made read-only.
+Backups are stored outside the subscription and are not counted in its disk,
+and scheduled backups keep running when the disk is full (they protect the
+customer). Hard operating-system disk limits are not set. The release still
 needs its lab round (D-025): a real update, rollback and a traffic/disk/mail
 trial on Debian, Ubuntu and Arch.
 

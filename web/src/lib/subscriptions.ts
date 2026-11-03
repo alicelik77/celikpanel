@@ -32,6 +32,10 @@ export interface SubscriptionUsage {
         over_since?: string;
         suspend_on?: string;
         uploads_blocked: boolean;
+        /** FTP/SFTP and PHP were brought to uploads_blocked (alpha.118). */
+        uploads_applied?: boolean;
+        /** ftp_kept, php_kept, ssh_open (comma-separated) or "error:<detail>". */
+        uploads_note?: string;
     };
 }
 

@@ -250,6 +250,16 @@
     file the owner kept, as long as the file keeps this line.
     CelikPanel'in kendi ekleme noktası; doğrulama konumu bu dosyaya değil o
     dizine yazılır. */}}
+{{- /* The site's traffic log for CelikPanel's monthly traffic limit
+    (alpha.118, D-044), only in the blocks that log to the site's own
+    access log: a block that only redirects to HTTPS keeps logging where it
+    did. The file is CelikPanel's (traffic_log.go); nginx accepts a pattern
+    that matches nothing.
+    Trafik günlüğü; yalnız sitenin kendi günlüğüne yazan bloklarda. */}}
+{{- define "traffic-include"}}
+    include {{.PanelManagedDir}}/*.traffic;
+{{- end}}
+
 {{- define "panel-include"}}
     # CelikPanel's own parts of this site (certificate validation) / CelikPanel'in parçaları
     include {{.PanelManagedDir}}/*.conf;
@@ -403,6 +413,7 @@ server {
 
     access_log /var/log/nginx/{{.Domain}}-access.log;
     error_log /var/log/nginx/{{.Domain}}-error.log;
+{{template "traffic-include" .}}
 {{template "panel-include" .}}
 {{template "panel-page" .}}
 }
@@ -415,6 +426,7 @@ server {
 
     access_log /var/log/nginx/{{.Domain}}-access.log;
     error_log /var/log/nginx/{{.Domain}}-error.log;
+{{template "traffic-include" .}}
 {{template "panel-include" .}}
 {{template "panel-page" .}}
 }
@@ -428,6 +440,7 @@ server {
 
     access_log /var/log/nginx/{{.Domain}}-access.log;
     error_log /var/log/nginx/{{.Domain}}-error.log;
+{{template "traffic-include" .}}
 {{template "panel-include" .}}
 
     location / {
@@ -445,6 +458,7 @@ server {
 
     access_log /var/log/nginx/{{.Domain}}-access.log;
     error_log /var/log/nginx/{{.Domain}}-error.log;
+{{template "traffic-include" .}}
 {{template "panel-include" .}}
 
     location / {
@@ -468,6 +482,7 @@ server {
 
     access_log /var/log/nginx/{{.Domain}}-access.log;
     error_log /var/log/nginx/{{.Domain}}-error.log;
+{{template "traffic-include" .}}
 {{template "panel-include" .}}
 
     location / {
@@ -485,6 +500,7 @@ server {
 
     access_log /var/log/nginx/{{.Domain}}-access.log;
     error_log /var/log/nginx/{{.Domain}}-error.log;
+{{template "traffic-include" .}}
 {{template "panel-include" .}}
 {{template "locations" .}}
 {{template "owner-include" .}}
@@ -504,6 +520,7 @@ server {
 {{else}}
     access_log /var/log/nginx/{{.Domain}}-access.log;
     error_log /var/log/nginx/{{.Domain}}-error.log;
+{{template "traffic-include" .}}
 {{template "locations" .}}
 {{template "owner-include" .}}
 {{end}}
@@ -517,6 +534,7 @@ server {
 
     access_log /var/log/nginx/{{.Domain}}-access.log;
     error_log /var/log/nginx/{{.Domain}}-error.log;
+{{template "traffic-include" .}}
 {{template "panel-include" .}}
 {{template "locations" .}}
 {{template "owner-include" .}}

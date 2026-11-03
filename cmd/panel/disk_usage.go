@@ -391,16 +391,21 @@ type subscriptionDiskView struct {
 	OverSince      string `json:"over_since,omitempty"`
 	SuspendOn      string `json:"suspend_on,omitempty"`
 	UploadsBlocked bool   `json:"uploads_blocked"`
+	// UploadsApplied: FTP/SFTP and PHP were brought to UploadsBlocked.
+	// UploadsNote: codes the screen explains (ftp_kept, php_kept, ssh_open,
+	// or "error:<detail>" while it is retried).
+	UploadsApplied bool   `json:"uploads_applied"`
+	UploadsNote    string `json:"uploads_note,omitempty"`
 }
 
 func loadSubscriptionDiskView(ctx context.Context, q rowQueryer, subscriptionID int) (subscriptionDiskView, error) {
 	view := subscriptionDiskView{State: "not_measured_yet"}
-	var state, detail, measured, over sql.NullString
-	var blocked int
+	var state, detail, measured, over, note sql.NullString
+	var blocked, applied int
 	err := q.QueryRowContext(ctx, `
-		SELECT web_bytes, mail_bytes, db_bytes, state, detail, measured_at, over_since, upload_blocked
+		SELECT web_bytes, mail_bytes, db_bytes, state, detail, measured_at, over_since, upload_blocked, upload_applied, upload_error
 		FROM subscription_disk_usage WHERE subscription_id = ?`, subscriptionID).
-		Scan(&view.WebBytes, &view.MailBytes, &view.DBBytes, &state, &detail, &measured, &over, &blocked)
+		Scan(&view.WebBytes, &view.MailBytes, &view.DBBytes, &state, &detail, &measured, &over, &blocked, &applied, &note)
 	if errors.Is(err, sql.ErrNoRows) {
 		return view, nil
 	}
@@ -417,5 +422,108 @@ func loadSubscriptionDiskView(ctx context.Context, q rowQueryer, subscriptionID 
 		view.SuspendOn = t.Add(diskSuspendAfter).UTC().Format(time.RFC3339)
 	}
 	view.UploadsBlocked = blocked == 1
+	view.UploadsApplied = applied == blocked
+	view.UploadsNote = note.String
 	return view, nil
+}
+
+// uploadBlockNative brings one subscription's FTP/SFTP and PHP uploads to
+// the wanted state and returns a note for the screen (an owner's file kept,
+// command-line accounts). Production asks the Agent; tests replace it.
+func (p *Panel) uploadBlockOps() func(ctx context.Context, subscriptionID int, blocked bool) (string, error) {
+	if p.uploadBlockNative != nil {
+		return p.uploadBlockNative
+	}
+	return p.applyUploadBlockNative
+}
+
+func (p *Panel) applyUploadBlockNative(ctx context.Context, subscriptionID int, blocked bool) (string, error) {
+	var notes []string
+	req := transport.SetFileAccessReadOnlyRequest{ExpectedBuildCommit: strings.TrimSpace(buildCommit), SubscriptionID: subscriptionID, ReadOnly: blocked}
+	var resp transport.SetFileAccessReadOnlyResponse
+	if err := p.callAgentContext(ctx, "Agent.SetFileAccessReadOnlyV1", &req, &resp); err != nil {
+		return "", fmt.Errorf("file access: %w", err)
+	}
+	if resp.Error != "" {
+		return "", fmt.Errorf("file access: %s", resp.Error)
+	}
+	if resp.Kept {
+		notes = append(notes, "ftp_kept")
+	}
+	if blocked && len(resp.SSHAccounts) > 0 {
+		notes = append(notes, "ssh_open")
+	}
+	rows, err := p.db.GetDB().QueryContext(ctx, `
+		SELECT d.id FROM domains d JOIN sites s ON s.domain_id = d.id
+		WHERE d.subscription_id = ? AND COALESCE(s.project_type, 'php') = 'php' ORDER BY d.id`, subscriptionID)
+	if err != nil {
+		return "", err
+	}
+	var domains []int
+	for rows.Next() {
+		var id int
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return "", err
+		}
+		domains = append(domains, id)
+	}
+	rows.Close()
+	for _, domainID := range domains {
+		site, err := p.loadSiteFileSite(ctx, domainID)
+		if err != nil || site.PHPVersion == "" {
+			continue
+		}
+		request := p.sitePoolRequest(ctx, site, transport.SitePoolOperationApply)
+		request.UploadsOff = &blocked
+		if _, err := p.applySitePool(ctx, site, request); err != nil {
+			var held *siteFileHeldError
+			if errors.As(err, &held) {
+				notes = append(notes, "php_kept")
+				continue
+			}
+			return "", fmt.Errorf("PHP pool of %s: %w", site.Domain, err)
+		}
+	}
+	return strings.Join(notes, ","), nil
+}
+
+// applyUploadBlocks brings every subscription whose disk state changed to
+// it: uploads closed over FTP/SFTP and in PHP while full, open again when
+// under the limit. A failure is kept and retried next round.
+func (p *Panel) applyUploadBlocks(ctx context.Context) error {
+	db := p.db.GetDB()
+	rows, err := db.QueryContext(ctx, `SELECT subscription_id, upload_blocked FROM subscription_disk_usage WHERE upload_blocked <> upload_applied OR (upload_blocked = 1 AND upload_error LIKE 'error:%')`)
+	if err != nil {
+		return err
+	}
+	type item struct {
+		id      int
+		blocked bool
+	}
+	var items []item
+	for rows.Next() {
+		var it item
+		if err := rows.Scan(&it.id, &it.blocked); err != nil {
+			rows.Close()
+			return err
+		}
+		items = append(items, it)
+	}
+	rows.Close()
+	var errs []error
+	for _, it := range items {
+		note, err := p.uploadBlockOps()(ctx, it.id, it.blocked)
+		if err != nil {
+			_, _ = db.ExecContext(ctx, `UPDATE subscription_disk_usage SET upload_error = ? WHERE subscription_id = ?`,
+				"error:"+boundedAgentDiagnostic(err.Error()), it.id)
+			errs = append(errs, fmt.Errorf("subscription %d: %w", it.id, err))
+			continue
+		}
+		if _, err := db.ExecContext(ctx, `UPDATE subscription_disk_usage SET upload_applied = ?, upload_error = ? WHERE subscription_id = ? AND upload_blocked = ?`,
+			it.blocked, nullIfEmpty(note), it.id, it.blocked); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
 }

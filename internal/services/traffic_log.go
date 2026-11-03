@@ -21,9 +21,11 @@ import (
 //   - /etc/nginx/conf.d/celikpanel-traffic.conf (http context): the log
 //     format "celikpanel_traffic" (time, bytes sent to the visitor, bytes
 //     received) and a map that leaves certificate validation requests out;
-//   - /etc/nginx/celikpanel-managed.d/<domain>/traffic-log.conf (server
-//     context, through the include line every site file already has): the
-//     access_log line of /var/log/celikpanel/traffic/<domain id>.log. While
+//   - /etc/nginx/celikpanel-managed.d/<domain>/access-log.traffic (server
+//     context, through the vhost's `include .../*.traffic;` line in the
+//     blocks that log to the site's own access log, so a block that only
+//     redirects to HTTPS keeps logging where it did): the access_log line
+//     of /var/log/celikpanel/traffic/<domain id>.log. While
 //     the site shows a CelikPanel page (suspended, maintenance, traffic limit)
 //     it holds only a comment, so those pages are not counted.
 //
@@ -40,7 +42,7 @@ const (
 	trafficHTTPConfName = "celikpanel-traffic.conf"
 	// TrafficIncludeFileName is the site's traffic log setting in its
 	// Panel-owned include directory.
-	TrafficIncludeFileName = "traffic-log.conf"
+	TrafficIncludeFileName = "access-log.traffic"
 	// TrafficLogFormat is the log format's name.
 	TrafficLogFormat = "celikpanel_traffic"
 	// trafficCountedVariable leaves ACME HTTP-01 validation out.
@@ -264,16 +266,21 @@ func removeTrafficInclude(domain string) {
 	}
 }
 
-// SiteReadsPanelDir reports whether the site's vhost file has the line that
-// reads CelikPanel's directory of the site (read only). A missing or
+// TrafficIncludeLine is the line a vhost needs to read the traffic log.
+func TrafficIncludeLine(domain string) string {
+	return "include " + PanelManagedDir(domain) + "/*.traffic;"
+}
+
+// SiteReadsTrafficInclude reports whether the site's vhost file has the
+// line that reads its traffic log setting (read only). A missing or
 // unreadable file reads as false.
-func SiteReadsPanelDir(domain string) bool {
+func SiteReadsTrafficInclude(domain string) bool {
 	available, _ := vhostPaths(domain)
 	content, err := readManagedConfig(available)
 	if err != nil {
 		return false
 	}
-	return fileHasDirective(content, PanelManagedIncludeLine(domain))
+	return fileHasDirective(content, TrafficIncludeLine(domain))
 }
 
 // ReconcileManagedFile writes CelikPanel's own small file (render header,

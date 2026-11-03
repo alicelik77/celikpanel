@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -421,4 +422,48 @@ func TestUsageNoticesAreReadOnlyByTheirRecipient(t *testing.T) {
 	}
 	wantStatus(t, f.as(t, 9704, http.MethodPost, usageNoticesPath+"/"+strconv.Itoa(id)+"/seen", ""), http.StatusNotFound, "")
 	wantStatus(t, f.as(t, 9703, http.MethodPost, usageNoticesPath+"/"+strconv.Itoa(id)+"/seen", ""), http.StatusOK, "")
+}
+
+func TestFullDiskClosesFTPSFTPAndPHPUploadsAndOpensThemAgain(t *testing.T) {
+	f := newUsageFixture(t)
+	ctx := context.Background()
+	disk := &fakeDiskMeasurer{bytes: map[int]int64{9802: 3 * mib}}
+	f.panel.diskMeasurer = disk
+	f.exec(t, `UPDATE subscriptions SET disk_quota_mb = 2 WHERE id = 9802`)
+	type call struct {
+		sub     int
+		blocked bool
+	}
+	var calls []call
+	fail := true
+	f.panel.uploadBlockNative = func(_ context.Context, sub int, blocked bool) (string, error) {
+		calls = append(calls, call{sub, blocked})
+		if fail {
+			return "", errors.New("agent unreachable")
+		}
+		return "ssh_open", nil
+	}
+	f.panel.runUsageRound(ctx)
+	view, _ := loadSubscriptionDiskView(ctx, f.panel.db.GetDB(), 9802)
+	if len(calls) != 1 || !calls[0].blocked || view.UploadsApplied || !strings.HasPrefix(view.UploadsNote, "error:") {
+		t.Fatalf("first round: calls %v view %+v", calls, view)
+	}
+	// The failure is retried next round, then the state holds.
+	fail = false
+	f.panel.runUsageRound(ctx)
+	view, _ = loadSubscriptionDiskView(ctx, f.panel.db.GetDB(), 9802)
+	if len(calls) != 2 || !view.UploadsApplied || view.UploadsNote != "ssh_open" {
+		t.Fatalf("retry: calls %v view %+v", calls, view)
+	}
+	f.panel.runUsageRound(ctx)
+	if len(calls) != 2 {
+		t.Fatalf("an applied state was applied again: %v", calls)
+	}
+	// Under the limit: uploads open again by themselves.
+	disk.bytes[9802] = mib
+	f.panel.requestDiskMeasurement(ctx, 9802)
+	f.panel.runUsageRound(ctx)
+	if len(calls) != 3 || calls[2].blocked {
+		t.Fatalf("not reopened: %v", calls)
+	}
 }

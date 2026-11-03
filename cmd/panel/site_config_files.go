@@ -243,7 +243,7 @@ func (p *Panel) recordedSiteFileSHA256(ctx context.Context, siteID int, kind str
 }
 
 func (p *Panel) sitePoolRequest(ctx context.Context, site siteFileSite, operation string) transport.SitePoolRequest {
-	return transport.SitePoolRequest{
+	request := transport.SitePoolRequest{
 		ExpectedBuildCommit: strings.TrimSpace(buildCommit),
 		SiteID:              site.SiteID,
 		Username:            services.SiteUsername(site.Domain),
@@ -251,6 +251,14 @@ func (p *Panel) sitePoolRequest(ctx context.Context, site siteFileSite, operatio
 		Operation:           operation,
 		RecordedSHA256:      p.recordedSiteFileSHA256(ctx, site.SiteID, transport.SiteFileKindPHPPool),
 	}
+	// alpha.118 (D-044): every render of the pool carries the disk state
+	// (PHP uploads off while the subscription's disk is full).
+	if subID, err := p.domainSubscriptionID(ctx, site.DomainID); err == nil {
+		if blocked, err := subscriptionUploadsBlocked(ctx, p.db.GetDB(), subID); err == nil {
+			request.UploadsOff = &blocked
+		}
+	}
+	return request
 }
 
 // hostingAppRequest is the unit request of a Node site's hosting state.

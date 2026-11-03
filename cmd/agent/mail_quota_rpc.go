@@ -93,8 +93,9 @@ plugin {
   quota_status_success = DUNNO
   quota_status_nouser = DUNNO
   quota_status_overquota = "` + mailQuotaFullReply + `"
+  quota_warning = storage=90%% quota-warning warn 90 %u
 }
-service quota-status {
+` + quotaWarningService() + `service quota-status {
   executable = quota-status -p postfix
   unix_listener /var/spool/postfix/` + mailQuotaPolicySocket + ` {
     user = postfix
@@ -118,7 +119,14 @@ protocol imap {
 quota_storage_size = 1024M
 quota "User quota" {
   quota_driver = count
+  warning warn-90 {
+    quota_storage_percentage = 90
+    execute quota-warning {
+      args = warn 90 %{user}
+    }
+  }
 }
+` + quotaWarningService() + `
 quota_status_success = DUNNO
 quota_status_nouser = DUNNO
 quota_status_overquota = "` + mailQuotaFullReply + `"
@@ -130,6 +138,19 @@ service quota-status {
     mode = 0660
   }
   client_limit = 1
+}
+`
+}
+
+// quotaWarningService runs the 90% warning script as the mail user
+// (mail_quota_warning.go); the same text in both dialects.
+func quotaWarningService() string {
+	return `service quota-warning {
+  executable = script ` + quotaWarningScriptPath + `
+  user = ` + vmailUser + `
+  unix_listener quota-warning {
+    user = ` + vmailUser + `
+  }
 }
 `
 }
@@ -283,7 +304,16 @@ func reconcileMailQuota(ctx context.Context, resp *transport.MailQuotaReconcileR
 		}
 	}
 
-	// 2. The Dovecot drop-in, validated by doveconf before it stays.
+	// 2. The 90% warning: its script, the hourly timer and the markers. They
+	// come first: the drop-in below names the script.
+	if warned, note := reconcileQuotaWarning(ctx, is24); warned || note != "" {
+		resp.Changed = resp.Changed || warned
+		if note != "" {
+			resp.Detail = "The mailbox 90% warning is not complete: " + note + "."
+		}
+	}
+
+	// 3. The Dovecot drop-in, validated by doveconf before it stays.
 	want := buildDovecotQuotaConf(is24)
 	current, err := snapshotMailFile(dovecotQuotaDropInPath)
 	if err != nil {
@@ -306,7 +336,7 @@ func reconcileMailQuota(ctx context.Context, resp *transport.MailQuotaReconcileR
 		resp.Changed = true
 	}
 
-	// 3. Postfix asks Dovecot before accepting mail.
+	// 4. Postfix asks Dovecot before accepting mail.
 	values, err := mailPolicyPostconf("-h", suspensionRestrictionsParam)
 	if err != nil {
 		resp.State = transport.MailQuotaNotApplied

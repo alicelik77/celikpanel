@@ -676,7 +676,11 @@ func (p *Panel) runRotationStep(ctx context.Context, native rotationNative, op r
 		if err != nil {
 			return "", "", string(before), err
 		}
-		resp, err := native.revokeFileAccess(ctx, transport.ApplyFileAccessRequest{Site: site, Enabled: false, RevokeCredentials: true, Reconcile: reconcile})
+		readOnly, err := subscriptionUploadsBlocked(ctx, p.db.GetDB(), e.Ref.SubscriptionID)
+		if err != nil {
+			return "", "", string(before), err
+		}
+		resp, err := native.revokeFileAccess(ctx, transport.ApplyFileAccessRequest{Site: site, Enabled: false, RevokeCredentials: true, Reconcile: reconcile, ReadOnly: readOnly})
 		if err != nil {
 			return "", "", string(before), unknownResult(err)
 		}

@@ -79,8 +79,10 @@ CREATE TABLE traffic_web_blocks (
 -- 'measured' or 'unknown' (detail says why). over_since: the first
 -- measurement that found it over its disk limit in the current episode; the
 -- 7-day countdown starts there and ends when a measurement is under the limit.
--- upload_blocked: at or over the limit, the panel's file manager refuses
--- uploads (FTP/SFTP write blocking is not part of this release).
+-- upload_blocked: at or over the limit, new uploads are closed: the panel's
+-- file manager refuses them, FTP and SFTP are read-only and PHP takes no
+-- uploaded file. upload_applied is what the server was last brought to
+-- (upload_error says why it could not be), so a failure is retried.
 CREATE TABLE subscription_disk_usage (
     subscription_id INTEGER PRIMARY KEY CHECK (subscription_id > 0),
     web_bytes INTEGER NOT NULL DEFAULT 0 CHECK (web_bytes >= 0),
@@ -93,7 +95,9 @@ CREATE TABLE subscription_disk_usage (
     attempted_at TEXT,
     requested_at TEXT,
     over_since TEXT,
-    upload_blocked INTEGER NOT NULL DEFAULT 0 CHECK (upload_blocked IN (0, 1))
+    upload_blocked INTEGER NOT NULL DEFAULT 0 CHECK (upload_blocked IN (0, 1)),
+    upload_applied INTEGER NOT NULL DEFAULT 0 CHECK (upload_applied IN (0, 1)),
+    upload_error TEXT
 );
 
 -- usage_notices: what a customer, its reseller and the administrator are

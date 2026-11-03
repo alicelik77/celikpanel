@@ -371,7 +371,7 @@ func buildFileAccessPlan(ctx context.Context, req transport.ApplyFileAccessReque
 		return plan, refusal
 	}
 	ssh := req.Enabled && req.SSH
-	plan.entry = fileaccess.Entry{Username: site.Username, SubscriptionID: site.SubscriptionID, DomainID: site.DomainID, SSH: ssh}
+	plan.entry = fileaccess.Entry{Username: site.Username, SubscriptionID: site.SubscriptionID, DomainID: site.DomainID, SSH: ssh, ReadOnly: req.ReadOnly}
 	// Revoking credentials closes access; it never sets a password or a key.
 	if req.RevokeCredentials && (req.Enabled || req.Password != "" || len(req.AddKeys) > 0) {
 		return plan, refuseFileAccess(transport.FileAccessRefusedInvalid, "revoking credentials closes access; it sets no password or key")
@@ -416,6 +416,13 @@ func buildFileAccessPlan(ctx context.Context, req transport.ApplyFileAccessReque
 		kept = append(kept, e)
 	}
 	plan.entries = fileaccess.MergeEntry(kept, plan.entry, req.Enabled)
+	// alpha.118 (D-044): read-only is the subscription's state, for every
+	// account of it.
+	for i := range plan.entries {
+		if plan.entries[i].SubscriptionID == site.SubscriptionID {
+			plan.entries[i].ReadOnly = req.ReadOnly
+		}
+	}
 	if req.Enabled {
 		chroot := fileaccess.ChrootDir(site.SubscriptionID)
 		chain, statErr := fileAccessStatChain(fileaccess.ChrootChain(chroot))
@@ -1275,5 +1282,91 @@ func prepareFileAccessKeysDir(dir string) error {
 	if os.Geteuid() == 0 {
 		return os.Chown(dir, 0, 0)
 	}
+	return nil
+}
+
+// SetFileAccessReadOnlyV1 closes (or opens again) new uploads over FTP and
+// SFTP for every account of one subscription: its disk is full (alpha.118,
+// D-044). The sshd drop-in's own entry lines record the state, so it holds
+// without the Panel; the change is proved with sshd -t and sshd -T and put
+// back when sshd refuses it, like every file access change. An owner's
+// drop-in is kept; an account with a command line keeps it.
+//
+// SetFileAccessReadOnlyV1, bir aboneliğin bütün hesaplarında FTP ve SFTP
+// ile yüklemeyi kapatır ya da yeniden açar.
+func (a *Agent) SetFileAccessReadOnlyV1(req *transport.SetFileAccessReadOnlyRequest, resp *transport.SetFileAccessReadOnlyResponse) error {
+	if req == nil || resp == nil {
+		return errors.New("file access read-only request and response are required")
+	}
+	*resp = transport.SetFileAccessReadOnlyResponse{}
+	if err := requireExpectedBuildCommit(req.ExpectedBuildCommit, "changing file access"); err != nil {
+		resp.Error = err.Error()
+		return nil
+	}
+	if req.SubscriptionID <= 0 {
+		resp.Error = "a subscription is required"
+		return nil
+	}
+	fileAccessMu.Lock()
+	defer fileAccessMu.Unlock()
+	ctx, cancel := context.WithTimeout(context.Background(), fileAccessTimeout)
+	defer cancel()
+	entries, state, before, exists, err := readFileAccessEntries()
+	switch {
+	case err != nil:
+		resp.Error = fmt.Sprintf("read %s: %v; nothing was changed", fileaccess.SSHDropInPath, err)
+		return nil
+	case !exists:
+		// No account has file access on this server: nothing to close.
+		resp.Applied = true
+		return nil
+	case state == fileaccess.FileOwner:
+		resp.Kept = true
+		resp.Detail = fileaccess.SSHDropInPath + " was changed by hand, so CelikPanel left it as it is and could not close uploads over FTP and SFTP. " +
+			"The server administrator removes the file or puts CelikPanel's version back."
+		return nil
+	}
+	changed := false
+	var target fileaccess.Entry
+	for i := range entries {
+		if entries[i].SubscriptionID != req.SubscriptionID {
+			continue
+		}
+		target = entries[i]
+		if entries[i].SSH {
+			resp.SSHAccounts = append(resp.SSHAccounts, entries[i].Username)
+		}
+		if entries[i].ReadOnly != req.ReadOnly {
+			entries[i].ReadOnly = req.ReadOnly
+			changed = true
+		}
+	}
+	if !changed {
+		resp.Applied = true
+		return nil
+	}
+	target.ReadOnly = req.ReadOnly
+	plan := &fileAccessPlan{req: transport.ApplyFileAccessRequest{Enabled: true, ReadOnly: req.ReadOnly}, entry: target, entries: entries}
+	if fileAccessCommandPresent("sshd") {
+		text, renderErr := fileaccess.RenderSSHDropIn(entries)
+		if renderErr != nil {
+			resp.Error = renderErr.Error() + "; nothing was changed"
+			return nil
+		}
+		plan.dropIn = &fileAccessFileWrite{path: fileaccess.SSHDropInPath, content: text, mode: 0o644, before: before, existed: true}
+		if refusal := applyFileAccessDropIn(ctx, plan); refusal != nil {
+			resp.Error = refusal.detail
+			return nil
+		}
+	}
+	planFileAccessFTP(ctx, plan)
+	applyFileAccessFTP(ctx, plan)
+	resp.Warnings = plan.warnings
+	if plan.ftpFailed {
+		resp.Changed = true
+		resp.Error = "SFTP is changed, but the FTP configuration could not be changed; the previous FTP configuration is back"
+		return nil
+	}
+	resp.Applied, resp.Changed = true, true
 	return nil
 }

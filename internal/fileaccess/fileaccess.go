@@ -133,6 +133,18 @@ type Entry struct {
 	SubscriptionID int
 	DomainID       int
 	SSH            bool
+	// ReadOnly (alpha.118, D-044): the subscription's disk is full, so new
+	// uploads are closed: SFTP is read-only (internal-sftp -R) and FTP has
+	// write_enable=NO. A command-line (SSH) account cannot be made read-only.
+	ReadOnly bool
+}
+
+// sftpCommand is the ForceCommand of an SFTP-only account.
+func sftpCommand(e Entry) string {
+	if e.ReadOnly {
+		return "internal-sftp -R -d " + StartDir(e.DomainID) + " -u 0027"
+	}
+	return "internal-sftp -d " + StartDir(e.DomainID) + " -u 0027"
 }
 
 var usernamePattern = regexp.MustCompile(`^[a-z0-9_][a-z0-9_.-]{0,31}$`)
@@ -266,7 +278,11 @@ func RenderSSHDropIn(entries []Entry) (string, error) {
 		if e.SSH {
 			ssh = 1
 		}
-		fmt.Fprintf(&b, "\n%suser=%s subscription=%d domain=%d ssh=%d\n", entryMarker, e.Username, e.SubscriptionID, e.DomainID, ssh)
+		readOnly := ""
+		if e.ReadOnly {
+			readOnly = " readonly=1"
+		}
+		fmt.Fprintf(&b, "\n%suser=%s subscription=%d domain=%d ssh=%d%s\n", entryMarker, e.Username, e.SubscriptionID, e.DomainID, ssh, readOnly)
 		fmt.Fprintf(&b, "Match User %s\n", e.Username)
 		fmt.Fprintf(&b, "\tChrootDirectory %s\n", ChrootDir(e.SubscriptionID))
 		fmt.Fprintf(&b, "\tAuthorizedKeysFile %s/%%u\n", KeysDir)
@@ -274,7 +290,7 @@ func RenderSSHDropIn(entries []Entry) (string, error) {
 			// internal-sftp runs inside sshd: no shell and no program from
 			// the jail. -u 0027 keeps new files readable by the web server
 			// group only.
-			fmt.Fprintf(&b, "\tForceCommand internal-sftp -d %s -u 0027\n", StartDir(e.DomainID))
+			fmt.Fprintf(&b, "\tForceCommand %s\n", sftpCommand(e))
 			b.WriteString("\tPermitTTY no\n")
 		}
 		b.WriteString("\tDisableForwarding yes\n")
@@ -315,10 +331,11 @@ func ParseSSHDropInEntries(body string) ([]Entry, error) {
 		}
 		subscription, err1 := strconv.Atoi(fields["subscription"])
 		domain, err2 := strconv.Atoi(fields["domain"])
-		if err1 != nil || err2 != nil || (fields["ssh"] != "0" && fields["ssh"] != "1") {
+		if err1 != nil || err2 != nil || (fields["ssh"] != "0" && fields["ssh"] != "1") ||
+			(fields["readonly"] != "" && fields["readonly"] != "1") {
 			return nil, fmt.Errorf("malformed entry %q", line)
 		}
-		entry := Entry{Username: fields["user"], SubscriptionID: subscription, DomainID: domain, SSH: fields["ssh"] == "1"}
+		entry := Entry{Username: fields["user"], SubscriptionID: subscription, DomainID: domain, SSH: fields["ssh"] == "1", ReadOnly: fields["readonly"] == "1"}
 		if err := entry.Validate(); err != nil {
 			return nil, err
 		}
@@ -380,7 +397,7 @@ func ExpectedSSHDEffective(e Entry, enabled bool) map[string]string {
 		"permittunnel":       "no",
 	}
 	if !e.SSH {
-		want["forcecommand"] = "internal-sftp -d " + StartDir(e.DomainID) + " -u 0027"
+		want["forcecommand"] = sftpCommand(e)
 	}
 	return want
 }

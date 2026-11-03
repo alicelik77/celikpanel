@@ -660,20 +660,22 @@ varken saatte bir; geri yükleme, içe aktarma ya da uygulama kurulumundan hemen
 | Düzey | Ne olur |
 |---|---|
 | %80 | Müşteriye, bayisine ve yöneticiye bildirim |
-| %100 | Yeni alan adı, posta kutusu, veritabanı, uygulama kurulumu, elle yedek ya da geri yükleme yok; dosya yöneticisi yüklemeyi reddeder; siteler çalışır. Askı tarihli bildirim |
+| %100 | Yeni alan adı, posta kutusu, veritabanı, uygulama kurulumu, elle yedek ya da geri yükleme yok; yeni yüklemeler hemen kapanır (dosya yöneticisi, FTP ve SFTP salt okunur, PHP `file_uploads` kapalı); siteler çalışır. Askı tarihli bildirim |
 | 5 gün aşım | Bildirim: 2 gün sonra askı |
 | 7 gün aşım | Abonelik askıya alınır (alpha.117 askısı, "disk" nedeni) |
 | Yeniden sınırın altında | Disk nedeni kendiliğinden kalkar; diğer nedenler (elle, bayi, bitiş tarihi) kalır |
 | Operatör açar | Disk nedeni kalkar ve yeni bir 7 günlük süre başlar |
 
 CelikPanel fstab'a, çekirdek satırına ya da dosya sistemi bayraklarına asla dokunmaz;
-sahibin kurduğu proje kotaları yalnız algılanır. Sert işletim sistemi sınırları, dolu
-diskte FTP/SFTP salt-okur kipi ve PHP `file_uploads=off` açık işlerdir.
+sahibin kurduğu proje kotaları yalnız algılanır. Sert işletim sistemi sınırları açık iştir.
+SSH hesabı komut satırını korur (salt okunur yapılamaz). Yedekler aboneliğin dışında
+saklanır ve sayılmaz; disk doluyken zamanlanmış yedekler çalışmaya devam eder.
 
 **Posta.** Her posta kutusunun boyutunu Dovecot'un kendi kota eklentisi uygular (iki
 lehçe); Postfix postayı kabul etmeden önce Dovecot'a sorar; dolu kutuya gelen posta
-reddedilir (552). CelikPanel olmadan da çalışır. Posta kutusu kullanıcısına %90 iletisi
-açık iştir.
+reddedilir (552). CelikPanel olmadan da çalışır. %90'da posta kutusu kullanıcısı her aşımda
+bir ileti (İngilizce ve Türkçe) alır: Dovecot'un kendi kota uyarısı ve aynı betiği çalıştıran
+saatlik bir systemd zamanlayıcısı.
 
 **Geçiş.** Daha önce kayıtlı trafik sınırları hiç gösterilmedi ve uygulanmadı; 057
 göçüyle sınırsız oldular ve yöneticiye bir kez söylenir.
