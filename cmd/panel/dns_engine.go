@@ -2525,7 +2525,16 @@ func (p *Panel) reconcileDNSEngineSwitchLocked(
 		}
 		return persisted, true, nil
 	}
-	return p.reconcileFailedDNSEngineSwitchLocked(ctx)
+	failed, reconciled, err := p.reconcileFailedDNSEngineSwitchLocked(ctx)
+	if err != nil && job == nil {
+		// No Agent job, so no failed job to prove a rollback with: a lease
+		// the Agent never admitted changed nothing and is released as such
+		// (alpha.118 lab D1). Without that proof the error stands.
+		if released, releaseErr := p.releaseNeverAdmittedDNSEngineSwitchLocked(ctx, persisted); releaseErr == nil && released {
+			return persisted, true, nil
+		}
+	}
+	return failed, reconciled, err
 }
 
 func (p *Panel) handleDNSEngineReconcile(

@@ -1531,6 +1531,21 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 			return false, p.persistServerSetupExecution(ctx, *execution)
 		}
 
+		var dnsReleased *serverSetupDNSNotAdmittedReleased
+		if step.Kind == "dns" && errors.As(err, &dnsReleased) {
+			// Verified: the Agent never admitted the DNS install and its
+			// reservation was released (nothing changed). Recorded at once.
+			step.Status = "failed"
+			execution.Status = "failed"
+			execution.Error = serverSetupFailureForStep(*step, err)
+			log.Printf("server setup step %s failed: %v", step.ID, err)
+			if persistErr := p.persistServerSetupExecution(ctx, *execution); persistErr != nil {
+				return false, persistErr
+			}
+			p.releaseFailedServerSetupDraft(ctx, plan)
+			return false, nil
+		}
+
 		var enrollmentFailure *serverSetupChildFailure
 		if step.Kind == "mail_enrollment" && errors.As(err, &enrollmentFailure) && enrollmentFailure.Code == "mail_enrollment_restored" {
 			// Exact terminal inverse evidence is a known outcome. An unrelated service
