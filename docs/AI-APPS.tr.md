@@ -109,6 +109,12 @@ işlem yapacağını ve sonraki adımı söyler (D-024).
 
 ## 5. Korumalı alan
 
+alpha.119'dan beri her uygulama ortak site korumasında çalışır ([SITE-SANDBOX.tr.md](SITE-SANDBOX.tr.md)):
+aşağıdakilere ek olarak ajan soketi ve bütün PHP-FPM soketleri gizlenir, bağlantı yerel ve üst veri
+adresleri kapanır, uygulama yalnız kendi döngü portlarına bağlanır ve 25, 465, 587 posta portları
+ona kapalıdır (127.0.0.1 dahil). alpha.118 ile kurulan uygulamalar, yönetici yeni korumayı
+uygulayana kadar kendi birimlerini korur.
+
 Her uygulamanın birimi (ve kurulum birimi) şu ayarlarla çalışır:
 
 - `User=` sitenin kendi hesabı (kanıtlanır: ev klasörü tam olarak sitenin ev klasörüdür); asla
