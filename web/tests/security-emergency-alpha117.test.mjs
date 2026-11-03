@@ -82,11 +82,13 @@ test('the emergency copy exists in both languages', () => {
   assert.match(enEmergencyScreens['emg.intro'], /No customer data is ever deleted/);
 });
 
-test('the section reads nothing until opened, then shows guidance before the steps', async () => {
+test('a closed section only reads; opened, it shows guidance before the steps', async () => {
   serve({ 'GET /api/v1/security-emergencies': { body: { emergencies: [detail()] } }, 'GET /api/v1/security-emergencies/e1': { body: detail() } });
   try {
     await mount(React.createElement(SecurityEmergencySection, { component: 'php', name: 'PHP', versions: ['8.4', '8.5'] }));
-    assert.equal(calls.length, 0, 'a closed section must not read');
+    // alpha.118: closed, it reads the list (one GET) to know whether an
+    // emergency is open, and reads nothing else.
+    assert.deepEqual(calls.map((call) => `${call.method} ${call.url}`), ['GET /api/v1/security-emergencies'], 'a closed section only reads the list');
     await click(tree.root.findAll((node) => node.type === 'button')[0]);
     const page = text();
     assert.ok(page.indexOf('PHP 8.5 is withdrawn for security.') < page.indexOf('emg.step.stop'), 'guidance comes before the steps');
