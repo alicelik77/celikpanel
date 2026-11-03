@@ -26,7 +26,7 @@ const chapter = {
     ["ul",["the page and the domain, mailbox or component it was about;",["the sentence the message says, and the code under ",["b","Technical details"],";"],"the time it happened."]],
     ["p","Never send a password or a private key. CelikPanel never shows them back to you, and nobody needs them to help."],
     ["h",2,"panel-not-answering","When the panel itself is not answering"],
-    ["p","If the panel cannot be reached or says it is starting, your websites, mail, DNS, databases, scheduled jobs and certificate renewal keep running. They are ordinary services of the server and do not depend on the panel. Try again in a few minutes. If the panel stays unreachable, tell the server administrator."],
+    ["p","If the panel cannot be reached or says it is starting, your websites, mail, DNS, databases and scheduled jobs keep running. They are ordinary services of the server and do not depend on the panel. Certificates of new websites are renewed by the server itself. Three kinds still need CelikPanel to renew them: the panel's own certificate, the mail server's certificate and older website certificates that have not been issued again. They do not expire at once, so a short outage is harmless. Try again in a few minutes. If the panel stays unreachable, tell the server administrator."],
   ],
 } as unknown as GuideChapter;
 

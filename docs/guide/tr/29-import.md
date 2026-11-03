@@ -1,0 +1,31 @@
+---
+id: import
+title: cPanel hesabını içe aktarmak
+roles: [admin]
+topics: [import]
+keywords: [içe aktarma, taşıma, göç, cpanel, cpmove, arşiv]
+---
+
+**İçe aktar**, tek bir cPanel hesabını cpmove ya da yedek arşivinden CelikPanel'e getirir. Başka panellerden içe aktarma henüz yok.
+
+## Başlamadan önce {#before}
+
+- Önce müşteriyi oluşturun; içe aktarma onun aboneliklerinden birine yapılır.
+- Arşivi root olarak bu sunucuya, sayfanın söylediği içe aktarma klasörüne, yalnız sahibinin okuyabileceği biçimde kopyalayın. Panel arşivi sizin yerinize indirmez.
+- Alan adı CelikPanel'de henüz bulunmamalı; var olan bir alan adına içe aktarma reddedilir.
+
+## Adımlar {#steps}
+
+1. **Kaynak:** **Sunucudaki arşiv yolu** alanını doldurup **Arşivi incele** düğmesine basın. Sayfa arşivin içeriğini listeler.
+2. **Önizleme:** **Hedef abonelik** ile içe aktarılacak alan adını ve nelerin geleceğini seçin: web sitesi dosyaları, posta hesapları ve yönlendirmeler, DNS kayıtları, veritabanları.
+3. **İçe aktarmayı başlat** düğmesine basın.
+4. **Sonuç:** içe aktarma bitti, bir kısmı aktarıldı ya da sonucu bilinmiyor.
+
+"Bir kısmı" gelmeyen parçaları listeler; onları elle taşıyın. "Bilinmiyor" yanıtın kaybolduğu anlamına gelir: yeniden başlatmadan önce alan adına bakın.
+
+## Taşınmayanlar {#limits}
+
+- Posta kutularındaki mevcut iletiler. Posta hesapları parolalarını korur; arşivde parolası olmayan posta kutusu oluşturulmaz. Eski postaları bir IMAP aracıyla taşıyın.
+- Veritabanı kullanıcıları. Yenilerini oluşturup sitenin ayarlarını onlara yönlendirin.
+
+İçe aktarmadan sonra siteyi denetleyin, ardından alan adının DNS'ini ya da ad sunucularını bu sunucuya çevirin.

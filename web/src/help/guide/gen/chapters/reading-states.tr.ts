@@ -26,7 +26,7 @@ const chapter = {
     ["ul",["sayfayı ve sorunun ilgili olduğu alan adını, posta kutusunu ya da bileşeni;",["iletinin cümlesini ve ",["b","Teknik ayrıntılar"]," altındaki kodu;"],"olayın saatini."]],
     ["p","Parola ya da özel anahtar asla göndermeyin. CelikPanel bunları size bir daha göstermez; size yardım etmek için de kimsenin bunlara ihtiyacı yoktur."],
     ["h",2,"panel-not-answering","Panelin kendisi yanıt vermediğinde"],
-    ["p","Panele ulaşılamıyorsa ya da panel \"başlatılıyor\" diyorsa web siteleriniz, e-postanız, DNS, veritabanlarınız, zamanlanmış işleriniz ve sertifika yenilemeniz çalışmaya devam eder. Bunlar sunucunun sıradan hizmetleridir ve panele bağlı değildir. Birkaç dakika sonra yeniden deneyin. Panele hâlâ ulaşılamıyorsa sunucu yöneticisine haber verin."],
+    ["p","Panele ulaşılamıyorsa ya da panel \"başlatılıyor\" diyorsa web siteleriniz, e-postanız, DNS, veritabanlarınız ve zamanlanmış işleriniz çalışmaya devam eder. Bunlar sunucunun sıradan hizmetleridir ve panele bağlı değildir. Yeni web sitelerinin sertifikalarını sunucunun kendisi yeniler. Üç tür sertifikanın yenilenmesi için ise CelikPanel gerekir: panelin kendi sertifikası, posta sunucusunun sertifikası ve yeniden alınmamış eski web sitesi sertifikaları. Bunlar bir anda geçersiz olmaz; kısa bir kesinti zarar vermez. Birkaç dakika sonra yeniden deneyin. Panele hâlâ ulaşılamıyorsa sunucu yöneticisine haber verin."],
   ],
 } as unknown as GuideChapter;
 

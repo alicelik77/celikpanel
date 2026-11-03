@@ -108,7 +108,7 @@ test('search folds Turkish letters and matches the start of words', async () => 
     assert.deepEqual(search.searchGuide(tr, '  '), []);
     assert.deepEqual(search.searchGuide(tr, 'zzzqqq'), []);
     // The index holds titles, headings and keywords; a word only the text has
-    // ("parmak izi", the certificate's fingerprint) is found once the
+    // ("parmak izi", a key's fingerprint, in the files chapter and the remote backups) is found once the
     // chapters' text has arrived.
     assert.deepEqual(search.searchGuide(tr, 'parmak'), []);
     const bodies = {};
@@ -117,7 +117,7 @@ test('search folds Turkish letters and matches the start of words', async () => 
         bodies[chapter.id] = search.chapterBodies(chapter);
     }
     const text = search.searchGuide(tr, 'parmak', bodies);
-    assert.deepEqual(text.map((hit) => [tr.chapters[hit.chapter].id, hit.anchor]), [['files-access', 'ftp-sftp']]);
+    assert.deepEqual(text.map((hit) => [tr.chapters[hit.chapter].id, hit.anchor]), [['files-access', 'ftp-sftp'], ['backups', 'remote']]);
     const page = read('../src/help/guide/GuidePage.tsx');
     assert.match(page, /Promise\.allSettled\(chunk\.chapters\.map\(\(entry\) => loadGuideChapter\(locale, entry\)\)\)/);
     assert.match(page, /if \(!complete\) fetched\.current = null;/);

@@ -2,7 +2,7 @@
 id: team-members
 title: Ekip üyeleri
 roles: [customer]
-topics: []
+topics: [team]
 keywords: [ekip, kullanıcı, ek kullanıcı, çalışma arkadaşı, geliştirici, ajans, erişim, izin, görüntüle, yönet, davet]
 ---
 

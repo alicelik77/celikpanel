@@ -2,7 +2,7 @@
 id: team-members
 title: Team members
 roles: [customer]
-topics: []
+topics: [team]
 keywords: [team, user, additional user, colleague, developer, access, permission, view, manage, invitation]
 ---
 

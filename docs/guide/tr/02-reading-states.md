@@ -57,4 +57,4 @@ Parola ya da özel anahtar asla göndermeyin. CelikPanel bunları size bir daha 
 
 ## Panelin kendisi yanıt vermediğinde {#panel-not-answering}
 
-Panele ulaşılamıyorsa ya da panel "başlatılıyor" diyorsa web siteleriniz, e-postanız, DNS, veritabanlarınız, zamanlanmış işleriniz ve sertifika yenilemeniz çalışmaya devam eder. Bunlar sunucunun sıradan hizmetleridir ve panele bağlı değildir. Birkaç dakika sonra yeniden deneyin. Panele hâlâ ulaşılamıyorsa sunucu yöneticisine haber verin.
+Panele ulaşılamıyorsa ya da panel "başlatılıyor" diyorsa web siteleriniz, e-postanız, DNS, veritabanlarınız ve zamanlanmış işleriniz çalışmaya devam eder. Bunlar sunucunun sıradan hizmetleridir ve panele bağlı değildir. Yeni web sitelerinin sertifikalarını sunucunun kendisi yeniler. Üç tür sertifikanın yenilenmesi için ise CelikPanel gerekir: panelin kendi sertifikası, posta sunucusunun sertifikası ve yeniden alınmamış eski web sitesi sertifikaları. Bunlar bir anda geçersiz olmaz; kısa bir kesinti zarar vermez. Birkaç dakika sonra yeniden deneyin. Panele hâlâ ulaşılamıyorsa sunucu yöneticisine haber verin.
