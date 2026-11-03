@@ -234,6 +234,41 @@ func TestInstallScriptPinsTheArtifact(t *testing.T) {
 	}
 }
 
+// TestNPMInstallCommandLine: n8n failed with EBADPLATFORM (alpha.118 lab
+// round 2) because n8n-nodes-base 2.46.x lists Alpine (musl) binaries as
+// ordinary dependencies; npm refuses those on glibc unless --force. The
+// command stays npm's standard install of the pinned tarball otherwise: no
+// platform overrides, no lifecycle-script or registry changes, and the
+// registry signatures are checked after it.
+func TestNPMInstallCommandLine(t *testing.T) {
+	app, _ := Lookup("n8n")
+	if !app.NPMPlatformDepsRequired {
+		t.Fatal("n8n 2.46.x requires other platforms' binaries")
+	}
+	script := InstallScript(app)
+	want := `"$runtime" "$npmcli" install --prefix "$target.partial" --omit=dev --no-save --force "$root/dist/$file"` + "\n"
+	if !strings.Contains(script, want) {
+		t.Fatalf("n8n install line missing:\n%s", script)
+	}
+	for _, forbidden := range []string{"--os", "--cpu", "--libc", "--ignore-scripts", "--registry", "--legacy-peer-deps", "--no-package-lock", "--omit=optional", "--include="} {
+		if strings.Contains(script, forbidden) {
+			t.Errorf("n8n install uses %s", forbidden)
+		}
+	}
+	if !strings.Contains(script, `"$runtime" "$npmcli" audit signatures --prefix "$target.partial"`) {
+		t.Fatal("registry signatures are no longer checked")
+	}
+	// An app without the defect keeps the plain install.
+	plain := app
+	plain.NPMPlatformDepsRequired = false
+	if strings.Contains(InstallScript(plain), "--force") {
+		t.Fatal("--force only for an app that needs it")
+	}
+	if !strings.Contains(InstallScript(plain), `--omit=dev --no-save "$root/dist/$file"`) {
+		t.Fatal("plain npm install line changed")
+	}
+}
+
 // systemdExpand follows systemd's replace_env() for one command argument:
 // "$$" is one "$", "${NAME}" is the variable (empty when unset), and a whole
 // argument "$NAME" is the variable too. Other "$" stay literal.

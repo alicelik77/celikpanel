@@ -180,6 +180,14 @@ Bunlar katalogta bu gerekçeyle listelenir; sunucu onları sunmayı ya da kurmay
   signatures` ise kayıt deposunun imzalarıyla denetler. Open WebUI doğrudan bağımlılıklarının
   çoğunu kesin olarak (`==`) sabitler, ancak pip bunları `--require-hashes` olmadan PyPI'dan
   çözer (her Python sürümü için tam bir parmak izi kilidi sonraki adımdır).
+- **n8n, npm'in `--force` seçeneğiyle kurulur (alpha.118 lab, 2. tur).** n8n-nodes-base 2.46.x,
+  `@napi-rs/canvas` ve `@napi-rs/image` paketlerinin Alpine (musl) yapılarını isteğe bağlı değil,
+  zorunlu bağımlılık olarak listeler; bu yüzden düz bir `npm install` her glibc sunucuda (Debian,
+  Ubuntu, Arch) `EBADPLATFORM` hatasıyla durur. npm'in bunun için tek seçeneği `--force`'tur;
+  kullanılmayan bu ikili dosyaları da (birkaç MB) kaydeder ve npm'in normalde reddedeceği eş
+  bağımlılık çakışmalarında devam etmesine izin verir. Bütünlük denetimi ve `npm audit
+  signatures` yine yapılır. Yalnız n8n için açıktır (`internal/serviceapps/catalog.go` içinde
+  `NPMPlatformDepsRequired`); n8n bu bağımlılıkları yeniden isteğe bağlı yaptığında kaldırılır.
 - **Kurulum betikleri çalışır.** `--ignore-scripts` iki uygulamayı da bozardı (n8n: sqlite3 ve
   isolated-vm yerel modülleri; sqlite3'ün betiği, GitHub sürümünden sabitlenmiş parmak izi
   olmayan hazır bir ikili dosya indirir). Betikler site kullanıcısı olarak korumalı alanın

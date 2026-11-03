@@ -23,8 +23,22 @@ func TestClamAVSignaturesReady(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "daily.cld"), []byte("signature"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	// alpha.118 lab round 2: the daemon's units require main AND daily;
+	// daily alone let systemd skip the daemon and its socket for good.
+	if clamAVSignaturesReady(dir) {
+		t.Fatal("daily.cld without main must not be ready")
+	}
+	if err := os.Mkdir(filepath.Join(dir, "main.inc"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if !clamAVSignaturesReady(dir) {
-		t.Fatal("daily.cld must make the database ready")
+		t.Fatal("daily.cld with the main.inc folder must be ready")
+	}
+	if err := os.Remove(filepath.Join(dir, "daily.cld")); err != nil {
+		t.Fatal(err)
+	}
+	if clamAVSignaturesReady(dir) {
+		t.Fatal("main without daily must not be ready")
 	}
 }
 

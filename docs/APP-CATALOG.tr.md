@@ -53,7 +53,12 @@ sunucuda henüz kanıtlanmadı" durumundadır.
    dağıtımın arşivinden kurulur (alpha.118); diğer sürümler depoyu ister. Arch tek PHP getirir:
    ret, paketleri ya da `/etc/php/conf.d` içinde açılacak uzantıları adlandırır; bunun için
    panelde henüz düğme yok. WordPress aynı denetimi (en az `mysqli`) veritabanı oluşturulmadan
-   önce yapar (alpha.118).
+   önce yapar (alpha.118; lab 2. turuna dek Agent bu denetimi WordPress için reddediyordu, bu
+   yüzden hep "sorulamadı" çıkıyordu). Denetim sunucu kilidi almaz, hiçbir şeyi değiştirmez.
+   Yanıt alınamazsa nedenini söyler (`APP_PREREQUISITES_UNKNOWN` ve bir neden): **meşgul** (40
+   saniyede yanıt yok, genellikle sunucuda başka bir iş sürüyor: kimse bir şey yapmaz, bir iki
+   dakika sonra yeniden kurulur), **reddedildi** (Agent isteği reddetti: yeniden denenir,
+   yinelenirse ileti bildirilir) ya da Agent'a ulaşılamadı (yönetici çalıştığını denetler).
 3. **Veritabanı** ve kullanıcısı, her veritabanı gibi kaydedilir ve sayılır.
 4. **Dosyalar**: indirme, doğrulama, WordPress sınırlarıyla kök kullanıcıya özel hazırlık
    klasörüne açma, sitenin kullanıcısına verme, **kurulum kilidi** (her adres "kuruluyor" yanıtı

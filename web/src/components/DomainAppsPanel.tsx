@@ -267,7 +267,11 @@ function Requirements({ app, administrator }: { app: DomainApp; administrator: b
     }
     if (!req) return null;
     if (req.state === 'ok') return <p className="text-sm text-success">{t('apps.ready')}</p>;
-    if (req.state === 'unknown') return <p className="text-sm text-fg-muted">{t('apps.requirementsUnknown')}</p>;
+    // alpha.118: a check without an answer says why (busy server, refused check).
+    if (req.state === 'unknown') {
+        const key = req.reason === 'busy' ? 'apps.requirementsBusy' : req.reason === 'refused' ? 'apps.requirementsRefused' : 'apps.requirementsUnknown';
+        return <p className="text-sm text-fg-muted">{t(key)}</p>;
+    }
     const packages = req.missing.filter((m) => m.package).map((m) => m.package);
     const enable = req.missing.filter((m) => !m.package).map((m) => m.extension);
     return (

@@ -162,6 +162,39 @@ type appRequirementView struct {
 	// extension ("" when no single Components install does).
 	InstallPackage string `json:"install_package,omitempty"`
 	Detail         string `json:"detail,omitempty"`
+	// Reason refines "unknown" (appPrereqFailure): busy, refused, or empty
+	// when the agent could not be reached.
+	Reason string `json:"reason,omitempty"`
+}
+
+// Why the read-only prerequisite check had no answer (alpha.118 lab round 2).
+// The check takes no host lease and changes nothing, so it is never refused
+// for other work; a busy server shows as an answer that did not come in time.
+const (
+	appPrereqBusy    = "busy"
+	appPrereqRefused = "refused"
+)
+
+// appPrereqFailure names the reason and the English message of a failed
+// prerequisite check: what happened, who acts, what next, how it resumes.
+func appPrereqFailure(app appcatalog.App, err error, resp transport.AppPrerequisitesResponse) (string, string) {
+	switch {
+	case err == nil:
+		// The agent answered but refused the request itself.
+		return appPrereqRefused, "the server's agent refused the check whether this site is ready for " + app.Name + " (" + boundedPrereqError(resp.Error) + "); nothing was changed. Try again; if it repeats, the administrator sends this message to CelikPanel support."
+	case errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled):
+		return appPrereqBusy, "the server did not answer the check for " + app.Name + " in time, most likely because other work is running on it; nothing was changed. Nobody needs to fix anything: wait a minute or two until that work has finished, then install again."
+	default:
+		return "", "the server could not be asked whether it is ready for " + app.Name + "; nothing was changed. Try again in a moment; if it persists, the administrator checks that the CelikPanel agent is running."
+	}
+}
+
+func boundedPrereqError(text string) string {
+	runes := []rune(strings.TrimSpace(text))
+	if len(runes) > 200 {
+		return string(runes[:200]) + "…"
+	}
+	return string(runes)
 }
 
 // catalogExtensionsInstallPackage names the Components install that brings
@@ -334,7 +367,7 @@ func (p *Panel) appRequirements(ctx context.Context, r *http.Request, e *effecti
 	}, &resp)
 	if err != nil || resp.Error != "" {
 		view.State = "unknown"
-		view.Detail = "the server could not be asked about this application's requirements now"
+		view.Reason, view.Detail = appPrereqFailure(app, err, resp)
 		view.PHPOK, view.PHPReason = app.PHPSupported(site.phpVersion)
 		return view
 	}
@@ -732,8 +765,14 @@ func (p *Panel) requireAppPrerequisites(w http.ResponseWriter, r *http.Request, 
 	defer cancel()
 	err := p.callAgentContext(ctx, "Agent.AppPrerequisitesV1", &transport.AppPrerequisitesRequest{AppID: app.ID, Site: identity}, &resp)
 	if err != nil || resp.Error != "" {
-		writeCodedError(w, http.StatusServiceUnavailable, errCodeAppPrereqUnknown,
-			"the server could not be asked whether it is ready for "+app.Name+"; nothing was changed. Try again in a moment; if it persists, the administrator checks that the CelikPanel agent is running.", "")
+		reason, message := appPrereqFailure(app, err, resp)
+		vars := map[string]string{"app": app.Name}
+		if reason == appPrereqRefused {
+			vars["cause"] = boundedPrereqError(resp.Error)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_ = json.NewEncoder(w).Encode(apiErrorBody{Error: message, Code: errCodeAppPrereqUnknown, Reason: reason, Vars: vars})
 		return false
 	}
 	if !resp.PHPOK {

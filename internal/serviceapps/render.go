@@ -493,7 +493,7 @@ echo "$digest  $root/dist/$file" | "${algo}sum" -c --status -
 export npm_config_cache="$root/.cache/npm" npm_config_update_notifier=false npm_config_fund=false npm_config_audit=false
 rm -rf "$target.partial"
 mkdir -p "$target.partial"
-"$runtime" "$npmcli" install --prefix "$target.partial" --omit=dev --no-save "$root/dist/$file"
+"$runtime" "$npmcli" install --prefix "$target.partial" --omit=dev --no-save` + npmPlatformFlag(app) + ` "$root/dist/$file"
 "$runtime" "$npmcli" audit signatures --prefix "$target.partial"
 rm -rf "$target"
 mv "$target.partial" "$target"
@@ -508,6 +508,17 @@ rm -rf "$target"
 rm -rf "$root/.cache/pip"
 echo "CelikPanel: installed $file"
 `
+	}
+	return ""
+}
+
+// npmPlatformFlag is " --force" for an app whose own package requires other
+// platforms' binaries (App.NPMPlatformDepsRequired), "" otherwise: npm
+// skips other platforms' OPTIONAL dependencies by itself, and refuses
+// required ones unless forced.
+func npmPlatformFlag(app App) string {
+	if app.NPMPlatformDepsRequired {
+		return " --force"
 	}
 	return ""
 }

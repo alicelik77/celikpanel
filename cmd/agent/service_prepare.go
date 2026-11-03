@@ -192,18 +192,9 @@ func prepareArchClamAVContext(ctx context.Context) error {
 		if err != nil {
 			return commandFailure("clamav signature download", out, err)
 		}
-		return fmt.Errorf("clamav signature download completed without creating a daily signature database")
+		return fmt.Errorf("clamav signature download completed without the main and daily signature databases")
 	}
 	return nil
-}
-
-func clamAVSignaturesReady(dir string) bool {
-	for _, name := range []string{"daily.cvd", "daily.cld", "daily.inc"} {
-		if info, err := os.Stat(filepath.Join(dir, name)); err == nil && !info.IsDir() {
-			return true
-		}
-	}
-	return false
 }
 
 func commandFailure(label string, out []byte, err error) error {
