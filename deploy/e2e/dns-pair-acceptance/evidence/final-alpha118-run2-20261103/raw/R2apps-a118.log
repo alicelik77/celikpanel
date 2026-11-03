@@ -1,0 +1,34 @@
+== R2apps 16:41:02 subB=4
+200 {"success": true}
+apps118.test id=3
+wp.apps118.test id=4
+-- WordPress on a server without the extensions (expect refusal with guidance)
+  req wordpress {"database_ok": true, "detail": "the server could not be asked about this application's requirements now", "disk_ok": true, "php_ok": true, "state": "unknown"}
+  admin view wordpress {"database_ok": true, "detail": "the server could not be asked about this application's requirements now", "disk_ok": true, "php_ok": true, "state": "unknown"}
+503 {"code": "APP_PREREQUISITES_UNKNOWN", "error": "the server could not be asked whether it is ready for WordPress; nothing was changed. Try again in a moment; if it persists, the administrator checks that the CelikPanel agent is running."}
+code wp.apps118.test/ http 200 ->  title: wp.apps118.test
+== admin: Components -> PHP-FPM php8.4-fpm (distribution) 16:41:24
+202 {"operation": {"id": "19ad386a7add8bf19681f7f873881490", "kind": "service_install", "package_name": "php8.4-fpm", "phase": "queued", "request_id": "6eb4820fef83683ef6869feb37aec387", "service_id": "php-fpm", "started_at": "2026-11-03T16:41:38.938355322Z", "status": "queued"}}
+  op 6eb4820fef83683ef6869feb37aec387: succeeded completed "" (16:42:40)
+200 {"operation": {"finished_at": "2026-11-03T16:42:31.589905324Z", "id": "19ad386a7add8bf19681f7f873881490", "kind": "service_install", "package_name": "php8.4-fpm", "phase": "completed", "request_id": "6eb4820fef83683ef6869feb37aec387", "result": {"installed": true, "success": true}, "service_id": "php-fpm", "started_at": "2026-11-03T16:41:38.938355322Z", "status": "succeeded"}}
+php8.4-bcmath php8.4-cli php8.4-common php8.4-curl php8.4-fpm php8.4-gd php8.4-intl php8.4-mbstring php8.4-mysql php8.4-opcache php8.4-pgsql php8.4-readline php8.4-sqlite3 php8.4-xml php8.4-zip 
+Suites: trixie trixie-updates trixie-backports
+Suites: trixie-security
+URIs: mirror+file:///etc/apt/mirrors/debian-security.list
+URIs: mirror+file:///etc/apt/mirrors/debian.list
+debian.sources
+== app nextcloud on next.apps118.test (id 6) 16:42:52
+200 {"admin_password": "[REDACTED]", "admin_url": "http://next.apps118.test/", "admin_user": "admin", "app": "nextcloud", "detail": "Nextcloud 35.0.2 is set up", "name": "Nextcloud", "operation_id": "fa94173a6b813a5b06a5c775278f74e5", "rules_kept": false, "site_url": "http://next.apps118.test/", "success": true, "version": "35.0.2"}
+  took 120s
+  installed {"app_id": "nextcloud", "status": "applied", "site_url": "https://next.apps118.test/", "error_kind": null, "last_error": null}
+code next.apps118.test/ http 302 -> http://next.apps118.test/index.php/login title: 
+grep: /tmp/get.out: No such file or directory
+head: cannot open '/tmp/get.out' for reading: No such file or directory
+get next.apps118.test/ http 302 http://next.apps118.test/index.php/login title:  | 
+== app joomla on joom.apps118.test (id 7) 16:44:59
+200 {"admin_password": "[REDACTED]", "admin_url": "http://joom.apps118.test/administrator/", "admin_user": "admin", "app": "joomla", "detail": "Joomla 5.4.10 is set up", "name": "Joomla", "operation_id": "9d65588a57a21eb63da84a2f5c7f1b7a", "rules_kept": false, "site_url": "http://joom.apps118.test/", "success": true, "version": "5.4.10"}
+  took 22s
+  installed {"app_id": "joomla", "status": "applied", "site_url": "https://joom.apps118.test/", "error_kind": null, "last_error": null}
+code joom.apps118.test/ http 200 ->  title: Home
+get joom.apps118.test/ http 200 http://192.0.3.190/ title: Home |  	 	<meta name="generator" content="Joomla! - Open S
+== app prestashop on pres.apps118.test (id 8) 16:45:32

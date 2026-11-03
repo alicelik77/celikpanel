@@ -1,0 +1,13 @@
+== R2n8n 16:41:02 subN=5
+node 24.22.2
+202 {"operation": {"id": "8329c2d26d57705203653689eb3f6922", "kind": "runtime_install", "package_name": "24.22.2", "phase": "queued", "request_id": "bf8aa7f65af6d8e84d2d4984c9227f52", "service_id": "node", "started_at": "2026-11-03T16:41:02.283785423Z", "status": "queued"}}
+  op bf8aa7f65af6d8e84d2d4984c9227f52: succeeded completed "" (16:41:13)
+-- offer n8n
+200 [('n8n', True, True, None)]
+n8n118.test id=5
+  certificate after create: False
+200 {"expires_at": "2031-11-03T16:41:28Z", "status": "success"}
+-- install n8n 16:41:31
+202 {"operation": {"created_at": "2026-11-03 16:41:31", "id": "d7d9e414544871de31553d14744ee925", "install_id": 1, "kind": "install", "state": "running", "step": "prepare", "updated_at": "2026-11-03 16:41:31"}}
+  16:41:31 install=installing active=False serving=False unit=celiksvc-1 url=https://n8n118.test/ | op=running step=prepare class=None reason=None msg= | suspended=False cert=true
+  16:41:47 install=installing active=False serving=False unit=celiksvc-1 url=https://n8n118.test/ | op=running step=installing class=None reason=None msg= | suspended=False cert=true

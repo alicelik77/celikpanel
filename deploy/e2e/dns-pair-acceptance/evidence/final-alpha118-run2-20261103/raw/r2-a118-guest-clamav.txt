@@ -1,0 +1,54 @@
+## 16:46:26
+inactive
+inactive
+active
+○ clamav-daemon.service - Clam AntiVirus userspace daemon
+     Loaded: loaded (/usr/lib/systemd/system/clamav-daemon.service; enabled; preset: enabled)
+    Drop-In: /etc/systemd/system/clamav-daemon.service.d
+             └─extend.conf
+     Active: inactive (dead)
+TriggeredBy: ○ clamav-daemon.socket
+  Condition: start condition unmet at Tue 2026-11-03 16:44:19 UTC; 2min 6s ago
+       Docs: man:clamd(8)
+             man:clamd.conf(5)
+             https://docs.clamav.net/
+total 110176
+drwxr-xr-x  2 clamav clamav     4096 16:44:24 .
+drwxr-xr-x 45 root   root       4096 16:44:28 ..
+-rw-r--r--  1 clamav clamav   281702 16:44:24 bytecode.cvd
+-rw-r--r--  1 clamav clamav 23447608 16:44:13 daily.cvd
+-rw-r--r--  1 clamav clamav       90 16:44:12 freshclam.dat
+-rw-r--r--  1 clamav clamav 89072577 16:44:20 main.cvd
+Nov 03 16:44:12.587359 frankfurt systemd[1]: Started clamav-freshclam.service - ClamAV virus database updater.
+Nov 03 16:44:12.618507 frankfurt freshclam[52942]: Tue Nov  3 16:44:12 2026 -> ClamAV update process started at Tue Nov  3 16:44:12 2026
+Nov 03 16:44:12.629296 frankfurt freshclam[52942]: WARNING: Tue Nov  3 16:44:12 2026 -> Your ClamAV installation is OUTDATED!
+Nov 03 16:44:12.629296 frankfurt freshclam[52942]: WARNING: Tue Nov  3 16:44:12 2026 -> Local version: 1.4.3 Recommended version: 1.4.6
+Nov 03 16:44:12.629424 frankfurt freshclam[52942]: Tue Nov  3 16:44:12 2026 -> DON'T PANIC! Read https://docs.clamav.net/manual/Installing.html
+Nov 03 16:44:12.629424 frankfurt freshclam[52942]: Tue Nov  3 16:44:12 2026 -> daily database available for download (remote version: 28173)
+Nov 03 16:44:13.771846 frankfurt freshclam[52942]: Tue Nov  3 16:44:13 2026 -> Testing database: '/var/lib/clamav/tmp.c959febec1/clamav-234cd01abcf4baf03d455e001616ce42.tmp-daily.cvd' ...
+Nov 03 16:44:14.561124 frankfurt systemd[1]: clamav-daemon.socket - Socket for Clam AntiVirus userspace daemon skipped, unmet condition check ConditionPathExistsGlob=/var/lib/clamav/daily.{c[vl]d,inc}
+Nov 03 16:44:14.561521 frankfurt systemd[1]: clamav-daemon.service - Clam AntiVirus userspace daemon skipped, unmet condition check ConditionPathExistsGlob=/var/lib/clamav/daily.{c[vl]d,inc}
+Nov 03 16:44:17.904050 frankfurt freshclam[52942]: Tue Nov  3 16:44:17 2026 -> Database test passed.
+Nov 03 16:44:17.904490 frankfurt freshclam[52942]: Tue Nov  3 16:44:17 2026 -> daily.cvd updated (version: 28173, sigs: 355841, f-level: 90, builder: svc.clamav-publisher)
+Nov 03 16:44:17.904490 frankfurt freshclam[52942]: Tue Nov  3 16:44:17 2026 -> main database available for download (remote version: 63)
+Nov 03 16:44:19.370574 frankfurt systemd[1]: clamav-daemon.socket - Socket for Clam AntiVirus userspace daemon skipped, unmet condition check ConditionPathExistsGlob=/var/lib/clamav/main.{c[vl]d,inc}
+Nov 03 16:44:19.370791 frankfurt systemd[1]: clamav-daemon.service - Clam AntiVirus userspace daemon skipped, unmet condition check ConditionPathExistsGlob=/var/lib/clamav/main.{c[vl]d,inc}
+Nov 03 16:44:21.377980 frankfurt freshclam[52942]: Tue Nov  3 16:44:21 2026 -> Testing database: '/var/lib/clamav/tmp.c959febec1/clamav-005eb9cc257cc603b009047c71579cec.tmp-main.cvd' ...
+Nov 03 16:44:24.215974 frankfurt freshclam[52942]: Tue Nov  3 16:44:24 2026 -> Database test passed.
+Nov 03 16:44:24.216461 frankfurt freshclam[52942]: Tue Nov  3 16:44:24 2026 -> main.cvd updated (version: 63, sigs: 3287027, f-level: 90, builder: tomjudge)
+Nov 03 16:44:24.216461 frankfurt freshclam[52942]: Tue Nov  3 16:44:24 2026 -> bytecode database available for download (remote version: 339)
+Nov 03 16:44:24.312826 frankfurt freshclam[52942]: Tue Nov  3 16:44:24 2026 -> Testing database: '/var/lib/clamav/tmp.c959febec1/clamav-90e72e41c8ed04e006fe694822508f90.tmp-bytecode.cvd' ...
+Nov 03 16:44:24.383189 frankfurt freshclam[52942]: Tue Nov  3 16:44:24 2026 -> Database test passed.
+Nov 03 16:44:24.383629 frankfurt freshclam[52942]: Tue Nov  3 16:44:24 2026 -> bytecode.cvd updated (version: 339, sigs: 80, f-level: 90, builder: nrandolp)
+Nov 03 16:44:24.384307 frankfurt freshclam[52942]: WARNING: Tue Nov  3 16:44:24 2026 -> Clamd was NOT notified: Can't connect to clamd through /var/run/clamav/clamd.ctl: No such file or directory
+Nov 03 16:44:11.550779 frankfurt adduser[52831]: Adding system user `clamav' (UID 110) ...
+Nov 03 16:44:11.552814 frankfurt adduser[52831]: Adding new group `clamav' (GID 113) ...
+Nov 03 16:44:11.613534 frankfurt groupadd[52836]: group added to /etc/group: name=clamav, GID=113
+Nov 03 16:44:11.643684 frankfurt groupadd[52836]: group added to /etc/gshadow: name=clamav
+Nov 03 16:44:11.644575 frankfurt groupadd[52836]: new group: name=clamav, GID=113
+Nov 03 16:44:11.647317 frankfurt adduser[52831]: Adding new user `clamav' (UID 110) with group `clamav' ...
+Nov 03 16:44:11.708431 frankfurt useradd[52841]: new user: name=clamav, UID=110, GID=113, home=/var/lib/clamav, shell=/bin/false, from=none
+Nov 03 16:44:11.767927 frankfurt adduser[52831]: Not creating home directory `/var/lib/clamav' as requested.
+[Service]
+ExecStartPre=-/bin/mkdir -p /run/clamav
+ExecStartPre=/bin/chown clamav /run/clamav

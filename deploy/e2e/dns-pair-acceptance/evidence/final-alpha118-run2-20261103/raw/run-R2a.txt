@@ -1,0 +1,44 @@
+== R2a prep 16:40:24
+200 {"id": 3, "rights": "unlimited", "success": true}
+200 {"id": 4, "rights": "unlimited", "success": true}
+200 {"id": 5, "rights": "unlimited", "success": true}
+subA=3 subB=4 subN=5
+c118.test id=2
+-- usage status before the mailbox
+200 {"disk": {"interval_hours": 6, "low_space": false, "measured": 1, "not_measured": 3, "unknown": 0}, "mail_quota": {"checked": "2026-11-03T16:39:19Z", "dialect": "2.4", "state": "enforced"}, "traffic": {"interval_minutes": 5, "last_attempt": "2026-11-03 16:40:03", "last_collected": "2026-11-03 16:40:03", "logrotate": "written", "measuring": 1, "unknown": {}}}
+-- D2: 1 MB mailbox q@c118.test 16:40:32
+200 {"id": 1, "success": true}
+-- 950 KB 16:40:47
+MAIL (250, b'2.1.0 Ok')
+RCPT q@c118.test (250, b'2.1.5 Ok')
+DATA ok 950078
+  16:41:10 +38s 300 KB: RCPT q@c118.test (250, b'2.1.5 Ok')
+  16:41:48 +76s 300 KB: RCPT q@c118.test (552, b'5.2.2 <q@c118.test>: Recipient address rejected: Mailbox is full')
+200 {"disk": {"interval_hours": 6, "low_space": false, "measured": 4, "not_measured": 0, "unknown": 0}, "mail_quota": {"checked": "2026-11-03T16:40:31Z", "dialect": "2.4", "state": "enforced"}, "traffic": {"interval_minutes": 5, "last_attempt": "2026-11-03 16:40:31", "last_collected": "2026-11-03 16:40:31", "logrotate": "written", "measuring": 2, "unknown": {}}}
+## 16:41:48 2.4.1-4 (7d8c0e5759)
+NEXT                         LEFT LAST PASSED UNIT                           ACTIVATES
+Tue 2026-11-03 17:04:44 UTC 22min -         - celikpanel-quota-warning.timer celikpanel-quota-warning.service
+
+-- No entries --
+total 8
+drwx------  2 vmail vmail 4096 Nov  3 16:37 .
+drwxr-xr-x 43 root  root  4096 Nov  3 16:39 ..
+Quota name Type    Value Limit                          %
+User quota STORAGE  1222  1024                        119
+User quota MESSAGE     2     -                          0
+## messages in q@c118.test (subjects)
+hdr.subject: lab quota probe 950000
+date.received: 2026-11-03 16:40:56
+hdr.subject: lab quota probe 300000
+date.received: 2026-11-03 16:41:09
+## postfix quota rejects
+Nov 03 16:41:48 frankfurt postfix/smtpd[46054]: NOQUEUE: reject: RCPT from unknown[192.0.3.1]: 552 5.2.2 <q@c118.test>: Recipient address rejected: Mailbox is full; from=<probe@beta1-lab.test> to=<q@c118.test> proto=ESMTP helo=<labnet.beta1-lab.test>
+## quota conf head
+# Managed by CelikPanel: Dovecot mailbox quotas. sha256=53c2648b5cc9acbc6004225a3e7358261373ce3e9b1c080acb0b832534fdd2bf
+# Mailbox size limits from /etc/dovecot/users, enforced by Dovecot itself.
+# Postfix asks the quota-status service below before it accepts mail, so mail
+check_policy_service { unix:private/celikpanel-quota-status, default_action=DUNNO }
+-- logrotate
+/usr/sbin/logrotate
+ii  logrotate      3.22.0-1     amd64        Log rotation utility
+== R2a done 16:41:49

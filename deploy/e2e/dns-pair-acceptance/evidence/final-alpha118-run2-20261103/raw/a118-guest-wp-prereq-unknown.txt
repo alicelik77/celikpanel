@@ -1,0 +1,18 @@
+Nov 03 16:41:05 frankfurt useradd[42556]: new group: name=apps118_test, GID=5003
+Nov 03 16:41:05 frankfurt useradd[42556]: new user: name=apps118_test, UID=5003, GID=5003, home=/var/www/celikpanel/subscriptions/4/sites/3, shell=/usr/sbin/nologin, from=none
+Nov 03 16:41:05 frankfurt useradd[42556]: add 'apps118_test' to group 'celikpanel-site'
+Nov 03 16:41:05 frankfurt useradd[42556]: add 'apps118_test' to shadow group 'celikpanel-site'
+Nov 03 16:41:14 frankfurt useradd[43397]: new group: name=wp_apps118_test, GID=5004
+Nov 03 16:41:14 frankfurt useradd[43397]: new user: name=wp_apps118_test, UID=5004, GID=5004, home=/var/www/celikpanel/subscriptions/4/sites/4, shell=/usr/sbin/nologin, from=none
+Nov 03 16:41:14 frankfurt useradd[43397]: add 'wp_apps118_test' to group 'celikpanel-site'
+Nov 03 16:41:14 frankfurt useradd[43397]: add 'wp_apps118_test' to shadow group 'celikpanel-site'
+Nov 03 16:41:15 frankfurt useradd[43488]: new group: name=n8n118_test, GID=5005
+Nov 03 16:41:15 frankfurt useradd[43488]: new user: name=n8n118_test, UID=5005, GID=5005, home=/var/www/celikpanel/subscriptions/5/sites/5, shell=/usr/sbin/nologin, from=none
+Nov 03 16:41:15 frankfurt useradd[43488]: add 'n8n118_test' to group 'celikpanel-site'
+Nov 03 16:41:15 frankfurt useradd[43488]: add 'n8n118_test' to shadow group 'celikpanel-site'
+Nov 03 16:41:17 frankfurt postfix/postfix-script[43664]: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+Nov 03 16:41:18 frankfurt postfix/postfix-script[43716]: refreshing the Postfix mail system
+Nov 03 16:41:18 frankfurt postfix/postfix-script[43735]: the Postfix mail system is running: PID: 37553
+Nov 03 16:41:26 frankfurt panel[14574]: 2026/11/03 16:41:26 site configuration n8n118.test (change): unchanged
+Nov 03 16:41:28 frankfurt panel[14574]: 2026/11/03 16:41:28 certificate for n8n118.test is valid from 2026-11-03T16:41:29Z, 0s after this server's time; waiting for it
+Nov 03 16:41:29 frankfurt panel[14574]: 2026/11/03 16:41:29 [dkim-auto] apps118.test: DKIM ready (domain_created; record published in apps118.test)

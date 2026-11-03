@@ -1,0 +1,10 @@
+== R2av 16:44:02
+202 {"operation": {"id": "00b1ee197a8f15ea812899e5053ca08a", "kind": "service_install", "phase": "queued", "request_id": "d308855b2f60b5ff465e881781ac515d", "service_id": "clamav", "started_at": "2026-11-03T16:44:01.585443371Z", "status": "queued"}}
+  op d308855b2f60b5ff465e881781ac515d: failed installing {"code": "service_install_failed", "component": "clamav", "detail": "service install: service did not become ready: clamav-daemon did not become active (Result=success)", "message": "The service could not be installed and verified.", "step": "package_install"} (16:44:22)
+200 {"operation": {"error": {"code": "service_install_failed", "component": "clamav", "detail": "service install: service did not become ready: clamav-daemon did not become active (Result=success)", "message": "The service could not be installed and verified.", "step": "package_install"}, "finished_at": "2026-11-03T16:44:19.460499381Z", "id": "00b1ee197a8f15ea812899e5053ca08a", "kind": "service_install", "phase": "installing", "request_id": "d308855b2f60b5ff465e881781ac515d", "result": {"failure": {"component": "clamav", "detail": "service install: service did not become ready: clamav-daemon did not become active (Result=success)", "step": "package_install"}, "installed": false, "success": false}, "service_id": "clamav", "started_at": "2026-11-03T16:44:01.585443371Z", "status": "failed"}}
+  16:44:23 scanner: 200 {"scanner": "clamscan", "signatures_age_hours": 0, "state": "ready"} | units: inactive active 
+  16:44:43 scanner: 200 {"scanner": "clamscan", "signatures_age_hours": 0, "state": "ready"} | units: inactive active 
+  16:45:04 scanner: 200 {"scanner": "clamscan", "signatures_age_hours": 0, "state": "ready"} | units: inactive active 
+  16:45:25 scanner: 200 {"scanner": "clamscan", "signatures_age_hours": 0, "state": "ready"} | units: inactive active 
+  16:45:45 scanner: 200 {"scanner": "clamscan", "signatures_age_hours": 0, "state": "ready"} | units: inactive active 
+  16:46:06 scanner: 200 {"scanner": "clamscan", "signatures_age_hours": 0, "state": "ready"} | units: inactive active 

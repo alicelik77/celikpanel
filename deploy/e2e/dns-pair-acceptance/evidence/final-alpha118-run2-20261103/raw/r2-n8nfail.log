@@ -1,0 +1,62 @@
+== n8n install log (API) 16:47:21
+200
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn While resolving: @langchain/community@1.1.27
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn Found: d3-dsv@2.0.0
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn node_modules/d3-dsv
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn   d3-dsv@"2.0.0" from @n8n/n8n-nodes-langchain@2.46.4
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn   node_modules/@n8n/n8n-nodes-langchain
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn     @n8n/n8n-nodes-langchain@"2.46.4" from n8n@2.46.4
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn     node_modules/n8n
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn Could not resolve dependency:
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn peerOptional d3-dsv@"^3.0.1" from @langchain/community@1.1.27
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn node_modules/@n8n/n8n-nodes-langchain/node_modules/@langchain/community
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn   @langchain/community@"1.1.27" from @n8n/n8n-nodes-langchain@2.46.4
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn   node_modules/@n8n/n8n-nodes-langchain
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn Conflicting peer dependency: d3-dsv@3.0.2
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn node_modules/d3-dsv
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn   peerOptional d3-dsv@"^3.0.1" from @langchain/community@1.1.27
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn   node_modules/@n8n/n8n-nodes-langchain/node_modules/@langchain/community
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn     @langchain/community@"1.1.27" from @n8n/n8n-nodes-langchain@2.46.4
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn     node_modules/@n8n/n8n-nodes-langchain
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn ERESOLVE overriding peer dependency
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn While resolving: @langchain/community@1.1.27
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn Found: ignore@5.3.2
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn node_modules/ignore
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn   ignore@"^5.2.0" from @n8n/n8n-nodes-langchain@2.46.4
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn   node_modules/@n8n/n8n-nodes-langchain
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn     @n8n/n8n-nodes-langchain@"2.46.4" from n8n@2.46.4
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn     node_modules/n8n
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn Could not resolve dependency:
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn peerOptional ignore@"^7.0.5" from @langchain/community@1.1.27
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn node_modules/@n8n/n8n-nodes-langchain/node_modules/@langchain/community
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn   @langchain/community@"1.1.27" from @n8n/n8n-nodes-langchain@2.46.4
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn   node_modules/@n8n/n8n-nodes-langchain
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn Conflicting peer dependency: ignore@7.0.14
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn node_modules/ignore
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn   peerOptional ignore@"^7.0.5" from @langchain/community@1.1.27
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn   node_modules/@n8n/n8n-nodes-langchain/node_modules/@langchain/community
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn     @langchain/community@"1.1.27" from @n8n/n8n-nodes-langchain@2.46.4
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn     node_modules/@n8n/n8n-nodes-langchain
+2026-11-03T16:46:18+00:00 frankfurt sh[45740]: npm warn ERESOLVE overriding peer dependency
+2026-11-03T16:46:19+00:00 frankfurt sh[45740]: npm warn ERESOLVE overriding peer dependency
+2026-11-03T16:46:19+00:00 frankfurt sh[45740]: npm warn ERESOLVE overriding peer dependency
+2026-11-03T16:46:19+00:00 frankfurt sh[45740]: npm warn ERESOLVE overriding peer dependency
+2026-11-03T16:46:19+00:00 frankfurt sh[45740]: npm warn ERESOLVE overriding peer dependency
+2026-11-03T16:46:19+00:00 frankfurt sh[45740]: npm warn ERESOLVE overriding peer dependency
+2026-11-03T16:46:19+00:00 frankfurt sh[45740]: npm warn ERESOLVE overriding peer dependency
+2026-11-03T16:46:19+00:00 frankfurt sh[45740]: npm error code EBADPLATFORM
+2026-11-03T16:46:19+00:00 frankfurt sh[45740]: npm error notsup Unsupported platform for @napi-rs/canvas-linux-arm64-musl@1.0.11: wanted {"os":"linux","cpu":"arm64","libc":"musl"} (current: {"os":"linux","cpu":"x64","libc":"glibc"})
+2026-11-03T16:46:19+00:00 frankfurt sh[45740]: npm error notsup Valid os:    linux
+2026-11-03T16:46:19+00:00 frankfurt sh[45740]: npm error notsup Actual os:   linux
+2026-11-03T16:46:19+00:00 frankfurt sh[45740]: npm error notsup Valid cpu:   arm64
+2026-11-03T16:46:19+00:00 frankfurt sh[45740]: npm error notsup Actual cpu:  x64
+2026-11-03T16:46:19+00:00 frankfurt sh[45740]: npm error notsup Valid libc:  musl
+2026-11-03T16:46:19+00:00 frankfurt sh[45740]: npm error notsup Actual libc: glibc
+2026-11-03T16:46:19+00:00 frankfurt sh[45740]: npm error A complete log of this run can be found in: /var/www/celikpanel/subscriptions/5/sites/5/apps/n8n/.cache/npm/_logs/2026-11-03T16_41_31_555Z-debug-0.log
+2026-11-03T16:46:19+00:00 frankfurt systemd[1]: celiksvcinst-1.service: Main process exited, code=exited, status=1/FAILURE
+2026-11-03T16:46:19+00:00 frankfurt systemd[1]: celiksvcinst-1.service: Failed with result 'exit-code'.
+2026-11-03T16:46:19+00:00 frankfurt systemd[1]: celiksvcinst-1.service: Consumed 54.872s CPU time, 1.2G memory peak.
