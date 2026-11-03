@@ -133,7 +133,10 @@ func (p *Panel) runServiceAppOperation(ctx context.Context, opID string, input *
 		_ = p.setServiceAppStep(ctx, op.ID, op.Step)
 	}
 
-	statusReq := transport.ServiceAppStatusRequest{Target: in.target(), Version: version, Port: in.Port, OperationID: op.ID}
+	// Proof: a running unit is proved against its sandbox profile (systemd's
+	// view, the SMTP block set, loopback only) before the site is published.
+	statusReq := transport.ServiceAppStatusRequest{Target: in.target(), Version: version, Port: in.Port, OperationID: op.ID,
+		Proof: true, AuxPort: in.AuxPort, Limits: limits}
 	if op.Step == "installing" {
 		deadline := time.Now().Add(serviceAppInstallTimeout)
 		startedAt := time.Now()
@@ -197,7 +200,16 @@ func (p *Panel) runServiceAppOperation(ctx context.Context, opID string, input *
 					return nil
 				}
 				if status.Serving {
-					break
+					if status.SandboxProof != nil && !status.SandboxProof.OK {
+						_, _ = native.control(ctx, transport.ServiceAppControlRequest{Target: in.target(), Action: "stop"})
+						p.failServiceAppOperation(ctx, op, transport.ServiceAppVerifiedFailure, "sandbox_proof", serviceAppSandboxProofFailure(status.SandboxProof))
+						return nil
+					}
+					if status.SandboxProof != nil {
+						break
+					}
+					// No proof yet (it could not be read): keep reading until the
+					// deadline; the site is not published unproved.
 				}
 				if status.ActiveState == "failed" {
 					p.failServiceAppOperation(ctx, op, transport.ServiceAppVerifiedFailure, "start_failed",

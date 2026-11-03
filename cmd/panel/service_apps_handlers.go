@@ -15,6 +15,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/alicelik/celikpanel/internal/serviceapps"
+	"github.com/alicelik/celikpanel/internal/sitesandbox"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -136,10 +137,13 @@ type serviceAppInstallView struct {
 	Serving         bool     `json:"serving"`
 	Exposed         []string `json:"exposed,omitempty"`
 	UnitFile        string   `json:"unit_file,omitempty"`
-	StatusUnknown   bool     `json:"status_unknown,omitempty"`
-	Unit            string   `json:"unit"`
-	Folder          string   `json:"folder"`
-	CreatedAt       string   `json:"created_at"`
+	// NeedsSandbox: the unit is CelikPanel's text of an earlier sandbox
+	// (alpha.119); the administrator applies the new one.
+	NeedsSandbox  bool   `json:"needs_sandbox,omitempty"`
+	StatusUnknown bool   `json:"status_unknown,omitempty"`
+	Unit          string `json:"unit"`
+	Folder        string `json:"folder"`
+	CreatedAt     string `json:"created_at"`
 }
 
 type serviceAppsDomainView struct {
@@ -279,6 +283,7 @@ func (p *Panel) writeServiceAppsView(w http.ResponseWriter, r *http.Request, dom
 		} else {
 			iv.Active, iv.Enabled, iv.ActiveState = status.Unit.Active, status.Unit.Enabled, status.ActiveState
 			iv.MemoryMB, iv.Serving, iv.Exposed, iv.UnitFile = status.MemoryMB, status.Serving, status.Exposed, status.UnitFile
+			iv.NeedsSandbox = status.UnitFile == "ours" && status.SandboxGeneration > 0 && status.SandboxGeneration < sitesandbox.Generation
 		}
 		view.Install = iv
 		if op, ok, err := p.latestServiceAppOperation(ctx, in.ID); err == nil && ok {
