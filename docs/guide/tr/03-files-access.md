@@ -1,7 +1,7 @@
 ---
 id: files-access
 title: Dosyalar: dosya yöneticisi, FTP, SFTP ve SSH
-roles: [customer]
+roles: [admin, reseller, customer]
 topics: [domain.files#file-manager, domain.access#ftp-sftp]
 keywords: [ftp, sftp, ssh, filezilla, yükleme, indirme, public_html, anahtar, komut satırı, terminal]
 ---

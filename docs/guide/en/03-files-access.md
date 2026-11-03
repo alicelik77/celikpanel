@@ -1,7 +1,7 @@
 ---
 id: files-access
 title: Files: file manager, FTP, SFTP and SSH
-roles: [customer]
+roles: [admin, reseller, customer]
 topics: [domain.files#file-manager, domain.access#ftp-sftp]
 keywords: [ftp, sftp, ssh, filezilla, upload, download, public_html, key, command line, terminal]
 ---
