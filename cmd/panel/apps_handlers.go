@@ -14,30 +14,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/alicelik/celikpanel/internal/appcatalog"
 	"github.com/alicelik/celikpanel/internal/hostingpath"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
-
-type appCatalogEntry struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Icon        string `json:"icon"`
-	RequiresDB  bool   `json:"requires_db"`
-	RequiresPHP bool   `json:"requires_php"`
-}
-
-var appCatalog = []appCatalogEntry{
-	{
-		ID:          "wordpress",
-		Name:        "WordPress",
-		Description: "The world's most popular CMS — blogs, sites, shops.",
-		Icon:        "wordpress",
-		RequiresDB:  true,
-		RequiresPHP: true,
-	},
-}
 
 var appInstallLocks [64]sync.Mutex
 
@@ -50,12 +31,8 @@ func appInstallMutex(domainID int) *sync.Mutex {
 	return &appInstallLocks[uint(domainID)%uint(len(appInstallLocks))]
 }
 
-func (p *Panel) handleAppCatalog(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"apps": appCatalog})
-}
-
 type appInstallTarget struct {
+	DomainID       int
 	SiteID         int
 	SubscriptionID int
 	Domain         string
@@ -84,7 +61,13 @@ func (p *Panel) handleAppInstall(w http.ResponseWriter, r *http.Request, domainI
 		return
 	}
 	if request.App != "wordpress" {
-		writeClientError(w, http.StatusBadRequest, "unknown application")
+		// alpha.118: every other catalog application.
+		app, ok := appcatalog.Lookup(request.App)
+		if !ok || app.Kind != appcatalog.KindPHPSite || app.Legacy() {
+			writeCodedError(w, http.StatusBadRequest, errCodeAppUnknown, "unknown application; nothing was changed", "")
+			return
+		}
+		p.handleCatalogAppInstall(w, r, domainID, app)
 		return
 	}
 
@@ -106,6 +89,18 @@ func (p *Panel) handleAppInstall(w http.ResponseWriter, r *http.Request, domainI
 		return
 	}
 	if !p.requireEntitlement(w, r, target.SubscriptionID, "app_installer") {
+		return
+	}
+	// alpha.118: WordPress is an offering too ("app:wordpress"); it stays
+	// offered on an existing server until the administrator withdraws it.
+	if wp, _ := appcatalog.Lookup("wordpress"); !p.requireAdministratorOffersApp(w, r, wp) {
+		return
+	}
+	if !p.requireSubscriptionOffering(w, r, target.SubscriptionID, appcatalog.OfferingID("wordpress"), "WordPress", false) {
+		return
+	}
+	if existing, ok := p.liveCatalogAppOnly(r.Context(), domainID); ok {
+		writeAppAlreadyInstalled(w, existing)
 		return
 	}
 	// A newly-created subscription may not have lazy local database metadata
@@ -314,6 +309,7 @@ func (p *Panel) resolveAppInstallTarget(ctx context.Context, domainID int) (appI
 	if err != nil {
 		return appInstallTarget{}, err
 	}
+	target.DomainID = domainID
 	if target.SiteID <= 0 || target.SubscriptionID <= 0 || strings.TrimSpace(target.Domain) == "" {
 		return appInstallTarget{}, fmt.Errorf("site has an invalid immutable identity")
 	}

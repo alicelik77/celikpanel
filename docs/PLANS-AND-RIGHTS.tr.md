@@ -264,6 +264,22 @@ sistemi kurulmaz (D-017: tek teklif kimliği alanı). Kimlik örneği:
 Bu bölüm bir ilke koyar; mağaza ve üçüncü taraf paket düzeni ayrı bir
 tasarımdır.
 
+### 4.5 Uygulama kataloğu (alpha.118)
+
+CelikPanel'in bir siteye kurduğu uygulamalar (WordPress, PrestaShop, Nextcloud,
+Drupal, Joomla, MediaWiki, phpBB) `app:<kimlik>` sunum kimliğiyle birer yazılım
+öğesidir; örneğin `app:nextcloud`. Kullanmak için iki şey gerekir: **Uygulama
+kurucu** izni (Uygulamalar sekmesi) ve uygulamanın her katmanda sunulması
+(kurulu ∩ sunulan ∩ bayi ∩ abonelik). Bir uygulama *yalnız yönetici
+işaretlediğinde sunulur* (Planlar ve haklar → Sunulanlar; üçüncü taraf yazılım
+sunma adımında denetlenir, 4.4). Yönetici hiç seçim yapmamışsa yalnız
+`app:wordpress` sunulur; alpha.118'den önce çalışan hiçbir şey durmaz. Sınırsız
+planlar sunulanı alır (P4); diğer planlar ve Özel kümeler `app:<kimlik>`
+öğelerini adlandırır. Geri çekmek hiçbir şeyi kaldırmaz: siteler uygulamayı
+korur, yalnız yeni kurulum reddedilir (P5). Kurulum ayrıca veritabanı motorunu
+(`component:mariadb`) ve veritabanı ile disk sınırlarında yer ister. Uygulama
+ekleme ve sabitleme: [APP-CATALOG.tr.md](APP-CATALOG.tr.md).
+
 ---
 
 ## 5. Roller ve hareket alanı

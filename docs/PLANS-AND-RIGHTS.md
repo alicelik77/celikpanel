@@ -261,6 +261,20 @@ security:
 This section sets a principle; the store and the third-party package arrangement are a separate
 design.
 
+### 4.5 Application catalog (alpha.118)
+
+The applications CelikPanel installs into a site (WordPress, PrestaShop, Nextcloud, Drupal,
+Joomla, MediaWiki, phpBB) are software items with the offering ID `app:<id>`, for example
+`app:nextcloud`. Using any of them needs two things: the **App installer** permission (the
+Applications tab) and the application's offering in every layer (installed ∩ offered ∩ reseller ∩
+subscription). An application is *offered only when the administrator ticks it* under Plans and
+rights → Offered (third-party software is gated at the offer step, 4.4); before the administrator
+ever chose, only `app:wordpress` is offered, so nothing that worked before alpha.118 stops. The
+Unlimited plans take what is offered (P4); other plans and Custom sets name `app:<id>` items.
+Withdrawing an application removes nothing: sites keep it, only new installations are refused
+(P5). Installing also needs the database engine (`component:mariadb`) and room in the database
+and disk limits. How an application is added and pinned: [APP-CATALOG.md](APP-CATALOG.md).
+
 ---
 
 ## 5. Roles and the room to play

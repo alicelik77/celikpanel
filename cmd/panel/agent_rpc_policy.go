@@ -138,6 +138,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.PostgreSQLClustersV1 Agent.PostgreSQLClusterPortPreviewV1 Agent.PostgreSQLSourceCheckV1
 		Agent.SiteCertificateRenewalStateV1 Agent.PanelListenConfigV1 Agent.MailAutoresponderState
 		Agent.FileAccessStateV1 Agent.FileAccessPreviewV1 Agent.SuspensionInspectV1
+		Agent.AppPrerequisitesV1
 		Agent.EmergencyUnitsInspectV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
@@ -165,6 +166,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostingSite, `
 		Agent.CreateSite Agent.DeleteSite Agent.InstallWordPress Agent.ApplyFileAccessV1
+		Agent.InstallCatalogAppV1 Agent.SetupCatalogAppV1 Agent.RemoveCatalogAppV1
 		Agent.SetSiteAccountSuspensionV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostingVHost, `
@@ -446,6 +448,10 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.StartSystemUpdate":           agentRPCDeploymentTimeout,
 	"Agent.AbandonSystemUpdate":         agentRPCMutationTimeout,
 	"Agent.InstallWordPress":            agentRPCDeploymentTimeout,
+	"Agent.InstallCatalogAppV1":         agentRPCDeploymentTimeout,
+	"Agent.SetupCatalogAppV1":           agentRPCDeploymentTimeout,
+	"Agent.RemoveCatalogAppV1":          agentRPCDeploymentTimeout,
+	"Agent.AppPrerequisitesV1":          agentRPCNetworkReadTimeout,
 	"Agent.IssueLetsEncryptCertificate": agentRPCDeploymentTimeout,
 	"Agent.IssuePanelCertificateV2":     agentRPCDeploymentTimeout,
 	"Agent.IssueMailHostCertificateV1":  agentRPCDeploymentTimeout,

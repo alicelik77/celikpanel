@@ -308,6 +308,31 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			// alpha.118: the application catalog's three privileged steps.
+			name: "InstallCatalogAppV1",
+			run: func(expected string) string {
+				var response transport.InstallCatalogAppResponse
+				_ = agent.InstallCatalogAppV1(&transport.InstallCatalogAppRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			name: "SetupCatalogAppV1",
+			run: func(expected string) string {
+				var response transport.SetupCatalogAppResponse
+				_ = agent.SetupCatalogAppV1(&transport.SetupCatalogAppRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			name: "RemoveCatalogAppV1",
+			run: func(expected string) string {
+				var response transport.RemoveCatalogAppResponse
+				_ = agent.RemoveCatalogAppV1(&transport.RemoveCatalogAppRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
 			name: "InstallWordPress",
 			run: func(expected string) string {
 				var response InstallWordPressResponse

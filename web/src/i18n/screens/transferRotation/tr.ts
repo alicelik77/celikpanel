@@ -13,7 +13,7 @@ export const trTransferRotationScreens: Record<TransferRotationScreenKey, string
     'transfer.rotate.mailboxes': '{names} posta kutuları: kimseye gösterilmeyen rastgele yeni parola; açık posta oturumları kapanır',
     'transfer.rotate.dbUsers': 'Veritabanı kullanıcıları: kimseye gösterilmeyen rastgele yeni parola',
     'transfer.rotate.dbPlain': '{name}',
-    'transfer.rotate.dbApp': '{name}: {domain} üzerindeki WordPress yapılandırmasına da yazılır, site çalışmayı sürdürür',
+    'transfer.rotate.dbApp': '{name}: CelikPanel’in {domain} üzerine kurduğu uygulamanın yapılandırmasına da yazılır, site çalışmayı sürdürür',
     'transfer.rotate.dbRemote': '{name}: {host} üzerinde; CelikPanel orada değiştiremez, orada değiştirin',
     'transfer.rotate.dbLegacy': '{name}: eski bir CelikPanel sürümünün kaydı; veritabanı sunucusunda değiştirin',
     'transfer.rotate.protected': '{domain} korumalı klasör kullanıcıları ({n}): rastgele yeni parola',

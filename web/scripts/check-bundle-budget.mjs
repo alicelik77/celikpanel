@@ -201,6 +201,11 @@ const screenPartBudgets = {
   // (susp., suspended.). A new part, set with at least 25% headroom from its
   // Turkish file (about 9.5 / 3.2 KiB as source).
   suspension: kib(13, 4.5),
+  // alpha.118: the application catalog of a domain, the administrator's
+  // offered applications and their refusal codes (apps.step., apps.status.,
+  // appOffer., err.APP_). A new part, set with at least 25% headroom from its
+  // Turkish file (about 9.5 / 3.4 KiB as source).
+  appCatalog: kib(13, 4.5),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

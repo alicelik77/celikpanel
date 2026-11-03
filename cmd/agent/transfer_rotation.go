@@ -67,7 +67,9 @@ func rotationPasswordStatement(engine, username, password string) (string, error
 
 func validDatabaseUserApp(app *transport.DatabaseUserApp, username string) error {
 	if app.Kind != "wordpress" {
-		return fmt.Errorf("unknown application %q", app.Kind)
+		if _, ok := appConfigFormatFor(app.Kind); !ok {
+			return fmt.Errorf("unknown application %q", app.Kind)
+		}
 	}
 	if app.SubscriptionID <= 0 || app.DomainID <= 0 {
 		return errors.New("the application's site identity is required")
@@ -164,7 +166,7 @@ func (a *Agent) RotateDatabaseUserPasswordV1(
 	resp.SessionsEnded = true
 	if config != nil {
 		if err := config.writePassword(req.NewPassword); err != nil {
-			resp.Error = "the password changed but wp-config.php could not be updated (" + err.Error() + "); the site cannot reach its database until it is"
+			resp.Error = "the password changed but the application's configuration file could not be updated (" + err.Error() + "); the site cannot reach its database until it is"
 			return nil
 		}
 		resp.AppUpdated = true

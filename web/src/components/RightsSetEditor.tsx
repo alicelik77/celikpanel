@@ -104,7 +104,7 @@ export function RightsSetEditor({ grantor, selection, onSelection, numbers, onNu
                             const heading = softwareGroupName(group);
                             return (
                                 <div key={group} className="min-w-0 rounded-lg border border-border p-3" data-rights-software-group={group}>
-                                    <p className="text-sm font-medium text-fg">{heading.product ?? t(heading.key === 'acme' ? 'rights.group.acme' : 'rights.group.extension')}</p>
+                                    <p className="text-sm font-medium text-fg">{heading.product ?? t(heading.key === 'acme' ? 'rights.group.acme' : heading.key === 'app' ? 'rights.group.app' : 'rights.group.extension')}</p>
                                     <ul className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
                                         {items.map((item) => {
                                             const open = grantable(grantor, 'software', item.id);
