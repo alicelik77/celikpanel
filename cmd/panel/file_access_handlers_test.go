@@ -22,9 +22,12 @@ type fileAccessPanelAgent struct {
 	mu           sync.Mutex
 	capabilities []string
 	enabled      bool
-	answer       transport.ApplyFileAccessResponse
-	applies      []transport.ApplyFileAccessRequest
-	previews     []transport.FileAccessPreviewRequest
+	// alpha.118: the jail tools the host lacks; sshOn: the account has SSH.
+	jailMissing []string
+	sshOn       bool
+	answer      transport.ApplyFileAccessResponse
+	applies     []transport.ApplyFileAccessRequest
+	previews    []transport.FileAccessPreviewRequest
 }
 
 func (a *fileAccessPanelAgent) Version(_ *transport.Empty, response *transport.AgentVersionResponse) error {
@@ -35,8 +38,9 @@ func (a *fileAccessPanelAgent) Version(_ *transport.Empty, response *transport.A
 func (a *fileAccessPanelAgent) FileAccessStateV1(request *transport.FileAccessStateRequest, response *transport.FileAccessStateResponse) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	response.Account = transport.FileAccessAccount{Username: request.Site.Username, Exists: true, HomeMatches: true, Enabled: a.enabled}
-	response.Server = transport.FileAccessServer{SSHDPresent: true, SSHPorts: []int{2222}, FTPCertificate: transport.FileAccessCertMailHost, FTPCertificateName: "mail.example.com"}
+	response.Account = transport.FileAccessAccount{Username: request.Site.Username, Exists: true, HomeMatches: true, Enabled: a.enabled, SSH: a.sshOn}
+	response.Server = transport.FileAccessServer{SSHDPresent: true, SSHPorts: []int{2222}, FTPCertificate: transport.FileAccessCertMailHost, FTPCertificateName: "mail.example.com",
+		JailChecked: true, JailMissing: a.jailMissing}
 	return nil
 }
 

@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { KeyRound, Plug, ShieldCheck, Trash2 } from 'lucide-react';
+import { Download, KeyRound, Plug, ShieldCheck, Trash2 } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
@@ -59,6 +59,10 @@ interface AccessView {
         ftpCertificateSHA256: string;
         fail2banInstalled: boolean;
         siteUsersWithShell: number;
+        // alpha.118: the command line's tools this server lacks (read only).
+        jailMissing: string[];
+        jailPackages: string[];
+        jailUnknown: string[];
     };
 }
 
@@ -112,6 +116,9 @@ function decodeAccess(raw: unknown): AccessView {
             ftpCertificateSHA256: str(server.ftp_certificate_sha256),
             fail2banInstalled: server.fail2ban_installed === true,
             siteUsersWithShell: num(server.site_users_with_shell),
+            jailMissing: decodeList<unknown>(server.jail_missing ?? []).map(str).filter(Boolean),
+            jailPackages: decodeList<unknown>(server.jail_packages ?? []).map(str).filter(Boolean),
+            jailUnknown: decodeList<unknown>(server.jail_unknown ?? []).map(str).filter(Boolean),
         } : null,
     };
 }
@@ -184,6 +191,7 @@ export function DomainFileAccess({ domainId, isAdmin = false }: { domainId: numb
     const [preview, setPreview] = useState<Preview | null>(null);
     const [busy, setBusy] = useState(false);
     const [problem, setProblem] = useState('');
+    const [toolsProblem, setToolsProblem] = useState('');
     // What the last saved change reported and the page does not already
     // show: kept beside the form, not as pop-ups over the page.
     const [lastWarnings, setLastWarnings] = useState<Array<{ key: TranslationKey; vars?: Record<string, string> }>>([]);
@@ -250,8 +258,16 @@ export function DomainFileAccess({ domainId, isAdmin = false }: { domainId: numb
                         if (!res) return;
                         if (!res.ok) {
                             const error = await readApiError(res);
-                            setProblem(error.message && error.code === 'FILE_ACCESS_REFUSED'
-                                ? `${apiErrorText(error, t)} ${error.message}` : apiErrorText(error, t));
+                            if (error.code === 'FILE_ACCESS_SSH_TOOLS_MISSING') {
+                                // The server lacks the command line's tools: the
+                                // notice beside the option says who acts.
+                                setProblem(t('fileAccess.sshTools.missing', { names: (error.details ?? []).join(', ') }));
+                                setSSH(null);
+                                await access.retry();
+                            } else {
+                                setProblem(error.message && error.code === 'FILE_ACCESS_REFUSED'
+                                    ? `${apiErrorText(error, t)} ${error.message}` : apiErrorText(error, t));
+                            }
                             setPreview(null);
                             return;
                         }
@@ -272,6 +288,36 @@ export function DomainFileAccess({ domainId, isAdmin = false }: { domainId: numb
                         setLastWarnings(changeWarnings(answered, t));
                         showToast('success', t(wantEnabled ? 'fileAccess.saved' : 'fileAccess.closed'));
                         reset();
+                        await access.retry();
+                    } finally {
+                        setBusy(false);
+                    }
+                };
+
+                // alpha.118: what the command line needs is installed before it
+                // is turned on. The administrator installs exactly the packages
+                // shown; a lost answer reads the server again (D-024).
+                const tools = view.server?.jailMissing ?? [];
+                const sshBlocked = view.rights.ssh && tools.length > 0 && !current?.ssh;
+                const installTools = async () => {
+                    setToolsProblem('');
+                    setBusy(true);
+                    try {
+                        const res = await answer.send('/api/v1/service/file-access-tools', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ packages: view.server?.jailPackages ?? [] }),
+                        });
+                        if (!res) return;
+                        if (!res.ok) {
+                            const error = await readApiError(res);
+                            setToolsProblem(error.code === 'FILE_ACCESS_TOOLS_CHANGED' ? t('fileAccess.sshTools.changed')
+                                : error.code === 'FILE_ACCESS_TOOLS_FAILED' ? t('fileAccess.sshTools.failed', { reason: error.message })
+                                    : error.code === 'FILE_ACCESS_TOOLS_UNSUPPORTED' ? error.message : apiErrorText(error, t));
+                            await access.retry();
+                            return;
+                        }
+                        answer.settle();
+                        showToast('success', t('fileAccess.sshTools.installed'));
                         await access.retry();
                     } finally {
                         setBusy(false);
@@ -312,7 +358,7 @@ export function DomainFileAccess({ domainId, isAdmin = false }: { domainId: numb
                                 </label>
                                 {wantEnabled && (
                                     <>
-                                        <label className="flex items-start gap-3">
+                                        {!sshBlocked && <label className="flex items-start gap-3">
                                             <input
                                                 type="checkbox"
                                                 className="mt-0.5 h-4 w-4 accent-primary"
@@ -326,7 +372,18 @@ export function DomainFileAccess({ domainId, isAdmin = false }: { domainId: numb
                                                     {t(view.rights.ssh ? 'fileAccess.sshHint' : 'fileAccess.sshNotInPlan')}
                                                 </span>
                                             </span>
-                                        </label>
+                                        </label>}
+                                        {view.rights.ssh && tools.length > 0 && view.server && (
+                                            <SSHToolsNotice
+                                                server={view.server}
+                                                isAdmin={isAdmin}
+                                                kept={current.ssh}
+                                                busy={busy}
+                                                disabled={busy || !settled}
+                                                problem={toolsProblem}
+                                                onInstall={() => void installTools()}
+                                            />
+                                        )}
                                         <label className="block space-y-1 text-sm font-medium text-fg">
                                             <span>{t(current.password === 'set' ? 'fileAccess.passwordReset' : 'fileAccess.passwordSet')}</span>
                                             <input
@@ -452,6 +509,40 @@ function AccessBlockers({ view, isAdmin }: { view: AccessView; isAdmin: boolean 
     return (
         <div className="space-y-2">
             {notes.map((note) => <Notice key={note.key} tone={note.tone}>{t(note.key, note.vars)}</Notice>)}
+        </div>
+    );
+}
+
+// alpha.118: in place of the command-line option while the server lacks its
+// tools. Says what is missing and who acts; the administrator installs the
+// official packages with one press, everyone else is told to ask. An account
+// that already has the command line keeps it.
+// Komut satırı seçeneğinin yerinde: eksik araçlar, kimin kuracağı, tek tık.
+function SSHToolsNotice({ server, isAdmin, kept, busy, disabled, problem, onInstall }: {
+    server: NonNullable<AccessView['server']>;
+    isAdmin: boolean;
+    kept: boolean;
+    busy: boolean;
+    disabled: boolean;
+    problem: string;
+    onInstall: () => void;
+}) {
+    const { t } = useI18n();
+    const names = server.jailMissing.join(', ');
+    return (
+        <div role="status" className="space-y-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-fg">
+            <p>{t('fileAccess.sshTools.missing', { names })}</p>
+            {kept && <p>{t('fileAccess.sshTools.kept')}</p>}
+            {server.jailUnknown.length > 0 && <p>{t('fileAccess.sshTools.unknown', { names: server.jailUnknown.join(', ') })}</p>}
+            {isAdmin && server.jailPackages.length > 0 ? (
+                <>
+                    <p>{t('fileAccess.sshTools.admin', { packages: server.jailPackages.join(', ') })}</p>
+                    <Button variant="primary" icon={Download} loading={busy} disabled={disabled} onClick={onInstall}>
+                        {t('fileAccess.sshTools.install')}
+                    </Button>
+                </>
+            ) : !isAdmin && <p>{t('fileAccess.sshTools.customer')}</p>}
+            {problem && <p role="alert" className="text-danger">{problem}</p>}
         </div>
     );
 }

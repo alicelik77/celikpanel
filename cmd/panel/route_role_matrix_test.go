@@ -181,6 +181,7 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/invitations/":                    gateAccount, // resend/void only for invitees the caller manages (handler)
 	"/api/v1/panel/port":                      gateAdmin,
 	"/api/v1/security/os-updates/mode":        gateAdmin,
+	"/api/v1/service/file-access-tools":       gateAdmin,
 	"/api/v1/security/os-updates/summary":     gateAdmin,
 
 	// Server, DNS infrastructure, setup and updates: administrator only.

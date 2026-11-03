@@ -10734,3 +10734,43 @@ Güvenlik → Güvenlik güncellemeleri, Gösterge Paneli ve Sunucu kurulumu →
   8.5): sahibin geçtiği ayrı bir programdır.
 
 Şema değişmedi (46). Kurulu paneller yalnız sahiplerince güncellenir.
+
+## SSH komut satırının araçları komut satırından önce gelir (alpha.118)
+
+Alan adı → Erişim. Sahip: SSH'nin çalışması için kurulması gereken bir şey varsa panel,
+SSH açılmadan önce onun kurulu olmasını sağlar.
+
+- **Neden.** Komut satırı, sunucunun kendi programlarını kopyalayan bir hapistir (bash,
+  ls, nano, vi, zip, unzip, rsync, scp ve `fileaccess.JailCommands`'ın geri kalanı).
+  Sunucuda olmayan program hapiste de olamaz; alpha.117'ye dek kayıt yalnız uyarıyordu
+  (`jail_programs_missing`) ve müşteriler zip ile unzip'i olmayan bir komut satırı aldı
+  (Boston, Ubuntu 24.04).
+- **Yeni kurulum.** install.sh'in küçük ön gereksinimleri minimal imajda olmayabilecek
+  paketleri kurar: Debian/Ubuntu `less zip unzip nano vim-tiny rsync`; Arch `less zip
+  unzip nano ex-vi-compat rsync diffutils` (Arch'ta `vi`, vim'i çalıştıran bir betiktir;
+  hapis vim'i de kopyalar). Komut→paket eşlemesi `fileaccess.JailCommandPackages`'tadır
+  ve paketlerin kendisinden okunmuştur.
+- **Kurulu sunucular, salt-okur.** Erişim görünümü eksik araçları ve resmi paketlerini
+  (`jail_missing`, `jail_packages`, `jail_unknown`) hapsi kuran aramayla aynı yoldan
+  bildirir. Okumak hiçbir şey başlatmaz.
+- **Kapı.** Bir araç eksik oldukça "Komut satırı (SSH)" yerine onları adlandıran bir
+  bildirim çıkar. FTP ve SFTP açılabilir kalır. Panel SSH'yi açan değişikliği reddeder
+  (`FILE_ACCESS_SSH_TOOLS_MISSING`, 409, araçlar `details`'te), Agent da reddeder
+  (`FILE_ACCESS_REFUSED` / `jail_tools_missing`). SSH'si zaten olan hesap onu korur; aynı
+  bildirimi görür ve kayıtları çalışır.
+- **Kim yapar.** Yöneticinin bildiriminde "Araçları kur" vardır:
+  `POST /api/v1/service/file-access-tools`, gösterilen paketlerle. Yalnız yöneticidir,
+  aynı anda bir tanedir (panelin servis değişikliği kilidi), kendi kalıcı Agent işinde
+  (`file_access_tools`, niteleyici sıralı paketler) paket kilidiyle çalışır ve
+  `service.install:<paketler>` olarak denetim izine yazılır. Agent listeyi yeniden
+  çıkarır, yalnız aynıysa kurar (değilse `FILE_ACCESS_TOOLS_CHANGED`); paketi bilinmeyen
+  araç `FILE_ACCESS_TOOLS_UNSUPPORTED`; paket yöneticisinin reddi kendi sözleriyle
+  `FILE_ACCESS_TOOLS_FAILED`'dir. Müşteri ve bayi, bunları sunucu yöneticisinin
+  kuracağını ve kurulunca seçeneğin görüneceğini okur.
+- **Bilinmeyen sonuç.** Kaybolan yanıt hiçbir şeyi yeniden göndermez; sayfa sunucuyu
+  yeniden okur. Tekrarlanan istek eksik bulmaz, hiçbir şey kurmaz.
+- **Sahibin bağımsızlığı.** Paketler sıradan dağıtım paketleridir; CelikPanel
+  kaldırılınca kalır.
+
+Hâlâ zorunlu ve zaten kapılı olan: OpenSSH sunucusu (`sshd_missing`). Komut satırı için
+başka zorunlu bir şey yok. Şema değişmedi; göç yok.

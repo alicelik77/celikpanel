@@ -10795,3 +10795,43 @@ Security → Security updates, the Dashboard and Server setup → Operating syst
   it is a separate program the owner moves to.
 
 Schema unchanged (46). Installed panels are updated only by their owners.
+
+## The SSH command line's tools come before the command line (alpha.118)
+
+Domain → Access. The owner: if something must be installed for SSH to work, the panel
+makes sure it is installed before SSH is turned on.
+
+- **Why.** The command line is a jail that copies the server's own programs (bash, ls,
+  nano, vi, zip, unzip, rsync, scp and the rest of `fileaccess.JailCommands`). A program
+  the server lacks cannot be in it; until alpha.117 the save only warned
+  (`jail_programs_missing`), so customers got a command line without zip and unzip
+  (Boston, Ubuntu 24.04).
+- **Fresh installs.** install.sh's small prerequisites bring the packages a minimal image
+  may lack: Debian/Ubuntu `less zip unzip nano vim-tiny rsync`; Arch `less zip unzip nano
+  ex-vi-compat rsync diffutils` (Arch's `vi` is a script in ex-vi-compat that runs vim,
+  so the jail copies vim with it). The full command-to-package map is
+  `fileaccess.JailCommandPackages`, read from the packages themselves.
+- **Existing servers, read only.** The Access view's state names the missing tools and
+  their official packages (`jail_missing`, `jail_packages`, `jail_unknown`) from the same
+  lookup that builds the jail. Reading starts nothing.
+- **The gate.** While any tool is missing, "Command line (SSH)" is replaced by a notice
+  naming them. FTP and SFTP stay available. The Panel refuses a change that turns SSH on
+  (`FILE_ACCESS_SSH_TOOLS_MISSING`, 409, the tools in `details`), and so does the Agent
+  (`FILE_ACCESS_REFUSED` / `jail_tools_missing`). An account that already has SSH keeps
+  it; it sees the same notice and its saves still work.
+- **Who acts.** The administrator's notice has "Install the tools":
+  `POST /api/v1/service/file-access-tools` with the packages that were shown. It is
+  administrator-only, single-flight (the panel's service-mutation lock), runs in its own
+  durable Agent job (`file_access_tools`, qualifier = the sorted packages) through the
+  package lock, and is audited as `service.install:<packages>`. The Agent works the list
+  out again and installs only when it is the same (`FILE_ACCESS_TOOLS_CHANGED`
+  otherwise); a tool with no known package is `FILE_ACCESS_TOOLS_UNSUPPORTED`; a package
+  manager refusal is `FILE_ACCESS_TOOLS_FAILED` with its words. Customers and resellers
+  read that the server administrator installs them and the option appears once they are.
+- **Unknown result.** A lost answer sends nothing again; the page reads the server. A
+  repeated request finds nothing missing and installs nothing.
+- **Owner independence.** The packages are ordinary distribution packages and stay
+  when CelikPanel is removed.
+
+Still mandatory and already gated: the OpenSSH server (`sshd_missing`). Nothing else is
+required for the command line. Schema unchanged; no migration.

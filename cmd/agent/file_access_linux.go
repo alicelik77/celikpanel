@@ -72,6 +72,14 @@ func ensureFileAccessJail(chroot string, users []fileaccess.JailUser) ([]string,
 		if err := jail.addProgram(hostPath); err != nil {
 			return missing, false, fmt.Errorf("copy %s: %w", command, err)
 		}
+		// alpha.118: Arch's vi is a script that runs vim; it comes along.
+		for _, companion := range fileaccess.JailCompanions[command] {
+			if companionPath := findHostCommand(companion); companionPath != "" {
+				if err := jail.addProgram(companionPath); err != nil {
+					return missing, false, fmt.Errorf("copy %s for %s: %w", companion, command, err)
+				}
+			}
+		}
 	}
 	// Merged-/usr hosts (Debian 13, Ubuntu, Arch) have /bin, /sbin and /lib*
 	// as links into /usr. The tools above are found under /usr/bin, so the
@@ -142,6 +150,19 @@ func (j *fileAccessJail) mirrorTopLevelLinks() error {
 		}
 	}
 	return nil
+}
+
+// missingJailCommands names the jail's tools this host lacks (read only;
+// alpha.118). The same lookup builds the jail, so what is reported here is
+// what a save would leave out.
+func missingJailCommands() []string {
+	var missing []string
+	for _, command := range fileaccess.JailCommands {
+		if findHostCommand(command) == "" {
+			missing = append(missing, command)
+		}
+	}
+	return missing
 }
 
 func findHostCommand(name string) string {

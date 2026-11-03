@@ -26,6 +26,8 @@ type fileAccessFakeHost struct {
 	probe         error
 	present       map[string]bool
 	jailCalls     int
+	// missing are the jail tools the host lacks (alpha.118).
+	missing []string
 }
 
 func installFileAccessFakeHost(t *testing.T) *fileAccessFakeHost {
@@ -144,6 +146,13 @@ func installFileAccessFakeHost(t *testing.T) *fileAccessFakeHost {
 		return nil, false, nil
 	}
 	fileAccessFamily = func() string { return "apt" }
+	savedMissing := fileAccessJailMissing
+	t.Cleanup(func() { fileAccessJailMissing = savedMissing })
+	fileAccessJailMissing = func() []string {
+		host.mu.Lock()
+		defer host.mu.Unlock()
+		return append([]string(nil), host.missing...)
+	}
 	fileAccessCommandPresent = func(name string) bool { return host.present[name] }
 	fileAccessUnitActive = func(context.Context, string) bool { return true }
 	fileAccessProbeFTP = func(context.Context) error { return host.probe }

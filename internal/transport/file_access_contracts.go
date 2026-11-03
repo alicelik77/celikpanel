@@ -123,6 +123,17 @@ type FileAccessServer struct {
 	SiteUsersTotal        int `json:"site_users_total"`
 	SiteUsersWithShell    int `json:"site_users_with_shell"`
 	SiteUsersOutsideGroup int `json:"site_users_outside_group"`
+	// alpha.118: the jail's command-line tools this server lacks (read
+	// only). JailChecked is false from an Agent that does not report them.
+	// JailPackages are the official packages that provide them on this
+	// system; JailUnknown names tools with no known package here. While
+	// JailMissing is not empty the command line is not turned on for an
+	// account that does not have it (FileAccessRefusedJailTools).
+	JailChecked   bool     `json:"jail_checked"`
+	JailMissing   []string `json:"jail_missing,omitempty"`
+	JailPackages  []string `json:"jail_packages,omitempty"`
+	JailUnknown   []string `json:"jail_unknown,omitempty"`
+	PackageFamily string   `json:"package_family,omitempty"`
 }
 
 // FileAccessAccount is one account as the host has it.
@@ -141,8 +152,6 @@ type FileAccessAccount struct {
 	KeysFile  string `json:"keys_file"`
 	ChrootDir string `json:"chroot_dir"`
 	StartDir  string `json:"start_dir"`
-	// JailMissing names jail programs the host does not have.
-	JailMissing []string `json:"jail_missing,omitempty"`
 }
 
 // FileAccessStateResponse is the State answer and part of every apply answer.
@@ -175,6 +184,9 @@ const (
 	FileAccessRefusedKeysOwner       = "keys_owner_file"
 	FileAccessRefusedJail            = "jail_failed"
 	FileAccessRefusedAccountChange   = "account_change_failed"
+	// alpha.118: the command line would be turned on while the server lacks
+	// some of its tools; the server administrator installs them first.
+	FileAccessRefusedJailTools = "jail_tools_missing"
 )
 
 // Warnings: the access works, one part did not (FTP, Fail2ban, ...).
@@ -202,3 +214,40 @@ type ApplyFileAccessResponse struct {
 	Warnings []string                `json:"warnings,omitempty"`
 	State    FileAccessStateResponse `json:"state"`
 }
+
+// InstallJailToolsRequest installs the official packages that provide the
+// command line's missing tools (alpha.118). Packages are the ones the
+// administrator was shown; the Agent works out the list again and installs
+// only when it is the same, so nothing else is ever installed.
+//
+// Komut satırının eksik araçlarını sağlayan resmi paketleri kurar; Agent
+// listeyi yeniden çıkarır ve yalnız gösterilenle aynıysa kurar.
+type InstallJailToolsRequest struct {
+	ServiceMutationBinding
+	Packages []string `json:"packages"`
+}
+
+// InstallJailToolsResponse: Installed are the packages installed by this
+// call (empty when nothing was missing); StillMissing are tools still
+// absent afterwards. ErrorCode is one of the JailTools* codes.
+type InstallJailToolsResponse struct {
+	Installed    []string `json:"installed,omitempty"`
+	StillMissing []string `json:"still_missing,omitempty"`
+	Packages     []string `json:"packages,omitempty"`
+	ErrorCode    string   `json:"error_code,omitempty"`
+	Error        string   `json:"error,omitempty"`
+}
+
+const (
+	// JailToolsChanged: what is missing is not what the page showed; the
+	// page reads the server again and nothing was installed.
+	JailToolsChanged = "changed"
+	// JailToolsUnsupported: no package is known for a missing tool on this
+	// system; the administrator installs it by hand.
+	JailToolsUnsupported = "unsupported"
+	// JailToolsRefused: the package manager refused or failed; its own
+	// words are in Error.
+	JailToolsRefused = "install_failed"
+	// JailToolsMutation: the operation's lease did not allow the step.
+	JailToolsMutation = "mutation_refused"
+)
