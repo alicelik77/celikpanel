@@ -382,7 +382,6 @@ class PopulatedDatabaseTests(unittest.TestCase):
 
     def test_actual_39_through_56_migrations_add_tables_and_change_no_old_row(self):
         # alpha.117 (56): two transfer rotation tables; no old table gains a column.
-        self.assertEqual(len(self.sql), 56, 'a migration after 56 needs its own pin before a candidate carries it')
         result = self.build()
         connection = sqlite3.connect(result['database'])
         connection.execute('PRAGMA foreign_keys=ON')
@@ -399,6 +398,73 @@ class PopulatedDatabaseTests(unittest.TestCase):
         self.assertEqual(p.NEW_TABLES[56] - p.NEW_TABLES[55], {'transfer_rotations', 'transfer_rotation_effects'})
         self.assertEqual(p.added_columns(56), p.added_columns(55))
         for version in (57, '56', True):
+            with self.subTest(version=version), self.assertRaises(p.Refused):
+                self.verify(result, version)
+
+    def migrated_to(self, version):
+        result = self.build()
+        connection = sqlite3.connect(result['database'])
+        connection.execute('PRAGMA foreign_keys=ON')
+        apply(connection, self.sql[38:version])
+        connection.close()
+        return result
+
+    def test_actual_39_through_57_migrations_reset_only_the_traffic_limit_of_old_rows(self):
+        # alpha.118 (57, D-044): six new tables; every old subscriptions and
+        # service_plans bandwidth_quota_mb becomes 0 (unlimited). Old rows
+        # held the schema38 default 102400, so the reset is proved row by
+        # row and nothing else in them may differ.
+        result = self.migrated_to(57)
+        for wrong in (55, 56):
+            with self.subTest(wrong=wrong), self.assertRaises(p.Refused):
+                self.verify(result, wrong)
+        proof = self.verify(result, 57)
+        self.assertEqual(proof['schema_version'], 57)
+        self.assertEqual(proof['table_count'], 101)
+        self.assertEqual(proof['old_rows_missing_or_changed'], 0)
+        self.assertEqual(proof['tables']['schema_migrations']['added'], 19)
+        self.assertGreaterEqual(proof['traffic_limits_reset_57'], 2)
+        self.assertEqual(p.NEW_TABLES[57] - p.NEW_TABLES[56], {
+            'traffic_daily', 'traffic_collect_state', 'traffic_sources', 'traffic_web_blocks',
+            'subscription_disk_usage', 'usage_notices'})
+        self.assertEqual(p.added_columns(57), p.added_columns(56))
+        for version in (58, '57', True):
+            with self.subTest(version=version), self.assertRaises(p.Refused):
+                self.verify(result, version)
+
+    def test_migration57_reset_accepts_only_known_old_traffic_values_and_no_other_change(self):
+        # An old limit other than NULL or 102400 cannot be reproduced from the
+        # sealed digest and stays refused; so does any other changed column.
+        self.change_source("UPDATE subscriptions SET bandwidth_quota_mb=5000 WHERE id=83")
+        result = self.migrated_to(57)
+        with self.assertRaises(p.Refused):
+            self.verify(result, 57)
+        self.setUp()
+        result = self.migrated_to(57)
+        connection = sqlite3.connect(result['database'])
+        connection.execute("UPDATE subscriptions SET name='changed' WHERE id=83")
+        connection.commit()
+        connection.close()
+        with self.assertRaises(p.Refused):
+            self.verify(result, 57)
+
+    def test_actual_39_through_61_migrations_add_tables_and_change_no_other_old_row(self):
+        # alpha.118: 58 application catalog operations, 59 WordPress tools and
+        # malware scans, 60 remote backups, 61 service apps; all additive.
+        self.assertEqual(len(self.sql), 61, 'a migration after 61 needs its own pin before a candidate carries it')
+        counts = {58: 102, 59: 107, 60: 110, 61: 113}
+        for version, tables in counts.items():
+            with self.subTest(version=version):
+                self.setUp()
+                result = self.migrated_to(version)
+                with self.assertRaises(p.Refused):
+                    self.verify(result, version - 1)
+                proof = self.verify(result, version)
+                self.assertEqual(proof['table_count'], tables)
+                self.assertEqual(proof['old_rows_missing_or_changed'], 0)
+                self.assertEqual(proof['tables']['schema_migrations']['added'], version - 38)
+                self.assertEqual(p.added_columns(version), p.added_columns(56))
+        for version in (62, '61', True):
             with self.subTest(version=version), self.assertRaises(p.Refused):
                 self.verify(result, version)
 

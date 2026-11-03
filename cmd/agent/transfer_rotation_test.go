@@ -130,7 +130,7 @@ func TestRotateDatabaseUserPasswordAbsentAndRefusals(t *testing.T) {
 		{User: user, NewPassword: "short"},
 		{User: user, NewPassword: "line\nbreak-long-enough"},
 		{User: transport.SuspensionDatabaseUser{Engine: "mysql", Username: "root"}, NewPassword: "Zq7xN2kLp9Vt4RmW"},
-		{User: user, NewPassword: "Zq7xN2kLp9Vt4RmW", App: &transport.DatabaseUserApp{Kind: "drupal", SubscriptionID: 1, DomainID: 1, SiteUsername: "s", DBName: "d"}},
+		{User: user, NewPassword: "Zq7xN2kLp9Vt4RmW", App: &transport.DatabaseUserApp{Kind: "not-in-the-catalog", SubscriptionID: 1, DomainID: 1, SiteUsername: "s", DBName: "d"}},
 	} {
 		engine.statements = nil
 		response := rotateDatabaseUser(t, bad)

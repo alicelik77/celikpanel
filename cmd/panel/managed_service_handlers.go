@@ -73,6 +73,16 @@ type ManagedServiceResponse struct {
 	// RequiresMissing: kurulumu engelleyen karşılanmamış gereksinimler (servis
 	// id'leri ya da grup adları) — UI Kur'u kapatır ve önce neyin kurulacağını söyler.
 	RequiresMissing []string `json:"requires_missing,omitempty"`
+	// NeedsMissing (alpha.118): for an INSTALLED tool (phpPgAdmin,
+	// phpMyAdmin, Roundcube), the requirements it no longer has on this
+	// server, read from the same scan, so it cannot work (owner's Boston
+	// screens: PostgreSQL was removed and phpPgAdmin stayed "Installed").
+	// The page says so on the tool's row with its two actions: install the
+	// requirement again, or remove the tool. Read-only; nothing is changed.
+	// A requirement nobody has observed is not claimed missing.
+	// NeedsMissing: KURULU bir aracın bu sunucuda artık sahip olmadığı
+	// gereksinimler; araç çalışamaz. Satır bunu iki eylemle söyler. Salt okur.
+	NeedsMissing []string `json:"needs_missing,omitempty"`
 	// NotOffered: this component installs from distro packages and has no
 	// package mapping for THIS server's family — deliberately not offered here
 	// ("installed means working" cannot be promised; see docs/DISTRO-SUPPORT).
@@ -169,6 +179,37 @@ type ManagedServiceResponse struct {
 	// exist: the tool is installed but cannot answer. Absent when unknown.
 	// PHPBinding, kurulu bir PHP aracının sunulduğu PHP sürümüdür.
 	PHPBinding *transport.PHPToolBinding `json:"php_binding,omitempty"`
+	// Waiting (alpha.118): installed, not running yet, and it starts by
+	// itself once an outside step finishes ("first_signatures": ClamAV
+	// before freshclam's first download). Only on an installed, stopped row.
+	// Waiting: kurulu, henüz çalışmıyor; dış adım bitince kendiliğinden başlar.
+	Waiting string `json:"waiting,omitempty"`
+}
+
+// waitingForResponse keeps a waiting reason only while the row is installed
+// and not running: a running daemon is ready, whatever the last scan said.
+func waitingForResponse(installed bool, status, waiting string) string {
+	if !installed || strings.HasPrefix(strings.ToLower(status), "active") {
+		return ""
+	}
+	if waiting != transport.InstallWaitingFirstSignatures {
+		return ""
+	}
+	return waiting
+}
+
+// clamAVWaitingForSignatures asks the Agent (read only) whether ClamAV has
+// any signatures yet. Best effort: an Agent that cannot say leaves the row
+// as it was (stopped), never a guessed "waiting".
+func (p *Panel) clamAVWaitingForSignatures(ctx context.Context) string {
+	var status transport.MalwareScannerStatusResponse
+	if err := p.callAgentContext(ctx, "Agent.MalwareScannerStatusV1", &transport.MalwareScannerStatusRequest{}, &status); err != nil {
+		return ""
+	}
+	if status.State == transport.MalwareScannerNoSignatures {
+		return transport.InstallWaitingFirstSignatures
+	}
+	return ""
 }
 
 // Installed answers the only question the panel's own logic may ask of a
@@ -300,6 +341,8 @@ type serviceObservation struct {
 	ConfigFiles []core.ConfigFile `json:"config_files,omitempty"`
 	// PHPBinding: see ManagedServiceResponse.PHPBinding (alpha.104).
 	PHPBinding *transport.PHPToolBinding `json:"php_binding,omitempty"`
+	// Waiting: see ManagedServiceResponse.Waiting (alpha.118).
+	Waiting string `json:"waiting,omitempty"`
 	// Instances is the per-copy truth for runtimes (B3b), straight from
 	// Agent.ListServiceInstances: version, unit, path, managed, per-unit
 	// status. The scan no longer parses versions out of unit names.
@@ -487,6 +530,38 @@ func catalogView(obs []serviceObservation, pkgFamily string) []ManagedServiceRes
 	return catalogViewForHost(obs, core.ManagedServiceHostProfile{PackageFamily: pkgFamily})
 }
 
+// toolNeedsMissing is RequirementsMissing for an installed tool, kept to
+// what the scan has actually observed: a requirement whose own row (or, for
+// a seat such as "web-server", any member's row) was never observed is not
+// claimed missing, because an unobserved row is unknown, not absent.
+// Kurulu bir aracın eksik gereksinimleri; gözlenmemiş satır "yok" sayılmaz.
+func toolNeedsMissing(tool *core.ManagedService, byID map[string]serviceObservation, installed map[string]bool) []string {
+	var out []string
+	for _, requirement := range core.RequirementsMissing(tool, installed) {
+		observed := false
+		if _, ok := byID[requirement]; ok {
+			observed = true
+		} else {
+			observed = true
+			members := 0
+			for i := range core.ManagedServices {
+				if core.ManagedServices[i].ConflictGroup != requirement {
+					continue
+				}
+				members++
+				if _, ok := byID[core.ManagedServices[i].ID]; !ok {
+					observed = false
+				}
+			}
+			observed = observed && members > 0
+		}
+		if observed {
+			out = append(out, requirement)
+		}
+	}
+	return out
+}
+
 func catalogViewForHost(obs []serviceObservation, host core.ManagedServiceHostProfile) []ManagedServiceResponse {
 	pkgFamily := host.PackageFamily
 	byID := make(map[string]serviceObservation, len(obs))
@@ -562,7 +637,7 @@ func catalogViewForHost(obs []serviceObservation, host core.ManagedServiceHostPr
 		}
 		status := o.Status
 		conflictWith := ""
-		var requiresMissing []string
+		var requiresMissing, needsMissing []string
 		repairPackage, repairAvailable := repairSelection(&managed, o, pkgFamily)
 
 		// Not-installed catalogue services are listed too, so the panel can
@@ -615,6 +690,9 @@ func catalogViewForHost(obs []serviceObservation, host core.ManagedServiceHostPr
 		default:
 			installedTrue := true
 			isInstalled = &installedTrue
+			if managed.Kind == core.KindTool {
+				needsMissing = toolNeedsMissing(&managed, byID, installedSet)
+			}
 		}
 
 		var packageVersion, packageVersionShort string
@@ -644,6 +722,7 @@ func catalogViewForHost(obs []serviceObservation, host core.ManagedServiceHostPr
 			InstalledEvidence: core.InstalledEvidenceFor(&managed, pkgFamily),
 			ConflictWith:      conflictWith,
 			RequiresMissing:   requiresMissing,
+			NeedsMissing:      needsMissing,
 			NotOffered:        notOffered,
 			NotOfferedKind:    notOfferedKind,
 			NotOfferedReason:  notOfferedReason,
@@ -662,6 +741,7 @@ func catalogViewForHost(obs []serviceObservation, host core.ManagedServiceHostPr
 			PackageVersionReadAt:   packageVersionReadAt,
 			PackageVersionKeptLong: packageVersionKeptLong,
 			PHPBinding:             phpBindingForResponse(isInstalled, o.PHPBinding),
+			Waiting:                waitingForResponse(isInstalled != nil && *isInstalled, status, o.Waiting),
 		})
 	}
 	return response
@@ -1132,6 +1212,9 @@ func (p *Panel) scanManagedServicesWithVersions(ctx context.Context, packageVers
 			Instances:             instances,
 			ConfigFiles:           uniqueConfigFiles(configFiles),
 			InstalledRepoPackages: installedRepoPackages,
+		}
+		if managed.ID == "clamav" && isInstalled && !anyRunning {
+			observation.Waiting = p.clamAVWaitingForSignatures(ctx)
 		}
 		if read, ok := packageVersions[managed.ID]; ok && isInstalled {
 			observation.PackageVersions = read.Packages

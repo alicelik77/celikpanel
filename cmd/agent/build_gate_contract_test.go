@@ -32,11 +32,92 @@ func protectedBuildGateOperations() []buildGateOperation {
 			}
 			return err.Error()
 		}},
+		// alpha.118: WordPress tools and the malware quarantine.
+		{name: "WordPressUpdateV1", run: func(expected string) string {
+			var response transport.WordPressUpdateResponse
+			_ = agent.WordPressUpdateV1(&transport.WordPressUpdateRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "WordPressCloneV1", run: func(expected string) string {
+			var response transport.WordPressCloneResponse
+			_ = agent.WordPressCloneV1(&transport.WordPressCloneRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "MalwareQuarantineV1", run: func(expected string) string {
+			var response transport.MalwareQuarantineResponse
+			_ = agent.MalwareQuarantineV1(&transport.MalwareQuarantineRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "MalwareRestoreV1", run: func(expected string) string {
+			var response transport.MalwareQuarantineItemResponse
+			_ = agent.MalwareRestoreV1(&transport.MalwareQuarantineItemRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "MalwareDeleteQuarantinedV1", run: func(expected string) string {
+			var response transport.MalwareQuarantineItemResponse
+			_ = agent.MalwareDeleteQuarantinedV1(&transport.MalwareQuarantineItemRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		// alpha.118: AI and automation service apps (added at integration;
+		// each refuses before its lock, its target or any host change).
+		{name: "ServiceAppPrepareV1", run: func(expected string) string {
+			var response transport.ServiceAppStepResponse
+			_ = agent.ServiceAppPrepareV1(&transport.ServiceAppPrepareRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "ServiceAppActivateV1", run: func(expected string) string {
+			var response transport.ServiceAppStepResponse
+			_ = agent.ServiceAppActivateV1(&transport.ServiceAppActivateRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "ServiceAppFinalizeV1", run: func(expected string) string {
+			var response transport.ServiceAppStepResponse
+			_ = agent.ServiceAppFinalizeV1(&transport.ServiceAppActivateRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "ServiceAppControlV1", run: func(expected string) string {
+			var response transport.ServiceAppStepResponse
+			_ = agent.ServiceAppControlV1(&transport.ServiceAppControlRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "ServiceAppSecretsV1", run: func(expected string) string {
+			var response transport.ServiceAppStepResponse
+			_ = agent.ServiceAppSecretsV1(&transport.ServiceAppSecretsRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "ServiceAppRemoveV1", run: func(expected string) string {
+			var response transport.ServiceAppRemoveResponse
+			_ = agent.ServiceAppRemoveV1(&transport.ServiceAppRemoveRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "SetServiceAppSuspensionV1", run: func(expected string) string {
+			var response transport.SetAppUnitSuspensionResponse
+			_ = agent.SetServiceAppSuspensionV1(&transport.SetServiceAppSuspensionRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
 		{
 			name: "ApplyVhost",
 			run: func(expected string) string {
 				var response ApplyVhostResponse
 				_ = agent.ApplyVhost(&ApplyVhostRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			// alpha.118 (D-044): a full disk makes FTP and SFTP read-only.
+			name: "SetFileAccessReadOnlyV1",
+			run: func(expected string) string {
+				var response transport.SetFileAccessReadOnlyResponse
+				_ = agent.SetFileAccessReadOnlyV1(&transport.SetFileAccessReadOnlyRequest{ExpectedBuildCommit: expected, SubscriptionID: 1}, &response)
+				return response.Error
+			},
+		},
+		{
+			// alpha.118 (D-044): Dovecot enforces the mailbox limits.
+			name: "ReconcileMailQuotaV1",
+			run: func(expected string) string {
+				var response transport.MailQuotaReconcileResponse
+				_ = agent.ReconcileMailQuotaV1(&transport.MailQuotaReconcileRequest{ExpectedBuildCommit: expected}, &response)
 				return response.Error
 			},
 		},
@@ -304,6 +385,31 @@ func protectedBuildGateOperations() []buildGateOperation {
 			run: func(expected string) string {
 				var response InstallCertResponse
 				_ = agent.InstallCustomCertificate(InstallCertRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			// alpha.118: the application catalog's three privileged steps.
+			name: "InstallCatalogAppV1",
+			run: func(expected string) string {
+				var response transport.InstallCatalogAppResponse
+				_ = agent.InstallCatalogAppV1(&transport.InstallCatalogAppRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			name: "SetupCatalogAppV1",
+			run: func(expected string) string {
+				var response transport.SetupCatalogAppResponse
+				_ = agent.SetupCatalogAppV1(&transport.SetupCatalogAppRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			name: "RemoveCatalogAppV1",
+			run: func(expected string) string {
+				var response transport.RemoveCatalogAppResponse
+				_ = agent.RemoveCatalogAppV1(&transport.RemoveCatalogAppRequest{ExpectedBuildCommit: expected}, &response)
 				return response.Error
 			},
 		},

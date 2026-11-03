@@ -549,7 +549,8 @@ func randomSalt() (string, error) {
 
 func wpHTTPClient(timeout time.Duration) *http.Client {
 	return &http.Client{
-		Timeout: timeout,
+		Timeout:   timeout,
+		Transport: catalogUserAgentTransport{},
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if len(via) >= 3 || req.URL.Scheme != "https" {
 				return fmt.Errorf("unsafe or excessive redirect")

@@ -12,7 +12,8 @@ import (
 // its whole tree (its own subscriptions and every customer's) cannot pass
 // the pool. When it is reached, no subscription of that tree can create more
 // of that kind; at 80% and at 100% a notice is stored for the reseller and
-// the administrator (rights_notices). Traffic is not measured and not pooled.
+// the administrator (rights_notices). Traffic (alpha.118, D-044) is pooled by
+// the month's real total; the usage worker applies it (traffic_collect.go).
 //
 // Bayi havuzu GERÇEK kullanımı sınırlar: dağıtım havuzu aşabilir, ağacın
 // gerçek toplamı aşamaz. %80 ve %100'de bildirim saklanır.
@@ -30,6 +31,8 @@ type poolUsage struct {
 	Databases     int64 `json:"databases"`
 	Mailboxes     int64 `json:"mailboxes"`
 	DiskUsedBytes int64 `json:"disk_used_bytes"`
+	// TrafficMonthBytes: the whole tree's website traffic this month.
+	TrafficMonthBytes int64 `json:"traffic_month_bytes"`
 }
 
 const treeSubscriptionsSQL = `
@@ -50,8 +53,8 @@ func resellerTreeUsage(ctx context.Context, q rowQueryer, resellerID int) (poolU
 		  (SELECT COUNT(*) FROM databases_v2 db WHERE db.subscription_id IN (`+treeSubscriptionsSQL+`)),
 		  (SELECT COUNT(*) FROM email_accounts ea JOIN domains d ON ea.domain_id = d.id
 		     WHERE d.subscription_id IN (`+treeSubscriptionsSQL+`)),
-		  COALESCE((SELECT SUM(si.disk_usage_bytes) FROM sites si JOIN domains d ON si.domain_id = d.id
-		     WHERE d.subscription_id IN (`+treeSubscriptionsSQL+`)), 0)`,
+		  COALESCE((SELECT SUM(`+subscriptionDiskBytesSQL+`) FROM subscriptions s
+		     WHERE s.id IN (`+treeSubscriptionsSQL+`)), 0)`,
 		resellerID,
 		resellerID, resellerID,
 		resellerID, resellerID,
@@ -61,6 +64,11 @@ func resellerTreeUsage(ctx context.Context, q rowQueryer, resellerID int) (poolU
 	if err != nil {
 		return poolUsage{}, fmt.Errorf("read reseller tree usage: %w", err)
 	}
+	traffic, err := treeTrafficMonth(ctx, q, resellerID, usageNow())
+	if err != nil {
+		return poolUsage{}, fmt.Errorf("read reseller tree traffic: %w", err)
+	}
+	u.TrafficMonthBytes = traffic
 	return u, nil
 }
 
@@ -199,6 +207,7 @@ func poolOverUsage(pool resellerPool, usage poolUsage) []string {
 	check("databases", pool.Databases, usage.Databases, "")
 	check("mailboxes", pool.Mailboxes, usage.Mailboxes, "")
 	check("disk", pool.DiskMB, usage.DiskUsedBytes/(1024*1024), " MB")
+	check("traffic", pool.TrafficMB, usage.TrafficMonthBytes/mib, " MB")
 	check("customers", pool.MaxCustomers, usage.Customers, "")
 	return out
 }

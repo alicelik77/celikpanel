@@ -496,6 +496,11 @@ type ApplyVhostRequest struct {
 	// "temporarily under maintenance" page (503); certificate validation
 	// stays. Suspended wins when both are set.
 	Maintenance bool `json:"maintenance,omitempty"`
+	// TrafficLimited (alpha.118, additive, D-044): the subscription used its
+	// monthly traffic (or its reseller's pool). The vhost then answers every
+	// request with the "traffic limit reached" page (503); mail, databases
+	// and file access are not affected. Suspended and Maintenance win.
+	TrafficLimited bool `json:"traffic_limited,omitempty"`
 }
 
 // SiteProtectedDirRequest is one password-protected folder of a site.

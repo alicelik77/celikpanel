@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Suspense, lazy, useState } from 'react';
 import { Layers, Lock, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
@@ -15,6 +15,9 @@ import {
 } from '../lib/rights';
 import { RightsPreviewBox, RightsSetEditor } from './RightsSetEditor';
 import { readableRefusal, useGrantorCatalog } from './AccountRights';
+
+// The offered applications (alpha.118) are their own chunk, fetched with the tab.
+const OfferedAppsSection = lazy(() => import('./OfferedAppsSection').then((module) => ({ default: module.OfferedAppsSection })));
 
 // Plans are templates of a rights set (D-042 6.4-6.5): quantities,
 // permissions and software. Editing a plan shows first what it does to the
@@ -224,6 +227,7 @@ export function ResellerPlansTab() {
                                     <th className="px-4 py-2.5">{t('plans.col.databases')}</th>
                                     <th className="px-4 py-2.5">{t('plans.col.mail')}</th>
                                     <th className="px-4 py-2.5">{t('plans.col.disk')}</th>
+                                    <th className="px-4 py-2.5">{t('rights.qty.traffic')}</th>
                                     <th className="px-4 py-2.5">{t('rights.col.rights')}</th>
                                     <th className="px-4 py-2.5">{t('rights.col.resellers')}</th>
                                     <th className="px-4 py-2.5" />
@@ -238,6 +242,7 @@ export function ResellerPlansTab() {
                                         <td className="px-4 py-3 text-fg-muted">{limitWords(plan.max_databases, t)}</td>
                                         <td className="px-4 py-3 text-fg-muted">{limitWords(plan.max_email_accounts, t)}</td>
                                         <td className="px-4 py-3 text-fg-muted">{limitWords(plan.disk_quota_mb, t, 'MB')}</td>
+                                        <td className="px-4 py-3 text-fg-muted">{limitWords(plan.traffic_quota_mb ?? 0, t, 'MB')}</td>
                                         <td className="px-4 py-3 text-fg-muted">{rightsSummary(plan.rights, t)}</td>
                                         <td className="px-4 py-3 text-fg-muted">{plan.resellers ?? 0}</td>
                                         <td className="px-4 py-3">
@@ -331,11 +336,11 @@ export function OfferedItemsTab() {
                             {view.installed_unknown && <p className="mb-2 text-xs text-warning">{t('rights.installedUnknown')}</p>}
                             {view.software.length === 0 ? <p className="text-sm text-fg-muted">{t('rights.softwareNone')}</p> : (
                                 <div className="grid gap-3">
-                                    {groupSoftware(view.software).map(({ group, items }) => {
+                                    {groupSoftware(view.software.filter((item) => !item.id.startsWith('app:'))).map(({ group, items }) => {
                                         const heading = softwareGroupName(group);
                                         return (
                                             <div key={group}>
-                                                <p className="mb-1 text-xs font-semibold text-fg-muted">{heading.product ?? t(heading.key === 'acme' ? 'rights.group.acme' : 'rights.group.extension')}</p>
+                                                <p className="mb-1 text-xs font-semibold text-fg-muted">{heading.product ?? t(heading.key === 'acme' ? 'rights.group.acme' : heading.key === 'app' ? 'rights.group.app' : 'rights.group.extension')}</p>
                                                 <ul className="divide-y divide-border rounded-lg border border-border bg-surface">{items.map((item) => row(item.id, item.granted))}</ul>
                                             </div>
                                         );
@@ -348,6 +353,9 @@ export function OfferedItemsTab() {
             })()}
             {pending && <Checking className="mt-2" label={t('rights.offered.saving', { name: offeredLabel(pending, t) })} />}
             <ErrorBanner className="mt-3" error={failure} sentence="rights.offered.failed" />
+            <Suspense fallback={<Checking className="mt-6" label={t('apps.checking')} />}>
+                <OfferedAppsSection />
+            </Suspense>
         </div>
     );
 }

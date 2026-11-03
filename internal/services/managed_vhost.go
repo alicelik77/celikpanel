@@ -204,6 +204,10 @@ type ManagedVhostItem struct {
 	// (managed_vhost_probe.go): certificate operations and the site-config
 	// read. Without it a kept file's Validation is not evaluated ("").
 	Probe *ValidationProbe
+	// TrafficLog, when set, keeps the site's traffic log setting in the
+	// Panel's directory (traffic_log.go, alpha.118) whenever the vhost after
+	// this operation reads that directory.
+	TrafficLog *TrafficLogItem
 }
 
 type siteFileInspection struct {
@@ -870,11 +874,9 @@ func (ng *NginxGenerator) ApplyManagedVhosts(items []ManagedVhostItem) ([]transp
 		vhostTouched[plan.index] = true
 	}
 	var challenges []plannedSiteFileWrite
+	readsDirectoryOf := make([]bool, len(items))
 	for index, item := range items {
 		result := &results[index]
-		if item.ACMEChallengeRoot == "" {
-			continue
-		}
 		kept := result.Outcome == transport.SiteFileOutcomeKept
 		// A kept file whose validation is to be measured gets CelikPanel's
 		// challenge file whatever its text says: only nginx's answer tells
@@ -883,6 +885,10 @@ func (ng *NginxGenerator) ApplyManagedVhosts(items []ManagedVhostItem) ([]transp
 		// that line; it only spares a write nothing would read).
 		readsDirectory := vhostTouched[index] || result.Outcome == transport.SiteFileOutcomeUnchanged ||
 			(kept && (!item.Probe.empty() || fileHasDirective(keptContent[index], result.ManagedInclude)))
+		readsDirectoryOf[index] = readsDirectory
+		if item.ACMEChallengeRoot == "" {
+			continue
+		}
 		if !readsDirectory {
 			continue
 		}
@@ -919,10 +925,44 @@ func (ng *NginxGenerator) ApplyManagedVhosts(items []ManagedVhostItem) ([]transp
 		}
 	}
 
+	// alpha.118: the site's traffic log setting, by the same rule as the
+	// challenge file (traffic_log.go). The log format file goes first; when
+	// it is the owner's, the sites' settings carry no log line.
+	var trafficFiles []*plannedTrafficFile
+	trafficIndexes := []int{}
+	formatChecked, formatOK := false, false
+	for index, item := range items {
+		result := &results[index]
+		if item.TrafficLog == nil || !readsDirectoryOf[index] {
+			continue
+		}
+		if !formatChecked {
+			formatChecked = true
+			format, ok, err := planTrafficFormat()
+			if err != nil {
+				result.Detail = boundedSiteFileDetail(strings.TrimPrefix(result.Detail+"; ", "; ") + "traffic log format: " + err.Error())
+			}
+			formatOK = ok && err == nil
+			if format != nil {
+				trafficFiles = append(trafficFiles, format)
+			}
+		}
+		file, outcome, err := planTrafficInclude(item.Domain, *item.TrafficLog, formatOK)
+		result.TrafficLog = outcome
+		if err != nil {
+			result.Detail = boundedSiteFileDetail(strings.TrimPrefix(result.Detail+"; ", "; ") + "traffic log setting: " + err.Error())
+			continue
+		}
+		if file != nil {
+			trafficFiles = append(trafficFiles, file)
+			trafficIndexes = append(trafficIndexes, index)
+		}
+	}
+
 	for _, path := range unchanged {
 		removeStalePending(path)
 	}
-	if len(touched) == 0 && len(challenges) == 0 {
+	if len(touched) == 0 && len(challenges) == 0 && len(trafficFiles) == 0 {
 		setValidation()
 		return results, nil
 	}
@@ -943,6 +983,9 @@ func (ng *NginxGenerator) ApplyManagedVhosts(items []ManagedVhostItem) ([]transp
 				result.Detail = boundedSiteFileDetail(detail)
 			}
 		}
+		for _, index := range trafficIndexes {
+			results[index].TrafficLog = transport.SiteFileChallengeFailed
+		}
 		setValidation()
 	}
 	everything := append(append([]plannedSiteFileWrite(nil), challenges...), touched...)
@@ -952,12 +995,12 @@ func (ng *NginxGenerator) ApplyManagedVhosts(items []ManagedVhostItem) ([]transp
 		if errors.As(err, &refused) {
 			detail = refused.FirstLine()
 		}
-		rollbackErr := restorePlannedSiteFiles(everything)
+		rollbackErr := errors.Join(restorePlannedSiteFiles(everything), restorePlannedTrafficFiles(trafficFiles))
 		failTouched(transport.SiteFileReasonNginxRefused, detail)
 		return results, ng.markManagedRestore(results, touched, ng.finishManagedRollbackFrom(fmt.Errorf("nginx validation failed: %w", err), rollbackErr, nginxBefore))
 	}
 	if err := ng.ReloadNginx(); err != nil {
-		rollbackErr := restorePlannedSiteFiles(everything)
+		rollbackErr := errors.Join(restorePlannedSiteFiles(everything), restorePlannedTrafficFiles(trafficFiles))
 		failTouched(transport.SiteFileReasonReloadFailed, err.Error())
 		return results, ng.markManagedRestore(results, touched, ng.finishManagedRollbackFrom(fmt.Errorf("nginx reload failed: %w", err), rollbackErr, nginxBefore))
 	}
@@ -972,6 +1015,9 @@ func (ng *NginxGenerator) ApplyManagedVhosts(items []ManagedVhostItem) ([]transp
 	}
 	for _, plan := range challenges {
 		results[plan.index].Reloaded = true
+	}
+	for _, index := range trafficIndexes {
+		results[index].Reloaded = true
 	}
 	setValidation()
 	return results, nil
@@ -1204,6 +1250,9 @@ func removePanelManagedDir(domain string) {
 	if inspected := inspectSiteFile(path, nil, ""); inspected.state == transport.SiteFileManagedUnchanged {
 		_ = os.Remove(path)
 	}
+	removeTrafficInclude(domain)
+	// alpha.118: the application rules and setup lock of a deleted site.
+	removeUnchangedAppIncludes(domain)
 	directory := PanelManagedDir(domain)
 	if info, err := os.Lstat(directory); err == nil && info.IsDir() {
 		_ = os.Remove(directory) // fails, and leaves it, when not empty

@@ -98,8 +98,8 @@ func (p *Panel) ensureAdminSubscription(ctx context.Context, callerID int) (int,
 	}
 
 	result, err := tx.ExecContext(ctx,
-		`INSERT INTO subscriptions (owner_id, name, max_domains, max_databases, status)
-		 VALUES (?, 'Admin Subscription', 999, 999, 'active')`, callerID)
+		`INSERT INTO subscriptions (owner_id, name, max_domains, max_databases, bandwidth_quota_mb, status)
+		 VALUES (?, 'Admin Subscription', 999, 999, 0, 'active')`, callerID)
 	if err != nil {
 		return 0, false, err
 	}

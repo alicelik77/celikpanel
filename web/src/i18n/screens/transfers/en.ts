@@ -67,6 +67,10 @@ export const enTransfersScreens = {
     'transfer.permission.team_members': 'Additional users',
     'transfer.permission.file_access': 'File access (FTP and SFTP)',
     'transfer.permission.ssh': 'SSH (command line)',
+    'transfer.permission.wordpress_tools': 'WordPress tools',
+    'transfer.permission.malware_scan': 'Malware scan results',
+    'transfer.permission.remote_backup_destinations': 'Own remote backup destinations',
+    'transfer.permission.service_apps': 'AI and automation apps',
     'transfer.item.acme': 'Certificates from {provider}',
 
     'transfer.requests.title': 'Transfer requests',

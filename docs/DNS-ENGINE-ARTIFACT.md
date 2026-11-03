@@ -1950,6 +1950,27 @@ the status command for that request, starts by itself once resolved).
 Component tests: `cmd/panel/dns_engine_journal_retained_test.go`,
 `cmd/agent/dns_engine_readiness_journal_test.go`.
 
+**A setup DNS install the Agent never admitted (alpha.118 lab D1).** The
+setup step records its switch (`activating`, attached) before it asks the
+Agent for the host lease. A lease refused before the Agent's ledger write left
+no job and so no rollback evidence, and the step stayed
+`server_setup_dns_result_unknown`. The Panel now proves "never admitted"
+read-only (exact attached first-install switch and accepted marker, no job and
+no hold for the request, no retained journal, no engine running, job absence
+read again after the runtime read). With the proof the step waits
+(`server_setup_host_busy` for a typed busy refusal, else
+`server_setup_dns_not_admitted`) and the next pass admits the same request and
+owner; past 30 minutes the proof is repeated under the DNS locks, the switch is
+released unchanged (`rolled_back`, audit `change_not_committed`) and the step
+fails with `server_setup_host_stayed_busy` or
+`server_setup_dns_not_admitted_failed`, naming "Review a revised plan". The
+owner's reconcile, which needs a failed Agent job for its rollback proof,
+releases such a switch with the same proof. Startup recovery is unchanged: it
+already finishes a source-empty install switch from the runtime proof.
+Without the proof nothing changes.
+Component tests:
+`cmd/panel/server_setup_dns_not_admitted_test.go`.
+
 **License refresh in the background.** The setup runner read a license check
 that only HTTP handlers refreshed, so with no browser request for a minute
 it reported `license_required` for an active license. It now performs the

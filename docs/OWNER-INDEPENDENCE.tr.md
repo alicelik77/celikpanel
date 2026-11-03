@@ -141,6 +141,41 @@ kurun ya da `sudo apt-get install cron` (Debian/Ubuntu) veya `sudo pacman -S
 cronie` ve ardından `sudo systemctl enable --now cronie` (Arch) çalıştırın. Sonra
 değişikliği yineleyin.
 
+## Plan sınırları: trafik günlükleri, disk ölçümü ve posta kutusu kotası (alpha.118, D-044)
+
+Bileşen testleriyle kaynak aşaması; yerel laboratuvar turu bekliyor.
+
+Her parça ait olduğu hizmetin düz yapılandırmasıdır ve CelikPanel'in başlığını
+taşır. CelikPanel bir dosyayı yalnız yokken ya da hâlâ kendi değiştirilmemiş
+metniyken yazar; sizin değiştirdiğiniz dosya korunur ve yöneticinin ekranında
+adıyla söylenir.
+
+| Dosya | Ne yapar | CelikPanel olmadan |
+|---|---|---|
+| `/etc/nginx/conf.d/celikpanel-traffic.conf` | `celikpanel_traffic` günlük biçimi (`$msec $bytes_sent $request_length`) ve sertifika doğrulamasını dışarıda bırakan bir eşleme | nginx yüklemeye devam eder; site günlükleri yazılmaya devam eder |
+| `/etc/nginx/celikpanel-managed.d/<alan adı>/access-log.traffic` | Tek bir `access_log /var/log/celikpanel/traffic/<alan adı no>.log celikpanel_traffic buffer=64k flush=1m` satırı; site dosyasının `include .../*.traffic;` satırıyla okunur; bu satır yalnız sitenin kendi erişim günlüğüne yazan bloklardadır (yalnız HTTPS'e yönlendiren blok eskisi gibi günlükler). Site bir CelikPanel sayfası gösterirken (askı, bakım, trafik sınırı) yalnız bir açıklama tutar | Aynı |
+| `/var/log/celikpanel/traffic/*.log` | Site başına küçük trafik günlükleri (istek başına yaklaşık 30 bayt). Sizin `/var/log/nginx/<alan adı>-access.log` dosyanız değişmez | logrotate döndürür (sonraki satır) |
+| `/etc/logrotate.d/celikpanel-traffic` | Günlük, üç gün saklanır, en çok 100 MB'de döndürülür, sıkıştırılır; nginx günlüklerini `systemctl kill --kill-whom=main --signal=USR1 nginx.service` ile yeniden açar | İşletim sisteminin logrotate'i günlükleri küçük tutar. logrotate kurulu değilse (Arch'ta olabilir) yöneticinin ekranı bunu söyler |
+| `/etc/dovecot/conf.d/90-celikpanel-quota.conf` | Dovecot'un kota eklentisi (`count` sürücüsü) ve `quota-status` hizmeti, kurulu Dovecot'un lehçesinde (2.3 ya da 2.4). `doveconf -n` ile doğrulanır; Dovecot reddederse önceki dosya geri konur | Posta kutusu boyutları uygulanmaya devam eder |
+| `/etc/dovecot/users` | Her posta kutusu satırı boyutunu iki lehçede taşır: `userdb_quota_rule=*:storage=<n>M userdb_quota_storage_size=<n>M` | Aynı |
+| `/etc/postfix/main.cf` içindeki `smtpd_recipient_restrictions` | `reject_unauth_destination` sonrasında tek öğe: `check_policy_service { unix:private/celikpanel-quota-status, default_action=DUNNO }`. Dolu kutuya gelen posta 552 ile reddedilir; Dovecot yanıt vermezse posta eskisi gibi kabul edilir | Aynı |
+| `/usr/local/libexec/celikpanel-quota-warning`, `/etc/systemd/system/celikpanel-quota-warning.{service,timer}`, `/var/lib/celikpanel-quota-warning` | %90 posta kutusu uyarısı: Dovecot üzerinden yapılan kayıtta Dovecot'un kota uyarısı betiği çalıştırır; Postfix'in doğrudan maildir'e yazdığı posta için saatlik zamanlayıcı (`scan`) çalıştırır. Her aşımda bir ileti (kutu başına işaret dosyası, %85 altında silinir), dovecot-lda ile teslim | Uyarmaya devam eder |
+| `/etc/ssh/sshd_config.d/` dosya erişimi eki ve `/etc/vsftpd/` hesap dosyaları | Aboneliğin diski doluyken hesapları `readonly=1` taşır: `ForceCommand internal-sftp -R ...` ve `write_enable=NO`. SSH (komut satırı) hesabı salt okunur yapılamaz | Son hâlinde kalır; sınırın altında CelikPanel yeniden açar |
+| Sitenin PHP-FPM havuzu | Disk doluyken `php_admin_flag[file_uploads] = off`, sınırın altında kaldırılır | Son hâlinde kalır |
+
+Başka hiçbir şey değişmez: CelikPanel fstab'a, çekirdek satırına ya da dosya
+sistemi bayraklarına asla dokunmaz. Disk ölçümü yalnız okur (`nice -n 19 ionice
+-c3 du -sx -B1`, MariaDB `information_schema`, PostgreSQL `pg_database_size`).
+Agent'ın kendi sayım durumu `/var/lib/celikpanel-agent-private/traffic/state.json`
+dosyasıdır (yalnız root); Agent'ı kaldırmak yalnız sayımı kaldırır, hiçbir siteyi değil.
+
+Trafik ölçümünü kendiniz durdurmak için: `conf.d/celikpanel-traffic.conf` içeriğini
+kendi açıklamanızla değiştirip nginx'i yeniden yükleyin; CelikPanel site dosyalarını
+günlük satırı olmadan yazar ve trafiği "bilinmiyor" gösterir (bilinmeyen sayıya göre
+hiçbir site sınırlanmaz). Posta kotasını durdurmak için: `90-celikpanel-quota.conf`
+dosyasını kenara alın ve `check_policy_service` öğesini çıkarın; sonra Dovecot ve
+Postfix'i yeniden yükleyin.
+
 ## Kanıt
 
 [Yerel doğrulama](validation/native-dns-independence-20260912/README.tr.md),

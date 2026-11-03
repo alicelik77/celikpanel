@@ -183,9 +183,28 @@ func (p *Panel) buildVhostRequest(
 		return applyVhostRPCRequest{}, fmt.Errorf("read the site's security emergency: %w", err)
 	}
 	req.Maintenance = maintenance
+	// alpha.118 (D-044): a subscription that used its monthly traffic (or
+	// its reseller's pool) shows the "traffic limit reached" page on its
+	// websites only, in every flow that re-renders.
+	limited, err := subscriptionTrafficLimited(ctx, p.db.GetDB(), subscriptionID)
+	if err != nil {
+		return applyVhostRPCRequest{}, fmt.Errorf("read the subscription's traffic limit: %w", err)
+	}
+	req.TrafficLimited = limited
 
 	if appPort != nil {
 		req.AppPort = *appPort
+	}
+	// alpha.118: an AI or automation app is served over HTTPS only. Without
+	// an active certificate the domain serves its own folder instead, never
+	// the app over plain HTTP.
+	if projectType == "service_app" {
+		if req.SSLType == "none" {
+			req.ProjectType = "static"
+			req.AppPort = 0
+		} else {
+			req.ForceHTTPS = true
+		}
 	}
 	if forwardTo != nil {
 		req.ForwardTo = *forwardTo

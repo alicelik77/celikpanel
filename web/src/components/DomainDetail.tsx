@@ -2,7 +2,7 @@ import { Fragment, Suspense, lazy, useCallback, useState, useEffect, type ReactN
 import { useSearchParams } from '../router';
 import {
     ArrowLeft, Globe, Lock, ExternalLink,
-    LayoutGrid, Server, Network, Mail, Database, Folder, Wrench, AppWindow, KeyRound,
+    LayoutGrid, Server, Network, Mail, Database, Folder, Wrench, AppWindow, KeyRound, Bot,
 } from 'lucide-react';
 import { DomainPHPSettings } from './DomainPHPSettings';
 import { DomainGeneralSettings } from './DomainGeneralSettings';
@@ -31,6 +31,17 @@ import {
 
 const DomainAppsPanel = lazy(() => import('./DomainAppsPanel').then((module) => ({
     default: module.DomainAppsPanel,
+})));
+// alpha.118: the WordPress tools (a section of the Applications tab, beside
+// the catalogue) and the malware scan (an Advanced sub-tab), fetched when
+// opened. The administrator sees both on every site; a customer when the
+// right is open.
+// WordPress araçları ve zararlı yazılım taraması; açılınca getirilir.
+const WordPressToolsPanel = lazy(() => import('./WordPressToolsPanel').then((module) => ({
+    default: module.WordPressToolsPanel,
+})));
+const DomainMalwareScan = lazy(() => import('./DomainMalwareScan').then((module) => ({
+    default: module.DomainMalwareScan,
 })));
 
 // The three panels of the Advanced tab are fetched when one of them is opened,
@@ -73,6 +84,11 @@ const SiteConfigNotice = lazy(() => import('./DomainSiteConfig').then((module) =
 const DomainFileAccess = lazy(() => import('./DomainFileAccess').then((module) => ({
     default: module.DomainFileAccess,
 })));
+// AI and automation apps of the site (alpha.118), fetched when the tab opens.
+// Kept apart from the PHP app catalogue of the Apps tab.
+const DomainServiceApps = lazy(() => import('./DomainServiceApps').then((module) => ({
+    default: module.DomainServiceApps,
+})));
 
 interface Domain {
     id: number;
@@ -96,11 +112,13 @@ interface Domain {
 interface DomainUsage {
     disk_usage: number;
     bandwidth: number;
+    /** alpha.118 (D-044): whether this month's traffic is counted. */
+    traffic_state?: string;
 }
 function decodeUsage(raw: unknown): DomainUsage {
-    const body = raw as { disk_usage?: unknown; bandwidth?: unknown } | null;
+    const body = raw as { disk_usage?: unknown; bandwidth?: unknown; traffic_state?: unknown } | null;
     if (!body || typeof body.disk_usage !== 'number' || typeof body.bandwidth !== 'number') throw new Error('shape');
-    return { disk_usage: body.disk_usage, bandwidth: body.bandwidth };
+    return { disk_usage: body.disk_usage, bandwidth: body.bandwidth, traffic_state: typeof body.traffic_state === 'string' ? body.traffic_state : undefined };
 }
 
 // What became of looking this domain up in the list the server gave.
@@ -356,6 +374,7 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
     // kalır ama değiştirilemez.
     const closed = new Set(domain.rights_closed ?? []);
     const open = (permission: string) => !closed.has(permission);
+    const wpTools = role === 'admin' || open('wordpress_tools');
     const combinedAccessMode = (capabilities: DomainCapability[]): DomainAccessMode => {
         if (!isTeamMember) return 'manage';
         const modes = capabilities.map((capability) => domain.access?.[capability] ?? 'none');
@@ -401,6 +420,7 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
         ...(canView('backups') && open('backups') ? [{ id: 'backups', labelKey: 'domain.sub.backups', capabilities: ['backups'], render: (readOnly) => <DomainBackupManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef] : []),
         ...(canView('cron') && open('cron') ? [{ id: 'cron', labelKey: 'domain.sub.cron', capabilities: ['cron'], render: (readOnly) => <DomainCronManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef] : []),
         ...(canView('statistics') ? [{ id: 'logs', labelKey: 'domain.sub.logs', capabilities: ['statistics'], render: (readOnly) => <DomainLogsViewer domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef] : []),
+        ...(!isTeamMember && !isDnsOnly && (role === 'admin' || open('malware_scan')) ? [{ id: 'malware', labelKey: 'mscan.title', render: () => <DomainMalwareScan domainId={domain.id} /> } satisfies SubDef] : []),
     ];
     const tabs: TabDef[] = [
         ...(!isTeamMember ? [{
@@ -419,7 +439,10 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
         ...(canView('dns') ? [{ id: 'dns', labelKey: 'domain.tab.dns', icon: Network, capabilities: ['dns'], render: (readOnly) => <DomainDNSManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly || !open('dns_edit')} isAdditionalUser={isTeamMember} dnssecHidden={!open('dnssec')} /> } satisfies TabDef] : []),
         ...(canView('mail') && open('mail') && (isTeamMember || !tabCaps || tabCaps.mail_server) ? [{ id: 'mail', labelKey: 'domain.tab.mail', icon: Mail, capabilities: ['mail'], render: (readOnly) => <DomainMailManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies TabDef] : []),
         ...(canView('databases') && open('databases') && (isTeamMember || !tabCaps || tabCaps.database_servers.length > 0) ? [{ id: 'databases', labelKey: 'domain.tab.databases', icon: Database, capabilities: ['databases'], render: (readOnly) => <DomainDatabaseManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} isAdditionalUser={isTeamMember} /> } satisfies TabDef] : []),
-        ...(!isTeamMember && projectType === 'php' && canView('files') && canView('php') && open('app_installer') ? [{ id: 'apps', labelKey: 'domain.tab.apps', icon: AppWindow, capabilities: ['files', 'php'], render: () => <DomainAppsPanel domainId={domain.id} domainName={domain.domain_name} /> } satisfies TabDef] : []),
+        ...(!isTeamMember && projectType === 'php' && canView('files') && canView('php') && (open('app_installer') || wpTools) ? [{ id: 'apps', labelKey: 'domain.tab.apps', icon: AppWindow, capabilities: ['files', 'php'], render: () => <>{open('app_installer') && <DomainAppsPanel domainId={domain.id} domainName={domain.domain_name} />}{wpTools && <WordPressToolsPanel domainId={domain.id} />}</> } satisfies TabDef] : []),
+        // alpha.118: an app that runs stays manageable (stop, log, removal)
+        // even when the right was closed later (D-042 P5).
+        ...(!isTeamMember && !isDnsOnly && (open('service_apps') || projectType === 'service_app') ? [{ id: 'ai', labelKey: 'svcapps.tab', icon: Bot, render: () => <DomainServiceApps domainId={domain.id} domainName={domain.domain_name} /> } satisfies TabDef] : []),
         ...(!isDnsOnly && canView('files') && open('file_manager') ? [{ id: 'files', labelKey: 'domain.tab.files', icon: Folder, capabilities: ['files'], render: (readOnly) => <DomainFileManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies TabDef] : []),
         ...(!isTeamMember && !isDnsOnly && (open('file_access') || open('ssh')) ? [{ id: 'access', labelKey: 'fileAccess.tab', icon: KeyRound, render: () => <DomainFileAccess domainId={domain.id} domainName={domain.domain_name} isAdmin={role === 'admin'} /> } satisfies TabDef] : []),
         ...(!isDnsOnly && advancedSubs.length > 0 ? [{
@@ -506,7 +529,13 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
         });
         facts.push({
             key: 'traffic',
-            content: <Fact label={t('domain.info.traffic')}>{fmtBytes(measured ? measured.bandwidth : domain.bandwidth)}/mo</Fact>,
+            content: (
+                <Fact label={t('domain.info.traffic')}>
+                    {measured?.traffic_state === 'unknown'
+                        ? t('domain.info.trafficUnknown')
+                        : t('domain.info.trafficMonth', { bytes: fmtBytes(measured ? measured.bandwidth : domain.bandwidth) })}
+                </Fact>
+            ),
         });
     }
 

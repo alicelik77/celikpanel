@@ -59,6 +59,7 @@ const (
 	serviceMutationStepConfigureWebmail         serviceMutationStepMethod = "Agent.ConfigureWebmail"
 	serviceMutationStepBindPHPTool              serviceMutationStepMethod = "Agent.BindPHPToolV1"
 	serviceMutationStepProvePHPTool             serviceMutationStepMethod = "Agent.ProvePHPToolV1"
+	serviceMutationStepInstallJailTools         serviceMutationStepMethod = "Agent.InstallJailToolsV1"
 	serviceMutationStepActivatePanelCertificate serviceMutationStepMethod = "agent.panel-certificate-activation"
 )
 
@@ -272,6 +273,12 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 		// vendor repositories to the OS's automatic updates.
 		return claim.target == "unattended-upgrades" && claim.packageName == "" && claim.action == "origins" &&
 			serviceMutationJobMatches(job, "os_updates_origins", "unattended-upgrades", "")
+
+	case serviceMutationStepInstallJailTools:
+		// alpha.118: the official packages of the SSH command line's missing
+		// tools, in their own job; the qualifier is the sorted package list.
+		return claim.target == fileAccessToolsTarget && claim.packageName != "" && claim.action == "install" &&
+			serviceMutationJobMatches(job, fileAccessToolsKind, fileAccessToolsTarget, claim.packageName)
 
 	case serviceMutationStepSetOSUpdatesMode:
 		// alpha.114: the owner's automatic/manual choice for the OS updates.

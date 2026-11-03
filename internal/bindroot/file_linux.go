@@ -93,7 +93,15 @@ func readExactFileAtWithParent(
 	if err != nil {
 		return nil, FileIdentity{}, fmt.Errorf("duplicate BIND vendor root: %w", err)
 	}
-	defer unix.Close(currentFD)
+	// The deferred close reads currentFD when the function returns, not when
+	// the defer is registered: the walk below closes and replaces it, and
+	// closing the first descriptor number again at return closed whatever
+	// another goroutine had opened under that number meanwhile (alpha.118
+	// lab: an application unpacking at the same time failed with "bad file
+	// descriptor"), while the last directory leaked.
+	// Ertelenen kapatma currentFD'nin dönüşteki değerini okur; aksi hâlde aynı
+	// numara ikinci kez kapanıp başka bir işin dosyasını kapatıyordu.
+	defer func() { _ = unix.Close(currentFD) }()
 	for index, component := range components[:len(components)-1] {
 		labelPath := path.Join("/", strings.Join(components[:index+1], "/"))
 		var nextFD int

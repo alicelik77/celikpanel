@@ -7363,3 +7363,48 @@ bağlantıyı tutar.
   Agent; iki koordinatör durmuş; biri çalışan biri durmuş; başarısız yeniden
   başlatma; beklenmeyen çalışan birim. Gerçek Arch dizisi henüz yeniden ölçülmedi.
   **Hiçbir P0 işi kapanmaz**; P0.1/P0.3 kısmi kalır.
+
+### Dal fix/a118-setup-dns (Agent'ın hiç kabul etmediği kurulum DNS işlemi bilinmeyen sonuçta kalmaz, bekler ve sürer; şema değişikliği yok; ilkeler 2 ve 4; P0.4; D-021; D-024; D-025; 2026-11-03)
+
+- **Olay.** alpha.118 adayı laboratuvar D1, iki temiz Debian 13 kurulumundan birinde:
+  kurulum `01-dns` adımı `server_setup_dns_result_unknown` durumunda kaldı; denetim
+  kaydında aynı saniyede `setup.accepted` ve `setup.reconcile_required` vardı;
+  değişim `activating` durumunda kaldı, PowerDNS hiç kurulmadı ve Agent'ın değişiklik
+  defterinde istek için iş yoktu (kurulumdan beri değişmemişti). Kurulumun DNS adımı
+  değişimi Agent'tan makine kirasını istemeden önce kaydeder; Agent kirayı defterine
+  yazmadan reddetti (örneğin paket yöneticisi ya da makine kilidi meşguldü), bu
+  yüzden başarısız iş ve geri alma kanıtı hiç oluşamadı. Günlüğe hiçbir şey
+  yazılmadı. Kod yolu alpha.117'den beri değişmedi (bilinmeyen süre sınırı
+  alpha.81'den beri): alpha.118 gerilemesi değil, eski ve ara sıra görülen bir hata.
+- **Sözleşme.** "Hiç kabul edilmedi" salt-okur kanıtlanır: tam ilk kurulum değişimi
+  hâlâ bağlı, `activating` evresinde ve kabul işaretçisiyle durur; Agent istek için
+  iş ve tutma bildirmez; DNS değişim günlüğü yoktur; hiçbir DNS motoru çalışmaz; işin
+  yokluğu çalışma durumu okunduktan sonra yeniden okunur. Kanıt varsa adım bekler
+  (tipli meşgul retti için `server_setup_host_busy`, değilse
+  `server_setup_dns_not_admitted`) ve sonraki geçiş aynı isteği aynı sahip
+  kimliğiyle yeniden ister. Agent istek başına ve makine başına tek kira verir; ikinci
+  bir değişiklik başlayamaz. 30 dakikalık sınır aşılınca kanıt DNS kilitleri altında
+  yinelenir ve ayrılan işlem değişmeden bırakılır (`rolled_back`, denetim
+  `change_not_committed`); adım `server_setup_host_stayed_busy` ya da
+  `server_setup_dns_not_admitted_failed` ve "Düzeltilmiş planı incele" ile durur.
+  Geri almayı kanıtlamak için başarısız Agent işine ihtiyaç duyan sahibin DNS
+  uzlaştırması (Sunucu → DNS) da böyle bir işlemi aynı kanıtla bırakır. Kanıt yoksa
+  önceki uzlaştırma/bilinmeyen yolu değişmez.
+  Kurulum DNS hatası artık günlüğe yazılır.
+- **Kurtarma.** D1 durumunda kalmış bir sunucu: sahibin panel güncellemesi paneli
+  yeniden başlatır; açılış kurtarması (değişmedi; kaynaksız kurulum işlemini çalışma
+  durumu kanıtıyla bitirir) işlemi hiçbir şeyi kısıtlamadan geri alınmış kaydeder;
+  kurulum `server_setup_dns_rolled_back` gösterir ve sahip Düzeltilmiş planı
+  incele'yi seçer. Yeniden başlatma olmadan sonraki kurulum geçişi aynı isteği
+  yeniden ister. Kalan açıklar: laboratuvar koşusundaki ret nedeni kaydedilmedi ve
+  gerçek sistemde yeniden üretilmedi; iş yokken motor çalışıyorsa ya da günlük
+  duruyorsa sonuç sahibin durum komutu için bilinmeyen kalır; yalnız kaynaksız ilk
+  kurulumlar kapsanır (motor değişikliği ya da yeniden kurulumun reddedilen kirası
+  önceki yolda kalır); Agent reddedilen kira için hâlâ bir şey yazmaz.
+- **Kanıt.** Yalnız bileşen testleri (`cmd/panel/server_setup_dns_not_admitted_test.go`):
+  laboratuvar sırası (kabul, sonra kira reddi; önceki kodda bilinmeyen sonuçla
+  başarısız olur), meşgul yeniden deneme, aynı isteğin tek değişim çağrısıyla
+  sürmesi, süren iş / kalan günlük / çalışan motorun asla başlamamış sayılmaması,
+  meşgul ve düz ret için bekleme ve sınırlı bırakma, ardından düzeltilmiş planın
+  kurulması; sahibin uzlaştırmasıyla bırakma; yeniden başlatmada kısıtlamadan
+  bitirme. Gerçek sistem koşusu yok. **Hiçbir P0 işi kapanmaz**; P0.4 kısmi kalır.

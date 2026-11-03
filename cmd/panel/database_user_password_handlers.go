@@ -121,13 +121,18 @@ func (p *Panel) handleSetDatabaseUserPassword(w http.ResponseWriter, r *http.Req
 			NewPassword: password,
 		}
 		var appDomainID int
-		var appDomain, appDB string
+		var appDomain, appDB, appKind string
+		// WordPress (028) or a catalog application (alpha.118, 058).
 		_ = p.db.GetDB().QueryRowContext(ctx, `
-			SELECT a.domain_id, d.name, a.database_name FROM application_install_operations a JOIN domains d ON d.id = a.domain_id
-			WHERE a.status = 'applied' AND a.database_server_id = ? AND a.database_user = ? LIMIT 1`,
-			user.ServerID, user.Username).Scan(&appDomainID, &appDomain, &appDB)
+			SELECT a.domain_id, d.name, a.database_name, 'wordpress' FROM application_install_operations a JOIN domains d ON d.id = a.domain_id
+			WHERE a.status = 'applied' AND a.database_server_id = ?1 AND a.database_user = ?2
+			UNION ALL
+			SELECT c.domain_id, d.name, c.database_name, c.app_id FROM app_catalog_operations c JOIN domains d ON d.id = c.domain_id
+			WHERE c.status IN ('applied', 'setup_failed') AND c.database_server_id = ?1 AND c.database_user = ?2
+			LIMIT 1`,
+			user.ServerID, user.Username).Scan(&appDomainID, &appDomain, &appDB, &appKind)
 		if appDomainID > 0 {
-			req.App = &transport.DatabaseUserApp{Kind: "wordpress", SubscriptionID: user.SubscriptionID, DomainID: appDomainID,
+			req.App = &transport.DatabaseUserApp{Kind: appKind, SubscriptionID: user.SubscriptionID, DomainID: appDomainID,
 				SiteUsername: services.SiteUsername(appDomain), DBName: appDB}
 		}
 		resp, err := p.rotationNativeOps().rotateDatabaseUser(ctx, req)

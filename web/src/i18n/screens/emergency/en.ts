@@ -12,6 +12,9 @@
 export const enEmergencyScreens = {
     // The section in the version drawer.
     'emg.title': 'Security emergency',
+    // alpha.118: the closed section while no emergency is open is a tool, not an alarm.
+    'emg.toolsTitle': 'Security emergency tools',
+    'emg.toolsHint': 'Nothing is wrong. Use these only if {name} has a security hole and no fix is available yet.',
     'emg.intro': 'Use this only when {name} has a security hole and no patch is available. Four separate steps, lightest first: withdraw, stop, move the sites, remove. No customer data is ever deleted.',
     'emg.open': 'Open the security emergency steps',
     'emg.close': 'Hide',

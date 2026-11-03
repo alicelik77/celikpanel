@@ -109,7 +109,7 @@ func (p *Panel) seedDemoData() {
 	err := db.QueryRowContext(ctx, `SELECT id FROM subscriptions WHERE owner_id = ? ORDER BY id LIMIT 1`, customer.ID).Scan(&subID)
 	if errors.Is(err, sql.ErrNoRows) {
 		res, err := db.ExecContext(ctx,
-			`INSERT INTO subscriptions (owner_id, name, max_domains, max_databases, status) VALUES (?, 'Demo Customer Plan', 25, 25, 'active')`,
+			`INSERT INTO subscriptions (owner_id, name, max_domains, max_databases, bandwidth_quota_mb, status) VALUES (?, 'Demo Customer Plan', 25, 25, 0, 'active')`,
 			customer.ID)
 		if err != nil {
 			log.Printf("demo: subscription seed failed: %v", err)

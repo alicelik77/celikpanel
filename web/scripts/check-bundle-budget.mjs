@@ -201,6 +201,33 @@ const screenPartBudgets = {
   // (susp., suspended.). A new part, set with at least 25% headroom from its
   // Turkish file (about 9.5 / 3.2 KiB as source).
   suspension: kib(13, 4.5),
+  // alpha.118 (D-044): My plan, this month's traffic, the disk and its
+  // countdown, the traffic and disk notices, the measurement status (myPlan.,
+  // usage.), split out of "settings" when the limits took it over its
+  // ceiling (Turkish 49.09 / 13.59 KiB before). A new part, set with at least
+  // 25% headroom from its Turkish file (about 9.7 KiB as source).
+  planUsage: kib(13, 4.75),
+  // alpha.118: the application catalog of a domain, the administrator's
+  // offered applications and their refusal codes (apps.step., apps.status.,
+  // appOffer., err.APP_). A new part, set with at least 25% headroom from its
+  // Turkish file (about 9.5 / 3.4 KiB as source).
+  appCatalog: kib(13, 4.5),
+  // alpha.118: WordPress tools and malware scanning of hosted sites (wpt.,
+  // mscan., err.WORDPRESS_, err.MALWARE_, and their audit words
+  // dashboard.audit.action.wordpress./.malware., since "dashboard" had no
+  // headroom left). A new part, set with at least 25% headroom from its
+  // Turkish file: 11.69 / 3.78 KiB.
+  siteTools: kib(16.5, 5.5),
+  // alpha.118 (W4): remote backups - destinations, every-site schedules, a
+  // site's remote copies and the guidance of every remote backup code
+  // (rbak.). A new part, set with at least 25% headroom from its Turkish
+  // file: 25.93 / 7.42 KiB.
+  remoteBackup: kib(33, 9.5),
+  // alpha.118: AI and automation apps of a site and the administrator's
+  // offering with its risk summary (svcapps., err.SERVICE_APP.). A new part,
+  // set with at least 25% headroom from its Turkish file as source:
+  // 21.4 / 6.5 KiB.
+  serviceApps: kib(27, 8.5),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

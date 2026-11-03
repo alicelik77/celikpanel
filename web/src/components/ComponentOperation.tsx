@@ -1989,6 +1989,11 @@ export function ComponentOperationProvider({ children }: { children: ReactNode }
                     showToast('warning', t('services.mailProfiles.fallbackWarning', {
                         name: installedName,
                     }));
+                } else if ((next.result as { waiting?: unknown } | undefined)?.waiting === 'first_signatures') {
+                    // alpha.118 (ClamAV): installed, starting by itself after
+                    // the first signature download. Not a failure.
+                    // Kuruldu; ilk imza indirmesinden sonra kendiliğinden başlar.
+                    showToast('info', t('services.installedWaitingSignatures', { name: installedName }));
                 } else {
                     showToast('success', t('services.installed', { name: installedName }));
                 }

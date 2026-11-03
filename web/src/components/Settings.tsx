@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from '../router';
-import { Lock, BadgeCheck, AlertTriangle, DownloadCloud } from 'lucide-react';
+import { Lock, BadgeCheck, AlertTriangle, DownloadCloud, UploadCloud } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { useAuth } from '../auth/AuthContext';
@@ -14,6 +14,8 @@ import { availablePanelUpdate, usePanelUpdateDiscovery, wholeVersion } from '../
 
 const LicensePanel = lazy(() => import('./LicensePanel').then((module) => ({ default: module.LicensePanel })));
 const PanelUpdateCard = lazy(() => import('./PanelUpdateCard').then((module) => ({ default: module.PanelUpdateCard })));
+// alpha.118: server-wide remote backup destinations and every-site schedules.
+const RemoteBackupDestinations = lazy(() => import('./RemoteBackupDestinations').then((module) => ({ default: module.RemoteBackupDestinations })));
 
 // Settings holds what is chosen once and decides how the panel behaves
 // (D-037, owner 2026-10-22). The person's own account security is My account
@@ -27,7 +29,7 @@ const PanelUpdateCard = lazy(() => import('./PanelUpdateCard').then((module) => 
 // sistem veritabanları Sunucu altındaki sayfalardır. Eski adresleri oraya
 // ulaşır. Tüm yöneticiler için bir güvenlik kuralı henüz yok; bölümü de yok.
 // Sunucu kurulumu alpha.100'den beri Sunucu altında kendi sayfasıdır.
-type SettingsSectionID = 'panel' | 'license' | 'updates';
+type SettingsSectionID = 'panel' | 'license' | 'updates' | 'remote-backups';
 type SettingsSection = {
     id: SettingsSectionID;
     icon: React.ComponentType<{ className?: string }>;
@@ -73,6 +75,14 @@ export function Settings() {
                 title: t('settings.section.updates'),
                 description: t('settings.section.updates.desc'),
                 ...(updateTarget ? { note: t('settings.section.updates.available', { version: updateTarget.version }), noteVersion: updateTarget.version } : {}),
+            },
+            // alpha.118 (W4): where backups are copied off this server - chosen
+            // once and deciding how the panel behaves, so it is a setting.
+            {
+                id: 'remote-backups' as const,
+                icon: UploadCloud,
+                title: t('rbak.settings.title'),
+                description: t('rbak.settings.desc'),
             },
         ]
         : [];
@@ -168,6 +178,9 @@ function SettingsWorkspace({
                         </div>
                         <div id="settings-updates-panel" role="tabpanel" aria-labelledby="settings-updates-tab" hidden={activeID !== 'updates'}>
                             {activeID === 'updates' && <Suspense fallback={null}><PanelUpdateCard /></Suspense>}
+                        </div>
+                        <div id="settings-remote-backups-panel" role="tabpanel" aria-labelledby="settings-remote-backups-tab" hidden={activeID !== 'remote-backups'}>
+                            {activeID === 'remote-backups' && <Suspense fallback={<p role="status">{t('common.loading')}</p>}><RemoteBackupDestinations admin /></Suspense>}
                         </div>
                     </>
                 )}

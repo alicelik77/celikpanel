@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Loader2, Package, RefreshCw, Settings2, ShoppingBag } from 'lucide-react';
 import { useSearchParams } from '../router';
 import { showToast } from './Toast';
@@ -9,6 +9,8 @@ import { PageHeader } from './PageHeader';
 import { invalidate } from '../lib/remote';
 import { useAuth } from '../auth/AuthContext';
 import { StoreCatalogAdmin } from './StoreCatalogAdmin';
+// alpha.118: offering AI and automation apps, fetched with the catalogue tab.
+const AdminServiceApps = lazy(() => import('./AdminServiceApps').then((module) => ({ default: module.AdminServiceApps })));
 import {
     StoreCatalog,
     type StoreEntitlementState,
@@ -289,6 +291,9 @@ export function AddonsPage() {
             {isAdmin && adminView === 'catalog' ? (
                 <div id="addons-catalog-panel" role="tabpanel" aria-labelledby="addons-catalog-tab">
                     <StoreCatalogAdmin onDirtyChange={setCatalogDirty} />
+                    <div className="mt-6">
+                        <Suspense fallback={null}><AdminServiceApps /></Suspense>
+                    </div>
                 </div>
             ) : loadingSubscriptions ? (
                 <div id={isAdmin ? 'addons-store-panel' : undefined} role={isAdmin ? 'tabpanel' : undefined} aria-labelledby={isAdmin ? 'addons-store-tab' : undefined}>

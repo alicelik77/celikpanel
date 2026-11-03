@@ -46,9 +46,13 @@ type suspensionCauses struct {
 	ResellerID int    `json:"reseller_id,omitempty"`
 	Reseller   string `json:"reseller,omitempty"`
 	Expired    bool   `json:"expired"`
+	// Disk (alpha.118, D-044): over the disk limit for 7 days. Cleared when
+	// a measurement is under the limit or by an operator's resume (which
+	// starts a new 7-day period); it never clears another cause.
+	Disk bool `json:"disk"`
 }
 
-func (c suspensionCauses) any() bool { return c.Manual || c.ResellerID > 0 || c.Expired }
+func (c suspensionCauses) any() bool { return c.Manual || c.ResellerID > 0 || c.Expired || c.Disk }
 
 // suspensionCauseChange is one accepted change of one cause.
 type suspensionCauseChange struct {
@@ -61,9 +65,11 @@ type suspensionCauseChange struct {
 	EndsAt  string
 	// WaiveExpiry records that an operator resumed after EndsAt passed.
 	WaiveExpiry bool
-	Reason      string
-	ActorID     int
-	Trigger     string
+	// Set or clear the disk cause (alpha.118).
+	Disk    *bool
+	Reason  string
+	ActorID int
+	Trigger string
 }
 
 // suspensionRow is the stored cause row of one subscription.
@@ -87,9 +93,9 @@ func loadSuspensionRow(ctx context.Context, q sqlQueryer, subscriptionID int) (s
 	var expiredEnds, waived, reason, since sql.NullString
 	err := q.QueryRowContext(ctx, `
 		SELECT cause_manual, cause_reseller_id, cause_expired, expired_ends_at,
-		       expiry_waived_ends_at, reason, suspended_at
+		       expiry_waived_ends_at, reason, suspended_at, cause_disk
 		FROM subscription_suspensions WHERE subscription_id = ?`, subscriptionID).
-		Scan(&row.Causes.Manual, &reseller, &row.Causes.Expired, &expiredEnds, &waived, &reason, &since)
+		Scan(&row.Causes.Manual, &reseller, &row.Causes.Expired, &expiredEnds, &waived, &reason, &since, &row.Causes.Disk)
 	if errors.Is(err, sql.ErrNoRows) {
 		return row, nil
 	}
@@ -147,6 +153,8 @@ func suspendReasonFor(c suspensionCauses) string {
 		return suspendReasonExpired
 	case c.ResellerID > 0:
 		return suspendReasonManual
+	case c.Disk:
+		return suspendReasonDisk
 	}
 	return ""
 }
@@ -221,6 +229,9 @@ func (p *Panel) acceptSuspensionChangeTx(ctx context.Context, tx sqlQueryer, sub
 	if change.WaiveExpiry && change.EndsAt != "" {
 		waived = change.EndsAt
 	}
+	if change.Disk != nil {
+		causes.Disk = *change.Disk
+	}
 	want := causes.any()
 
 	running, runningKind, err := runningSuspensionOperation(ctx, tx, subscriptionID)
@@ -251,17 +262,17 @@ func (p *Panel) acceptSuspensionChangeTx(ctx context.Context, tx sqlQueryer, sub
 	}
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO subscription_suspensions (subscription_id, cause_manual, cause_reseller_id,
-			cause_expired, expired_ends_at, expiry_waived_ends_at, reason, suspended_at, suspended_by, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN ? THEN COALESCE(NULLIF(?, ''), datetime('now')) END, ?, datetime('now'))
+			cause_expired, expired_ends_at, expiry_waived_ends_at, reason, suspended_at, suspended_by, updated_at, cause_disk)
+		VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN ? THEN COALESCE(NULLIF(?, ''), datetime('now')) END, ?, datetime('now'), ?)
 		ON CONFLICT(subscription_id) DO UPDATE SET
 			cause_manual = excluded.cause_manual, cause_reseller_id = excluded.cause_reseller_id,
 			cause_expired = excluded.cause_expired, expired_ends_at = excluded.expired_ends_at,
 			expiry_waived_ends_at = excluded.expiry_waived_ends_at, reason = excluded.reason,
 			suspended_at = excluded.suspended_at, suspended_by = excluded.suspended_by,
-			updated_at = excluded.updated_at`,
+			updated_at = excluded.updated_at, cause_disk = excluded.cause_disk`,
 		subscriptionID, causes.Manual, nullablePositiveInt(causes.ResellerID), causes.Expired,
 		nullIfEmpty(expiredEnds), nullIfEmpty(waived), nullIfEmpty(reason), want, since,
-		nullablePositiveInt(change.ActorID)); err != nil {
+		nullablePositiveInt(change.ActorID), causes.Disk); err != nil {
 		return result, err
 	}
 	status := "active"

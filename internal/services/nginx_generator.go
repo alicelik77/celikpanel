@@ -132,6 +132,10 @@ type VhostData struct {
 	// Maintenance renders the "temporarily under maintenance" vhost (D-043):
 	// 503 for every request, certificate validation kept. Suspended wins.
 	Maintenance bool
+	// TrafficLimited renders the "traffic limit reached" vhost (alpha.118,
+	// D-044): 503 for every request, certificate validation kept. Suspended
+	// and Maintenance win.
+	TrafficLimited bool
 }
 
 // Render executes the vhost template over prepared data, deriving the
@@ -191,7 +195,7 @@ func prepareVhostData(data VhostData) (VhostData, error) {
 		if data.PHPSocket == "" {
 			return VhostData{}, fmt.Errorf("php project has no PHP-FPM socket configured for this site")
 		}
-	case "node":
+	case "node", "service_app":
 		data.Upstream = fmt.Sprintf("http://127.0.0.1:%d", data.AppPort)
 	case "proxy":
 		data.Upstream = data.ForwardTo

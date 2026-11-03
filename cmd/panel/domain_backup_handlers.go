@@ -181,6 +181,13 @@ func (p *Panel) handleCreateBackup(w http.ResponseWriter, r *http.Request, d bac
 		writeClientError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
+	// alpha.118 (D-044): a full disk takes no new manual backup; scheduled
+	// backups keep running (they protect the data).
+	if err := p.checkSubscriptionQuota(r.Context(), d.SubscriptionID, quotaDisk); err != nil {
+		p.auditBackupFailure(r, "create", body.Type, d.ID, "disk limit reached")
+		writeQuotaRefusal(w, err)
+		return
+	}
 	req := backupspec.CreateRequest{
 		ProtocolVersion: backupspec.ProtocolVersion, SubscriptionID: d.SubscriptionID,
 		DomainID: d.ID, DomainName: d.Name, Type: body.Type,
@@ -301,6 +308,13 @@ func (p *Panel) handleRestoreBackup(w http.ResponseWriter, r *http.Request) {
 		writeClientError(w, http.StatusBadRequest, "invalid request body or backup name")
 		return
 	}
+	// alpha.118 (D-044): a restore can grow the subscription; a full disk
+	// takes none until space is freed or the limit is raised.
+	if err := p.checkSubscriptionQuota(r.Context(), d.SubscriptionID, quotaDisk); err != nil {
+		p.auditBackupFailure(r, "restore", "", d.ID, "disk limit reached")
+		writeQuotaRefusal(w, err)
+		return
+	}
 	inspectReq := backupspec.InspectRequest{
 		ProtocolVersion: backupspec.ProtocolVersion, SubscriptionID: d.SubscriptionID,
 		DomainID: d.ID, DomainName: d.Name, BackupName: body.BackupName,
@@ -358,6 +372,7 @@ func (p *Panel) handleRestoreBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p.audit(r, "backup.restore:"+inspection.Backup.Type, "domain", d.ID)
+	p.requestDiskMeasurement(r.Context(), d.SubscriptionID)
 	_ = json.NewEncoder(w).Encode(resp)
 }
 

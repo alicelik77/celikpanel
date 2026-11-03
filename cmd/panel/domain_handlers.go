@@ -74,7 +74,9 @@ const domainSiteInfoQuery = `SELECT php_version,
 		SELECT 1 FROM ssl_certificates sc
 		WHERE sc.domain_id = sites.domain_id AND sc.status = 'active'),
 	COALESCE(project_type,'php'),
-	COALESCE(disk_usage_bytes,0), COALESCE(traffic_month_bytes,0)
+	COALESCE(disk_usage_bytes,0),
+	COALESCE((SELECT SUM(t.bytes_out) FROM traffic_daily t
+		WHERE t.domain_id = sites.domain_id AND t.day >= strftime('%Y-%m-01', 'now', 'localtime')), 0)
 	FROM sites WHERE domain_id = ? LIMIT 1`
 
 func writeDomainCreatePartialSuccess(w http.ResponseWriter, domainID int, domain string, zoneExists bool) {
@@ -727,6 +729,10 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 	domain, err := domainRepo.GetByID(ctx, domainID)
 	if err != nil {
 		http.Error(w, "domain not found", http.StatusNotFound)
+		return
+	}
+	// alpha.118: an AI or automation app on the domain is removed first.
+	if p.refuseDomainDeleteWithServiceApp(w, r, domainID) {
 		return
 	}
 	if domain.DNSManagement == setupDNSModeLocal {

@@ -142,6 +142,8 @@ const codeKey: Record<string, TranslationKey> = {
     server_setup_dns_recovery_held: 'setup.guide.dnsRecoveryHeld',
     server_setup_dns_journal_retained: 'setup.guide.dnsJournalRetained',
     server_setup_dns_result_unknown: 'setup.guide.dnsResultUnknown',
+    server_setup_dns_not_admitted: 'setup.guide.dnsNotAdmitted',
+    server_setup_dns_not_admitted_failed: 'setup.guide.dnsNotAdmittedFailed',
     LICENSE_VERIFICATION_UNAVAILABLE: 'setup.guide.licenseUnverified',
     LICENSE_STATUS_UNAVAILABLE: 'setup.guide.licenseUnverified',
     server_setup_access_dns_required: 'setup.infrastructure.accessRequired',

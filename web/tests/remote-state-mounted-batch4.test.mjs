@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test, { mock } from 'node:test';
 import React from 'react';
 import Renderer, { act } from 'react-test-renderer';
-import { dataModule, reactURL, remoteURL, sharedLayer } from './fixtures/shared-layer.mjs';
+import { dataModule, reactURL, remoteURL, replaceLazyImport, sharedLayer } from './fixtures/shared-layer.mjs';
 import { readAllowList, scanTree } from './remote-state-ratchet.mjs';
 import { fileURLToPath } from 'node:url';
 
@@ -62,6 +62,7 @@ const shared = sharedLayer(stub);
 const own = {
   '/CurrentSettings': shared.compile('components/CurrentSettings.tsx'),
   '/lib/domainLogs': shared.compile('lib/domainLogs.ts'),
+  '/lib/appCatalog': shared.compile('lib/appCatalog.ts'),
 };
 const pick = async (name) => (await import(shared.compile(`components/${name}.tsx`, own)))[name];
 const DomainDNSManager = await pick('DomainDNSManager');
@@ -71,7 +72,11 @@ const DomainGeneralSettings = await pick('DomainGeneralSettings');
 const DomainAppsPanel = await pick('DomainAppsPanel');
 const MailAuthPanel = await pick('MailAuthPanel');
 const DomainLogsViewer = await pick('DomainLogsViewer');
-const DomainBackupManager = await pick('DomainBackupManager');
+// The remote copies section (alpha.118) has its own test; here it is a stand-in.
+const DomainBackupManager = (await import(replaceLazyImport(
+  shared.compile('components/DomainBackupManager.tsx', own), './DomainRemoteBackups',
+  dataModule('export const DomainRemoteBackups = () => null;'),
+))).DomainBackupManager;
 const DomainCronManager = await pick('DomainCronManager');
 const { useRefreshEvery, useRemote } = await import(remoteURL);
 globalThis.window ??= globalThis;
@@ -90,7 +95,7 @@ const good = {
   [`${D}/app/logs`]: { lines: ['listening on 3001'] },
   [`${D}/php`]: { domain_id: 1, domain_name: 'example.com', php_version: '8.3', available_versions: ['8.3'], pool_name: 'example_com', pool_config: { pm: 'ondemand', pm_max_children: 9, pm_start_servers: 3, pm_min_spare_servers: 2, pm_max_spare_servers: 4, user: 'site1', group: 'site1' } },
   [`${D}/general`]: { domain_id: 1, domain_name: 'example.com', document_root: '/home/site1/public_html', web_server: 'nginx', redirect_www: true, redirect_www_available: true, redirect_https: true, aliases: ['alias.example.net'] },
-  '/api/v1/apps': { apps: [{ id: 'wordpress', name: 'WordPress', description: 'A blog', icon: '', requires_db: true, requires_php: true }] },
+  [`${D}/apps`]: { apps: [{ id: 'wordpress', name: 'WordPress', version: 'latest', description: 'A blog', available: true, requirements: { state: 'ok', php_ok: true, missing: [], database_ok: true, disk_ok: true } }], installed: [], site: { php_version: '8.3', occupied: false } },
   [`${D}/mail/auth`]: { domain: 'example.com', zone_exists: true, dns_management_mode: 'local', spf: authRecord('pending'), dkim: authRecord('pending'), dmarc: authRecord('pending'), dkim_selector: 'default', signing_installed: true },
   [`${D}/logs/access`]: { success: true, lines: ['GET / 200'], total: 1, log_path: '/var/log/a.log' },
   [`${D}/backups`]: { backups: [{ name: 'files-1.tar.gz', size: 2048, type: 'files', origin: 'manual', legacy: false, restorable: true, created_at: '2026-10-08T10:00:00Z' }] },
@@ -102,7 +107,7 @@ const good = {
 const none = {
   [`${D}/dns/records`]: { records: [] },
   [`${D}/app/logs`]: { lines: [] },
-  '/api/v1/apps': { apps: null },
+  [`${D}/apps`]: { apps: null, installed: [] },
   [`${D}/logs/access`]: { success: true, lines: [], total: 0, log_path: '/var/log/a.log' },
   [`${D}/backups`]: { backups: [] },
   [`${D}/databases`]: { databases: [], available_types: [] },
@@ -185,7 +190,7 @@ const screens = [
   { name: 'Hosting type, the application’s logs', element: el(HostingTypePanel), read: `${D}/app/logs`, negative: ['hosting.app.empty'], changes: [], checking: 'hosting.app.logsChecking', unknown: 'hosting.app.unknown', empty: 'hosting.app.empty' },
   { name: 'PHP settings', element: php, read: `${D}/php`, negative: ['php.poolUnavailable', 'php.applyFirst'], changes: ['php.apply', 'php.savePool'], formFields: true, checking: 'php.checking', unknown: 'php.unknown', negativeAnswer: [{ php_version: '8.3', pool_name: 'example_com', available_versions: [] }, 'php.poolUnavailable'] },
   { name: 'General settings', element: el(DomainGeneralSettings), read: `${D}/general`, negative: ['general.noAliases', 'general.redirectWwwUnavailable'], changes: ['general.save', 'general.add', 'common.remove'], formFields: true, checking: 'general.checking', unknown: 'general.unknown', negativeAnswer: [{ ...good[`${D}/general`], aliases: null }, 'general.noAliases'] },
-  { name: 'Applications', element: el(DomainAppsPanel), read: '/api/v1/apps', negative: ['apps.empty'], changes: ['apps.install'], checking: 'apps.checking', unknown: 'apps.unknown', empty: 'apps.empty' },
+  { name: 'Applications', element: el(DomainAppsPanel), read: `${D}/apps`, negative: ['apps.empty'], changes: ['apps.install'], checking: 'apps.checking', unknown: 'apps.unknown', empty: 'apps.empty' },
   { name: 'Mail authentication', element: el(MailAuthPanel), read: `${D}/mail/auth`, negative: ['mailauth.status.missing', 'mailauth.status.no_key', 'mailauth.signingMissing'], changes: ['mailauth.apply', 'mailauth.generateKey'], checking: 'mailauth.checking', unknown: 'mailauth.unknown', negativeAnswer: [{ ...good[`${D}/mail/auth`], spf: authRecord('missing') }, 'mailauth.status.missing'] },
   { name: 'Logs', element: el(DomainLogsViewer), read: `${D}/logs/access`, negative: ['logs.empty', 'logs.linesN{"n":"0"}'], changes: ['logs.clear', 'logs.download'], checking: 'logs.checking', unknown: 'logs.unknown', empty: 'logs.empty' },
   { name: 'Backups, the list', element: el(DomainBackupManager), read: `${D}/backups`, negative: ['backup.empty'], changes: ['backup.restore', 'backup.delete', 'backup.files', 'backup.create', 'backup.full'], checking: 'backup.checking', unknown: 'backup.unknown', empty: 'backup.empty' },
@@ -312,7 +317,7 @@ const lost = [
     await press('general.add');
   }, reread: `${D}/general`, held: ['general.save', 'general.add', 'common.remove'], after: 'not-made' },
   { name: 'General settings, removing an alias', element: el(DomainGeneralSettings), change: `DELETE ${D}/aliases/alias.example.net`, path: `${D}/aliases/alias.example.net`, start: () => press('common.remove'), reread: `${D}/general`, held: ['general.save', 'general.add', 'common.remove'] },
-  { name: 'Applications, installing', element: el(DomainAppsPanel), change: `POST ${D}/apps/install`, path: `${D}/apps/install`, start: () => press('apps.install'), reread: '/api/v1/apps', held: ['apps.install'], where: 'apps.resultUnknownWhere' },
+  { name: 'Applications, installing', element: el(DomainAppsPanel), change: `POST ${D}/apps/install`, path: `${D}/apps/install`, start: () => press('apps.install'), reread: `${D}/apps`, held: ['apps.install'], where: 'apps.resultUnknownWhere' },
   { name: 'Mail authentication, publishing a record', element: el(MailAuthPanel), change: `POST ${D}/mail/auth/apply`, path: `${D}/mail/auth/apply`, start: () => press('mailauth.apply'), reread: `${D}/mail/auth`, held: ['mailauth.apply'] },
   { name: 'Logs, clearing', element: el(DomainLogsViewer), change: `DELETE ${D}/logs/access`, path: `${D}/logs/access`, start: () => press('logs.clear'), reread: `${D}/logs/access`, held: ['logs.clear'] },
   { name: 'Backups, creating', element: el(DomainBackupManager), change: `POST ${D}/backups`, path: `${D}/backups`, start: () => press('backup.files'), reread: `${D}/backups`, held: ['backup.files', 'backup.create', 'backup.full', 'backup.restore', 'backup.delete'], asked: true },

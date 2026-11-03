@@ -157,6 +157,10 @@ type SiteFileResult struct {
 	// ChallengeFile is what happened to the challenge file in ManagedDir
 	// (SiteFileChallenge*); "" when the operation did not look at it.
 	ChallengeFile string
+	// TrafficLog (alpha.118, additive) is what happened to the site's traffic
+	// log setting in ManagedDir (SiteFileChallenge* words: written,
+	// unchanged, kept, failed); "" when the operation did not look at it.
+	TrafficLog string
 	// Validation is, for a kept file (owner-edited, foreign, unknown origin),
 	// whether a certificate for the site can be validated without changing
 	// the file (SiteFileValidation*); "" for any other file.
@@ -373,6 +377,28 @@ type SitePoolRequest struct {
 	RecordedSHA256       string
 	ExpectedFileSHA256   string
 	ExpectedRenderSHA256 string
+	// Uploads (alpha.118, D-044): SitePoolUploadsOff while the subscription's
+	// disk is full (the pool carries php_admin_flag[file_uploads] = off),
+	// SitePoolUploadsOn under the limit, "" keeps what CelikPanel's current
+	// text of the pool says. A string, not a *bool: net/rpc's gob drops a
+	// pointer to false, so "uploads on again" arrived as "keep" and the line
+	// stayed after the limit was lifted (alpha.118 lab, D4).
+	Uploads string `json:",omitempty"`
+}
+
+// SitePoolRequest.Uploads values.
+const (
+	SitePoolUploadsKeep = ""
+	SitePoolUploadsOff  = "off"
+	SitePoolUploadsOn   = "on"
+)
+
+// SitePoolUploadsFor is the Uploads value of a known disk state.
+func SitePoolUploadsFor(blocked bool) string {
+	if blocked {
+		return SitePoolUploadsOff
+	}
+	return SitePoolUploadsOn
 }
 
 // ApplySiteFileResponse is a pool operation's answer. File is nil only when

@@ -189,7 +189,7 @@ func (a *Agent) addMailAccountLegacy(req *MailAccount, resp *bool) error {
 
 	// 2. Add to dovecot users
 	// user@domain:{SCHEME}hash::uid:gid::home::userdb_quota_rule=*:storage=XXM
-	line := fmt.Sprintf("%s:%s::::::userdb_quota_rule=*:storage=%dM", req.Email, hash, req.QuotaMB)
+	line := fmt.Sprintf("%s:%s::::::%s", req.Email, hash, dovecotQuotaFields(req.QuotaMB))
 	if err := appendToFile(dovecotUsersPath, line); err != nil {
 		return err
 	}
@@ -277,7 +277,7 @@ func (a *Agent) AddMailAccount(req *MailAccount, resp *transport.MailMutationRes
 		return fmt.Errorf("mail account already exists")
 	}
 
-	users = upsertMailLine(users, email, fmt.Sprintf("%s:%s::::::userdb_quota_rule=*:storage=%dM", email, hash, req.QuotaMB))
+	users = upsertMailLine(users, email, fmt.Sprintf("%s:%s::::::%s", email, hash, dovecotQuotaFields(req.QuotaMB)))
 	vboxes = upsertMailLine(vboxes, email, fmt.Sprintf("%s %s/%s/", email, domain, local))
 	domains = upsertMailLine(domains, domain, domain+" OK")
 	if err := applyMailFileMutation(ctx, []mailFileWrite{
@@ -492,7 +492,7 @@ func (a *Agent) importMailAccountLegacy(req *transport.ImportMailAccountRequest,
 	if quota <= 0 {
 		quota = 1024
 	}
-	line := fmt.Sprintf("%s:{CRYPT}%s::::::userdb_quota_rule=*:storage=%dM", req.Email, req.CryptHash, quota)
+	line := fmt.Sprintf("%s:{CRYPT}%s::::::%s", req.Email, req.CryptHash, dovecotQuotaFields(quota))
 	if err := appendToFile(dovecotUsersPath, line); err != nil {
 		return err
 	}
@@ -548,7 +548,7 @@ func (a *Agent) ImportMailAccount(req *transport.ImportMailAccountRequest, resp 
 	if mailFileHasKey(users, email) || mailFileHasKey(vboxes, email) {
 		return fmt.Errorf("mail account already exists")
 	}
-	users = upsertMailLine(users, email, fmt.Sprintf("%s:{CRYPT}%s::::::userdb_quota_rule=*:storage=%dM", email, req.CryptHash, req.QuotaMB))
+	users = upsertMailLine(users, email, fmt.Sprintf("%s:{CRYPT}%s::::::%s", email, req.CryptHash, dovecotQuotaFields(req.QuotaMB)))
 	vboxes = upsertMailLine(vboxes, email, fmt.Sprintf("%s %s/%s/", email, domain, local))
 	domains = upsertMailLine(domains, domain, domain+" OK")
 	ctx, cancel := newMailMutationContext()
@@ -587,9 +587,9 @@ func (a *Agent) updateMailQuotaLegacy(req *transport.UpdateMailQuotaRequest, res
 		// Kota kuralı ek-alanlar kuyruğudur; elle düzenlenmiş bir satır iki
 		// çelişen kural bırakamasın diye tümüyle değiştirilir.
 		if idx := strings.Index(line, "userdb_quota_rule="); idx >= 0 {
-			lines[i] = line[:idx] + fmt.Sprintf("userdb_quota_rule=*:storage=%dM", req.QuotaMB)
+			lines[i] = line[:idx] + dovecotQuotaFields(req.QuotaMB)
 		} else {
-			lines[i] = line + fmt.Sprintf(":userdb_quota_rule=*:storage=%dM", req.QuotaMB)
+			lines[i] = line + ":" + dovecotQuotaFields(req.QuotaMB)
 		}
 	}
 	if !found {
@@ -633,9 +633,9 @@ func (a *Agent) UpdateMailQuota(req *transport.UpdateMailQuotaRequest, resp *tra
 		}
 		found = true
 		if quotaIndex := strings.Index(line, "userdb_quota_rule="); quotaIndex >= 0 {
-			lines[index] = line[:quotaIndex] + fmt.Sprintf("userdb_quota_rule=*:storage=%dM", req.QuotaMB)
+			lines[index] = line[:quotaIndex] + dovecotQuotaFields(req.QuotaMB)
 		} else {
-			lines[index] = line + fmt.Sprintf(":userdb_quota_rule=*:storage=%dM", req.QuotaMB)
+			lines[index] = line + ":" + dovecotQuotaFields(req.QuotaMB)
 		}
 	}
 	if !found {

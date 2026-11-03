@@ -37,6 +37,10 @@ type planLimits struct {
 	Databases int `json:"max_databases"`
 	Mailboxes int `json:"max_email_accounts"`
 	DiskMB    int `json:"disk_quota_mb"`
+	// TrafficMB (alpha.118, D-044) is the monthly website traffic in MB:
+	// subscriptions.bandwidth_quota_mb, service_plans.bandwidth_quota_mb,
+	// reseller_pools/reseller_plans.traffic_quota_mb. 0 is unlimited.
+	TrafficMB int `json:"traffic_quota_mb"`
 }
 
 type resellerPool struct {
@@ -45,7 +49,7 @@ type resellerPool struct {
 }
 
 func (pool resellerPool) valid() bool {
-	return pool.MaxCustomers >= 0 && pool.Domains >= 0 && pool.Databases >= 0 && pool.Mailboxes >= 0 && pool.DiskMB >= 0
+	return pool.MaxCustomers >= 0 && pool.Domains >= 0 && pool.Databases >= 0 && pool.Mailboxes >= 0 && pool.DiskMB >= 0 && pool.TrafficMB >= 0
 }
 
 // poolAllocation is what a reseller's tree has been handed: per kind the sum
@@ -58,10 +62,12 @@ type poolAllocation struct {
 	Databases          int64 `json:"databases"`
 	Mailboxes          int64 `json:"mailboxes"`
 	DiskMB             int64 `json:"disk_mb"`
+	TrafficMB          int64 `json:"traffic_mb"`
 	UnlimitedDomains   bool  `json:"unlimited_domains,omitempty"`
 	UnlimitedDatabases bool  `json:"unlimited_databases,omitempty"`
 	UnlimitedMailboxes bool  `json:"unlimited_mailboxes,omitempty"`
 	UnlimitedDisk      bool  `json:"unlimited_disk,omitempty"`
+	UnlimitedTraffic   bool  `json:"unlimited_traffic,omitempty"`
 }
 
 func (a *poolAllocation) add(l planLimits) {
@@ -84,6 +90,11 @@ func (a *poolAllocation) add(l planLimits) {
 		a.UnlimitedDisk = true
 	} else {
 		a.DiskMB += int64(l.DiskMB)
+	}
+	if l.TrafficMB <= 0 {
+		a.UnlimitedTraffic = true
+	} else {
+		a.TrafficMB += int64(l.TrafficMB)
 	}
 }
 
@@ -124,9 +135,9 @@ func treeResellerID(ctx context.Context, q rowQueryer, userID int) (int, error) 
 func loadResellerPool(ctx context.Context, q rowQueryer, resellerID int) (resellerPool, bool, error) {
 	var pool resellerPool
 	err := q.QueryRowContext(ctx, `
-		SELECT max_customers, max_domains, max_databases, max_email_accounts, disk_quota_mb
+		SELECT max_customers, max_domains, max_databases, max_email_accounts, disk_quota_mb, traffic_quota_mb
 		FROM reseller_pools WHERE reseller_id = ?`, resellerID).
-		Scan(&pool.MaxCustomers, &pool.Domains, &pool.Databases, &pool.Mailboxes, &pool.DiskMB)
+		Scan(&pool.MaxCustomers, &pool.Domains, &pool.Databases, &pool.Mailboxes, &pool.DiskMB, &pool.TrafficMB)
 	if errors.Is(err, sql.ErrNoRows) {
 		return resellerPool{}, false, nil
 	}
@@ -148,7 +159,7 @@ func resellerAllocation(ctx context.Context, q rowQueryer, resellerID, excludeSu
 		return a, err
 	}
 	rows, err := q.QueryContext(ctx, `
-		SELECT s.max_domains, s.max_databases, s.max_email_accounts, s.disk_quota_mb
+		SELECT s.max_domains, s.max_databases, s.max_email_accounts, s.disk_quota_mb, s.bandwidth_quota_mb
 		FROM subscriptions s
 		WHERE s.id <> ?
 		  AND (s.owner_id = ? OR s.owner_id IN (
@@ -162,11 +173,12 @@ func resellerAllocation(ctx context.Context, q rowQueryer, resellerID, excludeSu
 	defer rows.Close()
 	for rows.Next() {
 		var l planLimits
-		var domains, databases, mailboxes, disk sql.NullInt64
-		if err := rows.Scan(&domains, &databases, &mailboxes, &disk); err != nil {
+		var domains, databases, mailboxes, disk, traffic sql.NullInt64
+		if err := rows.Scan(&domains, &databases, &mailboxes, &disk, &traffic); err != nil {
 			return a, err
 		}
 		l.Domains, l.Databases, l.Mailboxes, l.DiskMB = int(domains.Int64), int(databases.Int64), int(mailboxes.Int64), int(disk.Int64)
+		l.TrafficMB = int(traffic.Int64)
 		a.add(l)
 	}
 	return a, rows.Err()
@@ -254,7 +266,7 @@ func (p *Panel) handleResellerPool(w http.ResponseWriter, r *http.Request, c *Ca
 			pool := *body.Pool
 			p.auditDetailed(r, "reseller.pool:"+targetName, "user", targetID, map[string]any{
 				"max_customers": pool.MaxCustomers, "max_domains": pool.Domains, "max_databases": pool.Databases,
-				"max_email_accounts": pool.Mailboxes, "disk_quota_mb": pool.DiskMB,
+				"max_email_accounts": pool.Mailboxes, "disk_quota_mb": pool.DiskMB, "traffic_quota_mb": pool.TrafficMB,
 			})
 		}
 		p.writePoolAnswer(w, r, targetID, body.Pool)
@@ -269,13 +281,14 @@ type sqlExecer interface {
 
 func upsertResellerPool(ctx context.Context, db sqlExecer, resellerID int, pool resellerPool) error {
 	_, err := db.ExecContext(ctx, `
-		INSERT INTO reseller_pools (reseller_id, max_customers, max_domains, max_databases, max_email_accounts, disk_quota_mb)
-		VALUES (?, ?, ?, ?, ?, ?)
+		INSERT INTO reseller_pools (reseller_id, max_customers, max_domains, max_databases, max_email_accounts, disk_quota_mb, traffic_quota_mb)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(reseller_id) DO UPDATE SET
 		  max_customers = excluded.max_customers, max_domains = excluded.max_domains,
 		  max_databases = excluded.max_databases, max_email_accounts = excluded.max_email_accounts,
-		  disk_quota_mb = excluded.disk_quota_mb, updated_at = datetime('now')`,
-		resellerID, pool.MaxCustomers, pool.Domains, pool.Databases, pool.Mailboxes, pool.DiskMB)
+		  disk_quota_mb = excluded.disk_quota_mb, traffic_quota_mb = excluded.traffic_quota_mb,
+		  updated_at = datetime('now')`,
+		resellerID, pool.MaxCustomers, pool.Domains, pool.Databases, pool.Mailboxes, pool.DiskMB, pool.TrafficMB)
 	return err
 }
 

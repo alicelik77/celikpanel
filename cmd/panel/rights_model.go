@@ -41,12 +41,19 @@ const (
 	permissionItemHead = "permission:"
 )
 
+// rightServiceApps (alpha.118): AI and automation apps that run as the site's
+// service (docs/AI-APPS.md). Each app is also its own offering, app:<id>,
+// closed until the administrator offers it.
+const rightServiceApps = "service_apps"
+
 // rightPermissionIDs lists every permission in a fixed order with the name a
 // sentence uses.
 var rightPermissionIDs = []string{
 	rightDNSEdit, rightDNSSEC, rightMail, rightDatabases, rightCron, rightFileManager,
 	rightBackups, rightSSLACME, rightSSLCustom, rightSiteProtect, rightSiteProxy,
 	rightAppInstaller, rightVPN, rightTeamMembers, rightFileAccess, rightSSH,
+	rightRemoteBackupDestinations,
+	rightServiceApps,
 }
 
 var rightPermissionNames = map[string]string{
@@ -66,6 +73,10 @@ var rightPermissionNames = map[string]string{
 	rightTeamMembers:  "Additional users",
 	rightFileAccess:   "File access (FTP and SFTP)",
 	rightSSH:          "SSH (command line)",
+
+	// alpha.118 (remote_backup_model.go).
+	rightRemoteBackupDestinations: "Own remote backup destinations",
+	rightServiceApps:              "AI and automation apps",
 }
 
 // legacyGrantPermissions are the two product permissions that still need an
@@ -80,8 +91,10 @@ func knownPermission(id string) bool {
 }
 
 // Offering ids of D-017: component:<id>[:<version>], integration:acme:<id>,
-// extension:<vendor>:<name>. Lowercase, bounded.
-var offeringIDPattern = regexp.MustCompile(`^(component:[a-z0-9][a-z0-9-]{0,40}(:[0-9][0-9a-z.]{0,20})?|integration:acme:[a-z0-9][a-z0-9-]{0,40}|extension:[a-z0-9][a-z0-9-]{0,40}:[a-z0-9][a-z0-9-]{0,60})$`)
+// extension:<vendor>:<name>, app:<id> (alpha.118: one namespace for both app
+// catalogs, the PHP application catalog and the AI and automation service
+// apps; their ids never overlap). Lowercase, bounded.
+var offeringIDPattern = regexp.MustCompile(`^(component:[a-z0-9][a-z0-9-]{0,40}(:[0-9][0-9a-z.]{0,20})?|integration:acme:[a-z0-9][a-z0-9-]{0,40}|extension:[a-z0-9][a-z0-9-]{0,40}:[a-z0-9][a-z0-9-]{0,60}|app:[a-z][a-z0-9-]{1,40})$`)
 
 func validOfferingID(id string) bool { return offeringIDPattern.MatchString(id) }
 
@@ -298,6 +311,11 @@ type rightsTx interface {
 
 // saveRightsSet replaces one owner's set.
 func saveRightsSet(ctx context.Context, tx rightsTx, ownerKind string, ownerID int, s rightsSet) error {
+	// alpha.118: an app closed to resellers by its licence (n8n) is never
+	// written into a reseller's set or a set in a reseller's tree.
+	if err := refuseLicenceClosedRights(ctx, tx, ownerKind, ownerID, s); err != nil {
+		return err
+	}
 	boolInt := func(b bool) int {
 		if b {
 			return 1

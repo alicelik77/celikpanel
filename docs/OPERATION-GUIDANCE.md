@@ -10795,3 +10795,70 @@ Security → Security updates, the Dashboard and Server setup → Operating syst
   it is a separate program the owner moves to.
 
 Schema unchanged (46). Installed panels are updated only by their owners.
+
+## Components: PostgreSQL on its own, a tool left without its database, the security emergency tools (alpha.118)
+
+In source for the alpha.118 candidate (owner's Boston screens, Ubuntu 24.04, alpha.117;
+nothing measured on an installed server). **Who acts:** the administrator, from
+Components. Nothing starts by itself; every action opens its ordinary dialog.
+
+- **PostgreSQL is not installed and only the bundle is offered.** The installed view
+  (first since alpha.100) hides what is not installed, and since alpha.101 the database
+  bundle is PostgreSQL with phpPgAdmin. **Next action:** under the bundles of Databases,
+  "Or install one on its own" names PostgreSQL (and MariaDB or Nginx when they are
+  missing); it opens PostgreSQL's own install dialog with its versions (PGDG when chosen).
+  The Catalogue view shows the same row.
+- **phpPgAdmin (or phpMyAdmin) is installed but its database is not.** The tool's row
+  says it cannot work and offers **Install PostgreSQL** or **Remove phpPgAdmin**; both
+  open their ordinary dialogs and nothing changes before you confirm. Removing the tool
+  removes its package and its web entry only; no database and no data are touched.
+- **Removing PostgreSQL or MariaDB** offers its own web admin tool, ticked, in the same
+  confirmation. Untick it to keep the tool. The tool is removed only after the engine's
+  removal fully succeeded; if the tool's removal then fails, its row says what to do.
+- **Security emergency tools** under MariaDB and PostgreSQL (and in the PHP-FPM and
+  Node.js version drawers) are a quiet, closed tool: "Nothing is wrong. Use these only
+  if … has a security hole and no fix is available yet." The section turns red, with
+  the emergency's name, only while an emergency is open for that component. A click
+  opens or closes it; it no longer opens the component's page.
+
+Schema unchanged. Installed panels are updated only by their owners.
+
+## The SSH command line's tools come before the command line (alpha.118)
+
+Domain → Access. The owner: if something must be installed for SSH to work, the panel
+makes sure it is installed before SSH is turned on.
+
+- **Why.** The command line is a jail that copies the server's own programs (bash, ls,
+  nano, vi, zip, unzip, rsync, scp and the rest of `fileaccess.JailCommands`). A program
+  the server lacks cannot be in it; until alpha.117 the save only warned
+  (`jail_programs_missing`), so customers got a command line without zip and unzip
+  (Boston, Ubuntu 24.04).
+- **Fresh installs.** install.sh's small prerequisites bring the packages a minimal image
+  may lack: Debian/Ubuntu `less zip unzip nano vim-tiny rsync`; Arch `less zip unzip nano
+  ex-vi-compat rsync diffutils` (Arch's `vi` is a script in ex-vi-compat that runs vim,
+  so the jail copies vim with it). The full command-to-package map is
+  `fileaccess.JailCommandPackages`, read from the packages themselves.
+- **Existing servers, read only.** The Access view's state names the missing tools and
+  their official packages (`jail_missing`, `jail_packages`, `jail_unknown`) from the same
+  lookup that builds the jail. Reading starts nothing.
+- **The gate.** While any tool is missing, "Command line (SSH)" is replaced by a notice
+  naming them. FTP and SFTP stay available. The Panel refuses a change that turns SSH on
+  (`FILE_ACCESS_SSH_TOOLS_MISSING`, 409, the tools in `details`), and so does the Agent
+  (`FILE_ACCESS_REFUSED` / `jail_tools_missing`). An account that already has SSH keeps
+  it; it sees the same notice and its saves still work.
+- **Who acts.** The administrator's notice has "Install the tools":
+  `POST /api/v1/service/file-access-tools` with the packages that were shown. It is
+  administrator-only, single-flight (the panel's service-mutation lock), runs in its own
+  durable Agent job (`file_access_tools`, qualifier = the sorted packages) through the
+  package lock, and is audited as `service.install:<packages>`. The Agent works the list
+  out again and installs only when it is the same (`FILE_ACCESS_TOOLS_CHANGED`
+  otherwise); a tool with no known package is `FILE_ACCESS_TOOLS_UNSUPPORTED`; a package
+  manager refusal is `FILE_ACCESS_TOOLS_FAILED` with its words. Customers and resellers
+  read that the server administrator installs them and the option appears once they are.
+- **Unknown result.** A lost answer sends nothing again; the page reads the server. A
+  repeated request finds nothing missing and installs nothing.
+- **Owner independence.** The packages are ordinary distribution packages and stay
+  when CelikPanel is removed.
+
+Still mandatory and already gated: the OpenSSH server (`sshd_missing`). Nothing else is
+required for the command line. Schema unchanged; no migration.

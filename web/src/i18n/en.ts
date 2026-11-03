@@ -55,9 +55,14 @@ import type { SetupPublishingScreenKey } from './screens/setupPublishing/en';
 import type { FileAccessScreenKey } from './screens/fileAccess/en';
 import type { SuspensionScreenKey } from './screens/suspension/en';
 import type { EmergencyScreenKey } from './screens/emergency/en';
+import type { AppCatalogScreenKey } from './screens/appCatalog/en';
+import type { SiteToolsScreenKey } from './screens/siteTools/en';
 import type { TransfersScreenKey } from './screens/transfers/en';
 import type { TransferRotationScreenKey } from './screens/transferRotation/en';
+import type { PlanUsageScreenKey } from './screens/planUsage/en';
 import type { RightsScreenKey } from './screens/rights/en';
+import type { RemoteBackupScreenKey } from './screens/remoteBackup/en';
+import type { ServiceAppsScreenKey } from './screens/serviceApps/en';
 
 export const en = {
     // ---- alpha.108 tools ----
@@ -394,6 +399,7 @@ export const en = {
     'dnssrv.continue': 'Continue',
     'services.install': 'Install',
     'services.installed': '{name} installed.',
+    'services.installedWaitingSignatures': '{name} is installed and is downloading its first virus signatures, which usually takes a few minutes. You do not need to do anything: its scanner starts by itself when the download finishes, and Components shows it as running at its next check.',
     'services.phpToolProblem.versionGone': '{tool} is set to PHP {version}, which is no longer installed, so {tool} cannot answer. Open {tool} in Components and choose an installed PHP version in Manage.',
     'services.phpToolProof.moved': '{tool} runs on PHP {version}: it did not work on PHP {first} ({why}), so the next installed PHP version that has its extensions was used. You can change it in {tool}’s Manage window.',
     'services.phpToolProof.notReady': '{tool} was installed, but it did not answer on PHP {version} ({why}). It reads Not ready: open its Manage window in Components; the reason is shown there, and Check again asks it again without moving it.',
@@ -558,5 +564,10 @@ export type ScreenKey =
     | TransfersScreenKey
     | TransferRotationScreenKey
     | RightsScreenKey
-    | EmergencyScreenKey;
+    | EmergencyScreenKey
+    | PlanUsageScreenKey
+    | AppCatalogScreenKey
+    | SiteToolsScreenKey
+    | RemoteBackupScreenKey
+    | ServiceAppsScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

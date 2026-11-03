@@ -45,6 +45,7 @@ type wordpressInstallAgent struct {
 	installErr      error
 	services        []core.Service
 	servicesErr     error
+	prereqMissing   []transport.AppMissingExtension
 }
 
 func (a *wordpressInstallAgent) GetServices(
@@ -88,6 +89,16 @@ func (a *wordpressInstallAgent) InstallWordPress(
 	a.installRequests = append(a.installRequests, *req)
 	*resp = a.installResponse
 	return a.installErr
+}
+
+// AppPrerequisitesV1: WordPress's PHP has what it needs unless a test says
+// otherwise (alpha.118: WordPress runs the catalog's prerequisite check).
+func (a *wordpressInstallAgent) AppPrerequisitesV1(_ *transport.AppPrerequisitesRequest, resp *transport.AppPrerequisitesResponse) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	*resp = transport.AppPrerequisitesResponse{Family: "apt", PHPLine: "8.2", PHPOK: true,
+		Missing: append([]transport.AppMissingExtension(nil), a.prereqMissing...), DocRoot: transport.AppDocRootPlaceholder}
+	return nil
 }
 
 func (a *wordpressInstallAgent) snapshot() (

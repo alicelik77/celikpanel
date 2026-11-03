@@ -19,6 +19,89 @@ Code decisions live in git; this file is for strategy. Newest first.
 > D-029. Entries written after this note use the clock date; a dated entry from 10, 11 or
 > 12 October 2026 other than D-029 is genuine.
 
+## D-044 · Plan limits are real: website traffic per calendar month closes only the websites, a disk full for seven days suspends, Dovecot enforces mailbox sizes
+
+*2026-11-03 (owner's decisions of 3 November 2026) · Amends PLANS-AND-RIGHTS.md section 4.1 ("Traffic: not shown until measured", "Disk: a soft gate") and section 5 ("the traffic pool is not applied"); implemented in alpha.118, lab trial pending*
+
+**Why.** alpha.117 shipped plans whose traffic was never measured and whose
+disk limit read a number only the domain page refreshed. The panel's own
+traffic reading summed a log the distribution rotates daily, so "this month"
+was one or two days. A limit that is shown but not applied is a false
+statement on screen (D-024).
+
+**Traffic.** What the websites send to their visitors (outgoing bytes,
+headers included), per calendar month in server time; it starts again on the
+1st. At 100% only the subscription's websites show "this site has used its
+monthly traffic" (503); mail, databases and file access keep working. The
+websites open again by themselves on the 1st or within minutes after the
+limit is raised. Notices at 80% and 100% go to the customer, its reseller and
+the administrator. The reseller pool (K2) limits the real total of all its
+customers this month; when it is full, every customer of that reseller gets
+the 100% action. Traffic is collected every few minutes, so a site can go
+over its limit by what it sends in one interval; the screens say so.
+
+**Disk.** The real use of a subscription: site files, mail and databases,
+measured by the Agent at the lowest CPU and I/O priority (every 6 hours, every
+hour while the hosting file system has less than 10% free, and soon after a
+restore, an import or an app install). At 100% nothing new that grows the
+subscription is accepted (domains, mailboxes, databases, app installs, manual
+backups and restores) and new uploads close at once: the file manager
+refuses them, FTP and SFTP become read-only (`write_enable=NO`,
+`internal-sftp -R`; an account with a command line keeps it) and the
+subscription's PHP pools get `php_admin_flag[file_uploads] = off`. The sites
+keep running, and everything opens again by itself after a measurement under
+the limit. Seven days over the limit suspend the subscription with the
+alpha.117 suspension, cause "disk". It resumes by itself when a measurement is
+under the limit; an operator's resume clears the disk cause and starts a new
+7-day period. A disk cause never clears a manual, reseller or expiry cause.
+Notices at 80% and 100% and two days before the suspension.
+
+**Operating-system quotas.** CelikPanel never edits fstab, the kernel command
+line or file system flags (tune2fs). It only detects that the owner mounted
+the hosting file system with project quotas, and says so; it measures by
+walking the folders. Hard operating-system limits are an open item.
+
+**Mail.** Each mailbox's limit, already in /etc/dovecot/users, is enforced by
+Dovecot's own quota plugin ("count" driver, which also sees mail Postfix's
+virtual(8) delivered directly; measured on Dovecot 2.4.1), in the dialect of
+the installed Dovecot (2.3 and 2.4). Postfix asks Dovecot's quota-status
+service before it accepts mail, so mail to a full mailbox is refused with
+"552 5.2.2 Mailbox is full"; if the service does not answer, Postfix accepts
+the mail as before (fail-open). Mail clients that read the IMAP quota
+(Roundcube does) show how full a mailbox is; the panel's disk notices at 80%
+and 100% go to the customer. At 90% the mailbox user gets one plain message in
+English and Turkish, once per crossing: Dovecot's own quota warning runs
+CelikPanel's script when a save through Dovecot crosses 90%, and an hourly
+systemd timer runs the same script for mail Postfix delivered straight into
+the maildir (which never goes through Dovecot; measured on 2.4.1).
+
+**Owner independence (D-022).** Every part is native configuration with
+CelikPanel's render header, written only while absent or still CelikPanel's
+unchanged text: the nginx log format (conf.d/celikpanel-traffic.conf), each
+site's traffic log line (celikpanel-managed.d/<domain>/access-log.traffic), the
+logrotate file (/etc/logrotate.d/celikpanel-traffic), the Dovecot quota
+drop-in (conf.d/90-celikpanel-quota.conf), the 90% warning script and timer
+(/usr/local/libexec/celikpanel-quota-warning,
+/etc/systemd/system/celikpanel-quota-warning.{service,timer}), the read-only
+marks in the file access drop-in and vsftpd's per-account files, the PHP pool
+line, and one Postfix restriction element.
+Without the Panel nothing is measured or limited, the sites keep working, the
+traffic logs stay small, and the mailbox sizes stay enforced.
+
+**Migration.** The traffic limits stored before (mostly the 102400 MB column
+default) were never shown or applied; migration 057 sets them to unlimited
+and tells the administrator once, so no website closes on a number nobody
+chose.
+
+**Not claimed.** An SSH account (command line) cannot be made read-only.
+Backups are stored outside the subscription and are not counted in its disk,
+and scheduled backups keep running when the disk is full (they protect the
+customer). Hard operating-system disk limits are not set. The release still
+needs its lab round (D-025): a real update, rollback and a traffic/disk/mail
+trial on Debian, Ubuntu and Arch.
+
+---
+
 ## D-043 · A security emergency may stop or remove a component that is in use: withdraw, stop, move, remove — never delete data
 
 *2026-11-02 (owner's approval: "ok. hepsi uygun") · Amends D-038 point 2 ("nothing in use is removed") for security emergencies only; a principle, implementation planned in alpha.117*

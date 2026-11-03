@@ -40,7 +40,7 @@ guidance rule (D-024).
 
 **Exists:**
 - Plans (`service_plans`): numbers only. Domain, database, mailbox and disk limits. There is also
-  a traffic field but it is not measured. 0 means unlimited.
+  a traffic field but it is not measured. 0 means unlimited. (Measured from alpha.118, section 14.)
 - Subscription (`subscriptions`): copies the plan's numbers.
 - Reseller pool (`reseller_pools`): totals the reseller can hand out.
 - A reseller can make their own plans, but only as numbers.
@@ -131,8 +131,8 @@ The rights set has three parts. A plan and a custom rights set are made of the s
 | Number of domains | Subdomains count too (as today) |
 | Number of databases | Checked on every creation path (today one path is missing) |
 | Number of mailboxes | |
-| Disk | Today a soft gate at creation time; OS quota is a separate job |
-| Traffic | **Not shown** in a plan until it is measured (honesty rule) |
+| Disk | Real use of site files, mail and databases (alpha.118, D-044): at 100% nothing new and no upload; 7 days over suspends. No OS quota |
+| Traffic | Website traffic per calendar month (alpha.118, D-044): at 100% only the websites close until the 1st |
 | Number of customers | Only in a reseller's rights set |
 
 An item left at 0 or empty means **unlimited**, and the screen says "unlimited".
@@ -157,6 +157,9 @@ An item left at 0 or empty means **unlimited**, and the screen says "unlimited".
 | Additional users (team) | The menu is not visible |
 | File access (FTP and SFTP) | The Access tab is not visible; files are uploaded only through the panel's file manager |
 | SSH (command line) | The command line cannot be entered; file access is not affected |
+| WordPress tools (alpha.118, `wordpress_tools`) | The WordPress tools section is not visible; status, updates, the automatic minor-release switch and staging copies are refused. A site that already runs, and switches already on, are not changed (an automatic update is skipped while the right is closed) |
+| Malware scan results (alpha.118, `malware_scan`) | The Malware scan section is not visible; the customer cannot start scans or act on findings. The administrator can still scan every site, and the administrator's weekly scan still covers it |
+| Own remote backup destinations (alpha.118) | The account cannot add its own S3 or SFTP destination; it can still choose a destination the administrator offers. Schedules already set keep running ([REMOTE-BACKUPS.md](REMOTE-BACKUPS.md)) |
 
 **File access does not exist today.** On November 2, 2026 the owner looked for the FTP and SSH
 settings of a domain and could not find them. Verified from the code: there is no path in the
@@ -261,6 +264,43 @@ security:
 This section sets a principle; the store and the third-party package arrangement are a separate
 design.
 
+### 4.5 Application catalog (alpha.118)
+
+The applications CelikPanel installs into a site (WordPress, PrestaShop, Nextcloud, Drupal,
+Joomla, MediaWiki, phpBB) are software items with the offering ID `app:<id>`, for example
+`app:nextcloud`. Using any of them needs two things: the **App installer** permission (the
+Applications tab) and the application's offering in every layer (installed ∩ offered ∩ reseller ∩
+subscription). An application is *offered only when the administrator ticks it* under Plans and
+rights → Offered (third-party software is gated at the offer step, 4.4); before the administrator
+ever chose, only `app:wordpress` is offered, so nothing that worked before alpha.118 stops. The
+Unlimited plans take what is offered (P4); other plans and Custom sets name `app:<id>` items.
+Withdrawing an application removes nothing: sites keep it, only new installations are refused
+(P5). Installing also needs the database engine (`component:mariadb`) and room in the database
+and disk limits. How an application is added and pinned: [APP-CATALOG.md](APP-CATALOG.md).
+
+### 4.6 AI and automation apps (alpha.118)
+
+Beside the application catalog (4.5), third-party software built on 4.4 includes the AI and
+automation app catalog ([AI-APPS.md](AI-APPS.md)). Both catalogs share the one `app:<id>` offering
+namespace (their ids never overlap); each keeps its own offer rule below. Each app is one offering, `app:<id>` (for example `app:n8n`,
+`app:open-webui`), and using any of them also needs the permission **AI and automation apps**
+(`service_apps`).
+
+- **Closed until offered.** Unlike PHP and Node.js versions, an app is not offered by default: the
+  administrator offers it on the Add-ons page after reading its risk summary (what it can do, what
+  CelikPanel turns off, network needs, resource limits, licence). The offer records the summary's
+  digest; a release that changes the version, licence, limits or risks closes it again until the
+  administrator reads and offers it once more. What runs keeps running.
+- **The chain narrows.** Unlimited plans take an offered app automatically (P4); a reseller or a
+  plan can only leave it out. The server checks all layers on install and update; stopping,
+  logs and removal stay open (P5).
+- **Security hold.** The administrator can hold an app: every install is stopped and kept from
+  starting, and nobody installs, updates or starts it until the hold is lifted. Data is never
+  removed. This is the app's own emergency stop; the full D-043 workflow (notices, password
+  re-entry, per-version withdrawal) is not yet wired to apps.
+- **Not offerable.** Apps that run commands on the server on their own (OpenClaw, Hermes Agent,
+  Paperclip) cannot be offered in this release; see AI-APPS.md.
+
 ---
 
 ## 5. Roles and the room to play
@@ -293,7 +333,9 @@ design.
   limited.
 - For the count items (domain, database, mailbox, customer) real usage is already a number: what
   has been created is counted.
-- Until traffic starts to be measured, the traffic pool is not applied and the screen says so.
+- Traffic (alpha.118, D-044) is pooled by the month's real total of all customers' websites;
+  when the pool is full every customer's websites show "traffic limit reached" until the 1st
+  or until the pool is raised (section 14).
 
 **Customer**
 - Sees and uses only what is open in their own rights set.
@@ -569,5 +611,47 @@ tried once at the end of the release:
 Trial: tests of the changed parts, GitHub checks, and once at the end of the release an update, a
 rollback, a suspension and an SSH sandbox trial on a real server.
 
-**Out of scope:** price, period and payment; traffic measurement; OS disk quota; moving a single
-domain between subscriptions.
+**Out of scope:** price, period and payment; OS disk quota; moving a single domain between
+subscriptions. Traffic measurement followed in alpha.118 (section 14).
+
+---
+
+## 14. Limits made real (alpha.118, D-044; owner, November 3, 2026)
+
+**Traffic.** What the websites send to their visitors, per calendar month (server time), reset
+on the 1st. Measured from a small second access log per website that nginx writes for
+CelikPanel; the owner's own logs are untouched. Collected every 5 minutes, so a site can pass
+its limit by what it sends in one interval; the screens say so.
+
+| Level | What happens | Who is told |
+|---|---|---|
+| 80% | Nothing closes | Customer, its reseller, administrator |
+| 100% | Only the websites show "traffic limit reached" (503). Mail, databases, file access keep working | Customer, its reseller, administrator |
+| 1st of the month, or limit raised | The websites open again by themselves within minutes | - |
+| Reseller pool full (K2) | Every customer of the reseller gets the 100% action | Reseller, administrator, each customer |
+
+**Disk.** The real use of a subscription: site files, mail and databases, measured at the lowest
+priority every 6 hours (every hour when the hosting file system has less than 10% free, and
+soon after a restore, an import or an app install).
+
+| Level | What happens |
+|---|---|
+| 80% | Notice to the customer, its reseller and the administrator |
+| 100% | No new domain, mailbox, database, app install, manual backup or restore; new uploads close at once (file manager, FTP and SFTP read-only, PHP `file_uploads` off); the sites keep running. Notice with the suspension date |
+| 5 days over | Notice: suspension in 2 days |
+| 7 days over | The subscription is suspended (alpha.117 suspension, cause "disk") |
+| Under the limit again | The disk cause clears by itself; other causes (manual, reseller, end date) stay |
+| Operator resumes | The disk cause clears and a new 7-day period starts |
+
+CelikPanel never changes fstab, the kernel command line or file system flags; project quotas set
+up by the owner are only detected. Hard OS limits are an open item. An SSH account keeps its
+command line (it cannot be made read-only). Backups are stored outside the subscription and are
+not counted; scheduled backups keep running on a full disk.
+
+**Mail.** Each mailbox's size is enforced by Dovecot's own quota plugin (both dialects); Postfix
+asks Dovecot before accepting mail, so mail to a full mailbox is refused (552). This keeps working
+without CelikPanel. At 90% the mailbox user gets one message (English and Turkish) per crossing,
+from Dovecot's own quota warning and an hourly systemd timer running the same script.
+
+**Migration.** The traffic limits stored before were never shown or applied; they became
+unlimited (migration 057) and the administrator is told once.

@@ -54,6 +54,7 @@ func loadPlan(ctx context.Context, q rowQueryer, planID int) (loadedPlan, error)
 		SELECT id, name, owner_id, max_domains, max_databases, max_email_accounts, disk_quota_mb, bandwidth_quota_mb
 		FROM service_plans WHERE id = ?`, planID).
 		Scan(&pl.ID, &pl.Name, &owner, &pl.Limits.Domains, &pl.Limits.Databases, &pl.Limits.Mailboxes, &pl.Limits.DiskMB, &pl.Traffic)
+	pl.Limits.TrafficMB = pl.Traffic
 	if errors.Is(err, sql.ErrNoRows) {
 		return pl, errNotFound
 	}

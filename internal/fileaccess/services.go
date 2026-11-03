@@ -115,7 +115,13 @@ func RenderVsftpdUserConf(e Entry) (string, error) {
 	if err := e.Validate(); err != nil {
 		return "", err
 	}
-	return Seal("FTP folder of "+e.Username, "local_root="+ChrootDir(e.SubscriptionID)+"\n"), nil
+	body := "local_root=" + ChrootDir(e.SubscriptionID) + "\n"
+	if e.ReadOnly {
+		// The subscription's disk is full (alpha.118, D-044): reading and
+		// downloading work, nothing new is uploaded.
+		body += "write_enable=NO\n"
+	}
+	return Seal("FTP folder of "+e.Username, body), nil
 }
 
 // RenderVsftpdPAM is vsftpd's own PAM service. It does not use pam_shells,

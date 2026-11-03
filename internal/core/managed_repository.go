@@ -29,3 +29,40 @@ func InstallRequiresManagedRepository(service *ManagedService, selectedPackage s
 	match := re.FindString(selectedPackage)
 	return match == selectedPackage, nil
 }
+
+// distributionPHPLines is the PHP version each supported Debian and Ubuntu
+// release ships in its own archive (with its security support). Arch Linux
+// ships one moving PHP and has no versioned packages.
+var distributionPHPLines = map[string]string{
+	"debian 12":    "8.2",
+	"debian 13":    "8.4",
+	"ubuntu 22.04": "8.1",
+	"ubuntu 24.04": "8.3",
+}
+
+// DistributionPHPLine is the PHP major.minor the distribution release itself
+// ships ("" when this release is not one CelikPanel knows).
+// DistributionPHPLine dağıtımın kendi arşivindeki PHP sürümüdür.
+func DistributionPHPLine(distroID, versionID string) string {
+	return distributionPHPLines[strings.ToLower(strings.TrimSpace(distroID))+" "+strings.TrimSpace(versionID)]
+}
+
+var phpFPMVersionPackage = regexp.MustCompile(`^php([0-9]+\.[0-9]+)-fpm$`)
+
+// DistributionShipsSelectedPackage: the version a PHP-FPM install picks is
+// the distribution's own (php8.4-fpm on Debian 13), so it comes from the
+// distribution's archive with its companions and needs no vendor repository
+// (alpha.118 lab: Components asked for Sury to install Debian 13's own PHP
+// 8.4 extensions). Any other version still needs the vendor repository.
+// Seçilen PHP sürümü dağıtımın kendisininse üçüncü taraf depo gerekmez.
+func DistributionShipsSelectedPackage(service *ManagedService, distroID, versionID, selectedPackage string) bool {
+	if service == nil || service.ID != "php-fpm" {
+		return false
+	}
+	match := phpFPMVersionPackage.FindStringSubmatch(strings.TrimSpace(selectedPackage))
+	if match == nil {
+		return false
+	}
+	line := DistributionPHPLine(distroID, versionID)
+	return line != "" && line == match[1]
+}

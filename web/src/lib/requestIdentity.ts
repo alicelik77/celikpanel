@@ -49,6 +49,10 @@ const REASK_ROUTES = [
     // alpha.117: a database user's new password (shown once when made up).
     // Bir veritabanı kullanıcısının yeni parolası.
     /^\/api\/v1\/database-users\/\d+\/password$/,
+    // alpha.118: sending a backup to a remote destination and restoring one
+    // from there; each queues one operation, and a replay answers with it.
+    // Uzak hedefe yedek gönderme ve oradan geri yükleme; tek işlem kuyruğa girer.
+    /^\/api\/v1\/domains\/\d+\/backups\/remote\/(?:send|restore)$/,
 ];
 
 // An answer that says nothing about the change: a gateway between the browser

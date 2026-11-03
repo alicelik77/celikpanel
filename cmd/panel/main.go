@@ -98,6 +98,17 @@ type Panel struct {
 	// rotationNative replaces the Agent for transfer credential rotation in
 	// tests (nil in production; transfer_rotation.go).
 	rotationNative rotationNative
+	// alpha.118 (D-044): trafficCollector, trafficRender, diskMeasurer and
+	// mailQuota replace the Agent in tests (nil in production);
+	// usageWorker runs the traffic, disk and mail quota work (usage_worker.go).
+	trafficCollector trafficCollector
+	trafficRender    func(ctx context.Context, domainID int) error
+	diskMeasurer     diskMeasurer
+	mailQuota        func(ctx context.Context) (transport.MailQuotaReconcileResponse, error)
+	// uploadBlockNative closes or opens a subscription's FTP/SFTP and PHP
+	// uploads (disk_usage.go); nil asks the Agent.
+	uploadBlockNative func(ctx context.Context, subscriptionID int, blocked bool) (string, error)
+	usageWorker       usageWorkerState
 	// lastUpdateAttempt is injectable only for handler tests. Production leaves
 	// it nil and reads the native recovery observations directly.
 	lastUpdateAttempt func(commit string) (recoveryobs.Attempt, bool)
@@ -338,6 +349,19 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "backup-download", []string{http.MethodGet}
 	case "backups":
 		match.kind, match.methods = "backups", []string{http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodOptions}
+	// alpha.118: remote backups of the site.
+	case "backups/remote":
+		match.kind, match.methods = "backup-remote", []string{http.MethodGet}
+	case "backups/remote/policy":
+		match.kind, match.methods = "backup-remote-policy", []string{http.MethodPut, http.MethodDelete}
+	case "backups/remote/objects":
+		match.kind, match.methods = "backup-remote-objects", []string{http.MethodGet}
+	case "backups/remote/send":
+		match.kind, match.methods = "backup-remote-send", []string{http.MethodPost}
+	case "backups/remote/restore":
+		match.kind, match.methods = "backup-remote-restore", []string{http.MethodPost}
+	case "backups/remote/operation":
+		match.kind, match.methods = "backup-remote-operation", []string{http.MethodGet}
 	case "cron":
 		match.kind, match.methods = "cron", []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions}
 	case "mail/health":
@@ -358,6 +382,26 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPut, http.MethodOptions}
 	case "apps/install":
 		match.kind, match.methods = "app-install", []string{http.MethodPost}
+	case "apps":
+		// alpha.118: the domain's application catalog (read only).
+		match.kind, match.methods = "app-catalog", []string{http.MethodGet}
+	case "service-apps":
+		// alpha.118: AI and automation apps of the site (docs/AI-APPS.md).
+		// Not mapped for additional users: installing runs a service under
+		// the site's account and takes the owner's keys.
+		match.kind, match.methods = "service-apps", []string{http.MethodGet}
+	case "service-apps/install":
+		match.kind, match.methods = "service-apps-install", []string{http.MethodPost}
+	case "service-apps/update":
+		match.kind, match.methods = "service-apps-update", []string{http.MethodPost}
+	case "service-apps/control":
+		match.kind, match.methods = "service-apps-control", []string{http.MethodPost}
+	case "service-apps/logs":
+		match.kind, match.methods = "service-apps-logs", []string{http.MethodGet}
+	case "service-apps/secrets":
+		match.kind, match.methods = "service-apps-secrets", []string{http.MethodPut}
+	case "service-apps/uninstall":
+		match.kind, match.methods = "service-apps-uninstall", []string{http.MethodPost}
 	case "usage":
 		match.kind, match.methods = "usage", []string{http.MethodGet}
 	case "connection":
@@ -394,6 +438,11 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 	default:
 		if len(tail) == 2 && tail[0] == "aliases" {
 			match.kind, match.methods = "aliases", []string{http.MethodDelete}
+		} else if len(tail) == 2 && tail[0] == "apps" && validHexOperationID(tail[1]) {
+			// alpha.118: remove an installed catalog application.
+			match.kind, match.methods = "app-operation", []string{http.MethodDelete}
+		} else if len(tail) == 3 && tail[0] == "apps" && validHexOperationID(tail[1]) && (tail[2] == "retry" || tail[2] == "credentials") {
+			match.kind, match.methods = "app-operation", []string{http.MethodPost}
 		} else if len(tail) == 2 && tail[0] == "databases" {
 			if _, ok := strictPositiveID(tail[1]); !ok {
 				return domainSubroute{}, false
@@ -478,6 +527,9 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDownloadBackup(w, r)
 	case "backups":
 		p.handleDomainBackups(w, r)
+	case "backup-remote", "backup-remote-policy", "backup-remote-objects", "backup-remote-send",
+		"backup-remote-restore", "backup-remote-operation":
+		p.handleDomainRemoteBackup(w, r, match.domainID, match.kind)
 	case "cron":
 		p.handleDomainCronJobs(w, r)
 	case "mail-health":
@@ -486,6 +538,13 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainMail(w, r)
 	case "app-install":
 		p.handleAppInstall(w, r, match.domainID)
+	case "app-catalog":
+		p.handleDomainAppCatalog(w, r, match.domainID)
+	case "app-operation":
+		p.routeAppOperation(w, r, match.domainID)
+	case "service-apps", "service-apps-install", "service-apps-update", "service-apps-control",
+		"service-apps-logs", "service-apps-secrets", "service-apps-uninstall":
+		p.handleDomainServiceApps(w, r, match.domainID, match.kind)
 	case "usage":
 		p.handleDomainUsage(w, r)
 	case "connection":
@@ -1144,6 +1203,24 @@ func main() {
 	} else if recovered > 0 {
 		log.Printf("Marked %d interrupted application install(s) for review", recovered)
 	}
+	if recovered, err := panel.recoverInterruptedCatalogAppOperations(context.Background()); err != nil {
+		panel.markSubsystemDegraded(degradedSubsystemAppInstalls, errCodeStartupRecoveryFailed, err)
+		log.Printf("DEGRADED %s: failed to recover interrupted catalog applications: %v", degradedSubsystemAppInstalls, err)
+	} else if recovered > 0 {
+		log.Printf("Marked %d interrupted catalog application operation(s) for retry or review", recovered)
+	}
+	// alpha.118: an interrupted WordPress operation is marked for review
+	// (never guessed or repeated); an interrupted scan changed nothing.
+	if recovered, err := panel.recoverInterruptedWordPressOperations(context.Background()); err != nil {
+		log.Printf("WordPress operations: interrupted ones could not be marked: %v", err)
+	} else if recovered > 0 {
+		log.Printf("Marked %d interrupted WordPress operation(s) for review", recovered)
+	}
+	if recovered, err := panel.recoverInterruptedMalwareScans(context.Background()); err != nil {
+		log.Printf("Malware scans: interrupted ones could not be marked: %v", err)
+	} else if recovered > 0 {
+		log.Printf("Marked %d interrupted malware scan(s)", recovered)
+	}
 
 	// One-time repair of pre-A4 rows: seal any database root password that
 	// was stored as plaintext. Fatal on failure — booting with credentials
@@ -1367,6 +1444,8 @@ func main() {
 	http.HandleFunc(resellerPlansPath, panel.handleResellerPlans)
 	http.HandleFunc(resellerPlansPath+"/", panel.handleResellerPlanByID)
 	http.HandleFunc(rightsPathPrefix, panel.handleRightsRoutes)
+	// alpha.118: remote backup destinations and every-site schedules.
+	http.HandleFunc(remoteBackupPathPrefix, panel.handleRemoteBackupRoutes)
 	http.HandleFunc("/api/v1/subscriptions", panel.handleSubscriptions)
 	http.HandleFunc("/api/v1/subscriptions/", panel.handleSubscriptionEntitlements)
 	http.HandleFunc(transferRequestsPath, panel.handleTransferRequests)
@@ -1379,11 +1458,18 @@ func main() {
 	http.HandleFunc(securityEmergenciesPath+"/", panel.handleSecurityEmergencies)
 	http.HandleFunc(securityNoticesPath, panel.handleSecurityNotices)
 	http.HandleFunc(securityNoticesPath+"/", panel.handleSecurityNotices)
+	// alpha.118 (D-044): traffic and disk notices; the measurement status.
+	http.HandleFunc(usageNoticesPath, panel.handleUsageNotices)
+	http.HandleFunc(usageNoticesPath+"/", panel.handleUsageNotices)
+	http.HandleFunc(usageStatusPath, panel.handleUsageStatus)
 	http.HandleFunc("/api/v1/products", panel.handleProducts)
 	http.HandleFunc("/api/v1/store", panel.handleStore)
 	http.HandleFunc("/api/v1/store/", panel.handleStore)
 	http.HandleFunc("/api/v1/admin/store-catalog", panel.handleStoreCatalogAdmin)
 	http.HandleFunc("/api/v1/admin/store-catalog/", panel.handleStoreCatalogAdmin)
+	// alpha.118: the administrator's AI and automation app catalog.
+	http.HandleFunc(serviceAppsAdminPath, panel.handleServiceAppsAdmin)
+	http.HandleFunc(serviceAppsAdminPath+"/", panel.handleServiceAppsAdmin)
 	http.HandleFunc("/api/v1/audit-logs", panel.handleAuditLogs)
 	http.HandleFunc("/api/v1/dashboard", panel.handleDashboard)
 	http.HandleFunc("/api/v1/dns/remote/enrollments", panel.handleRemoteDNSAdmin)
@@ -1508,6 +1594,8 @@ func main() {
 	http.HandleFunc(osUpdatesOriginsPath, panel.handleOSUpdatesOrigins)
 	http.HandleFunc(osUpdatesModePath, panel.handleOSUpdatesMode)
 	http.HandleFunc(osUpdatesSummaryPath, panel.handleOSUpdatesSummary)
+	// alpha.118: the SSH command line's missing tools, installed by the administrator.
+	http.HandleFunc(fileAccessToolsPath, panel.handleFileAccessTools)
 	// alpha.107 (D-038 §10): services waiting for a restart, a reboot.
 	http.HandleFunc(restartNeedsPath, panel.handleRestartNeeds)
 	http.HandleFunc(osReleaseAPIPath, panel.handleOSRelease)
@@ -1564,6 +1652,9 @@ func main() {
 	http.HandleFunc("/api/v1/mail/configure", panel.handleMailConfigure)
 	http.HandleFunc("/api/v1/mail/policy", panel.handleMailPolicy)
 	http.HandleFunc("/api/v1/apps", panel.handleAppCatalog)
+	// alpha.118: WordPress tools and malware scanning of hosted sites.
+	http.HandleFunc(wordpressToolsPath, panel.handleWordPressTools)
+	http.HandleFunc(malwarePath, panel.handleMalware)
 
 	// System SQLite maintenance is a fixed-ID, administrator-only surface.
 	// Sistem SQLite bakımı, sabit kimlikli ve yalnız yöneticiye açık bir yüzeydir.
@@ -1646,13 +1737,24 @@ func main() {
 	// Immediate background host mutators are started only after recovery,
 	// route registration, and admission of normal application traffic.
 	panel.startBackupScheduler()
+	// alpha.118: scheduled minor WordPress core releases and malware scans.
+	panel.startWordPressAutoUpdater()
+	panel.startMalwareScanWorker()
+	// alpha.118: remote backups; continues what a restart interrupted.
+	panel.startRemoteBackupWorker()
 	panel.startCertRenewalScheduler()
 	panel.startVPNEntitlementReconciler()
 	// Suspensions: continue what a restart interrupted, check end dates.
 	panel.startSuspensionWorker()
+	// alpha.118 (D-044): traffic collection, disk measurement and mailbox
+	// quota enforcement.
+	panel.startUsageWorker()
 	// Security emergencies (D-043): continue what a restart interrupted,
 	// hand pending notices to the mail system.
 	panel.startEmergencyWorker()
+	// Service apps (alpha.118): continue install, update and removal
+	// operations a restart interrupted.
+	panel.resumeServiceAppOperations()
 	// A pending paired DNS publication whose cause is transient (the backup
 	// has not caught up) completes by itself through its exact recovery.
 	panel.startDNSPendingPublicationReconciler(discoveryCtx)

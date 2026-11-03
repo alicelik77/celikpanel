@@ -225,6 +225,7 @@ export const tr: Record<ShellKey, string> = {
     'dnssrv.continue': 'Devam et',
     'services.install': 'Kur',
     'services.installed': '{name} kuruldu.',
+    'services.installedWaitingSignatures': '{name} kuruldu ve ilk virüs imzalarını indiriyor; bu genellikle birkaç dakika sürer. Bir şey yapmanız gerekmiyor: indirme bitince tarayıcısı kendiliğinden başlar ve Bileşenler sayfası bir sonraki denetimde onu çalışıyor gösterir.',
     'services.phpToolProblem.versionGone': '{tool} artık kurulu olmayan PHP {version} sürümüne ayarlı; bu yüzden yanıt veremiyor. Bileşenler’de {tool} aracını açıp Yönet’te kurulu bir PHP sürümü seçin.',
     'services.phpToolProof.moved': '{tool} PHP {version} üzerinde çalışıyor: PHP {first} üzerinde çalışmadı ({why}); bu yüzden eklentileri olan sıradaki kurulu PHP sürümü kullanıldı. {tool} aracının Yönet penceresinden değiştirebilirsiniz.',
     'services.phpToolProof.notReady': '{tool} kuruldu, ama PHP {version} üzerinde yanıt vermedi ({why}). Hazır değil görünür: Bileşenler’de Yönet penceresini açın; neden orada yazar ve Yeniden denetle onu taşımadan yeniden sorar.',

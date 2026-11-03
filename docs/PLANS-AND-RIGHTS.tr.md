@@ -38,7 +38,7 @@ kullanılan şey kaldırılmaz, kimse sessizce taşınmaz), sahip bağımsızlı
 **Var:**
 - Planlar (`service_plans`): yalnız sayılar. Alan adı, veritabanı, posta
   kutusu ve disk sınırı var. Trafik alanı da var ama ölçülmüyor. 0 sınırsız
-  demek.
+  demek. (alpha.118'den beri ölçülüyor, 14. bölüm.)
 - Abonelik (`subscriptions`): planın sayılarını kopyalar.
 - Bayi havuzu (`reseller_pools`): bayinin dağıtabileceği toplamlar.
 - Bayi kendi planlarını yapabiliyor ama yalnız sayı olarak.
@@ -134,8 +134,8 @@ Hak setinin üç bölümü var. Plan da özel hak seti de aynı üç bölümden 
 | Alan adı sayısı | Alt alan adları da sayılır (bugünkü gibi) |
 | Veritabanı sayısı | Bütün oluşturma yollarında denetlenir (bugün bir yol eksik) |
 | Posta kutusu sayısı | |
-| Disk | Bugün oluşturma anında yumuşak bir kapı; işletim sistemi kotası ayrı iş |
-| Trafik | Ölçülene kadar planda **gösterilmez** (dürüstlük kuralı) |
+| Disk | Site dosyaları, posta ve veritabanlarının gerçek kullanımı (alpha.118, D-044): %100'de yeni bir şey ve yükleme yok; 7 gün aşım askıya alır. İşletim sistemi kotası yok |
+| Trafik | Takvim ayı başına web trafiği (alpha.118, D-044): %100'de ayın 1'ine dek yalnız web siteleri kapanır |
 | Müşteri sayısı | Yalnız bayi hak setinde |
 
 0 ya da boş bırakılan kalem **sınırsız** demektir ve ekranda "sınırsız" diye
@@ -161,6 +161,9 @@ yazılır.
 | Ek kullanıcılar (ekip) | Menü görünmez |
 | Dosya erişimi (FTP ve SFTP) | Erişim sekmesi görünmez; dosya yalnız panelin dosya yöneticisiyle yüklenir |
 | SSH (komut satırı) | Komut satırına girilemez; dosya erişimi etkilenmez |
+| WordPress araçları (alpha.118, `wordpress_tools`) | WordPress araçları bölümü görünmez; durum, güncelleme, küçük sürüm anahtarı ve deneme kopyası reddedilir. Çalışan site ve açık anahtarlar değişmez (hak kapalıyken otomatik güncelleme atlanır) |
+| Zararlı yazılım taraması sonuçları (alpha.118, `malware_scan`) | Zararlı yazılım taraması bölümü görünmez; müşteri tarama başlatamaz, bulgular üzerinde işlem yapamaz. Yönetici her siteyi yine tarayabilir; yöneticinin haftalık taraması onu da kapsar |
+| Kendi uzak yedek hedefleri (alpha.118) | Hesap kendi S3 ya da SFTP hedefini ekleyemez; yöneticinin sunduğu hedefi yine seçebilir. Kurulmuş zamanlamalar çalışmayı sürdürür ([REMOTE-BACKUPS.tr.md](REMOTE-BACKUPS.tr.md)) |
 
 **Dosya erişimi bugün yok.** Sahip, 2 Kasım 2026'da bir alan adının FTP ve SSH
 ayarlarını aradı ve bulamadı. Koddan doğrulandı: panelde FTP, SFTP ya da SSH
@@ -264,6 +267,50 @@ sistemi kurulmaz (D-017: tek teklif kimliği alanı). Kimlik örneği:
 Bu bölüm bir ilke koyar; mağaza ve üçüncü taraf paket düzeni ayrı bir
 tasarımdır.
 
+### 4.5 Uygulama kataloğu (alpha.118)
+
+CelikPanel'in bir siteye kurduğu uygulamalar (WordPress, PrestaShop, Nextcloud,
+Drupal, Joomla, MediaWiki, phpBB) `app:<kimlik>` sunum kimliğiyle birer yazılım
+öğesidir; örneğin `app:nextcloud`. Kullanmak için iki şey gerekir: **Uygulama
+kurucu** izni (Uygulamalar sekmesi) ve uygulamanın her katmanda sunulması
+(kurulu ∩ sunulan ∩ bayi ∩ abonelik). Bir uygulama *yalnız yönetici
+işaretlediğinde sunulur* (Planlar ve haklar → Sunulanlar; üçüncü taraf yazılım
+sunma adımında denetlenir, 4.4). Yönetici hiç seçim yapmamışsa yalnız
+`app:wordpress` sunulur; alpha.118'den önce çalışan hiçbir şey durmaz. Sınırsız
+planlar sunulanı alır (P4); diğer planlar ve Özel kümeler `app:<kimlik>`
+öğelerini adlandırır. Geri çekmek hiçbir şeyi kaldırmaz: siteler uygulamayı
+korur, yalnız yeni kurulum reddedilir (P5). Kurulum ayrıca veritabanı motorunu
+(`component:mariadb`) ve veritabanı ile disk sınırlarında yer ister. Uygulama
+ekleme ve sabitleme: [APP-CATALOG.tr.md](APP-CATALOG.tr.md).
+
+### 4.6 Yapay zekâ ve otomasyon uygulamaları (alpha.118)
+
+Uygulama kataloğunun (4.5) yanında, 4.4'ün üzerine kurulan üçüncü taraf
+yazılımlardan biri de yapay zekâ ve otomasyon uygulamaları kataloğudur
+([AI-APPS.tr.md](AI-APPS.tr.md)). İki katalog aynı `app:<id>` sunum adlarını
+paylaşır (kimlikleri çakışmaz); her biri aşağıdaki kendi sunma kuralını korur. Her uygulama bir
+sunumdur, `app:<id>` (örneğin `app:n8n`, `app:open-webui`); birini kullanmak
+ayrıca **Yapay zekâ ve otomasyon uygulamaları** iznini (`service_apps`) ister.
+
+- **Sunulana kadar kapalı.** PHP ve Node.js sürümlerinin aksine bir uygulama
+  kendiliğinden sunulmaz: yönetici onu Eklentiler sayfasında risk özetini
+  (neler yapabildiği, CelikPanel'in neyi kapattığı, ağ ihtiyacı, kaynak
+  sınırları, lisans) okuduktan sonra sunar. Sunum özetin parmak izini kaydeder;
+  sürümü, lisansı, sınırları ya da riskleri değiştiren bir sürüm, yönetici
+  yeniden okuyup sunana kadar onu yine kapatır. Çalışan çalışmaya devam eder.
+- **Zincir yalnız daraltır.** Sınırsız planlar sunulan uygulamayı kendiliğinden
+  alır (İ4); bayi ya da plan yalnız dışarıda bırakabilir. Sunucu kurulumda ve
+  güncellemede bütün katmanlara bakar; durdurma, günlük ve kaldırma açık kalır
+  (İ5).
+- **Güvenlik beklemesi.** Yönetici bir uygulamayı bekletebilir: her kurulum
+  durdurulur ve başlaması engellenir; bekleme kalkana dek kimse onu kuramaz,
+  güncelleyemez, başlatamaz. Veri asla silinmez. Bu, uygulamanın kendi acil
+  durdurmasıdır; D-043'ün tam akışı (bildirimler, parolayı yeniden girme,
+  sürüm bazında geri çekme) uygulamalara henüz bağlanmadı.
+- **Sunulamayanlar.** Sunucuda kendi başına komut çalıştıran uygulamalar
+  (OpenClaw, Hermes Agent, Paperclip) bu sürümde sunulamaz; ayrıntı
+  AI-APPS.tr.md'de.
+
 ---
 
 ## 5. Roller ve hareket alanı
@@ -297,8 +344,9 @@ tasarımdır.
   sınırlanıyor.
 - Sayı kalemlerinde (alan adı, veritabanı, posta kutusu, müşteri) gerçek
   kullanım zaten sayıdır: oluşturulmuş olanlar sayılır.
-- Trafik ölçülmeye başlayana kadar trafik havuzu uygulanmaz ve ekranda böyle
-  yazar.
+- Trafik (alpha.118, D-044) bütün müşterilerin web sitelerinin bu ayki gerçek toplamıyla
+  havuzlanır; havuz dolunca bütün müşterilerin web siteleri ayın 1'ine ya da havuz
+  yükseltilene dek "trafik sınırı doldu" gösterir (14. bölüm).
 
 **Müşteri**
 - Yalnız kendi hak setinde açık olanı görür ve kullanır.
@@ -585,5 +633,49 @@ Deneme: değişen parçaların testleri, GitHub kontrolleri ve sürüm sonunda b
 kez gerçek sunucuda güncelleme, geri dönüş, askıya alma ve SSH kum havuzu
 denemesi.
 
-**Kapsam dışı:** fiyat, dönem ve ödeme; trafik ölçümü; işletim sistemi disk
-kotası; tek bir alan adının abonelikler arasında taşınması.
+**Kapsam dışı:** fiyat, dönem ve ödeme; işletim sistemi disk kotası; tek bir alan
+adının abonelikler arasında taşınması. Trafik ölçümü alpha.118'de geldi (14. bölüm).
+
+---
+
+## 14. Sınırlar gerçek oldu (alpha.118, D-044; sahip, 3 Kasım 2026)
+
+**Trafik.** Web sitelerinin ziyaretçilere gönderdiği, takvim ayı başına (sunucu
+saati); ayın 1'inde sıfırlanır. nginx'in her site için CelikPanel'e yazdığı küçük
+ikinci erişim günlüğünden ölçülür; sahibin günlüklerine dokunulmaz. 5 dakikada bir
+toplanır; bu yüzden bir site bir aralıkta gönderdiği kadar sınırı aşabilir; ekranlar
+bunu söyler.
+
+| Düzey | Ne olur | Kime söylenir |
+|---|---|---|
+| %80 | Hiçbir şey kapanmaz | Müşteri, bayisi, yönetici |
+| %100 | Yalnız web siteleri "trafik sınırı doldu" gösterir (503). Posta, veritabanları, dosya erişimi çalışır | Müşteri, bayisi, yönetici |
+| Ayın 1'i ya da sınır yükseldi | Web siteleri birkaç dakikada kendiliğinden açılır | - |
+| Bayi havuzu doldu (K2) | Bayinin bütün müşterileri %100 işlemini alır | Bayi, yönetici, her müşteri |
+
+**Disk.** Aboneliğin gerçek kullanımı: site dosyaları, posta ve veritabanları; en
+düşük öncelikle 6 saatte bir ölçülür (barındırma dosya sisteminde %10'dan az boş yer
+varken saatte bir; geri yükleme, içe aktarma ya da uygulama kurulumundan hemen sonra).
+
+| Düzey | Ne olur |
+|---|---|
+| %80 | Müşteriye, bayisine ve yöneticiye bildirim |
+| %100 | Yeni alan adı, posta kutusu, veritabanı, uygulama kurulumu, elle yedek ya da geri yükleme yok; yeni yüklemeler hemen kapanır (dosya yöneticisi, FTP ve SFTP salt okunur, PHP `file_uploads` kapalı); siteler çalışır. Askı tarihli bildirim |
+| 5 gün aşım | Bildirim: 2 gün sonra askı |
+| 7 gün aşım | Abonelik askıya alınır (alpha.117 askısı, "disk" nedeni) |
+| Yeniden sınırın altında | Disk nedeni kendiliğinden kalkar; diğer nedenler (elle, bayi, bitiş tarihi) kalır |
+| Operatör açar | Disk nedeni kalkar ve yeni bir 7 günlük süre başlar |
+
+CelikPanel fstab'a, çekirdek satırına ya da dosya sistemi bayraklarına asla dokunmaz;
+sahibin kurduğu proje kotaları yalnız algılanır. Sert işletim sistemi sınırları açık iştir.
+SSH hesabı komut satırını korur (salt okunur yapılamaz). Yedekler aboneliğin dışında
+saklanır ve sayılmaz; disk doluyken zamanlanmış yedekler çalışmaya devam eder.
+
+**Posta.** Her posta kutusunun boyutunu Dovecot'un kendi kota eklentisi uygular (iki
+lehçe); Postfix postayı kabul etmeden önce Dovecot'a sorar; dolu kutuya gelen posta
+reddedilir (552). CelikPanel olmadan da çalışır. %90'da posta kutusu kullanıcısı her aşımda
+bir ileti (İngilizce ve Türkçe) alır: Dovecot'un kendi kota uyarısı ve aynı betiği çalıştıran
+saatlik bir systemd zamanlayıcısı.
+
+**Geçiş.** Daha önce kayıtlı trafik sınırları hiç gösterilmedi ve uygulanmadı; 057
+göçüyle sınırsız oldular ve yöneticiye bir kez söylenir.

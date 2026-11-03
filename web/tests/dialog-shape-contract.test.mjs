@@ -167,6 +167,8 @@ test('every dialogue in the product is the shared one', () => {
     'Dashboard.tsx': 1,
     'DatabaseAccountStrip.tsx': 1,
     'DomainMailManager.tsx': 1,
+    // alpha.118: installing, changing the keys of and removing an AI or automation app.
+    'DomainServiceApps.tsx': 3,
     // alpha.94: the confirmation of a database or web ready bundle.
     'ReadyBundleStrip.tsx': 2,
     'AppAccountLine.tsx': 1,
@@ -198,6 +200,9 @@ test('every dialogue in the product is the shared one', () => {
     'SuspensionDialog.tsx': 1,
     // alpha.117 (D-043): the serious confirmation of a security emergency step.
     'SecurityEmergency.tsx': 1,
+    // alpha.118: remote backups - a destination's form and its removal; a send and a restore.
+    'RemoteBackupDestinations.tsx': 2,
+    'DomainRemoteBackups.tsx': 2,
   });
 });
 

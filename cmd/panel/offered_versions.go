@@ -253,6 +253,9 @@ type offeredVersionsView struct {
 	// HiddenOfferings (alpha.117): other items the administrator does not
 	// offer, as offering ids or "permission:<id>" (rights_gate.go).
 	HiddenOfferings []string `json:"hidden_offerings"`
+	// OfferedApps (alpha.118): the catalog applications the administrator
+	// offers (an application is offered only when chosen).
+	OfferedApps []string `json:"offered_apps"`
 }
 
 type offeredVersionChange struct {
@@ -311,7 +314,7 @@ func (p *Panel) changeHiddenOffering(w http.ResponseWriter, r *http.Request, ite
 		writeServerError(w, err)
 		return
 	}
-	_ = json.NewEncoder(w).Encode(offeredVersionsView{Hidden: policy.Hidden, Restricted: false, HiddenOfferings: hiddenOfferingList(hidden)})
+	_ = json.NewEncoder(w).Encode(offeredVersionsView{Hidden: policy.Hidden, Restricted: false, HiddenOfferings: hiddenOfferingList(hidden), OfferedApps: p.offeredAppList(r.Context())})
 }
 
 // handleOfferedVersions: GET (every signed-in person: a customer's own page
@@ -331,7 +334,7 @@ func (p *Panel) handleOfferedVersions(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			hidden = map[string]bool{}
 		}
-		_ = json.NewEncoder(w).Encode(offeredVersionsView{Hidden: policy.Hidden, Restricted: !callerIsAdministrator(r), HiddenOfferings: hiddenOfferingList(hidden)})
+		_ = json.NewEncoder(w).Encode(offeredVersionsView{Hidden: policy.Hidden, Restricted: !callerIsAdministrator(r), HiddenOfferings: hiddenOfferingList(hidden), OfferedApps: p.offeredAppList(r.Context())})
 	case http.MethodPut:
 		if !callerIsAdministrator(r) {
 			writeClientError(w, http.StatusForbidden, "administrator access required")
@@ -353,6 +356,9 @@ func (p *Panel) handleOfferedVersions(w http.ResponseWriter, r *http.Request) {
 				change.Component, change.Version = "php", parts[2]
 			case len(parts) == 3 && parts[0] == "component" && parts[1] == "node":
 				change.Component, change.Version = "node", parts[2]
+			case len(parts) == 2 && parts[0] == "app":
+				p.changeOfferedApp(w, r, parts[1], change.Offered)
+				return
 			default:
 				p.changeHiddenOffering(w, r, item, change.Offered)
 				return
@@ -412,7 +418,7 @@ func (p *Panel) handleOfferedVersions(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			hiddenItems = map[string]bool{}
 		}
-		_ = json.NewEncoder(w).Encode(offeredVersionsView{Hidden: policy.Hidden, Restricted: !callerIsAdministrator(r), HiddenOfferings: hiddenOfferingList(hiddenItems)})
+		_ = json.NewEncoder(w).Encode(offeredVersionsView{Hidden: policy.Hidden, Restricted: !callerIsAdministrator(r), HiddenOfferings: hiddenOfferingList(hiddenItems), OfferedApps: p.offeredAppList(r.Context())})
 	default:
 		writeClientError(w, http.StatusMethodNotAllowed, "method not allowed")
 	}

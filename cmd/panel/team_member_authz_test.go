@@ -137,6 +137,15 @@ func seedDomainListMetadata(t *testing.T, fixture *authzMatrixFixture) {
 	); err != nil {
 		t.Fatalf("seed site metadata: %v", err)
 	}
+	// alpha.118 (D-044): the list's monthly traffic is the collected number
+	// of this month (traffic_daily), not the cached column.
+	if _, err := fixture.panel.db.GetDB().Exec(`
+		INSERT INTO traffic_daily (domain_id, day, subscription_id, bytes_out)
+		VALUES (?, strftime('%Y-%m-01', 'now', 'localtime'), ?, 987654321)`,
+		authzMatrixCustomerDomainID, authzMatrixCustomerSubID,
+	); err != nil {
+		t.Fatalf("seed traffic: %v", err)
+	}
 	// The list reports SSL only while a certificate is active, so a site that
 	// is listed with SSL on has one.
 	if _, err := fixture.panel.db.GetDB().Exec(`

@@ -714,6 +714,13 @@ func writeServerErrorFor(w http.ResponseWriter, r *http.Request, err error) {
 }
 
 func writeServerErrorAs(w http.ResponseWriter, caller *Caller, err error) {
+	// A rights change naming an app closed to resellers by its licence is a
+	// refusal with its reason, never a server error (alpha.118).
+	var licence *serviceAppLicenceClosedError
+	if errors.As(err, &licence) {
+		writeServiceAppLicenceClosed(w, licence.App)
+		return
+	}
 	// A failed dial of the Agent's socket is an unmet prerequisite with one
 	// owner action, whatever the handler was doing: no request reached the
 	// Agent. Every handler that reports through here names it (set14b O3:

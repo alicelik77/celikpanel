@@ -5,6 +5,8 @@ import type { EmergencyScreenKey } from './en';
 export const trEmergencyScreens: Record<EmergencyScreenKey, string> = {
     // Sürüm çekmecesindeki bölüm.
     'emg.title': 'Güvenlik acil durumu',
+    'emg.toolsTitle': 'Güvenlik acil durumu araçları',
+    'emg.toolsHint': 'Bir sorun yok. Bunları yalnız {name} bileşeninde bir güvenlik açığı varsa ve henüz düzeltmesi yoksa kullanın.',
     'emg.intro': 'Bunu yalnız {name} bileşeninde bir güvenlik açığı varsa ve yaması yoksa kullanın. Dört ayrı adım, en hafifi önce: geri çek, durdur, siteleri taşı, kaldır. Müşteri verisi asla silinmez.',
     'emg.open': 'Güvenlik acil durumu adımlarını aç',
     'emg.close': 'Gizle',

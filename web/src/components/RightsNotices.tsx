@@ -6,7 +6,8 @@ import { showToast } from './Toast';
 import { Button } from './ui';
 import { refusalText } from '../lib/apiError';
 import { invalidate, useRemote } from '../lib/remote';
-import { MIGRATION_NOTICE, POOL_NOTICES, RIGHTS_NOTICES_URL, decodeNotices, sendRights, type RightsNotice } from '../lib/rights';
+import { MIGRATION_NOTICE, POOL_NOTICES, RIGHTS_NOTICES_URL, TRAFFIC_MEASURED_NOTICE, decodeNotices, sendRights, type RightsNotice } from '../lib/rights';
+import { UsageNotices, UsageStatusCard } from './UsageNotices';
 
 // What the rights want someone to see (D-042 5 and 9): after the update, the
 // customers that had no subscription and are now Unlimited (the
@@ -73,13 +74,23 @@ export function AdminRightsNotices({ onSetRights }: { onSetRights: (userId: numb
     const { t } = useI18n();
     const read = useRemote(RIGHTS_NOTICES_URL, decodeNotices);
     const { busy, acknowledge } = useAcknowledge();
-    if (read.remote.state !== 'known') return null;
-    const notices = read.remote.value;
+    const notices = read.remote.state === 'known' ? read.remote.value : [];
     const migrated = notices.filter((notice) => notice.kind === MIGRATION_NOTICE);
     const pools = notices.filter((notice) => POOL_NOTICES.includes(notice.kind));
-    if (migrated.length === 0 && pools.length === 0) return null;
+    const traffic = notices.filter((notice) => notice.kind === TRAFFIC_MEASURED_NOTICE);
     return (
         <div className="mb-4 grid gap-3">
+            {/* alpha.118 (D-044): whether measuring works, and the traffic and disk notices. */}
+            <UsageStatusCard />
+            <UsageNotices />
+            {traffic.length > 0 && (
+                <section className="rounded-lg border border-border bg-surface p-4 text-sm leading-6 text-fg" role="status" data-rights-notice="traffic-measured">
+                    <h3 className="text-base font-semibold">{t('usage.measured.title')}</h3>
+                    <p className="mt-1 max-w-[75ch]">{t('usage.measured.body')}</p>
+                    <p className="mt-1 max-w-[75ch]"><span className="font-semibold">{t('problem.todo')}</span> {t('usage.measured.todo')}</p>
+                    <Button type="button" icon={Check} className="mt-2 max-sm:min-h-11" onClick={() => void acknowledge(traffic.map((notice) => notice.id))} disabled={busy !== null}>{t('rights.notice.seen')}</Button>
+                </section>
+            )}
             {migrated.length > 0 && (
                 <section className="rounded-lg border border-warning-mark/50 bg-warning-mark/15 p-4 text-sm leading-6 text-fg" role="status" data-rights-notice="migration">
                     <h3 className="flex items-start gap-2 text-base font-semibold">

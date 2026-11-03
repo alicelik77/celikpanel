@@ -318,6 +318,14 @@ func (p *Panel) handlePutFileAccess(w http.ResponseWriter, r *http.Request, site
 		RemoveKeys:          request.RemoveKeys,
 		Reconcile:           reconcile,
 	}
+	// alpha.118 (D-044): a full disk keeps the subscription's FTP and SFTP
+	// read-only whatever else this change does.
+	if blocked, err := subscriptionUploadsBlocked(r.Context(), p.db.GetDB(), site.SubscriptionID); err != nil {
+		writeServerError(w, err)
+		return
+	} else {
+		change.ReadOnly = blocked
+	}
 	var response transport.ApplyFileAccessResponse
 	if preview {
 		change.Password = ""
@@ -337,6 +345,12 @@ func (p *Panel) handlePutFileAccess(w http.ResponseWriter, r *http.Request, site
 	if err := p.callAgentContext(r.Context(), "Agent.FileAccessStateV1",
 		&transport.FileAccessStateRequest{Site: change.Site}, &before); err != nil {
 		writeServerErrorFor(w, r, err)
+		return
+	}
+	// alpha.118: the command line is not turned on while the server lacks
+	// its tools; the administrator installs them first (file_access_tools.go).
+	if message, missing, refused := sshToolsMissingRefusal(change, before); refused {
+		writeCodedErrorDetails(w, http.StatusConflict, errCodeFileAccessSSHToolsMissing, message, "", missing)
 		return
 	}
 	if err := p.callAgentContext(r.Context(), "Agent.ApplyFileAccessV1", &change, &response); err != nil {

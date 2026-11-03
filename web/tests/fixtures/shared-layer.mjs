@@ -126,6 +126,22 @@ export const siteCertificateRequestURL = compileSource('lib/siteCertificateReque
       : unexpected('lib/siteCertificateRequest.ts')(specifier)
 ));
 
+// alpha.118: remote backups' decoders and decisions; no imports of its own.
+export const remoteBackupURL = compileSource('lib/remoteBackup.ts', unexpected('lib/remoteBackup.ts'));
+
+// A part of a screen loaded lazily (`import('./X')`) is given a stand-in by the
+// test that mounts the screen: the compiled module, with that one import
+// pointed at `replacementURL`. Any other lazy import is left as it is.
+// Bir ekranın tembel yüklenen parçasına, ekranı bağlayan test bir vekil verir.
+export function replaceLazyImport(moduleURL, specifier, replacementURL) {
+  const source = Buffer.from(moduleURL.slice(moduleURL.indexOf(',') + 1), 'base64').toString();
+  const quoted = specifier.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+  const pattern = new RegExp(`import\\(['"]${quoted}['"]\\)`, 'g');
+  const replaced = source.replace(pattern, `import('${replacementURL}')`);
+  if (replaced === source) throw new Error(`${specifier} is not imported lazily`);
+  return dataModule(replaced);
+}
+
 export function sharedLayer(stubURL, extra = {}) {
   const uiURL = compileSource('components/ui.tsx', (specifier) => (
     specifier.endsWith('/apiError') ? apiErrorURL : stubURL
@@ -154,6 +170,7 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/offeredVersions': offeredVersionsURL,
     '/lib/vendorLane': vendorLaneURL,
     '/lib/testedVersions': testedVersionsURL,
+    '/lib/remoteBackup': remoteBackupURL,
     '/ui': uiURL,
     ...extra,
   };

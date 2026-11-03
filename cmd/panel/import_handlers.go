@@ -517,6 +517,7 @@ func (p *Panel) handleImportApply(w http.ResponseWriter, r *http.Request) {
 			}
 			p.mailMutationMu.Unlock()
 			imported++
+			p.requestMailQuotaReconcile()
 		}
 		mailDetail := fmt.Sprintf("%d accounts imported with original passwords (mailbox CONTENTS are not migrated in v1)", imported)
 		if imported > 0 {
@@ -721,6 +722,8 @@ func (p *Panel) handleImportApply(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	answer := importApplyAnswerFor(req.Domain, domainID, siteID, steps)
+	// alpha.118 (D-044): an import grows the subscription; measure it soon.
+	p.requestDiskMeasurement(ctx, req.SubscriptionID)
 	if answer.Status != importStatusComplete {
 		p.audit(r, "import.cpanel.incomplete", "domain", domainID)
 	} else {

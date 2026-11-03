@@ -165,7 +165,8 @@ test('partial webmail uninstall keeps an idempotent cleanup retry reachable', ()
   assert.match(dialog, /error=\{uninstallError\}/);
   assert.match(dialog, /retryCleanup=\{retryCleanup\}/);
   assert.match(dialog, /cleanupAttempt=\{cleanupAttempt\}/);
-  assert.match(dialog, /onConfirm=\{\(\) => doUninstall\(uninstallTarget\)\}/);
+  // alpha.118: the dialog hands back the engine's own tools the owner left ticked.
+  assert.match(dialog, /onConfirm=\{\(also\) => doUninstall\(uninstallTarget, also\)\}/);
   assert.match(uninstallFlow, /fetch\('\/api\/v1\/service\/uninstall'/);
   assert.match(uninstallFlow, /JSON\.stringify\(\{ service_id: service\.id \}\)/);
   assert.match(serviceList, /error \? 'services\.retryWebmailCleanup' : 'services\.cleanupWebmail'/);

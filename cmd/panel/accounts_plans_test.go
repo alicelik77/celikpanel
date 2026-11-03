@@ -523,7 +523,7 @@ func TestMySubscriptionShowsPlanUsageAndContact(t *testing.T) {
 			} `json:"usage"`
 		} `json:"subscriptions"`
 		Contact   myContact       `json:"contact"`
-		Bandwidth map[string]bool `json:"bandwidth"`
+		Bandwidth map[string]any  `json:"bandwidth"`
 		Pool      json.RawMessage `json:"pool"`
 	}
 	if err := json.Unmarshal(recorder.Body.Bytes(), &answer); err != nil {
@@ -539,8 +539,9 @@ func TestMySubscriptionShowsPlanUsageAndContact(t *testing.T) {
 	if answer.Contact.Kind != "reseller" || answer.Contact.Name != "matrix-reseller" {
 		t.Fatalf("contact: %+v", answer.Contact)
 	}
-	if answer.Bandwidth["measured"] {
-		t.Fatal("traffic is not measured, but the answer says it is")
+	// alpha.118 (D-044): traffic is measured; the answer says how often.
+	if answer.Bandwidth["measured"] != true || answer.Bandwidth["interval_minutes"] != float64(5) {
+		t.Fatalf("bandwidth: %v", answer.Bandwidth)
 	}
 	if len(answer.Pool) != 0 {
 		t.Fatal("a customer was shown a reseller pool")

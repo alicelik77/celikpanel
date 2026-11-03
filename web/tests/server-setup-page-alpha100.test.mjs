@@ -92,11 +92,11 @@ test('the route answers with its page; the wizard keeps /setup', () => {
     assert.ok(!/^import \{[^}]*ServerSetupPage/m.test(app), 'the page must stay lazy');
 });
 
-test('/settings?section=setup is replaced by the new page; Settings keeps its three sections', () => {
+test('/settings?section=setup is replaced by the new page; Settings keeps its own sections', () => {
     assert.equal(nav.movedSettingsSections.setup, '/server-setup');
     assert.equal(nav.settingsRedirect('?section=setup', 'admin'), '/server-setup');
     assert.equal(nav.settingsRedirect('?section=setup&from=guide', 'admin'), '/server-setup');
-    for (const section of ['panel', 'license', 'updates']) {
+    for (const section of ['panel', 'license', 'updates', 'remote-backups']) {
         assert.equal(nav.settingsRedirect(`?section=${section}`, 'admin'), null, section);
     }
     // A reseller or a customer still goes to My account, an additional user nowhere.
@@ -109,9 +109,10 @@ test('/settings?section=setup is replaced by the new page; Settings keeps its th
     assert.match(route, /if \(target\) return <Navigate to=\{target\} replace \/>;/);
 
     const settings = read('../src/components/Settings.tsx');
-    assert.match(settings, /type SettingsSectionID = 'panel' \| 'license' \| 'updates';/);
+    // alpha.118: remote backups are a fourth section.
+    assert.match(settings, /type SettingsSectionID = 'panel' \| 'license' \| 'updates' \| 'remote-backups';/);
     const adminSections = settings.slice(settings.indexOf("const sections: SettingsSection[] = role === 'admin'"), settings.indexOf(': [];'));
-    assert.deepEqual([...adminSections.matchAll(/id:\s*'([a-z-]+)'\s+as const/g)].map((match) => match[1]), ['panel', 'license', 'updates']);
+    assert.deepEqual([...adminSections.matchAll(/id:\s*'([a-z-]+)'\s+as const/g)].map((match) => match[1]), ['panel', 'license', 'updates', 'remote-backups']);
     assert.ok(!settings.includes('ServerSetupSettings') && !settings.includes('settings-setup-panel'));
 });
 

@@ -17,7 +17,7 @@ import (
 // alpha.114 beÅŸ gÃ¶Ã§ taÅŸÄ±r (047â€“051); hepsi eklemelidir, var olan satÄ±r deÄŸiÅŸmez.
 const (
 	panelPortChangeMigrationVersion = 47
-	newestMigrationVersion          = transferRotationMigrationVersion
+	newestMigrationVersion          = serviceAppsMigrationVersion
 )
 
 // requireMigrationsFrom proves that the embedded list ends at the newest
@@ -117,6 +117,17 @@ func TestSchema46DatabaseUpgradesThroughMigration51WithEveryRowIntact(t *testing
 	columns := make(map[string][]string, len(tables))
 	for _, table := range tables {
 		columns[table] = tableColumns(t, raw, table)
+		if table == "subscriptions" {
+			// 057 (alpha.118) sets the never-applied traffic limit to 0;
+			// that one value is checked below.
+			kept := columns[table][:0]
+			for _, column := range columns[table] {
+				if column != "bandwidth_quota_mb" {
+					kept = append(kept, column)
+				}
+			}
+			columns[table] = kept
+		}
 		before[table] = dumpRows(t, raw, table, columns[table])
 	}
 	if err := raw.Close(); err != nil {
@@ -133,6 +144,10 @@ func TestSchema46DatabaseUpgradesThroughMigration51WithEveryRowIntact(t *testing
 		if after := dumpRows(t, upgraded, table, columns[table]); after != before[table] {
 			t.Errorf("%s changed by the upgrade:\nbefore %s\nafter  %s", table, before[table], after)
 		}
+	}
+	var bandwidth int
+	if err := upgraded.QueryRow(`SELECT bandwidth_quota_mb FROM subscriptions WHERE id = 502`).Scan(&bandwidth); err != nil || bandwidth != 0 {
+		t.Errorf("the never-applied traffic limit after 057 = %d, %v; want 0 (unlimited)", bandwidth, err)
 	}
 	for version, filename := range wantFiles {
 		var recorded string

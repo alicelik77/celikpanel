@@ -61,7 +61,7 @@ type planPayload struct {
 }
 
 func (pl planPayload) limits() planLimits {
-	return planLimits{Domains: pl.MaxDomains, Databases: pl.MaxDatabases, Mailboxes: pl.MaxEmailAccounts, DiskMB: pl.DiskQuotaMB}
+	return planLimits{Domains: pl.MaxDomains, Databases: pl.MaxDatabases, Mailboxes: pl.MaxEmailAccounts, DiskMB: pl.DiskQuotaMB, TrafficMB: pl.BandwidthQuotaMB}
 }
 
 const (

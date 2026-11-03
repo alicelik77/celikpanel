@@ -1441,6 +1441,34 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse the service apps (migration 61, alpha.118).
+        DROP TABLE service_app_operations;
+        DROP TABLE service_app_installs;
+        DROP TABLE service_app_offerings;
+        -- Reverse the remote backups (migration 60, alpha.118).
+        DROP TABLE remote_backup_operations;
+        DROP TABLE remote_backup_policies;
+        DROP TABLE remote_backup_destinations;
+        -- Reverse the site tools (migration 59, alpha.118).
+        DROP TABLE malware_notices;
+        DROP TABLE malware_findings;
+        DROP TABLE malware_scans;
+        DROP TABLE wordpress_site_settings;
+        DROP TABLE wordpress_operations;
+        -- Reverse the application catalog operations (migration 58, alpha.118).
+        DROP TABLE app_catalog_operations;
+        -- Reverse the usage limits (migration 57, alpha.118).
+        ALTER TABLE subscription_suspensions DROP COLUMN cause_disk;
+        ALTER TABLE reseller_plans DROP COLUMN traffic_quota_mb;
+        ALTER TABLE reseller_pools DROP COLUMN traffic_quota_mb;
+        DROP TABLE usage_notices;
+        DROP TABLE subscription_disk_usage;
+        DROP TABLE traffic_web_blocks;
+        DROP TABLE traffic_sources;
+        DROP TABLE traffic_collect_state;
+        DROP TABLE traffic_daily;
+        DELETE FROM rights_notices WHERE kind = 'traffic_measured';
+
         -- Reverse the transfer credential rotation (migration 56, alpha.117).
         DROP TABLE transfer_rotation_effects;
         DROP TABLE transfer_rotations;

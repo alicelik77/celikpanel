@@ -53,6 +53,8 @@ var routeRoleMatrix = map[string]string{
 	"/":                             gatePublic, // the web interface (SPA)
 	"/api/v1/admin/store-catalog":   gateAdmin,
 	"/api/v1/admin/store-catalog/":  gateAdmin,
+	"/api/v1/admin/service-apps":    gateAdmin, // alpha.118: offering AI and automation apps
+	"/api/v1/admin/service-apps/":   gateAdmin,
 	"/api/v1/apps":                  gateTenant, // catalog read; install is ownership-checked
 	"/api/v1/audit-logs":            gateAdmin,
 	"/api/v1/auth/2fa/disable":      gateTenant, // own account only
@@ -132,6 +134,9 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/security-emergencies/": gateAdmin,   // D-043; steps need name + password (handler)
 	"/api/v1/security-notices":      gateTenant,  // the caller's own notices only (handler)
 	"/api/v1/security-notices/":     gateTenant,  // marks the caller's own notice seen (handler)
+	"/api/v1/usage-notices":         gateTenant,  // D-044: the caller's own notices only (handler)
+	"/api/v1/usage-notices/":        gateTenant,  // D-044: marks the caller's own notice seen (handler)
+	"/api/v1/usage/status":          gateTenant,  // D-044: administrator only (handler)
 	"/api/v1/suspensions/deletable": gateAccount, // admin + reseller (handler); customers refused
 	"/api/v1/transfer-requests":     gateAccount, // admin all, reseller its own, customer its own (handler)
 	"/api/v1/transfer-requests/":    gateAccount, // approver decides, requester withdraws (handler)
@@ -176,6 +181,7 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/invitations/":                    gateAccount, // resend/void only for invitees the caller manages (handler)
 	"/api/v1/panel/port":                      gateAdmin,
 	"/api/v1/security/os-updates/mode":        gateAdmin,
+	"/api/v1/service/file-access-tools":       gateAdmin,
 	"/api/v1/security/os-updates/summary":     gateAdmin,
 
 	// Server, DNS infrastructure, setup and updates: administrator only.
@@ -239,6 +245,18 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/setup/publisher":                  gateAdmin,
 	"/api/v1/setup/revise":                     gateAdmin,
 	"/api/v1/setup/start":                      gateAdmin,
+
+	// alpha.118: domain ownership, suspension and the wordpress_tools /
+	// malware_scan rights are checked in the handlers; the schedule is
+	// administrator-only there.
+	"/api/v1/wordpress/": gateTenant,
+	"/api/v1/malware/":   gateTenant,
+
+	// alpha.118: remote backup destinations are account routes (additional
+	// users never); the handlers check the backups and
+	// remote_backup_destinations rights and keep every-site schedules
+	// administrator-only.
+	"/api/v1/remote-backup/": gateAccount,
 }
 
 // registeredPanelRoutes parses the package source and returns every route

@@ -270,6 +270,8 @@ func (p *Panel) runServiceInstall(
 		if mailResp.HostCertificate != "" {
 			result["host_certificate"] = mailResp.HostCertificate
 		}
+		// Mailbox limits are enforced as soon as mail is configured.
+		p.requestMailQuotaReconcile()
 		// The agent starts a unit the moment its package lands, which is BEFORE
 		// this configuration ran — on Arch that first start failed (no TLS cert
 		// yet) and systemd left the service in "failed", so a correct install
@@ -410,7 +412,16 @@ func (p *Panel) runServiceInstall(
 	if err != nil {
 		return result, serviceInstallFailure(fmt.Errorf("post-install scan: %w", err))
 	}
-	if !verifyManagedServiceReady(services, req.ServiceID) {
+	// ClamAV installed before freshclam's first download (alpha.118 lab, D6):
+	// installed and enabled, its daemon starts by itself when the signatures
+	// are in. Not a failure; the scan shows the row as waiting until then.
+	waitingFirstSignatures := req.ServiceID == "clamav" && resp.Waiting == transport.InstallWaitingFirstSignatures
+	if waitingFirstSignatures && !verifyManagedServiceReady(services, req.ServiceID) {
+		if !verifyManagedServiceInstalled(services, req.ServiceID) {
+			return result, serviceInstallFailure(errors.New("post-install scan did not find ClamAV installed"))
+		}
+		result["waiting"] = transport.InstallWaitingFirstSignatures
+	} else if !verifyManagedServiceReady(services, req.ServiceID) {
 		return result, serviceInstallFailure(errors.New("post-install scan did not find the requested service in its required state"))
 	}
 	if req.ServiceID == "postgresql" && req.Package != "" {

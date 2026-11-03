@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alicelik/celikpanel/internal/appcatalog"
 	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -49,6 +50,13 @@ const (
 type adminOfferLayer struct {
 	versions offeredVersions
 	hidden   map[string]bool
+	// apps (alpha.118): the catalog applications the administrator offers.
+	// Unlike other items an application is offered only when chosen
+	// (third-party software is gated at the offer step, D-042).
+	apps map[string]bool
+	// serviceApps: the catalog service apps the administrator offers and
+	// has not put on a security hold (alpha.118). Closed by default.
+	serviceApps map[string]bool
 }
 
 func (p *Panel) loadHiddenOfferings(ctx context.Context) (map[string]bool, error) {
@@ -97,7 +105,15 @@ func (p *Panel) loadAdminOfferLayer(ctx context.Context) (adminOfferLayer, error
 	if err != nil {
 		return adminOfferLayer{}, fmt.Errorf("items offered to customers: %w", err)
 	}
-	return adminOfferLayer{versions: versions, hidden: hidden}, nil
+	apps, err := p.loadOfferedApps(ctx)
+	if err != nil {
+		return adminOfferLayer{}, fmt.Errorf("applications offered to customers: %w", err)
+	}
+	serviceApps, err := p.loadOfferedServiceApps(ctx)
+	if err != nil {
+		return adminOfferLayer{}, fmt.Errorf("service apps offered to customers: %w", err)
+	}
+	return adminOfferLayer{versions: versions, hidden: hidden, apps: apps, serviceApps: serviceApps}, nil
 }
 
 func (a adminOfferLayer) permits(permission string) bool {
@@ -107,6 +123,18 @@ func (a adminOfferLayer) permits(permission string) bool {
 func (a adminOfferLayer) offers(offeringID string) bool {
 	if a.hidden[offeringID] {
 		return false
+	}
+	// alpha.118: one "app:<id>" namespace, two catalogs with their own offer
+	// rule. A service app (AI and automation) is closed until the
+	// administrator offers it after reading its risk summary; it is matched
+	// first, by its exact catalog id. Every other "app:" id belongs to the
+	// application catalog, offered only when the administrator chose it
+	// (WordPress alone before any choice); an unknown one is not offered.
+	if appID, ok := serviceAppOfferingApp(offeringID); ok {
+		return a.serviceApps[appID]
+	}
+	if id, ok := appcatalog.IDFromOffering(offeringID); ok {
+		return a.apps[id]
 	}
 	parts := strings.SplitN(offeringID, ":", 3)
 	if len(parts) == 3 && parts[0] == "component" {
@@ -383,6 +411,8 @@ func (p *Panel) installedOfferingIDs(ctx context.Context) ([]string, error) {
 	for _, provider := range core.ACMEProviders {
 		out = append(out, "integration:acme:"+provider.ID)
 	}
+	out = append(out, catalogOfferingIDs()...)
+	out = append(out, serviceAppCandidateOfferings()...)
 	return out, nil
 }
 
@@ -552,6 +582,21 @@ var domainSubrouteRights = map[string]domainSubrouteRight{
 	"site-protect-users": {right: rightSiteProtect},
 	"site-redirects":     {right: rightSiteProtect},
 	"app-install":        {right: rightAppInstaller},
+	"app-catalog":        {right: rightAppInstaller},
+	"app-operation":      {right: rightAppInstaller},
+
+	// alpha.118: remote backups use the backup permission; an own
+	// destination needs remote_backup_destinations as well (checked inside).
+	"backup-remote":           {right: rightBackups},
+	"backup-remote-policy":    {right: rightBackups},
+	"backup-remote-objects":   {right: rightBackups, gateReads: true},
+	"backup-remote-send":      {right: rightBackups},
+	"backup-remote-restore":   {right: rightBackups},
+	"backup-remote-operation": {right: rightBackups},
+	// alpha.118: installing or updating a service app is new use; reading,
+	// stopping, logs and removal stay open (D-042 P5).
+	"service-apps-install": {right: rightServiceApps},
+	"service-apps-update":  {right: rightServiceApps},
 }
 
 // domainSubrouteRightFor: the permission a request needs, "" when none.

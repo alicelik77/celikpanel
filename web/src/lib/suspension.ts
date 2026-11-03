@@ -49,7 +49,14 @@ export interface SuspensionPreview {
     notes: string[];
 }
 
-export interface SuspensionCauses { manual: boolean; reseller_id?: number; reseller?: string; expired: boolean }
+export interface SuspensionCauses {
+    manual: boolean;
+    reseller_id?: number;
+    reseller?: string;
+    expired: boolean;
+    /** alpha.118 (D-044): over the disk limit for 7 days. */
+    disk?: boolean;
+}
 
 export interface SubscriptionSuspensionView {
     subscription_id: number;
@@ -114,6 +121,7 @@ function decodeCauses(raw: unknown): SuspensionCauses {
         reseller_id: typeof causes.reseller_id === 'number' ? causes.reseller_id : undefined,
         reseller: typeof causes.reseller === 'string' ? causes.reseller : undefined,
         expired: causes.expired === true,
+        disk: causes.disk === true,
     };
 }
 
@@ -245,11 +253,12 @@ export function availableActions(view: AccountSuspensionView): { suspend: boolea
 }
 
 /** Why a subscription is suspended, as the keys of its causes. */
-export function causeKeys(causes: SuspensionCauses): Array<'manual' | 'reseller' | 'expired'> {
+export function causeKeys(causes: SuspensionCauses): Array<'manual' | 'reseller' | 'expired' | 'disk'> {
     return [
         ...(causes.manual ? (['manual'] as const) : []),
         ...(causes.reseller_id !== undefined || causes.reseller ? (['reseller'] as const) : []),
         ...(causes.expired ? (['expired'] as const) : []),
+        ...(causes.disk ? (['disk'] as const) : []),
     ];
 }
 
