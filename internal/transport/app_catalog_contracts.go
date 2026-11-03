@@ -57,12 +57,14 @@ type AppPrerequisitesResponse struct {
 // Failure kinds of the catalog RPCs, for the screen's guidance.
 const (
 	AppFailVerification = "verification" // the download did not match the pinned digest
+	AppFailUnpack       = "unpack"       // the verified release could not be unpacked safely (nothing changed)
 	AppFailDownload     = "download"     // the release could not be downloaded
 	AppFailPrerequisite = "prerequisite" // something the administrator or owner must change first
 	AppFailContent      = "content"      // the document root holds content
 	AppFailPublish      = "publish"      // the files could not be put in place
 	AppFailSetup        = "setup"        // the application's own installer failed
 	AppFailNginx        = "nginx"        // nginx refused or kept a file
+	AppFailRemove       = "remove"       // a removal stopped part way; running it again continues it
 	AppFailInternal     = "internal"
 )
 

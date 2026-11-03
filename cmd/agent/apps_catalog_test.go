@@ -211,9 +211,10 @@ func newCatalogTestSite(t *testing.T, php string) catalogTestSite {
 	if err := os.MkdirAll(docRoot, 0o750); err != nil {
 		t.Fatal(err)
 	}
-	previous := catalogSitePaths
+	previous, previousRemovals := catalogSitePaths, catalogRemovalStateDir
 	catalogSitePaths = func(int, int) (string, string, error) { return docRoot, home, nil }
-	t.Cleanup(func() { catalogSitePaths = previous })
+	catalogRemovalStateDir = filepath.Join(t.TempDir(), "app-removals")
+	t.Cleanup(func() { catalogSitePaths, catalogRemovalStateDir = previous, previousRemovals })
 	return catalogTestSite{docRoot: docRoot, home: home, site: transport.AppSiteIdentity{
 		SiteID: 21, SubscriptionID: 4, DomainID: 13, Domain: catalogTestDomain,
 		Username: services.SiteUsername(catalogTestDomain), PHPVersion: php,
@@ -352,6 +353,9 @@ func fakeSiteUser(t *testing.T, calls *[]string) {
 		*calls = append(*calls, strings.Join(argv, " "))
 		switch argv[0] {
 		case "find":
+			if argv[len(argv)-1] != "-delete" {
+				return "", nil // the permission reset before the removal
+			}
 			entries, _ := os.ReadDir(argv[1])
 			for _, entry := range entries {
 				_ = os.RemoveAll(filepath.Join(argv[1], entry.Name()))

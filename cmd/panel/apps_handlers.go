@@ -93,7 +93,8 @@ func (p *Panel) handleAppInstall(w http.ResponseWriter, r *http.Request, domainI
 	}
 	// alpha.118: WordPress is an offering too ("app:wordpress"); it stays
 	// offered on an existing server until the administrator withdraws it.
-	if wp, _ := appcatalog.Lookup("wordpress"); !p.requireAdministratorOffersApp(w, r, wp) {
+	wp, _ := appcatalog.Lookup("wordpress")
+	if !p.requireAdministratorOffersApp(w, r, wp) {
 		return
 	}
 	if !p.requireSubscriptionOffering(w, r, target.SubscriptionID, appcatalog.OfferingID("wordpress"), "WordPress", false) {
@@ -111,6 +112,19 @@ func (p *Panel) handleAppInstall(w http.ResponseWriter, r *http.Request, domainI
 	}
 	if err := p.checkSubscriptionQuota(r.Context(), target.SubscriptionID, quotaDBs); err != nil {
 		writeQuotaRefusal(w, err)
+		return
+	}
+	// alpha.118 (lab): the same prerequisite check as every catalog
+	// application, before anything is created. Without mysqli WordPress was
+	// put in place and answered HTTP 500 "Requirements Not Met".
+	// Diğer katalog uygulamalarıyla aynı önkoşul denetimi, hiçbir şey
+	// oluşturulmadan önce.
+	site, err := p.appSiteFacts(r.Context(), target)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	if !p.requireAppPrerequisites(w, r, wp, appSiteIdentity(target, domainID, site.phpVersion)) {
 		return
 	}
 

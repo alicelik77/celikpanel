@@ -356,6 +356,13 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 	if requiresRepo && family == "apt" && svc.ID == "postgresql" && req.Package != "" && !svc.Repo.Required && pgDistributionOffers(req.Package) {
 		requiresRepo = false
 	}
+	// alpha.118 (lab): the PHP version the distribution itself ships
+	// (php8.4-fpm on Debian 13) installs from the distribution's archive with
+	// its extension packages; no vendor repository is needed.
+	if requiresRepo && family == "apt" && !svc.Repo.Required &&
+		core.DistributionShipsSelectedPackage(svc, profile.ID, profile.Version, req.Package) {
+		requiresRepo = false
+	}
 	if family == "apt" && requiresRepo {
 		var repoStatus RepoStatusResponse
 		if err := a.RepoStatus(&EnableRepoRequest{RepoID: svc.Repo.ID}, &repoStatus); err != nil {

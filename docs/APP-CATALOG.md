@@ -51,7 +51,17 @@ on Debian, Ubuntu and Arch is proven in the release's lab round; until then the 
    PHP extension with the **distribution package that brings it** (`php8.3-intl` on Debian and
    Ubuntu, `php-intl` on Arch, or "switch it on in php.ini"); the empty document root (or only
    CelikPanel's placeholder); free disk where sites live. The installer never installs a
-   package: the administrator does, from Components or the system's package manager.
+   package: the administrator does, from Components or the system's package manager. On Debian
+   and Ubuntu the card and the refusal offer the administrator **Install PHP <version>
+   extensions in Components**: it opens Components with the install of PHP-FPM of the site's
+   PHP version, whose preview lists its standard extension packages (`-mysql`, `-curl`,
+   `-gd`, `-zip`, `-intl`, `-mbstring`, `-xml`, `-bcmath` …); nothing starts before
+   the administrator confirms. The distribution's own PHP version (8.2 on Debian 12, 8.4 on
+   Debian 13, 8.1 on Ubuntu 22.04, 8.3 on Ubuntu 24.04) installs from the distribution's archive
+   **without** the Sury repository (alpha.118); other versions still need it. Arch Linux ships
+   one PHP: the refusal names `php-gd`/`php-intl`-style packages or the extensions to switch
+   on in `/etc/php/conf.d`; the panel has no button for that yet. WordPress runs the same
+   check (at least `mysqli`) before its database is created (alpha.118).
 3. **Database** and its user, recorded and counted like any database (the WordPress saga).
 4. **Files**: download, verify, unpack into a root-private staging folder with the WordPress
    limits, give to the site's user, write the **setup lock** (every address answers "being set
@@ -64,7 +74,14 @@ on Debian, Ubuntu and Arch is proven in the release's lab round; until then the 
    `install/phpbbcli.php install` (phpBB). Secrets never appear on a command line (other users
    can read those): the command line holds `@@CELIKPANEL:NAME@@` tokens and a fixed PHP file
    loaded first (`/var/lib/celikpanel-app-setup/prepend.php`) reads the values from standard
-   input. Installer output is returned with every secret removed and is never logged.
+   input. Installer output is returned with every secret removed and is never logged; its last
+   lines are shown beside a failed setup. The helper folder is made `0755` explicitly, because
+   the agent runs with `UMask=0027` and the site's user must read the helper (alpha.118: Joomla's
+   installer stopped with exit code 255 on "Failed opening required … prepend.php").
+   Downloads name CelikPanel in their User-Agent (`CelikPanel/<version>
+   (+https://celikpanel.net)`); some upstream servers refuse Go's default one.
+   Unpacking accepts relative links that stay inside the release, also through other links,
+   and writes them as copies; absolute links and links that leave the release are refused.
 6. **Rules**: the application's nginx rules are written to the site's CelikPanel include
    directory, then the setup lock is removed.
 
@@ -92,6 +109,16 @@ Type the domain to confirm. The Agent checks the document root still holds the a
 page back and removes the application's nginx rules and setup lock (a file the owner edited is
 kept and named). The database is removed only when ticked; Nextcloud's data folder only when it
 is also ticked.
+
+Applications make folders read-only (Drupal's `sites/default`): the site's user first gives
+itself `u+rwx` back on its own folders (`find -type d … chmod u+rwx`, no link followed). The
+removal is recorded in a root-private file before the first file is deleted
+(`/var/lib/celikpanel-agent-private/app-removals/`). If deletion still stops part way, the
+placeholder page is put back beside what remains (never over a file), the row says "Removing …
+stopped part way" (`needs_review` with kind `remove`, code `APP_REMOVE_INCOMPLETE`) with the
+path that could not be deleted, and **Remove** again continues it although the application's
+identifying files are gone. Without that record, a document root that no longer holds the
+application is still refused.
 
 ## nginx rules (native, readable without the panel)
 

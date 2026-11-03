@@ -55,6 +55,12 @@ func (p *Panel) preflightManagedServiceInstall(ctx context.Context, serviceID, s
 			managed.Name, taken)
 	}
 
+	// alpha.118 (lab): the distribution's own PHP version needs no vendor
+	// repository (the Agent applies the same rule).
+	if family == "apt" && managed.Repo != nil && !managed.Repo.Required &&
+		core.DistributionShipsSelectedPackage(managed, host.DistroID, host.VersionID, selectedPackage) {
+		return nil
+	}
 	return p.preflightManagedServiceRepository(ctx, managed, family, selectedPackage)
 }
 

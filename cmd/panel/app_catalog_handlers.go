@@ -7,10 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/appcatalog"
+	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -48,6 +50,8 @@ const (
 	errCodeAppDiskRoom          = "APP_DISK_ROOM"
 	errCodeAppNoDatabaseServer  = "APP_NO_DATABASE_SERVER"
 	errCodeAppVerification      = "APP_VERIFICATION_FAILED"
+	errCodeAppUnpack            = "APP_UNPACK_FAILED"
+	errCodeAppRemoveIncomplete  = "APP_REMOVE_INCOMPLETE"
 	errCodeAppDownload          = "APP_DOWNLOAD_FAILED"
 	errCodeAppSetupFailed       = "APP_SETUP_FAILED"
 	errCodeAppInstallFailed     = "APP_INSTALL_FAILED"
@@ -152,8 +156,43 @@ type appRequirementView struct {
 	DiskOK         bool                            `json:"disk_ok"`
 	DiskReason     string                          `json:"disk_reason,omitempty"`
 	Family         string                          `json:"family,omitempty"`
-	Detail         string                          `json:"detail,omitempty"`
+	PHPLine        string                          `json:"php_line,omitempty"`
+	// InstallPackage is the Components install (PHP-FPM of the site's PHP
+	// version) whose standard extension packages bring every missing
+	// extension ("" when no single Components install does).
+	InstallPackage string `json:"install_package,omitempty"`
+	Detail         string `json:"detail,omitempty"`
 }
+
+// catalogExtensionsInstallPackage names the Components install that brings
+// every missing extension of a site's PHP from the official packages: on
+// Debian and Ubuntu, installing PHP-FPM of that version installs its standard
+// extension packages (php8.4-mysql, -curl, -gd, ...), from the distribution
+// when it is the distribution's own version (alpha.118). "" when one of the
+// missing packages is not among them, or on Arch Linux (one PHP whose
+// extensions are switched on in its configuration).
+// Eksik uzantıların hepsini getiren Bileşenler kurulumu (PHP-FPM sürümü).
+func catalogExtensionsInstallPackage(family, phpLine string, missing []transport.AppMissingExtension) string {
+	if family != "apt" || len(missing) == 0 || !appPHPLinePattern.MatchString(phpLine) {
+		return ""
+	}
+	php := core.GetManagedServiceByID("php-fpm")
+	if php == nil || php.Repo == nil {
+		return ""
+	}
+	companions := map[string]bool{}
+	for _, template := range php.Repo.VersionCompanions {
+		companions[strings.ReplaceAll(template, "{v}", "php"+phpLine)] = true
+	}
+	for _, m := range missing {
+		if m.Package == "" || !companions[m.Package] {
+			return ""
+		}
+	}
+	return "php" + phpLine + "-fpm"
+}
+
+var appPHPLinePattern = regexp.MustCompile(`^[0-9]+\.[0-9]+$`)
 
 type domainAppView struct {
 	appCatalogEntryView
@@ -287,13 +326,6 @@ func (p *Panel) appRequirements(ctx context.Context, r *http.Request, e *effecti
 		view.DiskOK = false
 		view.DiskReason = err.Error()
 	}
-	if app.Legacy() {
-		view.PHPOK = true
-		if !view.DatabaseOK || !view.DiskOK {
-			view.State = "unmet"
-		}
-		return view
-	}
 	var resp transport.AppPrerequisitesResponse
 	callCtx, cancel := context.WithTimeout(ctx, 40*time.Second)
 	defer cancel()
@@ -306,7 +338,15 @@ func (p *Panel) appRequirements(ctx context.Context, r *http.Request, e *effecti
 		view.PHPOK, view.PHPReason = app.PHPSupported(site.phpVersion)
 		return view
 	}
+	if app.Legacy() {
+		// WordPress's own installer keeps its document-root rules (it keeps
+		// the placeholder page); its PHP and extensions are checked like
+		// every other application's (alpha.118 lab: no mysqli, HTTP 500).
+		resp.DocRoot = ""
+	}
 	view.Family, view.PHPOK, view.PHPReason, view.Missing, view.DocRoot = resp.Family, resp.PHPOK, resp.PHPReason, resp.Missing, resp.DocRoot
+	view.PHPLine = resp.PHPLine
+	view.InstallPackage = catalogExtensionsInstallPackage(resp.Family, resp.PHPLine, resp.Missing)
 	if resp.FreeDiskMB > 0 && resp.FreeDiskMB < app.MinDiskMB*2 {
 		view.DiskOK = false
 		view.DiskReason = fmt.Sprintf("the server has %d MB free where sites live; %s needs about %d MB", resp.FreeDiskMB, app.Name, app.MinDiskMB*2)
@@ -644,11 +684,12 @@ func (p *Panel) runCatalogAppSetup(w http.ResponseWriter, r *http.Request, opera
 	}
 	if !setup.Configured {
 		detail := setup.Error
-		if setup.Output != "" {
-			detail += "\n" + setup.Output
+		if tail := installerOutputTail(setup.Output, databasePassword, adminPassword); len(tail) > 0 {
+			detail += "\n" + strings.Join(tail, "\n")
 		}
 		_ = p.setCatalogAppStatus(operationID, appOpSetupFailed, firstNonEmpty(setup.ErrorKind, transport.AppFailSetup), detail)
-		writeCatalogAgentFailure(w, app, operationID, firstNonEmpty(setup.ErrorKind, transport.AppFailSetup), setup.Error)
+		writeCatalogAgentFailure(w, app, operationID, firstNonEmpty(setup.ErrorKind, transport.AppFailSetup), setup.Error,
+			installerOutputTail(setup.Output, databasePassword, adminPassword)...)
 		return
 	}
 	if _, err := p.db.GetDB().ExecContext(r.Context(), `UPDATE app_catalog_operations SET admin_path = ?, updated_at = datetime('now') WHERE operation_id = ?`,
@@ -713,15 +754,32 @@ func (p *Panel) requireAppPrerequisites(w http.ResponseWriter, r *http.Request, 
 				details = append(details, m.Extension+": switch it on in the PHP configuration")
 			}
 		}
-		writeCodedErrorVars(w, http.StatusConflict, errCodeAppExtensionsMissing,
-			"PHP "+resp.PHPLine+" on this server lacks what "+app.Name+" needs. Nothing was changed. The administrator installs these packages (Components, or the system's package manager): "+strings.Join(packages, " ")+"; then install again.",
-			"/services", details, map[string]string{"app": app.Name, "php": resp.PHPLine, "packages": strings.Join(packages, " ")})
+		message := "PHP " + resp.PHPLine + " on this server lacks what " + app.Name + " needs. Nothing was changed. The administrator installs these packages (Components, or the system's package manager): " + strings.Join(packages, " ") + "; then install again."
+		action := ""
+		install := catalogExtensionsInstallPackage(resp.Family, resp.PHPLine, resp.Missing)
+		if install != "" {
+			message = "PHP " + resp.PHPLine + " on this server lacks what " + app.Name + " needs (" + strings.Join(packages, " ") + "). Nothing was changed. The administrator installs PHP " + resp.PHPLine + " in Components (PHP-FPM, version " + resp.PHPLine + "): that adds its standard extensions from the official packages. Then install again."
+		}
+		if callerIsAdministrator(r) {
+			action = "/services?component=php-fpm"
+			if install != "" {
+				action += "&install=" + install
+			}
+		}
+		writeCodedErrorVars(w, http.StatusConflict, errCodeAppExtensionsMissing, message,
+			action, details, map[string]string{"app": app.Name, "php": resp.PHPLine, "packages": strings.Join(packages, " ")})
 		return false
 	}
 	if resp.ExtensionsUnknown {
 		writeCodedError(w, http.StatusServiceUnavailable, errCodeAppPrereqUnknown,
 			"the site's PHP could not be asked which extensions it has; nothing was changed. Check that PHP "+resp.PHPLine+" is installed and running, then try again.", "")
 		return false
+	}
+	if app.Legacy() {
+		// WordPress's own installer checks its document root and disk room
+		// itself (it keeps the placeholder page); here only PHP and its
+		// extensions, before anything is created.
+		return true
 	}
 	switch resp.DocRoot {
 	case transport.AppDocRootContent, transport.AppDocRootUnavailable:
@@ -745,22 +803,58 @@ func writeCodedErrorVars(w http.ResponseWriter, status int, code, message, actio
 }
 
 // writeCatalogAgentFailure answers a step the server refused, by kind.
-func writeCatalogAgentFailure(w http.ResponseWriter, app appcatalog.App, operationID, kind, message string) {
+func writeCatalogAgentFailure(w http.ResponseWriter, app appcatalog.App, operationID, kind, message string, details ...string) {
 	vars := map[string]string{"app": app.Name, "operation_id": operationID, "kind": kind}
+	if len(details) == 0 {
+		details = nil
+	}
 	switch kind {
 	case transport.AppFailVerification:
-		writeCodedErrorVars(w, http.StatusBadGateway, errCodeAppVerification, message, "", nil, vars)
+		writeCodedErrorVars(w, http.StatusBadGateway, errCodeAppVerification, message, "", details, vars)
+	case transport.AppFailUnpack:
+		writeCodedErrorVars(w, http.StatusBadGateway, errCodeAppUnpack, message, "", details, vars)
 	case transport.AppFailDownload:
-		writeCodedErrorVars(w, http.StatusBadGateway, errCodeAppDownload, message, "", nil, vars)
+		writeCodedErrorVars(w, http.StatusBadGateway, errCodeAppDownload, message, "", details, vars)
 	case transport.AppFailContent:
-		writeCodedErrorVars(w, http.StatusConflict, errCodeAppDocRootNotEmpty, message, "", nil, vars)
+		writeCodedErrorVars(w, http.StatusConflict, errCodeAppDocRootNotEmpty, message, "", details, vars)
 	case transport.AppFailPrerequisite:
-		writeCodedErrorVars(w, http.StatusConflict, errCodeAppPHPUnsupported, message, "", nil, vars)
+		writeCodedErrorVars(w, http.StatusConflict, errCodeAppPHPUnsupported, message, "", details, vars)
 	case transport.AppFailSetup, transport.AppFailNginx:
-		writeCodedErrorVars(w, http.StatusBadGateway, errCodeAppSetupFailed, message, "", nil, vars)
+		writeCodedErrorVars(w, http.StatusBadGateway, errCodeAppSetupFailed, message, "", details, vars)
+	case transport.AppFailRemove:
+		writeCodedErrorVars(w, http.StatusBadGateway, errCodeAppRemoveIncomplete, message, "", details, vars)
 	default:
-		writeCodedErrorVars(w, http.StatusBadGateway, errCodeAppInstallFailed, firstNonEmpty(message, app.Name+" could not be installed"), "", nil, vars)
+		writeCodedErrorVars(w, http.StatusBadGateway, errCodeAppInstallFailed, firstNonEmpty(message, app.Name+" could not be installed"), "", details, vars)
 	}
+}
+
+// installerOutputTail is the end of an application installer's own output,
+// shown beside a failed setup so its own reason is visible: the last few
+// non-empty lines, each bounded, with the operation's secrets removed again
+// (the agent already removed them).
+// Kurucunun kendi çıktısının son satırları; gizli bilgiler yeniden silinir.
+func installerOutputTail(output string, secrets ...string) []string {
+	for _, secret := range secrets {
+		if secret != "" {
+			output = strings.ReplaceAll(output, secret, "********")
+		}
+	}
+	const maxLines, maxRunes = 8, 300
+	lines := []string{}
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(strings.ToValidUTF8(line, "?"))
+		if line == "" {
+			continue
+		}
+		if runes := []rune(line); len(runes) > maxRunes {
+			line = string(runes[:maxRunes]) + "…"
+		}
+		lines = append(lines, line)
+	}
+	if len(lines) > maxLines {
+		lines = lines[len(lines)-maxLines:]
+	}
+	return lines
 }
 
 type liveApp struct {

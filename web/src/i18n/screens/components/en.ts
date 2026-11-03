@@ -159,6 +159,7 @@ export const enComponentsScreens = {
     'services.cleanupWebmailHint': 'Permanently remove leftover Roundcube application data without installing Roundcube or deleting mailboxes.',
     'services.cleanupWebmailWhy': 'Use this when an earlier Roundcube install or removal did not finish and left files on this server, for example when installing Roundcube again fails. Roundcube is not installed now.',
     'services.cleanupWebmailNotNeeded': 'Roundcube is installed, so there are no leftovers to clean up. To start over, remove Roundcube from its row first; the cleanup is offered after that if anything is left.',
+    'services.installLinkUnavailable': 'The link asked to install {package}, but that is not a PHP version this page can install here. Nothing was started. Open PHP-FPM’s versions below and choose the version.',
     'services.cleanupWebmailTitle': 'Remove leftover Roundcube data?',
     'services.cleanupWebmailWarn': 'This permanently removes leftover Roundcube application files and Roundcube-local settings, including its address-book database. It does not remove email mailboxes or Maildir data, and it does not install Roundcube.',
     'services.uninstallTitle': 'Uninstall {name}?',

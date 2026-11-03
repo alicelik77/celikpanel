@@ -310,7 +310,7 @@ func (a *Agent) InstallCatalogAppV1(req *InstallCatalogAppRequest, resp *Install
 		return fail(transport.AppFailPublish, "protect staging directory: %v", err)
 	}
 	if err := extractCatalogArchive(app, archive, stageDir, downloadDir); err != nil {
-		return fail(transport.AppFailVerification, "the %s release could not be unpacked safely (%v); nothing was changed", app.Name, err)
+		return fail(transport.AppFailUnpack, "the %s release could not be unpacked safely (%v); nothing was changed on the site. Try again later; if it repeats, report it to CelikPanel with this message", app.Name, err)
 	}
 	_ = os.Remove(archive)
 	if err := applyWordPressOwnership(stageDir, site.username); err != nil {
@@ -610,18 +610,46 @@ func (a *Agent) RemoveCatalogAppV1(req *RemoveCatalogAppRequest, resp *RemoveCat
 		return fail(transport.AppFailInternal, "the nginx configuration is not available on this agent; nothing was removed")
 	}
 	state := catalogDocRootState(site)
+	removalStarted := catalogRemovalStarted(req.Site.SiteID, site)
 	switch {
 	case state == transport.AppDocRootUnavailable:
 		return fail(transport.AppFailContent, "the site's document root could not be opened; nothing was removed")
-	case state == transport.AppDocRootContent && !catalogMarkersPresent(site):
+	case state == transport.AppDocRootContent && !removalStarted && !catalogMarkersPresent(site):
 		resp.NotThisApp = true
 		return fail(transport.AppFailContent, "the site's document root does not hold %s any more (something else is there now); nothing was removed. Remove those files with the file manager if you want them gone", site.app.Name)
 	case state == transport.AppDocRootContent:
+		// The removal is recorded before the first file goes, so a retry
+		// after a partial removal continues it although the application's
+		// own files that identify it may be gone already.
+		if err := markCatalogRemoval(req.Site.SiteID, site); err != nil {
+			return fail(transport.AppFailInternal, "the removal could not be recorded (%v); nothing was removed. Retry the removal", err)
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 		defer cancel()
-		if _, err := catalogRunAsSiteUser(ctx, site.username, site.siteHome,
+		// Applications make folders read-only for their own safety (Drupal's
+		// sites/default is r-x after setup): the site's user gives itself
+		// write permission back on its own folders first, otherwise nothing
+		// in them can be deleted (alpha.118 lab). find never follows links,
+		// and running as the site's user it can change only the user's own
+		// folders.
+		// Uygulamalar klasörleri salt okunur yapar; silmeden önce sitenin
+		// kullanıcısı kendi klasörlerine yazma iznini geri verir.
+		_, _ = catalogRunAsSiteUser(ctx, site.username, site.siteHome, catalogRemovalPermissionArgv(site.docRoot), nil)
+		if output, err := catalogRunAsSiteUser(ctx, site.username, site.siteHome,
 			[]string{"find", site.docRoot, "-xdev", "-mindepth", "1", "-delete"}, nil); err != nil {
-			return fail(transport.AppFailPublish, "some of %s's files could not be removed (%v); what remains is in the document root. Retry the removal", site.app.Name, err)
+			// What could not be removed stays; the placeholder page goes back
+			// beside it (never over a file) so visitors see the site's page
+			// instead of an error, and the record says the removal continues.
+			// Kaldırılamayanlar yerinde kalır; ziyaretçi hata yerine yer tutucu
+			// sayfayı görsün diye yer tutucu (bir dosyanın üzerine yazmadan) konur.
+			name, content := celikPanelSitePlaceholder(site.domain, "php")
+			_, _ = catalogRunAsSiteUser(ctx, site.username, site.docRoot,
+				[]string{"sh", "-c", `set -C; umask 027; cat > "$1"`, "sh", filepath.Join(site.docRoot, name)}, content)
+			reason := err.Error()
+			if last := lastNonEmptyLine(output); last != "" {
+				reason += ": " + last
+			}
+			return fail(transport.AppFailRemove, "removing %s stopped part way: some of its files could not be deleted (%s). What remains is in the site's document root, and the site shows its placeholder page where it could be put back. Press Remove again: it continues where it stopped. If it stops again, the administrator checks who owns those files (they must belong to the site's user)", site.app.Name, boundedText(reason, 400))
 		}
 		name, content := celikPanelSitePlaceholder(site.domain, "php")
 		if _, err := catalogRunAsSiteUser(ctx, site.username, site.docRoot,
@@ -630,6 +658,7 @@ func (a *Agent) RemoveCatalogAppV1(req *RemoveCatalogAppRequest, resp *RemoveCat
 		}
 	}
 	resp.FilesRemoved = true
+	clearCatalogRemoval(req.Site.SiteID, site)
 
 	for _, file := range []string{appcatalog.IncludeFileName(site.app.ID), services.AppSetupLockFileName} {
 		err := nginx.RemoveAppInclude(site.domain, file)

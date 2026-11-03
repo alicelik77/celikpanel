@@ -151,6 +151,7 @@ export const trComponentsScreens: Record<ComponentsScreenKey, string> = {
     'services.cleanupWebmailHint': 'Roundcube’u kurmadan veya posta kutularını silmeden kalan Roundcube uygulama verilerini kalıcı olarak temizler.',
     'services.cleanupWebmailWhy': 'Bunu, daha önceki bir Roundcube kurulumu ya da kaldırması bitmeyip bu sunucuda dosya bıraktığında kullanın; örneğin Roundcube yeniden kurulamıyorsa. Roundcube şu anda kurulu değil.',
     'services.cleanupWebmailNotNeeded': 'Roundcube kurulu; temizlenecek kalıntı yok. Baştan başlamak için önce Roundcube’u kendi satırından kaldırın; geride bir şey kalırsa temizlik ondan sonra sunulur.',
+    'services.installLinkUnavailable': 'Bağlantı {package} kurulmasını istedi, ama bu sayfa burada böyle bir PHP sürümü kuramaz. Hiçbir şey başlatılmadı. Aşağıda PHP-FPM sürümlerini açıp sürümü seçin.',
     'services.cleanupWebmailTitle': 'Kalan Roundcube verileri silinsin mi?',
     'services.cleanupWebmailWarn': 'Bu işlem kalan Roundcube uygulama dosyalarını ve adres defteri veritabanı dahil Roundcube’a özel ayarları kalıcı olarak siler. E-posta kutularını veya Maildir verilerini silmez ve Roundcube’u kurmaz.',
     'services.uninstallTitle': '{name} kaldırılsın mı?',
