@@ -24,7 +24,7 @@ env:
 jobs:
   go:
     name: Go — format, build, vet, test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
         with:
@@ -70,9 +70,11 @@ jobs:
       # current test was only 1 second old. Keep all tests and crypto parameters;
       # use an explicit bounded package budget (race shards keep their own limits).
       - run: go test ./... -count=1 -timeout=20m
+      # internal/db alone took 6m55s with -race on alpha.117 and 7m20s on
+      # alpha.118 (five more migrations); 8m timed out once. Keep every test.
       - name: Race-test security and persistence boundaries
         run: >-
-          go test -race -count=1 -timeout=8m
+          go test -race -count=1 -timeout=15m
           ./internal/auth
           ./internal/db
           ./internal/repositories
@@ -235,7 +237,7 @@ jobs:
 
   panel-race:
     name: Panel race — ${{ matrix.shard }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -368,7 +370,7 @@ jobs:
 
   linux-arm64-compile:
     name: Platform portability - Linux arm64 compile only
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       GOOS: linux
       GOARCH: arm64
@@ -386,7 +388,7 @@ jobs:
 
   web:
     name: Web — typecheck & build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: web
@@ -415,7 +417,7 @@ jobs:
 
   membership:
     name: Membership — PHP 8.3, SQLite, HTTP and license interoperability
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
@@ -435,7 +437,7 @@ jobs:
 
   package:
     name: Release — reproducible archive and checksum
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [go, panel-race, web, linux-arm64-compile, publisher-windows, membership]
     outputs:
       release_version: ${{ steps.release_version.outputs.value }}
@@ -573,7 +575,7 @@ jobs:
   publish-release:
     name: Release — publish permanent tag assets
     if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: package
     permissions:
       contents: write
