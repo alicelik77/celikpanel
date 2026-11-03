@@ -157,6 +157,7 @@ An item left at 0 or empty means **unlimited**, and the screen says "unlimited".
 | Additional users (team) | The menu is not visible |
 | File access (FTP and SFTP) | The Access tab is not visible; files are uploaded only through the panel's file manager |
 | SSH (command line) | The command line cannot be entered; file access is not affected |
+| Own remote backup destinations (alpha.118) | The account cannot add its own S3 or SFTP destination; it can still choose a destination the administrator offers. Schedules already set keep running ([REMOTE-BACKUPS.md](REMOTE-BACKUPS.md)) |
 
 **File access does not exist today.** On November 2, 2026 the owner looked for the FTP and SSH
 settings of a domain and could not find them. Verified from the code: there is no path in the

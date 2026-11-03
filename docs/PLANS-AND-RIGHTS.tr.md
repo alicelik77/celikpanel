@@ -161,6 +161,7 @@ yazılır.
 | Ek kullanıcılar (ekip) | Menü görünmez |
 | Dosya erişimi (FTP ve SFTP) | Erişim sekmesi görünmez; dosya yalnız panelin dosya yöneticisiyle yüklenir |
 | SSH (komut satırı) | Komut satırına girilemez; dosya erişimi etkilenmez |
+| Kendi uzak yedek hedefleri (alpha.118) | Hesap kendi S3 ya da SFTP hedefini ekleyemez; yöneticinin sunduğu hedefi yine seçebilir. Kurulmuş zamanlamalar çalışmayı sürdürür ([REMOTE-BACKUPS.tr.md](REMOTE-BACKUPS.tr.md)) |
 
 **Dosya erişimi bugün yok.** Sahip, 2 Kasım 2026'da bir alan adının FTP ve SSH
 ayarlarını aradı ve bulamadı. Koddan doğrulandı: panelde FTP, SFTP ya da SSH
