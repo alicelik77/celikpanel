@@ -116,6 +116,7 @@ export const enServiceAppsScreens = {
     'svcapps.reason.agent_unreachable': 'The server did not answer, so the result is not known. Read the status again before trying again.',
     'svcapps.reason.download_failed': 'The pinned file could not be downloaded or did not match its fingerprint, so it was not used. Check the server’s internet access, then try again.',
     'svcapps.reason.unit_edited': 'The app’s service file was changed on the server, so CelikPanel kept it. Move your changes to the drop-in folder named in the message, or remove the file, then try again.',
+    'svcapps.reason.env_edited': 'The app’s settings file was changed on the server, so CelikPanel kept it and did not save your change. The administrator moves the server-side changes to the drop-in folder named in the message, or removes the file; then try again.',
     'svcapps.reason.publish': 'The app runs, but the domain could not be switched to it. Try again; the app is not installed twice.',
     'svcapps.reason.site_account': 'The site’s own system account is missing or does not match this site. The administrator checks the site on the server.',
     'svcapps.reason.build_mismatch': 'The panel and the server agent are different versions. The administrator finishes the panel update; then try again.',

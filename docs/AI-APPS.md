@@ -89,7 +89,8 @@ optionally an OpenAI-compatible key and address.
 | Step | Who | What |
 |---|---|---|
 | prepare | Agent (root) | Downloads the pinned file to its private state folder and checks its sha512/sha256 against the pin; a mismatch is discarded. |
-| | site user | Creates `<site home>/apps/<app>/{dist,data,config}`, writes the verified file and `config/app.env` (0600). Root never writes inside the site's folder. |
+| | site user | Creates `<site home>/apps/<app>/{dist,data}`, writes the verified file. Root never writes inside the site's folder. |
+| | Agent (root) | Writes the environment file `/etc/celikpanel-svcapps/celiksvc-<id>.env` (folder 0700, file 0600, both root's), outside the site's folder (see §5). |
 | installing | site user, transient unit `celiksvcinst-<id>` | `npm install` of the verified tarball (then `npm audit signatures`) or `python -m venv` + `pip install` of the verified wheel, inside the same sandbox as the app. |
 | activate | Agent | Writes `/etc/systemd/system/celiksvc-<id>.service`, enables and starts it. |
 | verify | Agent → Panel | Proves that a process **of this unit** listens on `127.0.0.1:<port>` and on no other address. A unit that listens elsewhere, or a port another process holds, is stopped and not published. |
@@ -138,11 +139,31 @@ What CelikPanel turns off with each app's own supported settings:
   What stays: chat with the providers whose keys are entered, documents, web reading on request,
   Python "tools" that an Open WebUI admin adds (run in the app's process, inside the sandbox).
 
-Secrets (provider keys, Open WebUI's first password, n8n's encryption key) live only in
-`config/app.env`, 0600, owned by the site's user. They are not stored by the Panel, not written to
-its audit log (only which settings changed), never shown again, and every log line the panel
-shows is redacted on the server first (the file's own values, and anything that looks like a key,
-token, password or bcrypt hash).
+Secrets (provider keys, Open WebUI's first password, n8n's encryption key) live only in the
+environment file `/etc/celikpanel-svcapps/celiksvc-<id>.env`: root's, 0600, in a root folder
+(0700). They are not stored by the Panel, not written to its audit log (only which settings
+changed), never shown again, and every log line the panel shows is redacted on the server first
+(the file's own values, and anything that looks like a key, token, password or bcrypt hash).
+
+**Why the environment file is root's (alpha.118 security fix, before publication).** systemd
+reads a unit's `EnvironmentFile=` as root, before the sandbox starts, and follows links. The first
+alpha.118 build kept the file in the site's folder (`apps/<app>/config/app.env`), which the site's
+account can replace; its values would then have reached the app's process, which that account can
+read. The file is now written by the Agent as root, without following any link (`openat2`
+`RESOLVE_NO_SYMLINKS`), and carries CelikPanel's header line (the hash of its text, as the unit
+does: D-022, D-031). A file changed on the server is kept: CelikPanel refuses to write it again
+and the screen says so (`env_edited`; the owner's own values belong in the unit's drop-in folder
+as `Environment=` lines). Removal deletes it; an owner-changed file is first kept as a dated copy
+beside it. Installs made by an earlier alpha.118 build (lab guests only; the release was not
+published before the fix) are moved when the Agent starts: the old file is read as the site's
+user and never through a link, root's file is written, only the unit's `EnvironmentFile=` line
+changes, a running app is restarted and a stopped one stays stopped. If the old file was a link
+or missing, nothing is taken over and the app is stopped until its keys are set again. A unit the
+owner changed is kept; the Agent log names it.
+
+**Backups.** The environment file is not in the site's folder, so a site backup does not carry
+it. Restoring a site on the same server keeps the app's values; on another server the app's keys
+(and n8n's encryption key, which its saved credentials depend on) must be set again.
 
 ## 6. Not offered in this release
 
@@ -191,8 +212,8 @@ They are listed in the catalog with this reason; the server refuses to offer or 
   not yet from a plan.
 - **D-043.** The administrator's security hold covers apps; the full security-emergency workflow
   (affected-customer notices, password re-entry, version withdrawal) is not wired to apps yet.
-- **Owner independence.** The unit and environment file are plain systemd configuration and keep
-  running without the Panel. n8n uses the Panel's Node.js runtime under `/opt/celikpanel/runtimes`
+- **Owner independence.** The unit and environment file (`/etc/celikpanel-svcapps`) are plain
+  systemd configuration and keep running without the Panel. n8n uses the Panel's Node.js runtime under `/opt/celikpanel/runtimes`
   (as Node.js sites do); removing that folder stops n8n.
 - **WebSockets** pass through nginx; `proxy_read_timeout` is 60 s and the default upload limit is
   nginx's 1 MB; larger uploads need an owner include in the site's nginx include folder.
@@ -212,5 +233,6 @@ journalctl -u celiksvc-<id> -n 100   # its log
 ```
 
 Own settings go in `/etc/systemd/system/celiksvc-<id>.service.d/*.conf` (CelikPanel never
-writes there). An edit to the unit file itself is kept: CelikPanel refuses to overwrite it and
+writes there). An edit to the unit file itself, or to its environment file
+`/etc/celikpanel-svcapps/celiksvc-<id>.env`, is kept: CelikPanel refuses to overwrite it and
 says so. The app's files are in `/var/www/celikpanel/subscriptions/<sub>/sites/<domain id>/apps/<app>/`.
