@@ -230,10 +230,9 @@ const screenPartBudgets = {
   // 21.4 / 6.5 KiB.
   serviceApps: kib(27, 8.5),
   // alpha.119: the user guide's screens - the "?" help menu, the guide
-  // drawer, /help and the first-login tour (guide.). A new part; the plan's
-  // ceiling for it is 8 KiB raw, with at least 25% headroom from its Turkish
-  // file (measured below when the part was made).
-  guide: kib(8, 2.75),
+  // drawer, /help and the first-login tour (guide.). A new part, set with at
+  // least 25% headroom from its Turkish file: 3.82 / 1.58 KiB.
+  guide: kib(5, 2),
 }
 
 // Translation chunks, named by source. The shell halves are held to the
@@ -255,8 +254,10 @@ const namedChunkBudgets = {
   // The user guide's chapters (alpha.119), one lazy chunk per role and
   // language, generated from docs/guide by scripts/build-guide.mjs with their
   // search index. They are fetched when the guide is first opened. The
-  // ceiling is the guide plan's: it holds every chapter of one role (about
-  // twenty in all), so a chunk that outgrows it is split, not raised.
+  // ceiling is the guide plan's, not 25% over the first measurement: a chunk
+  // holds every chapter of one role (about twenty in all; with the three
+  // starter chapters the largest, customer/tr, is 24.87 / 8.10 KiB), so a
+  // chunk that outgrows it is split, not raised.
   // Kılavuz bölümleri: her rol ve dil için bir parça; tavan yükseltilmez.
   ...Object.fromEntries(['admin', 'reseller', 'customer'].flatMap((role) => ['en', 'tr'].map((locale) => [
     `src/help/guide/gen/${role}.${locale}.ts`, guideChunkBudget,
