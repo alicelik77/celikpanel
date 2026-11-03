@@ -142,5 +142,24 @@ a custom rights list get them only when someone chooses them.
 Integrated tree: Go build and vet clean; `internal` and `cmd/panel` suites pass;
 the Agent suite shows only the known guest-only failures that also fail on
 alpha.117; 2348 web tests pass within the bundle budgets; release-recovery
-fixtures extended to schema 61. <!-- LAB --> Lab round recorded in the release
-record.
+fixtures extended to schema 61.
+
+Lab (QEMU guests, branch `lab/alpha114-acceptance`, commit `1316e2f05`, evidence
+`final-alpha118-run1..run4-20261103`). Four short rounds; rounds 1–3 stopped at
+defects that are fixed above. Round 4 on the final candidate passed every item:
+
+- Debian 13 fresh install with the owner's command: setup, SSH tools present,
+  PrestaShop (admin path found), Drupal install and removal, phpBB not offered,
+  disk limit set and lifted (PHP uploads closed and reopened), n8n installed and
+  running with owner login, stopped by suspension and started again, refused for
+  resellers with the licence reason; PostgreSQL alone (distribution 17),
+  phpPgAdmin offered with its removal and shown as left without its database.
+- Ubuntu 24.04 updated from alpha.117 in 72 seconds: migrations 057–061, all
+  services active; SSH refused while zip and unzip were missing, the
+  administrator's one-click install added exactly those, then SSH was accepted.
+- Earlier rounds on this code: traffic limit (site only closes, mail works),
+  disk limit refusals, mailbox quota within one round on Dovecot 2.3 and 2.4,
+  Nextcloud, Joomla, MediaWiki, WordPress (refused without mysqli, then
+  installed), ClamAV (waits for signatures, EICAR quarantined and restored),
+  SFTP remote backup with `gpg` decryption, setup DNS waiting while the server
+  was busy. Not run: rollback, Open WebUI, Arch beyond install and setup.

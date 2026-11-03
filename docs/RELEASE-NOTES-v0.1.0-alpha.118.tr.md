@@ -140,5 +140,25 @@ hak listesi olan hesaplar yalnız biri seçerse alır.
 Birleştirilmiş ağaç: Go derleme ve vet temiz; `internal` ve `cmd/panel` testleri
 geçti; Agent testlerinde yalnız alpha.117'de de düşen, deneme ortamına özgü
 bilinen hatalar var; 2348 web testi paket sınırları içinde geçti;
-release-recovery fikstürleri şema 61'e genişletildi. <!-- LAB --> Laboratuvar
-denemesi yayın kaydına yazıldı.
+release-recovery fikstürleri şema 61'e genişletildi.
+
+Laboratuvar (QEMU konukları, `lab/alpha114-acceptance` dalı, `1316e2f05`, kanıt
+`final-alpha118-run1..run4-20261103`). Dört kısa tur; 1–3. turlar yukarıda
+düzeltilen hatalarda durdu. Son aday üzerindeki 4. tur her maddeden geçti:
+
+- Sahibin komutuyla sıfırdan Debian 13: ilk kurulum, SSH araçları hazır,
+  PrestaShop (yönetim yolu bulundu), Drupal kurma ve kaldırma, phpBB sunulmuyor,
+  disk sınırı kondu ve kalktı (PHP yüklemeleri kapandı ve açıldı), n8n kuruldu ve
+  sahibi girişiyle çalıştı, askıya almayla durdu ve yeniden başladı, bayiler için
+  lisans gerekçesiyle reddedildi; PostgreSQL tek başına (dağıtımın 17'si),
+  phpPgAdmin kaldırmada sunuldu ve veritabanısız kaldığını söyledi.
+- Ubuntu 24.04 alpha.117'den 72 saniyede güncellendi: 057–061 göçleri, tüm
+  hizmetler çalışıyor; zip ve unzip eksikken SSH reddedildi, yöneticinin tek tık
+  kurulumu tam bunları ekledi, sonra SSH kabul edildi.
+- Bu kodla önceki turlar: trafik sınırı (yalnız site kapanır, posta çalışır),
+  disk sınırı retleri, posta kotası Dovecot 2.3 ve 2.4'te bir tur içinde,
+  Nextcloud, Joomla, MediaWiki, WordPress (mysqli yokken reddedildi, sonra
+  kuruldu), ClamAV (imzaları bekler, EICAR karantinaya alındı ve geri kondu),
+  SFTP uzak yedeği ve `gpg` ile açılması, sunucu meşgulken kurulumun DNS adımının
+  beklemesi. Denenmeyenler: geri dönüş, Open WebUI, Arch'ta kurulum ve ilk kurulum
+  dışı.
