@@ -469,9 +469,14 @@ func ensureServiceAppEnvDir() error {
 	if err != nil {
 		return err
 	}
-	uid, _ := serviceAppEnvOwner()
+	uid, gid := serviceAppEnvOwner()
 	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 || !fileOwnedBy(info, uid) {
 		return fmt.Errorf("%s is not a folder owned by root", serviceAppEnvDir)
+	}
+	// root:root, not the agent's own group (the folder sits in /etc, which
+	// only root can change, so the path cannot be swapped meanwhile).
+	if err := os.Lchown(serviceAppEnvDir, int(uid), int(gid)); err != nil {
+		return err
 	}
 	return os.Chmod(serviceAppEnvDir, 0o700)
 }
