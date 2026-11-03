@@ -49,13 +49,13 @@
 .guide-table th, .guide-table td { padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; font-size: 0.9375rem; line-height: 1.5; }
 .guide-table thead th { font-size: 0.8125rem; color: var(--ink-2); border-bottom-color: var(--rule-strong); }
 
-/* A note is plain paper; a warning carries the attention ink on its edge
-   only, never red (signal colours mean state). */
-.guide-callout { margin-top: 1.5rem; padding: 1rem 1.15rem; border: 1px solid var(--rule); border-left-width: 4px; border-radius: var(--radius); background: var(--paper-2); }
+/* A note is plain paper; a warning carries the attention ink in its thin
+   frame and label, never red (signal colours mean state). */
+.guide-callout { margin-top: 1.5rem; padding: 1rem 1.15rem; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--paper-2); }
 .guide-callout > :first-child { margin-top: 0; }
 .guide-callout-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
-.guide-callout.guide-note { border-left-color: var(--rule-strong); }
-.guide-callout.guide-warning { border-left-color: var(--lamp-amber); }
+.guide-callout.guide-note { border-color: var(--rule-strong); }
+.guide-callout.guide-warning { border-color: var(--lamp-amber); }
 .guide-callout.guide-warning .guide-callout-label { color: var(--amber-ink); }
 
 .guide-pager { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid var(--rule); }
