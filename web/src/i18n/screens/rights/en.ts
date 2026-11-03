@@ -97,6 +97,7 @@ export const enRightsScreens = {
     'rights.perm.ssh': 'Command line (SSH)',
     'rights.perm.wordpress_tools': 'WordPress tools',
     'rights.perm.malware_scan': 'Malware scan results',
+    'rights.perm.remote_backup_destinations': 'Own remote backup destinations',
 
     'rights.review': 'Review the change',
     'rights.back': 'Back to editing',

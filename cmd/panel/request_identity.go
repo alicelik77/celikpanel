@@ -190,6 +190,18 @@ var requestIdentityRouteDatabaseUserPassword = requestIdentityRoute{
 	secret: true, digest: requestIdentityDatabaseUserPasswordDigest,
 }
 
+// alpha.118: sending a backup to a remote destination and restoring one
+// from there only queue an operation; a replay is answered with the same
+// operation.
+var (
+	requestIdentityRouteRemoteBackupSend = requestIdentityRoute{
+		pattern: "/api/v1/domains/{id}/backups/remote/send", timeout: time.Minute,
+	}
+	requestIdentityRouteRemoteBackupRestore = requestIdentityRoute{
+		pattern: "/api/v1/domains/{id}/backups/remote/restore", timeout: time.Minute,
+	}
+)
+
 // requestIdentityRouteFor names the protected route a request would reach. It
 // uses the dispatcher's own strict matchers, so a path the guard does not
 // recognize is a path the dispatcher does not serve either.
@@ -223,6 +235,10 @@ func requestIdentityRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 			return requestIdentityRouteBackupRestore, true
 		case "backups":
 			return requestIdentityRouteBackupCreate, true
+		case "backup-remote-send":
+			return requestIdentityRouteRemoteBackupSend, true
+		case "backup-remote-restore":
+			return requestIdentityRouteRemoteBackupRestore, true
 		case "ssl-letsencrypt":
 			return requestIdentityRouteLetsEncrypt, true
 		case "databases":

@@ -346,6 +346,19 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "backup-download", []string{http.MethodGet}
 	case "backups":
 		match.kind, match.methods = "backups", []string{http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodOptions}
+	// alpha.118: remote backups of the site.
+	case "backups/remote":
+		match.kind, match.methods = "backup-remote", []string{http.MethodGet}
+	case "backups/remote/policy":
+		match.kind, match.methods = "backup-remote-policy", []string{http.MethodPut, http.MethodDelete}
+	case "backups/remote/objects":
+		match.kind, match.methods = "backup-remote-objects", []string{http.MethodGet}
+	case "backups/remote/send":
+		match.kind, match.methods = "backup-remote-send", []string{http.MethodPost}
+	case "backups/remote/restore":
+		match.kind, match.methods = "backup-remote-restore", []string{http.MethodPost}
+	case "backups/remote/operation":
+		match.kind, match.methods = "backup-remote-operation", []string{http.MethodGet}
 	case "cron":
 		match.kind, match.methods = "cron", []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions}
 	case "mail/health":
@@ -494,6 +507,9 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDownloadBackup(w, r)
 	case "backups":
 		p.handleDomainBackups(w, r)
+	case "backup-remote", "backup-remote-policy", "backup-remote-objects", "backup-remote-send",
+		"backup-remote-restore", "backup-remote-operation":
+		p.handleDomainRemoteBackup(w, r, match.domainID, match.kind)
 	case "cron":
 		p.handleDomainCronJobs(w, r)
 	case "mail-health":
@@ -1405,6 +1421,8 @@ func main() {
 	http.HandleFunc(resellerPlansPath, panel.handleResellerPlans)
 	http.HandleFunc(resellerPlansPath+"/", panel.handleResellerPlanByID)
 	http.HandleFunc(rightsPathPrefix, panel.handleRightsRoutes)
+	// alpha.118: remote backup destinations and every-site schedules.
+	http.HandleFunc(remoteBackupPathPrefix, panel.handleRemoteBackupRoutes)
 	http.HandleFunc("/api/v1/subscriptions", panel.handleSubscriptions)
 	http.HandleFunc("/api/v1/subscriptions/", panel.handleSubscriptionEntitlements)
 	http.HandleFunc(transferRequestsPath, panel.handleTransferRequests)
@@ -1694,6 +1712,8 @@ func main() {
 	// alpha.118: scheduled minor WordPress core releases and malware scans.
 	panel.startWordPressAutoUpdater()
 	panel.startMalwareScanWorker()
+	// alpha.118: remote backups; continues what a restart interrupted.
+	panel.startRemoteBackupWorker()
 	panel.startCertRenewalScheduler()
 	panel.startVPNEntitlementReconciler()
 	// Suspensions: continue what a restart interrupted, check end dates.

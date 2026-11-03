@@ -215,6 +215,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityBackup, `
 		Agent.CreateBackup Agent.DeleteBackup Agent.ExtractCpmoveFiles Agent.RestoreBackup
+		Agent.ImportBackupChunk Agent.AbortBackupImport
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityRuntimeNode, `
 		Agent.InstallNodeVersion Agent.RemoveNodeVersion
@@ -513,6 +514,10 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.MalwareQuarantineV1":        agentRPCMutationTimeout,
 	"Agent.MalwareRestoreV1":           agentRPCMutationTimeout,
 	"Agent.MalwareDeleteQuarantinedV1": agentRPCMutationTimeout,
+	// alpha.118: a backup coming back from a remote destination, 1 MiB per
+	// chunk; the final chunk hashes the package and its payloads.
+	"Agent.ImportBackupChunk": agentRPCBulkImportTimeout,
+	"Agent.AbortBackupImport": agentRPCMutationTimeout,
 }
 
 var agentRPCPolicies = buildAgentRPCPolicies()

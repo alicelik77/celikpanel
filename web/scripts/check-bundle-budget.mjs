@@ -218,6 +218,11 @@ const screenPartBudgets = {
   // headroom left). A new part, set with at least 25% headroom from its
   // Turkish file: 11.69 / 3.78 KiB.
   siteTools: kib(16.5, 5.5),
+  // alpha.118 (W4): remote backups - destinations, every-site schedules, a
+  // site's remote copies and the guidance of every remote backup code
+  // (rbak.). A new part, set with at least 25% headroom from its Turkish
+  // file: 25.93 / 7.42 KiB.
+  remoteBackup: kib(33, 9.5),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

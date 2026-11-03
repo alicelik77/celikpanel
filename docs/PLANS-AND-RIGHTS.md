@@ -159,6 +159,7 @@ An item left at 0 or empty means **unlimited**, and the screen says "unlimited".
 | SSH (command line) | The command line cannot be entered; file access is not affected |
 | WordPress tools (alpha.118, `wordpress_tools`) | The WordPress tools section is not visible; status, updates, the automatic minor-release switch and staging copies are refused. A site that already runs, and switches already on, are not changed (an automatic update is skipped while the right is closed) |
 | Malware scan results (alpha.118, `malware_scan`) | The Malware scan section is not visible; the customer cannot start scans or act on findings. The administrator can still scan every site, and the administrator's weekly scan still covers it |
+| Own remote backup destinations (alpha.118) | The account cannot add its own S3 or SFTP destination; it can still choose a destination the administrator offers. Schedules already set keep running ([REMOTE-BACKUPS.md](REMOTE-BACKUPS.md)) |
 
 **File access does not exist today.** On November 2, 2026 the owner looked for the FTP and SSH
 settings of a domain and could not find them. Verified from the code: there is no path in the

@@ -47,6 +47,7 @@ var rightPermissionIDs = []string{
 	rightDNSEdit, rightDNSSEC, rightMail, rightDatabases, rightCron, rightFileManager,
 	rightBackups, rightSSLACME, rightSSLCustom, rightSiteProtect, rightSiteProxy,
 	rightAppInstaller, rightVPN, rightTeamMembers, rightFileAccess, rightSSH,
+	rightRemoteBackupDestinations,
 }
 
 var rightPermissionNames = map[string]string{
@@ -66,6 +67,9 @@ var rightPermissionNames = map[string]string{
 	rightTeamMembers:  "Additional users",
 	rightFileAccess:   "File access (FTP and SFTP)",
 	rightSSH:          "SSH (command line)",
+
+	// alpha.118 (remote_backup_model.go).
+	rightRemoteBackupDestinations: "Own remote backup destinations",
 }
 
 // legacyGrantPermissions are the two product permissions that still need an

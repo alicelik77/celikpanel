@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import {
     Archive, RefreshCw, Download, Trash2, RotateCcw,
-    HardDrive, Database, Clock, Info, type LucideIcon,
+    HardDrive, Database, Clock, Info, UploadCloud, type LucideIcon,
 } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
@@ -14,6 +14,11 @@ import { decodeListIn, invalidate, mapRemote, useRemote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
 import { decodeDomainDatabases } from '../lib/domainDatabases';
 import { saveDownload } from '../lib/download';
+import { decodeSiteOverview, remoteEligibleBackupName, siteRemoteURL } from '../lib/remoteBackup';
+
+// Remote copies (alpha.118): their own screen, fetched with this tab.
+// Uzak kopyalar: kendi ekranı, bu sekmeyle birlikte getirilir.
+const DomainRemoteBackups = lazy(() => import('./DomainRemoteBackups').then((module) => ({ default: module.DomainRemoteBackups })));
 
 interface BackupItem {
     name: string;
@@ -117,6 +122,12 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
     const [deleting, setDeleting] = useState<string | null>(null);
     const [downloading, setDownloading] = useState<string | null>(null);
     const answer = useLostAnswer(() => backups.retry());
+    // A local backup can also be sent to a remote destination when one may
+    // hold this site's backups (the overview the remote section reads too).
+    // Yerel yedek, bu siteyi tutabilecek bir uzak hedef varsa oraya da gönderilebilir.
+    const remoteOverview = useRemote(siteRemoteURL(domainId), decodeSiteOverview);
+    const remoteTargets = remoteOverview.remote.state === 'known' ? remoteOverview.remote.value.destinations.length : 0;
+    const [sendName, setSendName] = useState<string | null>(null);
 
     const loading = backups.reading;
     const loadBackups = () => backups.retry();
@@ -424,6 +435,18 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
                                                 )}
                                             </button>
                                         )}
+                                        {!readOnly && remoteTargets > 0 && remoteEligibleBackupName(backup.name) && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setSendName(backup.name)}
+                                                disabled={busy || shown.stale}
+                                                title={t('rbak.send.button')}
+                                                aria-label={t('rbak.send.rowLabel', { name: backup.name })}
+                                                className="rounded-md p-2 text-fg-muted hover:bg-surface-2 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                                <UploadCloud className="h-4 w-4" aria-hidden="true" />
+                                            </button>
+                                        )}
                                         <button
                                             type="button"
                                             onClick={() => void downloadBackup(backup.name)}
@@ -458,6 +481,10 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
                 )}
                 </RemoteGate>
             </section>
+
+            <Suspense fallback={null}>
+                <DomainRemoteBackups domainId={domainId} readOnly={readOnly} sendName={sendName} onSendClosed={() => setSendName(null)} />
+            </Suspense>
 
             <p className="flex items-start gap-2 text-xs text-fg-subtle">
                 <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />

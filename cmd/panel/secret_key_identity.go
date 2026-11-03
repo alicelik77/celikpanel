@@ -64,6 +64,10 @@ var sealedSecretProbes = []sealedSecretProbe{
 		family: "VPN preshared keys",
 		query:  `SELECT preshared_key FROM vpn_peers WHERE preshared_key != ''`,
 	},
+	{
+		family: "remote backup destination passphrases",
+		query:  `SELECT passphrase_sealed FROM remote_backup_destinations WHERE passphrase_sealed != ''`,
+	},
 }
 
 // verifySecretKeyIdentity answers, before a single secret is written, whether
