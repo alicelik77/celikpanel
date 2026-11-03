@@ -103,6 +103,12 @@ func serverSetupHostStayedBusy(step *serverSetupExecutionStep, reason, unchanged
 // Güvenlik duvarı ve posta sertifikası adımı meşgul reddinde aynı kimlikle
 // bekler; kanıt yoksa eski davranış sürer.
 func (p *Panel) serverSetupAgentRequestRefusedBusy(ctx context.Context, step *serverSetupExecutionStep, err error) error {
+	// The DNS step's own lease refused, proven never admitted (alpha.118
+	// lab D1): the same bounded wait, then a released reservation.
+	var dnsNotAdmitted *serverSetupDNSNotAdmittedError
+	if step.Kind == "dns" && errors.As(err, &dnsNotAdmitted) {
+		return p.serverSetupDNSNotAdmittedAttempt(ctx, step, dnsNotAdmitted, time.Now())
+	}
 	var publishBusy *serverSetupZonePublishBusyError
 	if errors.As(err, &publishBusy) {
 		// A zone publication of the infrastructure or mail DNS step refused at

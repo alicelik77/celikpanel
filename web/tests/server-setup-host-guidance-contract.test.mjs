@@ -64,4 +64,14 @@ test('setup never calls a kept-journal DNS operation undone and explains a block
   assert.match(retainedTR, /^Kurulum DNS kurulumunu başlatmadı/);
   assert.match(retainedTR, /Hiçbir şey başlatılmadı\./);
   assert.match(retainedTR, /kayıt çözülünce kurulumu başlatır/);
+  // alpha.118 lab D1: a DNS install the Agent never admitted waits, then
+  // stops as a verified "nothing changed" with the owner's next action.
+  assert.equal(mapped('server_setup_dns_not_admitted'), 'setup.guide.dnsNotAdmitted');
+  assert.equal(mapped('server_setup_dns_not_admitted_failed'), 'setup.guide.dnsNotAdmittedFailed');
+  assert.match(textOf(en, 'setup.guide.dnsNotAdmitted'), /nothing was started or changed/);
+  assert.match(textOf(en, 'setup.guide.dnsNotAdmitted'), /asks the Agent again by itself with the same operation/);
+  assert.match(textOf(tr, 'setup.guide.dnsNotAdmitted'), /hiçbir şey başlatılmadı ve değişmedi/);
+  assert.match(textOf(en, 'setup.guide.dnsNotAdmittedFailed'), /released the DNS operation it had reserved/);
+  assert.match(textOf(en, 'setup.guide.dnsNotAdmittedFailed'), /then choose Review a revised plan/);
+  assert.match(textOf(tr, 'setup.guide.dnsNotAdmittedFailed'), /Düzeltilmiş planı incele'yi seçin/);
 });

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -152,12 +153,26 @@ func (p *Panel) startServerSetupDNS(ctx context.Context, draft serverSetupDraft,
 			if err != nil {
 				return setupDNSReconciliationError(err)
 			}
-			if job == nil && persisted.Phase == "planned" {
+			readmit := false
+			if job == nil && persisted.Phase == "activating" {
+				// The accepted switch has no Agent job: admit the same
+				// request again only when its Agent lease provably never
+				// began (alpha.118 lab D1). Anything less stays unknown.
+				readmit, err = p.setupDNSSwitchNeverAdmitted(ctx, persisted)
+				if err != nil {
+					readmit = false
+				}
+			}
+			if job == nil && (persisted.Phase == "planned" || readmit) {
 				manifest, err := p.reconstructPersistedDNSEngineManifest(ctx, persisted)
 				if err != nil {
 					return setupDNSReconciliationError(err)
 				}
 				if err := p.executeDNSEngineSwitch(ctx, persisted, manifest); err != nil {
+					if notAdmitted := p.serverSetupDNSNotAdmitted(ctx, persisted, err); notAdmitted != nil {
+						return notAdmitted
+					}
+					log.Printf("server setup DNS request %s switch %s did not complete: %v", persisted.RequestID, persisted.SwitchID, err)
 					return p.reconcileServerSetupDNSFailure(ctx, persisted, err)
 				}
 			} else {
@@ -314,6 +329,13 @@ func (p *Panel) startServerSetupDNS(ctx context.Context, draft serverSetupDraft,
 	}
 	p.auditDNSEngineBounded(dnsEngineAuditActor{UserID: actor.UserID, IP: actor.IP, UserAgent: actor.UserAgent}, "setup.accepted", persisted)
 	if err := p.executeDNSEngineSwitch(ctx, persisted, manifest); err != nil {
+		// The Agent can refuse the lease itself (a busy host, for example)
+		// after the switch was accepted here. Proven, that is a wait on the
+		// same request, not an unknown result (alpha.118 lab D1).
+		if notAdmitted := p.serverSetupDNSNotAdmitted(ctx, persisted, err); notAdmitted != nil {
+			return notAdmitted
+		}
+		log.Printf("server setup DNS request %s switch %s did not complete: %v", persisted.RequestID, persisted.SwitchID, err)
 		p.auditDNSEngineBounded(dnsEngineAuditActor{UserID: actor.UserID, IP: actor.IP, UserAgent: actor.UserAgent}, "setup.reconcile_required", persisted)
 		return p.reconcileServerSetupDNSFailure(ctx, persisted, err)
 	}

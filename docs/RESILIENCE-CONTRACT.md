@@ -8141,3 +8141,48 @@ until the backup reports ready.
   helper; both coordinators stopped; one running and one stopped; a failed restart;
   an unexpected running unit. The native Arch sequence is not yet re-measured.
   **No P0 item is closed**; P0.1/P0.3 stay partial.
+
+### Branch fix/a118-setup-dns (a setup DNS install the Agent never admitted waits and resumes instead of staying unknown; no schema change; invariants 2 and 4; P0.4; D-021; D-024; D-025; 2026-11-03)
+
+- **Incident.** Lab D1, alpha.118 candidate, 1 of 2 fresh Debian 13 installs:
+  setup `01-dns` stayed `server_setup_dns_result_unknown`, the audit showed
+  `setup.accepted` and `setup.reconcile_required` in the same second, the switch
+  stayed `activating`, PowerDNS was never installed, and the Agent's mutation
+  ledger had no job for the request (unchanged since install). The setup DNS step
+  records its switch before it asks the Agent for the host lease; the Agent refused
+  that lease before writing its ledger (for example a busy package manager or host
+  lock), so no failed job and no rollback evidence could ever exist. Nothing was
+  logged. The code path is unchanged since alpha.117 (and the unknown bound since
+  alpha.81): an older, intermittent defect, not an alpha.118 regression.
+- **Contract.** "Never admitted" is proven read-only: the exact first-install switch
+  is still the attached one in phase `activating` with its accepted marker; the
+  Agent reports no job for the request and no hold; no DNS switch journal is
+  retained; no DNS engine runs; the job absence is read again after the runtime
+  read. With that proof the step waits (`server_setup_host_busy` for a typed busy
+  refusal, otherwise `server_setup_dns_not_admitted`) and the next pass admits the
+  same request under the same owner identity. The Agent admits one lease per
+  request and one per host, so no second mutation can start. Past the 30-minute
+  bound the proof is repeated under the DNS locks and the reservation is released
+  as unchanged (`rolled_back`, audit `change_not_committed`); the step fails with
+  `server_setup_host_stayed_busy` or `server_setup_dns_not_admitted_failed` and
+  "Review a revised plan". The owner's DNS reconcile (Server → DNS), which needs a
+  failed Agent job to prove a rollback, uses the same proof to release such a switch.
+  Without the proof the earlier reconcile/unknown path is unchanged. The setup DNS failure is now logged.
+- **Recovery.** A server already left in the D1 state: the owner's panel update
+  restarts the panel, and startup recovery (unchanged; it finishes a source-empty
+  install switch from the runtime proof) records it rolled back without degrading
+  anything; setup then shows `server_setup_dns_rolled_back` and the owner chooses
+  Review a revised plan. Without a restart, the next setup pass admits the same
+  request. Remaining gaps: the exact refusal reason of the lab
+  run was not recorded and is not reproduced natively; an absent job together with a
+  running engine or a retained journal stays an unknown result for the owner's
+  status command; only source-empty first installs are covered (a refused lease of
+  an engine change or reinstall keeps the earlier path); the Agent still writes
+  nothing for a refused lease.
+- **Evidence.** Component tests only (`cmd/panel/server_setup_dns_not_admitted_test.go`):
+  the lab interleaving (accepted, then lease refused; fails on the previous code with
+  the unknown result), busy retry, resume of the same request with one switch call,
+  a running job / retained journal / running engine never treated as unstarted, the
+  runner wait and the bounded release for a busy and a plain refusal, then a revised
+  plan installing; the owner's reconcile releasing it; startup after a restart
+  finishing it without degrading. No native run. **No P0 item is closed**; P0.4 stays partial.
