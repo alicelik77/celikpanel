@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.117.tr.md)
 
+> **Published** on 2026-11-03 (UTC): release commit `b22348ff8`, GitHub pre-release at 02:08:57Z, download portal at about 02:13Z (public check 27/27).
+
 The plans-and-rights release (D-042) and the security emergency (D-043), as the
 owner approved them on 2 November 2026. **Only the owner updates installed
 panels, from the panel's own update screen.**
