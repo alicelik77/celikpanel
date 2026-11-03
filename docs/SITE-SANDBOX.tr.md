@@ -11,7 +11,8 @@ başlatabilir; bu yüzden güvenlik sınırı bu korumadır, sunucuda hangi dill
 değildir.
 
 Kod `internal/sitesandbox` içindedir. Hizmet uygulamaları birimlerini bununla yazar; çalışma
-ortamı işi de Python uygulamaları ve yüklenen programlar için bunu kullanır.
+ortamı işi de Python uygulamaları ve yüklenen programlar için bunu kullanır. Yüklenen programlar
+[RUNTIME-APPS.tr.md](RUNTIME-APPS.tr.md) belgesinde anlatılır.
 
 ## 1. Her programın aldığı koruma
 

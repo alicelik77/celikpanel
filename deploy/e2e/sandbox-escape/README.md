@@ -19,6 +19,7 @@ namespace, and it removes all of them at the end. It never runs
 | `probes/goprobe/` | A static Go probe (the "uploaded program" kind: `NoExecPaths`, `MemoryDenyWriteExecute`). |
 | `probes/probe.py` | A Python probe (the python kind), using ctypes for the system calls. |
 | `run.sh` | The runner. |
+| `panel-runtime.sh` | Runs the Go probe as a real runtime app through a lab panel's API (below). |
 
 There is no C or Rust probe: the development system used to write the kit
 had neither toolchain. The Go probe is built static (`CGO_ENABLED=0`). A Rust
@@ -83,6 +84,72 @@ from the journal. An item with no line at all is a FAIL.
 | 15 | Kernel keyring (keyctl) | must fail |
 | 16 | Writes to /sys/fs/cgroup (root and own memory.max) | must fail |
 | 17 | The SMTP block after a restart, after a reboot and after the egress table is removed | the unit's cgroup is in `@smtp_blocked` again, and a new attempt is refused (the counter rises). After the table is removed, the guard timer must restore it within 45 seconds. |
+
+## Running the probe as a real runtime app
+
+`run.sh` renders its own units. `panel-runtime.sh` instead lets a **lab
+panel** do everything a customer's uploaded program goes through
+([docs/RUNTIME-APPS.md](../../../docs/RUNTIME-APPS.md)): create, the entry
+check, the real `celikrt-<id>.service` unit with its environment file,
+deploy (validate, render, restart, sandbox proof, health, publish), and the
+redacted log view. The probe runs with `-serve -port={port}`: it runs the
+matrix once, prints its `SANDBOX-PROBE` lines to the journal, then listens on
+`127.0.0.1:$PORT` and answers 200 on `/` so that the health step passes.
+
+**Lab VM only.** The script refuses to start without `LAB_ONLY=yes`. Point
+it only at a lab panel, never at a real server. It never updates a panel,
+never touches the firewall, and starts nothing on the server except, with
+`UPLOAD=local`, copying the probe into the site's `app/bin` as the site's
+own account.
+
+Prerequisites on the lab panel: the administrator offered `runtime:program`
+on the Add-ons page; the account's plan grants `program_apps`; the lab domain
+has a website and a certificate, and no other program.
+
+```sh
+./run.sh build          # on a machine with Go: bin/goprobe (static)
+
+# On the lab server as root (uploads as the site's account; also reads the SMTP counter):
+sudo LAB_ONLY=yes PANEL_URL=https://lab-vm:1923 COOKIE=<celikpanel_session> \
+  DOMAIN_ID=<id> OTHER_SITE_FILE=<a 0644 file of another lab site> \
+  CURL_INSECURE=1 REMOVE=1 ./panel-runtime.sh
+
+# From elsewhere, uploading over the domain's SFTP account (key authentication):
+LAB_ONLY=yes PANEL_URL=https://lab-vm:1923 COOKIE=<celikpanel_session> DOMAIN_ID=<id> \
+  UPLOAD=sftp SFTP_TARGET=<sftp user>@lab-vm SFTP_IDENTITY=~/.ssh/lab_key ./panel-runtime.sh
+```
+
+- **Authentication.** The panel has no API tokens. Sign in to the lab panel
+  in a browser as the domain's owner (or the administrator) and copy the
+  value of the `celikpanel_session` cookie into `COOKIE`. The script passes
+  it through a private curl config file, not on the command line, and sends
+  `Origin: $PANEL_URL` (the panel refuses a write without it).
+- **Upload.** `UPLOAD=local` (the default as root) copies the probe with
+  `runuser` as the account whose home is the site home. `UPLOAD=sftp` puts it
+  into `app/bin/goprobe` with `sftp -b` (batch mode needs key
+  authentication). `UPLOAD=none` means you uploaded it yourself with the file
+  manager or SFTP, executable by its owner.
+- **Environment.** Before the deploy the script sets `PROBE_RUN` (a marker,
+  so only this start's lines are judged), `PROBE_SECRET` as a secret (the
+  probe prints it on purpose, and the log view must hide it), and
+  `PROBE_OTHER_SITE` from `OTHER_SITE_FILE`. Without `OTHER_SITE_FILE`,
+  item 1 reads a path that may not exist, which proves nothing.
+- **One operation id.** The deploy is posted with one operation id. If no
+  answer arrives, the same id is posted again (the panel's lost-answer
+  guard). The script then only reads (`GET` without `?health=1`) until the
+  operation ends. It never posts a new id while one is running.
+- **Judging.** The script reads `GET …/runtime-apps/logs?lines=500` and
+  judges the lines after this run's marker as `run.sh` does: an item with no
+  line is a FAIL, and any `ESCAPED` is a FAIL. It also checks that `HOST` is
+  `127.0.0.1` and `PORT` is the app's port (`env`), and that the secret never
+  appears in the log view (`log`). A failed deploy is a FAIL, with its step,
+  class, reason and message. With `UPLOAD=local` the SMTP counter must rise
+  by at least 6 (item 9). Items 11 and 17 stay with `run.sh`.
+- **Removal.** `REMOVE=1` removes the program at the end with its own
+  operation id. `REMOVE_FILES=1` also removes the app folder (the script
+  types the domain as the confirmation).
+
+The last line is `PASS` or `FAIL`, and the exit status is 0 or 1.
 
 ## Known limits of the kit
 

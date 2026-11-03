@@ -15,7 +15,8 @@ server has installed does not matter.
 
 The code is in `internal/sitesandbox`. Service apps render their units
 through it (`internal/serviceapps`). The runtime workstream uses it for
-Python apps and uploaded programs.
+Python apps and uploaded programs. Uploaded programs are described in
+[RUNTIME-APPS.md](RUNTIME-APPS.md).
 
 ## 1. What every sandboxed program gets
 

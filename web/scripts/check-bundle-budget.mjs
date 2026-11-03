@@ -228,6 +228,11 @@ const screenPartBudgets = {
   // set with at least 25% headroom from its Turkish file as source:
   // 21.4 / 6.5 KiB.
   serviceApps: kib(27, 8.5),
+  // alpha.119: uploaded programs of a site and the administrator's offering,
+  // the guidance of every state and failure reason (runtime.,
+  // err.RUNTIME_APP., their audit words). A new part, set with at least 25%
+  // headroom from its Turkish file: 33.06 / 8.70 KiB.
+  runtimeApps: kib(42, 11),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

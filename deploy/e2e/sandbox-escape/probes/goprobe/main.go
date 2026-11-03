@@ -10,9 +10,16 @@
 // 127.0.0.1:$PROBE_PORT so run.sh can ask it to try the mail ports again
 // (GET /smtp) after it removed the egress table. It is test code: it only
 // tries and reports; it never keeps what an escape would give.
+//
+// With -serve it runs as a real CelikPanel runtime app (panel-runtime.sh,
+// docs/RUNTIME-APPS.md): it takes the port from -port (the "{port}"
+// argument) or $PORT, the app folder from -appdir or its working folder,
+// runs the matrix once, then answers 200 on / (the deploy's health step)
+// and /smtp on 127.0.0.1:<port>.
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net"
 	"net/http"
@@ -322,7 +329,57 @@ func load(mode string) {
 	}
 }
 
+// serveApp is the -serve mode: the probe as an uploaded program deployed
+// through the panel. Every line goes to stdout, so the panel's log view
+// (GET .../runtime-apps/logs) carries the SANDBOX-PROBE lines.
+func serveApp(port int, appDir string) {
+	if port == 0 {
+		port, _ = strconv.Atoi(os.Getenv("PORT"))
+	}
+	if appDir == "" {
+		appDir, _ = os.Getwd()
+	}
+	if port == 0 || appDir == "" || appDir == "/" {
+		fmt.Fprintln(out, "SANDBOX-PROBE SERVE-FAILED the port (-port or $PORT) and the app folder (-appdir or the working folder) are required")
+		os.Exit(2)
+	}
+	// The run marker lets panel-runtime.sh read only this start's lines.
+	fmt.Fprintf(out, "SANDBOX-PROBE-RUN %s\n", env("PROBE_RUN", "none"))
+	fmt.Fprintf(out, "SANDBOX-PROBE-ENV port=%d env_port=%s host=%s home=%s path=%s appdir=%s uid=%d\n",
+		port, os.Getenv("PORT"), os.Getenv("HOST"), os.Getenv("HOME"), os.Getenv("PATH"), appDir, os.Getuid())
+	// A secret environment value, printed on purpose: the panel must hide
+	// it in the log it shows (panel-runtime.sh checks that).
+	if secret := os.Getenv("PROBE_SECRET"); secret != "" {
+		fmt.Fprintf(out, "SANDBOX-PROBE-ENVECHO %s\n", secret)
+	}
+	matrix(appDir, port)
+	fmt.Fprintln(out, "SANDBOX-PROBE DONE")
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "CelikPanel sandbox probe: lab only")
+	})
+	mux.HandleFunc("/smtp", func(w http.ResponseWriter, r *http.Request) {
+		smtp()
+		fmt.Fprintln(out, "SANDBOX-PROBE SMTP-AGAIN DONE")
+		fmt.Fprintln(w, "ok")
+	})
+	// Loopback only, whatever HOST says: the deploy proof would stop any
+	// other listener anyway.
+	if err := http.ListenAndServe("127.0.0.1:"+strconv.Itoa(port), mux); err != nil {
+		fmt.Fprintln(out, "SANDBOX-PROBE LISTEN-FAILED", err)
+		os.Exit(1)
+	}
+}
+
 func main() {
+	serve := flag.Bool("serve", false, "run as a CelikPanel runtime app (panel-runtime.sh)")
+	servePort := flag.Int("port", 0, "with -serve: the loopback port (default $PORT)")
+	serveDir := flag.String("appdir", "", "with -serve: the app folder (default: the working folder)")
+	flag.Parse()
+	if *serve {
+		serveApp(*servePort, *serveDir)
+		return
+	}
 	mode := env("PROBE_MODE", "matrix")
 	if mode != "matrix" {
 		load(mode)
