@@ -135,7 +135,7 @@ func (p *Panel) handleDomainAppNodeVersion(w http.ResponseWriter, r *http.Reques
 	// alpha.108 (D-038 §14): another line is a customer's new choice and
 	// must be offered; another patch of the line the site runs never is
 	// refused.
-	if p.refuseVersionNotOffered(w, r, "node", from, req.Version) {
+	if p.refuseVersionNotOffered(w, r, domainID, "node", from, req.Version) {
 		return
 	}
 	if from == req.Version {
@@ -144,8 +144,28 @@ func (p *Panel) handleDomainAppNodeVersion(w http.ResponseWriter, r *http.Reques
 	}
 	ctx, cancel := hostingDurableContext(r.Context())
 	defer cancel()
-	failure := transitionHostingForMove(p, ctx, domainID, hostingSettingsOf(state, req.Version))
-	if failure == nil {
+	// D-043 (release decision c): a site a security emergency stopped moves
+	// with the start lock in place; a failed move leaves it stopped on the
+	// maintenance page and never starts it on the withdrawn version.
+	underEmergency, err := siteUnderEmergencyMaintenance(r.Context(), p.db.GetDB(), domainID)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	if underEmergency {
+		if _, failure := p.nodeEmergencyMoveSteps(p.emergencyNativeOps(), state, from, req.Version).run(ctx, from, req.Version); failure != nil {
+			p.auditDetailed(r, "site.node_version.failed:"+state.DomainName+":"+from+"->"+req.Version+" — "+auditReason(failure.Error()), "domain", domainID,
+				map[string]any{"site": state.DomainName, "component": "node", "from": from, "to": req.Version, "kept_stopped": true})
+			w.WriteHeader(http.StatusConflict)
+			json.NewEncoder(w).Encode(map[string]any{"error": failure.Error(), "code": "NODE_MOVE_FAILED", "kept_stopped": true})
+			return
+		}
+	}
+	var failure error
+	if !underEmergency {
+		failure = transitionHostingForMove(p, ctx, domainID, hostingSettingsOf(state, req.Version))
+	}
+	if failure == nil && !underEmergency {
 		failure = proveAppAnswers(ctx, int(state.AppPort.Int64))
 		if failure != nil {
 			if backErr := transitionHostingForMove(p, ctx, domainID, hostingSettingsOf(state, from)); backErr != nil {
@@ -167,6 +187,8 @@ func (p *Panel) handleDomainAppNodeVersion(w http.ResponseWriter, r *http.Reques
 		json.NewEncoder(w).Encode(map[string]any{"error": failure.Error(), "code": "NODE_MOVE_FAILED"})
 		return
 	}
+	// D-043: the site left a version under a security emergency.
+	p.noteEmergencySiteMoved(ctx, domainID)
 	details := map[string]any{"site": state.DomainName, "component": "node", "from": from, "to": req.Version, "proved": true}
 	for key, value := range versionSupportDetails("node", req.Version) {
 		if key != "version" {

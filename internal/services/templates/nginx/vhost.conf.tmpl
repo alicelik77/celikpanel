@@ -343,7 +343,64 @@ server {
 {{template "acme-names-server" .}}
 {{- end}}
 
-{{- if eq .ProjectType "forwarding"}}
+{{- /* A suspended subscription (alpha.117, PLANS-AND-RIGHTS 9A). Every
+    request gets the suspended page with 503 and Retry-After: no root, no PHP,
+    no proxy, no redirects and no owner include, so nothing of the customer is
+    served. The Panel's include stays: it holds only the ACME HTTP-01 location
+    (root-owned validation files, never public_html), so certificates keep
+    renewing and the site comes back with a valid one. The HTTPS block keeps
+    its certificate so https:// visitors see the page, not a TLS error.
+    Askıya alınmış abonelik: her isteğe 503 askı sayfası, müşteri içeriği yok.
+    Sertifika doğrulama konumu kalır; sertifikalar yenilenmeye devam eder. */}}
+{{- define "suspended-site"}}
+    # celikpanel-suspended: this subscription is suspended / abonelik askıda
+    add_header Retry-After 86400 always;
+    add_header Cache-Control "no-store" always;
+
+    location / {
+        default_type text/html;
+        charset utf-8;
+        return 503 '<!doctype html><html><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>Site suspended</title></head><body style="font-family:sans-serif;max-width:40em;margin:4em auto;padding:0 1em"><h1>This site is suspended</h1><p>Bu site askıya alınmıştır.</p><p>The site owner can contact their hosting provider. / Site sahibi barındırma sağlayıcısıyla görüşebilir.</p></body></html>';
+    }
+{{- end}}
+
+{{- define "maintenance-site"}}
+    # celikpanel-maintenance: a security emergency on this site's runtime / güvenlik acil durumu
+    add_header Retry-After 3600 always;
+    add_header Cache-Control "no-store" always;
+
+    location / {
+        default_type text/html;
+        charset utf-8;
+        return 503 '<!doctype html><html><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>Under maintenance</title></head><body style="font-family:sans-serif;max-width:40em;margin:4em auto;padding:0 1em"><h1>This site is temporarily under maintenance</h1><p>Bu site geçici olarak bakımdadır.</p><p>Please try again later. / Lütfen daha sonra yeniden deneyin.</p></body></html>';
+    }
+{{- end}}
+
+{{- if or .Suspended .Maintenance}}
+server {
+    listen 80;
+    listen [::]:80;
+    server_name{{range .ServerNames}} {{.}}{{end}};
+
+    access_log /var/log/nginx/{{.Domain}}-access.log;
+    error_log /var/log/nginx/{{.Domain}}-error.log;
+{{template "panel-include" .}}
+{{if .Suspended}}{{template "suspended-site" .}}{{else}}{{template "maintenance-site" .}}{{end}}
+}
+{{- if and (ne .SSLType "none") .SSLCert}}
+
+server {
+{{template "https-listen" .}}
+    server_name{{range .ServerNames}} {{.}}{{end}};
+{{template "tls-settings" .}}
+
+    access_log /var/log/nginx/{{.Domain}}-access.log;
+    error_log /var/log/nginx/{{.Domain}}-error.log;
+{{template "panel-include" .}}
+{{if .Suspended}}{{template "suspended-site" .}}{{else}}{{template "maintenance-site" .}}{{end}}
+}
+{{- end}}
+{{- else if eq .ProjectType "forwarding"}}
 {{- if eq .SSLType "none"}}
 server {
     listen 80;

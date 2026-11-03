@@ -35,10 +35,10 @@ func (p *Panel) handleNodeRuntimes(w http.ResponseWriter, r *http.Request) {
 		// alpha.108 (D-038 §14): a customer is listed the versions the
 		// administrator offers (their site's own version is added back by
 		// the picker, which keeps it).
+		// alpha.117 (D-042): and what the subscription's rights open.
 		if !callerIsAdministrator(r) {
-			policy, err := p.loadOfferedVersions(r.Context())
-			if err != nil {
-				writeServerError(w, err)
+			policy, _, ok := p.listingVersionPolicy(w, r)
+			if !ok {
 				return
 			}
 			resp.Installed = policy.filter("node", resp.Installed)
@@ -84,6 +84,10 @@ func (p *Panel) handleNodeRuntimes(w http.ResponseWriter, r *http.Request) {
 		}
 		if found {
 			writeAcceptedServiceOperation(w, existing)
+			return
+		}
+		// D-043: a withdrawn Node.js version is refused before anything queues.
+		if p.refuseWithdrawnInstall(w, r, "node", req.Version, "") {
 			return
 		}
 		release, busy := p.beginServiceMutation(w, r)

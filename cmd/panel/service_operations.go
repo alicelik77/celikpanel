@@ -264,6 +264,10 @@ func (p *Panel) handleServiceInstall(w http.ResponseWriter, r *http.Request) {
 		writeDNSEngineWorkflowRequired(w)
 		return
 	}
+	// D-043: a withdrawn version or engine is refused before anything queues.
+	if p.refuseWithdrawnInstall(w, r, req.ServiceID, req.Package, req.PHPVersion) {
+		return
+	}
 	release, busy := p.beginServiceMutation(w, r)
 	if busy {
 		return
@@ -770,11 +774,12 @@ func (p *Panel) syncMailTLSAfterOperation(
 	}
 	tlsResult := mailProfileTLSResult{
 		Configured: true, SNICount: response.SNICount,
-		FallbackOnly: response.SNICount == 0,
+		FallbackOnly:    response.SNICount == 0,
+		HostCertificate: mailProfileHostCertificateState(response.HostCertificate),
 	}
 	result["mail_tls"] = tlsResult
 	if tlsResult.FallbackOnly {
-		result["warnings"] = []string{mailProfileFallbackWarning}
+		result["warnings"] = []string{mailProfileTLSWarning(tlsResult.HostCertificate)}
 	}
 	return nil
 }
@@ -2487,6 +2492,10 @@ func (p *Panel) runNodeInstall(
 	}
 	if err := p.preflightManagedServiceInstall(ctx, "node", ""); err != nil {
 		return result, nodeInstallFailure(err)
+	}
+	// D-043: a withdrawn Node.js version is not installed.
+	if failure := p.withdrawnInstallFailure(ctx, "node", version, ""); failure != nil {
+		return result, failure
 	}
 	var response transport.NodeInstallResponse
 	if err := p.callAgentContext(ctx, "Agent.InstallNodeVersion", &transport.NodeInstallRequest{

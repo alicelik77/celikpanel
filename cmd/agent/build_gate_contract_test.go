@@ -41,6 +41,74 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			// alpha.117: subscription suspension, one native resource per call.
+			name: "SetSiteAccountSuspensionV1",
+			run: func(expected string) string {
+				var response transport.SetSiteAccountSuspensionResponse
+				_ = agent.SetSiteAccountSuspensionV1(&transport.SetSiteAccountSuspensionRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			name: "SetMailDomainSuspensionV1",
+			run: func(expected string) string {
+				var response transport.SetMailDomainSuspensionResponse
+				_ = agent.SetMailDomainSuspensionV1(&transport.SetMailDomainSuspensionRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			name: "SetDatabaseUserSuspensionV1",
+			run: func(expected string) string {
+				var response transport.SetDatabaseUserSuspensionResponse
+				_ = agent.SetDatabaseUserSuspensionV1(&transport.SetDatabaseUserSuspensionRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			// alpha.117: credential rotation after a subscription transfer.
+			name: "RotateDatabaseUserPasswordV1",
+			run: func(expected string) string {
+				var response transport.RotateDatabaseUserPasswordResponse
+				_ = agent.RotateDatabaseUserPasswordV1(&transport.RotateDatabaseUserPasswordRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			name: "EndMailSessionsV1",
+			run: func(expected string) string {
+				var response transport.EndMailSessionsResponse
+				_ = agent.EndMailSessionsV1(&transport.EndMailSessionsRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			name: "SetAppUnitSuspensionV1",
+			run: func(expected string) string {
+				var response transport.SetAppUnitSuspensionResponse
+				_ = agent.SetAppUnitSuspensionV1(&transport.SetAppUnitSuspensionRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			// alpha.117 (D-043): a security emergency's unit lock.
+			name: "SetEmergencyUnitLockV1",
+			run: func(expected string) string {
+				var response transport.SetEmergencyUnitLockResponse
+				_ = agent.SetEmergencyUnitLockV1(&transport.SetEmergencyUnitLockRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			// alpha.117 (D-043): a Node.js application's start lock.
+			name: "SetEmergencyAppLockV1",
+			run: func(expected string) string {
+				var response transport.SetEmergencyAppLockResponse
+				_ = agent.SetEmergencyAppLockV1(&transport.SetEmergencyAppLockRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
 			// alpha.113: the default HTTPS server's "Try again".
 			name: "ReconcileDefaultHTTPSServerV1",
 			run: func(expected string) string {
@@ -95,6 +163,17 @@ func protectedBuildGateOperations() []buildGateOperation {
 			run: func(expected string) string {
 				var response transport.MailAutoresponderResponse
 				if err := agent.SetMailAutoresponder(&transport.SetMailAutoresponderRequest{ExpectedBuildCommit: expected}, &response); err != nil {
+					return err.Error()
+				}
+				return response.Detail
+			},
+		},
+		{
+			// alpha.117: FTP, SFTP and SSH access of a hosting account.
+			name: "ApplyFileAccessV1",
+			run: func(expected string) string {
+				var response transport.ApplyFileAccessResponse
+				if err := agent.ApplyFileAccessV1(&transport.ApplyFileAccessRequest{ExpectedBuildCommit: expected}, &response); err != nil {
 					return err.Error()
 				}
 				return response.Detail

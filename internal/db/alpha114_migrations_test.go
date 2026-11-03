@@ -14,10 +14,10 @@ import (
 // Every one is additive. A release before one of them refuses a ledger that
 // carries it; a return is the pre-update snapshot restore, as for every
 // migration (there is no down migration).
-// alpha.114 beş göç taşır (047–051); hepsi eklemelidir, var olan satır değişmez.
+// alpha.114 beÅŸ gÃ¶Ã§ taÅŸÄ±r (047â€“051); hepsi eklemelidir, var olan satÄ±r deÄŸiÅŸmez.
 const (
 	panelPortChangeMigrationVersion = 47
-	newestMigrationVersion          = mailAutorespondersMigrationVersion
+	newestMigrationVersion          = transferRotationMigrationVersion
 )
 
 // requireMigrationsFrom proves that the embedded list ends at the newest
@@ -59,7 +59,7 @@ func TestOlderReleaseRefusesALedgerWithThePanelPortChangeEntry(t *testing.T) {
 
 // A schema-46 database (alpha.113, with its ledger) opened by this release
 // takes migrations 47 to 51 in order and keeps every row and value it had.
-// Şema-46 veritabanı 47–51 göçlerini sırayla alır; her satır aynen kalır.
+// Åema-46 veritabanÄ± 47â€“51 gÃ¶Ã§lerini sÄ±rayla alÄ±r; her satÄ±r aynen kalÄ±r.
 func TestSchema46DatabaseUpgradesThroughMigration51WithEveryRowIntact(t *testing.T) {
 	embedded, err := loadEmbeddedMigrations()
 	if err != nil {

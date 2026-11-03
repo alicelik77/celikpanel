@@ -35,6 +35,8 @@ interface DomainDNSManagerProps {
      * Birincildeki altyapi bolgesi: ayni duzenleyici, bolgenin kendi uclari.
      */
     infrastructureZone?: boolean;
+    /** The subscription's rights do not hold DNSSEC (alpha.117): the section is not drawn. */
+    dnssecHidden?: boolean;
 }
 
 // What the server says about a domain's zone, its records and its signing.
@@ -126,6 +128,7 @@ export function DomainDNSManager({
     readOnly = false,
     isAdditionalUser = false,
     infrastructureZone = false,
+    dnssecHidden = false,
 }: DomainDNSManagerProps) {
     const { t } = useI18n();
     const api = infrastructureZone
@@ -408,7 +411,7 @@ export function DomainDNSManager({
                     busy={capabilities.reading}
                 />
             )}
-            {!externalDNS && !remoteDNS && !infrastructureZone && (isAdditionalUser || (dnsServer !== null && dnsServer !== '')) && (
+            {!dnssecHidden && !externalDNS && !remoteDNS && !infrastructureZone && (isAdditionalUser || (dnsServer !== null && dnsServer !== '')) && (
                 <DNSSECSection domainId={domainId} domainName={domainName} readOnly={readOnly} />
             )}
 

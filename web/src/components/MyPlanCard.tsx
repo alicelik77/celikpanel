@@ -4,6 +4,8 @@ import type { TranslationKey } from '../i18n/en';
 import { RemoteGate, UsageBar } from './ui';
 import { useRemote } from '../lib/remote';
 import { MY_SUBSCRIPTION_URL, decodeMyPlan, usagePercent, type MyPlan, type MyPlanSubscription } from '../lib/myPlan';
+import { overLimitText, stateName } from '../lib/rights';
+import { ResellerPoolNotices } from './RightsNotices';
 
 // "My plan" (alpha.114): the signed-in customer's or reseller's plan, its
 // limits and the live usage the quota checks use — the same numbers a
@@ -41,7 +43,11 @@ function SubscriptionBlock({ sub }: { sub: MyPlanSubscription }) {
     const mb = 1024 * 1024;
     return (
         <div className="rounded-lg border border-border p-4" data-my-plan-subscription={sub.id}>
-            <p className="text-base font-semibold text-fg">{sub.plan ? sub.plan.name : t('myPlan.noPlanName')}</p>
+            {/* The state by its name (D-042 P3): Unlimited, Plan: <name>, or Custom. */}
+            <p className="text-base font-semibold text-fg" data-my-plan-state={sub.rights ?? ''}>
+                {sub.rights ? stateName(sub.rights, sub.plan?.name, t) : sub.plan ? sub.plan.name : t('myPlan.noPlanName')}
+            </p>
+            {sub.rights && <p className="mt-0.5 text-xs text-fg-subtle">{t(sub.rights === 'unlimited' ? 'rights.my.unlimited' : sub.rights === 'plan' ? 'rights.my.plan' : 'rights.my.custom')}</p>}
             {sub.over_limit.length > 0 && (
                 <div className="mt-2 rounded-md bg-danger/10 p-3 text-sm text-danger">
                     <p className="font-semibold">{t('myPlan.over')}</p>
@@ -95,7 +101,7 @@ export function MyPlanCard() {
                             {/* A reseller's pool comes first: it is what they hand out to customers.
                                 A plan of their own is only needed to host their own sites.
                                 Bayinin havuzu once gelir; kendi plani yalniz kendi siteleri icindir. */}
-                            {plan.pool && <PoolBlock pool={plan.pool} />}
+                            {plan.pool && <PoolBlock pool={plan.pool} rights={plan.resellerRights} />}
                             {plan.subscriptions.length === 0 ? (
                                 <p className="text-sm text-fg-muted" data-my-plan-none={plan.pool ? 'reseller' : 'account'}>{t(plan.pool ? 'myPlan.noneReseller' : 'myPlan.none')}</p>
                             ) : (
@@ -111,10 +117,38 @@ export function MyPlanCard() {
     );
 }
 
-function PoolBlock({ pool }: { pool: NonNullable<MyPlan['pool']> }) {
+function PoolBlock({ pool, rights }: { pool: NonNullable<MyPlan['pool']>; rights?: MyPlan['resellerRights'] }) {
     const { t } = useI18n();
     const a = pool.allocated;
     const l = pool.limits;
+    // alpha.117 (K2): the pool limits what the customers really use; what is
+    // handed out is information only.
+    // Havuz müşterilerin gerçekten kullandığını sınırlar; dağıtılan yalnız bilgidir.
+    if (pool.used) {
+        const u = pool.used;
+        const diskMB = Math.round(u.disk_used_bytes / (1024 * 1024));
+        return (
+            <div className="rounded-lg border border-border p-4" data-my-plan-pool="used">
+                <p className="text-base font-semibold text-fg">{t('myPlan.pool')}</p>
+                {rights && <p className="mt-0.5 text-sm text-fg-muted" data-my-reseller-rights={rights.state}>{stateName(rights.state, rights.plan_name, t, true)}</p>}
+                <p className="mt-1 text-xs text-fg-subtle">{l ? t('rights.my.poolUsedHint') : t('myPlan.poolNone')}</p>
+                <div className="mt-3"><ResellerPoolNotices /></div>
+                {pool.over_limit.length > 0 && (
+                    <ul className="mt-2 list-disc pl-5 text-sm text-danger">{pool.over_limit.map((line) => <li key={line}>{overLimitText(line, t)}</li>)}</ul>
+                )}
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <Meter label={t('myPlan.customers')} used={u.customers} limit={l?.max_customers ?? 0} usedText={String(u.customers)} limitText={String(l?.max_customers ?? 0)} />
+                    <Meter label={t('plans.col.domains')} used={u.domains} limit={l?.max_domains ?? 0} usedText={String(u.domains)} limitText={String(l?.max_domains ?? 0)} />
+                    <Meter label={t('plans.col.databases')} used={u.databases} limit={l?.max_databases ?? 0} usedText={String(u.databases)} limitText={String(l?.max_databases ?? 0)} />
+                    <Meter label={t('plans.col.mail')} used={u.mailboxes} limit={l?.max_email_accounts ?? 0} usedText={String(u.mailboxes)} limitText={String(l?.max_email_accounts ?? 0)} />
+                    <Meter label={t('plans.col.disk')} used={diskMB} limit={l?.disk_quota_mb ?? 0} usedText={fmtMB(diskMB)} limitText={fmtMB(l?.disk_quota_mb ?? 0)} />
+                </div>
+                <p className="mt-3 text-xs text-fg-subtle" data-my-plan-allocated="">
+                    {t('rights.my.allocated', { customers: a.customers, domains: a.unlimited_domains ? t('rights.unlimitedShort') : String(a.domains) })}
+                </p>
+            </div>
+        );
+    }
     return (
         <div className="rounded-lg border border-border p-4" data-my-plan-pool="">
             <p className="text-base font-semibold text-fg">{t('myPlan.pool')}</p>

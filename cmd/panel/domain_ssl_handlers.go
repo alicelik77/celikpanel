@@ -70,7 +70,38 @@ func (p *Panel) handleACMEProviders(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	json.NewEncoder(w).Encode(map[string]any{"providers": core.ACMEProviders})
+	// alpha.117 (D-017 #4, D-042): a customer is listed the providers its
+	// subscription may choose.
+	providers := core.ACMEProviders
+	if !callerIsAdministrator(r) {
+		subID, ok, handled := p.listingSubscription(w, r)
+		if handled {
+			return
+		}
+		var rights *effectiveRights
+		if ok {
+			loaded, err := p.effectiveSubscriptionRights(r.Context(), subID)
+			if err != nil {
+				writeServerError(w, err)
+				return
+			}
+			rights = loaded
+		} else {
+			admin, err := p.loadAdminOfferLayer(r.Context())
+			if err != nil {
+				writeServerError(w, err)
+				return
+			}
+			rights = &effectiveRights{admin: admin, Own: rightsState{Set: allOfferedRightsSet()}}
+		}
+		providers = []core.ACMEProvider{}
+		for _, provider := range core.ACMEProviders {
+			if rights.offers("integration:acme:" + provider.ID) {
+				providers = append(providers, provider)
+			}
+		}
+	}
+	json.NewEncoder(w).Encode(map[string]any{"providers": providers})
 }
 
 // SSL Certificate Management Handlers
@@ -191,6 +222,11 @@ type IssueLetsEncryptRequest struct {
 	// redirects to https:// (the site's force_https, which the owner can turn
 	// off on the SSL/TLS page). alpha.113, the owner's decision.
 	RedirectHTTP bool `json:"redirect_http,omitempty"`
+	// AllowNotPointed: the owner states the names are behind a proxy or CDN
+	// (the public DNS shows the proxy's address, but it forwards the
+	// challenge here). Skips only the CERTIFICATE_DOMAIN_NOT_POINTED refusal;
+	// the override is audited and a failure is the authority's own answer.
+	AllowNotPointed bool `json:"allow_not_pointed,omitempty"`
 }
 
 // UploadCertificateRequest represents a request to upload custom certificate
@@ -654,6 +690,11 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 		writeClientError(w, http.StatusBadRequest, "unknown ACME provider")
 		return
 	}
+	// alpha.117 (D-042, D-017): the certificate provider must be open to the
+	// subscription (the ACME permission was checked by the dispatcher).
+	if !p.requireSubscriptionOffering(w, r, subscriptionID, "integration:acme:"+provider.ID, provider.Name, false) {
+		return
+	}
 	if !provider.NeedsEAB {
 		// Never forward stale credentials from a previous provider selection.
 		req.EABKeyID = ""
@@ -667,6 +708,15 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	if provider.NeedsEAB && (req.EABKeyID == "" || req.EABHMACKey == "") {
 		writeClientError(w, http.StatusBadRequest,
 			provider.Name+" needs EAB credentials — enter the key ID and HMAC key from your "+provider.Name+" account.")
+		return
+	}
+
+	// A name the public DNS shows somewhere else cannot be validated, so the
+	// request is refused before the web server or the authority is touched
+	// (2 Nov 2026). A lookup that failed is unknown and does not refuse.
+	// Genel DNS'in başka yerde gösterdiği ad doğrulanamaz; istek, web sunucusuna
+	// ya da yetkiliye dokunulmadan reddedilir. Başarısız sorgu bilinmeyendir.
+	if p.refuseCertificateDomainNotPointed(ctx, w, r, domainID, domain.Name, managedNames, mailName, req.AllowNotPointed) {
 		return
 	}
 

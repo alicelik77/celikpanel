@@ -287,7 +287,7 @@ func TestNotOfferedKindDistinguishesIntegrationFromDistribution(t *testing.T) {
 		{"apt", "apache", core.ManagedServiceInstallBlockIntegration},
 		{"apt", "bind", core.ManagedServiceInstallBlockNone},
 		{"apt", "exim", core.ManagedServiceInstallBlockIntegration},
-		{"apt", "vsftpd", core.ManagedServiceInstallBlockIntegration},
+		{"apt", "vsftpd", core.ManagedServiceInstallBlockNone},
 		{"pacman", "spamassassin", core.ManagedServiceInstallBlockDistribution},
 		{"apt", "nginx", core.ManagedServiceInstallBlockNone},
 	} {

@@ -636,6 +636,8 @@ func validatedVhostData(req *ApplyVhostRequest) (services.VhostData, error) {
 		ACMEChallengeRoot:  acmeChallengeRoot,
 		RedirectWWW:        req.RedirectWWW,
 		ProjectType:        projectType,
+		Suspended:          req.Suspended,
+		Maintenance:        req.Maintenance,
 	}
 
 	protectedDirs, redirects, err := siteFeaturesFromRequest(req)

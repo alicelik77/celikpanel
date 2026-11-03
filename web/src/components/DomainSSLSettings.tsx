@@ -6,6 +6,8 @@ import { Button, Checking, CouldNotCheck, ErrorBanner, Field, FormActions, FormS
 import type { TranslationKey } from '../i18n/en';
 import { apiErrorText, readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
 import { CertificateIssueNotice, isCertificateIssueFailure } from './CertificateIssueNotice';
+import { CertificateReachNotice } from './CertificateReachNotice';
+import { certificateReachGate, decodeCertificateReach, type CertificateReachGate } from '../lib/certificateNames';
 import { decodeListIn, lastKnown, useRemote } from '../lib/remote';
 import { formatHSTSRemainingSeconds } from '../lib/hstsRemaining';
 import { sslTier, sslTierLabelFor } from '../lib/sslTier';
@@ -18,6 +20,13 @@ interface DomainSSLSettingsProps {
     mailAvailable: boolean | null;
     readOnly?: boolean;
     onCertificateChange?: (status: SSLRuntimeSummary) => void;
+    /**
+     * What the subscription's rights hold (alpha.117, D-042): a free
+     * certificate, an uploaded one. A closed source is not offered; the
+     * server refuses it anyway.
+     */
+    acmeOpen?: boolean;
+    customOpen?: boolean;
 }
 
 export interface SSLRuntimeSummary {
@@ -132,6 +141,8 @@ export function DomainSSLSettings({
     mailAvailable,
     readOnly = false,
     onCertificateChange,
+    acmeOpen = true,
+    customOpen = true,
 }: DomainSSLSettingsProps) {
     const { t, locale } = useI18n();
     // Another domain is another address: its answer never appears under this
@@ -145,7 +156,9 @@ export function DomainSSLSettings({
     const [email, setEmail] = useState('');
     const [autoRenew, setAutoRenew] = useState(true);
     const [includeMail, setIncludeMail] = useState(false);
-    const [certSource, setCertSource] = useState<'letsencrypt' | 'custom'>('letsencrypt');
+    const [chosenSource, setCertSource] = useState<'letsencrypt' | 'custom'>(acmeOpen ? 'letsencrypt' : 'custom');
+    // A source the rights close is never shown; the open one stands in for it.
+    const certSource: 'letsencrypt' | 'custom' = (chosenSource === 'letsencrypt' ? acmeOpen : customOpen) ? chosenSource : (acmeOpen ? 'letsencrypt' : 'custom');
     // The CA the cert is issued from (operator, 23 Jul: "a few kinds of SSL").
     // The list comes from the server registry — the UI never hardcodes a CA.
     // Sertifikanın alındığı CA (operatör, 23 Tem: "birkaç çeşit SSL"). Liste
@@ -181,6 +194,27 @@ export function DomainSSLSettings({
     const observed = lastKnown(ssl.remote);
     const data = observed?.value ?? null;
     const observedAt = observed?.observedAt ?? 0;
+    // Does every name of the request point to this server? Read from the same
+    // live DNS check as the Domain Overview, only while a free certificate can
+    // be requested here (owner, 2 Nov 2026: a domain that is not on the server
+    // cannot get a certificate). Only a known negative blocks; an unknown
+    // answer allows the attempt with a warning.
+    // Talepteki her ad bu sunucuyu gösteriyor mu? Yalnız bilinen olumsuz engeller.
+    const reachWanted = !readOnly && acmeOpen && (!observed || !observed.value.has_certificate || showReissue);
+    const reach = useRemote(
+        reachWanted ? `/api/v1/domains/${domainId}/connection?names=certificate` : null,
+        decodeCertificateReach,
+        { init: { cache: 'no-store' } },
+    );
+    const gate: CertificateReachGate = !reachWanted
+        ? { kind: 'open' }
+        : certificateReachGate(
+              reach.remote.state === 'known' ? reach.remote.value : null,
+              reach.remote.state === 'unknown',
+              domainName,
+              mailAvailable === true && includeMail,
+          );
+    const reachHolds = gate.kind === 'blocked' || gate.kind === 'checking';
     // Whether mail uses the certificate: `false` only where the server has no
     // mail or said so, `null` whenever it is not known.
     // Postanın sertifikayı kullanıp kullanmadığı: yalnız sunucu söylediğinde
@@ -302,8 +336,12 @@ export function DomainSSLSettings({
         return loadSSLData();
     };
 
-    const handleIssue = async () => {
+    // allowNotPointed: the owner states the names are behind a proxy such as
+    // Cloudflare. Only the "not pointed here" check is skipped, by the server
+    // too; a failure is then the certificate authority's own answer.
+    const handleIssue = async (allowNotPointed = false) => {
         if (readOnly || locked || providersRead.remote.state !== 'known') return;
+        if (reachHolds && !(allowNotPointed && gate.kind === 'blocked')) return;
         if (!email) return showToast('error', t('ssl.emailRequired'));
         const isReissue = data?.has_certificate === true;
         if (isReissue && mailAvailable !== false && secureMail === null) {
@@ -337,6 +375,7 @@ export function DomainSSLSettings({
                     eab_key_id: eabKid,
                     eab_hmac_key: eabHmac,
                     reissue: isReissue,
+                    ...(allowNotPointed ? { allow_not_pointed: true } : {}),
                 }),
             });
             // No result of its own: the notice is up and the certificate is
@@ -362,6 +401,10 @@ export function DomainSSLSettings({
                     await loadSSLData();
                     return;
                 }
+                // The server's own check said a name does not point here
+                // (the screen's read was older): read it again, and the
+                // refusal below says it in words.
+                if (apiError.code === 'CERTIFICATE_DOMAIN_NOT_POINTED') void reach.retry();
                 // What certbot's run came to is a sentence with something
                 // to correct: it stays on the page.
                 // certbot çalışmasının sonucu düzeltilecek bir şey taşır:
@@ -694,6 +737,21 @@ export function DomainSSLSettings({
             <ResultUnknown answer={issueAnswer} className="mb-4" />
             <CertificateIssueNotice failure={issueFailure} onClose={() => setIssueFailure(null)} className="mb-4" />
             <ErrorBanner className="mb-4" error={actionRefusal?.problem ?? null} sentence={actionRefusal?.sentence} />
+            {/* The domain does not point here yet (or could not be checked):
+                what is wrong and what to do, before anything else. */}
+            {reachWanted && certSource === 'letsencrypt' && (!data.has_certificate || showReissue) && (
+                <CertificateReachNotice
+                    gate={gate}
+                    variant="top"
+                    domainName={domainName}
+                    onRecheck={() => void reach.retry()}
+                    rechecking={reach.reading}
+                    onLeaveOutMail={() => setIncludeMail(false)}
+                    onRequestAnyway={() => void handleIssue(true)}
+                    requestAnywayDisabled={issuing || !email.trim() || locked}
+                    className="mb-4"
+                />
+            )}
             {/* Certificate status */}
             <FormSection title="SSL/TLS">
                 <div className="flex items-start gap-3">
@@ -901,8 +959,8 @@ export function DomainSSLSettings({
                     }
                 >
                     <div className="mb-4 flex gap-1 border-b border-border">
-                        <TabBtn active={certSource === 'letsencrypt'} onClick={() => setCertSource('letsencrypt')} icon={Shield} label={t('ssl.tab.letsencrypt')} />
-                        <TabBtn active={certSource === 'custom'} onClick={() => setCertSource('custom')} icon={Upload} label={t('ssl.tab.custom')} />
+                        {acmeOpen && <TabBtn active={certSource === 'letsencrypt'} onClick={() => setCertSource('letsencrypt')} icon={Shield} label={t('ssl.tab.letsencrypt')} />}
+                        {customOpen && <TabBtn active={certSource === 'custom'} onClick={() => setCertSource('custom')} icon={Upload} label={t('ssl.tab.custom')} />}
                     </div>
 
                     {replacementBlockedByMailState && (
@@ -1014,15 +1072,34 @@ export function DomainSSLSettings({
                             <Button
                                 variant="primary"
                                 icon={Lock}
-                                onClick={handleIssue}
-                                aria-describedby={!email.trim() && !issuing ? 'ssl-issue-reason' : undefined}
-                                disabled={locked || providersRead.remote.state !== 'known' || issuing || !email || replacementBlockedByMailState}
+                                onClick={() => handleIssue()}
+                                aria-describedby={
+                                    !email.trim() && !issuing
+                                        ? 'ssl-issue-reason'
+                                        : gate.kind !== 'open' && !issuing
+                                          ? 'ssl-reach-reason'
+                                          : undefined
+                                }
+                                disabled={locked || providersRead.remote.state !== 'known' || issuing || !email || replacementBlockedByMailState || reachHolds}
                                 loading={issuing}
                             >
                                 {issuing
                                     ? t(data.has_certificate ? 'ssl.reissuing' : 'ssl.issuing')
                                     : t(data.has_certificate ? 'ssl.reissue' : 'ssl.issue')}
                             </Button>
+                            {/* Why Get certificate is off because of the domain's DNS, beside it. */}
+                            {!issuing && (
+                                <CertificateReachNotice
+                                    gate={gate}
+                                    variant="inline"
+                                    domainName={domainName}
+                                    onRecheck={() => void reach.retry()}
+                                    rechecking={reach.reading}
+                                    onLeaveOutMail={() => setIncludeMail(false)}
+                                    onRequestAnyway={() => void handleIssue(true)}
+                                    requestAnywayDisabled={issuing || !email.trim() || locked}
+                                />
+                            )}
                             {/* Why Issue is off, beside it (owner feedback 2026-10-31). */}
                             {!email.trim() && !issuing && <p id="ssl-issue-reason" className="text-sm text-fg" data-blocked-reason="">{t('ssl.issue.needsEmail')}</p>}
                         </div>

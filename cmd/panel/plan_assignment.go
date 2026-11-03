@@ -162,19 +162,17 @@ func (p *Panel) handleAssignPlan(w http.ResponseWriter, r *http.Request, c *Call
 		}
 	}
 
-	_, violations, err := checkResellerPoolFor(ctx, db, target.ID, subID, &plan.Limits, false)
-	if err != nil {
-		writeServerError(w, err)
-		return
-	}
-	if len(violations) > 0 {
-		writePoolRefusal(w, violations)
-		return
-	}
+	// alpha.117 (K2): what a plan hands out may add up to more than the
+	// reseller's pool; the pool limits real use at creation time instead.
 
 	if subID == 0 {
 		id, err := p.insertSubscriptionFromPlan(ctx, db, target.ID, plan)
 		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		// Under a suspended reseller the new subscription is suspended too.
+		if err := p.syncResellerSuspensionCause(ctx, id, c.ID); err != nil {
 			writeServerError(w, err)
 			return
 		}
@@ -202,13 +200,18 @@ func (p *Panel) handleAssignPlan(w http.ResponseWriter, r *http.Request, c *Call
 			"", over)
 		return
 	}
-	if _, err := db.ExecContext(ctx, `
-		UPDATE subscriptions SET plan_id = ?, max_domains = ?, max_databases = ?,
-		       max_email_accounts = ?, disk_quota_mb = ?, bandwidth_quota_mb = ?,
-		       updated_at = datetime('now')
-		WHERE id = ?`,
-		plan.ID, plan.Limits.Domains, plan.Limits.Databases, plan.Limits.Mailboxes,
-		plan.Limits.DiskMB, plan.Traffic, subID); err != nil {
+	// Binding a plan ends a Custom set (D-042 P3: identical to the plan).
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	defer tx.Rollback()
+	if err := bindSubscriptionPlan(ctx, tx, subID, plan); err != nil {
+		writeServerError(w, err)
+		return
+	}
+	if err := tx.Commit(); err != nil {
 		writeServerError(w, err)
 		return
 	}
@@ -235,8 +238,8 @@ func writePlanAssignment(w http.ResponseWriter, subID int, over []string) {
 // insertSubscriptionFromPlan, bir planın sınırlarını yeni bir aboneliğe kopyalar.
 func (p *Panel) insertSubscriptionFromPlan(ctx context.Context, db sqlExecer, ownerID int, plan loadedPlan) (int, error) {
 	result, err := db.ExecContext(ctx, `
-		INSERT INTO subscriptions (owner_id, name, plan_id, max_domains, max_databases, max_email_accounts, disk_quota_mb, bandwidth_quota_mb, status)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
+		INSERT INTO subscriptions (owner_id, name, plan_id, max_domains, max_databases, max_email_accounts, disk_quota_mb, bandwidth_quota_mb, status, starts_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', datetime('now'))`,
 		ownerID, plan.Name, plan.ID, plan.Limits.Domains, plan.Limits.Databases, plan.Limits.Mailboxes, plan.Limits.DiskMB, plan.Traffic)
 	if err != nil {
 		return 0, fmt.Errorf("create subscription from plan: %w", err)

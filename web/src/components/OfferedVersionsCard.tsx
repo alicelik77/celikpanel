@@ -66,7 +66,8 @@ export function OfferedVersionsCard({ component, installed }: { component: Offer
         // The other places that show the offered versions (the version pickers)
         // read again too.
         // Sunulan sürümleri gösteren diğer yerler (sürüm seçiciler) de yeniden okur.
-        invalidate('components');
+        // alpha.117: the plans' and accounts' rights screens follow the offer too.
+        invalidate('components', 'rights');
         setPending(null);
     };
 

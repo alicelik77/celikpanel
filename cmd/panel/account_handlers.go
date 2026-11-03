@@ -42,6 +42,52 @@ type userResponse struct {
 	CreatedAt     string `json:"created_at"`
 	// Invitation: invited, not signed in yet (alpha.114); absent otherwise.
 	Invitation *accountInvitationState `json:"invitation,omitempty"`
+	// Rights: where a reseller's or a customer's rights come from (D-042 P3);
+	// absent for the administrator and additional users, or when unreadable.
+	Rights *accountRightsSummary `json:"rights,omitempty"`
+}
+
+// accountRightsSummary is the Accounts list's small rights field: state is
+// "unlimited", "plan" (plan_name set) or "custom"; a customer whose
+// subscriptions differ reads "mixed".
+type accountRightsSummary struct {
+	State    string `json:"state"`
+	PlanName string `json:"plan_name,omitempty"`
+}
+
+// accountRightsSummaryFor reads one listed account's rights state.
+func accountRightsSummaryFor(ctx context.Context, q sqlQueryer, u userResponse) (*accountRightsSummary, error) {
+	if u.AccountType != "" && u.AccountType != "account" {
+		return nil, nil
+	}
+	switch u.Role {
+	case roleReseller:
+		state, err := resellerRightsState(ctx, q, u.ID)
+		if err != nil {
+			return nil, err
+		}
+		return &accountRightsSummary{State: state.State, PlanName: state.PlanName}, nil
+	case roleCustomer:
+		ids, err := accountSubscriptionIDs(ctx, q, u.ID, false)
+		if err != nil {
+			return nil, err
+		}
+		// No subscription yet: Unlimited (P3, K4).
+		summary := &accountRightsSummary{State: rightsStateUnlimited}
+		for i, id := range ids {
+			state, err := subscriptionRightsState(ctx, q, id)
+			if err != nil {
+				return nil, err
+			}
+			next := accountRightsSummary{State: state.State, PlanName: state.PlanName}
+			if i > 0 && next != *summary {
+				return &accountRightsSummary{State: "mixed"}, nil
+			}
+			*summary = next
+		}
+		return summary, nil
+	}
+	return nil, nil
 }
 
 // requireManager rejects callers that are not admin or reseller.
@@ -185,8 +231,13 @@ func (p *Panel) handleUserByID(w http.ResponseWriter, r *http.Request) {
 		p.handleImpersonate(w, r, c, target)
 	case action == "plan":
 		p.handleAssignPlan(w, r, c, target)
+	case action == "suspension":
+		p.handleUserSuspension(w, r, c, target)
 	case action == "pool":
 		p.handleResellerPool(w, r, c, target.ID, target.Role, target.Username)
+	case action == "rights" || action == "rights/preview":
+		// alpha.117 (D-042): a reseller's rights state; a customer's list.
+		p.handleResellerRights(w, r, c, target, action == "rights/preview")
 	case action == "" && r.Method == http.MethodPut:
 		p.handleUpdateUser(w, r, target)
 	case action == "" && r.Method == http.MethodDelete:
@@ -245,6 +296,11 @@ func (p *Panel) handleListUsers(w http.ResponseWriter, r *http.Request, c *Calle
 	}
 	for i := range users {
 		users[i].Invitation = invited[users[i].ID]
+		// A rights state that cannot be read is left out (unknown), never
+		// shown as Unlimited.
+		if summary, err := accountRightsSummaryFor(r.Context(), p.db.GetDB(), users[i]); err == nil {
+			users[i].Rights = summary
+		}
 	}
 	json.NewEncoder(w).Encode(map[string]any{"users": users})
 }
@@ -258,6 +314,9 @@ func (p *Panel) handleCreateUser(w http.ResponseWriter, r *http.Request, c *Call
 		PlanID   int    `json:"plan_id,omitempty"`
 		// Pool: a new reseller's allowance, set by the administrator (alpha.114).
 		Pool *resellerPool `json:"pool,omitempty"`
+		// Rights (alpha.117, D-042 6.1): Unlimited, a plan or Custom. Absent:
+		// Unlimited (or the plan of plan_id), and the answer names the state.
+		Rights *accountRightsChoice `json:"rights,omitempty"`
 		// Invite: no password; the person chooses theirs by a link (P6).
 		Invite bool   `json:"invite,omitempty"`
 		Lang   string `json:"lang,omitempty"`
@@ -294,7 +353,7 @@ func (p *Panel) handleCreateUser(w http.ResponseWriter, r *http.Request, c *Call
 		writeClientError(w, http.StatusBadRequest, "valid email required")
 		return
 	}
-	plan, ok := p.precheckNewAccount(w, r, c, req.Role, req.PlanID, req.Pool)
+	planned, ok := p.precheckNewAccount(w, r, c, req.Role, req.PlanID, req.Pool, req.Rights)
 	if !ok {
 		return
 	}
@@ -324,17 +383,16 @@ func (p *Panel) handleCreateUser(w http.ResponseWriter, r *http.Request, c *Call
 		return
 	}
 
-	// Optional: create the first subscription from a plan in the same step
-	// (one obvious way to onboard a customer).
-	// İsteğe bağlı: aynı adımda plandan ilk aboneliği oluştur (bir müşteriyi
-	// devreye almanın tek belirgin yolu).
-	if !p.finishNewAccount(w, r, user, plan, req.Pool) {
+	// The account's rights in the same step: a customer's first subscription
+	// (Unlimited, from a plan, or Custom), a reseller's state and pool.
+	// Aynı adımda hesabın hakları: müşterinin ilk aboneliği, bayinin durumu.
+	if !p.finishNewAccount(w, r, user, planned) {
 		return
 	}
 
 	log.Printf("[audit] user %d (%s) created user %d (%s, role=%s)", c.ID, c.Role, user.ID, user.Username, user.Role)
-	p.audit(r, "user.create:"+user.Username+"/"+user.Role, "user", user.ID)
-	response := map[string]any{"success": true, "id": user.ID}
+	p.auditDetailed(r, "user.create:"+user.Username+"/"+user.Role, "user", user.ID, map[string]any{"rights": planned.State})
+	response := map[string]any{"success": true, "id": user.ID, "rights": planned.State}
 	if req.Invite {
 		response["invitation"] = p.issueInvitation(r, c.ID, user.ID, req.Lang, true)
 	}

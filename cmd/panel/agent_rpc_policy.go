@@ -137,6 +137,8 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.NodePatchesV1 Agent.OSReleaseFactsV1 Agent.RepoConfinePreviewV1 Agent.VendorLanePlanV1
 		Agent.PostgreSQLClustersV1 Agent.PostgreSQLClusterPortPreviewV1 Agent.PostgreSQLSourceCheckV1
 		Agent.SiteCertificateRenewalStateV1 Agent.PanelListenConfigV1 Agent.MailAutoresponderState
+		Agent.FileAccessStateV1 Agent.FileAccessPreviewV1 Agent.SuspensionInspectV1
+		Agent.EmergencyUnitsInspectV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -153,7 +155,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityServiceLifecycle, `
 		Agent.EnsureNginxReady Agent.ResetFailedUnitMutation Agent.ServiceMutationAction
-		Agent.StartServiceMutation
+		Agent.StartServiceMutation Agent.SetEmergencyUnitLockV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostConfig, `
 		Agent.DeletePHPPool Agent.TogglePHPExtension Agent.UpdateConfig
@@ -162,13 +164,15 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.SetPanelListenPortV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostingSite, `
-		Agent.CreateSite Agent.DeleteSite Agent.InstallWordPress
+		Agent.CreateSite Agent.DeleteSite Agent.InstallWordPress Agent.ApplyFileAccessV1
+		Agent.SetSiteAccountSuspensionV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostingVHost, `
 		Agent.ApplyVhost Agent.ApplyVhosts Agent.ReconcileDefaultHTTPSServerV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostingApp, `
-		Agent.ApplyAppUnit Agent.ControlAppUnit Agent.RemoveAppUnit
+		Agent.ApplyAppUnit Agent.ControlAppUnit Agent.RemoveAppUnit Agent.SetAppUnitSuspensionV1
+		Agent.SetEmergencyAppLockV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityCertificate, `
 		Agent.DeleteCertLineage Agent.InstallCustomCertificate Agent.IssueLetsEncryptCertificate
@@ -190,7 +194,8 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.EnsureDKIMKey Agent.ImportMailAccount Agent.PostfixQueueAction Agent.RemoveDKIMKey
 		Agent.SetMailPolicy Agent.SyncMailTLSV2 Agent.StartMailEnrollmentV1 Agent.ContinueMailEnrollmentV1
 		Agent.UpdateMailForwarding Agent.UpdateMailPassword Agent.UpdateMailQuota
-		Agent.WireMailFilters Agent.SetMailAutoresponder
+		Agent.WireMailFilters Agent.SetMailAutoresponder Agent.SetMailDomainSuspensionV1
+		Agent.EndMailSessionsV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityFilesystem, `
 		Agent.ChmodFile Agent.ClearLogs Agent.CreateFileOrDir Agent.DeleteFileOrDir
@@ -212,6 +217,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.CreateDatabase Agent.DeleteDatabase Agent.ImportCpmoveDatabase
 		Agent.ProvisionDatabaseAdminAccount Agent.RemoveDatabaseAdminAccount
 		Agent.SetPostgreSQLClusterPortV1 Agent.CopyPostgreSQLDatabaseV1 Agent.DropPostgreSQLDatabaseV1
+		Agent.SetDatabaseUserSuspensionV1 Agent.RotateDatabaseUserPasswordV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilitySystemSQLite, `
 		Agent.CreateSystemSQLiteSnapshot Agent.OptimizeSystemSQLiteDatabase
@@ -377,6 +383,16 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.SetMailAutoresponder":          agentRPCMutationTimeout,
 	"Agent.UpdateMailPassword":            agentRPCMutationTimeout,
 	"Agent.UpdateMailQuota":               agentRPCMutationTimeout,
+	"Agent.SuspensionInspectV1":           agentRPCStandardReadTimeout,
+	"Agent.SetSiteAccountSuspensionV1":    agentRPCMutationTimeout,
+	"Agent.SetMailDomainSuspensionV1":     agentRPCMutationTimeout,
+	"Agent.SetDatabaseUserSuspensionV1":   agentRPCMutationTimeout,
+	"Agent.RotateDatabaseUserPasswordV1":  agentRPCMutationTimeout,
+	"Agent.EndMailSessionsV1":             agentRPCMutationTimeout,
+	"Agent.SetAppUnitSuspensionV1":        agentRPCMutationTimeout,
+	"Agent.EmergencyUnitsInspectV1":       agentRPCStandardReadTimeout,
+	"Agent.SetEmergencyUnitLockV1":        agentRPCMutationTimeout,
+	"Agent.SetEmergencyAppLockV1":         agentRPCMutationTimeout,
 	"Agent.UpdateMySQLConfig":             agentRPCMutationTimeout,
 	"Agent.UpdatePHPConfig":               agentRPCMutationTimeout,
 	"Agent.UpdatePHPConfiguration":        agentRPCMutationTimeout,
@@ -466,6 +482,11 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.ImportCpmoveDatabase": agentRPCBulkImportTimeout,
 	"Agent.CreateBackup":         agentRPCBulkImportTimeout,
 	"Agent.RestoreBackup":        agentRPCBulkImportTimeout,
+
+	// alpha.117: file access of a site (sshd, vsftpd, jail copy).
+	"Agent.FileAccessStateV1":   agentRPCStandardReadTimeout,
+	"Agent.FileAccessPreviewV1": agentRPCStandardReadTimeout,
+	"Agent.ApplyFileAccessV1":   agentRPCDatabaseTimeout,
 }
 
 var agentRPCPolicies = buildAgentRPCPolicies()

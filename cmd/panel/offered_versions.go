@@ -74,10 +74,16 @@ func offeredVersionLine(component, version string) string {
 // offeredVersions is the stored choice: the lines hidden from customers.
 type offeredVersions struct {
 	Hidden map[string][]string `json:"hidden"`
+	// allow narrows the policy to one subscription's rights (rights_gate.go);
+	// nil for the server-wide policy. It is never stored.
+	allow func(component, line string) bool
+	// withdrawn (alpha.117, D-043): versions withdrawn for security by an
+	// open emergency. Read from security_emergencies; never stored here.
+	withdrawn map[string]map[string]bool
 }
 
 func (o offeredVersions) normalized() offeredVersions {
-	out := offeredVersions{Hidden: map[string][]string{}}
+	out := offeredVersions{Hidden: map[string][]string{}, allow: o.allow, withdrawn: o.withdrawn}
 	for component := range offeredComponents {
 		lines := []string{}
 		seen := map[string]bool{}
@@ -95,11 +101,17 @@ func (o offeredVersions) normalized() offeredVersions {
 
 // offered: whether a version is offered to customers.
 func (o offeredVersions) offered(component, version string) bool {
+	if versionWithdrawn(o.withdrawn, component, version) {
+		return false
+	}
 	line := offeredVersionLine(component, version)
 	for _, hidden := range o.Hidden[component] {
 		if hidden == line {
 			return false
 		}
+	}
+	if o.allow != nil && !o.allow(component, line) {
+		return false
 	}
 	return true
 }
@@ -118,18 +130,23 @@ func (o offeredVersions) filter(component string, versions []string) []string {
 var errOfferedVersionsUnreadable = errors.New("the versions offered to customers could not be read")
 
 func (p *Panel) loadOfferedVersions(ctx context.Context) (offeredVersions, error) {
+	withdrawn, err := withdrawnVersions(ctx, p.db.GetDB())
+	if err != nil {
+		return offeredVersions{}, err
+	}
 	var raw string
-	err := p.db.GetDB().QueryRowContext(ctx, `SELECT value FROM panel_settings WHERE key = ?`, settingOfferedVersions).Scan(&raw)
+	err = p.db.GetDB().QueryRowContext(ctx, `SELECT value FROM panel_settings WHERE key = ?`, settingOfferedVersions).Scan(&raw)
 	if errors.Is(err, sql.ErrNoRows) {
-		return offeredVersions{}.normalized(), nil
+		return offeredVersions{withdrawn: withdrawn}.normalized(), nil
 	}
 	if err != nil {
 		return offeredVersions{}, err
 	}
 	var stored offeredVersions
 	if err := json.Unmarshal([]byte(raw), &stored); err != nil {
-		return offeredVersions{}, errOfferedVersionsUnreadable
+		return offeredVersions{withdrawn: withdrawn}, errOfferedVersionsUnreadable
 	}
+	stored.withdrawn = withdrawn
 	return stored.normalized(), nil
 }
 
@@ -161,14 +178,24 @@ func versionChoiceKeeps(component, current, requested string) bool {
 }
 
 // refuseVersionNotOffered answers a customer's choice of a version the
-// administrator does not offer, and says true; it says false (and writes
-// nothing) when the choice may go on. An administrator is never refused, and
-// a site keeping what it runs is never refused.
-func (p *Panel) refuseVersionNotOffered(w http.ResponseWriter, r *http.Request, component, current, requested string) bool {
+// administrator does not offer, or the domain's subscription may not use
+// (rights_gate.go), and says true; it says false (and writes nothing) when
+// the choice may go on. An administrator is never refused, and a site
+// keeping what it runs is never refused.
+func (p *Panel) refuseVersionNotOffered(w http.ResponseWriter, r *http.Request, domainID int, component, current, requested string) bool {
+	// D-043: a version withdrawn for security is refused to everyone.
+	if p.refuseWithdrawnVersion(w, r, component, current, requested) {
+		return true
+	}
 	if callerIsAdministrator(r) || versionChoiceKeeps(component, current, requested) {
 		return false
 	}
-	policy, err := p.loadOfferedVersions(r.Context())
+	subID, err := p.domainSubscriptionID(r.Context(), domainID)
+	if err != nil {
+		writeClientError(w, http.StatusNotFound, "domain not found")
+		return true
+	}
+	policy, rights, err := p.subscriptionVersionPolicy(r.Context(), subID)
 	if err != nil {
 		writeServerError(w, fmt.Errorf("versions offered to customers: %w", err))
 		return true
@@ -176,7 +203,7 @@ func (p *Panel) refuseVersionNotOffered(w http.ResponseWriter, r *http.Request, 
 	if policy.offered(component, requested) {
 		return false
 	}
-	writeVersionNotOffered(w, component, requested)
+	writeVersionRefusal(w, rights, component, requested)
 	return true
 }
 
@@ -223,12 +250,68 @@ type offeredVersionsView struct {
 	// Restricted: the person reading is held to the offered versions (not
 	// the administrator), so their own page says a hidden version is kept.
 	Restricted bool `json:"restricted"`
+	// HiddenOfferings (alpha.117): other items the administrator does not
+	// offer, as offering ids or "permission:<id>" (rights_gate.go).
+	HiddenOfferings []string `json:"hidden_offerings"`
 }
 
 type offeredVersionChange struct {
 	Component string `json:"component"`
 	Version   string `json:"version"`
 	Offered   bool   `json:"offered"`
+	// OfferingID (alpha.117) names any item of the offered layer instead of
+	// component and version: an offering id or "permission:<id>".
+	OfferingID string `json:"offering_id,omitempty"`
+}
+
+func hiddenOfferingList(hidden map[string]bool) []string {
+	out := []string{}
+	for item := range hidden {
+		out = append(out, item)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// changeHiddenOffering offers or hides one item other than a PHP or Node.js
+// line. Nothing that runs changes; the audit names the item.
+func (p *Panel) changeHiddenOffering(w http.ResponseWriter, r *http.Request, item string, offered bool) {
+	hidden, err := p.loadHiddenOfferings(r.Context())
+	replaced := false
+	if errors.Is(err, errOfferedVersionsUnreadable) {
+		hidden, replaced, err = map[string]bool{}, true, nil
+	}
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	before := !hidden[item]
+	if offered {
+		delete(hidden, item)
+	} else {
+		hidden[item] = true
+	}
+	if before != offered || replaced {
+		if err := p.saveHiddenOfferings(r.Context(), hidden); err != nil {
+			writeServerError(w, err)
+			return
+		}
+		verb := "offered"
+		if !offered {
+			verb = "hidden"
+		}
+		details := map[string]any{"item": item, "offered_before": before, "offered": offered}
+		if replaced {
+			details["replaced_unreadable"] = true
+		}
+		p.auditDetailed(r, "offering.admin_offer:"+item+":"+verb, "panel_settings", 0, details)
+	}
+	policy, err := p.loadOfferedVersions(r.Context())
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	_ = json.NewEncoder(w).Encode(offeredVersionsView{Hidden: policy.Hidden, Restricted: false, HiddenOfferings: hiddenOfferingList(hidden)})
 }
 
 // handleOfferedVersions: GET (every signed-in person: a customer's own page
@@ -244,7 +327,11 @@ func (p *Panel) handleOfferedVersions(w http.ResponseWriter, r *http.Request) {
 			writeServerError(w, err)
 			return
 		}
-		_ = json.NewEncoder(w).Encode(offeredVersionsView{Hidden: policy.Hidden, Restricted: !callerIsAdministrator(r)})
+		hidden, err := p.loadHiddenOfferings(r.Context())
+		if err != nil {
+			hidden = map[string]bool{}
+		}
+		_ = json.NewEncoder(w).Encode(offeredVersionsView{Hidden: policy.Hidden, Restricted: !callerIsAdministrator(r), HiddenOfferings: hiddenOfferingList(hidden)})
 	case http.MethodPut:
 		if !callerIsAdministrator(r) {
 			writeClientError(w, http.StatusForbidden, "administrator access required")
@@ -254,6 +341,22 @@ func (p *Panel) handleOfferedVersions(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&change); err != nil {
 			writeClientError(w, http.StatusBadRequest, "invalid request")
 			return
+		}
+		if item := strings.TrimSpace(change.OfferingID); item != "" {
+			if !validRightsItem(item) {
+				writeClientError(w, http.StatusBadRequest, "offering_id must be an offering id or permission:<id>")
+				return
+			}
+			parts := strings.SplitN(item, ":", 3)
+			switch {
+			case len(parts) == 3 && parts[0] == "component" && parts[1] == "php-fpm":
+				change.Component, change.Version = "php", parts[2]
+			case len(parts) == 3 && parts[0] == "component" && parts[1] == "node":
+				change.Component, change.Version = "node", parts[2]
+			default:
+				p.changeHiddenOffering(w, r, item, change.Offered)
+				return
+			}
 		}
 		name, known := offeredComponents[change.Component]
 		line := offeredVersionLine(change.Component, change.Version)
@@ -305,7 +408,11 @@ func (p *Panel) handleOfferedVersions(w http.ResponseWriter, r *http.Request) {
 			}
 			p.auditDetailed(r, "versions.customer_offer:"+change.Component+":"+line+":"+verb, "panel_settings", 0, details)
 		}
-		_ = json.NewEncoder(w).Encode(offeredVersionsView{Hidden: policy.Hidden, Restricted: !callerIsAdministrator(r)})
+		hiddenItems, err := p.loadHiddenOfferings(r.Context())
+		if err != nil {
+			hiddenItems = map[string]bool{}
+		}
+		_ = json.NewEncoder(w).Encode(offeredVersionsView{Hidden: policy.Hidden, Restricted: !callerIsAdministrator(r), HiddenOfferings: hiddenOfferingList(hiddenItems)})
 	default:
 		writeClientError(w, http.StatusMethodNotAllowed, "method not allowed")
 	}

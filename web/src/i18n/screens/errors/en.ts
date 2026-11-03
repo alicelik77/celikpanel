@@ -84,7 +84,7 @@ export const enErrorsScreens = {
     'err.QUOTA_DATABASES_EXCEEDED.action': 'See my plan',
     'err.QUOTA_MAILBOXES_EXCEEDED': 'Your plan’s mailbox limit is reached. Nothing was created. Delete a mailbox you no longer use, or ask your provider for a larger plan (My plan says who).',
     'err.QUOTA_MAILBOXES_EXCEEDED.action': 'See my plan',
-    'err.RESELLER_POOL_EXCEEDED': 'This would hand out more than the reseller’s pool allows. Nothing was changed. Choose a smaller plan, move another customer to a smaller plan, or ask the administrator for a larger pool.',
+    'err.RESELLER_POOL_EXCEEDED': 'Nothing was created: your provider’s total allowance is used up by what all of its accounts really use. Remove something you no longer need, or ask your provider for more; a reseller asks the administrator for a larger pool.',
     'err.RESELLER_CUSTOMER_LIMIT': 'Your pool allows no more customers. Nothing was created. Remove a customer you no longer serve, or ask the administrator for a larger pool.',
     'err.PLAN_EXCEEDS_POOL': 'A plan may not promise more than your pool. Nothing was saved. Lower the limits (unlimited is not possible where your pool has a limit), or ask the administrator for a larger pool.',
     'err.PLAN_BELOW_USAGE': 'This plan is below what the account uses now. Nothing was changed. If you apply it anyway, nothing is deleted; new items of the listed kinds are refused until usage is under the limit.',

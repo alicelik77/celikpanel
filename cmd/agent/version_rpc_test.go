@@ -27,6 +27,7 @@ func TestAgentVersionPublishesClosedMutationCapabilities(t *testing.T) {
 		transport.AgentCapabilitySystemUpdateV1,
 		transport.AgentCapabilitySystemUpdateAbandonV1,
 		transport.AgentCapabilitySecurityAuditV1,
+		transport.AgentCapabilityFileAccessV1,
 	}
 	if !reflect.DeepEqual(response.Capabilities, want) {
 		t.Fatalf("agent capabilities = %#v, want %#v", response.Capabilities, want)

@@ -648,6 +648,8 @@ function snapshotConfirmsTerminalOperation(
 
 interface VerifiedMailProfileResult {
     fallbackOnly: boolean;
+    // The fallback is the trusted mail host certificate (additive field).
+    hostCertificateManaged: boolean;
 }
 
 function stringArrayMatchesSet(value: unknown, expected: readonly string[]): boolean {
@@ -689,7 +691,10 @@ function decodeVerifiedMailProfileResult(
     ) {
         return null;
     }
-    return { fallbackOnly: tls.fallback_only };
+    return {
+        fallbackOnly: tls.fallback_only,
+        hostCertificateManaged: tls.host_certificate === 'managed',
+    };
 }
 
 function readSessionValue(key: string): string {
@@ -1978,7 +1983,9 @@ export function ComponentOperationProvider({ children }: { children: ReactNode }
                 // Kurulum posta profilini posta ana bilgisayar sertifikasindan
                 // once kurar ve sonunda posta TLS durumunu kendisi dogrular;
                 // bu kurulumun gordugu varsayilan sertifika son durum degildir.
-                if (verifiedProfileResult?.fallbackOnly && next.setup_child !== true) {
+                // A trusted mail host certificate serves: no trust warning.
+                if (verifiedProfileResult?.fallbackOnly && next.setup_child !== true
+                    && !verifiedProfileResult.hostCertificateManaged) {
                     showToast('warning', t('services.mailProfiles.fallbackWarning', {
                         name: installedName,
                     }));

@@ -245,7 +245,6 @@ class PopulatedDatabaseTests(unittest.TestCase):
         # alpha.114 (47-51), all additive: eight new tables; NULL
         # sessions.impersonator_id, audit_logs.acting_as and
         # users.email_verified_at in every old row.
-        self.assertEqual(len(self.sql), 51, 'a migration after 51 needs its own pin before a candidate carries it')
         result = self.build()
         connection = sqlite3.connect(result['database'])
         connection.execute('PRAGMA foreign_keys=ON')
@@ -266,6 +265,140 @@ class PopulatedDatabaseTests(unittest.TestCase):
             'audit_logs': ('details', 'acting_as'), 'sites': ('app_run_as',), 'database_servers': ('cluster',),
             'sessions': ('impersonator_id',), 'users': ('email_verified_at',)})
         for version in (52, '51', True):
+            with self.subTest(version=version), self.assertRaises(p.Refused):
+                self.verify(result, version)
+
+    def test_actual_39_through_54_migrations_add_tables_and_null_columns_and_change_no_old_row(self):
+        # alpha.117 (52-54): eleven new tables; NULL subscriptions.starts_at,
+        # ends_at, suspend_reason and suspended_at in every old row. 52 also
+        # writes rights rows: each plan-less customer subscription becomes
+        # Custom; every customer here already has a subscription, so no
+        # 'Unlimited' one and no notice is added (see the next test).
+        result = self.build()
+        connection = sqlite3.connect(result['database'])
+        connection.execute('PRAGMA foreign_keys=ON')
+        apply(connection, self.sql[38:54])
+        connection.close()
+        for wrong in (51, 52, 53):
+            with self.subTest(wrong=wrong), self.assertRaises(p.Refused):
+                self.verify(result, wrong)
+        proof = self.verify(result, 54)
+        self.assertEqual(proof['schema_version'], 54)
+        self.assertEqual(proof['table_count'], 87)
+        self.assertEqual(proof['old_rows_missing_or_changed'], 0)
+        self.assertEqual(proof['tables']['schema_migrations']['added'], 16)
+        self.assertEqual(proof['tables']['subscriptions']['added'], 0)
+        self.assertEqual(proof['unlimited_subscriptions_52'], 0)
+        self.assertEqual(p.NEW_TABLES[54] - p.NEW_TABLES[51], {
+            'rights_sets', 'rights_set_items', 'reseller_plans', 'reseller_plan_bindings', 'rights_notices',
+            'subscription_suspensions', 'reseller_suspensions', 'suspension_operations', 'suspension_effects',
+            'suspension_before_images', 'subscription_transfers'})
+        self.assertEqual(p.added_columns(54), {
+            'audit_logs': ('details', 'acting_as'), 'sites': ('app_run_as',), 'database_servers': ('cluster',),
+            'sessions': ('impersonator_id',), 'users': ('email_verified_at',),
+            'subscriptions': ('starts_at', 'ends_at', 'suspend_reason', 'suspended_at')})
+        connection = sqlite3.connect(Path(result['database']).as_uri() + '?mode=ro&immutable=1', uri=True)
+        subscriptions = [row[0] for row in connection.execute('SELECT id FROM subscriptions WHERE plan_id IS NULL ORDER BY id')]
+        self.assertEqual(connection.execute(
+            "SELECT owner_id,all_permissions,all_software FROM rights_sets WHERE owner_kind='subscription' ORDER BY owner_id").fetchall(),
+            [(i, 0, 1) for i in subscriptions])
+        self.assertEqual(connection.execute('SELECT count(*) FROM rights_notices').fetchone(), (0,))
+        connection.close()
+        for version in (55, '54', True):
+            with self.subTest(version=version), self.assertRaises(p.Refused):
+                self.verify(result, version)
+
+    def migrated_54_with_unlimited_customer(self, tamper=None):
+        # Old data 52 acts on: customer 91 without a subscription, its team
+        # member 92 (gets nothing), and subscription 83 with the unused
+        # 001 expires_at set to a past date.
+        self.change_source("INSERT INTO users(id,username,password_hash,email,role,created_at) "
+                           "VALUES(91,'no-subscription','!','none@example.test','customer','1999-01-01')")
+        self.change_source("INSERT INTO users(id,username,password_hash,email,role,parent_id,account_type,created_at) "
+                           "VALUES(92,'member','!','member@example.test','customer',91,'additional_user','1999-01-01')")
+        self.change_source("UPDATE subscriptions SET expires_at='2001-01-01 00:00:00' WHERE id=83")
+        result = self.build()
+        connection = sqlite3.connect(result['database'])
+        connection.execute('PRAGMA foreign_keys=ON')
+        apply(connection, self.sql[38:54])
+        if tamper:
+            connection.execute(tamper)
+            connection.commit()
+        connection.close()
+        return result
+
+    def test_migration52_unlimited_subscription_and_unused_expiry_are_verified_exactly(self):
+        # K4: the customer without a subscription gets one 'Unlimited'
+        # subscription and a notice; the subscriptions counter advances to
+        # it. expires_at is not copied, so ends_at stays NULL (no suspension
+        # at the first start after the update).
+        result = self.migrated_54_with_unlimited_customer()
+        proof = self.verify(result, 54)
+        self.assertEqual(proof['old_rows_missing_or_changed'], 0)
+        self.assertEqual(proof['unlimited_subscriptions_52'], 1)
+        self.assertEqual(proof['tables']['subscriptions']['added'], 1)
+        connection = sqlite3.connect(Path(result['database']).as_uri() + '?mode=ro&immutable=1', uri=True)
+        self.assertEqual(connection.execute('SELECT expires_at,ends_at FROM subscriptions WHERE id=83').fetchone(),
+                         ('2001-01-01 00:00:00', None))
+        self.assertEqual(connection.execute("SELECT owner_id,name FROM subscriptions WHERE owner_id IN (91,92)").fetchall(),
+                         [(91, 'Unlimited')])
+        connection.close()
+
+    def test_migration52_transform_is_the_only_accepted_change(self):
+        for tamper in ("UPDATE subscriptions SET max_domains=1 WHERE name='Unlimited'",
+                       "INSERT INTO subscriptions(owner_id,name) VALUES(81,'second')",
+                       "INSERT INTO subscriptions(owner_id,name,status,starts_at) VALUES(81,'Unlimited','active','2000-01-01 00:00:00')",
+                       "DELETE FROM rights_notices WHERE kind='unlimited_after_migration'",
+                       "UPDATE sqlite_sequence SET seq=seq+5 WHERE name='subscriptions'",
+                       "UPDATE subscriptions SET ends_at=expires_at WHERE id=83"):
+            with self.subTest(tamper=tamper):
+                self.setUp()
+                result = self.migrated_54_with_unlimited_customer(tamper)
+                with self.assertRaises(p.Refused):
+                    self.verify(result, 54)
+
+    def test_actual_39_through_55_migrations_add_tables_and_change_no_old_row(self):
+        # alpha.117 (55, D-043): six new tables; no old table gains a column.
+        result = self.build()
+        connection = sqlite3.connect(result['database'])
+        connection.execute('PRAGMA foreign_keys=ON')
+        apply(connection, self.sql[38:55])
+        connection.close()
+        for wrong in (53, 54):
+            with self.subTest(wrong=wrong), self.assertRaises(p.Refused):
+                self.verify(result, wrong)
+        proof = self.verify(result, 55)
+        self.assertEqual(proof['schema_version'], 55)
+        self.assertEqual(proof['table_count'], 93)
+        self.assertEqual(proof['old_rows_missing_or_changed'], 0)
+        self.assertEqual(proof['tables']['schema_migrations']['added'], 17)
+        self.assertEqual(p.NEW_TABLES[55] - p.NEW_TABLES[54], {
+            'security_emergencies', 'security_emergency_operations', 'security_emergency_effects',
+            'security_emergency_sites', 'security_emergency_before_images', 'security_notices'})
+        self.assertEqual(p.added_columns(55), p.added_columns(54))
+        for version in (56, '55', True):
+            with self.subTest(version=version), self.assertRaises(p.Refused):
+                self.verify(result, version)
+
+    def test_actual_39_through_56_migrations_add_tables_and_change_no_old_row(self):
+        # alpha.117 (56): two transfer rotation tables; no old table gains a column.
+        self.assertEqual(len(self.sql), 56, 'a migration after 56 needs its own pin before a candidate carries it')
+        result = self.build()
+        connection = sqlite3.connect(result['database'])
+        connection.execute('PRAGMA foreign_keys=ON')
+        apply(connection, self.sql[38:56])
+        connection.close()
+        for wrong in (54, 55):
+            with self.subTest(wrong=wrong), self.assertRaises(p.Refused):
+                self.verify(result, wrong)
+        proof = self.verify(result, 56)
+        self.assertEqual(proof['schema_version'], 56)
+        self.assertEqual(proof['table_count'], 95)
+        self.assertEqual(proof['old_rows_missing_or_changed'], 0)
+        self.assertEqual(proof['tables']['schema_migrations']['added'], 18)
+        self.assertEqual(p.NEW_TABLES[56] - p.NEW_TABLES[55], {'transfer_rotations', 'transfer_rotation_effects'})
+        self.assertEqual(p.added_columns(56), p.added_columns(55))
+        for version in (57, '56', True):
             with self.subTest(version=version), self.assertRaises(p.Refused):
                 self.verify(result, version)
 

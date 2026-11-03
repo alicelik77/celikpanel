@@ -96,7 +96,13 @@ func (p *Panel) handleDomainPHPSettings(w http.ResponseWriter, r *http.Request) 
 		// alpha.108 (D-038 §14): a customer is offered what the administrator
 		// offers; the site's own version stays listed (it keeps it).
 		if !callerIsAdministrator(r) {
-			if policy, policyErr := p.loadOfferedVersions(r.Context()); policyErr == nil {
+			// alpha.117 (D-042): and what the subscription's rights open.
+			subID, subErr := p.domainSubscriptionID(r.Context(), domainID)
+			policy, _, policyErr := p.subscriptionVersionPolicy(r.Context(), subID)
+			if subErr != nil {
+				policyErr = subErr
+			}
+			if policyErr == nil {
 				kept := []string{}
 				for _, version := range availableVersions {
 					if version == phpVersion || policy.offered("php", version) {
@@ -177,7 +183,7 @@ func (p *Panel) handleDomainPHPSettings(w http.ResponseWriter, r *http.Request) 
 		}
 		// alpha.108 (D-038 §14): a customer chooses among the versions the
 		// administrator offers; the version the site already runs is kept.
-		if p.refuseVersionNotOffered(w, r, "php", phpVersion, req.PHPVersion) {
+		if p.refuseVersionNotOffered(w, r, domainID, "php", phpVersion, req.PHPVersion) {
 			return
 		}
 		discoveredVersions, err := p.phpVersionsFromAgent(r.Context())
@@ -244,6 +250,10 @@ func (p *Panel) handleDomainPHPSettings(w http.ResponseWriter, r *http.Request) 
 			// 502 veriyordu. Başarısız regen başarısız istektir: operatör
 			// "güncellendi" değil, sitenin karanlık olduğunu okumalı.
 			if err == nil {
+				// D-043: a site that leaves a version under a security
+				// emergency leaves its maintenance list; the render below
+				// shows the site again.
+				p.noteEmergencySiteMoved(r.Context(), domainID)
 				if verr := p.applySiteVhost(r.Context(), domainID); verr != nil {
 					log.Printf("vhost regen after php switch (domain %d): %v", domainID, verr)
 					writeServerError(w, verr)

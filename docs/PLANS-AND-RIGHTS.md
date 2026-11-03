@@ -390,6 +390,33 @@ configuration on the server will be verified in the implementation design (see S
 does, the transfer becomes an operation that follows the change rules of D-025: preview, durable
 checkpoints, rollback.
 
+*Verified in the implementation (alpha.117):* the owner change itself changes nothing on the
+server; everything there is keyed by subscription and domain ids (`cmd/panel/transfer.go`).
+
+**Passwords and keys (owner decision, November 2, 2026).** The confirmation shows "Change all
+passwords and keys", checked. The previous owner must not be able to use any credential after the
+transfer; the new owner sets new ones in the panel. The approver may untick it; the screen then
+warns that every password, key and VPN device keeps working for the previous owner.
+
+- The preview lists each credential: the site accounts (file access), VPN devices, mailboxes,
+  database users (a WordPress CelikPanel installed is named; a user on another server or recorded
+  by an older version is marked "change it there"), protected folder users; what the new owner does
+  after; and what CelikPanel does not hold (accounts inside apps, secrets in the site's own files).
+- Order: the owner change commits first. In the same transaction the change of credentials is
+  written as a durable operation and the VPN devices are revoked in the panel. The worker then
+  changes the server step by step: file access closed with the password removed and every SSH key
+  removed (first, because a shell could read the new passwords); the devices leave WireGuard; each
+  mailbox and each database user on this server gets a random password nobody is shown and its
+  open sessions end; the wp-config.php of a WordPress CelikPanel installed gets the database
+  password when it still names that database and user (otherwise the step stops, the site keeps
+  working and the screen says what to do); protected folder users get random passwords.
+- A crash continues the same operation; a step that cannot be confirmed is retried three times; a
+  stopped step is shown to the approver and the new owner as "still to do" with a Retry. A
+  credential the new owner sets first is theirs: the step is never run over it. Opening file access
+  waits until its step is finished. No password is stored outside the sealed database user record.
+- The new owner sets passwords where they already do (Mail, file access, VPN, protected folders);
+  a database user has "New password" under Databases (shown once).
+
 ---
 
 ## 9. Migration of existing installations

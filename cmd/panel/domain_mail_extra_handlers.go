@@ -303,7 +303,7 @@ func (p *Panel) handleMailConfigure(w http.ResponseWriter, r *http.Request) {
 	}
 	var resp transport.ConfigureMailStackResponse
 	err := p.withStandaloneAgentMutation(r.Context(), "mail_configure", "mail-stack", "", func(callCtx context.Context, binding agentMutationBinding) error {
-		request := transport.ServiceMutationRequest{ServiceMutationBinding: binding}
+		request := p.configureMailStackRequest(callCtx, binding)
 		if err := p.callAgentContext(callCtx, "Agent.ConfigureMailStack", &request, &resp); err != nil {
 			return err
 		}

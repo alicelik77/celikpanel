@@ -108,6 +108,9 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/postfix/queue":         gateAdmin,
 	"/api/v1/postfix/summary":       gateAdmin,
 	"/api/v1/products":              gateAccount,
+	"/api/v1/reseller-plans":        gateAccount, // administrator only (handler)
+	"/api/v1/reseller-plans/":       gateAccount, // administrator only (handler)
+	"/api/v1/rights/":               gateAccount, // catalog for each account's own scope; notices admin + reseller (handler)
 	"/api/v1/repo":                  gateAdmin,
 	"/api/v1/runtimes/node":         gateAccount, // admin-only in handler
 	"/api/v1/runtimes/node/":        gateAccount, // admin-only in handler
@@ -125,6 +128,13 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/store/":                gateAccount,
 	"/api/v1/subscriptions":         gateAccount, // ownership-filtered list
 	"/api/v1/subscriptions/":        gateAccount, // ownership-checked entitlements
+	"/api/v1/security-emergencies":  gateAdmin,   // D-043; also refused under "Log in as" (handler)
+	"/api/v1/security-emergencies/": gateAdmin,   // D-043; steps need name + password (handler)
+	"/api/v1/security-notices":      gateTenant,  // the caller's own notices only (handler)
+	"/api/v1/security-notices/":     gateTenant,  // marks the caller's own notice seen (handler)
+	"/api/v1/suspensions/deletable": gateAccount, // admin + reseller (handler); customers refused
+	"/api/v1/transfer-requests":     gateAccount, // admin all, reseller its own, customer its own (handler)
+	"/api/v1/transfer-requests/":    gateAccount, // approver decides, requester withdraws (handler)
 	"/api/v1/system-databases":      gateAdmin,
 	"/api/v1/system-databases/":     gateAdmin,
 	"/api/v1/system/check":          gateAdmin,

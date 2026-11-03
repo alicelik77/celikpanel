@@ -36,6 +36,11 @@ type DomainResponse struct {
 	// SiteConfig is the vhost's last observed state (D-031), for an
 	// administrator only. Absent when nothing was observed yet.
 	SiteConfig *domainSiteConfigSummary `json:"site_config,omitempty"`
+	// RightsClosed (alpha.117, D-042): the permissions the domain's
+	// subscription may not use now, so the page does not draw their tabs.
+	// The server refuses them anyway; absent when nothing is closed and for
+	// the administrator, whom the gates do not narrow.
+	RightsClosed []string `json:"rights_closed,omitempty"`
 }
 
 const (
@@ -139,6 +144,12 @@ func (p *Panel) handleDomains(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// The closed rights of each subscription, read once per subscription.
+	var closedRights *closedPermissionsCache
+	if caller != nil && !caller.hasAccountRole(roleAdmin) {
+		closedRights = p.newClosedPermissionsCache()
+	}
+
 	// Build response with proper field names for frontend
 	response := make([]DomainResponse, 0, len(domains))
 	for _, domain := range domains {
@@ -215,18 +226,19 @@ func (p *Panel) handleDomains(w http.ResponseWriter, r *http.Request) {
 		}
 
 		response = append(response, DomainResponse{
-			ID:          domain.ID,
-			DomainName:  domain.Name,
-			PHPVersion:  phpVersionResponse,
-			SSLEnabled:  sslEnabledResponse,
-			Status:      domain.Status,
-			ProjectType: projectTypeResponse,
-			CreatedAt:   domain.CreatedAt.Format("2006-01-02T15:04:05Z"),
-			DiskUsage:   diskUsageResponse,
-			Bandwidth:   bandwidthResponse,
-			ParentID:    parentID,
-			Access:      access,
-			SiteConfig:  siteConfigFor(siteConfigs, domain.ID),
+			ID:           domain.ID,
+			DomainName:   domain.Name,
+			PHPVersion:   phpVersionResponse,
+			SSLEnabled:   sslEnabledResponse,
+			Status:       domain.Status,
+			ProjectType:  projectTypeResponse,
+			CreatedAt:    domain.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			DiskUsage:    diskUsageResponse,
+			Bandwidth:    bandwidthResponse,
+			ParentID:     parentID,
+			Access:       access,
+			SiteConfig:   siteConfigFor(siteConfigs, domain.ID),
+			RightsClosed: domainRightsClosed(r.Context(), closedRights, domain.SubscriptionID),
 		})
 	}
 
@@ -452,7 +464,8 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 			// alpha.108 (D-038 §14): a customer's new site takes a version
 			// the administrator offers — the one asked for, or the newest
 			// offered one. An administrator is never restricted.
-			policy, policyErr := p.loadOfferedVersions(r.Context())
+			// alpha.117 (D-042): narrowed by the subscription's rights.
+			policy, rights, policyErr := p.subscriptionVersionPolicy(r.Context(), req.SubscriptionID)
 			if policyErr != nil {
 				writeServerError(w, policyErr)
 				return
@@ -460,17 +473,40 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 			chosen, offered := customerSitePHPVersion(req.PHPVersion, caps.PHPVersions, policy)
 			if !offered {
 				if req.PHPVersion == "" {
-					writeNoVersionOffered(w, "php")
+					writeNoVersionRefusal(w, rights, "php", caps.PHPVersions)
 				} else {
-					writeVersionNotOffered(w, "php", req.PHPVersion)
+					writeVersionRefusal(w, rights, "php", req.PHPVersion)
 				}
 				return
 			}
 			req.PHPVersion = chosen
 		}
+		if req.PHPVersion == "" {
+			// D-043: the default pick skips a version withdrawn for security
+			// (with every one withdrawn, the refusal below names it).
+			withdrawn, err := withdrawnVersions(r.Context(), p.db.GetDB())
+			if err != nil {
+				writeServerError(w, err)
+				return
+			}
+			var usable []string
+			for _, candidate := range caps.PHPVersions {
+				if !versionWithdrawn(withdrawn, "php", candidate) {
+					usable = append(usable, candidate)
+				}
+			}
+			if len(usable) > 0 {
+				caps.PHPVersions = usable
+			}
+		}
 		version, installed := newSitePHPVersion(req.PHPVersion, caps.PHPVersions)
 		if !installed {
 			writePHPVersionNotInstalled(w, req.PHPVersion, caps.PHPVersions)
+			return
+		}
+		// alpha.117 (D-043): a version withdrawn for security is never a
+		// new site's version, the administrator's either.
+		if p.refuseWithdrawnVersion(w, r, "php", "", version) {
 			return
 		}
 		req.PHPVersion = version

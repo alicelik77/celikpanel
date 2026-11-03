@@ -377,6 +377,12 @@ func (p *Panel) syncVPNPeersGenerationLocked(ctx context.Context, retries int) e
 		SELECT vp.id, vp.public_key, vp.preshared_key, vp.ip
 		FROM vpn_peers vp
 		WHERE vp.desired_state = 'active'
+		  -- alpha.117: a suspended subscription's peers stay in the panel but
+		  -- leave the live WireGuard configuration.
+		  AND NOT EXISTS (
+			SELECT 1 FROM subscriptions s
+			WHERE s.id = vp.subscription_id AND s.status IN ('suspended', 'expired')
+		  )
 		  AND (
 			vp.subscription_id IS NOT NULL
 			AND EXISTS (
@@ -771,6 +777,10 @@ func (p *Panel) createVPNPeer(w http.ResponseWriter, r *http.Request, caller *Ca
 	defer vpnMutationMu.Unlock()
 
 	if !p.requireActiveVPNEntitlement(w, r, *subscriptionID) {
+		return
+	}
+	// alpha.117 (D-042): the VPN permission of the subscription's rights.
+	if !p.requireSubscriptionRight(w, r, *subscriptionID, rightVPN) {
 		return
 	}
 	if p.secrets == nil {

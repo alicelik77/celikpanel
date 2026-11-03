@@ -110,6 +110,10 @@ func (p *Panel) handleTeamMembers(w http.ResponseWriter, r *http.Request) {
 		if !ok {
 			return
 		}
+		// alpha.117 (D-042): additional users are a right of the subscription.
+		if !p.requireTeamMembersRight(w, r, ownerID, &request.Access) {
+			return
+		}
 		if request.Status == "" {
 			request.Status = "active"
 		}
@@ -231,6 +235,12 @@ func (p *Panel) handleTeamMemberByID(w http.ResponseWriter, r *http.Request) {
 			update.PasswordHash = &hash
 		}
 		if request.Access != nil {
+			// alpha.117 (D-042): giving access is use of the right; taking
+			// all access away is not.
+			if len(request.Access.SubscriptionPermissions)+len(request.Access.DomainPermissions) > 0 &&
+				!p.requireTeamMembersRight(w, r, ownerID, request.Access) {
+				return
+			}
 			access := request.Access.coreAccess()
 			update.Access = &access
 		}

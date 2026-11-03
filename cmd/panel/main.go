@@ -87,6 +87,17 @@ type Panel struct {
 	// durable operation's audit is written after its terminal state (and the
 	// lock) and a test must not read the audit trail before it.
 	serviceOperationAudited func(action string)
+	// suspensionNative replaces the Agent for suspension operations in tests
+	// (nil in production); suspensionWorker runs them (suspension_run.go).
+	suspensionNative suspensionNative
+	suspensionWorker suspensionWorkerState
+	// emergencyNative replaces the Agent for security emergency operations
+	// in tests (nil in production); emergencyWorker runs them (D-043).
+	emergencyNative emergencyNative
+	emergencyWorker emergencyWorkerState
+	// rotationNative replaces the Agent for transfer credential rotation in
+	// tests (nil in production; transfer_rotation.go).
+	rotationNative rotationNative
 	// lastUpdateAttempt is injectable only for handler tests. Production leaves
 	// it nil and reads the native recovery observations directly.
 	lastUpdateAttempt func(commit string) (recoveryobs.Attempt, bool)
@@ -187,6 +198,9 @@ type Panel struct {
 	// "Check for updates" button and the check made when the update screen
 	// opens wait for each other; none runs beside another. Zero value ready.
 	updateCheckGate panelUpdateCheckGate
+	// rightsInstalledOfferings replaces the Agent's installed list in tests
+	// (rights_gate.go installedOfferingIDs); nil in production.
+	rightsInstalledOfferings func(context.Context) ([]string, error)
 	// The DNS page's overview (alpha.115, dns_overview.go): its network edges,
 	// set only by tests before the first read (nil in production), and the
 	// one shared answer per panel. Zero value ready.
@@ -348,6 +362,13 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "usage", []string{http.MethodGet}
 	case "connection":
 		match.kind, match.methods = "connection", []string{http.MethodGet}
+	case "access":
+		// alpha.117: FTP over TLS, SFTP and SSH of the site's account.
+		// Not mapped for additional users: the account's password and
+		// keys belong to the subscription's owner.
+		match.kind, match.methods = "file-access", []string{http.MethodGet, http.MethodPut}
+	case "access/preview":
+		match.kind, match.methods = "file-access-preview", []string{http.MethodPost}
 	case "site-config":
 		match.kind, match.methods = "site-config", []string{http.MethodGet}
 	case "site-config/keep":
@@ -396,6 +417,10 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !p.authorizeDomainSubroute(w, r, match.domainID, match.kind) {
+		return
+	}
+	// D-042: the subscription's rights decide new use and changes.
+	if !p.enforceDomainSubrouteRight(w, r, match.domainID, match.kind) {
 		return
 	}
 	switch match.kind {
@@ -465,6 +490,10 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainUsage(w, r)
 	case "connection":
 		p.handleDomainConnection(w, r, match.domainID)
+	case "file-access":
+		p.handleDomainFileAccess(w, r, match.domainID, false)
+	case "file-access-preview":
+		p.handleDomainFileAccess(w, r, match.domainID, true)
 	case "dns":
 		p.handleDomainDNS(w, r)
 	case "site-protect", "site-protect-users", "site-redirects":
@@ -529,10 +558,15 @@ func matchDatabaseSubroute(r *http.Request, prefix string) (databaseSubroute, bo
 			return databaseSubroute{}, false
 		}
 	case "/api/v1/database-users/":
-		if len(segments) != 1 {
+		switch {
+		case len(segments) == 1:
+			match.kind, match.methods = "user-delete", []string{http.MethodDelete}
+		// A new password (after a transfer, or whenever the owner wants one).
+		case len(segments) == 2 && segments[1] == "password":
+			match.kind, match.methods = "user-password", []string{http.MethodPost}
+		default:
 			return databaseSubroute{}, false
 		}
-		match.kind, match.methods = "user-delete", []string{http.MethodDelete}
 	case "/api/v1/database-grants/":
 		if len(segments) != 1 {
 			return databaseSubroute{}, false
@@ -588,6 +622,8 @@ func (p *Panel) handleDatabaseSubroute(w http.ResponseWriter, r *http.Request, p
 		}
 	case "user-delete":
 		p.handleDeleteDatabaseV2User(w, r)
+	case "user-password":
+		p.handleSetDatabaseUserPassword(w, r, match.resourceID)
 	case "grant-delete":
 		p.handleRevokeDatabaseAccess(w, r)
 	default:
@@ -1327,9 +1363,22 @@ func main() {
 	http.HandleFunc("/api/v1/team-members/", panel.handleTeamMemberByID)
 	http.HandleFunc("/api/v1/plans", panel.handlePlans)
 	http.HandleFunc("/api/v1/plans/", panel.handlePlanByID)
+	// alpha.117 (D-042): reseller plans, the rights catalog and notices.
+	http.HandleFunc(resellerPlansPath, panel.handleResellerPlans)
+	http.HandleFunc(resellerPlansPath+"/", panel.handleResellerPlanByID)
+	http.HandleFunc(rightsPathPrefix, panel.handleRightsRoutes)
 	http.HandleFunc("/api/v1/subscriptions", panel.handleSubscriptions)
 	http.HandleFunc("/api/v1/subscriptions/", panel.handleSubscriptionEntitlements)
+	http.HandleFunc(transferRequestsPath, panel.handleTransferRequests)
+	http.HandleFunc(transferRequestsPath+"/", panel.handleTransferRequests)
 	http.HandleFunc(mySubscriptionPath, panel.handleMySubscription)
+	http.HandleFunc(suspensionDeletablePath, panel.handleSuspensionDeletable)
+	// alpha.117 (D-043): security emergencies (administrator) and the
+	// notices their customers and resellers read.
+	http.HandleFunc(securityEmergenciesPath, panel.handleSecurityEmergencies)
+	http.HandleFunc(securityEmergenciesPath+"/", panel.handleSecurityEmergencies)
+	http.HandleFunc(securityNoticesPath, panel.handleSecurityNotices)
+	http.HandleFunc(securityNoticesPath+"/", panel.handleSecurityNotices)
 	http.HandleFunc("/api/v1/products", panel.handleProducts)
 	http.HandleFunc("/api/v1/store", panel.handleStore)
 	http.HandleFunc("/api/v1/store/", panel.handleStore)
@@ -1599,6 +1648,11 @@ func main() {
 	panel.startBackupScheduler()
 	panel.startCertRenewalScheduler()
 	panel.startVPNEntitlementReconciler()
+	// Suspensions: continue what a restart interrupted, check end dates.
+	panel.startSuspensionWorker()
+	// Security emergencies (D-043): continue what a restart interrupted,
+	// hand pending notices to the mail system.
+	panel.startEmergencyWorker()
 	// A pending paired DNS publication whose cause is transient (the backup
 	// has not caught up) completes by itself through its exact recovery.
 	panel.startDNSPendingPublicationReconciler(discoveryCtx)

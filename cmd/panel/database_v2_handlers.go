@@ -168,6 +168,19 @@ func writeDatabaseEngineError(
 //
 // databaseServerTypeName, cagiranin kaydettigi tipten surucunun sectigi motor
 // kimligini cozer. Bilinmeyen tip bos dizeye cozulur.
+// requireDatabaseServerRights: the databases permission and, for a known
+// engine, its offering (alpha.117, D-042).
+func (p *Panel) requireDatabaseServerRights(w http.ResponseWriter, r *http.Request, subscriptionID, typeID int) bool {
+	if !p.requireSubscriptionRight(w, r, subscriptionID, rightDatabases) {
+		return false
+	}
+	engine := p.databaseServerTypeName(r.Context(), typeID)
+	if offering := databaseEngineOffering(engine); offering != "" {
+		return p.requireSubscriptionOffering(w, r, subscriptionID, offering, engine, true)
+	}
+	return true
+}
+
 func (p *Panel) databaseServerTypeName(ctx context.Context, typeID int) string {
 	var name string
 	if err := p.db.GetDB().QueryRowContext(ctx,
@@ -564,6 +577,12 @@ func (p *Panel) handleCreateDatabaseV2(w http.ResponseWriter, r *http.Request) {
 	subscriptionID := server.SubscriptionID
 	caller := currentCaller(r)
 
+	// alpha.117 (D-042): databases and this engine must be open to the
+	// subscription.
+	if !p.requireDatabaseServerRights(w, r, subscriptionID, server.TypeID) {
+		return
+	}
+
 	// Resolve every caller-supplied reference before constructing a driver or
 	// mutating the physical engine/repository.
 	//
@@ -954,6 +973,15 @@ func (p *Panel) handleCreateDatabaseV2User(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	subscriptionID := server.SubscriptionID
+	// alpha.117: a new database user of a suspended subscription would not be
+	// locked; nothing new is added until it is resumed.
+	if p.refuseSuspendedTenantSubscription(w, ctx, subscriptionID) {
+		return
+	}
+	// alpha.117 (D-042): databases and this engine must be open.
+	if !p.requireDatabaseServerRights(w, r, subscriptionID, server.TypeID) {
+		return
+	}
 
 	// The account name is resolved before the driver, so a name no engine can
 	// hold is refused as a 400 rather than becoming an engine-side 500.
@@ -1231,6 +1259,10 @@ func (p *Panel) handleGrantDatabaseAccess(w http.ResponseWriter, r *http.Request
 	}
 	if database.SubscriptionID != server.SubscriptionID {
 		writeClientError(w, http.StatusNotFound, "invalid request")
+		return
+	}
+	// alpha.117 (D-042): a new grant is new use of databases.
+	if !p.requireDatabaseServerRights(w, r, server.SubscriptionID, server.TypeID) {
 		return
 	}
 

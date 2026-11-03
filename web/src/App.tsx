@@ -41,6 +41,9 @@ function lazyNamed<TModule, TKey extends keyof TModule>(
   }));
 }
 
+// alpha.117 (D-043): a customer's security notice; screen copy, so it loads
+// beside the screens and shows only once their copy is here.
+const SecurityNoticeBanner = lazyNamed(() => import('./components/SecurityNoticeBanner'), 'SecurityNoticeBanner');
 const SystemUpdateOperationProvider = lazyNamed(() => import('./components/SystemUpdateOperation'), 'SystemUpdateOperationProvider');
 const ServerSetupGate = lazyNamed(() => import('./components/ServerSetupGate'), 'ServerSetupGate');
 const ServerSetup = lazyNamed(() => import('./components/ServerSetup'), 'ServerSetup');
@@ -75,6 +78,10 @@ const MariaDBManagement = lazyNamed(() => import('./components/MariaDBManagement
 const ComponentDetail = lazyNamed(() => import('./components/ComponentDetail'), 'ComponentDetail');
 const ServiceRecordLookup = lazyNamed(() => import('./components/ServiceRecordLookup'), 'ServiceRecordLookup');
 const AccountLinkPage = lazyNamed(() => import('./components/AccountLinkPage'), 'AccountLinkPage');
+// The plain screen of an account whose services are suspended. Its copy is screen
+// copy, so it is fetched with the screen and not with the boot payload.
+// Hizmetleri askıya alınmış hesabın düz ekranı; metni ekran metnidir.
+const SuspendedScreen = lazyNamed(() => import('./components/SuspendedScreen'), 'SuspendedScreen');
 
 // The page of one domain, addressed by its name. Looking the name up, and
 // saying what came of it, belongs to the page's own bundle (DomainDetailByName):
@@ -232,6 +239,7 @@ function MainLayout({ children, currentPath }: { children: React.ReactNode; curr
     accountType: typeof user?.account_type === 'string' ? user.account_type : undefined,
     teamMembers: user?.features?.team_members === true,
     vpn: user?.features?.vpn === true,
+    databases: user?.features?.databases !== false,
   };
 
   // Longest matching path wins so "/domains/x" resolves to the domains item.
@@ -291,7 +299,7 @@ function ScreenCopyGate({ children }: { children: ReactNode }) {
   const { screensReady, screensFailed, t } = useI18n();
   if (screensFailed) return <PageLoadFailed message={t('app.pageLoadFailed')} reloadLabel={t('app.reload')} />;
   if (!screensReady) return <PageLoading />;
-  return <>{children}</>;
+  return <><SecurityNoticeBanner />{children}</>;
 }
 
 function PageLoadFailed({ message, reloadLabel }: { message: string; reloadLabel: string }) {
@@ -431,6 +439,8 @@ function AppRoutes() {
 // erişilmez tutar; tam kurtarma sayfası uygulamanın hiç başlayamadığı yükleme içindir.
 function AuthGate() {
   const { user, state, checking, unanswered, afterAnswer, failure, generation: authGenerationRef, retry, transitionAuthentication, markUnavailable } = usePanelSession();
+  // When the last suspension answer made the gate read who the person is again.
+  const suspensionRead = useRef(0);
   const [observationRecovery, setObservationRecovery] = useState(false);
   const endSession = useCallback(() => transitionAuthentication(null), [transitionAuthentication]);
   // While the followed update restarts the Panel, "still starting" is that
@@ -492,6 +502,15 @@ function AuthGate() {
             && !url.includes('/api/v1/license/access')) {
             window.dispatchEvent(new Event('celikpanel:license-locked'));
           }
+          // Every call of a suspended account is refused with this code. The gate reads
+          // who the person is again (a read, never a repeat of the refused call), and the
+          // answer draws the suspended screen. At most once in five seconds.
+          // Askıdaki hesabın her çağrısı bu kodla reddedilir; kapı kimliği yeniden okur.
+          if (problem.code === 'SUBSCRIPTION_SUSPENDED' && !url.includes('/api/v1/auth/')
+            && !mounted.current?.suspended && Date.now() - suspensionRead.current > 5000) {
+            suspensionRead.current = Date.now();
+            void retry();
+          }
           if (problem.code === 'AUTH_STATUS_UNAVAILABLE') markUnavailable(true);
           if ((problem.code === 'panel_starting' || problem.code === 'PANEL_STARTING') && !updateRestartStarting()) markUnavailable();
         }).catch(() => {});
@@ -499,7 +518,7 @@ function AuthGate() {
       return res;
     };
     return () => { window.fetch = originalFetch; };
-  }, [transitionAuthentication, markUnavailable, authGenerationRef, updateRestartStarting]);
+  }, [transitionAuthentication, markUnavailable, authGenerationRef, updateRestartStarting, retry]);
 
   // The router keeps the address while the sign-in form is shown, so signing in
   // again opens the same route. What was typed on that page is not kept.
@@ -520,6 +539,11 @@ function AuthGate() {
   return (
     <AccessHold active={state !== 'ready'} cause={cause === 'checking' ? 'availability' : cause} checking={checking}
       user={known} onRetry={() => void retry()} onUnauthorized={endSession}>
+    {shown.suspended ? (
+      <Suspense fallback={<PageLoading />}>
+        <SuspendedScreen username={shown.username} suspended={shown.suspended} onSignedOut={signOut} />
+      </Suspense>
+    ) : (
     <AuthProvider key={shown.username} user={shown} onLogout={signOut}>
         <LicenseOnboarding onRecoveryChange={setObservationRecovery} suspended={state !== 'ready'}>
         <Suspense fallback={<PageLoading />}>
@@ -529,6 +553,7 @@ function AuthGate() {
         </Suspense>
         </LicenseOnboarding>
     </AuthProvider>
+    )}
     </AccessHold>
   );
 }

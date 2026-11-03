@@ -179,6 +179,10 @@ func (p *Panel) handleDomainApp(w http.ResponseWriter, r *http.Request, domainID
 
 	case r.Method == http.MethodPost:
 		action := r.URL.Path[strings.LastIndexByte(r.URL.Path, '/')+1:]
+		// D-043: an application a security emergency stopped is not started.
+		if p.refuseAppStartUnderEmergency(w, r, domainID, action) {
+			return
+		}
 		var resp transport.AppApplyResponse
 		if err := p.callAgent("Agent.ControlAppUnit", &transport.AppControlRequest{SiteID: siteID, Action: action}, &resp); err != nil {
 			writeServerError(w, err)

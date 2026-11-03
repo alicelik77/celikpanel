@@ -35,6 +35,7 @@ export const enRefusalsScreens = {
     "secret.copyFailed": "Could not copy. Select the password and copy it by hand.",
     "secret.dbCreatedTitle": "Database {name} created, with a new user",
     "secret.userCreatedTitle": "Database user {name} created",
+    "secret.userPasswordTitle": "New password for database user {name}",
 
     "dbm.addDatabase": "Create database",
     "dbm.addUser": "Create database user",

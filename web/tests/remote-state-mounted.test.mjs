@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import React from 'react';
 import Renderer, { act } from 'react-test-renderer';
-import { compileSource, dataModule, reactURL, remoteURL, sharedLayer } from './fixtures/shared-layer.mjs';
+import { apiErrorURL, compileSource, dataModule, reactURL, remoteURL, sharedLayer } from './fixtures/shared-layer.mjs';
 import { englishCatalogue, englishScreens, turkishCatalogue, turkishScreens } from './locale-catalogue.mjs';
 
 // NO NEGATIVE UI UNLESS KNOWN, on the mounted screens (9 Oct 2026, D-024).
@@ -43,6 +43,13 @@ const stubbedComponents = [
   // alpha.114: My plan reads its own address.
   'MyPlanCard',
   'PendingInvitations', 'EmailVerificationCard',
+  // 2 Nov 2026: the suspension dialogue and the Deletable list are their own screens.
+  'SuspensionDialog', 'DeletableAccounts',
+  // alpha.117: transfers read their own addresses (SubscriptionTransfer).
+  'TransferRowAction', 'TransferRequestsList', 'TransferRequestCard',
+  // alpha.117 (D-042): the rights panels and tabs of the Accounts page read
+  // their own addresses; the Accounts list and the plans list are under test.
+  'AccountRightsPanel', 'NewAccountRightsSection', 'BuiltinPlanRow', 'OfferedItemsTab', 'PlanEditorGate', 'ResellerPlansTab', 'AdminRightsNotices',
 ];
 for (const name of screenFiles) {
   for (const match of source(`components/${name}.tsx`).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {
@@ -97,7 +104,7 @@ const hstsRemainingURL = compileSource('lib/hstsRemaining.ts', () => stub);
 const requestIdentityURL = compileSource('lib/requestIdentity.ts', () => stub);
 const own = {
   '/auth/domainAccess': domainAccessURL, '/lib/domainDeletionPending': deletionURL, '/lib/subscriptions': subscriptionsURL,
-  '/lib/accounts': accountsURL, '/lib/managedServices': managedServicesURL, '/lib/sslTier': sslTierURL, '/lib/hstsRemaining': hstsRemainingURL,
+  '/lib/accounts': accountsURL, '/lib/suspension': compileSource('lib/suspension.ts', besideRemote), '/lib/managedServices': managedServicesURL, '/lib/sslTier': sslTierURL, '/lib/hstsRemaining': hstsRemainingURL,
   '/lib/requestIdentity': requestIdentityURL,
   // Who renews a website certificate and what the administrator does (D-040).
   '/lib/sslRenewal': compileSource('lib/sslRenewal.ts', () => stub),
@@ -111,6 +118,8 @@ const own = {
   '/lib/panelCertificate': compileSource('lib/panelCertificate.ts', () => stub),
   // What the license check itself says (D-039, 2026-10-30).
   '/lib/licenseOffline': compileSource('lib/licenseOffline.ts', () => stub),
+  // Plans and rights (alpha.117): the shipped decoders and helpers.
+  '/lib/rights': compileSource('lib/rights.ts', (specifier) => (specifier.endsWith('/apiError') ? apiErrorURL : stub)),
 };
 // The two notices of 10 Oct 2026 are the shipped ones: what a service action
 // ended with, and a change whose one-time result is not kept.
@@ -120,6 +129,9 @@ own['/OnceOnlyNotice'] = shared.compile('components/OnceOnlyNotice.tsx', own);
 own['/BlockingProblems'] = shared.compile('components/BlockingProblems.tsx', own);
 // So is the notice of a certificate request certbot did not fulfil (11 Oct 2026).
 own['/CertificateIssueNotice'] = shared.compile('components/CertificateIssueNotice.tsx', own);
+// Get certificate is off for a name that does not point here (2 Nov 2026): the shipped gate and notice.
+own['/lib/certificateNames'] = compileSource('lib/certificateNames.ts', () => stub);
+own['/CertificateReachNotice'] = shared.compile('components/CertificateReachNotice.tsx', own);
 // alpha.114: the names a new site found pointing elsewhere, the shipped card.
 own['/KeptSiteRecords'] = shared.compile('components/KeptSiteRecords.tsx', own);
 const modalURL = shared.compile('components/AddDomainModal.tsx', own);
@@ -1652,6 +1664,92 @@ test('Domain certificate: while a certificate is requested the button spins and 
     assert.equal(busy.props.disabled, true);
     assert.equal(calls.filter((call) => call.method === 'POST').length, 1);
     await act(async () => { finish(); await settled(); await settled(); });
+  } finally { await cleanup(); }
+});
+
+// --- Get certificate is honest about the domain's DNS (owner, 2 Nov 2026) ------
+test('Domain certificate: Get certificate is off while the domain does not point here, Check again reads again, an unknown check allows the attempt', async () => {
+  const none = { domain_id: 1, domain_name: 'example.com', has_certificate: false, managed_names: ['example.com', 'www.example.com'], settings: { force_https: false, hsts_enabled: false, hsts_max_age: 300 } };
+  const names = (state, mailState = state) => [
+    { name: 'example.com', kind: 'site', state, ips: [] }, { name: 'www.example.com', kind: 'site', state, ips: [] },
+    { name: 'mail.example.com', kind: 'mail', state: mailState, ips: [] },
+  ];
+  let answer = () => json(connection({ certificate_names: names('elsewhere'), live_nameservers: ['ns1.old.example'] }))();
+  let reads = 0;
+  serve({
+    '/api/v1/domains/1/ssl': () => Response.json(none),
+    '/api/v1/domains/1/connection': () => { reads += 1; return answer(); },
+  });
+  const issueButton = () => buttons('ssl.issue').find((node) => node.props.disabled !== undefined);
+  try {
+    await mount(DomainSSLSettings, { ...domain, mailAvailable: true });
+    await act(async () => { tree.root.findAllByProps({ type: 'email' })[0].props.onChange({ target: { value: 'owner@example.com' } }); await settled(); });
+    assert.ok(calls.some((call) => call.url === '/api/v1/domains/1/connection?names=certificate'), 'the screen reads the live check of the request names');
+    assert.equal(issueButton().props.disabled, true, 'a known negative turns the button off');
+    assert.ok(has('ssl.reach.blockedTitle'), 'what is wrong is said at the top');
+    assert.ok(has('ssl.reach.inline.blocked'), 'and beside the button');
+    const posts = () => calls.filter((call) => call.method === 'POST').length;
+    await act(async () => { void issueButton().props.onClick({}); await settled(); });
+    assert.equal(posts(), 0, 'nothing is sent for a known negative');
+
+    // A check that could not tell is unknown: said, and the attempt is allowed.
+    answer = () => Response.json({ error: 'lookup failed' }, { status: 502 });
+    await press(buttons('ssl.reach.recheck')[0]);
+    assert.equal(issueButton().props.disabled, false, 'unknown never blocks');
+    assert.ok(has('ssl.reach.unknownTitle') && !has('ssl.reach.blockedTitle'), 'unknown is said, not called blocked');
+
+    // The change spread: Check again reads again, with no page refresh.
+    const before = reads;
+    answer = () => json(connection({ certificate_names: names('here') }))();
+    await press(buttons('ssl.reach.recheck')[0]);
+    assert.ok(reads > before, 'Check again asked the server again');
+    assert.equal(issueButton().props.disabled, false, 'the request is offered once every name points here');
+    assert.ok(!has('ssl.reach.blockedTitle') && !has('ssl.reach.unknownTitle'));
+  } finally { await cleanup(); }
+});
+
+test('Domain certificate: only the mail name failing is offered without it', async () => {
+  const none = { domain_id: 1, domain_name: 'example.com', has_certificate: false, managed_names: ['example.com', 'www.example.com'], settings: { force_https: false, hsts_enabled: false, hsts_max_age: 300 } };
+  const checks = [
+    { name: 'example.com', kind: 'site', state: 'here', ips: [] }, { name: 'www.example.com', kind: 'site', state: 'here', ips: [] },
+    { name: 'mail.example.com', kind: 'mail', state: 'elsewhere', ips: [] },
+  ];
+  serve({ '/api/v1/domains/1/ssl': () => Response.json(none), '/api/v1/domains/1/connection': json(connection({ certificate_names: checks })) });
+  const issueButton = () => buttons('ssl.issue').find((node) => node.props.disabled !== undefined);
+  try {
+    await mount(DomainSSLSettings, { ...domain, mailAvailable: true });
+    await act(async () => { tree.root.findAllByProps({ type: 'email' })[0].props.onChange({ target: { value: 'owner@example.com' } }); await settled(); });
+    assert.equal(issueButton().props.disabled, false, 'the mail name is not part of the request until it is chosen');
+    // The form's checkboxes in order: renew automatically, then the mail name.
+    await act(async () => { tree.root.findAllByProps({ type: 'checkbox' })[1].props.onChange({ target: { checked: true } }); await settled(); });
+    assert.equal(issueButton().props.disabled, true, 'with the mail name chosen the request is not offered');
+    assert.ok(has('ssl.reach.inline.mailOnly'));
+    await press(buttons('ssl.reach.leaveOutMail')[0]);
+    assert.equal(issueButton().props.disabled, false, 'requesting without the mail name is offered');
+  } finally { await cleanup(); }
+});
+
+test('Domain certificate: behind a proxy, "request anyway" sends allow_not_pointed and nothing else changes', async () => {
+  const none = { domain_id: 1, domain_name: 'example.com', has_certificate: false, managed_names: ['example.com', 'www.example.com'], settings: { force_https: false, hsts_enabled: false, hsts_max_age: 300 } };
+  const checks = [
+    { name: 'example.com', kind: 'site', state: 'elsewhere', ips: ['198.51.100.9'] }, { name: 'www.example.com', kind: 'site', state: 'elsewhere', ips: [] },
+  ];
+  serve({ '/api/v1/domains/1/ssl': () => Response.json(none), '/api/v1/domains/1/connection': json(connection({ certificate_names: checks })) }, 'admin', {
+    '/api/v1/domains/1/ssl/letsencrypt': () => Response.json({ error: 'authority said no', code: 'CERTIFICATE_ISSUE_FAILED', reason: 'validation' }, { status: 502 }),
+  });
+  const issueButton = () => buttons('ssl.issue').find((node) => node.props.disabled !== undefined);
+  try {
+    await mount(DomainSSLSettings, { ...domain, mailAvailable: true });
+    const anyway = () => buttons('ssl.reach.requestAnyway');
+    assert.ok(anyway().length > 0 && anyway().every((node) => node.props.disabled), 'asking anyway waits for the contact email like the request itself');
+    await act(async () => { tree.root.findAllByProps({ type: 'email' })[0].props.onChange({ target: { value: 'owner@example.com' } }); await settled(); });
+    assert.equal(issueButton().props.disabled, true, 'the plain request stays off');
+    await press(anyway()[0]);
+    const posts = calls.filter((call) => call.method === 'POST');
+    assert.equal(posts.length, 1);
+    assert.equal(JSON.parse(posts[0].body).allow_not_pointed, true);
+    assert.ok(has('ssl.issueFailure.validation') || has('ssl.issueFailure'), 'a failure is the authority’s own answer, shown in place');
+    assert.equal(issueButton().props.disabled, true, 'the plain request is still off afterwards');
   } finally { await cleanup(); }
 });
 

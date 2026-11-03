@@ -182,6 +182,14 @@ var requestIdentityRouteServiceUninstall = requestIdentityRoute{
 	pattern: serviceUninstallPath, timeout: 4*agentRPCDeploymentTimeout + 10*time.Minute,
 }
 
+// requestIdentityRouteDatabaseUserPassword (alpha.117): a database user's
+// new password; the answer may carry the one CelikPanel made up, so only its
+// status is kept, and the stored digest leaves the password out.
+var requestIdentityRouteDatabaseUserPassword = requestIdentityRoute{
+	pattern: "/api/v1/database-users/{id}/password", timeout: agentRPCMutationTimeout + time.Minute,
+	secret: true, digest: requestIdentityDatabaseUserPasswordDigest,
+}
+
 // requestIdentityRouteFor names the protected route a request would reach. It
 // uses the dispatcher's own strict matchers, so a path the guard does not
 // recognize is a path the dispatcher does not serve either.
@@ -227,6 +235,10 @@ func requestIdentityRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 			return requestIdentityRouteSiteConfigRecreate, true
 		case "site-config-apply":
 			return requestIdentityRouteSiteConfigApply, true
+		}
+	case strings.HasPrefix(path, "/api/v1/database-users/"):
+		if match, ok := matchDatabaseSubroute(r, "/api/v1/database-users/"); ok && match.kind == "user-password" {
+			return requestIdentityRouteDatabaseUserPassword, true
 		}
 	case strings.HasPrefix(path, "/api/v1/database-servers/"):
 		match, ok := matchDatabaseSubroute(r, "/api/v1/database-servers/")

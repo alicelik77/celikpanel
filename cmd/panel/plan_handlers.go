@@ -13,20 +13,24 @@ import (
 	"strings"
 )
 
-// Service plans: reusable quota templates (Plesk "Service Plans"). The
-// administrator's plans are global (owner_id NULL) and every reseller may use
-// them; a reseller's own plans (owner_id = the reseller, alpha.114) are seen
-// and used only by that reseller and the administrator, and never promise
-// more than the reseller's pool. Every limit of 0 is unlimited.
+// Service plans: templates of a rights set (D-042; Plesk "Service Plans").
+// A plan holds quantities (its max_* columns) and the permission and
+// software parts (rights_sets, owner "plan"). The administrator's plans are
+// global (owner_id NULL) and every reseller may use them; a reseller's own
+// plans (owner_id = the reseller) are seen and used only by that reseller
+// and the administrator, and never hand out a permission or software item
+// outside the reseller's own set. Quantities may add up to more than a
+// reseller's pool (K2: the pool limits real use). Every limit of 0 is
+// unlimited. The built-in "Unlimited" plan is not a row: it is the state
+// "unlimited" of a subscription.
 //
 // Bandwidth: bandwidth_quota_mb is stored and accepted for compatibility, but
 // traffic is not measured yet, so nothing enforces it and the screens say so
 // instead of showing a limit (ROADMAP v0.35 "enforce or delete").
 //
-// Servis planları: yeniden kullanılabilir kota şablonları. Yöneticinin
-// planları geneldir; bayinin kendi planlarını (alpha.114) yalnız o bayi ve
-// yönetici görür ve kullanır. Her 0 sınırı sınırsızdır. Trafik henüz
-// ölçülmediği için bant genişliği sınırı uygulanmaz; ekranlar bunu söyler.
+// Servis planları, bir hak kümesinin şablonudur. Bayinin planı bayinin kendi
+// kümesinin dışına çıkamaz; sayılar havuzu aşabilir (K2). "Sınırsız" plan bir
+// satır değildir; aboneliğin "unlimited" durumudur.
 
 type planPayload struct {
 	ID               int    `json:"id,omitempty"`
@@ -41,6 +45,12 @@ type planPayload struct {
 	// (PLAN_BELOW_USAGE); nothing is deleted.
 	// Bir abonenin kullandığının altına inen düzenlemeyi onaylar.
 	AcceptOverUsage bool `json:"accept_over_usage,omitempty"`
+	// Rights (alpha.117): the permission and software parts. Absent on a
+	// create: everything offered (D-017 #5); absent on an edit: unchanged.
+	Rights *rightsPayload `json:"rights,omitempty"`
+	// ConfirmNarrowing confirms an edit that takes items away from the
+	// subscriptions on the plan (PLAN_NARROWING_CONFIRM shows them first).
+	ConfirmNarrowing bool `json:"confirm_narrowing,omitempty"`
 	// Read-only facts of a listed plan; a client may send them back and they
 	// are ignored (ownership never comes from a request body).
 	// Listelenen planın salt-okur bilgileri; istemci geri gönderebilir,
@@ -58,6 +68,26 @@ const (
 	maxPlanRequestBytes = 32 << 10
 	maxPlanNameLength   = 100
 )
+
+// builtinPlanView is a built-in plan in a listing: everything offered and
+// no numeric limit; it cannot be edited, renamed or deleted (P4).
+type builtinPlanView struct {
+	Key  string `json:"key"`
+	Name string `json:"name"`
+	Kind string `json:"kind"`
+}
+
+// reservedPlanName: the built-in names describe their behaviour (P4), so no
+// other plan may carry them.
+func reservedPlanName(name string) bool {
+	n := strings.ToLower(strings.TrimSpace(name))
+	return n == strings.ToLower(builtinUnlimitedName) || n == strings.ToLower(builtinUnlimitedResellerName)
+}
+
+func writePlanNameReserved(w http.ResponseWriter) {
+	writeCodedError(w, http.StatusConflict, errCodePlanNameReserved,
+		"\"Unlimited\" and \"Unlimited reseller\" are the built-in plans that open everything offered; choose another name for this plan. Nothing was changed.", "")
+}
 
 // planManager admits the administrator and resellers acting as themselves
 // or through "Log in as" (a reseller impersonated by the administrator acts
@@ -120,7 +150,23 @@ func (p *Panel) handlePlans(w http.ResponseWriter, r *http.Request) {
 			writeServerError(w, fmt.Errorf("read service plans: %w", err))
 			return
 		}
-		if err := json.NewEncoder(w).Encode(map[string]any{"plans": plans}); err != nil {
+		rows.Close()
+		for i := range plans {
+			set, found, err := loadRightsSet(r.Context(), p.db.GetDB(), rightsOwnerPlan, plans[i].ID)
+			if err != nil {
+				writeServerError(w, err)
+				return
+			}
+			if !found {
+				set = allOfferedRightsSet()
+			}
+			payload := set.payload()
+			plans[i].Rights = &payload
+		}
+		if err := json.NewEncoder(w).Encode(map[string]any{
+			"plans":   plans,
+			"builtin": []builtinPlanView{{Key: rightsStateUnlimited, Name: builtinUnlimitedName, Kind: roleCustomer}},
+		}); err != nil {
 			log.Printf("encode service plans: %v", err)
 		}
 
@@ -129,22 +175,33 @@ func (p *Panel) handlePlans(w http.ResponseWriter, r *http.Request) {
 		if !ok {
 			return
 		}
+		if reservedPlanName(pl.Name) {
+			writePlanNameReserved(w)
+			return
+		}
+		set := allOfferedRightsSet()
+		if pl.Rights != nil {
+			parsed, err := pl.Rights.set()
+			if err != nil {
+				writeCodedError(w, http.StatusBadRequest, errCodeRightsUnknownItem, err.Error(), "")
+				return
+			}
+			set = parsed
+		}
+		if !p.planRightsWithinGrantor(w, r, c, rightsSet{}, set) {
+			return
+		}
 		var owner any
 		if c.hasAccountRole(roleReseller) {
-			// A reseller's own plan never promises more than its pool.
-			// Bayinin kendi planı asla havuzundan fazlasını vaat etmez.
-			pool, hasPool, err := loadResellerPool(r.Context(), p.db.GetDB(), c.ID)
-			if err != nil {
-				writeServerError(w, err)
-				return
-			}
-			if hasPool && !limitsWithinPool(pool, pl.limits()) {
-				writePlanExceedsPool(w, pool)
-				return
-			}
 			owner = c.ID
 		}
-		res, err := p.db.GetDB().ExecContext(r.Context(), `
+		tx, err := p.db.GetDB().BeginTx(r.Context(), nil)
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		defer tx.Rollback()
+		res, err := tx.ExecContext(r.Context(), `
 			INSERT INTO service_plans (owner_id, name, max_domains, max_databases, max_email_accounts, disk_quota_mb, bandwidth_quota_mb)
 			VALUES (?, ?, ?, ?, ?, ?, ?)`,
 			owner, pl.Name, pl.MaxDomains, pl.MaxDatabases, pl.MaxEmailAccounts, pl.DiskQuotaMB, pl.BandwidthQuotaMB)
@@ -157,7 +214,17 @@ func (p *Panel) handlePlans(w http.ResponseWriter, r *http.Request) {
 			writeServerError(w, fmt.Errorf("read inserted service plan identity: %w", err))
 			return
 		}
-		p.auditDetailed(r, "plan.create:"+pl.Name, "service_plan", int(id), planAuditDetails(pl))
+		if err := saveRightsSet(r.Context(), tx, rightsOwnerPlan, int(id), set); err != nil {
+			writeServerError(w, err)
+			return
+		}
+		if err := tx.Commit(); err != nil {
+			writeServerError(w, err)
+			return
+		}
+		details := planAuditDetails(pl)
+		details["rights"] = set.payload()
+		p.auditDetailed(r, "plan.create:"+pl.Name, "service_plan", int(id), details)
 		if err := json.NewEncoder(w).Encode(map[string]any{"success": true, "id": id}); err != nil {
 			log.Printf("encode service plan creation: %v", err)
 		}
@@ -165,6 +232,36 @@ func (p *Panel) handlePlans(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+// planRightsWithinGrantor refuses items a reseller does not have, or the
+// administrator does not offer, among those newly in the plan.
+func (p *Panel) planRightsWithinGrantor(w http.ResponseWriter, r *http.Request, c *Caller, before, after rightsSet) bool {
+	admin, err := p.loadAdminOfferLayer(r.Context())
+	if err != nil {
+		writeServerError(w, err)
+		return false
+	}
+	var reseller *rightsState
+	if c.hasAccountRole(roleReseller) {
+		state, err := resellerRightsState(r.Context(), p.db.GetDB(), c.ID)
+		if err != nil {
+			writeServerError(w, err)
+			return false
+		}
+		reseller = &state
+	}
+	outside := grantorOutside(admin, reseller, newlyGranted(before, after))
+	if len(outside) == 0 {
+		return true
+	}
+	who := "the administrator does not offer them on this server"
+	if reseller != nil {
+		who = "they are not in your own rights; ask the administrator to include them first"
+	}
+	writeCodedErrorDetails(w, http.StatusConflict, errCodeRightsOutside,
+		"Nothing was changed: a plan cannot include these items because "+who+".", "", outside)
+	return false
 }
 
 func planAuditDetails(pl planPayload) map[string]any {
@@ -222,13 +319,6 @@ func (p *Panel) planEditOverUsage(ctx context.Context, planID int, limits planLi
 	return over, nil
 }
 
-func writePlanExceedsPool(w http.ResponseWriter, pool resellerPool) {
-	writeCodedErrorDetails(w, http.StatusConflict, errCodePlanExceedsPool,
-		"a plan may not promise more than your pool; lower the limits (0 = unlimited is not possible where your pool is limited), or ask the administrator for a larger pool. Nothing was changed.",
-		"", []string{fmt.Sprintf("pool: domains %d, databases %d, mailboxes %d, disk %d MB (0 = unlimited)",
-			pool.Domains, pool.Databases, pool.Mailboxes, pool.DiskMB)})
-}
-
 // loadPlanOwner reads a plan's owner (0 = global); errNotFound when missing.
 func loadPlanOwner(ctx context.Context, q rowQueryer, planID int) (int, error) {
 	var owner sql.NullInt64
@@ -242,6 +332,36 @@ func loadPlanOwner(ctx context.Context, q rowQueryer, planID int) (int, error) {
 	return int(owner.Int64), nil
 }
 
+// planEditPreview is what an edit of a plan does to the subscriptions bound
+// to it (6.4): how many, which items go, where they are in use, and which
+// subscriptions fall below their usage. Custom subscriptions are not there.
+func (p *Panel) planEditPreview(ctx context.Context, planID int, before, after rightsSet, limits planLimits) (rightsPreview, error) {
+	preview := rightsPreview{From: "plan:" + strconv.Itoa(planID), To: "plan:" + strconv.Itoa(planID),
+		Added: []string{}, Removed: []string{}, InUse: []inUseLine{}, OverLimit: []string{}, Outside: []string{}}
+	admin, err := p.adminEffective(ctx)
+	if err != nil {
+		return preview, err
+	}
+	candidates, unknown := p.previewCandidates(ctx, before, after)
+	diff := diffEffective(admin.withOwn(before), admin.withOwn(after), candidates)
+	preview.Added, preview.Removed, preview.InstalledUnknown = diff.Added, diff.Removed, unknown
+	subs, err := subscriptionsOnPlan(ctx, p.db.GetDB(), planID)
+	if err != nil {
+		return preview, err
+	}
+	preview.Subscriptions = len(subs)
+	if preview.InUse, err = p.removedItemsInUse(ctx, subs, diff.Removed); err != nil {
+		return preview, err
+	}
+	if preview.OverLimit, err = p.planEditOverUsage(ctx, planID, limits); err != nil {
+		return preview, err
+	}
+	preview.LimitsTo = limits
+	preview.Message = fmt.Sprintf("%d subscription(s) are bound to this plan and follow the change. "+
+		"Items taken away keep running where they are used; they cannot be chosen again. Confirm to save.", len(subs))
+	return preview, nil
+}
+
 func (p *Panel) handlePlanByID(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	c := p.planManager(w, r)
@@ -249,9 +369,10 @@ func (p *Panel) handlePlanByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	idStr := strings.TrimPrefix(r.URL.Path, "/api/v1/plans/")
+	rest := strings.TrimPrefix(r.URL.Path, "/api/v1/plans/")
+	idStr, action, _ := strings.Cut(rest, "/")
 	id, err := strconv.Atoi(idStr)
-	if err != nil || id <= 0 {
+	if err != nil || id <= 0 || (action != "" && action != "preview") {
 		writeClientError(w, http.StatusBadRequest, "invalid plan id")
 		return
 	}
@@ -267,36 +388,64 @@ func (p *Panel) handlePlanByID(w http.ResponseWriter, r *http.Request) {
 		writeServerError(w, err)
 		return
 	}
+	if action == "preview" && r.Method != http.MethodPost {
+		rejectRouteMethod(w, []string{http.MethodPost})
+		return
+	}
 
 	switch r.Method {
-	case http.MethodPut:
+	case http.MethodPut, http.MethodPost:
+		if r.Method == http.MethodPost && action != "preview" {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
 		pl, ok := decodePlan(w, r)
 		if !ok {
 			return
 		}
-		if ownerID != 0 {
-			pool, hasPool, err := loadResellerPool(r.Context(), p.db.GetDB(), ownerID)
-			if err != nil {
-				writeServerError(w, err)
-				return
-			}
-			if hasPool && !limitsWithinPool(pool, pl.limits()) {
-				writePlanExceedsPool(w, pool)
-				return
-			}
+		if reservedPlanName(pl.Name) {
+			writePlanNameReserved(w)
+			return
 		}
-		// Plan edits also refresh subscriptions born from the plan — that is
-		// the point of a template (Plesk: "apply changes to subscribers").
-		// Plan düzenlemeleri, plandan doğan abonelikleri de tazeler.
-		// A lowered limit below what a subscriber uses now is refused with the
-		// list until the operator confirms (same rule as giving a plan to an
-		// account); nothing is deleted and new items of those kinds are refused.
-		// Abonenin kullanımının altına inen sınır, onaylanana kadar liste ile reddedilir.
-		over, err := p.planEditOverUsage(r.Context(), id, pl.limits())
+		before, found, err := loadRightsSet(r.Context(), p.db.GetDB(), rightsOwnerPlan, id)
 		if err != nil {
 			writeServerError(w, err)
 			return
 		}
+		if !found {
+			before = allOfferedRightsSet()
+		}
+		after := before
+		if pl.Rights != nil {
+			if after, err = pl.Rights.set(); err != nil {
+				writeCodedError(w, http.StatusBadRequest, errCodeRightsUnknownItem, err.Error(), "")
+				return
+			}
+		}
+		if !p.planRightsWithinGrantor(w, r, c, before, after) {
+			return
+		}
+		preview, err := p.planEditPreview(r.Context(), id, before, after, pl.limits())
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		if action == "preview" {
+			writeRightsJSON(w, http.StatusOK, map[string]any{"preview": preview})
+			return
+		}
+		// Taking items away is shown first (6.4, P7).
+		if len(preview.Removed) > 0 && !pl.ConfirmNarrowing {
+			writeRightsPreviewRefusal(w, errCodePlanNarrowingConfirm, preview)
+			return
+		}
+		// Plan edits also refresh subscriptions born from the plan — that is
+		// the point of a template (Plesk: "apply changes to subscribers").
+		// A lowered limit below what a subscriber uses now is refused with the
+		// list until the operator confirms; nothing is deleted and new items
+		// of those kinds are refused.
+		// Abonenin kullanımının altına inen sınır, onaylanana kadar liste ile reddedilir.
+		over := preview.OverLimit
 		if len(over) > 0 && !pl.AcceptOverUsage {
 			writeCodedErrorDetails(w, http.StatusConflict, errCodePlanBelowUsage,
 				"these limits are below what some accounts on this plan use now. Nothing was changed. To save anyway, confirm: nothing is deleted, and new items of these kinds are refused until usage is under the limit.",
@@ -309,23 +458,6 @@ func (p *Panel) handlePlanByID(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer tx.Rollback()
-		// The resellers whose trees hold this plan, with what they had
-		// handed out before the change.
-		// Bu planı ağacında tutan bayiler ve değişiklikten önceki dağıtımları.
-		affected, err := resellersUsingPlan(r.Context(), tx, id)
-		if err != nil {
-			writeServerError(w, err)
-			return
-		}
-		before := map[int]poolAllocation{}
-		for _, resellerID := range affected {
-			allocation, err := resellerAllocation(r.Context(), tx, resellerID, 0)
-			if err != nil {
-				writeServerError(w, err)
-				return
-			}
-			before[resellerID] = allocation
-		}
 		result, err := tx.ExecContext(r.Context(), `
 			UPDATE service_plans SET name = ?, max_domains = ?, max_databases = ?,
 			       max_email_accounts = ?, disk_quota_mb = ?, bandwidth_quota_mb = ?,
@@ -351,27 +483,8 @@ func (p *Panel) handlePlanByID(w http.ResponseWriter, r *http.Request) {
 			writeServerError(w, fmt.Errorf("apply service plan to subscriptions: %w", err))
 			return
 		}
-		violations := []string{}
-		for _, resellerID := range affected {
-			pool, hasPool, err := loadResellerPool(r.Context(), tx, resellerID)
-			if err != nil {
-				writeServerError(w, err)
-				return
-			}
-			if !hasPool {
-				continue
-			}
-			after, err := resellerAllocation(r.Context(), tx, resellerID, 0)
-			if err != nil {
-				writeServerError(w, err)
-				return
-			}
-			for _, v := range worsenedPoolViolations(pool, before[resellerID], after, false) {
-				violations = append(violations, fmt.Sprintf("reseller #%d %s", resellerID, v))
-			}
-		}
-		if len(violations) > 0 {
-			writePoolRefusal(w, violations)
+		if err := saveRightsSet(r.Context(), tx, rightsOwnerPlan, id, after); err != nil {
+			writeServerError(w, err)
 			return
 		}
 		if err := tx.Commit(); err != nil {
@@ -379,6 +492,8 @@ func (p *Panel) handlePlanByID(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		details := planAuditDetails(pl)
+		details["rights_added"], details["rights_removed"] = preview.Added, preview.Removed
+		details["subscriptions"] = preview.Subscriptions
 		if len(over) > 0 {
 			// The audit row is size-bounded; keep the first entries and the total.
 			shown := over
@@ -419,31 +534,6 @@ func (p *Panel) handlePlanByID(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
-}
-
-// resellersUsingPlan lists the resellers with a subscription on the plan in
-// their tree (their own or a customer's).
-func resellersUsingPlan(ctx context.Context, q rowQueryer, planID int) ([]int, error) {
-	rows, err := q.QueryContext(ctx, `
-		SELECT DISTINCT CASE WHEN o.role = 'reseller' THEN o.id ELSE p.id END
-		FROM subscriptions s
-		JOIN users o ON o.id = s.owner_id
-		LEFT JOIN users p ON p.id = o.parent_id
-		WHERE s.plan_id = ?
-		  AND (o.role = 'reseller' OR p.role = 'reseller')`, planID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	ids := []int{}
-	for rows.Next() {
-		var id int
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		ids = append(ids, id)
-	}
-	return ids, rows.Err()
 }
 
 func decodePlan(w http.ResponseWriter, r *http.Request) (planPayload, bool) {

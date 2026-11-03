@@ -36,6 +36,7 @@ func (a *Agent) Version(_ *transport.Empty, resp *AgentVersionResponse) error {
 		transport.AgentCapabilitySystemUpdateV1,
 		transport.AgentCapabilitySystemUpdateAbandonV1,
 		transport.AgentCapabilitySecurityAuditV1,
+		transport.AgentCapabilityFileAccessV1,
 	}
 	return nil
 }

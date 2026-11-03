@@ -173,11 +173,34 @@ const screenPartBudgets = {
   // mail dialog (setup.v7., svc.mailSetup.). A new part, set with at least 25%
   // headroom from its Turkish file (about 8.6 KiB as source).
   setupOwner: kib(12, 4),
+  // alpha.117: a site's FTP, SFTP and SSH access (fileAccess.) and its
+  // refusal codes (err.FILE_ACCESS_). A new part, set with at least 25%
+  // headroom from its Turkish file: 9.38 / 3.04 KiB.
+  fileAccess: kib(12.5, 4),
+  // alpha.117: transferring a subscription and the transfer requests
+  // (transfer., err.TRANSFER_). A new part, set with at least 25% headroom
+  // from its Turkish file: 8.41 / 2.89 KiB.
+  transfers: kib(12, 4),
+  // alpha.117 (owner decision of 2 November 2026): changing every password
+  // and key after a transfer (transfer.rotate., transfer.rotation.,
+  // err.TRANSFER_ROTATION_), split out of "transfers". A new part, set with
+  // at least 25% headroom from its Turkish file: 6.18 / 2.08 KiB.
+  transferRotation: kib(8.5, 3),
+  // alpha.117 (D-042): plans and rights - the account form's Rights section,
+  // an account's rights, the plan editors and previews, the offered layer,
+  // the notices (rights.) and the rights refusals. A new part, set with at
+  // least 25% headroom from its Turkish file: 14.28 / 4.15 KiB.
+  rights: kib(18, 5.5),
   // 2026-11-01 (alpha.114, lab run 2): the setup link's DNS-publisher and DKIM
   // waits, split out of "setupLink", which the run-2 wording took over its
   // ceiling (Turkish 13.35 KiB). A new part, set with at least 25% headroom
   // from its Turkish file: 4.51 / 1.42 KiB.
   setupPublishing: kib(6, 2),
+  // 2026-11-02: suspending and resuming the services of an account or a
+  // subscription, the Deletable list and the suspended owner's plain screen
+  // (susp., suspended.). A new part, set with at least 25% headroom from its
+  // Turkish file (about 9.5 / 3.2 KiB as source).
+  suspension: kib(13, 4.5),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

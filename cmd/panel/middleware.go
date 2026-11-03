@@ -172,6 +172,23 @@ func (p *Panel) requireAuth(next http.Handler) http.Handler {
 			return
 		}
 
+		// A suspended subscription's owner (and its team) or a suspended
+		// reseller sees only the suspended screen (alpha.117); every other
+		// call is refused with who to contact in /auth/me.
+		// Askıya alınmış hesap yalnız askı ekranını görür.
+		if !suspendedAccountAllowedPath(r.URL.Path) && !c.hasAccountRole(roleAdmin) {
+			suspension, err := p.accountServiceSuspension(r.Context(), c)
+			if err != nil {
+				writeAuthStatusUnavailable(w)
+				return
+			}
+			if suspension != nil {
+				writeCodedError(w, http.StatusForbidden, errCodeSubscriptionSuspended,
+					"this account's subscription is suspended; contact the reseller or administrator named on the screen", "")
+				return
+			}
+		}
+
 		// Server/OS-layer endpoints are administrator-only (ROLES.md: only the
 		// admin touches services, config files, and infrastructure). Tenant
 		// data (domains) is instead ownership-filtered inside its handlers.
@@ -259,6 +276,10 @@ func isAdminOnlyPath(path string) bool {
 	if path == storeCatalogAdminPath || strings.HasPrefix(path, storeCatalogAdminPath+"/") {
 		return true
 	}
+	// alpha.117 (D-043): a security emergency is the administrator's alone.
+	if path == securityEmergenciesPath || strings.HasPrefix(path, securityEmergenciesPath+"/") {
+		return true
+	}
 	// /api/v2/ is deliberately NOT here anymore (B1 role split, Jul 17):
 	// its DB/user/grant endpoints are tenant-scoped inside their handlers
 	// (callerSubscriptionID + canAccessDBServer); only SERVER REGISTRATION
@@ -326,8 +347,12 @@ func isAdditionalUserRestrictedPath(path string) bool {
 		"/api/v1/team-members",
 		"/api/v1/invitations",
 		"/api/v1/plans",
+		"/api/v1/reseller-plans",
+		"/api/v1/rights",
 		"/api/v1/subscriptions",
+		"/api/v1/transfer-requests",
 		"/api/v1/my",
+		"/api/v1/suspensions",
 		"/api/v1/vpn",
 		"/api/v1/runtimes",
 		"/dbtool",

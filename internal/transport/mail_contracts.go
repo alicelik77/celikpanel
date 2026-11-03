@@ -240,6 +240,10 @@ type SecureMailTLSResponse struct {
 	Configured  bool   `json:"configured"`
 	DefaultCert string `json:"default_cert"`
 	SNICount    int    `json:"sni_count"`
-	Detail      string `json:"detail,omitempty"`
-	Error       string `json:"error,omitempty"`
+	// HostCertificate: MailHostCertificateManaged or
+	// MailHostCertificateDefault after a verified synchronization; empty
+	// when unknown (an older Agent, a lost reply). Additive.
+	HostCertificate string `json:"host_certificate,omitempty"`
+	Detail          string `json:"detail,omitempty"`
+	Error           string `json:"error,omitempty"`
 }

@@ -18,6 +18,8 @@ export interface MyPlanSubscription {
     plan: { id: number; name: string } | null;
     usage: SubscriptionUsage;
     over_limit: string[];
+    /** alpha.117 (D-042): unlimited, plan or custom; absent from older servers. */
+    rights?: string;
 }
 
 export interface MyPlanContact {
@@ -46,11 +48,22 @@ export interface PoolAllocation {
     unlimited_disk?: boolean;
 }
 
+/** The reseller tree's real use, which the pool limits (alpha.117, K2). */
+export interface PoolUsed {
+    customers: number;
+    domains: number;
+    databases: number;
+    mailboxes: number;
+    disk_used_bytes: number;
+}
+
 export interface MyPlan {
     subscriptions: MyPlanSubscription[];
     contact: MyPlanContact;
     bandwidthMeasured: boolean;
-    pool?: { limits: PoolLimits | null; allocated: PoolAllocation; over_limit: string[] };
+    pool?: { limits: PoolLimits | null; allocated: PoolAllocation; over_limit: string[]; used?: PoolUsed };
+    /** A reseller's own rights: Unlimited reseller, a reseller plan, or Custom. */
+    resellerRights?: { state: string; plan_name?: string };
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -72,9 +85,13 @@ export function decodeMyPlan(raw: unknown): MyPlan {
             limits: isRecord(raw.pool.limits) ? (raw.pool.limits as unknown as PoolLimits) : null,
             allocated: raw.pool.allocated as unknown as PoolAllocation,
             over_limit: Array.isArray(raw.pool.over_limit) ? (raw.pool.over_limit as string[]) : [],
+            used: isRecord(raw.pool.used) ? (raw.pool.used as unknown as PoolUsed) : undefined,
         }
         : undefined;
-    return { subscriptions, contact: raw.contact as unknown as MyPlanContact, bandwidthMeasured: bandwidth, pool };
+    const resellerRights = isRecord(raw.reseller_rights) && typeof raw.reseller_rights.state === 'string'
+        ? { state: raw.reseller_rights.state, plan_name: typeof raw.reseller_rights.plan_name === 'string' && raw.reseller_rights.plan_name ? raw.reseller_rights.plan_name : undefined }
+        : undefined;
+    return { subscriptions, contact: raw.contact as unknown as MyPlanContact, bandwidthMeasured: bandwidth, pool, resellerRights };
 }
 
 /** Usage against a limit as a percentage; null when the limit is unlimited (0). */

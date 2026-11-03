@@ -300,7 +300,7 @@ func TestPlanVisibilityAndEditingFollowOwnership(t *testing.T) {
 	wantStatus(t, f.as(t, authzMatrixResellerID, http.MethodDelete, "/api/v1/plans/"+itoa(own), ""), http.StatusOK, "")
 }
 
-func TestResellerPoolRefusesOverAllocation(t *testing.T) {
+func TestResellerPoolAllowsAllocationAboveThePool(t *testing.T) {
 	f := newAccountsFixture(t)
 	big := createPlan(t, f, authzMatrixAdminID, `{"name":"Big","max_domains":20,"max_databases":5,"max_email_accounts":5,"disk_quota_mb":500,"bandwidth_quota_mb":0}`)
 	small := createPlan(t, f, authzMatrixAdminID, `{"name":"Small","max_domains":2,"max_databases":2,"max_email_accounts":2,"disk_quota_mb":100,"bandwidth_quota_mb":0}`)
@@ -316,36 +316,23 @@ func TestResellerPoolRefusesOverAllocation(t *testing.T) {
 
 	wantStatus(t, f.as(t, authzMatrixAdminID, http.MethodPut, "/api/v1/users/9702/pool",
 		`{"pool":{"max_customers":5,"max_domains":15,"max_databases":0,"max_email_accounts":0,"disk_quota_mb":0}}`), http.StatusOK, "")
+	// alpha.117 (K2, D-042): handing out more than the pool is allowed; the
+	// pool limits real use at creation time (rights_test.go).
 	withBig := `{"username":"pool-customer","email":"pool@example.test","password":"long-enough-1","role":"customer","plan_id":` + itoa(big) + `}`
-	wantStatus(t, f.as(t, authzMatrixResellerID, http.MethodPost, "/api/v1/users", withBig), http.StatusConflict, errCodeResellerPoolExceeded)
-	if n := f.count(t, `SELECT COUNT(*) FROM users WHERE username = 'pool-customer'`); n != 0 {
-		t.Fatal("a refused account was created")
-	}
-	withSmall := `{"username":"pool-customer","email":"pool@example.test","password":"long-enough-1","role":"customer","plan_id":` + itoa(small) + `}`
-	wantStatus(t, f.as(t, authzMatrixResellerID, http.MethodPost, "/api/v1/users", withSmall), http.StatusOK, "")
-
-	// Raising an existing customer past the pool is refused too.
-	wantStatus(t, f.as(t, authzMatrixResellerID, http.MethodPut, "/api/v1/users/9703/plan", `{"plan_id":`+itoa(big)+`}`), http.StatusConflict, errCodeResellerPoolExceeded)
-
-	// A reseller's own plan stays inside the pool (unlimited is not inside a limited pool).
+	wantStatus(t, f.as(t, authzMatrixResellerID, http.MethodPost, "/api/v1/users", withBig), http.StatusOK, "")
+	wantStatus(t, f.as(t, authzMatrixResellerID, http.MethodPut, "/api/v1/users/9703/plan", `{"plan_id":`+itoa(big)+`}`), http.StatusOK, "")
 	wantStatus(t, f.as(t, authzMatrixResellerID, http.MethodPost, "/api/v1/plans",
-		`{"name":"Too big","max_domains":16,"max_databases":1,"max_email_accounts":1,"disk_quota_mb":1,"bandwidth_quota_mb":0}`), http.StatusConflict, errCodePlanExceedsPool)
-	wantStatus(t, f.as(t, authzMatrixResellerID, http.MethodPost, "/api/v1/plans",
-		`{"name":"Unlimited","max_domains":0,"max_databases":1,"max_email_accounts":1,"disk_quota_mb":1,"bandwidth_quota_mb":0}`), http.StatusConflict, errCodePlanExceedsPool)
-
-	// Editing a global plan that would push the tree over the pool is refused.
+		`{"name":"Wide","max_domains":0,"max_databases":1,"max_email_accounts":1,"disk_quota_mb":1,"bandwidth_quota_mb":0}`), http.StatusOK, "")
 	wantStatus(t, f.as(t, authzMatrixAdminID, http.MethodPut, "/api/v1/plans/"+itoa(small),
-		`{"name":"Small","max_domains":30,"max_databases":2,"max_email_accounts":2,"disk_quota_mb":100,"bandwidth_quota_mb":0}`), http.StatusConflict, errCodeResellerPoolExceeded)
+		`{"name":"Small","max_domains":30,"max_databases":2,"max_email_accounts":2,"disk_quota_mb":100,"bandwidth_quota_mb":0}`), http.StatusOK, "")
 
-	// Lowering the pool below what is handed out is stored with a warning.
+	// Lowering the pool below real use (two domains) is stored with the list.
 	recorder := f.as(t, authzMatrixAdminID, http.MethodPut, "/api/v1/users/9702/pool",
-		`{"pool":{"max_customers":5,"max_domains":3,"max_databases":0,"max_email_accounts":0,"disk_quota_mb":0}}`)
+		`{"pool":{"max_customers":5,"max_domains":1,"max_databases":0,"max_email_accounts":0,"disk_quota_mb":0}}`)
 	wantStatus(t, recorder, http.StatusOK, "")
-	if !strings.Contains(recorder.Body.String(), `"over_limit":["domains:`) {
-		t.Fatalf("a pool below the allocation carries no warning: %s", recorder.Body.String())
+	if !strings.Contains(recorder.Body.String(), `"over_limit":["domains: 2 in use, pool 1"]`) {
+		t.Fatalf("a pool below real use carries no warning: %s", recorder.Body.String())
 	}
-	// ...and a change that does not grow the tree still works under it.
-	wantStatus(t, f.as(t, authzMatrixResellerID, http.MethodPut, "/api/v1/users/9703/plan", `{"plan_id":`+itoa(small)+`}`), http.StatusOK, "")
 	if n := f.count(t, `SELECT COUNT(*) FROM audit_logs WHERE action = 'reseller.pool:matrix-reseller'`); n != 3 {
 		t.Fatalf("pool audit rows = %d, want 3", n)
 	}
@@ -616,6 +603,49 @@ func TestAccountRoutesRoleMatrix(t *testing.T) {
 			if recorder.Code != row.want[i] {
 				t.Errorf("%s %s as role #%d: %d, want %d; body=%s", row.method, row.path, i, recorder.Code, row.want[i], recorder.Body.String())
 			}
+		}
+	}
+}
+
+// The Accounts list names each account's rights state (D-042 P3).
+func TestUsersListNamesTheRightsState(t *testing.T) {
+	f := newAccountsFixture(t)
+	gold := createPlan(t, f, authzMatrixAdminID, `{"name":"Gold","max_domains":3,"max_databases":3,"max_email_accounts":3,"disk_quota_mb":100,"bandwidth_quota_mb":0}`)
+	f.exec(t, `UPDATE subscriptions SET plan_id = ? WHERE id = 9803`, gold)
+	f.exec(t, `UPDATE subscriptions SET max_domains = 0, max_databases = 0, max_email_accounts = 0, disk_quota_mb = 0 WHERE id = 9802`)
+	recorder := f.as(t, authzMatrixAdminID, http.MethodGet, "/api/v1/users", "")
+	wantStatus(t, recorder, http.StatusOK, "")
+	var answer struct {
+		Users []userResponse `json:"users"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &answer); err != nil {
+		t.Fatal(err)
+	}
+	got := map[int]*accountRightsSummary{}
+	for _, u := range answer.Users {
+		got[u.ID] = u.Rights
+	}
+	if r := got[9704]; r == nil || r.State != rightsStatePlan || r.PlanName != "Gold" {
+		t.Fatalf("plan-bound customer: %+v", r)
+	}
+	if r := got[9703]; r == nil || r.State != rightsStateUnlimited {
+		t.Fatalf("unlimited customer: %+v", r)
+	}
+	if r := got[9702]; r == nil || r.State != rightsStateUnlimited {
+		t.Fatalf("reseller: %+v", r)
+	}
+	if r, ok := got[9701]; ok && r != nil {
+		t.Fatalf("the administrator has a rights field: %+v", r)
+	}
+	// Two subscriptions in different states read as mixed.
+	f.exec(t, `INSERT INTO subscriptions (id, owner_id, name, status, max_domains) VALUES (9899, 9704, 'second', 'active', 7)`)
+	recorder = f.as(t, authzMatrixAdminID, http.MethodGet, "/api/v1/users", "")
+	if err := json.Unmarshal(recorder.Body.Bytes(), &answer); err != nil {
+		t.Fatal(err)
+	}
+	for _, u := range answer.Users {
+		if u.ID == 9704 && (u.Rights == nil || u.Rights.State != "mixed") {
+			t.Fatalf("mixed: %+v", u.Rights)
 		}
 	}
 }

@@ -45,5 +45,9 @@ func TestMain(m *testing.M) {
 	if runtime.GOOS != "linux" {
 		verifyServiceMutationSecurityPolicy = func() error { return nil }
 	}
+	// Outside the disposable VM trials no test may reach a real CA.
+	if !nativeV3 && os.Getenv("CELIKPANEL_DISPOSABLE_MAIL_VM") != "debian13-20260911" {
+		blockRealCertificateAuthority()
+	}
 	os.Exit(m.Run())
 }

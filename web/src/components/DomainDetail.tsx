@@ -2,7 +2,7 @@ import { Fragment, Suspense, lazy, useCallback, useState, useEffect, type ReactN
 import { useSearchParams } from '../router';
 import {
     ArrowLeft, Globe, Lock, ExternalLink,
-    LayoutGrid, Server, Network, Mail, Database, Folder, Wrench, AppWindow,
+    LayoutGrid, Server, Network, Mail, Database, Folder, Wrench, AppWindow, KeyRound,
 } from 'lucide-react';
 import { DomainPHPSettings } from './DomainPHPSettings';
 import { DomainGeneralSettings } from './DomainGeneralSettings';
@@ -69,6 +69,10 @@ const DomainSiteConfig = lazy(() => import('./DomainSiteConfig').then((module) =
 const SiteConfigNotice = lazy(() => import('./DomainSiteConfig').then((module) => ({
     default: module.SiteConfigNotice,
 })));
+// The site's FTP, SFTP and SSH access (alpha.117), fetched when the tab opens.
+const DomainFileAccess = lazy(() => import('./DomainFileAccess').then((module) => ({
+    default: module.DomainFileAccess,
+})));
 
 interface Domain {
     id: number;
@@ -82,6 +86,8 @@ interface Domain {
     bandwidth?: number;
     access?: DomainAccess;
     site_config?: { state: string; kept_by_choice?: boolean; pending_reason?: string; kind?: string };
+    /** The permissions the subscription's rights close (alpha.117, D-042); absent when none. */
+    rights_closed?: string[];
 }
 
 // The measured usage of one domain. An answer without the numbers is not
@@ -343,6 +349,13 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
     const canView = (capability: DomainCapability) => (
         !isTeamMember || Boolean(domain.access && hasDomainAccess(domain.access, capability))
     );
+    // What the subscription's rights close (alpha.117, D-042): its tab is not
+    // drawn, and DNS records stay visible but cannot be changed. The server
+    // refuses all of it anyway; the page does not offer what it would refuse.
+    // Aboneliğin haklarının kapattığı: sekmesi çizilmez; DNS kayıtları görünür
+    // kalır ama değiştirilemez.
+    const closed = new Set(domain.rights_closed ?? []);
+    const open = (permission: string) => !closed.has(permission);
     const combinedAccessMode = (capabilities: DomainCapability[]): DomainAccessMode => {
         if (!isTeamMember) return 'manage';
         const modes = capabilities.map((capability) => domain.access?.[capability] ?? 'none');
@@ -355,10 +368,10 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
             { id: 'general', labelKey: 'domain.sub.general', capabilities: ['files'], render: () => <DomainGeneralSettings domainId={domain.id} domainName={domain.domain_name} /> } satisfies SubDef,
             { id: 'type', labelKey: 'domain.sub.hostingType', capabilities: ['files'], render: () => <HostingTypePanel domainId={domain.id} domainName={domain.domain_name} /> } satisfies SubDef,
         ] : []),
-        ...(canView('files') && (projectType === 'php' || projectType === 'static') ? [
+        ...(canView('files') && open('site_protect_redirects') && (projectType === 'php' || projectType === 'static') ? [
             { id: 'protect', labelKey: 'siteFeatures.protect.title', capabilities: ['files'], render: (readOnly) => <DomainSiteProtect domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef,
         ] : []),
-        ...(canView('files') && projectType !== 'forwarding' ? [
+        ...(canView('files') && open('site_protect_redirects') && projectType !== 'forwarding' ? [
             { id: 'redirects', labelKey: 'siteFeatures.redirect.title', capabilities: ['files'], render: (readOnly) => <DomainSiteRedirects domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef,
         ] : []),
         ...(role === 'admin' ? [
@@ -377,14 +390,16 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
                     domainName={domain.domain_name}
                     mailAvailable={isTeamMember ? canView('mail') : (caps?.mail_server ?? null)}
                     onCertificateChange={handleCertificateChange}
-                    readOnly={readOnly}
+                    readOnly={readOnly || (!open('ssl_acme') && !open('ssl_custom'))}
+                    acmeOpen={open('ssl_acme')}
+                    customOpen={open('ssl_custom')}
                 />
             ),
         } satisfies SubDef] : []),
     ];
     const advancedSubs: SubDef[] = [
-        ...(canView('backups') ? [{ id: 'backups', labelKey: 'domain.sub.backups', capabilities: ['backups'], render: (readOnly) => <DomainBackupManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef] : []),
-        ...(canView('cron') ? [{ id: 'cron', labelKey: 'domain.sub.cron', capabilities: ['cron'], render: (readOnly) => <DomainCronManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef] : []),
+        ...(canView('backups') && open('backups') ? [{ id: 'backups', labelKey: 'domain.sub.backups', capabilities: ['backups'], render: (readOnly) => <DomainBackupManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef] : []),
+        ...(canView('cron') && open('cron') ? [{ id: 'cron', labelKey: 'domain.sub.cron', capabilities: ['cron'], render: (readOnly) => <DomainCronManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef] : []),
         ...(canView('statistics') ? [{ id: 'logs', labelKey: 'domain.sub.logs', capabilities: ['statistics'], render: (readOnly) => <DomainLogsViewer domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef] : []),
     ];
     const tabs: TabDef[] = [
@@ -401,11 +416,12 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
             id: 'hosting', labelKey: 'domain.tab.hosting', icon: Server,
             subs: hostingSubs,
         } satisfies TabDef] : []),
-        ...(canView('dns') ? [{ id: 'dns', labelKey: 'domain.tab.dns', icon: Network, capabilities: ['dns'], render: (readOnly) => <DomainDNSManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} isAdditionalUser={isTeamMember} /> } satisfies TabDef] : []),
-        ...(canView('mail') && (isTeamMember || !tabCaps || tabCaps.mail_server) ? [{ id: 'mail', labelKey: 'domain.tab.mail', icon: Mail, capabilities: ['mail'], render: (readOnly) => <DomainMailManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies TabDef] : []),
-        ...(canView('databases') && (isTeamMember || !tabCaps || tabCaps.database_servers.length > 0) ? [{ id: 'databases', labelKey: 'domain.tab.databases', icon: Database, capabilities: ['databases'], render: (readOnly) => <DomainDatabaseManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} isAdditionalUser={isTeamMember} /> } satisfies TabDef] : []),
-        ...(!isTeamMember && projectType === 'php' && canView('files') && canView('php') ? [{ id: 'apps', labelKey: 'domain.tab.apps', icon: AppWindow, capabilities: ['files', 'php'], render: () => <DomainAppsPanel domainId={domain.id} domainName={domain.domain_name} /> } satisfies TabDef] : []),
-        ...(!isDnsOnly && canView('files') ? [{ id: 'files', labelKey: 'domain.tab.files', icon: Folder, capabilities: ['files'], render: (readOnly) => <DomainFileManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies TabDef] : []),
+        ...(canView('dns') ? [{ id: 'dns', labelKey: 'domain.tab.dns', icon: Network, capabilities: ['dns'], render: (readOnly) => <DomainDNSManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly || !open('dns_edit')} isAdditionalUser={isTeamMember} dnssecHidden={!open('dnssec')} /> } satisfies TabDef] : []),
+        ...(canView('mail') && open('mail') && (isTeamMember || !tabCaps || tabCaps.mail_server) ? [{ id: 'mail', labelKey: 'domain.tab.mail', icon: Mail, capabilities: ['mail'], render: (readOnly) => <DomainMailManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies TabDef] : []),
+        ...(canView('databases') && open('databases') && (isTeamMember || !tabCaps || tabCaps.database_servers.length > 0) ? [{ id: 'databases', labelKey: 'domain.tab.databases', icon: Database, capabilities: ['databases'], render: (readOnly) => <DomainDatabaseManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} isAdditionalUser={isTeamMember} /> } satisfies TabDef] : []),
+        ...(!isTeamMember && projectType === 'php' && canView('files') && canView('php') && open('app_installer') ? [{ id: 'apps', labelKey: 'domain.tab.apps', icon: AppWindow, capabilities: ['files', 'php'], render: () => <DomainAppsPanel domainId={domain.id} domainName={domain.domain_name} /> } satisfies TabDef] : []),
+        ...(!isDnsOnly && canView('files') && open('file_manager') ? [{ id: 'files', labelKey: 'domain.tab.files', icon: Folder, capabilities: ['files'], render: (readOnly) => <DomainFileManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies TabDef] : []),
+        ...(!isTeamMember && !isDnsOnly && (open('file_access') || open('ssh')) ? [{ id: 'access', labelKey: 'fileAccess.tab', icon: KeyRound, render: () => <DomainFileAccess domainId={domain.id} domainName={domain.domain_name} isAdmin={role === 'admin'} /> } satisfies TabDef] : []),
         ...(!isDnsOnly && advancedSubs.length > 0 ? [{
             id: 'advanced', labelKey: 'domain.tab.advanced', icon: Wrench,
             subs: advancedSubs,

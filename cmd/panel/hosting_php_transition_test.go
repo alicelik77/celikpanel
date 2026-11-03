@@ -295,6 +295,39 @@ func TestHostingTransitionCustomerTakesNewestOfferedPHP(t *testing.T) {
 	}
 }
 
+// D-043 (alpha.117 release decision e): the administrator's default pick
+// skips a version withdrawn for security; with every installed version
+// withdrawn nothing changes and the refusal names them.
+func TestHostingTransitionAdminDefaultSkipsWithdrawnPHP(t *testing.T) {
+	panel, domainID := newDomainAliasFixture(t)
+	staticSiteAsAddDomainCreatesIt(t, panel, domainID)
+	agent := newPHPHostingTestAgent("8.2", "8.4")
+	attachPHPHostingTestAgent(t, panel, agent)
+	withdraw := func(id, version string) {
+		if _, err := panel.db.GetDB().Exec(`INSERT INTO security_emergencies (id, component, version, reason) VALUES (?, 'php', ?, 'CVE-2026-0001')`, id, version); err != nil {
+			t.Fatal(err)
+		}
+	}
+	withdraw("emergency-php84-000001", "8.4")
+	if _, err := panel.transitionHosting(context.Background(), domainID, hostingSettings{ProjectType: "php"}); err != nil {
+		t.Fatalf("admin static -> php: %v", err)
+	}
+	if state := hostingTestState(t, panel, domainID); state.PHPVersion.String != "8.2" {
+		t.Fatalf("admin's PHP version = %q, want 8.2 (8.4 is withdrawn)", state.PHPVersion.String)
+	}
+
+	staticSiteAsAddDomainCreatesIt(t, panel, domainID)
+	withdraw("emergency-php82-000001", "8.2")
+	_, err := panel.transitionHosting(context.Background(), domainID, hostingSettings{ProjectType: "php"})
+	var withdrawn *hostingPHPWithdrawnError
+	if !errors.As(err, &withdrawn) || len(withdrawn.versions) != 2 {
+		t.Fatalf("transition error = %v, want every version withdrawn", err)
+	}
+	if state := hostingTestState(t, panel, domainID); state.ProjectType == "php" {
+		t.Fatalf("the site was switched to a withdrawn version: %#v", state)
+	}
+}
+
 // The switch's refusals carry their own reason, so the screens say that the
 // site was not switched (the codes' plain sentences belong to Add Domain).
 func TestHostingPHPRefusalsSayTheSiteWasNotSwitched(t *testing.T) {

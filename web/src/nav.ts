@@ -40,6 +40,10 @@ export interface NavAccessContext {
     // abonelikte VPN eklentisi var). Yalnız /auth/me bilir; yöneticinin sayfası
     // her zaman vardır.
     vpn?: boolean;
+    // The account's rights hold databases (alpha.117, D-042). Only false
+    // hides the page; an older server that does not say keeps it.
+    // Hesabın haklarında veritabanı var. Yalnız false sayfayı gizler.
+    databases?: boolean;
 }
 
 const ACCOUNT_ROLES: Role[] = ['admin', 'reseller', 'customer'];
@@ -121,8 +125,11 @@ export function navItemsForRole(role: Role, access?: NavAccessContext): NavItem[
     // stays open: /vpn then says so in one sentence instead of bouncing home.
     // VPN, sunucunun sunmadığı kişi için çizilmez. Rota açık kalır: /vpn eve
     // atmak yerine bunu tek cümleyle söyler.
+    // Databases is not drawn for a customer whose rights hold none (alpha.117).
+    // Veritabanı hakkı olmayan müşteriye Veritabanları çizilmez.
     return navItems.filter((item) => isNavItemAllowed(item, role, access)
-        && !(item.id === 'vpn' && role !== 'admin' && access?.vpn !== true));
+        && !(item.id === 'vpn' && role !== 'admin' && access?.vpn !== true)
+        && !(item.id === 'databases' && role === 'customer' && access?.databases === false));
 }
 
 // canAccessPath guards routes from the same fail-closed navigation contract.

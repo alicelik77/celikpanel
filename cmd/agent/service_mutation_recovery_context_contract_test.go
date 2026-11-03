@@ -56,7 +56,9 @@ func TestCancellingRecoveryContextIsRestrictedToExplicitRollbackPaths(t *testing
 				allowed := (filepath.Base(name) == "vpn_rpc.go" && function.Name.Name == "SyncVPNPeersV2") ||
 					(filepath.Base(name) == "bind_install_guard.go" && function.Name.Name == "installBINDPackagesWithGuard") ||
 					(filepath.Base(name) == "dns_engine_pdns_install.go" && function.Name.Name == "installPDNSPackagesWithGuard") ||
-					(filepath.Base(name) == "dns_engine_transaction.go" && function.Name.Name == "newDNSEngineRollbackContext")
+					(filepath.Base(name) == "dns_engine_transaction.go" && function.Name.Name == "newDNSEngineRollbackContext") ||
+					// Releasing the package start guard after a failed install.
+					(filepath.Base(name) == "package_start_guard.go" && function.Name.Name == "defaultPackageStartGuardOps")
 				if !allowed {
 					t.Errorf(
 						"cancelling recovery context used outside an explicit rollback path at %s:%d in %s",
@@ -69,7 +71,7 @@ func TestCancellingRecoveryContextIsRestrictedToExplicitRollbackPaths(t *testing
 			})
 		}
 	}
-	if uses != 6 {
-		t.Fatalf("cancelling recovery context uses=%d want=6 explicit rollback paths", uses)
+	if uses != 7 {
+		t.Fatalf("cancelling recovery context uses=%d want=7 explicit rollback paths", uses)
 	}
 }

@@ -51,6 +51,8 @@ const stub = dataModule(`
   export const ChangePasswordModal = () => null;
   // alpha.114: My plan (customers and resellers) reads its own address.
   export const MyPlanCard = () => null;
+  // alpha.117: a customer's transfer request reads its own addresses.
+  export const TransferRequestCard = () => null;
   export const useAuth = () => ({ role: 'admin' });
   export const EmailVerificationCard = () => null;
 `);

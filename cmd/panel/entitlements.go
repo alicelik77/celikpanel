@@ -145,6 +145,25 @@ func (p *Panel) handleSubscriptionEntitlements(w http.ResponseWriter, r *http.Re
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "private, no-store")
 	w.Header().Set("Pragma", "no-cache")
+	// alpha.117 (D-042): /api/v1/subscriptions/{id}/rights[/preview].
+	if subID, preview, ok := parseSubscriptionRightsPath(r.URL.Path); ok {
+		p.handleSubscriptionRights(w, r, subID, preview)
+		return
+	}
+	// alpha.117 (K7): /api/v1/subscriptions/{id}/ends-at.
+	if id, ok := parseSubscriptionEndsAtPath(r.URL.Path); ok {
+		p.handleSubscriptionEndsAt(w, r, id)
+		return
+	}
+	if id, ok := parseSubscriptionSuspensionPath(r.URL.Path); ok {
+		p.handleSubscriptionSuspension(w, r, id)
+		return
+	}
+	// alpha.117 (D-042 section 8): /api/v1/subscriptions/{id}/transfer...
+	if subID, action, ok := parseSubscriptionTransferPath(r.URL.Path); ok {
+		p.handleSubscriptionTransfer(w, r, subID, action)
+		return
+	}
 	path, ok := parseEntitlementPath(r.URL.Path)
 	if !ok {
 		http.NotFound(w, r)
@@ -378,6 +397,21 @@ func (p *Panel) grantEntitlement(w http.ResponseWriter, r *http.Request, subscri
 		}
 		json.NewEncoder(w).Encode(map[string]any{"success": true, "idempotent": true})
 		return
+	}
+	// alpha.117 (D-042): a Custom subscription's rights set carries the
+	// matching permission, so the grant works as it did before.
+	for permission, product := range legacyGrantPermissions {
+		if product != offering.ID {
+			continue
+		}
+		if _, err := tx.ExecContext(r.Context(), `
+			INSERT OR IGNORE INTO rights_set_items (set_id, item)
+			SELECT id, ? FROM rights_sets
+			WHERE owner_kind = 'subscription' AND owner_id = ? AND all_permissions = 0`,
+			permissionItemHead+permission, subscriptionID); err != nil {
+			writeServerError(w, err)
+			return
+		}
 	}
 	if err := insertEntitlementAudit(r, tx, "entitlement.grant:"+offering.ID, subscriptionID); err != nil {
 		writeServerError(w, err)

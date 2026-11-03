@@ -75,6 +75,9 @@ func (e *quotaExceededError) code() string {
 	}
 }
 
+// errSubscriptionSuspendedCreate: the subscription is suspended (alpha.117).
+var errSubscriptionSuspendedCreate = errors.New("subscription is suspended")
+
 // errQuotaSubscriptionMissing: the subscription a creation names does not exist.
 var errQuotaSubscriptionMissing = errors.New("subscription not found")
 
@@ -102,6 +105,14 @@ func (p *Panel) administratorWorkspace(ctx context.Context, subID int) bool {
 func (p *Panel) checkSubscriptionQuota(ctx context.Context, subID int, kind quotaKind) error {
 	var limit, used int64
 	var err error
+
+	// alpha.117: a suspended subscription takes nothing new (a new site or
+	// mailbox would serve, a new database would be open) until resumed.
+	if suspended, suspErr := p.subscriptionSuspended(ctx, subID); suspErr == nil && suspended {
+		return errSubscriptionSuspendedCreate
+	} else if suspErr != nil && !errors.Is(suspErr, errSuspensionNotFound) {
+		return suspErr
+	}
 
 	// The administrator's own workspace is not metered (see below).
 	if p.administratorWorkspace(ctx, subID) {
@@ -141,7 +152,7 @@ func (p *Panel) checkSubscriptionQuota(ctx context.Context, subID int, kind quot
 			return quotaReadError(err)
 		}
 		if quotaUnlimited(limit) || usedBytes < limit*1024*1024 {
-			return nil
+			return p.checkResellerPoolUsage(ctx, subID, kind)
 		}
 		return &quotaExceededError{Kind: quotaDisk, Used: usedBytes / (1024 * 1024), Limit: limit}
 	default:
@@ -151,7 +162,8 @@ func (p *Panel) checkSubscriptionQuota(ctx context.Context, subID int, kind quot
 		return quotaReadError(err)
 	}
 	if quotaUnlimited(limit) || used < limit {
-		return nil
+		// alpha.117 (K2): the reseller's pool limits the tree's real use.
+		return p.checkResellerPoolUsage(ctx, subID, kind)
 	}
 	return &quotaExceededError{Kind: kind, Used: used, Limit: limit}
 }
@@ -170,9 +182,16 @@ func quotaReadError(err error) error {
 // writeQuotaRefusal, başarısız bir kota denetimini yanıtlar.
 func writeQuotaRefusal(w http.ResponseWriter, err error) {
 	var exceeded *quotaExceededError
+	var pool *resellerPoolExceededError
 	switch {
 	case errors.As(err, &exceeded):
 		writeCodedError(w, http.StatusConflict, exceeded.code(), exceeded.Error(), myPlanPagePath)
+	case errors.As(err, &pool):
+		writeCodedErrorDetails(w, http.StatusConflict, errCodeResellerPoolExceeded, pool.Error(), myPlanPagePath,
+			[]string{fmt.Sprintf("%s: %d of %d", pool.Kind, pool.Used, pool.Limit)})
+	case errors.Is(err, errSubscriptionSuspendedCreate):
+		writeCodedError(w, http.StatusConflict, errCodeSubscriptionSuspended,
+			"this subscription is suspended, so nothing new can be added to it; nothing was changed. The administrator or its reseller resumes the subscription first.", "")
 	case errors.Is(err, errQuotaSubscriptionMissing):
 		writeCodedError(w, http.StatusConflict, errCodeNoSubscription,
 			"this account has no subscription yet; ask your provider to assign a plan", myPlanPagePath)

@@ -44,7 +44,7 @@ func TestServerSetupCatalogListsEveryCatalogueComponent(t *testing.T) {
 		"nginx": "choice", "php-fpm": "choice", "node": "choice", "mariadb": "choice", "postgresql": "choice",
 		"postfix": "choice", "roundcube": "choice", "clamav": "choice", "wireguard": "choice", "fail2ban": "choice",
 		"nftables": "required", "certbot": "required", core.NativeCronServiceID: "automatic", "bind": "dns", "pdns": "dns",
-		"apache": "unavailable", "exim": "unavailable", "vsftpd": "unavailable", "netdata": "components", "spamassassin": "choice",
+		"apache": "unavailable", "exim": "unavailable", "vsftpd": "choice", "netdata": "components", "spamassassin": "choice",
 	}
 	for id, role := range want {
 		choice := catalogChoice(t, catalog, id)

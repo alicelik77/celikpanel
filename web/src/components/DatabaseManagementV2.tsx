@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from '../router';
-import { Database, Plus, Trash2, Users, Server } from 'lucide-react';
+import { Database, KeyRound, Plus, Trash2, Users, Server } from 'lucide-react';
 import { showToast } from './Toast';
 import { AddDatabaseModalV2 } from './AddDatabaseModalV2';
 import { AddUserModalV2 } from './AddUserModalV2';
@@ -163,6 +163,31 @@ export function DatabaseManagementV2() {
         }
     };
 
+    // A new password made up by the server and shown once; for a WordPress
+    // CelikPanel installed the server writes it into its configuration too.
+    const handleNewPassword = async (id: number, name: string) => {
+        if (!confirm(t('databases.confirmNewPassword', { name }))) return;
+        try {
+            const res = await fetch(`${API_BASE}/database-users/${id}/password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: '{}',
+            });
+            if (!res.ok) { refuse(await readApiError(res), 'databases.newPasswordFailed'); return; }
+            const answer: unknown = await res.json();
+            const record = answer && typeof answer === 'object' ? answer as Record<string, unknown> : {};
+            setRefusal(null);
+            if (typeof record.password === 'string') setSecret({ user: name, password: record.password, renewed: true });
+            if (typeof record.app_domain === 'string' && record.app_updated === false) {
+                showToast('error', t('databases.newPasswordAppKept', { domain: record.app_domain, detail: String(record.app_detail ?? '') }));
+            }
+        } catch {
+            showToast('error', t('common.resultUnknown'));
+        } finally {
+            invalidate('databases');
+        }
+    };
+
     return (
         <div className="p-6 md:p-8">
             <PageHeader
@@ -267,7 +292,7 @@ export function DatabaseManagementV2() {
             />
             {secret && <ShownOnceSecret
                 className="mb-4"
-                title={t(secret.database ? 'secret.dbCreatedTitle' : 'secret.userCreatedTitle', { name: secret.database ?? secret.user })}
+                title={t(secret.database ? 'secret.dbCreatedTitle' : secret.renewed ? 'secret.userPasswordTitle' : 'secret.userCreatedTitle', { name: secret.database ?? secret.user })}
                 rows={[{ label: t('dbm.username'), value: secret.user }, ...(secret.database ? [{ label: t('dbm.databaseName'), value: secret.database }] : [])]}
                 secret={{ label: t('dbm.password'), value: secret.password }}
                 onClose={() => setSecret(null)}
@@ -404,6 +429,17 @@ export function DatabaseManagementV2() {
                                                     <Chips items={u.databases} />
                                                 </td>
                                                 <td className="row-actions px-4 py-3 text-right">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => void handleNewPassword(u.id, u.username)}
+                                                        disabled={list.stale || createAnswer.holding}
+                                                        title={t('databases.newPassword', { name: u.username })}
+                                                        aria-label={t('databases.newPassword', { name: u.username })}
+                                                        className="rounded-md p-1.5 text-fg-subtle transition-colors hover:bg-surface-2 hover:text-fg disabled:pointer-events-none disabled:opacity-40"
+                                                        data-database-user-password={u.id}
+                                                    >
+                                                        <KeyRound className="h-4 w-4" />
+                                                    </button>
                                                     <DeleteBtn
                                                         label={t('databases.deleteUser', { name: u.username })}
                                                         disabled={list.stale || createAnswer.holding}
