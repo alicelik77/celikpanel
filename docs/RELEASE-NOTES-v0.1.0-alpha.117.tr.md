@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.117.md)
 
+> **Yayımlandı**, 3 Kasım 2026 (UTC): sürüm commit'i `b22348ff8`, GitHub ön sürümü 02:08:57Z, indirme portalı yaklaşık 02:13Z (dış denetim 27/27).
+
 Sahibin 2 Kasım 2026'da onayladığı planlar ve haklar (D-042) ile güvenlik acil
 durumu (D-043) sürümü. **Kurulu panelleri yalnız sahibi, panelin kendi
 güncelleme ekranından günceller.**
