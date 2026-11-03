@@ -40,8 +40,9 @@ var DeniedAddresses = []string{
 }
 
 // SyscallDeny is subtracted from @system-service: the plan's groups and the
-// kernel keyring (escape matrix item 15; @system-service includes @keyring).
-const SyscallDeny = "~@debug @mount @raw-io @reboot @swap @module @cpu-emulation @obsolete @keyring"
+// kernel keyring (escape matrix item 15; @system-service includes @keyring)
+// and reading or writing another process's memory (item 5).
+const SyscallDeny = "~@debug @mount @raw-io @reboot @swap @module @cpu-emulation @obsolete @keyring process_vm_readv process_vm_writev"
 
 // directive is one line and the conditions it needs.
 type directive struct {
