@@ -157,6 +157,10 @@ func (p *Panel) handleUpdateHosting(w http.ResponseWriter, r *http.Request, doma
 	if p.refuseHostingChangeWithServiceApp(w, r, domainID) {
 		return
 	}
+	// alpha.119: the same for a runtime app.
+	if p.refuseHostingChangeWithRuntimeApp(w, r, domainID) {
+		return
+	}
 
 	// alpha.114: protected folders and redirects stay until the person removes
 	// them; a type that cannot carry them is refused with the next step.

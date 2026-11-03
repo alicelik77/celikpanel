@@ -1503,9 +1503,9 @@ class Set3PublishedBaselineTests(unittest.TestCase):
         # alpha.117 schemas 52 to 56 (rights sets, suspension, transfers,
         # security emergency, transfer credential rotation); alpha.118 schemas
         # 57 to 61 (usage limits, application catalog, site tools, remote
-        # backups, service apps).
+        # backups, service apps); alpha.119 schemas 62 and 63 (the first-login tour, runtime apps).
         self.assertEqual(sorted(pins["migrations"]), [38, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56,
-                                                      57, 58, 59, 60, 61])
+                                                      57, 58, 59, 60, 61, 62, 63])
 
         def reading(version, guarded):
             return {"schema_version": version, "ledger_rows": version, "ledger_contiguous": True,

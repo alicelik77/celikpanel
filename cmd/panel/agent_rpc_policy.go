@@ -146,6 +146,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.EmergencyUnitsInspectV1
 		Agent.WordPressStatusV1 Agent.MalwareScannerStatusV1 Agent.MalwareScanSiteV1
 		Agent.ServiceAppProbeV1 Agent.ServiceAppStatusV1 Agent.ServiceAppLogsV1 Agent.ServiceAppUnitStateV1 Agent.SandboxCapsV1
+		Agent.RuntimeAppCheckV1 Agent.RuntimeAppStatusV1 Agent.RuntimeAppLogsV1 Agent.RuntimeAppUnitStateV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -185,6 +186,8 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.ServiceAppPrepareV1 Agent.ServiceAppActivateV1 Agent.ServiceAppFinalizeV1
 		Agent.ServiceAppControlV1 Agent.ServiceAppSecretsV1 Agent.ServiceAppRemoveV1
 		Agent.SetServiceAppSuspensionV1
+		Agent.RuntimeAppRenderV1 Agent.RuntimeAppControlV1 Agent.RuntimeAppEnvV1 Agent.RuntimeAppRemoveV1
+		Agent.SetRuntimeAppSuspensionV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityCertificate, `
 		Agent.DeleteCertLineage Agent.InstallCustomCertificate Agent.IssueLetsEncryptCertificate
@@ -541,6 +544,18 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.ServiceAppSecretsV1":       agentRPCMutationTimeout,
 	"Agent.ServiceAppRemoveV1":        agentRPCDatabaseTimeout,
 	"Agent.SetServiceAppSuspensionV1": agentRPCMutationTimeout,
+
+	// alpha.119: runtime apps (uploaded programs). The status read includes
+	// the sandbox proof and one health GET of at most five seconds.
+	"Agent.RuntimeAppCheckV1":         agentRPCStandardReadTimeout,
+	"Agent.RuntimeAppStatusV1":        agentRPCStandardReadTimeout,
+	"Agent.RuntimeAppLogsV1":          agentRPCStandardReadTimeout,
+	"Agent.RuntimeAppUnitStateV1":     agentRPCQuickReadTimeout,
+	"Agent.RuntimeAppRenderV1":        agentRPCMutationTimeout,
+	"Agent.RuntimeAppControlV1":       agentRPCMutationTimeout,
+	"Agent.RuntimeAppEnvV1":           agentRPCMutationTimeout,
+	"Agent.RuntimeAppRemoveV1":        agentRPCDatabaseTimeout,
+	"Agent.SetRuntimeAppSuspensionV1": agentRPCMutationTimeout,
 }
 
 var agentRPCPolicies = buildAgentRPCPolicies()

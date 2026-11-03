@@ -280,6 +280,10 @@ func isAdminOnlyPath(path string) bool {
 	if path == serviceAppsAdminPath || strings.HasPrefix(path, serviceAppsAdminPath+"/") {
 		return true
 	}
+	// alpha.119: offering runtime apps is the administrator's.
+	if path == runtimeAppsAdminPath || strings.HasPrefix(path, runtimeAppsAdminPath+"/") {
+		return true
+	}
 	// alpha.117 (D-043): a security emergency is the administrator's alone.
 	if path == securityEmergenciesPath || strings.HasPrefix(path, securityEmergenciesPath+"/") {
 		return true

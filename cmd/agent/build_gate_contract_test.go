@@ -95,6 +95,33 @@ func protectedBuildGateOperations() []buildGateOperation {
 			_ = agent.SetServiceAppSuspensionV1(&transport.SetServiceAppSuspensionRequest{ExpectedBuildCommit: expected}, &response)
 			return response.Error
 		}},
+		// alpha.119: runtime apps (uploaded programs); each refuses before its
+		// lock, its target or any host change.
+		{name: "RuntimeAppRenderV1", run: func(expected string) string {
+			var response transport.RuntimeAppRenderResponse
+			_ = agent.RuntimeAppRenderV1(&transport.RuntimeAppRenderRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "RuntimeAppControlV1", run: func(expected string) string {
+			var response transport.RuntimeAppStepResponse
+			_ = agent.RuntimeAppControlV1(&transport.RuntimeAppControlRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "RuntimeAppEnvV1", run: func(expected string) string {
+			var response transport.RuntimeAppStepResponse
+			_ = agent.RuntimeAppEnvV1(&transport.RuntimeAppEnvRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "RuntimeAppRemoveV1", run: func(expected string) string {
+			var response transport.RuntimeAppRemoveResponse
+			_ = agent.RuntimeAppRemoveV1(&transport.RuntimeAppRemoveRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "SetRuntimeAppSuspensionV1", run: func(expected string) string {
+			var response transport.SetAppUnitSuspensionResponse
+			_ = agent.SetRuntimeAppSuspensionV1(&transport.SetRuntimeAppSuspensionRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
 		{
 			name: "ApplyVhost",
 			run: func(expected string) string {
