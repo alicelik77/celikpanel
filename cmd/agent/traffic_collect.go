@@ -428,7 +428,7 @@ func trafficSourceFor(domain transport.TrafficDomain, formatState string, gaps m
 		}
 		return state
 	}
-	if !services.SiteReadsPanelDir(domain.Domain) {
+	if !services.SiteReadsTrafficInclude(domain.Domain) {
 		state.State, state.Reason = transport.TrafficSourceUnknown, transport.TrafficReasonVhostKept
 		return state
 	}

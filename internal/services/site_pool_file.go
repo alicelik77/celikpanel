@@ -162,11 +162,33 @@ func sitePoolIdentity(version, poolName, username string) poolIdentity {
 
 // SitePoolBody is CelikPanel's text of a site's pool (the body under the
 // header): a comment that says what the file is, then the pool.
-func sitePoolBody(poolName string, identity poolIdentity, values poolValues) string {
-	return "; The PHP-FPM pool of " + poolName + ", written by CelikPanel. A line you add or change here is kept:\n" +
+func sitePoolBody(poolName string, identity poolIdentity, values poolValues, uploadsOff bool) string {
+	body := "; The PHP-FPM pool of " + poolName + ", written by CelikPanel. A line you add or change here is kept:\n" +
 		"; CelikPanel then shows the difference and asks before writing this file again.\n" +
 		"; Buraya eklediğiniz ya da değiştirdiğiniz satır korunur; CelikPanel yeniden yazmadan önce sorar.\n" +
 		legacyPoolText(poolName, identity, values)
+	if uploadsOff {
+		body += poolUploadsOffComment + poolUploadsOffLine + "\n"
+	}
+	return body
+}
+
+// The disk of the site's subscription is full (alpha.118, D-044): PHP takes
+// no uploaded file; the line goes away when a measurement is under the limit.
+const (
+	poolUploadsOffComment = "; The disk space of this subscription is full: uploads are off until it is under its limit.\n" +
+		"; Aboneliğin disk alanı dolu: sınırın altına inene dek yükleme kapalı.\n"
+	poolUploadsOffLine = "php_admin_flag[file_uploads] = off"
+)
+
+// poolUploadsOff reads whether CelikPanel's text of a pool turns uploads off.
+func poolUploadsOff(content []byte) bool {
+	for _, line := range strings.Split(string(content), "\n") {
+		if strings.TrimSpace(strings.TrimSuffix(line, "\r")) == poolUploadsOffLine {
+			return true
+		}
+	}
+	return false
 }
 
 func sitePoolName(siteID int) string { return fmt.Sprintf("site%d", siteID) }
@@ -179,6 +201,13 @@ func sitePoolFile(request transport.SitePoolRequest, version string, values *poo
 	var content []byte
 	if data, err := readManagedConfig(path); err == nil && len(data) <= maxManagedSiteFileBytes {
 		content = data
+	}
+	uploadsOff := poolUploadsOff(content)
+	if held, ok := HeldPendingBody(path, ManagedHeaderPrefixINI); ok && values == nil {
+		uploadsOff = poolUploadsOff([]byte(held))
+	}
+	if request.UploadsOff != nil {
+		uploadsOff = *request.UploadsOff
 	}
 	chosen := defaultPoolValues()
 	switch {
@@ -199,7 +228,7 @@ func sitePoolFile(request transport.SitePoolRequest, version string, values *poo
 		Kind:                 transport.SiteFileKindPHPPool,
 		Path:                 path,
 		HeaderPrefix:         ManagedHeaderPrefixINI,
-		Body:                 sitePoolBody(poolName, sitePoolIdentity(version, poolName, request.Username), chosen),
+		Body:                 sitePoolBody(poolName, sitePoolIdentity(version, poolName, request.Username), chosen, uploadsOff),
 		Trigger:              trigger,
 		RecordedSHA256:       request.RecordedSHA256,
 		ExpectedFileSHA256:   request.ExpectedFileSHA256,
@@ -310,6 +339,10 @@ func switchSitePoolLocked(request transport.SitePoolRequest) (transport.SiteFile
 	}
 	values = values.clamped()
 	targetRequest := request
+	if targetRequest.UploadsOff == nil {
+		off := poolUploadsOff(sourceInspected.content)
+		targetRequest.UploadsOff = &off
+	}
 	targetRequest.PHPVersion = newVersion
 	targetRequest.RecordedSHA256 = ""
 	target := sitePoolFile(targetRequest, newVersion, &values, transport.SiteFileTriggerCreate)

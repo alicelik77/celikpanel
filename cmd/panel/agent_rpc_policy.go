@@ -166,7 +166,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostingSite, `
 		Agent.CreateSite Agent.DeleteSite Agent.InstallWordPress Agent.ApplyFileAccessV1
-		Agent.SetSiteAccountSuspensionV1
+		Agent.SetSiteAccountSuspensionV1 Agent.SetFileAccessReadOnlyV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostingVHost, `
 		Agent.ApplyVhost Agent.ApplyVhosts Agent.ReconcileDefaultHTTPSServerV1
@@ -388,6 +388,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.TrafficCollectV1":              agentRPCStandardReadTimeout,
 	"Agent.SubscriptionDiskUsageV1":       agentRPCDatabaseTimeout,
 	"Agent.ReconcileMailQuotaV1":          agentRPCMutationTimeout,
+	"Agent.SetFileAccessReadOnlyV1":       agentRPCMutationTimeout,
 	"Agent.SetSiteAccountSuspensionV1":    agentRPCMutationTimeout,
 	"Agent.SetMailDomainSuspensionV1":     agentRPCMutationTimeout,
 	"Agent.SetDatabaseUserSuspensionV1":   agentRPCMutationTimeout,

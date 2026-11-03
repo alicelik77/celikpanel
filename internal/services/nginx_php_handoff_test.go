@@ -173,6 +173,11 @@ func TestNoVhostNamesADistributionSnippet(t *testing.T) {
 					if directive == PanelManagedIncludeLine("ornek.com") {
 						continue
 					}
+					// alpha.118 (D-044): CelikPanel's traffic log setting, in
+					// the same CelikPanel directory.
+					if directive == TrafficIncludeLine("ornek.com") {
+						continue
+					}
 					if directive != "include fastcgi.conf;" && directive != "include fastcgi_params;" {
 						t.Errorf("%s (tls %v, www %v): the vhost includes a file that is not nginx's own: %q", shape.ProjectType, tls, www, directive)
 					}

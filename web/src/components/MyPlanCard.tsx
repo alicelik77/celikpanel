@@ -84,6 +84,21 @@ function DiskFacts({ sub }: { sub: MyPlanSubscription }) {
     );
 }
 
+/** Where closing uploads on the server stands: pending, failed, or kept by the owner. */
+function UploadNotes({ disk }: { disk: NonNullable<MyPlanSubscription['usage']['disk']> }) {
+    const { t } = useI18n();
+    const note = disk.uploads_note ?? '';
+    const lines: string[] = [];
+    if (note.startsWith('error:')) lines.push(t('myPlan.uploadsError', { detail: note.slice('error:'.length) }));
+    else if (disk.uploads_applied === false) lines.push(t('myPlan.uploadsPending'));
+    const codes = note.startsWith('error:') ? [] : note.split(',');
+    if (codes.includes('ssh_open')) lines.push(t('myPlan.uploadsSSH'));
+    if (codes.includes('ftp_kept')) lines.push(t('myPlan.uploadsFTPKept'));
+    if (codes.includes('php_kept')) lines.push(t('myPlan.uploadsPHPKept'));
+    if (lines.length === 0) return null;
+    return <ul className="mt-1 list-disc pl-5 text-xs" data-my-plan-upload-notes="">{lines.map((line) => <li key={line}>{line}</li>)}</ul>;
+}
+
 function SubscriptionBlock({ sub, interval }: { sub: MyPlanSubscription; interval: number }) {
     const { t } = useI18n();
     const u = sub.usage;
@@ -106,6 +121,7 @@ function SubscriptionBlock({ sub, interval }: { sub: MyPlanSubscription; interva
                 <div className="mt-2 rounded-md bg-danger/10 p-3 text-sm text-danger" data-my-plan-disk-full="">
                     <p className="font-semibold">{t('myPlan.diskFullTitle')}</p>
                     <p className="mt-1">{t(suspendOn ? 'myPlan.diskFull' : 'myPlan.diskFullNoDate', { date: suspendOn })}</p>
+                    <UploadNotes disk={u.disk} />
                 </div>
             )}
             {sub.over_limit.length > 0 && (

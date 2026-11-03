@@ -32,8 +32,8 @@ export const enPlanUsageScreens = {
     'myPlan.diskNotMeasured': 'The disk has not been measured yet; it is measured within hours. Until then the number is from the domain pages.',
     'myPlan.diskUnknown': 'The last disk measurement failed ({detail}). The number shown is the last known one; CelikPanel measures again within hours.',
     'myPlan.diskFullTitle': 'The disk space is full',
-    'myPlan.diskFull': 'Nothing new can be created and uploads are refused; the websites keep running. Unless usage goes under the limit, the subscription is suspended on {date}. Delete files, mail or databases you no longer need, or ask the contact below for a larger plan; it is measured again within hours.',
-    'myPlan.diskFullNoDate': 'Nothing new can be created and uploads are refused; the websites keep running. If it stays over the limit for 7 days, the subscription is suspended. Delete what you no longer need, or ask the contact below for a larger plan.',
+    'myPlan.diskFull': 'Nothing new can be created, and new uploads are closed: the file manager refuses them, FTP and SFTP are read-only (downloads still work) and PHP sites take no uploaded file. The websites keep running. Unless usage goes under the limit, the subscription is suspended on {date}. Who acts: you delete files, mail or databases you no longer need, or ask the contact below for a larger plan; your provider or the administrator can raise the limit. Everything opens again by itself after the next measurement under the limit.',
+    'myPlan.diskFullNoDate': 'Nothing new can be created, and new uploads are closed: the file manager refuses them, FTP and SFTP are read-only and PHP sites take no uploaded file. The websites keep running. If it stays over the limit for 7 days, the subscription is suspended. Delete what you no longer need, or ask the contact below for a larger plan; your provider or the administrator can raise the limit.',
     'usage.notice.listTitle': 'Traffic and disk notices',
     'usage.notice.seenAll': 'Mark all as seen',
     'usage.notice.traffic80Title': '{what}: 80% of the monthly traffic used',
@@ -49,7 +49,7 @@ export const enPlanUsageScreens = {
     'usage.notice.disk80Title': '{what}: disk 80% used',
     'usage.notice.disk80': '{used} of {limit} used (site files, mail and databases). At 100% nothing new can be created or uploaded. Delete what is no longer needed, or ask for a larger plan.',
     'usage.notice.disk100Title': '{what}: disk full',
-    'usage.notice.disk100': '{used} of {limit} used. Nothing new can be created and uploads are refused; the websites keep running. If it stays over the limit, the subscription is suspended on {date}. Free space or raise the limit; it is measured again within hours.',
+    'usage.notice.disk100': '{used} of {limit} used. Nothing new can be created and new uploads are closed (file manager, FTP, SFTP and PHP uploads); the websites keep running. If it stays over the limit, the subscription is suspended on {date}. Free space or raise the limit; it is measured again within hours and opens by itself.',
     'usage.notice.countdownTitle': '{what}: suspension in 2 days (disk full)',
     'usage.notice.countdown': 'It has been over its {limit} disk space for 5 days ({used} used). It is suspended on {date} unless usage goes under the limit or the limit is raised.',
     'usage.notice.suspendedTitle': '{what}: suspended, disk over the limit for 7 days',
@@ -72,6 +72,11 @@ export const enPlanUsageScreens = {
     'myPlan.poolHint': 'What you may hand out in total over your own and your customers’ plans. To grow it, ask the server administrator.',
     'myPlan.poolNone': 'The administrator has set no pool limits for you.',
     'myPlan.customers': 'Customers',
+    'myPlan.uploadsPending': 'Closing or opening uploads on the server is in progress; it is done within minutes. Nothing to do.',
+    'myPlan.uploadsError': 'Uploads could not be changed on the server yet ({detail}). CelikPanel tries again every few minutes; if it stays, the administrator checks the CelikPanel agent.',
+    'myPlan.uploadsSSH': 'Accounts with a command line (SSH) can still write files; only FTP and SFTP are read-only.',
+    'myPlan.uploadsFTPKept': 'The server’s file access settings were changed by hand, so FTP and SFTP stay writable; the server administrator decides.',
+    'myPlan.uploadsPHPKept': 'A site’s PHP settings file was changed by hand, so that site still takes uploads; the server administrator decides.',
 } as const;
 
 export type PlanUsageScreenKey = keyof typeof enPlanUsageScreens;

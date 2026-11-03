@@ -41,6 +41,32 @@ type ApplyFileAccessRequest struct {
 	// "no password" ("*", which a later unlock cannot bring back) and every
 	// SSH key is removed. Used after a subscription transfer.
 	RevokeCredentials bool `json:"revoke_credentials,omitempty"`
+	// ReadOnly (alpha.118, D-044): the subscription's disk is full, so its
+	// accounts may read and download but not upload (SFTP internal-sftp -R,
+	// FTP write_enable=NO). An SSH account keeps its command line.
+	ReadOnly bool `json:"read_only,omitempty"`
+}
+
+// SetFileAccessReadOnlyRequest closes or opens new uploads over FTP and SFTP
+// for every account of one subscription (alpha.118, D-044).
+type SetFileAccessReadOnlyRequest struct {
+	ExpectedBuildCommit string `json:"expected_build_commit"`
+	SubscriptionID      int    `json:"subscription_id"`
+	ReadOnly            bool   `json:"read_only"`
+}
+
+// SetFileAccessReadOnlyResponse: Applied when the server matches the request
+// (also when the subscription has no account with file access); Kept when
+// the owner's own sshd drop-in was left alone; SSHAccounts are accounts with
+// a command line, which cannot be made read-only.
+type SetFileAccessReadOnlyResponse struct {
+	Applied     bool     `json:"applied"`
+	Changed     bool     `json:"changed"`
+	Kept        bool     `json:"kept,omitempty"`
+	SSHAccounts []string `json:"ssh_accounts,omitempty"`
+	Warnings    []string `json:"warnings,omitempty"`
+	Detail      string   `json:"detail,omitempty"`
+	Error       string   `json:"error,omitempty"`
 }
 
 // FileAccessPreviewRequest asks what an apply would change (read only).

@@ -41,6 +41,15 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			// alpha.118 (D-044): a full disk makes FTP and SFTP read-only.
+			name: "SetFileAccessReadOnlyV1",
+			run: func(expected string) string {
+				var response transport.SetFileAccessReadOnlyResponse
+				_ = agent.SetFileAccessReadOnlyV1(&transport.SetFileAccessReadOnlyRequest{ExpectedBuildCommit: expected, SubscriptionID: 1}, &response)
+				return response.Error
+			},
+		},
+		{
 			// alpha.118 (D-044): Dovecot enforces the mailbox limits.
 			name: "ReconcileMailQuotaV1",
 			run: func(expected string) string {

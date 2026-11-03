@@ -105,7 +105,10 @@ type Panel struct {
 	trafficRender    func(ctx context.Context, domainID int) error
 	diskMeasurer     diskMeasurer
 	mailQuota        func(ctx context.Context) (transport.MailQuotaReconcileResponse, error)
-	usageWorker      usageWorkerState
+	// uploadBlockNative closes or opens a subscription's FTP/SFTP and PHP
+	// uploads (disk_usage.go); nil asks the Agent.
+	uploadBlockNative func(ctx context.Context, subscriptionID int, blocked bool) (string, error)
+	usageWorker       usageWorkerState
 	// lastUpdateAttempt is injectable only for handler tests. Production leaves
 	// it nil and reads the native recovery observations directly.
 	lastUpdateAttempt func(commit string) (recoveryobs.Attempt, bool)

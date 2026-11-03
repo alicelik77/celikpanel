@@ -597,19 +597,21 @@ soon after a restore, an import or an app install).
 | Level | What happens |
 |---|---|
 | 80% | Notice to the customer, its reseller and the administrator |
-| 100% | No new domain, mailbox, database, app install, manual backup or restore; the file manager refuses uploads; the sites keep running. Notice with the suspension date |
+| 100% | No new domain, mailbox, database, app install, manual backup or restore; new uploads close at once (file manager, FTP and SFTP read-only, PHP `file_uploads` off); the sites keep running. Notice with the suspension date |
 | 5 days over | Notice: suspension in 2 days |
 | 7 days over | The subscription is suspended (alpha.117 suspension, cause "disk") |
 | Under the limit again | The disk cause clears by itself; other causes (manual, reseller, end date) stay |
 | Operator resumes | The disk cause clears and a new 7-day period starts |
 
 CelikPanel never changes fstab, the kernel command line or file system flags; project quotas set
-up by the owner are only detected. Hard OS limits, FTP/SFTP read-only mode and PHP
-`file_uploads=off` on a full disk are open items.
+up by the owner are only detected. Hard OS limits are an open item. An SSH account keeps its
+command line (it cannot be made read-only). Backups are stored outside the subscription and are
+not counted; scheduled backups keep running on a full disk.
 
 **Mail.** Each mailbox's size is enforced by Dovecot's own quota plugin (both dialects); Postfix
 asks Dovecot before accepting mail, so mail to a full mailbox is refused (552). This keeps working
-without CelikPanel. A 90% message to the mailbox user is an open item.
+without CelikPanel. At 90% the mailbox user gets one message (English and Turkish) per crossing,
+from Dovecot's own quota warning and an hourly systemd timer running the same script.
 
 **Migration.** The traffic limits stored before were never shown or applied; they became
 unlimited (migration 057) and the administrator is told once.

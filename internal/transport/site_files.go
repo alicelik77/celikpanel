@@ -377,6 +377,10 @@ type SitePoolRequest struct {
 	RecordedSHA256       string
 	ExpectedFileSHA256   string
 	ExpectedRenderSHA256 string
+	// UploadsOff (alpha.118, D-044, additive): the subscription's disk is
+	// full, so the pool carries php_admin_flag[file_uploads] = off. nil keeps
+	// what CelikPanel's current text of the pool says.
+	UploadsOff *bool `json:",omitempty"`
 }
 
 // ApplySiteFileResponse is a pool operation's answer. File is nil only when
