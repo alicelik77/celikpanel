@@ -31,6 +31,7 @@ export const enSuspensionScreens = {
     'susp.cause.manual': 'Suspended by an administrator or reseller.',
     'susp.cause.reseller': 'Suspended because its reseller ({name}) is suspended.',
     'susp.cause.expired': 'The subscription’s end date has passed.',
+    'susp.cause.disk': 'Its disk usage was over the limit for 7 days. It resumes by itself when a measurement is under the limit; raise the limit, or resume it to give 7 more days to free space.',
     'susp.reasonGiven': 'Reason given: {reason}',
     'susp.since': 'Since {date}.',
     'susp.resumeBlocked': 'It cannot be resumed here: {why}',

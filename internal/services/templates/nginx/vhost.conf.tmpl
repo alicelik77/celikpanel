@@ -376,7 +376,26 @@ server {
     }
 {{- end}}
 
-{{- if or .Suspended .Maintenance}}
+{{- /* The subscription used its monthly traffic (alpha.118, D-044): only
+    the website answers with this page; mail, databases and file access keep
+    working. It opens again by itself on the 1st of the month or when the
+    limit is raised. Suspended and Maintenance win.
+    Aylık trafik doldu: yalnız web sitesi bu sayfayı gösterir. */}}
+{{- define "traffic-limit-site"}}
+    # celikpanel-traffic-limit: the monthly traffic of this site is used up / aylık trafik doldu
+    add_header Retry-After 3600 always;
+    add_header Cache-Control "no-store" always;
+
+    location / {
+        default_type text/html;
+        charset utf-8;
+        return 503 '<!doctype html><html><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>Traffic limit reached</title></head><body style="font-family:sans-serif;max-width:40em;margin:4em auto;padding:0 1em"><h1>This site has used its monthly traffic</h1><p>Bu site aylık trafik hakkını doldurdu.</p><p>The site opens again on the 1st of next month, or as soon as its owner raises the limit with the hosting provider. / Site, gelecek ayın 1. günü ya da site sahibi barındırma sağlayıcısından sınırı yükselttiğinde kendiliğinden yeniden açılır.</p></body></html>';
+    }
+{{- end}}
+
+{{- define "panel-page"}}{{if .Suspended}}{{template "suspended-site" .}}{{else if .Maintenance}}{{template "maintenance-site" .}}{{else}}{{template "traffic-limit-site" .}}{{end}}{{end}}
+
+{{- if or .Suspended .Maintenance .TrafficLimited}}
 server {
     listen 80;
     listen [::]:80;
@@ -385,7 +404,7 @@ server {
     access_log /var/log/nginx/{{.Domain}}-access.log;
     error_log /var/log/nginx/{{.Domain}}-error.log;
 {{template "panel-include" .}}
-{{if .Suspended}}{{template "suspended-site" .}}{{else}}{{template "maintenance-site" .}}{{end}}
+{{template "panel-page" .}}
 }
 {{- if and (ne .SSLType "none") .SSLCert}}
 
@@ -397,7 +416,7 @@ server {
     access_log /var/log/nginx/{{.Domain}}-access.log;
     error_log /var/log/nginx/{{.Domain}}-error.log;
 {{template "panel-include" .}}
-{{if .Suspended}}{{template "suspended-site" .}}{{else}}{{template "maintenance-site" .}}{{end}}
+{{template "panel-page" .}}
 }
 {{- end}}
 {{- else if eq .ProjectType "forwarding"}}

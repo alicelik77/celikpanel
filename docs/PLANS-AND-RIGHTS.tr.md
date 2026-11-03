@@ -38,7 +38,7 @@ kullanılan şey kaldırılmaz, kimse sessizce taşınmaz), sahip bağımsızlı
 **Var:**
 - Planlar (`service_plans`): yalnız sayılar. Alan adı, veritabanı, posta
   kutusu ve disk sınırı var. Trafik alanı da var ama ölçülmüyor. 0 sınırsız
-  demek.
+  demek. (alpha.118'den beri ölçülüyor, 14. bölüm.)
 - Abonelik (`subscriptions`): planın sayılarını kopyalar.
 - Bayi havuzu (`reseller_pools`): bayinin dağıtabileceği toplamlar.
 - Bayi kendi planlarını yapabiliyor ama yalnız sayı olarak.
@@ -134,8 +134,8 @@ Hak setinin üç bölümü var. Plan da özel hak seti de aynı üç bölümden 
 | Alan adı sayısı | Alt alan adları da sayılır (bugünkü gibi) |
 | Veritabanı sayısı | Bütün oluşturma yollarında denetlenir (bugün bir yol eksik) |
 | Posta kutusu sayısı | |
-| Disk | Bugün oluşturma anında yumuşak bir kapı; işletim sistemi kotası ayrı iş |
-| Trafik | Ölçülene kadar planda **gösterilmez** (dürüstlük kuralı) |
+| Disk | Site dosyaları, posta ve veritabanlarının gerçek kullanımı (alpha.118, D-044): %100'de yeni bir şey ve yükleme yok; 7 gün aşım askıya alır. İşletim sistemi kotası yok |
+| Trafik | Takvim ayı başına web trafiği (alpha.118, D-044): %100'de ayın 1'ine dek yalnız web siteleri kapanır |
 | Müşteri sayısı | Yalnız bayi hak setinde |
 
 0 ya da boş bırakılan kalem **sınırsız** demektir ve ekranda "sınırsız" diye
@@ -297,8 +297,9 @@ tasarımdır.
   sınırlanıyor.
 - Sayı kalemlerinde (alan adı, veritabanı, posta kutusu, müşteri) gerçek
   kullanım zaten sayıdır: oluşturulmuş olanlar sayılır.
-- Trafik ölçülmeye başlayana kadar trafik havuzu uygulanmaz ve ekranda böyle
-  yazar.
+- Trafik (alpha.118, D-044) bütün müşterilerin web sitelerinin bu ayki gerçek toplamıyla
+  havuzlanır; havuz dolunca bütün müşterilerin web siteleri ayın 1'ine ya da havuz
+  yükseltilene dek "trafik sınırı doldu" gösterir (14. bölüm).
 
 **Müşteri**
 - Yalnız kendi hak setinde açık olanı görür ve kullanır.
@@ -585,5 +586,47 @@ Deneme: değişen parçaların testleri, GitHub kontrolleri ve sürüm sonunda b
 kez gerçek sunucuda güncelleme, geri dönüş, askıya alma ve SSH kum havuzu
 denemesi.
 
-**Kapsam dışı:** fiyat, dönem ve ödeme; trafik ölçümü; işletim sistemi disk
-kotası; tek bir alan adının abonelikler arasında taşınması.
+**Kapsam dışı:** fiyat, dönem ve ödeme; işletim sistemi disk kotası; tek bir alan
+adının abonelikler arasında taşınması. Trafik ölçümü alpha.118'de geldi (14. bölüm).
+
+---
+
+## 14. Sınırlar gerçek oldu (alpha.118, D-044; sahip, 3 Kasım 2026)
+
+**Trafik.** Web sitelerinin ziyaretçilere gönderdiği, takvim ayı başına (sunucu
+saati); ayın 1'inde sıfırlanır. nginx'in her site için CelikPanel'e yazdığı küçük
+ikinci erişim günlüğünden ölçülür; sahibin günlüklerine dokunulmaz. 5 dakikada bir
+toplanır; bu yüzden bir site bir aralıkta gönderdiği kadar sınırı aşabilir; ekranlar
+bunu söyler.
+
+| Düzey | Ne olur | Kime söylenir |
+|---|---|---|
+| %80 | Hiçbir şey kapanmaz | Müşteri, bayisi, yönetici |
+| %100 | Yalnız web siteleri "trafik sınırı doldu" gösterir (503). Posta, veritabanları, dosya erişimi çalışır | Müşteri, bayisi, yönetici |
+| Ayın 1'i ya da sınır yükseldi | Web siteleri birkaç dakikada kendiliğinden açılır | - |
+| Bayi havuzu doldu (K2) | Bayinin bütün müşterileri %100 işlemini alır | Bayi, yönetici, her müşteri |
+
+**Disk.** Aboneliğin gerçek kullanımı: site dosyaları, posta ve veritabanları; en
+düşük öncelikle 6 saatte bir ölçülür (barındırma dosya sisteminde %10'dan az boş yer
+varken saatte bir; geri yükleme, içe aktarma ya da uygulama kurulumundan hemen sonra).
+
+| Düzey | Ne olur |
+|---|---|
+| %80 | Müşteriye, bayisine ve yöneticiye bildirim |
+| %100 | Yeni alan adı, posta kutusu, veritabanı, uygulama kurulumu, elle yedek ya da geri yükleme yok; dosya yöneticisi yüklemeyi reddeder; siteler çalışır. Askı tarihli bildirim |
+| 5 gün aşım | Bildirim: 2 gün sonra askı |
+| 7 gün aşım | Abonelik askıya alınır (alpha.117 askısı, "disk" nedeni) |
+| Yeniden sınırın altında | Disk nedeni kendiliğinden kalkar; diğer nedenler (elle, bayi, bitiş tarihi) kalır |
+| Operatör açar | Disk nedeni kalkar ve yeni bir 7 günlük süre başlar |
+
+CelikPanel fstab'a, çekirdek satırına ya da dosya sistemi bayraklarına asla dokunmaz;
+sahibin kurduğu proje kotaları yalnız algılanır. Sert işletim sistemi sınırları, dolu
+diskte FTP/SFTP salt-okur kipi ve PHP `file_uploads=off` açık işlerdir.
+
+**Posta.** Her posta kutusunun boyutunu Dovecot'un kendi kota eklentisi uygular (iki
+lehçe); Postfix postayı kabul etmeden önce Dovecot'a sorar; dolu kutuya gelen posta
+reddedilir (552). CelikPanel olmadan da çalışır. Posta kutusu kullanıcısına %90 iletisi
+açık iştir.
+
+**Geçiş.** Daha önce kayıtlı trafik sınırları hiç gösterilmedi ve uygulanmadı; 057
+göçüyle sınırsız oldular ve yöneticiye bir kez söylenir.

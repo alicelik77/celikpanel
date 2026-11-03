@@ -40,7 +40,7 @@ guidance rule (D-024).
 
 **Exists:**
 - Plans (`service_plans`): numbers only. Domain, database, mailbox and disk limits. There is also
-  a traffic field but it is not measured. 0 means unlimited.
+  a traffic field but it is not measured. 0 means unlimited. (Measured from alpha.118, section 14.)
 - Subscription (`subscriptions`): copies the plan's numbers.
 - Reseller pool (`reseller_pools`): totals the reseller can hand out.
 - A reseller can make their own plans, but only as numbers.
@@ -131,8 +131,8 @@ The rights set has three parts. A plan and a custom rights set are made of the s
 | Number of domains | Subdomains count too (as today) |
 | Number of databases | Checked on every creation path (today one path is missing) |
 | Number of mailboxes | |
-| Disk | Today a soft gate at creation time; OS quota is a separate job |
-| Traffic | **Not shown** in a plan until it is measured (honesty rule) |
+| Disk | Real use of site files, mail and databases (alpha.118, D-044): at 100% nothing new and no upload; 7 days over suspends. No OS quota |
+| Traffic | Website traffic per calendar month (alpha.118, D-044): at 100% only the websites close until the 1st |
 | Number of customers | Only in a reseller's rights set |
 
 An item left at 0 or empty means **unlimited**, and the screen says "unlimited".
@@ -293,7 +293,9 @@ design.
   limited.
 - For the count items (domain, database, mailbox, customer) real usage is already a number: what
   has been created is counted.
-- Until traffic starts to be measured, the traffic pool is not applied and the screen says so.
+- Traffic (alpha.118, D-044) is pooled by the month's real total of all customers' websites;
+  when the pool is full every customer's websites show "traffic limit reached" until the 1st
+  or until the pool is raised (section 14).
 
 **Customer**
 - Sees and uses only what is open in their own rights set.
@@ -569,5 +571,45 @@ tried once at the end of the release:
 Trial: tests of the changed parts, GitHub checks, and once at the end of the release an update, a
 rollback, a suspension and an SSH sandbox trial on a real server.
 
-**Out of scope:** price, period and payment; traffic measurement; OS disk quota; moving a single
-domain between subscriptions.
+**Out of scope:** price, period and payment; OS disk quota; moving a single domain between
+subscriptions. Traffic measurement followed in alpha.118 (section 14).
+
+---
+
+## 14. Limits made real (alpha.118, D-044; owner, November 3, 2026)
+
+**Traffic.** What the websites send to their visitors, per calendar month (server time), reset
+on the 1st. Measured from a small second access log per website that nginx writes for
+CelikPanel; the owner's own logs are untouched. Collected every 5 minutes, so a site can pass
+its limit by what it sends in one interval; the screens say so.
+
+| Level | What happens | Who is told |
+|---|---|---|
+| 80% | Nothing closes | Customer, its reseller, administrator |
+| 100% | Only the websites show "traffic limit reached" (503). Mail, databases, file access keep working | Customer, its reseller, administrator |
+| 1st of the month, or limit raised | The websites open again by themselves within minutes | - |
+| Reseller pool full (K2) | Every customer of the reseller gets the 100% action | Reseller, administrator, each customer |
+
+**Disk.** The real use of a subscription: site files, mail and databases, measured at the lowest
+priority every 6 hours (every hour when the hosting file system has less than 10% free, and
+soon after a restore, an import or an app install).
+
+| Level | What happens |
+|---|---|
+| 80% | Notice to the customer, its reseller and the administrator |
+| 100% | No new domain, mailbox, database, app install, manual backup or restore; the file manager refuses uploads; the sites keep running. Notice with the suspension date |
+| 5 days over | Notice: suspension in 2 days |
+| 7 days over | The subscription is suspended (alpha.117 suspension, cause "disk") |
+| Under the limit again | The disk cause clears by itself; other causes (manual, reseller, end date) stay |
+| Operator resumes | The disk cause clears and a new 7-day period starts |
+
+CelikPanel never changes fstab, the kernel command line or file system flags; project quotas set
+up by the owner are only detected. Hard OS limits, FTP/SFTP read-only mode and PHP
+`file_uploads=off` on a full disk are open items.
+
+**Mail.** Each mailbox's size is enforced by Dovecot's own quota plugin (both dialects); Postfix
+asks Dovecot before accepting mail, so mail to a full mailbox is refused (552). This keeps working
+without CelikPanel. A 90% message to the mailbox user is an open item.
+
+**Migration.** The traffic limits stored before were never shown or applied; they became
+unlimited (migration 057) and the administrator is told once.

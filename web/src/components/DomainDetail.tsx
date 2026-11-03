@@ -96,11 +96,13 @@ interface Domain {
 interface DomainUsage {
     disk_usage: number;
     bandwidth: number;
+    /** alpha.118 (D-044): whether this month's traffic is counted. */
+    traffic_state?: string;
 }
 function decodeUsage(raw: unknown): DomainUsage {
-    const body = raw as { disk_usage?: unknown; bandwidth?: unknown } | null;
+    const body = raw as { disk_usage?: unknown; bandwidth?: unknown; traffic_state?: unknown } | null;
     if (!body || typeof body.disk_usage !== 'number' || typeof body.bandwidth !== 'number') throw new Error('shape');
-    return { disk_usage: body.disk_usage, bandwidth: body.bandwidth };
+    return { disk_usage: body.disk_usage, bandwidth: body.bandwidth, traffic_state: typeof body.traffic_state === 'string' ? body.traffic_state : undefined };
 }
 
 // What became of looking this domain up in the list the server gave.
@@ -506,7 +508,13 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
         });
         facts.push({
             key: 'traffic',
-            content: <Fact label={t('domain.info.traffic')}>{fmtBytes(measured ? measured.bandwidth : domain.bandwidth)}/mo</Fact>,
+            content: (
+                <Fact label={t('domain.info.traffic')}>
+                    {measured?.traffic_state === 'unknown'
+                        ? t('domain.info.trafficUnknown')
+                        : t('domain.info.trafficMonth', { bytes: fmtBytes(measured ? measured.bandwidth : domain.bandwidth) })}
+                </Fact>
+            ),
         });
     }
 

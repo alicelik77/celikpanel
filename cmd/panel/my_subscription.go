@@ -6,14 +6,15 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"time"
 )
 
 // GET /api/v1/my/subscription (alpha.114, ROADMAP v0.3 "the customer sees
 // their own subscription"): the signed-in account's plan, its limits and the
 // live usage the quota checks use, so the numbers on "My plan" are exactly
 // the numbers a 409 refusal is based on; whom to contact for a larger plan;
-// and, for a reseller, its pool and what it has handed out. Traffic is not
-// measured yet and says so instead of showing a limit. Team members (additional
+// and, for a reseller, its pool and what it has handed out. Traffic is
+// measured per calendar month (alpha.118, D-044). Team members (additional
 // users) do not see their customer's plan; the middleware refuses them.
 //
 // Oturumdaki hesabın planı, sınırları ve kota denetimlerinin kullandığı canlı
@@ -120,9 +121,10 @@ func (p *Panel) handleMySubscription(w http.ResponseWriter, r *http.Request) {
 	answer := map[string]any{
 		"subscriptions": entries,
 		"contact":       contact,
-		// Traffic is not measured yet: no traffic limit is applied anywhere.
-		// Trafik henüz ölçülmüyor: hiçbir yerde trafik sınırı uygulanmaz.
-		"bandwidth": map[string]bool{"measured": false},
+		// alpha.118 (D-044): website traffic is measured per calendar month
+		// and its limits apply; the collection interval is what a site can
+		// go over by.
+		"bandwidth": map[string]any{"measured": true, "interval_minutes": int(usageWorkerTick / time.Minute)},
 	}
 	if c.hasAccountRole(roleReseller) {
 		pool, ok, err := loadResellerPool(ctx, db, c.ID)

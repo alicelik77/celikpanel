@@ -34,6 +34,7 @@ type resellerPlanPayload struct {
 	MaxDatabases     int            `json:"max_databases"`
 	MaxEmailAccounts int            `json:"max_email_accounts"`
 	DiskQuotaMB      int            `json:"disk_quota_mb"`
+	TrafficQuotaMB   int            `json:"traffic_quota_mb"`
 	Rights           *rightsPayload `json:"rights,omitempty"`
 	ConfirmNarrowing bool           `json:"confirm_narrowing,omitempty"`
 	// Read-only: how many resellers are bound to it.
@@ -42,7 +43,8 @@ type resellerPlanPayload struct {
 
 func (pl resellerPlanPayload) pool() resellerPool {
 	return resellerPool{MaxCustomers: pl.MaxCustomers, planLimits: planLimits{
-		Domains: pl.MaxDomains, Databases: pl.MaxDatabases, Mailboxes: pl.MaxEmailAccounts, DiskMB: pl.DiskQuotaMB}}
+		Domains: pl.MaxDomains, Databases: pl.MaxDatabases, Mailboxes: pl.MaxEmailAccounts, DiskMB: pl.DiskQuotaMB,
+		TrafficMB: pl.TrafficQuotaMB}}
 }
 
 func decodeResellerPlan(w http.ResponseWriter, r *http.Request) (resellerPlanPayload, bool) {
@@ -94,7 +96,7 @@ func (p *Panel) handleResellerPlans(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		rows, err := db.QueryContext(ctx, `
 			SELECT rp.id, rp.name, rp.max_customers, rp.max_domains, rp.max_databases, rp.max_email_accounts, rp.disk_quota_mb,
-			       (SELECT COUNT(*) FROM reseller_plan_bindings b WHERE b.reseller_plan_id = rp.id)
+			       rp.traffic_quota_mb, (SELECT COUNT(*) FROM reseller_plan_bindings b WHERE b.reseller_plan_id = rp.id)
 			FROM reseller_plans rp ORDER BY rp.name, rp.id`)
 		if err != nil {
 			writeServerError(w, err)
@@ -103,7 +105,7 @@ func (p *Panel) handleResellerPlans(w http.ResponseWriter, r *http.Request) {
 		plans := []resellerPlanPayload{}
 		for rows.Next() {
 			var pl resellerPlanPayload
-			if err := rows.Scan(&pl.ID, &pl.Name, &pl.MaxCustomers, &pl.MaxDomains, &pl.MaxDatabases, &pl.MaxEmailAccounts, &pl.DiskQuotaMB, &pl.Resellers); err != nil {
+			if err := rows.Scan(&pl.ID, &pl.Name, &pl.MaxCustomers, &pl.MaxDomains, &pl.MaxDatabases, &pl.MaxEmailAccounts, &pl.DiskQuotaMB, &pl.TrafficQuotaMB, &pl.Resellers); err != nil {
 				rows.Close()
 				writeServerError(w, err)
 				return
@@ -148,8 +150,8 @@ func (p *Panel) handleResellerPlans(w http.ResponseWriter, r *http.Request) {
 		}
 		defer tx.Rollback()
 		result, err := tx.ExecContext(ctx, `
-			INSERT INTO reseller_plans (name, max_customers, max_domains, max_databases, max_email_accounts, disk_quota_mb)
-			VALUES (?, ?, ?, ?, ?, ?)`, pl.Name, pl.MaxCustomers, pl.MaxDomains, pl.MaxDatabases, pl.MaxEmailAccounts, pl.DiskQuotaMB)
+			INSERT INTO reseller_plans (name, max_customers, max_domains, max_databases, max_email_accounts, disk_quota_mb, traffic_quota_mb)
+			VALUES (?, ?, ?, ?, ?, ?, ?)`, pl.Name, pl.MaxCustomers, pl.MaxDomains, pl.MaxDatabases, pl.MaxEmailAccounts, pl.DiskQuotaMB, pl.TrafficQuotaMB)
 		if err != nil {
 			writeServerError(w, err)
 			return
@@ -203,7 +205,7 @@ func (p *Panel) handleResellerPlanByID(w http.ResponseWriter, r *http.Request) {
 		payload := plan.Set.payload()
 		writeRightsJSON(w, http.StatusOK, resellerPlanPayload{ID: plan.ID, Name: plan.Name, MaxCustomers: plan.Pool.MaxCustomers,
 			MaxDomains: plan.Pool.Domains, MaxDatabases: plan.Pool.Databases, MaxEmailAccounts: plan.Pool.Mailboxes,
-			DiskQuotaMB: plan.Pool.DiskMB, Rights: &payload})
+			DiskQuotaMB: plan.Pool.DiskMB, TrafficQuotaMB: plan.Pool.TrafficMB, Rights: &payload})
 	case (action == "" && r.Method == http.MethodPut) || (action == "preview" && r.Method == http.MethodPost):
 		pl, ok := decodeResellerPlan(w, r)
 		if !ok {
@@ -273,8 +275,8 @@ func (p *Panel) handleResellerPlanByID(w http.ResponseWriter, r *http.Request) {
 		defer tx.Rollback()
 		if _, err := tx.ExecContext(ctx, `
 			UPDATE reseller_plans SET name = ?, max_customers = ?, max_domains = ?, max_databases = ?,
-			       max_email_accounts = ?, disk_quota_mb = ?, updated_at = datetime('now') WHERE id = ?`,
-			pl.Name, pl.MaxCustomers, pl.MaxDomains, pl.MaxDatabases, pl.MaxEmailAccounts, pl.DiskQuotaMB, id); err != nil {
+			       max_email_accounts = ?, disk_quota_mb = ?, traffic_quota_mb = ?, updated_at = datetime('now') WHERE id = ?`,
+			pl.Name, pl.MaxCustomers, pl.MaxDomains, pl.MaxDatabases, pl.MaxEmailAccounts, pl.DiskQuotaMB, pl.TrafficQuotaMB, id); err != nil {
 			writeServerError(w, err)
 			return
 		}

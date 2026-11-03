@@ -371,6 +371,16 @@ func (p *Panel) handleFileAction(w http.ResponseWriter, r *http.Request, relativ
 			http.Error(w, "Invalid file name", http.StatusBadRequest)
 			return
 		}
+		// alpha.118 (D-044): at or over the disk limit no upload is taken;
+		// the site keeps running and editing an existing file still works.
+		if blocked, err := subscriptionUploadsBlocked(r.Context(), p.db.GetDB(), scope.SubscriptionID); err != nil {
+			writeServerError(w, err)
+			return
+		} else if blocked {
+			writeCodedError(w, http.StatusConflict, errCodeQuotaDisk,
+				"the disk space of this subscription is full, so nothing was uploaded. Delete files, mail or databases you no longer need, or ask your provider for a larger plan (see My plan); uploads work again after the next measurement shows free space.", myPlanPagePath)
+			return
+		}
 		var success bool
 		err := p.callAgentContext(r.Context(), "Agent.UploadFile", &transport.UploadFileRequest{
 			SubscriptionID: scope.SubscriptionID,

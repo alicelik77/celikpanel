@@ -25,6 +25,7 @@ export const trSuspensionScreens: Record<SuspensionScreenKey, string> = {
     'susp.cause.manual': 'Yönetici ya da bayi tarafından askıya alındı.',
     'susp.cause.reseller': 'Bayisi ({name}) askıda olduğu için askıya alındı.',
     'susp.cause.expired': 'Aboneliğin bitiş tarihi geçti.',
+    'susp.cause.disk': 'Disk kullanımı 7 gün boyunca sınırın üstündeydi. Ölçüm sınırın altına inince kendiliğinden açılır; sınırı yükseltin ya da yer açmak için 7 gün daha vermek üzere aboneliği açın.',
     'susp.reasonGiven': 'Verilen neden: {reason}',
     'susp.since': '{date} tarihinden beri.',
     'susp.resumeBlocked': 'Buradan yeniden açılamaz: {why}',

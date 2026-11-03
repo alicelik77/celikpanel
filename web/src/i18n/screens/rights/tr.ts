@@ -46,10 +46,10 @@ export const trRightsScreens: Record<RightsScreenKey, string> = {
     'rights.subscription': 'Abonelik',
     'rights.noSubscription': 'Bu hesabın aboneliği yok. Hakları bir abonelik açıldığında belirlenir.',
     'rights.adminWorkspace': 'Bunlar yöneticinin kendi siteleri: sınırları ve hak kümeleri yoktur.',
-    'rights.poolUsed': 'Müşterilerinin şu anki kullanımı: {customers} müşteri, {domains} alan adı, {databases} veritabanı, {mailboxes} posta kutusu, {disk} disk.',
+    'rights.poolUsed': 'Müşterilerinin şu anki kullanımı: {customers} müşteri, {domains} alan adı, {databases} veritabanı, {mailboxes} posta kutusu, {disk} disk, bu ay {traffic} web trafiği.',
 
     'rights.part.quantities': 'Sayılar',
-    'rights.part.quantitiesHint': '0 sınırsız demektir. Trafik henüz ölçülmediği için trafik sınırı yoktur.',
+    'rights.part.quantitiesHint': '0 sınırsız demektir. Disk; site dosyalarını, postayı ve veritabanlarını birlikte sayar.',
     'rights.part.pool': 'Havuz',
     'rights.part.poolHint': 'Bu bayinin bütün müşterilerinin gerçekte birlikte kullanabileceği. 0 sınırsız demektir. Bayi müşterilerine bundan fazlasını verebilir; gerçek toplam bunu geçemez.',
     'rights.part.permissions': 'İzinler',
@@ -67,6 +67,9 @@ export const trRightsScreens: Record<RightsScreenKey, string> = {
     'rights.qty.databases': 'Veritabanı',
     'rights.qty.mailboxes': 'Posta kutusu',
     'rights.qty.disk': 'Disk',
+    'rights.qty.traffic': 'Aylık trafik',
+    'rights.qty.trafficHint': 'Trafik, web sitelerinin bir takvim ayında (sunucu saatiyle) ziyaretçilerine gönderdiğidir. Dolunca ayın 1’ine dek yalnız web siteleri “trafik sınırı doldu” gösterir; posta, veritabanları ve dosya erişimi çalışır. 5 dakikada bir sayılır; bu yüzden bir site, o sürede gönderdiği kadar sınırı aşabilir.',
+    'rights.qty.trafficHintPool': 'Havuzun trafiği, bütün müşterilerin web sitelerinin bu ayki gerçek toplamıdır. Dolunca ayın 1’ine ya da havuz yükseltilene dek bütün müşterilerin web siteleri “trafik sınırı doldu” gösterir. 5 dakikada bir sayılır.',
 
     'rights.perm.dns_edit': 'DNS kayıtlarını düzenleme',
     'rights.perm.dnssec': 'DNSSEC',

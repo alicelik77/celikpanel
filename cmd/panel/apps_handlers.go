@@ -281,6 +281,8 @@ func (p *Panel) handleAppInstall(w http.ResponseWriter, r *http.Request, domainI
 		writeAgentError(w, nil, installResponse.Error)
 		return
 	}
+	// alpha.118 (D-044): an app install grows the subscription; measure it soon.
+	p.requestDiskMeasurement(r.Context(), target.SubscriptionID)
 	if err := p.setAppInstallStatus(operationID, "applied", ""); err != nil {
 		writeServerError(w, fmt.Errorf("persist completed application state: %w", err))
 		return

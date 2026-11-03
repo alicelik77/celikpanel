@@ -224,6 +224,7 @@ export function ResellerPlansTab() {
                                     <th className="px-4 py-2.5">{t('plans.col.databases')}</th>
                                     <th className="px-4 py-2.5">{t('plans.col.mail')}</th>
                                     <th className="px-4 py-2.5">{t('plans.col.disk')}</th>
+                                    <th className="px-4 py-2.5">{t('rights.qty.traffic')}</th>
                                     <th className="px-4 py-2.5">{t('rights.col.rights')}</th>
                                     <th className="px-4 py-2.5">{t('rights.col.resellers')}</th>
                                     <th className="px-4 py-2.5" />
@@ -238,6 +239,7 @@ export function ResellerPlansTab() {
                                         <td className="px-4 py-3 text-fg-muted">{limitWords(plan.max_databases, t)}</td>
                                         <td className="px-4 py-3 text-fg-muted">{limitWords(plan.max_email_accounts, t)}</td>
                                         <td className="px-4 py-3 text-fg-muted">{limitWords(plan.disk_quota_mb, t, 'MB')}</td>
+                                        <td className="px-4 py-3 text-fg-muted">{limitWords(plan.traffic_quota_mb ?? 0, t, 'MB')}</td>
                                         <td className="px-4 py-3 text-fg-muted">{rightsSummary(plan.rights, t)}</td>
                                         <td className="px-4 py-3 text-fg-muted">{plan.resellers ?? 0}</td>
                                         <td className="px-4 py-3">

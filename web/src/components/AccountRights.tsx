@@ -193,6 +193,12 @@ export function RightsChangeForm({ target, grantor, plans, grantorIsReseller, on
     );
 }
 
+/** Bytes in a sentence: MB below one GB, GB with one decimal above (alpha.118). */
+function usedBytes(bytes: number): string {
+    const mb = bytes / (1024 * 1024);
+    return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${Math.round(mb)} MB`;
+}
+
 /** The current state in one line: its name and its numbers. */
 function CurrentState({ view, numbers, reseller, t }: { view: RightsView; numbers: Numbers; reseller: boolean; t: Say }) {
     const limits = [
@@ -201,6 +207,7 @@ function CurrentState({ view, numbers, reseller, t }: { view: RightsView; number
         `${t('rights.qty.databases')}: ${limitWords(numbers.max_databases, t)}`,
         `${t('rights.qty.mailboxes')}: ${limitWords(numbers.max_email_accounts, t)}`,
         `${t('rights.qty.disk')}: ${limitWords(numbers.disk_quota_mb, t, 'MB')}`,
+        `${t('rights.qty.traffic')}: ${limitWords(numbers.traffic_quota_mb, t, 'MB')}`,
     ];
     return (
         <div className="rounded-lg border border-border bg-surface p-3" data-rights-current={view.state}>
@@ -270,7 +277,8 @@ function ResellerRightsBlock({ userId, answer, grantor, onClose, onCreatePlan }:
             <p className="text-xs text-fg-muted" data-reseller-used="">
                 {t('rights.poolUsed', {
                     customers: used.customers, domains: used.domains, databases: used.databases, mailboxes: used.mailboxes,
-                    disk: limitWords(Math.round(used.disk_used_bytes / (1024 * 1024)), t, 'MB'),
+                    disk: usedBytes(used.disk_used_bytes),
+                    traffic: usedBytes(used.traffic_month_bytes),
                 })}
             </p>
             {answer.over_limit.length > 0 && (

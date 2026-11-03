@@ -139,14 +139,12 @@ func (p *Panel) checkSubscriptionQuota(ctx context.Context, subID int, kind quot
 	case quotaDisk:
 		// Disk is a byte comparison, not a count: the gate refuses new
 		// resources once the subscription is already at/over its measured
-		// usage (the cached per-site measurements the domain pages show).
+		// usage (alpha.118: site files, mail and databases, measured by the
+		// Agent; before the first measurement the per-site cached numbers).
 		// Disk sayı değil bayt karşılaştırmasıdır.
 		var usedBytes int64
 		err = p.db.GetDB().QueryRowContext(ctx, `
-			SELECT s.disk_quota_mb,
-			       COALESCE((SELECT SUM(si.disk_usage_bytes)
-			                 FROM sites si JOIN domains d ON si.domain_id = d.id
-			                 WHERE d.subscription_id = s.id), 0)
+			SELECT s.disk_quota_mb, `+subscriptionDiskBytesSQL+`
 			FROM subscriptions s WHERE s.id = ?`, subID).Scan(&limit, &usedBytes)
 		if err != nil {
 			return quotaReadError(err)
@@ -162,6 +160,11 @@ func (p *Panel) checkSubscriptionQuota(ctx context.Context, subID int, kind quot
 		return quotaReadError(err)
 	}
 	if quotaUnlimited(limit) || used < limit {
+		// alpha.118 (D-044): a full disk takes nothing new that grows the
+		// subscription (a domain, a mailbox, a database).
+		if err := p.checkSubscriptionQuota(ctx, subID, quotaDisk); err != nil {
+			return err
+		}
 		// alpha.117 (K2): the reseller's pool limits the tree's real use.
 		return p.checkResellerPoolUsage(ctx, subID, kind)
 	}
@@ -214,22 +217,47 @@ type subscriptionUsage struct {
 	DatabasesLimit int   `json:"databases_limit"` // 0 = unlimited
 	MailAccounts   int   `json:"mail_accounts"`
 	MailLimit      int   `json:"mail_limit"` // 0 = unlimited
+	// alpha.118 (D-044): this month's website traffic and its limit, how
+	// sure the number is, and the disk measurement in parts.
+	TrafficUsedBytes  int64                `json:"traffic_used_bytes"`
+	TrafficLimitBytes int64                `json:"traffic_limit_bytes"` // 0 = unlimited
+	TrafficPeriod     string               `json:"traffic_period"`
+	TrafficMeasure    trafficMeasureState  `json:"traffic_measure"`
+	TrafficLimited    bool                 `json:"traffic_limited"`
+	Disk              subscriptionDiskView `json:"disk"`
 }
 
 func (p *Panel) subscriptionUsageFor(ctx context.Context, subID int) (*subscriptionUsage, error) {
 	var u subscriptionUsage
-	var diskLimitMB int64
-	err := p.db.GetDB().QueryRowContext(ctx, `
+	var diskLimitMB, trafficLimitMB int64
+	now := usageNow()
+	from, to := trafficMonthBounds(now)
+	db := p.db.GetDB()
+	err := db.QueryRowContext(ctx, `
 		SELECT
-		  s.max_domains, s.max_databases, s.max_email_accounts, s.disk_quota_mb,
+		  s.max_domains, s.max_databases, s.max_email_accounts, s.disk_quota_mb, COALESCE(s.bandwidth_quota_mb, 0),
 		  (SELECT COUNT(*) FROM domains d WHERE d.subscription_id = s.id),
 		  (SELECT COUNT(*) FROM databases_v2 db WHERE db.subscription_id = s.id),
 		  (SELECT COUNT(*) FROM email_accounts ea JOIN domains d ON ea.domain_id = d.id WHERE d.subscription_id = s.id),
-		  COALESCE((SELECT SUM(si.disk_usage_bytes) FROM sites si JOIN domains d ON si.domain_id = d.id WHERE d.subscription_id = s.id), 0)
-		FROM subscriptions s WHERE s.id = ?`, subID).Scan(
-		&u.DomainsLimit, &u.DatabasesLimit, &u.MailLimit, &diskLimitMB,
-		&u.Domains, &u.Databases, &u.MailAccounts, &u.DiskUsedBytes)
+		  `+subscriptionDiskBytesSQL+`,
+		  `+subscriptionTrafficSQL+`
+		FROM subscriptions s WHERE s.id = ?`, from, to, subID).Scan(
+		&u.DomainsLimit, &u.DatabasesLimit, &u.MailLimit, &diskLimitMB, &trafficLimitMB,
+		&u.Domains, &u.Databases, &u.MailAccounts, &u.DiskUsedBytes, &u.TrafficUsedBytes)
 	if err != nil {
+		return nil, err
+	}
+	if trafficLimitMB > 0 {
+		u.TrafficLimitBytes = trafficLimitMB * mib
+	}
+	u.TrafficPeriod = trafficPeriod(now)
+	if u.TrafficMeasure, err = subscriptionTrafficMeasure(ctx, db, subID); err != nil {
+		return nil, err
+	}
+	if u.TrafficLimited, err = subscriptionTrafficLimited(ctx, db, subID); err != nil {
+		return nil, err
+	}
+	if u.Disk, err = loadSubscriptionDiskView(ctx, db, subID); err != nil {
 		return nil, err
 	}
 	// Negative stored values are unlimited too; the answer says 0.
@@ -249,7 +277,7 @@ func (p *Panel) subscriptionUsageFor(ctx context.Context, subID int) (*subscript
 	// The administrator's own workspace has no limit; the answer says 0, not 999.
 	// Yoneticinin kendi calisma alani sinirsizdir; yanit 999 degil 0 der.
 	if p.administratorWorkspace(ctx, subID) {
-		u.DomainsLimit, u.DatabasesLimit, u.MailLimit, u.DiskLimitBytes = 0, 0, 0, 0
+		u.DomainsLimit, u.DatabasesLimit, u.MailLimit, u.DiskLimitBytes, u.TrafficLimitBytes = 0, 0, 0, 0, 0
 	}
 	return &u, nil
 }
@@ -271,6 +299,9 @@ func (u *subscriptionUsage) overLimits() []string {
 	}
 	if u.DiskLimitBytes > 0 && u.DiskUsedBytes > u.DiskLimitBytes {
 		over = append(over, fmt.Sprintf("disk: %d MB in use, limit %d MB", u.DiskUsedBytes/(1024*1024), u.DiskLimitBytes/(1024*1024)))
+	}
+	if u.TrafficLimitBytes > 0 && u.TrafficUsedBytes > u.TrafficLimitBytes {
+		over = append(over, fmt.Sprintf("traffic: %d MB in use, limit %d MB", u.TrafficUsedBytes/mib, u.TrafficLimitBytes/mib))
 	}
 	return over
 }

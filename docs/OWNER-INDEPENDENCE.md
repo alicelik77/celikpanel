@@ -137,6 +137,38 @@ Scheduled tasks screen now says so instead of showing an internal error
 `sudo apt-get install cron` (Debian/Ubuntu) or `sudo pacman -S cronie` followed by
 `sudo systemctl enable --now cronie` (Arch). Then repeat the change.
 
+## Plan limits: traffic logs, disk measurement and mailbox quotas (alpha.118, D-044)
+
+Source state with component tests; the native lab round is pending.
+
+Every part is plain configuration of the service it belongs to, with
+CelikPanel's render header. CelikPanel writes a file only while it is absent or
+still CelikPanel's unchanged text; a file you changed is kept and named on the
+administrator's screen.
+
+| File | What it does | Without CelikPanel |
+|---|---|---|
+| `/etc/nginx/conf.d/celikpanel-traffic.conf` | The log format `celikpanel_traffic` (`$msec $bytes_sent $request_length`) and a map that leaves certificate validation out | nginx keeps loading it; the per-site logs keep being written |
+| `/etc/nginx/celikpanel-managed.d/<domain>/traffic-log.conf` | One `access_log /var/log/celikpanel/traffic/<domain id>.log celikpanel_traffic buffer=64k flush=1m` line, read through the include line every site file already has. While the site shows a CelikPanel page (suspended, maintenance, traffic limit) it holds only a comment | Same |
+| `/var/log/celikpanel/traffic/*.log` | The small per-site traffic logs (about 30 bytes per request). Your own `/var/log/nginx/<domain>-access.log` is unchanged | Rotated by logrotate (next row) |
+| `/etc/logrotate.d/celikpanel-traffic` | Daily, three days kept, at most 100 MB before a rotation, compressed; nginx reopens its logs with `systemctl kill --kill-whom=main --signal=USR1 nginx.service` | The operating system's logrotate keeps the logs small. If logrotate is not installed (possible on Arch) the administrator's screen says so |
+| `/etc/dovecot/conf.d/90-celikpanel-quota.conf` | Dovecot's quota plugin (driver `count`) and its `quota-status` service, in the dialect of the installed Dovecot (2.3 or 2.4). Validated with `doveconf -n`; the previous file is put back when Dovecot refuses it | Mailbox sizes stay enforced |
+| `/etc/dovecot/users` | Each mailbox line carries its size in both dialects: `userdb_quota_rule=*:storage=<n>M userdb_quota_storage_size=<n>M` | Same |
+| `smtpd_recipient_restrictions` in `/etc/postfix/main.cf` | One element after `reject_unauth_destination`: `check_policy_service { unix:private/celikpanel-quota-status, default_action=DUNNO }`. Mail to a full mailbox is refused with 552; when Dovecot does not answer, mail is accepted as before | Same |
+
+Nothing else changes: CelikPanel never edits fstab, the kernel command line or
+file system flags. The disk measurement only reads (`nice -n 19 ionice -c3 du
+-sx -B1`, MariaDB `information_schema`, PostgreSQL `pg_database_size`). The
+Agent's own counting state is `/var/lib/celikpanel-agent-private/traffic/state.json`
+(root only); removing the Agent removes only the counting, never a site.
+
+To stop measuring traffic yourself: replace the contents of
+`conf.d/celikpanel-traffic.conf` with a comment of your own and reload nginx;
+CelikPanel then writes the per-site files without a log line and shows the
+traffic as "not known" (no website is limited on an unknown number). To stop
+the mailbox quota: move `90-celikpanel-quota.conf` aside and remove the
+`check_policy_service` element, then reload Dovecot and Postfix.
+
 ## Evidence
 
 [Local validation](validation/native-dns-independence-20260912/README.md) covers

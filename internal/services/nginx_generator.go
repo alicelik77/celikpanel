@@ -132,6 +132,10 @@ type VhostData struct {
 	// Maintenance renders the "temporarily under maintenance" vhost (D-043):
 	// 503 for every request, certificate validation kept. Suspended wins.
 	Maintenance bool
+	// TrafficLimited renders the "traffic limit reached" vhost (alpha.118,
+	// D-044): 503 for every request, certificate validation kept. Suspended
+	// and Maintenance win.
+	TrafficLimited bool
 }
 
 // Render executes the vhost template over prepared data, deriving the

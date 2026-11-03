@@ -721,6 +721,8 @@ func (p *Panel) handleImportApply(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	answer := importApplyAnswerFor(req.Domain, domainID, siteID, steps)
+	// alpha.118 (D-044): an import grows the subscription; measure it soon.
+	p.requestDiskMeasurement(ctx, req.SubscriptionID)
 	if answer.Status != importStatusComplete {
 		p.audit(r, "import.cpanel.incomplete", "domain", domainID)
 	} else {

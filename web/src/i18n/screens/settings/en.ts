@@ -1,6 +1,7 @@
 // SCREEN catalogue part "settings": Settings: CelikPanel updates, panel certificate, license, team, users, plans and the Store.
 // Key prefixes kept here: panelUpdate., panelCert., license., settings., team., users., plans., addons.,
-// account., dnsPeers. (the pages that left Settings in v0.1.0-alpha.98), myPlan. (alpha.114)
+// account., dnsPeers. (the pages that left Settings in v0.1.0-alpha.98). myPlan. moved to
+// "planUsage" in alpha.118.
 // One part of the screen copy; ../../index.tsx fetches every part in
 // parallel and no screen renders before all of them have arrived. A new key
 // goes into the part that holds its prefix; how to split a part that grows
@@ -282,24 +283,6 @@ export const enSettingsScreens = {
     'users.poolRemove': 'Remove limits',
     'users.poolSaved': 'Pool saved.',
     'users.poolSavedOver': 'Pool saved. It is below what is already handed out: nothing was taken away, and new allocations are refused until it fits.',
-    'myPlan.title': 'My plan',
-    'myPlan.checking': 'Reading your plan…',
-    'myPlan.unknown': 'Your plan could not be read from the server, so it is not shown. Nothing was changed. Try again.',
-    'myPlan.none': 'You have no plan yet, so you cannot add domains, databases or mailboxes. Ask the contact below to assign one.',
-    'myPlan.noneReseller': 'You can create customers and give them plans from your pool above without a plan of your own. You only need a plan for sites, databases or mailboxes of your own; ask the contact below to assign one.',
-    'myPlan.noPlanName': 'Subscription without a plan',
-    'myPlan.over': 'This plan is below what you use now. Nothing was deleted. New items of these kinds are refused until usage is under the limit:',
-    'myPlan.usedOf': '{used} of {limit}',
-    'myPlan.usedUnlimited': '{used} · unlimited',
-    'myPlan.full': 'Full: new items are refused. Remove one, or ask for a larger plan.',
-    'myPlan.nearlyFull': 'Nearly full.',
-    'myPlan.trafficNotMeasured': 'Traffic is not measured yet, so no traffic limit applies.',
-    'myPlan.contactReseller': 'For a larger plan, contact your provider {who}.',
-    'myPlan.contactAdmin': 'For a larger plan, contact the server administrator {who}.',
-    'myPlan.pool': 'Your reseller pool',
-    'myPlan.poolHint': 'What you may hand out in total over your own and your customers’ plans. To grow it, ask the server administrator.',
-    'myPlan.poolNone': 'The administrator has set no pool limits for you.',
-    'myPlan.customers': 'Customers',
     'addons.title': 'Component Store',
     'addons.subtitle': 'Manage product rights for a subscription. Server software is installed and managed in Components.',
     'addons.noSubs': 'No subscriptions',
