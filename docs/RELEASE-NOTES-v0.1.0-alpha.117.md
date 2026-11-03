@@ -80,8 +80,12 @@ panels, from the panel's own update screen.**
   anything done in the panel after the update is lost, and a suspension or
   emergency applied on the server in that time is not undone by the rollback.
 
+- A command sent over SSH without an interactive login (for example
+  `ssh host 'pwd'`) starts at the jail's root, which cannot be listed; an
+  interactive login starts in the site's own folder.
+
 ## Evidence
 
 Linux Go suites (82 packages; the known guest-only Agent failures also fail on
 main), 2305 web tests, release-recovery fixtures extended to schema 56, and a
-lab trial recorded in the release record.
+lab runs 1–3 (fresh install, rights, file access, suspension, transfer, update from alpha.116, SSH jail) recorded in the release record.

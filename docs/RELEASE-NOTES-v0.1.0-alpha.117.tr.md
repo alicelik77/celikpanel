@@ -79,6 +79,10 @@ güncelleme ekranından günceller.**
   koyar: güncellemeden sonra panelde yapılanlar kaybolur; o sürede sunucuda
   uygulanmış bir askıya alma ya da acil durum geri dönüşle geri alınmaz.
 
+- SSH üzerinden etkileşimli giriş olmadan gönderilen bir komut (örneğin
+  `ssh sunucu 'pwd'`) kapalı ortamın listelenemeyen kökünde başlar;
+  etkileşimli giriş sitenin kendi klasöründe başlar.
+
 ## Kanıt
 
 Linux Go testleri (82 paket; deneme ortamına özgü bilinen Agent hataları
