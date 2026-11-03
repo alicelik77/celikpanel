@@ -1,0 +1,61 @@
+== R6 22:34:20
+200 {"id": 3, "rights": "unlimited", "success": true}
+c118.test id=2
+== 1 new site
+## 22:34:25 c118.test root /var/www/celikpanel/subscriptions/3/sites/2/public_html
+/var/www/celikpanel/subscriptions/3/sites/2/public_html c118_test:www-data drwxr-s--- 2750
+dirs by mode:       1 2750 
+dirs not 2750: 
+files with setuid/setgid: 0
+files by mode:       1 640 
+foreign owner/group: 
+== 2 backup + restore
+200 {"success": true}
+200 {"success": true}
+500 {"code": "INTERNAL", "error": "internal server error"}
+404 {"code": "FILE_NOT_FOUND", "error": "This path does not exist in the site's web folder; it may have 
+## 22:34:26 c118.test root /var/www/celikpanel/subscriptions/3/sites/2/public_html
+/var/www/celikpanel/subscriptions/3/sites/2/public_html c118_test:www-data drwxr-s--- 2750
+dirs by mode:       1 2750 
+dirs not 2750: 
+files with setuid/setgid: 0
+files by mode:       1 640       2 644 
+foreign owner/group: 
+200 {"backup": {"created_at": "2026-11-03T22:34:26.897770076Z", "name": "full-20261103T223426.901852710Z-6adeee9814273fa2.cpbak", "origin": "manual", "restorable": true, "size": 2184, "type": "full"}, "success": true}
+200 {"safety_backup": {"created_at": "2026-11-03T22:34:27.098235168Z", "name": "full-20261103T223427.104174201Z-bcd4186088f98907.cpbak", "origin": "pre_restore", "restorable": true, "size": 2139, "type": "full"}, "success": true}
+## 22:34:27 c118.test root /var/www/celikpanel/subscriptions/3/sites/2/public_html
+/var/www/celikpanel/subscriptions/3/sites/2/public_html c118_test:www-data drwxr-s--- 2750
+dirs by mode:       1 2750 
+dirs not 2750: 
+files with setuid/setgid: 0
+files by mode:       1 640       2 644 
+foreign owner/group: 
+code c118.test/ http 200 ->  title: c118.test
+code c118.test/sub/inner.txt http 200 ->  title: c118.test
+== 3 WordPress staging copy 22:34:28
+202 {"operation": {"id": "fe4805dc73be079fea3bf3a82292612e", "kind": "service_install", "package_name": "php8.4-fpm", "phase": "queued", "request_id": "b730a6eb2d5b1c1d8431d74f67292ac2", "service_id": "php-fpm", "started_at": "2026-11-03T22:34:43.552970262Z", "status": "queued"}}
+  op b730a6eb2d5b1c1d8431d74f67292ac2: succeeded completed "" (22:35:34)
+200 {"success": true}
+wp.c118.test id=3
+200 {"detail": "WordPress downloaded, configured and ready for setup; the previous CelikPanel placeholder was preserved in a private recovery path", "setup_url": "https://wp.c118.test/wp-admin/install.php", "success": true}
+wp finish http 200: <h1>Success! 
+stage.c118.test id=4
+202 {"created_at": "", "items": [], "kind": "clone", "open": true, "operation_id": "26360bcd15095ce2c6de4f8bb93b069e", "origin": "manual", "status": "queued", "target_domain": "stage.c118.test", "target_domain_id": 4, "updated_at": ""}
+  wp op 26360bcd15095ce2c6de4f8bb93b069e: applied None None copied to stage.c118.test; the address was changed in 8 values (22:36:23)
+## 22:36:23 stage.c118.test root /var/www/celikpanel/subscriptions/3/sites/4/public_html
+/var/www/celikpanel/subscriptions/3/sites/4/public_html stage_c118_test:www-data drwxr-s--- 2750
+dirs by mode:     468 2750 
+dirs not 2750: 
+files with setuid/setgid: 0
+files by mode:       1 600    3782 640 
+foreign owner/group: 
+## 22:36:24 wp.c118.test root /var/www/celikpanel/subscriptions/3/sites/3/public_html
+/var/www/celikpanel/subscriptions/3/sites/3/public_html wp_c118_test:www-data drwxr-s--- 2750
+dirs by mode:     468 2750 
+dirs not 2750: 
+files with setuid/setgid: 0
+files by mode:       1 600    3782 640 
+foreign owner/group: 
+code stage.c118.test/ http 200 ->  title: Lab WP
+get stage.c118.test/ http 200 http://192.0.3.190/ title: Lab WP |  	 	 L
+== R6 done 22:36:25
