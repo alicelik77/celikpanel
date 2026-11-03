@@ -77,6 +77,11 @@ sahibi, panelin kendi güncelleme ekranından günceller.**
 
 ## Düzeltilenler
 
+- SSH komut satırı: ihtiyaç duyduğu araçlar (zip, unzip, nano, vi, rsync…) artık
+  panelle birlikte kurulur. Kurulu sunucularda biri eksikken SSH açılamaz;
+  yönetici alan adının Erişim sekmesinden tek tıkla kurar. SSH'si olan hesaplar
+  onu korur.
+
 - İlk kurulum DNS'i kurmaya başladığında sunucu meşgulse, kurulum artık "sonuç
   hâlâ bilinmiyor" durumunda kalmıyor. Bekliyor, hiçbir şeyin değişmediğini
   söylüyor ve kendiliğinden sürüyor. Sunucu 30 dakikadan uzun meşgul kalırsa

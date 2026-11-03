@@ -78,6 +78,11 @@ from the panel's own update screen.**
 
 ## Fixed
 
+- SSH command line: the tools it needs (zip, unzip, nano, vi, rsync…) are now
+  installed with the panel. On existing servers SSH cannot be turned on while one
+  is missing; the administrator installs them with one click on the domain's
+  Access tab. Accounts that already have SSH keep it.
+
 - If the server was busy when first-run setup began installing DNS, setup no
   longer stays on "result still unknown". It waits, says nothing was changed and
   continues by itself. If the server stays busy for more than 30 minutes, setup
