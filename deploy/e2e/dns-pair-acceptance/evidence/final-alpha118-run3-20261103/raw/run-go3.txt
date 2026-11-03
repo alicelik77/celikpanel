@@ -1,0 +1,34 @@
+a114
+beta1.py
+infra_guest.py
+start 17:35:48
+{
+  "node": "labnet",
+  "state": "stopped",
+  "deleted": true
+}
+
+infra-up exit 0 17:36:43
+sha256 Fingerprint=89:AD:98:76:85:70:71:B8:36:7F:61:87:43:5D:6C:44:C9:05:48:E0:E0:F7:44:20:B4:63:9A:B2:22:9B:3A:DF
+INFRA-UP
+labnet-tools-ok
+build done 17:38:08
+commit 5b872dfe06964284a5c77234b3aa3f0818969a4c
+bundle budget check passed
+EXIT 0
+  "tree": "c763e19fc4b1f77035890d0ce7730795ef7d3424",
+  "version": "v0.1.0-alpha.118"
+}
+BUILD-OK
+  "commit": "5b872dfe06964284a5c77234b3aa3f0818969a4c",
+  "sha256": "f6f745e07753cf4cf4e4ef5d9d6f3ba5ad4c9470a3b9f9e5577013f5219ae438",
+  "version": "v0.1.0-alpha.118"
+portal118 exit 0
+== get.sh difference from the release's download-portal/get.sh:
+8c8
+< bootstrap_release_public_key_sha256=7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb
+---
+sequence=118
+version=v0.1.0-alpha.118
+commit=5b872dfe06964284a5c77234b3aa3f0818969a4c
+phase1 done 17:38:10

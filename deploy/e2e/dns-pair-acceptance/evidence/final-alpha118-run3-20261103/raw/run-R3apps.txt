@@ -1,0 +1,25 @@
+== app prestashop on pres.apps118.test (id 6) 17:55:27
+502 {"code": "APP_SETUP_FAILED", "details": ["Populating database", "Configuring shop", "Installing modules on disk", "Installing theme hummingbird", "The admin folder was renamed into admin243uel9a76t8zr4wjhm/", "You can now access your backoffice at http://pres.apps118.test/admin243uel9a76t8zr4wjhm//.", "The install/ folder was removed.", "-- Installation successful! --"], "error": "PrestaShop is set up, but its administration folder could not be found (no renamed administration folder was found); retry the setup", "vars": {"app": "PrestaShop", "kind": "setup", "operation_id": "0fca2c521e8d5994a43a1a9864ab541f"}}
+  took 169s
+  installed {"operation_id": "0fca2c521e8d5994a43a1a9864ab541f", "app_id": "prestashop", "status": "setup_failed", "site_url": "https://pres.apps118.test/", "error_kind": "setup", "last_error": "PrestaShop is set up, but its administration folder could not be found (no renamed administration folder was found); retry the setup\nPopulating database\nConfiguring shop\nInstalling modules on disk\nInstalling theme hummingbird\nThe admin folder was renamed into admin243uel9a76t8zr4wjhm/\nYou can now access your backoffice at http://pres.apps118.test/admin243uel9a76t8zr4wjhm//.\nThe install/ folder was removed.\n-- Installation successful! --"}
+code pres.apps118.test/ http 503 ->  title: Being set up
+get pres.apps118.test/ http 503 http://192.0.3.190/ title: Being set up |  Being set up <body style="font-family:sans-serif;max-width:40em;margin:4em auto;padding:0 1e
+== app mediawiki on medi.apps118.test (id 7) 17:58:26
+200 {"admin_password": "[REDACTED]", "admin_url": "http://medi.apps118.test/index.php?title=Special:UserLogin", "admin_user": "Admin", "app": "mediawiki", "detail": "MediaWiki 1.43.11 is set up", "name": "MediaWiki", "operation_id": "31cc32385521ca9ad0e396434045e048", "rules_kept": false, "site_url": "http://medi.apps118.test/", "success": true, "version": "1.43.11"}
+  took 51s
+  installed {"operation_id": "31cc32385521ca9ad0e396434045e048", "app_id": "mediawiki", "status": "applied", "site_url": "https://medi.apps118.test/", "error_kind": null, "last_error": null}
+code medi.apps118.test/ http 301 -> http://medi.apps118.test/index.php?title=Main_Page title: 
+get medi.apps118.test/ http 301 http://medi.apps118.test/index.php?title=Main_Page title: Being set up |  Being set up <body style="font-family:sans-serif;max-width:40em;margin:4em auto;padding:0 1e
+== app phpbb on phpb.apps118.test (id 8) 17:59:25
+502 {"code": "APP_DOWNLOAD_FAILED", "error": "the phpBB 3.3.19 release could not be downloaded from https://download.phpbb.com/pub/release/3.3/3.3.19/phpBB-3.3.19.tar.bz2 (HTTP 403); nothing was changed. Check that this server can reach that address, then install again", "vars": {"app": "phpBB", "kind": "download", "operation_id": "f100100d0d94ec8326208d451867fe43"}}
+  took 1s
+  installed {"operation_id": "f100100d0d94ec8326208d451867fe43", "app_id": "phpbb", "status": "failed", "site_url": "https://phpb.apps118.test/", "error_kind": "download", "last_error": "the phpBB 3.3.19 release could not be downloaded from https://download.phpbb.com/pub/release/3.3/3.3.19/phpBB-3.3.19.tar.bz2 (HTTP 403); nothing was changed. Check that this server can reach that address, then install again"}
+code phpb.apps118.test/ http 200 ->  title: phpb.apps118.test
+get phpb.apps118.test/ http 200 http://192.0.3.190/ title: phpb.apps118.test |  phpb.apps118.test</tit
+== app drupal on drup.apps118.test (id 9) 17:59:38
+200 {"admin_password": "[REDACTED]", "admin_url": "http://drup.apps118.test/user/login", "admin_user": "admin", "app": "drupal", "detail": "Drupal 11.4.11 is set up", "name": "Drupal", "operation_id": "a297263e3e8f392124adce2287bb6f44", "rules_kept": false, "site_url": "http://drup.apps118.test/", "success": true, "version": "11.4.11"}
+  took 75s
+  installed {"operation_id": "a297263e3e8f392124adce2287bb6f44", "app_id": "drupal", "status": "applied", "site_url": "https://drup.apps118.test/", "error_kind": null, "last_error": null}
+code drup.apps118.test/ http 200 ->  title: Welcome! | drup.apps118.test
+get drup.apps118.test/ http 200 http://192.0.3.190/ title: Welcome! | drup.apps118.test |  <meta name="Generator" c
+== remove Drupal (op a297263e3e8f392124adce2287bb6f44) 18:01:03

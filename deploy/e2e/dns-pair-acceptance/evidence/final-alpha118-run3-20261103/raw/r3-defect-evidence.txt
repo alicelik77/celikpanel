@@ -1,0 +1,52 @@
+== 18:01:21 PrestaShop docroot (read only)
+## root /var/www/celikpanel/subscriptions/4/sites/6/public_html
+total 1536
+drwxr-s--- 27 pres_apps118_test www-data   4096 Nov  3 17:58 .
+drwxr-x---  3 pres_apps118_test www-data   4096 Nov  3 17:56 ..
+-rw-r-----  1 pres_apps118_test www-data    796 Nov  3 17:55 .env
+-rw-r-----  1 pres_apps118_test www-data   3635 Nov  3 17:57 .htaccess
+-rw-r-----  1 pres_apps118_test www-data   5062 Nov  3 17:56 INSTALL.txt
+-rw-r-----  1 pres_apps118_test www-data 719781 Nov  3 17:55 LICENSES
+-rw-r-----  1 pres_apps118_test www-data   6252 Nov  3 17:55 Makefile
+drwxr-s---  2 pres_apps118_test www-data   4096 Nov  3 17:56 admin-api
+drwxr-s---  9 pres_apps118_test www-data   4096 Nov  3 17:58 admin243uel9a76t8zr4wjhm
+drwxr-s---  5 pres_apps118_test www-data   4096 Nov  3 17:55 app
+-rw-r-----  1 pres_apps118_test www-data    387 Nov  3 17:56 autoload.php
+drwxr-s---  2 pres_apps118_test www-data   4096 Nov  3 17:56 bin
+drwxr-s---  8 pres_apps118_test www-data   4096 Nov  3 17:56 cache
+drwxr-s--- 25 pres_apps118_test www-data   4096 Nov  3 17:55 classes
+-rw-r-----  1 pres_apps118_test www-data 693713 Nov  3 17:55 composer.lock
+drwxr-s---  5 pres_apps118_test www-data   4096 Nov  3 17:55 config
+drwxr-s---  4 pres_apps118_test www-data   4096 Nov  3 17:56 controllers
+drwxr-s---  4 pres_apps118_test www-data   4096 Nov  3 17:56 docs
+drwxr-s---  2 pres_apps118_test www-data   4096 Nov  3 17:56 download
+-rw-r-----  1 pres_apps118_test www-data   2506 Nov  3 17:55 error500.html
+drwxr-s--- 22 pres_apps118_test www-data   4096 Nov  3 17:56 img
+-rw-r-----  1 pres_apps118_test www-data   2549 Nov  3 17:55 index.php
+-rw-r-----  1 pres_apps118_test www-data    501 Nov  3 17:56 init.php
+drwxr-s---  7 pres_apps118_test www-data   4096 Nov  3 17:55 js
+drwxr-s---  3 pres_apps118_test www-data   4096 Nov  3 17:55 localization
+drwxr-s---  5 pres_apps118_test www-data   4096 Nov  3 17:57 mails
+drwxr-s--- 82 pres_apps118_test www-data   4096 Nov  3 17:55 modules
+drwxr-s---  2 pres_apps118_test www-data   4096 Nov  3 17:55 override
+drwxr-s---  2 pres_apps118_test www-data   4096 Nov  3 17:56 pdf
+-rw-r-----  1 pres_apps118_test www-data   2960 Nov  3 17:57 robots.txt
+drwxr-s---  5 pres_apps118_test www-data   4096 Nov  3 17:56 src
+drwxr-s---  5 pres_apps118_test www-data   4096 Nov  3 17:55 themes
+drwxr-s---  3 pres_apps118_test www-data   4096 Nov  3 17:55 tools
+drwxr-s---  6 pres_apps118_test www-data   4096 Nov  3 17:57 translations
+drwxr-s---  2 pres_apps118_test www-data   4096 Nov  3 17:56 upload
+drwxr-s---  6 pres_apps118_test www-data   4096 Nov  3 17:58 var
+drwxr-s--- 51 pres_apps118_test www-data   4096 Nov  3 17:55 vendor
+drwxr-s---  2 pres_apps118_test www-data   4096 Nov  3 17:55 webservice
+/var/www/celikpanel/subscriptions/4/sites/6/public_html/admin-api
+/var/www/celikpanel/subscriptions/4/sites/6/public_html/admin243uel9a76t8zr4wjhm
+/var/www/celikpanel/subscriptions/4/sites/6/public_html/admin-api pres_apps118_test 2750
+/var/www/celikpanel/subscriptions/4/sites/6/public_html/admin243uel9a76t8zr4wjhm pres_apps118_test 2750
+== MediaWiki main page
+code medi.apps118.test/index.php?title=Main_Page http 200 ->  title: medi.apps118.test
+== phpBB/MediaWiki download User-Agent check from labnet (same NAT)
+UA [CelikPanel/v0.1.0-alpha.118 (+https://celikpanel.net)]: 403
+UA [curl/8.14.1]: 206
+UA [Go-http-client/1.1]: 403
+wikimedia CelikPanel UA: 206

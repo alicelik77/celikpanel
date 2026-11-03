@@ -1,0 +1,39 @@
+== R3av 17:48:54
+202 {"operation": {"id": "1d1a1b0add3d3ac453e722b45db02cc0", "kind": "service_install", "phase": "queued", "request_id": "a50295d4dddb8ba3f3306581566e94d7", "service_id": "clamav", "started_at": "2026-11-03T17:48:54.027209331Z", "status": "queued"}}
+  op a50295d4dddb8ba3f3306581566e94d7: succeeded completed "" (17:50:20)
+200 {"operation": {"finished_at": "2026-11-03T17:50:09.077332931Z", "id": "1d1a1b0add3d3ac453e722b45db02cc0", "kind": "service_install", "phase": "completed", "request_id": "a50295d4dddb8ba3f3306581566e94d7", "result": {"installed": true, "success": true}, "service_id": "clamav", "started_at": "2026-11-03T17:48:54.027209331Z", "status": "succeeded"}}
+  17:50:22 scanner: 200 {"scanner": "clamscan", "signatures_age_hours": 0, "state": "ready"} | daemon socket freshclam: active active active 
+## 17:50:22
+active
+active
+active
+## celikpanel-clamav-first-start.path: active=inactive enabled=not-found
+ls: cannot access '/etc/systemd/system/celikpanel-clamav-first-start.path': No such file or directory
+## celikpanel-clamav-first-start.service: active=inactive enabled=not-found
+ls: cannot access '/etc/systemd/system/celikpanel-clamav-first-start.service': No such file or directory
+-- No entries --
+total 110176
+drwxr-xr-x  2 clamav clamav     4096 17:49:56 .
+drwxr-xr-x 44 root   root       4096 17:49:13 ..
+-rw-r--r--  1 clamav clamav   281702 17:49:56 bytecode.cvd
+-rw-r--r--  1 clamav clamav 23447608 17:49:25 daily.cvd
+-rw-r--r--  1 clamav clamav       90 17:49:23 freshclam.dat
+-rw-r--r--  1 clamav clamav 89072577 17:49:45 main.cvd
+Nov 03 17:49:30.722964 frankfurt systemd[1]: clamav-daemon.socket - Socket for Clam AntiVirus userspace daemon skipped, unmet condition check ConditionPathExistsGlob=/var/lib/clamav/daily.{c[vl]d,inc}
+Nov 03 17:49:30.723456 frankfurt systemd[1]: clamav-daemon.service - Clam AntiVirus userspace daemon skipped, unmet condition check ConditionPathExistsGlob=/var/lib/clamav/daily.{c[vl]d,inc}
+Nov 03 17:49:30.731988 frankfurt systemd[1]: clamav-daemon.socket - Socket for Clam AntiVirus userspace daemon skipped, unmet condition check ConditionPathExistsGlob=/var/lib/clamav/daily.{c[vl]d,inc}
+Nov 03 17:49:57.776468 frankfurt systemd[1]: Listening on clamav-daemon.socket - Socket for Clam AntiVirus userspace daemon.
+Nov 03 17:49:59.753304 frankfurt systemd[1]: Started clamav-daemon.service - Clam AntiVirus userspace daemon.
+av118.test id=3
+200 {"success": true}
+202 {"scan_id": 1, "status": "queued"}
+  scan: infected files 2 infected 1 None 
+  finding 1 eicar-test.txt Eicar-Test-Signature found
+## 17:51:36 eicar files
+-rw-r--r-- 1 av118_test www-data 68 Nov  3 17:50 /var/www/celikpanel/subscriptions/4/sites/3/public_html/eicar-test.txt
+-- quarantine
+200 {"success": true}
+## 17:51:40 eicar files
+/var/lib/celikpanel-agent-private/quarantine
+  finding 1 eicar-test.txt Eicar-Test-Signature quarantined
+== R3av done 17:51:41

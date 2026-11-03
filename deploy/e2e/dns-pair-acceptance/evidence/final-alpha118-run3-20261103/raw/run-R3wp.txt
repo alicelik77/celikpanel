@@ -1,0 +1,32 @@
+== R3wp 17:51:49
+200 {"success": true}
+apps118.test id=4
+wp.apps118.test id=5
+## wp.apps118.test root /var/www/celikpanel/subscriptions/4/sites/5/public_html
+total 12
+drwxr-s--- 2 wp_apps118_test www-data 4096 Nov  3 17:52 .
+drwxr-x--- 3 wp_apps118_test www-data 4096 Nov  3 17:52 ..
+-rw-r----- 1 wp_apps118_test www-data 3254 Nov  3 17:52 index.php
+databases (non-system): 0
+  customer req wordpress {"database_ok": true, "disk_ok": true, "family": "apt", "install_package": "php8.4-fpm", "missing": [{"extension": "mysqli", "package": "php8.4-mysql"}], "php_line": "8.4", "php_ok": true, "state": "unmet"}
+  admin req wordpress {"database_ok": true, "disk_ok": true, "family": "apt", "install_package": "php8.4-fpm", "missing": [{"extension": "mysqli", "package": "php8.4-mysql"}], "php_line": "8.4", "php_ok": true, "state": "unmet"}
+-- install WordPress (expect refusal, nothing changed)
+409 {"code": "APP_EXTENSIONS_MISSING", "details": ["mysqli: php8.4-mysql"], "error": "PHP 8.4 on this server lacks what WordPress needs (php8.4-mysql). Nothing was changed. The administrator installs PHP 8.4 in Components (PHP-FPM, version 8.4): that adds its standard extensions from the official packages. Then install again.", "vars": {"app": "WordPress", "packages": "php8.4-mysql", "php": "8.4"}}
+  installed after refusal: []
+## wp.apps118.test root /var/www/celikpanel/subscriptions/4/sites/5/public_html
+total 12
+drwxr-s--- 2 wp_apps118_test www-data 4096 Nov  3 17:52 .
+drwxr-x--- 3 wp_apps118_test www-data 4096 Nov  3 17:52 ..
+-rw-r----- 1 wp_apps118_test www-data 3254 Nov  3 17:52 index.php
+databases (non-system): 0
+code wp.apps118.test/ http 200 ->  title: wp.apps118.test
+== Components -> php-fpm php8.4-fpm 17:53:17
+202 {"operation": {"id": "a5338bbd3cb616eeeba4791c4da727df", "kind": "service_install", "package_name": "php8.4-fpm", "phase": "queued", "request_id": "3a1836e567c78e28f24789a1c583cad2", "service_id": "php-fpm", "started_at": "2026-11-03T17:53:48.600370248Z", "status": "queued"}}
+  op 3a1836e567c78e28f24789a1c583cad2: succeeded completed "" (17:54:52)
+php8.4-bcmath php8.4-cli php8.4-common php8.4-curl php8.4-fpm php8.4-gd php8.4-intl php8.4-mbstring php8.4-mysql php8.4-opcache php8.4-pgsql php8.4-readline php8.4-sqlite3 php8.4-xml php8.4-zip 
+Suites: trixie trixie-updates trixie-backports
+Suites: trixie-security
+URIs: mirror+file:///etc/apt/mirrors/debian-security.list
+URIs: mirror+file:///etc/apt/mirrors/debian.list
+debian.sources
+== R3wp done 17:54:54
