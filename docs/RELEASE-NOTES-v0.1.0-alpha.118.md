@@ -31,7 +31,7 @@ from the panel's own update screen.**
 - The Applications tab is a catalogue: PrestaShop, Nextcloud, Drupal, Joomla
   and MediaWiki join WordPress. Each is the official release, checked
   against a fingerprint pinned in CelikPanel before it is unpacked.
-- The administrator chooses which applications are offered (Plans and rights →
+- The administrator chooses which applications are offered (Users →
   Offered). WordPress stays offered; the others start closed.
 - Before installing, the screen says what is missing (PHP version, PHP packages,
   an empty site, disk space). The application sets itself up and its admin
@@ -75,6 +75,15 @@ from the panel's own update screen.**
   through resellers. The screen says why.
 - Applications that run commands by themselves (OpenClaw, Hermes Agent,
   Paperclip) are listed but not offered yet; the catalogue says why.
+
+## Security
+
+- A site's own files can no longer influence what the server reads or changes
+  with administrator rights. This covers AI app settings, restores and site
+  copies, WordPress tools, mailbox-full warnings and app setup. Some of these
+  paths existed before this release, so updating is recommended. AI app settings
+  now live in a protected server folder; a site backup therefore no longer
+  carries them, and a restore on another server asks for the app's keys again.
 
 ## Fixed
 

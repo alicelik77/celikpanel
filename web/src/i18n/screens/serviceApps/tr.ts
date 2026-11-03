@@ -110,6 +110,7 @@ export const trServiceAppsScreens: Record<ServiceAppsScreenKey, string> = {
     'svcapps.reason.agent_unreachable': 'Sunucu yanıt vermedi, bu yüzden sonuç bilinmiyor. Yeniden denemeden önce durumu yeniden okuyun.',
     'svcapps.reason.download_failed': 'Sabitlenmiş dosya indirilemedi veya parmak iziyle eşleşmedi; bu yüzden kullanılmadı. Sunucunun internet erişimini denetleyin, sonra yeniden deneyin.',
     'svcapps.reason.unit_edited': 'Uygulamanın hizmet dosyası sunucuda değiştirilmiş; CelikPanel onu olduğu gibi bıraktı. Değişikliklerinizi iletide adı geçen ek klasörüne taşıyın veya dosyayı kaldırın, sonra yeniden deneyin.',
+    'svcapps.reason.env_edited': 'Uygulamanın ayar dosyası sunucuda değiştirilmiş; CelikPanel onu olduğu gibi bıraktı ve değişikliğinizi kaydetmedi. Yönetici sunucudaki değişiklikleri iletide adı geçen ek klasörüne taşır veya dosyayı kaldırır; sonra yeniden deneyin.',
     'svcapps.reason.publish': 'Uygulama çalışıyor ama alan adı ona geçirilemedi. Yeniden deneyin; uygulama iki kez kurulmaz.',
     'svcapps.reason.site_account': 'Sitenin kendi sistem hesabı eksik veya bu siteyle uyuşmuyor. Yönetici siteyi sunucuda denetler.',
     'svcapps.reason.build_mismatch': 'Panel ile sunucu ajanı farklı sürümlerde. Yönetici panel güncellemesini tamamlar; sonra yeniden deneyin.',

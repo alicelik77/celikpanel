@@ -180,14 +180,11 @@ func (p setupPlan) alreadyDone() bool { return p.done != nil && p.done() }
 func setupToken(name string) string { return "@@CELIKPANEL:" + name + "@@" }
 
 // configHolds: the application's configuration file exists and holds text.
+// Root reads it beneath the document root without following any link, never
+// a FIFO or device, and at most 4 MiB (the site's account owns the folder).
 func configHolds(site catalogSite, needle string) func() bool {
 	return func() bool {
-		path := filepath.Join(site.docRoot, filepath.FromSlash(site.app.ConfigFile))
-		info, err := os.Lstat(path)
-		if err != nil || !info.Mode().IsRegular() || info.Size() > 4<<20 {
-			return false
-		}
-		content, err := os.ReadFile(path)
+		content, err := readRegularBeneath(site.docRoot, site.app.ConfigFile, 4<<20)
 		return err == nil && bytes.Contains(content, []byte(needle))
 	}
 }

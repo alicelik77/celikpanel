@@ -4,12 +4,16 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -26,17 +30,26 @@ import (
 //
 // Komut sitenin kendi hesabıyla, kabuksuz ve sınırlı çıktıyla koşar; sitedeki
 // bir bağlantı root işlemini hiçbir yere götüremez.
+//
+// The process takes the account's own primary group, never the web server's:
+// every site home is <user>:<web group> 0750, so the web group would let the
+// site's PHP (a plugin run by upgrade.php) read every other site. New files
+// still get the web group from the document root's setgid bit.
 var wordpressRunAsSite = func(ctx context.Context, site transport.WordPressSite, dir string, stdin []byte, name string, args ...string) ([]byte, error) {
-	ownership, err := resolveWordPressOwnership(site.Username)
-	if err != nil {
-		return nil, err
-	}
 	account, err := user.Lookup(site.Username)
 	if err != nil {
 		return nil, err
 	}
 	if !hostingpath.IsSiteHome(account.HomeDir) {
 		return nil, errors.New("the site account is not a hosting account")
+	}
+	uid, err := strconv.Atoi(account.Uid)
+	if err != nil || uid < 1000 {
+		return nil, errors.New("the site account is a system account")
+	}
+	gid, err := strconv.Atoi(account.Gid)
+	if err != nil || gid < 1000 {
+		return nil, errors.New("the site account's group is a system group")
 	}
 	binary := name
 	if !filepath.IsAbs(binary) {
@@ -61,7 +74,7 @@ var wordpressRunAsSite = func(ctx context.Context, site transport.WordPressSite,
 	}
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setpgid:    true,
-		Credential: &syscall.Credential{Uid: uint32(ownership.uid), Gid: uint32(ownership.gid), Groups: []uint32{}},
+		Credential: &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid), Groups: []uint32{}},
 		Pdeathsig:  syscall.SIGKILL,
 	}
 	cmd.Cancel = func() error {
@@ -94,12 +107,64 @@ var wordpressRunAsSite = func(ctx context.Context, site transport.WordPressSite,
 	return stdout.buffer.Bytes(), nil
 }
 
-// copyOwnership gives target the owner and group of source (no link is
-// followed on either side).
-func copyOwnership(source, target string) error {
-	var stat unix.Stat_t
-	if err := unix.Lstat(source, &stat); err != nil {
+// rewriteStagedWordPressConfig points the staged copy's wp-config.php at the
+// copy's database. It runs on the staging folder's descriptor while the tree
+// is still root's and 0700 (prepareFilesRestoreEdited): no path, no link.
+func rewriteStagedWordPressConfig(stageFD int, req *transport.WordPressCloneRequest) error {
+	outside := errors.New("the source site keeps wp-config.php outside its web folder; CelikPanel copies only sites that keep it inside")
+	fd, err := unix.Openat(stageFD, "wp-config.php", unix.O_RDONLY|unix.O_CLOEXEC|unix.O_NOFOLLOW|unix.O_NONBLOCK, 0)
+	if err != nil {
+		return outside
+	}
+	file := os.NewFile(uintptr(fd), "wp-config.php")
+	if file == nil {
+		_ = unix.Close(fd)
+		return outside
+	}
+	info, err := file.Stat()
+	if err != nil || !info.Mode().IsRegular() {
+		file.Close()
+		return outside
+	}
+	content, err := io.ReadAll(io.LimitReader(file, 1<<20))
+	file.Close()
+	if err != nil {
 		return err
 	}
-	return unix.Lchown(target, int(stat.Uid), int(stat.Gid))
+	rewritten, err := rewriteWordPressConfig(content, req.TargetDatabase, req.TargetDBUser, req.TargetDBPass, req.Source.Domain, req.Target.Domain)
+	if err != nil {
+		return err
+	}
+	random := make([]byte, 8)
+	if _, err := rand.Read(random); err != nil {
+		return err
+	}
+	temp := ".wp-config-" + hex.EncodeToString(random)
+	tempFD, err := unix.Openat(stageFD, temp, unix.O_WRONLY|unix.O_CREAT|unix.O_EXCL|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0o600)
+	if err != nil {
+		return err
+	}
+	out := os.NewFile(uintptr(tempFD), temp)
+	if out == nil {
+		_ = unix.Close(tempFD)
+		_ = unix.Unlinkat(stageFD, temp, 0)
+		return errors.New("could not wrap file descriptor")
+	}
+	_, werr := out.Write(rewritten)
+	if werr == nil {
+		werr = out.Sync()
+	}
+	if werr == nil {
+		werr = out.Chmod(0o600)
+	}
+	if cerr := out.Close(); werr == nil {
+		werr = cerr
+	}
+	if werr == nil {
+		werr = unix.Renameat(stageFD, temp, stageFD, "wp-config.php")
+	}
+	if werr != nil {
+		_ = unix.Unlinkat(stageFD, temp, 0)
+	}
+	return werr
 }

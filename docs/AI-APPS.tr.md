@@ -62,7 +62,7 @@ gösterilir.
 
 - **Yapay zekâ ve otomasyon uygulamaları** izni (`service_apps`) ve her uygulama için bir
   sunum, `app:<id>`.
-- **Sunulana kadar kapalı.** Yönetici Eklentiler → katalog sekmesi → *Yapay zekâ ve otomasyon
+- **Sunulana kadar kapalı.** Yönetici Mağaza → **Katalog yönetimi** → *Yapay zekâ ve otomasyon
   uygulamaları* sayfasını açar, risk özetini okur, okuduğunu işaretler ve uygulamayı her kurulum
   için bellek, işlemci ve süreç sınırlarıyla birlikte sunar. İstek, özetin parmak izini taşır;
   bunu değiştiren bir sürüm, yeniden okunup bir kez daha sunulana kadar sunumu yine kapatır.
@@ -95,7 +95,8 @@ WebUI için isteğe bağlı olarak OpenAI uyumlu bir anahtar ve adres girer.
 | Adım | Kim | Ne yapılır |
 |---|---|---|
 | prepare (hazırlık) | Aracı (root) | Sabitlenmiş dosyayı kendi özel durum klasörüne indirir ve sha512/sha256 değerini sabitlemeyle karşılaştırır; uyuşmazsa dosya atılır. |
-| | site kullanıcısı | `<site home>/apps/<app>/{dist,data,config}` klasörlerini oluşturur, doğrulanmış dosyayı ve `config/app.env` dosyasını (0600) yazar. Root, sitenin klasörüne asla yazmaz. |
+| | site kullanıcısı | `<site home>/apps/<app>/{dist,data}` klasörlerini oluşturur, doğrulanmış dosyayı yazar. Root, sitenin klasörüne asla yazmaz. |
+| | Aracı (root) | Ortam dosyasını sitenin klasörünün dışına, `/etc/celikpanel-svcapps/celiksvc-<id>.env` yoluna yazar (klasör 0700, dosya 0600, ikisi de root'un; bkz. §5). |
 | installing (kurulum) | site kullanıcısı, geçici birim `celiksvcinst-<id>` | Doğrulanmış arşivin `npm install` işlemi (ardından `npm audit signatures`) ya da doğrulanmış wheel dosyasının `python -m venv` + `pip install` işlemi; uygulamayla aynı korumalı alanın içinde. |
 | activate (etkinleştirme) | Aracı | `/etc/systemd/system/celiksvc-<id>.service` dosyasını yazar, etkinleştirir ve başlatır. |
 | verify (doğrulama) | Aracı → Panel | `127.0.0.1:<port>` adresinde ve başka hiçbir adreste **bu birimin** bir sürecinin dinlediğini kanıtlar. Başka yerde dinleyen bir birim ya da portu başka bir süreç tutuyorsa birim durdurulur ve yayımlanmaz. |
@@ -147,10 +148,32 @@ CelikPanel'in her uygulamanın kendi desteklenen ayarlarıyla kapattıkları:
   "araçları" (uygulamanın sürecinde, korumalı alanın içinde çalışır).
 
 Gizli bilgiler (sağlayıcı anahtarları, Open WebUI'ın ilk parolası, n8n'in şifreleme anahtarı)
-yalnızca `config/app.env` dosyasında durur; 0600, sahibi site kullanıcısı. Panel bunları
-saklamaz, denetim günlüğüne yazmaz (yalnızca hangi ayarların değiştiği yazılır), bir daha
-gösterilmez; panelin gösterdiği her günlük satırı da önce sunucuda gizlenir (dosyanın kendi
-değerleri ve anahtar, jeton, parola ya da bcrypt özeti gibi görünen her şey).
+yalnızca ortam dosyasında durur: `/etc/celikpanel-svcapps/celiksvc-<id>.env`, root'un, 0600,
+root'un klasöründe (0700). Panel bunları saklamaz, denetim günlüğüne yazmaz (yalnızca hangi
+ayarların değiştiği yazılır), bir daha gösterilmez; panelin gösterdiği her günlük satırı da önce
+sunucuda gizlenir (dosyanın kendi değerleri ve anahtar, jeton, parola ya da bcrypt özeti gibi
+görünen her şey).
+
+**Ortam dosyası neden root'un (alpha.118 güvenlik düzeltmesi, yayımlanmadan önce).** systemd,
+bir birimin `EnvironmentFile=` dosyasını korumalı alan başlamadan root olarak okur ve bağlantıları
+izler. İlk alpha.118 yapısı dosyayı sitenin klasöründe (`apps/<app>/config/app.env`) tutuyordu;
+o klasörü site hesabı değiştirebilir, böylece başka bir dosyanın değerleri o hesabın okuyabildiği
+uygulama sürecine geçebilirdi. Dosyayı artık Aracı root olarak, hiçbir bağlantıyı izlemeden
+(`openat2` `RESOLVE_NO_SYMLINKS`) yazar; dosya, birim gibi CelikPanel'in başlık satırını (metninin
+özeti) taşır (D-022, D-031). Sunucuda değiştirilmiş bir dosya korunur: CelikPanel onu yeniden
+yazmayı reddeder ve ekran bunu söyler (`env_edited`; sahibin kendi değerleri birimin ek
+klasörüne `Environment=` satırı olarak yazılır). Kaldırma dosyayı siler; sahibin değiştirdiği bir
+dosyanın önce tarihli bir kopyası yanında bırakılır. Önceki bir alpha.118 yapısıyla yapılmış
+kurulumlar (yalnız deneme makinelerinde; sürüm düzeltmeden önce yayımlanmadı) Aracı başlarken
+taşınır: eski dosya site kullanıcısıyla ve hiçbir bağlantı izlenmeden okunur, root'un dosyası
+yazılır, birimde yalnız `EnvironmentFile=` satırı değişir, çalışan uygulama yeniden başlatılır,
+durmuş olan durur. Eski dosya bir bağlantıysa ya da yoksa hiçbir değer alınmaz ve anahtarlar
+yeniden girilene kadar uygulama durdurulur. Sahibin değiştirdiği bir birim korunur; Aracı
+günlüğü onu adıyla yazar.
+
+**Yedekler.** Ortam dosyası sitenin klasöründe olmadığından site yedeği onu taşımaz. Aynı
+sunucuda geri yükleme uygulamanın değerlerini korur; başka bir sunucuda uygulamanın anahtarları
+(ve n8n'in kayıtlı kimlik bilgilerinin bağlı olduğu şifreleme anahtarı) yeniden girilmelidir.
 
 ## 6. Bu sürümde sunulmayanlar
 
@@ -203,8 +226,8 @@ Bunlar katalogta bu gerekçeyle listelenir; sunucu onları sunmayı ya da kurmay
 - **D-043.** Yöneticinin güvenlik beklemesi uygulamaları kapsar; tam güvenlik acil durumu akışı
   (etkilenen müşterilere bildirimler, parolayı yeniden girme, sürümü geri çekme) uygulamalara
   henüz bağlanmadı.
-- **Sahip bağımsızlığı.** Birim ve ortam dosyası düz systemd yapılandırmasıdır ve Panel
-  olmadan çalışmayı sürdürür. n8n, `/opt/celikpanel/runtimes` altındaki Panel'in Node.js çalışma
+- **Sahip bağımsızlığı.** Birim ve ortam dosyası (`/etc/celikpanel-svcapps`) düz systemd
+  yapılandırmasıdır ve Panel olmadan çalışmayı sürdürür. n8n, `/opt/celikpanel/runtimes` altındaki Panel'in Node.js çalışma
   ortamını kullanır (Node.js siteleri gibi); bu klasörü kaldırmak n8n'i durdurur.
 - **WebSocket**'ler nginx'ten geçer; `proxy_read_timeout` 60 sn'dir ve varsayılan yükleme
   sınırı nginx'in 1 MB'ıdır; daha büyük yüklemeler için sitenin nginx içerme klasöründe sahibin
@@ -225,6 +248,7 @@ journalctl -u celiksvc-<id> -n 100   # günlüğü
 ```
 
 Kendi ayarlarınız `/etc/systemd/system/celiksvc-<id>.service.d/*.conf` içine yazılır
-(CelikPanel oraya asla yazmaz). Birim dosyasının kendisinde yapılan bir değişiklik korunur:
+(CelikPanel oraya asla yazmaz). Birim dosyasının ya da ortam dosyası
+`/etc/celikpanel-svcapps/celiksvc-<id>.env`'nin kendisinde yapılan bir değişiklik korunur:
 CelikPanel onun üzerine yazmayı reddeder ve bunu söyler. Uygulamanın dosyaları
 `/var/www/celikpanel/subscriptions/<sub>/sites/<domain id>/apps/<app>/` altındadır.

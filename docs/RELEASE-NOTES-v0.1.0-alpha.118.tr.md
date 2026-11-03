@@ -30,7 +30,7 @@ sahibi, panelin kendi güncelleme ekranından günceller.**
 - Uygulamalar sekmesi artık bir katalog: WordPress'e PrestaShop, Nextcloud,
   Drupal, Joomla ve MediaWiki eklendi. Her biri resmi sürümdür ve açılmadan
   önce CelikPanel'de sabitlenmiş parmak iziyle denetlenir.
-- Hangi uygulamaların sunulacağını yönetici seçer (Planlar ve haklar →
+- Hangi uygulamaların sunulacağını yönetici seçer (Kullanıcılar →
   Sunulanlar). WordPress sunulmaya devam eder; diğerleri kapalı başlar.
 - Kurulumdan önce ekran neyin eksik olduğunu söyler (PHP sürümü, PHP paketleri,
   boş site, disk alanı). Uygulama kendini kurar ve yönetici parolası bir kez
@@ -74,6 +74,16 @@ sahibi, panelin kendi güncelleme ekranından günceller.**
   sunamaz. Ekran nedenini söyler.
 - Kendi başına komut çalıştıran uygulamalar (OpenClaw, Hermes Agent, Paperclip)
   listede görünür ama henüz sunulmaz; katalog nedenini söyler.
+
+## Güvenlik
+
+- Bir sitenin kendi dosyaları, sunucunun yönetici yetkisiyle okuduğu ya da
+  değiştirdiği şeyleri artık etkileyemez. Bu; yapay zekâ uygulaması ayarlarını,
+  geri yükleme ve site kopyalamayı, WordPress araçlarını, posta kutusu doluluk
+  uyarısını ve uygulama kurulumunu kapsar. Bu yolların bir kısmı bu sürümden önce
+  de vardı; güncellemeniz önerilir. Yapay zekâ uygulaması ayarları artık
+  sunucunun korumalı bir klasöründe durur; bu yüzden site yedeği onları taşımaz ve
+  başka sunucuya geri yüklemede uygulamanın anahtarları yeniden istenir.
 
 ## Düzeltilenler
 

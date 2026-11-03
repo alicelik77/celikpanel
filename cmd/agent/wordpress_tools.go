@@ -1328,16 +1328,22 @@ func (a *Agent) WordPressCloneV1(req *transport.WordPressCloneRequest, resp *tra
 	}
 	resp.ReplacedValues, resp.SkippedValues = stats.Replaced, stats.Skipped
 
-	staged, err := prepareFilesRestore(filesArchive, targetRoot)
+	// wp-config.php is rewritten inside the staging folder while it is still
+	// root's and 0700, through its descriptor (never by path).
+	var editErr error
+	staged, err := prepareFilesRestoreEdited(filesArchive, targetRoot, func(stageFD int) error {
+		editErr = rewriteStagedWordPressConfig(stageFD, req)
+		return editErr
+	})
+	if editErr != nil {
+		resp.Error = editErr.Error()
+		return nil
+	}
 	if err != nil {
 		resp.Error = "prepare the copied files: " + boundedText(err.Error(), 300)
 		return nil
 	}
 	defer staged.Cleanup()
-	if err := rewriteStagedWordPressConfig(staged.stage, req); err != nil {
-		resp.Error = err.Error()
-		return nil
-	}
 	if err := restoreDatabaseFromFile(copyDatabaseIdentity(req.TargetDatabase), targetDump); err != nil {
 		resp.Error = "load the database copy: " + boundedText(err.Error(), 300)
 		return nil
@@ -1362,44 +1368,6 @@ func (a *Agent) WordPressCloneV1(req *transport.WordPressCloneRequest, resp *tra
 		resp.Detail = fmt.Sprintf("copied; the address was changed in %d values", stats.Replaced)
 	}
 	return nil
-}
-
-func rewriteStagedWordPressConfig(stage string, req *transport.WordPressCloneRequest) error {
-	configPath := filepath.Join(stage, "wp-config.php")
-	// Opened without following a link (the staged tree already belongs to
-	// the target's account).
-	file, _, err := secureOpenRegular(configPath)
-	if err != nil {
-		return errors.New("the source site keeps wp-config.php outside its web folder; CelikPanel copies only sites that keep it inside")
-	}
-	content, err := io.ReadAll(io.LimitReader(file, 1<<20))
-	file.Close()
-	if err != nil {
-		return err
-	}
-	rewritten, err := rewriteWordPressConfig(content, req.TargetDatabase, req.TargetDBUser, req.TargetDBPass, req.Source.Domain, req.Target.Domain)
-	if err != nil {
-		return err
-	}
-	temp, err := os.CreateTemp(stage, ".wp-config-")
-	if err != nil {
-		return err
-	}
-	defer os.Remove(temp.Name())
-	if _, err := temp.Write(rewritten); err != nil {
-		temp.Close()
-		return err
-	}
-	if err := temp.Close(); err != nil {
-		return err
-	}
-	if err := copyOwnership(configPath, temp.Name()); err != nil {
-		return err
-	}
-	if err := os.Chmod(temp.Name(), 0o600); err != nil {
-		return err
-	}
-	return os.Rename(temp.Name(), configPath)
 }
 
 // transformDumpFile changes the address in a gzip'd dump into a new one.

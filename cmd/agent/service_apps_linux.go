@@ -82,3 +82,9 @@ func unitCgroupPIDs(unit string) (map[int]bool, error) {
 	}
 	return pids, nil
 }
+
+// fileOwnedBy reports whether info (from Lstat) belongs to uid.
+func fileOwnedBy(info os.FileInfo, uid uint32) bool {
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	return ok && stat.Uid == uid
+}

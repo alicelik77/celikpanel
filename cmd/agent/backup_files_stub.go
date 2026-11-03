@@ -106,6 +106,14 @@ func safeExtractFilesArchive(string, string) error {
 
 type stagedFilesRestore struct{}
 
+func readRegularBeneath(string, string, int64) ([]byte, error) {
+	return nil, errors.New("supported only on Linux")
+}
+
+func prepareFilesRestoreEdited(string, string, func(int) error) (*stagedFilesRestore, error) {
+	return nil, errors.New("file restore is supported only on Linux")
+}
+
 func prepareFilesRestore(string, string) (*stagedFilesRestore, error) {
 	return nil, errBackupPlatformUnsupported
 }

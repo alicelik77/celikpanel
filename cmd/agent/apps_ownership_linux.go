@@ -473,7 +473,9 @@ func readWordPressPlaceholder(
 	path string,
 	maximum int64,
 ) ([]byte, os.FileInfo, error) {
-	fd, err := unix.Open(path, unix.O_RDONLY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
+	// O_NONBLOCK: a FIFO named like the placeholder must not hang the
+	// agent while it holds the site's locks.
+	fd, err := unix.Open(path, unix.O_RDONLY|unix.O_CLOEXEC|unix.O_NOFOLLOW|unix.O_NONBLOCK, 0)
 	if err != nil {
 		return nil, nil, err
 	}
