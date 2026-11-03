@@ -39,12 +39,13 @@ test('the page\'s own topic wins, then its route, then the first chapter', async
     assert.deepEqual(routes.placeFor(customer, ['domain.access', 'domains']), { chapter: 'files-access', anchor: 'ftp-sftp', fallback: false });
     assert.deepEqual(routes.placeFor(customer, [null, 'dashboard']), { chapter: 'getting-started', anchor: '', fallback: false });
     assert.deepEqual(routes.placeFor(customer, [null, 'account']), { chapter: 'getting-started', anchor: 'your-account', fallback: false });
-    // No chapter claims the topic yet: the guide's start, marked as such.
-    assert.deepEqual(routes.placeFor(customer, ['domain.mail', 'domains']), { chapter: 'getting-started', anchor: '', fallback: true });
-    // The administrator's guide has no files chapter (it is the customers').
+    // The tab's topic wins over the route's: the Mail tab opens the mail chapter.
+    assert.deepEqual(routes.placeFor(customer, ['domain.mail', 'domains']), { chapter: 'mail', anchor: 'mailboxes', fallback: false });
+    // No chapter claims the topic: the guide's start, marked as such.
+    assert.deepEqual(routes.placeFor(customer, ['no.such.topic']), { chapter: 'getting-started', anchor: '', fallback: true });
+    // The administrator also uses the domain's Access tab, so its guide has the files chapter.
     const admin = await chunk('admin', 'en');
-    assert.equal(routes.placeFor(admin, ['domain.access']).fallback, true);
-    assert.ok(!admin.chapters.some((c) => c.id === 'files-access'));
+    assert.deepEqual(routes.placeFor(admin, ['domain.access']), { chapter: 'files-access', anchor: 'ftp-sftp', fallback: false });
 });
 
 test('every page topic is a well-formed name, and every chunk claims the same topics in both languages', async () => {
