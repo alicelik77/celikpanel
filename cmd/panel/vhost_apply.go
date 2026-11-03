@@ -187,6 +187,17 @@ func (p *Panel) buildVhostRequest(
 	if appPort != nil {
 		req.AppPort = *appPort
 	}
+	// alpha.118: an AI or automation app is served over HTTPS only. Without
+	// an active certificate the domain serves its own folder instead, never
+	// the app over plain HTTP.
+	if projectType == "service_app" {
+		if req.SSLType == "none" {
+			req.ProjectType = "static"
+			req.AppPort = 0
+		} else {
+			req.ForceHTTPS = true
+		}
+	}
 	if forwardTo != nil {
 		req.ForwardTo = *forwardTo
 	}

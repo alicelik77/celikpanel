@@ -15,6 +15,7 @@ import (
 
 	"github.com/alicelik/celikpanel/internal/hostingpath"
 	"github.com/alicelik/celikpanel/internal/hostname"
+	"github.com/alicelik/celikpanel/internal/serviceapps"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -615,7 +616,7 @@ func validatedVhostData(req *ApplyVhostRequest) (services.VhostData, error) {
 		projectType = "php"
 	}
 	switch projectType {
-	case "php", "static", "node", "proxy", "forwarding":
+	case "php", "static", "node", "proxy", "forwarding", "service_app":
 	default:
 		return services.VhostData{}, fmt.Errorf("unsupported project type")
 	}
@@ -655,6 +656,17 @@ func validatedVhostData(req *ApplyVhostRequest) (services.VhostData, error) {
 	case "node":
 		if req.AppPort < 1024 || req.AppPort > 65535 {
 			return services.VhostData{}, fmt.Errorf("node application port is outside the supported range")
+		}
+		data.AppPort = req.AppPort
+	case "service_app":
+		// alpha.118: an AI or automation app (docs/AI-APPS.md) on its
+		// loopback port, HTTPS only (the Panel sends this type only with an
+		// active certificate).
+		if req.AppPort < serviceapps.PortMin || req.AppPort > serviceapps.PortMax {
+			return services.VhostData{}, fmt.Errorf("service app port is outside the service-app range")
+		}
+		if strings.ToLower(strings.TrimSpace(req.SSLType)) == "none" {
+			return services.VhostData{}, fmt.Errorf("a service app is served only over HTTPS")
 		}
 		data.AppPort = req.AppPort
 	case "proxy", "forwarding":

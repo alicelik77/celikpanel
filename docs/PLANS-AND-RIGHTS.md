@@ -261,6 +261,28 @@ security:
 This section sets a principle; the store and the third-party package arrangement are a separate
 design.
 
+### 4.5 AI and automation apps (alpha.118)
+
+The first third-party software built on 4.4 is the AI and automation app catalog
+([AI-APPS.md](AI-APPS.md)). Each app is one offering, `app:<id>` (for example `app:n8n`,
+`app:open-webui`), and using any of them also needs the permission **AI and automation apps**
+(`service_apps`).
+
+- **Closed until offered.** Unlike PHP and Node.js versions, an app is not offered by default: the
+  administrator offers it on the Add-ons page after reading its risk summary (what it can do, what
+  CelikPanel turns off, network needs, resource limits, licence). The offer records the summary's
+  digest; a release that changes the version, licence, limits or risks closes it again until the
+  administrator reads and offers it once more. What runs keeps running.
+- **The chain narrows.** Unlimited plans take an offered app automatically (P4); a reseller or a
+  plan can only leave it out. The server checks all layers on install and update; stopping,
+  logs and removal stay open (P5).
+- **Security hold.** The administrator can hold an app: every install is stopped and kept from
+  starting, and nobody installs, updates or starts it until the hold is lifted. Data is never
+  removed. This is the app's own emergency stop; the full D-043 workflow (notices, password
+  re-entry, per-version withdrawal) is not yet wired to apps.
+- **Not offerable.** Apps that run commands on the server on their own (OpenClaw, Hermes Agent,
+  Paperclip) cannot be offered in this release; see AI-APPS.md.
+
 ---
 
 ## 5. Roles and the room to play

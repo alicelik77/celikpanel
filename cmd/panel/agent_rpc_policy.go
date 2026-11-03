@@ -139,6 +139,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.SiteCertificateRenewalStateV1 Agent.PanelListenConfigV1 Agent.MailAutoresponderState
 		Agent.FileAccessStateV1 Agent.FileAccessPreviewV1 Agent.SuspensionInspectV1
 		Agent.EmergencyUnitsInspectV1
+		Agent.ServiceAppProbeV1 Agent.ServiceAppStatusV1 Agent.ServiceAppLogsV1 Agent.ServiceAppUnitStateV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -173,6 +174,9 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostingApp, `
 		Agent.ApplyAppUnit Agent.ControlAppUnit Agent.RemoveAppUnit Agent.SetAppUnitSuspensionV1
 		Agent.SetEmergencyAppLockV1
+		Agent.ServiceAppPrepareV1 Agent.ServiceAppActivateV1 Agent.ServiceAppFinalizeV1
+		Agent.ServiceAppControlV1 Agent.ServiceAppSecretsV1 Agent.ServiceAppRemoveV1
+		Agent.SetServiceAppSuspensionV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityCertificate, `
 		Agent.DeleteCertLineage Agent.InstallCustomCertificate Agent.IssueLetsEncryptCertificate
@@ -487,6 +491,22 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.FileAccessStateV1":   agentRPCStandardReadTimeout,
 	"Agent.FileAccessPreviewV1": agentRPCStandardReadTimeout,
 	"Agent.ApplyFileAccessV1":   agentRPCDatabaseTimeout,
+
+	// alpha.118: service apps (AI and automation). Prepare downloads and
+	// checks the pinned upstream file (up to ~110 MB) before it starts the
+	// install unit; the install itself runs detached and is followed with
+	// the quick status read.
+	"Agent.ServiceAppProbeV1":         agentRPCStandardReadTimeout,
+	"Agent.ServiceAppStatusV1":        agentRPCStandardReadTimeout,
+	"Agent.ServiceAppLogsV1":          agentRPCStandardReadTimeout,
+	"Agent.ServiceAppUnitStateV1":     agentRPCQuickReadTimeout,
+	"Agent.ServiceAppPrepareV1":       agentRPCDeploymentTimeout,
+	"Agent.ServiceAppActivateV1":      agentRPCMutationTimeout,
+	"Agent.ServiceAppFinalizeV1":      agentRPCMutationTimeout,
+	"Agent.ServiceAppControlV1":       agentRPCMutationTimeout,
+	"Agent.ServiceAppSecretsV1":       agentRPCMutationTimeout,
+	"Agent.ServiceAppRemoveV1":        agentRPCDatabaseTimeout,
+	"Agent.SetServiceAppSuspensionV1": agentRPCMutationTimeout,
 }
 
 var agentRPCPolicies = buildAgentRPCPolicies()

@@ -264,6 +264,32 @@ sistemi kurulmaz (D-017: tek teklif kimliği alanı). Kimlik örneği:
 Bu bölüm bir ilke koyar; mağaza ve üçüncü taraf paket düzeni ayrı bir
 tasarımdır.
 
+### 4.5 Yapay zekâ ve otomasyon uygulamaları (alpha.118)
+
+4.4'ün üzerine kurulan ilk üçüncü taraf yazılım, yapay zekâ ve otomasyon
+uygulamaları kataloğudur ([AI-APPS.tr.md](AI-APPS.tr.md)). Her uygulama bir
+sunumdur, `app:<id>` (örneğin `app:n8n`, `app:open-webui`); birini kullanmak
+ayrıca **Yapay zekâ ve otomasyon uygulamaları** iznini (`service_apps`) ister.
+
+- **Sunulana kadar kapalı.** PHP ve Node.js sürümlerinin aksine bir uygulama
+  kendiliğinden sunulmaz: yönetici onu Eklentiler sayfasında risk özetini
+  (neler yapabildiği, CelikPanel'in neyi kapattığı, ağ ihtiyacı, kaynak
+  sınırları, lisans) okuduktan sonra sunar. Sunum özetin parmak izini kaydeder;
+  sürümü, lisansı, sınırları ya da riskleri değiştiren bir sürüm, yönetici
+  yeniden okuyup sunana kadar onu yine kapatır. Çalışan çalışmaya devam eder.
+- **Zincir yalnız daraltır.** Sınırsız planlar sunulan uygulamayı kendiliğinden
+  alır (İ4); bayi ya da plan yalnız dışarıda bırakabilir. Sunucu kurulumda ve
+  güncellemede bütün katmanlara bakar; durdurma, günlük ve kaldırma açık kalır
+  (İ5).
+- **Güvenlik beklemesi.** Yönetici bir uygulamayı bekletebilir: her kurulum
+  durdurulur ve başlaması engellenir; bekleme kalkana dek kimse onu kuramaz,
+  güncelleyemez, başlatamaz. Veri asla silinmez. Bu, uygulamanın kendi acil
+  durdurmasıdır; D-043'ün tam akışı (bildirimler, parolayı yeniden girme,
+  sürüm bazında geri çekme) uygulamalara henüz bağlanmadı.
+- **Sunulamayanlar.** Sunucuda kendi başına komut çalıştıran uygulamalar
+  (OpenClaw, Hermes Agent, Paperclip) bu sürümde sunulamaz; ayrıntı
+  AI-APPS.tr.md'de.
+
 ---
 
 ## 5. Roller ve hareket alanı

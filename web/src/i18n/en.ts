@@ -58,6 +58,7 @@ import type { EmergencyScreenKey } from './screens/emergency/en';
 import type { TransfersScreenKey } from './screens/transfers/en';
 import type { TransferRotationScreenKey } from './screens/transferRotation/en';
 import type { RightsScreenKey } from './screens/rights/en';
+import type { ServiceAppsScreenKey } from './screens/serviceApps/en';
 
 export const en = {
     // ---- alpha.108 tools ----
@@ -558,5 +559,6 @@ export type ScreenKey =
     | TransfersScreenKey
     | TransferRotationScreenKey
     | RightsScreenKey
-    | EmergencyScreenKey;
+    | EmergencyScreenKey
+    | ServiceAppsScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

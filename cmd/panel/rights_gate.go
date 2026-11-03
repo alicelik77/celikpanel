@@ -49,6 +49,9 @@ const (
 type adminOfferLayer struct {
 	versions offeredVersions
 	hidden   map[string]bool
+	// serviceApps: the catalog service apps the administrator offers and
+	// has not put on a security hold (alpha.118). Closed by default.
+	serviceApps map[string]bool
 }
 
 func (p *Panel) loadHiddenOfferings(ctx context.Context) (map[string]bool, error) {
@@ -97,7 +100,11 @@ func (p *Panel) loadAdminOfferLayer(ctx context.Context) (adminOfferLayer, error
 	if err != nil {
 		return adminOfferLayer{}, fmt.Errorf("items offered to customers: %w", err)
 	}
-	return adminOfferLayer{versions: versions, hidden: hidden}, nil
+	serviceApps, err := p.loadOfferedServiceApps(ctx)
+	if err != nil {
+		return adminOfferLayer{}, fmt.Errorf("service apps offered to customers: %w", err)
+	}
+	return adminOfferLayer{versions: versions, hidden: hidden, serviceApps: serviceApps}, nil
 }
 
 func (a adminOfferLayer) permits(permission string) bool {
@@ -107,6 +114,11 @@ func (a adminOfferLayer) permits(permission string) bool {
 func (a adminOfferLayer) offers(offeringID string) bool {
 	if a.hidden[offeringID] {
 		return false
+	}
+	// alpha.118: a service app is closed until the administrator offers it
+	// after reading its risk summary (installed is not offered, D-042).
+	if appID, ok := serviceAppOfferingApp(offeringID); ok {
+		return a.serviceApps[appID]
 	}
 	parts := strings.SplitN(offeringID, ":", 3)
 	if len(parts) == 3 && parts[0] == "component" {
@@ -383,6 +395,7 @@ func (p *Panel) installedOfferingIDs(ctx context.Context) ([]string, error) {
 	for _, provider := range core.ACMEProviders {
 		out = append(out, "integration:acme:"+provider.ID)
 	}
+	out = append(out, serviceAppCandidateOfferings()...)
 	return out, nil
 }
 
@@ -552,6 +565,10 @@ var domainSubrouteRights = map[string]domainSubrouteRight{
 	"site-protect-users": {right: rightSiteProtect},
 	"site-redirects":     {right: rightSiteProtect},
 	"app-install":        {right: rightAppInstaller},
+	// alpha.118: installing or updating a service app is new use; reading,
+	// stopping, logs and removal stay open (D-042 P5).
+	"service-apps-install": {right: rightServiceApps},
+	"service-apps-update":  {right: rightServiceApps},
 }
 
 // domainSubrouteRightFor: the permission a request needs, "" when none.

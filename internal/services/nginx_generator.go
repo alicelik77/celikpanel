@@ -191,7 +191,7 @@ func prepareVhostData(data VhostData) (VhostData, error) {
 		if data.PHPSocket == "" {
 			return VhostData{}, fmt.Errorf("php project has no PHP-FPM socket configured for this site")
 		}
-	case "node":
+	case "node", "service_app":
 		data.Upstream = fmt.Sprintf("http://127.0.0.1:%d", data.AppPort)
 	case "proxy":
 		data.Upstream = data.ForwardTo

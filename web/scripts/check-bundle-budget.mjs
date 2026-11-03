@@ -201,6 +201,11 @@ const screenPartBudgets = {
   // (susp., suspended.). A new part, set with at least 25% headroom from its
   // Turkish file (about 9.5 / 3.2 KiB as source).
   suspension: kib(13, 4.5),
+  // alpha.118: AI and automation apps of a site and the administrator's
+  // offering with its risk summary (svcapps., err.SERVICE_APP.). A new part,
+  // set with at least 25% headroom from its Turkish file as source:
+  // 21.4 / 6.5 KiB.
+  serviceApps: kib(27, 8.5),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

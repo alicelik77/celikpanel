@@ -276,6 +276,10 @@ func isAdminOnlyPath(path string) bool {
 	if path == storeCatalogAdminPath || strings.HasPrefix(path, storeCatalogAdminPath+"/") {
 		return true
 	}
+	// alpha.118: offering AI and automation apps is the administrator's.
+	if path == serviceAppsAdminPath || strings.HasPrefix(path, serviceAppsAdminPath+"/") {
+		return true
+	}
 	// alpha.117 (D-043): a security emergency is the administrator's alone.
 	if path == securityEmergenciesPath || strings.HasPrefix(path, securityEmergenciesPath+"/") {
 		return true
