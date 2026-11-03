@@ -181,3 +181,46 @@ func ValidJobKey(key string) bool {
 	}
 	return true
 }
+
+// ImportChunkRequest writes one chunk of a backup package that came back from
+// a remote destination (alpha.118). Chunks are appended in order to a private
+// staging file of this import; the Final chunk carries the whole package's
+// size and SHA-256, and the Agent publishes the package under BackupName only
+// after the size, the hash, the manifest's scope and every payload's hash are
+// verified. A chunk that is sent again after a lost answer (the same offset
+// and length as the file already holds) is accepted without writing twice.
+// Additive: existing requests are unchanged.
+//
+// Uzak hedeften dönen yedek paketi parça parça yazılır; Agent boyutu, özeti,
+// kapsamı ve her yükün özetini doğrulamadan yayımlamaz.
+type ImportChunkRequest struct {
+	ProtocolVersion int    `json:"protocol_version"`
+	SubscriptionID  int    `json:"subscription_id"`
+	DomainID        int    `json:"domain_id"`
+	DomainName      string `json:"domain_name"`
+	BackupName      string `json:"backup_name"`
+	// ImportID identifies one import (ValidJobKey alphabet).
+	ImportID string `json:"import_id"`
+	Offset   int64  `json:"offset"`
+	Data     []byte `json:"data"`
+	Final    bool   `json:"final"`
+	Size     int64  `json:"size,omitempty"`
+	SHA256   string `json:"sha256,omitempty"`
+}
+
+type ImportChunkResponse struct {
+	Success bool   `json:"success"`
+	Offset  int64  `json:"offset"`
+	Backup  Info   `json:"backup,omitempty"`
+	Error   string `json:"error,omitempty"`
+}
+
+// ImportAbortRequest removes the staging file of an import that will not be
+// finished. Removing a missing staging file is not an error.
+type ImportAbortRequest struct {
+	ProtocolVersion int    `json:"protocol_version"`
+	SubscriptionID  int    `json:"subscription_id"`
+	DomainID        int    `json:"domain_id"`
+	DomainName      string `json:"domain_name"`
+	ImportID        string `json:"import_id"`
+}
