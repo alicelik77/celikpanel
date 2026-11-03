@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type Reac
 // Fetched when the in-place mail setup opens, as on the DNS page (alpha.118:
 // the route's budget had 0.33 KiB left). / Posta kurulumu açılınca getirilir.
 const MailSetupDialog = lazy(() => import('./MailSetupDialog').then((module) => ({ default: module.MailSetupDialog })));
-import { Settings, Play, StopCircle, RotateCw, RefreshCw, ScanSearch, DownloadCloud, ChevronDown, ChevronRight, Trash2, ShieldOff, Layers, Globe, Database, Mail, Network, Shield, Zap, FolderUp, Activity, Boxes, Clock } from 'lucide-react';
+import { Settings, Play, StopCircle, RotateCw, RefreshCw, ScanSearch, DownloadCloud, ChevronDown, ChevronRight, Trash2, ShieldOff, Layers, Globe, Database, Mail, Network, Shield, Zap, FolderUp, Activity, Boxes, Clock, Wrench } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
@@ -403,6 +403,8 @@ const categoryOrder: { id: string; labelKey: string; icon: LucideIcon; tint: str
     { id: 'ftp', labelKey: 'services.cat.ftp', icon: FolderUp, tint: 'bg-surface-2 text-fg-muted' },
     { id: 'monitoring', labelKey: 'services.cat.monitoring', icon: Activity, tint: 'bg-surface-2 text-fg-muted' },
     { id: 'system', labelKey: 'services.cat.system', icon: Clock, tint: 'bg-surface-2 text-fg-muted' },
+    // alpha.119: the administrator-only toolchains (Go, Rust); the server never offers them to a customer.
+    { id: 'devtools', labelKey: 'services.cat.devtools', icon: Wrench, tint: 'bg-surface-2 text-fg-muted' },
 ];
 
 interface ServiceListProps {

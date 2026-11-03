@@ -79,3 +79,40 @@ func TestInstallScriptBringsTheJailPackages(t *testing.T) {
 		}
 	}
 }
+
+// alpha.119: the developer toolchains are the administrator's own tools. A
+// customer's SFTP/SSH jail never carries a compiler: customers' programs are
+// uploaded already built and run in a sandbox. Neither the commands nor the
+// packages of Go and Rust may enter the jail.
+func TestJailNeverCarriesDeveloperToolchains(t *testing.T) {
+	toolchainCommands := []string{"go", "gofmt", "cargo", "rustc", "rustup", "rustdoc", "rustfmt", "cargo-clippy", "clippy-driver", "gcc", "cc", "make"}
+	for _, command := range JailCommands {
+		for _, banned := range toolchainCommands {
+			if command == banned || strings.HasSuffix(command, "/"+banned) {
+				t.Fatalf("the jail carries %s", command)
+			}
+		}
+	}
+	toolchainPackages := map[string]bool{"golang-go": true, "golang": true, "go": true, "rustc": true, "cargo": true, "rust": true, "gcc": true}
+	for family, table := range JailCommandPackages {
+		for command, pkg := range table {
+			if toolchainPackages[pkg] {
+				t.Fatalf("%s: the jail command %s comes from the toolchain package %s", family, command, pkg)
+			}
+		}
+		for _, pkg := range JailInstallPackages[family] {
+			if toolchainPackages[pkg] {
+				t.Fatalf("%s: install.sh brings the toolchain package %s", family, pkg)
+			}
+		}
+	}
+	for command, companions := range JailCompanions {
+		for _, companion := range companions {
+			for _, banned := range toolchainCommands {
+				if companion == banned {
+					t.Fatalf("%s: companion %s is a toolchain command", command, companion)
+				}
+			}
+		}
+	}
+}

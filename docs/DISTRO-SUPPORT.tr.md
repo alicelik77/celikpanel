@@ -93,6 +93,13 @@ Kurallar:
 |---|---|---|---|---|---|
 | ⏰ Scheduled tasks (cron) | Servis | `cron` | `cronie` | — | — |
 
+### Geliştirici araçları (yalnız yönetici)
+
+| Bileşen | Tür | APT paket eşlemesi | pacman paket eşlemesi | Koltuk | Gerekenler |
+|---|---|---|---|---|---|
+| 🐹 Go | Araç | `golang-go` | `go` | — | — |
+| 🦀 Rust | Araç | `rustc` `cargo` | `rust` | — | — |
+
 ## Kapalı hücreler ve gerekçeleri
 
 Bileşenler sayfası ve Agent aynı gerekçeyi verir (İngilizce metin, ekranda çevrilir).

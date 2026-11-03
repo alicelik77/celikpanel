@@ -301,6 +301,25 @@ namespace (their ids never overlap); each keeps its own offer rule below. Each a
 - **Not offerable.** Apps that run commands on the server on their own (OpenClaw, Hermes Agent,
   Paperclip) cannot be offered in this release; see AI-APPS.md.
 
+### 4.7 Developer toolchains (alpha.119): never offered
+
+Go and Rust (Components, category "Developer tools (administrator only)") are the server
+administrator's own tools, installed from the operating system's official packages only
+(`golang-go`; `rustc` and `cargo`; on Arch `go` and `rust`). The version is the distribution's own and can
+be older than the newest release (Debian 12 Go 1.19, Ubuntu 22.04 Go 1.18); the screen says so.
+Upstream tarballs are a later release.
+
+- **No offering id.** `validOfferingID` refuses `component:go` and `component:rust` (any version
+  suffix), so no plan, reseller set, hidden-offering list or store product can name them, and the
+  rights screens never list them. Customers' programs are uploaded already built and run in a
+  sandbox, so a compiler is never part of what a customer receives.
+- **Administrator-only on the server.** Their install and removal ride the ordinary component
+  install and uninstall routes (single-flight, audited as `service.install:<id>` and
+  `service.install.failed:<id>`, lost-answer guard) behind the administrator-only path rule, and
+  both handlers refuse any other caller again. The setup wizard does not list them.
+- **Never in the file-access jail.** Their commands and packages are not in the SSH/SFTP jail
+  (`internal/fileaccess`); a test pins it.
+
 ---
 
 ## 5. Roles and the room to play

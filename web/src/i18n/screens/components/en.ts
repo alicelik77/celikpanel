@@ -83,6 +83,7 @@ export const enComponentsScreens = {
     'services.cat.ftp': 'FTP',
     'services.cat.monitoring': 'Monitoring',
     'services.cat.system': 'System',
+    'services.cat.devtools': 'Developer tools (administrator only)',
     'services.installTitle': 'Install {name}',
     'services.willInstall': 'The following packages will be installed on this server:',
     'services.phpVersionNote': 'The default PHP version for this distribution is installed. Extra versions are managed per site under runtimes.',
@@ -409,6 +410,8 @@ export const enComponentsScreens = {
     'services.component.name.memcached': 'Memcached',
     'services.component.name.netdata': 'Netdata',
     'services.component.name.cron': 'Scheduled tasks (cron)',
+    'services.component.name.go': 'Go',
+    'services.component.name.rust': 'Rust',
     // Each component's one-line description (the catalogue's own is English;
     // lib/componentName.ts componentDescription, 2026-10-15). Same ids as the names.
     'services.component.description.php-fpm': 'PHP FastCGI Process Manager',
@@ -438,6 +441,9 @@ export const enComponentsScreens = {
     'services.component.description.memcached': 'Cache Server',
     'services.component.description.netdata': 'Real-time metrics agent',
     'services.component.description.cron': 'Native cron daemon that runs scheduled tasks',
+    // Developer tools (alpha.119): the distribution's own version, for the administrator alone.
+    'services.component.description.go': 'Go compiler and tools from your Linux distribution. The version is the distribution’s own and can be older than the newest Go. For the administrator’s own work on this server; customers’ programs are uploaded already built and run in a sandbox.',
+    'services.component.description.rust': 'Rust compiler and Cargo from your Linux distribution. The version is the distribution’s own and can be older than the newest Rust. For the administrator’s own work on this server; customers’ programs are uploaded already built and run in a sandbox.',
     // The typed blocked and warning sentences (cmd/panel mailProfileTextCode, 2026-10-14);
     // every code the Panel lists needs one here (tests/mail-profile-text.test.mjs).
     'services.mailProfiles.code.state_unverified': 'The service state is not verified yet; the next component check verifies it.',

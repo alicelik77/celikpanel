@@ -124,6 +124,7 @@ func RenderDistroMatrix(lang string) string {
 		"ftp":        "FTP",
 		"monitoring": "Monitoring",
 		"system":     "System",
+		"devtools":   "Developer tools (administrator only)",
 	}
 	if tr {
 		catLabel = map[string]string{
@@ -136,6 +137,7 @@ func RenderDistroMatrix(lang string) string {
 			"ftp":        "FTP",
 			"monitoring": "İzleme",
 			"system":     "Sistem",
+			"devtools":   "Geliştirici araçları (yalnız yönetici)",
 		}
 	}
 	cat := func(c string) string {

@@ -139,6 +139,9 @@ func (p *Panel) listStoreCatalogAdmin(w http.ResponseWriter, r *http.Request) {
 	components := make([]storeAdminComponentResponse, 0, len(core.ManagedServices))
 	for i := range core.ManagedServices {
 		service := &core.ManagedServices[i]
+		if service.AdminOnly {
+			continue // the developer toolchains are never sold or offered (alpha.119)
+		}
 		components = append(components, storeAdminComponentResponse{
 			ID:                  service.ID,
 			Name:                service.Name,
@@ -596,7 +599,7 @@ func validateStoreAdminUpdate(
 
 	seenComponents := map[string]bool{}
 	for _, componentID := range componentIDs {
-		if componentID == "" || seenComponents[componentID] || core.GetManagedServiceByID(componentID) == nil {
+		if componentID == "" || seenComponents[componentID] || core.GetManagedServiceByID(componentID) == nil || core.IsAdminOnlyComponent(componentID) {
 			return errors.New("unknown or duplicate component")
 		}
 		seenComponents[componentID] = true

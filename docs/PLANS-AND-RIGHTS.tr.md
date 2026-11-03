@@ -311,6 +311,24 @@ ayrıca **Yapay zekâ ve otomasyon uygulamaları** iznini (`service_apps`) ister
   (OpenClaw, Hermes Agent, Paperclip) bu sürümde sunulamaz; ayrıntı
   AI-APPS.tr.md'de.
 
+### 4.7 Geliştirici araç zincirleri (alpha.119): asla sunulmaz
+
+Go ve Rust (Bileşenler, "Geliştirici araçları (yalnız yönetici)" kategorisi) sunucu yöneticisinin kendi
+araçlarıdır ve yalnız işletim sisteminin resmi paketlerinden kurulur (`golang-go`; `rustc` ve `cargo`;
+Arch'ta `go` ve `rust`). Sürüm dağıtımın kendi sürümüdür ve en yeniden eski olabilir (Debian 12
+Go 1.19, Ubuntu 22.04 Go 1.18); ekran bunu açıkça söyler. Upstream arşivleri sonraki sürümdür.
+
+- **Sunum kimliği yok.** `validOfferingID`, `component:go` ve `component:rust` adlarını (sürüm eki
+  olsa da) reddeder; böylece hiçbir plan, bayi seti, gizli sunum listesi ya da mağaza ürünü onları
+  adlandıramaz ve hak ekranları onları listelemez. Müşteri programları derlenmiş yüklenir ve kum
+  havuzunda çalışır; derleyici müşterinin aldığı şeyin parçası değildir.
+- **Sunucuda yalnız yönetici.** Kurulum ve kaldırma olağan bileşen kurulum/kaldırma yollarından
+  geçer (tek uçuşlu, `service.install:<id>` ve `service.install.failed:<id>` olarak denetlenir,
+  kayıp-yanıt korumalı), yalnız-yönetici yol kuralının arkasındadır ve iki işleyici de başka
+  çağıranı yine reddeder. Kurulum sihirbazı onları listelemez.
+- **Dosya erişimi jail'inde asla.** Komutları ve paketleri SSH/SFTP jail'inde (`internal/fileaccess`)
+  yoktur; bir test bunu sabitler.
+
 ---
 
 ## 5. Roller ve hareket alanı
