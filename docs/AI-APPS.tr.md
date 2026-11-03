@@ -32,7 +32,8 @@ güncellenmez.
 **Yöneticinin sunmadan önce okuması gereken lisanslar:**
 - n8n'in Sustainable Use License'ı kullanıma "yalnızca kendi iç ticari amaçlarınız ya da ticari
   olmayan ya da kişisel kullanım için" izin verir; n8n'in kendisini başkalarına ücretli hizmet
-  olarak sunmak kısıtlıdır. Yönetici kaydı bu notu gösterir.
+  olarak sunmak kısıtlıdır. Yönetici kaydı bu notu gösterir. **n8n bayilere kapalıdır** (sahibin
+  3 Kasım 2026 kararı, lisans sorusu yanıtlanana dek): bkz. §3.
 - Open WebUI'ın lisansı, kurulumda 30 günde en çok 50 son kullanıcı bulunmadıkça, yazılı izin
   ya da kurumsal lisans olmadıkça markasını yerinde tutmayı şart koşar.
 
@@ -69,6 +70,15 @@ gösterilir.
   Sunucu, bir uygulama kurulurken ya da güncellenirken bütün katmanlara bakar. Durdurma, günlük
   ve kaldırma hiçbir zaman reddedilmez; böylece daraltılmış bir hak, çalışan bir uygulamayı
   ortada bırakmaz.
+- **Lisans nedeniyle bayilere kapalı (n8n).** Katalog kaydında `reseller_closed` bulunan
+  uygulama hiçbir zaman bayi üzerinden kullanılamaz. Yönetici onu yine sunabilir ve kendi
+  müşterilerine verebilir. Sunucu; uygulama bir bayinin haklarına, bir bayi planına, bir bayinin
+  sahip olduğu plana ya da bayi ağacındaki bir aboneliğin haklarına yazılmak istendiğinde ve böyle
+  bir abonelikte kurulmak ya da güncellenmek istendiğinde, isteyen kim olursa olsun (o hesap adına
+  işlem yapan yönetici de) lisansı neden göstererek reddeder (`SERVICE_APP` / `licence_reseller`,
+  HTTP 409). "Sunulan her şey"den bir öğe çıkarmak onu bayi için hiçbir zaman eklemez. Durdurma,
+  günlük ve kaldırma hiçbir zaman reddedilmez. Bayi ve müşterileri nedeni uygulamanın satırında
+  okur (lisans; karar yöneticinin). Open WebUI etkilenmez.
 - **Güvenlik beklemesi** (yönetici): her kurulumu hemen durdurur, açılışta başlamalarını
   engeller, kurulumları, güncellemeleri ve başlatmaları reddeder. Beklemeyi kaldırmak hiçbir
   şey başlatmaz. Veri asla silinmez.

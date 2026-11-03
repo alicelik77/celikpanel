@@ -41,6 +41,8 @@ export function ServiceAppRisk({ app }: { app: ServiceAppCatalogEntry }) {
                 <a className="underline" href={app.source} target="_blank" rel="noopener noreferrer">{t('svcapps.source')}</a>
             </p>
             {app.licence_note && <p className="text-xs text-warning">{t(('svcapps.licence.' + app.licence_note) as TranslationKey)}</p>}
+            {/* alpha.118: closed to resellers and their customers by its licence. */}
+            {app.reseller_closed && <p className="text-xs text-warning" data-reseller-closed="">{t('svcapps.licence.resellerClosed')}</p>}
             {app.defaults && (
                 <p className="text-xs text-fg-subtle">
                     {t('svcapps.resources', { memory: app.defaults.memory_mb, cpu: app.defaults.cpu_percent, disk: app.defaults.disk_mb })}

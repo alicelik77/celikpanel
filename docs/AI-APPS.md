@@ -30,7 +30,8 @@ pinned to one exact version; an update is a new CelikPanel release with a new pi
 **Licences the administrator reads before offering:**
 - n8n's Sustainable Use License allows use "only for your own internal business purposes or for
   non-commercial or personal use"; offering n8n itself to others as a paid service is restricted.
-  The admin entry shows this note.
+  The admin entry shows this note. **n8n is closed to resellers** (owner's decision, 3 Nov 2026,
+  until the licence question is answered): see §3.
 - Open WebUI's licence keeps its branding in place unless the deployment has at most 50 end users
   in 30 days, written permission or an enterprise licence.
 
@@ -63,6 +64,16 @@ Open WebUI is shown as not available on that system, with the found version.
 - Unlimited plans take an offered app; a reseller or plan can only leave it out. The server
   checks every layer when an app is installed or updated. Stopping, the log and removal are never
   refused, so a narrowed right never strands a running app.
+- **Closed to resellers by licence (n8n).** An app whose catalogue entry carries
+  `reseller_closed` is never available through a reseller. The administrator may still offer it
+  and give it to the administrator's own customers. The server refuses it, with the licence as
+  the reason (`SERVICE_APP` / `licence_reseller`, HTTP 409), when it would be written into a
+  reseller's rights, a reseller plan, a plan a reseller owns or the rights of a subscription in a
+  reseller's tree, and when it would be installed or updated in such a subscription, whoever
+  asks (an administrator acting for that account too). Taking an item out of "everything
+  offered" never adds it for a reseller. Stopping, the log and removal are never refused. The
+  reseller and their customers read why on the app's row (the licence; the administrator
+  decides). Open WebUI is not affected.
 - **Security hold** (admin): stops every install now, keeps them from starting at boot, refuses
   installs, updates and starts. Lifting the hold starts nothing. Data is never removed.
 - Additional users (team members) do not see the tab.

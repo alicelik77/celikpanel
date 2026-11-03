@@ -15,7 +15,9 @@ import (
 
 // Service apps (alpha.118). The fixture is the authz matrix: reseller 9702's
 // customer 9703 owns subscription 9802 and domain 9902
-// (customer.matrix.test). The server side is a fake that behaves like the
+// (customer.matrix.test); the administrator's own customer 9704 owns
+// subscription 9803 and domain 9903 (outsider.matrix.test). n8n is closed to
+// resellers and their customers by its licence, so its installs run on 9903. The server side is a fake that behaves like the
 // Agent: prepare starts an install that succeeds, activate starts a unit
 // that serves on loopback (or, when told, exposes itself).
 
@@ -166,6 +168,8 @@ func newServiceAppFixture(t *testing.T) serviceAppFixture {
 	f := serviceAppFixture{accountsFixture: base, native: native}
 	f.exec(t, `INSERT INTO sites (id, domain_id, document_root, project_type, ssl_enabled, ssl_cert_path, ssl_key_path)
 		VALUES (9940, 9902, '/var/www/celikpanel/subscriptions/9802/sites/9902/public_html', 'php', 1, '/etc/ssl/c.pem', '/etc/ssl/c.key')`)
+	f.exec(t, `INSERT INTO sites (id, domain_id, document_root, project_type, ssl_enabled, ssl_cert_path, ssl_key_path)
+		VALUES (9941, 9903, '/var/www/celikpanel/subscriptions/9803/sites/9903/public_html', 'php', 1, '/etc/ssl/o.pem', '/etc/ssl/o.key')`)
 	return f
 }
 
@@ -193,7 +197,9 @@ func (f serviceAppFixture) waitOperation(t *testing.T, id string) serviceAppOper
 	}
 }
 
-const n8nInstallBody = `{"app":"n8n","operation_id":"op-n8n-0001","owner_email":"owner@customer.matrix.test","owner_password":"correct horse battery","confirm_replace":true}`
+const n8nInstallBody = `{"app":"n8n","operation_id":"op-n8n-0001","owner_email":"owner@outsider.matrix.test","owner_password":"correct horse battery","confirm_replace":true}`
+
+const webuiInstallBody = `{"app":"open-webui","operation_id":"op-webui-0001","owner_email":"owner@customer.matrix.test","owner_password":"correct horse battery","confirm_replace":true}`
 
 func TestServiceAppIsClosedUntilTheAdministratorOffersIt(t *testing.T) {
 	f := newServiceAppFixture(t)
@@ -208,59 +214,59 @@ func TestServiceAppIsClosedUntilTheAdministratorOffersIt(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, app := range view.Apps {
-		if app.Offered || (app.ID == "n8n" && app.RefusedBy != rightsLayerAdministrator) {
+		if app.Offered || (app.ID == "n8n" && app.RefusedBy != rightsLayerLicence) || (app.ID == "open-webui" && app.RefusedBy != rightsLayerAdministrator) {
 			t.Fatalf("an app is open before it was offered: %+v", app)
 		}
 	}
-	wantStatus(t, f.as(t, 9703, http.MethodPost, path+"/install", n8nInstallBody), http.StatusConflict, errCodeNotOffered)
-	wantStatus(t, f.as(t, 9701, http.MethodPost, path+"/install", n8nInstallBody), http.StatusConflict, errCodeNotOffered)
+	wantStatus(t, f.as(t, 9703, http.MethodPost, path+"/install", webuiInstallBody), http.StatusConflict, errCodeNotOffered)
+	wantStatus(t, f.as(t, 9701, http.MethodPost, path+"/install", webuiInstallBody), http.StatusConflict, errCodeNotOffered)
 
 	// The administrator offers only with the current risk summary.
 	wantStatus(t, f.as(t, 9701, http.MethodPost, serviceAppsAdminPath+"/n8n/offer", `{"risk_digest":"stale"}`), http.StatusConflict, errCodeServiceApp)
 	wantStatus(t, f.as(t, 9703, http.MethodGet, serviceAppsAdminPath, ""), http.StatusForbidden, "")
 	wantStatus(t, f.as(t, 9701, http.MethodPost, serviceAppsAdminPath+"/openclaw/offer", `{"risk_digest":"x"}`), http.StatusConflict, errCodeServiceApp)
-	f.offer(t, "n8n")
+	f.offer(t, "open-webui")
 
-	// The reseller narrows: without app:n8n in the reseller's set the
+	// The reseller narrows: without app:open-webui in the reseller's set the
 	// customer is refused, and the reseller is named as the layer.
 	reseller := newRightsSet(true, false, "component:php-fpm:8.3")
 	if err := saveRightsSet(context.Background(), f.panel.db.GetDB(), rightsOwnerReseller, 9702, reseller); err != nil {
 		t.Fatal(err)
 	}
-	rec = f.as(t, 9703, http.MethodPost, path+"/install", n8nInstallBody)
+	rec = f.as(t, 9703, http.MethodPost, path+"/install", webuiInstallBody)
 	wantStatus(t, rec, http.StatusConflict, errCodeNotOffered)
 	if !strings.Contains(rec.Body.String(), `"reason":"reseller"`) {
 		t.Fatalf("the reseller layer must be named: %s", rec.Body.String())
 	}
-	reseller.Items["app:n8n"] = true
+	reseller.Items["app:open-webui"] = true
 	if err := saveRightsSet(context.Background(), f.panel.db.GetDB(), rightsOwnerReseller, 9702, reseller); err != nil {
 		t.Fatal(err)
 	}
 
 	// A security hold refuses new installs with its own reason.
-	wantStatus(t, f.as(t, 9701, http.MethodPost, serviceAppsAdminPath+"/n8n/hold", `{"reason":"CVE-2026-0001"}`), http.StatusOK, "")
-	rec = f.as(t, 9703, http.MethodPost, path+"/install", n8nInstallBody)
+	wantStatus(t, f.as(t, 9701, http.MethodPost, serviceAppsAdminPath+"/open-webui/hold", `{"reason":"CVE-2026-0001"}`), http.StatusOK, "")
+	rec = f.as(t, 9703, http.MethodPost, path+"/install", webuiInstallBody)
 	wantStatus(t, rec, http.StatusConflict, errCodeServiceApp)
 	if !strings.Contains(rec.Body.String(), `"reason":"held"`) {
 		t.Fatalf("held: %s", rec.Body.String())
 	}
-	wantStatus(t, f.as(t, 9701, http.MethodPost, serviceAppsAdminPath+"/n8n/release", `{}`), http.StatusOK, "")
-	rec = f.as(t, 9703, http.MethodPost, path+"/install", n8nInstallBody)
+	wantStatus(t, f.as(t, 9701, http.MethodPost, serviceAppsAdminPath+"/open-webui/release", `{}`), http.StatusOK, "")
+	rec = f.as(t, 9703, http.MethodPost, path+"/install", webuiInstallBody)
 	wantStatus(t, rec, http.StatusAccepted, "")
-	f.waitOperation(t, "op-n8n-0001")
+	f.waitOperation(t, "op-webui-0001")
 }
 
 func TestServiceAppInstallIsOneOperationAndKeepsNoSecret(t *testing.T) {
 	f := newServiceAppFixture(t)
 	f.offer(t, "n8n")
-	path := "/api/v1/domains/9902/service-apps/install"
+	path := "/api/v1/domains/9903/service-apps/install"
 
 	// Without confirming that the domain changes, nothing starts.
-	wantStatus(t, f.as(t, 9703, http.MethodPost, path, strings.Replace(n8nInstallBody, `"confirm_replace":true`, `"confirm_replace":false`, 1)), http.StatusBadRequest, errCodeServiceApp)
+	wantStatus(t, f.as(t, 9704, http.MethodPost, path, strings.Replace(n8nInstallBody, `"confirm_replace":true`, `"confirm_replace":false`, 1)), http.StatusBadRequest, errCodeServiceApp)
 
-	wantStatus(t, f.as(t, 9703, http.MethodPost, path, n8nInstallBody), http.StatusAccepted, "")
+	wantStatus(t, f.as(t, 9704, http.MethodPost, path, n8nInstallBody), http.StatusAccepted, "")
 	// The same request again (a lost answer) answers the same operation.
-	rec := f.as(t, 9703, http.MethodPost, path, n8nInstallBody)
+	rec := f.as(t, 9704, http.MethodPost, path, n8nInstallBody)
 	wantStatus(t, rec, http.StatusOK, "")
 	if !strings.Contains(rec.Body.String(), `"id":"op-n8n-0001"`) {
 		t.Fatalf("repeat: %s", rec.Body.String())
@@ -288,13 +294,13 @@ func TestServiceAppInstallIsOneOperationAndKeepsNoSecret(t *testing.T) {
 	}
 	var projectType string
 	var port, forceHTTPS int
-	if err := f.panel.db.GetDB().QueryRow(`SELECT project_type, app_port, force_https FROM sites WHERE id = 9940`).Scan(&projectType, &port, &forceHTTPS); err != nil {
+	if err := f.panel.db.GetDB().QueryRow(`SELECT project_type, app_port, force_https FROM sites WHERE id = 9941`).Scan(&projectType, &port, &forceHTTPS); err != nil {
 		t.Fatal(err)
 	}
 	if projectType != "service_app" || port != prepared.Port || forceHTTPS != 1 {
 		t.Fatalf("site: %s %d %d", projectType, port, forceHTTPS)
 	}
-	if n := f.count(t, `SELECT COUNT(*) FROM service_app_installs WHERE domain_id = 9902 AND state = 'running' AND version = '2.46.4'`); n != 1 {
+	if n := f.count(t, `SELECT COUNT(*) FROM service_app_installs WHERE domain_id = 9903 AND state = 'running' AND version = '2.46.4'`); n != 1 {
 		t.Fatalf("install row: %d", n)
 	}
 	// No secret is written to the Panel's database.
@@ -309,16 +315,16 @@ func TestServiceAppInstallIsOneOperationAndKeepsNoSecret(t *testing.T) {
 		}
 	}
 	// A second app on the same domain is refused.
-	wantStatus(t, f.as(t, 9703, http.MethodPost, path, `{"app":"n8n","owner_email":"a@b.cd","owner_password":"another long password","confirm_replace":true}`), http.StatusConflict, errCodeServiceApp)
+	wantStatus(t, f.as(t, 9704, http.MethodPost, path, `{"app":"n8n","owner_email":"a@b.cd","owner_password":"another long password","confirm_replace":true}`), http.StatusConflict, errCodeServiceApp)
 
 	// Removal puts the site back as it was and keeps the data unless asked.
-	rec = f.as(t, 9703, http.MethodPost, "/api/v1/domains/9902/service-apps/uninstall", `{"operation_id":"op-n8n-remove","remove_data":true}`)
+	rec = f.as(t, 9704, http.MethodPost, "/api/v1/domains/9903/service-apps/uninstall", `{"operation_id":"op-n8n-remove","remove_data":true}`)
 	wantStatus(t, rec, http.StatusBadRequest, errCodeServiceApp)
-	wantStatus(t, f.as(t, 9703, http.MethodPost, "/api/v1/domains/9902/service-apps/uninstall", `{"operation_id":"op-n8n-remove"}`), http.StatusAccepted, "")
+	wantStatus(t, f.as(t, 9704, http.MethodPost, "/api/v1/domains/9903/service-apps/uninstall", `{"operation_id":"op-n8n-remove"}`), http.StatusAccepted, "")
 	if op := f.waitOperation(t, "op-n8n-remove"); op.State != "succeeded" {
 		t.Fatalf("uninstall: %+v", op)
 	}
-	if err := f.panel.db.GetDB().QueryRow(`SELECT project_type FROM sites WHERE id = 9940`).Scan(&projectType); err != nil || projectType != "php" {
+	if err := f.panel.db.GetDB().QueryRow(`SELECT project_type FROM sites WHERE id = 9941`).Scan(&projectType); err != nil || projectType != "php" {
 		t.Fatalf("site type after removal: %s %v", projectType, err)
 	}
 	f.native.mu.Lock()
@@ -349,9 +355,9 @@ func TestServiceAppRefusedWhereTheOSCannotRunIt(t *testing.T) {
 		t.Fatal("a refused install left a record")
 	}
 	// A site without a certificate is an unmet prerequisite.
-	f.exec(t, `UPDATE sites SET ssl_enabled = 0 WHERE id = 9940`)
+	f.exec(t, `UPDATE sites SET ssl_enabled = 0 WHERE id = 9941`)
 	f.offer(t, "n8n")
-	rec = f.as(t, 9703, http.MethodPost, "/api/v1/domains/9902/service-apps/install", n8nInstallBody)
+	rec = f.as(t, 9704, http.MethodPost, "/api/v1/domains/9903/service-apps/install", n8nInstallBody)
 	if !strings.Contains(rec.Body.String(), `"reason":"certificate_missing"`) {
 		t.Fatalf("certificate: %s", rec.Body.String())
 	}
@@ -361,7 +367,7 @@ func TestServiceAppThatExposesItselfIsStopped(t *testing.T) {
 	f := newServiceAppFixture(t)
 	f.native.exposed = true
 	f.offer(t, "n8n")
-	wantStatus(t, f.as(t, 9703, http.MethodPost, "/api/v1/domains/9902/service-apps/install", n8nInstallBody), http.StatusAccepted, "")
+	wantStatus(t, f.as(t, 9704, http.MethodPost, "/api/v1/domains/9903/service-apps/install", n8nInstallBody), http.StatusAccepted, "")
 	op := f.waitOperation(t, "op-n8n-0001")
 	if op.State != "failed" || op.Class != transport.ServiceAppVerifiedFailure || op.Reason != "exposed" {
 		t.Fatalf("operation: %+v", op)
@@ -372,7 +378,7 @@ func TestServiceAppThatExposesItselfIsStopped(t *testing.T) {
 		t.Fatalf("the exposed app must be stopped: %v", f.native.controls)
 	}
 	var projectType string
-	if err := f.panel.db.GetDB().QueryRow(`SELECT project_type FROM sites WHERE id = 9940`).Scan(&projectType); err != nil || projectType != "php" {
+	if err := f.panel.db.GetDB().QueryRow(`SELECT project_type FROM sites WHERE id = 9941`).Scan(&projectType); err != nil || projectType != "php" {
 		t.Fatalf("an exposed app must not be published: %s", projectType)
 	}
 }

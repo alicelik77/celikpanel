@@ -27,6 +27,7 @@ export const enServiceAppsScreens = {
     'svcapps.closed.administrator': 'Not offered on this server. The administrator decides which apps can be used.',
     'svcapps.closed.reseller': 'Not in your provider’s rights. Ask {grantor} to include it.',
     'svcapps.closed.subscription': 'Not in this subscription’s rights. Ask {grantor} to include it.',
+    'svcapps.closed.licence': 'Not available through a reseller. This app’s licence restricts offering it to others as a hosted service, so it is closed to resellers and their customers. The administrator decides whether that changes; until then there is nothing to do here.',
     'svcapps.heldNote': 'The administrator has put this app on a security hold. It cannot be installed or started until the hold is lifted.',
     'svcapps.unavailable.runtime_missing': 'Cannot be installed yet: {detail}. The administrator installs Node.js 24 under Services → Node.js; after that it can be installed here.',
     'svcapps.unavailable.os_unsupported': 'Cannot run on this server’s operating system: {detail}. CelikPanel does not add outside package sources, so this app is not available here.',
@@ -37,6 +38,7 @@ export const enServiceAppsScreens = {
     'svcapps.deferred.command_agent_installer': 'An AI agent that runs commands on the server; its only official installer is a downloaded script, which CelikPanel does not run. Not offered in this release.',
     'svcapps.deferred.command_agent_postgres': 'An AI agent platform that drives command-line agents on the server and has no sign-in by default. Not offered in this release.',
     'svcapps.licence.sustainable_use': 'n8n’s Sustainable Use License allows use for your own internal business or personal purposes; offering n8n itself to others as a paid service is restricted. Check the licence before offering it commercially.',
+    'svcapps.licence.resellerClosed': 'Not offered through resellers: because of this licence, CelikPanel keeps it out of resellers’ rights and plans, and their customers cannot install it. You can still offer it to your own customers.',
     'svcapps.licence.branding': 'Open WebUI’s licence keeps its name and logo in place (removing them needs fewer than 50 users, the authors’ permission or an enterprise licence).',
     'svcapps.risk.canDo': 'What it can do',
     'svcapps.risk.disabled': 'What CelikPanel turns off',
@@ -178,6 +180,7 @@ export const enServiceAppsScreens = {
     'audit.resource.service_app': 'AI or automation app',
     // Refusals.
     'err.SERVICE_APP': 'The app could not be changed.',
+    'err.SERVICE_APP.licence_reseller': 'Nothing was changed: {app}’s licence ({licence}) restricts offering it to others as a hosted service, so it is not available to resellers or to their customers. The administrator decides whether that changes; until then there is nothing to do here, and every other app and right works as before.',
     'err.SERVICE_APP.held': 'Nothing was changed: the administrator has put {app} on a security hold. It can be installed or started again when the hold is lifted.',
     'err.SERVICE_APP.deferred': 'Nothing was changed: {app} is not available in this release.',
     'err.SERVICE_APP.risk_changed': 'Nothing was changed: the risk summary changed since this page was opened. Read it again, then offer.',

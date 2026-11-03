@@ -109,6 +109,14 @@ type App struct {
 	// (a code, svcapps.deferred.<code>); a deferred app cannot be offered.
 	CustomerOfferable bool   `json:"customer_offerable"`
 	Deferred          string `json:"deferred,omitempty"`
+	// ResellerClosed (alpha.118, the owner's decision of 3 Nov 2026): the
+	// app's licence limits offering it to others as a hosted service, so it
+	// is never available through a reseller: not in a reseller's rights or
+	// plans, and not installable in a reseller's own subscription or one of
+	// its customers'. The administrator may still offer it to the
+	// administrator's own customers. A code (svcapps.licence.<code>); empty
+	// for apps without the restriction. Stop, logs and removal stay open.
+	ResellerClosed string `json:"reseller_closed,omitempty"`
 
 	Defaults Resources `json:"defaults"`
 	Risk     Risk      `json:"risk"`
@@ -137,6 +145,7 @@ var catalog = []App{
 		HashKind:          HashNPMIntegrity,
 		NodeMajors:        []int{24},
 		CustomerOfferable: true,
+		ResellerClosed:    "sustainable_use",
 		Defaults:          Resources{MemoryMB: 1536, CPUPercent: 100, TasksMax: 512, DiskMB: 1600, InstallMemoryMB: 3072},
 		Risk: Risk{
 			CanDo:    []string{"workflows_outbound", "stores_credentials", "webhooks_public", "code_node_sandboxed"},
@@ -212,6 +221,20 @@ func Lookup(id string) (App, bool) {
 		}
 	}
 	return App{}, false
+}
+
+// ResellerClosedOffering reports whether an offering id names an app that is
+// closed to resellers and their customers, and which app.
+func ResellerClosedOffering(offeringID string) (App, bool) {
+	appID, ok := strings.CutPrefix(offeringID, "app:")
+	if !ok {
+		return App{}, false
+	}
+	app, found := Lookup(appID)
+	if !found || app.ResellerClosed == "" {
+		return App{}, false
+	}
+	return app, true
 }
 
 // Known reports whether id is a catalog app (offered or not).
