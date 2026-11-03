@@ -13,6 +13,6 @@ var wordpressRunAsSite = func(context.Context, transport.WordPressSite, string, 
 	return nil, errors.New("WordPress tools are supported only on Linux")
 }
 
-func copyOwnership(string, string) error {
+func rewriteStagedWordPressConfig(int, *transport.WordPressCloneRequest) error {
 	return errors.New("WordPress tools are supported only on Linux")
 }

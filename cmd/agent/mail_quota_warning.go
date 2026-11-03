@@ -112,8 +112,11 @@ warn() {
     percent=$1
     user=$2
     case "$user" in ''|*[!A-Za-z0-9@._+-]*|*/*) return 0 ;; esac
-    [ -e "$STATE/$user" ] && return 0
-    deliver "$user" "$percent" && : > "$STATE/$user"
+    [ -e "$STATE/$user" ] || [ -L "$STATE/$user" ] && return 0
+    # mkdir never follows a link: the hourly scan runs as root in a folder
+    # vmail owns, so a planted link must not make root create or truncate a file.
+    deliver "$user" "$percent" && mkdir -m 0700 -- "$STATE/$user" 2>/dev/null
+    return 0
 }
 
 scan() {
@@ -124,7 +127,7 @@ scan() {
         if [ "$percent" -ge ` + strconv.Itoa(quotaWarningPercent) + ` ]; then
             warn "$percent" "$user"
         elif [ "$percent" -lt ` + strconv.Itoa(quotaWarningResetBelow) + ` ]; then
-            rm -f "$STATE/$user"
+            rm -rf -- "$STATE/$user"
         fi
     done
 }

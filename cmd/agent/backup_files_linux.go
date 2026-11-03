@@ -5,6 +5,8 @@ package main
 import (
 	"archive/tar"
 	"compress/gzip"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +16,8 @@ import (
 	"sort"
 	"strings"
 	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
 var (
@@ -167,17 +171,108 @@ func atomicPublishFile(tmpPath, finalPath string) error {
 	return nil
 }
 
+// openDirectoryNoFollow opens an absolute directory path with openat2
+// RESOLVE_NO_SYMLINKS: a link at any component is refused, so a site's
+// account cannot redirect the descriptor anywhere else.
+func openDirectoryNoFollow(directory string) (int, error) {
+	clean, err := filepath.Abs(directory)
+	if err != nil {
+		return -1, err
+	}
+	relative := strings.TrimPrefix(filepath.Clean(clean), "/")
+	if relative == "" {
+		relative = "."
+	}
+	rootFD, err := unix.Open("/", unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return -1, err
+	}
+	defer unix.Close(rootFD)
+	fd, err := unix.Openat2(rootFD, relative, &unix.OpenHow{
+		Flags:   uint64(unix.O_RDONLY | unix.O_DIRECTORY | unix.O_CLOEXEC | unix.O_NOFOLLOW),
+		Resolve: unix.RESOLVE_BENEATH | unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS,
+	})
+	if err != nil {
+		return -1, fmt.Errorf("open %s without following links: %w", directory, err)
+	}
+	return fd, nil
+}
+
+// readRegularBeneath reads relative (slash-separated) below directory as
+// root: no link at any component, the file must be regular (opened
+// non-blocking, so a FIFO cannot hang the caller) and at most maximum bytes.
+func readRegularBeneath(directory, relative string, maximum int64) ([]byte, error) {
+	dirFD, err := openDirectoryNoFollow(directory)
+	if err != nil {
+		return nil, err
+	}
+	defer unix.Close(dirFD)
+	fd, err := unix.Openat2(dirFD, relative, &unix.OpenHow{
+		Flags:   uint64(unix.O_RDONLY | unix.O_CLOEXEC | unix.O_NOFOLLOW | unix.O_NONBLOCK),
+		Resolve: unix.RESOLVE_BENEATH | unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS,
+	})
+	if err != nil {
+		return nil, err
+	}
+	file := os.NewFile(uintptr(fd), relative)
+	if file == nil {
+		_ = unix.Close(fd)
+		return nil, errors.New("could not wrap file descriptor")
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() || info.Size() > maximum {
+		return nil, errors.New("not a bounded regular file")
+	}
+	content, err := io.ReadAll(io.LimitReader(file, maximum+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(content)) > maximum {
+		return nil, errors.New("not a bounded regular file")
+	}
+	return content, nil
+}
+
+// directoryNamesAt lists a directory descriptor's entries, sorted.
+func directoryNamesAt(dirFD int) ([]string, error) {
+	dup, err := unix.Dup(dirFD)
+	if err != nil {
+		return nil, err
+	}
+	dir := os.NewFile(uintptr(dup), "directory")
+	if dir == nil {
+		_ = unix.Close(dup)
+		return nil, errors.New("could not wrap directory descriptor")
+	}
+	defer dir.Close()
+	if _, err := unix.Seek(dup, 0, 0); err != nil {
+		return nil, err
+	}
+	names, err := dir.Readdirnames(-1)
+	if err != nil {
+		return nil, err
+	}
+	sort.Strings(names)
+	return names, nil
+}
+
+// safeCreateFilesArchive archives a document root as root. The walk holds a
+// descriptor for every directory and opens each entry relative to its
+// parent without following a link, so a site's account that swaps a folder
+// for a link mid-walk cannot make root read outside the document root.
 func safeCreateFilesArchive(sourceDir, destination string) (returnErr error) {
 	if err := rejectSymlinkPath(sourceDir); err != nil {
 		return err
 	}
-	rootInfo, err := os.Lstat(sourceDir)
+	rootFD, err := openDirectoryNoFollow(sourceDir)
 	if err != nil {
-		return err
-	}
-	if !rootInfo.IsDir() || rootInfo.Mode()&os.ModeSymlink != 0 {
 		return errors.New("document root is not a safe directory")
 	}
+	defer unix.Close(rootFD)
 	out, err := openPrivateExclusive(destination)
 	if err != nil {
 		return err
@@ -190,64 +285,7 @@ func safeCreateFilesArchive(sourceDir, destination string) (returnErr error) {
 	}()
 	gz := gzip.NewWriter(out)
 	tw := tar.NewWriter(gz)
-	err = filepath.WalkDir(sourceDir, func(filePath string, entry os.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if filePath == sourceDir {
-			return nil
-		}
-		info, err := os.Lstat(filePath)
-		if err != nil {
-			return err
-		}
-		if info.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("symlink in document root: %s", filePath)
-		}
-		if !info.IsDir() && !info.Mode().IsRegular() {
-			return fmt.Errorf("unsupported file type in document root: %s", filePath)
-		}
-		relative, err := filepath.Rel(sourceDir, filePath)
-		if err != nil {
-			return err
-		}
-		archiveName := filepath.ToSlash(relative)
-		if !validPackageEntryName(archiveName) {
-			return errors.New("unsafe document root path")
-		}
-		header, err := tar.FileInfoHeader(info, "")
-		if err != nil {
-			return err
-		}
-		header.Name = archiveName
-		header.Linkname = ""
-		header.Uid, header.Gid = 0, 0
-		header.Uname, header.Gname = "", ""
-		header.Mode = int64(info.Mode().Perm())
-		if err := tw.WriteHeader(header); err != nil {
-			return err
-		}
-		if info.IsDir() {
-			return nil
-		}
-		file, opened, err := secureOpenRegular(filePath)
-		if err != nil {
-			return err
-		}
-		written, copyErr := io.Copy(tw, file)
-		closeErr := file.Close()
-		if copyErr != nil {
-			return copyErr
-		}
-		if closeErr != nil {
-			return closeErr
-		}
-		if written != opened.Size() || written != info.Size() {
-			return errors.New("file changed while archiving")
-		}
-		return nil
-	})
-	if err != nil {
+	if err := archiveDirectoryAt(tw, rootFD, ""); err != nil {
 		_ = tw.Close()
 		_ = gz.Close()
 		return err
@@ -264,20 +302,155 @@ func safeCreateFilesArchive(sourceDir, destination string) (returnErr error) {
 	return out.Close()
 }
 
+func archiveDirectoryAt(tw *tar.Writer, dirFD int, prefix string) error {
+	names, err := directoryNamesAt(dirFD)
+	if err != nil {
+		return err
+	}
+	for _, name := range names {
+		archiveName := name
+		if prefix != "" {
+			archiveName = prefix + "/" + name
+		}
+		if !validPackageEntryName(archiveName) {
+			return errors.New("unsafe document root path")
+		}
+		var st unix.Stat_t
+		if err := unix.Fstatat(dirFD, name, &st, unix.AT_SYMLINK_NOFOLLOW); err != nil {
+			return err
+		}
+		switch st.Mode & unix.S_IFMT {
+		case unix.S_IFLNK:
+			return fmt.Errorf("symlink in document root: %s", archiveName)
+		case unix.S_IFDIR:
+			childFD, err := unix.Openat(dirFD, name, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
+			if err != nil {
+				return fmt.Errorf("open %s: %w", archiveName, err)
+			}
+			err = archiveEntryAt(tw, childFD, archiveName, true)
+			if err == nil {
+				err = archiveDirectoryAt(tw, childFD, archiveName)
+			}
+			_ = unix.Close(childFD)
+			if err != nil {
+				return err
+			}
+		case unix.S_IFREG:
+			fileFD, err := unix.Openat(dirFD, name, unix.O_RDONLY|unix.O_CLOEXEC|unix.O_NOFOLLOW|unix.O_NONBLOCK, 0)
+			if err != nil {
+				return fmt.Errorf("open %s: %w", archiveName, err)
+			}
+			err = archiveEntryAt(tw, fileFD, archiveName, false)
+			_ = unix.Close(fileFD)
+			if err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("unsupported file type in document root: %s", archiveName)
+		}
+	}
+	return nil
+}
+
+// archiveEntryAt writes one entry from an open descriptor (closed by the
+// caller); a regular file's content is copied from the same descriptor.
+func archiveEntryAt(tw *tar.Writer, fd int, archiveName string, directory bool) error {
+	dup, err := unix.Dup(fd)
+	if err != nil {
+		return err
+	}
+	file := os.NewFile(uintptr(dup), archiveName)
+	if file == nil {
+		_ = unix.Close(dup)
+		return errors.New("could not wrap file descriptor")
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	if directory != info.IsDir() || (!directory && !info.Mode().IsRegular()) {
+		return fmt.Errorf("unsupported file type in document root: %s", archiveName)
+	}
+	if stat, ok := info.Sys().(*syscall.Stat_t); !directory && (!ok || stat.Nlink != 1) {
+		return errors.New("hard-linked files are not allowed")
+	}
+	header, err := tar.FileInfoHeader(info, "")
+	if err != nil {
+		return err
+	}
+	header.Name = archiveName
+	header.Linkname = ""
+	header.Uid, header.Gid = 0, 0
+	header.Uname, header.Gname = "", ""
+	header.Mode = int64(info.Mode().Perm())
+	if err := tw.WriteHeader(header); err != nil {
+		return err
+	}
+	if directory {
+		return nil
+	}
+	written, err := io.Copy(tw, file)
+	if err != nil {
+		return err
+	}
+	if written != info.Size() {
+		return errors.New("file changed while archiving")
+	}
+	return nil
+}
+
 type extractedDirectoryMode struct {
-	path string
+	name string
 	mode os.FileMode
+}
+
+// openStageDirectoryAt opens (and with create, makes) the directory
+// components below base, one at a time and never through a link. The
+// returned descriptor is the caller's to close.
+func openStageDirectoryAt(base int, components []string, create bool) (int, error) {
+	current, err := unix.Dup(base)
+	if err != nil {
+		return -1, err
+	}
+	for _, component := range components {
+		if create {
+			if err := unix.Mkdirat(current, component, 0o700); err != nil && !errors.Is(err, unix.EEXIST) {
+				_ = unix.Close(current)
+				return -1, err
+			}
+		}
+		next, err := unix.Openat(current, component, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
+		_ = unix.Close(current)
+		if err != nil {
+			return -1, fmt.Errorf("restore staging folder %s: %w", component, err)
+		}
+		current = next
+	}
+	return current, nil
 }
 
 func safeExtractFilesArchive(source, destination string) error {
 	if err := secureMkdirAll(destination, 0o700); err != nil {
 		return err
 	}
-	entries, err := os.ReadDir(destination)
+	stageFD, err := openDirectoryNoFollow(destination)
 	if err != nil {
 		return err
 	}
-	if len(entries) != 0 {
+	defer unix.Close(stageFD)
+	return extractFilesArchiveAt(stageFD, source)
+}
+
+// extractFilesArchiveAt extracts into the directory stageFD names. Every
+// folder and file is made and set relative to a held descriptor, never by
+// path, so a renamed or replaced staging folder cannot redirect root.
+func extractFilesArchiveAt(stageFD int, source string) error {
+	existing, err := directoryNamesAt(stageFD)
+	if err != nil {
+		return err
+	}
+	if len(existing) != 0 {
 		return errors.New("restore staging directory is not empty")
 	}
 	file, _, err := secureOpenRegular(source)
@@ -318,10 +491,11 @@ func safeExtractFilesArchive(source, destination string) error {
 			return errors.New("duplicate files archive entry")
 		}
 		seen[name] = true
-		target := filepath.Join(destination, filepath.FromSlash(name))
-		relative, err := filepath.Rel(destination, target)
-		if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
-			return errors.New("files archive escapes staging directory")
+		components := strings.Split(name, "/")
+		for _, component := range components {
+			if component == "" || component == "." || component == ".." {
+				return errors.New("files archive escapes staging directory")
+			}
 		}
 		mode := os.FileMode(header.Mode) & os.ModePerm
 		switch header.Typeflag {
@@ -329,41 +503,27 @@ func safeExtractFilesArchive(source, destination string) error {
 			if mode == 0 {
 				mode = 0o700
 			}
-			if err := secureMkdirAll(target, 0o700); err != nil {
+			dirFD, err := openStageDirectoryAt(stageFD, components, true)
+			if err != nil {
 				return err
 			}
-			directoryModes = append(directoryModes, extractedDirectoryMode{target, mode})
+			_ = unix.Close(dirFD)
+			directoryModes = append(directoryModes, extractedDirectoryMode{name, mode})
 		case tar.TypeReg, tar.TypeRegA:
 			if header.Size < 0 || totalSize > maxPackagePayloadBytes-header.Size {
 				return errors.New("files archive size limit exceeded")
 			}
 			totalSize += header.Size
-			if err := secureMkdirAll(filepath.Dir(target), 0o700); err != nil {
-				return err
-			}
-			out, err := openPrivateExclusive(target)
-			if err != nil {
-				return err
-			}
-			written, copyErr := io.Copy(out, tr)
-			syncErr := out.Sync()
-			closeErr := out.Close()
-			if copyErr != nil {
-				return copyErr
-			}
-			if syncErr != nil {
-				return syncErr
-			}
-			if closeErr != nil {
-				return closeErr
-			}
-			if written != header.Size {
-				return errors.New("truncated files archive entry")
-			}
 			if mode == 0 {
 				mode = 0o600
 			}
-			if err := os.Chmod(target, mode); err != nil {
+			parentFD, err := openStageDirectoryAt(stageFD, components[:len(components)-1], true)
+			if err != nil {
+				return err
+			}
+			err = writeStagedFileAt(parentFD, components[len(components)-1], tr, header.Size, mode)
+			_ = unix.Close(parentFD)
+			if err != nil {
 				return err
 			}
 		default:
@@ -371,12 +531,52 @@ func safeExtractFilesArchive(source, destination string) error {
 		}
 	}
 	sort.Slice(directoryModes, func(i, j int) bool {
-		return strings.Count(directoryModes[i].path, string(filepath.Separator)) > strings.Count(directoryModes[j].path, string(filepath.Separator))
+		return strings.Count(directoryModes[i].name, "/") > strings.Count(directoryModes[j].name, "/")
 	})
 	for _, directory := range directoryModes {
-		if err := os.Chmod(directory.path, directory.mode); err != nil {
+		dirFD, err := openStageDirectoryAt(stageFD, strings.Split(directory.name, "/"), false)
+		if err != nil {
 			return err
 		}
+		err = unix.Fchmod(dirFD, uint32(directory.mode))
+		_ = unix.Close(dirFD)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// writeStagedFileAt creates name below parentFD (O_EXCL, no link followed),
+// copies size bytes and sets mode on the open file.
+func writeStagedFileAt(parentFD int, name string, content io.Reader, size int64, mode os.FileMode) error {
+	fd, err := unix.Openat(parentFD, name, unix.O_WRONLY|unix.O_CREAT|unix.O_EXCL|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0o600)
+	if err != nil {
+		return err
+	}
+	out := os.NewFile(uintptr(fd), name)
+	if out == nil {
+		_ = unix.Close(fd)
+		return errors.New("could not wrap file descriptor")
+	}
+	written, copyErr := io.Copy(out, content)
+	syncErr := out.Sync()
+	chmodErr := out.Chmod(mode)
+	closeErr := out.Close()
+	if copyErr != nil {
+		return copyErr
+	}
+	if syncErr != nil {
+		return syncErr
+	}
+	if chmodErr != nil {
+		return chmodErr
+	}
+	if closeErr != nil {
+		return closeErr
+	}
+	if written != size {
+		return errors.New("truncated files archive entry")
 	}
 	return nil
 }
@@ -412,6 +612,17 @@ type stagedFilesRestore struct {
 }
 
 func prepareFilesRestore(archivePath, target string) (*stagedFilesRestore, error) {
+	return prepareFilesRestoreEdited(archivePath, target, nil)
+}
+
+// prepareFilesRestoreEdited extracts archivePath into a new staging folder
+// beside target. The site's home is the site account's own folder, so that
+// account can rename the staging folder or put a link in its place: every
+// step after mkdir works on a held descriptor of the folder root made
+// (checked to be root's own and not a link), never by path. edit (optional)
+// runs on that descriptor while the tree is still root's and 0700; then the
+// tree is given target's owner and mode.
+func prepareFilesRestoreEdited(archivePath, target string, edit func(stageFD int) error) (*stagedFilesRestore, error) {
 	if err := rejectSymlinkPath(target); err != nil {
 		return nil, err
 	}
@@ -422,50 +633,100 @@ func prepareFilesRestore(archivePath, target string) (*stagedFilesRestore, error
 	if !targetInfo.IsDir() || targetInfo.Mode()&os.ModeSymlink != 0 {
 		return nil, errors.New("restore target is not a safe directory")
 	}
+	stat, ok := targetInfo.Sys().(*syscall.Stat_t)
+	if !ok {
+		return nil, errors.New("could not read restore target ownership")
+	}
 	parent := filepath.Dir(target)
-	stage, err := os.MkdirTemp(parent, ".restore-stage-")
+	parentFD, err := openDirectoryNoFollow(parent)
 	if err != nil {
 		return nil, err
 	}
-	result := &stagedFilesRestore{stage: stage, target: target}
-	if err := os.Chmod(stage, 0o700); err != nil {
+	defer unix.Close(parentFD)
+	random := make([]byte, 8)
+	if _, err := rand.Read(random); err != nil {
+		return nil, err
+	}
+	name := ".restore-stage-" + hex.EncodeToString(random)
+	if err := unix.Mkdirat(parentFD, name, 0o700); err != nil {
+		return nil, err
+	}
+	result := &stagedFilesRestore{stage: filepath.Join(parent, name), target: target}
+	stageFD, err := unix.Openat(parentFD, name, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
+	if err != nil {
+		result.Cleanup()
+		return nil, fmt.Errorf("open the restore staging folder: %w", err)
+	}
+	defer unix.Close(stageFD)
+	var stageStat unix.Stat_t
+	if err := unix.Fstat(stageFD, &stageStat); err != nil {
 		result.Cleanup()
 		return nil, err
 	}
-	if err := safeExtractFilesArchive(archivePath, stage); err != nil {
+	if stageStat.Uid != uint32(os.Geteuid()) {
+		// Someone else's folder took the name between mkdir and open.
+		return nil, errors.New("the restore staging folder was replaced; nothing was restored")
+	}
+	if err := unix.Fchmod(stageFD, 0o700); err != nil {
 		result.Cleanup()
 		return nil, err
 	}
-	stat, ok := targetInfo.Sys().(*syscall.Stat_t)
-	if !ok {
-		result.Cleanup()
-		return nil, errors.New("could not read restore target ownership")
-	}
-	if err := chownRestoreTree(stage, int(stat.Uid), int(stat.Gid)); err != nil {
+	if err := extractFilesArchiveAt(stageFD, archivePath); err != nil {
 		result.Cleanup()
 		return nil, err
 	}
-	if err := os.Chmod(stage, targetInfo.Mode().Perm()); err != nil {
+	if edit != nil {
+		if err := edit(stageFD); err != nil {
+			result.Cleanup()
+			return nil, err
+		}
+	}
+	if err := chownTreeAt(stageFD, int(stat.Uid), int(stat.Gid)); err != nil {
+		result.Cleanup()
+		return nil, err
+	}
+	if err := unix.Fchmod(stageFD, uint32(targetInfo.Mode().Perm())); err != nil {
 		result.Cleanup()
 		return nil, err
 	}
 	return result, nil
 }
 
-func chownRestoreTree(root string, uid, gid int) error {
-	return filepath.WalkDir(root, func(filePath string, entry os.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		info, err := os.Lstat(filePath)
-		if err != nil {
+// chownTreeAt gives the tree below dirFD (and dirFD) uid:gid through held
+// descriptors, never following a link.
+func chownTreeAt(dirFD int, uid, gid int) error {
+	if err := unix.Fchown(dirFD, uid, gid); err != nil {
+		return err
+	}
+	names, err := directoryNamesAt(dirFD)
+	if err != nil {
+		return err
+	}
+	for _, name := range names {
+		var st unix.Stat_t
+		if err := unix.Fstatat(dirFD, name, &st, unix.AT_SYMLINK_NOFOLLOW); err != nil {
 			return err
 		}
-		if info.Mode()&os.ModeSymlink != 0 {
+		switch st.Mode & unix.S_IFMT {
+		case unix.S_IFDIR:
+			childFD, err := unix.Openat(dirFD, name, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
+			if err != nil {
+				return err
+			}
+			err = chownTreeAt(childFD, uid, gid)
+			_ = unix.Close(childFD)
+			if err != nil {
+				return err
+			}
+		case unix.S_IFREG:
+			if err := unix.Fchownat(dirFD, name, uid, gid, unix.AT_SYMLINK_NOFOLLOW); err != nil {
+				return err
+			}
+		default:
 			return errors.New("symlink appeared in restore staging")
 		}
-		return os.Chown(filePath, uid, gid)
-	})
+	}
+	return nil
 }
 
 func (s *stagedFilesRestore) Publish() error {
