@@ -1,0 +1,3 @@
+== 18:51:18 why PANEL_UPDATE_BUSY
+200 {"operation": null}
+active None [('mail_tls_sync', 'mail-tls', 'succeeded', '2026-11-03T18:43:08.829200679Z'), ('firewall_sync', 'nftables', 'succeeded', '2026-11-03T18:38:03.629272344Z'), ('dns_zone_sync', 'cb117.test', 'succeeded', '2026-11-03T18:44:07.755892372Z'), ('firewall_sync', 'nftables', 'succeeded', '2026-11-03T18:42:46.180855424Z')]

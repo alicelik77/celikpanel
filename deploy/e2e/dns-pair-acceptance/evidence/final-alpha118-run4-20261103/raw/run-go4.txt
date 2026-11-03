@@ -1,0 +1,27 @@
+start 18:30:09
+{
+  "node": "labnet",
+  "state": "stopped",
+  "deleted": true
+}
+
+infra-up exit 0 18:32:02
+labnet-tools-ok
+builds done 18:33:28
+/var/tmp/a118r1/out-build118.out:commit 42091f3f9a7e2ba2717343abc410699bbd3d79d6
+/var/tmp/a118r1/out-build118.out:bundle budget check passed
+/var/tmp/a118r1/out-build118.out:EXIT 0
+/var/tmp/a118r1/out-build118.out:  "commit": "42091f3f9a7e2ba2717343abc410699bbd3d79d6",
+/var/tmp/a118r1/out-build118.out:  "sha256": "1ccf566ea689c33ed8a0541f7922f9b78bcebb4ec7be03c8c66c2d8ff57e246c",
+/var/tmp/a118r1/out-build117.out:commit b22348ff86f806c7132cc067221ce74c6fd09cdc
+/var/tmp/a118r1/out-build117.out:bundle budget check passed
+/var/tmp/a118r1/out-build117.out:EXIT 0
+/var/tmp/a118r1/out-build117.out:  "commit": "b22348ff86f806c7132cc067221ce74c6fd09cdc",
+/var/tmp/a118r1/out-build117.out:  "sha256": "6b5cb17d76223ca25e8a044c6f7d86842cb30883ead4c200a83bb5a705cfda1e",
+portal118 exit 0
+version=v0.1.0-alpha.118
+commit=42091f3f9a7e2ba2717343abc410699bbd3d79d6
+portal117 exit 0
+version=v0.1.0-alpha.117
+commit=b22348ff86f806c7132cc067221ce74c6fd09cdc
+phase1 done 18:33:31

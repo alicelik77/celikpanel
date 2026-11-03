@@ -1,0 +1,29 @@
+== R4ssh 18:59:16 u117 domain 2
+200 server: {"jail_checked": true, "jail_missing": ["unzip", "zip"], "jail_packages": ["unzip", "zip"], "jail_unknown": null, "package_family": "apt"} account: {"enabled": false, "ssh": false, "chroot_dir": "/var/www/celikpanel/subscriptions/3/sites", "username": "cb117_test"}
+-- file access + SSH on
+409 {"code": "FILE_ACCESS_SSH_TOOLS_MISSING", "details": ["unzip", "zip"], "error": "this server does not have these command-line tools: unzip, zip. The command line stays off until the server administrator installs them (Access tab, Install the tools); then turn it on again. FTP and SFTP are not affected"}
+-- admin installs the listed tools ["unzip", "zip"] 18:59:16
+200 {"installed": ["unzip", "zip"], "still_missing": null}
+200 server: {"jail_checked": true, "jail_missing": null, "jail_packages": null, "jail_unknown": null, "package_family": "apt"} account: {"enabled": false, "ssh": false, "chroot_dir": "/var/www/celikpanel/subscriptions/3/sites", "username": "cb117_test"}
+-- file access + SSH on again
+200 {"changes": [{"action": "create", "detail": "OpenSSH: SFTP and SSH confinement", "kind": "file", "target": "/etc/ssh/sshd_config.d/60-celikpanel-file-access.conf"}, {"action": "set", "detail": "login shell /bin/bash", "kind": "account", "target": "cb117_test"}, {"action": "set", "detail": "new password", "kind": "account", "target": "cb117_test"}, {"action": "update", "detail": "command-line tools for the SSH accounts of this subscription", "kind": "jail", "target": "/var/www/celikpanel/subscriptions/3/sites"}, {"action": "reload", "kind": "service", "target": "ssh.service"}], "connection": {"ftp_host": "cb117.test", "ftp_port": 21, "passive_max": "[REDACTED]", "passive_min": "[REDACTED]", "
+200 server: {"jail_checked": true, "jail_missing": null, "jail_packages": null, "jail_unknown": null, "package_family": "apt"} account: {"enabled": true, "ssh": true, "chroot_dir": "/var/www/celikpanel/subscriptions/3/sites", "username": "cb117_test"}
+## jail /var/www/celikpanel/subscriptions/3/sites
+zip: /var/www/celikpanel/subscriptions/3/sites/bin/zip
+unzip: /var/www/celikpanel/subscriptions/3/sites/bin/unzip
+nano: /var/www/celikpanel/subscriptions/3/sites/bin/nano
+vi: /var/www/celikpanel/subscriptions/3/sites/bin/vi
+vim: /var/www/celikpanel/subscriptions/3/sites/bin/vim
+rsync: /var/www/celikpanel/subscriptions/3/sites/bin/rsync
+less: /var/www/celikpanel/subscriptions/3/sites/bin/less
+bash: /var/www/celikpanel/subscriptions/3/sites/bin/bash
+9:Match User cb117_test
+10:	ChrootDirectory /var/www/celikpanel/subscriptions/3/sites
+sshd -t ok
+ii less 590-2ubuntu2.1
+ii nano 7.2-2ubuntu0.2
+ii rsync 3.2.7-1ubuntu1.5
+ii unzip 6.0-28ubuntu4.1
+ii vim-tiny 2:9.1.0016-1ubuntu7.20
+ii zip 3.0-13ubuntu0.2
+== R4ssh done 18:59:26

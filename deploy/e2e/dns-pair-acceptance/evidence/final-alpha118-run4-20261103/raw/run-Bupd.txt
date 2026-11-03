@@ -1,0 +1,31 @@
+== B data on 117 18:43:58
+200 {"id": 3, "rights": "unlimited", "success": true}
+cb117.test id=2
+200 {"id": 1, "success": true}
+## 18:44:09 release
+total 24
+drwxr-xr-x 6 root root       4096 Nov  3 18:35 .
+drwxr-xr-x 3 root root       4096 Nov  3 18:35 ..
+drwxr-xr-x 2 root root       4096 Nov  3 18:35 bin
+drwxr-xr-x 2 root root       4096 Nov  3 18:35 dns-owner-tools
+schema versions >=56: [(56,)]
+## services
+active active active active active active active active 
+## nginx -t
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+## traffic
+ls: cannot access '/var/log/celikpanel/traffic/': No such file or directory
+## dovecot 2.3.21 (47349e2482)
+head: cannot open '/etc/dovecot/conf.d/90-celikpanel-quota.conf' for reading: No such file or directory
+doveconf rc=0 
+
+Fatal: Unknown command 'quota', but plugin quota exists. Try to set mail_plugins=quota
+2026-11-03T18:43:44.807552+00:00 boston postfix/submission/smtpd[50802]: lost connection after EHLO from localhost[127.0.0.1]
+## panics
+0
+Nov 03 18:37:51 boston mariadb-server.postinst[20166]: 2026-11-03 18:37:51 0 [Warning] You need to use --log-bin to make --expire-logs-days or --binlog-expire-logs-seconds work.
+site http 200 body:  cb117.test :root{--bg:#eef1f5;--card:#ffffff;--ink:#16213a;--muted:#5a6478;--soft:#f5f7fa;--rule:#dde2ea
+== B update through the panel API 18:44:10
+check 200 {  "available": true,  "current_commit": "b22348ff86f806c7132cc067221ce74c6fd09cdc",  "current_version": "v0.1.0-alpha.117",  "supported": true,  "target": {   "arch": "amd64",   "archive_sha256": "1ccf566ea689c33ed8a0541f7922f9b78bcebb4ec7be03c8c66c2d8ff57e246c",   "archive_size": "70576609",   "commit": "42091f3f9a7e2ba2717343abc410699bbd3d79d6",   "os": "linux",   "published_at": "2026-11-03T18:33:30Z",   "sequence": "118",   "version": "v0.1.0-alpha.118"  } }
+409 {"code": "PANEL_UPDATE_BUSY", "error": "another server operation is active"}
+  10s 200 None None

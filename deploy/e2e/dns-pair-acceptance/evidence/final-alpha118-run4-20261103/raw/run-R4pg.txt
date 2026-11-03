@@ -1,0 +1,32 @@
+== R4pg 18:57:56
+  row {"id": "postgresql", "is_installed": false, "status": "not_installed", "kind": "service", "not_offered": null, "conflict_with": null, "requires_missing": null, "needs_missing": null, "versions": [], "packages": ["postgresql"]}
+  row {"id": "phppgadmin", "is_installed": false, "status": "not_installed", "kind": "tool", "not_offered": null, "conflict_with": null, "requires_missing": ["postgresql"], "needs_missing": null, "versions": [], "packages": ["phppgadmin"]}
+200 {"version": "17"}
+200 {"available": true, "detail": "Official PostgreSQL repository \u2014 every current major version, kept up to date.", "enabled": false, "id": "pgdg", "lane": true, "name": "PostgreSQL Global Development Group (PGDG)", "origin": "apt.postgresql.org"}
+-- install PostgreSQL (distribution version, no package)
+202 {"operation": {"id": "142d0a6fe1225a8ad34ed0385686cae0", "kind": "service_install", "phase": "queued", "request_id": "8f1da89cc5e2b3cf10a27205ca5eb275", "service_id": "postgresql", "started_at": "2026-11-03T18:57:56.329633875Z", "status": "queued"}}
+  op 8f1da89cc5e2b3cf10a27205ca5eb275: succeeded completed "" (18:58:27)
+200 {"operation": {"finished_at": "2026-11-03T18:58:17.553013015Z", "id": "142d0a6fe1225a8ad34ed0385686cae0", "kind": "service_install", "phase": "completed", "request_id": "8f1da89cc5e2b3cf10a27205ca5eb275", "result": {"installed": true, "success": true}, "service_id": "postgresql", "started_at": "2026-11-03T18:57:56.329633875Z", "status": "succeeded"}}
+-- install phpPgAdmin
+202 {"operation": {"id": "4e94a712f6a9c14759f6827a936e86eb", "kind": "service_install", "phase": "queued", "request_id": "e1508c7d38fbce6c9aba0b23cd60c3e0", "service_id": "phppgadmin", "started_at": "2026-11-03T18:58:27.031954486Z", "status": "queued"}}
+  op e1508c7d38fbce6c9aba0b23cd60c3e0: succeeded completed "" (18:58:38)
+200 {"operation": {"finished_at": "2026-11-03T18:58:36.85550024Z", "id": "4e94a712f6a9c14759f6827a936e86eb", "kind": "service_install", "phase": "completed", "request_id": "e1508c7d38fbce6c9aba0b23cd60c3e0", "result": {"installed": true, "php_tool_proof": {"proved": true, "tool": "phppgadmin", "version": "8.4"}, "success": true}, "service_id": "phppgadmin", "started_at": "2026-11-03T18:58:27.031954486Z", "status": "succeeded"}}
+  row {"id": "postgresql", "is_installed": true, "status": "active (running)", "kind": "service", "not_offered": null, "conflict_with": null, "requires_missing": null, "needs_missing": null, "versions": [], "packages": ["postgresql"]}
+  row {"id": "phppgadmin", "is_installed": true, "status": "installed", "kind": "tool", "not_offered": null, "conflict_with": null, "requires_missing": null, "needs_missing": null, "versions": [], "packages": ["phppgadmin"]}
+-- removal review for PostgreSQL
+200 {"all_versions": true, "bundles": [{"id": "db.postgresql", "name_code": "db_postgresql_phppgadmin"}], "companion_tools": ["phppgadmin"], "database_tools_reconfigured": false, "firewall_ports": [], "has_units": true, "hosted": {"blocks_removal": false, "count": 0, "kind": "databases", "names": []}, "mail_filter_rewired": false, "package_family": "apt", "packages": ["postgresql"], "removal": "packages", "required_by": ["phppgadmin"], "service_id": "postgresql", "setup_required": false, "simulation": {"bound_tools": [], "collateral": [], "data_paths": ["/var/lib/postgresql/17"], "default_runtime": false, "keeps_data": true, "refuses": false, "remove": ["postgresql", "postgresql-17", "libio-pty-perl", "libipc-run-perl", "libjson-perl", "libllvm19", "libz3-4", "postgresql-common", "postgresql-common-dev"], "state": "checked", "traces": [], "traces_state": "checked"}}
+-- remove PostgreSQL, keep phpPgAdmin (unticked)
+200 {"detail": "removed postgresql, postgresql-17, libio-pty-perl, libipc-run-perl, libjson-perl, libllvm19, libz3-4, postgresql-common, postgresql-common-dev", "removed": true, "success": true}
+  row {"id": "postgresql", "is_installed": false, "status": "not_installed", "kind": "service", "not_offered": null, "conflict_with": null, "requires_missing": null, "needs_missing": null, "versions": [], "packages": ["postgresql"]}
+  row {"id": "phppgadmin", "is_installed": true, "status": "installed", "kind": "tool", "not_offered": null, "conflict_with": null, "requires_missing": null, "needs_missing": ["postgresql"], "versions": [], "packages": ["phppgadmin"]}
+-- remove phpPgAdmin
+200 {"all_versions": false, "bundles": [], "companion_tools": [], "database_tools_reconfigured": true, "firewall_ports": [], "has_units": false, "hosted": null, "mail_filter_rewired": false, "package_family": "apt", "packages": ["phppgadmin"], "removal": "packages", "required_by": [], "service_id": "phppgadmin", "setup_required": false, "simulation": {"bound_tools": [], "collateral": [], "default_runtime": false, "refuses": false, "remove": ["phppgadmin", "libphp-adodb"], "state": "checked", "traces": [], "traces_state": "checked"}}
+200 {"detail": "removed phppgadmin, libphp-adodb", "removed": true, "success": true}
+  row {"id": "postgresql", "is_installed": false, "status": "not_installed", "kind": "service", "not_offered": null, "conflict_with": null, "requires_missing": null, "needs_missing": null, "versions": [], "packages": ["postgresql"]}
+  row {"id": "phppgadmin", "is_installed": false, "status": "not_installed", "kind": "tool", "not_offered": null, "conflict_with": null, "requires_missing": ["postgresql"], "needs_missing": null, "versions": [], "packages": ["phppgadmin"]}
+rc postgresql 17+278
+rc postgresql-17 17.11-0+deb13u1
+ii postgresql-client-17 17.11-0+deb13u1
+ii postgresql-client-common 278
+rc postgresql-common 278
+== R4pg done 18:59:05

@@ -1,0 +1,74 @@
+== R3n8n 18:48:07 subN=5
+node 24.22.2
+202 {"operation": {"id": "ecfa0284612bcfa35ad5a02137f57b63", "kind": "runtime_install", "package_name": "24.22.2", "phase": "queued", "request_id": "e671a863d5ce08ec7c8a8e79833ad73f", "service_id": "node", "started_at": "2026-11-03T18:48:07.101387856Z", "status": "queued"}}
+  op e671a863d5ce08ec7c8a8e79833ad73f: succeeded completed "" (18:48:18)
+-- offer n8n
+200 [('n8n', True, True, None)]
+n8n118.test id=7
+200 {"expires_at": "2031-11-03T18:48:26Z", "status": "success"}
+-- install n8n 18:48:29
+202 {"operation": {"created_at": "2026-11-03 18:48:28", "id": "6dab22412c3d6bad3f78f376e53d0361", "install_id": 1, "kind": "install", "state": "running", "step": "prepare", "updated_at": "2026-11-03 18:48:28"}}
+  18:48:29 install=installing active=False serving=False unit=celiksvc-1 url=https://n8n118.test/ | op=running step=prepare class=None reason=None msg= | suspended=False cert=true
+  18:48:44 install=installing active=False serving=False unit=celiksvc-1 url=https://n8n118.test/ | op=running step=installing class=None reason=None msg= | suspended=False cert=true
+  18:56:04 install=installing active=True serving=False unit=celiksvc-1 url=https://n8n118.test/ | op=running step=verify class=None reason=None msg= | suspended=False cert=true
+  18:56:19 install=running active=True serving=True unit=celiksvc-1 url=https://n8n118.test/ | op=succeeded step=done class=None reason=None msg= | suspended=False cert=true
+## 18:56:38 units
+  celiksvc-1.service loaded active running CelikPanel service app n8n for n8n118.test
+## celiksvc-1.service active=active enabled=enabled pid=55489
+## listeners 21000-29999
+127.0.0.1:21000 users:(("n8n
+127.0.0.1:21001 users:(("n8n
+## env (hardening, no secrets)
+## journal: native modules / errors
+## journal tail
+Nov 03 18:56:19 frankfurt node[55489]: Version: 2.46.4
+Nov 03 18:56:19 frankfurt node[55489]: Building workflow dependency index...
+Nov 03 18:56:19 frankfurt node[55489]: Scheduler started
+Nov 03 18:56:19 frankfurt node[55489]: Finished building workflow dependency index. Processed 0 draft workflows, 0 published workflows.
+Nov 03 18:56:19 frankfurt node[55489]: Editor is now accessible via:
+Nov 03 18:56:19 frankfurt node[55489]: https://n8n118.test
+https n8n118.test/ http 200 verify=0 title: n8n.io - Workflow Automation bytes=1708
+executeCommand mentions: 0
+https n8n118.test/types/nodes.json http 401 verify=0 title:  bytes=43
+executeCommand mentions: 0
+-- owner login
+n8n login http 200 user: owner@n8n118.test global:owner cookie: True
+== suspend subN 18:56:41
+202 {"can_resume": true, "can_suspend": false, "causes": {"disk": false, "expired": false, "manual": true}, "ends_at": null, "operation": {"attempts": 0, "created_at": "2026-11-03 18:56:40", "effects": [{"kind": "web", "state": "pending", "target": "n8n118.test"}, {"kind": "app", "state": "pending", "ta
+  suspended completed [["web", "n8n118.test", "done"], ["app", "service-app:n8n118.test", "done"], ["site_account", "n8n118.test", "done"]] (18:56:47)
+## 18:56:47 units
+## celiksvc-1.service active=inactive enabled=disabled pid=0
+## listeners 21000-29999
+## env (hardening, no secrets)
+## journal: native modules / errors
+## journal tail
+https n8n118.test/ http 503 verify=0 title: Site suspended bytes=407
+executeCommand mentions: 0
+== resume subN 18:56:48
+202 {"can_resume": false, "can_suspend": true, "causes": {"disk": false, "expired": false, "manual": false}, "ends_at": null, "operation": {"attempts": 0, "created_at": "2026-11-03 18:56:47", "effects": [{"kind": "web", "state": "pending", "target": "n8n118.test"}, {"kind": "app", "state": "pending", "t
+  active completed [["web", "n8n118.test", "done"], ["app", "service-app:n8n118.test", "done"], ["site_account", "n8n118.test", "done"]] (18:56:55)
+## 18:57:24 units
+  celiksvc-1.service loaded active running CelikPanel service app n8n for n8n118.test
+## celiksvc-1.service active=active enabled=enabled pid=55825
+## listeners 21000-29999
+127.0.0.1:21000 users:(("n8n
+127.0.0.1:21001 users:(("n8n
+https n8n118.test/ http 200 verify=0 title: n8n.io - Workflow Automation bytes=1708
+executeCommand mentions: 0
+== reseller refusals 18:57:25
+-- reseller plan naming app:n8n
+409 {"code": "SERVICE_APP", "error": "Nothing was changed: n8n\u2019s licence (Sustainable Use License 1.0) restricts offering it to others as a hosted service, so it is not available to resellers or to their customers. The administrator decides whether that changes; until then there is nothing to do here, and every other app and right works as before.", "reason": "licence_reseller", "vars": {"app": "n8n", "licence": "Sustainable Use License 1.0"}}
+-- reseller plan with all software
+200 {"id": 1, "success": true}
+200 {"id": 7, "rights": "plan", "success": true}
+-- reseller creates a customer
+200 {"id": 8, "rights": "unlimited", "success": true}
+reseller customer subscription 7
+rn8n118.test id=9
+200 {"expires_at": "2031-11-03T18:57:35Z", "status": "success"}
+  reseller-customer view: [('n8n', False, 'licence', None), ('open-webui', False, 'administrator', 'os_unsupported'), ('openclaw', False, 'administrator', 'deferred'), ('hermes-agent', False, 'administrator', 'deferred'), ('paperclip', False, 'administrator', 'deferred')]
+-- install n8n under the reseller-owned subscription (expect licence refusal)
+409 {"code": "SERVICE_APP", "error": "Nothing was changed: n8n\u2019s licence (Sustainable Use License 1.0) restricts offering it to others as a hosted service, so it is not available to resellers or to their customers. The administrator decides whether that changes; until then there is nothing to do here, and every other app and right works as before.", "reason": "licence_reseller", "vars": {"app": "n8n", "licence": "Sustainable Use License 1.0"}}
+-- same request by the administrator
+409 {"code": "SERVICE_APP", "error": "Nothing was changed: n8n\u2019s licence (Sustainable Use License 1.0) restricts offering it to others as a hosted service, so it is not available to resellers or to their customers. The administrator decides whether that changes; until then there is nothing to do here, and every other app and right works as before.", "reason": "licence_reseller", "vars": {"app": "n8n", "licence": "Sustainable Use License 1.0"}}
+== R3n8n done 18:57:38

@@ -1,0 +1,28 @@
+== R4lim2 18:57:12
+200 {"id": 6, "rights": "unlimited", "success": true}
+subD=6 d118lim.test id=8
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a118/lab/mkup.py:6: SyntaxWarning: "\P" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\P"? A raw string is also an option.
+  elif spec == "eicar": data = b"X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a118/lab/mkup.py:6: SyntaxWarning: "\P" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\P"? A raw string is also an option.
+  elif spec == "eicar": data = b"X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
+200 {"success": true}
+200 {"success": true}
+php upload http 200: file_uploads=true files=1 errors={"f":0}
+  disk 0 / 0 {'state': 'not_measured_yet', 'measured_at': None, 'uploads_blocked': False, 'uploads_applied': False, 'uploads_note': None}
+-- first measurement
+  usage round ran: 2026-11-03 18:56:38 -> 2026-11-03 19:01:38 (19:01:52)
+  disk 2527232 / 0 {'state': 'measured', 'measured_at': '2026-11-03 19:01:38', 'uploads_blocked': False, 'uploads_applied': True, 'uploads_note': None}
+== disk limit 1 MB 19:02:13
+200 {"lifecycle": {"ends_at": null, "starts_at": "2026-11-03T18:57:11Z", "status": "active"}, "limits": {"disk_quota_mb": 1, "max_databases": 0, "max_domains": 0, "max_email_accounts": 0, "traffic_quota_mb": 0}, "own": {"all_permissions": true, "all_software": true, "permissions": [], "software": []}, "permissions": [{"granted": true, "id": "dns_edit", "name": "DNS record editing"}, {"granted": true, "id": "dnssec", "name": "DNSSEC"}, {"granted": true, "id": "mail", "name": "Mail"}, {"granted": true
+  usage round ran: 2026-11-03 19:01:38 -> 2026-11-03 19:06:38 (19:06:48)
+  disk 2527232 / 1048576 {'state': 'measured', 'measured_at': '2026-11-03 19:01:38', 'uploads_blocked': True, 'uploads_applied': True, 'uploads_note': None}
+/etc/php/8.4/fpm/pool.d/site8.conf:php_admin_flag[file_uploads] = off
+-rw-r--r-- 1 root celikpanel   872 19:06:38 site8.conf
+php upload http 200: file_uploads=false files=0 errors=[]
+== disk limit lifted 19:07:09
+200 {"lifecycle": {"ends_at": null, "starts_at": "2026-11-03T18:57:11Z", "status": "active"}, "limits": {"disk_quota_mb": 0, "max_databases": 0, "max_domains": 0, "max_email_accounts": 0, "traffic_quota_mb": 0}, "own": {"all_permissions": true, "all_software": true, "permissions": [], "software": []}, "permissions": [{"granted": true, "id": "dns_edit", "name": "DNS record editing"}, {"granted": true, "id": "dnssec", "name": "DNSSEC"}, {"granted": true, "id": "mail", "name": "Mail"}, {"granted": true
+  usage round ran: 2026-11-03 19:06:38 -> 2026-11-03 19:11:38 (19:11:44)
+  disk 2527232 / 0 {'state': 'measured', 'measured_at': '2026-11-03 19:01:38', 'uploads_blocked': False, 'uploads_applied': True, 'uploads_note': None}
+-rw-r--r-- 1 root celikpanel   666 19:11:38 site8.conf
+php upload http 200: file_uploads=true files=1 errors={"f":0}
+== R4lim2 done 19:12:05

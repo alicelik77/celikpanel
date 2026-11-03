@@ -1,0 +1,33 @@
+== R4apps 18:44:09
+202 {"operation": {"id": "a8e87d8630faa160a4328d45b87c5373", "kind": "service_install", "package_name": "php8.4-fpm", "phase": "queued", "request_id": "2212aeea0e64e057e112b22abfa7f8d8", "service_id": "php-fpm", "started_at": "2026-11-03T18:44:08.796809487Z", "status": "queued"}}
+  op 2212aeea0e64e057e112b22abfa7f8d8: succeeded completed "" (18:44:40)
+200 {"hidden": {"node": [], "php": []}, "hidden_offerings": [], "offered_apps": ["drupal", "wordpress"], "restricted": false}
+200 {"hidden": {"node": [], "php": []}, "hidden_offerings": [], "offered_apps": ["drupal", "prestashop", "wordpress"], "restricted": false}
+400 {"error": "unknown application"}
+200 {"success": true}
+-- catalogue (admin, customer)
+  admin: ['wordpress', 'prestashop', 'nextcloud', 'drupal', 'joomla', 'mediawiki']
+  customer: ['wordpress', 'prestashop', 'drupal']
+== app prestashop on pres.apps118.test (id 4) 18:44:58
+200 {"admin_password": "[REDACTED]", "admin_url": "http://pres.apps118.test/admin018xthag4wiyj4oomjg/", "admin_user": "the e-mail address shown", "app": "prestashop", "detail": "PrestaShop 9.2.0 is set up", "name": "PrestaShop", "operation_id": "306bcac6a98b731b728a78590d302840", "rules_kept": false, "site_url": "http://pres.apps118.test/", "success": true, "version": "9.2.0"}
+  took 108s
+  installed {"operation_id": "306bcac6a98b731b728a78590d302840", "app_id": "prestashop", "status": "applied", "site_url": "https://pres.apps118.test/", "admin_url": "https://pres.apps118.test/admin018xthag4wiyj4oomjg/", "error_kind": null, "last_error": null}
+code pres.apps118.test/ http 302 -> http://pres.apps118.test/index.php title: 
+== app drupal on drup.apps118.test (id 5) 18:46:54
+200 {"admin_password": "[REDACTED]", "admin_url": "http://drup.apps118.test/user/login", "admin_user": "admin", "app": "drupal", "detail": "Drupal 11.4.11 is set up", "name": "Drupal", "operation_id": "2de123e5d2c803fe474f16c1db2ed4e8", "rules_kept": false, "site_url": "http://drup.apps118.test/", "success": true, "version": "11.4.11"}
+  took 46s
+  installed {"operation_id": "2de123e5d2c803fe474f16c1db2ed4e8", "app_id": "drupal", "status": "applied", "site_url": "https://drup.apps118.test/", "admin_url": "https://drup.apps118.test/user/login", "error_kind": null, "last_error": null}
+code drup.apps118.test/ http 200 ->  title: Welcome! | drup.apps118.test
+-- phpBB install request (withheld)
+400 {"code": "APP_UNKNOWN", "error": "unknown application; nothing was changed"}
+== remove Drupal (op 2de123e5d2c803fe474f16c1db2ed4e8) 18:47:50
+200 {"data_kept": "", "data_removed": false, "database": "drup_apps118_test_drupal", "database_kept": false, "database_note": "", "database_removed": true, "detail": "", "kept_entries": [], "rules_kept": false, "success": true}
+  installed: []
+code drup.apps118.test/ http 200 ->  title: drup.apps118.test
+## drup.apps118.test root /var/www/celikpanel/subscriptions/4/sites/5/public_html
+total 12
+drwxr-s--- 2 drup_apps118_test www-data 4096 Nov  3 18:47 .
+drwxr-x--- 3 drup_apps118_test www-data 4096 Nov  3 18:47 ..
+-rw-r----- 1 drup_apps118_test www-data 3258 Nov  3 18:47 index.php
+databases (non-system): 1
+== R4apps done 18:47:53

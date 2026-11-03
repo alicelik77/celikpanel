@@ -1,0 +1,69 @@
+== provision 18:34:11 ubuntu2404 192.0.3.191 zone=u117.test version=v0.1.0-alpha.117
+earch .\nPRETTY_NAME=\"Ubuntu 24.04.4 LTS\"\nVERSION_ID=\"24.04\"\n6.8.0-138-generic\nboston\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 22.4
+}
+
+v0.1.0-alpha.118
+== install through get.sh in a root terminal 18:34:35
+main terminal rc 0 60.0 problem None restart_required False postinstall rc 0
+  tail: rolayı doğrula:  | Created administrator / Yönetici oluşturuldu. |     ✓ administrator is ready / yönetici hazır | ==> Starting the panel / Panel başlatılıyor |     ✓ panel is running / panel çalışıyor | ==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor |     ✓ initial panel certificate is protected / ilk panel sertifikasi korundu |  | CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu. |     Panel:  https://192.0.3.191:1923 |     Services / Servisler: systemctl status celikpanel-agent celikpanel-panel |     Logs / Günlükler: journalctl -u celikpanel-panel -f | 
+v0.1.0-alpha.118
+license active acceptance_fixture can_use_panel True
+PRETTY_NAME="Ubuntu 24.04.4 LTS"
+CELIKPANEL_LISTEN=:1923
+
+wizard data single ['count', 'dnshome', 'domain', 'mail', 'name', 'names', 'roles']
+guidance 200 
+domain 200 
+count 200 
+name 200 
+roles 200 
+names 200 
+dnshome 200 
+mail 200 
+plan 200 can_start True blockers [] ['01-dns:local', '02-service:nginx', '03-service:certbot', '04-firewall:enable_and_persist', '05-infrastructure_dns:u117.test', '06-access_dns:boston.u117.test', '07-panel_certificate:boston.u117.test', '08-dns_readiness:local', '09-service:mariadb', '10-service:php-fpm', '11-access_dns:mail.u117.test', '12-mail_certificate:mail.u117.test', '13-mail_profile:webmail', '14-mail_profile:protected-mail', '15-mail_dns:u117.test', '16-mail_enrollment:mail-renewal', '17-main_site:u117.test', '18-verify:custom'] 
+== start 18:35:50
+start 202 {
+ "id": "828f1b6ae5771ff980d0b5b6b94b7617",
+ "panel_url": "https://boston.u117.test:1923/",
+ "phase": "queued",
+ "plan_id": "ffb0b2fa7f779c2bfd17ffd6a41d3b62",
+-- u117/main 18:35:55
+running 01-dns null
+01-dns=running 02-service=pending 03-service=pending 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-access_dns=pending 12-mail_certificate=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u117/main 18:36:35
+running 02-service null
+01-dns=succeeded 02-service=running 03-service=pending 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-access_dns=pending 12-mail_certificate=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u117/main 18:36:55
+running 03-service null
+01-dns=succeeded 02-service=succeeded 03-service=running 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-access_dns=pending 12-mail_certificate=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u117/main 18:37:15
+running 07-panel_certificate null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=running 08-dns_readiness=pending 09-service=pending 10-service=pending 11-access_dns=pending 12-mail_certificate=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u117/main 18:37:35
+running 09-service null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=running 10-service=pending 11-access_dns=pending 12-mail_certificate=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u117/main 18:38:16
+running 10-service null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=running 11-access_dns=pending 12-mail_certificate=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u117/main 18:38:56
+running 13-mail_profile null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=succeeded 13-mail_profile=running 14-mail_profile=pending 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u117/main 18:41:37
+running 14-mail_profile null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=succeeded 13-mail_profile=succeeded 14-mail_profile=running 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u117/main 18:43:18
+running 15-mail_dns null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=running 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u117/main 18:43:38
+running 17-main_site null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-mail_enrollment=succeeded 17-main_site=running 18-verify=pending
+-- u117/main 18:43:58
+succeeded complete null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-mail_enrollment=succeeded 17-main_site=succeeded 18-verify=succeeded
+== end 18:43:58
+succeeded complete null
+== single done 18:43:58
