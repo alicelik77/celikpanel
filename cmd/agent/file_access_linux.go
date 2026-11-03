@@ -73,6 +73,14 @@ func ensureFileAccessJail(chroot string, users []fileaccess.JailUser) ([]string,
 			return missing, false, fmt.Errorf("copy %s: %w", command, err)
 		}
 	}
+	// Merged-/usr hosts (Debian 13, Ubuntu, Arch) have /bin, /sbin and /lib*
+	// as links into /usr. The tools above are found under /usr/bin, so the
+	// jail had no /bin and sshd could not start the account's /bin/bash or
+	// the sftp subsystem through it (lab run 2 of alpha.117). The jail gets
+	// the same top-level links as the host.
+	if err := jail.mirrorTopLevelLinks(); err != nil {
+		return missing, false, err
+	}
 	// SFTP and scp for accounts that have the command line run the host's
 	// sftp-server inside the jail.
 	for _, candidate := range []string{"/usr/lib/openssh/sftp-server", "/usr/lib/ssh/sftp-server", "/usr/libexec/openssh/sftp-server"} {
@@ -102,6 +110,38 @@ func ensureFileAccessJail(chroot string, users []fileaccess.JailUser) ([]string,
 		return missing, false, err
 	}
 	return missing, mountHasNoDev(root), nil
+}
+
+// fileAccessTopLevelLinks are the root entries a merged-/usr host keeps as
+// links into /usr.
+var fileAccessTopLevelLinks = []string{"bin", "sbin", "lib", "lib32", "lib64", "libx32"}
+
+// fileAccessHostRoot is "/" except in tests.
+var fileAccessHostRoot = "/"
+
+// mirrorTopLevelLinks copies each top-level link of the host (for example
+// /bin -> usr/bin) into the jail. Only a link whose target stays inside /usr
+// is mirrored; a real directory on the host is left to the program copies.
+func (j *fileAccessJail) mirrorTopLevelLinks() error {
+	for _, name := range fileAccessTopLevelLinks {
+		hostPath := filepath.Join(fileAccessHostRoot, name)
+		info, err := os.Lstat(hostPath)
+		if err != nil || info.Mode()&os.ModeSymlink == 0 {
+			continue
+		}
+		target, err := os.Readlink(hostPath)
+		if err != nil {
+			return fmt.Errorf("read %s: %w", hostPath, err)
+		}
+		clean := strings.TrimPrefix(filepath.ToSlash(filepath.Clean(target)), "/")
+		if clean != "usr" && !strings.HasPrefix(clean, "usr/") {
+			continue
+		}
+		if err := j.ensureSymlink("/"+name, target); err != nil {
+			return fmt.Errorf("link %s in the jail: %w", name, err)
+		}
+	}
+	return nil
 }
 
 func findHostCommand(name string) string {
