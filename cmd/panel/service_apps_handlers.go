@@ -709,7 +709,16 @@ func (p *Panel) handleServiceAppControl(w http.ResponseWriter, r *http.Request, 
 		state = serviceAppStopped
 	}
 	_, _ = p.db.GetDB().ExecContext(ctx, `UPDATE service_app_installs SET state = ?, updated_at = datetime('now') WHERE id = ?`, state, in.ID)
-	p.auditDetailed(r, "service_app."+req.Action, "domain", domainID, map[string]any{"app": in.AppID, "install": in.ID})
+	// Fixed audit names (the audit name list is derived from the source).
+	details := map[string]any{"app": in.AppID, "install": in.ID}
+	switch req.Action {
+	case "start":
+		p.auditDetailed(r, "service_app.start", "domain", domainID, details)
+	case "stop":
+		p.auditDetailed(r, "service_app.stop", "domain", domainID, details)
+	default:
+		p.auditDetailed(r, "service_app.restart", "domain", domainID, details)
+	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]string{"state": state})
 }

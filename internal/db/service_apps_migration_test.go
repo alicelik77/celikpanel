@@ -40,7 +40,7 @@ func TestServiceAppsMigrationCreatesItsTables(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer database.Close()
-	for _, table := range []string{{"service_app_offerings", "service_app_installs", "service_app_operations"}} {
+	for _, table := range []string{"service_app_offerings", "service_app_installs", "service_app_operations"} {
 		var name string
 		if err := database.GetDB().QueryRow(`SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`, table).Scan(&name); err != nil {
 			t.Fatalf("table %s is missing: %v", table, err)

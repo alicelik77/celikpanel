@@ -205,6 +205,19 @@ export const enServiceAppsScreens = {
     'err.SERVICE_APP.logs_unavailable': 'The log could not be read from the server just now. Try again.',
     'err.SERVICE_APP.agent_unreachable': 'The server did not answer, so the result is not known. Read the status again before you retry.',
     'err.SERVICE_APP.site_features': 'Nothing was changed: this site has password-protected folders, which an app cannot carry. Remove their protection first.',
+    // Audit words for the dashboard's recent activity (kept in this part:
+    // the dashboard part has no headroom left).
+    'dashboard.audit.action.service_app.offer': 'offered an AI or automation app',
+    'dashboard.audit.action.service_app.withdraw': 'withdrew an AI or automation app',
+    'dashboard.audit.action.service_app.hold': 'put an AI or automation app on a security hold',
+    'dashboard.audit.action.service_app.release': 'lifted the security hold of an AI or automation app',
+    'dashboard.audit.action.service_app.install': 'started installing an AI or automation app',
+    'dashboard.audit.action.service_app.update': 'started updating an AI or automation app',
+    'dashboard.audit.action.service_app.start': 'started an AI or automation app',
+    'dashboard.audit.action.service_app.stop': 'stopped an AI or automation app',
+    'dashboard.audit.action.service_app.restart': 'restarted an AI or automation app',
+    'dashboard.audit.action.service_app.keys': "changed an AI or automation app's keys",
+    'dashboard.audit.action.service_app.uninstall': 'started removing an AI or automation app',
 };
 
 export type ServiceAppsScreenKey = keyof typeof enServiceAppsScreens;

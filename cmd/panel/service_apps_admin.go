@@ -216,8 +216,12 @@ func (p *Panel) holdServiceApp(w http.ResponseWriter, r *http.Request, app servi
 	if hold {
 		stopped, failed = p.stopServiceAppInstalls(ctx, app.ID)
 	}
-	p.auditDetailed(r, map[bool]string{true: "service_app.hold", false: "service_app.release"}[hold], "service_app", 0,
-		map[string]any{"app": app.ID, "reason": req.Reason, "stopped": stopped, "not_stopped": failed})
+	details := map[string]any{"app": app.ID, "reason": req.Reason, "stopped": stopped, "not_stopped": failed}
+	if hold {
+		p.auditDetailed(r, "service_app.hold", "service_app", 0, details)
+	} else {
+		p.auditDetailed(r, "service_app.release", "service_app", 0, details)
+	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"stopped": stopped, "not_stopped": failed})
 }

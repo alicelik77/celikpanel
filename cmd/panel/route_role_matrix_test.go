@@ -250,6 +250,12 @@ var routeRoleMatrix = map[string]string{
 	// administrator-only there.
 	"/api/v1/wordpress/": gateTenant,
 	"/api/v1/malware/":   gateTenant,
+
+	// alpha.118: remote backup destinations are account routes (additional
+	// users never); the handlers check the backups and
+	// remote_backup_destinations rights and keep every-site schedules
+	// administrator-only.
+	"/api/v1/remote-backup/": gateAccount,
 }
 
 // registeredPanelRoutes parses the package source and returns every route

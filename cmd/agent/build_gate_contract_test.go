@@ -58,6 +58,43 @@ func protectedBuildGateOperations() []buildGateOperation {
 			_ = agent.MalwareDeleteQuarantinedV1(&transport.MalwareQuarantineItemRequest{ExpectedBuildCommit: expected}, &response)
 			return response.Error
 		}},
+		// alpha.118: AI and automation service apps (added at integration;
+		// each refuses before its lock, its target or any host change).
+		{name: "ServiceAppPrepareV1", run: func(expected string) string {
+			var response transport.ServiceAppStepResponse
+			_ = agent.ServiceAppPrepareV1(&transport.ServiceAppPrepareRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "ServiceAppActivateV1", run: func(expected string) string {
+			var response transport.ServiceAppStepResponse
+			_ = agent.ServiceAppActivateV1(&transport.ServiceAppActivateRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "ServiceAppFinalizeV1", run: func(expected string) string {
+			var response transport.ServiceAppStepResponse
+			_ = agent.ServiceAppFinalizeV1(&transport.ServiceAppActivateRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "ServiceAppControlV1", run: func(expected string) string {
+			var response transport.ServiceAppStepResponse
+			_ = agent.ServiceAppControlV1(&transport.ServiceAppControlRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "ServiceAppSecretsV1", run: func(expected string) string {
+			var response transport.ServiceAppStepResponse
+			_ = agent.ServiceAppSecretsV1(&transport.ServiceAppSecretsRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "ServiceAppRemoveV1", run: func(expected string) string {
+			var response transport.ServiceAppRemoveResponse
+			_ = agent.ServiceAppRemoveV1(&transport.ServiceAppRemoveRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "SetServiceAppSuspensionV1", run: func(expected string) string {
+			var response transport.SetAppUnitSuspensionResponse
+			_ = agent.SetServiceAppSuspensionV1(&transport.SetServiceAppSuspensionRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
 		{
 			name: "ApplyVhost",
 			run: func(expected string) string {

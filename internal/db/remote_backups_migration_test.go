@@ -40,7 +40,7 @@ func TestRemoteBackupsMigrationCreatesItsTables(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer database.Close()
-	for _, table := range []string{{"remote_backup_destinations", "remote_backup_policies", "remote_backup_operations"}} {
+	for _, table := range []string{"remote_backup_destinations", "remote_backup_policies", "remote_backup_operations"} {
 		var name string
 		if err := database.GetDB().QueryRow(`SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`, table).Scan(&name); err != nil {
 			t.Fatalf("table %s is missing: %v", table, err)

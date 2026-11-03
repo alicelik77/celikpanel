@@ -59,6 +59,18 @@ MIGRATIONS = {
     55: '3c7ebe17eed3d48122fbf01ceb87003a269abd94daea6598a835ab1860fe0703',
     # alpha.117: 56 transfer credential rotation (two tables, no old one changed).
     56: 'a9453db6b3fb5ee946183707c0c6026642c51ab6875bd3b1da9ccf3645765782',
+    # alpha.118: 57 usage limits (six tables, NOT NULL DEFAULT 0 columns on the
+    # newer reseller_pools, reseller_plans and subscription_suspensions; it
+    # resets every old subscriptions and service_plans bandwidth_quota_mb to
+    # 0, verified by _bandwidth_reset_57, and writes one rights notice per
+    # administrator); 58 application catalog operations (one table); 59
+    # WordPress tools and malware scans (five tables); 60 remote backups
+    # (three tables); 61 service apps (three tables).
+    57: 'cb5b92e47b140673dab098484a0a5580b06830610e6cfb70e3a35ce323403ae7',
+    58: 'c383667c1e7b91d733ef733a84d81ffb632a1801fe15ef9f9321295875cbcac5',
+    59: 'c45aa19999b34f438cbfc7d21ebd1642b4e514bfee2497d8f4ff42892112c905',
+    60: '14a1836f9b469d59abb37346651de96f0687f786db0d20fb78db0199cf4d99c8',
+    61: 'b7fdaa9ef9fff2b1bae30ab8b90ead624f427ec84e18052724647a51855cd2f0',
 }
 # Exact sqlite_schema SQL from the released SQL, including triggers and indexes.
 # Tests reconstruct it from unmodified migration bytes, never a downgraded ledger.
@@ -79,6 +91,11 @@ SCHEMAS = {
     54: 'e286b815a959ab0b3e288ab2765b6f88c87ce06f790e6ade3838a1a44498bf95',
     55: '01067ff45af1f3d4d6570e82796ea6bc78478b3d5c41618769a7d75a3767891d',
     56: '8082cf8319c8d582f89cc10450208279970dd9c7d87c3d401da0d542a8c1f994',
+    57: 'd2aac5d1c8e781b64ea232361cecd6e095f9bb6e8e9b846ebe698c5248abda04',
+    58: '71baafc1e23efecd146d34ca54f19ef9340a3fe7c4c3dc9381ef00a1a8a0632a',
+    59: '87f30dce413ed06825d297ee4c77f2dc2dc8739ed2e2ab7dd61cbe3eb72a3a53',
+    60: '8ea008b1a7bf4f97e940db98408de0ae50eaa00d4fed1f0a142290de7e6d09ab',
+    61: 'c08629e3e2507c86dc666cb093d15907024bae1a00ef10c8aeadd007ec6a44ab',
 }
 ADMISSION_SCHEMA = 'celikpanel/lab-populated-database-admission/v1'
 MANIFEST_SCHEMA = 'celikpanel/lab-populated-database-manifest/v1'
@@ -105,6 +122,13 @@ NEW_TABLES_54 = NEW_TABLES_53 | {'subscription_transfers'}
 NEW_TABLES_55 = NEW_TABLES_54 | {'security_emergencies', 'security_emergency_operations', 'security_emergency_effects',
                                  'security_emergency_sites', 'security_emergency_before_images', 'security_notices'}
 NEW_TABLES_56 = NEW_TABLES_55 | {'transfer_rotations', 'transfer_rotation_effects'}
+NEW_TABLES_57 = NEW_TABLES_56 | {'traffic_daily', 'traffic_collect_state', 'traffic_sources', 'traffic_web_blocks',
+                                 'subscription_disk_usage', 'usage_notices'}
+NEW_TABLES_58 = NEW_TABLES_57 | {'app_catalog_operations'}
+NEW_TABLES_59 = NEW_TABLES_58 | {'wordpress_operations', 'wordpress_site_settings', 'malware_scans',
+                                 'malware_findings', 'malware_notices'}
+NEW_TABLES_60 = NEW_TABLES_59 | {'remote_backup_destinations', 'remote_backup_policies', 'remote_backup_operations'}
+NEW_TABLES_61 = NEW_TABLES_60 | {'service_app_offerings', 'service_app_installs', 'service_app_operations'}
 # Columns a pinned schema added to an old table, left out of the old-row
 # proof and required to be NULL in every old row (52 leaves ends_at NULL even
 # where the unused expires_at is set).
@@ -118,7 +142,15 @@ ADDED_COLUMNS = {45: {'audit_logs': ('details',), 'sites': ('app_run_as',)},
 NEW_TABLES = {42: NEW_TABLES_42, 43: NEW_TABLES_43, 44: NEW_TABLES_44, 45: NEW_TABLES_45, 46: NEW_TABLES_46,
               47: NEW_TABLES_47, 48: NEW_TABLES_48, 49: NEW_TABLES_49, 50: NEW_TABLES_50, 51: NEW_TABLES_51,
               52: NEW_TABLES_52, 53: NEW_TABLES_53, 54: NEW_TABLES_54, 55: NEW_TABLES_55,
-              56: NEW_TABLES_56}
+              56: NEW_TABLES_56, 57: NEW_TABLES_57, 58: NEW_TABLES_58, 59: NEW_TABLES_59, 60: NEW_TABLES_60,
+              61: NEW_TABLES_61}
+# Migration 57 resets bandwidth_quota_mb of these old tables to 0. The old
+# value is only inside the sealed row digest, so a reset row is accepted only
+# when its digest is reproduced with one of these old values (NULL in 001's
+# nullable column, the schema38 default 102400); any other old value stays
+# refused until its proof carries the value outside the digest.
+BANDWIDTH_RESET_57 = ('service_plans', 'subscriptions')
+BANDWIDTH_OLD_VALUES_57 = (None, 102400)
 
 
 def added_columns(version):
@@ -270,7 +302,7 @@ def _connect(path, *, writable=False):
 
 def _schema(connection, version):
     if type(version) is not int or version not in SCHEMAS:
-        raise Refused('only exact schema38 or schema42 through schema56 is supported')
+        raise Refused('only exact schema38 or schema42 through schema61 is supported')
     objects = connection.execute('SELECT type,name,tbl_name,sql FROM sqlite_schema ORDER BY type,name').fetchall()
     if _sha(json.dumps(objects, ensure_ascii=True, separators=(',', ':')).encode()) != SCHEMAS[version]:
         raise Refused('schema SQL differs from pinned released schema')
@@ -392,6 +424,44 @@ def _unlimited_subscriptions_52(connection, tables):
         raise Refused('old subscriptions counter differs from the one migration52 advanced')
     rows = [[r, _row_digest((rowid, 'subscriptions', ids[-1])) if r == rowid else d] for r, d in sequence['rows']]
     return dict(tables, sqlite_sequence=dict(sequence, rows=rows)), len(added)
+
+
+def _bandwidth_reset_57(connection, tables):
+    """Migration 57 (alpha.118, D-044): every old subscriptions and
+    service_plans row has bandwidth_quota_mb set to 0 (a traffic limit that
+    was never measured or applied becomes unlimited).
+
+    Each such row must now hold 0 there, and its sealed digest must be
+    reproduced from the current row with bandwidth_quota_mb restored to 0
+    (unchanged), NULL or 102400; every other old column is therefore proved
+    unchanged. Returns the expected evidence with those rows' digests
+    advanced, and the number of rows the migration changed.
+    """
+    expected, reset = dict(tables), 0
+    for table in BANDWIDTH_RESET_57:
+        proof = tables[table]
+        columns = proof['columns']
+        if 'bandwidth_quota_mb' not in columns:
+            raise Refused('migration57 traffic column missing from the old-row proof')
+        index = columns.index('bandwidth_quota_mb') + 1
+        sql = 'SELECT rowid,' + ','.join(map(_quote, columns)) + ' FROM ' + _quote(table) + ' WHERE rowid=?'
+        rows = []
+        for rowid, old in proof['rows']:
+            current = connection.execute(sql, (rowid,)).fetchone()
+            if current is None:
+                rows.append([rowid, old])  # _retained refuses the missing row
+                continue
+            if type(current[index]) is not int or current[index] != 0:
+                raise Refused('migration57 left a traffic limit in ' + table)
+            now = _row_digest(current)
+            if now != old:
+                if not any(_row_digest(current[:index] + (value,) + current[index + 1:]) == old
+                           for value in BANDWIDTH_OLD_VALUES_57):
+                    raise Refused('old row changed beyond the migration57 traffic reset: ' + table)
+                reset += 1
+            rows.append([rowid, now])
+        expected[table] = dict(proof, rows=rows)
+    return expected, reset
 
 
 def _names(nonce):
@@ -603,6 +673,9 @@ def verify_copy(database: Path, manifest: dict, *, manifest_sha256: str, expecte
         expected, unlimited = tables, 0
         if expected_version >= 52:
             expected, unlimited = _unlimited_subscriptions_52(connection, tables)
+        traffic_reset = 0
+        if expected_version >= 57:
+            expected, traffic_reset = _bandwidth_reset_57(connection, expected)
         projected = _projections(connection, expected)
         changes = _retained(expected, projected)
         if migrated:
@@ -625,5 +698,6 @@ def verify_copy(database: Path, manifest: dict, *, manifest_sha256: str, expecte
             'old_rows_missing_or_changed': 0, 'tables': changes, 'excluded_tables': [],
             'fixture_domain_count': 2, 'fixture_alias_count': 1, 'fixture_hostname_reservations': 6,
             'domain_defaults_40_42_verified': migrated, 'unlimited_subscriptions_52': unlimited,
+            'traffic_limits_reset_57': traffic_reset,
             'database_sha256': _sha(raw), 'manifest_sha256': manifest_sha256,
             'global_bytes_equal_to_populated': _sha(raw) == manifest['populated_sha256']}
