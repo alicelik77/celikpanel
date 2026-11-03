@@ -84,6 +84,8 @@ export const trRightsScreens: Record<RightsScreenKey, string> = {
     'rights.perm.team_members': 'Ek kullanıcılar (ekip)',
     'rights.perm.file_access': 'Dosya erişimi (FTP ve SFTP)',
     'rights.perm.ssh': 'Komut satırı (SSH)',
+    'rights.perm.wordpress_tools': 'WordPress araçları',
+    'rights.perm.malware_scan': 'Zararlı yazılım taraması sonuçları',
 
     'rights.review': 'Değişikliği gözden geçir',
     'rights.back': 'Düzenlemeye dön',

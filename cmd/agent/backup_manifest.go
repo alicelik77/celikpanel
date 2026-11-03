@@ -70,7 +70,7 @@ func manifestDatabaseID(m backupManifest) int {
 
 func validBackupOrigin(origin string) bool {
 	switch origin {
-	case backupspec.OriginManual, backupspec.OriginScheduled, backupspec.OriginPreRestore:
+	case backupspec.OriginManual, backupspec.OriginScheduled, backupspec.OriginPreRestore, backupspec.OriginPreUpdate:
 		return true
 	default:
 		return false

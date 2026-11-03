@@ -32,6 +32,32 @@ func protectedBuildGateOperations() []buildGateOperation {
 			}
 			return err.Error()
 		}},
+		// alpha.118: WordPress tools and the malware quarantine.
+		{name: "WordPressUpdateV1", run: func(expected string) string {
+			var response transport.WordPressUpdateResponse
+			_ = agent.WordPressUpdateV1(&transport.WordPressUpdateRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "WordPressCloneV1", run: func(expected string) string {
+			var response transport.WordPressCloneResponse
+			_ = agent.WordPressCloneV1(&transport.WordPressCloneRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "MalwareQuarantineV1", run: func(expected string) string {
+			var response transport.MalwareQuarantineResponse
+			_ = agent.MalwareQuarantineV1(&transport.MalwareQuarantineRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "MalwareRestoreV1", run: func(expected string) string {
+			var response transport.MalwareQuarantineItemResponse
+			_ = agent.MalwareRestoreV1(&transport.MalwareQuarantineItemRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "MalwareDeleteQuarantinedV1", run: func(expected string) string {
+			var response transport.MalwareQuarantineItemResponse
+			_ = agent.MalwareDeleteQuarantinedV1(&transport.MalwareQuarantineItemRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
 		{
 			name: "ApplyVhost",
 			run: func(expected string) string {

@@ -239,6 +239,12 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/setup/publisher":                  gateAdmin,
 	"/api/v1/setup/revise":                     gateAdmin,
 	"/api/v1/setup/start":                      gateAdmin,
+
+	// alpha.118: domain ownership, suspension and the wordpress_tools /
+	// malware_scan rights are checked in the handlers; the schedule is
+	// administrator-only there.
+	"/api/v1/wordpress/": gateTenant,
+	"/api/v1/malware/":   gateTenant,
 }
 
 // registeredPanelRoutes parses the package source and returns every route

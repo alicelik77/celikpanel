@@ -55,6 +55,7 @@ import type { SetupPublishingScreenKey } from './screens/setupPublishing/en';
 import type { FileAccessScreenKey } from './screens/fileAccess/en';
 import type { SuspensionScreenKey } from './screens/suspension/en';
 import type { EmergencyScreenKey } from './screens/emergency/en';
+import type { SiteToolsScreenKey } from './screens/siteTools/en';
 import type { TransfersScreenKey } from './screens/transfers/en';
 import type { TransferRotationScreenKey } from './screens/transferRotation/en';
 import type { RightsScreenKey } from './screens/rights/en';
@@ -558,5 +559,6 @@ export type ScreenKey =
     | TransfersScreenKey
     | TransferRotationScreenKey
     | RightsScreenKey
-    | EmergencyScreenKey;
+    | EmergencyScreenKey
+    | SiteToolsScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

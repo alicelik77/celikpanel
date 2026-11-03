@@ -92,6 +92,8 @@ export const enRightsScreens = {
     'rights.perm.team_members': 'Additional users (team)',
     'rights.perm.file_access': 'File access (FTP and SFTP)',
     'rights.perm.ssh': 'Command line (SSH)',
+    'rights.perm.wordpress_tools': 'WordPress tools',
+    'rights.perm.malware_scan': 'Malware scan results',
 
     'rights.review': 'Review the change',
     'rights.back': 'Back to editing',

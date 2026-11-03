@@ -20,6 +20,9 @@ const (
 	OriginManual     = "manual"
 	OriginScheduled  = "scheduled"
 	OriginPreRestore = "pre_restore"
+	// OriginPreUpdate (alpha.118): the backup a WordPress update makes
+	// first, restored when the update changed files and failed.
+	OriginPreUpdate = "pre_update"
 )
 
 // DatabaseIdentity is resolved from durable tenant metadata by the panel.

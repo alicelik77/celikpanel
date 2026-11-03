@@ -32,6 +32,17 @@ import {
 const DomainAppsPanel = lazy(() => import('./DomainAppsPanel').then((module) => ({
     default: module.DomainAppsPanel,
 })));
+// alpha.118: the WordPress tools (a section of the Applications tab, beside
+// the catalogue) and the malware scan (an Advanced sub-tab), fetched when
+// opened. The administrator sees both on every site; a customer when the
+// right is open.
+// WordPress araçları ve zararlı yazılım taraması; açılınca getirilir.
+const WordPressToolsPanel = lazy(() => import('./WordPressToolsPanel').then((module) => ({
+    default: module.WordPressToolsPanel,
+})));
+const DomainMalwareScan = lazy(() => import('./DomainMalwareScan').then((module) => ({
+    default: module.DomainMalwareScan,
+})));
 
 // The three panels of the Advanced tab are fetched when one of them is opened,
 // like the Applications panel above. They are the least visited part of a
@@ -356,6 +367,7 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
     // kalır ama değiştirilemez.
     const closed = new Set(domain.rights_closed ?? []);
     const open = (permission: string) => !closed.has(permission);
+    const wpTools = role === 'admin' || open('wordpress_tools');
     const combinedAccessMode = (capabilities: DomainCapability[]): DomainAccessMode => {
         if (!isTeamMember) return 'manage';
         const modes = capabilities.map((capability) => domain.access?.[capability] ?? 'none');
@@ -401,6 +413,7 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
         ...(canView('backups') && open('backups') ? [{ id: 'backups', labelKey: 'domain.sub.backups', capabilities: ['backups'], render: (readOnly) => <DomainBackupManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef] : []),
         ...(canView('cron') && open('cron') ? [{ id: 'cron', labelKey: 'domain.sub.cron', capabilities: ['cron'], render: (readOnly) => <DomainCronManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef] : []),
         ...(canView('statistics') ? [{ id: 'logs', labelKey: 'domain.sub.logs', capabilities: ['statistics'], render: (readOnly) => <DomainLogsViewer domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef] : []),
+        ...(!isTeamMember && !isDnsOnly && (role === 'admin' || open('malware_scan')) ? [{ id: 'malware', labelKey: 'mscan.title', render: () => <DomainMalwareScan domainId={domain.id} /> } satisfies SubDef] : []),
     ];
     const tabs: TabDef[] = [
         ...(!isTeamMember ? [{
@@ -419,7 +432,7 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
         ...(canView('dns') ? [{ id: 'dns', labelKey: 'domain.tab.dns', icon: Network, capabilities: ['dns'], render: (readOnly) => <DomainDNSManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly || !open('dns_edit')} isAdditionalUser={isTeamMember} dnssecHidden={!open('dnssec')} /> } satisfies TabDef] : []),
         ...(canView('mail') && open('mail') && (isTeamMember || !tabCaps || tabCaps.mail_server) ? [{ id: 'mail', labelKey: 'domain.tab.mail', icon: Mail, capabilities: ['mail'], render: (readOnly) => <DomainMailManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies TabDef] : []),
         ...(canView('databases') && open('databases') && (isTeamMember || !tabCaps || tabCaps.database_servers.length > 0) ? [{ id: 'databases', labelKey: 'domain.tab.databases', icon: Database, capabilities: ['databases'], render: (readOnly) => <DomainDatabaseManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} isAdditionalUser={isTeamMember} /> } satisfies TabDef] : []),
-        ...(!isTeamMember && projectType === 'php' && canView('files') && canView('php') && open('app_installer') ? [{ id: 'apps', labelKey: 'domain.tab.apps', icon: AppWindow, capabilities: ['files', 'php'], render: () => <DomainAppsPanel domainId={domain.id} domainName={domain.domain_name} /> } satisfies TabDef] : []),
+        ...(!isTeamMember && projectType === 'php' && canView('files') && canView('php') && (open('app_installer') || wpTools) ? [{ id: 'apps', labelKey: 'domain.tab.apps', icon: AppWindow, capabilities: ['files', 'php'], render: () => <>{open('app_installer') && <DomainAppsPanel domainId={domain.id} domainName={domain.domain_name} />}{wpTools && <WordPressToolsPanel domainId={domain.id} />}</> } satisfies TabDef] : []),
         ...(!isDnsOnly && canView('files') && open('file_manager') ? [{ id: 'files', labelKey: 'domain.tab.files', icon: Folder, capabilities: ['files'], render: (readOnly) => <DomainFileManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies TabDef] : []),
         ...(!isTeamMember && !isDnsOnly && (open('file_access') || open('ssh')) ? [{ id: 'access', labelKey: 'fileAccess.tab', icon: KeyRound, render: () => <DomainFileAccess domainId={domain.id} domainName={domain.domain_name} isAdmin={role === 'admin'} /> } satisfies TabDef] : []),
         ...(!isDnsOnly && advancedSubs.length > 0 ? [{

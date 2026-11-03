@@ -392,6 +392,7 @@ export const enSitesScreens = {
     'backup.origin.manual': 'Manual',
     'backup.origin.scheduled': 'Scheduled',
     'backup.origin.preRestore': 'Pre-restore safety copy',
+    'backup.origin.preUpdate': 'Before a WordPress update',
     'backup.origin.unknown': 'Unknown origin',
     'backup.format.current': 'Current format',
     'backup.format.legacy': 'Legacy',

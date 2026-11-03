@@ -138,6 +138,7 @@ const screenParts: Record<Locale, Array<() => Promise<Record<string, unknown>>>>
         () => import('./screens/transferRotation/en'),
         () => import('./screens/rights/en'),
         () => import('./screens/emergency/en'),
+        () => import('./screens/siteTools/en'),
     ],
     tr: [
         () => import('./screens/setup/tr'),
@@ -177,6 +178,7 @@ const screenParts: Record<Locale, Array<() => Promise<Record<string, unknown>>>>
         () => import('./screens/transferRotation/tr'),
         () => import('./screens/rights/tr'),
         () => import('./screens/emergency/tr'),
+        () => import('./screens/siteTools/tr'),
     ],
 };
 

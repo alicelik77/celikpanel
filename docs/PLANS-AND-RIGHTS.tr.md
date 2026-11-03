@@ -161,6 +161,8 @@ yazılır.
 | Ek kullanıcılar (ekip) | Menü görünmez |
 | Dosya erişimi (FTP ve SFTP) | Erişim sekmesi görünmez; dosya yalnız panelin dosya yöneticisiyle yüklenir |
 | SSH (komut satırı) | Komut satırına girilemez; dosya erişimi etkilenmez |
+| WordPress araçları (alpha.118, `wordpress_tools`) | WordPress araçları bölümü görünmez; durum, güncelleme, küçük sürüm anahtarı ve deneme kopyası reddedilir. Çalışan site ve açık anahtarlar değişmez (hak kapalıyken otomatik güncelleme atlanır) |
+| Zararlı yazılım taraması sonuçları (alpha.118, `malware_scan`) | Zararlı yazılım taraması bölümü görünmez; müşteri tarama başlatamaz, bulgular üzerinde işlem yapamaz. Yönetici her siteyi yine tarayabilir; yöneticinin haftalık taraması onu da kapsar |
 
 **Dosya erişimi bugün yok.** Sahip, 2 Kasım 2026'da bir alan adının FTP ve SSH
 ayarlarını aradı ve bulamadı. Koddan doğrulandı: panelde FTP, SFTP ya da SSH

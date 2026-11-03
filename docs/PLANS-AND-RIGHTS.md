@@ -157,6 +157,8 @@ An item left at 0 or empty means **unlimited**, and the screen says "unlimited".
 | Additional users (team) | The menu is not visible |
 | File access (FTP and SFTP) | The Access tab is not visible; files are uploaded only through the panel's file manager |
 | SSH (command line) | The command line cannot be entered; file access is not affected |
+| WordPress tools (alpha.118, `wordpress_tools`) | The WordPress tools section is not visible; status, updates, the automatic minor-release switch and staging copies are refused. A site that already runs, and switches already on, are not changed (an automatic update is skipped while the right is closed) |
+| Malware scan results (alpha.118, `malware_scan`) | The Malware scan section is not visible; the customer cannot start scans or act on findings. The administrator can still scan every site, and the administrator's weekly scan still covers it |
 
 **File access does not exist today.** On November 2, 2026 the owner looked for the FTP and SSH
 settings of a domain and could not find them. Verified from the code: there is no path in the

@@ -1441,6 +1441,13 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse the site tools (migration 59, alpha.118).
+        DROP TABLE malware_notices;
+        DROP TABLE malware_findings;
+        DROP TABLE malware_scans;
+        DROP TABLE wordpress_site_settings;
+        DROP TABLE wordpress_operations;
+
         -- Reverse the transfer credential rotation (migration 56, alpha.117).
         DROP TABLE transfer_rotation_effects;
         DROP TABLE transfer_rotations;

@@ -1144,6 +1144,18 @@ func main() {
 	} else if recovered > 0 {
 		log.Printf("Marked %d interrupted application install(s) for review", recovered)
 	}
+	// alpha.118: an interrupted WordPress operation is marked for review
+	// (never guessed or repeated); an interrupted scan changed nothing.
+	if recovered, err := panel.recoverInterruptedWordPressOperations(context.Background()); err != nil {
+		log.Printf("WordPress operations: interrupted ones could not be marked: %v", err)
+	} else if recovered > 0 {
+		log.Printf("Marked %d interrupted WordPress operation(s) for review", recovered)
+	}
+	if recovered, err := panel.recoverInterruptedMalwareScans(context.Background()); err != nil {
+		log.Printf("Malware scans: interrupted ones could not be marked: %v", err)
+	} else if recovered > 0 {
+		log.Printf("Marked %d interrupted malware scan(s)", recovered)
+	}
 
 	// One-time repair of pre-A4 rows: seal any database root password that
 	// was stored as plaintext. Fatal on failure — booting with credentials
@@ -1564,6 +1576,9 @@ func main() {
 	http.HandleFunc("/api/v1/mail/configure", panel.handleMailConfigure)
 	http.HandleFunc("/api/v1/mail/policy", panel.handleMailPolicy)
 	http.HandleFunc("/api/v1/apps", panel.handleAppCatalog)
+	// alpha.118: WordPress tools and malware scanning of hosted sites.
+	http.HandleFunc(wordpressToolsPath, panel.handleWordPressTools)
+	http.HandleFunc(malwarePath, panel.handleMalware)
 
 	// System SQLite maintenance is a fixed-ID, administrator-only surface.
 	// Sistem SQLite bakımı, sabit kimlikli ve yalnız yöneticiye açık bir yüzeydir.
@@ -1646,6 +1661,9 @@ func main() {
 	// Immediate background host mutators are started only after recovery,
 	// route registration, and admission of normal application traffic.
 	panel.startBackupScheduler()
+	// alpha.118: scheduled minor WordPress core releases and malware scans.
+	panel.startWordPressAutoUpdater()
+	panel.startMalwareScanWorker()
 	panel.startCertRenewalScheduler()
 	panel.startVPNEntitlementReconciler()
 	// Suspensions: continue what a restart interrupted, check end dates.
