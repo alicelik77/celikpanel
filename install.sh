@@ -2515,8 +2515,8 @@ print_kernel_reboot_closing() {
 # ≠ firewall'u açmak — böylece firewall temiz bir aç/kapa düğmesi kalır ve bu,
 # "firewall'u sürprizle açma" kuralına uyar.
 if [[ $APPLY_ONLY -eq 0 ]] && [ "${SKIP_DEPS:-0}" != "1" ]; then
-    step "Small prerequisites (curl, tar, xz, nftables, iproute2, logrotate)" \
-        "Küçük ön gereksinimler (curl, tar, xz, nftables, iproute2, logrotate)"
+    step "Small prerequisites (curl, tar, xz, nftables, iproute2, logrotate, command-line tools)" \
+        "Küçük ön gereksinimler (curl, tar, xz, nftables, iproute2, logrotate, komut satırı araçları)"
     case "$PKG_FAMILY" in
     apt)
         export DEBIAN_FRONTEND=noninteractive
@@ -2528,7 +2528,10 @@ if [[ $APPLY_ONLY -eq 0 ]] && [ "${SKIP_DEPS:-0}" != "1" ]; then
             "apt-get update uyarı verdi — devam ediliyor"
         # logrotate (alpha.118) rotates the web traffic logs; minimal Debian 13
         # images lack it. / Trafik günlüklerini döndürür; minimal imajda yok.
-        "$APT_GET_BIN" install -y -qq tar xz-utils curl ca-certificates nftables iproute2 logrotate >/dev/null
+        # less ... rsync (alpha.118): tools of a site's SSH command line that a
+        # minimal image may lack (fileaccess.JailInstallPackages). / Sitelerin
+        # SSH komut satırı araçları; minimal imajda olmayabilirler.
+        "$APT_GET_BIN" install -y -qq tar xz-utils curl ca-certificates nftables iproute2 logrotate less zip unzip nano vim-tiny rsync >/dev/null
         ;;
     pacman)
         # The pacman ecosystem does not support partial upgrades. Refresh,
@@ -2538,7 +2541,9 @@ if [[ $APPLY_ONLY -eq 0 ]] && [ "${SKIP_DEPS:-0}" != "1" ]; then
         # Arch kısmi yükseltmeleri desteklemez. Makineyi yeni paket veritabanı
         # ve eski temel sistemle bırakmamak için tazeleme, yükseltme ve ön
         # gereksinim kurulumunu tek işlemde yap.
-        "$PACMAN_BIN" -Syu --noconfirm --needed tar xz curl ca-certificates nftables iproute2 logrotate >/dev/null
+        # The SSH command line's tools (alpha.118); on Arch vi is ex-vi-compat,
+        # which runs vim. / SSH komut satırı araçları; Arch'ta vi, vim'i çalıştırır.
+        "$PACMAN_BIN" -Syu --noconfirm --needed tar xz curl ca-certificates nftables iproute2 logrotate less zip unzip nano ex-vi-compat rsync diffutils >/dev/null
         ;;
     esac
     ok "ready" "hazır"

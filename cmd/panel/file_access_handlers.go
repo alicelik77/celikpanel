@@ -347,6 +347,12 @@ func (p *Panel) handlePutFileAccess(w http.ResponseWriter, r *http.Request, site
 		writeServerErrorFor(w, r, err)
 		return
 	}
+	// alpha.118: the command line is not turned on while the server lacks
+	// its tools; the administrator installs them first (file_access_tools.go).
+	if message, missing, refused := sshToolsMissingRefusal(change, before); refused {
+		writeCodedErrorDetails(w, http.StatusConflict, errCodeFileAccessSSHToolsMissing, message, "", missing)
+		return
+	}
 	if err := p.callAgentContext(r.Context(), "Agent.ApplyFileAccessV1", &change, &response); err != nil {
 		// The answer did not arrive: the change may or may not be in place.
 		// The page reads the state again; saving again is safe (idempotent).

@@ -52,7 +52,7 @@ require_literal '        pacman)'
 # It runs right after the package step, and the restart is the LAST thing the
 # operator reads - after the success banner, not before it.
 require_literal 'KERNEL_REBOOT_STATE=$(classify_kernel_reboot_state "$PKG_FAMILY" "$KERNEL_REBOOT_RUNNING_RELEASE")'
-require_before 'step "Small prerequisites (curl, tar, xz, nftables, iproute2)" \' \
+require_before 'step "Small prerequisites (curl, tar, xz, nftables, iproute2, logrotate, command-line tools)" \' \
     'KERNEL_REBOOT_STATE=$(classify_kernel_reboot_state'
 require_before 'c '\''1;32'\'' "CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu."' \
     'print_kernel_reboot_closing "$KERNEL_REBOOT_STATE" "$KERNEL_REBOOT_RUNNING_RELEASE"'

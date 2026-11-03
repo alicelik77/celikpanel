@@ -79,11 +79,13 @@ var (
 		}
 		return nil
 	}
-	fileAccessRun            = runFileAccessCommand
-	fileAccessLookupAccount  = lookupFileAccessAccount
-	fileAccessListAccounts   = listFileAccessSiteAccounts
-	fileAccessStatChain      = statFileAccessChain
-	fileAccessEnsureJail     = ensureFileAccessJail
+	fileAccessRun           = runFileAccessCommand
+	fileAccessLookupAccount = lookupFileAccessAccount
+	fileAccessListAccounts  = listFileAccessSiteAccounts
+	fileAccessStatChain     = statFileAccessChain
+	fileAccessEnsureJail    = ensureFileAccessJail
+	// fileAccessJailMissing names the jail tools the host lacks (alpha.118).
+	fileAccessJailMissing    = missingJailCommands
 	fileAccessFamily         = detectPkgFamily
 	fileAccessCommandPresent = func(name string) bool {
 		_, err := fileAccessCommandPath(name)
@@ -404,6 +406,17 @@ func buildFileAccessPlan(ctx context.Context, req transport.ApplyFileAccessReque
 	case state == fileaccess.FileOwner:
 		return plan, refuseFileAccess(transport.FileAccessRefusedSSHDOwner,
 			"%s was changed by hand; CelikPanel keeps it and changes nothing. Remove it or put CelikPanel's version back to manage access here", fileaccess.SSHDropInPath)
+	}
+	// alpha.118 (owner: what SSH needs is installed before SSH is turned
+	// on): the command line is not turned on while the server lacks some of
+	// its tools. An account that already has it keeps it; FTP and SFTP are
+	// not affected.
+	if ssh {
+		if current, has := fileaccess.FindEntry(entries, site.Username); !has || !current.SSH {
+			if refusal := refuseMissingJailTools(); refusal != nil {
+				return plan, refusal
+			}
+		}
 	}
 	// Accounts that are gone (a deleted site) leave the record.
 	var kept []fileaccess.Entry
@@ -1085,6 +1098,10 @@ func readFileAccessState(ctx context.Context, site transport.FileAccessSite) tra
 			}
 		}
 	}
+	server.JailChecked = true
+	server.JailMissing = fileAccessJailMissing()
+	server.PackageFamily = fileAccessFamily()
+	server.JailPackages, server.JailUnknown = fileaccess.JailPackagesFor(server.PackageFamily, server.JailMissing)
 	server.FTPInstalled = fileAccessCommandPresent("vsftpd")
 	if server.FTPInstalled {
 		before, exists, err := fileAccessReadFile(fileaccess.VsftpdConfPath)
