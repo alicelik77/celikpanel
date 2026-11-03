@@ -685,11 +685,55 @@ func prepareFilesRestoreEdited(archivePath, target string, edit func(stageFD int
 		result.Cleanup()
 		return nil, err
 	}
-	if err := unix.Fchmod(stageFD, uint32(targetInfo.Mode().Perm())); err != nil {
+	// A site's folders carry the setgid bit so new files belong to the web
+	// server's group. Folders only: on a file that bit is a privilege.
+	setgid := targetInfo.Mode()&os.ModeSetgid != 0
+	if setgid {
+		if err := setgidDirectoriesAt(stageFD); err != nil {
+			result.Cleanup()
+			return nil, err
+		}
+	}
+	rootMode := uint32(targetInfo.Mode().Perm())
+	if setgid {
+		rootMode |= unix.S_ISGID
+	}
+	if err := unix.Fchmod(stageFD, rootMode); err != nil {
 		result.Cleanup()
 		return nil, err
 	}
 	return result, nil
+}
+
+// setgidDirectoriesAt adds the setgid bit to every directory below dirFD
+// through held descriptors, never following a link. Files are not touched.
+func setgidDirectoriesAt(dirFD int) error {
+	names, err := directoryNamesAt(dirFD)
+	if err != nil {
+		return err
+	}
+	for _, name := range names {
+		var st unix.Stat_t
+		if err := unix.Fstatat(dirFD, name, &st, unix.AT_SYMLINK_NOFOLLOW); err != nil {
+			return err
+		}
+		if st.Mode&unix.S_IFMT != unix.S_IFDIR {
+			continue
+		}
+		childFD, err := unix.Openat(dirFD, name, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
+		if err != nil {
+			return err
+		}
+		err = unix.Fchmod(childFD, (st.Mode&0o777)|unix.S_ISGID)
+		if err == nil {
+			err = setgidDirectoriesAt(childFD)
+		}
+		_ = unix.Close(childFD)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // chownTreeAt gives the tree below dirFD (and dirFD) uid:gid through held

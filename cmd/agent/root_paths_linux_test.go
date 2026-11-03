@@ -246,3 +246,86 @@ func TestQuotaWarningMarkerNeverFollowsALink(t *testing.T) {
 		t.Fatalf("no marker for a new warning: %v", err)
 	}
 }
+
+// alpha.118 lab round 5: a restored site keeps its folders' setgid bit (new
+// files then belong to the web server's group); files never get it.
+func TestRestoreKeepsTheSiteFoldersSetgidBit(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(root, "source")
+	target := filepath.Join(root, "home", "public_html")
+	for _, dir := range []string{filepath.Join(source, "sub", "deeper"), target} {
+		if err := os.MkdirAll(dir, 0o750); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(source, "sub", "index.php"), []byte("<?php"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	archive := filepath.Join(root, "files.tar.gz")
+	if err := safeCreateFilesArchive(source, archive); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(target, 0o750|os.ModeSetgid); err != nil {
+		t.Fatal(err)
+	}
+	staged, err := prepareFilesRestore(archive, target)
+	if err != nil {
+		t.Fatalf("prepare: %v", err)
+	}
+	defer staged.Cleanup()
+	if err := staged.Publish(); err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+	for _, dir := range []string{target, filepath.Join(target, "sub"), filepath.Join(target, "sub", "deeper")} {
+		info, err := os.Stat(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode()&os.ModeSetgid == 0 {
+			t.Fatalf("%s lost its setgid bit: %v", dir, info.Mode())
+		}
+	}
+	info, err := os.Stat(filepath.Join(target, "sub", "index.php"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode()&(os.ModeSetgid|os.ModeSetuid) != 0 {
+		t.Fatalf("a file got a privilege bit: %v", info.Mode())
+	}
+}
+
+// Without the bit on the target, nothing gains it.
+func TestRestoreAddsNoSetgidBitWhenTheSiteHadNone(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(root, "source")
+	target := filepath.Join(root, "home", "public_html")
+	for _, dir := range []string{filepath.Join(source, "sub"), target} {
+		if err := os.MkdirAll(dir, 0o750); err != nil {
+			t.Fatal(err)
+		}
+	}
+	archive := filepath.Join(root, "files.tar.gz")
+	if err := safeCreateFilesArchive(source, archive); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(target, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	staged, err := prepareFilesRestore(archive, target)
+	if err != nil {
+		t.Fatalf("prepare: %v", err)
+	}
+	defer staged.Cleanup()
+	if err := staged.Publish(); err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+	for _, dir := range []string{target, filepath.Join(target, "sub")} {
+		info, err := os.Stat(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode()&os.ModeSetgid != 0 {
+			t.Fatalf("%s gained a setgid bit: %v", dir, info.Mode())
+		}
+	}
+}
