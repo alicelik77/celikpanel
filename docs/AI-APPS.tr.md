@@ -62,7 +62,7 @@ gösterilir.
 
 - **Yapay zekâ ve otomasyon uygulamaları** izni (`service_apps`) ve her uygulama için bir
   sunum, `app:<id>`.
-- **Sunulana kadar kapalı.** Yönetici Eklentiler → katalog sekmesi → *Yapay zekâ ve otomasyon
+- **Sunulana kadar kapalı.** Yönetici Mağaza → **Katalog yönetimi** → *Yapay zekâ ve otomasyon
   uygulamaları* sayfasını açar, risk özetini okur, okuduğunu işaretler ve uygulamayı her kurulum
   için bellek, işlemci ve süreç sınırlarıyla birlikte sunar. İstek, özetin parmak izini taşır;
   bunu değiştiren bir sürüm, yeniden okunup bir kez daha sunulana kadar sunumu yine kapatır.

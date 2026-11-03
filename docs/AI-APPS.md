@@ -57,7 +57,7 @@ Open WebUI is shown as not available on that system, with the found version.
 ## 3. Rights and offering
 
 - Permission **AI and automation apps** (`service_apps`) and one offering per app, `app:<id>`.
-- **Closed until offered.** The administrator opens Add-ons → catalog tab → *AI and automation
+- **Closed until offered.** The administrator opens Store → **Catalog management** → *AI and automation
   apps*, reads the risk summary, ticks that they read it and offers it, with memory, CPU and
   process limits for every install. The request carries the summary's digest; a release that
   changes it closes the offer again until it is read and offered once more.
