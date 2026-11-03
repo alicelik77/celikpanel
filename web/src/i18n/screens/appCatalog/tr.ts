@@ -25,6 +25,7 @@ export const trAppCatalogScreens: Record<AppCatalogScreenKey, string> = {
     'apps.showPassword': 'Parolayı göster (bir kez)',
     'apps.retrySetup': 'Kurulumu yeniden dene',
     'apps.remove': 'Kaldır',
+    'apps.removedKept': '{name} kaldırıldı. Kaldırma başladıktan sonra sitenin genel klasörüne eklenen {count} öğe sizin olduğu için korundu: {items}. İstemiyorsanız dosya yöneticisiyle silin.',
     'apps.removed': '{name} kaldırıldı.',
     'apps.removeTitle': '{name} bu siteden kaldırılsın mı?',
     'apps.removeExplain': 'Dosyaları ve web sunucusu kuralları kaldırılır, site yeniden karşılama sayfasını gösterir. Aşağıda işaretlemezseniz veritabanı kalır; sitedeki kendi dosyalarınız da onunla gider.',

@@ -32,6 +32,7 @@ export const enAppCatalogScreens = {
     'apps.retrySetup': 'Retry setup',
     'apps.remove': 'Remove',
     'apps.removed': '{name} was removed.',
+    'apps.removedKept': '{name} was removed. {count} item(s) were added to the site’s public folder after the removal started and were kept, because they are yours: {items}. Remove them with the file manager if you do not want them.',
     'apps.removeTitle': 'Remove {name} from this site?',
     'apps.removeExplain': 'Its files and its web server rules are removed and the site shows the placeholder page again. The database stays unless you tick it below; files of your own in the site go with it.',
     'apps.removeDatabase': 'Also delete its database {database} (cannot be undone)',

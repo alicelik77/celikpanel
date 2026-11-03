@@ -182,7 +182,7 @@ func TestRemovalPermissionResetOpensReadOnlyFolders(t *testing.T) {
 	}
 }
 
-func TestRemoveCatalogAppResetsPermissionsAndContinuesAfterAPartialRemoval(t *testing.T) {
+func TestRemoveAgainAfterAPartialRemovalKeepsANewFileTheOwnerAdded(t *testing.T) {
 	site := newCatalogTestSite(t, "8.3")
 	rec := useRecordingIncludes(t)
 	app := catalogTestApp(t, "drupal")
@@ -190,7 +190,7 @@ func TestRemoveCatalogAppResetsPermissionsAndContinuesAfterAPartialRemoval(t *te
 	if err := os.MkdirAll(filepath.Join(site.docRoot, "sites", "default"), 0o750); err != nil {
 		t.Fatal(err)
 	}
-	var calls []string
+	var calls, deleted []string
 	failDelete := true
 	previous := catalogRunAsSiteUser
 	t.Cleanup(func() { catalogRunAsSiteUser = previous })
@@ -198,20 +198,23 @@ func TestRemoveCatalogAppResetsPermissionsAndContinuesAfterAPartialRemoval(t *te
 		calls = append(calls, strings.Join(argv, " "))
 		switch {
 		case argv[0] == "find" && argv[len(argv)-1] == "-delete":
-			entries, _ := os.ReadDir(argv[1])
-			for _, entry := range entries {
-				if failDelete && entry.Name() == "sites" {
+			deleted = append(deleted, argv[1:len(argv)-2]...)
+			for _, target := range argv[1 : len(argv)-2] {
+				if failDelete && filepath.Base(target) == "sites" {
 					continue // the read-only folder that stays
 				}
-				_ = os.RemoveAll(filepath.Join(argv[1], entry.Name()))
+				_ = os.RemoveAll(target)
 			}
 			if failDelete {
-				return "find: cannot delete " + argv[1] + "/sites/default: Permission denied", errors.New("it ended with exit code 1")
+				return "find: cannot delete " + site.docRoot + "/sites/default: Permission denied", errors.New("it ended with exit code 1")
 			}
 		case argv[0] == "sh" && strings.Contains(argv[2], "cat >"):
 			target := argv[len(argv)-1]
 			if strings.Contains(argv[2], "set -C") {
 				if _, err := os.Lstat(target); err == nil {
+					if strings.Contains(argv[2], "[ -e") {
+						return "", nil
+					}
 					return "", errors.New("file exists")
 				}
 			}
@@ -248,8 +251,16 @@ func TestRemoveCatalogAppResetsPermissionsAndContinuesAfterAPartialRemoval(t *te
 		t.Fatalf("nginx rules were removed although the files remain: %v", rec.removed)
 	}
 
-	// Drupal's own files are gone; the recorded removal continues anyway.
+	// The owner puts a file of their own into the folder meanwhile.
+	ownerFile := filepath.Join(site.docRoot, "owner-upload.html")
+	if err := os.WriteFile(ownerFile, []byte("mine"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+
+	// Drupal's own files are gone; the recorded removal continues anyway,
+	// and deletes only the entries recorded when it started.
 	failDelete = false
+	deleted = nil
 	resp = transport.RemoveCatalogAppResponse{}
 	if err := (&Agent{}).RemoveCatalogAppV1(&transport.RemoveCatalogAppRequest{AppID: "drupal", Site: site.site}, &resp); err != nil || resp.Error != "" {
 		t.Fatalf("the second removal: err=%v resp=%+v", err, resp)
@@ -257,17 +268,30 @@ func TestRemoveCatalogAppResetsPermissionsAndContinuesAfterAPartialRemoval(t *te
 	if !resp.FilesRemoved || resp.NotThisApp {
 		t.Fatalf("the second removal did not continue: %+v", resp)
 	}
-	entries, _ := os.ReadDir(site.docRoot)
-	if len(entries) != 1 || entries[0].Name() != name {
-		t.Fatalf("the document root does not hold only the placeholder: %v", entries)
+	for _, path := range deleted {
+		if base := filepath.Base(path); base != "sites" {
+			t.Fatalf("Remove again deleted %s, which was not left from the application: %v", base, deleted)
+		}
+	}
+	if content, err := os.ReadFile(ownerFile); err != nil || string(content) != "mine" {
+		t.Fatalf("the owner's new file did not survive Remove again: %q %v", content, err)
+	}
+	if len(resp.KeptEntries) != 1 || resp.KeptEntries[0] != "owner-upload.html" || !strings.Contains(resp.Detail, "owner-upload.html") {
+		t.Fatalf("the kept item is not named: %+v", resp)
+	}
+	if _, err := os.Stat(filepath.Join(site.docRoot, name)); err != nil {
+		t.Fatal("the placeholder page is gone")
+	}
+	if _, err := os.Stat(filepath.Join(site.docRoot, "sites")); err == nil {
+		t.Fatal("the application's remaining folder was not removed")
 	}
 	if entries, _ := os.ReadDir(catalogRemovalStateDir); len(entries) != 0 {
 		t.Fatalf("the removal record was kept: %v", entries)
 	}
-	// Without a record, a document root without Drupal's files stays refused.
-	if err := os.WriteFile(filepath.Join(site.docRoot, "owner.html"), []byte("mine"), 0o640); err != nil {
-		t.Fatal(err)
+	if len(rec.removed) != 2 {
+		t.Fatalf("the application's nginx rules were not removed: %v", rec.removed)
 	}
+	// Without a record, a document root without Drupal's files stays refused.
 	resp = transport.RemoveCatalogAppResponse{}
 	_ = (&Agent{}).RemoveCatalogAppV1(&transport.RemoveCatalogAppRequest{AppID: "drupal", Site: site.site}, &resp)
 	if !resp.NotThisApp {

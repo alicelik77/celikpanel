@@ -356,12 +356,15 @@ func fakeSiteUser(t *testing.T, calls *[]string) {
 			if argv[len(argv)-1] != "-delete" {
 				return "", nil // the permission reset before the removal
 			}
-			entries, _ := os.ReadDir(argv[1])
-			for _, entry := range entries {
-				_ = os.RemoveAll(filepath.Join(argv[1], entry.Name()))
+			// find <entry>... -xdev -delete: the recorded entries.
+			for _, target := range argv[1 : len(argv)-2] {
+				_ = os.RemoveAll(target)
 			}
 		case "sh":
 			if strings.Contains(argv[2], "cat >") {
+				if _, err := os.Lstat(argv[len(argv)-1]); err == nil && strings.Contains(argv[2], "set -C") {
+					return "", nil // noclobber: an existing file stays
+				}
 				return "", os.WriteFile(argv[len(argv)-1], stdin, 0o640)
 			}
 		}

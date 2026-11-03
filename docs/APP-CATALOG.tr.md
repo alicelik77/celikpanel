@@ -99,8 +99,11 @@ Uygulamalar klasörleri salt okunur yapar (Drupal'ın `sites/default`'u): siteni
 silinmeden önce köke özel bir kayda yazılır. Silme yine yarıda kalırsa yer tutucu sayfa kalanların
 yanına (hiçbir dosyanın üzerine yazmadan) konur, satır "… kaldırılırken yarıda kaldı" der
 (`needs_review`, tür `remove`, kod `APP_REMOVE_INCOMPLETE`) ve silinemeyen yolu gösterir;
-**Kaldır**'a yeniden basmak, uygulamayı tanıtan dosyalar gitmiş olsa da işi sürdürür. Bu kayıt
-yoksa uygulamayı artık tutmayan belge kökü yine reddedilir.
+**Kaldır**'a yeniden basmak, uygulamayı tanıtan dosyalar gitmiş olsa da işi sürdürür. Kayıt,
+kaldırma başladığında belge kökündeki üst düzey öğelerin yalnız **adlarını** tutar (içerik yok);
+sürdürülen kaldırma yalnız bunlardan hâlâ var olanları siler. Kaldırma başladıktan sonra sahibin
+koyduğu her şey sahibinindir ve kalır: kaldırma yine biter (`removed`) ve korunan öğeleri
+adlandırır. Bu kayıt yoksa uygulamayı artık tutmayan belge kökü yine reddedilir.
 
 ## nginx kuralları (yerel, panel olmadan okunur)
 

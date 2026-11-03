@@ -131,7 +131,10 @@ type RemoveCatalogAppResponse struct {
 	DataRemoved  bool   `json:"data_removed,omitempty"`
 	DataKept     string `json:"data_kept,omitempty"`
 	NotThisApp   bool   `json:"not_this_app,omitempty"`
-	Detail       string `json:"detail,omitempty"`
-	Error        string `json:"error,omitempty"`
-	ErrorKind    string `json:"error_kind,omitempty"`
+	// KeptEntries are top-level entries of the document root that appeared
+	// after a removal started; they are the owner's and were not deleted.
+	KeptEntries []string `json:"kept_entries,omitempty"`
+	Detail      string   `json:"detail,omitempty"`
+	Error       string   `json:"error,omitempty"`
+	ErrorKind   string   `json:"error_kind,omitempty"`
 }

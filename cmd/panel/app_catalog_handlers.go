@@ -1237,17 +1237,25 @@ func (p *Panel) removeCatalogApp(w http.ResponseWriter, r *http.Request, domainI
 			databaseRemoved = true
 		}
 	}
-	if err := p.setCatalogAppStatus(op.OperationID, appOpRemoved, "", databaseNote); err != nil {
+	kept := append([]string{}, resp.KeptEntries...)
+	statusNote := databaseNote
+	if len(kept) > 0 {
+		// Items the owner added after the removal started stay; the removal
+		// still ends (no failure loop) and says what was kept.
+		statusNote = strings.TrimPrefix(statusNote+"; ", "; ") + resp.Detail
+	}
+	if err := p.setCatalogAppStatus(op.OperationID, appOpRemoved, "", statusNote); err != nil {
 		writeServerError(w, err)
 		return
 	}
 	_, _ = p.db.GetDB().ExecContext(r.Context(), `UPDATE app_catalog_operations SET admin_secret_encrypted = NULL WHERE operation_id = ?`, op.OperationID)
 	p.auditDetailed(r, "app.remove:"+app.ID, "domain", domainID, map[string]any{
-		"operation_id": op.OperationID, "database_removed": databaseRemoved, "data_removed": resp.DataRemoved, "rules_kept": resp.RulesKept})
+		"operation_id": op.OperationID, "database_removed": databaseRemoved, "data_removed": resp.DataRemoved, "rules_kept": resp.RulesKept,
+		"kept_entries": len(kept)})
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"success": true, "database_removed": databaseRemoved, "database_kept": !databaseRemoved, "database": op.DatabaseName,
 		"database_note": databaseNote, "data_removed": resp.DataRemoved, "data_kept": resp.DataKept, "rules_kept": resp.RulesKept,
-		"detail": resp.Detail,
+		"detail": resp.Detail, "kept_entries": kept,
 	})
 }
 

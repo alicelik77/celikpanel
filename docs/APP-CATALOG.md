@@ -117,7 +117,11 @@ removal is recorded in a root-private file before the first file is deleted
 placeholder page is put back beside what remains (never over a file), the row says "Removing …
 stopped part way" (`needs_review` with kind `remove`, code `APP_REMOVE_INCOMPLETE`) with the
 path that could not be deleted, and **Remove** again continues it although the application's
-identifying files are gone. Without that record, a document root that no longer holds the
+identifying files are gone. The record holds the **names** of the document root's top-level
+entries when the removal started (no content); a continued removal deletes only those that still
+exist. Anything the owner put there after the removal started is the owner's and stays: the
+removal still ends (`removed`) and names the kept items ("N items added after the removal
+started were kept: …"). Without that record, a document root that no longer holds the
 application is still refused.
 
 ## nginx rules (native, readable without the panel)

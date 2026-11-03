@@ -347,6 +347,12 @@ function RemoveForm({ domainId, domainName, app, send, onClose }: {
             const result = await send(domainAppOperationURL(domainId, app.operation_id), { confirm: confirmName, remove_database: database, remove_data: data }, 'DELETE');
             if (result?.success === true) {
                 const note = typeof result.database_note === 'string' && result.database_note ? result.database_note : '';
+                // Items the owner added after the removal started were kept
+                // (alpha.118); the removal is finished and says so.
+                const kept = Array.isArray(result.kept_entries) ? result.kept_entries.filter((x): x is string => typeof x === 'string') : [];
+                if (kept.length > 0) {
+                    showToast('warning', t('apps.removedKept', { name: app.name, count: kept.length, items: kept.slice(0, 10).join(', ') + (kept.length > 10 ? ', …' : '') }));
+                }
                 showToast(note ? 'error' : 'success', note || t('apps.removed', { name: app.name }));
                 onClose();
             }
