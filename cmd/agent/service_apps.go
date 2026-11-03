@@ -35,10 +35,13 @@ import (
 // sandbox, listening on 127.0.0.1 only and reached through the site's nginx
 // over HTTPS. Root does only what needs root: it downloads and checks the
 // pinned upstream file, writes the unit and drives systemd. Every write
-// inside the site's folder (folders, the verified file, the environment file,
-// npm or pip, removal) runs as the site's user, so a link planted in that
-// folder can never make root write elsewhere. The unit and its environment
-// file are native systemd configuration and keep working without CelikPanel.
+// inside the site's folder (folders, the verified file, npm or pip, removal)
+// runs as the site's user, so a link planted in that folder can never make
+// root write elsewhere. The environment file is root's, outside the site's
+// folder (serviceapps.EnvDir): systemd reads it as root, so a file the site's
+// user controls could have been a link to a root-only file. The unit and its
+// environment file are native systemd configuration and keep working without
+// CelikPanel.
 //
 // Hizmet uygulamaları: sitenin kendi kullanıcısıyla, systemd korumasında,
 // yalnız 127.0.0.1'de çalışan ve sitenin nginx'i üzerinden HTTPS ile açılan
@@ -76,7 +79,12 @@ var serviceAppLookupAccount = func(target transport.ServiceAppTarget) (serviceAp
 	if err != nil {
 		return serviceAppAccount{}, err
 	}
-	name := services.SiteUsername(target.Domain)
+	return serviceAppLookupAccountByName(services.SiteUsername(target.Domain), home)
+}
+
+// serviceAppLookupAccountByName proves that the account name has exactly the
+// site home home (the agent's start reads the name from a unit's User=).
+var serviceAppLookupAccountByName = func(name, home string) (serviceAppAccount, error) {
 	account, err := user.Lookup(name)
 	if err != nil {
 		return serviceAppAccount{}, fmt.Errorf("the site's system account %s is missing", name)
@@ -246,9 +254,10 @@ func serviceAppStep(resp *transport.ServiceAppStepResponse, class, reason, detai
 // serviceAppContext validates a target and resolves everything an action
 // needs. A failure fills resp and returns ok false.
 type serviceAppContext struct {
-	app     serviceapps.App
-	account serviceAppAccount
-	layout  serviceapps.Layout
+	installID int
+	app       serviceapps.App
+	account   serviceAppAccount
+	layout    serviceapps.Layout
 }
 
 func resolveServiceApp(target transport.ServiceAppTarget, resp *transport.ServiceAppStepResponse) (serviceAppContext, bool) {
@@ -267,7 +276,7 @@ func resolveServiceApp(target transport.ServiceAppTarget, resp *transport.Servic
 		serviceAppStep(resp, transport.ServiceAppPrerequisite, "site_account", err.Error())
 		return serviceAppContext{}, false
 	}
-	return serviceAppContext{app: app, account: account, layout: layout}, true
+	return serviceAppContext{installID: target.InstallID, app: app, account: account, layout: layout}, true
 }
 
 func validServiceAppPorts(app serviceapps.App, port, aux int) bool {
@@ -361,23 +370,172 @@ func parseShow(out string) map[string]string {
 	return props
 }
 
-// readServiceAppEnv reads the environment file as the site's user ("" when
-// it does not exist yet).
+// readServiceAppEnv reads the install's environment file: root's file in
+// serviceapps.EnvDir, read without following any link. Until that exists, a
+// file an earlier alpha.118 build kept in the site's folder is read instead,
+// as the site's user and never through a link, so it can be moved.
 func readServiceAppEnv(sc serviceAppContext) (map[string]string, error) {
-	out, err := serviceAppAsUser(sc.account, nil, `f="$1/config/app.env"; if [ -f "$f" ] && [ ! -L "$f" ]; then cat "$f"; fi`, sc.layout.Root)
-	if err != nil {
+	raw, err := secureReadConfig(serviceAppEnvPath(sc.installID))
+	if err == nil {
+		return serviceapps.ParseEnv(string(raw)), nil
+	}
+	if !errors.Is(err, os.ErrNotExist) {
 		return nil, fmt.Errorf("read the environment file: %v", err)
 	}
-	return serviceapps.ParseEnv(string(out)), nil
+	legacy, err := readLegacyServiceAppEnv(sc.account, sc.layout)
+	if errors.Is(err, errServiceAppLegacyEnvLink) {
+		log.Printf("service app install %d: %v", sc.installID, err)
+		return map[string]string{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return serviceapps.ParseEnv(legacy), nil
 }
 
-func writeServiceAppEnv(sc serviceAppContext, text string) error {
-	_, err := serviceAppAsUser(sc.account, strings.NewReader(text),
-		`umask 077; mkdir -p "$1/config" && cat > "$1/config/app.env.partial" && mv -f "$1/config/app.env.partial" "$1/config/app.env"`, sc.layout.Root)
+// readLegacyServiceAppEnv reads <app>/config/app.env as the site's user (so
+// it can never read more than that user may); a link is refused and its
+// target is never read.
+func readLegacyServiceAppEnv(account serviceAppAccount, layout serviceapps.Layout) (string, error) {
+	out, err := serviceAppAsUser(account, nil, serviceAppLegacyEnvReadScript, layout.Root)
 	if err != nil {
+		return "", fmt.Errorf("read the earlier environment file: %v", err)
+	}
+	if strings.TrimSpace(string(out)) == "celikpanel-env-link" {
+		return "", errServiceAppLegacyEnvLink
+	}
+	return string(out), nil
+}
+
+// serviceAppLegacyEnvReadScript runs as the site's user: a link is named,
+// never read; a regular file is printed.
+const serviceAppLegacyEnvReadScript = `f="$1/config/app.env"; if [ -L "$f" ]; then echo celikpanel-env-link; exit 0; fi; if [ -f "$f" ]; then cat "$f"; fi`
+
+// errServiceAppLegacyEnvLink: the site-folder environment file of an earlier
+// build is a link; it is never read and its values are not taken over.
+var errServiceAppLegacyEnvLink = errors.New("the environment file in the site's folder is a link; it was not read")
+
+// removeLegacyServiceAppEnv removes the site-folder file once its values are
+// in root's file (as the site's user; rm does not follow a link).
+func removeLegacyServiceAppEnv(account serviceAppAccount, layout serviceapps.Layout) {
+	if _, err := serviceAppAsUser(account, nil, `rm -f -- "$1/config/app.env" "$1/config/app.env.partial"`, layout.Root); err != nil {
+		log.Printf("service app: the earlier environment file in %s could not be removed: %v", layout.Root, err)
+	}
+}
+
+// moveLegacyServiceAppEnv writes root's environment file from the one an
+// earlier alpha.118 build kept in the site's folder, when root's file does
+// not exist yet. Nothing to move is not an error.
+func moveLegacyServiceAppEnv(sc serviceAppContext) error {
+	if _, err := secureReadConfig(serviceAppEnvPath(sc.installID)); err == nil {
+		return nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("read the environment file: %v", err)
+	}
+	legacy, err := readLegacyServiceAppEnv(sc.account, sc.layout)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(legacy) == "" {
+		return nil
+	}
+	text, err := serviceapps.RenderLegacyEnv(sc.app, serviceapps.ParseEnv(legacy))
+	if err != nil {
+		return err
+	}
+	return writeServiceAppEnv(sc, text)
+}
+
+// errServiceAppEnvEdited: the environment file was changed on the server.
+var errServiceAppEnvEdited = errors.New("the environment file was changed on the server")
+
+// serviceAppEnvDir and serviceAppEnvOwner are replaced in tests.
+var (
+	serviceAppEnvDir   = serviceapps.EnvDir
+	serviceAppEnvOwner = func() (uint32, uint32) { return 0, 0 }
+)
+
+func serviceAppEnvPath(installID int) string {
+	return filepath.Join(serviceAppEnvDir, serviceapps.UnitName(installID)+".env")
+}
+
+// ensureServiceAppEnvDir makes the root folder (0700) and refuses one that
+// is a link, not a folder or not root's.
+func ensureServiceAppEnvDir() error {
+	if err := os.Mkdir(serviceAppEnvDir, 0o700); err != nil && !errors.Is(err, os.ErrExist) {
+		return err
+	}
+	info, err := os.Lstat(serviceAppEnvDir)
+	if err != nil {
+		return err
+	}
+	uid, _ := serviceAppEnvOwner()
+	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 || !fileOwnedBy(info, uid) {
+		return fmt.Errorf("%s is not a folder owned by root", serviceAppEnvDir)
+	}
+	return os.Chmod(serviceAppEnvDir, 0o700)
+}
+
+// writeServiceAppEnv writes root's environment file (0600) without following
+// a link. A file whose text no longer matches its header was changed on the
+// server and is kept (D-022, D-031): errServiceAppEnvEdited. Once written,
+// an earlier file in the site's folder is removed.
+func writeServiceAppEnv(sc serviceAppContext, text string) error {
+	if err := ensureServiceAppEnvDir(); err != nil {
 		return fmt.Errorf("write the environment file: %v", err)
 	}
+	path := serviceAppEnvPath(sc.installID)
+	current, err := secureReadConfig(path)
+	switch {
+	case err == nil && string(current) == text:
+	case err == nil && serviceapps.UnitTextState(string(current)) != "ours":
+		return errServiceAppEnvEdited
+	case err != nil && !errors.Is(err, os.ErrNotExist):
+		return fmt.Errorf("write the environment file: %v", err)
+	default:
+		uid, gid := serviceAppEnvOwner()
+		if err := secureWriteConfigOwnedBy(path, []byte(text), 0o600, uid, gid); err != nil {
+			return fmt.Errorf("write the environment file: %v", err)
+		}
+	}
+	removeLegacyServiceAppEnv(sc.account, sc.layout)
 	return nil
+}
+
+// serviceAppEnvStep fills resp for a failed environment write.
+func serviceAppEnvStep(resp *transport.ServiceAppStepResponse, installID int, err error) {
+	if errors.Is(err, errServiceAppEnvEdited) {
+		serviceAppStep(resp, transport.ServiceAppPrerequisite, "env_edited",
+			serviceAppEnvPath(installID)+" was changed on the server, so CelikPanel kept it and did not write it again; put your own values in "+
+				"/etc/systemd/system/"+serviceapps.UnitName(installID)+".service.d/*.conf (Environment=), or remove the file, then try again")
+		return
+	}
+	serviceAppStep(resp, transport.ServiceAppVerifiedFailure, "env_file", err.Error())
+}
+
+// removeServiceAppEnv deletes root's environment file; one the owner changed
+// is kept first as a dated copy (root's, 0600) and its path returned.
+func removeServiceAppEnv(installID int) (string, error) {
+	path := serviceAppEnvPath(installID)
+	raw, err := secureReadConfig(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	kept := ""
+	if serviceapps.UnitTextState(string(raw)) != "ours" {
+		kept = path + ".celikpanel-removed-" + time.Now().UTC().Format("20060102T150405Z")
+		uid, gid := serviceAppEnvOwner()
+		if err := secureWriteConfigOwnedBy(kept, raw, 0o600, uid, gid); err != nil {
+			return "", fmt.Errorf("a copy of the changed environment file could not be kept, so it was not removed: %v", err)
+		}
+	}
+	if err := secureRemoveConfig(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return kept, err
+	}
+	return kept, nil
 }
 
 func randomHex(n int) (string, error) {
@@ -543,7 +701,7 @@ func (a *Agent) ServiceAppPrepareV1(req *transport.ServiceAppPrepareRequest, res
 		return nil
 	}
 	if err := writeServiceAppEnv(sc, text); err != nil {
-		serviceAppStep(resp, transport.ServiceAppVerifiedFailure, "env_file", err.Error())
+		serviceAppEnvStep(resp, sc.installID, err)
 		return nil
 	}
 
@@ -701,6 +859,14 @@ func (a *Agent) ServiceAppActivateV1(req *transport.ServiceAppActivateRequest, r
 		serviceAppStep(resp, transport.ServiceAppPrerequisite, "install_missing", "the application files of this version are not in place; run the install again")
 		return nil
 	}
+	// The unit names root's environment file; one an earlier build kept in
+	// the site's folder is moved there first.
+	if err := moveLegacyServiceAppEnv(sc); errors.Is(err, errServiceAppLegacyEnvLink) {
+		log.Printf("ServiceAppActivateV1 install %d: %v", sc.installID, err)
+	} else if err != nil {
+		serviceAppEnvStep(resp, sc.installID, err)
+		return nil
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	runtime := serviceAppRuntime(ctx, sc.app)
@@ -795,11 +961,12 @@ func (a *Agent) ServiceAppFinalizeV1(req *transport.ServiceAppActivateRequest, r
 			return nil
 		}
 		text, err := renderServiceAppEnv(sc, existing, req.Target.Domain, req.Port, req.AuxPort, "", "", nil, keys)
-		if err == nil {
-			err = writeServiceAppEnv(sc, text)
-		}
 		if err != nil {
 			serviceAppStep(resp, transport.ServiceAppUnknown, "env_file", err.Error())
+			return nil
+		}
+		if err := writeServiceAppEnv(sc, text); err != nil {
+			serviceAppEnvStep(resp, sc.installID, err)
 			return nil
 		}
 	}
@@ -928,7 +1095,7 @@ func (a *Agent) ServiceAppSecretsV1(req *transport.ServiceAppSecretsRequest, res
 		return nil
 	}
 	if err := writeServiceAppEnv(sc, text); err != nil {
-		serviceAppStep(resp, transport.ServiceAppVerifiedFailure, "env_file", err.Error())
+		serviceAppEnvStep(resp, sc.installID, err)
 		return nil
 	}
 	name := serviceapps.UnitName(req.Target.InstallID)
@@ -986,6 +1153,12 @@ func (a *Agent) ServiceAppRemoveV1(req *transport.ServiceAppRemoveRequest, resp 
 	if out, err := appUnitSystemctl(systemctlArgs("daemon-reload")...); err != nil {
 		log.Printf("ServiceAppRemoveV1 install %d: daemon-reload: %v: %s", req.Target.InstallID, err, bytes.TrimSpace(out))
 	}
+	keptEnv, err := removeServiceAppEnv(req.Target.InstallID)
+	if err != nil {
+		serviceAppStep(&resp.ServiceAppStepResponse, transport.ServiceAppUnknown, "env_remove", "the unit is removed, but its environment file could not be removed: "+err.Error())
+		return nil
+	}
+	resp.KeptEnvCopy = keptEnv
 	script := `cd "$1" 2>/dev/null || exit 0; rm -rf -- app-* dist config .cache`
 	if req.RemoveData {
 		script += `; rm -rf -- data; cd .. && rmdir -- "$2" 2>/dev/null; true`
@@ -1038,4 +1211,122 @@ func (a *Agent) SetServiceAppSuspensionV1(req *transport.SetServiceAppSuspension
 	defer unlock()
 	applyUnitSuspension(serviceapps.UnitName(req.InstallID), req.Suspend, req.Before, resp)
 	return nil
+}
+
+// migrateServiceAppEnvFiles runs once at the agent's start: units written by
+// an alpha.118 build before the security fix name an environment file in the
+// site's folder, which systemd reads as root. Each such unit that is still
+// CelikPanel's unchanged text gets its values moved to root's file (read as
+// the site's user, never through a link) and only its EnvironmentFile= line
+// rewritten. An app that ran is restarted so it reads root's file; one that
+// was stopped stays stopped. A unit the owner changed is kept and named in
+// the log. No value is logged.
+func migrateServiceAppEnvFiles() {
+	dir, err := unitDir()
+	if err != nil {
+		log.Printf("service apps: environment move skipped: %v", err)
+		return
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			log.Printf("service apps: environment move skipped: %v", err)
+		}
+		return
+	}
+	for _, entry := range entries {
+		name, isService := strings.CutSuffix(entry.Name(), ".service")
+		if !isService || !entry.Type().IsRegular() || !serviceapps.ValidUnitName(name) {
+			continue
+		}
+		installID, err := strconv.Atoi(strings.TrimPrefix(name, "celiksvc-"))
+		if err != nil {
+			continue
+		}
+		if outcome, err := migrateServiceAppEnvFile(installID); err != nil {
+			log.Printf("service apps: %s: %s: %v", name, outcome, err)
+		} else if outcome != "" {
+			log.Printf("service apps: %s: %s", name, outcome)
+		}
+	}
+}
+
+// migrateServiceAppEnvFile moves one install; outcome "" means nothing to do.
+func migrateServiceAppEnvFile(installID int) (string, error) {
+	unlock := lockServiceApp(installID)
+	defer unlock()
+	path, err := serviceAppUnitPath(installID)
+	if err != nil {
+		return "unit folder", err
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return "unit not read", err
+	}
+	text := string(raw)
+	newText, legacy, ok := serviceapps.MigrateUnitEnvLine(text, installID)
+	if !ok {
+		if serviceapps.UnitTextState(text) != "ours" && strings.Contains(text, "/config/app.env") {
+			return "the unit was changed on the server and still names an environment file in the site's folder, which systemd reads as root; " +
+				"CelikPanel kept it: change its EnvironmentFile= to " + serviceapps.EnvFile(installID) + " (the server administrator)", nil
+		}
+		return "", nil
+	}
+	name := serviceapps.UnitName(installID)
+	before, stateErr := inspectUnitSuspensionState(name)
+	// Security first: the unit is rewritten even when the values cannot be
+	// moved, so systemd never reads the site-folder file again; the app then
+	// stays stopped until its keys are set again.
+	moveErr := moveLegacyServiceAppEnvFrom(installID, legacy, serviceapps.UnitUser(text))
+	if err := os.WriteFile(path+".partial", []byte(newText), 0o644); err != nil {
+		return "unit not rewritten", err
+	}
+	if err := os.Rename(path+".partial", path); err != nil {
+		return "unit not rewritten", err
+	}
+	if out, err := appUnitSystemctl(systemctlArgs("daemon-reload")...); err != nil {
+		return "unit rewritten, daemon-reload failed", fmt.Errorf("%v: %s", err, strings.TrimSpace(string(out)))
+	}
+	_, envErr := secureReadConfig(serviceAppEnvPath(installID))
+	if moveErr == nil && envErr == nil {
+		outcome := "environment file moved to " + serviceAppEnvPath(installID)
+		switch {
+		case stateErr != nil:
+			return outcome + "; its running state could not be read, so it was not restarted", nil
+		case before.Active:
+			if out, err := appUnitSystemctl(systemctlArgs("restart", name)...); err != nil {
+				return outcome + "; restart failed", fmt.Errorf("%v: %s", err, strings.TrimSpace(string(out)))
+			}
+			return outcome + "; restarted", nil
+		}
+		return outcome + "; it stays stopped as it was", nil
+	}
+	if stateErr != nil || before.Active {
+		_, _ = appUnitSystemctl(systemctlArgs("stop", name)...)
+	}
+	reason := "there was no environment file in the site's folder"
+	if moveErr != nil {
+		reason = moveErr.Error()
+	}
+	return "the unit now names " + serviceAppEnvPath(installID) + ", but no values could be taken over (" + reason +
+		"); the app is stopped. Set its keys again in the panel, then start it", nil
+}
+
+// moveLegacyServiceAppEnvFrom moves the values of the site-folder file a
+// unit named (legacy) to root's file, as the unit's own site account.
+func moveLegacyServiceAppEnvFrom(installID int, legacy, user string) error {
+	subscriptionID, domainID, appID, ok := serviceapps.LegacyEnvTarget(legacy)
+	if !ok {
+		return errors.New("the unit names an environment file outside a service-app folder")
+	}
+	app, _ := serviceapps.Lookup(appID)
+	layout, err := serviceapps.LayoutFor(subscriptionID, domainID, appID)
+	if err != nil {
+		return err
+	}
+	account, err := serviceAppLookupAccountByName(user, filepath.Dir(filepath.Dir(layout.Root)))
+	if err != nil {
+		return err
+	}
+	return moveLegacyServiceAppEnv(serviceAppContext{installID: installID, app: app, account: account, layout: layout})
 }

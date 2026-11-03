@@ -167,10 +167,12 @@ type ServiceAppRemoveRequest struct {
 }
 
 // ServiceAppRemoveResponse: KeptCopy names the copy of a unit file the owner
-// had changed (it is kept beside the removed one).
+// had changed (it is kept beside the removed one); KeptEnvCopy the same for
+// the environment file (root's, 0600, in the environment folder).
 type ServiceAppRemoveResponse struct {
 	ServiceAppStepResponse
-	KeptCopy string `json:"kept_copy,omitempty"`
+	KeptCopy    string `json:"kept_copy,omitempty"`
+	KeptEnvCopy string `json:"kept_env_copy,omitempty"`
 }
 
 // ServiceAppUnitStateRequest reads one install's unit state (suspension).

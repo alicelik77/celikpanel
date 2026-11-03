@@ -22,9 +22,18 @@ type serviceAppHost struct {
 	systemdRuns [][]string
 	userScripts []string
 	userStdin   []string
-	env         string
+	env         string // the site-folder file of an earlier build
+	legacyLink  bool   // that file is a link
+	appActive   bool
 	journal     string
 	systemctl   []string
+	envDir      string
+}
+
+// rootEnv reads root's environment file of an install ("" when absent).
+func (h *serviceAppHost) rootEnv(installID int) string {
+	raw, _ := os.ReadFile(filepath.Join(h.envDir, serviceapps.UnitName(installID)+".env"))
+	return string(raw)
 }
 
 func useServiceAppHost(t *testing.T) *serviceAppHost {
@@ -32,14 +41,26 @@ func useServiceAppHost(t *testing.T) *serviceAppHost {
 	host := &serviceAppHost{}
 	oldAccount, oldRun, oldUser, oldDownload, oldProbe, oldCtl, oldRoot, oldDir :=
 		serviceAppLookupAccount, serviceAppRun, serviceAppAsUser, serviceAppDownload, serviceAppProbe, appUnitSystemctl, serviceAppStateRoot, appUnitDirOverride
+	oldByName, oldEnvDir, oldEnvOwner := serviceAppLookupAccountByName, serviceAppEnvDir, serviceAppEnvOwner
 	t.Cleanup(func() {
 		serviceAppLookupAccount, serviceAppRun, serviceAppAsUser, serviceAppDownload, serviceAppProbe, appUnitSystemctl, serviceAppStateRoot, appUnitDirOverride =
 			oldAccount, oldRun, oldUser, oldDownload, oldProbe, oldCtl, oldRoot, oldDir
+		serviceAppLookupAccountByName, serviceAppEnvDir, serviceAppEnvOwner = oldByName, oldEnvDir, oldEnvOwner
 	})
 	serviceAppStateRoot = t.TempDir()
 	appUnitDirOverride = t.TempDir()
+	host.envDir = filepath.Join(t.TempDir(), "celikpanel-svcapps")
+	serviceAppEnvDir = host.envDir
+	serviceAppEnvOwner = func() (uint32, uint32) { return uint32(os.Geteuid()), uint32(os.Getegid()) }
+	account := serviceAppAccount{Name: "flows_example_com", Group: "flows_example_com", UID: 1500, GID: 1500, Home: "/var/www/celikpanel/subscriptions/3/sites/7"}
 	serviceAppLookupAccount = func(target transport.ServiceAppTarget) (serviceAppAccount, error) {
-		return serviceAppAccount{Name: "flows_example_com", Group: "flows_example_com", UID: 1500, GID: 1500, Home: "/var/www/celikpanel/subscriptions/3/sites/7"}, nil
+		return account, nil
+	}
+	serviceAppLookupAccountByName = func(name, home string) (serviceAppAccount, error) {
+		if name != account.Name || home != account.Home {
+			return serviceAppAccount{}, os.ErrNotExist
+		}
+		return account, nil
 	}
 	serviceAppProbe = func(context.Context) ([]serviceapps.NodeCandidate, []serviceapps.PythonCandidate) {
 		return []serviceapps.NodeCandidate{{Path: "/opt/celikpanel/runtimes/node/24.11.1/bin/node", Version: "24.11.1",
@@ -55,12 +76,15 @@ func useServiceAppHost(t *testing.T) *serviceAppHost {
 		if stdin != nil {
 			raw, _ := io.ReadAll(stdin)
 			host.userStdin = append(host.userStdin, string(raw))
-			if strings.Contains(script, "app.env.partial") {
-				host.env = string(raw)
-			}
 		}
-		if strings.Contains(script, "config/app.env\"; if") {
+		switch script {
+		case serviceAppLegacyEnvReadScript:
+			if host.legacyLink {
+				return []byte("celikpanel-env-link\n"), nil
+			}
 			return []byte(host.env), nil
+		case `rm -f -- "$1/config/app.env" "$1/config/app.env.partial"`:
+			host.env, host.legacyLink = "", false
 		}
 		return nil, nil
 	}
@@ -88,6 +112,12 @@ func useServiceAppHost(t *testing.T) *serviceAppHost {
 				return []byte("LoadState=loaded\nActiveState=active\nSubState=exited\nResult=success\n"), nil
 			}
 			return []byte("LoadState=not-found\nActiveState=inactive\nSubState=dead\nResult=success\n"), nil
+		}
+		if args[0] == "show" && strings.HasPrefix(args[1], "celiksvc-") {
+			if host.appActive {
+				return []byte("LoadState=loaded\nActiveState=active\nUnitFileState=enabled\n"), nil
+			}
+			return []byte("LoadState=loaded\nActiveState=inactive\nUnitFileState=disabled\n"), nil
 		}
 		if args[0] == "stop" && strings.HasPrefix(args[1], "celiksvcinst-") {
 			// stopping a running install of another operation is not done
@@ -139,7 +169,7 @@ func TestServiceAppPrepareStartsTheInstallOnceAsTheSiteUser(t *testing.T) {
 	if strings.Contains(args, "$2a$12$") || strings.Contains(args, "owner@example.com") {
 		t.Fatal("a secret reached the command line")
 	}
-	env := serviceapps.ParseEnv(host.env)
+	env := serviceapps.ParseEnv(host.rootEnv(5))
 	if env["N8N_LISTEN_ADDRESS"] != "127.0.0.1" || env["N8N_PORT"] != "21010" || env["N8N_INSTANCE_OWNER_PASSWORD_HASH"] == "" || len(env["N8N_ENCRYPTION_KEY"]) != 64 {
 		t.Fatalf("environment file: %v", env)
 	}
@@ -155,7 +185,7 @@ func TestServiceAppPrepareStartsTheInstallOnceAsTheSiteUser(t *testing.T) {
 	var secretsResp transport.ServiceAppStepResponse
 	_ = agent.ServiceAppSecretsV1(&transport.ServiceAppSecretsRequest{Target: n8nPrepareRequest("x").Target, Port: 21010, AuxPort: 21011,
 		OwnerSecret: "$2a$12$zyxwvutsrqponmlkjihgfeJ0123456789abcdefghijklmnopqrstu"}, &secretsResp)
-	if !secretsResp.Done || serviceapps.ParseEnv(host.env)["N8N_ENCRYPTION_KEY"] != key {
+	if !secretsResp.Done || serviceapps.ParseEnv(host.rootEnv(5))["N8N_ENCRYPTION_KEY"] != key {
 		t.Fatalf("rewrite lost the generated key: %+v", secretsResp)
 	}
 }

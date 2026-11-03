@@ -34,14 +34,14 @@ func TestUnitCarriesTheSandbox(t *testing.T) {
 		"BindPaths=/var/www/celikpanel/subscriptions/3/sites/7/apps/n8n\n",
 		"ReadWritePaths=/var/www/celikpanel/subscriptions/3/sites/7/apps/n8n\n",
 		"MemoryMax=1536M\n", "CPUQuota=100%\n", "TasksMax=512\n",
-		"EnvironmentFile=/var/www/celikpanel/subscriptions/3/sites/7/apps/n8n/config/app.env\n",
+		"EnvironmentFile=/etc/celikpanel-svcapps/celiksvc-12.env\n",
 		"ExecStart=/opt/celikpanel/runtimes/node/24.11.1/bin/node /var/www/celikpanel/subscriptions/3/sites/7/apps/n8n/app-2.46.4/node_modules/n8n/bin/n8n start\n",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("unit lacks %q", want)
 		}
 	}
-	for _, refused := range []string{"User=root", "docker", "AmbientCapabilities=CAP", "0.0.0.0"} {
+	for _, refused := range []string{"User=root", "docker", "AmbientCapabilities=CAP", "0.0.0.0", "config/app.env"} {
 		if strings.Contains(text, refused) {
 			t.Errorf("unit contains %q", refused)
 		}

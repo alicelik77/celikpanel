@@ -290,6 +290,12 @@ func (p *Panel) runServiceAppUninstall(ctx context.Context, native serviceAppNat
 	if resp.KeptCopy != "" {
 		message = "the unit had been changed on the server; a copy is kept as " + resp.KeptCopy
 	}
+	if resp.KeptEnvCopy != "" {
+		if message != "" {
+			message += "; "
+		}
+		message += "the environment file had been changed on the server; a copy is kept as " + resp.KeptEnvCopy
+	}
 	if _, err := p.db.GetDB().ExecContext(ctx, `DELETE FROM service_app_installs WHERE id = ?`, in.ID); err != nil {
 		return err
 	}

@@ -22,7 +22,11 @@ import (
 //	  dist/          the verified upstream file
 //	  app-<version>/ the application (npm prefix or Python venv)
 //	  data/          the application's own data
-//	  config/app.env the environment file (0600, the site's user)
+//
+// The environment file is not in the site's folder: systemd (PID 1) reads an
+// EnvironmentFile= as root and follows links, so a file the site's user can
+// replace could have been a link to a root-only file whose values would then
+// reach the app's process. It lives in EnvDir, root's (alpha.118 security fix).
 type Layout struct {
 	Root string
 }
@@ -42,8 +46,12 @@ func LayoutFor(subscriptionID, domainID int, appID string) (Layout, error) {
 func (l Layout) DistDir() string   { return path.Join(l.Root, "dist") }
 func (l Layout) DataDir() string   { return path.Join(l.Root, "data") }
 func (l Layout) ConfigDir() string { return path.Join(l.Root, "config") }
-func (l Layout) EnvFile() string   { return path.Join(l.Root, "config", "app.env") }
-func (l Layout) CacheDir() string  { return path.Join(l.Root, ".cache") }
+
+// LegacyEnvFile is where alpha.118 builds before the security fix kept the
+// environment file; it is read only to move it (as the site's user, never
+// through a link) and then removed.
+func (l Layout) LegacyEnvFile() string { return path.Join(l.Root, "config", "app.env") }
+func (l Layout) CacheDir() string      { return path.Join(l.Root, ".cache") }
 func (l Layout) InstallDir(version string) string {
 	return path.Join(l.Root, "app-"+version)
 }
@@ -55,6 +63,14 @@ func UnitName(installID int) string { return fmt.Sprintf("celiksvc-%d", installI
 
 // InstallUnitName is the transient unit that runs npm or pip for an install.
 func InstallUnitName(installID int) string { return fmt.Sprintf("celiksvcinst-%d", installID) }
+
+// EnvDir holds the service apps' environment files: root's, 0700; each file
+// root's, 0600. It is native configuration and stays without CelikPanel.
+// The runtime apps of alpha.119 use /etc/celikpanel-runtime the same way.
+const EnvDir = "/etc/celikpanel-svcapps"
+
+// EnvFile is the environment file of an install's unit.
+func EnvFile(installID int) string { return path.Join(EnvDir, UnitName(installID)+".env") }
 
 // ValidUnitName reports whether name is a service-app unit name.
 func ValidUnitName(name string) bool { return unitNamePattern.MatchString(name) }
@@ -211,7 +227,7 @@ func RenderUnit(p UnitParams) (string, error) {
 	b.WriteString("[Service]\nType=simple\n")
 	fmt.Fprintf(&b, "User=%s\nGroup=%s\n", p.User, p.Group)
 	fmt.Fprintf(&b, "WorkingDirectory=%s\n", p.Layout.Root)
-	fmt.Fprintf(&b, "EnvironmentFile=%s\n", p.Layout.EnvFile())
+	fmt.Fprintf(&b, "EnvironmentFile=%s\n", EnvFile(p.InstallID))
 	fmt.Fprintf(&b, "Environment=HOME=%s\n", p.Layout.DataDir())
 	fmt.Fprintf(&b, "Environment=PATH=%s\n", pathEnv)
 	fmt.Fprintf(&b, "ExecStart=%s\n", strings.Join(command, " "))
@@ -221,9 +237,13 @@ func RenderUnit(p UnitParams) (string, error) {
 		b.WriteByte('\n')
 	}
 	b.WriteString("\n[Install]\nWantedBy=multi-user.target\n")
-	body := b.String()
-	return RenderHeader + BodyHash(body) + "\n" + body, nil
+	return Seal(b.String()), nil
 }
+
+// Seal puts the render header (the hash of body) above body. The unit and
+// the environment file both carry it, so an owner's edit of either is
+// detected and kept (D-022, D-031).
+func Seal(body string) string { return RenderHeader + BodyHash(body) + "\n" + body }
 
 // BodyHash is the hex SHA-256 of a unit's text under its header.
 func BodyHash(body string) string {
@@ -429,6 +449,11 @@ func RenderEnv(p EnvParams) (string, error) {
 	for key, value := range FixedEnv(p) {
 		values[key] = value
 	}
+	return renderEnvText(p.App.Name, values)
+}
+
+// renderEnvText is the sealed environment file text of values (keys sorted).
+func renderEnvText(appName string, values map[string]string) (string, error) {
 	keys := make([]string, 0, len(values))
 	for key := range values {
 		if !envKeyPattern.MatchString(key) {
@@ -438,12 +463,89 @@ func RenderEnv(p EnvParams) (string, error) {
 	}
 	sort.Strings(keys)
 	var b strings.Builder
-	b.WriteString("# Environment of " + p.App.Name + ", written by CelikPanel. Readable only by the site's user (0600).\n")
+	b.WriteString("# Environment of " + appName + ", written by CelikPanel. Root's (0600): systemd reads it before the app starts.\n")
 	b.WriteString("# Lines CelikPanel owns (listen address, disabled features) are written again on every change.\n")
+	b.WriteString("# A change made here is kept: CelikPanel then refuses to write this file again and says so.\n")
 	for _, key := range keys {
 		b.WriteString(key + "=" + quoteEnv(values[key]) + "\n")
 	}
-	return b.String(), nil
+	return Seal(b.String()), nil
+}
+
+// RenderLegacyEnv re-seals the values of an environment file read from the
+// site's folder (alpha.118 before the security fix) for the root location.
+// Lines that are not a valid key with one line of text are dropped; the
+// next change in the panel renders the file from its parts again.
+func RenderLegacyEnv(app App, values map[string]string) (string, error) {
+	kept := map[string]string{}
+	for key, value := range values {
+		if envKeyPattern.MatchString(key) && (value == "" || ValidSecretValue(value)) {
+			kept[key] = value
+		}
+	}
+	return renderEnvText(app.Name, kept)
+}
+
+// MigrateUnitEnvLine rewrites an unchanged ("ours") unit of an earlier
+// alpha.118 build whose EnvironmentFile= names a file in the site's folder:
+// only that line changes, to EnvFile(installID), and the unit is sealed
+// again. It returns the legacy path the unit named. ok is false when the
+// unit is not CelikPanel's unchanged text or already names the root file.
+func MigrateUnitEnvLine(text string, installID int) (string, string, bool) {
+	if UnitTextState(text) != "ours" {
+		return "", "", false
+	}
+	_, body, _ := strings.Cut(text, "\n")
+	want := EnvFile(installID)
+	lines := strings.Split(body, "\n")
+	legacy := ""
+	for i, line := range lines {
+		value, found := strings.CutPrefix(line, "EnvironmentFile=")
+		if !found {
+			continue
+		}
+		if value == want || legacy != "" {
+			return "", "", false
+		}
+		legacy = value
+		lines[i] = "EnvironmentFile=" + want
+	}
+	if legacy == "" {
+		return "", "", false
+	}
+	return Seal(strings.Join(lines, "\n")), legacy, true
+}
+
+var legacyEnvPattern = regexp.MustCompile(`^/([1-9][0-9]{0,9})/sites/([1-9][0-9]{0,9})/apps/([a-z0-9-]{1,40})/config/app\.env$`)
+
+// LegacyEnvTarget reads the subscription, domain and app from a legacy
+// environment file path; ok is false for any other path.
+func LegacyEnvTarget(legacy string) (subscriptionID, domainID int, appID string, ok bool) {
+	root := hostingpath.SubscriptionsRoot()
+	rest, found := strings.CutPrefix(legacy, root)
+	if !found || path.Clean(legacy) != legacy {
+		return 0, 0, "", false
+	}
+	m := legacyEnvPattern.FindStringSubmatch(rest)
+	if m == nil || !Known(m[3]) {
+		return 0, 0, "", false
+	}
+	sub, err1 := strconv.Atoi(m[1])
+	dom, err2 := strconv.Atoi(m[2])
+	if err1 != nil || err2 != nil {
+		return 0, 0, "", false
+	}
+	return sub, dom, m[3], true
+}
+
+// UnitUser is the User= of a unit text ("" when absent).
+func UnitUser(text string) string {
+	for _, line := range strings.Split(text, "\n") {
+		if value, found := strings.CutPrefix(line, "User="); found {
+			return value
+		}
+	}
+	return ""
 }
 
 // ParseEnv reads an environment file written by RenderEnv (or edited in the
