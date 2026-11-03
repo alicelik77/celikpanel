@@ -85,6 +85,13 @@ from the panel's own update screen.**
 - When Debian or Ubuntu's own PHP version is chosen in Components, it installs
   from the distribution's packages without the Sury repository, together with the
   PHP extensions the application catalogue needs.
+- PostgreSQL can again be installed on its own, choosing its version (since
+  alpha.101 only the PostgreSQL + phpPgAdmin bundle was visible in the first
+  view). Removing a database offers to remove its admin tool too, and an admin
+  tool left without its database says so and offers to reinstall the database or
+  remove the tool.
+- The security emergency section under MariaDB and PostgreSQL is a quiet tool
+  unless an emergency is open, and clicking it no longer opens the settings page.
 - After saving FTP/SFTP/SSH access, its warnings appear on the page instead of
   pop-ups over the page's buttons; what the page already says is not repeated,
   and missing command-line tools are named, with who installs them.

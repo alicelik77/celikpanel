@@ -84,6 +84,13 @@ sahibi, panelin kendi güncelleme ekranından günceller.**
 - Bileşenler'de Debian ya da Ubuntu'nun kendi PHP sürümü seçilince, uygulama
   kataloğunun istediği PHP eklentileriyle birlikte dağıtımın paketlerinden kurulur;
   Sury deposu gerekmez.
+- PostgreSQL yeniden tek başına, sürümü seçilerek kurulabiliyor (alpha.101'den
+  beri ilk görünümde yalnız PostgreSQL + phpPgAdmin paketi görünüyordu).
+  Veritabanı kaldırılırken yönetim aracı da kaldırılmak üzere sunuluyor;
+  veritabanı olmadan kalan yönetim aracı bunu söylüyor ve veritabanını yeniden
+  kurmayı ya da aracı kaldırmayı sunuyor.
+- MariaDB ve PostgreSQL altındaki güvenlik acil durumu bölümü, açık bir acil durum
+  yoksa sakin bir araç; tıklayınca artık ayar sayfası açılmıyor.
 - FTP/SFTP/SSH erişimi kaydedilince uyarılar artık sayfanın düğmelerini örten
   açılır kutular yerine sayfada görünüyor; sayfanın zaten söylediği tekrarlanmıyor,
   eksik komut satırı araçları adıyla ve kimin kuracağıyla yazılıyor.
