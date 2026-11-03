@@ -150,6 +150,10 @@ its audit log (only which settings changed), never shown again, and every log li
 shows is redacted on the server first (the file's own values, and anything that looks like a key,
 token, password or bcrypt hash).
 
+Since alpha.119 the unit does not read `config/app.env` from the site's folder: before every
+start the app's bind unit reads it without following links and the unit reads its root-only
+copy under `/run/celikpanel-sandbox/` ([SITE-SANDBOX.md](SITE-SANDBOX.md) §1a).
+
 ## 6. Not offered in this release
 
 On a shared hosting server an agent that runs shell commands and reads untrusted content

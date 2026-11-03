@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/parser"
+	"github.com/alicelik/celikpanel/internal/sandboxbind"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/systemd"
 	"github.com/alicelik/celikpanel/internal/systemsqlite"
@@ -515,6 +516,12 @@ func main() {
 	if mailRenewalOnlyBuild {
 		os.Exit(runIndependentMailRenewal(os.Args[1:], os.Geteuid(), os.Environ()))
 		return // Keep ordinary dispatch unreachable to the helper build compiler.
+	}
+	// The site sandbox's helper (sandbox_helper.go): this binary started as
+	// /usr/lib/celikpanel-sandbox/sandbox-helper by a sandboxed unit. It
+	// exits before managers, RPC, sockets or background tasks.
+	if sandboxHelperMode() {
+		os.Exit(sandboxbind.Main(os.Args[1:], os.Stderr))
 	}
 
 	// Hidden system-update modes exit before managers, RPC, sockets, or

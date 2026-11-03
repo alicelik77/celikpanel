@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/hostingpath"
+	"github.com/alicelik/celikpanel/internal/sandboxbind"
 	"github.com/alicelik/celikpanel/internal/serviceapps"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/siteruntime"
@@ -108,6 +109,17 @@ func resolveRuntimeApp(target transport.RuntimeAppTarget, resp *transport.Runtim
 func runtimeAppEntryCheck(rc runtimeAppContext, entry string) transport.RuntimeAppEntryCheck {
 	if _, err := siteruntime.ValidEntry(rc.layout, entry); err != nil {
 		return transport.RuntimeAppEntryCheck{Code: siteruntime.EntryInvalid, Detail: err.Error()}
+	}
+	// The folder as the sandbox helper walks it before every start: no link
+	// anywhere from the hosting tree down, the right owners. A missing
+	// folder is the entry's state (upload the program), not a verdict here.
+	if _, err := os.Lstat(rc.layout.Root); err == nil {
+		if code, detail := sandboxFolderRefusal(rc.layout.Root, rc.account.UID); code != "" {
+			if code == sandboxbind.CodeUnreadable {
+				code = siteruntime.EntryUnreadable
+			}
+			return transport.RuntimeAppEntryCheck{Code: code, Detail: detail}
+		}
 	}
 	facts, err := runtimeAppEntryFacts(rc.layout.Root, siteruntime.EntryRelative(entry))
 	switch {
@@ -330,6 +342,10 @@ func (a *Agent) RuntimeAppRenderV1(req *transport.RuntimeAppRenderRequest, resp 
 		runtimeStep(step, transport.RuntimeAppVerifiedFailure, "unit_render", err.Error())
 		return nil
 	}
+	if err := ensureSandboxHelper(); err != nil {
+		runtimeStep(step, transport.RuntimeAppUnknown, "sandbox_helper", err.Error())
+		return nil
+	}
 	if err := ensureSandboxEgress(caps); err != nil {
 		runtimeStep(step, transport.RuntimeAppUnknown, "sandbox_egress", err.Error())
 		return nil
@@ -403,6 +419,17 @@ func (a *Agent) RuntimeAppControlV1(req *transport.RuntimeAppControlRequest, res
 		if out, err := appUnitSystemctl(systemctlArgs(s...)...); err != nil {
 			if s[0] == "reset-failed" {
 				continue
+			}
+			// A start the sandbox helper refused: name the app folder's
+			// state instead of systemd's exit status.
+			if s[0] == "restart" {
+				var probe transport.RuntimeAppStepResponse
+				if rc, ok := resolveRuntimeApp(req.Target, &probe); ok {
+					if code, detail := sandboxFolderRefusal(rc.layout.Root, rc.account.UID); code != "" && code != sandboxbind.CodeUnreadable {
+						runtimeStep(resp, transport.RuntimeAppPrerequisite, code, detail)
+						return nil
+					}
+				}
 			}
 			runtimeStep(resp, transport.RuntimeAppVerifiedFailure, "systemctl",
 				fmt.Sprintf("systemctl %s: %v: %s", strings.Join(s, " "), err, strings.TrimSpace(string(out))))

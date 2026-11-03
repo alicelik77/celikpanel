@@ -37,7 +37,7 @@ var domainPattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,62}\.)+[a-z0-9-]{1
 // Profile is the app's sandbox profile.
 func (p UnitParams) Profile() sitesandbox.Profile {
 	return sitesandbox.Profile{
-		Kind: SandboxKind(p.Kind), User: p.User, Group: p.Group, AppDir: p.Layout.Root, Port: p.Port,
+		Kind: SandboxKind(p.Kind), Unit: UnitName(p.AppID), User: p.User, Group: p.Group, AppDir: p.Layout.Root, Port: p.Port,
 		Limits: sitesandbox.Limits{MemoryMB: p.Limits.MemoryMB, CPUPercent: p.Limits.CPUPercent, Tasks: p.Limits.Tasks, NOFILE: 8192},
 		Level:  p.Level,
 	}
@@ -97,11 +97,12 @@ func RenderUnit(p UnitParams) (string, error) {
 		return "", err
 	}
 	unit := UnitName(p.AppID)
-	var pre, post []string
-	if p.Caps.EgressEnforced() {
-		if pre, post, err = sitesandbox.EgressExecLines(unit); err != nil {
-			return "", err
-		}
+	// The bind unit binds the app folder before every start, and the
+	// helper loads the SMTP block where the host holds it; the program's
+	// environment file is root's (EnvDir), never in the app folder.
+	unitLines, pre, post, err := sitesandbox.HelperLines(p.Profile(), p.Caps)
+	if err != nil {
+		return "", err
 	}
 	if err := sitesandbox.CheckValue(p.DropInDir); err != nil {
 		return "", err
@@ -117,11 +118,13 @@ func RenderUnit(p UnitParams) (string, error) {
 	b.WriteString("[Unit]\n")
 	fmt.Fprintf(&b, "Description=CelikPanel uploaded program of %s\n", p.Domain)
 	b.WriteString("After=network-online.target\nWants=network-online.target\n")
-	for _, line := range sitesandbox.UnitDirectives() {
+	for _, line := range append(sitesandbox.UnitDirectives(), unitLines...) {
 		b.WriteString(line + "\n")
 	}
 	b.WriteString("\n[Service]\nType=simple\n")
 	fmt.Fprintf(&b, "User=%s\nGroup=%s\n", p.User, p.Group)
+	// Resolved inside the sandbox, where the folder's path is the helper's
+	// bind of the folder itself (never the site home's entry on the host).
 	fmt.Fprintf(&b, "WorkingDirectory=%s\n", p.Layout.Root)
 	fmt.Fprintf(&b, "EnvironmentFile=-%s\n", EnvFile(p.AppID))
 	fmt.Fprintf(&b, "Environment=HOME=%s\n", p.Layout.DataDir())

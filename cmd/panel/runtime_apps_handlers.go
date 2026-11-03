@@ -285,7 +285,7 @@ func runtimeAppStates(in runtimeGuidanceInput) []string {
 		switch {
 		case code == siteruntime.EntryInvalid:
 			code = siteruntime.EntryMissing
-		case !strings.HasPrefix(code, "entry_") && code != siteruntime.EntryFolderNotOwned:
+		case !strings.HasPrefix(code, "entry_") && code != siteruntime.EntryFolderNotOwned && code != siteruntime.EntryFolderNotReal:
 			// The account or the request could not be resolved: the
 			// entry's state is unknown, not a verdict.
 			code = siteruntime.EntryUnreadable

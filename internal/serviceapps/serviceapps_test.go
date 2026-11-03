@@ -34,10 +34,10 @@ func TestUnitCarriesTheSandbox(t *testing.T) {
 		"User=flows_example_com\n", "NoNewPrivileges=yes\n", "ProtectSystem=strict\n", "ProtectHome=yes\n",
 		"PrivateTmp=yes\n", "CapabilityBoundingSet=\n", "ProtectProc=invisible\n",
 		"TemporaryFileSystem=/var/www/celikpanel:ro\n",
-		"BindPaths=/var/www/celikpanel/subscriptions/3/sites/7/apps/n8n\n",
-		"ReadWritePaths=/var/www/celikpanel/subscriptions/3/sites/7/apps/n8n\n",
+		"BindPaths=/run/celikpanel-sandbox/celiksvc-12.service/app:/var/www/celikpanel/subscriptions/3/sites/7/apps/n8n\n",
+		"WorkingDirectory=/var/www/celikpanel/subscriptions/3/sites/7/apps/n8n\n",
 		"MemoryMax=1536M\n", "CPUQuota=100%\n", "TasksMax=512\n",
-		"EnvironmentFile=/var/www/celikpanel/subscriptions/3/sites/7/apps/n8n/config/app.env\n",
+		"EnvironmentFile=/run/celikpanel-sandbox/celiksvc-12.service/app.env\n",
 		"ExecStart=/opt/celikpanel/runtimes/node/24.11.1/bin/node /var/www/celikpanel/subscriptions/3/sites/7/apps/n8n/app-2.46.4/node_modules/n8n/bin/n8n start\n",
 	} {
 		if !strings.Contains(text, want) {
@@ -388,7 +388,7 @@ func TestUnitClosesTheAlpha118Gaps(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		"# celikpanel-sandbox-generation: 2\n",
+		"# celikpanel-sandbox-generation: 3\n",
 		"StartLimitBurst=5\n",
 		"InaccessiblePaths=-/run/celikpanel -/run/php -/run/php-fpm ",
 		"-/var/spool/postfix\n",
@@ -397,9 +397,9 @@ func TestUnitClosesTheAlpha118Gaps(t *testing.T) {
 		"LogRateLimitIntervalSec=30s\n", "LogRateLimitBurst=1000\n",
 		"SystemCallFilter=~@debug @mount @raw-io",
 		"PrivateIPC=yes\n",
-		"ExecStartPre=+/usr/sbin/nft -f /usr/lib/celikpanel-sandbox/egress.nft\n",
-		"ExecStartPre=+/usr/sbin/nft add element inet celikpanel_egress smtp_blocked '{ \"system.slice/celiksvc-12.service\" }'\n",
-		"ExecStopPost=-+/usr/sbin/nft delete element inet celikpanel_egress smtp_blocked '{ \"system.slice/celiksvc-12.service\" }'\n",
+		"ExecStartPre=+/usr/lib/celikpanel-sandbox/sandbox-helper egress-add --unit=celiksvc-12.service\n",
+		"ExecStopPost=-+/usr/lib/celikpanel-sandbox/sandbox-helper egress-remove --unit=celiksvc-12.service\n",
+		"Requires=celikpanel-sandbox@celiksvc-12.service\n", "After=celikpanel-sandbox@celiksvc-12.service\n",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("unit lacks %q", want)
@@ -431,8 +431,42 @@ func TestUnitClosesTheAlpha118Gaps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(text, "nft") {
-		t.Fatalf("egress lines without nft support:\n%s", text)
+	if strings.Contains(text, "egress-add") || !strings.Contains(text, "Requires=celikpanel-sandbox@celiksvc-12.service") {
+		t.Fatalf("egress asked for without nft support, or no bind unit:\n%s", text)
+	}
+	// No privileged command of the unit is a dynamically linked program:
+	// every command gets the unit's environment, which is the customer's.
+	for _, line := range strings.Split(text, "\n") {
+		for _, prefix := range []string{"ExecStartPre=", "ExecStartPost=", "ExecStop=", "ExecStopPost=", "ExecReload=", "ExecCondition="} {
+			if rest, ok := strings.CutPrefix(line, prefix); ok && strings.Contains(strings.TrimLeft(rest, "-@:!"), "+") &&
+				!strings.HasPrefix(strings.TrimLeft(rest, "-@:!+"), sitesandbox.HelperPath+" ") {
+				t.Errorf("a privileged command other than the helper: %q", line)
+			}
+		}
+	}
+}
+
+// TestNoSitePathOnTheHost: the paths systemd resolves as root on the host
+// (bind sources, the environment file) never name the site home.
+func TestNoSitePathOnTheHost(t *testing.T) {
+	text, err := RenderUnit(n8nParams(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range strings.Split(text, "\n") {
+		name, value, _ := strings.Cut(line, "=")
+		switch name {
+		case "BindPaths", "BindReadOnlyPaths":
+			for _, field := range strings.Fields(value) {
+				if source, _, _ := strings.Cut(strings.TrimPrefix(field, "-"), ":"); strings.HasPrefix(source, "/var/www/") {
+					t.Errorf("bind source in the site home: %q", line)
+				}
+			}
+		case "EnvironmentFile", "ReadWritePaths", "RootDirectory":
+			if strings.Contains(value, "/var/www/") {
+				t.Errorf("%s names the site home: %q", name, line)
+			}
+		}
 	}
 }
 
@@ -445,12 +479,16 @@ func TestInstallUnitPropertiesBlockSMTPAndBindNothing(t *testing.T) {
 		t.Fatal(err)
 	}
 	joined := strings.Join(props, "\n")
-	for _, want := range []string{"SocketBindDeny=any", "MemoryMax=3072M", "system.slice/celiksvcinst-12.service", "ExecStopPost=-+"} {
+	for _, want := range []string{"SocketBindDeny=any", "MemoryMax=3072M",
+		"ExecStartPre=+/usr/lib/celikpanel-sandbox/sandbox-helper egress-add --unit=celiksvcinst-12.service",
+		"ExecStopPost=-+/usr/lib/celikpanel-sandbox/sandbox-helper egress-remove --unit=celiksvcinst-12.service",
+		"Requires=celikpanel-sandbox@celiksvcinst-12.service", "After=celikpanel-sandbox@celiksvcinst-12.service",
+		"BindPaths=/run/celikpanel-sandbox/celiksvcinst-12.service/app:/var/www/celikpanel/subscriptions/3/sites/7/apps/n8n"} {
 		if !strings.Contains(joined, want) {
 			t.Errorf("install properties lack %q", want)
 		}
 	}
-	if strings.Contains(joined, "SocketBindAllow") || strings.Contains(joined, "StartLimit") {
+	if strings.Contains(joined, "SocketBindAllow") || strings.Contains(joined, "StartLimit") || strings.Contains(joined, "EnvironmentFile") {
 		t.Errorf("the install unit binds nothing and has no [Unit] lines:\n%s", joined)
 	}
 	if _, err := InstallUnitProperties(12, layout, "root", "root", app.Defaults, 3072, caps); err == nil {

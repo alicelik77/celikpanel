@@ -158,6 +158,10 @@ saklamaz, denetim günlüğüne yazmaz (yalnızca hangi ayarların değiştiği 
 gösterilmez; panelin gösterdiği her günlük satırı da önce sunucuda gizlenir (dosyanın kendi
 değerleri ve anahtar, jeton, parola ya da bcrypt özeti gibi görünen her şey).
 
+alpha.119'dan beri birim `config/app.env` dosyasını site klasöründen okumaz: her başlatmadan önce
+uygulamanın bağlama birimi onu bağlantı izlemeden okur, birim de `/run/celikpanel-sandbox/`
+altındaki, yalnız root'un okuyabildiği kopyasını okur ([SITE-SANDBOX.tr.md](SITE-SANDBOX.tr.md) §1a).
+
 ## 6. Bu sürümde sunulmayanlar
 
 Paylaşımlı bir barındırma sunucusunda, kabuk komutları çalıştıran ve güvenilmeyen içerik okuyan

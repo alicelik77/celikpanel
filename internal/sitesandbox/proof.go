@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/alicelik/celikpanel/internal/hostingpath"
 )
 
 // The proof before a sandboxed program is published: what systemd actually
@@ -23,6 +25,10 @@ const (
 	ProofNotListening     = "not_listening"
 	ProofListensElsewhere = "listens_elsewhere"
 	ProofPortTaken        = "port_taken"
+	// ProofSitePath: systemd would read a path inside the hosting tree on
+	// the host, as root (a bind source or an environment file): a link
+	// there would follow anywhere.
+	ProofSitePath = "site_path_on_host"
 )
 
 // ProofResult is the outcome of Prove.
@@ -52,6 +58,7 @@ func ShowProperties() []string {
 		"RemoveIPC", "MemoryDenyWriteExecute", "CapabilityBoundingSet", "AmbientCapabilities",
 		"UMask", "MemoryMax", "MemorySwapMax", "TasksMax", "IPAddressDeny", "SocketBindDeny",
 		"ExecStartPre", "ExecStopPost", "LogRateLimitBurst",
+		"BindPaths", "BindReadOnlyPaths", "EnvironmentFiles", "Requires", "After",
 	}
 }
 
@@ -107,11 +114,40 @@ func Expected(p Profile, c Caps, unit string) map[string]Expectation {
 			e["SocketBindDeny"] = Expectation{Value: "any", Contains: true}
 		}
 	}
+	// The bind unit binds the folder before every start (its source is the
+	// root-owned mount point); where the host holds it, the unit's helper
+	// lines load the SMTP block.
+	e["Requires"] = Expectation{Value: BindUnit(p.Unit), Contains: true}
+	e["After"] = Expectation{Value: BindUnit(p.Unit), Contains: true}
 	if c.EgressEnforced() {
-		e["ExecStartPre"] = Expectation{Value: EgressFile, Contains: true}
-		e["ExecStopPost"] = Expectation{Value: "delete element inet " + EgressTable, Contains: true}
+		e["ExecStartPre"] = Expectation{Value: "argv[]=" + HelperCommand(EgressAddArgs(p.Unit)), Contains: true}
+		e["ExecStopPost"] = Expectation{Value: "argv[]=" + HelperCommand(EgressRemoveArgs(p.Unit)), Contains: true}
 	}
+	e["BindPaths"] = Expectation{Value: BindSource(p.Unit) + ":" + p.AppDir, Contains: true}
 	return e
+}
+
+// sitePathsOnHost lists the paths systemd reads on the host as root that lie
+// in the hosting tree: bind sources and environment files.
+func sitePathsOnHost(props map[string]string) []string {
+	base := hostingpath.HostingBase()
+	inTree := func(p string) bool { return p == base || strings.HasPrefix(p, base+"/") }
+	var out []string
+	for _, name := range []string{"BindPaths", "BindReadOnlyPaths"} {
+		for _, field := range strings.Fields(props[name]) {
+			source, _, _ := strings.Cut(strings.TrimPrefix(field, "-"), ":")
+			if inTree(source) {
+				out = append(out, name+" "+source)
+			}
+		}
+	}
+	for _, line := range strings.Split(props["EnvironmentFiles"], "\n") {
+		fields := strings.Fields(line)
+		if len(fields) > 0 && inTree(strings.TrimPrefix(fields[0], "-")) {
+			out = append(out, "EnvironmentFiles "+fields[0])
+		}
+	}
+	return out
 }
 
 // ParseShow reads `systemctl show` output into properties.
@@ -163,6 +199,9 @@ func Prove(in ProofInput) ProofResult {
 		names = append(names, name)
 	}
 	sort.Strings(names)
+	if paths := sitePathsOnHost(props); len(paths) > 0 {
+		return refuse(ProofSitePath, "%s: systemd reads %s on the host; a link there would be followed as root", in.Unit, strings.Join(paths, ", "))
+	}
 	if got, ok := props["ControlGroup"]; !ok || got != expected["ControlGroup"].Value {
 		return refuse(ProofCgroup, "%s runs in %q, not %s", in.Unit, got, expected["ControlGroup"].Value)
 	}

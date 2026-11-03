@@ -16,11 +16,11 @@ import (
 // It is a separate nftables table (inet celikpanel_egress), never the
 // firewall's own inet celikpanel_fw: the firewall policy (V2) is input-only
 // and refuses anything else. The table holds one set of cgroups; every
-// sandboxed unit loads the table and adds its own cgroup before it starts
-// (ExecStartPre=+, as root, outside the sandbox) and removes it after it
-// stops. If nft fails, the unit does not start (fail closed). The table, its
-// guard timer and the units are native files and keep working without
-// CelikPanel (D-022).
+// sandboxed unit's helper (helper.go, ExecStartPre=+, as root, outside the
+// sandbox) loads the table and adds the unit's cgroup before it starts, and
+// removes it after it stops. If nft fails, the unit does not start (fail
+// closed). The table, its guard timer, the helper and the units are native
+// files and keep working without CelikPanel (D-022).
 //
 // Not covered, and the screen says so: other mail ports (2525), mail sent
 // over HTTP APIs, and the program's own outbound traffic in general.
@@ -97,8 +97,9 @@ table inet ` + EgressTable + ` {
 // EgressGuardScriptText is the guard's shell text (run by EgressGuardUnit
 // with /bin/sh, so the header CelikPanel puts on line one is a comment). It
 // loads the table only when it is missing or its rule is gone (someone ran
-// "nft flush ruleset" or restarted nftables.service), then adds every
-// running sandboxed unit's cgroup again. A unit whose cgroup is not
+// "nft flush ruleset" or restarted nftables.service), then adds the cgroup
+// of every running sandboxed unit whose helper loads the block (its
+// ExecStartPre runs the helper's egress-add) again. A unit whose cgroup is not
 // /system.slice/<unit> is named in the journal and left out.
 func EgressGuardScriptText() string {
 	return `# CelikPanel site sandbox: SMTP egress guard (docs/SITE-SANDBOX.md).
@@ -115,7 +116,7 @@ for unit in $(systemctl list-units --type=service --state=active,activating,relo
 		celiksvc-[0-9]*.service|celiksvcinst-[0-9]*.service|celikrt-[0-9]*.service) ;;
 		*) continue ;;
 	esac
-	systemctl show -P ExecStartPre "$unit" | grep -q '` + EgressFile + `' || continue
+	systemctl show -P ExecStartPre "$unit" | grep -q -F 'argv[]=` + HelperPath + ` egress-add ' || continue
 	cgroup=$(systemctl show -P ControlGroup "$unit")
 	if [ "$cgroup" != "/system.slice/$unit" ]; then
 		echo "celikpanel-egress: $unit runs in $cgroup, not /system.slice/$unit; it is not blocked"
@@ -166,24 +167,13 @@ WantedBy=timers.target
 // at depth two, which is exactly /system.slice/<unit>.
 func cgroupElement(unit string) string { return "system.slice/" + unit }
 
-// EgressExecLines are the unit's lines that load the table and add its own
-// cgroup before it starts ("+": as root, outside the sandbox; a failure
-// stops the start), and remove it after it stops ("-": a cgroup already gone
-// is not an error). The values hold no "$" and no "%": the single quotes
-// keep the braces and double quotes for nft.
-func EgressExecLines(unit string) (pre []string, post []string, err error) {
+// CgroupElement is the set element of a unit, as the helper and the guard
+// add it: '{ "system.slice/<unit>" }' in nft's syntax.
+func CgroupElement(unit string) (string, error) {
 	if !ValidUnitName(unit) {
-		return nil, nil, errors.New("not a sandboxed unit name")
+		return "", errors.New("not a sandboxed unit name")
 	}
-	element := `'{ "` + cgroupElement(unit) + `" }'`
-	pre = []string{
-		"ExecStartPre=+" + NFT + " -f " + EgressFile,
-		"ExecStartPre=+" + NFT + " add element inet " + EgressTable + " " + EgressSet + " " + element,
-	}
-	post = []string{
-		"ExecStopPost=-+" + NFT + " delete element inet " + EgressTable + " " + EgressSet + " " + element,
-	}
-	return pre, post, nil
+	return `{ "` + cgroupElement(unit) + `" }`, nil
 }
 
 var setElementToken = regexp.MustCompile(`"([^"]*)"|\b([0-9]+)\b`)
