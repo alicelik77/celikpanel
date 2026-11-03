@@ -108,6 +108,9 @@ interface ManagedService {
     /** alpha.104: the PHP version an installed PHP tool is served from. */
     /** Kurulu bir PHP aracının sunulduğu PHP sürümü. */
     php_binding?: { version: string; socket_ready: boolean; version_installed: boolean };
+    /** alpha.118: installed and starting by itself after its first signature download (ClamAV). */
+    /** İlk imza indirmesinden sonra kendiliğinden başlayacak (ClamAV). */
+    waiting?: 'first_signatures';
 }
 
 interface ManagedServicesSnapshot {
@@ -227,7 +230,8 @@ function isManagedService(value: unknown): value is ManagedService {
             (Array.isArray(service.instances) && service.instances.every(isServiceInstance))) &&
         (service.ports === undefined ||
             (Array.isArray(service.ports) && service.ports.every((port) => typeof port === 'string'))) &&
-        (service.repair_available === undefined || typeof service.repair_available === 'boolean')
+        (service.repair_available === undefined || typeof service.repair_available === 'boolean') &&
+        (service.waiting === undefined || service.waiting === 'first_signatures')
     );
 }
 
@@ -1308,7 +1312,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     const isRunning = (s: ManagedService) => isServiceRunning(s.status);
     // Installed, with a unit of its own, and not running: the row's one red.
     // Kurulu, kendi unit'i var ve çalışmıyor: satırın tek kırmızısı.
-    const rowStopped = (s: ManagedService) => s.is_installed === true && s.kind !== 'tool' && s.status !== 'installed' && !isRunning(s);
+    const rowStopped = (s: ManagedService) => s.is_installed === true && s.kind !== 'tool' && s.status !== 'installed' && !isRunning(s) && componentStateWord(s) !== 'waiting';
 
     // A requirement token is either a ROLE (seat name: any member satisfies
     // it — "smtp-server" after the operator's "maybe I'll install a different
@@ -1943,6 +1947,14 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                     {t(phpNotReadyHintKey(phpBindingOf(s)!), { version: phpBindingOf(s)!.version, extensions: phpBindingOf(s)!.proof_extensions.join(', '), modules: phpBindingOf(s)!.proof_extensions.join(' ') })}
                                                                 </p>
                                                             )}
+                                                            {/* alpha.118: ClamAV before its first signature
+                                                                download: why, who acts, what next, how it resumes.
+                                                                İlk imza indirmesinden önce ClamAV. */}
+                                                            {componentStateWord(s) === 'waiting' && (
+                                                                <p className="mt-0.5 text-xs text-fg-muted" data-row-waiting="">
+                                                                    {t('services.waitingSignaturesHint')}
+                                                                </p>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     {versionColumn && (
@@ -1983,13 +1995,15 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 lib/serviceStatus.ts, alpha.101); the two are
                                                                 held equal by ready-bundles-mounted.
                                                                 Kurulu paket penceresi aynı sözü söyler. */}
-                                                            <StatusDot tone={notChecked(s) ? 'unknown' : !s.is_installed ? 'idle' : componentStateWord(s) === 'notReady' ? 'danger' : (running || s.kind === 'tool' || s.status === 'installed') ? 'success' : 'danger'} />
+                                                            <StatusDot tone={notChecked(s) ? 'unknown' : !s.is_installed ? 'idle' : componentStateWord(s) === 'notReady' ? 'danger' : componentStateWord(s) === 'waiting' ? 'unknown' : (running || s.kind === 'tool' || s.status === 'installed') ? 'success' : 'danger'} />
                                                             {notChecked(s)
                                                                 ? t('services.notChecked')
                                                                 : !s.is_installed
                                                                 ? t('services.notInstalled')
                                                                 : componentStateWord(s) === 'notReady'
                                                                   ? t('services.phpNotReady')
+                                                                  : componentStateWord(s) === 'waiting'
+                                                                  ? t('services.waitingSignatures')
                                                                   : s.kind === 'tool' || s.status === 'installed'
                                                                     ? t('services.installedLabel')
                                                                     : running

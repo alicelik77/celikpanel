@@ -564,8 +564,13 @@ func (a *Agent) ServiceAppPrepareV1(req *transport.ServiceAppPrepareRequest, res
 	for _, directive := range serviceapps.SandboxDirectives(sc.layout, limits, sc.app.Defaults.InstallMemoryMB) {
 		run = append(run, "--property="+directive)
 	}
-	run = append(run, "--", "/bin/sh", "-c", serviceapps.InstallScript(sc.app), "sh")
-	run = append(run, args...)
+	command, err := serviceapps.InstallCommand(sc.app, args)
+	if err != nil {
+		serviceAppStep(resp, transport.ServiceAppVerifiedFailure, "invalid_request", err.Error())
+		return nil
+	}
+	run = append(run, "--")
+	run = append(run, command...)
 	if out, err := serviceAppRun(ctx, "systemd-run", run...); err != nil {
 		serviceAppStep(resp, transport.ServiceAppVerifiedFailure, "install_unit",
 			"the install step could not be started: "+strings.TrimSpace(string(out)))

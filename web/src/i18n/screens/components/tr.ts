@@ -498,6 +498,8 @@ export const trComponentsScreens: Record<ComponentsScreenKey, string> = {
     'services.operation.notFound': 'Kaydedilmiş kurulum işlemi sunucuda bulunamadı.',
     'services.operation.refreshFailed': 'Kurulum bitti ancak güncel Bileşenler taraması yüklenemedi.',
     'services.phpNotReady': 'Hazır değil',
+    'services.waitingSignatures': 'İmzalar bekleniyor',
+    'services.waitingSignaturesHint': 'İlk virüs imzası indirmesi bitmediği için tarayıcı henüz başlamadı. Kimsenin bir şey yapması gerekmiyor: indirme kendiliğinden sürer ve bitince tarayıcı başlar; bu sayfa açıldığında yeniden bakar. Bir saat sonra hâlâ böyle yazıyorsa sunucu internete ulaşamıyor olabilir: sunucu yöneticisi nedenini görmek için "sudo journalctl -u clamav-freshclam" komutunu çalıştırır.',
     'services.phpNotReadyStopped': 'PHP {version} çalışmıyor; bu yüzden yanıt veremiyor. PHP-FPM {version} sürümünü başlatın ya da Yönet’te başka bir PHP sürümü seçin.',
     'services.phpNotReadyGone': 'Artık kurulu olmayan PHP {version} üzerinde çalışıyor; bu yüzden yanıt veremiyor. Yönet’te kurulu bir PHP sürümü seçin.',
     'services.phpNotReadyExtensions': 'PHP {version} için bu aracın ihtiyaç duyduğu PHP eklenti paketleri eksik; bu yüzden çalışmayabilir. Yönet’i açıp PHP {version} sürümünü yeniden seçin: taşıma onları kurar ve aracı dener.',

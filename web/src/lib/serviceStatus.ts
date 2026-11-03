@@ -29,7 +29,7 @@ export function isServiceRunning(status: unknown): boolean {
 // was not there at the last scan is "not ready", never plainly installed: it
 // cannot answer (Frankfurt's phpPgAdmin after PHP 8.4 was removed).
 // Bağlı olduğu PHP sürümü olmayan PHP aracı "hazır değil" der.
-export type ComponentStateWord = 'notChecked' | 'notInstalled' | 'installed' | 'running' | 'stopped' | 'notReady';
+export type ComponentStateWord = 'notChecked' | 'notInstalled' | 'installed' | 'running' | 'stopped' | 'notReady' | 'waiting';
 
 export interface PHPBindingFacts {
     version: string;
@@ -80,13 +80,17 @@ export function phpNotReadyHintKey(binding: PHPBindingFacts): 'services.phpNotRe
     return binding.proof_tried_others ? 'services.phpNotReadyProofOthers' : 'services.phpNotReadyProof';
 }
 
-export function componentStateWord(service: { is_installed: boolean | null; kind?: string; status?: unknown; php_binding?: unknown }): ComponentStateWord {
+export function componentStateWord(service: { is_installed: boolean | null; kind?: string; status?: unknown; php_binding?: unknown; waiting?: unknown }): ComponentStateWord {
     if (service.is_installed === null) return 'notChecked';
     if (!service.is_installed) return 'notInstalled';
     const binding = phpBindingOf(service);
     if (binding && (!binding.socket_ready || !binding.extensions_present || binding.proof_failed)) return 'notReady';
     if (service.kind === 'tool' || service.status === 'installed') return 'installed';
-    return isServiceRunning(service.status) ? 'running' : 'stopped';
+    if (isServiceRunning(service.status)) return 'running';
+    // alpha.118: installed and starting by itself once its first signature
+    // download finishes (ClamAV) - waiting, not stopped.
+    // İlk imza indirmesi bitince kendiliğinden başlayacak: bekliyor, durmadı.
+    return service.waiting === 'first_signatures' ? 'waiting' : 'stopped';
 }
 
 export const COMPONENT_STATE_KEYS: Record<ComponentStateWord, string> = {
@@ -96,4 +100,5 @@ export const COMPONENT_STATE_KEYS: Record<ComponentStateWord, string> = {
     running: 'services.running',
     stopped: 'services.stopped',
     notReady: 'services.phpNotReady',
+    waiting: 'services.waitingSignatures',
 };

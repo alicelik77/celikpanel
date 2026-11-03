@@ -13,9 +13,8 @@ import (
 // (save, switch) until a request turns it on again.
 func TestSitePoolUploadsOffFollowsTheDiskAndSurvivesOtherRenders(t *testing.T) {
 	path, _ := withSealedPool(t)
-	off, on := true, false
 	request := sitePoolTestRequest(transport.SitePoolOperationApply)
-	request.UploadsOff = &off
+	request.Uploads = transport.SitePoolUploadsOff
 	if result, err := NewPHPPoolManager().ApplySitePool(request); err != nil || result.Outcome != transport.SiteFileOutcomeWritten {
 		t.Fatalf("uploads off: %+v %v", result, err)
 	}
@@ -44,7 +43,7 @@ func TestSitePoolUploadsOffFollowsTheDiskAndSurvivesOtherRenders(t *testing.T) {
 	// Under the limit again: the line goes away.
 	back := sitePoolTestRequest(transport.SitePoolOperationApply)
 	back.PHPVersion = "8.4"
-	back.UploadsOff = &on
+	back.Uploads = transport.SitePoolUploadsOn
 	if _, err := NewPHPPoolManager().ApplySitePool(back); err != nil {
 		t.Fatal(err)
 	}

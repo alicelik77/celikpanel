@@ -674,6 +674,9 @@ func (p *Panel) runMailProfileInstall(
 	if mailStack.HostCertificate != "" {
 		result["mail_stack_host_certificate"] = mailStack.HostCertificate
 	}
+	// Mailbox limits are enforced as soon as mail is configured (alpha.118
+	// lab, D2: a first check before mail existed waited an hour).
+	p.requestMailQuotaReconcile()
 
 	if err := advance(mailProfilePhase(profile.ID, "submission")); err != nil {
 		return result, operationAdvanceFailure(err)

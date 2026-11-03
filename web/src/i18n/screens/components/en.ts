@@ -514,6 +514,8 @@ export const enComponentsScreens = {
     'services.operation.notFound': 'The saved installation operation could not be found on the server.',
     'services.operation.refreshFailed': 'Installation finished, but the fresh Components scan could not be loaded.',
     'services.phpNotReady': 'Not ready',
+    'services.waitingSignatures': 'Waiting for signatures',
+    'services.waitingSignaturesHint': 'The first virus signature download has not finished, so the scanner has not started yet. Nobody needs to act: the download runs by itself and the scanner starts when it finishes; this page checks again when you open it. If it still says this after an hour, the server may not reach the internet: the server administrator runs "sudo journalctl -u clamav-freshclam" to see why.',
     'services.phpNotReadyStopped': 'PHP {version} is not running, so it cannot answer. Start PHP-FPM {version}, or choose another PHP version in Manage.',
     'services.phpNotReadyGone': 'It runs on PHP {version}, which is no longer installed, so it cannot answer. Choose an installed PHP version in Manage.',
     'services.phpNotReadyExtensions': 'PHP {version} lacks PHP extension packages this tool needs, so it may not work. Open Manage and choose PHP {version} again: the move installs them and tests the tool.',

@@ -344,6 +344,11 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 		}
 		pkgs = append(pkgs, extensions...)
 	}
+	// alpha.118: the web server's traffic logs are rotated by the operating
+	// system's logrotate; minimal Debian 13 and Arch images lack it. The
+	// official package comes with nginx (named, so the owner's install check
+	// shows it) and stays when nginx is removed: it is a base system tool.
+	pkgs = withLogrotateCompanion(svc.ID, pkgs, trafficLogrotatePresent())
 	requiresRepo, err := core.InstallRequiresManagedRepository(svc, req.Package)
 	if err != nil {
 		resp.Error = fmt.Sprintf("repository policy failed: %v", err)
@@ -525,9 +530,23 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 	} else {
 		unit = a.firstPresentUnitWithExecutable(svc, systemctl)
 	}
+	// ClamAV's daemon waits for its first signatures (alpha.118 lab, D6):
+	// freshclam starts first; if the download outlasts a bounded wait, the
+	// install ends "waiting" and systemd starts the daemon when they land.
+	clamAVWaiting := false
+	if req.ID == "clamav" && unit != "" {
+		ready, err := clamAVAwaitFirstSignatures(ctx, systemctl, svc.HelperUnits)
+		if err != nil {
+			resp.Error = fmt.Sprintf("helper service did not become ready: %v", err)
+			return nil
+		}
+		clamAVWaiting = !ready
+	}
 	if unit != "" {
 		var err error
-		if serviceUsesBINDPackageInstallGuard(req.ID) {
+		if clamAVWaiting {
+			err = clamAVArmFirstStart(ctx, systemctl, unit)
+		} else if serviceUsesBINDPackageInstallGuard(req.ID) {
 			// BIND's package-maintainer auto-start guard deliberately leaves both
 			// distro unit names masked. The explicit panel configuration/switch
 			// operation owns unmask + enable + start after publishing valid zones.
@@ -583,6 +602,10 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 	}
 	if len(skipped) > 0 {
 		resp.Detail += fmt.Sprintf(" — not offered for this version: %s", strings.Join(skipped, ", "))
+	}
+	if clamAVWaiting {
+		resp.Waiting = transport.InstallWaitingFirstSignatures
+		resp.Detail += " — waiting for the first virus signature download; the daemon starts by itself when it finishes"
 	}
 	return nil
 }

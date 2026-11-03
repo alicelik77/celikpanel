@@ -468,19 +468,38 @@ func renderTrafficLogrotate() string {
 		"}\n"
 }
 
+// trafficLogrotatePresent: the logrotate program is on this server.
+func trafficLogrotatePresent() bool {
+	for _, candidate := range trafficLogrotateTools {
+		if _, err := os.Stat(candidate); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+// withLogrotateCompanion adds the official logrotate package to a web
+// server install on a server without it (the same name on apt and pacman).
+// It never changes the catalogue's slice.
+func withLogrotateCompanion(serviceID string, pkgs []string, present bool) []string {
+	if serviceID != "nginx" || present {
+		return pkgs
+	}
+	for _, pkg := range pkgs {
+		if pkg == "logrotate" {
+			return pkgs
+		}
+	}
+	return append(append([]string(nil), pkgs...), "logrotate")
+}
+
 // reconcileTrafficLogrotate keeps the logrotate file (at most hourly).
 func reconcileTrafficLogrotate(now time.Time) string {
 	if !trafficLastLogrotate.IsZero() && now.Sub(trafficLastLogrotate) < trafficLogrotateInterval {
 		return trafficLastLogrotateState
 	}
 	trafficLastLogrotate = now
-	tool := false
-	for _, candidate := range trafficLogrotateTools {
-		if _, err := os.Stat(candidate); err == nil {
-			tool = true
-			break
-		}
-	}
+	tool := trafficLogrotatePresent()
 	if info, err := os.Stat(filepath.Dir(trafficLogrotatePath)); err != nil || !info.IsDir() {
 		trafficLastLogrotateState = "missing_tool"
 		return trafficLastLogrotateState

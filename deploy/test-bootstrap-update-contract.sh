@@ -408,8 +408,8 @@ reject_literal "$INSTALL" 's|^ExecStart=/opt/celikpanel/bin/panel'
 
 # Arch package databases and the base system must advance in one transaction;
 # neither the installer nor the agent may create a partial-upgrade window.
-require_literal "$INSTALL" '"$APT_GET_BIN" install -y -qq tar xz-utils curl ca-certificates nftables iproute2'
-require_literal "$INSTALL" '"$PACMAN_BIN" -Syu --noconfirm --needed tar xz curl ca-certificates nftables iproute2'
+require_literal "$INSTALL" '"$APT_GET_BIN" install -y -qq tar xz-utils curl ca-certificates nftables iproute2 logrotate'
+require_literal "$INSTALL" '"$PACMAN_BIN" -Syu --noconfirm --needed tar xz curl ca-certificates nftables iproute2 logrotate'
 reject_literal "$INSTALL" 'pacman -Sy --noconfirm'
 
 # Fresh-install authorization comes from a complete, fixed-path vendor

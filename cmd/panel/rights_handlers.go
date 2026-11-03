@@ -379,6 +379,11 @@ func (p *Panel) planSubscriptionChange(w http.ResponseWriter, r *http.Request, c
 			planned.set = set
 		} else {
 			candidates, unknown := p.previewCandidates(ctx, current.Own.Set)
+			if current.ResellerID != 0 {
+				// Taking an item out of "everything offered" never names an
+				// app closed to resellers' customers by its licence.
+				candidates = withoutLicenceClosed(candidates)
+			}
 			set, err := applyGrantRevoke(current.Own.Set, req.Grant, req.Revoke, candidates, unknown)
 			if errors.Is(err, errUnknownRightsItem) {
 				writeCodedError(w, http.StatusBadRequest, errCodeRightsUnknownItem, "an item to grant or revoke is not a known permission or offering id", "")
@@ -650,6 +655,9 @@ func (p *Panel) planResellerChange(w http.ResponseWriter, r *http.Request, resel
 			planned.set = set
 		} else {
 			candidates, unknown := p.previewCandidates(ctx, current.Own.Set)
+			// A reseller's set never names an app closed to resellers by its
+			// licence, also when an item is taken out of "everything offered".
+			candidates = withoutLicenceClosed(candidates)
 			set, err := applyGrantRevoke(current.Own.Set, req.Grant, req.Revoke, candidates, unknown)
 			if errors.Is(err, errUnknownRightsItem) {
 				writeCodedError(w, http.StatusBadRequest, errCodeRightsUnknownItem, "an item to grant or revoke is not a known permission or offering id", "")

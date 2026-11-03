@@ -230,6 +230,9 @@ func (p *Panel) writeServiceAppsView(w http.ResponseWriter, r *http.Request, dom
 	for _, app := range serviceapps.Catalog() {
 		item := serviceAppAppView{App: app, Held: offerings[app.ID].Held}
 		switch {
+		case serviceAppClosedToReseller(app, e):
+			item.RefusedBy = rightsLayerLicence
+			item.Grantor = "the administrator"
 		case !offered[app.ID]:
 			item.RefusedBy = rightsLayerAdministrator
 			item.Grantor = "the administrator"
@@ -344,6 +347,12 @@ func (p *Panel) refuseServiceAppOffer(w http.ResponseWriter, r *http.Request, ap
 	e, err := p.serviceAppRights(ctx, r, subID)
 	if err != nil {
 		writeServerError(w, err)
+		return true
+	}
+	// alpha.118: closed to resellers and their customers by its licence,
+	// whoever asks (an administrator acting for the account too).
+	if serviceAppClosedToReseller(app, e) {
+		writeServiceAppLicenceClosed(w, app)
 		return true
 	}
 	if !offered[app.ID] {

@@ -2515,8 +2515,8 @@ print_kernel_reboot_closing() {
 # ≠ firewall'u açmak — böylece firewall temiz bir aç/kapa düğmesi kalır ve bu,
 # "firewall'u sürprizle açma" kuralına uyar.
 if [[ $APPLY_ONLY -eq 0 ]] && [ "${SKIP_DEPS:-0}" != "1" ]; then
-    step "Small prerequisites (curl, tar, xz, nftables, iproute2)" \
-        "Küçük ön gereksinimler (curl, tar, xz, nftables, iproute2)"
+    step "Small prerequisites (curl, tar, xz, nftables, iproute2, logrotate)" \
+        "Küçük ön gereksinimler (curl, tar, xz, nftables, iproute2, logrotate)"
     case "$PKG_FAMILY" in
     apt)
         export DEBIAN_FRONTEND=noninteractive
@@ -2526,7 +2526,9 @@ if [[ $APPLY_ONLY -eq 0 ]] && [ "${SKIP_DEPS:-0}" != "1" ]; then
         # paketler ana arşivlerden gelir ve zaten önbellekte olabilir.
         "$APT_GET_BIN" update -qq || warn "apt-get update returned a warning — continuing" \
             "apt-get update uyarı verdi — devam ediliyor"
-        "$APT_GET_BIN" install -y -qq tar xz-utils curl ca-certificates nftables iproute2 >/dev/null
+        # logrotate (alpha.118) rotates the web traffic logs; minimal Debian 13
+        # images lack it. / Trafik günlüklerini döndürür; minimal imajda yok.
+        "$APT_GET_BIN" install -y -qq tar xz-utils curl ca-certificates nftables iproute2 logrotate >/dev/null
         ;;
     pacman)
         # The pacman ecosystem does not support partial upgrades. Refresh,
@@ -2536,7 +2538,7 @@ if [[ $APPLY_ONLY -eq 0 ]] && [ "${SKIP_DEPS:-0}" != "1" ]; then
         # Arch kısmi yükseltmeleri desteklemez. Makineyi yeni paket veritabanı
         # ve eski temel sistemle bırakmamak için tazeleme, yükseltme ve ön
         # gereksinim kurulumunu tek işlemde yap.
-        "$PACMAN_BIN" -Syu --noconfirm --needed tar xz curl ca-certificates nftables iproute2 >/dev/null
+        "$PACMAN_BIN" -Syu --noconfirm --needed tar xz curl ca-certificates nftables iproute2 logrotate >/dev/null
         ;;
     esac
     ok "ready" "hazır"

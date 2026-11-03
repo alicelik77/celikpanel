@@ -21,6 +21,7 @@ export const trServiceAppsScreens: Record<ServiceAppsScreenKey, string> = {
     'svcapps.closed.administrator': 'Bu sunucuda sunulmuyor. Hangi uygulamaların kullanılabileceğine yönetici karar verir.',
     'svcapps.closed.reseller': 'Sağlayıcınızın haklarında yok. {grantor} ile görüşüp dahil etmesini isteyin.',
     'svcapps.closed.subscription': 'Bu aboneliğin haklarında yok. {grantor} ile görüşüp dahil etmesini isteyin.',
+    'svcapps.closed.licence': 'Bayi üzerinden kullanılamaz. Bu uygulamanın lisansı onu başkalarına barındırılan hizmet olarak sunmayı kısıtlıyor; bu yüzden bayilere ve onların müşterilerine kapalı. Bunun değişip değişmeyeceğine yönetici karar verir; o zamana dek burada yapmanız gereken bir şey yok.',
     'svcapps.heldNote': 'Yönetici bu uygulamayı güvenlik beklemesine aldı. Bekleme kaldırılana kadar kurulamaz veya başlatılamaz.',
     'svcapps.unavailable.runtime_missing': 'Henüz kurulamaz: {detail}. Yönetici Node.js 24’ü Hizmetler → Node.js bölümünden kurar; ondan sonra burada kurulabilir.',
     'svcapps.unavailable.os_unsupported': 'Bu sunucunun işletim sisteminde çalışamaz: {detail}. CelikPanel dışarıdan paket kaynağı eklemez; bu yüzden bu uygulama burada kullanılamaz.',
@@ -31,6 +32,7 @@ export const trServiceAppsScreens: Record<ServiceAppsScreenKey, string> = {
     'svcapps.deferred.command_agent_installer': 'Sunucuda komut çalıştıran bir yapay zekâ ajanı; tek resmî kurulum yolu indirilen bir betiktir ve CelikPanel bunu çalıştırmaz. Bu sürümde sunulmuyor.',
     'svcapps.deferred.command_agent_postgres': 'Sunucudaki komut satırı ajanlarını yöneten ve varsayılan olarak oturum açma istemeyen bir yapay zekâ ajanı platformu. Bu sürümde sunulmuyor.',
     'svcapps.licence.sustainable_use': 'n8n’in Sürdürülebilir Kullanım Lisansı, kendi iç işiniz veya kişisel amaçlarınız için kullanıma izin verir; n8n’in kendisini başkalarına ücretli hizmet olarak sunmak kısıtlıdır. Ticari olarak sunmadan önce lisansı denetleyin.',
+    'svcapps.licence.resellerClosed': 'Bayiler üzerinden sunulmaz: bu lisans nedeniyle CelikPanel onu bayilerin haklarına ve planlarına koymaz, bayilerin müşterileri de kuramaz. Kendi müşterilerinize yine sunabilirsiniz.',
     'svcapps.licence.branding': 'Open WebUI’nin lisansı adının ve logosunun yerinde kalmasını ister (bunları kaldırmak için 50’den az kullanıcı, yazarların izni veya kurumsal bir lisans gerekir).',
     'svcapps.risk.canDo': 'Neler yapabilir',
     'svcapps.risk.disabled': 'CelikPanel’in kapattıkları',
@@ -171,6 +173,7 @@ export const trServiceAppsScreens: Record<ServiceAppsScreenKey, string> = {
     // Refusals.
     'audit.resource.service_app': 'Yapay zekâ ya da otomasyon uygulaması',
     'err.SERVICE_APP': 'Uygulama değiştirilemedi.',
+    'err.SERVICE_APP.licence_reseller': 'Hiçbir şey değişmedi: {app} lisansı ({licence}) onu başkalarına barındırılan hizmet olarak sunmayı kısıtlıyor; bu yüzden bayilere ve onların müşterilerine kapalı. Bunun değişip değişmeyeceğine yönetici karar verir; o zamana dek burada yapmanız gereken bir şey yok, diğer uygulamalar ve haklar eskisi gibi çalışır.',
     'err.SERVICE_APP.held': 'Hiçbir şey değişmedi: yönetici {app} uygulamasını güvenlik beklemesine aldı. Bekleme kaldırılınca yeniden kurulabilir veya başlatılabilir.',
     'err.SERVICE_APP.deferred': 'Hiçbir şey değişmedi: {app} bu sürümde kullanılamıyor.',
     'err.SERVICE_APP.risk_changed': 'Hiçbir şey değişmedi: bu sayfa açıldıktan sonra risk özeti değişti. Yeniden okuyun, sonra sunun.',

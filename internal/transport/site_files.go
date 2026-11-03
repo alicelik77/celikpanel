@@ -377,10 +377,28 @@ type SitePoolRequest struct {
 	RecordedSHA256       string
 	ExpectedFileSHA256   string
 	ExpectedRenderSHA256 string
-	// UploadsOff (alpha.118, D-044, additive): the subscription's disk is
-	// full, so the pool carries php_admin_flag[file_uploads] = off. nil keeps
-	// what CelikPanel's current text of the pool says.
-	UploadsOff *bool `json:",omitempty"`
+	// Uploads (alpha.118, D-044): SitePoolUploadsOff while the subscription's
+	// disk is full (the pool carries php_admin_flag[file_uploads] = off),
+	// SitePoolUploadsOn under the limit, "" keeps what CelikPanel's current
+	// text of the pool says. A string, not a *bool: net/rpc's gob drops a
+	// pointer to false, so "uploads on again" arrived as "keep" and the line
+	// stayed after the limit was lifted (alpha.118 lab, D4).
+	Uploads string `json:",omitempty"`
+}
+
+// SitePoolRequest.Uploads values.
+const (
+	SitePoolUploadsKeep = ""
+	SitePoolUploadsOff  = "off"
+	SitePoolUploadsOn   = "on"
+)
+
+// SitePoolUploadsFor is the Uploads value of a known disk state.
+func SitePoolUploadsFor(blocked bool) string {
+	if blocked {
+		return SitePoolUploadsOff
+	}
+	return SitePoolUploadsOn
 }
 
 // ApplySiteFileResponse is a pool operation's answer. File is nil only when

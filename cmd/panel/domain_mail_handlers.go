@@ -250,6 +250,8 @@ func (p *Panel) handleAddEmailAccount(w http.ResponseWriter, r *http.Request, do
 	// The domain's first mailbox: its DKIM key and signing follow by
 	// themselves, without blocking this answer (domain_dkim_automatic.go).
 	p.queueAutomaticDKIMForMailbox(context.WithoutCancel(r.Context()), domainID, domain)
+	// Its size limit is enforced from now on, not at the next hourly check.
+	p.requestMailQuotaReconcile()
 	_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "id": newID})
 }
 
@@ -468,6 +470,7 @@ func (p *Panel) handleUpdateEmailQuota(w http.ResponseWriter, r *http.Request, d
 		writeServerError(w, err)
 		return
 	}
+	p.requestMailQuotaReconcile()
 	_ = json.NewEncoder(w).Encode(map[string]bool{"success": true})
 }
 

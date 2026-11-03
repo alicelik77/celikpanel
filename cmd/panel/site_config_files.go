@@ -255,7 +255,7 @@ func (p *Panel) sitePoolRequest(ctx context.Context, site siteFileSite, operatio
 	// (PHP uploads off while the subscription's disk is full).
 	if subID, err := p.domainSubscriptionID(ctx, site.DomainID); err == nil {
 		if blocked, err := subscriptionUploadsBlocked(ctx, p.db.GetDB(), subID); err == nil {
-			request.UploadsOff = &blocked
+			request.Uploads = transport.SitePoolUploadsFor(blocked)
 		}
 	}
 	return request

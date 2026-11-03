@@ -475,7 +475,7 @@ func (p *Panel) applyUploadBlockNative(ctx context.Context, subscriptionID int, 
 			continue
 		}
 		request := p.sitePoolRequest(ctx, site, transport.SitePoolOperationApply)
-		request.UploadsOff = &blocked
+		request.Uploads = transport.SitePoolUploadsFor(blocked)
 		if _, err := p.applySitePool(ctx, site, request); err != nil {
 			var held *siteFileHeldError
 			if errors.As(err, &held) {

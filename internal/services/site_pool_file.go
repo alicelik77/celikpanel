@@ -206,8 +206,11 @@ func sitePoolFile(request transport.SitePoolRequest, version string, values *poo
 	if held, ok := HeldPendingBody(path, ManagedHeaderPrefixINI); ok && values == nil {
 		uploadsOff = poolUploadsOff([]byte(held))
 	}
-	if request.UploadsOff != nil {
-		uploadsOff = *request.UploadsOff
+	switch request.Uploads {
+	case transport.SitePoolUploadsOff:
+		uploadsOff = true
+	case transport.SitePoolUploadsOn:
+		uploadsOff = false
 	}
 	chosen := defaultPoolValues()
 	switch {
@@ -246,6 +249,11 @@ func validateSitePoolRequest(request transport.SitePoolRequest) error {
 	}
 	if err := ValidatePHPVersion(request.PHPVersion); err != nil {
 		return err
+	}
+	switch request.Uploads {
+	case transport.SitePoolUploadsKeep, transport.SitePoolUploadsOff, transport.SitePoolUploadsOn:
+	default:
+		return fmt.Errorf("unknown uploads state %q", request.Uploads)
 	}
 	return validatePoolIdentity("user", request.Username)
 }
@@ -339,9 +347,8 @@ func switchSitePoolLocked(request transport.SitePoolRequest) (transport.SiteFile
 	}
 	values = values.clamped()
 	targetRequest := request
-	if targetRequest.UploadsOff == nil {
-		off := poolUploadsOff(sourceInspected.content)
-		targetRequest.UploadsOff = &off
+	if targetRequest.Uploads == transport.SitePoolUploadsKeep {
+		targetRequest.Uploads = transport.SitePoolUploadsFor(poolUploadsOff(sourceInspected.content))
 	}
 	targetRequest.PHPVersion = newVersion
 	targetRequest.RecordedSHA256 = ""

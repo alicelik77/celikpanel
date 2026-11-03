@@ -399,6 +399,7 @@ export const en = {
     'dnssrv.continue': 'Continue',
     'services.install': 'Install',
     'services.installed': '{name} installed.',
+    'services.installedWaitingSignatures': '{name} is installed and is downloading its first virus signatures, which usually takes a few minutes. You do not need to do anything: its scanner starts by itself when the download finishes, and Components shows it as running at its next check.',
     'services.phpToolProblem.versionGone': '{tool} is set to PHP {version}, which is no longer installed, so {tool} cannot answer. Open {tool} in Components and choose an installed PHP version in Manage.',
     'services.phpToolProof.moved': '{tool} runs on PHP {version}: it did not work on PHP {first} ({why}), so the next installed PHP version that has its extensions was used. You can change it in {tool}’s Manage window.',
     'services.phpToolProof.notReady': '{tool} was installed, but it did not answer on PHP {version} ({why}). It reads Not ready: open its Manage window in Components; the reason is shown there, and Check again asks it again without moving it.',
