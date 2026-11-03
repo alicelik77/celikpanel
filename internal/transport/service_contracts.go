@@ -304,7 +304,16 @@ type InstallServiceResponse struct {
 	// FirstInstall: the PHP tool was not on the host before this install,
 	// so its proof may try another installed PHP version (alpha.105).
 	FirstInstall bool `json:"first_install,omitempty"`
+	// Waiting (alpha.118, additive): the component is installed and starts
+	// by itself once an outside step finishes; not a failure. Today only
+	// InstallWaitingFirstSignatures (ClamAV before freshclam's first
+	// download). An older Panel ignores it and reads the scan.
+	Waiting string `json:"waiting,omitempty"`
 }
+
+// InstallWaitingFirstSignatures: ClamAV is installed and enabled; its daemon
+// starts when freshclam's first signature download is on disk.
+const InstallWaitingFirstSignatures = "first_signatures"
 
 type UninstallServiceResponse struct {
 	Removed         bool   `json:"removed"`

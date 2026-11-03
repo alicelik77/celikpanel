@@ -169,6 +169,37 @@ type ManagedServiceResponse struct {
 	// exist: the tool is installed but cannot answer. Absent when unknown.
 	// PHPBinding, kurulu bir PHP aracının sunulduğu PHP sürümüdür.
 	PHPBinding *transport.PHPToolBinding `json:"php_binding,omitempty"`
+	// Waiting (alpha.118): installed, not running yet, and it starts by
+	// itself once an outside step finishes ("first_signatures": ClamAV
+	// before freshclam's first download). Only on an installed, stopped row.
+	// Waiting: kurulu, henüz çalışmıyor; dış adım bitince kendiliğinden başlar.
+	Waiting string `json:"waiting,omitempty"`
+}
+
+// waitingForResponse keeps a waiting reason only while the row is installed
+// and not running: a running daemon is ready, whatever the last scan said.
+func waitingForResponse(installed bool, status, waiting string) string {
+	if !installed || strings.HasPrefix(strings.ToLower(status), "active") {
+		return ""
+	}
+	if waiting != transport.InstallWaitingFirstSignatures {
+		return ""
+	}
+	return waiting
+}
+
+// clamAVWaitingForSignatures asks the Agent (read only) whether ClamAV has
+// any signatures yet. Best effort: an Agent that cannot say leaves the row
+// as it was (stopped), never a guessed "waiting".
+func (p *Panel) clamAVWaitingForSignatures(ctx context.Context) string {
+	var status transport.MalwareScannerStatusResponse
+	if err := p.callAgentContext(ctx, "Agent.MalwareScannerStatusV1", &transport.MalwareScannerStatusRequest{}, &status); err != nil {
+		return ""
+	}
+	if status.State == transport.MalwareScannerNoSignatures {
+		return transport.InstallWaitingFirstSignatures
+	}
+	return ""
 }
 
 // Installed answers the only question the panel's own logic may ask of a
@@ -300,6 +331,8 @@ type serviceObservation struct {
 	ConfigFiles []core.ConfigFile `json:"config_files,omitempty"`
 	// PHPBinding: see ManagedServiceResponse.PHPBinding (alpha.104).
 	PHPBinding *transport.PHPToolBinding `json:"php_binding,omitempty"`
+	// Waiting: see ManagedServiceResponse.Waiting (alpha.118).
+	Waiting string `json:"waiting,omitempty"`
 	// Instances is the per-copy truth for runtimes (B3b), straight from
 	// Agent.ListServiceInstances: version, unit, path, managed, per-unit
 	// status. The scan no longer parses versions out of unit names.
@@ -662,6 +695,7 @@ func catalogViewForHost(obs []serviceObservation, host core.ManagedServiceHostPr
 			PackageVersionReadAt:   packageVersionReadAt,
 			PackageVersionKeptLong: packageVersionKeptLong,
 			PHPBinding:             phpBindingForResponse(isInstalled, o.PHPBinding),
+			Waiting:                waitingForResponse(isInstalled != nil && *isInstalled, status, o.Waiting),
 		})
 	}
 	return response
@@ -1132,6 +1166,9 @@ func (p *Panel) scanManagedServicesWithVersions(ctx context.Context, packageVers
 			Instances:             instances,
 			ConfigFiles:           uniqueConfigFiles(configFiles),
 			InstalledRepoPackages: installedRepoPackages,
+		}
+		if managed.ID == "clamav" && isInstalled && !anyRunning {
+			observation.Waiting = p.clamAVWaitingForSignatures(ctx)
 		}
 		if read, ok := packageVersions[managed.ID]; ok && isInstalled {
 			observation.PackageVersions = read.Packages
