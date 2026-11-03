@@ -145,7 +145,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.AppPrerequisitesV1
 		Agent.EmergencyUnitsInspectV1
 		Agent.WordPressStatusV1 Agent.MalwareScannerStatusV1 Agent.MalwareScanSiteV1
-		Agent.ServiceAppProbeV1 Agent.ServiceAppStatusV1 Agent.ServiceAppLogsV1 Agent.ServiceAppUnitStateV1
+		Agent.ServiceAppProbeV1 Agent.ServiceAppStatusV1 Agent.ServiceAppLogsV1 Agent.ServiceAppUnitStateV1 Agent.SandboxCapsV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -528,7 +528,9 @@ var agentRPCTimeouts = map[string]time.Duration{
 	// checks the pinned upstream file (up to ~110 MB) before it starts the
 	// install unit; the install itself runs detached and is followed with
 	// the quick status read.
-	"Agent.ServiceAppProbeV1":         agentRPCStandardReadTimeout,
+	"Agent.ServiceAppProbeV1": agentRPCStandardReadTimeout,
+	// alpha.119: the site sandbox probe (systemctl --version, nft --check).
+	"Agent.SandboxCapsV1":             agentRPCStandardReadTimeout,
 	"Agent.ServiceAppStatusV1":        agentRPCStandardReadTimeout,
 	"Agent.ServiceAppLogsV1":          agentRPCStandardReadTimeout,
 	"Agent.ServiceAppUnitStateV1":     agentRPCQuickReadTimeout,

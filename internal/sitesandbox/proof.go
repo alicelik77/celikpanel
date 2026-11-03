@@ -36,10 +36,10 @@ func refuse(code, format string, args ...any) ProofResult {
 	return ProofResult{Code: code, Detail: fmt.Sprintf(format, args...)}
 }
 
-// expectation is one `systemctl show` property and how it is compared.
-type expectation struct {
-	value    string
-	contains bool
+// Expectation is one `systemctl show` property and how it is compared.
+type Expectation struct {
+	Value    string
+	Contains bool
 }
 
 // ShowProperties are the properties Prove reads (systemctl show -p ...).
@@ -58,58 +58,58 @@ func ShowProperties() []string {
 // Expected are the properties a unit rendered from p on a host with c must
 // show. Only values whose `systemctl show` form is fixed are compared
 // exactly; the rest by a fragment.
-func Expected(p Profile, c Caps, unit string) map[string]expectation {
-	e := map[string]expectation{
-		"User":                  {value: p.User},
-		"Group":                 {value: p.Group},
-		"ControlGroup":          {value: "/system.slice/" + unit},
-		"NoNewPrivileges":       {value: "yes"},
-		"ProtectSystem":         {value: "strict"},
-		"ProtectHome":           {value: "yes"},
-		"PrivateTmp":            {value: "yes"},
-		"PrivateDevices":        {value: "yes"},
-		"ProtectKernelTunables": {value: "yes"},
-		"ProtectKernelModules":  {value: "yes"},
-		"ProtectKernelLogs":     {value: "yes"},
-		"ProtectControlGroups":  {value: "yes"},
-		"ProtectClock":          {value: "yes"},
-		"ProtectHostname":       {value: "yes"},
-		"RestrictSUIDSGID":      {value: "yes"},
-		"RestrictRealtime":      {value: "yes"},
-		"LockPersonality":       {value: "yes"},
-		"RemoveIPC":             {value: "yes"},
-		"CapabilityBoundingSet": {value: ""},
-		"AmbientCapabilities":   {value: ""},
-		"UMask":                 {value: "0077"},
-		"MemoryMax":             {value: strconv.FormatInt(int64(p.Limits.MemoryMB)<<20, 10)},
-		"MemorySwapMax":         {value: "0"},
-		"TasksMax":              {value: strconv.Itoa(p.Limits.Tasks)},
-		"LogRateLimitBurst":     {value: "1000"},
+func Expected(p Profile, c Caps, unit string) map[string]Expectation {
+	e := map[string]Expectation{
+		"User":                  {Value: p.User},
+		"Group":                 {Value: p.Group},
+		"ControlGroup":          {Value: "/system.slice/" + unit},
+		"NoNewPrivileges":       {Value: "yes"},
+		"ProtectSystem":         {Value: "strict"},
+		"ProtectHome":           {Value: "yes"},
+		"PrivateTmp":            {Value: "yes"},
+		"PrivateDevices":        {Value: "yes"},
+		"ProtectKernelTunables": {Value: "yes"},
+		"ProtectKernelModules":  {Value: "yes"},
+		"ProtectKernelLogs":     {Value: "yes"},
+		"ProtectControlGroups":  {Value: "yes"},
+		"ProtectClock":          {Value: "yes"},
+		"ProtectHostname":       {Value: "yes"},
+		"RestrictSUIDSGID":      {Value: "yes"},
+		"RestrictRealtime":      {Value: "yes"},
+		"LockPersonality":       {Value: "yes"},
+		"RemoveIPC":             {Value: "yes"},
+		"CapabilityBoundingSet": {Value: ""},
+		"AmbientCapabilities":   {Value: ""},
+		"UMask":                 {Value: "0077"},
+		"MemoryMax":             {Value: strconv.FormatInt(int64(p.Limits.MemoryMB)<<20, 10)},
+		"MemorySwapMax":         {Value: "0"},
+		"TasksMax":              {Value: strconv.Itoa(p.Limits.Tasks)},
+		"LogRateLimitBurst":     {Value: "1000"},
 	}
 	if c.SystemdVersion >= 247 {
-		e["ProtectProc"] = expectation{value: "invisible"}
+		e["ProtectProc"] = Expectation{Value: "invisible"}
 		if p.Kind != KindServiceApp {
-			e["ProcSubset"] = expectation{value: "pid"}
+			e["ProcSubset"] = Expectation{Value: "pid"}
 		}
 	}
 	if c.SystemdVersion >= 248 {
-		e["PrivateIPC"] = expectation{value: "yes"}
+		e["PrivateIPC"] = Expectation{Value: "yes"}
 	}
 	if c.SystemdVersion >= 257 {
-		e["PrivatePIDs"] = expectation{value: "yes"}
+		e["PrivatePIDs"] = Expectation{Value: "yes"}
 	}
 	if p.Kind == KindProgram {
-		e["MemoryDenyWriteExecute"] = expectation{value: "yes"}
+		e["MemoryDenyWriteExecute"] = Expectation{Value: "yes"}
 	}
 	if c.bpfEnforced() {
-		e["IPAddressDeny"] = expectation{value: "169.254.0.0/16", contains: true}
+		e["IPAddressDeny"] = Expectation{Value: "169.254.0.0/16", Contains: true}
 		if c.SystemdVersion >= 249 {
-			e["SocketBindDeny"] = expectation{value: "any", contains: true}
+			e["SocketBindDeny"] = Expectation{Value: "any", Contains: true}
 		}
 	}
 	if c.EgressEnforced() {
-		e["ExecStartPre"] = expectation{value: EgressFile, contains: true}
-		e["ExecStopPost"] = expectation{value: "delete element inet " + EgressTable, contains: true}
+		e["ExecStartPre"] = Expectation{Value: EgressFile, Contains: true}
+		e["ExecStopPost"] = Expectation{Value: "delete element inet " + EgressTable, Contains: true}
 	}
 	return e
 }
@@ -163,8 +163,8 @@ func Prove(in ProofInput) ProofResult {
 		names = append(names, name)
 	}
 	sort.Strings(names)
-	if got, ok := props["ControlGroup"]; !ok || got != expected["ControlGroup"].value {
-		return refuse(ProofCgroup, "%s runs in %q, not %s", in.Unit, got, expected["ControlGroup"].value)
+	if got, ok := props["ControlGroup"]; !ok || got != expected["ControlGroup"].Value {
+		return refuse(ProofCgroup, "%s runs in %q, not %s", in.Unit, got, expected["ControlGroup"].Value)
 	}
 	for _, name := range names {
 		want := expected[name]
@@ -172,14 +172,14 @@ func Prove(in ProofInput) ProofResult {
 		if !ok {
 			return refuse(ProofProperty, "%s: systemd did not show %s", in.Unit, name)
 		}
-		if want.contains {
-			if !strings.Contains(got, want.value) {
-				return refuse(ProofProperty, "%s: %s does not include %s", in.Unit, name, want.value)
+		if want.Contains {
+			if !strings.Contains(got, want.Value) {
+				return refuse(ProofProperty, "%s: %s does not include %s", in.Unit, name, want.Value)
 			}
 			continue
 		}
-		if got != want.value {
-			return refuse(ProofProperty, "%s: %s is %q, expected %q", in.Unit, name, got, want.value)
+		if got != want.Value {
+			return refuse(ProofProperty, "%s: %s is %q, expected %q", in.Unit, name, got, want.Value)
 		}
 	}
 	if in.Caps.EgressEnforced() {

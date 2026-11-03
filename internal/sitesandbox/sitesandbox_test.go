@@ -1,6 +1,8 @@
 package sitesandbox
 
 import (
+	"context"
+	"errors"
 	"strings"
 	"testing"
 )
@@ -287,9 +289,9 @@ func TestProbeParsing(t *testing.T) {
 func showFor(p Profile, unit string, c Caps) string {
 	var b strings.Builder
 	for name, e := range Expected(p, c, unit) {
-		value := e.value
-		if e.contains {
-			value = "{ x " + e.value + " y }"
+		value := e.Value
+		if e.Contains {
+			value = "{ x " + e.Value + " y }"
 		}
 		b.WriteString(name + "=" + value + "\n")
 	}
@@ -357,4 +359,65 @@ func TestListenProofStillDetectsExposure(t *testing.T) {
 	if !proof.Serving || len(proof.Exposed) != 1 {
 		t.Fatalf("proof = %+v", proof)
 	}
+}
+
+type fakeRunner struct {
+	version string
+	nftOK   bool
+	files   map[string]bool
+	calls   []string
+}
+
+func (f *fakeRunner) Run(_ context.Context, stdin, name string, args ...string) ([]byte, error) {
+	f.calls = append(f.calls, name+" "+strings.Join(args, " "))
+	switch name {
+	case "systemctl":
+		return []byte(f.version), nil
+	case NFT:
+		if len(args) < 1 || args[0] != "--check" || !strings.Contains(stdin, "table inet celikpanel_egress") {
+			return nil, errors.New("the probe may only check")
+		}
+		if f.nftOK {
+			return nil, nil
+		}
+		return []byte("Error: syntax error, unexpected cgroupv2"), errors.New("exit 1")
+	}
+	return nil, errors.New("unexpected command")
+}
+
+func (f *fakeRunner) Exists(path string) bool { return f.files[path] }
+
+func TestProbeIsReadOnlyAndAssesses(t *testing.T) {
+	ubuntu2204 := &fakeRunner{version: "systemd 249 (249.11-0ubuntu3.12)\n+PAM -BPF_FRAMEWORK\n", files: map[string]bool{CgroupControllers: true, NFT: true}}
+	c := Probe(context.Background(), ubuntu2204)
+	if c.SystemdVersion != 249 || c.BPFFramework || !c.CgroupV2 || c.NFTSocketCgroup {
+		t.Fatalf("caps = %+v", c)
+	}
+	a := Assess(c)
+	if a.Level != LevelReduced || strings.Join(gapStrings(a.Gaps), ",") != "bpf_missing,nft_cgroup_missing" {
+		t.Fatalf("assessment = %+v", a)
+	}
+	for _, call := range ubuntu2204.calls {
+		if strings.Contains(call, "nft") && !strings.Contains(call, "--check") {
+			t.Fatalf("the probe changed nftables: %s", call)
+		}
+	}
+	debian13 := &fakeRunner{version: "systemd 257 (257.8-1~deb13u2)\n+PAM +BPF_FRAMEWORK\n", nftOK: true, files: map[string]bool{CgroupControllers: true, NFT: true}}
+	a = Assess(Probe(context.Background(), debian13))
+	if a.Level != LevelFull || len(a.Gaps) != 0 || len(a.Extras) != 2 {
+		t.Fatalf("debian 13 = %+v", a)
+	}
+	none := &fakeRunner{files: map[string]bool{}}
+	a = Assess(Probe(context.Background(), none))
+	if a.Level != LevelReduced || a.Gaps[0] != GapSystemdUnknown {
+		t.Fatalf("nothing readable = %+v", a)
+	}
+}
+
+func gapStrings(gaps []Gap) []string {
+	out := make([]string, len(gaps))
+	for i, g := range gaps {
+		out[i] = string(g)
+	}
+	return out
 }

@@ -38,6 +38,7 @@ func useServiceAppHost(t *testing.T) *serviceAppHost {
 	})
 	serviceAppStateRoot = t.TempDir()
 	appUnitDirOverride = t.TempDir()
+	useSandboxHost(t, true)
 	serviceAppLookupAccount = func(target transport.ServiceAppTarget) (serviceAppAccount, error) {
 		return serviceAppAccount{Name: "flows_example_com", Group: "flows_example_com", UID: 1500, GID: 1500, Home: "/var/www/celikpanel/subscriptions/3/sites/7"}, nil
 	}

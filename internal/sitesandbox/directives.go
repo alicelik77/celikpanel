@@ -39,8 +39,9 @@ var DeniedAddresses = []string{
 	"100.100.100.200/32",
 }
 
-// SyscallDeny is subtracted from @system-service.
-const SyscallDeny = "~@debug @mount @raw-io @reboot @swap @module @cpu-emulation @obsolete"
+// SyscallDeny is subtracted from @system-service: the plan's groups and the
+// kernel keyring (escape matrix item 15; @system-service includes @keyring).
+const SyscallDeny = "~@debug @mount @raw-io @reboot @swap @module @cpu-emulation @obsolete @keyring"
 
 // directive is one line and the conditions it needs.
 type directive struct {
