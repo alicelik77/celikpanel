@@ -1,0 +1,74 @@
+== item 1 env file 22:07:11
+## 22:07:11 celiksvc-1.service active=active pid=45502
+## EnvironmentFiles: /etc/celikpanel-svcapps/celiksvc-1.env (ignore_errors=no)
+16:EnvironmentFile=/etc/celikpanel-svcapps/celiksvc-1.env
+/etc/celikpanel-svcapps root:root 700 directory
+/etc/celikpanel-svcapps/celiksvc-1.env root:root 600 regular file
+## working dir /var/www/celikpanel/subscriptions/5/sites/3/apps/n8n
+/var/www/celikpanel/subscriptions/5/sites/3/apps/n8n:
+total 24
+drwx------ 6 n8n118_test n8n118_test 4096 Nov  3 22:06 .
+drwx------ 3 n8n118_test n8n118_test 4096 Nov  3 21:57 ..
+drwx------ 3 n8n118_test n8n118_test 4096 Nov  3 22:03 app-2.46.4
+drwx------ 2 n8n118_test n8n118_test 4096 Nov  3 21:57 config
+drwx------ 5 n8n118_test n8n118_test 4096 Nov  3 22:06 data
+drwx------ 2 n8n118_test n8n118_test 4096 Nov  3 21:57 dist
+
+/var/www/celikpanel/subscriptions/5/sites/3/apps/n8n/config:
+total 8
+drwx------ 2 n8n118_test n8n118_test 4096 Nov  3 21:57 .
+## /proc/45502/environ: 38 vars; LAB_CANARY: 0; CELIKPANEL_ vars: 0
+   child 45535 LAB_CANARY: 0
+== item 2 attack setup (lab as malicious customer) 22:07:11
+## app root /var/www/celikpanel/subscriptions/5/sites/3/apps/n8n (account n8n118_test)
+total 24
+drwx------ 6 n8n118_test n8n118_test 4096 Nov  3 22:06 .
+drwx------ 3 n8n118_test n8n118_test 4096 Nov  3 21:57 ..
+drwx------ 3 n8n118_test n8n118_test 4096 Nov  3 22:03 app-2.46.4
+drwx------ 2 n8n118_test n8n118_test 4096 Nov  3 21:57 config
+drwx------ 5 n8n118_test n8n118_test 4096 Nov  3 22:06 data
+drwx------ 2 n8n118_test n8n118_test 4096 Nov  3 21:57 dist
+app.env -> canary link made by the site account
+config.d -> /etc/celikpanel link made
+config -> /etc/celikpanel link made
+total 24
+drwx------ 6 n8n118_test n8n118_test 4096 Nov  3 22:07 .
+drwx------ 3 n8n118_test n8n118_test 4096 Nov  3 21:57 ..
+drwx------ 3 n8n118_test n8n118_test 4096 Nov  3 22:03 app-2.46.4
+lrwxrwxrwx 1 n8n118_test n8n118_test   15 Nov  3 22:07 config -> /etc/celikpanel
+lrwxrwxrwx 1 n8n118_test n8n118_test   15 Nov  3 22:07 config.d -> /etc/celikpanel
+drwx------ 2 n8n118_test n8n118_test 4096 Nov  3 22:07 config.orig
+drwx------ 5 n8n118_test n8n118_test 4096 Nov  3 22:06 data
+drwx------ 2 n8n118_test n8n118_test 4096 Nov  3 21:57 dist
+-- change the app's keys through the panel (owner password)
+200 {"changed": ["owner_password"]}
+-- restart through the panel
+200 {"state": "running"}
+  22:07:13 install=running active=True serving=False unit=celiksvc-1 url=https://n8n118.test/ | op=succeeded step=done class=None reason=None msg= | suspended=False cert=true
+  22:07:23 install=running active=True serving=True unit=celiksvc-1 url=https://n8n118.test/ | op=succeeded step=done class=None reason=None msg= | suspended=False cert=true
+## 22:07:38 celiksvc-1.service active=active pid=45779
+## EnvironmentFiles: /etc/celikpanel-svcapps/celiksvc-1.env (ignore_errors=no)
+16:EnvironmentFile=/etc/celikpanel-svcapps/celiksvc-1.env
+/etc/celikpanel-svcapps root:root 700 directory
+/etc/celikpanel-svcapps/celiksvc-1.env root:root 600 regular file
+## working dir /var/www/celikpanel/subscriptions/5/sites/3/apps/n8n
+lrwxrwxrwx 1 n8n118_test n8n118_test   15 Nov  3 22:07 /var/www/celikpanel/subscriptions/5/sites/3/apps/n8n/config -> /etc/celikpanel
+
+/var/www/celikpanel/subscriptions/5/sites/3/apps/n8n:
+total 24
+drwx------ 6 n8n118_test n8n118_test 4096 Nov  3 22:07 .
+drwx------ 3 n8n118_test n8n118_test 4096 Nov  3 21:57 ..
+drwx------ 3 n8n118_test n8n118_test 4096 Nov  3 22:03 app-2.46.4
+lrwxrwxrwx 1 n8n118_test n8n118_test   15 Nov  3 22:07 config -> /etc/celikpanel
+lrwxrwxrwx 1 n8n118_test n8n118_test   15 Nov  3 22:07 config.d -> /etc/celikpanel
+drwx------ 2 n8n118_test n8n118_test 4096 Nov  3 22:07 config.orig
+drwx------ 5 n8n118_test n8n118_test 4096 Nov  3 22:06 data
+drwx------ 2 n8n118_test n8n118_test 4096 Nov  3 21:57 dist
+## /proc/45779/environ: 38 vars; LAB_CANARY: 0; CELIKPANEL_ vars: 0
+   child 45799 LAB_CANARY: 0
+Nov 03 22:07:12 frankfurt agent[11022]: 2026/11/03 22:07:12 service app: the earlier environment file in /var/www/celikpanel/subscriptions/5/sites/3/apps/n8n could not be removed: exit status 1: rm: cannot remove '/var/www/celikpanel/subscriptions/5/sites/3/apps/n8n/config/app.env': Permission denie
+https n8n118.test/ http 200 verify=0 title: n8n.io - Workflow Automation bytes=1708
+executeCommand mentions: 0
+-- owner login with the new password
+n8n login http 200 user: owner@n8n118.test global:owner cookie: True
+== R5svc done 22:07:40

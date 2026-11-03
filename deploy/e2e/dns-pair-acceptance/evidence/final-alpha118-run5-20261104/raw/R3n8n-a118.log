@@ -1,0 +1,35 @@
+== R3n8n 21:57:37 subN=5
+node 24.22.2
+202 {"operation": {"id": "2e8be72a6bfcebf76f520fe19c0d94b3", "kind": "runtime_install", "package_name": "24.22.2", "phase": "queued", "request_id": "5480302cf64ff26745881276ab9266fb", "service_id": "node", "started_at": "2026-11-03T21:57:37.280327329Z", "status": "queued"}}
+  op 5480302cf64ff26745881276ab9266fb: succeeded completed "" (21:57:48)
+-- offer n8n
+200 [('n8n', True, True, None)]
+n8n118.test id=3
+200 {"expires_at": "2031-11-03T21:57:56Z", "status": "success"}
+-- install n8n 21:57:58
+202 {"operation": {"created_at": "2026-11-03 21:57:58", "id": "6df6ca7753a79bfc0154aab720f9b4a1", "install_id": 1, "kind": "install", "state": "running", "step": "prepare", "updated_at": "2026-11-03 21:57:58"}}
+  21:57:59 install=installing active=False serving=False unit=celiksvc-1 url=https://n8n118.test/ | op=running step=prepare class=None reason=None msg= | suspended=False cert=true
+  21:58:14 install=installing active=False serving=False unit=celiksvc-1 url=https://n8n118.test/ | op=running step=installing class=None reason=None msg= | suspended=False cert=true
+  22:06:35 install=running active=True serving=True unit=celiksvc-1 url=https://n8n118.test/ | op=succeeded step=done class=None reason=None msg= | suspended=False cert=true
+## 22:06:55 units
+  celiksvc-1.service loaded active running CelikPanel service app n8n for n8n118.test
+## celiksvc-1.service active=active enabled=enabled pid=45502
+## listeners 21000-29999
+127.0.0.1:21001 users:(("n8n
+127.0.0.1:21000 users:(("n8n
+## env (hardening, no secrets)
+## journal: native modules / errors
+## journal tail
+Nov 03 22:06:38 frankfurt node[45502]: Version: 2.46.4
+Nov 03 22:06:38 frankfurt node[45502]: Building workflow dependency index...
+Nov 03 22:06:38 frankfurt node[45502]: Scheduler started
+Nov 03 22:06:38 frankfurt node[45502]: Finished building workflow dependency index. Processed 0 draft workflows, 0 published workflows.
+Nov 03 22:06:38 frankfurt node[45502]: Editor is now accessible via:
+Nov 03 22:06:38 frankfurt node[45502]: https://n8n118.test
+https n8n118.test/ http 200 verify=0 title: n8n.io - Workflow Automation bytes=1708
+executeCommand mentions: 0
+https n8n118.test/types/nodes.json http 401 verify=0 title:  bytes=43
+executeCommand mentions: 0
+-- owner login
+n8n login http 200 user: owner@n8n118.test global:owner cookie: True
+== R3n8n run-check done 22:06:57

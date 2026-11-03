@@ -1,0 +1,17 @@
+== 22:10:34 docroot modes after restore
+/var/www/celikpanel/subscriptions/2/sites/1/public_html f118_test:www-data drwxr-s--- 2750
+/var/www/celikpanel/subscriptions/3/sites/2/public_html c118_test:www-data drwxr-x--- 750
+/var/www/celikpanel/subscriptions/4/sites/4/public_html wp118_test:www-data drwxr-s--- 2750
+/var/www/celikpanel/subscriptions/4/sites/5/public_html stage_wp118_test:www-data drwxr-x--- 750
+/var/www/celikpanel/subscriptions/4/sites/6/public_html wiki118_test:www-data drwxr-s--- 2750
+/var/www/celikpanel/subscriptions/5/sites/3/public_html n8n118_test:www-data drwxr-s--- 2750
+total 16
+drwxr-x--- 2 c118_test www-data 4096 22:07:53 .
+drwxr-x--- 3 c118_test www-data 4096 22:07:53 ..
+-rw-r----- 1 c118_test www-data 3242 22:07:53 index.php
+-rw-r--r-- 1 c118_test www-data   13 22:07:53 restore-probe.txt
+-- upload a new file through the file manager after the restore
+200 {"success": true}
+/var/www/celikpanel/subscriptions/3/sites/2/public_html c118_test:www-data drwxr-x--- 750
+-rw-r--r-- 1 c118_test www-data    3 22:10:34 after-restore.txt
+get c118.test/after-restore.txt http 200 http://192.0.3.190/after-restore.txt title:  | new

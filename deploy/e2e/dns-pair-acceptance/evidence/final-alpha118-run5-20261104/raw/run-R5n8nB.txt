@@ -1,0 +1,55 @@
+== R3n8n 22:02:20 subN=3
+node 24.22.2
+202 {"operation": {"id": "93465beb55b1278f407b2d3e2fe8d57a", "kind": "runtime_install", "package_name": "24.22.2", "phase": "queued", "request_id": "2f359ae686b4c6963ab590f0c56b8beb", "service_id": "node", "started_at": "2026-11-03T22:02:21.154845487Z", "status": "queued"}}
+  op 2f359ae686b4c6963ab590f0c56b8beb: succeeded completed "" (22:02:31)
+-- offer n8n
+200 [('n8n', True, True, None)]
+n8nb.test id=3
+200 {"expires_at": "2031-11-03T22:02:40Z", "status": "success"}
+-- install n8n 22:02:42
+202 {"operation": {"created_at": "2026-11-03 22:02:42", "id": "97bc7c0ae413f35abbeedb81fdd6ec34", "install_id": 1, "kind": "install", "state": "running", "step": "prepare", "updated_at": "2026-11-03 22:02:42"}}
+  22:02:42 install=installing active=False serving=False unit=celiksvc-1 url=https://n8nb.test/ | op=running step=prepare class=None reason=None msg= | suspended=False cert=true
+  22:02:57 install=installing active=False serving=False unit=celiksvc-1 url=https://n8nb.test/ | op=running step=installing class=None reason=None msg= | suspended=False cert=true
+  22:09:47 install=running active=True serving=True unit=celiksvc-1 url=https://n8nb.test/ | op=succeeded step=done class=None reason=None msg= | suspended=False cert=true
+## 22:10:08 units
+  celiksvc-1.service loaded active running CelikPanel service app n8n for n8nb.test
+## celiksvc-1.service active=active enabled=enabled pid=71865
+## listeners 21000-29999
+127.0.0.1:21001 users:(("n8n
+127.0.0.1:21000 users:(("n8n
+## env (hardening, no secrets)
+## journal: native modules / errors
+## journal tail
+Nov 03 22:09:54 boston node[71865]: Version: 2.46.4
+Nov 03 22:09:54 boston node[71865]: Building workflow dependency index...
+Nov 03 22:09:54 boston node[71865]: Finished building workflow dependency index. Processed 0 draft workflows, 0 published workflows.
+Nov 03 22:09:54 boston node[71865]: Scheduler started
+Nov 03 22:09:54 boston node[71865]: Editor is now accessible via:
+Nov 03 22:09:54 boston node[71865]: https://n8nb.test
+## 22:10:08 celiksvc-1.service active=active pid=71865
+## EnvironmentFiles: /etc/celikpanel-svcapps/celiksvc-1.env (ignore_errors=no)
+16:EnvironmentFile=/etc/celikpanel-svcapps/celiksvc-1.env
+/etc/celikpanel-svcapps root:root 700 directory
+/etc/celikpanel-svcapps/celiksvc-1.env root:root 600 regular file
+## working dir /var/www/celikpanel/subscriptions/3/sites/3/apps/n8n
+/var/www/celikpanel/subscriptions/3/sites/3/apps/n8n:
+total 24
+drwx------ 6 n8nb_test n8nb_test 4096 Nov  3 22:09 .
+drwx------ 3 n8nb_test n8nb_test 4096 Nov  3 22:02 ..
+drwx------ 3 n8nb_test n8nb_test 4096 Nov  3 22:06 app-2.46.4
+drwx------ 2 n8nb_test n8nb_test 4096 Nov  3 22:02 config
+drwx------ 5 n8nb_test n8nb_test 4096 Nov  3 22:09 data
+drwx------ 2 n8nb_test n8nb_test 4096 Nov  3 22:02 dist
+
+/var/www/celikpanel/subscriptions/3/sites/3/apps/n8n/config:
+total 8
+drwx------ 2 n8nb_test n8nb_test 4096 Nov  3 22:02 .
+## /proc/71865/environ: 38 vars; LAB_CANARY: 0; CELIKPANEL_ vars: 0
+   child 71950 LAB_CANARY: 0
+https n8nb.test/ http 200 verify=0 title: n8n.io - Workflow Automation bytes=1708
+executeCommand mentions: 0
+https n8nb.test/types/nodes.json http 401 verify=0 title:  bytes=43
+executeCommand mentions: 0
+-- owner login
+n8n login http 200 user: owner@n8nb.test global:owner cookie: True
+== R3n8n run-check done 22:10:10

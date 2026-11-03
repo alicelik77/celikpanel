@@ -1,0 +1,104 @@
+== item 3 backup/restore 22:07:52
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a118/lab/mkup.py:6: SyntaxWarning: "\P" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\P"? A raw string is also an option.
+  elif spec == "eicar": data = b"X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
+200 {"success": true}
+## 22:07:53 c118.test root /var/www/celikpanel/subscriptions/3/sites/2/public_html
+/var/www/celikpanel/subscriptions/3/sites/2/public_html c118_test:www-data 2750
+/var/www/celikpanel/subscriptions/3/sites/2/public_html/index.php c118_test:www-data 640
+/var/www/celikpanel/subscriptions/3/sites/2/public_html/restore-probe.txt c118_test:www-data 644
+restore-probe.txt content: before-backup
+200 {"backup": {"created_at": "2026-11-03T22:07:53.109752886Z", "name": "full-20261103T220753.115616579Z-a893d06e0678b5a4.cpbak", "origin": "manual", "restorable": true, "size": 2174, "type": "full"}, "success": true}
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a118/lab/mkup.py:6: SyntaxWarning: "\P" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\P"? A raw string is also an option.
+  elif spec == "eicar": data = b"X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
+200 {"success": true}
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a118/lab/mkup.py:6: SyntaxWarning: "\P" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\P"? A raw string is also an option.
+  elif spec == "eicar": data = b"X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
+200 {"success": true}
+-- restore full-20261103T220753.115616579Z-a893d06e0678b5a4.cpbak
+200 {"safety_backup": {"created_at": "2026-11-03T22:07:53.664590918Z", "name": "full-20261103T220753.673835685Z-ae81bbce721c74cb.cpbak", "origin": "pre_restore", "restorable": true, "size": 2174, "type": "full"}, "success": true}
+## 22:07:54 c118.test root /var/www/celikpanel/subscriptions/3/sites/2/public_html
+/var/www/celikpanel/subscriptions/3/sites/2/public_html c118_test:www-data 750
+/var/www/celikpanel/subscriptions/3/sites/2/public_html/index.php c118_test:www-data 640
+/var/www/celikpanel/subscriptions/3/sites/2/public_html/restore-probe.txt c118_test:www-data 644
+restore-probe.txt content: before-backup
+site http 200 body:  c118.test :root{--bg:#eef1f5;--card:#ffffff;--ink:#16213a;--muted:#5a6478;--soft:#f5f7fa;--rule:#dde2ea;
+== item 3 WordPress staging copy 22:07:55
+202 {"operation": {"id": "f47b2656fb878249ba3f33f218381f6e", "kind": "service_install", "package_name": "php8.4-fpm", "phase": "queued", "request_id": "ddcbb08b62835b474e47f512e16ac3a1", "service_id": "php-fpm", "started_at": "2026-11-03T22:07:54.837830916Z", "status": "queued"}}
+  op ddcbb08b62835b474e47f512e16ac3a1: succeeded completed "" (22:08:25)
+200 {"success": true}
+wp118.test id=4
+200 {"detail": "WordPress downloaded, configured and ready for setup; the previous CelikPanel placeholder was preserved in a private recovery path", "setup_url": "https://wp118.test/wp-admin/install.php", "success": true}
+wp finish http 200: <h1>Success! 
+stage.wp118.test id=5
+202 {"created_at": "", "items": [], "kind": "clone", "open": true, "operation_id": "8b04154b590acae09a256cc8834e4018", "origin": "manual", "status": "queued", "target_domain": "stage.wp118.test", "target_domain_id": 5, "updated_at": ""}
+  wp op 8b04154b590acae09a256cc8834e4018: applied None None copied to stage.wp118.test; the address was changed in 8 values (22:09:45)
+get stage.wp118.test/ http 200 http://192.0.3.190/ title: Lab WP |  	 	 L
+## 22:09:46 stage.wp118.test root /var/www/celikpanel/subscriptions/4/sites/5/public_html
+/var/www/celikpanel/subscriptions/4/sites/5/public_html stage_wp118_test:www-data 750
+/var/www/celikpanel/subscriptions/4/sites/5/public_html/index.php stage_wp118_test:www-data 640
+/var/www/celikpanel/subscriptions/4/sites/5/public_html/license.txt stage_wp118_test:www-data 640
+/var/www/celikpanel/subscriptions/4/sites/5/public_html/readme.html stage_wp118_test:www-data 640
+/var/www/celikpanel/subscriptions/4/sites/5/public_html/wp-activate.php stage_wp118_test:www-data 640
+/var/www/celikpanel/subscriptions/4/sites/5/public_html/wp-admin stage_wp118_test:www-data 750
+/var/www/celikpanel/subscriptions/4/sites/5/public_html/wp-blog-header.php stage_wp118_test:www-data 640
+/var/www/celikpanel/subscriptions/4/sites/5/public_html/wp-comments-post.php stage_wp118_test:www-data 640
+/var/www/celikpanel/subscriptions/4/sites/5/public_html/wp-config-sample.php stage_wp118_test:www-data 640
+/var/www/celikpanel/subscriptions/4/sites/5/public_html/wp-config.php stage_wp118_test:www-data 600
+/var/www/celikpanel/subscriptions/4/sites/5/public_html/wp-content stage_wp118_test:www-data 750
+/var/www/celikpanel/subscriptions/4/sites/5/public_html/wp-cron.php stage_wp118_test:www-data 640
+== item 4 MediaWiki 22:09:47
+200 {"admin_password": "[REDACTED]", "admin_url": "http://wiki118.test/index.php?title=Special:UserLogin", "admin_user": "Admin", "app": "mediawiki", "detail": "MediaWiki 1.43.11 is set up", "name": "MediaWiki", "operation_id": "321a1d51f2d4098a38a1b3fbd66993f6", "rules_kept": false, "site_url": "http://wiki118.test/", "success": true, "version": "1.43.11"}
+code wiki118.test/index.php?title=Main_Page http 200 ->  title: wiki118.test
+== item 5 mailbox 90% warning 22:10:40
+inactive
+## 22:10:42 2.4.1-4 (7d8c0e5759)
+NEXT                         LEFT LAST                          PASSED UNIT                           ACTIVATES
+Tue 2026-11-03 23:03:13 UTC 52min Tue 2026-11-03 22:02:10 UTC 8min ago celikpanel-quota-warning.timer celikpanel-quota-warning.service
+
+Nov 03 22:02:10 frankfurt dovecot[44746]: lda(q@c118.test)<44746><2IqLBOJZ6mrKrgAAkbi+9g>: msgid=unspecified: saved mail to INBOX
+Nov 03 22:02:10 frankfurt systemd[1]: celikpanel-quota-warning.service: Deactivated successfully.
+Nov 03 22:02:10 frankfurt systemd[1]: Finished celikpanel-quota-warning.service - Tell mailboxes that are 90% full (CelikPanel, Dovecot quota).
+Nov 03 22:10:39 frankfurt systemd[1]: Starting celikpanel-quota-warning.service - Tell mailboxes that are 90% full (CelikPanel, Dovecot quota)...
+Nov 03 22:10:39 frankfurt systemd[1]: celikpanel-quota-warning.service: Deactivated successfully.
+Nov 03 22:10:39 frankfurt systemd[1]: Finished celikpanel-quota-warning.service - Tell mailboxes that are 90% full (CelikPanel, Dovecot quota).
+total 12
+drwx------  3 vmail vmail 4096 Nov  3 22:02 .
+drwxr-xr-x 45 root  root  4096 Nov  3 22:10 ..
+drwx------  2 root  root  4096 Nov  3 22:02 q@c118.test
+Quota name Type    Value Limit                          %
+User quota STORAGE  1223  1024                        119
+User quota MESSAGE     3     -                          0
+## messages in q@c118.test (subjects)
+hdr.subject: lab quota probe 950000
+date.received: 2026-11-03 21:56:44
+hdr.subject: lab quota probe 300000
+date.received: 2026-11-03 21:56:57
+hdr.subject: Your mailbox is 119% full / Posta kutunuz %119 dolu
+date.received: 2026-11-03 22:02:10
+## postfix quota rejects
+Nov 03 21:57:36 frankfurt postfix/smtpd[41925]: NOQUEUE: reject: RCPT from unknown[192.0.3.1]: 552 5.2.2 <q@c118.test>: Recipient address rejected: Mailbox is full; from=<probe@beta1-lab.test> to=<q@c118.test> proto=ESMTP helo=<labnet.beta1-lab.test>
+## quota conf head
+# Managed by CelikPanel: Dovecot mailbox quotas. sha256=53c2648b5cc9acbc6004225a3e7358261373ce3e9b1c080acb0b832534fdd2bf
+# Mailbox size limits from /etc/dovecot/users, enforced by Dovecot itself.
+# Postfix asks the quota-status service below before it accepts mail, so mail
+check_policy_service { unix:private/celikpanel-quota-status, default_action=DUNNO }
+total 12
+drwx------  3 vmail vmail 4096 Nov  3 22:02 .
+drwxr-xr-x 45 root  root  4096 Nov  3 22:10 ..
+drwx------  2 root  root  4096 Nov  3 22:02 q@c118.test
+/var/lib/celikpanel-quota-warning/q@c118.test root:root 700 directory
+Nov 03 22:02:10 frankfurt dovecot[44746]: lda(q@c118.test)<44746><2IqLBOJZ6mrKrgAAkbi+9g>: msgid=unspecified: saved mail to INBOX
+Nov 03 22:02:10 frankfurt systemd[1]: celikpanel-quota-warning.service: Deactivated successfully.
+Nov 03 22:02:10 frankfurt systemd[1]: Finished celikpanel-quota-warning.service - Tell mailboxes that are 90% full (CelikPanel, Dovecot quota).
+Nov 03 22:10:39 frankfurt systemd[1]: Starting celikpanel-quota-warning.service - Tell mailboxes that are 90% full (CelikPanel, Dovecot quota)...
+Nov 03 22:10:39 frankfurt systemd[1]: celikpanel-quota-warning.service: Deactivated successfully.
+Nov 03 22:10:39 frankfurt systemd[1]: Finished celikpanel-quota-warning.service - Tell mailboxes that are 90% full (CelikPanel, Dovecot quota).
+-- second run (must not warn again)
+## messages in q@c118.test (subjects)
+hdr.subject: lab quota probe 950000
+date.received: 2026-11-03 21:56:44
+hdr.subject: lab quota probe 300000
+date.received: 2026-11-03 21:56:57
+hdr.subject: Your mailbox is 119% full / Posta kutunuz %119 dolu
+date.received: 2026-11-03 22:02:10
+== R5bk done 22:10:46

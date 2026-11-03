@@ -1,0 +1,141 @@
+== B update through the panel API 21:59:13
+check 200 {  "available": true,  "current_commit": "b22348ff86f806c7132cc067221ce74c6fd09cdc",  "current_version": "v0.1.0-alpha.117",  "supported": true,  "target": {   "arch": "amd64",   "archive_sha256": "467d6dde36dcb71083ba5fd6b59fac8f5295dd803048c4d0e57b5dc2c87b10ae",   "archive_size": "70582933",   "commit": "31acebb77391633090f6afffb72bb9697aa6d98d",   "os": "linux",   "published_at": "2026-11-03T21:48:27Z",   "sequence": "118",   "version": "v0.1.0-alpha.118"  } }
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-03T21:59:14Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "stat
+  10s 200 running None
+  20s 
+  51s 200 running verifying
+  61s 200 succeeded None
+== B after update 22:00:15 (61s)
+## 22:00:16 release
+total 28
+drwxr-xr-x 7 root root       4096 Nov  3 21:59 .
+drwxr-xr-x 3 root root       4096 Nov  3 21:50 ..
+drwx------ 3 root root       4096 Nov  3 21:59 .recovery-publications
+drwxr-xr-x 2 root root       4096 Nov  3 21:59 bin
+schema versions >=56: [(56,), (57,), (58,), (59,), (60,), (61,)]
+## services
+active active active active active active active active 
+## nginx -t
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+## traffic
+celikpanel-traffic.conf
+drwxr-xr-x 2 root celikpanel 4096 Nov  3 22:00 .
+drwxr-x--- 3 root celikpanel 4096 Nov  3 22:00 ..
+-rw-r----- 1 root celikpanel    0 Nov  3 22:00 1.log
+-rw-r----- 1 root celikpanel    0 Nov  3 22:00 2.log
+## dovecot 2.3.21 (47349e2482)
+# Managed by CelikPanel: Dovecot mailbox quotas. sha256=e8b8bfbac0276514de0fccc6c13d463c9563b72d7cb9978489234a986195d444
+# Mailbox size limits from /etc/dovecot/users, enforced by Dovecot itself.
+# Postfix asks the quota-status service below before it accepts mail, so mail
+# to a full mailbox is refused (552) instead of stored. CelikPanel rewrites
+# this file only while it is exactly as CelikPanel wrote it. Dovecot runs
+# from this file with or without CelikPanel.
+# Posta kutusu boyut sınırları; dolu kutuya gelen posta reddedilir.
+mail_plugins = $mail_plugins quota
+protocol imap {
+  mail_plugins = $mail_plugins imap_quota
+}
+plugin {
+  quota = count:User quota
+  quota_vsizes = yes
+  quota_rule = *:storage=1024M
+  quota_status_success = DUNNO
+  quota_status_nouser = DUNNO
+  quota_status_overquota = "552 5.2.2 Mailbox is full"
+  quota_warning = storage=90%% quota-warning warn 90 %u
+}
+service quota-warning {
+  executable = script /usr/local/libexec/celikpanel-quota-warning
+  user = vmail
+  unix_listener quota-warning {
+    user = vmail
+  }
+}
+service quota-status {
+  executable = quota-status -p postfix
+  unix_listener /var/spool/postfix/private/celikpanel-quota-status {
+doveconf rc=0 
+check_policy_service { unix:private/celikpanel-quota-status, default_action=DUNNO }
+Quota name Type    Value Limit                         %
+User quota STORAGE     0  1024                         0
+User quota MESSAGE     0     -                         0
+2026-11-03T21:55:17.235529+00:00 boston postfix/postfix-script[41697]: the Postfix mail system is running: PID: 39739
+## panics
+0
+Nov 03 21:52:34 boston mariadb-server.postinst[20141]: 2026-11-03 21:52:34 0 [Warning] You need to use --log-bin to make --expire-logs-days or --binlog-expire-logs-seconds work.
+site http 200 body:  cb117.test :root{--bg:#eef1f5;--card:#ffffff;--ink:#16213a;--muted:#5a6478;--soft:#f5f7fa;--rule:#dde2ea
+-- usage status
+200 {"disk": {"interval_hours": 6, "low_space": false, "measured": 2, "not_measured": 0, "unknown": 0}, "mail_quota": {"state": "not_checked_yet"}, "traffic": {"interval_minutes": 5, "last_attempt": "2026-11-03 22:00:01", "last_collected": "2026-11-03 22:00:01", "logrotate": "written", "measuring": 2, "unknown": {}}}
+-- traffic: fetch twice
+fetch  http 200 bytes 3244
+fetch  http 200 bytes 3244
+fetch  http 200 bytes 3244
+-- mail quota q@cb117.test: 950 KB then 300 KB
+MAIL (250, b'2.1.0 Ok')
+RCPT q@cb117.test (250, b'2.1.5 Ok')
+DATA ok 950079
+MAIL (250, b'2.1.0 Ok')
+RCPT q@cb117.test (552, b'5.2.2 <q@cb117.test>: Recipient address rejected: Mailbox is full')
+== B wait one usage round 22:00:56
+  usage round ran: 2026-11-03 22:00:01 -> 2026-11-03 22:05:01 (22:05:13)
+200 {"traffic_used_bytes": 13676, "traffic_limit_bytes": 0, "traffic_limited": false, "traffic_measure": {"last_collected": "2026-11-03 22:05:01", "state": "measuring"}, "disk_used_bytes": 28672, "disk_limit_bytes": 0, "disk": {"db_bytes": 0, "mail_bytes": 8192, "measured_at": "2026-11-03 22:00:01", "state": "measured", "uploads_applied": true, "uploads_blocked": false, "web_bytes": 20480}}
+## 22:05:35 release
+total 28
+drwxr-xr-x 7 root root       4096 Nov  3 21:59 .
+drwxr-xr-x 3 root root       4096 Nov  3 21:50 ..
+drwx------ 3 root root       4096 Nov  3 21:59 .recovery-publications
+drwxr-xr-x 2 root root       4096 Nov  3 21:59 bin
+schema versions >=56: [(56,), (57,), (58,), (59,), (60,), (61,)]
+## services
+active active active active active active active active 
+## nginx -t
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+## traffic
+celikpanel-traffic.conf
+drwxr-xr-x 2 root celikpanel 4096 Nov  3 22:02 .
+drwxr-x--- 3 root celikpanel 4096 Nov  3 22:00 ..
+-rw-r----- 1 root celikpanel    0 Nov  3 22:00 1.log
+-rw-r----- 1 root celikpanel   92 Nov  3 22:01 2.log
+-rw-r----- 1 root celikpanel    0 Nov  3 22:02 3.log
+## dovecot 2.3.21 (47349e2482)
+# Managed by CelikPanel: Dovecot mailbox quotas. sha256=e8b8bfbac0276514de0fccc6c13d463c9563b72d7cb9978489234a986195d444
+# Mailbox size limits from /etc/dovecot/users, enforced by Dovecot itself.
+# Postfix asks the quota-status service below before it accepts mail, so mail
+# to a full mailbox is refused (552) instead of stored. CelikPanel rewrites
+# this file only while it is exactly as CelikPanel wrote it. Dovecot runs
+# from this file with or without CelikPanel.
+# Posta kutusu boyut sınırları; dolu kutuya gelen posta reddedilir.
+mail_plugins = $mail_plugins quota
+protocol imap {
+  mail_plugins = $mail_plugins imap_quota
+}
+plugin {
+  quota = count:User quota
+  quota_vsizes = yes
+  quota_rule = *:storage=1024M
+  quota_status_success = DUNNO
+  quota_status_nouser = DUNNO
+  quota_status_overquota = "552 5.2.2 Mailbox is full"
+  quota_warning = storage=90%% quota-warning warn 90 %u
+}
+service quota-warning {
+  executable = script /usr/local/libexec/celikpanel-quota-warning
+  user = vmail
+  unix_listener quota-warning {
+    user = vmail
+  }
+}
+service quota-status {
+  executable = quota-status -p postfix
+  unix_listener /var/spool/postfix/private/celikpanel-quota-status {
+doveconf rc=0 
+check_policy_service { unix:private/celikpanel-quota-status, default_action=DUNNO }
+Quota name Type    Value Limit                         %
+User quota STORAGE   929  1024                        90
+User quota MESSAGE     1     -                         0
+2026-11-03T21:55:17.235529+00:00 boston postfix/postfix-script[41697]: the Postfix mail system is running: PID: 39739
+2026-11-03T22:00:56.493400+00:00 boston postfix/smtpd[68324]: NOQUEUE: reject: RCPT from _gateway[192.0.3.1]: 552 5.2.2 <q@cb117.test>: Recipient address rejected: Mailbox is full; from=<probe@beta1-lab.test> to=<q@cb117.test> proto=ESMTP helo=<labnet.beta1-lab.test>
+## panics
+0
+Nov 03 21:52:34 boston mariadb-server.postinst[20141]: 2026-11-03 21:52:34 0 [Warning] You need to use --log-bin to make --expire-logs-days or --binlog-expire-logs-seconds work.
+== B done 22:05:35
