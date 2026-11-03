@@ -3,6 +3,8 @@ package serviceapps
 import (
 	"strings"
 	"testing"
+
+	"github.com/alicelik/celikpanel/internal/sitesandbox"
 )
 
 func n8nParams(t *testing.T) UnitParams {
@@ -18,6 +20,7 @@ func n8nParams(t *testing.T) UnitParams {
 		Port: 21010, AuxPort: 21011,
 		Runtime:   RuntimeChoice{Available: true, Path: "/opt/celikpanel/runtimes/node/24.11.1/bin/node", NPMCLI: "/opt/celikpanel/runtimes/node/24.11.1/lib/node_modules/npm/bin/npm-cli.js", Version: "24.11.1", Source: "panel"},
 		Limits:    app.Defaults,
+		Caps:      sitesandbox.Caps{SystemdVersion: 252, BPFFramework: true, CgroupV2: true, NFTSocketCgroup: true},
 		DropInDir: "/etc/systemd/system/celiksvc-12.service.d",
 	}
 }
@@ -372,5 +375,85 @@ func TestRenderedUnitHasNoExpansionSurprises(t *testing.T) {
 		if strings.Contains(line, "%") && !(strings.HasPrefix(line, "CPUQuota=") && strings.Count(line, "%") == 1 && strings.HasSuffix(line, "%")) {
 			t.Errorf("unit line has a specifier: %q", line)
 		}
+	}
+}
+
+// TestUnitClosesTheAlpha118Gaps is the rendering difference of the retrofit:
+// the service-app unit now renders through sitesandbox and gains the hidden
+// sockets, the metadata block, the bind rules, the log limit and the SMTP
+// block; an alpha.118 unit (no marker) reads as generation 1.
+func TestUnitClosesTheAlpha118Gaps(t *testing.T) {
+	text, err := RenderUnit(n8nParams(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"# celikpanel-sandbox-generation: 2\n",
+		"StartLimitBurst=5\n",
+		"InaccessiblePaths=-/run/celikpanel -/run/php -/run/php-fpm ",
+		"-/var/spool/postfix\n",
+		"IPAddressDeny=169.254.0.0/16 fe80::/10",
+		"SocketBindAllow=tcp:21010\n", "SocketBindAllow=tcp:21011\n", "SocketBindDeny=any\n",
+		"LogRateLimitIntervalSec=30s\n", "LogRateLimitBurst=1000\n",
+		"SystemCallFilter=~@debug @mount @raw-io",
+		"PrivateIPC=yes\n",
+		"ExecStartPre=+/usr/sbin/nft -f /usr/lib/celikpanel-sandbox/egress.nft\n",
+		"ExecStartPre=+/usr/sbin/nft add element inet celikpanel_egress smtp_blocked '{ \"system.slice/celiksvc-12.service\" }'\n",
+		"ExecStopPost=-+/usr/sbin/nft delete element inet celikpanel_egress smtp_blocked '{ \"system.slice/celiksvc-12.service\" }'\n",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("unit lacks %q", want)
+		}
+	}
+	unitSection, _, _ := strings.Cut(text, "[Service]")
+	if !strings.Contains(unitSection, "StartLimitIntervalSec=300") {
+		t.Errorf("StartLimit must be in [Unit]")
+	}
+	// Node.js reads /proc/cpuinfo; the service apps keep the full /proc view
+	// and are not an uploaded program (no MemoryDenyWriteExecute for V8).
+	for _, refused := range []string{"ProcSubset=", "MemoryDenyWriteExecute=", "NoExecPaths=", "PrivatePIDs="} {
+		if strings.Contains(text, refused) {
+			t.Errorf("service-app unit has %q", refused)
+		}
+	}
+	if UnitGeneration(text) != sitesandbox.Generation {
+		t.Fatalf("generation = %d", UnitGeneration(text))
+	}
+	if UnitGeneration("# celikpanel-render-sha256: x\n[Unit]\n") != 1 {
+		t.Fatalf("an alpha.118 unit is generation 1")
+	}
+
+	// A host without nft cgroup matching gets no egress lines (they would
+	// stop every start); its reduced level names the gap instead.
+	p := n8nParams(t)
+	p.Caps.NFTSocketCgroup = false
+	text, err = RenderUnit(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(text, "nft") {
+		t.Fatalf("egress lines without nft support:\n%s", text)
+	}
+}
+
+func TestInstallUnitPropertiesBlockSMTPAndBindNothing(t *testing.T) {
+	app, _ := Lookup("n8n")
+	layout, _ := LayoutFor(3, 7, "n8n")
+	caps := sitesandbox.Caps{SystemdVersion: 255, BPFFramework: true, CgroupV2: true, NFTSocketCgroup: true}
+	props, err := InstallUnitProperties(12, layout, "flows_example_com", "flows_example_com", app.Defaults, app.Defaults.InstallMemoryMB, caps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(props, "\n")
+	for _, want := range []string{"SocketBindDeny=any", "MemoryMax=3072M", "system.slice/celiksvcinst-12.service", "ExecStopPost=-+"} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("install properties lack %q", want)
+		}
+	}
+	if strings.Contains(joined, "SocketBindAllow") || strings.Contains(joined, "StartLimit") {
+		t.Errorf("the install unit binds nothing and has no [Unit] lines:\n%s", joined)
+	}
+	if _, err := InstallUnitProperties(12, layout, "root", "root", app.Defaults, 3072, caps); err == nil {
+		t.Fatal("root accepted")
 	}
 }

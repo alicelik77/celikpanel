@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/alicelik/celikpanel/internal/hostingpath"
+	"github.com/alicelik/celikpanel/internal/sitesandbox"
 )
 
 // Layout is where one install lives: inside the site's own home, beside (not
@@ -79,6 +80,8 @@ type UnitParams struct {
 	AuxPort   int
 	Runtime   RuntimeChoice
 	Limits    Resources
+	// Caps is what this host enforces (the Agent's sandbox probe).
+	Caps sitesandbox.Caps
 	// DropInDir is the owner's place (<unit>.service.d); CelikPanel never
 	// writes or removes it.
 	DropInDir string
@@ -118,50 +121,51 @@ func (p UnitParams) validate() error {
 	return nil
 }
 
-// SandboxDirectives are the systemd settings every service-app process runs
-// with: the long-running unit and the transient install unit alike. The
-// process is the site's own user; it sees the hosting tree only through its
-// own application folder, cannot gain privileges, sees no other user's
-// processes, cannot load kernel modules or change the clock, and writes only
-// to its own folder (and its private /tmp).
-func SandboxDirectives(layout Layout, limits Resources, memoryMB int) []string {
-	return []string{
-		"NoNewPrivileges=yes",
-		"ProtectSystem=strict",
-		"ProtectHome=yes",
-		"PrivateTmp=yes",
-		"PrivateDevices=yes",
-		"ProtectKernelTunables=yes",
-		"ProtectKernelModules=yes",
-		"ProtectKernelLogs=yes",
-		"ProtectControlGroups=yes",
-		"ProtectClock=yes",
-		"ProtectHostname=yes",
-		"ProtectProc=invisible",
-		"RestrictSUIDSGID=yes",
-		"RestrictRealtime=yes",
-		"RestrictNamespaces=yes",
-		"LockPersonality=yes",
-		"RemoveIPC=yes",
-		"CapabilityBoundingSet=",
-		"AmbientCapabilities=",
-		"SystemCallArchitectures=native",
-		"SystemCallFilter=@system-service",
-		"SystemCallErrorNumber=EPERM",
-		"RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK",
-		"UMask=0077",
-		// Every other site and subscription disappears: an empty read-only
-		// hosting tree with only this application's folder bound into it.
-		"TemporaryFileSystem=" + hostingpath.HostingBase() + ":ro",
-		"BindPaths=" + layout.Root,
-		"ReadWritePaths=" + layout.Root,
-		"InaccessiblePaths=-/etc/celikpanel -/var/lib/celikpanel -/var/lib/celikpanel-agent -/var/lib/celikpanel-agent-private -/var/log/celikpanel -/root",
-		"MemoryMax=" + strconv.Itoa(memoryMB) + "M",
-		"MemorySwapMax=0",
-		"CPUQuota=" + strconv.Itoa(limits.CPUPercent) + "%",
-		"TasksMax=" + strconv.Itoa(limits.TasksMax),
-		"LimitNOFILE=8192",
+// SandboxProfile is a service app's sandbox profile (alpha.119: every
+// service-app process, the long-running unit and the transient install unit
+// alike, runs in the shared site sandbox, internal/sitesandbox). The process
+// is the site's own user; it sees the hosting tree only through its own
+// application folder, cannot gain privileges, sees no other user's
+// processes, cannot reach the Agent's or any PHP-FPM socket, the metadata
+// address or a mail port, binds only its own loopback ports and writes only
+// to its own folder (and its private /tmp). port is 0 for the install unit.
+func SandboxProfile(layout Layout, user, group string, limits Resources, memoryMB, port, aux int, caps sitesandbox.Caps) sitesandbox.Profile {
+	profile := sitesandbox.Profile{
+		Kind: sitesandbox.KindServiceApp, User: user, Group: group, AppDir: layout.Root, Port: port,
+		Limits: sitesandbox.Limits{MemoryMB: memoryMB, CPUPercent: limits.CPUPercent, Tasks: limits.TasksMax, NOFILE: 8192},
+		// The service apps were offered before levels existed: they run at
+		// what this host enforces, and the Panel shows the level.
+		Level: sitesandbox.Assess(caps).Level,
 	}
+	if port != 0 && aux != 0 {
+		profile.ExtraPorts = []int{aux}
+	}
+	return profile
+}
+
+// SandboxDirectives are the systemd settings of a service-app process on a
+// host with caps.
+func SandboxDirectives(profile sitesandbox.Profile, caps sitesandbox.Caps) ([]string, error) {
+	return sitesandbox.Directives(profile, caps)
+}
+
+// InstallUnitProperties are the --property values of the transient install
+// unit: the sandbox and, where the host can hold it, the SMTP block (npm and
+// pip run third-party install scripts).
+func InstallUnitProperties(installID int, layout Layout, user, group string, limits Resources, memoryMB int, caps sitesandbox.Caps) ([]string, error) {
+	directives, err := SandboxDirectives(SandboxProfile(layout, user, group, limits, memoryMB, 0, 0, caps), caps)
+	if err != nil {
+		return nil, err
+	}
+	if caps.EgressEnforced() {
+		pre, post, err := sitesandbox.EgressExecLines(InstallUnitName(installID) + ".service")
+		if err != nil {
+			return nil, err
+		}
+		directives = append(directives, pre...)
+		directives = append(directives, post...)
+	}
+	return directives, nil
 }
 
 // StartCommand is the ExecStart argument vector.
@@ -196,6 +200,17 @@ func RenderUnit(p UnitParams) (string, error) {
 		}
 	}
 	name := UnitName(p.InstallID)
+	sandbox, err := SandboxDirectives(SandboxProfile(p.Layout, p.User, p.Group, p.Limits, p.Limits.MemoryMB, p.Port, p.AuxPort, p.Caps), p.Caps)
+	if err != nil {
+		return "", err
+	}
+	if p.Caps.EgressEnforced() {
+		pre, post, err := sitesandbox.EgressExecLines(name + ".service")
+		if err != nil {
+			return "", err
+		}
+		sandbox = append(append(pre, sandbox...), post...)
+	}
 	pathEnv := path.Dir(p.Runtime.Path) + ":/usr/local/bin:/usr/bin:/bin"
 	if p.App.Runtime == RuntimePython {
 		pathEnv = path.Join(p.Layout.InstallDir(p.Version), "bin") + ":/usr/local/bin:/usr/bin:/bin"
@@ -205,9 +220,14 @@ func RenderUnit(p UnitParams) (string, error) {
 	fmt.Fprintf(&b, "# It runs without CelikPanel: systemctl status|stop|start %s ; journalctl -u %s\n", name, name)
 	fmt.Fprintf(&b, "# Your own settings go in %s/*.conf; CelikPanel never writes or removes them.\n", p.DropInDir)
 	fmt.Fprintf(&b, "# Kendi ayarlarınız %s/*.conf içine; CelikPanel onlara dokunmaz. Bu dosyadaki bir değişiklik korunur.\n", p.DropInDir)
+	fmt.Fprintf(&b, "%s%d\n", sitesandbox.GenerationMarker, sitesandbox.Generation)
 	b.WriteString("[Unit]\n")
 	fmt.Fprintf(&b, "Description=CelikPanel service app %s for %s\n", p.App.Name, p.Domain)
-	b.WriteString("After=network-online.target\nWants=network-online.target\n\n")
+	b.WriteString("After=network-online.target\nWants=network-online.target\n")
+	for _, line := range sitesandbox.UnitDirectives() {
+		b.WriteString(line + "\n")
+	}
+	b.WriteString("\n")
 	b.WriteString("[Service]\nType=simple\n")
 	fmt.Fprintf(&b, "User=%s\nGroup=%s\n", p.User, p.Group)
 	fmt.Fprintf(&b, "WorkingDirectory=%s\n", p.Layout.Root)
@@ -216,7 +236,7 @@ func RenderUnit(p UnitParams) (string, error) {
 	fmt.Fprintf(&b, "Environment=PATH=%s\n", pathEnv)
 	fmt.Fprintf(&b, "ExecStart=%s\n", strings.Join(command, " "))
 	b.WriteString("Restart=on-failure\nRestartSec=10\nTimeoutStopSec=30\n")
-	for _, directive := range SandboxDirectives(p.Layout, p.Limits, p.Limits.MemoryMB) {
+	for _, directive := range sandbox {
 		b.WriteString(directive)
 		b.WriteByte('\n')
 	}
@@ -229,6 +249,21 @@ func RenderUnit(p UnitParams) (string, error) {
 func BodyHash(body string) string {
 	sum := sha256.Sum256([]byte(body))
 	return hex.EncodeToString(sum[:])
+}
+
+// UnitGeneration is the sandbox generation a unit text declares: 1 for a
+// unit without the marker (alpha.118), the marker's number otherwise. It is
+// read, never trusted for safety: Prove checks what systemd loaded.
+func UnitGeneration(text string) int {
+	for _, line := range strings.Split(text, "\n") {
+		if rest, ok := strings.CutPrefix(line, sitesandbox.GenerationMarker); ok {
+			if n, err := strconv.Atoi(strings.TrimSpace(rest)); err == nil && n > 0 {
+				return n
+			}
+			return 1
+		}
+	}
+	return 1
 }
 
 // UnitTextState classifies a unit file CelikPanel finds: "ours" (header
