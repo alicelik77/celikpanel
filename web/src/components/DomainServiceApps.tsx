@@ -339,6 +339,7 @@ function InstalledApp({ view, install, base, after, onReinstall }: {
                 )}
             </div>
             {install.held && <Notice>{t('svcapps.heldNote')}</Notice>}
+            {install.needs_sandbox && <Notice tone="info">{t('svcapps.needsSandbox')}</Notice>}
             {install.update_available && !busy && (
                 <Notice tone="info">
                     <span className="flex flex-wrap items-center justify-between gap-2">

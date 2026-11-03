@@ -277,6 +277,7 @@ var auditActionNames = []string{
 	"service_app.offer",
 	"service_app.release",
 	"service_app.restart",
+	"service_app.sandbox_refresh",
 	"service_app.start",
 	"service_app.stop",
 	"service_app.uninstall",
