@@ -1,7 +1,11 @@
-// The user guide's data, as web/scripts/build-guide.mjs writes it into
-// gen/<role>.<locale>.ts (one lazy chunk per role and language). The content
-// is public and carries no server data; the role only chooses relevance.
-// Kılavuzun verisi; build-guide.mjs her rol ve dil için bir parça yazar.
+// The user guide's data, as web/scripts/build-guide.mjs writes it: one small
+// index per role and language (gen/<role>.<locale>.ts: the chapter list,
+// topics and search index) and one lazy chunk per chapter and language
+// (gen/chapters/<id>.<locale>.ts), shared by every role that reads it, so no
+// chapter is carried twice. The content is public and carries no server
+// data; the role only chooses relevance.
+// Kılavuzun verisi: rol ve dil başına küçük bir dizin, bölüm ve dil başına
+// bir parça; bölümler roller arasında paylaşılır.
 
 export type GuideRole = 'admin' | 'reseller' | 'customer';
 export type GuideLocale = 'en' | 'tr';
@@ -35,11 +39,18 @@ export interface GuideChapter {
 /** [chapter index, section anchor ('' for the chapter), heading, folded words]. */
 export type GuideSearchEntry = [number, string, string, string];
 
-export interface GuideChunk {
-    v: 1;
+/** A chapter as the index lists it; its blocks arrive with load(). */
+export interface GuideChapterEntry {
+    id: string;
+    title: string;
+    load: () => Promise<{ default: GuideChapter }>;
+}
+
+export interface GuideIndex {
+    v: 2;
     role: GuideRole;
     locale: GuideLocale;
-    chapters: GuideChapter[];
+    chapters: GuideChapterEntry[];
     /** topic -> [chapter id, anchor or ''] */
     topics: Record<string, [string, string]>;
     search: GuideSearchEntry[];

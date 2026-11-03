@@ -1,4 +1,4 @@
-import type { GuideChunk } from './types';
+import type { GuideBlock, GuideChapter, GuideIndex, GuideInline } from './types';
 
 // The guide's search, shared by the panel and by web/scripts/build-guide.mjs,
 // which writes the index with these same functions (Node strips the types).
@@ -40,6 +40,47 @@ export function wordsOf(text: string): string[] {
     return [...seen];
 }
 
+
+// The index carries only what finds a chapter quickly: titles, headings and
+// keywords. The words of the chapters' text come from the chapters
+// themselves, fetched when someone searches (GuidePage), so no text is kept
+// twice. chapterBodies gives a fetched chapter's words per section.
+// Dizin yalnız başlık, ara başlık ve anahtar sözcük taşır; metnin sözcükleri
+// arama yapılınca bölümlerin kendisinden gelir.
+
+function inlineText(value: GuideInline): string {
+    if (typeof value === 'string') return value;
+    return value.map((part) => {
+        if (typeof part === 'string') return part;
+        if (part[0] === 'c') return part[1];
+        if (part[0] === 'b') return inlineText(part[1]);
+        if (part[0] === 'g') return inlineText(part[3]);
+        return inlineText(part[2]);
+    }).join(' ');
+}
+
+function blockText(block: GuideBlock): string {
+    switch (block[0]) {
+        case 'h': return inlineText(block[3]);
+        case 'p': return inlineText(block[1]);
+        case 'ul': case 'ol': return block[1].map(inlineText).join(' ');
+        case 't': return [...block[1], ...block[2].flat()].map(inlineText).join(' ');
+        case 'pre': return block[1];
+        default: return block[1].map(blockText).join(' ');
+    }
+}
+
+/** A chapter's words per section: anchor ('' for the opening text) -> words. */
+export function chapterBodies(chapter: GuideChapter): Record<string, string> {
+    const texts: Record<string, string> = { '': '' };
+    let anchor = '';
+    for (const block of chapter.blocks) {
+        if (block[0] === 'h') anchor = block[2];
+        texts[anchor] = `${texts[anchor] ?? ''} ${blockText(block)}`;
+    }
+    return Object.fromEntries(Object.entries(texts).map(([key, text]) => [key, wordsOf(text).join(' ')]));
+}
+
 export interface GuideHit {
     chapter: number;
     anchor: string;
@@ -47,14 +88,17 @@ export interface GuideHit {
     score: number;
 }
 
-/** Sections whose heading or words start with every term of the query. */
-export function searchGuide(chunk: GuideChunk, query: string, limit = 20): GuideHit[] {
+/**
+ * Sections whose heading, keywords or (when given) text start with every term
+ * of the query. bodies: chapter id -> chapterBodies of that chapter.
+ */
+export function searchGuide(index: GuideIndex, query: string, bodies: Record<string, Record<string, string>> = {}, limit = 20): GuideHit[] {
     const terms = [...new Set(fold(query).split(' ').filter((term) => term.length >= 2))];
     if (terms.length === 0) return [];
     const hits: GuideHit[] = [];
-    chunk.search.forEach(([chapter, anchor, heading, words], order) => {
-        const head = ` ${fold(heading)} `;
-        const body = ` ${words} `;
+    index.search.forEach(([chapter, anchor, heading, words], order) => {
+        const head = ` ${fold(heading)} ${words} `;
+        const body = ` ${bodies[index.chapters[chapter]?.id ?? '']?.[anchor] ?? ''} `;
         let score = 0;
         for (const term of terms) {
             if (head.includes(` ${term}`)) score += 3;

@@ -39,7 +39,7 @@ function readDecision(username: string, impersonating: boolean): Promise<ReturnT
 
 export function HelpControl() {
     const { t } = useI18n();
-    const { user } = useAuth();
+    const { user, role } = useAuth();
     const location = useLocation();
     const [open, setOpen] = useState(false);
     const [drawer, setDrawer] = useState<Array<string | null> | null>(null);
@@ -64,11 +64,11 @@ export function HelpControl() {
     useEffect(() => {
         const onOpen = (event: Event) => {
             const topic = (event as CustomEvent<{ topic?: string }>).detail?.topic;
-            if (typeof topic === 'string') setDrawer([topic, publishedGuideTopic(), topicForPath(location.pathname)]);
+            if (typeof topic === 'string') setDrawer([topic, publishedGuideTopic(), topicForPath(location.pathname, role)]);
         };
         window.addEventListener(GUIDE_OPEN_EVENT, onOpen);
         return () => window.removeEventListener(GUIDE_OPEN_EVENT, onOpen);
-    }, [location.pathname]);
+    }, [location.pathname, role]);
 
     // The menu is a disclosure like the personal menu: Escape closes it and
     // gives the focus back, and it closes when the focus leaves it.
@@ -132,7 +132,7 @@ export function HelpControl() {
                         className={itemClass}
                         onClick={() => {
                             setOpen(false);
-                            setDrawer([publishedGuideTopic(), topicForPath(location.pathname)]);
+                            setDrawer([publishedGuideTopic(), topicForPath(location.pathname, role)]);
                         }}
                     >
                         <HelpCircle className="h-4 w-4" aria-hidden="true" />

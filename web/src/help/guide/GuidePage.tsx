@@ -1,12 +1,12 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { useI18n } from '../../i18n';
 import { useLocation, useNavigate, useParams } from '../../router';
 import { PageHeader } from '../../components/PageHeader';
 import { Checking, CouldNotCheck } from '../../components/ui';
 import { ChapterView, sectionId } from './ChapterView';
-import { readableGuide, useGuideChunk } from './load';
-import { searchGuide } from './search';
+import { loadGuideChapter, readableGuide, useGuideChapter, useGuideIndex } from './load';
+import { chapterBodies, searchGuide } from './search';
 import { ViewAsSwitch } from './ViewAsSwitch';
 import type { GuideRole } from './types';
 
@@ -23,15 +23,42 @@ export function GuidePage() {
     const navigate = useNavigate();
     const as = new URLSearchParams(location.search).get('as');
     const guideRole = readableGuide(role, as);
-    const { load, retry } = useGuideChunk(guideRole, locale);
+    const { loaded: indexLoad, retry } = useGuideIndex(guideRole, locale);
     const [query, setQuery] = useState('');
     const article = useRef<HTMLDivElement>(null);
 
-    const chunk = load.state === 'known' ? load.chunk : null;
+    const chunk = indexLoad.state === 'known' ? indexLoad.value : null;
     const chapter = chunk ? (chunk.chapters.find((item) => item.id === requested) ?? chunk.chapters[0]) : undefined;
     const missing = Boolean(chunk && requested && chapter?.id !== requested);
     const anchor = decodeURIComponent(location.hash.replace(/^#/, ''));
-    const hits = useMemo(() => (chunk && query.trim() !== '' ? searchGuide(chunk, query) : null), [chunk, query]);
+    // Titles, headings and keywords are searched at once; the text of every
+    // chapter is fetched on the first search (each chapter once) and joins
+    // the results when it arrives. A chapter that could not be fetched is
+    // searched by its title and headings only, and the list says so.
+    const searching = Boolean(chunk && query.trim() !== '');
+    const [bodies, setBodies] = useState<{ index: unknown; texts: Record<string, Record<string, string>>; state: 'loading' | 'known' | 'partial' } | null>(null);
+    // The index whose texts are fetched or on their way; cleared after a
+    // partial fetch, so the next search fetches the missing chapters again.
+    const fetched = useRef<unknown>(null);
+    useEffect(() => {
+        if (!searching || !chunk || fetched.current === chunk) return;
+        fetched.current = chunk;
+        setBodies({ index: chunk, texts: {}, state: 'loading' });
+        void Promise.allSettled(chunk.chapters.map((entry) => loadGuideChapter(locale, entry))).then((results) => {
+            if (fetched.current !== chunk) return;
+            const texts: Record<string, Record<string, string>> = {};
+            for (const result of results) if (result.status === 'fulfilled') texts[result.value.id] = chapterBodies(result.value);
+            const complete = results.every((result) => result.status === 'fulfilled');
+            if (!complete) fetched.current = null;
+            setBodies({ index: chunk, texts, state: complete ? 'known' : 'partial' });
+        });
+    }, [searching, chunk, locale, query]);
+    const texts = bodies?.index === chunk ? bodies.texts : undefined;
+    const hits = useMemo(() => (chunk && searching ? searchGuide(chunk, query, texts) : null), [chunk, query, searching, texts]);
+    // The index lists the chapters; the one on screen is fetched on its own.
+    const { loaded: chapterLoad, retry: retryChapter } = useGuideChapter(locale, chapter);
+    const blocks = chapterLoad.state === 'known' && chapterLoad.value.id === chapter?.id ? chapterLoad.value : undefined;
+    const known = useMemo(() => new Set(chunk?.chapters.map((item) => item.id) ?? []), [chunk]);
 
     const own = readableGuide(role, null);
     const address = (id: string, section = '', viewAs: GuideRole = guideRole) =>
@@ -40,13 +67,13 @@ export function GuidePage() {
     // A chapter or section that was asked for is scrolled into view and gets
     // the focus, so a keyboard or screen reader lands where the link pointed.
     useLayoutEffect(() => {
-        if (!chapter || !article.current) return;
-        const target = anchor ? article.current.querySelector<HTMLElement>(`#${CSS.escape(sectionId(chapter.id, anchor))}`) : null;
+        if (!blocks || !article.current) return;
+        const target = anchor ? article.current.querySelector<HTMLElement>(`#${CSS.escape(sectionId(blocks.id, anchor))}`) : null;
         if (target) {
             target.scrollIntoView({ block: 'start' });
             target.focus({ preventScroll: true });
         }
-    }, [chapter, anchor]);
+    }, [blocks, anchor]);
 
     const open = (id: string, section = '') => {
         setQuery('');
@@ -66,8 +93,8 @@ export function GuidePage() {
             />
             {role === 'admin' && guideRole !== 'admin' && <p className="mb-4 text-sm text-fg-muted">{t('guide.viewAsHint')}</p>}
 
-            {load.state === 'loading' && <Checking label={t('guide.loading')} />}
-            {load.state === 'unknown' && <CouldNotCheck text={t('guide.unknown')} onRetry={retry} />}
+            {indexLoad.state === 'loading' && <Checking label={t('guide.loading')} />}
+            {indexLoad.state === 'unknown' && <CouldNotCheck text={t('guide.unknown')} onRetry={retry} />}
             {chunk && chapter && (
                 <div className="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
                     <nav aria-label={t('guide.chapters')} className="min-w-0 lg:sticky lg:top-0 lg:self-start">
@@ -85,6 +112,8 @@ export function GuidePage() {
                                 <p className="mb-1.5 text-xs text-fg-muted">
                                     {hits.length === 0 ? t('guide.search.none', { query: query.trim() }) : t('guide.search.count', { count: hits.length })}
                                 </p>
+                                {bodies?.index === chunk && bodies.state === 'loading' && <Checking className="mb-1.5" label={t('guide.search.text')} />}
+                                {bodies?.index === chunk && bodies.state === 'partial' && <p className="mb-1.5 text-xs text-fg-muted">{t('guide.search.partial')}</p>}
                                 <ul className="space-y-0.5">
                                     {hits.map((hit) => {
                                         const target = chunk.chapters[hit.chapter];
@@ -128,7 +157,9 @@ export function GuidePage() {
                     <article ref={article} className="min-w-0 max-w-3xl rounded-xl border border-border bg-surface p-5 md:p-6" aria-labelledby="guide-chapter-title">
                         {missing && <p className="mb-4 rounded-lg border border-border-strong bg-surface-2 p-3 text-sm text-fg-muted">{t('guide.notInGuide')}</p>}
                         <h2 id="guide-chapter-title" className="text-xl font-bold tracking-tight text-fg">{chapter.title}</h2>
-                        <ChapterView chapter={chapter} titleLevel={2} onGuideLink={open} />
+                        {chapterLoad.state === 'unknown' && <CouldNotCheck className="mt-4" text={t('guide.unknown')} onRetry={retryChapter} />}
+                        {!blocks && chapterLoad.state !== 'unknown' && <Checking className="mt-4" label={t('guide.loading')} />}
+                        {blocks && <ChapterView chapter={blocks} known={known} titleLevel={2} onGuideLink={open} />}
                     </article>
                 </div>
             )}

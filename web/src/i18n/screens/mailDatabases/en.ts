@@ -14,7 +14,7 @@ export const enMailDatabasesScreens = {
     'mail.webmail.noAddressAdmin': 'Webmail is not available yet. If Roundcube is installed, give it an address on Components → Webmail (Roundcube) → Manage; if it is not, install it there first.',
     'mail.webmail.setAddress': 'Open the webmail settings',
     'dbtools.title': 'Database web tools',
-    'dbtools.hint': 'Manage databases in the browser. Opened through the panel, admin-only — never exposed to the network.',
+    'dbtools.hint': 'Manage databases in the browser. The tool opens through the panel for any signed-in account and is never exposed to the network directly; you sign in to it with the database’s own user name and password.',
     'dbtools.open': 'Open {name}',
     'dbtools.install': 'Install {name} from Components to enable it',
     'db.teamEngineUnavailable': 'No supported database engine is currently available for this domain.',

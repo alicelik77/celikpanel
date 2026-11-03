@@ -30,7 +30,7 @@ The **Files** tab lists the site's folders and files. With it you can:
 Pictures, archives and other binary files can be uploaded and downloaded, but not edited in the panel. For many files at once, FTP or SFTP is quicker.
 
 :::warning
-A deleted file is gone. Before you change or delete something important, download a copy, or take a backup under **Backups** on the domain's **Hosting** tab.
+A deleted file is gone. Before you change or delete something important, download a copy, or take a backup under **Advanced** → **Backups** on the domain's page.
 :::
 
 ## FTP and SFTP {#ftp-sftp}

@@ -13,12 +13,15 @@ export const sectionId = (chapter: string, anchor: string) => `guide-${chapter}-
 
 interface Props {
     chapter: GuideChapter;
+    /** The chapters of the reader's guide. A link to any other chapter is
+        kept as its words: chapters are shared by roles, links are not. */
+    known: ReadonlySet<string>;
     /** The level of the chapter's own title; sections are drawn below it. */
     titleLevel: 1 | 2;
     onGuideLink: (chapter: string, anchor: string) => void;
 }
 
-export function ChapterView({ chapter, titleLevel, onGuideLink }: Props) {
+export function ChapterView({ chapter, known, titleLevel, onGuideLink }: Props) {
     const { t } = useI18n();
 
     const inline = (value: GuideInline, key?: number): ReactNode => {
@@ -32,6 +35,7 @@ export function ChapterView({ chapter, titleLevel, onGuideLink }: Props) {
                     return <code key={index} className="rounded border border-border bg-surface-2 px-1 py-px font-mono text-[0.85em] text-fg [overflow-wrap:anywhere]">{part[1]}</code>;
                 case 'g': {
                     const [, target, anchor, label] = part;
+                    if (!known.has(target)) return <Fragment key={index}>{inline(label)}</Fragment>;
                     return (
                         <a
                             key={index}

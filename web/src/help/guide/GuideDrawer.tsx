@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { BookOpen, X } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
 import { useI18n } from '../../i18n';
@@ -6,7 +6,7 @@ import { Link } from '../../router';
 import { Checking, CouldNotCheck } from '../../components/ui';
 import { ChapterView, sectionId } from './ChapterView';
 import { useFocusTrap } from './focusTrap';
-import { readableGuide, useGuideChunk } from './load';
+import { readableGuide, useGuideChapter, useGuideIndex } from './load';
 import { placeFor } from './routes';
 import { ViewAsSwitch } from './ViewAsSwitch';
 import type { GuideRole } from './types';
@@ -27,7 +27,7 @@ export function GuideDrawer({ topics, onClose }: Props) {
     const { t, locale } = useI18n();
     const { role } = useAuth();
     const [viewAs, setViewAs] = useState<GuideRole>(() => readableGuide(role, null));
-    const { load, retry } = useGuideChunk(viewAs, locale);
+    const { loaded: indexLoad, retry } = useGuideIndex(viewAs, locale);
     const [place, setPlace] = useState<{ chapter: string; anchor: string; fallback: boolean } | null>(null);
     const panel = useRef<HTMLElement>(null);
     const body = useRef<HTMLDivElement>(null);
@@ -36,20 +36,25 @@ export function GuideDrawer({ topics, onClose }: Props) {
 
     // Where the drawer opens follows the topics and the guide being read.
     // topics is a fresh array from the caller each render; its words are the key.
-    const chunk = load.state === 'known' ? load.chunk : null;
+    const index = indexLoad.state === 'known' ? indexLoad.value : null;
     const topicKey = topics.join(' ');
     useEffect(() => {
-        if (chunk) setPlace(placeFor(chunk, topicKey.split(' ')));
-    }, [chunk, topicKey]);
+        if (index) setPlace(placeFor(index, topicKey.split(' ')));
+    }, [index, topicKey]);
+
+    // The index names the chapter; its blocks are fetched when it is opened.
+    const chapter = index && place ? index.chapters.find((item) => item.id === place.chapter) : undefined;
+    const { loaded: chapterLoad, retry: retryChapter } = useGuideChapter(locale, chapter);
+    const blocks = chapterLoad.state === 'known' && chapterLoad.value.id === chapter?.id ? chapterLoad.value : undefined;
+    const known = useMemo(() => new Set(index?.chapters.map((item) => item.id) ?? []), [index]);
 
     useLayoutEffect(() => {
-        if (!place || !body.current) return;
+        if (!place || !body.current || !blocks) return;
         const target = place.anchor ? body.current.querySelector<HTMLElement>(`#${CSS.escape(sectionId(place.chapter, place.anchor))}`) : null;
         if (target) target.scrollIntoView({ block: 'start' });
         else body.current.scrollTop = 0;
-    }, [place]);
+    }, [place, blocks]);
 
-    const chapter = chunk && place ? chunk.chapters.find((item) => item.id === place.chapter) : undefined;
     const full = chapter ? `/help/${chapter.id}${viewAs !== readableGuide(role, null) ? `?as=${viewAs}` : ''}${place?.anchor ? `#${place.anchor}` : ''}` : '/help';
 
     return (
@@ -87,12 +92,15 @@ export function GuideDrawer({ topics, onClose }: Props) {
                 )}
 
                 <div ref={body} className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-                    {load.state === 'loading' && <Checking label={t('guide.loading')} />}
-                    {load.state === 'unknown' && <CouldNotCheck text={t('guide.unknown')} onRetry={retry} />}
+                    {indexLoad.state === 'loading' && <Checking label={t('guide.loading')} />}
+                    {indexLoad.state === 'unknown' && <CouldNotCheck text={t('guide.unknown')} onRetry={retry} />}
                     {place?.fallback && <p className="mb-3 rounded-lg border border-border-strong bg-surface-2 p-3 text-sm text-fg-muted">{t('guide.noTopic')}</p>}
-                    {chapter && (
+                    {chapter && chapterLoad.state === 'unknown' && <CouldNotCheck text={t('guide.unknown')} onRetry={retryChapter} />}
+                    {chapter && !blocks && chapterLoad.state !== 'unknown' && <Checking label={t('guide.loading')} />}
+                    {blocks && (
                         <ChapterView
-                            chapter={chapter}
+                            chapter={blocks}
+                            known={known}
                             titleLevel={2}
                             onGuideLink={(target, anchor) => setPlace({ chapter: target, anchor, fallback: false })}
                         />

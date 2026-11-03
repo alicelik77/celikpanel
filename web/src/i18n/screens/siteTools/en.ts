@@ -46,7 +46,7 @@ export const enSiteToolsScreens = {
     'wpt.upToDate': 'Up to date',
     'wpt.notFromOrg': 'Not from wordpress.org — update it from WordPress’s own Dashboard',
     'wpt.notVerifiable': '{version} — update it from WordPress’s own Dashboard > Updates',
-    'wpt.themeNote': 'wordpress.org publishes no checksum for theme packages, so CelikPanel does not install them. Update themes from WordPress’s own Dashboard > Updates page; make a backup first from the Backups tab.',
+    'wpt.themeNote': 'wordpress.org publishes no checksum for theme packages, so CelikPanel does not install them. Update themes from WordPress’s own Dashboard > Updates page; make a backup first under Advanced → Backups on this domain’s page.',
     'wpt.updateSelected': 'Update selected plugins ({count})',
     'wpt.confirmPlugins': 'Update {count} plugin(s)? A backup is made first; if the site breaks, the previous plugin files are put back.',
 

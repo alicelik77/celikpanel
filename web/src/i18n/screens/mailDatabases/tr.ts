@@ -8,7 +8,7 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'mail.webmail.noAddressAdmin': 'Web postası henüz kullanılamıyor. Roundcube kuruluysa Bileşenler → Web postası (Roundcube) → Yönet sayfasında ona bir adres verin; kurulu değilse önce oradan kurun.',
     'mail.webmail.setAddress': 'Web postası ayarlarını aç',
     'dbtools.title': 'Veritabanı web araçları',
-    'dbtools.hint': 'Veritabanlarını tarayıcıda yönetin. Panel üzerinden, yalnız yönetici — ağa asla açılmaz.',
+    'dbtools.hint': 'Veritabanlarını tarayıcıda yönetin. Araç, oturum açmış her hesap için panel üzerinden açılır ve ağa doğrudan hiç açılmaz; araca veritabanının kendi kullanıcı adı ve parolasıyla girersiniz.',
     'dbtools.open': '{name} aç',
     'dbtools.install': 'Etkinleştirmek için Bileşenler sayfasından {name} kurun',
     'db.teamEngineUnavailable': 'Bu alan adı için şu anda desteklenen bir veritabanı motoru kullanılamıyor.',

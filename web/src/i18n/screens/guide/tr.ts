@@ -22,6 +22,8 @@ export const trGuideScreens: Record<GuideScreenKey, string> = {
     'guide.search.placeholder': 'Arayın, örneğin: SSH',
     'guide.search.none': 'Bu kılavuzda “{query}” ile eşleşen bir şey yok. Başka bir sözcük deneyin ya da bir bölüm seçin.',
     'guide.search.count': '{count} sonuç',
+    'guide.search.text': 'Bütün bölümlerin metninde aranıyor…',
+    'guide.search.partial': 'Bazı bölümlerin metni getirilemedi; bu bölümler yalnız başlıklarıyla bulunur. Yeniden denemek için yeniden arayın.',
     'guide.note': 'Not',
     'guide.warning': 'Uyarı',
     'guide.table': 'Tablo: {name}',

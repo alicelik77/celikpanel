@@ -4,8 +4,9 @@
 
 The guide is written once, as Markdown files, and built into two places:
 
-- the panel: six lazy chunks, one per role and language (`web/src/help/guide/gen/`),
-  opened from the `?` in the page header and from `/help`;
+- the panel (`web/src/help/guide/gen/`): a small index per role and language (chapter
+  list, topics, search) and one lazy chunk per chapter and language, shared by every
+  role that reads it, opened from the `?` in the page header and from `/help`;
 - celikpanel.net: one page per chapter (`download-portal/guide/`).
 
 `web/scripts/build-guide.mjs` reads the files, refuses anything outside this format,
@@ -50,8 +51,11 @@ chapter of the reader's guide and says that the page has no chapter yet:
 `dashboard`, `domains`, `domain.overview`, `domain.hosting`, `domain.dns`,
 `domain.mail`, `domain.databases`, `domain.apps`, `domain.ai`, `domain.files`,
 `domain.access`, `domain.advanced`, `dns.infrastructure`, `databases`, `users`,
-`store`, `vpn`, `components`, `server-setup`, `dns.servers`, `monitoring`,
+`team`, `store`, `vpn`, `components`, `server-setup`, `dns.servers`, `monitoring`,
 `security`, `maintenance`, `import`, `audit`, `settings`, `account`, `help`.
+
+`/users` is two pages: account management for the administrator and a reseller
+(`users`), and the customer's team members for a customer (`team`).
 
 A new topic name is added to `routes.ts` (for a page) or used in
 `<GuideLink topic="…">` (inside a page). The build fails when a `GuideLink` names a
@@ -102,6 +106,9 @@ The build compares the two languages and fails when they differ in: the set of f
 
 ## Size
 
-Each panel chunk holds every chapter of one role in one language, with its search
-index. The ceiling is 90 KiB raw and 28 KiB gzip per chunk
-(`web/scripts/check-bundle-budget.mjs`); `npm run build` reports the headroom.
+Each chapter is its own chunk per language, at most 12 KiB raw and 4 KiB gzip; a
+longer chapter is split into two. Each role's index holds the titles, headings,
+topics and keywords of its chapters, at most 40 KiB raw and 14 KiB gzip; search
+reads the chapters' text from the chapters themselves, so keywords matter for the
+first results (`web/scripts/check-bundle-budget.mjs`; `npm run build` reports the
+headroom).

@@ -155,7 +155,7 @@ test('broken links, doubled topics and unclaimed screen topics fail the build', 
     }
 });
 
-test('a chunk holds its role\'s chapters; a link to another role\'s chapter keeps only its words', () => {
+test('an index lists the chapters of its role; each chapter is one chunk per language, shared by every role', () => {
     const root = fixture({
         ...pair('01-start.md', chapter('start', { roles: '[admin, reseller, customer]' }, 'Read [the admin part](guide:admin-only) now.\n')),
         ...pair('02-admin-only.md', chapter('admin-only', { roles: '[admin]' }, 'Admin.\n')),
@@ -166,8 +166,15 @@ test('a chunk holds its role\'s chapters; a link to another role\'s chapter keep
         const customer = files.get('web/src/help/guide/gen/customer.en.ts');
         const admin = files.get('web/src/help/guide/gen/admin.en.ts');
         assert.doesNotMatch(customer, /admin-only/);
-        assert.match(customer, /"Read the admin part now\."/);
-        assert.match(admin, /\["g","admin-only","",/);
+        assert.match(customer, /\{ id: "start", title: "start", load: \(\) => import\('\.\/chapters\/start\.en'\) \}/);
+        assert.match(admin, /load: \(\) => import\('\.\/chapters\/admin-only\.en'\)/);
+        // No chapter text in an index: only titles, topics and search words.
+        assert.doesNotMatch(customer, /blocks/);
+        // One chunk per chapter and language; the link stays in it, and the
+        // panel draws it as words for a reader whose guide lacks the target.
+        const chapters = [...files.keys()].filter((path) => path.startsWith('web/src/help/guide/gen/chapters/')).sort();
+        assert.deepEqual(chapters, ['admin-only.en.ts', 'admin-only.tr.ts', 'start.en.ts', 'start.tr.ts'].map((name) => `web/src/help/guide/gen/chapters/${name}`));
+        assert.match(files.get('web/src/help/guide/gen/chapters/start.en.ts'), /\["g","admin-only","",/);
         // The portal has every chapter, so the link stays a link there.
         assert.match(files.get('download-portal/guide/en/start.html'), /<a href="admin-only\.html">the admin part<\/a>/);
     } finally {
@@ -181,6 +188,9 @@ test('the committed chunks and portal pages are exactly what docs/guide builds',
     assert.deepEqual(staleFiles(repoRoot, files), [], 'run `npm run guide` in web/ and commit the result');
     for (const role of ['admin', 'reseller', 'customer']) {
         for (const locale of ['en', 'tr']) assert.ok(files.has(`web/src/help/guide/gen/${role}.${locale}.ts`), `${role}.${locale}`);
+    }
+    for (const id of ['getting-started', 'reading-states', 'files-access']) {
+        for (const locale of ['en', 'tr']) assert.ok(files.has(`web/src/help/guide/gen/chapters/${id}.${locale}.ts`), `${id}.${locale}`);
     }
 });
 

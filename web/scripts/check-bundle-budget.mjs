@@ -65,7 +65,9 @@ const budgets = {
 // Ekran katalogu parçaları; her parçanın kendi tavanı, oluşturulduğunda en az
 // %25 payla.
 const kib = (raw, gzip) => ({ raw: raw * 1024, gzip: gzip * 1024 })
-const guideChunkBudget = kib(90, 28)
+const guideIndexBudget = kib(40, 14)
+const guideChapterBudget = kib(12, 4)
+const guideChaptersDir = fileURLToPath(new URL('../src/help/guide/gen/chapters/', import.meta.url))
 const screenPartBudgets = {
   setup: kib(80, 21),
   sites: kib(68, 19),
@@ -231,8 +233,8 @@ const screenPartBudgets = {
   serviceApps: kib(27, 8.5),
   // alpha.119: the user guide's screens - the "?" help menu, the guide
   // drawer, /help and the first-login tour (guide.). A new part, set with at
-  // least 25% headroom from its Turkish file: 3.82 / 1.58 KiB.
-  guide: kib(5, 2),
+  // least 25% headroom from its Turkish file: 4.04 / 1.65 KiB.
+  guide: kib(5.25, 2.1),
 }
 
 // Translation chunks, named by source. The shell halves are held to the
@@ -251,17 +253,21 @@ const namedChunkBudgets = {
   // route to 0.29 KiB of its limit (2026-10-09).
   // Yardım metinleri, yardım çekmecesi açıldığında getirilir.
   'src/help/serviceHelp.ts': budgets.async,
-  // The user guide's chapters (alpha.119), one lazy chunk per role and
-  // language, generated from docs/guide by scripts/build-guide.mjs with their
-  // search index. They are fetched when the guide is first opened. The
-  // ceiling is the guide plan's, not 25% over the first measurement: a chunk
-  // holds every chapter of one role (about twenty in all; with the three
-  // starter chapters the largest, customer/tr, is 24.87 / 8.10 KiB), so a
-  // chunk that outgrows it is split, not raised.
-  // Kılavuz bölümleri: her rol ve dil için bir parça; tavan yükseltilmez.
+  // The user guide (alpha.119), generated from docs/guide by
+  // scripts/build-guide.mjs. Each role and language has a small index (the
+  // chapter list, topics and search index), fetched when the guide is first
+  // opened; each chapter is its own chunk per language, shared by every role
+  // that reads it, fetched when it is opened. A chapter that outgrows its
+  // ceiling is split into two chapters; an index that outgrows it trims its
+  // search words. Neither ceiling is raised to make room.
+  // Kılavuz: rol ve dil başına dizin, bölüm ve dil başına parça; tavan
+  // yükseltilmez.
   ...Object.fromEntries(['admin', 'reseller', 'customer'].flatMap((role) => ['en', 'tr'].map((locale) => [
-    `src/help/guide/gen/${role}.${locale}.ts`, guideChunkBudget,
+    `src/help/guide/gen/${role}.${locale}.ts`, guideIndexBudget,
   ]))),
+  ...Object.fromEntries((await readdir(guideChaptersDir)).filter((name) => name.endsWith('.ts')).map((name) => [
+    `src/help/guide/gen/chapters/${name}`, guideChapterBudget,
+  ])),
 }
 
 const jsNames = (await readdir(assetsDir))

@@ -1,5 +1,5 @@
 import { matchRoute } from '../../router-core';
-import type { GuideChunk } from './types';
+import type { GuideIndex } from './types';
 
 // Which part of the guide a page opens. A page names its topic here by its
 // route; a page that shows several things (a domain's tabs) names the one on
@@ -11,6 +11,8 @@ import type { GuideChunk } from './types';
 export interface GuideRoute {
     pattern: string;
     topic: string;
+    /** The page is a different one for a customer (and a team member). */
+    customerTopic?: string;
 }
 
 // Longer, more specific patterns first: the first match wins.
@@ -20,7 +22,9 @@ export const guideRoutes: GuideRoute[] = [
     { pattern: '/domains/infrastructure/:zone', topic: 'dns.infrastructure' },
     { pattern: '/domains/:domainName', topic: 'domains' },
     { pattern: '/databases', topic: 'databases' },
-    { pattern: '/users', topic: 'users' },
+    // Account management for the administrator and a reseller; a customer's
+    // team members for a customer.
+    { pattern: '/users', topic: 'users', customerTopic: 'team' },
     { pattern: '/addons', topic: 'store' },
     { pattern: '/vpn', topic: 'vpn' },
     { pattern: '/services', topic: 'components' },
@@ -38,10 +42,12 @@ export const guideRoutes: GuideRoute[] = [
     { pattern: '/help/:chapter', topic: 'help' },
 ];
 
-/** The route's topic, or null for an address the guide does not know. */
-export function topicForPath(pathname: string): string | null {
+/** The route's topic for this role, or null for an address the guide does not know. */
+export function topicForPath(pathname: string, role?: string): string | null {
     const path = pathname.replace(/\/+$/, '') || '/';
-    return guideRoutes.find((route) => matchRoute(route.pattern, path) !== null)?.topic ?? null;
+    const route = guideRoutes.find((item) => matchRoute(item.pattern, path) !== null);
+    if (!route) return null;
+    return route.customerTopic && role !== 'admin' && role !== 'reseller' ? route.customerTopic : route.topic;
 }
 
 export interface GuidePlace {
@@ -53,13 +59,13 @@ export interface GuidePlace {
 
 /**
  * Where the guide opens for these topics, most specific first. A topic that
- * the chunk does not hold is skipped; with none, the first chapter.
+ * the index does not hold is skipped; with none, the first chapter.
  */
-export function placeFor(chunk: GuideChunk, topics: Array<string | null | undefined>): GuidePlace | null {
+export function placeFor(index: GuideIndex, topics: Array<string | null | undefined>): GuidePlace | null {
     for (const topic of topics) {
-        const found = topic ? chunk.topics[topic] : undefined;
+        const found = topic ? index.topics[topic] : undefined;
         if (found) return { chapter: found[0], anchor: found[1], fallback: false };
     }
-    const first = chunk.chapters[0];
+    const first = index.chapters[0];
     return first ? { chapter: first.id, anchor: '', fallback: true } : null;
 }

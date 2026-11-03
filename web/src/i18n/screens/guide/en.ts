@@ -29,6 +29,8 @@ export const enGuideScreens = {
     'guide.search.placeholder': 'Search, for example: SSH',
     'guide.search.none': 'Nothing in this guide matches “{query}”. Try another word, or choose a chapter.',
     'guide.search.count': '{count} results',
+    'guide.search.text': 'Searching the text of every chapter…',
+    'guide.search.partial': 'The text of some chapters could not be fetched, so they are found by their titles and headings only. Search again to retry.',
     'guide.note': 'Note',
     'guide.warning': 'Warning',
     'guide.table': 'Table: {name}',

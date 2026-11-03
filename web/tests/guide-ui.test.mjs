@@ -25,6 +25,12 @@ test('a route names its topic; an address the guide does not know names none', (
     assert.equal(routes.topicForPath('/help/files-access'), 'help');
     assert.equal(routes.topicForPath('/account/'), 'account');
     assert.equal(routes.topicForPath('/nowhere'), null);
+    // /users manages accounts for the administrator and a reseller, and a
+    // customer's team members for a customer.
+    assert.equal(routes.topicForPath('/users', 'admin'), 'users');
+    assert.equal(routes.topicForPath('/users', 'reseller'), 'users');
+    assert.equal(routes.topicForPath('/users', 'customer'), 'team');
+    assert.equal(routes.topicForPath('/domains', 'customer'), 'domains');
 });
 
 test('the page\'s own topic wins, then its route, then the first chapter', async () => {
@@ -94,12 +100,27 @@ test('search folds Turkish letters and matches the start of words', async () => 
     const tr = await chunk('customer', 'tr');
     const hits = search.searchGuide(tr, 'ssh anahtar');
     assert.ok(hits.length > 0);
-    assert.equal(tr.chapters[hits[0].chapter].id, 'files-access');
-    assert.equal(hits[0].anchor, 'keys');
+    // The chapter (its keywords name both) and its "SSH anahtarları" section.
+    assert.deepEqual(hits.slice(0, 2).map((hit) => [tr.chapters[hit.chapter].id, hit.anchor]), [['files-access', ''], ['files-access', 'keys']]);
     // "dosya" finds "dosyaları"; an empty query finds nothing.
     assert.ok(search.searchGuide(tr, 'dosya').length > 0);
     assert.deepEqual(search.searchGuide(tr, '  '), []);
     assert.deepEqual(search.searchGuide(tr, 'zzzqqq'), []);
+    // The index holds titles, headings and keywords; a word only the text has
+    // ("parmak izi", the certificate's fingerprint) is found once the
+    // chapters' text has arrived.
+    assert.deepEqual(search.searchGuide(tr, 'parmak'), []);
+    const bodies = {};
+    for (const entry of tr.chapters) {
+        const chapter = (await import(new URL(`../src/help/guide/gen/chapters/${entry.id}.tr.ts`, import.meta.url).href)).default;
+        bodies[chapter.id] = search.chapterBodies(chapter);
+    }
+    const text = search.searchGuide(tr, 'parmak', bodies);
+    assert.deepEqual(text.map((hit) => [tr.chapters[hit.chapter].id, hit.anchor]), [['files-access', 'ftp-sftp']]);
+    const page = read('../src/help/guide/GuidePage.tsx');
+    assert.match(page, /Promise\.allSettled\(chunk\.chapters\.map\(\(entry\) => loadGuideChapter\(locale, entry\)\)\)/);
+    assert.match(page, /if \(!complete\) fetched\.current = null;/);
+    assert.match(page, /t\('guide\.search\.partial'\)/);
 });
 
 test('the shell carries the guide lazily, after the screen copy, with tour anchors', () => {
@@ -167,6 +188,40 @@ test('the guide part is registered like every screen part and budgeted', () => {
     assert.match(read('../src/i18n/en.ts'), /\| GuideScreenKey;/);
     const budget = read('../scripts/check-bundle-budget.mjs');
     assert.match(budget, /\n {2}guide: kib\(/);
-    assert.match(budget, /`src\/help\/guide\/gen\/\$\{role\}\.\$\{locale\}\.ts`, guideChunkBudget/);
+    assert.match(budget, /`src\/help\/guide\/gen\/\$\{role\}\.\$\{locale\}\.ts`, guideIndexBudget/);
+    assert.match(budget, /`src\/help\/guide\/gen\/chapters\/\$\{name\}`, guideChapterBudget/);
+    assert.match(budget, /const guideChapterBudget = kib\(12, 4\)/);
     assert.match(read('../package.json'), /"build": "node scripts\/build-guide\.mjs --check && tsc/);
+});
+
+test('the guide arrives as an index, then the opened chapter; nothing is fetched twice', async () => {
+    const load = read('../src/help/guide/load.ts');
+    assert.match(load, /'customer\.tr': \(\) => import\('\.\/gen\/customer\.tr'\)/);
+    assert.match(load, /cached\(`chapter:\$\{locale\}:\$\{entry\.id\}`, \(\) => entry\.load\(\)/);
+    assert.match(load, /found\.catch\(\(\) => cache\.delete\(key\)\)/);
+    for (const view of ['GuideDrawer', 'GuidePage']) {
+        const source = read(`../src/help/guide/${view}.tsx`);
+        assert.match(source, /useGuideIndex\(/, view);
+        assert.match(source, /useGuideChapter\(locale, chapter\)/, view);
+        // A chapter that could not be fetched says so, with Retry.
+        assert.match(source, /chapterLoad\.state === 'unknown' && <CouldNotCheck[^>]*onRetry=\{retryChapter\}/, view);
+        assert.match(source, /<ChapterView\s+chapter=\{blocks\}\s+known=\{known\}/, view);
+    }
+    // A link to a chapter outside the reader's guide is drawn as its words.
+    assert.match(read('../src/help/guide/ChapterView.tsx'), /if \(!known\.has\(target\)\) return <Fragment key=\{index\}>\{inline\(label\)\}<\/Fragment>;/);
+    // Every chapter an index lists has its own chunk in that language.
+    for (const role of ['admin', 'reseller', 'customer']) {
+        for (const locale of ['en', 'tr']) {
+            const index = await chunk(role, locale);
+            assert.equal(index.v, 2);
+            for (const entry of index.chapters) {
+                const source = read(`../src/help/guide/gen/${role}.${locale}.ts`);
+                assert.ok(source.includes(`load: () => import('./chapters/${entry.id}.${locale}') }`), `${role}.${locale} ${entry.id}`);
+                const chapter = (await import(new URL(`../src/help/guide/gen/chapters/${entry.id}.${locale}.ts`, import.meta.url).href)).default;
+                assert.equal(chapter.id, entry.id);
+                assert.equal(chapter.title, entry.title);
+                assert.ok(chapter.blocks.length > 0);
+            }
+        }
+    }
 });

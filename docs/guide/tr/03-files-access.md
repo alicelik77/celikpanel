@@ -30,7 +30,7 @@ Web sitenizin dosyaları `public_html` klasöründedir. Bir ekip üyesi (kullan�
 Resimler, arşivler ve diğer ikili (binary) dosyalar yüklenip indirilebilir ama panelde düzenlenemez. Çok sayıda dosya için FTP ya da SFTP daha hızlıdır.
 
 :::warning
-Silinen dosya geri gelmez. Önemli bir şeyi değiştirmeden ya da silmeden önce bir kopyasını indirin ya da alan adının **Barındırma** sekmesinde **Yedekler** altından yedek alın.
+Silinen dosya geri gelmez. Önemli bir şeyi değiştirmeden ya da silmeden önce bir kopyasını indirin ya da alan adının sayfasında **Gelişmiş** → **Yedekler** bölümünden yedek alın.
 :::
 
 ## FTP ve SFTP {#ftp-sftp}
