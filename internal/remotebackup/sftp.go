@@ -51,8 +51,8 @@ type SFTPConfig struct {
 
 // SFTPHostKey is what a first connection learned, for a person to confirm.
 type SFTPHostKey struct {
-	Key         string // authorized_keys line without comment, e.g. "ssh-ed25519 AAAA..."
-	Fingerprint string // ssh.FingerprintSHA256 form "SHA256:..."
+	Key         string `json:"key"`         // authorized_keys line without comment, e.g. "ssh-ed25519 AAAA..."
+	Fingerprint string `json:"fingerprint"` // ssh.FingerprintSHA256 form "SHA256:..."
 }
 
 // HostKeyMismatch is the underlying error (inside an *Error of kind

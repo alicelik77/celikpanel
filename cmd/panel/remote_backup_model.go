@@ -483,7 +483,7 @@ func remoteDestinationViewFor(c *Caller, d remoteDestination, siteOwnerID int64)
 // maskKeyID shows the start and end of an access key ID only.
 func maskKeyID(id string) string {
 	if len(id) <= 8 {
-		return strings.Repeat("•", len(id))
+		return "…"
 	}
 	return id[:4] + "…" + id[len(id)-4:]
 }

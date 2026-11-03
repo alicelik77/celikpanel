@@ -471,7 +471,7 @@ func (p *Panel) handleTestRemoteDestination(w http.ResponseWriter, r *http.Reque
 		writeServerError(w, err)
 		return
 	} else if refusal != "" {
-		writeRemoteRightRefusal(w, refusal)
+		p.writeRemoteRightRefusal(w, r, refusal)
 		return
 	}
 	secret, hostKey, err := p.resolveDestinationBody(&body, stored)
@@ -495,7 +495,23 @@ func (p *Panel) handleTestRemoteDestination(w http.ResponseWriter, r *http.Reque
 	_ = json.NewEncoder(w).Encode(result)
 }
 
-func writeRemoteRightRefusal(w http.ResponseWriter, layer string) {
+// remoteGrantor names who can open a customer's right, in the form the
+// screens read: "your provider (<name>)" under a reseller, else the
+// administrator.
+func (p *Panel) remoteGrantor(ctx context.Context, c *Caller) string {
+	if c == nil || !c.hasAccountRole(roleCustomer) {
+		return "the administrator"
+	}
+	var name, role string
+	err := p.db.GetDB().QueryRowContext(ctx, `SELECT pu.username, pu.role FROM users u JOIN users pu ON pu.id = u.parent_id
+		WHERE u.id = ?`, c.ID).Scan(&name, &role)
+	if err == nil && role == roleReseller && name != "" {
+		return "your provider (" + name + ")"
+	}
+	return "the administrator"
+}
+
+func (p *Panel) writeRemoteRightRefusal(w http.ResponseWriter, r *http.Request, layer string) {
 	if layer == "role" {
 		writeClientError(w, http.StatusForbidden, "remote backup destinations are managed by the account's owner")
 		return
@@ -507,7 +523,7 @@ func writeRemoteRightRefusal(w http.ResponseWriter, layer string) {
 		why = "it is not in the reseller's rights"
 	case rightsLayerSubscription:
 		why = "it is not in this account's rights"
-		who = "your provider"
+		who = p.remoteGrantor(r.Context(), currentCaller(r))
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusForbidden)
@@ -547,7 +563,7 @@ func (p *Panel) handleSaveRemoteDestination(w http.ResponseWriter, r *http.Reque
 			return
 		}
 		if refusal != "" {
-			writeRemoteRightRefusal(w, refusal)
+			p.writeRemoteRightRefusal(w, r, refusal)
 			return
 		}
 		if err := remotebackup.ValidPassphrase(body.Passphrase); err != nil {
@@ -751,7 +767,7 @@ func (p *Panel) handleSaveRemotePolicy(w http.ResponseWriter, r *http.Request, s
 			return
 		}
 		if refusal != "" {
-			writeRemoteChoiceRefusal(w, refusal)
+			p.writeRemoteChoiceRefusal(w, r, refusal)
 			return
 		}
 		res, err = db.ExecContext(ctx, `
@@ -798,9 +814,9 @@ func writeRemotePolicyHeld(w http.ResponseWriter) {
 		"Nothing was changed: the administrator set this schedule; only the administrator can change or turn it off.", "")
 }
 
-func writeRemoteChoiceRefusal(w http.ResponseWriter, code string) {
+func (p *Panel) writeRemoteChoiceRefusal(w http.ResponseWriter, r *http.Request, code string) {
 	if code == errCodeRightNotGranted {
-		writeRemoteRightRefusal(w, rightsLayerSubscription)
+		p.writeRemoteRightRefusal(w, r, rightsLayerSubscription)
 		return
 	}
 	writeCodedError(w, http.StatusConflict, "DESTINATION_NOT_AVAILABLE",
@@ -857,7 +873,9 @@ func (p *Panel) listPolicies(ctx context.Context, where string, args ...any) ([]
 	return out, rows.Err()
 }
 
-func (p *Panel) policyViews(ctx context.Context, c *Caller, policies []remotePolicy) []remotePolicyView {
+// policyViews: inSite marks the site overview, where an every-site schedule
+// is shown but changed only on the settings page.
+func (p *Panel) policyViews(ctx context.Context, c *Caller, policies []remotePolicy, inSite bool) []remotePolicyView {
 	out := []remotePolicyView{}
 	for _, pol := range policies {
 		v := remotePolicyView{ID: pol.ID, DestinationID: pol.DestinationID, EverySite: pol.DomainID == 0,
@@ -866,7 +884,12 @@ func (p *Panel) policyViews(ctx context.Context, c *Caller, policies []remotePol
 		if d, err := p.loadRemoteDestination(ctx, pol.DestinationID); err == nil {
 			v.Destination = d.Name
 		}
-		v.Editable = c.hasAccountRole(roleAdmin) || (pol.DomainID != 0 && !p.userIsAdministrator(ctx, pol.CreatedBy))
+		switch {
+		case pol.DomainID == 0:
+			v.Editable = !inSite && c.hasAccountRole(roleAdmin)
+		default:
+			v.Editable = c.hasAccountRole(roleAdmin) || !p.userIsAdministrator(ctx, pol.CreatedBy)
+		}
 		out = append(out, v)
 	}
 	return out
@@ -878,7 +901,7 @@ func (p *Panel) handleListServerPolicies(w http.ResponseWriter, r *http.Request)
 		writeServerError(w, err)
 		return
 	}
-	_ = json.NewEncoder(w).Encode(map[string]any{"policies": p.policyViews(r.Context(), currentCaller(r), policies)})
+	_ = json.NewEncoder(w).Encode(map[string]any{"policies": p.policyViews(r.Context(), currentCaller(r), policies, false)})
 }
 
 // ----- per site -----
@@ -969,7 +992,7 @@ func (p *Panel) handleSiteRemoteOverview(w http.ResponseWriter, r *http.Request,
 		return
 	}
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"destinations": views, "policies": p.policyViews(ctx, c, policies), "operations": ops,
+		"destinations": views, "policies": p.policyViews(ctx, c, policies, true), "operations": ops,
 		"can_add_destination": refusal == "", "add_refused_by": refusal,
 	})
 }
@@ -998,7 +1021,7 @@ func (p *Panel) siteDestination(w http.ResponseWriter, r *http.Request, site rem
 		return d, false
 	}
 	if refusal != "" {
-		writeRemoteChoiceRefusal(w, refusal)
+		p.writeRemoteChoiceRefusal(w, r, refusal)
 		return d, false
 	}
 	return d, true
