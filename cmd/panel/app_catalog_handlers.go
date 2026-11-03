@@ -133,6 +133,9 @@ func (p *Panel) handleAppCatalog(w http.ResponseWriter, r *http.Request) {
 	admin := callerIsAdministrator(r)
 	out := []appCatalogEntryView{}
 	for _, app := range appcatalog.All() {
+		if !app.Offerable() {
+			continue
+		}
 		on := offered[app.ID] && !hidden[appcatalog.OfferingID(app.ID)]
 		if !admin && !on {
 			continue
@@ -292,7 +295,7 @@ func (p *Panel) handleDomainAppCatalog(w http.ResponseWriter, r *http.Request, d
 	}
 	apps := []domainAppView{}
 	for _, app := range appcatalog.All() {
-		if app.Kind != appcatalog.KindPHPSite {
+		if app.Kind != appcatalog.KindPHPSite || !app.Offerable() {
 			continue
 		}
 		offering := appcatalog.OfferingID(app.ID)

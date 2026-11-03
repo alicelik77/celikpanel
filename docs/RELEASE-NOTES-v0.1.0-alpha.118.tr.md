@@ -28,7 +28,7 @@ sahibi, panelin kendi güncelleme ekranından günceller.**
 ## Uygulama kataloğu
 
 - Uygulamalar sekmesi artık bir katalog: WordPress'e PrestaShop, Nextcloud,
-  Drupal, Joomla, MediaWiki ve phpBB eklendi. Her biri resmi sürümdür ve açılmadan
+  Drupal, Joomla ve MediaWiki eklendi. Her biri resmi sürümdür ve açılmadan
   önce CelikPanel'de sabitlenmiş parmak iziyle denetlenir.
 - Hangi uygulamaların sunulacağını yönetici seçer (Planlar ve haklar →
   Sunulanlar). WordPress sunulmaya devam eder; diğerleri kapalı başlar.
@@ -102,6 +102,8 @@ hak listesi olan hesaplar yalnız biri seçerse alır.
   yedekler yine çalışır. Karantinadaki dosyalar disk sayımından çıkar.
 - Disk dolunca SSH erişimi salt-okur yapılamaz.
 - Trafik yalnız web sitelerini sayar (posta ve FTP değil).
+- phpBB henüz sunulmuyor: indirme sunucusu panelin indirmelerini reddediyor;
+  CelikPanel bunu aşmak için kendini başka bir program gibi göstermez.
 - Matomo ve Moodle henüz sunulmuyor. PrestaShop'ta kolay adresler kapalı;
   Nextcloud arka plan işleri zamanlanmış görev olarak kurulmuyor.
 - WordPress tema güncellemeleri WordPress'in kendi ekranına bırakıldı

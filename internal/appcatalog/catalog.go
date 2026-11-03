@@ -77,6 +77,9 @@ type Archive struct {
 
 // App is one catalog entry.
 type App struct {
+	// Withheld, when set, says why this release does not offer the
+	// application: it is not listed, offered or installed; its code stays.
+	Withheld string
 	ID       string
 	Kind     string
 	Name     string
@@ -158,6 +161,9 @@ func All() []App {
 	}
 	return out
 }
+
+// Offerable reports whether this release offers the application at all.
+func (a App) Offerable() bool { return a.Withheld == "" }
 
 // Lookup finds one application.
 func Lookup(id string) (App, bool) {

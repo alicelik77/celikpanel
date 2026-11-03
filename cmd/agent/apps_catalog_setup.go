@@ -370,7 +370,10 @@ func phpbbInstallYAML(domain, email, dbHost, dbName, dbUser string, https bool) 
 		"    extensions: []\n"
 }
 
-var prestashopAdminDir = regexp.MustCompile(`^admin[a-z0-9]{12}$`)
+// PrestaShop 9's own installer already renames the folder (admin + about
+// 20 random letters and digits); ours adds 12 when it did not. admin-api and
+// other hyphenated folders never match.
+var prestashopAdminDir = regexp.MustCompile(`^admin[a-z0-9]{8,40}$`)
 
 // prestashopAdminRename gives the administration folder a name nobody can
 // guess (PrestaShop asks for it); a folder renamed by an earlier attempt is
@@ -392,12 +395,20 @@ func prestashopAdminPath(site catalogSite) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	var found []string
 	for _, entry := range entries {
 		if entry.IsDir() && prestashopAdminDir.MatchString(entry.Name()) {
-			return "/" + entry.Name() + "/", nil
+			found = append(found, entry.Name())
 		}
 	}
-	return "", errors.New("no renamed administration folder was found")
+	switch len(found) {
+	case 1:
+		return "/" + found[0] + "/", nil
+	case 0:
+		return "", errors.New("no renamed administration folder was found")
+	default:
+		return "", fmt.Errorf("more than one administration folder was found (%s); keep the one PrestaShop uses and remove the others", strings.Join(found, ", "))
+	}
 }
 
 // drupalInstallPHP installs Drupal through its own install API, the way

@@ -29,7 +29,7 @@ const settingOfferedApps = "admin_offered_apps"
 func catalogOfferingIDs() []string {
 	out := []string{}
 	for _, app := range appcatalog.All() {
-		if app.Kind == appcatalog.KindPHPSite {
+		if app.Kind == appcatalog.KindPHPSite && app.Offerable() {
 			out = append(out, appcatalog.OfferingID(app.ID))
 		}
 	}
@@ -56,7 +56,7 @@ func (p *Panel) loadOfferedApps(ctx context.Context) (map[string]bool, error) {
 		return offered, nil
 	}
 	for _, id := range list {
-		if _, ok := appcatalog.Lookup(id); ok {
+		if app, ok := appcatalog.Lookup(id); ok && app.Offerable() {
 			offered[id] = true
 		}
 	}
@@ -98,7 +98,7 @@ func (p *Panel) offeredAppList(ctx context.Context) []string {
 // new installations are refused. The audit names the application.
 func (p *Panel) changeOfferedApp(w http.ResponseWriter, r *http.Request, id string, offered bool) {
 	app, ok := appcatalog.Lookup(id)
-	if !ok {
+	if !ok || (offered && !app.Offerable()) {
 		writeClientError(w, http.StatusBadRequest, "unknown application")
 		return
 	}

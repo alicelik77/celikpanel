@@ -5,7 +5,10 @@
 
 The Applications tab of a PHP site installs a ready-made web application into the site's empty
 document root: WordPress (its own older installer, unchanged), PrestaShop, Nextcloud, Drupal,
-Joomla, MediaWiki and phpBB. Each is one release pinned in one reviewed file.
+Joomla and MediaWiki. Each is one release pinned in one reviewed file. phpBB is pinned too but
+withheld in alpha.118: download.phpbb.com answers 403 to the panel's own User-Agent, and the
+panel does not pretend to be another program. It is not listed, offered or installed until that
+changes (`Withheld` in internal/appcatalog/pinned.go).
 
 This document describes code that has component tests only. Every application's real install
 on Debian, Ubuntu and Arch is proven in the release's lab round; until then the installers are
