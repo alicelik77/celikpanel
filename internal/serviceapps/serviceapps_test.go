@@ -233,3 +233,109 @@ func TestInstallScriptPinsTheArtifact(t *testing.T) {
 		t.Fatalf("npm installs check registry signatures")
 	}
 }
+
+// systemdExpand follows systemd's replace_env() for one command argument:
+// "$$" is one "$", "${NAME}" is the variable (empty when unset), and a whole
+// argument "$NAME" is the variable too. Other "$" stay literal.
+func systemdExpand(arg string, env map[string]string) string {
+	if len(arg) > 1 && arg[0] == '$' && arg[1] != '$' && arg[1] != '{' {
+		name := arg[1:]
+		valid := true
+		for _, r := range name {
+			if !(r == '_' || r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' || r >= '0' && r <= '9') {
+				valid = false
+			}
+		}
+		if valid {
+			return env[name]
+		}
+	}
+	var b strings.Builder
+	for i := 0; i < len(arg); i++ {
+		if arg[i] != '$' || i+1 >= len(arg) {
+			b.WriteByte(arg[i])
+			continue
+		}
+		switch arg[i+1] {
+		case '$':
+			b.WriteByte('$')
+			i++
+		case '{':
+			end := strings.IndexByte(arg[i:], '}')
+			if end < 0 {
+				b.WriteByte(arg[i])
+				continue
+			}
+			b.WriteString(env[arg[i+2:i+end]])
+			i += end
+		default:
+			b.WriteByte(arg[i])
+		}
+	}
+	return b.String()
+}
+
+// TestInstallCommandSurvivesSystemdExpansion: the n8n install unit failed
+// with "sum: invalid option -- 'c'" because systemd expanded "${algo}sum"
+// (alpha.118 lab). After systemd's expansion every argument must be exactly
+// the shell text and arguments CelikPanel meant; no bare "$" and no "%".
+func TestInstallCommandSurvivesSystemdExpansion(t *testing.T) {
+	for _, id := range []string{"n8n", "open-webui"} {
+		app, _ := Lookup(id)
+		layout, err := LayoutFor(3, 7, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		runtime := RuntimeChoice{Available: true, Path: "/usr/bin/python3", NPMCLI: "/opt/npm/bin/npm-cli.js"}
+		args, err := InstallArgs(app, layout, app.Version, runtime)
+		if err != nil {
+			t.Fatal(err)
+		}
+		command, err := InstallCommand(app, args)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := append([]string{"/bin/sh", "-c", InstallScript(app), "sh"}, args...)
+		if len(command) != len(want) {
+			t.Fatalf("%s: %d arguments, want %d", id, len(command), len(want))
+		}
+		env := map[string]string{"algo": "", "root": "/wrong", "HOME": "/wrong"}
+		for i := range command {
+			if strings.ContainsRune(command[i], '%') {
+				t.Errorf("%s argument %d has a specifier character", id, i)
+			}
+			if strings.Contains(strings.ReplaceAll(command[i], "$$", ""), "$") {
+				t.Errorf("%s argument %d has a bare $: %q", id, i, command[i])
+			}
+			if got := systemdExpand(command[i], env); got != want[i] {
+				t.Errorf("%s argument %d after systemd expansion:\n%s\nwant\n%s", id, i, got, want[i])
+			}
+		}
+		if !strings.Contains(InstallScript(app), `"${algo}sum" -c --status -`) {
+			t.Fatalf("%s: the checksum step is missing", id)
+		}
+	}
+	if _, err := SystemdExecArg("50%"); err == nil {
+		t.Fatal("a specifier character must be refused")
+	}
+}
+
+// TestRenderedUnitHasNoExpansionSurprises: the long-running unit's text has
+// no "$" at all and "%" only as CPUQuota's own percent sign.
+func TestRenderedUnitHasNoExpansionSurprises(t *testing.T) {
+	text, err := RenderUnit(n8nParams(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range strings.Split(text, "\n") {
+		if strings.HasPrefix(line, "#") {
+			continue
+		}
+		if strings.Contains(line, "$") {
+			t.Errorf("unit line has a $: %q", line)
+		}
+		if strings.Contains(line, "%") && !(strings.HasPrefix(line, "CPUQuota=") && strings.Count(line, "%") == 1 && strings.HasSuffix(line, "%")) {
+			t.Errorf("unit line has a specifier: %q", line)
+		}
+	}
+}

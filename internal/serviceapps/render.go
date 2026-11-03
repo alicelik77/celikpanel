@@ -485,7 +485,7 @@ umask 077
 root=$1; file=$2; algo=$3; digest=$4; target=$5; runtime=$6
 cd "$root"
 mkdir -p data config .cache
-printf '%s  %s\n' "$digest" "$root/dist/$file" | "${algo}sum" -c --status -
+echo "$digest  $root/dist/$file" | "${algo}sum" -c --status -
 `
 	switch app.Runtime {
 	case RuntimeNode:
@@ -510,6 +510,39 @@ echo "CelikPanel: installed $file"
 `
 	}
 	return ""
+}
+
+// SystemdExecArg escapes one argument of a systemd command line (ExecStart=
+// or systemd-run's command): systemd replaces "${NAME}" (and a lone "$NAME"
+// word) with environment values before the program runs, so every "$" the
+// program itself must see is written "$$". A "%" is a unit-file specifier but
+// is passed literally to a transient unit, so no escape is right for both:
+// SystemdExecArg refuses one and the install text is written without any.
+func SystemdExecArg(arg string) (string, error) {
+	if strings.ContainsRune(arg, '%') {
+		return "", errors.New("a systemd command argument contains a specifier character (%)")
+	}
+	return strings.ReplaceAll(arg, "$", "$$"), nil
+}
+
+// InstallCommand is the command vector (after systemd-run's "--") of the
+// transient install unit: the shell, InstallScript and its positional
+// arguments, each escaped for systemd. Without the escape systemd expanded
+// "${algo}" to nothing and the checksum step ran "sum -c" (alpha.118 lab).
+func InstallCommand(app App, args []string) ([]string, error) {
+	script := InstallScript(app)
+	if script == "" {
+		return nil, errors.New("the application has no install script")
+	}
+	out := append([]string{"/bin/sh", "-c", script, "sh"}, args...)
+	for i, arg := range out {
+		escaped, err := SystemdExecArg(arg)
+		if err != nil {
+			return nil, err
+		}
+		out[i] = escaped
+	}
+	return out, nil
 }
 
 // InstallArgs are the positional arguments of InstallScript.
