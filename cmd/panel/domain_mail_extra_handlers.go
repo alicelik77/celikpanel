@@ -324,6 +324,8 @@ func (p *Panel) handleMailConfigure(w http.ResponseWriter, r *http.Request) {
 		writeClientError(w, http.StatusConflict, resp.Error)
 		return
 	}
+	// Mailbox limits are enforced as soon as mail is configured.
+	p.requestMailQuotaReconcile()
 	// Receiving without sending is half a mail server: wire submission too.
 	// Göndermesiz almak yarım posta sunucusudur: gönderimi de bağla.
 	var sub transport.ConfigureMailSubmissionResponse

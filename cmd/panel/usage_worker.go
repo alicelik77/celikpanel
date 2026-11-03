@@ -33,6 +33,7 @@ type usageWorkerState struct {
 	stateMu      sync.Mutex
 	low          bool
 	lastQuota    time.Time
+	quotaWanted  bool
 	quotaResult  transport.MailQuotaReconcileResponse
 	quotaError   string
 	quotaChecked time.Time
@@ -65,6 +66,41 @@ func (p *Panel) kickUsageWorker() {
 	case p.usageWorker.kick <- struct{}{}:
 	default:
 	}
+}
+
+// requestMailQuotaReconcile asks for a mailbox quota check in the worker's
+// next round, which starts now: mail was just configured, or a mailbox was
+// created or its limit changed (alpha.118 lab, D2: a fresh install's first
+// check ran before mail existed and the next one came an hour later, so a
+// 1 MB mailbox took 1.25 MB). Requests coalesce into one check, which the
+// Agent applies idempotently; nothing that only reads a screen calls this.
+//
+// Posta yapılandırılınca ya da kutu eklenince/sınırı değişince kota denetimi
+// hemen istenir; istekler tek denetimde birleşir.
+func (p *Panel) requestMailQuotaReconcile() {
+	s := &p.usageWorker
+	s.stateMu.Lock()
+	s.quotaWanted = true
+	s.stateMu.Unlock()
+	p.kickUsageWorker()
+}
+
+// mailQuotaDue decides whether this round checks the mailbox quotas: when
+// asked, hourly, and every round while the last answer was "no mail yet",
+// unknown or an unreachable Agent, so a server whose mail arrives later is
+// enforced within one round, not an hour.
+func mailQuotaDue(wanted bool, last time.Time, result transport.MailQuotaReconcileResponse, callError string, now time.Time) bool {
+	if wanted || last.IsZero() || now.Sub(last) >= mailQuotaInterval {
+		return true
+	}
+	if callError != "" {
+		return true
+	}
+	switch result.State {
+	case transport.MailQuotaNoMail, transport.MailQuotaUnknown:
+		return true
+	}
+	return false
 }
 
 // reconcileMailQuota asks the Agent to keep Dovecot's quota enforced.
@@ -113,9 +149,10 @@ func (p *Panel) runUsageRound(ctx context.Context) {
 	}
 	s := &p.usageWorker
 	s.stateMu.Lock()
-	due := s.lastQuota.IsZero() || usageNow().Sub(s.lastQuota) >= mailQuotaInterval
+	due := mailQuotaDue(s.quotaWanted, s.lastQuota, s.quotaResult, s.quotaError, usageNow())
 	if due {
 		s.lastQuota = usageNow()
+		s.quotaWanted = false
 	}
 	s.stateMu.Unlock()
 	if due {

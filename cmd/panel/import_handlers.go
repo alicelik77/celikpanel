@@ -517,6 +517,7 @@ func (p *Panel) handleImportApply(w http.ResponseWriter, r *http.Request) {
 			}
 			p.mailMutationMu.Unlock()
 			imported++
+			p.requestMailQuotaReconcile()
 		}
 		mailDetail := fmt.Sprintf("%d accounts imported with original passwords (mailbox CONTENTS are not migrated in v1)", imported)
 		if imported > 0 {
