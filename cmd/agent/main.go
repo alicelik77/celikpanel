@@ -712,6 +712,8 @@ func main() {
 	}
 
 	go runMailHostCertificateRenewalWorker()
+	// alpha.118 (D-044): read the per-site traffic logs every minute.
+	go runTrafficWorker()
 
 	// Initialize Systemd Manager
 	sysMgr := systemd.NewManager()

@@ -65,6 +65,8 @@ export interface Limits {
     max_databases: number;
     max_email_accounts: number;
     disk_quota_mb: number;
+    /** Monthly website traffic in MB (alpha.118, D-044); 0 is unlimited. */
+    traffic_quota_mb: number;
 }
 
 export interface PoolNumbers extends Limits {
@@ -77,6 +79,8 @@ export interface PoolUsage {
     databases: number;
     mailboxes: number;
     disk_used_bytes: number;
+    /** The tree's website traffic this month (alpha.118). */
+    traffic_month_bytes: number;
 }
 
 export interface SubscriptionRights extends RightsView {
@@ -187,6 +191,7 @@ function decodeLimits(raw: unknown): Limits {
         max_databases: num(raw.max_databases),
         max_email_accounts: num(raw.max_email_accounts),
         disk_quota_mb: num(raw.disk_quota_mb),
+        traffic_quota_mb: num(raw.traffic_quota_mb),
     };
 }
 
@@ -217,6 +222,7 @@ export function decodePoolUsage(raw: unknown): PoolUsage {
         databases: num(raw.databases),
         mailboxes: num(raw.mailboxes),
         disk_used_bytes: num(raw.disk_used_bytes),
+        traffic_month_bytes: num(raw.traffic_month_bytes),
     };
 }
 
@@ -466,6 +472,8 @@ export function quantity(text: string): number {
 
 export const MIGRATION_NOTICE = 'unlimited_after_migration';
 export const POOL_NOTICES = ['reseller_pool_80', 'reseller_pool_100'];
+/** alpha.118 (D-044): traffic is measured now; every traffic limit started as unlimited. */
+export const TRAFFIC_MEASURED_NOTICE = 'traffic_measured';
 
 // ---- sending a change ---------------------------------------------------------
 
@@ -524,7 +532,7 @@ export type Numbers = PoolNumbers;
 
 type Say = T;
 
-export const NO_LIMITS: Numbers = { max_customers: 0, max_domains: 0, max_databases: 0, max_email_accounts: 0, disk_quota_mb: 0 };
+export const NO_LIMITS: Numbers = { max_customers: 0, max_domains: 0, max_databases: 0, max_email_accounts: 0, disk_quota_mb: 0, traffic_quota_mb: 0 };
 
 /** A limit in words: the number, or "Unlimited". */
 export function limitWords(n: number, t: Say, unit = ''): string {
@@ -539,6 +547,7 @@ const QTY_KINDS: Record<string, TranslationKey> = {
     mailboxes: 'rights.qty.mailboxes',
     'email accounts': 'rights.qty.mailboxes',
     disk: 'rights.qty.disk',
+    traffic: 'rights.qty.traffic',
     customers: 'rights.qty.customers',
 };
 
@@ -548,7 +557,7 @@ const QTY_KINDS: Record<string, TranslationKey> = {
  * other form is shown as the server wrote it.
  */
 export function overLimitText(line: string, t: Say): string {
-    const match = /^(?:(.*?) - |reseller #(\d+) )?(domains|databases|mailboxes|disk|customers): (\d+)( MB)? in use, (?:limit|pool) (\d+)( MB)?$/.exec(line.trim());
+    const match = /^(?:(.*?) - |reseller #(\d+) )?(domains|databases|mailboxes|disk|traffic|customers): (\d+)( MB)? in use, (?:limit|pool) (\d+)( MB)?$/.exec(line.trim());
     if (!match) return line;
     const [, account, reseller, kind, used, usedUnit, limit] = match;
     const what = t(QTY_KINDS[kind]);
@@ -599,7 +608,7 @@ export interface EditedPlan {
 export const NEW_PLAN: EditedPlan = {
     id: 0,
     name: '',
-    numbers: { max_customers: 0, max_domains: 5, max_databases: 10, max_email_accounts: 50, disk_quota_mb: 10240 },
+    numbers: { max_customers: 0, max_domains: 5, max_databases: 10, max_email_accounts: 50, disk_quota_mb: 10240, traffic_quota_mb: 0 },
     bandwidth: 0,
 };
 
@@ -607,7 +616,7 @@ export function editedFromCustomerPlan(plan: ServicePlan): EditedPlan {
     return {
         id: plan.id,
         name: plan.name,
-        numbers: { max_customers: 0, max_domains: plan.max_domains, max_databases: plan.max_databases, max_email_accounts: plan.max_email_accounts, disk_quota_mb: plan.disk_quota_mb },
+        numbers: { max_customers: 0, max_domains: plan.max_domains, max_databases: plan.max_databases, max_email_accounts: plan.max_email_accounts, disk_quota_mb: plan.disk_quota_mb, traffic_quota_mb: plan.bandwidth_quota_mb ?? 0 },
         bandwidth: plan.bandwidth_quota_mb ?? 0,
         rights: plan.rights,
     };
@@ -617,7 +626,7 @@ export function editedFromResellerPlan(plan: ResellerPlan): EditedPlan {
     return {
         id: plan.id,
         name: plan.name,
-        numbers: { max_customers: plan.max_customers, max_domains: plan.max_domains, max_databases: plan.max_databases, max_email_accounts: plan.max_email_accounts, disk_quota_mb: plan.disk_quota_mb },
+        numbers: { max_customers: plan.max_customers, max_domains: plan.max_domains, max_databases: plan.max_databases, max_email_accounts: plan.max_email_accounts, disk_quota_mb: plan.disk_quota_mb, traffic_quota_mb: plan.traffic_quota_mb ?? 0 },
         bandwidth: 0,
         rights: plan.rights,
     };
@@ -625,10 +634,11 @@ export function editedFromResellerPlan(plan: ResellerPlan): EditedPlan {
 
 /** The body a plan is saved with. Rights go only when they were chosen. */
 export function planBody(kind: PlanKind, plan: EditedPlan, selection: RightsSelection | null, flags: { narrowing?: boolean; overUsage?: boolean } = {}): Record<string, unknown> {
-    const { max_customers, ...limits } = plan.numbers;
+    const { max_customers, traffic_quota_mb, ...limits } = plan.numbers;
+    // A customer plan keeps its traffic limit in bandwidth_quota_mb (D-044).
     const body: Record<string, unknown> = kind === 'reseller'
-        ? { name: plan.name.trim(), max_customers, ...limits }
-        : { name: plan.name.trim(), ...limits, bandwidth_quota_mb: plan.bandwidth };
+        ? { name: plan.name.trim(), max_customers, ...limits, traffic_quota_mb }
+        : { name: plan.name.trim(), ...limits, bandwidth_quota_mb: traffic_quota_mb };
     if (selection) body.rights = payloadOf(selection);
     if (flags.narrowing) body.confirm_narrowing = true;
     if (flags.overUsage && kind === 'customer') body.accept_over_usage = true;

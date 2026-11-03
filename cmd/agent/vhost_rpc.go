@@ -176,6 +176,15 @@ func managedVhostItemFor(
 		ExpectedRenderSHA256: req.ExpectedRenderSHA256,
 		ACMEChallengeRoot:    data.ACMEChallengeRoot,
 	}
+	// alpha.118 (D-044): the site's traffic log setting is kept with the
+	// vhost; a CelikPanel page (suspended, maintenance, traffic limit) is
+	// not counted.
+	if req.DomainID > 0 {
+		item.TrafficLog = &services.TrafficLogItem{
+			DomainID: req.DomainID,
+			Counted:  !data.Suspended && !data.Maintenance && !data.TrafficLimited,
+		}
+	}
 	if data.SSLType != "none" {
 		item.SSLCert = data.SSLCert
 	}
@@ -638,6 +647,7 @@ func validatedVhostData(req *ApplyVhostRequest) (services.VhostData, error) {
 		ProjectType:        projectType,
 		Suspended:          req.Suspended,
 		Maintenance:        req.Maintenance,
+		TrafficLimited:     req.TrafficLimited,
 	}
 
 	protectedDirs, redirects, err := siteFeaturesFromRequest(req)

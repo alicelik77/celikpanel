@@ -241,6 +241,9 @@ const (
 	// accountMailSecurityNotice (alpha.117, D-043): a security emergency
 	// notice; its subject and body are written by security_emergency_notices.go.
 	accountMailSecurityNotice accountMailKind = "security_notice"
+	// accountMailUsageNotice (alpha.118, D-044): a traffic or disk notice;
+	// its subject and body are written by usage_limits.go.
+	accountMailUsageNotice accountMailKind = "usage_notice"
 )
 
 type accountMailContent struct {
@@ -268,7 +271,7 @@ func accountMailText(content accountMailContent, host string) (string, string) {
 	tr := content.lang == "tr"
 	user, inviter, link := content.username, content.inviter, content.link
 	switch content.kind {
-	case accountMailSecurityNotice:
+	case accountMailSecurityNotice, accountMailUsageNotice:
 		return content.subject, content.body
 	case accountMailReset:
 		if tr {

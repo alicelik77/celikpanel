@@ -22,6 +22,8 @@ const (
 	suspendReasonExpired  = "expired"
 	suspendReasonPayment  = "payment"
 	suspendReasonSecurity = "security"
+	// suspendReasonDisk (alpha.118, D-044): over the disk limit for 7 days.
+	suspendReasonDisk = "disk"
 
 	lifecycleActive    = "active"
 	lifecycleSuspended = "suspended"

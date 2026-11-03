@@ -19,6 +19,73 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 > kayıtlar saat tarihini kullanır; D-029 dışında 10, 11 veya 12 Ekim 2026 tarihli bir
 > kayıt gerçektir.
 
+## D-044 · Plan sınırları gerçektir: takvim ayı trafiği dolunca yalnız web siteleri kapanır, yedi gün dolu kalan disk askıya alır, posta kutusu boyutunu Dovecot uygular
+
+*2026-11-03 (sahibin 3 Kasım 2026 kararları) · PLANS-AND-RIGHTS.tr.md 4.1. bölümü ("Trafik: ölçülene dek gösterilmez", "Disk: yumuşak kapı") ve 5. bölümü ("trafik havuzu uygulanmaz") değiştirir; alpha.118'de uygulandı, laboratuvar denemesi bekliyor*
+
+**Neden.** alpha.117'deki planların trafiği hiç ölçülmüyordu; disk sınırı da
+yalnız alan adı sayfasının yenilediği bir sayıyı okuyordu. Panelin kendi trafik
+okuması dağıtımın her gün döndürdüğü günlüğü topluyordu; "bu ay" bir iki gündü.
+Gösterilen ama uygulanmayan sınır ekranda yanlış bir sözdür (D-024).
+
+**Trafik.** Web sitelerinin ziyaretçilere gönderdiği (giden bayt, başlıklar
+dahil), sunucu saatiyle takvim ayı başına; her ayın 1'inde sıfırdan başlar.
+%100'de yalnız aboneliğin web siteleri "bu site aylık trafik hakkını doldurdu"
+gösterir (503); posta, veritabanları ve dosya erişimi çalışır. Siteler ayın
+1'inde ya da sınır yükseltildikten birkaç dakika sonra kendiliğinden açılır.
+%80 ve %100 bildirimleri müşteriye, bayisine ve yöneticiye gider. Bayi havuzu
+(K2) bütün müşterilerinin bu ayki gerçek toplamını sınırlar; dolunca o bayinin
+bütün müşterileri %100 işlemini alır. Trafik birkaç dakikada bir toplanır; bu
+yüzden bir site bir aralıkta gönderdiği kadar sınırı aşabilir; ekranlar bunu
+söyler.
+
+**Disk.** Aboneliğin gerçek kullanımı: site dosyaları, posta ve veritabanları;
+Agent en düşük işlemci ve disk önceliğiyle ölçer (6 saatte bir, barındırma
+dosya sisteminde %10'dan az boş yer varken saatte bir, bir geri yükleme, içe
+aktarma ya da uygulama kurulumundan hemen sonra). %100'de aboneliği büyüten
+hiçbir yeni şey kabul edilmez (alan adı, posta kutusu, veritabanı, uygulama
+kurulumu, elle yedek ve geri yükleme) ve dosya yöneticisi yüklemeyi reddeder;
+siteler çalışır. Yedi gün sınırın üstünde kalmak aboneliği alpha.117 askısıyla,
+"disk" nedeniyle askıya alır. Ölçüm sınırın altına inince kendiliğinden açılır;
+operatörün açması disk nedenini kaldırır ve yeni bir 7 günlük süre başlatır.
+Disk nedeni elle, bayi ya da bitiş nedenini asla kaldırmaz. %80, %100 ve askıdan
+iki gün önce bildirim gider.
+
+**İşletim sistemi kotaları.** CelikPanel fstab'a, çekirdek satırına ya da dosya
+sistemi bayraklarına (tune2fs) asla dokunmaz. Yalnız sahibin barındırma dosya
+sistemini proje kotasıyla bağladığını algılar ve söyler; ölçümü klasörleri
+tarayarak yapar. Sert işletim sistemi sınırları açık iştir.
+
+**Posta.** /etc/dovecot/users içinde zaten yazılı olan her posta kutusu sınırını
+Dovecot'un kendi kota eklentisi uygular ("count" sürücüsü; Postfix'in virtual(8)
+ile doğrudan teslim ettiği postayı da görür; Dovecot 2.4.1'de ölçüldü), kurulu
+Dovecot'un lehçesinde (2.3 ve 2.4). Postfix postayı kabul etmeden önce Dovecot'un
+quota-status hizmetine sorar; dolu kutuya gelen posta "552 5.2.2 Mailbox is full"
+ile reddedilir; hizmet yanıt vermezse Postfix postayı eskisi gibi kabul eder.
+IMAP kotasını okuyan posta programları (Roundcube okur) kutunun doluluğunu
+gösterir; panelin %80 ve %100 disk bildirimleri müşteriye gider. Posta kutusu
+kullanıcısına %90'da ileti (Dovecot quota_warning ve teslim betiği) açık iştir.
+
+**Sahibin bağımsızlığı (D-022).** Her parça CelikPanel'in başlığını taşıyan yerel
+yapılandırmadır; yalnız yokken ya da hâlâ CelikPanel'in değiştirilmemiş metniyken
+yazılır: nginx günlük biçimi (conf.d/celikpanel-traffic.conf), her sitenin trafik
+günlüğü satırı (celikpanel-managed.d/<alan adı>/traffic-log.conf), logrotate
+dosyası (/etc/logrotate.d/celikpanel-traffic), Dovecot kota eki
+(conf.d/90-celikpanel-quota.conf) ve Postfix'te tek bir kısıt öğesi. Panel
+olmadan hiçbir şey ölçülmez ya da sınırlanmaz; siteler çalışır, trafik günlükleri
+küçük kalır, posta kutusu boyutları uygulanmaya devam eder.
+
+**Geçiş.** Daha önce kayıtlı trafik sınırları (çoğu 102400 MB sütun varsayılanı)
+hiç gösterilmedi ve uygulanmadı; 057 göçü onları sınırsıza çeker ve yöneticiye bir
+kez söyler; böylece kimsenin seçmediği bir sayı yüzünden site kapanmaz.
+
+**İddia edilmeyen.** Disk dolunca FTP/SFTP salt-okur kipi ve PHP `file_uploads=off`
+ile posta kutusu kullanıcısına %90 iletisi bu sürümde yoktur; yalnız panelin dosya yöneticisi yüklemeyi reddeder. Sert işletim
+sistemi disk sınırı konmaz. Sürümün laboratuvar turu (D-025) hâlâ gereklidir: Debian,
+Ubuntu ve Arch'ta gerçek güncelleme, geri alma ve trafik/disk/posta denemesi.
+
+---
+
 ## D-043 · Güvenlik acil durumunda kullanılan bir bileşen durdurulabilir ya da kaldırılabilir: geri çek, durdur, taşı, kaldır; veri asla silinmez
 
 *2026-11-02 (sahibin onayı: "ok. hepsi uygun") · Yalnız güvenlik acil durumları için D-038'in 2. maddesini ("kullanılan şey kaldırılmaz") değiştirir; bir ilkedir, uygulama alpha.117'de planlandı*

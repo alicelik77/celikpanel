@@ -41,6 +41,15 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			// alpha.118 (D-044): Dovecot enforces the mailbox limits.
+			name: "ReconcileMailQuotaV1",
+			run: func(expected string) string {
+				var response transport.MailQuotaReconcileResponse
+				_ = agent.ReconcileMailQuotaV1(&transport.MailQuotaReconcileRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
 			// alpha.117: subscription suspension, one native resource per call.
 			name: "SetSiteAccountSuspensionV1",
 			run: func(expected string) string {

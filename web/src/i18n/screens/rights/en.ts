@@ -54,10 +54,10 @@ export const enRightsScreens = {
     'rights.subscription': 'Subscription',
     'rights.noSubscription': 'This account has no subscription. Its rights are set when a subscription is made.',
     'rights.adminWorkspace': 'These are the administrator’s own sites: they have no limits and no rights set.',
-    'rights.poolUsed': 'Its customers use now: {customers} customers, {domains} domains, {databases} databases, {mailboxes} mailboxes, {disk} disk.',
+    'rights.poolUsed': 'Its customers use now: {customers} customers, {domains} domains, {databases} databases, {mailboxes} mailboxes, {disk} disk, {traffic} website traffic this month.',
 
     'rights.part.quantities': 'Quantities',
-    'rights.part.quantitiesHint': '0 means unlimited. Traffic is not measured yet, so there is no traffic limit.',
+    'rights.part.quantitiesHint': '0 means unlimited. Disk counts site files, mail and databases together.',
     'rights.part.pool': 'Pool',
     'rights.part.poolHint': 'What all of this reseller’s customers may really use together. 0 means unlimited. The reseller may give its customers more than this; their real total cannot pass it.',
     'rights.part.permissions': 'Permissions',
@@ -75,6 +75,9 @@ export const enRightsScreens = {
     'rights.qty.databases': 'Databases',
     'rights.qty.mailboxes': 'Mailboxes',
     'rights.qty.disk': 'Disk',
+    'rights.qty.traffic': 'Traffic per month',
+    'rights.qty.trafficHint': 'Traffic is what the websites send to their visitors in a calendar month (server time). When it is used up, only the websites show “traffic limit reached” until the 1st; mail, databases and file access keep working. It is counted every 5 minutes, so a site can go over its limit by what it sends in that time.',
+    'rights.qty.trafficHintPool': 'The pool’s traffic is the real total of all its customers’ websites this month. When it is used up, every customer’s websites show “traffic limit reached” until the 1st or until the pool is raised. It is counted every 5 minutes.',
 
     'rights.perm.dns_edit': 'Edit DNS records',
     'rights.perm.dnssec': 'DNSSEC',

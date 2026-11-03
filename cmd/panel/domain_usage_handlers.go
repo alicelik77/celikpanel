@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"path/filepath"
@@ -58,13 +59,34 @@ func (p *Panel) handleDomainUsage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// alpha.118 (D-044): this month's traffic is the collected number
+	// (traffic_daily), not a re-read of a log the distribution rotates daily.
+	from, to := trafficMonthBounds(usageNow())
+	var traffic int64
+	if err := p.db.GetDB().QueryRowContext(r.Context(), `
+		SELECT COALESCE(SUM(bytes_out), 0) FROM traffic_daily WHERE domain_id = ? AND day >= ? AND day < ?`,
+		domainID, from, to).Scan(&traffic); err != nil {
+		writeServerError(w, err)
+		return
+	}
+	var sourceState, sourceReason sql.NullString
+	_ = p.db.GetDB().QueryRowContext(r.Context(), `SELECT state, reason FROM traffic_sources WHERE domain_id = ?`, domainID).
+		Scan(&sourceState, &sourceReason)
+	state := sourceState.String
+	if state == "" {
+		state = "unknown"
+		sourceReason.String = "not_collected_yet"
+	}
+
 	p.db.GetDB().ExecContext(r.Context(), `
 		UPDATE sites SET disk_usage_bytes = ?, traffic_month_bytes = ?, usage_updated_at = ?
 		WHERE domain_id = ?`,
-		resp.DiskBytes, resp.TrafficMonthBytes, time.Now().UTC().Format(time.RFC3339), domainID)
+		resp.DiskBytes, traffic, time.Now().UTC().Format(time.RFC3339), domainID)
 
 	json.NewEncoder(w).Encode(map[string]any{
-		"disk_usage": resp.DiskBytes,
-		"bandwidth":  resp.TrafficMonthBytes,
+		"disk_usage":     resp.DiskBytes,
+		"bandwidth":      traffic,
+		"traffic_state":  state,
+		"traffic_reason": sourceReason.String,
 	})
 }

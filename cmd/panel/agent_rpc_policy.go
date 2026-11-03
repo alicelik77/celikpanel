@@ -138,6 +138,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.PostgreSQLClustersV1 Agent.PostgreSQLClusterPortPreviewV1 Agent.PostgreSQLSourceCheckV1
 		Agent.SiteCertificateRenewalStateV1 Agent.PanelListenConfigV1 Agent.MailAutoresponderState
 		Agent.FileAccessStateV1 Agent.FileAccessPreviewV1 Agent.SuspensionInspectV1
+		Agent.TrafficCollectV1 Agent.SubscriptionDiskUsageV1
 		Agent.EmergencyUnitsInspectV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
@@ -195,7 +196,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.SetMailPolicy Agent.SyncMailTLSV2 Agent.StartMailEnrollmentV1 Agent.ContinueMailEnrollmentV1
 		Agent.UpdateMailForwarding Agent.UpdateMailPassword Agent.UpdateMailQuota
 		Agent.WireMailFilters Agent.SetMailAutoresponder Agent.SetMailDomainSuspensionV1
-		Agent.EndMailSessionsV1
+		Agent.EndMailSessionsV1 Agent.ReconcileMailQuotaV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityFilesystem, `
 		Agent.ChmodFile Agent.ClearLogs Agent.CreateFileOrDir Agent.DeleteFileOrDir
@@ -384,6 +385,9 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.UpdateMailPassword":            agentRPCMutationTimeout,
 	"Agent.UpdateMailQuota":               agentRPCMutationTimeout,
 	"Agent.SuspensionInspectV1":           agentRPCStandardReadTimeout,
+	"Agent.TrafficCollectV1":              agentRPCStandardReadTimeout,
+	"Agent.SubscriptionDiskUsageV1":       agentRPCDatabaseTimeout,
+	"Agent.ReconcileMailQuotaV1":          agentRPCMutationTimeout,
 	"Agent.SetSiteAccountSuspensionV1":    agentRPCMutationTimeout,
 	"Agent.SetMailDomainSuspensionV1":     agentRPCMutationTimeout,
 	"Agent.SetDatabaseUserSuspensionV1":   agentRPCMutationTimeout,

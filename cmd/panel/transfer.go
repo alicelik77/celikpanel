@@ -211,7 +211,7 @@ func subscriptionRealUse(ctx context.Context, q rowQueryer, subID int) (transfer
 		  (SELECT COUNT(*) FROM domains d WHERE d.subscription_id = ?),
 		  (SELECT COUNT(*) FROM databases_v2 db WHERE db.subscription_id = ?),
 		  (SELECT COUNT(*) FROM email_accounts ea JOIN domains d ON ea.domain_id = d.id WHERE d.subscription_id = ?),
-		  COALESCE((SELECT SUM(si.disk_usage_bytes) FROM sites si JOIN domains d ON si.domain_id = d.id WHERE d.subscription_id = ?), 0)`,
+		  (SELECT `+subscriptionDiskBytesSQL+` FROM subscriptions s WHERE s.id = ?)`,
 		subID, subID, subID, subID).Scan(&u.Domains, &u.Databases, &u.Mailboxes, &u.DiskBytes)
 	return u, err
 }
@@ -550,7 +550,7 @@ func transferMoves(ctx context.Context, q rowQueryer, subID int) (transferConten
 		  (SELECT COUNT(*) FROM vpn_peers WHERE subscription_id = ?1 AND desired_state = 'active' AND provisioning_state = 'provisioning'),
 		  (SELECT COUNT(*) FROM backup_schedules b JOIN domains d ON d.id = b.domain_id WHERE d.subscription_id = ?1),
 		  (SELECT COUNT(*) FROM subscription_entitlements WHERE subscription_id = ?1 AND status = 'active'),
-		  COALESCE((SELECT SUM(si.disk_usage_bytes) FROM sites si JOIN domains d ON d.id = si.domain_id WHERE d.subscription_id = ?1), 0)`,
+		  (SELECT `+subscriptionDiskBytesSQL+` FROM subscriptions s WHERE s.id = ?1)`,
 		subID).Scan(&m.Domains, &m.Sites, &m.Mailboxes, &m.Databases, &m.DatabaseUsers, &m.Certificates,
 		&m.VPNDevices, &m.PendingVPNIssues, &m.BackupSchedules, &m.AddOns, &m.DiskUsedBytes)
 	return m, err

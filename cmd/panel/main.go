@@ -98,6 +98,14 @@ type Panel struct {
 	// rotationNative replaces the Agent for transfer credential rotation in
 	// tests (nil in production; transfer_rotation.go).
 	rotationNative rotationNative
+	// alpha.118 (D-044): trafficCollector, trafficRender, diskMeasurer and
+	// mailQuota replace the Agent in tests (nil in production);
+	// usageWorker runs the traffic, disk and mail quota work (usage_worker.go).
+	trafficCollector trafficCollector
+	trafficRender    func(ctx context.Context, domainID int) error
+	diskMeasurer     diskMeasurer
+	mailQuota        func(ctx context.Context) (transport.MailQuotaReconcileResponse, error)
+	usageWorker      usageWorkerState
 	// lastUpdateAttempt is injectable only for handler tests. Production leaves
 	// it nil and reads the native recovery observations directly.
 	lastUpdateAttempt func(commit string) (recoveryobs.Attempt, bool)
@@ -1379,6 +1387,10 @@ func main() {
 	http.HandleFunc(securityEmergenciesPath+"/", panel.handleSecurityEmergencies)
 	http.HandleFunc(securityNoticesPath, panel.handleSecurityNotices)
 	http.HandleFunc(securityNoticesPath+"/", panel.handleSecurityNotices)
+	// alpha.118 (D-044): traffic and disk notices; the measurement status.
+	http.HandleFunc(usageNoticesPath, panel.handleUsageNotices)
+	http.HandleFunc(usageNoticesPath+"/", panel.handleUsageNotices)
+	http.HandleFunc(usageStatusPath, panel.handleUsageStatus)
 	http.HandleFunc("/api/v1/products", panel.handleProducts)
 	http.HandleFunc("/api/v1/store", panel.handleStore)
 	http.HandleFunc("/api/v1/store/", panel.handleStore)
@@ -1650,6 +1662,9 @@ func main() {
 	panel.startVPNEntitlementReconciler()
 	// Suspensions: continue what a restart interrupted, check end dates.
 	panel.startSuspensionWorker()
+	// alpha.118 (D-044): traffic collection, disk measurement and mailbox
+	// quota enforcement.
+	panel.startUsageWorker()
 	// Security emergencies (D-043): continue what a restart interrupted,
 	// hand pending notices to the mail system.
 	panel.startEmergencyWorker()

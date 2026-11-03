@@ -513,6 +513,7 @@ func (a *Agent) CreateSite(req transport.CreateSiteRequest, reply *transport.Cre
 			Body:              rendered.Config,
 			Trigger:           transport.SiteFileTriggerCreate,
 			ACMEChallengeRoot: challengeRoot,
+			TrafficLog:        &services.TrafficLogItem{DomainID: vhostReq.DomainID, Counted: true},
 		})
 		reply.SiteFile = &result
 		reply.NginxConfig = services.SealManagedText(rendered.Config)

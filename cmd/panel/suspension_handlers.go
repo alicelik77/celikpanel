@@ -208,7 +208,7 @@ func (p *Panel) subscriptionSuspensionView(ctx context.Context, subscriptionID i
 		return view, err
 	}
 	view.CanSuspend = !row.Causes.Manual
-	view.CanResume = row.Causes.Manual || row.Causes.Expired
+	view.CanResume = row.Causes.Manual || row.Causes.Expired || row.Causes.Disk
 	if !view.CanResume && row.Causes.ResellerID > 0 {
 		view.ResumeBlocked = "Suspended because its reseller " + view.Causes.Reseller + " is suspended. The administrator resumes the reseller; this subscription then resumes with it."
 	}
@@ -348,7 +348,7 @@ func (p *Panel) applySubscriptionSuspensionAction(w http.ResponseWriter, r *http
 			writeServerError(w, err)
 			return false
 		}
-		if !row.Causes.Manual && !row.Causes.Expired && row.Causes.ResellerID > 0 {
+		if !row.Causes.Manual && !row.Causes.Expired && !row.Causes.Disk && row.Causes.ResellerID > 0 {
 			writeCodedError(w, http.StatusConflict, errCodeSuspensionCauseReseller,
 				"this subscription is suspended because its reseller is suspended; nothing was changed. The administrator resumes the reseller, and its subscriptions resume with it.", "")
 			return false
@@ -359,6 +359,16 @@ func (p *Panel) applySubscriptionSuspensionAction(w http.ResponseWriter, r *http
 			change.Expired = &no
 			change.WaiveExpiry = true
 			change.EndsAt = row.ExpiredEndsAt
+		}
+		if row.Causes.Disk {
+			// An operator's resume gives the customer a new 7-day period to
+			// free space (D-044); the next measurement over the limit starts
+			// the countdown again from now.
+			change.Disk = &no
+			if err := restartDiskCountdown(ctx, p.db.GetDB(), subscriptionID); err != nil {
+				writeServerError(w, err)
+				return false
+			}
 		}
 		if _, err := p.acceptSuspensionChange(ctx, subscriptionID, change, true); err != nil {
 			p.writeSuspensionError(w, err)
@@ -572,6 +582,12 @@ func (p *Panel) setCustomerSuspension(r *http.Request, c *Caller, customerID int
 			change = suspensionCauseChange{Manual: &no, ActorID: c.ID, Trigger: suspensionTriggerManual}
 			if row.Causes.Expired {
 				change.Expired, change.WaiveExpiry, change.EndsAt = &no, true, row.ExpiredEndsAt
+			}
+			if row.Causes.Disk {
+				change.Disk = &no
+				if err := restartDiskCountdown(ctx, db, id); err != nil {
+					return err
+				}
 			}
 		}
 		if _, err := p.acceptSuspensionChange(ctx, id, change, true); err != nil {

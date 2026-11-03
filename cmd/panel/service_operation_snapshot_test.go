@@ -1441,6 +1441,18 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse the usage limits (migration 57, alpha.118).
+        ALTER TABLE subscription_suspensions DROP COLUMN cause_disk;
+        ALTER TABLE reseller_plans DROP COLUMN traffic_quota_mb;
+        ALTER TABLE reseller_pools DROP COLUMN traffic_quota_mb;
+        DROP TABLE usage_notices;
+        DROP TABLE subscription_disk_usage;
+        DROP TABLE traffic_web_blocks;
+        DROP TABLE traffic_sources;
+        DROP TABLE traffic_collect_state;
+        DROP TABLE traffic_daily;
+        DELETE FROM rights_notices WHERE kind = 'traffic_measured';
+
         -- Reverse the transfer credential rotation (migration 56, alpha.117).
         DROP TABLE transfer_rotation_effects;
         DROP TABLE transfer_rotations;

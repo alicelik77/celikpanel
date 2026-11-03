@@ -370,6 +370,8 @@ const READ_KEY_ADDRESSES: Record<ReadKey, readonly RegExp[]> = {
         /^\/api\/v1\/offered-versions(\?|$)/,
         /^\/api\/v1\/hosting\/capabilities(\?|$)/,
         /^\/api\/v1\/domains(\?|$)/,
+        // alpha.118 (D-044): traffic and disk notices and the measurement status.
+        /^\/api\/v1\/usage(-notices|\/)/,
         SUBSCRIPTION_USAGE,
     ],
 };

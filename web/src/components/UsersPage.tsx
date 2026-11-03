@@ -545,6 +545,7 @@ function PlansTab({ isAdmin }: { isAdmin: boolean }) {
                                     <th className="px-4 py-2.5">{t('plans.col.databases')}</th>
                                     <th className="px-4 py-2.5">{t('plans.col.mail')}</th>
                                     <th className="px-4 py-2.5">{t('plans.col.disk')}</th>
+                                    <th className="px-4 py-2.5">{t('rights.qty.traffic')}</th>
                                     <th className="px-4 py-2.5">{t('rights.col.rights')}</th>
                                     {isAdmin && <th className="px-4 py-2.5">{t('plans.col.owner')}</th>}
                                     <th className="px-4 py-2.5">{t('plans.col.subscribers')}</th>
@@ -559,6 +560,7 @@ function PlansTab({ isAdmin }: { isAdmin: boolean }) {
                                         <td className="px-4 py-3 text-fg-muted">{limitText(p.max_databases, unlimited)}</td>
                                         <td className="px-4 py-3 text-fg-muted">{limitText(p.max_email_accounts, unlimited)}</td>
                                         <td className="px-4 py-3 text-fg-muted">{fmtGB(p.disk_quota_mb)}</td>
+                                        <td className="px-4 py-3 text-fg-muted">{fmtGB(p.bandwidth_quota_mb ?? 0)}</td>
                                         <td className="px-4 py-3 text-fg-muted">{rightsSummary(p.rights, t)}</td>
                                         {isAdmin && <td className="px-4 py-3 text-fg-muted">{p.owner || t('plans.ownerGlobal')}</td>}
                                         <td className="px-4 py-3 text-fg-muted">{p.subscribers ?? 0}</td>

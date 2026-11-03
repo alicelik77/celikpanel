@@ -176,6 +176,8 @@ export const enSitesScreens = {
     'domain.info.sslIssue': 'Configured — needs attention',
     'domain.info.disk': 'Disk usage',
     'domain.info.traffic': 'Traffic',
+    'domain.info.trafficMonth': '{bytes} this month',
+    'domain.info.trafficUnknown': 'Not counted now: the site’s traffic log is not in place on the server. See My plan.',
     'domain.info.on': 'On',
     'domain.info.off': 'Off',
     'domain.overview.hint': 'Choose an area to manage this domain.',

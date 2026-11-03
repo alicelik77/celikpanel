@@ -23,6 +23,7 @@ type rightsQuantities struct {
 	Databases *int `json:"max_databases,omitempty"`
 	Mailboxes *int `json:"max_email_accounts,omitempty"`
 	DiskMB    *int `json:"disk_quota_mb,omitempty"`
+	TrafficMB *int `json:"traffic_quota_mb,omitempty"`
 	Customers *int `json:"max_customers,omitempty"`
 }
 
@@ -30,7 +31,7 @@ func (q *rightsQuantities) valid() bool {
 	if q == nil {
 		return true
 	}
-	for _, v := range []*int{q.Domains, q.Databases, q.Mailboxes, q.DiskMB, q.Customers} {
+	for _, v := range []*int{q.Domains, q.Databases, q.Mailboxes, q.DiskMB, q.TrafficMB, q.Customers} {
 		if v != nil && *v < 0 {
 			return false
 		}
@@ -54,6 +55,9 @@ func (q *rightsQuantities) applyLimits(l planLimits) planLimits {
 	if q.DiskMB != nil {
 		l.DiskMB = *q.DiskMB
 	}
+	if q.TrafficMB != nil {
+		l.TrafficMB = *q.TrafficMB
+	}
 	return l
 }
 
@@ -67,13 +71,14 @@ func (q *rightsQuantities) applyPool(pool resellerPool) resellerPool {
 
 func loadSubscriptionLimits(ctx context.Context, q rowQueryer, subID int) (planLimits, error) {
 	var l planLimits
-	var domains, databases, mailboxes, disk sql.NullInt64
-	err := q.QueryRowContext(ctx, `SELECT max_domains, max_databases, max_email_accounts, disk_quota_mb FROM subscriptions WHERE id = ?`, subID).
-		Scan(&domains, &databases, &mailboxes, &disk)
+	var domains, databases, mailboxes, disk, traffic sql.NullInt64
+	err := q.QueryRowContext(ctx, `SELECT max_domains, max_databases, max_email_accounts, disk_quota_mb, bandwidth_quota_mb FROM subscriptions WHERE id = ?`, subID).
+		Scan(&domains, &databases, &mailboxes, &disk, &traffic)
 	if errors.Is(err, sql.ErrNoRows) {
 		return l, errRightsSubscriptionMissing
 	}
 	l.Domains, l.Databases, l.Mailboxes, l.DiskMB = int(domains.Int64), int(databases.Int64), int(mailboxes.Int64), int(disk.Int64)
+	l.TrafficMB = int(traffic.Int64)
 	return l, err
 }
 
@@ -102,7 +107,7 @@ func bindSubscriptionPlan(ctx context.Context, tx rightsTx, subID int, plan load
 	if err := deleteRightsSet(ctx, tx, rightsOwnerSubscription, subID); err != nil {
 		return err
 	}
-	return writeSubscriptionLimits(ctx, tx, subID, &plan.ID, plan.Limits, plan.Traffic)
+	return writeSubscriptionLimits(ctx, tx, subID, &plan.ID, plan.Limits, plan.Limits.TrafficMB)
 }
 
 // setSubscriptionCustom: the subscription's own set and numbers.
@@ -110,7 +115,7 @@ func setSubscriptionCustom(ctx context.Context, tx rightsTx, subID int, set righ
 	if err := saveRightsSet(ctx, tx, rightsOwnerSubscription, subID, set); err != nil {
 		return err
 	}
-	return writeSubscriptionLimits(ctx, tx, subID, nil, limits, 0)
+	return writeSubscriptionLimits(ctx, tx, subID, nil, limits, limits.TrafficMB)
 }
 
 // resellerPlan is one reseller plan with its set.
@@ -124,9 +129,9 @@ type resellerPlan struct {
 func loadResellerPlan(ctx context.Context, q rowQueryer, id int) (resellerPlan, error) {
 	var plan resellerPlan
 	err := q.QueryRowContext(ctx, `
-		SELECT id, name, max_customers, max_domains, max_databases, max_email_accounts, disk_quota_mb
+		SELECT id, name, max_customers, max_domains, max_databases, max_email_accounts, disk_quota_mb, traffic_quota_mb
 		FROM reseller_plans WHERE id = ?`, id).Scan(&plan.ID, &plan.Name, &plan.Pool.MaxCustomers,
-		&plan.Pool.Domains, &plan.Pool.Databases, &plan.Pool.Mailboxes, &plan.Pool.DiskMB)
+		&plan.Pool.Domains, &plan.Pool.Databases, &plan.Pool.Mailboxes, &plan.Pool.DiskMB, &plan.Pool.TrafficMB)
 	if errors.Is(err, sql.ErrNoRows) {
 		return plan, errNotFound
 	}
@@ -145,7 +150,7 @@ func loadResellerPlan(ctx context.Context, q rowQueryer, id int) (resellerPlan, 
 }
 
 func poolIsUnlimited(pool resellerPool) bool {
-	return pool.MaxCustomers <= 0 && pool.Domains <= 0 && pool.Databases <= 0 && pool.Mailboxes <= 0 && pool.DiskMB <= 0
+	return pool.MaxCustomers <= 0 && pool.Domains <= 0 && pool.Databases <= 0 && pool.Mailboxes <= 0 && pool.DiskMB <= 0 && pool.TrafficMB <= 0
 }
 
 func writeResellerPool(ctx context.Context, tx sqlExecer, resellerID int, pool *resellerPool) error {

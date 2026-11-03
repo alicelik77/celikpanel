@@ -172,6 +172,8 @@ export const trSitesScreens: Record<SitesScreenKey, string> = {
     'domain.info.sslIssue': 'Yapılandırıldı — ilgilenmeniz gerekiyor',
     'domain.info.disk': 'Disk kullanımı',
     'domain.info.traffic': 'Trafik',
+    'domain.info.trafficMonth': 'bu ay {bytes}',
+    'domain.info.trafficUnknown': 'Şu an sayılmıyor: sitenin trafik günlüğü sunucuda yerinde değil. Planım’a bakın.',
     'domain.info.on': 'Açık',
     'domain.info.off': 'Kapalı',
     'domain.overview.hint': 'Bu alan adını yönetmek için bir bölüm seçin.',

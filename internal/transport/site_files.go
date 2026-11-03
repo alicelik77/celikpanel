@@ -157,6 +157,10 @@ type SiteFileResult struct {
 	// ChallengeFile is what happened to the challenge file in ManagedDir
 	// (SiteFileChallenge*); "" when the operation did not look at it.
 	ChallengeFile string
+	// TrafficLog (alpha.118, additive) is what happened to the site's traffic
+	// log setting in ManagedDir (SiteFileChallenge* words: written,
+	// unchanged, kept, failed); "" when the operation did not look at it.
+	TrafficLog string
 	// Validation is, for a kept file (owner-edited, foreign, unknown origin),
 	// whether a certificate for the site can be validated without changing
 	// the file (SiteFileValidation*); "" for any other file.

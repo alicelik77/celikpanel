@@ -280,8 +280,8 @@ func (p *Panel) syncNewAccountResellerSuspension(ctx context.Context, tx sqlQuer
 func insertBareSubscription(ctx context.Context, db sqlExecer, ownerID int, name string, l planLimits) (int, error) {
 	result, err := db.ExecContext(ctx, `
 		INSERT INTO subscriptions (owner_id, name, max_domains, max_databases, max_email_accounts, disk_quota_mb, bandwidth_quota_mb, status, starts_at)
-		VALUES (?, ?, ?, ?, ?, ?, 0, 'active', datetime('now'))`,
-		ownerID, name, l.Domains, l.Databases, l.Mailboxes, l.DiskMB)
+		VALUES (?, ?, ?, ?, ?, ?, ?, 'active', datetime('now'))`,
+		ownerID, name, l.Domains, l.Databases, l.Mailboxes, l.DiskMB, l.TrafficMB)
 	if err != nil {
 		return 0, err
 	}

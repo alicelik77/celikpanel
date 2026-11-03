@@ -85,7 +85,7 @@ test('the account form sends Unlimited by name, a plan, or a Custom set; Create 
   assert.deepEqual(rights.newAccountRightsBody(rights.UNLIMITED_CHOICE, 'customer'), { state: 'unlimited' });
   assert.deepEqual(rights.newAccountRightsBody({ ...rights.UNLIMITED_CHOICE, state: 'plan', planID: 7 }, 'customer'), { state: 'plan', plan_id: 7 });
   const custom = rights.newAccountRightsBody({ state: 'custom', planID: 0, selection: { permissions: ['mail'], software: [] }, numbers: { ...rights.NO_LIMITS, max_domains: 3, max_customers: 9 } }, 'customer');
-  assert.deepEqual(custom.quantities, { max_domains: 3, max_databases: 0, max_email_accounts: 0, disk_quota_mb: 0 }, 'a customer has no customers count');
+  assert.deepEqual(custom.quantities, { max_domains: 3, max_databases: 0, max_email_accounts: 0, disk_quota_mb: 0, traffic_quota_mb: 0 }, 'a customer has no customers count');
   const reseller = rights.newAccountRightsBody({ state: 'custom', planID: 0, selection: { permissions: [], software: [] }, numbers: { ...rights.NO_LIMITS, max_customers: 9 } }, 'reseller');
   assert.equal(reseller.quantities.max_customers, 9);
   assert.deepEqual(rights.newAccountRightsMissing({ ...rights.UNLIMITED_CHOICE, state: 'plan', planID: 0 }, say('en')), ['Choose a plan']);
@@ -109,6 +109,13 @@ test('a plan is saved with its rights only when they were chosen; over-usage is 
   assert.equal(reseller.accept_over_usage, undefined, 'a reseller plan has no such field');
   assert.equal(reseller.max_customers, 4);
   assert.equal(reseller.bandwidth_quota_mb, undefined);
+  // alpha.118 (D-044): a customer plan keeps its traffic in bandwidth_quota_mb,
+  // a reseller plan in traffic_quota_mb.
+  const traffic = rights.planBody('customer', { ...edited, numbers: { ...edited.numbers, traffic_quota_mb: 2048 } }, null);
+  assert.equal(traffic.bandwidth_quota_mb, 2048);
+  assert.equal(traffic.traffic_quota_mb, undefined);
+  assert.equal(rights.planBody('reseller', { ...edited, numbers: { ...edited.numbers, traffic_quota_mb: 512 } }, null).traffic_quota_mb, 512);
+  assert.equal(rights.editedFromCustomerPlan({ ...edited, max_domains: 1, max_databases: 1, max_email_accounts: 1, disk_quota_mb: 1, bandwidth_quota_mb: 300 }).numbers.traffic_quota_mb, 300);
 });
 
 test('usage lines the server writes read in the owner’s language', () => {

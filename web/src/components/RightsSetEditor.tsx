@@ -61,7 +61,9 @@ export function RightsSetEditor({ grantor, selection, onSelection, numbers, onNu
                     {qty('max_databases', t('rights.qty.databases'))}
                     {qty('max_email_accounts', t('rights.qty.mailboxes'))}
                     {qty('disk_quota_mb', t('rights.qty.disk'), 'MB')}
+                    {qty('traffic_quota_mb', t('rights.qty.traffic'), 'MB')}
                 </div>
+                <p className="mt-1 text-xs text-fg-subtle" data-rights-traffic-hint="">{t(reseller ? 'rights.qty.trafficHintPool' : 'rights.qty.trafficHint')}</p>
             </fieldset>
 
             <fieldset className="min-w-0">
