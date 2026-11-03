@@ -47,7 +47,7 @@ const (
 type Extra string
 
 const (
-	ExtraPrivatePIDs        Extra = "private_pids"
+	ExtraPrivatePIDs         Extra = "private_pids"
 	ExtraStrictControlGroups Extra = "strict_control_groups"
 )
 

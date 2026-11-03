@@ -313,18 +313,24 @@ func TestProofComparison(t *testing.T) {
 		mutate func(*ProofInput)
 		code   string
 	}{
-		"nothing read":      {func(in *ProofInput) { in.Show = "" }, ProofUnreadable},
-		"other cgroup":      {func(in *ProofInput) { in.Show = strings.Replace(in.Show, "/system.slice/celikrt-5.service", "/my.slice/celikrt-5.service", 1) }, ProofCgroup},
-		"owner dropped NNP": {func(in *ProofInput) { in.Show = strings.Replace(in.Show, "NoNewPrivileges=yes", "NoNewPrivileges=no", 1) }, ProofProperty},
-		"memory raised":     {func(in *ProofInput) { in.Show = strings.Replace(in.Show, "MemoryMax=536870912", "MemoryMax=infinity", 1) }, ProofProperty},
-		"property missing":  {func(in *ProofInput) { in.Show = strings.Replace(in.Show, "PrivatePIDs=yes\n", "", 1) }, ProofProperty},
-		"not in set":        {func(in *ProofInput) { in.SetElements = []string{"system.slice/celikrt-6.service"} }, ProofNotInSet},
-		"set unreadable":    {func(in *ProofInput) { in.SetElements = nil }, ProofUnreadable},
-		"rule flushed":      {func(in *ProofInput) { in.OutputChain = "table inet celikpanel_egress {\n\tchain output {\n\t}\n}\n" }, ProofEgressMissing},
-		"exposed":           {func(in *ProofInput) { in.Listen = &ListenProof{Serving: true, Exposed: []string{"0.0.0.0:30010"}} }, ProofListensElsewhere},
-		"squatted":          {func(in *ProofInput) { in.Listen = &ListenProof{Squatted: true} }, ProofPortTaken},
-		"silent":            {func(in *ProofInput) { in.Listen = &ListenProof{} }, ProofNotListening},
-		"bad unit":          {func(in *ProofInput) { in.Unit = "sshd.service" }, ProofUnreadable},
+		"nothing read": {func(in *ProofInput) { in.Show = "" }, ProofUnreadable},
+		"other cgroup": {func(in *ProofInput) {
+			in.Show = strings.Replace(in.Show, "/system.slice/celikrt-5.service", "/my.slice/celikrt-5.service", 1)
+		}, ProofCgroup},
+		"owner dropped NNP": {func(in *ProofInput) {
+			in.Show = strings.Replace(in.Show, "NoNewPrivileges=yes", "NoNewPrivileges=no", 1)
+		}, ProofProperty},
+		"memory raised": {func(in *ProofInput) {
+			in.Show = strings.Replace(in.Show, "MemoryMax=536870912", "MemoryMax=infinity", 1)
+		}, ProofProperty},
+		"property missing": {func(in *ProofInput) { in.Show = strings.Replace(in.Show, "PrivatePIDs=yes\n", "", 1) }, ProofProperty},
+		"not in set":       {func(in *ProofInput) { in.SetElements = []string{"system.slice/celikrt-6.service"} }, ProofNotInSet},
+		"set unreadable":   {func(in *ProofInput) { in.SetElements = nil }, ProofUnreadable},
+		"rule flushed":     {func(in *ProofInput) { in.OutputChain = "table inet celikpanel_egress {\n\tchain output {\n\t}\n}\n" }, ProofEgressMissing},
+		"exposed":          {func(in *ProofInput) { in.Listen = &ListenProof{Serving: true, Exposed: []string{"0.0.0.0:30010"}} }, ProofListensElsewhere},
+		"squatted":         {func(in *ProofInput) { in.Listen = &ListenProof{Squatted: true} }, ProofPortTaken},
+		"silent":           {func(in *ProofInput) { in.Listen = &ListenProof{} }, ProofNotListening},
+		"bad unit":         {func(in *ProofInput) { in.Unit = "sshd.service" }, ProofUnreadable},
 	}
 	for name, tc := range cases {
 		in := good
