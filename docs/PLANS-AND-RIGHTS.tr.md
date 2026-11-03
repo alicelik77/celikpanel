@@ -164,6 +164,7 @@ yazılır.
 | WordPress araçları (alpha.118, `wordpress_tools`) | WordPress araçları bölümü görünmez; durum, güncelleme, küçük sürüm anahtarı ve deneme kopyası reddedilir. Çalışan site ve açık anahtarlar değişmez (hak kapalıyken otomatik güncelleme atlanır) |
 | Zararlı yazılım taraması sonuçları (alpha.118, `malware_scan`) | Zararlı yazılım taraması bölümü görünmez; müşteri tarama başlatamaz, bulgular üzerinde işlem yapamaz. Yönetici her siteyi yine tarayabilir; yöneticinin haftalık taraması onu da kapsar |
 | Kendi uzak yedek hedefleri (alpha.118) | Hesap kendi S3 ya da SFTP hedefini ekleyemez; yöneticinin sunduğu hedefi yine seçebilir. Kurulmuş zamanlamalar çalışmayı sürdürür ([REMOTE-BACKUPS.tr.md](REMOTE-BACKUPS.tr.md)) |
+| Python uygulamaları (alpha.119, `python_apps`) | Programlar sekmesinde Python uygulaması oluşturulamaz, değiştirilemez, yayımlanamaz. Çalışan uygulama çalışmayı sürdürür; yine durdurulabilir, başlatılabilir, ortam değişkenleri değiştirilebilir, günlüğü okunabilir ve kaldırılabilir ([RUNTIME-APPS.tr.md §18](RUNTIME-APPS.tr.md)) |
 | Yüklenen programlar (alpha.119, `program_apps`) | Alan adının Programlar sekmesinde program oluşturulamaz, değiştirilemez, yayımlanamaz. Çalışan program çalışmayı sürdürür; yine durdurulabilir, başlatılabilir, ortam değişkenleri değiştirilebilir, günlüğü okunabilir ve kaldırılabilir ([RUNTIME-APPS.tr.md](RUNTIME-APPS.tr.md)) |
 
 **Dosya erişimi bugün yok.** Sahip, 2 Kasım 2026'da bir alan adının FTP ve SSH
@@ -318,7 +319,7 @@ Müşterinin kendi derlenmiş programı (Go, Rust ya da sunucunun işlemcisi iç
 bir program), site korumasında sitenin hizmeti olarak çalışır
 ([RUNTIME-APPS.tr.md](RUNTIME-APPS.tr.md)). Tek bir sunumdur, **`runtime:program`**; kullanmak
 ayrıca **Yüklenen programlar** iznini (`program_apps`) ister. Python web uygulamaları kendi izni
-ve sunumları olan ayrı bir türdür.
+ve sunumu olan ayrı bir türdür (4.8).
 
 - **Sunulana kadar kapalı.** Yapay zekâ ve otomasyon uygulamaları (4.6) gibi, PHP ve Node.js
   sürümlerinin aksine kendiliğinden sunulmaz. Yönetici onu Eklentiler sayfasında risk özetini
@@ -337,6 +338,22 @@ ve sunumları olan ayrı bir türdür.
 - **Güvenlik beklemesi.** Yönetici yüklenen programları bekletebilir: yayımlanmış her program
   durdurulur ve başlaması engellenir; bekleme kalkana kadar kimse program oluşturamaz,
   yayımlayamaz, başlatamaz. Beklemeyi kaldırmak hiçbir şeyi başlatmaz. Dosyalar asla silinmez.
+
+### 4.8 Python uygulamaları (alpha.119)
+
+Müşterinin Python web uygulaması (Django, Flask, FastAPI); sunucunun kendi Python'uyla PyPI'dan
+kendi ortamına kurulur ([RUNTIME-APPS.tr.md §18](RUNTIME-APPS.tr.md)). Kullanmak **Python
+uygulamaları** iznini (`python_apps`) ve sunucunun Python'unun **`component:python:<sürüm>`**
+sunumunu (örneğin `component:python:3.13`) ister.
+
+- **Önce kurulu, sonra sunulur.** Yönetici önce Bileşenler altından Python'u kurar.
+- **Sunulana kadar kapalı.** Diğer bileşen sürümlerinin aksine Python sürümü, 4.7'deki gibi
+  Eklentiler sayfasında risk özeti okunduktan sonra sunulur. Kaynaktan derleme, sunumun ayrı ve
+  adı konmuş bir seçimidir (varsayılan kapalı); seçilirse özet ve parmak izi değişir.
+- **Zincir yalnız daraltır**, İ5 geçerlidir; Python uygulamalarının güvenlik beklemesi, hangi
+  Python sürümü için kurulmuş olursa olsun her Python uygulamasını durdurur.
+- Bir plandaki ya da bayi kümesindeki bütün bileşen öğesi `component:python`, PHP ve Node.js
+  sürümlerinde olduğu gibi sunucunun Python sürümünü kapsar.
 
 ---
 

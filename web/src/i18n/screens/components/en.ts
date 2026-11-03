@@ -384,6 +384,7 @@ export const enComponentsScreens = {
     // ids from the Go catalogue, so a new component without a name here fails.
     'services.component.name.php-fpm': 'PHP-FPM',
     'services.component.name.node': 'Node.js',
+    'services.component.name.python': 'Python',
     'services.component.name.nginx': 'Nginx',
     'services.component.name.apache': 'Apache',
     'services.component.name.postgresql': 'PostgreSQL',
@@ -413,6 +414,7 @@ export const enComponentsScreens = {
     // lib/componentName.ts componentDescription, 2026-10-15). Same ids as the names.
     'services.component.description.php-fpm': 'PHP FastCGI Process Manager',
     'services.component.description.node': 'JavaScript Runtime',
+    'services.component.description.python': 'Python Runtime (distribution)',
     'services.component.description.nginx': 'Reverse Proxy Server',
     'services.component.description.apache': 'Web Server',
     'services.component.description.postgresql': 'Database Server',

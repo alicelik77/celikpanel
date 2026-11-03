@@ -31,6 +31,7 @@ Rules:
 | Component | Kind | APT package mapping | pacman package mapping | Seat | Needs |
 |---|---|---|---|---|---|
 | 🐘 PHP-FPM | Runtime | `php-fpm` · version choice: Sury PHP (packages.sury.org) | `php-fpm` | — | — |
+| 🐍 Python | Runtime | `python3` `python3-venv` | `python` | — | web server |
 | 🔄 Nginx | Service | `nginx` | `nginx` | web server | — |
 | 🪶 Apache | Service | — | — | web server | — |
 

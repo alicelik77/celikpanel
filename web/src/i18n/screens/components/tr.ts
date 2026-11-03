@@ -367,6 +367,7 @@ export const trComponentsScreens: Record<ComponentsScreenKey, string> = {
     // (2026-10-15). Ürün adları olduğu gibi kalır, betimleyici adlar çevrilir.
     'services.component.name.php-fpm': 'PHP-FPM',
     'services.component.name.node': 'Node.js',
+    'services.component.name.python': 'Python',
     'services.component.name.nginx': 'Nginx',
     'services.component.name.apache': 'Apache',
     'services.component.name.postgresql': 'PostgreSQL',
@@ -396,6 +397,7 @@ export const trComponentsScreens: Record<ComponentsScreenKey, string> = {
     // lib/componentName.ts componentDescription, 2026-10-15). Adlarla aynı kimlikler.
     'services.component.description.php-fpm': 'PHP FastCGI Süreç Yöneticisi',
     'services.component.description.node': 'JavaScript çalışma ortamı',
+    'services.component.description.python': 'Müşterilerin Python web uygulamaları için Python çalışma ortamı (işletim sisteminin kendi Python’u)',
     'services.component.description.nginx': 'Ters vekil sunucu',
     'services.component.description.apache': 'Web sunucusu',
     'services.component.description.postgresql': 'Veritabanı sunucusu',

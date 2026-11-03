@@ -12,11 +12,14 @@ import {
     RUNTIME_STATE_GUIDANCE,
     argsFromText,
     argsValid,
+    callableValid,
     decodeLogLines,
     decodeRuntimeApps,
     entryValid,
     envKeyProblem,
     healthPathValid,
+    maxWorkers,
+    parseRequirementsRefusal,
     type RuntimeApp,
     type RuntimeAppsView,
     type RuntimeKindView,
@@ -25,9 +28,10 @@ import {
 import { RuntimeAppRisk } from './RuntimeAppRisk';
 
 // The domain's "Programs" tab (alpha.119, docs/RUNTIME-APPS.md): a program the
-// customer uploads (Go, Rust, any program for this server) runs as the site's
-// own account in the site sandbox and opens over HTTPS at this domain. What
-// stands in the way comes first, each with its reason, who acts, the next
+// customer uploads (Go, Rust, any program for this server) or a Python web app
+// (Django, Flask, FastAPI, built into its own environment from PyPI) runs as
+// the site's own account in the site sandbox and opens over HTTPS at this
+// domain. What stands in the way comes first, each with its reason, who acts, the next
 // action and how work resumes (D-024); then the running or last operation;
 // then the program with its actions, or the form that creates it.
 //
@@ -196,6 +200,10 @@ function grantorWords(grantor: string | undefined, t: Translate): string {
 function blockerOf(view: RuntimeAppsView, kind: RuntimeKindView, t: Translate): { tone: Tone; text: string } | null {
     if (!view.has_site) return { tone: 'warning', text: t('runtime.block.noSite') };
     if (view.suspended) return { tone: 'warning', text: t('runtime.block.suspended') };
+    // Installed before offered: the server's own Python with its venv module.
+    if (kind.kind === 'python' && !kind.python?.ready) {
+        return { tone: 'warning', text: t('runtime.python.missing', { detail: kind.python?.detail || '—' }) };
+    }
     if (kind.held) return { tone: 'warning', text: t('runtime.block.held') };
     if (!kind.permission_granted) return { tone: 'warning', text: t('runtime.block.notGranted', { grantor: grantorWords(kind.grantor, t) }) };
     if (!kind.offered) {
@@ -214,14 +222,19 @@ function blockerOf(view: RuntimeAppsView, kind: RuntimeKindView, t: Translate): 
 
 function Body({ view, base, after }: { view: RuntimeAppsView; base: string; after: After }) {
     const { t } = useI18n();
-    const kind = view.kinds.find((k) => k.kind === 'program' && k.implemented);
-    if (!kind) return <Notice tone="info">{t('runtime.kindUnavailable')}</Notice>;
+    const kinds = view.kinds.filter((k) => k.implemented);
     const app = view.app;
+    // Before an app exists the person chooses what runs here; an offered
+    // kind is chosen first.
+    const [choice, setChoice] = useState(() => (kinds.find((k) => k.offered) ?? kinds[0])?.kind ?? 'program');
+    const kind = kinds.find((k) => k.kind === (app ? app.kind : choice)) ?? kinds[0];
+    if (!kind) return <Notice tone="info">{t('runtime.kindUnavailable')}</Notice>;
     const blocker = app ? null : blockerOf(view, kind, t);
+    const python = kind.kind === 'python';
     const vars = {
-        domain: view.domain, entry: app?.entry ?? '', port: app?.port ?? '', path: app?.health_path ?? '/', dir: 'app/bin',
+        domain: view.domain, entry: app?.entry ?? '', port: app?.port ?? '', path: app?.health_path ?? '/', dir: python ? 'app/src' : 'app/bin',
         gaps: view.sandbox.gaps.join(', '), detail: app?.status?.entry_check?.detail ?? '', format: app?.status?.entry_check?.format ?? '',
-        placeholder: '{port}',
+        placeholder: '{port}', minor: kind.python?.minor ?? '',
     };
     const states = app ? app.states : [];
     return (
@@ -234,13 +247,30 @@ function Body({ view, base, after }: { view: RuntimeAppsView; base: string; afte
             {blocker && <Notice tone={blocker.tone}>{blocker.text}</Notice>}
             {!app && !blocker && !view.certificate && <Notice tone="info">{t('runtime.block.noCertificate', { domain: view.domain })}</Notice>}
             {view.operation && <OperationLine op={view.operation} vars={vars} />}
+            {!app && kinds.length > 1 && (
+                <fieldset className="space-y-1 text-sm" data-runtime-kind-choice="">
+                    <legend className="mb-1 font-medium text-fg">{t('runtime.kind.choose')}</legend>
+                    {kinds.map((k) => (
+                        <label key={k.kind} className="flex items-start gap-2 text-fg">
+                            <input type="radio" name="runtime-kind" className="mt-0.5 h-4 w-4 accent-primary" checked={kind.kind === k.kind} onChange={() => setChoice(k.kind)} />
+                            {t(('runtime.kind.' + k.kind) as TranslationKey)}
+                        </label>
+                    ))}
+                </fieldset>
+            )}
+            {python && kind.python?.ready && (
+                <p className="text-sm text-fg-muted">
+                    {t('runtime.python.version', { minor: kind.python.minor ?? '' })}{' '}
+                    {t(kind.python.source_builds ? 'runtime.python.sourceBuilds' : 'runtime.python.wheelsOnly', { minor: kind.python.minor ?? '' })}
+                </p>
+            )}
             {app ? (
-                <AppCard view={view} app={app} base={base} after={after} />
+                <AppCard view={view} app={app} kind={kind} base={base} after={after} />
             ) : !blocker ? (
                 <div className="space-y-3 rounded-xl border border-border bg-surface p-4">
-                    <div className="font-semibold text-fg">{t('runtime.create.title')}</div>
-                    <UploadHelp vars={vars} folder="" />
-                    <SettingsForm base={base} mode="create" after={after} />
+                    <div className="font-semibold text-fg">{t(python ? 'runtime.python.create' : 'runtime.create.title')}</div>
+                    <UploadHelp vars={vars} folder="" python={python} />
+                    <SettingsForm key={kind.kind} base={base} mode="create" kind={kind} after={after} />
                 </div>
             ) : null}
             <details className="rounded-xl border border-border bg-surface p-4" open={!app}>
@@ -251,17 +281,14 @@ function Body({ view, base, after }: { view: RuntimeAppsView; base: string; afte
     );
 }
 
-function UploadHelp({ vars, folder }: { vars: Record<string, string | number>; folder: string }) {
+function UploadHelp({ vars, folder, python }: { vars: Record<string, string | number>; folder: string; python: boolean }) {
     const { t } = useI18n();
+    const prefix = python ? 'runtime.upload.python.' : 'runtime.upload.';
     return (
         <div className="space-y-1 text-sm text-fg-muted">
-            <div className="font-medium text-fg">{t('runtime.upload.title')}</div>
+            <div className="font-medium text-fg">{t(python ? 'runtime.upload.python.title' : 'runtime.upload.title')}</div>
             <ol className="list-decimal space-y-1 pl-5">
-                <li>{t('runtime.upload.step1', vars)}</li>
-                <li>{t('runtime.upload.step2')}</li>
-                <li>{t('runtime.upload.step3', vars)}</li>
-                <li>{t('runtime.upload.step4', vars)}</li>
-                <li>{t('runtime.upload.step5')}</li>
+                {[1, 2, 3, 4, 5].map((n) => <li key={n}>{t((prefix + 'step' + n) as TranslationKey, vars)}</li>)}
             </ol>
             {folder && <p className="text-xs text-fg-subtle">{t('runtime.upload.folder', { folder })}</p>}
         </div>
@@ -285,6 +312,9 @@ function OperationLine({ op, vars }: { op: RuntimeOperation; vars: Record<string
     const reason = op.reason ?? '';
     const reasonKey = ('runtime.reason.' + reason) as TranslationKey;
     const reasonText = t(reasonKey, vars);
+    // A refused requirements line: the file, the line and why, in the
+    // person's language; the line itself as the server read it.
+    const refused = reason === 'requirements_refused' ? parseRequirementsRefusal(op.message) : null;
     return (
         <Notice tone={toneOf(op.class)}>
             <p className="font-medium">{t(('runtime.op.failed.' + (op.class || 'unknown')) as TranslationKey, { kind, step: t(('runtime.op.step.' + op.step) as TranslationKey) })}</p>
@@ -293,7 +323,12 @@ function OperationLine({ op, vars }: { op: RuntimeOperation; vars: Record<string
                     : reasonText !== reasonKey ? <p>{reasonText}</p>
                     : <p>{t('runtime.reason.other')}</p>}
             </div>
-            {op.message && <p className="mt-1 text-xs opacity-80">{t('runtime.serverSaid', { message: op.message })}</p>}
+            {refused && (
+                <p className="mt-1 font-medium" data-runtime-req-line="">
+                    {t('runtime.req.line', { file: refused.file, line: refused.line, why: t(('runtime.req.' + refused.code) as TranslationKey) })}
+                </p>
+            )}
+            {op.message && <p className="mt-1 text-xs opacity-80">{t(refused ? 'runtime.req.text' : 'runtime.serverSaid', { message: refused ? refused.text : op.message })}</p>}
         </Notice>
     );
 }
@@ -301,7 +336,7 @@ function OperationLine({ op, vars }: { op: RuntimeOperation; vars: Record<string
 // States that keep a deploy, a start or a restart from being accepted.
 const BLOCKS_NEW_USE = ['suspended', 'held', 'not_offered', 'sandbox_reduced', 'disk_full'];
 
-function AppCard({ view, app, base, after }: { view: RuntimeAppsView; app: RuntimeApp; base: string; after: After }) {
+function AppCard({ view, app, kind, base, after }: { view: RuntimeAppsView; app: RuntimeApp; kind: RuntimeKindView; base: string; after: After }) {
     const { t } = useI18n();
     const busy = view.operation?.state === 'running';
     const [acting, setActing] = useState('');
@@ -347,7 +382,7 @@ function AppCard({ view, app, base, after }: { view: RuntimeAppsView; app: Runti
         <div className="space-y-3 rounded-xl border border-border bg-surface p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                    <div className="break-all font-semibold text-fg">{t('runtime.app.entry', { entry: app.entry })}</div>
+                    <div className="break-all font-semibold text-fg">{app.python ? t('runtime.python.app', { callable: app.python.callable }) : t('runtime.app.entry', { entry: app.entry })}</div>
                     <div className="text-sm text-fg-muted">
                         {t(stateKey)}
                         {status?.memory_mb ? ' · ' + t('runtime.app.memory', { mb: status.memory_mb }) : ''}
@@ -364,8 +399,17 @@ function AppCard({ view, app, base, after }: { view: RuntimeAppsView; app: Runti
             <dl className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
                 <dt className="text-fg-subtle">{t('runtime.app.portLabel')}</dt>
                 <dd className="text-fg">{t('runtime.app.port', { port: app.port })}</dd>
-                <dt className="text-fg-subtle">{t('runtime.args')}</dt>
-                <dd className="break-all font-mono text-xs text-fg">{app.args.length ? app.args.join(' ') : t('runtime.app.noArgs')}</dd>
+                {app.python ? (
+                    <>
+                        <dt className="text-fg-subtle">{t('runtime.python.server')}</dt>
+                        <dd className="text-fg">{t(('runtime.python.server.' + app.python.server) as TranslationKey)} · {t('runtime.python.workersCount', { count: app.python.workers })}</dd>
+                    </>
+                ) : (
+                    <>
+                        <dt className="text-fg-subtle">{t('runtime.args')}</dt>
+                        <dd className="break-all font-mono text-xs text-fg">{app.args.length ? app.args.join(' ') : t('runtime.app.noArgs')}</dd>
+                    </>
+                )}
                 <dt className="text-fg-subtle">{t('runtime.health')}</dt>
                 <dd className="text-fg">
                     {app.health_path}
@@ -374,7 +418,7 @@ function AppCard({ view, app, base, after }: { view: RuntimeAppsView; app: Runti
                         : ' · ' + t('runtime.app.healthBad', { status: status.health.status ?? '—' }))}
                 </dd>
             </dl>
-            {!app.deployed && <Notice tone="info">{t('runtime.app.notDeployed')}</Notice>}
+            {!app.deployed && <Notice tone="info">{t(app.python ? 'runtime.python.notDeployed' : 'runtime.app.notDeployed')}</Notice>}
             <div className="flex flex-wrap gap-2">
                 <Button variant="primary" icon={Rocket} loading={acting === 'deploy'} disabled={busy || !!acting || deployBlocked} onClick={() => void deploy()}>
                     {t(app.deployed ? 'runtime.redeploy' : 'runtime.deploy')}
@@ -396,13 +440,13 @@ function AppCard({ view, app, base, after }: { view: RuntimeAppsView; app: Runti
             {deployBlocked && !busy && <p className="text-xs text-fg-subtle">{t('runtime.deployBlocked')}</p>}
             {editing && (
                 <div className="rounded-lg border border-border bg-surface-2 p-3">
-                    <SettingsForm base={base} mode="edit" app={app} after={after} onDone={() => setEditing(false)} />
+                    <SettingsForm base={base} mode="edit" kind={kind} app={app} after={after} onDone={() => setEditing(false)} />
                 </div>
             )}
             <details className="text-sm" open={!app.deployed}>
-                <summary className="cursor-pointer text-primary">{t('runtime.upload.title')}</summary>
+                <summary className="cursor-pointer text-primary">{t(app.python ? 'runtime.upload.python.title' : 'runtime.upload.title')}</summary>
                 <div className="mt-2">
-                    <UploadHelp vars={{ dir: 'app/bin', port: app.port, placeholder: '{port}' }} folder={app.folder} />
+                    <UploadHelp vars={{ dir: app.upload_dir, port: app.port, placeholder: '{port}' }} folder={app.folder} python={!!app.python} />
                 </div>
             </details>
             <p className="text-xs text-fg-subtle">{t('runtime.independent', { unit: app.unit, folder: app.folder })}</p>
@@ -419,23 +463,30 @@ function AppCard({ view, app, base, after }: { view: RuntimeAppsView; app: Runti
     );
 }
 
-function SettingsForm({ base, mode, app, after, onDone }: { base: string; mode: 'create' | 'edit'; app?: RuntimeApp; after: After; onDone?: () => void }) {
+function SettingsForm({ base, mode, kind, app, after, onDone }: { base: string; mode: 'create' | 'edit'; kind: RuntimeKindView; app?: RuntimeApp; after: After; onDone?: () => void }) {
     const { t } = useI18n();
-    const [entry, setEntry] = useState(app?.entry ?? '');
+    const python = kind.kind === 'python';
+    const [entry, setEntry] = useState(app?.python?.callable ?? app?.entry ?? '');
     const [argsText, setArgsText] = useState((app?.args ?? []).join('\n'));
     const [health, setHealth] = useState(app?.health_path ?? '/');
+    const [server, setServer] = useState<'wsgi' | 'asgi'>(app?.python?.server ?? 'wsgi');
+    const most = kind.python?.max_workers ?? maxWorkers(kind.limits.memory_mb);
+    const [workers, setWorkers] = useState(String(app?.python?.workers ?? Math.min(2, most)));
     const [busy, setBusy] = useState(false);
     const args = argsFromText(argsText);
-    const entryOK = entryValid(entry);
-    const argsOK = argsValid(args);
+    const entryOK = python ? callableValid(entry) : entryValid(entry);
+    const argsOK = python || argsValid(args);
+    const workersOK = !python || (/^\d+$/.test(workers) && Number(workers) >= 1 && Number(workers) <= most);
     const healthOK = healthPathValid(health.trim());
     const prefix = 'runtime-' + mode;
 
     const submit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (!entryOK || !argsOK || !healthOK) return;
+        if (!entryOK || !argsOK || !healthOK || !workersOK) return;
         setBusy(true);
-        const body = { kind: 'program', entry: entry.trim(), args, health_path: health.trim() || '/' };
+        const body = python
+            ? { kind: 'python', entry: entry.trim(), server, workers: Number(workers), health_path: health.trim() || '/' }
+            : { kind: 'program', entry: entry.trim(), args, health_path: health.trim() || '/' };
         const res = await sendJSON(base + (mode === 'create' ? '/create' : '/settings'), mode === 'create' ? 'POST' : 'PUT', body);
         setBusy(false);
         if (await after(res)) {
@@ -447,21 +498,36 @@ function SettingsForm({ base, mode, app, after, onDone }: { base: string; mode: 
     return (
         <form className="space-y-3" onSubmit={(event) => void submit(event)} noValidate>
             {mode === 'edit' && <div className="text-sm font-medium text-fg">{t('runtime.settings.title')}</div>}
-            <Field label={t('runtime.entry')} htmlFor={prefix + '-entry'} hint={t('runtime.entry.hint')}>
+            {python && (
+                <Field label={t('runtime.python.server')} htmlFor={prefix + '-server'}>
+                    <select id={prefix + '-server'} className={inputClass} value={server} onChange={(e) => setServer(e.target.value === 'asgi' ? 'asgi' : 'wsgi')}>
+                        <option value="wsgi">{t('runtime.python.server.wsgi')}</option>
+                        <option value="asgi">{t('runtime.python.server.asgi')}</option>
+                    </select>
+                </Field>
+            )}
+            <Field label={t(python ? 'runtime.python.callable' : 'runtime.entry')} htmlFor={prefix + '-entry'} hint={t(python ? 'runtime.python.callable.hint' : 'runtime.entry.hint')}>
                 <input id={prefix + '-entry'} className={inputClass} autoComplete="off" spellCheck={false} value={entry} onChange={(e) => setEntry(e.target.value)} />
             </Field>
-            {entry !== '' && !entryOK && <p className="text-xs text-warning">{t('err.RUNTIME_APP.entry_invalid')}</p>}
-            <Field label={t('runtime.args')} htmlFor={prefix + '-args'} hint={t('runtime.args.hint', { placeholder: '{port}' })}>
-                <textarea id={prefix + '-args'} rows={3} className={inputClass + ' font-mono'} spellCheck={false} value={argsText} onChange={(e) => setArgsText(e.target.value)} />
-            </Field>
+            {entry !== '' && !entryOK && <p className="text-xs text-warning">{t(python ? 'err.RUNTIME_APP.python_settings' : 'err.RUNTIME_APP.entry_invalid', { max: most })}</p>}
+            {python ? (
+                <Field label={t('runtime.python.workers')} htmlFor={prefix + '-workers'} hint={t('runtime.python.workers.hint', { max: most })}>
+                    <input id={prefix + '-workers'} inputMode="numeric" className={inputClass} value={workers} onChange={(e) => setWorkers(e.target.value)} />
+                </Field>
+            ) : (
+                <Field label={t('runtime.args')} htmlFor={prefix + '-args'} hint={t('runtime.args.hint', { placeholder: '{port}' })}>
+                    <textarea id={prefix + '-args'} rows={3} className={inputClass + ' font-mono'} spellCheck={false} value={argsText} onChange={(e) => setArgsText(e.target.value)} />
+                </Field>
+            )}
             {!argsOK && <p className="text-xs text-warning">{t('err.RUNTIME_APP.args_invalid')}</p>}
+            {!workersOK && <p className="text-xs text-warning">{t('runtime.python.workers.hint', { max: most })}</p>}
             <Field label={t('runtime.health')} htmlFor={prefix + '-health'} hint={t('runtime.health.hint')}>
                 <input id={prefix + '-health'} className={inputClass} autoComplete="off" spellCheck={false} value={health} onChange={(e) => setHealth(e.target.value)} />
             </Field>
             {!healthOK && <p className="text-xs text-warning">{t('err.RUNTIME_APP.health_path_invalid')}</p>}
             {mode === 'edit' && <p className="text-xs text-fg-subtle">{t('runtime.settings.applies')}</p>}
             <div className="flex flex-wrap gap-2">
-                <Button type="submit" variant="primary" icon={mode === 'create' ? Plus : undefined} loading={busy} disabled={!entryOK || !argsOK || !healthOK}>
+                <Button type="submit" variant="primary" icon={mode === 'create' ? Plus : undefined} loading={busy} disabled={!entryOK || !argsOK || !healthOK || !workersOK}>
                     {t(mode === 'create' ? 'runtime.create.button' : 'runtime.settings.save')}
                 </Button>
                 {onDone && <Button type="button" onClick={onDone} disabled={busy}>{t('common.cancel')}</Button>}

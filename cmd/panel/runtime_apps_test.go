@@ -33,10 +33,20 @@ type fakeRuntimeNative struct {
 	renders   []int
 	envs      []transport.RuntimeAppEnvRequest
 	removed   []transport.RuntimeAppRemoveRequest
+	// The Python kind: the server's Python, the builds by operation, the
+	// environment each render named, and a build that fails.
+	pyReady    bool
+	pyMinor    string
+	builds     map[string]transport.RuntimeAppBuildResponse
+	buildReqs  []transport.RuntimeAppBuildRequest
+	venvs      map[int]int
+	renderVenv []int
+	buildFail  string
 }
 
 func newFakeRuntimeNative() *fakeRuntimeNative {
-	return &fakeRuntimeNative{level: "full", entryCode: siteruntime.EntryOK, units: map[int]transport.AppUnitState{}}
+	return &fakeRuntimeNative{level: "full", entryCode: siteruntime.EntryOK, units: map[int]transport.AppUnitState{},
+		pyMinor: "3.13", builds: map[string]transport.RuntimeAppBuildResponse{}, venvs: map[int]int{}}
 }
 
 func (f *fakeRuntimeNative) note(call string) {
@@ -48,7 +58,7 @@ func (f *fakeRuntimeNative) mutations() int {
 	defer f.mu.Unlock()
 	n := 0
 	for _, c := range f.calls {
-		if c != "status" && c != "logs" && c != "caps" && c != "unitState" {
+		if c != "status" && c != "logs" && c != "caps" && c != "unitState" && c != "python" {
 			n++
 		}
 	}
@@ -72,6 +82,10 @@ func (f *fakeRuntimeNative) render(_ context.Context, req transport.RuntimeAppRe
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.note("render")
+	if req.Spec.Python != nil {
+		f.renderVenv = append(f.renderVenv, req.Spec.Python.Venv)
+		f.venvs[req.Target.AppID] = req.Spec.Python.Venv
+	}
 	if _, ok := f.units[req.Target.AppID]; !ok {
 		f.units[req.Target.AppID] = transport.AppUnitState{Present: true}
 	}
@@ -187,6 +201,60 @@ func (f *fakeRuntimeNative) sandboxCaps(context.Context) (transport.SandboxCapsR
 	return transport.SandboxCapsResponse{Level: f.level, Gaps: gaps}, nil
 }
 
+func (f *fakeRuntimeNative) python(context.Context) (transport.RuntimePythonResponse, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.note("python")
+	if !f.pyReady {
+		return transport.RuntimePythonResponse{Minor: f.pyMinor, Reason: siteruntime.PythonRuntimeMissing,
+			Detail: "Python's venv module is not installed (python3 python3-venv)"}, nil
+	}
+	return transport.RuntimePythonResponse{Minor: f.pyMinor, Expected: f.pyMinor, Ready: true}, nil
+}
+
+func (f *fakeRuntimeNative) build(_ context.Context, req transport.RuntimeAppBuildRequest) (transport.RuntimeAppBuildResponse, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.note("build")
+	if record, ok := f.builds[req.OperationID]; ok {
+		return record, nil
+	}
+	f.buildReqs = append(f.buildReqs, req)
+	before := f.venvs[req.Target.AppID]
+	next := before + 1
+	for _, record := range f.builds {
+		if record.Venv >= next {
+			next = record.Venv + 1
+		}
+	}
+	record := transport.RuntimeAppBuildResponse{RuntimeAppStepResponse: transport.RuntimeAppStepResponse{Done: true},
+		Phase: siteruntime.BuildPhaseRunning, Venv: next, Previous: before}
+	f.builds[req.OperationID] = record
+	return record, nil
+}
+
+func (f *fakeRuntimeNative) buildAdvance(_ context.Context, req transport.RuntimeAppBuildAdvanceRequest) (transport.RuntimeAppBuildResponse, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.note("buildAdvance")
+	record, ok := f.builds[req.OperationID]
+	if !ok {
+		return transport.RuntimeAppBuildResponse{RuntimeAppStepResponse: transport.RuntimeAppStepResponse{Class: transport.RuntimeAppUnknown,
+			Reason: siteruntime.BuildFailed, Error: "no build"}}, nil
+	}
+	if record.Phase == siteruntime.BuildPhaseRunning {
+		if f.buildFail != "" {
+			record.Phase, record.Done = siteruntime.BuildPhaseFailed, false
+			record.Class, record.Reason = transport.RuntimeAppVerifiedFailure, f.buildFail
+			record.Package, record.Error = "numpy", "numpy has no ready-made package (wheel) for Python 3.13; the running app was not changed"
+		} else {
+			record.Phase = siteruntime.BuildPhaseSucceeded
+		}
+		f.builds[req.OperationID] = record
+	}
+	return record, nil
+}
+
 type runtimeFixture struct {
 	serviceAppFixture
 	rt *fakeRuntimeNative
@@ -257,7 +325,8 @@ func (f runtimeFixture) view(t *testing.T, user int) runtimeAppsDomainView {
 func TestRuntimeAppsAreClosedUntilOfferedAndLayersOnlyNarrow(t *testing.T) {
 	f := newRuntimeFixture(t)
 	v := f.view(t, 9703)
-	if len(v.Kinds) != 1 || v.Kinds[0].Kind != "program" || v.Kinds[0].Offered || v.Kinds[0].RefusedBy != rightsLayerAdministrator {
+	if len(v.Kinds) != 2 || v.Kinds[0].Kind != "program" || v.Kinds[0].Offered || v.Kinds[0].RefusedBy != rightsLayerAdministrator ||
+		v.Kinds[1].Kind != "python" || v.Kinds[1].Offered || v.Kinds[1].Python == nil || v.Kinds[1].Python.Ready {
 		t.Fatalf("kinds before an offer: %+v", v.Kinds)
 	}
 	body := `{"kind":"program","entry":"server"}`
@@ -267,7 +336,7 @@ func TestRuntimeAppsAreClosedUntilOfferedAndLayersOnlyNarrow(t *testing.T) {
 	wantStatus(t, f.as(t, 9701, http.MethodPost, runtimePath+"/create", body), http.StatusConflict, errCodeNotOffered)
 	wantStatus(t, f.as(t, 9703, http.MethodGet, runtimeAppsAdminPath, ""), http.StatusForbidden, "")
 	wantStatus(t, f.as(t, 9701, http.MethodPost, runtimeAppsAdminPath+"/program/offer", `{"risk_digest":"stale"}`), http.StatusConflict, errCodeRuntimeApp)
-	wantStatus(t, f.as(t, 9701, http.MethodPost, runtimeAppsAdminPath+"/python/offer", `{}`), http.StatusNotFound, "")
+	wantStatus(t, f.as(t, 9701, http.MethodPost, runtimeAppsAdminPath+"/node/offer", `{}`), http.StatusNotFound, "")
 	wantStatus(t, f.as(t, 9701, http.MethodPost, runtimeAppsAdminPath+"/program/offer",
 		`{"risk_digest":"`+siteruntime.RiskDigest(siteruntime.KindProgram)+`","memory_mb":1}`), http.StatusBadRequest, errCodeRuntimeApp)
 	if f.offerRuntime(t, "").StatusCode != http.StatusOK {
@@ -592,9 +661,14 @@ func TestRuntimeOfferingIDIsARightsItem(t *testing.T) {
 	if !containsString(runtimeCandidateOfferings(), "runtime:program") {
 		t.Fatal("candidates")
 	}
-	if domainSubrouteRightFor("runtime-apps-deploy", http.MethodPost) != rightProgramApps ||
-		domainSubrouteRightFor("runtime-apps-remove", http.MethodPost) != "" ||
-		domainSubrouteRightFor("runtime-apps-control", http.MethodPost) != "" {
-		t.Fatal("subroute rights")
+	// The permission depends on the kind, so the route itself names none;
+	// runtimeKindRefusal checks program_apps or python_apps inside.
+	for _, kind := range []string{"runtime-apps-create", "runtime-apps-settings", "runtime-apps-deploy", "runtime-apps-remove", "runtime-apps-control"} {
+		if domainSubrouteRightFor(kind, http.MethodPost) != "" {
+			t.Fatalf("subroute %s names a fixed right", kind)
+		}
+	}
+	if !knownPermission(rightPythonApps) || !validOfferingID("component:python:3.13") {
+		t.Fatal("python rights ids")
 	}
 }

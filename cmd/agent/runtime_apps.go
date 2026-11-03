@@ -164,7 +164,11 @@ func (a *Agent) RuntimeAppCheckV1(req *transport.RuntimeAppCheckRequest, resp *t
 	defer cancel()
 	assessment, refusal := runtimeAppLevel(sandboxCaps(ctx), req.Spec)
 	resp.Level, resp.Gaps = string(assessment.Level), gapNames(assessment)
-	resp.Entry = runtimeAppEntryCheck(rc, req.Spec.Entry)
+	if rc.kind == siteruntime.KindPython {
+		resp.Entry, _, _ = runtimePythonCheck(rc, req.Spec)
+	} else {
+		resp.Entry = runtimeAppEntryCheck(rc, req.Spec.Entry)
+	}
 	switch {
 	case refusal != "":
 		runtimeStep(&resp.RuntimeAppStepResponse, transport.RuntimeAppPrerequisite, "sandbox_reduced", refusal)
@@ -279,8 +283,37 @@ func runtimeAppUnitParams(rc runtimeAppContext, target transport.RuntimeAppTarge
 		AppID: target.AppID, Kind: rc.kind, Domain: target.Domain, User: rc.account.Name, Group: rc.account.Group,
 		Layout: rc.layout, Entry: spec.Entry, Args: spec.Args, Port: spec.Port,
 		Limits: siteruntime.Limits{MemoryMB: spec.Limits.MemoryMB, CPUPercent: spec.Limits.CPUPercent, Tasks: spec.Limits.TasksMax},
-		Level:  level, Caps: caps, DropInDir: path + ".d",
+		Level:  level, Caps: caps, DropInDir: path + ".d", Python: runtimePythonUnit(spec),
 	}, nil
+}
+
+// runtimePythonUnit is the Python part of a unit (nil for a program).
+func runtimePythonUnit(spec transport.RuntimeAppSpec) *siteruntime.PythonUnit {
+	if spec.Python == nil {
+		return nil
+	}
+	return &siteruntime.PythonUnit{Venv: spec.Python.Venv,
+		Settings: siteruntime.PythonSettings{Server: spec.Python.Server, Callable: spec.Entry, Workers: spec.Python.Workers}}
+}
+
+// runtimeAppRenderCheck is what must hold before a unit is written: the
+// program's entry, or the Python app's code folder and the environment the
+// unit will run.
+func runtimeAppRenderCheck(rc runtimeAppContext, spec transport.RuntimeAppSpec) transport.RuntimeAppEntryCheck {
+	if rc.kind != siteruntime.KindPython {
+		return runtimeAppEntryCheck(rc, spec.Entry)
+	}
+	if _, err := pythonSettings(spec); err != nil {
+		return transport.RuntimeAppEntryCheck{Code: siteruntime.EntryInvalid, Detail: err.Error()}
+	}
+	if check := runtimePythonSourceCheck(rc); check.Code != siteruntime.EntryOK {
+		return check
+	}
+	if !runtimeAppVenvComplete(rc.layout.Root, siteruntime.VenvName(spec.Python.Venv)) {
+		return transport.RuntimeAppEntryCheck{Code: siteruntime.PythonVenvMissing,
+			Detail: "app/" + siteruntime.VenvName(spec.Python.Venv) + " is not a complete environment; deploy again to build it"}
+	}
+	return transport.RuntimeAppEntryCheck{Code: siteruntime.EntryOK, Format: "python"}
 }
 
 // RuntimeAppRenderV1 makes the app's folders as the site's account, writes
@@ -312,7 +345,7 @@ func (a *Agent) RuntimeAppRenderV1(req *transport.RuntimeAppRenderRequest, resp 
 		runtimeStep(step, transport.RuntimeAppPrerequisite, "sandbox_reduced", refusal)
 		return nil
 	}
-	if check := runtimeAppEntryCheck(rc, req.Spec.Entry); check.Code != siteruntime.EntryOK {
+	if check := runtimeAppRenderCheck(rc, req.Spec); check.Code != siteruntime.EntryOK {
 		runtimeStep(step, transport.RuntimeAppPrerequisite, check.Code, check.Detail)
 		return nil
 	}
@@ -508,7 +541,10 @@ func (a *Agent) RuntimeAppStatusV1(req *transport.RuntimeAppStatusRequest, resp 
 		var step transport.RuntimeAppStepResponse
 		rc, resolved = resolveRuntimeApp(req.Target, &step)
 		if req.Entry {
-			if resolved {
+			if resolved && rc.kind == siteruntime.KindPython {
+				check := runtimePythonStatusCheck(rc, req.Target.AppID)
+				resp.Entry = &check
+			} else if resolved {
 				check := runtimeAppEntryCheck(rc, req.Spec.Entry)
 				resp.Entry = &check
 			} else {
@@ -710,6 +746,9 @@ func (a *Agent) RuntimeAppRemoveV1(req *transport.RuntimeAppRemoveRequest, resp 
 	for _, s := range []string{"stop", "disable", "reset-failed"} {
 		_, _ = appUnitSystemctl(systemctlArgs(s, name)...)
 	}
+	// A Python app's build, if one runs, stops too; its input files go.
+	stopRuntimeAppBuildUnit(req.Target.AppID)
+	removeRuntimeAppBuildFiles(req.Target.AppID)
 	path, err := runtimeAppUnitPath(req.Target.AppID)
 	if err != nil {
 		runtimeStep(step, transport.RuntimeAppUnknown, "unit_dir", err.Error())

@@ -66,6 +66,7 @@ export const trTransfersScreens: Record<TransfersScreenKey, string> = {
     'transfer.permission.remote_backup_destinations': 'Kendi uzak yedek hedefleri',
     'transfer.permission.service_apps': 'Yapay zekâ ve otomasyon uygulamaları',
     'transfer.permission.program_apps': 'Yüklenen programlar',
+    'transfer.permission.python_apps': 'Python uygulamaları',
     'transfer.item.acme': '{provider} sertifikaları',
 
     'transfer.requests.title': 'Devir istekleri',

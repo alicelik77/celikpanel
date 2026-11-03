@@ -167,9 +167,9 @@ test('the new right follows ssh, as on the server, with its name in both languag
   // site tools that rights_site_tools.go appends) follow it in the same order;
   // alpha.119's uploaded programs (program_apps) come right after service_apps.
   const rights = read('../src/lib/rights.ts');
-  assert.match(rights, /'file_access', 'ssh',\s*(?:\/\/[^\n]*\n\s*)*'remote_backup_destinations', 'service_apps', 'program_apps', 'wordpress_tools', 'malware_scan',\s*\] as const;/);
+  assert.match(rights, /'file_access', 'ssh',\s*(?:\/\/[^\n]*\n\s*)*'remote_backup_destinations', 'service_apps', 'program_apps', 'python_apps', 'wordpress_tools', 'malware_scan',\s*\] as const;/);
   const server = read('../../cmd/panel/rights_model.go');
-  assert.match(server, /rightFileAccess, rightSSH,\s*rightRemoteBackupDestinations,\s*rightServiceApps,\s*rightProgramApps,\s*\}/);
+  assert.match(server, /rightFileAccess, rightSSH,\s*rightRemoteBackupDestinations,\s*rightServiceApps,\s*rightProgramApps,\s*rightPythonApps,\s*\}/);
   for (const catalogue of [englishCatalogue, turkishCatalogue]) {
     assert.match(catalogue, /'rights\.perm\.remote_backup_destinations':/);
     assert.match(catalogue, /'transfer\.permission\.remote_backup_destinations':/);

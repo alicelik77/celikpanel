@@ -448,7 +448,7 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
         // even when the right was closed later (D-042 P5).
         ...(!isTeamMember && !isDnsOnly && (open('service_apps') || projectType === 'service_app') ? [{ id: 'ai', labelKey: 'svcapps.tab', icon: Bot, render: () => <DomainServiceApps domainId={domain.id} domainName={domain.domain_name} /> } satisfies TabDef] : []),
         // alpha.119: a program that runs stays manageable after the right closes.
-        ...(!isTeamMember && !isDnsOnly && (open('program_apps') || projectType === 'runtime_app') ? [{ id: 'programs', labelKey: 'runtime.tab', icon: Cpu, render: () => <DomainRuntimeApps domainId={domain.id} domainName={domain.domain_name} /> } satisfies TabDef] : []),
+        ...(!isTeamMember && !isDnsOnly && (open('program_apps') || open('python_apps') || projectType === 'runtime_app') ? [{ id: 'programs', labelKey: 'runtime.tab', icon: Cpu, render: () => <DomainRuntimeApps domainId={domain.id} domainName={domain.domain_name} /> } satisfies TabDef] : []),
         ...(!isDnsOnly && canView('files') && open('file_manager') ? [{ id: 'files', labelKey: 'domain.tab.files', icon: Folder, capabilities: ['files'], render: (readOnly) => <DomainFileManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies TabDef] : []),
         ...(!isTeamMember && !isDnsOnly && (open('file_access') || open('ssh')) ? [{ id: 'access', labelKey: 'fileAccess.tab', icon: KeyRound, render: () => <DomainFileAccess domainId={domain.id} domainName={domain.domain_name} isAdmin={role === 'admin'} /> } satisfies TabDef] : []),
         ...(!isDnsOnly && advancedSubs.length > 0 ? [{

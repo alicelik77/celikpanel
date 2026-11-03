@@ -36,6 +36,8 @@ func (a *Agent) ListServiceInstances(req *ServiceInstancesRequest, resp *Service
 		resp.Instances = phpInstances()
 	case "node":
 		resp.Instances = nodeInstances()
+	case "python":
+		resp.Instances = pythonInstances()
 	default:
 		// Empty is the honest answer for a service with no per-instance
 		// model: one unit is one copy and the row already tells that truth.
@@ -84,6 +86,18 @@ func phpInstances() []core.ServiceInstance {
 	}
 	sortInstancesNewestFirst(out)
 	return out
+}
+
+// pythonInstances: the distribution's one Python (alpha.119), shown with
+// its minor; no unit of its own (Python apps run in their own units), never
+// operated here. Nothing when the system's own Python is not there.
+// pythonInstances: dağıtımın tek Python'u; kendi birimi yok, burada işletilmez.
+func pythonInstances() []core.ServiceInstance {
+	py := runtimePythonProbe()
+	if py.Minor == "" {
+		return []core.ServiceInstance{}
+	}
+	return []core.ServiceInstance{{Version: py.Minor, Path: "/usr/bin/python" + py.Minor, Managed: false}}
 }
 
 // nodeInstances: a managed Node version is a verified tarball tree under

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -42,6 +43,12 @@ type runtimeAdminEntry struct {
 	LevelGap bool `json:"level_gap"`
 	Apps     int  `json:"apps"`
 	Running  int  `json:"running"`
+	// The Python kind: the server's Python, whether source builds are
+	// allowed, and the summary and digest of an offer that allows them.
+	Python                 *runtimePythonView `json:"python,omitempty"`
+	SourceBuilds           bool               `json:"source_builds,omitempty"`
+	RiskSourceBuilds       *siteruntime.Risk  `json:"risk_source_builds,omitempty"`
+	RiskDigestSourceBuilds string             `json:"risk_digest_source_builds,omitempty"`
 }
 
 func (p *Panel) handleRuntimeAppsAdmin(w http.ResponseWriter, r *http.Request) {
@@ -64,7 +71,7 @@ func (p *Panel) handleRuntimeAppsAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	kind := siteruntime.Kind(parts[0])
-	if !siteruntime.Implemented(kind) || siteruntime.OfferingID(kind) == "" {
+	if !siteruntime.Implemented(kind) {
 		http.NotFound(w, r)
 		return
 	}
@@ -113,11 +120,14 @@ func (p *Panel) writeRuntimeAppsAdmin(w http.ResponseWriter, r *http.Request) {
 	}
 	entries := []runtimeAdminEntry{}
 	for _, kind := range siteruntime.Kinds {
-		id := siteruntime.OfferingID(kind)
-		if id == "" {
+		id, py := p.runtimeKindOffering(ctx, kind)
+		if id == "" && kind != siteruntime.KindPython {
 			continue
 		}
 		o, has := offerings[id]
+		if id == "" {
+			o, has = runtimeOffering{}, false
+		}
 		entry := runtimeAdminEntry{Kind: string(kind), OfferingID: id, Implemented: siteruntime.Implemented(kind),
 			Risk: siteruntime.RiskOf(kind), RiskDigest: siteruntime.RiskDigest(kind), Offered: o.Offered, Held: o.Held,
 			HeldReason: o.HeldReason, Limits: runtimeLimitsFor(kind, o, has), AcceptedLevel: "full", AcceptedGaps: []string{},
@@ -126,6 +136,13 @@ func (p *Panel) writeRuntimeAppsAdmin(w http.ResponseWriter, r *http.Request) {
 			entry.AcceptedLevel, entry.AcceptedGaps = o.AcceptedLevel, o.AcceptedGaps
 		}
 		entry.OfferStale = o.Offered && o.RiskDigest != entry.RiskDigest
+		if kind == siteruntime.KindPython {
+			entry.SourceBuilds = has && runtimeOfferSourceBuilds(o)
+			entry.OfferStale = o.Offered && !runtimeOfferOpen(runtimeOffering{Kind: kind, Offered: true, RiskDigest: o.RiskDigest})
+			withSource := siteruntime.RiskOfOffer(kind, true)
+			entry.RiskSourceBuilds, entry.RiskDigestSourceBuilds = &withSource, siteruntime.RiskDigestFor(kind, true)
+			entry.Python = pythonView(py, entry.Limits, entry.SourceBuilds)
+		}
 		entry.LevelGap = o.Offered && capsErr == nil && runtimeLevelRefusal(caps, o) != ""
 		entries = append(entries, entry)
 	}
@@ -162,14 +179,27 @@ func (p *Panel) offerRuntime(w http.ResponseWriter, r *http.Request, kind siteru
 		CPUPercent   int      `json:"cpu_percent"`
 		TasksMax     int      `json:"tasks_max"`
 		AcceptedGaps []string `json:"accepted_gaps"`
+		// SourceBuilds (Python only): pip may build packages from source.
+		// Off by default; the summary the administrator agrees to names it.
+		SourceBuilds bool `json:"source_builds"`
 	}
 	if !decodeServiceAppBody(w, r, &req) {
 		return
 	}
 	ctx := r.Context()
-	if req.RiskDigest != siteruntime.RiskDigest(kind) {
+	if req.SourceBuilds && kind != siteruntime.KindPython {
+		writeClientError(w, http.StatusBadRequest, "source builds apply to Python apps only")
+		return
+	}
+	if req.RiskDigest != siteruntime.RiskDigestFor(kind, req.SourceBuilds) {
 		writeRuntimeAppRefusal(w, http.StatusConflict, "risk_changed",
-			"Nothing was changed: the risk summary of uploaded programs changed since this page was opened. Read it again, then offer.", nil)
+			"Nothing was changed: the risk summary of "+runtimeKindName(kind)+" changed since this page was opened. Read it again, then offer.", nil)
+		return
+	}
+	id, py := p.runtimeKindOffering(ctx, kind)
+	if kind == siteruntime.KindPython && (py == nil || !py.Ready || id == "") {
+		refusal := runtimePythonMissingRefusal(py)
+		writeRuntimeAppRefusal(w, refusal.status, refusal.reason, refusal.message, refusal.vars)
 		return
 	}
 	limits := siteruntime.DefaultLimits(kind)
@@ -198,7 +228,6 @@ func (p *Panel) offerRuntime(w http.ResponseWriter, r *http.Request, kind siteru
 			map[string]string{"gaps": strings.Join(caps.Gaps, ", ")})
 		return
 	}
-	id := siteruntime.OfferingID(kind)
 	if _, err := p.db.GetDB().ExecContext(ctx, `
 		INSERT INTO runtime_offerings (offering_id, kind, offered, risk_digest, memory_mb, cpu_percent, tasks_max, accepted_level, accepted_gaps, changed_by)
 		VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?)
@@ -211,14 +240,19 @@ func (p *Panel) offerRuntime(w http.ResponseWriter, r *http.Request, kind siteru
 		return
 	}
 	p.auditDetailed(r, "runtime.offer", "runtime", 0, map[string]any{"offering": id, "risk_digest": req.RiskDigest,
-		"memory_mb": limits.MemoryMB, "cpu_percent": limits.CPUPercent, "tasks_max": limits.Tasks, "level": level, "accepted_gaps": gaps})
+		"memory_mb": limits.MemoryMB, "cpu_percent": limits.CPUPercent, "tasks_max": limits.Tasks, "level": level, "accepted_gaps": gaps,
+		"source_builds": req.SourceBuilds})
 	p.writeRuntimeAppsAdmin(w, r)
 }
 
 // withdrawRuntime closes the offering: nobody creates or deploys any more;
 // what runs keeps running (D-038, D-042 P5).
 func (p *Panel) withdrawRuntime(w http.ResponseWriter, r *http.Request, kind siteruntime.Kind) {
-	id := siteruntime.OfferingID(kind)
+	id, _ := p.runtimeKindOffering(r.Context(), kind)
+	if id == "" {
+		writeRuntimeAppRefusal(w, http.StatusConflict, siteruntime.PythonRuntimeMissing, "Nothing was changed: the server did not say which Python it has.", nil)
+		return
+	}
 	if _, err := p.db.GetDB().ExecContext(r.Context(), `
 		UPDATE runtime_offerings SET offered = 0, changed_by = ?, updated_at = datetime('now') WHERE offering_id = ?`,
 		nullablePositiveInt(callerID(currentCaller(r))), id); err != nil {
@@ -246,24 +280,43 @@ func (p *Panel) holdRuntime(w http.ResponseWriter, r *http.Request, kind siterun
 		return
 	}
 	ctx := r.Context()
-	id := siteruntime.OfferingID(kind)
+	// The Python line is the server's current one; when the server cannot
+	// say (Python removed), the hold still applies to every Python line
+	// already recorded and stops every Python app.
+	id, _ := p.runtimeKindOffering(ctx, kind)
+	if id == "" && kind != siteruntime.KindPython {
+		writeServerError(w, errors.New("the kind has no offering"))
+		return
+	}
 	limits := siteruntime.DefaultLimits(kind)
 	held := 0
 	if hold {
 		held = 1
 	}
-	if _, err := p.db.GetDB().ExecContext(ctx, `
+	if id != "" {
+		if _, err := p.db.GetDB().ExecContext(ctx, `
 		INSERT INTO runtime_offerings (offering_id, kind, offered, memory_mb, cpu_percent, tasks_max, held, held_reason, changed_by)
 		VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(offering_id) DO UPDATE SET held = excluded.held, held_reason = excluded.held_reason,
 		  changed_by = excluded.changed_by, updated_at = datetime('now')`,
-		id, string(kind), limits.MemoryMB, limits.CPUPercent, limits.Tasks, held, req.Reason, nullablePositiveInt(callerID(currentCaller(r)))); err != nil {
-		writeServerError(w, err)
-		return
+			id, string(kind), limits.MemoryMB, limits.CPUPercent, limits.Tasks, held, req.Reason, nullablePositiveInt(callerID(currentCaller(r)))); err != nil {
+			writeServerError(w, err)
+			return
+		}
+	}
+	// A hold of Python apps covers every Python line this server has had
+	// (an app made before a system upgrade still names the older one).
+	if kind == siteruntime.KindPython {
+		if _, err := p.db.GetDB().ExecContext(ctx, `
+			UPDATE runtime_offerings SET held = ?, held_reason = ?, changed_by = ?, updated_at = datetime('now') WHERE kind = 'python'`,
+			held, req.Reason, nullablePositiveInt(callerID(currentCaller(r)))); err != nil {
+			writeServerError(w, err)
+			return
+		}
 	}
 	stopped, failed := []string{}, []string{}
 	if hold {
-		stopped, failed = p.stopRuntimeApps(ctx, id)
+		stopped, failed = p.stopRuntimeApps(ctx, id, kind)
 	}
 	details := map[string]any{"offering": id, "reason": req.Reason, "stopped": stopped, "not_stopped": failed}
 	if hold {
@@ -275,12 +328,13 @@ func (p *Panel) holdRuntime(w http.ResponseWriter, r *http.Request, kind siterun
 	_ = json.NewEncoder(w).Encode(map[string]any{"stopped": stopped, "not_stopped": failed})
 }
 
-// stopRuntimeApps stops every deployed app of an offering (the hold). Each
-// is reported: stopped, or not stopped with the server's reason.
-func (p *Panel) stopRuntimeApps(ctx context.Context, offeringID string) ([]string, []string) {
+// stopRuntimeApps stops every deployed app of an offering (the hold), and
+// for the Python kind every Python app whatever line it names. Each is
+// reported: stopped, or not stopped with the server's reason.
+func (p *Panel) stopRuntimeApps(ctx context.Context, offeringID string, kind siteruntime.Kind) ([]string, []string) {
 	rows, err := p.db.GetDB().QueryContext(ctx, `
 		SELECT `+runtimeAppColumns+` FROM runtime_apps a JOIN domains d ON d.id = a.domain_id
-		WHERE a.offering_id = ? AND (a.deployed = 1 OR a.state IN ('deploying', 'running'))`, offeringID)
+		WHERE (a.offering_id = ? OR (? = 'python' AND a.kind = 'python')) AND (a.deployed = 1 OR a.state IN ('deploying', 'running'))`, offeringID, string(kind))
 	if err != nil {
 		return nil, []string{"the programs could not be listed: " + err.Error()}
 	}

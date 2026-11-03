@@ -59,7 +59,7 @@ func EgressRuleset() string {
 	portSet := "{ " + strings.Join(ports, ", ") + " }"
 	return `# CelikPanel site sandbox: SMTP egress block (docs/SITE-SANDBOX.md).
 # Members of @smtp_blocked are the cgroups of sandboxed programs (celiksvc-*,
-# celiksvcinst-*, celikrt-*). They cannot connect to ports 25, 465 and 587 on
+# celiksvcinst-*, celikrt-*, celikrtbuild-*). They cannot connect to ports 25, 465 and 587 on
 # any address, 127.0.0.1 included, and nothing outside reaches a port they
 # opened on another address than loopback. Each unit adds its own cgroup
 # before it starts and removes it after it stops; celikpanel-egress-guard.timer
@@ -110,9 +110,9 @@ if ! "$nft" list chain inet ` + EgressTable + ` output 2>/dev/null | grep -q '@`
 	"$nft" -f ` + EgressFile + ` || { echo "celikpanel-egress: nft could not load the SMTP block"; exit 1; }
 fi
 status=0
-for unit in $(systemctl list-units --type=service --state=active,activating,reloading --plain --no-legend --no-pager 'celiksvc-*.service' 'celiksvcinst-*.service' 'celikrt-*.service' | awk '{print $1}'); do
+for unit in $(systemctl list-units --type=service --state=active,activating,reloading --plain --no-legend --no-pager 'celiksvc-*.service' 'celiksvcinst-*.service' 'celikrt-*.service' 'celikrtbuild-*.service' | awk '{print $1}'); do
 	case "$unit" in
-		celiksvc-[0-9]*.service|celiksvcinst-[0-9]*.service|celikrt-[0-9]*.service) ;;
+		celiksvc-[0-9]*.service|celiksvcinst-[0-9]*.service|celikrt-[0-9]*.service|celikrtbuild-[0-9]*.service) ;;
 		*) continue ;;
 	esac
 	systemctl show -P ExecStartPre "$unit" | grep -q '` + EgressFile + `' || continue

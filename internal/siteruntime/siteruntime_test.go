@@ -31,7 +31,7 @@ func params(t *testing.T) UnitParams {
 }
 
 func TestKindsAndOfferings(t *testing.T) {
-	if !Implemented(KindProgram) || Implemented(KindPython) || !Known(KindPython) || Known("node") {
+	if !Implemented(KindProgram) || !Implemented(KindPython) || !Known(KindPython) || Known("node") {
 		t.Fatal("kinds")
 	}
 	if Permission(KindProgram) != "program_apps" || Permission(KindPython) != "python_apps" {

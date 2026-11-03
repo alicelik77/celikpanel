@@ -117,6 +117,16 @@ func protectedBuildGateOperations() []buildGateOperation {
 			_ = agent.RuntimeAppRemoveV1(&transport.RuntimeAppRemoveRequest{ExpectedBuildCommit: expected}, &response)
 			return response.Error
 		}},
+		{name: "RuntimeAppBuildV1", run: func(expected string) string {
+			var response transport.RuntimeAppBuildResponse
+			_ = agent.RuntimeAppBuildV1(&transport.RuntimeAppBuildRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "RuntimeAppBuildAdvanceV1", run: func(expected string) string {
+			var response transport.RuntimeAppBuildResponse
+			_ = agent.RuntimeAppBuildAdvanceV1(&transport.RuntimeAppBuildAdvanceRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
 		{name: "SetRuntimeAppSuspensionV1", run: func(expected string) string {
 			var response transport.SetAppUnitSuspensionResponse
 			_ = agent.SetRuntimeAppSuspensionV1(&transport.SetRuntimeAppSuspensionRequest{ExpectedBuildCommit: expected}, &response)

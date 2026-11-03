@@ -160,6 +160,7 @@ An item left at 0 or empty means **unlimited**, and the screen says "unlimited".
 | WordPress tools (alpha.118, `wordpress_tools`) | The WordPress tools section is not visible; status, updates, the automatic minor-release switch and staging copies are refused. A site that already runs, and switches already on, are not changed (an automatic update is skipped while the right is closed) |
 | Malware scan results (alpha.118, `malware_scan`) | The Malware scan section is not visible; the customer cannot start scans or act on findings. The administrator can still scan every site, and the administrator's weekly scan still covers it |
 | Own remote backup destinations (alpha.118) | The account cannot add its own S3 or SFTP destination; it can still choose a destination the administrator offers. Schedules already set keep running ([REMOTE-BACKUPS.md](REMOTE-BACKUPS.md)) |
+| Python apps (alpha.119, `python_apps`) | A Python app cannot be created, changed or deployed on the Programs tab. One that runs keeps running and can still be stopped, started, given environment values, read in the log and removed ([RUNTIME-APPS.md §18](RUNTIME-APPS.md)) |
 | Uploaded programs (alpha.119, `program_apps`) | A program cannot be created, changed or deployed on the domain's Programs tab. A program that already runs keeps running; it can still be stopped, started, given new environment values, read in the log and removed ([RUNTIME-APPS.md](RUNTIME-APPS.md)) |
 
 **File access does not exist today.** On November 2, 2026 the owner looked for the FTP and SSH
@@ -307,7 +308,7 @@ namespace (their ids never overlap); each keeps its own offer rule below. Each a
 A customer's own compiled program (Go, Rust or any other program for the server's processor),
 run as the site's service in the site sandbox ([RUNTIME-APPS.md](RUNTIME-APPS.md)). It is one
 offering, **`runtime:program`**, and using it also needs the permission **Uploaded programs**
-(`program_apps`). Python web apps are a separate kind with their own permission and offerings.
+(`program_apps`). Python web apps are a separate kind with their own permission and offering (4.8).
 
 - **Closed until offered.** Like the AI and automation apps (4.6), and unlike PHP and Node.js
   versions, it is not offered by default. The administrator offers it on the Add-ons page after
@@ -327,6 +328,22 @@ offering, **`runtime:program`**, and using it also needs the permission **Upload
 - **Security hold.** The administrator can hold uploaded programs: every deployed program is
   stopped and kept from starting, and nobody creates, deploys or starts one until the hold is
   lifted. Lifting starts nothing. Files are never removed.
+
+### 4.8 Python apps (alpha.119)
+
+A customer's Python web app (Django, Flask, FastAPI) built into its own environment from PyPI
+with the server's own Python ([RUNTIME-APPS.md §18](RUNTIME-APPS.md)). Using it needs the
+permission **Python apps** (`python_apps`) and the offering **`component:python:<minor>`** of the
+server's Python (for example `component:python:3.13`).
+
+- **Installed before offered.** The administrator installs Python under Components first.
+- **Closed until offered.** Unlike other component versions, the Python line is offered only on
+  the Add-ons page after reading its risk summary, as in 4.7. Source builds are a separate,
+  named choice of the offer (off by default); choosing them changes the summary and its digest.
+- **The chain narrows**, P5 holds, and a security hold of Python apps stops every Python app,
+  whatever Python line it was made for, as in 4.7.
+- A whole-component item `component:python` in a plan or a reseller's set covers the server's
+  Python line, as for PHP and Node.js versions.
 
 ---
 

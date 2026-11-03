@@ -1,7 +1,12 @@
 #!/bin/bash
 # Runs the kit's Go probe as a REAL runtime app (an uploaded program,
 # docs/RUNTIME-APPS.md) through a lab panel's API, then judges the escape
-# matrix from the panel's own log view, like run.sh does.
+# matrix from the panel's own log view, like run.sh does. With KIND=python it
+# runs the Python probe instead, as a real Python app (RUNTIME-APPS.md §18):
+# probes/probe.py and probes/wsgi_probe.py go into app/src, the panel builds
+# the environment from PyPI (the pinned gunicorn only; there is no
+# requirements.txt) and serves wsgi_probe:application; GET /matrix starts
+# the matrix.
 #
 # LAB VM ONLY. It creates, deploys and (with REMOVE=1) removes one program on
 # one domain of a lab panel. It never updates a panel, never touches the
@@ -19,6 +24,12 @@
 #                     that owns the domain (the panel has no API tokens; log in
 #                     with a browser and copy the cookie)
 #   DOMAIN_ID         the lab domain (it needs a website and a certificate)
+#   KIND              program (default: the Go probe) or python (the Python
+#                     probe as a WSGI app; the administrator offers
+#                     component:python:<minor> first)
+#   APP_URL           python only: where to ask GET /matrix (default
+#                     http://127.0.0.1:<port> with UPLOAD=local on the server,
+#                     else https://<domain>)
 #   UPLOAD            local: run as root on the lab server, the probe is copied
 #                     into <site home>/app/bin as the site's account (default
 #                     when root); sftp: upload over SFTP (SFTP_TARGET); none:
@@ -57,7 +68,13 @@ case "$PANEL_URL" in https://*) ;; *) die "PANEL_URL must start with https://" ;
 PANEL_URL=${PANEL_URL%/}
 case "$DOMAIN_ID" in *[!0-9]*) die "DOMAIN_ID is a number" ;; esac
 for tool in curl python3; do command -v $tool >/dev/null || die "missing: $tool"; done
-[ -x "$BIN/goprobe" ] || die "run ./run.sh build first (on a machine with Go)"
+KIND=${KIND:-program}
+case "$KIND" in program|python) ;; *) die "KIND is program or python" ;; esac
+if [ "$KIND" = program ]; then
+	[ -x "$BIN/goprobe" ] || die "run ./run.sh build first (on a machine with Go)"
+else
+	[ -f "$KIT/probes/probe.py" ] && [ -f "$KIT/probes/wsgi_probe.py" ] || die "probes/probe.py and probes/wsgi_probe.py are missing"
+fi
 if [ -z "${UPLOAD:-}" ]; then
 	if [ "$(id -u)" = 0 ]; then UPLOAD=local; elif [ -n "${SFTP_TARGET:-}" ]; then UPLOAD=sftp; else UPLOAD=none; fi
 fi
@@ -100,19 +117,29 @@ print("%s/%s: %s" % (v.get("code",""), v.get("reason",""), v.get("error","")))' 
 api GET "" || die "the panel did not answer at $PANEL_URL"
 [ "$HTTP_CODE" = 200 ] || die "reading the Programs view failed (HTTP $HTTP_CODE): $(refusal)"
 log "domain: $(js 'v["domain"]'); sandbox level: $(js 'v["sandbox"].get("level","unknown")') gaps: $(js 'v["sandbox"]["gaps"]')"
-OFFER=$(js 'next((k for k in v["kinds"] if k["kind"]=="program"), {})')
-log "program kind: $OFFER"
-if [ "$(js 'next((k["offered"] and k["permission_granted"] for k in v["kinds"] if k["kind"]=="program"), False)')" != true ]; then
+OFFER=$(KIND=$KIND js 'next((k for k in v["kinds"] if k["kind"]==__import__("os").environ["KIND"]), {})')
+log "$KIND kind: $OFFER"
+if [ "$(KIND=$KIND js 'next((k["offered"] and k["permission_granted"] for k in v["kinds"] if k["kind"]==__import__("os").environ["KIND"]), False)')" != true ]; then
+	if [ "$KIND" = python ]; then
+		die "Python apps are not open for this account. Who acts: the administrator installs Python in Components, then offers component:python:<minor> on the Add-ons page (and the plan grants python_apps)"
+	fi
 	die "uploaded programs are not open for this account. Who acts: the administrator offers runtime:program on the Add-ons page (and the plan grants program_apps)"
 fi
-ARGS='["-serve","-port={port}"]'
+if [ "$KIND" = python ]; then
+	ENTRY=wsgi_probe:application
+	SETTINGS='{"kind":"python","entry":"wsgi_probe:application","server":"wsgi","workers":1,"health_path":"/"}'
+else
+	ENTRY=goprobe
+	ARGS='["-serve","-port={port}"]'
+	SETTINGS="{\"kind\":\"program\",\"entry\":\"goprobe\",\"args\":$ARGS,\"health_path\":\"/\"}"
+fi
 if [ "$(js 'v["app"] is not None')" = true ]; then
-	[ "$(js 'v["app"]["entry"]')" = goprobe ] || die "this domain already has another program; use a separate lab domain or remove it first"
+	[ "$(js 'v["app"]["entry"]')" = "$ENTRY" ] || die "this domain already has another app; use a separate lab domain or remove it first"
 	log "reusing the existing probe app"
-	api PUT /settings "{\"entry\":\"goprobe\",\"args\":$ARGS,\"health_path\":\"/\"}" || die "settings: no answer"
+	api PUT /settings "$SETTINGS" || die "settings: no answer"
 	[ "$HTTP_CODE" = 200 ] || die "settings refused (HTTP $HTTP_CODE): $(refusal)"
 else
-	api POST /create "{\"kind\":\"program\",\"entry\":\"goprobe\",\"args\":$ARGS,\"health_path\":\"/\"}" || die "create: no answer; read the Programs tab before you retry"
+	api POST /create "$SETTINGS" || die "create: no answer; read the Programs tab before you retry"
 	[ "$HTTP_CODE" = 201 ] || die "create refused (HTTP $HTTP_CODE): $(refusal)"
 	log "created: $(cat "$BODY")"
 fi
@@ -131,22 +158,40 @@ case "$UPLOAD" in
 		OWNER=$(getent passwd | awk -F: -v h="$HOME_DIR" '$6==h {print $1; exit}')
 		[ -n "$OWNER" ] && [ "$OWNER" != root ] || die "no site account has $HOME_DIR as its home"
 		[ ! -L "$FOLDER" ] || die "$FOLDER is a link; the panel would refuse it (app_folder_not_owned)"
-		runuser -u "$OWNER" -- mkdir -p "$FOLDER/bin"
-		STAGED=$(mktemp /tmp/celik-goprobe.XXXXXX)
-		install -m 0644 "$BIN/goprobe" "$STAGED"
-		runuser -u "$OWNER" -- install -m 0750 "$STAGED" "$FOLDER/bin/goprobe"
-		rm -f "$STAGED"
-		log "uploaded as $OWNER: $FOLDER/bin/goprobe" ;;
+		if [ "$KIND" = python ]; then
+			runuser -u "$OWNER" -- mkdir -p "$FOLDER/src"
+			for f in probe.py wsgi_probe.py; do
+				STAGED=$(mktemp /tmp/celik-pyprobe.XXXXXX)
+				install -m 0644 "$KIT/probes/$f" "$STAGED"
+				runuser -u "$OWNER" -- install -m 0640 "$STAGED" "$FOLDER/src/$f"
+				rm -f "$STAGED"
+			done
+			log "uploaded as $OWNER: $FOLDER/src/probe.py, wsgi_probe.py"
+		else
+			runuser -u "$OWNER" -- mkdir -p "$FOLDER/bin"
+			STAGED=$(mktemp /tmp/celik-goprobe.XXXXXX)
+			install -m 0644 "$BIN/goprobe" "$STAGED"
+			runuser -u "$OWNER" -- install -m 0750 "$STAGED" "$FOLDER/bin/goprobe"
+			rm -f "$STAGED"
+			log "uploaded as $OWNER: $FOLDER/bin/goprobe"
+		fi ;;
 	sftp)
 		[ -n "${SFTP_TARGET:-}" ] || die "UPLOAD=sftp needs SFTP_TARGET=user@host"
 		command -v sftp >/dev/null || die "missing: sftp"
 		SFTP=(sftp -b - -P "${SFTP_PORT:-22}")
 		[ -n "${SFTP_IDENTITY:-}" ] && SFTP+=(-i "$SFTP_IDENTITY")
-		# An SFTP session starts in the site home: the target is app/bin.
-		printf -- '-mkdir app\n-mkdir app/bin\nput %s app/bin/goprobe\nchmod 750 app/bin/goprobe\n' "$BIN/goprobe" \
-			| "${SFTP[@]}" "$SFTP_TARGET" || die "the SFTP upload failed"
-		log "uploaded over SFTP to app/bin/goprobe" ;;
-	none) log "UPLOAD=none: app/bin/goprobe must already be uploaded (file manager or SFTP), executable by its owner" ;;
+		# An SFTP session starts in the site home: the target is app/bin
+		# (or app/src for the Python probe).
+		if [ "$KIND" = python ]; then
+			printf -- '-mkdir app\n-mkdir app/src\nput %s app/src/probe.py\nput %s app/src/wsgi_probe.py\n' "$KIT/probes/probe.py" "$KIT/probes/wsgi_probe.py" \
+				| "${SFTP[@]}" "$SFTP_TARGET" || die "the SFTP upload failed"
+			log "uploaded over SFTP to app/src"
+		else
+			printf -- '-mkdir app\n-mkdir app/bin\nput %s app/bin/goprobe\nchmod 750 app/bin/goprobe\n' "$BIN/goprobe" \
+				| "${SFTP[@]}" "$SFTP_TARGET" || die "the SFTP upload failed"
+			log "uploaded over SFTP to app/bin/goprobe"
+		fi ;;
+	none) log "UPLOAD=none: app/bin/goprobe (or app/src/probe.py and wsgi_probe.py with KIND=python) must already be uploaded with the file manager or SFTP" ;;
 esac
 
 # --- 3. environment: a run marker, a secret for the log check --------------
@@ -210,10 +255,23 @@ case "$OP_STATE" in
 	*) fail "deploy did not end within ${TIMEOUT}s (state $OP_STATE); it continues on the panel" ;;
 esac
 
+# The Python probe runs its matrix when asked (a request may not take as
+# long as the matrix does): GET /matrix starts it once in a thread.
+if [ "$KIND" = python ] && [ "$OP_STATE" = succeeded ]; then
+	if [ -z "${APP_URL:-}" ]; then
+		if [ "$UPLOAD" = local ]; then APP_URL="http://127.0.0.1:$PORT"; else APP_URL="https://$DOMAIN"; fi
+	fi
+	MATRIX=(curl -sS --max-time 30 -o /dev/null -w '%{http_code}')
+	[ "${CURL_INSECURE:-}" = 1 ] && MATRIX+=(-k)
+	CODE=$("${MATRIX[@]}" "${APP_URL%/}/matrix" || echo 000)
+	[ "$CODE" = 202 ] || fail "GET ${APP_URL%/}/matrix answered HTTP $CODE, not 202"
+	sleep 30
+fi
+
 # --- 5. the probe's lines from the panel's log view ------------------------
 # A deployed probe logged its last line before it listened; a failed deploy
 # is read once.
-TRIES=1; [ "$OP_STATE" = succeeded ] && TRIES=6
+TRIES=1; [ "$OP_STATE" = succeeded ] && TRIES=12
 for i in $(seq 1 "$TRIES"); do
 	api GET "/logs?lines=500" || true
 	if [ "$HTTP_CODE" = 200 ] && python3 -c 'import json,sys

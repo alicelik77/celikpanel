@@ -589,6 +589,31 @@ var ManagedServices = []ManagedService{
 		Requires: []string{"web-server"},
 	},
 	{
+		// The distribution's own Python for customers' Python web apps
+		// (alpha.119, docs/RUNTIME-APPS.md): python3 and its venv module
+		// (apt's python3-venv pulls python3.<minor>-venv; Arch's python
+		// carries ensurepip). One version, the system's: Debian 12 3.11,
+		// Debian 13 3.13, Ubuntu 22.04 3.10, Ubuntu 24.04 3.12, Arch 3.14.
+		// No daemon: each app runs in its own sandboxed unit, so the
+		// version drawer only shows the minor (Agent.ListServiceInstances).
+		// Installing it offers nothing: Python apps stay closed until the
+		// administrator offers component:python:<minor> with its risk
+		// summary. Removing it is refused while other software needs
+		// python3 (the removal simulation names it).
+		//
+		// Müşterilerin Python uygulamaları için dağıtımın kendi Python'u.
+		// Kurmak hiçbir şeyi sunmaz; yönetici risk özetiyle sunana dek kapalıdır.
+		ID:          "python",
+		Name:        "Python",
+		Description: "Python Runtime (distribution)",
+		Icon:        "🐍",
+		Category:    "web",
+		Kind:        KindRuntime,
+		SystemNames: []string{},
+		Packages:    map[string][]string{"apt": {"python3", "python3-venv"}, "pacman": {"python"}},
+		Requires:    []string{"web-server"},
+	},
+	{
 		ID:            "nginx",
 		Name:          "Nginx",
 		Description:   "Reverse Proxy Server",
