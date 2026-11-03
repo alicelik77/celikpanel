@@ -373,6 +373,33 @@ for page in index.html technical.html systems.html; do
   cmp -s -- "$template/$page" "$output/$page" \
     || die "staged portal page bytes differ: $page"
 done
+# The user guide (alpha.119): pages generated from docs/guide by
+# web/scripts/build-guide.mjs. guide/manifest.sha256 is their reviewed list,
+# itself guarded by a regeneration test: every listed page is copied and
+# proved byte for byte, and a file it does not list, a link or a malformed
+# line refuses the build. The manifest itself is not published.
+# Kullanım kılavuzu: manifest.sha256 sayfaların incelenmiş listesidir.
+guide_template="$template/guide"
+[[ -d "$guide_template" && ! -L "$guide_template" &&
+   -f "$guide_template/manifest.sha256" && ! -L "$guide_template/manifest.sha256" ]] \
+  || die "reviewed guide pages are unavailable"
+[[ -z "$(find "$guide_template" -type l -print -quit)" ]] \
+  || die "the guide pages contain a symbolic link"
+guide_listed=$(awk '
+  NF == 2 && $1 ~ /^[0-9a-f]{64}$/ && $2 ~ /^([a-z][a-z]\/)?[a-z0-9]+(-[a-z0-9]+)*\.html$/ { print $2; next }
+  { print "MALFORMED" }
+' "$guide_template/manifest.sha256" | LC_ALL=C sort)
+guide_present=$(cd "$guide_template" && find . -type f ! -name manifest.sha256 | sed 's#^\./##' | LC_ALL=C sort)
+[[ -n "$guide_listed" && "$guide_listed" != *MALFORMED* && "$guide_listed" == "$guide_present" ]] \
+  || die "guide pages differ from their reviewed manifest"
+(cd "$guide_template" && sha256sum --quiet --strict -c manifest.sha256) >/dev/null 2>&1 \
+  || die "guide page bytes differ from their reviewed manifest"
+while IFS= read -r guide_page; do
+  mkdir -p -- "$output/guide/$(dirname -- "$guide_page")"
+  cp -- "$guide_template/$guide_page" "$output/guide/$guide_page"
+done <<< "$guide_listed"
+(cd "$output/guide" && sha256sum --quiet --strict -c "$guide_template/manifest.sha256") >/dev/null 2>&1 \
+  || die "staged guide page bytes differ"
 cp -- "$template/.htaccess" "$template/get.sh" "$output/"
 cmp -s -- "$template/get.sh" "$output/get.sh" \
   || die "staged download bootstrap bytes differ"
@@ -403,7 +430,7 @@ cp -R -- "$template/account/." "$output/account/"
 membership_release=$(python3 "$repo_root/deploy/build-membership.py" --identity-only)
 [[ "$membership_release" =~ ^[a-f0-9]{64}$ ]] || fail "invalid membership application identity"
 sed -i "s/@MEMBERSHIP_RELEASE@/$membership_release/g" "$output/account/index.php"
-for asset in site.css site.js favicon-v2.svg \
+for asset in site.css site.js guide.css favicon-v2.svg \
   product-overview-tr.webp product-overview-en.webp \
   product-domains-tr.webp product-domains-en.webp \
   product-databases-tr.webp product-databases-en.webp; do

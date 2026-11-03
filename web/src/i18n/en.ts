@@ -63,6 +63,7 @@ import type { PlanUsageScreenKey } from './screens/planUsage/en';
 import type { RightsScreenKey } from './screens/rights/en';
 import type { RemoteBackupScreenKey } from './screens/remoteBackup/en';
 import type { ServiceAppsScreenKey } from './screens/serviceApps/en';
+import type { GuideScreenKey } from './screens/guide/en';
 
 export const en = {
     // ---- alpha.108 tools ----
@@ -291,6 +292,7 @@ export const en = {
     'nav.security': 'Security',
     'nav.maintenance': 'Maintenance',
     'nav.account': 'My account',
+    'nav.help': 'User guide',
     'nav.group.hosting': 'Hosting',
     'nav.group.server': 'Server',
 
@@ -569,5 +571,6 @@ export type ScreenKey =
     | AppCatalogScreenKey
     | SiteToolsScreenKey
     | RemoteBackupScreenKey
-    | ServiceAppsScreenKey;
+    | ServiceAppsScreenKey
+    | GuideScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

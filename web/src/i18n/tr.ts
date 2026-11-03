@@ -121,6 +121,7 @@ export const tr: Record<ShellKey, string> = {
     'nav.security': 'Güvenlik',
     'nav.maintenance': 'Bakım',
     'nav.account': 'Hesabım',
+    'nav.help': 'Kullanım kılavuzu',
     'nav.group.hosting': 'Barındırma',
     'nav.group.server': 'Sunucu',
 

@@ -52,3 +52,4 @@ internal/mailrenewalkit/deploy-hook text eol=lf
 internal/mailrenewalkit/legacy-deploy-hook text eol=lf
 *.asc text eol=lf
 deploy/recovery/*.sources text eol=lf
+download-portal/guide/** text eol=lf

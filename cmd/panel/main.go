@@ -1501,6 +1501,8 @@ func main() {
 	http.HandleFunc(serverSetupPath+"/operation", panel.handleServerSetupOperation)
 	http.HandleFunc("/api/v1/auth/password", panel.handleChangeOwnPassword)
 	http.HandleFunc(ownEmailPath, panel.handleChangeOwnEmail)
+	// alpha.119: the first-login tour's state, the signed-in person's own row.
+	http.HandleFunc(guideStatePath, panel.handleGuideState)
 	http.HandleFunc("/api/v1/auth/2fa/status", panel.handle2FA)
 	http.HandleFunc("/api/v1/auth/2fa/setup", panel.handle2FA)
 	http.HandleFunc("/api/v1/auth/2fa/enable", panel.handle2FA)

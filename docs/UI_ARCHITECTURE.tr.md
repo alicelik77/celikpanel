@@ -72,6 +72,12 @@ Dört paralel yerleşim (AdminLayout, ResellerLayout, CustomerLayout, UserLayout
 
 ---
 
+## Yardım ve kullanım kılavuzu (alpha.119)
+
+Kabuğun başlığındaki `?` küçük bir yardım menüsü açar: ekrandaki sayfanın yardımı (sayfanın konusunu sahiplenen bölümde açılan kılavuz çekmecesi), `/help` adresinde kılavuzun tamamı ve ilk giriş turu. Kılavuz `docs/guide/{en,tr}` altında [guide/FORMAT.md](guide/FORMAT.md) biçiminde yazılır; `web/scripts/build-guide.mjs` onu her rol ve dil için bir tembel parçaya ve celikpanel.net sayfalarına dönüştürür. Rol yalnız hangi bölümlerin gösterileceğini seçer: kılavuz herkese açıktır ve yönetici başka bir rolün kılavuzunu okuyabilir ("kim için göster"). Ekip üyesi müşteri kılavuzunu okur. Bir ekran kılavuza `<GuideLink topic="…" />` ile bağlanır; birden çok şey gösteren sayfa ekrandakini `publishGuideTopic` ile bildirir. Sunucunun tuttuğu tek şey her kişinin tur durumudur (`/api/v1/me/guide-state`): beklerken bir kez gösterilir, turun sürümü artınca yeniden önerilir (hiç zorlanmaz); durum okunamadığında ya da başkası adına giriş yapmış bir operatöre hiç gösterilmez.
+
+---
+
 ## Tema (karar verildi)
 
 Panel **hem açık hem koyu temayı** destekler; kullanıcı bir tema değiştiriciyle seçer. Varsayılan, işletim sistemi tercihini (`prefers-color-scheme`) izler, yoksa açık temaya düşer. Mekanik olarak: token'lar `web/src/index.css` içinde CSS özel değişkenleri olarak yaşar, `web/tailwind.config.js` her semantik Tailwind ismini bunlardan birine bağlar ve `web/src/theme/ThemeProvider.tsx` `<html>` üzerinde `.dark` sınıfını (ve skin'in `data-theme` değerini) açıp kapatır. İki tema, *aynı* değişkenlerin iki değer kümesidir — bileşenler değişkenlere başvurur, asla sabit renklere değil. Belgelenmiş sistem: [DESIGN.md](../DESIGN.md). Bu, kabuğun üstündeki dış görünümdür; hiçbir yapıyı değiştirmez.

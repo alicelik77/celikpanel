@@ -106,6 +106,8 @@ const own = {
   '/auth/domainAccess': domainAccessURL, '/lib/domainDeletionPending': deletionURL, '/lib/subscriptions': subscriptionsURL,
   '/lib/accounts': accountsURL, '/lib/suspension': compileSource('lib/suspension.ts', besideRemote), '/lib/managedServices': managedServicesURL, '/lib/sslTier': sslTierURL, '/lib/hstsRemaining': hstsRemainingURL,
   '/lib/requestIdentity': requestIdentityURL,
+  // alpha.119: the topic a domain's tab names for the guide's "?" (the real one).
+  '/help/guide/context': compileSource('help/guide/context.ts', () => stub),
   // Who renews a website certificate and what the administrator does (D-040).
   '/lib/sslRenewal': compileSource('lib/sslRenewal.ts', () => stub),
   // Reads that run only while the page is visible are the real ones (2026-10-15).
