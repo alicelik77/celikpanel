@@ -20,13 +20,16 @@ import (
 // rules are WordPress's (catalog limits, no absolute or escaping path, no
 // duplicate, no device, no hard link) with three additions the catalog's
 // releases need: a top folder of any name (or none), a zip inside the zip
-// (PrestaShop), and symbolic links that point at a file in the same folder
-// (Nextcloud's licence files), which are written as copies of that file so
-// the published tree holds no link at all.
+// (PrestaShop), and relative symbolic links that stay inside the release,
+// also through other links (Nextcloud's licence files), which are written as
+// copies of the file they end at so the published tree holds no link at all.
+// An absolute link, or one that leaves the release, is refused.
 //
 // Doğrulanmış sürüm, kök kullanıcıya özel hazırlık klasörüne açılır. Kurallar
 // WordPress'inkilerdir; ek olarak üst klasör adı serbesttir, zip içinde zip
-// açılır ve aynı klasördeki dosyayı gösteren bağlantılar kopya olarak yazılır.
+// açılır ve sürüm ağacının içinde kalan göreli bağlantılar (başka bağlantı
+// üzerinden de) gösterdikleri dosyanın kopyası olarak yazılır. Mutlak ya da
+// ağaçtan çıkan bağlantı reddedilir.
 
 type catalogExtractLimits struct {
 	maxBytes   int64
@@ -140,21 +143,64 @@ func (x *catalogExtractor) file(rel string, size int64, body io.Reader) error {
 	return closeErr
 }
 
-// link records a symbolic link; only a plain name in the same folder is
-// accepted (materialized after every entry is written).
-func (x *catalogExtractor) link(rel, target string) error {
-	if rel == "" || target == "" || strings.ContainsAny(target, "/\\\x00") || target == "." || target == ".." {
-		return fmt.Errorf("archive entry %q is a link outside its own folder", rel)
+// maxCatalogLinkHops bounds a chain of links (link -> link -> file).
+const maxCatalogLinkHops = 16
+
+// catalogLinkTarget resolves a link's text against the folder that holds
+// the link and returns the path relative to the application root. Only a
+// relative target that stays inside the root is accepted: an absolute target,
+// one that climbs out of the release, or one with a backslash or NUL is
+// refused (alpha.118 lab: Nextcloud 35 links its .license files to files in
+// other folders of its own tree, and to other links).
+//
+// Bağlantının hedefi, bağlantının bulunduğu klasöre göre çözülür; yalnız
+// sürüm ağacının içinde kalan göreli hedef kabul edilir.
+func catalogLinkTarget(rel, target string) (string, error) {
+	if rel == "" || target == "" || strings.ContainsAny(target, "\\\x00") || path.IsAbs(target) {
+		return "", fmt.Errorf("archive entry %q is a link outside the release", rel)
 	}
-	x.links[rel] = path.Join(path.Dir(rel), target)
+	resolved := path.Clean(path.Join(path.Dir(rel), target))
+	if resolved == "." || resolved == ".." || strings.HasPrefix(resolved, "../") || path.IsAbs(resolved) {
+		return "", fmt.Errorf("archive entry %q is a link outside the release", rel)
+	}
+	return resolved, nil
+}
+
+// link records a symbolic link whose target stays inside the release
+// (materialized after every entry is written).
+func (x *catalogExtractor) link(rel, target string) error {
+	resolved, err := catalogLinkTarget(rel, target)
+	if err != nil {
+		return err
+	}
+	x.links[rel] = resolved
 	return nil
 }
 
-// materializeLinks writes each link as a copy of the regular file it names.
+// finalLinkTarget follows a chain of links of the release to the entry that
+// is not a link; a loop or an overly long chain is refused.
+func (x *catalogExtractor) finalLinkTarget(rel string) (string, error) {
+	current := x.links[rel]
+	for hops := 0; ; hops++ {
+		next, isLink := x.links[current]
+		if !isLink {
+			return current, nil
+		}
+		if hops >= maxCatalogLinkHops || current == rel {
+			return "", fmt.Errorf("archive link %q is part of a loop or a too long chain of links", rel)
+		}
+		current = next
+	}
+}
+
+// materializeLinks writes each link as a copy of the regular file it names
+// (through any chain of links of the release). No link is ever written to
+// disk, so a path can never be followed outside the staging folder.
 func (x *catalogExtractor) materializeLinks() error {
-	for rel, targetRel := range x.links {
-		if _, isLink := x.links[targetRel]; isLink {
-			return fmt.Errorf("archive link %q points at another link", rel)
+	for rel := range x.links {
+		targetRel, err := x.finalLinkTarget(rel)
+		if err != nil {
+			return err
 		}
 		source, err := x.target(targetRel)
 		if err != nil {

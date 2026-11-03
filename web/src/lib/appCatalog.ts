@@ -9,6 +9,8 @@
 export const APP_CATALOG_URL = '/api/v1/apps';
 export const domainAppsURL = (domainId: number) => `/api/v1/domains/${domainId}/apps`;
 export const domainAppInstallURL = (domainId: number) => `/api/v1/domains/${domainId}/apps/install`;
+/** Components, opened at PHP-FPM with the install of one PHP version asked for. */
+export const phpExtensionsInstallPath = (pkg: string) => `/services?component=php-fpm&install=${encodeURIComponent(pkg)}`;
 export const domainAppOperationURL = (domainId: number, operationId: string, action?: 'retry' | 'credentials') =>
     `/api/v1/domains/${domainId}/apps/${operationId}${action ? `/${action}` : ''}`;
 
@@ -50,6 +52,10 @@ export interface AppRequirements {
     database_reason?: string;
     disk_ok: boolean;
     disk_reason?: string;
+    /** The site's PHP version line ("8.4"). */
+    php_line?: string;
+    /** The Components install that brings every missing extension ("php8.4-fpm"). */
+    install_package?: string;
     detail?: string;
 }
 
@@ -115,6 +121,8 @@ function decodeRequirements(raw: unknown): AppRequirements | undefined {
         doc_root: str(raw.doc_root) || undefined, database_ok: raw.database_ok !== false,
         database_reason: str(raw.database_reason) || undefined, disk_ok: raw.disk_ok !== false,
         disk_reason: str(raw.disk_reason) || undefined, detail: str(raw.detail) || undefined,
+        php_line: str(raw.php_line) || undefined,
+        install_package: /^php[0-9]+\.[0-9]+-fpm$/.test(str(raw.install_package)) ? str(raw.install_package) : undefined,
     };
 }
 

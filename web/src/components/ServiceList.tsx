@@ -1472,6 +1472,32 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         setPendingAction(action);
     };
 
+    // ?component=php-fpm&install=php8.4-fpm (alpha.118): the application
+    // catalog's "Install PHP 8.4 extensions" opens this page with the
+    // confirmation of that version's install, whose preview lists the
+    // extension packages; nothing starts before the owner confirms. The link
+    // is used once and leaves the address.
+    // Uygulama kataloğunun bağlantısı o PHP sürümünün kurulum onayını açar;
+    // sahip onaylamadan hiçbir şey başlamaz.
+    const installLinkRef = useRef(false);
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const pkg = params.get('install');
+        if (installLinkRef.current || !pkg || loading || hostMutationReadiness === null) return;
+        installLinkRef.current = true;
+        const php = services.find((service) => service.id === 'php-fpm');
+        const version = /^php([0-9]+\.[0-9]+)-fpm$/.exec(pkg)?.[1];
+        if (php && version && params.get('component') === 'php-fpm') {
+            requestComponentAction({ kind: 'install-package', service: php, pkg, version });
+        } else {
+            showToast('warning', t('services.installLinkUnavailable', { package: pkg }));
+        }
+        params.delete('install');
+        const query = params.toString();
+        navigate(location.pathname + (query ? `?${query}` : '') + location.hash, { replace: true });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [loading, location.search, services, hostMutationReadiness]);
+
     const confirmComponentAction = async (confirmed: string[] = []) => {
         const action = pendingAction;
         if (!action || hostMutationReadiness?.ready !== true || stateUnverified) return;

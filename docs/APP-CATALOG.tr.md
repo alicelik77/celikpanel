@@ -45,7 +45,15 @@ sunucuda henüz kanıtlanmadı" durumundadır.
 2. **Önkoşullar** (Agent, salt okunur): sitenin PHP sürümü; eksik her PHP uzantısı **onu
    getiren dağıtım paketiyle** (Debian ve Ubuntu'da `php8.3-intl`, Arch'ta `php-intl` ya da
    "php.ini'de açın"); boş belge kökü; sitelerin durduğu yerde boş disk. Kurucu paket kurmaz:
-   yönetici Bileşenler'den ya da sistemin paket yöneticisinden kurar.
+   yönetici Bileşenler'den ya da sistemin paket yöneticisinden kurar. Debian ve Ubuntu'da kart
+   ve ret, yöneticiye **PHP <sürüm> uzantılarını Bileşenler'den kur** yolunu sunar: Bileşenler,
+   sitenin PHP sürümünün PHP-FPM kurulum onayıyla açılır; önizleme standart uzantı paketlerini
+   listeler; yönetici onaylamadan hiçbir şey başlamaz. Dağıtımın kendi PHP sürümü (Debian 12'de
+   8.2, Debian 13'te 8.4, Ubuntu 22.04'te 8.1, Ubuntu 24.04'te 8.3) Sury deposu **olmadan**
+   dağıtımın arşivinden kurulur (alpha.118); diğer sürümler depoyu ister. Arch tek PHP getirir:
+   ret, paketleri ya da `/etc/php/conf.d` içinde açılacak uzantıları adlandırır; bunun için
+   panelde henüz düğme yok. WordPress aynı denetimi (en az `mysqli`) veritabanı oluşturulmadan
+   önce yapar (alpha.118).
 3. **Veritabanı** ve kullanıcısı, her veritabanı gibi kaydedilir ve sayılır.
 4. **Dosyalar**: indirme, doğrulama, WordPress sınırlarıyla kök kullanıcıya özel hazırlık
    klasörüne açma, sitenin kullanıcısına verme, **kurulum kilidi** (her adres "kuruluyor" yanıtı
@@ -53,7 +61,13 @@ sunucuda henüz kanıtlanmadı" durumundadır.
 5. **Kurulum**: uygulamanın kendi etkileşimsiz kurucusu **sitenin kullanıcısıyla**, sitenin
    PHP'siyle çalışır. Gizli bilgiler komut satırında yer almaz: komut satırında
    `@@CELIKPANEL:AD@@` belirteçleri olur, önce yüklenen sabit bir PHP dosyası değerleri standart
-   girişten okur. Kurucunun çıktısı gizli bilgileri silinmiş olarak döner, günlüğe yazılmaz.
+   girişten okur. Kurucunun çıktısı gizli bilgileri silinmiş olarak döner, günlüğe yazılmaz;
+   son satırları başarısız kurulumun yanında gösterilir. Yardımcı klasör açıkça `0755` yapılır,
+   çünkü agent `UMask=0027` ile çalışır ve sitenin kullanıcısı dosyayı okuyabilmelidir
+   (alpha.118: Joomla kurucusu "Failed opening required … prepend.php" ile 255 koduyla durdu).
+   İndirmeler User-Agent'ta CelikPanel'i adlandırır; bazı sunucular Go'nun varsayılanını reddeder.
+   Açma, sürüm ağacının içinde kalan göreli bağlantıları (başka bağlantı üzerinden de) kopya
+   olarak yazar; mutlak ya da ağaçtan çıkan bağlantı reddedilir.
 6. **Kurallar**: uygulamanın nginx kuralları sitenin CelikPanel ekleme dizinine yazılır, sonra
    kurulum kilidi kaldırılır.
 
@@ -79,6 +93,17 @@ Onay için alan adı yazılır. Agent belge kökünün uygulamayı hâlâ tuttu�
 şey kaldırılmaz), dosyaları **sitenin kullanıcısıyla** siler, karşılama sayfasını geri koyar,
 nginx kurallarını ve kurulum kilidini kaldırır (sahibin düzenlediği dosya korunur ve adı söylenir).
 Veritabanı yalnız işaretlenirse, Nextcloud'un veri klasörü yalnız o da işaretlenirse silinir.
+
+Uygulamalar klasörleri salt okunur yapar (Drupal'ın `sites/default`'u): sitenin kullanıcısı
+önce kendi klasörlerinde `u+rwx` iznini geri verir (bağlantı izlenmez). Kaldırma, ilk dosya
+silinmeden önce köke özel bir kayda yazılır. Silme yine yarıda kalırsa yer tutucu sayfa kalanların
+yanına (hiçbir dosyanın üzerine yazmadan) konur, satır "… kaldırılırken yarıda kaldı" der
+(`needs_review`, tür `remove`, kod `APP_REMOVE_INCOMPLETE`) ve silinemeyen yolu gösterir;
+**Kaldır**'a yeniden basmak, uygulamayı tanıtan dosyalar gitmiş olsa da işi sürdürür. Kayıt,
+kaldırma başladığında belge kökündeki üst düzey öğelerin yalnız **adlarını** tutar (içerik yok);
+sürdürülen kaldırma yalnız bunlardan hâlâ var olanları siler. Kaldırma başladıktan sonra sahibin
+koyduğu her şey sahibinindir ve kalır: kaldırma yine biter (`removed`) ve korunan öğeleri
+adlandırır. Bu kayıt yoksa uygulamayı artık tutmayan belge kökü yine reddedilir.
 
 ## nginx kuralları (yerel, panel olmadan okunur)
 

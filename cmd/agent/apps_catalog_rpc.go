@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -310,7 +311,7 @@ func (a *Agent) InstallCatalogAppV1(req *InstallCatalogAppRequest, resp *Install
 		return fail(transport.AppFailPublish, "protect staging directory: %v", err)
 	}
 	if err := extractCatalogArchive(app, archive, stageDir, downloadDir); err != nil {
-		return fail(transport.AppFailVerification, "the %s release could not be unpacked safely (%v); nothing was changed", app.Name, err)
+		return fail(transport.AppFailUnpack, "the %s release could not be unpacked safely (%v); nothing was changed on the site. Try again later; if it repeats, report it to CelikPanel with this message", app.Name, err)
 	}
 	_ = os.Remove(archive)
 	if err := applyWordPressOwnership(stageDir, site.username); err != nil {
@@ -610,26 +611,72 @@ func (a *Agent) RemoveCatalogAppV1(req *RemoveCatalogAppRequest, resp *RemoveCat
 		return fail(transport.AppFailInternal, "the nginx configuration is not available on this agent; nothing was removed")
 	}
 	state := catalogDocRootState(site)
+	record, removalStarted := loadCatalogRemoval(req.Site.SiteID, site)
+	placeholderName, placeholderContent := celikPanelSitePlaceholder(site.domain, "php")
 	switch {
 	case state == transport.AppDocRootUnavailable:
 		return fail(transport.AppFailContent, "the site's document root could not be opened; nothing was removed")
-	case state == transport.AppDocRootContent && !catalogMarkersPresent(site):
+	case state == transport.AppDocRootContent && !removalStarted && !catalogMarkersPresent(site):
 		resp.NotThisApp = true
 		return fail(transport.AppFailContent, "the site's document root does not hold %s any more (something else is there now); nothing was removed. Remove those files with the file manager if you want them gone", site.app.Name)
 	case state == transport.AppDocRootContent:
+		// The removal is recorded before the first file goes, with the names
+		// of the document root's top-level entries at that moment (names
+		// only). A retry after a partial removal continues it although the
+		// application's own identifying files may be gone, and it deletes
+		// only those recorded entries: anything the owner put there after
+		// the removal started is the owner's and stays (D-022).
+		// Kayıt yalnız başlangıçtaki üst düzey adları tutar; sonradan eklenen
+		// her şey sahibinindir ve silinmez.
+		if !removalStarted {
+			names, err := catalogTopLevelNames(site.docRoot)
+			if err != nil {
+				return fail(transport.AppFailContent, "the site's document root could not be listed (%v); nothing was removed", err)
+			}
+			record = catalogRemovalRecordFor(req.Site.SiteID, site)
+			record.Entries = names
+			if err := markCatalogRemoval(req.Site.SiteID, site, record); err != nil {
+				return fail(transport.AppFailInternal, "the removal could not be recorded (%v); nothing was removed. Retry the removal", err)
+			}
+		}
+		targets := catalogRemovalTargets(site.docRoot, record.Entries)
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 		defer cancel()
-		if _, err := catalogRunAsSiteUser(ctx, site.username, site.siteHome,
-			[]string{"find", site.docRoot, "-xdev", "-mindepth", "1", "-delete"}, nil); err != nil {
-			return fail(transport.AppFailPublish, "some of %s's files could not be removed (%v); what remains is in the document root. Retry the removal", site.app.Name, err)
+		if len(targets) > 0 {
+			if err := removeCatalogRemovalTargets(ctx, site, targets); err != nil {
+				// What could not be removed stays; the placeholder page goes back
+				// beside it (never over a file) so visitors see the site's page
+				// instead of an error, and the record says the removal continues.
+				// Kaldırılamayanlar yerinde kalır; ziyaretçi hata yerine yer tutucu
+				// sayfayı görsün diye yer tutucu (bir dosyanın üzerine yazmadan) konur.
+				placeholderPath := filepath.Join(site.docRoot, placeholderName)
+				_, existed := os.Lstat(placeholderPath)
+				if _, err := catalogRunAsSiteUser(ctx, site.username, site.docRoot,
+					[]string{"sh", "-c", `set -C; umask 027; cat > "$1"`, "sh", placeholderPath}, placeholderContent); err == nil && existed != nil {
+					// The placeholder now under that name is CelikPanel's own,
+					// not the application's: a continued removal leaves it
+					// (and whatever the owner may put there instead).
+					record.Entries = slices.DeleteFunc(record.Entries, func(name string) bool { return name == placeholderName })
+					if len(record.Entries) > 0 {
+						_ = markCatalogRemoval(req.Site.SiteID, site, record)
+					}
+				}
+				return fail(transport.AppFailRemove, "removing %s stopped part way: some of its files could not be deleted (%s). What remains is in the site's document root, and the site shows its placeholder page where it could be put back. Press Remove again: it continues where it stopped. If it stops again, the administrator checks who owns those files (they must belong to the site's user)", site.app.Name, boundedText(err.Error(), 400))
+			}
 		}
-		name, content := celikPanelSitePlaceholder(site.domain, "php")
+		resp.KeptEntries = catalogKeptEntries(site.docRoot, record.Entries, placeholderName)
 		if _, err := catalogRunAsSiteUser(ctx, site.username, site.docRoot,
-			[]string{"sh", "-c", `umask 027; cat > "$1"`, "sh", filepath.Join(site.docRoot, name)}, content); err != nil {
-			resp.Detail = "the placeholder page could not be put back; the site's document root is empty"
+			[]string{"sh", "-c", `set -C; umask 027; [ -e "$1" ] || cat > "$1"`, "sh", filepath.Join(site.docRoot, placeholderName)}, placeholderContent); err != nil {
+			resp.Detail = "the placeholder page could not be put back"
+		}
+		if len(resp.KeptEntries) > 0 {
+			resp.Detail = strings.TrimPrefix(resp.Detail+"; ", "; ") + fmt.Sprintf(
+				"%d item(s) were added to the site's document root after the removal started and were kept as they are: %s. They are yours; remove them with the file manager if you do not want them",
+				len(resp.KeptEntries), strings.Join(resp.KeptEntries, ", "))
 		}
 	}
 	resp.FilesRemoved = true
+	clearCatalogRemoval(req.Site.SiteID, site)
 
 	for _, file := range []string{appcatalog.IncludeFileName(site.app.ID), services.AppSetupLockFileName} {
 		err := nginx.RemoveAppInclude(site.domain, file)

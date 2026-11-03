@@ -8,7 +8,7 @@ import { useNavigate } from '../router';
 import { useRefreshEvery, useRemote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
 import {
-    RUNNING_STATES, decodeDomainApps, domainAppInstallURL, domainAppOperationURL, domainAppsURL,
+    RUNNING_STATES, decodeDomainApps, domainAppInstallURL, domainAppOperationURL, domainAppsURL, phpExtensionsInstallPath,
     type DomainApp, type InstalledApp,
 } from '../lib/appCatalog';
 import type { TranslationKey } from '../i18n/en';
@@ -215,7 +215,11 @@ function statusWords(app: InstalledApp, t: (key: TranslationKey, vars?: Record<s
     switch (app.status) {
         case 'applied': return { text: t('apps.status.applied'), tone: 'text-success' };
         case 'setup_failed': return { text: t('apps.status.setupFailed', { name: app.name }), tone: 'text-warning' };
-        case 'needs_review': return { text: t('apps.status.needsReview'), tone: 'text-warning' };
+        // A removal that stopped part way is a known state with its own
+        // next step (Remove again), not a lost answer (alpha.118).
+        case 'needs_review': return app.error_kind === 'remove'
+            ? { text: t('apps.status.removeIncomplete', { name: app.name }), tone: 'text-warning' }
+            : { text: t('apps.status.needsReview'), tone: 'text-warning' };
         case 'failed': return { text: t('apps.status.failed'), tone: 'text-danger' };
     }
     return { text: app.status, tone: 'text-fg-muted' };
@@ -253,6 +257,7 @@ function InstalledRow({ app, busy, onRetry, onReveal, onRemove }: { app: Install
 
 function Requirements({ app, administrator }: { app: DomainApp; administrator: boolean }) {
     const { t } = useI18n();
+    const navigate = useNavigate();
     const req = app.requirements;
     if (!app.available && administrator && app.refused_by === 'administrator') {
         return <p className="text-sm text-warning">{t('apps.offerFirst')}</p>;
@@ -269,6 +274,17 @@ function Requirements({ app, administrator }: { app: DomainApp; administrator: b
         <ul className="list-disc space-y-0.5 pl-5 text-sm text-warning" data-unmet="">
             {!req.php_ok && <li>{req.php_reason || t('apps.phpUnsupported', { range: app.php })} — {t('apps.phpAction')}</li>}
             {packages.length > 0 && <li>{t('apps.missingPackages', { packages: packages.join(' ') })}</li>}
+            {/* The administrator's path in the panel (alpha.118): Components
+                installs the site's PHP version with its standard extensions
+                from the official packages. */}
+            {packages.length > 0 && administrator && req.install_package && (
+                <li className="my-1 list-none text-fg-muted" data-install-extensions={req.install_package}>
+                    <Button icon={Download} onClick={() => navigate(phpExtensionsInstallPath(req.install_package!))}>
+                        {t('apps.installExtensions', { php: req.php_line ?? '' })}
+                    </Button>
+                    <span className="block text-xs">{t('apps.installExtensionsHint', { php: req.php_line ?? '' })}</span>
+                </li>
+            )}
             {enable.length > 0 && <li>{t('apps.enableExtensions', { extensions: enable.join(', ') })}</li>}
             {(req.doc_root === 'content' || req.doc_root === 'unavailable') && <li>{t('apps.docRootNotEmpty')}</li>}
             {!req.database_ok && <li>{req.database_reason}</li>}
@@ -331,6 +347,12 @@ function RemoveForm({ domainId, domainName, app, send, onClose }: {
             const result = await send(domainAppOperationURL(domainId, app.operation_id), { confirm: confirmName, remove_database: database, remove_data: data }, 'DELETE');
             if (result?.success === true) {
                 const note = typeof result.database_note === 'string' && result.database_note ? result.database_note : '';
+                // Items the owner added after the removal started were kept
+                // (alpha.118); the removal is finished and says so.
+                const kept = Array.isArray(result.kept_entries) ? result.kept_entries.filter((x): x is string => typeof x === 'string') : [];
+                if (kept.length > 0) {
+                    showToast('warning', t('apps.removedKept', { name: app.name, count: kept.length, items: kept.slice(0, 10).join(', ') + (kept.length > 10 ? ', …' : '') }));
+                }
                 showToast(note ? 'error' : 'success', note || t('apps.removed', { name: app.name }));
                 onClose();
             }

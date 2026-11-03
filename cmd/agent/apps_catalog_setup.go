@@ -80,7 +80,21 @@ func ensureSetupPrepend() error {
 	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 		return errors.New("the setup helper folder is not a real directory")
 	}
+	// The site's user must reach the file: the agent runs with UMask=0027, so
+	// MkdirAll alone left the folder 0750 root:root and PHP stopped with
+	// "Failed opening required .../prepend.php: Permission denied" before the
+	// application's installer started (alpha.118 lab, Joomla exit code 255).
+	// The folder and the file hold no secret; they are readable by everyone.
+	// Sitenin kullanıcısı dosyaya ulaşabilmeli: klasör ve dosya herkesçe okunur.
+	if info.Mode().Perm() != 0o755 {
+		if err := os.Chmod(dir, 0o755); err != nil {
+			return fmt.Errorf("make the setup helper folder readable: %w", err)
+		}
+	}
 	if current, err := os.ReadFile(setupPrependPath); err == nil && string(current) == setupPrependPHP {
+		if fileInfo, err := os.Lstat(setupPrependPath); err == nil && fileInfo.Mode().IsRegular() && fileInfo.Mode().Perm() != 0o644 {
+			return os.Chmod(setupPrependPath, 0o644)
+		}
 		return nil
 	}
 	tmp, err := os.CreateTemp(dir, ".prepend-*.php")

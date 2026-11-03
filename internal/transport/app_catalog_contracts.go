@@ -57,12 +57,14 @@ type AppPrerequisitesResponse struct {
 // Failure kinds of the catalog RPCs, for the screen's guidance.
 const (
 	AppFailVerification = "verification" // the download did not match the pinned digest
+	AppFailUnpack       = "unpack"       // the verified release could not be unpacked safely (nothing changed)
 	AppFailDownload     = "download"     // the release could not be downloaded
 	AppFailPrerequisite = "prerequisite" // something the administrator or owner must change first
 	AppFailContent      = "content"      // the document root holds content
 	AppFailPublish      = "publish"      // the files could not be put in place
 	AppFailSetup        = "setup"        // the application's own installer failed
 	AppFailNginx        = "nginx"        // nginx refused or kept a file
+	AppFailRemove       = "remove"       // a removal stopped part way; running it again continues it
 	AppFailInternal     = "internal"
 )
 
@@ -129,7 +131,10 @@ type RemoveCatalogAppResponse struct {
 	DataRemoved  bool   `json:"data_removed,omitempty"`
 	DataKept     string `json:"data_kept,omitempty"`
 	NotThisApp   bool   `json:"not_this_app,omitempty"`
-	Detail       string `json:"detail,omitempty"`
-	Error        string `json:"error,omitempty"`
-	ErrorKind    string `json:"error_kind,omitempty"`
+	// KeptEntries are top-level entries of the document root that appeared
+	// after a removal started; they are the owner's and were not deleted.
+	KeptEntries []string `json:"kept_entries,omitempty"`
+	Detail      string   `json:"detail,omitempty"`
+	Error       string   `json:"error,omitempty"`
+	ErrorKind   string   `json:"error_kind,omitempty"`
 }
