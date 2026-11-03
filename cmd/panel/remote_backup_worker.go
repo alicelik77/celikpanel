@@ -344,7 +344,7 @@ func (p *Panel) runRemoteOperation(parent context.Context, op remoteOperation) {
 			WHERE id = ?`, verified, op.ID); werr != nil {
 			log.Printf("remote backup %s finish: %v", op.ID, werr)
 		}
-		p.auditBackupSystem(writeCtx, "backup.remote."+op.Kind+":"+op.BackupType, op.DomainID)
+		p.auditBackupSystem(writeCtx, "backup.remote.done:"+op.Kind+":"+op.BackupType, op.DomainID)
 		return
 	}
 	f := classifyRemoteError(err)
@@ -378,7 +378,7 @@ func (p *Panel) runRemoteOperation(parent context.Context, op remoteOperation) {
 		WHERE id = ?`, f.class, f.code, auditReason(f.detail), op.ID); werr != nil {
 		log.Printf("remote backup %s failure: %v", op.ID, werr)
 	}
-	p.auditBackupSystem(writeCtx, "backup.remote."+op.Kind+".failed — "+f.code, op.DomainID)
+	p.auditBackupSystem(writeCtx, "backup.remote.failed:"+op.Kind+" — "+f.code, op.DomainID)
 }
 
 // progress records the phase and bytes at most every remoteProgressEvery.
@@ -691,7 +691,7 @@ func (p *Panel) applyRemoteRetention(ctx context.Context, store remotebackup.Sto
 			return err
 		}
 		_ = store.Delete(ctx, key+remotebackup.SidecarSuffix)
-		p.auditBackupSystem(ctx, "backup.remote.delete:retention", site.ID)
+		p.auditBackupSystem(ctx, "backup.remote.done:retention-delete", site.ID)
 	}
 	return nil
 }

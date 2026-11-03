@@ -632,7 +632,7 @@ func (p *Panel) handleSaveRemoteDestination(w http.ResponseWriter, r *http.Reque
 			return
 		}
 		id, _ = res.LastInsertId()
-		p.audit(r, "backup.remote.destination.add:"+body.Kind, "remote_backup_destination", int(id))
+		p.audit(r, "backup.remote.destination:add:"+body.Kind, "remote_backup_destination", int(id))
 	} else {
 		if !c.hasAccountRole(roleAdmin) {
 			offered = 0
@@ -645,7 +645,7 @@ func (p *Panel) handleSaveRemoteDestination(w http.ResponseWriter, r *http.Reque
 			writeServerError(w, err)
 			return
 		}
-		p.audit(r, "backup.remote.destination.change", "remote_backup_destination", int(id))
+		p.audit(r, "backup.remote.destination:change", "remote_backup_destination", int(id))
 	}
 	d, err := p.loadRemoteDestination(ctx, id)
 	if err != nil {
@@ -674,7 +674,7 @@ func (p *Panel) handleDeleteRemoteDestination(w http.ResponseWriter, r *http.Req
 		writeServerError(w, err)
 		return
 	}
-	p.audit(r, "backup.remote.destination.remove", "remote_backup_destination", int(id))
+	p.audit(r, "backup.remote.destination:remove", "remote_backup_destination", int(id))
 	_ = json.NewEncoder(w).Encode(map[string]any{"removed": true,
 		"note": "The destination and its schedules were removed from CelikPanel. The backups stored there were not touched."})
 }
@@ -851,7 +851,7 @@ func (p *Panel) handleDeleteRemotePolicy(w http.ResponseWriter, r *http.Request,
 	if site != nil {
 		resource = site.ID
 	}
-	p.audit(r, "backup.remote.schedule.off", "domain", resource)
+	p.audit(r, "backup.remote.schedule:off", "domain", resource)
 	_ = json.NewEncoder(w).Encode(map[string]any{"removed": true,
 		"note": "The schedule was turned off. Backups already sent stay at the destination."})
 }
