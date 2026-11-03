@@ -322,7 +322,9 @@ func (p *Panel) appRequirements(ctx context.Context, r *http.Request, e *effecti
 	return view
 }
 
-// appDiskRoom: the subscription's disk limit leaves room for needMB.
+// appDiskRoom: the subscription's disk limit leaves room for needMB, against
+// the same total the disk limit uses (alpha.118: the measured site files,
+// mail and databases; before the first measurement the per-site numbers).
 func (p *Panel) appDiskRoom(ctx context.Context, subID int, needMB int64) error {
 	if err := p.checkSubscriptionQuota(ctx, subID, quotaDisk); err != nil {
 		return err
@@ -332,7 +334,7 @@ func (p *Panel) appDiskRoom(ctx context.Context, subID int, needMB int64) error 
 	}
 	var limit, used int64
 	err := p.db.GetDB().QueryRowContext(ctx, `
-		SELECT s.disk_quota_mb, COALESCE((SELECT SUM(si.disk_usage_bytes) FROM sites si JOIN domains d ON si.domain_id = d.id WHERE d.subscription_id = s.id), 0)
+		SELECT s.disk_quota_mb, `+subscriptionDiskBytesSQL+`
 		FROM subscriptions s WHERE s.id = ?`, subID).Scan(&limit, &used)
 	if err != nil {
 		return quotaReadError(err)

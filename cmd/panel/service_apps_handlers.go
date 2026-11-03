@@ -411,6 +411,13 @@ func (p *Panel) handleServiceAppInstall(w http.ResponseWriter, r *http.Request, 
 	if p.refuseServiceAppOffer(w, r, app, site.SubscriptionID) {
 		return
 	}
+	// alpha.118 integration (D-044): an app's files and data live in the
+	// site's home and count toward the disk limit; a subscription already
+	// at or over it installs nothing new (My plan says what to do).
+	if err := p.checkSubscriptionQuota(ctx, site.SubscriptionID, quotaDisk); err != nil {
+		writeQuotaRefusal(w, err)
+		return
+	}
 	if !site.Certificate {
 		writeServiceAppRefusal(w, http.StatusConflict, "certificate_missing",
 			"Nothing was changed: "+app.Name+" is served only over HTTPS, and "+site.Domain+" has no certificate yet. Get a free certificate on the domain's SSL page, then install.",
