@@ -130,7 +130,11 @@ var catalog = []App{
 		Risk: "A wiki is open for anyone to edit by default; decide who may edit in LocalSettings.php before announcing it.",
 	},
 	{
-		ID: "phpbb", Kind: KindPHPSite, Name: "phpBB", Version: "3.3.19",
+		// alpha.118 lab: download.phpbb.com answers 403 to the panel's own
+		// User-Agent. CelikPanel does not pretend to be another program, so
+		// phpBB waits until its download works for the panel.
+		Withheld: "phpBB's download server refuses the panel's downloads",
+		ID:       "phpbb", Kind: KindPHPSite, Name: "phpBB", Version: "3.3.19",
 		License: "GPL-2.0-only", Homepage: "https://www.phpbb.com",
 		Summary: "A discussion forum.",
 		Archive: Archive{

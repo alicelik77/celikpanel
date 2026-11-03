@@ -4,8 +4,11 @@
 `cmd/panel/app_catalog_*.go`, migration 058. Haklar: [PLANS-AND-RIGHTS.tr.md](PLANS-AND-RIGHTS.tr.md) 4.5.*
 
 Bir PHP sitesinin Uygulamalar sekmesi, sitenin boş belge köküne hazır bir web uygulaması kurar:
-WordPress (eski kurucusu, değişmedi), PrestaShop, Nextcloud, Drupal, Joomla, MediaWiki ve phpBB.
-Her biri tek bir incelenmiş dosyada sabitlenmiş tek bir sürümdür.
+WordPress (eski kurucusu, değişmedi), PrestaShop, Nextcloud, Drupal, Joomla ve MediaWiki.
+Her biri tek bir incelenmiş dosyada sabitlenmiş tek bir sürümdür. phpBB de sabitlenmiştir ama
+alpha.118'de sunulmaz: download.phpbb.com panelin kendi User-Agent'ına 403 verir ve panel kendini
+başka bir program gibi göstermez. Bu değişene dek listelenmez, sunulmaz, kurulmaz
+(internal/appcatalog/pinned.go içinde `Withheld`).
 
 Bu belgedeki kodun yalnız bileşen testleri vardır. Her uygulamanın Debian, Ubuntu ve Arch'ta
 gerçek kurulumu sürümün laboratuvar turunda kanıtlanır; o zamana kadar kurucular "yazıldı, gerçek

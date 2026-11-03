@@ -147,18 +147,18 @@ var catalog = []App{
 		Homepage: "https://n8n.io", Source: "https://github.com/n8n-io/n8n",
 		Licence: "Sustainable Use License 1.0", LicenceNote: "sustainable_use",
 		Runtime: RuntimeNode, Package: "n8n", Version: "2.46.4",
-		ArtifactURL:       "https://registry.npmjs.org/n8n/-/n8n-2.46.4.tgz",
-		ArtifactFile:      "n8n-2.46.4.tgz",
-		ArtifactHash:      "sha512-Ek/AlWCxbNfULfr5Z4kzS+SwcHfVTpcVIVmughdfqM905EGw0rIGjVLHbBTvgnYsV15Ajwih8spQndc5+Xr1Wg==",
-		HashKind:          HashNPMIntegrity,
-		NodeMajors:        []int{24},
+		ArtifactURL:  "https://registry.npmjs.org/n8n/-/n8n-2.46.4.tgz",
+		ArtifactFile: "n8n-2.46.4.tgz",
+		ArtifactHash: "sha512-Ek/AlWCxbNfULfr5Z4kzS+SwcHfVTpcVIVmughdfqM905EGw0rIGjVLHbBTvgnYsV15Ajwih8spQndc5+Xr1Wg==",
+		HashKind:     HashNPMIntegrity,
+		NodeMajors:   []int{24},
 		// n8n-nodes-base 2.46.4 depends (not optionally) on the Alpine
 		// binaries @napi-rs/canvas-linux-{x64,arm64}-musl and
 		// @napi-rs/image-linux-{x64,arm64}-musl (registry, 3 Nov 2026).
 		NPMPlatformDepsRequired: true,
 		CustomerOfferable:       true,
 		ResellerClosed:          "sustainable_use",
-		Defaults:          Resources{MemoryMB: 1536, CPUPercent: 100, TasksMax: 512, DiskMB: 1600, InstallMemoryMB: 3072},
+		Defaults:                Resources{MemoryMB: 1536, CPUPercent: 100, TasksMax: 512, DiskMB: 1600, InstallMemoryMB: 3072},
 		Risk: Risk{
 			CanDo:    []string{"workflows_outbound", "stores_credentials", "webhooks_public", "code_node_sandboxed"},
 			Disabled: []string{"execute_command", "local_file_trigger", "community_packages", "python_code", "env_access", "file_access_outside", "git_hooks", "telemetry"},

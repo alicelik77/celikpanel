@@ -63,7 +63,7 @@ func (p *Panel) handleAppInstall(w http.ResponseWriter, r *http.Request, domainI
 	if request.App != "wordpress" {
 		// alpha.118: every other catalog application.
 		app, ok := appcatalog.Lookup(request.App)
-		if !ok || app.Kind != appcatalog.KindPHPSite || app.Legacy() {
+		if !ok || app.Kind != appcatalog.KindPHPSite || app.Legacy() || !app.Offerable() {
 			writeCodedError(w, http.StatusBadRequest, errCodeAppUnknown, "unknown application; nothing was changed", "")
 			return
 		}

@@ -291,7 +291,7 @@ func TestCatalogSetupFailureRetriesOnlyTheSetup(t *testing.T) {
 
 func TestCatalogRemoveKeepsTheDatabaseUnlessConfirmed(t *testing.T) {
 	f, agent := newCatalogFixture(t)
-	if recorder := installCatalogApp(t, f, "phpbb"); recorder.Code != http.StatusOK {
+	if recorder := installCatalogApp(t, f, "mediawiki"); recorder.Code != http.StatusOK {
 		t.Fatalf("install: %d %s", recorder.Code, recorder.Body.String())
 	}
 	op, _ := latestCatalogOperation(t, f)
@@ -392,5 +392,23 @@ func TestCatalogRecoveryAfterRestartNeverGuesses(t *testing.T) {
 	_ = db.QueryRow(`SELECT status FROM app_catalog_operations WHERE operation_id = ?`, strings.Repeat("a", 32)).Scan(&status)
 	if status != appOpNeedsReview {
 		t.Fatalf("interrupted file publication is %s, want needs_review", status)
+	}
+}
+
+// alpha.118 lab round 3: phpBB is withheld (its download server refuses the
+// panel). It is not listed, cannot be offered and cannot be installed.
+func TestCatalogWithheldPhpBBIsNeitherListedOfferedNorInstalled(t *testing.T) {
+	f, agent := newCatalogFixture(t)
+	offered, err := f.panel.loadOfferedApps(context.Background())
+	if err != nil || offered["phpbb"] {
+		t.Fatalf("phpBB is offered: %v %v", offered, err)
+	}
+	for _, id := range catalogOfferingIDs() {
+		if id == "app:phpbb" {
+			t.Fatal("phpBB is in the installed layer of offerings")
+		}
+	}
+	if recorder := installCatalogApp(t, f, "phpbb"); recorder.Code != http.StatusBadRequest || len(agent.setupCalls) != 0 {
+		t.Fatalf("phpBB install answered %d", recorder.Code)
 	}
 }

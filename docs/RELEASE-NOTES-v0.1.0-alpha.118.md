@@ -28,8 +28,8 @@ from the panel's own update screen.**
 
 ## Application catalogue
 
-- The Applications tab is a catalogue: PrestaShop, Nextcloud, Drupal, Joomla,
-  MediaWiki and phpBB join WordPress. Each is the official release, checked
+- The Applications tab is a catalogue: PrestaShop, Nextcloud, Drupal, Joomla
+  and MediaWiki join WordPress. Each is the official release, checked
   against a fingerprint pinned in CelikPanel before it is unpacked.
 - The administrator chooses which applications are offered (Plans and rights →
   Offered). WordPress stays offered; the others start closed.
@@ -104,6 +104,8 @@ a custom rights list get them only when someone chooses them.
   disk count.
 - SSH access cannot be made read-only when the disk is full.
 - Traffic counts websites only (not mail or FTP).
+- phpBB is not offered yet: its download server refuses the panel's downloads,
+  and CelikPanel does not pretend to be another program to get past that.
 - Matomo and Moodle are not offered yet. PrestaShop's friendly URLs are off;
   Nextcloud background jobs are not set up as scheduled tasks.
 - WordPress theme updates are left to WordPress's own screen (wordpress.org
