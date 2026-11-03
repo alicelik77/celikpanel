@@ -552,6 +552,15 @@ var domainSubrouteRights = map[string]domainSubrouteRight{
 	"site-protect-users": {right: rightSiteProtect},
 	"site-redirects":     {right: rightSiteProtect},
 	"app-install":        {right: rightAppInstaller},
+
+	// alpha.118: remote backups use the backup permission; an own
+	// destination needs remote_backup_destinations as well (checked inside).
+	"backup-remote":           {right: rightBackups},
+	"backup-remote-policy":    {right: rightBackups},
+	"backup-remote-objects":   {right: rightBackups, gateReads: true},
+	"backup-remote-send":      {right: rightBackups},
+	"backup-remote-restore":   {right: rightBackups},
+	"backup-remote-operation": {right: rightBackups},
 }
 
 // domainSubrouteRightFor: the permission a request needs, "" when none.

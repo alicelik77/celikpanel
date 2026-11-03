@@ -1396,3 +1396,13 @@ func (s *sftpStore) Close() error {
 	})
 	return nil
 }
+
+// HostKeyFingerprint returns the SHA256 fingerprint ("SHA256:...") of a key
+// in authorized_keys form, or "" when it cannot be parsed.
+func HostKeyFingerprint(authorizedKey string) string {
+	key, _, _, _, err := ssh.ParseAuthorizedKey([]byte(strings.TrimSpace(authorizedKey)))
+	if err != nil {
+		return ""
+	}
+	return ssh.FingerprintSHA256(key)
+}
