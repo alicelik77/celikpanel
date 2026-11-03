@@ -1,0 +1,42 @@
+build117 13:50:17
+commit b22348ff86f806c7132cc067221ce74c6fd09cdc
+bundle budget check passed
+EXIT 0
+  "tree": "c11eda1cd1327ef0c33ba6367e0a50aebe2a1f7b",
+  "version": "v0.1.0-alpha.117"
+}
+BUILD-OK
+  "commit": "b22348ff86f806c7132cc067221ce74c6fd09cdc",
+  "sha256": "6b5cb17d76223ca25e8a044c6f7d86842cb30883ead4c200a83bb5a705cfda1e",
+  "version": "v0.1.0-alpha.117"
+portal118 exit 0
+== get.sh difference from the release's download-portal/get.sh:
+6,8c6,8
+< bootstrap_release_sequence=117
+< bootstrap_release_version=v0.1.0-alpha.117
+< bootstrap_release_public_key_sha256=7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb
+---
+> bootstrap_release_sequence=118
+> bootstrap_release_version=v0.1.0-alpha.118
+> bootstrap_release_public_key_sha256=f6a969ea37c1e61c9eb188a7ee41a9af97eb6938f18508fb180e112d6a395552
+format=celikpanel-release-manifest-v2
+sequence=118
+version=v0.1.0-alpha.118
+commit=02542ef2432a12bfb090166b04f86876b99eca96
+published_at=2026-11-03T13:50:18Z
+os=linux
+arch=amd64
+archive=celikpanel-v0.1.0-alpha.118-linux-amd64.tar.gz
+archive_sha256=6550f221b62ffaf4c0756d36457d6900a9d92650c88b1888ec3f9c73a8446d21
+archive_size=70506160
+releases/v0.1.0-alpha.118/linux/amd64/celikpanel-v0.1.0-alpha.118-linux-amd64.tar.gz 70506160
+releases/v0.1.0-alpha.118/linux/amd64/celikpanel-v0.1.0-alpha.118-linux-amd64.tar.gz.sha256 113
+releases/v0.1.0-alpha.118/linux/amd64/release-manifest-v2.sig 64
+releases/v0.1.0-alpha.118/linux/amd64/release-manifest-v2 335
+releases/latest.txt 17
+get.sh 75043
+release-signing-ed25519.pem 113
+portal117 exit 0
+releases/v0.1.0-alpha.117/linux/amd64/release-manifest-v2 335
+get.sh 75043
+release-signing-ed25519.pem 113

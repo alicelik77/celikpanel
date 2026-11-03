@@ -1,0 +1,37 @@
+commit dbd4dfe68f9c478cf16960047d45829cee231fc6
+Author: lab <lab@beta1-lab.test>
+Date:   Tue Nov 3 16:55:42 2026 +0300
+
+    LAB ONLY: alpha.118 release identity bump on 02542ef2432a12bfb090166b04f86876b99eca96
+
+diff --git a/deploy/release-sequence-policy b/deploy/release-sequence-policy
+index c62bff260..a97c4a63e 100644
+--- a/deploy/release-sequence-policy
++++ b/deploy/release-sequence-policy
+@@ -1,6 +1,6 @@
+ format=celikpanel-release-sequence-policy-v1
+-version=v0.1.0-alpha.117
+-current=117
+-previous=116
+-previous_version=v0.1.0-alpha.116
+-previous_commit=3ab50130aff0696e469d12e0b862be98771543bd
++version=v0.1.0-alpha.118
++current=118
++previous=117
++previous_version=v0.1.0-alpha.117
++previous_commit=b22348ff86f806c7132cc067221ce74c6fd09cdc
+diff --git a/download-portal/get.sh b/download-portal/get.sh
+index e138eb2d1..619368f92 100644
+--- a/download-portal/get.sh
++++ b/download-portal/get.sh
+@@ -3,8 +3,8 @@ set -eu
+ umask 077
+ 
+ base_url=https://celikpanel.net
+-bootstrap_release_sequence=117
+-bootstrap_release_version=v0.1.0-alpha.117
++bootstrap_release_sequence=118
++bootstrap_release_version=v0.1.0-alpha.118
+ bootstrap_release_public_key_sha256=7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb
+ requested_version=latest
+ requested_action=auto

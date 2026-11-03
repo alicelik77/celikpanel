@@ -1,0 +1,33 @@
+## 14:27:00 agent journal: joomla
+## clamav
+inactive
+active
+○ clamav-daemon.service - Clam AntiVirus userspace daemon
+     Loaded: loaded (/usr/lib/systemd/system/clamav-daemon.service; enabled; preset: enabled)
+    Drop-In: /etc/systemd/system/clamav-daemon.service.d
+             └─extend.conf
+     Active: inactive (dead)
+TriggeredBy: ○ clamav-daemon.socket
+  Condition: start condition unmet at Tue 2026-11-03 14:24:24 UTC; 2min 35s ago
+       Docs: man:clamd(8)
+             man:clamd.conf(5)
+             https://docs.clamav.net/
+
+Nov 03 14:24:17 frankfurt systemd[1]: clamav-daemon.service - Clam AntiVirus userspace daemon skipped, unmet condition check ConditionPathExistsGlob=/var/lib/clamav/daily.{c[vl]d,inc}
+total 110176
+drwxr-xr-x  2 clamav clamav     4096 Nov  3 14:24 .
+drwxr-xr-x 45 root   root       4096 Nov  3 14:26 ..
+-rw-r--r--  1 clamav clamav   281702 Nov  3 14:24 bytecode.cvd
+-rw-r--r--  1 clamav clamav 23447608 Nov  3 14:24 daily.cvd
+-rw-r--r--  1 clamav clamav       90 Nov  3 14:24 freshclam.dat
+-rw-r--r--  1 clamav clamav 89072577 Nov  3 14:24 main.cvd
+Nov 03 14:24:31 frankfurt freshclam[61793]: Tue Nov  3 14:24:31 2026 -> Testing database: '/var/lib/clamav/tmp.89e44dab8a/clamav-051f25566032c29df7c59d15e7c96485.tmp-main.cvd' ...
+Nov 03 14:24:34 frankfurt freshclam[61793]: Tue Nov  3 14:24:34 2026 -> Database test passed.
+Nov 03 14:24:34 frankfurt freshclam[61793]: Tue Nov  3 14:24:34 2026 -> main.cvd updated (version: 63, sigs: 3287027, f-level: 90, builder: tomjudge)
+Nov 03 14:24:34 frankfurt freshclam[61793]: Tue Nov  3 14:24:34 2026 -> bytecode database available for download (remote version: 339)
+Nov 03 14:24:34 frankfurt freshclam[61793]: Tue Nov  3 14:24:34 2026 -> Testing database: '/var/lib/clamav/tmp.89e44dab8a/clamav-8e5ce131fde255923a2b0e9f0e12e55c.tmp-bytecode.cvd' ...
+Nov 03 14:24:35 frankfurt freshclam[61793]: Tue Nov  3 14:24:35 2026 -> Database test passed.
+Nov 03 14:24:35 frankfurt freshclam[61793]: Tue Nov  3 14:24:35 2026 -> bytecode.cvd updated (version: 339, sigs: 80, f-level: 90, builder: nrandolp)
+Nov 03 14:24:35 frankfurt freshclam[61793]: WARNING: Tue Nov  3 14:24:35 2026 -> Clamd was NOT notified: Can't connect to clamd through /var/run/clamav/clamd.ctl: No such file or directory
+               total        used        free      shared  buff/cache   available
+Mem:            4924        1117        1406           3        2690        3806

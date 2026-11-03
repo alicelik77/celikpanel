@@ -1,0 +1,37 @@
+Tue Nov  3 14:06:44 UTC 2026
+The exact DNS request could not be verified without its journal. Preserve the private evidence and inspect the original operation and native DNS service; no DNS operation was started. exact DNS switch job is absent from the mutation ledger
+## dns_engine_switch_snapshots ['switch_id', 'request_id', 'owner_id', 'mode', 'source_engine', 'target_engine', 'source_epoch', 'target_epoch', 'source_state_revision', 'topology', 'peer_ip', 'peer_ns', 'phase', 'manifest_qualifier', 'zone_count', 'snapshot_bytes', 'last_error', 'created_at', 'updated_at']
+   ('cfd7a592777e1ae85b6e6f265307a5d1', 'f524d64a9c82ea767d1769184fc32515', '87c305925e23fb928e48fd45f4eee8bd', 'switch', None, 'pdns', 0, 1, 1, 'standalone', '', '', 'activating', 'dns-engine-switch/v1:sha256:4bf1d7400f398b769c22bbeb9d68deed37ce5bb9d68688f39611335101771611', 0, 0, None, '2026-11-03 14:00:02', '2026-11-03 14:00:02')
+## dns_engine_state ['singleton_id', 'active_engine', 'active_epoch', 'revision', 'topology', 'current_switch_id', 'created_at', 'updated_at']
+   (1, None, 0, 2, 'standalone', 'cfd7a592777e1ae85b6e6f265307a5d1', '2026-11-03 13:59:33', '2026-11-03 14:00:02')
+## service_operations ['id', 'kind', 'service_id', 'package_name', 'status', 'phase', 'result_json', 'error_code', 'error_message', 'requested_by', 'request_ip', 'user_agent', 'started_at', 'finished_at', 'created_at', 'updated_at', 'request_id', 'operation_data']
+Nov 03 13:59:32 frankfurt systemd[1]: Starting celikpanel-agent.service - CelikPanel privileged agent...
+Nov 03 13:59:32 frankfurt systemd[1]: Started celikpanel-agent.service - CelikPanel privileged agent.
+Nov 03 13:59:32 frankfurt agent[10867]: 2026/11/03 13:59:32 Starting CelikPanel Agent...
+Nov 03 13:59:32 frankfurt agent[10867]: 2026/11/03 13:59:32 Agent listening on unix socket /run/celikpanel/agent.sock
+Nov 03 13:59:32 frankfurt agent[10867]: 2026/11/03 13:59:32 Panel certificate activation remains pending: open trusted panel TLS directory: no such file or directory
+Nov 03 13:59:37 frankfurt systemd[1]: Starting celikpanel-panel.service - CelikPanel web panel...
+Nov 03 13:59:38 frankfurt systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+Nov 03 13:59:38 frankfurt panel[11018]: 2026/11/03 13:59:38 Starting CelikPanel Backend...
+Nov 03 13:59:38 frankfurt panel[11018]: 2026/11/03 13:59:38 ACCEPTANCE FIXTURE — NOT FOR PRODUCTION: this panel was built with the acceptance_license test tag; it never contacts the license service and accepts only the acceptance fixture license on a disposable acceptance guest (guest: verified)
+Nov 03 13:59:38 frankfurt panel[11018]: 2026/11/03 13:59:38 Panel startup listener active on :1923 (HTTPS; application gated)
+Nov 03 13:59:38 frankfurt panel[11018]: 2026/11/03 13:59:38 Connected to Agent RPC; preparing normal management access
+Nov 03 13:59:38 frankfurt panel[11018]: 2026/11/03 13:59:38 milter chain: nothing to wire at startup: no mail server is installed on this server, so there is no Postfix milter chain to compose
+Nov 03 13:59:38 frankfurt panel[11018]: 2026/11/03 13:59:38 Panel ready on :1923 (HTTPS)
+Nov 03 13:59:39 frankfurt systemd[1]: Stopping celikpanel-panel.service - CelikPanel web panel...
+Nov 03 13:59:39 frankfurt systemd[1]: celikpanel-panel.service: Deactivated successfully.
+Nov 03 13:59:39 frankfurt systemd[1]: Stopped celikpanel-panel.service - CelikPanel web panel.
+Nov 03 13:59:39 frankfurt systemd[1]: celikpanel-panel.service: Consumed 622ms CPU time, 78.7M memory peak.
+Nov 03 13:59:39 frankfurt systemd[1]: Starting celikpanel-panel.service - CelikPanel web panel...
+Nov 03 13:59:39 frankfurt systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+Nov 03 13:59:39 frankfurt panel[11084]: 2026/11/03 13:59:39 Starting CelikPanel Backend...
+Nov 03 13:59:39 frankfurt panel[11084]: 2026/11/03 13:59:39 ACCEPTANCE FIXTURE — NOT FOR PRODUCTION: this panel was built with the acceptance_license test tag; it never contacts the license service and accepts only the acceptance fixture license on a disposable acceptance guest (guest: verified)
+Nov 03 13:59:39 frankfurt panel[11084]: 2026/11/03 13:59:39 Panel startup listener active on :1923 (HTTPS; application gated)
+Nov 03 13:59:39 frankfurt panel[11084]: 2026/11/03 13:59:39 Connected to Agent RPC; preparing normal management access
+Nov 03 13:59:39 frankfurt panel[11084]: 2026/11/03 13:59:39 milter chain: nothing to wire at startup: no mail server is installed on this server, so there is no Postfix milter chain to compose
+Nov 03 13:59:39 frankfurt panel[11084]: 2026/11/03 13:59:39 Panel ready on :1923 (HTTPS)
+Nov 03 14:01:32 frankfurt panel[11084]: 2026/11/03 14:01:32 [panel-update] automatic update check skipped (setup_running); next try in 1 hour
+inactive
+active
+active
+inactive

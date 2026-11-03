@@ -1,0 +1,22 @@
+== n8n install log via API 14:28:34
+200
+2026-11-03T14:26:51+00:00 frankfurt systemd[1]: Started celiksvcinst-1.service - CelikPanel install of n8n 2.46.4.
+2026-11-03T14:26:51+00:00 frankfurt (sh)[68695]: celiksvcinst-1.service: Referenced but unset environment variable evaluates to an empty string: algo
+2026-11-03T14:26:51+00:00 frankfurt systemd[1]: celiksvcinst-1.service: Main process exited, code=exited, status=1/FAILURE
+2026-11-03T14:26:51+00:00 frankfurt sh[68701]: sum: invalid option -- 'c'
+2026-11-03T14:26:51+00:00 frankfurt sh[68701]: Try 'sum --help' for more information.
+2026-11-03T14:26:51+00:00 frankfurt systemd[1]: celiksvcinst-1.service: Failed with result 'exit-code'.
+Nov 03 14:26:51 frankfurt systemd[1]: Started celiksvcinst-1.service - CelikPanel install of n8n 2.46.4.
+Nov 03 14:26:51 frankfurt (sh)[68695]: celiksvcinst-1.service: Referenced but unset environment variable evaluates to an empty string: algo
+Nov 03 14:26:51 frankfurt systemd[1]: celiksvcinst-1.service: Main process exited, code=exited, status=1/FAILURE
+Nov 03 14:26:51 frankfurt sh[68701]: sum: invalid option -- 'c'
+Nov 03 14:26:51 frankfurt sh[68701]: Try 'sum --help' for more information.
+Nov 03 14:26:51 frankfurt systemd[1]: celiksvcinst-1.service: Failed with result 'exit-code'.
+== remove Drupal (catalog app) 14:28:35
+drupal domain 14 op 27729106d15a3ef40dd4e9426fad6332
+502 {"code": "APP_INSTALL_FAILED", "error": "some of Drupal's files could not be removed (it ended with exit code 1); what remains is in the document root. Retry the removal", "vars": {"app": "Drupal", "kind": "publish", "operation_id": "27729106d15a3ef40dd4e9426fad6332"}}
+  after remove installed: [('drupal', 'needs_review')]
+get bdrup118.test/ http 403 http://192.0.3.190/ title: 403 Forbidden |   403 Forbidden   403 Forbidden  nginx    
+== upstream download check from labnet (same NAT egress) 14:28:37
+https://releases.wikimedia.org/mediawiki/1.43/mediawiki-1.43.11.tar.gz curl-UA: 206  Go-UA: 403  empty-UA: 403
+https://download.phpbb.com/pub/release/3.3/3.3.19/phpBB-3.3.19.tar.bz2 curl-UA: 206  Go-UA: 403  empty-UA: 403

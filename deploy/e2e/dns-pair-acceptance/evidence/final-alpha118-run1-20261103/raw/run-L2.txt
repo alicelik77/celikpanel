@@ -1,0 +1,47 @@
+== L2 start 14:18:25 subB=4
+200 {"hidden": {"node": [], "php": []}, "hidden_offerings": [], "offered_apps": ["nextcloud", "wordpress"], "restricted": false}
+200 {"hidden": {"node": [], "php": []}, "hidden_offerings": [], "offered_apps": ["drupal", "nextcloud", "wordpress"], "restricted": false}
+200 {"hidden": {"node": [], "php": []}, "hidden_offerings": [], "offered_apps": ["drupal", "joomla", "nextcloud", "wordpress"], "restricted": false}
+200 {"hidden": {"node": [], "php": []}, "hidden_offerings": [], "offered_apps": ["drupal", "joomla", "nextcloud", "prestashop", "wordpress"], "restricted": false}
+200 {"hidden": {"node": [], "php": []}, "hidden_offerings": [], "offered_apps": ["drupal", "joomla", "mediawiki", "nextcloud", "prestashop", "wordpress"], "restrict
+200 {"hidden": {"node": [], "php": []}, "hidden_offerings": [], "offered_apps": ["drupal", "joomla", "mediawiki", "nextcloud", "phpbb", "prestashop", "wordpress"], 
+-- app_installer grant
+200 {"success": true}
+-- customer catalog
+200 [('wordpress', 'latest', True), ('prestashop', '9.2.0', True), ('nextcloud', '35.0.2', True), ('drupal', '11.4.11', True), ('joomla', '5.4.10', True), ('mediawiki', '1.43.11', True), ('phpbb', '3.3.19', True)]
+== app nextcloud on next118.test (id 3) 14:18:42
+  req nextcloud {"database_ok": true, "disk_ok": true, "doc_root": "placeholder", "family": "apt", "missing": [{"extension": "curl", "package": "php8.4-curl"}, {"extension": "gd", "package": "php8.4-gd"}, {"extension": "pdo_mysql", "package": "php8.4-mysql"}], "php_ok": true, "state": "unmet"} refused_by None
+409 {"action": "/services", "code": "APP_EXTENSIONS_MISSING", "details": ["curl: php8.4-curl", "gd: php8.4-gd", "pdo_mysql: php8.4-mysql"], "error": "PHP 8.4 on this server lacks what Nextcloud needs. Nothing was changed. The administrator installs these packages (Components, or the system's package manager): php8.4-curl php8.4-gd php8.4-mysql; then install again.", "vars": {"app": "Nextcloud", "packages": "php8.4-curl php8.4-gd php8.4-mysql", "php": "8.4"}}
+  took 0s
+get next118.test/ http 200 http://192.0.3.190/ title: next118.test |  next118.test <
+== app drupal on drup118.test (id 5) 14:18:56
+  req drupal {"database_ok": true, "disk_ok": true, "doc_root": "placeholder", "family": "apt", "missing": [{"extension": "gd", "package": "php8.4-gd"}, {"extension": "pdo_mysql", "package": "php8.4-mysql"}], "php_ok": true, "state": "unmet"} refused_by None
+409 {"action": "/services", "code": "APP_EXTENSIONS_MISSING", "details": ["gd: php8.4-gd", "pdo_mysql: php8.4-mysql"], "error": "PHP 8.4 on this server lacks what Drupal needs. Nothing was changed. The administrator installs these packages (Components, or the system's package manager): php8.4-gd php8.4-mysql; then install again.", "vars": {"app": "Drupal", "packages": "php8.4-gd php8.4-mysql", "php": "8.4"}}
+  took 0s
+get drup118.test/ http 200 http://192.0.3.190/ title: drup118.test |  drup118.test <
+== app joomla on joom118.test (id 6) 14:19:06
+  req joomla {"database_ok": true, "disk_ok": true, "doc_root": "placeholder", "family": "apt", "missing": [{"extension": "gd", "package": "php8.4-gd"}, {"extension": "mysqli", "package": "php8.4-mysql"}], "php_ok": true, "state": "unmet"} refused_by None
+409 {"action": "/services", "code": "APP_EXTENSIONS_MISSING", "details": ["gd: php8.4-gd", "mysqli: php8.4-mysql"], "error": "PHP 8.4 on this server lacks what Joomla needs. Nothing was changed. The administrator installs these packages (Components, or the system's package manager): php8.4-gd php8.4-mysql; then install again.", "vars": {"app": "Joomla", "packages": "php8.4-gd php8.4-mysql", "php": "8.4"}}
+  took 0s
+get joom118.test/ http 200 http://192.0.3.190/ title: joom118.test |  joom118.test <
+== app prestashop on pres118.test (id 7) 14:19:18
+  req prestashop {"database_ok": true, "disk_ok": true, "doc_root": "placeholder", "family": "apt", "missing": [{"extension": "curl", "package": "php8.4-curl"}, {"extension": "gd", "package": "php8.4-gd"}, {"extension": "pdo_mysql", "package": "php8.4-mysql"}], "php_ok": true, "state": "unmet"} refused_by None
+409 {"action": "/services", "code": "APP_EXTENSIONS_MISSING", "details": ["curl: php8.4-curl", "gd: php8.4-gd", "pdo_mysql: php8.4-mysql"], "error": "PHP 8.4 on this server lacks what PrestaShop needs. Nothing was changed. The administrator installs these packages (Components, or the system's package manager): php8.4-curl php8.4-gd php8.4-mysql; then install again.", "vars": {"app": "PrestaShop", "packages": "php8.4-curl php8.4-gd php8.4-mysql", "php": "8.4"}}
+  took 0s
+get pres118.test/ http 200 http://192.0.3.190/ title: pres118.test |  pres118.test <
+== app mediawiki on medi118.test (id 8) 14:19:27
+  req mediawiki {"database_ok": true, "disk_ok": true, "doc_root": "placeholder", "family": "apt", "missing": [{"extension": "mysqli", "package": "php8.4-mysql"}], "php_ok": true, "state": "unmet"} refused_by None
+409 {"action": "/services", "code": "APP_EXTENSIONS_MISSING", "details": ["mysqli: php8.4-mysql"], "error": "PHP 8.4 on this server lacks what MediaWiki needs. Nothing was changed. The administrator installs these packages (Components, or the system's package manager): php8.4-mysql; then install again.", "vars": {"app": "MediaWiki", "packages": "php8.4-mysql", "php": "8.4"}}
+  took 1s
+get medi118.test/ http 200 http://192.0.3.190/ title: medi118.test |  medi118.test <
+== app phpbb on phpb118.test (id 9) 14:19:36
+  req phpbb {"database_ok": true, "disk_ok": true, "doc_root": "placeholder", "family": "apt", "missing": [{"extension": "mysqli", "package": "php8.4-mysql"}], "php_ok": true, "state": "unmet"} refused_by None
+409 {"action": "/services", "code": "APP_EXTENSIONS_MISSING", "details": ["mysqli: php8.4-mysql"], "error": "PHP 8.4 on this server lacks what phpBB needs. Nothing was changed. The administrator installs these packages (Components, or the system's package manager): php8.4-mysql; then install again.", "vars": {"app": "phpBB", "packages": "php8.4-mysql", "php": "8.4"}}
+  took 0s
+get phpb118.test/ http 200 http://192.0.3.190/ title: phpb118.test |  phpb118.test <
+== remove app on phpb118.test (op ) 14:19:38
+404 404 page not found
+
+  after remove installed: []
+get phpb118.test/ http 200 http://192.0.3.190/ title: phpb118.test |  phpb118.test <
+== L2 apps done 14:19:39

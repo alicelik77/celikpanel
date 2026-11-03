@@ -1,0 +1,195 @@
+== L2 start 14:18:25 subB=4
+200 {"hidden": {"node": [], "php": []}, "hidden_offerings": [], "offered_apps": ["nextcloud", "wordpress"], "restricted": false}
+200 {"hidden": {"node": [], "php": []}, "hidden_offerings": [], "offered_apps": ["drupal", "nextcloud", "wordpress"], "restricted": false}
+200 {"hidden": {"node": [], "php": []}, "hidden_offerings": [], "offered_apps": ["drupal", "joomla", "nextcloud", "wordpress"], "restricted": false}
+200 {"hidden": {"node": [], "php": []}, "hidden_offerings": [], "offered_apps": ["drupal", "joomla", "nextcloud", "prestashop", "wordpress"], "restricted": false}
+200 {"hidden": {"node": [], "php": []}, "hidden_offerings": [], "offered_apps": ["drupal", "joomla", "mediawiki", "nextcloud", "prestashop", "wordpress"], "restrict
+200 {"hidden": {"node": [], "php": []}, "hidden_offerings": [], "offered_apps": ["drupal", "joomla", "mediawiki", "nextcloud", "phpbb", "prestashop", "wordpress"], 
+-- app_installer grant
+200 {"success": true}
+-- customer catalog
+200 [('wordpress', 'latest', True), ('prestashop', '9.2.0', True), ('nextcloud', '35.0.2', True), ('drupal', '11.4.11', True), ('joomla', '5.4.10', True), ('mediawiki', '1.43.11', True), ('phpbb', '3.3.19', True)]
+== app nextcloud on next118.test (id 3) 14:18:42
+  req nextcloud {"database_ok": true, "disk_ok": true, "doc_root": "placeholder", "family": "apt", "missing": [{"extension": "curl", "package": "php8.4-curl"}, {"extension": "gd", "package": "php8.4-gd"}, {"extension": "pdo_mysql", "package": "php8.4-mysql"}], "php_ok": true, "state": "unmet"} refused_by None
+409 {"action": "/services", "code": "APP_EXTENSIONS_MISSING", "details": ["curl: php8.4-curl", "gd: php8.4-gd", "pdo_mysql: php8.4-mysql"], "error": "PHP 8.4 on this server lacks what Nextcloud needs. Nothing was changed. The administrator installs these packages (Components, or the system's package manager): php8.4-curl php8.4-gd php8.4-mysql; then install again.", "vars": {"app": "Nextcloud", "packages": "php8.4-curl php8.4-gd php8.4-mysql", "php": "8.4"}}
+  took 0s
+get next118.test/ http 200 http://192.0.3.190/ title: next118.test |  next118.test <
+== app drupal on drup118.test (id 5) 14:18:56
+  req drupal {"database_ok": true, "disk_ok": true, "doc_root": "placeholder", "family": "apt", "missing": [{"extension": "gd", "package": "php8.4-gd"}, {"extension": "pdo_mysql", "package": "php8.4-mysql"}], "php_ok": true, "state": "unmet"} refused_by None
+409 {"action": "/services", "code": "APP_EXTENSIONS_MISSING", "details": ["gd: php8.4-gd", "pdo_mysql: php8.4-mysql"], "error": "PHP 8.4 on this server lacks what Drupal needs. Nothing was changed. The administrator installs these packages (Components, or the system's package manager): php8.4-gd php8.4-mysql; then install again.", "vars": {"app": "Drupal", "packages": "php8.4-gd php8.4-mysql", "php": "8.4"}}
+  took 0s
+get drup118.test/ http 200 http://192.0.3.190/ title: drup118.test |  drup118.test <
+== app joomla on joom118.test (id 6) 14:19:06
+  req joomla {"database_ok": true, "disk_ok": true, "doc_root": "placeholder", "family": "apt", "missing": [{"extension": "gd", "package": "php8.4-gd"}, {"extension": "mysqli", "package": "php8.4-mysql"}], "php_ok": true, "state": "unmet"} refused_by None
+409 {"action": "/services", "code": "APP_EXTENSIONS_MISSING", "details": ["gd: php8.4-gd", "mysqli: php8.4-mysql"], "error": "PHP 8.4 on this server lacks what Joomla needs. Nothing was changed. The administrator installs these packages (Components, or the system's package manager): php8.4-gd php8.4-mysql; then install again.", "vars": {"app": "Joomla", "packages": "php8.4-gd php8.4-mysql", "php": "8.4"}}
+  took 0s
+get joom118.test/ http 200 http://192.0.3.190/ title: joom118.test |  joom118.test <
+== app prestashop on pres118.test (id 7) 14:19:18
+  req prestashop {"database_ok": true, "disk_ok": true, "doc_root": "placeholder", "family": "apt", "missing": [{"extension": "curl", "package": "php8.4-curl"}, {"extension": "gd", "package": "php8.4-gd"}, {"extension": "pdo_mysql", "package": "php8.4-mysql"}], "php_ok": true, "state": "unmet"} refused_by None
+409 {"action": "/services", "code": "APP_EXTENSIONS_MISSING", "details": ["curl: php8.4-curl", "gd: php8.4-gd", "pdo_mysql: php8.4-mysql"], "error": "PHP 8.4 on this server lacks what PrestaShop needs. Nothing was changed. The administrator installs these packages (Components, or the system's package manager): php8.4-curl php8.4-gd php8.4-mysql; then install again.", "vars": {"app": "PrestaShop", "packages": "php8.4-curl php8.4-gd php8.4-mysql", "php": "8.4"}}
+  took 0s
+get pres118.test/ http 200 http://192.0.3.190/ title: pres118.test |  pres118.test <
+== app mediawiki on medi118.test (id 8) 14:19:27
+  req mediawiki {"database_ok": true, "disk_ok": true, "doc_root": "placeholder", "family": "apt", "missing": [{"extension": "mysqli", "package": "php8.4-mysql"}], "php_ok": true, "state": "unmet"} refused_by None
+409 {"action": "/services", "code": "APP_EXTENSIONS_MISSING", "details": ["mysqli: php8.4-mysql"], "error": "PHP 8.4 on this server lacks what MediaWiki needs. Nothing was changed. The administrator installs these packages (Components, or the system's package manager): php8.4-mysql; then install again.", "vars": {"app": "MediaWiki", "packages": "php8.4-mysql", "php": "8.4"}}
+  took 1s
+get medi118.test/ http 200 http://192.0.3.190/ title: medi118.test |  medi118.test <
+== app phpbb on phpb118.test (id 9) 14:19:36
+  req phpbb {"database_ok": true, "disk_ok": true, "doc_root": "placeholder", "family": "apt", "missing": [{"extension": "mysqli", "package": "php8.4-mysql"}], "php_ok": true, "state": "unmet"} refused_by None
+409 {"action": "/services", "code": "APP_EXTENSIONS_MISSING", "details": ["mysqli: php8.4-mysql"], "error": "PHP 8.4 on this server lacks what phpBB needs. Nothing was changed. The administrator installs these packages (Components, or the system's package manager): php8.4-mysql; then install again.", "vars": {"app": "phpBB", "packages": "php8.4-mysql", "php": "8.4"}}
+  took 0s
+get phpb118.test/ http 200 http://192.0.3.190/ title: phpb118.test |  phpb118.test <
+== remove app on phpb118.test (op ) 14:19:38
+404 404 page not found
+
+  after remove installed: []
+get phpb118.test/ http 200 http://192.0.3.190/ title: phpb118.test |  phpb118.test <
+== L2 apps done 14:19:39
+== L2 start 14:22:37 subB=4
+200 {"hidden": {"node": [], "php": []}, "hidden_offerings": [], "offered_apps": ["drupal", "joomla", "mediawiki", "nextcloud", "phpbb", "prestashop", "wordpress"], 
+200 {"hidden": {"node": [], "php": []}, "hidden_offerings": [], "offered_apps": ["drupal", "joomla", "mediawiki", "nextcloud", "phpbb", "prestashop", "wordpress"], 
+200 {"hidden": {"node": [], "php": []}, "hidden_offerings": [], "offered_apps": ["drupal", "joomla", "mediawiki", "nextcloud", "phpbb", "prestashop", "wordpress"], 
+200 {"hidden": {"node": [], "php": []}, "hidden_offerings": [], "offered_apps": ["drupal", "joomla", "mediawiki", "nextcloud", "phpbb", "prestashop", "wordpress"], 
+200 {"hidden": {"node": [], "php": []}, "hidden_offerings": [], "offered_apps": ["drupal", "joomla", "mediawiki", "nextcloud", "phpbb", "prestashop", "wordpress"], 
+200 {"hidden": {"node": [], "php": []}, "hidden_offerings": [], "offered_apps": ["drupal", "joomla", "mediawiki", "nextcloud", "phpbb", "prestashop", "wordpress"], 
+-- app_installer grant
+200 {"idempotent": true, "success": true}
+-- customer catalog
+200 [('wordpress', 'latest', True), ('prestashop', '9.2.0', True), ('nextcloud', '35.0.2', True), ('drupal', '11.4.11', True), ('joomla', '5.4.10', True), ('mediawiki', '1.43.11', True), ('phpbb', '3.3.19', True)]
+== app nextcloud on bnext118.test (id 12) 14:22:46
+  req nextcloud {"database_ok": true, "disk_ok": true, "doc_root": "placeholder", "family": "apt", "php_ok": true, "state": "ok"} refused_by None
+502 {"code": "APP_VERIFICATION_FAILED", "error": "the Nextcloud release could not be unpacked safely (archive link \"apps/related_resources/js/vendors-node_modules_nextcloud_vue_dist_Components_NcRelatedResourcesPanel_js.related_resources.js.map.license\" points at another link); nothing was changed", "vars": {"app": "Nextcloud", "kind": "verification", "operation_id": "25c5759dd8b0ec34b54d2c2246c723d5"}}
+  took 106s
+  installed {"operation_id": "25c5759dd8b0ec34b54d2c2246c723d5", "app_id": "nextcloud", "status": "failed", "site_url": "https://bnext118.test/", "admin_url": null, "error_kind": "verification", "last_error": "the Nextcloud release could not be unpacked safely (archive link \"apps/related_resources/js/vendors-node_modules_nextcloud_vue_dist_Components_NcRelatedResourcesPanel_js.related_resources.js.map.license\" points at another link); nothing was changed", "can_remove": null}
+get bnext118.test/ http 200 http://192.0.3.190/ title: bnext118.test |  bnext118.test 
+== app drupal on bdrup118.test (id 14) 14:24:40
+  req drupal {"database_ok": true, "disk_ok": true, "doc_root": "placeholder", "family": "apt", "php_ok": true, "state": "ok"} refused_by None
+200 {"admin_password": "[REDACTED]", "admin_url": "http://bdrup118.test/user/login", "admin_user": "admin", "app": "drupal", "detail": "Drupal 11.4.11 is set up", "name": "Drupal", "operation_id": "27729106d15a3ef40dd4e9426fad6332", "rules_kept": false, "site_url": "http://bdrup118.test/", "success": true, "version": "11.4.11"}
+  took 47s
+  installed {"operation_id": "27729106d15a3ef40dd4e9426fad6332", "app_id": "drupal", "status": "applied", "site_url": "https://bdrup118.test/", "admin_url": "https://bdrup118.test/user/login", "error_kind": null, "last_error": null, "can_remove": true}
+get bdrup118.test/ http 200 http://192.0.3.190/ title: Welcome! | bdrup118.test |  <meta name="Generator" c
+== app joomla on bjoom118.test (id 15) 14:25:38
+  req joomla {"database_ok": true, "disk_ok": true, "doc_root": "placeholder", "family": "apt", "php_ok": true, "state": "ok"} refused_by None
+502 {"code": "APP_SETUP_FAILED", "error": "Joomla's own installer did not finish (Joomla CLI installer: it ended with exit code 255). The site stays closed with a \"being set up\" page. Retry the setup; if it fails again, remove the application and install it again", "vars": {"app": "Joomla", "kind": "setup", "operation_id": "abfc8c39ad4edfeb2fb8a0c0ea4b9bc3"}}
+  took 40s
+  installed {"operation_id": "abfc8c39ad4edfeb2fb8a0c0ea4b9bc3", "app_id": "joomla", "status": "setup_failed", "site_url": "https://bjoom118.test/", "admin_url": null, "error_kind": "setup", "last_error": "Joomla's own installer did not finish (Joomla CLI installer: it ended with exit code 255). The site stays closed with a \"being set up\" page. Retry the setup; if it fails again, remove the application and install it again\nPHP Warning:  Unknown: Failed to open stream: Permission denied in Unknown on line 0\nPHP Fatal error:  Failed opening required '/var/lib/celikpanel-app-setup/prepend.php' (include_path='.:/usr/share/php') in Unknown on line 0", "can_remove": true}
+get bjoom118.test/ http 503 http://192.0.3.190/ title: Being set up |  Being set up <body style="font-family:sans-serif;max-width:40em;margin:4em auto;padding:0 1e
+== app prestashop on bpres118.test (id 16) 14:26:26
+  req prestashop {"database_ok": true, "disk_ok": true, "doc_root": "placeholder", "family": "apt", "php_ok": true, "state": "ok"} refused_by None
+502 {"code": "APP_VERIFICATION_FAILED", "error": "the PrestaShop release could not be unpacked safely (write /var/www/celikpanel/subscriptions/4/sites/.app-stage-16-962853703/modules/klaviyopsautomation/vendor/giggsey/libphonenumber-for-php/src/geocoding/data/en/En_243.php: bad file descriptor); nothing was changed", "vars": {"app": "PrestaShop", "kind": "verification", "operation_id": "347267fca0010ed656cc429fe421adf6"}}
+  took 12s
+  installed {"operation_id": "347267fca0010ed656cc429fe421adf6", "app_id": "prestashop", "status": "failed", "site_url": "https://bpres118.test/", "admin_url": null, "error_kind": "verification", "last_error": "the PrestaShop release could not be unpacked safely (write /var/www/celikpanel/subscriptions/4/sites/.app-stage-16-962853703/modules/klaviyopsautomation/vendor/giggsey/libphonenumber-for-php/src/geocoding/data/en/En_243.php: bad file descriptor); nothing was changed", "can_remove": null}
+get bpres118.test/ http 200 http://192.0.3.190/ title: bpres118.test |  bpres118.test 
+== app mediawiki on bmedi118.test (id 17) 14:26:46
+  req mediawiki {"database_ok": true, "disk_ok": true, "doc_root": "placeholder", "family": "apt", "php_ok": true, "state": "ok"} refused_by None
+502 {"code": "APP_DOWNLOAD_FAILED", "error": "the MediaWiki 1.43.11 release could not be downloaded from https://releases.wikimedia.org/mediawiki/1.43/mediawiki-1.43.11.tar.gz (HTTP 403); nothing was changed. Check that this server can reach that address, then install again", "vars": {"app": "MediaWiki", "kind": "download", "operation_id": "e2e43262013b7d4c75a53ecb8ed4eca4"}}
+  took 2s
+  installed {"operation_id": "e2e43262013b7d4c75a53ecb8ed4eca4", "app_id": "mediawiki", "status": "failed", "site_url": "https://bmedi118.test/", "admin_url": null, "error_kind": "download", "last_error": "the MediaWiki 1.43.11 release could not be downloaded from https://releases.wikimedia.org/mediawiki/1.43/mediawiki-1.43.11.tar.gz (HTTP 403); nothing was changed. Check that this server can reach that address, then install again", "can_remove": null}
+get bmedi118.test/ http 200 http://192.0.3.190/ title: bmedi118.test |  bmedi118.test 
+== app phpbb on bphpb118.test (id 18) 14:26:59
+  req phpbb {"database_ok": true, "disk_ok": true, "doc_root": "placeholder", "family": "apt", "php_ok": true, "state": "ok"} refused_by None
+502 {"code": "APP_DOWNLOAD_FAILED", "error": "the phpBB 3.3.19 release could not be downloaded from https://download.phpbb.com/pub/release/3.3/3.3.19/phpBB-3.3.19.tar.bz2 (HTTP 403); nothing was changed. Check that this server can reach that address, then install again", "vars": {"app": "phpBB", "kind": "download", "operation_id": "04a90f04548022625fa9900b92192349"}}
+  took 1s
+  installed {"operation_id": "04a90f04548022625fa9900b92192349", "app_id": "phpbb", "status": "failed", "site_url": "https://bphpb118.test/", "admin_url": null, "error_kind": "download", "last_error": "the phpBB 3.3.19 release could not be downloaded from https://download.phpbb.com/pub/release/3.3/3.3.19/phpBB-3.3.19.tar.bz2 (HTTP 403); nothing was changed. Check that this server can reach that address, then install again", "can_remove": null}
+get bphpb118.test/ http 200 http://192.0.3.190/ title: bphpb118.test |  bphpb118.test 
+Traceback (most recent call last):
+  File "/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a118/lab/as.py", line 19, in <module>
+    r = go()
+  File "/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a118/lab/as.py", line 18, in go
+    return c.request(method, path, beta1.body_arg(body), timeout=float(os.environ.get("AS_TIMEOUT","120")), purpose="as " + cr["username"])
+                                   ~~~~~~~~~~~~~~^^^^^^
+  File "/var/tmp/a118r1/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 293, in body_arg
+    return json.loads(raw)
+           ~~~~~~~~~~^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 348, in decode
+    raise JSONDecodeError("Extra data", s, end)
+json.decoder.JSONDecodeError: Extra data: line 1 column 3 (char 2)
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+    d=json.load(sys.stdin); b=d.get("body") or ""
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+== remove app on phpb118.test
+bphpb118.test (op ) 14:27:02
+Traceback (most recent call last):
+  File "/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a118/lab/as.py", line 19, in <module>
+    r = go()
+  File "/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a118/lab/as.py", line 18, in go
+    return c.request(method, path, beta1.body_arg(body), timeout=float(os.environ.get("AS_TIMEOUT","120")), purpose="as " + cr["username"])
+                                   ~~~~~~~~~~~~~~^^^^^^
+  File "/var/tmp/a118r1/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 293, in body_arg
+    return json.loads(raw)
+           ~~~~~~~~~~^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 348, in decode
+    raise JSONDecodeError("Extra data", s, end)
+json.decoder.JSONDecodeError: Extra data: line 1 column 3 (char 2)
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+    d=json.load(sys.stdin); s=d.get("status"); b=d.get("body") or ""
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+Traceback (most recent call last):
+  File "/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a118/lab/as.py", line 19, in <module>
+    r = go()
+  File "/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a118/lab/as.py", line 18, in go
+    return c.request(method, path, beta1.body_arg(body), timeout=float(os.environ.get("AS_TIMEOUT","120")), purpose="as " + cr["username"])
+                                   ~~~~~~~~~~~~~~^^^^^^
+  File "/var/tmp/a118r1/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 293, in body_arg
+    return json.loads(raw)
+           ~~~~~~~~~~^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 348, in decode
+    raise JSONDecodeError("Extra data", s, end)
+json.decoder.JSONDecodeError: Extra data: line 1 column 3 (char 2)
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import json,sys; b=json.loads(json.load(sys.stdin)["body"]); print("  after remove installed:", [(x.get("app_id"),x.get("status")) for x in b.get("installed",[])])
+                                  ~~~~~~~~~^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+get phpb118.test/bphpb118.test http 200 http://192.0.3.190/bphpb118.test title: phpb118.test |  phpb118.test <
+== L2 apps done 14:27:03

@@ -1,0 +1,54 @@
+== A mail quota after the hourly reconcile 15:14:08
+200 {"disk": {"interval_hours": 6, "low_space": false, "measured": 3, "not_measured": 0, "unknown": 0}, "mail_quota": {"checked": "2026-11-03T15:12:40Z", "dialect": "2.4", "state": "enforced"}, "traffic": {"interval_minutes": 5, "last_attempt": "2026-11-03 15:12:36", "last_collected": "2026-11-03 15:12:36", "logrotate": "unchanged", "measuring": 20, "unknown": {}}}
+## 15:14:08 2.4.1-4 (7d8c0e5759)
+NEXT                         LEFT LAST PASSED UNIT                           ACTIVATES
+Tue 2026-11-03 16:04:20 UTC 50min -         - celikpanel-quota-warning.timer celikpanel-quota-warning.service
+
+-- No entries --
+total 8
+drwx------  2 vmail vmail 4096 Nov  3 15:12 .
+drwxr-xr-x 46 root  root  4096 Nov  3 15:12 ..
+Quota name Type    Value Limit                          %
+User quota STORAGE  1222  1024                        119
+User quota MESSAGE     2     -                          0
+## messages in q@c118.test (subjects)
+hdr.subject: lab quota probe 950000
+date.received: 2026-11-03 14:18:39
+hdr.subject: lab quota probe 300000
+date.received: 2026-11-03 14:20:00
+## postfix quota rejects
+## quota conf head
+# Managed by CelikPanel: Dovecot mailbox quotas. sha256=53c2648b5cc9acbc6004225a3e7358261373ce3e9b1c080acb0b832534fdd2bf
+# Mailbox size limits from /etc/dovecot/users, enforced by Dovecot itself.
+# Postfix asks the quota-status service below before it accepts mail, so mail
+check_policy_service { unix:private/celikpanel-quota-status, default_action=DUNNO }
+-- 300 KB to q@c118.test (now 1.25 MB in a 1 MB box; expect 552 5.2.2)
+MAIL (250, b'2.1.0 Ok')
+RCPT q@c118.test (552, b'5.2.2 <q@c118.test>: Recipient address rejected: Mailbox is full')
+-- 300 KB to box@c118.test (100 MB; expect accepted)
+MAIL (250, b'2.1.0 Ok')
+RCPT box@c118.test (250, b'2.1.5 Ok')
+DATA ok 300080
+## 15:14:28 2.4.1-4 (7d8c0e5759)
+NEXT                         LEFT LAST PASSED UNIT                           ACTIVATES
+Tue 2026-11-03 16:04:20 UTC 49min -         - celikpanel-quota-warning.timer celikpanel-quota-warning.service
+
+-- No entries --
+total 8
+drwx------  2 vmail vmail 4096 Nov  3 15:12 .
+drwxr-xr-x 46 root  root  4096 Nov  3 15:12 ..
+Quota name Type    Value Limit                          %
+User quota STORAGE  1222  1024                        119
+User quota MESSAGE     2     -                          0
+## messages in q@c118.test (subjects)
+hdr.subject: lab quota probe 950000
+date.received: 2026-11-03 14:18:39
+hdr.subject: lab quota probe 300000
+date.received: 2026-11-03 14:20:00
+## postfix quota rejects
+Nov 03 15:14:15 frankfurt postfix/smtpd[79500]: NOQUEUE: reject: RCPT from unknown[192.0.3.1]: 552 5.2.2 <q@c118.test>: Recipient address rejected: Mailbox is full; from=<probe@beta1-lab.test> to=<q@c118.test> proto=ESMTP helo=<labnet.beta1-lab.test>
+## quota conf head
+# Managed by CelikPanel: Dovecot mailbox quotas. sha256=53c2648b5cc9acbc6004225a3e7358261373ce3e9b1c080acb0b832534fdd2bf
+# Mailbox size limits from /etc/dovecot/users, enforced by Dovecot itself.
+# Postfix asks the quota-status service below before it accepts mail, so mail
+check_policy_service { unix:private/celikpanel-quota-status, default_action=DUNNO }

@@ -1,0 +1,22 @@
+['audit_logs', 'app_catalog_operations']
+## audit_logs ['id', 'user_id', 'action', 'resource_type', 'resource_id', 'ip_address', 'user_agent', 'created_at', 'details', 'acting_as']
+   (2, 2, 'server.setup.guidance', 'guided', None, '192.0.3.2', '', '2026-11-03 13:59:43', None, None)
+   (3, 2, 'server.setup.draft', None, None, '192.0.3.2', '', '2026-11-03 13:59:43', None, None)
+   (4, 2, 'server.setup.draft', None, None, '192.0.3.2', '', '2026-11-03 13:59:43', None, None)
+   (5, 2, 'server.setup.draft', None, None, '192.0.3.2', '', '2026-11-03 13:59:44', None, None)
+   (6, 2, 'server.setup.draft', None, None, '192.0.3.2', '', '2026-11-03 13:59:44', None, None)
+   (7, 2, 'server.setup.draft', None, None, '192.0.3.2', '', '2026-11-03 13:59:44', None, None)
+   (8, 2, 'server.setup.draft', None, None, '192.0.3.2', '', '2026-11-03 13:59:44', None, None)
+   (9, 2, 'server.setup.draft', None, None, '192.0.3.2', '', '2026-11-03 13:59:49', None, None)
+   (10, 2, 'server.setup.draft', None, None, '192.0.3.2', '', '2026-11-03 13:59:49', None, None)
+   (11, 2, 'server.setup.start:custom', 'service', None, '192.0.3.2', None, '2026-11-03 14:00:02', None, None)
+   (12, 2, 'dns.engine.switch.setup.accepted request=f524d64a9c82ea767d1769184fc32515 switch=cfd7a592777e1ae85b6e6f265307a5d1 source=none target=pdns action=install mode=switch', 'dns_engine', None, '192.0.3.2', None, '2026-11-03 14:00:02', None, None)
+   (13, 2, 'dns.engine.switch.setup.reconcile_required request=f524d64a9c82ea767d1769184fc32515 switch=cfd7a592777e1ae85b6e6f265307a5d1 source=none target=pdns action=install mode=switch', 'dns_engine', None, '192.0.3.2', None, '2026-11-03 14:00:02', None, None)
+## app_catalog_operations ['operation_id', 'app_id', 'app_version', 'domain_id', 'subscription_id', 'site_id', 'database_server_id', 'database_id', 'database_user_id', 'database_name', 'database_user', 'cleanup_token_encrypted', 'admin_secret_encrypted', 'admin_path', 'status', 'error_kind', 'last_error', 'created_by', 'created_at', 'updated_at']
+/var/lib/celikpanel-agent-private:
+total 16
+drwx------  3 root celikpanel 4096 Nov  3 13:59 .
+drwxr-xr-x 28 root root       4096 Nov  3 13:59 ..
+-rw-------  1 root celikpanel   23 Nov  3 13:59 service-mutations.json
+drwx------  2 root celikpanel 4096 Nov  3 14:09 traffic
+/var/lib/celikpanel-agent-private/service-mutations.json

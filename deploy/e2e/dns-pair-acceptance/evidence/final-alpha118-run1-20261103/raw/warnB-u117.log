@@ -1,0 +1,52 @@
+== B 90% warning check 15:01:18
+## 15:01:20 2.3.21 (47349e2482)
+NEXT                        LEFT LAST PASSED UNIT                           ACTIVATES
+Tue 2026-11-03 15:02:14 UTC  54s -         - celikpanel-quota-warning.timer celikpanel-quota-warning.service
+
+-- No entries --
+total 8
+drwx------  2 vmail vmail 4096 Nov  3 14:13 .
+drwxr-xr-x 65 root  root  4096 Nov  3 14:13 ..
+Quota name Type    Value Limit                         %
+User quota STORAGE   929  1024                        90
+User quota MESSAGE     1     -                         0
+## messages in q@cb117.test (subjects)
+hdr.subject: lab quota probe 950000
+date.received: 2026-11-03 14:13:28
+## postfix quota rejects
+Nov 03 14:13:59 boston postfix/smtpd[69361]: NOQUEUE: reject: RCPT from _gateway[192.0.3.1]: 552 5.2.2 <q@cb117.test>: Recipient address rejected: Mailbox is full; from=<probe@beta1-lab.test> to=<q@cb117.test> proto=ESMTP helo=<labnet.beta1-lab.test>
+2026-11-03T14:13:59.461311+00:00 boston postfix/smtpd[69361]: NOQUEUE: reject: RCPT from _gateway[192.0.3.1]: 552 5.2.2 <q@cb117.test>: Recipient address rejected: Mailbox is full; from=<probe@beta1-lab.test> to=<q@cb117.test> proto=ESMTP helo=<labne
+## quota conf head
+# Managed by CelikPanel: Dovecot mailbox quotas. sha256=e8b8bfbac0276514de0fccc6c13d463c9563b72d7cb9978489234a986195d444
+# Mailbox size limits from /etc/dovecot/users, enforced by Dovecot itself.
+# Postfix asks the quota-status service below before it accepts mail, so mail
+check_policy_service { unix:private/celikpanel-quota-status, default_action=DUNNO }
+== B 90% warning check 15:03:02
+## 15:03:02 2.3.21 (47349e2482)
+NEXT                         LEFT LAST                         PASSED UNIT                           ACTIVATES
+Tue 2026-11-03 16:01:08 UTC 58min Tue 2026-11-03 15:02:21 UTC 41s ago celikpanel-quota-warning.timer celikpanel-quota-warning.service
+
+Nov 03 15:02:21 boston systemd[1]: Starting celikpanel-quota-warning.service - Tell mailboxes that are 90% full (CelikPanel, Dovecot quota)...
+Nov 03 15:02:21 boston dovecot[73352]: lda(q@cb117.test)<73352><h46GGX336WqIHgEA4JtSzg>: msgid=unspecified: saved mail to INBOX
+Nov 03 15:02:21 boston systemd[1]: celikpanel-quota-warning.service: Deactivated successfully.
+Nov 03 15:02:21 boston systemd[1]: Finished celikpanel-quota-warning.service - Tell mailboxes that are 90% full (CelikPanel, Dovecot quota).
+total 8
+drwx------  2 vmail vmail 4096 Nov  3 15:02 .
+drwxr-xr-x 65 root  root  4096 Nov  3 14:13 ..
+-rw-r--r--  1 root  root     0 Nov  3 15:02 q@cb117.test
+Quota name Type    Value Limit                         %
+User quota STORAGE   929  1024                        90
+User quota MESSAGE     2     -                         0
+## messages in q@cb117.test (subjects)
+hdr.subject: lab quota probe 950000
+date.received: 2026-11-03 14:13:28
+hdr.subject: Your mailbox is 90% full / Posta kutunuz %90 dolu
+date.received: 2026-11-03 15:02:21
+## postfix quota rejects
+Nov 03 14:13:59 boston postfix/smtpd[69361]: NOQUEUE: reject: RCPT from _gateway[192.0.3.1]: 552 5.2.2 <q@cb117.test>: Recipient address rejected: Mailbox is full; from=<probe@beta1-lab.test> to=<q@cb117.test> proto=ESMTP helo=<labnet.beta1-lab.test>
+2026-11-03T14:13:59.461311+00:00 boston postfix/smtpd[69361]: NOQUEUE: reject: RCPT from _gateway[192.0.3.1]: 552 5.2.2 <q@cb117.test>: Recipient address rejected: Mailbox is full; from=<probe@beta1-lab.test> to=<q@cb117.test> proto=ESMTP helo=<labne
+## quota conf head
+# Managed by CelikPanel: Dovecot mailbox quotas. sha256=e8b8bfbac0276514de0fccc6c13d463c9563b72d7cb9978489234a986195d444
+# Mailbox size limits from /etc/dovecot/users, enforced by Dovecot itself.
+# Postfix asks the quota-status service below before it accepts mail, so mail
+check_policy_service { unix:private/celikpanel-quota-status, default_action=DUNNO }

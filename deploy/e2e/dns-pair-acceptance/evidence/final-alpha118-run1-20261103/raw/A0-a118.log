@@ -1,0 +1,94 @@
+== A0 prep 14:17:57
+200 {"id": 3, "rights": "unlimited", "success": true}
+200 {"id": 4, "rights": "unlimited", "success": true}
+subA=3 subB=4
+c118.test id=2
+-- mailbox box@c118.test quota 100 MB
+200 {"id": 1, "success": true}
+-- mailbox q@c118.test quota 1 MB
+200 {"id": 2, "success": true}
+-- file access on
+200 {"changes": [{"action": "create", "detail": "OpenSSH: SFTP and SSH confinement", "kind": "file", "target": "/etc/ssh/sshd_config.d/60-celikpanel-file-access.conf"}, {"action": "set", "detail": "new password", "kind": "account", "target": "c118_test"}, {"action": "reload", "kind": "service", "target"
+file user=c118_test
+-- files at /
+200 / ['index.php']
+-- subscription usage
+200 {"bandwidth": {"interval_minutes": 5, "measured": true}, "contact": {"email": "owner@beta1-lab.test", "kind": "administrator", "name": "owner"}, "subscriptions": [{"id": 3, "name": "Unlimited", "over_limit": [], "plan": null, "rights": "unlimited", "status": "active", "usage": {"databases": 0, "databases_limit": 0, "disk": {"db_bytes": 0, "mail_bytes": 0, "state": "not_measured_yet", "uploads_applied": false, "uploads_blocked": false, "web_bytes": 0}, "disk_limit_bytes": 0, "disk_used_bytes": 0, "domains": 1, "domains_limit": 0, "mail_accounts": 2, "mail_limit": 0, "traffic_limit_bytes": 0, "traffic_limited": false, "traffic_measure": {"last_collected": "2026-11-03 14:17:36", "reason": "not_collected_yet", "state": "unknown"}, "traffic_period": "2026-11", "traffic_used_bytes": 0}}]}
+-- usage status
+200 {"disk": {"interval_hours": 6, "low_space": false, "measured": 1, "not_measured": 2, "unknown": 0}, "mail_quota": {"checked": "2026-11-03T14:12:36Z", "detail": "Dovecot is not installed on this server, so there are no mailboxes to limit.", "state": "no_mail"}, "traffic": {"interval_minutes": 5, "last_attempt": "2026-11-03 14:17:36", "last_collected": "2026-11-03 14:17:36", "logrotate": "missing_tool", "measuring": 1, "unknown": {}}}
+## nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+## traffic conf
+# celikpanel-render v2 sha256=bdd4154dc606ef1b3d61c783d03634a603f53dd70a142e78ec16711c0b87197e
+# CelikPanel's traffic measurement: the log format of the small per-site
+# traffic logs in /var/log/celikpanel/traffic. Plain nginx configuration;
+# your own logs are not changed. CelikPanel writes this file only while it
+# is CelikPanel's unchanged text. Without it the sites keep working and
+# their traffic is shown as unknown.
+# CelikPanel trafik ölçümü: site başına küçük trafik günlüklerinin biçimi.
+log_format celikpanel_traffic '$msec $bytes_sent $request_length';
+map $uri $celikpanel_traffic_counted {
+    ~^/\.well-known/acme-challenge/ 0;
+    default 1;
+}
+## includes
+/etc/nginx/celikpanel-managed.d/c118.test/:
+total 16
+drwxr-xr-x 2 root celikpanel 4096 Nov  3 14:18 .
+drwxr-xr-x 4 root celikpanel 4096 Nov  3 14:18 ..
+-rw-r--r-- 1 root celikpanel  438 Nov  3 14:18 access-log.traffic
+-rw-r--r-- 1 root celikpanel  568 Nov  3 14:18 acme-http-01.conf
+
+/etc/nginx/celikpanel-managed.d/f118.test/:
+total 16
+drwxr-xr-x 2 root celikpanel 4096 Nov  3 14:17 .
+drwxr-xr-x 4 root celikpanel 4096 Nov  3 14:18 ..
+-rw-r--r-- 1 root celikpanel  438 Nov  3 14:17 access-log.traffic
+-rw-r--r-- 1 root celikpanel  568 Nov  3 14:17 acme-http-01.conf
+# celikpanel-render v2 sha256=eaea37f03278544bf920c1041ad59afee283e3337595cfeaf29db3f4cd9f5622
+# The traffic log of c118.test for CelikPanel's monthly traffic limit.
+# This directory is CelikPanel's; put your own additions in /etc/nginx/celikpanel-sites.d/c118.test/*.conf.
+# Trafik ölçümü; bu dizin CelikPanel'indir.
+access_log /var/log/celikpanel/traffic/2.log celikpanel_traffic buffer=64k flush=1m if=$celikpanel_traffic_counted;
+## traffic logs
+total 8
+drwxr-xr-x 2 root celikpanel 4096 Nov  3 14:18 .
+drwxr-x--- 3 root celikpanel 4096 Nov  3 14:17 ..
+-rw-r----- 1 root celikpanel    0 Nov  3 14:17 1.log
+-rw-r----- 1 root celikpanel    0 Nov  3 14:18 2.log
+## logrotate
+# celikpanel-render v2 sha256=53038f4c9c6b7b7b2951e1f32c73b84feeb98926d841fae65edd4d447cd208b4
+# The small per-site traffic logs nginx writes for CelikPanel's monthly
+# traffic limit. Rotated by the operating system, with or without CelikPanel.
+# CelikPanel writes this file only while it is CelikPanel's unchanged text.
+# CelikPanel'in trafik günlükleri; işletim sistemi döndürür.
+/var/log/celikpanel/traffic/*.log {
+    daily
+    maxsize 100M
+    rotate 3
+    missingok
+    notifempty
+    compress
+## dovecot
+2.4.1-4 (7d8c0e5759)
+-rw-r--r-- 1 root celikpanel   204 Nov  3 14:16 97-celikpanel-submission.conf
+-rw-r--r-- 1 root celikpanel   245 Nov  3 14:17 98-celikpanel-tls.conf
+-rw-r--r-- 1 root celikpanel   988 Nov  3 14:16 99-celikpanel.conf
+cat: /etc/dovecot/conf.d/90-celikpanel-quota.conf: No such file or directory
+## doveconf -n rc
+rc=0 
+## postfix restrictions
+
+## quota warning
+ls: cannot access '/usr/local/libexec/celikpanel-quota-warning': No such file or directory
+ls: cannot access '/etc/systemd/system/celikpanel-quota-warning.*': No such file or directory
+NEXT LEFT LAST PASSED UNIT ACTIVATES
+
+0 timers listed.
+## users quota lines
+box@c118.test userdb_quota_rule=* userdb_quota_storage_size=100M 
+q@c118.test userdb_quota_rule=* userdb_quota_storage_size=1M 
+## site docroot
+    root /var/www/celikpanel/subscriptions/3/sites/2/public_html;
+== A0 done 14:18:08

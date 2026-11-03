@@ -1,0 +1,88 @@
+Tue Nov  3 01:28:25 PM UTC 2026
+a114r3
+a114r3
+archparity
+archparity-gocache
+archparity-gocache-arch
+archparity-gomod
+archparity-gomod-arch
+archtry
+celikpanel-alpha27-portal-prep-native-01e16e90
+celikpanel-alpha74-preflight-20260913
+celikpanel-authority-v3-tests.9eiMhHt8
+celikpanel-authority-v3-tests.tcvUYiJ0
+celikpanel-authority-v3-tests.YQiUah4a
+celikpanel-authority-v3-tests.zcgg2JSH
+celikpanel-completion-db-tests.EIu1oYl8
+celikpanel-completion-db-tests.KaR6iriY
+celikpanel-completion-db-tests.RGXOEvTH
+celikpanel-db-committed-check.opjHuMHM
+celikpanel-db-core-283vgfmb
+celikpanel-db-core-83nyf7e7
+celikpanel-db-core-race-q5o70jmy
+celikpanel-db-legacy-l1k1cq2v
+celikpanel-db-legacy-race-jzrr8iwx
+celikpanel-db-privileged-guard.U6mONlYL
+celikpanel-db-shell-contracts.asMsohTq
+celikpanel-db-shell-contracts.R355AbmB
+celikpanel-db-shell-contracts.t0BLwc2F
+celikpanel-dns-review.lsbAar7X
+celikpanel-exchange-trace-48ze055p
+celikpanel-exchange-trace-final-gab3kv8i
+celikpanel-exit-before.tDhmIWNF
+celikpanel-exit-diagnostic.lohqqlgt
+celikpanel-exit-stop-diagnostic.px_w2qqi
+celikpanel-exit-trace.bIVuSpkR
+celikpanel-exit-trace.BSsii90t
+celikpanel-exit-wait-diagnostic.ip1mp5_0
+celikpanel-go1.26.5
+celikpanel-go1265-audit.RqrD4DGc
+celikpanel-go-cache
+celikpanel-go-mod-cache
+-- cp-beta1
+/var/tmp/cp-beta1:
+evidence
+keys
+lab
+state
+
+/var/tmp/cp-beta1/lab/cells:
+ap-a
+ap-b
+ap-c
+ap-d
+ap-e
+beta1-lab
+
+/var/tmp/cp-beta1/state:
+ap-a
+ap-b
+ap-c
+ap-d
+ap-e
+-- dist
+49c7efd5b68202fe155836cdf295c9b6ea14dc0a-acceptance-license
+650d4becfd804cf09b23ae063eb2a2d8d62de2a2-acceptance-license
+7e5cd5ab0597a98f9a3cb6c539168c6a70a0886a-acceptance-license
+88fcf3c67ea0d124be6d8df7f6dc8c1b2fd7a307-acceptance-license
+b6800f082b5e277e4b63a38a6447af1ddf57359c-acceptance-license
+c155d9f41af2a3613ea639c9d2748e37d9f3c8af-acceptance-license
+c3f4b328b6640482ea962a1e90eae79a5996c061-acceptance-license
+d3f3a323da46ce8f8dca5ad4385666c5428c353e-acceptance-license
+-- qemu
+-- images
+total 1486060
+drwx------ 2 root root      4096 Oct  1 15:57 .
+drwx------ 5 root root      4096 Sep 28 21:06 ..
+-r--r--r-- 1 root root 556609024 Sep 27 02:09 Arch-Linux-x86_64-cloudimg-20260815.573966.qcow2
+-r--r--r-- 1 root root 340262912 Sep 27 02:09 debian-13-genericcloud-amd64-20260826-2582.qcow2
+-r--r--r-- 1 root root 624829952 Sep  8 20:39 ubuntu-24.04-server-cloudimg-amd64-20260826.img
+/dev/sdd       1007G   40G  916G   5% /
+               total        used        free      shared  buff/cache   available
+Mem:              15           0          14           0           0          14
+16
+go1.26.5
+/usr/sbin/node
+/usr/sbin/npm
+/usr/sbin/go
+/usr/sbin/python3

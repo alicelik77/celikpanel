@@ -1,0 +1,19 @@
+== WordPress 14:19:39
+wp118.test id=10
+200 {"detail": "WordPress downloaded, configured and ready for setup; the previous CelikPanel placeholder was preserved in a private recovery path", "setup_url": "https://wp118.test/wp-admin/install.php", "success": true}
+wp finish http 500: 
+get wp118.test/ http 500 http://192.0.3.190/ title: Requirements Not Met |  	 	 			 Require
+-- status
+200 detected True core 7.1.4 core_update None db_linked True code None checked True
+  plugin akismet/akismet.php 5.7.2 -> None verifiable True
+  plugin hello.php 1.7.2 -> None verifiable False
+-- no plugin with an update available: plugin update NOT exercised
+-- clone to staging
+staging.wp118.test id=11
+200 {"targets": [{"domain": "drup118.test", "domain_id": 5}, {"domain": "joom118.test", "domain_id": 6}, {"domain": "medi118.test", "domain_id": 8}, {"domain": "n8n118.test", "domain_id": 4}, {"domain": "next118.test", "domain_id": 3}, {"domain": "phpb118.test", "domain_id": 9}, {"domain": "pres118.test
+202 {"created_at": "", "items": [], "kind": "clone", "open": true, "operation_id": "49ea36d7d2e5e425de1c2172607b6298", "origin": "manual", "status": "queued", "target_domain": "staging.wp118.test", "target_domain_id": 11, "updated_at": ""}
+  wp op 49ea36d7d2e5e425de1c2172607b6298: applied None None copied to staging.wp118.test; the address was changed in 0 values (14:21:28)
+get staging.wp118.test/ http 500 http://192.0.3.190/ title: Requirements Not Met |  	 	 			 Require
+== ClamAV 14:21:29
+202 {"operation": {"id": "25588f7dbba38e02fde8ecbadeb8b772", "kind": "service_install", "phase": "queued", "request_id": "2bd098af487331417e384aa84f2f2ab1", "service_id": "clamav", "started_at": "2026-11-03T14:21:28.912122946Z", "status": "queued"}}
+  op 2bd098af487331417e384aa84f2f2ab1: failed lease_failed {"code": "HOST_MUTATION_BUSY", "message": "This server's package manager is busy \u2014 a package task is still running on this server. Wait for it to finish, then try again.", "reason": "package_manager_active"} (14:21:29)

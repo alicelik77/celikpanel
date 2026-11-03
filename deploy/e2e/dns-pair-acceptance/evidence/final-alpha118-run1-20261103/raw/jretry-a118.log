@@ -1,0 +1,9 @@
+== Joomla retry (guidance) 14:30:11 domain 15 op abfc8c39ad4edfeb2fb8a0c0ea4b9bc3
+502 {"code": "APP_SETUP_FAILED", "error": "Joomla's own installer did not finish (Joomla CLI installer: it ended with exit code 255). The site stays closed with a \"being set up\" page. Retry the setup; if it fails again, remove the application and install it again", "vars": {"app": "Joomla", "kind": "setup", "operation_id": "abfc8c39ad4edfeb2fb8a0c0ea4b9bc3"}}
+get bjoom118.test/ http 503 http://192.0.3.190/ title: Being set up |  Being set up <body style="font-family:sans-serif;max-width:40em;margin:4em auto;padding:0 1e
+public_html
+INSTALL
+LICENSE.txt
+cache
+configuration.php-dist
+favicon.ico

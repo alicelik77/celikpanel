@@ -1,0 +1,142 @@
+## nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+## traffic conf
+# celikpanel-render v2 sha256=bdd4154dc606ef1b3d61c783d03634a603f53dd70a142e78ec16711c0b87197e
+# CelikPanel's traffic measurement: the log format of the small per-site
+# traffic logs in /var/log/celikpanel/traffic. Plain nginx configuration;
+# your own logs are not changed. CelikPanel writes this file only while it
+# is CelikPanel's unchanged text. Without it the sites keep working and
+# their traffic is shown as unknown.
+# CelikPanel trafik ölçümü: site başına küçük trafik günlüklerinin biçimi.
+log_format celikpanel_traffic '$msec $bytes_sent $request_length';
+map $uri $celikpanel_traffic_counted {
+    ~^/\.well-known/acme-challenge/ 0;
+    default 1;
+}
+## includes
+/etc/nginx/celikpanel-managed.d/av118.test/:
+total 16
+drwxr-xr-x  2 root celikpanel 4096 Nov  3 14:31 .
+drwxr-xr-x 22 root celikpanel 4096 Nov  3 14:38 ..
+-rw-r--r--  1 root celikpanel  441 Nov  3 14:31 access-log.traffic
+-rw-r--r--  1 root celikpanel  572 Nov  3 14:31 acme-http-01.conf
+
+/etc/nginx/celikpanel-managed.d/bdrup118.test/:
+total 20
+drwxr-xr-x  2 root celikpanel 4096 Nov  3 14:25 .
+drwxr-xr-x 22 root celikpanel 4096 Nov  3 14:38 ..
+-rw-r--r--  1 root celikpanel  447 Nov  3 14:24 access-log.traffic
+-rw-r--r--  1 root celikpanel  581 Nov  3 14:24 acme-http-01.conf
+-rw-r--r--  1 root celikpanel 1347 Nov  3 14:25 app-drupal.conf
+
+/etc/nginx/celikpanel-managed.d/bjoom118.test/:
+total 20
+drwxr-xr-x  2 root celikpanel 4096 Nov  3 14:25 .
+drwxr-xr-x 22 root celikpanel 4096 Nov  3 14:38 ..
+-rw-r--r--  1 root celikpanel  447 Nov  3 14:25 access-log.traffic
+# celikpanel-render v2 sha256=6a56c52f94328227cef35b8049ea7129c73d6b3e9ad1ab927a5b9334e4031a95
+# The traffic log of av118.test for CelikPanel's monthly traffic limit.
+# This directory is CelikPanel's; put your own additions in /etc/nginx/celikpanel-sites.d/av118.test/*.conf.
+# Trafik ölçümü; bu dizin CelikPanel'indir.
+access_log /var/log/celikpanel/traffic/19.log celikpanel_traffic buffer=64k flush=1m if=$celikpanel_traffic_counted;
+## traffic logs
+total 76
+drwxr-xr-x 2 root celikpanel 4096 Nov  3 14:38 .
+drwxr-x--- 3 root celikpanel 4096 Nov  3 14:17 ..
+-rw-r----- 1 root celikpanel    0 Nov  3 14:17 1.log
+-rw-r----- 1 root celikpanel  139 Nov  3 14:30 10.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:22 11.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:24 12.log
+-rw-r----- 1 root celikpanel   48 Nov  3 14:30 13.log
+-rw-r----- 1 root celikpanel   68 Nov  3 14:30 14.log
+-rw-r----- 1 root celikpanel   66 Nov  3 14:30 15.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:26 16.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:26 17.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:27 18.log
+-rw-r----- 1 root celikpanel    0 Nov  3 14:31 19.log
+-rw-r----- 1 root celikpanel  193 Nov  3 14:44 2.log
+-rw-r----- 1 root celikpanel    0 Nov  3 14:38 20.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:18 3.log
+-rw-r----- 1 root celikpanel   46 Nov  3 14:27 4.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:19 5.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:19 6.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:19 7.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:19 8.log
+-rw-r----- 1 root celikpanel   69 Nov  3 14:27 9.log
+## logrotate
+# celikpanel-render v2 sha256=53038f4c9c6b7b7b2951e1f32c73b84feeb98926d841fae65edd4d447cd208b4
+# The small per-site traffic logs nginx writes for CelikPanel's monthly
+# traffic limit. Rotated by the operating system, with or without CelikPanel.
+# CelikPanel writes this file only while it is CelikPanel's unchanged text.
+# CelikPanel'in trafik günlükleri; işletim sistemi döndürür.
+/var/log/celikpanel/traffic/*.log {
+    daily
+    maxsize 100M
+    rotate 3
+    missingok
+    notifempty
+    compress
+## dovecot
+2.4.1-4 (7d8c0e5759)
+-rw-r--r-- 1 root celikpanel  1307 Nov  3 15:12 90-celikpanel-quota.conf
+-rw-r--r-- 1 root celikpanel   204 Nov  3 14:16 97-celikpanel-submission.conf
+-rw-r--r-- 1 root celikpanel   245 Nov  3 14:17 98-celikpanel-tls.conf
+-rw-r--r-- 1 root celikpanel   988 Nov  3 14:16 99-celikpanel.conf
+# Managed by CelikPanel: Dovecot mailbox quotas. sha256=53c2648b5cc9acbc6004225a3e7358261373ce3e9b1c080acb0b832534fdd2bf
+# Mailbox size limits from /etc/dovecot/users, enforced by Dovecot itself.
+# Postfix asks the quota-status service below before it accepts mail, so mail
+# to a full mailbox is refused (552) instead of stored. CelikPanel rewrites
+# this file only while it is exactly as CelikPanel wrote it. Dovecot runs
+# from this file with or without CelikPanel.
+# Posta kutusu boyut sınırları; dolu kutuya gelen posta reddedilir.
+mail_plugins {
+  quota = yes
+}
+protocol imap {
+  mail_plugins {
+    imap_quota = yes
+  }
+}
+quota_storage_size = 1024M
+quota "User quota" {
+  quota_driver = count
+  warning warn-90 {
+    quota_storage_percentage = 90
+    execute quota-warning {
+      args = warn 90 %{user}
+    }
+  }
+}
+service quota-warning {
+  executable = script /usr/local/libexec/celikpanel-quota-warning
+  user = vmail
+  unix_listener quota-warning {
+    user = vmail
+  }
+}
+
+quota_status_success = DUNNO
+quota_status_nouser = DUNNO
+quota_status_overquota = "552 5.2.2 Mailbox is full"
+service quota-status {
+  executable = quota-status -p postfix
+  unix_listener /var/spool/postfix/private/celikpanel-quota-status {
+    user = postfix
+## doveconf -n rc
+rc=0 
+## postfix restrictions
+check_policy_service { unix:private/celikpanel-quota-status, default_action=DUNNO }
+## quota warning
+-rw-r--r-- 1 root celikpanel  334 Nov  3 15:12 /etc/systemd/system/celikpanel-quota-warning.service
+-rw-r--r-- 1 root celikpanel  294 Nov  3 15:12 /etc/systemd/system/celikpanel-quota-warning.timer
+-rwxr-xr-x 1 root celikpanel 2382 Nov  3 15:12 /usr/local/libexec/celikpanel-quota-warning
+NEXT                         LEFT LAST PASSED UNIT                           ACTIVATES
+Tue 2026-11-03 16:04:20 UTC 49min -         - celikpanel-quota-warning.timer celikpanel-quota-warning.service
+
+## users quota lines
+box@c118.test userdb_quota_rule=* userdb_quota_storage_size=100M 
+q@c118.test userdb_quota_rule=* userdb_quota_storage_size=1M 
+## site docroot
+    root /var/www/celikpanel/subscriptions/3/sites/2/public_html;
+    root /var/www/celikpanel/subscriptions/3/sites/20/public_html;

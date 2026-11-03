@@ -1,0 +1,3 @@
+== ClamAV 14:23:55
+202 {"operation": {"id": "74cece2a43da5f8b06e9b8a434182d8e", "kind": "service_install", "phase": "queued", "request_id": "a0454c11157a654f9921d5730f8929a1", "service_id": "clamav", "started_at": "2026-11-03T14:23:55.154708379Z", "status": "queued"}}
+  op a0454c11157a654f9921d5730f8929a1: failed installing {"code": "service_install_failed", "component": "clamav", "detail": "service install: service did not become ready: clamav-daemon did not become active (Result=success)", "message": "The service could not be installed and verified.", "step": "package_install"} (14:24:27)

@@ -1,0 +1,28 @@
+commit 02542ef2432a12bfb090166b04f86876b99eca96
+lab bump commit dbd4dfe68f9c478cf16960047d45829cee231fc6
+ deploy/release-sequence-policy | 10 +++++-----
+ download-portal/get.sh         |  4 ++--
+ 2 files changed, 7 insertions(+), 7 deletions(-)
+bundle budget check passed
+EXIT 0
+  "tree": "405fd2f0ef5e49985a132b3db00aa423b9f8249e",
+  "version": "v0.1.0-alpha.118"
+}
+BUILD-OK
+  "commit": "dbd4dfe68f9c478cf16960047d45829cee231fc6",
+  "sha256": "c7689044128a9fb36890dbf23132b201c6ab65523cec84b9a5e7b19d564fe145",
+  "version": "v0.1.0-alpha.118"
+C118L=dbd4dfe68f9c478cf16960047d45829cee231fc6
+portal118 exit 0
+== get.sh difference from the release's download-portal/get.sh:
+8c8
+< bootstrap_release_public_key_sha256=7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb
+---
+> bootstrap_release_public_key_sha256=f6a969ea37c1e61c9eb188a7ee41a9af97eb6938f18508fb180e112d6a395552
+format=celikpanel-release-manifest-v2
+sequence=118
+version=v0.1.0-alpha.118
+commit=dbd4dfe68f9c478cf16960047d45829cee231fc6
+published_at=2026-11-03T13:57:32Z
+os=linux
+arch=amd64

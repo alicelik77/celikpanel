@@ -1,0 +1,9 @@
+== PHP uploads recheck one more round after the disk limit was lifted 14:38:33
+{'state': 'measured', 'uploads_blocked': False, 'uploads_applied': True, 'uploads_note': None, 'over_since': None, 'measured_at': '2026-11-03 14:20:27'}
+  usage round ran: 2026-11-03 14:37:36 -> 2026-11-03 14:42:36 (14:42:51)
+{'state': 'measured', 'uploads_blocked': False, 'uploads_applied': True, 'uploads_note': None, 'over_since': None, 'measured_at': '2026-11-03 14:20:27'}
+php upload http 200: file_uploads=false files=0 errors=[]
+/etc/php/8.4/fpm/pool.d/site2.conf:21:php_admin_flag[file_uploads] = off
+-rw-r--r-- 1 root celikpanel   866 14:27:36 site2.conf
+-rw-r--r-- 1 root celikpanel   665 14:38:11 site20.conf
+[(2, 20480, 0, 0, 'walk', 'measured', None, '2026-11-03 14:17:36', '2026-11-03 14:17:36', None, None, 0, 0, None), (3, 2527232, 1277952, 0, 'walk', 'measured', None, '2026-11-03 14:20:27', '2026-11-03 14:20:27', None, None, 0, 0, None), (4, 243560448, 0, 32768, 'walk', 'measured', None, '2026-11-03 14:22:36', '2026-11-03 14:22:36', '2026-11-03 14:20:27', None, 0, 0, None)]

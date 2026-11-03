@@ -1,0 +1,21 @@
+== ClamAV 14:31:17
+  scanner: 200 {"scanner": "clamscan", "signatures_age_hours": 0, "state": "ready"}
+av118.test id=19
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a118/lab/mkup.py:6: SyntaxWarning: "\P" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\P"? A raw string is also an option.
+  elif spec == "eicar": data = b"X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
+200 {"success": true}
+202 {"scan_id": 1, "status": "queued"}
+  scan: infected files 2 infected 1 None 
+  finding 1 eicar-test.txt Eicar-Test-Signature found
+## 14:31:39 eicar files
+-rw-r--r-- 1 av118_test www-data 68 Nov  3 14:31 /var/www/celikpanel/subscriptions/4/sites/19/public_html/eicar-test.txt
+-- quarantine
+200 {"success": true}
+## 14:31:40 eicar files
+/var/lib/celikpanel-agent-private/quarantine
+-- restore
+200 {"success": true}
+## 14:31:41 eicar files
+-rw-r--r-- 1 av118_test www-data 68 Nov  3 14:31 /var/www/celikpanel/subscriptions/4/sites/19/public_html/eicar-test.txt
+/var/lib/celikpanel-agent-private/quarantine
+== L2w done 14:31:42

@@ -1,0 +1,11 @@
+== admin: Components -> PHP 8.4 (explicit version, companions) 14:19:55
+405 {"error": "method not allowed"}
+202 {"operation": {"id": "58e4fd581fb021ecd15e0e8d64c5d8b8", "kind": "service_install", "package_name": "php8.4-fpm", "phase": "queued", "request_id": "40763c2284fc30a115b066cb35a3a7b3", "service_id": "php-fpm", "started_at": "2026-11-03T14:20:56.281701503Z", "status": "queued"}}
+  op 40763c2284fc30a115b066cb35a3a7b3: failed installing {"code": "service_install_failed", "component": "php-fpm", "detail": "selected package php8.4-fpm requires the Sury PHP (packages.sury.org) repository; enable it from Components first", "message": "The service could not be installed and verified.", "step": "package_install"} (14:21:07)
+200 {"operation": {"error": {"code": "service_install_failed", "component": "php-fpm", "detail": "selected package php8.4-fpm requires the Sury PHP (packages.sury.org) repository; enable it from Components first", "message": "The service could not be installed and verified.", "step": "package_install"}, "finished_at": "2026-11-03T14:20:57.942013035Z", "id": "58e4fd581fb021ecd15e0e8d64c5d8b8", "kind": "service_install", "package_name": "php8.4-fpm", "phase": "installing", "request_id": "40763c2284fc30a115b066cb35a3a7b3", "result": {"failure": {"component": "php-fpm", "detail": "selected package php8.4-fpm requires the Sury PHP (packages.sury.org) repository; enable it from Components first", "step": "package_install"}, "installed": false, "success": false}, "service_id": "php-fpm", "started_at": "2026-11-03T14:20:56.281701503Z", "status": "failed"}}
+php8.4-cli php8.4-common php8.4-fpm php8.4-intl php8.4-mbstring php8.4-opcache php8.4-readline php8.4-sqlite3 php8.4-xml php8.4-zip == OWNER ACTION 14:21:24: apt-get install php8.4-curl php8.4-gd php8.4-mysql php8.4-bcmath (per APP_EXTENSIONS_MISSING guidance)
+Processing triggers for php8.4-cli (8.4.27-1~deb13u1) ...
+Processing triggers for libc-bin (2.41-12+deb13u3) ...
+Processing triggers for php8.4-fpm (8.4.27-1~deb13u1) ...
+active
+bcmath curl gd intl mysqli pdo_mysql zip 

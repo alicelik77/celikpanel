@@ -1,0 +1,222 @@
+== L1 start 14:18:25 subA=3 did=2 docdir=/
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a118/lab/mkup.py:6: SyntaxWarning: "\P" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\P"? A raw string is also an option.
+  elif spec == "eicar": data = b"X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a118/lab/mkup.py:6: SyntaxWarning: "\P" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\P"? A raw string is also an option.
+  elif spec == "eicar": data = b"X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
+-- upload big
+200 {"success": true}
+-- upload php
+200 {"success": true}
+-- traffic: fetch big.bin 3x from labnet
+fetch big.bin http 200 bytes 2500000
+fetch big.bin http 200 bytes 2500000
+fetch big.bin http 200 bytes 2500000
+-- php upload baseline
+php upload http 200: file_uploads=true files=1 errors={"f":0}
+-- mail: 950 KB to q@c118.test (quota 1 MB)
+MAIL (250, b'2.1.0 Ok')
+RCPT q@c118.test (250, b'2.1.5 Ok')
+DATA ok 950078
+## 14:19:49 traffic log
+drwxr-xr-x 2 root celikpanel 4096 Nov  3 14:19 .
+drwxr-x--- 3 root celikpanel 4096 Nov  3 14:17 ..
+-rw-r----- 1 root celikpanel    0 Nov  3 14:17 1.log
+-rw-r----- 1 root celikpanel    0 Nov  3 14:19 10.log
+-rw-r----- 1 root celikpanel  101 Nov  3 14:18 2.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:18 3.log
+-rw-r----- 1 root celikpanel    0 Nov  3 14:18 4.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:19 5.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:19 6.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:19 7.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:19 8.log
+-rw-r----- 1 root celikpanel   46 Nov  3 14:19 9.log
+4 /var/log/celikpanel/traffic/2.log
+## nginx -t
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+## traffic include
+# celikpanel-render v2 sha256=eaea37f03278544bf920c1041ad59afee283e3337595cfeaf29db3f4cd9f5622
+# The traffic log of c118.test for CelikPanel's monthly traffic limit.
+# This directory is CelikPanel's; put your own additions in /etc/nginx/celikpanel-sites.d/c118.test/*.conf.
+## php pool upload flag
+## sftp force command
+9:Match User c118_test
+12:	ForceCommand internal-sftp -d /2 -u 0027
+19:Match Group celikpanel-site User !c118_test,*
+24:Match all
+## db usage rows
+subscription_disk_usage ['subscription_id', 'web_bytes', 'mail_bytes', 'db_bytes', 'method', 'state', 'detail', 'measured_at', 'attempted_at', 'requested_at', 'over_since', 'upload_blocked', 'upload_applied', 'upload_error']
+   (2, 20480, 0, 0, 'walk', 'measured', None, '2026-11-03 14:17:36', '2026-11-03 14:17:36', None, None, 0, 0, None)
+traffic_web_blocks ['subscription_id', 'period', 'cause', 'wanted', 'applied', 'since', 'last_error', 'updated_at']
+traffic_daily ['domain_id', 'day', 'source', 'subscription_id', 'bytes_out', 'bytes_in', 'requests', 'updated_at']
+## mail quota q@c118.test
+Fatal: Unknown command 'quota', but plugin quota exists. Try to set mail_plugins=quota
+## maildir of q@c118.test
+home=/var/mail/vhosts/c118.test/q
+1
+/var/mail/vhosts/c118.test/q/new/1793715519.Vfe01I419a0M168955.frankfurt
+## postfix log (quota)
+-- mail: second 300 KB to q@c118.test (expect 552 5.2.2)
+MAIL (250, b'2.1.0 Ok')
+RCPT q@c118.test (250, b'2.1.5 Ok')
+DATA ok 300078
+-- imap box@c118.test
+imap login OK OK
+== wait for usage rounds (traffic collection) 14:20:01
+  usage round ran: 2026-11-03 14:17:36 -> 2026-11-03 14:20:27 (14:20:32)
+  usage round ran: 2026-11-03 14:20:27 -> 2026-11-03 14:22:36 (14:22:38)
+-- site usage
+200 {"bandwidth": 7500974, "disk_usage": 2503473, "traffic_reason": "", "traffic_state": "measuring"}
+-- subscription usage
+200 {"traffic_used_bytes": 7500974, "traffic_limit_bytes": 0, "traffic_limited": false, "traffic_measure": {"last_collected": "2026-11-03 14:22:36", "state": "measuring"}, "disk_used_bytes": 3805184, "disk_limit_bytes": 0, "disk": {"db_bytes": 0, "mail_bytes": 1277952, "measured_at": "2026-11-03 14:20:27", "state": "measured", "uploads_applied": true, "uploads_blocked": false, "web_bytes": 2527232}}
+== CHECK limits: traffic 1 MB, disk 1 MB 14:22:58
+200 {"lifecycle": {"ends_at": null, "starts_at": "2026-11-03T14:17:56Z", "status": "active"}, "limits": {"disk_quota_mb": 1, "max_databases": 0, "max_domains": 0, "max_email_accounts": 0, "traffic_quota_mb": 1}, "own": {"all_permissions": true, "all_software": true, "permissions": [], "software": []}, "permissions": [{"granted": true, "id": "dns_edit", "name": "DNS record editing"}, {"granted": true, "id": "dnssec", "name": "DNSSEC"}, {"granted": true, "id": "mail", "name": "Mail"}, {"granted": true
+  usage round ran: 2026-11-03 14:22:36 -> 2026-11-03 14:27:36 (14:27:39)
+200 {"traffic_used_bytes": 7500974, "traffic_limit_bytes": 1048576, "traffic_limited": true, "traffic_measure": {"last_collected": "2026-11-03 14:27:36", "state": "measuring"}, "disk_used_bytes": 3805184, "disk_limit_bytes": 1048576, "disk": {"db_bytes": 0, "mail_bytes": 1277952, "measured_at": "2026-11-03 14:20:27", "over_since": "2026-11-03 14:27:36", "state": "measured", "suspend_on": "2026-11-10T14:27:36Z", "uploads_applied": true, "uploads_blocked": true, "web_bytes": 2527232}}
+-- site (expect traffic-limit page)
+site http 503 body:  Traffic limit reached This site has used its monthly traffic Bu site aylık trafik hakkını doldur
+-- imap still works
+imap login OK OK
+-- new domain (expect QUOTA_DISK_EXCEEDED)
+409 {"action": "/account", "code": "QUOTA_DISK_EXCEEDED", "error": "disk quota reached: 3 of 1 MB in use. Free some space, or ask your provider for a larger plan (see My plan)."}
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a118/lab/mkup.py:6: SyntaxWarning: "\P" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\P"? A raw string is also an option.
+  elif spec == "eicar": data = b"X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
+-- file-manager upload (expect refused)
+409 {"action": "/account", "code": "QUOTA_DISK_EXCEEDED", "error": "the disk space of this subscription is full, so nothing was uploaded. Delete files, mail or databases you no longer need, or ask your provider for a larger plan (see My plan); uploads work again after the next measurement shows free space."}
+-- SFTP write (expect refused)
+c118_test@192.0.3.190: Permission denied (publickey).
+Connection closed
+sftp put rc=255
+## 14:28:02 traffic log
+drwxr-xr-x 2 root celikpanel 4096 Nov  3 14:26 .
+drwxr-x--- 3 root celikpanel 4096 Nov  3 14:17 ..
+-rw-r----- 1 root celikpanel    0 Nov  3 14:17 1.log
+-rw-r----- 1 root celikpanel  115 Nov  3 14:22 10.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:22 11.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:24 12.log
+-rw-r----- 1 root celikpanel   24 Nov  3 14:24 13.log
+-rw-r----- 1 root celikpanel   24 Nov  3 14:25 14.log
+-rw-r----- 1 root celikpanel   22 Nov  3 14:26 15.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:26 16.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:26 17.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:27 18.log
+-rw-r----- 1 root celikpanel  101 Nov  3 14:18 2.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:18 3.log
+-rw-r----- 1 root celikpanel   46 Nov  3 14:27 4.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:19 5.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:19 6.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:19 7.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:19 8.log
+-rw-r----- 1 root celikpanel   69 Nov  3 14:27 9.log
+4 /var/log/celikpanel/traffic/2.log
+## nginx -t
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+## traffic include
+# celikpanel-render v2 sha256=6279cdef281956dcd415431af75fd335ae5b6c6abc16db7881e581031866e0a6
+# The traffic log of c118.test for CelikPanel's monthly traffic limit.
+# This directory is CelikPanel's; put your own additions in /etc/nginx/celikpanel-sites.d/c118.test/*.conf.
+/etc/nginx/sites-enabled/c118.test.conf
+## php pool upload flag
+php_admin_flag[file_uploads] = off
+## sftp force command
+9:Match User c118_test
+12:	ForceCommand internal-sftp -R -d /2 -u 0027
+19:Match Group celikpanel-site User !c118_test,*
+24:Match all
+## db usage rows
+subscription_disk_usage ['subscription_id', 'web_bytes', 'mail_bytes', 'db_bytes', 'method', 'state', 'detail', 'measured_at', 'attempted_at', 'requested_at', 'over_since', 'upload_blocked', 'upload_applied', 'upload_error']
+   (4, 243560448, 0, 32768, 'walk', 'measured', None, '2026-11-03 14:22:36', '2026-11-03 14:22:36', '2026-11-03 14:20:27', None, 0, 0, None)
+   (3, 2527232, 1277952, 0, 'walk', 'measured', None, '2026-11-03 14:20:27', '2026-11-03 14:20:27', None, '2026-11-03 14:27:36', 1, 1, None)
+   (2, 20480, 0, 0, 'walk', 'measured', None, '2026-11-03 14:17:36', '2026-11-03 14:17:36', None, None, 0, 0, None)
+traffic_web_blocks ['subscription_id', 'period', 'cause', 'wanted', 'applied', 'since', 'last_error', 'updated_at']
+   (3, '2026-11', 'subscription', 1, 1, '2026-11-03 14:27:36', None, '2026-11-03 14:27:36')
+traffic_daily ['domain_id', 'day', 'source', 'subscription_id', 'bytes_out', 'bytes_in', 'requests', 'updated_at']
+   (17, '2026-11-03', 'web', 4, 3425, 77, 1, '2026-11-03 14:27:36')
+   (16, '2026-11-03', 'web', 4, 3425, 77, 1, '2026-11-03 14:27:36')
+   (15, '2026-11-03', 'web', 4, 593, 77, 1, '2026-11-03 14:27:36')
+   (14, '2026-11-03', 'web', 4, 12760, 77, 1, '2026-11-03 14:27:36')
+## mail quota q@c118.test
+Fatal: Unknown command 'quota', but plugin quota exists. Try to set mail_plugins=quota
+## maildir of q@c118.test
+home=/var/mail/vhosts/c118.test/q
+2
+/var/mail/vhosts/c118.test/q/new/1793715519.Vfe01I419a0M168955.frankfurt
+/var/mail/vhosts/c118.test/q/new/1793715600.Vfe01I42aa1M82538.frankfurt
+## postfix log (quota)
+== traffic limit lifted, disk still 1 MB 14:28:03
+200 {"lifecycle": {"ends_at": null, "starts_at": "2026-11-03T14:17:56Z", "status": "active"}, "limits": {"disk_quota_mb": 1, "max_databases": 0, "max_domains": 0, "max_email_accounts": 0, "traffic_quota_mb": 0}, "own": {"all_permissions": true, "all_software": true, "permissions": [], "software": []}, "permissions": [{"granted": true, "id": "dns_edit", "name": "DNS record editing"}, {"granted": true, "id": "dnssec", "name": "DNSSEC"}, {"granted": true, "id": "mail", "name": "Mail"}, {"granted": true
+  usage round ran: 2026-11-03 14:27:36 -> 2026-11-03 14:32:36 (14:32:39)
+-- site (expect reopened)
+site http 200 body:  c118.test :root{--bg:#eef1f5;--card:#ffffff;--ink:#16213a;--muted:#5a6478;--soft:#f5f7fa;--rule:#dde2ea;
+-- php upload (expect refused while disk full)
+php upload http 200: file_uploads=false files=0 errors=[]
+== disk limit lifted 14:33:00
+200 {"lifecycle": {"ends_at": null, "starts_at": "2026-11-03T14:17:56Z", "status": "active"}, "limits": {"disk_quota_mb": 0, "max_databases": 0, "max_domains": 0, "max_email_accounts": 0, "traffic_quota_mb": 0}, "own": {"all_permissions": true, "all_software": true, "permissions": [], "software": []}, "permissions": [{"granted": true, "id": "dns_edit", "name": "DNS record editing"}, {"granted": true, "id": "dnssec", "name": "DNSSEC"}, {"granted": true, "id": "mail", "name": "Mail"}, {"granted": true
+  usage round ran: 2026-11-03 14:32:36 -> 2026-11-03 14:37:36 (14:37:50)
+200 {"traffic_used_bytes": 7504602, "traffic_limit_bytes": 0, "traffic_limited": false, "traffic_measure": {"last_collected": "2026-11-03 14:37:36", "state": "measuring"}, "disk_used_bytes": 3805184, "disk_limit_bytes": 0, "disk": {"db_bytes": 0, "mail_bytes": 1277952, "measured_at": "2026-11-03 14:20:27", "state": "measured", "uploads_applied": true, "uploads_blocked": false, "web_bytes": 2527232}}
+-- new domain (expect ok)
+20
+-- file-manager upload (expect ok)
+200 {"success": true}
+-- SFTP write (expect ok)
+c118_test@192.0.3.190: Permission denied (publickey).
+Connection closed
+sftp put rc=255
+-- php upload (expect ok)
+php upload http 200: file_uploads=false files=0 errors=[]
+## 14:38:18 traffic log
+drwxr-xr-x 2 root celikpanel 4096 Nov  3 14:38 .
+drwxr-x--- 3 root celikpanel 4096 Nov  3 14:17 ..
+-rw-r----- 1 root celikpanel    0 Nov  3 14:17 1.log
+-rw-r----- 1 root celikpanel  139 Nov  3 14:30 10.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:22 11.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:24 12.log
+-rw-r----- 1 root celikpanel   48 Nov  3 14:30 13.log
+-rw-r----- 1 root celikpanel   68 Nov  3 14:30 14.log
+-rw-r----- 1 root celikpanel   66 Nov  3 14:30 15.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:26 16.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:26 17.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:27 18.log
+-rw-r----- 1 root celikpanel    0 Nov  3 14:31 19.log
+-rw-r----- 1 root celikpanel  147 Nov  3 14:33 2.log
+-rw-r----- 1 root celikpanel    0 Nov  3 14:38 20.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:18 3.log
+-rw-r----- 1 root celikpanel   46 Nov  3 14:27 4.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:19 5.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:19 6.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:19 7.log
+-rw-r----- 1 root celikpanel   23 Nov  3 14:19 8.log
+-rw-r----- 1 root celikpanel   69 Nov  3 14:27 9.log
+6 /var/log/celikpanel/traffic/2.log
+## nginx -t
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+## traffic include
+# celikpanel-render v2 sha256=eaea37f03278544bf920c1041ad59afee283e3337595cfeaf29db3f4cd9f5622
+# The traffic log of c118.test for CelikPanel's monthly traffic limit.
+# This directory is CelikPanel's; put your own additions in /etc/nginx/celikpanel-sites.d/c118.test/*.conf.
+## php pool upload flag
+php_admin_flag[file_uploads] = off
+## sftp force command
+9:Match User c118_test
+12:	ForceCommand internal-sftp -d /2 -u 0027
+19:Match Group celikpanel-site User !c118_test,*
+24:Match all
+## db usage rows
+subscription_disk_usage ['subscription_id', 'web_bytes', 'mail_bytes', 'db_bytes', 'method', 'state', 'detail', 'measured_at', 'attempted_at', 'requested_at', 'over_since', 'upload_blocked', 'upload_applied', 'upload_error']
+   (4, 243560448, 0, 32768, 'walk', 'measured', None, '2026-11-03 14:22:36', '2026-11-03 14:22:36', '2026-11-03 14:20:27', None, 0, 0, None)
+   (3, 2527232, 1277952, 0, 'walk', 'measured', None, '2026-11-03 14:20:27', '2026-11-03 14:20:27', None, None, 0, 0, None)
+   (2, 20480, 0, 0, 'walk', 'measured', None, '2026-11-03 14:17:36', '2026-11-03 14:17:36', None, None, 0, 0, None)
+traffic_web_blocks ['subscription_id', 'period', 'cause', 'wanted', 'applied', 'since', 'last_error', 'updated_at']
+traffic_daily ['domain_id', 'day', 'source', 'subscription_id', 'bytes_out', 'bytes_in', 'requests', 'updated_at']
+   (4, '2026-11-03', 'web', 4, 6702, 69, 2, '2026-11-03 14:32:36')
+   (18, '2026-11-03', 'web', 4, 3425, 77, 1, '2026-11-03 14:32:36')
+   (17, '2026-11-03', 'web', 4, 3425, 77, 1, '2026-11-03 14:27:36')
+   (16, '2026-11-03', 'web', 4, 3425, 77, 1, '2026-11-03 14:27:36')
+## mail quota q@c118.test
+Fatal: Unknown command 'quota', but plugin quota exists. Try to set mail_plugins=quota
+## maildir of q@c118.test
+home=/var/mail/vhosts/c118.test/q
+2
+/var/mail/vhosts/c118.test/q/new/1793715519.Vfe01I419a0M168955.frankfurt
+/var/mail/vhosts/c118.test/q/new/1793715600.Vfe01I42aa1M82538.frankfurt
+## postfix log (quota)
+== L1 done 14:38:19

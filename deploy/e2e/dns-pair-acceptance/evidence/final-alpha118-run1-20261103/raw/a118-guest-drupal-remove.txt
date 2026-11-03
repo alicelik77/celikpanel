@@ -1,0 +1,12 @@
+## 15:06:21 drupal docroot after failed removal
+total 12
+drwxr-s--- 3 bdrup118_test www-data 4096 Nov  3 14:28 .
+drwxr-x--- 3 bdrup118_test www-data 4096 Nov  3 14:25 ..
+drwxr-s--- 3 bdrup118_test www-data 4096 Nov  3 14:28 sites
+total 100
+dr-xr-x--- 3 bdrup118_test www-data  4096 Nov  3 14:25 .
+drwxr-s--- 3 bdrup118_test www-data  4096 Nov  3 14:28 ..
+-rw-r----- 1 bdrup118_test www-data 11188 Nov  3 14:24 default.services.yml
+-rw-r----- 1 bdrup118_test www-data 36625 Nov  3 14:24 default.settings.php
+drwxrwxr-x 2 bdrup118_test www-data  4096 Nov  3 14:28 files
+-r--r----- 1 bdrup118_test www-data 37353 Nov  3 14:25 settings.php

@@ -1,0 +1,38 @@
+== RB start 14:31:42 domain id 19
+rbk ready; gpg gpg (GnuPG) 2.4.7
+256 SHA256:Ws0aasxqqWMNfenFTDFBSFCTMnaM2eM8xq+zdls5U6w root@labnet (ECDSA)
+256 SHA256:Petb3VWwSCADy1EMDnyzCbOHmLH/Qnx5XviZyv2X4zE root@labnet (ED25519)
+3072 SHA256:RqHIQwR92DZMM/Ig4nhQ1iHqS53rF9j5IgNDVyXe1ok root@labnet (RSA)
+-- test without fingerprint (expect host key to confirm)
+200 {"guidance": {"code": "REMOTE_HOST_KEY_CONFIRM", "next_action": "Compare the fingerprint with the one the server's owner gives you (ssh-keygen -lf on the server); confirm it only if they match.", "reason": "Confirm the SFTP server's key fingerprint before the first connection.", "result": "prerequisite", "resumes": "After you confirm, the test runs again with that key pinned.", "who_acts": "destination_owner"}, "host_key": {"fingerprint": "SHA256:Petb3VWwSCADy1EMDnyzCbOHmLH/Qnx5XviZyv2X4zE", "key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHIijgCg9p7CXG9WgQrOdl6b//C7EwDY7KASJs+4EENu"}, "ok": false, "steps": []}
+fingerprint offered: SHA256:Petb3VWwSCADy1EMDnyzCbOHmLH/Qnx5XviZyv2X4zE
+-- create destination with pinned key
+200 {"destination": {"config": {"access_key_id": "\u2026", "host": "192.0.3.1", "path": "/home/rbk/backups", "port": 22, "user": "rbk"}, "has_secret": "[REDACTED]", "host_key_fingerprint": "SHA256:Petb3VWwSCADy1EMDnyzCbOHmLH/Qnx5XviZyv2X4zE", "id": 1, "kind": "sftp", "last_test_at": "2026-11-03 14:31:52", "last_test_result": "ok", "location": "sftp://rbk@192.0.3.1/home/rbk/backups", "manageable": true, "name": "labnet sftp", "offered_to_accounts": false, "passphrase_check": "[REDACTED]", "scope": "own"}, "saved": true, "test": {"ok": true, "steps": [{"ok": true, "step": "connect"}, {"ok": true, "step": "write"}, {"ok": true, "step": "read"}, {"ok": true, "step": "delete"}]}}
+destination id 1
+-- local backup (full)
+200 {"backup": {"created_at": "2026-11-03T14:31:52.45812395Z", "name": "full-20261103T143152.468330586Z-0f176cb01c2158d5.cpbak", "origin": "manual", "restorable": true, "size": 2252, "type": "full"}, "success": true}
+backup full-20261103T143152.468330586Z-0f176cb01c2158d5.cpbak
+-- send
+202 {"created": true, "operation": {"attempts": 0, "backup_name": "full-20261103T143152.468330586Z-0f176cb01c2158d5.cpbak", "bytes_done": 0, "bytes_total": 0, "created_at": "2026-11-03 14:31:52", "destination_id": 1, "guidance": {"next_action": "Nothing to do; this page follows the operation.", "reason": "Waiting for its turn: remote operations run one at a time.", "result": "waiting", "resumes": "It starts by itself.", "who_acts": "none"}, "id": "rb-8f5470d4df6a68f544577865a8a06771", "kind": "upload", "phase": "waiting", "scheduled": false, "state": "queued"}}
+  op rb-8f5470d4df6a68f544577865a8a06771: succeeded done verified size+sha256 2252 / 2252 {"next_action": "Nothing to do.", "reason": "Sent, encrypted, and checked at the destination.", "result": "done", "resumes": "", "who_acts": "none"} (14:31:53)
+-- objects
+200 {"objects": [{"backup_name": "full-20261103T143152.468330586Z-0f176cb01c2158d5.cpbak", "created_at": "2026-11-03T14:31:52.468330586Z", "group": "manual", "has_sidecar": true, "object_key": "frankfurt/sites/av118.test-d19/manual/full-20261103T143152.468330586Z-0f176cb01c2158d5.cpbak.gpg", "size": 2420, "type": "full"}]}
+-- on the target
+frankfurt/sites/av118.test-d19/manual/full-20261103T143152.468330586Z-0f176cb01c2158d5.cpbak.gpg 2420
+frankfurt/sites/av118.test-d19/manual/full-20261103T143152.468330586Z-0f176cb01c2158d5.cpbak.gpg.json 883
+-- manual gpg decrypt of frankfurt/sites/av118.test-d19/manual/full-20261103T143152.468330586Z-0f176cb01c2158d5.cpbak.gpg
+## sidecar
+{"format": "openpgp-symmetric-aes256-mdc", "decrypt_with": "gpg --batch --pinentry-mode loopback --passphrase-file PASSFILE --output BACKUP.cpbak --decrypt BACKUP.cpbak.gpg; then: tar -xzf BACKUP.cpbak (manifest.json, payload/files.tar.gz, payload/databases/ID.sql.gz)", "server": "frankfurt", "domain": "av118.test", "domain_id": 19, "subscription_id": 4, "backup_name": "full-20261103T143152.468330586Z-0f176cb01c2158d5.cpbak", "type": "full", "origin": "manual", "created_at": "2026-11-03T14:31:52.45812395Z", "uploaded_at": "2026-11-03T14:31:52.921408741Z", "plain_size": 2252, "plain_sha256": "45a7f69c8c32dcf4c1e0a969cfeeae53cbc2ab59f611cd3708a2097911cb2b4d", "encrypted_size": 2420, "encrypted_sha256": "4fd9eb0d2d73b0837aff69c361fe5977af7f32c2c1d9e98d076dee706d6f5b44", "panel_version": "v0.1.0-alpha.118"}
+gpg: directory '/root/.gnupg' created
+gpg: keybox '/root/.gnupg/pubring.kbx' created
+gpg: AES256.CFB encrypted session key
+gpg: encrypted with 1 passphrase
+gpg rc=0
+45a7f69c8c32dcf4c1e0a969cfeeae53cbc2ab59f611cd3708a2097911cb2b4d  x.cpbak
+4fd9eb0d2d73b0837aff69c361fe5977af7f32c2c1d9e98d076dee706d6f5b44  /home/rbk/backups/frankfurt/sites/av118.test-d19/manual/full-20261103T143152.468330586Z-0f176cb01c2158d5.cpbak.gpg
+manifest.json
+payload/files.tar.gz
+-- restore
+202 {"created": true, "operation": {"attempts": 0, "backup_name": "full-20261103T143152.468330586Z-0f176cb01c2158d5.cpbak", "backup_type": "full", "bytes_done": 0, "bytes_total": 0, "created_at": "2026-11-03 14:31:54", "destination_id": 1, "guidance": {"next_action": "Nothing to do; this page follows the operation.", "reason": "Waiting for its turn: remote operations run one at a time.", "result": "waiting", "resumes": "It starts by itself.", "who_acts": "none"}, "id": "rb-05545425f472795e408a83bfdf4eb895", "kind": "restore", "object_key": "frankfurt/sites/av118.test-d19/manual/full-20261103T143152.468330586Z-0f176cb01c2158d5.cpbak.gpg", "phase": "waiting", "scheduled": false, "state": "queued"}
+  op rb-05545425f472795e408a83bfdf4eb895: succeeded done verified sha256+mdc 2420 / 2420 {"next_action": "Nothing to do.", "reason": "Downloaded, checked, decrypted and restored. A safety backup of the state before the restore was kept on this server.", "result": "done", "resumes": "", "who_acts": "none"} (14:32:05)
+== RB done 14:32:05

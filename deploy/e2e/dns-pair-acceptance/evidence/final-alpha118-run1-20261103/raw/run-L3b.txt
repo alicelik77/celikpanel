@@ -1,0 +1,7 @@
+== L3 start 14:24:41
+-- issue a certificate on n8n118.test (SSL page) 14:24:42
+200 {"expires_at": "2031-11-03T14:24:43Z", "status": "success"}
+  certificate: True
+-- install n8n 14:24:45
+400 {"code": "SERVICE_APP", "error": "Confirm that n8n118.test will show n8n instead of its current website (its files stay in place).", "reason": "confirm_replace"}
+  14:24:45 install=None active=None serving=None unit=None url=None | op=None step=None class=None reason=None msg= | suspended=False cert=true

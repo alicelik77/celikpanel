@@ -1,0 +1,20 @@
+== WordPress rerun 14:22:37 (wp118.test id 10)
+get wp118.test/ http 302 http://wp118.test/wp-admin/install.php title: Requirements Not Met |  	 	 			 Require
+wp finish http 200: <h1>Success! 
+get wp118.test/ http 502 http://192.0.3.190/ title: 502 Bad Gateway |   502 Bad Gateway   502 Bad Gateway  nginx    
+-- status
+200 detected True core 7.1.4 core_update None db_linked True code None checked True
+  plugin akismet/akismet.php 5.7.2 -> None verifiable True
+  plugin hello.php 1.7.2 -> None verifiable False
+  op {"operation_id": "49ea36d7d2e5e425de1c2172607b6298", "kind": "clone", "status": "applied", "backup_name": null, "code": null}
+-- no plugin with an update available (bundled akismet/hello current): plugin update NOT exercised; core update offered: see status
+-- clone to a fresh staging subdomain
+stage2.wp118.test id=13
+202 {"created_at": "", "items": [], "kind": "clone", "open": true, "operation_id": "3f6f038017ee11b483209a8ce0472a86", "origin": "manual", "status": "queued", "target_domain": "stage2.wp118.test", "target_domain_id": 13, "updated_at": ""}
+  wp op 3f6f038017ee11b483209a8ce0472a86: applied None None copied to stage2.wp118.test; the address was changed in 9 values (14:23:53)
+get stage2.wp118.test/ http 200 http://192.0.3.190/ title: Lab WP |  	 	 L
+200 detected True core 7.1.4 core_update None db_linked True code None checked True
+  plugin akismet/akismet.php 5.7.2 -> None verifiable True
+  plugin hello.php 1.7.2 -> None verifiable False
+  op {"operation_id": "3f6f038017ee11b483209a8ce0472a86", "kind": "clone", "status": "applied", "backup_name": null, "code": null}
+== L2w2 done 14:23:55

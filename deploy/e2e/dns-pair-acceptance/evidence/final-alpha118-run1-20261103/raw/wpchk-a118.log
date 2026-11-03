@@ -1,0 +1,26 @@
+== 14:29:58 site checks
+get wp118.test/ http 200 http://192.0.3.190/ title: Lab WP |  	 	 L
+get stage2.wp118.test/ http 200 http://192.0.3.190/ title: Lab WP |  	 	 L
+get bdrup118.test/ http 403 http://192.0.3.190/ title: 403 Forbidden |   403 Forbidden   403 Forbidden  nginx    
+get bjoom118.test/ http 503 http://192.0.3.190/ title: Being set up |  Being set up <body style="font-family:sans-serif;max-width:40em;margin:4em auto;padding:0 1e
+php-fpm.sock
+php8.4-fpm-site10.sock
+php8.4-fpm-site11.sock
+php8.4-fpm-site12.sock
+php8.4-fpm-site13.sock
+php8.4-fpm-site14.sock
+php8.4-fpm-site15.sock
+php8.4-fpm-site16.sock
+php8.4-fpm-site17.sock
+php8.4-fpm-site18.sock
+php8.4-fpm-site2.sock
+php8.4-fpm-site3.sock
+php8.4-fpm-site4.sock
+php8.4-fpm-site5.sock
+php8.4-fpm-site6.sock
+php8.4-fpm-site7.sock
+php8.4-fpm-site8.sock
+php8.4-fpm-site9.sock
+php8.4-fpm.pid
+php8.4-fpm.sock
+active

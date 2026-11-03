@@ -1,0 +1,21 @@
+== C (Arch) checks 14:52:06
+200 {"id": 3, "rights": "unlimited", "success": true}
+ca118.test id=2
+200 {"id": 1, "success": true}
+fetch  http 200 bytes 3244
+fetch  http 200 bytes 3244
+fetch  http 200 bytes 3244
+200 {"disk": {"interval_hours": 6, "low_space": false, "measured": 0, "not_measured": 2, "unknown": 0}, "mail_quota": {"checked": "2026-11-03T14:47:46Z", "detail": "Dovecot is not installed on this server, so there are no mailboxes to limit.", "state": "no_mail"}, "traffic": {"interval_minutes": 5, "last_attempt": "2026-11-03 14:47:46", "last_collected": "2026-11-03 14:47:46", "logrotate": "missing_tool", "measuring": 0, "unknown": {}}}
+## 14:52:12 PRETTY_NAME="Arch Linux"
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+access_log /var/log/celikpanel/traffic/2.log celikpanel_traffic buffer=64k flush=1m if=$celikpanel_traffic_counted;
+drwxr-xr-x 1 root celikpanel 20 Nov  3 14:52 .
+drwxr-x--- 1 root celikpanel 14 Nov  3 14:51 ..
+-rw-r----- 1 root celikpanel  0 Nov  3 14:51 1.log
+-rw-r----- 1 root celikpanel  0 Nov  3 14:52 2.log
+## dovecot 2.4.5 (0cbb641e3e)
+doveconf rc=0 
+97-celikpanel-submission.conf 98-celikpanel-tls.conf 99-celikpanel.conf 
+cat: /etc/dovecot/conf.d/90-celikpanel-quota.conf: No such file or directory
+
+no logrotate

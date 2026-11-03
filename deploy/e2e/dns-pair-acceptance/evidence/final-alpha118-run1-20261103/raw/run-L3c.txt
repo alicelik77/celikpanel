@@ -1,0 +1,19 @@
+== L3 start 14:26:49
+-- issue a certificate on n8n118.test (SSL page) 14:26:50
+  certificate: True
+-- install n8n 14:26:50
+202 {"operation": {"created_at": "2026-11-03 14:26:50", "id": "8dfb1a4c7a3bd3c39d83c8f599fabef7", "install_id": 1, "kind": "install", "state": "running", "step": "prepare", "updated_at": "2026-11-03 14:26:50"}}
+  14:26:51 install=installing active=False serving=False unit=celiksvc-1 url=https://n8n118.test/ | op=running step=prepare class=None reason=None msg= | suspended=False cert=true
+  14:27:06 install=failed active=False serving=False unit=celiksvc-1 url=https://n8n118.test/ | op=failed step=installing class=verified_failure reason=install_failed msg=the install step ended with an error (exit-code); its log shows why | suspended=False cert=true
+## 14:27:06 units
+● celiksvcinst-1.service loaded failed failed CelikPanel install of n8n 2.46.4
+## listeners 21000-29999
+## memory
+               total        used        free      shared  buff/cache   available
+Mem:            4924        1114        1410           3        2689        3810
+/dev/vda1        24G  3.0G   20G  14% /
+https n8n118.test/ http 200 verify=0 title: n8n118.test bytes=3246
+executeCommand mentions: 0
+https n8n118.test/types/nodes.json http 200 verify=0 title: n8n118.test bytes=3246
+executeCommand mentions: 0
+== L3 done 14:27:08
