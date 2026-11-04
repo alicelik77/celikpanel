@@ -186,7 +186,7 @@ test('the guide part is registered like every screen part and budgeted', () => {
     const index = read('../src/i18n/index.tsx');
     assert.match(index, /\(\) => import\('\.\/screens\/guide\/en'\)/);
     assert.match(index, /\(\) => import\('\.\/screens\/guide\/tr'\)/);
-    assert.match(read('../src/i18n/en.ts'), /\| GuideScreenKey;/);
+    assert.match(read('../src/i18n/en.ts'), /\| GuideScreenKey\b/);
     const budget = read('../scripts/check-bundle-budget.mjs');
     assert.match(budget, /\n {2}guide: kib\(/);
     assert.match(budget, /`src\/help\/guide\/gen\/\$\{role\}\.\$\{locale\}\.ts`, guideIndexBudget/);
