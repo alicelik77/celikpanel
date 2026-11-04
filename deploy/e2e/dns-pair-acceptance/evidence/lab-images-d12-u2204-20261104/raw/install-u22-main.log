@@ -1,0 +1,24 @@
+{
+ "method": "get.sh in a root terminal (ssh -tt), lab portal",
+ "session": "# owner terminal session (lab): only PATH differs, see the curl stand-in\ncd /root\nexport PATH=/root/lab-portal/bin:$PATH\ncurl -fL --proto '=https' -o celikpanel-install.sh https://celikpanel.net/get.sh &&\nsh celikpanel-install.sh\n",
+ "stage": {
+  "rc": 0,
+  "out": "staged\n",
+  "err": ""
+ },
+ "terminal": {
+  "rc": 1,
+  "seconds": 8.6,
+  "answered": [],
+  "problem": null,
+  "tail": "Downloading and verifying CelikPanel v0.1.0-alpha.121. If interrupted, run the same installation command again. / CelikPanel v0.1.0-alpha.121 indiriliyor ve do\u011frulan\u0131yor. Kesilirse ayn\u0131 kurulum komutunu yeniden \u00e7al\u0131\u015ft\u0131r\u0131n.\ncelikpanel-v0.1.0-alpha.121-linux-amd64.tar.gz: OK\nInstalling CelikPanel v0.1.0-alpha.121 from verified archive celikpanel-v0.1.0-alpha.121-linux-amd64.tar.gz / CelikPanel v0.1.0-alpha.121 do\u011frulanm\u0131\u015f celikpanel-v0.1.0-alpha.121-linux-amd64.tar.gz ar\u015fivinden kuruluyor\nERROR / HATA: systemd private socket is group/other writable\n",
+  "restart_required": false,
+  "restart_recommended": false
+ },
+ "portal_requests": "2026-11-04T19:53:23Z https://celikpanel.net/get.sh\n2026-11-04T19:53:24Z https://celikpanel.net/release-signing-ed25519.pem\n2026-11-04T19:53:24Z https://celikpanel.net/releases/v0.1.0-alpha.121/linux/amd64/release-manifest-v2\n2026-11-04T19:53:24Z https://celikpanel.net/releases/v0.1.0-alpha.121/linux/amd64/release-manifest-v2.sig\n2026-11-04T19:53:24Z https://celikpanel.net/releases/v0.1.0-alpha.121/linux/amd64/celikpanel-v0.1.0-alpha.121-linux-amd64.tar.gz\n2026-11-04T19:53:24Z https://celikpanel.net/releases/v0.1.0-alpha.121/linux/amd64/celikpanel-v0.1.0-alpha.121-linux-amd64.tar.gz.sha256\n-rw-r--r-- 1 root root 75043 Nov  4 19:53 /root/celikpanel-install.sh\ne9111909fcc5d499f3d687d0f2ab7af5996def180591d2f644435d2c9805f142  /root/celikpanel-install.sh\n",
+ "postinstall": {
+  "rc": 1,
+  "out": ""
+ },
+ "seconds": 9.1
+}

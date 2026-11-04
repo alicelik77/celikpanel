@@ -1,0 +1,37 @@
+== provision 19:52:17 debian12 192.0.3.190 zone=d12.test version=v0.1.0-alpha.121
+_NAME=\"Debian GNU/Linux 12 (bookworm)\"\nVERSION_ID=\"12\"\n6.1.0-54-cloud-amd64\nfrankfurt\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 21.2
+}
+
+== install through get.sh in a root terminal 19:52:38
+main terminal rc 0 46.7 problem None restart_required False postinstall rc 0
+  tail: rolayı doğrula:  | Created administrator / Yönetici oluşturuldu. |     ✓ administrator is ready / yönetici hazır | ==> Starting the panel / Panel başlatılıyor |     ✓ panel is running / panel çalışıyor | ==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor |     ✓ initial panel certificate is protected / ilk panel sertifikasi korundu |  | CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu. |     Panel:  https://192.0.3.190:1923 |     Services / Servisler: systemctl status celikpanel-agent celikpanel-panel |     Logs / Günlükler: journalctl -u celikpanel-panel -f | 
+license active acceptance_fixture can_use_panel True
+PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"
+CELIKPANEL_LISTEN=:1923
+
+wizard data single ['count', 'dnshome', 'domain', 'mail', 'name', 'names', 'roles']
+guidance 200 
+domain 200 
+count 200 
+name 200 
+roles 200 
+names 200 
+dnshome 200 
+mail 200 
+plan 200 can_start True blockers [] ['01-dns:local', '02-service:nginx', '03-service:certbot', '04-firewall:enable_and_persist', '05-infrastructure_dns:d12.test', '06-access_dns:frankfurt.d12.test', '07-panel_certificate:frankfurt.d12.test', '08-dns_readiness:local', '09-service:mariadb', '10-service:php-fpm', '11-service:cron', '12-access_dns:mail.d12.test', '13-mail_certificate:mail.d12.test', '14-mail_profile:webmail', '15-mail_profile:protected-mail', '16-mail_dns:d12.test', '17-mail_enrollment:mail-renewal', '18-main_site:d12.test', '19-verify:custom'] 
+== start 19:53:43
+start 202 {
+ "id": "6ed1708ed8e0dbd93bda2f185f9b8e94",
+ "panel_url": "https://frankfurt.d12.test:1923/",
+ "phase": "queued",
+ "plan_id": "53749a6c40560c155aebd191210e8d79
+-- d12/main 19:53:53
+running 01-dns null
+01-dns=running 02-service=pending 03-service=pending 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d12/main 19:54:34
+waiting 01-dns {"code": "server_setup_dns_agent_failed", "message": "The CelikPanel Agent recorded this DNS operation (request 7c16c2f00f1784be599fecb6016bf899) as failed. Reason: The privileged host operation did not complete. CelikPanel has not confirmed that this server is back to its state before the operation, so setup is paused at this step and will not start the operation again. The server administrator should run `sudo /usr/libexec/celikpanel/recovery dns-switch-status --quiesced --request-id 7c16c2f00f1784be599fecb6016bf899` on this server and follow what it reports. Setup rechecks this same operation automatically and continues, or offers a new plan, once its result is confirmed."}
+01-dns=running 02-service=pending 03-service=pending 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending

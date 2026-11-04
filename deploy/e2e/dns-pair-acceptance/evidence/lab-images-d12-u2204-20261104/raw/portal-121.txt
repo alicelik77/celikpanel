@@ -1,0 +1,22 @@
+== get.sh difference from the release's download-portal/get.sh:
+8c8
+< bootstrap_release_public_key_sha256=7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb
+---
+> bootstrap_release_public_key_sha256=105b67ae1bd6e1f1d02e8c0e144c883ed1628393c0ea49360773f1c9d933d473
+format=celikpanel-release-manifest-v2
+sequence=121
+version=v0.1.0-alpha.121
+commit=ba0a53d1119bb045bcb650ba78064712a281c840
+published_at=2026-11-04T19:51:50Z
+os=linux
+arch=amd64
+archive=celikpanel-v0.1.0-alpha.121-linux-amd64.tar.gz
+archive_sha256=acc903ebc8c48ac1fea708dfd9f40082f2e00656a8ea88dc16a7056df53c810f
+archive_size=71060161
+releases/latest.txt 17
+releases/v0.1.0-alpha.121/linux/amd64/celikpanel-v0.1.0-alpha.121-linux-amd64.tar.gz 71060161
+releases/v0.1.0-alpha.121/linux/amd64/celikpanel-v0.1.0-alpha.121-linux-amd64.tar.gz.sha256 113
+releases/v0.1.0-alpha.121/linux/amd64/release-manifest-v2.sig 64
+releases/v0.1.0-alpha.121/linux/amd64/release-manifest-v2 335
+get.sh 75043
+release-signing-ed25519.pem 113

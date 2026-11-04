@@ -1,0 +1,24 @@
+# Output of kit/verify.sh on the archlinux lab host, 2026-11-04 19:4x UTC (sums fetched fresh over HTTPS
+# into a new empty directory under /var/tmp, removed afterwards). Lab only.
+== Debian 12 bookworm 20261026-2643
+sums fetched
+SHA512SUMS.sign HTTP 404
+SHA512SUMS.gpg HTTP 404
+published 0464b5d4ae3aa4f658468d88da83af7857b71548b30d46dcb6282770955a747fb95a983476db90d25afd0653af607224c7ebd05122ab71faa106fd712aaad652
+local     0464b5d4ae3aa4f658468d88da83af7857b71548b30d46dcb6282770955a747fb95a983476db90d25afd0653af607224c7ebd05122ab71faa106fd712aaad652
+DEBIAN12 SHA512 MATCH
+== Ubuntu 22.04 jammy release-20261020
+sums+sig fetched
+      D2EB 4462 6FDD C30B 513D  5BB7 1A5D 6C4C 7DB8 7C81
+uid           [ unknown] UEC Image Automatic Signing Key <cdimage@ubuntu.com>
+[GNUPG:] GOODSIG 1A5D6C4C7DB87C81 UEC Image Automatic Signing Key <cdimage@ubuntu.com>
+[GNUPG:] VALIDSIG D2EB44626FDDC30B513D5BB71A5D6C4C7DB87C81 2026-10-20 1792523718 0 4 0 1 10 00 D2EB44626FDDC30B513D5BB71
+published 2099e63da0b822ef8e05e3d596c1b402eaaae658fc08ab919cb8495bfcdc488b
+local     2099e63da0b822ef8e05e3d596c1b402eaaae658fc08ab919cb8495bfcdc488b
+UBUNTU2204 SHA256 MATCH
+== qemu-img info
+file format: qcow2
+virtual size: 3 GiB (3221225472 bytes)
+file format: qcow2
+virtual size: 2.2 GiB (2361393152 bytes)
+verify dir removed

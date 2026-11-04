@@ -1,0 +1,37 @@
+== 20:01:44 setup operation (API read)
+200 waiting 01-dns
+{"id": "01-dns", "kind": "dns", "owner_id": "c814a03af5ab3ab6f5e94686d7993bed", "request_id": "7c16c2f00f1784be599fecb6016bf899", "status": "running", "target": "local"}
+{"id": "02-service", "kind": "service", "owner_id": "6783095501b039ab950f7fdba93e97b8", "request_id": "9754960c7fabb8bdc9ecbc3743e6e66c", "status": "pending", "target": "nginx"}
+{"id": "03-service", "kind": "service", "owner_id": "37a54c4ace842e5ef19cc4071a41689f", "request_id": "3e58331935a00f96348570d6a442eb77", "status": "pending", "target": "certbot"}
+error {"code": "server_setup_dns_agent_failed", "message": "The CelikPanel Agent recorded this DNS operation (request 7c16c2f00f1784be599fecb6016bf899) as failed. Reason: The privileged host operation did not complete. CelikPanel has not confirmed that this server is back to its state before the operation, so setup is paused at this step and will not start the operation again. The server administrator should run `sudo /usr/libexec/celikpanel/recovery dns-switch-status --quiesced --request-id 7c16c2f00f1784be599fecb6016bf899` on this server and follow what it reports. Setup rechecks this same operation automatically and continues, or offers a new plan, once its result is confirmed."}
+== guest journal
+Nov 04 19:54:01.329738 frankfurt groupadd[5868]: group added to /etc/group: name=bind, GID=109
+Nov 04 19:54:01.359061 frankfurt groupadd[5868]: group added to /etc/gshadow: name=bind
+Nov 04 19:54:01.361414 frankfurt groupadd[5868]: new group: name=bind, GID=109
+Nov 04 19:54:01.481454 frankfurt useradd[5876]: new user: name=bind, UID=104, GID=109, home=/var/cache/bind, shell=/usr/sbin/nologin, from=none
+Nov 04 19:54:05.581785 frankfurt agent[4888]: 2026/11/04 19:54:05 DNS switch (request 7c16c2f00f1784be599fecb6016bf899): BIND rndc key /etc/bind/rndc.key is owner_or_package_provided (key_present)
+Nov 04 19:54:13.201110 frankfurt agent[4888]: 2026/11/04 19:54:13 Local port-53 listeners accepted as the systemd-resolved stub resolver (unit cgroup and address proved; not DNS authority): tcp|127.0.0.53|systemd-resolve|398|systemd-resolved.service, tcp|127.0.0.54|systemd-resolve|398|systemd-resolved.service, udp|127.0.0.53|systemd-resolve|398|systemd-resolved.service, udp|127.0.0.54|systemd-resolve|398|systemd-resolved.service.
+Nov 04 19:54:13.512568 frankfurt agent[4888]: 2026/11/04 19:54:13 Local port-53 listeners accepted as the systemd-resolved stub resolver (unit cgroup and address proved; not DNS authority): tcp|127.0.0.53|systemd-resolve|398|systemd-resolved.service, tcp|127.0.0.54|systemd-resolve|398|systemd-resolved.service, udp|127.0.0.53|systemd-resolve|398|systemd-resolved.service, udp|127.0.0.54|systemd-resolve|398|systemd-resolved.service.
+Nov 04 19:54:14.227109 frankfurt agent[4888]: 2026/11/04 19:54:14 DNS switch rollback (request 7c16c2f00f1784be599fecb6016bf899): BIND rndc key /etc/bind/rndc.key was left in place: it was provided by the package or the owner (key_present)
+Nov 04 19:54:16.641026 frankfurt agent[4888]: 2026/11/04 19:54:16 Local port-53 listeners accepted as the systemd-resolved stub resolver (unit cgroup and address proved; not DNS authority): tcp|127.0.0.53|systemd-resolve|398|systemd-resolved.service, tcp|127.0.0.54|systemd-resolve|398|systemd-resolved.service, udp|127.0.0.53|systemd-resolve|398|systemd-resolved.service, udp|127.0.0.54|systemd-resolve|398|systemd-resolved.service.
+Nov 04 19:54:16.730784 frankfurt agent[4888]: 2026/11/04 19:54:16 Local port-53 listeners accepted as the systemd-resolved stub resolver (unit cgroup and address proved; not DNS authority): tcp|127.0.0.53|systemd-resolve|398|systemd-resolved.service, tcp|127.0.0.54|systemd-resolve|398|systemd-resolved.service, udp|127.0.0.53|systemd-resolve|398|systemd-resolved.service, udp|127.0.0.54|systemd-resolve|398|systemd-resolved.service.
+Nov 04 19:54:16.857607 frankfurt agent[4888]: 2026/11/04 19:54:16 DNS switch rollback (request 7c16c2f00f1784be599fecb6016bf899): BIND rndc key /etc/bind/rndc.key was left in place: it was provided by the package or the owner (key_present)
+Nov 04 19:54:16.857820 frankfurt agent[4888]: 2026/11/04 19:54:16 DNS engine switch to bind at epoch 1 failed: activate BIND generation a3c571f76f1899d26fe740701e26a9f41cd05c6ced1fa038fb27b52887c3c16b: verify BIND vendor identity before enabling aliases: named.service does not resolve to the exact APT vendor BIND identity
+Nov 04 19:54:16.857820 frankfurt agent[4888]: explicit empty recovery applied and first BIND generation pointer removed
+-- named
+inactive inactive 
+bind9 1:9.18.49-1~deb12u3
+-- No entries --
+-- apt/dpkg
+
+Start-Date: 2026-11-04  19:52:54
+Commandline: /usr/bin/apt-get install -y -qq tar xz-utils curl ca-certificates nftables iproute2 logrotate less zip unzip nano vim-tiny rsync
+Requested-By: celik (1000)
+Install: libnftables1:amd64 (1.0.6-2+deb12u2, automatic), zip:amd64 (3.0-13+deb12u1), libjansson4:amd64 (2.14-2, automatic), logrotate:amd64 (3.21.0-1), rsync:amd64 (3.2.7-1+deb12u6), unzip:amd64 (6.0-28+deb12u1), nftables:amd64 (1.0.6-2+deb12u2)
+End-Date: 2026-11-04  19:53:01
+
+Start-Date: 2026-11-04  19:53:59
+Commandline: /usr/bin/apt-get install -y --no-install-recommends bind9
+Install: bind9:amd64 (1:9.18.49-1~deb12u3), bind9-utils:amd64 (1:9.18.49-1~deb12u3, automatic), dns-root-data:amd64 (2024071801~deb12u1, automatic)
+Upgrade: bind9-host:amd64 (1:9.18.49-1~deb12u2, 1:9.18.49-1~deb12u3), bind9-libs:amd64 (1:9.18.49-1~deb12u2, 1:9.18.49-1~deb12u3)
+End-Date: 2026-11-04  19:54:04

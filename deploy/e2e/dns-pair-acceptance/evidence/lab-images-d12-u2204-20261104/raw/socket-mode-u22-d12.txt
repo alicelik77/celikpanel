@@ -1,0 +1,20 @@
+== u22
+PRETTY_NAME="Ubuntu 22.04.5 LTS"
+5.15.0-198-generic
+systemd 249 (249.11-0ubuntu3.23)
+drwxr-xr-x 755 root:root links=25 /run/systemd
+srwxrwxrwx 777 root:root links=1 /run/systemd/private
+-rw-r--r-- 1 root root 75043 Nov  4 19:53 /root/celikpanel-install.sh
+ls: cannot access '/opt/celikpanel': No such file or directory
+ls: cannot access '/etc/celikpanel': No such file or directory
+running
+== d12
+PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"
+6.1.0-54-cloud-amd64
+systemd 252 (252.39-1~deb12u2)
+drwxr-xr-x 755 root:root links=25 /run/systemd
+srwx------ 700 root:root links=1 /run/systemd/private
+-rw-r--r-- 1 root root 75043 Nov  4 19:52 /root/celikpanel-install.sh
+/etc/celikpanel
+/opt/celikpanel
+running

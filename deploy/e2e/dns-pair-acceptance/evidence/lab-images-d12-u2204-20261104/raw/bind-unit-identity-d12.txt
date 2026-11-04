@@ -1,0 +1,42 @@
+Id=named.service
+Names=named.service
+LoadState=loaded
+FragmentPath=/lib/systemd/system/named.service
+UnitFileState=disabled
+Id=bind9.service
+LoadState=not-found
+FragmentPath=
+/lib/systemd
+/lib/systemd/system
+/lib/systemd/system/named-resolvconf.service
+/lib/systemd/system/named.service
+ls: cannot access '/etc/systemd/system/bind9.service': No such file or directory
+ls: cannot access '/etc/systemd/system/named.service': No such file or directory
+lrwxrwxrwx 1 root root   7 Oct 26 04:42 /lib -> usr/lib
+-rw-r--r-- 1 root root 376 Oct 13 19:41 /lib/systemd/system/named.service
+-rw-r--r-- 1 root root 376 Oct 13 19:41 /usr/lib/systemd/system/named.service
+/usr/lib/systemd/system/named.service
+bind9: /lib/systemd/system/named.service
+dpkg-query: no path found matching pattern /usr/lib/systemd/system/named.service
+[Unit]
+Description=BIND Domain Name Server
+Documentation=man:named(8)
+After=network.target
+Wants=nss-lookup.target
+Before=nss-lookup.target
+
+[Service]
+Type=notify
+EnvironmentFile=-/etc/default/named
+ExecStart=/usr/sbin/named -f $OPTIONS
+ExecReload=/usr/sbin/rndc reload
+ExecStop=/usr/sbin/rndc stop
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+Alias=bind9.service
+ExecStart={ path=/usr/sbin/named ; argv[]=/usr/sbin/named -f $OPTIONS ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }
+SourcePath=
+DropInPaths=
+Transient=no

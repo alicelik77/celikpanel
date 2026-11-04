@@ -359,6 +359,32 @@ Cookies, CSRF-like headers, passwords, license keys, tokens and private keys are
 redacted before capture; a registered secret that survives redaction aborts
 the write. `evidence.verify_sums(<dir>)` re-hashes a run.
 
+## Beta 1 lab images (`beta1/lab.py`)
+
+The Beta 1 lab (`beta1/lab.py`, `beta1/beta1.py`) boots official cloud images
+as read-only qcow2 backing files from `/var/tmp/cp-v3n28/images` (mode 0444)
+with a per-node overlay, a NoCloud seed (user `celik`, lab network, lab
+resolver, no package upgrade) and the lab bridge. Nothing is baked into the
+images; every guest prerequisite comes from cloud-init and `beta1.py provision`.
+
+| `--os` | File | Source | Verified |
+|---|---|---|---|
+| `debian13` | `debian-13-genericcloud-amd64-20260826-2582.qcow2` | cloud.debian.org trixie/20260826-2582 | SHA-512 pin |
+| `debian12` | `debian-12-genericcloud-amd64-20261026-2643.qcow2` (334 MiB) | cloud.debian.org bookworm/20261026-2643 | SHA-512 from that build's `SHA512SUMS` (Debian publishes no signature for it; HTTPS only) |
+| `ubuntu2404` | `ubuntu-24.04-server-cloudimg-amd64-20260826.img` | cloud-images.ubuntu.com noble/release-20260826 | SHA-256 pin |
+| `ubuntu2204` | `ubuntu-22.04-server-cloudimg-amd64-20261020.img` (697 MiB; upstream name without the date) | cloud-images.ubuntu.com jammy/release-20261020 | SHA-256 from `SHA256SUMS`, whose `SHA256SUMS.gpg` verified against the Ubuntu cloud image key `D2EB44626FDDC30B513D5BB71A5D6C4C7DB87C81` |
+| `arch` | `Arch-Linux-x86_64-cloudimg-20260815.573966.qcow2` | `../dns-kill-matrix/images.lock.json` | SHA-256 pin |
+
+To add one: download into a new empty directory under the image root, check
+the digest (and signature where the distribution publishes one), move it in,
+`chmod 0444`, add the pin to `IMAGE_FILES`, delete the download directory.
+PowerDNS as the setup's main DNS engine is accepted only on Debian 13 and
+Arch; on the other images run setup with BIND.
+
+First use (alpha.121, 2026-11-04): the Ubuntu 22.04 install is refused (systemd 249's
+private socket is 0777) and Debian 12 setup pauses at BIND activation (`named.service`
+under `/lib/systemd/system`); see `evidence/lab-images-d12-u2204-20261104/SUMMARY.md`.
+
 ## Running on the `archlinux` WSL host
 
 All commands are scripts (no inline `$`). From Windows PowerShell:

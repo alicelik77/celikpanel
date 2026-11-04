@@ -52,6 +52,14 @@ IMAGE_FILES = {
                  "184761b0dad0f9ace02f9298050ca96ce3caa39a461a47706d47ff9698b59933918b91b40177fbd4d392f6446af8b4d18ecb94caca988169b19641606bf34003"),
     "ubuntu2404": ("ubuntu-24.04-server-cloudimg-amd64-20260826.img", "qcow2", "sha256",
                    "d0fe84bb5f80853425fa6be28e2c106f30104c3cfe8611933f2e65c9b63f0e30"),
+    # Older supported releases (added 2026-11-04; see ../README.md "Beta 1 lab images").
+    # cloud.debian.org/images/cloud/bookworm/20261026-2643/ (SHA512SUMS, unsigned there; fetched over HTTPS).
+    "debian12": ("debian-12-genericcloud-amd64-20261026-2643.qcow2", "qcow2", "sha512",
+                 "0464b5d4ae3aa4f658468d88da83af7857b71548b30d46dcb6282770955a747fb95a983476db90d25afd0653af607224c7ebd05122ab71faa106fd712aaad652"),
+    # cloud-images.ubuntu.com/releases/jammy/release-20261020/ubuntu-22.04-server-cloudimg-amd64.img, renamed with
+    # the build date like the 24.04 image (SHA256SUMS signed by D2EB44626FDDC30B513D5BB71A5D6C4C7DB87C81).
+    "ubuntu2204": ("ubuntu-22.04-server-cloudimg-amd64-20261020.img", "qcow2", "sha256",
+                   "2099e63da0b822ef8e05e3d596c1b402eaaae658fc08ab919cb8495bfcdc488b"),
     # The kill matrix's pinned official image (../../dns-kill-matrix image lock).
     "arch": ("Arch-Linux-x86_64-cloudimg-20260815.573966.qcow2", "qcow2", "sha256",
              "5d8be8d28cfd290f051b0f67df0a6874596ad23de3f3f18b90c91aeb758eb878"),
