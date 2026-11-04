@@ -1,0 +1,35 @@
+== R3n8n 03:43:02 subN=5
+node 24.22.2
+202 {"operation": {"id": "b137b1a6007ece9dd573498d78ccd212", "kind": "runtime_install", "package_name": "24.22.2", "phase": "queued", "request_id": "302e135411f2db66e873d7e0bc2a9f6a", "service_id": "node", "started_at": "2026-11-04T03:43:01.695775229Z", "status": "queued"}}
+  op 302e135411f2db66e873d7e0bc2a9f6a: succeeded completed "" (03:43:12)
+-- offer n8n
+200 [('n8n', True, True, None)]
+n8n119.test id=6
+-- install n8n 03:43:14
+202 {"operation": {"created_at": "2026-11-04 03:43:13", "id": "d0d9f7d03ce632496dcbfec8b5c4a107", "install_id": 1, "kind": "install", "state": "running", "step": "prepare", "updated_at": "2026-11-04 03:43:13"}}
+  03:43:14 install=installing active=False serving=False unit=celiksvc-1 url=https://n8n119.test/ | op=running step=prepare class=None reason=None msg= | suspended=False cert=true
+  03:43:29 install=installing active=False serving=False unit=celiksvc-1 url=https://n8n119.test/ | op=running step=installing class=None reason=None msg= | suspended=False cert=true
+  03:52:04 install=installing active=True serving=False unit=celiksvc-1 url=https://n8n119.test/ | op=running step=verify class=None reason=None msg= | suspended=False cert=true
+  03:52:19 install=running active=True serving=True unit=celiksvc-1 url=https://n8n119.test/ | op=succeeded step=done class=None reason=None msg= | suspended=False cert=true
+## 03:52:39 units
+  celiksvc-1.service loaded active running CelikPanel service app n8n for n8n119.test
+## celiksvc-1.service active=active enabled=enabled pid=57306
+## listeners 21000-29999
+127.0.0.1:21001 users:(("n8n
+127.0.0.1:21000 users:(("n8n
+## env (hardening, no secrets)
+## journal: native modules / errors
+## journal tail
+Nov 04 03:52:14 frankfurt node[57306]: Version: 2.46.4
+Nov 04 03:52:14 frankfurt node[57306]: Building workflow dependency index...
+Nov 04 03:52:14 frankfurt node[57306]: Scheduler started
+Nov 04 03:52:14 frankfurt node[57306]: Finished building workflow dependency index. Processed 0 draft workflows, 0 published workflows.
+Nov 04 03:52:14 frankfurt node[57306]: Editor is now accessible via:
+Nov 04 03:52:14 frankfurt node[57306]: https://n8n119.test
+https n8n119.test/ http 200 verify=0 title: n8n.io - Workflow Automation bytes=1708
+executeCommand mentions: 0
+https n8n119.test/types/nodes.json http 401 verify=0 title:  bytes=43
+executeCommand mentions: 0
+-- owner login
+n8n login http 200 user: owner@n8n119.test global:owner cookie: True
+== R3n8n run-check done 03:52:41

@@ -1,0 +1,32 @@
+domain: py119.test; sandbox level: full gaps: []
+python kind: {"kind": "python", "implemented": true, "offering_id": "component:python:3.13", "offered": true, "permission_granted": true, "held": false, "risk": {"can_do": ["any_code", "own_folder", "loopback_port", "own_outbound", "pypi_packages"], "blocked": ["other_sites", "panel_files", "privileges", "mail_ports", "metadata", "other_ports"], "network": ["https_only", "outbound_open"], "remains": ["outbound_abuse", "mail_apis", "cpu_memory_share", "reduced_level", "customer_code", "pypi_third_party", "interpreter_exec"]}, "limits": {"memory_mb": 512, "cpu_percent": 100, "tasks_max": 256}, "accepted_level": "full", "accepted_gaps": [], "python": {"minor": "3.13", "ready": true, "packages": ["python3", "python3-venv"], "max_workers": 4, "source_builds": false}}
+created: {"id":3,"port":30002}
+app 3: unit celikrt-3.service, port 30002, folder /var/www/celikpanel/subscriptions/4/sites/3/app
+uploaded as py119_test: /var/www/celikpanel/subscriptions/4/sites/3/app/src/probe.py, wsgi_probe.py
+deploy accepted: operation probe-1793763473-r1a94f7e4fab1
+  step: build (running)
+  step: proof (running)
+  step: done (succeeded)
+deploy succeeded: https://py119.test/ serves the probe
+
+== runtime app escape matrix (app 3 on py119.test) ==
+item 1: PASS
+item 2: PASS
+item 3: PASS
+item 4: PASS
+item 5: PASS
+item 6: PASS
+item 7: PASS
+item 8: PASS
+item 9: PASS
+item 10: PASS
+item 12: PASS
+item 13: PASS
+item 14: PASS - exec skipped: the python kind runs its interpreter
+item 15: PASS
+item 16: PASS
+item env: PASS
+item log: PASS
+item 9 counter: +9 rejects
+items 11 and 17 (load limits, reboot, table removal) are run.sh's; not run here
+PASS

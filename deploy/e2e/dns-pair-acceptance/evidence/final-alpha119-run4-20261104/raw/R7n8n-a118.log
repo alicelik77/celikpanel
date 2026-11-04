@@ -1,0 +1,89 @@
+== R7n8n 03:43:02
+14:NID=$(cat $T/nid); echo "n8n119.test id=$NID"
+28:NID=$(cat $T/nid)
+== R3n8n 03:43:02 subN=5
+node 24.22.2
+202 {"operation": {"id": "b137b1a6007ece9dd573498d78ccd212", "kind": "runtime_install", "package_name": "24.22.2", "phase": "queued", "request_id": "302e135411f2db66e873d7e0bc2a9f6a", "service_id": "node", "started_at": "2026-11-04T03:43:01.695775229Z", "status": "queued"}}
+  op 302e135411f2db66e873d7e0bc2a9f6a: succeeded completed "" (03:43:12)
+-- offer n8n
+200 [('n8n', True, True, None)]
+n8n119.test id=6
+-- install n8n 03:43:14
+202 {"operation": {"created_at": "2026-11-04 03:43:13", "id": "d0d9f7d03ce632496dcbfec8b5c4a107", "install_id": 1, "kind": "install", "state": "running", "step": "prepare", "updated_at": "2026-11-04 03:43:13"}}
+  03:43:14 install=installing active=False serving=False unit=celiksvc-1 url=https://n8n119.test/ | op=running step=prepare class=None reason=None msg= | suspended=False cert=true
+  03:43:29 install=installing active=False serving=False unit=celiksvc-1 url=https://n8n119.test/ | op=running step=installing class=None reason=None msg= | suspended=False cert=true
+  03:52:04 install=installing active=True serving=False unit=celiksvc-1 url=https://n8n119.test/ | op=running step=verify class=None reason=None msg= | suspended=False cert=true
+  03:52:19 install=running active=True serving=True unit=celiksvc-1 url=https://n8n119.test/ | op=succeeded step=done class=None reason=None msg= | suspended=False cert=true
+## 03:52:39 units
+  celiksvc-1.service loaded active running CelikPanel service app n8n for n8n119.test
+## celiksvc-1.service active=active enabled=enabled pid=57306
+## listeners 21000-29999
+127.0.0.1:21001 users:(("n8n
+127.0.0.1:21000 users:(("n8n
+## env (hardening, no secrets)
+## journal: native modules / errors
+## journal tail
+Nov 04 03:52:14 frankfurt node[57306]: Version: 2.46.4
+Nov 04 03:52:14 frankfurt node[57306]: Building workflow dependency index...
+Nov 04 03:52:14 frankfurt node[57306]: Scheduler started
+Nov 04 03:52:14 frankfurt node[57306]: Finished building workflow dependency index. Processed 0 draft workflows, 0 published workflows.
+Nov 04 03:52:14 frankfurt node[57306]: Editor is now accessible via:
+Nov 04 03:52:14 frankfurt node[57306]: https://n8n119.test
+https n8n119.test/ http 200 verify=0 title: n8n.io - Workflow Automation bytes=1708
+executeCommand mentions: 0
+https n8n119.test/types/nodes.json http 401 verify=0 title:  bytes=43
+executeCommand mentions: 0
+-- owner login
+n8n login http 200 user: owner@n8n119.test global:owner cookie: True
+== R3n8n run-check done 03:52:41
+## 03:52:41 celiksvc-1.service active=active
+# celikpanel-sandbox-generation: 3
+After=network-online.target
+Requires=celikpanel-sandbox@celiksvc-1.service
+After=celikpanel-sandbox@celiksvc-1.service
+EnvironmentFile=/etc/celikpanel-svcapps/celiksvc-1.env
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+BindPaths=/run/celikpanel-sandbox/celiksvc-1.service/app:/var/www/celikpanel/subscriptions/5/sites/6/apps/n8n
+IPAddressDeny=169.254.0.0/16 fe80::/10 fd00:ec2::254/128 100.100.100.200/32
+SocketBindAllow=tcp:21000
+SocketBindAllow=tcp:21001
+SocketBindDeny=any
+# celikpanel-sandbox-generation: 3
+## bind unit: celikpanel-sandbox@celiksvc-1.service active=active
+total 0
+drwx------  5 root root 100 Nov  4 03:51 .
+drwxr-xr-x 33 root root 900 Nov  4 03:52 ..
+drwx------  3 root root  60 Nov  4 03:36 celikrt-2.service
+drwx------  3 root root  60 Nov  4 03:38 celikrt-3.service
+drwx------  3 root root  60 Nov  4 03:51 celiksvc-1.service
+/etc/celikpanel-svcapps root:root 700
+/etc/celikpanel-svcapps/celiksvc-1.env root:root 600
+## egress table
+table inet celikpanel_egress {
+	set smtp_blocked {
+		typeof socket cgroupv2 level 0
+		elements = { "system.slice/celikrt-2.service",
+			     "system.slice/celikrt-3.service",
+			     14055,
+			     "system.slice/celiksvc-1.service" }
+	}
+}
+	counter smtp_rejects {
+	set smtp_blocked {
+		tcp dport { 25, 465, 587 } socket cgroupv2 level 2 @smtp_blocked counter name "smtp_rejects" reject with tcp reset
+		iifname != "lo" tcp flags & (fin | syn | rst | ack) == syn socket cgroupv2 level 2 @smtp_blocked drop
+## cgroup /sys/fs/cgroup/system.slice/celiksvc-1.service
+## SMTP attempts from a helper process placed in the unit's cgroup (lab check)
+  smtp 127.0.0.1 25 refused: ConnectionRefusedError [Errno 111] Connection refused
+  smtp 127.0.0.1 465 refused: ConnectionRefusedError [Errno 111] Connection refused
+  smtp 127.0.0.1 587 refused: ConnectionRefusedError [Errno 111] Connection refused
+  smtp 192.0.2.25 25 refused: ConnectionRefusedError [Errno 111] Connection refused
+  smtp 192.0.2.25 465 refused: ConnectionRefusedError [Errno 111] Connection refused
+  smtp 192.0.2.25 587 refused: ConnectionRefusedError [Errno 111] Connection refused
+  smtp 1.1.1.1 25 refused: ConnectionRefusedError [Errno 111] Connection refused
+  smtp 1.1.1.1 465 refused: ConnectionRefusedError [Errno 111] Connection refused
+  smtp 1.1.1.1 587 refused: ConnectionRefusedError [Errno 111] Connection refused
+	counter smtp_rejects {
+		tcp dport { 25, 465, 587 } socket cgroupv2 level 2 @smtp_blocked counter name "smtp_rejects" reject with tcp reset
+  admin sandbox: {"busy": false, "edited": 0, "egress_file": "managed_unchanged", "egress_loaded": true, "gaps": [], "guard_timer": "active", "known": true, "level": "full", "needs_refresh": 0, "running": 0, "smtp_rejects": 27, "systemd_version": 257}
+== R7n8n done 03:52:42

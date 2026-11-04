@@ -1,0 +1,73 @@
+== R8arch 03:42:05
+200 {"id": 3, "rights": "unlimited", "success": true}
+flaskc.test id=2
+200 {"expires_at": "2031-11-04T03:42:12Z", "status": "success"}
+200 {"distribution": "arch", "installs": [], "notable": [], "refusals": [], "removes": [], "requested": [], "state": "known"}
+202 {"operation": {"id": "11ce33197c50c6a845b152c658ab2dfe", "kind": "service_install", "phase": "queued", "request_id": "96b94c4dd27e4c4f37249acaaf176e94", "service_id": "python", "started_at": "2026-11-04T03:42:28.891423949Z", "status": "queued"}}
+  op 96b94c4dd27e4c4f37249acaaf176e94: succeeded completed "" (03:42:39)
+  sandbox {"gaps": [], "known": true, "level": "full"}
+  kind {"kind": "program", "offering_id": "runtime:program", "offered": false, "python": null, "level_gap": false}
+  kind {"kind": "python", "offering_id": "component:python:3.14", "offered": false, "python": {"max_workers": 4, "minor": "3.14", "packages": ["python"], "ready": true, "source_builds": false}, "level_gap": false}
+200 [('program', 'runtime:program', False), ('python', 'component:python:3.14', True)]
+## /var/www/celikpanel/subscriptions/3/sites/2/app/src (flask)
+total 8
+drwxr-xr-x 1 flaskc_test flaskc_test  44 Nov  4 03:42 .
+drwxr-xr-x 1 flaskc_test flaskc_test   6 Nov  4 03:42 ..
+-rw-r--r-- 1 flaskc_test flaskc_test 106 Nov  4 03:42 app.py
+-rw-r--r-- 1 flaskc_test flaskc_test  13 Nov  4 03:42 requirements.txt
+flask==3.1.2
+201 {"id": 1, "port": 30000}
+202 {"operation": {"app_id": 1, "created_at": "2026-11-04 03:42:40", "id": "dep-dbd83debc26ef49b", "kind": "deploy", "state": "running", "step": "validate", "updated_at": "2026-11-04 03:42:40"}}
+  deploy: dep-dbd83debc26ef49b succeeded done None 
+lab flask app ok
+Python 3.14.9
+https flaskc.test/ http 200 verify=0 title:  bytes=17
+executeCommand mentions: 0
+== uploaded program via panel-runtime.sh (item 9 from the real app) 03:43:02
+progc.test id=3
+200 {"expires_at": "2031-11-04T03:43:08Z", "status": "success"}
+offer program 200 
+rc=2
+/root/kit/deploy/e2e/sandbox-escape/prt.sh: line 6: hostname: command not found
+curl: (3) URL rejected: No host present
+panel-runtime: the panel did not answer at https://:1923
+== run.sh quick (both probes + item 18) 03:43:10
+{
+  "assessment": {
+    "level": "full",
+    "gaps": [],
+    "extras": [
+      "private_pids",
+      "strict_control_groups"
+    ]
+  },
+  "caps": {
+    "systemd_version": 262,
+    "bpf_framework": true,
+    "cgroup_v2": true,
+    "nft_socket_cgroupv2": true
+  }
+}
+sandbox level: full (egress enforced: 1)
+== site sandbox escape matrix (level: full) ==
+item 1: PASS
+item 2: PASS
+item 3: PASS
+item 4: PASS
+item 5: PASS
+item 6: PASS
+item 7: PASS
+item 8: PASS
+item 9: PASS
+item 10: PASS
+item 11: SKIP — not run in quick mode
+item 12: PASS
+item 13: PASS
+item 14: PASS — python exec skipped: the python kind runs its interpreter
+item 15: PASS
+item 16: PASS
+item 17: SKIP — not run in quick mode
+item 18: PASS
+SKIP is not a failure, but these items were not judged: 11 17 (each names its reason above)
+PASS
+== R8arch done 03:45:01

@@ -1,0 +1,16 @@
+== after the broken redeploy 03:38:14
+flask https 502
+<html> <head><title>502 Bad Gateway</title></head> <body> <center><h1>502 Bad Gateway</h1></center> <hr><center>nginx</center> </body> </html> 
+activating
+{ path=/var/www/celikpanel/subscriptions/4/sites/4/app/venv-1/bin/python ; argv[]=/var/www/celikpanel/subscriptions/4/sites/4/app/venv-1/bin/python -m gunicorn --bind 127.0.0.1:30000 --workers 1 app:app ; ignore_errors=no ; start_time=[Wed 2026-11-04 03:38:08 UTC] ; stop_time=[Wed 2026-11-04 03:38:0
+  app state failed active activating serving False states ['not_listening']
+    2026-11-04T03:38:08+00:00 frankfurt python[53270]:     raise RuntimeError("lab: this module is broken on purpose")
+    2026-11-04T03:38:08+00:00 frankfurt python[53270]: RuntimeError: lab: this module is broken on purpose
+    2026-11-04T03:38:08+00:00 frankfurt python[53270]: lab: this module is broken on purpose
+    2026-11-04T03:38:08+00:00 frankfurt python[53270]: [2026-11-04 03:38:08 +0000] [2] [INFO] Worker exiting (pid: 2)
+    2026-11-04T03:38:08+00:00 frankfurt python[53262]: [2026-11-04 03:38:08 +0000] [1] [INFO] Control socket listening at /var/www/celikpanel/subscriptions/4/sites/4/app/data/.gunicorn/gunicorn.ctl
+    2026-11-04T03:38:08+00:00 frankfurt python[53262]: [2026-11-04 03:38:08 +0000] [1] [ERROR] Worker (pid:2) exited with code 3.
+    2026-11-04T03:38:08+00:00 frankfurt python[53262]: [2026-11-04 03:38:08 +0000] [1] [ERROR] Shutting down: Master
+    2026-11-04T03:38:08+00:00 frankfurt python[53262]: [2026-11-04 03:38:08 +0000] [1] [ERROR] Reason: Worker failed to boot.
+    2026-11-04T03:38:09+00:00 frankfurt systemd[1]: celikrt-1.service: Main process exited, code=exited, status=3/NOTIMPLEMENTED
+    2026-11-04T03:38:09+00:00 frankfurt systemd[1]: celikrt-1.service: Failed with result 'exit-code'.

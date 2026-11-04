@@ -1,0 +1,97 @@
+== R8py 03:36:02
+200 {"distribution": "debian", "installs": ["python3.13", "libpython3.13-stdlib", "python3.13-minimal", "libpython3.13-minimal", "python3-pip-whl", "python3-setuptools-whl", "python3.13-venv", "python3-venv"], "notable": [{"from": "3.13.5-2+deb13u4", "package": "libpython3.13-minimal", "point_update": true, "reason": "upgrade", "to": "3.13.5-2+deb13u5"}, {"from": "3.13.5-2+deb13u4", "package": "libpython3.13-stdlib", "point_update": true, "reason": "upgrade", "to": "3.13.5-2+deb13u5"}, {"from": "3.13.5-2+deb13u4", "package": "python3.13", "point_update": true, "reason": "upgrade", "to": "3.13.5-2+
+confirming: ["libpython3.13-minimal", "libpython3.13-stdlib", "python3.13", "python3.13-minimal"]
+202 {"operation": {"id": "b4ad127d56be67be6d2a892d3aff7ed4", "kind": "service_install", "phase": "queued", "request_id": "ba9d6591258ba77670fcc6e023d6e5c8", "service_id": "python", "started_at": "2026-11-04T03:36:03.700159445Z", "status": "queued"}}
+  op ba9d6591258ba77670fcc6e023d6e5c8: succeeded completed "" (03:36:24)
+-- offer component:python
+200 [('program', 'runtime:program', False, None), ('python', 'component:python:3.13', True, True)]
+== Flask app from wheels 03:36:25
+## /var/www/celikpanel/subscriptions/4/sites/4/app/src (flask)
+total 16
+drwxr-xr-x 2 flask119_test flask119_test 4096 Nov  4 03:36 .
+drwxr-xr-x 3 flask119_test flask119_test 4096 Nov  4 03:36 ..
+-rw-r--r-- 1 flask119_test flask119_test  106 Nov  4 03:36 app.py
+-rw-r--r-- 1 flask119_test flask119_test   13 Nov  4 03:36 requirements.txt
+flask==3.1.2
+201 {"id": 1, "port": 30000}
+202 {"operation": {"app_id": 1, "created_at": "2026-11-04 03:36:25", "id": "dep-91e0193769e9ea41", "kind": "deploy", "state": "running", "step": "validate", "updated_at": "2026-11-04 03:36:25"}}
+  deploy dep-91e0193769e9ea41: dep-91e0193769e9ea41 succeeded done (03:36:46)
+  app 1 python running python {"callable": "app:app", "server": "wsgi", "workers": 1} status {"active_state": "active", "serving": true, "health": {"checked": false, "ok": false}, "level": "full", "gaps": null, "sandbox_generation": 3}
+  op {"id": "dep-91e0193769e9ea41", "kind": "deploy", "state": "succeeded", "step": "done", "class": null, "reason": null, "message": null}
+https flask119.test/ http 200 verify=0 title:  bytes=17
+executeCommand mentions: 0
+lab flask app ok
+== FastAPI (asgi) 03:36:47
+## /var/www/celikpanel/subscriptions/4/sites/5/app/src (fastapi)
+total 16
+drwxr-xr-x 2 fast119_test fast119_test 4096 Nov  4 03:36 .
+drwxr-xr-x 3 fast119_test fast119_test 4096 Nov  4 03:36 ..
+-rw-r--r-- 1 fast119_test fast119_test  109 Nov  4 03:36 main.py
+-rw-r--r-- 1 fast119_test fast119_test   17 Nov  4 03:36 requirements.txt
+fastapi==0.115.6
+201 {"id": 2, "port": 30001}
+202 {"operation": {"app_id": 2, "created_at": "2026-11-04 03:36:47", "id": "dep-01f9101476e411ba", "kind": "deploy", "state": "running", "step": "validate", "updated_at": "2026-11-04 03:36:47"}}
+  deploy dep-01f9101476e411ba: dep-01f9101476e411ba succeeded done (03:37:09)
+  app 2 python running python {"callable": "main:app", "server": "asgi", "workers": 1} status {"active_state": "active", "serving": true, "health": {"checked": false, "ok": false}, "level": "full", "gaps": null, "sandbox_generation": 3}
+  op {"id": "dep-01f9101476e411ba", "kind": "deploy", "state": "succeeded", "step": "done", "class": null, "reason": null, "message": null}
+{"lab":"fastapi app ok"}https fast119.test/ http 200 verify=0 title:  bytes=24
+executeCommand mentions: 0
+== Flask redeploy with a broken module (expect fallback to the previous environment) 03:37:10
+## /var/www/celikpanel/subscriptions/4/sites/4/app/src (flask-broken)
+total 20
+drwxr-xr-x 3 flask119_test flask119_test 4096 Nov  4 03:36 .
+drwxr-xr-x 7 flask119_test flask119_test 4096 Nov  4 03:36 ..
+drwx------ 2 flask119_test flask119_test 4096 Nov  4 03:36 __pycache__
+-rw-r--r-- 1 flask119_test flask119_test   60 Nov  4 03:37 app.py
+-rw-r--r-- 1 flask119_test flask119_test   13 Nov  4 03:36 requirements.txt
+flask==3.1.2
+/var/www/celikpanel/subscriptions/4/sites/4/app/venv-1
+202 {"operation": {"app_id": 1, "created_at": "2026-11-04 03:37:10", "id": "dep-036c29e1b2a3f9cd", "kind": "deploy", "state": "running", "step": "validate", "updated_at": "2026-11-04 03:37:10"}}
+  deploy dep-036c29e1b2a3f9cd: dep-036c29e1b2a3f9cd failed proof (03:37:52)
+  app 1 python failed python {"callable": "app:app", "server": "wsgi", "workers": 1} status {"active_state": "activating", "serving": false, "health": {"checked": false, "ok": false}, "level": "full", "gaps": null, "sandbox_generation": 3}
+  op {"id": "dep-036c29e1b2a3f9cd", "kind": "deploy", "state": "failed", "step": "proof", "class": "verified_failure", "reason": "start_failed", "message": "the program stopped while starting (exit-code); its log shows why. The app was put back on its previous environment (venv-1) and restarted; the code in app/src is what you uploaded"}
+<html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+
+/var/www/celikpanel/subscriptions/4/sites/4/app/venv-1
+/var/www/celikpanel/subscriptions/4/sites/4/app/venv-2
+== wsgi probe via panel-runtime.sh KIND=python (full matrix) 03:37:52
+rc=0
+domain: py119.test; sandbox level: full gaps: []
+python kind: {"kind": "python", "implemented": true, "offering_id": "component:python:3.13", "offered": true, "permission_granted": true, "held": false, "risk": {"can_do": ["any_code", "own_folder", "loopback_port", "own_outbound", "pypi_packages"], "blocked": ["other_sites", "panel_files", "privile
+created: {"id":3,"port":30002}
+app 3: unit celikrt-3.service, port 30002, folder /var/www/celikpanel/subscriptions/4/sites/3/app
+uploaded as py119_test: /var/www/celikpanel/subscriptions/4/sites/3/app/src/probe.py, wsgi_probe.py
+deploy accepted: operation probe-1793763473-r1a94f7e4fab1
+  step: build (running)
+  step: proof (running)
+  step: done (succeeded)
+deploy succeeded: https://py119.test/ serves the probe
+
+== runtime app escape matrix (app 3 on py119.test) ==
+item 1: PASS
+item 2: PASS
+item 3: PASS
+item 4: PASS
+item 5: PASS
+item 6: PASS
+item 7: PASS
+item 8: PASS
+item 9: PASS
+item 10: PASS
+item 12: PASS
+item 13: PASS
+item 14: PASS - exec skipped: the python kind runs its interpreter
+item 15: PASS
+item 16: PASS
+item env: PASS
+item log: PASS
+item 9 counter: +9 rejects
+items 11 and 17 (load limits, reboot, table removal) are run.sh's; not run here
+PASS
+== R8py done 03:38:39

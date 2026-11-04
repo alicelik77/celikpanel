@@ -1,0 +1,32 @@
+domain: progc.test; sandbox level: full gaps: []
+program kind: {"kind": "program", "implemented": true, "offering_id": "runtime:program", "offered": true, "permission_granted": true, "held": false, "risk": {"can_do": ["any_code", "own_folder", "loopback_port", "own_outbound"], "blocked": ["other_sites", "panel_files", "privileges", "mail_ports", "metadata", "other_ports", "system_interpreters"], "network": ["https_only", "outbound_open"], "remains": ["outbound_abuse", "mail_apis", "cpu_memory_share", "reduced_level", "customer_code"]}, "limits": {"memory_mb": 512, "cpu_percent": 100, "tasks_max": 256}, "accepted_level": "full", "accepted_gaps": []}
+created: {"id":2,"port":30001}
+app 2: unit celikrt-2.service, port 30001, folder /var/www/celikpanel/subscriptions/3/sites/3/app
+uploaded as progc_test: /var/www/celikpanel/subscriptions/3/sites/3/app/bin/goprobe
+deploy accepted: operation probe-1793763917-rb2330f084679
+  step: restart (running)
+  step: done (succeeded)
+deploy succeeded: https://progc.test/ serves the probe
+
+== runtime app escape matrix (app 2 on progc.test) ==
+item 1: PASS
+item 2: PASS
+item 3: PASS
+item 4: PASS
+item 5: PASS
+item 6: PASS
+item 7: PASS
+item 8: PASS
+item 9: PASS
+item 10: PASS
+item 12: PASS
+item 13: PASS
+item 14: PASS
+item 15: PASS
+item 16: PASS
+item env: PASS
+item log: PASS
+item 9 counter: +9 rejects
+item 1: OTHER_SITE_FILE not set, so the probe reads the run.sh default path (a missing file is not proof)
+items 11 and 17 (load limits, reboot, table removal) are run.sh's; not run here
+PASS

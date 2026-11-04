@@ -1,0 +1,42 @@
+== run.sh matrix on a118 03:38:58
+{
+  "assessment": {
+    "level": "full",
+    "gaps": [],
+    "extras": [
+      "private_pids",
+      "strict_control_groups"
+    ]
+  },
+  "caps": {
+    "systemd_version": 257,
+    "bpf_framework": true,
+    "cgroup_v2": true,
+    "nft_socket_cgroupv2": true
+  }
+}
+sandbox level: full (egress enforced: 1)
+removing inet celikpanel_egress (what 'nft flush ruleset' does to it); the guard must restore it within 45 s
+item 10: SKIP - the host firewall drops the veth traffic before the sandbox's own rule (the reference listener is unreachable too)
+== site sandbox escape matrix (level: full) ==
+item 1: PASS
+item 2: PASS
+item 3: PASS
+item 4: PASS
+item 5: PASS
+item 6: PASS
+item 7: PASS
+item 8: PASS
+item 9: PASS
+item 10: SKIP — inconclusive, not a failure: this host's own firewall dropped both the sandboxed 0.0.0.0 listener and the reference listener outside the sandbox, so the egress table's input rule could not be seen. The bind attempts of item 10 were judged as usual. To judge the rule, run on a lab VM whose firewall accepts 10.250.250.0/30 on celiksbxh
+item 11: PASS
+item 12: PASS
+item 13: PASS
+item 14: PASS — python exec skipped: the python kind runs its interpreter
+item 15: PASS
+item 16: PASS
+item 17: PASS
+item 18: PASS
+SKIP is not a failure, but these items were not judged: 10 (each names its reason above)
+PASS
+== run.sh done 03:42:48
