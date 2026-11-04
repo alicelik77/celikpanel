@@ -94,16 +94,41 @@ tools are never a right.
 - Go and Rust are the distribution's versions, which can be older than the
   newest release (Debian 12: Go 1.19, Ubuntu 22.04: Go 1.18).
 - When a Python deploy fails, the rollback restores the previous environment,
-  not the code in `app/src`.
+  not the code in `app/src`. If the uploaded code itself is broken, the site
+  stops answering until working code is uploaded again; the screen says so.
+  Keep a copy of the previous code.
+- A program that ignores the stop signal can take up to 30 seconds to stop.
+- The lab tested Debian 13, Ubuntu 24.04 (update from alpha.118) and Arch.
+  Debian 12 and Ubuntu 22.04 were not tried on a real system in this release.
 
 ## Evidence
 
 Integrated tree (`release/alpha119`): Go build, vet and gofmt clean; the
 `internal` and `cmd/panel` suites pass; the Agent suite shows only the 19
 known guest-only DNS and mail failures that also fail on alpha.118, none new;
-2412 web tests pass, the guide's generated files match their sources, and the
+2424 web tests pass, the guide's generated files match their sources, and the
 build stays within the bundle budgets; release-recovery fixtures extended to
 schema 63; download portal and release sequence contracts pass (118 → 119).
-Lab round on the five supported systems: pending.
 
-<!-- LAB -->
+Lab (QEMU guests, branch `lab/alpha114-acceptance`, commit `792b8a58f`, evidence
+`final-alpha119-run1..run4-20261104`). Rounds 1–3 stopped at Python build
+defects that are fixed above. Round 4 on the final candidate passed:
+
+- Debian 13 fresh install: Flask over HTTPS and FastAPI from ready-made
+  packages; a broken redeploy went back to the previous environment as
+  documented; n8n installed and running on the new sandbox with owner login;
+  stopping a never-deployed program answers plainly.
+- Escape tests, uploaded Go program and Python app, Debian 13: every attempt was
+  refused. That includes reading other sites and root files, the panel's
+  sockets, privilege changes, other processes, raw sockets, mail ports 25, 465
+  and 587 (to the internet and to the server's own mail), cloud metadata, writes
+  outside the app folder, and swapping the app folder for a link. Binding
+  another port was not judged: the host firewall drops both listeners.
+- Arch fresh install: Python 3.14 Flask; uploaded program with the mail-port and
+  folder-link tests refused.
+- Earlier rounds on this code: the guide and first-login tour, Go for the
+  administrator only, an uploaded program deployed, suspended, resumed and
+  removed; Ubuntu 24.04 updated from alpha.118 in 61 seconds, and n8n moved to
+  the new sandbox with "Apply the new sandbox", after which its mail ports were
+  refused.
+- Not run: Debian 12, Ubuntu 22.04 (no lab image), rollback.

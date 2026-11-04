@@ -96,16 +96,41 @@ değildir.
 - Go ve Rust dağıtımın sürümleridir; en yeni sürümden eski olabilirler
   (Debian 12: Go 1.19, Ubuntu 22.04: Go 1.18).
 - Bir Python yayımlaması başarısız olursa geri alma önceki ortamı geri koyar,
-  `app/src` içindeki kodu değil.
+  `app/src` içindeki kodu değil. Yüklenen kodun kendisi bozuksa site, çalışan kod
+  yeniden yüklenene kadar yanıt vermez; ekran bunu söyler. Önceki kodun bir
+  kopyasını saklayın.
+- Durdurma sinyalini yok sayan bir program 30 saniyeye kadar geç durabilir.
+- Laboratuvar Debian 13, Ubuntu 24.04 (alpha.118'den güncelleme) ve Arch'ı denedi.
+  Debian 12 ve Ubuntu 22.04 bu sürümde gerçek sistemde denenmedi.
 
 ## Kanıt
 
 Birleştirilmiş ağaç (`release/alpha119`): Go derlemesi, vet ve gofmt temiz;
 `internal` ve `cmd/panel` testleri geçiyor; Ajan testlerinde yalnız alpha.118'de
 de başarısız olan, bilinen 19 konuk-ortamı DNS ve posta hatası var, yenisi yok;
-2412 web testi geçiyor, kılavuzun üretilen dosyaları kaynaklarıyla aynı ve
+2424 web testi geçiyor, kılavuzun üretilen dosyaları kaynaklarıyla aynı ve
 derleme paket bütçelerinin içinde; sürüm kurtarma örnekleri şema 63'e
 genişletildi; indirme sitesi ve sürüm sırası sözleşmeleri geçiyor (118 → 119).
-Desteklenen beş sistemde laboratuvar turu: bekliyor.
 
-<!-- LAB -->
+Laboratuvar (QEMU konukları, `lab/alpha114-acceptance` dalı, `792b8a58f`, kanıt
+`final-alpha119-run1..run4-20261104`). 1–3. turlar yukarıda düzeltilen Python
+kurulum hatalarında durdu. Son aday üzerindeki 4. tur geçti:
+
+- Sıfırdan Debian 13: hazır paketlerle Flask (HTTPS) ve FastAPI; bozuk bir
+  yeniden yayımlama belgelendiği gibi önceki ortama döndü; n8n yeni korumada
+  kuruldu, çalıştı, sahibi girdi; hiç yayımlanmamış programı durdurmak düz bir
+  yanıt veriyor.
+- Kaçma denemeleri, yüklenen Go programı ve Python uygulaması, Debian 13: her
+  deneme reddedildi. Bunlar arasında başka sitelerin ve root dosyalarının
+  okunması, panelin soketleri, yetki değişimi, başka süreçler, ham soketler,
+  25, 465 ve 587 posta portları (internete ve sunucunun kendi postasına), bulut
+  üst verisi, uygulama klasörü dışına yazma ve uygulama klasörünü bir bağla
+  değiştirme var. Başka port açma değerlendirilemedi: sunucunun güvenlik duvarı
+  iki dinleyiciyi de düşürüyor.
+- Sıfırdan Arch: Python 3.14 Flask; yüklenen programda posta portu ve klasör bağı
+  denemeleri reddedildi.
+- Bu kodla önceki turlar: kılavuz ve ilk giriş turu, yalnız yöneticiye Go,
+  yüklenen programın yayımlanması, askıya alınması, sürdürülmesi ve kaldırılması;
+  Ubuntu 24.04 alpha.118'den 61 saniyede güncellendi ve n8n "Yeni korumayı
+  uygula" ile yeni korumaya geçti, ardından posta portları reddedildi.
+- Denenmeyenler: Debian 12, Ubuntu 22.04 (laboratuvar görüntüsü yok), geri dönüş.
