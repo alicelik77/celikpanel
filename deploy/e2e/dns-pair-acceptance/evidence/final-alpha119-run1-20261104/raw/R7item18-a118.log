@@ -1,0 +1,19 @@
+== item 18 detail run (run.sh quick, instrumented) 01:40:53
+4
+ITEM18 bind unit state: failed / unit failed
+ITEM18 mount: /dev/vda1[/var/www/celikpanel/subscriptions/990001/sites/990001/app.moved] /run/celikpanel-sandbox/celikrt-990002.service/app ext4 shared
+ITEM18 bind journal: Nov 04 01:41:03.488435 frankfurt systemd[1]: Stopped celikpanel-sandbox@celikrt-990001.service - CelikPanel site sandbox: app folder of celikrt-990001.service.
+ITEM18 bind journal: Nov 04 01:41:03.489990 frankfurt systemd[1]: Starting celikpanel-sandbox@celikrt-990001.service - CelikPanel site sandbox: app folder of celikrt-990001.service...
+ITEM18 bind journal: Nov 04 01:41:03.540930 frankfurt sandbox-helper[55059]: celikpanel-sandbox: celikrt-990001.service was not started (app_folder_not_real): /var/www/celikpanel/subscriptions/990001/sites/990001/app is a link, not a real folder.
+ITEM18 bind journal: Nov 04 01:41:03.540930 frankfurt sandbox-helper[55059]: celikpanel-sandbox: the app folder must be a real folder of this site, with no link on its way. Put the real folder back, then start the app again.
+ITEM18 bind journal: Nov 04 01:41:03.540930 frankfurt sandbox-helper[55059]: celikpanel-sandbox: uygulama klasörü bu sitenin gerçek bir klasörü olmalı, yolunda bağlantı olmamalı. Gerçek klasörü geri koyun, sonra uygulamayı yeniden başlatın.
+ITEM18 bind journal: Nov 04 01:41:03.542679 frankfurt systemd[1]: celikpanel-sandbox@celikrt-990001.service: Main process exited, code=exited, status=1/FAILURE
+ITEM18 bind journal: Nov 04 01:41:03.542845 frankfurt systemd[1]: celikpanel-sandbox@celikrt-990001.service: Failed with result 'exit-code'.
+ITEM18 bind journal: Nov 04 01:41:03.543158 frankfurt systemd[1]: Failed to start celikpanel-sandbox@celikrt-990001.service - CelikPanel site sandbox: app folder of celikrt-990001.service.
+ITEM18 after stop: ls: cannot access '/run/celikpanel-sandbox/celikrt-990001.service': No such file or directory
+ITEM18 mount after stop: /dev/vda1[/var/www/celikpanel/subscriptions/990001/sites/990001/app] /run/celikpanel-sandbox/celikrt-990002.service/app
+ITEM18 bind unit after stop: inactive
+item 9: PASS
+item 18: FAIL — the other site is mounted somewhere
+FAIL
+== done 01:42:43

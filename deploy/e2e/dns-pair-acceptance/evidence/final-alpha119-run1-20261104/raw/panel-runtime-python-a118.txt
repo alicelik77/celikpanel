@@ -1,0 +1,16 @@
+210:counter() { nft list counter inet celikpanel_egress smtp_rejects 2>/dev/null | sed -n 's/.*packets \([0-9]*\).*/\1/p' | head -1 || true; }
+domain: py119.test; sandbox level: full gaps: []
+python kind: {"kind": "python", "implemented": true, "offering_id": "component:python:3.13", "offered": true, "permission_granted": true, "held": false, "risk": {"can_do": ["any_code", "own_folder", "loopback_port", "own_outbound", "pypi_packages"], "blocked": ["other_sites", "panel_files", "privileges", "mail_ports", "metadata", "other_ports"], "network": ["https_only", "outbound_open"], "remains": ["outbound_abuse", "mail_apis", "cpu_memory_share", "reduced_level", "customer_code", "pypi_third_party", "interpreter_exec"]}, "limits": {"memory_mb": 512, "cpu_percent": 100, "tasks_max": 256}, "accepted_level": "full", "accepted_gaps": [], "python": {"minor": "3.13", "ready": true, "packages": ["python3", "python3-venv"], "max_workers": 4, "source_builds": false}}
+created: {"id":3,"port":30000}
+app 3: unit celikrt-3.service, port 30000, folder /var/www/celikpanel/subscriptions/4/sites/3/app
+uploaded as py119_test: /var/www/celikpanel/subscriptions/4/sites/3/app/src/probe.py, wsgi_probe.py
+deploy accepted: operation probe-1793757022-ra06cd9048c12
+  step: build (running)
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+    sys.exit(0 if any("SANDBOX-PROBE DONE" in l for l in lines) else 1)
+                                                         ^^^^^
+TypeError: 'NoneType' object is not iterable
+Traceback (most recent call last):
+  File "<stdin>", line 4, in <module>
+TypeError: 'NoneType' object is not iterable

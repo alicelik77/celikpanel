@@ -1,0 +1,48 @@
+== kit fix 01:36:45
+50a51
+> 	return 0
+212c213
+< 	if nsenter -t "$pid" -m test -x "$APP/bin/goprobe" && ! nsenter -t "$pid" -m test -e "$APP/secret.txt"; then
+---
+> 	if [ -x "/proc/$pid/root$APP/bin/goprobe" ] && [ ! -e "/proc/$pid/root$APP/secret.txt" ]; then
+== run.sh matrix (fixed kit) on a118 01:36:46
+{
+  "assessment": {
+    "level": "full",
+    "gaps": [],
+    "extras": [
+      "private_pids",
+      "strict_control_groups"
+    ]
+  },
+  "caps": {
+    "systemd_version": 257,
+    "bpf_framework": true,
+    "cgroup_v2": true,
+    "nft_socket_cgroupv2": true
+  }
+}
+sandbox level: full (egress enforced: 1)
+removing inet celikpanel_egress (what 'nft flush ruleset' does to it); the guard must restore it within 45 s
+== site sandbox escape matrix (level: full) ==
+item 1: PASS
+item 2: PASS
+item 3: PASS
+item 4: PASS
+item 5: FAIL — program: no result for item 5
+item 6: PASS
+item 7: PASS
+item 8: PASS
+item 9: PASS
+item 10: SKIP — the host firewall drops both; inconclusive for the egress table's input rule
+item 11: PASS
+item 12: PASS
+item 13: PASS
+item 14: PASS — python exec skipped: the python kind runs its interpreter
+item 15: PASS
+item 16: PASS
+item 17: PASS
+item 18: FAIL — the other site is mounted somewhere; the stop left /run/celikpanel-sandbox/celikrt-990001.service behind
+FAIL
+## mounts with 99000x after the run
+== run.sh done 01:40:25

@@ -1,0 +1,52 @@
+== B7 sandbox refresh 01:45:31
+  admin sandbox: {"busy": false, "edited": 0, "egress_file": "absent", "egress_loaded": false, "gaps": ["bpf_missing"], "guard_timer": "inactive", "known": true, "level": "reduced", "needs_refresh": 1, "running": 1, "smtp_rejects": -1, "systemd_version": 255}
+  domain install: {"state": "running", "active": true, "serving": true, "unit": "celiksvc-1", "needs_sandbox": true, "sandbox_generation": null}
+## 01:45:31 celiksvc-1.service active=active
+After=network-online.target
+EnvironmentFile=/etc/celikpanel-svcapps/celiksvc-1.env
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+BindPaths=/var/www/celikpanel/subscriptions/3/sites/3/apps/n8n
+## bind unit: celikpanel-sandbox@celiksvc-1.service active=inactive
+ls: cannot access '/run/celikpanel-sandbox/': No such file or directory
+/etc/celikpanel-svcapps root:root 700
+/etc/celikpanel-svcapps/celiksvc-1.env root:root 600
+## egress table
+Error: No such file or directory
+list set inet celikpanel_egress smtp_blocked
+              ^^^^^^^^^^^^^^^^^
+## cgroup /sys/fs/cgroup/system.slice/celiksvc-1.service
+## SMTP attempts from a helper process placed in the unit's cgroup (lab check)
+  smtp 127.0.0.1 25 CONNECTED (escape)
+-- Apply the new sandbox (expected=1)
+200 {"request_id": "lab-refresh-e362320f9358", "rewritten": [], "skipped": [], "started": ["n8nb118.test"]}
+  admin sandbox: {"busy": false, "edited": 0, "egress_file": "managed_unchanged", "egress_loaded": true, "gaps": ["bpf_missing"], "guard_timer": "active", "known": true, "level": "reduced", "needs_refresh": 0, "running": 0, "smtp_rejects": 0, "systemd_version": 255}
+  domain install: {"state": "running", "active": true, "serving": true, "unit": "celiksvc-1", "needs_sandbox": null, "sandbox_generation": null}
+## 01:46:10 celiksvc-1.service active=active
+# celikpanel-sandbox-generation: 3
+After=network-online.target
+Requires=celikpanel-sandbox@celiksvc-1.service
+After=celikpanel-sandbox@celiksvc-1.service
+EnvironmentFile=/etc/celikpanel-svcapps/celiksvc-1.env
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+BindPaths=/run/celikpanel-sandbox/celiksvc-1.service/app:/var/www/celikpanel/subscriptions/3/sites/3/apps/n8n
+# celikpanel-sandbox-generation: 3
+## bind unit: celikpanel-sandbox@celiksvc-1.service active=active
+total 0
+drwx------  3 root root   60 Nov  4 01:45 .
+drwxr-xr-x 40 root root 1200 Nov  4 01:46 ..
+drwx------  3 root root   60 Nov  4 01:45 celiksvc-1.service
+/etc/celikpanel-svcapps root:root 700
+/etc/celikpanel-svcapps/celiksvc-1.env root:root 600
+## egress table
+table inet celikpanel_egress {
+	set smtp_blocked {
+		typeof socket cgroupv2 level 0
+		elements = { 10298,
+			     "system.slice/celiksvc-1.service" }
+	}
+}
+https n8nb118.test/ http 200 verify=0 title: n8n.io - Workflow Automation bytes=1708
+executeCommand mentions: 0
+-- owner login
+n8n login http 200 user: owner@n8nb118.test global:owner cookie: True
+== B7ref done 01:46:12

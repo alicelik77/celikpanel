@@ -1,0 +1,109 @@
+== R7prog 01:28:59
+  sandbox {"gaps": [], "known": true, "level": "full"}
+  kind {"kind": "program", "offering_id": "runtime:program", "offered": false, "held": false, "accepted_level": "full", "accepted_gaps": [], "level_gap": false, "python": null}
+  kind {"kind": "python", "offering_id": "component:python:3.13", "offered": false, "held": false, "accepted_level": "full", "accepted_gaps": [], "level_gap": false, "python": {"detail": "Python's venv module is not installed (python3 python3-venv); the administrator installs Python in Components", "max_workers": 4, "minor": "3.13", "packages": ["python3", "python3-venv"], "ready": false, "source_builds": false}}
+-- offer runtime:program
+200 {"kinds": [{"accepted_gaps": [], "accepted_level": "full", "apps": 0, "held": false, "implemented": true, "kind": "program", "level_gap": false, "limits": {"cpu_percent": 100, "memory_mb": 512, "tasks_max": 256}, "offer_stale": false, "offered": true, "offering_id": "runtime:program", "risk": {"bloc
+  sandbox {"gaps": [], "known": true, "level": "full"}
+  kind {"kind": "program", "offering_id": "runtime:program", "offered": true, "held": false, "accepted_level": "full", "accepted_gaps": [], "level_gap": false, "python": null}
+  kind {"kind": "python", "offering_id": "component:python:3.13", "offered": false, "held": false, "accepted_level": "full", "accepted_gaps": [], "level_gap": false, "python": {"detail": "Python's venv module is not installed (python3 python3-venv); the administrator installs Python in Components", "max_workers": 4, "minor": "3.13", "packages": ["python3", "python3-venv"], "ready": false, "source_builds": false}}
+  domain view: sandbox {"gaps": [], "known": true, "level": "full"} certificate true kinds [('program', True, True, None), ('python', False, True, 'administrator')]
+== panel-runtime.sh (program) on the guest 01:28:59
+other site file: /var/www/celikpanel/subscriptions/4/sites/6/public_html/secret.txt
+rc=1
+domain: prog119.test; sandbox level: full gaps: []
+program kind: {"kind": "program", "implemented": true, "offering_id": "runtime:program", "offered": true, "permission_granted": true, "held": false, "risk": {"can_do": ["any_code", "own_folder", "loopback_port", "own_outbound"], "blocked": ["other_sites", "panel_files", "privileges", "mail_ports", "
+created: {"id":1,"port":30000}
+app 1: unit celikrt-1.service, port 30000, folder /var/www/celikpanel/subscriptions/3/sites/2/app
+uploaded as prog119_test: /var/www/celikpanel/subscriptions/3/sites/2/app/bin/goprobe
+  app 1 created celikrt-1.service https://prog119.test/ status {"active_state": "inactive", "serving": false, "health": {"checked": false, "ok": false}, "level": "full", "gaps": null, "sandbox_proof": null, "sandbox_generation": null, "entry_check": {"code": "ok", "format": "elf"}}
+  operation null
+-- HTTPS through the site
+https prog119.test/ http 200 verify=0 title: prog119.test bytes=3248
+executeCommand mentions: 0
+== suspend subA 01:29:01
+202 {"can_resume": true, "can_suspend": false, "causes": {"disk": false, "expired": false, "manual": true}, "ends_at": null, "operation": {"attempts": 0, "created_at": "2026-11-04 01:29:00", "effects": [{
+== resume subA 01:29:17
+202 {"can_resume": false, "can_suspend": true, "causes": {"disk": false, "expired": false, "manual": false}, "ends_at": null, "operation": {"attempts": 0, "created_at": "2026-11-04 01:29:16", "effects": [
+https prog119.test/ http 200 verify=0 title: prog119.test bytes=3248
+executeCommand mentions: 0
+-- stop
+409 {"code": "RUNTIME_APP", "error": "systemctl stop celikrt-1.service: exit status 5: Failed to stop celikrt-1.service: Unit celikrt-1.service not loaded.", "reason": "systemctl"}
+-- logs (secret must be hidden)
+  200 0 lines; secret visible: False
+-- remove
+202 {"operation": {"app_id": 1, "created_at": "2026-11-04 01:29:37", "id": "rm-prog-1b6cfdd8e2bc", "kind": "remove", "state": "running", "step": "unpublish", "updated_at": "2026-11-04 01:29:37"}}
+  after remove app: null op: {"kind": null, "state": null, "reason": null}
+ls: cannot access '/run/celikpanel-sandbox/': No such file or directory
+== R7prog done 01:29:58
+== R7prog 01:30:21
+  sandbox {"gaps": [], "known": true, "level": "full"}
+  kind {"kind": "program", "offering_id": "runtime:program", "offered": true, "held": false, "accepted_level": "full", "accepted_gaps": [], "level_gap": false, "python": null}
+  kind {"kind": "python", "offering_id": "component:python:3.13", "offered": false, "held": false, "accepted_level": "full", "accepted_gaps": [], "level_gap": false, "python": {"detail": "Python's venv module is not installed (python3 python3-venv); the administrator installs Python in Components", "max_workers": 4, "minor": "3.13", "packages": ["python3", "python3-venv"], "ready": false, "source_builds": false}}
+-- offer runtime:program
+200 {"kinds": [{"accepted_gaps": [], "accepted_level": "full", "apps": 0, "held": false, "implemented": true, "kind": "program", "level_gap": false, "limits": {"cpu_percent": 100, "memory_mb": 512, "tasks_max": 256}, "offer_stale": false, "offered": true, "offering_id": "runtime:program", "risk": {"bloc
+  sandbox {"gaps": [], "known": true, "level": "full"}
+  kind {"kind": "program", "offering_id": "runtime:program", "offered": true, "held": false, "accepted_level": "full", "accepted_gaps": [], "level_gap": false, "python": null}
+  kind {"kind": "python", "offering_id": "component:python:3.13", "offered": false, "held": false, "accepted_level": "full", "accepted_gaps": [], "level_gap": false, "python": {"detail": "Python's venv module is not installed (python3 python3-venv); the administrator installs Python in Components", "max_workers": 4, "minor": "3.13", "packages": ["python3", "python3-venv"], "ready": false, "source_builds": false}}
+  domain view: sandbox {"gaps": [], "known": true, "level": "full"} certificate true kinds [('program', True, True, None), ('python', False, True, 'administrator')]
+== panel-runtime.sh (program) on the guest 01:30:22
+other site file: /var/www/celikpanel/subscriptions/4/sites/6/public_html/secret.txt
+rc=1
+210:counter() { nft list counter inet celikpanel_egress smtp_rejects 2>/dev/null | sed -n 's/.*packets \([0-9]*\).*/\1/p' | head -1 || true; }
+domain: prog119.test; sandbox level: full gaps: []
+program kind: {"kind": "program", "implemented": true, "offering_id": "runtime:program", "offered": true, "permission_granted": true, "held": false, "risk": {"can_do": ["any_code", "own_folder", "loopback_port", "own_outbound"], "blocked": ["other_sites", "panel_files", "privileges", "mail_ports", "
+created: {"id":2,"port":30000}
+app 2: unit celikrt-2.service, port 30000, folder /var/www/celikpanel/subscriptions/3/sites/2/app
+uploaded as prog119_test: /var/www/celikpanel/subscriptions/3/sites/2/app/bin/goprobe
+deploy accepted: operation probe-1793755822-rbe1cdcb05c53
+  step: render (running)
+  step: done (succeeded)
+deploy succeeded: https://prog119.test/ serves the probe
+
+== runtime app escape matrix (app 2 on prog119.test) ==
+item 1: PASS
+item 2: PASS
+item 3: PASS
+item 4: PASS
+item 5: FAIL - no result for item 5
+item 6: PASS
+item 7: PASS
+item 8: PASS
+item 9: PASS
+item 10: PASS
+item 12: PASS
+item 13: PASS
+item 14: PASS
+item 15: PASS
+item 16: PASS
+item env: PASS
+item log: PASS
+item 9 counter: +9 rejects
+items 11 and 17 (load limits, reboot, table removal) are run.sh's; not run here
+FAIL
+  app 2 running celikrt-2.service https://prog119.test/ status {"active_state": "active", "serving": true, "health": {"checked": false, "ok": false}, "level": "full", "gaps": null, "sandbox_proof": null, "sandbox_generation": 3, "entry_check": {"code": "ok", "format": "elf"}}
+  operation {"app_id": 2, "created_at": "2026-11-04 01:30:22", "id": "probe-1793755822-rbe1cdcb05c53", "kind": "deploy", "state": "succeeded", "step": "done", "updated_at": "2026-11-04 01:30:27"}
+-- HTTPS through the site
+https prog119.test/ http 200 verify=0 title:  bytes=35
+executeCommand mentions: 0
+== suspend subA 01:30:29
+202 {"can_resume": true, "can_suspend": false, "causes": {"disk": false, "expired": false, "manual": true}, "ends_at": null, "operation": {"attempts": 0, "created_at": "2026-11-04 01:30:28", "effects": [{
+celikrt-2.service loaded failed failed CelikPanel uploaded program of prog119.test
+== resume subA 01:30:44
+202 {"can_resume": false, "can_suspend": true, "causes": {"disk": false, "expired": false, "manual": false}, "ends_at": null, "operation": {"attempts": 0, "created_at": "2026-11-04 01:30:43", "effects": [
+celikrt-2.service loaded active running CelikPanel uploaded program of prog119.test
+https prog119.test/ http 200 verify=0 title:  bytes=35
+executeCommand mentions: 0
+-- stop
+200 {"state": "stopped"}
+celikrt-2.service loaded failed failed CelikPanel uploaded program of prog119.test
+-- logs (secret must be hidden)
+  200 40 lines; secret visible: False
+    2026-11-04T01:31:04+00:00 frankfurt systemd[1]: Stopping celikrt-2.service - CelikPanel uploaded program of prog119.test...
+    2026-11-04T01:31:04+00:00 frankfurt systemd[1]: celikrt-2.service: Main process exited, code=exited, status=143/n/a
+    2026-11-04T01:31:05+00:00 frankfurt systemd[1]: celikrt-2.service: Failed with result 'exit-code'.
+    2026-11-04T01:31:05+00:00 frankfurt systemd[1]: Stopped celikrt-2.service - CelikPanel uploaded program of prog119.test.
+-- remove
+202 {"operation": {"app_id": 2, "created_at": "2026-11-04 01:31:05", "id": "rm-prog-c8833666904d", "kind": "remove", "state": "running", "step": "unpublish", "updated_at": "2026-11-04 01:31:05"}}
+  after remove app: null op: {"kind": null, "state": null, "reason": null}
+== R7prog done 01:31:27

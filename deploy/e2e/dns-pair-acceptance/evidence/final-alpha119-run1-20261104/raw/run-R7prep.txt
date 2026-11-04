@@ -1,0 +1,39 @@
+== R7prep 01:26:20
+200 {"id": 3, "rights": "unlimited", "success": true}
+200 {"id": 4, "rights": "unlimited", "success": true}
+200 {"id": 5, "rights": "unlimited", "success": true}
+prog119.test id=2
+py119.test id=3
+flask119.test id=4
+n8n119.test id=5
+other119.test id=6
+200 {"success": true}
+  prog119.test certificate: False
+  py119.test certificate: False
+  flask119.test certificate: False
+  n8n119.test certificate: False
+== item 1 guide 01:27:29
+help http 200 bytes 791
+help chapter http 200
+<title>CelikPanel
+find: ‘/opt/celikpanel/web/dist’: No such file or directory
+admin.en chunk: MISSING http 200
+find: ‘/opt/celikpanel/web/dist’: No such file or directory
+customer.en chunk: MISSING http 200
+find: ‘/opt/celikpanel/web/dist’: No such file or directory
+reseller.en chunk: MISSING http 200
+find: ‘/opt/celikpanel/web/dist’: No such file or directory
+chapter getting-started: MISSING http 200
+find: ‘/opt/celikpanel/web/dist’: No such file or directory
+chapter server-setup: MISSING http 200
+find: ‘/opt/celikpanel/web/dist’: No such file or directory
+chapter team-members: MISSING http 200
+find: ‘/opt/celikpanel/web/dist’: No such file or directory
+guide chunks in dist: 0
+-- guide-state as customer
+200 {"tour_state": "pending", "tour_version": 0}
+200 {"tour_state": "skipped", "tour_version": 1}
+200 {"tour_state": "skipped", "tour_version": 1}
+-- guide-state as admin
+200 {"tour_state": "pending", "tour_version": 0}
+== R7prep done 01:27:30

@@ -1,0 +1,35 @@
+start 01:13:18
+{
+  "node": "labnet",
+  "state": "stopped",
+  "deleted": true
+}
+
+infra-up exit 0 01:14:27
+labnet-tools-ok
+builds done 01:16:41
+/var/tmp/a118r1/out-build119.out:commit bf708710e8dbe85f2c3ad78bf96300fdc58d881a
+/var/tmp/a118r1/out-build119.out:bundle budget check passed
+/var/tmp/a118r1/out-build119.out:EXIT 0
+/var/tmp/a118r1/out-build119.out:  "commit": "bf708710e8dbe85f2c3ad78bf96300fdc58d881a",
+/var/tmp/a118r1/out-build118.out:commit 70c61f9d7a8f9ec3cc39a6ccd7306b1f367d1073
+/var/tmp/a118r1/out-build118.out:bundle budget check passed
+/var/tmp/a118r1/out-build118.out:EXIT 0
+/var/tmp/a118r1/out-build118.out:  "commit": "70c61f9d7a8f9ec3cc39a6ccd7306b1f367d1073",
+portal119 exit 0
+version=v0.1.0-alpha.119
+commit=bf708710e8dbe85f2c3ad78bf96300fdc58d881a
+portal118 exit 0
+version=v0.1.0-alpha.118
+commit=70c61f9d7a8f9ec3cc39a6ccd7306b1f367d1073
+== kit build 01:16:44
+kit build rc=0
+built /var/tmp/a118r1/kit/deploy/e2e/sandbox-escape/bin/render, /var/tmp/a118r1/kit/deploy/e2e/sandbox-escape/bin/goprobe and /var/tmp/a118r1/kit/deploy/e2e/sandbox-escape/bin/sandbox-helper (static)
+total 56892
+drwxr-xr-x 2 root root     4096 Nov  4 04:17 .
+drwxrwxr-x 5 root root     4096 Nov  4 04:16 ..
+-rwxr-xr-x 1 root root  9100764 Nov  4 04:16 goprobe
+-rwxr-xr-x 1 root root  5033851 Nov  4 04:16 render
+-rwxr-xr-x 1 root root 44112339 Nov  4 04:17 sandbox-helper
+/var/tmp/a118r1/kit/deploy/e2e/sandbox-escape/bin/goprobe: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, Go BuildID=i6B-nzczpFbVS7faTzP7/zA-_Mj628eHM1wKVgLzV/li6IJlItwsQ6-uQ8t_9W/v8sGrUYM2KOII7gFLbFx, BuildID[sha1]=a77c8cc03c51e40058197b5d777a71150d07f277, with debug_info, not stripped
+phase1 done 01:17:18

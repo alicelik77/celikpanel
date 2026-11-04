@@ -1,0 +1,127 @@
+== R7py 01:42:59
+202 {"operation": {"id": "cf96176f24309ed94315c0ad8bd89029", "kind": "service_install", "phase": "queued", "request_id": "e05d0cd13ef512f9858b0b6113113b41", "service_id": "python", "started_at": "2026-11-04T01:42:58.553160841Z", "status": "queued"}}
+  op e05d0cd13ef512f9858b0b6113113b41: failed installing {"code": "service_install_failed", "component": "python", "detail": "Not installed: it would also bring libpython3.13-minimal, libpython3.13-stdlib (+2 more). Install it from Components to see and confirm them.", "message": "The service could not be installed and verified.", "step": "package_install (01:43:09)
+  kind {"kind": "program", "offering_id": "runtime:program", "offered": true, "python": null, "level_gap": false}
+  kind {"kind": "python", "offering_id": "component:python:3.13", "offered": false, "python": {"detail": "Python's venv module is not installed (python3 python3-venv); the administrator installs Python in Components", "max_workers": 4, "minor": "3.13", "packages": ["python3", "python3-venv"], "ready": false, "source_builds": false}, "level_gap": false}
+-- offer component:python
+409 {
+ "code": "RUNTIME_APP",
+ "error": "Nothing was changed: Python apps need this server's own Python with its venv module (Python's venv module is not installed (python3 python3-venv); the administrator installs Python in Components). The administrator installs Python in Components.",
+ "reason": "runtime_missing",
+ "vars": {
+  "detail": "Python's venv module is not installed (python3 python3-venv);
+== wsgi probe via panel-runtime.sh KIND=python 01:43:10
+rc=2
+210:counter() { nft list counter inet celikpanel_egress smtp_rejects 2>/dev/null | sed -n 's/.*packets \([0-9]*\).*/\1/p' | head -1 || true; }
+domain: py119.test; sandbox level: full gaps: []
+python kind: {"kind": "python", "implemented": true, "offering_id": "component:python:3.13", "offered": false, "refused_by": "administrator", "grantor": "the administrator", "permission_granted": true, "held": false, "risk": {"can_do": ["any_code", "own_folder", "loopback_port", "own_outbound", "pyp
+panel-runtime: Python apps are not open for this account. Who acts: the administrator installs Python in Components, then offers component:python:<minor> on the Add-ons page (and the plan grants python_apps)
+== Flask app from wheels 01:43:11
+## /var/www/celikpanel/subscriptions/4/sites/4/app/src (good)
+total 16
+drwxr-xr-x 2 flask119_test flask119_test 4096 Nov  4 01:43 .
+drwxr-xr-x 3 flask119_test flask119_test 4096 Nov  4 01:43 ..
+-rw-r--r-- 1 flask119_test flask119_test  106 Nov  4 01:43 app.py
+-rw-r--r-- 1 flask119_test flask119_test   13 Nov  4 01:43 requirements.txt
+flask==3.1.2
+409 {"code": "RUNTIME_APP", "error": "Nothing was changed: Python apps need this server's own Python with its venv module (Python's venv module is not installed (python3 python3-venv); the administrator installs Python in Components). The administrator installs Python in Components.", "reason": "runtime_missing", "vars": {"detail": "Python's venv module is not installed (python3 python3-venv); the adm
+404 {"code": "RUNTIME_APP", "error": "This domain has no program yet.", "reason": "not_created"}
+== R7py 01:50:09
+200 {"distribution": "debian", "installs": ["python3.13", "libpython3.13-stdlib", "python3.13-minimal", "libpython3.13-minimal", "python3-pip-whl", "python3-setuptools-whl", "python3.13-venv", "python3-venv"], "notable": [{"from": "3.13.5-2+deb13u4", "package": "libpython3.13-minimal", "point_update": true, "reason": "upgrade", "to": "3.13.5-2+deb13u5"}, {"from": "3.13.5-2+deb13u4", "package": "libpython3.13-stdlib", "point_update": true, "reason": "upgrade", "to": "3.13.5-2+deb13u5"}, {"from": "3.13.5-2+deb13u4", "package": "python3.13", "point_update": true, "reason": "upgrade", "to": "3.13.5-2+deb13u5"}, {"from": "3.13.5-2+deb13u4", "package": "python3.13-minimal", "point_update": true, "reason": "upgrade", "to": "3.13.5-2+deb13u5"}], "refusals": [], "removes": [], "requested": ["python3-venv"], "state": "known"}
+confirming: ["libpython3.13-minimal", "libpython3.13-stdlib", "python3.13", "python3.13-minimal"]
+202 {"operation": {"id": "de9614bccc2d53366c9a9eb3b93134a5", "kind": "service_install", "phase": "queued", "request_id": "b6e155a0a387c91c47c1d0f6ae7c6c35", "service_id": "python", "started_at": "2026-11-04T01:50:10.349395736Z", "status": "queued"}}
+  op b6e155a0a387c91c47c1d0f6ae7c6c35: succeeded completed "" (01:50:21)
+  kind {"kind": "program", "offering_id": "runtime:program", "offered": true, "python": null, "level_gap": false}
+  kind {"kind": "python", "offering_id": "component:python:3.13", "offered": false, "python": {"max_workers": 4, "minor": "3.13", "packages": ["python3", "python3-venv"], "ready": true, "source_builds": false}, "level_gap": false}
+-- offer component:python
+200 [('program', 'runtime:program', True), ('python', 'component:python:3.13', True)]
+== wsgi probe via panel-runtime.sh KIND=python 01:50:22
+rc=1
+210:counter() { nft list counter inet celikpanel_egress smtp_rejects 2>/dev/null | sed -n 's/.*packets \([0-9]*\).*/\1/p' | head -1 || true; }
+domain: py119.test; sandbox level: full gaps: []
+python kind: {"kind": "python", "implemented": true, "offering_id": "component:python:3.13", "offered": true, "permission_granted": true, "held": false, "risk": {"can_do": ["any_code", "own_folder", "loopback_port", "own_outbound", "pypi_packages"], "blocked": ["other_sites", "panel_files", "privile
+created: {"id":3,"port":30000}
+app 3: unit celikrt-3.service, port 30000, folder /var/www/celikpanel/subscriptions/4/sites/3/app
+uploaded as py119_test: /var/www/celikpanel/subscriptions/4/sites/3/app/src/probe.py, wsgi_probe.py
+deploy accepted: operation probe-1793757022-ra06cd9048c12
+  step: build (running)
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+    sys.exit(0 if any("SANDBOX-PROBE DONE" in l for l in lines) else 1)
+                                                         ^^^^^
+TypeError: 'NoneType' object is not iterable
+Traceback (most recent call last):
+  File "<stdin>", line 4, in <module>
+TypeError: 'NoneType' object is not iterable
+== Flask app from wheels 01:50:33
+## /var/www/celikpanel/subscriptions/4/sites/4/app/src (good)
+total 16
+drwxr-xr-x 2 flask119_test flask119_test 4096 Nov  4 01:43 .
+drwxr-xr-x 3 flask119_test flask119_test 4096 Nov  4 01:43 ..
+-rw-r--r-- 1 flask119_test flask119_test  106 Nov  4 01:50 app.py
+-rw-r--r-- 1 flask119_test flask119_test   13 Nov  4 01:50 requirements.txt
+flask==3.1.2
+201 {"id": 4, "port": 30001}
+202 {"operation": {"app_id": 4, "created_at": "2026-11-04 01:50:33", "id": "dep-748480d9835430f4", "kind": "deploy", "state": "running", "step": "validate", "updated_at": "2026-11-04 01:50:33"}}
+  deploy dep-748480d9835430f4: dep-748480d9835430f4 failed build (01:50:34)
+  app 4 python failed python {"callable": "app:app", "server": "wsgi", "workers": 1} status {"active_state": "inactive", "serving": false, "health": {"checked": false, "ok": false}, "level": "full", "gaps": null, "sandbox_generation": null}
+  op {"id": "dep-748480d9835430f4", "kind": "deploy", "state": "failed", "step": "build", "class": "verified_failure", "reason": "build_failed", "message": "the build could not be started: Failed to find executable /var/www/celikpanel/subscriptions/4/sites/4/app/venv-1.partial/bin/python: No such file or directory"}
+https flask119.test/ http 200 verify=0 title: flask119.test bytes=3250
+executeCommand mentions: 0
+== requirements with -e (expect refusal with the line number) 01:50:35
+## /var/www/celikpanel/subscriptions/4/sites/4/app/src (badreq-e)
+total 16
+drwxr-xr-x 2 flask119_test flask119_test 4096 Nov  4 01:43 .
+drwxr-xr-x 7 flask119_test flask119_test 4096 Nov  4 01:50 ..
+-rw-r--r-- 1 flask119_test flask119_test  106 Nov  4 01:50 app.py
+-rw-r--r-- 1 flask119_test flask119_test   28 Nov  4 01:50 requirements.txt
+flask==3.1.2
+-e ./local-pkg
+202 {"operation": {"app_id": 4, "created_at": "2026-11-04 01:50:35", "id": "dep-e0a98cad3c41d07a", "kind": "deploy", "state": "running", "step": "validate", "updated_at": "2026-11-04 01:50:35"}}
+  deploy dep-e0a98cad3c41d07a: dep-e0a98cad3c41d07a failed validate (01:50:36)
+  app 4 python failed python {"callable": "app:app", "server": "wsgi", "workers": 1} status {"active_state": "inactive", "serving": false, "health": {"checked": false, "ok": false}, "level": "full", "gaps": null, "sandbox_generation": null}
+  op {"id": "dep-e0a98cad3c41d07a", "kind": "deploy", "state": "failed", "step": "validate", "class": "prerequisite", "reason": "requirements_refused", "message": "requirements.txt:2 editable: -e ./local-pkg"}
+https flask119.test/ http 200 verify=0 title: flask119.test bytes=3250
+executeCommand mentions: 0
+== requirements with a URL line 01:50:36
+## /var/www/celikpanel/subscriptions/4/sites/4/app/src (badreq-url)
+total 16
+drwxr-xr-x 2 flask119_test flask119_test 4096 Nov  4 01:43 .
+drwxr-xr-x 7 flask119_test flask119_test 4096 Nov  4 01:50 ..
+-rw-r--r-- 1 flask119_test flask119_test  106 Nov  4 01:50 app.py
+-rw-r--r-- 1 flask119_test flask119_test   64 Nov  4 01:50 requirements.txt
+# lab
+flask==3.1.2
+https://example.com/pkg-1.0-py3-none-any.whl
+202 {"operation": {"app_id": 4, "created_at": "2026-11-04 01:50:36", "id": "dep-65e3301911e078b6", "kind": "deploy", "state": "running", "step": "validate", "updated_at": "2026-11-04 01:50:36"}}
+  deploy dep-65e3301911e078b6: dep-65e3301911e078b6 failed validate (01:50:37)
+  app 4 python failed python {"callable": "app:app", "server": "wsgi", "workers": 1} status {"active_state": "inactive", "serving": false, "health": {"checked": false, "ok": false}, "level": "full", "gaps": null, "sandbox_generation": null}
+  op {"id": "dep-65e3301911e078b6", "kind": "deploy", "state": "failed", "step": "validate", "class": "prerequisite", "reason": "requirements_refused", "message": "requirements.txt:3 url: https://example.com/pkg-1.0-py3-none-any.whl"}
+https flask119.test/ http 200 verify=0 title: flask119.test bytes=3250
+executeCommand mentions: 0
+== broken app redeploy (expect fallback to the previous environment) 01:50:38
+## /var/www/celikpanel/subscriptions/4/sites/4/app/src (brokenapp)
+total 16
+drwxr-xr-x 2 flask119_test flask119_test 4096 Nov  4 01:43 .
+drwxr-xr-x 7 flask119_test flask119_test 4096 Nov  4 01:50 ..
+-rw-r--r-- 1 flask119_test flask119_test   57 Nov  4 01:50 app.py
+-rw-r--r-- 1 flask119_test flask119_test   13 Nov  4 01:50 requirements.txt
+flask==3.1.2
+202 {"operation": {"app_id": 4, "created_at": "2026-11-04 01:50:37", "id": "dep-7f46bb6a66146097", "kind": "deploy", "state": "running", "step": "validate", "updated_at": "2026-11-04 01:50:37"}}
+  deploy dep-7f46bb6a66146097: dep-7f46bb6a66146097 failed build (01:50:38)
+  app 4 python failed python {"callable": "app:app", "server": "wsgi", "workers": 1} status {"active_state": "inactive", "serving": false, "health": {"checked": false, "ok": false}, "level": "full", "gaps": null, "sandbox_generation": null}
+  op {"id": "dep-7f46bb6a66146097", "kind": "deploy", "state": "failed", "step": "build", "class": "verified_failure", "reason": "build_failed", "message": "the build could not be started: Failed to find executable /var/www/celikpanel/subscriptions/4/sites/4/app/venv-1.partial/bin/python: No such file or directory"}
+https flask119.test/ http 200 verify=0 title: flask119.test bytes=3250
+executeCommand mentions: 0
+total 28
+drwxr-xr-x 7 flask119_test flask119_test 4096 Nov  4 01:50 .
+drwxr-x--- 4 flask119_test www-data      4096 Nov  4 01:43 ..
+drwxr-x--- 2 flask119_test flask119_test 4096 Nov  4 01:50 .build-tmp
+drwxr-x--- 2 flask119_test flask119_test 4096 Nov  4 01:50 .pip-cache
+drwxr-x--- 2 flask119_test flask119_test 4096 Nov  4 01:50 config
+drwxr-x--- 2 flask119_test flask119_test 4096 Nov  4 01:50 data
+drwxr-xr-x 2 flask119_test flask119_test 4096 Nov  4 01:43 src
+celikrt-990001.service not-found failed failed celikrt-990001.service
+celikrt-990002.service not-found failed failed celikrt-990002.service
+celikrt-990003.service not-found failed failed celikrt-990003.service
+== R7py done 01:50:39

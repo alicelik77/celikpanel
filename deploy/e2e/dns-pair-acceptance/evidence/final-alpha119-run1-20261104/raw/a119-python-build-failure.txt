@@ -1,0 +1,27 @@
+## 01:52:30 /var/www/celikpanel/subscriptions/4/sites/4/app
+total 28
+drwxr-xr-x 7 flask119_test flask119_test 4096 Nov  4 01:50 .
+drwxr-x--- 4 flask119_test www-data      4096 Nov  4 01:43 ..
+drwxr-x--- 2 flask119_test flask119_test 4096 Nov  4 01:50 .build-tmp
+drwxr-x--- 2 flask119_test flask119_test 4096 Nov  4 01:50 .pip-cache
+drwxr-x--- 2 flask119_test flask119_test 4096 Nov  4 01:50 config
+drwxr-x--- 2 flask119_test flask119_test 4096 Nov  4 01:50 data
+drwxr-xr-x 2 flask119_test flask119_test 4096 Nov  4 01:43 src
+ls: cannot access '/var/www/celikpanel/subscriptions/4/sites/4/app/venv-1.partial': No such file or directory
+ls: cannot access '/var/www/celikpanel/subscriptions/4/sites/4/app/venv-1.partial/bin': No such file or directory
+Python 3.13.5
+python3-venv 3.13.5-1
+python3.13-venv 3.13.5-2+deb13u5
+Nov 04 01:50:21 frankfurt sudo[57224]:    celik : PWD=/home/celik ; USER=root ; COMMAND=/usr/bin/bash /root/kit/deploy/e2e/sandbox-escape/prt.sh 3 /var/www/celikpanel/subscriptions/4/sites/6/public_html/secret.txt python
+Nov 04 01:50:38 frankfurt sudo[57809]:    celik : PWD=/home/celik ; USER=root ; COMMAND=/usr/bin/bash -c 'ls -la $(getent passwd flask119_test | cut -d: -f6)/app/ 2>&1 | head; systemctl list-units "celikrt*" --all --no-legend --plain'
+celikrt-990001.service not-found failed failed celikrt-990001.service
+celikrt-990002.service not-found failed failed celikrt-990002.service
+celikrt-990003.service not-found failed failed celikrt-990003.service
+Nov 04 01:50:33.204253 frankfurt systemd-logind[752]: Session 70 logged out. Waiting for processes to exit.
+Nov 04 01:50:33.592003 frankfurt systemd[1]: Reload requested from client PID 57505 ('systemctl') (unit celikpanel-agent.service)...
+Nov 04 01:50:33.592039 frankfurt systemd[1]: Reloading...
+Nov 04 01:50:33.676517 frankfurt (sd-exec-[57525]: /usr/lib/systemd/system-generators/systemd-ssh-generator failed with exit status 1.
+Nov 04 01:50:33.679103 frankfurt systemd-ssh-generator[57539]: Failed to query local AF_VSOCK CID: Cannot assign requested address
+Nov 04 01:50:33.771049 frankfurt systemd[1]: Reloading finished in 178 ms.
+Nov 04 01:50:34.740696 frankfurt systemd-logind[752]: Session 71 logged out. Waiting for processes to exit.
+Nov 04 01:50:34.929521 frankfurt systemd-logind[752]: Session 72 logged out. Waiting for processes to exit.

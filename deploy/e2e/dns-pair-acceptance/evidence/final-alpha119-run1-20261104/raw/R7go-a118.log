@@ -1,0 +1,12 @@
+== R7go 01:28:29
+  row {"id": "go", "is_installed": false, "status": "not_installed", "kind": "tool", "category": "devtools", "admin_only": null, "package_version": null, "package_version_short": null, "packages": ["golang-go"]}
+202 {"operation": {"id": "bceb9932efc484f66c51c62c4b31ed07", "kind": "service_install", "phase": "queued", "request_id": "a8e1c5dd41b3ab349e399b5c15f0b96c", "service_id": "go", "started_at": "2026-11-04T01:28:29.024867016Z", "status": "queued"}}
+  op a8e1c5dd41b3ab349e399b5c15f0b96c: succeeded completed "" (01:28:50)
+  row {"id": "go", "is_installed": true, "status": "installed", "kind": "tool", "category": "devtools", "admin_only": null, "package_version": "2:1.24~2", "package_version_short": "1.24", "packages": ["golang-go"]}
+go version go1.24.4 linux/amd64
+ii  golang-go:amd64 2:1.24~2     amd64        Go programming language compiler, linker, compiled stdlib
+-- customer: install Go (expect refusal)
+403 {"code": "ADMIN_ONLY", "error": "administrator access required"}
+-- customer: components listing (expect refusal)
+403 {"code": "ADMIN_ONLY", "error": "administrator access required"}
+== R7go done 01:28:51

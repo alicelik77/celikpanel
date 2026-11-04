@@ -1,0 +1,32 @@
+210:counter() { nft list counter inet celikpanel_egress smtp_rejects 2>/dev/null | sed -n 's/.*packets \([0-9]*\).*/\1/p' | head -1 || true; }
+domain: prog119.test; sandbox level: full gaps: []
+program kind: {"kind": "program", "implemented": true, "offering_id": "runtime:program", "offered": true, "permission_granted": true, "held": false, "risk": {"can_do": ["any_code", "own_folder", "loopback_port", "own_outbound"], "blocked": ["other_sites", "panel_files", "privileges", "mail_ports", "metadata", "other_ports", "system_interpreters"], "network": ["https_only", "outbound_open"], "remains": ["outbound_abuse", "mail_apis", "cpu_memory_share", "reduced_level", "customer_code"]}, "limits": {"memory_mb": 512, "cpu_percent": 100, "tasks_max": 256}, "accepted_level": "full", "accepted_gaps": []}
+created: {"id":2,"port":30000}
+app 2: unit celikrt-2.service, port 30000, folder /var/www/celikpanel/subscriptions/3/sites/2/app
+uploaded as prog119_test: /var/www/celikpanel/subscriptions/3/sites/2/app/bin/goprobe
+deploy accepted: operation probe-1793755822-rbe1cdcb05c53
+  step: render (running)
+  step: done (succeeded)
+deploy succeeded: https://prog119.test/ serves the probe
+
+== runtime app escape matrix (app 2 on prog119.test) ==
+item 1: PASS
+item 2: PASS
+item 3: PASS
+item 4: PASS
+item 5: FAIL - no result for item 5
+item 6: PASS
+item 7: PASS
+item 8: PASS
+item 9: PASS
+item 10: PASS
+item 12: PASS
+item 13: PASS
+item 14: PASS
+item 15: PASS
+item 16: PASS
+item env: PASS
+item log: PASS
+item 9 counter: +9 rejects
+items 11 and 17 (load limits, reboot, table removal) are run.sh's; not run here
+FAIL

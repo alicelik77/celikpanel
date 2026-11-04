@@ -1,0 +1,20 @@
+== B SMTP from the n8n unit cgroup after refresh 01:46:27
+	set smtp_blocked {
+		typeof socket cgroupv2 level 0
+	counter smtp_rejects {
+	set smtp_blocked {
+		tcp dport { 25, 465, 587 } socket cgroupv2 level 2 @smtp_blocked counter name "smtp_rejects" reject with tcp reset
+		iifname != "lo" tcp flags syn / fin,syn,rst,ack socket cgroupv2 level 2 @smtp_blocked drop
+## cgroup /sys/fs/cgroup/system.slice/celiksvc-1.service
+## SMTP attempts from a helper process placed in the unit's cgroup (lab check)
+  smtp 127.0.0.1 25 refused: ConnectionRefusedError [Errno 111] Connection refused
+  smtp 127.0.0.1 465 refused: ConnectionRefusedError [Errno 111] Connection refused
+  smtp 127.0.0.1 587 refused: ConnectionRefusedError [Errno 111] Connection refused
+  smtp 192.0.2.25 25 refused: ConnectionRefusedError [Errno 111] Connection refused
+  smtp 192.0.2.25 465 refused: ConnectionRefusedError [Errno 111] Connection refused
+  smtp 192.0.2.25 587 refused: ConnectionRefusedError [Errno 111] Connection refused
+  smtp 1.1.1.1 25 refused: ConnectionRefusedError [Errno 111] Connection refused
+  smtp 1.1.1.1 465 refused: ConnectionRefusedError [Errno 111] Connection refused
+  smtp 1.1.1.1 587 refused: ConnectionRefusedError [Errno 111] Connection refused
+	counter smtp_rejects {
+		tcp dport { 25, 465, 587 } socket cgroupv2 level 2 @smtp_blocked counter name "smtp_rejects" reject with tcp reset

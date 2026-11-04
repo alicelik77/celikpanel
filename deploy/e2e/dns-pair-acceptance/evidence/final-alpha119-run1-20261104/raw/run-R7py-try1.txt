@@ -1,0 +1,28 @@
+== R7py 01:42:59
+202 {"operation": {"id": "cf96176f24309ed94315c0ad8bd89029", "kind": "service_install", "phase": "queued", "request_id": "e05d0cd13ef512f9858b0b6113113b41", "service_id": "python", "started_at": "2026-11-04T01:42:58.553160841Z", "status": "queued"}}
+  op e05d0cd13ef512f9858b0b6113113b41: failed installing {"code": "service_install_failed", "component": "python", "detail": "Not installed: it would also bring libpython3.13-minimal, libpython3.13-stdlib (+2 more). Install it from Components to see and confirm them.", "message": "The service could not be installed and verified.", "step": "package_install (01:43:09)
+  kind {"kind": "program", "offering_id": "runtime:program", "offered": true, "python": null, "level_gap": false}
+  kind {"kind": "python", "offering_id": "component:python:3.13", "offered": false, "python": {"detail": "Python's venv module is not installed (python3 python3-venv); the administrator installs Python in Components", "max_workers": 4, "minor": "3.13", "packages": ["python3", "python3-venv"], "ready": false, "source_builds": false}, "level_gap": false}
+-- offer component:python
+409 {
+ "code": "RUNTIME_APP",
+ "error": "Nothing was changed: Python apps need this server's own Python with its venv module (Python's venv module is not installed (python3 python3-venv); the administrator installs Python in Components). The administrator installs Python in Components.",
+ "reason": "runtime_missing",
+ "vars": {
+  "detail": "Python's venv module is not installed (python3 python3-venv);
+== wsgi probe via panel-runtime.sh KIND=python 01:43:10
+rc=2
+210:counter() { nft list counter inet celikpanel_egress smtp_rejects 2>/dev/null | sed -n 's/.*packets \([0-9]*\).*/\1/p' | head -1 || true; }
+domain: py119.test; sandbox level: full gaps: []
+python kind: {"kind": "python", "implemented": true, "offering_id": "component:python:3.13", "offered": false, "refused_by": "administrator", "grantor": "the administrator", "permission_granted": true, "held": false, "risk": {"can_do": ["any_code", "own_folder", "loopback_port", "own_outbound", "pyp
+panel-runtime: Python apps are not open for this account. Who acts: the administrator installs Python in Components, then offers component:python:<minor> on the Add-ons page (and the plan grants python_apps)
+== Flask app from wheels 01:43:11
+## /var/www/celikpanel/subscriptions/4/sites/4/app/src (good)
+total 16
+drwxr-xr-x 2 flask119_test flask119_test 4096 Nov  4 01:43 .
+drwxr-xr-x 3 flask119_test flask119_test 4096 Nov  4 01:43 ..
+-rw-r--r-- 1 flask119_test flask119_test  106 Nov  4 01:43 app.py
+-rw-r--r-- 1 flask119_test flask119_test   13 Nov  4 01:43 requirements.txt
+flask==3.1.2
+409 {"code": "RUNTIME_APP", "error": "Nothing was changed: Python apps need this server's own Python with its venv module (Python's venv module is not installed (python3 python3-venv); the administrator installs Python in Components). The administrator installs Python in Components.", "reason": "runtime_missing", "vars": {"detail": "Python's venv module is not installed (python3 python3-venv); the adm
+404 {"code": "RUNTIME_APP", "error": "This domain has no program yet.", "reason": "not_created"}
