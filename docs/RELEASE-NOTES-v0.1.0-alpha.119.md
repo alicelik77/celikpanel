@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.119.tr.md)
 
+> **Published** on 2026-11-04 (UTC): release commit `7e4ebeb49`, GitHub pre-release at 06:17:49Z, download portal at about 06:22Z (public check 27/27). Lab round 5 (`final-alpha119-run5-20261104`) updated alpha.117 straight to 119 on Debian 13 (PowerDNS primary, mail) and Ubuntu 24.04: sites, mail, databases, backups, plans and users kept.
+
 A user guide inside the panel, uploaded programs and Python web apps that run
 in a new site sandbox, developer tools for the administrator, and a stronger
 sandbox for the AI apps of alpha.118. Every uploaded program is treated as
