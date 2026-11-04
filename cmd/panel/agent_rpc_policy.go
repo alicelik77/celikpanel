@@ -303,7 +303,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.NginxInspect":                  agentRPCQuickReadTimeout,
 	"Agent.PkgFamily":                     agentRPCQuickReadTimeout,
 	"Agent.ServiceRemovalPreviewV1":       agentRPCStandardReadTimeout,
-	"Agent.ServiceInstallPreviewV1":       agentRPCStandardReadTimeout,
+	"Agent.ServiceInstallPreviewV1":       agentRPCNetworkReadTimeout,
 	"Agent.PHPToolBindingsV1":             agentRPCQuickReadTimeout,
 	"Agent.PostfixQueue":                  agentRPCQuickReadTimeout,
 	"Agent.RepoStatus":                    agentRPCDeploymentTimeout,

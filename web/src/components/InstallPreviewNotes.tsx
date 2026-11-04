@@ -9,7 +9,7 @@ import { AlertTriangle } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Checking, CouldNotCheck, KeepWords } from './ui';
-import { capitalize, confirmationGroups, distroWords, hasVendorReplacement, reasonPhrase, versionPair, versionsSaid, type InstallPreview, type NotableInstall } from '../lib/installPreview';
+import { capitalize, confirmationGroups, distroWords, hasVendorReplacement, installPreviewReasonKeys, reasonPhrase, versionPair, versionsSaid, type InstallPreview, type NotableInstall } from '../lib/installPreview';
 import type { RemoteHandle } from '../lib/remote';
 
 // installPreviewGate: what the confirmation may send. A known answer with
@@ -65,12 +65,30 @@ export function InstallPreviewNotes({
         return <Checking label={t('services.installPreview.checking')} className="mt-3" />;
     }
     const preview = remote.state === 'known' ? remote.value : null;
+    const say = (key: string, params?: Record<string, string>) => t(key as TranslationKey, params);
+    const repoLabel = (id: string) => {
+        const key = `services.notable.repoName.${id}` as TranslationKey;
+        const said = id ? t(key) : key;
+        return said === key ? id || t('services.notable.repoUnknown') : said;
+    };
     if (!preview || preview.state !== 'known') {
         const why = preview?.state === 'busy' ? t('services.installPreview.whyBusy') : '';
+        // alpha.121 (D-024): the reason, who acts and the next step come
+        // first; the general sentence follows.
+        const reason = preview?.state === 'unknown' ? preview.reason : undefined;
+        const keys = reason ? installPreviewReasonKeys(reason) : null;
+        const repo = repoLabel(reason?.repo ?? '');
+        const list = reason && reason.packages.length > 0 ? `: ${reason.packages.join(', ')}` : '';
         return (
             <CouldNotCheck
                 className="mt-3"
-                text={t('services.installPreview.unknown', { why })}
+                text={reason && keys ? (
+                    <>
+                        <span className="block font-medium" data-install-preview-reason={reason.code}>{say(keys.reason, { list, repo })}</span>
+                        <span className="mt-1 block" data-install-preview-next="">{say(keys.next, { repo })}</span>
+                        <span className="mt-1 block text-fg-muted">{t('services.installPreview.unknown', { why })}</span>
+                    </>
+                ) : t('services.installPreview.unknown', { why })}
                 onRetry={() => void handle.retry()}
                 busy={handle.reading}
             />
@@ -91,12 +109,6 @@ export function InstallPreviewNotes({
             </>
         );
     }
-    const say = (key: string, params?: Record<string, string>) => t(key as TranslationKey, params);
-    const repoLabel = (id: string) => {
-        const key = `services.notable.repoName.${id}` as TranslationKey;
-        const said = id ? t(key) : key;
-        return said === key ? id || t('services.notable.repoUnknown') : said;
-    };
     const distro = distroWords(preview.distribution, locale, say);
     if (hasVendorReplacement(preview.notable)) {
         const refused = preview.notable.filter((item) => item.reason === 'vendor_replaces_distribution');

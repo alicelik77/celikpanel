@@ -195,6 +195,7 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/dns/infrastructure-zones":         gateAdmin,
 	"/api/v1/dns/infrastructure-zones/":        gateAdmin,
 	"/api/v1/dns/overview":                     gateAdmin,
+	"/api/v1/dns/server-hostname":              gateAdmin, // alpha.121: read-only, admin in handler too
 	"/api/v1/dns/remote/accept":                gateAdmin, // machine-verified peers bypass sessions
 	"/api/v1/dns/remote/clients":               gateAdmin,
 	"/api/v1/dns/remote/connections":           gateAdmin,

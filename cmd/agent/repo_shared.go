@@ -94,7 +94,11 @@ func hostVendorSharedPackageArgs(repo *core.ManagedRepo, selected string) []stri
 	if err != nil {
 		return nil
 	}
-	return vendorSharedPackageArgsFrom(repo, installed, index)
+	args := vendorSharedPackageArgsFrom(repo, installed, index)
+	// alpha.121 (Boston): the shared packages the version needs only where
+	// the distribution's own do not satisfy it (postgresql-common on Ubuntu
+	// 24.04); Debian 13 satisfies them and nothing more is named there.
+	return append(args, hostVendorNeededSharedArgs(repo, loc, selected, installed, args)...)
 }
 
 // refreshRepoConfinement rewrites CelikPanel's own, unchanged preferences

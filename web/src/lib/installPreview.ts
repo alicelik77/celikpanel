@@ -37,7 +37,26 @@ export interface InstallPreview {
     existingData?: { component: string; path: string }[];
     /** alpha.109: this server's os-release ID ("ubuntu"), when it was read. */
     distribution?: string;
+    /**
+     * alpha.121 (D-024): why the check could not answer, as a stable code,
+     * the packages and the managed repository it concerns. Absent on a known
+     * answer and from an older server.
+     */
+    reason?: InstallPreviewReason;
 }
+
+export type InstallPreviewReasonCode = 'unmet_dependencies' | 'package_not_found' | 'lists_refresh_failed' | 'package_manager_busy' | 'timed_out' | 'agent_unreachable' | 'invalid_request' | 'other';
+
+export interface InstallPreviewReason {
+    code: InstallPreviewReasonCode;
+    packages: string[];
+    repo?: string;
+    /** The repository whose lists the check refreshed before answering. */
+    refreshed?: string;
+}
+
+const REASON_CODES: readonly string[] = ['unmet_dependencies', 'package_not_found', 'lists_refresh_failed', 'package_manager_busy', 'timed_out', 'agent_unreachable', 'invalid_request', 'other'];
+const REPO_ID = /^[a-z0-9-]{1,32}$/;
 
 export interface InstallStep {
     id: string;
@@ -94,6 +113,19 @@ export function decodeInstallPreview(raw: unknown): InstallPreview {
         }
     }
     const distribution = typeof body.distribution === 'string' && /^[a-z0-9._-]{1,32}$/.test(body.distribution) ? body.distribution : '';
+    // An unknown code is said as "other"; only package names and a repository id pass.
+    let reason: InstallPreviewReason | undefined;
+    if (typeof body.reason_code === 'string' && body.reason_code) {
+        const packages = (strings(body.reason_packages) ?? []).filter((name) => PACKAGE.test(name)).slice(0, 8);
+        const repo = typeof body.reason_repo === 'string' && REPO_ID.test(body.reason_repo) ? body.reason_repo : '';
+        const refreshed = typeof body.lists_refreshed === 'string' && /^[a-z0-9,-]{1,64}$/.test(body.lists_refreshed) ? body.lists_refreshed : '';
+        reason = {
+            code: (REASON_CODES.includes(body.reason_code) ? body.reason_code : 'other') as InstallPreviewReasonCode,
+            packages,
+            ...(repo ? { repo } : {}),
+            ...(refreshed ? { refreshed } : {}),
+        };
+    }
     return {
         state: body.state as InstallPreview['state'],
         installs,
@@ -101,7 +133,18 @@ export function decodeInstallPreview(raw: unknown): InstallPreview {
         refusals,
         ...(existingData.length ? { existingData } : {}),
         ...(distribution ? { distribution } : {}),
+        ...(reason ? { reason } : {}),
     };
+}
+
+// installPreviewReasonKeys: the two sentences an unanswered check says
+// first (alpha.121, D-024): the reason with its packages, then who acts and
+// the next step. A missing package after the repository's lists were
+// refreshed names that repository.
+// Yanıtsız denetimin önce söylediği iki cümlenin anahtarları.
+export function installPreviewReasonKeys(reason: InstallPreviewReason): { reason: string; next: string } {
+    const next = reason.code === 'package_not_found' && reason.repo ? 'package_not_found_repo' : reason.code;
+    return { reason: `services.installPreview.reason.${reason.code}`, next: `services.installPreview.next.${next}` };
 }
 
 export function installPreviewURL(steps: readonly InstallStep[]): string | null {

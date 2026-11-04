@@ -228,6 +228,13 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
     // Bildirimi acik duran guncelleme suren bir guncelleme degildir; kart bos kalmaz.
     const stopped = systemUpdate.stopped ?? null;
     const inFlight = systemUpdate.active && !stopped;
+    // alpha.121 (Frankfurt 4 Nov): an update that stopped before changing
+    // anything no longer needs "Close the notice" first: the one explicit
+    // Start press checks the server again (read-only), closes that notice and
+    // starts. A verified return to the previous version keeps its own notice
+    // to close first. Nothing starts by itself.
+    // Degistirmeden duran guncellemenin bildirimi Baslat ile kapanir.
+    const closableStop = stopped && !stopped.rolledBack && systemUpdate.acknowledgeStopped ? stopped : null;
 
     // Opening the screen checks again (alpha.103, owner observation
     // 2026-10-23): once per opening, after the stored result was read, only
@@ -489,7 +496,8 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
 
     async function startUpdate() {
         const target = offer?.target;
-        if (actionInFlight.current || systemUpdate.active || !offer?.available || !target) return;
+        const closing = closableStop;
+        if (actionInFlight.current || (systemUpdate.active && !closing) || (stopped && !closing) || !offer?.available || !target) return;
         const generation = lifecycleGeneration.current;
         actionInFlight.current = true;
         setStarting(true);
@@ -501,6 +509,14 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
             await runHostMutationAdmission(refreshHostMutationReadiness, async () => {
                 // Route changes unmount this card. A readiness response from the
                 // abandoned generation must never create a marker or send POST.
+                if (lifecycleGeneration.current !== generation) return;
+                // The stopped attempt's notice is closed only now, after the
+                // read-only check said the server is ready (alpha.121).
+                if (closing && !await systemUpdate.acknowledgeStopped?.(closing.requestID)) {
+                    setMessageTone('warning');
+                    setMessage(t('panelUpdate.stoppedNoticeNotClosed', { version: target.version }));
+                    return;
+                }
                 if (lifecycleGeneration.current !== generation) return;
                 // Do not create a durable browser marker (and therefore do not mount
                 // the full-page tracker) until the bounded preflight proves idle.
@@ -706,8 +722,8 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                             notice never covers it (batch 26).
                             Bildirim kapaninca Baslat yeniden acilir; kartin ustunde soylenir. */}
                         {stopped && offer?.available && target && (
-                            <p className="mt-1 text-fg" data-update-stopped-notice-open="">
-                                {wholeVersion(t('panelUpdate.stoppedNoticeOpen', { version: target.version }), target.version)}
+                            <p className="mt-1 text-fg" data-update-stopped-notice-open={closableStop ? 'start-closes' : ''}>
+                                {wholeVersion(t(closableStop ? 'panelUpdate.stoppedNoticeStart' : 'panelUpdate.stoppedNoticeOpen', { version: target.version }), target.version)}
                             </p>
                         )}
                     </div>
@@ -909,7 +925,7 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                         variant="primary"
                         className="max-sm:min-h-11"
                         onClick={() => void startUpdate()}
-                        disabled={starting || readinessChecking || openChecking || stopped !== null || readiness?.ready !== true}
+                        disabled={starting || readinessChecking || openChecking || (stopped !== null && !closableStop) || readiness?.ready !== true}
                     >
                         {starting ? <Loader2 className="h-4 w-4 animate-spin" /> : <DownloadCloud className="h-4 w-4" />}
                         {starting ? t('panelUpdate.starting') : t('panelUpdate.start', { version: target.version })}

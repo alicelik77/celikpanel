@@ -274,6 +274,20 @@ type ServiceInstallPreviewResponse struct {
 	// database engine left on this server, which the install will use as
 	// it is. Additive.
 	ExistingData []ExistingData `json:"existing_data,omitempty"`
+	// ErrorCode (alpha.121, D-024): why a "failed" preview failed, as a
+	// stable code (unmet_dependencies, package_not_found,
+	// lists_refresh_failed, package_manager_busy, timed_out, invalid_request,
+	// other); ErrorPackages are the package names it concerns (at most 8) and
+	// ErrorRepo the managed repository whose lists were involved. Error stays
+	// the Agent's internal text, never shown. Additive.
+	// ErrorCode: başarısız önizlemenin kararlı nedeni; Error gösterilmez.
+	ErrorCode     string   `json:"error_code,omitempty"`
+	ErrorPackages []string `json:"error_packages,omitempty"`
+	ErrorRepo     string   `json:"error_repo,omitempty"`
+	// ListsRefreshed names the managed repository whose package lists the
+	// preview refreshed once (a package it should offer was not found)
+	// before this answer. Additive.
+	ListsRefreshed string `json:"lists_refreshed,omitempty"`
 }
 
 // ExistingData is one data directory a previous install left.

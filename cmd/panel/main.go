@@ -1668,6 +1668,8 @@ func main() {
 	http.HandleFunc("/api/v1/vpn/peers", panel.handleVPNPeers)
 	http.HandleFunc("/api/v1/vpn/peers/", panel.handleVPNPeerByID)
 	http.HandleFunc("/api/v1/pdns/enable", panel.handlePDNSEnable)
+	// alpha.121: does this server's own host name resolve publicly (read-only).
+	http.HandleFunc(serverHostnameDNSPath, panel.handleServerHostnameDNS)
 	http.HandleFunc(infrastructureDNSZonesPath, panel.handleInfrastructureDNSZones)
 	http.HandleFunc(infrastructureDNSZonesPath+"/", panel.handleInfrastructureDNSZones)
 	http.HandleFunc("/api/v1/dns/engine", panel.handleDNSEngine)

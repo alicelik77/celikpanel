@@ -145,6 +145,16 @@ type ManagedRepo struct {
 	// SharedPackages: üreticiye özgü bir sürümün üreticiden istediği ortak
 	// paketler; kurulum bunları adıyla ister.
 	SharedPackages []string
+	// SharedWhenNeeded (alpha.121, Boston): the vendor's shared packages a
+	// vendor-only version takes from the vendor only when the version apt
+	// would otherwise keep (the installed one, or the distribution's) does
+	// not satisfy the version's dependency: PGDG's postgresql-18 needs
+	// postgresql-common (>= 275~), which Debian 13 ships and Ubuntu 24.04
+	// does not. Named exactly and confirmed like SharedPackages; never
+	// otherwise, so a distribution that satisfies the dependency keeps its own.
+	// SharedWhenNeeded: yalnız dağıtımın sürümü bağımlılığı karşılamadığında
+	// üreticiden adıyla istenen ortak paketler.
+	SharedWhenNeeded []string
 	// ReleaseOrigin is the Origin field of the repository's Release file
 	// ("deb.sury.org", "apt.postgresql.org"). A repository with one is a
 	// vendor lane (alpha.108, D-038 amendment): it is enabled only as one
@@ -686,6 +696,7 @@ var ManagedServices = []ManagedService{
 			// major is the default.
 			MovingPackagePattern: `^postgresql(-client|-contrib)?$`,
 			SharedPackages:       []string{"libpq5"},
+			SharedWhenNeeded:     []string{"postgresql-common", "postgresql-client-common"},
 			ReleaseOrigin:        "apt.postgresql.org",
 		},
 	},

@@ -184,6 +184,7 @@ export const tr: Record<ShellKey, string> = {
     'err.HOST_MUTATION_BUSY.host_lock_busy': 'Tamamlanmamış bir değişiklik bu sunucuyu hâlâ tutuyor ve beklemekle geçmez. Sunucuyu yeniden başlatmak tutmayı bırakır; yine olursa bakılması gerekir.',
     'err.HOST_MUTATION_UNAVAILABLE': 'CelikPanel sunucunun değişiklik için hazır olduğunu güvenle doğrulayamadı. Sayfayı yenileyip yeniden deneyin.',
     'err.service_operation_busy': 'Başka bir paket işlemi zaten sürüyor. Tamamlanmasını bekleyin.',
+    'err.service_operation_busy.agent_startup': 'Sunucu, güncelleme ya da yeniden başlatma sonrasındaki açılış işlerini bitiriyor. Bir şey yapmanız gerekmiyor: bu bir iki dakika içinde kendiliğinden biter. Sonra aynı düğmeye yeniden basın.',
     'err.service_operation_request_conflict': 'Bu istek kimliği başka bir paket işlemine ait. Sayfayı yenileyip tekrar deneyin.',
     'err.service_operation_runner_panicked': 'Paket işlemi beklenmedik biçimde durdu. Yeni bir işlemden önce makinenin son durumu doğrulanmalıdır.',
     'err.operation_state_persist_failed': 'Paket işleminin durumu kaydedilemedi. Yeni bir işlemden önce makine durumunu doğrulayın.',

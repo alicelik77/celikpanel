@@ -477,6 +477,8 @@ export const enSettingsScreens = {
     'panelUpdate.status.shownFrom': 'What is shown is from the last check, {age}; you can check now.',
     'panelUpdate.status.lastChecked': 'Last checked {age}.',
     'panelUpdate.stoppedNoticeOpen': 'Close the notice about the stopped update first ("Close notification"); this button then starts the update to {version}. Nothing starts by itself.',
+    'panelUpdate.stoppedNoticeStart': 'The earlier update to {version} stopped before changing anything. Pressing “Update to {version}” closes that notice, checks the server again and then starts the update. Nothing starts by itself.',
+    'panelUpdate.stoppedNoticeNotClosed': 'The notice about the stopped update could not be closed in this browser, so nothing was started. Close it with "Close notification", then press “Update to {version}” again.',
     'panelUpdate.starting': 'Starting…',
     'panelUpdate.rateLimitedBeforeStart': 'Too many requests were sent. The update was not started; wait briefly and check again.',
     'panelUpdate.identityMismatch': 'The agent reported a different active operation identity. It will be monitored until terminal before this screen is released.',

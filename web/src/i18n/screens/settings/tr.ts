@@ -459,6 +459,8 @@ export const trSettingsScreens: Record<SettingsScreenKey, string> = {
     'panelUpdate.status.shownFrom': 'Gösterilen, son denetimin sonucudur ({age}); şimdi de denetleyebilirsiniz.',
     'panelUpdate.status.lastChecked': 'Son denetim: {age}.',
     'panelUpdate.stoppedNoticeOpen': 'Önce durdurulan güncellemeyle ilgili bildirimi kapatın ("Bildirimi kapat"); ardından bu düğme {version} güncellemesini başlatır. Hiçbir işlem kendiliğinden başlamaz.',
+    'panelUpdate.stoppedNoticeStart': '{version} için önceki güncelleme hiçbir şeyi değiştirmeden durdu. “{version} sürümüne güncelle” düğmesine basınca o bildirim kapanır, sunucu yeniden denetlenir ve güncelleme başlar. Hiçbir işlem kendiliğinden başlamaz.',
+    'panelUpdate.stoppedNoticeNotClosed': 'Durdurulan güncellemenin bildirimi bu tarayıcıda kapatılamadı; hiçbir şey başlatılmadı. "Bildirimi kapat" ile kapatın, sonra yeniden “{version} sürümüne güncelle” düğmesine basın.',
     'panelUpdate.starting': 'Başlatılıyor…',
     'panelUpdate.rateLimitedBeforeStart': 'Çok sık istek gönderildi. Güncelleme başlatılmadı; kısa süre bekleyip güncellemeleri yeniden denetleyin.',
     'panelUpdate.identityMismatch': 'Agent farklı ve etkin bir işlem kimliği bildirdi. Bu ekran açılmadan önce işlem terminal duruma kadar izlenecek.',

@@ -851,7 +851,9 @@ test('the provider tells the card about a stop only for a request that ended unc
     assert.match(tracker, /const occupied = systemUpdateMutationLocked\(/);
     const card = source('components/PanelUpdateCard.tsx');
     assert.match(card, /const inFlight = systemUpdate\.active && !stopped;/);
-    assert.match(card, /async function startUpdate\(\) \{\n\s+const target = offer\?\.target;\n\s+if \(actionInFlight\.current \|\| systemUpdate\.active/);
+    assert.match(card, /async function startUpdate\(\) \{\n\s+const target = offer\?\.target;\n\s+const closing = closableStop;\n\s+if \(actionInFlight\.current \|\| \(systemUpdate\.active && !closing\) \|\| \(stopped && !closing\)/);
+    // alpha.121: only a stop that changed nothing is closed by Start itself.
+    assert.match(card, /const closableStop = stopped && !stopped\.rolledBack && systemUpdate\.acknowledgeStopped \? stopped : null;/);
 });
 
 // Review of alpha.103: a stopped update's notice must not stop the check for

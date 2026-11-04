@@ -750,12 +750,22 @@ func hostVendorVersionLookup() func(name, version string) string {
 // repository card shows them instead of their being swallowed (D-038 §12).
 // A run that names none clears the repository's previous lines.
 func recordRepoAptErrors(output string) {
+	recordRepoAptErrorsFor(output, "")
+}
+
+// recordRepoAptErrorsFor is recordRepoAptErrors for one repository only
+// (only != ""): an update over that repository's source says nothing about
+// the others, so their lines are kept (alpha.121).
+func recordRepoAptErrorsFor(output, only string) {
 	locations := enabledRepoLocations()
 	if len(locations) == 0 {
 		return
 	}
 	now := repoConfinementNow().UTC().Format(time.RFC3339)
 	for id, loc := range locations {
+		if only != "" && id != only {
+			continue
+		}
 		var lines []string
 		for _, line := range strings.Split(output, "\n") {
 			line = strings.TrimSpace(line)
