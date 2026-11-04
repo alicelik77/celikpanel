@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.119.md)
 
+> **Yayımlandı**, 4 Kasım 2026 (UTC): sürüm commit'i `7e4ebeb49`, GitHub ön sürümü 06:17:49Z, indirme portalı yaklaşık 06:22Z (dış denetim 27/27). Laboratuvar 5. turu (`final-alpha119-run5-20261104`) alpha.117'yi doğrudan 119'a Debian 13 (PowerDNS birincil, posta) ve Ubuntu 24.04'te güncelledi: siteler, posta, veritabanları, yedekler, planlar ve kullanıcılar korundu.
+
 Panelin içinde kullanım kılavuzu, yeni site korumasında çalışan yüklenen
 programlar ve Python web uygulamaları, yönetici için geliştirici araçları ve
 alpha.118'in yapay zekâ uygulamaları için daha güçlü bir koruma. Yüklenen her
