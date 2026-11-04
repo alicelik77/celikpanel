@@ -78,3 +78,88 @@ func identityLinesOf(output string) []string {
 	}
 	return lines
 }
+
+// debian12NamedIdentity is what systemd 252 reported for bind9
+// 1:9.18.49-1~deb12u3 on a fresh Debian 12 image (lab evidence
+// lab-images-d12-u2204-20261104, raw/bind-unit-identity-d12.txt).
+const debian12NamedIdentity = "Id=named.service\nNames=named.service\n" +
+	"FragmentPath=/lib/systemd/system/named.service\nDropInPaths=\nSourcePath=\nTransient=no\n" +
+	"ExecStart={ path=/usr/sbin/named ; argv[]=/usr/sbin/named -f $OPTIONS ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }\n"
+
+func withLibAlias(t *testing.T, alias bool) {
+	t.Helper()
+	previous := libIsUsrLibAlias
+	libIsUsrLibAlias = func() bool { return alias }
+	t.Cleanup(func() { libIsUsrLibAlias = previous })
+}
+
+func TestAPTBINDVendorIdentityAcceptsMergedUsrLibName(t *testing.T) {
+	named, err := Parse(debian12NamedIdentity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	withLibAlias(t, true)
+	if err := ValidateAPTBINDVendorNamedIdentity(named, false); err != nil {
+		t.Fatalf("Debian 12 vendor identity refused on a merged-/usr host: %v", err)
+	}
+	usr := named
+	usr.FragmentPath = "/usr/lib/systemd/system/named.service"
+	if err := ValidateAPTBINDVendorNamedIdentity(usr, false); err != nil {
+		t.Fatalf("/usr/lib vendor identity refused: %v", err)
+	}
+	aliased := named
+	aliased.Names = []string{"bind9.service", "named.service"}
+	if err := ValidateAPTBINDVendorAliasIdentity(aliased, aliased); err != nil {
+		t.Fatalf("Debian 12 enabled alias identity refused: %v", err)
+	}
+	for name, mutate := range map[string]func(*Identity){
+		"etc fragment":       func(i *Identity) { i.FragmentPath = "/etc/systemd/system/named.service" },
+		"usr local fragment": func(i *Identity) { i.FragmentPath = "/usr/local/lib/systemd/system/named.service" },
+		"run fragment":       func(i *Identity) { i.FragmentPath = "/run/systemd/system/named.service" },
+		"other unit name":    func(i *Identity) { i.FragmentPath = "/lib/systemd/system/bind9.service" },
+		"non-canonical /lib": func(i *Identity) { i.FragmentPath = "/lib/systemd/system/../system/named.service" },
+		"drop-in":            func(i *Identity) { i.DropInPaths = []string{"/etc/systemd/system/named.service.d/x.conf"} },
+		"different command":  func(i *Identity) { i.ExecStartArgv = "/usr/sbin/named -f -u root" },
+		"different binary":   func(i *Identity) { i.ExecStartPath = "/usr/local/sbin/named" },
+		"generated source":   func(i *Identity) { i.SourcePath = "/etc/init.d/named" },
+		"transient":          func(i *Identity) { i.Transient = "yes" },
+		"unexpected alias":   func(i *Identity) { i.Names = []string{"bind9.service", "named.service"} },
+	} {
+		candidate := named
+		mutate(&candidate)
+		if err := ValidateAPTBINDVendorNamedIdentity(candidate, false); err == nil {
+			t.Fatalf("%s accepted", name)
+		}
+	}
+	// Arch is merged-/usr in packaging too; its unit is never under /lib.
+	pacman := named
+	pacman.ExecStartPath, pacman.ExecStartArgv = "/usr/bin/named", "/usr/bin/named -f -u named"
+	if err := ValidatePacmanBINDVendorIdentity(pacman); err == nil {
+		t.Fatal("pacman BIND identity accepted the /lib name")
+	}
+}
+
+func TestAPTBINDVendorIdentityRefusesLibNameWithoutMergedUsr(t *testing.T) {
+	named, err := Parse(debian12NamedIdentity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	withLibAlias(t, false)
+	if err := ValidateAPTBINDVendorNamedIdentity(named, false); err == nil {
+		t.Fatal("/lib unit accepted where /lib is not the merged-/usr alias")
+	}
+	named.FragmentPath = "/usr/lib/systemd/system/named.service"
+	if err := ValidateAPTBINDVendorNamedIdentity(named, false); err != nil {
+		t.Fatalf("/usr/lib vendor identity refused: %v", err)
+	}
+}
+
+func TestIsAPTVendorUnitFragmentRefusesMalformedUnitNames(t *testing.T) {
+	withLibAlias(t, true)
+	for _, unit := range []string{"", "../named.service", "system/named.service"} {
+		if IsAPTVendorUnitFragment(SplitUsrVendorUnitDir+unit, unit) ||
+			IsAPTVendorUnitFragment(VendorUnitDir+unit, unit) {
+			t.Fatalf("malformed unit name %q accepted", unit)
+		}
+	}
+}

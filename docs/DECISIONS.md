@@ -3664,7 +3664,9 @@ bootstrap. With no usable hint, or with conflicting hints, exactly one complete
 trusted toolchain must exist. APT means the fixed `apt-get` + `apt-cache` +
 `dpkg-query` set, pacman means fixed `pacman`, and DNF means fixed `dnf` + `rpm`.
 Fixed `systemctl` and `timeout` are always required, together with a root-owned,
-non-writable `/run/systemd` chain, a direct `/run/systemd/private` Unix socket,
+non-writable `/run/systemd` chain, a direct root:root `/run/systemd/private` Unix
+socket (owner-only writable, or the plain 0777 that systemd before v252 creates,
+as on Ubuntu 22.04; systemd itself refuses every non-root peer of that socket),
 and a bounded `systemctl is-system-running` proof of `running` or `degraded`.
 Every present candidate tool, its target, and its directory chain must satisfy
 the root-owned, non-writable fixed-path contract. Missing, incomplete, ambiguous,

@@ -452,3 +452,29 @@ func TestInspectBINDVendorFilesAtRejectsExtendedACL(t *testing.T) {
 		t.Fatalf("extended ACL error = %v", err)
 	}
 }
+
+// Debian 12 / Ubuntu 22.04 bind9 records its unit under /lib; the agent's
+// ownership proof accepts that name only on a merged-/usr host.
+func TestAPTBINDVendorPackageOwnershipAcceptsDebian12PackagePath(t *testing.T) {
+	owned := map[string]string{
+		"/lib/systemd/system/named.service": "bind9: /lib/systemd/system/named.service\n",
+		"/etc/default/named":                "bind9: /etc/default/named\n",
+	}
+	lookup := func(_ context.Context, path string) ([]byte, error) {
+		output, ok := owned[path]
+		if !ok {
+			return nil, errors.New("dpkg-query: no path found matching pattern")
+		}
+		return []byte(output), nil
+	}
+	if err := verifyExactAPTBINDVendorPackageOwnershipWithAlias(
+		context.Background(), lookup, true,
+	); err != nil {
+		t.Fatalf("Debian 12 package path refused: %v", err)
+	}
+	if err := verifyExactAPTBINDVendorPackageOwnershipWithAlias(
+		context.Background(), lookup, false,
+	); err == nil {
+		t.Fatal("/lib package path accepted without the merged-/usr alias")
+	}
+}

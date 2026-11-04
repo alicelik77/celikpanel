@@ -328,9 +328,15 @@ validate_systemd_runtime() {
         || die "systemd private socket is not owned by the trusted principal"
     [[ "$links" == 1 ]] \
         || die "systemd private socket must have exactly one hard link"
+    # Same rule and reasoning as install.sh's validate_systemd_runtime: systemd
+    # refuses every non-root peer of this socket itself (bus_check_peercred,
+    # SO_PEERCRED uid 0, v249 to v257). systemd before v252 binds it under
+    # umask 0 (Ubuntu 22.04: 0777), v252+ under umask 0077 (0700). The parent
+    # chain is root-owned and not group/other writable, owner and link count
+    # are checked above, so only those two shapes are accepted.
     permissions=$((8#$mode))
-    (( (permissions & 0022) == 0 )) \
-        || die "systemd private socket is group/other writable"
+    (( (permissions & 0022) == 0 || permissions == 8#777 )) \
+        || die "systemd private socket is group/other writable (mode $mode) and is not systemd's pre-v252 0777"
 
     readiness=$(LC_ALL=C SYSTEMD_COLORS=0 SYSTEMD_PAGER= \
         "$TIMEOUT_BIN" --signal=KILL --kill-after=1s 3s \
