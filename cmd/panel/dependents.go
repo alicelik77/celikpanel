@@ -138,7 +138,13 @@ func serviceDependents(ctx context.Context, db *sql.DB, serviceID string) (int, 
 		// dahil: node bütünüyle giderse onlar da durur.
 		return collectBlockers(ctx, db, `s.project_type = 'node'`)
 
-	case "nginx", "apache":
+	case "apache":
+		// alpha.123 (D-045): only the sites recorded on Apache need it; a
+		// stray Apache beside nginx sites is not refused for them.
+		// Yalnız Apache'de kayıtlı siteler ona muhtaçtır.
+		return collectBlockers(ctx, db, `COALESCE(s.project_type, 'php') != 'dnsonly' AND s.web_server = 'apache'`)
+
+	case "nginx":
 		// Every site except pure-DNS domains needs the web server: static and
 		// php are served by it, node/proxy/forwarding live behind it as a
 		// reverse proxy / redirect vhost.
@@ -187,7 +193,7 @@ func serviceDependents(ctx context.Context, db *sql.DB, serviceID string) (int, 
 		}
 		return count, lines, rows.Err()
 
-	case "postfix", "dovecot":
+	case "postfix", "exim", "dovecot":
 		// Mailboxes and forwardings die with the mail stack. There is no
 		// mail_domains table; both hang off domains directly.
 		// Posta kutuları ve yönlendirmeler posta yığınıyla ölür. mail_domains

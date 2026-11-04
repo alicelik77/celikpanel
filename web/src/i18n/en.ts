@@ -66,6 +66,7 @@ import type { ServiceAppsScreenKey } from './screens/serviceApps/en';
 import type { GuideScreenKey } from './screens/guide/en';
 import type { RuntimeAppsScreenKey } from './screens/runtimeApps/en';
 import type { HostNameScreenKey } from './screens/hostName/en';
+import type { RemovalRuleScreenKey } from './screens/removalRule/en';
 
 export const en = {
     // ---- alpha.108 tools ----
@@ -577,5 +578,6 @@ export type ScreenKey =
     | ServiceAppsScreenKey
     | GuideScreenKey
     | RuntimeAppsScreenKey
-    | HostNameScreenKey;
+    | HostNameScreenKey
+    | RemovalRuleScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

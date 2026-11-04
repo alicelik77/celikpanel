@@ -147,7 +147,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.WordPressStatusV1 Agent.MalwareScannerStatusV1 Agent.MalwareScanSiteV1
 		Agent.ServiceAppProbeV1 Agent.ServiceAppStatusV1 Agent.ServiceAppLogsV1 Agent.ServiceAppUnitStateV1 Agent.SandboxCapsV1
 		Agent.RuntimeAppCheckV1 Agent.RuntimeAppStatusV1 Agent.RuntimeAppLogsV1 Agent.RuntimeAppUnitStateV1
-		Agent.RuntimePythonV1
+		Agent.RuntimePythonV1 Agent.RuntimeVersionUsersV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -562,6 +562,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	// build (systemd-run; the build itself runs in its own unit) and
 	// completing one (a rename and removals as the site's account).
 	"Agent.RuntimePythonV1":          agentRPCQuickReadTimeout,
+	"Agent.RuntimeVersionUsersV1":    agentRPCQuickReadTimeout,
 	"Agent.RuntimeAppBuildV1":        agentRPCMutationTimeout,
 	"Agent.RuntimeAppBuildAdvanceV1": agentRPCDatabaseTimeout,
 }

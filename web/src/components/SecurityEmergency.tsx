@@ -327,6 +327,19 @@ function ConfirmDialog({ detail, step, onClose, onDone }: { detail: EmergencyDet
                     {detail.preview.offered_by.length > 0 && <p className="text-fg-muted">{t('emg.confirm.offeredBy')}: {detail.preview.offered_by.join(', ')}</p>}
                     {detail.preview.notes.map((note, index) => <p key={index} className="text-fg-muted">{note}</p>)}
                 </div>
+                {step === 'remove' && (detail.dependents?.length ?? 0) > 0 && (
+                    <div data-emergency-dependents="">
+                        <p className="font-medium text-fg">{t('rmrule.emergencyTitle')}</p>
+                        <ul className="mt-1 list-disc space-y-1 pl-5 text-fg">
+                            {detail.dependents!.map((d) => (
+                                <li key={`${d.kind}-${d.component ?? ''}`} data-emergency-dependent={d.component ?? d.kind}>
+                                    {t(`rmrule.kind.${d.kind}` as TranslationKey, { count: d.count, name: d.component ? (d.items[0]?.name ?? d.component) : e.name })}{' '}
+                                    <span className="text-fg-muted">{d.items.map((item) => item.name).join(', ')}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
                 {step === 'move' && (
                     <label className="block">
                         <span className="text-fg-muted">{t('emg.confirm.target')}</span>

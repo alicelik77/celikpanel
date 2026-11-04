@@ -751,6 +751,10 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 	}
 	addStep("dns", draft.DNSMode, "")
 	mailDependent := []string{}
+	// alpha.123 (D-045): a service that requires a component every setup
+	// installs (Fail2ban needs nftables) follows that component's step.
+	// Kurulumun her zaman kurdugu bilesene ihtiyac duyan servis onun adimindan sonra gelir.
+	requiredDependent := []string{}
 	if draft.Customization != nil {
 		resolved, err := serverSetupResolvedComponents(draft)
 		if err != nil {
@@ -782,6 +786,10 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 				// the mail profile that installs Postfix and Dovecot.
 				if serverSetupMailDependent(id) {
 					mailDependent = append(mailDependent, id)
+					continue
+				}
+				if serverSetupRequiredDependent(id) {
+					requiredDependent = append(requiredDependent, id)
 					continue
 				}
 				addService(id)
@@ -880,6 +888,9 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 	}
 	addService("nftables")
 	addService("certbot")
+	for _, id := range requiredDependent {
+		addService(id)
+	}
 	for id := range planned {
 		if service := core.GetManagedServiceByID(id); service != nil {
 			for _, port := range service.FirewallPorts {

@@ -206,6 +206,7 @@ test('every dialogue in the product is the shared one', () => {
     'SecurityEmergency.tsx': 1,
     // alpha.118: remote backups - a destination's form and its removal; a send and a restore.
     'RemoteBackupDestinations.tsx': 2,
+    'RemovalPlan.tsx': 1,
     'DomainRemoteBackups.tsx': 2,
   });
 });

@@ -604,7 +604,6 @@ var ManagedServices = []ManagedService{
 		// Requires, bugüne dek hiçbir yerde yazmayan kuralı bildirime çevirir:
 		// bir Node uygulamasına yalnız ters vekille ulaşılır, önce bir web
 		// sunucusu olmalıdır (grubun herhangi bir üyesi yeter).
-		Requires: []string{"web-server"},
 	},
 	{
 		// The distribution's own Python for customers' Python web apps
@@ -629,7 +628,6 @@ var ManagedServices = []ManagedService{
 		Kind:        KindRuntime,
 		SystemNames: []string{},
 		Packages:    map[string][]string{"apt": {"python3", "python3-venv"}, "pacman": {"python"}},
-		Requires:    []string{"web-server"},
 	},
 	{
 		ID:            "nginx",
@@ -639,7 +637,6 @@ var ManagedServices = []ManagedService{
 		Category:      "web",
 		Kind:          KindService,
 		SystemNames:   []string{"nginx"},
-		ConflictGroup: "web-server",
 		Packages:      map[string][]string{"apt": {"nginx"}, "pacman": {"nginx"}},
 		FirewallPorts: []FirewallPort{{80, "tcp"}, {443, "tcp"}},
 	},
@@ -651,7 +648,6 @@ var ManagedServices = []ManagedService{
 		Category:              "web",
 		Kind:                  KindService,
 		SystemNames:           []string{"apache2", "httpd"},
-		ConflictGroup:         "web-server",
 		Packages:              map[string][]string{"apt": {"apache2"}, "pacman": {"apache"}},
 		InstallDisabledReason: "Apache virtual-host integration is not available in CelikPanel yet; use Nginx.",
 		FirewallPorts:         []FirewallPort{{80, "tcp"}, {443, "tcp"}},
@@ -727,7 +723,6 @@ var ManagedServices = []ManagedService{
 		Kind:        KindTool,
 		SystemNames: []string{},
 		Packages:    map[string][]string{"apt": {"phpmyadmin"}, "pacman": {"phpmyadmin"}},
-		Requires:    []string{"mariadb", "web-server", "php-fpm"},
 	},
 	{
 		ID:          "phppgadmin",
@@ -743,7 +738,6 @@ var ManagedServices = []ManagedService{
 		// depo paketlerini taşır.
 		Packages:                  map[string][]string{"apt": {"phppgadmin"}},
 		FamilyInstallBlockReasons: map[string]string{"pacman": PHPPgAdminPacmanReason},
-		Requires:                  []string{"postgresql", "web-server", "php-fpm"},
 	},
 	{
 		ID:          "postfix",
@@ -765,7 +759,6 @@ var ManagedServices = []ManagedService{
 		// (operatör, 23 Tem: "belki profesyonel bir posta çözümü kurarım").
 		// İleride ticari bir posta bileşeni bu gruba katılır ve aynı
 		// bağımlıları tatmin eder (D-012/D-015).
-		ConflictGroup: "smtp-server",
 		Packages:      map[string][]string{"apt": {"postfix"}, "pacman": {"postfix"}},
 		FirewallPorts: []FirewallPort{{25, "tcp"}, {587, "tcp"}, {465, "tcp"}},
 	},
@@ -787,7 +780,6 @@ var ManagedServices = []ManagedService{
 		Category:              "email",
 		Kind:                  KindService,
 		SystemNames:           []string{"exim4", "exim"}, // Debian unit exim4, Arch exim
-		ConflictGroup:         "smtp-server",
 		Packages:              map[string][]string{"apt": {"exim4-daemon-light"}, "pacman": {"exim"}},
 		InstallDisabledReason: "Exim mailbox, TLS and submission integration is not available in CelikPanel yet; use Postfix.",
 		FirewallPorts:         []FirewallPort{{25, "tcp"}, {587, "tcp"}, {465, "tcp"}},
@@ -816,9 +808,7 @@ var ManagedServices = []ManagedService{
 		// sunucusunda iki spam filtresi özellik değildir: Postfix postayı TEK
 		// filtre zincirine verir; ikincisi ya ölü yük olur ya iki ayrı kararla
 		// çift tarama yapar. SMTP, DNS ve IMAP koltuklarıyla aynı gerekçe.
-		ConflictGroup: "spam-filter",
-		Packages:      map[string][]string{"apt": {"rspamd"}, "pacman": {"rspamd"}},
-		Requires:      []string{"smtp-server"},
+		Packages: map[string][]string{"apt": {"rspamd"}, "pacman": {"rspamd"}},
 	},
 	{
 		ID:          "dovecot",
@@ -836,8 +826,7 @@ var ManagedServices = []ManagedService{
 		// "bir IMAP sunucusu" isteyen her şey (webmail) ürünü değil ROLÜ
 		// adlandırır. İleride Cyrus/Stalwart bu gruba katılır ve aynı
 		// bağımlıları tatmin eder.
-		ConflictGroup: "imap-server",
-		Packages:      map[string][]string{"apt": {"dovecot-imapd", "dovecot-pop3d", "dovecot-lmtpd"}, "pacman": {"dovecot", "pigeonhole"}},
+		Packages: map[string][]string{"apt": {"dovecot-imapd", "dovecot-pop3d", "dovecot-lmtpd"}, "pacman": {"dovecot", "pigeonhole"}},
 		// pacman: pigeonhole is Dovecot's Sieve plugin (Arch's official
 		// package; the out-of-office reply runs on it). It is installed with
 		// Dovecot so that Dovecot starts with it: a running Dovecot 2.4 knows
@@ -889,7 +878,6 @@ var ManagedServices = []ManagedService{
 		Icon:        "✉️",
 		Category:    "email",
 		Kind:        KindTool,
-		Requires:    []string{"smtp-server", "imap-server", "web-server", "php-fpm"},
 	},
 	{
 		ID:          "spamassassin",
@@ -912,8 +900,7 @@ var ManagedServices = []ManagedService{
 		// "Installing…" sonra "Not installed"e döndü; tarama dürüstçe unit
 		// bulamamıştı). Arch hâlâ tek paket + `spamassassin` unit'i taşır;
 		// iki adın sebebi bu.
-		SystemNames:   []string{"spamd", "spamassassin"},
-		ConflictGroup: "spam-filter",
+		SystemNames: []string{"spamd", "spamassassin"},
 		// apt only: wiring SpamAssassin into Postfix needs spamass-milter, and
 		// that package does not exist in Arch's repos (AUR only, verified live
 		// 24 Jul). Offering an install that cannot filter mail would break
@@ -937,7 +924,6 @@ var ManagedServices = []ManagedService{
 		// üyesi tatmin eder (operatör, 23 Tem: "belki başka bir SMTP
 		// sunucusu, belki profesyonel bir posta çözümü kurarım"). Node'un
 		// web-server gereksinimiyle aynı kural.
-		Requires: []string{"smtp-server"},
 	},
 	{
 		ID:            "wireguard",
@@ -1044,29 +1030,27 @@ var ManagedServices = []ManagedService{
 		Packages:    map[string][]string{"apt": {"clamav", "clamav-daemon"}, "pacman": {"clamav"}},
 	},
 	{
-		ID:            "bind",
-		Name:          "BIND",
-		Description:   "DNS Server",
-		Icon:          "🌐",
-		Category:      "dns",
-		Kind:          KindService,
-		SystemNames:   []string{"bind9", "named"},
-		ConflictGroup: "dns-server",
-		Packages:      map[string][]string{"apt": {"bind9"}, "pacman": {"bind"}},
+		ID:          "bind",
+		Name:        "BIND",
+		Description: "DNS Server",
+		Icon:        "🌐",
+		Category:    "dns",
+		Kind:        KindService,
+		SystemNames: []string{"bind9", "named"},
+		Packages:    map[string][]string{"apt": {"bind9"}, "pacman": {"bind"}},
 		LifecycleInstallFamilies: map[string]bool{
 			"apt": true, "pacman": true,
 		},
 		FirewallPorts: []FirewallPort{{53, "tcp"}, {53, "udp"}},
 	},
 	{
-		ID:            "pdns",
-		Name:          "PowerDNS",
-		Description:   "DNS Server",
-		Icon:          "⚡",
-		Category:      "dns",
-		Kind:          KindService,
-		SystemNames:   []string{"pdns"},
-		ConflictGroup: "dns-server",
+		ID:          "pdns",
+		Name:        "PowerDNS",
+		Description: "DNS Server",
+		Icon:        "⚡",
+		Category:    "dns",
+		Kind:        KindService,
+		SystemNames: []string{"pdns"},
 		// Arch's powerdns ships the sqlite3 backend inside the main package —
 		// no separate backend package exists there.
 		// Arch'ın powerdns'i sqlite3 arka ucunu ana pakette taşır — orada ayrı
@@ -1128,7 +1112,6 @@ var ManagedServices = []ManagedService{
 		// kurmak onu porta bağlanamaz hâlde bırakır — yani "kurulu" ve ölü.
 		// Koltuk, bunu sessiz bir çakışma yerine görünür bir değiştirmeye
 		// çevirir.
-		ConflictGroup: "kv-store",
 	},
 	{
 		// Valkey is the community fork Redis left behind when it changed its
@@ -1153,9 +1136,8 @@ var ManagedServices = []ManagedService{
 		// ve unit'i valkey-server, Arch'ınki valkey ve valkey. İkisini birden
 		// yazmak, tarayıcının hangisi varsa onu sahiplenmesini sağlar —
 		// SpamAssassin'in "spamd" ve "spamassassin" taşımasıyla aynı sebep.
-		SystemNames:   []string{"valkey-server", "valkey"},
-		ConflictGroup: "kv-store",
-		Packages:      map[string][]string{"apt": {"valkey-server"}, "pacman": {"valkey"}},
+		SystemNames: []string{"valkey-server", "valkey"},
+		Packages:    map[string][]string{"apt": {"valkey-server"}, "pacman": {"valkey"}},
 		// No firewall ports: a cache is local-only, and that is the safest
 		// default. Exposing 6379 to the world is how unauthenticated caches get
 		// found and emptied.

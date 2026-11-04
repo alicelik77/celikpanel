@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -203,15 +204,18 @@ func (p *Panel) handleNodeRuntimeSub(w http.ResponseWriter, r *http.Request) {
 			writeClientError(w, http.StatusBadRequest, "not a valid node version")
 			return
 		}
-		count, blockers, err := runtimeVersionBlockers(r.Context(), p.db.GetDB(), "node", version)
+		// alpha.123 (D-045): sites on the version and the service apps whose
+		// units run on it (read from the Agent) refuse the removal, by name.
+		// The Agent refuses again if a unit still runs on it.
+		facts := p.removalNodeVersionFacts(r.Context(), version)
+		plan, err := computeRemovalPlan(r.Context(), p.db.GetDB(), core.GetManagedServiceByID("node"), version, nil, facts)
 		if err != nil {
 			writeServerError(w, err)
 			return
 		}
-		if count > 0 {
-			writeCodedErrorDetails(w, http.StatusConflict, errCodeRuntimeInUse,
-				fmt.Sprintf("%d site(s) run on Node.js %s — switch them to another version first.", count, version),
-				"", blockers)
+		if len(plan.Blockers) > 0 {
+			writeRemovalPlanRefusal(w, errCodeRuntimeInUse,
+				fmt.Sprintf("%d thing(s) run on Node.js %s — move or remove them first.", len(plan.BlockerLines()), version), plan)
 			return
 		}
 		var resp transport.NodeRemoveResponse
@@ -234,6 +238,10 @@ func (p *Panel) handleNodeRuntimeSub(w http.ResponseWriter, r *http.Request) {
 			writeServerError(w, err)
 			return
 		}
+		if resp.ErrorCode == "RUNTIME_UNITS_BOUND" {
+			writeCodedErrorDetails(w, http.StatusConflict, errCodeRuntimeInUse, resp.Error, "", p.runtimeUnitLabels(r.Context(), resp.Units))
+			return
+		}
 		if resp.Error != "" {
 			writeClientError(w, http.StatusConflict, resp.Error)
 			return
@@ -245,7 +253,11 @@ func (p *Panel) handleNodeRuntimeSub(w http.ResponseWriter, r *http.Request) {
 		p.auditDetailed(r, "runtime.node.remove:"+version, "service", 0, map[string]any{"component": "node", "version": version})
 		// Keep the components page truthful without a manual rescan.
 		// Bileşenler sayfası elle taramasız da doğru kalsın.
-		if _, err := p.scanManagedServices(r.Context()); err != nil {
+		services, err := p.scanManagedServices(r.Context())
+		if err == nil && !nodeLineStays(services, version) {
+			p.withdrawAfterRemoval(r.Context(), "node", version)
+		}
+		if err != nil {
 			log.Printf("rescan after node version removal: %v", err)
 			p.audit(r, "runtime.node.remove.refresh.failed:"+version+" — "+auditReason(err.Error()), "service", 0)
 			writeServiceStateRefreshFailed(w)

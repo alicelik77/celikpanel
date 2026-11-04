@@ -145,6 +145,53 @@ func serviceMutationSpamFilter(serviceID string) bool {
 	return service != nil && service.ConflictGroup == "spam-filter"
 }
 
+// serviceMutationRemoveTogetherMembers (alpha.123, D-045): the components a
+// remove-together lease covers: its target and the members of its qualifier,
+// each a "together" component that requires the target by the catalogue's
+// one dependency map. Anything else is no remove-together lease.
+// Birlikte kaldırma kirasının kapsadığı bileşenler.
+func serviceMutationRemoveTogetherMembers(job *ServiceMutationJob) []string {
+	if job == nil || job.Kind != "service_remove_together" {
+		return nil
+	}
+	target := core.GetManagedServiceByID(job.Target)
+	if target == nil || target.ConflictGroup == "dns-server" || job.Target == core.NativeCronServiceID {
+		return nil
+	}
+	if job.PackageName == "" {
+		// Only settings go with it (ClamAV's scan schedule).
+		return []string{job.Target}
+	}
+	members, err := core.ParseRemoveTogetherQualifier(job.PackageName)
+	if err != nil {
+		return nil
+	}
+	for _, member := range members {
+		if member == job.Target || !core.RuleRequires(member, job.Target) {
+			return nil
+		}
+	}
+	return append(members, job.Target)
+}
+
+func serviceMutationRemoveTogetherContains(job *ServiceMutationJob, serviceID string) bool {
+	for _, member := range serviceMutationRemoveTogetherMembers(job) {
+		if member == serviceID {
+			return true
+		}
+	}
+	return false
+}
+
+func serviceMutationRemoveTogetherAny(job *ServiceMutationJob, match func(string) bool) bool {
+	for _, member := range serviceMutationRemoveTogetherMembers(job) {
+		if match(member) {
+			return true
+		}
+	}
+	return false
+}
+
 func serviceMutationDNSEngineTarget(target string) bool {
 	target = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(target)), ".service")
 	service := core.GetManagedServiceByID(target)
@@ -190,7 +237,8 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 
 	case serviceMutationStepUninstallService:
 		return claim.action == "uninstall" && claim.target != "roundcube" &&
-			serviceMutationJobMatches(job, "service_uninstall", claim.target, claim.packageName)
+			(serviceMutationJobMatches(job, "service_uninstall", claim.target, claim.packageName) ||
+				(claim.packageName == "" && serviceMutationRemoveTogetherContains(job, claim.target)))
 
 	case serviceMutationStepInstallRoundcube:
 		return claim.target == "roundcube" && claim.packageName == "" && claim.action == "install" &&
@@ -199,12 +247,14 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 
 	case serviceMutationStepRemoveRoundcube:
 		return claim.target == "roundcube" && claim.packageName == "" && claim.action == "remove" &&
-			serviceMutationJobMatches(job, "service_uninstall", "roundcube", "")
+			(serviceMutationJobMatches(job, "service_uninstall", "roundcube", "") ||
+				serviceMutationRemoveTogetherContains(job, "roundcube"))
 
 	case serviceMutationStepConfigureWebmail:
 		return claim.target == "roundcube" && claim.packageName == "" && claim.action == "configure" &&
 			(serviceMutationJobMatches(job, "service_install", "roundcube", "") ||
 				serviceMutationJobMatches(job, "service_uninstall", "roundcube", "") ||
+				serviceMutationRemoveTogetherContains(job, "roundcube") ||
 				serviceMutationMailProfileContains(job, "roundcube"))
 
 	case serviceMutationStepInstallNodeVersion:
@@ -416,6 +466,7 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 			(job.Target == "startup" || serviceMutationSpamFilter(job.Target))) ||
 			(job.Kind == "service_install" && job.PackageName == "" &&
 				serviceMutationSpamFilter(job.Target)) ||
+			serviceMutationRemoveTogetherAny(job, serviceMutationSpamFilter) ||
 			serviceMutationJobMatches(job, "mail_profile_install", core.MailProfileProtected, "")
 
 	case serviceMutationStepConfigureMailSubmission:
@@ -475,8 +526,13 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 		return false
 
 	case serviceMutationStepConfigureDBTools:
-		if claim.target != "dbtools" || claim.packageName != "" || claim.action != "configure" ||
-			(job.Target != "phpmyadmin" && job.Target != "phppgadmin") {
+		if claim.target != "dbtools" || claim.packageName != "" || claim.action != "configure" {
+			return false
+		}
+		if serviceMutationRemoveTogetherAny(job, func(id string) bool { return id == "phpmyadmin" || id == "phppgadmin" }) {
+			return true
+		}
+		if job.Target != "phpmyadmin" && job.Target != "phppgadmin" {
 			return false
 		}
 		return job.PackageName == "" &&

@@ -274,6 +274,10 @@ func serverSetupComponentDependencies(id string) []string {
 		return dependencies
 	}
 	for _, dependency := range managed.Requires {
+		// Every setup installs its required components (nftables) itself.
+		if slices.Contains(serverSetupRequiredComponents, dependency) {
+			continue
+		}
 		switch dependency {
 		case "web-server":
 			dependency = "nginx"
@@ -292,6 +296,22 @@ func serverSetupComponentDependencies(id string) []string {
 	}
 	slices.Sort(dependencies)
 	return slices.Compact(dependencies)
+}
+
+// serverSetupRequiredDependent reports a service that requires a component
+// every setup installs (alpha.123: Fail2ban requires nftables); its step
+// follows that component's.
+func serverSetupRequiredDependent(id string) bool {
+	managed := core.GetManagedServiceByID(id)
+	if managed == nil {
+		return false
+	}
+	for _, requirement := range managed.Requires {
+		if slices.Contains(serverSetupRequiredComponents, requirement) {
+			return true
+		}
+	}
+	return false
 }
 
 // serverSetupMailDependent reports a generic service whose catalogue

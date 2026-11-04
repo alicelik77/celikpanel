@@ -246,6 +246,12 @@ const screenPartBudgets = {
   // a new part because "dashboard" had no headroom left. Set with at least
   // 25% headroom from its Turkish file: 2.24 / 0.90 KiB.
   hostName: kib(3, 1.25),
+  // v0.1.0-alpha.123 (D-045): the component dependency rule on screen - the
+  // removal window's three groups, the server-side removal's progress and the
+  // install window's "needs first" (rmrule.). A new part because "components"
+  // had little headroom left. Set with at least 25% headroom from its Turkish
+  // file: 6.30 / 2.24 KiB.
+  removalRule: kib(8, 3),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

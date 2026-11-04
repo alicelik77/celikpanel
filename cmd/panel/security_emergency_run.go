@@ -309,6 +309,12 @@ func (n panelEmergencyNative) removePackage(ctx context.Context, service, versio
 			}
 			return nil
 		})
+		// alpha.123 (D-045): the Agent's wall holds here too — a service
+		// app still running on this version is a prerequisite the
+		// administrator resolves (remove or stop the app), then continues.
+		if resp.ErrorCode == "RUNTIME_UNITS_BOUND" {
+			return "", &suspensionStepError{kind: "prerequisite", err: fmt.Errorf("%s", resp.Error)}
+		}
 		if resp.Error != "" {
 			return "", verifiedFailure("%s", resp.Error)
 		}

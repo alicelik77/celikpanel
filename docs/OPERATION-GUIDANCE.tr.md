@@ -10828,3 +10828,51 @@ SSH açılmadan önce onun kurulu olmasını sağlar.
 
 Hâlâ zorunlu ve zaten kapılı olan: OpenSSH sunucusu (`sshd_missing`). Komut satırı için
 başka zorunlu bir şey yok. Şema değişmedi; göç yok.
+
+### Bileşen kaldırmak: tek bağımlılık kuralı (D-045, alpha.123)
+
+Her kaldırma tek soru sorar: "kaldırılan şeye ne ihtiyaç duyuyor?" Yanıtı bileşen
+bağımlılık haritası (`internal/core/component_rules.go`) ve Panel'in kendi kayıtları
+(`cmd/panel/component_removal_plan.go`) verir. Kaldırma penceresi, kaldırma isteği,
+birlikte kaldırma işlemi ve güvenlik acil durumu aynı planı okur.
+
+- **Doğrulanmış ret (önkoşul).** Müşteri verisi ya da nesneleri, panelin kendi
+  ihtiyaçları ve kendisi kullanılan bileşenler: `SERVICE_HAS_DEPENDENTS` (bileşenin
+  tamamı) ya da `RUNTIME_IN_USE` (tek sürüm), 409, her ad `details` içinde, plan `plan`
+  içinde ve her öğenin bağlantısıyla. Yapacak olan: yönetici. Sonraki adım: her öğeyi
+  bağlantısından taşımak ya da kaldırmak (site → PHP ya da Node.js sürümünü değiştirmek
+  için kendi sayfası; veritabanı → Veritabanları; posta kutusu → alan adının Posta
+  sekmesi; sertifika → SSL sekmesi; VPN eşi → VPN; karantina → sitenin Kötücül yazılım
+  taraması; panel güvenlik duvarı → Güvenlik), sonra pencereyi yeniden açmak. "Zorla"
+  yoktur.
+- **Birlikte kaldırma.** Başka hiçbir şeyin kullanmadığı yaprak bileşenler (phpMyAdmin,
+  phpPgAdmin, Roundcube, Rspamd, SpamAssassin) ve ayarlar (ClamAV'ın tarama takvimi)
+  işaretli listelenir. İşaret kaldırılırsa kaldırma reddedilir (`REMOVAL_NEEDS_TOGETHER`,
+  hiçbir şey kaldırılmaz). İşaretliyse Panel 202 ve kalıcı bir işlemle yanıtlar
+  (`service_remove_together`, tek Agent kirası, niteleyici = sıralı üyeler): önce
+  ayarlar, sonra her bağımlı, sonra hedef; her adım taze taramayla denetlenir. Sayfayı
+  kapatmak işlemi durdurmaz. Sayfa o anki adımı, sonuç kaldırılanları söyler.
+- **Bilinmeyen sonuç.** Kaybolan yanıt hiçbir şeyi yeniden başlatmaz: işlem kimliğiyle
+  okunur. Panel yeniden başlarsa aynı çalışma sürer; gitmiş olan atlanır ve önce plan
+  yeniden denetlenir; arada ortaya çıkan bir kullanım kalanını reddeder
+  (`removal_blocked`, o ana dek kaldırılanlarla).
+- **Bilinmeyen durum.** Okunamayan panel güvenlik duvarı durumu nftables'ın kaldırılmasını
+  reddeder (`panel_firewall_unknown`); bir Node.js sürümündeki birimler okunamazsa bu bir
+  nottur ve kaldırma çalışırken Agent yeniden bakar (`RUNTIME_UNITS_BOUND`, birimler
+  adıyla; Panel hizmet uygulamalarını adlandırır).
+- **Neler durur.** Hiçbir şeyin ihtiyaç duymadığı kaldırma, neyin durduğunu ve neyin
+  çalışmaya devam ettiğini söyleyen düz bir onaydır (web postası, istenmeyen posta süzgeci,
+  engelleme koruması, kötücül yazılım taramaları, SFTP sürerken N hesap için FTP, panelin
+  kaydetmediği kullanım).
+- **Sunumlar.** Planlar, bayi daraltmaları ve özel kümeler kaldırılan bileşenin ya da
+  sürümün kayıtlarını kaybeder (`rights_set_items`); kaldırmayla birlikte denetim
+  kaydına geçer. Bir Node.js hattı, o hattın başka bir sürümü kuruluyken sunulmaya devam
+  eder.
+- **Güvenlik acil durumu (D-043).** Kural onu engellemez; kaldırma adımı aynı bağımlıları
+  gösterir. Bir Node.js sürümünde hâlâ çalışan hizmet uygulaması adımı önkoşul olarak
+  durdurur (Agent'ın duvarı).
+- **Kurulum.** Gereksinimleri karşılanmamış bileşen "önce başka bileşenler gerekiyor"
+  penceresini açar; eksik her parça için **Önce … kurulsun**; bir görev için onu
+  görebilen bileşenler listelenir.
+
+Şema değişmedi; geçiş yok. Laboratuvar denetimi bekliyor (D-025).

@@ -73,6 +73,10 @@ type ManagedServiceResponse struct {
 	// RequiresMissing: kurulumu engelleyen karşılanmamış gereksinimler (servis
 	// id'leri ya da grup adları) — UI Kur'u kapatır ve önce neyin kurulacağını söyler.
 	RequiresMissing []string `json:"requires_missing,omitempty"`
+	// Provides (alpha.123, D-045): the capability seat this component fills
+	// ("web-server"), from the one dependency map, so the install dialog can
+	// offer the components that meet a missing seat.
+	Provides []string `json:"provides,omitempty"`
 	// NeedsMissing (alpha.118): for an INSTALLED tool (phpPgAdmin,
 	// phpMyAdmin, Roundcube), the requirements it no longer has on this
 	// server, read from the same scan, so it cannot work (owner's Boston
@@ -729,6 +733,7 @@ func catalogViewForHost(obs []serviceObservation, host core.ManagedServiceHostPr
 			InstalledEvidence: core.InstalledEvidenceFor(&managed, pkgFamily),
 			ConflictWith:      conflictWith,
 			RequiresMissing:   requiresMissing,
+			Provides:          core.RuleFor(managed.ID).Provides,
 			NeedsMissing:      needsMissing,
 			NotOffered:        notOffered,
 			NotOfferedKind:    notOfferedKind,
