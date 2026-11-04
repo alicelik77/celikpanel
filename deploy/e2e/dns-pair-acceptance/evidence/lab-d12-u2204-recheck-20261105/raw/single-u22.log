@@ -1,0 +1,50 @@
+== provision 20:39:14 ubuntu2204 192.0.3.191 zone=u22.test version=v0.1.0-alpha.122
+arch .\nPRETTY_NAME=\"Ubuntu 22.04.5 LTS\"\nVERSION_ID=\"22.04\"\n5.15.0-198-generic\nboston\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 51.6
+}
+
+== install through get.sh in a root terminal 20:40:06
+main terminal rc 0 114.5 problem None restart_required False postinstall rc 0
+  tail: rolayı doğrula:  | Created administrator / Yönetici oluşturuldu. |     ✓ administrator is ready / yönetici hazır | ==> Starting the panel / Panel başlatılıyor |     ✓ panel is running / panel çalışıyor | ==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor |     ✓ initial panel certificate is protected / ilk panel sertifikasi korundu |  | CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu. |     Panel:  https://192.0.3.191:1923 |     Services / Servisler: systemctl status celikpanel-agent celikpanel-panel |     Logs / Günlükler: journalctl -u celikpanel-panel -f | 
+license active acceptance_fixture can_use_panel True
+PRETTY_NAME="Ubuntu 22.04.5 LTS"
+CELIKPANEL_LISTEN=:1923
+
+== setup DNS engine catalogue (GET /api/v1/setup/components, read-only) 20:42:11
+host {'distro_id': 'ubuntu', 'version_id': '22.04'} inventory ready
+  dns_engine {"candidate_version": "9.18.39", "id": "bind", "offered": true, "role": "main"}
+  dns_engine {"candidate_version": "9.18.39", "id": "bind", "offered": true, "role": "backup"}
+  dns_engine {"candidate_version": "4.5.3", "id": "pdns", "offered": false, "reason": "server_setup_pdns_main_untested_system", "role": "main"}
+  dns_engine {"candidate_version": "4.5.3", "id": "pdns", "offered": true, "role": "backup"}
+wizard data single ['count', 'dnshome', 'domain', 'mail', 'name', 'names', 'roles']
+guidance 200 
+domain 200 
+count 200 
+name 200 
+roles 200 
+names 200 
+dnshome 200 
+mail 200 
+== catalogue again before review 20:42:43
+host {'distro_id': 'ubuntu', 'version_id': '22.04'} inventory ready
+  dns_engine {"candidate_version": "9.18.39", "id": "bind", "offered": true, "role": "main"}
+  dns_engine {"candidate_version": "9.18.39", "id": "bind", "offered": true, "role": "backup"}
+  dns_engine {"candidate_version": "4.5.3", "id": "pdns", "offered": false, "reason": "server_setup_pdns_main_untested_system", "role": "main"}
+  dns_engine {"candidate_version": "4.5.3", "id": "pdns", "offered": true, "role": "backup"}
+plan 200 can_start True blockers [] ['01-dns:local', '02-service:nginx', '03-service:certbot', '04-firewall:enable_and_persist', '05-infrastructure_dns:u22.test', '06-access_dns:boston.u22.test', '07-panel_certificate:boston.u22.test', '08-dns_readiness:local', '09-service:mariadb', '10-service:php-fpm', '11-access_dns:mail.u22.test', '12-mail_certificate:mail.u22.test', '13-mail_profile:webmail', '14-mail_profile:protected-mail', '15-mail_dns:u22.test', '16-mail_enrollment:mail-renewal', '17-main_site:u22.test', '18-verify:custom'] 
+== start 20:43:10
+start 202 {
+ "id": "2c800c1be3bda8b24f9906bc50c5c3ca",
+ "panel_url": "https://boston.u22.test:1923/",
+ "phase": "queued",
+ "plan_id": "01547c77190753a45074b6d03a430542",
+
+-- u22/main 20:43:30
+failed 01-dns {"code": "server_setup_dns_failed", "message": "DNS setup requires attention. Verify the local address, nameserver identities, independent peer and the DNS operation result."}
+01-dns=failed 02-service=pending 03-service=pending 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-access_dns=pending 12-mail_certificate=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+== end 20:43:30
+failed 01-dns {"code": "server_setup_dns_failed", "message": "DNS setup requires attention. Verify the local address, nameserver identities, independent peer and the DNS operation result."}
+== single done 20:43:30

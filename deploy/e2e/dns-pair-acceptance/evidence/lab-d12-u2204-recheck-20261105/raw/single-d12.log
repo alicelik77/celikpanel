@@ -1,0 +1,43 @@
+== provision 20:39:44 debian12 192.0.3.190 zone=d12.test version=v0.1.0-alpha.122
+_NAME=\"Debian GNU/Linux 12 (bookworm)\"\nVERSION_ID=\"12\"\n6.1.0-54-cloud-amd64\nfrankfurt\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 46.6
+}
+
+== install through get.sh in a root terminal 20:40:31
+main terminal rc 0 76.0 problem None restart_required False postinstall rc 0
+  tail: rolayı doğrula:  | Created administrator / Yönetici oluşturuldu. |     ✓ administrator is ready / yönetici hazır | ==> Starting the panel / Panel başlatılıyor |     ✓ panel is running / panel çalışıyor | ==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor |     ✓ initial panel certificate is protected / ilk panel sertifikasi korundu |  | CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu. |     Panel:  https://192.0.3.190:1923 |     Services / Servisler: systemctl status celikpanel-agent celikpanel-panel |     Logs / Günlükler: journalctl -u celikpanel-panel -f | 
+license active acceptance_fixture can_use_panel True
+PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"
+CELIKPANEL_LISTEN=:1923
+
+== setup DNS engine catalogue (GET /api/v1/setup/components, read-only) 20:41:50
+host {'distro_id': 'debian', 'version_id': '12'} inventory ready
+  dns_engine {"candidate_version": "9.18.49", "id": "bind", "offered": true, "role": "main"}
+  dns_engine {"candidate_version": "9.18.49", "id": "bind", "offered": true, "role": "backup"}
+  dns_engine {"candidate_version": "4.7.3", "id": "pdns", "offered": false, "reason": "server_setup_pdns_main_untested_system", "role": "main"}
+  dns_engine {"candidate_version": "4.7.3", "id": "pdns", "offered": true, "role": "backup"}
+wizard data single ['count', 'dnshome', 'domain', 'mail', 'name', 'names', 'roles']
+guidance 200 
+domain 200 
+count 200 
+name 200 
+roles 200 
+names 200 
+dnshome 200 
+mail 200 
+== catalogue again before review 20:42:02
+host {'distro_id': 'debian', 'version_id': '12'} inventory ready
+  dns_engine {"candidate_version": "9.18.49", "id": "bind", "offered": true, "role": "main"}
+  dns_engine {"candidate_version": "9.18.49", "id": "bind", "offered": true, "role": "backup"}
+  dns_engine {"candidate_version": "4.7.3", "id": "pdns", "offered": false, "reason": "server_setup_pdns_main_untested_system", "role": "main"}
+  dns_engine {"candidate_version": "4.7.3", "id": "pdns", "offered": true, "role": "backup"}
+plan 200 can_start False blockers [] ['01-dns:local', '02-service:nginx', '03-service:certbot', '04-firewall:enable_and_persist', '05-infrastructure_dns:d12.test', '06-access_dns:frankfurt.d12.test', '07-panel_certificate:frankfurt.d12.test', '08-dns_readiness:local', '09-service:mariadb', '10-service:php-fpm', '11-service:cron', '12-access_dns:mail.d12.test', '13-mail_certificate:mail.d12.test', '14-mail_profile:webmail', '15-mail_profile:protected-mail', '16-mail_dns:d12.test', '17-mail_enrollment:mail-renewal', '18-main_site:d12.test', '19-verify:custom'] 
+== start 20:42:34
+start 409 {
+ "code": "server_setup_distribution_updates_unread",
+ "error": "CelikPanel could not read yet which installed distribution packages this plan's installs would
+-- d12/main 20:42:36
+200 None null

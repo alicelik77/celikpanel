@@ -1,0 +1,36 @@
+== 20:45:27 setup operation (API read)
+200 failed 01-dns
+{"id": "01-dns", "kind": "dns", "owner_id": "ed13976d2ec79113708deb765f1db4eb", "request_id": "feb737bb6894a80e1dd7b7c214fa581f", "status": "failed", "target": "local"}
+{"id": "02-service", "kind": "service", "owner_id": "c4d7b5c7b35e90517ae6895796747de5", "request_id": "c75f8749d21050b1660c27b65ac1ad79", "status": "pending", "target": "nginx"}
+{"id": "03-service", "kind": "service", "owner_id": "082941aec4831bd35a6224b869503de5", "request_id": "c064c0f863e7d28d88e865e8b01eb039", "status": "pending", "target": "certbot"}
+error {"code": "server_setup_dns_failed", "message": "DNS setup requires attention. Verify the local address, nameserver identities, independent peer and the DNS operation result."}
+== guest journal
+PRETTY_NAME="Ubuntu 22.04.5 LTS"
+systemd 249 (249.11-0ubuntu3.23)
+-- named
+inactive inactive 
+Id=named.service
+Names=named.service
+LoadState=not-found
+FragmentPath=
+DropInPaths=
+UnitFileState=
+ls: cannot access '/usr/lib/systemd/system/named.service': No such file or directory
+ls: cannot access '/lib/systemd/system/named.service': No such file or directory
+lrwxrwxrwx 1 root root 7 Oct 20 10:51 /lib -> usr/lib
+systemd: /usr/share/man/man8/systemd-hostnamed.service.8.gz
+systemd: /lib/systemd/system/systemd-hostnamed.service
+-- No entries --
+-- apt
+
+Start-Date: 2026-10-20  10:55:17
+Commandline: apt-get install -qqy grub-pc shim-signed
+Install: mokutil:amd64 (0.6.0-2~22.04.2, automatic), grub-efi-amd64-signed:amd64 (1.187.12+2.06-2ubuntu14.8, automatic), grub-efi-amd64-bin:amd64 (2.06-2ubuntu14.8, automatic), efibootmgr:amd64 (17-1ubuntu2, automatic), shim-signed:amd64 (1.51.4+15.8-0ubuntu1)
+End-Date: 2026-10-20  10:55:18
+
+Start-Date: 2026-11-04  20:41:05
+Commandline: /usr/bin/apt-get install -y -qq tar xz-utils curl ca-certificates nftables iproute2 logrotate less zip unzip nano vim-tiny rsync
+Requested-By: celik (1000)
+Install: zip:amd64 (3.0-12build2), unzip:amd64 (6.0-26ubuntu3.2)
+Upgrade: xz-utils:amd64 (5.2.5-2ubuntu1.1, 5.2.5-2ubuntu1.2), ca-certificates:amd64 (20260601~22.04.1, 20260816ubuntu0.22.04.1), nano:amd64 (6.2-1ubuntu0.2, 6.2-1ubuntu0.3)
+End-Date: 2026-11-04  20:41:29

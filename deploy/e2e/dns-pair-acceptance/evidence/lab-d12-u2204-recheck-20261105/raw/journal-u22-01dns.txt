@@ -1,0 +1,15 @@
+  celikpanel-agent.service          loaded active running CelikPanel privileged agent
+  celikpanel-panel.service          loaded active running CelikPanel web panel
+  celikpanel-release-recovery.timer loaded active waiting CelikPanel release transaction recovery watchdog
+Nov 04 20:43:07.204697 boston systemd[1]: Configuration file /run/systemd/system/netplan-ovs-cleanup.service is marked world-inaccessible. This has no effect as configuration data is accessible via APIs without restrictions. Proceeding anyway.
+Nov 04 20:43:10.141783 boston systemd[1]: Configuration file /run/systemd/system/netplan-ovs-cleanup.service is marked world-inaccessible. This has no effect as configuration data is accessible via APIs without restrictions. Proceeding anyway.
+Nov 04 20:43:12.702090 boston systemd[1]: Configuration file /run/systemd/system/netplan-ovs-cleanup.service is marked world-inaccessible. This has no effect as configuration data is accessible via APIs without restrictions. Proceeding anyway.
+Nov 04 20:43:13.486310 boston systemd-timesyncd[502]: Timed out waiting for reply from 185.125.190.56:123 (ntp.ubuntu.com).
+Nov 04 20:43:23.740203 boston systemd-timesyncd[502]: Timed out waiting for reply from 185.125.190.58:123 (ntp.ubuntu.com).
+Nov 04 20:43:24.839633 boston systemd[1]: Configuration file /run/systemd/system/netplan-ovs-cleanup.service is marked world-inaccessible. This has no effect as configuration data is accessible via APIs without restrictions. Proceeding anyway.
+Nov 04 20:43:26.929284 boston systemd[1]: Starting CelikPanel verified release transaction recovery...
+Nov 04 20:43:27.092209 boston systemd[1]: Configuration file /run/systemd/system/netplan-ovs-cleanup.service is marked world-inaccessible. This has no effect as configuration data is accessible via APIs without restrictions. Proceeding anyway.
+Nov 04 20:43:28.737316 boston systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+Nov 04 20:43:28.737892 boston systemd[1]: Finished CelikPanel verified release transaction recovery.
+Nov 04 20:43:29.314356 boston panel[12560]: 2026/11/04 20:43:29 server setup step 01-dns failed: database is locked (5) (SQLITE_BUSY)
+Nov 04 20:43:33.987037 boston systemd-timesyncd[502]: Timed out waiting for reply from 91.189.91.157:123 (ntp.ubuntu.com).

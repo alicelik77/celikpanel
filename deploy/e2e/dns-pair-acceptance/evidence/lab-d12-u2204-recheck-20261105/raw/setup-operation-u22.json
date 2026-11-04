@@ -1,0 +1,237 @@
+200
+{
+ "context": {
+  "access_dns_ip": "192.0.3.191",
+  "dns_engine": "bind",
+  "dns_hosting_management": "",
+  "dns_mode": "local",
+  "dns_role": "primary",
+  "infrastructure_dns": {
+   "expected_digest": "036eb00f52545a84a905b971761e1245",
+   "records": [
+    {
+     "action": "add",
+     "content": "ns1.u22.test hostmaster.u22.test 1 3600 600 604800 300",
+     "name": "u22.test",
+     "ttl": 3600,
+     "type": "SOA"
+    },
+    {
+     "action": "add",
+     "content": "ns1.u22.test",
+     "name": "u22.test",
+     "ttl": 3600,
+     "type": "NS"
+    },
+    {
+     "action": "add",
+     "content": "ns2.u22.test",
+     "name": "u22.test",
+     "ttl": 3600,
+     "type": "NS"
+    },
+    {
+     "action": "add",
+     "content": "192.0.3.191",
+     "name": "ns1.u22.test",
+     "ttl": 300,
+     "type": "A"
+    },
+    {
+     "action": "add",
+     "content": "192.0.3.191",
+     "name": "ns2.u22.test",
+     "ttl": 300,
+     "type": "A"
+    },
+    {
+     "action": "add",
+     "content": "192.0.3.191",
+     "name": "boston.u22.test",
+     "ttl": 300,
+     "type": "A"
+    },
+    {
+     "action": "add",
+     "content": "192.0.3.191",
+     "name": "mail.u22.test",
+     "ttl": 300,
+     "type": "A"
+    },
+    {
+     "action": "add",
+     "content": "mail.u22.test",
+     "name": "u22.test",
+     "origin": "mail",
+     "priority": 10,
+     "ttl": 3600,
+     "type": "MX"
+    },
+    {
+     "action": "add",
+     "content": "\"v=spf1 mx a:mail.u22.test ~all\"",
+     "name": "u22.test",
+     "origin": "mail",
+     "ttl": 3600,
+     "type": "TXT"
+    },
+    {
+     "action": "add",
+     "content": "\"v=DMARC1; p=none; rua=mailto:dmarc@u22.test\"",
+     "name": "_dmarc.u22.test",
+     "origin": "mail",
+     "ttl": 3600,
+     "type": "TXT"
+    }
+   ],
+   "zone": "u22.test",
+   "zone_type": "NATIVE"
+  },
+  "local_ip": "192.0.3.191",
+  "local_nameserver": "ns1.u22.test",
+  "mail_hostname": "mail.u22.test",
+  "panel_domain": "boston.u22.test",
+  "peer_ip": "",
+  "peer_nameserver": ""
+ },
+ "error": {
+  "code": "server_setup_dns_failed",
+  "message": "DNS setup requires attention. Verify the local address, nameserver identities, independent peer and the DNS operation result."
+ },
+ "id": "2c800c1be3bda8b24f9906bc50c5c3ca",
+ "panel_url": "https://boston.u22.test:1923/",
+ "phase": "01-dns",
+ "plan_id": "01547c77190753a45074b6d03a430542",
+ "request_id": "2c800c1be3bda8b24f9906bc50c5c3ca",
+ "status": "failed",
+ "steps": [
+  {
+   "id": "01-dns",
+   "kind": "dns",
+   "owner_id": "ed13976d2ec79113708deb765f1db4eb",
+   "request_id": "feb737bb6894a80e1dd7b7c214fa581f",
+   "status": "failed",
+   "target": "local"
+  },
+  {
+   "id": "02-service",
+   "kind": "service",
+   "owner_id": "c4d7b5c7b35e90517ae6895796747de5",
+   "request_id": "c75f8749d21050b1660c27b65ac1ad79",
+   "status": "pending",
+   "target": "nginx"
+  },
+  {
+   "id": "03-service",
+   "kind": "service",
+   "owner_id": "082941aec4831bd35a6224b869503de5",
+   "request_id": "c064c0f863e7d28d88e865e8b01eb039",
+   "status": "pending",
+   "target": "certbot"
+  },
+  {
+   "id": "04-firewall",
+   "kind": "firewall",
+   "owner_id": "570a43af363047e0d0f3fcbfd45e5235",
+   "request_id": "dcc3d168302e53ea442433d157861c02",
+   "status": "pending",
+   "target": "enable_and_persist"
+  },
+  {
+   "id": "05-infrastructure_dns",
+   "kind": "infrastructure_dns",
+   "owner_id": "54449a5324017835fd0971aa8bcb740d",
+   "request_id": "79c95a82bab53056b86b13c00fa1be1a",
+   "status": "pending",
+   "target": "u22.test"
+  },
+  {
+   "id": "06-access_dns",
+   "kind": "access_dns",
+   "owner_id": "d588af47168b2508e99b81e9958cd65d",
+   "qualifier": "192.0.3.191",
+   "request_id": "2ae328079712db4f64061e4353de1095",
+   "status": "pending",
+   "target": "boston.u22.test"
+  },
+  {
+   "id": "07-panel_certificate",
+   "kind": "panel_certificate",
+   "owner_id": "cde380a61e7ad3fadaf5c093cc075a3a",
+   "request_id": "0c146c3fb6e3e513f34b23506c88709f",
+   "status": "pending",
+   "target": "boston.u22.test"
+  },
+  {
+   "id": "08-dns_readiness",
+   "kind": "dns_readiness",
+   "owner_id": "13965a2c046ddd258d37b9d1c073c078",
+   "request_id": "9d8912fa14a26401ac24a51414661f86",
+   "status": "pending",
+   "target": "local"
+  },
+  {
+   "id": "09-service",
+   "kind": "service",
+   "owner_id": "d42dfa423ab08336469ddff7c78ace17",
+   "request_id": "42bcb13034d3d2b5a28b1166ef6a8961",
+   "status": "pending",
+   "target": "mariadb"
+  },
+  {
+   "id": "10-service",
+   "kind": "service",
+   "owner_id": "fe5e9d14370b8d450090d313d1297854",
+   "request_id": "59b478b5e2d3ca5a3aaa3d6f4989a397",
+   "status": "pending",
+   "target": "php-fpm"
+  },
+  {
+   "id": "11-access_dns",
+   "kind": "access_dns",
+   "owner_id": "936b784880e03113d306975976ef8f0a",
+   "qualifier": "192.0.3.191",
+   "request_id": "ff886d4cc37051643611045cec7aebb3",
+   "status": "pending",
+   "target": "mail.u22.test"
+  },
+  {
+   "id": "12-mail_certificate",
+   "kind": "mail_certificate",
+   "owner_id": "771e7b0257da86c3ce69acf089f5f5df",
+   "request_id": "3a83e14b7949c83c02137013335230a6",
+   "status": "pending",
+   "target": "mail.u22.test"
+  },
+  {
+   "id": "13-mail_profile",
+   "kind": "mail_profile",
+   "owner_id": "83f4e4370c5119d7da50cf4c16d2081d",
+   "request_id": "43fee4883255449441f54b2fb5c30d9b",
+   "status": "pending",
+   "target": "webmail"
+  },
+  {
+   "id": "14-mail_profile",
+   "kind": "mail_profile",
+   "owner_id": "6c58f165b1e1a78e430c71c331729e1f",
+   "request_id": "7706a5f2f52f2e72aa5e68d4b5e2b4b5",
+   "status": "pending",
+   "target": "protected-mail"
+  },
+  {
+   "id": "15-mail_dns",
+   "kind": "mail_dns",
+   "owner_id": "63038b929de9358f5342fb1b66596f47",
+   "request_id": "c167faf3fa6948c0f68609fb13ef6331",
+   "status": "pending",
+   "target": "u22.test"
+  },
+  {
+   "id": "16-mail_enrollment",
+   "kind": "mail_enrollment",
+   "owner_id": "545a7c492ba5bf2f65ab46b90fa53441",
+   "qualifier": "a491a7ada882e47867bc823989ce74a410c4874cf814365d58af163bd3ac641c",
+   "request_id": "a0b440f1f147d7090d11c57970e9c711",
+   "status": "pending",
+   "target": "mail-renew
