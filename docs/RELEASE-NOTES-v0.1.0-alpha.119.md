@@ -98,6 +98,12 @@ tools are never a right.
 
 ## Evidence
 
-<!-- INTEGRATION -->
+Integrated tree (`release/alpha119`): Go build, vet and gofmt clean; the
+`internal` and `cmd/panel` suites pass; the Agent suite shows only the 19
+known guest-only DNS and mail failures that also fail on alpha.118, none new;
+2412 web tests pass, the guide's generated files match their sources, and the
+build stays within the bundle budgets; release-recovery fixtures extended to
+schema 63; download portal and release sequence contracts pass (118 → 119).
+Lab round on the five supported systems: pending.
 
 <!-- LAB -->

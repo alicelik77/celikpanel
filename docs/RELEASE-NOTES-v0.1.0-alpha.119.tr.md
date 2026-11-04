@@ -100,6 +100,12 @@ değildir.
 
 ## Kanıt
 
-<!-- INTEGRATION -->
+Birleştirilmiş ağaç (`release/alpha119`): Go derlemesi, vet ve gofmt temiz;
+`internal` ve `cmd/panel` testleri geçiyor; Ajan testlerinde yalnız alpha.118'de
+de başarısız olan, bilinen 19 konuk-ortamı DNS ve posta hatası var, yenisi yok;
+2412 web testi geçiyor, kılavuzun üretilen dosyaları kaynaklarıyla aynı ve
+derleme paket bütçelerinin içinde; sürüm kurtarma örnekleri şema 63'e
+genişletildi; indirme sitesi ve sürüm sırası sözleşmeleri geçiyor (118 → 119).
+Desteklenen beş sistemde laboratuvar turu: bekliyor.
 
 <!-- LAB -->
