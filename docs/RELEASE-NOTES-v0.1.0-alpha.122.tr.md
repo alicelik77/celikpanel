@@ -41,4 +41,4 @@ günceller.**
 
 Şema değişmedi. Web testleri paket bütçeleri içinde geçiyor; sürüm sırası
 121 → 122.
-Yalnız ekran sürümü: Agent ya da Panel sunucu tarafında değişiklik yok, bu yüzden laboratuvar turu yapılmadı; otomatik denetimlerle denetlendi.
+Yalnız ekran sürümü: Agent ya da Panel sunucu tarafında değişiklik yok, bu yüzden laboratuvar turu yapılmadı; otomatik denetimlerle denetlendi. Bu denetimler de GitHub'ın `/run` bağlama bayraklarından bağımsız yapıldı: `/run` altına çalıştırılabilir dosya koyan üç sözleşme testi artık kendi özel tmpfs'ini kullanıyor; bu durum alpha.121'in paket derlemesini bir kez, alpha.122'nin denetimlerini bir kez durdurmuştu.

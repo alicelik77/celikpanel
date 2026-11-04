@@ -42,4 +42,4 @@ update screen.**
 
 No schema change. Web tests pass within the bundle budgets; release sequence
 121 → 122.
-Screen-only release: no Agent or Panel server change, so no lab round; checked by the automatic checks.
+Screen-only release: no Agent or Panel server change, so no lab round; checked by the automatic checks. Those checks themselves were made independent of GitHub's `/run` mount flags: the three contract tests that stage executables under `/run` now use a private tmpfs; this had stopped the alpha.121 package build once and the alpha.122 checks once.
