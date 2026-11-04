@@ -72,6 +72,8 @@ func TestMain(m *testing.M) {
 	}
 	sandboxUnitDir = func() (string, error) { return sandboxUnits, nil }
 	sandboxDaemonReload = func() error { return nil }
+	// A faked systemctl never unloads a unit: do not wait for it.
+	transientUnloadWait = 0
 	code := m.Run()
 	_ = os.RemoveAll(sandboxDir)
 	os.Exit(code)

@@ -344,12 +344,16 @@ func writeServiceAppMarker(installID int, marker serviceAppMarker) error {
 // installUnitState reads the transient install unit: none, running,
 // succeeded (active/exited, RemainAfterExit) or failed.
 func installUnitState(installID int) (string, string) {
-	out, err := appUnitSystemctl(systemctlArgs("show", serviceapps.InstallUnitName(installID), "--property=LoadState,ActiveState,SubState,Result")...)
+	out, err := appUnitSystemctl(systemctlArgs("show", serviceapps.InstallUnitName(installID), "--property=LoadState,ActiveState,SubState,Result,Job")...)
 	if err != nil {
 		return "unknown", strings.TrimSpace(string(out))
 	}
 	props := parseShow(string(out))
 	switch {
+	// A queued start job: the unit waits for its bind unit and shows
+	// "inactive" until it starts (alpha.119 lab round 3). It runs.
+	case props["LoadState"] != "not-found" && props["Job"] != "":
+		return "running", ""
 	case props["LoadState"] == "not-found" || props["ActiveState"] == "inactive" && props["Result"] == "success":
 		return "none", ""
 	case props["ActiveState"] == "failed":
@@ -360,6 +364,28 @@ func installUnitState(installID int) (string, string) {
 		return "running", ""
 	}
 	return "none", props["ActiveState"]
+}
+
+// serviceAppInstallRunArgs are systemd-run's arguments for an install unit
+// (celiksvcinst-<id>): the account, the environment, the sandbox in
+// systemd-run's own property form, its bind unit and the SMTP egress lines,
+// then the command.
+func serviceAppInstallRunArgs(sc serviceAppContext, version string, runtime serviceapps.RuntimeChoice, limits serviceapps.Resources, caps sitesandbox.Caps, command []string) ([]string, error) {
+	unit := serviceapps.InstallUnitName(sc.installID)
+	pathEnv := filepath.Dir(runtime.Path) + ":/usr/local/bin:/usr/bin:/bin"
+	run := []string{"--unit=" + unit, "--description=CelikPanel install of " + sc.app.Name + " " + version,
+		"--uid=" + sc.account.Name, "--gid=" + sc.account.Group, "--working-directory=" + sc.layout.Root,
+		"--setenv=HOME=" + sc.layout.DataDir(), "--setenv=PATH=" + pathEnv,
+		"--property=RemainAfterExit=yes", "--property=RuntimeMaxSec=7200", "--no-block", "--quiet"}
+	properties, err := serviceapps.InstallUnitProperties(sc.installID, sc.layout, sc.account.Name, sc.account.Group, limits, sc.app.Defaults.InstallMemoryMB, caps)
+	if err != nil {
+		return nil, err
+	}
+	for _, directive := range properties {
+		run = append(run, "--property="+directive)
+	}
+	run = append(run, "--")
+	return append(run, command...), nil
 }
 
 func parseShow(out string) map[string]string {
@@ -718,33 +744,28 @@ func (a *Agent) ServiceAppPrepareV1(req *transport.ServiceAppPrepareRequest, res
 		return nil
 	}
 	unit := serviceapps.InstallUnitName(req.Target.InstallID)
-	_, _ = appUnitSystemctl(systemctlArgs("stop", unit)...)
-	_, _ = appUnitSystemctl(systemctlArgs("reset-failed", unit)...)
+	// A unit of an earlier attempt (and its bind unit) is stopped and
+	// unloaded first: a loaded one refuses systemd-run's new unit of the
+	// same name ("already loaded").
+	if err := clearTransientUnit(unit + ".service"); err != nil {
+		serviceAppStep(resp, transport.ServiceAppUnknown, "install_unit", err.Error())
+		return nil
+	}
 	limits := serviceAppLimits(sc.app, req.Limits)
-	pathEnv := filepath.Dir(runtime.Path) + ":/usr/local/bin:/usr/bin:/bin"
-	run := []string{"--unit=" + unit, "--description=CelikPanel install of " + sc.app.Name + " " + req.Version,
-		"--uid=" + sc.account.Name, "--gid=" + sc.account.Group, "--working-directory=" + sc.layout.Root,
-		"--setenv=HOME=" + sc.layout.DataDir(), "--setenv=PATH=" + pathEnv,
-		"--property=RemainAfterExit=yes", "--property=RuntimeMaxSec=7200", "--no-block", "--quiet"}
 	caps := sandboxCaps(ctx)
 	if !serviceAppSandboxReady(sc, caps, resp) {
 		return nil
-	}
-	properties, err := serviceapps.InstallUnitProperties(req.Target.InstallID, sc.layout, sc.account.Name, sc.account.Group, limits, sc.app.Defaults.InstallMemoryMB, caps)
-	if err != nil {
-		serviceAppStep(resp, transport.ServiceAppVerifiedFailure, "sandbox_render", err.Error())
-		return nil
-	}
-	for _, directive := range properties {
-		run = append(run, "--property="+directive)
 	}
 	command, err := serviceapps.InstallCommand(sc.app, args)
 	if err != nil {
 		serviceAppStep(resp, transport.ServiceAppVerifiedFailure, "invalid_request", err.Error())
 		return nil
 	}
-	run = append(run, "--")
-	run = append(run, command...)
+	run, err := serviceAppInstallRunArgs(sc, req.Version, runtime, limits, caps, command)
+	if err != nil {
+		serviceAppStep(resp, transport.ServiceAppVerifiedFailure, "sandbox_render", err.Error())
+		return nil
+	}
 	if out, err := serviceAppRun(ctx, "systemd-run", run...); err != nil {
 		serviceAppStep(resp, transport.ServiceAppVerifiedFailure, "install_unit",
 			"the install step could not be started: "+strings.TrimSpace(string(out)))

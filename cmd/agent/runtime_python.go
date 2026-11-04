@@ -300,7 +300,7 @@ func removeRuntimeAppBuildFiles(appID int) {
 
 // buildUnitShow reads the build unit (found=false: systemd does not know it).
 func buildUnitShow(appID int) (props map[string]string, found bool, err error) {
-	out, err := appUnitSystemctl(systemctlArgs("show", siteruntime.BuildUnitName(appID), "--property=LoadState,ActiveState,Result,InvocationID")...)
+	out, err := appUnitSystemctl(systemctlArgs("show", siteruntime.BuildUnitName(appID), "--property=LoadState,ActiveState,Result,InvocationID,Job")...)
 	if err != nil {
 		return nil, false, fmt.Errorf("systemd could not be read: %s", strings.TrimSpace(string(out)))
 	}
@@ -308,10 +308,10 @@ func buildUnitShow(appID int) (props map[string]string, found bool, err error) {
 	return props, props["LoadState"] != "" && props["LoadState"] != "not-found", nil
 }
 
-func stopRuntimeAppBuildUnit(appID int) {
-	unit := siteruntime.BuildUnitName(appID)
-	_, _ = appUnitSystemctl(systemctlArgs("stop", unit)...)
-	_, _ = appUnitSystemctl(systemctlArgs("reset-failed", unit)...)
+// stopRuntimeAppBuildUnit stops and unloads an app's build unit and its
+// bind unit (clearTransientUnit).
+func stopRuntimeAppBuildUnit(appID int) error {
+	return clearTransientUnit(siteruntime.BuildUnitName(appID))
 }
 
 // RuntimeAppBuildV1 starts the build of a Python app's next environment for
@@ -381,8 +381,12 @@ func (a *Agent) RuntimeAppBuildV1(req *transport.RuntimeAppBuildRequest, resp *t
 		return nil
 	}
 	// A build of an operation that no longer runs (the Panel restarted
-	// and failed it) is stopped first; one build per app.
-	stopRuntimeAppBuildUnit(req.Target.AppID)
+	// and failed it) is stopped first; one build per app. Its unit must be
+	// gone before systemd-run makes the new one ("already loaded").
+	if err := stopRuntimeAppBuildUnit(req.Target.AppID); err != nil {
+		runtimeStep(step, transport.RuntimeAppUnknown, siteruntime.BuildFailed, err.Error())
+		return nil
+	}
 	for _, stale := range set.Stale() {
 		if _, err := runtimeAppAsUser(rc.account, "/bin/rm", "-rf", "--", path.Join(rc.layout.Root, stale)); err != nil {
 			runtimeStep(step, transport.RuntimeAppVerifiedFailure, "site_folder", "a leftover build folder could not be removed as the site's account: "+err.Error())
@@ -519,7 +523,8 @@ func (a *Agent) RuntimeAppBuildAdvanceV1(req *transport.RuntimeAppBuildAdvanceRe
 		runtimeStep(step, transport.RuntimeAppUnknown, "systemctl", err.Error())
 		return nil
 	}
-	phase, lost := siteruntime.BuildOutcome(found, props["ActiveState"], props["Result"])
+	phase, why := siteruntime.BuildOutcome(siteruntime.BuildUnit{Found: found, ActiveState: props["ActiveState"], Result: props["Result"],
+		Job: props["Job"], InvocationID: props["InvocationID"]})
 	if phase == siteruntime.BuildPhaseRunning {
 		record.answer(resp)
 		return nil
@@ -537,7 +542,9 @@ func (a *Agent) RuntimeAppBuildAdvanceV1(req *transport.RuntimeAppBuildAdvanceRe
 		if err := writeRuntimeBuildRecord(req.Target.AppID, record); err != nil {
 			log.Printf("RuntimeAppBuildAdvanceV1 app %d: record: %v", req.Target.AppID, err)
 		}
-		stopRuntimeAppBuildUnit(req.Target.AppID)
+		if err := stopRuntimeAppBuildUnit(req.Target.AppID); err != nil {
+			log.Printf("RuntimeAppBuildAdvanceV1 app %d: %v", req.Target.AppID, err)
+		}
 		removeRuntimeAppBuildFiles(req.Target.AppID)
 		record.answer(resp)
 	}
@@ -570,12 +577,20 @@ func (a *Agent) RuntimeAppBuildAdvanceV1(req *transport.RuntimeAppBuildAdvanceRe
 		end()
 		return nil
 	}
+	if why == siteruntime.BuildNotStarted {
+		// The build never ran: its bind unit (the sandbox helper) did not
+		// start. The helper's journal says why (a refused app folder).
+		record.Phase = siteruntime.BuildPhaseFailed
+		record.Class, record.Reason, record.Detail, record.Lines = buildBindFailure(ctx, req.Target.AppID)
+		end()
+		return nil
+	}
 	lines := buildJournal(ctx, req.Target.AppID, props["InvocationID"])
 	reason, pkg := siteruntime.ClassifyBuildFailure(lines)
 	record.Phase, record.Reason, record.Package = siteruntime.BuildPhaseFailed, reason, pkg
 	record.Lines = siteruntime.BuildTail(lines, 25, 1400)
 	switch {
-	case lost:
+	case why == siteruntime.BuildLost:
 		record.Class, record.Reason = transport.RuntimeAppUnknown, siteruntime.BuildFailed
 		record.Detail = "the build stopped without a result (the server restarted or someone stopped it); the running app was not changed. Deploy again"
 	case reason == siteruntime.WheelUnavailable:

@@ -276,3 +276,23 @@ func TestServiceAppUnitKeepsAnOwnerEdit(t *testing.T) {
 	}
 	_ = host
 }
+
+// alpha.119 lab round 3: an install unit whose start job waits for its bind
+// unit shows "inactive" with a job; it runs, it is not "none".
+func TestInstallUnitQueuedIsRunning(t *testing.T) {
+	old := appUnitSystemctl
+	t.Cleanup(func() { appUnitSystemctl = old })
+	show := ""
+	appUnitSystemctl = func(args ...string) ([]byte, error) { return []byte(show), nil }
+	for _, c := range []struct{ show, want string }{
+		{"LoadState=loaded\nActiveState=inactive\nSubState=dead\nResult=success\nJob=77\n", "running"},
+		{"LoadState=loaded\nActiveState=inactive\nSubState=dead\nResult=success\nJob=\n", "none"},
+		{"LoadState=loaded\nActiveState=active\nSubState=exited\nResult=success\nJob=\n", "succeeded"},
+		{"LoadState=not-found\nActiveState=inactive\nJob=\n", "none"},
+	} {
+		show = c.show
+		if got, _ := installUnitState(12); got != c.want {
+			t.Errorf("%q: %s, want %s", c.show, got, c.want)
+		}
+	}
+}

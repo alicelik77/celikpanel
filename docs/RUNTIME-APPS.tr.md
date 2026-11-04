@@ -571,6 +571,29 @@ adım kurulumu bitirir ve sonrakiler çalışmaz.
 adımından `--only-binary=:all:` yalnız sunum kaynaktan derlemeye izin
 veriyorsa çıkarılır; sabitlenmiş paketler her zaman hazır pakettir.
 
+**Kurulumun okunması (alpha.119 deneme turu 3).** `systemd-run` hemen sonra
+kurulum birimi bağlama birimini bekler. Bu sırada `systemctl show` onu
+sıradaki bir başlatma işiyle `inactive` gösterir (`Job=<no>`, `InvocationID`
+yok). Agent bunu süren kurulum sayar. Bu düzeltmeden önce Panel'in ilk
+okuması bekleyen kurulumu durmuş sanıp durduruyordu. Bağlama biriminin
+yardımcısı da onunla birlikte durduruluyordu (SIGTERM), bu yüzden hiçbir
+kurulum çalışmadı. Birimi çalıştırmadan biten başlatma işi (bağlama birimi
+başarısız olduysa) yardımcının nedeniyle bildirilir, örneğin
+`app_folder_not_real`.
+
+**Yeni deneme adı her zaman boş bulur.** Agent her kurulumdan önce ve işlem
+bitince kurulum birimini ve bağlama birimini durdurur, ikisini sıfırlar ve
+systemd'nin birimi bırakmasını bekler. Bırakılmayan birimde `systemd-run`
+aynı adı reddederdi ("already loaded"). Hizmet uygulaması kurulumu
+(`celiksvcinst-<no>`) da aynı biçimde çalışır. Aynı işlemin tekrarı kaydını
+yanıtlar, ikinci bir kurulum başlatmaz.
+
+**Gerçek systemd'de uçtan uca deneme.** `cmd/agent/sandbox_e2e_linux_test.go`
+ve `sandbox_e2e_svc_linux_test.go`, gerçek bağlama şablonu, gerçek yardımcı
+ve gerçek site hesabıyla Agent'ın kendi kodunu çalıştırır. Yalnız atılabilir
+bir sistemde, root olarak çalışır (komut İngilizce belgede). Debian 13
+(systemd 257) ve Arch'ta (systemd 262) geçti.
+
 Kuşaklar (`internal/siteruntime/venv.go`):
 
 1. Kalmış `venv-*.partial` klasörleri silinir; `n`, klasörün ya da birimin

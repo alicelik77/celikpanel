@@ -498,22 +498,27 @@ func TestVenvGenerationsSwapAndRollBack(t *testing.T) {
 	if _, err := NewVenvSet([]string{"venv-999999"}, 0).Next(); err == nil {
 		t.Fatal("generation overflow")
 	}
+	const inv = "0123456789abcdef0123456789abcdef"
 	for _, c := range []struct {
-		found          bool
-		active, result string
-		phase          string
-		lost           bool
+		unit  BuildUnit
+		phase string
+		why   string
 	}{
-		{true, "activating", "", BuildPhaseRunning, false},
-		{true, "active", "success", BuildPhaseSucceeded, false},
-		{true, "failed", "exit-code", BuildPhaseFailed, false},
-		{true, "inactive", "success", BuildPhaseFailed, true},
-		{false, "", "", BuildPhaseFailed, true},
-		{true, "failed", "timeout", BuildPhaseFailed, false},
+		{BuildUnit{Found: true, ActiveState: "activating", InvocationID: inv}, BuildPhaseRunning, ""},
+		{BuildUnit{Found: true, ActiveState: "active", Result: "success", InvocationID: inv}, BuildPhaseSucceeded, ""},
+		{BuildUnit{Found: true, ActiveState: "failed", Result: "exit-code", InvocationID: inv}, BuildPhaseFailed, ""},
+		{BuildUnit{Found: true, ActiveState: "inactive", Result: "success", InvocationID: inv}, BuildPhaseFailed, BuildLost},
+		{BuildUnit{}, BuildPhaseFailed, BuildLost},
+		{BuildUnit{Found: true, ActiveState: "failed", Result: "timeout", InvocationID: inv}, BuildPhaseFailed, ""},
+		// alpha.119 lab round 3: right after systemd-run the build waits
+		// for its bind unit: inactive, never started, with a start job.
+		{BuildUnit{Found: true, ActiveState: "inactive", Result: "success", Job: "560"}, BuildPhaseRunning, ""},
+		// The start job ended without running it (the bind unit failed).
+		{BuildUnit{Found: true, ActiveState: "inactive", Result: "success"}, BuildPhaseFailed, BuildNotStarted},
 	} {
-		phase, lost := BuildOutcome(c.found, c.active, c.result)
-		if phase != c.phase || lost != c.lost {
-			t.Errorf("%+v: %s %v", c, phase, lost)
+		phase, why := BuildOutcome(c.unit)
+		if phase != c.phase || why != c.why {
+			t.Errorf("%+v: %s %q", c.unit, phase, why)
 		}
 	}
 	if ActiveVenv("ExecStart=/x/app/venv-12.partial/bin/python -m gunicorn\n") != 0 || ActiveVenv("ExecStart=/x/app/venv-12/bin/python -m gunicorn a:b\n") != 12 {
