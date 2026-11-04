@@ -528,6 +528,9 @@ func (p *Panel) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 		writeClientError(w, http.StatusBadRequest, "move_tools_to applies to removing one PHP-FPM version and names an installed version")
 		return
 	}
+	if !requireAdministratorForComponent(w, r, req.ServiceID) {
+		return
+	}
 	if managedDNSEngineServiceID(req.ServiceID) {
 		writeDNSEngineWorkflowRequired(w)
 		return

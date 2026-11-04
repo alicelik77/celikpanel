@@ -245,6 +245,9 @@ func (p *Panel) handleServiceInstall(w http.ResponseWriter, r *http.Request) {
 		writeClientError(w, http.StatusBadRequest, "unknown managed service")
 		return
 	}
+	if !requireAdministratorForComponent(w, r, req.ServiceID) {
+		return
+	}
 	existing, found, err := p.idempotentServiceOperation(
 		r.Context(), req.RequestID, serviceOperationKindInstall, req.ServiceID, req.Package,
 	)

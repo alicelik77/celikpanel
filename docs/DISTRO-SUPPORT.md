@@ -96,6 +96,13 @@ Rules:
 |---|---|---|---|---|---|
 | ⏰ Scheduled tasks (cron) | Service | `cron` | `cronie` | — | — |
 
+### Developer tools (administrator only)
+
+| Component | Kind | APT package mapping | pacman package mapping | Seat | Needs |
+|---|---|---|---|---|---|
+| 🐹 Go | Tool | `golang-go` | `go` | — | — |
+| 🦀 Rust | Tool | `rustc` `cargo` | `rust` | — | — |
+
 ## Closed cells and their reasons
 
 The Components page and the Agent give the same reason.

@@ -136,6 +136,9 @@ func serverSetupComponentWizardRole(service *core.ManagedService) string {
 		return "automatic"
 	case managedDNSEngineService(service) || service.Category == "dns":
 		return "dns"
+	case service.AdminOnly:
+		// Developer toolchains: the administrator installs them from Components.
+		return "components"
 	case service.InstallDisabledReason != "":
 		return "unavailable"
 	case service.Repo != nil && service.Repo.Required:
@@ -555,6 +558,9 @@ func buildServerSetupComponentCatalogFrom(inputs serverSetupCatalogInputs) serve
 	}
 	for index := range core.ManagedServices {
 		managed := &core.ManagedServices[index]
+		if managed.AdminOnly {
+			continue // developer toolchains are not a server purpose: Components, administrator only
+		}
 		id := managed.ID
 		role := serverSetupComponentWizardRole(managed)
 		choice := serverSetupComponentChoice{ID: id, Name: managed.Name, Category: managed.Category, Dependencies: serverSetupComponentDependencies(id), Conflicts: []string{}, Installed: installed[id], Supported: true, Wizard: role}

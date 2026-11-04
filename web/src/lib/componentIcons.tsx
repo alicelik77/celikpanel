@@ -9,7 +9,7 @@
 import {
     Activity, ArrowLeftRight, BadgeCheck, Boxes, BrickWall, Clock, Database, Feather, FileCode2, Filter,
     FolderUp, Globe, Hexagon, Inbox, Lock, Mail, MailOpen, MemoryStick, Network, ScanSearch, Send, Shield,
-    ShieldBan, Table2, Zap,
+    ShieldBan, Table2, Wrench, Zap,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -23,6 +23,7 @@ export const categoryIcons: Record<string, LucideIcon> = {
     ftp: FolderUp,
     monitoring: Activity,
     system: Clock,
+    devtools: Wrench,
 };
 
 const componentIconMap: Record<string, LucideIcon> = {
