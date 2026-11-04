@@ -120,6 +120,7 @@ export const enSetupWizardScreens = {
     "setup.v2.dns.pdns.helpBackup": "Can run on the backup DNS server; the main server may run BIND or PowerDNS.",
     "setup.v2.dns.oneSoftware": "A server runs one DNS software at a time (both use port 53).",
     "setup.v2.engine.untested": "Not yet tested as the main DNS server on this system; use BIND, or choose PowerDNS on the backup server.",
+    "setup.v2.engine.untestedSystem": "PowerDNS has not been tested on this system, as the main or the backup DNS server. On this system use BIND for DNS.",
     "setup.v2.engine.notDebianArchive": "This server would install PowerDNS from another repository (for example repo.powerdns.com or backports), and CelikPanel runs the main DNS server only on Debian's own build; use BIND, or the server owner removes or confines that repository.",
     "setup.v2.engine.untestedVersion": "The PowerDNS version this server would install has not been tested as the main DNS server; use BIND, or choose PowerDNS on the backup server.",
     "setup.v2.engine.notOfficialRepository": "This server would install PowerDNS from a repository that is not Arch Linux's official extra repository, and CelikPanel runs the main DNS server only on Arch's own build; use BIND, or the server owner removes that repository from /etc/pacman.conf.",

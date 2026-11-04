@@ -41,6 +41,7 @@ export const trSetupJoinScreens: Record<SetupJoinScreenKey, string> = {
     "setup.v5.join.refused.server_setup_join_source_mismatch": "İstek bu sunucunun kendi adresinden gelmedi. Vekil sunucu olmadan doğrudan bu sunucudan katılın.",
     "setup.v5.join.refused.server_setup_join_not_waiting": "İlk sunucunun kurulumu katılacak bir sunucuyu beklemiyor ya da kod oluşturulduktan sonra değişti. Orada yeni bir kod oluşturun.",
     "setup.v5.join.refused.server_setup_join_rate_limited": "Kısa sürede çok fazla deneme oldu. Bir dakika bekleyip yeniden deneyin.",
+    "setup.v5.join.refused.server_setup_join_pdns_untested_system": "Bu kurulum DNS için PowerDNS kullanıyor ve PowerDNS bu sunucunun sisteminde denenmedi; bu yüzden bu sunucu katılamaz. Hiçbir şey değiştirilmedi, kod hâlâ geçerli. İlk sunucuda Düzeltilmiş planı incele'yi seçip DNS için BIND'i seçin ya da bir Debian 13 veya Ubuntu 24.04 sunucusundan katılın.",
     "setup.v5.join.refused.server_setup_join_same_server": "Bu, ilk sunucunun kendisi. Katılacak sunucudan katılın.",
     "setup.v5.join.refused.server_setup_join_certificate_unavailable": "İlk sunucu kendi IP adresinde geçerli bir sertifika sunmuyor; bu yüzden kodla eşleştirme yapılamaz. Sahibi o sertifikayı geri koyup panelini yeniden başlatır; sonra yeniden katılın.",
     "setup.v5.join.refused.server_setup_join_address_not_public": "Bu sunucunun adresi genel bir sunucu adresi değil; bu yüzden katılamaz.",

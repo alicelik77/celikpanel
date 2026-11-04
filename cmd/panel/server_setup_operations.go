@@ -149,6 +149,10 @@ type serverSetupExecution struct {
 	// not met (alpha.114 lab E8); past serverSetupVerificationOverdueAfter
 	// the wait is said as overdue, with the open checks and the next action.
 	VerificationSince string `json:"verification_since,omitempty"`
+	// PanelBusyAttempts: consecutive passes of the current step that met
+	// the Panel's own database busy (server_setup_panel_busy); cleared once
+	// the run's state is anything else.
+	PanelBusyAttempts int `json:"panel_busy_attempts,omitempty"`
 }
 
 var serverSetupRunners sync.Map
@@ -604,8 +608,9 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 			}
 		} else if code := setupPDNSPairedPrimaryBlocker(draft, state); code != "" {
 			addBlocker(code)
-		} else if draft.DNSRole == transport.DNSPairRolePrimary && transport.DNSEngine(draft.DNSEngine) == transport.DNSEnginePowerDNS && !serverSetupPDNSMainSystemTested(p.managedServiceHostProfile()) {
-			addBlocker("server_setup_pdns_main_untested_system")
+		} else if code := setupPDNSSystemBlocker(draft, p.managedServiceHostProfile()); code != "" {
+			// The catalogue's system rule, for the main and the backup role.
+			addBlocker(code)
 		} else if draft.DNSRole == transport.DNSPairRolePrimary && transport.DNSEngine(draft.DNSEngine) == transport.DNSEnginePowerDNS {
 			if code := p.serverSetupPDNSMainCandidateCode(ctx); code != "" {
 				addBlocker(code)
@@ -636,11 +641,10 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 			// here at review time, before any DNS identity is saved.
 			if code := setupPDNSPairedPrimaryBlocker(draft, state); code != "" {
 				addBlocker(code)
-			} else if draft.DNSRole == transport.DNSPairRolePrimary && state.ActiveEngine == "" &&
-				transport.DNSEngine(draft.DNSEngine) == transport.DNSEnginePowerDNS &&
-				!serverSetupPDNSMainSystemTested(p.managedServiceHostProfile()) {
-				// Same rule as the catalogue: refused at review, not mid-run.
-				addBlocker("server_setup_pdns_main_untested_system")
+			} else if code := setupPDNSSystemBlocker(draft, p.managedServiceHostProfile()); state.ActiveEngine == "" && code != "" {
+				// Same rule as the catalogue, for the main and the backup
+				// role: refused at review, not mid-run.
+				addBlocker(code)
 			} else if draft.DNSRole == transport.DNSPairRolePrimary && state.ActiveEngine == "" &&
 				transport.DNSEngine(draft.DNSEngine) == transport.DNSEnginePowerDNS {
 				if code := p.serverSetupPDNSMainCandidateCode(ctx); code != "" {
@@ -1356,6 +1360,9 @@ func (p *Panel) persistServerSetupExecution(ctx context.Context, execution serve
 	if execution.Error == nil || execution.Error.Code != serverSetupHostStartingCode {
 		execution.HostStartingSince = ""
 	}
+	if execution.Error == nil || execution.Error.Code != serverSetupPanelBusyCode {
+		execution.PanelBusyAttempts = 0
+	}
 	encoded, err := json.Marshal(execution)
 	if err != nil {
 		return err
@@ -1395,9 +1402,25 @@ func (p *Panel) launchServerSetupExecution() {
 				log.Printf("server setup runner stopped: %v", recovered)
 			}
 		}()
+		// A pass whose own bookkeeping met the Panel's database busy is
+		// asked again (bounded) instead of leaving the run without a runner
+		// until the next panel start (alpha.123 lab).
+		busyPasses := 0
+		retryBusy := func(err error) bool {
+			if !panelDatabaseBusy(err) || busyPasses >= serverSetupRunnerBusyPasses {
+				return false
+			}
+			busyPasses++
+			p.sleepServerSetupRunner(serverSetupPanelBusyDelay(busyPasses))
+			return true
+		}
 		for {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 			execution, err := p.latestServerSetupExecution(ctx)
+			if err != nil && retryBusy(err) {
+				cancel()
+				continue
+			}
 			if err != nil || execution == nil || (execution.Status != "running" && execution.Status != "waiting") {
 				cancel()
 				return
@@ -1406,21 +1429,29 @@ func (p *Panel) launchServerSetupExecution() {
 			plan, err := p.loadServerSetupPlan(ctx, execution.PlanID)
 			if err != nil {
 				cancel()
+				if retryBusy(err) {
+					continue
+				}
 				log.Printf("server setup saved plan: %v", err)
 				return
 			}
 			cancel()
 			progressed, err := p.advanceServerSetupExecution(plan, execution)
 			if err != nil {
+				if retryBusy(err) {
+					log.Printf("server setup execution %s: the panel database was busy; this pass is asked again: %v", execution.ID, err)
+					continue
+				}
 				log.Printf("server setup execution %s: %v", execution.ID, err)
 				return
 			}
+			busyPasses = 0
 			if execution.Status == "failed" || execution.Status == "succeeded" {
 				return
 			}
 			if !progressed {
 				if execution.Status == "waiting" {
-					p.sleepServerSetupRunner(serverSetupWaitingInterval)
+					p.sleepServerSetupRunner(serverSetupRunnerPause(execution))
 				} else {
 					time.Sleep(2 * time.Second)
 				}
@@ -1638,6 +1669,18 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 			execution.Error = &serviceOperationError{Code: serverSetupHostBusyCode, Message: serverSetupHostBusyWaitMessage}
 			return false, p.persistServerSetupExecution(ctx, *execution)
 		}
+		if panelDatabaseBusy(err) {
+			// The Panel's own database was briefly busy: a wait, never a
+			// verified failure of the step (alpha.123 lab). The same step is
+			// asked again through its saved request identity, so no second
+			// Agent mutation starts. Past the bound it stops with its own
+			// reason, not the step's generic one.
+			log.Printf("server setup step %s: the panel database was busy; the step is asked again: %v", step.ID, err)
+			if serverSetupPanelBusyWait(execution) {
+				return false, p.persistServerSetupExecution(ctx, *execution)
+			}
+			err = errors.Join(errServerSetupPanelStayedBusy, err)
+		}
 		if serverSetupHostStarting(err) {
 			// The host is still starting: nothing was sent to the Agent; the
 			// same step is asked again (N1). Past the bound it is a failure.
@@ -1669,6 +1712,7 @@ func (p *Panel) advanceServerSetupExecution(plan serverSetupPlan, execution *ser
 		execution.Status = "running"
 		execution.Error = nil
 		execution.HostStartingSince = ""
+		execution.PanelBusyAttempts = 0
 		if !done {
 			return false, p.persistServerSetupExecution(ctx, *execution)
 		}
@@ -2170,6 +2214,10 @@ func serverSetupFailureForStep(step serverSetupExecutionStep, cause error) *serv
 			Reason: child.Reason}
 	}
 	switch {
+	case errors.Is(cause, errServerSetupPDNSUntestedSystem):
+		return &serviceOperationError{Code: serverSetupPDNSUntestedSystemCode, Message: serverSetupPDNSUntestedSystemText}
+	case errors.Is(cause, errServerSetupPanelStayedBusy):
+		return &serviceOperationError{Code: serverSetupPanelStayedBusyCode, Message: serverSetupPanelStayedBusyText}
 	case errors.Is(cause, errServerSetupHostNotStarted):
 		return &serviceOperationError{Code: serverSetupHostNotStartedCode, Message: serverSetupHostNotStartedText}
 	case errors.Is(cause, errServerSetupAgentNotAnswering):

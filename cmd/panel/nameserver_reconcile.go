@@ -249,7 +249,7 @@ func rewriteAllZoneSOAMNamesTx(ctx context.Context, tx *sql.Tx, localNS string) 
 // peer: validating or saving the names against the old peer tuple first would
 // either reject the change or leave partially rewritten zones behind.
 func (p *Panel) saveDNSClusterSettingsAndReconcile(ctx context.Context, role, peerIP, peerNS, ns1, ns2, localIPv4 string) error {
-	tx, err := p.db.GetDB().BeginTx(ctx, nil)
+	tx, err := beginDNSWriteTx(ctx, p.db.GetDB())
 	if err != nil {
 		return err
 	}
@@ -351,7 +351,7 @@ func (p *Panel) stageDNSClusterSettingsAndReconcile(
 	stagingKind string,
 	role, peerIP, peerNS, ns1, ns2, localIPv4 string,
 ) (bool, error) {
-	tx, err := p.db.GetDB().BeginTx(ctx, nil)
+	tx, err := beginDNSWriteTx(ctx, p.db.GetDB())
 	if err != nil {
 		return false, err
 	}
@@ -536,7 +536,7 @@ func (p *Panel) saveNameservers(ctx context.Context, ns1, ns2 string) error {
 }
 
 func (p *Panel) saveNameserversLedger(ctx context.Context, ns1, ns2, localIPv4 string) ([]string, error) {
-	tx, err := p.db.GetDB().BeginTx(ctx, nil)
+	tx, err := beginDNSWriteTx(ctx, p.db.GetDB())
 	if err != nil {
 		return nil, err
 	}

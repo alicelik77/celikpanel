@@ -350,7 +350,7 @@ func (agent *dnsEngineTestAgent) HostPlatform(
 	_ *transport.Empty,
 	response *transport.HostPlatformResponse,
 ) error {
-	*response = debianPolicyTestIdentity()
+	*response = pdnsCertifiedPolicyTestIdentity()
 	return nil
 }
 

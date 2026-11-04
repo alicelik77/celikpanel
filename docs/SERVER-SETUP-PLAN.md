@@ -111,6 +111,35 @@ targeted VM re-run is owed before any is called proven.
   check) or `server_setup_agent_not_answering` (the Agent never answered;
   `sudo systemctl status celikpanel-agent`). Each boot is its own episode: any
   other outcome ends the previous one.
+- **A busy panel database is a wait, for every step (alpha.123 lab).** On a
+  fresh Ubuntu 22.04 the DNS step failed after 19 s with "database is locked
+  (SQLITE_BUSY)" and showed the verified `server_setup_dns_failed`, although
+  nothing had changed (bind9 was never installed, the Agent had no DNS
+  operation). The Panel's own DNS write transaction began DEFERRED (read
+  first, write after); its first write met another panel writer and SQLite
+  answered at once, without the 5 s busy timeout. The DNS transactions now
+  take the write lock with their first statement (`beginDNSWriteTx`), and any
+  remaining busy or locked answer of the Panel's own database (the driver's
+  error type, never an Agent's text) makes the step wait as
+  `server_setup_panel_busy`: nobody acts, and the same step is asked again
+  through its saved request identity after 2, 4, 8, 16, then 20 s, so no
+  second Agent mutation starts. After about ten minutes of consecutive busy
+  passes the step stops with `server_setup_panel_stayed_busy` (restart the
+  panel, then Review a revised plan), never with DNS guidance. The runner
+  itself also retries a pass whose own bookkeeping met a busy database
+  (bounded) instead of stopping until the next panel start.
+- **PowerDNS only where its package is certified, in every role.** PowerDNS
+  was refused as the main DNS server on Debian 12 (4.7) and Ubuntu 22.04
+  (4.5) but still offered there as the backup, where its unit file is not
+  one the Agent certifies. One rule (`pdnsSystemCertified`: Debian 13, Ubuntu
+  24.04, Arch) now refuses both roles there with
+  `server_setup_pdns_untested_system` ("use BIND for DNS") in the catalogue
+  and the review; the main role keeps `server_setup_pdns_main_untested_system`
+  on Ubuntu 24.04. The same rule refuses a PowerDNS join by code from such a
+  system (`server_setup_join_pdns_untested_system`, the code stays valid),
+  a PowerDNS install, switch or reinstall in Server → DNS
+  (`pdns_untested_system`), and the setup DNS step of a plan reviewed before
+  it. Components never installs DNS software (unchanged).
 - **Another change on the server holds the start, and a run waits.** A start
   while a Components install ran created a run whose first component the
   Agent refused at admission (`HOST_MUTATION_BUSY`), and the run failed. The
