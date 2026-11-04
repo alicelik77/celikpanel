@@ -152,25 +152,55 @@ const (
 	BuildPhaseFailed    = "failed"
 )
 
+// BuildUnit is systemd's view of a build unit (`systemctl show`).
+type BuildUnit struct {
+	// Found is false when systemd does not know the unit.
+	Found        bool
+	ActiveState  string
+	Result       string
+	Job          string // a queued or running job's id ("" when none)
+	InvocationID string // "" until the unit has started once
+}
+
+// Why a build that did not succeed ended (BuildOutcome).
+const (
+	BuildEndedNormally = ""
+	// BuildLost: systemd does not know the unit, or it ran and someone
+	// stopped it; there is no result.
+	BuildLost = "lost"
+	// BuildNotStarted: the start job ended without running the unit: its
+	// bind unit (the sandbox helper) did not start, or the start was
+	// cancelled.
+	BuildNotStarted = "not_started"
+)
+
 // BuildOutcome decides a build unit's phase from systemd's view of it (the
 // transient unit is Type=oneshot with RemainAfterExit=yes: "active" with
-// result success means every step exited 0). found is false when systemd
-// does not know the unit (a restart removed it): the build is lost, never a
-// success.
-func BuildOutcome(found bool, activeState, result string) (phase string, lost bool) {
+// result success means every step exited 0).
+//
+// A unit whose start job is still queued is "inactive" with a job: it waits
+// for its bind unit (Requires=, After=). That is a running build, never a
+// lost one (alpha.119 lab round 3: the first read right after the start
+// took the queued build for a stopped one, stopped it and with it the
+// bind unit's helper, so no build ever ran).
+func BuildOutcome(u BuildUnit) (phase, why string) {
 	switch {
-	case !found:
-		return BuildPhaseFailed, true
-	case activeState == "active" && (result == "" || result == "success"):
-		return BuildPhaseSucceeded, false
-	case activeState == "activating" || activeState == "reloading":
-		return BuildPhaseRunning, false
-	case activeState == "failed" || (result != "" && result != "success"):
-		return BuildPhaseFailed, false
-	case activeState == "inactive":
+	case !u.Found:
+		return BuildPhaseFailed, BuildLost
+	case u.Job != "":
+		return BuildPhaseRunning, BuildEndedNormally
+	case u.ActiveState == "active" && (u.Result == "" || u.Result == "success"):
+		return BuildPhaseSucceeded, BuildEndedNormally
+	case u.ActiveState == "activating" || u.ActiveState == "reloading":
+		return BuildPhaseRunning, BuildEndedNormally
+	case u.ActiveState == "failed" || (u.Result != "" && u.Result != "success"):
+		return BuildPhaseFailed, BuildEndedNormally
+	case u.ActiveState == "inactive" && u.InvocationID == "":
+		return BuildPhaseFailed, BuildNotStarted
+	case u.ActiveState == "inactive":
 		// A oneshot with RemainAfterExit never goes back to inactive by
 		// itself after success: someone stopped it.
-		return BuildPhaseFailed, true
+		return BuildPhaseFailed, BuildLost
 	}
-	return BuildPhaseRunning, false
+	return BuildPhaseRunning, BuildEndedNormally
 }

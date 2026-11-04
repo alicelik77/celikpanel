@@ -630,6 +630,34 @@ variable from changing the index. `--only-binary=:all:` is left out of the
 customer's step only when the offering allows source builds; the pins are
 always wheels.
 
+**Reading the build (alpha.119 lab round 3).** Right after `systemd-run`, the
+build unit waits for its bind unit. During that wait `systemctl show` reports
+it as `inactive` with a queued start job (`Job=<id>`, no `InvocationID`). The
+Agent counts that as a running build. Before this fix, the Panel's first read
+took the waiting build for a stopped one and stopped it, and the bind unit's
+helper was stopped with it (SIGTERM). So no build ever ran. A start job that
+ends without running the unit (the bind unit failed) is reported with the
+helper's reason, for example `app_folder_not_real`, never as "stopped
+without a result".
+
+**A new attempt always finds the name free.** Before every build, and when an
+operation ends, the Agent stops the build unit and its bind unit, resets
+both, and waits until systemd has unloaded the unit. An inactive transient
+unit that a failed bind unit still refers to stays loaded, and `systemd-run`
+then refuses the same name ("already loaded"). The service-app install
+(`celiksvcinst-<id>`) works the same way. A repeat of the same operation
+answers its record and never starts a second build.
+
+**End-to-end check on a real systemd.** `cmd/agent/sandbox_e2e_linux_test.go`
+and `sandbox_e2e_svc_linux_test.go` drive the Agent's own code with the real
+bind template, the real helper and a real site account. They build a Python
+app twice from PyPI, start it, serve it and stop it. They also stop a build
+from outside and build again, start and stop an uploaded program, and run the
+service-app install unit twice and the long-running service-app unit once.
+They run only on a throwaway system:
+`CELIKPANEL_E2E_SYSTEMD=1 CELIKPANEL_E2E_AGENT=<agent binary> go test -run TestE2E ./cmd/agent/`
+(as root). They passed on Debian 13 (systemd 257) and Arch (systemd 262).
+
 Generations (`internal/siteruntime/venv.go`):
 
 1. Leftover `venv-*.partial` folders are removed; `n` is one above every

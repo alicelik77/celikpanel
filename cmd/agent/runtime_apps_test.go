@@ -82,6 +82,11 @@ func useRuntimeAppHost(t *testing.T) *runtimeAppHost {
 		if len(args) > 0 && args[0] == "show" {
 			return []byte(host.show), nil
 		}
+		// systemd unloads a stopped transient unit (a build): the next
+		// read finds none (clearTransientUnit waits for that).
+		if len(args) > 1 && args[0] == "stop" && strings.HasPrefix(args[1], "celikrtbuild-") {
+			host.show = "LoadState=not-found\nActiveState=inactive\n"
+		}
 		return nil, nil
 	}
 	return host

@@ -167,6 +167,8 @@ func TestPythonCheckRefusesTheRequirementsLine(t *testing.T) {
 	}
 }
 
+const nl = "\n"
+
 func TestPythonBuildStartsOnceAndCompletesAsTheSiteAccount(t *testing.T) {
 	h := usePythonHost(t)
 	h.dirs = []string{"src", "venv-1", "venv-2", "venv-3.partial"}
@@ -209,6 +211,21 @@ func TestPythonBuildStartsOnceAndCompletesAsTheSiteAccount(t *testing.T) {
 	_ = (&Agent{}).RuntimeAppBuildV1(req, &resp)
 	if len(h.runs) != 1 || resp.Venv != 4 {
 		t.Fatalf("repeat started a second build: %v", h.runs)
+	}
+	// alpha.119 lab round 3: right after systemd-run the build waits for
+	// its bind unit ("inactive", a start job, never started). That is a
+	// running build: nothing is stopped.
+	h.show = "LoadState=loaded" + nl + "ActiveState=inactive" + nl + "SubState=dead" + nl + "Result=success" + nl + "Job=560" + nl + "InvocationID=" + nl
+	calls := len(h.systemctl)
+	queued := transport.RuntimeAppBuildResponse{}
+	_ = (&Agent{}).RuntimeAppBuildAdvanceV1(&transport.RuntimeAppBuildAdvanceRequest{OperationID: "op-python-1", Target: pythonTarget}, &queued)
+	if !queued.Done || queued.Phase != siteruntime.BuildPhaseRunning {
+		t.Fatalf("a queued build: %+v", queued)
+	}
+	for _, call := range h.systemctl[calls:] {
+		if strings.HasPrefix(call, "stop ") {
+			t.Fatalf("a queued build was stopped: %v", h.systemctl[calls:])
+		}
 	}
 	// Still running: nothing changes.
 	h.show = "LoadState=loaded\nActiveState=activating\nResult=success\nInvocationID=0123456789abcdef0123456789abcdef\n"
@@ -276,6 +293,18 @@ func TestPythonBuildFailureNamesThePackageAndKeepsTheRunningApp(t *testing.T) {
 	_ = (&Agent{}).RuntimeAppBuildAdvanceV1(&transport.RuntimeAppBuildAdvanceRequest{OperationID: "op-python-3", Target: pythonTarget}, &resp)
 	if resp.Done || resp.Class != transport.RuntimeAppUnknown || resp.Reason != siteruntime.BuildFailed {
 		t.Fatalf("lost %+v", resp)
+	}
+	// A build whose bind unit refused the app folder never started: the
+	// helper's reason, not "lost".
+	_ = os.Remove(filepath.Join(runtimeAppStateDir(12), "build.json"))
+	resp = transport.RuntimeAppBuildResponse{}
+	_ = (&Agent{}).RuntimeAppBuildV1(&transport.RuntimeAppBuildRequest{OperationID: "op-python-5", Target: pythonTarget, Spec: pythonSpec()}, &resp)
+	h.show = "LoadState=loaded" + nl + "ActiveState=inactive" + nl + "Result=success" + nl + "Job=" + nl + "InvocationID=" + nl
+	h.journal = "celikpanel-sandbox: celikrtbuild-12.service was not started (app_folder_not_real): /x/app is a link, not a real folder." + nl
+	resp = transport.RuntimeAppBuildResponse{}
+	_ = (&Agent{}).RuntimeAppBuildAdvanceV1(&transport.RuntimeAppBuildAdvanceRequest{OperationID: "op-python-5", Target: pythonTarget}, &resp)
+	if resp.Done || resp.Class != transport.RuntimeAppPrerequisite || resp.Reason != "app_folder_not_real" || !strings.Contains(resp.Error, "did not start") {
+		t.Fatalf("not started %+v", resp)
 	}
 	// Another operation's id is not answered with this record.
 	resp = transport.RuntimeAppBuildResponse{}

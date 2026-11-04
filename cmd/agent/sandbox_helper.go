@@ -63,7 +63,9 @@ func ensureSandboxHelper() error {
 }
 
 // sandboxDaemonReload makes systemd read a changed template; tests swap it.
-var sandboxDaemonReload = func() error {
+var sandboxDaemonReload = hostDaemonReload
+
+func hostDaemonReload() error {
 	if out, err := appUnitSystemctl(systemctlArgs("daemon-reload")...); err != nil {
 		return fmt.Errorf("systemctl daemon-reload: %v: %s", err, strings.TrimSpace(string(out)))
 	}
@@ -202,7 +204,9 @@ func copySandboxHelper(dst string) error {
 // sandboxFolderRefusal checks an app folder as the helper will before the
 // next start: "" when it may start, a code and the reason otherwise
 // (sandboxbind.CodeNotReal, CodeNotOwned, CodeUnreadable).
-var sandboxFolderRefusal = func(appDir string, uid int) (string, string) {
+var sandboxFolderRefusal = hostSandboxFolderRefusal
+
+func hostSandboxFolderRefusal(appDir string, uid int) (string, string) {
 	if uid < 0 {
 		return sandboxbind.CodeNotOwned, "the site's account is unknown"
 	}
