@@ -1,0 +1,213 @@
+== R8py 02:56:21
+200 {"distribution": "debian", "installs": ["python3.13", "libpython3.13-stdlib", "python3.13-minimal", "libpython3.13-minimal", "python3-pip-whl", "python3-setuptools-whl", "python3.13-venv", "python3-venv"], "notable": [{"from": "3.13.5-2+deb13u4", "package": "libpython3.13-minimal", "point_update": true, "reason": "upgrade", "to": "3.13.5-2+deb13u5"}, {"from": "3.13.5-2+deb13u4", "package": "libpython3.13-stdlib", "point_update": true, "reason": "upgrade", "to": "3.13.5-2+deb13u5"}, {"from": "3.13.5-2+deb13u4", "package": "python3.13", "point_update": true, "reason": "upgrade", "to": "3.13.5-2+
+confirming: ["libpython3.13-minimal", "libpython3.13-stdlib", "python3.13", "python3.13-minimal"]
+202 {"operation": {"id": "7b84daee9ef836ef63202c71293504f8", "kind": "service_install", "phase": "queued", "request_id": "b8d53e3a93b1d001cc6c44e22d690b49", "service_id": "python", "started_at": "2026-11-04T02:56:23.319823516Z", "status": "queued"}}
+  op b8d53e3a93b1d001cc6c44e22d690b49: succeeded completed "" (02:56:44)
+-- offer component:python
+200 [('program', 'runtime:program', False, None), ('python', 'component:python:3.13', True, True)]
+== Flask app from wheels 02:56:44
+## /var/www/celikpanel/subscriptions/4/sites/4/app/src (flask)
+total 16
+drwxr-xr-x 2 flask119_test flask119_test 4096 Nov  4 02:56 .
+drwxr-xr-x 3 flask119_test flask119_test 4096 Nov  4 02:56 ..
+-rw-r--r-- 1 flask119_test flask119_test  106 Nov  4 02:56 app.py
+-rw-r--r-- 1 flask119_test flask119_test   13 Nov  4 02:56 requirements.txt
+flask==3.1.2
+201 {"id": 1, "port": 30000}
+202 {"operation": {"app_id": 1, "created_at": "2026-11-04 02:56:45", "id": "dep-227be39aa33665c8", "kind": "deploy", "state": "running", "step": "validate", "updated_at": "2026-11-04 02:56:45"}}
+  deploy dep-227be39aa33665c8: dep-227be39aa33665c8 failed build (02:56:56)
+  app 1 python failed python {"callable": "app:app", "server": "wsgi", "workers": 1} status {"active_state": "inactive", "serving": false, "health": {"checked": false, "ok": false}, "level": "full", "gaps": null, "sandbox_generation": null}
+  op {"id": "dep-227be39aa33665c8", "kind": "deploy", "state": "failed", "step": "build", "class": "unknown", "reason": "build_failed", "message": "the build stopped without a result (the server restarted or someone stopped it); the running app was not changed. Deploy again"}
+https flask119.test/ http 200 verify=0 title: flask119.test bytes=3250
+executeCommand mentions: 0
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>flask119.test</title>
+<style>
+  :root{--bg:#eef1f5;--card:#ffffff;--ink:#16213a;--muted:#5a6478;--soft:#f5f7fa;--rule:#dde2ea;--accent:#1f5fa8;color-scheme:light}
+  @media (prefers-color-scheme:dark){:root{--bg:#0d1422;--card:#141e31;--ink:#e6ebf3;--muted:#9aa5b8;--soft:#1a263c;--rule:#26334b;--accent:#86b2ea;color-scheme:dark}}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;min-height:100vh;padding:32px 16px;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",sans-serif;-webkit-font-smoothing:antialiased}
+  main{width:100%;max-width:600px;background:var(--card);border:1px solid var(--rule);border-top:4px solid var(--accent);border-radius:12px;padding:40px 36px 32px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
+  .label{margin:0 0 10px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+  h1{margin:0 0 16px;font-size:clamp(26px,6vw,36px);font-weight:700;line-height:1.15;letter-spacing:-.01em;overflow-wrap:anywhere}
+  p{margin:0}
+  .lead{font-size:17px;color:var(--ink)}
+  .en{margin-top:4px;font-size:14px;color:var(--muted)}
+  section{margin-top:28px;padding:20px 22px;background:var(--soft);border:1px solid var(--rule);border-radius:10px}
+  h2{margin:0 0 12px;font-size:15px;font-weight:600}
+  h2 span{font-weight:400;color:var(--muted)}
+  ol{margin:0;padding-left:20px;display:grid;gap:12px}
+  li{padding-left:2px;color:var(--ink);font-size:15px}
+  li .en{font-size:13px}
+  b{font-weight:600}
+  code{font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;padding:1px 6px;background:var(--card);border:1px solid var(--rule);border-radius:5px}
+  footer{font-size:13px;color:var(--muted)}
+  @media (max-width:480px){main{padding:28px 20px 24px}section{padding:16px}}
+</style>
+</head>
+<body>
+<main>
+  <p class="label">Alan adı hazır · <span lang="en">Domain ready</span></p>
+  <h1>flask119.test</h1>
+  <p class="lead">Bu adres çalışıyor. Site henüz yayımlanmadı.</p>
+  <p class="en" lang="en">This address works. The site has not been published yet.</p>
+  <section>
+    <h2>Sitenin sahibi misiniz? <span lang="en">· Own this site?</span></h2>
+    <ol>
+      <li>Panelde bu sitenin <b>Dosyalar</b> bölümünden sitenizin dosyalarını yükleyin ya da <b>Uygulamalar</b> bölümünden WordPress gibi hazır bir uygulama kurun.<p class="en" lang="en">Upload your site's files from this site's <b>Files</b> section in the panel, or install a ready-made application such as WordPress from its <b>Applications</b> section.</p></li>
+      <li>Bu sayfa <code>index.php</code> dosyasıdır. Kendi siteniz hazır olunca bu dosyayı silin ya da üzerine yazın.<p class="en" lang="en">This page is the file <code>index.php</code>. When your own site is ready, delete it or overwrite it.</p></li>
+    </ol>
+  </section>
+</main>
+<footer>CelikPanel ile barındırılıyor · <span lang="en">Hosted with CelikPanel</span></footer>
+</body>
+</html>
+== FastAPI (asgi) 02:56:57
+## /var/www/celikpanel/subscriptions/4/sites/5/app/src (fastapi)
+total 16
+drwxr-xr-x 2 fast119_test fast119_test 4096 Nov  4 02:56 .
+drwxr-xr-x 3 fast119_test fast119_test 4096 Nov  4 02:56 ..
+-rw-r--r-- 1 fast119_test fast119_test  109 Nov  4 02:56 main.py
+-rw-r--r-- 1 fast119_test fast119_test   17 Nov  4 02:56 requirements.txt
+fastapi==0.115.6
+201 {"id": 2, "port": 30001}
+202 {"operation": {"app_id": 2, "created_at": "2026-11-04 02:56:57", "id": "dep-44ef031121086257", "kind": "deploy", "state": "running", "step": "validate", "updated_at": "2026-11-04 02:56:57"}}
+  deploy dep-44ef031121086257: dep-44ef031121086257 failed build (02:57:08)
+  app 2 python failed python {"callable": "main:app", "server": "asgi", "workers": 1} status {"active_state": "inactive", "serving": false, "health": {"checked": false, "ok": false}, "level": "full", "gaps": null, "sandbox_generation": null}
+  op {"id": "dep-44ef031121086257", "kind": "deploy", "state": "failed", "step": "build", "class": "unknown", "reason": "build_failed", "message": "the build stopped without a result (the server restarted or someone stopped it); the running app was not changed. Deploy again"}
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>fast119.test</title>
+<style>
+  :root{--bg:#eef1f5;--card:#ffffff;--ink:#16213a;--muted:#5a6478;--soft:#f5f7fa;--rule:#dde2ea;--accent:#1f5fa8;color-scheme:light}
+  @media (prefers-color-scheme:dark){:root{--bg:#0d1422;--card:#141e31;--ink:#e6ebf3;--muted:#9aa5b8;--soft:#1a263c;--rule:#26334b;--accent:#86b2ea;color-scheme:dark}}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;min-height:100vh;padding:32px 16px;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",sans-serif;-webkit-font-smoothing:antialiased}
+  main{width:100%;max-width:600px;background:var(--card);border:1px solid var(--rule);border-top:4px solid var(--accent);border-radius:12px;padding:40px 36px 32px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
+  .label{margin:0 0 10px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+  h1{margin:0 0 16px;font-size:clamp(26px,6vw,36px);font-weight:700;line-height:1.15;letter-spacing:-.01em;overflow-wrap:anywhere}
+  p{margin:0}
+  .lead{font-size:17px;color:var(--ink)}
+  .en{margin-top:4px;font-size:14px;color:var(--muted)}
+  section{margin-top:28px;padding:20px 22px;background:var(--soft);border:1px solid var(--rule);border-radius:10px}
+  h2{margin:0 0 12px;font-size:15px;font-weight:600}
+  h2 span{font-weight:400;color:var(--muted)}
+  ol{margin:0;padding-left:20px;display:grid;gap:12px}
+  li{padding-left:2px;color:var(--ink);font-size:15px}
+  li .en{font-size:13px}
+  b{font-weight:600}
+  code{font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;padding:1px 6px;background:var(--card);border:1px solid var(--rule);border-radius:5px}
+  footer{font-size:13px;color:var(--muted)}
+  @media (max-width:480px){main{padding:28px 20px 24px}section{padding:16px}}
+</style>
+</head>
+<body>
+<main>
+  <p class="label">Alan adı hazır · <span lang="en">Domain ready</span></p>
+  <h1>fast119.test</h1>
+  <p class="lead">Bu adres çalışıyor. Site henüz yayımlanmadı.</p>
+  <p class="en" lang="en">This address works. The site has not been published yet.</p>
+  <section>
+    <h2>Sitenin sahibi misiniz? <span lang="en">· Own this site?</span></h2>
+    <ol>
+      <li>Panelde bu sitenin <b>Dosyalar</b> bölümünden sitenizin dosyalarını yükleyin ya da <b>Uygulamalar</b> bölümünden WordPress gibi hazır bir uygulama kurun.<p class="en" lang="en">Upload your site's files from this site's <b>Files</b> section in the panel, or install a ready-made application such as WordPress from its <b>Applications</b> section.</p></li>
+      <li>Bu sayfa <code>index.php</code> dosyasıdır. Kendi siteniz hazır olunca bu dosyayı silin ya da üzerine yazın.<p class="en" lang="en">This page is the file <code>index.php</code>. When your own site is ready, delete it or overwrite it.</p></li>
+    </ol>
+  </section>
+</main>
+<footer>CelikPanel ile barındırılıyor · <span lang="en">Hosted with CelikPanel</span></footer>
+</body>
+</html>
+https fast119.test/ http 200 verify=0 title: fast119.test bytes=3248
+executeCommand mentions: 0
+== Flask redeploy with a broken module (expect fallback to the previous environment) 02:57:09
+## /var/www/celikpanel/subscriptions/4/sites/4/app/src (flask-broken)
+total 16
+drwxr-xr-x 2 flask119_test flask119_test 4096 Nov  4 02:56 .
+drwxr-xr-x 7 flask119_test flask119_test 4096 Nov  4 02:56 ..
+-rw-r--r-- 1 flask119_test flask119_test   60 Nov  4 02:57 app.py
+-rw-r--r-- 1 flask119_test flask119_test   13 Nov  4 02:56 requirements.txt
+flask==3.1.2
+202 {"operation": {"app_id": 1, "created_at": "2026-11-04 02:57:09", "id": "dep-0cc28636796f19c6", "kind": "deploy", "state": "running", "step": "validate", "updated_at": "2026-11-04 02:57:09"}}
+  deploy dep-0cc28636796f19c6: dep-0cc28636796f19c6 failed build (02:57:10)
+  app 1 python failed python {"callable": "app:app", "server": "wsgi", "workers": 1} status {"active_state": "inactive", "serving": false, "health": {"checked": false, "ok": false}, "level": "full", "gaps": null, "sandbox_generation": null}
+  op {"id": "dep-0cc28636796f19c6", "kind": "deploy", "state": "failed", "step": "build", "class": "verified_failure", "reason": "build_failed", "message": "the build could not be started: Failed to start transient service unit: Unit celikrtbuild-1.service was already loaded or has a fragment file."}
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>flask119.test</title>
+<style>
+  :root{--bg:#eef1f5;--card:#ffffff;--ink:#16213a;--muted:#5a6478;--soft:#f5f7fa;--rule:#dde2ea;--accent:#1f5fa8;color-scheme:light}
+  @media (prefers-color-scheme:dark){:root{--bg:#0d1422;--card:#141e31;--ink:#e6ebf3;--muted:#9aa5b8;--soft:#1a263c;--rule:#26334b;--accent:#86b2ea;color-scheme:dark}}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;min-height:100vh;padding:32px 16px;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",sans-serif;-webkit-font-smoothing:antialiased}
+  main{width:100%;max-width:600px;background:var(--card);border:1px solid var(--rule);border-top:4px solid var(--accent);border-radius:12px;padding:40px 36px 32px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
+  .label{margin:0 0 10px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+  h1{margin:0 0 16px;font-size:clamp(26px,6vw,36px);font-weight:700;line-height:1.15;letter-spacing:-.01em;overflow-wrap:anywhere}
+  p{margin:0}
+  .lead{font-size:17px;color:var(--ink)}
+  .en{margin-top:4px;font-size:14px;color:var(--muted)}
+  section{margin-top:28px;padding:20px 22px;background:var(--soft);border:1px solid var(--rule);border-radius:10px}
+  h2{margin:0 0 12px;font-size:15px;font-weight:600}
+  h2 span{font-weight:400;color:var(--muted)}
+  ol{margin:0;padding-left:20px;display:grid;gap:12px}
+  li{padding-left:2px;color:var(--ink);font-size:15px}
+  li .en{font-size:13px}
+  b{font-weight:600}
+  code{font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;padding:1px 6px;background:var(--card);border:1px solid var(--rule);border-radius:5px}
+  footer{font-size:13px;color:var(--muted)}
+  @media (max-width:480px){main{padding:28px 20px 24px}section{padding:16px}}
+</style>
+</head>
+<body>
+<main>
+  <p class="label">Alan adı hazır · <span lang="en">Domain ready</span></p>
+  <h1>flask119.test</h1>
+  <p class="lead">Bu adres çalışıyor. Site henüz yayımlanmadı.</p>
+  <p class="en" lang="en">This address works. The site has not been published yet.</p>
+  <section>
+    <h2>Sitenin sahibi misiniz? <span lang="en">· Own this site?</span></h2>
+    <ol>
+      <li>Panelde bu sitenin <b>Dosyalar</b> bölümünden sitenizin dosyalarını yükleyin ya da <b>Uygulamalar</b> bölümünden WordPress gibi hazır bir uygulama kurun.<p class="en" lang="en">Upload your site's files from this site's <b>Files</b> section in the panel, or install a ready-made application such as WordPress from its <b>Applications</b> section.</p></li>
+      <li>Bu sayfa <code>index.php</code> dosyasıdır. Kendi siteniz hazır olunca bu dosyayı silin ya da üzerine yazın.<p class="en" lang="en">This page is the file <code>index.php</code>. When your own site is ready, delete it or overwrite it.</p></li>
+    </ol>
+  </section>
+</main>
+<footer>CelikPanel ile barındırılıyor · <span lang="en">Hosted with CelikPanel</span></footer>
+</body>
+</html>
+
+ls: cannot access '/var/www/celikpanel/subscriptions/4/sites/4/app/venv-*': No such file or directory
+== wsgi probe via panel-runtime.sh KIND=python (full matrix) 02:57:11
+rc=1
+domain: py119.test; sandbox level: full gaps: []
+python kind: {"kind": "python", "implemented": true, "offering_id": "component:python:3.13", "offered": true, "permission_granted": true, "held": false, "risk": {"can_do": ["any_code", "own_folder", "loopback_port", "own_outbound", "pypi_packages"], "blocked": ["other_sites", "panel_files", "privile
+created: {"id":3,"port":30002}
+app 3: unit celikrt-3.service, port 30002, folder /var/www/celikpanel/subscriptions/4/sites/3/app
+uploaded as py119_test: /var/www/celikpanel/subscriptions/4/sites/3/app/src/probe.py, wsgi_probe.py
+deploy accepted: operation probe-1793761031-rced231ee23d8
+  step: build (running)
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+    sys.exit(0 if any("SANDBOX-PROBE DONE" in l for l in lines) else 1)
+                                                         ^^^^^
+TypeError: 'NoneType' object is not iterable
+Traceback (most recent call last):
+  File "<stdin>", line 4, in <module>
+TypeError: 'NoneType' object is not iterable
+== R8py done 02:57:22

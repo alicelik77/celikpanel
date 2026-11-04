@@ -1,0 +1,25 @@
+grep: /var/tmp/a118r1/out-build118.out: No such file or directory
+ted": true
+}
+
+infra-up exit 0 02:45:38
+labnet-tools-ok
+builds done 02:46:15
+/var/tmp/a118r1/out-build119.out:commit 7b43c2d05388df8b134b912e917e434a40691930
+/var/tmp/a118r1/out-build119.out:bundle budget check passed
+/var/tmp/a118r1/out-build119.out:EXIT 0
+/var/tmp/a118r1/out-build119.out:  "commit": "7b43c2d05388df8b134b912e917e434a40691930",
+portal119 exit 0
+version=v0.1.0-alpha.119
+commit=7b43c2d05388df8b134b912e917e434a40691930
+== kit build 02:46:16
+kit build rc=0
+built /var/tmp/a118r1/kit/deploy/e2e/sandbox-escape/bin/render, /var/tmp/a118r1/kit/deploy/e2e/sandbox-escape/bin/goprobe and /var/tmp/a118r1/kit/deploy/e2e/sandbox-escape/bin/sandbox-helper (static)
+total 56920
+drwxr-xr-x 2 root root     4096 Nov  4 05:46 .
+drwxrwxr-x 5 root root     4096 Nov  4 05:46 ..
+-rwxr-xr-x 1 root root  9109332 Nov  4 05:46 goprobe
+-rwxr-xr-x 1 root root  5036395 Nov  4 05:46 render
+-rwxr-xr-x 1 root root 44128672 Nov  4 05:46 sandbox-helper
+/var/tmp/a118r1/kit/deploy/e2e/sandbox-escape/bin/goprobe: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, Go BuildID=EpUBE__oxn_Pugnm2Z6b/bqMRHDqJoYQ9Mnouqx_v/W2Vm42oucJInzpSQQ0Ef/HY6b-4hZfrmZk9kiukuC, BuildID[sha1]=90137f9c73b0a0a71a276a374986752cbc7c3c78, with debug_info, not stripped
+phase1 done 02:46:23

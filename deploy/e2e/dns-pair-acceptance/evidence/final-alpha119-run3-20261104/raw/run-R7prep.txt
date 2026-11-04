@@ -1,0 +1,39 @@
+== R7prep 02:54:43
+200 {"id": 3, "rights": "unlimited", "success": true}
+200 {"id": 4, "rights": "unlimited", "success": true}
+200 {"id": 5, "rights": "unlimited", "success": true}
+prog119.test id=2
+py119.test id=3
+flask119.test id=4
+fast119.test id=5
+n8n119.test id=6
+other119.test id=7
+200 {"success": true}
+  prog119.test certificate: False
+  py119.test certificate: False
+  flask119.test certificate: False
+  fast119.test certificate: False
+  n8n119.test certificate: False
+== item 1 guide 02:55:51
+help http 200 bytes 791
+help chapter http 200
+<title>CelikPanel
+assets
+favicon.svg
+index.html
+recovery-offline.html
+recovery-worker.js
+admin.en chunk: assets/admin.en-s0FuGp9L.js http 200 text/javascript; charset=utf-8 11505
+customer.en chunk: assets/customer.en-5CmQ--GL.js http 200 text/javascript; charset=utf-8 6833
+reseller.en chunk: assets/reseller.en-B6dbfoQo.js http 200 text/javascript; charset=utf-8 7247
+chapter getting-started: assets/getting-started.en-CGDk1s1k.js http 200 text/javascript; charset=utf-8 3615
+chapter server-setup: assets/server-setup.en-oZPYvTAO.js http 200 text/javascript; charset=utf-8 3076
+chapter team-members: assets/team-members.en-s5tdnOAE.js http 200 text/javascript; charset=utf-8 2684
+guide js chunks: 6  chapter chunks: 10
+-- guide-state as customer
+200 {"tour_state": "pending", "tour_version": 0}
+200 {"tour_state": "skipped", "tour_version": 1}
+200 {"tour_state": "skipped", "tour_version": 1}
+-- guide-state as admin
+200 {"tour_state": "pending", "tour_version": 0}
+== R7prep done 02:55:52

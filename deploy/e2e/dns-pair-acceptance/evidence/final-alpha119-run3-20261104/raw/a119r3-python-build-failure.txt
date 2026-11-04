@@ -1,0 +1,78 @@
+## celikrtbuild-1: inactive / success 0 loaded 
+-- No entries --
+## celikrtbuild-2: inactive / success 0 loaded 
+-- No entries --
+## celikrtbuild-3: inactive / success 0 not-found 
+-- No entries --
+celikrtbuild-1.service loaded inactive dead CelikPanel Python build of flask119.test
+celikrtbuild-2.service loaded inactive dead CelikPanel Python build of fast119.test
+total 28
+drwxr-xr-x 7 flask119_test flask119_test 4096 Nov  4 02:56 .
+drwxr-x--- 4 flask119_test www-data      4096 Nov  4 02:56 ..
+drwxr-x--- 2 flask119_test flask119_test 4096 Nov  4 02:56 .build-tmp
+drwxr-x--- 2 flask119_test flask119_test 4096 Nov  4 02:56 .pip-cache
+drwxr-x--- 2 flask119_test flask119_test 4096 Nov  4 02:56 config
+drwxr-x--- 2 flask119_test flask119_test 4096 Nov  4 02:56 data
+drwxr-xr-x 2 flask119_test flask119_test 4096 Nov  4 02:56 src
+Type=oneshot
+RemainAfterExit=yes
+ExecMainStartTimestamp=
+ExecMainExitTimestamp=
+ExecMainCode=0
+ExecMainStatus=0
+ExecStart={ path=/usr/bin/python3.13 ; argv[]=/usr/bin/python3.13 -m venv /var/www/celikpanel/subscriptions/4/sites/4/app/venv-1.partial ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }
+WorkingDirectory=/var/www/celikpanel/subscriptions/4/sites/4/app
+StandardOutput=journal
+LogNamespace=
+User=flask119_test
+ReadWritePaths=
+InaccessiblePaths=-/run/celikpanel -/run/php -/run/php-fpm -/etc/celikpanel -/var/lib/celikpanel -/var/lib/celikpanel-agent -/var/lib/celikpanel-agent-private -/var/log/celikpanel -/root -/opt/celikpanel/toolchains -/var/spool/postfix
+ExecPaths=
+NoExecPaths=
+ProtectControlGroups=yes
+ProtectControlGroupsEx=strict
+ProtectHome=yes
+ProtectSystem=strict
+BindPaths=/run/celikpanel-sandbox/celikrtbuild-1.service/app:/var/www/celikpanel/subscriptions/4/sites/4/app:rbind
+BindReadOnlyPaths=
+TemporaryFileSystem=/var/www/celikpanel:ro
+Nov 04 02:56:44.299073 frankfurt systemd[1]: Created slice user-1000.slice - User Slice of UID 1000.
+Nov 04 02:56:44.300096 frankfurt systemd[1]: Starting user-runtime-dir@1000.service - User Runtime Directory /run/user/1000...
+Nov 04 02:56:44.325022 frankfurt systemd[1]: Finished user-runtime-dir@1000.service - User Runtime Directory /run/user/1000.
+Nov 04 02:56:44.327474 frankfurt systemd[1]: Starting user@1000.service - User Manager for UID 1000...
+Nov 04 02:56:44.413515 frankfurt systemd[50744]: Queued start job for default target default.target.
+Nov 04 02:56:44.427396 frankfurt systemd[50744]: Created slice app.slice - User Application Slice.
+Nov 04 02:56:44.427440 frankfurt systemd[50744]: Reached target paths.target - Paths.
+Nov 04 02:56:44.427476 frankfurt systemd[50744]: Reached target timers.target - Timers.
+Nov 04 02:56:44.428230 frankfurt systemd[50744]: Starting ssh-agent.socket - OpenSSH Agent socket...
+Nov 04 02:56:44.439365 frankfurt systemd[50744]: Listening on ssh-agent.socket - OpenSSH Agent socket.
+Nov 04 02:56:44.439632 frankfurt systemd[50744]: Reached target sockets.target - Sockets.
+Nov 04 02:56:44.439790 frankfurt systemd[50744]: Reached target basic.target - Basic System.
+Nov 04 02:56:44.439925 frankfurt systemd[1]: Started user@1000.service - User Manager for UID 1000.
+Nov 04 02:56:44.440827 frankfurt systemd[50744]: Reached target default.target - Main User Target.
+Nov 04 02:56:44.440860 frankfurt systemd[50744]: Startup finished in 90ms.
+Nov 04 02:56:45.180366 frankfurt systemd[1]: Reload requested from client PID 50821 ('systemctl') (unit celikpanel-agent.service)...
+Nov 04 02:56:45.180400 frankfurt systemd[1]: Reloading...
+Nov 04 02:56:45.282165 frankfurt systemd-ssh-generator[50856]: Failed to query local AF_VSOCK CID: Cannot assign requested address
+Nov 04 02:56:45.293260 frankfurt (sd-exec-[50842]: /usr/lib/systemd/system-generators/systemd-ssh-generator failed with exit status 1.
+Nov 04 02:56:45.375825 frankfurt systemd[1]: Reloading finished in 195 ms.
+Result=success
+Requires=sysinit.target -.mount celikpanel-sandbox@celikrtbuild-1.service system.slice
+Wants=-.mount tmp.mount
+BindsTo=
+After=celikpanel-sandbox@celikrtbuild-1.service sysinit.target tmp.mount -.mount systemd-journald.socket basic.target systemd-tmpfiles-setup.service system.slice
+LoadState=loaded
+ActiveState=inactive
+SubState=dead
+InvocationID=
+## celikpanel-sandbox@celikrtbuild-1.service: failed signal
+Nov 04 02:56:45.882461 frankfurt systemd[1]: Starting celikpanel-sandbox@celikrtbuild-1.service - CelikPanel site sandbox: app folder of celikrtbuild-1.service...
+Nov 04 02:56:45.924703 frankfurt systemd[1]: celikpanel-sandbox@celikrtbuild-1.service: Main process exited, code=killed, status=15/TERM
+Nov 04 02:56:45.924819 frankfurt systemd[1]: celikpanel-sandbox@celikrtbuild-1.service: Failed with result 'signal'.
+Nov 04 02:56:45.925079 frankfurt systemd[1]: Stopped celikpanel-sandbox@celikrtbuild-1.service - CelikPanel site sandbox: app folder of celikrtbuild-1.service.
+Nov 04 02:56:45.877659 frankfurt systemd[1]: Created slice system-celikpanel\x2dsandbox.slice - Slice /system/celikpanel-sandbox.
+Nov 04 02:56:45.882461 frankfurt systemd[1]: Starting celikpanel-sandbox@celikrtbuild-1.service - CelikPanel site sandbox: app folder of celikrtbuild-1.service...
+Nov 04 02:56:45.924703 frankfurt systemd[1]: celikpanel-sandbox@celikrtbuild-1.service: Main process exited, code=killed, status=15/TERM
+Nov 04 02:56:45.924819 frankfurt systemd[1]: celikpanel-sandbox@celikrtbuild-1.service: Failed with result 'signal'.
+Nov 04 02:56:45.925079 frankfurt systemd[1]: Stopped celikpanel-sandbox@celikrtbuild-1.service - CelikPanel site sandbox: app folder of celikrtbuild-1.service.
+Nov 04 02:56:56.553931 frankfurt systemd[51023]: Queued start job for default target default.target.
