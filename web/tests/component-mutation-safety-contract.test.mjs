@@ -26,12 +26,13 @@ function sourceSection(source, start, end) {
   return source.slice(startIndex, endIndex);
 }
 
-test('fresh Components visits open the installed view and remember only an explicit catalogue choice (D-010, alpha.100)', () => {
-  assert.match(
-    serviceSource,
-    /typeof localStorage === 'undefined' \|\| localStorage\.getItem\(viewKey\) !== 'catalog'/,
-  );
-  assert.match(serviceSource, /localStorage\.setItem\(viewKey, installedOnly \? 'installed' : 'catalog'\)/);
+// alpha.122 (owner decision): one list, no view switch; every category open
+// on the first visit, a folded one remembered per viewer behind try/catch.
+test('Components is one list: no view switch, and only folded categories are remembered (alpha.122)', () => {
+  assert.doesNotMatch(serviceSource, /viewKey|hideNotInstalled|services\.viewCatalog|services\.viewInstalled|coreRowWhenAbsent/);
+  assert.match(serviceSource, /const collapsedKey = 'celikpanel\.components\.collapsed';/);
+  assert.match(serviceSource, /try \{\s*const stored: unknown = JSON\.parse\(localStorage\.getItem\(collapsedKey\) \?\? '\[\]'\);/);
+  assert.match(serviceSource, /try \{\s*localStorage\.setItem\(collapsedKey, JSON\.stringify\(\[\.\.\.value\]\)\);\s*\} catch/);
 });
 
 test('component mutations are gated by fail-closed host readiness', () => {

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Bot, PauseCircle, PlayCircle, ShieldAlert, ShieldCheck, XCircle } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
+import { useNavigate } from '../router';
 import type { TranslationKey } from '../i18n/en';
 import { Button, ErrorBanner, Field, RemoteGate, inputClass } from './ui';
 import { readApiError, type ApiError } from '../lib/apiError';
@@ -62,6 +63,7 @@ export function AdminServiceApps() {
 
 function AdminAppCard({ app, onDone, onFailure }: { app: AdminServiceAppEntry; onDone: () => void; onFailure: (e: ApiError | null) => void }) {
     const { t } = useI18n();
+    const navigate = useNavigate();
     const [read, setRead] = useState(false);
     const [memory, setMemory] = useState(String(app.limits.memory_mb));
     const [cpu, setCPU] = useState(String(app.limits.cpu_percent));
@@ -108,7 +110,17 @@ function AdminAppCard({ app, onDone, onFailure }: { app: AdminServiceAppEntry; o
             </div>
             {app.held && <div className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{t('svcapps.admin.held', { reason: app.held_reason ?? '' })}</div>}
             {app.offer_stale && <div className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">{t('svcapps.admin.offerStale')}</div>}
-            {unavailable && <p className="text-sm text-warning">{unavailable}</p>}
+            {unavailable && (
+                <p className="text-sm text-warning">
+                    {unavailable}
+                    {/* alpha.122: Node.js's own install in Components. / Node.js'in Bileşenler'deki kurulumu. */}
+                    {app.reason === 'runtime_missing' && (
+                        <>{' '}<button type="button" onClick={() => navigate('/components?component=node&install=')} className="font-semibold text-primary underline underline-offset-2 max-sm:min-h-11" data-install-link="node">
+                            {t('services.installTitle', { name: t('services.component.name.node') })}
+                        </button></>
+                    )}
+                </p>
+            )}
             {app.available && app.runtime_source && (
                 <p className="text-xs text-fg-subtle">{t(('svcapps.admin.runtime.' + app.runtime_source) as TranslationKey)}</p>
             )}

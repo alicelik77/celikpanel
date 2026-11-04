@@ -177,7 +177,7 @@ async function mount({ managed = payload(), impacts, catalogue = words, stored }
   globalThis.bundleToasts = [];
   globalThis.document = { addEventListener() {}, removeEventListener() {}, getElementById: () => null, activeElement: null, body: { style: {} } };
   if (stored !== undefined) {
-    globalThis.localStorage = { getItem: (key) => (key === 'celikpanel.components.view' ? stored : null), setItem() {}, removeItem() {} };
+    globalThis.localStorage = { getItem: (key) => stored[key] ?? null, setItem(key, value) { stored[key] = value; }, removeItem() {} };
   }
   serve(managed, impacts);
   await act(async () => { tree = Renderer.create(React.createElement(ServiceList, {})); });
@@ -505,12 +505,31 @@ test('every removal text exists in English and Turkish in the components part, T
 });
 
 // --- The first visit ------------------------------------------------------------------
-test('the first visit opens the installed view; a stored "catalog" opens the catalogue; an unknown value is a first visit', async () => {
-  for (const [stored, shown] of [[undefined, false], [null, false], ['installed', false], ['catalog', true], ['something-else', false]]) {
+// alpha.122 (owner decision): one list with every component and every
+// category open on the first visit; only a category the viewer folded is
+// remembered, and the old view choice no longer hides anything.
+// Tek liste; ilk ziyarette her bölüm açık, yalnız katlanan bölüm hatırlanır.
+test('every component is listed on the first visit; a folded category is remembered; an old view choice or unreadable memory hides nothing', async () => {
+  for (const [stored, shown] of [
+    [undefined, true],
+    [{}, true],
+    [{ 'celikpanel.components.view': 'installed' }, true],
+    [{ 'celikpanel.components.collapsed': 'not json' }, true],
+    [{ 'celikpanel.components.collapsed': '["cache"]' }, false],
+  ]) {
     await mount({ stored });
     try {
-      assert.equal(rowOf('redis') !== undefined, shown, `stored ${stored}: the not-installed row`);
-      assert.ok(rowOf('nginx'), `stored ${stored}: an installed row`);
+      assert.equal(rowOf('redis') !== undefined, shown, `stored ${JSON.stringify(stored)}: the not-installed row`);
+      assert.ok(rowOf('nginx'), `stored ${JSON.stringify(stored)}: an installed row`);
     } finally { await unmount(); }
   }
+  // Folding a category is remembered for this viewer.
+  const stored = {};
+  await mount({ stored });
+  try {
+    const header = tree.root.findAll((node) => node.type === 'button' && label(node).includes(words['services.cat.cache']))[0];
+    await act(async () => { header.props.onClick(); });
+    assert.equal(rowOf('redis'), undefined, 'the folded category hides its rows');
+    assert.equal(stored['celikpanel.components.collapsed'], '["cache"]');
+  } finally { await unmount(); }
 });

@@ -89,18 +89,11 @@ test('the components toolbar never end-aligns a row it cannot fit', () => {
   );
   assert.match(row, /sm:justify-end/, 'it should still end-align once there is room');
 
-  const clusterAt = source.indexOf('className="flex flex-wrap items-center gap-x-4', rowAt);
-  assert.ok(
-    clusterAt > rowAt && clusterAt < rowAt + 2000,
-    'the view cluster must be allowed to wrap rather than overflow',
-  );
-
-  // Both view buttons are still one segmented control, not two loose buttons.
-  const installedAt = source.indexOf('services.viewInstalled', clusterAt);
-  const catalogAt = source.indexOf('services.viewCatalog', clusterAt);
-  assert.ok(installedAt > 0 && catalogAt > installedAt);
-  const control = source.slice(clusterAt, catalogAt);
-  assert.match(control, /inline-flex overflow-hidden rounded-lg border border-border-strong/);
+  // alpha.122: no view switch any more; the fold controls are one small
+  // cluster in the same row, and nothing names an Installed or Catalog view.
+  const foldAt = source.indexOf('data-fold-controls=""', rowAt);
+  assert.ok(foldAt > rowAt && foldAt < rowAt + 1500, 'the fold controls must stay in the toolbar row');
+  assert.doesNotMatch(source, /services\.viewInstalled|services\.viewCatalog/);
 });
 
 // Owner rule 2026-10-14: a button whose request makes the owner wait shows its

@@ -8,15 +8,19 @@ keywords: [kurulum, kaldırma, php, node.js, sürümler, hazır paket, depo, ngi
 
 **Bileşenler**, sunucudaki servisleri, PHP ve Node.js gibi çalışma ortamlarını ve phpMyAdmin gibi araçları listeler. Yazılımlar işletim sisteminin kendi paketlerinden gelir.
 
-## Kurulu ve Katalog {#views}
+## Tek liste {#views}
 
-**Kurulu** görünümü çalışanları durumlarıyla ve **Başlat**, **Durdur**, **Yeniden başlat**, **Onar ve başlat**, **Yönet** düğmeleriyle gösterir. **Katalog** kurulabilecekleri listeler. **Yeniden tara**, örneğin bir şeyi kendiniz kurduktan sonra, sunucuyu baştan okur.
+Sunucunun sunduğu her bileşen kendi bölümünde listelenir; kurulu olanlar önce gelir. Kurulu satır durumunu **Başlat**, **Durdur**, **Yeniden başlat**, **Onar ve başlat** ve **Yönet** düğmeleriyle gösterir. **Kurulu değil** yazan satırda **Kur** düğmesi vardır ya da satır neden burada kurulamadığını tek satırda söyler; örneğin Apache'nin yanında **Nginx ile çakışır** yazar. Postfix ve Dovecot gibi posta motorları, e-posta bölümünün başındaki posta kurulumuyla kurulur: satırlarında **Posta kurulumuyla kur** yazar. DNS motorları DNS sayfasında seçilir.
+
+İlk ziyarette her bölüm açıktır. **Tümünü kapat**, **Tümünü aç** ya da bölümün kendi başlığı bölümleri kapatır ve açar; bu tarayıcı neyi katladığınızı hatırlar. Arama her bileşeni bulur. **Yeniden tara**, örneğin bir şeyi kendiniz kurduktan sonra, sunucuyu baştan okur.
+
+Başka bir sayfa Fail2ban, ClamAV, vsftpd, Python, Node.js ya da WireGuard gibi bir bileşenin eksik olduğunu söylediğinde, oradaki **Kur** bağlantısı o bileşenin kurulum penceresini burada açar. Siz onaylamadan hiçbir şey başlamaz.
 
 ## Kurmak ve kaldırmak {#install}
 
 **Kur**, hiçbir şey değişmeden önce neyin kurulacağını gösterir. **Kaldır**, **Silinenler**, **Bu sunucuda etkilenecekler** ve **Yerinde kalanlar** bölümlerini gösterir; bileşene hâlâ bağlı bir şey varsa reddedilir. Bir veritabanı motorunu kaldırmak verisini silmez.
 
-**Hazır paketler**, **Temel Posta** ya da **Nginx + PHP-FPM** gibi birkaç bileşeni art arda kurar. Bir adım başarısız olursa **Devam et** yalnız eksik kalanları kurar; hiçbir şey kaldırılmaz.
+**Hazır paketler**, **Temel Posta** ya da **Nginx + PHP-FPM** gibi birkaç bileşeni art arda kurar. Henüz hiçbir parçası kurulu olmayan paket **Kur** der; parçalarından bazıları kurulu olan paket neyi ekleyeceğini adıyla söyler, örneğin **Ekle: phpPgAdmin**. Bir adım başarısız olursa **Devam et** yalnız eksik kalanları kurar; hiçbir şey kaldırılmaz.
 
 ## Sürümler {#versions}
 

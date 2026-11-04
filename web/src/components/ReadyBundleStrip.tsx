@@ -232,7 +232,7 @@ const chipFocus = 'focus-visible:outline focus-visible:outline-2 focus-visible:o
 // An installed chip: quiet, a door to its dialogue.
 const installedChip = `${chipBase} ${chipFocus} whitespace-nowrap border border-border bg-surface text-fg transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-60`;
 // A chip that installs: an outlined secondary button, never filled.
-const actionChip = `${chipBase} ${chipFocus} whitespace-nowrap border border-border-strong bg-surface font-semibold text-fg transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:border-dashed disabled:bg-transparent disabled:text-fg-muted`;
+const actionChip = `${chipBase} ${chipFocus} flex-wrap text-left border border-border-strong bg-surface font-semibold text-fg transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:border-dashed disabled:bg-transparent disabled:text-fg-muted`;
 // A chip that cannot act: calm muted text, no button.
 const quietChip = `${chipBase} text-fg-muted`;
 
@@ -329,6 +329,8 @@ export function ReadyBundleStrip({
         else onComponents(bundle);
     };
 
+    // Some parts are here and some are missing: the chip names what it adds.
+    const adds = (bundle: ReadyBundle) => bundle.missing_components.length > 0 && bundle.missing_components.length < bundle.components.length;
     const chip = ({ bundle, state, includedIn }: BundleChip): ReactNode => {
         const key = bundle.id;
         const common = { 'data-bundle': bundle.id, 'data-bundle-status': bundle.status, 'data-bundle-state': state } as const;
@@ -402,21 +404,21 @@ export function ReadyBundleStrip({
                 </button>
             );
         case 'available':
-            return (
-                <button key={key} type='button' aria-haspopup='dialog' className={actionChip} disabled={disabled || runActive} onClick={() => act(bundle)} {...common}>
-                    {label}
-                    <Dot />
-                    <span className='text-primary'>{t(bundle.parent !== undefined ? 'services.bundles.chip.add' : 'services.bundles.chip.install')}</span>
-                </button>
-            );
         case 'partial':
+            // alpha.122 (owner's Boston screens: "PostgreSQL + phpPgAdmin ·
+            // Install" with PostgreSQL installed): a bundle some of whose
+            // parts are already here says what it adds, by name; one with
+            // nothing here yet says Install.
+            // Parçalarından bazıları kurulu paket neyi ekleyeceğini adıyla söyler.
             return (
                 <button key={key} type='button' aria-haspopup='dialog' className={actionChip} disabled={disabled || runActive} onClick={() => act(bundle)} {...common}>
                     {label}
                     <Dot />
-                    <span className='font-normal text-fg-muted'>{t('services.bundles.chip.progress', { n: bundle.components.length - bundle.missing_components.length, total: bundle.components.length })}</span>
-                    <Dot />
-                    <span className='text-primary'>{t('services.bundles.continue')}</span>
+                    <span className='text-primary' data-bundle-adds={adds(bundle) ? bundle.missing_components.join(' ') : undefined}>
+                        {adds(bundle)
+                            ? <KeepWords text={t('services.bundles.chip.addNamed', { names: bundle.missing_components.map(nameOf).join(', ') })} />
+                            : t(bundle.parent !== undefined ? 'services.bundles.chip.add' : 'services.bundles.chip.install')}
+                    </span>
                 </button>
             );
         case 'blocked':

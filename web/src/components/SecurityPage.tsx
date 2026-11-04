@@ -153,11 +153,15 @@ function Fail2banStatus() {
                         <div className="flex flex-wrap items-start gap-x-3 gap-y-2" data-fail2ban-state={state}>
                             <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${tone}`} aria-hidden="true" />
                             <p className="min-w-0 flex-1 basis-64 text-sm text-fg">{t(`securityPage.f2b.${state}` as Parameters<typeof t>[0])}</p>
+                            {/* alpha.122: not installed opens Fail2ban's own install dialog in
+                                Components; nothing starts until it is confirmed there.
+                                Kurulu değilse Fail2ban'ın kurulum penceresini açar. */}
                             <Link
-                                to={installed ? '/components/fail2ban' : '/components'}
+                                to={installed ? '/components/fail2ban' : state === 'notInstalled' ? '/components?component=fail2ban&install=' : '/components?component=fail2ban'}
                                 className="inline-flex items-center text-sm font-semibold text-primary underline decoration-1 underline-offset-[3px] hover:decoration-2 max-sm:min-h-11"
+                                data-install-link={state === 'notInstalled' ? 'fail2ban' : undefined}
                             >
-                                {installed ? t('securityPage.f2b.manage') : t('securityPage.f2b.openComponents')}
+                                {installed ? t('securityPage.f2b.manage') : state === 'notInstalled' ? t('services.installTitle', { name: t('services.component.name.fail2ban') }) : t('securityPage.f2b.openComponents')}
                             </Link>
                         </div>
                     );

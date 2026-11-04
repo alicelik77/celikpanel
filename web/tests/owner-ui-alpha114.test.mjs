@@ -41,10 +41,11 @@ test('Domains: a delete tells every reader; the kept-records card is shown after
 test('install buttons lead to the right place, in the panel, without a page load', () => {
   const vpn = source('components/VPNPage.tsx');
   assert.doesNotMatch(vpn, /window\.location\.assign\('\/(services|components)'\)/);
-  assert.match(vpn, /navigate\('\/components\?component=wireguard'\)/);
+  assert.match(vpn, /navigate\('\/components\?component=wireguard&install='\)/);
   const list = source('components/ServiceList.tsx');
   assert.match(list, /get\('component'\)/, 'the Components page does not open at one component');
-  assert.match(list, /if \(linkedComponent\) return false;/, 'a linked component that is not installed would stay hidden');
+  // alpha.122: there is no view that could hide a linked component.
+  assert.doesNotMatch(list, /hideNotInstalled/, 'a linked component that is not installed would stay hidden');
   // The DNS engine is chosen on the DNS page's own engine card: no ping-pong.
   const dns = source('components/DNSServerSettings.tsx');
   assert.doesNotMatch(dns, /to="\/(services|components)"/);

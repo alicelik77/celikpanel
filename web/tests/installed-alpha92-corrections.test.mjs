@@ -129,7 +129,7 @@ test('item counts are pluralised in both languages', () => {
   assert.equal(catalogues.en['common.itemsTotal'], '{n} items');
   assert.equal(catalogues.tr['common.itemsTotalOne'], '1 öğe');
   assert.equal(catalogues.tr['common.itemsTotal'], '{n} öğe');
-  for (const file of ['Domains', 'DatabaseManagementV2', 'DomainDNSManager', 'DomainMailManager', 'ServiceList', 'TeamMembersPage', 'UsersPage']) {
+  for (const file of ['Domains', 'DatabaseManagementV2', 'DomainDNSManager', 'DomainMailManager', 'TeamMembersPage', 'UsersPage']) {
     const source = read(`../src/components/${file}.tsx`);
     const many = source.match(/t\('common\.itemsTotal', /g)?.length ?? 0;
     const one = source.match(/t\('common\.itemsTotalOne'\)/g)?.length ?? 0;
