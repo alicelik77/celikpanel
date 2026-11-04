@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.118.tr.md)
 
+> **Published** on 2026-11-04 (UTC): release commit `70c61f9d7`, GitHub pre-release at 00:29:10Z, download portal at about 00:32Z (public check 27/27). The security fix was rechecked in lab rounds 5 and 6 (`final-alpha118-run5`/`run6-20261104`): a planted link never exposed root-only content, restores and staging copies keep their folders' modes, and an update from alpha.117 moved nothing out of place.
+
 Real plan limits, an application catalogue, WordPress tools, malware scanning,
 remote backups and the first AI and automation applications, as the owner
 decided on 3 November 2026 (D-044). **Only the owner updates installed panels,
