@@ -106,3 +106,56 @@ func TestFileManagerMissingPathAnswersGuidance(t *testing.T) {
 		})
 	}
 }
+
+// alpha.119 (lab round 6): a folder create answered 500 INTERNAL. A request
+// the file manager cannot use - no name (the Agent answers "permission
+// denied" for the web folder itself), a name no file system holds, an
+// unreadable body or an unknown action - is a 400 with guidance, and the
+// Agent is never asked. A valid name still reaches the Agent.
+func TestFileManagerUnusableRequestIsClientErrorWithGuidance(t *testing.T) {
+	scope := domainFileScope{SubscriptionID: 7, DomainID: 1, Root: "/site"}
+	long := strings.Repeat("a", 256)
+	for _, tc := range []struct {
+		name, relative, body string
+	}{
+		{name: "folder create without a name", relative: "", body: `{"action":"create","is_dir":true}`},
+		{name: "name over 255 bytes", relative: "docs/" + long, body: `{"action":"create","is_dir":true}`},
+		{name: "control character in the name", relative: "docs/new\nfolder", body: `{"action":"create","is_dir":true}`},
+		{name: "delete of the web folder itself", relative: "", body: `{"action":"delete"}`},
+		{name: "rename to the web folder", relative: "a.txt", body: `{"action":"rename","new_path":"/docs/` + long + `"}`},
+		{name: "body is not JSON", relative: "docs/new", body: `not json`},
+		{name: "unknown field", relative: "docs/new", body: `{"action":"create","path":"x"}`},
+		{name: "unknown action", relative: "docs/new", body: `{"action":"explode"}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			agentPanel := newFileAnswerTestPanel(t, &fileAnswerTestAgent{answer: "permission denied"})
+			recorder := httptest.NewRecorder()
+			request := httptest.NewRequest(http.MethodPost, "/api/v1/domains/1/files", strings.NewReader(tc.body))
+			agentPanel.handleFileAction(recorder, request, tc.relative, scope)
+			if recorder.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want 400; body=%q", recorder.Code, recorder.Body.String())
+			}
+			var body apiErrorBody
+			if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
+				t.Fatalf("decode %q: %v", recorder.Body.String(), err)
+			}
+			if body.Code != errCodeFileRequestInvalid || !strings.Contains(body.Error, "Check the name and try again") {
+				t.Fatalf("answer = %+v, want %s with guidance", body, errCodeFileRequestInvalid)
+			}
+		})
+	}
+	t.Run("a valid name still reaches the Agent", func(t *testing.T) {
+		agentPanel := newFileAnswerTestPanel(t, &fileAnswerTestAgent{answer: transport.SiteFilePathExists})
+		recorder := httptest.NewRecorder()
+		request := httptest.NewRequest(http.MethodPost, "/api/v1/domains/1/files", strings.NewReader(`{"action":"create","is_dir":true}`))
+		agentPanel.handleFileAction(recorder, request, "docs/new folder", scope)
+		if recorder.Code != http.StatusConflict {
+			t.Fatalf("status = %d, want 409 from the Agent's answer; body=%q", recorder.Code, recorder.Body.String())
+		}
+	})
+	t.Run("target validity: the web folder itself and empty parts are not names", func(t *testing.T) {
+		if siteFileTargetValid("") || !siteFileTargetValid("a/b c") || siteFileTargetValid("a//b") {
+			t.Fatal("siteFileTargetValid classified a basic name wrongly")
+		}
+	})
+}

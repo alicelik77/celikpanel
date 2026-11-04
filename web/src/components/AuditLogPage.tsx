@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
 import { ScrollText } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { auditActionParts, auditActionText, auditActorName, auditDetailParts, auditResourceText } from '../lib/auditAction';
 import type { TranslationKey } from '../i18n/en';
-import { EmptyState, Spinner } from './ui';
+import { useRemote, decodeListIn } from '../lib/remote';
+import { KnownEmpty, RemoteGate } from './ui';
 import { PageHeader } from './PageHeader';
 
 interface AuditEntry {
@@ -26,18 +26,13 @@ interface AuditEntry {
 // Denetim izi: sunucu-geneli, en yeniden eskiye, kim nereden ne yaptı. Yalnız
 // admin. Panelin artık her hassas eylemde yazdığı audit_logs tablosundan
 // doğrudan okunur.
+// A failed or malformed read is "not known", never an empty list (D-024).
+// Başarısız ya da bozuk okuma "bilinmiyor"dur, asla boş liste değil.
+const decodeAudit = (raw: unknown) => decodeListIn<AuditEntry>(raw, 'entries');
+
 export function AuditLogPage() {
     const { t } = useI18n();
-    const [entries, setEntries] = useState<AuditEntry[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        fetch('/api/v1/audit-logs?limit=200')
-            .then((r) => (r.ok ? r.json() : { entries: [] }))
-            .then((d) => setEntries(d.entries || []))
-            .catch(() => {})
-            .finally(() => setLoading(false));
-    }, []);
+    const audit = useRemote('/api/v1/audit-logs?limit=200', decodeAudit);
 
     return (
         <div className="p-6 md:p-8">
@@ -47,12 +42,9 @@ export function AuditLogPage() {
                 breadcrumb={[t('common.home'), t('audit.title')]}
             />
 
-            {loading ? (
-                <div className="flex items-center justify-center py-16">
-                    <Spinner />
-                </div>
-            ) : entries.length === 0 ? (
-                <EmptyState icon={ScrollText} title={t('audit.empty')} />
+            <RemoteGate remote={audit.remote} checking={t('settings.audit.checking')} failed={t('settings.audit.unknown')} onRetry={() => void audit.retry()} busy={audit.reading}>
+                {(shown) => shown.value.length === 0 ? (
+                <KnownEmpty of={shown} icon={ScrollText} title={t('audit.empty')} />
             ) : (
                 <div className="overflow-x-auto rounded-xl border border-border-strong bg-surface">
                     <table className="w-full text-sm">
@@ -66,7 +58,7 @@ export function AuditLogPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {entries.map((e) => {
+                            {shown.value.map((e) => {
                                 // The action is said as a sentence in the interface language
                                 // (its target inside it); the detail names what the row is about
                                 // only when the sentence does not already.
@@ -106,7 +98,8 @@ export function AuditLogPage() {
                         </tbody>
                     </table>
                 </div>
-            )}
+                )}
+            </RemoteGate>
         </div>
     );
 }

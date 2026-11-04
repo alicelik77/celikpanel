@@ -455,8 +455,8 @@ kullanım engellenir.
 Özel abonelikler bu ekranda yer almaz, çünkü plandan çıkmışlardır.
 
 **6.5 Plan silme.** Plana bağlı bir abonelik varsa reddedilir (bugünkü gibi).
-Hazır gelen iki Sınırsız plan silinemez. Yönetici sınırlarını ve kalemlerini
-değiştirebilir.
+Hazır gelen iki Sınırsız plan silinemez ve düzenlenemez: sunulana kendiliğinden
+uyan sabit satırlardır (P4). Daraltmak için yönetici başka adla yeni bir plan açar.
 
 **6.6 Bayi hak seti daralırsa.** Yönetici bir bayinin hak setinden bir kalemi
 kaldırırsa, bayinin planları ve müşterileri o kalemi kullanmayı sürdürebilir

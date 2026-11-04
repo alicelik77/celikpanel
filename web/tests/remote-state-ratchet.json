@@ -21,11 +21,6 @@
       "rawRead": 2,
       "unprovenEmptyState": 3
     },
-    "src/components/AuditLogPage.tsx": {
-      "swallowedFailure": 1,
-      "rawRead": 1,
-      "unprovenEmptyState": 1
-    },
     "src/components/ComponentOperation.tsx": {
       "rawRead": 6
     },

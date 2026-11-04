@@ -441,7 +441,7 @@ export interface ServicePlan {
     max_databases: number;
     max_email_accounts: number;
     disk_quota_mb: number;
-    /** Stored for compatibility; traffic is not measured, so it is not shown or enforced. */
+    /** Stored for compatibility; the plan's traffic limit is the rights number (alpha.118). */
     bandwidth_quota_mb: number;
     subscribers?: number;
     /** A reseller's own plan (alpha.114); absent for a global plan. */

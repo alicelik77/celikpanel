@@ -192,5 +192,11 @@ func (p *Panel) handleAuditLogs(w http.ResponseWriter, r *http.Request) {
 		}
 		entries = append(entries, e)
 	}
+	// A read that broke off part-way is a failure, never a shorter list the
+	// screen would take for the whole history (D-024).
+	if err := rows.Err(); err != nil {
+		writeServerError(w, err)
+		return
+	}
 	json.NewEncoder(w).Encode(map[string]any{"entries": entries})
 }

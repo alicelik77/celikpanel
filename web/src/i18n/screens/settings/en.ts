@@ -260,7 +260,9 @@ export const enSettingsScreens = {
     'plans.unknown': 'The plans could not be read from the server, so the list is not shown. This does not mean there are no plans. Nothing was changed. Try again.',
     // alpha.114: plans, plan changes, reseller pools and My plan.
     'plans.unlimited': 'Unlimited',
-    'plans.hint': '0 means unlimited. Traffic is not measured yet, so plans have no traffic limit. Changing a plan updates every account on it.',
+    'settings.audit.checking': 'Reading the audit log from the server…',
+    'settings.audit.unknown': 'The audit log could not be read just now, so it is not known whether anything was recorded. Nothing was changed. Try again; if it keeps failing, check that the panel service is running.',
+    'plans.hint': '0 means unlimited. Monthly traffic is counted for websites only; at 100% only the websites close until the 1st. Changing a plan updates every account on it.',
     'plans.col.owner': 'Owner',
     'plans.ownerGlobal': 'Everyone (global)',
     'users.changePlan': 'Plan',

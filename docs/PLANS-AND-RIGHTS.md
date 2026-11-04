@@ -443,8 +443,8 @@ differences are shown first; if there are items where usage is larger than the p
 Custom subscriptions do not appear on this screen, because they have left the plan.
 
 **6.5 Deleting a plan.** It is refused if a subscription is bound to the plan (as today). The two
-ready-made Unlimited plans cannot be deleted. The administrator can change their limits and
-items.
+ready-made Unlimited plans cannot be deleted or edited: they are fixed rows that follow what is
+offered (P4). To narrow one, the administrator creates a new plan with another name.
 
 **6.6 If a reseller's rights set narrows.** If the administrator removes an item from a reseller's
 rights set, the reseller's plans and customers may keep using that item (P5). But none of them can

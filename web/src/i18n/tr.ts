@@ -366,7 +366,7 @@ export const tr: Record<ShellKey, string> = {
     'panelUpdate.interactionLocked': 'Bu güncelleme denetlenirken gezinme geçici olarak kilitlidir. İki dakika sonra kendiliğinden açılır; panel o sırada hâlâ yeniden başlıyorsa yeniden yanıt verdiğinde, en geç başlangıçtan altı dakika sonra açılır. İşlem arka planda izlenmeye devam eder.',
     'panelUpdate.ambiguous': 'Başlatma yanıtı belirsiz. İstek tekrarlanmayacak; aynı sunucu durumu izlenecek.',
     'panelUpdate.outcome.rolledBackTitle': 'Güncelleme tamamlanmadı; önceki sürüm geri yüklendi',
-    'panelUpdate.outcome.rolledBack': '{target} sürümüne güncelleme tamamlanmadı. Sunucu otomatik olarak {previous} sürümüne döndürüldü ve şu an onu çalıştırıyor.',
+    'panelUpdate.outcome.rolledBack': '{target} sürümüne güncelleme tamamlanmadı. Sunucu otomatik olarak {previous} sürümüne döndürüldü ve şu an onu çalıştırıyor. Panel verileri güncelleme öncesi alınan kopyadan döner; güncelleme başladıktan sonra panelde yapılan değişiklikler korunmaz.',
     'panelUpdate.outcome.cause.candidate_panel_startup_check_failed': 'Neden: yeni sürümün paneli, hiçbir şey devreye alınmadan önce başlangıç denetiminden geçemedi.',
     'panelUpdate.outcome.cause.panel_start_unverified': 'Neden: güncelleme uygulandıktan sonra yeni sürümün paneli başlayıp yanıt vermedi.',
     'panelUpdate.outcome.cause.update_finishing_scheduler': 'Neden: yeni sürüm kurulduktan sonra otomatik sertifika yenilemeyi yeniden açma doğrulanmadı.',
