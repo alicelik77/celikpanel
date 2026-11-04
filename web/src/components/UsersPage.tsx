@@ -512,7 +512,7 @@ function PlansTab({ isAdmin }: { isAdmin: boolean }) {
 
     return (
         <div>
-            {/* 0 = unlimited; traffic is not measured yet (alpha.114). */}
+            {/* 0 = unlimited; traffic is measured monthly, web only (alpha.118). */}
             <p className="mb-3 text-xs text-fg-subtle">{t('plans.hint')}</p>
             {/* The built-in Unlimited plan: a fixed row (D-042 P4). */}
             <BuiltinPlanRow kind="customer" ownField={!isAdmin} />

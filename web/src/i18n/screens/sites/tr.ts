@@ -251,6 +251,7 @@ export const trSitesScreens: Record<SitesScreenKey, string> = {
     'files.backToRoot': 'Web klasörüne dön',
     'files.notFound': 'Bu yol sitenin web klasöründe yok; yeniden adlandırılmış, taşınmış ya da silinmiş olabilir. Dosya yöneticisinin en üst düzeyi (/) sitenin web klasörüdür: oraya ya da üst klasöre dönüp öğeyi listeden yeniden açın.',
     'files.rootMissing': 'Sitenin web klasörü sunucuda yok; bu yüzden gösterilecek ya da değiştirilecek bir şey yok. Sunucu sahibi klasörü geri yükler (örneğin bir yedekten) ya da yeniden oluşturur; klasör var olur olmaz dosya yöneticisi yeniden çalışır.',
+    'files.requestInvalid': 'Dosya yöneticisi bu isteği kullanamadı: ad boş, 255 karakterden uzun ya da denetim karakteri içeriyor. Hiçbir şey değişmedi. Adı denetleyip yeniden deneyin; sürerse sayfayı yenileyin.',
     'files.nameTaken': 'Bu klasörde bu adla bir öğe zaten var. Başka bir ad seçin ya da önce var olan öğeyi yeniden adlandırın veya silin, sonra yeniden deneyin.',
     'files.newFolder': 'Yeni klasör',
     'files.newFile': 'Yeni dosya',

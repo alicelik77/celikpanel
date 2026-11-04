@@ -97,6 +97,7 @@ export function DomainFileManager({ domainId, readOnly = false }: DomainFileMana
         case 'FILE_NOT_FOUND': return t('files.notFound');
         case 'FILE_ROOT_MISSING': return t('files.rootMissing');
         case 'FILE_EXISTS': return t('files.nameTaken');
+        case 'FILE_REQUEST_INVALID': return t('files.requestInvalid');
         default: return fallback ?? apiErrorText(err, t);
         }
     };
